@@ -5,6 +5,7 @@ package wshremote
 
 import (
 	"archive/tar"
+	"archive/tar"
 	"context"
 	"encoding/base64"
 	"errors"
@@ -15,6 +16,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 	"time"
 
 	"github.com/wavetermdev/waveterm/pkg/remote/fileshare"
@@ -76,14 +78,15 @@ func (impl *ServerImpl) remoteStreamFileDir(ctx context.Context, path string, by
 			innerFilesEntries = innerFilesEntries[:wshrpc.MaxDirSize]
 		}
 	} else {
-		if byteRange.Start >= int64(len(innerFilesEntries)) {
-			return nil
+		if byteRange.Start < int64(len(innerFilesEntries)) {
+			realEnd := byteRange.End
+			if realEnd > int64(len(innerFilesEntries)) {
+				realEnd = int64(len(innerFilesEntries))
+			}
+			innerFilesEntries = innerFilesEntries[byteRange.Start:realEnd]
+		} else {
+			innerFilesEntries = []os.DirEntry{}
 		}
-		realEnd := byteRange.End
-		if realEnd > int64(len(innerFilesEntries)) {
-			realEnd = int64(len(innerFilesEntries))
-		}
-		innerFilesEntries = innerFilesEntries[byteRange.Start:realEnd]
 	}
 	var fileInfoArr []*wshrpc.FileInfo
 	parent := filepath.Dir(path)
@@ -115,6 +118,7 @@ func (impl *ServerImpl) remoteStreamFileDir(ctx context.Context, path string, by
 }
 
 func (impl *ServerImpl) remoteStreamFileRegular(ctx context.Context, path string, byteRange ByteRangeType, dataCallback func(fileInfo []*wshrpc.FileInfo, data []byte, byteRange ByteRangeType)) error {
+func (impl *ServerImpl) remoteStreamFileRegular(ctx context.Context, path string, byteRange ByteRangeType, dataCallback func(fileInfo []*wshrpc.FileInfo, data []byte, byteRange ByteRangeType)) error {
 	fd, err := os.Open(path)
 	if err != nil {
 		return fmt.Errorf("cannot open file %q: %w", path, err)
@@ -129,6 +133,7 @@ func (impl *ServerImpl) remoteStreamFileRegular(ctx context.Context, path string
 		filePos = byteRange.Start
 	}
 	buf := make([]byte, wshrpc.FileChunkSize)
+	buf := make([]byte, wshrpc.FileChunkSize)
 	for {
 		if ctx.Err() != nil {
 			return ctx.Err()
@@ -139,6 +144,7 @@ func (impl *ServerImpl) remoteStreamFileRegular(ctx context.Context, path string
 				n = int(byteRange.End - filePos)
 			}
 			filePos += int64(n)
+			dataCallback(nil, buf[:n], byteRange)
 			dataCallback(nil, buf[:n], byteRange)
 		}
 		if !byteRange.All && filePos >= byteRange.End {
@@ -155,6 +161,7 @@ func (impl *ServerImpl) remoteStreamFileRegular(ctx context.Context, path string
 }
 
 func (impl *ServerImpl) remoteStreamFileInternal(ctx context.Context, data wshrpc.CommandRemoteStreamFileData, dataCallback func(fileInfo []*wshrpc.FileInfo, data []byte, byteRange ByteRangeType)) error {
+func (impl *ServerImpl) remoteStreamFileInternal(ctx context.Context, data wshrpc.CommandRemoteStreamFileData, dataCallback func(fileInfo []*wshrpc.FileInfo, data []byte, byteRange ByteRangeType)) error {
 	byteRange, err := parseByteRange(data.ByteRange)
 	if err != nil {
 		return err
@@ -168,9 +175,11 @@ func (impl *ServerImpl) remoteStreamFileInternal(ctx context.Context, data wshrp
 		return fmt.Errorf("cannot stat file %q: %w", path, err)
 	}
 	dataCallback([]*wshrpc.FileInfo{finfo}, nil, byteRange)
+	dataCallback([]*wshrpc.FileInfo{finfo}, nil, byteRange)
 	if finfo.NotFound {
 		return nil
 	}
+	if finfo.Size > wshrpc.MaxFileSize {
 	if finfo.Size > wshrpc.MaxFileSize {
 		return fmt.Errorf("file %q is too large to read, use /wave/stream-file", path)
 	}
@@ -183,16 +192,21 @@ func (impl *ServerImpl) remoteStreamFileInternal(ctx context.Context, data wshrp
 
 func (impl *ServerImpl) RemoteStreamFileCommand(ctx context.Context, data wshrpc.CommandRemoteStreamFileData) chan wshrpc.RespOrErrorUnion[wshrpc.FileData] {
 	ch := make(chan wshrpc.RespOrErrorUnion[wshrpc.FileData], 16)
+func (impl *ServerImpl) RemoteStreamFileCommand(ctx context.Context, data wshrpc.CommandRemoteStreamFileData) chan wshrpc.RespOrErrorUnion[wshrpc.FileData] {
+	ch := make(chan wshrpc.RespOrErrorUnion[wshrpc.FileData], 16)
 	go func() {
 		defer close(ch)
+		firstPk := true
 		err := impl.remoteStreamFileInternal(ctx, data, func(fileInfo []*wshrpc.FileInfo, data []byte, byteRange ByteRangeType) {
 			resp := wshrpc.FileData{}
 			fileInfoLen := len(fileInfo)
-			if fileInfoLen > 1 {
-				resp.Info = fileInfo[0]
+			if fileInfoLen > 1 || !firstPk {
 				resp.Entries = fileInfo
 			} else if fileInfoLen == 1 {
 				resp.Info = fileInfo[0]
+			}
+			if firstPk {
+				firstPk = false
 			}
 			if len(data) > 0 {
 				resp.Data64 = base64.StdEncoding.EncodeToString(data)
@@ -211,7 +225,10 @@ func (impl *ServerImpl) RemoteStreamFileCommand(ctx context.Context, data wshrpc
 func (impl *ServerImpl) RemoteTarStreamCommand(ctx context.Context, data wshrpc.CommandRemoteStreamTarData) <-chan wshrpc.RespOrErrorUnion[[]byte] {
 	path := data.Path
 	opts := data.Opts
-	recursive := opts != nil && opts.Recursive
+	if opts == nil {
+		opts = &wshrpc.FileCopyOpts{}
+	}
+	recursive := opts.Recursive
 	log.Printf("RemoteTarStreamCommand: path=%s\n", path)
 	path, err := wavebase.ExpandHomeDir(path)
 	if err != nil {
@@ -226,7 +243,7 @@ func (impl *ServerImpl) RemoteTarStreamCommand(ctx context.Context, data wshrpc.
 	tarWriter := tar.NewWriter(pipeWriter)
 	timeout := time.Millisecond * 100
 	if opts.Timeout > 0 {
-		timeout = time.Duration(opts.Timeout)
+		timeout = time.Duration(opts.Timeout) * time.Millisecond
 	}
 	readerCtx, _ := context.WithTimeout(context.Background(), timeout)
 	rtn := iochan.ReaderChan(readerCtx, pipeReader, wshrpc.FileChunkSize, func() {
@@ -295,32 +312,55 @@ func (impl *ServerImpl) RemoteTarStreamCommand(ctx context.Context, data wshrpc.
 }
 
 func (impl *ServerImpl) RemoteFileCopyCommand(ctx context.Context, data wshrpc.CommandRemoteFileCopyData) error {
-	log.Printf("RemoteFileCopyCommand: src=%s, dest=%s\n", data.SrcUri, data.DestPath)
+	log.Printf("RemoteFileCopyCommand: src=%s, dest=%s\n", data.SrcUri, data.DestUri)
 	opts := data.Opts
-	destPath := data.DestPath
+	if opts == nil {
+		opts = &wshrpc.FileCopyOpts{}
+	}
+	destUri := data.DestUri
 	srcUri := data.SrcUri
-	merge := opts != nil && opts.Merge
-	overwrite := opts != nil && opts.Overwrite
-	destPathCleaned := filepath.Clean(wavebase.ExpandHomeDirSafe(destPath))
+	// merge :=  opts.Merge
+	overwrite := opts.Overwrite
+
+	destConn, err := connparse.ParseURIAndReplaceCurrentHost(ctx, destUri)
+	if err != nil {
+		return fmt.Errorf("cannot parse destination URI %q: %w", srcUri, err)
+	}
+	destPathCleaned := filepath.Clean(wavebase.ExpandHomeDirSafe(destConn.Path))
 	destinfo, err := os.Stat(destPathCleaned)
 	if err == nil {
 		if !destinfo.IsDir() {
 			if !overwrite {
-				return fmt.Errorf("destination %q already exists, use overwrite option", destPath)
+				return fmt.Errorf("destination %q already exists, use overwrite option", destPathCleaned)
 			} else {
 				err := os.Remove(destPathCleaned)
 				if err != nil {
-					return fmt.Errorf("cannot remove file %q: %w", destPath, err)
+					return fmt.Errorf("cannot remove file %q: %w", destPathCleaned, err)
 				}
 			}
 		}
 	} else if !errors.Is(err, fs.ErrNotExist) {
-		return fmt.Errorf("cannot stat destination %q: %w", destPath, err)
+		return fmt.Errorf("cannot stat destination %q: %w", destPathCleaned, err)
 	}
-	log.Printf("copying %q to %q\n", srcUri, destPath)
+	log.Printf("copying %q to %q\n", srcUri, destUri)
+	srcConn, err := connparse.ParseURIAndReplaceCurrentHost(ctx, srcUri)
+	if err != nil {
+		return fmt.Errorf("cannot parse source URI %q: %w", srcUri, err)
+	}
+	if srcConn.Host == destConn.Host {
+		log.Printf("same host, copying file\n")
+		srcPathCleaned := filepath.Clean(wavebase.ExpandHomeDirSafe(srcConn.Path))
+		err := os.Rename(srcPathCleaned, destPathCleaned)
+		if err != nil {
+			return fmt.Errorf("cannot copy file %q to %q: %w", srcPathCleaned, destPathCleaned, err)
+		}
+	} else {
+		return fmt.Errorf("cannot copy file %q to %q: source and destination must be on the same host", srcUri, destPathCleaned)
+	}
+	/* TODO: uncomment once ready for cross-connection copy
 	timeout := time.Millisecond * 100
 	if opts.Timeout > 0 {
-		timeout = time.Duration(opts.Timeout)
+		timeout = time.Duration(opts.Timeout) * time.Millisecond
 	}
 	readCtx, _ := context.WithTimeout(ctx, timeout)
 	readCtx, cancel := context.WithCancelCause(readCtx)
@@ -428,7 +468,8 @@ func (impl *ServerImpl) RemoteFileCopyCommand(ctx context.Context, data wshrpc.C
 				}
 			}
 		}
-	}
+	}*/
+	return nil
 }
 
 func (impl *ServerImpl) RemoteListEntriesCommand(ctx context.Context, data wshrpc.CommandRemoteListEntriesData) chan wshrpc.RespOrErrorUnion[wshrpc.CommandRemoteListEntriesRtnData] {
@@ -501,7 +542,18 @@ func (impl *ServerImpl) RemoteListEntriesCommand(ctx context.Context, data wshrp
 
 func statToFileInfo(fullPath string, finfo fs.FileInfo, extended bool) *wshrpc.FileInfo {
 	mimeType := fileutil.DetectMimeType(fullPath, finfo, extended)
+	mimeType := fileutil.DetectMimeType(fullPath, finfo, extended)
 	rtn := &wshrpc.FileInfo{
+		Path:          wavebase.ReplaceHomeDir(fullPath),
+		Dir:           computeDirPart(fullPath, finfo.IsDir()),
+		Name:          finfo.Name(),
+		Size:          finfo.Size(),
+		Mode:          finfo.Mode(),
+		ModeStr:       finfo.Mode().String(),
+		ModTime:       finfo.ModTime().UnixMilli(),
+		IsDir:         finfo.IsDir(),
+		MimeType:      mimeType,
+		SupportsMkdir: true,
 		Path:          wavebase.ReplaceHomeDir(fullPath),
 		Dir:           computeDirPart(fullPath, finfo.IsDir()),
 		Name:          finfo.Name(),
@@ -620,16 +672,49 @@ func (impl *ServerImpl) RemoteFileTouchCommand(ctx context.Context, path string)
 	return nil
 }
 
-func (impl *ServerImpl) RemoteFileRenameCommand(ctx context.Context, pathTuple [2]string) error {
-	path := pathTuple[0]
-	newPath := pathTuple[1]
-	cleanedPath := filepath.Clean(wavebase.ExpandHomeDirSafe(path))
-	cleanedNewPath := filepath.Clean(wavebase.ExpandHomeDirSafe(newPath))
-	if _, err := os.Stat(cleanedNewPath); err == nil {
-		return fmt.Errorf("destination file path %q already exists", path)
+func (impl *ServerImpl) RemoteFileMoveCommand(ctx context.Context, data wshrpc.CommandRemoteFileCopyData) error {
+	log.Printf("RemoteFileCopyCommand: src=%s, dest=%s\n", data.SrcUri, data.DestUri)
+	opts := data.Opts
+	destUri := data.DestUri
+	srcUri := data.SrcUri
+	overwrite := opts != nil && opts.Overwrite
+
+	destConn, err := connparse.ParseURIAndReplaceCurrentHost(ctx, destUri)
+	if err != nil {
+		return fmt.Errorf("cannot parse destination URI %q: %w", srcUri, err)
 	}
-	if err := os.Rename(cleanedPath, cleanedNewPath); err != nil {
-		return fmt.Errorf("cannot rename file %q to %q: %w", cleanedPath, cleanedNewPath, err)
+	destPathCleaned := filepath.Clean(wavebase.ExpandHomeDirSafe(destConn.Path))
+	destinfo, err := os.Stat(destPathCleaned)
+	if err == nil {
+		if !destinfo.IsDir() {
+			if !overwrite {
+				return fmt.Errorf("destination %q already exists, use overwrite option", destUri)
+			} else {
+				err := os.Remove(destPathCleaned)
+				if err != nil {
+					return fmt.Errorf("cannot remove file %q: %w", destUri, err)
+				}
+			}
+		}
+	} else if !errors.Is(err, fs.ErrNotExist) {
+		return fmt.Errorf("cannot stat destination %q: %w", destUri, err)
+	}
+	log.Printf("moving %q to %q\n", srcUri, destUri)
+	srcConn, err := connparse.ParseURIAndReplaceCurrentHost(ctx, srcUri)
+	if err != nil {
+		return fmt.Errorf("cannot parse source URI %q: %w", srcUri, err)
+	}
+	log.Printf("source host: %q, destination host: %q\n", srcConn.Host, destConn.Host)
+	if srcConn.Host == destConn.Host {
+		log.Printf("moving file on same host\n")
+		srcPathCleaned := filepath.Clean(wavebase.ExpandHomeDirSafe(srcConn.Path))
+		log.Printf("moving %q to %q\n", srcPathCleaned, destPathCleaned)
+		err := os.Rename(srcPathCleaned, destPathCleaned)
+		if err != nil {
+			return fmt.Errorf("cannot move file %q to %q: %w", srcPathCleaned, destPathCleaned, err)
+		}
+	} else {
+		return fmt.Errorf("cannot move file %q to %q: source and destination must be on the same host", srcUri, destUri)
 	}
 	return nil
 }
@@ -651,9 +736,12 @@ func (impl *ServerImpl) RemoteMkdirCommand(ctx context.Context, path string) err
 
 func (*ServerImpl) RemoteWriteFileCommand(ctx context.Context, data wshrpc.FileData) error {
 	path, err := wavebase.ExpandHomeDir(data.Info.Path)
+func (*ServerImpl) RemoteWriteFileCommand(ctx context.Context, data wshrpc.FileData) error {
+	path, err := wavebase.ExpandHomeDir(data.Info.Path)
 	if err != nil {
 		return err
 	}
+	createMode := data.Info.Mode
 	createMode := data.Info.Mode
 	if createMode == 0 {
 		createMode = 0644
@@ -679,15 +767,28 @@ func (*ServerImpl) RemoteWriteFileCommand(ctx context.Context, data wshrpc.FileD
 		}
 	}
 
-	file, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY, createMode)
+	openFlags := os.O_CREATE | os.O_WRONLY
+	if data.Info.Opts.Truncate {
+		openFlags |= os.O_TRUNC
+	}
+	if data.Info.Opts.Append {
+		openFlags |= os.O_APPEND
+	}
+
+	file, err := os.OpenFile(path, openFlags, createMode)
 	if err != nil {
 		return fmt.Errorf("cannot open file %q: %w", path, err)
 	}
-	offsetWriter := io.NewOffsetWriter(file, offset)
-	n, err = offsetWriter.Write(dataBytes[:n])
+	if offset > 0 && !data.Info.Opts.Append {
+		n, err = file.WriteAt(dataBytes[:n], offset)
+	} else {
+		n, err = file.Write(dataBytes[:n])
+	}
 	if err != nil {
 		return fmt.Errorf("cannot write to file %q: %w", path, err)
+		return fmt.Errorf("cannot write to file %q: %w", path, err)
 	}
+	log.Printf("wrote %d bytes to file %q at offset %q\n", n, path, offset)
 	log.Printf("wrote %d bytes to file %q at offset %q\n", n, path, offset)
 	return nil
 }

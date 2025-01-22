@@ -53,10 +53,10 @@ var WFS *FileStore = &FileStore{
 
 type WaveFile struct {
 	// these fields are static (not updated)
-	ZoneId    string              `json:"zoneid"`
-	Name      string              `json:"name"`
-	Opts      wshrpc.FileOptsType `json:"opts"`
-	CreatedTs int64               `json:"createdts"`
+	ZoneId    string          `json:"zoneid"`
+	Name      string          `json:"name"`
+	Opts      wshrpc.FileOpts `json:"opts"`
+	CreatedTs int64           `json:"createdts"`
 
 	//  these fields are mutable
 	Size  int64           `json:"size"`
@@ -112,7 +112,7 @@ type FileData struct {
 func (FileData) UseDBMap() {}
 
 // synchronous (does not interact with the cache)
-func (s *FileStore) MakeFile(ctx context.Context, zoneId string, name string, meta wshrpc.FileMeta, opts wshrpc.FileOptsType) error {
+func (s *FileStore) MakeFile(ctx context.Context, zoneId string, name string, meta wshrpc.FileMeta, opts wshrpc.FileOpts) error {
 	if opts.MaxSize < 0 {
 		return fmt.Errorf("max size must be non-negative")
 	}
@@ -368,7 +368,10 @@ func (s *FileStore) GetAllZoneIds(ctx context.Context) ([]string, error) {
 
 // returns (offset, data, error)
 // we return the offset because the offset may have been adjusted if the size was too big (for circular files)
-func (s *FileStore) ReadAt(ctx context.Context, zoneId string, name string, offset int64, size int) (rtnOffset int64, rtnData []byte, rtnErr error) {
+func (s *FileStore) ReadAt(ctx context.Context, zoneId string, name string, offset int64, size int64) (rtnOffset int64, rtnData []byte, rtnErr error) {
+	if size < 0 || size > math.MaxInt {
+		return 0, nil, fmt.Errorf("size must be non-negative and less than MaxInt")
+	}
 	withLock(s, zoneId, name, func(entry *CacheEntry) error {
 		rtnOffset, rtnData, rtnErr = entry.readAt(ctx, offset, size, false)
 		return nil

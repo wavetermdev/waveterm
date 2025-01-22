@@ -446,7 +446,6 @@ export class PreviewModel implements ViewModel {
         const connErr = getFn(this.connectionError);
         const editMode = getFn(this.editMode);
         const parentFileInfo = await this.getParentInfo(fileInfo);
-        console.log(parentFileInfo);
 
         if (connErr != "") {
             return { errorStr: `Connection Error: ${connErr}` };
@@ -523,6 +522,7 @@ export class PreviewModel implements ViewModel {
             const parentFileInfo = await RpcApi.RemoteFileJoinCommand(TabRpcClient, [fileInfo.path, ".."], {
                 route: makeConnRoute(conn),
             });
+            console.log("parent file info", parentFileInfo);
             return parentFileInfo;
         } catch {
             return undefined;
@@ -549,7 +549,6 @@ export class PreviewModel implements ViewModel {
                 this.goParentDirectory({ fileInfo: newFileInfo });
                 return;
             }
-            console.log(newFileInfo.path);
             this.updateOpenFileModalAndError(false);
             await this.goHistory(newFileInfo.path);
             refocusNode(this.blockId);

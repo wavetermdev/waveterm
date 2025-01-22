@@ -11,17 +11,18 @@ import (
 	"io"
 	"io/fs"
 	"log"
+	"log"
 	"os"
 	"path"
 	"path/filepath"
 	"strings"
+	"text/tabwriter"
 	"text/tabwriter"
 	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/wavetermdev/waveterm/pkg/util/colprint"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
-	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
 	"golang.org/x/term"
@@ -33,7 +34,7 @@ const (
 	WaveFilePrefix = "wavefile://"
 
 	DefaultFileTimeout = 5000
-	TimeoutYear        = 365 * 24 * time.Hour // 1 year
+	TimeoutYear        = int64(365) * 24 * 60 * 60 * 1000
 
 	UriHelpText = `
 
@@ -41,20 +42,30 @@ URI format: [profile]:[uri-scheme]://[connection]/[path]
 
 Supported URI schemes:
   wsh:
-    Used to access files on remote hosts over SSH via the WSH helper. Allows for file streaming to Wave and other remotes.
-    Profiles are optional for WSH URIs, provided that you have configured the remote host in your "connections.json" or "~/.ssh/config" file.
-    If a profile is provided, it must be defined in "profiles.json" in the Wave configuration directory.
+    Used to access files on remote hosts over SSH via the WSH helper. Allows
+    for file streaming to Wave and other remotes.
+
+    Profiles are optional for WSH URIs, provided that you have configured the
+    remote host in your "connections.json" or "~/.ssh/config" file.
+
+    If a profile is provided, it must be defined in "profiles.json" in the Wave
+    configuration directory.
 
     Format: wsh://[remote]/[path]
 
     Shorthands can be used for the current remote and your local computer:
       [path]              a relative or absolute path on the current remote
       //[remote]/[path]   a path on a remote
-      /~/[path]           a path relative to your home directory on your local computer
+      /~/[path]           a path relative to the home directory on your local
+                          computer
   s3:
     Used to access files on S3-compatible systems.
-    Requires S3 credentials to be set up, either in the AWS CLI configuration files, or in "profiles.json" in the Wave configuration directory.
-    If no profile is provided, the default from your AWS CLI configuration will be used. Profiles from the AWS CLI must be prefixed with "aws:".
+
+    Requires S3 credentials to be set up, either in the AWS CLI configuration
+    files, or in "profiles.json" in the Wave configuration directory.
+
+    If no profile is provided, the default from your AWS CLI configuration will
+    be used. Profiles from the AWS CLI must be prefixed with "aws:".
 
     Format: s3://[bucket]/[path]
             aws:[profile]:s3://[bucket]/[path]
@@ -68,7 +79,11 @@ Supported URI schemes:
 var fileCmd = &cobra.Command{
 	Use:   "file",
 	Short: "manage files across different storage systems",
-	Long:  "Manage files across different storage systems.\n\nWave Terminal is capable of managing files from remote SSH hosts, S3-compatible systems, and the internal Wave filesystem.\nFiles are addressed via URIs, which vary depending on the storage system." + UriHelpText}
+	Long: `Manage files across different storage systems.
+    
+Wave Terminal is capable of managing files from remote SSH hosts, S3-compatible
+systems, and the internal Wave filesystem. Files are addressed via URIs, which
+vary depending on the storage system.` + UriHelpText}
 
 var fileTimeout int
 
@@ -91,7 +106,13 @@ func init() {
 	fileCpCmd.Flags().BoolP("merge", "m", false, "merge directories")
 	fileCpCmd.Flags().BoolP("recursive", "r", false, "copy directories recursively")
 	fileCpCmd.Flags().BoolP("force", "f", false, "force overwrite of existing files")
+	fileCpCmd.Flags().BoolP("merge", "m", false, "merge directories")
+	fileCpCmd.Flags().BoolP("recursive", "r", false, "copy directories recursively")
+	fileCpCmd.Flags().BoolP("force", "f", false, "force overwrite of existing files")
 	fileCmd.AddCommand(fileCpCmd)
+	fileMvCmd.Flags().BoolP("recursive", "r", false, "move directories recursively")
+	fileMvCmd.Flags().BoolP("force", "f", false, "force overwrite of existing files")
+	fileCmd.AddCommand(fileMvCmd)
 }
 
 type waveFileRef struct {
@@ -109,11 +130,20 @@ var fileListCmd = &cobra.Command{
 	Short:   "list files",
 	Long:    "List files in a directory. By default, lists files in the current directory." + UriHelpText,
 	Example: "  wsh file ls wsh://user@ec2/home/user/\n  wsh file ls wavefile://client/configs/",
+	Use:     "ls [uri]",
+	Aliases: []string{"list"},
+	Short:   "list files",
+	Long:    "List files in a directory. By default, lists files in the current directory." + UriHelpText,
+	Example: "  wsh file ls wsh://user@ec2/home/user/\n  wsh file ls wavefile://client/configs/",
 	RunE:    activityWrap("file", fileListRun),
 	PreRunE: preRunSetupRpcClient,
 }
 
 var fileCatCmd = &cobra.Command{
+	Use:     "cat [uri]",
+	Short:   "display contents of a file",
+	Long:    "Display the contents of a file." + UriHelpText,
+	Example: "  wsh file cat wsh://user@ec2/home/user/config.txt\n  wsh file cat wavefile://client/settings.json",
 	Use:     "cat [uri]",
 	Short:   "display contents of a file",
 	Long:    "Display the contents of a file." + UriHelpText,
@@ -125,7 +155,10 @@ var fileCatCmd = &cobra.Command{
 
 var fileInfoCmd = &cobra.Command{
 	Use:     "info [uri]",
+	Use:     "info [uri]",
 	Short:   "show wave file information",
+	Long:    "Show information about a file." + UriHelpText,
+	Example: "  wsh file info wsh://user@ec2/home/user/config.txt\n  wsh file info wavefile://client/settings.json",
 	Long:    "Show information about a file." + UriHelpText,
 	Example: "  wsh file info wsh://user@ec2/home/user/config.txt\n  wsh file info wavefile://client/settings.json",
 	Args:    cobra.ExactArgs(1),
@@ -138,6 +171,10 @@ var fileRmCmd = &cobra.Command{
 	Short:   "remove a file",
 	Long:    "Remove a file." + UriHelpText,
 	Example: "  wsh file rm wsh://user@ec2/home/user/config.txt\n  wsh file rm wavefile://client/settings.json",
+	Use:     "rm [uri]",
+	Short:   "remove a file",
+	Long:    "Remove a file." + UriHelpText,
+	Example: "  wsh file rm wsh://user@ec2/home/user/config.txt\n  wsh file rm wavefile://client/settings.json",
 	Args:    cobra.ExactArgs(1),
 	RunE:    activityWrap("file", fileRmRun),
 	PreRunE: preRunSetupRpcClient,
@@ -146,7 +183,7 @@ var fileRmCmd = &cobra.Command{
 var fileWriteCmd = &cobra.Command{
 	Use:     "write [uri]",
 	Short:   "write stdin into a file (up to 10MB)",
-	Long:    "Write stdin into a file, buffering input and respecting 10MB total file size limit." + UriHelpText,
+	Long:    "Write stdin into a file, buffering input (10MB total file size limit)." + UriHelpText,
 	Example: "  echo 'hello' | wsh file write wavefile://block/greeting.txt",
 	Args:    cobra.ExactArgs(1),
 	RunE:    activityWrap("file", fileWriteRun),
@@ -156,7 +193,7 @@ var fileWriteCmd = &cobra.Command{
 var fileAppendCmd = &cobra.Command{
 	Use:     "append [uri]",
 	Short:   "append stdin to a file",
-	Long:    "Append stdin to a file, buffering input and respecting 10MB total file size limit." + UriHelpText,
+	Long:    "Append stdin to a file, buffering input (10MB total file size limit)." + UriHelpText,
 	Example: "  tail -f log.txt | wsh file append wavefile://block/app.log",
 	Args:    cobra.ExactArgs(1),
 	RunE:    activityWrap("file", fileAppendRun),
@@ -165,6 +202,7 @@ var fileAppendCmd = &cobra.Command{
 
 var fileCpCmd = &cobra.Command{
 	Use:     "cp [source-uri] [destination-uri]" + UriHelpText,
+	Aliases: []string{"copy"},
 	Short:   "copy files between storage systems",
 	Long:    "Copy files between different storage systems." + UriHelpText,
 	Example: "  wsh file cp wavefile://block/config.txt ./local-config.txt\n  wsh file cp ./local-config.txt wavefile://block/config.txt\n  wsh file cp wsh://user@ec2/home/user/config.txt wavefile://client/config.txt",
@@ -173,11 +211,26 @@ var fileCpCmd = &cobra.Command{
 	PreRunE: preRunSetupRpcClient,
 }
 
+var fileMvCmd = &cobra.Command{
+	Use:     "mv [source-uri] [destination-uri]" + UriHelpText,
+	Aliases: []string{"move"},
+	Short:   "move files between storage systems",
+	Long:    "Move files between different storage systems. The source file will be deleted once the operation completes successfully." + UriHelpText,
+	Example: "  wsh file mv wavefile://block/config.txt ./local-config.txt\n  wsh file mv ./local-config.txt wavefile://block/config.txt\n  wsh file mv wsh://user@ec2/home/user/config.txt wavefile://client/config.txt",
+	Args:    cobra.ExactArgs(2),
+	RunE:    activityWrap("file", fileMvRun),
+	PreRunE: preRunSetupRpcClient,
+}
+
 func fileCatRun(cmd *cobra.Command, args []string) error {
+	path, err := fixRelativePaths(args[0])
 	path, err := fixRelativePaths(args[0])
 	if err != nil {
 		return err
 	}
+	fileData := wshrpc.FileData{
+		Info: &wshrpc.FileInfo{
+			Path: path}}
 	fileData := wshrpc.FileData{
 		Info: &wshrpc.FileInfo{
 			Path: path}}
@@ -187,11 +240,13 @@ func fileCatRun(cmd *cobra.Command, args []string) error {
 	err = convertNotFoundErr(err)
 	if err == fs.ErrNotExist {
 		return fmt.Errorf("%s: no such file", path)
+		return fmt.Errorf("%s: no such file", path)
 	}
 	if err != nil {
 		return fmt.Errorf("getting file info: %w", err)
 	}
 
+	err = streamReadFromFile(fileData, info.Size, os.Stdout)
 	err = streamReadFromFile(fileData, info.Size, os.Stdout)
 	if err != nil {
 		return fmt.Errorf("reading file: %w", err)
@@ -202,9 +257,13 @@ func fileCatRun(cmd *cobra.Command, args []string) error {
 
 func fileInfoRun(cmd *cobra.Command, args []string) error {
 	path, err := fixRelativePaths(args[0])
+	path, err := fixRelativePaths(args[0])
 	if err != nil {
 		return err
 	}
+	fileData := wshrpc.FileData{
+		Info: &wshrpc.FileInfo{
+			Path: path}}
 	fileData := wshrpc.FileData{
 		Info: &wshrpc.FileInfo{
 			Path: path}}
@@ -212,6 +271,7 @@ func fileInfoRun(cmd *cobra.Command, args []string) error {
 	info, err := wshclient.FileInfoCommand(RpcClient, fileData, &wshrpc.RpcOpts{Timeout: DefaultFileTimeout})
 	err = convertNotFoundErr(err)
 	if err == fs.ErrNotExist {
+		return fmt.Errorf("%s: no such file", path)
 		return fmt.Errorf("%s: no such file", path)
 	}
 	if err != nil {
@@ -227,7 +287,18 @@ func fileInfoRun(cmd *cobra.Command, args []string) error {
 		WriteStdout("size:\t%d\n", info.Size)
 	}
 	if info.Meta != nil && len(*info.Meta) > 0 {
+	WriteStdout("name:\t%s\n", info.Name)
+	if info.Mode != 0 {
+		WriteStdout("mode:\t%s\n", info.Mode.String())
+	}
+	WriteStdout("mtime:\t%s\n", time.Unix(info.ModTime/1000, 0).Format(time.DateTime))
+	if !info.IsDir {
+		WriteStdout("size:\t%d\n", info.Size)
+	}
+	if info.Meta != nil && len(*info.Meta) > 0 {
 		WriteStdout("metadata:\n")
+		for k, v := range *info.Meta {
+			WriteStdout("\t\t\t%s: %v\n", k, v)
 		for k, v := range *info.Meta {
 			WriteStdout("\t\t\t%s: %v\n", k, v)
 		}
@@ -237,9 +308,13 @@ func fileInfoRun(cmd *cobra.Command, args []string) error {
 
 func fileRmRun(cmd *cobra.Command, args []string) error {
 	path, err := fixRelativePaths(args[0])
+	path, err := fixRelativePaths(args[0])
 	if err != nil {
 		return err
 	}
+	fileData := wshrpc.FileData{
+		Info: &wshrpc.FileInfo{
+			Path: path}}
 	fileData := wshrpc.FileData{
 		Info: &wshrpc.FileInfo{
 			Path: path}}
@@ -247,6 +322,7 @@ func fileRmRun(cmd *cobra.Command, args []string) error {
 	_, err = wshclient.FileInfoCommand(RpcClient, fileData, &wshrpc.RpcOpts{Timeout: DefaultFileTimeout})
 	err = convertNotFoundErr(err)
 	if err == fs.ErrNotExist {
+		return fmt.Errorf("%s: no such file", path)
 		return fmt.Errorf("%s: no such file", path)
 	}
 	if err != nil {
@@ -263,18 +339,24 @@ func fileRmRun(cmd *cobra.Command, args []string) error {
 
 func fileWriteRun(cmd *cobra.Command, args []string) error {
 	path, err := fixRelativePaths(args[0])
+	path, err := fixRelativePaths(args[0])
 	if err != nil {
 		return err
 	}
 	fileData := wshrpc.FileData{
 		Info: &wshrpc.FileInfo{
 			Path: path}}
+	fileData := wshrpc.FileData{
+		Info: &wshrpc.FileInfo{
+			Path: path}}
 
+	_, err = ensureFile(path, fileData)
 	_, err = ensureFile(path, fileData)
 	if err != nil {
 		return err
 	}
 
+	err = streamWriteToFile(fileData, WrappedStdin)
 	err = streamWriteToFile(fileData, WrappedStdin)
 	if err != nil {
 		return fmt.Errorf("writing file: %w", err)
@@ -285,13 +367,18 @@ func fileWriteRun(cmd *cobra.Command, args []string) error {
 
 func fileAppendRun(cmd *cobra.Command, args []string) error {
 	path, err := fixRelativePaths(args[0])
+	path, err := fixRelativePaths(args[0])
 	if err != nil {
 		return err
 	}
 	fileData := wshrpc.FileData{
 		Info: &wshrpc.FileInfo{
 			Path: path}}
+	fileData := wshrpc.FileData{
+		Info: &wshrpc.FileInfo{
+			Path: path}}
 
+	info, err := ensureFile(path, fileData)
 	info, err := ensureFile(path, fileData)
 	if err != nil {
 		return err
@@ -321,7 +408,7 @@ func fileAppendRun(cmd *cobra.Command, args []string) error {
 
 		if buf.Len() >= 8192 { // 8KB batch size
 			fileData.Data64 = base64.StdEncoding.EncodeToString(buf.Bytes())
-			err = wshclient.FileAppendCommand(RpcClient, fileData, &wshrpc.RpcOpts{Timeout: time.Duration(fileTimeout)})
+			err = wshclient.FileAppendCommand(RpcClient, fileData, &wshrpc.RpcOpts{Timeout: int64(fileTimeout)})
 			if err != nil {
 				return fmt.Errorf("appending to file: %w", err)
 			}
@@ -332,7 +419,7 @@ func fileAppendRun(cmd *cobra.Command, args []string) error {
 
 	if buf.Len() > 0 {
 		fileData.Data64 = base64.StdEncoding.EncodeToString(buf.Bytes())
-		err = wshclient.FileAppendCommand(RpcClient, fileData, &wshrpc.RpcOpts{Timeout: time.Duration(fileTimeout)})
+		err = wshclient.FileAppendCommand(RpcClient, fileData, &wshrpc.RpcOpts{Timeout: int64(fileTimeout)})
 		if err != nil {
 			return fmt.Errorf("appending to file: %w", err)
 		}
@@ -403,6 +490,34 @@ func fileCpRun(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+func fileMvRun(cmd *cobra.Command, args []string) error {
+	src, dst := args[0], args[1]
+	recursive, err := cmd.Flags().GetBool("recursive")
+	if err != nil {
+		return err
+	}
+	force, err := cmd.Flags().GetBool("force")
+	if err != nil {
+		return err
+	}
+
+	srcPath, err := fixRelativePaths(src)
+	if err != nil {
+		return fmt.Errorf("unable to parse src path: %w", err)
+	}
+	destPath, err := fixRelativePaths(dst)
+	if err != nil {
+		return fmt.Errorf("unable to parse dest path: %w", err)
+	}
+	log.Printf("Moving %s to %s; recursive: %v, force: %v", srcPath, destPath, recursive, force)
+	rpcOpts := &wshrpc.RpcOpts{Timeout: TimeoutYear}
+	err = wshclient.FileMoveCommand(RpcClient, wshrpc.CommandFileCopyData{SrcUri: srcPath, DestUri: destPath, Opts: &wshrpc.FileCopyOpts{Recursive: recursive, Overwrite: force, Timeout: TimeoutYear}}, rpcOpts)
+	if err != nil {
+		return fmt.Errorf("moving file: %w", err)
+	}
+	return nil
+}
+
 func filePrintColumns(filesChan <-chan wshrpc.RespOrErrorUnion[wshrpc.CommandRemoteListEntriesRtnData]) error {
 	width := 80 // default if we can't get terminal
 	if w, _, err := term.GetSize(int(os.Stdout.Fd())); err == nil {
@@ -414,6 +529,7 @@ func filePrintColumns(filesChan <-chan wshrpc.RespOrErrorUnion[wshrpc.CommandRem
 		numCols = 1
 	}
 
+	return colprint.PrintColumnsArray(
 	return colprint.PrintColumnsArray(
 		filesChan,
 		numCols,
@@ -508,7 +624,11 @@ func fileListRun(cmd *cobra.Command, args []string) error {
 	}
 
 	filesChan := wshclient.FileListStreamCommand(RpcClient, wshrpc.FileListData{Path: path, Opts: &wshrpc.FileListOpts{All: recursive}}, &wshrpc.RpcOpts{Timeout: 2000})
-
+	// Drain the channel when done
+	defer func() {
+		for range filesChan {
+		}
+	}()
 	if longForm {
 		return filePrintLong(filesChan)
 	}

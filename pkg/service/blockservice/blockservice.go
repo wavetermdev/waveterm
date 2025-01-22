@@ -54,7 +54,7 @@ func (bs *BlockService) SaveTerminalState(ctx context.Context, blockId string, s
 		return fmt.Errorf("invalid state type: %q", stateType)
 	}
 	// ignore MakeFile error (already exists is ok)
-	filestore.WFS.MakeFile(ctx, blockId, "cache:term:"+stateType, nil, wshrpc.FileOptsType{})
+	filestore.WFS.MakeFile(ctx, blockId, "cache:term:"+stateType, nil, wshrpc.FileOpts{})
 	err = filestore.WFS.WriteFile(ctx, blockId, "cache:term:"+stateType, []byte(state))
 	if err != nil {
 		return fmt.Errorf("cannot save terminal state: %w", err)
@@ -84,7 +84,7 @@ func (bs *BlockService) SaveWaveAiData(ctx context.Context, blockId string, hist
 		return fmt.Errorf("unable to serialize ai history: %v", err)
 	}
 	// ignore MakeFile error (already exists is ok)
-	filestore.WFS.MakeFile(ctx, blockId, "aidata", nil, wshrpc.FileOptsType{})
+	filestore.WFS.MakeFile(ctx, blockId, "aidata", nil, wshrpc.FileOpts{})
 	err = filestore.WFS.WriteFile(ctx, blockId, "aidata", historyBytes)
 	if err != nil {
 		return fmt.Errorf("cannot save terminal state: %w", err)

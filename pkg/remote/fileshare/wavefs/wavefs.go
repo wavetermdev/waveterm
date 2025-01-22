@@ -72,7 +72,7 @@ func (c WaveClient) Read(ctx context.Context, conn *connparse.Connection, data w
 		return nil, fmt.Errorf("error cleaning path: %w", err)
 	}
 	if data.At != nil {
-		_, dataBuf, err := filestore.WFS.ReadAt(ctx, zoneId, fileName, data.At.Offset, data.At.Size)
+		_, dataBuf, err := filestore.WFS.ReadAt(ctx, zoneId, fileName, data.At.Offset, int64(data.At.Size))
 		if err == nil {
 			return &wshrpc.FileData{Info: data.Info, Data64: base64.StdEncoding.EncodeToString(dataBuf)}, nil
 		} else if errors.Is(err, fs.ErrNotExist) {
@@ -221,7 +221,7 @@ func (c WaveClient) PutFile(ctx context.Context, conn *connparse.Connection, dat
 		if !errors.Is(err, fs.ErrNotExist) {
 			return fmt.Errorf("error getting blockfile info: %w", err)
 		}
-		var opts wshrpc.FileOptsType
+		var opts wshrpc.FileOpts
 		var meta wshrpc.FileMeta
 		if data.Info != nil {
 			if data.Info.Opts != nil {
@@ -265,12 +265,91 @@ func (c WaveClient) PutFile(ctx context.Context, conn *connparse.Connection, dat
 	return nil
 }
 
+/*
+
+	path := data.Info.Path
+	log.Printf("Append: path=%s", path)
+	client, conn := CreateFileShareClient(ctx, path)
+	if conn == nil || client == nil {
+		return fmt.Errorf(ErrorParsingConnection, path)
+	}
+	finfo, err := client.Stat(ctx, conn)
+	if err != nil {
+		return err
+	}
+	if data.Info == nil {
+		data.Info = &wshrpc.FileInfo{}
+	}
+	oldInfo := data.Info
+	data.Info = finfo
+	if oldInfo.Opts != nil {
+		data.Info.Opts = oldInfo.Opts
+	}
+	data.At = &wshrpc.FileDataAt{
+		Offset: finfo.Size,
+	}
+	log.Printf("Append: offset=%d", data.At.Offset)
+	return client.PutFile(ctx, conn, data)
+*/
+
+func (c WaveClient) AppendFile(ctx context.Context, conn *connparse.Connection, data wshrpc.FileData) error {
+	dataBuf, err := base64.StdEncoding.DecodeString(data.Data64)
+	if err != nil {
+		return fmt.Errorf("error decoding data64: %w", err)
+	}
+	zoneId := conn.Host
+	if zoneId == "" {
+		return fmt.Errorf("zoneid not found in connection")
+	}
+	fileName, err := cleanPath(conn.Path)
+	if err != nil {
+		return fmt.Errorf("error cleaning path: %w", err)
+	}
+	_, err = filestore.WFS.Stat(ctx, zoneId, fileName)
+	if err != nil {
+		if !errors.Is(err, fs.ErrNotExist) {
+			return fmt.Errorf("error getting blockfile info: %w", err)
+		}
+		var opts wshrpc.FileOpts
+		var meta wshrpc.FileMeta
+		if data.Info != nil {
+			if data.Info.Opts != nil {
+				opts = *data.Info.Opts
+			}
+			if data.Info.Meta != nil {
+				meta = *data.Info.Meta
+			}
+		}
+		err := filestore.WFS.MakeFile(ctx, zoneId, fileName, meta, opts)
+		if err != nil {
+			return fmt.Errorf("error making blockfile: %w", err)
+		}
+	}
+	err = filestore.WFS.AppendData(ctx, zoneId, fileName, dataBuf)
+	if errors.Is(err, fs.ErrNotExist) {
+		return fmt.Errorf("NOTFOUND: %w", err)
+	}
+	if err != nil {
+		return fmt.Errorf("error writing to blockfile: %w", err)
+	}
+	wps.Broker.Publish(wps.WaveEvent{
+		Event:  wps.Event_BlockFile,
+		Scopes: []string{waveobj.MakeORef(waveobj.OType_Block, zoneId).String()},
+		Data: &wps.WSFileEventData{
+			ZoneId:   zoneId,
+			FileName: fileName,
+			FileOp:   wps.FileOp_Invalidate,
+		},
+	})
+	return nil
+}
+
 // WaveFile does not support directories, only prefix-based listing
 func (c WaveClient) Mkdir(ctx context.Context, conn *connparse.Connection) error {
 	return nil
 }
 
-func (c WaveClient) Move(ctx context.Context, srcConn, destConn *connparse.Connection, recursive bool) error {
+func (c WaveClient) Move(ctx context.Context, srcConn, destConn *connparse.Connection, opts *wshrpc.FileCopyOpts) error {
 	return nil
 }
 

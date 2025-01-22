@@ -14,6 +14,9 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/remote/connparse"
 	"github.com/wavetermdev/waveterm/pkg/util/fileutil"
 	"github.com/wavetermdev/waveterm/pkg/util/wavefileutil"
+	"github.com/wavetermdev/waveterm/pkg/remote/connparse"
+	"github.com/wavetermdev/waveterm/pkg/util/fileutil"
+	"github.com/wavetermdev/waveterm/pkg/util/wavefileutil"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
 )
@@ -29,9 +32,11 @@ func convertNotFoundErr(err error) error {
 }
 
 func ensureFile(origName string, fileData wshrpc.FileData) (*wshrpc.FileInfo, error) {
+func ensureFile(origName string, fileData wshrpc.FileData) (*wshrpc.FileInfo, error) {
 	info, err := wshclient.FileInfoCommand(RpcClient, fileData, &wshrpc.RpcOpts{Timeout: DefaultFileTimeout})
 	err = convertNotFoundErr(err)
 	if err == fs.ErrNotExist {
+		err = wshclient.FileCreateCommand(RpcClient, fileData, &wshrpc.RpcOpts{Timeout: DefaultFileTimeout})
 		err = wshclient.FileCreateCommand(RpcClient, fileData, &wshrpc.RpcOpts{Timeout: DefaultFileTimeout})
 		if err != nil {
 			return nil, fmt.Errorf("creating file: %w", err)
@@ -81,7 +86,7 @@ func streamWriteToFile(fileData wshrpc.FileData, reader io.Reader) error {
 		appendData := fileData
 		appendData.Data64 = base64.StdEncoding.EncodeToString(chunk)
 
-		err = wshclient.FileAppendCommand(RpcClient, appendData, &wshrpc.RpcOpts{Timeout: time.Duration(fileTimeout)})
+		err = wshclient.FileAppendCommand(RpcClient, appendData, &wshrpc.RpcOpts{Timeout: int64(fileTimeout)})
 		if err != nil {
 			return fmt.Errorf("appending chunk to file: %w", err)
 		}
@@ -90,6 +95,7 @@ func streamWriteToFile(fileData wshrpc.FileData, reader io.Reader) error {
 	return nil
 }
 
+func streamReadFromFile(fileData wshrpc.FileData, size int64, writer io.Writer) error {
 func streamReadFromFile(fileData wshrpc.FileData, size int64, writer io.Writer) error {
 	const chunkSize = 32 * 1024 // 32KB chunks
 	for offset := int64(0); offset < size; offset += chunkSize {
@@ -101,17 +107,19 @@ func streamReadFromFile(fileData wshrpc.FileData, size int64, writer io.Writer) 
 
 		// Set up the ReadAt request
 		fileData.At = &wshrpc.FileDataAt{
+		fileData.At = &wshrpc.FileDataAt{
 			Offset: offset,
 			Size:   length,
 		}
 
 		// Read the chunk
-		data, err := wshclient.FileReadCommand(RpcClient, fileData, &wshrpc.RpcOpts{Timeout: time.Duration(fileTimeout)})
+		data, err := wshclient.FileReadCommand(RpcClient, fileData, &wshrpc.RpcOpts{Timeout: int64(fileTimeout)})
 		if err != nil {
 			return fmt.Errorf("reading chunk at offset %d: %w", offset, err)
 		}
 
 		// Decode and write the chunk
+		chunk, err := base64.StdEncoding.DecodeString(data.Data64)
 		chunk, err := base64.StdEncoding.DecodeString(data.Data64)
 		if err != nil {
 			return fmt.Errorf("decoding chunk at offset %d: %w", offset, err)
@@ -216,10 +224,9 @@ func fixRelativePaths(path string) (string, error) {
 		return "", err
 	}
 	if conn.Scheme == connparse.ConnectionTypeWsh {
-		fixedPath := conn.Path
 		if conn.Host == connparse.ConnHostCurrent {
 			conn.Host = RpcContext.Conn
-			fixedPath, err = fileutil.FixPath(conn.Path)
+			fixedPath, err := fileutil.FixPath(conn.Path)
 			if err != nil {
 				return "", err
 			}

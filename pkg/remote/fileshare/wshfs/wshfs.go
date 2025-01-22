@@ -9,8 +9,6 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
-	"log"
-	"time"
 
 	"github.com/wavetermdev/waveterm/pkg/remote/connparse"
 	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/fstype"
@@ -20,7 +18,7 @@ import (
 )
 
 const (
-	ThirtySeconds = 30 * time.Second
+	ThirtySeconds = 30 * 1000
 )
 
 // This needs to be set by whoever initializes the client, either main-server or wshcmd-connserver
@@ -47,7 +45,6 @@ func (c WshClient) Read(ctx context.Context, conn *connparse.Connection, data ws
 		resp := respUnion.Response
 		if firstPk {
 			firstPk = false
-			log.Printf("stream file, first pk: %v", resp)
 			// first packet has the fileinfo
 			if resp.Info == nil {
 				return nil, fmt.Errorf("stream file protocol error, first pk fileinfo is empty")
@@ -60,7 +57,6 @@ func (c WshClient) Read(ctx context.Context, conn *connparse.Connection, data ws
 		}
 		if isDir {
 			if len(resp.Entries) == 0 {
-				log.Printf("stream dir, no entries")
 				continue
 			}
 			fileData.Entries = append(fileData.Entries, resp.Entries...)
@@ -71,7 +67,7 @@ func (c WshClient) Read(ctx context.Context, conn *connparse.Connection, data ws
 			decoder := base64.NewDecoder(base64.StdEncoding, bytes.NewReader([]byte(resp.Data64)))
 			_, err := io.Copy(&fileBuf, decoder)
 			if err != nil {
-				return nil, fmt.Errorf("stream file, failed to decode base64 data %q: %w", resp.Data64, err)
+				return nil, fmt.Errorf("stream file, failed to decode base64 data: %w", err)
 			}
 		}
 	}
@@ -91,7 +87,6 @@ func (c WshClient) ReadStream(ctx context.Context, conn *connparse.Connection, d
 }
 
 func (c WshClient) ReadTarStream(ctx context.Context, conn *connparse.Connection, opts *wshrpc.FileCopyOpts) <-chan wshrpc.RespOrErrorUnion[[]byte] {
-	log.Print("ReadTarStream wshfs")
 	timeout := opts.Timeout
 	if timeout == 0 {
 		timeout = ThirtySeconds
@@ -121,6 +116,28 @@ func (c WshClient) Stat(ctx context.Context, conn *connparse.Connection) (*wshrp
 }
 
 func (c WshClient) PutFile(ctx context.Context, conn *connparse.Connection, data wshrpc.FileData) error {
+	info := data.Info
+	if info == nil {
+		info = &wshrpc.FileInfo{Opts: &wshrpc.FileOpts{}}
+	} else if info.Opts == nil {
+		info.Opts = &wshrpc.FileOpts{}
+	}
+	info.Path = conn.Path
+	info.Opts.Truncate = true
+	data.Info = info
+	return wshclient.RemoteWriteFileCommand(RpcClient, data, &wshrpc.RpcOpts{Route: wshutil.MakeConnectionRouteId(conn.Host)})
+}
+
+func (c WshClient) AppendFile(ctx context.Context, conn *connparse.Connection, data wshrpc.FileData) error {
+	info := data.Info
+	if info == nil {
+		info = &wshrpc.FileInfo{Path: conn.Path, Opts: &wshrpc.FileOpts{}}
+	} else if info.Opts == nil {
+		info.Opts = &wshrpc.FileOpts{}
+	}
+	info.Path = conn.Path
+	info.Opts.Append = true
+	data.Info = info
 	return wshclient.RemoteWriteFileCommand(RpcClient, data, &wshrpc.RpcOpts{Route: wshutil.MakeConnectionRouteId(conn.Host)})
 }
 
@@ -128,16 +145,26 @@ func (c WshClient) Mkdir(ctx context.Context, conn *connparse.Connection) error 
 	return wshclient.RemoteMkdirCommand(RpcClient, conn.Path, &wshrpc.RpcOpts{Route: wshutil.MakeConnectionRouteId(conn.Host)})
 }
 
-func (c WshClient) Move(ctx context.Context, srcConn, destConn *connparse.Connection, recursive bool) error {
-	return wshclient.RemoteFileRenameCommand(RpcClient, [2]string{srcConn.Path, destConn.Path}, &wshrpc.RpcOpts{Route: wshutil.MakeConnectionRouteId(srcConn.Host)})
-}
-
-func (c WshClient) Copy(ctx context.Context, srcConn, destConn *connparse.Connection, opts *wshrpc.FileCopyOpts) error {
+func (c WshClient) Move(ctx context.Context, srcConn, destConn *connparse.Connection, opts *wshrpc.FileCopyOpts) error {
+	if opts == nil {
+		opts = &wshrpc.FileCopyOpts{}
+	}
 	timeout := opts.Timeout
 	if timeout == 0 {
 		timeout = ThirtySeconds
 	}
-	return wshclient.RemoteFileCopyCommand(RpcClient, wshrpc.CommandRemoteFileCopyData{SrcUri: srcConn.GetFullURI(), DestPath: destConn.Path, Opts: opts}, &wshrpc.RpcOpts{Route: wshutil.MakeConnectionRouteId(destConn.Host), Timeout: timeout})
+	return wshclient.RemoteFileMoveCommand(RpcClient, wshrpc.CommandRemoteFileCopyData{SrcUri: srcConn.GetFullURI(), DestUri: destConn.GetFullURI(), Opts: opts}, &wshrpc.RpcOpts{Route: wshutil.MakeConnectionRouteId(destConn.Host), Timeout: timeout})
+}
+
+func (c WshClient) Copy(ctx context.Context, srcConn, destConn *connparse.Connection, opts *wshrpc.FileCopyOpts) error {
+	if opts == nil {
+		opts = &wshrpc.FileCopyOpts{}
+	}
+	timeout := opts.Timeout
+	if timeout == 0 {
+		timeout = ThirtySeconds
+	}
+	return wshclient.RemoteFileCopyCommand(RpcClient, wshrpc.CommandRemoteFileCopyData{SrcUri: srcConn.GetFullURI(), DestUri: destConn.GetFullURI(), Opts: opts}, &wshrpc.RpcOpts{Route: wshutil.MakeConnectionRouteId(destConn.Host), Timeout: timeout})
 }
 
 func (c WshClient) Delete(ctx context.Context, conn *connparse.Connection) error {
