@@ -75,7 +75,7 @@ func WriterChan(ctx context.Context, w io.Writer, ch <-chan wshrpc.RespOrErrorUn
 				}
 				if _, err := w.Write(resp.Response); err != nil {
 					log.Printf("WriterChan: write error: %v", err)
-					errCallback(resp.Error)
+					errCallback(err)
 					return
 				} else {
 					// log.Printf("WriterChan: wrote %d bytes", n)
