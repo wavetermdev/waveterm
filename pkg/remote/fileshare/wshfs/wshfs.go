@@ -20,7 +20,7 @@ import (
 )
 
 const (
-	ThirtySeconds = int(30 * time.Second)
+	ThirtySeconds = 30 * time.Second
 )
 
 // This needs to be set by whoever initializes the client, either main-server or wshcmd-connserver

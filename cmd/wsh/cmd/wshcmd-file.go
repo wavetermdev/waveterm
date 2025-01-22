@@ -33,7 +33,7 @@ const (
 	WaveFilePrefix = "wavefile://"
 
 	DefaultFileTimeout = 5000
-	TimeoutYear        = int(365 * 24 * time.Hour) // 1 year
+	TimeoutYear        = 365 * 24 * time.Hour // 1 year
 
 	UriHelpText = `
 
@@ -321,7 +321,7 @@ func fileAppendRun(cmd *cobra.Command, args []string) error {
 
 		if buf.Len() >= 8192 { // 8KB batch size
 			fileData.Data64 = base64.StdEncoding.EncodeToString(buf.Bytes())
-			err = wshclient.FileAppendCommand(RpcClient, fileData, &wshrpc.RpcOpts{Timeout: fileTimeout})
+			err = wshclient.FileAppendCommand(RpcClient, fileData, &wshrpc.RpcOpts{Timeout: time.Duration(fileTimeout)})
 			if err != nil {
 				return fmt.Errorf("appending to file: %w", err)
 			}
@@ -332,7 +332,7 @@ func fileAppendRun(cmd *cobra.Command, args []string) error {
 
 	if buf.Len() > 0 {
 		fileData.Data64 = base64.StdEncoding.EncodeToString(buf.Bytes())
-		err = wshclient.FileAppendCommand(RpcClient, fileData, &wshrpc.RpcOpts{Timeout: fileTimeout})
+		err = wshclient.FileAppendCommand(RpcClient, fileData, &wshrpc.RpcOpts{Timeout: time.Duration(fileTimeout)})
 		if err != nil {
 			return fmt.Errorf("appending to file: %w", err)
 		}

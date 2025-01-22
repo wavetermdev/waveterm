@@ -26,10 +26,6 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
 )
 
-const (
-	OneYear = int(time.Hour * 24 * 365)
-)
-
 type ServerImpl struct {
 	LogWriter io.Writer
 }

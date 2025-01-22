@@ -11,6 +11,7 @@ import (
 	"log"
 	"os"
 	"reflect"
+	"time"
 
 	"github.com/wavetermdev/waveterm/pkg/ijson"
 	"github.com/wavetermdev/waveterm/pkg/vdom"
@@ -233,9 +234,9 @@ type WshServerCommandMeta struct {
 }
 
 type RpcOpts struct {
-	Timeout    int    `json:"timeout,omitempty"`
-	NoResponse bool   `json:"noresponse,omitempty"`
-	Route      string `json:"route,omitempty"`
+	Timeout    time.Duration `json:"timeout,omitempty"`
+	NoResponse bool          `json:"noresponse,omitempty"`
+	Route      string        `json:"route,omitempty"`
 
 	StreamCancelFn func() `json:"-"` // this is an *output* parameter, set by the handler
 }
@@ -508,10 +509,10 @@ type CommandRemoteStreamTarData struct {
 }
 
 type FileCopyOpts struct {
-	Overwrite bool `json:"overwrite,omitempty"`
-	Recursive bool `json:"recursive,omitempty"`
-	Merge     bool `json:"merge,omitempty"`
-	Timeout   int  `json:"timeout,omitempty"`
+	Overwrite bool          `json:"overwrite,omitempty"`
+	Recursive bool          `json:"recursive,omitempty"`
+	Merge     bool          `json:"merge,omitempty"`
+	Timeout   time.Duration `json:"timeout,omitempty"`
 }
 
 type CommandRemoteStreamFileData struct {
