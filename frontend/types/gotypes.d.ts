@@ -311,7 +311,7 @@ declare global {
         "conn:askbeforewshinstall"?: boolean;
         "conn:wshpath"?: string;
         "conn:shellpath"?: string;
-        "conn:ignoreconfig"?: boolean;
+        "conn:ignoresshconfig"?: boolean;
         "display:hidden"?: boolean;
         "display:order"?: number;
         "term:*"?: boolean;

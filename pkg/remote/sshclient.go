@@ -708,7 +708,7 @@ func ConnectToClient(connCtx context.Context, opts *SSHOpts, currentClient *ssh.
 	}
 
 	var sshConfigKeywords *wshrpc.ConnKeywords
-	if utilfn.SafeDeref(internalSshConfigKeywords.ConnIgnoreConfig) {
+	if utilfn.SafeDeref(internalSshConfigKeywords.ConnIgnoreSshConfig) {
 		var err error
 		sshConfigKeywords, err = findSshDefaults(opts.SSHHost)
 		if err != nil {
