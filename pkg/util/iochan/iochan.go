@@ -86,7 +86,5 @@ func WriterChan(ctx context.Context, w io.Writer, ch <-chan wshrpc.RespOrErrorUn
 }
 
 func drainChannel(ch <-chan wshrpc.RespOrErrorUnion[[]byte]) {
-	for range ch {
-		<-ch
-	}
+	for range ch {}
 }
