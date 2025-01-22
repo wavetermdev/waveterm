@@ -561,13 +561,13 @@ function TableBody({
                 },
                 // TODO: Only show this option for local files, resolve correct host path if connection is WSL
                 {
-                    label: makeNativeLabel(finfo.isdir, false),
+                    label: makeNativeLabel(PLATFORM, finfo.isdir, false),
                     click: () => {
                         getApi().openNativePath(normPath);
                     },
                 },
                 {
-                    label: makeNativeLabel(true, true),
+                    label: makeNativeLabel(PLATFORM, true, true),
                     click: () => {
                         getApi().openNativePath(finfo.dir);
                     },
@@ -851,7 +851,7 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
                 },
                 // TODO: Only show this option for local files, resolve correct host path if connection is WSL
                 {
-                    label: makeNativeLabel(true, true),
+                    label: makeNativeLabel(PLATFORM, true, true),
                     click: () => {
                         getApi().openNativePath(dirPath);
                     },
