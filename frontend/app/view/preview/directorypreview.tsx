@@ -9,7 +9,7 @@ import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import type { PreviewModel } from "@/app/view/preview/preview";
 import { checkKeyPressed, isCharacterKeyEvent } from "@/util/keyutil";
-import { fireAndForget, isBlank } from "@/util/util";
+import { fireAndForget, isBlank, makeConnRoute, makeNativeLabel } from "@/util/util";
 import { offset, useDismiss, useFloating, useInteractions } from "@floating-ui/react";
 import {
     Column,
