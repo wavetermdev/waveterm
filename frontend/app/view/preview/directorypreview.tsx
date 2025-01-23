@@ -575,22 +575,6 @@ function TableBody({
                 {
                     type: "separator",
                 },
-                // TODO: Only show this option for local files, resolve correct host path if connection is WSL
-                {
-                    label: makeNativeLabel(PLATFORM, finfo.isdir, false),
-                    click: () => {
-                        getApi().openNativePath(normPath);
-                    },
-                },
-                {
-                    label: makeNativeLabel(PLATFORM, true, true),
-                    click: () => {
-                        getApi().openNativePath(parentFileInfo.dir);
-                    },
-                },
-                {
-                    type: "separator",
-                },
                 {
                     label: "Open Preview in New Block",
                     click: () =>
@@ -606,6 +590,26 @@ function TableBody({
                         }),
                 },
             ];
+            if (!conn) {
+                menu.push(
+                    {
+                        type: "separator",
+                    },
+                    // TODO: resolve correct host path if connection is WSL
+                    {
+                        label: makeNativeLabel(PLATFORM, finfo.isdir, false),
+                        click: () => {
+                            getApi().openNativePath(normPath);
+                        },
+                    },
+                    {
+                        label: makeNativeLabel(PLATFORM, true, true),
+                        click: () => {
+                            getApi().openNativePath(parentFileInfo.dir);
+                        },
+                    }
+                );
+            }
             if (finfo.mimetype == "directory") {
                 menu.push({
                     label: "Open Terminal in New Block",
@@ -864,12 +868,6 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
         (e: any) => {
             e.preventDefault();
             e.stopPropagation();
-            let openNativeLabel = "Open Directory in File Manager";
-            if (PLATFORM == "darwin") {
-                openNativeLabel = "Open Directory in Finder";
-            } else if (PLATFORM == "win32") {
-                openNativeLabel = "Open Directory in Explorer";
-            }
             const menu: ContextMenuItem[] = [
                 {
                     label: "New File",
@@ -886,14 +884,16 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
                 {
                     type: "separator",
                 },
-                // TODO: Only show this option for local files, resolve correct host path if connection is WSL
-                {
+            ];
+            if (!conn) {
+                // TODO:  resolve correct host path if connection is WSL
+                menu.push({
                     label: makeNativeLabel(PLATFORM, true, true),
                     click: () => {
                         getApi().openNativePath(dirPath);
                     },
-                },
-            ];
+                });
+            }
             menu.push({
                 label: "Open Terminal in New Block",
                 click: async () => {

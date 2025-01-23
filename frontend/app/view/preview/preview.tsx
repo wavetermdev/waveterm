@@ -149,6 +149,7 @@ export class PreviewModel implements ViewModel {
     loadableStatFilePath: Atom<Loadable<string>>;
     loadableFileInfo: Atom<Loadable<FileInfo>>;
     connection: Atom<Promise<string>>;
+    connectionImmediate: Atom<string>;
     statFile: Atom<Promise<FileInfo>>;
     fullFile: Atom<Promise<FileData>>;
     fileMimeType: Atom<Promise<string>>;
@@ -373,6 +374,9 @@ export class PreviewModel implements ViewModel {
                 globalStore.set(this.connectionError, e as string);
             }
             return connName;
+        });
+        this.connectionImmediate = atom<string>((get) => {
+            return get(this.blockAtom)?.meta?.connection;
         });
         this.statFile = atom<Promise<FileInfo>>(async (get) => {
             const fileName = get(this.metaFilePath);
@@ -700,21 +704,27 @@ export class PreviewModel implements ViewModel {
                         await createBlock(termBlockDef);
                     }),
             });
-            menuItems.push({
-                label: makeNativeLabel(PLATFORM, true, true),
-                click: async () => {
-                    const fileInfo = await globalStore.get(this.statFile);
-                    getApi().openNativePath(fileInfo.dir);
-                },
-            });
+            const conn = globalStore.get(this.connectionImmediate);
+            if (!conn) {
+                menuItems.push({
+                    label: makeNativeLabel(PLATFORM, true, true),
+                    click: async () => {
+                        const fileInfo = await globalStore.get(this.statFile);
+                        getApi().openNativePath(fileInfo.dir);
+                    },
+                });
+            }
         } else {
-            menuItems.push({
-                label: makeNativeLabel(PLATFORM, false, false),
-                click: async () => {
-                    const fileInfo = await globalStore.get(this.statFile);
-                    getApi().openNativePath(`${fileInfo.dir}/${fileInfo.name}`);
-                },
-            });
+            const conn = globalStore.get(this.connectionImmediate);
+            if (!conn) {
+                menuItems.push({
+                    label: makeNativeLabel(PLATFORM, false, false),
+                    click: async () => {
+                        const fileInfo = await globalStore.get(this.statFile);
+                        getApi().openNativePath(`${fileInfo.dir}/${fileInfo.name}`);
+                    },
+                });
+            }
         }
         const loadableSV = globalStore.get(this.loadableSpecializedView);
         const wordWrapAtom = getOverrideConfigAtom(this.blockId, "editor:wordwrap");
