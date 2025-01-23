@@ -599,6 +599,7 @@ function TableBody({
                                 meta: {
                                     view: "preview",
                                     file: finfo.path,
+                                    connection: conn,
                                 },
                             };
                             await createBlock(blockDef);
@@ -615,6 +616,7 @@ function TableBody({
                                     controller: "shell",
                                     view: "term",
                                     "cmd:cwd": await model.formatRemoteUri(finfo.path, globalStore.get),
+                                    connection: conn,
                                 },
                             };
                             await createBlock(termBlockDef);
@@ -900,6 +902,7 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
                             controller: "shell",
                             view: "term",
                             "cmd:cwd": dirPath,
+                            connection: conn,
                         },
                     };
                     await createBlock(termBlockDef);

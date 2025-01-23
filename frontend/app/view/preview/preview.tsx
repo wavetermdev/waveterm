@@ -687,12 +687,14 @@ export class PreviewModel implements ViewModel {
                 label: "Open Terminal in New Block",
                 click: () =>
                     fireAndForget(async () => {
+                        const conn = await globalStore.get(this.connection);
                         const fileInfo = await globalStore.get(this.statFile);
                         const termBlockDef: BlockDef = {
                             meta: {
                                 view: "term",
                                 controller: "shell",
                                 "cmd:cwd": fileInfo.dir,
+                                connection: conn,
                             },
                         };
                         await createBlock(termBlockDef);
