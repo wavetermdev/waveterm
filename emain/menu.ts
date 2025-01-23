@@ -360,4 +360,19 @@ electron.ipcMain.on("contextmenu-show", (event, workspaceId: string, menuDefArr?
     event.returnValue = true;
 });
 
-export { getAppMenu };
+const dockMenu = electron.Menu.buildFromTemplate([
+    {
+        label: "New Window",
+        click() {
+            fireAndForget(createNewWaveWindow);
+        },
+    },
+]);
+
+function makeDockTaskbar() {
+    if (unamePlatform == "darwin") {
+        electron.app.dock.setMenu(dockMenu);
+    }
+}
+
+export { getAppMenu, makeDockTaskbar };

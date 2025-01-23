@@ -45,7 +45,7 @@ import {
 import { ElectronWshClient, initElectronWshClient } from "./emain-wsh";
 import { getLaunchSettings } from "./launchsettings";
 import { log } from "./log";
-import { makeAppMenu } from "./menu";
+import { makeAppMenu, makeDockTaskbar } from "./menu";
 import {
     callWithOriginalXdgCurrentDesktopAsync,
     checkIfRunningUnderARM64Translation,
@@ -611,6 +611,7 @@ async function appMain() {
     setTimeout(runActiveTimer, 5000); // start active timer, wait 5s just to be safe
 
     makeAppMenu();
+    makeDockTaskbar();
     await configureAutoUpdater();
     setGlobalIsStarting(false);
     if (fullConfig?.settings?.["window:maxtabcachesize"] != null) {
