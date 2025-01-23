@@ -237,7 +237,10 @@ func getCustomInitScriptKeyCascade(shellType string) []string {
 
 func getCustomInitScript(logCtx context.Context, meta waveobj.MetaMapType, connName string, shellType string) string {
 	initScriptVal, metaKeyName := getCustomInitScriptValue(meta, connName, shellType)
-	if initScriptVal == "" || !fileutil.IsInitScriptPath(initScriptVal) {
+	if initScriptVal == "" {
+		return ""
+	}
+	if !fileutil.IsInitScriptPath(initScriptVal) {
 		blocklogger.Infof(logCtx, "[conndebug] inline initScript (size=%d) found in meta key: %s\n", len(initScriptVal), metaKeyName)
 		return initScriptVal
 	}
@@ -271,19 +274,40 @@ func getCustomInitScriptValue(meta waveobj.MetaMapType, connName string, shellTy
 	if connMeta != nil {
 		for _, key := range keys {
 			if connMeta.HasKey(key) {
-				return connMeta.GetString(key, ""), "blockmeta:[" + connName + "]/" + key
+				return connMeta.GetString(key, ""), "blockmeta/[" + connName + "]/" + key
 			}
 		}
 	}
 	for _, key := range keys {
 		if meta.HasKey(key) {
-			return meta.GetString(key, ""), "blockmeta:" + key
+			return meta.GetString(key, ""), "blockmeta/" + key
+		}
+	}
+	fullConfig := wconfig.GetWatcher().GetFullConfig()
+	connKeywords := fullConfig.Connections[connName]
+	connKeywordsMap := make(map[string]any)
+	err := utilfn.ReUnmarshal(&connKeywordsMap, connKeywords)
+	if err != nil {
+		log.Printf("error re-unmarshalling connKeywords: %v\n", err)
+		return "", ""
+	}
+	ckMeta := waveobj.MetaMapType(connKeywordsMap)
+	for _, key := range keys {
+		if ckMeta.HasKey(key) {
+			return ckMeta.GetString(key, ""), "connections.json/" + connName + "/" + key
 		}
 	}
 	return "", ""
 }
 
 func resolveEnvMap(blockId string, blockMeta waveobj.MetaMapType, connName string) (map[string]string, error) {
+	rtn := make(map[string]string)
+	config := wconfig.GetWatcher().GetFullConfig()
+	connKeywords := config.Connections[connName]
+	ckEnv := connKeywords.CmdEnv
+	for k, v := range ckEnv {
+		rtn[k] = v
+	}
 	ctx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancelFn()
 	_, envFileData, err := filestore.WFS.ReadFile(ctx, blockId, wavebase.BlockFile_Env)
@@ -293,7 +317,6 @@ func resolveEnvMap(blockId string, blockMeta waveobj.MetaMapType, connName strin
 	if err != nil {
 		return nil, fmt.Errorf("error reading command env file: %w", err)
 	}
-	rtn := make(map[string]string)
 	if len(envFileData) > 0 {
 		envMap := envutil.EnvToMap(string(envFileData))
 		for k, v := range envMap {
@@ -547,7 +570,7 @@ func (bc *BlockController) setupAndStartShellProcess(logCtx context.Context, rc 
 	var shellProc *shellexec.ShellProc
 	swapToken := bc.makeSwapToken(ctx, logCtx, blockMeta, remoteName, connUnion.ShellType)
 	cmdOpts.SwapToken = swapToken
-	blocklogger.Infof(logCtx, "[conndebug] created swaptoken: %s\n", swapToken.Token)
+	blocklogger.Debugf(logCtx, "[conndebug] created swaptoken: %s\n", swapToken.Token)
 	if connUnion.ConnType == ConnType_Wsl {
 		wslConn := connUnion.WslConn
 		if !connUnion.WshEnabled {
@@ -569,8 +592,8 @@ func (bc *BlockController) setupAndStartShellProcess(logCtx context.Context, rc 
 			if err != nil {
 				wslConn.SetWshError(err)
 				wslConn.WshEnabled.Store(false)
-				log.Printf("error starting wsl shell proc with wsh: %v", err)
-				log.Print("attempting install without wsh")
+				blocklogger.Infof(logCtx, "[conndebug] error starting wsl shell proc with wsh: %v\n", err)
+				blocklogger.Infof(logCtx, "[conndebug] attempting install without wsh\n")
 				shellProc, err = shellexec.StartWslShellProcNoWsh(ctx, rc.TermSize, cmdStr, cmdOpts, wslConn)
 				if err != nil {
 					return nil, err
@@ -598,8 +621,8 @@ func (bc *BlockController) setupAndStartShellProcess(logCtx context.Context, rc 
 			if err != nil {
 				conn.SetWshError(err)
 				conn.WshEnabled.Store(false)
-				log.Printf("error starting remote shell proc with wsh: %v", err)
-				log.Print("attempting install without wsh")
+				blocklogger.Infof(logCtx, "[conndebug] error starting remote shell proc with wsh: %v\n", err)
+				blocklogger.Infof(logCtx, "[conndebug] attempting install without wsh\n")
 				shellProc, err = shellexec.StartRemoteShellProcNoWsh(ctx, rc.TermSize, cmdStr, cmdOpts, conn)
 				if err != nil {
 					return nil, err
