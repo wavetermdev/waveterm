@@ -342,7 +342,10 @@ function DirectoryTable({
     });
 
     useEffect(() => {
-        setSelectedPath((table.getSortedRowModel()?.flatRows[focusIndex]?.getValue("path") as string) ?? null);
+        const topRows = table.getTopRows() || [];
+        const centerRows = table.getCenterRows() || [];
+        const allRows = [...topRows, ...centerRows];
+        setSelectedPath((allRows[focusIndex]?.getValue("path") as string) ?? null);
     }, [table, focusIndex, data]);
 
     useEffect(() => {
