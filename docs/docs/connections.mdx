@@ -38,6 +38,7 @@ At the moment, we are capable of parsing any SSH config file that does not conta
 |---------|-------------|
 | Host | The pattern to match when attempting to connect via `[user]@[host]`. We list hosts that do not contain any wildcards characters (`*`, `?`, or `!`). Even if a host pattern contains wildcards, it will still be parsed when determining the values associated with the keys as usual.|
 | User | The user of the SSH remote connection. This will default to the current user on the local machine if not specified.|
+|HostName| The real host name of the machine to log into. An IP address can be used if desired. This will default to the Host if not specified.
 | Port | The port to connect to the remote on. `22` is the default if not specified.|
 | IdentityFile | This can be specified more than once per host. It gives the path to a private identity file (id_rsa, id_ed25519, id_ecdsa, etc.) that is used to authenticate the connection. Each will be tried in order, and they can be encrypted with a passphrase if desired. If no value is set, the default is to try in order: ~/.ssh/id_rsa, ~/.ssh/id_ecdsa, ~/.ssh/id_ecdsa_sk, ~/.ssh/id_ed25519_sk, ~/.ssh/id_dsa.|
 |BatchMode| If set to true, user interaction via password, challenge/response, and publickey passphrase authentication will be disabled. It is set to false by default.|
@@ -46,7 +47,11 @@ At the moment, we are capable of parsing any SSH config file that does not conta
 |KbdInteractiveAuthentication| This is used to specify if keyboard-interactive authentication should be attempted. The default is `yes`.|
 |PreferredAuthentications| (partial) Specifies the order the client should attempt to authenticate in. It is partially implemented as it does not support `gssapi-with-mic` or `hostbased` authentication. The default is `publickey,keyboard-interactive,password`|
 |AddKeysToAgent| (partial) This option will automatically add keys and their corresponding passphrase to your running ssh agent if it is enabled. It is partially supported as it can only accept `yes` and `no` as valid inputs. Other inputs such as `confirm` or a time interval will behave the same as `no`. The default value is `no`.|
+|IdentityAgent| Specifies the Unix Domain Socket used to communicate with the SSH Agent. This is used to overwrite the SSH_AUTH_SOCK identity agent.|
+|IdentitiesOnly| Specifies that only the specified authentication identity files should be used. This is either the default files or the ones specified with the IdentityFile keyword. It can accept `yes` or `no`. The default value is `no`.|
 |ProxyJump| Specifies one or more jump proxies in a comma separated list. Each will be visited sequentially using TCP forwarding before connecting to the desired connection (also using TCP forwarding). It can be set to `none` to disable the feature.|
+|UserKnownHostsFile| Provides the location of one or more user host key database files for recording trusted remote connections. The filenames are entered in the same string and separated by whitespace. The default value is `"~/.ssh/known_hosts ~/.ssh/known_hosts2"`.|
+|GlobalKnownHostsFile| Provides the location of one or more global host key database files for recording trusted remote connections. The filenames are entered in the same string and separated by whitespace. The default value is `"/etc/ssh/ssh_known_hosts /etc/ssh/ssh_known_hosts2"`.|
 
 ### Example SSH Config Host
 
