@@ -117,6 +117,7 @@ export class PreviewModel implements ViewModel {
     viewType: string;
     blockId: string;
     nodeModel: BlockNodeModel;
+    noPadding?: Atom<boolean>;
     blockAtom: Atom<Block>;
     viewIcon: Atom<string | IconButtonDecl>;
     viewName: Atom<string>;
@@ -433,6 +434,8 @@ export class PreviewModel implements ViewModel {
             const connAtom = getConnStatusAtom(connName);
             return get(connAtom);
         });
+
+        this.noPadding = atom(true);
     }
 
     markdownShowTocToggle() {
@@ -825,7 +828,7 @@ function StreamingPreview({ model }: SpecializedViewProps) {
     if (fileInfo.mimetype == "application/pdf") {
         return (
             <div className="view-preview view-preview-pdf">
-                <iframe src={streamingUrl} width="95%" height="95%" name="pdfview" />
+                <iframe src={streamingUrl} width="100%" height="100%" name="pdfview" />
             </div>
         );
     }
