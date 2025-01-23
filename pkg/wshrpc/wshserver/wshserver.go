@@ -273,7 +273,7 @@ func (ws *WshServer) ControllerAppendOutputCommand(ctx context.Context, data wsh
 	if err != nil {
 		return fmt.Errorf("error decoding output data: %w", err)
 	}
-	err = blockcontroller.HandleAppendBlockFile(data.BlockId, blockcontroller.BlockFile_Term, outputBuf[:nw])
+	err = blockcontroller.HandleAppendBlockFile(data.BlockId, wavebase.BlockFile_Term, outputBuf[:nw])
 	if err != nil {
 		return fmt.Errorf("error appending to block file: %w", err)
 	}
@@ -335,7 +335,7 @@ func (ws *WshServer) FileAppendCommand(ctx context.Context, data wshrpc.FileData
 
 func (ws *WshServer) FileAppendIJsonCommand(ctx context.Context, data wshrpc.CommandAppendIJsonData) error {
 	tryCreate := true
-	if data.FileName == blockcontroller.BlockFile_VDom && tryCreate {
+	if data.FileName == wavebase.BlockFile_VDom && tryCreate {
 		err := filestore.WFS.MakeFile(ctx, data.ZoneId, data.FileName, nil, wshrpc.FileOpts{MaxSize: blockcontroller.DefaultHtmlMaxFileSize, IJson: true})
 		if err != nil && err != fs.ErrExist {
 			return fmt.Errorf("error creating blockfile[vdom]: %w", err)
@@ -496,7 +496,7 @@ func (ws *WshServer) ConnEnsureCommand(ctx context.Context, data wshrpc.ConnExtD
 func (ws *WshServer) ConnDisconnectCommand(ctx context.Context, connName string) error {
 	if strings.HasPrefix(connName, "wsl://") {
 		distroName := strings.TrimPrefix(connName, "wsl://")
-		conn := wslconn.GetWslConn(ctx, distroName, false)
+		conn := wslconn.GetWslConn(distroName)
 		if conn == nil {
 			return fmt.Errorf("distro not found: %s", connName)
 		}
@@ -506,7 +506,7 @@ func (ws *WshServer) ConnDisconnectCommand(ctx context.Context, connName string)
 	if err != nil {
 		return fmt.Errorf("error parsing connection name: %w", err)
 	}
-	conn := conncontroller.GetConn(ctx, connOpts, &wconfig.ConnKeywords{})
+	conn := conncontroller.GetConn(connOpts)
 	if conn == nil {
 		return fmt.Errorf("connection not found: %s", connName)
 	}
@@ -519,7 +519,7 @@ func (ws *WshServer) ConnConnectCommand(ctx context.Context, connRequest wshrpc.
 	connName := connRequest.Host
 	if strings.HasPrefix(connName, "wsl://") {
 		distroName := strings.TrimPrefix(connName, "wsl://")
-		conn := wslconn.GetWslConn(ctx, distroName, false)
+		conn := wslconn.GetWslConn(distroName)
 		if conn == nil {
 			return fmt.Errorf("connection not found: %s", connName)
 		}
@@ -529,7 +529,7 @@ func (ws *WshServer) ConnConnectCommand(ctx context.Context, connRequest wshrpc.
 	if err != nil {
 		return fmt.Errorf("error parsing connection name: %w", err)
 	}
-	conn := conncontroller.GetConn(ctx, connOpts, &connRequest.Keywords)
+	conn := conncontroller.GetConn(connOpts)
 	if conn == nil {
 		return fmt.Errorf("connection not found: %s", connName)
 	}
@@ -542,7 +542,7 @@ func (ws *WshServer) ConnReinstallWshCommand(ctx context.Context, data wshrpc.Co
 	connName := data.ConnName
 	if strings.HasPrefix(connName, "wsl://") {
 		distroName := strings.TrimPrefix(connName, "wsl://")
-		conn := wslconn.GetWslConn(ctx, distroName, false)
+		conn := wslconn.GetWslConn(distroName)
 		if conn == nil {
 			return fmt.Errorf("connection not found: %s", connName)
 		}
@@ -552,7 +552,7 @@ func (ws *WshServer) ConnReinstallWshCommand(ctx context.Context, data wshrpc.Co
 	if err != nil {
 		return fmt.Errorf("error parsing connection name: %w", err)
 	}
-	conn := conncontroller.GetConn(ctx, connOpts, &wconfig.ConnKeywords{})
+	conn := conncontroller.GetConn(connOpts)
 	if conn == nil {
 		return fmt.Errorf("connection not found: %s", connName)
 	}
@@ -589,7 +589,7 @@ func (ws *WshServer) ConnUpdateWshCommand(ctx context.Context, remoteInfo wshrpc
 	if err != nil {
 		return false, fmt.Errorf("error parsing connection name: %w", err)
 	}
-	conn := conncontroller.GetConn(ctx, connOpts, &wconfig.ConnKeywords{})
+	conn := conncontroller.GetConn(connOpts)
 	if conn == nil {
 		return false, fmt.Errorf("connection not found: %s", connName)
 	}
@@ -639,7 +639,7 @@ func (ws *WshServer) WslDefaultDistroCommand(ctx context.Context) (string, error
 func (ws *WshServer) DismissWshFailCommand(ctx context.Context, connName string) error {
 	if strings.HasPrefix(connName, "wsl://") {
 		distroName := strings.TrimPrefix(connName, "wsl://")
-		conn := wslconn.GetWslConn(ctx, distroName, false)
+		conn := wslconn.GetWslConn(distroName)
 		if conn == nil {
 			return fmt.Errorf("connection not found: %s", connName)
 		}
@@ -651,7 +651,7 @@ func (ws *WshServer) DismissWshFailCommand(ctx context.Context, connName string)
 	if err != nil {
 		return err
 	}
-	conn := conncontroller.GetConn(ctx, opts, nil)
+	conn := conncontroller.GetConn(opts)
 	if conn == nil {
 		return fmt.Errorf("connection %s not found", connName)
 	}

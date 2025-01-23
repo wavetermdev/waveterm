@@ -316,6 +316,31 @@ func checkFileDataAt(t *testing.T, ctx context.Context, zoneId string, name stri
 	}
 }
 
+func TestWriteAt(t *testing.T) {
+	initDb(t)
+	defer cleanupDb(t)
+
+	ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancelFn()
+	fileName := "t3"
+	zoneId := uuid.NewString()
+	err := WFS.MakeFile(ctx, zoneId, fileName, nil, FileOptsType{})
+	if err != nil {
+		t.Fatalf("error creating file: %v", err)
+	}
+	err = WFS.WriteFile(ctx, zoneId, fileName, []byte("hello world!"))
+	if err != nil {
+		t.Fatalf("error writing data: %v", err)
+	}
+	checkFileData(t, ctx, zoneId, fileName, "hello world!")
+	err = WFS.WriteAt(ctx, zoneId, fileName, 0, []byte("foo"))
+	if err != nil {
+		t.Fatalf("error writing data: %v", err)
+	}
+	checkFileSize(t, ctx, zoneId, fileName, 12)
+	checkFileData(t, ctx, zoneId, fileName, "foolo world!")
+}
+
 func TestAppend(t *testing.T) {
 	initDb(t)
 	defer cleanupDb(t)

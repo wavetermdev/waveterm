@@ -812,7 +812,7 @@ func getConnInternal(opts *remote.SSHOpts) *SSHConn {
 }
 
 // does NOT connect, can return nil if connection does not exist
-func GetConn(ctx context.Context, opts *remote.SSHOpts, connFlags *wconfig.ConnKeywords) *SSHConn {
+func GetConn(opts *remote.SSHOpts) *SSHConn {
 	conn := getConnInternal(opts)
 	return conn
 }
@@ -826,7 +826,7 @@ func EnsureConnection(ctx context.Context, connName string) error {
 	if err != nil {
 		return fmt.Errorf("error parsing connection name: %w", err)
 	}
-	conn := GetConn(ctx, connOpts, &wconfig.ConnKeywords{})
+	conn := GetConn(connOpts)
 	if conn == nil {
 		return fmt.Errorf("connection not found: %s", connName)
 	}

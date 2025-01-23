@@ -38,7 +38,6 @@ type CommandOptsType struct {
 	Interactive bool                      `json:"interactive,omitempty"`
 	Login       bool                      `json:"login,omitempty"`
 	Cwd         string                    `json:"cwd,omitempty"`
-	Env         map[string]string         `json:"env,omitempty"`
 	ShellPath   string                    `json:"shellPath,omitempty"`
 	ShellOpts   []string                  `json:"shellOpts,omitempty"`
 	SwapToken   *shellutil.TokenSwapEntry `json:"swapToken,omitempty"`
@@ -256,13 +255,13 @@ func StartWslShellProc(ctx context.Context, termSize waveobj.TermSize, cmdStr st
 		conn.Infof(ctx, "setting ZDOTDIR to %s\n", zshDir)
 		cmdCombined = fmt.Sprintf(`ZDOTDIR=%s %s`, zshDir, cmdCombined)
 	}
-
-	jwtToken, ok := cmdOpts.Env[wshutil.WaveJwtTokenVarName]
-	if !ok {
-		return nil, fmt.Errorf("no jwt token provided to connection")
+	packedToken, err := cmdOpts.SwapToken.PackForClient()
+	if err != nil {
+		conn.Infof(ctx, "error packing swap token: %v", err)
+	} else {
+		conn.Debugf(ctx, "packed swaptoken %s\n", packedToken)
+		cmdCombined = fmt.Sprintf(`%s=%s %s`, wavebase.WaveSwapTokenVarName, packedToken, cmdCombined)
 	}
-	cmdCombined = fmt.Sprintf(`%s=%s %s`, wshutil.WaveJwtTokenVarName, jwtToken, cmdCombined)
-
 	log.Printf("full combined command: %s", cmdCombined)
 	ecmd := exec.Command("wsl.exe", "~", "-d", client.Name(), "--", "sh", "-c", cmdCombined)
 	if termSize.Rows == 0 || termSize.Cols == 0 {
@@ -425,12 +424,6 @@ func StartRemoteShellProc(ctx context.Context, logCtx context.Context, termSize 
 	session.Stdin = remoteStdinRead
 	session.Stdout = remoteStdoutWrite
 	session.Stderr = remoteStdoutWrite
-
-	for envKey, envVal := range cmdOpts.Env {
-		// note these might fail depending on server settings, but we still try
-		session.Setenv(envKey, envVal)
-	}
-
 	if shellType == shellutil.ShellType_zsh {
 		zshDir := fmt.Sprintf("~/.waveterm/%s", shellutil.ZshIntegrationDir)
 		conn.Infof(logCtx, "setting ZDOTDIR to %s\n", zshDir)
@@ -557,7 +550,6 @@ func StartLocalShellProc(logCtx context.Context, termSize waveobj.TermSize, cmdS
 		envToAdd["LANG"] = wavebase.DetermineLang()
 	}
 	shellutil.UpdateCmdEnv(ecmd, envToAdd)
-	shellutil.UpdateCmdEnv(ecmd, cmdOpts.Env)
 	if termSize.Rows == 0 || termSize.Cols == 0 {
 		termSize.Rows = shellutil.DefaultTermRows
 		termSize.Cols = shellutil.DefaultTermCols
