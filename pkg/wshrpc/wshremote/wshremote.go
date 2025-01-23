@@ -738,7 +738,7 @@ func (*ServerImpl) RemoteWriteFileCommand(ctx context.Context, data wshrpc.FileD
 	if finfo != nil {
 		fileSize = finfo.Size()
 	}
-	offset := fileSize
+	offset := 0
 	if data.At != nil {
 		if data.At.Offset > 0 {
 			offset = min(data.At.Offset, fileSize)
