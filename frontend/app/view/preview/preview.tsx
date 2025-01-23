@@ -13,10 +13,12 @@ import { Markdown } from "@/element/markdown";
 import {
     atoms,
     createBlock,
+    getApi,
     getConnStatusAtom,
     getOverrideConfigAtom,
     getSettingsKeyAtom,
     globalStore,
+    PLATFORM,
     refocusNode,
 } from "@/store/global";
 import * as services from "@/store/services";
@@ -24,7 +26,15 @@ import * as WOS from "@/store/wos";
 import { getWebServerEndpoint } from "@/util/endpoints";
 import { goHistory, goHistoryBack, goHistoryForward } from "@/util/historyutil";
 import { adaptFromReactOrNativeKeyEvent, checkKeyPressed, keydownWrapper } from "@/util/keyutil";
-import { base64ToString, fireAndForget, isBlank, jotaiLoadableValue, makeConnRoute, stringToBase64 } from "@/util/util";
+import {
+    base64ToString,
+    fireAndForget,
+    isBlank,
+    jotaiLoadableValue,
+    makeConnRoute,
+    makeNativeLabel,
+    stringToBase64,
+} from "@/util/util";
 import { Monaco } from "@monaco-editor/react";
 import clsx from "clsx";
 import { Atom, atom, Getter, PrimitiveAtom, useAtomValue, useSetAtom, WritableAtom } from "jotai";
@@ -139,6 +149,7 @@ export class PreviewModel implements ViewModel {
     loadableStatFilePath: Atom<Loadable<string>>;
     loadableFileInfo: Atom<Loadable<FileInfo>>;
     connection: Atom<Promise<string>>;
+    connectionImmediate: Atom<string>;
     statFile: Atom<Promise<FileInfo>>;
     fullFile: Atom<Promise<FileData>>;
     fileMimeType: Atom<Promise<string>>;
@@ -363,6 +374,9 @@ export class PreviewModel implements ViewModel {
                 globalStore.set(this.connectionError, e as string);
             }
             return connName;
+        });
+        this.connectionImmediate = atom<string>((get) => {
+            return get(this.blockAtom)?.meta?.connection;
         });
         this.statFile = atom<Promise<FileInfo>>(async (get) => {
             const fileName = get(this.metaFilePath);
@@ -677,17 +691,40 @@ export class PreviewModel implements ViewModel {
                 label: "Open Terminal in New Block",
                 click: () =>
                     fireAndForget(async () => {
+                        const conn = await globalStore.get(this.connection);
                         const fileInfo = await globalStore.get(this.statFile);
                         const termBlockDef: BlockDef = {
                             meta: {
                                 view: "term",
                                 controller: "shell",
                                 "cmd:cwd": fileInfo.dir,
+                                connection: conn,
                             },
                         };
                         await createBlock(termBlockDef);
                     }),
             });
+            const conn = globalStore.get(this.connectionImmediate);
+            if (!conn) {
+                menuItems.push({
+                    label: makeNativeLabel(PLATFORM, true, true),
+                    click: async () => {
+                        const fileInfo = await globalStore.get(this.statFile);
+                        getApi().openNativePath(fileInfo.dir);
+                    },
+                });
+            }
+        } else {
+            const conn = globalStore.get(this.connectionImmediate);
+            if (!conn) {
+                menuItems.push({
+                    label: makeNativeLabel(PLATFORM, false, false),
+                    click: async () => {
+                        const fileInfo = await globalStore.get(this.statFile);
+                        getApi().openNativePath(`${fileInfo.dir}/${fileInfo.name}`);
+                    },
+                });
+            }
         }
         const loadableSV = globalStore.get(this.loadableSpecializedView);
         const wordWrapAtom = getOverrideConfigAtom(this.blockId, "editor:wordwrap");
