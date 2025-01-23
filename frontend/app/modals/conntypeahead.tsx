@@ -465,6 +465,8 @@ const ChangeConnectionBlockModal = React.memo(
                         globalStore.set(changeConnModalAtom, false);
                         globalRefocusWithTimeout(10);
                     }
+                    setRowIndex(0);
+                    return true;
                 }
                 if (keyutil.checkKeyPressed(waveEvent, "Escape")) {
                     globalStore.set(changeConnModalAtom, false);
@@ -481,6 +483,7 @@ const ChangeConnectionBlockModal = React.memo(
                     return true;
                 }
                 setRowIndex(0);
+                return false;
             },
             [changeConnModalAtom, viewModel, blockId, connSelected, selectionList]
         );
