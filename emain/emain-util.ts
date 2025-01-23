@@ -6,11 +6,15 @@ import { getWebServerEndpoint } from "../frontend/util/endpoints";
 
 export const WaveAppPathVarName = "WAVETERM_APP_PATH";
 
+// not necessarily exact, but we use this to help get us unstuck in certain cases
+let lastCtrlShiftSate: boolean = false;
+
 export function delay(ms): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 function setCtrlShift(wc: Electron.WebContents, state: boolean) {
+    lastCtrlShiftSate = state;
     wc.send("control-shift-state-update", state);
 }
 
@@ -28,6 +32,11 @@ export function handleCtrlShiftState(sender: Electron.WebContents, waveEvent: Wa
         if (waveEvent.key == "Meta") {
             if (waveEvent.control && waveEvent.shift) {
                 setCtrlShift(sender, true);
+            }
+        }
+        if (lastCtrlShiftSate) {
+            if (!waveEvent.control || !waveEvent.shift) {
+                setCtrlShift(sender, false);
             }
         }
         return;

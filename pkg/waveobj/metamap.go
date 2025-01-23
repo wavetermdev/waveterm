@@ -14,6 +14,22 @@ func (m MetaMapType) GetString(key string, def string) string {
 	return def
 }
 
+func (m MetaMapType) HasKey(key string) bool {
+	_, ok := m[key]
+	return ok
+}
+
+func (m MetaMapType) GetConnectionOverride(connName string) MetaMapType {
+	v, ok := m["["+connName+"]"]
+	if !ok {
+		return nil
+	}
+	if mval, ok := v.(map[string]any); ok {
+		return MetaMapType(mval)
+	}
+	return nil
+}
+
 func (m MetaMapType) GetStringList(key string) []string {
 	v, ok := m[key]
 	if !ok {

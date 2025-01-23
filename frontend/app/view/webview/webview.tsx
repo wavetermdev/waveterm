@@ -33,6 +33,7 @@ function getWebviewPreloadUrl() {
 export class WebViewModel implements ViewModel {
     viewType: string;
     blockId: string;
+    noPadding?: Atom<boolean>;
     blockAtom: Atom<Block>;
     viewIcon: Atom<string | IconButtonDecl>;
     viewName: Atom<string>;
@@ -58,6 +59,7 @@ export class WebViewModel implements ViewModel {
         this.nodeModel = nodeModel;
         this.viewType = "web";
         this.blockId = blockId;
+        this.noPadding = atom(true);
         this.blockAtom = WOS.getWaveObjectAtom<Block>(`block:${blockId}`);
         this.url = atom();
         const defaultUrlAtom = getSettingsKeyAtom("web:defaulturl");

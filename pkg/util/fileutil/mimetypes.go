@@ -1,7 +1,7 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-package utilfn
+package fileutil
 
 var StaticMimeTypeMap = map[string]string{
 	".a2l":                       "application/A2L",

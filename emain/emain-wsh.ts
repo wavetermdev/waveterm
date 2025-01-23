@@ -1,7 +1,8 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { FileService, WindowService } from "@/app/store/services";
+import { WindowService } from "@/app/store/services";
+import { RpcApi } from "@/app/store/wshclientapi";
 import { Notification } from "electron";
 import { getResolvedUpdateChannel } from "emain/updater";
 import { RpcResponseHelper, WshClient } from "../frontend/app/store/wshclient";
@@ -44,7 +45,7 @@ export class ElectronWshClientType extends WshClient {
 
     async handle_focuswindow(rh: RpcResponseHelper, windowId: string) {
         console.log(`focuswindow ${windowId}`);
-        const fullConfig = await FileService.GetFullConfig();
+        const fullConfig = await RpcApi.GetFullConfigCommand(ElectronWshClient);
         let ww = getWaveWindowById(windowId);
         if (ww == null) {
             const window = await WindowService.GetWindow(windowId);

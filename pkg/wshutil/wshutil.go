@@ -549,7 +549,6 @@ func getShell() string {
 	if runtime.GOOS == "darwin" {
 		return shellutil.GetMacUserShell()
 	}
-
 	shell := os.Getenv("SHELL")
 	if shell == "" {
 		return "/bin/bash"
@@ -572,4 +571,15 @@ func InstallRcFiles() error {
 	waveDir := filepath.Join(home, wavebase.RemoteWaveHomeDirName)
 	wshBinDir := filepath.Join(waveDir, wavebase.RemoteWshBinDirName)
 	return shellutil.InitRcFiles(waveDir, wshBinDir)
+}
+
+func SendErrCh[T any](err error) <-chan wshrpc.RespOrErrorUnion[T] {
+	ch := make(chan wshrpc.RespOrErrorUnion[T], 1)
+	ch <- RespErr[T](err)
+	close(ch)
+	return ch
+}
+
+func RespErr[T any](err error) wshrpc.RespOrErrorUnion[T] {
+	return wshrpc.RespOrErrorUnion[T]{Error: err}
 }
