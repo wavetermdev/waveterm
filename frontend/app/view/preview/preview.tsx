@@ -333,7 +333,6 @@ export class PreviewModel implements ViewModel {
         });
         this.metaFilePath = atom<string>((get) => {
             const file = get(this.blockAtom)?.meta?.file;
-            console.log("FOO metaFilePath", file);
             if (isBlank(file)) {
                 return "~";
             }

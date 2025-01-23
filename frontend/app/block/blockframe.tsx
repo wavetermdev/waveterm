@@ -704,7 +704,6 @@ const ChangeConnectionBlockModal = React.memo(
 
         const changeConnection = React.useCallback(
             async (connName: string) => {
-                console.log("FOO changeConnection", connName);
                 if (connName == "") {
                     connName = null;
                 }
@@ -718,7 +717,6 @@ const ChangeConnectionBlockModal = React.memo(
                 } else {
                     newCwd = "~";
                 }
-                console.log("FOO set new file", newCwd);
                 await RpcApi.SetMetaCommand(TabRpcClient, {
                     oref: WOS.makeORef("block", blockId),
                     meta: { connection: connName, file: newCwd },
