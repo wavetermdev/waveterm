@@ -6,6 +6,7 @@ package connparse
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
@@ -20,6 +21,8 @@ const (
 	ConnHostCurrent = "current"
 	ConnHostWaveSrv = "wavesrv"
 )
+
+var windowsDriveRegex = regexp.MustCompile(`^[a-zA-Z]:`)
 
 type Connection struct {
 	Scheme string
@@ -102,7 +105,11 @@ func ParseURI(uri string) (*Connection, error) {
 			split = strings.SplitN(rest, "/", 2)
 			if len(split) > 1 {
 				host = split[0]
-				remotePath = "/" + split[1]
+				if windowsDriveRegex.MatchString(split[1]) {
+					remotePath = split[1]
+				} else {
+					remotePath = "/" + split[1]
+				}
 			} else {
 				host = split[0]
 				remotePath = "/"
