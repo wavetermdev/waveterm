@@ -13,6 +13,9 @@
         align-items: start;
         justify-content: start;
         overflow: auto;
+        .markdown {
+            margin: 10px 5px;
+        }
     }
 
     &.view-preview-text {

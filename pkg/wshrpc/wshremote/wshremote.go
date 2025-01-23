@@ -714,15 +714,29 @@ func (impl *ServerImpl) RemoteMkdirCommand(ctx context.Context, path string) err
 	}
 	return nil
 }
-
 func (*ServerImpl) RemoteWriteFileCommand(ctx context.Context, data wshrpc.FileData) error {
+	var truncate, append bool
+	var atOffset int64
+	if data.Info != nil && data.Info.Opts != nil {
+		truncate = data.Info.Opts.Truncate
+		append = data.Info.Opts.Append
+	}
+	if data.At != nil {
+		atOffset = data.At.Offset
+	}
+	if truncate && atOffset > 0 {
+		return fmt.Errorf("cannot specify non-zero offset with truncate option")
+	}
+	if append && atOffset > 0 {
+		return fmt.Errorf("cannot specify non-zero offset with append option")
+	}
 	path, err := wavebase.ExpandHomeDir(data.Info.Path)
 	if err != nil {
 		return err
 	}
-	createMode := data.Info.Mode
-	if createMode == 0 {
-		createMode = 0644
+	createMode := os.FileMode(0644)
+	if data.Info != nil && data.Info.Mode > 0 {
+		createMode = data.Info.Mode
 	}
 	dataSize := base64.StdEncoding.DecodedLen(len(data.Data64))
 	dataBytes := make([]byte, dataSize)
@@ -738,18 +752,14 @@ func (*ServerImpl) RemoteWriteFileCommand(ctx context.Context, data wshrpc.FileD
 	if finfo != nil {
 		fileSize = finfo.Size()
 	}
-	offset := fileSize
-	if data.At != nil {
-		if data.At.Offset > 0 {
-			offset = min(data.At.Offset, fileSize)
-		}
+	if atOffset > fileSize {
+		return fmt.Errorf("cannot write at offset %d, file size is %d", atOffset, fileSize)
 	}
-
 	openFlags := os.O_CREATE | os.O_WRONLY
-	if data.Info.Opts.Truncate {
+	if truncate {
 		openFlags |= os.O_TRUNC
 	}
-	if data.Info.Opts.Append {
+	if append {
 		openFlags |= os.O_APPEND
 	}
 
@@ -757,15 +767,16 @@ func (*ServerImpl) RemoteWriteFileCommand(ctx context.Context, data wshrpc.FileD
 	if err != nil {
 		return fmt.Errorf("cannot open file %q: %w", path, err)
 	}
-	if offset > 0 && !data.Info.Opts.Append {
-		n, err = file.WriteAt(dataBytes[:n], offset)
+	defer file.Close()
+	if atOffset > 0 && !append {
+		n, err = file.WriteAt(dataBytes[:n], atOffset)
 	} else {
 		n, err = file.Write(dataBytes[:n])
 	}
 	if err != nil {
 		return fmt.Errorf("cannot write to file %q: %w", path, err)
 	}
-	log.Printf("wrote %d bytes to file %q at offset %q\n", n, path, offset)
+	log.Printf("wrote %d bytes to file %q at offset %d\n", n, path, atOffset)
 	return nil
 }
 
