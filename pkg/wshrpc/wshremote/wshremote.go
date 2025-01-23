@@ -162,21 +162,25 @@ func (impl *ServerImpl) remoteStreamFileInternal(ctx context.Context, data wshrp
 	if err != nil {
 		return err
 	}
-	finfo, err := impl.fileInfoInternal(data.Path, true)
+	path, err := wavebase.ExpandHomeDir(data.Path)
 	if err != nil {
-		return fmt.Errorf("cannot stat file %q: %w", data.Path, err)
+		return err
+	}
+	finfo, err := impl.fileInfoInternal(path, true)
+	if err != nil {
+		return fmt.Errorf("cannot stat file %q: %w", path, err)
 	}
 	dataCallback([]*wshrpc.FileInfo{finfo}, nil, byteRange)
 	if finfo.NotFound {
 		return nil
 	}
 	if finfo.Size > wshrpc.MaxFileSize {
-		return fmt.Errorf("file %q is too large to read, use /wave/stream-file", finfo.Path)
+		return fmt.Errorf("file %q is too large to read, use /wave/stream-file", path)
 	}
 	if finfo.IsDir {
-		return impl.remoteStreamFileDir(ctx, finfo.Path, byteRange, dataCallback)
+		return impl.remoteStreamFileDir(ctx, path, byteRange, dataCallback)
 	} else {
-		return impl.remoteStreamFileRegular(ctx, finfo.Path, byteRange, dataCallback)
+		return impl.remoteStreamFileRegular(ctx, path, byteRange, dataCallback)
 	}
 }
 
