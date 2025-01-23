@@ -237,28 +237,28 @@ func getCustomInitScriptKeyCascade(shellType string) []string {
 
 func getCustomInitScript(logCtx context.Context, meta waveobj.MetaMapType, connName string, shellType string) string {
 	initScriptVal, metaKeyName := getCustomInitScriptValue(meta, connName, shellType)
-	blocklogger.Infof(logCtx, "[conndebug] initScript found in meta key: %s\n", metaKeyName)
 	if initScriptVal == "" || !fileutil.IsInitScriptPath(initScriptVal) {
+		blocklogger.Infof(logCtx, "[conndebug] inline initScript (size=%d) found in meta key: %s\n", len(initScriptVal), metaKeyName)
 		return initScriptVal
 	}
-	blocklogger.Infof(logCtx, "[conndebug] initScript detected as a file: %q\n", initScriptVal)
+	blocklogger.Infof(logCtx, "[conndebug] initScript detected as a file %q from meta key: %s\n", initScriptVal, metaKeyName)
 	initScriptVal, err := wavebase.ExpandHomeDir(initScriptVal)
 	if err != nil {
 		blocklogger.Infof(logCtx, "[conndebug] cannot expand home dir in Wave initscript file: %v\n", err)
-		return fmt.Sprintf("echo \"cannot expand home dir in Wave initscript file: %s\";\n", metaKeyName)
+		return fmt.Sprintf("echo \"cannot expand home dir in Wave initscript file, from key %s\";\n", metaKeyName)
 	}
 	fileData, err := os.ReadFile(initScriptVal)
 	if err != nil {
 		blocklogger.Infof(logCtx, "[conndebug] cannot open Wave initscript file: %v\n", err)
-		return fmt.Sprintf("echo \"cannot open Wave initscript file: %s\";\n", metaKeyName)
+		return fmt.Sprintf("echo \"cannot open Wave initscript file, from key %s\";\n", metaKeyName)
 	}
 	if len(fileData) > MaxInitScriptSize {
 		blocklogger.Infof(logCtx, "[conndebug] initscript file too large, size=%d, max=%d\n", len(fileData), MaxInitScriptSize)
-		return fmt.Sprintf("echo \"initscript file too large: %s\";\n", metaKeyName)
+		return fmt.Sprintf("echo \"initscript file too large, from key %s\";\n", metaKeyName)
 	}
 	if utilfn.HasBinaryData(fileData) {
 		blocklogger.Infof(logCtx, "[conndebug] initscript file contains binary data\n")
-		return fmt.Sprintf("echo \"initscript file contains binary data: %s\";\n", metaKeyName)
+		return fmt.Sprintf("echo \"initscript file contains binary data, from key %s\";\n", metaKeyName)
 	}
 	blocklogger.Infof(logCtx, "[conndebug] initscript file read successfully, size=%d\n", len(fileData))
 	return string(fileData)
