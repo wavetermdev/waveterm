@@ -295,8 +295,13 @@ function DirectoryTable({
                     newPath = path.substring(0, lastInstance) + newName;
                     console.log(`replacing ${fileName} with ${newName}: ${path}`);
                     fireAndForget(async () => {
-                        const connection = await globalStore.get(model.connection);
-                        await FileService.Rename(connection, path, newPath);
+                        await RpcApi.FileMoveCommand(TabRpcClient, {
+                            srcuri: await model.formatRemoteUri(path),
+                            desturi: await model.formatRemoteUri(newPath),
+                            opts: {
+                                recursive: true,
+                            },
+                        });
                         model.refreshCallback();
                     });
                 }
@@ -620,7 +625,11 @@ function TableBody({
                     label: "Delete",
                     click: () => {
                         fireAndForget(async () => {
-                            await FileService.DeleteFile(conn, finfo.path).catch((e) => console.log(e));
+                            await RpcApi.FileDeleteCommand(TabRpcClient, {
+                                info: {
+                                    path: await model.formatRemoteUri(finfo.path),
+                                },
+                            }).catch((e) => console.log(e));
                             setRefreshVersion((current) => current + 1);
                         });
                     },
@@ -833,8 +842,11 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
             onSave: (newName: string) => {
                 console.log(`newDirectory: ${newName}`);
                 fireAndForget(async () => {
-                    const connection = await globalStore.get(model.connection);
-                    await FileService.Mkdir(connection, `${dirPath}/${newName}`);
+                    await RpcApi.FileMkdirCommand(TabRpcClient, {
+                        info: {
+                            path: await model.formatRemoteUri(`${dirPath}/${newName}`),
+                        },
+                    });
                     model.refreshCallback();
                 });
                 setEntryManagerProps(undefined);
