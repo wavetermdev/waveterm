@@ -151,6 +151,14 @@ type ConnKeywords struct {
 	TermFontFamily string  `json:"term:fontfamily,omitempty"`
 	TermTheme      string  `json:"term:theme,omitempty"`
 
+	CmdEnv            map[string]string `json:"cmd:env,omitempty"`
+	CmdInitScript     string            `json:"cmd:initscript,omitempty"`
+	CmdInitScriptSh   string            `json:"cmd:initscript.sh,omitempty"`
+	CmdInitScriptBash string            `json:"cmd:initscript.bash,omitempty"`
+	CmdInitScriptZsh  string            `json:"cmd:initscript.zsh,omitempty"`
+	CmdInitScriptPwsh string            `json:"cmd:initscript.pwsh,omitempty"`
+	CmdInitScriptFish string            `json:"cmd:initscript.fish,omitempty"`
+
 	SshUser                         *string  `json:"ssh:user,omitempty"`
 	SshHostName                     *string  `json:"ssh:hostname,omitempty"`
 	SshPort                         *string  `json:"ssh:port,omitempty"`

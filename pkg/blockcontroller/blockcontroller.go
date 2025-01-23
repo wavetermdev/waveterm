@@ -11,6 +11,7 @@ import (
 	"io"
 	"io/fs"
 	"log"
+	"os"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -24,6 +25,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/remote/conncontroller"
 	"github.com/wavetermdev/waveterm/pkg/shellexec"
 	"github.com/wavetermdev/waveterm/pkg/util/envutil"
+	"github.com/wavetermdev/waveterm/pkg/util/fileutil"
 	"github.com/wavetermdev/waveterm/pkg/util/shellutil"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
@@ -57,6 +59,7 @@ const (
 const (
 	DefaultTermMaxFileSize = 256 * 1024
 	DefaultHtmlMaxFileSize = 256 * 1024
+	MaxInitScriptSize      = 50 * 1024
 )
 
 const DefaultTimeout = 2 * time.Second
@@ -232,25 +235,79 @@ func getCustomInitScriptKeyCascade(shellType string) []string {
 	return []string{waveobj.MetaKey_CmdInitScript}
 }
 
-func getCustomInitScript(meta waveobj.MetaMapType, connName string, shellType string) string {
+func getCustomInitScript(logCtx context.Context, meta waveobj.MetaMapType, connName string, shellType string) string {
+	initScriptVal, metaKeyName := getCustomInitScriptValue(meta, connName, shellType)
+	if initScriptVal == "" {
+		return ""
+	}
+	if !fileutil.IsInitScriptPath(initScriptVal) {
+		blocklogger.Infof(logCtx, "[conndebug] inline initScript (size=%d) found in meta key: %s\n", len(initScriptVal), metaKeyName)
+		return initScriptVal
+	}
+	blocklogger.Infof(logCtx, "[conndebug] initScript detected as a file %q from meta key: %s\n", initScriptVal, metaKeyName)
+	initScriptVal, err := wavebase.ExpandHomeDir(initScriptVal)
+	if err != nil {
+		blocklogger.Infof(logCtx, "[conndebug] cannot expand home dir in Wave initscript file: %v\n", err)
+		return fmt.Sprintf("echo \"cannot expand home dir in Wave initscript file, from key %s\";\n", metaKeyName)
+	}
+	fileData, err := os.ReadFile(initScriptVal)
+	if err != nil {
+		blocklogger.Infof(logCtx, "[conndebug] cannot open Wave initscript file: %v\n", err)
+		return fmt.Sprintf("echo \"cannot open Wave initscript file, from key %s\";\n", metaKeyName)
+	}
+	if len(fileData) > MaxInitScriptSize {
+		blocklogger.Infof(logCtx, "[conndebug] initscript file too large, size=%d, max=%d\n", len(fileData), MaxInitScriptSize)
+		return fmt.Sprintf("echo \"initscript file too large, from key %s\";\n", metaKeyName)
+	}
+	if utilfn.HasBinaryData(fileData) {
+		blocklogger.Infof(logCtx, "[conndebug] initscript file contains binary data\n")
+		return fmt.Sprintf("echo \"initscript file contains binary data, from key %s\";\n", metaKeyName)
+	}
+	blocklogger.Infof(logCtx, "[conndebug] initscript file read successfully, size=%d\n", len(fileData))
+	return string(fileData)
+}
+
+// returns (value, metakey)
+func getCustomInitScriptValue(meta waveobj.MetaMapType, connName string, shellType string) (string, string) {
 	keys := getCustomInitScriptKeyCascade(shellType)
 	connMeta := meta.GetConnectionOverride(connName)
 	if connMeta != nil {
 		for _, key := range keys {
 			if connMeta.HasKey(key) {
-				return connMeta.GetString(key, "")
+				return connMeta.GetString(key, ""), "blockmeta/[" + connName + "]/" + key
 			}
 		}
 	}
 	for _, key := range keys {
 		if meta.HasKey(key) {
-			return meta.GetString(key, "")
+			return meta.GetString(key, ""), "blockmeta/" + key
 		}
 	}
-	return ""
+	fullConfig := wconfig.GetWatcher().GetFullConfig()
+	connKeywords := fullConfig.Connections[connName]
+	connKeywordsMap := make(map[string]any)
+	err := utilfn.ReUnmarshal(&connKeywordsMap, connKeywords)
+	if err != nil {
+		log.Printf("error re-unmarshalling connKeywords: %v\n", err)
+		return "", ""
+	}
+	ckMeta := waveobj.MetaMapType(connKeywordsMap)
+	for _, key := range keys {
+		if ckMeta.HasKey(key) {
+			return ckMeta.GetString(key, ""), "connections.json/" + connName + "/" + key
+		}
+	}
+	return "", ""
 }
 
 func resolveEnvMap(blockId string, blockMeta waveobj.MetaMapType, connName string) (map[string]string, error) {
+	rtn := make(map[string]string)
+	config := wconfig.GetWatcher().GetFullConfig()
+	connKeywords := config.Connections[connName]
+	ckEnv := connKeywords.CmdEnv
+	for k, v := range ckEnv {
+		rtn[k] = v
+	}
 	ctx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancelFn()
 	_, envFileData, err := filestore.WFS.ReadFile(ctx, blockId, wavebase.BlockFile_Env)
@@ -260,25 +317,27 @@ func resolveEnvMap(blockId string, blockMeta waveobj.MetaMapType, connName strin
 	if err != nil {
 		return nil, fmt.Errorf("error reading command env file: %w", err)
 	}
-	rtn := make(map[string]string)
 	if len(envFileData) > 0 {
 		envMap := envutil.EnvToMap(string(envFileData))
 		for k, v := range envMap {
 			rtn[k] = v
 		}
 	}
-	cmdEnv := blockMeta.GetMap(waveobj.MetaKey_CmdEnv)
+	cmdEnv := blockMeta.GetStringMap(waveobj.MetaKey_CmdEnv, true)
 	for k, v := range cmdEnv {
-		if v == nil {
+		if v == waveobj.MetaMap_DeleteSentinel {
 			delete(rtn, k)
 			continue
 		}
-		if strVal, ok := v.(string); ok {
-			rtn[k] = strVal
+		rtn[k] = v
+	}
+	connEnv := blockMeta.GetConnectionOverride(connName).GetStringMap(waveobj.MetaKey_CmdEnv, true)
+	for k, v := range connEnv {
+		if v == waveobj.MetaMap_DeleteSentinel {
+			delete(rtn, k)
+			continue
 		}
-		if floatVal, ok := v.(float64); ok {
-			rtn[k] = fmt.Sprintf("%v", floatVal)
-		}
+		rtn[k] = v
 	}
 	return rtn, nil
 }
@@ -322,7 +381,7 @@ func (bc *BlockController) DoRunShellCommand(logCtx context.Context, rc *RunShel
 	return bc.manageRunningShellProcess(shellProc, rc, blockMeta)
 }
 
-func (bc *BlockController) makeSwapToken(ctx context.Context, blockMeta waveobj.MetaMapType, remoteName string, shellType string) *shellutil.TokenSwapEntry {
+func (bc *BlockController) makeSwapToken(ctx context.Context, logCtx context.Context, blockMeta waveobj.MetaMapType, remoteName string, shellType string) *shellutil.TokenSwapEntry {
 	token := &shellutil.TokenSwapEntry{
 		Token: uuid.New().String(),
 		Env:   make(map[string]string),
@@ -360,7 +419,7 @@ func (bc *BlockController) makeSwapToken(ctx context.Context, blockMeta waveobj.
 	for k, v := range envMap {
 		token.Env[k] = v
 	}
-	token.ScriptText = getCustomInitScript(blockMeta, remoteName, shellType)
+	token.ScriptText = getCustomInitScript(logCtx, blockMeta, remoteName, shellType)
 	return token
 }
 
@@ -509,9 +568,9 @@ func (bc *BlockController) setupAndStartShellProcess(logCtx context.Context, rc 
 		return nil, fmt.Errorf("unknown controller type %q", bc.ControllerType)
 	}
 	var shellProc *shellexec.ShellProc
-	swapToken := bc.makeSwapToken(ctx, blockMeta, remoteName, connUnion.ShellType)
+	swapToken := bc.makeSwapToken(ctx, logCtx, blockMeta, remoteName, connUnion.ShellType)
 	cmdOpts.SwapToken = swapToken
-	blocklogger.Infof(logCtx, "[conndebug] created swaptoken: %s\n", swapToken.Token)
+	blocklogger.Debugf(logCtx, "[conndebug] created swaptoken: %s\n", swapToken.Token)
 	if connUnion.ConnType == ConnType_Wsl {
 		wslConn := connUnion.WslConn
 		if !connUnion.WshEnabled {
@@ -533,8 +592,8 @@ func (bc *BlockController) setupAndStartShellProcess(logCtx context.Context, rc 
 			if err != nil {
 				wslConn.SetWshError(err)
 				wslConn.WshEnabled.Store(false)
-				log.Printf("error starting wsl shell proc with wsh: %v", err)
-				log.Print("attempting install without wsh")
+				blocklogger.Infof(logCtx, "[conndebug] error starting wsl shell proc with wsh: %v\n", err)
+				blocklogger.Infof(logCtx, "[conndebug] attempting install without wsh\n")
 				shellProc, err = shellexec.StartWslShellProcNoWsh(ctx, rc.TermSize, cmdStr, cmdOpts, wslConn)
 				if err != nil {
 					return nil, err
@@ -562,8 +621,8 @@ func (bc *BlockController) setupAndStartShellProcess(logCtx context.Context, rc 
 			if err != nil {
 				conn.SetWshError(err)
 				conn.WshEnabled.Store(false)
-				log.Printf("error starting remote shell proc with wsh: %v", err)
-				log.Print("attempting install without wsh")
+				blocklogger.Infof(logCtx, "[conndebug] error starting remote shell proc with wsh: %v\n", err)
+				blocklogger.Infof(logCtx, "[conndebug] attempting install without wsh\n")
 				shellProc, err = shellexec.StartRemoteShellProcNoWsh(ctx, rc.TermSize, cmdStr, cmdOpts, conn)
 				if err != nil {
 					return nil, err

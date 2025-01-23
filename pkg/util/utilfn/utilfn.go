@@ -932,3 +932,12 @@ func TimeoutFromContext(ctx context.Context, defaultTimeout time.Duration) time.
 	}
 	return time.Until(deadline)
 }
+
+func HasBinaryData(data []byte) bool {
+	for _, b := range data {
+		if b < 32 && b != '\n' && b != '\r' && b != '\t' && b != '\f' && b != '\b' {
+			return true
+		}
+	}
+	return false
+}
