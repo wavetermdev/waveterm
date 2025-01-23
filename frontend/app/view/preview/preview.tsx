@@ -781,7 +781,7 @@ export class PreviewModel implements ViewModel {
     }
 
     async formatRemoteUri(path: string, get: Getter): Promise<string> {
-        const conn = (await globalStore.get(this.connection)) ?? "local";
+        const conn = (await get(this.connection)) ?? "local";
         return `wsh://${conn}/${path}`;
     }
 }
