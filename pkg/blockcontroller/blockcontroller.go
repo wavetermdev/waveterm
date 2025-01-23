@@ -273,11 +273,11 @@ func resolveEnvMap(blockId string, blockMeta waveobj.MetaMapType, connName strin
 			delete(rtn, k)
 			continue
 		}
-		if _, ok := v.(string); ok {
-			rtn[k] = v.(string)
+		if strVal, ok := v.(string); ok {
+			rtn[k] = strVal
 		}
-		if _, ok := v.(float64); ok {
-			rtn[k] = fmt.Sprintf("%v", v)
+		if floatVal, ok := v.(float64); ok {
+			rtn[k] = fmt.Sprintf("%v", floatVal)
 		}
 	}
 	return rtn, nil
