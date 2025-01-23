@@ -324,7 +324,7 @@ func TestWriteAt(t *testing.T) {
 	defer cancelFn()
 	fileName := "t3"
 	zoneId := uuid.NewString()
-	err := WFS.MakeFile(ctx, zoneId, fileName, nil, FileOptsType{})
+	err := WFS.MakeFile(ctx, zoneId, fileName, nil, wshrpc.FileOpts{})
 	if err != nil {
 		t.Fatalf("error creating file: %v", err)
 	}
