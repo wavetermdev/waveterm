@@ -103,15 +103,10 @@ func ParseURI(uri string) (*Connection, error) {
 		if strings.HasPrefix(rest, "//") {
 			rest = strings.TrimPrefix(rest, "//")
 			split = strings.SplitN(rest, "/", 2)
+			host = split[0]
 			if len(split) > 1 {
-				host = split[0]
-				if windowsDriveRegex.MatchString(split[1]) {
-					remotePath = split[1]
-				} else {
-					remotePath = "/" + split[1]
-				}
+				remotePath = split[1]
 			} else {
-				host = split[0]
 				remotePath = "/"
 			}
 		} else if strings.HasPrefix(rest, "/~") {
@@ -123,11 +118,10 @@ func ParseURI(uri string) (*Connection, error) {
 		}
 	} else {
 		split = strings.SplitN(rest, "/", 2)
+		host = split[0]
 		if len(split) > 1 {
-			host = split[0]
-			remotePath = "/" + split[1]
+			remotePath = split[1]
 		} else {
-			host = split[0]
 			remotePath = "/"
 		}
 	}
@@ -138,6 +132,8 @@ func ParseURI(uri string) (*Connection, error) {
 		}
 		if strings.HasPrefix(remotePath, "/~") {
 			remotePath = strings.TrimPrefix(remotePath, "/")
+		} else if len(remotePath) > 1 && !windowsDriveRegex.MatchString(remotePath) && !strings.HasPrefix(remotePath, "/") {
+			remotePath = "/" + remotePath
 		}
 	}
 
