@@ -6786,9 +6786,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@waveterm/docusaurus-og@https://github.com/wavetermdev/docusaurus-og.git#commit=243b4a7feffde0cbb7c0bf29fe7a2f74ee655c0c":
+"@waveterm/docusaurus-og@https://github.com/wavetermdev/docusaurus-og.git":
   version: 1.0.0-alpha.132
-  resolution: "@waveterm/docusaurus-og@https://github.com/wavetermdev/docusaurus-og.git#commit=243b4a7feffde0cbb7c0bf29fe7a2f74ee655c0c"
+  resolution: "@waveterm/docusaurus-og@https://github.com/wavetermdev/docusaurus-og.git#commit=5bc1b62416d3377480c7ad84642845ba80998872"
   dependencies:
     "@docusaurus/core": "npm:^3.7.0"
     "@docusaurus/module-type-aliases": "npm:^3.7.0"
@@ -6804,7 +6804,7 @@ __metadata:
     node-html-parser: "npm:^6.1.13"
     object-hash: "npm:^3.0.0"
     satori: "npm:^0.1.2"
-  checksum: 10c0/dbb9588ee6dbe2d3235d19dbbe89355ad93d356220159c1cb57b98be11cf140eb44f8d4a0f18a4d580c3b88b867874c5066675f9351ff87a9c1ea7e1ce976e15
+  checksum: 10c0/26a64e01111c9fa28eeaf3ec0d7d8a44a0e00dd4f615a8e588d6b38676634e0bf5e15b868c8a477fbca087fb57a673a5372534c184d95e92154b46db303570f7
   languageName: node
   linkType: hard
 
@@ -21596,7 +21596,7 @@ __metadata:
     "@types/eslint": "npm:^9.6.1"
     "@types/eslint-config-prettier": "npm:^6.11.3"
     "@types/ua-parser-js": "npm:^0.7.39"
-    "@waveterm/docusaurus-og": "https://github.com/wavetermdev/docusaurus-og.git#commit=243b4a7feffde0cbb7c0bf29fe7a2f74ee655c0c"
+    "@waveterm/docusaurus-og": "https://github.com/wavetermdev/docusaurus-og.git"
     clsx: "npm:^2.1.1"
     docusaurus-plugin-sass: "npm:^0.2.6"
     eslint: "npm:^9.18.0"
