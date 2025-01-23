@@ -11,6 +11,7 @@ import (
 	"io"
 	"io/fs"
 	"log"
+	"os"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -24,6 +25,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/remote/conncontroller"
 	"github.com/wavetermdev/waveterm/pkg/shellexec"
 	"github.com/wavetermdev/waveterm/pkg/util/envutil"
+	"github.com/wavetermdev/waveterm/pkg/util/fileutil"
 	"github.com/wavetermdev/waveterm/pkg/util/shellutil"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
@@ -57,6 +59,7 @@ const (
 const (
 	DefaultTermMaxFileSize = 256 * 1024
 	DefaultHtmlMaxFileSize = 256 * 1024
+	MaxInitScriptSize      = 50 * 1024
 )
 
 const DefaultTimeout = 2 * time.Second
@@ -233,21 +236,40 @@ func getCustomInitScriptKeyCascade(shellType string) []string {
 }
 
 func getCustomInitScript(meta waveobj.MetaMapType, connName string, shellType string) string {
+	initScriptVal, metaKeyName := getCustomInitScriptValue(meta, connName, shellType)
+	if initScriptVal == "" || !fileutil.IsInitScriptPath(initScriptVal) {
+		return initScriptVal
+	}
+	fileData, err := os.ReadFile(initScriptVal)
+	if err != nil {
+		return fmt.Sprintf(`echo "cannot open Wave initscript file: %s";\n`, metaKeyName)
+	}
+	if len(fileData) > MaxInitScriptSize {
+		return fmt.Sprintf(`echo "initscript file too large: %s";\n`, metaKeyName)
+	}
+	if utilfn.HasBinaryData(fileData) {
+		return fmt.Sprintf(`echo "initscript file contains binary data: %s";\n`, metaKeyName)
+	}
+	return string(fileData)
+}
+
+// returns (value, metakey)
+func getCustomInitScriptValue(meta waveobj.MetaMapType, connName string, shellType string) (string, string) {
 	keys := getCustomInitScriptKeyCascade(shellType)
 	connMeta := meta.GetConnectionOverride(connName)
 	if connMeta != nil {
 		for _, key := range keys {
 			if connMeta.HasKey(key) {
-				return connMeta.GetString(key, "")
+				return connMeta.GetString(key, ""), "blockmeta:[" + connName + "]/" + key
 			}
 		}
 	}
 	for _, key := range keys {
 		if meta.HasKey(key) {
-			return meta.GetString(key, "")
+			return meta.GetString(key, ""), "blockmeta:" + key
 		}
 	}
-	return ""
+	return "", ""
 }
 
 func resolveEnvMap(blockId string, blockMeta waveobj.MetaMapType, connName string) (map[string]string, error) {
@@ -267,18 +289,21 @@ func resolveEnvMap(blockId string, blockMeta waveobj.MetaMapType, connName strin
 			rtn[k] = v
 		}
 	}
-	cmdEnv := blockMeta.GetMap(waveobj.MetaKey_CmdEnv)
+	cmdEnv := blockMeta.GetStringMap(waveobj.MetaKey_CmdEnv, true)
 	for k, v := range cmdEnv {
-		if v == nil {
+		if v == waveobj.MetaMap_DeleteSentinel {
 			delete(rtn, k)
 			continue
 		}
-		if strVal, ok := v.(string); ok {
-			rtn[k] = strVal
+		rtn[k] = v
+	}
+	connEnv := blockMeta.GetConnectionOverride(connName).GetStringMap(waveobj.MetaKey_CmdEnv, true)
+	for k, v := range connEnv {
+		if v == waveobj.MetaMap_DeleteSentinel {
+			delete(rtn, k)
+			continue
 		}
-		if floatVal, ok := v.(float64); ok {
-			rtn[k] = fmt.Sprintf("%v", floatVal)
-		}
+		rtn[k] = v
 	}
 	return rtn, nil
 }

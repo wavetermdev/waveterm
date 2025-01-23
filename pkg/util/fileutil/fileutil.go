@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
@@ -115,4 +116,53 @@ func DetectMimeType(path string, fileInfo fs.FileInfo, extended bool) string {
 		return ""
 	}
 	return rtn
+}
+
+var (
+	systemBinDirs = []string{
+		"/bin/",
+		"/usr/bin/",
+		"/usr/local/bin/",
+		"/opt/bin/",
+		"/sbin/",
+		"/usr/sbin/",
+	}
+	suspiciousPattern = regexp.MustCompile(`[:;#!&$\t%="|>{}]`)
+	flagPattern       = regexp.MustCompile(` --?[a-zA-Z0-9]`)
+)
+
+// IsInitScriptPath tries to determine if the input string is a path to a script
+// rather than an inline script content.
+func IsInitScriptPath(input string) bool {
+	if len(input) == 0 || strings.Contains(input, "\n") {
+		return false
+	}
+
+	if suspiciousPattern.MatchString(input) {
+		return false
+	}
+
+	if flagPattern.MatchString(input) {
+		return false
+	}
+
+	// Check for home directory path
+	if strings.HasPrefix(input, "~/") {
+		return true
+	}
+
+	// Path must be absolute (if not home directory)
+	if !filepath.IsAbs(input) {
+		return false
+	}
+
+	// Check if path starts with system binary directories
+	normalizedPath := filepath.ToSlash(input)
+	for _, binDir := range systemBinDirs {
+		if strings.HasPrefix(normalizedPath, binDir) {
+			return false
+		}
+	}
+
+	return true
 }

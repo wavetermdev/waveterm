@@ -3,7 +3,11 @@
 
 package waveobj
 
+import "github.com/google/uuid"
+
 type MetaMapType map[string]any
+
+var MetaMap_DeleteSentinel = uuid.NewString()
 
 func (m MetaMapType) GetString(key string, def string) string {
 	if v, ok := m[key]; ok {
@@ -43,6 +47,26 @@ func (m MetaMapType) GetStringList(key string) []string {
 	for _, varrVal := range varr {
 		if s, ok := varrVal.(string); ok {
 			rtn = append(rtn, s)
+		}
+	}
+	return rtn
+}
+
+func (m MetaMapType) GetStringMap(key string, useDeleteSentinel bool) map[string]string {
+	mval := m.GetMap(key)
+	if len(mval) == 0 {
+		return nil
+	}
+	rtn := make(map[string]string, len(mval))
+	for k, v := range mval {
+		if v == nil {
+			if useDeleteSentinel {
+				rtn[k] = MetaMap_DeleteSentinel
+			}
+			continue
+		}
+		if s, ok := v.(string); ok {
+			rtn[k] = s
 		}
 	}
 	return rtn
