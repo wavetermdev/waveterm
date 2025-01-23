@@ -373,7 +373,7 @@ func (s *FileStore) ReadAt(ctx context.Context, zoneId string, name string, offs
 		return 0, nil, fmt.Errorf("size must be non-negative and less than MaxInt")
 	}
 	withLock(s, zoneId, name, func(entry *CacheEntry) error {
-		rtnOffset, rtnData, rtnErr = entry.readAt(ctx, offset, size, false)
+		rtnOffset, rtnData, rtnErr = entry.readAt(ctx, offset, int(size), false)
 		return nil
 	})
 	return
@@ -423,8 +423,6 @@ func (s *FileStore) FlushCache(ctx context.Context) (stats FlushStats, rtnErr er
 	}
 	return stats, nil
 }
-
-///////////////////////////////////
 
 func (f *WaveFile) partIdxAtOffset(offset int64) int {
 	partIdx := int(min(offset/int64(partDataSize), math.MaxInt))

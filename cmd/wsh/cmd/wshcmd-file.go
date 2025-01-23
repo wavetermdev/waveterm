@@ -11,18 +11,17 @@ import (
 	"io"
 	"io/fs"
 	"log"
-	"log"
 	"os"
 	"path"
 	"path/filepath"
 	"strings"
-	"text/tabwriter"
 	"text/tabwriter"
 	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/wavetermdev/waveterm/pkg/util/colprint"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
+	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
 	"golang.org/x/term"
@@ -130,20 +129,11 @@ var fileListCmd = &cobra.Command{
 	Short:   "list files",
 	Long:    "List files in a directory. By default, lists files in the current directory." + UriHelpText,
 	Example: "  wsh file ls wsh://user@ec2/home/user/\n  wsh file ls wavefile://client/configs/",
-	Use:     "ls [uri]",
-	Aliases: []string{"list"},
-	Short:   "list files",
-	Long:    "List files in a directory. By default, lists files in the current directory." + UriHelpText,
-	Example: "  wsh file ls wsh://user@ec2/home/user/\n  wsh file ls wavefile://client/configs/",
 	RunE:    activityWrap("file", fileListRun),
 	PreRunE: preRunSetupRpcClient,
 }
 
 var fileCatCmd = &cobra.Command{
-	Use:     "cat [uri]",
-	Short:   "display contents of a file",
-	Long:    "Display the contents of a file." + UriHelpText,
-	Example: "  wsh file cat wsh://user@ec2/home/user/config.txt\n  wsh file cat wavefile://client/settings.json",
 	Use:     "cat [uri]",
 	Short:   "display contents of a file",
 	Long:    "Display the contents of a file." + UriHelpText,
@@ -155,10 +145,7 @@ var fileCatCmd = &cobra.Command{
 
 var fileInfoCmd = &cobra.Command{
 	Use:     "info [uri]",
-	Use:     "info [uri]",
 	Short:   "show wave file information",
-	Long:    "Show information about a file." + UriHelpText,
-	Example: "  wsh file info wsh://user@ec2/home/user/config.txt\n  wsh file info wavefile://client/settings.json",
 	Long:    "Show information about a file." + UriHelpText,
 	Example: "  wsh file info wsh://user@ec2/home/user/config.txt\n  wsh file info wavefile://client/settings.json",
 	Args:    cobra.ExactArgs(1),
@@ -167,10 +154,6 @@ var fileInfoCmd = &cobra.Command{
 }
 
 var fileRmCmd = &cobra.Command{
-	Use:     "rm [uri]",
-	Short:   "remove a file",
-	Long:    "Remove a file." + UriHelpText,
-	Example: "  wsh file rm wsh://user@ec2/home/user/config.txt\n  wsh file rm wavefile://client/settings.json",
 	Use:     "rm [uri]",
 	Short:   "remove a file",
 	Long:    "Remove a file." + UriHelpText,
@@ -224,13 +207,9 @@ var fileMvCmd = &cobra.Command{
 
 func fileCatRun(cmd *cobra.Command, args []string) error {
 	path, err := fixRelativePaths(args[0])
-	path, err := fixRelativePaths(args[0])
 	if err != nil {
 		return err
 	}
-	fileData := wshrpc.FileData{
-		Info: &wshrpc.FileInfo{
-			Path: path}}
 	fileData := wshrpc.FileData{
 		Info: &wshrpc.FileInfo{
 			Path: path}}
@@ -240,13 +219,11 @@ func fileCatRun(cmd *cobra.Command, args []string) error {
 	err = convertNotFoundErr(err)
 	if err == fs.ErrNotExist {
 		return fmt.Errorf("%s: no such file", path)
-		return fmt.Errorf("%s: no such file", path)
 	}
 	if err != nil {
 		return fmt.Errorf("getting file info: %w", err)
 	}
 
-	err = streamReadFromFile(fileData, info.Size, os.Stdout)
 	err = streamReadFromFile(fileData, info.Size, os.Stdout)
 	if err != nil {
 		return fmt.Errorf("reading file: %w", err)
@@ -257,13 +234,9 @@ func fileCatRun(cmd *cobra.Command, args []string) error {
 
 func fileInfoRun(cmd *cobra.Command, args []string) error {
 	path, err := fixRelativePaths(args[0])
-	path, err := fixRelativePaths(args[0])
 	if err != nil {
 		return err
 	}
-	fileData := wshrpc.FileData{
-		Info: &wshrpc.FileInfo{
-			Path: path}}
 	fileData := wshrpc.FileData{
 		Info: &wshrpc.FileInfo{
 			Path: path}}
@@ -272,21 +245,11 @@ func fileInfoRun(cmd *cobra.Command, args []string) error {
 	err = convertNotFoundErr(err)
 	if err == fs.ErrNotExist {
 		return fmt.Errorf("%s: no such file", path)
-		return fmt.Errorf("%s: no such file", path)
 	}
 	if err != nil {
 		return fmt.Errorf("getting file info: %w", err)
 	}
 
-	WriteStdout("name:\t%s\n", info.Name)
-	if info.Mode != 0 {
-		WriteStdout("mode:\t%s\n", info.Mode.String())
-	}
-	WriteStdout("mtime:\t%s\n", time.Unix(info.ModTime/1000, 0).Format(time.DateTime))
-	if !info.IsDir {
-		WriteStdout("size:\t%d\n", info.Size)
-	}
-	if info.Meta != nil && len(*info.Meta) > 0 {
 	WriteStdout("name:\t%s\n", info.Name)
 	if info.Mode != 0 {
 		WriteStdout("mode:\t%s\n", info.Mode.String())
@@ -299,8 +262,6 @@ func fileInfoRun(cmd *cobra.Command, args []string) error {
 		WriteStdout("metadata:\n")
 		for k, v := range *info.Meta {
 			WriteStdout("\t\t\t%s: %v\n", k, v)
-		for k, v := range *info.Meta {
-			WriteStdout("\t\t\t%s: %v\n", k, v)
 		}
 	}
 	return nil
@@ -308,13 +269,9 @@ func fileInfoRun(cmd *cobra.Command, args []string) error {
 
 func fileRmRun(cmd *cobra.Command, args []string) error {
 	path, err := fixRelativePaths(args[0])
-	path, err := fixRelativePaths(args[0])
 	if err != nil {
 		return err
 	}
-	fileData := wshrpc.FileData{
-		Info: &wshrpc.FileInfo{
-			Path: path}}
 	fileData := wshrpc.FileData{
 		Info: &wshrpc.FileInfo{
 			Path: path}}
@@ -322,7 +279,6 @@ func fileRmRun(cmd *cobra.Command, args []string) error {
 	_, err = wshclient.FileInfoCommand(RpcClient, fileData, &wshrpc.RpcOpts{Timeout: DefaultFileTimeout})
 	err = convertNotFoundErr(err)
 	if err == fs.ErrNotExist {
-		return fmt.Errorf("%s: no such file", path)
 		return fmt.Errorf("%s: no such file", path)
 	}
 	if err != nil {
@@ -339,24 +295,18 @@ func fileRmRun(cmd *cobra.Command, args []string) error {
 
 func fileWriteRun(cmd *cobra.Command, args []string) error {
 	path, err := fixRelativePaths(args[0])
-	path, err := fixRelativePaths(args[0])
 	if err != nil {
 		return err
 	}
 	fileData := wshrpc.FileData{
 		Info: &wshrpc.FileInfo{
 			Path: path}}
-	fileData := wshrpc.FileData{
-		Info: &wshrpc.FileInfo{
-			Path: path}}
 
-	_, err = ensureFile(path, fileData)
 	_, err = ensureFile(path, fileData)
 	if err != nil {
 		return err
 	}
 
-	err = streamWriteToFile(fileData, WrappedStdin)
 	err = streamWriteToFile(fileData, WrappedStdin)
 	if err != nil {
 		return fmt.Errorf("writing file: %w", err)
@@ -367,18 +317,13 @@ func fileWriteRun(cmd *cobra.Command, args []string) error {
 
 func fileAppendRun(cmd *cobra.Command, args []string) error {
 	path, err := fixRelativePaths(args[0])
-	path, err := fixRelativePaths(args[0])
 	if err != nil {
 		return err
 	}
 	fileData := wshrpc.FileData{
 		Info: &wshrpc.FileInfo{
 			Path: path}}
-	fileData := wshrpc.FileData{
-		Info: &wshrpc.FileInfo{
-			Path: path}}
 
-	info, err := ensureFile(path, fileData)
 	info, err := ensureFile(path, fileData)
 	if err != nil {
 		return err
@@ -529,7 +474,6 @@ func filePrintColumns(filesChan <-chan wshrpc.RespOrErrorUnion[wshrpc.CommandRem
 		numCols = 1
 	}
 
-	return colprint.PrintColumnsArray(
 	return colprint.PrintColumnsArray(
 		filesChan,
 		numCols,

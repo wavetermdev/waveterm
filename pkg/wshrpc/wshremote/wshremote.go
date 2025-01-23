@@ -5,7 +5,6 @@ package wshremote
 
 import (
 	"archive/tar"
-	"archive/tar"
 	"context"
 	"encoding/base64"
 	"errors"
@@ -17,9 +16,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
-	"time"
 
-	"github.com/wavetermdev/waveterm/pkg/remote/fileshare"
+	"github.com/wavetermdev/waveterm/pkg/remote/connparse"
 	"github.com/wavetermdev/waveterm/pkg/util/fileutil"
 	"github.com/wavetermdev/waveterm/pkg/util/iochan"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
@@ -118,7 +116,6 @@ func (impl *ServerImpl) remoteStreamFileDir(ctx context.Context, path string, by
 }
 
 func (impl *ServerImpl) remoteStreamFileRegular(ctx context.Context, path string, byteRange ByteRangeType, dataCallback func(fileInfo []*wshrpc.FileInfo, data []byte, byteRange ByteRangeType)) error {
-func (impl *ServerImpl) remoteStreamFileRegular(ctx context.Context, path string, byteRange ByteRangeType, dataCallback func(fileInfo []*wshrpc.FileInfo, data []byte, byteRange ByteRangeType)) error {
 	fd, err := os.Open(path)
 	if err != nil {
 		return fmt.Errorf("cannot open file %q: %w", path, err)
@@ -133,7 +130,6 @@ func (impl *ServerImpl) remoteStreamFileRegular(ctx context.Context, path string
 		filePos = byteRange.Start
 	}
 	buf := make([]byte, wshrpc.FileChunkSize)
-	buf := make([]byte, wshrpc.FileChunkSize)
 	for {
 		if ctx.Err() != nil {
 			return ctx.Err()
@@ -144,7 +140,6 @@ func (impl *ServerImpl) remoteStreamFileRegular(ctx context.Context, path string
 				n = int(byteRange.End - filePos)
 			}
 			filePos += int64(n)
-			dataCallback(nil, buf[:n], byteRange)
 			dataCallback(nil, buf[:n], byteRange)
 		}
 		if !byteRange.All && filePos >= byteRange.End {
@@ -161,7 +156,6 @@ func (impl *ServerImpl) remoteStreamFileRegular(ctx context.Context, path string
 }
 
 func (impl *ServerImpl) remoteStreamFileInternal(ctx context.Context, data wshrpc.CommandRemoteStreamFileData, dataCallback func(fileInfo []*wshrpc.FileInfo, data []byte, byteRange ByteRangeType)) error {
-func (impl *ServerImpl) remoteStreamFileInternal(ctx context.Context, data wshrpc.CommandRemoteStreamFileData, dataCallback func(fileInfo []*wshrpc.FileInfo, data []byte, byteRange ByteRangeType)) error {
 	byteRange, err := parseByteRange(data.ByteRange)
 	if err != nil {
 		return err
@@ -175,11 +169,9 @@ func (impl *ServerImpl) remoteStreamFileInternal(ctx context.Context, data wshrp
 		return fmt.Errorf("cannot stat file %q: %w", path, err)
 	}
 	dataCallback([]*wshrpc.FileInfo{finfo}, nil, byteRange)
-	dataCallback([]*wshrpc.FileInfo{finfo}, nil, byteRange)
 	if finfo.NotFound {
 		return nil
 	}
-	if finfo.Size > wshrpc.MaxFileSize {
 	if finfo.Size > wshrpc.MaxFileSize {
 		return fmt.Errorf("file %q is too large to read, use /wave/stream-file", path)
 	}
@@ -190,8 +182,6 @@ func (impl *ServerImpl) remoteStreamFileInternal(ctx context.Context, data wshrp
 	}
 }
 
-func (impl *ServerImpl) RemoteStreamFileCommand(ctx context.Context, data wshrpc.CommandRemoteStreamFileData) chan wshrpc.RespOrErrorUnion[wshrpc.FileData] {
-	ch := make(chan wshrpc.RespOrErrorUnion[wshrpc.FileData], 16)
 func (impl *ServerImpl) RemoteStreamFileCommand(ctx context.Context, data wshrpc.CommandRemoteStreamFileData) chan wshrpc.RespOrErrorUnion[wshrpc.FileData] {
 	ch := make(chan wshrpc.RespOrErrorUnion[wshrpc.FileData], 16)
 	go func() {
@@ -542,18 +532,7 @@ func (impl *ServerImpl) RemoteListEntriesCommand(ctx context.Context, data wshrp
 
 func statToFileInfo(fullPath string, finfo fs.FileInfo, extended bool) *wshrpc.FileInfo {
 	mimeType := fileutil.DetectMimeType(fullPath, finfo, extended)
-	mimeType := fileutil.DetectMimeType(fullPath, finfo, extended)
 	rtn := &wshrpc.FileInfo{
-		Path:          wavebase.ReplaceHomeDir(fullPath),
-		Dir:           computeDirPart(fullPath, finfo.IsDir()),
-		Name:          finfo.Name(),
-		Size:          finfo.Size(),
-		Mode:          finfo.Mode(),
-		ModeStr:       finfo.Mode().String(),
-		ModTime:       finfo.ModTime().UnixMilli(),
-		IsDir:         finfo.IsDir(),
-		MimeType:      mimeType,
-		SupportsMkdir: true,
 		Path:          wavebase.ReplaceHomeDir(fullPath),
 		Dir:           computeDirPart(fullPath, finfo.IsDir()),
 		Name:          finfo.Name(),
@@ -736,12 +715,9 @@ func (impl *ServerImpl) RemoteMkdirCommand(ctx context.Context, path string) err
 
 func (*ServerImpl) RemoteWriteFileCommand(ctx context.Context, data wshrpc.FileData) error {
 	path, err := wavebase.ExpandHomeDir(data.Info.Path)
-func (*ServerImpl) RemoteWriteFileCommand(ctx context.Context, data wshrpc.FileData) error {
-	path, err := wavebase.ExpandHomeDir(data.Info.Path)
 	if err != nil {
 		return err
 	}
-	createMode := data.Info.Mode
 	createMode := data.Info.Mode
 	if createMode == 0 {
 		createMode = 0644
@@ -786,9 +762,7 @@ func (*ServerImpl) RemoteWriteFileCommand(ctx context.Context, data wshrpc.FileD
 	}
 	if err != nil {
 		return fmt.Errorf("cannot write to file %q: %w", path, err)
-		return fmt.Errorf("cannot write to file %q: %w", path, err)
 	}
-	log.Printf("wrote %d bytes to file %q at offset %q\n", n, path, offset)
 	log.Printf("wrote %d bytes to file %q at offset %q\n", n, path, offset)
 	return nil
 }

@@ -25,7 +25,6 @@ const DefaultTimeoutMs = 5000
 const RespChSize = 32
 const DefaultMessageChSize = 32
 const CtxDoneChSize = 10
-const CtxDoneChSize = 10
 
 type ResponseFnType = func(any) error
 

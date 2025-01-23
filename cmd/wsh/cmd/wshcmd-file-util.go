@@ -9,11 +9,7 @@ import (
 	"io"
 	"io/fs"
 	"strings"
-	"time"
 
-	"github.com/wavetermdev/waveterm/pkg/remote/connparse"
-	"github.com/wavetermdev/waveterm/pkg/util/fileutil"
-	"github.com/wavetermdev/waveterm/pkg/util/wavefileutil"
 	"github.com/wavetermdev/waveterm/pkg/remote/connparse"
 	"github.com/wavetermdev/waveterm/pkg/util/fileutil"
 	"github.com/wavetermdev/waveterm/pkg/util/wavefileutil"
@@ -32,11 +28,9 @@ func convertNotFoundErr(err error) error {
 }
 
 func ensureFile(origName string, fileData wshrpc.FileData) (*wshrpc.FileInfo, error) {
-func ensureFile(origName string, fileData wshrpc.FileData) (*wshrpc.FileInfo, error) {
 	info, err := wshclient.FileInfoCommand(RpcClient, fileData, &wshrpc.RpcOpts{Timeout: DefaultFileTimeout})
 	err = convertNotFoundErr(err)
 	if err == fs.ErrNotExist {
-		err = wshclient.FileCreateCommand(RpcClient, fileData, &wshrpc.RpcOpts{Timeout: DefaultFileTimeout})
 		err = wshclient.FileCreateCommand(RpcClient, fileData, &wshrpc.RpcOpts{Timeout: DefaultFileTimeout})
 		if err != nil {
 			return nil, fmt.Errorf("creating file: %w", err)
@@ -96,7 +90,6 @@ func streamWriteToFile(fileData wshrpc.FileData, reader io.Reader) error {
 }
 
 func streamReadFromFile(fileData wshrpc.FileData, size int64, writer io.Writer) error {
-func streamReadFromFile(fileData wshrpc.FileData, size int64, writer io.Writer) error {
 	const chunkSize = 32 * 1024 // 32KB chunks
 	for offset := int64(0); offset < size; offset += chunkSize {
 		// Calculate the length of this chunk
@@ -106,7 +99,6 @@ func streamReadFromFile(fileData wshrpc.FileData, size int64, writer io.Writer) 
 		}
 
 		// Set up the ReadAt request
-		fileData.At = &wshrpc.FileDataAt{
 		fileData.At = &wshrpc.FileDataAt{
 			Offset: offset,
 			Size:   length,
@@ -119,7 +111,6 @@ func streamReadFromFile(fileData wshrpc.FileData, size int64, writer io.Writer) 
 		}
 
 		// Decode and write the chunk
-		chunk, err := base64.StdEncoding.DecodeString(data.Data64)
 		chunk, err := base64.StdEncoding.DecodeString(data.Data64)
 		if err != nil {
 			return fmt.Errorf("decoding chunk at offset %d: %w", offset, err)
