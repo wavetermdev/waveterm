@@ -105,13 +105,13 @@ func (impl *ServerImpl) remoteStreamFileDir(ctx context.Context, path string, by
 		innerFileInfo := statToFileInfo(filepath.Join(path, innerFileInfoInt.Name()), innerFileInfoInt, false)
 		fileInfoArr = append(fileInfoArr, innerFileInfo)
 		if len(fileInfoArr) >= wshrpc.DirChunkSize {
-			log.Printf("sending %d entries\n", len(fileInfoArr))
+			logPrintfDev("sending %d entries\n", len(fileInfoArr))
 			dataCallback(fileInfoArr, nil, byteRange)
 			fileInfoArr = nil
 		}
 	}
 	if len(fileInfoArr) > 0 {
-		log.Printf("sending %d entries\n", len(fileInfoArr))
+		logPrintfDev("sending %d entries\n", len(fileInfoArr))
 		dataCallback(fileInfoArr, nil, byteRange)
 	}
 	return nil
@@ -204,7 +204,7 @@ func (impl *ServerImpl) RemoteStreamFileCommand(ctx context.Context, data wshrpc
 				resp.Data64 = base64.StdEncoding.EncodeToString(data)
 				resp.At = &wshrpc.FileDataAt{Offset: byteRange.Start, Size: len(data)}
 			}
-			log.Printf("callback -- sending response %d\n", len(resp.Data64))
+			logPrintfDev("callback -- sending response %d\n", len(resp.Data64))
 			ch <- wshrpc.RespOrErrorUnion[wshrpc.FileData]{Response: resp}
 		})
 		if err != nil {
@@ -254,9 +254,9 @@ func (impl *ServerImpl) RemoteTarStreamCommand(ctx context.Context, data wshrpc.
 			return
 		}
 		defer tarWriter.Close()
-		log.Printf("creating tar stream for %q\n", path)
+		logPrintfDev("creating tar stream for %q\n", path)
 		if finfo.IsDir() {
-			log.Printf("%q is a directory, recursive: %v\n", path, recursive)
+			logPrintfDev("%q is a directory, recursive: %v\n", path, recursive)
 			if !recursive {
 				rtn <- wshutil.RespErr[[]byte](fmt.Errorf("cannot create tar stream for %q: %w", path, errors.New("directory copy requires recursive option")))
 				return
@@ -288,7 +288,7 @@ func (impl *ServerImpl) RemoteTarStreamCommand(ctx context.Context, data wshrpc.
 					log.Printf("error copying file %q: %v\n", file, err)
 					return err
 				} else {
-					log.Printf("wrote %d bytes to tar stream\n", n)
+					logPrintfDev("wrote %d bytes to tar stream\n", n)
 				}
 			}
 			time.Sleep(time.Millisecond * 10)
@@ -297,9 +297,9 @@ func (impl *ServerImpl) RemoteTarStreamCommand(ctx context.Context, data wshrpc.
 		if err != nil {
 			rtn <- wshutil.RespErr[[]byte](fmt.Errorf("cannot create tar stream for %q: %w", path, err))
 		}
-		log.Printf("returning tar stream\n")
+		logPrintfDev("returning tar stream\n")
 	}()
-	log.Printf("returning channel\n")
+	logPrintfDev("returning channel\n")
 	return rtn
 }
 
@@ -334,13 +334,13 @@ func (impl *ServerImpl) RemoteFileCopyCommand(ctx context.Context, data wshrpc.C
 	} else if !errors.Is(err, fs.ErrNotExist) {
 		return fmt.Errorf("cannot stat destination %q: %w", destPathCleaned, err)
 	}
-	log.Printf("copying %q to %q\n", srcUri, destUri)
+	logPrintfDev("copying %q to %q\n", srcUri, destUri)
 	srcConn, err := connparse.ParseURIAndReplaceCurrentHost(ctx, srcUri)
 	if err != nil {
 		return fmt.Errorf("cannot parse source URI %q: %w", srcUri, err)
 	}
 	if srcConn.Host == destConn.Host {
-		log.Printf("same host, copying file\n")
+		logPrintfDev("same host, copying file\n")
 		srcPathCleaned := filepath.Clean(wavebase.ExpandHomeDirSafe(srcConn.Path))
 		err := os.Rename(srcPathCleaned, destPathCleaned)
 		if err != nil {
@@ -654,7 +654,7 @@ func (impl *ServerImpl) RemoteFileTouchCommand(ctx context.Context, path string)
 }
 
 func (impl *ServerImpl) RemoteFileMoveCommand(ctx context.Context, data wshrpc.CommandRemoteFileCopyData) error {
-	log.Printf("RemoteFileCopyCommand: src=%s, dest=%s\n", data.SrcUri, data.DestUri)
+	logPrintfDev("RemoteFileCopyCommand: src=%s, dest=%s\n", data.SrcUri, data.DestUri)
 	opts := data.Opts
 	destUri := data.DestUri
 	srcUri := data.SrcUri
@@ -680,16 +680,16 @@ func (impl *ServerImpl) RemoteFileMoveCommand(ctx context.Context, data wshrpc.C
 	} else if !errors.Is(err, fs.ErrNotExist) {
 		return fmt.Errorf("cannot stat destination %q: %w", destUri, err)
 	}
-	log.Printf("moving %q to %q\n", srcUri, destUri)
+	logPrintfDev("moving %q to %q\n", srcUri, destUri)
 	srcConn, err := connparse.ParseURIAndReplaceCurrentHost(ctx, srcUri)
 	if err != nil {
 		return fmt.Errorf("cannot parse source URI %q: %w", srcUri, err)
 	}
-	log.Printf("source host: %q, destination host: %q\n", srcConn.Host, destConn.Host)
+	logPrintfDev("source host: %q, destination host: %q\n", srcConn.Host, destConn.Host)
 	if srcConn.Host == destConn.Host {
-		log.Printf("moving file on same host\n")
+		logPrintfDev("moving file on same host\n")
 		srcPathCleaned := filepath.Clean(wavebase.ExpandHomeDirSafe(srcConn.Path))
-		log.Printf("moving %q to %q\n", srcPathCleaned, destPathCleaned)
+		logPrintfDev("moving %q to %q\n", srcPathCleaned, destPathCleaned)
 		err := os.Rename(srcPathCleaned, destPathCleaned)
 		if err != nil {
 			return fmt.Errorf("cannot move file %q to %q: %w", srcPathCleaned, destPathCleaned, err)
@@ -776,7 +776,7 @@ func (*ServerImpl) RemoteWriteFileCommand(ctx context.Context, data wshrpc.FileD
 	if err != nil {
 		return fmt.Errorf("cannot write to file %q: %w", path, err)
 	}
-	log.Printf("wrote %d bytes to file %q at offset %d\n", n, path, atOffset)
+	logPrintfDev("wrote %d bytes to file %q at offset %d\n", n, path, atOffset)
 	return nil
 }
 
@@ -799,4 +799,10 @@ func (*ServerImpl) RemoteGetInfoCommand(ctx context.Context) (wshrpc.RemoteInfo,
 
 func (*ServerImpl) RemoteInstallRcFilesCommand(ctx context.Context) error {
 	return wshutil.InstallRcFiles()
+}
+
+func logPrintfDev(format string, args ...interface{}) {
+	if wavebase.IsDevMode() {
+		log.Printf(format, args...)
+	}
 }
