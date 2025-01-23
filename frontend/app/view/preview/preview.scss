@@ -37,12 +37,7 @@
             object-fit: contain;
         }
     }
-    &.view-preview-directory {
-        flex-direction: column;
-        align-items: start;
-    }
-    &.view-preview-pdf,
-    &.view-preview-directory {
+    &.view-preview-pdf {
         padding: 5px;
     }
 }
