@@ -333,6 +333,7 @@ export class PreviewModel implements ViewModel {
         });
         this.metaFilePath = atom<string>((get) => {
             const file = get(this.blockAtom)?.meta?.file;
+            console.log("FOO metaFilePath", file);
             if (isBlank(file)) {
                 return "~";
             }
@@ -370,7 +371,7 @@ export class PreviewModel implements ViewModel {
             }
             const statFile = await RpcApi.FileInfoCommand(TabRpcClient, {
                 info: {
-                    path: await this.formatRemoteUri(fileName),
+                    path: await this.formatRemoteUri(fileName, get),
                 },
             });
             console.log("stat file", statFile);
@@ -391,7 +392,7 @@ export class PreviewModel implements ViewModel {
             }
             const file = await RpcApi.FileReadCommand(TabRpcClient, {
                 info: {
-                    path: await this.formatRemoteUri(fileName),
+                    path: await this.formatRemoteUri(fileName, get),
                 },
             });
             console.log("full file", file);
@@ -601,7 +602,7 @@ export class PreviewModel implements ViewModel {
         try {
             await RpcApi.FileWriteCommand(TabRpcClient, {
                 info: {
-                    path: await this.formatRemoteUri(filePath),
+                    path: await this.formatRemoteUri(filePath, globalStore.get),
                 },
                 data64: stringToBase64(newFileContent),
             });
@@ -777,7 +778,7 @@ export class PreviewModel implements ViewModel {
         return false;
     }
 
-    async formatRemoteUri(path: string): Promise<string> {
+    async formatRemoteUri(path: string, get: Getter): Promise<string> {
         const conn = (await globalStore.get(this.connection)) ?? "local";
         return `wsh://${conn}/${path}`;
     }

@@ -4,7 +4,7 @@
 import { Button } from "@/app/element/button";
 import { Input } from "@/app/element/input";
 import { ContextMenuModel } from "@/app/store/contextmenu";
-import { PLATFORM, atoms, createBlock, getApi } from "@/app/store/global";
+import { PLATFORM, atoms, createBlock, getApi, globalStore } from "@/app/store/global";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import type { PreviewModel } from "@/app/view/preview/preview";
@@ -296,8 +296,8 @@ function DirectoryTable({
                     console.log(`replacing ${fileName} with ${newName}: ${path}`);
                     fireAndForget(async () => {
                         await RpcApi.FileMoveCommand(TabRpcClient, {
-                            srcuri: await model.formatRemoteUri(path),
-                            desturi: await model.formatRemoteUri(newPath),
+                            srcuri: await model.formatRemoteUri(path, globalStore.get),
+                            desturi: await model.formatRemoteUri(newPath, globalStore.get),
                             opts: {
                                 recursive: true,
                             },
@@ -610,7 +610,7 @@ function TableBody({
                                 meta: {
                                     controller: "shell",
                                     view: "term",
-                                    "cmd:cwd": await model.formatRemoteUri(finfo.path),
+                                    "cmd:cwd": await model.formatRemoteUri(finfo.path, globalStore.get),
                                 },
                             };
                             await createBlock(termBlockDef);
@@ -627,7 +627,7 @@ function TableBody({
                         fireAndForget(async () => {
                             await RpcApi.FileDeleteCommand(TabRpcClient, {
                                 info: {
-                                    path: await model.formatRemoteUri(finfo.path),
+                                    path: await model.formatRemoteUri(finfo.path, globalStore.get),
                                 },
                             }).catch((e) => console.log(e));
                             setRefreshVersion((current) => current + 1);
@@ -726,7 +726,7 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
                 TabRpcClient,
                 {
                     info: {
-                        path: await model.formatRemoteUri(dirPath),
+                        path: await model.formatRemoteUri(dirPath, globalStore.get),
                     },
                 },
                 null
@@ -825,7 +825,7 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
                         TabRpcClient,
                         {
                             info: {
-                                path: await model.formatRemoteUri(`${dirPath}/${newName}`),
+                                path: await model.formatRemoteUri(`${dirPath}/${newName}`, globalStore.get),
                             },
                         },
                         null
@@ -844,7 +844,7 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
                 fireAndForget(async () => {
                     await RpcApi.FileMkdirCommand(TabRpcClient, {
                         info: {
-                            path: await model.formatRemoteUri(`${dirPath}/${newName}`),
+                            path: await model.formatRemoteUri(`${dirPath}/${newName}`, globalStore.get),
                         },
                     });
                     model.refreshCallback();
