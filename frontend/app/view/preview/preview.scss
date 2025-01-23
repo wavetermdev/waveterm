@@ -13,9 +13,6 @@
         align-items: start;
         justify-content: start;
         overflow: auto;
-        .markdown {
-            margin: 10px 5px;
-        }
     }
 
     &.view-preview-text {
@@ -40,8 +37,7 @@
             object-fit: contain;
         }
     }
-    &.view-preview-pdf,
-    &.view-preview-markdown {
+    &.view-preview-pdf {
         padding: 5px;
     }
 }

@@ -19,6 +19,7 @@
         font-family: var(--markdown-font-family);
         font-size: var(--markdown-font-size);
         overflow-wrap: break-word;
+        padding: 5px 15px;
 
         &.non-scrollable {
             overflow: hidden;
