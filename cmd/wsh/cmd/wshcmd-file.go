@@ -21,7 +21,6 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/wavetermdev/waveterm/pkg/util/colprint"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
-	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
 	"golang.org/x/term"
@@ -105,22 +104,10 @@ func init() {
 	fileCpCmd.Flags().BoolP("merge", "m", false, "merge directories")
 	fileCpCmd.Flags().BoolP("recursive", "r", false, "copy directories recursively")
 	fileCpCmd.Flags().BoolP("force", "f", false, "force overwrite of existing files")
-	fileCpCmd.Flags().BoolP("merge", "m", false, "merge directories")
-	fileCpCmd.Flags().BoolP("recursive", "r", false, "copy directories recursively")
-	fileCpCmd.Flags().BoolP("force", "f", false, "force overwrite of existing files")
 	fileCmd.AddCommand(fileCpCmd)
 	fileMvCmd.Flags().BoolP("recursive", "r", false, "move directories recursively")
 	fileMvCmd.Flags().BoolP("force", "f", false, "force overwrite of existing files")
 	fileCmd.AddCommand(fileMvCmd)
-}
-
-type waveFileRef struct {
-	zoneId   string
-	fileName string
-}
-
-func resolveWaveFile(ref *waveFileRef) (*waveobj.ORef, error) {
-	return resolveSimpleId(ref.zoneId)
 }
 
 var fileListCmd = &cobra.Command{

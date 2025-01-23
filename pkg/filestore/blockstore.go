@@ -43,7 +43,7 @@ const NoPartIdx = -1
 var warningCount = &atomic.Int32{}
 var flushErrorCount = &atomic.Int32{}
 
-var partDataSize int = DefaultPartDataSize // overridden in tests
+var partDataSize int64 = DefaultPartDataSize // overridden in tests
 var stopFlush = &atomic.Bool{}
 
 var WFS *FileStore = &FileStore{
@@ -68,7 +68,7 @@ type WaveFile struct {
 // for circular files this is min(Size, MaxSize)
 func (f WaveFile) DataLength() int64 {
 	if f.Opts.Circular {
-		return min(f.Size, f.Opts.MaxSize)
+		return minInt64(f.Size, f.Opts.MaxSize)
 	}
 	return f.Size
 }
@@ -123,9 +123,8 @@ func (s *FileStore) MakeFile(ctx context.Context, zoneId string, name string, me
 		return fmt.Errorf("circular file cannot be ijson")
 	}
 	if opts.Circular {
-		partDataSizeInt64 := int64(partDataSize)
-		if opts.MaxSize%partDataSizeInt64 != 0 {
-			opts.MaxSize = (opts.MaxSize/partDataSizeInt64 + 1) * partDataSizeInt64
+		if opts.MaxSize%partDataSize != 0 {
+			opts.MaxSize = (opts.MaxSize/partDataSize + 1) * partDataSize
 		}
 	}
 	if opts.IJsonBudget > 0 && !opts.IJson {
@@ -251,7 +250,7 @@ func (s *FileStore) WriteAt(ctx context.Context, zoneId string, name string, off
 		if offset > file.Size {
 			return fmt.Errorf("offset is past the end of the file")
 		}
-		partMap := file.computePartMap(offset, len(data))
+		partMap := file.computePartMap(offset, int64(len(data)))
 		incompleteParts := incompletePartsFromMap(partMap)
 		err = entry.loadDataPartsIntoCache(ctx, incompleteParts)
 		if err != nil {
@@ -268,7 +267,7 @@ func (s *FileStore) AppendData(ctx context.Context, zoneId string, name string, 
 		if err != nil {
 			return err
 		}
-		partMap := entry.File.computePartMap(entry.File.Size, len(data))
+		partMap := entry.File.computePartMap(entry.File.Size, int64(len(data)))
 		incompleteParts := incompletePartsFromMap(partMap)
 		if len(incompleteParts) > 0 {
 			err = entry.loadDataPartsIntoCache(ctx, incompleteParts)
@@ -334,7 +333,7 @@ func (s *FileStore) AppendIJson(ctx context.Context, zoneId string, name string,
 		if !entry.File.Opts.IJson {
 			return fmt.Errorf("file %s:%s is not an ijson file", zoneId, name)
 		}
-		partMap := entry.File.computePartMap(entry.File.Size, len(data))
+		partMap := entry.File.computePartMap(entry.File.Size, int64(len(data)))
 		incompleteParts := incompletePartsFromMap(partMap)
 		if len(incompleteParts) > 0 {
 			err = entry.loadDataPartsIntoCache(ctx, incompleteParts)
@@ -373,7 +372,7 @@ func (s *FileStore) ReadAt(ctx context.Context, zoneId string, name string, offs
 		return 0, nil, fmt.Errorf("size must be non-negative and less than MaxInt")
 	}
 	withLock(s, zoneId, name, func(entry *CacheEntry) error {
-		rtnOffset, rtnData, rtnErr = entry.readAt(ctx, offset, int(size), false)
+		rtnOffset, rtnData, rtnErr = entry.readAt(ctx, offset, size, false)
 		return nil
 	})
 	return
@@ -424,10 +423,12 @@ func (s *FileStore) FlushCache(ctx context.Context) (stats FlushStats, rtnErr er
 	return stats, nil
 }
 
+///////////////////////////////////
+
 func (f *WaveFile) partIdxAtOffset(offset int64) int {
-	partIdx := int(min(offset/int64(partDataSize), math.MaxInt))
+	partIdx := int(offset / partDataSize)
 	if f.Opts.Circular {
-		maxPart := int(min(f.Opts.MaxSize/int64(partDataSize), math.MaxInt))
+		maxPart := int(f.Opts.MaxSize / partDataSize)
 		partIdx = partIdx % maxPart
 	}
 	return partIdx
@@ -452,17 +453,16 @@ func getPartIdxsFromMap(partMap map[int]int) []int {
 }
 
 // returns a map of partIdx to amount of data to write to that part
-func (file *WaveFile) computePartMap(startOffset int64, size int) map[int]int {
+func (file *WaveFile) computePartMap(startOffset int64, size int64) map[int]int {
 	partMap := make(map[int]int)
-	endOffset := startOffset + int64(size)
-	partDataSizeInt64 := int64(partDataSize)
-	startFileOffset := startOffset - (startOffset % partDataSizeInt64)
-	for testOffset := startFileOffset; testOffset < endOffset; testOffset += partDataSizeInt64 {
+	endOffset := startOffset + size
+	startFileOffset := startOffset - (startOffset % partDataSize)
+	for testOffset := startFileOffset; testOffset < endOffset; testOffset += partDataSize {
 		partIdx := file.partIdxAtOffset(testOffset)
 		partStartOffset := testOffset
-		partEndOffset := testOffset + partDataSizeInt64
+		partEndOffset := testOffset + partDataSize
 		partWriteStartOffset := 0
-		partWriteEndOffset := partDataSize
+		partWriteEndOffset := int(partDataSize)
 		if startOffset > partStartOffset && startOffset < partEndOffset {
 			partWriteStartOffset = int(startOffset - partStartOffset)
 		}
