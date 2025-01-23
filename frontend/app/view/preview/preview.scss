@@ -37,7 +37,8 @@
             object-fit: contain;
         }
     }
-    &.view-preview-pdf {
+    &.view-preview-pdf,
+    &.view-preview-markdown {
         padding: 5px;
     }
 }
