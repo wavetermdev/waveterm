@@ -302,6 +302,10 @@ function makeConnRoute(conn: string): string {
     return "conn:" + conn;
 }
 
+function sleep(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 function makeNativeLabel(platform: string, isDirectory: boolean, isParent: boolean) {
     let managerName: string;
     if (!isDirectory && !isParent) {
@@ -345,6 +349,7 @@ export {
     makeExternLink,
     makeIconClass,
     makeNativeLabel,
+    sleep,
     stringToBase64,
     useAtomValueSafe,
 };

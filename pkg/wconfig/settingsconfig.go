@@ -19,11 +19,11 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wconfig/defaultconfig"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 )
 
 const SettingsFile = "settings.json"
 const ConnectionsFile = "connections.json"
+const ProfilesFile = "profiles.json"
 
 const AnySchema = `
 {
@@ -132,8 +132,40 @@ type FullConfigType struct {
 	Widgets        map[string]WidgetConfigType    `json:"widgets"`
 	Presets        map[string]waveobj.MetaMapType `json:"presets"`
 	TermThemes     map[string]TermThemeType       `json:"termthemes"`
-	Connections    map[string]wshrpc.ConnKeywords `json:"connections"`
+	Connections    map[string]ConnKeywords        `json:"connections"`
 	ConfigErrors   []ConfigError                  `json:"configerrors" configfile:"-"`
+}
+type ConnKeywords struct {
+	ConnWshEnabled          *bool  `json:"conn:wshenabled,omitempty"`
+	ConnAskBeforeWshInstall *bool  `json:"conn:askbeforewshinstall,omitempty"`
+	ConnOverrideConfig      bool   `json:"conn:overrideconfig,omitempty"`
+	ConnWshPath             string `json:"conn:wshpath,omitempty"`
+	ConnShellPath           string `json:"conn:shellpath,omitempty"`
+	ConnIgnoreSshConfig     *bool  `json:"conn:ignoresshconfig,omitempty"`
+
+	DisplayHidden *bool   `json:"display:hidden,omitempty"`
+	DisplayOrder  float32 `json:"display:order,omitempty"`
+
+	TermClear      bool    `json:"term:*,omitempty"`
+	TermFontSize   float64 `json:"term:fontsize,omitempty"`
+	TermFontFamily string  `json:"term:fontfamily,omitempty"`
+	TermTheme      string  `json:"term:theme,omitempty"`
+
+	SshUser                         *string  `json:"ssh:user,omitempty"`
+	SshHostName                     *string  `json:"ssh:hostname,omitempty"`
+	SshPort                         *string  `json:"ssh:port,omitempty"`
+	SshIdentityFile                 []string `json:"ssh:identityfile,omitempty"`
+	SshBatchMode                    *bool    `json:"ssh:batchmode,omitempty"`
+	SshPubkeyAuthentication         *bool    `json:"ssh:pubkeyauthentication,omitempty"`
+	SshPasswordAuthentication       *bool    `json:"ssh:passwordauthentication,omitempty"`
+	SshKbdInteractiveAuthentication *bool    `json:"ssh:kbdinteractiveauthentication,omitempty"`
+	SshPreferredAuthentications     []string `json:"ssh:preferredauthentications,omitempty"`
+	SshAddKeysToAgent               *bool    `json:"ssh:addkeystoagent,omitempty"`
+	SshIdentityAgent                *string  `json:"ssh:identityagent,omitempty"`
+	SshIdentitiesOnly               *bool    `json:"ssh:identitiesonly,omitempty"`
+	SshProxyJump                    []string `json:"ssh:proxyjump,omitempty"`
+	SshUserKnownHostsFile           []string `json:"ssh:userknownhostsfile,omitempty"`
+	SshGlobalKnownHostsFile         []string `json:"ssh:globalknownhostsfile,omitempty"`
 }
 
 func DefaultBoolPtr(arg *bool, def bool) bool {

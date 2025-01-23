@@ -24,6 +24,7 @@ import (
 const DefaultTimeoutMs = 5000
 const RespChSize = 32
 const DefaultMessageChSize = 32
+const CtxDoneChSize = 10
 
 type ResponseFnType = func(any) error
 
@@ -44,6 +45,7 @@ type WshRpc struct {
 	clientId           string
 	InputCh            chan []byte
 	OutputCh           chan []byte
+	CtxDoneCh          chan string // for context cancellation, value is ResId
 	RpcContext         *atomic.Pointer[wshrpc.RpcContext]
 	AuthToken          string
 	RpcMap             map[string]*rpcData
@@ -52,6 +54,7 @@ type WshRpc struct {
 	ResponseHandlerMap map[string]*RpcResponseHandler // reqId => handler
 	Debug              bool
 	DebugName          string
+	ServerDone         bool
 }
 
 type wshRpcContextKey struct{}
@@ -110,7 +113,7 @@ type RpcMessage struct {
 	Command   string `json:"command,omitempty"`
 	ReqId     string `json:"reqid,omitempty"`
 	ResId     string `json:"resid,omitempty"`
-	Timeout   int    `json:"timeout,omitempty"`
+	Timeout   int64  `json:"timeout,omitempty"`
 	Route     string `json:"route,omitempty"`     // to route/forward requests to alternate servers
 	AuthToken string `json:"authtoken,omitempty"` // needed for routing unauthenticated requests (WshRpcMultiProxy)
 	Source    string `json:"source,omitempty"`    // source route id
@@ -206,6 +209,7 @@ func MakeWshRpc(inputCh chan []byte, outputCh chan []byte, rpcCtx wshrpc.RpcCont
 		clientId:           uuid.New().String(),
 		InputCh:            inputCh,
 		OutputCh:           outputCh,
+		CtxDoneCh:          make(chan string, CtxDoneChSize),
 		RpcMap:             make(map[string]*rpcData),
 		RpcContext:         &atomic.Pointer[wshrpc.RpcContext]{},
 		EventListener:      MakeEventListener(),
@@ -326,11 +330,33 @@ func (w *WshRpc) handleRequest(req *RpcMessage) {
 }
 
 func (w *WshRpc) runServer() {
-	defer close(w.OutputCh)
-	for msgBytes := range w.InputCh {
-		if w.Debug {
-			log.Printf("[%s] received message: %s\n", w.DebugName, string(msgBytes))
+	defer func() {
+		panichandler.PanicHandler("wshrpc.runServer", recover())
+		close(w.OutputCh)
+		w.setServerDone()
+	}()
+outer:
+	for {
+		var msgBytes []byte
+		var inputChMore bool
+		var resIdTimeout string
+
+		select {
+		case msgBytes, inputChMore = <-w.InputCh:
+			if !inputChMore {
+				break outer
+			}
+			if w.Debug {
+				log.Printf("[%s] received message: %s\n", w.DebugName, string(msgBytes))
+			}
+		case resIdTimeout = <-w.CtxDoneCh:
+			if w.Debug {
+				log.Printf("[%s] received request timeout: %s\n", w.DebugName, resIdTimeout)
+			}
+			w.unregisterRpc(resIdTimeout, fmt.Errorf("EC-TIME: timeout waiting for response"))
+			continue
 		}
+
 		var msg RpcMessage
 		err := json.Unmarshal(msgBytes, &msg)
 		if err != nil {
@@ -396,7 +422,7 @@ func (w *WshRpc) registerRpc(ctx context.Context, reqId string) chan *RpcMessage
 			panichandler.PanicHandler("registerRpc:timeout", recover())
 		}()
 		<-ctx.Done()
-		w.unregisterRpc(reqId, fmt.Errorf("EC-TIME: timeout waiting for response"))
+		w.retrySendTimeout(reqId)
 	}()
 	return rpcCh
 }
@@ -413,7 +439,13 @@ func (w *WshRpc) unregisterRpc(reqId string, err error) {
 			ResId: reqId,
 			Error: err.Error(),
 		}
-		rd.ResCh <- errResp
+		// non-blocking send since we're about to close anyway
+		// likely the channel isn't being actively read
+		// this also prevents us from blocking the main loop (and holding the lock)
+		select {
+		case rd.ResCh <- errResp:
+		default:
+		}
 	}
 	delete(w.RpcMap, reqId)
 	close(rd.ResCh)
@@ -642,6 +674,9 @@ func (handler *RpcResponseHandler) IsDone() bool {
 }
 
 func (w *WshRpc) SendComplexRequest(command string, data any, opts *wshrpc.RpcOpts) (rtnHandler *RpcRequestHandler, rtnErr error) {
+	if w.IsServerDone() {
+		return nil, errors.New("server is no longer running, cannot send new requests")
+	}
 	if opts == nil {
 		opts = &wshrpc.RpcOpts{}
 	}
@@ -680,4 +715,43 @@ func (w *WshRpc) SendComplexRequest(command string, data any, opts *wshrpc.RpcOp
 	handler.respCh = w.registerRpc(handler.ctx, handler.reqId)
 	w.OutputCh <- barr
 	return handler, nil
+}
+
+func (w *WshRpc) IsServerDone() bool {
+	w.Lock.Lock()
+	defer w.Lock.Unlock()
+	return w.ServerDone
+}
+
+func (w *WshRpc) setServerDone() {
+	w.Lock.Lock()
+	defer w.Lock.Unlock()
+	w.ServerDone = true
+	close(w.CtxDoneCh)
+	for range w.CtxDoneCh {
+		// drain channel
+	}
+}
+
+func (w *WshRpc) retrySendTimeout(resId string) {
+	for {
+		done := func() bool {
+			w.Lock.Lock()
+			defer w.Lock.Unlock()
+			if w.ServerDone {
+				return true
+			}
+			select {
+			case w.CtxDoneCh <- resId:
+				return true
+			default:
+				return false
+			}
+		}()
+		if done {
+			return
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+
 }

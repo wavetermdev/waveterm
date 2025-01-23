@@ -5,11 +5,9 @@
     display: flex;
     flex-direction: row;
     height: 100%;
-    flex-grow: 1;
     overflow: hidden;
     align-items: center;
     justify-content: center;
-    padding: 0 5px;
 
     &.view-preview-markdown {
         align-items: start;
@@ -42,6 +40,10 @@
     &.view-preview-directory {
         flex-direction: column;
         align-items: start;
+    }
+    &.view-preview-pdf,
+    &.view-preview-directory {
+        padding: 5px;
     }
 }
 

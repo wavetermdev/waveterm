@@ -83,7 +83,7 @@ func CreateBlock(ctx context.Context, tabId string, blockDef *waveobj.BlockDef, 
 	// upload the files if present
 	if len(blockDef.Files) > 0 {
 		for fileName, fileDef := range blockDef.Files {
-			err := filestore.WFS.MakeFile(ctx, newBlockOID, fileName, fileDef.Meta, filestore.FileOptsType{})
+			err := filestore.WFS.MakeFile(ctx, newBlockOID, fileName, fileDef.Meta, wshrpc.FileOpts{})
 			if err != nil {
 				return nil, fmt.Errorf("error making blockfile %q: %w", fileName, err)
 			}

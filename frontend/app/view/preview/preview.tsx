@@ -127,6 +127,7 @@ export class PreviewModel implements ViewModel {
     viewType: string;
     blockId: string;
     nodeModel: BlockNodeModel;
+    noPadding?: Atom<boolean>;
     blockAtom: Atom<Block>;
     viewIcon: Atom<string | IconButtonDecl>;
     viewName: Atom<string>;
@@ -149,7 +150,7 @@ export class PreviewModel implements ViewModel {
     loadableFileInfo: Atom<Loadable<FileInfo>>;
     connection: Atom<Promise<string>>;
     statFile: Atom<Promise<FileInfo>>;
-    fullFile: Atom<Promise<FullFile>>;
+    fullFile: Atom<Promise<FileData>>;
     fileMimeType: Atom<Promise<string>>;
     fileMimeTypeLoadable: Atom<Loadable<string>>;
     fileContentSaved: PrimitiveAtom<string | null>;
@@ -378,8 +379,12 @@ export class PreviewModel implements ViewModel {
             if (fileName == null) {
                 return null;
             }
-            const conn = (await get(this.connection)) ?? "";
-            const statFile = await services.FileService.StatFile(conn, fileName);
+            const statFile = await RpcApi.FileInfoCommand(TabRpcClient, {
+                info: {
+                    path: await this.formatRemoteUri(fileName),
+                },
+            });
+            console.log("stat file", statFile);
             return statFile;
         });
         this.fileMimeType = atom<Promise<string>>(async (get) => {
@@ -390,13 +395,17 @@ export class PreviewModel implements ViewModel {
         this.newFileContent = atom(null) as PrimitiveAtom<string | null>;
         this.goParentDirectory = this.goParentDirectory.bind(this);
 
-        const fullFileAtom = atom<Promise<FullFile>>(async (get) => {
+        const fullFileAtom = atom<Promise<FileData>>(async (get) => {
             const fileName = get(this.metaFilePath);
             if (fileName == null) {
                 return null;
             }
-            const conn = (await get(this.connection)) ?? "";
-            const file = await services.FileService.ReadFile(conn, fileName);
+            const file = await RpcApi.FileReadCommand(TabRpcClient, {
+                info: {
+                    path: await this.formatRemoteUri(fileName),
+                },
+            });
+            console.log("full file", file);
             return file;
         });
 
@@ -415,7 +424,7 @@ export class PreviewModel implements ViewModel {
                 const fullFile = await get(fullFileAtom);
                 return base64ToString(fullFile?.data64);
             },
-            (get, set, update: string) => {
+            (_, set, update: string) => {
                 set(this.fileContentSaved, update);
             }
         );
@@ -435,6 +444,8 @@ export class PreviewModel implements ViewModel {
             const connAtom = getConnStatusAtom(connName);
             return get(connAtom);
         });
+
+        this.noPadding = atom(true);
     }
 
     markdownShowTocToggle() {
@@ -448,7 +459,6 @@ export class PreviewModel implements ViewModel {
         const connErr = getFn(this.connectionError);
         const editMode = getFn(this.editMode);
         const parentFileInfo = await this.getParentInfo(fileInfo);
-        console.log(parentFileInfo);
 
         if (connErr != "") {
             return { errorStr: `Connection Error: ${connErr}` };
@@ -525,6 +535,7 @@ export class PreviewModel implements ViewModel {
             const parentFileInfo = await RpcApi.RemoteFileJoinCommand(TabRpcClient, [fileInfo.path, ".."], {
                 route: makeConnRoute(conn),
             });
+            console.log("parent file info", parentFileInfo);
             return parentFileInfo;
         } catch {
             return undefined;
@@ -551,7 +562,6 @@ export class PreviewModel implements ViewModel {
                 this.goParentDirectory({ fileInfo: newFileInfo });
                 return;
             }
-            console.log(newFileInfo.path);
             this.updateOpenFileModalAndError(false);
             await this.goHistory(newFileInfo.path);
             refocusNode(this.blockId);
@@ -601,9 +611,13 @@ export class PreviewModel implements ViewModel {
             console.log("not saving file, newFileContent is null");
             return;
         }
-        const conn = (await globalStore.get(this.connection)) ?? "";
         try {
-            await services.FileService.SaveFile(conn, filePath, stringToBase64(newFileContent));
+            await RpcApi.FileWriteCommand(TabRpcClient, {
+                info: {
+                    path: await this.formatRemoteUri(filePath),
+                },
+                data64: stringToBase64(newFileContent),
+            });
             globalStore.set(this.fileContent, newFileContent);
             globalStore.set(this.newFileContent, null);
             console.log("saved file", filePath);
@@ -790,6 +804,11 @@ export class PreviewModel implements ViewModel {
         }
         return false;
     }
+
+    async formatRemoteUri(path: string): Promise<string> {
+        const conn = (await globalStore.get(this.connection)) ?? "local";
+        return `wsh://${conn}/${path}`;
+    }
 }
 
 function makePreviewModel(blockId: string, nodeModel: BlockNodeModel): PreviewModel {
@@ -834,7 +853,7 @@ function StreamingPreview({ model }: SpecializedViewProps) {
     if (fileInfo.mimetype == "application/pdf") {
         return (
             <div className="view-preview view-preview-pdf">
-                <iframe src={streamingUrl} width="95%" height="95%" name="pdfview" />
+                <iframe src={streamingUrl} width="100%" height="100%" name="pdfview" />
             </div>
         );
     }

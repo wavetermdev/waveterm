@@ -267,10 +267,10 @@ func handleRemoteStreamFile(w http.ResponseWriter, _ *http.Request, conn string,
 		}
 		if firstPk {
 			firstPk = false
-			if len(respUnion.Response.FileInfo) != 1 {
-				return fmt.Errorf("stream file protocol error, first pk fileinfo len=%d", len(respUnion.Response.FileInfo))
+			if respUnion.Response.Info == nil {
+				return fmt.Errorf("stream file protocol error, fileinfo is empty")
 			}
-			fileInfo = respUnion.Response.FileInfo[0]
+			fileInfo = respUnion.Response.Info
 			if fileInfo.NotFound {
 				if no404 {
 					serveTransparentGIF(w)
