@@ -19,26 +19,41 @@ The easiest way to access connections is to click the <i className="fa-sharp fa-
 `wsh` is a small program that helps manage waveterm regardless of which machine you are currently connected to. It is always included on your host machine, but you also have the option to install it when connecting to a remote machine. If it is installed on the remote machine, it is installed at `~/.waveterm/bin/wsh`. Then, when wave connects to your connection (and only when wave connects to your connection), the following happens:
 
 - `~/.waveterm/bin` is added to your `PATH` for that individual session. This allows the user to use the `wsh` command without providing the complete path.
-- Several environment variables are injected into the session to make certain tasks with `wsh` easier. These are listed below.
+- Several environment variables are injected into the session to make certain tasks with `wsh` easier. These are [listed below](#additional-environment-variables).
+- The user-defined environment variables in the `cmd:env` entry of`connections.json` are injected into the session.
+- The user-defined initialization scripts located in `connections.json` are run. For more information on these scripts, see the section below.
 
-If this fails for some reason, Wave will attempt to run without wsh. You will see this indicated by a small **<code><i className="fa-link-slash fa-solid fa-sharp"/></code>** icon in the block header. For more info on what `wsh` is capable of, see [wsh command](/wsh). And if you wish to view the source code of `wsh`, you can find it [here](https://github.com/wavetermdev/waveterm/tree/main/cmd/wsh).
+If this fails for some reason, Wave will attempt to run without `wsh`. You will see this indicated by a small **<code><i className="fa-link-slash fa-solid fa-sharp"/></code>** icon in the block header. For more info on what `wsh` is capable of, see [wsh command](/wsh). And if you wish to view the source code of `wsh`, you can find it [here](https://github.com/wavetermdev/waveterm/tree/main/cmd/wsh).
 
 With `wsh` installed, you have the ability to view certain widgets from the remote machine as if it were your host, for instance the `files` and `sysinfo` widgets. In addition, `wsh` can be used to influence the widgets across various machines. As a simple example, you can close a widget on the host machine by using the `wsh` command in a terminal window on a remote machine. For more information on what you can accomplish with `wsh`, take a look [here](/wsh).
 
-### Additional Environment variables
+### Additional Environment Variables
 
 As mentioned above, `wsh` injects a few environment variables in remote sessions for the user's convenience. These are listed below:
 
 | Variable Name        | Description                                                                   |
 | -------------------- | ----------------------------------------------------------------------------- |
-| TERM_PROGRAM         | Set to `waveterm` in wave                                                     |
-| WAVETERM             | This is set to 1 in wave                                                      |
+| TERM_PROGRAM         | Set to `waveterm` in wave.                                                    |
+| WAVETERM             | This is set to 1 in wave.                                                     |
 | WAVETERM_BLOCKID     | The id of the block containing your current terminal widget.                  |
 | WAVETERM_CLIENTID    | The id of the RPC Client being used by your current terminal widget.          |
 | WAVETERM_CONN        | The name of the remote connection being used by your current terminal widget. |
 | WAVETERM_TABID       | The id of the tab containing your current terminal widget.                    |
 | WAVETERM_VERSION     | The current semver version of wave.                                           |
 | WAVETERM_WORKSPACEID | The id of thw workspace containing your current terminal widget.              |
+
+# Initialization Scripts
+
+Wave provides you with options for running initialization scripts on your remote machines when connecting to them. These are defined in `connections.json` and can take either the form of the path of a script or a short script written directly in the file. If multiple scripts are defined, the most specific one relevant to the current shell is applied. The keywords for the scripts are:
+
+| Script Keyword      | Shells Where Applied |
+| ------------------- | -------------------- |
+| cmd:initscript      | all shells           |
+| cmd:initscript.sh   | bash and zsh         |
+| cmd:initscript.bash | bash                 |
+| cmd:initscript.zsh  | zsh                  |
+| cmd:initscript.pwsh | pwsh                 |
+| cmd:initscript.fish | fish                 |
 
 ## Add a New Connection to the Dropdown
 
@@ -92,7 +107,7 @@ You would then be able to access this connection with `myhost` or `username@myho
 In addition to the regular ssh config file, wave also has its own config file to manage separate variables. These include
 | Keyword | Description |
 |---------|-------------|
-| conn:wshenabled | This boolean allows wsh to be used for your connection, if it is set to `false`, `wsh` will never be used for that connection. It defaults to `true`.|
+| conn:wshenabled | This boolean allows `wsh` to be used for your connection, if it is set to `false`, `wsh` will never be used for that connection. It defaults to `true`.|
 | conn:askbeforewshinstall | This boolean is used to prompt the user before installing wsh. If it is set to false, `wsh` will automatically be installed instead without prompting. It defaults to `true`.|
 | conn:wshpath | A string indicating the path to the `wsh` executable on the connection. It defaults to `"~/.waveterm/bin/wsh"`.|
 | conn:shellpath | A string indicating the path to the shell executable on the connection. If not set, the output of `$SHELL` on the connection will be used.|
@@ -102,6 +117,13 @@ In addition to the regular ssh config file, wave also has its own config file to
 | term:fontsize | This int can be used to override the terminal font size for blocks using this connection. The block metadata takes priority over this setting. It defaults to null which means the global setting will be used instead. |
 | term:fontfamily | This string can be used to specify a terminal font family for blocks using this connection. The block metadata takes priority over this setting. It defaults to null which means the global setting will be used instead. |
 | term:theme | This string can be used to specify a terminal theme for blocks using this connection. The block metadata takes priority over this setting. It defaults to null which means the global setting will be used instead. |
+| cmd:env | A json object with key value pairs of environment variables and the value they should be set to for this remote. This only works if `wsh` is enabled.
+| cmd:initscript | A script or a path to a script that runs when initializing this connection with any shell. This only works if `wsh` is enabled. |
+| cmd:initscript.sh | A script or a path to a script that runs when initializing this connection with POSIX shells like `bash` or `zsh`. This only works if `wsh` is enabled.
+| cmd:initscript.bash | A script or a path to a script that runs when initializing this connection with the `bash` shell. This only works if `wsh` is enabled. |
+| cmd:initscript.zsh | A script or a path to a script that runs when initializing this connection with the `zsh` shell. This only works if `wsh` is enabled. |
+| cmd:initscript.pwsh | A script or a path to a script that runs when initializing this connection with the `pwsh` shell. This only works if `wsh` is enabled. |
+| cmd:initscript.fish | A script or a path to a script that runs when initializing this connection with the `fish` shell. This only works if `wsh` is enabled. |
 | ssh:user | A string that indicates the username of the connection. Can be used to override the value in `~/.ssh/config` or to set it if the ssh config is being ignored.|
 | ssh:hostname | A string representing the internal hostname of the connection. Can be used to override the value in `~/.ssh/config` or to set it if the ssh config is being ignored.|
 | ssh:port | A string to indicate the numerical port to connect on. Can be used to override the value in `~/.ssh/config` or to set it if the ssh config is being ignored.|
@@ -187,7 +209,7 @@ Suppose you want to set up a connection but have no desire to learn the syntax o
 
 This will create a connection without that connection needing to be in the `~/.ssh/config` file. A couple additional options are set as well as an example of how that can be done.
 
-### Disabling Wsh for a Connection
+### Disabling wsh for a Connection
 
 While Wave provides an option disable `wsh` when first connecting to a remote, there are cases where you may wish to disable it afterward. The easiest way to do this is by editing the `connections.json` file. Suppose the connection shows up in the dropdown as `root@wshless`. Then you can disable it manually with the following line:
 
