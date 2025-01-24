@@ -3,7 +3,11 @@
 
 package shellutil
 
-import "regexp"
+import (
+	"log"
+	"math"
+	"regexp"
+)
 
 var (
 	safePattern       = regexp.MustCompile(`^[a-zA-Z0-9_/.-]+$`)
@@ -23,10 +27,15 @@ func HardQuote(s string) string {
 		return s
 	}
 
-	buf := make([]byte, 0, len(s)+5)
+	lenS := len(s)
+	if lenS > math.MaxInt-5 {
+		log.Fatalf("string is too long to quote: %d", lenS)
+	}
+
+	buf := make([]byte, 0, lenS+5)
 	buf = append(buf, '"')
 
-	for i := 0; i < len(s); i++ {
+	for i := 0; i < lenS; i++ {
 		switch s[i] {
 		case '"', '\\', '$', '`':
 			buf = append(buf, '\\', s[i])
@@ -51,10 +60,15 @@ func HardQuoteFish(s string) string {
 		return s
 	}
 
-	buf := make([]byte, 0, len(s)+5)
+	lenS := len(s)
+	if lenS > math.MaxInt-5 {
+		log.Fatalf("string is too long to quote: %d", lenS)
+	}
+
+	buf := make([]byte, 0, lenS+5)
 	buf = append(buf, '"')
 
-	for i := 0; i < len(s); i++ {
+	for i := 0; i < lenS; i++ {
 		switch s[i] {
 		case '"', '\\', '$':
 			buf = append(buf, '\\', s[i])
@@ -72,10 +86,15 @@ func HardQuotePowerShell(s string) string {
 		return "\"\""
 	}
 
-	buf := make([]byte, 0, len(s)+5)
+	lenS := len(s)
+	if lenS > math.MaxInt-5 {
+		log.Fatalf("string is too long to quote: %d", lenS)
+	}
+
+	buf := make([]byte, 0, lenS+5)
 	buf = append(buf, '"')
 
-	for i := 0; i < len(s); i++ {
+	for i := 0; i < lenS; i++ {
 		c := s[i]
 		// In PowerShell, backtick (`) is the escape character
 		switch c {
@@ -96,15 +115,17 @@ func SoftQuote(s string) string {
 		return "\"\""
 	}
 
+	lenS := len(s)
+
 	// Handle special case of ~ paths
-	if len(s) > 0 && s[0] == '~' {
+	if lenS > 0 && s[0] == '~' {
 		// If it's just ~ or ~/something with no special chars, leave it as is
-		if len(s) == 1 || (len(s) > 1 && s[1] == '/' && safePattern.MatchString(s[2:])) {
+		if lenS == 1 || (lenS > 1 && s[1] == '/' && safePattern.MatchString(s[2:])) {
 			return s
 		}
 
 		// Otherwise quote everything after the ~ (including the /)
-		if len(s) > 1 && s[1] == '/' {
+		if lenS > 1 && s[1] == '/' {
 			return "~" + SoftQuote(s[1:])
 		}
 	}
@@ -113,10 +134,14 @@ func SoftQuote(s string) string {
 		return s
 	}
 
-	buf := make([]byte, 0, len(s)+5)
+	if lenS > math.MaxInt-5 {
+		log.Fatalf("string is too long to quote: %d", lenS)
+	}
+
+	buf := make([]byte, 0, lenS+5)
 	buf = append(buf, '"')
 
-	for i := 0; i < len(s); i++ {
+	for i := 0; i < lenS; i++ {
 		c := s[i]
 		// In soft quote, we don't escape $ to allow expansion
 		if c == '"' || c == '\\' || c == '`' {
