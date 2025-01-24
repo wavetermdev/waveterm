@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"log"
 	"strings"
 
 	"github.com/wavetermdev/waveterm/pkg/remote/connparse"
@@ -210,10 +211,12 @@ func streamFileList(zoneId string, path string, recursive bool, filesOnly bool) 
 }
 
 func fixRelativePaths(path string) (string, error) {
+	log.Printf("fixRelativePaths: path=%q", path)
 	conn, err := connparse.ParseURI(path)
 	if err != nil {
 		return "", err
 	}
+	log.Printf("fixRelativePaths: conn=%v", conn)
 	if conn.Scheme == connparse.ConnectionTypeWsh {
 		if conn.Host == connparse.ConnHostCurrent {
 			conn.Host = RpcContext.Conn
