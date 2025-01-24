@@ -1,19 +1,12 @@
 # Building for release
 
-## Temporary instructions while waiting on GitHub support
-
-1. On the `wave8` branch, run `task version -- <none, patch, minor, major> <false, true>` based on the options mentioned in step 2 of the [Step-by-step guide](#step-by-step-guide).
-2. Commit and push the changes to the `wave8` branch.
-3. Manually create a tag named `v<version>` attached to `origin/wave8`. Push the tag to GitHub.
-4. This should kick off the build as normal and create a draft release when done. Continue from step 4 of the [Step-by-step guide](#step-by-step-guide).
-
 ## Step-by-step guide
 
 1. Go to the [Actions tab](https://github.com/wavetermdev/waveterm/actions) and select "Bump Version" from the left sidebar.
 2. Click on "Run workflow".
    - You will see two options:
      - "SemVer Bump": This defaults to `none`. Adjust this if you want to increment the version number according to semantic versioning rules (`patch`, `minor`, `major`).
-     - "Is Prerelease": This defaults to `true`. If set to `true`, a `-beta.X` version will be appended to the end of the version. If one is already present and the base SemVer is not being incremented, the `-beta` version will be incremented (i.e. `0.1.13-beta.0` to `0.1.13-beta.1`). If set to `false`, the `-beta.X` suffix will be removed from the version number. If one was not already present, it will remain absent.
+     - "Is Prerelease": This defaults to `true`. If set to `true`, a `-beta.X` version will be appended to the end of the version. If one is already present and the base SemVer is not being incremented, the `-beta` version will be incremented (i.e. `0.11.1-beta.0` to `0.11.1-beta.1`). If set to `false`, the `-beta.X` suffix will be removed from the version number. If one was not already present, it will remain absent.
    - Some examples:
      - If you are creating a new prerelease following an official release, you would set "SemVer Bump" to to the expected version bump (`patch`, `minor`, or `major`) and "Is Prerelease" to `true`.
      - If you are bumping an existing prerelease to a new prerelease under the same version, you would set "SemVer Bump" to `none` and "Is Prerelease" to `true`.
@@ -61,13 +54,25 @@ With each release, YAML files will be produced that point to the newest release 
 
 We utilize update channels to roll out beta and stable releases. These are determined based on the package versioning [described above](#bump-version-workflow). Users can select their update channel using the `autoupdate:channel` setting in Wave. See [here](https://www.electron.build/tutorials/release-using-channels.html) for more information.
 
+### Package Managers
+
+We currently publish to Homebrew (macOS), WinGet (Windows), Chocolatey (Windows), and Snap (Linux or macOS).
+
 #### Homebrew
 
-Homebrew is automatically bumped when new artifacts are published.
+The Homebrew maintains an Autobump bot that regularly checks our release feed for new general releases and updates our Cask automatically. You can find the configuration for our cask [here](https://github.com/Homebrew/homebrew-cask/blob/master/Casks/w/wave.rb). We added ourselves to [this list](https://github.com/Homebrew/homebrew-cask/blob/master/.github/autobump.txt) to indicate that we want the bot to autobump us.
 
-#### Linux
+#### WinGet
 
-We do not currently submit the Linux packages to any of the package repositories. We are working on addressing this in the near future.
+WinGet uses PRs to manage version bumps for packages. They ship a tool called [`wingetcreate`](https://github.com/microsoft/winget-create) which automates most of this process. We run this tool in our [`Publish Release` workflow](./.github/workflows/publish-release.yml) for all general releases. This publishes a PR to their repository using our [Wave Release Bot](https://github.com/wave-releaser) service account. They usually pick up these changes within a day.
+
+#### Chocolatey
+
+Chocolatey maintains a [PowerShell module](https://github.com/chocolatey-community/chocolatey-au) for publishing releases to their system. We have a separate repository which contains this script and the workflow to run it: [wavetermdev/chocolatey](https://github.com/wavetermdev/chocolatey). This workflow gets run once a day. It checks whether there's new changes, validates the SHA and that the package can install, and then pushes the new version to Chocolatey. It then commits the updated package spec back to our repository. They usually take up to two weeks to accept our updates.
+
+#### Snap
+
+Snap maintains [snapcraft](https://snapcraft.io/docs/snapcraft) to build and publish Snaps to the Snap Store. We run this tool in our [`Publish Release` workflow](./.github/workflows/publish-release.yml) workflow for all beta and general releases. Beta releases publish only to the `beta` channel, while general releases publish to both `beta` and `stable`. These changes are picked up immediately.
 
 ### `electron-build` configuration
 
