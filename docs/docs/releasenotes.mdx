@@ -6,6 +6,48 @@ sidebar_position: 200
 
 # Release Notes
 
+### v0.11.0 &mdash; Jan 24, 2025
+
+Wave Terminal v0.11.0 includes a major rewrite of our connections infrastructure, with changes to both our backend and remote file protocol systems, alongside numerous features, bug fixes, and stability improvements.
+
+A key addition in this release is the new shell initialization system, which enables customization of your shell environment across local and remote connections. You can now configure environment variables and shell-specific init scripts on both a per-block and per-connection basis.
+
+For day-to-day use, we've added search functionality across both terminal and web blocks, along with a terminal multi-input feature for simultaneous input to all terminals within a tab. We've also added support for Google Gemini to Wave AI, expanding our suite of AI integrations.
+
+Behind the scenes, we've redesigned our remote file protocol, laying the groundwork for upcoming S3 (and S3-compatible system) support in our preview widget. This architectural change sets the stage for adding more file backends in the future.
+
+- **Shell Environment Customization** -- Configure your shell environment using environment variables and init scripts, with support for both local and remote connections
+- **Connection Backend Improvements** -- Major rewrite with improved shell detection, better error logging, and reduced 2FA prompts when using ForceCommand
+- **Multi-Shell Support** -- Enhanced support for bash, zsh, pwsh, and fish shells, with shell-specific initialization capabilities
+- **Terminal Search** -- use Cmd-F to search for text in terminal widgets
+- **Web Search** -- use Cmd-F to search for text in web views
+- **Terminal Multi-Input** -- Use Ctrl-Shift-I to allow multi-input to all terminals in the same tab
+- **Wave AI now supports Google Gemini**
+- Improved WSL support with wsh-free connection options
+- Added inline connection debugging information
+- Fixed file permission handling issues on Windows systems
+- Connection related popups are now delivered only to the initiating window
+- Improved timeout handling for SSH connections which require 2FA prompts
+- Fixed escape key handling in global event handlers (closing modals)
+- Directory preview now fills the entire block width
+- Custom widgets can now be launched in magnified mode
+- Various workspace UX improvements around closing/deleting
+- file:/// urls now work in web widget
+- Increased size of files allowed in `wsh ai`
+- Increased maximum allowed term:scrollback to 50k lines
+- [build] Switched to free Ubuntu ARM runners for better ARM64 build support
+- [build] Windows builds now use zig, simplifying Windows dev setup
+- [bugfix] Connections dropdown now populated even when ssh config is missing or invalid
+- [bugfix] Disabled bracketed paste mode by default (configuration option to turn it back on)
+- [bugfix] Timeout for `wsh ssh` increased to 60s
+- [bugfix] Fix for sysinfo widget when displaying a huge number of CPU graphs
+- [bugfix] Fixes XDG variables for Snap installs
+- [bugfix] Honor SSH IdentitiesOnly flag (useful when many keys are loaded into ssh-agent)
+- [bugfix] Better shell environment variable setup when running local shells
+- [bugfix] Fix preview for large text files
+- [bugfix] Fix URLs in terminal (now clickable again)
+- [bugfix] Windows URLs now work properly for Wave background images
+
 ### v0.10.4 &mdash; Dec 20, 2024
 
 Quick update with bug fixes and new configuration options
