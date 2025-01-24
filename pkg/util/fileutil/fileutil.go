@@ -19,7 +19,7 @@ import (
 
 func FixPath(path string) (string, error) {
 	if strings.HasPrefix(path, "~") {
-		return filepath.Join(wavebase.GetHomeDir(), path[1:]), nil
+		path = filepath.Join(wavebase.GetHomeDir(), path[1:])
 	} else if !filepath.IsAbs(path) {
 		log.Printf("FixPath: path is not absolute: %s", path)
 		path, err := filepath.Abs(path)
@@ -27,10 +27,8 @@ func FixPath(path string) (string, error) {
 			return "", err
 		}
 		log.Printf("FixPath: fixed path: %s", path)
-		return path, nil
-	} else {
-		return path, nil
 	}
+	return path, nil
 }
 
 const (

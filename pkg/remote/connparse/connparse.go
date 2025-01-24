@@ -6,6 +6,7 @@ package connparse
 import (
 	"context"
 	"fmt"
+	"log"
 	"regexp"
 	"strings"
 
@@ -87,29 +88,46 @@ func GetConnNameFromContext(ctx context.Context) (string, error) {
 
 // ParseURI parses a connection URI and returns the connection type, host/path, and parameters.
 func ParseURI(uri string) (*Connection, error) {
-	split := strings.SplitN(uri, "://", 2)
+	split := strings.SplitN(uri, "//", 2)
 	var scheme string
 	var rest string
 	if len(split) > 1 {
-		scheme = split[0]
+		scheme = strings.TrimSuffix(split[0], ":")
 		rest = split[1]
 	} else {
 		rest = split[0]
 	}
 
+	log.Printf("parseURI: scheme=%q, rest=%q", scheme, rest)
+
 	var host string
 	var remotePath string
+
+	parseGenericPath := func() {
+		split = strings.SplitN(rest, "/", 2)
+		host = split[0]
+		if len(split) > 1 {
+			remotePath = split[1]
+		} else {
+			remotePath = "/"
+		}
+		log.Printf("parseGenericPath: host=%q, remotePath=%q", host, remotePath)
+	}
+	parseWshPath := func() {
+		if strings.HasPrefix(rest, "wsl://") {
+			host = wslConnRegex.FindString(rest)
+			remotePath = strings.TrimPrefix(rest, host)
+			log.Printf("parseWshPath: host=%q, remotePath=%q", host, remotePath)
+		} else {
+			parseGenericPath()
+		}
+	}
+
 	if scheme == "" {
 		scheme = ConnectionTypeWsh
-		if strings.HasPrefix(rest, "//") {
-			rest = strings.TrimPrefix(rest, "//")
-			split = strings.SplitN(rest, "/", 2)
-			host = split[0]
-			if len(split) > 1 {
-				remotePath = split[1]
-			} else {
-				remotePath = "/"
-			}
+		if len(rest) != len(uri) {
+			// This accounts for when the uri starts with "//", which would get trimmed in the first split.
+			parseWshPath()
 		} else if strings.HasPrefix(rest, "/~") {
 			host = wshrpc.LocalConnName
 			remotePath = rest
@@ -117,19 +135,10 @@ func ParseURI(uri string) (*Connection, error) {
 			host = ConnHostCurrent
 			remotePath = rest
 		}
+	} else if scheme == ConnectionTypeWsh {
+		parseWshPath()
 	} else {
-		if strings.HasPrefix(rest, "wsl://") {
-			host = wslConnRegex.FindString(rest)
-			remotePath = strings.TrimPrefix(rest, host)
-		} else {
-			split = strings.SplitN(rest, "/", 2)
-			host = split[0]
-			if len(split) > 1 {
-				remotePath = split[1]
-			} else {
-				remotePath = "/"
-			}
-		}
+		parseGenericPath()
 	}
 
 	if scheme == ConnectionTypeWsh {
