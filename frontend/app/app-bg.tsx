@@ -54,7 +54,7 @@ function processBackgroundUrls(cssText: string): string {
                 return;
             }
             // allow absolute paths
-            if (originalUrl.startsWith("/") || originalUrl.startsWith("~/")) {
+            if (originalUrl.startsWith("/") || originalUrl.startsWith("~/") || /^[a-zA-Z]:(\/|\\)/.test(originalUrl)) {
                 const newUrl = encodeFileURL(originalUrl);
                 node.value = newUrl;
                 return;

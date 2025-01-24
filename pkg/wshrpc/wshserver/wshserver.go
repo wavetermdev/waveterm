@@ -28,6 +28,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/remote/fileshare"
 	"github.com/wavetermdev/waveterm/pkg/telemetry"
 	"github.com/wavetermdev/waveterm/pkg/util/envutil"
+	"github.com/wavetermdev/waveterm/pkg/util/shellutil"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/util/wavefileutil"
 	"github.com/wavetermdev/waveterm/pkg/waveai"
@@ -50,6 +51,19 @@ type WshServer struct{}
 func (*WshServer) WshServerImpl() {}
 
 var WshServerImpl = WshServer{}
+
+// TODO remove this after implementing in multiproxy, just for wsl
+func (ws *WshServer) AuthenticateTokenCommand(ctx context.Context, data wshrpc.CommandAuthenticateTokenData) (wshrpc.CommandAuthenticateRtnData, error) {
+	entry := shellutil.GetAndRemoveTokenSwapEntry(data.Token)
+	if entry == nil {
+		return wshrpc.CommandAuthenticateRtnData{}, fmt.Errorf("invalid token")
+	}
+	rtn := wshrpc.CommandAuthenticateRtnData{
+		Env:            entry.Env,
+		InitScriptText: entry.ScriptText,
+	}
+	return rtn, nil
+}
 
 func (ws *WshServer) TestCommand(ctx context.Context, data string) error {
 	defer func() {

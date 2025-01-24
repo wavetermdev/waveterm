@@ -20,7 +20,6 @@ type TokenSwapEntry struct {
 	Token      string             `json:"token"`
 	SockName   string             `json:"sockname,omitempty"`
 	RpcContext *wshrpc.RpcContext `json:"rpccontext,omitempty"`
-	JwtToken   string             `json:"jwttoken,omitempty"`
 	Env        map[string]string  `json:"env,omitempty"`
 	ScriptText string             `json:"scripttext,omitempty"`
 	Exp        time.Time          `json:"-"`
