@@ -60,7 +60,7 @@ We currently publish to Homebrew (macOS), WinGet (Windows), Chocolatey (Windows)
 
 #### Homebrew
 
-The Homebrew maintains an Autobump bot that regularly checks our release feed for new general releases and updates our Cask automatically. You can find the configuration for our cask [here](https://github.com/Homebrew/homebrew-cask/blob/master/Casks/w/wave.rb). We added ourselves to [this list](https://github.com/Homebrew/homebrew-cask/blob/master/.github/autobump.txt) to indicate that we want the bot to autobump us.
+Homebrew maintains an Autobump bot that regularly checks our release feed for new general releases and updates our Cask automatically. You can find the configuration for our cask [here](https://github.com/Homebrew/homebrew-cask/blob/master/Casks/w/wave.rb). We added ourselves to [this list](https://github.com/Homebrew/homebrew-cask/blob/master/.github/autobump.txt) to indicate that we want the bot to autobump us.
 
 #### WinGet
 
@@ -68,7 +68,7 @@ WinGet uses PRs to manage version bumps for packages. They ship a tool called [`
 
 #### Chocolatey
 
-Chocolatey maintains a [PowerShell module](https://github.com/chocolatey-community/chocolatey-au) for publishing releases to their system. We have a separate repository which contains this script and the workflow to run it: [wavetermdev/chocolatey](https://github.com/wavetermdev/chocolatey). This workflow gets run once a day. It checks whether there's new changes, validates the SHA and that the package can install, and then pushes the new version to Chocolatey. It then commits the updated package spec back to our repository. They usually take up to two weeks to accept our updates.
+Chocolatey maintains a [PowerShell module](https://github.com/chocolatey-community/chocolatey-au) for publishing releases to their system. We have a separate repository which contains this script and the workflow to run it: [wavetermdev/chocolatey](https://github.com/wavetermdev/chocolatey). This workflow gets run once a day. It checks whether there are new changes, validates the SHA and that the package can install, and then pushes the new version to Chocolatey. It then commits the updated package spec back to our repository. They usually take up to two weeks to accept our updates.
 
 #### Snap
 
