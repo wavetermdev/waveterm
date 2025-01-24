@@ -148,6 +148,25 @@ Suppose you have a connection named `myhost` that shows up as `myusername@myhost
 
 This style, font size, and font family will then only apply to the widgets that are using this connection.
 
+### Entirely Defined Internally
+
+Suppose you want to set up a connection but have no desire to learn the syntax of `~/.ssh/config`. In this case, you can entirely define the connection in your `connections.json` file. For example:
+
+```json
+{
+    <... other connections go here ...>,
+    "myusername@myhost" : {
+        "ssh:hostname": 190.0.2.0,
+        "ssh:identityfile": ["~/.ssh/myidentityfile"],
+        "ssh:identitiesonly": true,
+        "ssh:addkeystoagent": true
+    },
+    <... other connections go here ...>
+}
+```
+
+This will create a connection without that connection needing to be in the `~/.ssh/config` file. A couple additional options are set as well as an example of how that can be done.
+
 ### Disabling Wsh for a Connection
 
 While Wave provides an option disable `wsh` when first connecting to a remote, there are cases where you may wish to disable it afterward. The easiest way to do this is by editing the `connections.json` file. Suppose the connection shows up in the dropdown as `root@wshless`. Then you can disable it manually with the following line:
