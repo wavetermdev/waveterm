@@ -3,7 +3,14 @@
 
 package shellutil
 
-import "regexp"
+import (
+	"log"
+	"regexp"
+)
+
+const (
+	MaxQuoteSize = 10000000 // 10MB
+)
 
 var (
 	safePattern       = regexp.MustCompile(`^[a-zA-Z0-9_/.-]+$`)
@@ -21,6 +28,10 @@ func HardQuote(s string) string {
 
 	if safePattern.MatchString(s) {
 		return s
+	}
+
+	if !checkQuoteSize(s) {
+		return ""
 	}
 
 	buf := make([]byte, 0, len(s)+5)
@@ -51,6 +62,10 @@ func HardQuoteFish(s string) string {
 		return s
 	}
 
+	if !checkQuoteSize(s) {
+		return ""
+	}
+
 	buf := make([]byte, 0, len(s)+5)
 	buf = append(buf, '"')
 
@@ -70,6 +85,10 @@ func HardQuoteFish(s string) string {
 func HardQuotePowerShell(s string) string {
 	if s == "" {
 		return "\"\""
+	}
+
+	if !checkQuoteSize(s) {
+		return ""
 	}
 
 	buf := make([]byte, 0, len(s)+5)
@@ -113,6 +132,10 @@ func SoftQuote(s string) string {
 		return s
 	}
 
+	if !checkQuoteSize(s) {
+		return ""
+	}
+
 	buf := make([]byte, 0, len(s)+5)
 	buf = append(buf, '"')
 
@@ -127,4 +150,12 @@ func SoftQuote(s string) string {
 
 	buf = append(buf, '"')
 	return string(buf)
+}
+
+func checkQuoteSize(s string) bool {
+	if len(s) > MaxQuoteSize {
+		log.Printf("string too long to quote: %s", s)
+		return false
+	}
+	return true
 }
