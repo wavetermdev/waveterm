@@ -8,24 +8,26 @@ sidebar_position: 200
 
 ### v0.11.0 &mdash; Jan 24, 2025
 
-Wave Terminal v0.11.0 features a major rewrite of our connections backend, rewrites of our remote file protocol, and a host of smaller features, bug fixes, and stability improvements.
+Wave Terminal v0.11.0 includes a major rewrite of our connections infrastructure, with changes to both our backend and remote file protocol systems, alongside numerous features, bug fixes, and stability improvements.
 
-This release introduces powerful new shell initialization capabilities, allowing you to customize your shell environment across both local and remote connections using environment variables and shell-specific init scripts (configurable on a per block or connnection basis).
+A key addition in this release is the new shell initialization system, which enables customization of your shell environment across local and remote connections. You can now configure environment variables and shell-specific init scripts on both a per-block and per-connection basis.
 
-While not visible, we also have overhauled our backend remote file protocol, with the aim of allowing our preview widget supporting S3 (and S3 compatible systems). Hoping to add even more file backends in the future as well.
+For day-to-day use, we've added search functionality across both terminal and web blocks, along with a terminal multi-input feature for simultaneous input to all terminals within a tab. We've also added support for Google Gemini to Wave AI, expanding our suite of AI integrations.
+
+Behind the scenes, we've redesigned our remote file protocol, laying the groundwork for upcoming S3 (and S3-compatible system) support in our preview widget. This architectural change sets the stage for adding more file backends in the future.
 
 - **Shell Environment Customization** -- Configure your shell environment using environment variables and init scripts, with support for both local and remote connections
 - **Connection Backend Improvements** -- Major rewrite with improved shell detection, better error logging, and reduced 2FA prompts when using ForceCommand
 - **Multi-Shell Support** -- Enhanced support for bash, zsh, pwsh, and fish shells, with shell-specific initialization capabilities
-- **Terminal Search** -- use Cmd:f to search for text in terminal widgets
-- **Web Search** -- use Cmd:f to search for text in web views
-- **Terminal Multi-Input** -- Use Ctrl:Shift:i to allow multi-input to all terminals in the same tab
+- **Terminal Search** -- use Cmd-F to search for text in terminal widgets
+- **Web Search** -- use Cmd-F to search for text in web views
+- **Terminal Multi-Input** -- Use Ctrl-Shift-I to allow multi-input to all terminals in the same tab
+- **Wave AI now supports Google Gemini**
 - Improved WSL support with wsh-free connection options
 - Added inline connection debugging information
 - Fixed file permission handling issues on Windows systems
 - Connection related popups are now delivered only to the initiating window
 - Improved timeout handling for SSH connections which require 2FA prompts
-- Wave AI now supports Google Gemini
 - Fixed escape key handling in global event handlers (closing modals)
 - Directory preview now fills the entire block width
 - Custom widgets can now be launched in magnified mode
