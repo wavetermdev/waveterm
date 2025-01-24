@@ -138,7 +138,6 @@ type FullConfigType struct {
 type ConnKeywords struct {
 	ConnWshEnabled          *bool  `json:"conn:wshenabled,omitempty"`
 	ConnAskBeforeWshInstall *bool  `json:"conn:askbeforewshinstall,omitempty"`
-	ConnOverrideConfig      bool   `json:"conn:overrideconfig,omitempty"`
 	ConnWshPath             string `json:"conn:wshpath,omitempty"`
 	ConnShellPath           string `json:"conn:shellpath,omitempty"`
 	ConnIgnoreSshConfig     *bool  `json:"conn:ignoresshconfig,omitempty"`
