@@ -3,6 +3,7 @@
 
 import { RpcApi } from "@/app/store/wshclientapi";
 import * as electron from "electron";
+import { globalEvents } from "emain/emain-events";
 import { FastAverageColor } from "fast-average-color";
 import fs from "fs";
 import * as child_process from "node:child_process";
@@ -570,6 +571,17 @@ process.on("uncaughtException", (error) => {
     console.log("Stack Trace:", error.stack);
     // Optionally, handle cleanup or exit the app
     electronApp.quit();
+});
+
+let lastWaveWindowCount = 0;
+globalEvents.on("windows-updated", () => {
+    const wwCount = getAllWaveWindows().length;
+    if (wwCount == lastWaveWindowCount) {
+        return;
+    }
+    lastWaveWindowCount = wwCount;
+    console.log("windows-updated", wwCount);
+    makeAppMenu();
 });
 
 async function appMain() {
