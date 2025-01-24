@@ -186,3 +186,30 @@ Note that this same line gets added to your `connections.json` file automaticall
 ## Managing Connections with the CLI
 
 The `wsh` command gives some commands specifically for interacting with the connections. You can view these [here](/wsh-reference#conn).
+
+## Troubleshooting Connections
+
+### Log Files
+
+If there are issues with connections, the easiest first step is to enable debugging in a terminal widget that is trying to connect. To do this, click the **<code><i className="fa-gear fa-solid fa-sharp"/></code>** button and hover over the **`Debug Connection`** item. From there you can select two log levels, `Info` and `Verbose`. After this, debug info will print out to the terminal during the connection.
+
+If this is not sufficient, it is also possible to view the full log file. To do this, you can run the command `wsh wavepath log` to get the location of a log file.
+
+### Known Limitations
+
+In the case that there is an error setting up `wsh`, your connection will still launch without `wsh`. However, depending on the debug info, there are a few things that can cause this.
+
+#### Shell Type
+
+Wave is capable of injecting `wsh` in the following shells:
+
+- bash
+- zsh
+- pwsh (powershell)
+- fish
+
+If the shell is different than those, it is possible the `wsh` command will not work by default. The easiest way to fix this at the moment is the switch the shell type. This can be done by setting the `conn:shellpath` value with a path to one of the above shells in the `connections.json` file for the connection you are trying to use. Alternatively, you can use the `chsh` command to change the shell in that connection, but this will also take effect outside of wave. Once this is done, restart wave for the changes to take effect.
+
+#### AllowTcpForwarding in sshd
+
+Some systems have sshd configured to disable TCP forwarding by default. This can be found on the connection in the `/etc/ssh/sshd_config` file. In that file, search for the line containing `AllowTcpForwarding`. If this is set to `no`, it is likely the reason `wsh` will not work on your connection. In order to get `wsh` working, set the value for `AllowTcpForwarding` to either `yes` or `local` (they both provide different levels of permission but both work in this case). Then, restart the `sshd` service with whichever method your remote machine provides. Once that is done, restart wave, so it can reconnect with this change.
