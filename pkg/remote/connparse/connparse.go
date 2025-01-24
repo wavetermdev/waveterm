@@ -6,7 +6,6 @@ package connparse
 import (
 	"context"
 	"fmt"
-	"log"
 	"regexp"
 	"strings"
 
@@ -98,8 +97,6 @@ func ParseURI(uri string) (*Connection, error) {
 		rest = split[0]
 	}
 
-	log.Printf("parseURI: scheme=%q, rest=%q", scheme, rest)
-
 	var host string
 	var remotePath string
 
@@ -117,13 +114,11 @@ func ParseURI(uri string) (*Connection, error) {
 				remotePath = "/"
 			}
 		}
-		log.Printf("parseGenericPath: host=%q, remotePath=%q", host, remotePath)
 	}
 	parseWshPath := func() {
 		if strings.HasPrefix(rest, "wsl://") {
 			host = wslConnRegex.FindString(rest)
 			remotePath = strings.TrimPrefix(rest, host)
-			log.Printf("parseWshPath: host=%q, remotePath=%q", host, remotePath)
 		} else {
 			parseGenericPath()
 		}
