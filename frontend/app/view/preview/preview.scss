@@ -13,6 +13,10 @@
         align-items: start;
         justify-content: start;
         overflow: auto;
+
+        .markdown .content {
+            padding: 5px 15px 10px 15px;
+        }
     }
 
     &.view-preview-text {
