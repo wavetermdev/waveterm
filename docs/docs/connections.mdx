@@ -74,12 +74,29 @@ In addition to the regular ssh config file, wave also has its own config file to
 |---------|-------------|
 | conn:wshenabled | This boolean allows wsh to be used for your connection, if it is set to `false`, `wsh` will never be used for that connection. It defaults to `true`.|
 | conn:askbeforewshinstall | This boolean is used to prompt the user before installing wsh. If it is set to false, `wsh` will automatically be installed instead without prompting. It defaults to `true`.|
+| conn:wshpath | A string indicating the path to the `wsh` executable on the connection. It defaults to `"~/.waveterm/bin/wsh"`.|
+| conn:shellpath | A string indicating the path to the shell executable on the connection. If not set, the output of `$SHELL` on the connection will be used.|
+| conn:ignoresshconfig | This boolean allows wave to ignore the `~/.ssh/config` file for resolving keywords for this connection. The regular defaults will be used, but all changes to those must be specified in the `connections.json` file instead. This defaults to false.|
 | display:hidden | This boolean hides the connection from the dropdown list. It defaults to `false` |
 | display:order | This float determines the order of connections in the connection dropdown. It defaults to `0`.|
 | term:fontsize | This int can be used to override the terminal font size for blocks using this connection. The block metadata takes priority over this setting. It defaults to null which means the global setting will be used instead. |
 | term:fontfamily | This string can be used to specify a terminal font family for blocks using this connection. The block metadata takes priority over this setting. It defaults to null which means the global setting will be used instead. |
 | term:theme | This string can be used to specify a terminal theme for blocks using this connection. The block metadata takes priority over this setting. It defaults to null which means the global setting will be used instead. |
-| ssh:identityfile | A list of strings containing the paths to identity files that will be used. If a `wsh ssh` command using the `-i` flag is successful, the identity file will automatically be added here. |
+| ssh:user | A string that indicates the username of the connection. Can be used to override the value in `~/.ssh/config` or to set it if the ssh config is being ignored.|
+| ssh:hostname | A string representing the internal hostname of the connection. Can be used to override the value in `~/.ssh/config` or to set it if the ssh config is being ignored.|
+| ssh:port | A string to indicate the numerical port to connect on. Can be used to override the value in `~/.ssh/config` or to set it if the ssh config is being ignored.|
+| ssh:identityfile | A list of strings containing the paths to identity files that will be used. If a `wsh ssh` command using the `-i` flag is successful, the identity file will automatically be added here. These are used before the `~/.ssh/config` values.|
+| ssh:identitiesonly | A boolean indicating if only the specified identity files should be used. This means only the files set with the `ssh:identityfile` flag or the defaults. Can be used to override the value in `~/.ssh/config` or to set it if the ssh config is being ignored.|
+| ssh:batchmode | A boolean indicating if password and passphrase prompts should be skipped. Can be used to override the value in `~/.ssh/config` or to set it if the ssh config is being ignored.|
+| ssh:pubkeyauthentication | A boolean indicating if public key authentication is enabled. Can be used to override the value in `~/.ssh/config` or to set it if the ssh config is being ignored.|
+| ssh:passwordauthentication | A boolean indicating if password authentication is enabled. Can be used to override the value in `~/.ssh/config` or to set it if the ssh config is being ignored. |
+| ssh:kbdinteractiveauthentication | A boolean indicating if keyboard interactive authentication is enabled. Can be used to override the value in `~/.ssh/config` or to set it if the ssh config is being ignored. |
+| ssh:preferredauthentications | A list of strings indicating an ordering of different types of authentications. Each authentication type will be tried in order. This supports `"publickey"`, `"keyboard-interactive"`, and `"password"` as valid types. Other types of authentication are not handled and will be skipped. Can be used to override the value in `~/.ssh/config` or to set it if the ssh config is being ignored.|
+| ssh:addkeystoagent | A boolean indicating if the keys used for a connection should be added to the ssh agent. Can be used to override the value in `~/.ssh/config` or to set it if the ssh config is being ignored.|
+| ssh:identityagent | A string giving the path to the unix domain socket of the identity agent. Can be used to overwrite the value in `~/.ssh/config` or to set it if the ssh config is being ignored.|
+| ssh:proxyjump | A list of strings specifying the names of hosts that must be successively visited with tcp forwarding to establish a connection. Can be used to overwrite the value in `~/.ssh/config` or to set it if the ssh config is being ignored.|
+| ssh:userknownhostsfile | A list containing the paths of any user host key database files used to keep track of authorized connections. Can be used to overwrite the value in `~/.ssh/config` or to set it if the ssh config is being ignored.|
+| ssh:globalknownhostsfile | A list containing the paths of any global host key database files used to keep track of authorized connections. Can be used to overwrite the value in `~/.ssh/config` or to set it if the ssh config is being ignored.|
 
 ### Example Internal Configurations
 
