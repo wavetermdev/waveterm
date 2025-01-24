@@ -431,6 +431,13 @@ export class WebViewModel implements ViewModel {
         return true;
     }
 
+    copyUrlToClipboard() {
+        const url = this.getUrl();
+        if (url != null && url != "") {
+            fireAndForget(() => navigator.clipboard.writeText(url));
+        }
+    }
+
     keyDownHandler(e: WaveKeyboardEvent): boolean {
         if (checkKeyPressed(e, "Cmd:l")) {
             this.urlInputRef?.current?.focus();
@@ -509,6 +516,10 @@ export class WebViewModel implements ViewModel {
 
         const isNavHidden = globalStore.get(this.hideNav);
         return [
+            {
+                label: "Copy URL to Clipboard",
+                click: () => this.copyUrlToClipboard(),
+            },
             {
                 label: "Set Block Homepage",
                 click: () => fireAndForget(() => this.setHomepageUrl(this.getUrl(), "block")),
