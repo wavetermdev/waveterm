@@ -174,7 +174,7 @@ Windows. but it may be different on your system. Also note that both `pwsh.exe` 
 
 ### Example Remote Shell Widgets
 
-If you want to open a terminal widget for a particular connection (SSH or WSL), you can use the `connection` meta key. The connection key's value should match connections.json (or what's in your connections dropdown menu). Note that you should only use the canonical name (do not use any custom "display:name" that you've set).
+If you want to open a terminal widget for a particular connection (SSH or WSL), you can use the `connection` meta key. The connection key's value should match connections.json (or what's in your connections dropdown menu). Note that you should only use the canonical name (do not use any custom "display:name" that you've set). For WSL that might look like `wsl://Ubuntu`, and for SSH connections that might look like `user@remotehostname`.
 
 ```json
 {
