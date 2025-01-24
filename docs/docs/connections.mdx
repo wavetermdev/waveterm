@@ -16,9 +16,29 @@ The easiest way to access connections is to click the <i className="fa-sharp fa-
 
 ## What are wsh Shell Extensions?
 
-`wsh` is a small program that helps manage waveterm regardless of which machine you are currently connected to. It is always included on your host machine, but you also have the option to install it when connecting to a remote machine. If it is installed on the remote machine, it is installed at `~/.waveterm/bin/wsh`. Then, when wave connects to your connection (and only when wave connects to your connection), `~/.waveterm/bin` is added to your `PATH` for that individual session. If this fails for some reason, Wave will attempt to run without wsh. You will see this indicated by a small **<code><i className="fa-link-slash fa-solid fa-sharp"/></code>** icon in the block header. For more info on what `wsh` is capable of, see [wsh command](/wsh). And if you wish to view the source code of `wsh`, you can find it [here](https://github.com/wavetermdev/waveterm/tree/main/cmd/wsh).
+`wsh` is a small program that helps manage waveterm regardless of which machine you are currently connected to. It is always included on your host machine, but you also have the option to install it when connecting to a remote machine. If it is installed on the remote machine, it is installed at `~/.waveterm/bin/wsh`. Then, when wave connects to your connection (and only when wave connects to your connection), the following happens:
 
-With `wsh` installed, you have the ability to view certain widgets from the remote machine as if it were your host. In addition, `wsh` can be used to influence the widgets across various machines. As a very simple example, you can close a widget on the host machine by using the `wsh` command in a terminal window on a remote machine. For more information on what you can accomplish with `wsh`, take a look [here](/wsh).
+- `~/.waveterm/bin` is added to your `PATH` for that individual session. This allows the user to use the `wsh` command without providing the complete path.
+- Several environment variables are injected into the session to make certain tasks with `wsh` easier. These are listed below.
+
+If this fails for some reason, Wave will attempt to run without wsh. You will see this indicated by a small **<code><i className="fa-link-slash fa-solid fa-sharp"/></code>** icon in the block header. For more info on what `wsh` is capable of, see [wsh command](/wsh). And if you wish to view the source code of `wsh`, you can find it [here](https://github.com/wavetermdev/waveterm/tree/main/cmd/wsh).
+
+With `wsh` installed, you have the ability to view certain widgets from the remote machine as if it were your host, for instance the `files` and `sysinfo` widgets. In addition, `wsh` can be used to influence the widgets across various machines. As a simple example, you can close a widget on the host machine by using the `wsh` command in a terminal window on a remote machine. For more information on what you can accomplish with `wsh`, take a look [here](/wsh).
+
+### Additional Environment variables
+
+As mentioned above, `wsh` injects a few environment variables in remote sessions for the user's convenience. These are listed below:
+
+| Variable Name        | Description                                                                   |
+| -------------------- | ----------------------------------------------------------------------------- |
+| TERM_PROGRAM         | Set to `waveterm` in wave                                                     |
+| WAVETERM             | This is set to 1 in wave                                                      |
+| WAVETERM_BLOCKID     | The id of the block containing your current terminal widget.                  |
+| WAVETERM_CLIENTID    | The id of the RPC Client being used by your current terminal widget.          |
+| WAVETERM_CONN        | The name of the remote connection being used by your current terminal widget. |
+| WAVETERM_TABID       | The id of the tab containing your current terminal widget.                    |
+| WAVETERM_VERSION     | The current semver version of wave.                                           |
+| WAVETERM_WORKSPACEID | The id of thw workspace containing your current terminal widget.              |
 
 ## Add a New Connection to the Dropdown
 
