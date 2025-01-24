@@ -24,7 +24,7 @@ All releases start by first bumping the package version and creating a new Git t
 
 To run it, trigger a new run of the [Bump Version workflow](https://github.com/wavetermdev/waveterm/actions/workflows/bump-version.yml). When triggering the run, you will be prompted to select a version bump type, either `none`, `patch`, `minor`, or `major`, and whether the version is prerelease or not. This determines how much the version number is incremented.
 
-See [`version.cjs`](../../version.cjs) for more details on how this works.
+See [`version.cjs`](./version.cjs) for more details on how this works.
 
 Once the tag has been created, a new [Build Helper](#build-helper-workflow) run will be automatically queued to generate the artifacts.
 
@@ -32,17 +32,25 @@ Once the tag has been created, a new [Build Helper](#build-helper-workflow) run 
 
 Our release builds are managed by the [Build Helper workflow](https://github.com/wavetermdev/waveterm/actions/workflows/build-helper.yml).
 
-Under the hood, this will call the `package` task in [`Taskfile.yml`](../../Taskfile.yml), which will build the `wavesrv` and `wsh` binaries, then the frontend and Electron codebases using Vite, then it will call `electron-builder` to generate the distributable app packages. The configuration for `electron-builder` is defined in [`electron-builder.config.cjs`](../../electron-builder.config.cjs).
+Under the hood, this will call the `package` task in [`Taskfile.yml`](./Taskfile.yml), which will build the `wavesrv` and `wsh` binaries, then the frontend and Electron codebases using Vite, then it will call `electron-builder` to generate the distributable app packages. The configuration for `electron-builder` is defined in [`electron-builder.config.cjs`](./electron-builder.config.cjs).
 
 This will also sign and notarize the macOS app packages and sign the Windows packages.
 
-Once a build is complete, it will be placed in `s3://waveterm-github-artifacts/staging-w2/<version>`. It can be downloaded for testing using the `artifacts:download:*` task. When you are ready to publish the artifacts to the public release feed, use the `artifacts:publish:*` task to directly copy the artifacts from the staging bucket to the releases bucket.
+Once a build is complete, the artifacts will be placed in `s3://waveterm-github-artifacts/staging-w2/<version>`. A new draft release will be created on GitHub and the artifacts will be uploaded there too.
 
-You will need to configure an AWS CLI profile with write permissions for the S3 buckets in order for the script to work. You should invoke the tasks as follows:
+### Testing new releases
+
+The [Build Helper workflow](#build-helper-workflow) creates a draft release on GitHub once it completes. You can find this on the [Releases page](https://github.com/wavetermdev/waveterm/releases) of the repo. You can use this to download the build artifacts for testing.
+
+You can also use the `artifacts:download` task in the [`Taskfile.yml`](./Taskfile.yml) to download all the artifacts for a build. You will need to configure an AWS CLI profile with write permissions for the S3 buckets in order for the script to work. You should invoke the tasks as follows:
 
 ```bash
-task artifacts:<download or publish>:<version> -- --profile <aws-profile>
+task artifacts:download:<version> -- --profile <aws-profile>
 ```
+
+### Publishing a release
+
+Once you have validated that the new release is ready, navigate to the [Releases page](https://github.com/wavetermdev/waveterm/releases) and click on the draft release for the version that is ready. Click the pencil button in the top right corner to edit the draft. Use this opportunity to adjust the release notes as needed. When you are ready to publish, scroll all the way to the bottom of the release editor and click Publish. This will kick off the [`Publish Release` workflow](./.github/workflows/publish-release.yml), at which point all further tasks are automated and hands-off.
 
 ### Automatic updates
 
