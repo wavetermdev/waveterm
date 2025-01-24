@@ -16,9 +16,29 @@ The easiest way to access connections is to click the <i className="fa-sharp fa-
 
 ## What are wsh Shell Extensions?
 
-`wsh` is a small program that helps manage waveterm regardless of which machine you are currently connected to. It is always included on your host machine, but you also have the option to install it when connecting to a remote machine. If it is installed on the remote machine, it is installed at `~/.waveterm/bin/wsh`. Then, when wave connects to your connection (and only when wave connects to your connection), `~/.waveterm/bin` is added to your `PATH` for that individual session. If this fails for some reason, Wave will attempt to run without wsh. You will see this indicated by a small **<code><i className="fa-link-slash fa-solid fa-sharp"/></code>** icon in the block header. For more info on what `wsh` is capable of, see [wsh command](/wsh). And if you wish to view the source code of `wsh`, you can find it [here](https://github.com/wavetermdev/waveterm/tree/main/cmd/wsh).
+`wsh` is a small program that helps manage waveterm regardless of which machine you are currently connected to. It is always included on your host machine, but you also have the option to install it when connecting to a remote machine. If it is installed on the remote machine, it is installed at `~/.waveterm/bin/wsh`. Then, when wave connects to your connection (and only when wave connects to your connection), the following happens:
 
-With `wsh` installed, you have the ability to view certain widgets from the remote machine as if it were your host. In addition, `wsh` can be used to influence the widgets across various machines. As a very simple example, you can close a widget on the host machine by using the `wsh` command in a terminal window on a remote machine. For more information on what you can accomplish with `wsh`, take a look [here](/wsh).
+- `~/.waveterm/bin` is added to your `PATH` for that individual session. This allows the user to use the `wsh` command without providing the complete path.
+- Several environment variables are injected into the session to make certain tasks with `wsh` easier. These are listed below.
+
+If this fails for some reason, Wave will attempt to run without wsh. You will see this indicated by a small **<code><i className="fa-link-slash fa-solid fa-sharp"/></code>** icon in the block header. For more info on what `wsh` is capable of, see [wsh command](/wsh). And if you wish to view the source code of `wsh`, you can find it [here](https://github.com/wavetermdev/waveterm/tree/main/cmd/wsh).
+
+With `wsh` installed, you have the ability to view certain widgets from the remote machine as if it were your host, for instance the `files` and `sysinfo` widgets. In addition, `wsh` can be used to influence the widgets across various machines. As a simple example, you can close a widget on the host machine by using the `wsh` command in a terminal window on a remote machine. For more information on what you can accomplish with `wsh`, take a look [here](/wsh).
+
+### Additional Environment variables
+
+As mentioned above, `wsh` injects a few environment variables in remote sessions for the user's convenience. These are listed below:
+
+| Variable Name        | Description                                                                   |
+| -------------------- | ----------------------------------------------------------------------------- |
+| TERM_PROGRAM         | Set to `waveterm` in wave                                                     |
+| WAVETERM             | This is set to 1 in wave                                                      |
+| WAVETERM_BLOCKID     | The id of the block containing your current terminal widget.                  |
+| WAVETERM_CLIENTID    | The id of the RPC Client being used by your current terminal widget.          |
+| WAVETERM_CONN        | The name of the remote connection being used by your current terminal widget. |
+| WAVETERM_TABID       | The id of the tab containing your current terminal widget.                    |
+| WAVETERM_VERSION     | The current semver version of wave.                                           |
+| WAVETERM_WORKSPACEID | The id of thw workspace containing your current terminal widget.              |
 
 ## Add a New Connection to the Dropdown
 
@@ -38,6 +58,7 @@ At the moment, we are capable of parsing any SSH config file that does not conta
 |---------|-------------|
 | Host | The pattern to match when attempting to connect via `[user]@[host]`. We list hosts that do not contain any wildcards characters (`*`, `?`, or `!`). Even if a host pattern contains wildcards, it will still be parsed when determining the values associated with the keys as usual.|
 | User | The user of the SSH remote connection. This will default to the current user on the local machine if not specified.|
+|HostName| The real host name of the machine to log into. An IP address can be used if desired. This will default to the Host if not specified.
 | Port | The port to connect to the remote on. `22` is the default if not specified.|
 | IdentityFile | This can be specified more than once per host. It gives the path to a private identity file (id_rsa, id_ed25519, id_ecdsa, etc.) that is used to authenticate the connection. Each will be tried in order, and they can be encrypted with a passphrase if desired. If no value is set, the default is to try in order: ~/.ssh/id_rsa, ~/.ssh/id_ecdsa, ~/.ssh/id_ecdsa_sk, ~/.ssh/id_ed25519_sk, ~/.ssh/id_dsa.|
 |BatchMode| If set to true, user interaction via password, challenge/response, and publickey passphrase authentication will be disabled. It is set to false by default.|
@@ -46,7 +67,11 @@ At the moment, we are capable of parsing any SSH config file that does not conta
 |KbdInteractiveAuthentication| This is used to specify if keyboard-interactive authentication should be attempted. The default is `yes`.|
 |PreferredAuthentications| (partial) Specifies the order the client should attempt to authenticate in. It is partially implemented as it does not support `gssapi-with-mic` or `hostbased` authentication. The default is `publickey,keyboard-interactive,password`|
 |AddKeysToAgent| (partial) This option will automatically add keys and their corresponding passphrase to your running ssh agent if it is enabled. It is partially supported as it can only accept `yes` and `no` as valid inputs. Other inputs such as `confirm` or a time interval will behave the same as `no`. The default value is `no`.|
+|IdentityAgent| Specifies the Unix Domain Socket used to communicate with the SSH Agent. This is used to overwrite the SSH_AUTH_SOCK identity agent.|
+|IdentitiesOnly| Specifies that only the specified authentication identity files should be used. This is either the default files or the ones specified with the IdentityFile keyword. It can accept `yes` or `no`. The default value is `no`.|
 |ProxyJump| Specifies one or more jump proxies in a comma separated list. Each will be visited sequentially using TCP forwarding before connecting to the desired connection (also using TCP forwarding). It can be set to `none` to disable the feature.|
+|UserKnownHostsFile| Provides the location of one or more user host key database files for recording trusted remote connections. The filenames are entered in the same string and separated by whitespace. The default value is `"~/.ssh/known_hosts ~/.ssh/known_hosts2"`.|
+|GlobalKnownHostsFile| Provides the location of one or more global host key database files for recording trusted remote connections. The filenames are entered in the same string and separated by whitespace. The default value is `"/etc/ssh/ssh_known_hosts /etc/ssh/ssh_known_hosts2"`.|
 
 ### Example SSH Config Host
 
@@ -69,12 +94,29 @@ In addition to the regular ssh config file, wave also has its own config file to
 |---------|-------------|
 | conn:wshenabled | This boolean allows wsh to be used for your connection, if it is set to `false`, `wsh` will never be used for that connection. It defaults to `true`.|
 | conn:askbeforewshinstall | This boolean is used to prompt the user before installing wsh. If it is set to false, `wsh` will automatically be installed instead without prompting. It defaults to `true`.|
+| conn:wshpath | A string indicating the path to the `wsh` executable on the connection. It defaults to `"~/.waveterm/bin/wsh"`.|
+| conn:shellpath | A string indicating the path to the shell executable on the connection. If not set, the output of `$SHELL` on the connection will be used.|
+| conn:ignoresshconfig | This boolean allows wave to ignore the `~/.ssh/config` file for resolving keywords for this connection. The regular defaults will be used, but all changes to those must be specified in the `connections.json` file instead. This defaults to false.|
 | display:hidden | This boolean hides the connection from the dropdown list. It defaults to `false` |
 | display:order | This float determines the order of connections in the connection dropdown. It defaults to `0`.|
 | term:fontsize | This int can be used to override the terminal font size for blocks using this connection. The block metadata takes priority over this setting. It defaults to null which means the global setting will be used instead. |
 | term:fontfamily | This string can be used to specify a terminal font family for blocks using this connection. The block metadata takes priority over this setting. It defaults to null which means the global setting will be used instead. |
 | term:theme | This string can be used to specify a terminal theme for blocks using this connection. The block metadata takes priority over this setting. It defaults to null which means the global setting will be used instead. |
-| ssh:identityfile | A list of strings containing the paths to identity files that will be used. If a `wsh ssh` command using the `-i` flag is successful, the identity file will automatically be added here. |
+| ssh:user | A string that indicates the username of the connection. Can be used to override the value in `~/.ssh/config` or to set it if the ssh config is being ignored.|
+| ssh:hostname | A string representing the internal hostname of the connection. Can be used to override the value in `~/.ssh/config` or to set it if the ssh config is being ignored.|
+| ssh:port | A string to indicate the numerical port to connect on. Can be used to override the value in `~/.ssh/config` or to set it if the ssh config is being ignored.|
+| ssh:identityfile | A list of strings containing the paths to identity files that will be used. If a `wsh ssh` command using the `-i` flag is successful, the identity file will automatically be added here. These are used before the `~/.ssh/config` values.|
+| ssh:identitiesonly | A boolean indicating if only the specified identity files should be used. This means only the files set with the `ssh:identityfile` flag or the defaults. Can be used to override the value in `~/.ssh/config` or to set it if the ssh config is being ignored.|
+| ssh:batchmode | A boolean indicating if password and passphrase prompts should be skipped. Can be used to override the value in `~/.ssh/config` or to set it if the ssh config is being ignored.|
+| ssh:pubkeyauthentication | A boolean indicating if public key authentication is enabled. Can be used to override the value in `~/.ssh/config` or to set it if the ssh config is being ignored.|
+| ssh:passwordauthentication | A boolean indicating if password authentication is enabled. Can be used to override the value in `~/.ssh/config` or to set it if the ssh config is being ignored. |
+| ssh:kbdinteractiveauthentication | A boolean indicating if keyboard interactive authentication is enabled. Can be used to override the value in `~/.ssh/config` or to set it if the ssh config is being ignored. |
+| ssh:preferredauthentications | A list of strings indicating an ordering of different types of authentications. Each authentication type will be tried in order. This supports `"publickey"`, `"keyboard-interactive"`, and `"password"` as valid types. Other types of authentication are not handled and will be skipped. Can be used to override the value in `~/.ssh/config` or to set it if the ssh config is being ignored.|
+| ssh:addkeystoagent | A boolean indicating if the keys used for a connection should be added to the ssh agent. Can be used to override the value in `~/.ssh/config` or to set it if the ssh config is being ignored.|
+| ssh:identityagent | A string giving the path to the unix domain socket of the identity agent. Can be used to overwrite the value in `~/.ssh/config` or to set it if the ssh config is being ignored.|
+| ssh:proxyjump | A list of strings specifying the names of hosts that must be successively visited with tcp forwarding to establish a connection. Can be used to overwrite the value in `~/.ssh/config` or to set it if the ssh config is being ignored.|
+| ssh:userknownhostsfile | A list containing the paths of any user host key database files used to keep track of authorized connections. Can be used to overwrite the value in `~/.ssh/config` or to set it if the ssh config is being ignored.|
+| ssh:globalknownhostsfile | A list containing the paths of any global host key database files used to keep track of authorized connections. Can be used to overwrite the value in `~/.ssh/config` or to set it if the ssh config is being ignored.|
 
 ### Example Internal Configurations
 
@@ -126,6 +168,25 @@ Suppose you have a connection named `myhost` that shows up as `myusername@myhost
 
 This style, font size, and font family will then only apply to the widgets that are using this connection.
 
+### Entirely Defined Internally
+
+Suppose you want to set up a connection but have no desire to learn the syntax of `~/.ssh/config`. In this case, you can entirely define the connection in your `connections.json` file. For example:
+
+```json
+{
+    <... other connections go here ...>,
+    "myusername@myhost" : {
+        "ssh:hostname": "190.0.2.0",
+        "ssh:identityfile": ["~/.ssh/myidentityfile"],
+        "ssh:identitiesonly": true,
+        "ssh:addkeystoagent": true
+    },
+    <... other connections go here ...>
+}
+```
+
+This will create a connection without that connection needing to be in the `~/.ssh/config` file. A couple additional options are set as well as an example of how that can be done.
+
 ### Disabling Wsh for a Connection
 
 While Wave provides an option disable `wsh` when first connecting to a remote, there are cases where you may wish to disable it afterward. The easiest way to do this is by editing the `connections.json` file. Suppose the connection shows up in the dropdown as `root@wshless`. Then you can disable it manually with the following line:
@@ -145,3 +206,30 @@ Note that this same line gets added to your `connections.json` file automaticall
 ## Managing Connections with the CLI
 
 The `wsh` command gives some commands specifically for interacting with the connections. You can view these [here](/wsh-reference#conn).
+
+## Troubleshooting Connections
+
+### Log Files
+
+If there are issues with connections, the easiest first step is to enable debugging in a terminal widget that is trying to connect. To do this, click the **<code><i className="fa-gear fa-solid fa-sharp"/></code>** button and hover over the **`Debug Connection`** item. From there you can select two log levels, `Info` and `Verbose`. After this, debug info will print out to the terminal during the connection.
+
+If this is not sufficient, it is also possible to view the full log file. To do this, you can run the command `wsh wavepath log` to get the location of a log file.
+
+### Known Limitations
+
+In the case that there is an error setting up `wsh`, your connection will still launch without `wsh`. However, depending on the debug info, there are a few things that can cause this.
+
+#### Shell Type
+
+Wave is capable of injecting `wsh` in the following shells:
+
+- bash
+- zsh
+- pwsh (powershell)
+- fish
+
+If the shell is different than those, it is possible the `wsh` command will not work by default. The easiest way to fix this at the moment is the switch the shell type. This can be done by setting the `conn:shellpath` value with a path to one of the above shells in the `connections.json` file for the connection you are trying to use. Alternatively, you can use the `chsh` command to change the shell in that connection, but this will also take effect outside of wave. Once this is done, restart wave for the changes to take effect.
+
+#### AllowTcpForwarding in sshd
+
+Some systems have sshd configured to disable TCP forwarding by default. This can be found on the connection in the `/etc/ssh/sshd_config` file. In that file, search for the line containing `AllowTcpForwarding`. If this is set to `no`, it is likely the reason `wsh` will not work on your connection. In order to get `wsh` working, set the value for `AllowTcpForwarding` to either `yes` or `local` (they both provide different levels of permission but both work in this case). Then, restart the `sshd` service with whichever method your remote machine provides. Once that is done, restart wave, so it can reconnect with this change.
