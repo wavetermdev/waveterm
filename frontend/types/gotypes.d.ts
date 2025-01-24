@@ -306,6 +306,13 @@ declare global {
         "term:fontsize"?: number;
         "term:fontfamily"?: string;
         "term:theme"?: string;
+        "cmd:env"?: {[key: string]: string};
+        "cmd:initscript"?: string;
+        "cmd:initscript.sh"?: string;
+        "cmd:initscript.bash"?: string;
+        "cmd:initscript.zsh"?: string;
+        "cmd:initscript.pwsh"?: string;
+        "cmd:initscript.fish"?: string;
         "ssh:user"?: string;
         "ssh:hostname"?: string;
         "ssh:port"?: string;
