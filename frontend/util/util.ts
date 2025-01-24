@@ -302,6 +302,33 @@ function makeConnRoute(conn: string): string {
     return "conn:" + conn;
 }
 
+function sleep(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function makeNativeLabel(platform: string, isDirectory: boolean, isParent: boolean) {
+    let managerName: string;
+    if (!isDirectory && !isParent) {
+        managerName = "Default Application";
+    } else if (platform == "darwin") {
+        managerName = "Finder";
+    } else if (platform == "win32") {
+        managerName = "Explorer";
+    } else {
+        managerName = "File Manager";
+    }
+
+    let fileAction: string;
+    if (isParent) {
+        fileAction = "Reveal";
+    } else if (isDirectory) {
+        fileAction = "Open Directory";
+    } else {
+        fileAction = "Open File";
+    }
+    return `${fileAction} in ${managerName}`;
+}
+
 export {
     atomWithDebounce,
     atomWithThrottle,
@@ -321,6 +348,8 @@ export {
     makeConnRoute,
     makeExternLink,
     makeIconClass,
+    makeNativeLabel,
+    sleep,
     stringToBase64,
     useAtomValueSafe,
 };

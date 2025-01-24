@@ -9,6 +9,8 @@ import (
 	"sync"
 
 	"github.com/google/uuid"
+	"github.com/wavetermdev/waveterm/pkg/util/shellutil"
+	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 )
 
@@ -80,6 +82,44 @@ func (p *WshRpcProxy) sendAuthenticateResponse(msg RpcMessage, routeId string) {
 	p.SendRpcMessage(respBytes)
 }
 
+func (p *WshRpcProxy) sendAuthenticateTokenResponse(msg RpcMessage, entry *shellutil.TokenSwapEntry) {
+	if msg.ReqId == "" {
+		// no response needed
+		return
+	}
+	routeId, _ := MakeRouteIdFromCtx(entry.RpcContext) // already validated so don't need to check error
+	resp := RpcMessage{
+		ResId: msg.ReqId,
+		Route: msg.Source,
+		Data: wshrpc.CommandAuthenticateRtnData{
+			RouteId:        routeId,
+			Env:            entry.Env,
+			InitScriptText: entry.ScriptText,
+		},
+	}
+	respBytes, _ := json.Marshal(resp)
+	p.SendRpcMessage(respBytes)
+}
+
+func validateRpcContextFromAuth(newCtx *wshrpc.RpcContext) (string, error) {
+	if newCtx == nil {
+		return "", fmt.Errorf("no context found in jwt token")
+	}
+	if newCtx.BlockId == "" && newCtx.Conn == "" {
+		return "", fmt.Errorf("no blockid or conn found in jwt token")
+	}
+	if newCtx.BlockId != "" {
+		if _, err := uuid.Parse(newCtx.BlockId); err != nil {
+			return "", fmt.Errorf("invalid blockId in jwt token")
+		}
+	}
+	routeId, err := MakeRouteIdFromCtx(newCtx)
+	if err != nil {
+		return "", fmt.Errorf("error making routeId from context: %w", err)
+	}
+	return routeId, nil
+}
+
 func handleAuthenticationCommand(msg RpcMessage) (*wshrpc.RpcContext, string, error) {
 	if msg.Data == nil {
 		return nil, "", fmt.Errorf("no data in authenticate message")
@@ -92,22 +132,34 @@ func handleAuthenticationCommand(msg RpcMessage) (*wshrpc.RpcContext, string, er
 	if err != nil {
 		return nil, "", fmt.Errorf("error validating token: %w", err)
 	}
-	if newCtx == nil {
-		return nil, "", fmt.Errorf("no context found in jwt token")
-	}
-	if newCtx.BlockId == "" && newCtx.Conn == "" {
-		return nil, "", fmt.Errorf("no blockid or conn found in jwt token")
-	}
-	if newCtx.BlockId != "" {
-		if _, err := uuid.Parse(newCtx.BlockId); err != nil {
-			return nil, "", fmt.Errorf("invalid blockId in jwt token")
-		}
-	}
-	routeId, err := MakeRouteIdFromCtx(newCtx)
+	routeId, err := validateRpcContextFromAuth(newCtx)
 	if err != nil {
-		return nil, "", fmt.Errorf("error making routeId from context: %w", err)
+		return nil, "", err
 	}
 	return newCtx, routeId, nil
+}
+
+func handleAuthenticateTokenCommand(msg RpcMessage) (*shellutil.TokenSwapEntry, error) {
+	if msg.Data == nil {
+		return nil, fmt.Errorf("no data in authenticatetoken message")
+	}
+	var tokenData wshrpc.CommandAuthenticateTokenData
+	err := utilfn.ReUnmarshal(&tokenData, msg.Data)
+	if err != nil {
+		return nil, fmt.Errorf("error unmarshalling token data: %w", err)
+	}
+	if tokenData.Token == "" {
+		return nil, fmt.Errorf("no token in authenticatetoken message")
+	}
+	entry := shellutil.GetAndRemoveTokenSwapEntry(tokenData.Token)
+	if entry == nil {
+		return nil, fmt.Errorf("no token entry found")
+	}
+	_, err = validateRpcContextFromAuth(entry.RpcContext)
+	if err != nil {
+		return nil, err
+	}
+	return entry, nil
 }
 
 // runs on the client (stdio client)
@@ -127,28 +179,30 @@ func (p *WshRpcProxy) HandleClientProxyAuth(router *WshRouter) (string, error) {
 			// this message is not allowed (protocol error at this point), ignore
 			continue
 		}
-		// we only allow one command "authenticate", everything else returns an error
-		if origMsg.Command != wshrpc.Command_Authenticate {
-			respErr := fmt.Errorf("connection not authenticated")
-			p.sendResponseError(origMsg, respErr)
-			continue
+		if origMsg.Command == wshrpc.Command_Authenticate {
+			authRtn, err := router.HandleProxyAuth(origMsg.Data)
+			if err != nil {
+				respErr := fmt.Errorf("error handling proxy auth: %w", err)
+				p.sendResponseError(origMsg, respErr)
+				return "", respErr
+			}
+			p.SetAuthToken(authRtn.AuthToken)
+			announceMsg := RpcMessage{
+				Command:   wshrpc.Command_RouteAnnounce,
+				Source:    authRtn.RouteId,
+				AuthToken: authRtn.AuthToken,
+			}
+			announceBytes, _ := json.Marshal(announceMsg)
+			router.InjectMessage(announceBytes, authRtn.RouteId)
+			p.sendAuthenticateResponse(origMsg, authRtn.RouteId)
+			return authRtn.RouteId, nil
 		}
-		authRtn, err := router.HandleProxyAuth(origMsg.Data)
-		if err != nil {
-			respErr := fmt.Errorf("error handling proxy auth: %w", err)
-			p.sendResponseError(origMsg, respErr)
-			return "", respErr
+		if origMsg.Command == wshrpc.Command_AuthenticateToken {
+			// TODO implement authenticatetoken for proxyauth
 		}
-		p.SetAuthToken(authRtn.AuthToken)
-		announceMsg := RpcMessage{
-			Command:   wshrpc.Command_RouteAnnounce,
-			Source:    authRtn.RouteId,
-			AuthToken: authRtn.AuthToken,
-		}
-		announceBytes, _ := json.Marshal(announceMsg)
-		router.InjectMessage(announceBytes, authRtn.RouteId)
-		p.sendAuthenticateResponse(origMsg, authRtn.RouteId)
-		return authRtn.RouteId, nil
+		respErr := fmt.Errorf("connection not authenticated")
+		p.sendResponseError(origMsg, respErr)
+		continue
 	}
 }
 
@@ -169,19 +223,27 @@ func (p *WshRpcProxy) HandleAuthentication() (*wshrpc.RpcContext, error) {
 			// this message is not allowed (protocol error at this point), ignore
 			continue
 		}
-		// we only allow one command "authenticate", everything else returns an error
-		if msg.Command != wshrpc.Command_Authenticate {
-			respErr := fmt.Errorf("connection not authenticated")
-			p.sendResponseError(msg, respErr)
-			continue
+		if msg.Command == wshrpc.Command_Authenticate {
+			newCtx, routeId, err := handleAuthenticationCommand(msg)
+			if err != nil {
+				p.sendResponseError(msg, err)
+				continue
+			}
+			p.sendAuthenticateResponse(msg, routeId)
+			return newCtx, nil
 		}
-		newCtx, routeId, err := handleAuthenticationCommand(msg)
-		if err != nil {
-			p.sendResponseError(msg, err)
-			continue
+		if msg.Command == wshrpc.Command_AuthenticateToken {
+			entry, err := handleAuthenticateTokenCommand(msg)
+			if err != nil {
+				p.sendResponseError(msg, err)
+				continue
+			}
+			p.sendAuthenticateTokenResponse(msg, entry)
+			return entry.RpcContext, nil
 		}
-		p.sendAuthenticateResponse(msg, routeId)
-		return newCtx, nil
+		respErr := fmt.Errorf("connection not authenticated")
+		p.sendResponseError(msg, respErr)
+		continue
 	}
 }
 

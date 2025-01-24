@@ -58,40 +58,88 @@ func loadJSONFile(filepath string) (map[string]interface{}, error) {
 	return result, nil
 }
 
-func parseMetaSets(metaSets []string) (map[string]interface{}, error) {
-	meta := make(map[string]interface{})
+func parseMetaValue(setVal string) (any, error) {
+	if setVal == "" || setVal == "null" {
+		return nil, nil
+	}
+	if setVal == "true" {
+		return true, nil
+	}
+	if setVal == "false" {
+		return false, nil
+	}
+	if setVal[0] == '[' || setVal[0] == '{' || setVal[0] == '"' {
+		var val any
+		err := json.Unmarshal([]byte(setVal), &val)
+		if err != nil {
+			return nil, fmt.Errorf("invalid json value: %v", err)
+		}
+		return val, nil
+	}
+
+	// Try parsing as integer
+	ival, err := strconv.ParseInt(setVal, 0, 64)
+	if err == nil {
+		return ival, nil
+	}
+
+	// Try parsing as float
+	fval, err := strconv.ParseFloat(setVal, 64)
+	if err == nil {
+		return fval, nil
+	}
+
+	// Fallback to string
+	return setVal, nil
+}
+
+func setNestedValue(meta map[string]any, path []string, value any) {
+	// For single key, just set directly
+	if len(path) == 1 {
+		meta[path[0]] = value
+		return
+	}
+
+	// For nested path, traverse or create maps as needed
+	current := meta
+	for i := 0; i < len(path)-1; i++ {
+		key := path[i]
+		// If next level doesn't exist or isn't a map, create new map
+		next, exists := current[key]
+		if !exists {
+			nextMap := make(map[string]any)
+			current[key] = nextMap
+			current = nextMap
+		} else if nextMap, ok := next.(map[string]any); ok {
+			current = nextMap
+		} else {
+			// If existing value isn't a map, replace with new map
+			nextMap = make(map[string]any)
+			current[key] = nextMap
+			current = nextMap
+		}
+	}
+
+	// Set the final value
+	current[path[len(path)-1]] = value
+}
+
+func parseMetaSets(metaSets []string) (map[string]any, error) {
+	meta := make(map[string]any)
 	for _, metaSet := range metaSets {
 		fields := strings.SplitN(metaSet, "=", 2)
 		if len(fields) != 2 {
 			return nil, fmt.Errorf("invalid meta set: %q", metaSet)
 		}
-		setVal := fields[1]
-		if setVal == "" || setVal == "null" {
-			meta[fields[0]] = nil
-		} else if setVal == "true" {
-			meta[fields[0]] = true
-		} else if setVal == "false" {
-			meta[fields[0]] = false
-		} else if setVal[0] == '[' || setVal[0] == '{' || setVal[0] == '"' {
-			var val interface{}
-			err := json.Unmarshal([]byte(setVal), &val)
-			if err != nil {
-				return nil, fmt.Errorf("invalid json value: %v", err)
-			}
-			meta[fields[0]] = val
-		} else {
-			ival, err := strconv.ParseInt(setVal, 0, 64)
-			if err == nil {
-				meta[fields[0]] = ival
-			} else {
-				fval, err := strconv.ParseFloat(setVal, 64)
-				if err == nil {
-					meta[fields[0]] = fval
-				} else {
-					meta[fields[0]] = setVal
-				}
-			}
+
+		val, err := parseMetaValue(fields[1])
+		if err != nil {
+			return nil, err
 		}
+
+		// Split the key path and set nested value
+		path := strings.Split(fields[0], "/")
+		setNestedValue(meta, path, val)
 	}
 	return meta, nil
 }

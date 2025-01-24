@@ -5,10 +5,11 @@ import { Button } from "@/app/element/button";
 import { Input } from "@/app/element/input";
 import { ContextMenuModel } from "@/app/store/contextmenu";
 import { PLATFORM, atoms, createBlock, getApi, globalStore } from "@/app/store/global";
-import { FileService } from "@/app/store/services";
+import { RpcApi } from "@/app/store/wshclientapi";
+import { TabRpcClient } from "@/app/store/wshrpcutil";
 import type { PreviewModel } from "@/app/view/preview/preview";
 import { checkKeyPressed, isCharacterKeyEvent } from "@/util/keyutil";
-import { base64ToString, fireAndForget, isBlank } from "@/util/util";
+import { fireAndForget, isBlank, makeConnRoute, makeNativeLabel } from "@/util/util";
 import { offset, useDismiss, useFloating, useInteractions } from "@floating-ui/react";
 import {
     Column,
@@ -67,7 +68,7 @@ const displaySuffixes = {
 };
 
 function getBestUnit(bytes: number, si: boolean = false, sigfig: number = 3): string {
-    if (bytes < 0) {
+    if (bytes === undefined || bytes < 0) {
         return "-";
     }
     const units = si ? ["kB", "MB", "GB", "TB"] : ["KiB", "MiB", "GiB", "TiB"];
@@ -290,11 +291,17 @@ function DirectoryTable({
             onSave: (newName: string) => {
                 let newPath: string;
                 if (newName !== fileName) {
-                    newPath = path.replace(fileName, newName);
+                    const lastInstance = path.lastIndexOf(fileName);
+                    newPath = path.substring(0, lastInstance) + newName;
                     console.log(`replacing ${fileName} with ${newName}: ${path}`);
                     fireAndForget(async () => {
-                        const connection = await globalStore.get(model.connection);
-                        await FileService.Rename(connection, path, newPath);
+                        await RpcApi.FileMoveCommand(TabRpcClient, {
+                            srcuri: await model.formatRemoteUri(path, globalStore.get),
+                            desturi: await model.formatRemoteUri(newPath, globalStore.get),
+                            opts: {
+                                recursive: true,
+                            },
+                        });
                         model.refreshCallback();
                     });
                 }
@@ -335,7 +342,10 @@ function DirectoryTable({
     });
 
     useEffect(() => {
-        setSelectedPath((table.getSortedRowModel()?.flatRows[focusIndex]?.getValue("path") as string) ?? null);
+        const topRows = table.getTopRows() || [];
+        const centerRows = table.getCenterRows() || [];
+        const allRows = [...topRows, ...centerRows];
+        setSelectedPath((allRows[focusIndex]?.getValue("path") as string) ?? null);
     }, [table, focusIndex, data]);
 
     useEffect(() => {
@@ -501,7 +511,7 @@ function TableBody({
     }, [focusIndex]);
 
     const handleFileContextMenu = useCallback(
-        (e: any, finfo: FileInfo) => {
+        async (e: any, finfo: FileInfo) => {
             e.preventDefault();
             e.stopPropagation();
             if (finfo == null) {
@@ -509,16 +519,14 @@ function TableBody({
             }
             const normPath = getNormFilePath(finfo);
             const fileName = finfo.path.split("/").pop();
-            let openNativeLabel = "Open File";
-            if (finfo.isdir) {
-                openNativeLabel = "Open Directory in File Manager";
-                if (PLATFORM == "darwin") {
-                    openNativeLabel = "Open Directory in Finder";
-                } else if (PLATFORM == "win32") {
-                    openNativeLabel = "Open Directory in Explorer";
-                }
-            } else {
-                openNativeLabel = "Open File in Default Application";
+            let parentFileInfo: FileInfo;
+            try {
+                parentFileInfo = await RpcApi.RemoteFileJoinCommand(TabRpcClient, [normPath, ".."], {
+                    route: makeConnRoute(conn),
+                });
+            } catch (e) {
+                console.log("could not get parent file info. using child file info as fallback");
+                parentFileInfo = finfo;
             }
             const menu: ContextMenuItem[] = [
                 {
@@ -570,16 +578,6 @@ function TableBody({
                 {
                     type: "separator",
                 },
-                // TODO: Only show this option for local files, resolve correct host path if connection is WSL
-                {
-                    label: openNativeLabel,
-                    click: () => {
-                        getApi().openNativePath(normPath);
-                    },
-                },
-                {
-                    type: "separator",
-                },
                 {
                     label: "Open Preview in New Block",
                     click: () =>
@@ -588,12 +586,33 @@ function TableBody({
                                 meta: {
                                     view: "preview",
                                     file: finfo.path,
+                                    connection: conn,
                                 },
                             };
                             await createBlock(blockDef);
                         }),
                 },
             ];
+            if (!conn) {
+                menu.push(
+                    {
+                        type: "separator",
+                    },
+                    // TODO: resolve correct host path if connection is WSL
+                    {
+                        label: makeNativeLabel(PLATFORM, finfo.isdir, false),
+                        click: () => {
+                            getApi().openNativePath(normPath);
+                        },
+                    },
+                    {
+                        label: makeNativeLabel(PLATFORM, true, true),
+                        click: () => {
+                            getApi().openNativePath(parentFileInfo.dir);
+                        },
+                    }
+                );
+            }
             if (finfo.mimetype == "directory") {
                 menu.push({
                     label: "Open Terminal in New Block",
@@ -603,7 +622,8 @@ function TableBody({
                                 meta: {
                                     controller: "shell",
                                     view: "term",
-                                    "cmd:cwd": finfo.path,
+                                    "cmd:cwd": await model.formatRemoteUri(finfo.path, globalStore.get),
+                                    connection: conn,
                                 },
                             };
                             await createBlock(termBlockDef);
@@ -618,7 +638,11 @@ function TableBody({
                     label: "Delete",
                     click: () => {
                         fireAndForget(async () => {
-                            await FileService.DeleteFile(conn, finfo.path).catch((e) => console.log(e));
+                            await RpcApi.FileDeleteCommand(TabRpcClient, {
+                                info: {
+                                    path: await model.formatRemoteUri(finfo.path, globalStore.get),
+                                },
+                            }).catch((e) => console.log(e));
                             setRefreshVersion((current) => current + 1);
                         });
                     },
@@ -711,22 +735,28 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
 
     useEffect(() => {
         const getContent = async () => {
-            const file = await FileService.ReadFile(conn, dirPath);
-            const serializedContent = base64ToString(file?.data64);
-            const content: FileInfo[] = JSON.parse(serializedContent);
-            setUnfilteredData(content);
+            const file = await RpcApi.FileReadCommand(
+                TabRpcClient,
+                {
+                    info: {
+                        path: await model.formatRemoteUri(dirPath, globalStore.get),
+                    },
+                },
+                null
+            );
+            setUnfilteredData(file.entries);
         };
         getContent();
     }, [conn, dirPath, refreshVersion]);
 
     useEffect(() => {
-        const filtered = unfilteredData.filter((fileInfo) => {
+        const filtered = unfilteredData?.filter((fileInfo) => {
             if (!showHiddenFiles && fileInfo.name.startsWith(".") && fileInfo.name != "..") {
                 return false;
             }
             return fileInfo.name.toLowerCase().includes(searchText);
         });
-        setFilteredData(filtered);
+        setFilteredData(filtered ?? []);
     }, [unfilteredData, showHiddenFiles, searchText]);
 
     useEffect(() => {
@@ -765,7 +795,6 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
                 !blockData?.meta?.connection
             ) {
                 getApi().onQuicklook(selectedPath);
-                console.log(selectedPath);
                 return true;
             }
             if (isCharacterKeyEvent(waveEvent)) {
@@ -805,8 +834,15 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
             onSave: (newName: string) => {
                 console.log(`newFile: ${newName}`);
                 fireAndForget(async () => {
-                    const connection = await globalStore.get(model.connection);
-                    await FileService.TouchFile(connection, `${dirPath}/${newName}`);
+                    await RpcApi.FileCreateCommand(
+                        TabRpcClient,
+                        {
+                            info: {
+                                path: await model.formatRemoteUri(`${dirPath}/${newName}`, globalStore.get),
+                            },
+                        },
+                        null
+                    );
                     model.refreshCallback();
                 });
                 setEntryManagerProps(undefined);
@@ -819,8 +855,11 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
             onSave: (newName: string) => {
                 console.log(`newDirectory: ${newName}`);
                 fireAndForget(async () => {
-                    const connection = await globalStore.get(model.connection);
-                    await FileService.Mkdir(connection, `${dirPath}/${newName}`);
+                    await RpcApi.FileMkdirCommand(TabRpcClient, {
+                        info: {
+                            path: await model.formatRemoteUri(`${dirPath}/${newName}`, globalStore.get),
+                        },
+                    });
                     model.refreshCallback();
                 });
                 setEntryManagerProps(undefined);
@@ -832,12 +871,6 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
         (e: any) => {
             e.preventDefault();
             e.stopPropagation();
-            let openNativeLabel = "Open Directory in File Manager";
-            if (PLATFORM == "darwin") {
-                openNativeLabel = "Open Directory in Finder";
-            } else if (PLATFORM == "win32") {
-                openNativeLabel = "Open Directory in Explorer";
-            }
             const menu: ContextMenuItem[] = [
                 {
                     label: "New File",
@@ -854,15 +887,16 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
                 {
                     type: "separator",
                 },
-                // TODO: Only show this option for local files, resolve correct host path if connection is WSL
-                {
-                    label: openNativeLabel,
+            ];
+            if (!conn) {
+                // TODO:  resolve correct host path if connection is WSL
+                menu.push({
+                    label: makeNativeLabel(PLATFORM, true, true),
                     click: () => {
-                        console.log(`opening ${dirPath}`);
                         getApi().openNativePath(dirPath);
                     },
-                },
-            ];
+                });
+            }
             menu.push({
                 label: "Open Terminal in New Block",
                 click: async () => {
@@ -871,6 +905,7 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
                             controller: "shell",
                             view: "term",
                             "cmd:cwd": dirPath,
+                            connection: conn,
                         },
                     };
                     await createBlock(termBlockDef);

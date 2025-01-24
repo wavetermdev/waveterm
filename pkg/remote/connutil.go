@@ -15,12 +15,16 @@ import (
 	"regexp"
 	"strings"
 	"text/template"
+	"time"
 
+	"github.com/wavetermdev/waveterm/pkg/blocklogger"
 	"github.com/wavetermdev/waveterm/pkg/genconn"
+	"github.com/wavetermdev/waveterm/pkg/remote/awsconn"
+	"github.com/wavetermdev/waveterm/pkg/util/iterfn"
 	"github.com/wavetermdev/waveterm/pkg/util/shellutil"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
+	"github.com/wavetermdev/waveterm/pkg/wconfig"
 	"golang.org/x/crypto/ssh"
-	"golang.org/x/mod/semver"
 )
 
 var userHostRe = regexp.MustCompile(`^([a-zA-Z0-9][a-zA-Z0-9._@\\-]*@)?([a-zA-Z0-9][a-zA-Z0-9.-]*)(?::([0-9]+))?$`)
@@ -34,122 +38,6 @@ func ParseOpts(input string) (*SSHOpts, error) {
 	remoteUser = strings.Trim(remoteUser, "@")
 
 	return &SSHOpts{SSHHost: remoteHost, SSHUser: remoteUser, SSHPort: remotePort}, nil
-}
-
-func DetectShell(client *ssh.Client) (string, error) {
-	wshPath := GetWshPath(client)
-
-	session, err := client.NewSession()
-	if err != nil {
-		return "", err
-	}
-
-	log.Printf("shell detecting using command: %s shell", wshPath)
-	out, err := session.Output(wshPath + " shell")
-	if err != nil {
-		log.Printf("unable to determine shell. defaulting to /bin/bash: %s", err)
-		return "/bin/bash", nil
-	}
-	log.Printf("detecting shell: %s", out)
-
-	return fmt.Sprintf(`"%s"`, strings.TrimSpace(string(out))), nil
-}
-
-// returns a valid semver version string
-func GetWshVersion(client *ssh.Client) (string, error) {
-	wshPath := GetWshPath(client)
-
-	session, err := client.NewSession()
-	if err != nil {
-		return "", err
-	}
-
-	out, err := session.Output(wshPath + " version")
-	if err != nil {
-		return "", err
-	}
-	// output is expected to be in the form of "wsh v0.10.4"
-	// should strip off the "wsh" prefix, and return a semver object
-	fields := strings.Fields(strings.TrimSpace(string(out)))
-	if len(fields) != 2 {
-		return "", fmt.Errorf("unexpected output from wsh version: %s", out)
-	}
-	wshVersion := strings.TrimSpace(fields[1])
-	if !semver.IsValid(wshVersion) {
-		return "", fmt.Errorf("invalid semver version: %s", wshVersion)
-	}
-	return wshVersion, nil
-}
-
-func GetWshPath(client *ssh.Client) string {
-	defaultPath := wavebase.RemoteFullWshBinPath
-	session, err := client.NewSession()
-	if err != nil {
-		log.Printf("unable to detect client's wsh path. using default. error: %v", err)
-		return defaultPath
-	}
-
-	out, whichErr := session.Output("which wsh")
-	if whichErr == nil {
-		return strings.TrimSpace(string(out))
-	}
-
-	session, err = client.NewSession()
-	if err != nil {
-		log.Printf("unable to detect client's wsh path. using default. error: %v", err)
-		return defaultPath
-	}
-
-	out, whereErr := session.Output("where.exe wsh")
-	if whereErr == nil {
-		return strings.TrimSpace(string(out))
-	}
-
-	// check cmd on windows since it requires an absolute path with backslashes
-	session, err = client.NewSession()
-	if err != nil {
-		log.Printf("unable to detect client's wsh path. using default. error: %v", err)
-		return defaultPath
-	}
-
-	out, cmdErr := session.Output("(dir 2>&1 *``|echo %userprofile%\\.waveterm%\\.waveterm\\bin\\wsh.exe);&<# rem #>echo none") //todo
-	if cmdErr == nil && strings.TrimSpace(string(out)) != "none" {
-		return strings.TrimSpace(string(out))
-	}
-
-	// no custom install, use default path
-	return defaultPath
-}
-
-func hasBashInstalled(client *ssh.Client) (bool, error) {
-	session, err := client.NewSession()
-	if err != nil {
-		// this is a true error that should stop further progress
-		return false, err
-	}
-
-	out, whichErr := session.Output("which bash")
-	if whichErr == nil && len(out) != 0 {
-		return true, nil
-	}
-
-	session, err = client.NewSession()
-	if err != nil {
-		// this is a true error that should stop further progress
-		return false, err
-	}
-
-	out, whereErr := session.Output("where.exe bash")
-	if whereErr == nil && len(out) != 0 {
-		return true, nil
-	}
-
-	// note: we could also check in /bin/bash explicitly
-	// just in case that wasn't added to the path. but if
-	// that's true, we will most likely have worse
-	// problems going forward
-
-	return false, nil
 }
 
 func normalizeOs(os string) string {
@@ -171,6 +59,7 @@ func normalizeArch(arch string) string {
 // returns (os, arch, error)
 // guaranteed to return a supported platform
 func GetClientPlatform(ctx context.Context, shell genconn.ShellClient) (string, string, error) {
+	blocklogger.Infof(ctx, "[conndebug] running `uname -sm` to detect client platform\n")
 	stdout, stderr, err := genconn.RunSimpleCommand(ctx, shell, genconn.CommandSpec{
 		Cmd: "uname -sm",
 	})
@@ -189,16 +78,32 @@ func GetClientPlatform(ctx context.Context, shell genconn.ShellClient) (string, 
 	return os, arch, nil
 }
 
+func GetClientPlatformFromOsArchStr(ctx context.Context, osArchStr string) (string, string, error) {
+	parts := strings.Fields(strings.TrimSpace(osArchStr))
+	if len(parts) != 2 {
+		return "", "", fmt.Errorf("unexpected output from uname: %s", osArchStr)
+	}
+	os, arch := normalizeOs(parts[0]), normalizeArch(parts[1])
+	if err := wavebase.ValidateWshSupportedArch(os, arch); err != nil {
+		return "", "", err
+	}
+	return os, arch, nil
+}
+
 var installTemplateRawDefault = strings.TrimSpace(`
-mkdir -p {{.installDir}} || exit 1
-cat > {{.tempPath}} || exit 1
-mv {{.tempPath}} {{.installPath}} || exit 1
-chmod a+x {{.installPath}} || exit 1
+mkdir -p {{.installDir}} || exit 1;
+cat > {{.tempPath}} || exit 1;
+mv {{.tempPath}} {{.installPath}} || exit 1;
+chmod a+x {{.installPath}} || exit 1;
 `)
 var installTemplate = template.Must(template.New("wsh-install-template").Parse(installTemplateRawDefault))
 
 func CpWshToRemote(ctx context.Context, client *ssh.Client, clientOs string, clientArch string) error {
-	wshLocalPath, err := shellutil.GetWshBinaryPath(wavebase.WaveVersion, clientOs, clientArch)
+	deadline, ok := ctx.Deadline()
+	if ok {
+		blocklogger.Debugf(ctx, "[conndebug] CpWshToRemote, timeout: %v\n", time.Until(deadline))
+	}
+	wshLocalPath, err := shellutil.GetLocalWshBinaryPath(wavebase.WaveVersion, clientOs, clientArch)
 	if err != nil {
 		return err
 	}
@@ -209,13 +114,14 @@ func CpWshToRemote(ctx context.Context, client *ssh.Client, clientOs string, cli
 	defer input.Close()
 	installWords := map[string]string{
 		"installDir":  filepath.ToSlash(filepath.Dir(wavebase.RemoteFullWshBinPath)),
-		"tempPath":    filepath.ToSlash(wavebase.RemoteFullWshBinPath + ".temp"),
-		"installPath": filepath.ToSlash(wavebase.RemoteFullWshBinPath),
+		"tempPath":    wavebase.RemoteFullWshBinPath + ".temp",
+		"installPath": wavebase.RemoteFullWshBinPath,
 	}
 	var installCmd bytes.Buffer
 	if err := installTemplate.Execute(&installCmd, installWords); err != nil {
 		return fmt.Errorf("failed to prepare install command: %w", err)
 	}
+	blocklogger.Infof(ctx, "[conndebug] copying %q to remote server %q\n", wshLocalPath, wavebase.RemoteFullWshBinPath)
 	genCmd, err := genconn.MakeSSHCmdClient(client, genconn.CommandSpec{
 		Cmd: installCmd.String(),
 	})
@@ -255,31 +161,6 @@ func CpWshToRemote(ctx context.Context, client *ssh.Client, clientOs string, cli
 	return nil
 }
 
-func InstallClientRcFiles(client *ssh.Client) error {
-	path := GetWshPath(client)
-	log.Printf("path to wsh searched is: %s", path)
-	session, err := client.NewSession()
-	if err != nil {
-		// this is a true error that should stop further progress
-		return err
-	}
-
-	_, err = session.Output(path + " rcfiles")
-	return err
-}
-
-func GetHomeDir(client *ssh.Client) string {
-	session, err := client.NewSession()
-	if err != nil {
-		return "~"
-	}
-	out, err := session.Output(`echo "$HOME"`)
-	if err == nil {
-		return strings.TrimSpace(string(out))
-	}
-	return "~"
-}
-
 func IsPowershell(shellPath string) bool {
 	// get the base path, and then check contains
 	shellBase := filepath.Base(shellPath)
@@ -308,4 +189,19 @@ func NormalizeConfigPattern(pattern string) string {
 		port = ":" + port
 	}
 	return fmt.Sprintf("%s%s%s", userName, pattern, port)
+}
+
+func ParseProfiles() []string {
+	connfile, cerrs := wconfig.ReadWaveHomeConfigFile(wconfig.ProfilesFile)
+	if len(cerrs) > 0 {
+		log.Printf("error reading config file: %v", cerrs[0])
+		return nil
+	}
+
+	awsProfiles := awsconn.ParseProfiles()
+	for profile := range awsProfiles {
+		connfile[profile] = struct{}{}
+	}
+
+	return iterfn.MapKeysToSorted(connfile)
 }

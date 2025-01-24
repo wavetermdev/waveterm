@@ -19,10 +19,18 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 )
 
-const DefaultRoute = "wavesrv"
-const UpstreamRoute = "upstream"
-const SysRoute = "sys" // this route doesn't exist, just a placeholder for system messages
-const ElectronRoute = "electron"
+const (
+	DefaultRoute  = "wavesrv"
+	UpstreamRoute = "upstream"
+	SysRoute      = "sys" // this route doesn't exist, just a placeholder for system messages
+	ElectronRoute = "electron"
+
+	RoutePrefix_Conn       = "conn:"
+	RoutePrefix_Controller = "controller:"
+	RoutePrefix_Proc       = "proc:"
+	RoutePrefix_Tab        = "tab:"
+	RoutePrefix_FeBlock    = "feblock:"
+)
 
 // this works like a network switch
 
@@ -188,20 +196,26 @@ func (router *WshRouter) getAnnouncedRoute(routeId string) string {
 func (router *WshRouter) sendRoutedMessage(msgBytes []byte, routeId string) bool {
 	rpc := router.GetRpc(routeId)
 	if rpc != nil {
+		// log.Printf("[router] sending message to %q via rpc\n", routeId)
 		rpc.SendRpcMessage(msgBytes)
 		return true
 	}
 	upstream := router.GetUpstreamClient()
 	if upstream != nil {
+		log.Printf("[router] sending message to %q via upstream\n", routeId)
 		upstream.SendRpcMessage(msgBytes)
 		return true
 	} else {
+		log.Printf("[router] sending message to %q via announced route\n", routeId)
 		// we are the upstream, so consult our announced routes map
 		localRouteId := router.getAnnouncedRoute(routeId)
+		log.Printf("[router] local route id: %q\n", localRouteId)
 		rpc := router.GetRpc(localRouteId)
 		if rpc == nil {
+			log.Printf("[router] no rpc for local route id %q\n", localRouteId)
 			return false
 		}
+		log.Printf("[router] sending message to %q via local route\n", localRouteId)
 		rpc.SendRpcMessage(msgBytes)
 		return true
 	}
