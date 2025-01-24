@@ -3,7 +3,10 @@
 
 package shellutil
 
-import "regexp"
+import (
+	"log"
+	"regexp"
+)
 
 const (
 	MaxQuoteSize = 10000000 // 10MB
@@ -150,5 +153,9 @@ func SoftQuote(s string) string {
 }
 
 func checkQuoteSize(s string) bool {
-	return len(s) < MaxQuoteSize
+	if len(s) > MaxQuoteSize {
+		log.Printf("string too long to quote: %s", s)
+		return false
+	}
+	return true
 }
