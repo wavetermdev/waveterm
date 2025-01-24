@@ -339,7 +339,7 @@ const ConnStatusOverlay = React.memo(
         React.useEffect(() => {
             if (width) {
                 const hasError = !util.isBlank(connStatus.error);
-                const showError = hasError && width >= 250 && connStatus.status != "connecting";
+                const showError = hasError && width >= 250 && connStatus.status == "error";
                 setShowError(showError);
             }
         }, [width, connStatus, setShowError]);
