@@ -35,6 +35,9 @@ Behind the scenes, we've redesigned our remote file protocol, laying the groundw
 - file:/// urls now work in web widget
 - Increased max size of files allowed in `wsh ai` to 50k
 - Increased maximum allowed term:scrollback to 50k lines
+- Allow connections to entirely be defined in connections.json without relying on ~/.ssh/config
+- Added an option to reveal files in external file viewer for local connection
+- Added a New Window option when right clicking the MacOS dock icon button
 - [build] Switched to free Ubuntu ARM runners for better ARM64 build support
 - [build] Windows builds now use zig, simplifying Windows dev setup
 - [bugfix] Connections dropdown now populated even when ssh config is missing or invalid
@@ -47,6 +50,9 @@ Behind the scenes, we've redesigned our remote file protocol, laying the groundw
 - [bugfix] Fix preview for large text files
 - [bugfix] Fix URLs in terminal (now clickable again)
 - [bugfix] Windows URLs now work properly for Wave background images
+- [bugfix] Connections launch without wsh if the unix domain socket can't be opened
+- [bugfix] Connection status list lights up correctly with currently connected connections
+- [bugfix] Use en_US.UTF-8 if the requested LANG is not available in your terminal
 - Other bug fixes, performance improvements, and dependency updates
 
 ### v0.10.4 &mdash; Dec 20, 2024
