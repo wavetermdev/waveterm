@@ -63,9 +63,14 @@ export async function toggleTerminalPreviewLink(terminalId: string, previewId: s
         return;
     }
 
-    await ObjectService.UpdateObjectMeta(previewBlockRef, {
-        "preview:linked_terminal": terminalId
-    });
+    try {
+        await ObjectService.UpdateObjectMeta(previewBlockRef, {
+            "preview:linked_terminal": terminalId
+        });
+    } catch (err) {
+        console.error("Failed to update preview block metadata:", err);
+        // Optionally display an error notification to the user
+    }
 
     const terminalBlock = globalStore.get(WOS.getWaveObjectAtom(WOS.makeORef("block", terminalId)));
     const terminalCwd = terminalBlock?.meta?.["cmd:cwd"];
