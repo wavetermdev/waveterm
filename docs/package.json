@@ -24,7 +24,7 @@
         "@docusaurus/theme-classic": "^3.7.0",
         "@docusaurus/theme-search-algolia": "^3.7.0",
         "@mdx-js/react": "^3.0.0",
-        "@waveterm/docusaurus-og": "https://github.com/wavetermdev/docusaurus-og.git#commit=243b4a7feffde0cbb7c0bf29fe7a2f74ee655c0c",
+        "@waveterm/docusaurus-og": "https://github.com/wavetermdev/docusaurus-og.git",
         "clsx": "^2.1.1",
         "docusaurus-plugin-sass": "^0.2.6",
         "prism-react-renderer": "^2.3.0",

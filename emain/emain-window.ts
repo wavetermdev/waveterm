@@ -5,6 +5,7 @@ import { ClientService, ObjectService, WindowService, WorkspaceService } from "@
 import { RpcApi } from "@/app/store/wshclientapi";
 import { fireAndForget } from "@/util/util";
 import { BaseWindow, BaseWindowConstructorOptions, dialog, globalShortcut, ipcMain, screen } from "electron";
+import { globalEvents } from "emain/emain-events";
 import path from "path";
 import { debounce } from "throttle-debounce";
 import {
@@ -293,6 +294,7 @@ export class WaveBrowserWindow extends BaseWindow {
                 console.log("win quitting or updating", this.waveWindowId);
                 return;
             }
+            setTimeout(() => globalEvents.emit("windows-updated"), 50);
             waveWindowMap.delete(this.waveWindowId);
             if (focusedWaveWindow == this) {
                 focusedWaveWindow = null;
@@ -309,6 +311,7 @@ export class WaveBrowserWindow extends BaseWindow {
             }
         });
         waveWindowMap.set(waveWindow.oid, this);
+        setTimeout(() => globalEvents.emit("windows-updated"), 50);
     }
 
     private removeAllChildViews() {

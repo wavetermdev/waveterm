@@ -4,12 +4,12 @@
 import { Button } from "@/app/element/button";
 import { Input } from "@/app/element/input";
 import { ContextMenuModel } from "@/app/store/contextmenu";
-import { PLATFORM, atoms, createBlock, getApi } from "@/app/store/global";
+import { PLATFORM, atoms, createBlock, getApi, globalStore } from "@/app/store/global";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import type { PreviewModel } from "@/app/view/preview/preview";
 import { checkKeyPressed, isCharacterKeyEvent } from "@/util/keyutil";
-import { fireAndForget, isBlank } from "@/util/util";
+import { fireAndForget, isBlank, makeConnRoute, makeNativeLabel } from "@/util/util";
 import { offset, useDismiss, useFloating, useInteractions } from "@floating-ui/react";
 import {
     Column,
@@ -296,8 +296,8 @@ function DirectoryTable({
                     console.log(`replacing ${fileName} with ${newName}: ${path}`);
                     fireAndForget(async () => {
                         await RpcApi.FileMoveCommand(TabRpcClient, {
-                            srcuri: await model.formatRemoteUri(path),
-                            desturi: await model.formatRemoteUri(newPath),
+                            srcuri: await model.formatRemoteUri(path, globalStore.get),
+                            desturi: await model.formatRemoteUri(newPath, globalStore.get),
                             opts: {
                                 recursive: true,
                             },
@@ -342,7 +342,10 @@ function DirectoryTable({
     });
 
     useEffect(() => {
-        setSelectedPath((table.getSortedRowModel()?.flatRows[focusIndex]?.getValue("path") as string) ?? null);
+        const topRows = table.getTopRows() || [];
+        const centerRows = table.getCenterRows() || [];
+        const allRows = [...topRows, ...centerRows];
+        setSelectedPath((allRows[focusIndex]?.getValue("path") as string) ?? null);
     }, [table, focusIndex, data]);
 
     useEffect(() => {
@@ -508,7 +511,7 @@ function TableBody({
     }, [focusIndex]);
 
     const handleFileContextMenu = useCallback(
-        (e: any, finfo: FileInfo) => {
+        async (e: any, finfo: FileInfo) => {
             e.preventDefault();
             e.stopPropagation();
             if (finfo == null) {
@@ -516,16 +519,14 @@ function TableBody({
             }
             const normPath = getNormFilePath(finfo);
             const fileName = finfo.path.split("/").pop();
-            let openNativeLabel = "Open File";
-            if (finfo.isdir) {
-                openNativeLabel = "Open Directory in File Manager";
-                if (PLATFORM == "darwin") {
-                    openNativeLabel = "Open Directory in Finder";
-                } else if (PLATFORM == "win32") {
-                    openNativeLabel = "Open Directory in Explorer";
-                }
-            } else {
-                openNativeLabel = "Open File in Default Application";
+            let parentFileInfo: FileInfo;
+            try {
+                parentFileInfo = await RpcApi.RemoteFileJoinCommand(TabRpcClient, [normPath, ".."], {
+                    route: makeConnRoute(conn),
+                });
+            } catch (e) {
+                console.log("could not get parent file info. using child file info as fallback");
+                parentFileInfo = finfo;
             }
             const menu: ContextMenuItem[] = [
                 {
@@ -577,16 +578,6 @@ function TableBody({
                 {
                     type: "separator",
                 },
-                // TODO: Only show this option for local files, resolve correct host path if connection is WSL
-                {
-                    label: openNativeLabel,
-                    click: () => {
-                        getApi().openNativePath(normPath);
-                    },
-                },
-                {
-                    type: "separator",
-                },
                 {
                     label: "Open Preview in New Block",
                     click: () =>
@@ -595,12 +586,33 @@ function TableBody({
                                 meta: {
                                     view: "preview",
                                     file: finfo.path,
+                                    connection: conn,
                                 },
                             };
                             await createBlock(blockDef);
                         }),
                 },
             ];
+            if (!conn) {
+                menu.push(
+                    {
+                        type: "separator",
+                    },
+                    // TODO: resolve correct host path if connection is WSL
+                    {
+                        label: makeNativeLabel(PLATFORM, finfo.isdir, false),
+                        click: () => {
+                            getApi().openNativePath(normPath);
+                        },
+                    },
+                    {
+                        label: makeNativeLabel(PLATFORM, true, true),
+                        click: () => {
+                            getApi().openNativePath(parentFileInfo.dir);
+                        },
+                    }
+                );
+            }
             if (finfo.mimetype == "directory") {
                 menu.push({
                     label: "Open Terminal in New Block",
@@ -610,7 +622,8 @@ function TableBody({
                                 meta: {
                                     controller: "shell",
                                     view: "term",
-                                    "cmd:cwd": await model.formatRemoteUri(finfo.path),
+                                    "cmd:cwd": await model.formatRemoteUri(finfo.path, globalStore.get),
+                                    connection: conn,
                                 },
                             };
                             await createBlock(termBlockDef);
@@ -627,7 +640,7 @@ function TableBody({
                         fireAndForget(async () => {
                             await RpcApi.FileDeleteCommand(TabRpcClient, {
                                 info: {
-                                    path: await model.formatRemoteUri(finfo.path),
+                                    path: await model.formatRemoteUri(finfo.path, globalStore.get),
                                 },
                             }).catch((e) => console.log(e));
                             setRefreshVersion((current) => current + 1);
@@ -726,7 +739,7 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
                 TabRpcClient,
                 {
                     info: {
-                        path: await model.formatRemoteUri(dirPath),
+                        path: await model.formatRemoteUri(dirPath, globalStore.get),
                     },
                 },
                 null
@@ -825,7 +838,7 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
                         TabRpcClient,
                         {
                             info: {
-                                path: await model.formatRemoteUri(`${dirPath}/${newName}`),
+                                path: await model.formatRemoteUri(`${dirPath}/${newName}`, globalStore.get),
                             },
                         },
                         null
@@ -844,7 +857,7 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
                 fireAndForget(async () => {
                     await RpcApi.FileMkdirCommand(TabRpcClient, {
                         info: {
-                            path: await model.formatRemoteUri(`${dirPath}/${newName}`),
+                            path: await model.formatRemoteUri(`${dirPath}/${newName}`, globalStore.get),
                         },
                     });
                     model.refreshCallback();
@@ -858,12 +871,6 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
         (e: any) => {
             e.preventDefault();
             e.stopPropagation();
-            let openNativeLabel = "Open Directory in File Manager";
-            if (PLATFORM == "darwin") {
-                openNativeLabel = "Open Directory in Finder";
-            } else if (PLATFORM == "win32") {
-                openNativeLabel = "Open Directory in Explorer";
-            }
             const menu: ContextMenuItem[] = [
                 {
                     label: "New File",
@@ -880,15 +887,16 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
                 {
                     type: "separator",
                 },
-                // TODO: Only show this option for local files, resolve correct host path if connection is WSL
-                {
-                    label: openNativeLabel,
+            ];
+            if (!conn) {
+                // TODO:  resolve correct host path if connection is WSL
+                menu.push({
+                    label: makeNativeLabel(PLATFORM, true, true),
                     click: () => {
-                        console.log(`opening ${dirPath}`);
                         getApi().openNativePath(dirPath);
                     },
-                },
-            ];
+                });
+            }
             menu.push({
                 label: "Open Terminal in New Block",
                 click: async () => {
@@ -897,6 +905,7 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
                             controller: "shell",
                             view: "term",
                             "cmd:cwd": dirPath,
+                            connection: conn,
                         },
                     };
                     await createBlock(termBlockDef);

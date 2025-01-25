@@ -296,7 +296,6 @@ declare global {
     type ConnKeywords = {
         "conn:wshenabled"?: boolean;
         "conn:askbeforewshinstall"?: boolean;
-        "conn:overrideconfig"?: boolean;
         "conn:wshpath"?: string;
         "conn:shellpath"?: string;
         "conn:ignoresshconfig"?: boolean;
@@ -306,6 +305,13 @@ declare global {
         "term:fontsize"?: number;
         "term:fontfamily"?: string;
         "term:theme"?: string;
+        "cmd:env"?: {[key: string]: string};
+        "cmd:initscript"?: string;
+        "cmd:initscript.sh"?: string;
+        "cmd:initscript.bash"?: string;
+        "cmd:initscript.zsh"?: string;
+        "cmd:initscript.pwsh"?: string;
+        "cmd:initscript.fish"?: string;
         "ssh:user"?: string;
         "ssh:hostname"?: string;
         "ssh:port"?: string;
@@ -499,11 +505,18 @@ declare global {
         "cmd:closeonexit"?: boolean;
         "cmd:closeonexitforce"?: boolean;
         "cmd:closeonexitdelay"?: number;
-        "cmd:env"?: {[key: string]: string};
-        "cmd:cwd"?: string;
         "cmd:nowsh"?: boolean;
         "cmd:args"?: string[];
         "cmd:shell"?: boolean;
+        "cmd:allowconnchange"?: boolean;
+        "cmd:env"?: {[key: string]: string};
+        "cmd:cwd"?: string;
+        "cmd:initscript"?: string;
+        "cmd:initscript.sh"?: string;
+        "cmd:initscript.bash"?: string;
+        "cmd:initscript.zsh"?: string;
+        "cmd:initscript.pwsh"?: string;
+        "cmd:initscript.fish"?: string;
         "ai:*"?: boolean;
         "ai:preset"?: string;
         "ai:apitype"?: string;

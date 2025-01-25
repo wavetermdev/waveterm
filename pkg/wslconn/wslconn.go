@@ -117,6 +117,10 @@ func (conn *WslConn) Infof(ctx context.Context, format string, args ...any) {
 	blocklogger.Infof(ctx, "[conndebug] "+format, args...)
 }
 
+func (conn *WslConn) Debugf(ctx context.Context, format string, args ...any) {
+	blocklogger.Infof(ctx, "[conndebug] "+format, args...)
+}
+
 func (conn *WslConn) FireConnChangeEvent() {
 	status := conn.DeriveConnStatus()
 	event := wps.WaveEvent{
@@ -751,11 +755,8 @@ func getConnInternal(name string) *WslConn {
 	return rtn
 }
 
-func GetWslConn(ctx context.Context, name string, shouldConnect bool) *WslConn {
+func GetWslConn(name string) *WslConn {
 	conn := getConnInternal(name)
-	if conn.Client == nil && shouldConnect {
-		conn.Connect(ctx)
-	}
 	return conn
 }
 
@@ -764,7 +765,7 @@ func EnsureConnection(ctx context.Context, connName string) error {
 	if connName == "" {
 		return nil
 	}
-	conn := GetWslConn(ctx, connName, false)
+	conn := GetWslConn(connName)
 	if conn == nil {
 		return fmt.Errorf("connection not found: %s", connName)
 	}

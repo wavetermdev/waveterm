@@ -968,7 +968,7 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
         const termTransparency = globalStore.get(model.termTransparencyAtom);
         const termBPMAtom = getOverrideConfigAtom(blockId, "term:allowbracketedpaste");
         const [termTheme, _] = computeTheme(fullConfig, termThemeName, termTransparency);
-        let termScrollback = 1000;
+        let termScrollback = 2000;
         if (termSettings?.["term:scrollback"]) {
             termScrollback = Math.floor(termSettings["term:scrollback"]);
         }
@@ -978,8 +978,8 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
         if (termScrollback < 0) {
             termScrollback = 0;
         }
-        if (termScrollback > 10000) {
-            termScrollback = 10000;
+        if (termScrollback > 50000) {
+            termScrollback = 50000;
         }
         const termAllowBPM = globalStore.get(termBPMAtom) ?? false;
         const wasFocused = model.termRef.current != null && globalStore.get(model.nodeModel.isFocused);

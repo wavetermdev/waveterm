@@ -161,6 +161,16 @@ const config: Config = {
         {
             tagName: "link",
             attributes: {
+                rel: "preload",
+                as: "font",
+                type: "font/woff2",
+                "data-next-font": "size-adjust",
+                href: `${baseUrl}fontawesome/webfonts/fa-sharp-solid-900.woff2`,
+            },
+        },
+        {
+            tagName: "link",
+            attributes: {
                 rel: "sitemap",
                 type: "application/xml",
                 title: "Sitemap",
@@ -176,7 +186,11 @@ const config: Config = {
             },
         },
     ].filter((v) => v),
-    stylesheets: [`${baseUrl}fontawesome/css/fontawesome.min.css`, `${baseUrl}fontawesome/css/sharp-regular.min.css`],
+    stylesheets: [
+        `${baseUrl}fontawesome/css/fontawesome.min.css`,
+        `${baseUrl}fontawesome/css/sharp-regular.min.css`,
+        `${baseUrl}fontawesome/css/sharp-solid.min.css`,
+    ],
     staticDirectories: ["static", "storybook"],
 };
 

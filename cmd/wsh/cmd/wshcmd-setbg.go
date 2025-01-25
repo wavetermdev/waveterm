@@ -140,7 +140,7 @@ func setBgRun(cmd *cobra.Command, args []string) (rtnErr error) {
 			}
 
 			// Create URL-safe path
-			escapedPath := strings.ReplaceAll(absPath, "\\", "\\\\")
+			escapedPath := filepath.ToSlash(absPath)
 			escapedPath = strings.ReplaceAll(escapedPath, "'", "\\'")
 			bgStyle = fmt.Sprintf("url('%s')", escapedPath)
 

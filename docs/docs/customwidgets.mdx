@@ -66,7 +66,7 @@ This `WidgetConfigType` is shared between all types of widgets. That is to say, 
 
 The other options are part of the inner `MetaTSType` (outlined in blue in the image). This contains all of the details about how the widget actually works. The valid keys vary with each type of widget. They will be individually explored in more detail below.
 
-# Terminal and CLI Widgets
+## Terminal and CLI Widgets
 
 A terminal widget, or CLI widget, is a widget that simply opens a terminal and runs a CLI command. They tend to look something like the example below:
 
@@ -80,7 +80,7 @@ A terminal widget, or CLI widget, is a widget that simply opens a terminal and r
         "blockdef": {
             "meta": {
                 "view": "term",
-                "controller": "cmd"
+                "controller": "cmd",
                 "cmd": "<the actual cli command>"
             }
         }
@@ -110,7 +110,7 @@ The `WidgetConfigType` takes the usual options common to all widgets. The `MetaT
 | "term:localshellpath"  | (optional) Sets the shell used for running your widget command. Only works locally. If left blank, wave will determine your system default instead.                                                                                                                                |
 | "term:localshellopts"  | (optional) Sets the shell options meant to be used with `"term:localshellpath"`. This is useful if you are using a nonstandard shell and need to provide a specific option that we do not cover. Only works locally. Defaults to an empty string.                                  |
 
-## Example Shell Widgets
+### Example Local Shell Widgets
 
 If you have multiple shells installed on your machine, there may be times when you want to use a non-default shell. For cases like this, it is easy to create a widget for each.
 
@@ -172,7 +172,29 @@ It is possible that `pwsh` is not in your path. If this is true, using `"pwsh"` 
 Windows. but it may be different on your system. Also note that both `pwsh.exe` and `pwsh` work on Windows, but only `pwsh` works on Unix systems.
 :::
 
-## Example Cmd Widgets
+### Example Remote Shell Widgets
+
+If you want to open a terminal widget for a particular connection (SSH or WSL), you can use the `connection` meta key. The connection key's value should match connections.json (or what's in your connections dropdown menu). Note that you should only use the canonical name (do not use any custom "display:name" that you've set). For WSL that might look like `wsl://Ubuntu`, and for SSH connections that might look like `user@remotehostname`.
+
+```json
+{
+	<... other widgets go here ...>,
+	"remote-term": {
+		"icon": "rectangle-terminal",
+		"label": "remote",
+		"blockdef": {
+			"meta": {
+				"view": "term",
+				"controller": "shell",
+				"connection": "<connection>"
+			}
+		}
+	},
+	<... other widgets go here ...>
+}
+```
+
+### Example Cmd Widgets
 
 Here are a few simple cmd widgets to serve as examples.
 
@@ -227,7 +249,7 @@ This adds an icon to the widget bar that you can press to launch a terminal runn
 
 Because this is a TUI app that does not return anything when closed, the `"cmd:clearonstart"` option doesn't change the behavior, so it has been excluded.
 
-# Web Widgets
+## Web Widgets
 
 Sometimes, it is desireable to open a page directly to a website. That can easily be accomplished by creating a custom `"web"` widget. They have the following form in general:
 
@@ -256,7 +278,7 @@ The `WidgetConfigType` takes the usual options common to all widgets. The `MetaT
 | "url" | This string is the url of the current page. As part of a widget, it will serve as the page the widget starts at. If not specified, this will default to the globally configurable `"web:defaulturl"` which is [https://github.com/wavetermdev/waveterm](https://github.com/wavetermdev/waveterm) on a fresh install. |
 | "pinnedurl" | (optional) This string is the url the homepage button will take you to. If not specified, this will default to the globally configurable `"web:defaulturl"` which is [https://github.com/wavetermdev/waveterm](https://github.com/wavetermdev/waveterm) on a fresh install. |
 
-## Example Web Widgets
+### Example Web Widgets
 
 Say you want a widget that automatically starts at YouTube and will use YouTube as the home page. This can be done using:
 
@@ -304,7 +326,7 @@ Alternatively, say you want a web widget that opens to github as if it were a bo
 This adds an icon to the widget bar that you can press to launch a web widget on the github homepage.
 ![The example speedtest widget](./img/widget-example-github.webp)
 
-# Sysinfo Widgets
+## Sysinfo Widgets
 
 The Sysinfo Widget is intentionally kept to a very small subset of possible values that we will expand over time. But it is still possible to configure your own version of it&mdash;for instance, if you want to load a different plot by default. The general form of this widget is:
 
@@ -334,7 +356,7 @@ The `WidgetConfigType` takes the usual options common to all widgets. The `MetaT
 | "graph:numpoints" | The maximum amount of points that can be shown on the graph. Equivalently, the number of seconds the graph window covers. This defaults to 100.|
 | "sysinfo:type" | A string representing the collection of types to show on the graph. Valid values for this are `"CPU"`, `"Mem"`, `"CPU + Mem"`, and `All CPU`. Note that these are case sensitive. If no value is provided, the plot will default to showing `"CPU"`.|
 
-## Example Sysinfo Widgets
+### Example Sysinfo Widgets
 
 Suppose you have a build process that lasts 3 minutes and you'd like to be able to see the entire build on the sysinfo graph. Also, you would really like to view both the cpu and memory since both are impacted by this process. In that case, you can set up a widget as follows:
 
@@ -381,3 +403,17 @@ Now, suppose you are fine with the default 100 points (and 100 seconds) but woul
 This adds an icon to the widget bar that you can press to launch All CPU plots by default.
 
 ![The example speedtest widget](./img/widget-example-all-cpu.webp)
+
+## Overriding Default Widgets
+
+Wave ships with 5 default widgets in the widgets bar (terminal, files, web, ai, and sysinfo). You can modify or remove these by overriding their config in widgets.json. The names of the 5 widgets, in order, are:
+
+- `defwidget@terminal`
+- `defwidget@files`
+- `defwidget@web`
+- `defwidget@ai`
+- `defwidget@sysinfo`
+
+To remove any of them, just set that key to `null` in your widgets.json file.
+
+To see their definitions, to copy/paste them, or to understand how they work, you can view all of their definitions on [GitHub - default widgets.json](https://github.com/wavetermdev/waveterm/blob/main/pkg/wconfig/defaultconfig/widgets.json)

@@ -13,10 +13,12 @@ import { Markdown } from "@/element/markdown";
 import {
     atoms,
     createBlock,
+    getApi,
     getConnStatusAtom,
     getOverrideConfigAtom,
     getSettingsKeyAtom,
     globalStore,
+    PLATFORM,
     refocusNode,
 } from "@/store/global";
 import * as services from "@/store/services";
@@ -24,7 +26,15 @@ import * as WOS from "@/store/wos";
 import { getWebServerEndpoint } from "@/util/endpoints";
 import { goHistory, goHistoryBack, goHistoryForward } from "@/util/historyutil";
 import { adaptFromReactOrNativeKeyEvent, checkKeyPressed, keydownWrapper } from "@/util/keyutil";
-import { base64ToString, fireAndForget, isBlank, jotaiLoadableValue, makeConnRoute, stringToBase64 } from "@/util/util";
+import {
+    base64ToString,
+    fireAndForget,
+    isBlank,
+    jotaiLoadableValue,
+    makeConnRoute,
+    makeNativeLabel,
+    stringToBase64,
+} from "@/util/util";
 import { Monaco } from "@monaco-editor/react";
 import clsx from "clsx";
 import { Atom, atom, Getter, PrimitiveAtom, useAtomValue, useSetAtom, WritableAtom } from "jotai";
@@ -117,6 +127,7 @@ export class PreviewModel implements ViewModel {
     viewType: string;
     blockId: string;
     nodeModel: BlockNodeModel;
+    noPadding?: Atom<boolean>;
     blockAtom: Atom<Block>;
     viewIcon: Atom<string | IconButtonDecl>;
     viewName: Atom<string>;
@@ -138,6 +149,7 @@ export class PreviewModel implements ViewModel {
     loadableStatFilePath: Atom<Loadable<string>>;
     loadableFileInfo: Atom<Loadable<FileInfo>>;
     connection: Atom<Promise<string>>;
+    connectionImmediate: Atom<string>;
     statFile: Atom<Promise<FileInfo>>;
     fullFile: Atom<Promise<FileData>>;
     fileMimeType: Atom<Promise<string>>;
@@ -363,6 +375,9 @@ export class PreviewModel implements ViewModel {
             }
             return connName;
         });
+        this.connectionImmediate = atom<string>((get) => {
+            return get(this.blockAtom)?.meta?.connection;
+        });
         this.statFile = atom<Promise<FileInfo>>(async (get) => {
             const fileName = get(this.metaFilePath);
             if (fileName == null) {
@@ -370,7 +385,7 @@ export class PreviewModel implements ViewModel {
             }
             const statFile = await RpcApi.FileInfoCommand(TabRpcClient, {
                 info: {
-                    path: await this.formatRemoteUri(fileName),
+                    path: await this.formatRemoteUri(fileName, get),
                 },
             });
             console.log("stat file", statFile);
@@ -391,7 +406,7 @@ export class PreviewModel implements ViewModel {
             }
             const file = await RpcApi.FileReadCommand(TabRpcClient, {
                 info: {
-                    path: await this.formatRemoteUri(fileName),
+                    path: await this.formatRemoteUri(fileName, get),
                 },
             });
             console.log("full file", file);
@@ -433,6 +448,8 @@ export class PreviewModel implements ViewModel {
             const connAtom = getConnStatusAtom(connName);
             return get(connAtom);
         });
+
+        this.noPadding = atom(true);
     }
 
     markdownShowTocToggle() {
@@ -601,7 +618,7 @@ export class PreviewModel implements ViewModel {
         try {
             await RpcApi.FileWriteCommand(TabRpcClient, {
                 info: {
-                    path: await this.formatRemoteUri(filePath),
+                    path: await this.formatRemoteUri(filePath, globalStore.get),
                 },
                 data64: stringToBase64(newFileContent),
             });
@@ -674,17 +691,40 @@ export class PreviewModel implements ViewModel {
                 label: "Open Terminal in New Block",
                 click: () =>
                     fireAndForget(async () => {
+                        const conn = await globalStore.get(this.connection);
                         const fileInfo = await globalStore.get(this.statFile);
                         const termBlockDef: BlockDef = {
                             meta: {
                                 view: "term",
                                 controller: "shell",
                                 "cmd:cwd": fileInfo.dir,
+                                connection: conn,
                             },
                         };
                         await createBlock(termBlockDef);
                     }),
             });
+            const conn = globalStore.get(this.connectionImmediate);
+            if (!conn) {
+                menuItems.push({
+                    label: makeNativeLabel(PLATFORM, true, true),
+                    click: async () => {
+                        const fileInfo = await globalStore.get(this.statFile);
+                        getApi().openNativePath(fileInfo.dir);
+                    },
+                });
+            }
+        } else {
+            const conn = globalStore.get(this.connectionImmediate);
+            if (!conn) {
+                menuItems.push({
+                    label: makeNativeLabel(PLATFORM, false, false),
+                    click: async () => {
+                        const fileInfo = await globalStore.get(this.statFile);
+                        getApi().openNativePath(`${fileInfo.dir}/${fileInfo.name}`);
+                    },
+                });
+            }
         }
         const loadableSV = globalStore.get(this.loadableSpecializedView);
         const wordWrapAtom = getOverrideConfigAtom(this.blockId, "editor:wordwrap");
@@ -777,8 +817,8 @@ export class PreviewModel implements ViewModel {
         return false;
     }
 
-    async formatRemoteUri(path: string): Promise<string> {
-        const conn = (await globalStore.get(this.connection)) ?? "local";
+    async formatRemoteUri(path: string, get: Getter): Promise<string> {
+        const conn = (await get(this.connection)) ?? "local";
         return `wsh://${conn}/${path}`;
     }
 }
@@ -825,7 +865,7 @@ function StreamingPreview({ model }: SpecializedViewProps) {
     if (fileInfo.mimetype == "application/pdf") {
         return (
             <div className="view-preview view-preview-pdf">
-                <iframe src={streamingUrl} width="95%" height="95%" name="pdfview" />
+                <iframe src={streamingUrl} width="100%" height="100%" name="pdfview" />
             </div>
         );
     }

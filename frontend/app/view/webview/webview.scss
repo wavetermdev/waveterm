@@ -11,6 +11,7 @@
     padding: 0;
     margin: 0;
     user-select: none;
+    border-radius: 0 0 var(--block-border-radius) var(--block-border-radius);
 
     // try to force pixel alignment to prevent
     // subpixel rendering artifacts

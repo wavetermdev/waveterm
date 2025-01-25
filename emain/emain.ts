@@ -3,6 +3,7 @@
 
 import { RpcApi } from "@/app/store/wshclientapi";
 import * as electron from "electron";
+import { globalEvents } from "emain/emain-events";
 import { FastAverageColor } from "fast-average-color";
 import fs from "fs";
 import * as child_process from "node:child_process";
@@ -45,7 +46,7 @@ import {
 import { ElectronWshClient, initElectronWshClient } from "./emain-wsh";
 import { getLaunchSettings } from "./launchsettings";
 import { log } from "./log";
-import { makeAppMenu } from "./menu";
+import { makeAppMenu, makeDockTaskbar } from "./menu";
 import {
     callWithOriginalXdgCurrentDesktopAsync,
     checkIfRunningUnderARM64Translation,
@@ -572,6 +573,17 @@ process.on("uncaughtException", (error) => {
     electronApp.quit();
 });
 
+let lastWaveWindowCount = 0;
+globalEvents.on("windows-updated", () => {
+    const wwCount = getAllWaveWindows().length;
+    if (wwCount == lastWaveWindowCount) {
+        return;
+    }
+    lastWaveWindowCount = wwCount;
+    console.log("windows-updated", wwCount);
+    makeAppMenu();
+});
+
 async function appMain() {
     // Set disableHardwareAcceleration as early as possible, if required.
     const launchSettings = getLaunchSettings();
@@ -611,6 +623,7 @@ async function appMain() {
     setTimeout(runActiveTimer, 5000); // start active timer, wait 5s just to be safe
 
     makeAppMenu();
+    makeDockTaskbar();
     await configureAutoUpdater();
     setGlobalIsStarting(false);
     if (fullConfig?.settings?.["window:maxtabcachesize"] != null) {

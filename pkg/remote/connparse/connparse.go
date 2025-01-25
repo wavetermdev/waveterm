@@ -6,6 +6,7 @@ package connparse
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
@@ -20,6 +21,9 @@ const (
 	ConnHostCurrent = "current"
 	ConnHostWaveSrv = "wavesrv"
 )
+
+var windowsDriveRegex = regexp.MustCompile(`^[a-zA-Z]:`)
+var wslConnRegex = regexp.MustCompile(`^wsl://[^/]+`)
 
 type Connection struct {
 	Scheme string
@@ -83,11 +87,11 @@ func GetConnNameFromContext(ctx context.Context) (string, error) {
 
 // ParseURI parses a connection URI and returns the connection type, host/path, and parameters.
 func ParseURI(uri string) (*Connection, error) {
-	split := strings.SplitN(uri, "://", 2)
+	split := strings.SplitN(uri, "//", 2)
 	var scheme string
 	var rest string
 	if len(split) > 1 {
-		scheme = split[0]
+		scheme = strings.TrimSuffix(split[0], ":")
 		rest = split[1]
 	} else {
 		rest = split[0]
@@ -95,18 +99,36 @@ func ParseURI(uri string) (*Connection, error) {
 
 	var host string
 	var remotePath string
-	if scheme == "" {
-		scheme = ConnectionTypeWsh
-		if strings.HasPrefix(rest, "//") {
-			rest = strings.TrimPrefix(rest, "//")
+
+	parseGenericPath := func() {
+		split = strings.SplitN(rest, "/", 2)
+		host = split[0]
+		if len(split) > 1 {
+			remotePath = split[1]
+		} else {
 			split = strings.SplitN(rest, "/", 2)
+			host = split[0]
 			if len(split) > 1 {
-				host = split[0]
-				remotePath = "/" + split[1]
+				remotePath = split[1]
 			} else {
-				host = split[0]
 				remotePath = "/"
 			}
+		}
+	}
+	parseWshPath := func() {
+		if strings.HasPrefix(rest, "wsl://") {
+			host = wslConnRegex.FindString(rest)
+			remotePath = strings.TrimPrefix(rest, host)
+		} else {
+			parseGenericPath()
+		}
+	}
+
+	if scheme == "" {
+		scheme = ConnectionTypeWsh
+		if len(rest) != len(uri) {
+			// This accounts for when the uri starts with "//", which would get trimmed in the first split.
+			parseWshPath()
 		} else if strings.HasPrefix(rest, "/~") {
 			host = wshrpc.LocalConnName
 			remotePath = rest
@@ -114,15 +136,10 @@ func ParseURI(uri string) (*Connection, error) {
 			host = ConnHostCurrent
 			remotePath = rest
 		}
+	} else if scheme == ConnectionTypeWsh {
+		parseWshPath()
 	} else {
-		split = strings.SplitN(rest, "/", 2)
-		if len(split) > 1 {
-			host = split[0]
-			remotePath = "/" + split[1]
-		} else {
-			host = split[0]
-			remotePath = "/"
-		}
+		parseGenericPath()
 	}
 
 	if scheme == ConnectionTypeWsh {
@@ -131,6 +148,8 @@ func ParseURI(uri string) (*Connection, error) {
 		}
 		if strings.HasPrefix(remotePath, "/~") {
 			remotePath = strings.TrimPrefix(remotePath, "/")
+		} else if len(remotePath) > 1 && !windowsDriveRegex.MatchString(remotePath) && !strings.HasPrefix(remotePath, "/") && !strings.HasPrefix(remotePath, "~") {
+			remotePath = "/" + remotePath
 		}
 	}
 
