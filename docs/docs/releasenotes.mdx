@@ -33,7 +33,7 @@ Behind the scenes, we've redesigned our remote file protocol, laying the groundw
 - Custom widgets can now be launched in magnified mode
 - Various workspace UX improvements around closing/deleting
 - file:/// urls now work in web widget
-- Increased size of files allowed in `wsh ai`
+- Increased max size of files allowed in `wsh ai` to 50k
 - Increased maximum allowed term:scrollback to 50k lines
 - Allow connections to entirely be defined in connections.json without relying on ~/.ssh/config
 - Added an option to reveal files in external file viewer for local connection
@@ -53,6 +53,7 @@ Behind the scenes, we've redesigned our remote file protocol, laying the groundw
 - [bugfix] Connections launch without wsh if the unix domain socket can't be opened
 - [bugfix] Connection status list lights up correctly with currently connected connections
 - [bugfix] Use en_US.UTF-8 if the requested LANG is not available in your terminal
+- Other bug fixes, performance improvements, and dependency updates
 
 ### v0.10.4 &mdash; Dec 20, 2024
 
