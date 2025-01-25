@@ -534,21 +534,26 @@ export class PreviewModel implements ViewModel {
 
         const linkedTerminalId = blockMeta?.["preview:linked_terminal"];
         if (linkedTerminalId && !this.isUpdatingFromTerminal) {
-            const fileInfo = await RpcApi.FileInfoCommand(TabRpcClient, {
-                info: {
-                    path: await this.formatRemoteUri(newPath, globalStore.get),
-                },
-            });
-            if (fileInfo?.isdir) {
-                const terminalBlockRef = WOS.makeORef("block", linkedTerminalId);
-                await services.ObjectService.UpdateObjectMeta(terminalBlockRef, {
-                    "cmd:cwd": fileInfo.dir
+            try {
+                const fileInfo = await RpcApi.FileInfoCommand(TabRpcClient, {
+                    info: {
+                        path: await this.formatRemoteUri(newPath, globalStore.get),
+                    },
                 });
-                
-                await RpcApi.ControllerInputCommand(TabRpcClient, {
-                    blockid: linkedTerminalId,
-                    inputdata64: btoa(`cd "${fileInfo.dir}"\n`),
-                });
+                if (fileInfo?.isdir) {
+                    const terminalBlockRef = WOS.makeORef("block", linkedTerminalId);
+                    await services.ObjectService.UpdateObjectMeta(terminalBlockRef, {
+                        "cmd:cwd": fileInfo.dir
+                    });
+                    
+                    await RpcApi.ControllerInputCommand(TabRpcClient, {
+                        blockid: linkedTerminalId,
+                        inputdata64: btoa(`cd "${fileInfo.dir}"\n`),
+                    });
+                }
+            } catch (error) {
+                console.error("Failed to sync terminal directory:", error);
+                // Consider showing a user-friendly error notification
             }
         }
 
