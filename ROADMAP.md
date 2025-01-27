@@ -29,13 +29,12 @@ Currently in beta, targeting release on 1/24.
 Likely to follow v0.11 by 1 week.
 
 - 🔧 Reduce main-line 2FA requests to 1 per connection
-- 🔷 Frontend Only Widgets, React + Babel Transpiling in an iframe/webview
-- 🔷 Monaco Theming
 - 🔧 Remote S3 bucket browsing (directory + files)
 - 🔷 Drag & drop between preview blocks
-- 🔷 Drag into a preview directory from the native file browser or desktop to copy a file
+- 🔷 Drag into/out of a preview block from native file explorer
 - 🔷 Wave Apps (Go SDK)
-- 🤞 Explore VSCode Extension Compatibility with standalone Monaco Editor (language servers)
+- 🔷 JSON schema support (basic)
+- 🤞 Frontend Only Widgets, React + Babel Transpiling in an iframe/webview
 
 ## v0.12
 
@@ -50,3 +49,8 @@ Likely to follow v0.11 by 1 week.
   - 🔷 Re-assign system keybindings
 - 🔷 Command Palette
 - 🔷 AI Context
+- 🔷 Monaco Theming
+- 🔷 File system watching for Preview
+- 🔷 File system watching for drag and drop
+- 🤞 Explore VSCode Extension Compatibility with standalone Monaco Editor (language servers)
+- 🤞 VSCode File Icons in Preview
