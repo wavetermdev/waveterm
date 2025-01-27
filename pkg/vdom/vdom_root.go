@@ -46,6 +46,7 @@ type RootElem struct {
 	NeedsRenderMap  map[string]bool
 	Atoms           map[string]*Atom
 	RefOperations   []VDomRefOperation
+	FeRenderContext *VDomRenderContext
 }
 
 const (

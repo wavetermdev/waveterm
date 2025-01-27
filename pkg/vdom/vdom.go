@@ -425,6 +425,15 @@ func UseRenderTs(ctx context.Context) int64 {
 	return vc.Root.RenderTs
 }
 
+// may be nil before the first render
+func UseFeRenderContext(ctx context.Context) *VDomRenderContext {
+	vc := getRenderContext(ctx)
+	if vc == nil {
+		panic("UseFeRenderContext must be called within a component (no context)")
+	}
+	return vc.Root.FeRenderContext
+}
+
 func QueueRefOp(ctx context.Context, ref *VDomRef, op VDomRefOperation) {
 	if ref == nil || !ref.HasCurrent {
 		return

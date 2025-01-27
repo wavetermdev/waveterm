@@ -47,6 +47,7 @@ func (impl *WaveAppServerImpl) VDomRenderCommand(ctx context.Context, feUpdate v
 	}
 
 	impl.Client.Root.RenderTs = feUpdate.Ts
+	impl.Client.Root.RenderContext = &feUpdate.RenderContext
 
 	// set atoms
 	for _, ss := range feUpdate.StateSync {
