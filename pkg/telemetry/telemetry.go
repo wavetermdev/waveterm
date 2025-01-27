@@ -35,7 +35,7 @@ type TEvent struct {
 	RawProps string `json:"-" db:"props"`
 }
 
-func NewTEvent(event string, props map[string]any) *TEvent {
+func MakeTEvent(event string, props map[string]any) *TEvent {
 	if event == "" {
 		panic("TEvent.Event cannot be empty")
 	}
