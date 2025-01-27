@@ -1,4 +1,4 @@
-// Copyright 2024, Command Line Inc.
+// Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 package wavebase
@@ -17,6 +17,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 )
 
 // set by main-server.go
@@ -24,12 +26,25 @@ var WaveVersion = "0.0.0"
 var BuildTime = "0"
 
 const (
-	WaveConfigHomeEnvVar = "WAVETERM_CONFIG_HOME"
-	WaveDataHomeEnvVar   = "WAVETERM_DATA_HOME"
-	WaveAppPathVarName   = "WAVETERM_APP_PATH"
-	WaveDevVarName       = "WAVETERM_DEV"
-	WaveDevViteVarName   = "WAVETERM_DEV_VITE"
+	WaveConfigHomeEnvVar      = "WAVETERM_CONFIG_HOME"
+	WaveDataHomeEnvVar        = "WAVETERM_DATA_HOME"
+	WaveAppPathVarName        = "WAVETERM_APP_PATH"
+	WaveDevVarName            = "WAVETERM_DEV"
+	WaveDevViteVarName        = "WAVETERM_DEV_VITE"
+	WaveWshForceUpdateVarName = "WAVETERM_WSHFORCEUPDATE"
+
+	WaveJwtTokenVarName  = "WAVETERM_JWT"
+	WaveSwapTokenVarName = "WAVETERM_SWAPTOKEN"
 )
+
+const (
+	BlockFile_Term  = "term"            // used for main pty output
+	BlockFile_Cache = "cache:term:full" // for cached block
+	BlockFile_VDom  = "vdom"            // used for alt html layout
+	BlockFile_Env   = "env"
+)
+
+const NeedJwtConst = "NEED-JWT"
 
 var ConfigHome_VarCache string // caches WAVETERM_CONFIG_HOME
 var DataHome_VarCache string   // caches WAVETERM_DATA_HOME
@@ -199,28 +214,41 @@ func TryMkdirs(dirName string, perm os.FileMode, dirDesc string) error {
 	return nil
 }
 
+func listValidLangs(ctx context.Context) []string {
+	out, err := exec.CommandContext(ctx, "locale", "-a").CombinedOutput()
+	if err != nil {
+		log.Printf("error running 'locale -a': %s\n", err)
+		return []string{}
+	}
+	// don't bother with CRLF line endings
+	// this command doesn't work on windows
+	return strings.Split(string(out), "\n")
+}
+
 var osLangOnce = &sync.Once{}
 var osLang string
 
 func determineLang() string {
+	defaultLang := "en_US.UTF-8"
 	ctx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancelFn()
 	if runtime.GOOS == "darwin" {
 		out, err := exec.CommandContext(ctx, "defaults", "read", "-g", "AppleLocale").CombinedOutput()
 		if err != nil {
-			log.Printf("error executing 'defaults read -g AppleLocale': %v\n", err)
-			return ""
+			log.Printf("error executing 'defaults read -g AppleLocale', will use default 'en_US.UTF-8': %v\n", err)
+			return defaultLang
 		}
 		strOut := string(out)
 		truncOut := strings.Split(strOut, "@")[0]
-		return strings.TrimSpace(truncOut) + ".UTF-8"
-	} else if runtime.GOOS == "win32" {
-		out, err := exec.CommandContext(ctx, "Get-Culture", "|", "select", "-exp", "Name").CombinedOutput()
-		if err != nil {
-			log.Printf("error executing 'Get-Culture | select -exp Name': %v\n", err)
-			return ""
+		preferredLang := strings.TrimSpace(truncOut) + ".UTF-8"
+		validLangs := listValidLangs(ctx)
+
+		if !utilfn.ContainsStr(validLangs, preferredLang) {
+			log.Printf("unable to use desired lang %s, will use default 'en_US.UTF-8'\n", preferredLang)
+			return defaultLang
 		}
-		return strings.TrimSpace(string(out)) + ".UTF-8"
+
+		return preferredLang
 	} else {
 		// this is specifically to get the wavesrv LANG so waveshell
 		// on a remote uses the same LANG

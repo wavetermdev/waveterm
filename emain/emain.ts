@@ -1,8 +1,9 @@
-// Copyright 2024, Command Line Inc.
+// Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 import { RpcApi } from "@/app/store/wshclientapi";
 import * as electron from "electron";
+import { globalEvents } from "emain/emain-events";
 import { FastAverageColor } from "fast-average-color";
 import fs from "fs";
 import * as child_process from "node:child_process";
@@ -14,7 +15,7 @@ import * as services from "../frontend/app/store/services";
 import { initElectronWshrpc, shutdownWshrpc } from "../frontend/app/store/wshrpcutil";
 import { getWebServerEndpoint } from "../frontend/util/endpoints";
 import * as keyutil from "../frontend/util/keyutil";
-import { fireAndForget } from "../frontend/util/util";
+import { fireAndForget, sleep } from "../frontend/util/util";
 import { AuthKey, configureAuthKeyRequestInjection } from "./authkey";
 import { initDocsite } from "./docsite";
 import {
@@ -45,8 +46,9 @@ import {
 import { ElectronWshClient, initElectronWshClient } from "./emain-wsh";
 import { getLaunchSettings } from "./launchsettings";
 import { log } from "./log";
-import { makeAppMenu } from "./menu";
+import { makeAppMenu, makeDockTaskbar } from "./menu";
 import {
+    callWithOriginalXdgCurrentDesktopAsync,
     checkIfRunningUnderARM64Translation,
     getElectronAppBasePath,
     getElectronAppUnpackedBasePath,
@@ -94,7 +96,7 @@ function handleWSEvent(evtMsg: WSEventType) {
             if (windowData == null) {
                 return;
             }
-            const fullConfig = await services.FileService.GetFullConfig();
+            const fullConfig = await RpcApi.GetFullConfigCommand(ElectronWshClient);
             const newWin = await createBrowserWindow(windowData, fullConfig, { unamePlatform });
             newWin.show();
         } else if (evtMsg.eventtype == "electron:closewindow") {
@@ -121,9 +123,13 @@ function handleWSEvent(evtMsg: WSEventType) {
 // Listen for the open-external event from the renderer process
 electron.ipcMain.on("open-external", (event, url) => {
     if (url && typeof url === "string") {
-        electron.shell.openExternal(url).catch((err) => {
-            console.error(`Failed to open URL ${url}:`, err);
-        });
+        fireAndForget(() =>
+            callWithOriginalXdgCurrentDesktopAsync(() =>
+                electron.shell.openExternal(url).catch((err) => {
+                    console.error(`Failed to open URL ${url}:`, err);
+                })
+            )
+        );
     } else {
         console.error("Invalid URL received in open-external event:", url);
     }
@@ -311,7 +317,7 @@ if (unamePlatform !== "darwin") {
 
     electron.ipcMain.on("update-window-controls-overlay", async (event, rect: Dimensions) => {
         // Bail out if the user requests the native titlebar
-        const fullConfig = await services.FileService.GetFullConfig();
+        const fullConfig = await RpcApi.GetFullConfigCommand(ElectronWshClient);
         if (fullConfig.settings["window:nativetitlebar"]) return;
 
         const zoomFactor = event.sender.getZoomFactor();
@@ -347,9 +353,11 @@ electron.ipcMain.on("quicklook", (event, filePath: string) => {
 electron.ipcMain.on("open-native-path", (event, filePath: string) => {
     console.log("open-native-path", filePath);
     fireAndForget(() =>
-        electron.shell.openPath(filePath).then((excuse) => {
-            if (excuse) console.error(`Failed to open ${filePath} in native application: ${excuse}`);
-        })
+        callWithOriginalXdgCurrentDesktopAsync(() =>
+            electron.shell.openPath(filePath).then((excuse) => {
+                if (excuse) console.error(`Failed to open ${filePath} in native application: ${excuse}`);
+            })
+        )
     );
 });
 
@@ -565,6 +573,17 @@ process.on("uncaughtException", (error) => {
     electronApp.quit();
 });
 
+let lastWaveWindowCount = 0;
+globalEvents.on("windows-updated", () => {
+    const wwCount = getAllWaveWindows().length;
+    if (wwCount == lastWaveWindowCount) {
+        return;
+    }
+    lastWaveWindowCount = wwCount;
+    console.log("windows-updated", wwCount);
+    makeAppMenu();
+});
+
 async function appMain() {
     // Set disableHardwareAcceleration as early as possible, if required.
     const launchSettings = getLaunchSettings();
@@ -588,19 +607,23 @@ async function appMain() {
     console.log("wavesrv ready signal received", ready, Date.now() - startTs, "ms");
     await electronApp.whenReady();
     configureAuthKeyRequestInjection(electron.session.defaultSession);
-    const fullConfig = await services.FileService.GetFullConfig();
-    checkIfRunningUnderARM64Translation(fullConfig);
-    ensureHotSpareTab(fullConfig);
-    await relaunchBrowserWindows();
-    await initDocsite();
-    setTimeout(runActiveTimer, 5000); // start active timer, wait 5s just to be safe
+
+    await sleep(10); // wait a bit for wavesrv to be ready
     try {
         initElectronWshClient();
         initElectronWshrpc(ElectronWshClient, { authKey: AuthKey });
     } catch (e) {
         console.log("error initializing wshrpc", e);
     }
+    const fullConfig = await RpcApi.GetFullConfigCommand(ElectronWshClient);
+    checkIfRunningUnderARM64Translation(fullConfig);
+    ensureHotSpareTab(fullConfig);
+    await relaunchBrowserWindows();
+    await initDocsite();
+    setTimeout(runActiveTimer, 5000); // start active timer, wait 5s just to be safe
+
     makeAppMenu();
+    makeDockTaskbar();
     await configureAutoUpdater();
     setGlobalIsStarting(false);
     if (fullConfig?.settings?.["window:maxtabcachesize"] != null) {

@@ -1,4 +1,4 @@
-// Copyright 2024, Command Line Inc.
+// Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 import { Block, SubBlock } from "@/app/block/block";
@@ -682,6 +682,45 @@ class TermViewModel implements ViewModel {
                 },
             });
         }
+        const debugConn = blockData?.meta?.["term:conndebug"];
+        fullMenu.push({
+            label: "Debug Connection",
+            submenu: [
+                {
+                    label: "Off",
+                    type: "checkbox",
+                    checked: !debugConn,
+                    click: () => {
+                        RpcApi.SetMetaCommand(TabRpcClient, {
+                            oref: WOS.makeORef("block", this.blockId),
+                            meta: { "term:conndebug": null },
+                        });
+                    },
+                },
+                {
+                    label: "Info",
+                    type: "checkbox",
+                    checked: debugConn == "info",
+                    click: () => {
+                        RpcApi.SetMetaCommand(TabRpcClient, {
+                            oref: WOS.makeORef("block", this.blockId),
+                            meta: { "term:conndebug": "info" },
+                        });
+                    },
+                },
+                {
+                    label: "Verbose",
+                    type: "checkbox",
+                    checked: debugConn == "debug",
+                    click: () => {
+                        RpcApi.SetMetaCommand(TabRpcClient, {
+                            oref: WOS.makeORef("block", this.blockId),
+                            meta: { "term:conndebug": "debug" },
+                        });
+                    },
+                },
+            ],
+        });
         return fullMenu;
     }
 }
@@ -927,8 +966,9 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
         const fullConfig = globalStore.get(atoms.fullConfigAtom);
         const termThemeName = globalStore.get(model.termThemeNameAtom);
         const termTransparency = globalStore.get(model.termTransparencyAtom);
+        const termBPMAtom = getOverrideConfigAtom(blockId, "term:allowbracketedpaste");
         const [termTheme, _] = computeTheme(fullConfig, termThemeName, termTransparency);
-        let termScrollback = 1000;
+        let termScrollback = 2000;
         if (termSettings?.["term:scrollback"]) {
             termScrollback = Math.floor(termSettings["term:scrollback"]);
         }
@@ -938,9 +978,10 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
         if (termScrollback < 0) {
             termScrollback = 0;
         }
-        if (termScrollback > 10000) {
-            termScrollback = 10000;
+        if (termScrollback > 50000) {
+            termScrollback = 50000;
         }
+        const termAllowBPM = globalStore.get(termBPMAtom) ?? false;
         const wasFocused = model.termRef.current != null && globalStore.get(model.nodeModel.isFocused);
         const termWrap = new TermWrap(
             blockId,
@@ -955,6 +996,7 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
                 allowTransparency: true,
                 scrollback: termScrollback,
                 allowProposedApi: true, // Required by @xterm/addon-search to enable search functionality and decorations
+                ignoreBracketedPasteMode: !termAllowBPM,
             },
             {
                 keydownHandler: model.handleTerminalKeydown.bind(model),

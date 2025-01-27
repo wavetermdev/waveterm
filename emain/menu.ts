@@ -1,4 +1,4 @@
-// Copyright 2024, Command Line Inc.
+// Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 import { waveEventSubscribe } from "@/app/store/wps";
@@ -10,6 +10,7 @@ import {
     createNewWaveWindow,
     createWorkspace,
     focusedWaveWindow,
+    getAllWaveWindows,
     getWaveWindowByWorkspaceId,
     relaunchBrowserWindows,
     WaveBrowserWindow,
@@ -67,7 +68,11 @@ async function getWorkspaceMenu(ww?: WaveBrowserWindow): Promise<Electron.MenuIt
     return workspaceMenu;
 }
 
-async function getAppMenu(callbacks: AppMenuCallbacks, workspaceId?: string): Promise<Electron.Menu> {
+async function getAppMenu(
+    numWaveWindows: number,
+    callbacks: AppMenuCallbacks,
+    workspaceId?: string
+): Promise<Electron.Menu> {
     const ww = workspaceId && getWaveWindowByWorkspaceId(workspaceId);
     const fileMenu: Electron.MenuItemConstructorOptions[] = [
         {
@@ -83,6 +88,22 @@ async function getAppMenu(callbacks: AppMenuCallbacks, workspaceId?: string): Pr
             },
         },
     ];
+    if (numWaveWindows == 0) {
+        fileMenu.push({
+            label: "New Window (hidden-1)",
+            accelerator: unamePlatform === "darwin" ? "Command+N" : "Alt+N",
+            acceleratorWorksWhenHidden: true,
+            visible: false,
+            click: () => fireAndForget(callbacks.createNewWaveWindow),
+        });
+        fileMenu.push({
+            label: "New Window (hidden-2)",
+            accelerator: unamePlatform === "darwin" ? "Command+T" : "Alt+T",
+            acceleratorWorksWhenHidden: true,
+            visible: false,
+            click: () => fireAndForget(callbacks.createNewWaveWindow),
+        });
+    }
     const appMenu: Electron.MenuItemConstructorOptions[] = [
         {
             label: "About Wave Terminal",
@@ -299,8 +320,9 @@ async function getAppMenu(callbacks: AppMenuCallbacks, workspaceId?: string): Pr
     return electron.Menu.buildFromTemplate(menuTemplate);
 }
 
-export function instantiateAppMenu(workspaceId?: string): Promise<electron.Menu> {
+export function instantiateAppMenu(numWindows: number, workspaceId?: string): Promise<electron.Menu> {
     return getAppMenu(
+        numWindows,
         {
             createNewWaveWindow,
             relaunchBrowserWindows,
@@ -311,7 +333,8 @@ export function instantiateAppMenu(workspaceId?: string): Promise<electron.Menu>
 
 export function makeAppMenu() {
     fireAndForget(async () => {
-        const menu = await instantiateAppMenu();
+        const wwCount = getAllWaveWindows().length;
+        const menu = await instantiateAppMenu(wwCount);
         electron.Menu.setApplicationMenu(menu);
     });
 }
@@ -351,13 +374,29 @@ electron.ipcMain.on("contextmenu-show", (event, workspaceId: string, menuDefArr?
     if (menuDefArr?.length === 0) {
         return;
     }
+    const wwCount = getAllWaveWindows().length;
     fireAndForget(async () => {
         const menu = menuDefArr
             ? convertMenuDefArrToMenu(workspaceId, menuDefArr)
-            : await instantiateAppMenu(workspaceId);
+            : await instantiateAppMenu(wwCount, workspaceId);
         menu.popup();
     });
     event.returnValue = true;
 });
 
-export { getAppMenu };
+const dockMenu = electron.Menu.buildFromTemplate([
+    {
+        label: "New Window",
+        click() {
+            fireAndForget(createNewWaveWindow);
+        },
+    },
+]);
+
+function makeDockTaskbar() {
+    if (unamePlatform == "darwin") {
+        electron.app.dock.setMenu(dockMenu);
+    }
+}
+
+export { getAppMenu, makeDockTaskbar };

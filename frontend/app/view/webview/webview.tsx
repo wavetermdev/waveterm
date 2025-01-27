@@ -1,4 +1,4 @@
-// Copyright 2024, Command Line Inc.
+// Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 import { BlockNodeModel } from "@/app/block/blocktypes";
@@ -33,6 +33,7 @@ function getWebviewPreloadUrl() {
 export class WebViewModel implements ViewModel {
     viewType: string;
     blockId: string;
+    noPadding?: Atom<boolean>;
     blockAtom: Atom<Block>;
     viewIcon: Atom<string | IconButtonDecl>;
     viewName: Atom<string>;
@@ -58,6 +59,7 @@ export class WebViewModel implements ViewModel {
         this.nodeModel = nodeModel;
         this.viewType = "web";
         this.blockId = blockId;
+        this.noPadding = atom(true);
         this.blockAtom = WOS.getWaveObjectAtom<Block>(`block:${blockId}`);
         this.url = atom();
         const defaultUrlAtom = getSettingsKeyAtom("web:defaulturl");
@@ -429,6 +431,13 @@ export class WebViewModel implements ViewModel {
         return true;
     }
 
+    copyUrlToClipboard() {
+        const url = this.getUrl();
+        if (url != null && url != "") {
+            fireAndForget(() => navigator.clipboard.writeText(url));
+        }
+    }
+
     keyDownHandler(e: WaveKeyboardEvent): boolean {
         if (checkKeyPressed(e, "Cmd:l")) {
             this.urlInputRef?.current?.focus();
@@ -507,6 +516,10 @@ export class WebViewModel implements ViewModel {
 
         const isNavHidden = globalStore.get(this.hideNav);
         return [
+            {
+                label: "Copy URL to Clipboard",
+                click: () => this.copyUrlToClipboard(),
+            },
             {
                 label: "Set Block Homepage",
                 click: () => fireAndForget(() => this.setHomepageUrl(this.getUrl(), "block")),

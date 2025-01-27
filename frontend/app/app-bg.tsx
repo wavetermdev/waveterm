@@ -1,4 +1,4 @@
-// Copyright 2024, Command Line Inc.
+// Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 import { getWebServerEndpoint } from "@/util/endpoints";
@@ -54,7 +54,7 @@ function processBackgroundUrls(cssText: string): string {
                 return;
             }
             // allow absolute paths
-            if (originalUrl.startsWith("/") || originalUrl.startsWith("~/")) {
+            if (originalUrl.startsWith("/") || originalUrl.startsWith("~/") || /^[a-zA-Z]:(\/|\\)/.test(originalUrl)) {
                 const newUrl = encodeFileURL(originalUrl);
                 node.value = newUrl;
                 return;

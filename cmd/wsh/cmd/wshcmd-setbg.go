@@ -1,4 +1,4 @@
-// Copyright 2024, Command Line Inc.
+// Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 package cmd
@@ -12,7 +12,7 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
-	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
+	"github.com/wavetermdev/waveterm/pkg/util/fileutil"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
@@ -131,7 +131,7 @@ func setBgRun(cmd *cobra.Command, args []string) (rtnErr error) {
 				return fmt.Errorf("path is a directory, not an image file")
 			}
 
-			mimeType := utilfn.DetectMimeType(absPath, fileInfo, true)
+			mimeType := fileutil.DetectMimeType(absPath, fileInfo, true)
 			switch mimeType {
 			case "image/jpeg", "image/png", "image/gif", "image/webp", "image/svg+xml":
 				// Valid image type
@@ -140,7 +140,7 @@ func setBgRun(cmd *cobra.Command, args []string) (rtnErr error) {
 			}
 
 			// Create URL-safe path
-			escapedPath := strings.ReplaceAll(absPath, "\\", "\\\\")
+			escapedPath := filepath.ToSlash(absPath)
 			escapedPath = strings.ReplaceAll(escapedPath, "'", "\\'")
 			bgStyle = fmt.Sprintf("url('%s')", escapedPath)
 
@@ -162,7 +162,7 @@ func setBgRun(cmd *cobra.Command, args []string) (rtnErr error) {
 		if err != nil {
 			return fmt.Errorf("error formatting metadata: %v", err)
 		}
-		WriteStdout(string(jsonBytes) + "\n")
+		WriteStdout("%s\n", string(jsonBytes))
 		return nil
 	}
 

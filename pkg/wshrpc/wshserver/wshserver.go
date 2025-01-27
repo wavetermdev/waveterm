@@ -1,4 +1,4 @@
-// Copyright 2024, Command Line Inc.
+// Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 package wshserver
@@ -19,13 +19,18 @@ import (
 
 	"github.com/skratchdot/open-golang/open"
 	"github.com/wavetermdev/waveterm/pkg/blockcontroller"
+	"github.com/wavetermdev/waveterm/pkg/blocklogger"
 	"github.com/wavetermdev/waveterm/pkg/filestore"
+	"github.com/wavetermdev/waveterm/pkg/genconn"
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/remote"
 	"github.com/wavetermdev/waveterm/pkg/remote/conncontroller"
+	"github.com/wavetermdev/waveterm/pkg/remote/fileshare"
 	"github.com/wavetermdev/waveterm/pkg/telemetry"
 	"github.com/wavetermdev/waveterm/pkg/util/envutil"
+	"github.com/wavetermdev/waveterm/pkg/util/shellutil"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
+	"github.com/wavetermdev/waveterm/pkg/util/wavefileutil"
 	"github.com/wavetermdev/waveterm/pkg/waveai"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
@@ -35,6 +40,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
 	"github.com/wavetermdev/waveterm/pkg/wsl"
+	"github.com/wavetermdev/waveterm/pkg/wslconn"
 	"github.com/wavetermdev/waveterm/pkg/wstore"
 )
 
@@ -45,6 +51,19 @@ type WshServer struct{}
 func (*WshServer) WshServerImpl() {}
 
 var WshServerImpl = WshServer{}
+
+// TODO remove this after implementing in multiproxy, just for wsl
+func (ws *WshServer) AuthenticateTokenCommand(ctx context.Context, data wshrpc.CommandAuthenticateTokenData) (wshrpc.CommandAuthenticateRtnData, error) {
+	entry := shellutil.GetAndRemoveTokenSwapEntry(data.Token)
+	if entry == nil {
+		return wshrpc.CommandAuthenticateRtnData{}, fmt.Errorf("invalid token")
+	}
+	rtn := wshrpc.CommandAuthenticateRtnData{
+		Env:            entry.Env,
+		InitScriptText: entry.ScriptText,
+	}
+	return rtn, nil
+}
 
 func (ws *WshServer) TestCommand(ctx context.Context, data string) error {
 	defer func() {
@@ -90,7 +109,7 @@ func MakePlotData(ctx context.Context, blockId string) error {
 	if viewName != "cpuplot" && viewName != "sysinfo" {
 		return fmt.Errorf("invalid view type: %s", viewName)
 	}
-	return filestore.WFS.MakeFile(ctx, blockId, "cpuplotdata", nil, filestore.FileOptsType{})
+	return filestore.WFS.MakeFile(ctx, blockId, "cpuplotdata", nil, wshrpc.FileOpts{})
 }
 
 func SavePlotData(ctx context.Context, blockId string, history string) error {
@@ -237,6 +256,8 @@ func (ws *WshServer) ControllerStopCommand(ctx context.Context, blockId string) 
 }
 
 func (ws *WshServer) ControllerResyncCommand(ctx context.Context, data wshrpc.CommandControllerResyncData) error {
+	ctx = genconn.ContextWithConnData(ctx, data.BlockId)
+	ctx = termCtxWithLogBlockId(ctx, data.BlockId)
 	return blockcontroller.ResyncController(ctx, data.TabId, data.BlockId, data.RtOpts, data.ForceRestart)
 }
 
@@ -260,216 +281,76 @@ func (ws *WshServer) ControllerInputCommand(ctx context.Context, data wshrpc.Com
 	return bc.SendInput(inputUnion)
 }
 
-func (ws *WshServer) FileCreateCommand(ctx context.Context, data wshrpc.CommandFileCreateData) error {
-	var fileOpts filestore.FileOptsType
-	if data.Opts != nil {
-		fileOpts = *data.Opts
-	}
-	err := filestore.WFS.MakeFile(ctx, data.ZoneId, data.FileName, data.Meta, fileOpts)
+func (ws *WshServer) ControllerAppendOutputCommand(ctx context.Context, data wshrpc.CommandControllerAppendOutputData) error {
+	outputBuf := make([]byte, base64.StdEncoding.DecodedLen(len(data.Data64)))
+	nw, err := base64.StdEncoding.Decode(outputBuf, []byte(data.Data64))
 	if err != nil {
-		return fmt.Errorf("error creating blockfile: %w", err)
+		return fmt.Errorf("error decoding output data: %w", err)
 	}
-	wps.Broker.Publish(wps.WaveEvent{
-		Event:  wps.Event_BlockFile,
-		Scopes: []string{waveobj.MakeORef(waveobj.OType_Block, data.ZoneId).String()},
-		Data: &wps.WSFileEventData{
-			ZoneId:   data.ZoneId,
-			FileName: data.FileName,
-			FileOp:   wps.FileOp_Create,
-		},
-	})
+	err = blockcontroller.HandleAppendBlockFile(data.BlockId, wavebase.BlockFile_Term, outputBuf[:nw])
+	if err != nil {
+		return fmt.Errorf("error appending to block file: %w", err)
+	}
 	return nil
 }
 
-func (ws *WshServer) FileDeleteCommand(ctx context.Context, data wshrpc.CommandFileData) error {
-	err := filestore.WFS.DeleteFile(ctx, data.ZoneId, data.FileName)
+func (ws *WshServer) FileCreateCommand(ctx context.Context, data wshrpc.FileData) error {
+	data.Data64 = ""
+	err := fileshare.PutFile(ctx, data)
 	if err != nil {
-		return fmt.Errorf("error deleting blockfile: %w", err)
+		return fmt.Errorf("error creating file: %w", err)
 	}
-	wps.Broker.Publish(wps.WaveEvent{
-		Event:  wps.Event_BlockFile,
-		Scopes: []string{waveobj.MakeORef(waveobj.OType_Block, data.ZoneId).String()},
-		Data: &wps.WSFileEventData{
-			ZoneId:   data.ZoneId,
-			FileName: data.FileName,
-			FileOp:   wps.FileOp_Delete,
-		},
-	})
 	return nil
 }
 
-func waveFileToWaveFileInfo(wf *filestore.WaveFile) *wshrpc.WaveFileInfo {
-	return &wshrpc.WaveFileInfo{
-		ZoneId:    wf.ZoneId,
-		Name:      wf.Name,
-		Opts:      wf.Opts,
-		Size:      wf.Size,
-		CreatedTs: wf.CreatedTs,
-		ModTs:     wf.ModTs,
-		Meta:      wf.Meta,
-	}
+func (ws *WshServer) FileMkdirCommand(ctx context.Context, data wshrpc.FileData) error {
+	return fileshare.Mkdir(ctx, data.Info.Path)
 }
 
-func (ws *WshServer) FileInfoCommand(ctx context.Context, data wshrpc.CommandFileData) (*wshrpc.WaveFileInfo, error) {
-	fileInfo, err := filestore.WFS.Stat(ctx, data.ZoneId, data.FileName)
-	if err != nil {
-		if err == fs.ErrNotExist {
-			return nil, fmt.Errorf("NOTFOUND: %w", err)
-		}
-		return nil, fmt.Errorf("error getting file info: %w", err)
-	}
-	return waveFileToWaveFileInfo(fileInfo), nil
+func (ws *WshServer) FileDeleteCommand(ctx context.Context, data wshrpc.FileData) error {
+	return fileshare.Delete(ctx, data.Info.Path)
 }
 
-func (ws *WshServer) FileListCommand(ctx context.Context, data wshrpc.CommandFileListData) ([]*wshrpc.WaveFileInfo, error) {
-	fileListOrig, err := filestore.WFS.ListFiles(ctx, data.ZoneId)
-	if err != nil {
-		return nil, fmt.Errorf("error listing blockfiles: %w", err)
-	}
-	var fileList []*wshrpc.WaveFileInfo
-	for _, wf := range fileListOrig {
-		fileList = append(fileList, waveFileToWaveFileInfo(wf))
-	}
-	if data.Prefix != "" {
-		var filteredList []*wshrpc.WaveFileInfo
-		for _, file := range fileList {
-			if strings.HasPrefix(file.Name, data.Prefix) {
-				filteredList = append(filteredList, file)
-			}
-		}
-		fileList = filteredList
-	}
-	if !data.All {
-		var filteredList []*wshrpc.WaveFileInfo
-		dirMap := make(map[string]int64) // the value is max modtime
-		for _, file := range fileList {
-			// if there is an extra "/" after the prefix, don't include it
-			// first strip the prefix
-			relPath := strings.TrimPrefix(file.Name, data.Prefix)
-			// then check if there is a "/" after the prefix
-			if strings.Contains(relPath, "/") {
-				dirPath := strings.Split(relPath, "/")[0]
-				modTime := dirMap[dirPath]
-				if file.ModTs > modTime {
-					dirMap[dirPath] = file.ModTs
-				}
-				continue
-			}
-			filteredList = append(filteredList, file)
-		}
-		for dir := range dirMap {
-			filteredList = append(filteredList, &wshrpc.WaveFileInfo{
-				ZoneId:    data.ZoneId,
-				Name:      data.Prefix + dir + "/",
-				Size:      0,
-				Meta:      nil,
-				ModTs:     dirMap[dir],
-				CreatedTs: dirMap[dir],
-				IsDir:     true,
-			})
-		}
-		fileList = filteredList
-	}
-	if data.Offset > 0 {
-		if data.Offset >= len(fileList) {
-			fileList = nil
-		} else {
-			fileList = fileList[data.Offset:]
-		}
-	}
-	if data.Limit > 0 {
-		if data.Limit < len(fileList) {
-			fileList = fileList[:data.Limit]
-		}
-	}
-	return fileList, nil
+func (ws *WshServer) FileInfoCommand(ctx context.Context, data wshrpc.FileData) (*wshrpc.FileInfo, error) {
+	return fileshare.Stat(ctx, data.Info.Path)
 }
 
-func (ws *WshServer) FileWriteCommand(ctx context.Context, data wshrpc.CommandFileData) error {
-	dataBuf, err := base64.StdEncoding.DecodeString(data.Data64)
-	if err != nil {
-		return fmt.Errorf("error decoding data64: %w", err)
-	}
-	if data.At != nil {
-		err = filestore.WFS.WriteAt(ctx, data.ZoneId, data.FileName, data.At.Offset, dataBuf)
-		if err == fs.ErrNotExist {
-			return fmt.Errorf("NOTFOUND: %w", err)
-		}
-		if err != nil {
-			return fmt.Errorf("error writing to blockfile: %w", err)
-		}
-	} else {
-		err = filestore.WFS.WriteFile(ctx, data.ZoneId, data.FileName, dataBuf)
-		if err == fs.ErrNotExist {
-			return fmt.Errorf("NOTFOUND: %w", err)
-		}
-		if err != nil {
-			return fmt.Errorf("error writing to blockfile: %w", err)
-		}
-	}
-	wps.Broker.Publish(wps.WaveEvent{
-		Event:  wps.Event_BlockFile,
-		Scopes: []string{waveobj.MakeORef(waveobj.OType_Block, data.ZoneId).String()},
-		Data: &wps.WSFileEventData{
-			ZoneId:   data.ZoneId,
-			FileName: data.FileName,
-			FileOp:   wps.FileOp_Invalidate,
-		},
-	})
-	return nil
+func (ws *WshServer) FileListCommand(ctx context.Context, data wshrpc.FileListData) ([]*wshrpc.FileInfo, error) {
+	return fileshare.ListEntries(ctx, data.Path, data.Opts)
 }
 
-func (ws *WshServer) FileReadCommand(ctx context.Context, data wshrpc.CommandFileData) (string, error) {
-	if data.At != nil {
-		_, dataBuf, err := filestore.WFS.ReadAt(ctx, data.ZoneId, data.FileName, data.At.Offset, data.At.Size)
-		if err == fs.ErrNotExist {
-			return "", fmt.Errorf("NOTFOUND: %w", err)
-		}
-		if err != nil {
-			return "", fmt.Errorf("error reading blockfile: %w", err)
-		}
-		return base64.StdEncoding.EncodeToString(dataBuf), nil
-	} else {
-		_, dataBuf, err := filestore.WFS.ReadFile(ctx, data.ZoneId, data.FileName)
-		if err == fs.ErrNotExist {
-			return "", fmt.Errorf("NOTFOUND: %w", err)
-		}
-		if err != nil {
-			return "", fmt.Errorf("error reading blockfile: %w", err)
-		}
-		return base64.StdEncoding.EncodeToString(dataBuf), nil
-	}
+func (ws *WshServer) FileListStreamCommand(ctx context.Context, data wshrpc.FileListData) <-chan wshrpc.RespOrErrorUnion[wshrpc.CommandRemoteListEntriesRtnData] {
+	return fileshare.ListEntriesStream(ctx, data.Path, data.Opts)
 }
 
-func (ws *WshServer) FileAppendCommand(ctx context.Context, data wshrpc.CommandFileData) error {
-	dataBuf, err := base64.StdEncoding.DecodeString(data.Data64)
-	if err != nil {
-		return fmt.Errorf("error decoding data64: %w", err)
-	}
-	err = filestore.WFS.AppendData(ctx, data.ZoneId, data.FileName, dataBuf)
-	if err == fs.ErrNotExist {
-		return fmt.Errorf("NOTFOUND: %w", err)
-	}
-	if err != nil {
-		return fmt.Errorf("error appending to blockfile: %w", err)
-	}
-	wps.Broker.Publish(wps.WaveEvent{
-		Event:  wps.Event_BlockFile,
-		Scopes: []string{waveobj.MakeORef(waveobj.OType_Block, data.ZoneId).String()},
-		Data: &wps.WSFileEventData{
-			ZoneId:   data.ZoneId,
-			FileName: data.FileName,
-			FileOp:   wps.FileOp_Append,
-			Data64:   base64.StdEncoding.EncodeToString(dataBuf),
-		},
-	})
-	return nil
+func (ws *WshServer) FileWriteCommand(ctx context.Context, data wshrpc.FileData) error {
+	return fileshare.PutFile(ctx, data)
+}
+
+func (ws *WshServer) FileReadCommand(ctx context.Context, data wshrpc.FileData) (*wshrpc.FileData, error) {
+	return fileshare.Read(ctx, data)
+}
+
+func (ws *WshServer) FileCopyCommand(ctx context.Context, data wshrpc.CommandFileCopyData) error {
+	return fileshare.Copy(ctx, data)
+}
+
+func (ws *WshServer) FileMoveCommand(ctx context.Context, data wshrpc.CommandFileCopyData) error {
+	return fileshare.Move(ctx, data)
+}
+
+func (ws *WshServer) FileStreamTarCommand(ctx context.Context, data wshrpc.CommandRemoteStreamTarData) <-chan wshrpc.RespOrErrorUnion[[]byte] {
+	return fileshare.ReadTarStream(ctx, data)
+}
+
+func (ws *WshServer) FileAppendCommand(ctx context.Context, data wshrpc.FileData) error {
+	return fileshare.Append(ctx, data)
 }
 
 func (ws *WshServer) FileAppendIJsonCommand(ctx context.Context, data wshrpc.CommandAppendIJsonData) error {
 	tryCreate := true
-	if data.FileName == blockcontroller.BlockFile_VDom && tryCreate {
-		err := filestore.WFS.MakeFile(ctx, data.ZoneId, data.FileName, nil, filestore.FileOptsType{MaxSize: blockcontroller.DefaultHtmlMaxFileSize, IJson: true})
+	if data.FileName == wavebase.BlockFile_VDom && tryCreate {
+		err := filestore.WFS.MakeFile(ctx, data.ZoneId, data.FileName, nil, wshrpc.FileOpts{MaxSize: blockcontroller.DefaultHtmlMaxFileSize, IJson: true})
 		if err != nil && err != fs.ErrExist {
 			return fmt.Errorf("error creating blockfile[vdom]: %w", err)
 		}
@@ -586,28 +467,50 @@ func (ws *WshServer) SetConnectionsConfigCommand(ctx context.Context, data wshrp
 	return wconfig.SetConnectionsConfigValue(data.Host, data.MetaMapType)
 }
 
+func (ws *WshServer) GetFullConfigCommand(ctx context.Context) (wconfig.FullConfigType, error) {
+	watcher := wconfig.GetWatcher()
+	return watcher.GetFullConfig(), nil
+}
+
 func (ws *WshServer) ConnStatusCommand(ctx context.Context) ([]wshrpc.ConnStatus, error) {
 	rtn := conncontroller.GetAllConnStatus()
 	return rtn, nil
 }
 
 func (ws *WshServer) WslStatusCommand(ctx context.Context) ([]wshrpc.ConnStatus, error) {
-	rtn := wsl.GetAllConnStatus()
+	rtn := wslconn.GetAllConnStatus()
 	return rtn, nil
 }
 
-func (ws *WshServer) ConnEnsureCommand(ctx context.Context, connName string) error {
-	if strings.HasPrefix(connName, "wsl://") {
-		distroName := strings.TrimPrefix(connName, "wsl://")
-		return wsl.EnsureConnection(ctx, distroName)
+func termCtxWithLogBlockId(ctx context.Context, logBlockId string) context.Context {
+	if logBlockId == "" {
+		return ctx
 	}
-	return conncontroller.EnsureConnection(ctx, connName)
+	block, err := wstore.DBMustGet[*waveobj.Block](ctx, logBlockId)
+	if err != nil {
+		return ctx
+	}
+	connDebug := block.Meta.GetString(waveobj.MetaKey_TermConnDebug, "")
+	if connDebug == "" {
+		return ctx
+	}
+	return blocklogger.ContextWithLogBlockId(ctx, logBlockId, connDebug == "debug")
+}
+
+func (ws *WshServer) ConnEnsureCommand(ctx context.Context, data wshrpc.ConnExtData) error {
+	ctx = genconn.ContextWithConnData(ctx, data.LogBlockId)
+	ctx = termCtxWithLogBlockId(ctx, data.LogBlockId)
+	if strings.HasPrefix(data.ConnName, "wsl://") {
+		distroName := strings.TrimPrefix(data.ConnName, "wsl://")
+		return wslconn.EnsureConnection(ctx, distroName)
+	}
+	return conncontroller.EnsureConnection(ctx, data.ConnName)
 }
 
 func (ws *WshServer) ConnDisconnectCommand(ctx context.Context, connName string) error {
 	if strings.HasPrefix(connName, "wsl://") {
 		distroName := strings.TrimPrefix(connName, "wsl://")
-		conn := wsl.GetWslConn(ctx, distroName, false)
+		conn := wslconn.GetWslConn(distroName)
 		if conn == nil {
 			return fmt.Errorf("distro not found: %s", connName)
 		}
@@ -617,7 +520,7 @@ func (ws *WshServer) ConnDisconnectCommand(ctx context.Context, connName string)
 	if err != nil {
 		return fmt.Errorf("error parsing connection name: %w", err)
 	}
-	conn := conncontroller.GetConn(ctx, connOpts, false, &wshrpc.ConnKeywords{})
+	conn := conncontroller.GetConn(connOpts)
 	if conn == nil {
 		return fmt.Errorf("connection not found: %s", connName)
 	}
@@ -625,10 +528,12 @@ func (ws *WshServer) ConnDisconnectCommand(ctx context.Context, connName string)
 }
 
 func (ws *WshServer) ConnConnectCommand(ctx context.Context, connRequest wshrpc.ConnRequest) error {
+	ctx = genconn.ContextWithConnData(ctx, connRequest.LogBlockId)
+	ctx = termCtxWithLogBlockId(ctx, connRequest.LogBlockId)
 	connName := connRequest.Host
 	if strings.HasPrefix(connName, "wsl://") {
 		distroName := strings.TrimPrefix(connName, "wsl://")
-		conn := wsl.GetWslConn(ctx, distroName, false)
+		conn := wslconn.GetWslConn(distroName)
 		if conn == nil {
 			return fmt.Errorf("connection not found: %s", connName)
 		}
@@ -638,31 +543,77 @@ func (ws *WshServer) ConnConnectCommand(ctx context.Context, connRequest wshrpc.
 	if err != nil {
 		return fmt.Errorf("error parsing connection name: %w", err)
 	}
-	conn := conncontroller.GetConn(ctx, connOpts, false, &connRequest.Keywords)
+	conn := conncontroller.GetConn(connOpts)
 	if conn == nil {
 		return fmt.Errorf("connection not found: %s", connName)
 	}
 	return conn.Connect(ctx, &connRequest.Keywords)
 }
 
-func (ws *WshServer) ConnReinstallWshCommand(ctx context.Context, connName string) error {
+func (ws *WshServer) ConnReinstallWshCommand(ctx context.Context, data wshrpc.ConnExtData) error {
+	ctx = genconn.ContextWithConnData(ctx, data.LogBlockId)
+	ctx = termCtxWithLogBlockId(ctx, data.LogBlockId)
+	connName := data.ConnName
 	if strings.HasPrefix(connName, "wsl://") {
 		distroName := strings.TrimPrefix(connName, "wsl://")
-		conn := wsl.GetWslConn(ctx, distroName, false)
+		conn := wslconn.GetWslConn(distroName)
 		if conn == nil {
 			return fmt.Errorf("connection not found: %s", connName)
 		}
-		return conn.CheckAndInstallWsh(ctx, connName, &wsl.WshInstallOpts{Force: true, NoUserPrompt: true})
+		return conn.InstallWsh(ctx, "")
 	}
 	connOpts, err := remote.ParseOpts(connName)
 	if err != nil {
 		return fmt.Errorf("error parsing connection name: %w", err)
 	}
-	conn := conncontroller.GetConn(ctx, connOpts, false, &wshrpc.ConnKeywords{})
+	conn := conncontroller.GetConn(connOpts)
 	if conn == nil {
 		return fmt.Errorf("connection not found: %s", connName)
 	}
-	return conn.CheckAndInstallWsh(ctx, connName, &conncontroller.WshInstallOpts{Force: true, NoUserPrompt: true})
+	return conn.InstallWsh(ctx, "")
+}
+
+func (ws *WshServer) ConnUpdateWshCommand(ctx context.Context, remoteInfo wshrpc.RemoteInfo) (bool, error) {
+	handler := wshutil.GetRpcResponseHandlerFromContext(ctx)
+	if handler == nil {
+		return false, fmt.Errorf("could not determine handler from context")
+	}
+	connName := handler.GetRpcContext().Conn
+	if connName == "" {
+		return false, fmt.Errorf("invalid remote info: missing connection name")
+	}
+
+	log.Printf("checking wsh version for connection %s (current: %s)", connName, remoteInfo.ClientVersion)
+	upToDate, _, _, err := conncontroller.IsWshVersionUpToDate(ctx, remoteInfo.ClientVersion)
+	if err != nil {
+		return false, fmt.Errorf("unable to compare wsh version: %w", err)
+	}
+	if upToDate {
+		// no need to update
+		log.Printf("wsh is already up to date for connection %s", connName)
+		return false, nil
+	}
+
+	// todo: need to add user input code here for validation
+
+	if strings.HasPrefix(connName, "wsl://") {
+		return false, fmt.Errorf("connupdatewshcommand is not supported for wsl connections")
+	}
+	connOpts, err := remote.ParseOpts(connName)
+	if err != nil {
+		return false, fmt.Errorf("error parsing connection name: %w", err)
+	}
+	conn := conncontroller.GetConn(connOpts)
+	if conn == nil {
+		return false, fmt.Errorf("connection not found: %s", connName)
+	}
+	err = conn.UpdateWsh(ctx, connName, &remoteInfo)
+	if err != nil {
+		return false, fmt.Errorf("wsh update failed for connection %s: %w", connName, err)
+	}
+
+	// todo: need to add code for modifying configs?
+	return true, nil
 }
 
 func (ws *WshServer) ConnListCommand(ctx context.Context) ([]string, error) {
@@ -700,17 +651,25 @@ func (ws *WshServer) WslDefaultDistroCommand(ctx context.Context) (string, error
  * Dismisses the WshFail Command in runtime memory on the backend
  */
 func (ws *WshServer) DismissWshFailCommand(ctx context.Context, connName string) error {
+	if strings.HasPrefix(connName, "wsl://") {
+		distroName := strings.TrimPrefix(connName, "wsl://")
+		conn := wslconn.GetWslConn(distroName)
+		if conn == nil {
+			return fmt.Errorf("connection not found: %s", connName)
+		}
+		conn.ClearWshError()
+		conn.FireConnChangeEvent()
+		return nil
+	}
 	opts, err := remote.ParseOpts(connName)
 	if err != nil {
 		return err
 	}
-	conn := conncontroller.GetConn(ctx, opts, false, nil)
+	conn := conncontroller.GetConn(opts)
 	if conn == nil {
 		return fmt.Errorf("connection %s not found", connName)
 	}
-	conn.WithLock(func() {
-		conn.WshError = ""
-	})
+	conn.ClearWshError()
 	conn.FireConnChangeEvent()
 	return nil
 }
@@ -732,12 +691,13 @@ func (ws *WshServer) BlockInfoCommand(ctx context.Context, blockId string) (*wsh
 	if err != nil {
 		return nil, fmt.Errorf("error listing blockfiles: %w", err)
 	}
+	fileInfoList := wavefileutil.WaveFileListToFileInfoList(fileList)
 	return &wshrpc.BlockInfoData{
 		BlockId:     blockId,
 		TabId:       tabId,
 		WorkspaceId: workspaceId,
 		Block:       blockData,
-		Files:       fileList,
+		Files:       fileInfoList,
 	}, nil
 }
 
@@ -820,7 +780,7 @@ func (ws *WshServer) SetVarCommand(ctx context.Context, data wshrpc.CommandVarDa
 	_, fileData, err := filestore.WFS.ReadFile(ctx, data.ZoneId, data.FileName)
 	if err == fs.ErrNotExist {
 		fileData = []byte{}
-		err = filestore.WFS.MakeFile(ctx, data.ZoneId, data.FileName, nil, filestore.FileOptsType{})
+		err = filestore.WFS.MakeFile(ctx, data.ZoneId, data.FileName, nil, wshrpc.FileOpts{})
 		if err != nil {
 			return fmt.Errorf("error creating blockfile: %w", err)
 		}

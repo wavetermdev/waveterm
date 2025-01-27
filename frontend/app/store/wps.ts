@@ -1,3 +1,6 @@
+// Copyright 2025, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
 import { isBlank } from "@/util/util";
 import { Subject } from "rxjs";
 import { sendRawRpcMessage } from "./ws";

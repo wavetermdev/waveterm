@@ -5,16 +5,18 @@
     display: flex;
     flex-direction: row;
     height: 100%;
-    flex-grow: 1;
     overflow: hidden;
     align-items: center;
     justify-content: center;
-    padding: 0 5px;
 
     &.view-preview-markdown {
         align-items: start;
         justify-content: start;
         overflow: auto;
+
+        .markdown .content {
+            padding: 5px 15px 10px 15px;
+        }
     }
 
     &.view-preview-text {
@@ -39,9 +41,8 @@
             object-fit: contain;
         }
     }
-    &.view-preview-directory {
-        flex-direction: column;
-        align-items: start;
+    &.view-preview-pdf {
+        padding: 5px;
     }
 }
 

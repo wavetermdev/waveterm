@@ -1,4 +1,4 @@
-// Copyright 2024, Command Line Inc.
+// Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 package service
@@ -11,7 +11,6 @@ import (
 
 	"github.com/wavetermdev/waveterm/pkg/service/blockservice"
 	"github.com/wavetermdev/waveterm/pkg/service/clientservice"
-	"github.com/wavetermdev/waveterm/pkg/service/fileservice"
 	"github.com/wavetermdev/waveterm/pkg/service/objectservice"
 	"github.com/wavetermdev/waveterm/pkg/service/userinputservice"
 	"github.com/wavetermdev/waveterm/pkg/service/windowservice"
@@ -25,7 +24,6 @@ import (
 var ServiceMap = map[string]any{
 	"block":     blockservice.BlockServiceInstance,
 	"object":    &objectservice.ObjectService{},
-	"file":      &fileservice.FileService{},
 	"client":    &clientservice.ClientService{},
 	"window":    &windowservice.WindowService{},
 	"workspace": &workspaceservice.WorkspaceService{},

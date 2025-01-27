@@ -1,4 +1,4 @@
-// Copyright 2024, Command Line Inc.
+// Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 package waveai
@@ -75,7 +75,6 @@ func RunAICommand(ctx context.Context, request wshrpc.WaveAIStreamRequest) chan 
 		request.Opts.Model = "default"
 		backend = WaveAICloudBackend{}
 	} else {
-		request.Opts.APIType = APIType_OpenAI
 		backend = OpenAIBackend{}
 	}
 	if backend == nil {

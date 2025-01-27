@@ -1,3 +1,6 @@
+// Copyright 2025, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
 import type { WebSocket as NodeWebSocketType } from "ws";
 
 let NodeWebSocket: typeof NodeWebSocketType = null;

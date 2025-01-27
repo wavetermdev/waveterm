@@ -1,10 +1,11 @@
-// Copyright 2024, Command Line Inc.
+// Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 package utilfn
 
 import (
 	"bytes"
+	"context"
 	"crypto/rand"
 	"crypto/sha1"
 	"encoding/base64"
@@ -13,14 +14,10 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/fs"
 	"math"
 	mathrand "math/rand"
-	"mime"
-	"net/http"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"reflect"
 	"regexp"
 	"sort"
@@ -617,63 +614,6 @@ func CopyToChannel(outputCh chan<- []byte, reader io.Reader) error {
 	}
 }
 
-// on error just returns ""
-// does not return "application/octet-stream" as this is considered a detection failure
-// can pass an existing fileInfo to avoid re-statting the file
-// falls back to text/plain for 0 byte files
-func DetectMimeType(path string, fileInfo fs.FileInfo, extended bool) string {
-	if fileInfo == nil {
-		statRtn, err := os.Stat(path)
-		if err != nil {
-			return ""
-		}
-		fileInfo = statRtn
-	}
-	if fileInfo.IsDir() {
-		return "directory"
-	}
-	if fileInfo.Mode()&os.ModeNamedPipe == os.ModeNamedPipe {
-		return "pipe"
-	}
-	charDevice := os.ModeDevice | os.ModeCharDevice
-	if fileInfo.Mode()&charDevice == charDevice {
-		return "character-special"
-	}
-	if fileInfo.Mode()&os.ModeDevice == os.ModeDevice {
-		return "block-special"
-	}
-	ext := filepath.Ext(path)
-	if mimeType, ok := StaticMimeTypeMap[ext]; ok {
-		return mimeType
-	}
-	if mimeType := mime.TypeByExtension(ext); mimeType != "" {
-		return mimeType
-	}
-	if fileInfo.Size() == 0 {
-		return "text/plain"
-	}
-	if !extended {
-		return ""
-	}
-	fd, err := os.Open(path)
-	if err != nil {
-		return ""
-	}
-	defer fd.Close()
-	buf := make([]byte, 512)
-	// ignore the error (EOF / UnexpectedEOF is fine, just process how much we got back)
-	n, _ := io.ReadAtLeast(fd, buf, 512)
-	if n == 0 {
-		return ""
-	}
-	buf = buf[:n]
-	rtn := http.DetectContentType(buf)
-	if rtn == "application/octet-stream" {
-		return ""
-	}
-	return rtn
-}
-
 func GetCmdExitCode(cmd *exec.Cmd, err error) int {
 	if cmd == nil || cmd.ProcessState == nil {
 		return GetExitCode(err)
@@ -938,7 +878,7 @@ func FormatLsTime(t time.Time) string {
 		// Recent files: "Nov 18 18:40"
 		return t.Format("Jan _2 15:04")
 	} else {
-		// Older files: "Apr 12  2024"
+		// Older files: "Apr 12  2025"
 		return t.Format("Jan _2  2006")
 	}
 }
@@ -1006,4 +946,21 @@ func ConvertUUIDv4Tov7(uuidv4 string) (string, error) {
 	// Combine sections to form UUIDv7
 	uuidv7 := fmt.Sprintf("%s-%s-%s-%s-%s", section1, section2, section3, section4, section5)
 	return uuidv7, nil
+}
+
+func TimeoutFromContext(ctx context.Context, defaultTimeout time.Duration) time.Duration {
+	deadline, ok := ctx.Deadline()
+	if !ok {
+		return defaultTimeout
+	}
+	return time.Until(deadline)
+}
+
+func HasBinaryData(data []byte) bool {
+	for _, b := range data {
+		if b < 32 && b != '\n' && b != '\r' && b != '\t' && b != '\f' && b != '\b' {
+			return true
+		}
+	}
+	return false
 }

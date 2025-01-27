@@ -1,4 +1,4 @@
-// Copyright 2024, Command Line Inc.
+// Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 import { Workspace } from "@/app/workspace/workspace";
@@ -12,7 +12,7 @@ import {
     PLATFORM,
     removeFlashError,
 } from "@/store/global";
-import { appHandleKeyDown } from "@/store/keymodel";
+import { appHandleKeyDown, keyboardMouseDownHandler } from "@/store/keymodel";
 import { getElemAsStr } from "@/util/focusutil";
 import * as keyutil from "@/util/keyutil";
 import * as util from "@/util/util";
@@ -193,9 +193,11 @@ const AppKeyHandlers = () => {
     useEffect(() => {
         const staticKeyDownHandler = keyutil.keydownWrapper(appHandleKeyDown);
         document.addEventListener("keydown", staticKeyDownHandler);
+        document.addEventListener("mousedown", keyboardMouseDownHandler);
 
         return () => {
             document.removeEventListener("keydown", staticKeyDownHandler);
+            document.removeEventListener("mousedown", keyboardMouseDownHandler);
         };
     }, []);
     return null;

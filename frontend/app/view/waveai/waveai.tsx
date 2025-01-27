@@ -1,4 +1,4 @@
-// Copyright 2024, Command Line Inc.
+// Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 import { Button } from "@/app/element/button";
@@ -523,7 +523,6 @@ const ChatWindow = memo(
         const handleNewMessage = useCallback(
             throttle(100, (messagesLen: number) => {
                 if (osRef.current?.osInstance()) {
-                    console.log("handleNewMessage", messagesLen, isUserScrolling.current);
                     const { viewport } = osRef.current.osInstance().elements();
                     if (prevMessagesLenRef.current !== messagesLen || !isUserScrolling.current) {
                         viewport.scrollTo({

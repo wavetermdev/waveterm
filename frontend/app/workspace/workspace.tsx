@@ -1,4 +1,4 @@
-// Copyright 2024, Command Line Inc.
+// Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 import { ErrorBoundary } from "@/app/element/errorboundary";
@@ -71,17 +71,14 @@ const Widgets = memo(() => {
     );
 });
 
-async function handleWidgetSelect(blockDef: BlockDef) {
-    createBlock(blockDef);
+async function handleWidgetSelect(widget: WidgetConfigType) {
+    const blockDef = widget.blockdef;
+    createBlock(blockDef, widget.magnified);
 }
 
 const Widget = memo(({ widget }: { widget: WidgetConfigType }) => {
     return (
-        <div
-            className="widget"
-            onClick={() => handleWidgetSelect(widget.blockdef)}
-            title={widget.description || widget.label}
-        >
+        <div className="widget" onClick={() => handleWidgetSelect(widget)} title={widget.description || widget.label}>
             <div className="widget-icon" style={{ color: widget.color }}>
                 <i className={makeIconClass(widget.icon, true, { defaultIcon: "browser" })}></i>
             </div>
