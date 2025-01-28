@@ -742,22 +742,25 @@ func (impl *ServerImpl) RemoteFileMoveCommand(ctx context.Context, data wshrpc.C
 	} else if !errors.Is(err, fs.ErrNotExist) {
 		return fmt.Errorf("cannot stat destination %q: %w", destUri, err)
 	}
-	logPrintfDev("moving %q to %q\n", srcUri, destUri)
 	srcConn, err := connparse.ParseURIAndReplaceCurrentHost(ctx, srcUri)
 	if err != nil {
 		return fmt.Errorf("cannot parse source URI %q: %w", srcUri, err)
 	}
-	logPrintfDev("source host: %q, destination host: %q\n", srcConn.Host, destConn.Host)
 	if srcConn.Host == destConn.Host {
-		logPrintfDev("moving file on same host\n")
 		srcPathCleaned := filepath.Clean(wavebase.ExpandHomeDirSafe(srcConn.Path))
-		logPrintfDev("moving %q to %q\n", srcPathCleaned, destPathCleaned)
 		err := os.Rename(srcPathCleaned, destPathCleaned)
 		if err != nil {
 			return fmt.Errorf("cannot move file %q to %q: %w", srcPathCleaned, destPathCleaned, err)
 		}
 	} else {
-		return fmt.Errorf("cannot move file %q to %q: source and destination must be on the same host", srcUri, destUri)
+		err := impl.RemoteFileCopyCommand(ctx, data)
+		if err != nil {
+			return fmt.Errorf("cannot copy %q to %q: %w", srcUri, destUri, err)
+		}
+		err = impl.RemoteFileDeleteCommand(ctx, wshrpc.CommandDeleteFileData{Path: srcUri, Recursive: data.Opts.Recursive})
+		if err != nil {
+			return fmt.Errorf("cannot delete %q: %w", srcUri, err)
+		}
 	}
 	return nil
 }
