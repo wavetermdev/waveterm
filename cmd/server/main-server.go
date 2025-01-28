@@ -25,6 +25,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/service"
 	"github.com/wavetermdev/waveterm/pkg/telemetry"
 	"github.com/wavetermdev/waveterm/pkg/util/shellutil"
+	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wcloud"
@@ -75,9 +76,25 @@ func installShutdownSignalHandlers() {
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGHUP, syscall.SIGTERM, syscall.SIGINT)
 	go func() {
+		defer func() {
+			panichandler.PanicHandler("installShutdownSignalHandlers", recover())
+		}()
 		for sig := range sigCh {
 			doShutdown(fmt.Sprintf("got signal %v", sig))
 			break
+		}
+	}()
+}
+
+func installSIGUSR1Handler() {
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, syscall.SIGUSR1)
+	go func() {
+		defer func() {
+			panichandler.PanicHandler("installSIGUSR1Handler", recover())
+		}()
+		for range sigCh {
+			utilfn.DumpGoRoutineStacks()
 		}
 	}()
 }
@@ -296,6 +313,7 @@ func main() {
 
 	createMainWshClient()
 	installShutdownSignalHandlers()
+	installSIGUSR1Handler()
 	startupActivityUpdate()
 	go stdinReadWatch()
 	go telemetryLoop()
