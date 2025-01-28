@@ -20,6 +20,7 @@ import (
 	"os/exec"
 	"reflect"
 	"regexp"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -940,4 +941,10 @@ func HasBinaryData(data []byte) bool {
 		}
 	}
 	return false
+}
+
+func DumpGoRoutineStacks() {
+	buf := make([]byte, 1<<20)
+	n := runtime.Stack(buf, true)
+	os.Stdout.Write(buf[:n])
 }
