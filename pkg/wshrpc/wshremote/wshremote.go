@@ -437,13 +437,14 @@ func (impl *ServerImpl) RemoteFileCopyCommand(ctx context.Context, data wshrpc.C
 			}
 		}()
 		numFiles := 0
+		numSkipped := 0
 		for {
 			select {
 			case <-readCtx.Done():
 				if readCtx.Err() != nil {
 					return context.Cause(readCtx)
 				}
-				log.Printf("copy complete: %d files copied in %vms\n", numFiles, time.Since(copyStart).Milliseconds())
+				log.Printf("copy complete: %d files copied in %dms, %d skipped\n", numFiles, time.Since(copyStart).Milliseconds(), numSkipped)
 				return nil
 			default:
 				next, err := tarReader.Next()
@@ -453,18 +454,19 @@ func (impl *ServerImpl) RemoteFileCopyCommand(ctx context.Context, data wshrpc.C
 						return context.Cause(readCtx)
 					}
 					if errors.Is(err, io.EOF) {
-						log.Printf("copy complete: %d files copied in %vms\n", numFiles, time.Since(copyStart).Milliseconds())
+						log.Printf("copy complete: %d files copied in %dms, %d skipped\n", numFiles, time.Since(copyStart).Milliseconds(), numSkipped)
 						return nil
 					} else {
 						return fmt.Errorf("cannot read tar stream: %w", err)
 					}
 				}
-				numFiles++
 				// Check for directory traversal
 				if strings.Contains(next.Name, "..") {
 					log.Printf("skipping file with unsafe path: %q\n", next.Name)
+					numSkipped++
 					continue
 				}
+				numFiles++
 				finfo := next.FileInfo()
 				nextPath := filepath.Join(destPathCleaned, next.Name)
 				destinfo, err = os.Stat(nextPath)
