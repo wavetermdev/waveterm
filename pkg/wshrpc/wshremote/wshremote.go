@@ -241,7 +241,16 @@ func (impl *ServerImpl) RemoteTarStreamCommand(ctx context.Context, data wshrpc.
 	readerCtx, cancel := context.WithTimeout(context.Background(), timeout)
 	rtn := iochan.ReaderChan(readerCtx, pipeReader, wshrpc.FileChunkSize, func() {
 		logPrintfDev("closing pipe reader\n")
-		pipeReader.Close()
+		log.Printf("closing pipe reader\n")
+		for {
+			if err := pipeReader.Close(); err != nil {
+				log.Printf("error closing pipe reader: %v\n", err)
+				time.Sleep(time.Millisecond * 10)
+				continue
+			}
+			log.Printf("closed pipe reader\n")
+			break
+		}
 	})
 
 	var pathPrefix string
@@ -388,7 +397,16 @@ func (impl *ServerImpl) RemoteFileCopyCommand(ctx context.Context, data wshrpc.C
 		pipeReader, pipeWriter := io.Pipe()
 		iochan.WriterChan(readCtx, pipeWriter, ioch, func() {
 			log.Printf("copy closing pipe writer\n")
-			pipeWriter.Close()
+			for {
+				if err := pipeWriter.Close(); err != nil {
+					log.Printf("error closing pipe writer: %v\n", err)
+					time.Sleep(time.Millisecond * 10)
+					continue
+				}
+				log.Printf("copy closed pipe writer\n")
+				timeoutCancel()
+				break
+			}
 		}, cancel)
 		tarReader := tar.NewReader(pipeReader)
 		defer func() {
