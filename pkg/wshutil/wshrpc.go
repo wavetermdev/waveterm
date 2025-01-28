@@ -42,7 +42,6 @@ type AbstractRpcClient interface {
 
 type WshRpc struct {
 	Lock               *sync.Mutex
-	clientId           string
 	InputCh            chan []byte
 	OutputCh           chan []byte
 	CtxDoneCh          chan string // for context cancellation, value is ResId
@@ -196,7 +195,7 @@ func validateServerImpl(serverImpl ServerImpl) {
 }
 
 // closes outputCh when inputCh is closed/done
-func MakeWshRpc(inputCh chan []byte, outputCh chan []byte, rpcCtx wshrpc.RpcContext, serverImpl ServerImpl) *WshRpc {
+func MakeWshRpc(inputCh chan []byte, outputCh chan []byte, rpcCtx wshrpc.RpcContext, serverImpl ServerImpl, debugName string) *WshRpc {
 	if inputCh == nil {
 		inputCh = make(chan []byte, DefaultInputChSize)
 	}
@@ -206,7 +205,7 @@ func MakeWshRpc(inputCh chan []byte, outputCh chan []byte, rpcCtx wshrpc.RpcCont
 	validateServerImpl(serverImpl)
 	rtn := &WshRpc{
 		Lock:               &sync.Mutex{},
-		clientId:           uuid.New().String(),
+		DebugName:          debugName,
 		InputCh:            inputCh,
 		OutputCh:           outputCh,
 		CtxDoneCh:          make(chan string, CtxDoneChSize),
@@ -219,10 +218,6 @@ func MakeWshRpc(inputCh chan []byte, outputCh chan []byte, rpcCtx wshrpc.RpcCont
 	rtn.RpcContext.Store(&rpcCtx)
 	go rtn.runServer()
 	return rtn
-}
-
-func (w *WshRpc) ClientId() string {
-	return w.clientId
 }
 
 func (w *WshRpc) GetRpcContext() wshrpc.RpcContext {
@@ -753,5 +748,8 @@ func (w *WshRpc) retrySendTimeout(resId string) {
 		}
 		time.Sleep(100 * time.Millisecond)
 	}
+}
+
+func (w *WshRpc) sendWithBlockMessage() {
 
 }
