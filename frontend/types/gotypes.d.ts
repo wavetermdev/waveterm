@@ -589,6 +589,12 @@ declare global {
     // waveobj.ORef
     type ORef = string;
 
+    // iochantypes.Packet
+    type Packet = {
+        Data: string;
+        Checksum: string;
+    };
+
     // wshrpc.PathCommandData
     type PathCommandData = {
         pathtype: string;

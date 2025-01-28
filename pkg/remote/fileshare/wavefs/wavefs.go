@@ -15,6 +15,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/filestore"
 	"github.com/wavetermdev/waveterm/pkg/remote/connparse"
 	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/fstype"
+	"github.com/wavetermdev/waveterm/pkg/util/iochan/iochantypes"
 	"github.com/wavetermdev/waveterm/pkg/util/wavefileutil"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wps"
@@ -95,7 +96,7 @@ func (c WaveClient) Read(ctx context.Context, conn *connparse.Connection, data w
 	return &wshrpc.FileData{Info: data.Info, Entries: list}, nil
 }
 
-func (c WaveClient) ReadTarStream(ctx context.Context, conn *connparse.Connection, opts *wshrpc.FileCopyOpts) <-chan wshrpc.RespOrErrorUnion[[]byte] {
+func (c WaveClient) ReadTarStream(ctx context.Context, conn *connparse.Connection, opts *wshrpc.FileCopyOpts) <-chan wshrpc.RespOrErrorUnion[iochantypes.Packet] {
 	return nil
 }
 
@@ -264,33 +265,6 @@ func (c WaveClient) PutFile(ctx context.Context, conn *connparse.Connection, dat
 	})
 	return nil
 }
-
-/*
-
-	path := data.Info.Path
-	log.Printf("Append: path=%s", path)
-	client, conn := CreateFileShareClient(ctx, path)
-	if conn == nil || client == nil {
-		return fmt.Errorf(ErrorParsingConnection, path)
-	}
-	finfo, err := client.Stat(ctx, conn)
-	if err != nil {
-		return err
-	}
-	if data.Info == nil {
-		data.Info = &wshrpc.FileInfo{}
-	}
-	oldInfo := data.Info
-	data.Info = finfo
-	if oldInfo.Opts != nil {
-		data.Info.Opts = oldInfo.Opts
-	}
-	data.At = &wshrpc.FileDataAt{
-		Offset: finfo.Size,
-	}
-	log.Printf("Append: offset=%d", data.At.Offset)
-	return client.PutFile(ctx, conn, data)
-*/
 
 func (c WaveClient) AppendFile(ctx context.Context, conn *connparse.Connection, data wshrpc.FileData) error {
 	dataBuf, err := base64.StdEncoding.DecodeString(data.Data64)

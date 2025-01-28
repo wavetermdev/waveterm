@@ -203,7 +203,7 @@ class RpcApiType {
     }
 
     // command "filestreamtar" [responsestream]
-	FileStreamTarCommand(client: WshClient, data: CommandRemoteStreamTarData, opts?: RpcOpts): AsyncGenerator<string, void, boolean> {
+	FileStreamTarCommand(client: WshClient, data: CommandRemoteStreamTarData, opts?: RpcOpts): AsyncGenerator<Packet, void, boolean> {
         return client.wshRpcStream("filestreamtar", data, opts);
     }
 
@@ -313,7 +313,7 @@ class RpcApiType {
     }
 
     // command "remotetarstream" [responsestream]
-	RemoteTarStreamCommand(client: WshClient, data: CommandRemoteStreamTarData, opts?: RpcOpts): AsyncGenerator<string, void, boolean> {
+	RemoteTarStreamCommand(client: WshClient, data: CommandRemoteStreamTarData, opts?: RpcOpts): AsyncGenerator<Packet, void, boolean> {
         return client.wshRpcStream("remotetarstream", data, opts);
     }
 

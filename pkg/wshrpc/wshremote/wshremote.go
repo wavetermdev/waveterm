@@ -21,6 +21,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/remote/fileshare"
 	"github.com/wavetermdev/waveterm/pkg/util/fileutil"
 	"github.com/wavetermdev/waveterm/pkg/util/iochan"
+	"github.com/wavetermdev/waveterm/pkg/util/iochan/iochantypes"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
@@ -227,7 +228,7 @@ func (impl *ServerImpl) RemoteStreamFileCommand(ctx context.Context, data wshrpc
 	return ch
 }
 
-func (impl *ServerImpl) RemoteTarStreamCommand(ctx context.Context, data wshrpc.CommandRemoteStreamTarData) <-chan wshrpc.RespOrErrorUnion[[]byte] {
+func (impl *ServerImpl) RemoteTarStreamCommand(ctx context.Context, data wshrpc.CommandRemoteStreamTarData) <-chan wshrpc.RespOrErrorUnion[iochantypes.Packet] {
 	path := data.Path
 	opts := data.Opts
 	if opts == nil {
@@ -237,12 +238,12 @@ func (impl *ServerImpl) RemoteTarStreamCommand(ctx context.Context, data wshrpc.
 	logPrintfDev("RemoteTarStreamCommand: path=%s\n", path)
 	path, err := wavebase.ExpandHomeDir(path)
 	if err != nil {
-		return wshutil.SendErrCh[[]byte](fmt.Errorf("cannot expand path %q: %w", path, err))
+		return wshutil.SendErrCh[iochantypes.Packet](fmt.Errorf("cannot expand path %q: %w", path, err))
 	}
 	cleanedPath := filepath.Clean(wavebase.ExpandHomeDirSafe(path))
 	finfo, err := os.Stat(cleanedPath)
 	if err != nil {
-		return wshutil.SendErrCh[[]byte](fmt.Errorf("cannot stat file %q: %w", path, err))
+		return wshutil.SendErrCh[iochantypes.Packet](fmt.Errorf("cannot stat file %q: %w", path, err))
 	}
 	pipeReader, pipeWriter := io.Pipe()
 	tarWriter := tar.NewWriter(pipeWriter)
@@ -303,7 +304,7 @@ func (impl *ServerImpl) RemoteTarStreamCommand(ctx context.Context, data wshrpc.
 		if finfo.IsDir() {
 			logPrintfDev("%q is a directory, recursive: %v\n", path, recursive)
 			if !recursive {
-				rtn <- wshutil.RespErr[[]byte](fmt.Errorf("cannot create tar stream for %q: %w", path, errors.New("directory copy requires recursive option")))
+				rtn <- wshutil.RespErr[iochantypes.Packet](fmt.Errorf("cannot create tar stream for %q: %w", path, errors.New("directory copy requires recursive option")))
 				return
 			}
 		}
@@ -342,7 +343,7 @@ func (impl *ServerImpl) RemoteTarStreamCommand(ctx context.Context, data wshrpc.
 			return nil
 		})
 		if err != nil {
-			rtn <- wshutil.RespErr[[]byte](fmt.Errorf("cannot create tar stream for %q: %w", path, err))
+			rtn <- wshutil.RespErr[iochantypes.Packet](fmt.Errorf("cannot create tar stream for %q: %w", path, err))
 		}
 		logPrintfDev("returning tar stream\n")
 	}()
