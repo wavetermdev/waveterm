@@ -243,11 +243,12 @@ func handleLocalStreamFile(w http.ResponseWriter, r *http.Request, path string, 
 	}
 }
 
-func handleRemoteStreamFile(w http.ResponseWriter, _ *http.Request, conn string, path string, no404 bool) error {
+func handleRemoteStreamFile(w http.ResponseWriter, req *http.Request, conn string, path string, no404 bool) error {
 	client := wshserver.GetMainRpcClient()
 	streamFileData := wshrpc.CommandRemoteStreamFileData{Path: path}
 	route := wshutil.MakeConnectionRouteId(conn)
-	rtnCh := wshclient.RemoteStreamFileCommand(client, streamFileData, &wshrpc.RpcOpts{Route: route})
+	rpcOpts := &wshrpc.RpcOpts{Route: route, Timeout: 60 * 1000}
+	rtnCh := wshclient.RemoteStreamFileCommand(client, streamFileData, rpcOpts)
 	firstPk := true
 	var fileInfo *wshrpc.FileInfo
 	loopDone := false
@@ -261,45 +262,54 @@ func handleRemoteStreamFile(w http.ResponseWriter, _ *http.Request, conn string,
 			}
 		}()
 	}()
-	for respUnion := range rtnCh {
-		if respUnion.Error != nil {
-			return respUnion.Error
-		}
-		if firstPk {
-			firstPk = false
-			if respUnion.Response.Info == nil {
-				return fmt.Errorf("stream file protocol error, fileinfo is empty")
+	ctx := req.Context()
+	for {
+		select {
+		case <-ctx.Done():
+			rpcOpts.StreamCancelFn()
+			return ctx.Err()
+		case respUnion, ok := <-rtnCh:
+			if !ok {
+				loopDone = true
+				return nil
 			}
-			fileInfo = respUnion.Response.Info
-			if fileInfo.NotFound {
-				if no404 {
-					serveTransparentGIF(w)
-					return nil
-				} else {
-					return fmt.Errorf("file not found: %q", path)
+			if respUnion.Error != nil {
+				return respUnion.Error
+			}
+			if firstPk {
+				firstPk = false
+				if respUnion.Response.Info == nil {
+					return fmt.Errorf("stream file protocol error, fileinfo is empty")
 				}
+				fileInfo = respUnion.Response.Info
+				if fileInfo.NotFound {
+					if no404 {
+						serveTransparentGIF(w)
+						return nil
+					} else {
+						return fmt.Errorf("file not found: %q", path)
+					}
+				}
+				if fileInfo.IsDir {
+					return fmt.Errorf("cannot stream directory: %q", path)
+				}
+				w.Header().Set(ContentTypeHeaderKey, fileInfo.MimeType)
+				w.Header().Set(ContentLengthHeaderKey, fmt.Sprintf("%d", fileInfo.Size))
+				continue
 			}
-			if fileInfo.IsDir {
-				return fmt.Errorf("cannot stream directory: %q", path)
+			if respUnion.Response.Data64 == "" {
+				continue
 			}
-			w.Header().Set(ContentTypeHeaderKey, fileInfo.MimeType)
-			w.Header().Set(ContentLengthHeaderKey, fmt.Sprintf("%d", fileInfo.Size))
-			continue
-		}
-		if respUnion.Response.Data64 == "" {
-			continue
-		}
-		decoder := base64.NewDecoder(base64.StdEncoding, bytes.NewReader([]byte(respUnion.Response.Data64)))
-		_, err := io.Copy(w, decoder)
-		if err != nil {
-			log.Printf("error streaming file %q: %v\n", path, err)
-			// not sure what to do here, the headers have already been sent.
-			// just return
-			return nil
+			decoder := base64.NewDecoder(base64.StdEncoding, bytes.NewReader([]byte(respUnion.Response.Data64)))
+			_, err := io.Copy(w, decoder)
+			if err != nil {
+				log.Printf("error streaming file %q: %v\n", path, err)
+				// not sure what to do here, the headers have already been sent.
+				// just return
+				return nil
+			}
 		}
 	}
-	loopDone = true
-	return nil
 }
 
 func handleStreamFile(w http.ResponseWriter, r *http.Request) {

@@ -191,9 +191,6 @@ func (impl *ServerImpl) remoteStreamFileInternal(ctx context.Context, data wshrp
 	if finfo.NotFound {
 		return nil
 	}
-	if finfo.Size > wshrpc.MaxFileSize {
-		return fmt.Errorf("file %q is too large to read, use /wave/stream-file", path)
-	}
 	if finfo.IsDir {
 		return impl.remoteStreamFileDir(ctx, path, byteRange, dataCallback)
 	} else {
@@ -221,7 +218,6 @@ func (impl *ServerImpl) RemoteStreamFileCommand(ctx context.Context, data wshrpc
 				resp.Data64 = base64.StdEncoding.EncodeToString(data)
 				resp.At = &wshrpc.FileDataAt{Offset: byteRange.Start, Size: len(data)}
 			}
-			logPrintfDev("callback -- sending response %d\n", len(resp.Data64))
 			ch <- wshrpc.RespOrErrorUnion[wshrpc.FileData]{Response: resp}
 		})
 		if err != nil {
