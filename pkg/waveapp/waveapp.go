@@ -176,7 +176,7 @@ func (client *Client) Connect() error {
 	if err != nil {
 		return fmt.Errorf("error extracting socket name from %s: %v", wshutil.WaveJwtTokenVarName, err)
 	}
-	rpcClient, err := wshutil.SetupDomainSocketRpcClient(sockName, client.ServerImpl)
+	rpcClient, err := wshutil.SetupDomainSocketRpcClient(sockName, client.ServerImpl, "vdomclient")
 	if err != nil {
 		return fmt.Errorf("error setting up domain socket rpc client: %v", err)
 	}

@@ -137,7 +137,7 @@ func setupConnServerRpcClientWithRouter(router *wshutil.WshRouter, jwtToken stri
 	}
 	inputCh := make(chan []byte, wshutil.DefaultInputChSize)
 	outputCh := make(chan []byte, wshutil.DefaultOutputChSize)
-	connServerClient := wshutil.MakeWshRpc(inputCh, outputCh, *rpcCtx, &wshremote.ServerImpl{LogWriter: os.Stdout})
+	connServerClient := wshutil.MakeWshRpc(inputCh, outputCh, *rpcCtx, &wshremote.ServerImpl{LogWriter: os.Stdout}, authRtn.RouteId)
 	connServerClient.SetAuthToken(authRtn.AuthToken)
 	router.RegisterRoute(authRtn.RouteId, connServerClient, false)
 	wshclient.RouteAnnounceCommand(connServerClient, nil)
