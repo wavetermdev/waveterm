@@ -454,8 +454,9 @@ func (impl *ServerImpl) RemoteFileCopyCommand(ctx context.Context, data wshrpc.C
 					}
 					if errors.Is(err, io.EOF) {
 						return nil
+					} else {
+						return fmt.Errorf("cannot read tar stream: %w", err)
 					}
-					return fmt.Errorf("cannot read tar stream: %w", err)
 				}
 				// Check for directory traversal
 				if strings.Contains(next.Name, "..") {

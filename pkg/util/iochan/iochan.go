@@ -24,7 +24,6 @@ func ReaderChan(ctx context.Context, r io.Reader, chunkSize int64, callback func
 			close(ch)
 			callback()
 		}()
-		buf := make([]byte, chunkSize)
 		for {
 			select {
 			case <-ctx.Done():
@@ -35,6 +34,7 @@ func ReaderChan(ctx context.Context, r io.Reader, chunkSize int64, callback func
 				log.Printf("ReaderChan: context error: %v", ctx.Err())
 				return
 			default:
+				buf := make([]byte, chunkSize)
 				if n, err := r.Read(buf); err != nil {
 					if errors.Is(err, io.EOF) {
 						log.Printf("ReaderChan: EOF")
@@ -78,8 +78,6 @@ func WriterChan(ctx context.Context, w io.Writer, ch <-chan wshrpc.RespOrErrorUn
 					log.Printf("WriterChan: write error: %v", err)
 					errCallback(err)
 					return
-				} else {
-					// log.Printf("WriterChan: wrote %d bytes", n)
 				}
 			}
 		}
