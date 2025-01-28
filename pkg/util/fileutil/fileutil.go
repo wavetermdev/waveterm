@@ -38,12 +38,19 @@ const (
 
 func WinSymlinkDir(path string, bits os.FileMode) bool {
 	// Windows compatibility layer doesn't expose symlink target type through fileInfo
-	// so we need to check file attributes and extension patterns
+	// so we need to over-engineer a bit
 	isFileSymlink := func(filepath string) bool {
-		if len(filepath) == 0 {
-			return false
+		Length, dirIndex := len(filepath)-1, strings.LastIndex(filepath, "\\")
+		for i := Length; i > dirIndex; i-- {
+			if filepath[i] == '.' {
+				// here to catch directories like .shared / .config
+				if i-1 == dirIndex {
+					break
+				}
+				return true
+			}
 		}
-		return strings.LastIndex(filepath, ".") > strings.LastIndex(filepath, "/")
+		return false
 	}
 
 	flags := uint32(bits >> 12)
