@@ -338,11 +338,9 @@ func (impl *ServerImpl) RemoteTarStreamCommand(ctx context.Context, data wshrpc.
 				if err != nil {
 					return err
 				}
-				if n, err := io.Copy(tarWriter, data); err != nil {
+				if _, err := io.Copy(tarWriter, data); err != nil {
 					log.Printf("error copying file %q: %v\n", file, err)
 					return err
-				} else {
-					logPrintfDev("wrote %d bytes to tar stream\n", n)
 				}
 			}
 			return nil
@@ -408,6 +406,7 @@ func (impl *ServerImpl) RemoteFileCopyCommand(ctx context.Context, data wshrpc.C
 		readCtx, cancel := context.WithCancelCause(ctx)
 		readCtx, timeoutCancel := context.WithTimeoutCause(readCtx, timeout, fmt.Errorf("timeout copying file %q to %q", srcUri, destUri))
 		defer timeoutCancel()
+		copyStart := time.Now()
 		ioch := fileshare.ReadTarStream(readCtx, wshrpc.CommandRemoteStreamTarData{Path: srcUri, Opts: opts})
 		pipeReader, pipeWriter := io.Pipe()
 		iochan.WriterChan(readCtx, pipeWriter, ioch, func() {
@@ -437,12 +436,14 @@ func (impl *ServerImpl) RemoteFileCopyCommand(ctx context.Context, data wshrpc.C
 				break
 			}
 		}()
+		numFiles := 0
 		for {
 			select {
 			case <-readCtx.Done():
 				if readCtx.Err() != nil {
 					return context.Cause(readCtx)
 				}
+				log.Printf("copy complete: %d files copied in %vms\n", numFiles, time.Since(copyStart).Milliseconds())
 				return nil
 			default:
 				next, err := tarReader.Next()
@@ -452,11 +453,13 @@ func (impl *ServerImpl) RemoteFileCopyCommand(ctx context.Context, data wshrpc.C
 						return context.Cause(readCtx)
 					}
 					if errors.Is(err, io.EOF) {
+						log.Printf("copy complete: %d files copied in %vms\n", numFiles, time.Since(copyStart).Milliseconds())
 						return nil
 					} else {
 						return fmt.Errorf("cannot read tar stream: %w", err)
 					}
 				}
+				numFiles++
 				// Check for directory traversal
 				if strings.Contains(next.Name, "..") {
 					log.Printf("skipping file with unsafe path: %q\n", next.Name)
