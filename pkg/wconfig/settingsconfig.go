@@ -582,13 +582,14 @@ func SetConnectionsConfigValue(connName string, toMerge waveobj.MetaMapType) err
 }
 
 type WidgetConfigType struct {
-	DisplayOrder float64          `json:"display:order,omitempty"`
-	Icon         string           `json:"icon,omitempty"`
-	Color        string           `json:"color,omitempty"`
-	Label        string           `json:"label,omitempty"`
-	Description  string           `json:"description,omitempty"`
-	Magnified    bool             `json:"magnified,omitempty"`
-	BlockDef     waveobj.BlockDef `json:"blockdef"`
+	DisplayOrder  float64          `json:"display:order,omitempty"`
+	DisplayHidden bool             `json:"display:hidden,omitempty"`
+	Icon          string           `json:"icon,omitempty"`
+	Color         string           `json:"color,omitempty"`
+	Label         string           `json:"label,omitempty"`
+	Description   string           `json:"description,omitempty"`
+	Magnified     bool             `json:"magnified,omitempty"`
+	BlockDef      waveobj.BlockDef `json:"blockdef"`
 }
 
 type MimeTypeConfigType struct {
