@@ -757,7 +757,7 @@ func (impl *ServerImpl) RemoteFileMoveCommand(ctx context.Context, data wshrpc.C
 		if err != nil {
 			return fmt.Errorf("cannot copy %q to %q: %w", srcUri, destUri, err)
 		}
-		err = impl.RemoteFileDeleteCommand(ctx, wshrpc.CommandDeleteFileData{Path: srcUri, Recursive: data.Opts.Recursive})
+		err = fileshare.Delete(ctx, wshrpc.CommandDeleteFileData{Path: srcUri, Recursive: data.Opts.Recursive})
 		if err != nil {
 			return fmt.Errorf("cannot delete %q: %w", srcUri, err)
 		}
