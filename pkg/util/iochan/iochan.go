@@ -28,6 +28,7 @@ func ReaderChan(ctx context.Context, r io.Reader, chunkSize int64, callback func
 		for {
 			select {
 			case <-ctx.Done():
+				log.Printf("ReaderChan: context done")
 				if ctx.Err() == context.Canceled {
 					return
 				}
@@ -57,8 +58,8 @@ func WriterChan(ctx context.Context, w io.Writer, ch <-chan wshrpc.RespOrErrorUn
 	go func() {
 		defer func() {
 			log.Printf("WriterChan: closing channel")
-			callback()
 			drainChannel(ch)
+			callback()
 		}()
 		for {
 			select {
@@ -86,5 +87,6 @@ func WriterChan(ctx context.Context, w io.Writer, ch <-chan wshrpc.RespOrErrorUn
 }
 
 func drainChannel(ch <-chan wshrpc.RespOrErrorUnion[[]byte]) {
-	for range ch {}
+	for range ch {
+	}
 }

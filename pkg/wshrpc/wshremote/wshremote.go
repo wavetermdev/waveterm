@@ -240,9 +240,8 @@ func (impl *ServerImpl) RemoteTarStreamCommand(ctx context.Context, data wshrpc.
 	}
 	readerCtx, cancel := context.WithTimeout(context.Background(), timeout)
 	rtn := iochan.ReaderChan(readerCtx, pipeReader, wshrpc.FileChunkSize, func() {
+		logPrintfDev("closing pipe reader\n")
 		pipeReader.Close()
-		pipeWriter.Close()
-		cancel()
 	})
 
 	var pathPrefix string
@@ -252,10 +251,33 @@ func (impl *ServerImpl) RemoteTarStreamCommand(ctx context.Context, data wshrpc.
 		pathPrefix = filepath.Dir(cleanedPath)
 	}
 	go func() {
+		defer func() {
+			logPrintfDev("closing tar writer\n")
+			for {
+				if err := tarWriter.Close(); err != nil {
+					logPrintfDev("error closing tar writer: %v\n", err)
+					time.Sleep(time.Millisecond * 10)
+					continue
+				}
+				logPrintfDev("closed tar writer\n")
+				break
+			}
+			logPrintfDev("closing pipe writer\n")
+			for {
+				if err := pipeWriter.Close(); err != nil {
+					logPrintfDev("error closing pipe writer: %v\n", err)
+					time.Sleep(time.Millisecond * 10)
+					continue
+				}
+				logPrintfDev("closed pipe writer\n")
+				break
+			}
+			log.Printf("closing context\n")
+			cancel()
+		}()
 		if readerCtx.Err() != nil {
 			return
 		}
-		defer tarWriter.Close()
 		logPrintfDev("creating tar stream for %q\n", path)
 		if finfo.IsDir() {
 			logPrintfDev("%q is a directory, recursive: %v\n", path, recursive)
@@ -365,11 +387,23 @@ func (impl *ServerImpl) RemoteFileCopyCommand(ctx context.Context, data wshrpc.C
 		ioch := fileshare.ReadTarStream(readCtx, wshrpc.CommandRemoteStreamTarData{Path: srcUri, Opts: opts})
 		pipeReader, pipeWriter := io.Pipe()
 		iochan.WriterChan(readCtx, pipeWriter, ioch, func() {
-			logPrintfDev("closing pipe writer\n")
+			log.Printf("copy closing pipe writer\n")
 			pipeWriter.Close()
-			pipeReader.Close()
 		}, cancel)
 		tarReader := tar.NewReader(pipeReader)
+		defer func() {
+			log.Printf("copy closing pipe reader\n")
+			for {
+				if err := pipeReader.Close(); err != nil {
+					log.Printf("error closing pipe reader: %v\n", err)
+					time.Sleep(time.Millisecond * 10)
+					continue
+				}
+				log.Printf("copy closed pipe reader\n")
+				timeoutCancel()
+				break
+			}
+		}()
 		for {
 			select {
 			case <-readCtx.Done():
