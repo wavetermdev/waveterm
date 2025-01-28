@@ -326,7 +326,7 @@ func (impl *ServerImpl) RemoteTarStreamCommand(ctx context.Context, data wshrpc.
 				header.Name = header.Name[1:]
 			}
 
-			log.Printf("file: %q; header: %v\n", file, header)
+			// log.Printf("file: %q; header: %v\n", file, header)
 
 			// write header
 			if err := tarWriter.WriteHeader(header); err != nil {
@@ -345,7 +345,6 @@ func (impl *ServerImpl) RemoteTarStreamCommand(ctx context.Context, data wshrpc.
 					logPrintfDev("wrote %d bytes to tar stream\n", n)
 				}
 			}
-			time.Sleep(time.Millisecond * 10)
 			return nil
 		})
 		if err != nil {
@@ -469,7 +468,7 @@ func (impl *ServerImpl) RemoteFileCopyCommand(ctx context.Context, data wshrpc.C
 				if err != nil && !errors.Is(err, fs.ErrNotExist) {
 					return fmt.Errorf("cannot stat file %q: %w", nextPath, err)
 				}
-				log.Printf("new file: name %q; dest %q\n", next.Name, nextPath)
+				// log.Printf("new file: name %q; dest %q\n", next.Name, nextPath)
 
 				if destinfo != nil {
 					if destinfo.IsDir() {
