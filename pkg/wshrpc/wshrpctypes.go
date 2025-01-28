@@ -150,7 +150,7 @@ type WshRpcInterface interface {
 	WaitForRouteCommand(ctx context.Context, data CommandWaitForRouteData) (bool, error)
 	FileMkdirCommand(ctx context.Context, data FileData) error
 	FileCreateCommand(ctx context.Context, data FileData) error
-	FileDeleteCommand(ctx context.Context, data FileData) error
+	FileDeleteCommand(ctx context.Context, data CommandDeleteFileData) error
 	FileAppendCommand(ctx context.Context, data FileData) error
 	FileAppendIJsonCommand(ctx context.Context, data CommandAppendIJsonData) error
 	FileWriteCommand(ctx context.Context, data FileData) error
@@ -205,7 +205,7 @@ type WshRpcInterface interface {
 	RemoteFileInfoCommand(ctx context.Context, path string) (*FileInfo, error)
 	RemoteFileTouchCommand(ctx context.Context, path string) error
 	RemoteFileMoveCommand(ctx context.Context, data CommandRemoteFileCopyData) error
-	RemoteFileDeleteCommand(ctx context.Context, path string) error
+	RemoteFileDeleteCommand(ctx context.Context, data CommandDeleteFileData) error
 	RemoteWriteFileCommand(ctx context.Context, data FileData) error
 	RemoteFileJoinCommand(ctx context.Context, paths []string) (*FileInfo, error)
 	RemoteMkdirCommand(ctx context.Context, path string) error
@@ -496,6 +496,11 @@ type CpuDataRequest struct {
 type CpuDataType struct {
 	Time  int64   `json:"time"`
 	Value float64 `json:"value"`
+}
+
+type CommandDeleteFileData struct {
+	Path      string `json:"path"`
+	Recursive bool   `json:"recursive"`
 }
 
 type CommandFileCopyData struct {

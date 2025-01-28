@@ -838,15 +838,27 @@ func (*ServerImpl) RemoteWriteFileCommand(ctx context.Context, data wshrpc.FileD
 	return nil
 }
 
-func (*ServerImpl) RemoteFileDeleteCommand(ctx context.Context, path string) error {
-	expandedPath, err := wavebase.ExpandHomeDir(path)
+func (*ServerImpl) RemoteFileDeleteCommand(ctx context.Context, data wshrpc.CommandDeleteFileData) error {
+	expandedPath, err := wavebase.ExpandHomeDir(data.Path)
 	if err != nil {
-		return fmt.Errorf("cannot delete file %q: %w", path, err)
+		return fmt.Errorf("cannot delete file %q: %w", data.Path, err)
 	}
 	cleanedPath := filepath.Clean(expandedPath)
+
 	err = os.Remove(cleanedPath)
 	if err != nil {
-		return fmt.Errorf("cannot delete file %q: %w", path, err)
+		finfo, _ := os.Stat(cleanedPath)
+		if finfo != nil && finfo.IsDir() {
+			if !data.Recursive {
+				return fmt.Errorf("cannot delete directory %q, recursive option not specified", data.Path)
+			}
+			err = os.RemoveAll(cleanedPath)
+			if err != nil {
+				return fmt.Errorf("cannot delete directory %q: %w", data.Path, err)
+			}
+		} else {
+			return fmt.Errorf("cannot delete file %q: %w", data.Path, err)
+		}
 	}
 	return nil
 }

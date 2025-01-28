@@ -133,12 +133,12 @@ func Copy(ctx context.Context, data wshrpc.CommandFileCopyData) error {
 	return destClient.Copy(ctx, srcConn, destConn, data.Opts)
 }
 
-func Delete(ctx context.Context, path string) error {
-	client, conn := CreateFileShareClient(ctx, path)
+func Delete(ctx context.Context, data wshrpc.CommandDeleteFileData) error {
+	client, conn := CreateFileShareClient(ctx, data.Path)
 	if conn == nil || client == nil {
-		return fmt.Errorf(ErrorParsingConnection, path)
+		return fmt.Errorf(ErrorParsingConnection, data.Path)
 	}
-	return client.Delete(ctx, conn)
+	return client.Delete(ctx, conn, data.Recursive)
 }
 
 func Join(ctx context.Context, path string, parts ...string) (string, error) {

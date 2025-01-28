@@ -207,7 +207,7 @@ func FileCreateCommand(w *wshutil.WshRpc, data wshrpc.FileData, opts *wshrpc.Rpc
 }
 
 // command "filedelete", wshserver.FileDeleteCommand
-func FileDeleteCommand(w *wshutil.WshRpc, data wshrpc.FileData, opts *wshrpc.RpcOpts) error {
+func FileDeleteCommand(w *wshutil.WshRpc, data wshrpc.CommandDeleteFileData, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "filedelete", data, opts)
 	return err
 }
@@ -313,7 +313,7 @@ func RemoteFileCopyCommand(w *wshutil.WshRpc, data wshrpc.CommandRemoteFileCopyD
 }
 
 // command "remotefiledelete", wshserver.RemoteFileDeleteCommand
-func RemoteFileDeleteCommand(w *wshutil.WshRpc, data string, opts *wshrpc.RpcOpts) error {
+func RemoteFileDeleteCommand(w *wshutil.WshRpc, data wshrpc.CommandDeleteFileData, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "remotefiledelete", data, opts)
 	return err
 }

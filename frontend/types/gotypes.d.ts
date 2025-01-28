@@ -166,6 +166,12 @@ declare global {
         blockid: string;
     };
 
+    // wshrpc.CommandDeleteFileData
+    type CommandDeleteFileData = {
+        path: string;
+        recursive: boolean;
+    };
+
     // wshrpc.CommandDisposeData
     type CommandDisposeData = {
         routeid: string;

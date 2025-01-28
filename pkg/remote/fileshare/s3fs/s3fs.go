@@ -105,7 +105,7 @@ func (c S3Client) Copy(ctx context.Context, srcConn, destConn *connparse.Connect
 	return nil
 }
 
-func (c S3Client) Delete(ctx context.Context, conn *connparse.Connection) error {
+func (c S3Client) Delete(ctx context.Context, conn *connparse.Connection, recursive bool) error {
 	return nil
 }
 

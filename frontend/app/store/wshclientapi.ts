@@ -168,7 +168,7 @@ class RpcApiType {
     }
 
     // command "filedelete" [call]
-    FileDeleteCommand(client: WshClient, data: FileData, opts?: RpcOpts): Promise<void> {
+    FileDeleteCommand(client: WshClient, data: CommandDeleteFileData, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("filedelete", data, opts);
     }
 
@@ -258,7 +258,7 @@ class RpcApiType {
     }
 
     // command "remotefiledelete" [call]
-    RemoteFileDeleteCommand(client: WshClient, data: string, opts?: RpcOpts): Promise<void> {
+    RemoteFileDeleteCommand(client: WshClient, data: CommandDeleteFileData, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("remotefiledelete", data, opts);
     }
 

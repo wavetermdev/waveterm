@@ -357,7 +357,7 @@ func (c WaveClient) Copy(ctx context.Context, srcConn, destConn *connparse.Conne
 	return nil
 }
 
-func (c WaveClient) Delete(ctx context.Context, conn *connparse.Connection) error {
+func (c WaveClient) Delete(ctx context.Context, conn *connparse.Connection, recursive bool) error {
 	zoneId := conn.Host
 	if zoneId == "" {
 		return fmt.Errorf("zoneid not found in connection")

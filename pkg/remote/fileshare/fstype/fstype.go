@@ -34,7 +34,7 @@ type FileShareClient interface {
 	// Copy copies the file from srcConn to destConn
 	Copy(ctx context.Context, srcConn, destConn *connparse.Connection, opts *wshrpc.FileCopyOpts) error
 	// Delete deletes the entry at the given path
-	Delete(ctx context.Context, conn *connparse.Connection) error
+	Delete(ctx context.Context, conn *connparse.Connection, recursive bool) error
 	// Join joins the given parts to the connection path
 	Join(ctx context.Context, conn *connparse.Connection, parts ...string) (string, error)
 	// GetConnectionType returns the type of connection for the fileshare
