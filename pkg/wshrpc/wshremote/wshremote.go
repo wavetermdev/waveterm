@@ -45,6 +45,22 @@ func (impl *ServerImpl) MessageCommand(ctx context.Context, data wshrpc.CommandM
 	return nil
 }
 
+func (impl *ServerImpl) StreamTestCommand(ctx context.Context) chan wshrpc.RespOrErrorUnion[int] {
+	ch := make(chan wshrpc.RespOrErrorUnion[int], 16)
+	go func() {
+		defer close(ch)
+		idx := 0
+		for {
+			ch <- wshrpc.RespOrErrorUnion[int]{Response: idx}
+			idx++
+			if idx == 1000 {
+				break
+			}
+		}
+	}()
+	return ch
+}
+
 type ByteRangeType struct {
 	All   bool
 	Start int64

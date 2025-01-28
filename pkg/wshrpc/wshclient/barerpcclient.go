@@ -31,7 +31,7 @@ func GetBareRpcClient() *wshutil.WshRpc {
 	waveSrvClient_Once.Do(func() {
 		inputCh := make(chan []byte, DefaultInputChSize)
 		outputCh := make(chan []byte, DefaultOutputChSize)
-		waveSrvClient_Singleton = wshutil.MakeWshRpc(inputCh, outputCh, wshrpc.RpcContext{}, &WshServerImpl)
+		waveSrvClient_Singleton = wshutil.MakeWshRpc(inputCh, outputCh, wshrpc.RpcContext{}, &WshServerImpl, "bare-client")
 		wshutil.DefaultRouter.RegisterRoute(BareClientRoute, waveSrvClient_Singleton, true)
 		wps.Broker.SetClient(wshutil.DefaultRouter)
 	})

@@ -16,6 +16,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
+	"github.com/wavetermdev/waveterm/pkg/util/ds"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/wps"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
@@ -25,6 +26,8 @@ const DefaultTimeoutMs = 5000
 const RespChSize = 32
 const DefaultMessageChSize = 32
 const CtxDoneChSize = 10
+
+var blockingExpMap = ds.MakeExpMap[bool]()
 
 type ResponseFnType = func(any) error
 
@@ -42,7 +45,6 @@ type AbstractRpcClient interface {
 
 type WshRpc struct {
 	Lock               *sync.Mutex
-	clientId           string
 	InputCh            chan []byte
 	OutputCh           chan []byte
 	CtxDoneCh          chan string // for context cancellation, value is ResId
@@ -181,8 +183,10 @@ func (r *RpcMessage) Validate() error {
 }
 
 type rpcData struct {
-	ResCh chan *RpcMessage
-	Ctx   context.Context
+	Command string
+	Route   string
+	ResCh   chan *RpcMessage
+	Ctx     context.Context
 }
 
 func validateServerImpl(serverImpl ServerImpl) {
@@ -196,7 +200,7 @@ func validateServerImpl(serverImpl ServerImpl) {
 }
 
 // closes outputCh when inputCh is closed/done
-func MakeWshRpc(inputCh chan []byte, outputCh chan []byte, rpcCtx wshrpc.RpcContext, serverImpl ServerImpl) *WshRpc {
+func MakeWshRpc(inputCh chan []byte, outputCh chan []byte, rpcCtx wshrpc.RpcContext, serverImpl ServerImpl, debugName string) *WshRpc {
 	if inputCh == nil {
 		inputCh = make(chan []byte, DefaultInputChSize)
 	}
@@ -206,7 +210,7 @@ func MakeWshRpc(inputCh chan []byte, outputCh chan []byte, rpcCtx wshrpc.RpcCont
 	validateServerImpl(serverImpl)
 	rtn := &WshRpc{
 		Lock:               &sync.Mutex{},
-		clientId:           uuid.New().String(),
+		DebugName:          debugName,
 		InputCh:            inputCh,
 		OutputCh:           outputCh,
 		CtxDoneCh:          make(chan string, CtxDoneChSize),
@@ -219,10 +223,6 @@ func MakeWshRpc(inputCh chan []byte, outputCh chan []byte, rpcCtx wshrpc.RpcCont
 	rtn.RpcContext.Store(&rpcCtx)
 	go rtn.runServer()
 	return rtn
-}
-
-func (w *WshRpc) ClientId() string {
-	return w.clientId
 }
 
 func (w *WshRpc) GetRpcContext() wshrpc.RpcContext {
@@ -377,11 +377,7 @@ outer:
 				w.handleRequest(&msg)
 			}()
 		} else {
-			respCh := w.getResponseCh(msg.ResId)
-			if respCh == nil {
-				continue
-			}
-			respCh <- &msg
+			w.sendRespWithBlockMessage(msg)
 			if !msg.Cont {
 				w.unregisterRpc(msg.ResId, nil)
 			}
@@ -389,17 +385,17 @@ outer:
 	}
 }
 
-func (w *WshRpc) getResponseCh(resId string) chan *RpcMessage {
+func (w *WshRpc) getResponseCh(resId string) (chan *RpcMessage, *rpcData) {
 	if resId == "" {
-		return nil
+		return nil, nil
 	}
 	w.Lock.Lock()
 	defer w.Lock.Unlock()
 	rd := w.RpcMap[resId]
 	if rd == nil {
-		return nil
+		return nil, nil
 	}
-	return rd.ResCh
+	return rd.ResCh, rd
 }
 
 func (w *WshRpc) SetServerImpl(serverImpl ServerImpl) {
@@ -409,13 +405,15 @@ func (w *WshRpc) SetServerImpl(serverImpl ServerImpl) {
 	w.ServerImpl = serverImpl
 }
 
-func (w *WshRpc) registerRpc(ctx context.Context, reqId string) chan *RpcMessage {
+func (w *WshRpc) registerRpc(ctx context.Context, command string, route string, reqId string) chan *RpcMessage {
 	w.Lock.Lock()
 	defer w.Lock.Unlock()
 	rpcCh := make(chan *RpcMessage, RespChSize)
 	w.RpcMap[reqId] = &rpcData{
-		ResCh: rpcCh,
-		Ctx:   ctx,
+		Command: command,
+		Route:   route,
+		ResCh:   rpcCh,
+		Ctx:     ctx,
 	}
 	go func() {
 		defer func() {
@@ -712,7 +710,7 @@ func (w *WshRpc) SendComplexRequest(command string, data any, opts *wshrpc.RpcOp
 	if err != nil {
 		return nil, err
 	}
-	handler.respCh = w.registerRpc(handler.ctx, handler.reqId)
+	handler.respCh = w.registerRpc(handler.ctx, command, opts.Route, handler.reqId)
 	w.OutputCh <- barr
 	return handler, nil
 }
@@ -753,5 +751,34 @@ func (w *WshRpc) retrySendTimeout(resId string) {
 		}
 		time.Sleep(100 * time.Millisecond)
 	}
+}
 
+func (w *WshRpc) sendRespWithBlockMessage(msg RpcMessage) {
+	respCh, rd := w.getResponseCh(msg.ResId)
+	if respCh == nil {
+		return
+	}
+	select {
+	case respCh <- &msg:
+		// normal case, message got sent, just return!
+		return
+	default:
+		// channel is full, we would block...
+	}
+	// log the fact that we're blocking
+	_, noLog := blockingExpMap.Get(msg.ResId)
+	if !noLog {
+		log.Printf("[rpc:%s] blocking on response command:%s route:%s resid:%s\n", w.DebugName, rd.Command, rd.Route, msg.ResId)
+		blockingExpMap.Set(msg.ResId, true, time.Now().Add(time.Second))
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancel()
+	select {
+	case respCh <- &msg:
+		// message got sent, just return!
+		return
+	case <-ctx.Done():
+	}
+	log.Printf("[rpc:%s] failed to clear response channel (waited 1s), will fail RPC command:%s route:%s resid:%s\n", w.DebugName, rd.Command, rd.Route, msg.ResId)
+	w.unregisterRpc(msg.ResId, nil) // we don't pass an error because the channel is full, it won't work anyway...
 }
