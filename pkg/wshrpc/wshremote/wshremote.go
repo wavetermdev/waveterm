@@ -253,15 +253,12 @@ func (impl *ServerImpl) RemoteTarStreamCommand(ctx context.Context, data wshrpc.
 	}
 	readerCtx, cancel := context.WithTimeout(context.Background(), timeout)
 	rtn := iochan.ReaderChan(readerCtx, pipeReader, wshrpc.FileChunkSize, func() {
-		logPrintfDev("closing pipe reader\n")
-		log.Printf("closing pipe reader\n")
 		for {
 			if err := pipeReader.Close(); err != nil {
-				log.Printf("error closing pipe reader: %v\n", err)
+				log.Printf("error closing pipe reader: %v, trying again in 10ms\n", err)
 				time.Sleep(time.Millisecond * 10)
 				continue
 			}
-			log.Printf("closed pipe reader\n")
 			break
 		}
 	})
@@ -274,35 +271,28 @@ func (impl *ServerImpl) RemoteTarStreamCommand(ctx context.Context, data wshrpc.
 	}
 	go func() {
 		defer func() {
-			logPrintfDev("closing tar writer\n")
 			for {
 				if err := tarWriter.Close(); err != nil {
-					logPrintfDev("error closing tar writer: %v\n", err)
+					logPrintfDev("error closing tar writer: %v, trying again in 10ms\n", err)
 					time.Sleep(time.Millisecond * 10)
 					continue
 				}
-				logPrintfDev("closed tar writer\n")
 				break
 			}
-			logPrintfDev("closing pipe writer\n")
 			for {
 				if err := pipeWriter.Close(); err != nil {
-					logPrintfDev("error closing pipe writer: %v\n", err)
+					logPrintfDev("error closing pipe writer: %v, trying again in 10ms\n", err)
 					time.Sleep(time.Millisecond * 10)
 					continue
 				}
-				logPrintfDev("closed pipe writer\n")
 				break
 			}
-			log.Printf("closing context\n")
 			cancel()
 		}()
 		if readerCtx.Err() != nil {
 			return
 		}
-		logPrintfDev("creating tar stream for %q\n", path)
 		if finfo.IsDir() {
-			logPrintfDev("%q is a directory, recursive: %v\n", path, recursive)
 			if !recursive {
 				rtn <- wshutil.RespErr[iochantypes.Packet](fmt.Errorf("cannot create tar stream for %q: %w", path, errors.New("directory copy requires recursive option")))
 				return
@@ -322,8 +312,6 @@ func (impl *ServerImpl) RemoteTarStreamCommand(ctx context.Context, data wshrpc.
 			if strings.HasPrefix(header.Name, "/") {
 				header.Name = header.Name[1:]
 			}
-
-			// log.Printf("file: %q; header: %v\n", file, header)
 
 			// write header
 			if err := tarWriter.WriteHeader(header); err != nil {
@@ -345,9 +333,9 @@ func (impl *ServerImpl) RemoteTarStreamCommand(ctx context.Context, data wshrpc.
 		if err != nil {
 			rtn <- wshutil.RespErr[iochantypes.Packet](fmt.Errorf("cannot create tar stream for %q: %w", path, err))
 		}
-		logPrintfDev("returning tar stream\n")
+		log.Printf("RemoteTarStreamCommand: done\n")
 	}()
-	logPrintfDev("returning channel\n")
+	log.Printf("RemoteTarStreamCommand: returning channel\n")
 	return rtn
 }
 
@@ -382,20 +370,17 @@ func (impl *ServerImpl) RemoteFileCopyCommand(ctx context.Context, data wshrpc.C
 	} else if !errors.Is(err, fs.ErrNotExist) {
 		return fmt.Errorf("cannot stat destination %q: %w", destPathCleaned, err)
 	}
-	log.Printf("copying %q to %q\n", srcUri, destUri)
 	srcConn, err := connparse.ParseURIAndReplaceCurrentHost(ctx, srcUri)
 	if err != nil {
 		return fmt.Errorf("cannot parse source URI %q: %w", srcUri, err)
 	}
 	if srcConn.Host == destConn.Host {
-		logPrintfDev("same host, copying file\n")
 		srcPathCleaned := filepath.Clean(wavebase.ExpandHomeDirSafe(srcConn.Path))
 		err := os.Rename(srcPathCleaned, destPathCleaned)
 		if err != nil {
 			return fmt.Errorf("cannot copy file %q to %q: %w", srcPathCleaned, destPathCleaned, err)
 		}
 	} else {
-		logPrintfDev("different hosts, streaming file\n")
 		timeout := time.Millisecond * 100
 		if opts.Timeout > 0 {
 			timeout = time.Duration(opts.Timeout) * time.Millisecond
@@ -407,41 +392,41 @@ func (impl *ServerImpl) RemoteFileCopyCommand(ctx context.Context, data wshrpc.C
 		ioch := fileshare.ReadTarStream(readCtx, wshrpc.CommandRemoteStreamTarData{Path: srcUri, Opts: opts})
 		pipeReader, pipeWriter := io.Pipe()
 		iochan.WriterChan(readCtx, pipeWriter, ioch, func() {
-			log.Printf("copy closing pipe writer\n")
 			for {
 				if err := pipeWriter.Close(); err != nil {
-					log.Printf("error closing pipe writer: %v\n", err)
+					log.Printf("error closing pipe writer: %v, trying again in 10ms\n", err)
 					time.Sleep(time.Millisecond * 10)
 					continue
 				}
-				log.Printf("copy closed pipe writer\n")
 				timeoutCancel()
 				break
 			}
 		}, cancel)
 		tarReader := tar.NewReader(pipeReader)
 		defer func() {
-			log.Printf("copy closing pipe reader\n")
 			for {
 				if err := pipeReader.Close(); err != nil {
-					log.Printf("error closing pipe reader: %v\n", err)
+					log.Printf("error closing pipe reader: %v, trying again in 10ms\n", err)
 					time.Sleep(time.Millisecond * 10)
 					continue
 				}
-				log.Printf("copy closed pipe reader\n")
 				timeoutCancel()
 				break
 			}
 		}()
 		numFiles := 0
 		numSkipped := 0
+		totalBytes := int64(0)
+		logResult := func() {
+			log.Printf("RemoteFileCopyCommand: done; %d files copied in %dms, total of %d bytes, %d files skipped\n", numFiles, time.Since(copyStart).Milliseconds(), totalBytes, numSkipped)
+		}
 		for {
 			select {
 			case <-readCtx.Done():
 				if readCtx.Err() != nil {
 					return context.Cause(readCtx)
 				}
-				log.Printf("copy complete: %d files copied in %dms, %d skipped\n", numFiles, time.Since(copyStart).Milliseconds(), numSkipped)
+				logResult()
 				return nil
 			default:
 				next, err := tarReader.Next()
@@ -451,7 +436,7 @@ func (impl *ServerImpl) RemoteFileCopyCommand(ctx context.Context, data wshrpc.C
 						return context.Cause(readCtx)
 					}
 					if errors.Is(err, io.EOF) {
-						log.Printf("copy complete: %d files copied in %dms, %d skipped\n", numFiles, time.Since(copyStart).Milliseconds(), numSkipped)
+						logResult()
 						return nil
 					} else {
 						return fmt.Errorf("cannot read tar stream: %w", err)
@@ -470,7 +455,9 @@ func (impl *ServerImpl) RemoteFileCopyCommand(ctx context.Context, data wshrpc.C
 				if err != nil && !errors.Is(err, fs.ErrNotExist) {
 					return fmt.Errorf("cannot stat file %q: %w", nextPath, err)
 				}
-				// log.Printf("new file: name %q; dest %q\n", next.Name, nextPath)
+				if !finfo.IsDir() {
+					totalBytes += finfo.Size()
+				}
 
 				if destinfo != nil {
 					if destinfo.IsDir() {
@@ -512,7 +499,6 @@ func (impl *ServerImpl) RemoteFileCopyCommand(ctx context.Context, data wshrpc.C
 					}
 				} else {
 					if finfo.IsDir() {
-						logPrintfDev("creating directory %q\n", nextPath)
 						err := os.MkdirAll(nextPath, finfo.Mode())
 						if err != nil {
 							return fmt.Errorf("cannot create directory %q: %w", nextPath, err)
