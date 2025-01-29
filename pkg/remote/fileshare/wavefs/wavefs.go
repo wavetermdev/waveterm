@@ -117,7 +117,7 @@ func (c WaveClient) ReadTarStream(ctx context.Context, conn *connparse.Connectio
 		timeout = time.Duration(opts.Timeout) * time.Millisecond
 	}
 	readerCtx, cancel := context.WithTimeout(context.Background(), timeout)
-	rtn, writeHeader, fileWriter, tarClose := tarcopy.TarCopySrc(readerCtx, wshrpc.FileChunkSize, pathPrefix)
+	rtn, writeHeader, fileWriter, tarClose := tarcopy.TarCopySrc(readerCtx, pathPrefix)
 
 	go func() {
 		defer func() {
@@ -510,11 +510,13 @@ func (c WaveClient) Delete(ctx context.Context, conn *connparse.Connection, recu
 		if !recursive {
 			return fmt.Errorf("more than one entry, use recursive flag to delete")
 		}
+		errs := make([]error, 0)
 		for _, entry := range entries {
 			fileName := strings.TrimPrefix(entry.Path, schemeAndHost)
 			err = filestore.WFS.DeleteFile(ctx, zoneId, fileName)
 			if err != nil {
-				return fmt.Errorf("error deleting blockfile: %w", err)
+				errs = append(errs, fmt.Errorf("error deleting blockfile %s/%s: %w", zoneId, fileName, err))
+				continue
 			}
 			wps.Broker.Publish(wps.WaveEvent{
 				Event:  wps.Event_BlockFile,
@@ -525,6 +527,9 @@ func (c WaveClient) Delete(ctx context.Context, conn *connparse.Connection, recu
 					FileOp:   wps.FileOp_Delete,
 				},
 			})
+		}
+		if len(errs) > 0 {
+			return fmt.Errorf("error deleting blockfiles: %v", errs)
 		}
 	}
 	return nil
