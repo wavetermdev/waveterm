@@ -17,7 +17,7 @@ import cssWorker from "monaco-editor/esm/vs/language/css/css.worker?worker";
 import htmlWorker from "monaco-editor/esm/vs/language/html/html.worker?worker";
 import jsonWorker from "monaco-editor/esm/vs/language/json/json.worker?worker";
 import tsWorker from "monaco-editor/esm/vs/language/typescript/ts.worker?worker";
-import { SchemaEndpoints, getEndpointInfo } from "./schemaendpoints";
+import { SchemaEndpoints, getSchemaEndpointInfo } from "./schemaendpoints";
 import ymlWorker from "./yamlworker?worker";
 
 import "./codeeditor.scss";
@@ -78,7 +78,7 @@ export async function loadMonaco() {
     monaco.languages.typescript.typescriptDefaults.setDiagnosticsOptions({
         noSemanticValidation: true,
     });
-    const schemas = await Promise.all(SchemaEndpoints.map((endpoint) => getEndpointInfo(endpoint)));
+    const schemas = await Promise.all(SchemaEndpoints.map((endpoint) => getSchemaEndpointInfo(endpoint)));
     monaco.languages.json.jsonDefaults.setDiagnosticsOptions({
         validate: true,
         allowComments: false, // Set to true if you want to allow comments in JSON

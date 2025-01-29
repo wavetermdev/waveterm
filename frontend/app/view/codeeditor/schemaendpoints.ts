@@ -13,7 +13,7 @@ type EndpointInfo = {
 const allFilepaths: Map<string, Array<string>> = new Map();
 allFilepaths.set(`${getWebServerEndpoint()}/schema/settings.json`, [`${getApi().getConfigDir()}/settings.json`]);
 
-async function getEndpointInfo(endpoint: string): Promise<EndpointInfo> {
+async function getSchemaEndpointInfo(endpoint: string): Promise<EndpointInfo> {
     const data = await fetch(endpoint);
     const schema: object = await data.json();
     const fileMatch = allFilepaths.get(endpoint) ?? [];
@@ -27,4 +27,4 @@ async function getEndpointInfo(endpoint: string): Promise<EndpointInfo> {
 
 const SchemaEndpoints = Array.from(allFilepaths.keys());
 
-export { getEndpointInfo, SchemaEndpoints };
+export { getSchemaEndpointInfo, SchemaEndpoints };
