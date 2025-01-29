@@ -30,10 +30,12 @@ type FileShareClient interface {
 	AppendFile(ctx context.Context, conn *connparse.Connection, data wshrpc.FileData) error
 	// Mkdir creates a directory at the given path
 	Mkdir(ctx context.Context, conn *connparse.Connection) error
-	// Move moves the file from srcConn to destConn
-	Move(ctx context.Context, srcConn, destConn *connparse.Connection, opts *wshrpc.FileCopyOpts) error
-	// Copy copies the file from srcConn to destConn
-	Copy(ctx context.Context, srcConn, destConn *connparse.Connection, opts *wshrpc.FileCopyOpts) error
+	// Move moves the file within the same connection
+	MoveInternal(ctx context.Context, srcConn, destConn *connparse.Connection, opts *wshrpc.FileCopyOpts) error
+	// Copy copies the file within the same connection
+	CopyInternal(ctx context.Context, srcConn, destConn *connparse.Connection, opts *wshrpc.FileCopyOpts) error
+	// CopyRemote copies the file between different connections
+	CopyRemote(ctx context.Context, srcConn, destConn *connparse.Connection, srcClient FileShareClient, opts *wshrpc.FileCopyOpts) error
 	// Delete deletes the entry at the given path
 	Delete(ctx context.Context, conn *connparse.Connection, recursive bool) error
 	// Join joins the given parts to the connection path

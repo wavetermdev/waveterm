@@ -320,14 +320,63 @@ func (c WaveClient) AppendFile(ctx context.Context, conn *connparse.Connection, 
 
 // WaveFile does not support directories, only prefix-based listing
 func (c WaveClient) Mkdir(ctx context.Context, conn *connparse.Connection) error {
+	return errors.ErrUnsupported
+}
+
+func (c WaveClient) MoveInternal(ctx context.Context, srcConn, destConn *connparse.Connection, opts *wshrpc.FileCopyOpts) error {
+	if srcConn.Host != destConn.Host {
+		return fmt.Errorf("move internal, src and dest hosts do not match")
+	}
+	err := c.CopyInternal(ctx, srcConn, destConn, opts)
+	if err != nil {
+		return fmt.Errorf("error copying blockfile: %w", err)
+	}
+	err = c.Delete(ctx, srcConn, opts.Recursive)
+	if err != nil {
+		return fmt.Errorf("error deleting blockfile: %w", err)
+	}
 	return nil
 }
 
-func (c WaveClient) Move(ctx context.Context, srcConn, destConn *connparse.Connection, opts *wshrpc.FileCopyOpts) error {
-	return nil
+func (c WaveClient) CopyInternal(ctx context.Context, srcConn, destConn *connparse.Connection, opts *wshrpc.FileCopyOpts) error {
+	if srcConn.Host == destConn.Host {
+		host := srcConn.Host
+		srcFileName, err := cleanPath(srcConn.Path)
+		if err != nil {
+			return fmt.Errorf("error cleaning source path: %w", err)
+		}
+		destFileName, err := cleanPath(destConn.Path)
+		if err != nil {
+			return fmt.Errorf("error cleaning destination path: %w", err)
+		}
+		err = filestore.WFS.MakeFile(ctx, host, destFileName, wshrpc.FileMeta{}, wshrpc.FileOpts{})
+		if err != nil {
+			return fmt.Errorf("error making source blockfile: %w", err)
+		}
+		_, dataBuf, err := filestore.WFS.ReadFile(ctx, host, srcFileName)
+		if err != nil {
+			return fmt.Errorf("error reading source blockfile: %w", err)
+		}
+		err = filestore.WFS.WriteFile(ctx, host, destFileName, dataBuf)
+		if err != nil {
+			return fmt.Errorf("error writing to destination blockfile: %w", err)
+		}
+		wps.Broker.Publish(wps.WaveEvent{
+			Event:  wps.Event_BlockFile,
+			Scopes: []string{waveobj.MakeORef(waveobj.OType_Block, host).String()},
+			Data: &wps.WSFileEventData{
+				ZoneId:   host,
+				FileName: destFileName,
+				FileOp:   wps.FileOp_Invalidate,
+			},
+		})
+		return nil
+	} else {
+		return fmt.Errorf("copy between different hosts not supported")
+	}
 }
 
-func (c WaveClient) Copy(ctx context.Context, srcConn, destConn *connparse.Connection, opts *wshrpc.FileCopyOpts) error {
+func (c WaveClient) CopyRemote(ctx context.Context, srcConn, destConn *connparse.Connection, srcClient fstype.FileShareClient, opts *wshrpc.FileCopyOpts) error {
 	return nil
 }
 

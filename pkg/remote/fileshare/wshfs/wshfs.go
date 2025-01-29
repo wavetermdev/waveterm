@@ -146,7 +146,10 @@ func (c WshClient) Mkdir(ctx context.Context, conn *connparse.Connection) error 
 	return wshclient.RemoteMkdirCommand(RpcClient, conn.Path, &wshrpc.RpcOpts{Route: wshutil.MakeConnectionRouteId(conn.Host)})
 }
 
-func (c WshClient) Move(ctx context.Context, srcConn, destConn *connparse.Connection, opts *wshrpc.FileCopyOpts) error {
+func (c WshClient) MoveInternal(ctx context.Context, srcConn, destConn *connparse.Connection, opts *wshrpc.FileCopyOpts) error {
+	if srcConn.Host != destConn.Host {
+		return fmt.Errorf("move internal, src and dest hosts do not match")
+	}
 	if opts == nil {
 		opts = &wshrpc.FileCopyOpts{}
 	}
@@ -157,7 +160,11 @@ func (c WshClient) Move(ctx context.Context, srcConn, destConn *connparse.Connec
 	return wshclient.RemoteFileMoveCommand(RpcClient, wshrpc.CommandRemoteFileCopyData{SrcUri: srcConn.GetFullURI(), DestUri: destConn.GetFullURI(), Opts: opts}, &wshrpc.RpcOpts{Route: wshutil.MakeConnectionRouteId(destConn.Host), Timeout: timeout})
 }
 
-func (c WshClient) Copy(ctx context.Context, srcConn, destConn *connparse.Connection, opts *wshrpc.FileCopyOpts) error {
+func (c WshClient) CopyRemote(ctx context.Context, srcConn, destConn *connparse.Connection, _ fstype.FileShareClient, opts *wshrpc.FileCopyOpts) error {
+	return c.CopyInternal(ctx, srcConn, destConn, opts)
+}
+
+func (c WshClient) CopyInternal(ctx context.Context, srcConn, destConn *connparse.Connection, opts *wshrpc.FileCopyOpts) error {
 	if opts == nil {
 		opts = &wshrpc.FileCopyOpts{}
 	}

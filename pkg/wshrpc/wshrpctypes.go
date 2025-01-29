@@ -66,6 +66,7 @@ const (
 	Command_FileRead             = "fileread"
 	Command_FileMove             = "filemove"
 	Command_FileCopy             = "filecopy"
+	Command_FileStreamTar        = "filestreamtar"
 	Command_EventPublish         = "eventpublish"
 	Command_EventRecv            = "eventrecv"
 	Command_EventSub             = "eventsub"

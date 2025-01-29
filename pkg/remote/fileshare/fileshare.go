@@ -109,27 +109,39 @@ func Mkdir(ctx context.Context, path string) error {
 }
 
 func Move(ctx context.Context, data wshrpc.CommandFileCopyData) error {
-	srcConn, err := connparse.ParseURIAndReplaceCurrentHost(ctx, data.SrcUri)
-	if err != nil {
-		return fmt.Errorf("error parsing source connection %s: %v", data.SrcUri, err)
+	srcClient, srcConn := CreateFileShareClient(ctx, data.SrcUri)
+	if srcConn == nil || srcClient == nil {
+		return fmt.Errorf("error creating fileshare client, could not parse source connection %s", data.SrcUri)
 	}
 	destClient, destConn := CreateFileShareClient(ctx, data.DestUri)
 	if destConn == nil || destClient == nil {
-		return fmt.Errorf("error creating fileshare client, could not parse connection %s or %s", data.SrcUri, data.DestUri)
+		return fmt.Errorf("error creating fileshare client, could not parse destination connection %s", data.DestUri)
 	}
-	return destClient.Move(ctx, srcConn, destConn, data.Opts)
+	if srcConn.Host != destConn.Host {
+		err := destClient.CopyRemote(ctx, srcConn, destConn, srcClient, data.Opts)
+		if err != nil {
+			return fmt.Errorf("cannot copy %q to %q: %w", data.SrcUri, data.DestUri, err)
+		}
+		return srcClient.Delete(ctx, srcConn, data.Opts.Recursive)
+	} else {
+		return srcClient.MoveInternal(ctx, srcConn, destConn, data.Opts)
+	}
 }
 
 func Copy(ctx context.Context, data wshrpc.CommandFileCopyData) error {
-	srcConn, err := connparse.ParseURIAndReplaceCurrentHost(ctx, data.SrcUri)
-	if err != nil {
-		return fmt.Errorf("error parsing source connection %s: %v", data.SrcUri, err)
+	srcClient, srcConn := CreateFileShareClient(ctx, data.SrcUri)
+	if srcConn == nil || srcClient == nil {
+		return fmt.Errorf("error creating fileshare client, could not parse source connection %s", data.SrcUri)
 	}
 	destClient, destConn := CreateFileShareClient(ctx, data.DestUri)
 	if destConn == nil || destClient == nil {
-		return fmt.Errorf("error creating fileshare client, could not parse connection %s or %s", data.SrcUri, data.DestUri)
+		return fmt.Errorf("error creating fileshare client, could not parse destination connection %s", data.DestUri)
 	}
-	return destClient.Copy(ctx, srcConn, destConn, data.Opts)
+	if srcConn.Host != destConn.Host {
+		return destClient.CopyRemote(ctx, srcConn, destConn, srcClient, data.Opts)
+	} else {
+		return srcClient.CopyInternal(ctx, srcConn, destConn, data.Opts)
+	}
 }
 
 func Delete(ctx context.Context, data wshrpc.CommandDeleteFileData) error {
