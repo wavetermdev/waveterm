@@ -22,8 +22,13 @@ import (
 )
 
 const (
-	maxRetries = 5
-	retryDelay = 10 * time.Millisecond
+	maxRetries      = 5
+	retryDelay      = 10 * time.Millisecond
+	tarCopySrcName  = "TarCopySrc"
+	tarCopyDestName = "TarCopyDest"
+	pipeReaderName  = "pipe reader"
+	pipeWriterName  = "pipe writer"
+	tarWriterName   = "tar writer"
 )
 
 // TarCopySrc creates a tar stream writer and returns a channel to send the tar stream to.
@@ -34,14 +39,7 @@ func TarCopySrc(ctx context.Context, chunkSize int, pathPrefix string) (outputCh
 	pipeReader, pipeWriter := io.Pipe()
 	tarWriter := tar.NewWriter(pipeWriter)
 	rtnChan := iochan.ReaderChan(ctx, pipeReader, wshrpc.FileChunkSize, func() {
-		for retries := 0; retries < maxRetries; retries++ {
-			if err := pipeReader.Close(); err != nil {
-				log.Printf("TarCopySrc: error closing pipe reader: %v, trying again in 10ms\n", err)
-				time.Sleep(retryDelay)
-				continue
-			}
-			break
-		}
+		gracefulClose(pipeReader, tarCopySrcName, pipeReaderName)
 	})
 
 	return rtnChan, func(fi fs.FileInfo, file string) error {
@@ -65,22 +63,8 @@ func TarCopySrc(ctx context.Context, chunkSize int, pathPrefix string) (outputCh
 			}
 			return nil
 		}, tarWriter, func() {
-			for retries := 0; retries < maxRetries; retries++ {
-				if err := tarWriter.Close(); err != nil {
-					log.Printf("TarCopySrc: error closing tar writer: %v, trying again in 10ms\n", err)
-					time.Sleep(retryDelay)
-					continue
-				}
-				break
-			}
-			for retries := 0; retries < maxRetries; retries++ {
-				if err := pipeWriter.Close(); err != nil {
-					log.Printf("TarCopySrc: error closing pipe writer: %v, trying again in 10ms\n", err)
-					time.Sleep(retryDelay)
-					continue
-				}
-				break
-			}
+			gracefulClose(tarWriter, tarCopySrcName, tarWriterName)
+			gracefulClose(pipeWriter, tarCopySrcName, pipeWriterName)
 		}
 }
 
@@ -90,27 +74,13 @@ func TarCopySrc(ctx context.Context, chunkSize int, pathPrefix string) (outputCh
 func TarCopyDest(ctx context.Context, cancel context.CancelCauseFunc, ch <-chan wshrpc.RespOrErrorUnion[iochantypes.Packet], readNext func(next *tar.Header, reader *tar.Reader) error) error {
 	pipeReader, pipeWriter := io.Pipe()
 	iochan.WriterChan(ctx, pipeWriter, ch, func() {
-		for retries := 0; retries < maxRetries; retries++ {
-			if err := pipeWriter.Close(); err != nil {
-				log.Printf("TarCopyDest: error closing pipe writer: %v, trying again in 10ms\n", err)
-				time.Sleep(retryDelay)
-				continue
-			}
-			cancel(nil)
-			break
-		}
+		gracefulClose(pipeWriter, tarCopyDestName, pipeWriterName)
+		cancel(nil)
 	}, cancel)
 	tarReader := tar.NewReader(pipeReader)
 	defer func() {
-		for retries := 0; retries < maxRetries; retries++ {
-			if err := pipeReader.Close(); err != nil {
-				log.Printf("error closing pipe reader: %v, trying again in 10ms\n", err)
-				time.Sleep(retryDelay)
-				continue
-			}
-			cancel(nil)
-			break
-		}
+		gracefulClose(pipeReader, tarCopyDestName, pipeReaderName)
+		cancel(nil)
 	}()
 	for {
 		select {
@@ -134,5 +104,21 @@ func TarCopyDest(ctx context.Context, cancel context.CancelCauseFunc, ch <-chan 
 				return err
 			}
 		}
+	}
+}
+
+func gracefulClose(closer io.Closer, debugName string, closerName string) {
+	closed := false
+	for retries := 0; retries < maxRetries; retries++ {
+		if err := closer.Close(); err != nil {
+			log.Printf("%s: error closing %s: %v, trying again in %dms\n", debugName, closerName, err, retryDelay.Milliseconds())
+			time.Sleep(retryDelay)
+			continue
+		}
+		closed = true
+		break
+	}
+	if !closed {
+		log.Printf("%s: unable to close %s after %d retries\n", debugName, closerName, maxRetries)
 	}
 }
