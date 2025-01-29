@@ -98,7 +98,7 @@ func init() {
 	fileCmd.AddCommand(fileListCmd)
 	fileCmd.AddCommand(fileCatCmd)
 	fileCmd.AddCommand(fileWriteCmd)
-	fileRmCmd.Flags().BoolP("recursive", "r", false, "copy directories recursively")
+	fileRmCmd.Flags().BoolP("recursive", "r", false, "remove directories recursively")
 	fileCmd.AddCommand(fileRmCmd)
 	fileCmd.AddCommand(fileInfoCmd)
 	fileCmd.AddCommand(fileAppendCmd)
