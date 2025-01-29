@@ -271,9 +271,6 @@ func (impl *ServerImpl) RemoteTarStreamCommand(ctx context.Context, data wshrpc.
 			tarClose()
 			cancel()
 		}()
-		if readerCtx.Err() != nil {
-			return
-		}
 		err := filepath.Walk(path, func(file string, fi os.FileInfo, err error) error {
 			if readerCtx.Err() != nil {
 				return readerCtx.Err()
