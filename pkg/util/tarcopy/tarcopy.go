@@ -67,10 +67,10 @@ func TarCopySrc(ctx context.Context, pathPrefix string) (outputChan chan wshrpc.
 
 func validatePath(path string) error {
 	if strings.Contains(path, "..") {
-		return fmt.Errorf("invalid path containing directory traversal: %s", path)
+		return fmt.Errorf("invalid tar path containing directory traversal: %s", path)
 	}
 	if strings.HasPrefix(path, "/") {
-		return fmt.Errorf("invalid path starting with /: %s", path)
+		return fmt.Errorf("invalid tar path starting with /: %s", path)
 	}
 	return nil
 }
@@ -94,18 +94,23 @@ func TarCopyDest(ctx context.Context, cancel context.CancelCauseFunc, ch <-chan 
 	for {
 		select {
 		case <-ctx.Done():
+			if ctx.Err() != nil {
+				return context.Cause(ctx)
+			}
 			return nil
 		default:
 			next, err := tarReader.Next()
 			if err != nil {
 				// Do one more check for context error before returning
 				if ctx.Err() != nil {
-					return nil
+					if ctx.Err() != nil {
+						return context.Cause(ctx)
+					}
 				}
 				if errors.Is(err, io.EOF) {
 					return nil
 				} else {
-					return fmt.Errorf("cannot read tar stream: %w", err)
+					return err
 				}
 			}
 			err = readNext(next, tarReader)

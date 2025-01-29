@@ -251,7 +251,7 @@ func (impl *ServerImpl) RemoteTarStreamCommand(ctx context.Context, data wshrpc.
 	if finfo.IsDir() && strings.HasSuffix(cleanedPath, "/") {
 		pathPrefix = cleanedPath
 	} else {
-		pathPrefix = filepath.Dir(cleanedPath)
+		pathPrefix = filepath.Dir(cleanedPath) + "/"
 	}
 	if finfo.IsDir() {
 		if !recursive {
@@ -271,31 +271,37 @@ func (impl *ServerImpl) RemoteTarStreamCommand(ctx context.Context, data wshrpc.
 			tarClose()
 			cancel()
 		}()
-		err := filepath.Walk(path, func(file string, fi os.FileInfo, err error) error {
+		walkFunc := func(path string, info fs.FileInfo, err error) error {
 			if readerCtx.Err() != nil {
 				return readerCtx.Err()
 			}
 			if err != nil {
 				return err
 			}
-			if err = writeHeader(fi, file); err != nil {
+			if err = writeHeader(info, path); err != nil {
 				return err
 			}
 			// if not a dir, write file content
-			if !fi.IsDir() {
-				data, err := os.Open(file)
+			if !info.IsDir() {
+				data, err := os.Open(path)
 				if err != nil {
 					return err
 				}
 				if _, err := io.Copy(fileWriter, data); err != nil {
-					log.Printf("error copying file %q: %v\n", file, err)
 					return err
 				}
 			}
 			return nil
-		})
+		}
+		log.Printf("RemoteTarStreamCommand: starting\n")
+		err = nil
+		if finfo.IsDir() {
+			err = filepath.Walk(path, walkFunc)
+		} else {
+			err = walkFunc(path, finfo, nil)
+		}
 		if err != nil {
-			rtn <- wshutil.RespErr[iochantypes.Packet](fmt.Errorf("cannot create tar stream for %q: %w", path, err))
+			rtn <- wshutil.RespErr[iochantypes.Packet](err)
 		}
 		log.Printf("RemoteTarStreamCommand: done\n")
 	}()
@@ -435,7 +441,12 @@ func (impl *ServerImpl) RemoteFileCopyCommand(ctx context.Context, data wshrpc.C
 		if err != nil {
 			return fmt.Errorf("cannot copy %q to %q: %w", srcUri, destUri, err)
 		}
-		log.Printf("RemoteFileCopyCommand: done; %d files copied in %dms, total of %d bytes, %d files skipped\n", numFiles, time.Since(copyStart).Milliseconds(), totalBytes, numSkipped)
+		totalTime := time.Since(copyStart).Seconds()
+		rate := float64(0)
+		if totalTime > 0 {
+			rate = float64(totalBytes) / totalTime / 1024 / 1024
+		}
+		log.Printf("RemoteFileCopyCommand: done; %d files copied in %.3fs, total of %d bytes, %.2f MB/s, %d files skipped\n", numFiles, totalTime, totalBytes, rate, numSkipped)
 	}
 	return nil
 }
