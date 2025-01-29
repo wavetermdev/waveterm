@@ -20,6 +20,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/wshfs"
 	"github.com/wavetermdev/waveterm/pkg/util/packetparser"
+	"github.com/wavetermdev/waveterm/pkg/util/sigutil"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
@@ -261,6 +262,9 @@ func serverRun(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+
+	sigutil.InstallSIGUSR1Handler()
+
 	if singleServerRouter {
 		return serverRunSingle(jwtToken)
 	} else if connServerRouter {
