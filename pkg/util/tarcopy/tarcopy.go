@@ -79,8 +79,10 @@ func TarCopyDest(ctx context.Context, cancel context.CancelCauseFunc, ch <-chan 
 	}, cancel)
 	tarReader := tar.NewReader(pipeReader)
 	defer func() {
-		gracefulClose(pipeReader, tarCopyDestName, pipeReaderName)
-		cancel(nil)
+		if !gracefulClose(pipeReader, tarCopyDestName, pipeReaderName) {
+			// If the pipe reader cannot be closed, cancel the context. This should kill the writer goroutine.
+			cancel(nil)
+		}
 	}()
 	for {
 		select {
@@ -107,7 +109,7 @@ func TarCopyDest(ctx context.Context, cancel context.CancelCauseFunc, ch <-chan 
 	}
 }
 
-func gracefulClose(closer io.Closer, debugName string, closerName string) {
+func gracefulClose(closer io.Closer, debugName string, closerName string) bool {
 	closed := false
 	for retries := 0; retries < maxRetries; retries++ {
 		if err := closer.Close(); err != nil {
@@ -121,4 +123,5 @@ func gracefulClose(closer io.Closer, debugName string, closerName string) {
 	if !closed {
 		log.Printf("%s: unable to close %s after %d retries\n", debugName, closerName, maxRetries)
 	}
+	return closed
 }
