@@ -275,6 +275,12 @@ func (impl *ServerImpl) RemoteTarStreamCommand(ctx context.Context, data wshrpc.
 			return
 		}
 		err := filepath.Walk(path, func(file string, fi os.FileInfo, err error) error {
+			if readerCtx.Err() != nil {
+				return readerCtx.Err()
+			}
+			if err != nil {
+				return err
+			}
 			if err = writeHeader(fi, file); err != nil {
 				return err
 			}
