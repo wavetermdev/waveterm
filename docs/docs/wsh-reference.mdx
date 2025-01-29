@@ -21,7 +21,7 @@ This is the detailed wsh reference documention. For an overview of `wsh` functio
 
 You can open a preview block with the contents of any file or directory by running:
 
-```
+```sh
 wsh view [path]
 ```
 
@@ -32,11 +32,11 @@ a codeedit block which you can use to quickly edit the file using Wave's embedde
 
 ## edit
 
-```
+```sh
 wsh edit [path]
 ```
 
-This will open up codeedit for the specified file. This is useful for quickly editing files on a local or remote machine in our graphical editor. This command will wait until the file is closed before exiting (unlike \`view\`) so you can set your \`$EDITOR\` to \`wsh editor\` for a seamless experience. You can combine this with a \`-m\` flag to open the editor in magnified mode.
+This will open up codeedit for the specified file. This is useful for quickly editing files on a local or remote machine in our graphical editor. This command will wait until the file is closed before exiting (unlike `view`) so you can set your `$EDITOR` to `wsh editor` for a seamless experience. You can combine this with a `-m` flag to open the editor in magnified mode.
 
 ---
 
@@ -44,7 +44,7 @@ This will open up codeedit for the specified file. This is useful for quickly ed
 
 You can view the metadata of any block or tab by running:
 
-```
+```sh
 # get the metadata for the current terminal block
 wsh getmeta
 
@@ -83,7 +83,7 @@ blockid format:
 
 You can update any metadata key value pair for blocks (and tabs) by using the setmeta command. The setmeta command takes the same `-b` arguments as getmeta.
 
-```
+```sh
 wsh setmeta -b [blockid] [key]=[value]
 wsh setmeta -b [blockid] file=~/myfile.txt
 wsh setmeta -b [blockid] url=https://waveterm.dev/
@@ -102,7 +102,7 @@ Other useful metadata values to override block titles, icons, colors, themes, et
 
 Here's a complex command that will copy the background (bg:\* keys) from one tab to the current tab:
 
-```
+```sh
 wsh getmeta -b [other-tab-id] "bg:*" --clear-prefix | wsh setmeta -b tab --json -
 ```
 
@@ -114,7 +114,7 @@ Send messages to new or existing AI blocks directly from the CLI. `-f` passes a 
 
 By default the messages get sent to the first AI block (by blocknum). If no AI block exists, then a new one will be created. Use `-n` to force creation of a new AI block. Use `-b` to target a specific AI block.
 
-```
+```sh
 wsh ai "how do i write an ls command that sorts files in reverse size order"
 wsh ai -f <(tail -n 20 "my.log") -- "any idea what these error messages mean"
 wsh ai -f README.md "help me update this readme file"
@@ -135,7 +135,7 @@ tail -n 50 mylog.log | wsh ai - "can you tell me what this error means?"
 
 You can easily open up any of Wave's config files using this command.
 
-```
+```sh
 wsh editconfig [config-file-name]
 
 # opens the default settings.json file
@@ -157,7 +157,7 @@ wsh editconfig presets/ai.json
 
 The `setbg` command allows you to set a background image or color for the current tab with various customization options.
 
-```bash
+```sh
 wsh setbg [--opacity value] [--tile|--center] [--size value] (image-path|"#color"|color-name)
 ```
 
@@ -180,7 +180,7 @@ Supported image formats: JPEG, PNG, GIF, WebP, and SVG.
 
 Examples:
 
-```bash
+```sh
 # Set an image background with default settings
 wsh setbg ~/pictures/background.jpg
 
@@ -225,7 +225,7 @@ Use `--print` to preview the metadata for any background configuration without a
 
 The `run` command creates a new terminal command block and executes a specified command within it. The command can be provided either as arguments after `--` or using the `-c` flag. Unless the `-x` or `-X` flags are passed, commands can be re-executed by pressing `Enter` once the command has finished running.
 
-```bash
+```sh
 # Run a command specified after --
 wsh run -- ls -la
 
@@ -260,7 +260,7 @@ Flags:
 
 Examples:
 
-```bash
+```sh
 # Run a build command in magnified mode
 wsh run -m -- npm run build
 
@@ -292,7 +292,7 @@ You can use either `--` followed by your command and arguments, or the `-c` flag
 
 ## deleteblock
 
-```
+```sh
 wsh deleteblock -b [blockid]
 ```
 
@@ -302,7 +302,7 @@ This will delete the block with the specified id.
 
 ## ssh
 
-```
+```sh
 wsh ssh [user@host]
 ```
 
@@ -312,8 +312,8 @@ This will use Wave's internal ssh implementation to connect to the specified rem
 
 ## wsl
 
-```
-wsh wsl [-d <distribution name>]
+```sh
+wsh wsl [-d <distribution-name>]
 ```
 
 This will connect to a WSL distribution on the local machine. It will use the default if no distribution is provided.
@@ -324,14 +324,14 @@ This will connect to a WSL distribution on the local machine. It will use the de
 
 You can search for a given url using:
 
-```
-wsh web open <url>
+```sh
+wsh web open [url]
 ```
 
 Alternatively, you can search with the configured search engine using:
 
-```
-wsh web open <search query>
+```sh
+wsh web open [search-query]
 ```
 
 Both of these commands will open a new web block with the desired page.
@@ -342,7 +342,7 @@ Both of these commands will open a new web block with the desired page.
 
 The `notify` command creates a desktop notification from Wave Terminal.
 
-```bash
+```sh
 wsh notify [message] [-t title] [-s]
 ```
 
@@ -355,7 +355,7 @@ Flags:
 
 Examples:
 
-```bash
+```sh
 # Basic notification
 wsh notify "Build completed successfully"
 
@@ -376,7 +376,7 @@ This has several subcommands which all perform various features related to conne
 
 ### status
 
-```
+```sh
 wsh conn status
 ```
 
@@ -386,14 +386,14 @@ This command gives the status of all connections made since waveterm started.
 
 For ssh connections,
 
-```
+```sh
 wsh conn reinstall [user@host]
 ```
 
 For wsl connections,
 
-```
-wsh conn reinstall [wsl://<distribution name>]
+```sh
+wsh conn reinstall [wsl://<distribution-name>]
 ```
 
 This command reinstalls the Wave Shell Extensions on the specified connection.
@@ -402,13 +402,13 @@ This command reinstalls the Wave Shell Extensions on the specified connection.
 
 For ssh connections,
 
-```
+```sh
 wsh conn disconnect [user@host]
 ```
 
 For wsl connections,
 
-```
+```sh
 wsh conn disconnect [wsl://<distribution name>]
 ```
 
@@ -418,14 +418,14 @@ This command completely disconnects the specified connection. This will apply to
 
 For ssh connections,
 
-```
+```sh
 wsh conn connect [user@host]
 ```
 
 For wsl connections,
 
-```
-wsh conn connect [wsl://<distribution name>]
+```sh
+wsh conn connect [wsl://<distribution-name>]
 ```
 
 This command connects to the specified connection but does not create a block for it.
@@ -434,14 +434,14 @@ This command connects to the specified connection but does not create a block fo
 
 For ssh connections,
 
-```
+```sh
 wsh conn ensure [user@host]
 ```
 
 For wsl connections,
 
-```
-wsh conn ensure [wsl://<distribution name>]
+```sh
+wsh conn ensure [wsl://<distribution-name>]
 ```
 
 This command connects to the specified connection if it isn't already connected.
@@ -450,8 +450,8 @@ This command connects to the specified connection if it isn't already connected.
 
 ## setconfig
 
-```
-wsh setconfig [config name]=[config value]
+```sh
+wsh setconfig [<config-name>=<config-value>]
 ```
 
 This allows setting various options in the `config/settings.json` file. It will check to be sure a valid config option was provided.
@@ -460,115 +460,196 @@ This allows setting various options in the `config/settings.json` file. It will 
 
 ## file
 
-The `file` command provides a set of subcommands for managing files stored in Wave blocks. Files are referenced using `wavefile://` URLs which specify the zone where the file is stored (e.g., `wavefile://block/mydocs.md` or `wavefile://global/myfile.txt`).
+The `file` command provides a set of subcommands for managing files across different storage systems, such as `wavefile`, `wsh` remote servers, and S3 (not yet supported).
+
+:::note
+
+Wave Terminal is capable of managing files from remote SSH hosts, S3-compatible
+systems, and the internal Wave filesystem. Files are addressed via URIs, which
+vary depending on the storage system.
+
+URI format: `[profile]:[uri-scheme]://[connection]/[path]`
+
+Supported URI schemes:
+
+- `wsh` - Used to access files on remote hosts over SSH via the WSH helper. Allows for file streaming to Wave and other remotes.
+
+  Profiles are optional for WSH URIs, provided that you have configured the remote host in your "connections.json" or "~/.ssh/config" file.
+
+  If a profile is provided, it must be defined in "profiles.json" in the Wave configuration directory.
+
+  Format: `wsh://[remote]/[path]`
+
+  Shorthands can be used for the current remote and your local computer:
+  `[path]` a relative or absolute path on the current remote
+  `//[remote]/[path]` a path on a remote
+  `/~/[path]` a path relative to the home directory on your local computer
+
+- `s3` - Used to access files on S3-compatible systems.
+  Requires S3 credentials to be set up, either in the AWS CLI configuration files, or in "profiles.json" in the Wave configuration directory.
+
+  If no profile is provided, the default from your AWS CLI configuration will be used. Profiles from the AWS CLI must be prefixed with "aws:".
+
+  Format:
+
+  - `s3://[bucket]/[path]`
+  - `aws:[profile]:s3://[bucket]/[path]`
+  - `[profile]:s3://[bucket]/[path]`
+
+- `wavefile` - Used to retrieve blockfiles from the internal Wave filesystem.
+
+  Format: `wavefile://[zoneid]/[path]`
+
+  Wave file locations can be:
+
+  - `wavefile://block/...` - stored in the current block ("this" is also an alias for "block")
+  - `wavefile://tab/...` - stored in the current tab
+  - `wavefile://workspace/...` - stored in the current workspace ("ws" is also an alias for "workspace")
+  - `wavefile://client/...` - stored globally for the client ("global" is also an alias for "client")
+  - `wavefile://temp/...` - stored globally, but removed on startup/shutdown
+  - `wavefile://[uuid]/...` - an entity id (can be a block, tab, workspace, etc.)
+
+All file operations respect a maximum file size of 10MB.
+
+:::
 
 ### cat
 
-```bash
-wsh file cat wavefile://global/filename
+```sh
+wsh file cat [file-uri]
 ```
 
-Display the contents of a wave file. For example:
+Display the contents of a file. For example:
 
-```bash
+```sh
 wsh file cat wavefile://block/config.txt
 wsh file cat wavefile://client/settings.json
 ```
 
 ### write
 
-```bash
-wsh file write wavefile://tab/filename
+```sh
+wsh file write [file-uri]
 ```
 
-Write data from stdin to a wave file. The maximum file size is 10MB. For example:
+Write data from stdin to a file. The maximum file size is 10MB. For example:
 
-```bash
+```sh
 echo "hello" | wsh file write wavefile://block/greeting.txt
-cat config.json | wsh file write wavefile://client/settings.json
+cat config.json | wsh file write //ec2-user@remote01/~/config.json
 ```
 
 ### append
 
-```bash
-wsh file append wavefile://global/filename
+```sh
+wsh file append [file-uri]
 ```
 
-Append data from stdin to an existing wave file, respecting the 10MB total file size limit. This is useful for log files or accumulating data. For example:
+Append data from stdin to a file, respecting the 10MB total file size limit. This is useful for log files or accumulating data. For example:
 
-```bash
+```sh
 tail -f app.log | wsh file append wavefile://block/logs.txt
 echo "new line" | wsh file append wavefile://client/notes.txt
 ```
 
 ### rm
 
-```bash
-wsh file rm wavefile://client/filename
+```sh
+wsh file rm [flag] [file-uri]
 ```
 
-Remove a wave file. For example:
+Remove a file. For example:
 
-```bash
-wsh file rm wavefile://block/old-config.txt
-wsh file rm wavefile://client/temp.json
+```sh
+wsh file rm wsh://user@ec2/home/user/config.txt
+wsh file rm wavefile://client/settings.json
 ```
+
+Flags:
+
+- `-r, --recursive` - recursively deletes directory entries
 
 ### info
 
-```bash
-wsh file info wavefile://client/filename
+```sh
+wsh file info [file-uri]
 ```
 
-Display information about a wave file including size, creation time, modification time, and metadata. For example:
+Display information about a file including size, creation time, modification time, and metadata. For example:
 
-```bash
-wsh file info wavefile://block/config.txt
+```sh
+wsh file info wsh://user@ec2/home/user/config.txt
 wsh file info wavefile://client/settings.json
 ```
 
 ### cp
 
-```bash
-wsh file cp source destination
+```sh
+wsh file cp [flags] [source-uri] [destination-uri]
 ```
 
-Copy files between wave storage and the local filesystem. Exactly one of the source or destination must be a wavefile:// URL. For example:
+Copy files between different storage systems. For example:
 
-```bash
-# Copy from wave storage to local filesystem
+```sh
+# Copy a wave file into your local filesystem
 wsh file cp wavefile://block/config.txt ./local-config.txt
 
-# Copy from local filesystem to wave storage
-wsh file cp ./local-config.txt wavefile://client/config.txt
+# Copy a local file into the wave filesystem
+wsh file cp ./local-config.txt wavefile://block/config.txt
+
+# Copy a remote file into the wave filesystem
+wsh file cp wsh://user@ec2/home/user/config.txt wavefile://client/config.txt
+
+# Recursively copy a directory between two remote computers
+wsh file cp wsh://user@ec2-1/home/user/.config wsh://user@ec2-2/home/user/.config -r
 ```
+
+Flags:
+
+- `-r, --recursive` - copies all files in a directory recursively
+- `-f, --force` - overwrites any conflicts when copying
+- `-m, --merge` - does not clear existing directory entries when copying a directory, instead merging its contents with the destination's
+
+### mv
+
+```sh
+wsh file mv [flags] [source-uri] [destination-uri]
+```
+
+Move files between different storage systems. The source file will be deleted once the operation completes successfully. For example:
+
+```sh
+# Move a wave file into your local filesystem
+wsh file mv wavefile://block/config.txt ./local-config.txt
+
+# Move a local file into the wave filesystem
+wsh file mv ./local-config.txt wavefile://block/config.txt
+
+# Move a remote file into the wave filesystem
+wsh file mv wsh://user@ec2/home/user/config.txt wavefile://client/config.txt
+
+# Recursively move a directory between two remote computers
+wsh file mv wsh://user@ec2-1/home/user/.config wsh://user@ec2-2/home/user/.config -r
+```
+
+Flags:
+
+- `-r, --recursive` - moves all files in a directory recursively
+- `-f, --force` - overwrites any conflicts when moving
 
 ### ls
 
-```bash
-wsh file ls [flags] [wavefile://zone/path]
+```sh
+wsh file ls [flags] [file-uri]
 ```
 
-List wave files in a zone. If no path is specified, lists all files in `wavefile://client/`.
+List files in a directory. By default, lists files in the current directory for the current terminal session.
 
 Examples:
 
-```bash
-# List all files in client zone
-wsh file ls
-
-# List files in a specific zone
-wsh file ls wavefile://block/
-wsh file ls wavefile://workspace/configs/
-
-# Show detailed file information
-wsh file ls -l wavefile://client/
-
-# List files recursively
-wsh file ls -r wavefile://block/
-
-# List one file per line (good for scripting)
-wsh file ls -1 wavefile://client/
+```sh
+wsh file ls wsh://user@ec2/home/user/
+wsh file ls wavefile://client/configs/
 ```
 
 Flags:
@@ -580,25 +661,10 @@ Flags:
 
 When output is piped to another command, automatically switches to one-file-per-line format:
 
-```bash
+```sh
 # Easy to process with grep, awk, etc.
 wsh file ls wavefile://client/ | grep ".json$"
 ```
-
-:::info
-
-Note: Wave file locations can be:
-
-- `wavefile://block/...` - stored in the current block ("this" is also an alias for "block")
-- `wavefile://tab/...` - stored in the current tab
-- `wavefile://workspace/...` - stored in the current workspace ("ws" is also an alias for "workspace")
-- `wavefile://client/...` - stored globally for the client ("global" is also an alias for "client")
-- `wavefile://temp/...` - stored globally, but removed on startup/shutdown
-- `wavefile://[uuid]/...` - an entity id (can be a block, tab, workspace, etc.)
-
-All file operations respect a maximum file size of 10MB.
-
-:::
 
 ---
 
@@ -608,7 +674,7 @@ Wave Terminal provides commands for managing persistent variables at different s
 
 ### setvar
 
-```bash
+```sh
 wsh setvar [flags] KEY=VALUE...
 ```
 
@@ -616,7 +682,7 @@ Set one or more variables. By default, variables are set at the client (global) 
 
 Examples:
 
-```bash
+```sh
 # Set a single variable
 wsh setvar API_KEY=abc123
 
@@ -639,13 +705,13 @@ Flags:
 
 ### getvar
 
-```bash
+```sh
 wsh getvar [flags] [key]
 ```
 
 Get the value of a variable. Returns exit code 0 if the variable exists, 1 if it doesn't. This allows for shell scripting like:
 
-```bash
+```sh
 # Check if a variable exists
 if wsh getvar API_KEY >/dev/null; then
     echo "API key is set"
@@ -673,7 +739,7 @@ Flags:
 
 Variables can be accessed at different scopes using the `-b` flag:
 
-```bash
+```sh
 # Get/set at block level
 wsh getvar -b block MYVAR
 wsh setvar -b block MYVAR=value
@@ -697,7 +763,7 @@ Variables set with these commands persist across sessions and can be used to sto
 
 The `wavepath` command lets you get the paths to various Wave Terminal directories and files, including configuration, data storage, and logs.
 
-```bash
+```sh
 wsh wavepath {config|data|log}
 ```
 
@@ -711,7 +777,7 @@ Flags:
 
 Examples:
 
-```bash
+```sh
 # Get path to config directory
 wsh wavepath config
 
