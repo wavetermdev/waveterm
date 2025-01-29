@@ -8,6 +8,7 @@ import (
 	"io"
 	"io/fs"
 	"log"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -37,7 +38,7 @@ func TarCopySrc(ctx context.Context, chunkSize int, pathPrefix string) (outputCh
 				return err
 			}
 
-			header.Name = strings.TrimPrefix(file, pathPrefix)
+			header.Name = filepath.Clean(strings.TrimPrefix(file, pathPrefix))
 			if header.Name == "" {
 				return nil
 			}
