@@ -872,7 +872,7 @@ function ImageZooomControls() {
     );
 }
 
-function SreamingImagePreview({ url }: { url: string }) {
+function StreamingImagePreview({ url }: { url: string }) {
     return (
         <div className="view-preview view-preview-image">
             <TransformWrapper initialScale={1} centerOnInit>
@@ -925,7 +925,7 @@ function StreamingPreview({ model }: SpecializedViewProps) {
         );
     }
     if (fileInfo.mimetype.startsWith("image/")) {
-        return <SreamingImagePreview url={streamingUrl} />;
+        return <StreamingImagePreview url={streamingUrl} />;
     }
     return <CenteredDiv>Preview Not Supported</CenteredDiv>;
 }
