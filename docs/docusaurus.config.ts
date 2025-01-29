@@ -1,4 +1,5 @@
 import type { Config } from "@docusaurus/types";
+import rehypeHighlight from "rehype-highlight";
 import { docOgRenderer } from "./src/renderer/image-renderers";
 
 const baseUrl = process.env.EMBEDDED ? "/docsite/" : "/";
@@ -40,6 +41,7 @@ const config: Config = {
                 routeBasePath: "/",
                 exclude: ["features/**"],
                 editUrl: !process.env.EMBEDDED ? "https://github.com/wavetermdev/waveterm/edit/main/docs/" : undefined,
+                rehypePlugins: [rehypeHighlight],
             } as import("@docusaurus/plugin-content-docs").Options,
         ],
         "ideal-image",
@@ -63,7 +65,7 @@ const config: Config = {
         "@docusaurus/plugin-svgr",
     ].filter((v) => v),
     themes: [
-        ["classic", { customCss: "src/css/custom.css" }],
+        ["classic", { customCss: "src/css/custom.scss" }],
         !process.env.EMBEDDED && "@docusaurus/theme-search-algolia",
     ].filter((v) => v),
     themeConfig: {
