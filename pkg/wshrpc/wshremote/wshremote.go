@@ -29,6 +29,10 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
 )
 
+const (
+	DefaultTimeout = 30 * time.Second
+)
+
 type ServerImpl struct {
 	LogWriter io.Writer
 }
@@ -259,7 +263,7 @@ func (impl *ServerImpl) RemoteTarStreamCommand(ctx context.Context, data wshrpc.
 		}
 	}
 
-	timeout := time.Millisecond * 100
+	timeout := DefaultTimeout
 	if opts.Timeout > 0 {
 		timeout = time.Duration(opts.Timeout) * time.Millisecond
 	}
@@ -351,7 +355,7 @@ func (impl *ServerImpl) RemoteFileCopyCommand(ctx context.Context, data wshrpc.C
 			return fmt.Errorf("cannot copy file %q to %q: %w", srcPathCleaned, destPathCleaned, err)
 		}
 	} else {
-		timeout := time.Millisecond * 100
+		timeout := DefaultTimeout
 		if opts.Timeout > 0 {
 			timeout = time.Duration(opts.Timeout) * time.Millisecond
 		}
