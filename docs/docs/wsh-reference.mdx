@@ -472,7 +472,7 @@ URI format: `[profile]:[uri-scheme]://[connection]/[path]`
 
 Supported URI schemes:
 
-- `wsh`: Used to access files on remote hosts over SSH via the WSH helper. Allows for file streaming to Wave and other remotes.
+- `wsh` - Used to access files on remote hosts over SSH via the WSH helper. Allows for file streaming to Wave and other remotes.
 
   Profiles are optional for WSH URIs, provided that you have configured the remote host in your "connections.json" or "~/.ssh/config" file.
 
@@ -485,7 +485,7 @@ Supported URI schemes:
   `//[remote]/[path]` a path on a remote
   `/~/[path]` a path relative to the home directory on your local computer
 
-- `s3`: Used to access files on S3-compatible systems.
+- `s3` - Used to access files on S3-compatible systems.
   Requires S3 credentials to be set up, either in the AWS CLI configuration files, or in "profiles.json" in the Wave configuration directory.
 
   If no profile is provided, the default from your AWS CLI configuration will be used. Profiles from the AWS CLI must be prefixed with "aws:".
@@ -496,7 +496,7 @@ Supported URI schemes:
   - `aws:[profile]:s3://[bucket]/[path]`
   - `[profile]:s3://[bucket]/[path]`
 
-- `wavefile`: Used to retrieve blockfiles from the internal Wave filesystem.
+- `wavefile` - Used to retrieve blockfiles from the internal Wave filesystem.
 
   Format: `wavefile://[zoneid]/[path]`
 
