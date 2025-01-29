@@ -3,6 +3,8 @@ package tarcopy
 import (
 	"archive/tar"
 	"context"
+	"errors"
+	"fmt"
 	"io"
 	"io/fs"
 	"log"
@@ -66,4 +68,57 @@ func TarCopySrc(ctx context.Context, chunkSize int, pathPrefix string) (outputCh
 				break
 			}
 		}
+}
+
+func TarCopyDest(ctx context.Context, cancel context.CancelCauseFunc, ch <-chan wshrpc.RespOrErrorUnion[iochantypes.Packet], readNext func(next *tar.Header, reader *tar.Reader) error) error {
+	pipeReader, pipeWriter := io.Pipe()
+	iochan.WriterChan(ctx, pipeWriter, ch, func() {
+		for {
+			if err := pipeWriter.Close(); err != nil {
+				log.Printf("error closing pipe writer: %v, trying again in 10ms\n", err)
+				time.Sleep(time.Millisecond * 10)
+				continue
+			}
+			cancel(nil)
+			break
+		}
+	}, cancel)
+	tarReader := tar.NewReader(pipeReader)
+	defer func() {
+		for {
+			if err := pipeReader.Close(); err != nil {
+				log.Printf("error closing pipe reader: %v, trying again in 10ms\n", err)
+				time.Sleep(time.Millisecond * 10)
+				continue
+			}
+			cancel(nil)
+			break
+		}
+	}()
+	for {
+		select {
+		case <-ctx.Done():
+			if ctx.Err() != nil {
+				return context.Cause(ctx)
+			}
+			return nil
+		default:
+			next, err := tarReader.Next()
+			if err != nil {
+				// Do one more check for context error before returning
+				if ctx.Err() != nil {
+					return context.Cause(ctx)
+				}
+				if errors.Is(err, io.EOF) {
+					return nil
+				} else {
+					return fmt.Errorf("cannot read tar stream: %w", err)
+				}
+			}
+			err = readNext(next, tarReader)
+			if err != nil {
+				return err
+			}
+		}
+	}
 }
