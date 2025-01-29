@@ -57,6 +57,10 @@ func (c *Connection) GetFullURI() string {
 	return c.Scheme + "://" + c.GetPathWithHost()
 }
 
+func (c *Connection) GetSchemeAndHost() string {
+	return c.Scheme + "://" + c.Host
+}
+
 func ParseURIAndReplaceCurrentHost(ctx context.Context, uri string) (*Connection, error) {
 	conn, err := ParseURI(uri)
 	if err != nil {

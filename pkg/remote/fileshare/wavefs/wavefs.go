@@ -9,7 +9,9 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
+	"log"
 	"path"
 	"strings"
 	"time"
@@ -101,14 +103,14 @@ func (c WaveClient) Read(ctx context.Context, conn *connparse.Connection, data w
 }
 
 func (c WaveClient) ReadTarStream(ctx context.Context, conn *connparse.Connection, opts *wshrpc.FileCopyOpts) <-chan wshrpc.RespOrErrorUnion[iochantypes.Packet] {
-	pathPrefix, err := cleanPath(conn.Path)
-	if err != nil {
-		return wshutil.SendErrCh[iochantypes.Packet](fmt.Errorf("error cleaning path: %w", err))
-	}
+	log.Printf("ReadTarStream: conn: %v, opts: %v\n", conn, opts)
 	list, err := c.ListEntries(ctx, conn, nil)
 	if err != nil {
 		return wshutil.SendErrCh[iochantypes.Packet](fmt.Errorf("error listing blockfiles: %w", err))
 	}
+
+	pathPrefix := getPathPrefix(conn)
+	schemeAndHost := conn.GetSchemeAndHost() + "/"
 
 	timeout := time.Millisecond * 100
 	if opts.Timeout > 0 {
@@ -127,6 +129,7 @@ func (c WaveClient) ReadTarStream(ctx context.Context, conn *connparse.Connectio
 				rtn <- wshutil.RespErr[iochantypes.Packet](readerCtx.Err())
 				return
 			}
+			file.Mode = 0644
 
 			if err = writeHeader(fileutil.ToFsFileInfo(file), file.Path); err != nil {
 				rtn <- wshutil.RespErr[iochantypes.Packet](fmt.Errorf("error writing tar header: %w", err))
@@ -136,7 +139,11 @@ func (c WaveClient) ReadTarStream(ctx context.Context, conn *connparse.Connectio
 				continue
 			}
 
-			_, dataBuf, err := filestore.WFS.ReadFile(ctx, conn.Host, file.Path)
+			log.Printf("ReadTarStream: reading file: %s\n", file.Path)
+
+			internalPath := strings.TrimPrefix(file.Path, schemeAndHost)
+
+			_, dataBuf, err := filestore.WFS.ReadFile(ctx, conn.Host, internalPath)
 			if err != nil {
 				rtn <- wshutil.RespErr[iochantypes.Packet](fmt.Errorf("error reading blockfile: %w", err))
 				return
@@ -168,9 +175,13 @@ func (c WaveClient) ListEntriesStream(ctx context.Context, conn *connparse.Conne
 }
 
 func (c WaveClient) ListEntries(ctx context.Context, conn *connparse.Connection, opts *wshrpc.FileListOpts) ([]*wshrpc.FileInfo, error) {
+	log.Printf("ListEntries: conn: %v, opts: %v\n", conn, opts)
 	zoneId := conn.Host
 	if zoneId == "" {
 		return nil, fmt.Errorf("zoneid not found in connection")
+	}
+	if opts == nil {
+		opts = &wshrpc.FileListOpts{}
 	}
 	prefix, err := cleanPath(conn.Path)
 	if err != nil {
@@ -432,13 +443,19 @@ func (c WaveClient) CopyRemote(ctx context.Context, srcConn, destConn *connparse
 	if zoneId == "" {
 		return fmt.Errorf("zoneid not found in connection")
 	}
+	destPrefix := getPathPrefix(destConn)
+	destPrefix = strings.TrimPrefix(destPrefix, destConn.GetSchemeAndHost()+"/")
+	log.Printf("CopyRemote: srcConn: %v, destConn: %v, destPrefix: %s\n", srcConn, destConn, destPrefix)
 	readCtx, cancel := context.WithCancelCause(ctx)
 	ioch := srcClient.ReadTarStream(readCtx, srcConn, opts)
 	err := tarcopy.TarCopyDest(readCtx, cancel, ioch, func(next *tar.Header, reader *tar.Reader) error {
 		if next.Typeflag == tar.TypeDir {
 			return nil
 		}
-		fileName, err := cleanPath(path.Join(destConn.Path, next.Name))
+		fileName, err := cleanPath(path.Join(destPrefix, next.Name))
+		if err != nil {
+			return fmt.Errorf("error cleaning path: %w", err)
+		}
 		_, err = filestore.WFS.Stat(ctx, zoneId, fileName)
 		if err != nil {
 			if !errors.Is(err, fs.ErrNotExist) {
@@ -449,12 +466,15 @@ func (c WaveClient) CopyRemote(ctx context.Context, srcConn, destConn *connparse
 				return fmt.Errorf("error making blockfile: %w", err)
 			}
 		}
+		log.Printf("CopyRemote: writing file: %s; size: %d\n", fileName, next.Size)
 		dataBuf := make([]byte, next.Size)
-		n, err := reader.Read(dataBuf)
+		_, err = reader.Read(dataBuf)
 		if err != nil {
-			return fmt.Errorf("error reading tar data: %w", err)
+			if !errors.Is(err, io.EOF) {
+				return fmt.Errorf("error reading tar data: %w", err)
+			}
 		}
-		err = filestore.WFS.WriteFile(ctx, zoneId, fileName, dataBuf[:n])
+		err = filestore.WFS.WriteFile(ctx, zoneId, fileName, dataBuf)
 		if err != nil {
 			return fmt.Errorf("error writing to blockfile: %w", err)
 		}
@@ -534,4 +554,14 @@ func cleanPath(path string) (string, error) {
 
 func (c WaveClient) GetConnectionType() string {
 	return connparse.ConnectionTypeWave
+}
+
+func getPathPrefix(conn *connparse.Connection) string {
+	fullUri := conn.GetFullURI()
+	pathPrefix := fullUri
+	lastSlash := strings.LastIndex(fullUri, "/")
+	if lastSlash > 10 && lastSlash < len(fullUri)-1 {
+		pathPrefix = fullUri[:lastSlash+1]
+	}
+	return pathPrefix
 }
