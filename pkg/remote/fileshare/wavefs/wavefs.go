@@ -500,23 +500,33 @@ func (c WaveClient) Delete(ctx context.Context, conn *connparse.Connection, recu
 	if zoneId == "" {
 		return fmt.Errorf("zoneid not found in connection")
 	}
-	fileName, err := cleanPath(conn.Path)
+	schemeAndHost := conn.GetSchemeAndHost() + "/"
+
+	entries, err := c.ListEntries(ctx, conn, nil)
 	if err != nil {
-		return fmt.Errorf("error cleaning path: %w", err)
+		return fmt.Errorf("error listing blockfiles: %w", err)
 	}
-	err = filestore.WFS.DeleteFile(ctx, zoneId, fileName)
-	if err != nil {
-		return fmt.Errorf("error deleting blockfile: %w", err)
+	if len(entries) > 0 {
+		if !recursive {
+			return fmt.Errorf("more than one entry, use recursive flag to delete")
+		}
+		for _, entry := range entries {
+			fileName := strings.TrimPrefix(entry.Path, schemeAndHost)
+			err = filestore.WFS.DeleteFile(ctx, zoneId, fileName)
+			if err != nil {
+				return fmt.Errorf("error deleting blockfile: %w", err)
+			}
+			wps.Broker.Publish(wps.WaveEvent{
+				Event:  wps.Event_BlockFile,
+				Scopes: []string{waveobj.MakeORef(waveobj.OType_Block, zoneId).String()},
+				Data: &wps.WSFileEventData{
+					ZoneId:   zoneId,
+					FileName: fileName,
+					FileOp:   wps.FileOp_Delete,
+				},
+			})
+		}
 	}
-	wps.Broker.Publish(wps.WaveEvent{
-		Event:  wps.Event_BlockFile,
-		Scopes: []string{waveobj.MakeORef(waveobj.OType_Block, zoneId).String()},
-		Data: &wps.WSFileEventData{
-			ZoneId:   zoneId,
-			FileName: fileName,
-			FileOp:   wps.FileOp_Delete,
-		},
-	})
 	return nil
 }
 
