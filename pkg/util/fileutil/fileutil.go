@@ -6,7 +6,6 @@ package fileutil
 import (
 	"io"
 	"io/fs"
-	"log"
 	"mime"
 	"net/http"
 	"os"
@@ -20,15 +19,14 @@ import (
 )
 
 func FixPath(path string) (string, error) {
+	var err error
 	if strings.HasPrefix(path, "~") {
 		path = filepath.Join(wavebase.GetHomeDir(), path[1:])
 	} else if !filepath.IsAbs(path) {
-		log.Printf("FixPath: path is not absolute: %s", path)
-		path, err := filepath.Abs(path)
+		path, err = filepath.Abs(path)
 		if err != nil {
 			return "", err
 		}
-		log.Printf("FixPath: fixed path: %s", path)
 	}
 	return path, nil
 }
