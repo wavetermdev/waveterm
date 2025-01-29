@@ -23,7 +23,7 @@ func TarCopySrc(ctx context.Context, chunkSize int, pathPrefix string) (outputCh
 	rtnChan := iochan.ReaderChan(ctx, pipeReader, wshrpc.FileChunkSize, func() {
 		for {
 			if err := pipeReader.Close(); err != nil {
-				log.Printf("error closing pipe reader: %v, trying again in 10ms\n", err)
+				log.Printf("TarCopySrc: error closing pipe reader: %v, trying again in 10ms\n", err)
 				time.Sleep(time.Millisecond * 10)
 				continue
 			}
@@ -76,7 +76,7 @@ func TarCopyDest(ctx context.Context, cancel context.CancelCauseFunc, ch <-chan 
 	iochan.WriterChan(ctx, pipeWriter, ch, func() {
 		for {
 			if err := pipeWriter.Close(); err != nil {
-				log.Printf("error closing pipe writer: %v, trying again in 10ms\n", err)
+				log.Printf("TarCopyDest: error closing pipe writer: %v, trying again in 10ms\n", err)
 				time.Sleep(time.Millisecond * 10)
 				continue
 			}
