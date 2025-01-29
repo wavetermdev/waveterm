@@ -9,6 +9,7 @@ import type * as MonacoTypes from "monaco-editor/esm/vs/editor/editor.api";
 import { configureMonacoYaml } from "monaco-yaml";
 import React, { useMemo, useRef } from "react";
 
+import { getWebServerEndpoint } from "@/util/endpoints";
 import editorWorker from "monaco-editor/esm/vs/editor/editor.worker?worker";
 import cssWorker from "monaco-editor/esm/vs/language/css/css.worker?worker";
 import htmlWorker from "monaco-editor/esm/vs/language/html/html.worker?worker";
@@ -75,11 +76,23 @@ export function loadMonaco() {
             monaco.languages.typescript.typescriptDefaults.setDiagnosticsOptions({
                 noSemanticValidation: true,
             });
-            monaco.languages.json.jsonDefaults.setDiagnosticsOptions({
-                validate: true,
-                allowComments: false, // Set to true if you want to allow comments in JSON
-                schemas: [], // You can specify JSON schemas here if needed
-            });
+            const schemaUri = getWebServerEndpoint() + "/schema/settings.json";
+            fetch(schemaUri)
+                .then((data) => data.json())
+                .then((schema: object) => {
+                    console.log("schema is", schema);
+                    monaco.languages.json.jsonDefaults.setDiagnosticsOptions({
+                        validate: true,
+                        allowComments: false, // Set to true if you want to allow comments in JSON
+                        schemas: [
+                            {
+                                uri: "http://mytest/settings.json",
+                                fileMatch: ["settings.json"],
+                                schema,
+                            },
+                        ], // You can specify JSON schemas here if needed
+                    });
+                });
         })
         .catch((e) => {
             console.error("error loading monaco", e);
