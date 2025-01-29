@@ -442,11 +442,12 @@ func (impl *ServerImpl) RemoteFileCopyCommand(ctx context.Context, data wshrpc.C
 			return fmt.Errorf("cannot copy %q to %q: %w", srcUri, destUri, err)
 		}
 		totalTime := time.Since(copyStart).Seconds()
+		totalMegaBytes := float64(totalBytes) / 1024 / 1024
 		rate := float64(0)
 		if totalTime > 0 {
-			rate = float64(totalBytes) / totalTime / 1024 / 1024
+			rate = totalMegaBytes / totalTime
 		}
-		log.Printf("RemoteFileCopyCommand: done; %d files copied in %.3fs, total of %d bytes, %.2f MB/s, %d files skipped\n", numFiles, totalTime, totalBytes, rate, numSkipped)
+		log.Printf("RemoteFileCopyCommand: done; %d files copied in %.3fs, total of %.4f MB, %.2f MB/s, %d files skipped\n", numFiles, totalTime, totalMegaBytes, rate, numSkipped)
 	}
 	return nil
 }
