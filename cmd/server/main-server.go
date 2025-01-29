@@ -8,11 +8,9 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"os/signal"
 
 	"runtime"
 	"sync"
-	"syscall"
 	"time"
 
 	"github.com/wavetermdev/waveterm/pkg/authkey"
@@ -25,7 +23,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/service"
 	"github.com/wavetermdev/waveterm/pkg/telemetry"
 	"github.com/wavetermdev/waveterm/pkg/util/shellutil"
-	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
+	"github.com/wavetermdev/waveterm/pkg/util/sigutil"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wcloud"
@@ -70,33 +68,6 @@ func doShutdown(reason string) {
 		log.Printf("shutdown complete\n")
 		os.Exit(0)
 	})
-}
-
-func installShutdownSignalHandlers() {
-	sigCh := make(chan os.Signal, 1)
-	signal.Notify(sigCh, syscall.SIGHUP, syscall.SIGTERM, syscall.SIGINT)
-	go func() {
-		defer func() {
-			panichandler.PanicHandler("installShutdownSignalHandlers", recover())
-		}()
-		for sig := range sigCh {
-			doShutdown(fmt.Sprintf("got signal %v", sig))
-			break
-		}
-	}()
-}
-
-func installSIGUSR1Handler() {
-	sigCh := make(chan os.Signal, 1)
-	signal.Notify(sigCh, syscall.SIGUSR1)
-	go func() {
-		defer func() {
-			panichandler.PanicHandler("installSIGUSR1Handler", recover())
-		}()
-		for range sigCh {
-			utilfn.DumpGoRoutineStacks()
-		}
-	}()
 }
 
 // watch stdin, kill server if stdin is closed
@@ -312,8 +283,10 @@ func main() {
 	}
 
 	createMainWshClient()
-	installShutdownSignalHandlers()
-	installSIGUSR1Handler()
+
+	sigutil.InstallShutdownSignalHandlers(doShutdown)
+	sigutil.InstallSIGUSR1Handler()
+
 	startupActivityUpdate()
 	go stdinReadWatch()
 	go telemetryLoop()
