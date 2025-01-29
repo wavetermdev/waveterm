@@ -866,7 +866,7 @@ function ImageZooomControls() {
                 <i className="fa-sharp fa-minus" />
             </Button>
             <Button onClick={() => resetTransform()} title="Reset Zoom">
-                <i className="fa-sharp fa-xmark-large" />
+                <i className="fa-sharp fa-rotate-left" />
             </Button>
         </div>
     );
@@ -875,7 +875,7 @@ function ImageZooomControls() {
 function StreamingImagePreview({ url }: { url: string }) {
     return (
         <div className="view-preview view-preview-image">
-            <TransformWrapper initialScale={1} centerOnInit>
+            <TransformWrapper initialScale={1} centerOnInit pinch={{ step: 10 }}>
                 {({ zoomIn, zoomOut, resetTransform, ...rest }) => (
                     <>
                         <ImageZooomControls />
