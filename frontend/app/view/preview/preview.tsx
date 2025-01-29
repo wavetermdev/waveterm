@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { BlockNodeModel } from "@/app/block/blocktypes";
+import { Button } from "@/app/element/button";
 import { CenteredDiv } from "@/app/element/quickelems";
 import { TypeAheadModal } from "@/app/modals/typeaheadmodal";
 import { ContextMenuModel } from "@/app/store/contextmenu";
@@ -41,6 +42,7 @@ import { Atom, atom, Getter, PrimitiveAtom, useAtomValue, useSetAtom, WritableAt
 import { loadable } from "jotai/utils";
 import type * as MonacoTypes from "monaco-editor/esm/vs/editor/editor.api";
 import { createRef, memo, useCallback, useEffect, useMemo, useState } from "react";
+import { TransformComponent, TransformWrapper, useControls } from "react-zoom-pan-pinch";
 import { CSVView } from "./csvview";
 import { DirectoryPreview } from "./directorypreview";
 import "./preview.scss";
@@ -852,6 +854,41 @@ function MarkdownPreview({ model }: SpecializedViewProps) {
     );
 }
 
+function ImageZooomControls() {
+    const { zoomIn, zoomOut, resetTransform } = useControls();
+
+    return (
+        <div className="tools">
+            <Button onClick={() => zoomIn()} title="Zoom In">
+                <i className="fa-sharp fa-plus" />
+            </Button>
+            <Button onClick={() => zoomOut()} title="Zoom Out">
+                <i className="fa-sharp fa-minus" />
+            </Button>
+            <Button onClick={() => resetTransform()} title="Reset Zoom">
+                <i className="fa-sharp fa-rotate-left" />
+            </Button>
+        </div>
+    );
+}
+
+function StreamingImagePreview({ url }: { url: string }) {
+    return (
+        <div className="view-preview view-preview-image">
+            <TransformWrapper initialScale={1} centerOnInit pinch={{ step: 10 }}>
+                {({ zoomIn, zoomOut, resetTransform, ...rest }) => (
+                    <>
+                        <ImageZooomControls />
+                        <TransformComponent>
+                            <img src={url} />
+                        </TransformComponent>
+                    </>
+                )}
+            </TransformWrapper>
+        </div>
+    );
+}
+
 function StreamingPreview({ model }: SpecializedViewProps) {
     const conn = useAtomValue(model.connection);
     const fileInfo = useAtomValue(model.statFile);
@@ -888,11 +925,7 @@ function StreamingPreview({ model }: SpecializedViewProps) {
         );
     }
     if (fileInfo.mimetype.startsWith("image/")) {
-        return (
-            <div className="view-preview view-preview-image">
-                <img src={streamingUrl} />
-            </div>
-        );
+        return <StreamingImagePreview url={streamingUrl} />;
     }
     return <CenteredDiv>Preview Not Supported</CenteredDiv>;
 }

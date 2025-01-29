@@ -233,6 +233,31 @@ function getS3Suggestions(
     return s3Suggestions;
 }
 
+function getDisconnectItem(
+    connection: string,
+    connStatusMap: Map<string, ConnStatus>
+): SuggestionConnectionItem | null {
+    if (!connection) {
+        return null;
+    }
+    const connStatus = connStatusMap.get(connection);
+    if (!connStatus || connStatus.status != "connected") {
+        return null;
+    }
+    const disconnectSuggestionItem: SuggestionConnectionItem = {
+        status: "connected",
+        icon: "xmark",
+        iconColor: "var(--grey-text-color)",
+        label: `Disconnect ${connStatus.connection}`,
+        value: "",
+        onSelect: async (_: string) => {
+            const prtn = RpcApi.ConnDisconnectCommand(TabRpcClient, connection, { timeout: 60000 });
+            prtn.catch((e) => console.log("error disconnecting", connStatus.connection, e));
+        },
+    };
+    return disconnectSuggestionItem;
+}
+
 function getConnectionsEditItem(
     changeConnModalAtom: jotai.PrimitiveAtom<boolean>,
     connSelected: string
@@ -420,6 +445,7 @@ const ChangeConnectionBlockModal = React.memo(
             filterOutNowsh
         );
         const connectionsEditItem = getConnectionsEditItem(changeConnModalAtom, connSelected);
+        const disconnectItem = getDisconnectItem(connection, connStatusMap);
         const newConnectionSuggestionItem = getNewConnectionSuggestionItem(
             connSelected,
             localName,
@@ -435,6 +461,7 @@ const ChangeConnectionBlockModal = React.memo(
             ...(localSuggestions ? [localSuggestions] : []),
             ...(remoteSuggestions ? [remoteSuggestions] : []),
             ...(s3Suggestions ? [s3Suggestions] : []),
+            ...(disconnectItem ? [disconnectItem] : []),
             ...(connectionsEditItem ? [connectionsEditItem] : []),
             ...(newConnectionSuggestionItem ? [newConnectionSuggestionItem] : []),
         ];

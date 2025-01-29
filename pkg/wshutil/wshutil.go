@@ -199,11 +199,11 @@ func RestoreTermState() {
 }
 
 // returns (wshRpc, wrappedStdin)
-func SetupTerminalRpcClient(serverImpl ServerImpl) (*WshRpc, io.Reader) {
+func SetupTerminalRpcClient(serverImpl ServerImpl, debugStr string) (*WshRpc, io.Reader) {
 	messageCh := make(chan []byte, DefaultInputChSize)
 	outputCh := make(chan []byte, DefaultOutputChSize)
 	ptyBuf := MakePtyBuffer(WaveServerOSCPrefix, os.Stdin, messageCh)
-	rpcClient := MakeWshRpc(messageCh, outputCh, wshrpc.RpcContext{}, serverImpl)
+	rpcClient := MakeWshRpc(messageCh, outputCh, wshrpc.RpcContext{}, serverImpl, debugStr)
 	go func() {
 		defer func() {
 			panichandler.PanicHandler("SetupTerminalRpcClient", recover())
@@ -221,11 +221,11 @@ func SetupTerminalRpcClient(serverImpl ServerImpl) (*WshRpc, io.Reader) {
 	return rpcClient, ptyBuf
 }
 
-func SetupPacketRpcClient(input io.Reader, output io.Writer, serverImpl ServerImpl) (*WshRpc, chan []byte) {
+func SetupPacketRpcClient(input io.Reader, output io.Writer, serverImpl ServerImpl, debugStr string) (*WshRpc, chan []byte) {
 	messageCh := make(chan []byte, DefaultInputChSize)
 	outputCh := make(chan []byte, DefaultOutputChSize)
 	rawCh := make(chan []byte, DefaultOutputChSize)
-	rpcClient := MakeWshRpc(messageCh, outputCh, wshrpc.RpcContext{}, serverImpl)
+	rpcClient := MakeWshRpc(messageCh, outputCh, wshrpc.RpcContext{}, serverImpl, debugStr)
 	go packetparser.Parse(input, messageCh, rawCh)
 	go func() {
 		defer func() {
@@ -238,7 +238,7 @@ func SetupPacketRpcClient(input io.Reader, output io.Writer, serverImpl ServerIm
 	return rpcClient, rawCh
 }
 
-func SetupConnRpcClient(conn net.Conn, serverImpl ServerImpl) (*WshRpc, chan error, error) {
+func SetupConnRpcClient(conn net.Conn, serverImpl ServerImpl, debugStr string) (*WshRpc, chan error, error) {
 	inputCh := make(chan []byte, DefaultInputChSize)
 	outputCh := make(chan []byte, DefaultOutputChSize)
 	writeErrCh := make(chan error, 1)
@@ -260,7 +260,7 @@ func SetupConnRpcClient(conn net.Conn, serverImpl ServerImpl) (*WshRpc, chan err
 		defer conn.Close()
 		AdaptStreamToMsgCh(conn, inputCh)
 	}()
-	rtn := MakeWshRpc(inputCh, outputCh, wshrpc.RpcContext{}, serverImpl)
+	rtn := MakeWshRpc(inputCh, outputCh, wshrpc.RpcContext{}, serverImpl, debugStr)
 	return rtn, writeErrCh, nil
 }
 
@@ -272,7 +272,7 @@ func tryTcpSocket(sockName string) (net.Conn, error) {
 	return net.DialTCP("tcp", nil, addr)
 }
 
-func SetupDomainSocketRpcClient(sockName string, serverImpl ServerImpl) (*WshRpc, error) {
+func SetupDomainSocketRpcClient(sockName string, serverImpl ServerImpl, debugName string) (*WshRpc, error) {
 	conn, tcpErr := tryTcpSocket(sockName)
 	var unixErr error
 	if tcpErr != nil {
@@ -281,7 +281,7 @@ func SetupDomainSocketRpcClient(sockName string, serverImpl ServerImpl) (*WshRpc
 	if tcpErr != nil && unixErr != nil {
 		return nil, fmt.Errorf("failed to connect to tcp or unix domain socket: tcp err:%w: unix socket err: %w", tcpErr, unixErr)
 	}
-	rtn, errCh, err := SetupConnRpcClient(conn, serverImpl)
+	rtn, errCh, err := SetupConnRpcClient(conn, serverImpl, debugName)
 	go func() {
 		defer func() {
 			panichandler.PanicHandler("SetupDomainSocketRpcClient:closeConn", recover())

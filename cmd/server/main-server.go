@@ -8,11 +8,9 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"os/signal"
 
 	"runtime"
 	"sync"
-	"syscall"
 	"time"
 
 	"github.com/wavetermdev/waveterm/pkg/authkey"
@@ -25,6 +23,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/service"
 	"github.com/wavetermdev/waveterm/pkg/telemetry"
 	"github.com/wavetermdev/waveterm/pkg/util/shellutil"
+	"github.com/wavetermdev/waveterm/pkg/util/sigutil"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wcloud"
@@ -69,17 +68,6 @@ func doShutdown(reason string) {
 		log.Printf("shutdown complete\n")
 		os.Exit(0)
 	})
-}
-
-func installShutdownSignalHandlers() {
-	sigCh := make(chan os.Signal, 1)
-	signal.Notify(sigCh, syscall.SIGHUP, syscall.SIGTERM, syscall.SIGINT)
-	go func() {
-		for sig := range sigCh {
-			doShutdown(fmt.Sprintf("got signal %v", sig))
-			break
-		}
-	}()
 }
 
 // watch stdin, kill server if stdin is closed
@@ -179,7 +167,7 @@ func createMainWshClient() {
 	wshfs.RpcClient = rpc
 	wshutil.DefaultRouter.RegisterRoute(wshutil.DefaultRoute, rpc, true)
 	wps.Broker.SetClient(wshutil.DefaultRouter)
-	localConnWsh := wshutil.MakeWshRpc(nil, nil, wshrpc.RpcContext{Conn: wshrpc.LocalConnName}, &wshremote.ServerImpl{})
+	localConnWsh := wshutil.MakeWshRpc(nil, nil, wshrpc.RpcContext{Conn: wshrpc.LocalConnName}, &wshremote.ServerImpl{}, "conn:local")
 	go wshremote.RunSysInfoLoop(localConnWsh, wshrpc.LocalConnName)
 	wshutil.DefaultRouter.RegisterRoute(wshutil.MakeConnectionRouteId(wshrpc.LocalConnName), localConnWsh, true)
 }
@@ -295,7 +283,10 @@ func main() {
 	}
 
 	createMainWshClient()
-	installShutdownSignalHandlers()
+
+	sigutil.InstallShutdownSignalHandlers(doShutdown)
+	sigutil.InstallSIGUSR1Handler()
+
 	startupActivityUpdate()
 	go stdinReadWatch()
 	go telemetryLoop()

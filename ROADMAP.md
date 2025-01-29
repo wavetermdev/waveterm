@@ -8,7 +8,7 @@ Legend: ✅ Done | 🔧 In Progress | 🔷 Planned | 🤞 Stretch Goal
 
 ## v0.11.0
 
-Currently in beta, targeting release on 1/24.
+Released on 1/25/25
 
 - ✅ File/Directory Preview improvements
   - ✅ Reworked fileshare layer running over RPC
@@ -26,22 +26,29 @@ Currently in beta, targeting release on 1/24.
 
 ## v0.11.1
 
-Likely to follow v0.11 by 1 week.
+Targeting 1/31/25
 
 - 🔧 Reduce main-line 2FA requests to 1 per connection
-- 🔷 Frontend Only Widgets, React + Babel Transpiling in an iframe/webview
-- 🔷 Monaco Theming
 - 🔧 Remote S3 bucket browsing (directory + files)
 - 🔷 Drag & drop between preview blocks
-- 🔷 Drag into a preview directory from the native file browser or desktop to copy a file
+- 🔷 Drag into/out of a preview block from native file explorer
 - 🔷 Wave Apps (Go SDK)
-- 🤞 Explore VSCode Extension Compatibility with standalone Monaco Editor (language servers)
+- 🔷 JSON schema support (basic)
+- 🤞 Frontend Only Widgets, React + Babel Transpiling in an iframe/webview
 
 ## v0.12
+
+Targeting mid-February (more will get added before work on v0.12 kicks off)
 
 - 🔷 Import/Export Tab Layouts and Widgets
 - 🔷 log viewer
 - 🔷 binary viewer
+- 🔷 New layout actions (splitting, replacing blocks)
+- 🔷 Rewrite of window/tab system
+- 🔷 Minimized / Non-Visible blocks
+- 🔷 Custom keybindings to quickly switch / invoke built-in and custom widgets
+- 🔷 More Drag & Drop support of files/URLs to create blocks
+- 🔷 Tab Templates
 
 ## Planned (Unscheduled)
 
@@ -50,3 +57,8 @@ Likely to follow v0.11 by 1 week.
   - 🔷 Re-assign system keybindings
 - 🔷 Command Palette
 - 🔷 AI Context
+- 🔷 Monaco Theming
+- 🔷 File system watching for Preview
+- 🔷 File system watching for drag and drop
+- 🤞 Explore VSCode Extension Compatibility with standalone Monaco Editor (language servers)
+- 🤞 VSCode File Icons in Preview

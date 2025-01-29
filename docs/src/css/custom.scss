@@ -1,0 +1,117 @@
+@import url("../../../node_modules/highlight.js/scss/github-dark-dimmed.scss");
+
+:root {
+  --ifm-background-color: #ffffff;
+  --ifm-color-primary: #1a660b;
+  --ifm-color-primary-dark: #175c0a;
+  --ifm-color-primary-darker: #165709;
+  --ifm-color-primary-darkest: #124708;
+  --ifm-color-primary-light: #1d700c;
+  --ifm-color-primary-lighter: #1e750d;
+  --ifm-color-primary-lightest: #22850e;
+}
+
+[data-theme="dark"] {
+  --ifm-background-color: #1b1b1d;
+  --ifm-color-primary: #58c142;
+  --ifm-color-primary-dark: #4eb03a;
+  --ifm-color-primary-darker: #4aa636;
+  --ifm-color-primary-darkest: #429431;
+  --ifm-color-primary-light: #69c756;
+  --ifm-color-primary-lighter: #72cb5f;
+  --ifm-color-primary-lightest: #8cd47d;
+}
+
+.docs-doc-id-index article nav {
+  display: none;
+}
+
+body .markdown h1:first-child {
+  --ifm-h1-font-size: 2rem;
+}
+
+body .markdown h2 {
+  --ifm-h2-font-size: 1.75rem;
+}
+
+@media (min-width: 996px) {
+  .reference-links {
+    display: none;
+  }
+}
+
+/* Adds extra margin between last navbar item and the dark mode toggle. */
+.navbar__items--right .navbar__item:last-of-type {
+  margin-right: 4px;
+}
+
+.header-link-custom:before {
+  display: block;
+  height: 24px;
+  width: 24px;
+  background-color: var(--ifm-navbar-link-color);
+  transition: background-color 0.15s linear;
+}
+
+.header-link-custom:hover:before {
+  background-color: var(--ifm-navbar-link-hover-color);
+}
+
+.custom-icon-inline:before {
+  display: inline-block;
+  height: 16px;
+  width: 16px;
+  background-color: var(--ifm-color-primary-contrast-foreground);
+  transition: background-color 0.15s linear;
+}
+
+.custom-icon-github:before {
+  content: "";
+  mask: url(/img/github.svg) no-repeat center / contain;
+  -webkit-mask: url(/img/github.svg) no-repeat center / contain;
+}
+
+.custom-icon-discord:before {
+  content: "";
+  mask: url(/img/discord.svg) no-repeat center / contain;
+  -webkit-mask: url(/img/discord.svg) no-repeat center / contain;
+}
+
+.custom-icon-workspace:before {
+  content: "";
+  mask: url(/img/workspace.svg) no-repeat center / contain;
+  -webkit-mask: url(/img/workspace.svg) no-repeat center / contain;
+}
+
+.custom-icon-magnify-enabled:before {
+  content: "";
+  mask: url(/img/magnify-enabled.svg) no-repeat center / contain;
+  -webkit-mask: url(/img/magnify-enabled.svg) no-repeat center / contain;
+  margin-bottom: -2px;
+}
+
+.custom-icon-magnify-disabled:before {
+  content: "";
+  mask: url(/img/magnify-disabled.svg) no-repeat center / contain;
+  -webkit-mask: url(/img/magnify-disabled.svg) no-repeat center / contain;
+  margin-bottom: -2px;
+}
+
+img[src*="#left"] {
+  float: left;
+  margin: 0 10px 10px 0;
+  max-width: 300px;
+}
+img[src*="#right"] {
+  float: right;
+  margin: 0 0 10px 10px;
+  max-width: 300px;
+}
+img[src*="#center"] {
+  display: block;
+  margin: auto;
+}
+
+.hidden {
+  display: none;
+}
