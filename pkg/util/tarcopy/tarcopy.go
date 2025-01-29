@@ -103,9 +103,7 @@ func TarCopyDest(ctx context.Context, cancel context.CancelCauseFunc, ch <-chan 
 			if err != nil {
 				// Do one more check for context error before returning
 				if ctx.Err() != nil {
-					if ctx.Err() != nil {
-						return context.Cause(ctx)
-					}
+					return context.Cause(ctx)
 				}
 				if errors.Is(err, io.EOF) {
 					return nil
