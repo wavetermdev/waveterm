@@ -13,8 +13,10 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
+	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 )
 
 func FixPath(path string) (string, error) {
@@ -163,4 +165,48 @@ func IsInitScriptPath(input string) bool {
 	}
 
 	return true
+}
+
+type FsFileInfo struct {
+	NameInternal    string
+	ModeInternal    os.FileMode
+	SizeInternal    int64
+	ModTimeInternal int64
+	IsDirInternal   bool
+}
+
+func (f FsFileInfo) Name() string {
+	return f.NameInternal
+}
+
+func (f FsFileInfo) Size() int64 {
+	return f.SizeInternal
+}
+
+func (f FsFileInfo) Mode() os.FileMode {
+	return f.ModeInternal
+}
+
+func (f FsFileInfo) ModTime() time.Time {
+	return time.Unix(0, f.ModTimeInternal)
+}
+
+func (f FsFileInfo) IsDir() bool {
+	return f.IsDirInternal
+}
+
+func (f FsFileInfo) Sys() interface{} {
+	return nil
+}
+
+var _ fs.FileInfo = FsFileInfo{}
+
+func ToFsFileInfo(fi *wshrpc.FileInfo) FsFileInfo {
+	return FsFileInfo{
+		NameInternal:    fi.Name,
+		ModeInternal:    fi.Mode,
+		SizeInternal:    fi.Size,
+		ModTimeInternal: fi.ModTime,
+		IsDirInternal:   fi.IsDir,
+	}
 }

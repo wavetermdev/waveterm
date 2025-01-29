@@ -4,6 +4,7 @@
 package wavefs
 
 import (
+	"archive/tar"
 	"context"
 	"encoding/base64"
 	"errors"
@@ -11,11 +12,14 @@ import (
 	"io/fs"
 	"path"
 	"strings"
+	"time"
 
 	"github.com/wavetermdev/waveterm/pkg/filestore"
 	"github.com/wavetermdev/waveterm/pkg/remote/connparse"
 	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/fstype"
+	"github.com/wavetermdev/waveterm/pkg/util/fileutil"
 	"github.com/wavetermdev/waveterm/pkg/util/iochan/iochantypes"
+	"github.com/wavetermdev/waveterm/pkg/util/tarcopy"
 	"github.com/wavetermdev/waveterm/pkg/util/wavefileutil"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wps"
@@ -97,7 +101,54 @@ func (c WaveClient) Read(ctx context.Context, conn *connparse.Connection, data w
 }
 
 func (c WaveClient) ReadTarStream(ctx context.Context, conn *connparse.Connection, opts *wshrpc.FileCopyOpts) <-chan wshrpc.RespOrErrorUnion[iochantypes.Packet] {
-	return nil
+	pathPrefix, err := cleanPath(conn.Path)
+	if err != nil {
+		return wshutil.SendErrCh[iochantypes.Packet](fmt.Errorf("error cleaning path: %w", err))
+	}
+	list, err := c.ListEntries(ctx, conn, nil)
+	if err != nil {
+		return wshutil.SendErrCh[iochantypes.Packet](fmt.Errorf("error listing blockfiles: %w", err))
+	}
+
+	timeout := time.Millisecond * 100
+	if opts.Timeout > 0 {
+		timeout = time.Duration(opts.Timeout) * time.Millisecond
+	}
+	readerCtx, cancel := context.WithTimeout(context.Background(), timeout)
+	rtn, writeHeader, fileWriter, tarClose := tarcopy.TarCopySrc(readerCtx, wshrpc.FileChunkSize, pathPrefix)
+
+	go func() {
+		defer func() {
+			tarClose()
+			cancel()
+		}()
+		for _, file := range list {
+			if readerCtx.Err() != nil {
+				rtn <- wshutil.RespErr[iochantypes.Packet](readerCtx.Err())
+				return
+			}
+
+			if err = writeHeader(fileutil.ToFsFileInfo(file), file.Path); err != nil {
+				rtn <- wshutil.RespErr[iochantypes.Packet](fmt.Errorf("error writing tar header: %w", err))
+				return
+			}
+			if file.IsDir {
+				continue
+			}
+
+			_, dataBuf, err := filestore.WFS.ReadFile(ctx, conn.Host, file.Path)
+			if err != nil {
+				rtn <- wshutil.RespErr[iochantypes.Packet](fmt.Errorf("error reading blockfile: %w", err))
+				return
+			}
+			if _, err = fileWriter.Write(dataBuf); err != nil {
+				rtn <- wshutil.RespErr[iochantypes.Packet](fmt.Errorf("error writing tar data: %w", err))
+				return
+			}
+		}
+	}()
+
+	return rtn
 }
 
 func (c WaveClient) ListEntriesStream(ctx context.Context, conn *connparse.Connection, opts *wshrpc.FileListOpts) <-chan wshrpc.RespOrErrorUnion[wshrpc.CommandRemoteListEntriesRtnData] {
@@ -377,6 +428,50 @@ func (c WaveClient) CopyInternal(ctx context.Context, srcConn, destConn *connpar
 }
 
 func (c WaveClient) CopyRemote(ctx context.Context, srcConn, destConn *connparse.Connection, srcClient fstype.FileShareClient, opts *wshrpc.FileCopyOpts) error {
+	zoneId := destConn.Host
+	if zoneId == "" {
+		return fmt.Errorf("zoneid not found in connection")
+	}
+	readCtx, cancel := context.WithCancelCause(ctx)
+	ioch := srcClient.ReadTarStream(readCtx, srcConn, opts)
+	err := tarcopy.TarCopyDest(readCtx, cancel, ioch, func(next *tar.Header, reader *tar.Reader) error {
+		if next.Typeflag == tar.TypeDir {
+			return nil
+		}
+		fileName, err := cleanPath(path.Join(destConn.Path, next.Name))
+		_, err = filestore.WFS.Stat(ctx, zoneId, fileName)
+		if err != nil {
+			if !errors.Is(err, fs.ErrNotExist) {
+				return fmt.Errorf("error getting blockfile info: %w", err)
+			}
+			err := filestore.WFS.MakeFile(ctx, zoneId, fileName, nil, wshrpc.FileOpts{})
+			if err != nil {
+				return fmt.Errorf("error making blockfile: %w", err)
+			}
+		}
+		dataBuf := make([]byte, next.Size)
+		n, err := reader.Read(dataBuf)
+		if err != nil {
+			return fmt.Errorf("error reading tar data: %w", err)
+		}
+		err = filestore.WFS.WriteFile(ctx, zoneId, fileName, dataBuf[:n])
+		if err != nil {
+			return fmt.Errorf("error writing to blockfile: %w", err)
+		}
+		wps.Broker.Publish(wps.WaveEvent{
+			Event:  wps.Event_BlockFile,
+			Scopes: []string{waveobj.MakeORef(waveobj.OType_Block, zoneId).String()},
+			Data: &wps.WSFileEventData{
+				ZoneId:   zoneId,
+				FileName: fileName,
+				FileOp:   wps.FileOp_Invalidate,
+			},
+		})
+		return nil
+	})
+	if err != nil {
+		return fmt.Errorf("error copying tar stream: %w", err)
+	}
 	return nil
 }
 

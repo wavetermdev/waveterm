@@ -56,7 +56,7 @@ func ReaderChan(ctx context.Context, r io.Reader, chunkSize int64, callback func
 }
 
 // WriterChan reads from a channel and writes the data to an io.Writer
-func WriterChan(ctx context.Context, w io.Writer, ch <-chan wshrpc.RespOrErrorUnion[iochantypes.Packet], callback func(), errCallback func(error)) {
+func WriterChan(ctx context.Context, w io.Writer, ch <-chan wshrpc.RespOrErrorUnion[iochantypes.Packet], callback func(), cancel context.CancelCauseFunc) {
 	sha256Hash := sha256.New()
 	go func() {
 		defer func() {
@@ -72,23 +72,23 @@ func WriterChan(ctx context.Context, w io.Writer, ch <-chan wshrpc.RespOrErrorUn
 					return
 				}
 				if resp.Error != nil {
-					errCallback(resp.Error)
+					cancel(resp.Error)
 					return
 				}
 				if _, err := sha256Hash.Write(resp.Response.Data); err != nil {
-					errCallback(fmt.Errorf("WriterChan: error writing to sha256 hash: %v", err))
+					cancel(fmt.Errorf("WriterChan: error writing to sha256 hash: %v", err))
 					return
 				}
 				// The checksum is sent as the last packet
 				if resp.Response.Checksum != nil {
 					localChecksum := sha256Hash.Sum(nil)
 					if !bytes.Equal(localChecksum, resp.Response.Checksum) {
-						errCallback(fmt.Errorf("WriterChan: checksum mismatch"))
+						cancel(fmt.Errorf("WriterChan: checksum mismatch"))
 					}
 					return
 				}
 				if _, err := w.Write(resp.Response.Data); err != nil {
-					errCallback(fmt.Errorf("WriterChan: write error: %v", err))
+					cancel(fmt.Errorf("WriterChan: write error: %v", err))
 					return
 				}
 			}
