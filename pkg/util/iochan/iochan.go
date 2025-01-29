@@ -20,12 +20,12 @@ import (
 // ReaderChan reads from an io.Reader and sends the data to a channel
 func ReaderChan(ctx context.Context, r io.Reader, chunkSize int64, callback func()) chan wshrpc.RespOrErrorUnion[iochantypes.Packet] {
 	ch := make(chan wshrpc.RespOrErrorUnion[iochantypes.Packet], 32)
-	sha256Hash := sha256.New()
 	go func() {
 		defer func() {
 			close(ch)
 			callback()
 		}()
+		sha256Hash := sha256.New()
 		for {
 			select {
 			case <-ctx.Done():
@@ -57,12 +57,14 @@ func ReaderChan(ctx context.Context, r io.Reader, chunkSize int64, callback func
 
 // WriterChan reads from a channel and writes the data to an io.Writer
 func WriterChan(ctx context.Context, w io.Writer, ch <-chan wshrpc.RespOrErrorUnion[iochantypes.Packet], callback func(), cancel context.CancelCauseFunc) {
-	sha256Hash := sha256.New()
 	go func() {
 		defer func() {
-			drainChannel(ch)
+			if ctx.Err() != nil {
+				drainChannel(ch)
+			}
 			callback()
 		}()
+		sha256Hash := sha256.New()
 		for {
 			select {
 			case <-ctx.Done():
@@ -97,6 +99,8 @@ func WriterChan(ctx context.Context, w io.Writer, ch <-chan wshrpc.RespOrErrorUn
 }
 
 func drainChannel(ch <-chan wshrpc.RespOrErrorUnion[iochantypes.Packet]) {
-	for range ch {
-	}
+	go func() {
+		for range ch {
+		}
+	}()
 }
