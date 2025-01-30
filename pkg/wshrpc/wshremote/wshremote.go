@@ -384,6 +384,7 @@ func (impl *ServerImpl) RemoteFileCopyCommand(ctx context.Context, data wshrpc.C
 			if !finfo.IsDir() {
 				totalBytes += finfo.Size()
 			}
+			log.Printf("copying %q to %q\n", next.Name, nextPath)
 
 			if destinfo != nil {
 				if destinfo.IsDir() {
