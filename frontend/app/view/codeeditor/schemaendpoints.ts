@@ -15,7 +15,9 @@ allFilepaths.set(`${getWebServerEndpoint()}/schema/settings.json`, [`${getApi().
 
 async function getSchemaEndpointInfo(endpoint: string): Promise<EndpointInfo> {
     const data = await fetch(endpoint);
-    const schema: object = await data.json();
+    const fullSchema: object = await data.json();
+    const schemaRef = fullSchema?.["$ref"];
+    const schema = fullSchema?.[schemaRef];
     const fileMatch = allFilepaths.get(endpoint) ?? [];
 
     return {

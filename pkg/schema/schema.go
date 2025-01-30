@@ -33,7 +33,6 @@ func GetSchemaHandler() http.Handler {
 func addHeaders(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Add("Content-Type", "application/schema+json")
-		w.WriteHeader(http.StatusOK)
 		next.ServeHTTP(w, r)
 	})
 }

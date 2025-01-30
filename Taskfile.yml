@@ -25,6 +25,7 @@ tasks:
             - yarn
             - docsite:build:embedded
             - build:backend
+            - build:schema
         env:
             WCLOUD_ENDPOINT: "https://ot2e112zx5.execute-api.us-west-2.amazonaws.com/dev"
             WCLOUD_WS_ENDPOINT: "wss://5lfzlg5crl.execute-api.us-west-2.amazonaws.com/dev/"
@@ -38,6 +39,7 @@ tasks:
             - yarn
             - docsite:build:embedded
             - build:backend
+            - build:schema
         env:
             WCLOUD_ENDPOINT: "https://ot2e112zx5.execute-api.us-west-2.amazonaws.com/dev"
             WCLOUD_WS_ENDPOINT: "wss://5lfzlg5crl.execute-api.us-west-2.amazonaws.com/dev/"
@@ -107,12 +109,25 @@ tasks:
             - yarn
             - docsite:build:embedded
             - build:backend
+            - build:schema
 
     build:backend:
         desc: Build the wavesrv and wsh components.
         cmds:
             - task: build:server
             - task: build:wsh
+
+    build:schema:
+        desc: Build the schema for configuration.
+        sources:
+        generates:
+            - "dist/schema/**/*"
+        cmds:
+            - go run cmd/generateschema/main-generateschema.go
+            - '{{.RMRF}} "dist/schema"'
+            - task: copyfiles:'schema':'dist/schema'
+        deps:
+            - generate
 
     build:server:
         desc: Build the wavesrv component.
