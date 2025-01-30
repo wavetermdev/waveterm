@@ -5,9 +5,7 @@
 package iochan
 
 import (
-	"bytes"
 	"context"
-	"crypto/sha256"
 	"errors"
 	"fmt"
 	"io"
@@ -25,7 +23,7 @@ func ReaderChan(ctx context.Context, r io.Reader, chunkSize int64, callback func
 			close(ch)
 			callback()
 		}()
-		sha256Hash := sha256.New()
+		// sha256Hash := sha256.New()
 		for {
 			select {
 			case <-ctx.Done():
@@ -37,16 +35,16 @@ func ReaderChan(ctx context.Context, r io.Reader, chunkSize int64, callback func
 				buf := make([]byte, chunkSize)
 				if n, err := r.Read(buf); err != nil {
 					if errors.Is(err, io.EOF) {
-						ch <- wshrpc.RespOrErrorUnion[iochantypes.Packet]{Response: iochantypes.Packet{Checksum: sha256Hash.Sum(nil)}} // send the checksum
+						// ch <- wshrpc.RespOrErrorUnion[iochantypes.Packet]{Response: iochantypes.Packet{Checksum: sha256Hash.Sum(nil)}} // send the checksum
 						return
 					}
 					ch <- wshutil.RespErr[iochantypes.Packet](fmt.Errorf("ReaderChan: read error: %v", err))
 					return
 				} else if n > 0 {
-					if _, err := sha256Hash.Write(buf[:n]); err != nil {
-						ch <- wshutil.RespErr[iochantypes.Packet](fmt.Errorf("ReaderChan: error writing to sha256 hash: %v", err))
-						return
-					}
+					// if _, err := sha256Hash.Write(buf[:n]); err != nil {
+					// 	ch <- wshutil.RespErr[iochantypes.Packet](fmt.Errorf("ReaderChan: error writing to sha256 hash: %v", err))
+					// 	return
+					// }
 					ch <- wshrpc.RespOrErrorUnion[iochantypes.Packet]{Response: iochantypes.Packet{Data: buf[:n]}}
 				}
 			}
@@ -64,7 +62,7 @@ func WriterChan(ctx context.Context, w io.Writer, ch <-chan wshrpc.RespOrErrorUn
 			}
 			callback()
 		}()
-		sha256Hash := sha256.New()
+		// sha256Hash := sha256.New()
 		for {
 			select {
 			case <-ctx.Done():
@@ -77,18 +75,18 @@ func WriterChan(ctx context.Context, w io.Writer, ch <-chan wshrpc.RespOrErrorUn
 					cancel(resp.Error)
 					return
 				}
-				if _, err := sha256Hash.Write(resp.Response.Data); err != nil {
-					cancel(fmt.Errorf("WriterChan: error writing to sha256 hash: %v", err))
-					return
-				}
+				// if _, err := sha256Hash.Write(resp.Response.Data); err != nil {
+				// 	cancel(fmt.Errorf("WriterChan: error writing to sha256 hash: %v", err))
+				// 	return
+				// }
 				// The checksum is sent as the last packet
-				if resp.Response.Checksum != nil {
-					localChecksum := sha256Hash.Sum(nil)
-					if !bytes.Equal(localChecksum, resp.Response.Checksum) {
-						cancel(fmt.Errorf("WriterChan: checksum mismatch"))
-					}
-					return
-				}
+				// if resp.Response.Checksum != nil {
+				// 	localChecksum := sha256Hash.Sum(nil)
+				// 	if !bytes.Equal(localChecksum, resp.Response.Checksum) {
+				// 		cancel(fmt.Errorf("WriterChan: checksum mismatch"))
+				// 	}
+				// 	return
+				// }
 				if _, err := w.Write(resp.Response.Data); err != nil {
 					cancel(fmt.Errorf("WriterChan: write error: %v", err))
 					return

@@ -6,6 +6,7 @@ package tarcopy
 
 import (
 	"archive/tar"
+	"bufio"
 	"compress/gzip"
 	"context"
 	"errors"
@@ -90,20 +91,25 @@ func validatePath(path string) error {
 // The function returns an error if the tar stream cannot be read.
 func TarCopyDest(ctx context.Context, cancel context.CancelCauseFunc, ch <-chan wshrpc.RespOrErrorUnion[iochantypes.Packet], readNext func(next *tar.Header, reader *tar.Reader) error) error {
 	pipeReader, pipeWriter := io.Pipe()
-	defer func() {
+	bufReader := bufio.NewReader(pipeReader)
+	gzReader, err := gzip.NewReader(bufReader)
+	gzReader.Multistream(false)
+	if err != nil {
 		if !gracefulClose(pipeReader, tarCopyDestName, pipeReaderName) {
 			// If the pipe reader cannot be closed, cancel the context. This should kill the
 			// writer goroutine.
 			cancel(nil)
 		}
-	}()
-	gzReader, err := gzip.NewReader(pipeReader)
-	if err != nil {
 		return err
 	}
 	defer func() {
 		if !gracefulClose(gzReader, tarCopyDestName, gzReaderName) {
 			// If the gzip reader cannot be closed, cancel the context. This should kill the
+			// writer goroutine.
+			cancel(nil)
+		}
+		if !gracefulClose(pipeReader, tarCopyDestName, pipeReaderName) {
+			// If the pipe reader cannot be closed, cancel the context. This should kill the
 			// writer goroutine.
 			cancel(nil)
 		}
@@ -133,6 +139,7 @@ func TarCopyDest(ctx context.Context, cancel context.CancelCauseFunc, ch <-chan 
 					return err
 				}
 			}
+			log.Printf("reading next file: %s\n", next.Name)
 			err = readNext(next, tarReader)
 			if err != nil {
 				return err
