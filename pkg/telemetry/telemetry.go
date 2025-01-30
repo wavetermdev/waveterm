@@ -14,6 +14,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/util/daystr"
 	"github.com/wavetermdev/waveterm/pkg/util/dbutil"
+	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/wconfig"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
@@ -23,9 +24,10 @@ import (
 const MaxTzNameLen = 50
 
 type TEvent struct {
-	Ts    int64          `json:"ts" db:"ts"`
-	Event string         `json:"event" db:"event"`
-	Props map[string]any `json:"-" db:"-"` // Don't scan directly to map
+	Ts      int64          `json:"ts" db:"ts"`
+	TsLocal string         `json:"tslocal" db:"-"` // iso8601 format (wall clock converted to PT)
+	Event   string         `json:"event" db:"event"`
+	Props   map[string]any `json:"props" db:"-"` // Don't scan directly to map
 
 	// DB fields
 	Id       int64 `json:"-" db:"id"`
@@ -42,11 +44,41 @@ func MakeTEvent(event string, props map[string]any) *TEvent {
 	if props == nil {
 		props = make(map[string]any)
 	}
+	now := time.Now()
+	localTime := utilfn.ConvertToWallClockPT(now)
 	return &TEvent{
-		Ts:    time.Now().UnixMilli(),
-		Event: event,
-		Props: props,
+		Ts:      now.UnixMilli(),
+		TsLocal: localTime.Format(time.RFC3339),
+		Event:   event,
+		Props:   props,
 	}
+}
+
+func (t *TEvent) SetUser(key string, value any) {
+	if t.Props == nil {
+		t.Props = make(map[string]any)
+	}
+	if t.Props["$set"] == nil {
+		t.Props["$set"] = make(map[string]any)
+	}
+	t.Props["$set"].(map[string]any)[key] = value
+}
+
+func (t *TEvent) SetUserOnce(key string, value any) {
+	if t.Props == nil {
+		t.Props = make(map[string]any)
+	}
+	if t.Props["$set_once"] == nil {
+		t.Props["$set_once"] = make(map[string]any)
+	}
+	t.Props["$set_once"].(map[string]any)[key] = value
+}
+
+func (t *TEvent) Set(key string, value any) {
+	if t.Props == nil {
+		t.Props = make(map[string]any)
+	}
+	t.Props[key] = value
 }
 
 func (t *TEvent) convertRawJSON() error {

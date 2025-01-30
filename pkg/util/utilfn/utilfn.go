@@ -31,6 +31,15 @@ import (
 )
 
 var HexDigits = []byte{'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'}
+var PTLoc *time.Location
+
+func init() {
+	loc, err := time.LoadLocation("America/Los_Angeles")
+	if err != nil {
+		loc = time.FixedZone("PT", -8*60*60)
+	}
+	PTLoc = loc
+}
 
 func GetStrArr(v interface{}, field string) []string {
 	if v == nil {
@@ -970,4 +979,11 @@ func DumpGoRoutineStacks() {
 	buf := make([]byte, 1<<20)
 	n := runtime.Stack(buf, true)
 	os.Stdout.Write(buf[:n])
+}
+
+func ConvertToWallClockPT(t time.Time) time.Time {
+	year, month, day := t.Date()
+	hour, min, sec := t.Clock()
+	pstTime := time.Date(year, month, day, hour, min, sec, 0, PTLoc)
+	return pstTime
 }
