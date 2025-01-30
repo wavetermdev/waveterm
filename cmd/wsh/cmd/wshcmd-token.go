@@ -22,9 +22,6 @@ func init() {
 }
 
 func tokenCmdRun(cmd *cobra.Command, args []string) (rtnErr error) {
-	defer func() {
-		sendActivity("token", rtnErr == nil)
-	}()
 	if len(args) != 2 {
 		OutputHelpMessage(cmd)
 		return fmt.Errorf("wsh token requires exactly 2 arguments, got %d", len(args))
