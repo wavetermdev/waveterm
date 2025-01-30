@@ -201,6 +201,14 @@ tasks:
                   GOARCH: amd64
             - task: build:wsh:internal
               vars:
+                  GOOS: linux
+                  GOARCH: mips
+            - task: build:wsh:internal
+              vars:
+                  GOOS: linux
+                  GOARCH: mips64
+            - task: build:wsh:internal
+              vars:
                   GOOS: windows
                   GOARCH: amd64
             - task: build:wsh:internal
