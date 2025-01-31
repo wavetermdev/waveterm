@@ -92,7 +92,7 @@ func validatePath(path string) error {
 // The function returns an error if the tar stream cannot be read.
 func TarCopyDest(ctx context.Context, cancel context.CancelCauseFunc, ch <-chan wshrpc.RespOrErrorUnion[iochantypes.Packet], readNext func(next *tar.Header, reader *tar.Reader) error) error {
 	pipeReader, pipeWriter := io.Pipe()
-	bufReader := bufio.NewReader(pipeReader)
+	bufReader := bufio.NewReaderSize(pipeReader, wshrpc.FileChunkSize)
 	iochan.WriterChan(ctx, pipeWriter, ch, func() {
 		gracefulClose(pipeWriter, tarCopyDestName, pipeWriterName)
 		cancel(nil)

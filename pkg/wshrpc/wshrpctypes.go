@@ -26,7 +26,7 @@ const (
 	// MaxDirSize is the maximum number of entries that can be read in a directory
 	MaxDirSize = 1024
 	// FileChunkSize is the size of the file chunk to read
-	FileChunkSize = 64 * 1024
+	FileChunkSize = 1024 * 1024
 	// DirChunkSize is the size of the directory chunk to read
 	DirChunkSize = 128
 )
