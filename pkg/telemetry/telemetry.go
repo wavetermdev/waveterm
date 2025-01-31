@@ -6,7 +6,6 @@ package telemetry
 import (
 	"context"
 	"database/sql/driver"
-	"encoding/json"
 	"fmt"
 	"log"
 	"time"
@@ -22,71 +21,7 @@ import (
 )
 
 const MaxTzNameLen = 50
-
-type TEvent struct {
-	Ts      int64          `json:"ts" db:"ts"`
-	TsLocal string         `json:"tslocal" db:"-"` // iso8601 format (wall clock converted to PT)
-	Event   string         `json:"event" db:"event"`
-	Props   map[string]any `json:"props" db:"-"` // Don't scan directly to map
-
-	// DB fields
-	Id       int64 `json:"-" db:"id"`
-	Uploaded bool  `json:"-" db:"uploaded"`
-
-	// For database scanning
-	RawProps string `json:"-" db:"props"`
-}
-
-func MakeTEvent(event string, props map[string]any) *TEvent {
-	if event == "" {
-		panic("TEvent.Event cannot be empty")
-	}
-	if props == nil {
-		props = make(map[string]any)
-	}
-	now := time.Now()
-	localTime := utilfn.ConvertToWallClockPT(now)
-	return &TEvent{
-		Ts:      now.UnixMilli(),
-		TsLocal: localTime.Format(time.RFC3339),
-		Event:   event,
-		Props:   props,
-	}
-}
-
-func (t *TEvent) SetUser(key string, value any) {
-	if t.Props == nil {
-		t.Props = make(map[string]any)
-	}
-	if t.Props["$set"] == nil {
-		t.Props["$set"] = make(map[string]any)
-	}
-	t.Props["$set"].(map[string]any)[key] = value
-}
-
-func (t *TEvent) SetUserOnce(key string, value any) {
-	if t.Props == nil {
-		t.Props = make(map[string]any)
-	}
-	if t.Props["$set_once"] == nil {
-		t.Props["$set_once"] = make(map[string]any)
-	}
-	t.Props["$set_once"].(map[string]any)[key] = value
-}
-
-func (t *TEvent) Set(key string, value any) {
-	if t.Props == nil {
-		t.Props = make(map[string]any)
-	}
-	t.Props[key] = value
-}
-
-func (t *TEvent) convertRawJSON() error {
-	if t.RawProps != "" {
-		return json.Unmarshal([]byte(t.RawProps), &t.Props)
-	}
-	return nil
-}
+const ActivityEventName = "activity"
 
 type ActivityType struct {
 	Day           string        `json:"day"`
@@ -162,7 +97,7 @@ func GoUpdateActivityWrap(update wshrpc.ActivityUpdate, debugStr string) {
 	}()
 }
 
-func InsertTEvent(ctx context.Context, event *TEvent) error {
+func InsertTEvent(ctx context.Context, event *wshrpc.TEvent) error {
 	return wstore.WithTx(ctx, func(tx *wstore.TxWrap) error {
 		query := `INSERT INTO db_tevent (ts, event, props)
 				  VALUES (?, ?, ?)`
@@ -171,13 +106,68 @@ func InsertTEvent(ctx context.Context, event *TEvent) error {
 	})
 }
 
-func GetNonUploadedTEvents(ctx context.Context, maxEvents int) ([]*TEvent, error) {
-	return wstore.WithTxRtn(ctx, func(tx *wstore.TxWrap) ([]*TEvent, error) {
-		var rtn []*TEvent
-		query := `SELECT id, ts, event, props, uploaded FROM db_tevent WHERE uploaded = 0 ORDER BY ts LIMIT ?`
-		tx.Select(&rtn, query, maxEvents)
+// merges newActivity into curActivity, returns curActivity
+func mergeActivity(curActivity map[string]any, newActivity map[string]any) map[string]any {
+	if curActivity == nil {
+		curActivity = make(map[string]any)
+	}
+	for key, val := range newActivity {
+		newVal := utilfn.ConvertInt(val)
+		curVal := utilfn.ConvertInt(curActivity[key])
+		curActivity[key] = curVal + newVal
+	}
+	return curActivity
+}
+
+// ignores the timestamp in tevent, and uses the current time
+func UpdateActivityTEvent(ctx context.Context, tevent *wshrpc.TEvent) error {
+	eventTs := time.Now()
+	// compute to hour boundary, and round up to next hour
+	eventTs = eventTs.Truncate(time.Hour).Add(time.Hour)
+	return wstore.WithTx(ctx, func(tx *wstore.TxWrap) error {
+		// find event that matches this timestamp with event name "activity"
+		var hasRow bool
+		curActivity := make(map[string]any)
+		rawProps := tx.GetString(`SELECT props FROM db_tevent WHERE ts = ? AND event = ?`, eventTs.UnixMilli(), ActivityEventName)
+		if rawProps != "" {
+			hasRow = true
+			curActivity = dbutil.ParseJsonMap(rawProps, true)
+		}
+		curActivity = mergeActivity(curActivity, tevent.Props)
+		if hasRow {
+			query := `UPDATE db_tevent SET props = ? WHERE ts = ? AND event = ?`
+			tx.Exec(query, dbutil.QuickJson(curActivity), eventTs.UnixMilli(), ActivityEventName)
+		} else {
+			query := `INSERT INTO db_tevent (ts, event, props) VALUES (?, ?, ?)`
+			tx.Exec(query, eventTs.UnixMilli(), ActivityEventName, dbutil.QuickJson(curActivity))
+		}
+		return nil
+	})
+}
+
+func RecordTEvent(ctx context.Context, tevent *wshrpc.TEvent) error {
+	if tevent == nil {
+		return nil
+	}
+	err := tevent.ValidateCurrentTEvent()
+	if err != nil {
+		return err
+	}
+	tevent.EnsureTimestamps()
+	if tevent.Event == ActivityEventName {
+		return UpdateActivityTEvent(ctx, tevent)
+	}
+	return InsertTEvent(ctx, tevent)
+}
+
+func GetNonUploadedTEvents(ctx context.Context, maxEvents int) ([]*wshrpc.TEvent, error) {
+	now := time.Now()
+	return wstore.WithTxRtn(ctx, func(tx *wstore.TxWrap) ([]*wshrpc.TEvent, error) {
+		var rtn []*wshrpc.TEvent
+		query := `SELECT id, ts, event, props, uploaded FROM db_tevent WHERE uploaded = 0 AND ts <= ? ORDER BY ts LIMIT ?`
+		tx.Select(&rtn, query, now.UnixMilli(), maxEvents)
 		for _, event := range rtn {
-			if err := event.convertRawJSON(); err != nil {
+			if err := event.ConvertRawJSON(); err != nil {
 				return nil, fmt.Errorf("scan json for event %d: %w", event.Id, err)
 			}
 		}
@@ -185,7 +175,7 @@ func GetNonUploadedTEvents(ctx context.Context, maxEvents int) ([]*TEvent, error
 	})
 }
 
-func MarkTEventsAsUploaded(ctx context.Context, events []*TEvent) error {
+func MarkTEventsAsUploaded(ctx context.Context, events []*wshrpc.TEvent) error {
 	return wstore.WithTx(ctx, func(tx *wstore.TxWrap) error {
 		ids := make([]int64, 0, len(events))
 		for _, event := range events {

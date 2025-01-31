@@ -734,6 +734,10 @@ func (ws *WshServer) WorkspaceListCommand(ctx context.Context) ([]wshrpc.Workspa
 	return rtn, nil
 }
 
+func (ws *WshServer) RecordTEventCommand(ctx context.Context, data wshrpc.TEvent) error {
+	return telemetry.RecordTEvent(ctx, &data)
+}
+
 var wshActivityRe = regexp.MustCompile(`^[a-z:#]+$`)
 
 func (ws *WshServer) WshActivityCommand(ctx context.Context, data map[string]int) error {

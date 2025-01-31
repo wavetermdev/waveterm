@@ -20,6 +20,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/telemetry"
 	"github.com/wavetermdev/waveterm/pkg/util/daystr"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
+	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 )
 
 const WCloudEndpoint = "https://api.waveterm.dev/central"
@@ -150,11 +151,11 @@ func doRequest(req *http.Request, outputObj interface{}) (*http.Response, error)
 }
 
 type TDataInputType struct {
-	ClientId string              `json:"clientId"`
-	TEvents  []*telemetry.TEvent `json:"tevents"`
+	ClientId string           `json:"clientId"`
+	TEvents  []*wshrpc.TEvent `json:"tevents"`
 }
 
-const TEventsBatchSize = 1000
+const TEventsBatchSize = 100
 
 // returns (done, error)
 func sendTEventsBatch(clientId string) (bool, error) {

@@ -85,6 +85,33 @@ func GetBool(v interface{}, field string) bool {
 	return bval
 }
 
+// converts an int or int64 to an int64
+// nil or bad type returns 0
+func ConvertInt(val any) int64 {
+	if val == 0 {
+		return 0
+	}
+	switch typedVal := val.(type) {
+	case int:
+		return int64(typedVal)
+	case int64:
+		return typedVal
+	default:
+		return 0
+	}
+}
+
+func ConvertMap(val any) map[string]any {
+	if val == nil {
+		return nil
+	}
+	m, ok := val.(map[string]any)
+	if !ok {
+		return nil
+	}
+	return m
+}
+
 var needsQuoteRe = regexp.MustCompile(`[^\w@%:,./=+-]`)
 
 // minimum maxlen=6, pass -1 for no max length
