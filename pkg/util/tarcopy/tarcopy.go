@@ -6,6 +6,8 @@ package tarcopy
 
 import (
 	"archive/tar"
+	"bufio"
+	"compress/gzip"
 	"context"
 	"errors"
 	"fmt"
@@ -26,6 +28,8 @@ const (
 	retryDelay      = 10 * time.Millisecond
 	tarCopySrcName  = "TarCopySrc"
 	tarCopyDestName = "TarCopyDest"
+	gzWriterName    = "gzip writer"
+	gzReaderName    = "gzip reader"
 	pipeReaderName  = "pipe reader"
 	pipeWriterName  = "pipe writer"
 	tarWriterName   = "tar writer"
@@ -37,12 +41,18 @@ const (
 // close is a function that closes the tar writer and internal pipe writer.
 func TarCopySrc(ctx context.Context, pathPrefix string) (outputChan chan wshrpc.RespOrErrorUnion[iochantypes.Packet], writeHeader func(fi fs.FileInfo, file string) error, writer io.Writer, close func()) {
 	pipeReader, pipeWriter := io.Pipe()
-	tarWriter := tar.NewWriter(pipeWriter)
+	gzWriter := gzip.NewWriter(pipeWriter)
+	tarWriter := tar.NewWriter(gzWriter)
 	rtnChan := iochan.ReaderChan(ctx, pipeReader, wshrpc.FileChunkSize, func() {
 		gracefulClose(pipeReader, tarCopySrcName, pipeReaderName)
 	})
 
 	return rtnChan, func(fi fs.FileInfo, file string) error {
+			err := gzWriter.Flush() // flush the gzip writer to ensure buffered data is written
+			if err != nil {
+				return err
+			}
+
 			// generate tar header
 			header, err := tar.FileInfoHeader(fi, file)
 			if err != nil {
@@ -58,9 +68,11 @@ func TarCopySrc(ctx context.Context, pathPrefix string) (outputChan chan wshrpc.
 			if err := tarWriter.WriteHeader(header); err != nil {
 				return err
 			}
+			log.Printf("wrote header: %s\n", header.Name)
 			return nil
 		}, tarWriter, func() {
 			gracefulClose(tarWriter, tarCopySrcName, tarWriterName)
+			gracefulClose(gzWriter, tarCopySrcName, gzWriterName)
 			gracefulClose(pipeWriter, tarCopySrcName, pipeWriterName)
 		}
 }
@@ -80,17 +92,41 @@ func validatePath(path string) error {
 // The function returns an error if the tar stream cannot be read.
 func TarCopyDest(ctx context.Context, cancel context.CancelCauseFunc, ch <-chan wshrpc.RespOrErrorUnion[iochantypes.Packet], readNext func(next *tar.Header, reader *tar.Reader) error) error {
 	pipeReader, pipeWriter := io.Pipe()
+	bufReader := bufio.NewReaderSize(pipeReader, wshrpc.FileChunkSize)
 	iochan.WriterChan(ctx, pipeWriter, ch, func() {
 		gracefulClose(pipeWriter, tarCopyDestName, pipeWriterName)
 		cancel(nil)
 	}, cancel)
-	tarReader := tar.NewReader(pipeReader)
+	gzReader, err := gzip.NewReader(bufReader)
+	if err != nil {
+		if !gracefulClose(pipeReader, tarCopyDestName, pipeReaderName) {
+			// If the pipe reader cannot be closed, cancel the context. This should kill the
+			// writer goroutine.
+			cancel(fmt.Errorf("error closing %s; could not create gzip reader: %w", pipeReaderName, err))
+		}
+		if !gracefulClose(pipeWriter, tarCopyDestName, pipeWriterName) {
+			// If the pipe reader cannot be closed, cancel the context. This should kill the
+			// writer goroutine.
+			cancel(fmt.Errorf("error closing %s; could not create gzip reader: %w", pipeWriterName, err))
+		}
+		return err
+	}
+	gzReader.Multistream(false)
 	defer func() {
 		if !gracefulClose(pipeReader, tarCopyDestName, pipeReaderName) {
-			// If the pipe reader cannot be closed, cancel the context. This should kill the writer goroutine.
-			cancel(nil)
+			// If the pipe reader cannot be closed, cancel the context. This should kill the
+			// writer goroutine.
+			cancel(fmt.Errorf("error closing %s", pipeReaderName))
+		}
+		if !gracefulClose(gzReader, tarCopyDestName, gzReaderName) {
+			// If the gzip reader cannot be closed, cancel the context. This should kill the
+			// writer goroutine.
+			cancel(fmt.Errorf("error closing %s", gzReaderName))
 		}
 	}()
+	log.Printf("reading tar stream\n")
+	bufReader1 := bufio.NewReader(gzReader)
+	tarReader := tar.NewReader(bufReader1)
 	for {
 		select {
 		case <-ctx.Done():
@@ -108,6 +144,7 @@ func TarCopyDest(ctx context.Context, cancel context.CancelCauseFunc, ch <-chan 
 				if errors.Is(err, io.EOF) {
 					return nil
 				} else {
+					log.Printf("error reading tar stream: %v\n", err)
 					return err
 				}
 			}
