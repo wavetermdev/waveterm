@@ -18590,9 +18590,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"remark-preset-lint-consistent@npm:^6.0.0":
-  version: 6.0.0
-  resolution: "remark-preset-lint-consistent@npm:6.0.0"
+"remark-preset-lint-consistent@npm:^6.0.1":
+  version: 6.0.1
+  resolution: "remark-preset-lint-consistent@npm:6.0.1"
   dependencies:
     remark-lint: "npm:^10.0.0"
     remark-lint-blockquote-indentation: "npm:^4.0.0"
@@ -18609,13 +18609,13 @@ __metadata:
     remark-lint-strong-marker: "npm:^4.0.0"
     remark-lint-table-cell-padding: "npm:^5.0.0"
     unified: "npm:^11.0.0"
-  checksum: 10c0/f20064bc2dab161fa463a82186b107ac9596cf9e8c308e6cf41de94a5039fe601498de7cff8dc74459d0f0a4247424cc1398407fe2f7404dfebb9e6dd2c62180
+  checksum: 10c0/08755494b4097cc11c3f8f354346f8b9319aacdef91c877f19a6ca2722b4de59d636d859bdb129d3a16eb50a7bf594ad3215d560c9063452da28a09d37c2cc37
   languageName: node
   linkType: hard
 
-"remark-preset-lint-recommended@npm:^7.0.0":
-  version: 7.0.0
-  resolution: "remark-preset-lint-recommended@npm:7.0.0"
+"remark-preset-lint-recommended@npm:^7.0.1":
+  version: 7.0.1
+  resolution: "remark-preset-lint-recommended@npm:7.0.1"
   dependencies:
     remark-lint: "npm:^10.0.0"
     remark-lint-final-newline: "npm:^3.0.0"
@@ -18632,7 +18632,7 @@ __metadata:
     remark-lint-no-unused-definitions: "npm:^4.0.0"
     remark-lint-ordered-list-marker-style: "npm:^4.0.0"
     unified: "npm:^11.0.0"
-  checksum: 10c0/ee425c9a3733e077889de9e644d6892f846edc4efb23d6a9b1e5e9c0d74d09f0b79cb0bb2d6cd1bca920288435a21a1c034cd6ab692ed00280b26f4f023333e1
+  checksum: 10c0/6d6cd159f56a8098e3fdac9d3bc68801f3181faf4bec37628c97f37fd2e69075ee3733268405fbd5bc1d73c25e3be820803ac3efbde68bc5e044df9ab244dd00
   languageName: node
   linkType: hard
 
@@ -21618,8 +21618,8 @@ __metadata:
     remark-frontmatter: "npm:^5.0.0"
     remark-gfm: "npm:^4.0.0"
     remark-mdx: "npm:^3.1.0"
-    remark-preset-lint-consistent: "npm:^6.0.0"
-    remark-preset-lint-recommended: "npm:^7.0.0"
+    remark-preset-lint-consistent: "npm:^6.0.1"
+    remark-preset-lint-recommended: "npm:^7.0.1"
     remark-typescript-code-import: "npm:^1.0.1"
     sass: "npm:^1.83.4"
     typescript: "npm:^5.7.3"
