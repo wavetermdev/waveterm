@@ -98,6 +98,7 @@ func init() {
 	fileCmd.AddCommand(fileListCmd)
 	fileCmd.AddCommand(fileCatCmd)
 	fileCmd.AddCommand(fileWriteCmd)
+	fileRmCmd.Flags().BoolP("recursive", "r", false, "remove directories recursively")
 	fileCmd.AddCommand(fileRmCmd)
 	fileCmd.AddCommand(fileInfoCmd)
 	fileCmd.AddCommand(fileAppendCmd)
@@ -259,6 +260,10 @@ func fileRmRun(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	recursive, err := cmd.Flags().GetBool("recursive")
+	if err != nil {
+		return err
+	}
 	fileData := wshrpc.FileData{
 		Info: &wshrpc.FileInfo{
 			Path: path}}
@@ -272,7 +277,7 @@ func fileRmRun(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("getting file info: %w", err)
 	}
 
-	err = wshclient.FileDeleteCommand(RpcClient, fileData, &wshrpc.RpcOpts{Timeout: DefaultFileTimeout})
+	err = wshclient.FileDeleteCommand(RpcClient, wshrpc.CommandDeleteFileData{Path: path, Recursive: recursive}, &wshrpc.RpcOpts{Timeout: DefaultFileTimeout})
 	if err != nil {
 		return fmt.Errorf("removing file: %w", err)
 	}

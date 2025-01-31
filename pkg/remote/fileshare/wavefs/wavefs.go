@@ -4,22 +4,33 @@
 package wavefs
 
 import (
+	"archive/tar"
 	"context"
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
+	"log"
 	"path"
 	"strings"
+	"time"
 
 	"github.com/wavetermdev/waveterm/pkg/filestore"
 	"github.com/wavetermdev/waveterm/pkg/remote/connparse"
 	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/fstype"
+	"github.com/wavetermdev/waveterm/pkg/util/fileutil"
+	"github.com/wavetermdev/waveterm/pkg/util/iochan/iochantypes"
+	"github.com/wavetermdev/waveterm/pkg/util/tarcopy"
 	"github.com/wavetermdev/waveterm/pkg/util/wavefileutil"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wps"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
+)
+
+const (
+	DefaultTimeout = 30 * time.Second
 )
 
 type WaveClient struct{}
@@ -95,8 +106,60 @@ func (c WaveClient) Read(ctx context.Context, conn *connparse.Connection, data w
 	return &wshrpc.FileData{Info: data.Info, Entries: list}, nil
 }
 
-func (c WaveClient) ReadTarStream(ctx context.Context, conn *connparse.Connection, opts *wshrpc.FileCopyOpts) <-chan wshrpc.RespOrErrorUnion[[]byte] {
-	return nil
+func (c WaveClient) ReadTarStream(ctx context.Context, conn *connparse.Connection, opts *wshrpc.FileCopyOpts) <-chan wshrpc.RespOrErrorUnion[iochantypes.Packet] {
+	log.Printf("ReadTarStream: conn: %v, opts: %v\n", conn, opts)
+	list, err := c.ListEntries(ctx, conn, nil)
+	if err != nil {
+		return wshutil.SendErrCh[iochantypes.Packet](fmt.Errorf("error listing blockfiles: %w", err))
+	}
+
+	pathPrefix := getPathPrefix(conn)
+	schemeAndHost := conn.GetSchemeAndHost() + "/"
+
+	timeout := DefaultTimeout
+	if opts.Timeout > 0 {
+		timeout = time.Duration(opts.Timeout) * time.Millisecond
+	}
+	readerCtx, cancel := context.WithTimeout(context.Background(), timeout)
+	rtn, writeHeader, fileWriter, tarClose := tarcopy.TarCopySrc(readerCtx, pathPrefix)
+
+	go func() {
+		defer func() {
+			tarClose()
+			cancel()
+		}()
+		for _, file := range list {
+			if readerCtx.Err() != nil {
+				rtn <- wshutil.RespErr[iochantypes.Packet](readerCtx.Err())
+				return
+			}
+			file.Mode = 0644
+
+			if err = writeHeader(fileutil.ToFsFileInfo(file), file.Path); err != nil {
+				rtn <- wshutil.RespErr[iochantypes.Packet](fmt.Errorf("error writing tar header: %w", err))
+				return
+			}
+			if file.IsDir {
+				continue
+			}
+
+			log.Printf("ReadTarStream: reading file: %s\n", file.Path)
+
+			internalPath := strings.TrimPrefix(file.Path, schemeAndHost)
+
+			_, dataBuf, err := filestore.WFS.ReadFile(ctx, conn.Host, internalPath)
+			if err != nil {
+				rtn <- wshutil.RespErr[iochantypes.Packet](fmt.Errorf("error reading blockfile: %w", err))
+				return
+			}
+			if _, err = fileWriter.Write(dataBuf); err != nil {
+				rtn <- wshutil.RespErr[iochantypes.Packet](fmt.Errorf("error writing tar data: %w", err))
+				return
+			}
+		}
+	}()
+
+	return rtn
 }
 
 func (c WaveClient) ListEntriesStream(ctx context.Context, conn *connparse.Connection, opts *wshrpc.FileListOpts) <-chan wshrpc.RespOrErrorUnion[wshrpc.CommandRemoteListEntriesRtnData] {
@@ -116,9 +179,13 @@ func (c WaveClient) ListEntriesStream(ctx context.Context, conn *connparse.Conne
 }
 
 func (c WaveClient) ListEntries(ctx context.Context, conn *connparse.Connection, opts *wshrpc.FileListOpts) ([]*wshrpc.FileInfo, error) {
+	log.Printf("ListEntries: conn: %v, opts: %v\n", conn, opts)
 	zoneId := conn.Host
 	if zoneId == "" {
 		return nil, fmt.Errorf("zoneid not found in connection")
+	}
+	if opts == nil {
+		opts = &wshrpc.FileListOpts{}
 	}
 	prefix, err := cleanPath(conn.Path)
 	if err != nil {
@@ -265,33 +332,6 @@ func (c WaveClient) PutFile(ctx context.Context, conn *connparse.Connection, dat
 	return nil
 }
 
-/*
-
-	path := data.Info.Path
-	log.Printf("Append: path=%s", path)
-	client, conn := CreateFileShareClient(ctx, path)
-	if conn == nil || client == nil {
-		return fmt.Errorf(ErrorParsingConnection, path)
-	}
-	finfo, err := client.Stat(ctx, conn)
-	if err != nil {
-		return err
-	}
-	if data.Info == nil {
-		data.Info = &wshrpc.FileInfo{}
-	}
-	oldInfo := data.Info
-	data.Info = finfo
-	if oldInfo.Opts != nil {
-		data.Info.Opts = oldInfo.Opts
-	}
-	data.At = &wshrpc.FileDataAt{
-		Offset: finfo.Size,
-	}
-	log.Printf("Append: offset=%d", data.At.Offset)
-	return client.PutFile(ctx, conn, data)
-*/
-
 func (c WaveClient) AppendFile(ctx context.Context, conn *connparse.Connection, data wshrpc.FileData) error {
 	dataBuf, err := base64.StdEncoding.DecodeString(data.Data64)
 	if err != nil {
@@ -346,39 +386,156 @@ func (c WaveClient) AppendFile(ctx context.Context, conn *connparse.Connection, 
 
 // WaveFile does not support directories, only prefix-based listing
 func (c WaveClient) Mkdir(ctx context.Context, conn *connparse.Connection) error {
+	return errors.ErrUnsupported
+}
+
+func (c WaveClient) MoveInternal(ctx context.Context, srcConn, destConn *connparse.Connection, opts *wshrpc.FileCopyOpts) error {
+	if srcConn.Host != destConn.Host {
+		return fmt.Errorf("move internal, src and dest hosts do not match")
+	}
+	err := c.CopyInternal(ctx, srcConn, destConn, opts)
+	if err != nil {
+		return fmt.Errorf("error copying blockfile: %w", err)
+	}
+	err = c.Delete(ctx, srcConn, opts.Recursive)
+	if err != nil {
+		return fmt.Errorf("error deleting blockfile: %w", err)
+	}
 	return nil
 }
 
-func (c WaveClient) Move(ctx context.Context, srcConn, destConn *connparse.Connection, opts *wshrpc.FileCopyOpts) error {
+func (c WaveClient) CopyInternal(ctx context.Context, srcConn, destConn *connparse.Connection, opts *wshrpc.FileCopyOpts) error {
+	if srcConn.Host == destConn.Host {
+		host := srcConn.Host
+		srcFileName, err := cleanPath(srcConn.Path)
+		if err != nil {
+			return fmt.Errorf("error cleaning source path: %w", err)
+		}
+		destFileName, err := cleanPath(destConn.Path)
+		if err != nil {
+			return fmt.Errorf("error cleaning destination path: %w", err)
+		}
+		err = filestore.WFS.MakeFile(ctx, host, destFileName, wshrpc.FileMeta{}, wshrpc.FileOpts{})
+		if err != nil {
+			return fmt.Errorf("error making source blockfile: %w", err)
+		}
+		_, dataBuf, err := filestore.WFS.ReadFile(ctx, host, srcFileName)
+		if err != nil {
+			return fmt.Errorf("error reading source blockfile: %w", err)
+		}
+		err = filestore.WFS.WriteFile(ctx, host, destFileName, dataBuf)
+		if err != nil {
+			return fmt.Errorf("error writing to destination blockfile: %w", err)
+		}
+		wps.Broker.Publish(wps.WaveEvent{
+			Event:  wps.Event_BlockFile,
+			Scopes: []string{waveobj.MakeORef(waveobj.OType_Block, host).String()},
+			Data: &wps.WSFileEventData{
+				ZoneId:   host,
+				FileName: destFileName,
+				FileOp:   wps.FileOp_Invalidate,
+			},
+		})
+		return nil
+	} else {
+		return fmt.Errorf("copy between different hosts not supported")
+	}
+}
+
+func (c WaveClient) CopyRemote(ctx context.Context, srcConn, destConn *connparse.Connection, srcClient fstype.FileShareClient, opts *wshrpc.FileCopyOpts) error {
+	zoneId := destConn.Host
+	if zoneId == "" {
+		return fmt.Errorf("zoneid not found in connection")
+	}
+	destPrefix := getPathPrefix(destConn)
+	destPrefix = strings.TrimPrefix(destPrefix, destConn.GetSchemeAndHost()+"/")
+	log.Printf("CopyRemote: srcConn: %v, destConn: %v, destPrefix: %s\n", srcConn, destConn, destPrefix)
+	readCtx, cancel := context.WithCancelCause(ctx)
+	ioch := srcClient.ReadTarStream(readCtx, srcConn, opts)
+	err := tarcopy.TarCopyDest(readCtx, cancel, ioch, func(next *tar.Header, reader *tar.Reader) error {
+		if next.Typeflag == tar.TypeDir {
+			return nil
+		}
+		fileName, err := cleanPath(path.Join(destPrefix, next.Name))
+		if err != nil {
+			return fmt.Errorf("error cleaning path: %w", err)
+		}
+		_, err = filestore.WFS.Stat(ctx, zoneId, fileName)
+		if err != nil {
+			if !errors.Is(err, fs.ErrNotExist) {
+				return fmt.Errorf("error getting blockfile info: %w", err)
+			}
+			err := filestore.WFS.MakeFile(ctx, zoneId, fileName, nil, wshrpc.FileOpts{})
+			if err != nil {
+				return fmt.Errorf("error making blockfile: %w", err)
+			}
+		}
+		log.Printf("CopyRemote: writing file: %s; size: %d\n", fileName, next.Size)
+		dataBuf := make([]byte, next.Size)
+		_, err = reader.Read(dataBuf)
+		if err != nil {
+			if !errors.Is(err, io.EOF) {
+				return fmt.Errorf("error reading tar data: %w", err)
+			}
+		}
+		err = filestore.WFS.WriteFile(ctx, zoneId, fileName, dataBuf)
+		if err != nil {
+			return fmt.Errorf("error writing to blockfile: %w", err)
+		}
+		wps.Broker.Publish(wps.WaveEvent{
+			Event:  wps.Event_BlockFile,
+			Scopes: []string{waveobj.MakeORef(waveobj.OType_Block, zoneId).String()},
+			Data: &wps.WSFileEventData{
+				ZoneId:   zoneId,
+				FileName: fileName,
+				FileOp:   wps.FileOp_Invalidate,
+			},
+		})
+		return nil
+	})
+	if err != nil {
+		return fmt.Errorf("error copying tar stream: %w", err)
+	}
 	return nil
 }
 
-func (c WaveClient) Copy(ctx context.Context, srcConn, destConn *connparse.Connection, opts *wshrpc.FileCopyOpts) error {
-	return nil
-}
-
-func (c WaveClient) Delete(ctx context.Context, conn *connparse.Connection) error {
+func (c WaveClient) Delete(ctx context.Context, conn *connparse.Connection, recursive bool) error {
 	zoneId := conn.Host
 	if zoneId == "" {
 		return fmt.Errorf("zoneid not found in connection")
 	}
-	fileName, err := cleanPath(conn.Path)
+	schemeAndHost := conn.GetSchemeAndHost() + "/"
+
+	entries, err := c.ListEntries(ctx, conn, nil)
 	if err != nil {
-		return fmt.Errorf("error cleaning path: %w", err)
+		return fmt.Errorf("error listing blockfiles: %w", err)
 	}
-	err = filestore.WFS.DeleteFile(ctx, zoneId, fileName)
-	if err != nil {
-		return fmt.Errorf("error deleting blockfile: %w", err)
+	if len(entries) > 0 {
+		if !recursive {
+			return fmt.Errorf("more than one entry, use recursive flag to delete")
+		}
+		errs := make([]error, 0)
+		for _, entry := range entries {
+			fileName := strings.TrimPrefix(entry.Path, schemeAndHost)
+			err = filestore.WFS.DeleteFile(ctx, zoneId, fileName)
+			if err != nil {
+				errs = append(errs, fmt.Errorf("error deleting blockfile %s/%s: %w", zoneId, fileName, err))
+				continue
+			}
+			wps.Broker.Publish(wps.WaveEvent{
+				Event:  wps.Event_BlockFile,
+				Scopes: []string{waveobj.MakeORef(waveobj.OType_Block, zoneId).String()},
+				Data: &wps.WSFileEventData{
+					ZoneId:   zoneId,
+					FileName: fileName,
+					FileOp:   wps.FileOp_Delete,
+				},
+			})
+		}
+		if len(errs) > 0 {
+			return fmt.Errorf("error deleting blockfiles: %v", errs)
+		}
 	}
-	wps.Broker.Publish(wps.WaveEvent{
-		Event:  wps.Event_BlockFile,
-		Scopes: []string{waveobj.MakeORef(waveobj.OType_Block, zoneId).String()},
-		Data: &wps.WSFileEventData{
-			ZoneId:   zoneId,
-			FileName: fileName,
-			FileOp:   wps.FileOp_Delete,
-		},
-	})
 	return nil
 }
 
@@ -416,4 +573,14 @@ func cleanPath(path string) (string, error) {
 
 func (c WaveClient) GetConnectionType() string {
 	return connparse.ConnectionTypeWave
+}
+
+func getPathPrefix(conn *connparse.Connection) string {
+	fullUri := conn.GetFullURI()
+	pathPrefix := fullUri
+	lastSlash := strings.LastIndex(fullUri, "/")
+	if lastSlash > 10 && lastSlash < len(fullUri)-1 {
+		pathPrefix = fullUri[:lastSlash+1]
+	}
+	return pathPrefix
 }

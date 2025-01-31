@@ -168,7 +168,7 @@ class RpcApiType {
     }
 
     // command "filedelete" [call]
-    FileDeleteCommand(client: WshClient, data: FileData, opts?: RpcOpts): Promise<void> {
+    FileDeleteCommand(client: WshClient, data: CommandDeleteFileData, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("filedelete", data, opts);
     }
 
@@ -203,7 +203,7 @@ class RpcApiType {
     }
 
     // command "filestreamtar" [responsestream]
-	FileStreamTarCommand(client: WshClient, data: CommandRemoteStreamTarData, opts?: RpcOpts): AsyncGenerator<string, void, boolean> {
+	FileStreamTarCommand(client: WshClient, data: CommandRemoteStreamTarData, opts?: RpcOpts): AsyncGenerator<Packet, void, boolean> {
         return client.wshRpcStream("filestreamtar", data, opts);
     }
 
@@ -258,7 +258,7 @@ class RpcApiType {
     }
 
     // command "remotefiledelete" [call]
-    RemoteFileDeleteCommand(client: WshClient, data: string, opts?: RpcOpts): Promise<void> {
+    RemoteFileDeleteCommand(client: WshClient, data: CommandDeleteFileData, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("remotefiledelete", data, opts);
     }
 
@@ -313,7 +313,7 @@ class RpcApiType {
     }
 
     // command "remotetarstream" [responsestream]
-	RemoteTarStreamCommand(client: WshClient, data: CommandRemoteStreamTarData, opts?: RpcOpts): AsyncGenerator<string, void, boolean> {
+	RemoteTarStreamCommand(client: WshClient, data: CommandRemoteStreamTarData, opts?: RpcOpts): AsyncGenerator<Packet, void, boolean> {
         return client.wshRpcStream("remotetarstream", data, opts);
     }
 

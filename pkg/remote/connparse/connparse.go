@@ -57,6 +57,10 @@ func (c *Connection) GetFullURI() string {
 	return c.Scheme + "://" + c.GetPathWithHost()
 }
 
+func (c *Connection) GetSchemeAndHost() string {
+	return c.Scheme + "://" + c.Host
+}
+
 func ParseURIAndReplaceCurrentHost(ctx context.Context, uri string) (*Connection, error) {
 	conn, err := ParseURI(uri)
 	if err != nil {
@@ -148,7 +152,7 @@ func ParseURI(uri string) (*Connection, error) {
 		}
 		if strings.HasPrefix(remotePath, "/~") {
 			remotePath = strings.TrimPrefix(remotePath, "/")
-		} else if len(remotePath) > 1 && !windowsDriveRegex.MatchString(remotePath) && !strings.HasPrefix(remotePath, "/") && !strings.HasPrefix(remotePath, "~") {
+		} else if len(remotePath) > 1 && !windowsDriveRegex.MatchString(remotePath) && !strings.HasPrefix(remotePath, "/") && !strings.HasPrefix(remotePath, "~") && !strings.HasPrefix(remotePath, "./") && !strings.HasPrefix(remotePath, "../") && !strings.HasPrefix(remotePath, ".\\") && !strings.HasPrefix(remotePath, "..\\") && remotePath != ".." {
 			remotePath = "/" + remotePath
 		}
 	}
