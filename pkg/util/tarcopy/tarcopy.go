@@ -125,7 +125,8 @@ func TarCopyDest(ctx context.Context, cancel context.CancelCauseFunc, ch <-chan 
 		}
 	}()
 	log.Printf("reading tar stream\n")
-	tarReader := tar.NewReader(gzReader)
+	bufReader1 := bufio.NewReader(gzReader)
+	tarReader := tar.NewReader(bufReader1)
 	for {
 		select {
 		case <-ctx.Done():
