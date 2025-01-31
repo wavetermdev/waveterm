@@ -54,8 +54,8 @@
         "remark-cli": "^12.0.1",
         "remark-frontmatter": "^5.0.0",
         "remark-mdx": "^3.1.0",
-        "remark-preset-lint-consistent": "^6.0.0",
-        "remark-preset-lint-recommended": "^7.0.0",
+        "remark-preset-lint-consistent": "^6.0.1",
+        "remark-preset-lint-recommended": "^7.0.1",
         "typescript": "^5.7.3",
         "typescript-eslint": "^8.21.0"
     },
