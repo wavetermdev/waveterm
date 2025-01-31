@@ -199,12 +199,17 @@ func (f FsFileInfo) Sys() interface{} {
 
 var _ fs.FileInfo = FsFileInfo{}
 
+// ToFsFileInfo converts wshrpc.FileInfo to FsFileInfo.
+// It panics if fi is nil.
 func ToFsFileInfo(fi *wshrpc.FileInfo) FsFileInfo {
-	return FsFileInfo{
-		NameInternal:    fi.Name,
-		ModeInternal:    fi.Mode,
-		SizeInternal:    fi.Size,
-		ModTimeInternal: fi.ModTime,
-		IsDirInternal:   fi.IsDir,
-	}
+    if fi == nil {
+        panic("ToFsFileInfo: nil FileInfo")
+    }
+    return FsFileInfo{
+        NameInternal:    fi.Name,
+        ModeInternal:    fi.Mode,
+        SizeInternal:    fi.Size,
+        ModTimeInternal: fi.ModTime,
+        IsDirInternal:   fi.IsDir,
+    }
 }
