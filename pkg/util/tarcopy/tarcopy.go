@@ -68,6 +68,7 @@ func TarCopySrc(ctx context.Context, pathPrefix string) (outputChan chan wshrpc.
 			if err := tarWriter.WriteHeader(header); err != nil {
 				return err
 			}
+			log.Printf("wrote header: %s\n", header.Name)
 			return nil
 		}, tarWriter, func() {
 			gracefulClose(tarWriter, tarCopySrcName, tarWriterName)
@@ -91,33 +92,41 @@ func validatePath(path string) error {
 // The function returns an error if the tar stream cannot be read.
 func TarCopyDest(ctx context.Context, cancel context.CancelCauseFunc, ch <-chan wshrpc.RespOrErrorUnion[iochantypes.Packet], readNext func(next *tar.Header, reader *tar.Reader) error) error {
 	pipeReader, pipeWriter := io.Pipe()
-	bufReader := bufio.NewReader(pipeReader)
-	gzReader, err := gzip.NewReader(bufReader)
-	gzReader.Multistream(false)
-	if err != nil {
-		if !gracefulClose(pipeReader, tarCopyDestName, pipeReaderName) {
-			// If the pipe reader cannot be closed, cancel the context. This should kill the
-			// writer goroutine.
-			cancel(nil)
-		}
-		return err
-	}
 	defer func() {
-		if !gracefulClose(gzReader, tarCopyDestName, gzReaderName) {
-			// If the gzip reader cannot be closed, cancel the context. This should kill the
+		if !gracefulClose(pipeWriter, tarCopyDestName, pipeWriterName) {
+			// If the pipe writer cannot be closed, cancel the context. This should kill the
 			// writer goroutine.
-			cancel(nil)
-		}
-		if !gracefulClose(pipeReader, tarCopyDestName, pipeReaderName) {
-			// If the pipe reader cannot be closed, cancel the context. This should kill the
-			// writer goroutine.
-			cancel(nil)
+			cancel(fmt.Errorf("error closing %s", pipeWriterName))
 		}
 	}()
+	bufReader := bufio.NewReader(pipeReader)
 	iochan.WriterChan(ctx, pipeWriter, ch, func() {
 		gracefulClose(pipeWriter, tarCopyDestName, pipeWriterName)
 		cancel(nil)
 	}, cancel)
+	gzReader, err := gzip.NewReader(bufReader)
+	if err != nil {
+		if !gracefulClose(pipeReader, tarCopyDestName, pipeReaderName) {
+			// If the pipe reader cannot be closed, cancel the context. This should kill the
+			// writer goroutine.
+			cancel(fmt.Errorf("error closing %s; could not create gzip reader: %w", pipeReaderName, err))
+		}
+		return err
+	}
+	gzReader.Multistream(false)
+	defer func() {
+		if !gracefulClose(gzReader, tarCopyDestName, gzReaderName) {
+			// If the gzip reader cannot be closed, cancel the context. This should kill the
+			// writer goroutine.
+			cancel(fmt.Errorf("error closing %s", gzReaderName))
+		}
+		if !gracefulClose(pipeReader, tarCopyDestName, pipeReaderName) {
+			// If the pipe reader cannot be closed, cancel the context. This should kill the
+			// writer goroutine.
+			cancel(fmt.Errorf("error closing %s", pipeReaderName))
+		}
+	}()
+	log.Printf("reading tar stream\n")
 	tarReader := tar.NewReader(gzReader)
 	for {
 		select {
@@ -136,10 +145,10 @@ func TarCopyDest(ctx context.Context, cancel context.CancelCauseFunc, ch <-chan 
 				if errors.Is(err, io.EOF) {
 					return nil
 				} else {
+					log.Printf("error reading tar stream: %v\n", err)
 					return err
 				}
 			}
-			log.Printf("reading next file: %s\n", next.Name)
 			err = readNext(next, tarReader)
 			if err != nil {
 				return err

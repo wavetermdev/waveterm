@@ -364,6 +364,7 @@ func (impl *ServerImpl) RemoteFileCopyCommand(ctx context.Context, data wshrpc.C
 		defer timeoutCancel()
 		copyStart := time.Now()
 		ioch := wshclient.FileStreamTarCommand(wshfs.RpcClient, wshrpc.CommandRemoteStreamTarData{Path: srcUri, Opts: opts}, &wshrpc.RpcOpts{Timeout: opts.Timeout})
+		log.Printf("RemoteFileCopyCommand: copying %q to %q\n", srcUri, destUri)
 		numFiles := 0
 		numSkipped := 0
 		totalBytes := int64(0)

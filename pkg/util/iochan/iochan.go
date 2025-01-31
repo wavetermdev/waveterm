@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 
 	"github.com/wavetermdev/waveterm/pkg/util/iochan/iochantypes"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
@@ -38,9 +39,11 @@ func ReaderChan(ctx context.Context, r io.Reader, chunkSize int64, callback func
 						// ch <- wshrpc.RespOrErrorUnion[iochantypes.Packet]{Response: iochantypes.Packet{Checksum: sha256Hash.Sum(nil)}} // send the checksum
 						return
 					}
+					log.Printf("ReaderChan: read error: %v", err)
 					ch <- wshutil.RespErr[iochantypes.Packet](fmt.Errorf("ReaderChan: read error: %v", err))
 					return
 				} else if n > 0 {
+					// log.Printf("ReaderChan: read %d bytes", n)
 					// if _, err := sha256Hash.Write(buf[:n]); err != nil {
 					// 	ch <- wshutil.RespErr[iochantypes.Packet](fmt.Errorf("ReaderChan: error writing to sha256 hash: %v", err))
 					// 	return
