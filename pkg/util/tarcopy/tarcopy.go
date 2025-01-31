@@ -92,13 +92,6 @@ func validatePath(path string) error {
 // The function returns an error if the tar stream cannot be read.
 func TarCopyDest(ctx context.Context, cancel context.CancelCauseFunc, ch <-chan wshrpc.RespOrErrorUnion[iochantypes.Packet], readNext func(next *tar.Header, reader *tar.Reader) error) error {
 	pipeReader, pipeWriter := io.Pipe()
-	defer func() {
-		if !gracefulClose(pipeWriter, tarCopyDestName, pipeWriterName) {
-			// If the pipe writer cannot be closed, cancel the context. This should kill the
-			// writer goroutine.
-			cancel(fmt.Errorf("error closing %s", pipeWriterName))
-		}
-	}()
 	bufReader := bufio.NewReader(pipeReader)
 	iochan.WriterChan(ctx, pipeWriter, ch, func() {
 		gracefulClose(pipeWriter, tarCopyDestName, pipeWriterName)
@@ -111,19 +104,24 @@ func TarCopyDest(ctx context.Context, cancel context.CancelCauseFunc, ch <-chan 
 			// writer goroutine.
 			cancel(fmt.Errorf("error closing %s; could not create gzip reader: %w", pipeReaderName, err))
 		}
+		if !gracefulClose(pipeWriter, tarCopyDestName, pipeWriterName) {
+			// If the pipe reader cannot be closed, cancel the context. This should kill the
+			// writer goroutine.
+			cancel(fmt.Errorf("error closing %s; could not create gzip reader: %w", pipeWriterName, err))
+		}
 		return err
 	}
 	gzReader.Multistream(false)
 	defer func() {
-		if !gracefulClose(gzReader, tarCopyDestName, gzReaderName) {
-			// If the gzip reader cannot be closed, cancel the context. This should kill the
-			// writer goroutine.
-			cancel(fmt.Errorf("error closing %s", gzReaderName))
-		}
 		if !gracefulClose(pipeReader, tarCopyDestName, pipeReaderName) {
 			// If the pipe reader cannot be closed, cancel the context. This should kill the
 			// writer goroutine.
 			cancel(fmt.Errorf("error closing %s", pipeReaderName))
+		}
+		if !gracefulClose(gzReader, tarCopyDestName, gzReaderName) {
+			// If the gzip reader cannot be closed, cancel the context. This should kill the
+			// writer goroutine.
+			cancel(fmt.Errorf("error closing %s", gzReaderName))
 		}
 	}()
 	log.Printf("reading tar stream\n")
