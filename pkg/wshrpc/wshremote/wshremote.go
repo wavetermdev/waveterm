@@ -267,7 +267,7 @@ func (impl *ServerImpl) RemoteTarStreamCommand(ctx context.Context, data wshrpc.
 	if opts.Timeout > 0 {
 		timeout = time.Duration(opts.Timeout) * time.Millisecond
 	}
-	readerCtx, cancel := context.WithTimeout(context.Background(), timeout)
+	readerCtx, cancel := context.WithTimeout(ctx, timeout)
 	rtn, writeHeader, fileWriter, tarClose := tarcopy.TarCopySrc(readerCtx, pathPrefix)
 
 	go func() {
