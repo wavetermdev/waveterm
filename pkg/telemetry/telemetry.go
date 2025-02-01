@@ -24,7 +24,7 @@ import (
 )
 
 const MaxTzNameLen = 50
-const ActivityEventName = "activity"
+const ActivityEventName = "app:activity"
 
 type ActivityType struct {
 	Day           string        `json:"day"`
@@ -136,7 +136,7 @@ func updateActivityTEvent(ctx context.Context, tevent *telemetrydata.TEvent) err
 	// compute to hour boundary, and round up to next hour
 	eventTs = eventTs.Truncate(time.Hour).Add(time.Hour)
 	return wstore.WithTx(ctx, func(tx *wstore.TxWrap) error {
-		// find event that matches this timestamp with event name "activity"
+		// find event that matches this timestamp with event name "app:activity"
 		var hasRow bool
 		var curActivity telemetrydata.TEventProps
 		uuidStr := tx.GetString(`SELECT uuid FROM db_tevent WHERE ts = ? AND event = ?`, eventTs.UnixMilli(), ActivityEventName)
@@ -158,6 +158,23 @@ func updateActivityTEvent(ctx context.Context, tevent *telemetrydata.TEvent) err
 			tsLocal := utilfn.ConvertToWallClockPT(eventTs).Format(time.RFC3339)
 			tx.Exec(query, uuid.New().String(), eventTs.UnixMilli(), tsLocal, ActivityEventName, dbutil.QuickJson(curActivity))
 		}
+		return nil
+	})
+}
+
+func TruncateActivityTEventForShutdown(ctx context.Context) error {
+	nowTs := time.Now()
+	eventTs := nowTs.Truncate(time.Hour).Add(time.Hour)
+	return wstore.WithTx(ctx, func(tx *wstore.TxWrap) error {
+		// find event that matches this timestamp with event name "app:activity"
+		uuidStr := tx.GetString(`SELECT uuid FROM db_tevent WHERE ts = ? AND event = ?`, eventTs.UnixMilli(), ActivityEventName)
+		if uuidStr == "" {
+			return nil
+		}
+		// we're going to update this app:activity event back to nowTs
+		tsLocal := utilfn.ConvertToWallClockPT(nowTs).Format(time.RFC3339)
+		query := `UPDATE db_tevent SET ts = ?, tslocal = ? WHERE uuid = ?`
+		tx.Exec(query, nowTs.UnixMilli(), tsLocal, uuidStr)
 		return nil
 	})
 }

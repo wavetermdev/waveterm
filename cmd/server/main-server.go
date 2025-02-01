@@ -177,6 +177,10 @@ func shutdownActivityUpdate() {
 	if err != nil {
 		log.Printf("error updating shutdown activity: %v\n", err)
 	}
+	err = telemetry.TruncateActivityTEventForShutdown(ctx)
+	if err != nil {
+		log.Printf("error truncating activity t-event for shutdown: %v\n", err)
+	}
 	tevent := telemetrydata.MakeTEvent("app:shutdown", telemetrydata.TEventProps{})
 	err = telemetry.RecordTEvent(ctx, tevent)
 	if err != nil {
