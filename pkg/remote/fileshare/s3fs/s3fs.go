@@ -7,9 +7,11 @@ import (
 	"context"
 	"errors"
 	"log"
+	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/wavetermdev/waveterm/pkg/remote/awsconn"
 	"github.com/wavetermdev/waveterm/pkg/remote/connparse"
 	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/fstype"
@@ -42,31 +44,24 @@ func (c S3Client) ReadTarStream(ctx context.Context, conn *connparse.Connection,
 	return wshutil.SendErrCh[iochantypes.Packet](errors.ErrUnsupported)
 }
 
-func (c S3Client) ListEntriesStream(ctx context.Context, conn *connparse.Connection, opts *wshrpc.FileListOpts) <-chan wshrpc.RespOrErrorUnion[wshrpc.CommandRemoteListEntriesRtnData] {
-	ch := make(chan wshrpc.RespOrErrorUnion[wshrpc.CommandRemoteListEntriesRtnData], 16)
-	go func() {
-		defer close(ch)
-		list, err := c.ListEntries(ctx, conn, opts)
-		if err != nil {
-			ch <- wshutil.RespErr[wshrpc.CommandRemoteListEntriesRtnData](err)
-			return
+func (c S3Client) ListEntries(ctx context.Context, conn *connparse.Connection, opts *wshrpc.FileListOpts) ([]*wshrpc.FileInfo, error) {
+	var entries []*wshrpc.FileInfo
+	rtnCh := c.ListEntriesStream(ctx, conn, opts)
+	for respUnion := range rtnCh {
+		if respUnion.Error != nil {
+			return nil, respUnion.Error
 		}
-		if list == nil {
-			ch <- wshrpc.RespOrErrorUnion[wshrpc.CommandRemoteListEntriesRtnData]{Response: wshrpc.CommandRemoteListEntriesRtnData{}}
-			return
-		}
-		for i := 0; i < len(list); i += wshrpc.DirChunkSize {
-			ch <- wshrpc.RespOrErrorUnion[wshrpc.CommandRemoteListEntriesRtnData]{Response: wshrpc.CommandRemoteListEntriesRtnData{FileInfo: list[i:min(i+wshrpc.DirChunkSize, len(list))]}}
-		}
-	}()
-	return ch
+		resp := respUnion.Response
+		entries = append(entries, resp.FileInfo...)
+	}
+	return entries, nil
 }
 
-func (c S3Client) ListEntries(ctx context.Context, conn *connparse.Connection, opts *wshrpc.FileListOpts) ([]*wshrpc.FileInfo, error) {
-	if conn.Path == "" || conn.Path == "/" {
+func (c S3Client) ListEntriesStream(ctx context.Context, conn *connparse.Connection, opts *wshrpc.FileListOpts) <-chan wshrpc.RespOrErrorUnion[wshrpc.CommandRemoteListEntriesRtnData] {
+	if conn.Host == "" || conn.Host == "/" {
 		buckets, err := awsconn.ListBuckets(ctx, c.client)
 		if err != nil {
-			return nil, err
+			return wshutil.SendErrCh[wshrpc.CommandRemoteListEntriesRtnData](err)
 		}
 		var entries []*wshrpc.FileInfo
 		for _, bucket := range buckets {
@@ -78,9 +73,76 @@ func (c S3Client) ListEntries(ctx context.Context, conn *connparse.Connection, o
 				})
 			}
 		}
-		return entries, nil
+		rtn := make(chan wshrpc.RespOrErrorUnion[wshrpc.CommandRemoteListEntriesRtnData], 1)
+		defer close(rtn)
+		rtn <- wshrpc.RespOrErrorUnion[wshrpc.CommandRemoteListEntriesRtnData]{Response: wshrpc.CommandRemoteListEntriesRtnData{FileInfo: entries}}
+		return rtn
+	} else {
+		rtn := make(chan wshrpc.RespOrErrorUnion[wshrpc.CommandRemoteListEntriesRtnData], 16)
+		go func() {
+			defer close(rtn)
+			var err error
+			var output *s3.ListObjectsV2Output
+			input := &s3.ListObjectsV2Input{
+				Bucket: aws.String(conn.Host),
+				Prefix: aws.String(conn.Path),
+			}
+			objectPaginator := s3.NewListObjectsV2Paginator(c.client, input)
+			for objectPaginator.HasMorePages() {
+				output, err = objectPaginator.NextPage(ctx)
+				if err != nil {
+					var noBucket *types.NoSuchBucket
+					if errors.As(err, &noBucket) {
+						log.Printf("Bucket %s does not exist.\n", conn.Host)
+						err = noBucket
+					}
+					rtn <- wshutil.RespErr[wshrpc.CommandRemoteListEntriesRtnData](err)
+					break
+				} else {
+					entryMap := make(map[string]*wshrpc.FileInfo, len(output.Contents))
+					for _, obj := range output.Contents {
+						if obj.Key != nil {
+							name := strings.TrimPrefix(*obj.Key, conn.Path)
+							if strings.Count(name, "/") > 1 {
+								if entryMap[name] == nil {
+									name = strings.SplitN(name, "/", 2)[0]
+									entryMap[name] = &wshrpc.FileInfo{
+										Name:  name + "/", // add trailing slash to indicate directory
+										IsDir: true,
+										Dir:   conn.Path,
+										Size:  -1,
+									}
+								}
+								continue
+							}
+							size := int64(0)
+							if obj.Size != nil {
+								size = *obj.Size
+							}
+							entryMap[name] = &wshrpc.FileInfo{
+								Name:  name,
+								IsDir: false,
+								Dir:   conn.Path,
+								Size:  size,
+							}
+						}
+					}
+					entries := make([]*wshrpc.FileInfo, 0, wshrpc.DirChunkSize)
+					for _, entry := range entryMap {
+						entries = append(entries, entry)
+						if len(entries) == wshrpc.DirChunkSize {
+							rtn <- wshrpc.RespOrErrorUnion[wshrpc.CommandRemoteListEntriesRtnData]{Response: wshrpc.CommandRemoteListEntriesRtnData{FileInfo: entries}}
+							entries = make([]*wshrpc.FileInfo, 0, wshrpc.DirChunkSize)
+						}
+					}
+					if len(entries) > 0 {
+						rtn <- wshrpc.RespOrErrorUnion[wshrpc.CommandRemoteListEntriesRtnData]{Response: wshrpc.CommandRemoteListEntriesRtnData{FileInfo: entries}}
+					}
+				}
+			}
+		}()
+		return rtn
 	}
-	return nil, nil
 }
 
 func (c S3Client) Stat(ctx context.Context, conn *connparse.Connection) (*wshrpc.FileInfo, error) {

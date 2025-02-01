@@ -124,13 +124,24 @@ func ParseProfiles() map[string]struct{} {
 }
 
 func ListBuckets(ctx context.Context, client *s3.Client) ([]types.Bucket, error) {
-	output, err := client.ListBuckets(ctx, &s3.ListBucketsInput{})
-	if err != nil {
-		var apiErr smithy.APIError
-		if errors.As(err, &apiErr) {
-			return nil, fmt.Errorf("error listing buckets: %v", apiErr)
+	var err error
+	var output *s3.ListBucketsOutput
+	var buckets []types.Bucket
+	bucketPaginator := s3.NewListBucketsPaginator(client, &s3.ListBucketsInput{})
+	for bucketPaginator.HasMorePages() {
+		output, err = bucketPaginator.NextPage(ctx)
+		if err != nil {
+			var apiErr smithy.APIError
+			if errors.As(err, &apiErr) && apiErr.ErrorCode() == "AccessDenied" {
+				fmt.Println("You don't have permission to list buckets for this account.")
+				err = apiErr
+			} else {
+				log.Printf("Couldn't list buckets for your account. Here's why: %v\n", err)
+			}
+			break
+		} else {
+			buckets = append(buckets, output.Buckets...)
 		}
-		return nil, fmt.Errorf("error listing buckets: %v", err)
 	}
 	return output.Buckets, nil
 }

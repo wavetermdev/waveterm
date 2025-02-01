@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/wavetermdev/waveterm/pkg/remote/awsconn"
 	"github.com/wavetermdev/waveterm/pkg/remote/connparse"
 	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/fstype"
+	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/s3fs"
 	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/wavefs"
 	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/wshfs"
 	"github.com/wavetermdev/waveterm/pkg/util/iochan/iochantypes"
@@ -28,12 +30,12 @@ func CreateFileShareClient(ctx context.Context, connection string) (fstype.FileS
 	}
 	conntype := conn.GetType()
 	if conntype == connparse.ConnectionTypeS3 {
-		// config, err := awsconn.GetConfig(ctx, connection)
-		// if err != nil {
-		// 	log.Printf("error getting aws config: %v", err)
-		// 	return nil, nil
-		// }
-		return nil, nil
+		config, err := awsconn.GetConfig(ctx, connection)
+		if err != nil {
+			log.Printf("error getting aws config: %v", err)
+			return nil, nil
+		}
+		return s3fs.NewS3Client(config), conn
 	} else if conntype == connparse.ConnectionTypeWave {
 		return wavefs.NewWaveClient(), conn
 	} else if conntype == connparse.ConnectionTypeWsh {
