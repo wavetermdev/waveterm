@@ -5,7 +5,6 @@ package wshutil
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -20,6 +19,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/wps"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
+	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshencode"
 )
 
 const DefaultTimeoutMs = 5000
@@ -57,6 +57,7 @@ type WshRpc struct {
 	Debug              bool
 	DebugName          string
 	ServerDone         bool
+	EncDec             *wshencode.EncoderDecoder
 }
 
 type wshRpcContextKey struct{}
@@ -219,6 +220,7 @@ func MakeWshRpc(inputCh chan []byte, outputCh chan []byte, rpcCtx wshrpc.RpcCont
 		EventListener:      MakeEventListener(),
 		ServerImpl:         serverImpl,
 		ResponseHandlerMap: make(map[string]*RpcResponseHandler),
+		EncDec:             wshencode.MakeEncoderDecoder(),
 	}
 	rtn.RpcContext.Store(&rpcCtx)
 	go rtn.runServer()
@@ -358,7 +360,7 @@ outer:
 		}
 
 		var msg RpcMessage
-		err := json.Unmarshal(msgBytes, &msg)
+		err := w.EncDec.Unmarshal(msgBytes, &msg)
 		if err != nil {
 			log.Printf("wshrpc received bad message: %v\n", err)
 			continue
@@ -503,7 +505,7 @@ func (handler *RpcRequestHandler) SendCancel() {
 		ReqId:     handler.reqId,
 		AuthToken: handler.w.GetAuthToken(),
 	}
-	barr, _ := json.Marshal(msg) // will never fail
+	barr, _ := handler.w.EncDec.Marshal(msg) // will never fail
 	handler.w.OutputCh <- barr
 	handler.finalize()
 }
@@ -600,7 +602,7 @@ func (handler *RpcResponseHandler) SendMessage(msg string) {
 		},
 		AuthToken: handler.w.GetAuthToken(),
 	}
-	msgBytes, _ := json.Marshal(rpcMsg) // will never fail
+	msgBytes, _ := handler.w.EncDec.Marshal(rpcMsg) // will never fail
 	handler.w.OutputCh <- msgBytes
 }
 
@@ -623,7 +625,7 @@ func (handler *RpcResponseHandler) SendResponse(data any, done bool) error {
 		Cont:      !done,
 		AuthToken: handler.w.GetAuthToken(),
 	}
-	barr, err := json.Marshal(msg)
+	barr, err := handler.w.EncDec.Marshal(msg)
 	if err != nil {
 		return err
 	}
@@ -644,7 +646,7 @@ func (handler *RpcResponseHandler) SendResponseError(err error) {
 		Error:     err.Error(),
 		AuthToken: handler.w.GetAuthToken(),
 	}
-	barr, _ := json.Marshal(msg) // will never fail
+	barr, _ := handler.w.EncDec.Marshal(msg) // will never fail
 	handler.w.OutputCh <- barr
 }
 
@@ -710,7 +712,7 @@ func (w *WshRpc) SendComplexRequest(command string, data any, opts *wshrpc.RpcOp
 		Route:     opts.Route,
 		AuthToken: w.GetAuthToken(),
 	}
-	barr, err := json.Marshal(req)
+	barr, err := w.EncDec.Marshal(req)
 	if err != nil {
 		return nil, err
 	}

@@ -17,6 +17,7 @@ import {
     getXdgCurrentDesktop,
     WaveConfigHomeVarName,
     WaveDataHomeVarName,
+    WshEncTypeVarName,
 } from "./platform";
 import { updater } from "./updater";
 
@@ -62,6 +63,7 @@ export function runWaveSrv(handleWSEvent: (evtMsg: WSEventType) => void): Promis
     envCopy[WaveAuthKeyEnv] = AuthKey;
     envCopy[WaveDataHomeVarName] = getWaveDataDir();
     envCopy[WaveConfigHomeVarName] = getWaveConfigDir();
+    envCopy[WshEncTypeVarName] = "bson";
     const waveSrvCmd = getWaveSrvPath();
     console.log("trying to run local server", waveSrvCmd);
     const proc = child_process.spawn(getWaveSrvPath(), {

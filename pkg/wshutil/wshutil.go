@@ -221,23 +221,6 @@ func SetupTerminalRpcClient(serverImpl ServerImpl, debugStr string) (*WshRpc, io
 	return rpcClient, ptyBuf
 }
 
-func SetupPacketRpcClient(input io.Reader, output io.Writer, serverImpl ServerImpl, debugStr string) (*WshRpc, chan []byte) {
-	messageCh := make(chan []byte, DefaultInputChSize)
-	outputCh := make(chan []byte, DefaultOutputChSize)
-	rawCh := make(chan []byte, DefaultOutputChSize)
-	rpcClient := MakeWshRpc(messageCh, outputCh, wshrpc.RpcContext{}, serverImpl, debugStr)
-	go packetparser.Parse(input, messageCh, rawCh)
-	go func() {
-		defer func() {
-			panichandler.PanicHandler("SetupPacketRpcClient:outputloop", recover())
-		}()
-		for msg := range outputCh {
-			packetparser.WritePacket(output, msg)
-		}
-	}()
-	return rpcClient, rawCh
-}
-
 func SetupConnRpcClient(conn net.Conn, serverImpl ServerImpl, debugStr string) (*WshRpc, chan error, error) {
 	inputCh := make(chan []byte, DefaultInputChSize)
 	outputCh := make(chan []byte, DefaultOutputChSize)
