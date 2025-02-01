@@ -756,16 +756,10 @@ declare global {
 
     // telemetrydata.TEventProps
     type TEventProps = {
+        TEventUserProps: TEventUserProps;
         "activity:activeminutes"?: number;
         "activity:fgminutes"?: number;
         "activity:openminutes"?: number;
-        "client:arch"?: string;
-        "client:version"?: string;
-        "client:initial_version"?: string;
-        "client:buildtime"?: string;
-        "client:osrelease"?: string;
-        "loc:countrycode"?: string;
-        "loc:regioncode"?: string;
         $set?: TEventUserProps;
         $set_once?: TEventUserProps;
     };
@@ -777,6 +771,9 @@ declare global {
         "client:initial_version"?: string;
         "client:buildtime"?: string;
         "client:osrelease"?: string;
+        "client:isdev"?: boolean;
+        "autoupdate:channel"?: string;
+        "autoupdate:enabled"?: boolean;
         "loc:countrycode"?: string;
         "loc:regioncode"?: string;
     };
