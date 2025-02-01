@@ -737,7 +737,11 @@ func (ws *WshServer) WorkspaceListCommand(ctx context.Context) ([]wshrpc.Workspa
 }
 
 func (ws *WshServer) RecordTEventCommand(ctx context.Context, data telemetrydata.TEvent) error {
-	return telemetry.RecordTEvent(ctx, &data)
+	err := telemetry.RecordTEvent(ctx, &data)
+	if err != nil {
+		log.Printf("error recording telemetry event: %v", err)
+	}
+	return err
 }
 
 func (ws WshServer) SendTelemetryCommand(ctx context.Context) error {

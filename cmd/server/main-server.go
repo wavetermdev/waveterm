@@ -83,7 +83,7 @@ func stdinReadWatch() {
 	}
 }
 
-func configWatcher() {
+func startConfigWatcher() {
 	watcher := wconfig.GetWatcher()
 	if watcher != nil {
 		watcher.Start()
@@ -151,13 +151,17 @@ func startupActivityUpdate() {
 	if err != nil {
 		log.Printf("error updating startup activity: %v\n", err)
 	}
+	autoUpdateChannel := telemetry.AutoUpdateChannel()
+	autoUpdateEnabled := telemetry.IsAutoUpdateEnabled()
 	tevent := telemetrydata.MakeTEvent("app:startup", telemetrydata.TEventProps{
-		ClientVersion: "v" + WaveVersion,
 		UserSet: &telemetrydata.TEventUserProps{
-			ClientVersion:   "v" + WaveVersion,
-			ClientBuildTime: BuildTime,
-			ClientArch:      wavebase.ClientArch(),
-			ClientOSRelease: wavebase.UnameKernelRelease(),
+			ClientVersion:     "v" + WaveVersion,
+			ClientBuildTime:   BuildTime,
+			ClientArch:        wavebase.ClientArch(),
+			ClientOSRelease:   wavebase.UnameKernelRelease(),
+			ClientIsDev:       wavebase.IsDevMode(),
+			AutoUpdateChannel: autoUpdateChannel,
+			AutoUpdateEnabled: autoUpdateEnabled,
 		},
 		UserSetOnce: &telemetrydata.TEventUserProps{
 			ClientInitialVersion: "v" + WaveVersion,
@@ -309,15 +313,14 @@ func main() {
 	}
 
 	createMainWshClient()
-
 	sigutil.InstallShutdownSignalHandlers(doShutdown)
 	sigutil.InstallSIGUSR1Handler()
-
-	startupActivityUpdate()
 	go stdinReadWatch()
 	go telemetryLoop()
-	configWatcher()
+	startConfigWatcher()
+	startupActivityUpdate() // must be after startConfigWatcher()
 	blocklogger.InitBlockLogger()
+
 	webListener, err := web.MakeTCPListener("web")
 	if err != nil {
 		log.Printf("error creating web listener: %v\n", err)

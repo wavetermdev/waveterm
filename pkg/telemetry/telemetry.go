@@ -154,7 +154,7 @@ func updateActivityTEvent(ctx context.Context, tevent *telemetrydata.TEvent) err
 			query := `UPDATE db_tevent SET props = ? WHERE uuid = ?`
 			tx.Exec(query, dbutil.QuickJson(curActivity), uuidStr)
 		} else {
-			query := `INSERT INTO db_tevent (uuid, ts, tslocal, event, props) VALUES (?, ?, ?, ?)`
+			query := `INSERT INTO db_tevent (uuid, ts, tslocal, event, props) VALUES (?, ?, ?, ?, ?)`
 			tsLocal := utilfn.ConvertToWallClockPT(eventTs).Format(time.RFC3339)
 			tx.Exec(query, uuid.New().String(), eventTs.UnixMilli(), tsLocal, ActivityEventName, dbutil.QuickJson(curActivity))
 		}

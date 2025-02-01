@@ -39,22 +39,19 @@ type TEventUserProps struct {
 	ClientInitialVersion string `json:"client:initial_version,omitempty"`
 	ClientBuildTime      string `json:"client:buildtime,omitempty"`
 	ClientOSRelease      string `json:"client:osrelease,omitempty"`
+	ClientIsDev          bool   `json:"client:isdev,omitempty"`
+	AutoUpdateChannel    string `json:"autoupdate:channel,omitempty"`
+	AutoUpdateEnabled    bool   `json:"autoupdate:enabled,omitempty"`
 	LocCountryCode       string `json:"loc:countrycode,omitempty"`
 	LocRegionCode        string `json:"loc:regioncode,omitempty"`
 }
 
 type TEventProps struct {
+	TEventUserProps // generally don't need to set these since they will be automatically copied over
+
 	ActiveMinutes int `json:"activity:activeminutes,omitempty"`
 	FgMinutes     int `json:"activity:fgminutes,omitempty"`
 	OpenMinutes   int `json:"activity:openminutes,omitempty"`
-
-	ClientArch           string `json:"client:arch,omitempty"`
-	ClientVersion        string `json:"client:version,omitempty"`
-	ClientInitialVersion string `json:"client:initial_version,omitempty"`
-	ClientBuildTime      string `json:"client:buildtime,omitempty"`
-	ClientOSRelease      string `json:"client:osrelease,omitempty"`
-	LocCountryCode       string `json:"loc:countrycode,omitempty"`
-	LocRegionCode        string `json:"loc:regioncode,omitempty"`
 
 	UserSet     *TEventUserProps `json:"$set,omitempty"`
 	UserSetOnce *TEventUserProps `json:"$set_once,omitempty"`
