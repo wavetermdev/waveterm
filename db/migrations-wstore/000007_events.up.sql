@@ -1,5 +1,5 @@
 CREATE TABLE db_tevent (
-   id INTEGER PRIMARY KEY,
+   uuid varchar(36) PRIMARY KEY,
    ts int NOT NULL,
    tslocal varchar(100) NOT NULL,
    event varchar(50) NOT NULL,

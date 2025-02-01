@@ -9,6 +9,7 @@ import (
 	"regexp"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 )
 
@@ -19,14 +20,14 @@ var ValidEventNames = map[string]bool{
 }
 
 type TEvent struct {
+	Uuid    string      `json:"uuid,omitempty" db:"uuid"`
 	Ts      int64       `json:"ts,omitempty" db:"ts"`
 	TsLocal string      `json:"tslocal,omitempty" db:"tslocal"` // iso8601 format (wall clock converted to PT)
 	Event   string      `json:"event" db:"event"`
 	Props   TEventProps `json:"props" db:"-"` // Don't scan directly to map
 
 	// DB fields
-	Id       int64 `json:"-" db:"id"`
-	Uploaded bool  `json:"-" db:"uploaded"`
+	Uploaded bool `json:"-" db:"uploaded"`
 
 	// For database scanning
 	RawProps string `json:"-" db:"props"`
@@ -38,21 +39,32 @@ type TEventUserProps struct {
 	ClientInitialVersion string `json:"client:initial_version,omitempty"`
 	ClientBuildTime      string `json:"client:buildtime,omitempty"`
 	ClientOSRelease      string `json:"client:osrelease,omitempty"`
+	LocCountryCode       string `json:"loc:countrycode,omitempty"`
+	LocRegionCode        string `json:"loc:regioncode,omitempty"`
 }
 
 type TEventProps struct {
-	ActiveMinutes int              `json:"activity:activeminutes,omitempty"`
-	FgMinutes     int              `json:"activity:fgminutes,omitempty"`
-	OpenMinutes   int              `json:"activity:openminutes,omitempty"`
-	ClientVersion string           `json:"client:version,omitempty"`
-	UserSet       *TEventUserProps `json:"$set,omitempty"`
-	UserSetOnce   *TEventUserProps `json:"$set_once,omitempty"`
+	ActiveMinutes int `json:"activity:activeminutes,omitempty"`
+	FgMinutes     int `json:"activity:fgminutes,omitempty"`
+	OpenMinutes   int `json:"activity:openminutes,omitempty"`
+
+	ClientArch           string `json:"client:arch,omitempty"`
+	ClientVersion        string `json:"client:version,omitempty"`
+	ClientInitialVersion string `json:"client:initial_version,omitempty"`
+	ClientBuildTime      string `json:"client:buildtime,omitempty"`
+	ClientOSRelease      string `json:"client:osrelease,omitempty"`
+	LocCountryCode       string `json:"loc:countrycode,omitempty"`
+	LocRegionCode        string `json:"loc:regioncode,omitempty"`
+
+	UserSet     *TEventUserProps `json:"$set,omitempty"`
+	UserSetOnce *TEventUserProps `json:"$set_once,omitempty"`
 }
 
 func MakeTEvent(event string, props TEventProps) *TEvent {
 	now := time.Now()
 	// TsLocal gets set in EnsureTimestamps()
 	return &TEvent{
+		Uuid:  uuid.New().String(),
 		Ts:    now.UnixMilli(),
 		Event: event,
 		Props: props,
@@ -116,6 +128,13 @@ func (te *TEvent) Validate(current bool) error {
 	}
 	if !ValidEventNames[te.Event] {
 		return fmt.Errorf("TEvent.Event not valid: %q", te.Event)
+	}
+	if te.Uuid == "" {
+		return fmt.Errorf("TEvent.Uuid cannot be empty")
+	}
+	_, err := uuid.Parse(te.Uuid)
+	if err != nil {
+		return fmt.Errorf("TEvent.Uuid invalid: %v", err)
 	}
 	if current {
 		if te.Ts != 0 {

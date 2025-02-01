@@ -11,6 +11,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/telemetry/telemetrydata"
 	"github.com/wavetermdev/waveterm/pkg/util/daystr"
@@ -88,7 +89,9 @@ func AutoUpdateChannel() string {
 // Wraps UpdateCurrentActivity, spawns goroutine, and logs errors
 func GoUpdateActivityWrap(update wshrpc.ActivityUpdate, debugStr string) {
 	go func() {
-		defer panichandler.PanicHandlerNoTelemetry("GoUpdateActivityWrap", recover())
+		defer func() {
+			panichandler.PanicHandlerNoTelemetry("GoUpdateActivityWrap", recover())
+		}()
 		ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancelFn()
 		err := UpdateActivity(ctx, update)
@@ -99,11 +102,23 @@ func GoUpdateActivityWrap(update wshrpc.ActivityUpdate, debugStr string) {
 	}()
 }
 
-func InsertTEvent(ctx context.Context, event *telemetrydata.TEvent) error {
+func insertTEvent(ctx context.Context, event *telemetrydata.TEvent) error {
+	if event.Uuid == "" {
+		return fmt.Errorf("cannot insert TEvent: uuid is empty")
+	}
+	if event.Ts == 0 {
+		return fmt.Errorf("cannot insert TEvent: ts is 0")
+	}
+	if event.TsLocal == "" {
+		return fmt.Errorf("cannot insert TEvent: tslocal is empty")
+	}
+	if event.Event == "" {
+		return fmt.Errorf("cannot insert TEvent: event is empty")
+	}
 	return wstore.WithTx(ctx, func(tx *wstore.TxWrap) error {
-		query := `INSERT INTO db_tevent (ts, tslocal, event, props)
-				  VALUES (?, ?, ?, ?)`
-		tx.Exec(query, event.Ts, event.TsLocal, event.Event, dbutil.QuickJson(event.Props))
+		query := `INSERT INTO db_tevent (uuid, ts, tslocal, event, props)
+				  VALUES (?, ?, ?, ?, ?)`
+		tx.Exec(query, event.Uuid, event.Ts, event.TsLocal, event.Event, dbutil.QuickJson(event.Props))
 		return nil
 	})
 }
@@ -116,7 +131,7 @@ func mergeActivity(curActivity *telemetrydata.TEventProps, newActivity telemetry
 }
 
 // ignores the timestamp in tevent, and uses the current time
-func UpdateActivityTEvent(ctx context.Context, tevent *telemetrydata.TEvent) error {
+func updateActivityTEvent(ctx context.Context, tevent *telemetrydata.TEvent) error {
 	eventTs := time.Now()
 	// compute to hour boundary, and round up to next hour
 	eventTs = eventTs.Truncate(time.Hour).Add(time.Hour)
@@ -124,9 +139,10 @@ func UpdateActivityTEvent(ctx context.Context, tevent *telemetrydata.TEvent) err
 		// find event that matches this timestamp with event name "activity"
 		var hasRow bool
 		var curActivity telemetrydata.TEventProps
-		rawProps := tx.GetString(`SELECT props FROM db_tevent WHERE ts = ? AND event = ?`, eventTs.UnixMilli(), ActivityEventName)
-		if rawProps != "" {
+		uuidStr := tx.GetString(`SELECT uuid FROM db_tevent WHERE ts = ? AND event = ?`, eventTs.UnixMilli(), ActivityEventName)
+		if uuidStr != "" {
 			hasRow = true
+			rawProps := tx.GetString(`SELECT props FROM db_tevent WHERE uuid = ?`, uuidStr)
 			err := json.Unmarshal([]byte(rawProps), &curActivity)
 			if err != nil {
 				// ignore, curActivity will just be 0
@@ -135,20 +151,41 @@ func UpdateActivityTEvent(ctx context.Context, tevent *telemetrydata.TEvent) err
 		}
 		mergeActivity(&curActivity, tevent.Props)
 		if hasRow {
-			query := `UPDATE db_tevent SET props = ? WHERE ts = ? AND event = ?`
-			tx.Exec(query, dbutil.QuickJson(curActivity), eventTs.UnixMilli(), ActivityEventName)
+			query := `UPDATE db_tevent SET props = ? WHERE uuid = ?`
+			tx.Exec(query, dbutil.QuickJson(curActivity), uuidStr)
 		} else {
-			query := `INSERT INTO db_tevent (ts, tslocal, event, props) VALUES (?, ?, ?, ?)`
+			query := `INSERT INTO db_tevent (uuid, ts, tslocal, event, props) VALUES (?, ?, ?, ?)`
 			tsLocal := utilfn.ConvertToWallClockPT(eventTs).Format(time.RFC3339)
-			tx.Exec(query, eventTs.UnixMilli(), tsLocal, ActivityEventName, dbutil.QuickJson(curActivity))
+			tx.Exec(query, uuid.New().String(), eventTs.UnixMilli(), tsLocal, ActivityEventName, dbutil.QuickJson(curActivity))
 		}
 		return nil
 	})
 }
 
+func GoRecordTEventWrap(tevent *telemetrydata.TEvent) {
+	if tevent == nil || tevent.Event == "" {
+		return
+	}
+	go func() {
+		defer func() {
+			panichandler.PanicHandlerNoTelemetry("GoRecordTEventWrap", recover())
+		}()
+		ctx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)
+		defer cancelFn()
+		err := RecordTEvent(ctx, tevent)
+		if err != nil {
+			// ignore error, just log, since this is not critical
+			log.Printf("error recording %q telemetry event: %v\n", tevent.Event, err)
+		}
+	}()
+}
+
 func RecordTEvent(ctx context.Context, tevent *telemetrydata.TEvent) error {
 	if tevent == nil {
 		return nil
+	}
+	if tevent.Uuid == "" {
+		tevent.Uuid = uuid.New().String()
 	}
 	err := tevent.Validate(true)
 	if err != nil {
@@ -156,20 +193,30 @@ func RecordTEvent(ctx context.Context, tevent *telemetrydata.TEvent) error {
 	}
 	tevent.EnsureTimestamps()
 	if tevent.Event == ActivityEventName {
-		return UpdateActivityTEvent(ctx, tevent)
+		return updateActivityTEvent(ctx, tevent)
 	}
-	return InsertTEvent(ctx, tevent)
+	return insertTEvent(ctx, tevent)
+}
+
+func CleanOldTEvents(ctx context.Context) error {
+	return wstore.WithTx(ctx, func(tx *wstore.TxWrap) error {
+		// delete events older than 28 days
+		query := `DELETE FROM db_tevent WHERE ts < ?`
+		olderThan := time.Now().AddDate(0, 0, -28).UnixMilli()
+		tx.Exec(query, olderThan)
+		return nil
+	})
 }
 
 func GetNonUploadedTEvents(ctx context.Context, maxEvents int) ([]*telemetrydata.TEvent, error) {
 	now := time.Now()
 	return wstore.WithTxRtn(ctx, func(tx *wstore.TxWrap) ([]*telemetrydata.TEvent, error) {
 		var rtn []*telemetrydata.TEvent
-		query := `SELECT id, ts, tslocal, event, props, uploaded FROM db_tevent WHERE uploaded = 0 AND ts <= ? ORDER BY ts LIMIT ?`
+		query := `SELECT uuid, ts, tslocal, event, props, uploaded FROM db_tevent WHERE uploaded = 0 AND ts <= ? ORDER BY ts LIMIT ?`
 		tx.Select(&rtn, query, now.UnixMilli(), maxEvents)
 		for _, event := range rtn {
 			if err := event.ConvertRawJSON(); err != nil {
-				return nil, fmt.Errorf("scan json for event %d: %w", event.Id, err)
+				return nil, fmt.Errorf("scan json for event %s: %w", event.Uuid, err)
 			}
 		}
 		return rtn, nil
@@ -178,11 +225,11 @@ func GetNonUploadedTEvents(ctx context.Context, maxEvents int) ([]*telemetrydata
 
 func MarkTEventsAsUploaded(ctx context.Context, events []*telemetrydata.TEvent) error {
 	return wstore.WithTx(ctx, func(tx *wstore.TxWrap) error {
-		ids := make([]int64, 0, len(events))
+		ids := make([]string, 0, len(events))
 		for _, event := range events {
-			ids = append(ids, event.Id)
+			ids = append(ids, event.Uuid)
 		}
-		query := `UPDATE db_tevent SET uploaded = 1 WHERE id IN (SELECT value FROM json_each(?))`
+		query := `UPDATE db_tevent SET uploaded = 1 WHERE uuid IN (SELECT value FROM json_each(?))`
 		tx.Exec(query, dbutil.QuickJson(ids))
 		return nil
 	})

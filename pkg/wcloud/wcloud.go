@@ -150,53 +150,55 @@ func doRequest(req *http.Request, outputObj interface{}) (*http.Response, error)
 	return resp, nil
 }
 
-type TDataInputType struct {
-	ClientId string                  `json:"clientId"`
-	TEvents  []*telemetrydata.TEvent `json:"tevents"`
+type TEventsInputType struct {
+	ClientId string                  `json:"clientid"`
+	Events   []*telemetrydata.TEvent `json:"events"`
 }
 
 const TEventsBatchSize = 100
 
-// returns (done, error)
-func sendTEventsBatch(clientId string) (bool, error) {
+// returns (done, num-sent, error)
+func sendTEventsBatch(clientId string) (bool, int, error) {
 	ctx, cancelFn := context.WithTimeout(context.Background(), WCloudDefaultTimeout)
 	defer cancelFn()
 	events, err := telemetry.GetNonUploadedTEvents(ctx, TEventsBatchSize)
 	if err != nil {
-		return true, fmt.Errorf("cannot get events: %v", err)
+		return true, 0, fmt.Errorf("cannot get events: %v", err)
 	}
 	if len(events) == 0 {
-		return true, nil
+		return true, 0, nil
 	}
 	log.Printf("[wcloud] sending %d tevents\n", len(events))
-	input := TDataInputType{
+	input := TEventsInputType{
 		ClientId: clientId,
-		TEvents:  events,
+		Events:   events,
 	}
 	req, err := makeAnonPostReq(ctx, TEventsUrl, input)
 	if err != nil {
-		return true, err
+		return true, 0, err
 	}
 	_, err = doRequest(req, nil)
 	if err != nil {
-		return true, err
+		return true, 0, err
 	}
 	err = telemetry.MarkTEventsAsUploaded(ctx, events)
 	if err != nil {
-		return true, fmt.Errorf("error marking activity as uploaded: %v", err)
+		return true, 0, fmt.Errorf("error marking activity as uploaded: %v", err)
 	}
-	return len(events) < TEventsBatchSize, nil
+	return len(events) < TEventsBatchSize, len(events), nil
 }
 
-func sendTEvents(clientId string) error {
+func sendTEvents(clientId string) (int, error) {
 	numIters := 0
+	totalEvents := 0
 	for {
 		numIters++
-		done, err := sendTEventsBatch(clientId)
+		done, numEvents, err := sendTEventsBatch(clientId)
 		if err != nil {
 			log.Printf("error sending telemetry events: %v\n", err)
 			break
 		}
+		totalEvents += numEvents
 		if done {
 			break
 		}
@@ -205,15 +207,20 @@ func sendTEvents(clientId string) error {
 			break
 		}
 	}
-	return nil
+	return totalEvents, nil
 }
 
 func SendAllTelemetry(ctx context.Context, clientId string) error {
+	defer func() {
+		ctx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)
+		defer cancelFn()
+		telemetry.CleanOldTEvents(ctx)
+	}()
 	if !telemetry.IsTelemetryEnabled() {
 		log.Printf("telemetry disabled, not sending\n")
 		return nil
 	}
-	err := sendTEvents(clientId)
+	_, err := sendTEvents(clientId)
 	if err != nil {
 		return err
 	}

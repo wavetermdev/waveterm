@@ -475,7 +475,7 @@ function logActiveState() {
             await RpcApi.RecordTEventCommand(
                 ElectronWshClient,
                 {
-                    event: "activity",
+                    event: "app:activity",
                     props: {
                         "activity:activeminutes": activity.activeminutes,
                         "activity:fgminutes": activity.fgminutes,

@@ -747,6 +747,7 @@ declare global {
 
     // telemetrydata.TEvent
     type TEvent = {
+        uuid?: string;
         ts?: number;
         tslocal?: string;
         event: string;
@@ -758,7 +759,13 @@ declare global {
         "activity:activeminutes"?: number;
         "activity:fgminutes"?: number;
         "activity:openminutes"?: number;
+        "client:arch"?: string;
         "client:version"?: string;
+        "client:initial_version"?: string;
+        "client:buildtime"?: string;
+        "client:osrelease"?: string;
+        "loc:countrycode"?: string;
+        "loc:regioncode"?: string;
         $set?: TEventUserProps;
         $set_once?: TEventUserProps;
     };
@@ -770,6 +777,8 @@ declare global {
         "client:initial_version"?: string;
         "client:buildtime"?: string;
         "client:osrelease"?: string;
+        "loc:countrycode"?: string;
+        "loc:regioncode"?: string;
     };
 
     // waveobj.Tab

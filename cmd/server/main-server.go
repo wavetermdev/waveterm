@@ -151,8 +151,17 @@ func startupActivityUpdate() {
 	if err != nil {
 		log.Printf("error updating startup activity: %v\n", err)
 	}
-	tevent := telemetrydata.MakeTEvent("startup", telemetrydata.TEventProps{
+	tevent := telemetrydata.MakeTEvent("app:startup", telemetrydata.TEventProps{
 		ClientVersion: "v" + WaveVersion,
+		UserSet: &telemetrydata.TEventUserProps{
+			ClientVersion:   "v" + WaveVersion,
+			ClientBuildTime: BuildTime,
+			ClientArch:      wavebase.ClientArch(),
+			ClientOSRelease: wavebase.UnameKernelRelease(),
+		},
+		UserSetOnce: &telemetrydata.TEventUserProps{
+			ClientInitialVersion: "v" + WaveVersion,
+		},
 	})
 	err = telemetry.RecordTEvent(ctx, tevent)
 	if err != nil {
@@ -167,6 +176,11 @@ func shutdownActivityUpdate() {
 	err := telemetry.UpdateActivity(ctx, activity) // do NOT use the go routine wrap here (this needs to be synchronous)
 	if err != nil {
 		log.Printf("error updating shutdown activity: %v\n", err)
+	}
+	tevent := telemetrydata.MakeTEvent("app:shutdown", telemetrydata.TEventProps{})
+	err = telemetry.RecordTEvent(ctx, tevent)
+	if err != nil {
+		log.Printf("error recording shutdown event: %v\n", err)
 	}
 }
 

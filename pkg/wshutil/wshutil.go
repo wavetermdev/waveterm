@@ -156,7 +156,9 @@ func installShutdownSignalHandlers(quiet bool) {
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGHUP, syscall.SIGTERM, syscall.SIGINT)
 	go func() {
-		defer panichandler.PanicHandlerNoTelemetry("installShutdownSignalHandlers", recover())
+		defer func() {
+			panichandler.PanicHandlerNoTelemetry("installShutdownSignalHandlers", recover())
+		}()
 		for sig := range sigCh {
 			DoShutdown(fmt.Sprintf("got signal %v", sig), 1, quiet)
 			break
