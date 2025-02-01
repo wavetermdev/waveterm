@@ -6,11 +6,13 @@ package telemetry
 import (
 	"context"
 	"database/sql/driver"
+	"encoding/json"
 	"fmt"
 	"log"
 	"time"
 
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
+	"github.com/wavetermdev/waveterm/pkg/telemetry/telemetrydata"
 	"github.com/wavetermdev/waveterm/pkg/util/daystr"
 	"github.com/wavetermdev/waveterm/pkg/util/dbutil"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
@@ -97,59 +99,58 @@ func GoUpdateActivityWrap(update wshrpc.ActivityUpdate, debugStr string) {
 	}()
 }
 
-func InsertTEvent(ctx context.Context, event *wshrpc.TEvent) error {
+func InsertTEvent(ctx context.Context, event *telemetrydata.TEvent) error {
 	return wstore.WithTx(ctx, func(tx *wstore.TxWrap) error {
-		query := `INSERT INTO db_tevent (ts, event, props)
-				  VALUES (?, ?, ?)`
-		tx.Exec(query, event.Ts, event.Event, dbutil.QuickJson(event.Props))
+		query := `INSERT INTO db_tevent (ts, tslocal, event, props)
+				  VALUES (?, ?, ?, ?)`
+		tx.Exec(query, event.Ts, event.TsLocal, event.Event, dbutil.QuickJson(event.Props))
 		return nil
 	})
 }
 
 // merges newActivity into curActivity, returns curActivity
-func mergeActivity(curActivity map[string]any, newActivity map[string]any) map[string]any {
-	if curActivity == nil {
-		curActivity = make(map[string]any)
-	}
-	for key, val := range newActivity {
-		newVal := utilfn.ConvertInt(val)
-		curVal := utilfn.ConvertInt(curActivity[key])
-		curActivity[key] = curVal + newVal
-	}
-	return curActivity
+func mergeActivity(curActivity *telemetrydata.TEventProps, newActivity telemetrydata.TEventProps) {
+	curActivity.ActiveMinutes += newActivity.ActiveMinutes
+	curActivity.FgMinutes += newActivity.FgMinutes
+	curActivity.OpenMinutes += newActivity.OpenMinutes
 }
 
 // ignores the timestamp in tevent, and uses the current time
-func UpdateActivityTEvent(ctx context.Context, tevent *wshrpc.TEvent) error {
+func UpdateActivityTEvent(ctx context.Context, tevent *telemetrydata.TEvent) error {
 	eventTs := time.Now()
 	// compute to hour boundary, and round up to next hour
 	eventTs = eventTs.Truncate(time.Hour).Add(time.Hour)
 	return wstore.WithTx(ctx, func(tx *wstore.TxWrap) error {
 		// find event that matches this timestamp with event name "activity"
 		var hasRow bool
-		curActivity := make(map[string]any)
+		var curActivity telemetrydata.TEventProps
 		rawProps := tx.GetString(`SELECT props FROM db_tevent WHERE ts = ? AND event = ?`, eventTs.UnixMilli(), ActivityEventName)
 		if rawProps != "" {
 			hasRow = true
-			curActivity = dbutil.ParseJsonMap(rawProps, true)
+			err := json.Unmarshal([]byte(rawProps), &curActivity)
+			if err != nil {
+				// ignore, curActivity will just be 0
+				log.Printf("error unmarshalling activity props: %v\n", err)
+			}
 		}
-		curActivity = mergeActivity(curActivity, tevent.Props)
+		mergeActivity(&curActivity, tevent.Props)
 		if hasRow {
 			query := `UPDATE db_tevent SET props = ? WHERE ts = ? AND event = ?`
 			tx.Exec(query, dbutil.QuickJson(curActivity), eventTs.UnixMilli(), ActivityEventName)
 		} else {
-			query := `INSERT INTO db_tevent (ts, event, props) VALUES (?, ?, ?)`
-			tx.Exec(query, eventTs.UnixMilli(), ActivityEventName, dbutil.QuickJson(curActivity))
+			query := `INSERT INTO db_tevent (ts, tslocal, event, props) VALUES (?, ?, ?, ?)`
+			tsLocal := utilfn.ConvertToWallClockPT(eventTs).Format(time.RFC3339)
+			tx.Exec(query, eventTs.UnixMilli(), tsLocal, ActivityEventName, dbutil.QuickJson(curActivity))
 		}
 		return nil
 	})
 }
 
-func RecordTEvent(ctx context.Context, tevent *wshrpc.TEvent) error {
+func RecordTEvent(ctx context.Context, tevent *telemetrydata.TEvent) error {
 	if tevent == nil {
 		return nil
 	}
-	err := tevent.ValidateCurrentTEvent()
+	err := tevent.Validate(true)
 	if err != nil {
 		return err
 	}
@@ -160,11 +161,11 @@ func RecordTEvent(ctx context.Context, tevent *wshrpc.TEvent) error {
 	return InsertTEvent(ctx, tevent)
 }
 
-func GetNonUploadedTEvents(ctx context.Context, maxEvents int) ([]*wshrpc.TEvent, error) {
+func GetNonUploadedTEvents(ctx context.Context, maxEvents int) ([]*telemetrydata.TEvent, error) {
 	now := time.Now()
-	return wstore.WithTxRtn(ctx, func(tx *wstore.TxWrap) ([]*wshrpc.TEvent, error) {
-		var rtn []*wshrpc.TEvent
-		query := `SELECT id, ts, event, props, uploaded FROM db_tevent WHERE uploaded = 0 AND ts <= ? ORDER BY ts LIMIT ?`
+	return wstore.WithTxRtn(ctx, func(tx *wstore.TxWrap) ([]*telemetrydata.TEvent, error) {
+		var rtn []*telemetrydata.TEvent
+		query := `SELECT id, ts, tslocal, event, props, uploaded FROM db_tevent WHERE uploaded = 0 AND ts <= ? ORDER BY ts LIMIT ?`
 		tx.Select(&rtn, query, now.UnixMilli(), maxEvents)
 		for _, event := range rtn {
 			if err := event.ConvertRawJSON(); err != nil {
@@ -175,7 +176,7 @@ func GetNonUploadedTEvents(ctx context.Context, maxEvents int) ([]*wshrpc.TEvent
 	})
 }
 
-func MarkTEventsAsUploaded(ctx context.Context, events []*wshrpc.TEvent) error {
+func MarkTEventsAsUploaded(ctx context.Context, events []*telemetrydata.TEvent) error {
 	return wstore.WithTx(ctx, func(tx *wstore.TxWrap) error {
 		ids := make([]int64, 0, len(events))
 		for _, event := range events {

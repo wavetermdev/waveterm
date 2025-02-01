@@ -22,6 +22,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/wshfs"
 	"github.com/wavetermdev/waveterm/pkg/service"
 	"github.com/wavetermdev/waveterm/pkg/telemetry"
+	"github.com/wavetermdev/waveterm/pkg/telemetry/telemetrydata"
 	"github.com/wavetermdev/waveterm/pkg/util/shellutil"
 	"github.com/wavetermdev/waveterm/pkg/util/sigutil"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
@@ -113,7 +114,7 @@ func sendTelemetryWrapper() {
 	defer func() {
 		panichandler.PanicHandler("sendTelemetryWrapper", recover())
 	}()
-	ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancelFn := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancelFn()
 	beforeSendActivityUpdate(ctx)
 	client, err := wstore.DBGetSingleton[*waveobj.Client](ctx)
@@ -121,7 +122,7 @@ func sendTelemetryWrapper() {
 		log.Printf("[error] getting client data for telemetry: %v\n", err)
 		return
 	}
-	err = wcloud.SendTelemetry(ctx, client.OID)
+	err = wcloud.SendAllTelemetry(ctx, client.OID)
 	if err != nil {
 		log.Printf("[error] sending telemetry: %v\n", err)
 	}
@@ -149,6 +150,13 @@ func startupActivityUpdate() {
 	err := telemetry.UpdateActivity(ctx, activity) // set at least one record into activity (don't use go routine wrap here)
 	if err != nil {
 		log.Printf("error updating startup activity: %v\n", err)
+	}
+	tevent := telemetrydata.MakeTEvent("startup", telemetrydata.TEventProps{
+		ClientVersion: "v" + WaveVersion,
+	})
+	err = telemetry.RecordTEvent(ctx, tevent)
+	if err != nil {
+		log.Printf("error recording startup event: %v\n", err)
 	}
 }
 

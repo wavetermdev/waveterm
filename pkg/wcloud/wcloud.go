@@ -18,9 +18,9 @@ import (
 	"time"
 
 	"github.com/wavetermdev/waveterm/pkg/telemetry"
+	"github.com/wavetermdev/waveterm/pkg/telemetry/telemetrydata"
 	"github.com/wavetermdev/waveterm/pkg/util/daystr"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 )
 
 const WCloudEndpoint = "https://api.waveterm.dev/central"
@@ -151,8 +151,8 @@ func doRequest(req *http.Request, outputObj interface{}) (*http.Response, error)
 }
 
 type TDataInputType struct {
-	ClientId string           `json:"clientId"`
-	TEvents  []*wshrpc.TEvent `json:"tevents"`
+	ClientId string                  `json:"clientId"`
+	TEvents  []*telemetrydata.TEvent `json:"tevents"`
 }
 
 const TEventsBatchSize = 100
@@ -188,11 +188,7 @@ func sendTEventsBatch(clientId string) (bool, error) {
 	return len(events) < TEventsBatchSize, nil
 }
 
-func SendTEvents(clientId string) error {
-	if !telemetry.IsTelemetryEnabled() {
-		log.Printf("telemetry disabled, not sending\n")
-		return nil
-	}
+func sendTEvents(clientId string) error {
 	numIters := 0
 	for {
 		numIters++
@@ -212,11 +208,23 @@ func SendTEvents(clientId string) error {
 	return nil
 }
 
-func SendTelemetry(ctx context.Context, clientId string) error {
+func SendAllTelemetry(ctx context.Context, clientId string) error {
 	if !telemetry.IsTelemetryEnabled() {
 		log.Printf("telemetry disabled, not sending\n")
 		return nil
 	}
+	err := sendTEvents(clientId)
+	if err != nil {
+		return err
+	}
+	err = sendTelemetry(ctx, clientId)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func sendTelemetry(ctx context.Context, clientId string) error {
 	activity, err := telemetry.GetNonUploadedActivity(ctx)
 	if err != nil {
 		return fmt.Errorf("cannot get activity: %v", err)

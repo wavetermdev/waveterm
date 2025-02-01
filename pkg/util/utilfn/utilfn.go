@@ -85,7 +85,7 @@ func GetBool(v interface{}, field string) bool {
 	return bval
 }
 
-// converts an int or int64 to an int64
+// converts an int, int64, or float64 to an int64
 // nil or bad type returns 0
 func ConvertInt(val any) int64 {
 	if val == 0 {
@@ -96,6 +96,8 @@ func ConvertInt(val any) int64 {
 		return int64(typedVal)
 	case int64:
 		return typedVal
+	case float64:
+		return int64(typedVal)
 	default:
 		return 0
 	}

@@ -252,6 +252,11 @@ class RpcApiType {
         return client.wshRpcCall("path", data, opts);
     }
 
+    // command "recordtevent" [call]
+    RecordTEventCommand(client: WshClient, data: TEvent, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("recordtevent", data, opts);
+    }
+
     // command "remotefilecopy" [call]
     RemoteFileCopyCommand(client: WshClient, data: CommandRemoteFileCopyData, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("remotefilecopy", data, opts);
@@ -335,6 +340,11 @@ class RpcApiType {
     // command "routeunannounce" [call]
     RouteUnannounceCommand(client: WshClient, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("routeunannounce", null, opts);
+    }
+
+    // command "sendtelemetry" [call]
+    SendTelemetryCommand(client: WshClient, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("sendtelemetry", null, opts);
     }
 
     // command "setconfig" [call]

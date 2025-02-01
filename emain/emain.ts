@@ -472,6 +472,18 @@ function logActiveState() {
         activity.displays = getActivityDisplays();
         try {
             await RpcApi.ActivityCommand(ElectronWshClient, activity, { noresponse: true });
+            await RpcApi.RecordTEventCommand(
+                ElectronWshClient,
+                {
+                    event: "activity",
+                    props: {
+                        "activity:activeminutes": activity.activeminutes,
+                        "activity:fgminutes": activity.fgminutes,
+                        "activity:openminutes": activity.openminutes,
+                    },
+                },
+                { noresponse: true }
+            );
         } catch (e) {
             console.log("error logging active state", e);
         } finally {

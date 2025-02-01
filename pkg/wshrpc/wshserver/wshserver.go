@@ -27,6 +27,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/remote/conncontroller"
 	"github.com/wavetermdev/waveterm/pkg/remote/fileshare"
 	"github.com/wavetermdev/waveterm/pkg/telemetry"
+	"github.com/wavetermdev/waveterm/pkg/telemetry/telemetrydata"
 	"github.com/wavetermdev/waveterm/pkg/util/envutil"
 	"github.com/wavetermdev/waveterm/pkg/util/shellutil"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
@@ -34,6 +35,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/waveai"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
+	"github.com/wavetermdev/waveterm/pkg/wcloud"
 	"github.com/wavetermdev/waveterm/pkg/wconfig"
 	"github.com/wavetermdev/waveterm/pkg/wcore"
 	"github.com/wavetermdev/waveterm/pkg/wps"
@@ -734,8 +736,16 @@ func (ws *WshServer) WorkspaceListCommand(ctx context.Context) ([]wshrpc.Workspa
 	return rtn, nil
 }
 
-func (ws *WshServer) RecordTEventCommand(ctx context.Context, data wshrpc.TEvent) error {
+func (ws *WshServer) RecordTEventCommand(ctx context.Context, data telemetrydata.TEvent) error {
 	return telemetry.RecordTEvent(ctx, &data)
+}
+
+func (ws WshServer) SendTelemetryCommand(ctx context.Context) error {
+	client, err := wstore.DBGetSingleton[*waveobj.Client](ctx)
+	if err != nil {
+		return fmt.Errorf("getting client data for telemetry: %v", err)
+	}
+	return wcloud.SendAllTelemetry(ctx, client.OID)
 }
 
 var wshActivityRe = regexp.MustCompile(`^[a-z:#]+$`)

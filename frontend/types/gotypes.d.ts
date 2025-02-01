@@ -745,6 +745,33 @@ declare global {
         allscopes?: boolean;
     };
 
+    // telemetrydata.TEvent
+    type TEvent = {
+        ts?: number;
+        tslocal?: string;
+        event: string;
+        props: TEventProps;
+    };
+
+    // telemetrydata.TEventProps
+    type TEventProps = {
+        "activity:activeminutes"?: number;
+        "activity:fgminutes"?: number;
+        "activity:openminutes"?: number;
+        "client:version"?: string;
+        $set?: TEventUserProps;
+        $set_once?: TEventUserProps;
+    };
+
+    // telemetrydata.TEventUserProps
+    type TEventUserProps = {
+        "client:arch"?: string;
+        "client:version"?: string;
+        "client:initial_version"?: string;
+        "client:buildtime"?: string;
+        "client:osrelease"?: string;
+    };
+
     // waveobj.Tab
     type Tab = WaveObj & {
         name: string;
