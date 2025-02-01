@@ -38,12 +38,10 @@ var serverCmd = &cobra.Command{
 
 var connServerRouter bool
 var singleServerRouter bool
-var EncType string
 
 func init() {
 	serverCmd.Flags().BoolVar(&connServerRouter, "router", false, "run in local router mode")
 	serverCmd.Flags().BoolVar(&singleServerRouter, "single", false, "run in local single mode")
-	serverCmd.Flags().StringVar(&EncType, "enc", EncType, "encoding type (json or bson)")
 	rootCmd.AddCommand(serverCmd)
 }
 
