@@ -64,9 +64,11 @@ const (
 	Command_DeleteBlock          = "deleteblock"
 	Command_FileWrite            = "filewrite"
 	Command_FileRead             = "fileread"
+	Command_FileReadStream       = "filereadstream"
 	Command_FileMove             = "filemove"
 	Command_FileCopy             = "filecopy"
 	Command_FileStreamTar        = "filestreamtar"
+	Command_FileShareCapability  = "filesharecapability"
 	Command_EventPublish         = "eventpublish"
 	Command_EventRecv            = "eventrecv"
 	Command_EventSub             = "eventsub"
@@ -157,12 +159,14 @@ type WshRpcInterface interface {
 	FileAppendIJsonCommand(ctx context.Context, data CommandAppendIJsonData) error
 	FileWriteCommand(ctx context.Context, data FileData) error
 	FileReadCommand(ctx context.Context, data FileData) (*FileData, error)
+	FileReadStreamCommand(ctx context.Context, data FileData) <-chan RespOrErrorUnion[FileData]
 	FileStreamTarCommand(ctx context.Context, data CommandRemoteStreamTarData) <-chan RespOrErrorUnion[iochantypes.Packet]
 	FileMoveCommand(ctx context.Context, data CommandFileCopyData) error
 	FileCopyCommand(ctx context.Context, data CommandFileCopyData) error
 	FileInfoCommand(ctx context.Context, data FileData) (*FileInfo, error)
 	FileListCommand(ctx context.Context, data FileListData) ([]*FileInfo, error)
 	FileListStreamCommand(ctx context.Context, data FileListData) <-chan RespOrErrorUnion[CommandRemoteListEntriesRtnData]
+	FileShareCapabilityCommand(ctx context.Context, path string) (FileShareCapability, error)
 	EventPublishCommand(ctx context.Context, data wps.WaveEvent) error
 	EventSubCommand(ctx context.Context, data wps.SubscriptionRequest) error
 	EventUnsubCommand(ctx context.Context, data string) error
@@ -716,4 +720,9 @@ type ActivityUpdate struct {
 type ConnExtData struct {
 	ConnName   string `json:"connname"`
 	LogBlockId string `json:"logblockid,omitempty"`
+}
+
+type FileShareCapability struct {
+	CanAppend bool
+	CanMkdir  bool
 }

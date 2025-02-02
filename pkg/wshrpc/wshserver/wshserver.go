@@ -332,6 +332,10 @@ func (ws *WshServer) FileReadCommand(ctx context.Context, data wshrpc.FileData) 
 	return fileshare.Read(ctx, data)
 }
 
+func (ws *WshServer) FileReadStreamCommand(ctx context.Context, data wshrpc.FileData) <-chan wshrpc.RespOrErrorUnion[wshrpc.FileData] {
+	return fileshare.ReadStream(ctx, data)
+}
+
 func (ws *WshServer) FileCopyCommand(ctx context.Context, data wshrpc.CommandFileCopyData) error {
 	return fileshare.Copy(ctx, data)
 }
@@ -371,6 +375,10 @@ func (ws *WshServer) FileAppendIJsonCommand(ctx context.Context, data wshrpc.Com
 		},
 	})
 	return nil
+}
+
+func (ws *WshServer) FileShareCapabilityCommand(ctx context.Context, path string) (wshrpc.FileShareCapability, error) {
+	return fileshare.GetCapability(ctx, path)
 }
 
 func (ws *WshServer) DeleteSubBlockCommand(ctx context.Context, data wshrpc.CommandDeleteBlockData) error {

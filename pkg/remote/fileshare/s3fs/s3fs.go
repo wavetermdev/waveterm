@@ -6,10 +6,10 @@ package s3fs
 import (
 	"bytes"
 	"context"
-	"encoding/base64"
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"log"
 	"regexp"
 	"strings"
@@ -21,6 +21,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/remote/awsconn"
 	"github.com/wavetermdev/waveterm/pkg/remote/connparse"
 	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/fstype"
+	"github.com/wavetermdev/waveterm/pkg/util/fileutil"
 	"github.com/wavetermdev/waveterm/pkg/util/iochan/iochantypes"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
@@ -40,71 +41,52 @@ func NewS3Client(config *aws.Config) *S3Client {
 
 func (c S3Client) Read(ctx context.Context, conn *connparse.Connection, data wshrpc.FileData) (*wshrpc.FileData, error) {
 	rtnCh := c.ReadStream(ctx, conn, data)
-	var fileData *wshrpc.FileData
-	firstPk := true
-	isDir := false
-	var fileBuf bytes.Buffer
-	for respUnion := range rtnCh {
-		if respUnion.Error != nil {
-			return nil, respUnion.Error
-		}
-		resp := respUnion.Response
-		if firstPk {
-			firstPk = false
-			// first packet has the fileinfo
-			if resp.Info == nil {
-				return nil, fmt.Errorf("stream file protocol error, first pk fileinfo is empty")
-			}
-			fileData = &resp
-			if fileData.Info.IsDir {
-				isDir = true
-			}
-			continue
-		}
-		if isDir {
-			if len(resp.Entries) == 0 {
-				continue
-			}
-			fileData.Entries = append(fileData.Entries, resp.Entries...)
-		} else {
-			if resp.Data64 == "" {
-				continue
-			}
-			decoder := base64.NewDecoder(base64.StdEncoding, bytes.NewReader([]byte(resp.Data64)))
-			_, err := io.Copy(&fileBuf, decoder)
-			if err != nil {
-				return nil, fmt.Errorf("stream file, failed to decode base64 data: %w", err)
-			}
-		}
-	}
-	if !isDir {
-		fileData.Data64 = base64.StdEncoding.EncodeToString(fileBuf.Bytes())
-	}
-	return fileData, nil
+	return fileutil.ReadStreamToFileData(ctx, rtnCh)
 }
 
 func (c S3Client) ReadStream(ctx context.Context, conn *connparse.Connection, data wshrpc.FileData) <-chan wshrpc.RespOrErrorUnion[wshrpc.FileData] {
 	bucket := conn.Host
 	objectKey := conn.Path
-	if bucket == "" || bucket == "/" || objectKey == "" || objectKey == "/" {
-		rtn := make(chan wshrpc.RespOrErrorUnion[wshrpc.FileData], 1)
+	rtn := make(chan wshrpc.RespOrErrorUnion[wshrpc.FileData], 16)
+	go func() {
 		defer close(rtn)
-		entries, err := c.ListEntries(ctx, conn, nil)
-		if err != nil {
-			rtn <- wshutil.RespErr[wshrpc.FileData](err)
-			return rtn
-		}
-		rtn <- wshrpc.RespOrErrorUnion[wshrpc.FileData]{Response: wshrpc.FileData{Entries: entries}}
-		return rtn
-	} else {
-		rtn := make(chan wshrpc.RespOrErrorUnion[wshrpc.FileData], 16)
-		go func() {
-			defer close(rtn)
-			result, err := c.client.GetObject(ctx, &s3.GetObjectInput{
-				Bucket: &bucket,
-				Key:    &objectKey,
-			})
+		if bucket == "" || bucket == "/" || objectKey == "" || objectKey == "/" {
+			entries, err := c.ListEntries(ctx, conn, nil)
 			if err != nil {
+				rtn <- wshutil.RespErr[wshrpc.FileData](err)
+				return
+			}
+			entryBuf := make([]*wshrpc.FileInfo, 0, wshrpc.DirChunkSize)
+			for _, entry := range entries {
+				entryBuf = append(entryBuf, entry)
+				if len(entryBuf) == wshrpc.DirChunkSize {
+					rtn <- wshrpc.RespOrErrorUnion[wshrpc.FileData]{Response: wshrpc.FileData{Entries: entryBuf}}
+					entryBuf = make([]*wshrpc.FileInfo, 0, wshrpc.DirChunkSize)
+				}
+			}
+			if len(entryBuf) > 0 {
+				rtn <- wshrpc.RespOrErrorUnion[wshrpc.FileData]{Response: wshrpc.FileData{Entries: entryBuf}}
+			}
+			return
+		} else {
+			var result *s3.GetObjectOutput
+			var err error
+			if data.At != nil {
+				log.Printf("reading %v with offset %d and size %d", conn.GetFullURI(), data.At.Offset, data.At.Size)
+				result, err = c.client.GetObject(ctx, &s3.GetObjectInput{
+					Bucket: aws.String(bucket),
+					Key:    aws.String(objectKey),
+					Range:  aws.String(fmt.Sprintf("bytes=%d-%d", data.At.Offset, data.At.Offset+int64(data.At.Size)-1)),
+				})
+			} else {
+				log.Printf("reading %v", conn.GetFullURI())
+				result, err = c.client.GetObject(ctx, &s3.GetObjectInput{
+					Bucket: aws.String(bucket),
+					Key:    aws.String(objectKey),
+				})
+			}
+			if err != nil {
+				log.Printf("error getting object %v:%v: %v", bucket, objectKey, err)
 				var noKey *types.NoSuchKey
 				if errors.As(err, &noKey) {
 					log.Printf("Can't get object %s from bucket %s. No such key exists.\n", objectKey, bucket)
@@ -119,40 +101,49 @@ func (c S3Client) ReadStream(ctx context.Context, conn *connparse.Connection, da
 			if result.ContentLength != nil {
 				size = *result.ContentLength
 			}
-			rtn <- wshrpc.RespOrErrorUnion[wshrpc.FileData]{Response: wshrpc.FileData{Info: &wshrpc.FileInfo{
+			finfo := &wshrpc.FileInfo{
 				Name:    objectKey,
 				IsDir:   false,
 				Size:    size,
 				ModTime: result.LastModified.UnixMilli(),
 				Path:    conn.GetFullURI(),
-			}}}
+			}
+			log.Printf("file info: %v", finfo)
+			rtn <- wshrpc.RespOrErrorUnion[wshrpc.FileData]{Response: wshrpc.FileData{Info: finfo}}
 			if size == 0 {
+				log.Printf("no data to read")
 				return
 			}
 			defer result.Body.Close()
+			bytesRemaining := size
 			for {
+				log.Printf("bytes remaining: %d", bytesRemaining)
 				select {
 				case <-ctx.Done():
+					log.Printf("context done")
+					rtn <- wshutil.RespErr[wshrpc.FileData](ctx.Err())
 					return
 				default:
-					buf := make([]byte, wshrpc.FileChunkSize)
+					buf := make([]byte, min(bytesRemaining, wshrpc.FileChunkSize))
 					n, err := result.Body.Read(buf)
-					if err != nil {
-						if err.Error() == "EOF" {
-							break
-						}
+					if err != nil && !errors.Is(err, io.EOF) {
 						rtn <- wshutil.RespErr[wshrpc.FileData](err)
 						return
 					}
+					log.Printf("read %d bytes", n)
 					if n == 0 {
 						break
 					}
-					rtn <- wshrpc.RespOrErrorUnion[wshrpc.FileData]{Response: wshrpc.FileData{Data64: base64.StdEncoding.EncodeToString(buf[:n])}}
+					bytesRemaining -= int64(n)
+					rtn <- wshrpc.RespOrErrorUnion[wshrpc.FileData]{Response: wshrpc.FileData{Data64: string(buf)}}
+					if bytesRemaining == 0 || errors.Is(err, io.EOF) {
+						return
+					}
 				}
 			}
-		}()
-		return rtn
-	}
+		}
+	}()
+	return rtn
 }
 
 func (c S3Client) ReadTarStream(ctx context.Context, conn *connparse.Connection, opts *wshrpc.FileCopyOpts) <-chan wshrpc.RespOrErrorUnion[iochantypes.Packet] {
@@ -331,7 +322,6 @@ func (c S3Client) Stat(ctx context.Context, conn *connparse.Connection) (*wshrpc
 			if errors.As(err, &apiError) {
 				switch apiError.(type) {
 				case *types.NotFound:
-					log.Printf("Bucket %v is available.\n", bucketName)
 					exists = false
 					err = nil
 				default:
@@ -360,9 +350,9 @@ func (c S3Client) Stat(ctx context.Context, conn *connparse.Connection) (*wshrpc
 	})
 	if err != nil {
 		var noKey *types.NoSuchKey
-		if errors.As(err, &noKey) {
-			log.Printf("Can't get object %s from bucket %s. No such key exists.\n", objectKey, bucketName)
-			err = noKey
+		var notFound *types.NotFound
+		if errors.As(err, &noKey) || errors.As(err, &notFound) {
+			err = fs.ErrNotExist
 		} else {
 			log.Printf("Couldn't get object %v:%v. Here's why: %v\n", bucketName, objectKey, err)
 		}
@@ -497,6 +487,13 @@ func (c S3Client) Join(ctx context.Context, conn *connparse.Connection, parts ..
 
 func (c S3Client) GetConnectionType() string {
 	return connparse.ConnectionTypeS3
+}
+
+func (c S3Client) GetCapability() wshrpc.FileShareCapability {
+	return wshrpc.FileShareCapability{
+		CanAppend: false,
+		CanMkdir:  false,
+	}
 }
 
 func getParentPathUri(conn *connparse.Connection) string {

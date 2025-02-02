@@ -4,14 +4,12 @@
 package wshfs
 
 import (
-	"bytes"
 	"context"
-	"encoding/base64"
 	"fmt"
-	"io"
 
 	"github.com/wavetermdev/waveterm/pkg/remote/connparse"
 	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/fstype"
+	"github.com/wavetermdev/waveterm/pkg/util/fileutil"
 	"github.com/wavetermdev/waveterm/pkg/util/iochan/iochantypes"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
@@ -35,47 +33,7 @@ func NewWshClient() *WshClient {
 
 func (c WshClient) Read(ctx context.Context, conn *connparse.Connection, data wshrpc.FileData) (*wshrpc.FileData, error) {
 	rtnCh := c.ReadStream(ctx, conn, data)
-	var fileData *wshrpc.FileData
-	firstPk := true
-	isDir := false
-	var fileBuf bytes.Buffer
-	for respUnion := range rtnCh {
-		if respUnion.Error != nil {
-			return nil, respUnion.Error
-		}
-		resp := respUnion.Response
-		if firstPk {
-			firstPk = false
-			// first packet has the fileinfo
-			if resp.Info == nil {
-				return nil, fmt.Errorf("stream file protocol error, first pk fileinfo is empty")
-			}
-			fileData = &resp
-			if fileData.Info.IsDir {
-				isDir = true
-			}
-			continue
-		}
-		if isDir {
-			if len(resp.Entries) == 0 {
-				continue
-			}
-			fileData.Entries = append(fileData.Entries, resp.Entries...)
-		} else {
-			if resp.Data64 == "" {
-				continue
-			}
-			decoder := base64.NewDecoder(base64.StdEncoding, bytes.NewReader([]byte(resp.Data64)))
-			_, err := io.Copy(&fileBuf, decoder)
-			if err != nil {
-				return nil, fmt.Errorf("stream file, failed to decode base64 data: %w", err)
-			}
-		}
-	}
-	if !isDir {
-		fileData.Data64 = base64.StdEncoding.EncodeToString(fileBuf.Bytes())
-	}
-	return fileData, nil
+	return fileutil.ReadStreamToFileData(ctx, rtnCh)
 }
 
 func (c WshClient) ReadStream(ctx context.Context, conn *connparse.Connection, data wshrpc.FileData) <-chan wshrpc.RespOrErrorUnion[wshrpc.FileData] {
@@ -189,4 +147,8 @@ func (c WshClient) Join(ctx context.Context, conn *connparse.Connection, parts .
 
 func (c WshClient) GetConnectionType() string {
 	return connparse.ConnectionTypeWsh
+}
+
+func (c WshClient) GetCapability() wshrpc.FileShareCapability {
+	return wshrpc.FileShareCapability{CanAppend: true, CanMkdir: true}
 }

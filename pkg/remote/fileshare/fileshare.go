@@ -169,3 +169,11 @@ func Append(ctx context.Context, data wshrpc.FileData) error {
 	}
 	return client.AppendFile(ctx, conn, data)
 }
+
+func GetCapability(ctx context.Context, path string) (wshrpc.FileShareCapability, error) {
+	client, conn := CreateFileShareClient(ctx, path)
+	if conn == nil || client == nil {
+		return wshrpc.FileShareCapability{}, fmt.Errorf(ErrorParsingConnection, path)
+	}
+	return client.GetCapability(), nil
+}

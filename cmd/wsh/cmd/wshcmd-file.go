@@ -212,7 +212,7 @@ func fileCatRun(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("getting file info: %w", err)
 	}
 
-	err = streamReadFromFile(fileData, info.Size, os.Stdout)
+	err = streamReadFromFile(cmd.Context(), fileData, info.Size, os.Stdout)
 	if err != nil {
 		return fmt.Errorf("reading file: %w", err)
 	}
@@ -294,14 +294,31 @@ func fileWriteRun(cmd *cobra.Command, args []string) error {
 		Info: &wshrpc.FileInfo{
 			Path: path}}
 
-	_, err = ensureFile(path, fileData)
+	capability, err := wshclient.FileShareCapabilityCommand(RpcClient, fileData.Info.Path, &wshrpc.RpcOpts{Timeout: DefaultFileTimeout})
 	if err != nil {
-		return err
+		return fmt.Errorf("getting fileshare capability: %w", err)
 	}
-
-	err = streamWriteToFile(fileData, WrappedStdin)
-	if err != nil {
-		return fmt.Errorf("writing file: %w", err)
+	if capability.CanAppend {
+		err = streamWriteToFile(fileData, WrappedStdin)
+		if err != nil {
+			return fmt.Errorf("writing file: %w", err)
+		}
+	} else {
+		buf := make([]byte, MaxFileSize)
+		n, err := WrappedStdin.Read(buf)
+		if err != nil && err != io.EOF {
+			return fmt.Errorf("reading input: %w", err)
+		}
+		if int64(n) == MaxFileSize {
+			if _, err := WrappedStdin.Read(make([]byte, 1)); err != io.EOF {
+				return fmt.Errorf("input exceeds maximum file size of %d bytes", MaxFileSize)
+			}
+		}
+		fileData.Data64 = base64.StdEncoding.EncodeToString(buf[:n])
+		err = wshclient.FileWriteCommand(RpcClient, fileData, &wshrpc.RpcOpts{Timeout: DefaultFileTimeout})
+		if err != nil {
+			return fmt.Errorf("writing file: %w", err)
+		}
 	}
 
 	return nil
@@ -316,7 +333,7 @@ func fileAppendRun(cmd *cobra.Command, args []string) error {
 		Info: &wshrpc.FileInfo{
 			Path: path}}
 
-	info, err := ensureFile(path, fileData)
+	info, err := ensureFile(fileData)
 	if err != nil {
 		return err
 	}

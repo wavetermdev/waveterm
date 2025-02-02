@@ -548,6 +548,13 @@ func (c WaveClient) Join(ctx context.Context, conn *connparse.Connection, parts 
 	return newPath, nil
 }
 
+func (c WaveClient) GetCapability() wshrpc.FileShareCapability {
+	return wshrpc.FileShareCapability{
+		CanAppend: true,
+		CanMkdir:  false,
+	}
+}
+
 func cleanPath(path string) (string, error) {
 	if path == "" {
 		return "", fmt.Errorf("path is empty")

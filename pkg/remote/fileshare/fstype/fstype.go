@@ -42,4 +42,6 @@ type FileShareClient interface {
 	Join(ctx context.Context, conn *connparse.Connection, parts ...string) (string, error)
 	// GetConnectionType returns the type of connection for the fileshare
 	GetConnectionType() string
+	// GetCapability returns the capability of the fileshare
+	GetCapability() wshrpc.FileShareCapability
 }

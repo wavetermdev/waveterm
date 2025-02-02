@@ -4,6 +4,7 @@
 package cmd
 
 import (
+	"context"
 	"encoding/base64"
 	"fmt"
 	"io"
@@ -27,7 +28,7 @@ func convertNotFoundErr(err error) error {
 	return err
 }
 
-func ensureFile(origName string, fileData wshrpc.FileData) (*wshrpc.FileInfo, error) {
+func ensureFile(fileData wshrpc.FileData) (*wshrpc.FileInfo, error) {
 	info, err := wshclient.FileInfoCommand(RpcClient, fileData, &wshrpc.RpcOpts{Timeout: DefaultFileTimeout})
 	err = convertNotFoundErr(err)
 	if err == fs.ErrNotExist {
@@ -56,7 +57,7 @@ func streamWriteToFile(fileData wshrpc.FileData, reader io.Reader) error {
 		return fmt.Errorf("initializing file with empty write: %w", err)
 	}
 
-	const chunkSize = 32 * 1024 // 32KB chunks
+	const chunkSize = wshrpc.FileChunkSize // 32KB chunks
 	buf := make([]byte, chunkSize)
 	totalWritten := int64(0)
 
@@ -89,40 +90,9 @@ func streamWriteToFile(fileData wshrpc.FileData, reader io.Reader) error {
 	return nil
 }
 
-func streamReadFromFile(fileData wshrpc.FileData, size int64, writer io.Writer) error {
-	const chunkSize = 32 * 1024 // 32KB chunks
-	for offset := int64(0); offset < size; offset += chunkSize {
-		// Calculate the length of this chunk
-		length := chunkSize
-		if offset+int64(length) > size {
-			length = int(size - offset)
-		}
-
-		// Set up the ReadAt request
-		fileData.At = &wshrpc.FileDataAt{
-			Offset: offset,
-			Size:   length,
-		}
-
-		// Read the chunk
-		data, err := wshclient.FileReadCommand(RpcClient, fileData, &wshrpc.RpcOpts{Timeout: int64(fileTimeout)})
-		if err != nil {
-			return fmt.Errorf("reading chunk at offset %d: %w", offset, err)
-		}
-
-		// Decode and write the chunk
-		chunk, err := base64.StdEncoding.DecodeString(data.Data64)
-		if err != nil {
-			return fmt.Errorf("decoding chunk at offset %d: %w", offset, err)
-		}
-
-		_, err = writer.Write(chunk)
-		if err != nil {
-			return fmt.Errorf("writing chunk at offset %d: %w", offset, err)
-		}
-	}
-
-	return nil
+func streamReadFromFile(ctx context.Context, fileData wshrpc.FileData, size int64, writer io.Writer) error {
+	ch := wshclient.FileReadStreamCommand(RpcClient, fileData, &wshrpc.RpcOpts{Timeout: DefaultFileTimeout})
+	return fileutil.ReadFileStreamToWriter(ctx, ch, writer)
 }
 
 type fileListResult struct {
