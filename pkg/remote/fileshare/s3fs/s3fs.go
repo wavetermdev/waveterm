@@ -307,7 +307,7 @@ func (c S3Client) ReadTarStream(ctx context.Context, conn *connparse.Connection,
 			}
 		}
 	}()
-
+	return rtn
 }
 
 func (c S3Client) ListEntries(ctx context.Context, conn *connparse.Connection, opts *wshrpc.FileListOpts) ([]*wshrpc.FileInfo, error) {
