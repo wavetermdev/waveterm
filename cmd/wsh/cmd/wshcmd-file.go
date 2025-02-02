@@ -264,18 +264,6 @@ func fileRmRun(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	fileData := wshrpc.FileData{
-		Info: &wshrpc.FileInfo{
-			Path: path}}
-
-	_, err = wshclient.FileInfoCommand(RpcClient, fileData, &wshrpc.RpcOpts{Timeout: DefaultFileTimeout})
-	err = convertNotFoundErr(err)
-	if err == fs.ErrNotExist {
-		return fmt.Errorf("%s: no such file", path)
-	}
-	if err != nil {
-		return fmt.Errorf("getting file info: %w", err)
-	}
 
 	err = wshclient.FileDeleteCommand(RpcClient, wshrpc.CommandDeleteFileData{Path: path, Recursive: recursive}, &wshrpc.RpcOpts{Timeout: DefaultFileTimeout})
 	if err != nil {

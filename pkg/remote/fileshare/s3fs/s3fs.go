@@ -166,12 +166,17 @@ func (c S3Client) ListEntries(ctx context.Context, conn *connparse.Connection, o
 var slashRe = regexp.MustCompile(`/`)
 
 func (c S3Client) ListEntriesStream(ctx context.Context, conn *connparse.Connection, opts *wshrpc.FileListOpts) <-chan wshrpc.RespOrErrorUnion[wshrpc.CommandRemoteListEntriesRtnData] {
+	bucket := conn.Host
+	objectKeyPrefix := conn.Path
+	if objectKeyPrefix != "" && !strings.HasSuffix(objectKeyPrefix, "/") {
+		objectKeyPrefix = objectKeyPrefix + "/"
+	}
 	numToFetch := wshrpc.MaxDirSize
 	if opts != nil && opts.Limit > 0 {
 		numToFetch = min(opts.Limit, wshrpc.MaxDirSize)
 	}
 	numFetched := 0
-	if conn.Host == "" || conn.Host == "/" {
+	if bucket == "" || bucket == "/" {
 		buckets, err := awsconn.ListBuckets(ctx, c.client)
 		if err != nil {
 			return wshutil.SendErrCh[wshrpc.CommandRemoteListEntriesRtnData](err)
@@ -204,8 +209,8 @@ func (c S3Client) ListEntriesStream(ctx context.Context, conn *connparse.Connect
 			var err error
 			var output *s3.ListObjectsV2Output
 			input := &s3.ListObjectsV2Input{
-				Bucket: aws.String(conn.Host),
-				Prefix: aws.String(conn.Path),
+				Bucket: aws.String(bucket),
+				Prefix: aws.String(objectKeyPrefix),
 			}
 			objectPaginator := s3.NewListObjectsV2Paginator(c.client, input)
 			parentPath := getParentPathUri(conn)
@@ -238,8 +243,8 @@ func (c S3Client) ListEntriesStream(ctx context.Context, conn *connparse.Connect
 						if obj.LastModified != nil {
 							lastModTime = obj.LastModified.UnixMilli()
 						}
-						if obj.Key != nil && len(*obj.Key) > len(conn.Path) {
-							name := strings.TrimPrefix(*obj.Key, conn.Path)
+						if obj.Key != nil && len(*obj.Key) > len(objectKeyPrefix) {
+							name := strings.TrimPrefix(*obj.Key, objectKeyPrefix)
 							if strings.Count(name, "/") > 0 {
 								name = strings.SplitN(name, "/", 2)[0]
 								name = name + "/" // add trailing slash to indicate directory
@@ -249,7 +254,7 @@ func (c S3Client) ListEntriesStream(ctx context.Context, conn *connparse.Connect
 											Path:    conn.GetFullURI() + name,
 											Name:    name,
 											IsDir:   true,
-											Dir:     conn.Path,
+											Dir:     objectKeyPrefix,
 											ModTime: lastModTime,
 											Size:    -1,
 										}
@@ -269,7 +274,7 @@ func (c S3Client) ListEntriesStream(ctx context.Context, conn *connparse.Connect
 							entryMap[name] = &wshrpc.FileInfo{
 								Name:    name,
 								IsDir:   false,
-								Dir:     conn.Path,
+								Dir:     objectKeyPrefix,
 								Path:    conn.GetFullURI() + name,
 								ModTime: lastModTime,
 								Size:    size,
@@ -432,6 +437,9 @@ func (c S3Client) Delete(ctx context.Context, conn *connparse.Connection, recurs
 		return errors.Join(errors.ErrUnsupported, fmt.Errorf("object key must be specified"))
 	}
 	if recursive {
+		if !strings.HasSuffix(objectKey, "/") {
+			objectKey = objectKey + "/"
+		}
 		entries, err := c.client.ListObjectsV2(ctx, &s3.ListObjectsV2Input{
 			Bucket: aws.String(bucket),
 			Prefix: aws.String(objectKey),
