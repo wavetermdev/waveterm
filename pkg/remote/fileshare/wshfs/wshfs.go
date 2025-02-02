@@ -16,10 +16,6 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
 )
 
-const (
-	ThirtySeconds = 30 * 1000
-)
-
 // This needs to be set by whoever initializes the client, either main-server or wshcmd-connserver
 var RpcClient *wshutil.WshRpc
 
@@ -48,7 +44,7 @@ func (c WshClient) ReadStream(ctx context.Context, conn *connparse.Connection, d
 func (c WshClient) ReadTarStream(ctx context.Context, conn *connparse.Connection, opts *wshrpc.FileCopyOpts) <-chan wshrpc.RespOrErrorUnion[iochantypes.Packet] {
 	timeout := opts.Timeout
 	if timeout == 0 {
-		timeout = ThirtySeconds
+		timeout = fstype.DefaultTimeout.Milliseconds()
 	}
 	return wshclient.RemoteTarStreamCommand(RpcClient, wshrpc.CommandRemoteStreamTarData{Path: conn.Path, Opts: opts}, &wshrpc.RpcOpts{Route: wshutil.MakeConnectionRouteId(conn.Host), Timeout: timeout})
 }
@@ -113,7 +109,7 @@ func (c WshClient) MoveInternal(ctx context.Context, srcConn, destConn *connpars
 	}
 	timeout := opts.Timeout
 	if timeout == 0 {
-		timeout = ThirtySeconds
+		timeout = fstype.DefaultTimeout.Milliseconds()
 	}
 	return wshclient.RemoteFileMoveCommand(RpcClient, wshrpc.CommandRemoteFileCopyData{SrcUri: srcConn.GetFullURI(), DestUri: destConn.GetFullURI(), Opts: opts}, &wshrpc.RpcOpts{Route: wshutil.MakeConnectionRouteId(destConn.Host), Timeout: timeout})
 }
@@ -128,7 +124,7 @@ func (c WshClient) CopyInternal(ctx context.Context, srcConn, destConn *connpars
 	}
 	timeout := opts.Timeout
 	if timeout == 0 {
-		timeout = ThirtySeconds
+		timeout = fstype.DefaultTimeout.Milliseconds()
 	}
 	return wshclient.RemoteFileCopyCommand(RpcClient, wshrpc.CommandRemoteFileCopyData{SrcUri: srcConn.GetFullURI(), DestUri: destConn.GetFullURI(), Opts: opts}, &wshrpc.RpcOpts{Route: wshutil.MakeConnectionRouteId(destConn.Host), Timeout: timeout})
 }

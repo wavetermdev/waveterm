@@ -5,10 +5,15 @@ package fstype
 
 import (
 	"context"
+	"time"
 
 	"github.com/wavetermdev/waveterm/pkg/remote/connparse"
 	"github.com/wavetermdev/waveterm/pkg/util/iochan/iochantypes"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
+)
+
+const (
+	DefaultTimeout = 30 * time.Second
 )
 
 type FileShareClient interface {

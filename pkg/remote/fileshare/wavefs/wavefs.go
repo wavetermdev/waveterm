@@ -29,10 +29,6 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
 )
 
-const (
-	DefaultTimeout = 30 * time.Second
-)
-
 type WaveClient struct{}
 
 var _ fstype.FileShareClient = WaveClient{}
@@ -116,7 +112,7 @@ func (c WaveClient) ReadTarStream(ctx context.Context, conn *connparse.Connectio
 	pathPrefix := getPathPrefix(conn)
 	schemeAndHost := conn.GetSchemeAndHost() + "/"
 
-	timeout := DefaultTimeout
+	timeout := fstype.DefaultTimeout
 	if opts.Timeout > 0 {
 		timeout = time.Duration(opts.Timeout) * time.Millisecond
 	}

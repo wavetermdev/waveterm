@@ -13,6 +13,8 @@ import (
 	"log"
 	"regexp"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -23,6 +25,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/fstype"
 	"github.com/wavetermdev/waveterm/pkg/util/fileutil"
 	"github.com/wavetermdev/waveterm/pkg/util/iochan/iochantypes"
+	"github.com/wavetermdev/waveterm/pkg/util/tarcopy"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
 )
@@ -147,7 +150,164 @@ func (c S3Client) ReadStream(ctx context.Context, conn *connparse.Connection, da
 }
 
 func (c S3Client) ReadTarStream(ctx context.Context, conn *connparse.Connection, opts *wshrpc.FileCopyOpts) <-chan wshrpc.RespOrErrorUnion[iochantypes.Packet] {
-	return wshutil.SendErrCh[iochantypes.Packet](errors.ErrUnsupported)
+
+	bucket := conn.Host
+	if bucket == "" || bucket == "/" {
+		return wshutil.SendErrCh[iochantypes.Packet](fmt.Errorf("bucket must be specified"))
+	}
+
+	objectPrefix := conn.Path
+
+	wholeBucket := objectPrefix == "" || objectPrefix == "/"
+	singleFile := false
+	includeDir := false
+	if !wholeBucket {
+		finfo, err := c.Stat(ctx, conn)
+		if err != nil && !errors.Is(err, fs.ErrNotExist) {
+			return wshutil.SendErrCh[iochantypes.Packet](err)
+		}
+		if finfo != nil && !finfo.IsDir {
+			singleFile = true
+		} else if strings.HasSuffix(objectPrefix, "/") {
+			includeDir = true
+		}
+	}
+
+	timeout := fstype.DefaultTimeout
+
+	if opts.Timeout > 0 {
+		timeout = time.Duration(opts.Timeout) * time.Millisecond
+	}
+
+	readerCtx, cancel := context.WithTimeout(context.Background(), timeout)
+
+	pathPrefix := conn.Path
+	if includeDir || singleFile {
+		pathPrefix = getParentPath(conn)
+	}
+
+	rtn, writeHeader, fileWriter, tarClose := tarcopy.TarCopySrc(readerCtx, pathPrefix)
+
+	go func() {
+		defer func() {
+			tarClose()
+			cancel()
+		}()
+
+		if singleFile {
+			result, err := c.client.GetObject(ctx, &s3.GetObjectInput{
+				Bucket: aws.String(bucket),
+				Key:    aws.String(conn.Path),
+			})
+
+			if err != nil {
+				rtn <- wshutil.RespErr[iochantypes.Packet](err)
+				return
+			}
+
+			defer result.Body.Close()
+
+			finfo := &wshrpc.FileInfo{
+				Name:    conn.Path,
+				IsDir:   false,
+				Size:    *result.ContentLength,
+				ModTime: result.LastModified.UnixMilli(),
+			}
+
+			if err := writeHeader(fileutil.ToFsFileInfo(finfo), conn.Path); err != nil {
+				rtn <- wshutil.RespErr[iochantypes.Packet](err)
+				return
+			}
+
+			if _, err := io.Copy(fileWriter, result.Body); err != nil {
+				rtn <- wshutil.RespErr[iochantypes.Packet](err)
+				return
+			}
+		} else {
+			var err error
+			var output *s3.ListObjectsV2Output
+			var input *s3.ListObjectsV2Input
+			if wholeBucket {
+				input = &s3.ListObjectsV2Input{
+					Bucket: aws.String(bucket),
+				}
+			} else {
+				objectPrefix := conn.Path
+				if !strings.HasSuffix(objectPrefix, "/") {
+					objectPrefix = objectPrefix + "/"
+				}
+				input = &s3.ListObjectsV2Input{
+					Bucket: aws.String(bucket),
+					Prefix: aws.String(objectPrefix),
+				}
+			}
+			objectPaginator := s3.NewListObjectsV2Paginator(c.client, input)
+			for objectPaginator.HasMorePages() {
+				output, err = objectPaginator.NextPage(ctx)
+				if err != nil {
+					rtn <- wshutil.RespErr[iochantypes.Packet](err)
+					return
+				}
+				nextObjs := make(map[int]struct {
+					finfo  *wshrpc.FileInfo
+					result *s3.GetObjectOutput
+				}, len(output.Contents))
+				errs := make([]error, 0)
+				wg := sync.WaitGroup{}
+				defer func() {
+					for _, obj := range nextObjs {
+						if obj.result != nil {
+							obj.result.Body.Close()
+						}
+					}
+				}()
+				getObjectAndFileInfo := func(obj *types.Object, index int) {
+					defer wg.Done()
+					result, err := c.client.GetObject(ctx, &s3.GetObjectInput{
+						Bucket: aws.String(bucket),
+						Key:    obj.Key,
+					})
+					if err != nil {
+						errs = append(errs, err)
+						return
+					}
+					finfo := &wshrpc.FileInfo{
+						Name:    *obj.Key,
+						IsDir:   false,
+						Size:    *obj.Size,
+						ModTime: result.LastModified.UnixMilli(),
+					}
+					nextObjs[index] = struct {
+						finfo  *wshrpc.FileInfo
+						result *s3.GetObjectOutput
+					}{
+						finfo:  finfo,
+						result: result,
+					}
+				}
+				for _, obj := range output.Contents {
+					wg.Add(1)
+					go getObjectAndFileInfo(&obj, len(nextObjs))
+				}
+				wg.Wait()
+				if len(errs) > 0 {
+					rtn <- wshutil.RespErr[iochantypes.Packet](errors.Join(errs...))
+					return
+				}
+				for _, obj := range nextObjs {
+					if err := writeHeader(fileutil.ToFsFileInfo(obj.finfo), obj.finfo.Name); err != nil {
+						rtn <- wshutil.RespErr[iochantypes.Packet](err)
+						return
+					}
+					if _, err := io.Copy(fileWriter, obj.result.Body); err != nil {
+						rtn <- wshutil.RespErr[iochantypes.Packet](err)
+						return
+					}
+				}
+			}
+		}
+	}()
+
 }
 
 func (c S3Client) ListEntries(ctx context.Context, conn *connparse.Connection, opts *wshrpc.FileListOpts) ([]*wshrpc.FileInfo, error) {
@@ -312,6 +472,7 @@ func (c S3Client) Stat(ctx context.Context, conn *connparse.Connection) (*wshrpc
 			IsDir:   true,
 			Size:    -1,
 			ModTime: 0,
+			Path:    fmt.Sprintf("%s://", conn.Scheme),
 		}, nil
 	}
 	if objectKey == "" || objectKey == "/" {
@@ -517,5 +678,4 @@ func getParentPath(conn *connparse.Connection) string {
 		}
 	}
 	return parentPath
-
 }
