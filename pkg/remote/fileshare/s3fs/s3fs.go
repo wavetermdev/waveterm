@@ -154,7 +154,6 @@ func (c S3Client) ListEntries(ctx context.Context, conn *connparse.Connection, o
 	var entries []*wshrpc.FileInfo
 	rtnCh := c.ListEntriesStream(ctx, conn, opts)
 	for respUnion := range rtnCh {
-		log.Printf("respUnion: %v", respUnion)
 		if respUnion.Error != nil {
 			return nil, respUnion.Error
 		}
@@ -175,7 +174,6 @@ func (c S3Client) ListEntriesStream(ctx context.Context, conn *connparse.Connect
 	if conn.Host == "" || conn.Host == "/" {
 		buckets, err := awsconn.ListBuckets(ctx, c.client)
 		if err != nil {
-			log.Printf("error listing buckets: %v", err)
 			return wshutil.SendErrCh[wshrpc.CommandRemoteListEntriesRtnData](err)
 		}
 		var entries []*wshrpc.FileInfo
@@ -226,7 +224,6 @@ func (c S3Client) ListEntriesStream(ctx context.Context, conn *connparse.Connect
 				if err != nil {
 					var noBucket *types.NoSuchBucket
 					if !awsconn.CheckAccessDeniedErr(&err) && errors.As(err, &noBucket) {
-						log.Printf("Bucket %s does not exist.\n", conn.Host)
 						err = noBucket
 					}
 					rtn <- wshutil.RespErr[wshrpc.CommandRemoteListEntriesRtnData](err)
@@ -325,12 +322,8 @@ func (c S3Client) Stat(ctx context.Context, conn *connparse.Connection) (*wshrpc
 					exists = false
 					err = nil
 				default:
-					log.Printf("Either you don't have access to bucket %v or another error occurred. "+
-						"Here's what happened: %v\n", bucketName, err)
 				}
 			}
-		} else {
-			log.Printf("Bucket %v exists and you already own it.", bucketName)
 		}
 
 		if exists {
