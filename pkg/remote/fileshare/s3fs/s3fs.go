@@ -4,6 +4,7 @@
 package s3fs
 
 import (
+	"archive/tar"
 	"bytes"
 	"context"
 	"errors"
@@ -11,6 +12,7 @@ import (
 	"io"
 	"io/fs"
 	"log"
+	"path"
 	"regexp"
 	"strings"
 	"sync"
@@ -569,7 +571,51 @@ func (c S3Client) MoveInternal(ctx context.Context, srcConn, destConn *connparse
 }
 
 func (c S3Client) CopyRemote(ctx context.Context, srcConn, destConn *connparse.Connection, srcClient fstype.FileShareClient, opts *wshrpc.FileCopyOpts) error {
-	return errors.ErrUnsupported
+
+	destBucket := destConn.Host
+	destKey := destConn.Path
+	overwrite := opts != nil && opts.Overwrite
+	merge := opts != nil && opts.Merge
+	if destBucket == "" || destBucket == "/" {
+		return errors.Join(errors.ErrUnsupported, fmt.Errorf("destination bucket must be specified"))
+	}
+	entries, err := c.ListEntries(ctx, destConn, nil)
+	if err != nil {
+		return err
+	}
+	if len(entries) > 1 && !merge {
+		return errors.Join(errors.ErrUnsupported, fmt.Errorf("more than one entry in destination, use merge option to copy to existing directory"))
+	}
+	destPrefix := getPathPrefix(destConn)
+	readCtx, cancel := context.WithCancelCause(ctx)
+	defer cancel(nil)
+	ioch := srcClient.ReadTarStream(readCtx, srcConn, opts)
+	err = tarcopy.TarCopyDest(readCtx, cancel, ioch, func(next *tar.Header, reader *tar.Reader) error {
+		log.Printf("copying %v", next.Name)
+		if next.Typeflag == tar.TypeDir {
+			return nil
+		}
+		fileName, err := cleanPath(path.Join(destPrefix, next.Name))
+		if !overwrite {
+			for _, entry := range entries {
+				if entry.Name == fileName {
+					return fmt.Errorf("destination already exists: %v", fileName)
+				}
+			}
+		}
+		_, err = c.client.PutObject(ctx, &s3.PutObjectInput{
+			Bucket:        aws.String(destBucket),
+			Key:           aws.String(destKey + next.Name),
+			Body:          reader,
+			ContentLength: aws.Int64(next.Size),
+		})
+		return err
+	})
+	if err != nil {
+		cancel(err)
+		return err
+	}
+	return nil
 }
 
 func (c S3Client) CopyInternal(ctx context.Context, srcConn, destConn *connparse.Connection, opts *wshrpc.FileCopyOpts) error {
@@ -678,4 +724,37 @@ func getParentPath(conn *connparse.Connection) string {
 		}
 	}
 	return parentPath
+}
+
+func getPathPrefix(conn *connparse.Connection) string {
+	fullUri := conn.GetFullURI()
+	pathPrefix := fullUri
+	lastSlash := strings.LastIndex(fullUri, "/")
+	if lastSlash > 10 && lastSlash < len(fullUri)-1 {
+		pathPrefix = fullUri[:lastSlash+1]
+	}
+	return pathPrefix
+}
+
+func cleanPath(path string) (string, error) {
+	if path == "" {
+		return "", fmt.Errorf("path is empty")
+	}
+	if strings.HasPrefix(path, "/") {
+		path = path[1:]
+	}
+	if strings.HasPrefix(path, "~") || strings.HasPrefix(path, ".") || strings.HasPrefix(path, "..") {
+		return "", fmt.Errorf("s3 path cannot start with ~, ., or ..")
+	}
+	var newParts []string
+	for _, part := range strings.Split(path, "/") {
+		if part == ".." {
+			if len(newParts) > 0 {
+				newParts = newParts[:len(newParts)-1]
+			}
+		} else if part != "." {
+			newParts = append(newParts, part)
+		}
+	}
+	return strings.Join(newParts, "/"), nil
 }

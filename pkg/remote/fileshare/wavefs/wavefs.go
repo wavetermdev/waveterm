@@ -443,12 +443,21 @@ func (c WaveClient) CopyRemote(ctx context.Context, srcConn, destConn *connparse
 	if zoneId == "" {
 		return fmt.Errorf("zoneid not found in connection")
 	}
+	overwrite := opts != nil && opts.Overwrite
+	merge := opts != nil && opts.Merge
 	destPrefix := getPathPrefix(destConn)
 	destPrefix = strings.TrimPrefix(destPrefix, destConn.GetSchemeAndHost()+"/")
 	log.Printf("CopyRemote: srcConn: %v, destConn: %v, destPrefix: %s\n", srcConn, destConn, destPrefix)
+	entries, err := c.ListEntries(ctx, srcConn, nil)
+	if err != nil {
+		return fmt.Errorf("error listing blockfiles: %w", err)
+	}
+	if len(entries) > 1 && !merge {
+		return fmt.Errorf("more than one entry at destination prefix, use merge flag to copy")
+	}
 	readCtx, cancel := context.WithCancelCause(ctx)
 	ioch := srcClient.ReadTarStream(readCtx, srcConn, opts)
-	err := tarcopy.TarCopyDest(readCtx, cancel, ioch, func(next *tar.Header, reader *tar.Reader) error {
+	err = tarcopy.TarCopyDest(readCtx, cancel, ioch, func(next *tar.Header, reader *tar.Reader) error {
 		if next.Typeflag == tar.TypeDir {
 			return nil
 		}
@@ -456,14 +465,11 @@ func (c WaveClient) CopyRemote(ctx context.Context, srcConn, destConn *connparse
 		if err != nil {
 			return fmt.Errorf("error cleaning path: %w", err)
 		}
-		_, err = filestore.WFS.Stat(ctx, zoneId, fileName)
-		if err != nil {
-			if !errors.Is(err, fs.ErrNotExist) {
-				return fmt.Errorf("error getting blockfile info: %w", err)
-			}
-			err := filestore.WFS.MakeFile(ctx, zoneId, fileName, nil, wshrpc.FileOpts{})
-			if err != nil {
-				return fmt.Errorf("error making blockfile: %w", err)
+		if !overwrite {
+			for _, entry := range entries {
+				if entry.Name == fileName {
+					return fmt.Errorf("destination already exists: %v", fileName)
+				}
 			}
 		}
 		log.Printf("CopyRemote: writing file: %s; size: %d\n", fileName, next.Size)
