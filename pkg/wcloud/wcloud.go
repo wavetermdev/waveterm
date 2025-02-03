@@ -155,7 +155,8 @@ type TEventsInputType struct {
 	Events   []*telemetrydata.TEvent `json:"events"`
 }
 
-const TEventsBatchSize = 100
+const TEventsBatchSize = 200
+const TEventsMaxBatches = 10
 
 // returns (done, num-sent, error)
 func sendTEventsBatch(clientId string) (bool, int, error) {
@@ -202,8 +203,8 @@ func sendTEvents(clientId string) (int, error) {
 		if done {
 			break
 		}
-		if numIters > 10 {
-			log.Printf("hit 10 iterations, stopping\n")
+		if numIters > TEventsMaxBatches {
+			log.Printf("sendTEvents, hit %d iterations, stopping\n", numIters)
 			break
 		}
 	}

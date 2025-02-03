@@ -765,6 +765,7 @@ declare global {
         "ai:backendtype"?: string;
         "wsh:cmd"?: string;
         "wsh:haderror"?: boolean;
+        "conn:conntype"?: string;
         $set?: TEventUserProps;
         $set_once?: TEventUserProps;
     };
