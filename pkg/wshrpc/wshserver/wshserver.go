@@ -27,6 +27,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/remote/conncontroller"
 	"github.com/wavetermdev/waveterm/pkg/remote/fileshare"
 	"github.com/wavetermdev/waveterm/pkg/telemetry"
+	"github.com/wavetermdev/waveterm/pkg/telemetry/telemetrydata"
 	"github.com/wavetermdev/waveterm/pkg/util/envutil"
 	"github.com/wavetermdev/waveterm/pkg/util/iochan/iochantypes"
 	"github.com/wavetermdev/waveterm/pkg/util/shellutil"
@@ -35,6 +36,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/waveai"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
+	"github.com/wavetermdev/waveterm/pkg/wcloud"
 	"github.com/wavetermdev/waveterm/pkg/wconfig"
 	"github.com/wavetermdev/waveterm/pkg/wcore"
 	"github.com/wavetermdev/waveterm/pkg/wps"
@@ -735,12 +737,29 @@ func (ws *WshServer) WorkspaceListCommand(ctx context.Context) ([]wshrpc.Workspa
 	return rtn, nil
 }
 
+func (ws *WshServer) RecordTEventCommand(ctx context.Context, data telemetrydata.TEvent) error {
+	err := telemetry.RecordTEvent(ctx, &data)
+	if err != nil {
+		log.Printf("error recording telemetry event: %v", err)
+	}
+	return err
+}
+
+func (ws WshServer) SendTelemetryCommand(ctx context.Context) error {
+	client, err := wstore.DBGetSingleton[*waveobj.Client](ctx)
+	if err != nil {
+		return fmt.Errorf("getting client data for telemetry: %v", err)
+	}
+	return wcloud.SendAllTelemetry(ctx, client.OID)
+}
+
 var wshActivityRe = regexp.MustCompile(`^[a-z:#]+$`)
 
 func (ws *WshServer) WshActivityCommand(ctx context.Context, data map[string]int) error {
 	if len(data) == 0 {
 		return nil
 	}
+	props := telemetrydata.TEventProps{}
 	for key, value := range data {
 		if len(key) > 20 {
 			delete(data, key)
@@ -751,11 +770,20 @@ func (ws *WshServer) WshActivityCommand(ctx context.Context, data map[string]int
 		if value != 1 {
 			delete(data, key)
 		}
+		if strings.HasSuffix(key, "#error") {
+			props.WshHadError = true
+		} else {
+			props.WshCmd = key
+		}
 	}
 	activityUpdate := wshrpc.ActivityUpdate{
 		WshCmds: data,
 	}
 	telemetry.GoUpdateActivityWrap(activityUpdate, "wsh-activity")
+	telemetry.GoRecordTEventWrap(&telemetrydata.TEvent{
+		Event: "wsh:run",
+		Props: props,
+	})
 	return nil
 }
 

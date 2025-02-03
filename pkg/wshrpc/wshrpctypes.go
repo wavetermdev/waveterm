@@ -13,6 +13,7 @@ import (
 	"reflect"
 
 	"github.com/wavetermdev/waveterm/pkg/ijson"
+	"github.com/wavetermdev/waveterm/pkg/telemetry/telemetrydata"
 	"github.com/wavetermdev/waveterm/pkg/util/iochan/iochantypes"
 	"github.com/wavetermdev/waveterm/pkg/vdom"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
@@ -179,9 +180,11 @@ type WshRpcInterface interface {
 	WaveInfoCommand(ctx context.Context) (*WaveInfoData, error)
 	WshActivityCommand(ct context.Context, data map[string]int) error
 	ActivityCommand(ctx context.Context, data ActivityUpdate) error
+	RecordTEventCommand(ctx context.Context, data telemetrydata.TEvent) error
 	GetVarCommand(ctx context.Context, data CommandVarData) (*CommandVarResponseData, error)
 	SetVarCommand(ctx context.Context, data CommandVarData) error
 	PathCommand(ctx context.Context, data PathCommandData) (string, error)
+	SendTelemetryCommand(ctx context.Context) error
 
 	// connection functions
 	ConnStatusCommand(ctx context.Context) ([]ConnStatus, error)

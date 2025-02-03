@@ -11,7 +11,7 @@ import (
 
 // to log NumPanics into the local telemetry system
 // gets around import cycles
-var PanicTelemetryHandler func()
+var PanicTelemetryHandler func(panicType string)
 
 func PanicHandlerNoTelemetry(debugStr string, recoverVal any) {
 	if recoverVal == nil {
@@ -30,8 +30,10 @@ func PanicHandler(debugStr string, recoverVal any) error {
 	debug.PrintStack()
 	if PanicTelemetryHandler != nil {
 		go func() {
-			defer PanicHandlerNoTelemetry("PanicTelemetryHandler", recover())
-			PanicTelemetryHandler()
+			defer func() {
+				PanicHandlerNoTelemetry("PanicTelemetryHandler", recover())
+			}()
+			PanicTelemetryHandler(debugStr)
 		}()
 	}
 	if err, ok := recoverVal.(error); ok {

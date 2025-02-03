@@ -757,6 +757,57 @@ declare global {
         allscopes?: boolean;
     };
 
+    // telemetrydata.TEvent
+    type TEvent = {
+        uuid?: string;
+        ts?: number;
+        tslocal?: string;
+        event: string;
+        props: TEventProps;
+    };
+
+    // telemetrydata.TEventProps
+    type TEventProps = {
+        "activity:activeminutes"?: number;
+        "activity:fgminutes"?: number;
+        "activity:openminutes"?: number;
+        "action:initiator"?: "keyboard" | "mouse";
+        "debug:panictype"?: string;
+        "block:view"?: string;
+        "ai:backendtype"?: string;
+        "wsh:cmd"?: string;
+        "wsh:haderror"?: boolean;
+        "conn:conntype"?: string;
+        "display:height"?: number;
+        "display:width"?: number;
+        "display:dpr"?: number;
+        "display:count"?: number;
+        "display:all"?: any;
+        "count:blocks"?: number;
+        "count:tabs"?: number;
+        "count:windows"?: number;
+        "count:workspaces"?: number;
+        "count:sshconn"?: number;
+        "count:wslconn"?: number;
+        "count:views"?: {[key: string]: number};
+        $set?: TEventUserProps;
+        $set_once?: TEventUserProps;
+    };
+
+    // telemetrydata.TEventUserProps
+    type TEventUserProps = {
+        "client:arch"?: string;
+        "client:version"?: string;
+        "client:initial_version"?: string;
+        "client:buildtime"?: string;
+        "client:osrelease"?: string;
+        "client:isdev"?: boolean;
+        "autoupdate:channel"?: string;
+        "autoupdate:enabled"?: boolean;
+        "loc:countrycode"?: string;
+        "loc:regioncode"?: string;
+    };
+
     // waveobj.Tab
     type Tab = WaveObj & {
         name: string;

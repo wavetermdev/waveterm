@@ -58,7 +58,7 @@ func streamToLines_processBuf(lineBuf *lineBuf, readBuf []byte, lineFn func([]by
 
 func StreamToLines(input io.Reader, lineFn func([]byte)) error {
 	var lineBuf lineBuf
-	readBuf := make([]byte, 16*1024)
+	readBuf := make([]byte, 64*1024)
 	for {
 		n, err := input.Read(readBuf)
 		streamToLines_processBuf(&lineBuf, readBuf[:n], lineFn)
