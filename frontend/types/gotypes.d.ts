@@ -766,6 +766,11 @@ declare global {
         "wsh:cmd"?: string;
         "wsh:haderror"?: boolean;
         "conn:conntype"?: string;
+        "display:height"?: number;
+        "display:width"?: number;
+        "display:dpr"?: number;
+        "display:count"?: number;
+        "display:all"?: any;
         $set?: TEventUserProps;
         $set_once?: TEventUserProps;
     };

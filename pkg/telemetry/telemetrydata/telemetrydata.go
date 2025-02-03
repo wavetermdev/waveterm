@@ -17,6 +17,7 @@ var ValidEventNames = map[string]bool{
 	"app:startup":        true,
 	"app:shutdown":       true,
 	"app:activity":       true,
+	"app:display":        true,
 	"action:magnify":     true,
 	"action:settabtheme": true,
 	"action:runaicmd":    true,
@@ -69,6 +70,12 @@ type TEventProps struct {
 	WshCmd          string `json:"wsh:cmd,omitempty"`
 	WshHadError     bool   `json:"wsh:haderror,omitempty"`
 	ConnType        string `json:"conn:conntype,omitempty"`
+
+	DisplayHeight int         `json:"display:height,omitempty"`
+	DisplayWidth  int         `json:"display:width,omitempty"`
+	DisplayDPR    float64     `json:"display:dpr,omitempty"`
+	DisplayCount  int         `json:"display:count,omitempty"`
+	DisplayAll    interface{} `json:"display:all,omitempty"`
 
 	UserSet     *TEventUserProps `json:"$set,omitempty"`
 	UserSetOnce *TEventUserProps `json:"$set_once,omitempty"`
