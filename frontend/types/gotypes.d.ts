@@ -771,6 +771,13 @@ declare global {
         "display:dpr"?: number;
         "display:count"?: number;
         "display:all"?: any;
+        "count:blocks"?: number;
+        "count:tabs"?: number;
+        "count:windows"?: number;
+        "count:workspaces"?: number;
+        "count:sshconn"?: number;
+        "count:wslconn"?: number;
+        "count:views"?: {[key: string]: number};
         $set?: TEventUserProps;
         $set_once?: TEventUserProps;
     };

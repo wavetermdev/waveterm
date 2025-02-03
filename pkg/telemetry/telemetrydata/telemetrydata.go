@@ -18,6 +18,7 @@ var ValidEventNames = map[string]bool{
 	"app:shutdown":       true,
 	"app:activity":       true,
 	"app:display":        true,
+	"app:counts":         true,
 	"action:magnify":     true,
 	"action:settabtheme": true,
 	"action:runaicmd":    true,
@@ -76,6 +77,14 @@ type TEventProps struct {
 	DisplayDPR    float64     `json:"display:dpr,omitempty"`
 	DisplayCount  int         `json:"display:count,omitempty"`
 	DisplayAll    interface{} `json:"display:all,omitempty"`
+
+	CountBlocks     int            `json:"count:blocks,omitempty"`
+	CountTabs       int            `json:"count:tabs,omitempty"`
+	CountWindows    int            `json:"count:windows,omitempty"`
+	CountWorkspaces int            `json:"count:workspaces,omitempty"`
+	CountSSHConn    int            `json:"count:sshconn,omitempty"`
+	CountWSLConn    int            `json:"count:wslconn,omitempty"`
+	CountViews      map[string]int `json:"count:views,omitempty"`
 
 	UserSet     *TEventUserProps `json:"$set,omitempty"`
 	UserSetOnce *TEventUserProps `json:"$set_once,omitempty"`

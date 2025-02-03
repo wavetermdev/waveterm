@@ -4,8 +4,28 @@
 package utilfn
 
 import (
+	"bytes"
+	"encoding/json"
 	"reflect"
 )
+
+func CompareAsMarshaledJson(a, b any) bool {
+	if a == nil && b == nil {
+		return true
+	}
+	if a == nil || b == nil {
+		return false
+	}
+	barrA, err := json.Marshal(a)
+	if err != nil {
+		return false
+	}
+	barrB, err := json.Marshal(b)
+	if err != nil {
+		return false
+	}
+	return bytes.Equal(barrA, barrB)
+}
 
 // this is a shallow equal, but with special handling for numeric types
 // it will up convert to float64 and compare
