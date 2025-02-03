@@ -27,6 +27,7 @@ import dayjs from "dayjs";
 import { PrimitiveAtom, atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { OverlayScrollbarsComponent, OverlayScrollbarsComponentRef } from "overlayscrollbars-react";
 import React, { Fragment, memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useDrag, useDrop } from "react-dnd";
 import { quote as shellQuote } from "shell-quote";
 import { debounce } from "throttle-debounce";
 import "./directorypreview.scss";
@@ -652,6 +653,7 @@ function TableBody({
         [setRefreshVersion, conn]
     );
 
+    /*
     const displayRow = useCallback(
         (row: Row<FileInfo>, idx: number) => (
             <div
@@ -680,6 +682,24 @@ function TableBody({
         [setSearch, handleFileContextMenu, setFocusIndex, focusIndex]
     );
 
+    const dragItem: DraggedFile = {
+        relName: "",
+        absParent: "",
+        uri: "",
+    };
+    const [{ isDragging }, drag, dragPreview] = useDrag(
+        () => ({
+            type: "FILE",
+            canDrag: true,
+            item: () => dragItem,
+            collect: (monitor) => ({
+                isDragging: monitor.isDragging(),
+            }),
+        }),
+        []
+    );
+	*/
+
     return (
         <div className="dir-table-body" ref={bodyRef}>
             {search !== "" && (
@@ -695,12 +715,110 @@ function TableBody({
                 <div className="dummy dir-table-body-row" ref={dummyLineRef}>
                     <div className="dir-table-body-cell">dummy-data</div>
                 </div>
-                {table.getTopRows().map(displayRow)}
-                {table.getCenterRows().map((row, idx) => displayRow(row, idx + table.getTopRows().length))}
+                {table.getTopRows().map((row, idx) => (
+                    <TableRow
+                        model={model}
+                        row={row}
+                        focusIndex={focusIndex}
+                        setFocusIndex={setFocusIndex}
+                        setSearch={setSearch}
+                        idx={idx}
+                        handleFileContextMenu={handleFileContextMenu}
+                        ref={(el) => (rowRefs.current[idx] = el)}
+                    />
+                ))}
+                {table.getCenterRows().map((row, idx) => (
+                    <TableRow
+                        model={model}
+                        row={row}
+                        focusIndex={focusIndex}
+                        setFocusIndex={setFocusIndex}
+                        setSearch={setSearch}
+                        idx={idx + table.getTopRows().length}
+                        handleFileContextMenu={handleFileContextMenu}
+                        ref={(el) => (rowRefs.current[idx] = el)}
+                    />
+                ))}
             </div>
         </div>
     );
 }
+
+type TableRowProps = {
+    model: PreviewModel;
+    row: Row<FileInfo>;
+    focusIndex: number;
+    setFocusIndex: (_: number) => void;
+    setSearch: (_: string) => void;
+    idx: number;
+    handleFileContextMenu: (e: any, finfo: FileInfo) => Promise<void>;
+};
+
+const TableRow = React.forwardRef(function (
+    { model, row, focusIndex, setFocusIndex, setSearch, idx, handleFileContextMenu }: TableRowProps,
+    ref: React.RefObject<HTMLDivElement>
+) {
+    const dirPath = useAtomValue(model.normFilePath);
+    const connection = useAtomValue(model.connection);
+    const formatRemoteUri = useCallback(
+        (path: string) => {
+            let conn: string;
+            if (!connection) {
+                conn = "local";
+            } else {
+                conn = connection;
+            }
+            return `wsh://${conn}/${path}`;
+        },
+        [connection]
+    );
+
+    const dragItem: DraggedFile = {
+        relName: row.getValue("name") as string,
+        absParent: dirPath,
+        uri: formatRemoteUri(row.getValue("path") as string),
+    };
+    console.log("drag item is", dragItem);
+    const [{ isDragging }, drag, dragPreview] = useDrag(
+        () => ({
+            type: "FILE",
+            canDrag: true,
+            item: () => dragItem,
+            collect: (monitor) => ({
+                isDragging: monitor.isDragging(),
+            }),
+        }),
+        [dragItem]
+    );
+
+    useEffect(() => {
+        drag(ref.current);
+    }, [drag, ref.current]);
+
+    return (
+        <div
+            className={clsx("dir-table-body-row", { focused: focusIndex === idx })}
+            onDoubleClick={() => {
+                const newFileName = row.getValue("path") as string;
+                model.goHistory(newFileName);
+                setSearch("");
+            }}
+            onClick={() => setFocusIndex(idx)}
+            onContextMenu={(e) => handleFileContextMenu(e, row.original)}
+            ref={ref}
+        >
+            {row.getVisibleCells().map((cell) => (
+                <div
+                    className={clsx("dir-table-body-cell", "col-" + cell.column.id)}
+                    key={cell.id}
+                    style={{ width: `calc(var(--col-${cell.column.id}-size) * 1px)` }}
+                >
+                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                </div>
+            ))}
+        </div>
+    );
+});
 
 const MemoizedTableBody = React.memo(
     TableBody,
@@ -722,6 +840,16 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
     const conn = useAtomValue(model.connection);
     const blockData = useAtomValue(model.blockAtom);
     const dirPath = useAtomValue(model.normFilePath);
+
+    const childAbsPath = useCallback(
+        async (fileName: string) => {
+            const dirAbsInfo = await RpcApi.RemoteFileJoinCommand(TabRpcClient, [dirPath, fileName], {
+                route: makeConnRoute(conn),
+            });
+            return dirAbsInfo.dir;
+        },
+        [dirPath, conn]
+    );
 
     useEffect(() => {
         model.refreshCallback = () => {
@@ -812,6 +940,43 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
             setFocusIndex(filteredData.length - 1);
         }
     }, [filteredData]);
+
+    const [, drop] = useDrop(
+        () => ({
+            accept: "FILE", //a name of file drop type
+            canDrop: (_, monitor) => {
+                const dragItem = monitor.getItem<DraggedFile>();
+                // drop if not current dir is the parent directory of the dragged item
+                // probably requires absolute path
+                if (monitor.isOver({ shallow: true }) && dragItem.absParent !== dirPath) {
+                    //TODO: make sure this allows the right copies. there's potential for this to be slightly off
+                    return true;
+                }
+                return false;
+            },
+            drop: async (draggedFile: DraggedFile, monitor) => {
+                if (!monitor.didDrop()) {
+                    // function to handle the copy operation goes here
+                    const destPath = await childAbsPath(draggedFile.relName);
+                    const opts: FileCopyOpts = {};
+                    const desturi = await model.formatRemoteUri(destPath, globalStore.get);
+                    const data: CommandFileCopyData = {
+                        srcuri: draggedFile.uri,
+                        desturi,
+                        opts,
+                    };
+                    const timeoutYear = 31536000000; // one year
+                    RpcApi.FileCopyCommand(TabRpcClient, data, { timeout: timeoutYear });
+                }
+            },
+            // mabe add a hover option?
+        }),
+        []
+    );
+
+    useEffect(() => {
+        drop(refs.floating);
+    }, []);
 
     const entryManagerPropsAtom = useState(
         atom<EntryManagerOverlayProps>(null) as PrimitiveAtom<EntryManagerOverlayProps>
