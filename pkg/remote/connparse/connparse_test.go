@@ -190,6 +190,54 @@ func TestParseURI_WSHCurrentPathShorthand(t *testing.T) {
 	}
 }
 
+func TestParseURI_WSHCurrentPath(t *testing.T) {
+	cstr := "./Documents/path/to/file"
+	c, err := connparse.ParseURI(cstr)
+	if err != nil {
+		t.Fatalf("failed to parse URI: %v", err)
+	}
+	expected := "./Documents/path/to/file"
+	if c.Path != expected {
+		t.Fatalf("expected path to be %q, got %q", expected, c.Path)
+	}
+	expected = "current"
+	if c.Host != expected {
+		t.Fatalf("expected host to be %q, got %q", expected, c.Host)
+	}
+	expected = "wsh"
+	if c.Scheme != expected {
+		t.Fatalf("expected scheme to be %q, got %q", expected, c.Scheme)
+	}
+	expected = "wsh://current/./Documents/path/to/file"
+	if c.GetFullURI() != expected {
+		t.Fatalf("expected full URI to be %q, got %q", expected, c.GetFullURI())
+	}
+}
+
+func TestParseURI_WSHCurrentPathWindows(t *testing.T) {
+	cstr := ".\\Documents\\path\\to\\file"
+	c, err := connparse.ParseURI(cstr)
+	if err != nil {
+		t.Fatalf("failed to parse URI: %v", err)
+	}
+	expected := ".\\Documents\\path\\to\\file"
+	if c.Path != expected {
+		t.Fatalf("expected path to be %q, got %q", expected, c.Path)
+	}
+	expected = "current"
+	if c.Host != expected {
+		t.Fatalf("expected host to be %q, got %q", expected, c.Host)
+	}
+	expected = "wsh"
+	if c.Scheme != expected {
+		t.Fatalf("expected scheme to be %q, got %q", expected, c.Scheme)
+	}
+	expected = "wsh://current/.\\Documents\\path\\to\\file"
+	if c.GetFullURI() != expected {
+		t.Fatalf("expected full URI to be %q, got %q", expected, c.GetFullURI())
+	}
+}
+
 func TestParseURI_WSHLocalShorthand(t *testing.T) {
 	t.Parallel()
 	cstr := "/~/path/to/file"

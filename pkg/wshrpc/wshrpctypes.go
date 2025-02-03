@@ -13,6 +13,7 @@ import (
 	"reflect"
 
 	"github.com/wavetermdev/waveterm/pkg/ijson"
+	"github.com/wavetermdev/waveterm/pkg/util/iochan/iochantypes"
 	"github.com/wavetermdev/waveterm/pkg/vdom"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wconfig"
@@ -25,7 +26,7 @@ const (
 	// MaxDirSize is the maximum number of entries that can be read in a directory
 	MaxDirSize = 1024
 	// FileChunkSize is the size of the file chunk to read
-	FileChunkSize = 16 * 1024
+	FileChunkSize = 64 * 1024
 	// DirChunkSize is the size of the directory chunk to read
 	DirChunkSize = 128
 )
@@ -65,6 +66,7 @@ const (
 	Command_FileRead             = "fileread"
 	Command_FileMove             = "filemove"
 	Command_FileCopy             = "filecopy"
+	Command_FileStreamTar        = "filestreamtar"
 	Command_EventPublish         = "eventpublish"
 	Command_EventRecv            = "eventrecv"
 	Command_EventSub             = "eventsub"
@@ -150,12 +152,12 @@ type WshRpcInterface interface {
 	WaitForRouteCommand(ctx context.Context, data CommandWaitForRouteData) (bool, error)
 	FileMkdirCommand(ctx context.Context, data FileData) error
 	FileCreateCommand(ctx context.Context, data FileData) error
-	FileDeleteCommand(ctx context.Context, data FileData) error
+	FileDeleteCommand(ctx context.Context, data CommandDeleteFileData) error
 	FileAppendCommand(ctx context.Context, data FileData) error
 	FileAppendIJsonCommand(ctx context.Context, data CommandAppendIJsonData) error
 	FileWriteCommand(ctx context.Context, data FileData) error
 	FileReadCommand(ctx context.Context, data FileData) (*FileData, error)
-	FileStreamTarCommand(ctx context.Context, data CommandRemoteStreamTarData) <-chan RespOrErrorUnion[[]byte]
+	FileStreamTarCommand(ctx context.Context, data CommandRemoteStreamTarData) <-chan RespOrErrorUnion[iochantypes.Packet]
 	FileMoveCommand(ctx context.Context, data CommandFileCopyData) error
 	FileCopyCommand(ctx context.Context, data CommandFileCopyData) error
 	FileInfoCommand(ctx context.Context, data FileData) (*FileInfo, error)
@@ -199,13 +201,13 @@ type WshRpcInterface interface {
 
 	// remotes
 	RemoteStreamFileCommand(ctx context.Context, data CommandRemoteStreamFileData) chan RespOrErrorUnion[FileData]
-	RemoteTarStreamCommand(ctx context.Context, data CommandRemoteStreamTarData) <-chan RespOrErrorUnion[[]byte]
+	RemoteTarStreamCommand(ctx context.Context, data CommandRemoteStreamTarData) <-chan RespOrErrorUnion[iochantypes.Packet]
 	RemoteFileCopyCommand(ctx context.Context, data CommandRemoteFileCopyData) error
 	RemoteListEntriesCommand(ctx context.Context, data CommandRemoteListEntriesData) chan RespOrErrorUnion[CommandRemoteListEntriesRtnData]
 	RemoteFileInfoCommand(ctx context.Context, path string) (*FileInfo, error)
 	RemoteFileTouchCommand(ctx context.Context, path string) error
 	RemoteFileMoveCommand(ctx context.Context, data CommandRemoteFileCopyData) error
-	RemoteFileDeleteCommand(ctx context.Context, path string) error
+	RemoteFileDeleteCommand(ctx context.Context, data CommandDeleteFileData) error
 	RemoteWriteFileCommand(ctx context.Context, data FileData) error
 	RemoteFileJoinCommand(ctx context.Context, paths []string) (*FileInfo, error)
 	RemoteMkdirCommand(ctx context.Context, path string) error
@@ -496,6 +498,11 @@ type CpuDataRequest struct {
 type CpuDataType struct {
 	Time  int64   `json:"time"`
 	Value float64 `json:"value"`
+}
+
+type CommandDeleteFileData struct {
+	Path      string `json:"path"`
+	Recursive bool   `json:"recursive"`
 }
 
 type CommandFileCopyData struct {

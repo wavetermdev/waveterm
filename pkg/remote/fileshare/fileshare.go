@@ -5,12 +5,11 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/wavetermdev/waveterm/pkg/remote/awsconn"
 	"github.com/wavetermdev/waveterm/pkg/remote/connparse"
 	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/fstype"
-	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/s3fs"
 	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/wavefs"
 	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/wshfs"
+	"github.com/wavetermdev/waveterm/pkg/util/iochan/iochantypes"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
 )
@@ -29,12 +28,12 @@ func CreateFileShareClient(ctx context.Context, connection string) (fstype.FileS
 	}
 	conntype := conn.GetType()
 	if conntype == connparse.ConnectionTypeS3 {
-		config, err := awsconn.GetConfig(ctx, connection)
-		if err != nil {
-			log.Printf("error getting aws config: %v", err)
-			return nil, nil
-		}
-		return s3fs.NewS3Client(config), conn
+		// config, err := awsconn.GetConfig(ctx, connection)
+		// if err != nil {
+		// 	log.Printf("error getting aws config: %v", err)
+		// 	return nil, nil
+		// }
+		return nil, nil
 	} else if conntype == connparse.ConnectionTypeWave {
 		return wavefs.NewWaveClient(), conn
 	} else if conntype == connparse.ConnectionTypeWsh {
@@ -61,10 +60,10 @@ func ReadStream(ctx context.Context, data wshrpc.FileData) <-chan wshrpc.RespOrE
 	return client.ReadStream(ctx, conn, data)
 }
 
-func ReadTarStream(ctx context.Context, data wshrpc.CommandRemoteStreamTarData) <-chan wshrpc.RespOrErrorUnion[[]byte] {
+func ReadTarStream(ctx context.Context, data wshrpc.CommandRemoteStreamTarData) <-chan wshrpc.RespOrErrorUnion[iochantypes.Packet] {
 	client, conn := CreateFileShareClient(ctx, data.Path)
 	if conn == nil || client == nil {
-		return wshutil.SendErrCh[[]byte](fmt.Errorf(ErrorParsingConnection, data.Path))
+		return wshutil.SendErrCh[iochantypes.Packet](fmt.Errorf(ErrorParsingConnection, data.Path))
 	}
 	return client.ReadTarStream(ctx, conn, data.Opts)
 }
@@ -110,35 +109,47 @@ func Mkdir(ctx context.Context, path string) error {
 }
 
 func Move(ctx context.Context, data wshrpc.CommandFileCopyData) error {
-	srcConn, err := connparse.ParseURIAndReplaceCurrentHost(ctx, data.SrcUri)
-	if err != nil {
-		return fmt.Errorf("error parsing source connection %s: %v", data.SrcUri, err)
+	srcClient, srcConn := CreateFileShareClient(ctx, data.SrcUri)
+	if srcConn == nil || srcClient == nil {
+		return fmt.Errorf("error creating fileshare client, could not parse source connection %s", data.SrcUri)
 	}
 	destClient, destConn := CreateFileShareClient(ctx, data.DestUri)
 	if destConn == nil || destClient == nil {
-		return fmt.Errorf("error creating fileshare client, could not parse connection %s or %s", data.SrcUri, data.DestUri)
+		return fmt.Errorf("error creating fileshare client, could not parse destination connection %s", data.DestUri)
 	}
-	return destClient.Move(ctx, srcConn, destConn, data.Opts)
+	if srcConn.Host != destConn.Host {
+		err := destClient.CopyRemote(ctx, srcConn, destConn, srcClient, data.Opts)
+		if err != nil {
+			return fmt.Errorf("cannot copy %q to %q: %w", data.SrcUri, data.DestUri, err)
+		}
+		return srcClient.Delete(ctx, srcConn, data.Opts.Recursive)
+	} else {
+		return srcClient.MoveInternal(ctx, srcConn, destConn, data.Opts)
+	}
 }
 
 func Copy(ctx context.Context, data wshrpc.CommandFileCopyData) error {
-	srcConn, err := connparse.ParseURIAndReplaceCurrentHost(ctx, data.SrcUri)
-	if err != nil {
-		return fmt.Errorf("error parsing source connection %s: %v", data.SrcUri, err)
+	srcClient, srcConn := CreateFileShareClient(ctx, data.SrcUri)
+	if srcConn == nil || srcClient == nil {
+		return fmt.Errorf("error creating fileshare client, could not parse source connection %s", data.SrcUri)
 	}
 	destClient, destConn := CreateFileShareClient(ctx, data.DestUri)
 	if destConn == nil || destClient == nil {
-		return fmt.Errorf("error creating fileshare client, could not parse connection %s or %s", data.SrcUri, data.DestUri)
+		return fmt.Errorf("error creating fileshare client, could not parse destination connection %s", data.DestUri)
 	}
-	return destClient.Copy(ctx, srcConn, destConn, data.Opts)
+	if srcConn.Host != destConn.Host {
+		return destClient.CopyRemote(ctx, srcConn, destConn, srcClient, data.Opts)
+	} else {
+		return srcClient.CopyInternal(ctx, srcConn, destConn, data.Opts)
+	}
 }
 
-func Delete(ctx context.Context, path string) error {
-	client, conn := CreateFileShareClient(ctx, path)
+func Delete(ctx context.Context, data wshrpc.CommandDeleteFileData) error {
+	client, conn := CreateFileShareClient(ctx, data.Path)
 	if conn == nil || client == nil {
-		return fmt.Errorf(ErrorParsingConnection, path)
+		return fmt.Errorf(ErrorParsingConnection, data.Path)
 	}
-	return client.Delete(ctx, conn)
+	return client.Delete(ctx, conn, data.Recursive)
 }
 
 func Join(ctx context.Context, path string, parts ...string) (string, error) {

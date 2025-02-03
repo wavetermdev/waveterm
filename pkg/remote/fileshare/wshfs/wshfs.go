@@ -12,6 +12,7 @@ import (
 
 	"github.com/wavetermdev/waveterm/pkg/remote/connparse"
 	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/fstype"
+	"github.com/wavetermdev/waveterm/pkg/util/iochan/iochantypes"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
@@ -86,7 +87,7 @@ func (c WshClient) ReadStream(ctx context.Context, conn *connparse.Connection, d
 	return wshclient.RemoteStreamFileCommand(RpcClient, streamFileData, &wshrpc.RpcOpts{Route: wshutil.MakeConnectionRouteId(conn.Host)})
 }
 
-func (c WshClient) ReadTarStream(ctx context.Context, conn *connparse.Connection, opts *wshrpc.FileCopyOpts) <-chan wshrpc.RespOrErrorUnion[[]byte] {
+func (c WshClient) ReadTarStream(ctx context.Context, conn *connparse.Connection, opts *wshrpc.FileCopyOpts) <-chan wshrpc.RespOrErrorUnion[iochantypes.Packet] {
 	timeout := opts.Timeout
 	if timeout == 0 {
 		timeout = ThirtySeconds
@@ -145,7 +146,10 @@ func (c WshClient) Mkdir(ctx context.Context, conn *connparse.Connection) error 
 	return wshclient.RemoteMkdirCommand(RpcClient, conn.Path, &wshrpc.RpcOpts{Route: wshutil.MakeConnectionRouteId(conn.Host)})
 }
 
-func (c WshClient) Move(ctx context.Context, srcConn, destConn *connparse.Connection, opts *wshrpc.FileCopyOpts) error {
+func (c WshClient) MoveInternal(ctx context.Context, srcConn, destConn *connparse.Connection, opts *wshrpc.FileCopyOpts) error {
+	if srcConn.Host != destConn.Host {
+		return fmt.Errorf("move internal, src and dest hosts do not match")
+	}
 	if opts == nil {
 		opts = &wshrpc.FileCopyOpts{}
 	}
@@ -156,7 +160,11 @@ func (c WshClient) Move(ctx context.Context, srcConn, destConn *connparse.Connec
 	return wshclient.RemoteFileMoveCommand(RpcClient, wshrpc.CommandRemoteFileCopyData{SrcUri: srcConn.GetFullURI(), DestUri: destConn.GetFullURI(), Opts: opts}, &wshrpc.RpcOpts{Route: wshutil.MakeConnectionRouteId(destConn.Host), Timeout: timeout})
 }
 
-func (c WshClient) Copy(ctx context.Context, srcConn, destConn *connparse.Connection, opts *wshrpc.FileCopyOpts) error {
+func (c WshClient) CopyRemote(ctx context.Context, srcConn, destConn *connparse.Connection, _ fstype.FileShareClient, opts *wshrpc.FileCopyOpts) error {
+	return c.CopyInternal(ctx, srcConn, destConn, opts)
+}
+
+func (c WshClient) CopyInternal(ctx context.Context, srcConn, destConn *connparse.Connection, opts *wshrpc.FileCopyOpts) error {
 	if opts == nil {
 		opts = &wshrpc.FileCopyOpts{}
 	}
@@ -167,8 +175,8 @@ func (c WshClient) Copy(ctx context.Context, srcConn, destConn *connparse.Connec
 	return wshclient.RemoteFileCopyCommand(RpcClient, wshrpc.CommandRemoteFileCopyData{SrcUri: srcConn.GetFullURI(), DestUri: destConn.GetFullURI(), Opts: opts}, &wshrpc.RpcOpts{Route: wshutil.MakeConnectionRouteId(destConn.Host), Timeout: timeout})
 }
 
-func (c WshClient) Delete(ctx context.Context, conn *connparse.Connection) error {
-	return wshclient.RemoteFileDeleteCommand(RpcClient, conn.Path, &wshrpc.RpcOpts{Route: wshutil.MakeConnectionRouteId(conn.Host)})
+func (c WshClient) Delete(ctx context.Context, conn *connparse.Connection, recursive bool) error {
+	return wshclient.RemoteFileDeleteCommand(RpcClient, wshrpc.CommandDeleteFileData{Path: conn.Path, Recursive: recursive}, &wshrpc.RpcOpts{Route: wshutil.MakeConnectionRouteId(conn.Host)})
 }
 
 func (c WshClient) Join(ctx context.Context, conn *connparse.Connection, parts ...string) (string, error) {

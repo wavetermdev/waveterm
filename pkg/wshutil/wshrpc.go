@@ -736,21 +736,21 @@ func (w *WshRpc) setServerDone() {
 }
 
 func (w *WshRpc) retrySendTimeout(resId string) {
+	done := func() bool {
+		w.Lock.Lock()
+		defer w.Lock.Unlock()
+		if w.ServerDone {
+			return true
+		}
+		select {
+		case w.CtxDoneCh <- resId:
+			return true
+		default:
+			return false
+		}
+	}
 	for {
-		done := func() bool {
-			w.Lock.Lock()
-			defer w.Lock.Unlock()
-			if w.ServerDone {
-				return true
-			}
-			select {
-			case w.CtxDoneCh <- resId:
-				return true
-			default:
-				return false
-			}
-		}()
-		if done {
+		if done() {
 			return
 		}
 		time.Sleep(100 * time.Millisecond)

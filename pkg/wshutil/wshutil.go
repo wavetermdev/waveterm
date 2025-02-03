@@ -484,6 +484,8 @@ func handleDomainSocketClient(conn net.Conn) {
 		}()
 		defer func() {
 			conn.Close()
+			close(proxy.FromRemoteCh)
+			close(proxy.ToRemoteCh)
 			routeIdPtr := routeIdContainer.Load()
 			if routeIdPtr != nil && *routeIdPtr != "" {
 				DefaultRouter.UnregisterRoute(*routeIdPtr)

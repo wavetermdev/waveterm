@@ -2,7 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { BlockNodeModel } from "@/app/block/blocktypes";
-import { getApi } from "@/app/store/global";
+import { getApi, globalStore, WOS } from "@/app/store/global";
+import { RpcApi } from "@/app/store/wshclientapi";
+import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { WebView, WebViewModel } from "@/app/view/webview/webview";
 import { fireAndForget } from "@/util/util";
 import { atom, useAtomValue } from "jotai";
@@ -59,7 +61,61 @@ class HelpViewModel extends WebViewModel {
         };
     }
 
+    setZoomFactor(factor: number | null) {
+        // null is ok (will reset to default)
+        if (factor != null && factor < 0.1) {
+            factor = 0.1;
+        }
+        if (factor != null && factor > 5) {
+            factor = 5;
+        }
+        const domReady = globalStore.get(this.domReady);
+        if (!domReady) {
+            return;
+        }
+        this.webviewRef.current?.setZoomFactor(factor || 1);
+        RpcApi.SetMetaCommand(TabRpcClient, {
+            oref: WOS.makeORef("block", this.blockId),
+            meta: { "web:zoom": factor }, // allow null so we can remove the zoom factor here
+        });
+    }
+
     getSettingsMenuItems(): ContextMenuItem[] {
+        const zoomSubMenu: ContextMenuItem[] = [];
+        let curZoom = 1;
+        if (globalStore.get(this.domReady)) {
+            curZoom = this.webviewRef.current?.getZoomFactor() || 1;
+        }
+        const model = this; // for the closure to work (this is getting unset)
+        function makeZoomFactorMenuItem(label: string, factor: number): ContextMenuItem {
+            return {
+                label: label,
+                type: "checkbox",
+                click: () => {
+                    model.setZoomFactor(factor);
+                },
+                checked: curZoom == factor,
+            };
+        }
+        zoomSubMenu.push({
+            label: "Reset",
+            click: () => {
+                model.setZoomFactor(null);
+            },
+        });
+        zoomSubMenu.push(makeZoomFactorMenuItem("25%", 0.25));
+        zoomSubMenu.push(makeZoomFactorMenuItem("50%", 0.5));
+        zoomSubMenu.push(makeZoomFactorMenuItem("70%", 0.7));
+        zoomSubMenu.push(makeZoomFactorMenuItem("80%", 0.8));
+        zoomSubMenu.push(makeZoomFactorMenuItem("90%", 0.9));
+        zoomSubMenu.push(makeZoomFactorMenuItem("100%", 1));
+        zoomSubMenu.push(makeZoomFactorMenuItem("110%", 1.1));
+        zoomSubMenu.push(makeZoomFactorMenuItem("120%", 1.2));
+        zoomSubMenu.push(makeZoomFactorMenuItem("130%", 1.3));
+        zoomSubMenu.push(makeZoomFactorMenuItem("150%", 1.5));
+        zoomSubMenu.push(makeZoomFactorMenuItem("175%", 1.75));
+        zoomSubMenu.push(makeZoomFactorMenuItem("200%", 2));
+
         return [
             {
                 label: this.webviewRef.current?.isDevToolsOpened() ? "Close DevTools" : "Open DevTools",
@@ -72,6 +128,10 @@ class HelpViewModel extends WebViewModel {
                         }
                     }
                 },
+            },
+            {
+                label: "Set Zoom Factor",
+                submenu: zoomSubMenu,
             },
         ];
     }
