@@ -1224,6 +1224,7 @@ declare global {
     // wconfig.WidgetConfigType
     type WidgetConfigType = {
         "display:order"?: number;
+        "display:hidden"?: boolean;
         icon?: string;
         color?: string;
         label?: string;
