@@ -12,6 +12,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/wavetermdev/waveterm/pkg/eventbus"
 	"github.com/wavetermdev/waveterm/pkg/telemetry"
+	"github.com/wavetermdev/waveterm/pkg/telemetry/telemetrydata"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wconfig"
@@ -236,6 +237,9 @@ func CreateTab(ctx context.Context, workspaceId string, tabName string, activate
 		}
 	}
 	telemetry.GoUpdateActivityWrap(wshrpc.ActivityUpdate{NewTab: 1}, "createtab")
+	telemetry.GoRecordTEventWrap(&telemetrydata.TEvent{
+		Event: "action:createtab",
+	})
 	return tab.OID, nil
 }
 

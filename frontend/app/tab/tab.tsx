@@ -1,7 +1,7 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { atoms, globalStore, refocusNode } from "@/app/store/global";
+import { atoms, globalStore, recordTEvent, refocusNode } from "@/app/store/global";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { Button } from "@/element/button";
@@ -183,7 +183,8 @@ const Tab = memo(
                                 click: () =>
                                     fireAndForget(async () => {
                                         await ObjectService.UpdateObjectMeta(oref, preset);
-                                        await RpcApi.ActivityCommand(TabRpcClient, { settabtheme: 1 });
+                                        RpcApi.ActivityCommand(TabRpcClient, { settabtheme: 1 }, { noresponse: true });
+                                        recordTEvent("action:settabtheme");
                                     }),
                             });
                         }

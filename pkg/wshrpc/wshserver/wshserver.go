@@ -758,6 +758,7 @@ func (ws *WshServer) WshActivityCommand(ctx context.Context, data map[string]int
 	if len(data) == 0 {
 		return nil
 	}
+	props := telemetrydata.TEventProps{}
 	for key, value := range data {
 		if len(key) > 20 {
 			delete(data, key)
@@ -768,11 +769,20 @@ func (ws *WshServer) WshActivityCommand(ctx context.Context, data map[string]int
 		if value != 1 {
 			delete(data, key)
 		}
+		if strings.HasSuffix(key, "#error") {
+			props.WshHadError = true
+		} else {
+			props.WshCmd = key
+		}
 	}
 	activityUpdate := wshrpc.ActivityUpdate{
 		WshCmds: data,
 	}
 	telemetry.GoUpdateActivityWrap(activityUpdate, "wsh-activity")
+	telemetry.GoRecordTEventWrap(&telemetrydata.TEvent{
+		Event: "wsh:run",
+		Props: props,
+	})
 	return nil
 }
 

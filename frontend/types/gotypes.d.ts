@@ -756,10 +756,15 @@ declare global {
 
     // telemetrydata.TEventProps
     type TEventProps = {
-        TEventUserProps: TEventUserProps;
         "activity:activeminutes"?: number;
         "activity:fgminutes"?: number;
         "activity:openminutes"?: number;
+        "action:initiator"?: "keyboard" | "mouse";
+        "debug:panictype"?: string;
+        "block:view"?: string;
+        "ai:backendtype"?: string;
+        "wsh:cmd"?: string;
+        "wsh:haderror"?: boolean;
         $set?: TEventUserProps;
         $set_once?: TEventUserProps;
     };

@@ -102,12 +102,15 @@ func telemetryLoop() {
 	}
 }
 
-func panicTelemetryHandler() {
+func panicTelemetryHandler(panicName string) {
 	activity := wshrpc.ActivityUpdate{NumPanics: 1}
 	err := telemetry.UpdateActivity(context.Background(), activity)
 	if err != nil {
 		log.Printf("error updating activity (panicTelemetryHandler): %v\n", err)
 	}
+	telemetry.RecordTEvent(context.Background(), telemetrydata.MakeTEvent("debug:panic", telemetrydata.TEventProps{
+		PanicType: panicName,
+	}))
 }
 
 func sendTelemetryWrapper() {

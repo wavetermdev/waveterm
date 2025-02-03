@@ -14,9 +14,16 @@ import (
 )
 
 var ValidEventNames = map[string]bool{
-	"app:startup":  true,
-	"app:shutdown": true,
-	"app:activity": true,
+	"app:startup":        true,
+	"app:shutdown":       true,
+	"app:activity":       true,
+	"action:magnify":     true,
+	"action:settabtheme": true,
+	"action:runaicmd":    true,
+	"action:createtab":   true,
+	"action:createblock": true,
+	"wsh:run":            true,
+	"debug:panic":        true,
 }
 
 type TEvent struct {
@@ -47,11 +54,18 @@ type TEventUserProps struct {
 }
 
 type TEventProps struct {
-	TEventUserProps // generally don't need to set these since they will be automatically copied over
+	TEventUserProps `tstype:"-"` // generally don't need to set these since they will be automatically copied over
 
 	ActiveMinutes int `json:"activity:activeminutes,omitempty"`
 	FgMinutes     int `json:"activity:fgminutes,omitempty"`
 	OpenMinutes   int `json:"activity:openminutes,omitempty"`
+
+	ActionInitiator string `json:"action:initiator,omitempty" tstype:"\"keyboard\" | \"mouse\""`
+	PanicType       string `json:"debug:panictype,omitempty"`
+	BlockView       string `json:"block:view,omitempty"`
+	AiBackendType   string `json:"ai:backendtype,omitempty"`
+	WshCmd          string `json:"wsh:cmd,omitempty"`
+	WshHadError     bool   `json:"wsh:haderror,omitempty"`
 
 	UserSet     *TEventUserProps `json:"$set,omitempty"`
 	UserSetOnce *TEventUserProps `json:"$set_once,omitempty"`
