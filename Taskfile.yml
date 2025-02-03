@@ -114,6 +114,18 @@ tasks:
             - task: build:server
             - task: build:wsh
 
+    build:schema:
+        desc: Build the schema for configuration.
+        sources:
+            - "cmd/generateschema/*.go"
+            - "pkg/wconfig/*.go"
+        generates:
+            - "dist/schema/**/*"
+        cmds:
+            - go run cmd/generateschema/main-generateschema.go
+            - '{{.RMRF}} "dist/schema"'
+            - task: copyfiles:'schema':'dist/schema'
+
     build:server:
         desc: Build the wavesrv component.
         cmds:
@@ -243,6 +255,8 @@ tasks:
         cmds:
             - go run cmd/generatets/main-generatets.go
             - go run cmd/generatego/main-generatego.go
+        deps:
+            - build:schema
         sources:
             - "cmd/generatego/*.go"
             - "cmd/generatets/*.go"

@@ -9,11 +9,15 @@ import type * as MonacoTypes from "monaco-editor/esm/vs/editor/editor.api";
 import { configureMonacoYaml } from "monaco-yaml";
 import React, { useMemo, useRef } from "react";
 
+import { RpcApi } from "@/app/store/wshclientapi";
+import { TabRpcClient } from "@/app/store/wshrpcutil";
+import { makeConnRoute } from "@/util/util";
 import editorWorker from "monaco-editor/esm/vs/editor/editor.worker?worker";
 import cssWorker from "monaco-editor/esm/vs/language/css/css.worker?worker";
 import htmlWorker from "monaco-editor/esm/vs/language/html/html.worker?worker";
 import jsonWorker from "monaco-editor/esm/vs/language/json/json.worker?worker";
 import tsWorker from "monaco-editor/esm/vs/language/typescript/ts.worker?worker";
+import { SchemaEndpoints, getSchemaEndpointInfo } from "./schemaendpoints";
 import ymlWorker from "./yamlworker?worker";
 
 import "./codeeditor.scss";
@@ -42,48 +46,45 @@ window.MonacoEnvironment = {
     },
 };
 
-export function loadMonaco() {
+export async function loadMonaco() {
     loader.config({ paths: { vs: "monaco" } });
-    loader
-        .init()
-        .then(() => {
-            monaco.editor.defineTheme("wave-theme-dark", {
-                base: "vs-dark",
-                inherit: true,
-                rules: [],
-                colors: {
-                    "editor.background": "#00000000",
-                    "editorStickyScroll.background": "#00000055",
-                    "minimap.background": "#00000077",
-                    focusBorder: "#00000000",
-                },
-            });
-            monaco.editor.defineTheme("wave-theme-light", {
-                base: "vs",
-                inherit: true,
-                rules: [],
-                colors: {
-                    "editor.background": "#fefefe",
-                    focusBorder: "#00000000",
-                },
-            });
-            configureMonacoYaml(monaco, {
-                validate: true,
-                schemas: [],
-            });
-            // Disable default validation errors for typescript and javascript
-            monaco.languages.typescript.typescriptDefaults.setDiagnosticsOptions({
-                noSemanticValidation: true,
-            });
-            monaco.languages.json.jsonDefaults.setDiagnosticsOptions({
-                validate: true,
-                allowComments: false, // Set to true if you want to allow comments in JSON
-                schemas: [], // You can specify JSON schemas here if needed
-            });
-        })
-        .catch((e) => {
-            console.error("error loading monaco", e);
-        });
+    await loader.init();
+
+    monaco.editor.defineTheme("wave-theme-dark", {
+        base: "vs-dark",
+        inherit: true,
+        rules: [],
+        colors: {
+            "editor.background": "#00000000",
+            "editorStickyScroll.background": "#00000055",
+            "minimap.background": "#00000077",
+            focusBorder: "#00000000",
+        },
+    });
+    monaco.editor.defineTheme("wave-theme-light", {
+        base: "vs",
+        inherit: true,
+        rules: [],
+        colors: {
+            "editor.background": "#fefefe",
+            focusBorder: "#00000000",
+        },
+    });
+    configureMonacoYaml(monaco, {
+        validate: true,
+        schemas: [],
+    });
+    // Disable default validation errors for typescript and javascript
+    monaco.languages.typescript.typescriptDefaults.setDiagnosticsOptions({
+        noSemanticValidation: true,
+    });
+    const schemas = await Promise.all(SchemaEndpoints.map((endpoint) => getSchemaEndpointInfo(endpoint)));
+    monaco.languages.json.jsonDefaults.setDiagnosticsOptions({
+        validate: true,
+        allowComments: false, // Set to true if you want to allow comments in JSON
+        enableSchemaRequest: true,
+        schemas,
+    });
 }
 
 function defaultEditorOptions(): MonacoTypes.editor.IEditorOptions {
@@ -125,6 +126,7 @@ export function CodeEditor({ blockId, text, language, filename, meta, onChange, 
     const wordWrap = useOverrideConfigAtom(blockId, "editor:wordwrap") ?? false;
     const fontSize = boundNumber(useOverrideConfigAtom(blockId, "editor:fontsize"), 6, 64);
     const theme = "wave-theme-dark";
+    const [absPath, setAbsPath] = React.useState("");
 
     React.useEffect(() => {
         return () => {
@@ -134,6 +136,24 @@ export function CodeEditor({ blockId, text, language, filename, meta, onChange, 
             }
         };
     }, []);
+
+    React.useEffect(() => {
+        const inner = async () => {
+            try {
+                const fileInfo = await RpcApi.RemoteFileJoinCommand(TabRpcClient, [filename], {
+                    route: makeConnRoute(meta.connection ?? ""),
+                });
+                setAbsPath(`${fileInfo.dir}/${fileInfo.name}`);
+            } catch (e) {
+                setAbsPath(filename);
+            }
+        };
+        inner();
+    }, [filename]);
+
+    React.useEffect(() => {
+        console.log("abspath is", absPath);
+    }, [absPath]);
 
     function handleEditorChange(text: string, ev: MonacoTypes.editor.IModelContentChangedEvent) {
         if (onChange) {
@@ -165,7 +185,7 @@ export function CodeEditor({ blockId, text, language, filename, meta, onChange, 
                     options={editorOpts}
                     onChange={handleEditorChange}
                     onMount={handleEditorOnMount}
-                    path={filename}
+                    path={absPath}
                     language={language}
                 />
             </div>
