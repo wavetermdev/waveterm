@@ -183,7 +183,7 @@ const BlockFrame_Header = ({
             return;
         }
         RpcApi.ActivityCommand(TabRpcClient, { nummagnify: 1 });
-        recordTEvent("action:magnify");
+        recordTEvent("action:magnify", { "block:view": viewName });
     }, [magnified]);
 
     if (blockData?.meta?.["frame:title"]) {
