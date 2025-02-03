@@ -74,8 +74,8 @@ const SpecializedViewMap: { [view: string]: ({ model }: SpecializedViewProps) =>
 
 const textApplicationMimetypes = [
     "application/sql",
-    "application/pem-certificate-chain",
     "application/x-php",
+    "application/x-pem-file",
     "application/x-httpd-php",
     "application/liquid",
     "application/graphql",

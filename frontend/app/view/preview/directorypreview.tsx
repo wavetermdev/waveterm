@@ -639,9 +639,8 @@ function TableBody({
                     click: () => {
                         fireAndForget(async () => {
                             await RpcApi.FileDeleteCommand(TabRpcClient, {
-                                info: {
-                                    path: await model.formatRemoteUri(finfo.path, globalStore.get),
-                                },
+                                path: await model.formatRemoteUri(finfo.path, globalStore.get),
+                                recursive: false,
                             }).catch((e) => console.log(e));
                             setRefreshVersion((current) => current + 1);
                         });

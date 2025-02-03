@@ -5,6 +5,7 @@ package s3fs
 
 import (
 	"context"
+	"errors"
 	"log"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -12,6 +13,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/remote/awsconn"
 	"github.com/wavetermdev/waveterm/pkg/remote/connparse"
 	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/fstype"
+	"github.com/wavetermdev/waveterm/pkg/util/iochan/iochantypes"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
 )
@@ -29,15 +31,15 @@ func NewS3Client(config *aws.Config) *S3Client {
 }
 
 func (c S3Client) Read(ctx context.Context, conn *connparse.Connection, data wshrpc.FileData) (*wshrpc.FileData, error) {
-	return nil, nil
+	return nil, errors.ErrUnsupported
 }
 
 func (c S3Client) ReadStream(ctx context.Context, conn *connparse.Connection, data wshrpc.FileData) <-chan wshrpc.RespOrErrorUnion[wshrpc.FileData] {
-	return nil
+	return wshutil.SendErrCh[wshrpc.FileData](errors.ErrUnsupported)
 }
 
-func (c S3Client) ReadTarStream(ctx context.Context, conn *connparse.Connection, opts *wshrpc.FileCopyOpts) <-chan wshrpc.RespOrErrorUnion[[]byte] {
-	return nil
+func (c S3Client) ReadTarStream(ctx context.Context, conn *connparse.Connection, opts *wshrpc.FileCopyOpts) <-chan wshrpc.RespOrErrorUnion[iochantypes.Packet] {
+	return wshutil.SendErrCh[iochantypes.Packet](errors.ErrUnsupported)
 }
 
 func (c S3Client) ListEntriesStream(ctx context.Context, conn *connparse.Connection, opts *wshrpc.FileListOpts) <-chan wshrpc.RespOrErrorUnion[wshrpc.CommandRemoteListEntriesRtnData] {
@@ -82,35 +84,39 @@ func (c S3Client) ListEntries(ctx context.Context, conn *connparse.Connection, o
 }
 
 func (c S3Client) Stat(ctx context.Context, conn *connparse.Connection) (*wshrpc.FileInfo, error) {
-	return nil, nil
+	return nil, errors.ErrUnsupported
 }
 
 func (c S3Client) PutFile(ctx context.Context, conn *connparse.Connection, data wshrpc.FileData) error {
-	return nil
+	return errors.ErrUnsupported
 }
 
 func (c S3Client) AppendFile(ctx context.Context, conn *connparse.Connection, data wshrpc.FileData) error {
-	return nil
+	return errors.ErrUnsupported
 }
 
 func (c S3Client) Mkdir(ctx context.Context, conn *connparse.Connection) error {
-	return nil
+	return errors.ErrUnsupported
 }
 
-func (c S3Client) Move(ctx context.Context, srcConn, destConn *connparse.Connection, opts *wshrpc.FileCopyOpts) error {
-	return nil
+func (c S3Client) MoveInternal(ctx context.Context, srcConn, destConn *connparse.Connection, opts *wshrpc.FileCopyOpts) error {
+	return errors.ErrUnsupported
 }
 
-func (c S3Client) Copy(ctx context.Context, srcConn, destConn *connparse.Connection, opts *wshrpc.FileCopyOpts) error {
-	return nil
+func (c S3Client) CopyRemote(ctx context.Context, srcConn, destConn *connparse.Connection, srcClient fstype.FileShareClient, opts *wshrpc.FileCopyOpts) error {
+	return errors.ErrUnsupported
 }
 
-func (c S3Client) Delete(ctx context.Context, conn *connparse.Connection) error {
-	return nil
+func (c S3Client) CopyInternal(ctx context.Context, srcConn, destConn *connparse.Connection, opts *wshrpc.FileCopyOpts) error {
+	return errors.ErrUnsupported
+}
+
+func (c S3Client) Delete(ctx context.Context, conn *connparse.Connection, recursive bool) error {
+	return errors.ErrUnsupported
 }
 
 func (c S3Client) Join(ctx context.Context, conn *connparse.Connection, parts ...string) (string, error) {
-	return "", nil
+	return "", errors.ErrUnsupported
 }
 
 func (c S3Client) GetConnectionType() string {

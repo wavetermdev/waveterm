@@ -29,6 +29,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/telemetry"
 	"github.com/wavetermdev/waveterm/pkg/telemetry/telemetrydata"
 	"github.com/wavetermdev/waveterm/pkg/util/envutil"
+	"github.com/wavetermdev/waveterm/pkg/util/iochan/iochantypes"
 	"github.com/wavetermdev/waveterm/pkg/util/shellutil"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/util/wavefileutil"
@@ -309,8 +310,8 @@ func (ws *WshServer) FileMkdirCommand(ctx context.Context, data wshrpc.FileData)
 	return fileshare.Mkdir(ctx, data.Info.Path)
 }
 
-func (ws *WshServer) FileDeleteCommand(ctx context.Context, data wshrpc.FileData) error {
-	return fileshare.Delete(ctx, data.Info.Path)
+func (ws *WshServer) FileDeleteCommand(ctx context.Context, data wshrpc.CommandDeleteFileData) error {
+	return fileshare.Delete(ctx, data)
 }
 
 func (ws *WshServer) FileInfoCommand(ctx context.Context, data wshrpc.FileData) (*wshrpc.FileInfo, error) {
@@ -341,7 +342,7 @@ func (ws *WshServer) FileMoveCommand(ctx context.Context, data wshrpc.CommandFil
 	return fileshare.Move(ctx, data)
 }
 
-func (ws *WshServer) FileStreamTarCommand(ctx context.Context, data wshrpc.CommandRemoteStreamTarData) <-chan wshrpc.RespOrErrorUnion[[]byte] {
+func (ws *WshServer) FileStreamTarCommand(ctx context.Context, data wshrpc.CommandRemoteStreamTarData) <-chan wshrpc.RespOrErrorUnion[iochantypes.Packet] {
 	return fileshare.ReadTarStream(ctx, data)
 }
 

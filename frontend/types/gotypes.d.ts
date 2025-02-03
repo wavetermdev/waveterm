@@ -166,6 +166,12 @@ declare global {
         blockid: string;
     };
 
+    // wshrpc.CommandDeleteFileData
+    type CommandDeleteFileData = {
+        path: string;
+        recursive: boolean;
+    };
+
     // wshrpc.CommandDisposeData
     type CommandDisposeData = {
         routeid: string;
@@ -582,6 +588,12 @@ declare global {
 
     // waveobj.ORef
     type ORef = string;
+
+    // iochantypes.Packet
+    type Packet = {
+        Data: string;
+        Checksum: string;
+    };
 
     // wshrpc.PathCommandData
     type PathCommandData = {
