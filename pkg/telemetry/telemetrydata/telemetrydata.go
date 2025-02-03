@@ -24,6 +24,8 @@ var ValidEventNames = map[string]bool{
 	"action:createblock": true,
 	"wsh:run":            true,
 	"debug:panic":        true,
+	"conn:connect":       true,
+	"conn:connecterror":  true,
 }
 
 type TEvent struct {
@@ -66,6 +68,7 @@ type TEventProps struct {
 	AiBackendType   string `json:"ai:backendtype,omitempty"`
 	WshCmd          string `json:"wsh:cmd,omitempty"`
 	WshHadError     bool   `json:"wsh:haderror,omitempty"`
+	ConnType        string `json:"conn:conntype,omitempty"`
 
 	UserSet     *TEventUserProps `json:"$set,omitempty"`
 	UserSetOnce *TEventUserProps `json:"$set_once,omitempty"`

@@ -25,6 +25,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/remote"
 	"github.com/wavetermdev/waveterm/pkg/telemetry"
+	"github.com/wavetermdev/waveterm/pkg/telemetry/telemetrydata"
 	"github.com/wavetermdev/waveterm/pkg/userinput"
 	"github.com/wavetermdev/waveterm/pkg/util/shellutil"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
@@ -556,6 +557,12 @@ func (conn *SSHConn) Connect(ctx context.Context, connFlags *wconfig.ConnKeyword
 			telemetry.GoUpdateActivityWrap(wshrpc.ActivityUpdate{
 				Conn: map[string]int{"ssh:connecterror": 1},
 			}, "ssh-connconnect")
+			telemetry.GoRecordTEventWrap(&telemetrydata.TEvent{
+				Event: "conn:connecterror",
+				Props: telemetrydata.TEventProps{
+					ConnType: "ssh",
+				},
+			})
 		} else {
 			conn.Infof(ctx, "successfully connected (wsh:%v)\n\n", conn.WshEnabled.Load())
 			conn.Status = Status_Connected
@@ -566,6 +573,12 @@ func (conn *SSHConn) Connect(ctx context.Context, connFlags *wconfig.ConnKeyword
 			telemetry.GoUpdateActivityWrap(wshrpc.ActivityUpdate{
 				Conn: map[string]int{"ssh:connect": 1},
 			}, "ssh-connconnect")
+			telemetry.GoRecordTEventWrap(&telemetrydata.TEvent{
+				Event: "conn:connect",
+				Props: telemetrydata.TEventProps{
+					ConnType: "ssh",
+				},
+			})
 		}
 	})
 	conn.FireConnChangeEvent()
