@@ -124,6 +124,7 @@ tasks:
         cmds:
             - go run cmd/generateschema/main-generateschema.go
             - '{{.RMRF}} "dist/schema"'
+              ignore_error: true
             - task: copyfiles:'schema':'dist/schema'
 
     build:server:
