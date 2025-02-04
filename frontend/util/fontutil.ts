@@ -2,10 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 let isJetBrainsMonoLoaded = false;
-let isLatoFontLoaded = false;
 let isHackFontLoaded = false;
 let isHackNerdFontLoaded = false;
-let isFiraCodeLoaded = false;
 let isInterFontLoaded = false;
 
 function addToFontFaceSet(fontFaceSet: FontFaceSet, fontFace: FontFace) {
@@ -36,44 +34,6 @@ function loadJetBrainsMonoFont() {
     jbmFontNormal.load();
     jbmFont200.load();
     jbmFont700.load();
-}
-
-function loadLatoFont() {
-    if (isLatoFontLoaded) {
-        return;
-    }
-    isLatoFontLoaded = true;
-    const latoFont = new FontFace("Lato", "url('fonts/lato-regular.woff')", {
-        style: "normal",
-        weight: "400",
-    });
-    const latoFontBold = new FontFace("Lato", "url('fonts/lato-bold.woff')", {
-        style: "normal",
-        weight: "700",
-    });
-    addToFontFaceSet(document.fonts, latoFont);
-    addToFontFaceSet(document.fonts, latoFontBold);
-    latoFont.load();
-    latoFontBold.load();
-}
-
-function loadFiraCodeFont() {
-    if (isFiraCodeLoaded) {
-        return;
-    }
-    isFiraCodeLoaded = true;
-    const firaCodeRegular = new FontFace("Fira Code", "url('fonts/firacode-regular.woff2')", {
-        style: "normal",
-        weight: "400",
-    });
-    const firaCodeBold = new FontFace("Fira Code", "url('fonts/firacode-bold.woff2')", {
-        style: "normal",
-        weight: "700",
-    });
-    addToFontFaceSet(document.fonts, firaCodeRegular);
-    addToFontFaceSet(document.fonts, firaCodeBold);
-    firaCodeRegular.load();
-    firaCodeBold.load();
 }
 
 function loadHackNerdFont() {
@@ -124,7 +84,6 @@ function loadFonts() {
     loadInterFont();
     loadJetBrainsMonoFont();
     loadHackNerdFont();
-    loadFiraCodeFont();
 }
 
 export { loadFonts };
