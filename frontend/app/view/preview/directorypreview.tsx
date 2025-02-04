@@ -725,6 +725,7 @@ function TableBody({
                         idx={idx}
                         handleFileContextMenu={handleFileContextMenu}
                         ref={(el) => (rowRefs.current[idx] = el)}
+                        key={idx}
                     />
                 ))}
                 {table.getCenterRows().map((row, idx) => (
@@ -737,6 +738,7 @@ function TableBody({
                         idx={idx + table.getTopRows().length}
                         handleFileContextMenu={handleFileContextMenu}
                         ref={(el) => (rowRefs.current[idx] = el)}
+                        key={idx}
                     />
                 ))}
             </div>
@@ -778,22 +780,33 @@ const TableRow = React.forwardRef(function (
         absParent: dirPath,
         uri: formatRemoteUri(row.getValue("path") as string),
     };
-    console.log("drag item is", dragItem);
+    //console.log("drag item is", dragItem);
     const [{ isDragging }, drag, dragPreview] = useDrag(
         () => ({
             type: "FILE",
             canDrag: true,
             item: () => dragItem,
-            collect: (monitor) => ({
-                isDragging: monitor.isDragging(),
-            }),
+            collect: (monitor) => {
+                return {
+                    isDragging: monitor.isDragging(),
+                };
+            },
+            end: (draggedItem, monitor) => {
+                console.log("did it drop:", monitor.didDrop());
+            },
         }),
         [dragItem]
     );
 
     useEffect(() => {
+        console.log("dragging is:", isDragging);
+    }, [isDragging]);
+
+    /*
+    useEffect(() => {
         drag(ref.current);
     }, [drag, ref.current]);
+	*/
 
     return (
         <div
@@ -805,7 +818,7 @@ const TableRow = React.forwardRef(function (
             }}
             onClick={() => setFocusIndex(idx)}
             onContextMenu={(e) => handleFileContextMenu(e, row.original)}
-            ref={ref}
+            ref={drag}
         >
             {row.getVisibleCells().map((cell) => (
                 <div
@@ -946,9 +959,10 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
             accept: "FILE", //a name of file drop type
             canDrop: (_, monitor) => {
                 const dragItem = monitor.getItem<DraggedFile>();
+                console.log("checking for drop");
                 // drop if not current dir is the parent directory of the dragged item
                 // probably requires absolute path
-                if (monitor.isOver({ shallow: true }) && dragItem.absParent !== dirPath) {
+                if (monitor.isOver({ shallow: false }) && dragItem.absParent !== dirPath) {
                     //TODO: make sure this allows the right copies. there's potential for this to be slightly off
                     return true;
                 }
@@ -956,6 +970,7 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
             },
             drop: async (draggedFile: DraggedFile, monitor) => {
                 if (!monitor.didDrop()) {
+                    console.log("a drop has occurred");
                     // function to handle the copy operation goes here
                     const destPath = await childAbsPath(draggedFile.relName);
                     const opts: FileCopyOpts = {};
@@ -974,10 +989,6 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
         []
     );
 
-    useEffect(() => {
-        drop(refs.floating);
-    }, []);
-
     const entryManagerPropsAtom = useState(
         atom<EntryManagerOverlayProps>(null) as PrimitiveAtom<EntryManagerOverlayProps>
     )[0];
@@ -988,6 +999,11 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
         onOpenChange: () => setEntryManagerProps(undefined),
         middleware: [offset(({ rects }) => -rects.reference.height / 2 - rects.floating.height / 2)],
     });
+
+    useEffect(() => {
+        drop(refs.floating);
+        console.log("drop register");
+    }, [drop, refs.floating.current]);
 
     const dismiss = useDismiss(context);
     const { getReferenceProps, getFloatingProps } = useInteractions([dismiss]);
