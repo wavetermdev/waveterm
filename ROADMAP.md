@@ -38,7 +38,7 @@ Targeting 1/31/25
 
 ## v0.12
 
-Targeting mid-February (more will get added before work on v0.12 kicks off)
+Targeting mid-February.
 
 - 🔷 Import/Export Tab Layouts and Widgets
 - 🔷 log viewer

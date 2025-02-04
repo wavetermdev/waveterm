@@ -6,6 +6,7 @@
 package wshclient
 
 import (
+	"github.com/wavetermdev/waveterm/pkg/telemetry/telemetrydata"
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wconfig"
@@ -307,6 +308,12 @@ func PathCommand(w *wshutil.WshRpc, data wshrpc.PathCommandData, opts *wshrpc.Rp
 	return resp, err
 }
 
+// command "recordtevent", wshserver.RecordTEventCommand
+func RecordTEventCommand(w *wshutil.WshRpc, data telemetrydata.TEvent, opts *wshrpc.RpcOpts) error {
+	_, err := sendRpcRequestCallHelper[any](w, "recordtevent", data, opts)
+	return err
+}
+
 // command "remotefilecopy", wshserver.RemoteFileCopyCommand
 func RemoteFileCopyCommand(w *wshutil.WshRpc, data wshrpc.CommandRemoteFileCopyData, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "remotefilecopy", data, opts)
@@ -402,6 +409,12 @@ func RouteAnnounceCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) error {
 // command "routeunannounce", wshserver.RouteUnannounceCommand
 func RouteUnannounceCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "routeunannounce", nil, opts)
+	return err
+}
+
+// command "sendtelemetry", wshserver.SendTelemetryCommand
+func SendTelemetryCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) error {
+	_, err := sendRpcRequestCallHelper[any](w, "sendtelemetry", nil, opts)
 	return err
 }
 
