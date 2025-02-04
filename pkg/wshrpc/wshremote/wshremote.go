@@ -389,7 +389,7 @@ func (impl *ServerImpl) RemoteFileCopyCommand(ctx context.Context, data wshrpc.C
 				if destinfo.IsDir() {
 					if !finfo.IsDir() {
 						if !overwrite {
-							return fmt.Errorf("cannot create directory %q, file exists at path, overwrite not specified", nextPath)
+							return fmt.Errorf("cannot create directory %q, file exists at path, force not specified", nextPath)
 						} else {
 							err := os.Remove(nextPath)
 							if err != nil {
@@ -397,7 +397,7 @@ func (impl *ServerImpl) RemoteFileCopyCommand(ctx context.Context, data wshrpc.C
 							}
 						}
 					} else if !merge && !overwrite {
-						return fmt.Errorf("cannot create directory %q, directory exists at path, neither overwrite nor merge specified", nextPath)
+						return fmt.Errorf("cannot create directory %q, directory exists at path, neither force nor merge specified", nextPath)
 					} else if overwrite {
 						err := os.RemoveAll(nextPath)
 						if err != nil {
