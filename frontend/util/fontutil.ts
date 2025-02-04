@@ -5,7 +5,6 @@ let isJetBrainsMonoLoaded = false;
 let isLatoFontLoaded = false;
 let isHackFontLoaded = false;
 let isHackNerdFontLoaded = false;
-let isBaseFontsLoaded = false;
 let isFiraCodeLoaded = false;
 let isInterFontLoaded = false;
 
@@ -108,37 +107,6 @@ function loadHackNerdFont() {
     hackBoldItalic.load();
 }
 
-function loadHackFont() {
-    if (isHackFontLoaded) {
-        return;
-    }
-    isHackFontLoaded = true;
-    const hackRegular = new FontFace("Hack", "url('fonts/hack-regular.woff2')", {
-        style: "normal",
-        weight: "400",
-    });
-    const hackBold = new FontFace("Hack", "url('fonts/hack-bold.woff2')", {
-        style: "normal",
-        weight: "700",
-    });
-    const hackItalic = new FontFace("Hack", "url('fonts/hack-italic.woff2')", {
-        style: "italic",
-        weight: "400",
-    });
-    const hackBoldItalic = new FontFace("Hack", "url('fonts/hack-bolditalic.woff2')", {
-        style: "italic",
-        weight: "700",
-    });
-    addToFontFaceSet(document.fonts, hackRegular);
-    addToFontFaceSet(document.fonts, hackBold);
-    addToFontFaceSet(document.fonts, hackItalic);
-    addToFontFaceSet(document.fonts, hackBoldItalic);
-    hackRegular.load();
-    hackBold.load();
-    hackItalic.load();
-    hackBoldItalic.load();
-}
-
 function loadInterFont() {
     if (isInterFontLoaded) {
         return;
@@ -152,21 +120,7 @@ function loadInterFont() {
     interFont.load();
 }
 
-function loadBaseFonts() {
-    if (isBaseFontsLoaded) {
-        return;
-    }
-    isBaseFontsLoaded = true;
-    const mmFont = new FontFace("Martian Mono", "url('fonts/MartianMono-VariableFont_wdth,wght.ttf')", {
-        style: "normal",
-        weight: "normal",
-    });
-    addToFontFaceSet(document.fonts, mmFont);
-    mmFont.load();
-}
-
 function loadFonts() {
-    loadBaseFonts();
     loadInterFont();
     loadJetBrainsMonoFont();
     loadHackNerdFont();
