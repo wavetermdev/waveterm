@@ -15,25 +15,50 @@ import (
 )
 
 const WaveSchemaSettingsFileName = "schema/settings.json"
+const WaveSchemaConnectionsFileName = "schema/connections.json"
 
-func main() {
+func generateSettingsSchema() error {
 	settingsSchema := jsonschema.Reflect(&wconfig.SettingsType{})
 
 	jsonSettingsSchema, err := json.MarshalIndent(settingsSchema, "", "  ")
 	if err != nil {
-		log.Fatalf("failed to parse local schema: %v", err)
+		return fmt.Errorf("failed to parse local schema: %v", err)
 	}
-	/*
-		err = os.MkdirAll(WaveSchemaSettingsFileName, 0755)
-		if err != nil {
-			log.Fatalf("failed to create schema dir: %v", err)
-		}
-	*/
 	written, err := utilfn.WriteFileIfDifferent(WaveSchemaSettingsFileName, jsonSettingsSchema)
 	if !written {
 		fmt.Fprintf(os.Stderr, "no changes to %s\n", WaveSchemaSettingsFileName)
 	}
 	if err != nil {
-		log.Fatalf("failed to write local schema: %v", err)
+		return fmt.Errorf("failed to write local schema: %v", err)
+	}
+	return nil
+}
+
+func generateConnectionsSchema() error {
+	connExample := make(map[string]wconfig.ConnKeywords)
+	connectionSchema := jsonschema.Reflect(connExample)
+
+	jsonSettingsSchema, err := json.MarshalIndent(connectionSchema, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to parse local schema: %v", err)
+	}
+	written, err := utilfn.WriteFileIfDifferent(WaveSchemaConnectionsFileName, jsonSettingsSchema)
+	if !written {
+		fmt.Fprintf(os.Stderr, "no changes to %s\n", WaveSchemaConnectionsFileName)
+	}
+	if err != nil {
+		return fmt.Errorf("failed to write local schema: %v", err)
+	}
+	return nil
+}
+
+func main() {
+	err := generateSettingsSchema()
+	if err != nil {
+		log.Fatalf("settings schema error: %v", err)
+	}
+	err = generateConnectionsSchema()
+	if err != nil {
+		log.Fatalf("connections schema error: %v", err)
 	}
 }
