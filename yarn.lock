@@ -7577,7 +7577,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"autoprefixer@npm:^10.4.19":
+"autoprefixer@npm:^10.4.19, autoprefixer@npm:^10.4.20":
   version: 10.4.20
   resolution: "autoprefixer@npm:10.4.20"
   dependencies:
@@ -22136,6 +22136,7 @@ __metadata:
     "@xterm/addon-web-links": "npm:^0.11.0"
     "@xterm/addon-webgl": "npm:^0.18.0"
     "@xterm/xterm": "npm:^5.5.0"
+    autoprefixer: "npm:^10.4.20"
     base64-js: "npm:^1.5.1"
     clsx: "npm:^2.1.1"
     color: "npm:^4.2.3"

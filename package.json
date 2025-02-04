@@ -61,6 +61,7 @@
         "@types/ws": "^8",
         "@vitejs/plugin-react-swc": "^3.7.2",
         "@vitest/coverage-istanbul": "^3.0.4",
+        "autoprefixer": "^10.4.20",
         "electron": "^34.0.2",
         "electron-builder": "^25.1.8",
         "electron-vite": "^2.3.0",
