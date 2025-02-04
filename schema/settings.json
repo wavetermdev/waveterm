@@ -1,0 +1,232 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/wavetermdev/waveterm/pkg/wconfig/settings-type",
+  "$ref": "#/$defs/SettingsType",
+  "$defs": {
+    "SettingsType": {
+      "properties": {
+        "app:*": {
+          "type": "boolean"
+        },
+        "app:globalhotkey": {
+          "type": "string"
+        },
+        "app:dismissarchitecturewarning": {
+          "type": "boolean"
+        },
+        "ai:*": {
+          "type": "boolean"
+        },
+        "ai:preset": {
+          "type": "string"
+        },
+        "ai:apitype": {
+          "type": "string"
+        },
+        "ai:baseurl": {
+          "type": "string"
+        },
+        "ai:apitoken": {
+          "type": "string"
+        },
+        "ai:name": {
+          "type": "string"
+        },
+        "ai:model": {
+          "type": "string"
+        },
+        "ai:orgid": {
+          "type": "string"
+        },
+        "ai:apiversion": {
+          "type": "string"
+        },
+        "ai:maxtokens": {
+          "type": "number"
+        },
+        "ai:timeoutms": {
+          "type": "number"
+        },
+        "ai:fontsize": {
+          "type": "number"
+        },
+        "ai:fixedfontsize": {
+          "type": "number"
+        },
+        "term:*": {
+          "type": "boolean"
+        },
+        "term:fontsize": {
+          "type": "number"
+        },
+        "term:fontfamily": {
+          "type": "string"
+        },
+        "term:theme": {
+          "type": "string"
+        },
+        "term:disablewebgl": {
+          "type": "boolean"
+        },
+        "term:localshellpath": {
+          "type": "string"
+        },
+        "term:localshellopts": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "term:scrollback": {
+          "type": "integer"
+        },
+        "term:copyonselect": {
+          "type": "boolean"
+        },
+        "term:transparency": {
+          "type": "number"
+        },
+        "term:allowbracketedpaste": {
+          "type": "boolean"
+        },
+        "editor:minimapenabled": {
+          "type": "boolean"
+        },
+        "editor:stickyscrollenabled": {
+          "type": "boolean"
+        },
+        "editor:wordwrap": {
+          "type": "boolean"
+        },
+        "editor:fontsize": {
+          "type": "number"
+        },
+        "web:*": {
+          "type": "boolean"
+        },
+        "web:openlinksinternally": {
+          "type": "boolean"
+        },
+        "web:defaulturl": {
+          "type": "string"
+        },
+        "web:defaultsearch": {
+          "type": "string"
+        },
+        "blockheader:*": {
+          "type": "boolean"
+        },
+        "blockheader:showblockids": {
+          "type": "boolean"
+        },
+        "autoupdate:*": {
+          "type": "boolean"
+        },
+        "autoupdate:enabled": {
+          "type": "boolean"
+        },
+        "autoupdate:intervalms": {
+          "type": "number"
+        },
+        "autoupdate:installonquit": {
+          "type": "boolean"
+        },
+        "autoupdate:channel": {
+          "type": "string"
+        },
+        "markdown:fontsize": {
+          "type": "number"
+        },
+        "markdown:fixedfontsize": {
+          "type": "number"
+        },
+        "preview:showhiddenfiles": {
+          "type": "boolean"
+        },
+        "tab:preset": {
+          "type": "string"
+        },
+        "widget:*": {
+          "type": "boolean"
+        },
+        "widget:showhelp": {
+          "type": "boolean"
+        },
+        "window:*": {
+          "type": "boolean"
+        },
+        "window:transparent": {
+          "type": "boolean"
+        },
+        "window:blur": {
+          "type": "boolean"
+        },
+        "window:opacity": {
+          "type": "number"
+        },
+        "window:bgcolor": {
+          "type": "string"
+        },
+        "window:reducedmotion": {
+          "type": "boolean"
+        },
+        "window:tilegapsize": {
+          "type": "integer"
+        },
+        "window:showmenubar": {
+          "type": "boolean"
+        },
+        "window:nativetitlebar": {
+          "type": "boolean"
+        },
+        "window:disablehardwareacceleration": {
+          "type": "boolean"
+        },
+        "window:maxtabcachesize": {
+          "type": "integer"
+        },
+        "window:magnifiedblockopacity": {
+          "type": "number"
+        },
+        "window:magnifiedblocksize": {
+          "type": "number"
+        },
+        "window:magnifiedblockblurprimarypx": {
+          "type": "integer"
+        },
+        "window:magnifiedblockblursecondarypx": {
+          "type": "integer"
+        },
+        "window:confirmclose": {
+          "type": "boolean"
+        },
+        "window:savelastwindow": {
+          "type": "boolean"
+        },
+        "window:dimensions": {
+          "type": "string"
+        },
+        "window:zoom": {
+          "type": "number"
+        },
+        "telemetry:*": {
+          "type": "boolean"
+        },
+        "telemetry:enabled": {
+          "type": "boolean"
+        },
+        "conn:*": {
+          "type": "boolean"
+        },
+        "conn:askbeforewshinstall": {
+          "type": "boolean"
+        },
+        "conn:wshenabled": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    }
+  }
+}

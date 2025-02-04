@@ -24,11 +24,14 @@ func GenerateWshClient() error {
 	fmt.Fprintf(os.Stderr, "generating wshclient file to %s\n", WshClientFileName)
 	var buf strings.Builder
 	gogen.GenerateBoilerplate(&buf, "wshclient", []string{
+		"github.com/wavetermdev/waveterm/pkg/telemetry/telemetrydata",
 		"github.com/wavetermdev/waveterm/pkg/wshutil",
 		"github.com/wavetermdev/waveterm/pkg/wshrpc",
+		"github.com/wavetermdev/waveterm/pkg/wconfig",
 		"github.com/wavetermdev/waveterm/pkg/waveobj",
 		"github.com/wavetermdev/waveterm/pkg/wps",
 		"github.com/wavetermdev/waveterm/pkg/vdom",
+		"github.com/wavetermdev/waveterm/pkg/util/iochan/iochantypes",
 	})
 	wshDeclMap := wshrpc.GenerateWshCommandDeclMap()
 	for _, key := range utilfn.GetOrderedMapKeys(wshDeclMap) {

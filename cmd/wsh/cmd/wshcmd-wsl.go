@@ -16,7 +16,7 @@ import (
 var distroName string
 
 var wslCmd = &cobra.Command{
-	Use:     "wsl [-d <Distro>]",
+	Use:     "wsl [-d <distribution-name>]",
 	Short:   "connect this terminal to a local wsl connection",
 	Args:    cobra.NoArgs,
 	RunE:    wslRun,

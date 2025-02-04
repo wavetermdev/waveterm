@@ -1,4 +1,5 @@
 import type { Config } from "@docusaurus/types";
+import rehypeHighlight from "rehype-highlight";
 import { docOgRenderer } from "./src/renderer/image-renderers";
 
 const baseUrl = process.env.EMBEDDED ? "/docsite/" : "/";
@@ -40,6 +41,7 @@ const config: Config = {
                 routeBasePath: "/",
                 exclude: ["features/**"],
                 editUrl: !process.env.EMBEDDED ? "https://github.com/wavetermdev/waveterm/edit/main/docs/" : undefined,
+                rehypePlugins: [rehypeHighlight],
             } as import("@docusaurus/plugin-content-docs").Options,
         ],
         "ideal-image",
@@ -59,9 +61,11 @@ const config: Config = {
                 },
             },
         ],
+        "docusaurus-plugin-sass",
+        "@docusaurus/plugin-svgr",
     ].filter((v) => v),
     themes: [
-        ["classic", { customCss: "src/css/custom.css" }],
+        ["classic", { customCss: "src/css/custom.scss" }],
         !process.env.EMBEDDED && "@docusaurus/theme-search-algolia",
     ].filter((v) => v),
     themeConfig: {
@@ -159,6 +163,16 @@ const config: Config = {
         {
             tagName: "link",
             attributes: {
+                rel: "preload",
+                as: "font",
+                type: "font/woff2",
+                "data-next-font": "size-adjust",
+                href: `${baseUrl}fontawesome/webfonts/fa-sharp-solid-900.woff2`,
+            },
+        },
+        {
+            tagName: "link",
+            attributes: {
                 rel: "sitemap",
                 type: "application/xml",
                 title: "Sitemap",
@@ -174,7 +188,11 @@ const config: Config = {
             },
         },
     ].filter((v) => v),
-    stylesheets: [`${baseUrl}fontawesome/css/fontawesome.min.css`, `${baseUrl}fontawesome/css/sharp-regular.min.css`],
+    stylesheets: [
+        `${baseUrl}fontawesome/css/fontawesome.min.css`,
+        `${baseUrl}fontawesome/css/sharp-regular.min.css`,
+        `${baseUrl}fontawesome/css/sharp-solid.min.css`,
+    ],
     staticDirectories: ["static", "storybook"],
 };
 

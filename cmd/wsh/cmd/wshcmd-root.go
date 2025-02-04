@@ -86,7 +86,7 @@ func preRunSetupRpcClient(cmd *cobra.Command, args []string) error {
 	if jwtToken == "" {
 		wshutil.SetTermRawModeAndInstallShutdownHandlers(true)
 		UsingTermWshMode = true
-		RpcClient, WrappedStdin = wshutil.SetupTerminalRpcClient(nil)
+		RpcClient, WrappedStdin = wshutil.SetupTerminalRpcClient(nil, "wshcmd-termclient")
 		return nil
 	}
 	err := setupRpcClient(nil, jwtToken)
@@ -148,7 +148,7 @@ func setupRpcClientWithToken(swapTokenStr string) (wshrpc.CommandAuthenticateRtn
 		return rtn, fmt.Errorf("no rpccontext in token")
 	}
 	RpcContext = *token.RpcContext
-	RpcClient, err = wshutil.SetupDomainSocketRpcClient(token.SockName, nil)
+	RpcClient, err = wshutil.SetupDomainSocketRpcClient(token.SockName, nil, "wshcmd")
 	if err != nil {
 		return rtn, fmt.Errorf("error setting up domain socket rpc client: %w", err)
 	}
@@ -166,7 +166,7 @@ func setupRpcClient(serverImpl wshutil.ServerImpl, jwtToken string) error {
 	if err != nil {
 		return fmt.Errorf("error extracting socket name from %s: %v", wshutil.WaveJwtTokenVarName, err)
 	}
-	RpcClient, err = wshutil.SetupDomainSocketRpcClient(sockName, serverImpl)
+	RpcClient, err = wshutil.SetupDomainSocketRpcClient(sockName, serverImpl, "wshcmd")
 	if err != nil {
 		return fmt.Errorf("error setting up domain socket rpc client: %v", err)
 	}

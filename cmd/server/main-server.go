@@ -8,11 +8,9 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"os/signal"
 
 	"runtime"
 	"sync"
-	"syscall"
 	"time"
 
 	"github.com/wavetermdev/waveterm/pkg/authkey"
@@ -21,9 +19,13 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/filestore"
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/remote/conncontroller"
+	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/wshfs"
 	"github.com/wavetermdev/waveterm/pkg/service"
 	"github.com/wavetermdev/waveterm/pkg/telemetry"
+	"github.com/wavetermdev/waveterm/pkg/telemetry/telemetrydata"
 	"github.com/wavetermdev/waveterm/pkg/util/shellutil"
+	"github.com/wavetermdev/waveterm/pkg/util/sigutil"
+	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wcloud"
@@ -46,6 +48,8 @@ var BuildTime = "0"
 const InitialTelemetryWait = 10 * time.Second
 const TelemetryTick = 2 * time.Minute
 const TelemetryInterval = 4 * time.Hour
+const TelemetryInitialCountsWait = 5 * time.Second
+const TelemetryCountsInterval = 1 * time.Hour
 
 var shutdownOnce sync.Once
 
@@ -70,17 +74,6 @@ func doShutdown(reason string) {
 	})
 }
 
-func installShutdownSignalHandlers() {
-	sigCh := make(chan os.Signal, 1)
-	signal.Notify(sigCh, syscall.SIGHUP, syscall.SIGTERM, syscall.SIGINT)
-	go func() {
-		for sig := range sigCh {
-			doShutdown(fmt.Sprintf("got signal %v", sig))
-			break
-		}
-	}()
-}
-
 // watch stdin, kill server if stdin is closed
 func stdinReadWatch() {
 	buf := make([]byte, 1024)
@@ -93,7 +86,7 @@ func stdinReadWatch() {
 	}
 }
 
-func configWatcher() {
+func startConfigWatcher() {
 	watcher := wconfig.GetWatcher()
 	if watcher != nil {
 		watcher.Start()
@@ -112,19 +105,22 @@ func telemetryLoop() {
 	}
 }
 
-func panicTelemetryHandler() {
+func panicTelemetryHandler(panicName string) {
 	activity := wshrpc.ActivityUpdate{NumPanics: 1}
 	err := telemetry.UpdateActivity(context.Background(), activity)
 	if err != nil {
 		log.Printf("error updating activity (panicTelemetryHandler): %v\n", err)
 	}
+	telemetry.RecordTEvent(context.Background(), telemetrydata.MakeTEvent("debug:panic", telemetrydata.TEventProps{
+		PanicType: panicName,
+	}))
 }
 
 func sendTelemetryWrapper() {
 	defer func() {
 		panichandler.PanicHandler("sendTelemetryWrapper", recover())
 	}()
-	ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancelFn := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancelFn()
 	beforeSendActivityUpdate(ctx)
 	client, err := wstore.DBGetSingleton[*waveobj.Client](ctx)
@@ -132,9 +128,47 @@ func sendTelemetryWrapper() {
 		log.Printf("[error] getting client data for telemetry: %v\n", err)
 		return
 	}
-	err = wcloud.SendTelemetry(ctx, client.OID)
+	err = wcloud.SendAllTelemetry(ctx, client.OID)
 	if err != nil {
 		log.Printf("[error] sending telemetry: %v\n", err)
+	}
+}
+
+func updateTelemetryCounts(lastCounts telemetrydata.TEventProps) telemetrydata.TEventProps {
+	ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancelFn()
+	var props telemetrydata.TEventProps
+	props.CountBlocks, _ = wstore.DBGetCount[*waveobj.Block](ctx)
+	props.CountTabs, _ = wstore.DBGetCount[*waveobj.Tab](ctx)
+	props.CountWindows, _ = wstore.DBGetCount[*waveobj.Window](ctx)
+	props.CountWorkspaces, _, _ = wstore.DBGetWSCounts(ctx)
+	props.CountSSHConn = conncontroller.GetNumSSHHasConnected()
+	props.CountWSLConn = wslconn.GetNumWSLHasConnected()
+	props.CountViews, _ = wstore.DBGetBlockViewCounts(ctx)
+	if utilfn.CompareAsMarshaledJson(props, lastCounts) {
+		return lastCounts
+	}
+	tevent := telemetrydata.MakeTEvent("app:counts", props)
+	err := telemetry.RecordTEvent(ctx, tevent)
+	if err != nil {
+		log.Printf("error recording counts tevent: %v\n", err)
+	}
+	return props
+}
+
+func updateTelemetryCountsLoop() {
+	defer func() {
+		panichandler.PanicHandler("updateTelemetryCountsLoop", recover())
+	}()
+	var nextSend int64
+	var lastCounts telemetrydata.TEventProps
+	time.Sleep(TelemetryInitialCountsWait)
+	for {
+		if time.Now().Unix() > nextSend {
+			nextSend = time.Now().Add(TelemetryCountsInterval).Unix()
+			lastCounts = updateTelemetryCounts(lastCounts)
+		}
+		time.Sleep(TelemetryTick)
 	}
 }
 
@@ -161,6 +195,26 @@ func startupActivityUpdate() {
 	if err != nil {
 		log.Printf("error updating startup activity: %v\n", err)
 	}
+	autoUpdateChannel := telemetry.AutoUpdateChannel()
+	autoUpdateEnabled := telemetry.IsAutoUpdateEnabled()
+	tevent := telemetrydata.MakeTEvent("app:startup", telemetrydata.TEventProps{
+		UserSet: &telemetrydata.TEventUserProps{
+			ClientVersion:     "v" + WaveVersion,
+			ClientBuildTime:   BuildTime,
+			ClientArch:        wavebase.ClientArch(),
+			ClientOSRelease:   wavebase.UnameKernelRelease(),
+			ClientIsDev:       wavebase.IsDevMode(),
+			AutoUpdateChannel: autoUpdateChannel,
+			AutoUpdateEnabled: autoUpdateEnabled,
+		},
+		UserSetOnce: &telemetrydata.TEventUserProps{
+			ClientInitialVersion: "v" + WaveVersion,
+		},
+	})
+	err = telemetry.RecordTEvent(ctx, tevent)
+	if err != nil {
+		log.Printf("error recording startup event: %v\n", err)
+	}
 }
 
 func shutdownActivityUpdate() {
@@ -171,13 +225,23 @@ func shutdownActivityUpdate() {
 	if err != nil {
 		log.Printf("error updating shutdown activity: %v\n", err)
 	}
+	err = telemetry.TruncateActivityTEventForShutdown(ctx)
+	if err != nil {
+		log.Printf("error truncating activity t-event for shutdown: %v\n", err)
+	}
+	tevent := telemetrydata.MakeTEvent("app:shutdown", telemetrydata.TEventProps{})
+	err = telemetry.RecordTEvent(ctx, tevent)
+	if err != nil {
+		log.Printf("error recording shutdown event: %v\n", err)
+	}
 }
 
 func createMainWshClient() {
 	rpc := wshserver.GetMainRpcClient()
+	wshfs.RpcClient = rpc
 	wshutil.DefaultRouter.RegisterRoute(wshutil.DefaultRoute, rpc, true)
 	wps.Broker.SetClient(wshutil.DefaultRouter)
-	localConnWsh := wshutil.MakeWshRpc(nil, nil, wshrpc.RpcContext{Conn: wshrpc.LocalConnName}, &wshremote.ServerImpl{})
+	localConnWsh := wshutil.MakeWshRpc(nil, nil, wshrpc.RpcContext{Conn: wshrpc.LocalConnName}, &wshremote.ServerImpl{}, "conn:local")
 	go wshremote.RunSysInfoLoop(localConnWsh, wshrpc.LocalConnName)
 	wshutil.DefaultRouter.RegisterRoute(wshutil.MakeConnectionRouteId(wshrpc.LocalConnName), localConnWsh, true)
 }
@@ -293,12 +357,15 @@ func main() {
 	}
 
 	createMainWshClient()
-	installShutdownSignalHandlers()
-	startupActivityUpdate()
+	sigutil.InstallShutdownSignalHandlers(doShutdown)
+	sigutil.InstallSIGUSR1Handler()
+	startConfigWatcher()
 	go stdinReadWatch()
 	go telemetryLoop()
-	configWatcher()
+	go updateTelemetryCountsLoop()
+	startupActivityUpdate() // must be after startConfigWatcher()
 	blocklogger.InitBlockLogger()
+
 	webListener, err := web.MakeTCPListener("web")
 	if err != nil {
 		log.Printf("error creating web listener: %v\n", err)

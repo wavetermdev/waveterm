@@ -22,9 +22,16 @@ import { getLayoutModelForStaticTab } from "@/layout/lib/layoutModelHooks";
 import * as keyutil from "@/util/keyutil";
 import { fireAndForget } from "@/util/util";
 import * as jotai from "jotai";
+import { modalsModel } from "./modalmodel";
 
 const simpleControlShiftAtom = jotai.atom(false);
 const globalKeyMap = new Map<string, (waveEvent: WaveKeyboardEvent) => boolean>();
+
+export function keyboardMouseDownHandler(e: MouseEvent) {
+    if (!e.ctrlKey || !e.shiftKey) {
+        unsetControlShift();
+    }
+}
 
 function getFocusedBlockInStaticTab() {
     const tabId = globalStore.get(atoms.staticTabId);
@@ -378,7 +385,16 @@ function registerGlobalKeys() {
         return false;
     }
     globalKeyMap.set("Cmd:f", activateSearch);
-    globalKeyMap.set("Escape", deactivateSearch);
+    globalKeyMap.set("Escape", () => {
+        if (modalsModel.hasOpenModals()) {
+            modalsModel.popModal();
+            return true;
+        }
+        if (deactivateSearch()) {
+            return true;
+        }
+        return false;
+    });
     const allKeys = Array.from(globalKeyMap.keys());
     // special case keys, handled by web view
     allKeys.push("Cmd:l", "Cmd:r", "Cmd:ArrowRight", "Cmd:ArrowLeft");

@@ -226,6 +226,7 @@ func WaveshellLocalEnvVars(termType string) map[string]string {
 	if termType != "" {
 		rtn["TERM"] = termType
 	}
+	// these are not necessary since they should be set with the swap token, but no harm in setting them here
 	rtn["TERM_PROGRAM"] = "waveterm"
 	rtn["WAVETERM"], _ = os.Executable()
 	rtn["WAVETERM_VERSION"] = wavebase.WaveVersion

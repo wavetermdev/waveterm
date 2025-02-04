@@ -15,11 +15,15 @@ import (
 	"regexp"
 	"strings"
 	"text/template"
+	"time"
 
 	"github.com/wavetermdev/waveterm/pkg/blocklogger"
 	"github.com/wavetermdev/waveterm/pkg/genconn"
+	"github.com/wavetermdev/waveterm/pkg/remote/awsconn"
+	"github.com/wavetermdev/waveterm/pkg/util/iterfn"
 	"github.com/wavetermdev/waveterm/pkg/util/shellutil"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
+	"github.com/wavetermdev/waveterm/pkg/wconfig"
 	"golang.org/x/crypto/ssh"
 )
 
@@ -95,6 +99,10 @@ chmod a+x {{.installPath}} || exit 1;
 var installTemplate = template.Must(template.New("wsh-install-template").Parse(installTemplateRawDefault))
 
 func CpWshToRemote(ctx context.Context, client *ssh.Client, clientOs string, clientArch string) error {
+	deadline, ok := ctx.Deadline()
+	if ok {
+		blocklogger.Debugf(ctx, "[conndebug] CpWshToRemote, timeout: %v\n", time.Until(deadline))
+	}
 	wshLocalPath, err := shellutil.GetLocalWshBinaryPath(wavebase.WaveVersion, clientOs, clientArch)
 	if err != nil {
 		return err
@@ -181,4 +189,19 @@ func NormalizeConfigPattern(pattern string) string {
 		port = ":" + port
 	}
 	return fmt.Sprintf("%s%s%s", userName, pattern, port)
+}
+
+func ParseProfiles() []string {
+	connfile, cerrs := wconfig.ReadWaveHomeConfigFile(wconfig.ProfilesFile)
+	if len(cerrs) > 0 {
+		log.Printf("error reading config file: %v", cerrs[0])
+		return nil
+	}
+
+	awsProfiles := awsconn.ParseProfiles()
+	for profile := range awsProfiles {
+		connfile[profile] = struct{}{}
+	}
+
+	return iterfn.MapKeysToSorted(connfile)
 }

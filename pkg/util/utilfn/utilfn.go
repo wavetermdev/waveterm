@@ -5,6 +5,7 @@ package utilfn
 
 import (
 	"bytes"
+	"context"
 	"crypto/rand"
 	"crypto/sha1"
 	"encoding/base64"
@@ -13,16 +14,13 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/fs"
 	"math"
 	mathrand "math/rand"
-	"mime"
-	"net/http"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"reflect"
 	"regexp"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -33,6 +31,15 @@ import (
 )
 
 var HexDigits = []byte{'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'}
+var PTLoc *time.Location
+
+func init() {
+	loc, err := time.LoadLocation("America/Los_Angeles")
+	if err != nil {
+		loc = time.FixedZone("PT", -8*60*60)
+	}
+	PTLoc = loc
+}
 
 func GetStrArr(v interface{}, field string) []string {
 	if v == nil {
@@ -76,6 +83,35 @@ func GetBool(v interface{}, field string) bool {
 		return false
 	}
 	return bval
+}
+
+// converts an int, int64, or float64 to an int64
+// nil or bad type returns 0
+func ConvertInt(val any) int64 {
+	if val == 0 {
+		return 0
+	}
+	switch typedVal := val.(type) {
+	case int:
+		return int64(typedVal)
+	case int64:
+		return typedVal
+	case float64:
+		return int64(typedVal)
+	default:
+		return 0
+	}
+}
+
+func ConvertMap(val any) map[string]any {
+	if val == nil {
+		return nil
+	}
+	m, ok := val.(map[string]any)
+	if !ok {
+		return nil
+	}
+	return m
 }
 
 var needsQuoteRe = regexp.MustCompile(`[^\w@%:,./=+-]`)
@@ -617,91 +653,6 @@ func CopyToChannel(outputCh chan<- []byte, reader io.Reader) error {
 	}
 }
 
-const (
-	winFlagSoftlink = uint32(0x8000) // FILE_ATTRIBUTE_REPARSE_POINT
-	winFlagJunction = uint32(0x80)   // FILE_ATTRIBUTE_JUNCTION
-)
-
-func WinSymlinkDir(path string, bits os.FileMode) bool {
-	// Windows compatibility layer doesn't expose symlink target type through fileInfo
-	// so we need to check file attributes and extension patterns
-	isFileSymlink := func(filepath string) bool {
-		if len(filepath) == 0 {
-			return false
-		}
-		return strings.LastIndex(filepath, ".") > strings.LastIndex(filepath, "/")
-	}
-
-	flags := uint32(bits >> 12)
-
-	if flags == winFlagSoftlink {
-		return !isFileSymlink(path)
-	} else if flags == winFlagJunction {
-		return true
-	} else {
-		return false
-	}
-}
-
-// on error just returns ""
-// does not return "application/octet-stream" as this is considered a detection failure
-// can pass an existing fileInfo to avoid re-statting the file
-// falls back to text/plain for 0 byte files
-
-func DetectMimeType(path string, fileInfo fs.FileInfo, extended bool) string {
-	if fileInfo == nil {
-		statRtn, err := os.Stat(path)
-		if err != nil {
-			return ""
-		}
-		fileInfo = statRtn
-	}
-
-	if fileInfo.IsDir() || WinSymlinkDir(path, fileInfo.Mode()) {
-		return "directory"
-	}
-	if fileInfo.Mode()&os.ModeNamedPipe == os.ModeNamedPipe {
-		return "pipe"
-	}
-	charDevice := os.ModeDevice | os.ModeCharDevice
-	if fileInfo.Mode()&charDevice == charDevice {
-		return "character-special"
-	}
-	if fileInfo.Mode()&os.ModeDevice == os.ModeDevice {
-		return "block-special"
-	}
-	ext := filepath.Ext(path)
-	if mimeType, ok := StaticMimeTypeMap[ext]; ok {
-		return mimeType
-	}
-	if mimeType := mime.TypeByExtension(ext); mimeType != "" {
-		return mimeType
-	}
-	if fileInfo.Size() == 0 {
-		return "text/plain"
-	}
-	if !extended {
-		return ""
-	}
-	fd, err := os.Open(path)
-	if err != nil {
-		return ""
-	}
-	defer fd.Close()
-	buf := make([]byte, 512)
-	// ignore the error (EOF / UnexpectedEOF is fine, just process how much we got back)
-	n, _ := io.ReadAtLeast(fd, buf, 512)
-	if n == 0 {
-		return ""
-	}
-	buf = buf[:n]
-	rtn := http.DetectContentType(buf)
-	if rtn == "application/octet-stream" {
-		return ""
-	}
-	return rtn
-}
-
 func GetCmdExitCode(cmd *exec.Cmd, err error) int {
 	if cmd == nil || cmd.ProcessState == nil {
 		return GetExitCode(err)
@@ -1011,4 +962,57 @@ func FilterValidArch(arch string) (string, error) {
 		return "arm64", nil
 	}
 	return "", fmt.Errorf("unknown architecture: %s", formatted)
+}
+
+func ConvertUUIDv4Tov7(uuidv4 string) (string, error) {
+	// Parse the UUIDv4
+	parts := strings.Split(uuidv4, "-")
+	if len(parts) != 5 {
+		return "", fmt.Errorf("invalid UUIDv4 format")
+	}
+
+	// Section 1 and 2: Fixed timestamp for Jan 1, 2024
+	section1 := "01823a80" // High 32 bits of the timestamp
+	section2 := "0000"     // Middle 16 bits of the timestamp
+
+	// Section 3: Version (7) and the last 3 bytes of randomness from UUIDv4
+	section3 := "7" + parts[2][1:] // Replace the first nibble with '7' for version
+
+	// Section 4 and 5: Copy from the original UUIDv4
+	section4 := parts[3]
+	section5 := parts[4]
+
+	// Combine sections to form UUIDv7
+	uuidv7 := fmt.Sprintf("%s-%s-%s-%s-%s", section1, section2, section3, section4, section5)
+	return uuidv7, nil
+}
+
+func TimeoutFromContext(ctx context.Context, defaultTimeout time.Duration) time.Duration {
+	deadline, ok := ctx.Deadline()
+	if !ok {
+		return defaultTimeout
+	}
+	return time.Until(deadline)
+}
+
+func HasBinaryData(data []byte) bool {
+	for _, b := range data {
+		if b < 32 && b != '\n' && b != '\r' && b != '\t' && b != '\f' && b != '\b' {
+			return true
+		}
+	}
+	return false
+}
+
+func DumpGoRoutineStacks() {
+	buf := make([]byte, 1<<20)
+	n := runtime.Stack(buf, true)
+	os.Stdout.Write(buf[:n])
+}
+
+func ConvertToWallClockPT(t time.Time) time.Time {
+	year, month, day := t.Date()
+	hour, min, sec := t.Clock()
+	pstTime := time.Date(year, month, day, hour, min, sec, 0, PTLoc)
+	return pstTime
 }

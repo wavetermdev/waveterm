@@ -1,7 +1,7 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { FileService } from "@/app/store/services";
+import { RpcApi } from "@/app/store/wshclientapi";
 import { adaptFromElectronKeyEvent } from "@/util/keyutil";
 import { Rectangle, shell, WebContentsView } from "electron";
 import { getWaveWindowById } from "emain/emain-window";
@@ -9,6 +9,7 @@ import path from "path";
 import { configureAuthKeyRequestInjection } from "./authkey";
 import { setWasActive } from "./emain-activity";
 import { handleCtrlShiftFocus, handleCtrlShiftState, shFrameNavHandler, shNavHandler } from "./emain-util";
+import { ElectronWshClient } from "./emain-wsh";
 import { getElectronAppBasePath, isDevVite } from "./platform";
 
 function computeBgColor(fullConfig: FullConfigType): string {
@@ -200,7 +201,7 @@ export async function getOrCreateWebViewForTab(waveWindowId: string, tabId: stri
     if (tabView) {
         return [tabView, true];
     }
-    const fullConfig = await FileService.GetFullConfig();
+    const fullConfig = await RpcApi.GetFullConfigCommand(ElectronWshClient);
     tabView = getSpareTab(fullConfig);
     tabView.waveWindowId = waveWindowId;
     tabView.lastUsedTs = Date.now();

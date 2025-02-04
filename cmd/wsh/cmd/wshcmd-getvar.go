@@ -11,6 +11,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/wavetermdev/waveterm/pkg/util/envutil"
+	"github.com/wavetermdev/waveterm/pkg/util/wavefileutil"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
 )
@@ -112,12 +113,11 @@ func getVarRun(cmd *cobra.Command, args []string) error {
 }
 
 func getAllVariables(zoneId string) error {
-	fileData := wshrpc.CommandFileData{
-		ZoneId:   zoneId,
-		FileName: getVarFileName,
-	}
+	fileData := wshrpc.FileData{
+		Info: &wshrpc.FileInfo{
+			Path: fmt.Sprintf(wavefileutil.WaveFilePathPattern, zoneId, getVarFileName)}}
 
-	envStr64, err := wshclient.FileReadCommand(RpcClient, fileData, &wshrpc.RpcOpts{Timeout: 2000})
+	data, err := wshclient.FileReadCommand(RpcClient, fileData, &wshrpc.RpcOpts{Timeout: 2000})
 	err = convertNotFoundErr(err)
 	if err == fs.ErrNotExist {
 		return nil
@@ -125,7 +125,7 @@ func getAllVariables(zoneId string) error {
 	if err != nil {
 		return fmt.Errorf("reading variables: %w", err)
 	}
-	envBytes, err := base64.StdEncoding.DecodeString(envStr64)
+	envBytes, err := base64.StdEncoding.DecodeString(data.Data64)
 	if err != nil {
 		return fmt.Errorf("decoding variables: %w", err)
 	}

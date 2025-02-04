@@ -19,10 +19,18 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 )
 
-const DefaultRoute = "wavesrv"
-const UpstreamRoute = "upstream"
-const SysRoute = "sys" // this route doesn't exist, just a placeholder for system messages
-const ElectronRoute = "electron"
+const (
+	DefaultRoute  = "wavesrv"
+	UpstreamRoute = "upstream"
+	SysRoute      = "sys" // this route doesn't exist, just a placeholder for system messages
+	ElectronRoute = "electron"
+
+	RoutePrefix_Conn       = "conn:"
+	RoutePrefix_Controller = "controller:"
+	RoutePrefix_Proc       = "proc:"
+	RoutePrefix_Tab        = "tab:"
+	RoutePrefix_FeBlock    = "feblock:"
+)
 
 // this works like a network switch
 
@@ -200,6 +208,7 @@ func (router *WshRouter) sendRoutedMessage(msgBytes []byte, routeId string) bool
 		localRouteId := router.getAnnouncedRoute(routeId)
 		rpc := router.GetRpc(localRouteId)
 		if rpc == nil {
+			log.Printf("[router] no rpc for local route id %q\n", localRouteId)
 			return false
 		}
 		rpc.SendRpcMessage(msgBytes)
