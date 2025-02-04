@@ -1,0 +1,16 @@
+@source './**/*.{js,ts,jsx,tsx,scss,css}';
+@source './../.storybook/**/*.{js,ts,jsx,tsx,scss,css}';
+
+@theme {
+    --color-background: #000000;
+    --color-foreground: #f7f7f7;
+    --color-muted-foreground: rgb(195, 200, 194);
+}
+
+/* Copyright 2024, Command Line Inc.
+   SPDX-License-Identifier: Apache-2.0 */
+
+/* added this wrapper while we transition */
+.tw {
+    @import "tailwindcss";
+}

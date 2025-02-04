@@ -27,8 +27,8 @@ import { AppBackground } from "./app-bg";
 import { CenteredDiv } from "./element/quickelems";
 import { NotificationBubbles } from "./notification/notificationbubbles";
 
+import "../tailwindsetup.css";
 import "./app.scss";
-import "./tailwindsetup.css";
 
 const dlog = debug("wave:app");
 const focusLog = debug("wave:focus");

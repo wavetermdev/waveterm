@@ -17,8 +17,4 @@ body {
     }
 }
 
-.tw {
-    @tailwind base;
-    @tailwind components;
-    @tailwind utilities;
-}
+@import "../frontend/tailwindsetup.css";

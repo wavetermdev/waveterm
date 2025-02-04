@@ -1,11 +1,10 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react-swc";
-import autoprefixer from "autoprefixer";
 import { defineConfig } from "electron-vite";
 import flow from "rollup-plugin-flow";
-import tailwindcss from "tailwindcss";
 import { ViteImageOptimizer } from "vite-plugin-image-optimizer";
 import { viteStaticCopy } from "vite-plugin-static-copy";
 import svgr from "vite-plugin-svgr";
@@ -71,9 +70,6 @@ export default defineConfig({
                     // your existing scss options if any
                 },
             },
-            postcss: {
-                plugins: [tailwindcss as any, autoprefixer as any],
-            },
         },
         plugins: [
             ViteImageOptimizer(),
@@ -82,6 +78,7 @@ export default defineConfig({
                 svgrOptions: { exportType: "default", ref: true, svgo: false, titleProp: true },
                 include: "**/*.svg",
             }),
+            tailwindcss(),
             react({}),
             flow(),
             viteStaticCopy({
