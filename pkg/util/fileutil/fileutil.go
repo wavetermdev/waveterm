@@ -235,7 +235,7 @@ func ReadFileStream(ctx context.Context, readCh <-chan wshrpc.RespOrErrorUnion[w
 	for {
 		select {
 		case <-ctx.Done():
-			return fmt.Errorf("context cancelled: %v", ctx.Err())
+			return fmt.Errorf("context cancelled: %v", context.Cause(ctx))
 		case respUnion, ok := <-readCh:
 			if !ok {
 				drain = false

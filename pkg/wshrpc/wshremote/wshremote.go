@@ -376,6 +376,7 @@ func (impl *ServerImpl) RemoteFileCopyCommand(ctx context.Context, data wshrpc.C
 			}
 			numFiles++
 			finfo := next.FileInfo()
+			log.Printf("copying file %q\n", next.Name)
 			nextPath := filepath.Join(destPathCleaned, next.Name)
 			destinfo, err = os.Stat(nextPath)
 			if err != nil && !errors.Is(err, fs.ErrNotExist) {
@@ -388,9 +389,11 @@ func (impl *ServerImpl) RemoteFileCopyCommand(ctx context.Context, data wshrpc.C
 			if destinfo != nil {
 				if destinfo.IsDir() {
 					if !finfo.IsDir() {
+						log.Println("dest is dir, src is file")
 						if !overwrite {
 							return fmt.Errorf("cannot create directory %q, file exists at path, force not specified", nextPath)
 						} else {
+							log.Printf("removing file %q\n", nextPath)
 							err := os.Remove(nextPath)
 							if err != nil {
 								return fmt.Errorf("cannot remove file %q: %w", nextPath, err)
@@ -399,6 +402,7 @@ func (impl *ServerImpl) RemoteFileCopyCommand(ctx context.Context, data wshrpc.C
 					} else if !merge && !overwrite {
 						return fmt.Errorf("cannot create directory %q, directory exists at path, neither force nor merge specified", nextPath)
 					} else if overwrite {
+						log.Printf("removing directory %q\n", nextPath)
 						err := os.RemoveAll(nextPath)
 						if err != nil {
 							return fmt.Errorf("cannot remove directory %q: %w", nextPath, err)
@@ -406,9 +410,11 @@ func (impl *ServerImpl) RemoteFileCopyCommand(ctx context.Context, data wshrpc.C
 					}
 				} else {
 					if finfo.IsDir() {
+						log.Println("dest is file, src is dir")
 						if !overwrite {
 							return fmt.Errorf("cannot create file %q, directory exists at path, overwrite not specified", nextPath)
 						} else {
+							log.Printf("removing directory %q\n", nextPath)
 							err := os.RemoveAll(nextPath)
 							if err != nil {
 								return fmt.Errorf("cannot remove directory %q: %w", nextPath, err)
@@ -420,11 +426,13 @@ func (impl *ServerImpl) RemoteFileCopyCommand(ctx context.Context, data wshrpc.C
 				}
 			} else {
 				if finfo.IsDir() {
+					log.Printf("creating directory %q\n", nextPath)
 					err := os.MkdirAll(nextPath, finfo.Mode())
 					if err != nil {
 						return fmt.Errorf("cannot create directory %q: %w", nextPath, err)
 					}
 				} else {
+					log.Printf("creating file %q\n", nextPath)
 					err := os.MkdirAll(filepath.Dir(nextPath), 0755)
 					if err != nil {
 						return fmt.Errorf("cannot create parent directory %q: %w", filepath.Dir(nextPath), err)
@@ -658,19 +666,19 @@ func (impl *ServerImpl) RemoteFileMoveCommand(ctx context.Context, data wshrpc.C
 	}
 	destPathCleaned := filepath.Clean(wavebase.ExpandHomeDirSafe(destConn.Path))
 	destinfo, err := os.Stat(destPathCleaned)
-	if err == nil {
+	if err == nil && destinfo != nil {
 		if !destinfo.IsDir() {
 			if !overwrite {
-				return fmt.Errorf("destination %q already exists, use overwrite option", destUri)
+				return fmt.Errorf("destination %q already exists, use overwrite option", destPathCleaned)
 			} else {
 				err := os.Remove(destPathCleaned)
 				if err != nil {
-					return fmt.Errorf("cannot remove file %q: %w", destUri, err)
+					return fmt.Errorf("cannot remove file %q: %w", destPathCleaned, err)
 				}
 			}
 		}
 	} else if !errors.Is(err, fs.ErrNotExist) {
-		return fmt.Errorf("cannot stat destination %q: %w", destUri, err)
+		return fmt.Errorf("cannot stat destination %q: %w", destPathCleaned, err)
 	}
 	srcConn, err := connparse.ParseURIAndReplaceCurrentHost(ctx, srcUri)
 	if err != nil {

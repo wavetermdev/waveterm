@@ -50,7 +50,7 @@ func (c WaveClient) ReadStream(ctx context.Context, conn *connparse.Connection, 
 		if !rtnData.Info.IsDir {
 			for i := 0; i < dataLen; i += wshrpc.FileChunkSize {
 				if ctx.Err() != nil {
-					ch <- wshutil.RespErr[wshrpc.FileData](ctx.Err())
+					ch <- wshutil.RespErr[wshrpc.FileData](context.Cause(ctx))
 					return
 				}
 				dataEnd := min(i+wshrpc.FileChunkSize, dataLen)
@@ -59,7 +59,7 @@ func (c WaveClient) ReadStream(ctx context.Context, conn *connparse.Connection, 
 		} else {
 			for i := 0; i < len(rtnData.Entries); i += wshrpc.DirChunkSize {
 				if ctx.Err() != nil {
-					ch <- wshutil.RespErr[wshrpc.FileData](ctx.Err())
+					ch <- wshutil.RespErr[wshrpc.FileData](context.Cause(ctx))
 					return
 				}
 				ch <- wshrpc.RespOrErrorUnion[wshrpc.FileData]{Response: wshrpc.FileData{Entries: rtnData.Entries[i:min(i+wshrpc.DirChunkSize, len(rtnData.Entries))], Info: rtnData.Info}}
@@ -126,7 +126,7 @@ func (c WaveClient) ReadTarStream(ctx context.Context, conn *connparse.Connectio
 		}()
 		for _, file := range list {
 			if readerCtx.Err() != nil {
-				rtn <- wshutil.RespErr[iochantypes.Packet](readerCtx.Err())
+				rtn <- wshutil.RespErr[iochantypes.Packet](context.Cause(readerCtx))
 				return
 			}
 			file.Mode = 0644

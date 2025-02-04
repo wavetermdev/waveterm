@@ -128,7 +128,7 @@ func (c S3Client) ReadStream(ctx context.Context, conn *connparse.Connection, da
 				select {
 				case <-ctx.Done():
 					log.Printf("context done")
-					rtn <- wshutil.RespErr[wshrpc.FileData](ctx.Err())
+					rtn <- wshutil.RespErr[wshrpc.FileData](context.Cause(ctx))
 					return
 				default:
 					buf := make([]byte, min(bytesRemaining, wshrpc.FileChunkSize))
@@ -163,24 +163,28 @@ func (c S3Client) ReadTarStream(ctx context.Context, conn *connparse.Connection,
 	objectPrefix := conn.Path
 
 	wholeBucket := objectPrefix == "" || objectPrefix == "/"
-	var singleFileObj *s3.GetObjectOutput
+	var singleFileResult *s3.GetObjectOutput
+	defer func() {
+		if singleFileResult != nil {
+			singleFileResult.Body.Close()
+		}
+	}()
 	var err error
 	if !wholeBucket {
-		singleFileObj, err = c.client.GetObject(ctx, &s3.GetObjectInput{
+		singleFileResult, err = c.client.GetObject(ctx, &s3.GetObjectInput{
 			Bucket: aws.String(bucket),
 			Key:    aws.String(objectPrefix),
 		})
 		if err != nil {
 			var noKey *types.NoSuchKey
-			if errors.As(err, &noKey) {
-				log.Printf("Can't get object %s from bucket %s. No such key exists.\n", objectPrefix, bucket)
-				return wshutil.SendErrCh[iochantypes.Packet](noKey)
+			var notFound *types.NotFound
+			if !errors.As(err, &noKey) && !errors.As(err, &notFound) {
+				return wshutil.SendErrCh[iochantypes.Packet](err)
 			}
-			return wshutil.SendErrCh[iochantypes.Packet](err)
 		}
 	}
-	singleFile := singleFileObj != nil
-	includeDir := singleFileObj == nil && objectPrefix != "" && !strings.HasSuffix(objectPrefix, "/")
+	singleFile := singleFileResult != nil
+	includeDir := singleFileResult == nil && objectPrefix != "" && !strings.HasSuffix(objectPrefix, "/")
 
 	timeout := fstype.DefaultTimeout
 	if opts.Timeout > 0 {
@@ -190,10 +194,8 @@ func (c S3Client) ReadTarStream(ctx context.Context, conn *connparse.Connection,
 
 	tarPathPrefix := conn.Path
 	if singleFile || includeDir {
-		tarPathPrefix = path.Dir(objectPrefix)
-		if tarPathPrefix != "" && !strings.HasSuffix(tarPathPrefix, "/") {
-			tarPathPrefix = tarPathPrefix + "/"
-		}
+		tarPathPrefix = getParentPathString(tarPathPrefix)
+		log.Printf("objectPrefix: %v; tarPathPrefix: %v", objectPrefix, tarPathPrefix)
 	}
 
 	rtn, writeHeader, fileWriter, tarClose := tarcopy.TarCopySrc(readerCtx, tarPathPrefix)
@@ -205,11 +207,12 @@ func (c S3Client) ReadTarStream(ctx context.Context, conn *connparse.Connection,
 		}()
 
 		writeFileAndHeader := func(objOutput *s3.GetObjectOutput, objKey string) error {
+			log.Printf("writing file %v", objKey)
 			modTime := int64(0)
 			if objOutput != nil && objOutput.LastModified != nil {
 				modTime = objOutput.LastModified.UnixMilli()
 			}
-			size := int64(-1)
+			size := int64(0)
 			if objOutput != nil && objOutput.ContentLength != nil {
 				size = *objOutput.ContentLength
 			}
@@ -229,23 +232,12 @@ func (c S3Client) ReadTarStream(ctx context.Context, conn *connparse.Connection,
 					return err
 				}
 			}
+			log.Printf("wrote file %v", objKey)
 			return nil
 		}
 
 		if singleFile {
-			result, err := c.client.GetObject(ctx, &s3.GetObjectInput{
-				Bucket: aws.String(bucket),
-				Key:    aws.String(conn.Path),
-			})
-
-			if err != nil {
-				rtn <- wshutil.RespErr[iochantypes.Packet](err)
-				return
-			}
-
-			defer result.Body.Close()
-
-			if err := writeFileAndHeader(result, conn.Path); err != nil {
+			if err := writeFileAndHeader(singleFileResult, conn.Path); err != nil {
 				rtn <- wshutil.RespErr[iochantypes.Packet](err)
 				return
 			}
@@ -400,7 +392,7 @@ func (c S3Client) ListEntriesStream(ctx context.Context, conn *connparse.Connect
 						Path:  parentPath,
 						Name:  "..",
 						IsDir: true,
-						Size:  -1,
+						Size:  0,
 					},
 				}}}
 			}
@@ -436,7 +428,7 @@ func (c S3Client) ListEntriesStream(ctx context.Context, conn *connparse.Connect
 											IsDir:   true,
 											Dir:     objectKeyPrefix,
 											ModTime: lastModTime,
-											Size:    -1,
+											Size:    0,
 										}
 										prevUsedDirKeys[name] = struct{}{}
 										numFetched++
@@ -490,7 +482,7 @@ func (c S3Client) Stat(ctx context.Context, conn *connparse.Connection) (*wshrpc
 		return &wshrpc.FileInfo{
 			Name:    "/",
 			IsDir:   true,
-			Size:    -1,
+			Size:    0,
 			ModTime: 0,
 			Path:    fmt.Sprintf("%s://", conn.Scheme),
 		}, nil
@@ -516,7 +508,7 @@ func (c S3Client) Stat(ctx context.Context, conn *connparse.Connection) (*wshrpc
 			return &wshrpc.FileInfo{
 				Name:    bucketName,
 				IsDir:   true,
-				Size:    -1,
+				Size:    0,
 				ModTime: 0,
 			}, nil
 		} else {
@@ -755,8 +747,12 @@ func getParentPathUri(conn *connparse.Connection) string {
 }
 
 func getParentPath(conn *connparse.Connection) string {
-	var parentPath string
 	hostAndPath := conn.GetPathWithHost()
+	return getParentPathString(hostAndPath)
+}
+
+func getParentPathString(hostAndPath string) string {
+	parentPath := ""
 	slashIndices := slashRe.FindAllStringIndex(hostAndPath, -1)
 	if slashIndices != nil && len(slashIndices) > 0 {
 		if slashIndices[len(slashIndices)-1][0] != len(hostAndPath)-1 {
