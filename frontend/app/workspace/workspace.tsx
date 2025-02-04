@@ -13,7 +13,6 @@ import { memo } from "react";
 import { NotificationPopover } from "../notification/notificationpopover";
 
 import clsx from "clsx";
-import "./workspace.scss";
 
 const iconRegex = /^[a-z0-9-]+$/;
 
