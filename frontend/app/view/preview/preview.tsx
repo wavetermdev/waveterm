@@ -259,14 +259,35 @@ export class PreviewModel implements ViewModel {
                 saveClassName = "green";
             }
             if (isCeView) {
-                viewTextChildren.push({
-                    elemtype: "textbutton",
-                    text: "Save",
-                    className: clsx(
-                        `${saveClassName} warning border-radius-4 vertical-padding-2 horizontal-padding-10 font-size-11 font-weight-500`
-                    ),
-                    onClick: () => fireAndForget(this.handleFileSave.bind(this)),
-                });
+                const fileInfo = globalStore.get(this.loadableFileInfo);
+                if (fileInfo.state != "hasData") {
+                    viewTextChildren.push({
+                        elemtype: "textbutton",
+                        text: "Loading ...",
+                        className: clsx(
+                            `grey warning border-radius-4 vertical-padding-2 horizontal-padding-10 font-size-11 font-weight-500`
+                        ),
+                        onClick: () => {},
+                    });
+                } else if (fileInfo.data.readonly) {
+                    viewTextChildren.push({
+                        elemtype: "textbutton",
+                        text: "Read Only",
+                        className: clsx(
+                            `yellow warning border-radius-4 vertical-padding-2 horizontal-padding-10 font-size-11 font-weight-500`
+                        ),
+                        onClick: () => {},
+                    });
+                } else {
+                    viewTextChildren.push({
+                        elemtype: "textbutton",
+                        text: "Save",
+                        className: clsx(
+                            `${saveClassName} warning border-radius-4 vertical-padding-2 horizontal-padding-10 font-size-11 font-weight-500`
+                        ),
+                        onClick: () => fireAndForget(this.handleFileSave.bind(this)),
+                    });
+                }
                 if (get(this.canPreview)) {
                     viewTextChildren.push({
                         elemtype: "textbutton",
@@ -934,6 +955,7 @@ function CodeEditPreview({ model }: SpecializedViewProps) {
     const fileContent = useAtomValue(model.fileContent);
     const setNewFileContent = useSetAtom(model.newFileContent);
     const fileName = useAtomValue(model.statFilePath);
+    const fileInfo = useAtomValue(model.statFile);
     const blockMeta = useAtomValue(model.blockAtom)?.meta;
 
     function codeEditKeyDownHandler(e: WaveKeyboardEvent): boolean {
@@ -985,6 +1007,7 @@ function CodeEditPreview({ model }: SpecializedViewProps) {
             blockId={model.blockId}
             text={fileContent}
             filename={fileName}
+            fileinfo={fileInfo}
             meta={blockMeta}
             onChange={(text) => setNewFileContent(text)}
             onMount={onMount}
