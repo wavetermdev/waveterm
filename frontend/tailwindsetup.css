@@ -1,14 +1,12 @@
 /* Copyright 2025, Command Line Inc.
    SPDX-License-Identifier: Apache-2.0 */
 
-@source './**/*.{jsx,tsx}';
-@source './../.storybook/**/*.{jsx,tsx}';
-
 @theme {
     --color-background: rgb(34, 34, 34);
     --color-foreground: #f7f7f7;
     --color-white: #f7f7f7;
     --color-muted-foreground: rgb(195, 200, 194);
+    --color-secondary: rgb(195, 200, 194);
     --color-accent-50: rgb(236, 253, 232);
     --color-accent-100: rgb(209, 250, 202);
     --color-accent-200: rgb(167, 243, 168);
@@ -23,7 +21,7 @@
     --color-warning: rgb(224, 185, 86);
     --color-success: rgb(78, 154, 6);
     --color-panel: rgba(31, 33, 31, 0.5);
-    --color-highlight: rgba(255, 255, 255, 0.2);
+    --color-highlightbg: rgba(255, 255, 255, 0.2);
     --color-hover: rgba(255, 255, 255, 0.1);
     --color-border: rgba(255, 255, 255, 0.16);
 
@@ -32,12 +30,10 @@
     --font-markdown: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif,
         "Apple Color Emoji", "Segoe UI Emoji";
 
+    --text-title: 18px;
+    --text-default: 14px;
+
     --radius: 8px;
 }
 
-@variant dark (&:where([data-colorscheme="dark"], [data-colorscheme="dark"] *));
-
-/* added this wrapper while we transition */
-.tw {
-    @import "tailwindcss";
-}
+@import "tailwindcss";

@@ -4,7 +4,6 @@
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react-swc";
 import { defineConfig } from "electron-vite";
-import flow from "rollup-plugin-flow";
 import { ViteImageOptimizer } from "vite-plugin-image-optimizer";
 import { viteStaticCopy } from "vite-plugin-static-copy";
 import svgr from "vite-plugin-svgr";
@@ -21,7 +20,7 @@ export default defineConfig({
             },
             outDir: "dist/main",
         },
-        plugins: [tsconfigPaths(), flow()],
+        plugins: [tsconfigPaths()],
         resolve: {
             alias: {
                 "@": "frontend",
@@ -47,7 +46,7 @@ export default defineConfig({
             },
             outDir: "dist/preload",
         },
-        plugins: [tsconfigPaths(), flow()],
+        plugins: [tsconfigPaths()],
     },
     renderer: {
         root: ".",
@@ -67,7 +66,7 @@ export default defineConfig({
         css: {
             preprocessorOptions: {
                 scss: {
-                    // your existing scss options if any
+                    silenceDeprecations: ["mixed-decls"],
                 },
             },
         },
@@ -78,9 +77,8 @@ export default defineConfig({
                 svgrOptions: { exportType: "default", ref: true, svgo: false, titleProp: true },
                 include: "**/*.svg",
             }),
-            tailwindcss(),
             react({}),
-            flow(),
+            tailwindcss(),
             viteStaticCopy({
                 targets: [{ src: "node_modules/monaco-editor/min/vs/*", dest: "monaco" }],
             }),

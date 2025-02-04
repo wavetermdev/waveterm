@@ -27,8 +27,10 @@ import { AppBackground } from "./app-bg";
 import { CenteredDiv } from "./element/quickelems";
 import { NotificationBubbles } from "./notification/notificationbubbles";
 
-import "../tailwindsetup.css";
 import "./app.scss";
+
+// this should come after app.scss (don't remove the newline above otherwise prettier will reorder these imports)
+import "../tailwindsetup.css";
 
 const dlog = debug("wave:app");
 const focusLog = debug("wave:focus");
