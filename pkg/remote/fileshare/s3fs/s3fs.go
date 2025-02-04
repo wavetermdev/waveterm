@@ -318,10 +318,13 @@ func (c S3Client) ReadTarStream(ctx context.Context, conn *connparse.Connection,
 			wg.Wait()
 
 			// Walk the tree and write the tar entries
-			tree.Walk(func(path string, _ bool) error {
+			if err := tree.Walk(func(path string, _ bool) error {
 				mapEntry := outputMap[path]
 				return writeFileAndHeader(mapEntry, path)
-			})
+			}); err != nil {
+				rtn <- wshutil.RespErr[iochantypes.Packet](err)
+				return
+			}
 		}
 	}()
 	return rtn
