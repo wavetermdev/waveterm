@@ -1,5 +1,5 @@
-@source './**/*.{js,ts,jsx,tsx,scss,css}';
-@source './../.storybook/**/*.{js,ts,jsx,tsx,scss,css}';
+@source './**/*.{jsx,tsx}';
+@source './../.storybook/**/*.{jsx,tsx}';
 
 @theme {
     --color-background: #000000;
