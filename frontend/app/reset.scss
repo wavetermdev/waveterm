@@ -19,6 +19,15 @@
     padding: 0;
 }
 
+html,
+:host {
+    -webkit-text-size-adjust: 100%;
+    tab-size: 4;
+    font-feature-settings: var(--default-font-feature-settings, normal);
+    font-variation-settings: var(--default-font-variation-settings, normal);
+    -webkit-tap-highlight-color: transparent;
+}
+
 h1,
 h2,
 h3,
@@ -157,6 +166,12 @@ input:where([type="button"], [type="reset"], [type="submit"]),
 
 [hidden]:where(:not([hidden="until-found"])) {
     display: none !important;
+}
+
+table {
+    text-indent: 0;
+    border-color: inherit;
+    border-collapse: collapse;
 }
 
 body {
