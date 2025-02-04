@@ -30,6 +30,7 @@
     --font-markdown: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif,
         "Apple Color Emoji", "Segoe UI Emoji";
 
+    --text-xxs: 10px;
     --text-title: 18px;
     --text-default: 14px;
 
