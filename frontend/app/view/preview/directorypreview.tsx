@@ -954,6 +954,17 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
         }
     }, [filteredData]);
 
+    const entryManagerPropsAtom = useState(
+        atom<EntryManagerOverlayProps>(null) as PrimitiveAtom<EntryManagerOverlayProps>
+    )[0];
+    const [entryManagerProps, setEntryManagerProps] = useAtom(entryManagerPropsAtom);
+
+    const { refs, floatingStyles, context } = useFloating({
+        open: !!entryManagerProps,
+        onOpenChange: () => setEntryManagerProps(undefined),
+        middleware: [offset(({ rects }) => -rects.reference.height / 2 - rects.floating.height / 2)],
+    });
+
     const [, drop] = useDrop(
         () => ({
             accept: "FILE", //a name of file drop type
@@ -969,41 +980,35 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
                 return false;
             },
             drop: async (draggedFile: DraggedFile, monitor) => {
+                console.log("inside drop function:", draggedFile);
                 if (!monitor.didDrop()) {
-                    console.log("a drop has occurred");
+                    console.log("a drop has occurred:", draggedFile.relName);
                     // function to handle the copy operation goes here
                     const destPath = await childAbsPath(draggedFile.relName);
                     const opts: FileCopyOpts = {};
                     const desturi = await model.formatRemoteUri(destPath, globalStore.get);
+                    console.log("desturi:", desturi);
                     const data: CommandFileCopyData = {
                         srcuri: draggedFile.uri,
                         desturi,
                         opts,
                     };
                     const timeoutYear = 31536000000; // one year
-                    RpcApi.FileCopyCommand(TabRpcClient, data, { timeout: timeoutYear });
+                    await RpcApi.FileCopyCommand(TabRpcClient, data, { timeout: timeoutYear });
                 }
+            },
+            hover: (i, monitor) => {
+                console.log("is it hovering: ", monitor.isOver);
             },
             // mabe add a hover option?
         }),
-        []
+        [childAbsPath, model.formatRemoteUri]
     );
 
-    const entryManagerPropsAtom = useState(
-        atom<EntryManagerOverlayProps>(null) as PrimitiveAtom<EntryManagerOverlayProps>
-    )[0];
-    const [entryManagerProps, setEntryManagerProps] = useAtom(entryManagerPropsAtom);
-
-    const { refs, floatingStyles, context } = useFloating({
-        open: !!entryManagerProps,
-        onOpenChange: () => setEntryManagerProps(undefined),
-        middleware: [offset(({ rects }) => -rects.reference.height / 2 - rects.floating.height / 2)],
-    });
-
     useEffect(() => {
-        drop(refs.floating);
-        console.log("drop register");
-    }, [drop, refs.floating.current]);
+        console.log("set reference drop");
+        drop(refs.reference);
+    }, [refs.reference]);
 
     const dismiss = useDismiss(context);
     const { getReferenceProps, getFloatingProps } = useInteractions([dismiss]);
