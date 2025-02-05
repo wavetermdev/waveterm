@@ -51,7 +51,7 @@ func TarCopySrc(ctx context.Context, pathPrefix string) (outputChan chan wshrpc.
 				return err
 			}
 			log.Printf("header: %v\n", header)
-			log.Printf("isDir: %v\n", fi.IsDir())
+			log.Printf("isDir: %v; headerIsDir: %v\n", fi.IsDir(), header.Typeflag)
 
 			header.Name = filepath.Clean(strings.TrimPrefix(path, pathPrefix))
 			if err := validatePath(header.Name); err != nil {

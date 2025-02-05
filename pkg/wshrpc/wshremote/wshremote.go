@@ -376,19 +376,20 @@ func (impl *ServerImpl) RemoteFileCopyCommand(ctx context.Context, data wshrpc.C
 			}
 			numFiles++
 			finfo := next.FileInfo()
-			log.Printf("copying file %q\n", next.Name)
+			log.Printf("copying file %v\n", finfo)
+			srcIsDir := finfo.IsDir()
 			nextPath := filepath.Join(destPathCleaned, next.Name)
 			destinfo, err = os.Stat(nextPath)
 			if err != nil && !errors.Is(err, fs.ErrNotExist) {
 				return fmt.Errorf("cannot stat file %q: %w", nextPath, err)
 			}
-			if !finfo.IsDir() {
+			if !srcIsDir {
 				totalBytes += finfo.Size()
 			}
 
 			if destinfo != nil {
 				if destinfo.IsDir() {
-					if !finfo.IsDir() {
+					if !srcIsDir {
 						log.Println("dest is dir, src is file")
 						if !overwrite {
 							return fmt.Errorf("cannot create directory %q, file exists at path, force not specified", nextPath)
@@ -409,7 +410,7 @@ func (impl *ServerImpl) RemoteFileCopyCommand(ctx context.Context, data wshrpc.C
 						}
 					}
 				} else {
-					if finfo.IsDir() {
+					if srcIsDir {
 						log.Println("dest is file, src is dir")
 						if !overwrite {
 							return fmt.Errorf("cannot create file %q, directory exists at path, overwrite not specified", nextPath)

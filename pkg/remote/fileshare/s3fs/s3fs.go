@@ -13,6 +13,7 @@ import (
 	"io"
 	"io/fs"
 	"log"
+	"os"
 	"path"
 	"regexp"
 	"strings"
@@ -32,6 +33,11 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/util/tarcopy"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
+)
+
+const (
+	FileMode os.FileMode = 0644
+	DirMode  os.FileMode = 0755 | os.ModeDir
 )
 
 type S3Client struct {
@@ -206,27 +212,38 @@ func (c S3Client) ReadTarStream(ctx context.Context, conn *connparse.Connection,
 			cancel()
 		}()
 
-		writeFileAndHeader := func(objOutput *s3.GetObjectOutput, objKey string) error {
+		writeFileAndHeader := func(objOutput *s3.GetObjectOutput, objKey string, numChildren int) error {
 			log.Printf("writing file %v", objKey)
-			modTime := int64(0)
-			if objOutput != nil && objOutput.LastModified != nil {
-				modTime = objOutput.LastModified.UnixMilli()
-			}
+			modTime := int64(time.Now().Unix())
 			size := int64(0)
-			if objOutput != nil && objOutput.ContentLength != nil {
-				size = *objOutput.ContentLength
+			isDir := objOutput == nil
+			if isDir {
+				size = int64(numChildren)
+			} else {
+				if objOutput.ContentLength != nil {
+					size = *objOutput.ContentLength
+				}
+				if objOutput.LastModified != nil {
+					modTime = objOutput.LastModified.UnixMilli()
+				}
 			}
+
+			mode := FileMode
+			if isDir {
+				mode = DirMode
+			}
+
 			finfo := &wshrpc.FileInfo{
 				Name:    objKey,
-				IsDir:   objOutput == nil,
+				IsDir:   isDir,
 				Size:    size,
 				ModTime: modTime,
-				Mode:    0644,
+				Mode:    mode,
 			}
 			if err := writeHeader(fileutil.ToFsFileInfo(finfo), objKey); err != nil {
 				return err
 			}
-			if objOutput != nil {
+			if !isDir {
 				base64Reader := base64.NewDecoder(base64.StdEncoding, objOutput.Body)
 				if _, err := io.Copy(fileWriter, base64Reader); err != nil {
 					return err
@@ -237,7 +254,7 @@ func (c S3Client) ReadTarStream(ctx context.Context, conn *connparse.Connection,
 		}
 
 		if singleFile {
-			if err := writeFileAndHeader(singleFileResult, conn.Path); err != nil {
+			if err := writeFileAndHeader(singleFileResult, conn.Path, 0); err != nil {
 				rtn <- wshutil.RespErr[iochantypes.Packet](err)
 				return
 			}
@@ -309,10 +326,14 @@ func (c S3Client) ReadTarStream(ctx context.Context, conn *connparse.Connection,
 
 			wg.Wait()
 
+			// log.Printf("outputMap: %v", outputMap)
+
 			// Walk the tree and write the tar entries
-			if err := tree.Walk(func(path string, _ bool) error {
+			if err := tree.Walk(func(path string, numChildren int) error {
 				mapEntry := outputMap[path]
-				return writeFileAndHeader(mapEntry, path)
+				// log.Printf("path: %v", path)
+				// log.Printf("mapEntry: %v", mapEntry)
+				return writeFileAndHeader(mapEntry, path, numChildren)
 			}); err != nil {
 				rtn <- wshutil.RespErr[iochantypes.Packet](err)
 				return

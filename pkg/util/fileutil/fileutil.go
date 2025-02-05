@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"log"
 	"mime"
 	"net/http"
 	"os"
@@ -209,13 +210,16 @@ func ToFsFileInfo(fi *wshrpc.FileInfo) FsFileInfo {
 	if fi == nil {
 		panic("ToFsFileInfo: nil FileInfo")
 	}
-	return FsFileInfo{
+	fsFileInfo := FsFileInfo{
 		NameInternal:    fi.Name,
 		ModeInternal:    fi.Mode,
 		SizeInternal:    fi.Size,
 		ModTimeInternal: fi.ModTime,
 		IsDirInternal:   fi.IsDir,
 	}
+
+	log.Printf("fi: %v; fsFileInfo: %v\n", fi, fsFileInfo)
+	return fsFileInfo
 }
 
 func ReadFileStream(ctx context.Context, readCh <-chan wshrpc.RespOrErrorUnion[wshrpc.FileData], fileInfoCallback func(finfo wshrpc.FileInfo), dirCallback func(entries []*wshrpc.FileInfo) error, fileCallback func(data io.Reader) error) error {

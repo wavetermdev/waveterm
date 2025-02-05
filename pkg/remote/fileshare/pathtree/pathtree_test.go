@@ -57,9 +57,9 @@ func TestWalk(t *testing.T) {
 	tree := initializeTree()
 
 	// Check that the tree traverses all nodes and identifies leaf nodes correctly
-	pathMap := make(map[string]bool)
-	err := tree.Walk(func(path string, isLeaf bool) error {
-		pathMap[path] = isLeaf
+	pathMap := make(map[string]int)
+	err := tree.Walk(func(path string, numChildren int) error {
+		pathMap[path] = numChildren
 		return nil
 	})
 
@@ -67,34 +67,29 @@ func TestWalk(t *testing.T) {
 		t.Errorf("unexpected error: %v", err)
 	}
 
-	expectedPathMap := map[string]bool{
-		"root/":      false,
-		"root/a":     false,
-		"root/a/d":   true,
-		"root/a/e":   true,
-		"root/a/f":   true,
-		"root/b":     false,
-		"root/b/g":   false,
-		"root/b/g/h": true,
-		"root/c":     true,
+	expectedPathMap := map[string]int{
+		"root/a":     3,
+		"root/a/d":   0,
+		"root/a/e":   0,
+		"root/a/f":   0,
+		"root/b":     1,
+		"root/b/g":   1,
+		"root/b/g/h": 0,
+		"root/c":     0,
 	}
 
 	log.Printf("pathMap: %v", pathMap)
 
-	for path, isLeaf := range expectedPathMap {
-		if pathMap[path] != isLeaf {
-			if isLeaf {
-				t.Errorf("expected %s to be a leaf", path)
-			} else {
-				t.Errorf("expected %s to not be a leaf", path)
-			}
+	for path, numChildren := range expectedPathMap {
+		if pathMap[path] != numChildren {
+			t.Errorf("expected %d children for path %s, got %d", numChildren, path, pathMap[path])
 		}
 	}
 
 	expectedError := errors.New("test error")
 
 	// Check that the walk function returns an error if it is returned by the walk function
-	err = tree.Walk(func(path string, isLeaf bool) error {
+	err = tree.Walk(func(path string, numChildren int) error {
 		return expectedError
 	})
 	if err != expectedError {
