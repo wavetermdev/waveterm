@@ -61,16 +61,7 @@ const DonutChart = ({
     nameKey: string;
 }) => {
     return (
-        <div
-            className="tw"
-            style={{
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                width: "100%",
-                height: "100%",
-            }}
-        >
+        <div className="flex flex-col items-center w-full h-full">
             <ChartContainer config={config} className="mx-auto w-full h-full aspect-square max-h-[250px]">
                 <PieChart>
                     <ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel />} />
