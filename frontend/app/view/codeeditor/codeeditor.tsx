@@ -112,13 +112,14 @@ interface CodeEditorProps {
     blockId: string;
     text: string;
     filename: string;
+    fileinfo: FileInfo;
     language?: string;
     meta?: MetaType;
     onChange?: (text: string) => void;
     onMount?: (monacoPtr: MonacoTypes.editor.IStandaloneCodeEditor, monaco: Monaco) => () => void;
 }
 
-export function CodeEditor({ blockId, text, language, filename, meta, onChange, onMount }: CodeEditorProps) {
+export function CodeEditor({ blockId, text, language, filename, fileinfo, meta, onChange, onMount }: CodeEditorProps) {
     const divRef = useRef<HTMLDivElement>(null);
     const unmountRef = useRef<() => void>(null);
     const minimapEnabled = useOverrideConfigAtom(blockId, "editor:minimapenabled") ?? false;
@@ -169,12 +170,13 @@ export function CodeEditor({ blockId, text, language, filename, meta, onChange, 
 
     const editorOpts = useMemo(() => {
         const opts = defaultEditorOptions();
+        opts.readOnly = fileinfo.readonly;
         opts.minimap.enabled = minimapEnabled;
         opts.stickyScroll.enabled = stickyScrollEnabled;
         opts.wordWrap = wordWrap ? "on" : "off";
         opts.fontSize = fontSize;
         return opts;
-    }, [minimapEnabled, stickyScrollEnabled, wordWrap, fontSize]);
+    }, [minimapEnabled, stickyScrollEnabled, wordWrap, fontSize, fileinfo.readonly]);
 
     return (
         <div className="code-editor-wrapper">
