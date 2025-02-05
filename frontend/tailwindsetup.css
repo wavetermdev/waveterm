@@ -1,6 +1,8 @@
 /* Copyright 2025, Command Line Inc.
    SPDX-License-Identifier: Apache-2.0 */
 
+@import "tailwindcss";
+
 @theme {
     --color-background: rgb(34, 34, 34);
     --color-foreground: #f7f7f7;
@@ -36,5 +38,3 @@
 
     --radius: 8px;
 }
-
-@import "tailwindcss";
