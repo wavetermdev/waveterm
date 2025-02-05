@@ -653,53 +653,6 @@ function TableBody({
         [setRefreshVersion, conn]
     );
 
-    /*
-    const displayRow = useCallback(
-        (row: Row<FileInfo>, idx: number) => (
-            <div
-                ref={(el) => (rowRefs.current[idx] = el)}
-                className={clsx("dir-table-body-row", { focused: focusIndex === idx })}
-                key={row.id}
-                onDoubleClick={() => {
-                    const newFileName = row.getValue("path") as string;
-                    model.goHistory(newFileName);
-                    setSearch("");
-                }}
-                onClick={() => setFocusIndex(idx)}
-                onContextMenu={(e) => handleFileContextMenu(e, row.original)}
-            >
-                {row.getVisibleCells().map((cell) => (
-                    <div
-                        className={clsx("dir-table-body-cell", "col-" + cell.column.id)}
-                        key={cell.id}
-                        style={{ width: `calc(var(--col-${cell.column.id}-size) * 1px)` }}
-                    >
-                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </div>
-                ))}
-            </div>
-        ),
-        [setSearch, handleFileContextMenu, setFocusIndex, focusIndex]
-    );
-
-    const dragItem: DraggedFile = {
-        relName: "",
-        absParent: "",
-        uri: "",
-    };
-    const [{ isDragging }, drag, dragPreview] = useDrag(
-        () => ({
-            type: "FILE",
-            canDrag: true,
-            item: () => dragItem,
-            collect: (monitor) => ({
-                isDragging: monitor.isDragging(),
-            }),
-        }),
-        []
-    );
-	*/
-
     return (
         <div className="dir-table-body" ref={bodyRef}>
             {search !== "" && (
@@ -780,10 +733,9 @@ const TableRow = React.forwardRef(function (
         absParent: dirPath,
         uri: formatRemoteUri(row.getValue("path") as string),
     };
-    //console.log("drag item is", dragItem);
     const [{ isDragging }, drag, dragPreview] = useDrag(
         () => ({
-            type: "FILE",
+            type: "FILE_ITEM",
             canDrag: true,
             item: () => dragItem,
             collect: (monitor) => {
@@ -791,22 +743,9 @@ const TableRow = React.forwardRef(function (
                     isDragging: monitor.isDragging(),
                 };
             },
-            end: (draggedItem, monitor) => {
-                console.log("did it drop:", monitor.didDrop());
-            },
         }),
         [dragItem]
     );
-
-    useEffect(() => {
-        console.log("dragging is:", isDragging);
-    }, [isDragging]);
-
-    /*
-    useEffect(() => {
-        drag(ref.current);
-    }, [drag, ref.current]);
-	*/
 
     return (
         <div
@@ -859,7 +798,7 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
             const dirAbsInfo = await RpcApi.RemoteFileJoinCommand(TabRpcClient, [dirPath, fileName], {
                 route: makeConnRoute(conn),
             });
-            return dirAbsInfo.dir;
+            return dirAbsInfo.path;
         },
         [dirPath, conn]
     );
@@ -967,27 +906,21 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
 
     const [, drop] = useDrop(
         () => ({
-            accept: "FILE", //a name of file drop type
+            accept: "FILE_ITEM", //a name of file drop type
             canDrop: (_, monitor) => {
                 const dragItem = monitor.getItem<DraggedFile>();
-                console.log("checking for drop");
                 // drop if not current dir is the parent directory of the dragged item
-                // probably requires absolute path
+                // requires absolute path
                 if (monitor.isOver({ shallow: false }) && dragItem.absParent !== dirPath) {
-                    //TODO: make sure this allows the right copies. there's potential for this to be slightly off
                     return true;
                 }
                 return false;
             },
             drop: async (draggedFile: DraggedFile, monitor) => {
-                console.log("inside drop function:", draggedFile);
                 if (!monitor.didDrop()) {
-                    console.log("a drop has occurred:", draggedFile.relName);
-                    // function to handle the copy operation goes here
-                    const destPath = await childAbsPath(draggedFile.relName);
+                    //const destPath = await childAbsPath(draggedFile.relName);  // TODO? needed if renaming via cp gets supported
                     const opts: FileCopyOpts = {};
-                    const desturi = await model.formatRemoteUri(destPath, globalStore.get);
-                    console.log("desturi:", desturi);
+                    const desturi = await model.formatRemoteUri(draggedFile.absParent, globalStore.get);
                     const data: CommandFileCopyData = {
                         srcuri: draggedFile.uri,
                         desturi,
@@ -995,18 +928,15 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
                     };
                     const timeoutYear = 31536000000; // one year
                     await RpcApi.FileCopyCommand(TabRpcClient, data, { timeout: timeoutYear });
+                    model.refreshCallback();
                 }
             },
-            hover: (i, monitor) => {
-                console.log("is it hovering: ", monitor.isOver);
-            },
-            // mabe add a hover option?
+            // TODO: mabe add a hover option?
         }),
-        [childAbsPath, model.formatRemoteUri]
+        [childAbsPath, model.formatRemoteUri, model.refreshCallback]
     );
 
     useEffect(() => {
-        console.log("set reference drop");
         drop(refs.reference);
     }, [refs.reference]);
 
