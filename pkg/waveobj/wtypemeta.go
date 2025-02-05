@@ -36,6 +36,10 @@ type MetaTSType struct {
 	FrameIcon              string `json:"frame:icon,omitempty"`
 	FrameText              string `json:"frame:text,omitempty"`
 
+	// Preview options
+	PreviewLinkedTerminal string `json:"preview:linked_terminal,omitempty"`
+
+	// Command options
 	CmdClear            bool     `json:"cmd:*,omitempty"`
 	Cmd                 string   `json:"cmd,omitempty"`
 	CmdInteractive      bool     `json:"cmd:interactive,omitempty"`

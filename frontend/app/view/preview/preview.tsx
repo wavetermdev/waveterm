@@ -46,6 +46,8 @@ import { TransformComponent, TransformWrapper, useControls } from "react-zoom-pa
 import { CSVView } from "./csvview";
 import { DirectoryPreview } from "./directorypreview";
 import "./preview.scss";
+import { useTerminalPreviewSync } from "./sync";
+import { toggleTerminalPreviewLink } from "./sync";
 
 const MaxFileSize = 1024 * 1024 * 10; // 10MB
 const MaxCSVSize = 1024 * 1024 * 1; // 1MB
@@ -174,6 +176,7 @@ export class PreviewModel implements ViewModel {
     refreshCallback: () => void;
     directoryKeyDownHandler: (waveEvent: WaveKeyboardEvent) => boolean;
     codeEditKeyDownHandler: (waveEvent: WaveKeyboardEvent) => boolean;
+    isUpdatingFromTerminal: boolean;
 
     constructor(blockId: string, nodeModel: BlockNodeModel) {
         this.viewType = "preview";
@@ -473,6 +476,7 @@ export class PreviewModel implements ViewModel {
         });
 
         this.noPadding = atom(true);
+        this.isUpdatingFromTerminal = false;
     }
 
     markdownShowTocToggle() {
@@ -550,6 +554,31 @@ export class PreviewModel implements ViewModel {
         }
         const blockOref = WOS.makeORef("block", this.blockId);
         await services.ObjectService.UpdateObjectMeta(blockOref, updateMeta);
+
+        const linkedTerminalId = blockMeta?.["preview:linked_terminal"];
+        if (linkedTerminalId && !this.isUpdatingFromTerminal) {
+            try {
+                const fileInfo = await RpcApi.FileInfoCommand(TabRpcClient, {
+                    info: {
+                        path: await this.formatRemoteUri(newPath, globalStore.get),
+                    },
+                });
+                if (fileInfo?.isdir) {
+                    const terminalBlockRef = WOS.makeORef("block", linkedTerminalId);
+                    await services.ObjectService.UpdateObjectMeta(terminalBlockRef, {
+                        "cmd:cwd": fileInfo.dir
+                    });
+                    
+                    await RpcApi.ControllerInputCommand(TabRpcClient, {
+                        blockid: linkedTerminalId,
+                        inputdata64: btoa(`cd "${fileInfo.dir}"\n`),
+                    });
+                }
+            } catch (error) {
+                console.error("Failed to sync terminal directory:", error);
+                // Consider showing a user-friendly error notification
+            }
+        }
 
         // Clear the saved file buffers
         globalStore.set(this.fileContentSaved, null);
@@ -708,6 +737,29 @@ export class PreviewModel implements ViewModel {
                     await navigator.clipboard.writeText(fileInfo.name);
                 }),
         });
+
+        menuItems.push({ type: "separator" });
+        menuItems.push({
+            label: "Link to Terminal (from clipboard)",
+            click: () =>
+                fireAndForget(async () => {
+                    const terminalId = await navigator.clipboard.readText();
+                    if (!terminalId) return;
+                    await toggleTerminalPreviewLink(terminalId, this.blockId);
+                }),
+        });
+
+        menuItems.push({
+            label: "Unlink from Terminal",
+            click: () =>
+                fireAndForget(async () => {
+                    const linkedTerminalId = globalStore.get(this.blockAtom)?.meta?.["preview:linked_terminal"];
+                    if (linkedTerminalId) {
+                        await toggleTerminalPreviewLink(linkedTerminalId, this.blockId);
+                    }
+                }),
+        });
+
         const mimeType = jotaiLoadableValue(globalStore.get(this.fileMimeTypeLoadable), "");
         if (mimeType == "directory") {
             menuItems.push({
@@ -1080,6 +1132,8 @@ function PreviewView({
     model: PreviewModel;
 }) {
     const connStatus = useAtomValue(model.connStatus);
+    useTerminalPreviewSync(model);
+    
     if (connStatus?.status != "connected") {
         return null;
     }

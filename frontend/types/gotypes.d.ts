@@ -501,6 +501,7 @@ declare global {
         "frame:title"?: string;
         "frame:icon"?: string;
         "frame:text"?: string;
+        "preview:linked_terminal"?: string;
         "cmd:*"?: boolean;
         cmd?: string;
         "cmd:interactive"?: boolean;

@@ -37,6 +37,8 @@ const (
 	MetaKey_FrameIcon                        = "frame:icon"
 	MetaKey_FrameText                        = "frame:text"
 
+	MetaKey_PreviewLinkedTerminal            = "preview:linked_terminal"
+
 	MetaKey_CmdClear                         = "cmd:*"
 	MetaKey_Cmd                              = "cmd"
 	MetaKey_CmdInteractive                   = "cmd:interactive"
