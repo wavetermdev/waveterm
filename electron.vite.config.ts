@@ -4,6 +4,7 @@
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react-swc";
 import { defineConfig } from "electron-vite";
+import flow from "rollup-plugin-flow";
 import { ViteImageOptimizer } from "vite-plugin-image-optimizer";
 import { viteStaticCopy } from "vite-plugin-static-copy";
 import svgr from "vite-plugin-svgr";
@@ -20,7 +21,7 @@ export default defineConfig({
             },
             outDir: "dist/main",
         },
-        plugins: [tsconfigPaths()],
+        plugins: [tsconfigPaths(), flow()],
         resolve: {
             alias: {
                 "@": "frontend",
@@ -46,7 +47,7 @@ export default defineConfig({
             },
             outDir: "dist/preload",
         },
-        plugins: [tsconfigPaths()],
+        plugins: [tsconfigPaths(), flow()],
     },
     renderer: {
         root: ".",
@@ -73,6 +74,7 @@ export default defineConfig({
         plugins: [
             ViteImageOptimizer(),
             tsconfigPaths(),
+            flow(),
             svgr({
                 svgrOptions: { exportType: "default", ref: true, svgo: false, titleProp: true },
                 include: "**/*.svg",
