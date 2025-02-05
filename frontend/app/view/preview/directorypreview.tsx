@@ -31,6 +31,8 @@ import { quote as shellQuote } from "shell-quote";
 import { debounce } from "throttle-debounce";
 import "./directorypreview.scss";
 
+const PageJumpSize = 20;
+
 declare module "@tanstack/react-table" {
     interface TableMeta<TData extends RowData> {
         updateName: (path: string) => void;
@@ -776,11 +778,11 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
                 return true;
             }
             if (checkKeyPressed(waveEvent, "PageUp")) {
-                setFocusIndex((idx) => Math.max(idx - 20, 0));
+                setFocusIndex((idx) => Math.max(idx - PageJumpSize, 0));
                 return true;
             }
             if (checkKeyPressed(waveEvent, "PageDown")) {
-                setFocusIndex((idx) => Math.min(idx + 20, filteredData.length - 1));
+                setFocusIndex((idx) => Math.min(idx + PageJumpSize, filteredData.length - 1));
                 return true;
             }
             if (checkKeyPressed(waveEvent, "Enter")) {
