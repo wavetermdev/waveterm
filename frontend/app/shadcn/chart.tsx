@@ -1,9 +1,16 @@
+// Copyright 2025, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+//
+// This file is based on components from shadcn/ui, which is licensed under the MIT License.
+// Original source: https://github.com/shadcn/ui
+// Modifications made by Command Line Inc.
+
 "use client";
 
 import * as React from "react";
 import * as RechartsPrimitive from "recharts";
 
-import cn from "clsx";
+import { cn } from "@/shadcn/lib/utils";
 
 // Format: { THEME_NAME: CSS_SELECTOR }
 const THEMES = { light: "", dark: ".dark" } as const;

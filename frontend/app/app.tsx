@@ -30,6 +30,7 @@ import { NotificationBubbles } from "./notification/notificationbubbles";
 import "./app.scss";
 
 // this should come after app.scss (don't remove the newline above otherwise prettier will reorder these imports)
+import QuickLaunchPalette from "@/app/quicklaunch/quicklaunch";
 import "../tailwindsetup.css";
 
 const dlog = debug("wave:app");
@@ -309,6 +310,7 @@ const AppInner = () => {
                 <Workspace />
             </DndProvider>
             <FlashError />
+            <QuickLaunchPalette />
             {isDev() ? <NotificationBubbles></NotificationBubbles> : null}
         </div>
     );

@@ -4,7 +4,7 @@
 @import "tailwindcss";
 
 @theme {
-    --color-background: rgb(34, 34, 34);
+    --color-background: #000000;
     --color-foreground: #f7f7f7;
     --color-white: #f7f7f7;
     --color-muted-foreground: rgb(195, 200, 194);

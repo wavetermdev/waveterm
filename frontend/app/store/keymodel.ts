@@ -1,6 +1,7 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { quickLaunchModel } from "@/app/quicklaunch/quicklaunch";
 import {
     atoms,
     createBlock,
@@ -348,6 +349,10 @@ function registerGlobalKeys() {
             return true;
         }
         globalStore.set(atoms.isTermMultiInput, !curMI);
+        return true;
+    });
+    globalKeyMap.set("Cmd:k", () => {
+        quickLaunchModel.toggleOpenState();
         return true;
     });
     for (let idx = 1; idx <= 9; idx++) {
