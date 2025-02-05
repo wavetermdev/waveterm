@@ -54,14 +54,84 @@ interface SearchResponse {
     matches: CommandMatch[];
 }
 
-// Mock search function - replace with actual RPC call
+// Mock data
+const MOCK_COMMANDS: CommandMatch[] = [
+    {
+        id: "1",
+        type: "url",
+        title: "Wave GitHub",
+        subtitle: "github.com/wave-framework/wave",
+        url: "https://github.com/wave-framework/wave",
+        icon: "fa-sharp fa-github",
+    },
+    {
+        id: "2",
+        type: "url",
+        title: "Wave Documentation",
+        subtitle: "docs.wave-framework.io",
+        url: "https://docs.wave-framework.io",
+        icon: "fa-sharp fa-book",
+    },
+    {
+        id: "3",
+        type: "directory",
+        title: "~/projects/wave",
+        subtitle: "Local Wave repository",
+        directory: "~/projects/wave",
+    },
+    {
+        id: "4",
+        type: "shell",
+        title: "Production Server",
+        subtitle: "ssh wave@prod-1",
+        command: "ssh wave@prod-1",
+        icon: "fa-sharp fa-server",
+        color: "#00ff00",
+    },
+    {
+        id: "5",
+        type: "command",
+        title: "System Monitor",
+        subtitle: "Run htop",
+        command: "htop",
+        icon: "fa-sharp fa-chart-line",
+    },
+    {
+        id: "6",
+        type: "url",
+        title: "Wave Discord",
+        subtitle: "discord.gg/wave-community",
+        url: "https://discord.gg/wave-community",
+        icon: "fa-sharp fa-discord",
+        color: "#5865F2",
+    },
+];
+
+interface SearchResponse {
+    matches: CommandMatch[];
+}
+
 const searchCommands = async (search: string): Promise<SearchResponse> => {
-    // This would be replaced with your actual RPC call
-    return { matches: [] };
+    if (!search) {
+        return { matches: MOCK_COMMANDS };
+    }
+
+    const searchLower = search.toLowerCase();
+    const filtered = MOCK_COMMANDS.filter((cmd) => {
+        return (
+            cmd.title.toLowerCase().includes(searchLower) ||
+            cmd.subtitle?.toLowerCase().includes(searchLower) ||
+            cmd.url?.toLowerCase().includes(searchLower) ||
+            cmd.directory?.toLowerCase().includes(searchLower) ||
+            cmd.command?.toLowerCase().includes(searchLower)
+        );
+    });
+
+    return { matches: filtered };
 };
 
 const QuickLaunchPalette = () => {
-    const [results, setResults] = useState<SearchResponse>({ matches: [] });
+    const [results, setResults] = useState<SearchResponse>({ matches: MOCK_COMMANDS });
     const [open, setOpen] = useAtom(quickLaunchModel.openAtom);
 
     React.useEffect(() => {
@@ -125,7 +195,7 @@ const QuickLaunchPalette = () => {
     };
 
     return (
-        <CommandDialog open={open} onOpenChange={setOpen}>
+        <CommandDialog open={open} onOpenChange={setOpen} variant="quicklaunch">
             <Command className="rounded-lg" shouldFilter={false}>
                 <CommandInput placeholder="Type a command or search..." onValueChange={handleSearch} />
                 <CommandList>
