@@ -493,18 +493,21 @@ function TableBody({
             const viewportHeight = viewport.offsetHeight;
             const rowElement = rowRefs.current[focusIndex];
             const rowRect = rowElement.getBoundingClientRect();
-            const parentRect = bodyRef.current.getBoundingClientRect();
+            const parentRect = viewport.getBoundingClientRect();
             const viewportScrollTop = viewport.scrollTop;
-
-            const rowTopRelativeToViewport = rowRect.top - parentRect.top;
-            const rowBottomRelativeToViewport = rowRect.bottom - parentRect.top;
-
-            if (rowTopRelativeToViewport < viewportScrollTop) {
+            const rowTopRelativeToViewport = rowRect.top - parentRect.top + viewport.scrollTop;
+            const rowBottomRelativeToViewport = rowRect.bottom - parentRect.top + viewport.scrollTop;
+            if (rowTopRelativeToViewport - 30 < viewportScrollTop) {
                 // Row is above the visible area
-                viewport.scrollTo({ top: rowTopRelativeToViewport });
-            } else if (rowBottomRelativeToViewport > viewportScrollTop + viewportHeight) {
+                let topVal = rowTopRelativeToViewport - 30;
+                if (topVal < 0) {
+                    topVal = 0;
+                }
+                viewport.scrollTo({ top: topVal });
+            } else if (rowBottomRelativeToViewport + 5 > viewportScrollTop + viewportHeight) {
                 // Row is below the visible area
-                viewport.scrollTo({ top: rowBottomRelativeToViewport - viewportHeight });
+                const topVal = rowBottomRelativeToViewport - viewportHeight + 5;
+                viewport.scrollTo({ top: topVal });
             }
         }
         // setIndexChangedFromClick(false);
@@ -770,6 +773,14 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
             }
             if (checkKeyPressed(waveEvent, "ArrowDown")) {
                 setFocusIndex((idx) => Math.min(idx + 1, filteredData.length - 1));
+                return true;
+            }
+            if (checkKeyPressed(waveEvent, "PageUp")) {
+                setFocusIndex((idx) => Math.max(idx - 20, 0));
+                return true;
+            }
+            if (checkKeyPressed(waveEvent, "PageDown")) {
+                setFocusIndex((idx) => Math.min(idx + 20, filteredData.length - 1));
                 return true;
             }
             if (checkKeyPressed(waveEvent, "Enter")) {
