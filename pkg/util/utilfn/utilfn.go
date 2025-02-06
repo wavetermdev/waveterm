@@ -13,6 +13,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"hash/fnv"
 	"io"
 	"math"
 	mathrand "math/rand"
@@ -1015,4 +1016,10 @@ func ConvertToWallClockPT(t time.Time) time.Time {
 	hour, min, sec := t.Clock()
 	pstTime := time.Date(year, month, day, hour, min, sec, 0, PTLoc)
 	return pstTime
+}
+
+func QuickHashString(s string) string {
+	h := fnv.New64a()
+	h.Write([]byte(s))
+	return base64.RawURLEncoding.EncodeToString(h.Sum(nil))
 }

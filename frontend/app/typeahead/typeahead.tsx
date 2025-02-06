@@ -3,7 +3,7 @@
 
 import { offset, useFloating } from "@floating-ui/react";
 import clsx from "clsx";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useId, useRef, useState } from "react";
 
 interface Suggestion {
     type: "file";
@@ -15,17 +15,25 @@ interface Suggestion {
     mimetype: string;
 }
 
+interface SuggestionRequestContext {
+    widgetid: string;
+    reqnum: number;
+    dispose?: boolean;
+}
+
+type SuggestionsFnType = (query: string, reqContext: SuggestionRequestContext) => Promise<Suggestion[]>;
+
 interface TypeaheadProps {
     anchorRef: React.RefObject<HTMLElement>;
     isOpen: boolean;
     onClose: () => void;
     onSelect: (item: Suggestion, queryStr: string) => void;
-    fetchSuggestions: (query: string) => Promise<Suggestion[]>;
+    fetchSuggestions: SuggestionsFnType;
     className?: string;
+    placeholderText?: string;
 }
 
 const Typeahead: React.FC<TypeaheadProps> = ({ anchorRef, isOpen, onClose, onSelect, fetchSuggestions, className }) => {
-    console.log("TYPEAHEAD", anchorRef, isOpen, onClose, onSelect, fetchSuggestions, className);
     if (!isOpen || !anchorRef.current || !fetchSuggestions) return null;
 
     return <TypeaheadInner {...{ anchorRef, onClose, onSelect, fetchSuggestions, className }} />;
@@ -38,7 +46,9 @@ const TypeaheadInner: React.FC<Omit<TypeaheadProps, "isOpen">> = ({
     fetchSuggestions,
     className,
 }) => {
+    const widgetId = useId();
     const [query, setQuery] = useState("");
+    const reqNumRef = useRef(0);
     const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
     const [selectedIndex, setSelectedIndex] = useState(-1);
     const [fetched, setFetched] = useState(false);
@@ -60,11 +70,19 @@ const TypeaheadInner: React.FC<Omit<TypeaheadProps, "isOpen">> = ({
     }, [anchorRef.current]);
 
     useEffect(() => {
-        fetchSuggestions(query).then((results) => {
+        reqNumRef.current++;
+        fetchSuggestions(query, { widgetid: widgetId, reqnum: reqNumRef.current }).then((results) => {
             setSuggestions(results);
             setFetched(true);
         });
     }, [query, fetchSuggestions]);
+
+    useEffect(() => {
+        return () => {
+            reqNumRef.current++;
+            fetchSuggestions("", { widgetid: widgetId, reqnum: reqNumRef.current, dispose: true });
+        };
+    }, []);
 
     useEffect(() => {
         inputRef.current?.focus();
@@ -100,36 +118,46 @@ const TypeaheadInner: React.FC<Omit<TypeaheadProps, "isOpen">> = ({
         }
     };
 
-    console.log("SUGGESTIONS-LEN", suggestions.length);
-
     return (
         <div
-            className={clsx("typeahead-container z-[var(--zindex-typeahead-modal)]", className)}
+            className={clsx(
+                "w-96 rounded-lg bg-gray-800 shadow-lg border border-gray-700 z-[var(--zindex-typeahead-modal)]",
+                className
+            )}
             ref={refs.setFloating}
             style={floatingStyles}
         >
-            <input
-                ref={inputRef}
-                type="text"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                onKeyDown={handleKeyDown}
-                className="typeahead-input"
-                placeholder="Search files..."
-            />
+            <div className="p-2">
+                <input
+                    ref={inputRef}
+                    type="text"
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    className="w-full bg-gray-900 text-gray-100 px-4 py-2 rounded-md 
+                             border border-gray-700 focus:outline-none focus:border-blue-500
+                             placeholder-gray-500"
+                    placeholder="Search files..."
+                />
+            </div>
             {fetched && suggestions.length > 0 && (
-                <div className="typeahead-dropdown">
+                <div ref={dropdownRef} className="max-h-96 overflow-y-auto divide-y divide-gray-700">
                     {suggestions.map((suggestion, index) => (
                         <div
                             key={suggestion.suggestionid}
-                            className={clsx("typeahead-item", { selected: index === selectedIndex })}
+                            className={clsx(
+                                "flex items-center gap-3 px-4 py-2 cursor-pointer",
+                                "hover:bg-gray-700",
+                                index === selectedIndex ? "bg-gray-700" : "",
+                                "text-gray-100"
+                            )}
                             onClick={() => {
                                 onSelect(suggestion, query);
                                 onClose();
                             }}
                         >
-                            <i className={suggestion.icon} style={{ color: suggestion.iconcolor }}></i>
-                            <span>{suggestion.filename}</span>
+                            <i className={clsx(suggestion.icon, "text-lg")} style={{ color: suggestion.iconcolor }} />
+                            <span className="truncate">{suggestion.filename}</span>
                         </div>
                     ))}
                 </div>

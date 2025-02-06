@@ -372,6 +372,16 @@ declare global {
         height: number;
     };
 
+    // wshrpc.FetchSuggestionsData
+    type FetchSuggestionsData = {
+        suggestiontype: string;
+        query: string;
+        widgetid: string;
+        reqnum: number;
+        "file:cwd"?: string;
+        "file:dironly"?: boolean;
+    };
+
     // wshrpc.FileCopyOpts
     type FileCopyOpts = {
         overwrite?: boolean;
@@ -755,6 +765,17 @@ declare global {
         event: string;
         scopes?: string[];
         allscopes?: boolean;
+    };
+
+    // wshrpc.SuggestionType
+    type SuggestionType = {
+        type: string;
+        suggestionid: string;
+        icon?: string;
+        iconcolor?: string;
+        "file:mimetype"?: string;
+        "file:name"?: string;
+        "file:path"?: string;
     };
 
     // telemetrydata.TEvent

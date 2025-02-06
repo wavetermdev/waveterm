@@ -116,6 +116,30 @@ func DetectMimeType(path string, fileInfo fs.FileInfo, extended bool) string {
 	return rtn
 }
 
+func DetectMimeTypeWithDirEnt(path string, dirEnt fs.DirEntry) string {
+	if dirEnt != nil {
+		if dirEnt.IsDir() {
+			return "directory"
+		}
+		mode := dirEnt.Type()
+		if mode&os.ModeNamedPipe == os.ModeNamedPipe {
+			return "pipe"
+		}
+		charDevice := os.ModeDevice | os.ModeCharDevice
+		if mode&charDevice == charDevice {
+			return "character-special"
+		}
+		if mode&os.ModeDevice == os.ModeDevice {
+			return "block-special"
+		}
+	}
+	ext := filepath.Ext(path)
+	if mimeType, ok := StaticMimeTypeMap[ext]; ok {
+		return mimeType
+	}
+	return ""
+}
+
 var (
 	systemBinDirs = []string{
 		"/bin/",
@@ -202,14 +226,14 @@ var _ fs.FileInfo = FsFileInfo{}
 // ToFsFileInfo converts wshrpc.FileInfo to FsFileInfo.
 // It panics if fi is nil.
 func ToFsFileInfo(fi *wshrpc.FileInfo) FsFileInfo {
-    if fi == nil {
-        panic("ToFsFileInfo: nil FileInfo")
-    }
-    return FsFileInfo{
-        NameInternal:    fi.Name,
-        ModeInternal:    fi.Mode,
-        SizeInternal:    fi.Size,
-        ModTimeInternal: fi.ModTime,
-        IsDirInternal:   fi.IsDir,
-    }
+	if fi == nil {
+		panic("ToFsFileInfo: nil FileInfo")
+	}
+	return FsFileInfo{
+		NameInternal:    fi.Name,
+		ModeInternal:    fi.Mode,
+		SizeInternal:    fi.Size,
+		ModTimeInternal: fi.ModTime,
+		IsDirInternal:   fi.IsDir,
+	}
 }

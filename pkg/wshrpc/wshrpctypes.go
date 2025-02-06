@@ -185,6 +185,7 @@ type WshRpcInterface interface {
 	SetVarCommand(ctx context.Context, data CommandVarData) error
 	PathCommand(ctx context.Context, data PathCommandData) (string, error)
 	SendTelemetryCommand(ctx context.Context) error
+	FetchSuggestionsCommand(ctx context.Context, data FetchSuggestionsData) ([]SuggestionType, error)
 
 	// connection functions
 	ConnStatusCommand(ctx context.Context) ([]ConnStatus, error)
@@ -719,4 +720,23 @@ type ActivityUpdate struct {
 type ConnExtData struct {
 	ConnName   string `json:"connname"`
 	LogBlockId string `json:"logblockid,omitempty"`
+}
+
+type FetchSuggestionsData struct {
+	SuggestionType string `json:"suggestiontype"`
+	Query          string `json:"query"`
+	WidgetId       string `json:"widgetid"`
+	ReqNum         int    `json:"reqnum"`
+	FileCwd        string `json:"file:cwd,omitempty"`
+	FileDirOnly    bool   `json:"file:dironly,omitempty"`
+}
+
+type SuggestionType struct {
+	Type         string `json:"type"`
+	SuggestionId string `json:"suggestionid"`
+	Icon         string `json:"icon,omitempty"`
+	IconColor    string `json:"iconcolor,omitempty"`
+	FileMimeType string `json:"file:mimetype,omitempty"`
+	FileName     string `json:"file:name,omitempty"`
+	FilePath     string `json:"file:path,omitempty"`
 }
