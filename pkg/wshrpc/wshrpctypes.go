@@ -388,7 +388,6 @@ type FileInfo struct {
 	Path          string      `json:"path"`          // cleaned path (may have "~")
 	Dir           string      `json:"dir,omitempty"` // returns the directory part of the path (if this is a a directory, it will be equal to Path).  "~" will be expanded, and separators will be normalized to "/"
 	Name          string      `json:"name,omitempty"`
-	NotFound      bool        `json:"notfound,omitempty"`
 	Opts          *FileOpts   `json:"opts,omitempty"`
 	Size          int64       `json:"size,omitempty"`
 	Meta          *FileMeta   `json:"meta,omitempty"`

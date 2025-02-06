@@ -315,7 +315,12 @@ func (ws *WshServer) FileDeleteCommand(ctx context.Context, data wshrpc.CommandD
 }
 
 func (ws *WshServer) FileInfoCommand(ctx context.Context, data wshrpc.FileData) (*wshrpc.FileInfo, error) {
-	return fileshare.Stat(ctx, data.Info.Path)
+	finfo, err := fileshare.Stat(ctx, data.Info.Path)
+	if err != nil {
+		log.Printf("error getting file info: %v", err)
+		return nil, err
+	}
+	return finfo, nil
 }
 
 func (ws *WshServer) FileListCommand(ctx context.Context, data wshrpc.FileListData) ([]*wshrpc.FileInfo, error) {

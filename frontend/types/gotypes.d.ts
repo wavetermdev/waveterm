@@ -405,7 +405,6 @@ declare global {
         path: string;
         dir?: string;
         name?: string;
-        notfound?: boolean;
         opts?: FileOpts;
         size?: number;
         meta?: {[key: string]: any};

@@ -193,10 +193,10 @@ func (impl *ServerImpl) remoteStreamFileInternal(ctx context.Context, data wshrp
 	if err != nil {
 		return fmt.Errorf("cannot stat file %q: %w", path, err)
 	}
-	dataCallback([]*wshrpc.FileInfo{finfo}, nil, byteRange)
-	if finfo.NotFound {
+	if errors.Is(err, fs.ErrNotExist) {
 		return nil
 	}
+	dataCallback([]*wshrpc.FileInfo{finfo}, nil, byteRange)
 	if finfo.IsDir {
 		return impl.remoteStreamFileDir(ctx, path, byteRange, dataCallback)
 	} else {
@@ -630,15 +630,6 @@ func computeDirPart(path string, isDir bool) string {
 func (*ServerImpl) fileInfoInternal(path string, extended bool) (*wshrpc.FileInfo, error) {
 	cleanedPath := filepath.Clean(wavebase.ExpandHomeDirSafe(path))
 	finfo, err := os.Stat(cleanedPath)
-	if os.IsNotExist(err) {
-		return &wshrpc.FileInfo{
-			Path:          wavebase.ReplaceHomeDir(path),
-			Dir:           computeDirPart(path, false),
-			NotFound:      true,
-			ReadOnly:      checkIsReadOnly(cleanedPath, finfo, false),
-			SupportsMkdir: true,
-		}, nil
-	}
 	if err != nil {
 		return nil, fmt.Errorf("cannot stat file %q: %w", path, err)
 	}
@@ -671,7 +662,13 @@ func (impl *ServerImpl) RemoteFileJoinCommand(ctx context.Context, paths []strin
 }
 
 func (impl *ServerImpl) RemoteFileInfoCommand(ctx context.Context, path string) (*wshrpc.FileInfo, error) {
-	return impl.fileInfoInternal(path, true)
+	finfo, err := impl.fileInfoInternal(path, true)
+	if err != nil {
+		log.Printf("RemoteFileInfoCommand: error: %v\n", err)
+		return nil, err
+	}
+	log.Printf("RemoteFileInfoCommand: path=%s, finfo=%v\n", path, finfo)
+	return finfo, nil
 }
 
 func (impl *ServerImpl) RemoteFileTouchCommand(ctx context.Context, path string) error {
