@@ -12,7 +12,7 @@ import { useAtomValue } from "jotai";
 import { memo } from "react";
 import { NotificationPopover } from "../notification/notificationpopover";
 
-import "./workspace.scss";
+import clsx from "clsx";
 
 const iconRegex = /^[a-z0-9-]+$/;
 
@@ -57,11 +57,11 @@ const Widgets = memo(() => {
     const showHelp = fullConfig?.settings?.["widget:showhelp"] ?? true;
     const widgets = sortByDisplayOrder(fullConfig?.widgets);
     return (
-        <div className="workspace-widgets">
+        <div className="flex flex-col w-12 overflow-hidden py-1 -ml-1 select-none">
             {widgets?.map((data, idx) => <Widget key={`widget-${idx}`} widget={data} />)}
             {showHelp ? (
                 <>
-                    <div className="widget-spacer" />
+                    <div className="flex-grow" />
                     <Widget key="tips" widget={tipsWidget} />
                     <Widget key="help" widget={helpWidget} />
                 </>
@@ -79,17 +79,21 @@ async function handleWidgetSelect(widget: WidgetConfigType) {
 const Widget = memo(({ widget }: { widget: WidgetConfigType }) => {
     return (
         <div
-            className="widget"
+            className={clsx(
+                "flex flex-col justify-center items-center w-full py-1.5 pr-0.5 text-secondary text-lg overflow-hidden rounded-sm hover:bg-highlightbg hover:text-white cursor-pointer",
+                widget["display:hidden"] && "hidden"
+            )}
             onClick={() => handleWidgetSelect(widget)}
             title={widget.description || widget.label}
-            style={{
-                display: widget["display:hidden"] ? "none" : "inherit",
-            }}
         >
-            <div className="widget-icon" style={{ color: widget.color }}>
+            <div style={{ color: widget.color }}>
                 <i className={makeIconClass(widget.icon, true, { defaultIcon: "browser" })}></i>
             </div>
-            {!isBlank(widget.label) ? <div className="widget-label">{widget.label}</div> : null}
+            {!isBlank(widget.label) ? (
+                <div className="text-xxs mt-0.5 w-full px-0.5 text-center whitespace-nowrap overflow-hidden">
+                    {widget.label}
+                </div>
+            ) : null}
         </div>
     );
 });
@@ -98,11 +102,11 @@ const WorkspaceElem = memo(() => {
     const tabId = useAtomValue(atoms.staticTabId);
     const ws = useAtomValue(atoms.workspace);
     return (
-        <div className="workspace">
+        <div className="flex flex-col w-full flex-grow overflow-hidden">
             <TabBar key={ws.oid} workspace={ws} />
-            <div className="workspace-tabcontent">
+            <div className="flex flex-row flex-grow overflow-hidden">
                 <ErrorBoundary key={tabId}>
-                    {tabId == "" ? (
+                    {tabId === "" ? (
                         <CenteredDiv>No Active Tab</CenteredDiv>
                     ) : (
                         <>
