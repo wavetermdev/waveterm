@@ -289,8 +289,8 @@ func ReadStreamToFileData(ctx context.Context, readCh <-chan wshrpc.RespOrErrorU
 		fileData = &wshrpc.FileData{
 			Info: &finfo,
 		}
-	}, func(entries []*wshrpc.FileInfo) error {
-		entries = append(entries, entries...)
+	}, func(fileEntries []*wshrpc.FileInfo) error {
+		entries = append(entries, fileEntries...)
 		return nil
 	}, func(data io.Reader) error {
 		if _, err := io.Copy(&dataBuf, data); err != nil {
