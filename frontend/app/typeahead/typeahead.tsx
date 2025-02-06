@@ -1,9 +1,11 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { atoms } from "@/app/store/global";
 import { makeIconClass } from "@/util/util";
 import { offset, useFloating } from "@floating-ui/react";
 import clsx from "clsx";
+import { useAtomValue } from "jotai";
 import React, { ReactNode, useEffect, useId, useRef, useState } from "react";
 
 interface TypeaheadProps {
@@ -55,18 +57,48 @@ function defaultHighlighter(target: string, search: string): ReactNode[] {
     return highlightSearchMatch(target, search, (char) => <span className="text-blue-500 font-bold">{char}</span>);
 }
 
+function getMimeTypeIconAndColor(fullConfig: FullConfigType, mimeType: string): [string, string] {
+    if (mimeType == null) {
+        return [null, null];
+    }
+    while (mimeType.length > 0) {
+        const icon = fullConfig.mimetypes?.[mimeType]?.icon ?? null;
+        const iconColor = fullConfig.mimetypes?.[mimeType]?.color ?? null;
+        if (icon != null) {
+            return [icon, iconColor];
+        }
+        mimeType = mimeType.slice(0, -1);
+    }
+    return [null, null];
+}
+
+const SuggestionIcon: React.FC<{ suggestion: SuggestionType }> = ({ suggestion }) => {
+    const fullConfig = useAtomValue(atoms.fullConfigAtom);
+    let icon = suggestion.icon;
+    let iconColor: string = null;
+    if (icon == null && suggestion["file:mimetype"] != null) {
+        [icon, iconColor] = getMimeTypeIconAndColor(fullConfig, suggestion["file:mimetype"]);
+    }
+    if (suggestion.iconcolor != null) {
+        iconColor = suggestion.iconcolor;
+    }
+    const iconClass = makeIconClass(icon, true, { defaultIcon: "file" });
+    return <i className={iconClass} style={{ color: iconColor }} />;
+};
+
 const TypeaheadInner: React.FC<Omit<TypeaheadProps, "isOpen">> = ({
     anchorRef,
     onClose,
     onSelect,
     fetchSuggestions,
     className,
+    placeholderText,
 }) => {
     const widgetId = useId();
     const [query, setQuery] = useState("");
     const reqNumRef = useRef(0);
     const [suggestions, setSuggestions] = useState<SuggestionType[]>([]);
-    const [selectedIndex, setSelectedIndex] = useState(-1);
+    const [selectedIndex, setSelectedIndex] = useState(0);
     const [fetched, setFetched] = useState(false);
     const inputRef = useRef<HTMLInputElement>(null);
     const dropdownRef = useRef<HTMLDivElement>(null);
@@ -91,7 +123,7 @@ const TypeaheadInner: React.FC<Omit<TypeaheadProps, "isOpen">> = ({
             if (results.reqnum != reqNumRef.current) {
                 return;
             }
-            setSuggestions(results.suggestions);
+            setSuggestions(results.suggestions ?? []);
             setFetched(true);
         });
     }, [query, fetchSuggestions]);
@@ -153,12 +185,15 @@ const TypeaheadInner: React.FC<Omit<TypeaheadProps, "isOpen">> = ({
                     ref={inputRef}
                     type="text"
                     value={query}
-                    onChange={(e) => setQuery(e.target.value)}
+                    onChange={(e) => {
+                        setQuery(e.target.value);
+                        setSelectedIndex(0);
+                    }}
                     onKeyDown={handleKeyDown}
                     className="w-full bg-gray-900 text-gray-100 px-4 py-2 rounded-md 
                              border border-gray-700 focus:outline-none focus:border-blue-500
                              placeholder-gray-500"
-                    placeholder="Search files..."
+                    placeholder={placeholderText}
                 />
             </div>
             {fetched && suggestions.length > 0 && (
@@ -177,13 +212,7 @@ const TypeaheadInner: React.FC<Omit<TypeaheadProps, "isOpen">> = ({
                                 onClose();
                             }}
                         >
-                            <i
-                                className={clsx(
-                                    makeIconClass(suggestion.icon, true, { defaultIcon: "file" }),
-                                    "text-lg"
-                                )}
-                                style={{ color: suggestion.iconcolor }}
-                            />
+                            <SuggestionIcon suggestion={suggestion} />
                             <span className="truncate">{defaultHighlighter(suggestion["file:name"], query)}</span>
                         </div>
                     ))}

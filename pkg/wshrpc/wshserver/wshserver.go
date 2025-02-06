@@ -12,7 +12,6 @@ import (
 	"fmt"
 	"io/fs"
 	"log"
-	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -27,10 +26,10 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/remote"
 	"github.com/wavetermdev/waveterm/pkg/remote/conncontroller"
 	"github.com/wavetermdev/waveterm/pkg/remote/fileshare"
+	"github.com/wavetermdev/waveterm/pkg/suggestion"
 	"github.com/wavetermdev/waveterm/pkg/telemetry"
 	"github.com/wavetermdev/waveterm/pkg/telemetry/telemetrydata"
 	"github.com/wavetermdev/waveterm/pkg/util/envutil"
-	"github.com/wavetermdev/waveterm/pkg/util/fileutil"
 	"github.com/wavetermdev/waveterm/pkg/util/iochan/iochantypes"
 	"github.com/wavetermdev/waveterm/pkg/util/shellutil"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
@@ -865,54 +864,5 @@ func (ws *WshServer) PathCommand(ctx context.Context, data wshrpc.PathCommandDat
 }
 
 func (ws *WshServer) FetchSuggestionsCommand(ctx context.Context, data wshrpc.FetchSuggestionsData) (*wshrpc.FetchSuggestionsResponse, error) {
-	if data.SuggestionType != "file" {
-		return nil, fmt.Errorf("unsupported suggestion type: %q", data.SuggestionType)
-	}
-	rawCwd := data.FileCwd
-	if rawCwd == "" {
-		rawCwd = "~"
-	}
-	cwd, err := wavebase.ExpandHomeDir(rawCwd)
-	if err != nil {
-		return nil, fmt.Errorf("error expanding home dir: %w", err)
-	}
-	dirFd, err := os.Open(cwd)
-	if err != nil {
-		return nil, fmt.Errorf("error opening directory: %w", err)
-	}
-	defer dirFd.Close()
-	finfo, err := dirFd.Stat()
-	if err != nil {
-		return nil, fmt.Errorf("error getting directory info: %w", err)
-	}
-	if !finfo.IsDir() {
-		return nil, fmt.Errorf("not a directory: %s", cwd)
-	}
-	dirEnts, err := dirFd.ReadDir(1000)
-	if err != nil {
-		return nil, fmt.Errorf("error reading directory: %w", err)
-	}
-	var suggestions []wshrpc.SuggestionType
-	for _, dirEnt := range dirEnts {
-		if len(suggestions) > 50 {
-			break
-		}
-		fileName := dirEnt.Name()
-		match := strings.Contains(fileName, data.Query)
-		if !match {
-			continue
-		}
-		s := wshrpc.SuggestionType{
-			Type: "file",
-		}
-		s.FilePath = filepath.Join(cwd, fileName)
-		s.SuggestionId = utilfn.QuickHashString(s.FilePath)
-		s.FileName = fileName
-		s.FileMimeType = fileutil.DetectMimeTypeWithDirEnt(s.FilePath, dirEnt)
-		suggestions = append(suggestions, s)
-	}
-	return &wshrpc.FetchSuggestionsResponse{
-		Suggestions: suggestions,
-		ReqNum:      data.ReqNum,
-	}, nil
+	return suggestion.FetchSuggestions(ctx, data)
 }

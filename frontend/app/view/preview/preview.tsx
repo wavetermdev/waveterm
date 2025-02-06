@@ -1118,11 +1118,13 @@ const mockFileSuggestions: SuggestionType[] = [
 ];
 
 const fetchSuggestions = async (
+    cwd: string,
     query: string,
     reqContext: SuggestionRequestContext
 ): Promise<FetchSuggestionsResponse> => {
     return RpcApi.FetchSuggestionsCommand(TabRpcClient, {
         suggestiontype: "file",
+        "file:cwd": cwd,
         query: query,
         widgetid: reqContext.widgetid,
         reqnum: reqContext.reqnum,
@@ -1169,6 +1171,16 @@ function PreviewView({
     if (connStatus?.status != "connected") {
         return null;
     }
+    const handleSelect = (s: SuggestionType) => {
+        model.handleOpenFile(s["file:path"]);
+    };
+    const fetchSuggestionsFn = async (query, ctx) => {
+        const fileInfo = await globalStore.get(model.statFile);
+        if (fileInfo == null) {
+            return null;
+        }
+        return await fetchSuggestions(fileInfo.dir, query, ctx);
+    };
     return (
         <>
             {/* <OpenFileModal blockId={blockId} model={model} blockRef={blockRef} /> */}
@@ -1176,8 +1188,9 @@ function PreviewView({
                 anchorRef={blockRef}
                 isOpen={openFileModal}
                 onClose={() => model.updateOpenFileModalAndError(false)}
-                onSelect={(s) => console.log("onSelct", s)}
-                fetchSuggestions={mockFetchSuggestions}
+                onSelect={handleSelect}
+                fetchSuggestions={fetchSuggestionsFn}
+                placeholderText="Open File..."
             />
             <div className="full-preview scrollbar-hide-until-hover">
                 <div ref={contentRef} className="full-preview-content">
