@@ -602,6 +602,7 @@ const BlockFrame_Default_Component = (props: BlockFrameProps) => {
                     "--magnified-block-blur": `${magnifiedBlockBlur}px`,
                 } as React.CSSProperties
             }
+            inert={preview ? "1" : undefined}
         >
             <BlockMask nodeModel={nodeModel} />
             {preview || viewModel == null ? null : (
