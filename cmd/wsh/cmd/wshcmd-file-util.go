@@ -209,23 +209,31 @@ func streamFileList(zoneId string, path string, recursive bool, filesOnly bool) 
 	return resultChan, nil
 }
 
-func fixRelativePaths(path string) (string, error) {
+func fixRelativePathsConn(path string) (*connparse.Connection, error) {
 	conn, err := connparse.ParseURI(path)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	if conn.Scheme == connparse.ConnectionTypeWsh {
 		if conn.Host == connparse.ConnHostCurrent {
 			conn.Host = RpcContext.Conn
 			fixedPath, err := fileutil.FixPath(conn.Path)
 			if err != nil {
-				return "", err
+				return nil, err
 			}
 			conn.Path = fixedPath
 		}
 		if conn.Host == "" {
 			conn.Host = wshrpc.LocalConnName
 		}
+	}
+	return conn, nil
+}
+
+func fixRelativePaths(path string) (string, error) {
+	conn, err := fixRelativePathsConn(path)
+	if err != nil {
+		return "", err
 	}
 	return conn.GetFullURI(), nil
 }

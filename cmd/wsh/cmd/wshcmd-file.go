@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"github.com/wavetermdev/waveterm/pkg/remote/connparse"
 	"github.com/wavetermdev/waveterm/pkg/util/colprint"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
@@ -132,13 +133,14 @@ var fileCatCmd = &cobra.Command{
 }
 
 var fileInfoCmd = &cobra.Command{
-	Use:     "info [uri]",
-	Short:   "show wave file information",
-	Long:    "Show information about a file." + UriHelpText,
-	Example: "  wsh file info wsh://user@ec2/home/user/config.txt\n  wsh file info wavefile://client/settings.json",
-	Args:    cobra.ExactArgs(1),
-	RunE:    activityWrap("file", fileInfoRun),
-	PreRunE: preRunSetupRpcClient,
+	Use:               "info [uri]",
+	Short:             "show wave file information",
+	Long:              "Show information about a file." + UriHelpText,
+	Example:           "  wsh file info wsh://user@ec2/home/user/config.txt\n  wsh file info wavefile://client/settings.json",
+	Args:              cobra.ExactArgs(1),
+	ValidArgsFunction: argAutocomplete,
+	RunE:              activityWrap("file", fileInfoRun),
+	PreRunE:           preRunSetupRpcClient,
 }
 
 var fileRmCmd = &cobra.Command{
@@ -583,4 +585,59 @@ func fileListRun(cmd *cobra.Command, args []string) error {
 	}
 
 	return filePrintColumns(filesChan)
+}
+
+func argAutocomplete(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	log.Printf("args: %v, toComplete: %s", args, toComplete)
+	if toComplete == "" {
+		return nil, cobra.ShellCompDirectiveDefault
+	}
+
+	toCompleteConn, err := fixRelativePathsConn(toComplete)
+	if err != nil {
+		log.Printf("error fixing relative path: %v", err)
+		return nil, cobra.ShellCompDirectiveError
+	}
+
+	if toCompleteConn.Host == connparse.ConnHostCurrent {
+		return nil, cobra.ShellCompDirectiveDefault
+	}
+
+	toCompleteDir := toComplete
+
+	if toCompleteDir != "." {
+		toCompleteDir := filepath.Dir(toCompleteConn.Path)
+		if toCompleteDir == "" {
+			toCompleteDir = "/"
+		}
+	}
+
+	toCompleteConn.Path = toCompleteDir
+
+	toCompleteUri := toCompleteConn.GetFullURI()
+
+	entries, err := wshclient.FileListCommand(RpcClient, wshrpc.FileListData{Path: toCompleteUri}, &wshrpc.RpcOpts{Timeout: 2000})
+	if err != nil {
+		log.Printf("error listing entries: %v", err)
+		return nil, cobra.ShellCompDirectiveError
+	}
+	log.Printf("entries: %v", entries)
+
+	var completions []string
+	for _, entry := range entries {
+		if strings.HasPrefix(entry.Path, toComplete) {
+			if entry.IsDir {
+				completions = append(completions, entry.Name+"/")
+			} else {
+				completions = append(completions, entry.Name)
+			}
+		}
+	}
+
+	if len(completions) == 0 {
+		log.Printf("no completions found")
+		return nil, cobra.ShellCompDirectiveError
+	}
+
+	return completions, cobra.ShellCompDirectiveNoFileComp
 }
