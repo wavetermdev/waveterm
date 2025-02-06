@@ -447,8 +447,10 @@ func (impl *ServerImpl) RemoteFileCopyCommand(ctx context.Context, data wshrpc.C
 			}
 		} else {
 			file, err := os.Open(srcPathCleaned)
-			defer file.Close()
 			if err != nil {
+				return fmt.Errorf("cannot open file %q: %w", srcPathCleaned, err)
+			}
+			defer file.Close()
 				return fmt.Errorf("cannot open file %q: %w", srcPathCleaned, err)
 			}
 			_, err = copyFileFunc(destPathCleaned, srcFileStat, file)
