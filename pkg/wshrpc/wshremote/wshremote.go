@@ -429,17 +429,17 @@ func (impl *ServerImpl) RemoteFileCopyCommand(ctx context.Context, data wshrpc.C
 				if err != nil {
 					return err
 				}
-				path = filepath.Join(destPathCleaned, strings.TrimPrefix(path, srcPathCleaned))
-
+				srcFilePath := path
+				destFilePath := filepath.Join(destPathCleaned, strings.TrimPrefix(path, srcPathCleaned))
 				var file *os.File
 				if !info.IsDir() {
-					file, err = os.Open(path)
+					file, err = os.Open(srcFilePath)
 					if err != nil {
-						return fmt.Errorf("cannot open file %q: %w", path, err)
+						return fmt.Errorf("cannot open file %q: %w", srcFilePath, err)
 					}
 					defer file.Close()
 				}
-				_, err = copyFileFunc(path, info, file)
+				_, err = copyFileFunc(destFilePath, info, file)
 				return err
 			})
 			if err != nil {
@@ -451,8 +451,6 @@ func (impl *ServerImpl) RemoteFileCopyCommand(ctx context.Context, data wshrpc.C
 				return fmt.Errorf("cannot open file %q: %w", srcPathCleaned, err)
 			}
 			defer file.Close()
-				return fmt.Errorf("cannot open file %q: %w", srcPathCleaned, err)
-			}
 			_, err = copyFileFunc(destPathCleaned, srcFileStat, file)
 			if err != nil {
 				return fmt.Errorf("cannot copy %q to %q: %w", srcUri, destUri, err)
