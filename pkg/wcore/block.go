@@ -14,6 +14,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/filestore"
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/telemetry"
+	"github.com/wavetermdev/waveterm/pkg/telemetry/telemetrydata"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wps"
@@ -105,6 +106,12 @@ func CreateBlock(ctx context.Context, tabId string, blockDef *waveobj.BlockDef, 
 		defer cancelFn()
 		telemetry.UpdateActivity(tctx, wshrpc.ActivityUpdate{
 			Renderers: map[string]int{blockView: 1},
+		})
+		telemetry.RecordTEvent(tctx, &telemetrydata.TEvent{
+			Event: "action:createblock",
+			Props: telemetrydata.TEventProps{
+				BlockView: blockView,
+			},
 		})
 	}()
 	return blockData, nil

@@ -12,6 +12,7 @@ import {
     getConnStatusAtom,
     getSettingsKeyAtom,
     globalStore,
+    recordTEvent,
     useBlockAtom,
     WOS,
 } from "@/app/store/global";
@@ -182,6 +183,7 @@ const BlockFrame_Header = ({
             return;
         }
         RpcApi.ActivityCommand(TabRpcClient, { nummagnify: 1 });
+        recordTEvent("action:magnify", { "block:view": viewName });
     }, [magnified]);
 
     if (blockData?.meta?.["frame:title"]) {

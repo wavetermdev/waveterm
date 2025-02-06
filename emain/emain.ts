@@ -459,6 +459,31 @@ function getActivityDisplays(): ActivityDisplayType[] {
     return rtn;
 }
 
+async function sendDisplaysTDataEvent() {
+    const displays = getActivityDisplays();
+    if (displays.length === 0) {
+        return;
+    }
+    const props: TEventProps = {};
+    props["display:count"] = displays.length;
+    props["display:height"] = displays[0].height;
+    props["display:width"] = displays[0].width;
+    props["display:dpr"] = displays[0].dpr;
+    props["display:all"] = displays;
+    try {
+        await RpcApi.RecordTEventCommand(
+            ElectronWshClient,
+            {
+                event: "app:display",
+                props,
+            },
+            { noresponse: true }
+        );
+    } catch (e) {
+        console.log("error sending display tdata event", e);
+    }
+}
+
 function logActiveState() {
     fireAndForget(async () => {
         const astate = getActivityState();
@@ -472,6 +497,18 @@ function logActiveState() {
         activity.displays = getActivityDisplays();
         try {
             await RpcApi.ActivityCommand(ElectronWshClient, activity, { noresponse: true });
+            await RpcApi.RecordTEventCommand(
+                ElectronWshClient,
+                {
+                    event: "app:activity",
+                    props: {
+                        "activity:activeminutes": activity.activeminutes,
+                        "activity:fgminutes": activity.fgminutes,
+                        "activity:openminutes": activity.openminutes,
+                    },
+                },
+                { noresponse: true }
+            );
         } catch (e) {
             console.log("error logging active state", e);
         } finally {
@@ -621,6 +658,7 @@ async function appMain() {
     await relaunchBrowserWindows();
     await initDocsite();
     setTimeout(runActiveTimer, 5000); // start active timer, wait 5s just to be safe
+    setTimeout(sendDisplaysTDataEvent, 5000);
 
     makeAppMenu();
     makeDockTaskbar();

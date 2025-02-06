@@ -26,8 +26,8 @@ tasks:
             - docsite:build:embedded
             - build:backend
         env:
-            WCLOUD_ENDPOINT: "https://ot2e112zx5.execute-api.us-west-2.amazonaws.com/dev"
-            WCLOUD_WS_ENDPOINT: "wss://5lfzlg5crl.execute-api.us-west-2.amazonaws.com/dev/"
+            WCLOUD_ENDPOINT: "https://api-dev.waveterm.dev/central"
+            WCLOUD_WS_ENDPOINT: "wss://wsapi-dev.waveterm.dev/"
 
     electron:start:
         desc: Run the Electron application directly.
@@ -39,8 +39,8 @@ tasks:
             - docsite:build:embedded
             - build:backend
         env:
-            WCLOUD_ENDPOINT: "https://ot2e112zx5.execute-api.us-west-2.amazonaws.com/dev"
-            WCLOUD_WS_ENDPOINT: "wss://5lfzlg5crl.execute-api.us-west-2.amazonaws.com/dev/"
+            WCLOUD_ENDPOINT: "https://api-dev.waveterm.dev"
+            WCLOUD_WS_ENDPOINT: "wss://wsapi-dev.waveterm.dev"
 
     storybook:
         desc: Start the Storybook server.
@@ -113,6 +113,19 @@ tasks:
         cmds:
             - task: build:server
             - task: build:wsh
+
+    build:schema:
+        desc: Build the schema for configuration.
+        sources:
+            - "cmd/generateschema/*.go"
+            - "pkg/wconfig/*.go"
+        generates:
+            - "dist/schema/**/*"
+        cmds:
+            - go run cmd/generateschema/main-generateschema.go
+            - cmd: '{{.RMRF}} "dist/schema"'
+              ignore_error: true
+            - task: copyfiles:'schema':'dist/schema'
 
     build:server:
         desc: Build the wavesrv component.
@@ -243,6 +256,8 @@ tasks:
         cmds:
             - go run cmd/generatets/main-generatets.go
             - go run cmd/generatego/main-generatego.go
+        deps:
+            - build:schema
         sources:
             - "cmd/generatego/*.go"
             - "cmd/generatets/*.go"

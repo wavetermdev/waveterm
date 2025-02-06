@@ -25,6 +25,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/docsite"
 	"github.com/wavetermdev/waveterm/pkg/filestore"
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
+	"github.com/wavetermdev/waveterm/pkg/schema"
 	"github.com/wavetermdev/waveterm/pkg/service"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
@@ -419,6 +420,7 @@ func MakeUnixListener() (net.Listener, error) {
 }
 
 const docsitePrefix = "/docsite/"
+const schemaPrefix = "/schema/"
 
 // blocking
 func RunWebServer(listener net.Listener) {
@@ -428,6 +430,7 @@ func RunWebServer(listener net.Listener) {
 	gr.HandleFunc("/wave/service", WebFnWrap(WebFnOpts{JsonErrors: true}, handleService))
 	gr.HandleFunc("/vdom/{uuid}/{path:.*}", WebFnWrap(WebFnOpts{AllowCaching: true}, handleVDom))
 	gr.PathPrefix(docsitePrefix).Handler(http.StripPrefix(docsitePrefix, docsite.GetDocsiteHandler()))
+	gr.PathPrefix(schemaPrefix).Handler(http.StripPrefix(schemaPrefix, schema.GetSchemaHandler()))
 	handler := http.TimeoutHandler(gr, HttpTimeoutDuration, "Timeout")
 	if wavebase.IsDevMode() {
 		handler = handlers.CORS(handlers.AllowedOrigins([]string{"*"}))(handler)

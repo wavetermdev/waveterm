@@ -45,5 +45,8 @@
     },
     "[md]": {
         "editor.wordWrap": "on"
+    },
+    "files.associations": {
+        "*.css": "tailwindcss"
     }
 }
