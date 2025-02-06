@@ -9,6 +9,7 @@ const (
 	ConfigKey_AppClear                       = "app:*"
 	ConfigKey_AppGlobalHotkey                = "app:globalhotkey"
 	ConfigKey_AppDismissArchitectureWarning  = "app:dismissarchitecturewarning"
+
 	ConfigKey_AiClear                        = "ai:*"
 	ConfigKey_AiPreset                       = "ai:preset"
 	ConfigKey_AiApiType                      = "ai:apitype"

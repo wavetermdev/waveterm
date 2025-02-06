@@ -36,6 +36,8 @@ func getBeforeColonPart(s string) string {
 func GenerateMetaMapConsts(buf *strings.Builder, constPrefix string, rtype reflect.Type, embedded bool) {
 	if !embedded {
 		buf.WriteString("const (\n")
+	} else {
+		buf.WriteString("\n")
 	}
 	var lastBeforeColon = ""
 	isFirst := true
