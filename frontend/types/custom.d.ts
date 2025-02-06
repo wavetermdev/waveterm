@@ -372,6 +372,14 @@ declare global {
         miny?: string | number;
         decimalPlaces?: number;
     };
+
+    interface SuggestionRequestContext {
+        widgetid: string;
+        reqnum: number;
+        dispose?: boolean;
+    }
+
+    type SuggestionsFnType = (query: string, reqContext: SuggestionRequestContext) => Promise<FetchSuggestionsResponse>;
 }
 
 export {};

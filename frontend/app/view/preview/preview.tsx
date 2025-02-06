@@ -9,7 +9,7 @@ import { ContextMenuModel } from "@/app/store/contextmenu";
 import { tryReinjectKey } from "@/app/store/keymodel";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
-import { Suggestion, Typeahead } from "@/app/typeahead/typeahead";
+import { Typeahead } from "@/app/typeahead/typeahead";
 import { CodeEditor } from "@/app/view/codeeditor/codeeditor";
 import { Markdown } from "@/element/markdown";
 import {
@@ -1069,64 +1069,85 @@ function SpecializedView({ parentRef, model }: SpecializedViewProps) {
     return <SpecializedViewComponent model={model} parentRef={parentRef} />;
 }
 
-const mockFileSuggestions: Suggestion[] = [
+const mockFileSuggestions: SuggestionType[] = [
     {
         type: "file",
         suggestionid: "1",
-        filename: "document.txt",
-        filepath: "/home/user/document.txt",
-        icon: "fa-file",
+        "file:name": "document.txt",
+        "file:path": "/home/user/document.txt",
+        icon: "file",
         iconcolor: "#4A90E2",
-        mimetype: "text/plain",
+        "file:mimetype": "text/plain",
     },
     {
         type: "file",
         suggestionid: "2",
-        filename: "presentation.pptx",
-        filepath: "/home/user/presentation.pptx",
-        icon: "fa-file-powerpoint",
+        "file:name": "presentation.pptx",
+        "file:path": "/home/user/presentation.pptx",
+        icon: "file-powerpoint",
         iconcolor: "#D04423",
-        mimetype: "application/vnd.ms-powerpoint",
+        "file:mimetype": "application/vnd.ms-powerpoint",
     },
     {
         type: "file",
         suggestionid: "3",
-        filename: "spreadsheet.xlsx",
-        filepath: "/home/user/spreadsheet.xlsx",
-        icon: "fa-file-excel",
+        "file:name": "spreadsheet.xlsx",
+        "file:path": "/home/user/spreadsheet.xlsx",
+        icon: "file-excel",
         iconcolor: "#107C41",
-        mimetype: "application/vnd.ms-excel",
+        "file:mimetype": "application/vnd.ms-excel",
     },
     {
         type: "file",
         suggestionid: "4",
-        filename: "image.png",
-        filepath: "/home/user/image.png",
-        icon: "fa-file-image",
+        "file:name": "image.png",
+        "file:path": "/home/user/image.png",
+        icon: "file-image",
         iconcolor: "#E44D26",
-        mimetype: "image/png",
+        "file:mimetype": "image/png",
     },
     {
         type: "file",
         suggestionid: "5",
-        filename: "notes.md",
-        filepath: "/home/user/notes.md",
-        icon: "fa-file-alt",
+        "file:name": "notes.md",
+        "file:path": "/home/user/notes.md",
+        icon: "file-alt",
         iconcolor: "#777",
-        mimetype: "text/markdown",
+        "file:mimetype": "text/markdown",
     },
 ];
 
-const mockFetchSuggestions = async (query: string): Promise<Suggestion[]> => {
+const fetchSuggestions = async (
+    query: string,
+    reqContext: SuggestionRequestContext
+): Promise<FetchSuggestionsResponse> => {
+    return RpcApi.FetchSuggestionsCommand(TabRpcClient, {
+        suggestiontype: "file",
+        query: query,
+        widgetid: reqContext.widgetid,
+        reqnum: reqContext.reqnum,
+    });
+};
+
+const mockFetchSuggestions = async (
+    query: string,
+    reqCtx: SuggestionRequestContext
+): Promise<FetchSuggestionsResponse> => {
     console.log("mock-suggestions", query);
     return new Promise((resolve) => {
         setTimeout(() => {
             if (query == null || !query.trim()) {
-                resolve(mockFileSuggestions);
+                resolve({ suggestions: mockFileSuggestions, reqnum: reqCtx.reqnum });
             } else {
-                resolve(
-                    mockFileSuggestions.filter((file) => file.filename.toLowerCase().includes(query.toLowerCase()))
-                );
+                resolve({
+                    suggestions: mockFileSuggestions.filter((file) => {
+                        if (file["file:name"] == null) {
+                            return false;
+                        }
+                        return file["file:name"].toLowerCase().includes(query.toLowerCase());
+                    }),
+                    reqnum: reqCtx.reqnum,
+                });
             }
         }, 200);
     });

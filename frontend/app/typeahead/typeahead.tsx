@@ -1,33 +1,16 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { makeIconClass } from "@/util/util";
 import { offset, useFloating } from "@floating-ui/react";
 import clsx from "clsx";
-import React, { useEffect, useId, useRef, useState } from "react";
-
-interface Suggestion {
-    type: "file";
-    suggestionid: string;
-    filename: string;
-    filepath: string;
-    icon: string;
-    iconcolor: string;
-    mimetype: string;
-}
-
-interface SuggestionRequestContext {
-    widgetid: string;
-    reqnum: number;
-    dispose?: boolean;
-}
-
-type SuggestionsFnType = (query: string, reqContext: SuggestionRequestContext) => Promise<Suggestion[]>;
+import React, { ReactNode, useEffect, useId, useRef, useState } from "react";
 
 interface TypeaheadProps {
     anchorRef: React.RefObject<HTMLElement>;
     isOpen: boolean;
     onClose: () => void;
-    onSelect: (item: Suggestion, queryStr: string) => void;
+    onSelect: (item: SuggestionType, queryStr: string) => void;
     fetchSuggestions: SuggestionsFnType;
     className?: string;
     placeholderText?: string;
@@ -39,6 +22,39 @@ const Typeahead: React.FC<TypeaheadProps> = ({ anchorRef, isOpen, onClose, onSel
     return <TypeaheadInner {...{ anchorRef, onClose, onSelect, fetchSuggestions, className }} />;
 };
 
+function highlightSearchMatch(target: string, search: string, highlightFn: (char: string) => ReactNode): ReactNode[] {
+    if (!search || !target) return [target];
+
+    const result: ReactNode[] = [];
+    let targetIndex = 0;
+    let searchIndex = 0;
+
+    while (targetIndex < target.length) {
+        // If we've matched all search chars, add remaining target string
+        if (searchIndex >= search.length) {
+            result.push(target.slice(targetIndex));
+            break;
+        }
+
+        // If current chars match
+        if (target[targetIndex].toLowerCase() === search[searchIndex].toLowerCase()) {
+            // Add highlighted character
+            result.push(highlightFn(target[targetIndex]));
+            searchIndex++;
+            targetIndex++;
+        } else {
+            // Add non-matching character
+            result.push(target[targetIndex]);
+            targetIndex++;
+        }
+    }
+    return result;
+}
+
+function defaultHighlighter(target: string, search: string): ReactNode[] {
+    return highlightSearchMatch(target, search, (char) => <span className="text-blue-500 font-bold">{char}</span>);
+}
+
 const TypeaheadInner: React.FC<Omit<TypeaheadProps, "isOpen">> = ({
     anchorRef,
     onClose,
@@ -49,7 +65,7 @@ const TypeaheadInner: React.FC<Omit<TypeaheadProps, "isOpen">> = ({
     const widgetId = useId();
     const [query, setQuery] = useState("");
     const reqNumRef = useRef(0);
-    const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+    const [suggestions, setSuggestions] = useState<SuggestionType[]>([]);
     const [selectedIndex, setSelectedIndex] = useState(-1);
     const [fetched, setFetched] = useState(false);
     const inputRef = useRef<HTMLInputElement>(null);
@@ -72,7 +88,10 @@ const TypeaheadInner: React.FC<Omit<TypeaheadProps, "isOpen">> = ({
     useEffect(() => {
         reqNumRef.current++;
         fetchSuggestions(query, { widgetid: widgetId, reqnum: reqNumRef.current }).then((results) => {
-            setSuggestions(results);
+            if (results.reqnum != reqNumRef.current) {
+                return;
+            }
+            setSuggestions(results.suggestions);
             setFetched(true);
         });
     }, [query, fetchSuggestions]);
@@ -118,6 +137,8 @@ const TypeaheadInner: React.FC<Omit<TypeaheadProps, "isOpen">> = ({
         }
     };
 
+    console.log("rendering suggestions", suggestions);
+
     return (
         <div
             className={clsx(
@@ -156,8 +177,14 @@ const TypeaheadInner: React.FC<Omit<TypeaheadProps, "isOpen">> = ({
                                 onClose();
                             }}
                         >
-                            <i className={clsx(suggestion.icon, "text-lg")} style={{ color: suggestion.iconcolor }} />
-                            <span className="truncate">{suggestion.filename}</span>
+                            <i
+                                className={clsx(
+                                    makeIconClass(suggestion.icon, true, { defaultIcon: "file" }),
+                                    "text-lg"
+                                )}
+                                style={{ color: suggestion.iconcolor }}
+                            />
+                            <span className="truncate">{defaultHighlighter(suggestion["file:name"], query)}</span>
                         </div>
                     ))}
                 </div>
@@ -167,4 +194,3 @@ const TypeaheadInner: React.FC<Omit<TypeaheadProps, "isOpen">> = ({
 };
 
 export { Typeahead };
-export type { Suggestion };

@@ -185,8 +185,8 @@ func EventUnsubAllCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) error {
 }
 
 // command "fetchsuggestions", wshserver.FetchSuggestionsCommand
-func FetchSuggestionsCommand(w *wshutil.WshRpc, data wshrpc.FetchSuggestionsData, opts *wshrpc.RpcOpts) ([]wshrpc.SuggestionType, error) {
-	resp, err := sendRpcRequestCallHelper[[]wshrpc.SuggestionType](w, "fetchsuggestions", data, opts)
+func FetchSuggestionsCommand(w *wshutil.WshRpc, data wshrpc.FetchSuggestionsData, opts *wshrpc.RpcOpts) (*wshrpc.FetchSuggestionsResponse, error) {
+	resp, err := sendRpcRequestCallHelper[*wshrpc.FetchSuggestionsResponse](w, "fetchsuggestions", data, opts)
 	return resp, err
 }
 

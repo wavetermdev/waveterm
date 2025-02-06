@@ -380,6 +380,13 @@ declare global {
         reqnum: number;
         "file:cwd"?: string;
         "file:dironly"?: boolean;
+        "file:connection"?: string;
+    };
+
+    // wshrpc.FetchSuggestionsResponse
+    type FetchSuggestionsResponse = {
+        reqnum: number;
+        suggestions: SuggestionType[];
     };
 
     // wshrpc.FileCopyOpts

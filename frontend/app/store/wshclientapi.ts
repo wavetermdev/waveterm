@@ -148,7 +148,7 @@ class RpcApiType {
     }
 
     // command "fetchsuggestions" [call]
-    FetchSuggestionsCommand(client: WshClient, data: FetchSuggestionsData, opts?: RpcOpts): Promise<SuggestionType[]> {
+    FetchSuggestionsCommand(client: WshClient, data: FetchSuggestionsData, opts?: RpcOpts): Promise<FetchSuggestionsResponse> {
         return client.wshRpcCall("fetchsuggestions", data, opts);
     }
 

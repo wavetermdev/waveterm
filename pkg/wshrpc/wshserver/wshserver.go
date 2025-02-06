@@ -864,7 +864,7 @@ func (ws *WshServer) PathCommand(ctx context.Context, data wshrpc.PathCommandDat
 	return path, nil
 }
 
-func (ws *WshServer) FetchSuggestionsCommand(ctx context.Context, data wshrpc.FetchSuggestionsData) ([]wshrpc.SuggestionType, error) {
+func (ws *WshServer) FetchSuggestionsCommand(ctx context.Context, data wshrpc.FetchSuggestionsData) (*wshrpc.FetchSuggestionsResponse, error) {
 	if data.SuggestionType != "file" {
 		return nil, fmt.Errorf("unsupported suggestion type: %q", data.SuggestionType)
 	}
@@ -911,5 +911,8 @@ func (ws *WshServer) FetchSuggestionsCommand(ctx context.Context, data wshrpc.Fe
 		s.FileMimeType = fileutil.DetectMimeTypeWithDirEnt(s.FilePath, dirEnt)
 		suggestions = append(suggestions, s)
 	}
-	return suggestions, nil
+	return &wshrpc.FetchSuggestionsResponse{
+		Suggestions: suggestions,
+		ReqNum:      data.ReqNum,
+	}, nil
 }
