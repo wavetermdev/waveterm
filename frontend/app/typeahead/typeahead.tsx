@@ -102,11 +102,13 @@ const TypeaheadInner: React.FC<Omit<TypeaheadProps, "isOpen">> = ({
     const [fetched, setFetched] = useState(false);
     const inputRef = useRef<HTMLInputElement>(null);
     const dropdownRef = useRef<HTMLDivElement>(null);
-    const { refs, floatingStyles } = useFloating({
+    const { refs, floatingStyles, middlewareData } = useFloating({
         placement: "bottom",
         strategy: "absolute",
         middleware: [offset(5)],
     });
+
+    console.log("TYPEAHEAD INNER", floatingStyles, middlewareData);
 
     useEffect(() => {
         if (anchorRef.current == null) {
@@ -174,7 +176,8 @@ const TypeaheadInner: React.FC<Omit<TypeaheadProps, "isOpen">> = ({
     return (
         <div
             className={clsx(
-                "w-96 rounded-lg bg-gray-800 shadow-lg border border-gray-700 z-[var(--zindex-typeahead-modal)]",
+                "w-96 rounded-lg bg-gray-800 shadow-lg border border-gray-700 z-[var(--zindex-typeahead-modal)] absolute",
+                middlewareData?.offset == null ? "opacity-0" : null,
                 className
             )}
             ref={refs.setFloating}

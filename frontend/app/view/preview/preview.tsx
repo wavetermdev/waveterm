@@ -1050,7 +1050,7 @@ function iconForFile(mimeType: string): string {
     }
 }
 
-function SpecializedView({ parentRef, model }: SpecializedViewProps) {
+const SpecializedView = memo(({ parentRef, model }: SpecializedViewProps) => {
     const specializedView = useAtomValue(model.specializedView);
     const mimeType = useAtomValue(model.fileMimeType);
     const setCanPreview = useSetAtom(model.canPreview);
@@ -1066,8 +1066,9 @@ function SpecializedView({ parentRef, model }: SpecializedViewProps) {
     if (!SpecializedViewComponent) {
         return <CenteredDiv>Invalid Specialzied View Component ({specializedView.specializedView})</CenteredDiv>;
     }
+    console.log("RENDER AGAIN SpecializedView", model, parentRef);
     return <SpecializedViewComponent model={model} parentRef={parentRef} />;
-}
+});
 
 const mockFileSuggestions: SuggestionType[] = [
     {
@@ -1184,6 +1185,11 @@ function PreviewView({
     return (
         <>
             {/* <OpenFileModal blockId={blockId} model={model} blockRef={blockRef} /> */}
+            <div key="fullpreview" className="full-preview scrollbar-hide-until-hover">
+                <div ref={contentRef} className="full-preview-content">
+                    <SpecializedView parentRef={contentRef} model={model} />
+                </div>
+            </div>
             <Typeahead
                 anchorRef={blockRef}
                 isOpen={openFileModal}
@@ -1192,11 +1198,6 @@ function PreviewView({
                 fetchSuggestions={fetchSuggestionsFn}
                 placeholderText="Open File..."
             />
-            <div className="full-preview scrollbar-hide-until-hover">
-                <div ref={contentRef} className="full-preview-content">
-                    <SpecializedView parentRef={contentRef} model={model} />
-                </div>
-            </div>
         </>
     );
 }
