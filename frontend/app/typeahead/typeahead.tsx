@@ -160,16 +160,25 @@ const TypeaheadInner: React.FC<Omit<TypeaheadProps, "isOpen">> = ({
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
         if (e.key === "ArrowDown") {
+            e.preventDefault();
             setSelectedIndex((prev) => Math.min(prev + 1, suggestions.length - 1));
-            e.preventDefault();
         } else if (e.key === "ArrowUp") {
-            setSelectedIndex((prev) => Math.max(prev - 1, 0));
             e.preventDefault();
+            setSelectedIndex((prev) => Math.max(prev - 1, 0));
         } else if (e.key === "Enter" && selectedIndex >= 0) {
+            e.preventDefault();
             onSelect(suggestions[selectedIndex], query);
             onClose();
         } else if (e.key === "Escape") {
+            e.preventDefault();
             onClose();
+        } else if (e.key === "Tab") {
+            e.preventDefault();
+            const suggestion = suggestions[selectedIndex];
+            if (suggestion != null) {
+                // set the query to the suggestion
+                setQuery(suggestion["file:name"]);
+            }
         }
     };
 
