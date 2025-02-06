@@ -212,6 +212,50 @@ func TestParseURI_WSHCurrentPath(t *testing.T) {
 	if c.GetFullURI() != expected {
 		t.Fatalf("expected full URI to be %q, got %q", expected, c.GetFullURI())
 	}
+
+	cstr = "path/to/file"
+	c, err = connparse.ParseURI(cstr)
+	if err != nil {
+		t.Fatalf("failed to parse URI: %v", err)
+	}
+	expected = "path/to/file"
+	if c.Path != expected {
+		t.Fatalf("expected path to be %q, got %q", expected, c.Path)
+	}
+	expected = "current"
+	if c.Host != expected {
+		t.Fatalf("expected host to be %q, got %q", expected, c.Host)
+	}
+	expected = "wsh"
+	if c.Scheme != expected {
+		t.Fatalf("expected scheme to be %q, got %q", expected, c.Scheme)
+	}
+	expected = "wsh://current/path/to/file"
+	if c.GetFullURI() != expected {
+		t.Fatalf("expected full URI to be %q, got %q", expected, c.GetFullURI())
+	}
+
+	cstr = "/etc/path/to/file"
+	c, err = connparse.ParseURI(cstr)
+	if err != nil {
+		t.Fatalf("failed to parse URI: %v", err)
+	}
+	expected = "/etc/path/to/file"
+	if c.Path != expected {
+		t.Fatalf("expected path to be %q, got %q", expected, c.Path)
+	}
+	expected = "current"
+	if c.Host != expected {
+		t.Fatalf("expected host to be %q, got %q", expected, c.Host)
+	}
+	expected = "wsh"
+	if c.Scheme != expected {
+		t.Fatalf("expected scheme to be %q, got %q", expected, c.Scheme)
+	}
+	expected = "wsh://current/etc/path/to/file"
+	if c.GetFullURI() != expected {
+		t.Fatalf("expected full URI to be %q, got %q", expected, c.GetFullURI())
+	}
 }
 
 func TestParseURI_WSHCurrentPathWindows(t *testing.T) {
