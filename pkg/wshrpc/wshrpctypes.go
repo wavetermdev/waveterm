@@ -733,8 +733,9 @@ type FetchSuggestionsData struct {
 }
 
 type FetchSuggestionsResponse struct {
-	ReqNum      int              `json:"reqnum"`
-	Suggestions []SuggestionType `json:"suggestions"`
+	ReqNum        int              `json:"reqnum"`
+	Suggestions   []SuggestionType `json:"suggestions"`
+	HighlightTerm string           `json:"highlightterm,omitempty"`
 }
 
 type SuggestionType struct {

@@ -99,6 +99,7 @@ const TypeaheadInner: React.FC<Omit<TypeaheadProps, "isOpen">> = ({
     const reqNumRef = useRef(0);
     const [suggestions, setSuggestions] = useState<SuggestionType[]>([]);
     const [selectedIndex, setSelectedIndex] = useState(0);
+    const [highlightTerm, setHighlightTerm] = useState("");
     const [fetched, setFetched] = useState(false);
     const inputRef = useRef<HTMLInputElement>(null);
     const dropdownRef = useRef<HTMLDivElement>(null);
@@ -126,6 +127,7 @@ const TypeaheadInner: React.FC<Omit<TypeaheadProps, "isOpen">> = ({
                 return;
             }
             setSuggestions(results.suggestions ?? []);
+            setHighlightTerm(results.highlightterm ?? "");
             setFetched(true);
         });
     }, [query, fetchSuggestions]);
@@ -216,7 +218,9 @@ const TypeaheadInner: React.FC<Omit<TypeaheadProps, "isOpen">> = ({
                             }}
                         >
                             <SuggestionIcon suggestion={suggestion} />
-                            <span className="truncate">{defaultHighlighter(suggestion["file:name"], query)}</span>
+                            <span className="truncate">
+                                {defaultHighlighter(suggestion["file:name"], highlightTerm)}
+                            </span>
                         </div>
                     ))}
                 </div>

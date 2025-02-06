@@ -387,6 +387,7 @@ declare global {
     type FetchSuggestionsResponse = {
         reqnum: number;
         suggestions: SuggestionType[];
+        highlightterm?: string;
     };
 
     // wshrpc.FileCopyOpts
