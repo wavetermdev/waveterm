@@ -147,7 +147,7 @@ func (c S3Client) ReadStream(ctx context.Context, conn *connparse.Connection, da
 						break
 					}
 					bytesRemaining -= int64(n)
-					rtn <- wshrpc.RespOrErrorUnion[wshrpc.FileData]{Response: wshrpc.FileData{Data64: string(buf)}}
+					rtn <- wshrpc.RespOrErrorUnion[wshrpc.FileData]{Response: wshrpc.FileData{Data64: base64.StdEncoding.EncodeToString(buf[:n])}}
 					if bytesRemaining == 0 || errors.Is(err, io.EOF) {
 						return
 					}
