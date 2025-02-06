@@ -242,7 +242,12 @@ const BlockFrame_Header = ({
     };
 
     return (
-        <div className="block-frame-default-header" ref={dragHandleRef} onContextMenu={onContextMenu}>
+        <div
+            className="block-frame-default-header"
+            data-role="block-header"
+            ref={dragHandleRef}
+            onContextMenu={onContextMenu}
+        >
             {preIconButtonElem}
             <div className="block-frame-default-header-iconview">
                 {viewIconElem}

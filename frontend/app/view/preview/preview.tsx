@@ -9,6 +9,7 @@ import { ContextMenuModel } from "@/app/store/contextmenu";
 import { tryReinjectKey } from "@/app/store/keymodel";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
+import { Suggestion, Typeahead } from "@/app/typeahead/typeahead";
 import { CodeEditor } from "@/app/view/codeeditor/codeeditor";
 import { Markdown } from "@/element/markdown";
 import {
@@ -1068,6 +1069,69 @@ function SpecializedView({ parentRef, model }: SpecializedViewProps) {
     return <SpecializedViewComponent model={model} parentRef={parentRef} />;
 }
 
+const mockFileSuggestions: Suggestion[] = [
+    {
+        type: "file",
+        suggestionid: "1",
+        filename: "document.txt",
+        filepath: "/home/user/document.txt",
+        icon: "fa-file",
+        iconcolor: "#4A90E2",
+        mimetype: "text/plain",
+    },
+    {
+        type: "file",
+        suggestionid: "2",
+        filename: "presentation.pptx",
+        filepath: "/home/user/presentation.pptx",
+        icon: "fa-file-powerpoint",
+        iconcolor: "#D04423",
+        mimetype: "application/vnd.ms-powerpoint",
+    },
+    {
+        type: "file",
+        suggestionid: "3",
+        filename: "spreadsheet.xlsx",
+        filepath: "/home/user/spreadsheet.xlsx",
+        icon: "fa-file-excel",
+        iconcolor: "#107C41",
+        mimetype: "application/vnd.ms-excel",
+    },
+    {
+        type: "file",
+        suggestionid: "4",
+        filename: "image.png",
+        filepath: "/home/user/image.png",
+        icon: "fa-file-image",
+        iconcolor: "#E44D26",
+        mimetype: "image/png",
+    },
+    {
+        type: "file",
+        suggestionid: "5",
+        filename: "notes.md",
+        filepath: "/home/user/notes.md",
+        icon: "fa-file-alt",
+        iconcolor: "#777",
+        mimetype: "text/markdown",
+    },
+];
+
+const mockFetchSuggestions = async (query: string): Promise<Suggestion[]> => {
+    console.log("mock-suggestions", query);
+    return new Promise((resolve) => {
+        setTimeout(() => {
+            if (query == null || !query.trim()) {
+                resolve(mockFileSuggestions);
+            } else {
+                resolve(
+                    mockFileSuggestions.filter((file) => file.filename.toLowerCase().includes(query.toLowerCase()))
+                );
+            }
+        }, 200);
+    });
+};
+
 function PreviewView({
     blockId,
     blockRef,
@@ -1080,12 +1144,20 @@ function PreviewView({
     model: PreviewModel;
 }) {
     const connStatus = useAtomValue(model.connStatus);
+    const openFileModal = useAtomValue(model.openFileModal);
     if (connStatus?.status != "connected") {
         return null;
     }
     return (
         <>
-            <OpenFileModal blockId={blockId} model={model} blockRef={blockRef} />
+            {/* <OpenFileModal blockId={blockId} model={model} blockRef={blockRef} /> */}
+            <Typeahead
+                anchorRef={blockRef}
+                isOpen={openFileModal}
+                onClose={() => model.updateOpenFileModalAndError(false)}
+                onSelect={(s) => console.log("onSelct", s)}
+                fetchSuggestions={mockFetchSuggestions}
+            />
             <div className="full-preview scrollbar-hide-until-hover">
                 <div ref={contentRef} className="full-preview-content">
                     <SpecializedView parentRef={contentRef} model={model} />
