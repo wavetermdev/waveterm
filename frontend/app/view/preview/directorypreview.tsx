@@ -932,7 +932,11 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
                         desturi,
                         opts,
                     };
-                    await RpcApi.FileCopyCommand(TabRpcClient, data, { timeout: timeoutYear });
+                    try {
+                        await RpcApi.FileCopyCommand(TabRpcClient, data, { timeout: timeoutYear });
+                    } catch (e) {
+                        console.log("copy failed:", e);
+                    }
                     model.refreshCallback();
                 }
             },
