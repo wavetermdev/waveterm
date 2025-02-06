@@ -7,7 +7,6 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"io/fs"
@@ -276,14 +275,6 @@ func handleRemoteStreamFile(w http.ResponseWriter, req *http.Request, conn strin
 				return nil
 			}
 			if respUnion.Error != nil {
-				if errors.Is(respUnion.Error, fs.ErrNotExist) {
-					if no404 {
-						serveTransparentGIF(w)
-						return nil
-					} else {
-						return fmt.Errorf("file not found: %q", path)
-					}
-				}
 				return respUnion.Error
 			}
 			if firstPk {
@@ -292,6 +283,14 @@ func handleRemoteStreamFile(w http.ResponseWriter, req *http.Request, conn strin
 					return fmt.Errorf("stream file protocol error, fileinfo is empty")
 				}
 				fileInfo = respUnion.Response.Info
+				if fileInfo.NotFound {
+					if no404 {
+						serveTransparentGIF(w)
+						return nil
+					} else {
+						return fmt.Errorf("file not found: %q", path)
+					}
+				}
 				if fileInfo.IsDir {
 					return fmt.Errorf("cannot stream directory: %q", path)
 				}
