@@ -372,6 +372,12 @@ declare global {
         miny?: string | number;
         decimalPlaces?: number;
     };
+
+    type DraggedFile = {
+        uri: string;
+        absParent: string;
+        relName: string;
+    };
 }
 
 export {};

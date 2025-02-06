@@ -27,6 +27,7 @@ import dayjs from "dayjs";
 import { PrimitiveAtom, atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { OverlayScrollbarsComponent, OverlayScrollbarsComponentRef } from "overlayscrollbars-react";
 import React, { Fragment, memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useDrag, useDrop } from "react-dnd";
 import { quote as shellQuote } from "shell-quote";
 import { debounce } from "throttle-debounce";
 import "./directorypreview.scss";
@@ -657,34 +658,6 @@ function TableBody({
         [setRefreshVersion, conn]
     );
 
-    const displayRow = useCallback(
-        (row: Row<FileInfo>, idx: number) => (
-            <div
-                ref={(el) => (rowRefs.current[idx] = el)}
-                className={clsx("dir-table-body-row", { focused: focusIndex === idx })}
-                key={row.id}
-                onDoubleClick={() => {
-                    const newFileName = row.getValue("path") as string;
-                    model.goHistory(newFileName);
-                    setSearch("");
-                }}
-                onClick={() => setFocusIndex(idx)}
-                onContextMenu={(e) => handleFileContextMenu(e, row.original)}
-            >
-                {row.getVisibleCells().map((cell) => (
-                    <div
-                        className={clsx("dir-table-body-cell", "col-" + cell.column.id)}
-                        key={cell.id}
-                        style={{ width: `calc(var(--col-${cell.column.id}-size) * 1px)` }}
-                    >
-                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </div>
-                ))}
-            </div>
-        ),
-        [setSearch, handleFileContextMenu, setFocusIndex, focusIndex]
-    );
-
     return (
         <div className="dir-table-body" ref={bodyRef}>
             {search !== "" && (
@@ -700,12 +673,109 @@ function TableBody({
                 <div className="dummy dir-table-body-row" ref={dummyLineRef}>
                     <div className="dir-table-body-cell">dummy-data</div>
                 </div>
-                {table.getTopRows().map(displayRow)}
-                {table.getCenterRows().map((row, idx) => displayRow(row, idx + table.getTopRows().length))}
+                {table.getTopRows().map((row, idx) => (
+                    <TableRow
+                        model={model}
+                        row={row}
+                        focusIndex={focusIndex}
+                        setFocusIndex={setFocusIndex}
+                        setSearch={setSearch}
+                        idx={idx}
+                        handleFileContextMenu={handleFileContextMenu}
+                        ref={(el) => (rowRefs.current[idx] = el)}
+                        key={idx}
+                    />
+                ))}
+                {table.getCenterRows().map((row, idx) => (
+                    <TableRow
+                        model={model}
+                        row={row}
+                        focusIndex={focusIndex}
+                        setFocusIndex={setFocusIndex}
+                        setSearch={setSearch}
+                        idx={idx + table.getTopRows().length}
+                        handleFileContextMenu={handleFileContextMenu}
+                        ref={(el) => (rowRefs.current[idx] = el)}
+                        key={idx}
+                    />
+                ))}
             </div>
         </div>
     );
 }
+
+type TableRowProps = {
+    model: PreviewModel;
+    row: Row<FileInfo>;
+    focusIndex: number;
+    setFocusIndex: (_: number) => void;
+    setSearch: (_: string) => void;
+    idx: number;
+    handleFileContextMenu: (e: any, finfo: FileInfo) => Promise<void>;
+};
+
+const TableRow = React.forwardRef(function (
+    { model, row, focusIndex, setFocusIndex, setSearch, idx, handleFileContextMenu }: TableRowProps,
+    ref: React.RefObject<HTMLDivElement>
+) {
+    const dirPath = useAtomValue(model.normFilePath);
+    const connection = useAtomValue(model.connection);
+    const formatRemoteUri = useCallback(
+        (path: string) => {
+            let conn: string;
+            if (!connection) {
+                conn = "local";
+            } else {
+                conn = connection;
+            }
+            return `wsh://${conn}/${path}`;
+        },
+        [connection]
+    );
+
+    const dragItem: DraggedFile = {
+        relName: row.getValue("name") as string,
+        absParent: dirPath,
+        uri: formatRemoteUri(row.getValue("path") as string),
+    };
+    const [{ isDragging }, drag, dragPreview] = useDrag(
+        () => ({
+            type: "FILE_ITEM",
+            canDrag: true,
+            item: () => dragItem,
+            collect: (monitor) => {
+                return {
+                    isDragging: monitor.isDragging(),
+                };
+            },
+        }),
+        [dragItem]
+    );
+
+    return (
+        <div
+            className={clsx("dir-table-body-row", { focused: focusIndex === idx })}
+            onDoubleClick={() => {
+                const newFileName = row.getValue("path") as string;
+                model.goHistory(newFileName);
+                setSearch("");
+            }}
+            onClick={() => setFocusIndex(idx)}
+            onContextMenu={(e) => handleFileContextMenu(e, row.original)}
+            ref={drag}
+        >
+            {row.getVisibleCells().map((cell) => (
+                <div
+                    className={clsx("dir-table-body-cell", "col-" + cell.column.id)}
+                    key={cell.id}
+                    style={{ width: `calc(var(--col-${cell.column.id}-size) * 1px)` }}
+                >
+                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                </div>
+            ))}
+        </div>
+    );
+});
 
 const MemoizedTableBody = React.memo(
     TableBody,
@@ -836,6 +906,48 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
         onOpenChange: () => setEntryManagerProps(undefined),
         middleware: [offset(({ rects }) => -rects.reference.height / 2 - rects.floating.height / 2)],
     });
+
+    const [, drop] = useDrop(
+        () => ({
+            accept: "FILE_ITEM", //a name of file drop type
+            canDrop: (_, monitor) => {
+                const dragItem = monitor.getItem<DraggedFile>();
+                // drop if not current dir is the parent directory of the dragged item
+                // requires absolute path
+                if (monitor.isOver({ shallow: false }) && dragItem.absParent !== dirPath) {
+                    return true;
+                }
+                return false;
+            },
+            drop: async (draggedFile: DraggedFile, monitor) => {
+                if (!monitor.didDrop()) {
+                    const timeoutYear = 31536000000; // one year
+                    const opts: FileCopyOpts = {
+                        timeout: timeoutYear,
+                        recursive: true,
+                    };
+                    const desturi = await model.formatRemoteUri(dirPath, globalStore.get);
+                    const data: CommandFileCopyData = {
+                        srcuri: draggedFile.uri,
+                        desturi,
+                        opts,
+                    };
+                    try {
+                        await RpcApi.FileCopyCommand(TabRpcClient, data, { timeout: timeoutYear });
+                    } catch (e) {
+                        console.log("copy failed:", e);
+                    }
+                    model.refreshCallback();
+                }
+            },
+            // TODO: mabe add a hover option?
+        }),
+        [dirPath, model.formatRemoteUri, model.refreshCallback]
+    );
+
+    useEffect(() => {
+        drop(refs.reference);
+    }, [refs.reference]);
 
     const dismiss = useDismiss(context);
     const { getReferenceProps, getFloatingProps } = useInteractions([dismiss]);
