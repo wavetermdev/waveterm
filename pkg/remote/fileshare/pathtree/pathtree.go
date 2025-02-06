@@ -68,19 +68,19 @@ func (t *Tree) Add(path string) {
 	components := strings.Split(relativePath, t.delimiter)
 	log.Printf("components: %v", components)
 
-	// // Quick check to see if the parent path is already in the tree, in which case we can skip the loop
-	// if len(components) > 1 {
-	// 	parentPath := strings.Join(components[:len(components)-1], t.delimiter)
-	// 	log.Printf("parentPath: %s", parentPath)
-	// 	if t.nodes[parentPath] != nil {
-	// 		lastPathComponent := components[len(components)-1]
-	// 		t.nodes[parentPath].Children[lastPathComponent] = &Node{
-	// 			Children: make(map[string]*Node),
-	// 		}
-	// 		t.nodes[relativePath] = t.nodes[parentPath].Children[lastPathComponent]
-	// 		return
-	// 	}
-	// }
+	// Quick check to see if the parent path is already in the tree, in which case we can skip the loop
+	if len(components) > 1 {
+		parentPath := strings.Join(components[:len(components)-1], t.delimiter)
+		log.Printf("parentPath: %s", parentPath)
+		if t.nodes[parentPath] != nil {
+			lastPathComponent := components[len(components)-1]
+			t.nodes[parentPath].Children[lastPathComponent] = &Node{
+				Children: make(map[string]*Node),
+			}
+			t.nodes[relativePath] = t.nodes[parentPath].Children[lastPathComponent]
+			return
+		}
+	}
 
 	currentNode := t.Root
 	for i, component := range components {
