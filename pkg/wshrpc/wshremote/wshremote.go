@@ -407,11 +407,11 @@ func (impl *ServerImpl) RemoteFileCopyCommand(ctx context.Context, data wshrpc.C
 		if err != nil {
 			return 0, fmt.Errorf("cannot create new file %q: %w", path, err)
 		}
+		defer file.Close()
 		_, err = io.Copy(file, srcFile)
 		if err != nil {
 			return 0, fmt.Errorf("cannot write file %q: %w", path, err)
 		}
-		file.Close()
 
 		return finfo.Size(), nil
 	}
