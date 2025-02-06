@@ -924,6 +924,7 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
                     const timeoutYear = 31536000000; // one year
                     const opts: FileCopyOpts = {
                         timeout: timeoutYear,
+                        recursive: true,
                     };
                     const desturi = await model.formatRemoteUri(dirPath, globalStore.get);
                     const data: CommandFileCopyData = {
