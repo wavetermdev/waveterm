@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"log"
 	"mime"
 	"net/http"
 	"os"
@@ -217,8 +216,6 @@ func ToFsFileInfo(fi *wshrpc.FileInfo) FsFileInfo {
 		ModTimeInternal: fi.ModTime,
 		IsDirInternal:   fi.IsDir,
 	}
-
-	log.Printf("fi: %v; fsFileInfo: %v\n", fi, fsFileInfo)
 	return fsFileInfo
 }
 

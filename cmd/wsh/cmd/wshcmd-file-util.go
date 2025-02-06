@@ -29,14 +29,14 @@ func convertNotFoundErr(err error) error {
 }
 
 func ensureFile(fileData wshrpc.FileData) (*wshrpc.FileInfo, error) {
-	info, err := wshclient.FileInfoCommand(RpcClient, fileData, &wshrpc.RpcOpts{Timeout: DefaultFileTimeout})
+	info, err := wshclient.FileInfoCommand(RpcClient, fileData, &wshrpc.RpcOpts{Timeout: fileTimeout})
 	err = convertNotFoundErr(err)
 	if err == fs.ErrNotExist {
-		err = wshclient.FileCreateCommand(RpcClient, fileData, &wshrpc.RpcOpts{Timeout: DefaultFileTimeout})
+		err = wshclient.FileCreateCommand(RpcClient, fileData, &wshrpc.RpcOpts{Timeout: fileTimeout})
 		if err != nil {
 			return nil, fmt.Errorf("creating file: %w", err)
 		}
-		info, err = wshclient.FileInfoCommand(RpcClient, fileData, &wshrpc.RpcOpts{Timeout: DefaultFileTimeout})
+		info, err = wshclient.FileInfoCommand(RpcClient, fileData, &wshrpc.RpcOpts{Timeout: fileTimeout})
 		if err != nil {
 			return nil, fmt.Errorf("getting file info: %w", err)
 		}
@@ -52,7 +52,7 @@ func streamWriteToFile(fileData wshrpc.FileData, reader io.Reader) error {
 	// First truncate the file with an empty write
 	emptyWrite := fileData
 	emptyWrite.Data64 = ""
-	err := wshclient.FileWriteCommand(RpcClient, emptyWrite, &wshrpc.RpcOpts{Timeout: DefaultFileTimeout})
+	err := wshclient.FileWriteCommand(RpcClient, emptyWrite, &wshrpc.RpcOpts{Timeout: fileTimeout})
 	if err != nil {
 		return fmt.Errorf("initializing file with empty write: %w", err)
 	}
@@ -90,8 +90,8 @@ func streamWriteToFile(fileData wshrpc.FileData, reader io.Reader) error {
 	return nil
 }
 
-func streamReadFromFile(ctx context.Context, fileData wshrpc.FileData, size int64, writer io.Writer) error {
-	ch := wshclient.FileReadStreamCommand(RpcClient, fileData, &wshrpc.RpcOpts{Timeout: DefaultFileTimeout})
+func streamReadFromFile(ctx context.Context, fileData wshrpc.FileData, writer io.Writer) error {
+	ch := wshclient.FileReadStreamCommand(RpcClient, fileData, &wshrpc.RpcOpts{Timeout: fileTimeout})
 	return fileutil.ReadFileStreamToWriter(ctx, ch, writer)
 }
 

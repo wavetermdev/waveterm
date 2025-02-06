@@ -14,6 +14,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"math"
 	mathrand "math/rand"
 	"os"
@@ -947,4 +948,21 @@ func DumpGoRoutineStacks() {
 	buf := make([]byte, 1<<20)
 	n := runtime.Stack(buf, true)
 	os.Stdout.Write(buf[:n])
+}
+
+func GracefulClose(closer io.Closer, debugName string, closerName string, maxRetries int, retryDelay time.Duration) bool {
+	closed := false
+	for retries := 0; retries < maxRetries; retries++ {
+		if err := closer.Close(); err != nil {
+			log.Printf("%s: error closing %s: %v, trying again in %dms\n", debugName, closerName, err, retryDelay.Milliseconds())
+			time.Sleep(retryDelay)
+			continue
+		}
+		closed = true
+		break
+	}
+	if !closed {
+		log.Printf("%s: unable to close %s after %d retries\n", debugName, closerName, maxRetries)
+	}
+	return closed
 }

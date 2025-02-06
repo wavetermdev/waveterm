@@ -31,8 +31,7 @@ const (
 	WaveFileScheme = "wavefile"
 	WaveFilePrefix = "wavefile://"
 
-	DefaultFileTimeout = int64(30) * 1000
-	TimeoutYear        = int64(365) * 24 * 60 * 60 * 1000
+	TimeoutYear = int64(365) * 24 * 60 * 60 * 1000
 
 	UriHelpText = `
 
@@ -83,12 +82,12 @@ Wave Terminal is capable of managing files from remote SSH hosts, S3-compatible
 systems, and the internal Wave filesystem. Files are addressed via URIs, which
 vary depending on the storage system.` + UriHelpText}
 
-var fileTimeout int
+var fileTimeout int64
 
 func init() {
 	rootCmd.AddCommand(fileCmd)
 
-	fileCmd.PersistentFlags().IntVarP(&fileTimeout, "timeout", "t", 15000, "timeout in milliseconds for long operations")
+	fileCmd.PersistentFlags().Int64VarP(&fileTimeout, "timeout", "t", 15000, "timeout in milliseconds for long operations")
 
 	fileListCmd.Flags().BoolP("recursive", "r", false, "list subdirectories recursively")
 	fileListCmd.Flags().BoolP("long", "l", false, "use long listing format")
@@ -202,17 +201,7 @@ func fileCatRun(cmd *cobra.Command, args []string) error {
 		Info: &wshrpc.FileInfo{
 			Path: path}}
 
-	// Get file info first to check existence and get size
-	info, err := wshclient.FileInfoCommand(RpcClient, fileData, &wshrpc.RpcOpts{Timeout: 2000})
-	err = convertNotFoundErr(err)
-	if err == fs.ErrNotExist {
-		return fmt.Errorf("%s: no such file", path)
-	}
-	if err != nil {
-		return fmt.Errorf("getting file info: %w", err)
-	}
-
-	err = streamReadFromFile(cmd.Context(), fileData, info.Size, os.Stdout)
+	err = streamReadFromFile(cmd.Context(), fileData, os.Stdout)
 	if err != nil {
 		return fmt.Errorf("reading file: %w", err)
 	}
@@ -229,7 +218,7 @@ func fileInfoRun(cmd *cobra.Command, args []string) error {
 		Info: &wshrpc.FileInfo{
 			Path: path}}
 
-	info, err := wshclient.FileInfoCommand(RpcClient, fileData, &wshrpc.RpcOpts{Timeout: DefaultFileTimeout})
+	info, err := wshclient.FileInfoCommand(RpcClient, fileData, &wshrpc.RpcOpts{Timeout: fileTimeout})
 	err = convertNotFoundErr(err)
 	if err == fs.ErrNotExist {
 		return fmt.Errorf("%s: no such file", path)
@@ -265,7 +254,7 @@ func fileRmRun(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	err = wshclient.FileDeleteCommand(RpcClient, wshrpc.CommandDeleteFileData{Path: path, Recursive: recursive}, &wshrpc.RpcOpts{Timeout: DefaultFileTimeout})
+	err = wshclient.FileDeleteCommand(RpcClient, wshrpc.CommandDeleteFileData{Path: path, Recursive: recursive}, &wshrpc.RpcOpts{Timeout: fileTimeout})
 	if err != nil {
 		return fmt.Errorf("removing file: %w", err)
 	}
@@ -282,7 +271,7 @@ func fileWriteRun(cmd *cobra.Command, args []string) error {
 		Info: &wshrpc.FileInfo{
 			Path: path}}
 
-	capability, err := wshclient.FileShareCapabilityCommand(RpcClient, fileData.Info.Path, &wshrpc.RpcOpts{Timeout: DefaultFileTimeout})
+	capability, err := wshclient.FileShareCapabilityCommand(RpcClient, fileData.Info.Path, &wshrpc.RpcOpts{Timeout: fileTimeout})
 	if err != nil {
 		return fmt.Errorf("getting fileshare capability: %w", err)
 	}
@@ -303,7 +292,7 @@ func fileWriteRun(cmd *cobra.Command, args []string) error {
 			}
 		}
 		fileData.Data64 = base64.StdEncoding.EncodeToString(buf[:n])
-		err = wshclient.FileWriteCommand(RpcClient, fileData, &wshrpc.RpcOpts{Timeout: DefaultFileTimeout})
+		err = wshclient.FileWriteCommand(RpcClient, fileData, &wshrpc.RpcOpts{Timeout: fileTimeout})
 		if err != nil {
 			return fmt.Errorf("writing file: %w", err)
 		}
@@ -350,7 +339,7 @@ func fileAppendRun(cmd *cobra.Command, args []string) error {
 
 		if buf.Len() >= 8192 { // 8KB batch size
 			fileData.Data64 = base64.StdEncoding.EncodeToString(buf.Bytes())
-			err = wshclient.FileAppendCommand(RpcClient, fileData, &wshrpc.RpcOpts{Timeout: int64(fileTimeout)})
+			err = wshclient.FileAppendCommand(RpcClient, fileData, &wshrpc.RpcOpts{Timeout: fileTimeout})
 			if err != nil {
 				return fmt.Errorf("appending to file: %w", err)
 			}
@@ -361,7 +350,7 @@ func fileAppendRun(cmd *cobra.Command, args []string) error {
 
 	if buf.Len() > 0 {
 		fileData.Data64 = base64.StdEncoding.EncodeToString(buf.Bytes())
-		err = wshclient.FileAppendCommand(RpcClient, fileData, &wshrpc.RpcOpts{Timeout: int64(fileTimeout)})
+		err = wshclient.FileAppendCommand(RpcClient, fileData, &wshrpc.RpcOpts{Timeout: fileTimeout})
 		if err != nil {
 			return fmt.Errorf("appending to file: %w", err)
 		}

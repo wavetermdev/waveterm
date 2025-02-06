@@ -5,7 +5,6 @@ package s3fs
 
 import (
 	"archive/tar"
-	"bytes"
 	"context"
 	"encoding/base64"
 	"errors"
@@ -160,17 +159,20 @@ func (c S3Client) ReadStream(ctx context.Context, conn *connparse.Connection, da
 }
 
 func (c S3Client) ReadTarStream(ctx context.Context, conn *connparse.Connection, opts *wshrpc.FileCopyOpts) <-chan wshrpc.RespOrErrorUnion[iochantypes.Packet] {
+	recursive := opts != nil && opts.Recursive
 
 	bucket := conn.Host
 	if bucket == "" || bucket == "/" {
 		return wshutil.SendErrCh[iochantypes.Packet](fmt.Errorf("bucket must be specified"))
 	}
 
-	objectPrefix := conn.Path
+	// whether the operation is on the whole bucket
+	wholeBucket := conn.Path == "" || conn.Path == "/"
 
-	wholeBucket := objectPrefix == "" || objectPrefix == "/"
+	// get the object if it's a single file operation
 	var singleFileResult *s3.GetObjectOutput
 	defer func() {
+		// in case we error out before the object gets copied, make sure to close it
 		if singleFileResult != nil {
 			singleFileResult.Body.Close()
 		}
@@ -179,9 +181,10 @@ func (c S3Client) ReadTarStream(ctx context.Context, conn *connparse.Connection,
 	if !wholeBucket {
 		singleFileResult, err = c.client.GetObject(ctx, &s3.GetObjectInput{
 			Bucket: aws.String(bucket),
-			Key:    aws.String(objectPrefix),
+			Key:    aws.String(conn.Path), // does not care if the path has a prefixed slash
 		})
 		if err != nil {
+			// if the object doesn't exist, we can assume the prefix is a directory and continue
 			var noKey *types.NoSuchKey
 			var notFound *types.NotFound
 			if !errors.As(err, &noKey) && !errors.As(err, &notFound) {
@@ -189,8 +192,15 @@ func (c S3Client) ReadTarStream(ctx context.Context, conn *connparse.Connection,
 			}
 		}
 	}
+
+	// whether the operation is on a single file
 	singleFile := singleFileResult != nil
-	includeDir := singleFileResult == nil && objectPrefix != "" && !strings.HasSuffix(objectPrefix, "/")
+	if !singleFile && !recursive {
+		return wshutil.SendErrCh[iochantypes.Packet](fmt.Errorf("recursive must be set to true for non-single file operations"))
+	}
+
+	// whether to include the directory itself in the tar
+	includeDir := (wholeBucket && conn.Path == "") || (singleFileResult == nil && conn.Path != "" && !strings.HasSuffix(conn.Path, "/"))
 
 	timeout := fstype.DefaultTimeout
 	if opts.Timeout > 0 {
@@ -198,10 +208,19 @@ func (c S3Client) ReadTarStream(ctx context.Context, conn *connparse.Connection,
 	}
 	readerCtx, cancel := context.WithTimeout(context.Background(), timeout)
 
+	// the prefix that should be removed from the tar paths
 	tarPathPrefix := conn.Path
-	if singleFile || includeDir {
+
+	if wholeBucket {
+		// we treat the bucket name as the root directory. If we're not including the directory itself, we need to remove the bucket name from the tar paths
+		if includeDir {
+			tarPathPrefix = ""
+		} else {
+			tarPathPrefix = bucket
+		}
+	} else if singleFile || includeDir {
+		// if we're including the directory itself, we need to remove the last part of the path
 		tarPathPrefix = getParentPathString(tarPathPrefix)
-		log.Printf("objectPrefix: %v; tarPathPrefix: %v", objectPrefix, tarPathPrefix)
 	}
 
 	rtn, writeHeader, fileWriter, tarClose := tarcopy.TarCopySrc(readerCtx, tarPathPrefix)
@@ -212,55 +231,27 @@ func (c S3Client) ReadTarStream(ctx context.Context, conn *connparse.Connection,
 			cancel()
 		}()
 
-		writeFileAndHeader := func(objOutput *s3.GetObjectOutput, objKey string, numChildren int) error {
-			log.Printf("writing file %v", objKey)
-			modTime := int64(time.Now().Unix())
-			size := int64(0)
-			isDir := objOutput == nil
-			if isDir {
-				size = int64(numChildren)
-			} else {
-				if objOutput.ContentLength != nil {
-					size = *objOutput.ContentLength
-				}
-				if objOutput.LastModified != nil {
-					modTime = objOutput.LastModified.UnixMilli()
-				}
+		// below we get the objects concurrently so we need to store the results in a map
+		objMap := make(map[string]*s3.GetObjectOutput)
+		// close the objects when we're done
+		defer func() {
+			for key, obj := range objMap {
+				log.Printf("closing object %v", key)
+				obj.Body.Close()
 			}
+		}()
 
-			mode := FileMode
-			if isDir {
-				mode = DirMode
-			}
-
-			finfo := &wshrpc.FileInfo{
-				Name:    objKey,
-				IsDir:   isDir,
-				Size:    size,
-				ModTime: modTime,
-				Mode:    mode,
-			}
-			if err := writeHeader(fileutil.ToFsFileInfo(finfo), objKey); err != nil {
-				return err
-			}
-			if !isDir {
-				base64Reader := base64.NewDecoder(base64.StdEncoding, objOutput.Body)
-				if _, err := io.Copy(fileWriter, base64Reader); err != nil {
-					return err
-				}
-			}
-			log.Printf("wrote file %v", objKey)
-			return nil
-		}
+		// tree to keep track of the paths we've added and insert fake directories for subpaths
+		tree := pathtree.NewTree(tarPathPrefix, "/")
 
 		if singleFile {
-			if err := writeFileAndHeader(singleFileResult, conn.Path, 0); err != nil {
-				rtn <- wshutil.RespErr[iochantypes.Packet](err)
-				return
-			}
+			objMap[conn.Path] = singleFileResult
+			tree.Add(conn.Path)
 		} else {
+			// list the objects in the bucket and add them to a tree that we can then walk to write the tar entries
 			var input *s3.ListObjectsV2Input
 			if wholeBucket {
+				// get all the objects in the bucket
 				input = &s3.ListObjectsV2Input{
 					Bucket: aws.String(bucket),
 				}
@@ -275,22 +266,13 @@ func (c S3Client) ReadTarStream(ctx context.Context, conn *connparse.Connection,
 				}
 			}
 
-			// Make sure that the tree and outputMap are thread-safe
-			treeMutex := sync.Mutex{}
-			tree := pathtree.NewTree(tarPathPrefix, "/")
-			outputMap := make(map[string]*s3.GetObjectOutput)
-
-			defer func() {
-				for _, obj := range outputMap {
-					if obj != nil {
-						obj.Body.Close()
-					}
-				}
-			}()
+			// mutex to protect the tree and objMap since we're fetching objects concurrently
+			treeMapMutex := sync.Mutex{}
+			// wait group to await the finished fetches
+			wg := sync.WaitGroup{}
 
 			// Fetch all the matching objects concurrently
 			var output *s3.ListObjectsV2Output
-			wg := sync.WaitGroup{}
 			objectPaginator := s3.NewListObjectsV2Paginator(c.client, input)
 			for objectPaginator.HasMorePages() {
 				output, err = objectPaginator.NextPage(ctx)
@@ -309,10 +291,14 @@ func (c S3Client) ReadTarStream(ctx context.Context, conn *connparse.Connection,
 						errs = append(errs, err)
 						return
 					}
-					treeMutex.Lock()
-					defer treeMutex.Unlock()
-					outputMap[*obj.Key] = result
-					tree.Add(*obj.Key)
+					path := *obj.Key
+					if wholeBucket {
+						path = bucket + "/" + path
+					}
+					treeMapMutex.Lock()
+					defer treeMapMutex.Unlock()
+					objMap[path] = result
+					tree.Add(path)
 				}
 				for _, obj := range output.Contents {
 					wg.Add(1)
@@ -323,21 +309,48 @@ func (c S3Client) ReadTarStream(ctx context.Context, conn *connparse.Connection,
 					return
 				}
 			}
-
 			wg.Wait()
+		}
 
-			// log.Printf("outputMap: %v", outputMap)
+		// Walk the tree and write the tar entries
+		if err := tree.Walk(func(path string, numChildren int) error {
+			mapEntry, isFile := objMap[path]
 
-			// Walk the tree and write the tar entries
-			if err := tree.Walk(func(path string, numChildren int) error {
-				mapEntry := outputMap[path]
-				// log.Printf("path: %v", path)
-				// log.Printf("mapEntry: %v", mapEntry)
-				return writeFileAndHeader(mapEntry, path, numChildren)
-			}); err != nil {
-				rtn <- wshutil.RespErr[iochantypes.Packet](err)
-				return
+			// default vals assume entry is dir, since mapEntry might not exist
+			modTime := int64(time.Now().Unix())
+			mode := DirMode
+			size := int64(numChildren)
+
+			if isFile {
+				mode = FileMode
+				size = *mapEntry.ContentLength
+				if mapEntry.LastModified != nil {
+					modTime = mapEntry.LastModified.UnixMilli()
+				}
 			}
+
+			finfo := &wshrpc.FileInfo{
+				Name:    path,
+				IsDir:   !isFile,
+				Size:    size,
+				ModTime: modTime,
+				Mode:    mode,
+			}
+			if err := writeHeader(fileutil.ToFsFileInfo(finfo), path); err != nil {
+				return err
+			}
+			if isFile {
+				if n, err := io.Copy(fileWriter, mapEntry.Body); err != nil {
+					return err
+				} else if n != size {
+					return fmt.Errorf("error copying %v; expected to read %d bytes, but read %d", path, size, n)
+				}
+			}
+			return nil
+		}); err != nil {
+			log.Printf("error walking tree: %v", err)
+			rtn <- wshutil.RespErr[iochantypes.Packet](err)
+			return
 		}
 	}()
 	return rtn
@@ -536,7 +549,7 @@ func (c S3Client) Stat(ctx context.Context, conn *connparse.Connection) (*wshrpc
 			return nil, fmt.Errorf("bucket %v does not exist", bucketName)
 		}
 	}
-	result, err := c.client.HeadObject(ctx, &s3.HeadObjectInput{
+	result, err := c.client.GetObjectAttributes(ctx, &s3.GetObjectAttributesInput{
 		Bucket: aws.String(bucketName),
 		Key:    aws.String(objectKey),
 	})
@@ -551,8 +564,8 @@ func (c S3Client) Stat(ctx context.Context, conn *connparse.Connection) (*wshrpc
 		return nil, err
 	}
 	size := int64(0)
-	if result.ContentLength != nil {
-		size = *result.ContentLength
+	if result.ObjectSize != nil {
+		size = *result.ObjectSize
 	}
 	lastModified := int64(0)
 	if result.LastModified != nil {
@@ -578,9 +591,10 @@ func (c S3Client) PutFile(ctx context.Context, conn *connparse.Connection, data 
 		return errors.Join(errors.ErrUnsupported, fmt.Errorf("bucket and object key must be specified"))
 	}
 	_, err := c.client.PutObject(ctx, &s3.PutObjectInput{
-		Bucket: aws.String(bucket),
-		Key:    aws.String(objectKey),
-		Body:   bytes.NewReader([]byte(data.Data64)),
+		Bucket:        aws.String(bucket),
+		Key:           aws.String(objectKey),
+		Body:          base64.NewDecoder(base64.StdEncoding, strings.NewReader(data.Data64)),
+		ContentLength: aws.Int64(int64(base64.StdEncoding.DecodedLen(len(data.Data64)))),
 	})
 	return err
 }

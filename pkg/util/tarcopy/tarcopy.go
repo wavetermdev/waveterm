@@ -18,6 +18,7 @@ import (
 
 	"github.com/wavetermdev/waveterm/pkg/util/iochan"
 	"github.com/wavetermdev/waveterm/pkg/util/iochan/iochantypes"
+	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 )
 
@@ -39,8 +40,13 @@ func TarCopySrc(ctx context.Context, pathPrefix string) (outputChan chan wshrpc.
 	pipeReader, pipeWriter := io.Pipe()
 	tarWriter := tar.NewWriter(pipeWriter)
 	rtnChan := iochan.ReaderChan(ctx, pipeReader, wshrpc.FileChunkSize, func() {
-		gracefulClose(pipeReader, tarCopySrcName, pipeReaderName)
+		log.Printf("Closing pipe reader\n")
+		utilfn.GracefulClose(pipeReader, tarCopySrcName, pipeReaderName, maxRetries, retryDelay)
 	})
+
+	if pathPrefix != "" && !strings.HasSuffix(pathPrefix, "/") {
+		pathPrefix += "/"
+	}
 
 	return rtnChan, func(fi fs.FileInfo, path string) error {
 			log.Printf("path: %s\n", path)
@@ -50,14 +56,13 @@ func TarCopySrc(ctx context.Context, pathPrefix string) (outputChan chan wshrpc.
 			if err != nil {
 				return err
 			}
-			log.Printf("header: %v\n", header)
-			log.Printf("isDir: %v; headerIsDir: %v\n", fi.IsDir(), header.Typeflag)
 
 			header.Name = filepath.Clean(strings.TrimPrefix(path, pathPrefix))
 			if err := validatePath(header.Name); err != nil {
 				return err
 			}
-			log.Printf("header.Name: %s\n", header.Name)
+
+			log.Printf("header: %v\n", header)
 
 			// write header
 			if err := tarWriter.WriteHeader(header); err != nil {
@@ -65,8 +70,9 @@ func TarCopySrc(ctx context.Context, pathPrefix string) (outputChan chan wshrpc.
 			}
 			return nil
 		}, tarWriter, func() {
-			gracefulClose(tarWriter, tarCopySrcName, tarWriterName)
-			gracefulClose(pipeWriter, tarCopySrcName, pipeWriterName)
+			log.Printf("Closing tar writer\n")
+			utilfn.GracefulClose(tarWriter, tarCopySrcName, tarWriterName, maxRetries, retryDelay)
+			utilfn.GracefulClose(pipeWriter, tarCopySrcName, pipeWriterName, maxRetries, retryDelay)
 		}
 }
 
@@ -86,12 +92,12 @@ func validatePath(path string) error {
 func TarCopyDest(ctx context.Context, cancel context.CancelCauseFunc, ch <-chan wshrpc.RespOrErrorUnion[iochantypes.Packet], readNext func(next *tar.Header, reader *tar.Reader) error) error {
 	pipeReader, pipeWriter := io.Pipe()
 	iochan.WriterChan(ctx, pipeWriter, ch, func() {
-		gracefulClose(pipeWriter, tarCopyDestName, pipeWriterName)
+		utilfn.GracefulClose(pipeWriter, tarCopyDestName, pipeWriterName, maxRetries, retryDelay)
 		cancel(nil)
 	}, cancel)
 	tarReader := tar.NewReader(pipeReader)
 	defer func() {
-		if !gracefulClose(pipeReader, tarCopyDestName, pipeReaderName) {
+		if !utilfn.GracefulClose(pipeReader, tarCopyDestName, pipeReaderName, maxRetries, retryDelay) {
 			// If the pipe reader cannot be closed, cancel the context. This should kill the writer goroutine.
 			cancel(nil)
 		}
@@ -122,21 +128,4 @@ func TarCopyDest(ctx context.Context, cancel context.CancelCauseFunc, ch <-chan 
 			}
 		}
 	}
-}
-
-func gracefulClose(closer io.Closer, debugName string, closerName string) bool {
-	closed := false
-	for retries := 0; retries < maxRetries; retries++ {
-		if err := closer.Close(); err != nil {
-			log.Printf("%s: error closing %s: %v, trying again in %dms\n", debugName, closerName, err, retryDelay.Milliseconds())
-			time.Sleep(retryDelay)
-			continue
-		}
-		closed = true
-		break
-	}
-	if !closed {
-		log.Printf("%s: unable to close %s after %d retries\n", debugName, closerName, maxRetries)
-	}
-	return closed
 }
