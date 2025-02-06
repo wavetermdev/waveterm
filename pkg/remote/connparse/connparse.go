@@ -128,8 +128,11 @@ func ParseURI(uri string) (*Connection, error) {
 		}
 	}
 
+	addPrecedingSlash := true
+
 	if scheme == "" {
 		scheme = ConnectionTypeWsh
+		addPrecedingSlash = false
 		if len(rest) != len(uri) {
 			// This accounts for when the uri starts with "//", which would get trimmed in the first split.
 			parseWshPath()
@@ -152,7 +155,7 @@ func ParseURI(uri string) (*Connection, error) {
 		}
 		if strings.HasPrefix(remotePath, "/~") {
 			remotePath = strings.TrimPrefix(remotePath, "/")
-		} else if len(remotePath) > 1 && !windowsDriveRegex.MatchString(remotePath) && !strings.HasPrefix(remotePath, "/") && !strings.HasPrefix(remotePath, "~") && !strings.HasPrefix(remotePath, "./") && !strings.HasPrefix(remotePath, "../") && !strings.HasPrefix(remotePath, ".\\") && !strings.HasPrefix(remotePath, "..\\") && remotePath != ".." {
+		} else if addPrecedingSlash && (len(remotePath) > 1 && !windowsDriveRegex.MatchString(remotePath) && !strings.HasPrefix(remotePath, "/") && !strings.HasPrefix(remotePath, "~") && !strings.HasPrefix(remotePath, "./") && !strings.HasPrefix(remotePath, "../") && !strings.HasPrefix(remotePath, ".\\") && !strings.HasPrefix(remotePath, "..\\") && remotePath != "..") {
 			remotePath = "/" + remotePath
 		}
 	}
