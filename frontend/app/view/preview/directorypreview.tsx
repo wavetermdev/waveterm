@@ -798,16 +798,6 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
     const blockData = useAtomValue(model.blockAtom);
     const dirPath = useAtomValue(model.normFilePath);
 
-    const childAbsPath = useCallback(
-        async (fileName: string) => {
-            const dirAbsInfo = await RpcApi.RemoteFileJoinCommand(TabRpcClient, [dirPath, fileName], {
-                route: makeConnRoute(conn),
-            });
-            return dirAbsInfo.path;
-        },
-        [dirPath, conn]
-    );
-
     useEffect(() => {
         model.refreshCallback = () => {
             setRefreshVersion((refreshVersion) => refreshVersion + 1);
@@ -931,22 +921,23 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
             },
             drop: async (draggedFile: DraggedFile, monitor) => {
                 if (!monitor.didDrop()) {
-                    //const destPath = await childAbsPath(draggedFile.relName);  // TODO? needed if renaming via cp gets supported
-                    const opts: FileCopyOpts = {};
-                    const desturi = await model.formatRemoteUri(draggedFile.absParent, globalStore.get);
+                    const timeoutYear = 31536000000; // one year
+                    const opts: FileCopyOpts = {
+                        timeout: timeoutYear,
+                    };
+                    const desturi = await model.formatRemoteUri(dirPath, globalStore.get);
                     const data: CommandFileCopyData = {
                         srcuri: draggedFile.uri,
                         desturi,
                         opts,
                     };
-                    const timeoutYear = 31536000000; // one year
                     await RpcApi.FileCopyCommand(TabRpcClient, data, { timeout: timeoutYear });
                     model.refreshCallback();
                 }
             },
             // TODO: mabe add a hover option?
         }),
-        [childAbsPath, model.formatRemoteUri, model.refreshCallback]
+        [dirPath, model.formatRemoteUri, model.refreshCallback]
     );
 
     useEffect(() => {
