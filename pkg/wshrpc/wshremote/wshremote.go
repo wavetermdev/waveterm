@@ -358,13 +358,14 @@ func (impl *ServerImpl) RemoteFileCopyCommand(ctx context.Context, data wshrpc.C
 		if destinfo != nil {
 			if destinfo.IsDir() {
 				if !finfo.IsDir() {
-					if !overwrite {
-						return 0, fmt.Errorf("cannot create directory %q, file exists at path, overwrite not specified", path)
-					} else {
-						err := os.Remove(path)
-						if err != nil {
-							return 0, fmt.Errorf("cannot remove file %q: %w", path, err)
-						}
+					// try to create file in directory
+					path = filepath.Join(path, filepath.Base(finfo.Name()))
+					newdestinfo, err := os.Stat(path)
+					if err != nil && !errors.Is(err, fs.ErrNotExist) {
+						return 0, fmt.Errorf("cannot stat file %q: %w", path, err)
+					}
+					if newdestinfo != nil && !overwrite {
+						return 0, fmt.Errorf("cannot create file %q, file exists at path, overwrite not specified", path)
 					}
 				} else if !merge && !overwrite {
 					return 0, fmt.Errorf("cannot create directory %q, directory exists at path, neither overwrite nor merge specified", path)
@@ -388,28 +389,30 @@ func (impl *ServerImpl) RemoteFileCopyCommand(ctx context.Context, data wshrpc.C
 					return 0, fmt.Errorf("cannot create file %q, file exists at path, overwrite not specified", path)
 				}
 			}
+		}
+
+		if finfo.IsDir() {
+			err := os.MkdirAll(path, finfo.Mode())
+			if err != nil {
+				return 0, fmt.Errorf("cannot create directory %q: %w", path, err)
+			}
 		} else {
-			if finfo.IsDir() {
-				err := os.MkdirAll(path, finfo.Mode())
-				if err != nil {
-					return 0, fmt.Errorf("cannot create directory %q: %w", path, err)
-				}
-			} else {
-				err := os.MkdirAll(filepath.Dir(path), 0755)
-				if err != nil {
-					return 0, fmt.Errorf("cannot create parent directory %q: %w", filepath.Dir(path), err)
-				}
-				file, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, finfo.Mode())
-				if err != nil {
-					return 0, fmt.Errorf("cannot create new file %q: %w", path, err)
-				}
-				_, err = io.Copy(file, srcFile)
-				if err != nil {
-					return 0, fmt.Errorf("cannot write file %q: %w", path, err)
-				}
-				file.Close()
+			err := os.MkdirAll(filepath.Dir(path), 0755)
+			if err != nil {
+				return 0, fmt.Errorf("cannot create parent directory %q: %w", filepath.Dir(path), err)
 			}
 		}
+
+		file, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, finfo.Mode())
+		if err != nil {
+			return 0, fmt.Errorf("cannot create new file %q: %w", path, err)
+		}
+		_, err = io.Copy(file, srcFile)
+		if err != nil {
+			return 0, fmt.Errorf("cannot write file %q: %w", path, err)
+		}
+		file.Close()
+
 		return finfo.Size(), nil
 	}
 
@@ -434,19 +437,24 @@ func (impl *ServerImpl) RemoteFileCopyCommand(ctx context.Context, data wshrpc.C
 					if err != nil {
 						return fmt.Errorf("cannot open file %q: %w", path, err)
 					}
+					defer file.Close()
 				}
 				_, err = copyFileFunc(path, info, file)
 				return err
 			})
+			if err != nil {
+				return fmt.Errorf("cannot copy %q to %q: %w", srcUri, destUri, err)
+			}
 		} else {
 			file, err := os.Open(srcPathCleaned)
+			defer file.Close()
 			if err != nil {
 				return fmt.Errorf("cannot open file %q: %w", srcPathCleaned, err)
 			}
-			_, err = copyFileFunc(srcPathCleaned, srcFileStat, file)
-		}
-		if err != nil {
-			return fmt.Errorf("cannot copy %q to %q: %w", srcUri, destUri, err)
+			_, err = copyFileFunc(destPathCleaned, srcFileStat, file)
+			if err != nil {
+				return fmt.Errorf("cannot copy %q to %q: %w", srcUri, destUri, err)
+			}
 		}
 	} else {
 		timeout := DefaultTimeout
