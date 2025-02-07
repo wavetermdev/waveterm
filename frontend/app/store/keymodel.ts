@@ -397,7 +397,7 @@ function registerGlobalKeys() {
     });
     const allKeys = Array.from(globalKeyMap.keys());
     // special case keys, handled by web view
-    allKeys.push("Cmd:l", "Cmd:r", "Cmd:ArrowRight", "Cmd:ArrowLeft");
+    allKeys.push("Cmd:l", "Cmd:r", "Cmd:ArrowRight", "Cmd:ArrowLeft", "Cmd:o");
     getApi().registerGlobalWebviewKeys(allKeys);
 }
 

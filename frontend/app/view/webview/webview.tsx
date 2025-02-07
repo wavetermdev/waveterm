@@ -8,7 +8,7 @@ import { getSimpleControlShiftAtom } from "@/app/store/keymodel";
 import { ObjectService } from "@/app/store/services";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
-import { BlockHeaderTypeahead } from "@/app/typeahead/typeahead";
+import { BlockHeaderSuggestionControl } from "@/app/suggestion/suggestion";
 import { WOS, globalStore } from "@/store/global";
 import { adaptFromReactOrNativeKeyEvent, checkKeyPressed } from "@/util/keyutil";
 import { fireAndForget } from "@/util/util";
@@ -477,6 +477,7 @@ export class WebViewModel implements ViewModel {
             return true;
         }
         if (checkKeyPressed(e, "Cmd:o")) {
+            // return false; // commented out for now
             const curVal = globalStore.get(this.typeaheadOpen);
             globalStore.set(this.typeaheadOpen, !curVal);
             return true;
@@ -601,7 +602,7 @@ interface WebViewProps {
 const BookmarkTypeahead = memo(
     ({ model, blockRef }: { model: WebViewModel; blockRef: React.RefObject<HTMLDivElement> }) => {
         return (
-            <BlockHeaderTypeahead
+            <BlockHeaderSuggestionControl
                 blockRef={blockRef}
                 openAtom={model.typeaheadOpen}
                 onClose={() => model.setTypeaheadOpen(false)}
@@ -627,6 +628,7 @@ const WebView = memo(({ model, onFailLoad, blockRef }: WebViewProps) => {
     metaUrl = model.ensureUrlScheme(metaUrl, defaultSearch);
     const metaUrlRef = useRef(metaUrl);
     const zoomFactor = useAtomValue(getBlockMetaKeyAtom(model.blockId, "web:zoom")) || 1;
+    const webPartition = useAtomValue(getBlockMetaKeyAtom(model.blockId, "web:partition")) || undefined;
 
     // Search
     const searchProps = useSearch({ anchorRef: model.webviewRef, viewModel: model });
@@ -835,6 +837,7 @@ const WebView = memo(({ model, onFailLoad, blockRef }: WebViewProps) => {
                 preload={getWebviewPreloadUrl()}
                 // @ts-ignore This is a discrepancy between the React typing and the Chromium impl for webviewTag. Chrome webviewTag expects a string, while React expects a boolean.
                 allowpopups="true"
+                partition={webPartition}
             />
             {errorText && (
                 <div className="webview-error">

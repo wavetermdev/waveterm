@@ -9,7 +9,7 @@ import { ContextMenuModel } from "@/app/store/contextmenu";
 import { tryReinjectKey } from "@/app/store/keymodel";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
-import { BlockHeaderTypeahead } from "@/app/typeahead/typeahead";
+import { BlockHeaderSuggestionControl } from "@/app/suggestion/suggestion";
 import { CodeEditor } from "@/app/view/codeeditor/codeeditor";
 import { Markdown } from "@/element/markdown";
 import {
@@ -1148,7 +1148,7 @@ function PreviewView({
                     <SpecializedView parentRef={contentRef} model={model} />
                 </div>
             </div>
-            <BlockHeaderTypeahead
+            <BlockHeaderSuggestionControl
                 blockRef={blockRef}
                 openAtom={model.openFileModal}
                 onClose={() => model.updateOpenFileModalAndError(false)}

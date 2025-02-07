@@ -106,6 +106,7 @@ const (
 
 	MetaKey_WebZoom                          = "web:zoom"
 	MetaKey_WebHideNav                       = "web:hidenav"
+	MetaKey_WebPartition                     = "web:partition"
 
 	MetaKey_MarkdownFontSize                 = "markdown:fontsize"
 	MetaKey_MarkdownFixedFontSize            = "markdown:fixedfontsize"

@@ -24,10 +24,17 @@ type BlockHeaderTypeaheadProps = Omit<TypeaheadProps, "anchorRef" | "isOpen"> & 
     openAtom: Atom<boolean>;
 };
 
-const Typeahead: React.FC<TypeaheadProps> = ({ anchorRef, isOpen, onClose, onSelect, fetchSuggestions, className }) => {
+const SuggestionControl: React.FC<TypeaheadProps> = ({
+    anchorRef,
+    isOpen,
+    onClose,
+    onSelect,
+    fetchSuggestions,
+    className,
+}) => {
     if (!isOpen || !anchorRef.current || !fetchSuggestions) return null;
 
-    return <TypeaheadInner {...{ anchorRef, onClose, onSelect, fetchSuggestions, className }} />;
+    return <SuggestionControlInner {...{ anchorRef, onClose, onSelect, fetchSuggestions, className }} />;
 };
 
 function highlightPositions(target: string, positions: number[]): ReactNode[] {
@@ -114,7 +121,7 @@ const SuggestionContent: React.FC<{
     return <span className="truncate">{highlightPositions(suggestion.display, suggestion.matchpos)}</span>;
 };
 
-const BlockHeaderTypeahead: React.FC<BlockHeaderTypeaheadProps> = (props) => {
+const BlockHeaderSuggestionControl: React.FC<BlockHeaderTypeaheadProps> = (props) => {
     const [headerElem, setHeaderElem] = useState<HTMLElement>(null);
     const isOpen = useAtomValue(props.openAtom);
 
@@ -128,10 +135,10 @@ const BlockHeaderTypeahead: React.FC<BlockHeaderTypeaheadProps> = (props) => {
     }, [props.blockRef.current]);
 
     const newClass = clsx(props.className, "rounded-t-none");
-    return <Typeahead {...props} anchorRef={{ current: headerElem }} isOpen={isOpen} className={newClass} />;
+    return <SuggestionControl {...props} anchorRef={{ current: headerElem }} isOpen={isOpen} className={newClass} />;
 };
 
-const TypeaheadInner: React.FC<Omit<TypeaheadProps, "isOpen">> = ({
+const SuggestionControlInner: React.FC<Omit<TypeaheadProps, "isOpen">> = ({
     anchorRef,
     onClose,
     onSelect,
@@ -267,4 +274,4 @@ const TypeaheadInner: React.FC<Omit<TypeaheadProps, "isOpen">> = ({
     );
 };
 
-export { BlockHeaderTypeahead, Typeahead };
+export { BlockHeaderSuggestionControl, SuggestionControl };

@@ -580,6 +580,7 @@ declare global {
         "term:conndebug"?: string;
         "web:zoom"?: number;
         "web:hidenav"?: boolean;
+        "web:partition"?: string;
         "markdown:fontsize"?: number;
         "markdown:fixedfontsize"?: number;
         "vdom:*"?: boolean;
