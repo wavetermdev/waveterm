@@ -7,7 +7,9 @@ for fname in cases/*.sh; do
     setup_testcp
     #"${fname}" | read outerr && printf "\e[32mPASS $fname\n\n\e[0m" || printf "\e[31mFAIL $fname: $outerr \n\n\e[0m"
     if ! outerr=$("${fname}" 2>&1); then
-        printf "\e[31mFAIL $fname:\n$outerr \n\n\e[0m"
+        printf "\e[31mFAIL $fname:\n$outerr \n\e[0m"
+		cat "${fname}"
+		printf "\n"
     else
         printf "\e[32mPASS $fname\n\n\e[0m"
     fi
