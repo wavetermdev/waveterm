@@ -779,13 +779,17 @@ declare global {
     type SuggestionType = {
         type: string;
         suggestionid: string;
+        display: string;
+        subtext?: string;
         icon?: string;
         iconcolor?: string;
-        "file:mimetype"?: string;
-        "file:name"?: string;
-        "file:path"?: string;
+        iconsrc?: string;
         matchpositions?: number[];
         score?: number;
+        "file:mimetype"?: string;
+        "file:path"?: string;
+        "file:name"?: string;
+        "url:url"?: string;
     };
 
     // telemetrydata.TEvent

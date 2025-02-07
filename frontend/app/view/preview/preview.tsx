@@ -1125,11 +1125,29 @@ function PreviewView({
 }) {
     const connStatus = useAtomValue(model.connStatus);
     const openFileModal = useAtomValue(model.openFileModal);
+    const [headerElem, setHeaderElem] = useState<HTMLElement>(null);
+
+    useEffect(() => {
+        if (blockRef.current == null) {
+            setHeaderElem(null);
+            return;
+        }
+        const headerElem = blockRef.current.querySelector("[data-role='block-header']");
+        setHeaderElem(headerElem as HTMLElement);
+    }, [blockRef.current]);
+
     if (connStatus?.status != "connected") {
         return null;
     }
     const handleSelect = (s: SuggestionType) => {
         model.handleOpenFile(s["file:path"]);
+    };
+    const handleTab = (s: SuggestionType, query: string): string => {
+        if (s["mime:type"] == "directory") {
+            return s["file:name"] + "/";
+        } else {
+            return s["file:name"];
+        }
     };
     const fetchSuggestionsFn = async (query, ctx) => {
         return await fetchSuggestions(model, query, ctx);
@@ -1143,10 +1161,11 @@ function PreviewView({
                 </div>
             </div>
             <Typeahead
-                anchorRef={blockRef}
+                anchorRef={{ current: headerElem }}
                 isOpen={openFileModal}
                 onClose={() => model.updateOpenFileModalAndError(false)}
                 onSelect={handleSelect}
+                onTab={handleTab}
                 fetchSuggestions={fetchSuggestionsFn}
                 placeholderText="Open File..."
             />

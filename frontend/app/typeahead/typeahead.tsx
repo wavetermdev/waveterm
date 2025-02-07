@@ -13,6 +13,7 @@ interface TypeaheadProps {
     isOpen: boolean;
     onClose: () => void;
     onSelect: (item: SuggestionType, queryStr: string) => void;
+    onTab?: (item: SuggestionType, queryStr: string) => string;
     fetchSuggestions: SuggestionsFnType;
     className?: string;
     placeholderText?: string;
@@ -76,12 +77,12 @@ function highlightPositions(target: string, positions: number[]): ReactNode[] {
 
 function getHighlightedText(suggestion: SuggestionType, highlightTerm: string): ReactNode[] {
     if (suggestion.matchpositions != null && suggestion.matchpositions.length > 0) {
-        return highlightPositions(suggestion["file:name"], suggestion.matchpositions);
+        return highlightPositions(suggestion.display, suggestion.matchpositions);
     }
     if (isBlank(highlightTerm)) {
-        return [suggestion["file:name"]];
+        return [suggestion.display];
     }
-    return defaultHighlighter(suggestion["file:name"], highlightTerm);
+    return defaultHighlighter(suggestion.display, highlightTerm);
 }
 
 function getMimeTypeIconAndColor(fullConfig: FullConfigType, mimeType: string): [string, string] {
@@ -100,23 +101,54 @@ function getMimeTypeIconAndColor(fullConfig: FullConfigType, mimeType: string): 
 }
 
 const SuggestionIcon: React.FC<{ suggestion: SuggestionType }> = ({ suggestion }) => {
-    const fullConfig = useAtomValue(atoms.fullConfigAtom);
-    let icon = suggestion.icon;
-    let iconColor: string = null;
-    if (icon == null && suggestion["file:mimetype"] != null) {
-        [icon, iconColor] = getMimeTypeIconAndColor(fullConfig, suggestion["file:mimetype"]);
+    if (suggestion.iconsrc) {
+        return <img src={suggestion.iconsrc} alt="favicon" className="w-4 h-4 rounded-sm object-contain" />;
     }
-    if (suggestion.iconcolor != null) {
-        iconColor = suggestion.iconcolor;
+    if (suggestion.icon) {
+        const iconClass = makeIconClass(suggestion.icon, true);
+        const iconColor = suggestion.iconcolor;
+        return <i className={iconClass} style={{ color: iconColor }} />;
     }
-    const iconClass = makeIconClass(icon, true, { defaultIcon: "file" });
-    return <i className={iconClass} style={{ color: iconColor }} />;
+    if (suggestion.type === "url") {
+        const iconClass = makeIconClass("globe", true);
+        const iconColor = suggestion.iconcolor;
+        return <i className={iconClass} style={{ color: iconColor }} />;
+    } else if (suggestion.type === "file") {
+        // For file suggestions, use the existing logic.
+        const fullConfig = useAtomValue(atoms.fullConfigAtom);
+        let icon: string = null;
+        let iconColor: string = null;
+        if (icon == null && suggestion["file:mimetype"] != null) {
+            [icon, iconColor] = getMimeTypeIconAndColor(fullConfig, suggestion["file:mimetype"]);
+        }
+        const iconClass = makeIconClass(icon, true, { defaultIcon: "file" });
+        return <i className={iconClass} style={{ color: iconColor }} />;
+    }
+    return makeIconClass("file", true);
+};
+
+const SuggestionContent: React.FC<{
+    suggestion: SuggestionType;
+    highlightTerm: string;
+}> = ({ suggestion, highlightTerm }) => {
+    if (!isBlank(suggestion.subtext)) {
+        return (
+            <div className="flex flex-col">
+                {/* Title on the first line, with highlighting */}
+                <div className="truncate">{getHighlightedText(suggestion, highlightTerm)}</div>
+                {/* Subtext on the second line in a smaller, grey style */}
+                <div className="truncate text-sm text-gray-400">{suggestion.subtext}</div>
+            </div>
+        );
+    }
+    return <span className="truncate">{getHighlightedText(suggestion, highlightTerm)}</span>;
 };
 
 const TypeaheadInner: React.FC<Omit<TypeaheadProps, "isOpen">> = ({
     anchorRef,
     onClose,
     onSelect,
+    onTab,
     fetchSuggestions,
     className,
     placeholderText,
@@ -137,12 +169,7 @@ const TypeaheadInner: React.FC<Omit<TypeaheadProps, "isOpen">> = ({
     });
 
     useEffect(() => {
-        if (anchorRef.current == null) {
-            refs.setReference(null);
-            return;
-        }
-        const headerElem = anchorRef.current.querySelector("[data-role='block-header']");
-        refs.setReference(headerElem);
+        refs.setReference(anchorRef.current);
     }, [anchorRef.current]);
 
     useEffect(() => {
@@ -196,11 +223,9 @@ const TypeaheadInner: React.FC<Omit<TypeaheadProps, "isOpen">> = ({
             e.preventDefault();
             const suggestion = suggestions[selectedIndex];
             if (suggestion != null) {
-                // set the query to the suggestion
-                if (suggestion["file:mimetype"] == "directory") {
-                    setQuery(suggestion["file:name"] + "/");
-                } else {
-                    setQuery(suggestion["file:name"]);
+                const tabResult = onTab?.(suggestion, query);
+                if (tabResult != null) {
+                    setQuery(tabResult);
                 }
             }
         }
@@ -226,9 +251,7 @@ const TypeaheadInner: React.FC<Omit<TypeaheadProps, "isOpen">> = ({
                         setSelectedIndex(0);
                     }}
                     onKeyDown={handleKeyDown}
-                    className="w-full bg-gray-900 text-gray-100 px-4 py-2 rounded-md 
-                             border border-gray-700 focus:outline-none focus:border-blue-500
-                             placeholder-gray-500"
+                    className="w-full bg-gray-900 text-gray-100 px-4 py-2 rounded-md border border-gray-700 focus:outline-none focus:border-blue-500 placeholder-gray-500"
                     placeholder={placeholderText}
                 />
             </div>
@@ -238,8 +261,7 @@ const TypeaheadInner: React.FC<Omit<TypeaheadProps, "isOpen">> = ({
                         <div
                             key={suggestion.suggestionid}
                             className={clsx(
-                                "flex items-center gap-3 px-4 py-2 cursor-pointer",
-                                "hover:bg-gray-700",
+                                "flex items-center gap-3 px-4 py-2 cursor-pointer hover:bg-gray-700",
                                 index === selectedIndex ? "bg-gray-700" : "",
                                 "text-gray-100"
                             )}
@@ -249,7 +271,7 @@ const TypeaheadInner: React.FC<Omit<TypeaheadProps, "isOpen">> = ({
                             }}
                         >
                             <SuggestionIcon suggestion={suggestion} />
-                            <span className="truncate">{getHighlightedText(suggestion, highlightTerm)}</span>
+                            <SuggestionContent suggestion={suggestion} highlightTerm={highlightTerm} />
                         </div>
                     ))}
                 </div>

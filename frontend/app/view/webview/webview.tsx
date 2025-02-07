@@ -8,6 +8,7 @@ import { getSimpleControlShiftAtom } from "@/app/store/keymodel";
 import { ObjectService } from "@/app/store/services";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
+import { Typeahead } from "@/app/typeahead/typeahead";
 import { WOS, globalStore } from "@/store/global";
 import { adaptFromReactOrNativeKeyEvent, checkKeyPressed } from "@/util/keyutil";
 import { fireAndForget } from "@/util/util";
@@ -54,6 +55,7 @@ export class WebViewModel implements ViewModel {
     domReady: PrimitiveAtom<boolean>;
     hideNav: Atom<boolean>;
     searchAtoms?: SearchAtoms;
+    typeaheadOpen: PrimitiveAtom<boolean>;
 
     constructor(blockId: string, nodeModel: BlockNodeModel) {
         this.nodeModel = nodeModel;
@@ -78,6 +80,7 @@ export class WebViewModel implements ViewModel {
         this.webviewRef = createRef<WebviewTag>();
         this.domReady = atom(false);
         this.hideNav = getBlockMetaKeyAtom(blockId, "web:hidenav");
+        this.typeaheadOpen = atom(false);
 
         this.mediaPlaying = atom(false);
         this.mediaMuted = atom(false);
@@ -227,6 +230,38 @@ export class WebViewModel implements ViewModel {
         } catch (e) {
             console.error("Failed to change mute value", e);
         }
+    }
+
+    setTypeaheadOpen(open: boolean) {
+        globalStore.set(this.typeaheadOpen, open);
+    }
+
+    async fetchBookmarkSuggestions(
+        query: string,
+        reqContext: SuggestionRequestContext
+    ): Promise<FetchSuggestionsResponse> {
+        let suggestions: SuggestionType[] = [];
+        suggestions.push({
+            type: "url",
+            suggestionid: "google",
+            display: "Google",
+            subtext: "https://www.google.com",
+            "url:url": "https://www.google.com",
+        });
+        suggestions.push({
+            type: "url",
+            suggestionid: "claude",
+            display: "Claude AI",
+            subtext: "https://claude.ai",
+            "url:url": "https://claude.ai",
+        });
+        suggestions.push({
+            type: "url",
+            suggestionid: "chatgpt",
+            display: "https://chatgpt.com",
+            "url:url": "https://chatgpt.com/",
+        });
+        return { suggestions: suggestions, reqnum: reqContext.reqnum };
     }
 
     handleUrlWrapperMouseOver(e: React.MouseEvent<HTMLDivElement, MouseEvent>) {
@@ -456,6 +491,10 @@ export class WebViewModel implements ViewModel {
             this.handleForward(null);
             return true;
         }
+        if (checkKeyPressed(e, "Cmd:o")) {
+            const curVal = globalStore.get(this.typeaheadOpen);
+            globalStore.set(this.typeaheadOpen, !curVal);
+        }
         return false;
     }
 
@@ -570,9 +609,42 @@ interface WebViewProps {
     blockId: string;
     model: WebViewModel;
     onFailLoad?: (url: string) => void;
+    blockRef: React.RefObject<HTMLDivElement>;
 }
 
-const WebView = memo(({ model, onFailLoad }: WebViewProps) => {
+const BookmarkTypeahead = memo(
+    ({ model, blockRef }: { model: WebViewModel; blockRef: React.RefObject<HTMLDivElement> }) => {
+        const typeaheadOpen = useAtomValue(model.typeaheadOpen);
+        const [headerElem, setHeaderElem] = useState<HTMLElement>(null);
+
+        useEffect(() => {
+            if (blockRef.current == null) {
+                setHeaderElem(null);
+                return;
+            }
+            const headerElem = blockRef.current.querySelector("[data-role='block-header']");
+            setHeaderElem(headerElem as HTMLElement);
+        }, [blockRef.current]);
+
+        return (
+            <Typeahead
+                anchorRef={{ current: headerElem }}
+                isOpen={typeaheadOpen}
+                onClose={() => model.setTypeaheadOpen(false)}
+                onSelect={(suggestion) => {
+                    if (suggestion == null || suggestion.type != "url") {
+                        return;
+                    }
+                    model.loadUrl(suggestion["url:url"], "bookmark-typeahead");
+                }}
+                fetchSuggestions={model.fetchBookmarkSuggestions}
+                placeholderText="Open Bookmark..."
+            />
+        );
+    }
+);
+
+const WebView = memo(({ model, onFailLoad, blockRef }: WebViewProps) => {
     const blockData = useAtomValue(model.blockAtom);
     const defaultUrl = useAtomValue(model.homepageUrl);
     const defaultSearchAtom = getSettingsKeyAtom("web:defaultsearch");
@@ -796,6 +868,7 @@ const WebView = memo(({ model, onFailLoad }: WebViewProps) => {
                 </div>
             )}
             <Search {...searchProps} />
+            <BookmarkTypeahead model={model} blockRef={blockRef} />
         </Fragment>
     );
 });

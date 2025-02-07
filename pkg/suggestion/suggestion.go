@@ -239,10 +239,10 @@ func FetchSuggestions(ctx context.Context, data wshrpc.FetchSuggestionsData) (*w
 			}
 		}
 		s := wshrpc.SuggestionType{
-			Type:         "file",
-			FilePath:     fullPath,
-			SuggestionId: utilfn.QuickHashString(fullPath),
-			// Use the queryPrefix to build the display name.
+			Type:           "file",
+			FilePath:       fullPath,
+			SuggestionId:   utilfn.QuickHashString(fullPath),
+			Display:        suggestionFileName,
 			FileName:       suggestionFileName,
 			FileMimeType:   fileutil.DetectMimeTypeWithDirEnt(fullPath, candidate.ent),
 			MatchPositions: scoredEntries[i].positions,
