@@ -33,7 +33,7 @@
         "rehype-highlight": "^7.0.1",
         "remark-gfm": "^4.0.0",
         "remark-typescript-code-import": "^1.0.1",
-        "sass": "^1.83.4",
+        "sass": "^1.84.0",
         "ua-parser-js": "^2.0.0"
     },
     "devDependencies": {
