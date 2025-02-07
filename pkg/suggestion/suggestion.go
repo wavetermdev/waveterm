@@ -165,7 +165,7 @@ func fetchBookmarkSuggestions(_ context.Context, data wshrpc.FetchSuggestionsDat
 	var scoredEntries []scoredEntry
 	var slab util.Slab
 
-	bookmarkKeys := utilfn.GetKeys[wconfig.WebBookmark](bookmarks)
+	bookmarkKeys := utilfn.GetMapKeys(bookmarks)
 	// sort by display:order and then by key
 	sort.Slice(bookmarkKeys, func(i, j int) bool {
 		bookmarkA := bookmarks[bookmarkKeys[i]]
