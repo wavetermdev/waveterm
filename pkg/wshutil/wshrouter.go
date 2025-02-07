@@ -5,7 +5,6 @@ package wshutil
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -17,6 +16,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/wps"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
+	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshencode"
 )
 
 const (
@@ -55,6 +55,7 @@ type WshRouter struct {
 	RpcMap           map[string]*routeInfo        // rpcid => routeinfo
 	SimpleRequestMap map[string]chan *RpcMessage  // simple reqid => response channel
 	InputCh          chan msgAndRoute
+	EncDec           *wshencode.EncoderDecoder // abstract encoder/decoder
 }
 
 func MakeConnectionRouteId(connId string) string {
@@ -87,6 +88,7 @@ func NewWshRouter() *WshRouter {
 		RpcMap:           make(map[string]*routeInfo),
 		SimpleRequestMap: make(map[string]chan *RpcMessage),
 		InputCh:          make(chan msgAndRoute, DefaultInputChSize),
+		EncDec:           wshencode.MakeEncoderDecoder(),
 	}
 	go rtn.runServer()
 	return rtn
@@ -112,7 +114,7 @@ func (router *WshRouter) SendEvent(routeId string, event wps.WaveEvent) {
 		Route:   routeId,
 		Data:    event,
 	}
-	msgBytes, err := json.Marshal(msg)
+	msgBytes, err := router.EncDec.Marshal(msg)
 	if err != nil {
 		// nothing to do
 		return
@@ -129,7 +131,7 @@ func (router *WshRouter) handleNoRoute(msg RpcMessage) {
 		}
 		// no response needed, but send message back to source
 		respMsg := RpcMessage{Command: wshrpc.Command_Message, Route: msg.Source, Data: wshrpc.CommandMessageData{Message: nrErr.Error()}}
-		respBytes, _ := json.Marshal(respMsg)
+		respBytes, _ := router.EncDec.Marshal(respMsg)
 		router.InputCh <- msgAndRoute{msgBytes: respBytes, fromRouteId: SysRoute}
 		return
 	}
@@ -138,7 +140,7 @@ func (router *WshRouter) handleNoRoute(msg RpcMessage) {
 		ResId: msg.ReqId,
 		Error: nrErr.Error(),
 	}
-	respBytes, _ := json.Marshal(response)
+	respBytes, _ := router.EncDec.Marshal(response)
 	router.sendRoutedMessage(respBytes, msg.Source)
 }
 
@@ -220,7 +222,7 @@ func (router *WshRouter) runServer() {
 	for input := range router.InputCh {
 		msgBytes := input.msgBytes
 		var msg RpcMessage
-		err := json.Unmarshal(msgBytes, &msg)
+		err := router.EncDec.Unmarshal(msgBytes, &msg)
 		if err != nil {
 			fmt.Println("error unmarshalling message: ", err)
 			continue
@@ -315,7 +317,7 @@ func (router *WshRouter) RegisterRoute(routeId string, rpc AbstractRpcClient, sh
 		// announce
 		if shouldAnnounce && !alreadyExists && router.GetUpstreamClient() != nil {
 			announceMsg := RpcMessage{Command: wshrpc.Command_RouteAnnounce, Source: routeId}
-			announceBytes, _ := json.Marshal(announceMsg)
+			announceBytes, _ := router.EncDec.Marshal(announceMsg)
 			router.GetUpstreamClient().SendRpcMessage(announceBytes)
 		}
 		for {
@@ -324,7 +326,7 @@ func (router *WshRouter) RegisterRoute(routeId string, rpc AbstractRpcClient, sh
 				break
 			}
 			var rpcMsg RpcMessage
-			err := json.Unmarshal(msgBytes, &rpcMsg)
+			err := router.EncDec.Unmarshal(msgBytes, &rpcMsg)
 			if err != nil {
 				continue
 			}
@@ -335,7 +337,7 @@ func (router *WshRouter) RegisterRoute(routeId string, rpc AbstractRpcClient, sh
 				if rpcMsg.Route == "" {
 					rpcMsg.Route = DefaultRoute
 				}
-				msgBytes, err = json.Marshal(rpcMsg)
+				msgBytes, err = router.EncDec.Marshal(rpcMsg)
 				if err != nil {
 					continue
 				}
@@ -418,7 +420,7 @@ func (router *WshRouter) RunSimpleRawCommand(ctx context.Context, msg RpcMessage
 	if msg.Command == "" {
 		return nil, errors.New("no command")
 	}
-	msgBytes, err := json.Marshal(msg)
+	msgBytes, err := router.EncDec.Marshal(msg)
 	if err != nil {
 		return nil, err
 	}

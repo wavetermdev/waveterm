@@ -40,6 +40,7 @@ keyutil.setKeyUtilPlatform(unamePlatform);
 const WaveConfigHomeVarName = "WAVETERM_CONFIG_HOME";
 const WaveDataHomeVarName = "WAVETERM_DATA_HOME";
 const WaveHomeVarName = "WAVETERM_HOME";
+const WshEncTypeVarName = "WSH_ENC_TYPE";
 
 export function checkIfRunningUnderARM64Translation(fullConfig: FullConfigType) {
     if (!fullConfig.settings["app:dismissarchitecturewarning"] && app.runningUnderARM64Translation) {
@@ -270,4 +271,5 @@ export {
     unamePlatform,
     WaveConfigHomeVarName,
     WaveDataHomeVarName,
+    WshEncTypeVarName,
 };

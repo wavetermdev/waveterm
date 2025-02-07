@@ -34,6 +34,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wps"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
+	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshencode"
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
 	"github.com/wavetermdev/waveterm/pkg/wslconn"
 	"github.com/wavetermdev/waveterm/pkg/wstore"
@@ -391,6 +392,7 @@ func (bc *BlockController) makeSwapToken(ctx context.Context, logCtx context.Con
 	token.Env["WAVETERM_BLOCKID"] = bc.BlockId
 	token.Env["WAVETERM_VERSION"] = wavebase.WaveVersion
 	token.Env["WAVETERM"] = "1"
+	token.Env[wshencode.EncTypeEnvVar] = wshencode.GetEncTypeFromEnv()
 	tabId, err := wstore.DBFindTabForBlockId(ctx, bc.BlockId)
 	if err != nil {
 		log.Printf("error finding tab for block: %v\n", err)
