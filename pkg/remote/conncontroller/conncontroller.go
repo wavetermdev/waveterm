@@ -25,6 +25,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/remote"
 	"github.com/wavetermdev/waveterm/pkg/telemetry"
+	"github.com/wavetermdev/waveterm/pkg/telemetry/telemetrydata"
 	"github.com/wavetermdev/waveterm/pkg/userinput"
 	"github.com/wavetermdev/waveterm/pkg/util/shellutil"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
@@ -528,7 +529,7 @@ func (conn *SSHConn) WaitForConnect(ctx context.Context) error {
 }
 
 // does not return an error since that error is stored inside of SSHConn
-func (conn *SSHConn) Connect(ctx context.Context, connFlags *wshrpc.ConnKeywords) error {
+func (conn *SSHConn) Connect(ctx context.Context, connFlags *wconfig.ConnKeywords) error {
 	blocklogger.Infof(ctx, "\n")
 	var connectAllowed bool
 	conn.WithLock(func() {
@@ -556,6 +557,12 @@ func (conn *SSHConn) Connect(ctx context.Context, connFlags *wshrpc.ConnKeywords
 			telemetry.GoUpdateActivityWrap(wshrpc.ActivityUpdate{
 				Conn: map[string]int{"ssh:connecterror": 1},
 			}, "ssh-connconnect")
+			telemetry.GoRecordTEventWrap(&telemetrydata.TEvent{
+				Event: "conn:connecterror",
+				Props: telemetrydata.TEventProps{
+					ConnType: "ssh",
+				},
+			})
 		} else {
 			conn.Infof(ctx, "successfully connected (wsh:%v)\n\n", conn.WshEnabled.Load())
 			conn.Status = Status_Connected
@@ -566,6 +573,12 @@ func (conn *SSHConn) Connect(ctx context.Context, connFlags *wshrpc.ConnKeywords
 			telemetry.GoUpdateActivityWrap(wshrpc.ActivityUpdate{
 				Conn: map[string]int{"ssh:connect": 1},
 			}, "ssh-connconnect")
+			telemetry.GoRecordTEventWrap(&telemetrydata.TEvent{
+				Event: "conn:connect",
+				Props: telemetrydata.TEventProps{
+					ConnType: "ssh",
+				},
+			})
 		}
 	})
 	conn.FireConnChangeEvent()
@@ -698,11 +711,11 @@ func (conn *SSHConn) tryEnableWsh(ctx context.Context, clientDisplayName string)
 	}
 }
 
-func (conn *SSHConn) getConnectionConfig() (wshrpc.ConnKeywords, bool) {
+func (conn *SSHConn) getConnectionConfig() (wconfig.ConnKeywords, bool) {
 	config := wconfig.GetWatcher().GetFullConfig()
 	connSettings, ok := config.Connections[conn.GetName()]
 	if !ok {
-		return wshrpc.ConnKeywords{}, false
+		return wconfig.ConnKeywords{}, false
 	}
 	return connSettings, true
 }
@@ -729,7 +742,7 @@ func (conn *SSHConn) persistWshInstalled(ctx context.Context, result WshCheckRes
 }
 
 // returns (connect-error)
-func (conn *SSHConn) connectInternal(ctx context.Context, connFlags *wshrpc.ConnKeywords) error {
+func (conn *SSHConn) connectInternal(ctx context.Context, connFlags *wconfig.ConnKeywords) error {
 	conn.Infof(ctx, "connectInternal %s\n", conn.GetName())
 	client, _, err := remote.ConnectToClient(ctx, conn.Opts, nil, 0, connFlags)
 	if err != nil {
@@ -812,7 +825,7 @@ func getConnInternal(opts *remote.SSHOpts) *SSHConn {
 }
 
 // does NOT connect, can return nil if connection does not exist
-func GetConn(ctx context.Context, opts *remote.SSHOpts, connFlags *wshrpc.ConnKeywords) *SSHConn {
+func GetConn(opts *remote.SSHOpts) *SSHConn {
 	conn := getConnInternal(opts)
 	return conn
 }
@@ -826,7 +839,7 @@ func EnsureConnection(ctx context.Context, connName string) error {
 	if err != nil {
 		return fmt.Errorf("error parsing connection name: %w", err)
 	}
-	conn := GetConn(ctx, connOpts, &wshrpc.ConnKeywords{})
+	conn := GetConn(connOpts)
 	if conn == nil {
 		return fmt.Errorf("connection not found: %s", connName)
 	}
@@ -837,7 +850,7 @@ func EnsureConnection(ctx context.Context, connName string) error {
 	case Status_Connecting:
 		return conn.WaitForConnect(ctx)
 	case Status_Init, Status_Disconnected:
-		return conn.Connect(ctx, &wshrpc.ConnKeywords{})
+		return conn.Connect(ctx, &wconfig.ConnKeywords{})
 	case Status_Error:
 		return fmt.Errorf("connection error: %s", connStatus.Error)
 	default:

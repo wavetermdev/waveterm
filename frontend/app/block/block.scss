@@ -410,7 +410,7 @@
             border: 2px solid transparent;
             pointer-events: none;
             padding: 2px;
-            border-radius: calc(var(--block-border-radius) + 2px);
+            border-radius: var(--block-border-radius);
             z-index: var(--zindex-block-mask-inner);
 
             &.show-block-mask {

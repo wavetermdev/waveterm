@@ -20,7 +20,8 @@
             "@/layout/*": ["frontend/layout/*"],
             "@/store/*": ["frontend/app/store/*"],
             "@/view/*": ["frontend/app/view/*"],
-            "@/element/*": ["frontend/app/element/*"]
+            "@/element/*": ["frontend/app/element/*"],
+            "@/shadcn/*": ["frontend/app/shadcn/*"]
         },
         "types": ["vite/client", "vite-plugin-svgr/client"]
     }

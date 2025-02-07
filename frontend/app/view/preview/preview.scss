@@ -5,16 +5,18 @@
     display: flex;
     flex-direction: row;
     height: 100%;
-    flex-grow: 1;
     overflow: hidden;
     align-items: center;
     justify-content: center;
-    padding: 0 5px;
 
     &.view-preview-markdown {
         align-items: start;
         justify-content: start;
         overflow: auto;
+
+        .markdown .content {
+            padding: 5px 15px 10px 15px;
+        }
     }
 
     &.view-preview-text {
@@ -27,21 +29,42 @@
         }
     }
 
-    &.view-preview-image,
     &.view-preview-video,
     &.view-preview-audio {
         video,
-        audio,
-        img {
+        audio {
             width: 100%;
             height: 100%;
             padding: 10px;
             object-fit: contain;
         }
     }
-    &.view-preview-directory {
-        flex-direction: column;
-        align-items: start;
+
+    &.view-preview-image {
+        position: relative;
+        .tools {
+            position: absolute;
+            display: flex;
+            flex-direction: row;
+            z-index: 2;
+            top: 0;
+            right: 0;
+            padding: 5px;
+            gap: 4px;
+            button {
+                padding: 4px 5px;
+            }
+        }
+        img {
+            z-index: 1;
+        }
+        .react-transform-wrapper {
+            height: 100%;
+            width: 100%;
+        }
+    }
+    &.view-preview-pdf {
+        padding: 5px;
     }
 }
 

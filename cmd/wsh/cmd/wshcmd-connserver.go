@@ -18,7 +18,9 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
+	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/wshfs"
 	"github.com/wavetermdev/waveterm/pkg/util/packetparser"
+	"github.com/wavetermdev/waveterm/pkg/util/sigutil"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
@@ -136,7 +138,7 @@ func setupConnServerRpcClientWithRouter(router *wshutil.WshRouter, jwtToken stri
 	}
 	inputCh := make(chan []byte, wshutil.DefaultInputChSize)
 	outputCh := make(chan []byte, wshutil.DefaultOutputChSize)
-	connServerClient := wshutil.MakeWshRpc(inputCh, outputCh, *rpcCtx, &wshremote.ServerImpl{LogWriter: os.Stdout})
+	connServerClient := wshutil.MakeWshRpc(inputCh, outputCh, *rpcCtx, &wshremote.ServerImpl{LogWriter: os.Stdout}, authRtn.RouteId)
 	connServerClient.SetAuthToken(authRtn.AuthToken)
 	router.RegisterRoute(authRtn.RouteId, connServerClient, false)
 	wshclient.RouteAnnounceCommand(connServerClient, nil)
@@ -180,6 +182,7 @@ func serverRunRouter(jwtToken string) error {
 	if err != nil {
 		return fmt.Errorf("error setting up connserver rpc client: %v", err)
 	}
+	wshfs.RpcClient = client
 	go runListener(unixListener, router)
 	// run the sysinfo loop
 	wshremote.RunSysInfoLoop(client, client.GetRpcContext().Conn)
@@ -224,6 +227,7 @@ func serverRunNormal(jwtToken string) error {
 	if err != nil {
 		return err
 	}
+	wshfs.RpcClient = RpcClient
 	WriteStdout("running wsh connserver (%s)\n", RpcContext.Conn)
 	go wshremote.RunSysInfoLoop(RpcClient, RpcContext.Conn)
 	select {} // run forever
@@ -258,6 +262,9 @@ func serverRun(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+
+	sigutil.InstallSIGUSR1Handler()
+
 	if singleServerRouter {
 		return serverRunSingle(jwtToken)
 	} else if connServerRouter {

@@ -11,7 +11,7 @@ import (
 	"strconv"
 )
 
-func QuickSetStr(strVal *string, m map[string]interface{}, name string) {
+func QuickSetStr(strVal *string, m map[string]any, name string) {
 	v, ok := m[name]
 	if !ok {
 		return
@@ -28,7 +28,7 @@ func QuickSetStr(strVal *string, m map[string]interface{}, name string) {
 	*strVal = str
 }
 
-func QuickSetInt(ival *int, m map[string]interface{}, name string) {
+func QuickSetInt(ival *int, m map[string]any, name string) {
 	v, ok := m[name]
 	if !ok {
 		return
@@ -64,7 +64,7 @@ func QuickSetNullableInt64(ival **int64, m map[string]any, name string) {
 	}
 }
 
-func QuickSetInt64(ival *int64, m map[string]interface{}, name string) {
+func QuickSetInt64(ival *int64, m map[string]any, name string) {
 	v, ok := m[name]
 	if !ok {
 		// leave as zero
@@ -82,7 +82,7 @@ func QuickSetInt64(ival *int64, m map[string]interface{}, name string) {
 	}
 }
 
-func QuickSetBool(bval *bool, m map[string]interface{}, name string) {
+func QuickSetBool(bval *bool, m map[string]any, name string) {
 	v, ok := m[name]
 	if !ok {
 		return
@@ -100,7 +100,7 @@ func QuickSetBool(bval *bool, m map[string]interface{}, name string) {
 	}
 }
 
-func QuickSetBytes(bval *[]byte, m map[string]interface{}, name string) {
+func QuickSetBytes(bval *[]byte, m map[string]any, name string) {
 	v, ok := m[name]
 	if !ok {
 		return
@@ -130,7 +130,7 @@ func getByteArr(m map[string]any, name string, def string) ([]byte, bool) {
 	return barr, true
 }
 
-func QuickSetJson(ptr interface{}, m map[string]interface{}, name string) {
+func QuickSetJson(ptr any, m map[string]any, name string) {
 	barr, ok := getByteArr(m, name, "{}")
 	if !ok {
 		return
@@ -138,7 +138,7 @@ func QuickSetJson(ptr interface{}, m map[string]interface{}, name string) {
 	json.Unmarshal(barr, ptr)
 }
 
-func QuickSetNullableJson(ptr interface{}, m map[string]interface{}, name string) {
+func QuickSetNullableJson(ptr any, m map[string]any, name string) {
 	barr, ok := getByteArr(m, name, "null")
 	if !ok {
 		return
@@ -146,7 +146,7 @@ func QuickSetNullableJson(ptr interface{}, m map[string]interface{}, name string
 	json.Unmarshal(barr, ptr)
 }
 
-func QuickSetJsonArr(ptr interface{}, m map[string]interface{}, name string) {
+func QuickSetJsonArr(ptr any, m map[string]any, name string) {
 	barr, ok := getByteArr(m, name, "[]")
 	if !ok {
 		return
@@ -154,7 +154,7 @@ func QuickSetJsonArr(ptr interface{}, m map[string]interface{}, name string) {
 	json.Unmarshal(barr, ptr)
 }
 
-func CheckNil(v interface{}) bool {
+func CheckNil(v any) bool {
 	rv := reflect.ValueOf(v)
 	if !rv.IsValid() {
 		return true
@@ -168,7 +168,7 @@ func CheckNil(v interface{}) bool {
 	}
 }
 
-func QuickNullableJson(v interface{}) string {
+func QuickNullableJson(v any) string {
 	if CheckNil(v) {
 		return "null"
 	}
@@ -176,7 +176,7 @@ func QuickNullableJson(v interface{}) string {
 	return string(barr)
 }
 
-func QuickJson(v interface{}) string {
+func QuickJson(v any) string {
 	if CheckNil(v) {
 		return "{}"
 	}
@@ -184,7 +184,7 @@ func QuickJson(v interface{}) string {
 	return string(barr)
 }
 
-func QuickJsonBytes(v interface{}) []byte {
+func QuickJsonBytes(v any) []byte {
 	if CheckNil(v) {
 		return []byte("{}")
 	}
@@ -192,7 +192,7 @@ func QuickJsonBytes(v interface{}) []byte {
 	return barr
 }
 
-func QuickJsonArr(v interface{}) string {
+func QuickJsonArr(v any) string {
 	if CheckNil(v) {
 		return "[]"
 	}
@@ -200,7 +200,7 @@ func QuickJsonArr(v interface{}) string {
 	return string(barr)
 }
 
-func QuickJsonArrBytes(v interface{}) []byte {
+func QuickJsonArrBytes(v any) []byte {
 	if CheckNil(v) {
 		return []byte("[]")
 	}
@@ -208,7 +208,7 @@ func QuickJsonArrBytes(v interface{}) []byte {
 	return barr
 }
 
-func QuickScanJson(ptr interface{}, val interface{}) error {
+func QuickScanJson(ptr any, val any) error {
 	barrVal, ok := val.([]byte)
 	if !ok {
 		strVal, ok := val.(string)
@@ -223,7 +223,7 @@ func QuickScanJson(ptr interface{}, val interface{}) error {
 	return json.Unmarshal(barrVal, ptr)
 }
 
-func QuickValueJson(v interface{}) (driver.Value, error) {
+func QuickValueJson(v any) (driver.Value, error) {
 	if CheckNil(v) {
 		return "{}", nil
 	}
@@ -232,4 +232,33 @@ func QuickValueJson(v interface{}) (driver.Value, error) {
 		return nil, err
 	}
 	return string(barr), nil
+}
+
+// on error will return nil unless forceMake is set, in which case it returns make(map[string]any)
+func ParseJsonMap(val string, forceMake bool) map[string]any {
+	var noRtn map[string]any
+	if forceMake {
+		noRtn = make(map[string]any)
+	}
+	if val == "" {
+		return noRtn
+	}
+	var m map[string]any
+	err := json.Unmarshal([]byte(val), &m)
+	if err != nil {
+		return noRtn
+	}
+return m
+}
+
+func ParseJsonArr[T any](val string) []T {
+	if val == "" {
+		return nil
+	}
+	var arr []T
+	err := json.Unmarshal([]byte(val), &arr)
+	if err != nil {
+		return nil
+	}
+	return arr
 }

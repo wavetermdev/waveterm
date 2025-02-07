@@ -52,7 +52,7 @@ func sendRpcRequestResponseStreamHelper[T any](w *wshutil.WshRpc, command string
 	if opts == nil {
 		opts = &wshrpc.RpcOpts{}
 	}
-	respChan := make(chan wshrpc.RespOrErrorUnion[T])
+	respChan := make(chan wshrpc.RespOrErrorUnion[T], 32)
 	if w == nil {
 		rtnErr(respChan, errors.New("nil wshrpc passed to wshclient"))
 		return respChan

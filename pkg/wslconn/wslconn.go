@@ -20,6 +20,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/remote/conncontroller"
 	"github.com/wavetermdev/waveterm/pkg/telemetry"
+	"github.com/wavetermdev/waveterm/pkg/telemetry/telemetrydata"
 	"github.com/wavetermdev/waveterm/pkg/userinput"
 	"github.com/wavetermdev/waveterm/pkg/util/shellutil"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
@@ -114,6 +115,10 @@ func (conn *WslConn) DeriveConnStatus() wshrpc.ConnStatus {
 
 func (conn *WslConn) Infof(ctx context.Context, format string, args ...any) {
 	log.Print(fmt.Sprintf("[conn:%s] ", conn.GetName()) + fmt.Sprintf(format, args...))
+	blocklogger.Infof(ctx, "[conndebug] "+format, args...)
+}
+
+func (conn *WslConn) Debugf(ctx context.Context, format string, args ...any) {
 	blocklogger.Infof(ctx, "[conndebug] "+format, args...)
 }
 
@@ -530,6 +535,12 @@ func (conn *WslConn) Connect(ctx context.Context) error {
 			telemetry.GoUpdateActivityWrap(wshrpc.ActivityUpdate{
 				Conn: map[string]int{"wsl:connecterror": 1},
 			}, "wsl-connconnect")
+			telemetry.GoRecordTEventWrap(&telemetrydata.TEvent{
+				Event: "conn:connecterror",
+				Props: telemetrydata.TEventProps{
+					ConnType: "wsl",
+				},
+			})
 		} else {
 			conn.Infof(ctx, "successfully connected (wsh:%v)\n\n", conn.WshEnabled.Load())
 			conn.Status = Status_Connected
@@ -540,6 +551,12 @@ func (conn *WslConn) Connect(ctx context.Context) error {
 			telemetry.GoUpdateActivityWrap(wshrpc.ActivityUpdate{
 				Conn: map[string]int{"wsl:connect": 1},
 			}, "wsl-connconnect")
+			telemetry.GoRecordTEventWrap(&telemetrydata.TEvent{
+				Event: "conn:connect",
+				Props: telemetrydata.TEventProps{
+					ConnType: "wsl",
+				},
+			})
 		}
 	})
 	conn.FireConnChangeEvent()
@@ -641,11 +658,11 @@ func (conn *WslConn) tryEnableWsh(ctx context.Context, clientDisplayName string)
 	}
 }
 
-func (conn *WslConn) getConnectionConfig() (wshrpc.ConnKeywords, bool) {
+func (conn *WslConn) getConnectionConfig() (wconfig.ConnKeywords, bool) {
 	config := wconfig.GetWatcher().GetFullConfig()
 	connSettings, ok := config.Connections[conn.GetName()]
 	if !ok {
-		return wshrpc.ConnKeywords{}, false
+		return wconfig.ConnKeywords{}, false
 	}
 	return connSettings, true
 }
@@ -751,11 +768,8 @@ func getConnInternal(name string) *WslConn {
 	return rtn
 }
 
-func GetWslConn(ctx context.Context, name string, shouldConnect bool) *WslConn {
+func GetWslConn(name string) *WslConn {
 	conn := getConnInternal(name)
-	if conn.Client == nil && shouldConnect {
-		conn.Connect(ctx)
-	}
 	return conn
 }
 
@@ -764,7 +778,7 @@ func EnsureConnection(ctx context.Context, connName string) error {
 	if connName == "" {
 		return nil
 	}
-	conn := GetWslConn(ctx, connName, false)
+	conn := GetWslConn(connName)
 	if conn == nil {
 		return fmt.Errorf("connection not found: %s", connName)
 	}

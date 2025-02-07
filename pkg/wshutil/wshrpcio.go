@@ -22,12 +22,23 @@ func AdaptStreamToMsgCh(input io.Reader, output chan []byte) error {
 }
 
 func AdaptOutputChToStream(outputCh chan []byte, output io.Writer) error {
+	drain := false
+	defer func() {
+		if drain {
+			go func() {
+				for range outputCh {
+				}
+			}()
+		}
+	}()
 	for msg := range outputCh {
 		if _, err := output.Write(msg); err != nil {
+			drain = true
 			return fmt.Errorf("error writing to output (AdaptOutputChToStream): %w", err)
 		}
 		// write trailing newline
 		if _, err := output.Write([]byte{'\n'}); err != nil {
+			drain = true
 			return fmt.Errorf("error writing trailing newline to output (AdaptOutputChToStream): %w", err)
 		}
 	}

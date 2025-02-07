@@ -8,38 +8,47 @@ Legend: ✅ Done | 🔧 In Progress | 🔷 Planned | 🤞 Stretch Goal
 
 ## v0.11.0
 
-Targeting first betas at then end of the week of Jan 6th, 2025 (or early the following week). Release at the end of the week or early the following week.
+Released on 1/25/25
 
-- 🔧 File/Directory Preview improvements
-  - 🔧 Remote S3 bucket browsing (directory + files)
+- ✅ File/Directory Preview improvements
+  - ✅ Reworked fileshare layer running over RPC
+  - ✅ Expanded URI types supported by `wsh file ...`
   - ✅ EC-TIME timeout when transferring large files
-- 🔧 Fixes for reducing 2FA requests on connect
+- ✅ Fixes for reducing 2FA requests on connect
 - ✅ WebLinks in the terminal working again
 - ✅ Search in Web Views
 - ✅ Search in the Terminal
-- 🔷 Custom init files for widgets and terminal blocks
+- ✅ Custom init files for widgets and terminal blocks
 - ✅ Multi-Input between terminal blocks on the same tab
 - ✅ Gemini AI support
-- 🔧 Various Connection Bugs + Improvements
-- 🔧 More Connection Config Options
+- ✅ Various Connection Bugs + Improvements
+- ✅ More Connection Config Options
 
 ## v0.11.1
 
-Likely to follow v0.11 by 1 week.
+Targeting 1/31/25
 
 - 🔧 Reduce main-line 2FA requests to 1 per connection
-- 🔷 Frontend Only Widgets, React + Babel Transpiling in an iframe/webview
-- 🔷 Monaco Theming
+- 🔧 Remote S3 bucket browsing (directory + files)
 - 🔷 Drag & drop between preview blocks
-- 🔷 Drag into a preview directory from the native file browser or desktop to copy a file
+- 🔷 Drag into/out of a preview block from native file explorer
 - 🔷 Wave Apps (Go SDK)
-- 🤞 Explore VSCode Extension Compatibility with standalone Monaco Editor (language servers)
+- 🔷 JSON schema support (basic)
+- 🤞 Frontend Only Widgets, React + Babel Transpiling in an iframe/webview
 
 ## v0.12
+
+Targeting mid-February.
 
 - 🔷 Import/Export Tab Layouts and Widgets
 - 🔷 log viewer
 - 🔷 binary viewer
+- 🔷 New layout actions (splitting, replacing blocks)
+- 🔷 Rewrite of window/tab system
+- 🔷 Minimized / Non-Visible blocks
+- 🔷 Custom keybindings to quickly switch / invoke built-in and custom widgets
+- 🔷 More Drag & Drop support of files/URLs to create blocks
+- 🔷 Tab Templates
 
 ## Planned (Unscheduled)
 
@@ -48,3 +57,8 @@ Likely to follow v0.11 by 1 week.
   - 🔷 Re-assign system keybindings
 - 🔷 Command Palette
 - 🔷 AI Context
+- 🔷 Monaco Theming
+- 🔷 File system watching for Preview
+- 🔷 File system watching for drag and drop
+- 🤞 Explore VSCode Extension Compatibility with standalone Monaco Editor (language servers)
+- 🤞 VSCode File Icons in Preview

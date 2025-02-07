@@ -96,6 +96,15 @@ Lastly, some data is sent along with the telemetry that describes how to classif
 | AutoUpdateChannel | The type of auto update in use. This specifically refers to whether a latest or beta channel is selected.                   |
 | CurDay            | The current day (in your time zone) when telemetry is sent. It does not include the time of day.                            |
 
+## Geo Data
+
+We do not store IP addresses in our telemetry table. However, CloudFlare passes us Geo-Location headers. We store these two header values:
+
+| Name         | Description                                                       |
+| ------------ | ----------------------------------------------------------------- |
+| CFCountry    | 2-letter country code (e.g. "US", "FR", or "JP")                  |
+| CFRegionCode | region code (often a provence, region, or state within a country) |
+
 ---
 
 ## When Telemetry is Turned Off

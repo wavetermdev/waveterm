@@ -12,7 +12,7 @@ import {
     PLATFORM,
     removeFlashError,
 } from "@/store/global";
-import { appHandleKeyDown } from "@/store/keymodel";
+import { appHandleKeyDown, keyboardMouseDownHandler } from "@/store/keymodel";
 import { getElemAsStr } from "@/util/focusutil";
 import * as keyutil from "@/util/keyutil";
 import * as util from "@/util/util";
@@ -28,6 +28,9 @@ import { CenteredDiv } from "./element/quickelems";
 import { NotificationBubbles } from "./notification/notificationbubbles";
 
 import "./app.scss";
+
+// this should come after app.scss (don't remove the newline above otherwise prettier will reorder these imports)
+import "../tailwindsetup.css";
 
 const dlog = debug("wave:app");
 const focusLog = debug("wave:focus");
@@ -193,9 +196,11 @@ const AppKeyHandlers = () => {
     useEffect(() => {
         const staticKeyDownHandler = keyutil.keydownWrapper(appHandleKeyDown);
         document.addEventListener("keydown", staticKeyDownHandler);
+        document.addEventListener("mousedown", keyboardMouseDownHandler);
 
         return () => {
             document.removeEventListener("keydown", staticKeyDownHandler);
+            document.removeEventListener("mousedown", keyboardMouseDownHandler);
         };
     }, []);
     return null;
