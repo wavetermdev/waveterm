@@ -784,6 +784,8 @@ declare global {
         "file:mimetype"?: string;
         "file:name"?: string;
         "file:path"?: string;
+        matchpositions?: number[];
+        score?: number;
     };
 
     // telemetrydata.TEvent

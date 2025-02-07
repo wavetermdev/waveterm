@@ -739,11 +739,13 @@ type FetchSuggestionsResponse struct {
 }
 
 type SuggestionType struct {
-	Type         string `json:"type"`
-	SuggestionId string `json:"suggestionid"`
-	Icon         string `json:"icon,omitempty"`
-	IconColor    string `json:"iconcolor,omitempty"`
-	FileMimeType string `json:"file:mimetype,omitempty"`
-	FileName     string `json:"file:name,omitempty"`
-	FilePath     string `json:"file:path,omitempty"`
+	Type           string `json:"type"`
+	SuggestionId   string `json:"suggestionid"`
+	Icon           string `json:"icon,omitempty"`
+	IconColor      string `json:"iconcolor,omitempty"`
+	FileMimeType   string `json:"file:mimetype,omitempty"`
+	FileName       string `json:"file:name,omitempty"`
+	FilePath       string `json:"file:path,omitempty"`
+	MatchPositions []int  `json:"matchpositions,omitempty"`
+	Score          int    `json:"score,omitempty"`
 }

@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { atoms } from "@/app/store/global";
-import { makeIconClass } from "@/util/util";
+import { isBlank, makeIconClass } from "@/util/util";
 import { offset, useFloating } from "@floating-ui/react";
 import clsx from "clsx";
 import { useAtomValue } from "jotai";
@@ -55,6 +55,33 @@ function highlightSearchMatch(target: string, search: string, highlightFn: (char
 
 function defaultHighlighter(target: string, search: string): ReactNode[] {
     return highlightSearchMatch(target, search, (char) => <span className="text-blue-500 font-bold">{char}</span>);
+}
+
+function highlightPositions(target: string, positions: number[]): ReactNode[] {
+    const result: ReactNode[] = [];
+    let targetIndex = 0;
+    let posIndex = 0;
+
+    while (targetIndex < target.length) {
+        if (posIndex < positions.length && targetIndex === positions[posIndex]) {
+            result.push(<span className="text-blue-500 font-bold">{target[targetIndex]}</span>);
+            posIndex++;
+        } else {
+            result.push(target[targetIndex]);
+        }
+        targetIndex++;
+    }
+    return result;
+}
+
+function getHighlightedText(suggestion: SuggestionType, highlightTerm: string): ReactNode[] {
+    if (suggestion.matchpositions != null && suggestion.matchpositions.length > 0) {
+        return highlightPositions(suggestion["file:name"], suggestion.matchpositions);
+    }
+    if (isBlank(highlightTerm)) {
+        return [suggestion["file:name"]];
+    }
+    return defaultHighlighter(suggestion["file:name"], highlightTerm);
 }
 
 function getMimeTypeIconAndColor(fullConfig: FullConfigType, mimeType: string): [string, string] {
@@ -227,9 +254,7 @@ const TypeaheadInner: React.FC<Omit<TypeaheadProps, "isOpen">> = ({
                             }}
                         >
                             <SuggestionIcon suggestion={suggestion} />
-                            <span className="truncate">
-                                {defaultHighlighter(suggestion["file:name"], highlightTerm)}
-                            </span>
+                            <span className="truncate">{getHighlightedText(suggestion, highlightTerm)}</span>
                         </div>
                     ))}
                 </div>
