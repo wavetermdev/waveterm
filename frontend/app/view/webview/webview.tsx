@@ -3,12 +3,16 @@
 
 import { BlockNodeModel } from "@/app/block/blocktypes";
 import { Search, useSearch } from "@/app/element/search";
-import { getApi, getBlockMetaKeyAtom, getSettingsKeyAtom, openLink } from "@/app/store/global";
+import { createBlock, getApi, getBlockMetaKeyAtom, getSettingsKeyAtom, openLink } from "@/app/store/global";
 import { getSimpleControlShiftAtom } from "@/app/store/keymodel";
 import { ObjectService } from "@/app/store/services";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
-import { BlockHeaderSuggestionControl } from "@/app/suggestion/suggestion";
+import {
+    BlockHeaderSuggestionControl,
+    SuggestionControlNoData,
+    SuggestionControlNoResults,
+} from "@/app/suggestion/suggestion";
 import { WOS, globalStore } from "@/store/global";
 import { adaptFromReactOrNativeKeyEvent, checkKeyPressed } from "@/util/keyutil";
 import { fireAndForget } from "@/util/util";
@@ -601,6 +605,19 @@ interface WebViewProps {
 
 const BookmarkTypeahead = memo(
     ({ model, blockRef }: { model: WebViewModel; blockRef: React.RefObject<HTMLDivElement> }) => {
+        const openBookmarksJson = () => {
+            fireAndForget(async () => {
+                const path = `${getApi().getConfigDir()}/presets/bookmarks.json`;
+                const blockDef: BlockDef = {
+                    meta: {
+                        view: "preview",
+                        file: path,
+                    },
+                };
+                await createBlock(blockDef, false, true);
+                model.setTypeaheadOpen(false);
+            });
+        };
         return (
             <BlockHeaderSuggestionControl
                 blockRef={blockRef}
@@ -614,7 +631,28 @@ const BookmarkTypeahead = memo(
                 }}
                 fetchSuggestions={model.fetchBookmarkSuggestions}
                 placeholderText="Open Bookmark..."
-            />
+            >
+                <SuggestionControlNoData>
+                    <div className="text-center">
+                        <p className="text-lg font-bold text-gray-100">No Bookmarks Configured</p>
+                        <p className="text-sm text-gray-400 mt-1">
+                            Edit your <code className="font-mono">bookmarks.json</code> file to configure bookmarks.
+                        </p>
+                        <button
+                            onClick={openBookmarksJson}
+                            className="mt-3 px-4 py-2 text-sm font-medium text-white bg-gray-700 rounded-lg hover:bg-gray-600 cursor-pointer"
+                        >
+                            Open bookmarks.json
+                        </button>
+                    </div>
+                </SuggestionControlNoData>
+
+                <SuggestionControlNoResults>
+                    <div className="text-center">
+                        <p className="text-sm text-gray-400">No matching bookmarks</p>
+                    </div>
+                </SuggestionControlNoResults>
+            </BlockHeaderSuggestionControl>
         );
     }
 );

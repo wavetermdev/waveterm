@@ -17,6 +17,7 @@ interface SuggestionControlProps {
     fetchSuggestions: SuggestionsFnType;
     className?: string;
     placeholderText?: string;
+    children?: React.ReactNode;
 }
 
 type BlockHeaderSuggestionControlProps = Omit<SuggestionControlProps, "anchorRef" | "isOpen"> & {
@@ -31,10 +32,11 @@ const SuggestionControl: React.FC<SuggestionControlProps> = ({
     onSelect,
     fetchSuggestions,
     className,
+    children,
 }) => {
     if (!isOpen || !anchorRef.current || !fetchSuggestions) return null;
 
-    return <SuggestionControlInner {...{ anchorRef, onClose, onSelect, fetchSuggestions, className }} />;
+    return <SuggestionControlInner {...{ anchorRef, onClose, onSelect, fetchSuggestions, className, children }} />;
 };
 
 function highlightPositions(target: string, positions: number[]): ReactNode[] {
@@ -50,7 +52,11 @@ function highlightPositions(target: string, positions: number[]): ReactNode[] {
 
     while (targetIndex < target.length) {
         if (posIndex < positions.length && targetIndex === positions[posIndex]) {
-            result.push(<span className="text-blue-500 font-bold">{target[targetIndex]}</span>);
+            result.push(
+                <span key={`h-${targetIndex}`} className="text-blue-500 font-bold">
+                    {target[targetIndex]}
+                </span>
+            );
             posIndex++;
         } else {
             result.push(target[targetIndex]);
@@ -138,7 +144,29 @@ const BlockHeaderSuggestionControl: React.FC<BlockHeaderSuggestionControlProps> 
     return <SuggestionControl {...props} anchorRef={{ current: headerElem }} isOpen={isOpen} className={newClass} />;
 };
 
-const SuggestionControlInner: React.FC<Omit<SuggestionControlProps, "isOpen">> = ({
+/**
+ * The empty state component that can be used as a child of SuggestionControl.
+ * If no children are provided to SuggestionControl, this default empty state will be used.
+ */
+const SuggestionControlNoResults: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
+    return (
+        <div className="flex items-center justify-center min-h-[120px] p-4">
+            {children ?? <span className="text-gray-500">No Suggestions</span>}
+        </div>
+    );
+};
+
+const SuggestionControlNoData: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
+    return (
+        <div className="flex items-center justify-center min-h-[120px] p-4">
+            {children ?? <span className="text-gray-500">No Suggestions</span>}
+        </div>
+    );
+};
+
+interface SuggestionControlInnerProps extends Omit<SuggestionControlProps, "isOpen"> {}
+
+const SuggestionControlInner: React.FC<SuggestionControlInnerProps> = ({
     anchorRef,
     onClose,
     onSelect,
@@ -146,11 +174,12 @@ const SuggestionControlInner: React.FC<Omit<SuggestionControlProps, "isOpen">> =
     fetchSuggestions,
     className,
     placeholderText,
+    children,
 }) => {
     const widgetId = useId();
     const [query, setQuery] = useState("");
     const reqNumRef = useRef(0);
-    const [suggestions, setSuggestions] = useState<SuggestionType[]>([]);
+    let [suggestions, setSuggestions] = useState<SuggestionType[]>([]);
     const [selectedIndex, setSelectedIndex] = useState(0);
     const [fetched, setFetched] = useState(false);
     const inputRef = useRef<HTMLInputElement>(null);
@@ -160,6 +189,12 @@ const SuggestionControlInner: React.FC<Omit<SuggestionControlProps, "isOpen">> =
         strategy: "absolute",
         middleware: [offset(-1)],
     });
+    const emptyStateChild = React.Children.toArray(children).find(
+        (child) => React.isValidElement(child) && child.type === SuggestionControlNoResults
+    );
+    const noDataChild = React.Children.toArray(children).find(
+        (child) => React.isValidElement(child) && child.type === SuggestionControlNoData
+    );
 
     useEffect(() => {
         refs.setReference(anchorRef.current);
@@ -168,7 +203,7 @@ const SuggestionControlInner: React.FC<Omit<SuggestionControlProps, "isOpen">> =
     useEffect(() => {
         reqNumRef.current++;
         fetchSuggestions(query, { widgetid: widgetId, reqnum: reqNumRef.current }).then((results) => {
-            if (results.reqnum != reqNumRef.current) {
+            if (results.reqnum !== reqNumRef.current) {
                 return;
             }
             setSuggestions(results.suggestions ?? []);
@@ -222,7 +257,6 @@ const SuggestionControlInner: React.FC<Omit<SuggestionControlProps, "isOpen">> =
             }
         }
     };
-
     return (
         <div
             className={clsx(
@@ -247,29 +281,37 @@ const SuggestionControlInner: React.FC<Omit<SuggestionControlProps, "isOpen">> =
                     placeholder={placeholderText}
                 />
             </div>
-            {fetched && suggestions.length > 0 && (
-                <div ref={dropdownRef} className="max-h-96 overflow-y-auto divide-y divide-gray-700">
-                    {suggestions.map((suggestion, index) => (
-                        <div
-                            key={suggestion.suggestionid}
-                            className={clsx(
-                                "flex items-center gap-3 px-4 py-2 cursor-pointer",
-                                index === selectedIndex ? "bg-accentbg" : "hover:bg-hoverbg",
-                                "text-gray-100"
-                            )}
-                            onClick={() => {
-                                onSelect(suggestion, query);
-                                onClose();
-                            }}
-                        >
-                            <SuggestionIcon suggestion={suggestion} />
-                            <SuggestionContent suggestion={suggestion} />
-                        </div>
-                    ))}
-                </div>
-            )}
+            {fetched &&
+                (suggestions.length > 0 ? (
+                    <div ref={dropdownRef} className="max-h-96 overflow-y-auto divide-y divide-gray-700">
+                        {suggestions.map((suggestion, index) => (
+                            <div
+                                key={suggestion.suggestionid}
+                                className={clsx(
+                                    "flex items-center gap-3 px-4 py-2 cursor-pointer",
+                                    index === selectedIndex ? "bg-accentbg" : "hover:bg-hoverbg",
+                                    "text-gray-100"
+                                )}
+                                onClick={() => {
+                                    onSelect(suggestion, query);
+                                    onClose();
+                                }}
+                            >
+                                <SuggestionIcon suggestion={suggestion} />
+                                <SuggestionContent suggestion={suggestion} />
+                            </div>
+                        ))}
+                    </div>
+                ) : (
+                    // Render the empty state (either a provided child or the default)
+                    <div key="empty" className="flex items-center justify-center min-h-[120px] p-4">
+                        {query === ""
+                            ? (noDataChild ?? <SuggestionControlNoData />)
+                            : (emptyStateChild ?? <SuggestionControlNoResults />)}
+                    </div>
+                ))}
         </div>
     );
 };
 
-export { BlockHeaderSuggestionControl, SuggestionControl };
+export { BlockHeaderSuggestionControl, SuggestionControl, SuggestionControlNoData, SuggestionControlNoResults };
