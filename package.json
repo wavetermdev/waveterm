@@ -52,7 +52,7 @@
         "@types/papaparse": "^5",
         "@types/pngjs": "^6.0.5",
         "@types/prop-types": "^15",
-        "@types/react": "^19.0.7",
+        "@types/react": "^19.0.8",
         "@types/react-dom": "^19.0.3",
         "@types/semver": "^7",
         "@types/shell-quote": "^1",
