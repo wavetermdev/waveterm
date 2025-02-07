@@ -10,7 +10,6 @@ import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { BlockHeaderTypeahead } from "@/app/typeahead/typeahead";
 import { WOS, globalStore } from "@/store/global";
-import { isDev } from "@/util/isdev";
 import { adaptFromReactOrNativeKeyEvent, checkKeyPressed } from "@/util/keyutil";
 import { fireAndForget } from "@/util/util";
 import clsx from "clsx";
@@ -480,6 +479,7 @@ export class WebViewModel implements ViewModel {
         if (checkKeyPressed(e, "Cmd:o")) {
             const curVal = globalStore.get(this.typeaheadOpen);
             globalStore.set(this.typeaheadOpen, !curVal);
+            return true;
         }
         return false;
     }
@@ -600,9 +600,6 @@ interface WebViewProps {
 
 const BookmarkTypeahead = memo(
     ({ model, blockRef }: { model: WebViewModel; blockRef: React.RefObject<HTMLDivElement> }) => {
-        if (!isDev) {
-            return null;
-        }
         return (
             <BlockHeaderTypeahead
                 blockRef={blockRef}

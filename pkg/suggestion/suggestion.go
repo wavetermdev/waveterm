@@ -14,6 +14,7 @@ import (
 
 	"github.com/junegunn/fzf/src/algo"
 	"github.com/junegunn/fzf/src/util"
+	"github.com/wavetermdev/waveterm/pkg/faviconcache"
 	"github.com/wavetermdev/waveterm/pkg/util/fileutil"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
@@ -143,7 +144,7 @@ var Bookmarks = []BookmarkType{
 	},
 	{
 		Title: "Wave Terminal",
-		Url:   "https://waveterm.com",
+		Url:   "https://waveterm.dev",
 	},
 	{
 		Title: "Wave Github",
@@ -169,7 +170,7 @@ func FetchSuggestions(ctx context.Context, data wshrpc.FetchSuggestionsData) (*w
 	return nil, fmt.Errorf("unsupported suggestion type: %q", data.SuggestionType)
 }
 
-func fetchBookmarkSuggestions(ctx context.Context, data wshrpc.FetchSuggestionsData) (*wshrpc.FetchSuggestionsResponse, error) {
+func fetchBookmarkSuggestions(_ context.Context, data wshrpc.FetchSuggestionsData) (*wshrpc.FetchSuggestionsResponse, error) {
 	if data.SuggestionType != "bookmark" {
 		return nil, fmt.Errorf("unsupported suggestion type: %q", data.SuggestionType)
 	}
@@ -287,11 +288,7 @@ func fetchBookmarkSuggestions(ctx context.Context, data wshrpc.FetchSuggestionsD
 
 	// Build up to 50 suggestions.
 	var suggestions []wshrpc.SuggestionType
-	for i, entry := range scoredEntries {
-		if i >= 50 {
-			break
-		}
-
+	for _, entry := range scoredEntries {
 		var display, subText string
 		if entry.bookmark.Title != "" {
 			display = entry.bookmark.Title
@@ -311,7 +308,11 @@ func fetchBookmarkSuggestions(ctx context.Context, data wshrpc.FetchSuggestionsD
 			Score:        entry.score,
 			UrlUrl:       entry.bookmark.Url,
 		}
+		suggestion.IconSrc = faviconcache.GetFavicon(entry.bookmark.Url)
 		suggestions = append(suggestions, suggestion)
+		if len(suggestions) >= 50 {
+			break
+		}
 	}
 
 	return &wshrpc.FetchSuggestionsResponse{
@@ -321,7 +322,7 @@ func fetchBookmarkSuggestions(ctx context.Context, data wshrpc.FetchSuggestionsD
 }
 
 // FetchSuggestions returns file suggestions using junegunn/fzf’s fuzzy matching.
-func fetchFileSuggestions(ctx context.Context, data wshrpc.FetchSuggestionsData) (*wshrpc.FetchSuggestionsResponse, error) {
+func fetchFileSuggestions(_ context.Context, data wshrpc.FetchSuggestionsData) (*wshrpc.FetchSuggestionsResponse, error) {
 	// Only support file suggestions.
 	if data.SuggestionType != "file" {
 		return nil, fmt.Errorf("unsupported suggestion type: %q", data.SuggestionType)

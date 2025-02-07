@@ -70,7 +70,7 @@ function getMimeTypeIconAndColor(fullConfig: FullConfigType, mimeType: string): 
 
 const SuggestionIcon: React.FC<{ suggestion: SuggestionType }> = ({ suggestion }) => {
     if (suggestion.iconsrc) {
-        return <img src={suggestion.iconsrc} alt="favicon" className="w-4 h-4 rounded-sm object-contain" />;
+        return <img src={suggestion.iconsrc} alt="favicon" className="w-4 h-4 object-contain" />;
     }
     if (suggestion.icon) {
         const iconClass = makeIconClass(suggestion.icon, true);
