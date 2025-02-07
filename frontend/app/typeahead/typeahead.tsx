@@ -109,8 +109,6 @@ const TypeaheadInner: React.FC<Omit<TypeaheadProps, "isOpen">> = ({
         middleware: [offset(5)],
     });
 
-    console.log("TYPEAHEAD INNER", floatingStyles, middlewareData);
-
     useEffect(() => {
         if (anchorRef.current == null) {
             refs.setReference(null);
@@ -185,8 +183,6 @@ const TypeaheadInner: React.FC<Omit<TypeaheadProps, "isOpen">> = ({
             }
         }
     };
-
-    console.log("rendering suggestions", suggestions);
 
     return (
         <div
