@@ -33,13 +33,23 @@ func getBeforeColonPart(s string) string {
 	return s
 }
 
-func GenerateMetaMapConsts(buf *strings.Builder, constPrefix string, rtype reflect.Type) {
-	buf.WriteString("const (\n")
+func GenerateMetaMapConsts(buf *strings.Builder, constPrefix string, rtype reflect.Type, embedded bool) {
+	if !embedded {
+		buf.WriteString("const (\n")
+	} else {
+		buf.WriteString("\n")
+	}
 	var lastBeforeColon = ""
 	isFirst := true
 	for idx := 0; idx < rtype.NumField(); idx++ {
 		field := rtype.Field(idx)
 		if field.PkgPath != "" {
+			continue
+		}
+		if field.Anonymous {
+			var embeddedBuf strings.Builder
+			GenerateMetaMapConsts(&embeddedBuf, constPrefix, field.Type, true)
+			buf.WriteString(embeddedBuf.String())
 			continue
 		}
 		fieldName := field.Name
@@ -58,7 +68,9 @@ func GenerateMetaMapConsts(buf *strings.Builder, constPrefix string, rtype refle
 		buf.WriteString(fmt.Sprintf("\t%-40s = %q\n", cname, jsonTag))
 		isFirst = false
 	}
-	buf.WriteString(")\n")
+	if !embedded {
+		buf.WriteString(")\n")
+	}
 }
 
 func GenMethod_Call(buf *strings.Builder, methodDecl *wshrpc.WshRpcMethodDecl) {

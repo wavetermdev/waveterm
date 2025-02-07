@@ -799,6 +799,16 @@ declare global {
 
     // telemetrydata.TEventProps
     type TEventProps = {
+        "client:arch"?: string;
+        "client:version"?: string;
+        "client:initial_version"?: string;
+        "client:buildtime"?: string;
+        "client:osrelease"?: string;
+        "client:isdev"?: boolean;
+        "autoupdate:channel"?: string;
+        "autoupdate:enabled"?: boolean;
+        "loc:countrycode"?: string;
+        "loc:regioncode"?: string;
         "activity:activeminutes"?: number;
         "activity:fgminutes"?: number;
         "activity:openminutes"?: number;

@@ -32,11 +32,7 @@ const AnySchema = `
 }
 `
 
-type SettingsType struct {
-	AppClear                      bool   `json:"app:*,omitempty"`
-	AppGlobalHotkey               string `json:"app:globalhotkey,omitempty"`
-	AppDismissArchitectureWarning bool   `json:"app:dismissarchitecturewarning,omitempty"`
-
+type AiSettingsType struct {
 	AiClear         bool    `json:"ai:*,omitempty"`
 	AiPreset        string  `json:"ai:preset,omitempty"`
 	AiApiType       string  `json:"ai:apitype,omitempty"`
@@ -50,6 +46,14 @@ type SettingsType struct {
 	AiTimeoutMs     float64 `json:"ai:timeoutms,omitempty"`
 	AiFontSize      float64 `json:"ai:fontsize,omitempty"`
 	AiFixedFontSize float64 `json:"ai:fixedfontsize,omitempty"`
+}
+
+type SettingsType struct {
+	AppClear                      bool   `json:"app:*,omitempty"`
+	AppGlobalHotkey               string `json:"app:globalhotkey,omitempty"`
+	AppDismissArchitectureWarning bool   `json:"app:dismissarchitecturewarning,omitempty"`
+
+	AiSettingsType
 
 	TermClear               bool     `json:"term:*,omitempty"`
 	TermFontSize            float64  `json:"term:fontsize,omitempty"`
