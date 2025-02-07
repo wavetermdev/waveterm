@@ -5,7 +5,7 @@ import { atoms } from "@/app/store/global";
 import { isBlank, makeIconClass } from "@/util/util";
 import { offset, useFloating } from "@floating-ui/react";
 import clsx from "clsx";
-import { useAtomValue } from "jotai";
+import { Atom, useAtomValue } from "jotai";
 import React, { ReactNode, useEffect, useId, useRef, useState } from "react";
 
 interface TypeaheadProps {
@@ -18,6 +18,11 @@ interface TypeaheadProps {
     className?: string;
     placeholderText?: string;
 }
+
+type BlockHeaderTypeaheadProps = Omit<TypeaheadProps, "anchorRef" | "isOpen"> & {
+    blockRef: React.RefObject<HTMLElement>;
+    openAtom: Atom<boolean>;
+};
 
 const Typeahead: React.FC<TypeaheadProps> = ({ anchorRef, isOpen, onClose, onSelect, fetchSuggestions, className }) => {
     if (!isOpen || !anchorRef.current || !fetchSuggestions) return null;
@@ -98,15 +103,32 @@ const SuggestionContent: React.FC<{
         return (
             <div className="flex flex-col">
                 {/* Title on the first line, with highlighting */}
-                <div className="truncate">{highlightPositions(suggestion.display, suggestion.matchpos)}</div>
+                <div className="truncate text-white">{highlightPositions(suggestion.display, suggestion.matchpos)}</div>
                 {/* Subtext on the second line in a smaller, grey style */}
-                <div className="truncate text-sm text-gray-400">
+                <div className="truncate text-sm text-secondary">
                     {highlightPositions(suggestion.subtext, suggestion.submatchpos)}
                 </div>
             </div>
         );
     }
     return <span className="truncate">{highlightPositions(suggestion.display, suggestion.matchpos)}</span>;
+};
+
+const BlockHeaderTypeahead: React.FC<BlockHeaderTypeaheadProps> = (props) => {
+    const [headerElem, setHeaderElem] = useState<HTMLElement>(null);
+    const isOpen = useAtomValue(props.openAtom);
+
+    useEffect(() => {
+        if (props.blockRef.current == null) {
+            setHeaderElem(null);
+            return;
+        }
+        const headerElem = props.blockRef.current.querySelector("[data-role='block-header']");
+        setHeaderElem(headerElem as HTMLElement);
+    }, [props.blockRef.current]);
+
+    const newClass = clsx(props.className, "rounded-t-none");
+    return <Typeahead {...props} anchorRef={{ current: headerElem }} isOpen={isOpen} className={newClass} />;
 };
 
 const TypeaheadInner: React.FC<Omit<TypeaheadProps, "isOpen">> = ({
@@ -129,7 +151,7 @@ const TypeaheadInner: React.FC<Omit<TypeaheadProps, "isOpen">> = ({
     const { refs, floatingStyles, middlewareData } = useFloating({
         placement: "bottom",
         strategy: "absolute",
-        middleware: [offset(5)],
+        middleware: [offset(-1)],
     });
 
     useEffect(() => {
@@ -199,7 +221,7 @@ const TypeaheadInner: React.FC<Omit<TypeaheadProps, "isOpen">> = ({
     return (
         <div
             className={clsx(
-                "w-96 rounded-lg bg-gray-800 shadow-lg border border-gray-700 z-[var(--zindex-typeahead-modal)] absolute",
+                "w-96 rounded-lg bg-modalbg shadow-lg border border-gray-700 z-[var(--zindex-typeahead-modal)] absolute",
                 middlewareData?.offset == null ? "opacity-0" : null,
                 className
             )}
@@ -216,7 +238,7 @@ const TypeaheadInner: React.FC<Omit<TypeaheadProps, "isOpen">> = ({
                         setSelectedIndex(0);
                     }}
                     onKeyDown={handleKeyDown}
-                    className="w-full bg-gray-900 text-gray-100 px-4 py-2 rounded-md border border-gray-700 focus:outline-none focus:border-blue-500 placeholder-gray-500"
+                    className="w-full bg-gray-900 text-gray-100 px-4 py-2 rounded-md border border-gray-700 focus:outline-none focus:border-accent placeholder-secondary"
                     placeholder={placeholderText}
                 />
             </div>
@@ -226,8 +248,8 @@ const TypeaheadInner: React.FC<Omit<TypeaheadProps, "isOpen">> = ({
                         <div
                             key={suggestion.suggestionid}
                             className={clsx(
-                                "flex items-center gap-3 px-4 py-2 cursor-pointer hover:bg-gray-700",
-                                index === selectedIndex ? "bg-gray-700" : "",
+                                "flex items-center gap-3 px-4 py-2 cursor-pointer",
+                                index === selectedIndex ? "bg-accentbg" : "hover:bg-hoverbg",
                                 "text-gray-100"
                             )}
                             onClick={() => {
@@ -245,4 +267,4 @@ const TypeaheadInner: React.FC<Omit<TypeaheadProps, "isOpen">> = ({
     );
 };
 
-export { Typeahead };
+export { BlockHeaderTypeahead, Typeahead };

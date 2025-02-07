@@ -8,7 +8,7 @@ import { getSimpleControlShiftAtom } from "@/app/store/keymodel";
 import { ObjectService } from "@/app/store/services";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
-import { Typeahead } from "@/app/typeahead/typeahead";
+import { BlockHeaderTypeahead } from "@/app/typeahead/typeahead";
 import { WOS, globalStore } from "@/store/global";
 import { adaptFromReactOrNativeKeyEvent, checkKeyPressed } from "@/util/keyutil";
 import { fireAndForget } from "@/util/util";
@@ -599,22 +599,10 @@ interface WebViewProps {
 
 const BookmarkTypeahead = memo(
     ({ model, blockRef }: { model: WebViewModel; blockRef: React.RefObject<HTMLDivElement> }) => {
-        const typeaheadOpen = useAtomValue(model.typeaheadOpen);
-        const [headerElem, setHeaderElem] = useState<HTMLElement>(null);
-
-        useEffect(() => {
-            if (blockRef.current == null) {
-                setHeaderElem(null);
-                return;
-            }
-            const headerElem = blockRef.current.querySelector("[data-role='block-header']");
-            setHeaderElem(headerElem as HTMLElement);
-        }, [blockRef.current]);
-
         return (
-            <Typeahead
-                anchorRef={{ current: headerElem }}
-                isOpen={typeaheadOpen}
+            <BlockHeaderTypeahead
+                blockRef={blockRef}
+                openAtom={model.typeaheadOpen}
                 onClose={() => model.setTypeaheadOpen(false)}
                 onSelect={(suggestion) => {
                     if (suggestion == null || suggestion.type != "url") {
