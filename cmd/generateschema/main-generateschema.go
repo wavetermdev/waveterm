@@ -50,6 +50,6 @@ func main() {
 	aiPresetsTemplate := make(map[string]wconfig.AiSettingsType)
 	err = generateSchema(&aiPresetsTemplate, WaveSchemaAiPresetsFileName)
 	if err != nil {
-		log.Fatalf("connections schema error: %v", err)
+		log.Fatalf("ai presets schema error: %v", err)
 	}
 }
