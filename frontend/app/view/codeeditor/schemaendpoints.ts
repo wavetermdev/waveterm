@@ -14,6 +14,7 @@ const allFilepaths: Map<string, Array<string>> = new Map();
 allFilepaths.set(`${getWebServerEndpoint()}/schema/settings.json`, [`${getApi().getConfigDir()}/settings.json`]);
 allFilepaths.set(`${getWebServerEndpoint()}/schema/connections.json`, [`${getApi().getConfigDir()}/connections.json`]);
 allFilepaths.set(`${getWebServerEndpoint()}/schema/aipresets.json`, [`${getApi().getConfigDir()}/presets/ai.json`]);
+allFilepaths.set(`${getWebServerEndpoint()}/schema/widgets.json`, [`${getApi().getConfigDir()}/widgets.json`]);
 
 async function getSchemaEndpointInfo(endpoint: string): Promise<EndpointInfo> {
     let schema: Object;
