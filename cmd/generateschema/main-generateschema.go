@@ -16,49 +16,40 @@ import (
 
 const WaveSchemaSettingsFileName = "schema/settings.json"
 const WaveSchemaConnectionsFileName = "schema/connections.json"
+const WaveSchemaAiPresetsFileName = "schema/aipresets.json"
 
-func generateSettingsSchema() error {
-	settingsSchema := jsonschema.Reflect(&wconfig.SettingsType{})
+func generateSchema(template any, dir string) error {
+	settingsSchema := jsonschema.Reflect(template)
 
 	jsonSettingsSchema, err := json.MarshalIndent(settingsSchema, "", "  ")
 	if err != nil {
-		return fmt.Errorf("failed to parse local schema: %v", err)
+		return fmt.Errorf("failed to parse local schema: %w", err)
 	}
-	written, err := utilfn.WriteFileIfDifferent(WaveSchemaSettingsFileName, jsonSettingsSchema)
+	written, err := utilfn.WriteFileIfDifferent(dir, jsonSettingsSchema)
 	if !written {
-		fmt.Fprintf(os.Stderr, "no changes to %s\n", WaveSchemaSettingsFileName)
+		fmt.Fprintf(os.Stderr, "no changes to %s\n", dir)
 	}
 	if err != nil {
-		return fmt.Errorf("failed to write local schema: %v", err)
-	}
-	return nil
-}
-
-func generateConnectionsSchema() error {
-	connExample := make(map[string]wconfig.ConnKeywords)
-	connectionSchema := jsonschema.Reflect(connExample)
-
-	jsonSettingsSchema, err := json.MarshalIndent(connectionSchema, "", "  ")
-	if err != nil {
-		return fmt.Errorf("failed to parse local schema: %v", err)
-	}
-	written, err := utilfn.WriteFileIfDifferent(WaveSchemaConnectionsFileName, jsonSettingsSchema)
-	if !written {
-		fmt.Fprintf(os.Stderr, "no changes to %s\n", WaveSchemaConnectionsFileName)
-	}
-	if err != nil {
-		return fmt.Errorf("failed to write local schema: %v", err)
+		return fmt.Errorf("failed to write local schema: %w", err)
 	}
 	return nil
 }
 
 func main() {
-	err := generateSettingsSchema()
+	err := generateSchema(&wconfig.SettingsType{}, WaveSchemaSettingsFileName)
 	if err != nil {
 		log.Fatalf("settings schema error: %v", err)
 	}
-	err = generateConnectionsSchema()
+
+	connectionTemplate := make(map[string]wconfig.ConnKeywords)
+	err = generateSchema(&connectionTemplate, WaveSchemaConnectionsFileName)
 	if err != nil {
 		log.Fatalf("connections schema error: %v", err)
+	}
+
+	aiPresetsTemplate := make(map[string]wconfig.AiSettingsType)
+	err = generateSchema(&aiPresetsTemplate, WaveSchemaAiPresetsFileName)
+	if err != nil {
+		log.Fatalf("ai presets schema error: %v", err)
 	}
 }

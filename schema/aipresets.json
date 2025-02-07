@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "AiSettingsType": {
+      "properties": {
+        "ai:*": {
+          "type": "boolean"
+        },
+        "ai:preset": {
+          "type": "string"
+        },
+        "ai:apitype": {
+          "type": "string"
+        },
+        "ai:baseurl": {
+          "type": "string"
+        },
+        "ai:apitoken": {
+          "type": "string"
+        },
+        "ai:name": {
+          "type": "string"
+        },
+        "ai:model": {
+          "type": "string"
+        },
+        "ai:orgid": {
+          "type": "string"
+        },
+        "ai:apiversion": {
+          "type": "string"
+        },
+        "ai:maxtokens": {
+          "type": "number"
+        },
+        "ai:timeoutms": {
+          "type": "number"
+        },
+        "ai:fontsize": {
+          "type": "number"
+        },
+        "ai:fixedfontsize": {
+          "type": "number"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    }
+  },
+  "additionalProperties": {
+    "$ref": "#/$defs/AiSettingsType"
+  },
+  "type": "object"
+}
