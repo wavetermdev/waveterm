@@ -117,13 +117,6 @@ function isIconValid(icon: string): boolean {
     return icon.match(iconRegex) != null;
 }
 
-function getIconClass(icon: string): string {
-    if (!isIconValid(icon)) {
-        return "fa fa-solid fa-question fa-fw";
-    }
-    return `fa fa-solid fa-${icon} fa-fw`;
-}
-
 function getSortIcon(sortType: string | boolean): React.ReactNode {
     switch (sortType) {
         case "asc":

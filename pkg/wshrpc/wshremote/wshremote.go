@@ -19,6 +19,7 @@ import (
 
 	"github.com/wavetermdev/waveterm/pkg/remote/connparse"
 	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/wshfs"
+	"github.com/wavetermdev/waveterm/pkg/suggestion"
 	"github.com/wavetermdev/waveterm/pkg/util/fileutil"
 	"github.com/wavetermdev/waveterm/pkg/util/iochan/iochantypes"
 	"github.com/wavetermdev/waveterm/pkg/util/tarcopy"
@@ -842,6 +843,10 @@ func (*ServerImpl) RemoteGetInfoCommand(ctx context.Context) (wshrpc.RemoteInfo,
 
 func (*ServerImpl) RemoteInstallRcFilesCommand(ctx context.Context) error {
 	return wshutil.InstallRcFiles()
+}
+
+func (*ServerImpl) FetchSuggestionsCommand(ctx context.Context, data wshrpc.FetchSuggestionsData) (*wshrpc.FetchSuggestionsResponse, error) {
+	return suggestion.FetchSuggestions(ctx, data)
 }
 
 func logPrintfDev(format string, args ...interface{}) {

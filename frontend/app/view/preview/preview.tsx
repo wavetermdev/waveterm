@@ -9,6 +9,7 @@ import { ContextMenuModel } from "@/app/store/contextmenu";
 import { tryReinjectKey } from "@/app/store/keymodel";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
+import { Typeahead } from "@/app/typeahead/typeahead";
 import { CodeEditor } from "@/app/view/codeeditor/codeeditor";
 import { Markdown } from "@/element/markdown";
 import {
@@ -162,6 +163,7 @@ export class PreviewModel implements ViewModel {
     connectionError: PrimitiveAtom<string>;
 
     openFileModal: PrimitiveAtom<boolean>;
+    openFileModalDelay: PrimitiveAtom<boolean>;
     openFileError: PrimitiveAtom<string>;
     openFileModalGiveFocusRef: React.MutableRefObject<() => boolean>;
 
@@ -184,6 +186,7 @@ export class PreviewModel implements ViewModel {
         this.refreshVersion = atom(0);
         this.previewTextRef = createRef();
         this.openFileModal = atom(false);
+        this.openFileModalDelay = atom(false);
         this.openFileError = atom(null) as PrimitiveAtom<string>;
         this.openFileModalGiveFocusRef = createRef();
         this.manageConnection = atom(true);
@@ -251,7 +254,7 @@ export class PreviewModel implements ViewModel {
                     text: headerPath,
                     ref: this.previewTextRef,
                     className: "preview-filename",
-                    onClick: () => this.updateOpenFileModalAndError(true),
+                    onClick: () => this.toggleOpenFileModal(),
                 },
             ];
             let saveClassName = "grey";
@@ -536,6 +539,25 @@ export class PreviewModel implements ViewModel {
     updateOpenFileModalAndError(isOpen, errorMsg = null) {
         globalStore.set(this.openFileModal, isOpen);
         globalStore.set(this.openFileError, errorMsg);
+        if (isOpen) {
+            globalStore.set(this.openFileModalDelay, true);
+        } else {
+            const delayVal = globalStore.get(this.openFileModalDelay);
+            if (delayVal) {
+                setTimeout(() => {
+                    globalStore.set(this.openFileModalDelay, false);
+                }, 200);
+            }
+        }
+    }
+
+    toggleOpenFileModal() {
+        const modalOpen = globalStore.get(this.openFileModal);
+        const delayVal = globalStore.get(this.openFileModalDelay);
+        if (!modalOpen && delayVal) {
+            return;
+        }
+        this.updateOpenFileModalAndError(!modalOpen);
     }
 
     async goHistory(newPath: string) {
@@ -810,12 +832,9 @@ export class PreviewModel implements ViewModel {
             fireAndForget(() => this.goParentDirectory({}));
             return true;
         }
-        const openModalOpen = globalStore.get(this.openFileModal);
-        if (!openModalOpen) {
-            if (checkKeyPressed(e, "Cmd:o")) {
-                this.updateOpenFileModalAndError(true);
-                return true;
-            }
+        if (checkKeyPressed(e, "Cmd:o")) {
+            this.toggleOpenFileModal();
+            return true;
         }
         const canPreview = globalStore.get(this.canPreview);
         if (canPreview) {
@@ -1049,7 +1068,7 @@ function iconForFile(mimeType: string): string {
     }
 }
 
-function SpecializedView({ parentRef, model }: SpecializedViewProps) {
+const SpecializedView = memo(({ parentRef, model }: SpecializedViewProps) => {
     const specializedView = useAtomValue(model.specializedView);
     const mimeType = useAtomValue(model.fileMimeType);
     const setCanPreview = useSetAtom(model.canPreview);
@@ -1066,7 +1085,32 @@ function SpecializedView({ parentRef, model }: SpecializedViewProps) {
         return <CenteredDiv>Invalid Specialzied View Component ({specializedView.specializedView})</CenteredDiv>;
     }
     return <SpecializedViewComponent model={model} parentRef={parentRef} />;
-}
+});
+
+const fetchSuggestions = async (
+    model: PreviewModel,
+    query: string,
+    reqContext: SuggestionRequestContext
+): Promise<FetchSuggestionsResponse> => {
+    const fileInfo = await globalStore.get(model.statFile);
+    if (fileInfo == null) {
+        return null;
+    }
+    const conn = await globalStore.get(model.connection);
+    return await RpcApi.FetchSuggestionsCommand(
+        TabRpcClient,
+        {
+            suggestiontype: "file",
+            "file:cwd": fileInfo.dir,
+            query: query,
+            widgetid: reqContext.widgetid,
+            reqnum: reqContext.reqnum,
+        },
+        {
+            route: makeConnRoute(conn),
+        }
+    );
+};
 
 function PreviewView({
     blockId,
@@ -1080,17 +1124,32 @@ function PreviewView({
     model: PreviewModel;
 }) {
     const connStatus = useAtomValue(model.connStatus);
+    const openFileModal = useAtomValue(model.openFileModal);
     if (connStatus?.status != "connected") {
         return null;
     }
+    const handleSelect = (s: SuggestionType) => {
+        model.handleOpenFile(s["file:path"]);
+    };
+    const fetchSuggestionsFn = async (query, ctx) => {
+        return await fetchSuggestions(model, query, ctx);
+    };
     return (
         <>
-            <OpenFileModal blockId={blockId} model={model} blockRef={blockRef} />
-            <div className="full-preview scrollbar-hide-until-hover">
+            {/* <OpenFileModal blockId={blockId} model={model} blockRef={blockRef} /> */}
+            <div key="fullpreview" className="full-preview scrollbar-hide-until-hover">
                 <div ref={contentRef} className="full-preview-content">
                     <SpecializedView parentRef={contentRef} model={model} />
                 </div>
             </div>
+            <Typeahead
+                anchorRef={blockRef}
+                isOpen={openFileModal}
+                onClose={() => model.updateOpenFileModalAndError(false)}
+                onSelect={handleSelect}
+                fetchSuggestions={fetchSuggestionsFn}
+                placeholderText="Open File..."
+            />
         </>
     );
 }

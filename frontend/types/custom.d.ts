@@ -373,6 +373,14 @@ declare global {
         decimalPlaces?: number;
     };
 
+    interface SuggestionRequestContext {
+        widgetid: string;
+        reqnum: number;
+        dispose?: boolean;
+    }
+
+    type SuggestionsFnType = (query: string, reqContext: SuggestionRequestContext) => Promise<FetchSuggestionsResponse>;
+
     type DraggedFile = {
         uri: string;
         absParent: string;
