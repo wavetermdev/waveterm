@@ -10,6 +10,7 @@ import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { BlockHeaderTypeahead } from "@/app/typeahead/typeahead";
 import { WOS, globalStore } from "@/store/global";
+import { isDev } from "@/util/isdev";
 import { adaptFromReactOrNativeKeyEvent, checkKeyPressed } from "@/util/keyutil";
 import { fireAndForget } from "@/util/util";
 import clsx from "clsx";
@@ -599,6 +600,9 @@ interface WebViewProps {
 
 const BookmarkTypeahead = memo(
     ({ model, blockRef }: { model: WebViewModel; blockRef: React.RefObject<HTMLDivElement> }) => {
+        if (!isDev) {
+            return null;
+        }
         return (
             <BlockHeaderTypeahead
                 blockRef={blockRef}
