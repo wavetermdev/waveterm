@@ -11,6 +11,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"strings"
 	"sync"
 	"time"
 )
@@ -154,6 +155,10 @@ func fetchFavicon(domain string) (string, error) {
 	if mimeType == "" {
 		// If no Content-Type header, detect from content
 		mimeType = http.DetectContentType(data)
+	}
+
+	if !strings.HasPrefix(mimeType, "image/") {
+		return "", fmt.Errorf("unexpected MIME type: %s", mimeType)
 	}
 
 	return "data:" + mimeType + ";base64," + b64Data, nil

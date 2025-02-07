@@ -481,7 +481,6 @@ export class WebViewModel implements ViewModel {
             return true;
         }
         if (checkKeyPressed(e, "Cmd:o")) {
-            // return false; // commented out for now
             const curVal = globalStore.get(this.typeaheadOpen);
             globalStore.set(this.typeaheadOpen, !curVal);
             return true;
