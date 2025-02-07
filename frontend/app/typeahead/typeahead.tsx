@@ -170,7 +170,6 @@ const TypeaheadInner: React.FC<Omit<TypeaheadProps, "isOpen">> = ({
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
-            console.log("TYPEAHEAD handleClickOutside");
             if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
                 onClose();
             }
