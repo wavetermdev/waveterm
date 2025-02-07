@@ -690,7 +690,9 @@ function TableBody({
                         setSearch={setSearch}
                         idx={idx + table.getTopRows().length}
                         handleFileContextMenu={handleFileContextMenu}
-                        ref={(el) => (rowRefs.current[idx] = el)}
+                        ref={(el) => {
+                            rowRefs.current[idx] = el;
+                        }}
                         key={idx}
                     />
                 ))}
@@ -757,7 +759,9 @@ const TableRow = React.forwardRef(function (
             }}
             onClick={() => setFocusIndex(idx)}
             onContextMenu={(e) => handleFileContextMenu(e, row.original)}
-            ref={drag}
+            ref={(el) => {
+                drag(el);
+            }}
         >
             {row.getVisibleCells().map((cell) => (
                 <div
