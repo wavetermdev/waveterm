@@ -380,6 +380,12 @@ declare global {
     }
 
     type SuggestionsFnType = (query: string, reqContext: SuggestionRequestContext) => Promise<FetchSuggestionsResponse>;
+
+    type DraggedFile = {
+        uri: string;
+        absParent: string;
+        relName: string;
+    };
 }
 
 export {};

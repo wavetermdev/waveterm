@@ -31,6 +31,8 @@ import {
 } from "./types";
 import { determineDropDirection } from "./utils";
 
+const tileItemType = "TILE_ITEM";
+
 export interface TileLayoutProps {
     /**
      * The atom containing the layout tree state.
@@ -59,14 +61,16 @@ function TileLayoutComponent({ tabAtom, contents, getCursorPoint }: TileLayoutPr
     const setReady = useSetAtom(layoutModel.ready);
     const isResizing = useAtomValue(layoutModel.isResizing);
 
-    const { activeDrag, dragClientOffset } = useDragLayer((monitor) => ({
+    const { activeDrag, dragClientOffset, dragItemType } = useDragLayer((monitor) => ({
         activeDrag: monitor.isDragging(),
         dragClientOffset: monitor.getClientOffset(),
+        dragItemType: monitor.getItemType(),
     }));
 
     useEffect(() => {
-        setActiveDrag(activeDrag);
-    }, [setActiveDrag, activeDrag]);
+        const activeTileDrag = activeDrag && dragItemType == tileItemType;
+        setActiveDrag(activeTileDrag);
+    }, [activeDrag, dragItemType]);
 
     const checkForCursorBounds = useCallback(
         debounce(100, (dragClientOffset: XYCoord) => {
@@ -214,8 +218,6 @@ interface DisplayNodeProps {
     node: LayoutNode;
 }
 
-const dragItemType = "TILE_ITEM";
-
 /**
  * The draggable and displayable portion of a leaf node in a layout tree.
  */
@@ -230,7 +232,7 @@ const DisplayNode = ({ layoutModel, node }: DisplayNodeProps) => {
 
     const [{ isDragging }, drag, dragPreview] = useDrag(
         () => ({
-            type: dragItemType,
+            type: tileItemType,
             canDrag: () => !(isEphemeral || isMagnified),
             item: () => node,
             collect: (monitor) => ({
@@ -358,7 +360,7 @@ const OverlayNode = memo(({ node, layoutModel }: OverlayNodeProps) => {
 
     const [, drop] = useDrop(
         () => ({
-            accept: dragItemType,
+            accept: tileItemType,
             canDrop: (_, monitor) => {
                 const dragItem = monitor.getItem<LayoutNode>();
                 if (monitor.isOver({ shallow: true }) && dragItem.id !== node.id) {
