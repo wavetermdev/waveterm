@@ -163,6 +163,7 @@ export class PreviewModel implements ViewModel {
     connectionError: PrimitiveAtom<string>;
 
     openFileModal: PrimitiveAtom<boolean>;
+    openFileModalDelay: PrimitiveAtom<boolean>;
     openFileError: PrimitiveAtom<string>;
     openFileModalGiveFocusRef: React.MutableRefObject<() => boolean>;
 
@@ -185,6 +186,7 @@ export class PreviewModel implements ViewModel {
         this.refreshVersion = atom(0);
         this.previewTextRef = createRef();
         this.openFileModal = atom(false);
+        this.openFileModalDelay = atom(false);
         this.openFileError = atom(null) as PrimitiveAtom<string>;
         this.openFileModalGiveFocusRef = createRef();
         this.manageConnection = atom(true);
@@ -252,7 +254,7 @@ export class PreviewModel implements ViewModel {
                     text: headerPath,
                     ref: this.previewTextRef,
                     className: "preview-filename",
-                    onClick: () => this.updateOpenFileModalAndError(true),
+                    onClick: () => this.toggleOpenFileModal(),
                 },
             ];
             let saveClassName = "grey";
@@ -537,6 +539,25 @@ export class PreviewModel implements ViewModel {
     updateOpenFileModalAndError(isOpen, errorMsg = null) {
         globalStore.set(this.openFileModal, isOpen);
         globalStore.set(this.openFileError, errorMsg);
+        if (isOpen) {
+            globalStore.set(this.openFileModalDelay, true);
+        } else {
+            const delayVal = globalStore.get(this.openFileModalDelay);
+            if (delayVal) {
+                setTimeout(() => {
+                    globalStore.set(this.openFileModalDelay, false);
+                }, 200);
+            }
+        }
+    }
+
+    toggleOpenFileModal() {
+        const modalOpen = globalStore.get(this.openFileModal);
+        const delayVal = globalStore.get(this.openFileModalDelay);
+        if (!modalOpen && delayVal) {
+            return;
+        }
+        this.updateOpenFileModalAndError(!modalOpen);
     }
 
     async goHistory(newPath: string) {
@@ -811,12 +832,9 @@ export class PreviewModel implements ViewModel {
             fireAndForget(() => this.goParentDirectory({}));
             return true;
         }
-        const openModalOpen = globalStore.get(this.openFileModal);
-        if (!openModalOpen) {
-            if (checkKeyPressed(e, "Cmd:o")) {
-                this.updateOpenFileModalAndError(true);
-                return true;
-            }
+        if (checkKeyPressed(e, "Cmd:o")) {
+            this.toggleOpenFileModal();
+            return true;
         }
         const canPreview = globalStore.get(this.canPreview);
         if (canPreview) {
@@ -1066,7 +1084,6 @@ const SpecializedView = memo(({ parentRef, model }: SpecializedViewProps) => {
     if (!SpecializedViewComponent) {
         return <CenteredDiv>Invalid Specialzied View Component ({specializedView.specializedView})</CenteredDiv>;
     }
-    console.log("RENDER AGAIN SpecializedView", model, parentRef);
     return <SpecializedViewComponent model={model} parentRef={parentRef} />;
 });
 
