@@ -147,6 +147,11 @@ class RpcApiType {
         return client.wshRpcCall("eventunsuball", null, opts);
     }
 
+    // command "fetchsuggestions" [call]
+    FetchSuggestionsCommand(client: WshClient, data: FetchSuggestionsData, opts?: RpcOpts): Promise<FetchSuggestionsResponse> {
+        return client.wshRpcCall("fetchsuggestions", data, opts);
+    }
+
     // command "fileappend" [call]
     FileAppendCommand(client: WshClient, data: FileData, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("fileappend", data, opts);

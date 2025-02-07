@@ -220,11 +220,12 @@ func fileInfoRun(cmd *cobra.Command, args []string) error {
 
 	info, err := wshclient.FileInfoCommand(RpcClient, fileData, &wshrpc.RpcOpts{Timeout: fileTimeout})
 	err = convertNotFoundErr(err)
-	if err == fs.ErrNotExist {
-		return fmt.Errorf("%s: no such file", path)
-	}
 	if err != nil {
 		return fmt.Errorf("getting file info: %w", err)
+	}
+
+	if info.NotFound {
+		return fmt.Errorf("%s: no such file", path)
 	}
 
 	WriteStdout("name:\t%s\n", info.Name)
