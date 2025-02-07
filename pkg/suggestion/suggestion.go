@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"io/fs"
+	"net/url"
 	"os"
 	"path/filepath"
 	"sort"
@@ -138,6 +139,22 @@ func FetchSuggestions(ctx context.Context, data wshrpc.FetchSuggestionsData) (*w
 	return nil, fmt.Errorf("unsupported suggestion type: %q", data.SuggestionType)
 }
 
+func filterBookmarksForValid(bookmarks map[string]wconfig.WebBookmark) map[string]wconfig.WebBookmark {
+	validBookmarks := make(map[string]wconfig.WebBookmark)
+	for k, v := range bookmarks {
+		if v.Url == "" {
+			continue
+		}
+		u, err := url.ParseRequestURI(v.Url)
+		if err != nil || u.Scheme == "" || u.Host == "" {
+			continue
+		}
+
+		validBookmarks[k] = v
+	}
+	return validBookmarks
+}
+
 func fetchBookmarkSuggestions(_ context.Context, data wshrpc.FetchSuggestionsData) (*wshrpc.FetchSuggestionsResponse, error) {
 	if data.SuggestionType != "bookmark" {
 		return nil, fmt.Errorf("unsupported suggestion type: %q", data.SuggestionType)
@@ -155,6 +172,7 @@ func fetchBookmarkSuggestions(_ context.Context, data wshrpc.FetchSuggestionsDat
 	}
 
 	bookmarks := wconfig.GetWatcher().GetFullConfig().Bookmarks
+	bookmarks = filterBookmarksForValid(bookmarks)
 
 	searchTerm := data.Query
 	var patternRunes []rune
