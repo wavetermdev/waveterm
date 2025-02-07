@@ -292,6 +292,7 @@ func (impl *ServerImpl) RemoteTarStreamCommand(ctx context.Context, data wshrpc.
 				if err != nil {
 					return err
 				}
+				defer data.Close()
 				if _, err := io.Copy(fileWriter, data); err != nil {
 					return err
 				}
