@@ -8,7 +8,7 @@ import clsx from "clsx";
 import { Atom, useAtomValue } from "jotai";
 import React, { ReactNode, useEffect, useId, useRef, useState } from "react";
 
-interface TypeaheadProps {
+interface SuggestionControlProps {
     anchorRef: React.RefObject<HTMLElement>;
     isOpen: boolean;
     onClose: () => void;
@@ -19,12 +19,12 @@ interface TypeaheadProps {
     placeholderText?: string;
 }
 
-type BlockHeaderTypeaheadProps = Omit<TypeaheadProps, "anchorRef" | "isOpen"> & {
+type BlockHeaderSuggestionControlProps = Omit<SuggestionControlProps, "anchorRef" | "isOpen"> & {
     blockRef: React.RefObject<HTMLElement>;
     openAtom: Atom<boolean>;
 };
 
-const SuggestionControl: React.FC<TypeaheadProps> = ({
+const SuggestionControl: React.FC<SuggestionControlProps> = ({
     anchorRef,
     isOpen,
     onClose,
@@ -121,7 +121,7 @@ const SuggestionContent: React.FC<{
     return <span className="truncate">{highlightPositions(suggestion.display, suggestion.matchpos)}</span>;
 };
 
-const BlockHeaderSuggestionControl: React.FC<BlockHeaderTypeaheadProps> = (props) => {
+const BlockHeaderSuggestionControl: React.FC<BlockHeaderSuggestionControlProps> = (props) => {
     const [headerElem, setHeaderElem] = useState<HTMLElement>(null);
     const isOpen = useAtomValue(props.openAtom);
 
@@ -138,7 +138,7 @@ const BlockHeaderSuggestionControl: React.FC<BlockHeaderTypeaheadProps> = (props
     return <SuggestionControl {...props} anchorRef={{ current: headerElem }} isOpen={isOpen} className={newClass} />;
 };
 
-const SuggestionControlInner: React.FC<Omit<TypeaheadProps, "isOpen">> = ({
+const SuggestionControlInner: React.FC<Omit<SuggestionControlProps, "isOpen">> = ({
     anchorRef,
     onClose,
     onSelect,
@@ -222,8 +222,6 @@ const SuggestionControlInner: React.FC<Omit<TypeaheadProps, "isOpen">> = ({
             }
         }
     };
-
-    console.log("TypeaheadInner", suggestions);
 
     return (
         <div
