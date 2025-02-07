@@ -6,7 +6,7 @@ package suggestion
 import (
 	"context"
 	"fmt"
-	"log"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -17,7 +17,41 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 )
 
-// returns (baseDir, queryPrefix, searchTerm, error)
+type MockDirEntry struct {
+	NameStr  string
+	IsDirVal bool
+	FileMode fs.FileMode
+}
+
+func (m *MockDirEntry) Name() string               { return m.NameStr }
+func (m *MockDirEntry) IsDir() bool                { return m.IsDirVal }
+func (m *MockDirEntry) Type() fs.FileMode          { return m.FileMode }
+func (m *MockDirEntry) Info() (fs.FileInfo, error) { return nil, fs.ErrInvalid }
+
+var PathSepStr = string(os.PathSeparator)
+
+// ensureTrailingSlash makes sure s ends with a slash.
+func ensureTrailingSlash(s string) string {
+	if s == "" {
+		return s
+	}
+	if !strings.HasSuffix(s, PathSepStr) {
+		return s + PathSepStr
+	}
+	return s
+}
+
+// resolveFileQuery returns (baseDir, queryPrefix, searchTerm, error).
+//
+// Our approach is to use the presence of a trailing slash to decide whether
+// to treat the query as a directory listing (searchTerm is empty) or a search
+// filter. (This means that a query of exactly "." or ".." is treated as a
+// search filter, so that files with a dot in their name––including ".."––will
+// be returned.)
+//
+// In addition, if there is a slash anywhere in the query (but not at the end),
+// we treat everything before the last slash as a relative directory to search
+// in, and the portion after the last slash as the search term.
 func resolveFileQuery(cwd string, query string) (string, string, string, error) {
 	// If no current working directory, default to "~".
 	if cwd == "" {
@@ -31,31 +65,31 @@ func resolveFileQuery(cwd string, query string) (string, string, string, error) 
 	if query == "" {
 		return cwd, "", "", nil
 	}
-	if query == "~" || strings.HasPrefix(query, "~/") {
+	// Expand home if needed.
+	tildeSlash := "~" + PathSepStr
+	if query == "~" || strings.HasPrefix(query, tildeSlash) {
 		ogQuery := query
 		query, err = wavebase.ExpandHomeDir(query)
 		if err != nil {
 			return "", "", "", fmt.Errorf("error expanding query home dir: %w", err)
 		}
-		if ogQuery == "~" || ogQuery == "~/" {
-			return query, "~/", "", nil
+		if ogQuery == "~" || ogQuery == tildeSlash {
+			return query, tildeSlash, "", nil
 		}
 	}
-	// Handle absolute queries (starting with "/")
-	if strings.HasPrefix(query, "/") {
-		if query == "/" {
-			return "/", "/", "", nil
+	// Handle absolute queries.
+	if filepath.IsAbs(query) {
+		if filepath.Dir(query) == query {
+			return query, query, "", nil
 		}
-		if strings.HasSuffix(query, "/") {
-			// If the query ends with a slash, we want to list all entries inside that directory.
-			// Remove the trailing slash to get a canonical directory path.
-			baseDir := strings.TrimRight(query, "/")
-			// For display purposes, keep the trailing slash in the query prefix.
+		if strings.HasSuffix(query, PathSepStr) {
+			// Remove trailing slash for canonical directory path.
+			baseDir := strings.TrimRight(query, PathSepStr)
+			// But keep the trailing slash in the queryPrefix for display.
 			queryPrefix := query
 			return baseDir, queryPrefix, "", nil
 		}
-		// Otherwise (e.g. "/var/f"), baseDir is the directory containing the file and
-		// queryPrefix is the directory part.
+		// Otherwise, e.g. "/var/f"
 		baseDir := filepath.Dir(query)
 		queryPrefix := filepath.Dir(query)
 		searchTerm := filepath.Base(query)
@@ -63,24 +97,32 @@ func resolveFileQuery(cwd string, query string) (string, string, string, error) 
 	}
 
 	// For relative queries:
-	if strings.HasSuffix(query, "/") {
-		// When the query ends with a slash, the entire query represents a directory.
-		// Compute the full directory path by joining the cwd and query,
-		// then trim any trailing slash.
+	// If the query ends with a slash (e.g. "./" or "waveterm/"), then treat it
+	// as a directory listing.
+	if strings.HasSuffix(query, PathSepStr) {
 		fullPath := filepath.Join(cwd, query)
-		baseDir := strings.TrimRight(fullPath, string(filepath.Separator))
-		// Keep the query prefix as typed so that the suggestions show the trailing slash.
+		baseDir := strings.TrimRight(fullPath, PathSepStr)
 		queryPrefix := query
 		return baseDir, queryPrefix, "", nil
 	}
 
-	// For relative queries that do not end with a slash:
-	fullPath := filepath.Join(cwd, query)
-	baseDir := filepath.Dir(fullPath)
-	queryPrefix := filepath.Dir(query)
-	searchTerm := filepath.Base(query)
-	return baseDir, queryPrefix, searchTerm, nil
+	// If there is a slash in the query, split into directory part and search term.
+	if idx := strings.LastIndex(query, PathSepStr); idx != -1 {
+		dirPart := query[:idx]
+		term := query[idx+1:]
+		baseDir := filepath.Join(cwd, dirPart)
+		// For display purposes, set queryPrefix to the dirPart with a trailing slash.
+		queryPrefix := ""
+		if dirPart != "" {
+			queryPrefix = ensureTrailingSlash(dirPart)
+		}
+		return baseDir, queryPrefix, term, nil
+	}
+
+	// No slash in query: search in the cwd.
+	return cwd, "", query, nil
 }
+
 func FetchSuggestions(ctx context.Context, data wshrpc.FetchSuggestionsData) (*wshrpc.FetchSuggestionsResponse, error) {
 	if data.SuggestionType != "file" {
 		return nil, fmt.Errorf("unsupported suggestion type: %q", data.SuggestionType)
@@ -89,7 +131,6 @@ func FetchSuggestions(ctx context.Context, data wshrpc.FetchSuggestionsData) (*w
 	if err != nil {
 		return nil, fmt.Errorf("error resolving base dir: %w", err)
 	}
-	log.Printf("RESOLVE BASE DIR: %s, %s (from %s, %s)", baseDir, queryPrefix, data.FileCwd, data.Query)
 	dirFd, err := os.Open(baseDir)
 	if err != nil {
 		return nil, fmt.Errorf("error opening directory: %w", err)
@@ -107,14 +148,18 @@ func FetchSuggestions(ctx context.Context, data wshrpc.FetchSuggestionsData) (*w
 		return nil, fmt.Errorf("error reading directory: %w", err)
 	}
 
-	lowerSearchTerm := strings.ToLower(searchTerm)
 	var suggestions []wshrpc.SuggestionType
+	if filepath.Dir(baseDir) != baseDir {
+		dirEnts = append(dirEnts, &MockDirEntry{NameStr: "..", IsDirVal: true, FileMode: fs.ModeDir | 0755})
+	}
+	lowerSearchTerm := strings.ToLower(searchTerm)
 	for _, dirEnt := range dirEnts {
+		// Limit to at most 50 suggestions.
 		if len(suggestions) > 50 {
 			break
 		}
 		fileName := dirEnt.Name()
-		// If there is a search term, only include entries that match it.
+		// If a search term is provided, only include entries that match.
 		if lowerSearchTerm != "" && !strings.Contains(strings.ToLower(fileName), lowerSearchTerm) {
 			continue
 		}
@@ -124,7 +169,7 @@ func FetchSuggestions(ctx context.Context, data wshrpc.FetchSuggestionsData) (*w
 		fullPath := filepath.Join(baseDir, fileName)
 		s.FilePath = fullPath
 		s.SuggestionId = utilfn.QuickHashString(fullPath)
-		// The suggestion name is built using the queryPrefix.
+		// Build the display name using the queryPrefix.
 		s.FileName = filepath.Join(queryPrefix, fileName)
 		s.FileMimeType = fileutil.DetectMimeTypeWithDirEnt(fullPath, dirEnt)
 		suggestions = append(suggestions, s)

@@ -177,7 +177,11 @@ const TypeaheadInner: React.FC<Omit<TypeaheadProps, "isOpen">> = ({
             const suggestion = suggestions[selectedIndex];
             if (suggestion != null) {
                 // set the query to the suggestion
-                setQuery(suggestion["file:name"]);
+                if (suggestion["file:mimetype"] == "directory") {
+                    setQuery(suggestion["file:name"] + "/");
+                } else {
+                    setQuery(suggestion["file:name"]);
+                }
             }
         }
     };
