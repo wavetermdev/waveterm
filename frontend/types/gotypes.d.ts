@@ -467,6 +467,7 @@ declare global {
         presets: {[key: string]: MetaType};
         termthemes: {[key: string]: TermThemeType};
         connections: {[key: string]: ConnKeywords};
+        bookmarks: {[key: string]: WebBookmark};
         configerrors: ConfigError[];
     };
 
@@ -1284,6 +1285,16 @@ declare global {
         pos: Point;
         winsize: WinSize;
         lastfocusts: number;
+    };
+
+    // wconfig.WebBookmark
+    type WebBookmark = {
+        url: string;
+        title?: string;
+        icon?: string;
+        iconcolor?: string;
+        iconurl?: string;
+        "display:order"?: number;
     };
 
     // service.WebCallType

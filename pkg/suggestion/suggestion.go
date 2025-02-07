@@ -18,6 +18,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/util/fileutil"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
+	"github.com/wavetermdev/waveterm/pkg/wconfig"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 )
 
@@ -127,39 +128,6 @@ func resolveFileQuery(cwd string, query string) (string, string, string, error) 
 	return cwd, "", query, nil
 }
 
-type BookmarkType struct {
-	FavIcon string `json:"favicon,omitempty"`
-	Title   string `json:"title,omitempty"`
-	Url     string `json:"url"`
-}
-
-var Bookmarks = []BookmarkType{
-	{
-		Title: "Google",
-		Url:   "https://www.google.com",
-	},
-	{
-		Title: "Claude AI",
-		Url:   "https://claude.ai",
-	},
-	{
-		Title: "Wave Terminal",
-		Url:   "https://waveterm.dev",
-	},
-	{
-		Title: "Wave Github",
-		Url:   "https://github.com/wavetermdev/waveterm",
-	},
-	{
-		Title: "Chat GPT (Open AI)",
-		Url:   "https://chatgpt.com",
-	},
-	{
-		Title: "Wave Pull Requests",
-		Url:   "https://github.com/wavetermdev/waveterm/pulls",
-	},
-}
-
 func FetchSuggestions(ctx context.Context, data wshrpc.FetchSuggestionsData) (*wshrpc.FetchSuggestionsResponse, error) {
 	if data.SuggestionType == "file" {
 		return fetchFileSuggestions(ctx, data)
@@ -179,12 +147,14 @@ func fetchBookmarkSuggestions(_ context.Context, data wshrpc.FetchSuggestionsDat
 	// field that will be used for display, the positions for the secondary field (if any),
 	// and its original index in the Bookmarks list.
 	type scoredEntry struct {
-		bookmark    BookmarkType
+		bookmark    wconfig.WebBookmark
 		score       int
 		matchPos    []int // positions for the field that's used as Display
 		subMatchPos []int // positions for the other field (if any)
 		origIndex   int
 	}
+
+	bookmarks := wconfig.GetWatcher().GetFullConfig().Bookmarks
 
 	searchTerm := data.Query
 	var patternRunes []rune
@@ -195,7 +165,18 @@ func fetchBookmarkSuggestions(_ context.Context, data wshrpc.FetchSuggestionsDat
 	var scoredEntries []scoredEntry
 	var slab util.Slab
 
-	for i, bookmark := range Bookmarks {
+	bookmarkKeys := utilfn.GetKeys[wconfig.WebBookmark](bookmarks)
+	// sort by display:order and then by key
+	sort.Slice(bookmarkKeys, func(i, j int) bool {
+		bookmarkA := bookmarks[bookmarkKeys[i]]
+		bookmarkB := bookmarks[bookmarkKeys[j]]
+		if bookmarkA.DisplayOrder != bookmarkB.DisplayOrder {
+			return bookmarkA.DisplayOrder < bookmarkB.DisplayOrder
+		}
+		return bookmarkKeys[i] < bookmarkKeys[j]
+	})
+	for i, bmkey := range bookmarkKeys {
+		bookmark := bookmarks[bmkey]
 		// If no search term, include all bookmarks (score 0, no positions).
 		if searchTerm == "" {
 			scoredEntries = append(scoredEntries, scoredEntry{

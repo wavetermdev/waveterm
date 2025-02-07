@@ -1023,3 +1023,11 @@ func QuickHashString(s string) string {
 	h.Write([]byte(s))
 	return base64.RawURLEncoding.EncodeToString(h.Sum(nil))
 }
+
+func GetKeys[T any](m map[string]T) []string {
+	keys := make([]string, 0, len(m))
+	for key := range m {
+		keys = append(keys, key)
+	}
+	return keys
+}
