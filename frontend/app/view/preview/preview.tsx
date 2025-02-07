@@ -1087,90 +1087,29 @@ const SpecializedView = memo(({ parentRef, model }: SpecializedViewProps) => {
     return <SpecializedViewComponent model={model} parentRef={parentRef} />;
 });
 
-const mockFileSuggestions: SuggestionType[] = [
-    {
-        type: "file",
-        suggestionid: "1",
-        "file:name": "document.txt",
-        "file:path": "/home/user/document.txt",
-        icon: "file",
-        iconcolor: "#4A90E2",
-        "file:mimetype": "text/plain",
-    },
-    {
-        type: "file",
-        suggestionid: "2",
-        "file:name": "presentation.pptx",
-        "file:path": "/home/user/presentation.pptx",
-        icon: "file-powerpoint",
-        iconcolor: "#D04423",
-        "file:mimetype": "application/vnd.ms-powerpoint",
-    },
-    {
-        type: "file",
-        suggestionid: "3",
-        "file:name": "spreadsheet.xlsx",
-        "file:path": "/home/user/spreadsheet.xlsx",
-        icon: "file-excel",
-        iconcolor: "#107C41",
-        "file:mimetype": "application/vnd.ms-excel",
-    },
-    {
-        type: "file",
-        suggestionid: "4",
-        "file:name": "image.png",
-        "file:path": "/home/user/image.png",
-        icon: "file-image",
-        iconcolor: "#E44D26",
-        "file:mimetype": "image/png",
-    },
-    {
-        type: "file",
-        suggestionid: "5",
-        "file:name": "notes.md",
-        "file:path": "/home/user/notes.md",
-        icon: "file-alt",
-        iconcolor: "#777",
-        "file:mimetype": "text/markdown",
-    },
-];
-
 const fetchSuggestions = async (
-    cwd: string,
+    model: PreviewModel,
     query: string,
     reqContext: SuggestionRequestContext
 ): Promise<FetchSuggestionsResponse> => {
-    return RpcApi.FetchSuggestionsCommand(TabRpcClient, {
-        suggestiontype: "file",
-        "file:cwd": cwd,
-        query: query,
-        widgetid: reqContext.widgetid,
-        reqnum: reqContext.reqnum,
-    });
-};
-
-const mockFetchSuggestions = async (
-    query: string,
-    reqCtx: SuggestionRequestContext
-): Promise<FetchSuggestionsResponse> => {
-    console.log("mock-suggestions", query);
-    return new Promise((resolve) => {
-        setTimeout(() => {
-            if (query == null || !query.trim()) {
-                resolve({ suggestions: mockFileSuggestions, reqnum: reqCtx.reqnum });
-            } else {
-                resolve({
-                    suggestions: mockFileSuggestions.filter((file) => {
-                        if (file["file:name"] == null) {
-                            return false;
-                        }
-                        return file["file:name"].toLowerCase().includes(query.toLowerCase());
-                    }),
-                    reqnum: reqCtx.reqnum,
-                });
-            }
-        }, 200);
-    });
+    const fileInfo = await globalStore.get(model.statFile);
+    if (fileInfo == null) {
+        return null;
+    }
+    const conn = await globalStore.get(model.connection);
+    return await RpcApi.FetchSuggestionsCommand(
+        TabRpcClient,
+        {
+            suggestiontype: "file",
+            "file:cwd": fileInfo.dir,
+            query: query,
+            widgetid: reqContext.widgetid,
+            reqnum: reqContext.reqnum,
+        },
+        {
+            route: makeConnRoute(conn),
+        }
+    );
 };
 
 function PreviewView({
@@ -1193,11 +1132,7 @@ function PreviewView({
         model.handleOpenFile(s["file:path"]);
     };
     const fetchSuggestionsFn = async (query, ctx) => {
-        const fileInfo = await globalStore.get(model.statFile);
-        if (fileInfo == null) {
-            return null;
-        }
-        return await fetchSuggestions(fileInfo.dir, query, ctx);
+        return await fetchSuggestions(model, query, ctx);
     };
     return (
         <>

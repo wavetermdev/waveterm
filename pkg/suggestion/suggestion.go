@@ -172,6 +172,7 @@ func FetchSuggestions(ctx context.Context, data wshrpc.FetchSuggestionsData) (*w
 	type scoredEntry struct {
 		ent       fs.DirEntry
 		score     int
+		fileName  string
 		positions []int
 	}
 	var scoredEntries []scoredEntry
@@ -201,20 +202,23 @@ func FetchSuggestions(ctx context.Context, data wshrpc.FetchSuggestionsData) (*w
 				continue
 			}
 			score = result.Score
-			entry := scoredEntry{ent: de, score: score}
+			entry := scoredEntry{ent: de, score: score, fileName: fileName}
 			if positions != nil {
 				entry.positions = *positions
 			}
 			scoredEntries = append(scoredEntries, entry)
 		} else {
-			scoredEntries = append(scoredEntries, scoredEntry{ent: de, score: score})
+			scoredEntries = append(scoredEntries, scoredEntry{ent: de, score: score, fileName: fileName})
 		}
 	}
 
 	// Sort entries by descending score (better matches first).
 	if searchTerm != "" {
 		sort.Slice(scoredEntries, func(i, j int) bool {
-			return scoredEntries[i].score > scoredEntries[j].score
+			if scoredEntries[i].score != scoredEntries[j].score {
+				return scoredEntries[i].score > scoredEntries[j].score
+			}
+			return len(scoredEntries[i].fileName) < len(scoredEntries[j].fileName)
 		})
 	}
 
