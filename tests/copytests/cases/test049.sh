@@ -1,4 +1,4 @@
-# copy the current directory into an existing directory with the -r flag 
+# copy the current directory into an existing directory
 # ensure the copy succeeds and the output exists
 
 set -e
@@ -8,7 +8,7 @@ touch foo/bar.txt
 mkdir baz
 cd foo
 
-wsh file copy -r . ../baz
+wsh file copy . ../baz
 cd ..
 
 if [ ! -f baz/bar.txt ]; then

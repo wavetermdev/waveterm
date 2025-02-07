@@ -14,7 +14,7 @@ mkdir corge
 # we need a nested corge/foo so the foo.zip contains the same exact file names
 # in other words, if one file was named foo and the other was corge, they would
 # not match. this allows them to be the same.
-wsh file copy -r foo corge/foo
+wsh file copy foo corge/foo
 
 
 zip -r foo.zip foo >/dev/null 2>&1

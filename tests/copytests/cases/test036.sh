@@ -1,11 +1,11 @@
-# copy an empty directory to a non-existing directory ending with / with -r flag
+# copy an empty directory to a non-existing directory ending with /
 # ensure the copy succeeds and the new directory exists
 
 set -e
 cd "$HOME/testcp"
 mkdir bar
 
-wsh file copy -r bar baz/
+wsh file copy bar baz/
 
 if [ ! -d baz ]; then
     echo "baz does not exist"

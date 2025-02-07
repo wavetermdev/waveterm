@@ -1,4 +1,4 @@
-# copy a directory containing a file to an existing directory with -r flag
+# copy a directory containing a file to an existing directory
 # ensure this succeeds and the new files are nested in the existing directory
 
 set -e
@@ -7,7 +7,7 @@ mkdir bar
 touch bar/foo.txt
 mkdir baz
 
-wsh file -r bar baz
+wsh file copy bar baz
 
 if [ ! -f baz/bar/foo.txt ]; then
     echo "baz/bar/foo.txt does not exist"
