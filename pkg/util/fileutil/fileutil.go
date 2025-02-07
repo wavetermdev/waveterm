@@ -279,6 +279,7 @@ func ReadFileStream(ctx context.Context, readCh <-chan wshrpc.RespOrErrorUnion[w
 				if fileData.Info.IsDir {
 					isDir = true
 				}
+				fileInfoCallback(*fileData.Info)
 				continue
 			}
 			if isDir {
