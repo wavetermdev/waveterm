@@ -9,7 +9,6 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
-	"io/fs"
 	"log"
 	"os"
 	"path"
