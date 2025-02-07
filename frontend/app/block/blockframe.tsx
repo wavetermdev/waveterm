@@ -30,6 +30,7 @@ import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
 import * as React from "react";
 import { CopyButton } from "../element/copybutton";
 import { BlockFrameProps } from "./blocktypes";
+import { WindowDrag } from "../element/windowdrag";
 
 const NumActiveConnColors = 8;
 
@@ -171,6 +172,8 @@ const BlockFrame_Header = ({
     const preIconButton = util.useAtomValueSafe(viewModel?.preIconButton);
     let headerTextUnion = util.useAtomValueSafe(viewModel?.viewText);
     const magnified = jotai.useAtomValue(nodeModel.isMagnified);
+    const settings = jotai.useAtomValue(atoms.settingsAtom);
+    const autoHideTabBar = settings?.["window:autohidetabbar"] ?? false;
     const prevMagifiedState = React.useRef(magnified);
     const manageConnection = util.useAtomValueSafe(viewModel?.manageConnection);
     const dragHandleRef = preview ? null : nodeModel.dragHandleRef;
@@ -243,6 +246,7 @@ const BlockFrame_Header = ({
 
     return (
         <div className="block-frame-default-header" ref={dragHandleRef} onContextMenu={onContextMenu}>
+            <WindowDrag className={clsx({ 'left': autoHideTabBar })} />
             {preIconButtonElem}
             <div className="block-frame-default-header-iconview">
                 {viewIconElem}

@@ -8,6 +8,7 @@ import { deleteLayoutModelForTab } from "@/layout/index";
 import { atoms, createTab, getApi, globalStore, isDev, PLATFORM, setActiveTab } from "@/store/global";
 import { fireAndForget } from "@/util/util";
 import { useAtomValue } from "jotai";
+import clsx from "clsx";
 import { OverlayScrollbars } from "overlayscrollbars";
 import { createRef, memo, useCallback, useEffect, useRef, useState } from "react";
 import { debounce } from "throttle-debounce";
@@ -174,9 +175,43 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
     const isFullScreen = useAtomValue(atoms.isFullScreen);
 
     const settings = useAtomValue(atoms.settingsAtom);
+    const autoHideTabBar = settings?.["window:autohidetabbar"] ?? false;
 
     let prevDelta: number;
     let prevDragDirection: string;
+
+    const handleAutoHideTabBar = (event: MouseEvent) => {
+        const tabBar = tabbarWrapperRef.current;
+        const tabBarHeight = tabBar?.clientHeight + 1;
+
+        if (event.type === 'mouseenter') {
+            tabBar.style.top = '0px';
+            tabBar.addEventListener("mouseleave", handleAutoHideTabBar);
+            tabBar.classList.add('tab-bar-wrapper-auto-hide-visible')
+        }
+
+        if (event.type === 'mouseleave') {
+            tabBar.style.top = `-${tabBarHeight - 10}px`;
+            tabBar.removeEventListener("mouseleave", handleAutoHideTabBar);
+            tabBar.classList.remove('tab-bar-wrapper-auto-hide-visible')
+        }
+    };
+
+    useEffect(() => {
+        const tabBar = tabbarWrapperRef.current;
+        if (!autoHideTabBar) {
+            tabBar.style.top = '0px';
+            return;
+        }
+
+        const tabBarHeight = tabBar?.clientHeight + 1;
+        if (autoHideTabBar) {
+            tabbarWrapperRef.current.style.top = `-${tabBarHeight - 10}px`
+        }
+
+        tabbarWrapperRef.current.addEventListener("mouseenter", handleAutoHideTabBar);
+        return () => tabbarWrapperRef.current.removeEventListener("mouseenter", handleAutoHideTabBar);
+    }, [autoHideTabBar])
 
     // Update refs when tabIds change
     useEffect(() => {
@@ -654,7 +689,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
         title: "Add Tab",
     };
     return (
-        <div ref={tabbarWrapperRef} className="tab-bar-wrapper">
+        <div ref={tabbarWrapperRef} className={clsx('tab-bar-wrapper', {'tab-bar-wrapper-auto-hide': autoHideTabBar, 'tab-bar-wrapper-always-visible': !autoHideTabBar})}>
             <WindowDrag ref={draggerLeftRef} className="left" />
             {appMenuButton}
             {devLabel}
