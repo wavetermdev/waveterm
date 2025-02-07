@@ -126,8 +126,202 @@ func resolveFileQuery(cwd string, query string) (string, string, string, error) 
 	return cwd, "", query, nil
 }
 
-// FetchSuggestions returns file suggestions using junegunn/fzf’s fuzzy matching.
+type BookmarkType struct {
+	FavIcon string `json:"favicon,omitempty"`
+	Title   string `json:"title,omitempty"`
+	Url     string `json:"url"`
+}
+
+var Bookmarks = []BookmarkType{
+	{
+		Title: "Google",
+		Url:   "https://www.google.com",
+	},
+	{
+		Title: "Claude AI",
+		Url:   "https://claude.ai",
+	},
+	{
+		Title: "Wave Terminal",
+		Url:   "https://waveterm.com",
+	},
+	{
+		Title: "Wave Github",
+		Url:   "https://github.com/wavetermdev/waveterm",
+	},
+	{
+		Title: "Chat GPT (Open AI)",
+		Url:   "https://chatgpt.com",
+	},
+	{
+		Title: "Wave Pull Requests",
+		Url:   "https://github.com/wavetermdev/waveterm/pulls",
+	},
+}
+
 func FetchSuggestions(ctx context.Context, data wshrpc.FetchSuggestionsData) (*wshrpc.FetchSuggestionsResponse, error) {
+	if data.SuggestionType == "file" {
+		return fetchFileSuggestions(ctx, data)
+	}
+	if data.SuggestionType == "bookmark" {
+		return fetchBookmarkSuggestions(ctx, data)
+	}
+	return nil, fmt.Errorf("unsupported suggestion type: %q", data.SuggestionType)
+}
+
+func fetchBookmarkSuggestions(ctx context.Context, data wshrpc.FetchSuggestionsData) (*wshrpc.FetchSuggestionsResponse, error) {
+	if data.SuggestionType != "bookmark" {
+		return nil, fmt.Errorf("unsupported suggestion type: %q", data.SuggestionType)
+	}
+
+	// scoredEntry holds a bookmark along with its computed score, the match positions for the
+	// field that will be used for display, the positions for the secondary field (if any),
+	// and its original index in the Bookmarks list.
+	type scoredEntry struct {
+		bookmark    BookmarkType
+		score       int
+		matchPos    []int // positions for the field that's used as Display
+		subMatchPos []int // positions for the other field (if any)
+		origIndex   int
+	}
+
+	searchTerm := data.Query
+	var patternRunes []rune
+	if searchTerm != "" {
+		patternRunes = []rune(strings.ToLower(searchTerm))
+	}
+
+	var scoredEntries []scoredEntry
+	var slab util.Slab
+
+	for i, bookmark := range Bookmarks {
+		// If no search term, include all bookmarks (score 0, no positions).
+		if searchTerm == "" {
+			scoredEntries = append(scoredEntries, scoredEntry{
+				bookmark:  bookmark,
+				score:     0,
+				origIndex: i,
+			})
+			continue
+		}
+
+		// For bookmarks with a title, Display is set to the title and SubText to the URL.
+		// We perform fuzzy matching on both fields.
+		if bookmark.Title != "" {
+			// Fuzzy match against the title.
+			candidateTitle := strings.ToLower(bookmark.Title)
+			textTitle := util.ToChars([]byte(candidateTitle))
+			resultTitle, titlePositionsPtr := algo.FuzzyMatchV2(false, true, true, &textTitle, patternRunes, true, &slab)
+			var titleScore int
+			var titlePositions []int
+			if titlePositionsPtr != nil {
+				titlePositions = *titlePositionsPtr
+			}
+			titleScore = resultTitle.Score
+
+			// Fuzzy match against the URL.
+			candidateUrl := strings.ToLower(bookmark.Url)
+			textUrl := util.ToChars([]byte(candidateUrl))
+			resultUrl, urlPositionsPtr := algo.FuzzyMatchV2(false, true, true, &textUrl, patternRunes, true, &slab)
+			var urlScore int
+			var urlPositions []int
+			if urlPositionsPtr != nil {
+				urlPositions = *urlPositionsPtr
+			}
+			urlScore = resultUrl.Score
+
+			// Compute the overall score as the higher of the two.
+			maxScore := titleScore
+			if urlScore > maxScore {
+				maxScore = urlScore
+			}
+
+			// If neither field produced a positive match, skip this bookmark.
+			if maxScore <= 0 {
+				continue
+			}
+
+			// Since Display is title, we use the title match positions as MatchPos and the URL match positions as SubMatchPos.
+			scoredEntries = append(scoredEntries, scoredEntry{
+				bookmark:    bookmark,
+				score:       maxScore,
+				matchPos:    titlePositions,
+				subMatchPos: urlPositions,
+				origIndex:   i,
+			})
+		} else {
+			// For bookmarks with no title, Display is set to the URL.
+			// Only perform fuzzy matching against the URL.
+			candidateUrl := strings.ToLower(bookmark.Url)
+			textUrl := util.ToChars([]byte(candidateUrl))
+			resultUrl, urlPositionsPtr := algo.FuzzyMatchV2(false, true, true, &textUrl, patternRunes, true, &slab)
+			urlScore := resultUrl.Score
+			var urlPositions []int
+			if urlPositionsPtr != nil {
+				urlPositions = *urlPositionsPtr
+			}
+
+			// Skip this bookmark if the URL doesn't match.
+			if urlScore <= 0 {
+				continue
+			}
+
+			scoredEntries = append(scoredEntries, scoredEntry{
+				bookmark:    bookmark,
+				score:       urlScore,
+				matchPos:    urlPositions, // match positions come from the URL, since that's what is displayed.
+				subMatchPos: nil,
+				origIndex:   i,
+			})
+		}
+	}
+
+	// Sort the scored entries in descending order by score.
+	// For equal scores, preserve the original order from the Bookmarks list.
+	sort.Slice(scoredEntries, func(i, j int) bool {
+		if scoredEntries[i].score != scoredEntries[j].score {
+			return scoredEntries[i].score > scoredEntries[j].score
+		}
+		return scoredEntries[i].origIndex < scoredEntries[j].origIndex
+	})
+
+	// Build up to 50 suggestions.
+	var suggestions []wshrpc.SuggestionType
+	for i, entry := range scoredEntries {
+		if i >= 50 {
+			break
+		}
+
+		var display, subText string
+		if entry.bookmark.Title != "" {
+			display = entry.bookmark.Title
+			subText = entry.bookmark.Url
+		} else {
+			display = entry.bookmark.Url
+			subText = ""
+		}
+
+		suggestion := wshrpc.SuggestionType{
+			Type:         "url",
+			SuggestionId: utilfn.QuickHashString(entry.bookmark.Url),
+			Display:      display,
+			SubText:      subText,
+			MatchPos:     entry.matchPos,    // These positions correspond to the field in Display.
+			SubMatchPos:  entry.subMatchPos, // For bookmarks with a title, this is the URL match positions.
+			Score:        entry.score,
+			UrlUrl:       entry.bookmark.Url,
+		}
+		suggestions = append(suggestions, suggestion)
+	}
+
+	return &wshrpc.FetchSuggestionsResponse{
+		Suggestions: suggestions,
+		ReqNum:      data.ReqNum,
+	}, nil
+}
+
+// FetchSuggestions returns file suggestions using junegunn/fzf’s fuzzy matching.
+func fetchFileSuggestions(ctx context.Context, data wshrpc.FetchSuggestionsData) (*wshrpc.FetchSuggestionsResponse, error) {
 	// Only support file suggestions.
 	if data.SuggestionType != "file" {
 		return nil, fmt.Errorf("unsupported suggestion type: %q", data.SuggestionType)
@@ -239,21 +433,20 @@ func FetchSuggestions(ctx context.Context, data wshrpc.FetchSuggestionsData) (*w
 			}
 		}
 		s := wshrpc.SuggestionType{
-			Type:           "file",
-			FilePath:       fullPath,
-			SuggestionId:   utilfn.QuickHashString(fullPath),
-			Display:        suggestionFileName,
-			FileName:       suggestionFileName,
-			FileMimeType:   fileutil.DetectMimeTypeWithDirEnt(fullPath, candidate.ent),
-			MatchPositions: scoredEntries[i].positions,
-			Score:          candidate.score,
+			Type:         "file",
+			FilePath:     fullPath,
+			SuggestionId: utilfn.QuickHashString(fullPath),
+			Display:      suggestionFileName,
+			FileName:     suggestionFileName,
+			FileMimeType: fileutil.DetectMimeTypeWithDirEnt(fullPath, candidate.ent),
+			MatchPos:     scoredEntries[i].positions,
+			Score:        candidate.score,
 		}
 		suggestions = append(suggestions, s)
 	}
 
 	return &wshrpc.FetchSuggestionsResponse{
-		Suggestions:   suggestions,
-		ReqNum:        data.ReqNum,
-		HighlightTerm: searchTerm,
+		Suggestions: suggestions,
+		ReqNum:      data.ReqNum,
 	}, nil
 }

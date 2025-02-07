@@ -240,28 +240,13 @@ export class WebViewModel implements ViewModel {
         query: string,
         reqContext: SuggestionRequestContext
     ): Promise<FetchSuggestionsResponse> {
-        let suggestions: SuggestionType[] = [];
-        suggestions.push({
-            type: "url",
-            suggestionid: "google",
-            display: "Google",
-            subtext: "https://www.google.com",
-            "url:url": "https://www.google.com",
+        const result = await RpcApi.FetchSuggestionsCommand(TabRpcClient, {
+            suggestiontype: "bookmark",
+            query,
+            widgetid: reqContext.widgetid,
+            reqnum: reqContext.reqnum,
         });
-        suggestions.push({
-            type: "url",
-            suggestionid: "claude",
-            display: "Claude AI",
-            subtext: "https://claude.ai",
-            "url:url": "https://claude.ai",
-        });
-        suggestions.push({
-            type: "url",
-            suggestionid: "chatgpt",
-            display: "https://chatgpt.com",
-            "url:url": "https://chatgpt.com/",
-        });
-        return { suggestions: suggestions, reqnum: reqContext.reqnum };
+        return result;
     }
 
     handleUrlWrapperMouseOver(e: React.MouseEvent<HTMLDivElement, MouseEvent>) {

@@ -25,40 +25,13 @@ const Typeahead: React.FC<TypeaheadProps> = ({ anchorRef, isOpen, onClose, onSel
     return <TypeaheadInner {...{ anchorRef, onClose, onSelect, fetchSuggestions, className }} />;
 };
 
-function highlightSearchMatch(target: string, search: string, highlightFn: (char: string) => ReactNode): ReactNode[] {
-    if (!search || !target) return [target];
-
-    const result: ReactNode[] = [];
-    let targetIndex = 0;
-    let searchIndex = 0;
-
-    while (targetIndex < target.length) {
-        // If we've matched all search chars, add remaining target string
-        if (searchIndex >= search.length) {
-            result.push(target.slice(targetIndex));
-            break;
-        }
-
-        // If current chars match
-        if (target[targetIndex].toLowerCase() === search[searchIndex].toLowerCase()) {
-            // Add highlighted character
-            result.push(highlightFn(target[targetIndex]));
-            searchIndex++;
-            targetIndex++;
-        } else {
-            // Add non-matching character
-            result.push(target[targetIndex]);
-            targetIndex++;
-        }
-    }
-    return result;
-}
-
-function defaultHighlighter(target: string, search: string): ReactNode[] {
-    return highlightSearchMatch(target, search, (char) => <span className="text-blue-500 font-bold">{char}</span>);
-}
-
 function highlightPositions(target: string, positions: number[]): ReactNode[] {
+    if (target == null) {
+        return [];
+    }
+    if (positions == null) {
+        return [target];
+    }
     const result: ReactNode[] = [];
     let targetIndex = 0;
     let posIndex = 0;
@@ -73,16 +46,6 @@ function highlightPositions(target: string, positions: number[]): ReactNode[] {
         targetIndex++;
     }
     return result;
-}
-
-function getHighlightedText(suggestion: SuggestionType, highlightTerm: string): ReactNode[] {
-    if (suggestion.matchpositions != null && suggestion.matchpositions.length > 0) {
-        return highlightPositions(suggestion.display, suggestion.matchpositions);
-    }
-    if (isBlank(highlightTerm)) {
-        return [suggestion.display];
-    }
-    return defaultHighlighter(suggestion.display, highlightTerm);
 }
 
 function getMimeTypeIconAndColor(fullConfig: FullConfigType, mimeType: string): [string, string] {
@@ -124,24 +87,26 @@ const SuggestionIcon: React.FC<{ suggestion: SuggestionType }> = ({ suggestion }
         const iconClass = makeIconClass(icon, true, { defaultIcon: "file" });
         return <i className={iconClass} style={{ color: iconColor }} />;
     }
-    return makeIconClass("file", true);
+    const iconClass = makeIconClass("file", true);
+    return <i className={iconClass} />;
 };
 
 const SuggestionContent: React.FC<{
     suggestion: SuggestionType;
-    highlightTerm: string;
-}> = ({ suggestion, highlightTerm }) => {
+}> = ({ suggestion }) => {
     if (!isBlank(suggestion.subtext)) {
         return (
             <div className="flex flex-col">
                 {/* Title on the first line, with highlighting */}
-                <div className="truncate">{getHighlightedText(suggestion, highlightTerm)}</div>
+                <div className="truncate">{highlightPositions(suggestion.display, suggestion.matchpos)}</div>
                 {/* Subtext on the second line in a smaller, grey style */}
-                <div className="truncate text-sm text-gray-400">{suggestion.subtext}</div>
+                <div className="truncate text-sm text-gray-400">
+                    {highlightPositions(suggestion.subtext, suggestion.submatchpos)}
+                </div>
             </div>
         );
     }
-    return <span className="truncate">{getHighlightedText(suggestion, highlightTerm)}</span>;
+    return <span className="truncate">{highlightPositions(suggestion.display, suggestion.matchpos)}</span>;
 };
 
 const TypeaheadInner: React.FC<Omit<TypeaheadProps, "isOpen">> = ({
@@ -158,7 +123,6 @@ const TypeaheadInner: React.FC<Omit<TypeaheadProps, "isOpen">> = ({
     const reqNumRef = useRef(0);
     const [suggestions, setSuggestions] = useState<SuggestionType[]>([]);
     const [selectedIndex, setSelectedIndex] = useState(0);
-    const [highlightTerm, setHighlightTerm] = useState("");
     const [fetched, setFetched] = useState(false);
     const inputRef = useRef<HTMLInputElement>(null);
     const dropdownRef = useRef<HTMLDivElement>(null);
@@ -179,7 +143,6 @@ const TypeaheadInner: React.FC<Omit<TypeaheadProps, "isOpen">> = ({
                 return;
             }
             setSuggestions(results.suggestions ?? []);
-            setHighlightTerm(results.highlightterm ?? "");
             setFetched(true);
         });
     }, [query, fetchSuggestions]);
@@ -231,6 +194,8 @@ const TypeaheadInner: React.FC<Omit<TypeaheadProps, "isOpen">> = ({
         }
     };
 
+    console.log("TypeaheadInner", suggestions);
+
     return (
         <div
             className={clsx(
@@ -271,7 +236,7 @@ const TypeaheadInner: React.FC<Omit<TypeaheadProps, "isOpen">> = ({
                             }}
                         >
                             <SuggestionIcon suggestion={suggestion} />
-                            <SuggestionContent suggestion={suggestion} highlightTerm={highlightTerm} />
+                            <SuggestionContent suggestion={suggestion} />
                         </div>
                     ))}
                 </div>

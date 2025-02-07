@@ -387,7 +387,6 @@ declare global {
     type FetchSuggestionsResponse = {
         reqnum: number;
         suggestions: SuggestionType[];
-        highlightterm?: string;
     };
 
     // wshrpc.FileCopyOpts
@@ -784,7 +783,8 @@ declare global {
         icon?: string;
         iconcolor?: string;
         iconsrc?: string;
-        matchpositions?: number[];
+        matchpos?: number[];
+        submatchpos?: number[];
         score?: number;
         "file:mimetype"?: string;
         "file:path"?: string;
