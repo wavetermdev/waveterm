@@ -202,13 +202,6 @@ declare global {
         message: string;
     };
 
-    // wshrpc.CommandRemoteFileCopyData
-    type CommandRemoteFileCopyData = {
-        srcuri: string;
-        desturi: string;
-        opts?: FileCopyOpts;
-    };
-
     // wshrpc.CommandRemoteListEntriesData
     type CommandRemoteListEntriesData = {
         path: string;

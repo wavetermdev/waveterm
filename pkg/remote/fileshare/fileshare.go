@@ -118,11 +118,19 @@ func Move(ctx context.Context, data wshrpc.CommandFileCopyData) error {
 		return fmt.Errorf("error creating fileshare client, could not parse destination connection %s", data.DestUri)
 	}
 	if srcConn.Host != destConn.Host {
-		err := destClient.CopyRemote(ctx, srcConn, destConn, srcClient, data.Opts)
+		finfo, err := srcClient.Stat(ctx, srcConn)
+		if err != nil {
+			return fmt.Errorf("cannot stat %q: %w", data.SrcUri, err)
+		}
+		recursive := data.Opts != nil && data.Opts.Recursive
+		if finfo.IsDir && data.Opts != nil && !recursive {
+			return fmt.Errorf("cannot move directory %q to %q without recursive flag", data.SrcUri, data.DestUri)
+		}
+		err = destClient.CopyRemote(ctx, srcConn, destConn, srcClient, data.Opts)
 		if err != nil {
 			return fmt.Errorf("cannot copy %q to %q: %w", data.SrcUri, data.DestUri, err)
 		}
-		return srcClient.Delete(ctx, srcConn, data.Opts.Recursive)
+		return srcClient.Delete(ctx, srcConn, recursive)
 	} else {
 		return srcClient.MoveInternal(ctx, srcConn, destConn, data.Opts)
 	}

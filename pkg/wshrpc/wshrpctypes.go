@@ -206,11 +206,11 @@ type WshRpcInterface interface {
 	// remotes
 	RemoteStreamFileCommand(ctx context.Context, data CommandRemoteStreamFileData) chan RespOrErrorUnion[FileData]
 	RemoteTarStreamCommand(ctx context.Context, data CommandRemoteStreamTarData) <-chan RespOrErrorUnion[iochantypes.Packet]
-	RemoteFileCopyCommand(ctx context.Context, data CommandRemoteFileCopyData) error
+	RemoteFileCopyCommand(ctx context.Context, data CommandFileCopyData) error
 	RemoteListEntriesCommand(ctx context.Context, data CommandRemoteListEntriesData) chan RespOrErrorUnion[CommandRemoteListEntriesRtnData]
 	RemoteFileInfoCommand(ctx context.Context, path string) (*FileInfo, error)
 	RemoteFileTouchCommand(ctx context.Context, path string) error
-	RemoteFileMoveCommand(ctx context.Context, data CommandRemoteFileCopyData) error
+	RemoteFileMoveCommand(ctx context.Context, data CommandFileCopyData) error
 	RemoteFileDeleteCommand(ctx context.Context, data CommandDeleteFileData) error
 	RemoteWriteFileCommand(ctx context.Context, data FileData) error
 	RemoteFileJoinCommand(ctx context.Context, paths []string) (*FileInfo, error)
@@ -515,12 +515,6 @@ type CommandFileCopyData struct {
 	Opts    *FileCopyOpts `json:"opts,omitempty"`
 }
 
-type CommandRemoteFileCopyData struct {
-	SrcUri  string        `json:"srcuri"`
-	DestUri string        `json:"desturi"`
-	Opts    *FileCopyOpts `json:"opts,omitempty"`
-}
-
 type CommandRemoteStreamTarData struct {
 	Path string        `json:"path"`
 	Opts *FileCopyOpts `json:"opts,omitempty"`
@@ -528,8 +522,8 @@ type CommandRemoteStreamTarData struct {
 
 type FileCopyOpts struct {
 	Overwrite bool  `json:"overwrite,omitempty"`
-	Recursive bool  `json:"recursive,omitempty"`
-	Merge     bool  `json:"merge,omitempty"`
+	Recursive bool  `json:"recursive,omitempty"` // only used for move, always true for copy
+	Merge     bool  `json:"merge,omitempty"`     // only used for copy, always false for move
 	Timeout   int64 `json:"timeout,omitempty"`
 }
 

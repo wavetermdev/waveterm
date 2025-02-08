@@ -393,11 +393,19 @@ func (c WaveClient) MoveInternal(ctx context.Context, srcConn, destConn *connpar
 	if srcConn.Host != destConn.Host {
 		return fmt.Errorf("move internal, src and dest hosts do not match")
 	}
-	err := c.CopyInternal(ctx, srcConn, destConn, opts)
+	finfo, err := c.Stat(ctx, srcConn)
+	if err != nil {
+		return fmt.Errorf("error getting file info: %w", err)
+	}
+	recursive := opts != nil && opts.Recursive
+	if finfo.IsDir && !recursive {
+		return fmt.Errorf("source is a directory, use recursive flag to move")
+	}
+	err = c.CopyInternal(ctx, srcConn, destConn, opts)
 	if err != nil {
 		return fmt.Errorf("error copying blockfile: %w", err)
 	}
-	err = c.Delete(ctx, srcConn, opts.Recursive)
+	err = c.Delete(ctx, srcConn, recursive)
 	if err != nil {
 		return fmt.Errorf("error deleting blockfile: %w", err)
 	}

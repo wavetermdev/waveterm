@@ -157,7 +157,7 @@ func (c WshClient) MoveInternal(ctx context.Context, srcConn, destConn *connpars
 	if timeout == 0 {
 		timeout = ThirtySeconds
 	}
-	return wshclient.RemoteFileMoveCommand(RpcClient, wshrpc.CommandRemoteFileCopyData{SrcUri: srcConn.GetFullURI(), DestUri: destConn.GetFullURI(), Opts: opts}, &wshrpc.RpcOpts{Route: wshutil.MakeConnectionRouteId(destConn.Host), Timeout: timeout})
+	return wshclient.RemoteFileMoveCommand(RpcClient, wshrpc.CommandFileCopyData{SrcUri: srcConn.GetFullURI(), DestUri: destConn.GetFullURI(), Opts: opts}, &wshrpc.RpcOpts{Route: wshutil.MakeConnectionRouteId(destConn.Host), Timeout: timeout})
 }
 
 func (c WshClient) CopyRemote(ctx context.Context, srcConn, destConn *connparse.Connection, _ fstype.FileShareClient, opts *wshrpc.FileCopyOpts) error {
@@ -172,7 +172,7 @@ func (c WshClient) CopyInternal(ctx context.Context, srcConn, destConn *connpars
 	if timeout == 0 {
 		timeout = ThirtySeconds
 	}
-	return wshclient.RemoteFileCopyCommand(RpcClient, wshrpc.CommandRemoteFileCopyData{SrcUri: srcConn.GetFullURI(), DestUri: destConn.GetFullURI(), Opts: opts}, &wshrpc.RpcOpts{Route: wshutil.MakeConnectionRouteId(destConn.Host), Timeout: timeout})
+	return wshclient.RemoteFileCopyCommand(RpcClient, wshrpc.CommandFileCopyData{SrcUri: srcConn.GetFullURI(), DestUri: destConn.GetFullURI(), Opts: opts}, &wshrpc.RpcOpts{Route: wshutil.MakeConnectionRouteId(destConn.Host), Timeout: timeout})
 }
 
 func (c WshClient) Delete(ctx context.Context, conn *connparse.Connection, recursive bool) error {

@@ -240,7 +240,6 @@ func (impl *ServerImpl) RemoteTarStreamCommand(ctx context.Context, data wshrpc.
 	if opts == nil {
 		opts = &wshrpc.FileCopyOpts{}
 	}
-	recursive := opts.Recursive
 	logPrintfDev("RemoteTarStreamCommand: path=%s\n", path)
 	path, err := wavebase.ExpandHomeDir(path)
 	if err != nil {
@@ -257,11 +256,6 @@ func (impl *ServerImpl) RemoteTarStreamCommand(ctx context.Context, data wshrpc.
 		pathPrefix = cleanedPath
 	} else {
 		pathPrefix = filepath.Dir(cleanedPath) + "/"
-	}
-	if finfo.IsDir() {
-		if !recursive {
-			return wshutil.SendErrCh[iochantypes.Packet](fmt.Errorf("cannot create tar stream for %q: %w", path, errors.New("directory copy requires recursive option")))
-		}
 	}
 
 	timeout := DefaultTimeout
@@ -314,7 +308,7 @@ func (impl *ServerImpl) RemoteTarStreamCommand(ctx context.Context, data wshrpc.
 	return rtn
 }
 
-func (impl *ServerImpl) RemoteFileCopyCommand(ctx context.Context, data wshrpc.CommandRemoteFileCopyData) error {
+func (impl *ServerImpl) RemoteFileCopyCommand(ctx context.Context, data wshrpc.CommandFileCopyData) error {
 	log.Printf("RemoteFileCopyCommand: src=%s, dest=%s\n", data.SrcUri, data.DestUri)
 	opts := data.Opts
 	if opts == nil {
@@ -689,12 +683,13 @@ func (impl *ServerImpl) RemoteFileTouchCommand(ctx context.Context, path string)
 	return nil
 }
 
-func (impl *ServerImpl) RemoteFileMoveCommand(ctx context.Context, data wshrpc.CommandRemoteFileCopyData) error {
+func (impl *ServerImpl) RemoteFileMoveCommand(ctx context.Context, data wshrpc.CommandFileCopyData) error {
 	logPrintfDev("RemoteFileCopyCommand: src=%s, dest=%s\n", data.SrcUri, data.DestUri)
 	opts := data.Opts
 	destUri := data.DestUri
 	srcUri := data.SrcUri
 	overwrite := opts != nil && opts.Overwrite
+	recursive := opts != nil && opts.Recursive
 
 	destConn, err := connparse.ParseURIAndReplaceCurrentHost(ctx, destUri)
 	if err != nil {
@@ -722,7 +717,14 @@ func (impl *ServerImpl) RemoteFileMoveCommand(ctx context.Context, data wshrpc.C
 	}
 	if srcConn.Host == destConn.Host {
 		srcPathCleaned := filepath.Clean(wavebase.ExpandHomeDirSafe(srcConn.Path))
-		err := os.Rename(srcPathCleaned, destPathCleaned)
+		finfo, err := os.Stat(srcPathCleaned)
+		if err != nil {
+			return fmt.Errorf("cannot stat file %q: %w", srcPathCleaned, err)
+		}
+		if finfo.IsDir() && !recursive {
+			return fmt.Errorf("cannot move directory %q, recursive option not specified", srcUri)
+		}
+		err = os.Rename(srcPathCleaned, destPathCleaned)
 		if err != nil {
 			return fmt.Errorf("cannot move file %q to %q: %w", srcPathCleaned, destPathCleaned, err)
 		}

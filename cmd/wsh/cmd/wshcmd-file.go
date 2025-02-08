@@ -103,7 +103,6 @@ func init() {
 	fileCmd.AddCommand(fileInfoCmd)
 	fileCmd.AddCommand(fileAppendCmd)
 	fileCpCmd.Flags().BoolP("merge", "m", false, "merge directories")
-	fileCpCmd.Flags().BoolP("recursive", "r", false, "copy directories recursively")
 	fileCpCmd.Flags().BoolP("force", "f", false, "force overwrite of existing files")
 	fileCmd.AddCommand(fileCpCmd)
 	fileMvCmd.Flags().BoolP("recursive", "r", false, "move directories recursively")
@@ -174,7 +173,7 @@ var fileAppendCmd = &cobra.Command{
 var fileCpCmd = &cobra.Command{
 	Use:     "cp [source-uri] [destination-uri]" + UriHelpText,
 	Aliases: []string{"copy"},
-	Short:   "copy files between storage systems",
+	Short:   "copy files between storage systems, recursively if needed",
 	Long:    "Copy files between different storage systems." + UriHelpText,
 	Example: "  wsh file cp wavefile://block/config.txt ./local-config.txt\n  wsh file cp ./local-config.txt wavefile://block/config.txt\n  wsh file cp wsh://user@ec2/home/user/config.txt wavefile://client/config.txt",
 	Args:    cobra.ExactArgs(2),
@@ -398,10 +397,6 @@ func getTargetPath(src, dst string) (string, error) {
 
 func fileCpRun(cmd *cobra.Command, args []string) error {
 	src, dst := args[0], args[1]
-	recursive, err := cmd.Flags().GetBool("recursive")
-	if err != nil {
-		return err
-	}
 	merge, err := cmd.Flags().GetBool("merge")
 	if err != nil {
 		return err
@@ -419,9 +414,9 @@ func fileCpRun(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("unable to parse dest path: %w", err)
 	}
-	log.Printf("Copying %s to %s; recursive: %v, merge: %v, force: %v", srcPath, destPath, recursive, merge, force)
+	log.Printf("Copying %s to %s; merge: %v, force: %v", srcPath, destPath, merge, force)
 	rpcOpts := &wshrpc.RpcOpts{Timeout: TimeoutYear}
-	err = wshclient.FileCopyCommand(RpcClient, wshrpc.CommandFileCopyData{SrcUri: srcPath, DestUri: destPath, Opts: &wshrpc.FileCopyOpts{Recursive: recursive, Merge: merge, Overwrite: force, Timeout: TimeoutYear}}, rpcOpts)
+	err = wshclient.FileCopyCommand(RpcClient, wshrpc.CommandFileCopyData{SrcUri: srcPath, DestUri: destPath, Opts: &wshrpc.FileCopyOpts{Merge: merge, Overwrite: force, Timeout: TimeoutYear}}, rpcOpts)
 	if err != nil {
 		return fmt.Errorf("copying file: %w", err)
 	}
@@ -449,7 +444,7 @@ func fileMvRun(cmd *cobra.Command, args []string) error {
 	}
 	log.Printf("Moving %s to %s; recursive: %v, force: %v", srcPath, destPath, recursive, force)
 	rpcOpts := &wshrpc.RpcOpts{Timeout: TimeoutYear}
-	err = wshclient.FileMoveCommand(RpcClient, wshrpc.CommandFileCopyData{SrcUri: srcPath, DestUri: destPath, Opts: &wshrpc.FileCopyOpts{Recursive: recursive, Overwrite: force, Timeout: TimeoutYear}}, rpcOpts)
+	err = wshclient.FileMoveCommand(RpcClient, wshrpc.CommandFileCopyData{SrcUri: srcPath, DestUri: destPath, Opts: &wshrpc.FileCopyOpts{Overwrite: force, Timeout: TimeoutYear, Recursive: recursive}}, rpcOpts)
 	if err != nil {
 		return fmt.Errorf("moving file: %w", err)
 	}
