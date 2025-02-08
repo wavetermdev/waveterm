@@ -14,6 +14,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/wavetermdev/waveterm/pkg/panichandler"
 )
 
 // --- Constants and Types ---
@@ -38,6 +40,9 @@ var (
 	fetchLock sync.Mutex
 	fetching  = make(map[string]bool)
 )
+
+// Use a semaphore (buffered channel) to limit concurrent fetches to 5.
+var fetchSemaphore = make(chan bool, 5)
 
 var (
 	faviconCacheLock sync.Mutex
@@ -94,8 +99,16 @@ func triggerAsyncFetch(domain string) {
 	fetchLock.Unlock()
 
 	go func() {
+		defer func() {
+			panichandler.PanicHandler("Favicon:triggerAsyncFetch", recover())
+		}()
+
+		// Acquire a slot in the semaphore.
+		fetchSemaphore <- true
+
 		// When done, ensure that we clear the “fetching” flag.
 		defer func() {
+			<-fetchSemaphore
 			fetchLock.Lock()
 			delete(fetching, domain)
 			fetchLock.Unlock()
@@ -164,9 +177,7 @@ func fetchFavicon(domain string) (string, error) {
 	return "data:" + mimeType + ";base64," + b64Data, nil
 }
 
-// --- Stub functions for cache access ---
-//
-// Replace these stubs with your custom backend implementation.
+// TODO store in blockstore
 
 func GetFromCache(key string) (FaviconCacheItem, bool) {
 	faviconCacheLock.Lock()
