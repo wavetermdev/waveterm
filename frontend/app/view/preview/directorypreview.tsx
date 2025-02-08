@@ -1125,9 +1125,11 @@ const CopyErrorOverlay = React.memo(
             if (!copyStatus) {
                 return;
             }
-            copyStatus.copyData.opts.overwrite = true;
-
-            await handleDropCopy(copyStatus.copyData);
+            const updatedData = {
+                ...copyStatus.copyData,
+                opts: { ...copyStatus.copyData.opts, overwrite: true },
+            };
+            await handleDropCopy(updatedData);
         }, [copyStatus.copyData]);
 
         let statusText = "Copy Error";
