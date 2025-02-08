@@ -9,7 +9,7 @@ import { ContextMenuModel } from "@/app/store/contextmenu";
 import { tryReinjectKey } from "@/app/store/keymodel";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
-import { Typeahead } from "@/app/typeahead/typeahead";
+import { BlockHeaderSuggestionControl } from "@/app/suggestion/suggestion";
 import { CodeEditor } from "@/app/view/codeeditor/codeeditor";
 import { Markdown } from "@/element/markdown";
 import {
@@ -1124,12 +1124,18 @@ function PreviewView({
     model: PreviewModel;
 }) {
     const connStatus = useAtomValue(model.connStatus);
-    const openFileModal = useAtomValue(model.openFileModal);
     if (connStatus?.status != "connected") {
         return null;
     }
     const handleSelect = (s: SuggestionType) => {
         model.handleOpenFile(s["file:path"]);
+    };
+    const handleTab = (s: SuggestionType, query: string): string => {
+        if (s["mime:type"] == "directory") {
+            return s["file:name"] + "/";
+        } else {
+            return s["file:name"];
+        }
     };
     const fetchSuggestionsFn = async (query, ctx) => {
         return await fetchSuggestions(model, query, ctx);
@@ -1142,11 +1148,12 @@ function PreviewView({
                     <SpecializedView parentRef={contentRef} model={model} />
                 </div>
             </div>
-            <Typeahead
-                anchorRef={blockRef}
-                isOpen={openFileModal}
+            <BlockHeaderSuggestionControl
+                blockRef={blockRef}
+                openAtom={model.openFileModal}
                 onClose={() => model.updateOpenFileModalAndError(false)}
                 onSelect={handleSelect}
+                onTab={handleTab}
                 fetchSuggestions={fetchSuggestionsFn}
                 placeholderText="Open File..."
             />

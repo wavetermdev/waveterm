@@ -129,6 +129,15 @@ type ConfigError struct {
 	Err  string `json:"err"`
 }
 
+type WebBookmark struct {
+	Url          string  `json:"url"`
+	Title        string  `json:"title,omitempty"`
+	Icon         string  `json:"icon,omitempty"`
+	IconColor    string  `json:"iconcolor,omitempty"`
+	IconUrl      string  `json:"iconurl,omitempty"`
+	DisplayOrder float64 `json:"display:order,omitempty"`
+}
+
 type FullConfigType struct {
 	Settings       SettingsType                   `json:"settings" merge:"meta"`
 	MimeTypes      map[string]MimeTypeConfigType  `json:"mimetypes"`
@@ -137,6 +146,7 @@ type FullConfigType struct {
 	Presets        map[string]waveobj.MetaMapType `json:"presets"`
 	TermThemes     map[string]TermThemeType       `json:"termthemes"`
 	Connections    map[string]ConnKeywords        `json:"connections"`
+	Bookmarks      map[string]WebBookmark         `json:"bookmarks"`
 	ConfigErrors   []ConfigError                  `json:"configerrors" configfile:"-"`
 }
 type ConnKeywords struct {
