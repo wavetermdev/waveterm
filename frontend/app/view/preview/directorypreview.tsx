@@ -1125,8 +1125,6 @@ const CopyErrorOverlay = React.memo(
             if (!copyStatus) {
                 return;
             }
-            //const retryOpts: FileCopyOpts = { ...copyStatus.copyData.opts, overwrite: true };
-            //const newData: CommandFileCopyData = { ...copyStatus.copyData, opts: }
             copyStatus.copyData.opts.overwrite = true;
 
             await handleDropCopy(copyStatus.copyData);
@@ -1182,6 +1180,14 @@ const CopyErrorOverlay = React.memo(
                                 </div>
                             )}
                         </div>
+                        {copyStatus?.allowRetry || (
+                            <div className="connstatus-actions">
+                                <Button
+                                    className={`fa-xmark fa-solid ${reconClassName}`}
+                                    onClick={handleRemoveCopyError}
+                                />
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
