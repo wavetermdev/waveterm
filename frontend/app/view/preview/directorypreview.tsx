@@ -2,7 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { Button } from "@/app/element/button";
+import { CopyButton } from "@/app/element/copybutton";
 import { Input } from "@/app/element/input";
+import { useDimensionsWithCallbackRef } from "@/app/hook/useDimensions";
 import { ContextMenuModel } from "@/app/store/contextmenu";
 import { PLATFORM, atoms, createBlock, getApi, globalStore } from "@/app/store/global";
 import { RpcApi } from "@/app/store/wshclientapi";
@@ -33,6 +35,12 @@ import { debounce } from "throttle-debounce";
 import "./directorypreview.scss";
 
 const PageJumpSize = 20;
+
+type FileCopyStatus = {
+    copyData: CommandFileCopyData;
+    copyError: string;
+    allowRetry: boolean;
+};
 
 declare module "@tanstack/react-table" {
     interface TableMeta<TData extends RowData> {
@@ -790,6 +798,7 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
     const conn = useAtomValue(model.connection);
     const blockData = useAtomValue(model.blockAtom);
     const dirPath = useAtomValue(model.normFilePath);
+    const [copyStatus, setCopyStatus] = useState<FileCopyStatus>(null);
 
     useEffect(() => {
         model.refreshCallback = () => {
@@ -900,6 +909,27 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
         middleware: [offset(({ rects }) => -rects.reference.height / 2 - rects.floating.height / 2)],
     });
 
+    const handleDropCopy = useCallback(
+        async (data: CommandFileCopyData) => {
+            try {
+                await RpcApi.FileCopyCommand(TabRpcClient, data, { timeout: data.opts.timeout });
+                setCopyStatus(null);
+            } catch (e) {
+                console.log("copy failed:", e);
+                const copyError = `${e}`;
+                const allowRetry = copyError.endsWith("overwrite not specified");
+                const copyStatus: FileCopyStatus = {
+                    copyError,
+                    copyData: data,
+                    allowRetry,
+                };
+                setCopyStatus(copyStatus);
+            }
+            model.refreshCallback();
+        },
+        [setCopyStatus, model.refreshCallback]
+    );
+
     const [, drop] = useDrop(
         () => ({
             accept: "FILE_ITEM", //a name of file drop type
@@ -925,17 +955,12 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
                         desturi,
                         opts,
                     };
-                    try {
-                        await RpcApi.FileCopyCommand(TabRpcClient, data, { timeout: timeoutYear });
-                    } catch (e) {
-                        console.log("copy failed:", e);
-                    }
-                    model.refreshCallback();
+                    await handleDropCopy(data);
                 }
             },
             // TODO: mabe add a hover option?
         }),
-        [dirPath, model.formatRemoteUri, model.refreshCallback]
+        [dirPath, model.formatRemoteUri, model.refreshCallback, setCopyStatus]
     );
 
     useEffect(() => {
@@ -1049,6 +1074,13 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
                 onContextMenu={(e) => handleFileContextMenu(e)}
                 onClick={() => setEntryManagerProps(undefined)}
             >
+                {copyStatus != null && (
+                    <CopyErrorOverlay
+                        copyStatus={copyStatus}
+                        setCopyStatus={setCopyStatus}
+                        handleDropCopy={handleDropCopy}
+                    />
+                )}
                 <DirectoryTable
                     model={model}
                     data={filteredData}
@@ -1075,5 +1107,86 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
         </Fragment>
     );
 }
+
+const CopyErrorOverlay = React.memo(
+    ({
+        copyStatus,
+        setCopyStatus,
+        handleDropCopy,
+    }: {
+        copyStatus: FileCopyStatus;
+        setCopyStatus: (_: FileCopyStatus) => void;
+        handleDropCopy: (data: CommandFileCopyData) => Promise<void>;
+    }) => {
+        const [overlayRefCallback, _, domRect] = useDimensionsWithCallbackRef(30);
+        const width = domRect?.width;
+
+        const handleRetryCopy = React.useCallback(async () => {
+            if (!copyStatus) {
+                return;
+            }
+            //const retryOpts: FileCopyOpts = { ...copyStatus.copyData.opts, overwrite: true };
+            //const newData: CommandFileCopyData = { ...copyStatus.copyData, opts: }
+            copyStatus.copyData.opts.overwrite = true;
+
+            await handleDropCopy(copyStatus.copyData);
+        }, [copyStatus.copyData]);
+
+        let statusText = "Copy Error";
+        let errorMsg = `error: ${copyStatus?.copyError}`;
+        if (copyStatus?.allowRetry) {
+            statusText = "Confirm Overwrite File(s)";
+            errorMsg = "This copy operation will overwrite an existing file. Would you like to continue?";
+        }
+
+        let reconClassName = "outlined grey";
+        if (width && width < 350) {
+            reconClassName = clsx(reconClassName, "font-size-12 vertical-padding-5 horizontal-padding-6");
+        } else {
+            reconClassName = clsx(reconClassName, "font-size-11 vertical-padding-3 horizontal-padding-7");
+        }
+
+        const handleRemoveCopyError = React.useCallback(async () => {
+            setCopyStatus(null);
+        }, [setCopyStatus]);
+
+        const handleCopyToClipboard = React.useCallback(
+            async (e: React.MouseEvent) => {
+                await navigator.clipboard.writeText(errorMsg);
+            },
+            [errorMsg]
+        );
+
+        return (
+            <div className="copyerror-overlay" ref={overlayRefCallback}>
+                <div className="copyerror-content">
+                    <div className={clsx("copyerror-status-icon-wrapper", { "has-error": true })}>
+                        <i className="fa-solid fa-triangle-exclamation"></i>
+                        <div className="copyerror-status">
+                            <div className="copyerror-status-text">{statusText}</div>
+                            <OverlayScrollbarsComponent
+                                className="copyerror-error"
+                                options={{ scrollbars: { autoHide: "leave" } }}
+                            >
+                                <CopyButton className="copy-button" onClick={handleCopyToClipboard} title="Copy" />
+                                <div>{errorMsg}</div>
+                            </OverlayScrollbarsComponent>
+                            {copyStatus?.allowRetry && (
+                                <div className="copyerror-overwrite-btns">
+                                    <Button className={reconClassName} onClick={handleRetryCopy}>
+                                        Yes
+                                    </Button>
+                                    <Button className={reconClassName} onClick={handleRemoveCopyError}>
+                                        No
+                                    </Button>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+);
 
 export { DirectoryPreview };
