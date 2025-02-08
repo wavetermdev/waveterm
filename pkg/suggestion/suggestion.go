@@ -23,6 +23,8 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 )
 
+const MaxSuggestions = 50
+
 type MockDirEntry struct {
 	NameStr  string
 	IsDirVal bool
@@ -285,7 +287,7 @@ func fetchBookmarkSuggestions(_ context.Context, data wshrpc.FetchSuggestionsDat
 		return scoredEntries[i].origIndex < scoredEntries[j].origIndex
 	})
 
-	// Build up to 50 suggestions.
+	// Build up to MaxSuggestions suggestions.
 	var suggestions []wshrpc.SuggestionType
 	for _, entry := range scoredEntries {
 		var display, subText string
@@ -309,7 +311,7 @@ func fetchBookmarkSuggestions(_ context.Context, data wshrpc.FetchSuggestionsDat
 		}
 		suggestion.IconSrc = faviconcache.GetFavicon(entry.bookmark.Url)
 		suggestions = append(suggestions, suggestion)
-		if len(suggestions) >= 50 {
+		if len(suggestions) >= MaxSuggestions {
 			break
 		}
 	}
@@ -416,12 +418,9 @@ func fetchFileSuggestions(_ context.Context, data wshrpc.FetchSuggestionsData) (
 		})
 	}
 
-	// Build up to 50 suggestions.
+	// Build up to MaxSuggestions suggestions
 	var suggestions []wshrpc.SuggestionType
-	for i, candidate := range scoredEntries {
-		if i >= 50 {
-			break
-		}
+	for _, candidate := range scoredEntries {
 		fileName := candidate.ent.Name()
 		fullPath := filepath.Join(baseDir, fileName)
 		suggestionFileName := filepath.Join(queryPrefix, fileName)
@@ -439,10 +438,13 @@ func fetchFileSuggestions(_ context.Context, data wshrpc.FetchSuggestionsData) (
 			Display:      suggestionFileName,
 			FileName:     suggestionFileName,
 			FileMimeType: fileutil.DetectMimeTypeWithDirEnt(fullPath, candidate.ent),
-			MatchPos:     scoredEntries[i].positions,
+			MatchPos:     candidate.positions,
 			Score:        candidate.score,
 		}
 		suggestions = append(suggestions, s)
+		if len(suggestions) >= MaxSuggestions {
+			break
+		}
 	}
 
 	return &wshrpc.FetchSuggestionsResponse{
