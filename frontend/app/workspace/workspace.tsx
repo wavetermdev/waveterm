@@ -80,7 +80,7 @@ const Widget = memo(({ widget }: { widget: WidgetConfigType }) => {
     return (
         <div
             className={clsx(
-                "flex flex-col justify-center items-center w-full py-1.5 pr-0.5 text-secondary text-lg overflow-hidden rounded-sm hover:bg-highlightbg hover:text-white cursor-pointer",
+                "flex flex-col justify-center items-center w-full py-1.5 pr-0.5 text-secondary text-lg overflow-hidden rounded-sm hover:bg-hoverbg hover:text-white cursor-pointer",
                 widget["display:hidden"] && "hidden"
             )}
             onClick={() => handleWidgetSelect(widget)}

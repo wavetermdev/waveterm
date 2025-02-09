@@ -210,11 +210,11 @@ type WshRpcInterface interface {
 	// remotes
 	RemoteStreamFileCommand(ctx context.Context, data CommandRemoteStreamFileData) chan RespOrErrorUnion[FileData]
 	RemoteTarStreamCommand(ctx context.Context, data CommandRemoteStreamTarData) <-chan RespOrErrorUnion[iochantypes.Packet]
-	RemoteFileCopyCommand(ctx context.Context, data CommandRemoteFileCopyData) error
+	RemoteFileCopyCommand(ctx context.Context, data CommandFileCopyData) error
 	RemoteListEntriesCommand(ctx context.Context, data CommandRemoteListEntriesData) chan RespOrErrorUnion[CommandRemoteListEntriesRtnData]
 	RemoteFileInfoCommand(ctx context.Context, path string) (*FileInfo, error)
 	RemoteFileTouchCommand(ctx context.Context, path string) error
-	RemoteFileMoveCommand(ctx context.Context, data CommandRemoteFileCopyData) error
+	RemoteFileMoveCommand(ctx context.Context, data CommandFileCopyData) error
 	RemoteFileDeleteCommand(ctx context.Context, data CommandDeleteFileData) error
 	RemoteWriteFileCommand(ctx context.Context, data FileData) error
 	RemoteFileJoinCommand(ctx context.Context, paths []string) (*FileInfo, error)
@@ -519,12 +519,6 @@ type CommandFileCopyData struct {
 	Opts    *FileCopyOpts `json:"opts,omitempty"`
 }
 
-type CommandRemoteFileCopyData struct {
-	SrcUri  string        `json:"srcuri"`
-	DestUri string        `json:"desturi"`
-	Opts    *FileCopyOpts `json:"opts,omitempty"`
-}
-
 type CommandRemoteStreamTarData struct {
 	Path string        `json:"path"`
 	Opts *FileCopyOpts `json:"opts,omitempty"`
@@ -532,8 +526,8 @@ type CommandRemoteStreamTarData struct {
 
 type FileCopyOpts struct {
 	Overwrite bool  `json:"overwrite,omitempty"`
-	Recursive bool  `json:"recursive,omitempty"`
-	Merge     bool  `json:"merge,omitempty"`
+	Recursive bool  `json:"recursive,omitempty"` // only used for move, always true for copy
+	Merge     bool  `json:"merge,omitempty"`     // only used for copy, always false for move
 	Timeout   int64 `json:"timeout,omitempty"`
 }
 
@@ -737,21 +731,25 @@ type FetchSuggestionsData struct {
 }
 
 type FetchSuggestionsResponse struct {
-	ReqNum        int              `json:"reqnum"`
-	Suggestions   []SuggestionType `json:"suggestions"`
-	HighlightTerm string           `json:"highlightterm,omitempty"`
+	ReqNum      int              `json:"reqnum"`
+	Suggestions []SuggestionType `json:"suggestions"`
 }
 
 type SuggestionType struct {
-	Type           string `json:"type"`
-	SuggestionId   string `json:"suggestionid"`
-	Icon           string `json:"icon,omitempty"`
-	IconColor      string `json:"iconcolor,omitempty"`
-	FileMimeType   string `json:"file:mimetype,omitempty"`
-	FileName       string `json:"file:name,omitempty"`
-	FilePath       string `json:"file:path,omitempty"`
-	MatchPositions []int  `json:"matchpositions,omitempty"`
-	Score          int    `json:"score,omitempty"`
+	Type         string `json:"type"`
+	SuggestionId string `json:"suggestionid"`
+	Display      string `json:"display"`
+	SubText      string `json:"subtext,omitempty"`
+	Icon         string `json:"icon,omitempty"`
+	IconColor    string `json:"iconcolor,omitempty"`
+	IconSrc      string `json:"iconsrc,omitempty"`
+	MatchPos     []int  `json:"matchpos,omitempty"`
+	SubMatchPos  []int  `json:"submatchpos,omitempty"`
+	Score        int    `json:"score,omitempty"`
+	FileMimeType string `json:"file:mimetype,omitempty"`
+	FilePath     string `json:"file:path,omitempty"`
+	FileName     string `json:"file:name,omitempty"`
+	UrlUrl       string `json:"url:url,omitempty"`
 }
 
 type FileShareCapability struct {

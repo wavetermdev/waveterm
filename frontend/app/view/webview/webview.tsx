@@ -3,11 +3,16 @@
 
 import { BlockNodeModel } from "@/app/block/blocktypes";
 import { Search, useSearch } from "@/app/element/search";
-import { getApi, getBlockMetaKeyAtom, getSettingsKeyAtom, openLink } from "@/app/store/global";
+import { createBlock, getApi, getBlockMetaKeyAtom, getSettingsKeyAtom, openLink } from "@/app/store/global";
 import { getSimpleControlShiftAtom } from "@/app/store/keymodel";
 import { ObjectService } from "@/app/store/services";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
+import {
+    BlockHeaderSuggestionControl,
+    SuggestionControlNoData,
+    SuggestionControlNoResults,
+} from "@/app/suggestion/suggestion";
 import { WOS, globalStore } from "@/store/global";
 import { adaptFromReactOrNativeKeyEvent, checkKeyPressed } from "@/util/keyutil";
 import { fireAndForget } from "@/util/util";
@@ -54,6 +59,7 @@ export class WebViewModel implements ViewModel {
     domReady: PrimitiveAtom<boolean>;
     hideNav: Atom<boolean>;
     searchAtoms?: SearchAtoms;
+    typeaheadOpen: PrimitiveAtom<boolean>;
 
     constructor(blockId: string, nodeModel: BlockNodeModel) {
         this.nodeModel = nodeModel;
@@ -78,6 +84,7 @@ export class WebViewModel implements ViewModel {
         this.webviewRef = createRef<WebviewTag>();
         this.domReady = atom(false);
         this.hideNav = getBlockMetaKeyAtom(blockId, "web:hidenav");
+        this.typeaheadOpen = atom(false);
 
         this.mediaPlaying = atom(false);
         this.mediaMuted = atom(false);
@@ -227,6 +234,23 @@ export class WebViewModel implements ViewModel {
         } catch (e) {
             console.error("Failed to change mute value", e);
         }
+    }
+
+    setTypeaheadOpen(open: boolean) {
+        globalStore.set(this.typeaheadOpen, open);
+    }
+
+    async fetchBookmarkSuggestions(
+        query: string,
+        reqContext: SuggestionRequestContext
+    ): Promise<FetchSuggestionsResponse> {
+        const result = await RpcApi.FetchSuggestionsCommand(TabRpcClient, {
+            suggestiontype: "bookmark",
+            query,
+            widgetid: reqContext.widgetid,
+            reqnum: reqContext.reqnum,
+        });
+        return result;
     }
 
     handleUrlWrapperMouseOver(e: React.MouseEvent<HTMLDivElement, MouseEvent>) {
@@ -456,6 +480,11 @@ export class WebViewModel implements ViewModel {
             this.handleForward(null);
             return true;
         }
+        if (checkKeyPressed(e, "Cmd:o")) {
+            const curVal = globalStore.get(this.typeaheadOpen);
+            globalStore.set(this.typeaheadOpen, !curVal);
+            return true;
+        }
         return false;
     }
 
@@ -570,9 +599,70 @@ interface WebViewProps {
     blockId: string;
     model: WebViewModel;
     onFailLoad?: (url: string) => void;
+    blockRef: React.RefObject<HTMLDivElement>;
 }
 
-const WebView = memo(({ model, onFailLoad }: WebViewProps) => {
+const BookmarkTypeahead = memo(
+    ({ model, blockRef }: { model: WebViewModel; blockRef: React.RefObject<HTMLDivElement> }) => {
+        const openBookmarksJson = () => {
+            fireAndForget(async () => {
+                const path = `${getApi().getConfigDir()}/presets/bookmarks.json`;
+                const blockDef: BlockDef = {
+                    meta: {
+                        view: "preview",
+                        file: path,
+                    },
+                };
+                await createBlock(blockDef, false, true);
+                model.setTypeaheadOpen(false);
+            });
+        };
+        return (
+            <BlockHeaderSuggestionControl
+                blockRef={blockRef}
+                openAtom={model.typeaheadOpen}
+                onClose={() => model.setTypeaheadOpen(false)}
+                onSelect={(suggestion) => {
+                    if (suggestion == null || suggestion.type != "url") {
+                        return;
+                    }
+                    model.loadUrl(suggestion["url:url"], "bookmark-typeahead");
+                }}
+                fetchSuggestions={model.fetchBookmarkSuggestions}
+                placeholderText="Open Bookmark..."
+            >
+                <SuggestionControlNoData>
+                    <div className="text-center">
+                        <p className="text-lg font-bold text-gray-100">No Bookmarks Configured</p>
+                        <p className="text-sm text-gray-400 mt-1">
+                            Edit your <code className="font-mono">bookmarks.json</code> file to configure bookmarks.
+                        </p>
+                        <button
+                            onClick={openBookmarksJson}
+                            className="mt-3 px-4 py-2 text-sm font-medium text-black bg-accent hover:bg-accenthover rounded-lg cursor-pointer"
+                        >
+                            Open bookmarks.json
+                        </button>
+                    </div>
+                </SuggestionControlNoData>
+
+                <SuggestionControlNoResults>
+                    <div className="text-center">
+                        <p className="text-sm text-gray-400">No matching bookmarks</p>
+                        <button
+                            onClick={openBookmarksJson}
+                            className="mt-3 px-4 py-2 text-sm font-medium text-black bg-accent hover:bg-accenthover rounded-lg cursor-pointer"
+                        >
+                            Edit bookmarks.json
+                        </button>
+                    </div>
+                </SuggestionControlNoResults>
+            </BlockHeaderSuggestionControl>
+        );
+    }
+);
+
+const WebView = memo(({ model, onFailLoad, blockRef }: WebViewProps) => {
     const blockData = useAtomValue(model.blockAtom);
     const defaultUrl = useAtomValue(model.homepageUrl);
     const defaultSearchAtom = getSettingsKeyAtom("web:defaultsearch");
@@ -581,6 +671,7 @@ const WebView = memo(({ model, onFailLoad }: WebViewProps) => {
     metaUrl = model.ensureUrlScheme(metaUrl, defaultSearch);
     const metaUrlRef = useRef(metaUrl);
     const zoomFactor = useAtomValue(getBlockMetaKeyAtom(model.blockId, "web:zoom")) || 1;
+    const webPartition = useAtomValue(getBlockMetaKeyAtom(model.blockId, "web:partition")) || undefined;
 
     // Search
     const searchProps = useSearch({ anchorRef: model.webviewRef, viewModel: model });
@@ -789,6 +880,7 @@ const WebView = memo(({ model, onFailLoad }: WebViewProps) => {
                 preload={getWebviewPreloadUrl()}
                 // @ts-ignore This is a discrepancy between the React typing and the Chromium impl for webviewTag. Chrome webviewTag expects a string, while React expects a boolean.
                 allowpopups="true"
+                partition={webPartition}
             />
             {errorText && (
                 <div className="webview-error">
@@ -796,6 +888,7 @@ const WebView = memo(({ model, onFailLoad }: WebViewProps) => {
                 </div>
             )}
             <Search {...searchProps} />
+            <BookmarkTypeahead model={model} blockRef={blockRef} />
         </Fragment>
     );
 });

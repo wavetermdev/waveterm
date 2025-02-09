@@ -107,8 +107,9 @@ type MetaTSType struct {
 	TermAllowBracketedPaste *bool    `json:"term:allowbracketedpaste,omitempty"`
 	TermConnDebug           string   `json:"term:conndebug,omitempty"` // null, info, debug
 
-	WebZoom    float64 `json:"web:zoom,omitempty"`
-	WebHideNav *bool   `json:"web:hidenav,omitempty"`
+	WebZoom      float64 `json:"web:zoom,omitempty"`
+	WebHideNav   *bool   `json:"web:hidenav,omitempty"`
+	WebPartition string  `json:"web:partition,omitempty"`
 
 	MarkdownFontSize      float64 `json:"markdown:fontsize,omitempty"`
 	MarkdownFixedFontSize float64 `json:"markdown:fixedfontsize,omitempty"`

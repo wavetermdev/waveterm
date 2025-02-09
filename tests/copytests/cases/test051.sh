@@ -1,4 +1,4 @@
-# copy the current directory into a non-existing directory with the -r flag 
+# copy the current directory into a non-existing directory
 # ensure the copy succeeds and the output exists
 
 set -e
@@ -7,7 +7,7 @@ mkdir foo
 touch foo/bar.txt
 cd foo
 
-wsh file copy -r . ../baz
+wsh file copy . ../baz
 cd ..
 
 if [ ! -f baz/bar.txt ]; then

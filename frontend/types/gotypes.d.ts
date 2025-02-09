@@ -202,13 +202,6 @@ declare global {
         message: string;
     };
 
-    // wshrpc.CommandRemoteFileCopyData
-    type CommandRemoteFileCopyData = {
-        srcuri: string;
-        desturi: string;
-        opts?: FileCopyOpts;
-    };
-
     // wshrpc.CommandRemoteListEntriesData
     type CommandRemoteListEntriesData = {
         path: string;
@@ -387,7 +380,6 @@ declare global {
     type FetchSuggestionsResponse = {
         reqnum: number;
         suggestions: SuggestionType[];
-        highlightterm?: string;
     };
 
     // wshrpc.FileCopyOpts
@@ -474,6 +466,7 @@ declare global {
         presets: {[key: string]: MetaType};
         termthemes: {[key: string]: TermThemeType};
         connections: {[key: string]: ConnKeywords};
+        bookmarks: {[key: string]: WebBookmark};
         configerrors: ConfigError[];
     };
 
@@ -587,6 +580,7 @@ declare global {
         "term:conndebug"?: string;
         "web:zoom"?: number;
         "web:hidenav"?: boolean;
+        "web:partition"?: string;
         "markdown:fontsize"?: number;
         "markdown:fixedfontsize"?: number;
         "vdom:*"?: boolean;
@@ -785,13 +779,18 @@ declare global {
     type SuggestionType = {
         type: string;
         suggestionid: string;
+        display: string;
+        subtext?: string;
         icon?: string;
         iconcolor?: string;
-        "file:mimetype"?: string;
-        "file:name"?: string;
-        "file:path"?: string;
-        matchpositions?: number[];
+        iconsrc?: string;
+        matchpos?: number[];
+        submatchpos?: number[];
         score?: number;
+        "file:mimetype"?: string;
+        "file:path"?: string;
+        "file:name"?: string;
+        "url:url"?: string;
     };
 
     // telemetrydata.TEvent
@@ -805,6 +804,16 @@ declare global {
 
     // telemetrydata.TEventProps
     type TEventProps = {
+        "client:arch"?: string;
+        "client:version"?: string;
+        "client:initial_version"?: string;
+        "client:buildtime"?: string;
+        "client:osrelease"?: string;
+        "client:isdev"?: boolean;
+        "autoupdate:channel"?: string;
+        "autoupdate:enabled"?: boolean;
+        "loc:countrycode"?: string;
+        "loc:regioncode"?: string;
         "activity:activeminutes"?: number;
         "activity:fgminutes"?: number;
         "activity:openminutes"?: number;
@@ -1285,6 +1294,16 @@ declare global {
         pos: Point;
         winsize: WinSize;
         lastfocusts: number;
+    };
+
+    // wconfig.WebBookmark
+    type WebBookmark = {
+        url: string;
+        title?: string;
+        icon?: string;
+        iconcolor?: string;
+        iconurl?: string;
+        "display:order"?: number;
     };
 
     // service.WebCallType

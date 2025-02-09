@@ -131,7 +131,7 @@ func (c WaveClient) ReadTarStream(ctx context.Context, conn *connparse.Connectio
 			}
 			file.Mode = 0644
 
-			if err = writeHeader(fileutil.ToFsFileInfo(file), file.Path); err != nil {
+			if err = writeHeader(fileutil.ToFsFileInfo(file), file.Path, file.Path == conn.Path); err != nil {
 				rtn <- wshutil.RespErr[iochantypes.Packet](fmt.Errorf("error writing tar header: %w", err))
 				return
 			}
@@ -445,6 +445,7 @@ func (c WaveClient) CopyRemote(ctx context.Context, srcConn, destConn *connparse
 	}
 	overwrite := opts != nil && opts.Overwrite
 	merge := opts != nil && opts.Merge
+	destHasSlash := strings.HasSuffix(destConn.Path, "/")
 	destPrefix := getPathPrefix(destConn)
 	destPrefix = strings.TrimPrefix(destPrefix, destConn.GetSchemeAndHost()+"/")
 	log.Printf("CopyRemote: srcConn: %v, destConn: %v, destPrefix: %s\n", srcConn, destConn, destPrefix)
@@ -457,11 +458,14 @@ func (c WaveClient) CopyRemote(ctx context.Context, srcConn, destConn *connparse
 	}
 	readCtx, cancel := context.WithCancelCause(ctx)
 	ioch := srcClient.ReadTarStream(readCtx, srcConn, opts)
-	err = tarcopy.TarCopyDest(readCtx, cancel, ioch, func(next *tar.Header, reader *tar.Reader) error {
+	err = tarcopy.TarCopyDest(readCtx, cancel, ioch, func(next *tar.Header, reader *tar.Reader, singleFile bool) error {
 		if next.Typeflag == tar.TypeDir {
 			return nil
 		}
 		fileName, err := cleanPath(path.Join(destPrefix, next.Name))
+		if singleFile && !destHasSlash {
+			fileName, err = cleanPath(destConn.Path)
+		}
 		if err != nil {
 			return fmt.Errorf("error cleaning path: %w", err)
 		}

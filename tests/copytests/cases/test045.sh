@@ -1,4 +1,4 @@
-# copy a doubly nested directory containing a file to an existing directory with the -r flag
+# copy a doubly nested directory containing a file to an existing directory
 # ensure this succeeds and the new files exist and are nested in the existing directory
 
 set -e
@@ -8,7 +8,7 @@ mkdir foo/bar
 touch foo/bar/baz.txt
 mkdir qux
 
-wsh file copy -r foo qux
+wsh file copy foo qux
 
 if [ ! -f qux/foo/bar/baz.txt ]; then
     echo "qux/foo/bar/baz.txt does not exist"

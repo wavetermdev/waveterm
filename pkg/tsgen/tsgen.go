@@ -176,24 +176,32 @@ var tsRenameMap = map[string]string{
 	"MetaSettingsType": "SettingsType",
 }
 
-func generateTSTypeInternal(rtype reflect.Type, tsTypesMap map[reflect.Type]string) (string, []reflect.Type) {
+func generateTSTypeInternal(rtype reflect.Type, tsTypesMap map[reflect.Type]string, embedded bool) (string, []reflect.Type) {
 	var buf bytes.Buffer
 	tsTypeName := rtype.Name()
 	if tsRename, ok := tsRenameMap[tsTypeName]; ok {
 		tsTypeName = tsRename
 	}
 	var isWaveObj bool
-	buf.WriteString(fmt.Sprintf("// %s\n", rtype.String()))
-	if rtype.Implements(waveObjRType) || reflect.PointerTo(rtype).Implements(waveObjRType) {
-		isWaveObj = true
-		buf.WriteString(fmt.Sprintf("type %s = WaveObj & {\n", tsTypeName))
-	} else {
-		buf.WriteString(fmt.Sprintf("type %s = {\n", tsTypeName))
+	if !embedded {
+		buf.WriteString(fmt.Sprintf("// %s\n", rtype.String()))
+		if rtype.Implements(waveObjRType) || reflect.PointerTo(rtype).Implements(waveObjRType) {
+			isWaveObj = true
+			buf.WriteString(fmt.Sprintf("type %s = WaveObj & {\n", tsTypeName))
+		} else {
+			buf.WriteString(fmt.Sprintf("type %s = {\n", tsTypeName))
+		}
 	}
 	var subTypes []reflect.Type
 	for i := 0; i < rtype.NumField(); i++ {
 		field := rtype.Field(i)
 		if field.PkgPath != "" {
+			continue
+		}
+		if field.Anonymous {
+			embeddedBuf, embeddedTypes := generateTSTypeInternal(field.Type, tsTypesMap, true)
+			buf.WriteString(embeddedBuf)
+			subTypes = append(subTypes, embeddedTypes...)
 			continue
 		}
 		fieldName := getTSFieldName(field)
@@ -225,7 +233,9 @@ func generateTSTypeInternal(rtype reflect.Type, tsTypesMap map[reflect.Type]stri
 		}
 		buf.WriteString(fmt.Sprintf("    %s%s: %s;\n", fieldName, optMarker, tsType))
 	}
-	buf.WriteString("};\n")
+	if !embedded {
+		buf.WriteString("};\n")
+	}
 	return buf.String(), subTypes
 }
 
@@ -303,7 +313,7 @@ func GenerateTSType(rtype reflect.Type, tsTypesMap map[reflect.Type]string) {
 	if rtype.Kind() != reflect.Struct {
 		return
 	}
-	tsType, subTypes := generateTSTypeInternal(rtype, tsTypesMap)
+	tsType, subTypes := generateTSTypeInternal(rtype, tsTypesMap, false)
 	tsTypesMap[rtype] = tsType
 	for _, subType := range subTypes {
 		GenerateTSType(subType, tsTypesMap)
