@@ -35,7 +35,7 @@ const (
 )
 
 // TarCopySrc creates a tar stream writer and returns a channel to send the tar stream to.
-// writeHeader is a function that writes the tar header for the file.
+// writeHeader is a function that writes the tar header for the file. If only a single file is being written, the singleFile flag should be set to true.
 // writer is the tar writer to write the file data to.
 // close is a function that closes the tar writer and internal pipe writer.
 func TarCopySrc(ctx context.Context, pathPrefix string) (outputChan chan wshrpc.RespOrErrorUnion[iochantypes.Packet], writeHeader func(fi fs.FileInfo, file string, singleFile bool) error, writer io.Writer, close func()) {
@@ -45,6 +45,8 @@ func TarCopySrc(ctx context.Context, pathPrefix string) (outputChan chan wshrpc.
 		gracefulClose(pipeReader, tarCopySrcName, pipeReaderName)
 	})
 
+	singleFileFlagSet := false
+
 	return rtnChan, func(fi fs.FileInfo, path string, singleFile bool) error {
 			// generate tar header
 			header, err := tar.FileInfoHeader(fi, path)
@@ -53,7 +55,12 @@ func TarCopySrc(ctx context.Context, pathPrefix string) (outputChan chan wshrpc.
 			}
 
 			if singleFile {
+				if singleFileFlagSet {
+					return errors.New("attempting to write multiple files to a single file tar stream")
+				}
+
 				header.PAXRecords = map[string]string{SingleFile: "true"}
+				singleFileFlagSet = true
 			}
 
 			path, err = fixPath(path, pathPrefix)
@@ -89,7 +96,7 @@ func fixPath(path string, prefix string) (string, error) {
 }
 
 // TarCopyDest reads a tar stream from a channel and writes the files to the destination.
-// readNext is a function that is called for each file in the tar stream to read the file data. It should return an error if the file cannot be read.
+// readNext is a function that is called for each file in the tar stream to read the file data. If only a single file is being written from the tar src, the singleFile flag will be set in this callback. It should return an error if the file cannot be read.
 // The function returns an error if the tar stream cannot be read.
 func TarCopyDest(ctx context.Context, cancel context.CancelCauseFunc, ch <-chan wshrpc.RespOrErrorUnion[iochantypes.Packet], readNext func(next *tar.Header, reader *tar.Reader, singleFile bool) error) error {
 	pipeReader, pipeWriter := io.Pipe()
