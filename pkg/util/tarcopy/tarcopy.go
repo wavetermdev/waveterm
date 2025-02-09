@@ -133,7 +133,7 @@ func TarCopyDest(ctx context.Context, cancel context.CancelCauseFunc, ch <-chan 
 
 			// Check for directory traversal
 			if strings.Contains(next.Name, "..") {
-				return nil
+				return fmt.Errorf("invalid tar path containing directory traversal: %s", next.Name)
 			}
 			err = readNext(next, tarReader, next.PAXRecords != nil && next.PAXRecords[SingleFile] == "true")
 			if err != nil {
