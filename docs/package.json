@@ -33,8 +33,7 @@
         "rehype-highlight": "^7.0.2",
         "remark-gfm": "^4.0.0",
         "remark-typescript-code-import": "^1.0.1",
-        "sass": "^1.83.4",
-        "ua-parser-js": "^2.0.1"
+        "sass": "^1.83.4"
     },
     "devDependencies": {
         "@docusaurus/module-type-aliases": "3.7.0",
@@ -44,7 +43,6 @@
         "@mdx-js/typescript-plugin": "^0.0.8",
         "@types/eslint": "^9.6.1",
         "@types/eslint-config-prettier": "^6.11.3",
-        "@types/ua-parser-js": "^0.7.39",
         "eslint": "^9.19.0",
         "eslint-config-prettier": "^10.0.1",
         "eslint-plugin-mdx": "^3.1.5",
