@@ -12,7 +12,9 @@ import (
 	"io"
 	"io/fs"
 	"log"
+	"os"
 	"path"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -30,7 +32,7 @@ import (
 )
 
 const (
-	DefaultTimeout = 30 * time.Second
+	DirMode os.FileMode = 0755 | os.ModeDir
 )
 
 type WaveClient struct{}
@@ -54,7 +56,7 @@ func (c WaveClient) ReadStream(ctx context.Context, conn *connparse.Connection, 
 		if !rtnData.Info.IsDir {
 			for i := 0; i < dataLen; i += wshrpc.FileChunkSize {
 				if ctx.Err() != nil {
-					ch <- wshutil.RespErr[wshrpc.FileData](ctx.Err())
+					ch <- wshutil.RespErr[wshrpc.FileData](context.Cause(ctx))
 					return
 				}
 				dataEnd := min(i+wshrpc.FileChunkSize, dataLen)
@@ -63,7 +65,7 @@ func (c WaveClient) ReadStream(ctx context.Context, conn *connparse.Connection, 
 		} else {
 			for i := 0; i < len(rtnData.Entries); i += wshrpc.DirChunkSize {
 				if ctx.Err() != nil {
-					ch <- wshutil.RespErr[wshrpc.FileData](ctx.Err())
+					ch <- wshutil.RespErr[wshrpc.FileData](context.Cause(ctx))
 					return
 				}
 				ch <- wshrpc.RespOrErrorUnion[wshrpc.FileData]{Response: wshrpc.FileData{Entries: rtnData.Entries[i:min(i+wshrpc.DirChunkSize, len(rtnData.Entries))], Info: rtnData.Info}}
@@ -108,15 +110,38 @@ func (c WaveClient) Read(ctx context.Context, conn *connparse.Connection, data w
 
 func (c WaveClient) ReadTarStream(ctx context.Context, conn *connparse.Connection, opts *wshrpc.FileCopyOpts) <-chan wshrpc.RespOrErrorUnion[iochantypes.Packet] {
 	log.Printf("ReadTarStream: conn: %v, opts: %v\n", conn, opts)
-	list, err := c.ListEntries(ctx, conn, nil)
+	path := conn.Path
+	srcHasSlash := strings.HasSuffix(path, "/")
+	cleanedPath, err := cleanPath(path)
 	if err != nil {
-		return wshutil.SendErrCh[iochantypes.Packet](fmt.Errorf("error listing blockfiles: %w", err))
+		return wshutil.SendErrCh[iochantypes.Packet](fmt.Errorf("error cleaning path: %w", err))
 	}
 
+	finfo, err := c.Stat(ctx, conn)
+	if err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return wshutil.SendErrCh[iochantypes.Packet](fmt.Errorf("error getting file info: %w", err))
+	}
+	singleFile := finfo != nil && !finfo.IsDir
 	pathPrefix := getPathPrefix(conn)
+	if !singleFile && srcHasSlash {
+		pathPrefix = cleanedPath
+	} else {
+		pathPrefix = filepath.Dir(cleanedPath)
+	}
+
 	schemeAndHost := conn.GetSchemeAndHost() + "/"
 
-	timeout := DefaultTimeout
+	var entries []*wshrpc.FileInfo
+	if singleFile {
+		entries = []*wshrpc.FileInfo{finfo}
+	} else {
+		entries, err = c.ListEntries(ctx, conn, nil)
+		if err != nil {
+			return wshutil.SendErrCh[iochantypes.Packet](fmt.Errorf("error listing blockfiles: %w", err))
+		}
+	}
+
+	timeout := fstype.DefaultTimeout
 	if opts.Timeout > 0 {
 		timeout = time.Duration(opts.Timeout) * time.Millisecond
 	}
@@ -128,14 +153,14 @@ func (c WaveClient) ReadTarStream(ctx context.Context, conn *connparse.Connectio
 			tarClose()
 			cancel()
 		}()
-		for _, file := range list {
+		for _, file := range entries {
 			if readerCtx.Err() != nil {
-				rtn <- wshutil.RespErr[iochantypes.Packet](readerCtx.Err())
+				rtn <- wshutil.RespErr[iochantypes.Packet](context.Cause(readerCtx))
 				return
 			}
 			file.Mode = 0644
 
-			if err = writeHeader(fileutil.ToFsFileInfo(file), file.Path); err != nil {
+			if err = writeHeader(fileutil.ToFsFileInfo(file), file.Path, singleFile); err != nil {
 				rtn <- wshutil.RespErr[iochantypes.Packet](fmt.Errorf("error writing tar header: %w", err))
 				return
 			}
@@ -232,6 +257,7 @@ func (c WaveClient) ListEntries(ctx context.Context, conn *connparse.Connection,
 				Size:          0,
 				IsDir:         true,
 				SupportsMkdir: false,
+				Mode:          DirMode,
 			})
 		}
 		fileList = filteredList
@@ -447,27 +473,49 @@ func (c WaveClient) CopyRemote(ctx context.Context, srcConn, destConn *connparse
 	if zoneId == "" {
 		return fmt.Errorf("zoneid not found in connection")
 	}
+	overwrite := opts != nil && opts.Overwrite
+	merge := opts != nil && opts.Merge
+	destHasSlash := strings.HasSuffix(destConn.Path, "/")
 	destPrefix := getPathPrefix(destConn)
 	destPrefix = strings.TrimPrefix(destPrefix, destConn.GetSchemeAndHost()+"/")
 	log.Printf("CopyRemote: srcConn: %v, destConn: %v, destPrefix: %s\n", srcConn, destConn, destPrefix)
+
+	var entries []*wshrpc.FileInfo
+	_, err := c.Stat(ctx, destConn)
+	if err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			entries, err = c.ListEntries(ctx, destConn, nil)
+			if err != nil {
+				return err
+			}
+			if len(entries) > 0 && !merge {
+				return fmt.Errorf("more than one entry exists at prefix, merge not specified")
+			}
+		} else {
+			return err
+		}
+	} else if !overwrite {
+		return fmt.Errorf("file already exists at destination %q, use force to overwrite", destConn.GetFullURI())
+	}
+
 	readCtx, cancel := context.WithCancelCause(ctx)
 	ioch := srcClient.ReadTarStream(readCtx, srcConn, opts)
-	err := tarcopy.TarCopyDest(readCtx, cancel, ioch, func(next *tar.Header, reader *tar.Reader) error {
+	err = tarcopy.TarCopyDest(readCtx, cancel, ioch, func(next *tar.Header, reader *tar.Reader, singleFile bool) error {
 		if next.Typeflag == tar.TypeDir {
 			return nil
 		}
 		fileName, err := cleanPath(path.Join(destPrefix, next.Name))
+		if singleFile && !destHasSlash {
+			fileName, err = cleanPath(destConn.Path)
+		}
 		if err != nil {
 			return fmt.Errorf("error cleaning path: %w", err)
 		}
-		_, err = filestore.WFS.Stat(ctx, zoneId, fileName)
-		if err != nil {
-			if !errors.Is(err, fs.ErrNotExist) {
-				return fmt.Errorf("error getting blockfile info: %w", err)
-			}
-			err := filestore.WFS.MakeFile(ctx, zoneId, fileName, nil, wshrpc.FileOpts{})
-			if err != nil {
-				return fmt.Errorf("error making blockfile: %w", err)
+		if !overwrite {
+			for _, entry := range entries {
+				if entry.Name == fileName {
+					return fmt.Errorf("destination already exists: %v", fileName)
+				}
 			}
 		}
 		log.Printf("CopyRemote: writing file: %s; size: %d\n", fileName, next.Size)
@@ -546,6 +594,13 @@ func (c WaveClient) Join(ctx context.Context, conn *connparse.Connection, parts 
 		return "", fmt.Errorf("error cleaning path: %w", err)
 	}
 	return newPath, nil
+}
+
+func (c WaveClient) GetCapability() wshrpc.FileShareCapability {
+	return wshrpc.FileShareCapability{
+		CanAppend: true,
+		CanMkdir:  false,
+	}
 }
 
 func cleanPath(path string) (string, error) {

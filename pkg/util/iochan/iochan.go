@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 
 	"github.com/wavetermdev/waveterm/pkg/util/iochan/iochantypes"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
@@ -22,6 +23,7 @@ func ReaderChan(ctx context.Context, r io.Reader, chunkSize int64, callback func
 	ch := make(chan wshrpc.RespOrErrorUnion[iochantypes.Packet], 32)
 	go func() {
 		defer func() {
+			log.Printf("Closing ReaderChan\n")
 			close(ch)
 			callback()
 		}()

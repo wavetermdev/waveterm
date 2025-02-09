@@ -5,10 +5,15 @@ package fstype
 
 import (
 	"context"
+	"time"
 
 	"github.com/wavetermdev/waveterm/pkg/remote/connparse"
 	"github.com/wavetermdev/waveterm/pkg/util/iochan/iochantypes"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
+)
+
+const (
+	DefaultTimeout = 30 * time.Second
 )
 
 type FileShareClient interface {
@@ -42,4 +47,6 @@ type FileShareClient interface {
 	Join(ctx context.Context, conn *connparse.Connection, parts ...string) (string, error)
 	// GetConnectionType returns the type of connection for the fileshare
 	GetConnectionType() string
+	// GetCapability returns the capability of the fileshare
+	GetCapability() wshrpc.FileShareCapability
 }

@@ -19,6 +19,7 @@ var viewMagnified bool
 
 var viewCmd = &cobra.Command{
 	Use:     "view {file|directory|URL}",
+	Aliases: []string{"preview", "open"},
 	Short:   "preview/edit a file or directory",
 	RunE:    viewRun,
 	PreRunE: preRunSetupRpcClient,

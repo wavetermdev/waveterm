@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	"github.com/google/uuid"
+	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/util/shellutil"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
@@ -248,6 +249,9 @@ func (p *WshRpcProxy) HandleAuthentication() (*wshrpc.RpcContext, error) {
 }
 
 func (p *WshRpcProxy) SendRpcMessage(msg []byte) {
+	defer func() {
+		panichandler.PanicHandler("WshRpcProxy.SendRpcMessage", recover())
+	}()
 	p.ToRemoteCh <- msg
 }
 

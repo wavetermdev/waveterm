@@ -47,6 +47,9 @@ func (c *Connection) GetPathWithHost() string {
 	if c.Host == "" {
 		return ""
 	}
+	if c.Path == "" {
+		return c.Host
+	}
 	if strings.HasPrefix(c.Path, "/") {
 		return c.Host + c.Path
 	}
@@ -107,16 +110,13 @@ func ParseURI(uri string) (*Connection, error) {
 	parseGenericPath := func() {
 		split = strings.SplitN(rest, "/", 2)
 		host = split[0]
-		if len(split) > 1 {
+		if len(split) > 1 && split[1] != "" {
 			remotePath = split[1]
+		} else if strings.HasSuffix(rest, "/") {
+			// preserve trailing slash
+			remotePath = "/"
 		} else {
-			split = strings.SplitN(rest, "/", 2)
-			host = split[0]
-			if len(split) > 1 {
-				remotePath = split[1]
-			} else {
-				remotePath = "/"
-			}
+			remotePath = ""
 		}
 	}
 	parseWshPath := func() {

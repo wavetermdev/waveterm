@@ -65,9 +65,11 @@ const (
 	Command_DeleteBlock          = "deleteblock"
 	Command_FileWrite            = "filewrite"
 	Command_FileRead             = "fileread"
+	Command_FileReadStream       = "filereadstream"
 	Command_FileMove             = "filemove"
 	Command_FileCopy             = "filecopy"
 	Command_FileStreamTar        = "filestreamtar"
+	Command_FileShareCapability  = "filesharecapability"
 	Command_EventPublish         = "eventpublish"
 	Command_EventRecv            = "eventrecv"
 	Command_EventSub             = "eventsub"
@@ -158,12 +160,14 @@ type WshRpcInterface interface {
 	FileAppendIJsonCommand(ctx context.Context, data CommandAppendIJsonData) error
 	FileWriteCommand(ctx context.Context, data FileData) error
 	FileReadCommand(ctx context.Context, data FileData) (*FileData, error)
+	FileReadStreamCommand(ctx context.Context, data FileData) <-chan RespOrErrorUnion[FileData]
 	FileStreamTarCommand(ctx context.Context, data CommandRemoteStreamTarData) <-chan RespOrErrorUnion[iochantypes.Packet]
 	FileMoveCommand(ctx context.Context, data CommandFileCopyData) error
 	FileCopyCommand(ctx context.Context, data CommandFileCopyData) error
 	FileInfoCommand(ctx context.Context, data FileData) (*FileInfo, error)
 	FileListCommand(ctx context.Context, data FileListData) ([]*FileInfo, error)
 	FileListStreamCommand(ctx context.Context, data FileListData) <-chan RespOrErrorUnion[CommandRemoteListEntriesRtnData]
+	FileShareCapabilityCommand(ctx context.Context, path string) (FileShareCapability, error)
 	EventPublishCommand(ctx context.Context, data wps.WaveEvent) error
 	EventSubCommand(ctx context.Context, data wps.SubscriptionRequest) error
 	EventUnsubCommand(ctx context.Context, data string) error
@@ -206,11 +210,11 @@ type WshRpcInterface interface {
 	// remotes
 	RemoteStreamFileCommand(ctx context.Context, data CommandRemoteStreamFileData) chan RespOrErrorUnion[FileData]
 	RemoteTarStreamCommand(ctx context.Context, data CommandRemoteStreamTarData) <-chan RespOrErrorUnion[iochantypes.Packet]
-	RemoteFileCopyCommand(ctx context.Context, data CommandRemoteFileCopyData) error
+	RemoteFileCopyCommand(ctx context.Context, data CommandFileCopyData) error
 	RemoteListEntriesCommand(ctx context.Context, data CommandRemoteListEntriesData) chan RespOrErrorUnion[CommandRemoteListEntriesRtnData]
 	RemoteFileInfoCommand(ctx context.Context, path string) (*FileInfo, error)
 	RemoteFileTouchCommand(ctx context.Context, path string) error
-	RemoteFileMoveCommand(ctx context.Context, data CommandRemoteFileCopyData) error
+	RemoteFileMoveCommand(ctx context.Context, data CommandFileCopyData) error
 	RemoteFileDeleteCommand(ctx context.Context, data CommandDeleteFileData) error
 	RemoteWriteFileCommand(ctx context.Context, data FileData) error
 	RemoteFileJoinCommand(ctx context.Context, paths []string) (*FileInfo, error)
@@ -515,12 +519,6 @@ type CommandFileCopyData struct {
 	Opts    *FileCopyOpts `json:"opts,omitempty"`
 }
 
-type CommandRemoteFileCopyData struct {
-	SrcUri  string        `json:"srcuri"`
-	DestUri string        `json:"desturi"`
-	Opts    *FileCopyOpts `json:"opts,omitempty"`
-}
-
 type CommandRemoteStreamTarData struct {
 	Path string        `json:"path"`
 	Opts *FileCopyOpts `json:"opts,omitempty"`
@@ -528,8 +526,8 @@ type CommandRemoteStreamTarData struct {
 
 type FileCopyOpts struct {
 	Overwrite bool  `json:"overwrite,omitempty"`
-	Recursive bool  `json:"recursive,omitempty"`
-	Merge     bool  `json:"merge,omitempty"`
+	Recursive bool  `json:"recursive,omitempty"` // only used for move, always true for copy
+	Merge     bool  `json:"merge,omitempty"`     // only used for copy, always false for move
 	Timeout   int64 `json:"timeout,omitempty"`
 }
 
@@ -752,4 +750,12 @@ type SuggestionType struct {
 	FilePath     string `json:"file:path,omitempty"`
 	FileName     string `json:"file:name,omitempty"`
 	UrlUrl       string `json:"url:url,omitempty"`
+}
+
+// FileShareCapability represents the capabilities of a file share
+type FileShareCapability struct {
+	// CanAppend indicates whether the file share supports appending to files
+	CanAppend bool `json:"canappend"`
+	// CanMkdir indicates whether the file share supports creating directories
+	CanMkdir bool `json:"canmkdir"`
 }
