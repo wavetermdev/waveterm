@@ -105,7 +105,6 @@ func TarCopyDest(ctx context.Context, cancel context.CancelCauseFunc, ch <-chan 
 	pipeReader, pipeWriter := io.Pipe()
 	iochan.WriterChan(ctx, pipeWriter, ch, func() {
 		utilfn.GracefulClose(pipeWriter, tarCopyDestName, pipeWriterName, maxRetries, retryDelay)
-		cancel(nil)
 	}, cancel)
 	tarReader := tar.NewReader(pipeReader)
 	defer func() {

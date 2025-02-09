@@ -159,8 +159,6 @@ func (c S3Client) ReadStream(ctx context.Context, conn *connparse.Connection, da
 }
 
 func (c S3Client) ReadTarStream(ctx context.Context, conn *connparse.Connection, opts *wshrpc.FileCopyOpts) <-chan wshrpc.RespOrErrorUnion[iochantypes.Packet] {
-	recursive := opts != nil && opts.Recursive
-
 	bucket := conn.Host
 	if bucket == "" || bucket == "/" {
 		return wshutil.SendErrCh[iochantypes.Packet](fmt.Errorf("bucket must be specified"))
@@ -195,9 +193,6 @@ func (c S3Client) ReadTarStream(ctx context.Context, conn *connparse.Connection,
 
 	// whether the operation is on a single file
 	singleFile := singleFileResult != nil
-	if !singleFile && !recursive {
-		return wshutil.SendErrCh[iochantypes.Packet](fmt.Errorf("recursive must be set to true for non-single file operations"))
-	}
 
 	// whether to include the directory itself in the tar
 	includeDir := (wholeBucket && conn.Path == "") || (singleFileResult == nil && conn.Path != "" && !strings.HasSuffix(conn.Path, "/"))
