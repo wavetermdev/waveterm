@@ -252,7 +252,8 @@ func (impl *ServerImpl) RemoteTarStreamCommand(ctx context.Context, data wshrpc.
 	}
 
 	var pathPrefix string
-	if finfo.IsDir() && strings.HasSuffix(cleanedPath, "/") {
+	singleFile := !finfo.IsDir()
+	if !singleFile && strings.HasSuffix(cleanedPath, "/") {
 		pathPrefix = cleanedPath
 	} else {
 		pathPrefix = filepath.Dir(cleanedPath) + "/"
@@ -277,7 +278,7 @@ func (impl *ServerImpl) RemoteTarStreamCommand(ctx context.Context, data wshrpc.
 			if err != nil {
 				return err
 			}
-			if err = writeHeader(info, path); err != nil {
+			if err = writeHeader(info, path, singleFile); err != nil {
 				return err
 			}
 			// if not a dir, write file content
@@ -294,10 +295,10 @@ func (impl *ServerImpl) RemoteTarStreamCommand(ctx context.Context, data wshrpc.
 		}
 		log.Printf("RemoteTarStreamCommand: starting\n")
 		err = nil
-		if finfo.IsDir() {
-			err = filepath.Walk(path, walkFunc)
+		if singleFile {
+			err = walkFunc(cleanedPath, finfo, nil)
 		} else {
-			err = walkFunc(path, finfo, nil)
+			err = filepath.Walk(cleanedPath, walkFunc)
 		}
 		if err != nil {
 			rtn <- wshutil.RespErr[iochantypes.Packet](err)
@@ -325,19 +326,25 @@ func (impl *ServerImpl) RemoteFileCopyCommand(ctx context.Context, data wshrpc.C
 	}
 	destPathCleaned := filepath.Clean(wavebase.ExpandHomeDirSafe(destConn.Path))
 	destinfo, err := os.Stat(destPathCleaned)
-	if err == nil {
-		if !destinfo.IsDir() {
-			if !overwrite {
-				return fmt.Errorf("destination %q already exists, use overwrite option", destPathCleaned)
-			} else {
-				err := os.Remove(destPathCleaned)
-				if err != nil {
-					return fmt.Errorf("cannot remove file %q: %w", destPathCleaned, err)
-				}
+	if err != nil {
+		if !errors.Is(err, fs.ErrNotExist) {
+			return fmt.Errorf("cannot stat destination %q: %w", destPathCleaned, err)
+		}
+	}
+
+	destExists := destinfo != nil
+	destIsDir := destExists && destinfo.IsDir()
+	destHasSlash := strings.HasSuffix(destUri, "/")
+
+	if destExists && !destIsDir {
+		if !overwrite {
+			return fmt.Errorf("file already exists at destination %q, use overwrite option", destPathCleaned)
+		} else {
+			err := os.Remove(destPathCleaned)
+			if err != nil {
+				return fmt.Errorf("cannot remove file %q: %w", destPathCleaned, err)
 			}
 		}
-	} else if !errors.Is(err, fs.ErrNotExist) {
-		return fmt.Errorf("cannot stat destination %q: %w", destPathCleaned, err)
 	}
 	srcConn, err := connparse.ParseURIAndReplaceCurrentHost(ctx, srcUri)
 	if err != nil {
@@ -345,13 +352,13 @@ func (impl *ServerImpl) RemoteFileCopyCommand(ctx context.Context, data wshrpc.C
 	}
 
 	copyFileFunc := func(path string, finfo fs.FileInfo, srcFile io.Reader) (int64, error) {
-		destinfo, err = os.Stat(path)
+		nextinfo, err := os.Stat(path)
 		if err != nil && !errors.Is(err, fs.ErrNotExist) {
 			return 0, fmt.Errorf("cannot stat file %q: %w", path, err)
 		}
 
-		if destinfo != nil {
-			if destinfo.IsDir() {
+		if nextinfo != nil {
+			if nextinfo.IsDir() {
 				if !finfo.IsDir() {
 					// try to create file in directory
 					path = filepath.Join(path, filepath.Base(finfo.Name()))
@@ -464,18 +471,19 @@ func (impl *ServerImpl) RemoteFileCopyCommand(ctx context.Context, data wshrpc.C
 		numFiles := 0
 		numSkipped := 0
 		totalBytes := int64(0)
-		err := tarcopy.TarCopyDest(readCtx, cancel, ioch, func(next *tar.Header, reader *tar.Reader) error {
-			// Check for directory traversal
-			if strings.Contains(next.Name, "..") {
-				log.Printf("skipping file with unsafe path: %q\n", next.Name)
-				numSkipped++
-				return nil
-			}
+
+		err := tarcopy.TarCopyDest(readCtx, cancel, ioch, func(next fs.FileInfo, reader *tar.Reader, singleFile bool) error {
 			numFiles++
-			finfo := next.FileInfo()
-			n, err := copyFileFunc(filepath.Join(destPathCleaned, next.Name), finfo, reader)
+			nextpath := filepath.Join(destPathCleaned, next.Name())
+			if singleFile {
+				// custom flag to indicate that the source is a single file, not a directory the contents of a directory
+				if !destHasSlash {
+					nextpath = destPathCleaned
+				}
+			}
+			n, err := copyFileFunc(nextpath, next, reader)
 			if err != nil {
-				return fmt.Errorf("cannot copy file %q: %w", next.Name, err)
+				return fmt.Errorf("cannot copy file %q: %w", next.Name(), err)
 			}
 			totalBytes += n
 			return nil

@@ -29,24 +29,31 @@ const (
 	pipeReaderName  = "pipe reader"
 	pipeWriterName  = "pipe writer"
 	tarWriterName   = "tar writer"
+
+	// custom flag to indicate that the source is a single file, not a directory the contents of a directory
+	SingleFile = "singlefile"
 )
 
 // TarCopySrc creates a tar stream writer and returns a channel to send the tar stream to.
 // writeHeader is a function that writes the tar header for the file.
 // writer is the tar writer to write the file data to.
 // close is a function that closes the tar writer and internal pipe writer.
-func TarCopySrc(ctx context.Context, pathPrefix string) (outputChan chan wshrpc.RespOrErrorUnion[iochantypes.Packet], writeHeader func(fi fs.FileInfo, file string) error, writer io.Writer, close func()) {
+func TarCopySrc(ctx context.Context, pathPrefix string) (outputChan chan wshrpc.RespOrErrorUnion[iochantypes.Packet], writeHeader func(fi fs.FileInfo, file string, singleFile bool) error, writer io.Writer, close func()) {
 	pipeReader, pipeWriter := io.Pipe()
 	tarWriter := tar.NewWriter(pipeWriter)
 	rtnChan := iochan.ReaderChan(ctx, pipeReader, wshrpc.FileChunkSize, func() {
 		gracefulClose(pipeReader, tarCopySrcName, pipeReaderName)
 	})
 
-	return rtnChan, func(fi fs.FileInfo, file string) error {
+	return rtnChan, func(fi fs.FileInfo, file string, singleFile bool) error {
 			// generate tar header
 			header, err := tar.FileInfoHeader(fi, file)
 			if err != nil {
 				return err
+			}
+
+			if singleFile {
+				header.PAXRecords[SingleFile] = "true"
 			}
 
 			header.Name = filepath.Clean(strings.TrimPrefix(file, pathPrefix))
@@ -78,7 +85,7 @@ func validatePath(path string) error {
 // TarCopyDest reads a tar stream from a channel and writes the files to the destination.
 // readNext is a function that is called for each file in the tar stream to read the file data. It should return an error if the file cannot be read.
 // The function returns an error if the tar stream cannot be read.
-func TarCopyDest(ctx context.Context, cancel context.CancelCauseFunc, ch <-chan wshrpc.RespOrErrorUnion[iochantypes.Packet], readNext func(next *tar.Header, reader *tar.Reader) error) error {
+func TarCopyDest(ctx context.Context, cancel context.CancelCauseFunc, ch <-chan wshrpc.RespOrErrorUnion[iochantypes.Packet], readNext func(next fs.FileInfo, reader *tar.Reader, singleFile bool) error) error {
 	pipeReader, pipeWriter := io.Pipe()
 	iochan.WriterChan(ctx, pipeWriter, ch, func() {
 		gracefulClose(pipeWriter, tarCopyDestName, pipeWriterName)
@@ -110,7 +117,12 @@ func TarCopyDest(ctx context.Context, cancel context.CancelCauseFunc, ch <-chan 
 					return err
 				}
 			}
-			err = readNext(next, tarReader)
+
+			// Check for directory traversal
+			if strings.Contains(next.Name, "..") {
+				return nil
+			}
+			err = readNext(next.FileInfo(), tarReader, next.PAXRecords[SingleFile] == "true")
 			if err != nil {
 				return err
 			}

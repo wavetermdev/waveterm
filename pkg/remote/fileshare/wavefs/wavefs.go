@@ -29,10 +29,6 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
 )
 
-const (
-	DefaultTimeout = 30 * time.Second
-)
-
 type WaveClient struct{}
 
 var _ fstype.FileShareClient = WaveClient{}
@@ -54,7 +50,7 @@ func (c WaveClient) ReadStream(ctx context.Context, conn *connparse.Connection, 
 		if !rtnData.Info.IsDir {
 			for i := 0; i < dataLen; i += wshrpc.FileChunkSize {
 				if ctx.Err() != nil {
-					ch <- wshutil.RespErr[wshrpc.FileData](ctx.Err())
+					ch <- wshutil.RespErr[wshrpc.FileData](context.Cause(ctx))
 					return
 				}
 				dataEnd := min(i+wshrpc.FileChunkSize, dataLen)
@@ -63,7 +59,7 @@ func (c WaveClient) ReadStream(ctx context.Context, conn *connparse.Connection, 
 		} else {
 			for i := 0; i < len(rtnData.Entries); i += wshrpc.DirChunkSize {
 				if ctx.Err() != nil {
-					ch <- wshutil.RespErr[wshrpc.FileData](ctx.Err())
+					ch <- wshutil.RespErr[wshrpc.FileData](context.Cause(ctx))
 					return
 				}
 				ch <- wshrpc.RespOrErrorUnion[wshrpc.FileData]{Response: wshrpc.FileData{Entries: rtnData.Entries[i:min(i+wshrpc.DirChunkSize, len(rtnData.Entries))], Info: rtnData.Info}}
@@ -116,7 +112,7 @@ func (c WaveClient) ReadTarStream(ctx context.Context, conn *connparse.Connectio
 	pathPrefix := getPathPrefix(conn)
 	schemeAndHost := conn.GetSchemeAndHost() + "/"
 
-	timeout := DefaultTimeout
+	timeout := fstype.DefaultTimeout
 	if opts.Timeout > 0 {
 		timeout = time.Duration(opts.Timeout) * time.Millisecond
 	}
@@ -130,12 +126,12 @@ func (c WaveClient) ReadTarStream(ctx context.Context, conn *connparse.Connectio
 		}()
 		for _, file := range list {
 			if readerCtx.Err() != nil {
-				rtn <- wshutil.RespErr[iochantypes.Packet](readerCtx.Err())
+				rtn <- wshutil.RespErr[iochantypes.Packet](context.Cause(readerCtx))
 				return
 			}
 			file.Mode = 0644
 
-			if err = writeHeader(fileutil.ToFsFileInfo(file), file.Path); err != nil {
+			if err = writeHeader(fileutil.ToFsFileInfo(file), file.Path, file.Path == conn.Path); err != nil {
 				rtn <- wshutil.RespErr[iochantypes.Packet](fmt.Errorf("error writing tar header: %w", err))
 				return
 			}
@@ -393,19 +389,11 @@ func (c WaveClient) MoveInternal(ctx context.Context, srcConn, destConn *connpar
 	if srcConn.Host != destConn.Host {
 		return fmt.Errorf("move internal, src and dest hosts do not match")
 	}
-	finfo, err := c.Stat(ctx, srcConn)
-	if err != nil {
-		return fmt.Errorf("error getting file info: %w", err)
-	}
-	recursive := opts != nil && opts.Recursive
-	if finfo.IsDir && !recursive {
-		return fmt.Errorf("source is a directory, use recursive flag to move")
-	}
-	err = c.CopyInternal(ctx, srcConn, destConn, opts)
+	err := c.CopyInternal(ctx, srcConn, destConn, opts)
 	if err != nil {
 		return fmt.Errorf("error copying blockfile: %w", err)
 	}
-	err = c.Delete(ctx, srcConn, recursive)
+	err = c.Delete(ctx, srcConn, opts.Recursive)
 	if err != nil {
 		return fmt.Errorf("error deleting blockfile: %w", err)
 	}
@@ -455,31 +443,41 @@ func (c WaveClient) CopyRemote(ctx context.Context, srcConn, destConn *connparse
 	if zoneId == "" {
 		return fmt.Errorf("zoneid not found in connection")
 	}
+	overwrite := opts != nil && opts.Overwrite
+	merge := opts != nil && opts.Merge
+	destHasSlash := strings.HasSuffix(destConn.Path, "/")
 	destPrefix := getPathPrefix(destConn)
 	destPrefix = strings.TrimPrefix(destPrefix, destConn.GetSchemeAndHost()+"/")
 	log.Printf("CopyRemote: srcConn: %v, destConn: %v, destPrefix: %s\n", srcConn, destConn, destPrefix)
+	entries, err := c.ListEntries(ctx, srcConn, nil)
+	if err != nil {
+		return fmt.Errorf("error listing blockfiles: %w", err)
+	}
+	if len(entries) > 1 && !merge {
+		return fmt.Errorf("more than one entry at destination prefix, use merge flag to copy")
+	}
 	readCtx, cancel := context.WithCancelCause(ctx)
 	ioch := srcClient.ReadTarStream(readCtx, srcConn, opts)
-	err := tarcopy.TarCopyDest(readCtx, cancel, ioch, func(next *tar.Header, reader *tar.Reader) error {
-		if next.Typeflag == tar.TypeDir {
+	err = tarcopy.TarCopyDest(readCtx, cancel, ioch, func(next fs.FileInfo, reader *tar.Reader, singleFile bool) error {
+		if next.IsDir() {
 			return nil
 		}
-		fileName, err := cleanPath(path.Join(destPrefix, next.Name))
+		fileName, err := cleanPath(path.Join(destPrefix, next.Name()))
+		if singleFile && !destHasSlash {
+			fileName, err = cleanPath(destConn.Path)
+		}
 		if err != nil {
 			return fmt.Errorf("error cleaning path: %w", err)
 		}
-		_, err = filestore.WFS.Stat(ctx, zoneId, fileName)
-		if err != nil {
-			if !errors.Is(err, fs.ErrNotExist) {
-				return fmt.Errorf("error getting blockfile info: %w", err)
-			}
-			err := filestore.WFS.MakeFile(ctx, zoneId, fileName, nil, wshrpc.FileOpts{})
-			if err != nil {
-				return fmt.Errorf("error making blockfile: %w", err)
+		if !overwrite {
+			for _, entry := range entries {
+				if entry.Name == fileName {
+					return fmt.Errorf("destination already exists: %v", fileName)
+				}
 			}
 		}
 		log.Printf("CopyRemote: writing file: %s; size: %d\n", fileName, next.Size)
-		dataBuf := make([]byte, next.Size)
+		dataBuf := make([]byte, next.Size())
 		_, err = reader.Read(dataBuf)
 		if err != nil {
 			if !errors.Is(err, io.EOF) {
