@@ -30,7 +30,7 @@ const (
 	pipeWriterName  = "pipe writer"
 	tarWriterName   = "tar writer"
 
-	// custom flag to indicate that the source is a single file, not a directory the contents of a directory
+	// custom flag to indicate that the source is a single file
 	SingleFile = "singlefile"
 )
 
