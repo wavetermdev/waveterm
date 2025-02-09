@@ -45,9 +45,9 @@ func TarCopySrc(ctx context.Context, pathPrefix string) (outputChan chan wshrpc.
 		gracefulClose(pipeReader, tarCopySrcName, pipeReaderName)
 	})
 
-	return rtnChan, func(fi fs.FileInfo, file string, singleFile bool) error {
+	return rtnChan, func(fi fs.FileInfo, path string, singleFile bool) error {
 			// generate tar header
-			header, err := tar.FileInfoHeader(fi, file)
+			header, err := tar.FileInfoHeader(fi, path)
 			if err != nil {
 				return err
 			}
@@ -56,7 +56,10 @@ func TarCopySrc(ctx context.Context, pathPrefix string) (outputChan chan wshrpc.
 				header.PAXRecords = map[string]string{SingleFile: "true"}
 			}
 
-			header.Name = filepath.Clean(strings.TrimPrefix(file, pathPrefix))
+			header.Name = filepath.Clean(strings.TrimPrefix(path, pathPrefix))
+			if header.Name == "." {
+				return nil
+			}
 			if err := validatePath(header.Name); err != nil {
 				return err
 			}
