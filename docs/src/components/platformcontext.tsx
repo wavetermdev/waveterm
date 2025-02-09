@@ -14,8 +14,7 @@ interface PlatformContextProps {
 export const PlatformContext = createContext<PlatformContextProps | undefined>(undefined);
 
 function getOS(): Platform {
-    var userAgent = window.navigator.userAgent,
-        platform = window.navigator.platform,
+    var platform = window.navigator.platform,
         macosPlatforms = ["Macintosh", "MacIntel", "MacPPC", "Mac68K"],
         windowsPlatforms = ["Win32", "Win64", "Windows", "WinCE"],
         iosPlatforms = ["iPhone", "iPad", "iPod"],
