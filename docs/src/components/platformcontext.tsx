@@ -1,6 +1,5 @@
 import BrowserOnly from "@docusaurus/BrowserOnly";
 import { createContext, ReactNode, useCallback, useContext, useState } from "react";
-import { UAParser } from "ua-parser-js";
 
 import clsx from "clsx";
 import "./platformcontext.css";
@@ -14,24 +13,26 @@ interface PlatformContextProps {
 
 export const PlatformContext = createContext<PlatformContextProps | undefined>(undefined);
 
-const detectPlatform = (): Platform => {
-    const savedPlatform = localStorage.getItem("platform") as Platform | null;
-    if (savedPlatform) {
-        return savedPlatform;
-    }
-    const { os } = UAParser(navigator.userAgent);
+function getOS(): Platform {
+    var platform = window.navigator.platform,
+        macosPlatforms = ["Macintosh", "MacIntel", "MacPPC", "Mac68K"],
+        windowsPlatforms = ["Win32", "Win64", "Windows", "WinCE"],
+        iosPlatforms = ["iPhone", "iPad", "iPod"],
+        os: Platform = null;
 
-    if (/Windows/.test(os.name)) {
-        return "windows";
-    } else if (/Mac OS|iOS/.test(os.name)) {
-        return "mac";
+    if (macosPlatforms.indexOf(platform) !== -1 || iosPlatforms.indexOf(platform) !== -1) {
+        os = "mac";
+    } else if (windowsPlatforms.indexOf(platform) !== -1) {
+        os = "windows";
     } else {
-        return "linux";
+        os = "linux";
     }
-};
+
+    return os;
+}
 
 const PlatformProviderInternal = ({ children }: { children: ReactNode }) => {
-    const [platform, setPlatform] = useState<Platform>(detectPlatform());
+    const [platform, setPlatform] = useState<Platform>(getOS());
 
     const setPlatformCallback = useCallback((newPlatform: Platform) => {
         setPlatform(newPlatform);
