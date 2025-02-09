@@ -31,6 +31,9 @@ func (n *Node) Walk(curPath string, walkFunc WalkFunc, delimiter string) error {
 }
 
 func NewTree(path string, delimiter string) *Tree {
+	if len(delimiter) > 1 {
+		log.Printf("Warning: multi-character delimiter '%s' may cause unexpected behavior", delimiter)
+	}
 	if path != "" && !strings.HasSuffix(path, delimiter) {
 		path += delimiter
 	}
