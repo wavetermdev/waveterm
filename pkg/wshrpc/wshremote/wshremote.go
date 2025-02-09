@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/wavetermdev/waveterm/pkg/remote/connparse"
+	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/fstype"
 	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/wshfs"
 	"github.com/wavetermdev/waveterm/pkg/suggestion"
 	"github.com/wavetermdev/waveterm/pkg/util/fileutil"
@@ -28,10 +29,6 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
-)
-
-const (
-	DefaultTimeout = 30 * time.Second
 )
 
 type ServerImpl struct {
@@ -240,7 +237,8 @@ func (impl *ServerImpl) RemoteTarStreamCommand(ctx context.Context, data wshrpc.
 	if opts == nil {
 		opts = &wshrpc.FileCopyOpts{}
 	}
-	logPrintfDev("RemoteTarStreamCommand: path=%s\n", path)
+	log.Printf("RemoteTarStreamCommand: path=%s\n", path)
+	srcHasSlash := strings.HasSuffix(path, "/")
 	path, err := wavebase.ExpandHomeDir(path)
 	if err != nil {
 		return wshutil.SendErrCh[iochantypes.Packet](fmt.Errorf("cannot expand path %q: %w", path, err))
@@ -253,13 +251,14 @@ func (impl *ServerImpl) RemoteTarStreamCommand(ctx context.Context, data wshrpc.
 
 	var pathPrefix string
 	singleFile := !finfo.IsDir()
-	if !singleFile && strings.HasSuffix(cleanedPath, "/") {
+	if !singleFile && srcHasSlash {
 		pathPrefix = cleanedPath
 	} else {
 		pathPrefix = filepath.Dir(cleanedPath) + "/"
 	}
+	log.Printf("RemoteTarStreamCommand: path=%s, pathPrefix=%s\n", path, pathPrefix)
 
-	timeout := DefaultTimeout
+	timeout := fstype.DefaultTimeout
 	if opts.Timeout > 0 {
 		timeout = time.Duration(opts.Timeout) * time.Millisecond
 	}
@@ -278,6 +277,7 @@ func (impl *ServerImpl) RemoteTarStreamCommand(ctx context.Context, data wshrpc.
 			if err != nil {
 				return err
 			}
+			log.Printf("RemoteTarStreamCommand: path=%s\n", path)
 			if err = writeHeader(info, path, singleFile); err != nil {
 				return err
 			}
@@ -359,7 +359,9 @@ func (impl *ServerImpl) RemoteFileCopyCommand(ctx context.Context, data wshrpc.C
 
 		if nextinfo != nil {
 			if nextinfo.IsDir() {
+				log.Printf("RemoteFileCopyCommand: nextinfo is dir, path=%s\n", path)
 				if !finfo.IsDir() {
+					log.Printf("RemoteFileCopyCommand: finfo is file: %s\n", path)
 					// try to create file in directory
 					path = filepath.Join(path, filepath.Base(finfo.Name()))
 					newdestinfo, err := os.Stat(path)
@@ -391,13 +393,17 @@ func (impl *ServerImpl) RemoteFileCopyCommand(ctx context.Context, data wshrpc.C
 					return 0, fmt.Errorf("cannot create file %q, file exists at path, overwrite not specified", path)
 				}
 			}
+		} else {
+			log.Printf("RemoteFileCopyCommand: nextinfo is nil, path=%s\n", path)
 		}
 
 		if finfo.IsDir() {
+			log.Printf("RemoteFileCopyCommand: making dirs %s\n", path)
 			err := os.MkdirAll(path, finfo.Mode())
 			if err != nil {
 				return 0, fmt.Errorf("cannot create directory %q: %w", path, err)
 			}
+			return 0, nil
 		} else {
 			err := os.MkdirAll(filepath.Dir(path), 0755)
 			if err != nil {
@@ -427,12 +433,19 @@ func (impl *ServerImpl) RemoteFileCopyCommand(ctx context.Context, data wshrpc.C
 		}
 
 		if srcFileStat.IsDir() {
+			log.Print("RemoteFileCopyCommand: copying directory\n")
+			srcPathPrefix := filepath.Dir(srcPathCleaned)
+			if strings.HasSuffix(srcUri, "/") {
+				log.Printf("RemoteFileCopyCommand: src has slash, using %q as src path\n", srcPathCleaned)
+				srcPathPrefix = srcPathCleaned
+			}
 			err = filepath.Walk(srcPathCleaned, func(path string, info fs.FileInfo, err error) error {
 				if err != nil {
 					return err
 				}
 				srcFilePath := path
-				destFilePath := filepath.Join(destPathCleaned, strings.TrimPrefix(path, srcPathCleaned))
+				destFilePath := filepath.Join(destPathCleaned, strings.TrimPrefix(path, srcPathPrefix))
+				log.Printf("RemoteFileCopyCommand: copying %q to %q\n", srcFilePath, destFilePath)
 				var file *os.File
 				if !info.IsDir() {
 					file, err = os.Open(srcFilePath)
@@ -448,18 +461,24 @@ func (impl *ServerImpl) RemoteFileCopyCommand(ctx context.Context, data wshrpc.C
 				return fmt.Errorf("cannot copy %q to %q: %w", srcUri, destUri, err)
 			}
 		} else {
+			log.Print("RemoteFileCopyCommand: copying single file\n")
 			file, err := os.Open(srcPathCleaned)
 			if err != nil {
 				return fmt.Errorf("cannot open file %q: %w", srcPathCleaned, err)
 			}
 			defer file.Close()
-			_, err = copyFileFunc(destPathCleaned, srcFileStat, file)
+			destFilePath := filepath.Join(destPathCleaned, filepath.Base(srcPathCleaned))
+			if destHasSlash {
+				log.Printf("RemoteFileCopyCommand: dest has slash, using %q as dest path\n", destPathCleaned)
+				destFilePath = destPathCleaned
+			}
+			_, err = copyFileFunc(destFilePath, srcFileStat, file)
 			if err != nil {
 				return fmt.Errorf("cannot copy %q to %q: %w", srcUri, destUri, err)
 			}
 		}
 	} else {
-		timeout := DefaultTimeout
+		timeout := fstype.DefaultTimeout
 		if opts.Timeout > 0 {
 			timeout = time.Duration(opts.Timeout) * time.Millisecond
 		}
@@ -472,18 +491,20 @@ func (impl *ServerImpl) RemoteFileCopyCommand(ctx context.Context, data wshrpc.C
 		numSkipped := 0
 		totalBytes := int64(0)
 
-		err := tarcopy.TarCopyDest(readCtx, cancel, ioch, func(next fs.FileInfo, reader *tar.Reader, singleFile bool) error {
+		err := tarcopy.TarCopyDest(readCtx, cancel, ioch, func(next *tar.Header, reader *tar.Reader, singleFile bool) error {
 			numFiles++
-			nextpath := filepath.Join(destPathCleaned, next.Name())
+			nextpath := filepath.Join(destPathCleaned, next.Name)
+			log.Printf("RemoteFileCopyCommand: copying %q to %q\n", next.Name, nextpath)
 			if singleFile {
 				// custom flag to indicate that the source is a single file, not a directory the contents of a directory
 				if !destHasSlash {
 					nextpath = destPathCleaned
 				}
 			}
-			n, err := copyFileFunc(nextpath, next, reader)
+			finfo := next.FileInfo()
+			n, err := copyFileFunc(nextpath, finfo, reader)
 			if err != nil {
-				return fmt.Errorf("cannot copy file %q: %w", next.Name(), err)
+				return fmt.Errorf("cannot copy file %q: %w", next.Name, err)
 			}
 			totalBytes += n
 			return nil

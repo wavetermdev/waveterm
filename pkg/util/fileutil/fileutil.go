@@ -19,6 +19,7 @@ import (
 )
 
 func FixPath(path string) (string, error) {
+	origPath := path
 	var err error
 	if strings.HasPrefix(path, "~") {
 		path = filepath.Join(wavebase.GetHomeDir(), path[1:])
@@ -27,6 +28,9 @@ func FixPath(path string) (string, error) {
 		if err != nil {
 			return "", err
 		}
+	}
+	if strings.HasSuffix(origPath, "/") && !strings.HasSuffix(path, "/") {
+		path += "/"
 	}
 	return path, nil
 }

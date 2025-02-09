@@ -458,11 +458,11 @@ func (c WaveClient) CopyRemote(ctx context.Context, srcConn, destConn *connparse
 	}
 	readCtx, cancel := context.WithCancelCause(ctx)
 	ioch := srcClient.ReadTarStream(readCtx, srcConn, opts)
-	err = tarcopy.TarCopyDest(readCtx, cancel, ioch, func(next fs.FileInfo, reader *tar.Reader, singleFile bool) error {
-		if next.IsDir() {
+	err = tarcopy.TarCopyDest(readCtx, cancel, ioch, func(next *tar.Header, reader *tar.Reader, singleFile bool) error {
+		if next.Typeflag == tar.TypeDir {
 			return nil
 		}
-		fileName, err := cleanPath(path.Join(destPrefix, next.Name()))
+		fileName, err := cleanPath(path.Join(destPrefix, next.Name))
 		if singleFile && !destHasSlash {
 			fileName, err = cleanPath(destConn.Path)
 		}
@@ -477,7 +477,7 @@ func (c WaveClient) CopyRemote(ctx context.Context, srcConn, destConn *connparse
 			}
 		}
 		log.Printf("CopyRemote: writing file: %s; size: %d\n", fileName, next.Size)
-		dataBuf := make([]byte, next.Size())
+		dataBuf := make([]byte, next.Size)
 		_, err = reader.Read(dataBuf)
 		if err != nil {
 			if !errors.Is(err, io.EOF) {
