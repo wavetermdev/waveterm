@@ -56,7 +56,7 @@ func GenerateWaveObjMetaConsts() error {
 	fmt.Fprintf(os.Stderr, "generating waveobj meta consts file to %s\n", WaveObjMetaConstsFileName)
 	var buf strings.Builder
 	gogen.GenerateBoilerplate(&buf, "waveobj", []string{})
-	gogen.GenerateMetaMapConsts(&buf, "MetaKey_", reflect.TypeOf(waveobj.MetaTSType{}))
+	gogen.GenerateMetaMapConsts(&buf, "MetaKey_", reflect.TypeOf(waveobj.MetaTSType{}), false)
 	buf.WriteString("\n")
 	written, err := utilfn.WriteFileIfDifferent(WaveObjMetaConstsFileName, []byte(buf.String()))
 	if !written {
@@ -69,7 +69,7 @@ func GenerateSettingsMetaConsts() error {
 	fmt.Fprintf(os.Stderr, "generating settings meta consts file to %s\n", SettingsMetaConstsFileName)
 	var buf strings.Builder
 	gogen.GenerateBoilerplate(&buf, "wconfig", []string{})
-	gogen.GenerateMetaMapConsts(&buf, "ConfigKey_", reflect.TypeOf(wconfig.SettingsType{}))
+	gogen.GenerateMetaMapConsts(&buf, "ConfigKey_", reflect.TypeOf(wconfig.SettingsType{}), false)
 	buf.WriteString("\n")
 	written, err := utilfn.WriteFileIfDifferent(SettingsMetaConstsFileName, []byte(buf.String()))
 	if !written {

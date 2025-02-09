@@ -88,7 +88,7 @@ function getViewElem(
         );
     }
     if (blockView === "web") {
-        return <WebView key={blockId} blockId={blockId} model={viewModel as WebViewModel} />;
+        return <WebView key={blockId} blockId={blockId} model={viewModel as WebViewModel} blockRef={blockRef} />;
     }
     if (blockView === "waveai") {
         return <WaveAi key={blockId} blockId={blockId} model={viewModel as WaveAiModel} />;

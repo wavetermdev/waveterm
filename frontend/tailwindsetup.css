@@ -23,9 +23,13 @@
     --color-warning: rgb(224, 185, 86);
     --color-success: rgb(78, 154, 6);
     --color-panel: rgba(31, 33, 31, 0.5);
-    --color-highlightbg: rgba(255, 255, 255, 0.2);
     --color-hover: rgba(255, 255, 255, 0.1);
     --color-border: rgba(255, 255, 255, 0.16);
+    --color-modalbg: #232323;
+    --color-accentbg: rgba(88, 193, 66, 0.5);
+    --color-hoverbg: rgba(255, 255, 255, 0.2);
+    --color-accent: rgb(88, 193, 66);
+    --color-accenthover: rgb(118, 223, 96);
 
     --font-sans: "Inter", sans-serif;
     --font-mono: "Hack", monospace;

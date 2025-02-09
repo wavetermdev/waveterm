@@ -733,19 +733,23 @@ type FetchSuggestionsData struct {
 }
 
 type FetchSuggestionsResponse struct {
-	ReqNum        int              `json:"reqnum"`
-	Suggestions   []SuggestionType `json:"suggestions"`
-	HighlightTerm string           `json:"highlightterm,omitempty"`
+	ReqNum      int              `json:"reqnum"`
+	Suggestions []SuggestionType `json:"suggestions"`
 }
 
 type SuggestionType struct {
-	Type           string `json:"type"`
-	SuggestionId   string `json:"suggestionid"`
-	Icon           string `json:"icon,omitempty"`
-	IconColor      string `json:"iconcolor,omitempty"`
-	FileMimeType   string `json:"file:mimetype,omitempty"`
-	FileName       string `json:"file:name,omitempty"`
-	FilePath       string `json:"file:path,omitempty"`
-	MatchPositions []int  `json:"matchpositions,omitempty"`
-	Score          int    `json:"score,omitempty"`
+	Type         string `json:"type"`
+	SuggestionId string `json:"suggestionid"`
+	Display      string `json:"display"`
+	SubText      string `json:"subtext,omitempty"`
+	Icon         string `json:"icon,omitempty"`
+	IconColor    string `json:"iconcolor,omitempty"`
+	IconSrc      string `json:"iconsrc,omitempty"`
+	MatchPos     []int  `json:"matchpos,omitempty"`
+	SubMatchPos  []int  `json:"submatchpos,omitempty"`
+	Score        int    `json:"score,omitempty"`
+	FileMimeType string `json:"file:mimetype,omitempty"`
+	FilePath     string `json:"file:path,omitempty"`
+	FileName     string `json:"file:name,omitempty"`
+	UrlUrl       string `json:"url:url,omitempty"`
 }
