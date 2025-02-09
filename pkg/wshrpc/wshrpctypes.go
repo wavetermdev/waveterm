@@ -752,7 +752,10 @@ type SuggestionType struct {
 	UrlUrl       string `json:"url:url,omitempty"`
 }
 
+// FileShareCapability represents the capabilities of a file share
 type FileShareCapability struct {
-	CanAppend bool
-	CanMkdir  bool
+	// CanAppend indicates whether the file share supports appending to files
+	CanAppend bool `json:"canappend"`
+	// CanMkdir indicates whether the file share supports creating directories
+	CanMkdir bool `json:"canmkdir"`
 }
