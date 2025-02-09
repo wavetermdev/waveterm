@@ -21,15 +21,11 @@ function getOS(): Platform {
         iosPlatforms = ["iPhone", "iPad", "iPod"],
         os: Platform = null;
 
-    if (macosPlatforms.indexOf(platform) !== -1) {
-        os = "mac";
-    } else if (iosPlatforms.indexOf(platform) !== -1) {
+    if (macosPlatforms.indexOf(platform) !== -1 || iosPlatforms.indexOf(platform) !== -1) {
         os = "mac";
     } else if (windowsPlatforms.indexOf(platform) !== -1) {
         os = "windows";
-    } else if (/Android/.test(userAgent)) {
-        os = "linux";
-    } else if (!os && /Linux/.test(platform)) {
+    } else {
         os = "linux";
     }
 
