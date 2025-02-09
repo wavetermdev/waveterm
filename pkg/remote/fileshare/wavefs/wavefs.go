@@ -13,6 +13,7 @@ import (
 	"io/fs"
 	"log"
 	"path"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -104,13 +105,36 @@ func (c WaveClient) Read(ctx context.Context, conn *connparse.Connection, data w
 
 func (c WaveClient) ReadTarStream(ctx context.Context, conn *connparse.Connection, opts *wshrpc.FileCopyOpts) <-chan wshrpc.RespOrErrorUnion[iochantypes.Packet] {
 	log.Printf("ReadTarStream: conn: %v, opts: %v\n", conn, opts)
-	list, err := c.ListEntries(ctx, conn, nil)
+	path := conn.Path
+	srcHasSlash := strings.HasSuffix(path, "/")
+	cleanedPath, err := cleanPath(path)
 	if err != nil {
-		return wshutil.SendErrCh[iochantypes.Packet](fmt.Errorf("error listing blockfiles: %w", err))
+		return wshutil.SendErrCh[iochantypes.Packet](fmt.Errorf("error cleaning path: %w", err))
 	}
 
+	finfo, err := c.Stat(ctx, conn)
+	if err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return wshutil.SendErrCh[iochantypes.Packet](fmt.Errorf("error getting file info: %w", err))
+	}
+	singleFile := finfo != nil && !finfo.IsDir
 	pathPrefix := getPathPrefix(conn)
+	if !singleFile && srcHasSlash {
+		pathPrefix = cleanedPath
+	} else {
+		pathPrefix = filepath.Dir(cleanedPath)
+	}
+
 	schemeAndHost := conn.GetSchemeAndHost() + "/"
+
+	var entries []*wshrpc.FileInfo
+	if singleFile {
+		entries = []*wshrpc.FileInfo{finfo}
+	} else {
+		entries, err = c.ListEntries(ctx, conn, nil)
+		if err != nil {
+			return wshutil.SendErrCh[iochantypes.Packet](fmt.Errorf("error listing blockfiles: %w", err))
+		}
+	}
 
 	timeout := fstype.DefaultTimeout
 	if opts.Timeout > 0 {
@@ -124,14 +148,14 @@ func (c WaveClient) ReadTarStream(ctx context.Context, conn *connparse.Connectio
 			tarClose()
 			cancel()
 		}()
-		for _, file := range list {
+		for _, file := range entries {
 			if readerCtx.Err() != nil {
 				rtn <- wshutil.RespErr[iochantypes.Packet](context.Cause(readerCtx))
 				return
 			}
 			file.Mode = 0644
 
-			if err = writeHeader(fileutil.ToFsFileInfo(file), file.Path, file.Path == conn.Path); err != nil {
+			if err = writeHeader(fileutil.ToFsFileInfo(file), file.Path, singleFile); err != nil {
 				rtn <- wshutil.RespErr[iochantypes.Packet](fmt.Errorf("error writing tar header: %w", err))
 				return
 			}
@@ -449,13 +473,25 @@ func (c WaveClient) CopyRemote(ctx context.Context, srcConn, destConn *connparse
 	destPrefix := getPathPrefix(destConn)
 	destPrefix = strings.TrimPrefix(destPrefix, destConn.GetSchemeAndHost()+"/")
 	log.Printf("CopyRemote: srcConn: %v, destConn: %v, destPrefix: %s\n", srcConn, destConn, destPrefix)
-	entries, err := c.ListEntries(ctx, srcConn, nil)
+
+	var entries []*wshrpc.FileInfo
+	_, err := c.Stat(ctx, destConn)
 	if err != nil {
-		return fmt.Errorf("error listing blockfiles: %w", err)
+		if errors.Is(err, fs.ErrNotExist) {
+			entries, err = c.ListEntries(ctx, destConn, nil)
+			if err != nil {
+				return err
+			}
+			if len(entries) > 0 && !merge {
+				return fmt.Errorf("more than one entry exists at prefix, merge not specified")
+			}
+		} else {
+			return err
+		}
+	} else if !overwrite {
+		return fmt.Errorf("file already exists at destination %q, use force to overwrite", destConn.GetFullURI())
 	}
-	if len(entries) > 1 && !merge {
-		return fmt.Errorf("more than one entry at destination prefix, use merge flag to copy")
-	}
+
 	readCtx, cancel := context.WithCancelCause(ctx)
 	ioch := srcClient.ReadTarStream(readCtx, srcConn, opts)
 	err = tarcopy.TarCopyDest(readCtx, cancel, ioch, func(next *tar.Header, reader *tar.Reader, singleFile bool) error {

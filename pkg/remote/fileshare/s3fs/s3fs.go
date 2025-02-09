@@ -336,7 +336,7 @@ func (c S3Client) ReadTarStream(ctx context.Context, conn *connparse.Connection,
 				ModTime: modTime,
 				Mode:    mode,
 			}
-			if err := writeHeader(fileutil.ToFsFileInfo(finfo), path); err != nil {
+			if err := writeHeader(fileutil.ToFsFileInfo(finfo), path, singleFile); err != nil {
 				return err
 			}
 			if isFile {
@@ -616,10 +616,12 @@ func (c S3Client) MoveInternal(ctx context.Context, srcConn, destConn *connparse
 }
 
 func (c S3Client) CopyRemote(ctx context.Context, srcConn, destConn *connparse.Connection, srcClient fstype.FileShareClient, opts *wshrpc.FileCopyOpts) error {
-
 	destBucket := destConn.Host
 	overwrite := opts != nil && opts.Overwrite
 	merge := opts != nil && opts.Merge
+	destHasSlash := strings.HasSuffix(destConn.Path, "/")
+	destPrefix := getPathPrefix(destConn)
+	destPrefix = strings.TrimPrefix(destPrefix, destConn.GetSchemeAndHost()+"/")
 	if destBucket == "" || destBucket == "/" {
 		return fmt.Errorf("destination bucket must be specified")
 	}
@@ -632,39 +634,30 @@ func (c S3Client) CopyRemote(ctx context.Context, srcConn, destConn *connparse.C
 			if err != nil {
 				return err
 			}
-			if len(entries) > 0 {
-				if overwrite {
-					err := c.Delete(ctx, destConn, true)
-					if err != nil {
-						return err
-					}
-				} else if !merge {
-					return fmt.Errorf("more than one entry exists at prefix, neither force nor merge specified")
-				}
+			if len(entries) > 0 && !merge {
+				return fmt.Errorf("more than one entry exists at prefix, merge not specified")
 			}
 		} else {
 			return err
 		}
 	} else if !overwrite {
-		return fmt.Errorf("destination already exists, use force to overwrite: %v", destConn.GetFullURI())
-	}
-
-	destPrefix := destConn.Path
-	// Make sure destPrefix has a trailing slash if the destination is a "directory"
-	if destPrefix != "" && entries != nil && !strings.HasSuffix(destPrefix, "/") {
-		destPrefix = destPrefix + "/"
+		return fmt.Errorf("file already exists at destination %q, use force to overwrite", destConn.GetFullURI())
 	}
 
 	readCtx, cancel := context.WithCancelCause(ctx)
 	defer cancel(nil)
 	ioch := srcClient.ReadTarStream(readCtx, srcConn, opts)
-	err = tarcopy.TarCopyDest(readCtx, cancel, ioch, func(next *tar.Header, reader *tar.Reader) error {
-		log.Printf("copying %v", next.Name)
+	err = tarcopy.TarCopyDest(readCtx, cancel, ioch, func(next *tar.Header, reader *tar.Reader, singleFile bool) error {
 		if next.Typeflag == tar.TypeDir {
 			return nil
 		}
 		fileName, err := cleanPath(path.Join(destPrefix, next.Name))
-		log.Printf("cleaned path: %v", fileName)
+		if singleFile && !destHasSlash {
+			fileName, err = cleanPath(destConn.Path)
+		}
+		if err != nil {
+			return fmt.Errorf("error cleaning path: %w", err)
+		}
 		if !overwrite {
 			for _, entry := range entries {
 				if entry.Name == fileName {
@@ -672,6 +665,7 @@ func (c S3Client) CopyRemote(ctx context.Context, srcConn, destConn *connparse.C
 				}
 			}
 		}
+		log.Printf("CopyRemote: writing file: %s; size: %d\n", fileName, next.Size)
 		_, err = c.client.PutObject(ctx, &s3.PutObjectInput{
 			Bucket:        aws.String(destBucket),
 			Key:           aws.String(fileName),
