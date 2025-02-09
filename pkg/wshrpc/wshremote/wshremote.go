@@ -254,7 +254,7 @@ func (impl *ServerImpl) RemoteTarStreamCommand(ctx context.Context, data wshrpc.
 	if !singleFile && srcHasSlash {
 		pathPrefix = cleanedPath
 	} else {
-		pathPrefix = filepath.Dir(cleanedPath) + "/"
+		pathPrefix = filepath.Dir(cleanedPath)
 	}
 	log.Printf("RemoteTarStreamCommand: path=%s, pathPrefix=%s\n", path, pathPrefix)
 

@@ -56,13 +56,16 @@ func TarCopySrc(ctx context.Context, pathPrefix string) (outputChan chan wshrpc.
 				header.PAXRecords = map[string]string{SingleFile: "true"}
 			}
 
-			header.Name = filepath.Clean(strings.TrimPrefix(path, pathPrefix))
-			if header.Name == "." {
-				return nil
-			}
-			if err := validatePath(header.Name); err != nil {
+			path, err = fixPath(path, pathPrefix)
+			if err != nil {
 				return err
 			}
+
+			// skip if path is empty, which means the file is the root directory
+			if path == "" {
+				return nil
+			}
+			header.Name = path
 
 			log.Printf("TarCopySrc: header name: %v\n", header.Name)
 
@@ -77,14 +80,12 @@ func TarCopySrc(ctx context.Context, pathPrefix string) (outputChan chan wshrpc.
 		}
 }
 
-func validatePath(path string) error {
+func fixPath(path string, prefix string) (string, error) {
+	path = strings.TrimPrefix(strings.TrimPrefix(filepath.Clean(strings.TrimPrefix(path, prefix)), "/"), "\\")
 	if strings.Contains(path, "..") {
-		return fmt.Errorf("invalid tar path containing directory traversal: %s", path)
+		return "", fmt.Errorf("invalid tar path containing directory traversal: %s", path)
 	}
-	if strings.HasPrefix(path, "/") {
-		return fmt.Errorf("invalid tar path starting with /: %s", path)
-	}
-	return nil
+	return path, nil
 }
 
 // TarCopyDest reads a tar stream from a channel and writes the files to the destination.
