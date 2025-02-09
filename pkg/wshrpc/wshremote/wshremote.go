@@ -143,7 +143,7 @@ func (impl *ServerImpl) remoteStreamFileRegular(ctx context.Context, path string
 	if err != nil {
 		return fmt.Errorf("cannot open file %q: %w", path, err)
 	}
-	defer fd.Close()
+	defer utilfn.GracefulClose(fd, "remoteStreamFileRegular", path)
 	var filePos int64
 	if !byteRange.All && byteRange.Start > 0 {
 		_, err := fd.Seek(byteRange.Start, io.SeekStart)
@@ -287,7 +287,7 @@ func (impl *ServerImpl) RemoteTarStreamCommand(ctx context.Context, data wshrpc.
 				if err != nil {
 					return err
 				}
-				defer data.Close()
+				defer utilfn.GracefulClose(data, "RemoteTarStreamCommand", path)
 				if _, err := io.Copy(fileWriter, data); err != nil {
 					return err
 				}
@@ -416,7 +416,7 @@ func (impl *ServerImpl) RemoteFileCopyCommand(ctx context.Context, data wshrpc.C
 		if err != nil {
 			return 0, fmt.Errorf("cannot create new file %q: %w", path, err)
 		}
-		defer file.Close()
+		defer utilfn.GracefulClose(file, "RemoteFileCopyCommand", path)
 		_, err = io.Copy(file, srcFile)
 		if err != nil {
 			return 0, fmt.Errorf("cannot write file %q: %w", path, err)
@@ -453,7 +453,7 @@ func (impl *ServerImpl) RemoteFileCopyCommand(ctx context.Context, data wshrpc.C
 					if err != nil {
 						return fmt.Errorf("cannot open file %q: %w", srcFilePath, err)
 					}
-					defer file.Close()
+					defer utilfn.GracefulClose(file, "RemoteFileCopyCommand", srcFilePath)
 				}
 				_, err = copyFileFunc(destFilePath, info, file)
 				return err
@@ -467,7 +467,7 @@ func (impl *ServerImpl) RemoteFileCopyCommand(ctx context.Context, data wshrpc.C
 			if err != nil {
 				return fmt.Errorf("cannot open file %q: %w", srcPathCleaned, err)
 			}
-			defer file.Close()
+			defer utilfn.GracefulClose(file, "RemoteFileCopyCommand", srcPathCleaned)
 			destFilePath := filepath.Join(destPathCleaned, filepath.Base(srcPathCleaned))
 			if destHasSlash {
 				log.Printf("RemoteFileCopyCommand: dest has slash, using %q as dest path\n", destPathCleaned)
@@ -626,7 +626,7 @@ func checkIsReadOnly(path string, fileInfo fs.FileInfo, exists bool) bool {
 		if err != nil {
 			return true
 		}
-		fd.Close()
+		utilfn.GracefulClose(fd, "checkIsReadOnly", tmpFileName)
 		os.Remove(tmpFileName)
 		return false
 	}
@@ -635,7 +635,7 @@ func checkIsReadOnly(path string, fileInfo fs.FileInfo, exists bool) bool {
 	if err != nil {
 		return true
 	}
-	file.Close()
+	utilfn.GracefulClose(file, "checkIsReadOnly", path)
 	return false
 }
 
@@ -831,7 +831,7 @@ func (*ServerImpl) RemoteWriteFileCommand(ctx context.Context, data wshrpc.FileD
 	if err != nil {
 		return fmt.Errorf("cannot open file %q: %w", path, err)
 	}
-	defer file.Close()
+	defer utilfn.GracefulClose(file, "RemoteWriteFileCommand", path)
 	if atOffset > 0 && !append {
 		n, err = file.WriteAt(dataBytes[:n], atOffset)
 	} else {

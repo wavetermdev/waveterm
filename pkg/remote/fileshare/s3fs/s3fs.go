@@ -30,6 +30,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/util/fileutil"
 	"github.com/wavetermdev/waveterm/pkg/util/iochan/iochantypes"
 	"github.com/wavetermdev/waveterm/pkg/util/tarcopy"
+	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
 )
@@ -126,7 +127,7 @@ func (c S3Client) ReadStream(ctx context.Context, conn *connparse.Connection, da
 				log.Printf("no data to read")
 				return
 			}
-			defer result.Body.Close()
+			defer utilfn.GracefulClose(result.Body, "s3fs", conn.GetFullURI())
 			bytesRemaining := size
 			for {
 				log.Printf("bytes remaining: %d", bytesRemaining)
@@ -172,7 +173,7 @@ func (c S3Client) ReadTarStream(ctx context.Context, conn *connparse.Connection,
 	defer func() {
 		// in case we error out before the object gets copied, make sure to close it
 		if singleFileResult != nil {
-			singleFileResult.Body.Close()
+			utilfn.GracefulClose(singleFileResult.Body, "s3fs", conn.Path)
 		}
 	}()
 	var err error
@@ -231,8 +232,7 @@ func (c S3Client) ReadTarStream(ctx context.Context, conn *connparse.Connection,
 		// close the objects when we're done
 		defer func() {
 			for key, obj := range objMap {
-				log.Printf("closing object %v", key)
-				obj.Body.Close()
+				utilfn.GracefulClose(obj.Body, "s3fs", key)
 			}
 		}()
 

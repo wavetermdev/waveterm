@@ -14,7 +14,6 @@ import (
 	"log"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/wavetermdev/waveterm/pkg/util/iochan"
 	"github.com/wavetermdev/waveterm/pkg/util/iochan/iochantypes"
@@ -23,8 +22,6 @@ import (
 )
 
 const (
-	maxRetries      = 5
-	retryDelay      = 10 * time.Millisecond
 	tarCopySrcName  = "TarCopySrc"
 	tarCopyDestName = "TarCopyDest"
 	pipeReaderName  = "pipe reader"
@@ -44,7 +41,7 @@ func TarCopySrc(ctx context.Context, pathPrefix string) (outputChan chan wshrpc.
 	tarWriter := tar.NewWriter(pipeWriter)
 	rtnChan := iochan.ReaderChan(ctx, pipeReader, wshrpc.FileChunkSize, func() {
 		log.Printf("Closing pipe reader\n")
-		utilfn.GracefulClose(pipeReader, tarCopySrcName, pipeReaderName, maxRetries, retryDelay)
+		utilfn.GracefulClose(pipeReader, tarCopySrcName, pipeReaderName)
 	})
 
 	singleFileFlagSet := false
@@ -85,8 +82,8 @@ func TarCopySrc(ctx context.Context, pathPrefix string) (outputChan chan wshrpc.
 			return nil
 		}, tarWriter, func() {
 			log.Printf("Closing tar writer\n")
-			utilfn.GracefulClose(tarWriter, tarCopySrcName, tarWriterName, maxRetries, retryDelay)
-			utilfn.GracefulClose(pipeWriter, tarCopySrcName, pipeWriterName, maxRetries, retryDelay)
+			utilfn.GracefulClose(tarWriter, tarCopySrcName, tarWriterName)
+			utilfn.GracefulClose(pipeWriter, tarCopySrcName, pipeWriterName)
 		}
 }
 
@@ -104,11 +101,11 @@ func fixPath(path string, prefix string) (string, error) {
 func TarCopyDest(ctx context.Context, cancel context.CancelCauseFunc, ch <-chan wshrpc.RespOrErrorUnion[iochantypes.Packet], readNext func(next *tar.Header, reader *tar.Reader, singleFile bool) error) error {
 	pipeReader, pipeWriter := io.Pipe()
 	iochan.WriterChan(ctx, pipeWriter, ch, func() {
-		utilfn.GracefulClose(pipeWriter, tarCopyDestName, pipeWriterName, maxRetries, retryDelay)
+		utilfn.GracefulClose(pipeWriter, tarCopyDestName, pipeWriterName)
 	}, cancel)
 	tarReader := tar.NewReader(pipeReader)
 	defer func() {
-		if !utilfn.GracefulClose(pipeReader, tarCopyDestName, pipeReaderName, maxRetries, retryDelay) {
+		if !utilfn.GracefulClose(pipeReader, tarCopyDestName, pipeReaderName) {
 			// If the pipe reader cannot be closed, cancel the context. This should kill the writer goroutine.
 			cancel(nil)
 		}

@@ -1025,7 +1025,12 @@ func QuickHashString(s string) string {
 	return base64.RawURLEncoding.EncodeToString(h.Sum(nil))
 }
 
-func GracefulClose(closer io.Closer, debugName string, closerName string, maxRetries int, retryDelay time.Duration) bool {
+const (
+	maxRetries = 5
+	retryDelay = 10 * time.Millisecond
+)
+
+func GracefulClose(closer io.Closer, debugName string, closerName string) bool {
 	closed := false
 	for retries := 0; retries < maxRetries; retries++ {
 		if err := closer.Close(); err != nil {
