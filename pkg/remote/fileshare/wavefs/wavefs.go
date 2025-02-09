@@ -12,6 +12,7 @@ import (
 	"io"
 	"io/fs"
 	"log"
+	"os"
 	"path"
 	"path/filepath"
 	"strings"
@@ -28,6 +29,10 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wps"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
+)
+
+const (
+	DirMode os.FileMode = 0755 | os.ModeDir
 )
 
 type WaveClient struct{}
@@ -252,6 +257,7 @@ func (c WaveClient) ListEntries(ctx context.Context, conn *connparse.Connection,
 				Size:          0,
 				IsDir:         true,
 				SupportsMkdir: false,
+				Mode:          DirMode,
 			})
 		}
 		fileList = filteredList
