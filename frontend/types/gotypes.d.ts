@@ -153,6 +153,8 @@ declare global {
         rtopts?: RuntimeOpts;
         magnified?: boolean;
         ephemeral?: boolean;
+        targetblockid?: string;
+        targetaction?: string;
     };
 
     // wshrpc.CommandCreateSubBlockData
@@ -480,6 +482,8 @@ declare global {
         focused: boolean;
         magnified: boolean;
         ephemeral: boolean;
+        targetblockid?: string;
+        position?: string;
     };
 
     // waveobj.LayoutState

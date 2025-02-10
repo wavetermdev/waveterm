@@ -70,6 +70,9 @@ export enum LayoutTreeActionType {
     FocusNode = "focus",
     MagnifyNodeToggle = "magnify",
     ClearTree = "clear",
+    ReplaceNode = "replace",
+    SplitHorizontal = "splithorizontal",
+    SplitVertical = "splitvertical",
 }
 
 /**
@@ -185,6 +188,33 @@ export interface LayoutTreeCommitPendingAction extends LayoutTreeAction {
  */
 export interface LayoutTreeClearPendingAction extends LayoutTreeAction {
     type: LayoutTreeActionType.ClearPendingAction;
+}
+
+// ReplaceNode: replace an existing node in place with a new one.
+export interface LayoutTreeReplaceNodeAction extends LayoutTreeAction {
+    type: LayoutTreeActionType.ReplaceNode;
+    targetNodeId: string;
+    newNode: LayoutNode;
+}
+
+// SplitHorizontal: split the current block horizontally.
+// The "position" field indicates whether the new node should be inserted before (to the left)
+// or after (to the right) of the target node.
+export interface LayoutTreeSplitHorizontalAction extends LayoutTreeAction {
+    type: LayoutTreeActionType.SplitHorizontal;
+    targetNodeId: string;
+    newNode: LayoutNode;
+    position: "before" | "after";
+    focused?: boolean;
+}
+
+// SplitVertical: similar to split horizontal but along the vertical axis.
+export interface LayoutTreeSplitVerticalAction extends LayoutTreeAction {
+    type: LayoutTreeActionType.SplitVertical;
+    targetNodeId: string;
+    newNode: LayoutNode;
+    position: "before" | "after";
+    focused?: boolean;
 }
 
 /**

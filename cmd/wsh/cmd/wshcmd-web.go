@@ -39,9 +39,11 @@ var webGetInner bool
 var webGetAll bool
 var webGetJson bool
 var webOpenMagnified bool
+var webOpenReplaceBlock string
 
 func init() {
 	webOpenCmd.Flags().BoolVarP(&webOpenMagnified, "magnified", "m", false, "open view in magnified mode")
+	webOpenCmd.Flags().StringVarP(&webOpenReplaceBlock, "replace", "r", "", "replace block")
 	webCmd.AddCommand(webOpenCmd)
 	webGetCmd.Flags().BoolVarP(&webGetInner, "inner", "", false, "get inner html (instead of outer)")
 	webGetCmd.Flags().BoolVarP(&webGetAll, "all", "", false, "get all matches (querySelectorAll)")
@@ -98,6 +100,17 @@ func webOpenRun(cmd *cobra.Command, args []string) (rtnErr error) {
 		sendActivity("web", rtnErr == nil)
 	}()
 
+	var replaceBlockORef *waveobj.ORef
+	if webOpenReplaceBlock != "" {
+		var err error
+		replaceBlockORef, err = resolveSimpleId(webOpenReplaceBlock)
+		if err != nil {
+			return fmt.Errorf("resolving -r blockid: %w", err)
+		}
+	}
+	if replaceBlockORef != nil && webOpenMagnified {
+		return fmt.Errorf("cannot use --replace and --magnified together")
+	}
 	wshCmd := wshrpc.CommandCreateBlockData{
 		BlockDef: &waveobj.BlockDef{
 			Meta: map[string]any{
@@ -106,6 +119,10 @@ func webOpenRun(cmd *cobra.Command, args []string) (rtnErr error) {
 			},
 		},
 		Magnified: webOpenMagnified,
+	}
+	if replaceBlockORef != nil {
+		wshCmd.TargetBlockId = replaceBlockORef.OID
+		wshCmd.TargetAction = wshrpc.CreateBlockAction_Replace
 	}
 	oref, err := wshclient.CreateBlockCommand(RpcClient, wshCmd, nil)
 	if err != nil {
