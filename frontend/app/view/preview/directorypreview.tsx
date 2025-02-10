@@ -2,7 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { Button } from "@/app/element/button";
+import { CopyButton } from "@/app/element/copybutton";
 import { Input } from "@/app/element/input";
+import { useDimensionsWithCallbackRef } from "@/app/hook/useDimensions";
 import { ContextMenuModel } from "@/app/store/contextmenu";
 import { PLATFORM, atoms, createBlock, getApi, globalStore } from "@/app/store/global";
 import { RpcApi } from "@/app/store/wshclientapi";
@@ -33,6 +35,12 @@ import { debounce } from "throttle-debounce";
 import "./directorypreview.scss";
 
 const PageJumpSize = 20;
+
+type FileCopyStatus = {
+    copyData: CommandFileCopyData;
+    copyError: string;
+    allowRetry: boolean;
+};
 
 declare module "@tanstack/react-table" {
     interface TableMeta<TData extends RowData> {
@@ -790,6 +798,7 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
     const conn = useAtomValue(model.connection);
     const blockData = useAtomValue(model.blockAtom);
     const dirPath = useAtomValue(model.normFilePath);
+    const [copyStatus, setCopyStatus] = useState<FileCopyStatus>(null);
 
     useEffect(() => {
         model.refreshCallback = () => {
@@ -900,6 +909,27 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
         middleware: [offset(({ rects }) => -rects.reference.height / 2 - rects.floating.height / 2)],
     });
 
+    const handleDropCopy = useCallback(
+        async (data: CommandFileCopyData) => {
+            try {
+                await RpcApi.FileCopyCommand(TabRpcClient, data, { timeout: data.opts.timeout });
+                setCopyStatus(null);
+            } catch (e) {
+                console.log("copy failed:", e);
+                const copyError = `${e}`;
+                const allowRetry = copyError.endsWith("overwrite not specified");
+                const copyStatus: FileCopyStatus = {
+                    copyError,
+                    copyData: data,
+                    allowRetry,
+                };
+                setCopyStatus(copyStatus);
+            }
+            model.refreshCallback();
+        },
+        [setCopyStatus, model.refreshCallback]
+    );
+
     const [, drop] = useDrop(
         () => ({
             accept: "FILE_ITEM", //a name of file drop type
@@ -925,17 +955,12 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
                         desturi,
                         opts,
                     };
-                    try {
-                        await RpcApi.FileCopyCommand(TabRpcClient, data, { timeout: timeoutYear });
-                    } catch (e) {
-                        console.log("copy failed:", e);
-                    }
-                    model.refreshCallback();
+                    await handleDropCopy(data);
                 }
             },
             // TODO: mabe add a hover option?
         }),
-        [dirPath, model.formatRemoteUri, model.refreshCallback]
+        [dirPath, model.formatRemoteUri, model.refreshCallback, setCopyStatus]
     );
 
     useEffect(() => {
@@ -1049,6 +1074,13 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
                 onContextMenu={(e) => handleFileContextMenu(e)}
                 onClick={() => setEntryManagerProps(undefined)}
             >
+                {copyStatus != null && (
+                    <CopyErrorOverlay
+                        copyStatus={copyStatus}
+                        setCopyStatus={setCopyStatus}
+                        handleDropCopy={handleDropCopy}
+                    />
+                )}
                 <DirectoryTable
                     model={model}
                     data={filteredData}
@@ -1075,5 +1107,103 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
         </Fragment>
     );
 }
+
+const CopyErrorOverlay = React.memo(
+    ({
+        copyStatus,
+        setCopyStatus,
+        handleDropCopy,
+    }: {
+        copyStatus: FileCopyStatus;
+        setCopyStatus: (_: FileCopyStatus) => void;
+        handleDropCopy: (data: CommandFileCopyData) => Promise<void>;
+    }) => {
+        const [overlayRefCallback, _, domRect] = useDimensionsWithCallbackRef(30);
+        const width = domRect?.width;
+
+        const handleRetryCopy = React.useCallback(async () => {
+            if (!copyStatus) {
+                return;
+            }
+            const updatedData = {
+                ...copyStatus.copyData,
+                opts: { ...copyStatus.copyData.opts, overwrite: true },
+            };
+            await handleDropCopy(updatedData);
+        }, [copyStatus.copyData]);
+
+        let statusText = "Copy Error";
+        let errorMsg = `error: ${copyStatus?.copyError}`;
+        if (copyStatus?.allowRetry) {
+            statusText = "Confirm Overwrite File(s)";
+            errorMsg = "This copy operation will overwrite an existing file. Would you like to continue?";
+        }
+
+        const buttonClassName = "outlined grey font-size-11 vertical-padding-3 horizontal-padding-7";
+
+        const handleRemoveCopyError = React.useCallback(async () => {
+            setCopyStatus(null);
+        }, [setCopyStatus]);
+
+        const handleCopyToClipboard = React.useCallback(async () => {
+            await navigator.clipboard.writeText(errorMsg);
+        }, [errorMsg]);
+
+        return (
+            <div
+                ref={overlayRefCallback}
+                className="absolute top-[0] left-1.5 right-1.5 z-[var(--zindex-block-mask-inner)] overflow-hidden bg-[var(--conn-status-overlay-bg-color)] backdrop-blur-[50px] rounded-md shadow-lg"
+            >
+                <div className="flex flex-row justify-between p-2.5 pl-3 font-[var(--base-font)] text-[var(--secondary-text-color)]">
+                    <div
+                        className={clsx("flex flex-row items-center gap-3 grow min-w-0", {
+                            "items-start": true,
+                        })}
+                    >
+                        <i className="fa-solid fa-triangle-exclamation text-[#e6ba1e] text-base"></i>
+
+                        <div className="flex flex-col items-start gap-1 grow w-full">
+                            <div className="max-w-full text-xs font-semibold leading-4 tracking-[0.11px] text-white">
+                                {statusText}
+                            </div>
+
+                            <OverlayScrollbarsComponent
+                                className="group text-xs font-normal leading-[15px] tracking-[0.11px] text-wrap max-h-20 rounded-lg py-1.5 pl-0 relative w-full"
+                                options={{ scrollbars: { autoHide: "leave" } }}
+                            >
+                                <CopyButton
+                                    className="invisible group-hover:visible flex absolute top-0 right-1 rounded backdrop-blur-lg p-1 items-center justify-end gap-1"
+                                    onClick={handleCopyToClipboard}
+                                    title="Copy"
+                                />
+                                <div>{errorMsg}</div>
+                            </OverlayScrollbarsComponent>
+
+                            {copyStatus?.allowRetry && (
+                                <div className="flex flex-row gap-1.5">
+                                    <Button className={buttonClassName} onClick={handleRetryCopy}>
+                                        Override
+                                    </Button>
+                                    <Button className={buttonClassName} onClick={handleRemoveCopyError}>
+                                        Cancel
+                                    </Button>
+                                </div>
+                            )}
+                        </div>
+
+                        {!copyStatus?.allowRetry && (
+                            <div className="flex items-start">
+                                <Button
+                                    className={clsx(buttonClassName, "fa-xmark fa-solid")}
+                                    onClick={handleRemoveCopyError}
+                                />
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </div>
+        );
+    }
+);
 
 export { DirectoryPreview };
