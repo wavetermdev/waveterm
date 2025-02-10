@@ -40,7 +40,6 @@ function getWindowWebContents(window: electron.BaseWindow): electron.WebContents
 
 async function getWorkspaceMenu(ww?: WaveBrowserWindow): Promise<Electron.MenuItemConstructorOptions[]> {
     const workspaceList = await RpcApi.WorkspaceListCommand(ElectronWshClient);
-    console.log("workspaceList:", workspaceList);
     const workspaceMenu: Electron.MenuItemConstructorOptions[] = [
         {
             label: "Create Workspace",

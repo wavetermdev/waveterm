@@ -260,13 +260,9 @@ export class WaveBrowserWindow extends BaseWindow {
                 const numWindows = waveWindowMap.size;
                 const fullConfig = await RpcApi.GetFullConfigCommand(ElectronWshClient);
                 if (numWindows > 1 || !fullConfig.settings["window:savelastwindow"]) {
-                    console.log("numWindows > 1 or user does not want last window saved", numWindows);
                     if (fullConfig.settings["window:confirmclose"]) {
-                        console.log("confirmclose", this.waveWindowId);
                         const workspace = await WorkspaceService.GetWorkspace(this.workspaceId);
-                        console.log("workspace", workspace);
                         if (isNonEmptyUnsavedWorkspace(workspace)) {
-                            console.log("workspace has no name, icon, and multiple tabs", workspace);
                             const choice = dialog.showMessageBoxSync(this, {
                                 type: "question",
                                 buttons: ["Cancel", "Close Window"],
@@ -275,15 +271,12 @@ export class WaveBrowserWindow extends BaseWindow {
                                     "Window has unsaved tabs, closing window will delete existing tabs.\n\nContinue?",
                             });
                             if (choice === 0) {
-                                console.log("user cancelled close window", this.waveWindowId);
                                 return;
                             }
                         }
                     }
-                    console.log("deleteAllowed = true", this.waveWindowId);
                     this.deleteAllowed = true;
                 }
-                console.log("canClose = true", this.waveWindowId);
                 this.canClose = true;
                 this.close();
             });
