@@ -1139,53 +1139,62 @@ const CopyErrorOverlay = React.memo(
             errorMsg = "This copy operation will overwrite an existing file. Would you like to continue?";
         }
 
-        let reconClassName = "outlined grey";
-        if (width && width < 350) {
-            reconClassName = clsx(reconClassName, "font-size-12 vertical-padding-5 horizontal-padding-6");
-        } else {
-            reconClassName = clsx(reconClassName, "font-size-11 vertical-padding-3 horizontal-padding-7");
-        }
+        const buttonClassName = "outlined grey font-size-11 vertical-padding-3 horizontal-padding-7";
 
         const handleRemoveCopyError = React.useCallback(async () => {
             setCopyStatus(null);
         }, [setCopyStatus]);
 
-        const handleCopyToClipboard = React.useCallback(
-            async (e: React.MouseEvent) => {
-                await navigator.clipboard.writeText(errorMsg);
-            },
-            [errorMsg]
-        );
+        const handleCopyToClipboard = React.useCallback(async () => {
+            await navigator.clipboard.writeText(errorMsg);
+        }, [errorMsg]);
 
         return (
-            <div className="copyerror-overlay" ref={overlayRefCallback}>
-                <div className="copyerror-content">
-                    <div className={clsx("copyerror-status-icon-wrapper", { "has-error": true })}>
-                        <i className="fa-solid fa-triangle-exclamation"></i>
-                        <div className="copyerror-status">
-                            <div className="copyerror-status-text">{statusText}</div>
+            <div
+                ref={overlayRefCallback}
+                className="absolute top-[0] left-1.5 right-1.5 z-[var(--zindex-block-mask-inner)] overflow-hidden bg-[var(--conn-status-overlay-bg-color)] backdrop-blur-[50px] rounded-md shadow-lg"
+            >
+                <div className="flex flex-row justify-between p-2.5 pl-3 font-[var(--base-font)] text-[var(--secondary-text-color)]">
+                    <div
+                        className={clsx("flex flex-row items-center gap-3 grow min-w-0", {
+                            "items-start": true,
+                        })}
+                    >
+                        <i className="fa-solid fa-triangle-exclamation text-[#e6ba1e] text-base"></i>
+
+                        <div className="flex flex-col items-start gap-1 grow w-full">
+                            <div className="max-w-full text-xs font-semibold leading-4 tracking-[0.11px] text-white">
+                                {statusText}
+                            </div>
+
                             <OverlayScrollbarsComponent
-                                className="copyerror-error"
+                                className="group text-xs font-normal leading-[15px] tracking-[0.11px] text-wrap max-h-20 rounded-lg py-1.5 pl-0 relative w-full"
                                 options={{ scrollbars: { autoHide: "leave" } }}
                             >
-                                <CopyButton className="copy-button" onClick={handleCopyToClipboard} title="Copy" />
+                                <CopyButton
+                                    className="invisible group-hover:visible flex absolute top-0 right-1 rounded backdrop-blur-lg p-1 items-center justify-end gap-1"
+                                    onClick={handleCopyToClipboard}
+                                    title="Copy"
+                                />
                                 <div>{errorMsg}</div>
                             </OverlayScrollbarsComponent>
+
                             {copyStatus?.allowRetry && (
-                                <div className="copyerror-overwrite-btns">
-                                    <Button className={reconClassName} onClick={handleRetryCopy}>
-                                        Yes
+                                <div className="flex flex-row gap-1.5">
+                                    <Button className={buttonClassName} onClick={handleRetryCopy}>
+                                        Override
                                     </Button>
-                                    <Button className={reconClassName} onClick={handleRemoveCopyError}>
-                                        No
+                                    <Button className={buttonClassName} onClick={handleRemoveCopyError}>
+                                        Cancel
                                     </Button>
                                 </div>
                             )}
                         </div>
-                        {copyStatus?.allowRetry || (
-                            <div className="connstatus-actions">
+
+                        {!copyStatus?.allowRetry && (
+                            <div className="flex items-start">
                                 <Button
-                                    className={`fa-xmark fa-solid ${reconClassName}`}
+                                    className={clsx(buttonClassName, "fa-xmark fa-solid")}
                                     onClick={handleRemoveCopyError}
                                 />
                             </div>
