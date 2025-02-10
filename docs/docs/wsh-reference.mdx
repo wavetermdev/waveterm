@@ -668,6 +668,38 @@ wsh file ls wavefile://client/ | grep ".json$"
 
 ---
 
+## launch
+
+The `wsh launch` command allows you to open pre-configured widgets directly from your terminal.
+
+```sh
+wsh launch [flags] widget-id
+```
+
+The command will search for the specified widget ID in both user-defined widgets and default widgets, then create a new block using the widget's configuration.
+
+Flags:
+
+- `-m, --magnify` - open the widget in magnified mode, overriding the widget's default magnification setting
+
+Examples:
+
+```sh
+# Launch a widget with its default settings
+wsh launch my-custom-widget
+
+# Launch a widget in magnified mode
+wsh launch -m system-monitor
+```
+
+The widget's configuration determines the initial block settings, including the view type, metadata, and default magnification state. The `-m` flag can be used to override the widget's default magnification setting.
+
+:::tip
+Widget configurations can be customized in your `widgets.json` configuration file, which you can edit using `wsh editconfig widgets.json`
+:::
+
+---
+
 ## getvar/setvar
 
 Wave Terminal provides commands for managing persistent variables at different scopes (block, tab, workspace, or client-wide).
