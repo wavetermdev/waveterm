@@ -13,7 +13,10 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
 )
 
-var identityFiles []string
+var (
+	identityFiles []string
+	newBlock      bool
+)
 
 var sshCmd = &cobra.Command{
 	Use:     "ssh",
@@ -25,6 +28,7 @@ var sshCmd = &cobra.Command{
 
 func init() {
 	sshCmd.Flags().StringArrayVarP(&identityFiles, "identityfile", "i", []string{}, "add an identity file for publickey authentication")
+	sshCmd.Flags().BoolVarP(&newBlock, "new", "n", false, "create a new terminal block with this connection")
 	rootCmd.AddCommand(sshCmd)
 }
 
@@ -35,10 +39,11 @@ func sshRun(cmd *cobra.Command, args []string) (rtnErr error) {
 
 	sshArg := args[0]
 	blockId := RpcContext.BlockId
-	if blockId == "" {
+	if blockId == "" && !newBlock {
 		return fmt.Errorf("cannot determine blockid (not in JWT)")
 	}
-	// first, make a connection independent of the block
+
+	// Create connection request
 	connOpts := wshrpc.ConnRequest{
 		Host:       sshArg,
 		LogBlockId: blockId,
@@ -48,7 +53,30 @@ func sshRun(cmd *cobra.Command, args []string) (rtnErr error) {
 	}
 	wshclient.ConnConnectCommand(RpcClient, connOpts, &wshrpc.RpcOpts{Timeout: 60000})
 
-	// now, with that made, it will be straightforward to connect
+	if newBlock {
+		// Create a new block with the SSH connection
+		createMeta := map[string]any{
+			waveobj.MetaKey_View:       "term",
+			waveobj.MetaKey_Controller: "shell",
+			waveobj.MetaKey_Connection: sshArg,
+		}
+		if RpcContext.Conn != "" {
+			createMeta[waveobj.MetaKey_Connection] = RpcContext.Conn
+		}
+		createBlockData := wshrpc.CommandCreateBlockData{
+			BlockDef: &waveobj.BlockDef{
+				Meta: createMeta,
+			},
+		}
+		oref, err := wshclient.CreateBlockCommand(RpcClient, createBlockData, nil)
+		if err != nil {
+			return fmt.Errorf("creating new terminal block: %w", err)
+		}
+		WriteStdout("new terminal block created with connection to %q: %s\n", sshArg, oref)
+		return nil
+	}
+
+	// Update existing block with the new connection
 	data := wshrpc.CommandSetMetaData{
 		ORef: waveobj.MakeORef(waveobj.OType_Block, blockId),
 		Meta: map[string]any{
