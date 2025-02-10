@@ -248,6 +248,7 @@ func (p *WshRpcProxy) HandleAuthentication() (*wshrpc.RpcContext, error) {
 	}
 }
 
+// TODO: Figure out who is sending to closed routes and why we're not catching it
 func (p *WshRpcProxy) SendRpcMessage(msg []byte) {
 	defer func() {
 		panichandler.PanicHandler("WshRpcProxy.SendRpcMessage", recover())
