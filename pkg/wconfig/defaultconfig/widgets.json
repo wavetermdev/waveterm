@@ -6,7 +6,10 @@
         "blockdef": {
             "meta": {
                 "view": "term",
-                "controller": "shell"
+                "controller": "shell",
+                "cmd:closeonexit": true,
+                "cmd:closeonexitforce": false,
+                "cmd:closeonexitdelay": 2000
             }
         }
     },
