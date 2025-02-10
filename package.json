@@ -42,7 +42,6 @@
         "@storybook/react-vite": "^8.5.3",
         "@storybook/test": "^8.5.3",
         "@storybook/theming": "^8.5.3",
-        "@tailwindcss/postcss": "4.0.4",
         "@tailwindcss/vite": "^4.0.4",
         "@types/color": "^4.2.0",
         "@types/css-tree": "^2",
