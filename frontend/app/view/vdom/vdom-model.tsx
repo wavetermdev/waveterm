@@ -9,6 +9,7 @@ import { RpcResponseHelper, WshClient } from "@/app/store/wshclient";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { makeFeBlockRouteId } from "@/app/store/wshrouter";
 import { DefaultRouter, TabRpcClient } from "@/app/store/wshrpcutil";
+import { VDomView } from "@/app/view/vdom/vdom";
 import { applyCanvasOp, mergeBackendUpdates, restoreVDomElems } from "@/app/view/vdom/vdom-utils";
 import { getWebServerEndpoint } from "@/util/endpoints";
 import { adaptFromReactOrNativeKeyEvent, checkKeyPressed } from "@/util/keyutil";
@@ -181,6 +182,10 @@ export class VDomModel {
                 }
             }
         );
+    }
+
+    get viewComponent(): ViewComponent {
+        return VDomView;
     }
 
     dispose() {

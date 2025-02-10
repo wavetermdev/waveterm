@@ -9,9 +9,8 @@ import {
     FullSubBlockProps,
     SubBlockProps,
 } from "@/app/block/blocktypes";
-import { PreviewModel, PreviewView, makePreviewModel } from "@/app/view/preview/preview";
-import { SysinfoView, SysinfoViewModel, makeSysinfoViewModel } from "@/app/view/sysinfo/sysinfo";
-import { VDomView, makeVDomModel } from "@/app/view/vdom/vdom";
+import { PreviewModel } from "@/app/view/preview/preview";
+import { SysinfoViewModel } from "@/app/view/sysinfo/sysinfo";
 import { VDomModel } from "@/app/view/vdom/vdom-model";
 import { ErrorBoundary } from "@/element/errorboundary";
 import { CenteredDiv } from "@/element/quickelems";
@@ -25,40 +24,31 @@ import {
 import { getWaveObjectAtom, makeORef, useWaveObjectValue } from "@/store/wos";
 import { focusedBlockId, getElemAsStr } from "@/util/focusutil";
 import { isBlank, useAtomValueSafe } from "@/util/util";
-import { HelpView, HelpViewModel, makeHelpViewModel } from "@/view/helpview/helpview";
-import { QuickTipsView, QuickTipsViewModel } from "@/view/quicktipsview/quicktipsview";
-import { TermViewModel, TerminalView, makeTerminalModel } from "@/view/term/term";
-import { WaveAi, WaveAiModel, makeWaveAiViewModel } from "@/view/waveai/waveai";
-import { WebView, WebViewModel, makeWebViewModel } from "@/view/webview/webview";
+import { HelpViewModel } from "@/view/helpview/helpview";
+import { TermViewModel } from "@/view/term/term";
+import { WaveAiModel } from "@/view/waveai/waveai";
+import { WebViewModel } from "@/view/webview/webview";
 import clsx from "clsx";
 import { atom, useAtomValue } from "jotai";
-import { Suspense, memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { memo, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import "./block.scss";
 import { BlockFrame } from "./blockframe";
 import { blockViewToIcon, blockViewToName } from "./blockutil";
 
+const BlockRegistry: Map<string, ViewModelClass> = new Map();
+BlockRegistry.set("term", TermViewModel);
+BlockRegistry.set("preview", PreviewModel);
+BlockRegistry.set("web", WebViewModel);
+BlockRegistry.set("waveai", WaveAiModel);
+BlockRegistry.set("cpuplot", SysinfoViewModel);
+BlockRegistry.set("sysinfo", SysinfoViewModel);
+BlockRegistry.set("vdom", VDomModel);
+BlockRegistry.set("help", HelpViewModel);
+
 function makeViewModel(blockId: string, blockView: string, nodeModel: BlockNodeModel): ViewModel {
-    if (blockView === "term") {
-        return makeTerminalModel(blockId, nodeModel);
-    }
-    if (blockView === "preview") {
-        return makePreviewModel(blockId, nodeModel);
-    }
-    if (blockView === "web") {
-        return makeWebViewModel(blockId, nodeModel);
-    }
-    if (blockView === "waveai") {
-        return makeWaveAiViewModel(blockId);
-    }
-    if (blockView === "cpuplot" || blockView == "sysinfo") {
-        // "cpuplot" is for backwards compatibility with already-opened widgets
-        return makeSysinfoViewModel(blockId, blockView);
-    }
-    if (blockView == "vdom") {
-        return makeVDomModel(blockId, nodeModel);
-    }
-    if (blockView === "help") {
-        return makeHelpViewModel(blockId, nodeModel);
+    const ctor = BlockRegistry.get(blockView);
+    if (ctor != null) {
+        return new ctor(blockId, nodeModel);
     }
     return makeDefaultViewModel(blockId, blockView);
 }
@@ -73,40 +63,11 @@ function getViewElem(
     if (isBlank(blockView)) {
         return <CenteredDiv>No View</CenteredDiv>;
     }
-    if (blockView === "term") {
-        return <TerminalView key={blockId} blockId={blockId} model={viewModel as TermViewModel} />;
+    if (viewModel.viewComponent == null) {
+        return <CenteredDiv>No View Component</CenteredDiv>;
     }
-    if (blockView === "preview") {
-        return (
-            <PreviewView
-                key={blockId}
-                blockId={blockId}
-                blockRef={blockRef}
-                contentRef={contentRef}
-                model={viewModel as PreviewModel}
-            />
-        );
-    }
-    if (blockView === "web") {
-        return <WebView key={blockId} blockId={blockId} model={viewModel as WebViewModel} blockRef={blockRef} />;
-    }
-    if (blockView === "waveai") {
-        return <WaveAi key={blockId} blockId={blockId} model={viewModel as WaveAiModel} />;
-    }
-    if (blockView === "cpuplot" || blockView === "sysinfo") {
-        // "cpuplot" is for backwards compatibility with already opened widgets
-        return <SysinfoView key={blockId} blockId={blockId} model={viewModel as SysinfoViewModel} />;
-    }
-    if (blockView == "help") {
-        return <HelpView key={blockId} model={viewModel as HelpViewModel} />;
-    }
-    if (blockView == "tips") {
-        return <QuickTipsView key={blockId} model={viewModel as QuickTipsViewModel} />;
-    }
-    if (blockView == "vdom") {
-        return <VDomView key={blockId} blockId={blockId} model={viewModel as VDomModel} />;
-    }
-    return <CenteredDiv>Invalid View "{blockView}"</CenteredDiv>;
+    const VC = viewModel.viewComponent;
+    return <VC key={blockId} blockId={blockId} blockRef={blockRef} contentRef={contentRef} model={viewModel} />;
 }
 
 function makeDefaultViewModel(blockId: string, viewType: string): ViewModel {
@@ -123,6 +84,7 @@ function makeDefaultViewModel(blockId: string, viewType: string): ViewModel {
         }),
         preIconButton: atom(null),
         endIconButtons: atom(null),
+        viewComponent: null,
     };
     return viewModel;
 }

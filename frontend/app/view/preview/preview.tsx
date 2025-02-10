@@ -482,6 +482,10 @@ export class PreviewModel implements ViewModel {
         globalStore.set(this.markdownShowToc, !globalStore.get(this.markdownShowToc));
     }
 
+    get viewComponent(): ViewComponent {
+        return PreviewView;
+    }
+
     async getSpecializedView(getFn: Getter): Promise<{ specializedView?: string; errorStr?: string }> {
         const mimeType = await getFn(this.fileMimeType);
         const fileInfo = await getFn(this.statFile);

@@ -249,6 +249,17 @@ declare global {
         wholeWord?: PrimitiveAtom<boolean>;
     };
 
+    declare type ViewComponentProps<T extends ViewModel> = {
+        blockId: string;
+        blockRef: React.RefObject<HTMLDivElement>;
+        contentRef: React.RefObject<HTMLDivElement>;
+        model: T;
+    };
+
+    declare type ViewComponent = React.FC<ViewComponentProps>;
+
+    type ViewModelClass = new (blockId: string, nodeModel: BlockNodeModel) => ViewModel;
+
     interface ViewModel {
         viewType: string;
         viewIcon?: jotai.Atom<string | IconButtonDecl>;
@@ -261,6 +272,8 @@ declare global {
         noPadding?: jotai.Atom<boolean>;
         filterOutNowsh?: jotai.Atom<boolean>;
         searchAtoms?: SearchAtoms;
+
+        viewComponent: ViewComponent<ViewModel>;
 
         // just for terminal
         isBasicTerm?: (getFn: jotai.Getter) => boolean;
