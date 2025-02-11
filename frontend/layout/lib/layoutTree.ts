@@ -29,6 +29,9 @@ import {
     MoveOperation,
 } from "./types";
 
+import { newLayoutNode } from "./layoutNode";
+import { LayoutTreeReplaceNodeAction, LayoutTreeSplitHorizontalAction, LayoutTreeSplitVerticalAction } from "./types";
+
 export const DEFAULT_MAX_CHILDREN = 5;
 
 /**
@@ -423,5 +426,120 @@ export function clearTree(layoutState: LayoutTreeState) {
     layoutState.leafOrder = undefined;
     layoutState.focusedNodeId = undefined;
     layoutState.magnifiedNodeId = undefined;
+    layoutState.generation++;
+}
+
+export function replaceNode(layoutState: LayoutTreeState, action: LayoutTreeReplaceNodeAction) {
+    const { targetNodeId, newNode } = action;
+    if (layoutState.rootNode.id === targetNodeId) {
+        newNode.size = layoutState.rootNode.size; // preserve size
+        layoutState.rootNode = newNode;
+    } else {
+        const parent = findParent(layoutState.rootNode, targetNodeId);
+        if (!parent) {
+            console.error("replaceNode: Parent not found for", targetNodeId);
+            return;
+        }
+        const index = parent.children.findIndex((child) => child.id === targetNodeId);
+        if (index === -1) {
+            console.error("replaceNode: Target node not found in parent's children", targetNodeId);
+            return;
+        }
+        // Preserve the old node's size.
+        const targetNode = parent.children[index];
+        newNode.size = targetNode.size;
+        parent.children[index] = newNode;
+    }
+    layoutState.generation++;
+}
+
+// ─── SPLIT HORIZONTAL ─────────────────────────────────────────────────────────────
+
+export function splitHorizontal(layoutState: LayoutTreeState, action: LayoutTreeSplitHorizontalAction) {
+    const { targetNodeId, newNode, position } = action;
+    const targetNode = findNode(layoutState.rootNode, targetNodeId);
+    if (!targetNode) {
+        console.error("splitHorizontal: Target node not found", targetNodeId);
+        return;
+    }
+
+    const parent = findParent(layoutState.rootNode, targetNodeId);
+    if (parent && parent.flexDirection === FlexDirection.Row) {
+        const index = parent.children.findIndex((child) => child.id === targetNodeId);
+        if (index === -1) {
+            console.error("splitHorizontal: Target node not found in parent's children", targetNodeId);
+            return;
+        }
+        const insertIndex = position === "before" ? index : index + 1;
+        // Directly splice in the new node instead of calling addChildAt (which may flatten nodes)
+        parent.children.splice(insertIndex, 0, newNode);
+        // Rebalance sizes equally (or use your own logic)
+        parent.children.forEach((child) => (child.size = 1));
+    } else {
+        // Otherwise, if no parent or parent's flexDirection is not Row, we need to wrap
+        // Create a new group node with horizontal layout.
+        // IMPORTANT: pass an initial children array so the new node is valid.
+        const groupNode = newLayoutNode(FlexDirection.Row, targetNode.size, [targetNode], undefined);
+        // Now decide the ordering based on the "position"
+        groupNode.children = position === "before" ? [newNode, targetNode] : [targetNode, newNode];
+        groupNode.children.forEach((child) => (child.size = 1));
+        if (parent) {
+            const index = parent.children.findIndex((child) => child.id === targetNodeId);
+            if (index === -1) {
+                console.error("splitHorizontal (wrap): Target node not found in parent's children", targetNodeId);
+                return;
+            }
+            parent.children[index] = groupNode;
+        } else {
+            layoutState.rootNode = groupNode;
+        }
+    }
+    if (action.focused) {
+        layoutState.focusedNodeId = newNode.id;
+    }
+    layoutState.generation++;
+}
+
+// ─── SPLIT VERTICAL ─────────────────────────────────────────────────────────────
+
+export function splitVertical(layoutState: LayoutTreeState, action: LayoutTreeSplitVerticalAction) {
+    const { targetNodeId, newNode, position } = action;
+    const targetNode = findNode(layoutState.rootNode, targetNodeId);
+    if (!targetNode) {
+        console.error("splitVertical: Target node not found", targetNodeId);
+        return;
+    }
+
+    const parent = findParent(layoutState.rootNode, targetNodeId);
+    if (parent && parent.flexDirection === FlexDirection.Column) {
+        const index = parent.children.findIndex((child) => child.id === targetNodeId);
+        if (index === -1) {
+            console.error("splitVertical: Target node not found in parent's children", targetNodeId);
+            return;
+        }
+        const insertIndex = position === "before" ? index : index + 1;
+        // For vertical splits in an already vertical parent, splice directly.
+        parent.children.splice(insertIndex, 0, newNode);
+        parent.children.forEach((child) => (child.size = 1));
+    } else {
+        // Wrap target node in a new vertical group.
+        // Create group node with an initial children array so that validation passes.
+        const groupNode = newLayoutNode(FlexDirection.Column, targetNode.size, [targetNode], undefined);
+        groupNode.children = position === "before" ? [newNode, targetNode] : [targetNode, newNode];
+        groupNode.children.forEach((child) => (child.size = 1));
+        if (parent) {
+            const index = parent.children.findIndex((child) => child.id === targetNodeId);
+            if (index === -1) {
+                console.error("splitVertical (wrap): Target node not found in parent's children", targetNodeId);
+                return;
+            }
+            parent.children[index] = groupNode;
+        } else {
+            layoutState.rootNode = groupNode;
+        }
+    }
+    if (action.focused) {
+        layoutState.focusedNodeId = newNode.id;
+    }
     layoutState.generation++;
 }

@@ -318,6 +318,10 @@ class TermViewModel implements ViewModel {
         });
     }
 
+    get viewComponent(): ViewComponent {
+        return TerminalView;
+    }
+
     isBasicTerm(getFn: jotai.Getter): boolean {
         // needs to match "const isBasicTerm" in TerminalView()
         const termMode = getFn(this.termMode);
@@ -873,7 +877,7 @@ const TermToolbarVDomNode = ({ blockId, model }: TerminalViewProps) => {
     );
 };
 
-const TerminalView = ({ blockId, model }: TerminalViewProps) => {
+const TerminalView = ({ blockId, model }: ViewComponentProps<TermViewModel>) => {
     const viewRef = React.useRef<HTMLDivElement>(null);
     const connectElemRef = React.useRef<HTMLDivElement>(null);
     const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", blockId));

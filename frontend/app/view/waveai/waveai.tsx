@@ -284,6 +284,10 @@ export class WaveAiModel implements ViewModel {
         });
     }
 
+    get viewComponent(): ViewComponent {
+        return WaveAi;
+    }
+
     dispose() {
         DefaultRouter.unregisterRoute(makeFeBlockRouteId(this.blockId));
     }
