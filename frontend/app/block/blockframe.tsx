@@ -607,7 +607,8 @@ const BlockFrame_Default_Component = (props: BlockFrameProps) => {
                     "--magnified-block-blur": `${magnifiedBlockBlur}px`,
                 } as React.CSSProperties
             }
-            inert={preview ? "1" : undefined} // this does exist in the DOM, just not in react
+            // @ts-ignore: inert does exist in the DOM, just not in react
+            inert={preview ? "1" : undefined} //
         >
             <BlockMask nodeModel={nodeModel} />
             {preview || viewModel == null ? null : (

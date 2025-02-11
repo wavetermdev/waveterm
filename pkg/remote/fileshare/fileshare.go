@@ -47,6 +47,7 @@ func CreateFileShareClient(ctx context.Context, connection string) (fstype.FileS
 }
 
 func Read(ctx context.Context, data wshrpc.FileData) (*wshrpc.FileData, error) {
+	log.Printf("Read: %v", data.Info.Path)
 	client, conn := CreateFileShareClient(ctx, data.Info.Path)
 	if conn == nil || client == nil {
 		return nil, fmt.Errorf(ErrorParsingConnection, data.Info.Path)

@@ -52,6 +52,11 @@ class RpcApiType {
         return client.wshRpcCall("connlist", null, opts);
     }
 
+    // command "connlistaws" [call]
+    ConnListAWSCommand(client: WshClient, opts?: RpcOpts): Promise<string[]> {
+        return client.wshRpcCall("connlistaws", null, opts);
+    }
+
     // command "connreinstallwsh" [call]
     ConnReinstallWshCommand(client: WshClient, data: ConnExtData, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("connreinstallwsh", data, opts);

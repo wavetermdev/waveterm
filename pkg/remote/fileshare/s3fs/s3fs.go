@@ -60,27 +60,34 @@ func (c S3Client) Read(ctx context.Context, conn *connparse.Connection, data wsh
 func (c S3Client) ReadStream(ctx context.Context, conn *connparse.Connection, data wshrpc.FileData) <-chan wshrpc.RespOrErrorUnion[wshrpc.FileData] {
 	bucket := conn.Host
 	objectKey := conn.Path
+	log.Printf("s3fs.ReadStream: %v", conn.GetFullURI())
 	rtn := make(chan wshrpc.RespOrErrorUnion[wshrpc.FileData], 16)
 	go func() {
 		defer close(rtn)
-		if bucket == "" || bucket == "/" || objectKey == "" || objectKey == "/" {
-			entries, err := c.ListEntries(ctx, conn, nil)
-			if err != nil {
-				rtn <- wshutil.RespErr[wshrpc.FileData](err)
-				return
-			}
-			entryBuf := make([]*wshrpc.FileInfo, 0, wshrpc.DirChunkSize)
-			for _, entry := range entries {
-				entryBuf = append(entryBuf, entry)
-				if len(entryBuf) == wshrpc.DirChunkSize {
-					rtn <- wshrpc.RespOrErrorUnion[wshrpc.FileData]{Response: wshrpc.FileData{Entries: entryBuf}}
-					entryBuf = make([]*wshrpc.FileInfo, 0, wshrpc.DirChunkSize)
+		finfo, err := c.Stat(ctx, conn)
+		if err != nil {
+			rtn <- wshutil.RespErr[wshrpc.FileData](err)
+			return
+		}
+		rtn <- wshrpc.RespOrErrorUnion[wshrpc.FileData]{Response: wshrpc.FileData{Info: finfo}}
+		if finfo.IsDir {
+			listEntriesCh := c.ListEntriesStream(ctx, conn, nil)
+			defer func() {
+				go func() {
+					for range listEntriesCh {
+					}
+				}()
+			}()
+			for respUnion := range listEntriesCh {
+				if respUnion.Error != nil {
+					rtn <- wshutil.RespErr[wshrpc.FileData](respUnion.Error)
+					return
+				}
+				resp := respUnion.Response
+				if len(resp.FileInfo) > 0 {
+					rtn <- wshrpc.RespOrErrorUnion[wshrpc.FileData]{Response: wshrpc.FileData{Entries: resp.FileInfo}}
 				}
 			}
-			if len(entryBuf) > 0 {
-				rtn <- wshrpc.RespOrErrorUnion[wshrpc.FileData]{Response: wshrpc.FileData{Entries: entryBuf}}
-			}
-			return
 		} else {
 			var result *s3.GetObjectOutput
 			var err error
@@ -102,10 +109,7 @@ func (c S3Client) ReadStream(ctx context.Context, conn *connparse.Connection, da
 				log.Printf("error getting object %v:%v: %v", bucket, objectKey, err)
 				var noKey *types.NoSuchKey
 				if errors.As(err, &noKey) {
-					log.Printf("Can't get object %s from bucket %s. No such key exists.\n", objectKey, bucket)
 					err = noKey
-				} else {
-					log.Printf("Couldn't get object %v:%v. Here's why: %v\n", bucket, objectKey, err)
 				}
 				rtn <- wshutil.RespErr[wshrpc.FileData](err)
 				return
@@ -389,10 +393,11 @@ func (c S3Client) ListEntriesStream(ctx context.Context, conn *connparse.Connect
 			}
 			if bucket.Name != nil {
 				entries = append(entries, &wshrpc.FileInfo{
-					Path:    fmt.Sprintf("%s://%s/", conn.Scheme, *bucket.Name), // add trailing slash to indicate directory
-					Name:    *bucket.Name,
-					ModTime: bucket.CreationDate.UnixMilli(),
-					IsDir:   true,
+					Path:     *bucket.Name + "/",
+					Name:     *bucket.Name,
+					ModTime:  bucket.CreationDate.UnixMilli(),
+					IsDir:    true,
+					MimeType: "directory",
 				})
 				numFetched++
 			}
@@ -414,14 +419,15 @@ func (c S3Client) ListEntriesStream(ctx context.Context, conn *connparse.Connect
 				Prefix: aws.String(objectKeyPrefix),
 			}
 			objectPaginator := s3.NewListObjectsV2Paginator(c.client, input)
-			parentPath := getParentPathUri(conn)
+			parentPath := getParentPath(conn)
 			if parentPath != "" {
 				rtn <- wshrpc.RespOrErrorUnion[wshrpc.CommandRemoteListEntriesRtnData]{Response: wshrpc.CommandRemoteListEntriesRtnData{FileInfo: []*wshrpc.FileInfo{
 					{
-						Path:  parentPath,
-						Name:  "..",
-						IsDir: true,
-						Size:  0,
+						Path:     parentPath,
+						Name:     "..",
+						IsDir:    true,
+						Size:     0,
+						MimeType: "directory",
 					},
 				}}}
 			}
@@ -448,17 +454,19 @@ func (c S3Client) ListEntriesStream(ctx context.Context, conn *connparse.Connect
 							name := strings.TrimPrefix(*obj.Key, objectKeyPrefix)
 							if strings.Count(name, "/") > 0 {
 								name = strings.SplitN(name, "/", 2)[0]
-								name = name + "/" // add trailing slash to indicate directory
+								path := fmt.Sprintf("%s/%s/", conn.GetPathWithHost(), name)
 								if entryMap[name] == nil {
 									if _, ok := prevUsedDirKeys[name]; !ok {
 										entryMap[name] = &wshrpc.FileInfo{
-											Path:    conn.GetFullURI() + name,
+											Path:    path,
 											Name:    name,
 											IsDir:   true,
 											Dir:     objectKeyPrefix,
 											ModTime: lastModTime,
 											Size:    0,
 										}
+										fileutil.AddMimeTypeToFileInfo(path, entryMap[name])
+
 										prevUsedDirKeys[name] = struct{}{}
 										numFetched++
 									}
@@ -468,6 +476,7 @@ func (c S3Client) ListEntriesStream(ctx context.Context, conn *connparse.Connect
 								continue
 							}
 
+							path := fmt.Sprintf("%s/%s", conn.GetPathWithHost(), name)
 							size := int64(0)
 							if obj.Size != nil {
 								size = *obj.Size
@@ -476,10 +485,11 @@ func (c S3Client) ListEntriesStream(ctx context.Context, conn *connparse.Connect
 								Name:    name,
 								IsDir:   false,
 								Dir:     objectKeyPrefix,
-								Path:    conn.GetFullURI() + name,
+								Path:    path,
 								ModTime: lastModTime,
 								Size:    size,
 							}
+							fileutil.AddMimeTypeToFileInfo(path, entryMap[name])
 							numFetched++
 						}
 					}
@@ -508,12 +518,14 @@ func (c S3Client) Stat(ctx context.Context, conn *connparse.Connection) (*wshrpc
 	bucketName := conn.Host
 	objectKey := conn.Path
 	if bucketName == "" || bucketName == "/" {
+		// root, refers to list all buckets
 		return &wshrpc.FileInfo{
-			Name:    "/",
-			IsDir:   true,
-			Size:    0,
-			ModTime: 0,
-			Path:    fmt.Sprintf("%s://", conn.Scheme),
+			Name:     "/",
+			IsDir:    true,
+			Size:     0,
+			ModTime:  0,
+			Path:     "/",
+			MimeType: "directory",
 		}, nil
 	}
 	if objectKey == "" || objectKey == "/" {
@@ -535,10 +547,12 @@ func (c S3Client) Stat(ctx context.Context, conn *connparse.Connection) (*wshrpc
 
 		if exists {
 			return &wshrpc.FileInfo{
-				Name:    bucketName,
-				IsDir:   true,
-				Size:    0,
-				ModTime: 0,
+				Name:     bucketName,
+				Path:     bucketName,
+				IsDir:    true,
+				Size:     0,
+				ModTime:  0,
+				MimeType: "directory",
 			}, nil
 		} else {
 			return nil, fmt.Errorf("bucket %v does not exist", bucketName)
@@ -547,14 +561,15 @@ func (c S3Client) Stat(ctx context.Context, conn *connparse.Connection) (*wshrpc
 	result, err := c.client.GetObjectAttributes(ctx, &s3.GetObjectAttributesInput{
 		Bucket: aws.String(bucketName),
 		Key:    aws.String(objectKey),
+		ObjectAttributes: []types.ObjectAttributes{
+			types.ObjectAttributesObjectSize,
+		},
 	})
 	if err != nil {
 		var noKey *types.NoSuchKey
 		var notFound *types.NotFound
 		if errors.As(err, &noKey) || errors.As(err, &notFound) {
 			err = fs.ErrNotExist
-		} else {
-			log.Printf("Couldn't get object %v:%v. Here's why: %v\n", bucketName, objectKey, err)
 		}
 		return nil, err
 	}
@@ -566,14 +581,16 @@ func (c S3Client) Stat(ctx context.Context, conn *connparse.Connection) (*wshrpc
 	if result.LastModified != nil {
 		lastModified = result.LastModified.UnixMilli()
 	}
-	return &wshrpc.FileInfo{
+	rtn := &wshrpc.FileInfo{
 		Name:    objectKey,
-		Path:    conn.GetFullURI(),
-		Dir:     getParentPathUri(conn),
+		Path:    conn.GetPathWithHost(),
+		Dir:     getParentPath(conn),
 		IsDir:   false,
 		Size:    size,
 		ModTime: lastModified,
-	}, nil
+	}
+	fileutil.AddMimeTypeToFileInfo(rtn.Path, rtn)
+	return rtn, nil
 }
 
 func (c S3Client) PutFile(ctx context.Context, conn *connparse.Connection, data wshrpc.FileData) error {
@@ -762,14 +779,6 @@ func (c S3Client) GetCapability() wshrpc.FileShareCapability {
 	}
 }
 
-func getParentPathUri(conn *connparse.Connection) string {
-	parentPath := getParentPath(conn)
-	if parentPath == "" {
-		return ""
-	}
-	return fmt.Sprintf("%s://%s", conn.Scheme, parentPath)
-}
-
 func getParentPath(conn *connparse.Connection) string {
 	hostAndPath := conn.GetPathWithHost()
 	return getParentPathString(hostAndPath)
@@ -777,7 +786,7 @@ func getParentPath(conn *connparse.Connection) string {
 
 func getParentPathString(hostAndPath string) string {
 	parentPath := ""
-	slashIndices := slashRe.FindAllStringIndex(hostAndPath, -1)
+	slashIndices := slashRe.FindAllStringIndex(hostAndPath)
 	if slashIndices != nil && len(slashIndices) > 0 {
 		if slashIndices[len(slashIndices)-1][0] != len(hostAndPath)-1 {
 			parentPath = hostAndPath[:slashIndices[len(slashIndices)-1][0]+1]

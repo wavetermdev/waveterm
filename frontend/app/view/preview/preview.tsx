@@ -382,13 +382,7 @@ export class PreviewModel implements ViewModel {
         });
         this.normFilePath = atom<Promise<string>>(async (get) => {
             const fileInfo = await get(this.statFile);
-            if (fileInfo == null) {
-                return null;
-            }
-            if (fileInfo.isdir) {
-                return fileInfo.dir;
-            }
-            return fileInfo.dir + "/" + fileInfo.name;
+            return fileInfo?.path;
         });
         this.loadableStatFilePath = loadable(this.statFilePath);
         this.connection = atom<Promise<string>>(async (get) => {
@@ -406,12 +400,13 @@ export class PreviewModel implements ViewModel {
         });
         this.statFile = atom<Promise<FileInfo>>(async (get) => {
             const fileName = get(this.metaFilePath);
+            const path = await this.formatRemoteUri(fileName, get);
             if (fileName == null) {
                 return null;
             }
             const statFile = await RpcApi.FileInfoCommand(TabRpcClient, {
                 info: {
-                    path: await this.formatRemoteUri(fileName, get),
+                    path,
                 },
             });
             console.log("stat file", statFile);
@@ -427,12 +422,14 @@ export class PreviewModel implements ViewModel {
 
         const fullFileAtom = atom<Promise<FileData>>(async (get) => {
             const fileName = get(this.metaFilePath);
+            const path = await this.formatRemoteUri(fileName, get);
             if (fileName == null) {
                 return null;
             }
+            console.log("full file path", path);
             const file = await RpcApi.FileReadCommand(TabRpcClient, {
                 info: {
-                    path: await this.formatRemoteUri(fileName, get),
+                    path,
                 },
             });
             console.log("full file", file);
@@ -442,16 +439,15 @@ export class PreviewModel implements ViewModel {
         this.fileContentSaved = atom(null) as PrimitiveAtom<string | null>;
         const fileContentAtom = atom(
             async (get) => {
-                const _ = get(this.metaFilePath);
                 const newContent = get(this.newFileContent);
+                const savedContent = get(this.fileContentSaved);
+                const fullFile = await get(fullFileAtom);
                 if (newContent != null) {
                     return newContent;
                 }
-                const savedContent = get(this.fileContentSaved);
                 if (savedContent != null) {
                     return savedContent;
                 }
-                const fullFile = await get(fullFileAtom);
                 return base64ToString(fullFile?.data64);
             },
             (_, set, update: string) => {
@@ -716,7 +712,19 @@ export class PreviewModel implements ViewModel {
                     if (filePath == null) {
                         return;
                     }
-                    await navigator.clipboard.writeText(filePath);
+                    const conn = await globalStore.get(this.connection);
+                    if (conn) {
+                        // remote path
+                        if (conn.startsWith("aws:")) {
+                            // TODO: We need a better way to handle s3 paths
+                            await navigator.clipboard.writeText(`${conn}:s3://${filePath}`);
+                        } else {
+                            await navigator.clipboard.writeText(`wsh://${conn}/${filePath}`);
+                        }
+                    } else {
+                        // local path
+                        await navigator.clipboard.writeText(filePath);
+                    }
                 }),
         });
         menuItems.push({
@@ -860,8 +868,17 @@ export class PreviewModel implements ViewModel {
     }
 
     async formatRemoteUri(path: string, get: Getter): Promise<string> {
+        console.log("formatRemoteUri", path);
         const conn = (await get(this.connection)) ?? "local";
-        return `wsh://${conn}/${path}`;
+        // TODO: We need a better way to handle s3 paths
+        var retVal: string;
+        if (conn.startsWith("aws:")) {
+            retVal = `${conn}:s3://${path ?? ""}`;
+        } else {
+            retVal = `wsh://${conn}/${path}`;
+        }
+        console.log("formatted", retVal);
+        return retVal;
     }
 }
 

@@ -69,7 +69,6 @@ func WinSymlinkDir(path string, bits os.FileMode) bool {
 // does not return "application/octet-stream" as this is considered a detection failure
 // can pass an existing fileInfo to avoid re-statting the file
 // falls back to text/plain for 0 byte files
-
 func DetectMimeType(path string, fileInfo fs.FileInfo, extended bool) string {
 	if fileInfo == nil {
 		statRtn, err := os.Stat(path)
@@ -146,6 +145,15 @@ func DetectMimeTypeWithDirEnt(path string, dirEnt fs.DirEntry) string {
 		return mimeType
 	}
 	return ""
+}
+
+func AddMimeTypeToFileInfo(path string, fileInfo *wshrpc.FileInfo) {
+	if fileInfo == nil {
+		return
+	}
+	if fileInfo.MimeType == "" {
+		fileInfo.MimeType = DetectMimeType(path, ToFsFileInfo(fileInfo), false)
+	}
 }
 
 var (

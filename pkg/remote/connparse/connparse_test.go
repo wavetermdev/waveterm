@@ -77,7 +77,7 @@ func TestParseURI_WSHRemoteShorthand(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to parse URI: %v", err)
 	}
-	expected := "/path/to/file"
+	expected := "path/to/file"
 	if c.Path != expected {
 		t.Fatalf("expected path to be \"%q\", got \"%q\"", expected, c.Path)
 	}
@@ -99,7 +99,7 @@ func TestParseURI_WSHRemoteShorthand(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to parse URI: %v", err)
 	}
-	expected = "/path/to/file"
+	expected = "path/to/file"
 	if c.Path != expected {
 		t.Fatalf("expected path to be \"%q\", got \"%q\"", expected, c.Path)
 	}
@@ -122,7 +122,7 @@ func TestParseURI_WSHRemoteShorthand(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to parse URI: %v", err)
 	}
-	expected = "/path/to/file"
+	expected = "path/to/file"
 	if c.Path != expected {
 		t.Fatalf("expected path to be \"%q\", got \"%q\"", expected, c.Path)
 	}

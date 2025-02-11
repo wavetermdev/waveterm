@@ -122,7 +122,7 @@ func (c WaveClient) ReadTarStream(ctx context.Context, conn *connparse.Connectio
 		return wshutil.SendErrCh[iochantypes.Packet](fmt.Errorf("error getting file info: %w", err))
 	}
 	singleFile := finfo != nil && !finfo.IsDir
-	pathPrefix := getPathPrefix(conn)
+	var pathPrefix string
 	if !singleFile && srcHasSlash {
 		pathPrefix = cleanedPath
 	} else {
