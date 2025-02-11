@@ -64,6 +64,9 @@ export class LauncherViewModel implements ViewModel {
         const currentRow = Math.floor(selectedIndex / gridLayout.columns);
         const currentCol = selectedIndex % gridLayout.columns;
         if (checkKeyPressed(e, "ArrowUp")) {
+            if (filteredWidgets.length == 0) {
+                return true;
+            }
             if (currentRow > 0) {
                 const newIndex = selectedIndex - gridLayout.columns;
                 if (newIndex >= 0) {
@@ -73,6 +76,9 @@ export class LauncherViewModel implements ViewModel {
             return true;
         }
         if (checkKeyPressed(e, "ArrowDown")) {
+            if (filteredWidgets.length == 0) {
+                return true;
+            }
             if (currentRow < rows - 1) {
                 const newIndex = selectedIndex + gridLayout.columns;
                 if (newIndex < filteredWidgets.length) {
@@ -82,18 +88,27 @@ export class LauncherViewModel implements ViewModel {
             return true;
         }
         if (checkKeyPressed(e, "ArrowLeft")) {
+            if (filteredWidgets.length == 0) {
+                return true;
+            }
             if (currentCol > 0) {
                 globalStore.set(this.selectedIndex, selectedIndex - 1);
             }
             return true;
         }
         if (checkKeyPressed(e, "ArrowRight")) {
+            if (filteredWidgets.length == 0) {
+                return true;
+            }
             if (currentCol < gridLayout.columns - 1 && selectedIndex + 1 < filteredWidgets.length) {
                 globalStore.set(this.selectedIndex, selectedIndex + 1);
             }
             return true;
         }
         if (checkKeyPressed(e, "Enter")) {
+            if (filteredWidgets.length == 0) {
+                return true;
+            }
             if (filteredWidgets[selectedIndex]) {
                 this.handleWidgetSelect(filteredWidgets[selectedIndex]);
             }
