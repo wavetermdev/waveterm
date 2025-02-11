@@ -61,7 +61,7 @@ Wave Terminal uses a modular ViewModel system to define interactive blocks. Each
    - Accent color is: text-accent, for a 50% transparent accent background use bg-accentbg
    - Hover background is: bg-hoverbg
    - Border color is "border", so use border-border
-   - Colors are also defined for error, warning, and success (text-error, text-warning, text-su cess)
+   - Colors are also defined for error, warning, and success (text-error, text-warning, text-sucess)
 
 ## Relevant TypeScript Types
 

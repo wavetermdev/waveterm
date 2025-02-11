@@ -63,7 +63,6 @@ export class LauncherViewModel implements ViewModel {
         const rows = Math.ceil(filteredWidgets.length / gridLayout.columns);
         const currentRow = Math.floor(selectedIndex / gridLayout.columns);
         const currentCol = selectedIndex % gridLayout.columns;
-        console.log("keydown", e);
         if (checkKeyPressed(e, "ArrowUp")) {
             if (currentRow > 0) {
                 const newIndex = selectedIndex - gridLayout.columns;
