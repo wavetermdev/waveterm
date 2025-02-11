@@ -249,27 +249,67 @@ declare global {
         wholeWord?: PrimitiveAtom<boolean>;
     };
 
+    declare type ViewComponentProps<T extends ViewModel> = {
+        blockId: string;
+        blockRef: React.RefObject<HTMLDivElement>;
+        contentRef: React.RefObject<HTMLDivElement>;
+        model: T;
+    };
+
+    declare type ViewComponent = React.FC<ViewComponentProps>;
+
+    type ViewModelClass = new (blockId: string, nodeModel: BlockNodeModel) => ViewModel;
+
     interface ViewModel {
+        // The type of view, used for identifying and rendering the appropriate component.
         viewType: string;
+
+        // Icon representing the view, can be a string or an IconButton declaration.
         viewIcon?: jotai.Atom<string | IconButtonDecl>;
+
+        // Display name for the view, used in UI headers.
         viewName?: jotai.Atom<string>;
+
+        // Optional header text or elements for the view.
         viewText?: jotai.Atom<string | HeaderElem[]>;
+
+        // Icon button displayed before the title in the header.
         preIconButton?: jotai.Atom<IconButtonDecl>;
+
+        // Icon buttons displayed at the end of the block header.
         endIconButtons?: jotai.Atom<IconButtonDecl[]>;
+
+        // Background styling metadata for the block.
         blockBg?: jotai.Atom<MetaType>;
+
+        // Whether the block manages its own connection (e.g., for remote access).
         manageConnection?: jotai.Atom<boolean>;
-        noPadding?: jotai.Atom<boolean>;
+
+        // If true, filters out 'nowsh' connections (when managing connections)
         filterOutNowsh?: jotai.Atom<boolean>;
+
+        // If true, removes padding inside the block content area.
+        noPadding?: jotai.Atom<boolean>;
+
+        // Atoms used for managing search functionality within the block.
         searchAtoms?: SearchAtoms;
 
-        // just for terminal
+        // The main view component associated with this ViewModel.
+        viewComponent: ViewComponent<ViewModel>;
+
+        // Function to determine if this is a basic terminal block.
         isBasicTerm?: (getFn: jotai.Getter) => boolean;
 
-        onBack?: () => void;
-        onForward?: () => void;
+        // Returns menu items for the settings dropdown.
         getSettingsMenuItems?: () => ContextMenuItem[];
+
+        // Attempts to give focus to the block, returning true if successful.
         giveFocus?: () => boolean;
+
+        // Handles keydown events within the block.
         keyDownHandler?: (e: WaveKeyboardEvent) => boolean;
+
+        // Cleans up resources when the block is disposed.
         dispose?: () => void;
     }
 
