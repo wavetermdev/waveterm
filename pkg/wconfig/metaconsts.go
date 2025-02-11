@@ -35,6 +35,9 @@ const (
 	ConfigKey_TermCopyOnSelect               = "term:copyonselect"
 	ConfigKey_TermTransparency               = "term:transparency"
 	ConfigKey_TermAllowBracketedPaste        = "term:allowbracketedpaste"
+	ConfigKey_TermAutoClose                  = "term:autoclose"
+	ConfigKey_TermAutoCloseOnError           = "term:autocloseonerror"
+	ConfigKey_TermAutoCloseDelay             = "term:autoclosedelay"
 
 	ConfigKey_EditorMinimapEnabled           = "editor:minimapenabled"
 	ConfigKey_EditorStickyScrollEnabled      = "editor:stickyscrollenabled"
