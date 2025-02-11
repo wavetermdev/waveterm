@@ -20,25 +20,27 @@ replace "Cmd" with "Alt" (note that "Ctrl" is "Ctrl" on both Mac, Windows, and L
 <PlatformSelectorButton />
 <div style={{ marginBottom: 20 }}></div>
 
-| Key                          | Function                                                                          |
-| ---------------------------- | --------------------------------------------------------------------------------- |
-| <Kbd k="Cmd:t"/>             | Open a new tab                                                                    |
-| <Kbd k="Cmd:n"/>             | Open a new terminal block (defaults to the same connection and working directory) |
-| <Kbd k="Cmd:Shift:n"/>       | Open a new window                                                                 |
-| <Kbd k="Cmd:w"/>             | Close the current block                                                           |
-| <Kbd k="Cmd:Shift:w"/>       | Close the current tab                                                             |
-| <Kbd k="Cmd:m"/>             | Magnify / Un-Magnify the current block                                            |
-| <Kbd k="Cmd:g"/>             | Open the "connection" switcher                                                    |
-| <Kbd k="Cmd:i"/>             | Refocus the current block (useful if the block has lost input focus)              |
-| <Kbd k="Ctrl:Shift"/>        | Show block numbers                                                                |
-| <Kbd k="Ctrl:Shift:1-9"/>    | Switch to block number                                                            |
-| <Kbd k="Ctrl:Shift:Arrows"/> | Move left, right, up, down between blocks                                         |
-| <Kbd k="Cmd:1-9"/>           | Switch to tab number                                                              |
-| <Kbd k="Cmd:["/>             | Switch tab left                                                                   |
-| <Kbd k="Cmd:]"/>             | Switch tab right                                                                  |
-| <Kbd k="Cmd:Ctrl:1-9"/>      | Switch to workspace number                                                        |
-| <Kbd k="Cmd:Shift:r"/>       | Refresh the UI                                                                    |
-| <Kbd k="Ctrl:Shift:i"/>      | Toggle terminal multi-input mode                                                  |
+| Key                          | Function                                                                                                                                               |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| <Kbd k="Cmd:t"/>             | Open a new tab                                                                                                                                         |
+| <Kbd k="Cmd:n"/>             | Open a new block (defaults to a terminal block with the same connection and working directory). Switch to launcher using `app:defaultnewblock` setting |
+| <Kbd k="Cmd:d"/>             | Split horizontally, open a new block to the right                                                                                                      |
+| <Kbd k="Cmd:Shift:d"/>       | Split vertically, open a new block below                                                                                                               |
+| <Kbd k="Cmd:Shift:n"/>       | Open a new window                                                                                                                                      |
+| <Kbd k="Cmd:w"/>             | Close the current block                                                                                                                                |
+| <Kbd k="Cmd:Shift:w"/>       | Close the current tab                                                                                                                                  |
+| <Kbd k="Cmd:m"/>             | Magnify / Un-Magnify the current block                                                                                                                 |
+| <Kbd k="Cmd:g"/>             | Open the "connection" switcher                                                                                                                         |
+| <Kbd k="Cmd:i"/>             | Refocus the current block (useful if the block has lost input focus)                                                                                   |
+| <Kbd k="Ctrl:Shift"/>        | Show block numbers                                                                                                                                     |
+| <Kbd k="Ctrl:Shift:1-9"/>    | Switch to block number                                                                                                                                 |
+| <Kbd k="Ctrl:Shift:Arrows"/> | Move left, right, up, down between blocks                                                                                                              |
+| <Kbd k="Cmd:1-9"/>           | Switch to tab number                                                                                                                                   |
+| <Kbd k="Cmd:["/>             | Switch tab left                                                                                                                                        |
+| <Kbd k="Cmd:]"/>             | Switch tab right                                                                                                                                       |
+| <Kbd k="Cmd:Ctrl:1-9"/>      | Switch to workspace number                                                                                                                             |
+| <Kbd k="Cmd:Shift:r"/>       | Refresh the UI                                                                                                                                         |
+| <Kbd k="Ctrl:Shift:i"/>      | Toggle terminal multi-input mode                                                                                                                       |
 
 ## File Preview Keybindings
 
@@ -66,6 +68,7 @@ replace "Cmd" with "Alt" (note that "Ctrl" is "Ctrl" on both Mac, Windows, and L
 | <Kbd k="Cmd:ArrowLeft"/>  | Back                                                          |
 | <Kbd k="Cmd:ArrowRight"/> | Forward                                                       |
 | <Kbd k="Cmd:f"/>          | Find in webpage                                               |
+| <Kbd k="Cmd:o"/>          | Open a bookmark                                               |
 
 ## WaveAI Keybindings
 
