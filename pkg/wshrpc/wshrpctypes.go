@@ -41,6 +41,14 @@ const (
 	RpcType_Complex          = "complex"          // streaming request/response
 )
 
+const (
+	CreateBlockAction_Replace    = "replace"
+	CreateBlockAction_SplitUp    = "splitup"
+	CreateBlockAction_SplitDown  = "splitdown"
+	CreateBlockAction_SplitLeft  = "splitleft"
+	CreateBlockAction_SplitRight = "splitright"
+)
+
 // TODO generate these constants from the interface
 const (
 	Command_Authenticate         = "authenticate"      // special
@@ -337,11 +345,13 @@ type CommandResolveIdsRtnData struct {
 }
 
 type CommandCreateBlockData struct {
-	TabId     string               `json:"tabid" wshcontext:"TabId"`
-	BlockDef  *waveobj.BlockDef    `json:"blockdef"`
-	RtOpts    *waveobj.RuntimeOpts `json:"rtopts,omitempty"`
-	Magnified bool                 `json:"magnified,omitempty"`
-	Ephemeral bool                 `json:"ephemeral,omitempty"`
+	TabId         string               `json:"tabid" wshcontext:"TabId"`
+	BlockDef      *waveobj.BlockDef    `json:"blockdef"`
+	RtOpts        *waveobj.RuntimeOpts `json:"rtopts,omitempty"`
+	Magnified     bool                 `json:"magnified,omitempty"`
+	Ephemeral     bool                 `json:"ephemeral,omitempty"`
+	TargetBlockId string               `json:"targetblockid,omitempty"`
+	TargetAction  string               `json:"targetaction,omitempty"` // "replace", "splitright", "splitdown", "splitleft", "splitup"
 }
 
 type CommandCreateSubBlockData struct {

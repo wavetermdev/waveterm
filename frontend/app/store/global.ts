@@ -10,6 +10,7 @@ import {
     newLayoutNode,
 } from "@/layout/index";
 import { getLayoutModelForStaticTab } from "@/layout/lib/layoutModelHooks";
+import { LayoutTreeSplitHorizontalAction, LayoutTreeSplitVerticalAction } from "@/layout/lib/types";
 import { getWebServerEndpoint } from "@/util/endpoints";
 import { fetch } from "@/util/fetchutil";
 import { deepCompareReturnPrev, getPrefixedSettings, isBlank } from "@/util/util";
@@ -379,6 +380,54 @@ function getApi(): ElectronApi {
     return (window as any).api;
 }
 
+async function createBlockSplitHorizontally(
+    blockDef: BlockDef,
+    targetBlockId: string,
+    position: "before" | "after"
+): Promise<string> {
+    const tabId = globalStore.get(atoms.staticTabId);
+    const layoutModel = getLayoutModelForTabById(tabId);
+    const rtOpts: RuntimeOpts = { termsize: { rows: 25, cols: 80 } };
+    const newBlockId = await ObjectService.CreateBlock(blockDef, rtOpts);
+    const targetNodeId = layoutModel.getNodeByBlockId(targetBlockId)?.id;
+    if (targetNodeId == null) {
+        throw new Error(`targetNodeId not found for blockId: ${targetBlockId}`);
+    }
+    const splitAction: LayoutTreeSplitHorizontalAction = {
+        type: LayoutTreeActionType.SplitHorizontal,
+        targetNodeId: targetNodeId,
+        newNode: newLayoutNode(undefined, undefined, undefined, { blockId: newBlockId }),
+        position: position,
+        focused: true,
+    };
+    layoutModel.treeReducer(splitAction);
+    return newBlockId;
+}
+
+async function createBlockSplitVertically(
+    blockDef: BlockDef,
+    targetBlockId: string,
+    position: "before" | "after"
+): Promise<string> {
+    const tabId = globalStore.get(atoms.staticTabId);
+    const layoutModel = getLayoutModelForTabById(tabId);
+    const rtOpts: RuntimeOpts = { termsize: { rows: 25, cols: 80 } };
+    const newBlockId = await ObjectService.CreateBlock(blockDef, rtOpts);
+    const targetNodeId = layoutModel.getNodeByBlockId(targetBlockId)?.id;
+    if (targetNodeId == null) {
+        throw new Error(`targetNodeId not found for blockId: ${targetBlockId}`);
+    }
+    const splitAction: LayoutTreeSplitVerticalAction = {
+        type: LayoutTreeActionType.SplitVertical,
+        targetNodeId: targetNodeId,
+        newNode: newLayoutNode(undefined, undefined, undefined, { blockId: newBlockId }),
+        position: position,
+        focused: true,
+    };
+    layoutModel.treeReducer(splitAction);
+    return newBlockId;
+}
+
 async function createBlock(blockDef: BlockDef, magnified = false, ephemeral = false): Promise<string> {
     const tabId = globalStore.get(atoms.staticTabId);
     const layoutModel = getLayoutModelForTabById(tabId);
@@ -682,6 +731,8 @@ export {
     countersClear,
     countersPrint,
     createBlock,
+    createBlockSplitHorizontally,
+    createBlockSplitVertically,
     createTab,
     fetchWaveFile,
     getAllBlockComponentModels,
