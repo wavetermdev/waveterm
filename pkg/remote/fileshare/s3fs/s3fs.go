@@ -5,6 +5,7 @@ package s3fs
 
 import (
 	"archive/tar"
+	"bytes"
 	"context"
 	"encoding/base64"
 	"errors"
@@ -607,20 +608,37 @@ func (c S3Client) Stat(ctx context.Context, conn *connparse.Connection) (*wshrpc
 }
 
 func (c S3Client) PutFile(ctx context.Context, conn *connparse.Connection, data wshrpc.FileData) error {
+	log.Printf("PutFile: %v", conn.GetFullURI())
 	if data.At != nil {
+		log.Printf("PutFile: offset %d and size %d", data.At.Offset, data.At.Size)
 		return errors.Join(errors.ErrUnsupported, fmt.Errorf("file data offset and size not supported"))
 	}
 	bucket := conn.Host
 	objectKey := conn.Path
 	if bucket == "" || bucket == "/" || objectKey == "" || objectKey == "/" {
+		log.Printf("PutFile: bucket and object key must be specified")
 		return errors.Join(errors.ErrUnsupported, fmt.Errorf("bucket and object key must be specified"))
 	}
-	_, err := c.client.PutObject(ctx, &s3.PutObjectInput{
+	if len(data.Data64) == 0 {
+		data.Data64 = base64.StdEncoding.EncodeToString([]byte("\n"))
+	}
+	contentMaxLength := base64.StdEncoding.DecodedLen(len(data.Data64))
+	decodedBody := make([]byte, contentMaxLength)
+	contentLength, err := base64.StdEncoding.Decode(decodedBody, []byte(data.Data64))
+	if err != nil {
+		log.Printf("PutFile: error decoding data: %v", err)
+		return err
+	}
+	bodyReaderSeeker := bytes.NewReader(decodedBody[:contentLength])
+	_, err = c.client.PutObject(ctx, &s3.PutObjectInput{
 		Bucket:        aws.String(bucket),
 		Key:           aws.String(objectKey),
-		Body:          base64.NewDecoder(base64.StdEncoding, strings.NewReader(data.Data64)),
-		ContentLength: aws.Int64(int64(base64.StdEncoding.DecodedLen(len(data.Data64)))),
+		Body:          bodyReaderSeeker,
+		ContentLength: aws.Int64(int64(contentLength)),
 	})
+	if err != nil {
+		log.Printf("PutFile: error putting object %v:%v: %v", bucket, objectKey, err)
+	}
 	return err
 }
 
