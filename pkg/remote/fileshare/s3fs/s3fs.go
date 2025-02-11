@@ -790,7 +790,7 @@ func getParentPath(conn *connparse.Connection) string {
 
 func getParentPathString(hostAndPath string) string {
 	parentPath := ""
-	slashIndices := slashRe.FindAllStringIndex(hostAndPath, 0)
+	slashIndices := slashRe.FindAllStringIndex(hostAndPath, -1)
 	if slashIndices != nil && len(slashIndices) > 0 {
 		if slashIndices[len(slashIndices)-1][0] != len(hostAndPath)-1 {
 			parentPath = hostAndPath[:slashIndices[len(slashIndices)-1][0]+1]
