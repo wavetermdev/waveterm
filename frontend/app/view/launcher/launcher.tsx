@@ -2,11 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import logoUrl from "@/app/asset/logo.svg?url";
-import { atoms, replaceBlock } from "@/app/store/global";
+import { atoms, globalStore, replaceBlock } from "@/app/store/global";
+import { checkKeyPressed, keydownWrapper } from "@/util/keyutil";
 import { isBlank, makeIconClass } from "@/util/util";
 import clsx from "clsx";
-import { atom, useAtomValue } from "jotai";
-import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { atom, useAtom, useAtomValue } from "jotai";
+import React, { useEffect, useLayoutEffect, useRef } from "react";
 
 function sortByDisplayOrder(wmap: { [key: string]: WidgetConfigType } | null | undefined): WidgetConfigType[] {
     if (!wmap) return [];
@@ -15,13 +16,34 @@ function sortByDisplayOrder(wmap: { [key: string]: WidgetConfigType } | null | u
     return wlist;
 }
 
+type GridLayoutType = { columns: number; tileWidth: number; tileHeight: number; showLabel: boolean };
+
 export class LauncherViewModel implements ViewModel {
+    blockId: string;
     viewType = "launcher";
     viewIcon = atom("shapes");
     viewName = atom("Widget Launcher");
     viewComponent = LauncherView;
     noHeader = atom(true);
     inputRef = { current: null } as React.RefObject<HTMLInputElement>;
+    searchTerm = atom("");
+    selectedIndex = atom(0);
+    containerSize = atom({ width: 0, height: 0 });
+    gridLayout: GridLayoutType = null;
+
+    constructor(blockId: string) {
+        this.blockId = blockId;
+    }
+
+    filteredWidgetsAtom = atom((get) => {
+        const searchTerm = get(this.searchTerm);
+        const widgets = sortByDisplayOrder(get(atoms.fullConfigAtom)?.widgets || {});
+        return widgets.filter(
+            (widget) =>
+                !widget["display:hidden"] &&
+                (!searchTerm || widget.label?.toLowerCase().includes(searchTerm.toLowerCase()))
+        );
+    });
 
     giveFocus(): boolean {
         if (this.inputRef.current) {
@@ -30,26 +52,80 @@ export class LauncherViewModel implements ViewModel {
         }
         return false;
     }
+
+    keyDownHandler(e: WaveKeyboardEvent): boolean {
+        if (this.gridLayout == null) {
+            return;
+        }
+        const gridLayout = this.gridLayout;
+        const filteredWidgets = globalStore.get(this.filteredWidgetsAtom);
+        const selectedIndex = globalStore.get(this.selectedIndex);
+        const rows = Math.ceil(filteredWidgets.length / gridLayout.columns);
+        const currentRow = Math.floor(selectedIndex / gridLayout.columns);
+        const currentCol = selectedIndex % gridLayout.columns;
+        console.log("keydown", e);
+        if (checkKeyPressed(e, "ArrowUp")) {
+            if (currentRow > 0) {
+                const newIndex = selectedIndex - gridLayout.columns;
+                if (newIndex >= 0) {
+                    globalStore.set(this.selectedIndex, newIndex);
+                }
+            }
+            return true;
+        }
+        if (checkKeyPressed(e, "ArrowDown")) {
+            if (currentRow < rows - 1) {
+                const newIndex = selectedIndex + gridLayout.columns;
+                if (newIndex < filteredWidgets.length) {
+                    globalStore.set(this.selectedIndex, newIndex);
+                }
+            }
+            return true;
+        }
+        if (checkKeyPressed(e, "ArrowLeft")) {
+            if (currentCol > 0) {
+                globalStore.set(this.selectedIndex, selectedIndex - 1);
+            }
+            return true;
+        }
+        if (checkKeyPressed(e, "ArrowRight")) {
+            if (currentCol < gridLayout.columns - 1 && selectedIndex + 1 < filteredWidgets.length) {
+                globalStore.set(this.selectedIndex, selectedIndex + 1);
+            }
+            return true;
+        }
+        if (checkKeyPressed(e, "Enter")) {
+            if (filteredWidgets[selectedIndex]) {
+                this.handleWidgetSelect(filteredWidgets[selectedIndex]);
+            }
+            return true;
+        }
+        if (checkKeyPressed(e, "Escape")) {
+            globalStore.set(this.searchTerm, "");
+            globalStore.set(this.selectedIndex, 0);
+            return true;
+        }
+        return false;
+    }
+
+    async handleWidgetSelect(widget: WidgetConfigType) {
+        try {
+            await replaceBlock(this.blockId, widget.blockdef);
+        } catch (error) {
+            console.error("Error replacing block:", error);
+        }
+    }
 }
 
 const LauncherView: React.FC<ViewComponentProps<LauncherViewModel>> = ({ blockId, model }) => {
-    const fullConfig = useAtomValue(atoms.fullConfigAtom);
-    const widgetMap = fullConfig?.widgets || {};
-    const widgets = sortByDisplayOrder(widgetMap);
-
     // Search and selection state
-    const [searchTerm, setSearchTerm] = useState("");
-    const [selectedIndex, setSelectedIndex] = useState(0);
-
-    // Filter widgets based on search term
-    const filteredWidgets = widgets.filter(
-        (widget) =>
-            !widget["display:hidden"] && (!searchTerm || widget.label?.toLowerCase().includes(searchTerm.toLowerCase()))
-    );
+    const [searchTerm, setSearchTerm] = useAtom(model.searchTerm);
+    const [selectedIndex, setSelectedIndex] = useAtom(model.selectedIndex);
+    const filteredWidgets = useAtomValue(model.filteredWidgetsAtom);
 
     // Container measurement
     const containerRef = useRef<HTMLDivElement>(null);
-    const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
+    const [containerSize, setContainerSize] = useAtom(model.containerSize);
 
     useLayoutEffect(() => {
         if (!containerRef.current) return;
@@ -79,7 +155,7 @@ const LauncherView: React.FC<ViewComponentProps<LauncherViewModel>> = ({ blockId
     const availableHeight = containerSize.height - (showLogo ? logoWidth + MARGIN_BOTTOM : 0);
 
     // Determine optimal grid layout
-    const gridLayout = React.useMemo(() => {
+    const gridLayout: GridLayoutType = React.useMemo(() => {
         if (containerSize.width === 0 || availableHeight <= 0 || filteredWidgets.length === 0) {
             return { columns: 1, tileWidth: 90, tileHeight: 90, showLabel: true };
         }
@@ -103,72 +179,10 @@ const LauncherView: React.FC<ViewComponentProps<LauncherViewModel>> = ({ blockId
         }
         return { columns: bestColumns, tileWidth: bestTileWidth, tileHeight: bestTileHeight, showLabel };
     }, [containerSize, availableHeight, filteredWidgets.length]);
+    model.gridLayout = gridLayout;
 
     const finalTileWidth = Math.min(gridLayout.tileWidth, MAX_TILE_SIZE);
     const finalTileHeight = gridLayout.showLabel ? Math.min(gridLayout.tileHeight, MAX_TILE_SIZE) : finalTileWidth;
-
-    // Handle widget selection and launch
-    const handleWidgetSelect = async (widget: WidgetConfigType) => {
-        try {
-            await replaceBlock(blockId, widget.blockdef);
-        } catch (error) {
-            console.error("Error replacing block:", error);
-        }
-    };
-
-    // Keyboard navigation
-    const handleKeyDown = useCallback(
-        (e: KeyboardEvent) => {
-            const rows = Math.ceil(filteredWidgets.length / gridLayout.columns);
-            const currentRow = Math.floor(selectedIndex / gridLayout.columns);
-            const currentCol = selectedIndex % gridLayout.columns;
-
-            switch (e.key) {
-                case "ArrowUp":
-                    e.preventDefault();
-                    if (currentRow > 0) {
-                        const newIndex = selectedIndex - gridLayout.columns;
-                        if (newIndex >= 0) setSelectedIndex(newIndex);
-                    }
-                    break;
-                case "ArrowDown":
-                    e.preventDefault();
-                    if (currentRow < rows - 1) {
-                        const newIndex = selectedIndex + gridLayout.columns;
-                        if (newIndex < filteredWidgets.length) setSelectedIndex(newIndex);
-                    }
-                    break;
-                case "ArrowLeft":
-                    e.preventDefault();
-                    if (currentCol > 0) setSelectedIndex(selectedIndex - 1);
-                    break;
-                case "ArrowRight":
-                    e.preventDefault();
-                    if (currentCol < gridLayout.columns - 1 && selectedIndex + 1 < filteredWidgets.length) {
-                        setSelectedIndex(selectedIndex + 1);
-                    }
-                    break;
-                case "Enter":
-                    e.preventDefault();
-                    if (filteredWidgets[selectedIndex]) {
-                        handleWidgetSelect(filteredWidgets[selectedIndex]);
-                    }
-                    break;
-                case "Escape":
-                    e.preventDefault();
-                    setSearchTerm("");
-                    setSelectedIndex(0);
-                    break;
-            }
-        },
-        [selectedIndex, gridLayout.columns, filteredWidgets.length, handleWidgetSelect]
-    );
-
-    // Set up keyboard listeners
-    useEffect(() => {
-        window.addEventListener("keydown", handleKeyDown);
-        return () => window.removeEventListener("keydown", handleKeyDown);
-    }, [handleKeyDown]);
 
     // Reset selection when search term changes
     useEffect(() => {
@@ -182,6 +196,7 @@ const LauncherView: React.FC<ViewComponentProps<LauncherViewModel>> = ({ blockId
                 ref={model.inputRef}
                 type="text"
                 value={searchTerm}
+                onKeyDown={keydownWrapper(model.keyDownHandler.bind(model))}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="sr-only"
                 aria-label="Search widgets"
@@ -204,7 +219,7 @@ const LauncherView: React.FC<ViewComponentProps<LauncherViewModel>> = ({ blockId
                 {filteredWidgets.map((widget, index) => (
                     <div
                         key={index}
-                        onClick={() => handleWidgetSelect(widget)}
+                        onClick={() => model.handleWidgetSelect(widget)}
                         title={widget.description || widget.label}
                         className={clsx(
                             "flex flex-col items-center justify-center cursor-pointer rounded-md p-2 text-center",
