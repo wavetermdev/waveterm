@@ -531,6 +531,7 @@ export class LayoutModel {
                                 position: action.position,
                             };
                             this.treeReducer(splitAction, false);
+                            break;
                         }
                         case LayoutTreeActionType.SplitVertical: {
                             const targetNode = this?.getNodeByBlockId(action.targetblockid);
@@ -558,6 +559,7 @@ export class LayoutModel {
                                 position: action.position,
                             };
                             this.treeReducer(splitAction, false);
+                            break;
                         }
                         default:
                             console.warn("unsupported layout action", action);
