@@ -386,7 +386,7 @@ export class PreviewModel implements ViewModel {
                 return null;
             }
             if (fileInfo.isdir) {
-                return fileInfo.dir + "/";
+                return fileInfo.dir;
             }
             return fileInfo.dir + "/" + fileInfo.name;
         });

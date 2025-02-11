@@ -453,8 +453,8 @@ declare global {
 
     // wshrpc.FileShareCapability
     type FileShareCapability = {
-        CanAppend: boolean;
-        CanMkdir: boolean;
+        canappend: boolean;
+        canmkdir: boolean;
     };
 
     // wconfig.FullConfigType

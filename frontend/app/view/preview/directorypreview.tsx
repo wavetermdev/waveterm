@@ -739,16 +739,11 @@ const TableRow = React.forwardRef(function (
         absParent: dirPath,
         uri: formatRemoteUri(row.getValue("path") as string),
     };
-    const [{ isDragging }, drag, dragPreview] = useDrag(
+    const [_, drag] = useDrag(
         () => ({
             type: "FILE_ITEM",
             canDrag: true,
             item: () => dragItem,
-            collect: (monitor) => {
-                return {
-                    isDragging: monitor.isDragging(),
-                };
-            },
         }),
         [dragItem]
     );

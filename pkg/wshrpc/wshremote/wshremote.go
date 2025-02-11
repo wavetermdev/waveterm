@@ -256,7 +256,6 @@ func (impl *ServerImpl) RemoteTarStreamCommand(ctx context.Context, data wshrpc.
 	} else {
 		pathPrefix = filepath.Dir(cleanedPath)
 	}
-	log.Printf("RemoteTarStreamCommand: path=%s, pathPrefix=%s\n", path, pathPrefix)
 
 	timeout := fstype.DefaultTimeout
 	if opts.Timeout > 0 {
@@ -277,7 +276,6 @@ func (impl *ServerImpl) RemoteTarStreamCommand(ctx context.Context, data wshrpc.
 			if err != nil {
 				return err
 			}
-			log.Printf("RemoteTarStreamCommand: path=%s\n", path)
 			if err = writeHeader(info, path, singleFile); err != nil {
 				return err
 			}
@@ -360,9 +358,7 @@ func (impl *ServerImpl) RemoteFileCopyCommand(ctx context.Context, data wshrpc.C
 
 		if nextinfo != nil {
 			if nextinfo.IsDir() {
-				log.Printf("RemoteFileCopyCommand: nextinfo is dir, path=%s\n", path)
 				if !finfo.IsDir() {
-					log.Printf("RemoteFileCopyCommand: finfo is file: %s\n", path)
 					// try to create file in directory
 					path = filepath.Join(path, filepath.Base(finfo.Name()))
 					newdestinfo, err := os.Stat(path)
@@ -394,8 +390,6 @@ func (impl *ServerImpl) RemoteFileCopyCommand(ctx context.Context, data wshrpc.C
 					return 0, fmt.Errorf("cannot create file %q, file exists at path, overwrite not specified", path)
 				}
 			}
-		} else {
-			log.Printf("RemoteFileCopyCommand: nextinfo is nil, path=%s\n", path)
 		}
 
 		if finfo.IsDir() {
@@ -434,10 +428,8 @@ func (impl *ServerImpl) RemoteFileCopyCommand(ctx context.Context, data wshrpc.C
 		}
 
 		if srcFileStat.IsDir() {
-			log.Print("RemoteFileCopyCommand: copying directory\n")
 			srcPathPrefix := filepath.Dir(srcPathCleaned)
 			if strings.HasSuffix(srcUri, "/") {
-				log.Printf("RemoteFileCopyCommand: src has slash, using %q as src path\n", srcPathCleaned)
 				srcPathPrefix = srcPathCleaned
 			}
 			err = filepath.Walk(srcPathCleaned, func(path string, info fs.FileInfo, err error) error {
@@ -446,7 +438,6 @@ func (impl *ServerImpl) RemoteFileCopyCommand(ctx context.Context, data wshrpc.C
 				}
 				srcFilePath := path
 				destFilePath := filepath.Join(destPathCleaned, strings.TrimPrefix(path, srcPathPrefix))
-				log.Printf("RemoteFileCopyCommand: copying %q to %q\n", srcFilePath, destFilePath)
 				var file *os.File
 				if !info.IsDir() {
 					file, err = os.Open(srcFilePath)
@@ -462,7 +453,6 @@ func (impl *ServerImpl) RemoteFileCopyCommand(ctx context.Context, data wshrpc.C
 				return fmt.Errorf("cannot copy %q to %q: %w", srcUri, destUri, err)
 			}
 		} else {
-			log.Print("RemoteFileCopyCommand: copying single file\n")
 			file, err := os.Open(srcPathCleaned)
 			if err != nil {
 				return fmt.Errorf("cannot open file %q: %w", srcPathCleaned, err)
@@ -470,7 +460,6 @@ func (impl *ServerImpl) RemoteFileCopyCommand(ctx context.Context, data wshrpc.C
 			defer utilfn.GracefulClose(file, "RemoteFileCopyCommand", srcPathCleaned)
 			destFilePath := filepath.Join(destPathCleaned, filepath.Base(srcPathCleaned))
 			if destHasSlash {
-				log.Printf("RemoteFileCopyCommand: dest has slash, using %q as dest path\n", destPathCleaned)
 				destFilePath = destPathCleaned
 			}
 			_, err = copyFileFunc(destFilePath, srcFileStat, file)
