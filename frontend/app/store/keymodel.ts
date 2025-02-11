@@ -10,6 +10,7 @@ import {
     getAllBlockComponentModels,
     getApi,
     getBlockComponentModel,
+    getSettingsKeyAtom,
     globalStore,
     refocusNode,
     WOS,
@@ -176,7 +177,17 @@ function globalRefocus() {
     refocusNode(blockId);
 }
 
-async function handleCmdN() {
+function getDefaultNewBlockDef(): BlockDef {
+    const adnbAtom = getSettingsKeyAtom("app:defaultnewblock");
+    const adnb = globalStore.get(adnbAtom) ?? "term";
+    if (adnb == "launcher") {
+        return {
+            meta: {
+                view: "launcher",
+            },
+        };
+    }
+    // "term", blank, anything else, fall back to terminal
     const termBlockDef: BlockDef = {
         meta: {
             view: "term",
@@ -197,59 +208,32 @@ async function handleCmdN() {
             termBlockDef.meta.connection = blockData.meta.connection;
         }
     }
-    await createBlock(termBlockDef);
+    return termBlockDef;
+}
+
+async function handleCmdN() {
+    const blockDef = getDefaultNewBlockDef();
+    await createBlock(blockDef);
 }
 
 async function handleSplitHorizontal() {
-    // split horizontally
-    const termBlockDef: BlockDef = {
-        meta: {
-            view: "term",
-            controller: "shell",
-        },
-    };
     const layoutModel = getLayoutModelForStaticTab();
     const focusedNode = globalStore.get(layoutModel.focusedNode);
     if (focusedNode == null) {
         return;
     }
-    const blockAtom = WOS.getWaveObjectAtom<Block>(WOS.makeORef("block", focusedNode.data?.blockId));
-    const blockData = globalStore.get(blockAtom);
-    if (blockData?.meta?.view == "term") {
-        if (blockData?.meta?.["cmd:cwd"] != null) {
-            termBlockDef.meta["cmd:cwd"] = blockData.meta["cmd:cwd"];
-        }
-    }
-    if (blockData?.meta?.connection != null) {
-        termBlockDef.meta.connection = blockData.meta.connection;
-    }
-    await createBlockSplitHorizontally(termBlockDef, focusedNode.data.blockId, "after");
+    const blockDef = getDefaultNewBlockDef();
+    await createBlockSplitHorizontally(blockDef, focusedNode.data.blockId, "after");
 }
 
 async function handleSplitVertical() {
-    // split horizontally
-    const termBlockDef: BlockDef = {
-        meta: {
-            view: "term",
-            controller: "shell",
-        },
-    };
     const layoutModel = getLayoutModelForStaticTab();
     const focusedNode = globalStore.get(layoutModel.focusedNode);
     if (focusedNode == null) {
         return;
     }
-    const blockAtom = WOS.getWaveObjectAtom<Block>(WOS.makeORef("block", focusedNode.data?.blockId));
-    const blockData = globalStore.get(blockAtom);
-    if (blockData?.meta?.view == "term") {
-        if (blockData?.meta?.["cmd:cwd"] != null) {
-            termBlockDef.meta["cmd:cwd"] = blockData.meta["cmd:cwd"];
-        }
-    }
-    if (blockData?.meta?.connection != null) {
-        termBlockDef.meta.connection = blockData.meta.connection;
-    }
-    await createBlockSplitVertically(termBlockDef, focusedNode.data.blockId, "after");
+    const blockDef = getDefaultNewBlockDef();
+    await createBlockSplitVertically(blockDef, focusedNode.data.blockId, "after");
 }
 
 let lastHandledEvent: KeyboardEvent | null = null;
