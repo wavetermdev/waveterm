@@ -31,13 +31,14 @@ const (
 
 	// SleepThreshold: if gap > SleepThreshold, then flush sample history.
 	SleepThreshold = 100 * time.Second
+
+	// KilledProcessLinger is the duration that a killed process will remain in the table.
+	KilledProcessLinger = 5 * time.Second
 )
 
 // -- Process Data Structure --
 
 // ProcessInfo holds the process details for a "ps"-like display.
-// Note: Started and CPUTime are now stored as int64 values (Unix ms).
-// Status is stored as []string.
 type ProcessInfo struct {
 	User       string  `json:"user"`
 	PID        int32   `json:"pid"`
@@ -58,6 +59,10 @@ type ProcessInfo struct {
 
 	CPUSamples []float64 `json:"cpu_samples"`
 	MemSamples []float32 `json:"mem_samples"`
+
+	// KilledAt holds the Unix timestamp (in milliseconds) when the process was marked killed.
+	// A value of 0 indicates the process is still active.
+	KilledAt int64 `json:"killed_at"`
 }
 
 // -- Internal Tracking Structure --
@@ -80,7 +85,6 @@ type ProcessTable struct {
 
 // -- Global Tracker (singleton) --
 
-// trackerMu guards access to the singleton tracker instance.
 var (
 	tracker   *ProcessTable
 	trackerMu sync.Mutex
@@ -89,7 +93,6 @@ var (
 // -- Public API --
 
 // StartTracking starts the polling loop (at 1-second intervals).
-// It returns an error if tracking is already running.
 func StartTracking() error {
 	trackerMu.Lock()
 	defer trackerMu.Unlock()
@@ -153,8 +156,9 @@ func CombineAndSortStatus(statuses []string) string {
 }
 
 // update polls the current processes and updates our internal map.
-// It also inserts missing-sample sentinels if a gap (e.g., due to sleep)
-// is detected. If the gap exceeds SleepThreshold, the history is flushed.
+// It also inserts missing-sample sentinels if a gap is detected.
+// Additionally, processes that are no longer active are marked as killed,
+// and remain in the map for KilledProcessLinger duration before being removed.
 func (pt *ProcessTable) update() {
 	now := time.Now()
 	pt.mu.Lock()
@@ -183,10 +187,12 @@ func (pt *ProcessTable) update() {
 		return
 	}
 
-	// Build a new map for updated processes.
-	newMap := make(map[int32]*ProcessInfo)
+	// Create a set to record which PIDs are active in this poll.
+	seenPIDs := make(map[int32]bool)
+
 	for _, p := range procs {
 		pid := p.Pid
+		seenPIDs[pid] = true
 
 		// Gather process details (ignoring errors for brevity).
 		user, _ := p.Username()
@@ -217,60 +223,87 @@ func (pt *ProcessTable) update() {
 
 		// If the process was seen before, update its samples and check for changes.
 		if old, exists := pt.processes[pid]; exists {
-			changed := (old.User != newProc.User ||
-				old.Command != newProc.Command ||
-				old.CPUPercent != newProc.CPUPercent ||
-				old.MemPercent != newProc.MemPercent ||
-				old.VSZ != newProc.VSZ ||
-				old.RSS != newProc.RSS ||
-				old.TTY != newProc.TTY ||
-				old.Status != newProc.Status ||
-				old.Started != newProc.Started ||
-				old.CPUTime != newProc.CPUTime)
-			if changed {
+			// Check if the process has been replaced (new instance) based on the start time.
+			if old.Started != newProc.Started {
+				// New process instance; discard the old sample history.
 				newProc.UpdatedTs = now.UnixMilli()
-			} else {
-				newProc.UpdatedTs = old.UpdatedTs
-			}
-
-			// Handle sample history.
-			if flushSamples {
-				// Too long a gap: flush the history.
 				newProc.CPUSamples = []float64{newProc.CPUPercent}
 				newProc.MemSamples = []float32{newProc.MemPercent}
+				newProc.KilledAt = 0
 			} else {
-				// Copy old samples.
-				newSamplesCPU := append([]float64{}, old.CPUSamples...)
-				newSamplesMem := append([]float32{}, old.MemSamples...)
-				// Insert missing-sample sentinels.
-				for i := 0; i < missingCount; i++ {
-					newSamplesCPU = append(newSamplesCPU, SentinelNoDataCPU)
-					newSamplesMem = append(newSamplesMem, SentinelNoDataMem)
+				// Same process instance.
+				// Clear killed marker if it was previously set.
+				newProc.KilledAt = 0
+
+				changed := (old.User != newProc.User ||
+					old.Command != newProc.Command ||
+					old.CPUPercent != newProc.CPUPercent ||
+					old.MemPercent != newProc.MemPercent ||
+					old.VSZ != newProc.VSZ ||
+					old.RSS != newProc.RSS ||
+					old.TTY != newProc.TTY ||
+					old.Status != newProc.Status ||
+					old.Started != newProc.Started ||
+					old.CPUTime != newProc.CPUTime)
+				if changed {
+					newProc.UpdatedTs = now.UnixMilli()
+				} else {
+					newProc.UpdatedTs = old.UpdatedTs
 				}
-				// Append the current sample.
-				newSamplesCPU = append(newSamplesCPU, newProc.CPUPercent)
-				newSamplesMem = append(newSamplesMem, newProc.MemPercent)
-				// Trim history to the last MaxSamples samples.
-				if len(newSamplesCPU) > MaxSamples {
-					newSamplesCPU = newSamplesCPU[len(newSamplesCPU)-MaxSamples:]
+
+				// Handle sample history.
+				if flushSamples {
+					newProc.CPUSamples = []float64{newProc.CPUPercent}
+					newProc.MemSamples = []float32{newProc.MemPercent}
+				} else {
+					newSamplesCPU := append([]float64{}, old.CPUSamples...)
+					newSamplesMem := append([]float32{}, old.MemSamples...)
+					// Insert missing-sample sentinels.
+					for i := 0; i < missingCount; i++ {
+						newSamplesCPU = append(newSamplesCPU, SentinelNoDataCPU)
+						newSamplesMem = append(newSamplesMem, SentinelNoDataMem)
+					}
+					// Append the current sample.
+					newSamplesCPU = append(newSamplesCPU, newProc.CPUPercent)
+					newSamplesMem = append(newSamplesMem, newProc.MemPercent)
+					// Trim history to the last MaxSamples samples.
+					if len(newSamplesCPU) > MaxSamples {
+						newSamplesCPU = newSamplesCPU[len(newSamplesCPU)-MaxSamples:]
+					}
+					if len(newSamplesMem) > MaxSamples {
+						newSamplesMem = newSamplesMem[len(newSamplesMem)-MaxSamples:]
+					}
+					newProc.CPUSamples = newSamplesCPU
+					newProc.MemSamples = newSamplesMem
 				}
-				if len(newSamplesMem) > MaxSamples {
-					newSamplesMem = newSamplesMem[len(newSamplesMem)-MaxSamples:]
-				}
-				newProc.CPUSamples = newSamplesCPU
-				newProc.MemSamples = newSamplesMem
 			}
 		} else {
-			// For new processes, start the sample arrays.
+			// New process.
 			newProc.UpdatedTs = now.UnixMilli()
 			newProc.CPUSamples = []float64{newProc.CPUPercent}
 			newProc.MemSamples = []float32{newProc.MemPercent}
+			newProc.KilledAt = 0
 		}
-		newMap[pid] = newProc
+		// Update the map with the new/updated process.
+		pt.processes[pid] = newProc
 	}
 
-	// Replace the internal map with the updated one.
-	pt.processes = newMap
+	// Handle processes that were not seen in the current poll.
+	for pid, info := range pt.processes {
+		if !seenPIDs[pid] {
+			if info.KilledAt == 0 {
+				// Mark the process as killed.
+				info.KilledAt = now.UnixMilli()
+				info.UpdatedTs = now.UnixMilli()
+			} else {
+				// Already marked as killed; check if linger period has expired.
+				killedTime := time.UnixMilli(info.KilledAt)
+				if now.Sub(killedTime) >= KilledProcessLinger {
+					delete(pt.processes, pid)
+				}
+			}
+		}
+	}
 }
 
 // CopyData returns a deep copy of the processes map.
@@ -288,17 +321,4 @@ func (pt *ProcessTable) CopyData() map[int32]ProcessInfo {
 		copyMap[pid] = copyInfo
 	}
 	return copyMap
-}
-
-// stringSliceEqual compares two slices of strings for equality.
-func stringSliceEqual(a, b []string) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	for i, v := range a {
-		if v != b[i] {
-			return false
-		}
-	}
-	return true
 }
