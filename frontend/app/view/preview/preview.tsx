@@ -715,12 +715,7 @@ export class PreviewModel implements ViewModel {
                     const conn = await globalStore.get(this.connection);
                     if (conn) {
                         // remote path
-                        if (conn.startsWith("aws:")) {
-                            // TODO: We need a better way to handle s3 paths
-                            await navigator.clipboard.writeText(`${conn}:s3://${filePath}`);
-                        } else {
-                            await navigator.clipboard.writeText(`wsh://${conn}/${filePath}`);
-                        }
+                        await navigator.clipboard.writeText(formatRemoteUri(filePath, conn));
                     } else {
                         // local path
                         await navigator.clipboard.writeText(filePath);
@@ -868,17 +863,7 @@ export class PreviewModel implements ViewModel {
     }
 
     async formatRemoteUri(path: string, get: Getter): Promise<string> {
-        console.log("formatRemoteUri", path);
-        const conn = (await get(this.connection)) ?? "local";
-        // TODO: We need a better way to handle s3 paths
-        var retVal: string;
-        if (conn.startsWith("aws:")) {
-            retVal = `${conn}:s3://${path ?? ""}`;
-        } else {
-            retVal = `wsh://${conn}/${path}`;
-        }
-        console.log("formatted", retVal);
-        return retVal;
+        return formatRemoteUri(path, await get(this.connection));
     }
 }
 
@@ -1244,4 +1229,18 @@ const OpenFileModal = memo(
     }
 );
 
-export { makePreviewModel, PreviewView };
+function formatRemoteUri(path: string, connection: string): string {
+    console.log("formatRemoteUri", path);
+    connection = connection ?? "local";
+    // TODO: We need a better way to handle s3 paths
+    var retVal: string;
+    if (connection.startsWith("aws:")) {
+        retVal = `${connection}:s3://${path ?? ""}`;
+    } else {
+        retVal = `wsh://${connection}/${path}`;
+    }
+    console.log("formatted", retVal);
+    return retVal;
+}
+
+export { formatRemoteUri, makePreviewModel, PreviewView };

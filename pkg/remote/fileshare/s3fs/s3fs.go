@@ -174,9 +174,11 @@ func (c S3Client) ReadTarStream(ctx context.Context, conn *connparse.Connection,
 
 	// get the object if it's a single file operation
 	var singleFileResult *s3.GetObjectOutput
+	// this ensures we don't leak the object if we error out before copying it
+	closeSingleFileResult := true
 	defer func() {
 		// in case we error out before the object gets copied, make sure to close it
-		if singleFileResult != nil {
+		if singleFileResult != nil && closeSingleFileResult {
 			utilfn.GracefulClose(singleFileResult.Body, "s3fs", conn.Path)
 		}
 	}()
@@ -224,7 +226,6 @@ func (c S3Client) ReadTarStream(ctx context.Context, conn *connparse.Connection,
 	}
 
 	rtn, writeHeader, fileWriter, tarClose := tarcopy.TarCopySrc(readerCtx, tarPathPrefix)
-
 	go func() {
 		defer func() {
 			tarClose()
@@ -236,6 +237,7 @@ func (c S3Client) ReadTarStream(ctx context.Context, conn *connparse.Connection,
 		// close the objects when we're done
 		defer func() {
 			for key, obj := range objMap {
+				log.Printf("closing object %v", key)
 				utilfn.GracefulClose(obj.Body, "s3fs", key)
 			}
 		}()
@@ -352,6 +354,8 @@ func (c S3Client) ReadTarStream(ctx context.Context, conn *connparse.Connection,
 			return
 		}
 	}()
+	// we've handed singleFileResult off to the tar writer, so we don't want to close it
+	closeSingleFileResult = false
 	return rtn
 }
 
@@ -786,7 +790,7 @@ func getParentPath(conn *connparse.Connection) string {
 
 func getParentPathString(hostAndPath string) string {
 	parentPath := ""
-	slashIndices := slashRe.FindAllStringIndex(hostAndPath)
+	slashIndices := slashRe.FindAllStringIndex(hostAndPath, 0)
 	if slashIndices != nil && len(slashIndices) > 0 {
 		if slashIndices[len(slashIndices)-1][0] != len(hostAndPath)-1 {
 			parentPath = hostAndPath[:slashIndices[len(slashIndices)-1][0]+1]
@@ -794,6 +798,7 @@ func getParentPathString(hostAndPath string) string {
 			parentPath = hostAndPath[:slashIndices[len(slashIndices)-2][0]+1]
 		}
 	}
+	log.Printf("hostAndPath: %v, parentPath: %v", hostAndPath, parentPath)
 	return parentPath
 }
 

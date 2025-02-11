@@ -9,7 +9,7 @@ import { ContextMenuModel } from "@/app/store/contextmenu";
 import { PLATFORM, atoms, createBlock, getApi, globalStore } from "@/app/store/global";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
-import type { PreviewModel } from "@/app/view/preview/preview";
+import { formatRemoteUri, type PreviewModel } from "@/app/view/preview/preview";
 import { checkKeyPressed, isCharacterKeyEvent } from "@/util/keyutil";
 import { fireAndForget, isBlank, makeConnRoute, makeNativeLabel } from "@/util/util";
 import { offset, useDismiss, useFloating, useInteractions } from "@floating-ui/react";
@@ -683,7 +683,6 @@ function TableBody({
                         setSearch={setSearch}
                         idx={idx}
                         handleFileContextMenu={handleFileContextMenu}
-                        ref={(el) => (rowRefs.current[idx] = el)}
                         key={idx}
                     />
                 ))}
@@ -696,7 +695,6 @@ function TableBody({
                         setSearch={setSearch}
                         idx={idx + table.getTopRows().length}
                         handleFileContextMenu={handleFileContextMenu}
-                        ref={(el) => (rowRefs.current[idx] = el)}
                         key={idx}
                     />
                 ))}
@@ -715,29 +713,22 @@ type TableRowProps = {
     handleFileContextMenu: (e: any, finfo: FileInfo) => Promise<void>;
 };
 
-const TableRow = React.forwardRef(function (
-    { model, row, focusIndex, setFocusIndex, setSearch, idx, handleFileContextMenu }: TableRowProps,
-    ref: React.RefObject<HTMLDivElement>
-) {
+const TableRow = React.forwardRef(function ({
+    model,
+    row,
+    focusIndex,
+    setFocusIndex,
+    setSearch,
+    idx,
+    handleFileContextMenu,
+}: TableRowProps) {
     const dirPath = useAtomValue(model.normFilePath);
     const connection = useAtomValue(model.connection);
-    const formatRemoteUri = useCallback(
-        (path: string) => {
-            let conn: string;
-            if (!connection) {
-                conn = "local";
-            } else {
-                conn = connection;
-            }
-            return `wsh://${conn}/${path}`;
-        },
-        [connection]
-    );
 
     const dragItem: DraggedFile = {
         relName: row.getValue("name") as string,
         absParent: dirPath,
-        uri: formatRemoteUri(row.getValue("path") as string),
+        uri: formatRemoteUri(row.getValue("path") as string, connection),
     };
     const [_, drag] = useDrag(
         () => ({
