@@ -619,15 +619,20 @@ func (c S3Client) PutFile(ctx context.Context, conn *connparse.Connection, data 
 		log.Printf("PutFile: bucket and object key must be specified")
 		return errors.Join(errors.ErrUnsupported, fmt.Errorf("bucket and object key must be specified"))
 	}
-	if len(data.Data64) == 0 {
-		data.Data64 = base64.StdEncoding.EncodeToString([]byte("\n"))
-	}
 	contentMaxLength := base64.StdEncoding.DecodedLen(len(data.Data64))
-	decodedBody := make([]byte, contentMaxLength)
-	contentLength, err := base64.StdEncoding.Decode(decodedBody, []byte(data.Data64))
-	if err != nil {
-		log.Printf("PutFile: error decoding data: %v", err)
-		return err
+	var decodedBody []byte
+	var contentLength int
+	var err error
+	if contentMaxLength > 0 {
+		decodedBody = make([]byte, contentMaxLength)
+		contentLength, err = base64.StdEncoding.Decode(decodedBody, []byte(data.Data64))
+		if err != nil {
+			log.Printf("PutFile: error decoding data: %v", err)
+			return err
+		}
+	} else {
+		decodedBody = []byte("\n")
+		contentLength = 1
 	}
 	bodyReaderSeeker := bytes.NewReader(decodedBody[:contentLength])
 	_, err = c.client.PutObject(ctx, &s3.PutObjectInput{
