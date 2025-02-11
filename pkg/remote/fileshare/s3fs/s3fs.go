@@ -125,6 +125,7 @@ func (c S3Client) ReadStream(ctx context.Context, conn *connparse.Connection, da
 				ModTime: result.LastModified.UnixMilli(),
 				Path:    conn.GetFullURI(),
 			}
+			fileutil.AddMimeTypeToFileInfo(finfo.Path, finfo)
 			log.Printf("file info: %v", finfo)
 			rtn <- wshrpc.RespOrErrorUnion[wshrpc.FileData]{Response: wshrpc.FileData{Info: finfo}}
 			if size == 0 {
@@ -397,7 +398,7 @@ func (c S3Client) ListEntriesStream(ctx context.Context, conn *connparse.Connect
 			}
 			if bucket.Name != nil {
 				entries = append(entries, &wshrpc.FileInfo{
-					Path:     *bucket.Name + "/",
+					Path:     *bucket.Name,
 					Name:     *bucket.Name,
 					ModTime:  bucket.CreationDate.UnixMilli(),
 					IsDir:    true,
@@ -458,7 +459,7 @@ func (c S3Client) ListEntriesStream(ctx context.Context, conn *connparse.Connect
 							name := strings.TrimPrefix(*obj.Key, objectKeyPrefix)
 							if strings.Count(name, "/") > 0 {
 								name = strings.SplitN(name, "/", 2)[0]
-								path := fmt.Sprintf("%s/%s/", conn.GetPathWithHost(), name)
+								path := fmt.Sprintf("%s/%s", conn.GetPathWithHost(), name)
 								if entryMap[name] == nil {
 									if _, ok := prevUsedDirKeys[name]; !ok {
 										entryMap[name] = &wshrpc.FileInfo{
@@ -572,10 +573,18 @@ func (c S3Client) Stat(ctx context.Context, conn *connparse.Connection) (*wshrpc
 	if err != nil {
 		var noKey *types.NoSuchKey
 		var notFound *types.NotFound
-		if errors.As(err, &noKey) || errors.As(err, &notFound) {
-			err = fs.ErrNotExist
+		if !errors.As(err, &noKey) && !errors.As(err, &notFound) {
+			return nil, err
+		} else {
+			return &wshrpc.FileInfo{
+				Name:     objectKey,
+				Path:     conn.GetPathWithHost(),
+				IsDir:    true,
+				Size:     0,
+				ModTime:  0,
+				MimeType: "directory",
+			}, nil
 		}
-		return nil, err
 	}
 	size := int64(0)
 	if result.ObjectSize != nil {
@@ -789,7 +798,7 @@ func getParentPath(conn *connparse.Connection) string {
 }
 
 func getParentPathString(hostAndPath string) string {
-	parentPath := ""
+	parentPath := "/"
 	slashIndices := slashRe.FindAllStringIndex(hostAndPath, -1)
 	if slashIndices != nil && len(slashIndices) > 0 {
 		if slashIndices[len(slashIndices)-1][0] != len(hostAndPath)-1 {
