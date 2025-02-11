@@ -464,6 +464,7 @@ async function replaceBlock(blockId: string, blockDef: BlockDef): Promise<string
         type: LayoutTreeActionType.ReplaceNode,
         targetNodeId: targetNodeId,
         newNode: newLayoutNode(undefined, undefined, undefined, { blockId: newBlockId }),
+        focused: true,
     };
     layoutModel.treeReducer(replaceNodeAction);
     return newBlockId;

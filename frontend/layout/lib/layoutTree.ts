@@ -450,6 +450,9 @@ export function replaceNode(layoutState: LayoutTreeState, action: LayoutTreeRepl
         newNode.size = targetNode.size;
         parent.children[index] = newNode;
     }
+    if (action.focused) {
+        layoutState.focusedNodeId = newNode.id;
+    }
     layoutState.generation++;
 }
 

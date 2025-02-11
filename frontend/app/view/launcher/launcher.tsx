@@ -20,6 +20,7 @@ export class LauncherViewModel implements ViewModel {
     viewIcon = atom("shapes");
     viewName = atom("Widget Launcher");
     viewComponent = LauncherView;
+    noHeader = atom(true);
 }
 
 const LauncherView: React.FC<ViewComponentProps<LauncherViewModel>> = ({ blockId, model }) => {
