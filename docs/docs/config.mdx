@@ -4,6 +4,14 @@ id: "config"
 title: "Configuration"
 ---
 
+import { Kbd } from "@site/src/components/kbd.tsx";
+import { PlatformProvider, PlatformSelectorButton } from "@site/src/components/platformcontext.tsx";
+
+<PlatformProvider>
+
+<PlatformSelectorButton />
+<div style={{ marginBottom: 20 }}></div>
+
 Wave's configuration files are located at `~/.config/waveterm/`.
 
 The main configuration file is `settings.json` (`~/.config/waveterm/settings.json`).
@@ -125,7 +133,7 @@ files as well: `termthemes.json`, `presets.json`, and `widgets.json`.
 
 ## WebBookmarks Configuration
 
-WebBookmarks allows you to store and manage web links with customizable display preferences. The bookmarks are stored in a JSON file (`bookmarks.json`) as a key-value map where the key (`id`) is an arbitrary identifier for the bookmark. By convention you should start your ids with "bookmark@".
+WebBookmarks allows you to store and manage web links with customizable display preferences. The bookmarks are stored in a JSON file (`bookmarks.json`) as a key-value map where the key (`id`) is an arbitrary identifier for the bookmark. By convention, you should start your ids with "bookmark@". In the web widget, you can pull up your bookmarks using <Kbd k="Cmd:o"/>
 
 ### Bookmark Structure
 
@@ -188,15 +196,9 @@ Each bookmark follows this structure (only `url` is required):
 ### Behavior
 
 - If `iconurl` is set, it fetches the icon from the specified URL instead of the site's default favicon.
-- Bookmarks are sorted based on `display:order` (if provided), otherwise they follow default order.
+- Bookmarks are sorted based on `display:order` (if provided), otherwise by id.
 - `icon` and `iconcolor` are rarely needed since the default behavior fetches the site's favicon.
-
-### Use Cases
-
-- Organizing frequently used links.
-- Overriding incorrect favicons for better visibility in different themes (e.g., dark mode).
-
-Ensure that `bookmarks.json` is structured correctly for proper rendering.
+- favicons are refreshed every 24-hours
 
 ## Terminal Theming
 
@@ -328,3 +330,5 @@ We support the following key names:
 - The numpad minus/subtract represented by `Subtract`
 - The numpad star/multiply represented by `Multiply`
 - The numpad slash/divide represented by `Divide`
+
+</PlatformProvider>
