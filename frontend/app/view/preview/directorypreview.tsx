@@ -148,7 +148,7 @@ enum EntryManagerType {
 }
 
 type EntryManagerOverlayProps = {
-    forwardRef?: React.Ref<HTMLDivElement>;
+    ref?: React.Ref<HTMLDivElement>;
     entryManagerType: EntryManagerType;
     startingValue?: string;
     onSave: (newValue: string) => void;
@@ -163,13 +163,13 @@ const EntryManagerOverlay = memo(
         startingValue,
         onSave,
         onCancel,
-        forwardRef,
+        ref,
         style,
         getReferenceProps,
     }: EntryManagerOverlayProps) => {
         const [value, setValue] = useState(startingValue);
         return (
-            <div className="entry-manager-overlay" ref={forwardRef} style={style} {...getReferenceProps()}>
+            <div className="entry-manager-overlay" ref={ref} style={style} {...getReferenceProps()}>
                 <div className="entry-manager-type">{entryManagerType}</div>
                 <div className="entry-manager-input">
                     <Input
@@ -372,8 +372,8 @@ function DirectoryTable({
         return colSizes;
     }, [table.getState().columnSizingInfo]);
 
-    const osRef = useRef<OverlayScrollbarsComponentRef>();
-    const bodyRef = useRef<HTMLDivElement>();
+    const osRef = useRef<OverlayScrollbarsComponentRef>(null);
+    const bodyRef = useRef<HTMLDivElement>(null);
     const [scrollHeight, setScrollHeight] = useState(0);
 
     const onScroll = useCallback(
@@ -486,8 +486,8 @@ function TableBody({
     setRefreshVersion,
     osRef,
 }: TableBodyProps) {
-    const dummyLineRef = useRef<HTMLDivElement>();
-    const warningBoxRef = useRef<HTMLDivElement>();
+    const dummyLineRef = useRef<HTMLDivElement>(null);
+    const warningBoxRef = useRef<HTMLDivElement>(null);
     const rowRefs = useRef<HTMLDivElement[]>([]);
     const conn = useAtomValue(model.connection);
 
@@ -683,7 +683,9 @@ function TableBody({
                         setSearch={setSearch}
                         idx={idx}
                         handleFileContextMenu={handleFileContextMenu}
-                        ref={(el) => (rowRefs.current[idx] = el)}
+                        ref={(el) => {
+                            rowRefs.current[idx] = el;
+                        }}
                         key={idx}
                     />
                 ))}
@@ -696,7 +698,9 @@ function TableBody({
                         setSearch={setSearch}
                         idx={idx + table.getTopRows().length}
                         handleFileContextMenu={handleFileContextMenu}
-                        ref={(el) => (rowRefs.current[idx] = el)}
+                        ref={(el) => {
+                            rowRefs.current[idx] = el;
+                        }}
                         key={idx}
                     />
                 ))}
@@ -763,7 +767,9 @@ const TableRow = React.forwardRef(function (
             }}
             onClick={() => setFocusIndex(idx)}
             onContextMenu={(e) => handleFileContextMenu(e, row.original)}
-            ref={drag}
+            ref={(el) => {
+                drag(el);
+            }}
         >
             {row.getVisibleCells().map((cell) => (
                 <div
@@ -1098,7 +1104,7 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
             {entryManagerProps && (
                 <EntryManagerOverlay
                     {...entryManagerProps}
-                    forwardRef={refs.setFloating}
+                    ref={refs.setFloating}
                     style={floatingStyles}
                     getReferenceProps={getFloatingProps}
                     onCancel={() => setEntryManagerProps(undefined)}

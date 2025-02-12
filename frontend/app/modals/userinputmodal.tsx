@@ -13,7 +13,7 @@ import "./userinputmodal.scss";
 const UserInputModal = (userInputRequest: UserInputRequest) => {
     const [responseText, setResponseText] = useState("");
     const [countdown, setCountdown] = useState(Math.floor(userInputRequest.timeoutms / 1000));
-    const checkboxRef = useRef<HTMLInputElement>();
+    const checkboxRef = useRef<HTMLInputElement>(null);
 
     const handleSendErrResponse = useCallback(() => {
         fireAndForget(() =>

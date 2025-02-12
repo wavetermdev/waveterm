@@ -158,6 +158,8 @@ declare global {
         iconSpin?: boolean;
         className?: string;
         title?: string;
+        click?: (e: React.MouseEvent<any>) => void;
+        longClick?: (e: React.PointerEvent<any>) => void;
         disabled?: boolean;
         noAction?: boolean;
     };
