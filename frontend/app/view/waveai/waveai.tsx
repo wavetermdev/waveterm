@@ -163,8 +163,13 @@ export class WaveAiModel implements ViewModel {
         this.aiOpts = atom((get) => {
             const meta = get(this.blockAtom).meta;
             let settings = get(atoms.settingsAtom);
+            let presetKey = get(this.presetKey);
+
+            let presets = get(atoms.fullConfigAtom).presets;
+            let selectedPresets = presets?.[presetKey] ?? {};
             settings = {
                 ...settings,
+                ...selectedPresets,
                 ...meta,
             };
             const opts: WaveAIOptsType = {
@@ -244,7 +249,6 @@ export class WaveAiModel implements ViewModel {
                             onClick: () =>
                                 fireAndForget(() =>
                                     ObjectService.UpdateObjectMeta(WOS.makeORef("block", this.blockId), {
-                                        ...preset[1],
                                         "ai:preset": preset[0],
                                     })
                                 ),
