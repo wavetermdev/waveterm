@@ -1227,16 +1227,14 @@ const OpenFileModal = memo(
 );
 
 function formatRemoteUri(path: string, connection: string): string {
-    console.log("formatRemoteUri", path);
     connection = connection ?? "local";
     // TODO: We need a better way to handle s3 paths
-    var retVal: string;
+    let retVal: string;
     if (connection.startsWith("aws:")) {
         retVal = `${connection}:s3://${path ?? ""}`;
     } else {
         retVal = `wsh://${connection}/${path}`;
     }
-    console.log("formatted", retVal);
     return retVal;
 }
 
