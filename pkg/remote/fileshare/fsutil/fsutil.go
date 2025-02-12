@@ -15,16 +15,20 @@ func GetParentPath(conn *connparse.Connection) string {
 }
 
 func GetParentPathString(hostAndPath string) string {
-	parentPath := "/"
-	slashIndices := slashRe.FindAllStringIndex(hostAndPath, -1)
-	if slashIndices != nil && len(slashIndices) > 0 {
-		if slashIndices[len(slashIndices)-1][0] != len(hostAndPath)-1 {
-			parentPath = hostAndPath[:slashIndices[len(slashIndices)-1][0]+1]
-		} else if len(slashIndices) > 1 {
-			parentPath = hostAndPath[:slashIndices[len(slashIndices)-2][0]+1]
-		}
-	}
-	return parentPath
+    if hostAndPath == "" || hostAndPath == "/" {
+        return "/"
+    }
+    
+    // Remove trailing slash if present
+    if strings.HasSuffix(hostAndPath, "/") {
+        hostAndPath = hostAndPath[:len(hostAndPath)-1]
+    }
+    
+    lastSlash := strings.LastIndex(hostAndPath, "/")
+    if lastSlash <= 0 {
+        return "/"
+    }
+    return hostAndPath[:lastSlash+1]
 }
 
 func GetPathPrefix(conn *connparse.Connection) string {
