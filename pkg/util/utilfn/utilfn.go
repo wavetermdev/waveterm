@@ -1023,3 +1023,12 @@ func QuickHashString(s string) string {
 	h.Write([]byte(s))
 	return base64.RawURLEncoding.EncodeToString(h.Sum(nil))
 }
+
+func SendWithCtxCheck[T any](ctx context.Context, ch chan<- T, val T) bool {
+	select {
+	case <-ctx.Done():
+		return false
+	case ch <- val:
+		return true
+	}
+}
