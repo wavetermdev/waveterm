@@ -31,11 +31,16 @@ func GetParentPathString(hostAndPath string) string {
     return hostAndPath[:lastSlash+1]
 }
 
+const minURILength = 10 // Minimum length for a valid URI (e.g., "s3://bucket")
+
 func GetPathPrefix(conn *connparse.Connection) string {
 	fullUri := conn.GetFullURI()
+	if fullUri == "" {
+		return ""
+	}
 	pathPrefix := fullUri
 	lastSlash := strings.LastIndex(fullUri, "/")
-	if lastSlash > 10 && lastSlash < len(fullUri)-1 {
+	if lastSlash > minURILength && lastSlash < len(fullUri)-1 {
 		pathPrefix = fullUri[:lastSlash+1]
 	}
 	return pathPrefix
