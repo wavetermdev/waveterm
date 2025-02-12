@@ -434,11 +434,6 @@ export class WaveAiModel implements ViewModel {
     }
 }
 
-function makeWaveAiViewModel(blockId: string): WaveAiModel {
-    const waveAiModel = new WaveAiModel(blockId);
-    return waveAiModel;
-}
-
 const ChatItem = ({ chatItemAtom, model }: ChatItemProps) => {
     const chatItem = useAtomValue(chatItemAtom);
     const { user, text } = chatItem;
@@ -873,4 +868,4 @@ const WaveAi = ({ model }: { model: WaveAiModel; blockId: string }) => {
     );
 };
 
-export { makeWaveAiViewModel, WaveAi };
+export { WaveAi };

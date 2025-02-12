@@ -321,11 +321,6 @@ class SysinfoViewModel implements ViewModel {
     }
 }
 
-function makeSysinfoViewModel(blockId: string, viewType: string): SysinfoViewModel {
-    const sysinfoViewModel = new SysinfoViewModel(blockId, viewType);
-    return sysinfoViewModel;
-}
-
 const plotColors = ["#58C142", "#FFC107", "#FF5722", "#2196F3", "#9C27B0", "#00BCD4", "#FFEB3B", "#795548"];
 
 type SysinfoViewProps = {
@@ -562,4 +557,4 @@ const SysinfoViewInner = React.memo(({ model }: SysinfoViewProps) => {
     );
 });
 
-export { makeSysinfoViewModel, SysinfoView, SysinfoViewModel };
+export { SysinfoViewModel };

@@ -141,10 +141,6 @@ class HelpViewModel extends WebViewModel {
     }
 }
 
-function makeHelpViewModel(blockId: string, nodeModel: BlockNodeModel) {
-    return new HelpViewModel(blockId, nodeModel);
-}
-
 function HelpView(props: ViewComponentProps<HelpViewModel>) {
     const model = props.model;
     const homepageUrl = useAtomValue(model.homepageUrl);
@@ -176,4 +172,4 @@ function HelpView(props: ViewComponentProps<HelpViewModel>) {
     );
 }
 
-export { HelpView, HelpViewModel, makeHelpViewModel };
+export { HelpViewModel };

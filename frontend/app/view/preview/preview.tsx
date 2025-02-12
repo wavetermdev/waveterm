@@ -869,11 +869,6 @@ export class PreviewModel implements ViewModel {
     }
 }
 
-function makePreviewModel(blockId: string, nodeModel: BlockNodeModel): PreviewModel {
-    const previewModel = new PreviewModel(blockId, nodeModel);
-    return previewModel;
-}
-
 function MarkdownPreview({ model }: SpecializedViewProps) {
     const connName = useAtomValue(model.connection);
     const fileInfo = useAtomValue(model.statFile);
@@ -1231,4 +1226,4 @@ const OpenFileModal = memo(
     }
 );
 
-export { makePreviewModel, PreviewView };
+export { PreviewView };

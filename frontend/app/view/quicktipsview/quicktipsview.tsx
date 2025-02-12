@@ -25,10 +25,6 @@ class QuickTipsViewModel implements ViewModel {
     }
 }
 
-function makeQuickTipsViewModel() {
-    return new QuickTipsViewModel();
-}
-
 function QuickTipsView({ model }: { model: QuickTipsViewModel }) {
     return (
         <div className="quicktips-view">
@@ -37,4 +33,4 @@ function QuickTipsView({ model }: { model: QuickTipsViewModel }) {
     );
 }
 
-export { makeQuickTipsViewModel, QuickTipsView, QuickTipsViewModel };
+export { QuickTipsViewModel };

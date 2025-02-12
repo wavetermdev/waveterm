@@ -594,11 +594,6 @@ export class WebViewModel implements ViewModel {
     }
 }
 
-function makeWebViewModel(blockId: string, nodeModel: BlockNodeModel): WebViewModel {
-    const webviewModel = new WebViewModel(blockId, nodeModel);
-    return webviewModel;
-}
-
 const BookmarkTypeahead = memo(
     ({ model, blockRef }: { model: WebViewModel; blockRef: React.RefObject<HTMLDivElement> }) => {
         const openBookmarksJson = () => {
@@ -898,4 +893,4 @@ const WebView = memo(({ model, onFailLoad, blockRef }: WebViewProps) => {
     );
 });
 
-export { WebView, makeWebViewModel };
+export { WebView };
