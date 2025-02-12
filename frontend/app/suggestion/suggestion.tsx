@@ -232,6 +232,18 @@ const SuggestionControlInner: React.FC<SuggestionControlInnerProps> = ({
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, [onClose, anchorRef]);
 
+    useEffect(() => {
+        if (dropdownRef.current) {
+            const children = dropdownRef.current.children;
+            if (children[selectedIndex]) {
+                (children[selectedIndex] as HTMLElement).scrollIntoView({
+                    behavior: "auto",
+                    block: "nearest",
+                });
+            }
+        }
+    }, [selectedIndex]);
+
     const handleKeyDown = (e: React.KeyboardEvent) => {
         if (e.key === "ArrowDown") {
             e.preventDefault();
@@ -255,6 +267,12 @@ const SuggestionControlInner: React.FC<SuggestionControlInnerProps> = ({
                     setQuery(tabResult);
                 }
             }
+        } else if (e.key === "PageDown") {
+            e.preventDefault();
+            setSelectedIndex((prev) => Math.min(prev + 10, suggestions.length - 1));
+        } else if (e.key === "PageUp") {
+            e.preventDefault();
+            setSelectedIndex((prev) => Math.max(prev - 10, 0));
         }
     };
     return (
