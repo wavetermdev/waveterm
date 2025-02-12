@@ -15,6 +15,10 @@ const docsiteWebUrl = "https://docs.waveterm.dev/";
 const baseUrlRegex = /http[s]?:\/\/([^:\/])+(:\d+)?/;
 
 class HelpViewModel extends WebViewModel {
+    get viewComponent(): ViewComponent {
+        return HelpView;
+    }
+
     constructor(blockId: string, nodeModel: BlockNodeModel) {
         super(blockId, nodeModel);
         this.viewText = atom((get) => {
@@ -137,10 +141,6 @@ class HelpViewModel extends WebViewModel {
     }
 }
 
-function makeHelpViewModel(blockId: string, nodeModel: BlockNodeModel) {
-    return new HelpViewModel(blockId, nodeModel);
-}
-
 function HelpView(props: ViewComponentProps<HelpViewModel>) {
     const model = props.model;
     const homepageUrl = useAtomValue(model.homepageUrl);
@@ -172,4 +172,4 @@ function HelpView(props: ViewComponentProps<HelpViewModel>) {
     );
 }
 
-export { HelpView, HelpViewModel, makeHelpViewModel };
+export { HelpViewModel };
