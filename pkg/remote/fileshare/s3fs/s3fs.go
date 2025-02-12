@@ -13,9 +13,7 @@ import (
 	"io"
 	"io/fs"
 	"log"
-	"os"
 	"path"
-	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -27,6 +25,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/remote/awsconn"
 	"github.com/wavetermdev/waveterm/pkg/remote/connparse"
 	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/fstype"
+	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/fsutil"
 	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/pathtree"
 	"github.com/wavetermdev/waveterm/pkg/util/fileutil"
 	"github.com/wavetermdev/waveterm/pkg/util/iochan/iochantypes"
@@ -34,11 +33,6 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
-)
-
-const (
-	FileMode os.FileMode = 0644
-	DirMode  os.FileMode = 0755 | os.ModeDir
 )
 
 type S3Client struct {
@@ -125,6 +119,7 @@ func (c S3Client) ReadStream(ctx context.Context, conn *connparse.Connection, da
 				Size:    size,
 				ModTime: result.LastModified.UnixMilli(),
 				Path:    conn.GetFullURI(),
+				Dir:     fsutil.GetParentPath(conn),
 			}
 			fileutil.AddMimeTypeToFileInfo(finfo.Path, finfo)
 			log.Printf("file info: %v", finfo)
@@ -224,7 +219,7 @@ func (c S3Client) ReadTarStream(ctx context.Context, conn *connparse.Connection,
 		}
 	} else if singleFile || includeDir {
 		// if we're including the directory itself, we need to remove the last part of the path
-		tarPathPrefix = getParentPathString(tarPathPrefix)
+		tarPathPrefix = fsutil.GetParentPathString(tarPathPrefix)
 	}
 
 	rtn, writeHeader, fileWriter, tarClose := tarcopy.TarCopySrc(readerCtx, tarPathPrefix)
@@ -321,11 +316,11 @@ func (c S3Client) ReadTarStream(ctx context.Context, conn *connparse.Connection,
 
 			// default vals assume entry is dir, since mapEntry might not exist
 			modTime := int64(time.Now().Unix())
-			mode := DirMode
+			mode := fstype.DirMode
 			size := int64(numChildren)
 
 			if isFile {
-				mode = FileMode
+				mode = fstype.FileMode
 				size = *mapEntry.ContentLength
 				if mapEntry.LastModified != nil {
 					modTime = mapEntry.LastModified.UnixMilli()
@@ -374,8 +369,6 @@ func (c S3Client) ListEntries(ctx context.Context, conn *connparse.Connection, o
 	return entries, nil
 }
 
-var slashRe = regexp.MustCompile(`/`)
-
 func (c S3Client) ListEntriesStream(ctx context.Context, conn *connparse.Connection, opts *wshrpc.FileListOpts) <-chan wshrpc.RespOrErrorUnion[wshrpc.CommandRemoteListEntriesRtnData] {
 	bucket := conn.Host
 	objectKeyPrefix := conn.Path
@@ -401,6 +394,7 @@ func (c S3Client) ListEntriesStream(ctx context.Context, conn *connparse.Connect
 				entries = append(entries, &wshrpc.FileInfo{
 					Path:     *bucket.Name,
 					Name:     *bucket.Name,
+					Dir:      "/",
 					ModTime:  bucket.CreationDate.UnixMilli(),
 					IsDir:    true,
 					MimeType: "directory",
@@ -425,11 +419,12 @@ func (c S3Client) ListEntriesStream(ctx context.Context, conn *connparse.Connect
 				Prefix: aws.String(objectKeyPrefix),
 			}
 			objectPaginator := s3.NewListObjectsV2Paginator(c.client, input)
-			parentPath := getParentPath(conn)
+			parentPath := fsutil.GetParentPath(conn)
 			if parentPath != "" {
 				rtn <- wshrpc.RespOrErrorUnion[wshrpc.CommandRemoteListEntriesRtnData]{Response: wshrpc.CommandRemoteListEntriesRtnData{FileInfo: []*wshrpc.FileInfo{
 					{
 						Path:     parentPath,
+						Dir:      fsutil.GetParentPathString(parentPath),
 						Name:     "..",
 						IsDir:    true,
 						Size:     0,
@@ -531,6 +526,7 @@ func (c S3Client) Stat(ctx context.Context, conn *connparse.Connection) (*wshrpc
 			Size:     0,
 			ModTime:  0,
 			Path:     "/",
+			Dir:      "/",
 			MimeType: "directory",
 		}, nil
 	}
@@ -555,6 +551,7 @@ func (c S3Client) Stat(ctx context.Context, conn *connparse.Connection) (*wshrpc
 			return &wshrpc.FileInfo{
 				Name:     bucketName,
 				Path:     bucketName,
+				Dir:      "/",
 				IsDir:    true,
 				Size:     0,
 				ModTime:  0,
@@ -580,6 +577,7 @@ func (c S3Client) Stat(ctx context.Context, conn *connparse.Connection) (*wshrpc
 			return &wshrpc.FileInfo{
 				Name:     objectKey,
 				Path:     conn.GetPathWithHost(),
+				Dir:      fsutil.GetParentPath(conn),
 				IsDir:    true,
 				Size:     0,
 				ModTime:  0,
@@ -598,7 +596,7 @@ func (c S3Client) Stat(ctx context.Context, conn *connparse.Connection) (*wshrpc
 	rtn := &wshrpc.FileInfo{
 		Name:    objectKey,
 		Path:    conn.GetPathWithHost(),
-		Dir:     getParentPath(conn),
+		Dir:     fsutil.GetParentPath(conn),
 		IsDir:   false,
 		Size:    size,
 		ModTime: lastModified,
@@ -668,7 +666,7 @@ func (c S3Client) CopyRemote(ctx context.Context, srcConn, destConn *connparse.C
 	overwrite := opts != nil && opts.Overwrite
 	merge := opts != nil && opts.Merge
 	destHasSlash := strings.HasSuffix(destConn.Path, "/")
-	destPrefix := getPathPrefix(destConn)
+	destPrefix := fsutil.GetPathPrefix(destConn)
 	destPrefix = strings.TrimPrefix(destPrefix, destConn.GetSchemeAndHost()+"/")
 	if destBucket == "" || destBucket == "/" {
 		return fmt.Errorf("destination bucket must be specified")
@@ -787,7 +785,7 @@ func (c S3Client) Delete(ctx context.Context, conn *connparse.Connection, recurs
 	return err
 }
 
-func (c S3Client) Join(ctx context.Context, conn *connparse.Connection, parts ...string) (string, error) {
+func (c S3Client) Join(ctx context.Context, conn *connparse.Connection, parts ...string) (*wshrpc.FileInfo, error) {
 	var joinParts []string
 	if conn.Host == "" || conn.Host == "/" {
 		if conn.Path == "" || conn.Path == "/" {
@@ -801,7 +799,9 @@ func (c S3Client) Join(ctx context.Context, conn *connparse.Connection, parts ..
 		joinParts = append([]string{conn.Host, conn.Path}, parts...)
 	}
 
-	return fmt.Sprintf("%s://%s", conn.Scheme, strings.Join(joinParts, "/")), nil
+	conn.Path = strings.Join(joinParts, "/")
+
+	return c.Stat(ctx, conn)
 }
 
 func (c S3Client) GetConnectionType() string {
@@ -813,35 +813,6 @@ func (c S3Client) GetCapability() wshrpc.FileShareCapability {
 		CanAppend: false,
 		CanMkdir:  false,
 	}
-}
-
-func getParentPath(conn *connparse.Connection) string {
-	hostAndPath := conn.GetPathWithHost()
-	return getParentPathString(hostAndPath)
-}
-
-func getParentPathString(hostAndPath string) string {
-	parentPath := "/"
-	slashIndices := slashRe.FindAllStringIndex(hostAndPath, -1)
-	if slashIndices != nil && len(slashIndices) > 0 {
-		if slashIndices[len(slashIndices)-1][0] != len(hostAndPath)-1 {
-			parentPath = hostAndPath[:slashIndices[len(slashIndices)-1][0]+1]
-		} else if len(slashIndices) > 1 {
-			parentPath = hostAndPath[:slashIndices[len(slashIndices)-2][0]+1]
-		}
-	}
-	log.Printf("hostAndPath: %v, parentPath: %v", hostAndPath, parentPath)
-	return parentPath
-}
-
-func getPathPrefix(conn *connparse.Connection) string {
-	fullUri := conn.GetFullURI()
-	pathPrefix := fullUri
-	lastSlash := strings.LastIndex(fullUri, "/")
-	if lastSlash > 10 && lastSlash < len(fullUri)-1 {
-		pathPrefix = fullUri[:lastSlash+1]
-	}
-	return pathPrefix
 }
 
 func cleanPath(path string) (string, error) {

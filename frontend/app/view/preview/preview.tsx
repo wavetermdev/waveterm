@@ -400,6 +400,7 @@ export class PreviewModel implements ViewModel {
         });
         this.statFile = atom<Promise<FileInfo>>(async (get) => {
             const fileName = get(this.metaFilePath);
+            console.log("stat file", fileName);
             const path = await this.formatRemoteUri(fileName, get);
             if (fileName == null) {
                 return null;
@@ -579,10 +580,11 @@ export class PreviewModel implements ViewModel {
     }
 
     async getParentInfo(fileInfo: FileInfo): Promise<FileInfo | undefined> {
-        const conn = await globalStore.get(this.connection);
         try {
-            const parentFileInfo = await RpcApi.RemoteFileJoinCommand(TabRpcClient, [fileInfo.path, ".."], {
-                route: makeConnRoute(conn),
+            const parentFileInfo = await RpcApi.FileInfoCommand(TabRpcClient, {
+                info: {
+                    path: await this.formatRemoteUri(fileInfo.dir, globalStore.get),
+                },
             });
             console.log("parent file info", parentFileInfo);
             return parentFileInfo;
@@ -601,11 +603,13 @@ export class PreviewModel implements ViewModel {
             this.updateOpenFileModalAndError(false);
             return true;
         }
-        const conn = await globalStore.get(this.connection);
         try {
-            const newFileInfo = await RpcApi.RemoteFileJoinCommand(TabRpcClient, [fileInfo.path, ".."], {
-                route: makeConnRoute(conn),
+            const newFileInfo = await RpcApi.FileInfoCommand(TabRpcClient, {
+                info: {
+                    path: await this.formatRemoteUri(fileInfo.dir, globalStore.get),
+                },
             });
+            console.log("parent file info", newFileInfo);
             if (newFileInfo.path != "" && newFileInfo.notfound) {
                 console.log("does not exist, ", newFileInfo.path);
                 this.goParentDirectory({ fileInfo: newFileInfo });
@@ -616,7 +620,7 @@ export class PreviewModel implements ViewModel {
             refocusNode(this.blockId);
         } catch (e) {
             globalStore.set(this.openFileError, e.message);
-            console.error("Error opening file", [fileInfo.dir, ".."], e);
+            console.error("Error opening file", fileInfo.dir, e);
         }
     }
 
@@ -682,22 +686,12 @@ export class PreviewModel implements ViewModel {
     }
 
     async handleOpenFile(filePath: string) {
-        const fileInfo = await globalStore.get(this.statFile);
-        if (fileInfo == null) {
-            this.updateOpenFileModalAndError(false);
-            return true;
-        }
-        const conn = await globalStore.get(this.connection);
         try {
-            const newFileInfo = await RpcApi.RemoteFileJoinCommand(TabRpcClient, [fileInfo.dir, filePath], {
-                route: makeConnRoute(conn),
-            });
-            this.updateOpenFileModalAndError(false);
-            this.goHistory(newFileInfo.path);
+            this.goHistory(filePath);
             refocusNode(this.blockId);
         } catch (e) {
             globalStore.set(this.openFileError, e.message);
-            console.error("Error opening file", fileInfo.dir, filePath, e);
+            console.error("Error opening file", filePath, e);
         }
     }
 
@@ -1119,7 +1113,6 @@ const fetchSuggestions = async (
 };
 
 function PreviewView({
-    blockId,
     blockRef,
     contentRef,
     model,

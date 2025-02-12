@@ -21,6 +21,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/filestore"
 	"github.com/wavetermdev/waveterm/pkg/remote/connparse"
 	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/fstype"
+	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/fsutil"
 	"github.com/wavetermdev/waveterm/pkg/util/fileutil"
 	"github.com/wavetermdev/waveterm/pkg/util/iochan/iochantypes"
 	"github.com/wavetermdev/waveterm/pkg/util/tarcopy"
@@ -249,11 +250,11 @@ func (c WaveClient) ListEntries(ctx context.Context, conn *connparse.Connection,
 			filteredList = append(filteredList, file)
 		}
 		for dir := range dirMap {
-			dirName := prefix + dir + "/"
+			dirName := prefix + dir
 			filteredList = append(filteredList, &wshrpc.FileInfo{
-				Path:          fmt.Sprintf(wavefileutil.WaveFilePathPattern, zoneId, dirName),
+				Path:          strings.Join([]string{conn.GetPathWithHost(), dirName}, "/"),
 				Name:          dirName,
-				Dir:           dirName,
+				Dir:           fsutil.GetParentPathString(dirName),
 				Size:          0,
 				IsDir:         true,
 				SupportsMkdir: false,
@@ -587,13 +588,14 @@ func (c WaveClient) Delete(ctx context.Context, conn *connparse.Connection, recu
 	return nil
 }
 
-func (c WaveClient) Join(ctx context.Context, conn *connparse.Connection, parts ...string) (string, error) {
+func (c WaveClient) Join(ctx context.Context, conn *connparse.Connection, parts ...string) (*wshrpc.FileInfo, error) {
 	newPath := path.Join(append([]string{conn.Path}, parts...)...)
 	newPath, err := cleanPath(newPath)
 	if err != nil {
-		return "", fmt.Errorf("error cleaning path: %w", err)
+		return nil, fmt.Errorf("error cleaning path: %w", err)
 	}
-	return newPath, nil
+	conn.Path = newPath
+	return c.Stat(ctx, conn)
 }
 
 func (c WaveClient) GetCapability() wshrpc.FileShareCapability {

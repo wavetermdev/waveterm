@@ -51,33 +51,36 @@ const (
 
 // TODO generate these constants from the interface
 const (
-	Command_Authenticate         = "authenticate"      // special
-	Command_AuthenticateToken    = "authenticatetoken" // special
-	Command_Dispose              = "dispose"           // special (disposes of the route, for multiproxy only)
-	Command_RouteAnnounce        = "routeannounce"     // special (for routing)
-	Command_RouteUnannounce      = "routeunannounce"   // special (for routing)
-	Command_Message              = "message"
-	Command_GetMeta              = "getmeta"
-	Command_SetMeta              = "setmeta"
-	Command_SetView              = "setview"
-	Command_ControllerInput      = "controllerinput"
-	Command_ControllerRestart    = "controllerrestart"
-	Command_ControllerStop       = "controllerstop"
-	Command_ControllerResync     = "controllerresync"
-	Command_FileAppend           = "fileappend"
-	Command_FileAppendIJson      = "fileappendijson"
-	Command_Mkdir                = "mkdir"
-	Command_ResolveIds           = "resolveids"
-	Command_BlockInfo            = "blockinfo"
-	Command_CreateBlock          = "createblock"
-	Command_DeleteBlock          = "deleteblock"
-	Command_FileWrite            = "filewrite"
-	Command_FileRead             = "fileread"
-	Command_FileReadStream       = "filereadstream"
-	Command_FileMove             = "filemove"
-	Command_FileCopy             = "filecopy"
-	Command_FileStreamTar        = "filestreamtar"
-	Command_FileShareCapability  = "filesharecapability"
+	Command_Authenticate      = "authenticate"      // special
+	Command_AuthenticateToken = "authenticatetoken" // special
+	Command_Dispose           = "dispose"           // special (disposes of the route, for multiproxy only)
+	Command_RouteAnnounce     = "routeannounce"     // special (for routing)
+	Command_RouteUnannounce   = "routeunannounce"   // special (for routing)
+	Command_Message           = "message"
+	Command_GetMeta           = "getmeta"
+	Command_SetMeta           = "setmeta"
+	Command_SetView           = "setview"
+	Command_ControllerInput   = "controllerinput"
+	Command_ControllerRestart = "controllerrestart"
+	Command_ControllerStop    = "controllerstop"
+	Command_ControllerResync  = "controllerresync"
+	Command_Mkdir             = "mkdir"
+	Command_ResolveIds        = "resolveids"
+	Command_BlockInfo         = "blockinfo"
+	Command_CreateBlock       = "createblock"
+	Command_DeleteBlock       = "deleteblock"
+
+	Command_FileWrite           = "filewrite"
+	Command_FileRead            = "fileread"
+	Command_FileReadStream      = "filereadstream"
+	Command_FileMove            = "filemove"
+	Command_FileCopy            = "filecopy"
+	Command_FileStreamTar       = "filestreamtar"
+	Command_FileAppend          = "fileappend"
+	Command_FileAppendIJson     = "fileappendijson"
+	Command_FileJoin            = "filejoin"
+	Command_FileShareCapability = "filesharecapability"
+
 	Command_EventPublish         = "eventpublish"
 	Command_EventRecv            = "eventrecv"
 	Command_EventSub             = "eventsub"
@@ -162,6 +165,7 @@ type WshRpcInterface interface {
 	DeleteBlockCommand(ctx context.Context, data CommandDeleteBlockData) error
 	DeleteSubBlockCommand(ctx context.Context, data CommandDeleteBlockData) error
 	WaitForRouteCommand(ctx context.Context, data CommandWaitForRouteData) (bool, error)
+
 	FileMkdirCommand(ctx context.Context, data FileData) error
 	FileCreateCommand(ctx context.Context, data FileData) error
 	FileDeleteCommand(ctx context.Context, data CommandDeleteFileData) error
@@ -175,7 +179,9 @@ type WshRpcInterface interface {
 	FileCopyCommand(ctx context.Context, data CommandFileCopyData) error
 	FileInfoCommand(ctx context.Context, data FileData) (*FileInfo, error)
 	FileListCommand(ctx context.Context, data FileListData) ([]*FileInfo, error)
+	FileJoinCommand(ctx context.Context, paths []string) (*FileInfo, error)
 	FileListStreamCommand(ctx context.Context, data FileListData) <-chan RespOrErrorUnion[CommandRemoteListEntriesRtnData]
+
 	FileShareCapabilityCommand(ctx context.Context, path string) (FileShareCapability, error)
 	EventPublishCommand(ctx context.Context, data wps.WaveEvent) error
 	EventSubCommand(ctx context.Context, data wps.SubscriptionRequest) error

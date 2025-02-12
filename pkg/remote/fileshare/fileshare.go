@@ -163,10 +163,10 @@ func Delete(ctx context.Context, data wshrpc.CommandDeleteFileData) error {
 	return client.Delete(ctx, conn, data.Recursive)
 }
 
-func Join(ctx context.Context, path string, parts ...string) (string, error) {
+func Join(ctx context.Context, path string, parts ...string) (*wshrpc.FileInfo, error) {
 	client, conn := CreateFileShareClient(ctx, path)
 	if conn == nil || client == nil {
-		return "", fmt.Errorf(ErrorParsingConnection, path)
+		return nil, fmt.Errorf(ErrorParsingConnection, path)
 	}
 	return client.Join(ctx, conn, parts...)
 }

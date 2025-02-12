@@ -11,7 +11,7 @@ import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { formatRemoteUri, type PreviewModel } from "@/app/view/preview/preview";
 import { checkKeyPressed, isCharacterKeyEvent } from "@/util/keyutil";
-import { fireAndForget, isBlank, makeConnRoute, makeNativeLabel } from "@/util/util";
+import { fireAndForget, isBlank, makeNativeLabel } from "@/util/util";
 import { offset, useDismiss, useFloating, useInteractions } from "@floating-ui/react";
 import {
     Column,
@@ -528,8 +528,10 @@ function TableBody({
             const fileName = finfo.path.split("/").pop();
             let parentFileInfo: FileInfo;
             try {
-                parentFileInfo = await RpcApi.RemoteFileJoinCommand(TabRpcClient, [normPath, ".."], {
-                    route: makeConnRoute(conn),
+                parentFileInfo = await RpcApi.FileInfoCommand(TabRpcClient, {
+                    info: {
+                        path: await model.formatRemoteUri(finfo.dir, globalStore.get),
+                    },
                 });
             } catch (e) {
                 console.log("could not get parent file info. using child file info as fallback");

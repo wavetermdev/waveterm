@@ -187,6 +187,11 @@ class RpcApiType {
         return client.wshRpcCall("fileinfo", data, opts);
     }
 
+    // command "filejoin" [call]
+    FileJoinCommand(client: WshClient, data: string[], opts?: RpcOpts): Promise<FileInfo> {
+        return client.wshRpcCall("filejoin", data, opts);
+    }
+
     // command "filelist" [call]
     FileListCommand(client: WshClient, data: FileListData, opts?: RpcOpts): Promise<FileInfo[]> {
         return client.wshRpcCall("filelist", data, opts);

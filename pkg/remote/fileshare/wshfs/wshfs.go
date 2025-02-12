@@ -133,12 +133,8 @@ func (c WshClient) Delete(ctx context.Context, conn *connparse.Connection, recur
 	return wshclient.RemoteFileDeleteCommand(RpcClient, wshrpc.CommandDeleteFileData{Path: conn.Path, Recursive: recursive}, &wshrpc.RpcOpts{Route: wshutil.MakeConnectionRouteId(conn.Host)})
 }
 
-func (c WshClient) Join(ctx context.Context, conn *connparse.Connection, parts ...string) (string, error) {
-	finfo, err := wshclient.RemoteFileJoinCommand(RpcClient, append([]string{conn.Path}, parts...), &wshrpc.RpcOpts{Route: wshutil.MakeConnectionRouteId(conn.Host)})
-	if err != nil {
-		return "", err
-	}
-	return finfo.Path, nil
+func (c WshClient) Join(ctx context.Context, conn *connparse.Connection, parts ...string) (*wshrpc.FileInfo, error) {
+	return wshclient.RemoteFileJoinCommand(RpcClient, append([]string{conn.Path}, parts...), &wshrpc.RpcOpts{Route: wshutil.MakeConnectionRouteId(conn.Host)})
 }
 
 func (c WshClient) GetConnectionType() string {

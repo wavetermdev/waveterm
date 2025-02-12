@@ -430,6 +430,16 @@ func (ws *WshServer) FileAppendIJsonCommand(ctx context.Context, data wshrpc.Com
 	return nil
 }
 
+func (ws *WshServer) FileJoinCommand(ctx context.Context, paths []string) (*wshrpc.FileInfo, error) {
+	if len(paths) < 2 {
+		if len(paths) == 0 {
+			return nil, fmt.Errorf("no paths provided")
+		}
+		return fileshare.Stat(ctx, paths[0])
+	}
+	return fileshare.Join(ctx, paths[0], paths[1:]...)
+}
+
 func (ws *WshServer) FileShareCapabilityCommand(ctx context.Context, path string) (wshrpc.FileShareCapability, error) {
 	return fileshare.GetCapability(ctx, path)
 }
