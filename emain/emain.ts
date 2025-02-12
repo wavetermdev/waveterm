@@ -259,6 +259,16 @@ electron.ipcMain.on("get-cursor-point", (event) => {
     event.returnValue = retVal;
 });
 
+electron.ipcMain.handle("capture-screenshot", async (event, rect) => {
+    const tabView = getWaveTabViewByWebContentsId(event.sender.id);
+    if (!tabView) {
+        throw new Error("No tab view found for the given webContents id");
+    }
+    const image = await tabView.webContents.capturePage(rect);
+    const base64String = image.toPNG().toString("base64");
+    return `data:image/png;base64,${base64String}`;
+});
+
 electron.ipcMain.on("get-env", (event, varName) => {
     event.returnValue = process.env[varName] ?? null;
 });

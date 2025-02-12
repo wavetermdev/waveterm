@@ -1,7 +1,7 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { contextBridge, ipcRenderer, WebviewTag } from "electron";
+import { contextBridge, ipcRenderer, Rectangle, WebviewTag } from "electron";
 
 contextBridge.exposeInMainWorld("api", {
     getAuthKey: () => ipcRenderer.sendSync("get-auth-key"),
@@ -51,6 +51,7 @@ contextBridge.exposeInMainWorld("api", {
     sendLog: (log) => ipcRenderer.send("fe-log", log),
     onQuicklook: (filePath: string) => ipcRenderer.send("quicklook", filePath),
     openNativePath: (filePath: string) => ipcRenderer.send("open-native-path", filePath),
+    captureScreenshot: (rect: Rectangle) => ipcRenderer.invoke("capture-screenshot", rect),
 });
 
 // Custom event for "new-window"

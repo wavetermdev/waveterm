@@ -101,6 +101,7 @@ declare global {
         sendLog: (log: string) => void;
         onQuicklook: (filePath: string) => void;
         openNativePath(filePath: string): void;
+        captureScreenshot(rect: Electron.Rectangle): Promise<string>;
     };
 
     type ElectronContextMenuItem = {
