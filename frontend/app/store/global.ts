@@ -10,7 +10,11 @@ import {
     newLayoutNode,
 } from "@/layout/index";
 import { getLayoutModelForStaticTab } from "@/layout/lib/layoutModelHooks";
-import { LayoutTreeSplitHorizontalAction, LayoutTreeSplitVerticalAction } from "@/layout/lib/types";
+import {
+    LayoutTreeReplaceNodeAction,
+    LayoutTreeSplitHorizontalAction,
+    LayoutTreeSplitVerticalAction,
+} from "@/layout/lib/types";
 import { getWebServerEndpoint } from "@/util/endpoints";
 import { fetch } from "@/util/fetchutil";
 import { deepCompareReturnPrev, getPrefixedSettings, isBlank } from "@/util/util";
@@ -447,6 +451,25 @@ async function createBlock(blockDef: BlockDef, magnified = false, ephemeral = fa
     return blockId;
 }
 
+async function replaceBlock(blockId: string, blockDef: BlockDef): Promise<string> {
+    const tabId = globalStore.get(atoms.staticTabId);
+    const layoutModel = getLayoutModelForTabById(tabId);
+    const rtOpts: RuntimeOpts = { termsize: { rows: 25, cols: 80 } };
+    const newBlockId = await ObjectService.CreateBlock(blockDef, rtOpts);
+    const targetNodeId = layoutModel.getNodeByBlockId(blockId)?.id;
+    if (targetNodeId == null) {
+        throw new Error(`targetNodeId not found for blockId: ${blockId}`);
+    }
+    const replaceNodeAction: LayoutTreeReplaceNodeAction = {
+        type: LayoutTreeActionType.ReplaceNode,
+        targetNodeId: targetNodeId,
+        newNode: newLayoutNode(undefined, undefined, undefined, { blockId: newBlockId }),
+        focused: true,
+    };
+    layoutModel.treeReducer(replaceNodeAction);
+    return newBlockId;
+}
+
 // when file is not found, returns {data: null, fileInfo: null}
 async function fetchWaveFile(
     zoneId: string,
@@ -761,6 +784,7 @@ export {
     removeFlashError,
     removeNotification,
     removeNotificationById,
+    replaceBlock,
     setActiveTab,
     setNodeFocus,
     setPlatform,

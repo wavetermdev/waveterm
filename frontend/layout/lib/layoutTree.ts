@@ -450,6 +450,9 @@ export function replaceNode(layoutState: LayoutTreeState, action: LayoutTreeRepl
         newNode.size = targetNode.size;
         parent.children[index] = newNode;
     }
+    if (action.focused) {
+        layoutState.focusedNodeId = newNode.id;
+    }
     layoutState.generation++;
 }
 
@@ -473,8 +476,6 @@ export function splitHorizontal(layoutState: LayoutTreeState, action: LayoutTree
         const insertIndex = position === "before" ? index : index + 1;
         // Directly splice in the new node instead of calling addChildAt (which may flatten nodes)
         parent.children.splice(insertIndex, 0, newNode);
-        // Rebalance sizes equally (or use your own logic)
-        parent.children.forEach((child) => (child.size = 1));
     } else {
         // Otherwise, if no parent or parent's flexDirection is not Row, we need to wrap
         // Create a new group node with horizontal layout.
@@ -482,7 +483,6 @@ export function splitHorizontal(layoutState: LayoutTreeState, action: LayoutTree
         const groupNode = newLayoutNode(FlexDirection.Row, targetNode.size, [targetNode], undefined);
         // Now decide the ordering based on the "position"
         groupNode.children = position === "before" ? [newNode, targetNode] : [targetNode, newNode];
-        groupNode.children.forEach((child) => (child.size = 1));
         if (parent) {
             const index = parent.children.findIndex((child) => child.id === targetNodeId);
             if (index === -1) {
@@ -520,13 +520,11 @@ export function splitVertical(layoutState: LayoutTreeState, action: LayoutTreeSp
         const insertIndex = position === "before" ? index : index + 1;
         // For vertical splits in an already vertical parent, splice directly.
         parent.children.splice(insertIndex, 0, newNode);
-        parent.children.forEach((child) => (child.size = 1));
     } else {
         // Wrap target node in a new vertical group.
         // Create group node with an initial children array so that validation passes.
         const groupNode = newLayoutNode(FlexDirection.Column, targetNode.size, [targetNode], undefined);
         groupNode.children = position === "before" ? [newNode, targetNode] : [targetNode, newNode];
-        groupNode.children.forEach((child) => (child.size = 1));
         if (parent) {
             const index = parent.children.findIndex((child) => child.id === targetNodeId);
             if (index === -1) {

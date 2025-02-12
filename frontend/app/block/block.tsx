@@ -9,6 +9,7 @@ import {
     FullSubBlockProps,
     SubBlockProps,
 } from "@/app/block/blocktypes";
+import { LauncherViewModel } from "@/app/view/launcher/launcher";
 import { PreviewModel } from "@/app/view/preview/preview";
 import { SysinfoViewModel } from "@/app/view/sysinfo/sysinfo";
 import { VDomModel } from "@/app/view/vdom/vdom-model";
@@ -44,6 +45,7 @@ BlockRegistry.set("cpuplot", SysinfoViewModel);
 BlockRegistry.set("sysinfo", SysinfoViewModel);
 BlockRegistry.set("vdom", VDomModel);
 BlockRegistry.set("help", HelpViewModel);
+BlockRegistry.set("launcher", LauncherViewModel);
 
 function makeViewModel(blockId: string, blockView: string, nodeModel: BlockNodeModel): ViewModel {
     const ctor = BlockRegistry.get(blockView);
