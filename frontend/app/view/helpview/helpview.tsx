@@ -15,6 +15,10 @@ const docsiteWebUrl = "https://docs.waveterm.dev/";
 const baseUrlRegex = /http[s]?:\/\/([^:\/])+(:\d+)?/;
 
 class HelpViewModel extends WebViewModel {
+    get viewComponent(): ViewComponent {
+        return HelpView;
+    }
+
     constructor(blockId: string, nodeModel: BlockNodeModel) {
         super(blockId, nodeModel);
         this.viewText = atom((get) => {
