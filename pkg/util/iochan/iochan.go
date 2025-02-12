@@ -14,6 +14,7 @@ import (
 	"log"
 
 	"github.com/wavetermdev/waveterm/pkg/util/iochan/iochantypes"
+	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
 )
@@ -62,7 +63,7 @@ func WriterChan(ctx context.Context, w io.Writer, ch <-chan wshrpc.RespOrErrorUn
 	go func() {
 		defer func() {
 			if ctx.Err() != nil {
-				drainChannel(ch)
+				utilfn.DrainChannelSafe(ch, "WriterChan")
 			}
 			callback()
 		}()
@@ -96,13 +97,6 @@ func WriterChan(ctx context.Context, w io.Writer, ch <-chan wshrpc.RespOrErrorUn
 					return
 				}
 			}
-		}
-	}()
-}
-
-func drainChannel(ch <-chan wshrpc.RespOrErrorUnion[iochantypes.Packet]) {
-	go func() {
-		for range ch {
 		}
 	}()
 }

@@ -432,44 +432,36 @@ func (c WaveClient) MoveInternal(ctx context.Context, srcConn, destConn *connpar
 }
 
 func (c WaveClient) CopyInternal(ctx context.Context, srcConn, destConn *connparse.Connection, opts *wshrpc.FileCopyOpts) error {
-	if srcConn.Host == destConn.Host {
-		host := srcConn.Host
-		srcFileName, err := cleanPath(srcConn.Path)
-		if err != nil {
-			return fmt.Errorf("error cleaning source path: %w", err)
-		}
-		destFileName, err := cleanPath(destConn.Path)
-		if err != nil {
-			return fmt.Errorf("error cleaning destination path: %w", err)
-		}
-		err = filestore.WFS.MakeFile(ctx, host, destFileName, wshrpc.FileMeta{}, wshrpc.FileOpts{})
-		if err != nil {
-			return fmt.Errorf("error making source blockfile: %w", err)
-		}
-		_, dataBuf, err := filestore.WFS.ReadFile(ctx, host, srcFileName)
+	return fsutil.PrefixCopyInternal(ctx, srcConn, destConn, c, opts, func(ctx context.Context, srcPath, destPath string) error {
+		srcHost := srcConn.Host
+		srcFileName := strings.TrimPrefix(srcPath, srcHost+"/")
+		destHost := destConn.Host
+		destFileName := strings.TrimPrefix(destPath, destHost+"/")
+		_, dataBuf, err := filestore.WFS.ReadFile(ctx, srcHost, srcFileName)
 		if err != nil {
 			return fmt.Errorf("error reading source blockfile: %w", err)
 		}
-		err = filestore.WFS.WriteFile(ctx, host, destFileName, dataBuf)
+		err = filestore.WFS.WriteFile(ctx, destHost, destFileName, dataBuf)
 		if err != nil {
 			return fmt.Errorf("error writing to destination blockfile: %w", err)
 		}
 		wps.Broker.Publish(wps.WaveEvent{
 			Event:  wps.Event_BlockFile,
-			Scopes: []string{waveobj.MakeORef(waveobj.OType_Block, host).String()},
+			Scopes: []string{waveobj.MakeORef(waveobj.OType_Block, destHost).String()},
 			Data: &wps.WSFileEventData{
-				ZoneId:   host,
+				ZoneId:   destHost,
 				FileName: destFileName,
 				FileOp:   wps.FileOp_Invalidate,
 			},
 		})
 		return nil
-	} else {
-		return fmt.Errorf("copy between different hosts not supported")
-	}
+	})
 }
 
 func (c WaveClient) CopyRemote(ctx context.Context, srcConn, destConn *connparse.Connection, srcClient fstype.FileShareClient, opts *wshrpc.FileCopyOpts) error {
+	if srcConn.Scheme == connparse.ConnectionTypeWave && destConn.Scheme == connparse.ConnectionTypeWave {
+		return c.CopyInternal(ctx, srcConn, destConn, opts)
+	}
 	zoneId := destConn.Host
 	if zoneId == "" {
 		return fmt.Errorf("zoneid not found in connection")

@@ -730,9 +730,7 @@ func (w *WshRpc) setServerDone() {
 	defer w.Lock.Unlock()
 	w.ServerDone = true
 	close(w.CtxDoneCh)
-	for range w.CtxDoneCh {
-		// drain channel
-	}
+	utilfn.DrainChannelSafe(w.InputCh, "wshrpc.setServerDone")
 }
 
 func (w *WshRpc) retrySendTimeout(resId string) {

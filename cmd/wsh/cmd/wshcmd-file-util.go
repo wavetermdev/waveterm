@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/wavetermdev/waveterm/pkg/remote/connparse"
+	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/fsutil"
 	"github.com/wavetermdev/waveterm/pkg/util/fileutil"
 	"github.com/wavetermdev/waveterm/pkg/util/wavefileutil"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
@@ -92,7 +93,7 @@ func streamWriteToFile(fileData wshrpc.FileData, reader io.Reader) error {
 
 func streamReadFromFile(ctx context.Context, fileData wshrpc.FileData, writer io.Writer) error {
 	ch := wshclient.FileReadStreamCommand(RpcClient, fileData, &wshrpc.RpcOpts{Timeout: fileTimeout})
-	return fileutil.ReadFileStreamToWriter(ctx, ch, writer)
+	return fsutil.ReadFileStreamToWriter(ctx, ch, writer)
 }
 
 type fileListResult struct {

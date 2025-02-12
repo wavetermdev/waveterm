@@ -49,7 +49,7 @@ func NewS3Client(config *aws.Config) *S3Client {
 
 func (c S3Client) Read(ctx context.Context, conn *connparse.Connection, data wshrpc.FileData) (*wshrpc.FileData, error) {
 	rtnCh := c.ReadStream(ctx, conn, data)
-	return fileutil.ReadStreamToFileData(ctx, rtnCh)
+	return fsutil.ReadStreamToFileData(ctx, rtnCh)
 }
 
 func (c S3Client) ReadStream(ctx context.Context, conn *connparse.Connection, data wshrpc.FileData) <-chan wshrpc.RespOrErrorUnion[wshrpc.FileData] {
@@ -68,10 +68,7 @@ func (c S3Client) ReadStream(ctx context.Context, conn *connparse.Connection, da
 		if finfo.IsDir {
 			listEntriesCh := c.ListEntriesStream(ctx, conn, nil)
 			defer func() {
-				go func() {
-					for range listEntriesCh {
-					}
-				}()
+				utilfn.DrainChannelSafe(listEntriesCh, "s3fs.ReadStream")
 			}()
 			for respUnion := range listEntriesCh {
 				if respUnion.Error != nil {

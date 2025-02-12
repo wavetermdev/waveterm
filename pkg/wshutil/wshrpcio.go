@@ -25,10 +25,7 @@ func AdaptOutputChToStream(outputCh chan []byte, output io.Writer) error {
 	drain := false
 	defer func() {
 		if drain {
-			go func() {
-				for range outputCh {
-				}
-			}()
+			utilfn.DrainChannelSafe(outputCh, "AdaptOutputChToStream")
 		}
 	}()
 	for msg := range outputCh {
