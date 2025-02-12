@@ -11,7 +11,7 @@ import { DefaultRouter, TabRpcClient } from "@/app/store/wshrpcutil";
 import { atoms, createBlock, fetchWaveFile, getApi, globalStore, useOverrideConfigAtom, WOS } from "@/store/global";
 import { BlockService, ObjectService } from "@/store/services";
 import { adaptFromReactOrNativeKeyEvent, checkKeyPressed } from "@/util/keyutil";
-import { fireAndForget, isBlank, makeIconClass } from "@/util/util";
+import { fireAndForget, isBlank, makeIconClass, mergeMeta } from "@/util/util";
 import { atom, Atom, PrimitiveAtom, useAtomValue, WritableAtom } from "jotai";
 import { splitAtom } from "jotai/utils";
 import type { OverlayScrollbars } from "overlayscrollbars";
@@ -164,23 +164,22 @@ export class WaveAiModel implements ViewModel {
             const meta = get(this.blockAtom).meta;
             let settings = get(atoms.settingsAtom);
             let presetKey = get(this.presetKey);
-
             let presets = get(atoms.fullConfigAtom).presets;
+
             let selectedPresets = presets?.[presetKey] ?? {};
-            settings = {
-                ...settings,
-                ...selectedPresets,
-                ...meta,
-            };
+            let mergedPresets: MetaType = {};
+            mergedPresets = mergeMeta(settings, selectedPresets);
+            mergedPresets = mergeMeta(mergedPresets, meta);
+
             const opts: WaveAIOptsType = {
-                model: settings["ai:model"] ?? null,
-                apitype: settings["ai:apitype"] ?? null,
-                orgid: settings["ai:orgid"] ?? null,
-                apitoken: settings["ai:apitoken"] ?? null,
-                apiversion: settings["ai:apiversion"] ?? null,
-                maxtokens: settings["ai:maxtokens"] ?? null,
-                timeoutms: settings["ai:timeoutms"] ?? 60000,
-                baseurl: settings["ai:baseurl"] ?? null,
+                model: mergedPresets["ai:model"] ?? null,
+                apitype: mergedPresets["ai:apitype"] ?? null,
+                orgid: mergedPresets["ai:orgid"] ?? null,
+                apitoken: mergedPresets["ai:apitoken"] ?? null,
+                apiversion: mergedPresets["ai:apiversion"] ?? null,
+                maxtokens: mergedPresets["ai:maxtokens"] ?? null,
+                timeoutms: mergedPresets["ai:timeoutms"] ?? 60000,
+                baseurl: mergedPresets["ai:baseurl"] ?? null,
             };
             return opts;
         });

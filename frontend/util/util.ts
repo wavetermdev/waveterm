@@ -329,6 +329,55 @@ function makeNativeLabel(platform: string, isDirectory: boolean, isParent: boole
     return `${fileAction} in ${managerName}`;
 }
 
+function mergeMeta(meta: MetaType, metaUpdate: MetaType): MetaType {
+    const rtn: MetaType = {};
+
+    // Copy original meta
+    for (const [k, v] of Object.entries(meta)) {
+        rtn[k] = v;
+    }
+
+    // Deal with "section:*" keys
+    for (const k of Object.keys(metaUpdate)) {
+        if (!k.endsWith(":*")) {
+            continue;
+        }
+
+        if (!metaUpdate[k]) {
+            continue;
+        }
+
+        const prefix = k.slice(0, -2); // Remove ':*' suffix
+        if (prefix === "") {
+            continue;
+        }
+
+        // Delete "[prefix]" and all keys that start with "[prefix]:"
+        const prefixColon = prefix + ":";
+        for (const k2 of Object.keys(rtn)) {
+            if (k2 === prefix || k2.startsWith(prefixColon)) {
+                delete rtn[k2];
+            }
+        }
+    }
+
+    // Deal with regular keys
+    for (const [k, v] of Object.entries(metaUpdate)) {
+        if (k.endsWith(":*")) {
+            continue;
+        }
+
+        if (v === null || v === undefined) {
+            delete rtn[k];
+            continue;
+        }
+
+        rtn[k] = v;
+    }
+
+    return rtn;
+}
+
 export {
     atomWithDebounce,
     atomWithThrottle,
@@ -349,6 +398,7 @@ export {
     makeExternLink,
     makeIconClass,
     makeNativeLabel,
+    mergeMeta,
     sleep,
     stringToBase64,
     useAtomValueSafe,
