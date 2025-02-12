@@ -240,6 +240,10 @@ class SysinfoViewModel implements ViewModel {
         });
     }
 
+    get viewComponent(): ViewComponent {
+        return SysinfoView;
+    }
+
     async loadInitialData() {
         globalStore.set(this.loadingAtom, true);
         try {

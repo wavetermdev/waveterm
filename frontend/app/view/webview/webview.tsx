@@ -176,6 +176,10 @@ export class WebViewModel implements ViewModel {
         });
     }
 
+    get viewComponent(): ViewComponent {
+        return WebView;
+    }
+
     /**
      * Whether the back button in the header should be disabled.
      * @returns True if the WebView cannot go back or if the WebView call fails. False otherwise.
@@ -595,13 +599,6 @@ function makeWebViewModel(blockId: string, nodeModel: BlockNodeModel): WebViewMo
     return webviewModel;
 }
 
-interface WebViewProps {
-    blockId: string;
-    model: WebViewModel;
-    onFailLoad?: (url: string) => void;
-    blockRef: React.RefObject<HTMLDivElement>;
-}
-
 const BookmarkTypeahead = memo(
     ({ model, blockRef }: { model: WebViewModel; blockRef: React.RefObject<HTMLDivElement> }) => {
         const openBookmarksJson = () => {
@@ -661,6 +658,14 @@ const BookmarkTypeahead = memo(
         );
     }
 );
+
+interface WebViewProps {
+    blockId: string;
+    model: WebViewModel;
+    onFailLoad?: (url: string) => void;
+    blockRef: React.RefObject<HTMLDivElement>;
+    contentRef: React.RefObject<HTMLDivElement>;
+}
 
 const WebView = memo(({ model, onFailLoad, blockRef }: WebViewProps) => {
     const blockData = useAtomValue(model.blockAtom);

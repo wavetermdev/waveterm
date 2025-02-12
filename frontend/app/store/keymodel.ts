@@ -4,6 +4,8 @@
 import {
     atoms,
     createBlock,
+    createBlockSplitHorizontally,
+    createBlockSplitVertically,
     createTab,
     getAllBlockComponentModels,
     getApi,
@@ -198,6 +200,58 @@ async function handleCmdN() {
     await createBlock(termBlockDef);
 }
 
+async function handleSplitHorizontal() {
+    // split horizontally
+    const termBlockDef: BlockDef = {
+        meta: {
+            view: "term",
+            controller: "shell",
+        },
+    };
+    const layoutModel = getLayoutModelForStaticTab();
+    const focusedNode = globalStore.get(layoutModel.focusedNode);
+    if (focusedNode == null) {
+        return;
+    }
+    const blockAtom = WOS.getWaveObjectAtom<Block>(WOS.makeORef("block", focusedNode.data?.blockId));
+    const blockData = globalStore.get(blockAtom);
+    if (blockData?.meta?.view == "term") {
+        if (blockData?.meta?.["cmd:cwd"] != null) {
+            termBlockDef.meta["cmd:cwd"] = blockData.meta["cmd:cwd"];
+        }
+    }
+    if (blockData?.meta?.connection != null) {
+        termBlockDef.meta.connection = blockData.meta.connection;
+    }
+    await createBlockSplitHorizontally(termBlockDef, focusedNode.data.blockId, "after");
+}
+
+async function handleSplitVertical() {
+    // split horizontally
+    const termBlockDef: BlockDef = {
+        meta: {
+            view: "term",
+            controller: "shell",
+        },
+    };
+    const layoutModel = getLayoutModelForStaticTab();
+    const focusedNode = globalStore.get(layoutModel.focusedNode);
+    if (focusedNode == null) {
+        return;
+    }
+    const blockAtom = WOS.getWaveObjectAtom<Block>(WOS.makeORef("block", focusedNode.data?.blockId));
+    const blockData = globalStore.get(blockAtom);
+    if (blockData?.meta?.view == "term") {
+        if (blockData?.meta?.["cmd:cwd"] != null) {
+            termBlockDef.meta["cmd:cwd"] = blockData.meta["cmd:cwd"];
+        }
+    }
+    if (blockData?.meta?.connection != null) {
+        termBlockDef.meta.connection = blockData.meta.connection;
+    }
+    await createBlockSplitVertically(termBlockDef, focusedNode.data.blockId, "after");
+}
+
 let lastHandledEvent: KeyboardEvent | null = null;
 
 function appHandleKeyDown(waveEvent: WaveKeyboardEvent): boolean {
@@ -278,6 +332,14 @@ function registerGlobalKeys() {
     });
     globalKeyMap.set("Cmd:n", () => {
         handleCmdN();
+        return true;
+    });
+    globalKeyMap.set("Cmd:d", () => {
+        handleSplitHorizontal();
+        return true;
+    });
+    globalKeyMap.set("Shift:Cmd:d", () => {
+        handleSplitVertical();
         return true;
     });
     globalKeyMap.set("Cmd:i", () => {

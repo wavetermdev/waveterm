@@ -208,13 +208,61 @@ func (ws *WshServer) CreateBlockCommand(ctx context.Context, data wshrpc.Command
 	if err != nil {
 		return nil, fmt.Errorf("error creating block: %w", err)
 	}
-	err = wcore.QueueLayoutActionForTab(ctx, tabId, waveobj.LayoutActionData{
-		ActionType: wcore.LayoutActionDataType_Insert,
-		BlockId:    blockData.OID,
-		Magnified:  data.Magnified,
-		Ephemeral:  data.Ephemeral,
-		Focused:    true,
-	})
+	var layoutAction *waveobj.LayoutActionData
+	if data.TargetBlockId != "" {
+		switch data.TargetAction {
+		case "replace":
+			layoutAction = &waveobj.LayoutActionData{
+				ActionType:    wcore.LayoutActionDataType_Replace,
+				TargetBlockId: data.TargetBlockId,
+				BlockId:       blockData.OID,
+				Focused:       true,
+			}
+			err = wcore.DeleteBlock(ctx, data.TargetBlockId, false)
+			if err != nil {
+				return nil, fmt.Errorf("error deleting block (trying to do block replace): %w", err)
+			}
+		case "splitright":
+			layoutAction = &waveobj.LayoutActionData{
+				ActionType:    wcore.LayoutActionDataType_SplitHorizontal,
+				BlockId:       blockData.OID,
+				TargetBlockId: data.TargetBlockId,
+				Position:      "after",
+			}
+		case "splitleft":
+			layoutAction = &waveobj.LayoutActionData{
+				ActionType:    wcore.LayoutActionDataType_SplitHorizontal,
+				BlockId:       blockData.OID,
+				TargetBlockId: data.TargetBlockId,
+				Position:      "before",
+			}
+		case "splitup":
+			layoutAction = &waveobj.LayoutActionData{
+				ActionType:    wcore.LayoutActionDataType_SplitVertical,
+				BlockId:       blockData.OID,
+				TargetBlockId: data.TargetBlockId,
+				Position:      "before",
+			}
+		case "splitdown":
+			layoutAction = &waveobj.LayoutActionData{
+				ActionType:    wcore.LayoutActionDataType_SplitVertical,
+				BlockId:       blockData.OID,
+				TargetBlockId: data.TargetBlockId,
+				Position:      "after",
+			}
+		default:
+			return nil, fmt.Errorf("invalid target action: %s", data.TargetAction)
+		}
+	} else {
+		layoutAction = &waveobj.LayoutActionData{
+			ActionType: wcore.LayoutActionDataType_Insert,
+			BlockId:    blockData.OID,
+			Magnified:  data.Magnified,
+			Ephemeral:  data.Ephemeral,
+			Focused:    true,
+		}
+	}
+	err = wcore.QueueLayoutActionForTab(ctx, tabId, *layoutAction)
 	if err != nil {
 		return nil, fmt.Errorf("error queuing layout action: %w", err)
 	}
