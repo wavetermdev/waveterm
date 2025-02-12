@@ -458,8 +458,10 @@ func (impl *ServerImpl) RemoteFileCopyCommand(ctx context.Context, data wshrpc.C
 				return fmt.Errorf("cannot open file %q: %w", srcPathCleaned, err)
 			}
 			defer utilfn.GracefulClose(file, "RemoteFileCopyCommand", srcPathCleaned)
-			destFilePath := filepath.Join(destPathCleaned, filepath.Base(srcPathCleaned))
+			var destFilePath string
 			if destHasSlash {
+				destFilePath = filepath.Join(destPathCleaned, filepath.Base(srcPathCleaned))
+			} else {
 				destFilePath = destPathCleaned
 			}
 			_, err = copyFileFunc(destFilePath, srcFileStat, file)
@@ -485,11 +487,9 @@ func (impl *ServerImpl) RemoteFileCopyCommand(ctx context.Context, data wshrpc.C
 			numFiles++
 			nextpath := filepath.Join(destPathCleaned, next.Name)
 			log.Printf("RemoteFileCopyCommand: copying %q to %q\n", next.Name, nextpath)
-			if singleFile {
+			if singleFile && !destHasSlash {
 				// custom flag to indicate that the source is a single file, not a directory the contents of a directory
-				if !destHasSlash {
-					nextpath = destPathCleaned
-				}
+				nextpath = destPathCleaned
 			}
 			finfo := next.FileInfo()
 			n, err := copyFileFunc(nextpath, finfo, reader)
