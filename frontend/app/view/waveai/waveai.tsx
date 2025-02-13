@@ -448,10 +448,7 @@ const ChatItem = ({ chatItemAtom, model }: ChatItemProps) => {
     const chatItem = useAtomValue(chatItemAtom);
     const { user, text } = chatItem;
     const fontSize = useAtomValue(model.mergedPresets)?.["ai:fontsize"];
-    console.log("font size is:", fontSize);
-    //const fontSize = useOverrideConfigAtom(model.blockId, "ai:fontsize");
     const fixedFontSize = useAtomValue(model.mergedPresets)?.["ai:fixedfontsize"];
-    //const fixedFontSize = useOverrideConfigAtom(model.blockId, "ai:fixedfontsize");
     const renderContent = useMemo(() => {
         if (user == "error") {
             return (
