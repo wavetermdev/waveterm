@@ -8,10 +8,10 @@ import { RpcResponseHelper, WshClient } from "@/app/store/wshclient";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { makeFeBlockRouteId } from "@/app/store/wshrouter";
 import { DefaultRouter, TabRpcClient } from "@/app/store/wshrpcutil";
-import { atoms, createBlock, fetchWaveFile, getApi, globalStore, useOverrideConfigAtom, WOS } from "@/store/global";
+import { atoms, createBlock, fetchWaveFile, getApi, globalStore, WOS } from "@/store/global";
 import { BlockService, ObjectService } from "@/store/services";
 import { adaptFromReactOrNativeKeyEvent, checkKeyPressed } from "@/util/keyutil";
-import { fireAndForget, isBlank, makeIconClass } from "@/util/util";
+import { fireAndForget, isBlank, makeIconClass, mergeMeta } from "@/util/util";
 import { atom, Atom, PrimitiveAtom, useAtomValue, WritableAtom } from "jotai";
 import { splitAtom } from "jotai/utils";
 import type { OverlayScrollbars } from "overlayscrollbars";
@@ -67,6 +67,7 @@ export class WaveAiModel implements ViewModel {
     blockAtom: Atom<Block>;
     presetKey: Atom<string>;
     presetMap: Atom<{ [k: string]: MetaType }>;
+    mergedPresets: Atom<MetaType>;
     aiOpts: Atom<WaveAIOptsType>;
     viewIcon?: Atom<string | IconButtonDecl>;
     viewName?: Atom<string>;
@@ -160,22 +161,32 @@ export class WaveAiModel implements ViewModel {
             set(this.updateLastMessageAtom, "", false);
         });
 
-        this.aiOpts = atom((get) => {
+        this.mergedPresets = atom((get) => {
             const meta = get(this.blockAtom).meta;
             let settings = get(atoms.settingsAtom);
-            settings = {
-                ...settings,
-                ...meta,
-            };
+            let presetKey = get(this.presetKey);
+            let presets = get(atoms.fullConfigAtom).presets;
+            let selectedPresets = presets?.[presetKey] ?? {};
+
+            let mergedPresets: MetaType = {};
+            mergedPresets = mergeMeta(settings, selectedPresets, "ai");
+            mergedPresets = mergeMeta(mergedPresets, meta, "ai");
+
+            return mergedPresets;
+        });
+
+        this.aiOpts = atom((get) => {
+            const mergedPresets = get(this.mergedPresets);
+
             const opts: WaveAIOptsType = {
-                model: settings["ai:model"] ?? null,
-                apitype: settings["ai:apitype"] ?? null,
-                orgid: settings["ai:orgid"] ?? null,
-                apitoken: settings["ai:apitoken"] ?? null,
-                apiversion: settings["ai:apiversion"] ?? null,
-                maxtokens: settings["ai:maxtokens"] ?? null,
-                timeoutms: settings["ai:timeoutms"] ?? 60000,
-                baseurl: settings["ai:baseurl"] ?? null,
+                model: mergedPresets["ai:model"] ?? null,
+                apitype: mergedPresets["ai:apitype"] ?? null,
+                orgid: mergedPresets["ai:orgid"] ?? null,
+                apitoken: mergedPresets["ai:apitoken"] ?? null,
+                apiversion: mergedPresets["ai:apiversion"] ?? null,
+                maxtokens: mergedPresets["ai:maxtokens"] ?? null,
+                timeoutms: mergedPresets["ai:timeoutms"] ?? 60000,
+                baseurl: mergedPresets["ai:baseurl"] ?? null,
             };
             return opts;
         });
@@ -244,7 +255,6 @@ export class WaveAiModel implements ViewModel {
                             onClick: () =>
                                 fireAndForget(() =>
                                     ObjectService.UpdateObjectMeta(WOS.makeORef("block", this.blockId), {
-                                        ...preset[1],
                                         "ai:preset": preset[0],
                                     })
                                 ),
@@ -437,8 +447,8 @@ export class WaveAiModel implements ViewModel {
 const ChatItem = ({ chatItemAtom, model }: ChatItemProps) => {
     const chatItem = useAtomValue(chatItemAtom);
     const { user, text } = chatItem;
-    const fontSize = useOverrideConfigAtom(model.blockId, "ai:fontsize");
-    const fixedFontSize = useOverrideConfigAtom(model.blockId, "ai:fixedfontsize");
+    const fontSize = useAtomValue(model.mergedPresets)?.["ai:fontsize"];
+    const fixedFontSize = useAtomValue(model.mergedPresets)?.["ai:fixedfontsize"];
     const renderContent = useMemo(() => {
         if (user == "error") {
             return (

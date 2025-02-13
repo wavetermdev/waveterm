@@ -329,6 +329,77 @@ function makeNativeLabel(platform: string, isDirectory: boolean, isParent: boole
     return `${fileAction} in ${managerName}`;
 }
 
+function mergeMeta(meta: MetaType, metaUpdate: MetaType, prefix?: string): MetaType {
+    const rtn: MetaType = {};
+
+    // Helper function to check if a key matches the prefix criteria
+    const shouldIncludeKey = (key: string): boolean => {
+        if (prefix === undefined) {
+            return true;
+        }
+        if (prefix === "") {
+            return !key.includes(":");
+        }
+        return key.startsWith(prefix + ":");
+    };
+
+    // Copy original meta (only keys matching prefix criteria)
+    for (const [k, v] of Object.entries(meta)) {
+        if (shouldIncludeKey(k)) {
+            rtn[k] = v;
+        }
+    }
+
+    // Deal with "section:*" keys (only if they match prefix criteria)
+    for (const k of Object.keys(metaUpdate)) {
+        if (!k.endsWith(":*")) {
+            continue;
+        }
+
+        if (!metaUpdate[k]) {
+            continue;
+        }
+
+        const sectionPrefix = k.slice(0, -2); // Remove ':*' suffix
+        if (sectionPrefix === "") {
+            continue;
+        }
+
+        // Only process if this section matches our prefix criteria
+        if (!shouldIncludeKey(sectionPrefix)) {
+            continue;
+        }
+
+        // Delete "[sectionPrefix]" and all keys that start with "[sectionPrefix]:"
+        const prefixColon = sectionPrefix + ":";
+        for (const k2 of Object.keys(rtn)) {
+            if (k2 === sectionPrefix || k2.startsWith(prefixColon)) {
+                delete rtn[k2];
+            }
+        }
+    }
+
+    // Deal with regular keys (only if they match prefix criteria)
+    for (const [k, v] of Object.entries(metaUpdate)) {
+        if (!shouldIncludeKey(k)) {
+            continue;
+        }
+
+        if (k.endsWith(":*")) {
+            continue;
+        }
+
+        if (v === null || v === undefined) {
+            delete rtn[k];
+            continue;
+        }
+
+        rtn[k] = v;
+    }
+
+    return rtn;
+}
+
 export {
     atomWithDebounce,
     atomWithThrottle,
@@ -349,6 +420,7 @@ export {
     makeExternLink,
     makeIconClass,
     makeNativeLabel,
+    mergeMeta,
     sleep,
     stringToBase64,
     useAtomValueSafe,
