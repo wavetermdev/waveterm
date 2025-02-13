@@ -1,13 +1,20 @@
+// Copyright 2025, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+//
+// This file is based on components from shadcn/ui, which is licensed under the MIT License.
+// Original source: https://github.com/shadcn/ui
+// Modifications made by Command Line Inc.
+
 "use client";
 
 import * as LabelPrimitive from "@radix-ui/react-label";
 import { Slot } from "@radix-ui/react-slot";
 import { Controller, ControllerProps, FieldPath, FieldValues, FormProvider, useFormContext } from "react-hook-form";
 
+import { Label } from "@/shadcn/label";
 import * as React from "react";
-import { Label } from "./label";
 
-import cn from "clsx";
+import { cn } from "@/shadcn/lib/utils";
 
 const Form = FormProvider;
 
