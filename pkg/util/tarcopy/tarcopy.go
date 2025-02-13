@@ -87,7 +87,7 @@ func TarCopySrc(ctx context.Context, pathPrefix string) (outputChan chan wshrpc.
 		}
 }
 
-func fixPath(path string, prefix string) (string, error) {
+func fixPath(path, prefix string) (string, error) {
 	path = strings.TrimPrefix(strings.TrimPrefix(filepath.Clean(strings.TrimPrefix(path, prefix)), "/"), "\\")
 	if strings.Contains(path, "..") {
 		return "", fmt.Errorf("invalid tar path containing directory traversal: %s", path)

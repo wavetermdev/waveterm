@@ -1030,7 +1030,7 @@ const (
 	retryDelay = 10 * time.Millisecond
 )
 
-func GracefulClose(closer io.Closer, debugName string, closerName string) bool {
+func GracefulClose(closer io.Closer, debugName, closerName string) bool {
 	closed := false
 	for retries := 0; retries < maxRetries; retries++ {
 		if err := closer.Close(); err != nil {

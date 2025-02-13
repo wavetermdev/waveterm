@@ -104,7 +104,7 @@ if srcFileStat.IsDir() {
 */
 
 type CopyFunc func(ctx context.Context, srcPath, destPath string) error
-type ListEntriesPrefix func(ctx context.Context, prefix string) ([]string, error)
+type ListEntriesPrefix func(ctx context.Context, host, prefix string) ([]string, error)
 
 func PrefixCopyInternal(ctx context.Context, srcConn, destConn *connparse.Connection, c fstype.FileShareClient, opts *wshrpc.FileCopyOpts, listEntriesPrefix ListEntriesPrefix, copyFunc CopyFunc) error {
 	// merge := opts != nil && opts.Merge
@@ -136,7 +136,7 @@ func PrefixCopyInternal(ctx context.Context, srcConn, destConn *connparse.Connec
 			if err != nil {
 				return fmt.Errorf("error deleting conflicting destination file: %w", err)
 			} else {
-				entries, err := listEntriesPrefix(ctx, destParentPrefix)
+				entries, err := listEntriesPrefix(ctx, destConn.Host, destParentPrefix)
 				if err != nil {
 					return fmt.Errorf("error listing destination directory: %w", err)
 				}
@@ -156,7 +156,7 @@ func PrefixCopyInternal(ctx context.Context, srcConn, destConn *connparse.Connec
 		if !srcHasSlash {
 			srcPathPrefix += "/"
 		}
-		entries, err := listEntriesPrefix(ctx, srcPathPrefix)
+		entries, err := listEntriesPrefix(ctx, srcConn.Host, srcPathPrefix)
 		if err != nil {
 			return fmt.Errorf("error listing source directory: %w", err)
 		}

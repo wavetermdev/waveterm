@@ -452,26 +452,15 @@ func (c WaveClient) MoveInternal(ctx context.Context, srcConn, destConn *connpar
 }
 
 func (c WaveClient) CopyInternal(ctx context.Context, srcConn, destConn *connparse.Connection, opts *wshrpc.FileCopyOpts) error {
-	return fsutil.PrefixCopyInternal(ctx, srcConn, destConn, c, opts, func(ctx context.Context, prefix string) ([]string, error) {
-		zoneId := srcConn.Host
-		if zoneId == "" {
-			return nil, fmt.Errorf("zoneid not found in connection")
+	return fsutil.PrefixCopyInternal(ctx, srcConn, destConn, c, opts, func(ctx context.Context, zoneId, prefix string) ([]string, error) {
+		entryList := make([]string, 0)
+		if err := listEntriesPrefix(ctx, zoneId, prefix, func(entry string) error {
+			entryList = append(entryList, entry)
+			return nil
+		}); err != nil {
+			return nil, err
 		}
-		fileListOrig, err := filestore.WFS.ListFiles(ctx, zoneId)
-		if err != nil {
-			return nil, fmt.Errorf("error listing blockfiles: %w", err)
-		}
-		var fileList []string
-		for _, wf := range fileListOrig {
-			fileList = append(fileList, wf.Name)
-		}
-		var filteredList []string
-		for _, file := range fileList {
-			if strings.HasPrefix(file, prefix) {
-				filteredList = append(filteredList, file)
-			}
-		}
-		return filteredList, nil
+		return entryList, nil
 	}, func(ctx context.Context, srcPath, destPath string) error {
 		srcHost := srcConn.Host
 		srcFileName := strings.TrimPrefix(srcPath, srcHost+"/")
@@ -496,6 +485,28 @@ func (c WaveClient) CopyInternal(ctx context.Context, srcConn, destConn *connpar
 		})
 		return nil
 	})
+}
+
+func listEntriesPrefix(ctx context.Context, zoneId, prefix string, entryCallback func(string) error) error {
+	if zoneId == "" {
+		return fmt.Errorf("zoneid not found in connection")
+	}
+	fileListOrig, err := filestore.WFS.ListFiles(ctx, zoneId)
+	if err != nil {
+		return fmt.Errorf("error listing blockfiles: %w", err)
+	}
+	var fileList []string
+	for _, wf := range fileListOrig {
+		fileList = append(fileList, wf.Name)
+	}
+	for _, file := range fileList {
+		if strings.HasPrefix(file, prefix) {
+			if err := entryCallback(file); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 func (c WaveClient) CopyRemote(ctx context.Context, srcConn, destConn *connparse.Connection, srcClient fstype.FileShareClient, opts *wshrpc.FileCopyOpts) error {

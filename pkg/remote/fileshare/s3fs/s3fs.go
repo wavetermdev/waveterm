@@ -740,10 +740,10 @@ func (c S3Client) CopyRemote(ctx context.Context, srcConn, destConn *connparse.C
 }
 
 func (c S3Client) CopyInternal(ctx context.Context, srcConn, destConn *connparse.Connection, opts *wshrpc.FileCopyOpts) error {
-	return fsutil.PrefixCopyInternal(ctx, srcConn, destConn, c, opts, func(ctx context.Context, prefix string) ([]string, error) {
+	return fsutil.PrefixCopyInternal(ctx, srcConn, destConn, c, opts, func(ctx context.Context, bucket, prefix string) ([]string, error) {
 		var entries []string
 		err := c.listFilesPrefix(ctx, &s3.ListObjectsV2Input{
-			Bucket: aws.String(srcConn.Host),
+			Bucket: aws.String(bucket),
 			Prefix: aws.String(prefix),
 		}, func(obj *types.Object) (bool, error) {
 			entries = append(entries, *obj.Key)
