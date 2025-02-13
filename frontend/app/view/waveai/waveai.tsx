@@ -165,11 +165,11 @@ export class WaveAiModel implements ViewModel {
             let settings = get(atoms.settingsAtom);
             let presetKey = get(this.presetKey);
             let presets = get(atoms.fullConfigAtom).presets;
-
             let selectedPresets = presets?.[presetKey] ?? {};
+
             let mergedPresets: MetaType = {};
-            mergedPresets = mergeMeta(settings, selectedPresets);
-            mergedPresets = mergeMeta(mergedPresets, meta);
+            mergedPresets = mergeMeta(settings, selectedPresets, "ai");
+            mergedPresets = mergeMeta(mergedPresets, meta, "ai");
 
             const opts: WaveAIOptsType = {
                 model: mergedPresets["ai:model"] ?? null,
