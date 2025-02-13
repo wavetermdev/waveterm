@@ -414,12 +414,10 @@ func (c S3Client) ListEntriesStream(ctx context.Context, conn *connparse.Connect
 					lastModTime = obj.LastModified.UnixMilli()
 				}
 				if obj.Key != nil && len(*obj.Key) > len(objectKeyPrefix) {
-					name := strings.TrimPrefix(*obj.Key, objectKeyPrefix)
-
-					// we're only interested in the first level of directories
-					if strings.Count(name, fspath.Separator) > 0 {
-						name = strings.SplitN(name, fspath.Separator, 2)[0]
-						path := fspath.Join(conn.GetPathWithHost(), name)
+					// get the first level directory name or file name
+					name, isDir := fspath.FirstLevelDir(strings.TrimPrefix(*obj.Key, objectKeyPrefix))
+					path := fspath.Join(conn.GetPathWithHost(), name)
+					if isDir {
 						if entryMap[name] == nil {
 							if _, ok := prevUsedDirKeys[name]; !ok {
 								entryMap[name] = &wshrpc.FileInfo{
@@ -441,7 +439,6 @@ func (c S3Client) ListEntriesStream(ctx context.Context, conn *connparse.Connect
 						return true, nil
 					}
 
-					path := fspath.Join(conn.GetPathWithHost(), name)
 					size := int64(0)
 					if obj.Size != nil {
 						size = *obj.Size

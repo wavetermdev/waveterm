@@ -221,35 +221,26 @@ func (c WaveClient) ListEntries(ctx context.Context, conn *connparse.Connection,
 		return nil, fmt.Errorf("error cleaning path: %w", err)
 	}
 	prefix += fspath.Separator
-	fileListOrig, err := filestore.WFS.ListFiles(ctx, zoneId)
-	if err != nil {
-		return nil, fmt.Errorf("error listing blockfiles: %w", err)
-	}
 	var fileList []*wshrpc.FileInfo
-	for _, wf := range fileListOrig {
-		fileList = append(fileList, wavefileutil.WaveFileToFileInfo(wf))
-	}
-	if prefix != "" {
-		var filteredList []*wshrpc.FileInfo
-		for _, file := range fileList {
-			if strings.HasPrefix(file.Name, prefix) {
-				filteredList = append(filteredList, file)
+	if err := listEntriesPrefix(ctx, zoneId, prefix, func(wf *filestore.WaveFile) error {
+		if !opts.All {
+			path, isDir := fspath.FirstLevelDirPrefix(wf.Name, prefix)
+			if isDir {
+				dirMap[path] = struct{}{}
 			}
 		}
-		fileList = filteredList
+		fileList = append(fileList, wavefileutil.WaveFileToFileInfo(wf))
+		return nil
+	}); err != nil {
+		return nil, fmt.Errorf("error listing entries: %w", err)
 	}
 	if !opts.All {
 		var filteredList []*wshrpc.FileInfo
 		dirMap := make(map[string]any) // the value is max modtime
 		for _, file := range fileList {
-			// if there is an extra "/" after the prefix, don't include it
-			// first strip the prefix
-			relPath := strings.TrimPrefix(file.Name, prefix)
-			// then check if there is a "/" after the prefix
-			if strings.Contains(relPath, fspath.Separator) {
-				dirPath := strings.Split(relPath, fspath.Separator)[0]
-				dirMap[dirPath] = struct{}{}
-				continue
+			path, isDir := fspath.FirstLevelDirPrefix(file.Name, prefix)
+			if isDir {
+				dirMap[path] = struct{}{}
 			}
 			filteredList = append(filteredList, file)
 		}
@@ -458,8 +449,8 @@ func (c WaveClient) MoveInternal(ctx context.Context, srcConn, destConn *connpar
 func (c WaveClient) CopyInternal(ctx context.Context, srcConn, destConn *connparse.Connection, opts *wshrpc.FileCopyOpts) error {
 	return fsutil.PrefixCopyInternal(ctx, srcConn, destConn, c, opts, func(ctx context.Context, zoneId, prefix string) ([]string, error) {
 		entryList := make([]string, 0)
-		if err := listEntriesPrefix(ctx, zoneId, prefix, func(entry string) error {
-			entryList = append(entryList, entry)
+		if err := listEntriesPrefix(ctx, zoneId, prefix, func(wf *filestore.WaveFile) error {
+			entryList = append(entryList, wf.Name)
 			return nil
 		}); err != nil {
 			return nil, err
@@ -489,28 +480,6 @@ func (c WaveClient) CopyInternal(ctx context.Context, srcConn, destConn *connpar
 		})
 		return nil
 	})
-}
-
-func listEntriesPrefix(ctx context.Context, zoneId, prefix string, entryCallback func(string) error) error {
-	if zoneId == "" {
-		return fmt.Errorf("zoneid not found in connection")
-	}
-	fileListOrig, err := filestore.WFS.ListFiles(ctx, zoneId)
-	if err != nil {
-		return fmt.Errorf("error listing blockfiles: %w", err)
-	}
-	var fileList []string
-	for _, wf := range fileListOrig {
-		fileList = append(fileList, wf.Name)
-	}
-	for _, file := range fileList {
-		if strings.HasPrefix(file, prefix) {
-			if err := entryCallback(file); err != nil {
-				return err
-			}
-		}
-	}
-	return nil
 }
 
 func (c WaveClient) CopyRemote(ctx context.Context, srcConn, destConn *connparse.Connection, srcClient fstype.FileShareClient, opts *wshrpc.FileCopyOpts) error {
@@ -565,17 +534,27 @@ func (c WaveClient) Delete(ctx context.Context, conn *connparse.Connection, recu
 	}
 	schemeAndHost := conn.GetSchemeAndHost() + fspath.Separator
 
-	entries, err := c.ListEntries(ctx, conn, nil)
+	pathsToDelete := make([]string, 0)
+	err := listEntriesPrefix(ctx, zoneId, schemeAndHost, func(wf *filestore.WaveFile) error {
+		pathTrimmed := strings.TrimPrefix(wf.Name, schemeAndHost)
+		if strings.ContainsAny(pathTrimmed, fspath.Separator) && !recursive {
+			dir := fspath.Dir(pathTrimmed)
+			return fmt.Errorf("%v is not empty, use recursive flag to delete", dir)
+		}
+		pathsToDelete = append(pathsToDelete, wf.Name)
+		return nil
+	})
 	if err != nil {
 		return fmt.Errorf("error listing blockfiles: %w", err)
 	}
-	if len(entries) > 0 {
-		if !recursive {
-			return fmt.Errorf("more than one entry, use recursive flag to delete")
+	if len(pathsToDelete) > 0 {
+		var dirEntry *wshrpc.FileInfo
+		if dirEntry != nil && !recursive {
+			return fmt.Errorf("%v is not empty, use recursive flag to delete", dirEntry.Path)
 		}
 		errs := make([]error, 0)
-		for _, entry := range entries {
-			fileName := strings.TrimPrefix(entry.Path, schemeAndHost)
+		for _, entry := range pathsToDelete {
+			fileName := strings.TrimPrefix(entry, schemeAndHost)
 			err = filestore.WFS.DeleteFile(ctx, zoneId, fileName)
 			if err != nil {
 				errs = append(errs, fmt.Errorf("error deleting blockfile %s/%s: %w", zoneId, fileName, err))
@@ -593,6 +572,22 @@ func (c WaveClient) Delete(ctx context.Context, conn *connparse.Connection, recu
 		}
 		if len(errs) > 0 {
 			return fmt.Errorf("error deleting blockfiles: %v", errs)
+		}
+	}
+	return nil
+}
+
+func listEntriesPrefix(ctx context.Context, zoneId, prefix string, entryCallback func(*filestore.WaveFile) error) error {
+	if zoneId == "" {
+		return fmt.Errorf("zoneid not found in connection")
+	}
+	fileListOrig, err := filestore.WFS.ListFiles(ctx, zoneId)
+	if err != nil {
+		return fmt.Errorf("error listing blockfiles: %w", err)
+	}
+	for _, wf := range fileListOrig {
+		if prefix == "" || strings.HasPrefix(wf.Name, prefix) {
+			entryCallback(wf)
 		}
 	}
 	return nil
