@@ -11,7 +11,8 @@ SET data = json_remove(
     '$.meta.ai:orgid',
     '$.meta.ai:apiversion',
     '$.meta.ai:maxtokens',
-    '$.meta.timeoutms',
-    '$.meta.fontsize',
-    '$.meta.fixedfontsize'
-);
+    '$.meta.ai:timeoutms',
+    '$.meta.ai:fontsize',
+    '$.meta.ai:fixedfontsize'
+)
+WHERE json_extract(data, '$.meta.view') = 'waveai';
