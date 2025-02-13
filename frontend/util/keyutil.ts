@@ -212,7 +212,7 @@ function checkKeyPressed(event: WaveKeyboardEvent, keyDescription: string): bool
     }
     if (keyPress.keyType == KeyTypeKey) {
         eventKey = event.key;
-        if (eventKey.length == 1 && /[A-Z]/.test(eventKey.charAt(0))) {
+        if (eventKey != null && eventKey.length == 1 && /[A-Z]/.test(eventKey.charAt(0))) {
             // key is upper case A-Z, this means shift is applied, we want to allow
             // "Shift:e" as well as "Shift:E" or "E"
             eventKey = eventKey.toLocaleLowerCase();
