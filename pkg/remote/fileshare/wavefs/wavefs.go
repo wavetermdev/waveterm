@@ -119,8 +119,12 @@ func (c WaveClient) ReadTarStream(ctx context.Context, conn *connparse.Connectio
 	}
 
 	finfo, err := c.Stat(ctx, conn)
-	if err != nil && !errors.Is(err, fs.ErrNotExist) {
+	exists := err == nil && !finfo.NotFound
+	if err != nil {
 		return wshutil.SendErrCh[iochantypes.Packet](fmt.Errorf("error getting file info: %w", err))
+	}
+	if !exists {
+		return wshutil.SendErrCh[iochantypes.Packet](fmt.Errorf("file not found: %s", conn.GetFullURI()))
 	}
 	singleFile := finfo != nil && !finfo.IsDir
 	var pathPrefix string
@@ -525,21 +529,25 @@ func (c WaveClient) CopyRemote(ctx context.Context, srcConn, destConn *connparse
 	log.Printf("CopyRemote: srcConn: %v, destConn: %v, destPrefix: %s\n", srcConn, destConn, destPrefix)
 
 	var entries []*wshrpc.FileInfo
-	_, err := c.Stat(ctx, destConn)
+	destInfo, err := c.Stat(ctx, destConn)
+	destExists := err == nil && !destInfo.NotFound
 	if err != nil {
-		if errors.Is(err, fs.ErrNotExist) {
-			entries, err = c.ListEntries(ctx, destConn, nil)
-			if err != nil {
-				return err
+		return err
+	}
+
+	if destExists {
+		if destInfo.IsDir {
+			if !merge {
+				return fmt.Errorf("destination already exists, merge not specified: %v", destConn.GetFullURI())
 			}
-			if len(entries) > 0 && !merge {
-				return fmt.Errorf("more than one entry exists at prefix, merge not specified")
-			}
+		} else if !overwrite {
+			return fmt.Errorf("file already exists at destination %q, use force to overwrite", destConn.GetFullURI())
 		} else {
-			return err
+			err = c.Delete(ctx, destConn, false)
+			if err != nil {
+				return fmt.Errorf("error deleting conflicting destination file: %w", err)
+			}
 		}
-	} else if !overwrite {
-		return fmt.Errorf("file already exists at destination %q, use force to overwrite", destConn.GetFullURI())
 	}
 
 	readCtx, cancel := context.WithCancelCause(ctx)
