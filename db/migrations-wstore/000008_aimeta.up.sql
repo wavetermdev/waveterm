@@ -15,4 +15,4 @@ SET data = json_remove(
     '$.meta.ai:fontsize',
     '$.meta.ai:fixedfontsize'
 )
-WHERE json_value(data, '$.meta.view') = 'waveai';
+WHERE json_extract(data, '$.meta.view') = 'waveai';
