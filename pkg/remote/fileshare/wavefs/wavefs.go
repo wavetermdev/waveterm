@@ -4,7 +4,6 @@
 package wavefs
 
 import (
-	"archive/tar"
 	"context"
 	"encoding/base64"
 	"errors"
@@ -13,13 +12,13 @@ import (
 	"io/fs"
 	"log"
 	"os"
-	"path"
 	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/wavetermdev/waveterm/pkg/filestore"
 	"github.com/wavetermdev/waveterm/pkg/remote/connparse"
+	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/fspath"
 	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/fstype"
 	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/fsutil"
 	"github.com/wavetermdev/waveterm/pkg/util/fileutil"
@@ -221,6 +220,7 @@ func (c WaveClient) ListEntries(ctx context.Context, conn *connparse.Connection,
 	if err != nil {
 		return nil, fmt.Errorf("error cleaning path: %w", err)
 	}
+	prefix += fspath.Separator
 	fileListOrig, err := filestore.WFS.ListFiles(ctx, zoneId)
 	if err != nil {
 		return nil, fmt.Errorf("error listing blockfiles: %w", err)
@@ -246,8 +246,8 @@ func (c WaveClient) ListEntries(ctx context.Context, conn *connparse.Connection,
 			// first strip the prefix
 			relPath := strings.TrimPrefix(file.Name, prefix)
 			// then check if there is a "/" after the prefix
-			if strings.Contains(relPath, "/") {
-				dirPath := strings.Split(relPath, "/")[0]
+			if strings.Contains(relPath, fspath.Separator) {
+				dirPath := strings.Split(relPath, fspath.Separator)[0]
 				dirMap[dirPath] = struct{}{}
 				continue
 			}
@@ -256,7 +256,7 @@ func (c WaveClient) ListEntries(ctx context.Context, conn *connparse.Connection,
 		for dir := range dirMap {
 			dirName := prefix + dir
 			filteredList = append(filteredList, &wshrpc.FileInfo{
-				Path:          strings.Join([]string{conn.GetPathWithHost(), dirName}, "/"),
+				Path:          fspath.Join(conn.GetPathWithHost(), dirName),
 				Name:          dirName,
 				Dir:           fsutil.GetParentPathString(dirName),
 				Size:          0,
@@ -467,9 +467,9 @@ func (c WaveClient) CopyInternal(ctx context.Context, srcConn, destConn *connpar
 		return entryList, nil
 	}, func(ctx context.Context, srcPath, destPath string) error {
 		srcHost := srcConn.Host
-		srcFileName := strings.TrimPrefix(srcPath, srcHost+"/")
+		srcFileName := strings.TrimPrefix(srcPath, srcHost+fspath.Separator)
 		destHost := destConn.Host
-		destFileName := strings.TrimPrefix(destPath, destHost+"/")
+		destFileName := strings.TrimPrefix(destPath, destHost+fspath.Separator)
 		_, dataBuf, err := filestore.WFS.ReadFile(ctx, srcHost, srcFileName)
 		if err != nil {
 			return fmt.Errorf("error reading source blockfile: %w", err)
@@ -521,64 +521,27 @@ func (c WaveClient) CopyRemote(ctx context.Context, srcConn, destConn *connparse
 	if zoneId == "" {
 		return fmt.Errorf("zoneid not found in connection")
 	}
-	overwrite := opts != nil && opts.Overwrite
-	merge := opts != nil && opts.Merge
-	destHasSlash := strings.HasSuffix(destConn.Path, "/")
-	destPrefix := getPathPrefix(destConn)
-	destPrefix = strings.TrimPrefix(destPrefix, destConn.GetSchemeAndHost()+"/")
-	log.Printf("CopyRemote: srcConn: %v, destConn: %v, destPrefix: %s\n", srcConn, destConn, destPrefix)
-
-	var entries []*wshrpc.FileInfo
-	destInfo, err := c.Stat(ctx, destConn)
-	destExists := err == nil && !destInfo.NotFound
-	if err != nil {
-		return err
-	}
-
-	if destExists {
-		if destInfo.IsDir {
-			if !merge {
-				return fmt.Errorf("destination already exists, merge not specified: %v", destConn.GetFullURI())
-			}
-		} else if !overwrite {
-			return fmt.Errorf("file already exists at destination %q, use force to overwrite", destConn.GetFullURI())
-		} else {
-			err = c.Delete(ctx, destConn, false)
-			if err != nil {
-				return fmt.Errorf("error deleting conflicting destination file: %w", err)
-			}
-		}
-	}
-
-	readCtx, cancel := context.WithCancelCause(ctx)
-	ioch := srcClient.ReadTarStream(readCtx, srcConn, opts)
-	err = tarcopy.TarCopyDest(readCtx, cancel, ioch, func(next *tar.Header, reader *tar.Reader, singleFile bool) error {
-		if next.Typeflag == tar.TypeDir {
-			return nil
-		}
-		fileName, err := cleanPath(path.Join(destPrefix, next.Name))
-		if singleFile && !destHasSlash {
-			fileName, err = cleanPath(destConn.Path)
-		}
-		if err != nil {
-			return fmt.Errorf("error cleaning path: %w", err)
-		}
-		if !overwrite {
-			for _, entry := range entries {
-				if entry.Name == fileName {
-					return fmt.Errorf("destination already exists: %v", fileName)
-				}
-			}
-		}
-		log.Printf("CopyRemote: writing file: %s; size: %d\n", fileName, next.Size)
-		dataBuf := make([]byte, next.Size)
-		_, err = reader.Read(dataBuf)
+	return fsutil.PrefixCopyRemote(ctx, srcConn, destConn, srcClient, c, func(zoneId, path string, size int64, reader io.Reader) error {
+		dataBuf := make([]byte, size)
+		_, err := reader.Read(dataBuf)
 		if err != nil {
 			if !errors.Is(err, io.EOF) {
 				return fmt.Errorf("error reading tar data: %w", err)
 			}
 		}
-		err = filestore.WFS.WriteFile(ctx, zoneId, fileName, dataBuf)
+		_, err = filestore.WFS.Stat(ctx, zoneId, path)
+		if err != nil {
+			if !errors.Is(err, fs.ErrNotExist) {
+				return fmt.Errorf("error getting blockfile info: %w", err)
+			} else {
+				err := filestore.WFS.MakeFile(ctx, zoneId, path, wshrpc.FileMeta{}, wshrpc.FileOpts{})
+				if err != nil {
+					return fmt.Errorf("error making blockfile: %w", err)
+				}
+			}
+		}
+
+		err = filestore.WFS.WriteFile(ctx, zoneId, path, dataBuf)
 		if err != nil {
 			return fmt.Errorf("error writing to blockfile: %w", err)
 		}
@@ -587,16 +550,12 @@ func (c WaveClient) CopyRemote(ctx context.Context, srcConn, destConn *connparse
 			Scopes: []string{waveobj.MakeORef(waveobj.OType_Block, zoneId).String()},
 			Data: &wps.WSFileEventData{
 				ZoneId:   zoneId,
-				FileName: fileName,
+				FileName: path,
 				FileOp:   wps.FileOp_Invalidate,
 			},
 		})
 		return nil
-	})
-	if err != nil {
-		return fmt.Errorf("error copying tar stream: %w", err)
-	}
-	return nil
+	}, opts)
 }
 
 func (c WaveClient) Delete(ctx context.Context, conn *connparse.Connection, recursive bool) error {
@@ -604,7 +563,7 @@ func (c WaveClient) Delete(ctx context.Context, conn *connparse.Connection, recu
 	if zoneId == "" {
 		return fmt.Errorf("zoneid not found in connection")
 	}
-	schemeAndHost := conn.GetSchemeAndHost() + "/"
+	schemeAndHost := conn.GetSchemeAndHost() + fspath.Separator
 
 	entries, err := c.ListEntries(ctx, conn, nil)
 	if err != nil {
@@ -640,7 +599,7 @@ func (c WaveClient) Delete(ctx context.Context, conn *connparse.Connection, recu
 }
 
 func (c WaveClient) Join(ctx context.Context, conn *connparse.Connection, parts ...string) (*wshrpc.FileInfo, error) {
-	newPath := path.Join(append([]string{conn.Path}, parts...)...)
+	newPath := fspath.Join(append([]string{conn.Path}, parts...)...)
 	newPath, err := cleanPath(newPath)
 	if err != nil {
 		return nil, fmt.Errorf("error cleaning path: %w", err)
@@ -657,17 +616,17 @@ func (c WaveClient) GetCapability() wshrpc.FileShareCapability {
 }
 
 func cleanPath(path string) (string, error) {
-	if path == "" {
-		return "", fmt.Errorf("path is empty")
+	if path == "" || path == fspath.Separator {
+		return "", nil
 	}
-	if strings.HasPrefix(path, "/") {
+	if strings.HasPrefix(path, fspath.Separator) {
 		path = path[1:]
 	}
 	if strings.HasPrefix(path, "~") || strings.HasPrefix(path, ".") || strings.HasPrefix(path, "..") {
 		return "", fmt.Errorf("wavefile path cannot start with ~, ., or ..")
 	}
 	var newParts []string
-	for _, part := range strings.Split(path, "/") {
+	for _, part := range strings.Split(path, fspath.Separator) {
 		if part == ".." {
 			if len(newParts) > 0 {
 				newParts = newParts[:len(newParts)-1]
@@ -676,19 +635,9 @@ func cleanPath(path string) (string, error) {
 			newParts = append(newParts, part)
 		}
 	}
-	return strings.Join(newParts, "/"), nil
+	return fspath.Join(newParts...), nil
 }
 
 func (c WaveClient) GetConnectionType() string {
 	return connparse.ConnectionTypeWave
-}
-
-func getPathPrefix(conn *connparse.Connection) string {
-	fullUri := conn.GetFullURI()
-	pathPrefix := fullUri
-	lastSlash := strings.LastIndex(fullUri, "/")
-	if lastSlash > 10 && lastSlash < len(fullUri)-1 {
-		pathPrefix = fullUri[:lastSlash+1]
-	}
-	return pathPrefix
 }

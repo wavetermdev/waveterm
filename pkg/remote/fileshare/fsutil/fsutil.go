@@ -1,6 +1,7 @@
 package fsutil
 
 import (
+	"archive/tar"
 	"bytes"
 	"context"
 	"encoding/base64"
@@ -9,17 +10,16 @@ import (
 	"io"
 	"io/fs"
 	"log"
-	"regexp"
 	"strings"
 
 	"github.com/wavetermdev/waveterm/pkg/remote/connparse"
+	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/fspath"
 	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/fstype"
 	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/pathtree"
+	"github.com/wavetermdev/waveterm/pkg/util/tarcopy"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 )
-
-var slashRe = regexp.MustCompile(`/`)
 
 func GetParentPath(conn *connparse.Connection) string {
 	hostAndPath := conn.GetPathWithHost()
@@ -27,18 +27,18 @@ func GetParentPath(conn *connparse.Connection) string {
 }
 
 func GetParentPathString(hostAndPath string) string {
-	if hostAndPath == "" || hostAndPath == "/" {
-		return "/"
+	if hostAndPath == "" || hostAndPath == fspath.Separator {
+		return fspath.Separator
 	}
 
 	// Remove trailing slash if present
-	if strings.HasSuffix(hostAndPath, "/") {
+	if strings.HasSuffix(hostAndPath, fspath.Separator) {
 		hostAndPath = hostAndPath[:len(hostAndPath)-1]
 	}
 
-	lastSlash := strings.LastIndex(hostAndPath, "/")
+	lastSlash := strings.LastIndex(hostAndPath, fspath.Separator)
 	if lastSlash <= 0 {
-		return "/"
+		return fspath.Separator
 	}
 	return hostAndPath[:lastSlash+1]
 }
@@ -51,141 +51,172 @@ func GetPathPrefix(conn *connparse.Connection) string {
 		return ""
 	}
 	pathPrefix := fullUri
-	lastSlash := strings.LastIndex(fullUri, "/")
+	lastSlash := strings.LastIndex(fullUri, fspath.Separator)
 	if lastSlash > minURILength && lastSlash < len(fullUri)-1 {
 		pathPrefix = fullUri[:lastSlash+1]
 	}
 	return pathPrefix
 }
 
-/*
-if srcFileStat.IsDir() {
-			srcPathPrefix := filepath.Dir(srcPathCleaned)
-			if strings.HasSuffix(srcUri, "/") {
-				srcPathPrefix = srcPathCleaned
-			}
-			err = filepath.Walk(srcPathCleaned, func(path string, info fs.FileInfo, err error) error {
-				if err != nil {
-					return err
-				}
-				srcFilePath := path
-				destFilePath := filepath.Join(destPathCleaned, strings.TrimPrefix(path, srcPathPrefix))
-				var file *os.File
-				if !info.IsDir() {
-					file, err = os.Open(srcFilePath)
-					if err != nil {
-						return fmt.Errorf("cannot open file %q: %w", srcFilePath, err)
-					}
-					defer utilfn.GracefulClose(file, "RemoteFileCopyCommand", srcFilePath)
-				}
-				_, err = copyFileFunc(destFilePath, info, file)
-				return err
-			})
-			if err != nil {
-				return fmt.Errorf("cannot copy %q to %q: %w", srcUri, destUri, err)
-			}
-		} else {
-			file, err := os.Open(srcPathCleaned)
-			if err != nil {
-				return fmt.Errorf("cannot open file %q: %w", srcPathCleaned, err)
-			}
-			defer utilfn.GracefulClose(file, "RemoteFileCopyCommand", srcPathCleaned)
-			var destFilePath string
-			if destHasSlash {
-				destFilePath = filepath.Join(destPathCleaned, filepath.Base(srcPathCleaned))
-			} else {
-				destFilePath = destPathCleaned
-			}
-			_, err = copyFileFunc(destFilePath, srcFileStat, file)
-			if err != nil {
-				return fmt.Errorf("cannot copy %q to %q: %w", srcUri, destUri, err)
-			}
-		}
-*/
-
 type CopyFunc func(ctx context.Context, srcPath, destPath string) error
 type ListEntriesPrefix func(ctx context.Context, host, prefix string) ([]string, error)
 
 func PrefixCopyInternal(ctx context.Context, srcConn, destConn *connparse.Connection, c fstype.FileShareClient, opts *wshrpc.FileCopyOpts, listEntriesPrefix ListEntriesPrefix, copyFunc CopyFunc) error {
-	// merge := opts != nil && opts.Merge
+	log.Printf("PrefixCopyInternal: %v -> %v", srcConn.GetFullURI(), destConn.GetFullURI())
+	merge := opts != nil && opts.Merge
 	overwrite := opts != nil && opts.Overwrite
-	srcHasSlash := strings.HasSuffix(srcConn.Path, "/")
-	srcFileName, err := cleanPathPrefix(srcConn.Path)
+	if overwrite && merge {
+		return fmt.Errorf("cannot specify both overwrite and merge")
+	}
+	srcHasSlash := strings.HasSuffix(srcConn.Path, fspath.Separator)
+	srcPath, err := cleanPathPrefix(srcConn.Path)
 	if err != nil {
 		return fmt.Errorf("error cleaning source path: %w", err)
 	}
-	// destHasSlash := strings.HasSuffix(destConn.Path, "/")
-	// destFileName, err := cleanPathPrefix(destConn.Path)
+	destHasSlash := strings.HasSuffix(destConn.Path, fspath.Separator)
+	destPath, err := cleanPathPrefix(destConn.Path)
 	if err != nil {
 		return fmt.Errorf("error cleaning destination path: %w", err)
 	}
+	if !srcHasSlash {
+		if !destHasSlash {
+			destPath += fspath.Separator
+		}
+		destPath += fspath.Base(srcPath)
+	}
+	destConn.Path = destPath
 	destInfo, err := c.Stat(ctx, destConn)
 	destExists := err == nil && !destInfo.NotFound
 	if err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return fmt.Errorf("error getting destination file info: %w", err)
-	}
-	destEntries := make(map[string]any)
-	destParentPrefix := GetParentPath(destConn) + "/"
-	if destExists {
-		log.Printf("destInfo: %v", destInfo)
-		if destInfo.IsDir {
-			if !overwrite {
-				return fmt.Errorf("destination already exists, overwrite not specified: %v", destConn.GetFullURI())
-			}
-			err = c.Delete(ctx, destConn, false)
-			if err != nil {
-				return fmt.Errorf("error deleting conflicting destination file: %w", err)
-			} else {
-				entries, err := listEntriesPrefix(ctx, destConn.Host, destParentPrefix)
-				if err != nil {
-					return fmt.Errorf("error listing destination directory: %w", err)
-				}
-				for _, entry := range entries {
-					destEntries[entry] = struct{}{}
-				}
-			}
-		}
 	}
 
 	srcInfo, err := c.Stat(ctx, srcConn)
 	if err != nil {
 		return fmt.Errorf("error getting source file info: %w", err)
 	}
-	if srcInfo.IsDir {
-		srcPathPrefix := srcFileName
-		if !srcHasSlash {
-			srcPathPrefix += "/"
+	if destExists {
+		if overwrite {
+			err = c.Delete(ctx, destConn, true)
+			if err != nil {
+				return fmt.Errorf("error deleting conflicting destination file: %w", err)
+			}
+		} else if destInfo.IsDir && srcInfo.IsDir {
+			if !merge {
+				return fmt.Errorf("destination and source are both directories, neither merge nor overwrite specified: %v", destConn.GetFullURI())
+			}
+		} else {
+			return fmt.Errorf("destination already exists, overwrite not specified: %v", destConn.GetFullURI())
 		}
-		entries, err := listEntriesPrefix(ctx, srcConn.Host, srcPathPrefix)
+	}
+	if srcInfo.IsDir {
+		if !srcHasSlash {
+			srcPath += fspath.Separator
+		}
+		destPath += fspath.Separator
+		log.Printf("Copying directory: %v -> %v", srcPath, destPath)
+		entries, err := listEntriesPrefix(ctx, srcConn.Host, srcPath)
 		if err != nil {
 			return fmt.Errorf("error listing source directory: %w", err)
 		}
-		tree := pathtree.NewTree(srcPathPrefix, "/")
-		// srcName := path.Base(srcFileName)
-		// TODO: Finish implementing logic to match local copy in wshremote
+
+		tree := pathtree.NewTree(srcPath, fspath.Separator)
 		for _, entry := range entries {
 			tree.Add(entry)
 		}
-		if err = tree.Walk(func(path string, numChildren int) error {
-			log.Printf("path: %s, numChildren: %d", path, numChildren)
-			/*
 
-				relativePath := strings.TrimPrefix(entry, srcPathPrefix)
-				if !srcHasSlash {
-					relativePath = srcName + "/" + relativePath
-				}
-				destPath := destParentPrefix + relativePath
-				if _, ok := destEntries[destPath]; ok {
-					if !overwrite {
-						return fmt.Errorf("destination already exists, overwrite not specified: %v", destConn.GetFullURI())
-					}
-				}*/
-			return nil
-		}); err != nil {
-			return fmt.Errorf("error walking source directory: %w", err)
+		/* tree.Walk will return the full path in the source bucket for each item.
+		prefixToRemove specifies how much of that path we want in the destination subtree.
+		If the source path has a trailing slash, we don't want to include the source directory itself in the destination subtree.*/
+		prefixToRemove := srcPath
+		if !srcHasSlash {
+			prefixToRemove = fspath.Dir(srcPath) + fspath.Separator
 		}
+		return tree.Walk(func(path string, numChildren int) error {
+			// since this is a prefix filesystem, we only care about leafs
+			if numChildren > 0 {
+				return nil
+			}
+			destFilePath := destPath + strings.TrimPrefix(path, prefixToRemove)
+			return copyFunc(ctx, path, destFilePath)
+		})
 	} else {
-		return fmt.Errorf("copy between different hosts not supported")
+		return copyFunc(ctx, srcPath, destPath)
+	}
+}
+
+func PrefixCopyRemote(ctx context.Context, srcConn, destConn *connparse.Connection, srcClient, destClient fstype.FileShareClient, destPutFile func(host, path string, size int64, reader io.Reader) error, opts *wshrpc.FileCopyOpts) error {
+	merge := opts != nil && opts.Merge
+	overwrite := opts != nil && opts.Overwrite
+	if overwrite && merge {
+		return fmt.Errorf("cannot specify both overwrite and merge")
+	}
+	srcHasSlash := strings.HasSuffix(srcConn.Path, fspath.Separator)
+	destHasSlash := strings.HasSuffix(destConn.Path, fspath.Separator)
+	destPath, err := cleanPathPrefix(destConn.Path)
+	if err != nil {
+		return fmt.Errorf("error cleaning destination path: %w", err)
+	}
+	if !srcHasSlash {
+		if !destHasSlash {
+			destPath += fspath.Separator
+		}
+		destPath += fspath.Base(srcConn.Path)
+	}
+	destConn.Path = destPath
+	destInfo, err := destClient.Stat(ctx, destConn)
+	destExists := err == nil && !destInfo.NotFound
+	if err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return fmt.Errorf("error getting destination file info: %w", err)
+	}
+
+	srcInfo, err := srcClient.Stat(ctx, srcConn)
+	if err != nil {
+		return fmt.Errorf("error getting source file info: %w", err)
+	}
+	if destExists {
+		if overwrite {
+			err = destClient.Delete(ctx, destConn, true)
+			if err != nil {
+				return fmt.Errorf("error deleting conflicting destination file: %w", err)
+			}
+		} else if destInfo.IsDir && srcInfo.IsDir {
+			if !merge {
+				return fmt.Errorf("destination and source are both directories, neither merge nor overwrite specified: %v", destConn.GetFullURI())
+			}
+		} else {
+			return fmt.Errorf("destination already exists, overwrite not specified: %v", destConn.GetFullURI())
+		}
+	}
+	if err != nil {
+		if !errors.Is(err, fs.ErrNotExist) {
+			return err
+		}
+	}
+	log.Printf("Copying: %v -> %v", srcConn.GetFullURI(), destConn.GetFullURI())
+	readCtx, cancel := context.WithCancelCause(ctx)
+	defer cancel(nil)
+	ioch := srcClient.ReadTarStream(readCtx, srcConn, opts)
+	err = tarcopy.TarCopyDest(readCtx, cancel, ioch, func(next *tar.Header, reader *tar.Reader, singleFile bool) error {
+		if next.Typeflag == tar.TypeDir {
+			return nil
+		}
+		if singleFile && srcInfo.IsDir {
+			return fmt.Errorf("protocol error: source is a directory, but only a single file is being copied")
+		}
+		fileName, err := cleanPathPrefix(fspath.Join(destPath, next.Name))
+		if singleFile && !destHasSlash {
+			fileName, err = cleanPathPrefix(destConn.Path)
+		}
+		if err != nil {
+			return fmt.Errorf("error cleaning path: %w", err)
+		}
+		log.Printf("CopyRemote: writing file: %s; size: %d\n", fileName, next.Size)
+		return destPutFile(destConn.Host, fileName, next.Size, reader)
+	})
+	if err != nil {
+		cancel(err)
+		return err
 	}
 	return nil
 }
@@ -195,14 +226,14 @@ func cleanPathPrefix(path string) (string, error) {
 	if path == "" {
 		return "", fmt.Errorf("path is empty")
 	}
-	if strings.HasPrefix(path, "/") {
+	if strings.HasPrefix(path, fspath.Separator) {
 		path = path[1:]
 	}
 	if strings.HasPrefix(path, "~") || strings.HasPrefix(path, ".") || strings.HasPrefix(path, "..") {
 		return "", fmt.Errorf("path cannot start with ~, ., or ..")
 	}
 	var newParts []string
-	for _, part := range strings.Split(path, "/") {
+	for _, part := range strings.Split(path, fspath.Separator) {
 		if part == ".." {
 			if len(newParts) > 0 {
 				newParts = newParts[:len(newParts)-1]
@@ -211,7 +242,7 @@ func cleanPathPrefix(path string) (string, error) {
 			newParts = append(newParts, part)
 		}
 	}
-	return strings.Join(newParts, "/"), nil
+	return fspath.Join(newParts...), nil
 }
 
 func ReadFileStream(ctx context.Context, readCh <-chan wshrpc.RespOrErrorUnion[wshrpc.FileData], fileInfoCallback func(finfo wshrpc.FileInfo), dirCallback func(entries []*wshrpc.FileInfo) error, fileCallback func(data io.Reader) error) error {
