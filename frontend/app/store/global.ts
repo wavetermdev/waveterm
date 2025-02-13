@@ -763,6 +763,7 @@ export {
     getBlockComponentModel,
     getBlockMetaKeyAtom,
     getConnStatusAtom,
+    getFocusedBlockId,
     getHostName,
     getObjectId,
     getOverrideConfigAtom,

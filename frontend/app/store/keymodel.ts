@@ -10,9 +10,11 @@ import {
     getAllBlockComponentModels,
     getApi,
     getBlockComponentModel,
+    getFocusedBlockId,
     getSettingsKeyAtom,
     globalStore,
     refocusNode,
+    replaceBlock,
     WOS,
 } from "@/app/store/global";
 import {
@@ -378,6 +380,18 @@ function registerGlobalKeys() {
     globalKeyMap.set("Ctrl:Shift:ArrowRight", () => {
         const tabId = globalStore.get(atoms.staticTabId);
         switchBlockInDirection(tabId, NavigateDirection.Right);
+        return true;
+    });
+    globalKeyMap.set("Ctrl:Shift:k", () => {
+        const blockId = getFocusedBlockId();
+        if (blockId == null) {
+            return true;
+        }
+        replaceBlock(blockId, {
+            meta: {
+                view: "launcher",
+            },
+        });
         return true;
     });
     globalKeyMap.set("Cmd:g", () => {
