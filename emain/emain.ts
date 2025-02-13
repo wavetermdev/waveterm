@@ -322,6 +322,12 @@ electron.ipcMain.on("register-global-webview-keys", (event, keys: string[]) => {
     webviewKeys = keys ?? [];
 });
 
+electron.ipcMain.on("set-keyboard-chord-mode", (event) => {
+    event.returnValue = null;
+    const tabView = getWaveTabViewByWebContentsId(event.sender.id);
+    tabView?.setKeyboardChordMode(true);
+});
+
 if (unamePlatform !== "darwin") {
     const fac = new FastAverageColor();
 

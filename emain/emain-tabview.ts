@@ -45,6 +45,8 @@ export class WaveTabView extends WebContentsView {
     isInitialized: boolean = false;
     isWaveReady: boolean = false;
     isDestroyed: boolean = false;
+    keyboardChordMode: boolean = false;
+    resetChordModeTimeout: NodeJS.Timeout = null;
 
     constructor(fullConfig: FullConfigType) {
         console.log("createBareTabView");
@@ -89,6 +91,22 @@ export class WaveTabView extends WebContentsView {
 
     set waveTabId(waveTabId: string) {
         this._waveTabId = waveTabId;
+    }
+
+    setKeyboardChordMode(mode: boolean) {
+        this.keyboardChordMode = mode;
+        if (mode) {
+            if (this.resetChordModeTimeout) {
+                clearTimeout(this.resetChordModeTimeout);
+            }
+            this.resetChordModeTimeout = setTimeout(() => {
+                this.keyboardChordMode = false;
+            }, 2000);
+        } else {
+            if (this.resetChordModeTimeout) {
+                clearTimeout(this.resetChordModeTimeout);
+            }
+        }
     }
 
     positionTabOnScreen(winBounds: Rectangle) {
@@ -220,6 +238,11 @@ export async function getOrCreateWebViewForTab(waveWindowId: string, tabId: stri
         // console.log("WIN bie", tabView.waveTabId.substring(0, 8), waveEvent.type, waveEvent.code);
         handleCtrlShiftState(tabView.webContents, waveEvent);
         setWasActive(true);
+        if (input.type == "keyDown" && tabView.keyboardChordMode) {
+            e.preventDefault();
+            tabView.setKeyboardChordMode(false);
+            tabView.webContents.send("reinject-key", waveEvent);
+        }
     });
     tabView.webContents.on("zoom-changed", (e) => {
         tabView.webContents.send("zoom-changed");
