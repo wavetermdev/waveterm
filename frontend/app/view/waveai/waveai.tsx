@@ -8,7 +8,7 @@ import { RpcResponseHelper, WshClient } from "@/app/store/wshclient";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { makeFeBlockRouteId } from "@/app/store/wshrouter";
 import { DefaultRouter, TabRpcClient } from "@/app/store/wshrpcutil";
-import { atoms, createBlock, fetchWaveFile, getApi, globalStore, useOverrideConfigAtom, WOS } from "@/store/global";
+import { atoms, createBlock, fetchWaveFile, getApi, globalStore, WOS } from "@/store/global";
 import { BlockService, ObjectService } from "@/store/services";
 import { adaptFromReactOrNativeKeyEvent, checkKeyPressed } from "@/util/keyutil";
 import { fireAndForget, isBlank, makeIconClass, mergeMeta } from "@/util/util";
@@ -67,6 +67,7 @@ export class WaveAiModel implements ViewModel {
     blockAtom: Atom<Block>;
     presetKey: Atom<string>;
     presetMap: Atom<{ [k: string]: MetaType }>;
+    mergedPresets: Atom<MetaType>;
     aiOpts: Atom<WaveAIOptsType>;
     viewIcon?: Atom<string | IconButtonDecl>;
     viewName?: Atom<string>;
@@ -160,7 +161,7 @@ export class WaveAiModel implements ViewModel {
             set(this.updateLastMessageAtom, "", false);
         });
 
-        this.aiOpts = atom((get) => {
+        this.mergedPresets = atom((get) => {
             const meta = get(this.blockAtom).meta;
             let settings = get(atoms.settingsAtom);
             let presetKey = get(this.presetKey);
@@ -170,6 +171,12 @@ export class WaveAiModel implements ViewModel {
             let mergedPresets: MetaType = {};
             mergedPresets = mergeMeta(settings, selectedPresets, "ai");
             mergedPresets = mergeMeta(mergedPresets, meta, "ai");
+
+            return mergedPresets;
+        });
+
+        this.aiOpts = atom((get) => {
+            const mergedPresets = get(this.mergedPresets);
 
             const opts: WaveAIOptsType = {
                 model: mergedPresets["ai:model"] ?? null,
@@ -440,8 +447,11 @@ export class WaveAiModel implements ViewModel {
 const ChatItem = ({ chatItemAtom, model }: ChatItemProps) => {
     const chatItem = useAtomValue(chatItemAtom);
     const { user, text } = chatItem;
-    const fontSize = useOverrideConfigAtom(model.blockId, "ai:fontsize");
-    const fixedFontSize = useOverrideConfigAtom(model.blockId, "ai:fixedfontsize");
+    const fontSize = useAtomValue(model.mergedPresets)?.["ai:fontsize"];
+    console.log("font size is:", fontSize);
+    //const fontSize = useOverrideConfigAtom(model.blockId, "ai:fontsize");
+    const fixedFontSize = useAtomValue(model.mergedPresets)?.["ai:fixedfontsize"];
+    //const fixedFontSize = useOverrideConfigAtom(model.blockId, "ai:fixedfontsize");
     const renderContent = useMemo(() => {
         if (user == "error") {
             return (
