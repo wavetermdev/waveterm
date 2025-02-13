@@ -48,6 +48,7 @@ function resetChord() {
 }
 
 function setActiveChord(activeChordArg: string) {
+    getApi().setKeyboardChordMode();
     if (chordTimeout) {
         clearTimeout(chordTimeout);
     }
