@@ -261,50 +261,44 @@ func (c S3Client) ReadTarStream(ctx context.Context, conn *connparse.Connection,
 				}
 			}
 
+			errs := make([]error, 0)
 			// mutex to protect the tree and objMap since we're fetching objects concurrently
 			treeMapMutex := sync.Mutex{}
 			// wait group to await the finished fetches
 			wg := sync.WaitGroup{}
-
-			// Fetch all the matching objects concurrently
-			var output *s3.ListObjectsV2Output
-			objectPaginator := s3.NewListObjectsV2Paginator(c.client, input)
-			for objectPaginator.HasMorePages() {
-				output, err = objectPaginator.NextPage(ctx)
+			getObjectAndFileInfo := func(obj *types.Object) {
+				defer wg.Done()
+				result, err := c.client.GetObject(ctx, &s3.GetObjectInput{
+					Bucket: aws.String(bucket),
+					Key:    obj.Key,
+				})
 				if err != nil {
-					rtn <- wshutil.RespErr[iochantypes.Packet](err)
+					errs = append(errs, err)
 					return
 				}
-				errs := make([]error, 0)
-				getObjectAndFileInfo := func(obj *types.Object) {
-					defer wg.Done()
-					result, err := c.client.GetObject(ctx, &s3.GetObjectInput{
-						Bucket: aws.String(bucket),
-						Key:    obj.Key,
-					})
-					if err != nil {
-						errs = append(errs, err)
-						return
-					}
-					path := *obj.Key
-					if wholeBucket {
-						path = bucket + "/" + path
-					}
-					treeMapMutex.Lock()
-					defer treeMapMutex.Unlock()
-					objMap[path] = result
-					tree.Add(path)
+				path := *obj.Key
+				if wholeBucket {
+					path = bucket + "/" + path
 				}
-				for _, obj := range output.Contents {
-					wg.Add(1)
-					go getObjectAndFileInfo(&obj)
-				}
-				if len(errs) > 0 {
-					rtn <- wshutil.RespErr[iochantypes.Packet](errors.Join(errs...))
-					return
-				}
+				treeMapMutex.Lock()
+				defer treeMapMutex.Unlock()
+				objMap[path] = result
+				tree.Add(path)
+			}
+
+			if err := c.listFilesPrefix(ctx, input, func(obj *types.Object) (bool, error) {
+				wg.Add(1)
+				go getObjectAndFileInfo(obj)
+				return true, nil
+			}); err != nil {
+				rtn <- wshutil.RespErr[iochantypes.Packet](err)
+				return
 			}
 			wg.Wait()
+			if len(errs) > 0 {
+				rtn <- wshutil.RespErr[iochantypes.Packet](errors.Join(errs...))
+				return
+			}
 		}
 
 		// Walk the tree and write the tar entries
@@ -409,13 +403,67 @@ func (c S3Client) ListEntriesStream(ctx context.Context, conn *connparse.Connect
 		prevUsedDirKeys := make(map[string]any)
 		go func() {
 			defer close(rtn)
-			var err error
-			var output *s3.ListObjectsV2Output
-			input := &s3.ListObjectsV2Input{
+			entryMap := make(map[string]*wshrpc.FileInfo)
+			if err := c.listFilesPrefix(ctx, &s3.ListObjectsV2Input{
 				Bucket: aws.String(bucket),
 				Prefix: aws.String(objectKeyPrefix),
+			}, func(obj *types.Object) (bool, error) {
+				if numFetched >= numToFetch {
+					return false, nil
+				}
+				lastModTime := int64(0)
+				if obj.LastModified != nil {
+					lastModTime = obj.LastModified.UnixMilli()
+				}
+				if obj.Key != nil && len(*obj.Key) > len(objectKeyPrefix) {
+					name := strings.TrimPrefix(*obj.Key, objectKeyPrefix)
+
+					// we're only interested in the first level of directories
+					if strings.Count(name, "/") > 0 {
+						name = strings.SplitN(name, "/", 2)[0]
+						path := fmt.Sprintf("%s/%s", conn.GetPathWithHost(), name)
+						if entryMap[name] == nil {
+							if _, ok := prevUsedDirKeys[name]; !ok {
+								entryMap[name] = &wshrpc.FileInfo{
+									Path:    path,
+									Name:    name,
+									IsDir:   true,
+									Dir:     objectKeyPrefix,
+									ModTime: lastModTime,
+									Size:    0,
+								}
+								fileutil.AddMimeTypeToFileInfo(path, entryMap[name])
+
+								prevUsedDirKeys[name] = struct{}{}
+								numFetched++
+							}
+						} else if entryMap[name].ModTime < lastModTime {
+							entryMap[name].ModTime = lastModTime
+						}
+						return true, nil
+					}
+
+					path := fmt.Sprintf("%s/%s", conn.GetPathWithHost(), name)
+					size := int64(0)
+					if obj.Size != nil {
+						size = *obj.Size
+					}
+					entryMap[name] = &wshrpc.FileInfo{
+						Name:    name,
+						IsDir:   false,
+						Dir:     objectKeyPrefix,
+						Path:    path,
+						ModTime: lastModTime,
+						Size:    size,
+					}
+					fileutil.AddMimeTypeToFileInfo(path, entryMap[name])
+					numFetched++
+				}
+				return true, nil
+			}); err != nil {
+				rtn <- wshutil.RespErr[wshrpc.CommandRemoteListEntriesRtnData](err)
+				return
 			}
-			objectPaginator := s3.NewListObjectsV2Paginator(c.client, input)
 			parentPath := fsutil.GetParentPath(conn)
 			if parentPath != "" {
 				rtn <- wshrpc.RespOrErrorUnion[wshrpc.CommandRemoteListEntriesRtnData]{Response: wshrpc.CommandRemoteListEntriesRtnData{FileInfo: []*wshrpc.FileInfo{
@@ -429,83 +477,16 @@ func (c S3Client) ListEntriesStream(ctx context.Context, conn *connparse.Connect
 					},
 				}}}
 			}
-			for objectPaginator.HasMorePages() {
-				output, err = objectPaginator.NextPage(ctx)
-				if err != nil {
-					var noBucket *types.NoSuchBucket
-					if !awsconn.CheckAccessDeniedErr(&err) && errors.As(err, &noBucket) {
-						err = noBucket
-					}
-					rtn <- wshutil.RespErr[wshrpc.CommandRemoteListEntriesRtnData](err)
-					break
-				} else {
-					entryMap := make(map[string]*wshrpc.FileInfo, len(output.Contents))
-					for _, obj := range output.Contents {
-						if numFetched >= numToFetch {
-							break
-						}
-						lastModTime := int64(0)
-						if obj.LastModified != nil {
-							lastModTime = obj.LastModified.UnixMilli()
-						}
-						if obj.Key != nil && len(*obj.Key) > len(objectKeyPrefix) {
-							name := strings.TrimPrefix(*obj.Key, objectKeyPrefix)
-							if strings.Count(name, "/") > 0 {
-								name = strings.SplitN(name, "/", 2)[0]
-								path := fmt.Sprintf("%s/%s", conn.GetPathWithHost(), name)
-								if entryMap[name] == nil {
-									if _, ok := prevUsedDirKeys[name]; !ok {
-										entryMap[name] = &wshrpc.FileInfo{
-											Path:    path,
-											Name:    name,
-											IsDir:   true,
-											Dir:     objectKeyPrefix,
-											ModTime: lastModTime,
-											Size:    0,
-										}
-										fileutil.AddMimeTypeToFileInfo(path, entryMap[name])
-
-										prevUsedDirKeys[name] = struct{}{}
-										numFetched++
-									}
-								} else if entryMap[name].ModTime < lastModTime {
-									entryMap[name].ModTime = lastModTime
-								}
-								continue
-							}
-
-							path := fmt.Sprintf("%s/%s", conn.GetPathWithHost(), name)
-							size := int64(0)
-							if obj.Size != nil {
-								size = *obj.Size
-							}
-							entryMap[name] = &wshrpc.FileInfo{
-								Name:    name,
-								IsDir:   false,
-								Dir:     objectKeyPrefix,
-								Path:    path,
-								ModTime: lastModTime,
-								Size:    size,
-							}
-							fileutil.AddMimeTypeToFileInfo(path, entryMap[name])
-							numFetched++
-						}
-					}
-					entries := make([]*wshrpc.FileInfo, 0, wshrpc.DirChunkSize)
-					for _, entry := range entryMap {
-						entries = append(entries, entry)
-						if len(entries) == wshrpc.DirChunkSize {
-							rtn <- wshrpc.RespOrErrorUnion[wshrpc.CommandRemoteListEntriesRtnData]{Response: wshrpc.CommandRemoteListEntriesRtnData{FileInfo: entries}}
-							entries = make([]*wshrpc.FileInfo, 0, wshrpc.DirChunkSize)
-						}
-					}
-					if len(entries) > 0 {
-						rtn <- wshrpc.RespOrErrorUnion[wshrpc.CommandRemoteListEntriesRtnData]{Response: wshrpc.CommandRemoteListEntriesRtnData{FileInfo: entries}}
-					}
+			entries := make([]*wshrpc.FileInfo, 0, wshrpc.DirChunkSize)
+			for _, entry := range entryMap {
+				entries = append(entries, entry)
+				if len(entries) == wshrpc.DirChunkSize {
+					rtn <- wshrpc.RespOrErrorUnion[wshrpc.CommandRemoteListEntriesRtnData]{Response: wshrpc.CommandRemoteListEntriesRtnData{FileInfo: entries}}
+					entries = make([]*wshrpc.FileInfo, 0, wshrpc.DirChunkSize)
 				}
-				if numFetched >= numToFetch {
-					return
-				}
+			}
+			if len(entries) > 0 {
+				rtn <- wshrpc.RespOrErrorUnion[wshrpc.CommandRemoteListEntriesRtnData]{Response: wshrpc.CommandRemoteListEntriesRtnData{FileInfo: entries}}
 			}
 		}()
 		return rtn
@@ -555,7 +536,12 @@ func (c S3Client) Stat(ctx context.Context, conn *connparse.Connection) (*wshrpc
 				MimeType: "directory",
 			}, nil
 		} else {
-			return nil, fmt.Errorf("bucket %v does not exist", bucketName)
+			return &wshrpc.FileInfo{
+				Name:     bucketName,
+				Path:     bucketName,
+				Dir:      "/",
+				NotFound: true,
+			}, nil
 		}
 	}
 	result, err := c.client.GetObjectAttributes(ctx, &s3.GetObjectAttributesInput{
@@ -566,21 +552,45 @@ func (c S3Client) Stat(ctx context.Context, conn *connparse.Connection) (*wshrpc
 		},
 	})
 	if err != nil {
+		log.Printf("error getting object %v:%v: %v", bucketName, objectKey, err)
 		var noKey *types.NoSuchKey
 		var notFound *types.NotFound
-		if !errors.As(err, &noKey) && !errors.As(err, &notFound) {
-			return nil, err
-		} else {
+		if errors.As(err, &noKey) || errors.As(err, &notFound) {
+			log.Printf("object not found: %v:%v", bucketName, objectKey)
+			// try to list a single object to see if the prefix exists
+			if !strings.HasSuffix(objectKey, "/") {
+				objectKey += "/"
+			}
+			log.Printf("trying to list %v", objectKey)
+			entries, err := c.client.ListObjectsV2(ctx, &s3.ListObjectsV2Input{
+				Bucket:  aws.String(bucketName),
+				Prefix:  aws.String(objectKey),
+				MaxKeys: aws.Int32(1),
+			})
+			if err == nil {
+				if entries.Contents != nil && len(entries.Contents) > 0 {
+					return &wshrpc.FileInfo{
+						Name:     objectKey,
+						Path:     conn.GetPathWithHost(),
+						Dir:      fsutil.GetParentPath(conn),
+						IsDir:    true,
+						Size:     0,
+						Mode:     fstype.DirMode,
+						MimeType: "directory",
+					}, nil
+				}
+			} else if !errors.As(err, &noKey) && !errors.As(err, &notFound) {
+				return nil, err
+			}
+
 			return &wshrpc.FileInfo{
 				Name:     objectKey,
 				Path:     conn.GetPathWithHost(),
 				Dir:      fsutil.GetParentPath(conn),
-				IsDir:    true,
-				Size:     0,
-				ModTime:  0,
-				MimeType: "directory",
+				NotFound: true,
 			}, nil
 		}
+		return nil, err
 	}
 	size := int64(0)
 	if result.ObjectSize != nil {
@@ -670,21 +680,26 @@ func (c S3Client) CopyRemote(ctx context.Context, srcConn, destConn *connparse.C
 	}
 
 	var entries []*wshrpc.FileInfo
-	_, err := c.Stat(ctx, destConn)
+	destinfo, err := c.Stat(ctx, destConn)
+	destExists := err == nil && !destinfo.NotFound
 	if err != nil {
-		if errors.Is(err, fs.ErrNotExist) {
-			entries, err = c.ListEntries(ctx, destConn, nil)
-			if err != nil {
-				return err
-			}
-			if len(entries) > 0 && !merge {
-				return fmt.Errorf("more than one entry exists at prefix, merge not specified")
-			}
-		} else {
+		if !errors.Is(err, fs.ErrNotExist) {
 			return err
 		}
-	} else if !overwrite {
-		return fmt.Errorf("file already exists at destination %q, use force to overwrite", destConn.GetFullURI())
+	}
+
+	if destExists {
+		if !overwrite {
+			return fmt.Errorf("file already exists at destination %q, use force to overwrite", destConn.GetFullURI())
+		}
+	} else {
+		entries, err = c.ListEntries(ctx, destConn, nil)
+		if err != nil {
+			return err
+		}
+		if len(entries) > 0 && !merge {
+			return fmt.Errorf("more than one entry exists at prefix, merge not specified")
+		}
 	}
 
 	readCtx, cancel := context.WithCancelCause(ctx)
@@ -725,19 +740,54 @@ func (c S3Client) CopyRemote(ctx context.Context, srcConn, destConn *connparse.C
 }
 
 func (c S3Client) CopyInternal(ctx context.Context, srcConn, destConn *connparse.Connection, opts *wshrpc.FileCopyOpts) error {
-	srcBucket := srcConn.Host
-	srcKey := srcConn.Path
-	destBucket := destConn.Host
-	destKey := destConn.Path
-	if srcBucket == "" || srcBucket == "/" || srcKey == "" || srcKey == "/" || destBucket == "" || destBucket == "/" || destKey == "" || destKey == "/" {
-		return errors.Join(errors.ErrUnsupported, fmt.Errorf("source and destination bucket and object key must be specified"))
-	}
-	_, err := c.client.CopyObject(ctx, &s3.CopyObjectInput{
-		Bucket:     aws.String(destBucket),
-		Key:        aws.String(destKey),
-		CopySource: aws.String(fmt.Sprintf("%s/%s", srcBucket, srcKey)),
+	return fsutil.PrefixCopyInternal(ctx, srcConn, destConn, c, opts, func(ctx context.Context, prefix string) ([]string, error) {
+		var entries []string
+		err := c.listFilesPrefix(ctx, &s3.ListObjectsV2Input{
+			Bucket: aws.String(srcConn.Host),
+			Prefix: aws.String(prefix),
+		}, func(obj *types.Object) (bool, error) {
+			entries = append(entries, *obj.Key)
+			return true, nil
+		})
+		return entries, err
+	}, func(ctx context.Context, srcPath, destPath string) error {
+		srcBucket := srcConn.Host
+		destBucket := destConn.Host
+		if srcBucket == "" || srcBucket == "/" || destBucket == "" || destBucket == "/" {
+			return fmt.Errorf("source and destination bucket must be specified")
+		}
+		_, err := c.client.CopyObject(ctx, &s3.CopyObjectInput{
+			Bucket:     aws.String(destBucket),
+			Key:        aws.String(destPath),
+			CopySource: aws.String(fmt.Sprintf("%s/%s", srcBucket, srcPath)),
+		})
+		return err
 	})
-	return err
+}
+
+func (c S3Client) listFilesPrefix(ctx context.Context, input *s3.ListObjectsV2Input, fileCallback func(*types.Object) (bool, error)) error {
+	var err error
+	var output *s3.ListObjectsV2Output
+	objectPaginator := s3.NewListObjectsV2Paginator(c.client, input)
+	for objectPaginator.HasMorePages() {
+		output, err = objectPaginator.NextPage(ctx)
+		if err != nil {
+			var noBucket *types.NoSuchBucket
+			if !awsconn.CheckAccessDeniedErr(&err) && errors.As(err, &noBucket) {
+				err = noBucket
+			}
+			return err
+		} else {
+			for _, obj := range output.Contents {
+				if cont, err := fileCallback(&obj); err != nil {
+					return err
+				} else if !cont {
+					return nil
+				}
+			}
+		}
+	}
+	return nil
 }
 
 func (c S3Client) Delete(ctx context.Context, conn *connparse.Connection, recursive bool) error {

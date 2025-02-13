@@ -609,9 +609,8 @@ export class PreviewModel implements ViewModel {
                     path: await this.formatRemoteUri(fileInfo.dir, globalStore.get),
                 },
             });
-            console.log("parent file info", newFileInfo);
             if (newFileInfo.path != "" && newFileInfo.notfound) {
-                console.log("does not exist, ", newFileInfo.path);
+                console.log("parent does not exist, ", newFileInfo.path);
                 this.goParentDirectory({ fileInfo: newFileInfo });
                 return;
             }
@@ -686,6 +685,11 @@ export class PreviewModel implements ViewModel {
     }
 
     async handleOpenFile(filePath: string) {
+        const fileInfo = await globalStore.get(this.statFile);
+        this.updateOpenFileModalAndError(false);
+        if (fileInfo == null) {
+            return true;
+        }
         try {
             this.goHistory(filePath);
             refocusNode(this.blockId);

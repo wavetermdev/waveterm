@@ -8,11 +8,13 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"log"
 	"regexp"
 	"strings"
 
 	"github.com/wavetermdev/waveterm/pkg/remote/connparse"
 	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/fstype"
+	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/pathtree"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 )
@@ -105,24 +107,27 @@ type CopyFunc func(ctx context.Context, srcPath, destPath string) error
 type ListEntriesPrefix func(ctx context.Context, prefix string) ([]string, error)
 
 func PrefixCopyInternal(ctx context.Context, srcConn, destConn *connparse.Connection, c fstype.FileShareClient, opts *wshrpc.FileCopyOpts, listEntriesPrefix ListEntriesPrefix, copyFunc CopyFunc) error {
-	merge := opts != nil && opts.Merge
+	// merge := opts != nil && opts.Merge
 	overwrite := opts != nil && opts.Overwrite
 	srcHasSlash := strings.HasSuffix(srcConn.Path, "/")
 	srcFileName, err := cleanPathPrefix(srcConn.Path)
 	if err != nil {
 		return fmt.Errorf("error cleaning source path: %w", err)
 	}
-	destHasSlash := strings.HasSuffix(destConn.Path, "/")
-	destFileName, err := cleanPathPrefix(destConn.Path)
+	// destHasSlash := strings.HasSuffix(destConn.Path, "/")
+	// destFileName, err := cleanPathPrefix(destConn.Path)
 	if err != nil {
 		return fmt.Errorf("error cleaning destination path: %w", err)
 	}
 	destInfo, err := c.Stat(ctx, destConn)
+	destExists := err == nil && !destInfo.NotFound
 	if err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return fmt.Errorf("error getting destination file info: %w", err)
 	}
 	destEntries := make(map[string]any)
-	if destInfo != nil {
+	destParentPrefix := GetParentPath(destConn) + "/"
+	if destExists {
+		log.Printf("destInfo: %v", destInfo)
 		if destInfo.IsDir {
 			if !overwrite {
 				return fmt.Errorf("destination already exists, overwrite not specified: %v", destConn.GetFullURI())
@@ -131,7 +136,7 @@ func PrefixCopyInternal(ctx context.Context, srcConn, destConn *connparse.Connec
 			if err != nil {
 				return fmt.Errorf("error deleting conflicting destination file: %w", err)
 			} else {
-				entries, err := listEntriesPrefix(ctx, GetParentPath(destConn))
+				entries, err := listEntriesPrefix(ctx, destParentPrefix)
 				if err != nil {
 					return fmt.Errorf("error listing destination directory: %w", err)
 				}
@@ -147,26 +152,42 @@ func PrefixCopyInternal(ctx context.Context, srcConn, destConn *connparse.Connec
 		return fmt.Errorf("error getting source file info: %w", err)
 	}
 	if srcInfo.IsDir {
-		entries, err := listEntriesPrefix(ctx, srcConn.Path)
+		srcPathPrefix := srcFileName
+		if !srcHasSlash {
+			srcPathPrefix += "/"
+		}
+		entries, err := listEntriesPrefix(ctx, srcPathPrefix)
 		if err != nil {
 			return fmt.Errorf("error listing source directory: %w", err)
 		}
+		tree := pathtree.NewTree(srcPathPrefix, "/")
+		// srcName := path.Base(srcFileName)
 		// TODO: Finish implementing logic to match local copy in wshremote
 		for _, entry := range entries {
-			var destEntryPath string
-			if destHasSlash {
-				destEntryPath = destFileName + "/" + entry
-			} else {
+			tree.Add(entry)
+		}
+		if err = tree.Walk(func(path string, numChildren int) error {
+			log.Printf("path: %s, numChildren: %d", path, numChildren)
+			/*
 
-			if _, ok := destEntries[entry]; ok {
-				if !merge {
-					return fmt.Errorf("destination already exists, merge not specified: %v", destConn.GetFullURI())
+				relativePath := strings.TrimPrefix(entry, srcPathPrefix)
+				if !srcHasSlash {
+					relativePath = srcName + "/" + relativePath
 				}
-			}
+				destPath := destParentPrefix + relativePath
+				if _, ok := destEntries[destPath]; ok {
+					if !overwrite {
+						return fmt.Errorf("destination already exists, overwrite not specified: %v", destConn.GetFullURI())
+					}
+				}*/
+			return nil
+		}); err != nil {
+			return fmt.Errorf("error walking source directory: %w", err)
 		}
 	} else {
 		return fmt.Errorf("copy between different hosts not supported")
 	}
+	return nil
 }
 
 // cleanPathPrefix corrects paths for prefix filesystems (i.e. ones that don't have directories)

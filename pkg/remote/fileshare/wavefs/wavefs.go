@@ -290,7 +290,27 @@ func (c WaveClient) Stat(ctx context.Context, conn *connparse.Connection) (*wshr
 	fileInfo, err := filestore.WFS.Stat(ctx, zoneId, fileName)
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
-			return nil, fmt.Errorf("NOTFOUND: %w", err)
+			// attempt to list the directory
+			entries, err := c.ListEntries(ctx, conn, nil)
+			if err != nil {
+				return nil, fmt.Errorf("error listing entries: %w", err)
+			}
+			if len(entries) > 0 {
+				return &wshrpc.FileInfo{
+					Path:  conn.GetPathWithHost(),
+					Name:  fileName,
+					Dir:   fsutil.GetParentPathString(fileName),
+					Size:  0,
+					IsDir: true,
+					Mode:  DirMode,
+				}, nil
+			} else {
+				return &wshrpc.FileInfo{
+					Path:     conn.GetPathWithHost(),
+					Name:     fileName,
+					Dir:      fsutil.GetParentPathString(fileName),
+					NotFound: true}, nil
+			}
 		}
 		return nil, fmt.Errorf("error getting file info: %w", err)
 	}
@@ -432,7 +452,27 @@ func (c WaveClient) MoveInternal(ctx context.Context, srcConn, destConn *connpar
 }
 
 func (c WaveClient) CopyInternal(ctx context.Context, srcConn, destConn *connparse.Connection, opts *wshrpc.FileCopyOpts) error {
-	return fsutil.PrefixCopyInternal(ctx, srcConn, destConn, c, opts, func(ctx context.Context, srcPath, destPath string) error {
+	return fsutil.PrefixCopyInternal(ctx, srcConn, destConn, c, opts, func(ctx context.Context, prefix string) ([]string, error) {
+		zoneId := srcConn.Host
+		if zoneId == "" {
+			return nil, fmt.Errorf("zoneid not found in connection")
+		}
+		fileListOrig, err := filestore.WFS.ListFiles(ctx, zoneId)
+		if err != nil {
+			return nil, fmt.Errorf("error listing blockfiles: %w", err)
+		}
+		var fileList []string
+		for _, wf := range fileListOrig {
+			fileList = append(fileList, wf.Name)
+		}
+		var filteredList []string
+		for _, file := range fileList {
+			if strings.HasPrefix(file, prefix) {
+				filteredList = append(filteredList, file)
+			}
+		}
+		return filteredList, nil
+	}, func(ctx context.Context, srcPath, destPath string) error {
 		srcHost := srcConn.Host
 		srcFileName := strings.TrimPrefix(srcPath, srcHost+"/")
 		destHost := destConn.Host
