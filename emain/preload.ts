@@ -52,6 +52,7 @@ contextBridge.exposeInMainWorld("api", {
     onQuicklook: (filePath: string) => ipcRenderer.send("quicklook", filePath),
     openNativePath: (filePath: string) => ipcRenderer.send("open-native-path", filePath),
     captureScreenshot: (rect: Rectangle) => ipcRenderer.invoke("capture-screenshot", rect),
+    setKeyboardChordMode: () => ipcRenderer.send("set-keyboard-chord-mode"),
 });
 
 // Custom event for "new-window"
