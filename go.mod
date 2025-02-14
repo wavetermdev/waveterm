@@ -35,7 +35,7 @@ require (
 	golang.org/x/crypto v0.32.0
 	golang.org/x/mod v0.22.0
 	golang.org/x/sys v0.30.0
-	golang.org/x/term v0.28.0
+	golang.org/x/term v0.29.0
 	google.golang.org/api v0.220.0
 	gopkg.in/ini.v1 v1.67.0
 )
