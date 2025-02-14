@@ -90,7 +90,11 @@ func setBgRun(cmd *cobra.Command, args []string) (rtnErr error) {
 		if setBgOpacity < 0 || setBgOpacity > 1 {
 			return fmt.Errorf("opacity must be between 0.0 and 1.0")
 		}
-		meta["bg:opacity"] = setBgOpacity
+		if setBgClear {
+			meta["bg:*"] = true
+		} else {
+			meta["bg:opacity"] = setBgOpacity
+		}
 	} else if len(args) > 1 {
 		OutputHelpMessage(cmd)
 		return fmt.Errorf("too many arguments")
