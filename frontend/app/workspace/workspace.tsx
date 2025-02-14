@@ -4,15 +4,17 @@
 import { ErrorBoundary } from "@/app/element/errorboundary";
 import { CenteredDiv } from "@/app/element/quickelems";
 import { ModalsRenderer } from "@/app/modals/modalsrenderer";
+import { NotificationPopover } from "@/app/notification/notificationpopover";
+import { ContextMenuModel } from "@/app/store/contextmenu";
+import { RpcApi } from "@/app/store/wshclientapi";
+import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { TabBar } from "@/app/tab/tabbar";
 import { TabContent } from "@/app/tab/tabcontent";
-import { atoms, createBlock, isDev } from "@/store/global";
-import { isBlank, makeIconClass } from "@/util/util";
+import { atoms, createBlock, getApi, isDev } from "@/store/global";
+import { fireAndForget, isBlank, makeIconClass } from "@/util/util";
+import clsx from "clsx";
 import { useAtomValue } from "jotai";
 import { memo } from "react";
-import { NotificationPopover } from "../notification/notificationpopover";
-
-import clsx from "clsx";
 
 const iconRegex = /^[a-z0-9-]+$/;
 
@@ -56,12 +58,60 @@ const Widgets = memo(() => {
     };
     const showHelp = fullConfig?.settings?.["widget:showhelp"] ?? true;
     const widgets = sortByDisplayOrder(fullConfig?.widgets);
+
+    const handleWidgetsBarContextMenu = (e: React.MouseEvent) => {
+        e.preventDefault();
+        const menu: ContextMenuItem[] = [
+            {
+                label: "Edit widgets.json",
+                click: () => {
+                    fireAndForget(async () => {
+                        const path = `${getApi().getConfigDir()}/widgets.json`;
+                        const blockDef: BlockDef = {
+                            meta: { view: "preview", file: path },
+                        };
+                        await createBlock(blockDef, false, true);
+                    });
+                },
+            },
+            {
+                label: "Show Help Widgets",
+                submenu: [
+                    {
+                        label: "On",
+                        type: "checkbox",
+                        checked: showHelp,
+                        click: () => {
+                            fireAndForget(async () => {
+                                await RpcApi.SetConfigCommand(TabRpcClient, { "widget:showhelp": true });
+                            });
+                        },
+                    },
+                    {
+                        label: "Off",
+                        type: "checkbox",
+                        checked: !showHelp,
+                        click: () => {
+                            fireAndForget(async () => {
+                                await RpcApi.SetConfigCommand(TabRpcClient, { "widget:showhelp": false });
+                            });
+                        },
+                    },
+                ],
+            },
+        ];
+        ContextMenuModel.showContextMenu(menu, e);
+    };
+
     return (
-        <div className="flex flex-col w-12 overflow-hidden py-1 -ml-1 select-none">
+        <div
+            className="flex flex-col w-12 overflow-hidden py-1 -ml-1 select-none"
+            onContextMenu={handleWidgetsBarContextMenu}
+        >
             {widgets?.map((data, idx) => <Widget key={`widget-${idx}`} widget={data} />)}
+            <div className="flex-grow" />
             {showHelp ? (
                 <>
-                    <div className="flex-grow" />
                     <Widget key="tips" widget={tipsWidget} />
                     <Widget key="help" widget={helpWidget} />
                 </>

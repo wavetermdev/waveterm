@@ -680,6 +680,7 @@ declare global {
         "app:*"?: boolean;
         "app:globalhotkey"?: string;
         "app:dismissarchitecturewarning"?: boolean;
+        "app:defaultnewblock"?: string;
         "ai:*"?: boolean;
         "ai:preset"?: string;
         "ai:apitype"?: string;

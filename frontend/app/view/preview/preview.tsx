@@ -869,11 +869,6 @@ export class PreviewModel implements ViewModel {
     }
 }
 
-function makePreviewModel(blockId: string, nodeModel: BlockNodeModel): PreviewModel {
-    const previewModel = new PreviewModel(blockId, nodeModel);
-    return previewModel;
-}
-
 function MarkdownPreview({ model }: SpecializedViewProps) {
     const connName = useAtomValue(model.connection);
     const fileInfo = useAtomValue(model.statFile);
@@ -1242,4 +1237,4 @@ function formatRemoteUri(path: string, connection: string): string {
     return retVal;
 }
 
-export { formatRemoteUri, makePreviewModel, PreviewView };
+export { formatRemoteUri, PreviewView };

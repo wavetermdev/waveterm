@@ -282,6 +282,8 @@ declare global {
         // Background styling metadata for the block.
         blockBg?: jotai.Atom<MetaType>;
 
+        noHeader?: jotai.Atom<boolean>;
+
         // Whether the block manages its own connection (e.g., for remote access).
         manageConnection?: jotai.Atom<boolean>;
 

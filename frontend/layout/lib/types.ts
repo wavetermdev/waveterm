@@ -195,6 +195,7 @@ export interface LayoutTreeReplaceNodeAction extends LayoutTreeAction {
     type: LayoutTreeActionType.ReplaceNode;
     targetNodeId: string;
     newNode: LayoutNode;
+    focused?: boolean;
 }
 
 // SplitHorizontal: split the current block horizontally.

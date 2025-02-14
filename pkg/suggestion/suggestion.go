@@ -4,6 +4,7 @@
 package suggestion
 
 import (
+	"container/heap"
 	"context"
 	"fmt"
 	"io/fs"
@@ -322,103 +323,133 @@ func fetchBookmarkSuggestions(_ context.Context, data wshrpc.FetchSuggestionsDat
 	}, nil
 }
 
-// FetchSuggestions returns file suggestions using junegunn/fzf’s fuzzy matching.
+// Define a scored entry for fuzzy matching.
+type scoredEntry struct {
+	ent       fs.DirEntry
+	score     int
+	fileName  string
+	positions []int
+}
+
+// We'll use a heap to only keep the top MaxSuggestions when a search term is provided.
+// Define a min-heap so that the worst (lowest scoring) candidate is at the top.
+type scoredEntryHeap []scoredEntry
+
+// Less: lower score is “less”. For equal scores, a candidate with a longer filename is considered worse.
+func (h scoredEntryHeap) Len() int { return len(h) }
+func (h scoredEntryHeap) Less(i, j int) bool {
+	if h[i].score != h[j].score {
+		return h[i].score < h[j].score
+	}
+	return len(h[i].fileName) > len(h[j].fileName)
+}
+func (h scoredEntryHeap) Swap(i, j int)       { h[i], h[j] = h[j], h[i] }
+func (h *scoredEntryHeap) Push(x interface{}) { *h = append(*h, x.(scoredEntry)) }
+func (h *scoredEntryHeap) Pop() interface{} {
+	old := *h
+	n := len(old)
+	x := old[n-1]
+	*h = old[0 : n-1]
+	return x
+}
+
 func fetchFileSuggestions(_ context.Context, data wshrpc.FetchSuggestionsData) (*wshrpc.FetchSuggestionsResponse, error) {
 	// Only support file suggestions.
 	if data.SuggestionType != "file" {
 		return nil, fmt.Errorf("unsupported suggestion type: %q", data.SuggestionType)
 	}
 
-	// Resolve the base directory, the query prefix (for display) and the search term.
+	// Resolve the base directory, query prefix (for display) and search term.
 	baseDir, queryPrefix, searchTerm, err := resolveFileQuery(data.FileCwd, data.Query)
 	if err != nil {
 		return nil, fmt.Errorf("error resolving base dir: %w", err)
 	}
 
-	dirFd, err := os.Open(baseDir)
+	// Use a cancellable context for directory listing.
+	listingCtx, cancelFn := context.WithCancel(context.Background())
+	defer cancelFn()
+
+	entriesCh, err := listDirectory(listingCtx, baseDir, 1000)
 	if err != nil {
-		return nil, fmt.Errorf("error opening directory: %w", err)
-	}
-	defer dirFd.Close()
-
-	finfo, err := dirFd.Stat()
-	if err != nil {
-		return nil, fmt.Errorf("error getting directory info: %w", err)
-	}
-	if !finfo.IsDir() {
-		return nil, fmt.Errorf("not a directory: %s", baseDir)
+		return nil, fmt.Errorf("error listing directory: %w", err)
 	}
 
-	// Read up to 1000 entries.
-	dirEnts, err := dirFd.ReadDir(1000)
-	if err != nil {
-		return nil, fmt.Errorf("error reading directory: %w", err)
-	}
+	const maxEntries = MaxSuggestions // top-k entries
 
-	// Add parent directory (“..”) entry if not at the filesystem root.
-	if filepath.Dir(baseDir) != baseDir {
-		dirEnts = append(dirEnts, &MockDirEntry{
-			NameStr:  "..",
-			IsDirVal: true,
-			FileMode: fs.ModeDir | 0755,
-		})
-	}
+	// Always use a heap.
+	var topHeap scoredEntryHeap
+	heap.Init(&topHeap)
 
-	// For fuzzy matching we’ll compute a score for each candidate.
-	type scoredEntry struct {
-		ent       fs.DirEntry
-		score     int
-		fileName  string
-		positions []int
-	}
-	var scoredEntries []scoredEntry
-
-	// If a search term is provided, convert it to lowercase (per fzf’s API contract).
 	var patternRunes []rune
 	if searchTerm != "" {
 		patternRunes = []rune(strings.ToLower(searchTerm))
 	}
 
-	// Create a slab for temporary allocations in the fzf matching function.
 	var slab util.Slab
+	var index int // used for ordering when searchTerm is empty
 
-	// Iterate over directory entries.
-	for _, de := range dirEnts {
+	// Process each directory entry.
+	for result := range entriesCh {
+		if result.Err != nil {
+			return nil, fmt.Errorf("error reading directory: %w", result.Err)
+		}
+		de := result.Entry
 		fileName := de.Name()
-		score := 0
+		var score int
+		var candidatePositions []int
 
-		// If a search term was provided, perform fuzzy matching.
 		if searchTerm != "" {
-			// Convert candidate to lowercase for case-insensitive matching.
+			// Perform fuzzy matching.
 			candidate := strings.ToLower(fileName)
 			text := util.ToChars([]byte(candidate))
-			result, positions := algo.FuzzyMatchV2(false, true, true, &text, patternRunes, true, &slab)
-			if result.Score <= 0 {
-				// No match: skip this entry.
+			matchResult, positions := algo.FuzzyMatchV2(false, true, true, &text, patternRunes, true, &slab)
+			if matchResult.Score <= 0 {
+				index++
 				continue
 			}
-			score = result.Score
-			entry := scoredEntry{ent: de, score: score, fileName: fileName}
+			score = matchResult.Score
 			if positions != nil {
-				entry.positions = *positions
+				candidatePositions = *positions
 			}
-			scoredEntries = append(scoredEntries, entry)
 		} else {
-			scoredEntries = append(scoredEntries, scoredEntry{ent: de, score: score, fileName: fileName})
+			// Use ordering: first entry gets highest score.
+			score = maxEntries - index
+		}
+		index++
+
+		se := scoredEntry{
+			ent:       de,
+			score:     score,
+			fileName:  fileName,
+			positions: candidatePositions,
+		}
+
+		if topHeap.Len() < maxEntries {
+			heap.Push(&topHeap, se)
+		} else {
+			// Replace the worst candidate if this one is better.
+			worst := topHeap[0]
+			if se.score > worst.score || (se.score == worst.score && len(se.fileName) < len(worst.fileName)) {
+				heap.Pop(&topHeap)
+				heap.Push(&topHeap, se)
+			}
+		}
+		if searchTerm == "" && topHeap.Len() >= maxEntries {
+			break
 		}
 	}
 
-	// Sort entries by descending score (better matches first).
-	if searchTerm != "" {
-		sort.Slice(scoredEntries, func(i, j int) bool {
-			if scoredEntries[i].score != scoredEntries[j].score {
-				return scoredEntries[i].score > scoredEntries[j].score
-			}
-			return len(scoredEntries[i].fileName) < len(scoredEntries[j].fileName)
-		})
-	}
+	// Extract and sort the scored entries (highest score first).
+	scoredEntries := make([]scoredEntry, topHeap.Len())
+	copy(scoredEntries, topHeap)
+	sort.Slice(scoredEntries, func(i, j int) bool {
+		if scoredEntries[i].score != scoredEntries[j].score {
+			return scoredEntries[i].score > scoredEntries[j].score
+		}
+		return len(scoredEntries[i].fileName) < len(scoredEntries[j].fileName)
+	})
 
-	// Build up to MaxSuggestions suggestions
+	// Build suggestions from the scored entries.
 	var suggestions []wshrpc.SuggestionType
 	for _, candidate := range scoredEntries {
 		fileName := candidate.ent.Name()
@@ -426,7 +457,7 @@ func fetchFileSuggestions(_ context.Context, data wshrpc.FetchSuggestionsData) (
 		suggestionFileName := filepath.Join(queryPrefix, fileName)
 		offset := len(suggestionFileName) - len(fileName)
 		if offset > 0 && len(candidate.positions) > 0 {
-			// Adjust the match positions to account for the queryPrefix.
+			// Adjust match positions to account for the query prefix.
 			for j := range candidate.positions {
 				candidate.positions[j] += offset
 			}

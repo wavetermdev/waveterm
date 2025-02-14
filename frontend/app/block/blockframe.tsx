@@ -537,6 +537,8 @@ const BlockFrame_Default_Component = (props: BlockFrameProps) => {
     const [magnifiedBlockOpacityAtom] = React.useState(() => getSettingsKeyAtom("window:magnifiedblockopacity"));
     const magnifiedBlockOpacity = jotai.useAtomValue(magnifiedBlockOpacityAtom);
     const connBtnRef = React.useRef<HTMLDivElement>();
+    const noHeader = util.useAtomValueSafe(viewModel?.noHeader);
+
     React.useEffect(() => {
         if (!manageConnection) {
             return;
@@ -619,7 +621,7 @@ const BlockFrame_Default_Component = (props: BlockFrameProps) => {
                 />
             )}
             <div className="block-frame-default-inner" style={innerStyle}>
-                <ErrorBoundary fallback={headerElemNoView}>{headerElem}</ErrorBoundary>
+                {noHeader || <ErrorBoundary fallback={headerElemNoView}>{headerElem}</ErrorBoundary>}
                 {preview ? previewElem : children}
             </div>
             {preview || viewModel == null || !connModalOpen ? null : (
