@@ -105,6 +105,7 @@ export class WaveTabView extends WebContentsView {
         } else {
             if (this.resetChordModeTimeout) {
                 clearTimeout(this.resetChordModeTimeout);
+                this.resetChordModeTimeout = null;
             }
         }
     }
