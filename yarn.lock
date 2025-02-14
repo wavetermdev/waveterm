@@ -6027,12 +6027,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/node@npm:^22.13.1":
-  version: 22.13.1
-  resolution: "@types/node@npm:22.13.1"
+"@types/node@npm:^22.13.4":
+  version: 22.13.4
+  resolution: "@types/node@npm:22.13.4"
   dependencies:
     undici-types: "npm:~6.20.0"
-  checksum: 10c0/d4e56d41d8bd53de93da2651c0a0234e330bd7b1b6d071b1a94bd3b5ee2d9f387519e739c52a15c1faa4fb9d97e825b848421af4b2e50e6518011e7adb4a34b7
+  checksum: 10c0/3a234fa7766a3efc382cf81f66f474c26cdab2f54f43f757634c81c0444eb2160c2dabbde9741e4983078a318a88515b65416b5f1ab5478548579d7b3ead1d95
   languageName: node
   linkType: hard
 
@@ -16958,6 +16958,17 @@ __metadata:
   languageName: node
   linkType: hard
 
+"postcss@npm:^8.5.2":
+  version: 8.5.2
+  resolution: "postcss@npm:8.5.2"
+  dependencies:
+    nanoid: "npm:^3.3.8"
+    picocolors: "npm:^1.1.1"
+    source-map-js: "npm:^1.2.1"
+  checksum: 10c0/3044d49bc725029ab62292e8bf9849741251b95f3b754e191bf8b4025414d40ec3b4ac05c5a563d4b50060b5c8e96683eb4d783d8d8fa3867eb7b763cbe66127
+  languageName: node
+  linkType: hard
+
 "prebuild-install@npm:^7.1.1":
   version: 7.1.2
   resolution: "prebuild-install@npm:7.1.2"
@@ -21742,7 +21753,7 @@ __metadata:
     "@types/css-tree": "npm:^2"
     "@types/debug": "npm:^4"
     "@types/electron": "npm:^1.6.12"
-    "@types/node": "npm:^22.13.1"
+    "@types/node": "npm:^22.13.4"
     "@types/papaparse": "npm:^5"
     "@types/pngjs": "npm:^6.0.5"
     "@types/prop-types": "npm:^15"
@@ -21790,7 +21801,7 @@ __metadata:
     papaparse: "npm:^5.5.2"
     parse-srcset: "npm:^1.0.2"
     pngjs: "npm:^7.0.0"
-    postcss: "npm:^8.5.1"
+    postcss: "npm:^8.5.2"
     prettier: "npm:^3.4.2"
     prettier-plugin-jsdoc: "npm:^1.3.2"
     prettier-plugin-organize-imports: "npm:^4.1.0"
