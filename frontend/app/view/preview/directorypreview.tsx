@@ -360,7 +360,7 @@ function DirectoryTable({
                 return;
             }
         }
-    }, [data]);
+    }, [table]);
     const columnSizeVars = useMemo(() => {
         const headers = table.getFlatHeaders();
         const colSizes: { [key: string]: number } = {};
