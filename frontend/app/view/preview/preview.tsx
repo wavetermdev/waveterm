@@ -441,14 +441,14 @@ export class PreviewModel implements ViewModel {
         const fileContentAtom = atom(
             async (get) => {
                 const newContent = get(this.newFileContent);
-                const savedContent = get(this.fileContentSaved);
-                const fullFile = await get(fullFileAtom);
                 if (newContent != null) {
                     return newContent;
                 }
+                const savedContent = get(this.fileContentSaved);
                 if (savedContent != null) {
                     return savedContent;
                 }
+                const fullFile = await get(fullFileAtom);
                 return base64ToString(fullFile?.data64);
             },
             (_, set, update: string) => {
