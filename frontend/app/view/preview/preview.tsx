@@ -1236,19 +1236,24 @@ const ErrorOverlay = memo(({ errorMsg, resetOverlay }: { errorMsg: ErrorMsg; res
     const showDismiss = errorMsg.showDismiss ?? true;
     const buttonClassName = "outlined grey font-size-11 vertical-padding-3 horizontal-padding-7";
 
+    let iconClass = "fa-solid fa-circle-exclamation text-[var(--error-color)] text-base";
+    if (errorMsg.level == "warning") {
+        iconClass = "fa-solid fa-triangle-exclamation text-[var(--warning-color)] text-base";
+    }
+
     const handleCopyToClipboard = useCallback(async () => {
         await navigator.clipboard.writeText(errorMsg.text);
     }, [errorMsg.text]);
 
     return (
-        <div className="absolute top-[0] left-1.5 right-1.5 z-[var(--zindex-block-mask-inner)] overflow-hidden bg-[var(--error-status-overlay-bg-color)] backdrop-blur-[50px] rounded-md shadow-lg">
+        <div className="absolute top-[0] left-1.5 right-1.5 z-[var(--zindex-block-mask-inner)] overflow-hidden bg-[var(--conn-status-overlay-bg-color)] backdrop-blur-[50px] rounded-md shadow-lg">
             <div className="flex flex-row justify-between p-2.5 pl-3 font-[var(--base-font)] text-[var(--secondary-text-color)]">
                 <div
                     className={clsx("flex flex-row items-center gap-3 grow min-w-0", {
                         "items-start": true,
                     })}
                 >
-                    <i className=" text-[#e6ba1e] text-base"></i>
+                    <i className={iconClass}></i>
 
                     <div className="flex flex-col items-start gap-1 grow w-full">
                         <div className="max-w-full text-xs font-semibold leading-4 tracking-[0.11px] text-white">

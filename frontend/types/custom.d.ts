@@ -439,6 +439,7 @@ declare global {
     type ErrorMsg = {
         status: string;
         text: string;
+        level?: "error" | "warning";
         buttons?: Array<ErrorButtonDef>;
         closeAction?: () => void;
         showDismiss?: boolean;
