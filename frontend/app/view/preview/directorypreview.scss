@@ -32,6 +32,7 @@
             top: 0;
             z-index: 10;
             width: 100%;
+            min-width: fit-content;
             border-bottom: 1px solid var(--border-color);
 
             .dir-table-head-row {
@@ -88,6 +89,7 @@
         .dir-table-body {
             display: flex;
             flex-direction: column;
+            padding: 0 5px 5px 5px;
             .dir-table-body-search-display {
                 display: flex;
                 border-radius: 3px;

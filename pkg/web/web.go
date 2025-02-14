@@ -1,4 +1,4 @@
-// Copyright 2024, Command Line Inc.
+// Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 package web
@@ -25,6 +25,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/docsite"
 	"github.com/wavetermdev/waveterm/pkg/filestore"
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
+	"github.com/wavetermdev/waveterm/pkg/schema"
 	"github.com/wavetermdev/waveterm/pkg/service"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
@@ -243,11 +244,12 @@ func handleLocalStreamFile(w http.ResponseWriter, r *http.Request, path string, 
 	}
 }
 
-func handleRemoteStreamFile(w http.ResponseWriter, _ *http.Request, conn string, path string, no404 bool) error {
+func handleRemoteStreamFile(w http.ResponseWriter, req *http.Request, conn string, path string, no404 bool) error {
 	client := wshserver.GetMainRpcClient()
 	streamFileData := wshrpc.CommandRemoteStreamFileData{Path: path}
 	route := wshutil.MakeConnectionRouteId(conn)
-	rtnCh := wshclient.RemoteStreamFileCommand(client, streamFileData, &wshrpc.RpcOpts{Route: route})
+	rpcOpts := &wshrpc.RpcOpts{Route: route, Timeout: 60 * 1000}
+	rtnCh := wshclient.RemoteStreamFileCommand(client, streamFileData, rpcOpts)
 	firstPk := true
 	var fileInfo *wshrpc.FileInfo
 	loopDone := false
@@ -261,45 +263,54 @@ func handleRemoteStreamFile(w http.ResponseWriter, _ *http.Request, conn string,
 			}
 		}()
 	}()
-	for respUnion := range rtnCh {
-		if respUnion.Error != nil {
-			return respUnion.Error
-		}
-		if firstPk {
-			firstPk = false
-			if len(respUnion.Response.FileInfo) != 1 {
-				return fmt.Errorf("stream file protocol error, first pk fileinfo len=%d", len(respUnion.Response.FileInfo))
+	ctx := req.Context()
+	for {
+		select {
+		case <-ctx.Done():
+			rpcOpts.StreamCancelFn()
+			return ctx.Err()
+		case respUnion, ok := <-rtnCh:
+			if !ok {
+				loopDone = true
+				return nil
 			}
-			fileInfo = respUnion.Response.FileInfo[0]
-			if fileInfo.NotFound {
-				if no404 {
-					serveTransparentGIF(w)
-					return nil
-				} else {
-					return fmt.Errorf("file not found: %q", path)
+			if respUnion.Error != nil {
+				return respUnion.Error
+			}
+			if firstPk {
+				firstPk = false
+				if respUnion.Response.Info == nil {
+					return fmt.Errorf("stream file protocol error, fileinfo is empty")
 				}
+				fileInfo = respUnion.Response.Info
+				if fileInfo.NotFound {
+					if no404 {
+						serveTransparentGIF(w)
+						return nil
+					} else {
+						return fmt.Errorf("file not found: %q", path)
+					}
+				}
+				if fileInfo.IsDir {
+					return fmt.Errorf("cannot stream directory: %q", path)
+				}
+				w.Header().Set(ContentTypeHeaderKey, fileInfo.MimeType)
+				w.Header().Set(ContentLengthHeaderKey, fmt.Sprintf("%d", fileInfo.Size))
+				continue
 			}
-			if fileInfo.IsDir {
-				return fmt.Errorf("cannot stream directory: %q", path)
+			if respUnion.Response.Data64 == "" {
+				continue
 			}
-			w.Header().Set(ContentTypeHeaderKey, fileInfo.MimeType)
-			w.Header().Set(ContentLengthHeaderKey, fmt.Sprintf("%d", fileInfo.Size))
-			continue
-		}
-		if respUnion.Response.Data64 == "" {
-			continue
-		}
-		decoder := base64.NewDecoder(base64.StdEncoding, bytes.NewReader([]byte(respUnion.Response.Data64)))
-		_, err := io.Copy(w, decoder)
-		if err != nil {
-			log.Printf("error streaming file %q: %v\n", path, err)
-			// not sure what to do here, the headers have already been sent.
-			// just return
-			return nil
+			decoder := base64.NewDecoder(base64.StdEncoding, bytes.NewReader([]byte(respUnion.Response.Data64)))
+			_, err := io.Copy(w, decoder)
+			if err != nil {
+				log.Printf("error streaming file %q: %v\n", path, err)
+				// not sure what to do here, the headers have already been sent.
+				// just return
+				return nil
+			}
 		}
 	}
-	loopDone = true
-	return nil
 }
 
 func handleStreamFile(w http.ResponseWriter, r *http.Request) {
@@ -358,7 +369,7 @@ type ClientActiveState struct {
 func WebFnWrap(opts WebFnOpts, fn WebFnType) WebFnType {
 	return func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
-			recErr := panichandler.PanicHandler("WebFnWrap")
+			recErr := panichandler.PanicHandler("WebFnWrap", recover())
 			if recErr == nil {
 				return
 			}
@@ -409,6 +420,7 @@ func MakeUnixListener() (net.Listener, error) {
 }
 
 const docsitePrefix = "/docsite/"
+const schemaPrefix = "/schema/"
 
 // blocking
 func RunWebServer(listener net.Listener) {
@@ -418,6 +430,7 @@ func RunWebServer(listener net.Listener) {
 	gr.HandleFunc("/wave/service", WebFnWrap(WebFnOpts{JsonErrors: true}, handleService))
 	gr.HandleFunc("/vdom/{uuid}/{path:.*}", WebFnWrap(WebFnOpts{AllowCaching: true}, handleVDom))
 	gr.PathPrefix(docsitePrefix).Handler(http.StripPrefix(docsitePrefix, docsite.GetDocsiteHandler()))
+	gr.PathPrefix(schemaPrefix).Handler(http.StripPrefix(schemaPrefix, schema.GetSchemaHandler()))
 	handler := http.TimeoutHandler(gr, HttpTimeoutDuration, "Timeout")
 	if wavebase.IsDevMode() {
 		handler = handlers.CORS(handlers.AllowedOrigins([]string{"*"}))(handler)

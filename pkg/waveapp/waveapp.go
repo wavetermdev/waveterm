@@ -1,4 +1,4 @@
-// Copyright 2024, Command Line Inc.
+// Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 package waveapp
@@ -176,12 +176,12 @@ func (client *Client) Connect() error {
 	if err != nil {
 		return fmt.Errorf("error extracting socket name from %s: %v", wshutil.WaveJwtTokenVarName, err)
 	}
-	rpcClient, err := wshutil.SetupDomainSocketRpcClient(sockName, client.ServerImpl)
+	rpcClient, err := wshutil.SetupDomainSocketRpcClient(sockName, client.ServerImpl, "vdomclient")
 	if err != nil {
 		return fmt.Errorf("error setting up domain socket rpc client: %v", err)
 	}
 	client.RpcClient = rpcClient
-	authRtn, err := wshclient.AuthenticateCommand(client.RpcClient, jwtToken, &wshrpc.RpcOpts{NoResponse: true})
+	authRtn, err := wshclient.AuthenticateCommand(client.RpcClient, jwtToken, nil)
 	if err != nil {
 		return fmt.Errorf("error authenticating rpc connection: %v", err)
 	}

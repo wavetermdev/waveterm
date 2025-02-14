@@ -38,9 +38,9 @@ function convertKey(platform: Platform, key: string): [any, string, boolean] {
         return ["⇧", "Shift", true];
     }
     if (key == "Escape") {
-        return ["Esc", null, false];
+        return ["Esc", "Escape", false];
     }
-    return [key, null, false];
+    return [key.length > 1 ? key : key.toUpperCase(), key, false];
 }
 
 // Custom KBD component
@@ -50,7 +50,7 @@ const KbdInternal = ({ k }: { k: string }) => {
     const keyElems = keys.map((key, i) => {
         const [displayKey, title, symbol] = convertKey(platform, key);
         return (
-            <kbd key={i} title={title} className={symbol ? "symbol" : null}>
+            <kbd key={i} title={title} aria-label={title} className={symbol ? "symbol" : null}>
                 {displayKey}
             </kbd>
         );
@@ -60,4 +60,16 @@ const KbdInternal = ({ k }: { k: string }) => {
 
 export const Kbd = ({ k }: { k: string }) => {
     return <BrowserOnly fallback={<kbd>{k}</kbd>}>{() => <KbdInternal k={k} />}</BrowserOnly>;
+};
+
+export const KbdChord = ({ karr }: { karr: string[] }) => {
+    const elems: React.ReactNode[] = [];
+    for (let i = 0; i < karr.length; i++) {
+        if (i > 0) {
+            elems.push(<span style={{ padding: "0 2px" }}>+</span>);
+        }
+        elems.push(<Kbd key={i} k={karr[i]} />);
+    }
+    const fullElem = <span style={{ whiteSpace: "nowrap" }}>{elems}</span>;
+    return <BrowserOnly fallback={null}>{() => fullElem}</BrowserOnly>;
 };

@@ -1,4 +1,4 @@
-// Copyright 2024, Command Line Inc.
+// Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 package remote
@@ -23,12 +23,14 @@ import (
 
 	"github.com/kevinburke/ssh_config"
 	"github.com/skeema/knownhosts"
+	"github.com/wavetermdev/waveterm/pkg/blocklogger"
+	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/trimquotes"
 	"github.com/wavetermdev/waveterm/pkg/userinput"
 	"github.com/wavetermdev/waveterm/pkg/util/shellutil"
+	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/wconfig"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/agent"
 	xknownhosts "golang.org/x/crypto/ssh/knownhosts"
@@ -70,9 +72,19 @@ type ConnectionError struct {
 
 func (ce ConnectionError) Error() string {
 	if ce.CurrentClient == nil {
-		return fmt.Sprintf("Connecting to %+#v, Error: %v", ce.NextOpts, ce.Err)
+		return fmt.Sprintf("Connecting to %s, Error: %v", ce.NextOpts, ce.Err)
 	}
-	return fmt.Sprintf("Connecting from %v to %+#v (jump number %d), Error: %v", ce.CurrentClient, ce.NextOpts, ce.JumpNum, ce.Err)
+	return fmt.Sprintf("Connecting from %v to %s (jump number %d), Error: %v", ce.CurrentClient, ce.NextOpts, ce.JumpNum, ce.Err)
+}
+
+func SimpleMessageFromPossibleConnectionError(err error) string {
+	if err == nil {
+		return ""
+	}
+	if ce, ok := err.(ConnectionError); ok {
+		return ce.Err.Error()
+	}
+	return err.Error()
 }
 
 // This exists to trick the ssh library into continuing to try
@@ -102,7 +114,7 @@ func createDummySigner() ([]ssh.Signer, error) {
 // they were successes. An error in this function prevents any other
 // keys from being attempted. But if there's an error because of a dummy
 // file, the library can still try again with a new key.
-func createPublicKeyCallback(connCtx context.Context, sshKeywords *wshrpc.ConnKeywords, authSockSignersExt []ssh.Signer, agentClient agent.ExtendedAgent, debugInfo *ConnectionDebugInfo) func() ([]ssh.Signer, error) {
+func createPublicKeyCallback(connCtx context.Context, sshKeywords *wconfig.ConnKeywords, authSockSignersExt []ssh.Signer, agentClient agent.ExtendedAgent, debugInfo *ConnectionDebugInfo) func() ([]ssh.Signer, error) {
 	var identityFiles []string
 	existingKeys := make(map[string][]byte)
 
@@ -128,7 +140,13 @@ func createPublicKeyCallback(connCtx context.Context, sshKeywords *wshrpc.ConnKe
 	authSockSigners = append(authSockSigners, authSockSignersExt...)
 	authSockSignersPtr := &authSockSigners
 
-	return func() ([]ssh.Signer, error) {
+	return func() (outSigner []ssh.Signer, outErr error) {
+		defer func() {
+			panicErr := panichandler.PanicHandler("sshclient:publickey-callback", recover())
+			if panicErr != nil {
+				outErr = panicErr
+			}
+		}()
 		// try auth sock
 		if len(*authSockSignersPtr) != 0 {
 			authSockSigner := (*authSockSignersPtr)[0]
@@ -140,6 +158,7 @@ func createPublicKeyCallback(connCtx context.Context, sshKeywords *wshrpc.ConnKe
 			return nil, ConnectionError{ConnectionDebugInfo: debugInfo, Err: fmt.Errorf("no identity files remaining")}
 		}
 		identityFile := (*identityFilesPtr)[0]
+		blocklogger.Infof(connCtx, "[conndebug] trying keyfile %q...\n", identityFile)
 		*identityFilesPtr = (*identityFilesPtr)[1:]
 		privateKey, ok := existingKeys[identityFile]
 		if !ok {
@@ -152,7 +171,7 @@ func createPublicKeyCallback(connCtx context.Context, sshKeywords *wshrpc.ConnKe
 		if err == nil {
 			signer, err := ssh.NewSignerFromKey(unencryptedPrivateKey)
 			if err == nil {
-				if sshKeywords.SshAddKeysToAgent && agentClient != nil {
+				if utilfn.SafeDeref(sshKeywords.SshAddKeysToAgent) && agentClient != nil {
 					agentClient.Add(agent.AddedKey{
 						PrivateKey: unencryptedPrivateKey,
 					})
@@ -166,7 +185,7 @@ func createPublicKeyCallback(connCtx context.Context, sshKeywords *wshrpc.ConnKe
 		}
 
 		// batch mode deactivates user input
-		if sshKeywords.SshBatchMode {
+		if utilfn.SafeDeref(sshKeywords.SshBatchMode) {
 			// skip this key and try with the next
 			return createDummySigner()
 		}
@@ -195,7 +214,7 @@ func createPublicKeyCallback(connCtx context.Context, sshKeywords *wshrpc.ConnKe
 			// skip this key and try with the next
 			return createDummySigner()
 		}
-		if sshKeywords.SshAddKeysToAgent && agentClient != nil {
+		if utilfn.SafeDeref(sshKeywords.SshAddKeysToAgent) && agentClient != nil {
 			agentClient.Add(agent.AddedKey{
 				PrivateKey: unencryptedPrivateKey,
 			})
@@ -205,7 +224,14 @@ func createPublicKeyCallback(connCtx context.Context, sshKeywords *wshrpc.ConnKe
 }
 
 func createInteractivePasswordCallbackPrompt(connCtx context.Context, remoteDisplayName string, debugInfo *ConnectionDebugInfo) func() (secret string, err error) {
-	return func() (secret string, err error) {
+	return func() (secret string, outErr error) {
+		defer func() {
+			panicErr := panichandler.PanicHandler("sshclient:password-callback", recover())
+			if panicErr != nil {
+				outErr = panicErr
+			}
+		}()
+		blocklogger.Infof(connCtx, "[conndebug] Password Authentication requested from connection %s...\n", remoteDisplayName)
 		ctx, cancelFn := context.WithTimeout(connCtx, 60*time.Second)
 		defer cancelFn()
 		queryText := fmt.Sprintf(
@@ -220,14 +246,22 @@ func createInteractivePasswordCallbackPrompt(connCtx context.Context, remoteDisp
 		}
 		response, err := userinput.GetUserInput(ctx, request)
 		if err != nil {
+			blocklogger.Infof(connCtx, "[conndebug] ERROR Password Authentication failed: %v\n", SimpleMessageFromPossibleConnectionError(err))
 			return "", ConnectionError{ConnectionDebugInfo: debugInfo, Err: err}
 		}
+		blocklogger.Infof(connCtx, "[conndebug] got password from user, sending to ssh\n")
 		return response.Text, nil
 	}
 }
 
 func createInteractiveKbdInteractiveChallenge(connCtx context.Context, remoteName string, debugInfo *ConnectionDebugInfo) func(name, instruction string, questions []string, echos []bool) (answers []string, err error) {
-	return func(name, instruction string, questions []string, echos []bool) (answers []string, err error) {
+	return func(name, instruction string, questions []string, echos []bool) (answers []string, outErr error) {
+		defer func() {
+			panicErr := panichandler.PanicHandler("sshclient:kbdinteractive-callback", recover())
+			if panicErr != nil {
+				outErr = panicErr
+			}
+		}()
 		if len(questions) != len(echos) {
 			return nil, fmt.Errorf("bad response from server: questions has len %d, echos has len %d", len(questions), len(echos))
 		}
@@ -315,7 +349,7 @@ func writeToKnownHosts(knownHostsFile string, newLine string, getUserVerificatio
 	return f.Close()
 }
 
-func createUnknownKeyVerifier(knownHostsFile string, hostname string, remote string, key ssh.PublicKey) func() (*userinput.UserInputResponse, error) {
+func createUnknownKeyVerifier(ctx context.Context, knownHostsFile string, hostname string, remote string, key ssh.PublicKey) func() (*userinput.UserInputResponse, error) {
 	base64Key := base64.StdEncoding.EncodeToString(key.Marshal())
 	queryText := fmt.Sprintf(
 		"The authenticity of host '%s (%s)' can't be established "+
@@ -332,7 +366,7 @@ func createUnknownKeyVerifier(knownHostsFile string, hostname string, remote str
 		Title:        "Known Hosts Key Missing",
 	}
 	return func() (*userinput.UserInputResponse, error) {
-		ctx, cancelFn := context.WithTimeout(context.Background(), 60*time.Second)
+		ctx, cancelFn := context.WithTimeout(ctx, 60*time.Second)
 		defer cancelFn()
 		resp, err := userinput.GetUserInput(ctx, request)
 		if err != nil {
@@ -385,7 +419,7 @@ func lineContainsMatch(line []byte, matches [][]byte) bool {
 	return false
 }
 
-func createHostKeyCallback(sshKeywords *wshrpc.ConnKeywords) (ssh.HostKeyCallback, HostKeyAlgorithms, error) {
+func createHostKeyCallback(ctx context.Context, sshKeywords *wconfig.ConnKeywords) (ssh.HostKeyCallback, HostKeyAlgorithms, error) {
 	globalKnownHostsFiles := sshKeywords.SshGlobalKnownHostsFile
 	userKnownHostsFiles := sshKeywords.SshUserKnownHostsFile
 
@@ -456,7 +490,13 @@ func createHostKeyCallback(sshKeywords *wshrpc.ConnKeywords) (ssh.HostKeyCallbac
 		}
 	}
 
-	waveHostKeyCallback := func(hostname string, remote net.Addr, key ssh.PublicKey) error {
+	waveHostKeyCallback := func(hostname string, remote net.Addr, key ssh.PublicKey) (outErr error) {
+		defer func() {
+			panicErr := panichandler.PanicHandler("sshclient:wave-hostkey-callback", recover())
+			if panicErr != nil {
+				outErr = panicErr
+			}
+		}()
 		err := basicCallback(hostname, remote, key)
 		if err == nil {
 			// success
@@ -476,7 +516,7 @@ func createHostKeyCallback(sshKeywords *wshrpc.ConnKeywords) (ssh.HostKeyCallbac
 			err := fmt.Errorf("placeholder, should not be returned") // a null value here can cause problems with empty slice
 			for _, filename := range knownHostsFiles {
 				newLine := xknownhosts.Line([]string{xknownhosts.Normalize(hostname)}, key)
-				getUserVerification := createUnknownKeyVerifier(filename, hostname, remote.String(), key)
+				getUserVerification := createUnknownKeyVerifier(ctx, filename, hostname, remote.String(), key)
 				err = writeToKnownHosts(filename, newLine, getUserVerification)
 				if err == nil {
 					break
@@ -551,17 +591,28 @@ func createHostKeyCallback(sshKeywords *wshrpc.ConnKeywords) (ssh.HostKeyCallbac
 	return waveHostKeyCallback, hostKeyAlgorithms, nil
 }
 
-func createClientConfig(connCtx context.Context, sshKeywords *wshrpc.ConnKeywords, debugInfo *ConnectionDebugInfo) (*ssh.ClientConfig, error) {
-	remoteName := sshKeywords.SshUser + "@" + xknownhosts.Normalize(sshKeywords.SshHostName+":"+sshKeywords.SshPort)
+func createClientConfig(connCtx context.Context, sshKeywords *wconfig.ConnKeywords, debugInfo *ConnectionDebugInfo) (*ssh.ClientConfig, error) {
+	chosenUser := utilfn.SafeDeref(sshKeywords.SshUser)
+	chosenHostName := utilfn.SafeDeref(sshKeywords.SshHostName)
+	chosenPort := utilfn.SafeDeref(sshKeywords.SshPort)
+	remoteName := xknownhosts.Normalize(chosenHostName + ":" + chosenPort)
+	if chosenUser != "" {
+		remoteName = chosenUser + "@" + remoteName
+	}
 
 	var authSockSigners []ssh.Signer
 	var agentClient agent.ExtendedAgent
-	conn, err := net.Dial("unix", sshKeywords.SshIdentityAgent)
-	if err != nil {
-		log.Printf("Failed to open Identity Agent Socket: %v", err)
-	} else {
-		agentClient = agent.NewClient(conn)
-		authSockSigners, _ = agentClient.Signers()
+
+	// IdentitiesOnly indicates that only the keys listed in the identity and certificate files or passed as arguments should be used, even if there are matches in the SSH Agent, PKCS11Provider, or SecurityKeyProvider. See https://man.openbsd.org/ssh_config#IdentitiesOnly
+	// TODO: Update if we decide to support PKCS11Provider and SecurityKeyProvider
+	if !utilfn.SafeDeref(sshKeywords.SshIdentitiesOnly) {
+		conn, err := net.Dial("unix", utilfn.SafeDeref(sshKeywords.SshIdentityAgent))
+		if err != nil {
+			log.Printf("Failed to open Identity Agent Socket: %v", err)
+		} else {
+			agentClient = agent.NewClient(conn)
+			authSockSigners, _ = agentClient.Signers()
+		}
 	}
 
 	publicKeyCallback := ssh.PublicKeysCallback(createPublicKeyCallback(connCtx, sshKeywords, authSockSigners, agentClient, debugInfo))
@@ -577,9 +628,9 @@ func createClientConfig(connCtx context.Context, sshKeywords *wshrpc.ConnKeyword
 
 	// note: batch mode turns off interactive input
 	authMethodActiveMap := map[string]bool{
-		"publickey":            sshKeywords.SshPubkeyAuthentication,
-		"keyboard-interactive": sshKeywords.SshKbdInteractiveAuthentication && !sshKeywords.SshBatchMode,
-		"password":             sshKeywords.SshPasswordAuthentication && !sshKeywords.SshBatchMode,
+		"publickey":            utilfn.SafeDeref(sshKeywords.SshPubkeyAuthentication),
+		"keyboard-interactive": utilfn.SafeDeref(sshKeywords.SshKbdInteractiveAuthentication) && !utilfn.SafeDeref(sshKeywords.SshBatchMode),
+		"password":             utilfn.SafeDeref(sshKeywords.SshPasswordAuthentication) && !utilfn.SafeDeref(sshKeywords.SshBatchMode),
 	}
 
 	var authMethods []ssh.AuthMethod
@@ -595,14 +646,14 @@ func createClientConfig(connCtx context.Context, sshKeywords *wshrpc.ConnKeyword
 		authMethods = append(authMethods, authMethod)
 	}
 
-	hostKeyCallback, hostKeyAlgorithms, err := createHostKeyCallback(sshKeywords)
+	hostKeyCallback, hostKeyAlgorithms, err := createHostKeyCallback(connCtx, sshKeywords)
 	if err != nil {
 		return nil, err
 	}
 
-	networkAddr := sshKeywords.SshHostName + ":" + sshKeywords.SshPort
+	networkAddr := chosenHostName + ":" + chosenPort
 	return &ssh.ClientConfig{
-		User:              sshKeywords.SshUser,
+		User:              chosenUser,
 		Auth:              authMethods,
 		HostKeyCallback:   hostKeyCallback,
 		HostKeyAlgorithms: hostKeyAlgorithms(networkAddr),
@@ -614,24 +665,31 @@ func connectInternal(ctx context.Context, networkAddr string, clientConfig *ssh.
 	var err error
 	if currentClient == nil {
 		d := net.Dialer{Timeout: clientConfig.Timeout}
+		blocklogger.Infof(ctx, "[conndebug] ssh dial %s\n", networkAddr)
 		clientConn, err = d.DialContext(ctx, "tcp", networkAddr)
 		if err != nil {
+			blocklogger.Infof(ctx, "[conndebug] ERROR dial error: %v\n", err)
 			return nil, err
 		}
 	} else {
+		blocklogger.Infof(ctx, "[conndebug] ssh dial (from client) %s\n", networkAddr)
 		clientConn, err = currentClient.DialContext(ctx, "tcp", networkAddr)
 		if err != nil {
+			blocklogger.Infof(ctx, "[conndebug] ERROR dial error: %v\n", err)
 			return nil, err
 		}
 	}
 	c, chans, reqs, err := ssh.NewClientConn(clientConn, networkAddr, clientConfig)
 	if err != nil {
+		blocklogger.Infof(ctx, "[conndebug] ERROR ssh auth/negotiation: %s\n", SimpleMessageFromPossibleConnectionError(err))
 		return nil, err
 	}
+	blocklogger.Infof(ctx, "[conndebug] successful ssh connection to %s\n", networkAddr)
 	return ssh.NewClient(c, chans, reqs), nil
 }
 
-func ConnectToClient(connCtx context.Context, opts *SSHOpts, currentClient *ssh.Client, jumpNum int32, connFlags *wshrpc.ConnKeywords) (*ssh.Client, int32, error) {
+func ConnectToClient(connCtx context.Context, opts *SSHOpts, currentClient *ssh.Client, jumpNum int32, connFlags *wconfig.ConnKeywords) (*ssh.Client, int32, error) {
+	blocklogger.Infof(connCtx, "[conndebug] ConnectToClient %s (jump:%d)...\n", opts.String(), jumpNum)
 	debugInfo := &ConnectionDebugInfo{
 		CurrentClient: currentClient,
 		NextOpts:      opts,
@@ -640,26 +698,54 @@ func ConnectToClient(connCtx context.Context, opts *SSHOpts, currentClient *ssh.
 	if jumpNum > SshProxyJumpMaxDepth {
 		return nil, jumpNum, ConnectionError{ConnectionDebugInfo: debugInfo, Err: fmt.Errorf("ProxyJump %d exceeds Wave's max depth of %d", jumpNum, SshProxyJumpMaxDepth)}
 	}
-	// todo print final warning if logging gets turned off
-	sshConfigKeywords, err := findSshConfigKeywords(opts.SSHHost)
-	if err != nil {
-		return nil, debugInfo.JumpNum, ConnectionError{ConnectionDebugInfo: debugInfo, Err: err}
-	}
-
-	connFlags.SshUser = opts.SSHUser
-	connFlags.SshHostName = opts.SSHHost
-	connFlags.SshPort = fmt.Sprintf("%d", opts.SSHPort)
 
 	rawName := opts.String()
-	savedKeywords, ok := wconfig.ReadFullConfig().Connections[rawName]
+	fullConfig := wconfig.GetWatcher().GetFullConfig()
+	internalSshConfigKeywords, ok := fullConfig.Connections[rawName]
 	if !ok {
-		savedKeywords = wshrpc.ConnKeywords{}
+		internalSshConfigKeywords = wconfig.ConnKeywords{}
 	}
 
-	sshKeywords, err := combineSshKeywords(connFlags, sshConfigKeywords, &savedKeywords)
-	if err != nil {
-		return nil, debugInfo.JumpNum, ConnectionError{ConnectionDebugInfo: debugInfo, Err: err}
+	var sshConfigKeywords *wconfig.ConnKeywords
+	if utilfn.SafeDeref(internalSshConfigKeywords.ConnIgnoreSshConfig) {
+		var err error
+		sshConfigKeywords, err = findSshDefaults(opts.SSHHost)
+		if err != nil {
+			err = fmt.Errorf("cannot determine default config keywords: %w", err)
+			return nil, debugInfo.JumpNum, ConnectionError{ConnectionDebugInfo: debugInfo, Err: err}
+		}
+	} else {
+		var err error
+		sshConfigKeywords, err = findSshConfigKeywords(opts.SSHHost)
+		if err != nil {
+			err = fmt.Errorf("cannot determine config keywords: %w", err)
+			return nil, debugInfo.JumpNum, ConnectionError{ConnectionDebugInfo: debugInfo, Err: err}
+		}
 	}
+
+	parsedKeywords := &wconfig.ConnKeywords{}
+	if opts.SSHUser != "" {
+		parsedKeywords.SshUser = &opts.SSHUser
+	}
+	if opts.SSHPort != "" {
+		parsedKeywords.SshPort = &opts.SSHPort
+	}
+
+	// cascade order:
+	//   ssh config -> (optional) internal config -> specified flag keywords -> parsed keywords
+	partialMerged := sshConfigKeywords
+	partialMerged = mergeKeywords(partialMerged, &internalSshConfigKeywords)
+	partialMerged = mergeKeywords(partialMerged, connFlags)
+	sshKeywords := mergeKeywords(partialMerged, parsedKeywords)
+
+	// handle these separately since
+	// - they append
+	// - since they append, the order is reversed
+	// - there is no reason to not include the internal config
+	// - they are never part of the parsedKeywords
+	sshKeywords.SshIdentityFile = append(sshKeywords.SshIdentityFile, connFlags.SshIdentityFile...)
+	sshKeywords.SshIdentityFile = append(sshKeywords.SshIdentityFile, internalSshConfigKeywords.SshIdentityFile...)
+	sshKeywords.SshIdentityFile = append(sshKeywords.SshIdentityFile, sshConfigKeywords.SshIdentityFile...)
 
 	for _, proxyName := range sshKeywords.SshProxyJump {
 		proxyOpts, err := ParseOpts(proxyName)
@@ -673,7 +759,7 @@ func ConnectToClient(connCtx context.Context, opts *SSHOpts, currentClient *ssh.
 		}
 
 		// do not apply supplied keywords to proxies - ssh config must be used for that
-		debugInfo.CurrentClient, jumpNum, err = ConnectToClient(connCtx, proxyOpts, debugInfo.CurrentClient, jumpNum, &wshrpc.ConnKeywords{})
+		debugInfo.CurrentClient, jumpNum, err = ConnectToClient(connCtx, proxyOpts, debugInfo.CurrentClient, jumpNum, &wconfig.ConnKeywords{})
 		if err != nil {
 			// do not add a context on a recursive call
 			// (this can cause a recursive nested context that's arbitrarily deep)
@@ -684,7 +770,7 @@ func ConnectToClient(connCtx context.Context, opts *SSHOpts, currentClient *ssh.
 	if err != nil {
 		return nil, debugInfo.JumpNum, ConnectionError{ConnectionDebugInfo: debugInfo, Err: err}
 	}
-	networkAddr := sshKeywords.SshHostName + ":" + sshKeywords.SshPort
+	networkAddr := utilfn.SafeDeref(sshKeywords.SshHostName) + ":" + utilfn.SafeDeref(sshKeywords.SshPort)
 	client, err := connectInternal(connCtx, networkAddr, clientConfig, debugInfo.CurrentClient)
 	if err != nil {
 		return client, debugInfo.JumpNum, ConnectionError{ConnectionDebugInfo: debugInfo, Err: err}
@@ -692,87 +778,51 @@ func ConnectToClient(connCtx context.Context, opts *SSHOpts, currentClient *ssh.
 	return client, debugInfo.JumpNum, nil
 }
 
-func combineSshKeywords(userProvidedOpts *wshrpc.ConnKeywords, configKeywords *wshrpc.ConnKeywords, savedKeywords *wshrpc.ConnKeywords) (*wshrpc.ConnKeywords, error) {
-	sshKeywords := &wshrpc.ConnKeywords{}
-
-	if userProvidedOpts.SshUser != "" {
-		sshKeywords.SshUser = userProvidedOpts.SshUser
-	} else if configKeywords.SshUser != "" {
-		sshKeywords.SshUser = configKeywords.SshUser
-	} else {
-		user, err := user.Current()
-		if err != nil {
-			return nil, fmt.Errorf("failed to get user for ssh: %+v", err)
-		}
-		sshKeywords.SshUser = user.Username
-	}
-
-	// we have to check the host value because of the weird way
-	// we store the pattern as the hostname for imported remotes
-	if configKeywords.SshHostName != "" {
-		sshKeywords.SshHostName = configKeywords.SshHostName
-	} else {
-		sshKeywords.SshHostName = userProvidedOpts.SshHostName
-	}
-
-	if userProvidedOpts.SshPort != "0" && userProvidedOpts.SshPort != "22" {
-		sshKeywords.SshPort = userProvidedOpts.SshPort
-	} else if configKeywords.SshPort != "" && configKeywords.SshPort != "22" {
-		sshKeywords.SshPort = configKeywords.SshPort
-	} else {
-		sshKeywords.SshPort = "22"
-	}
-
-	// use internal config ones
-	if savedKeywords != nil {
-		sshKeywords.SshIdentityFile = append(sshKeywords.SshIdentityFile, savedKeywords.SshIdentityFile...)
-	}
-
-	sshKeywords.SshIdentityFile = append(sshKeywords.SshIdentityFile, userProvidedOpts.SshIdentityFile...)
-	sshKeywords.SshIdentityFile = append(sshKeywords.SshIdentityFile, configKeywords.SshIdentityFile...)
-
-	// these are not officially supported in the waveterm frontend but can be configured
-	// in ssh config files
-	sshKeywords.SshBatchMode = configKeywords.SshBatchMode
-	sshKeywords.SshPubkeyAuthentication = configKeywords.SshPubkeyAuthentication
-	sshKeywords.SshPasswordAuthentication = configKeywords.SshPasswordAuthentication
-	sshKeywords.SshKbdInteractiveAuthentication = configKeywords.SshKbdInteractiveAuthentication
-	sshKeywords.SshPreferredAuthentications = configKeywords.SshPreferredAuthentications
-	sshKeywords.SshAddKeysToAgent = configKeywords.SshAddKeysToAgent
-	sshKeywords.SshIdentityAgent = configKeywords.SshIdentityAgent
-	sshKeywords.SshProxyJump = configKeywords.SshProxyJump
-	sshKeywords.SshUserKnownHostsFile = configKeywords.SshUserKnownHostsFile
-	sshKeywords.SshGlobalKnownHostsFile = configKeywords.SshGlobalKnownHostsFile
-
-	return sshKeywords, nil
-}
-
 // note that a `var == "yes"` will default to false
 // but `var != "no"` will default to true
 // when given unexpected strings
-func findSshConfigKeywords(hostPattern string) (*wshrpc.ConnKeywords, error) {
+func findSshConfigKeywords(hostPattern string) (connKeywords *wconfig.ConnKeywords, outErr error) {
+	defer func() {
+		panicErr := panichandler.PanicHandler("sshclient:find-ssh-config-keywords", recover())
+		if panicErr != nil {
+			outErr = panicErr
+		}
+	}()
 	WaveSshConfigUserSettings().ReloadConfigs()
-	sshKeywords := &wshrpc.ConnKeywords{}
+	sshKeywords := &wconfig.ConnKeywords{}
 	var err error
-	//config := wconfig.ReadFullConfig()
 
 	userRaw, err := WaveSshConfigUserSettings().GetStrict(hostPattern, "User")
 	if err != nil {
 		return nil, err
 	}
-	sshKeywords.SshUser = trimquotes.TryTrimQuotes(userRaw)
+	userClean := trimquotes.TryTrimQuotes(userRaw)
+	if userClean == "" {
+		userDetails, err := user.Current()
+		if err != nil {
+			return nil, err
+		}
+		userClean = userDetails.Username
+	}
+	sshKeywords.SshUser = &userClean
 
 	hostNameRaw, err := WaveSshConfigUserSettings().GetStrict(hostPattern, "HostName")
 	if err != nil {
 		return nil, err
 	}
-	sshKeywords.SshHostName = trimquotes.TryTrimQuotes(hostNameRaw)
+	// manually implementing default HostName here as it is not handled by ssh_config library
+	hostNameProcessed := trimquotes.TryTrimQuotes(hostNameRaw)
+	if hostNameProcessed == "" {
+		sshKeywords.SshHostName = &hostPattern
+	} else {
+		sshKeywords.SshHostName = &hostNameRaw
+	}
 
 	portRaw, err := WaveSshConfigUserSettings().GetStrict(hostPattern, "Port")
 	if err != nil {
 		return nil, err
 	}
-	sshKeywords.SshPort = trimquotes.TryTrimQuotes(portRaw)
+	sshKeywords.SshPort = utilfn.Ptr(trimquotes.TryTrimQuotes(portRaw))
 
 	identityFileRaw := WaveSshConfigUserSettings().GetAll(hostPattern, "IdentityFile")
 	for i := 0; i < len(identityFileRaw); i++ {
@@ -784,26 +834,26 @@ func findSshConfigKeywords(hostPattern string) (*wshrpc.ConnKeywords, error) {
 	if err != nil {
 		return nil, err
 	}
-	sshKeywords.SshBatchMode = (strings.ToLower(trimquotes.TryTrimQuotes(batchModeRaw)) == "yes")
+	sshKeywords.SshBatchMode = utilfn.Ptr(strings.ToLower(trimquotes.TryTrimQuotes(batchModeRaw)) == "yes")
 
 	// we currently do not support host-bound or unbound but will use yes when they are selected
 	pubkeyAuthenticationRaw, err := WaveSshConfigUserSettings().GetStrict(hostPattern, "PubkeyAuthentication")
 	if err != nil {
 		return nil, err
 	}
-	sshKeywords.SshPubkeyAuthentication = (strings.ToLower(trimquotes.TryTrimQuotes(pubkeyAuthenticationRaw)) != "no")
+	sshKeywords.SshPubkeyAuthentication = utilfn.Ptr(strings.ToLower(trimquotes.TryTrimQuotes(pubkeyAuthenticationRaw)) != "no")
 
 	passwordAuthenticationRaw, err := WaveSshConfigUserSettings().GetStrict(hostPattern, "PasswordAuthentication")
 	if err != nil {
 		return nil, err
 	}
-	sshKeywords.SshPasswordAuthentication = (strings.ToLower(trimquotes.TryTrimQuotes(passwordAuthenticationRaw)) != "no")
+	sshKeywords.SshPasswordAuthentication = utilfn.Ptr(strings.ToLower(trimquotes.TryTrimQuotes(passwordAuthenticationRaw)) != "no")
 
 	kbdInteractiveAuthenticationRaw, err := WaveSshConfigUserSettings().GetStrict(hostPattern, "KbdInteractiveAuthentication")
 	if err != nil {
 		return nil, err
 	}
-	sshKeywords.SshKbdInteractiveAuthentication = (strings.ToLower(trimquotes.TryTrimQuotes(kbdInteractiveAuthenticationRaw)) != "no")
+	sshKeywords.SshKbdInteractiveAuthentication = utilfn.Ptr(strings.ToLower(trimquotes.TryTrimQuotes(kbdInteractiveAuthenticationRaw)) != "no")
 
 	// these are parsed as a single string and must be separated
 	// these are case sensitive in openssh so they are here too
@@ -816,7 +866,13 @@ func findSshConfigKeywords(hostPattern string) (*wshrpc.ConnKeywords, error) {
 	if err != nil {
 		return nil, err
 	}
-	sshKeywords.SshAddKeysToAgent = (strings.ToLower(trimquotes.TryTrimQuotes(addKeysToAgentRaw)) == "yes")
+	sshKeywords.SshAddKeysToAgent = utilfn.Ptr(strings.ToLower(trimquotes.TryTrimQuotes(addKeysToAgentRaw)) == "yes")
+
+	identitiesOnly, err := WaveSshConfigUserSettings().GetStrict(hostPattern, "IdentitiesOnly")
+	if err != nil {
+		return nil, err
+	}
+	sshKeywords.SshIdentitiesOnly = utilfn.Ptr(strings.ToLower(trimquotes.TryTrimQuotes(identitiesOnly)) == "yes")
 
 	identityAgentRaw, err := WaveSshConfigUserSettings().GetStrict(hostPattern, "IdentityAgent")
 	if err != nil {
@@ -831,7 +887,7 @@ func findSshConfigKeywords(hostPattern string) (*wshrpc.ConnKeywords, error) {
 			if err != nil {
 				return nil, err
 			}
-			sshKeywords.SshIdentityAgent = agentPath
+			sshKeywords.SshIdentityAgent = utilfn.Ptr(agentPath)
 		} else {
 			log.Printf("unable to find SSH_AUTH_SOCK: %v\n", err)
 		}
@@ -840,7 +896,7 @@ func findSshConfigKeywords(hostPattern string) (*wshrpc.ConnKeywords, error) {
 		if err != nil {
 			return nil, err
 		}
-		sshKeywords.SshIdentityAgent = agentPath
+		sshKeywords.SshIdentityAgent = utilfn.Ptr(agentPath)
 	}
 
 	proxyJumpRaw, err := WaveSshConfigUserSettings().GetStrict(hostPattern, "ProxyJump")
@@ -863,10 +919,35 @@ func findSshConfigKeywords(hostPattern string) (*wshrpc.ConnKeywords, error) {
 	return sshKeywords, nil
 }
 
+func findSshDefaults(hostPattern string) (connKeywords *wconfig.ConnKeywords, outErr error) {
+	sshKeywords := &wconfig.ConnKeywords{}
+
+	userDetails, err := user.Current()
+	if err != nil {
+		return nil, err
+	}
+	sshKeywords.SshUser = &userDetails.Username
+	sshKeywords.SshHostName = &hostPattern
+	sshKeywords.SshPort = utilfn.Ptr(ssh_config.Default("Port"))
+	sshKeywords.SshIdentityFile = ssh_config.DefaultAll("IdentityFile", hostPattern, ssh_config.DefaultUserSettings) // use the sshconfig here. should be different later
+	sshKeywords.SshBatchMode = utilfn.Ptr(false)
+	sshKeywords.SshPubkeyAuthentication = utilfn.Ptr(true)
+	sshKeywords.SshPasswordAuthentication = utilfn.Ptr(true)
+	sshKeywords.SshKbdInteractiveAuthentication = utilfn.Ptr(true)
+	sshKeywords.SshPreferredAuthentications = strings.Split(ssh_config.Default("PreferredAuthentications"), ",")
+	sshKeywords.SshAddKeysToAgent = utilfn.Ptr(false)
+	sshKeywords.SshIdentitiesOnly = utilfn.Ptr(false)
+	sshKeywords.SshIdentityAgent = utilfn.Ptr(ssh_config.Default("IdentityAgent"))
+	sshKeywords.SshProxyJump = []string{}
+	sshKeywords.SshUserKnownHostsFile = strings.Fields(ssh_config.Default("UserKnownHostsFile"))
+	sshKeywords.SshGlobalKnownHostsFile = strings.Fields(ssh_config.Default("GlobalKnownHostsFile"))
+	return sshKeywords, nil
+}
+
 type SSHOpts struct {
 	SSHHost string `json:"sshhost"`
 	SSHUser string `json:"sshuser"`
-	SSHPort int    `json:"sshport,omitempty"`
+	SSHPort string `json:"sshport,omitempty"`
 }
 
 func (opts SSHOpts) String() string {
@@ -875,8 +956,64 @@ func (opts SSHOpts) String() string {
 		stringRepr = opts.SSHUser + "@"
 	}
 	stringRepr = stringRepr + opts.SSHHost
-	if opts.SSHPort != 0 {
+	if opts.SSHPort != "22" && opts.SSHPort != "" {
 		stringRepr = stringRepr + ":" + fmt.Sprint(opts.SSHPort)
 	}
 	return stringRepr
+}
+
+func mergeKeywords(oldKeywords *wconfig.ConnKeywords, newKeywords *wconfig.ConnKeywords) *wconfig.ConnKeywords {
+	if oldKeywords == nil {
+		oldKeywords = &wconfig.ConnKeywords{}
+	}
+	if newKeywords == nil {
+		return oldKeywords
+	}
+	outKeywords := *oldKeywords
+
+	if newKeywords.SshHostName != nil {
+		outKeywords.SshHostName = newKeywords.SshHostName
+	}
+	if newKeywords.SshUser != nil {
+		outKeywords.SshUser = newKeywords.SshUser
+	}
+	if newKeywords.SshPort != nil {
+		outKeywords.SshPort = newKeywords.SshPort
+	}
+	// skip identityfile (handled separately due to different behavior)
+	if newKeywords.SshBatchMode != nil {
+		outKeywords.SshBatchMode = newKeywords.SshBatchMode
+	}
+	if newKeywords.SshPubkeyAuthentication != nil {
+		outKeywords.SshPubkeyAuthentication = newKeywords.SshPubkeyAuthentication
+	}
+	if newKeywords.SshPasswordAuthentication != nil {
+		outKeywords.SshPasswordAuthentication = newKeywords.SshPasswordAuthentication
+	}
+	if newKeywords.SshKbdInteractiveAuthentication != nil {
+		outKeywords.SshKbdInteractiveAuthentication = newKeywords.SshKbdInteractiveAuthentication
+	}
+	if newKeywords.SshPreferredAuthentications != nil {
+		outKeywords.SshPreferredAuthentications = newKeywords.SshPreferredAuthentications
+	}
+	if newKeywords.SshAddKeysToAgent != nil {
+		outKeywords.SshAddKeysToAgent = newKeywords.SshAddKeysToAgent
+	}
+	if newKeywords.SshIdentityAgent != nil {
+		outKeywords.SshIdentityAgent = newKeywords.SshIdentityAgent
+	}
+	if newKeywords.SshIdentitiesOnly != nil {
+		outKeywords.SshIdentitiesOnly = newKeywords.SshIdentitiesOnly
+	}
+	if newKeywords.SshProxyJump != nil {
+		outKeywords.SshProxyJump = newKeywords.SshProxyJump
+	}
+	if newKeywords.SshUserKnownHostsFile != nil {
+		outKeywords.SshUserKnownHostsFile = newKeywords.SshUserKnownHostsFile
+	}
+	if newKeywords.SshGlobalKnownHostsFile != nil {
+		outKeywords.SshGlobalKnownHostsFile = newKeywords.SshGlobalKnownHostsFile
+	}
+
+	return &outKeywords
 }

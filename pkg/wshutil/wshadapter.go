@@ -1,4 +1,4 @@
-// Copyright 2024, Command Line Inc.
+// Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 package wshutil
@@ -132,7 +132,9 @@ func serverImplAdapter(impl any) func(*RpcResponseHandler) bool {
 				return true
 			}
 			go func() {
-				defer panichandler.PanicHandler("serverImplAdapter:responseStream")
+				defer func() {
+					panichandler.PanicHandler("serverImplAdapter:responseStream", recover())
+				}()
 				defer handler.Finalize()
 				// must use reflection here because we don't know the generic type of RespOrErrorUnion
 				for {

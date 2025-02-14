@@ -1,4 +1,4 @@
-// Copyright 2024, Command Line Inc.
+// Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 package cmd
@@ -24,9 +24,43 @@ var debugBlockIdsCmd = &cobra.Command{
 	Hidden: true,
 }
 
+var debugSendTelemetryCmd = &cobra.Command{
+	Use:    "send-telemetry",
+	Short:  "send telemetry",
+	RunE:   debugSendTelemetryRun,
+	Hidden: true,
+}
+
+var debugGetTabCmd = &cobra.Command{
+	Use:    "gettab",
+	Short:  "get tab",
+	RunE:   debugGetTabRun,
+	Hidden: true,
+}
+
 func init() {
 	debugCmd.AddCommand(debugBlockIdsCmd)
+	debugCmd.AddCommand(debugSendTelemetryCmd)
+	debugCmd.AddCommand(debugGetTabCmd)
 	rootCmd.AddCommand(debugCmd)
+}
+
+func debugGetTabRun(cmd *cobra.Command, args []string) error {
+	tab, err := wshclient.GetTabCommand(RpcClient, RpcContext.TabId, nil)
+	if err != nil {
+		return err
+	}
+	barr, err := json.MarshalIndent(tab, "", "  ")
+	if err != nil {
+		return err
+	}
+	WriteStdout("%s\n", string(barr))
+	return nil
+}
+
+func debugSendTelemetryRun(cmd *cobra.Command, args []string) error {
+	err := wshclient.SendTelemetryCommand(RpcClient, nil)
+	return err
 }
 
 func debugBlockIdsRun(cmd *cobra.Command, args []string) error {

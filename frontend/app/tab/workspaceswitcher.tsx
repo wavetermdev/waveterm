@@ -1,4 +1,4 @@
-// Copyright 2024, Command Line
+// Copyright 2025, Command Line
 // SPDX-License-Identifier: Apache-2.0
 
 import {
@@ -153,6 +153,7 @@ const WorkspaceSwitcherItem = ({
     const isCurrentWorkspace = activeWorkspace.oid === workspace.oid;
 
     const setWorkspace = useCallback((newWorkspace: Workspace) => {
+        setWorkspaceEntry({ ...workspaceEntry, workspace: newWorkspace });
         if (newWorkspace.name != "") {
             fireAndForget(() =>
                 WorkspaceService.UpdateWorkspace(

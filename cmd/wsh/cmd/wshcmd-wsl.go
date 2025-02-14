@@ -1,4 +1,4 @@
-// Copyright 2024, Command Line Inc.
+// Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 package cmd
@@ -16,7 +16,7 @@ import (
 var distroName string
 
 var wslCmd = &cobra.Command{
-	Use:     "wsl [-d <Distro>]",
+	Use:     "wsl [-d <distribution-name>]",
 	Short:   "connect this terminal to a local wsl connection",
 	Args:    cobra.NoArgs,
 	RunE:    wslRun,

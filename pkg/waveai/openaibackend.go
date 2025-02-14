@@ -1,4 +1,4 @@
-// Copyright 2024, Command Line Inc.
+// Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 package waveai
@@ -20,14 +20,16 @@ type OpenAIBackend struct{}
 
 var _ AIBackend = OpenAIBackend{}
 
+const DefaultAzureAPIVersion = "2023-05-15"
+
 // copied from go-openai/config.go
 func defaultAzureMapperFn(model string) string {
 	return regexp.MustCompile(`[.:]`).ReplaceAllString(model, "")
 }
 
-func setApiType(opts *wshrpc.OpenAIOptsType, clientConfig *openaiapi.ClientConfig) error {
+func setApiType(opts *wshrpc.WaveAIOptsType, clientConfig *openaiapi.ClientConfig) error {
 	ourApiType := strings.ToLower(opts.APIType)
-	if ourApiType == "" || ourApiType == strings.ToLower(string(openaiapi.APITypeOpenAI)) {
+	if ourApiType == "" || ourApiType == APIType_OpenAI || ourApiType == strings.ToLower(string(openaiapi.APITypeOpenAI)) {
 		clientConfig.APIType = openaiapi.APITypeOpenAI
 		return nil
 	} else if ourApiType == strings.ToLower(string(openaiapi.APITypeAzure)) {
@@ -50,7 +52,7 @@ func setApiType(opts *wshrpc.OpenAIOptsType, clientConfig *openaiapi.ClientConfi
 	}
 }
 
-func convertPrompt(prompt []wshrpc.OpenAIPromptMessageType) []openaiapi.ChatCompletionMessage {
+func convertPrompt(prompt []wshrpc.WaveAIPromptMessageType) []openaiapi.ChatCompletionMessage {
 	var rtn []openaiapi.ChatCompletionMessage
 	for _, p := range prompt {
 		msg := openaiapi.ChatCompletionMessage{Role: p.Role, Content: p.Content, Name: p.Name}
@@ -59,22 +61,11 @@ func convertPrompt(prompt []wshrpc.OpenAIPromptMessageType) []openaiapi.ChatComp
 	return rtn
 }
 
-func convertUsage(resp openaiapi.ChatCompletionResponse) *wshrpc.OpenAIUsageType {
-	if resp.Usage.TotalTokens == 0 {
-		return nil
-	}
-	return &wshrpc.OpenAIUsageType{
-		PromptTokens:     resp.Usage.PromptTokens,
-		CompletionTokens: resp.Usage.CompletionTokens,
-		TotalTokens:      resp.Usage.TotalTokens,
-	}
-}
-
-func (OpenAIBackend) StreamCompletion(ctx context.Context, request wshrpc.OpenAiStreamRequest) chan wshrpc.RespOrErrorUnion[wshrpc.OpenAIPacketType] {
-	rtn := make(chan wshrpc.RespOrErrorUnion[wshrpc.OpenAIPacketType])
+func (OpenAIBackend) StreamCompletion(ctx context.Context, request wshrpc.WaveAIStreamRequest) chan wshrpc.RespOrErrorUnion[wshrpc.WaveAIPacketType] {
+	rtn := make(chan wshrpc.RespOrErrorUnion[wshrpc.WaveAIPacketType])
 	go func() {
 		defer func() {
-			panicErr := panichandler.PanicHandler("OpenAIBackend.StreamCompletion")
+			panicErr := panichandler.PanicHandler("OpenAIBackend.StreamCompletion", recover())
 			if panicErr != nil {
 				rtn <- makeAIError(panicErr)
 			}
@@ -128,18 +119,18 @@ func (OpenAIBackend) StreamCompletion(ctx context.Context, request wshrpc.OpenAi
 			}
 
 			// Send header packet
-			headerPk := MakeOpenAIPacket()
+			headerPk := MakeWaveAIPacket()
 			headerPk.Model = resp.Model
 			headerPk.Created = resp.Created
-			rtn <- wshrpc.RespOrErrorUnion[wshrpc.OpenAIPacketType]{Response: *headerPk}
+			rtn <- wshrpc.RespOrErrorUnion[wshrpc.WaveAIPacketType]{Response: *headerPk}
 
 			// Send content packet(s)
 			for i, choice := range resp.Choices {
-				pk := MakeOpenAIPacket()
+				pk := MakeWaveAIPacket()
 				pk.Index = i
 				pk.Text = choice.Message.Content
 				pk.FinishReason = string(choice.FinishReason)
-				rtn <- wshrpc.RespOrErrorUnion[wshrpc.OpenAIPacketType]{Response: *pk}
+				rtn <- wshrpc.RespOrErrorUnion[wshrpc.WaveAIPacketType]{Response: *pk}
 			}
 			return
 		}
@@ -167,18 +158,18 @@ func (OpenAIBackend) StreamCompletion(ctx context.Context, request wshrpc.OpenAi
 				break
 			}
 			if streamResp.Model != "" && !sentHeader {
-				pk := MakeOpenAIPacket()
+				pk := MakeWaveAIPacket()
 				pk.Model = streamResp.Model
 				pk.Created = streamResp.Created
-				rtn <- wshrpc.RespOrErrorUnion[wshrpc.OpenAIPacketType]{Response: *pk}
+				rtn <- wshrpc.RespOrErrorUnion[wshrpc.WaveAIPacketType]{Response: *pk}
 				sentHeader = true
 			}
 			for _, choice := range streamResp.Choices {
-				pk := MakeOpenAIPacket()
+				pk := MakeWaveAIPacket()
 				pk.Index = choice.Index
 				pk.Text = choice.Delta.Content
 				pk.FinishReason = string(choice.FinishReason)
-				rtn <- wshrpc.RespOrErrorUnion[wshrpc.OpenAIPacketType]{Response: *pk}
+				rtn <- wshrpc.RespOrErrorUnion[wshrpc.WaveAIPacketType]{Response: *pk}
 			}
 		}
 	}()

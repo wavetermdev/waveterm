@@ -12,7 +12,6 @@
 # Wave Terminal
 
 [![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fwavetermdev%2Fwaveterm.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2Fwavetermdev%2Fwaveterm?ref=badge_shield)
-[![waveterm](https://snapcraft.io/waveterm/trending.svg?name=0)](https://snapcraft.io/waveterm)
 
 Wave is an open-source terminal that combines traditional terminal features with graphical capabilities like file previews, web browsing, and AI assistance. It runs on MacOS, Linux, and Windows.
 
@@ -41,11 +40,23 @@ You can also install Wave Terminal directly from: [www.waveterm.dev/download](ht
 
 ### Minimum requirements
 
-Wave Terminal and WSH run on the following platforms:
+Wave Terminal runs on the following platforms:
 
 - macOS 11 or later (arm64, x64)
 - Windows 10 1809 or later (x64)
 - Linux based on glibc-2.28 or later (Debian 10, RHEL 8, Ubuntu 20.04, etc.) (arm64, x64)
+
+The WSH helper runs on the following platforms:
+
+- macOS 11 or later (arm64, x64)
+- Windows 10 or later (arm64, x64)
+- Linux Kernel 2.6.32 or later (x64), Linux Kernel 3.1 or later (arm64)
+
+## Roadmap
+
+Wave is constantly improving! Our roadmap will be continuously updated with our goals for each release. You can find it [here](./ROADMAP.md).
+
+Want to provide input to our future releases? Connect with us on [Discord](https://discord.gg/XfvZ334gwU) or open a [Feature Request](https://github.com/wavetermdev/waveterm/issues/new/choose)!
 
 ## Links
 

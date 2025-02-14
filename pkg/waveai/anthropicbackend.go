@@ -1,4 +1,4 @@
-// Copyright 2024, Command Line Inc.
+// Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 package waveai
@@ -109,12 +109,12 @@ func parseSSE(reader *bufio.Reader) (*sseEvent, error) {
 	}
 }
 
-func (AnthropicBackend) StreamCompletion(ctx context.Context, request wshrpc.OpenAiStreamRequest) chan wshrpc.RespOrErrorUnion[wshrpc.OpenAIPacketType] {
-	rtn := make(chan wshrpc.RespOrErrorUnion[wshrpc.OpenAIPacketType])
+func (AnthropicBackend) StreamCompletion(ctx context.Context, request wshrpc.WaveAIStreamRequest) chan wshrpc.RespOrErrorUnion[wshrpc.WaveAIPacketType] {
+	rtn := make(chan wshrpc.RespOrErrorUnion[wshrpc.WaveAIPacketType])
 
 	go func() {
 		defer func() {
-			panicErr := panichandler.PanicHandler("AnthropicBackend.StreamCompletion")
+			panicErr := panichandler.PanicHandler("AnthropicBackend.StreamCompletion", recover())
 			if panicErr != nil {
 				rtn <- makeAIError(panicErr)
 			}
@@ -128,7 +128,7 @@ func (AnthropicBackend) StreamCompletion(ctx context.Context, request wshrpc.Ope
 
 		model := request.Opts.Model
 		if model == "" {
-			model = "claude-3-sonnet-20240229" // default model
+			model = "claude-3-sonnet-20250229" // default model
 		}
 
 		// Convert messages format
@@ -231,23 +231,23 @@ func (AnthropicBackend) StreamCompletion(ctx context.Context, request wshrpc.Ope
 			switch sse.Event {
 			case "message_start":
 				if event.Message != nil {
-					pk := MakeOpenAIPacket()
+					pk := MakeWaveAIPacket()
 					pk.Model = event.Message.Model
-					rtn <- wshrpc.RespOrErrorUnion[wshrpc.OpenAIPacketType]{Response: *pk}
+					rtn <- wshrpc.RespOrErrorUnion[wshrpc.WaveAIPacketType]{Response: *pk}
 				}
 
 			case "content_block_start":
 				if event.ContentBlock != nil && event.ContentBlock.Text != "" {
-					pk := MakeOpenAIPacket()
+					pk := MakeWaveAIPacket()
 					pk.Text = event.ContentBlock.Text
-					rtn <- wshrpc.RespOrErrorUnion[wshrpc.OpenAIPacketType]{Response: *pk}
+					rtn <- wshrpc.RespOrErrorUnion[wshrpc.WaveAIPacketType]{Response: *pk}
 				}
 
 			case "content_block_delta":
 				if event.Delta != nil && event.Delta.Text != "" {
-					pk := MakeOpenAIPacket()
+					pk := MakeWaveAIPacket()
 					pk.Text = event.Delta.Text
-					rtn <- wshrpc.RespOrErrorUnion[wshrpc.OpenAIPacketType]{Response: *pk}
+					rtn <- wshrpc.RespOrErrorUnion[wshrpc.WaveAIPacketType]{Response: *pk}
 				}
 
 			case "content_block_stop":
@@ -258,27 +258,27 @@ func (AnthropicBackend) StreamCompletion(ctx context.Context, request wshrpc.Ope
 			case "message_delta":
 				// Update message metadata, usage stats
 				if event.Usage != nil {
-					pk := MakeOpenAIPacket()
-					pk.Usage = &wshrpc.OpenAIUsageType{
+					pk := MakeWaveAIPacket()
+					pk.Usage = &wshrpc.WaveAIUsageType{
 						PromptTokens:     event.Usage.InputTokens,
 						CompletionTokens: event.Usage.OutputTokens,
 						TotalTokens:      event.Usage.InputTokens + event.Usage.OutputTokens,
 					}
-					rtn <- wshrpc.RespOrErrorUnion[wshrpc.OpenAIPacketType]{Response: *pk}
+					rtn <- wshrpc.RespOrErrorUnion[wshrpc.WaveAIPacketType]{Response: *pk}
 				}
 
 			case "message_stop":
 				if event.Message != nil {
-					pk := MakeOpenAIPacket()
+					pk := MakeWaveAIPacket()
 					pk.FinishReason = event.Message.StopReason
 					if event.Message.Usage != nil {
-						pk.Usage = &wshrpc.OpenAIUsageType{
+						pk.Usage = &wshrpc.WaveAIUsageType{
 							PromptTokens:     event.Message.Usage.InputTokens,
 							CompletionTokens: event.Message.Usage.OutputTokens,
 							TotalTokens:      event.Message.Usage.InputTokens + event.Message.Usage.OutputTokens,
 						}
 					}
-					rtn <- wshrpc.RespOrErrorUnion[wshrpc.OpenAIPacketType]{Response: *pk}
+					rtn <- wshrpc.RespOrErrorUnion[wshrpc.WaveAIPacketType]{Response: *pk}
 				}
 
 			default:

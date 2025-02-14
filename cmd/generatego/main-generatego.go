@@ -1,4 +1,4 @@
-// Copyright 2024, Command Line Inc.
+// Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 package main
@@ -24,11 +24,14 @@ func GenerateWshClient() error {
 	fmt.Fprintf(os.Stderr, "generating wshclient file to %s\n", WshClientFileName)
 	var buf strings.Builder
 	gogen.GenerateBoilerplate(&buf, "wshclient", []string{
+		"github.com/wavetermdev/waveterm/pkg/telemetry/telemetrydata",
 		"github.com/wavetermdev/waveterm/pkg/wshutil",
 		"github.com/wavetermdev/waveterm/pkg/wshrpc",
+		"github.com/wavetermdev/waveterm/pkg/wconfig",
 		"github.com/wavetermdev/waveterm/pkg/waveobj",
 		"github.com/wavetermdev/waveterm/pkg/wps",
 		"github.com/wavetermdev/waveterm/pkg/vdom",
+		"github.com/wavetermdev/waveterm/pkg/util/iochan/iochantypes",
 	})
 	wshDeclMap := wshrpc.GenerateWshCommandDeclMap()
 	for _, key := range utilfn.GetOrderedMapKeys(wshDeclMap) {
@@ -53,7 +56,7 @@ func GenerateWaveObjMetaConsts() error {
 	fmt.Fprintf(os.Stderr, "generating waveobj meta consts file to %s\n", WaveObjMetaConstsFileName)
 	var buf strings.Builder
 	gogen.GenerateBoilerplate(&buf, "waveobj", []string{})
-	gogen.GenerateMetaMapConsts(&buf, "MetaKey_", reflect.TypeOf(waveobj.MetaTSType{}))
+	gogen.GenerateMetaMapConsts(&buf, "MetaKey_", reflect.TypeOf(waveobj.MetaTSType{}), false)
 	buf.WriteString("\n")
 	written, err := utilfn.WriteFileIfDifferent(WaveObjMetaConstsFileName, []byte(buf.String()))
 	if !written {
@@ -66,7 +69,7 @@ func GenerateSettingsMetaConsts() error {
 	fmt.Fprintf(os.Stderr, "generating settings meta consts file to %s\n", SettingsMetaConstsFileName)
 	var buf strings.Builder
 	gogen.GenerateBoilerplate(&buf, "wconfig", []string{})
-	gogen.GenerateMetaMapConsts(&buf, "ConfigKey_", reflect.TypeOf(wconfig.SettingsType{}))
+	gogen.GenerateMetaMapConsts(&buf, "ConfigKey_", reflect.TypeOf(wconfig.SettingsType{}), false)
 	buf.WriteString("\n")
 	written, err := utilfn.WriteFileIfDifferent(SettingsMetaConstsFileName, []byte(buf.String()))
 	if !written {

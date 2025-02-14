@@ -1,4 +1,4 @@
-// Copyright 2024, Command Line Inc.
+// Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 import { getFileSubject } from "@/app/store/wps";
@@ -9,6 +9,7 @@ import { PLATFORM, WOS, atoms, fetchWaveFile, getSettingsKeyAtom, globalStore, o
 import * as services from "@/store/services";
 import * as util from "@/util/util";
 import { base64ToArray, fireAndForget } from "@/util/util";
+import { SearchAddon } from "@xterm/addon-search";
 import { SerializeAddon } from "@xterm/addon-serialize";
 import { WebLinksAddon } from "@xterm/addon-web-links";
 import { WebglAddon } from "@xterm/addon-webgl";
@@ -41,7 +42,97 @@ let loggedWebGL = false;
 type TermWrapOptions = {
     keydownHandler?: (e: KeyboardEvent) => boolean;
     useWebGl?: boolean;
+    sendDataHandler?: (data: string) => void;
 };
+
+function handleOscWaveCommand(data: string, blockId: string, loaded: boolean): boolean {
+    if (!loaded) {
+        return false;
+    }
+    if (!data || data.length === 0) {
+        console.log("Invalid Wave OSC command received (empty)");
+        return false;
+    }
+
+    // Expected formats:
+    // "setmeta;{JSONDATA}"
+    // "setmeta;[wave-id];{JSONDATA}"
+    const parts = data.split(";");
+    if (parts[0] !== "setmeta") {
+        console.log("Invalid Wave OSC command received (bad command)", data);
+        return false;
+    }
+    let jsonPayload: string;
+    let waveId: string | undefined;
+    if (parts.length === 2) {
+        jsonPayload = parts[1];
+    } else if (parts.length >= 3) {
+        waveId = parts[1];
+        jsonPayload = parts.slice(2).join(";");
+    } else {
+        console.log("Invalid Wave OSC command received (1 part)", data);
+        return false;
+    }
+
+    let meta: any;
+    try {
+        meta = JSON.parse(jsonPayload);
+    } catch (e) {
+        console.error("Invalid JSON in Wave OSC command:", e);
+        return false;
+    }
+
+    if (waveId) {
+        // Resolve the wave id to an ORef using our ResolveIdsCommand.
+        fireAndForget(() => {
+            return RpcApi.ResolveIdsCommand(TabRpcClient, { blockid: blockId, ids: [waveId] })
+                .then((response: { resolvedids: { [key: string]: any } }) => {
+                    const oref = response.resolvedids[waveId];
+                    if (!oref) {
+                        console.error("Failed to resolve wave id:", waveId);
+                        return;
+                    }
+                    services.ObjectService.UpdateObjectMeta(oref, meta);
+                })
+                .catch((err: any) => {
+                    console.error("Error resolving wave id", waveId, err);
+                });
+        });
+    } else {
+        // No wave id provided; update using the current block id.
+        fireAndForget(() => {
+            return services.ObjectService.UpdateObjectMeta(WOS.makeORef("block", blockId), meta);
+        });
+    }
+    return true;
+}
+
+function handleOsc7Command(data: string, blockId: string, loaded: boolean): boolean {
+    if (!loaded) {
+        return false;
+    }
+    if (data == null || data.length == 0) {
+        console.log("Invalid OSC 7 command received (empty)");
+        return false;
+    }
+    if (data.startsWith("file://")) {
+        data = data.substring(7);
+        const nextSlashIdx = data.indexOf("/");
+        if (nextSlashIdx == -1) {
+            console.log("Invalid OSC 7 command received (bad path)", data);
+            return false;
+        }
+        data = data.substring(nextSlashIdx);
+    }
+    setTimeout(() => {
+        fireAndForget(() =>
+            services.ObjectService.UpdateObjectMeta(WOS.makeORef("block", blockId), {
+                "cmd:cwd": data,
+            })
+        );
+    }, 0);
+    return true;
+}
 
 export class TermWrap {
     blockId: string;
@@ -51,6 +142,7 @@ export class TermWrap {
     terminal: Terminal;
     connectElem: HTMLDivElement;
     fitAddon: FitAddon;
+    searchAddon: SearchAddon;
     serializeAddon: SerializeAddon;
     mainFileSubject: SubjectWithRef<WSFileEventData>;
     loaded: boolean;
@@ -58,6 +150,10 @@ export class TermWrap {
     handleResize_debounced: () => void;
     hasResized: boolean;
     isLoadingCache: boolean;
+    multiInputCallback: (data: string) => void;
+    sendDataHandler: (data: string) => void;
+    onSearchResultsDidChange?: (result: { resultIndex: number; resultCount: number }) => void;
+    private toDispose: TermTypes.IDisposable[] = [];
 
     constructor(
         blockId: string,
@@ -68,6 +164,7 @@ export class TermWrap {
         this.loaded = false;
         this.isLoadingCache = false;
         this.blockId = blockId;
+        this.sendDataHandler = waveOptions.sendDataHandler;
         this.ptyOffset = 0;
         this.dataBytesProcessed = 0;
         this.hasResized = false;
@@ -75,6 +172,8 @@ export class TermWrap {
         this.fitAddon = new FitAddon();
         this.fitAddon.noScrollbar = PLATFORM == "darwin";
         this.serializeAddon = new SerializeAddon();
+        this.searchAddon = new SearchAddon();
+        this.terminal.loadAddon(this.searchAddon);
         this.terminal.loadAddon(this.fitAddon);
         this.terminal.loadAddon(this.serializeAddon);
         this.terminal.loadAddon(
@@ -96,38 +195,23 @@ export class TermWrap {
         );
         if (WebGLSupported && waveOptions.useWebGl) {
             const webglAddon = new WebglAddon();
-            webglAddon.onContextLoss(() => {
-                webglAddon.dispose();
-            });
+            this.toDispose.push(
+                webglAddon.onContextLoss(() => {
+                    webglAddon.dispose();
+                })
+            );
             this.terminal.loadAddon(webglAddon);
             if (!loggedWebGL) {
                 console.log("loaded webgl!");
                 loggedWebGL = true;
             }
         }
+        // Register OSC 9283 handler
+        this.terminal.parser.registerOscHandler(9283, (data: string) => {
+            return handleOscWaveCommand(data, this.blockId, this.loaded);
+        });
         this.terminal.parser.registerOscHandler(7, (data: string) => {
-            if (!this.loaded) {
-                return false;
-            }
-            if (data == null || data.length == 0) {
-                return false;
-            }
-            if (data.startsWith("file://")) {
-                data = data.substring(7);
-                const nextSlashIdx = data.indexOf("/");
-                if (nextSlashIdx == -1) {
-                    return false;
-                }
-                data = data.substring(nextSlashIdx);
-            }
-            setTimeout(() => {
-                fireAndForget(() =>
-                    services.ObjectService.UpdateObjectMeta(WOS.makeORef("block", this.blockId), {
-                        "cmd:cwd": data,
-                    })
-                );
-            }, 0);
-            return true;
+            return handleOsc7Command(data, this.blockId, this.loaded);
         });
         this.terminal.attachCustomKeyEventHandler(waveOptions.keydownHandler);
         this.connectElem = connectElem;
@@ -140,18 +224,24 @@ export class TermWrap {
 
     async initTerminal() {
         const copyOnSelectAtom = getSettingsKeyAtom("term:copyonselect");
-        this.terminal.onData(this.handleTermData.bind(this));
-        this.terminal.onSelectionChange(
-            debounce(50, () => {
-                if (!globalStore.get(copyOnSelectAtom)) {
-                    return;
-                }
-                const selectedText = this.terminal.getSelection();
-                if (selectedText.length > 0) {
-                    navigator.clipboard.writeText(selectedText);
-                }
-            })
+        this.toDispose.push(this.terminal.onData(this.handleTermData.bind(this)));
+        this.toDispose.push(this.terminal.onKey(this.onKeyHandler.bind(this)));
+        this.toDispose.push(
+            this.terminal.onSelectionChange(
+                debounce(50, () => {
+                    if (!globalStore.get(copyOnSelectAtom)) {
+                        return;
+                    }
+                    const selectedText = this.terminal.getSelection();
+                    if (selectedText.length > 0) {
+                        navigator.clipboard.writeText(selectedText);
+                    }
+                })
+            )
         );
+        if (this.onSearchResultsDidChange != null) {
+            this.toDispose.push(this.searchAddon.onDidChangeResults(this.onSearchResultsDidChange.bind(this)));
+        }
         this.mainFileSubject = getFileSubject(this.blockId, TermFileName);
         this.mainFileSubject.subscribe(this.handleNewFileSubjectData.bind(this));
         try {
@@ -164,6 +254,11 @@ export class TermWrap {
 
     dispose() {
         this.terminal.dispose();
+        this.toDispose.forEach((d) => {
+            try {
+                d.dispose();
+            } catch (_) {}
+        });
         this.mainFileSubject.release();
     }
 
@@ -182,6 +277,13 @@ export class TermWrap {
             feactionid: actionId,
             pendingptyoffset: this.pendingPtyOffset,
         });
+        this.sendDataHandler?.(data);
+    }
+
+    onKeyHandler(data: { key: string; domEvent: KeyboardEvent }) {
+        if (this.multiInputCallback) {
+            this.multiInputCallback(data.key);
+        }
     }
 
     addFocusListener(focusFn: () => void) {

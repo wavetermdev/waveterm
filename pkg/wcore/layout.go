@@ -1,4 +1,4 @@
-// Copyright 2024, Command Line Inc.
+// Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 package wcore
@@ -14,10 +14,13 @@ import (
 )
 
 const (
-	LayoutActionDataType_Insert        = "insert"
-	LayoutActionDataType_InsertAtIndex = "insertatindex"
-	LayoutActionDataType_Remove        = "delete"
-	LayoutActionDataType_ClearTree     = "clear"
+	LayoutActionDataType_Insert          = "insert"
+	LayoutActionDataType_InsertAtIndex   = "insertatindex"
+	LayoutActionDataType_Remove          = "delete"
+	LayoutActionDataType_ClearTree       = "clear"
+	LayoutActionDataType_Replace         = "replace"
+	LayoutActionDataType_SplitHorizontal = "splithorizontal"
+	LayoutActionDataType_SplitVertical   = "splitvertical"
 )
 
 type PortableLayout []struct {

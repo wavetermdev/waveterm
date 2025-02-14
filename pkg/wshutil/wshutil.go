@@ -1,4 +1,4 @@
-// Copyright 2024, Command Line Inc.
+// Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 package wshutil
@@ -12,6 +12,9 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"path/filepath"
+	"runtime"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"syscall"
@@ -21,6 +24,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/util/packetparser"
+	"github.com/wavetermdev/waveterm/pkg/util/shellutil"
+	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"golang.org/x/term"
@@ -42,7 +47,7 @@ const ESC = 0x1b
 const DefaultOutputChSize = 32
 const DefaultInputChSize = 32
 
-const WaveJwtTokenVarName = "WAVETERM_JWT"
+const WaveJwtTokenVarName = wavebase.WaveJwtTokenVarName
 
 // OSC escape types
 // OSC 23198 ; (JSON | base64-JSON) ST
@@ -151,7 +156,9 @@ func installShutdownSignalHandlers(quiet bool) {
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGHUP, syscall.SIGTERM, syscall.SIGINT)
 	go func() {
-		defer panichandler.PanicHandlerNoTelemetry("installShutdownSignalHandlers")
+		defer func() {
+			panichandler.PanicHandlerNoTelemetry("installShutdownSignalHandlers", recover())
+		}()
 		for sig := range sigCh {
 			DoShutdown(fmt.Sprintf("got signal %v", sig), 1, quiet)
 			break
@@ -194,13 +201,15 @@ func RestoreTermState() {
 }
 
 // returns (wshRpc, wrappedStdin)
-func SetupTerminalRpcClient(serverImpl ServerImpl) (*WshRpc, io.Reader) {
+func SetupTerminalRpcClient(serverImpl ServerImpl, debugStr string) (*WshRpc, io.Reader) {
 	messageCh := make(chan []byte, DefaultInputChSize)
 	outputCh := make(chan []byte, DefaultOutputChSize)
 	ptyBuf := MakePtyBuffer(WaveServerOSCPrefix, os.Stdin, messageCh)
-	rpcClient := MakeWshRpc(messageCh, outputCh, wshrpc.RpcContext{}, serverImpl)
+	rpcClient := MakeWshRpc(messageCh, outputCh, wshrpc.RpcContext{}, serverImpl, debugStr)
 	go func() {
-		defer panichandler.PanicHandler("SetupTerminalRpcClient")
+		defer func() {
+			panichandler.PanicHandler("SetupTerminalRpcClient", recover())
+		}()
 		for msg := range outputCh {
 			barr, err := EncodeWaveOSCBytes(WaveOSC, msg)
 			if err != nil {
@@ -214,14 +223,16 @@ func SetupTerminalRpcClient(serverImpl ServerImpl) (*WshRpc, io.Reader) {
 	return rpcClient, ptyBuf
 }
 
-func SetupPacketRpcClient(input io.Reader, output io.Writer, serverImpl ServerImpl) (*WshRpc, chan []byte) {
+func SetupPacketRpcClient(input io.Reader, output io.Writer, serverImpl ServerImpl, debugStr string) (*WshRpc, chan []byte) {
 	messageCh := make(chan []byte, DefaultInputChSize)
 	outputCh := make(chan []byte, DefaultOutputChSize)
 	rawCh := make(chan []byte, DefaultOutputChSize)
-	rpcClient := MakeWshRpc(messageCh, outputCh, wshrpc.RpcContext{}, serverImpl)
+	rpcClient := MakeWshRpc(messageCh, outputCh, wshrpc.RpcContext{}, serverImpl, debugStr)
 	go packetparser.Parse(input, messageCh, rawCh)
 	go func() {
-		defer panichandler.PanicHandler("SetupPacketRpcClient:outputloop")
+		defer func() {
+			panichandler.PanicHandler("SetupPacketRpcClient:outputloop", recover())
+		}()
 		for msg := range outputCh {
 			packetparser.WritePacket(output, msg)
 		}
@@ -229,12 +240,14 @@ func SetupPacketRpcClient(input io.Reader, output io.Writer, serverImpl ServerIm
 	return rpcClient, rawCh
 }
 
-func SetupConnRpcClient(conn net.Conn, serverImpl ServerImpl) (*WshRpc, chan error, error) {
+func SetupConnRpcClient(conn net.Conn, serverImpl ServerImpl, debugStr string) (*WshRpc, chan error, error) {
 	inputCh := make(chan []byte, DefaultInputChSize)
 	outputCh := make(chan []byte, DefaultOutputChSize)
 	writeErrCh := make(chan error, 1)
 	go func() {
-		defer panichandler.PanicHandler("SetupConnRpcClient:AdaptOutputChToStream")
+		defer func() {
+			panichandler.PanicHandler("SetupConnRpcClient:AdaptOutputChToStream", recover())
+		}()
 		writeErr := AdaptOutputChToStream(outputCh, conn)
 		if writeErr != nil {
 			writeErrCh <- writeErr
@@ -242,12 +255,14 @@ func SetupConnRpcClient(conn net.Conn, serverImpl ServerImpl) (*WshRpc, chan err
 		}
 	}()
 	go func() {
-		defer panichandler.PanicHandler("SetupConnRpcClient:AdaptStreamToMsgCh")
+		defer func() {
+			panichandler.PanicHandler("SetupConnRpcClient:AdaptStreamToMsgCh", recover())
+		}()
 		// when input is closed, close the connection
 		defer conn.Close()
 		AdaptStreamToMsgCh(conn, inputCh)
 	}()
-	rtn := MakeWshRpc(inputCh, outputCh, wshrpc.RpcContext{}, serverImpl)
+	rtn := MakeWshRpc(inputCh, outputCh, wshrpc.RpcContext{}, serverImpl, debugStr)
 	return rtn, writeErrCh, nil
 }
 
@@ -259,7 +274,7 @@ func tryTcpSocket(sockName string) (net.Conn, error) {
 	return net.DialTCP("tcp", nil, addr)
 }
 
-func SetupDomainSocketRpcClient(sockName string, serverImpl ServerImpl) (*WshRpc, error) {
+func SetupDomainSocketRpcClient(sockName string, serverImpl ServerImpl, debugName string) (*WshRpc, error) {
 	conn, tcpErr := tryTcpSocket(sockName)
 	var unixErr error
 	if tcpErr != nil {
@@ -268,9 +283,11 @@ func SetupDomainSocketRpcClient(sockName string, serverImpl ServerImpl) (*WshRpc
 	if tcpErr != nil && unixErr != nil {
 		return nil, fmt.Errorf("failed to connect to tcp or unix domain socket: tcp err:%w: unix socket err: %w", tcpErr, unixErr)
 	}
-	rtn, errCh, err := SetupConnRpcClient(conn, serverImpl)
+	rtn, errCh, err := SetupConnRpcClient(conn, serverImpl, debugName)
 	go func() {
-		defer panichandler.PanicHandler("SetupDomainSocketRpcClient:closeConn")
+		defer func() {
+			panichandler.PanicHandler("SetupDomainSocketRpcClient:closeConn", recover())
+		}()
 		defer conn.Close()
 		err := <-errCh
 		if err != nil && err != io.EOF {
@@ -404,10 +421,10 @@ type WriteFlusher interface {
 }
 
 // blocking, returns if there is an error, or on EOF of input
-func HandleStdIOClient(logName string, input io.Reader, output io.Writer) {
+func HandleStdIOClient(logName string, input chan utilfn.LineOutput, output io.Writer) {
 	proxy := MakeRpcMultiProxy()
 	rawCh := make(chan []byte, DefaultInputChSize)
-	go packetparser.Parse(input, proxy.FromRemoteRawCh, rawCh)
+	go packetparser.ParseWithLinesChan(input, proxy.FromRemoteRawCh, rawCh)
 	doneCh := make(chan struct{})
 	var doneOnce sync.Once
 	closeDoneCh := func() {
@@ -417,11 +434,15 @@ func HandleStdIOClient(logName string, input io.Reader, output io.Writer) {
 		proxy.DisposeRoutes()
 	}
 	go func() {
-		defer panichandler.PanicHandler("HandleStdIOClient:RunUnauthLoop")
+		defer func() {
+			panichandler.PanicHandler("HandleStdIOClient:RunUnauthLoop", recover())
+		}()
 		proxy.RunUnauthLoop()
 	}()
 	go func() {
-		defer panichandler.PanicHandler("HandleStdIOClient:ToRemoteChLoop")
+		defer func() {
+			panichandler.PanicHandler("HandleStdIOClient:ToRemoteChLoop", recover())
+		}()
 		defer closeDoneCh()
 		for msg := range proxy.ToRemoteCh {
 			err := packetparser.WritePacket(output, msg)
@@ -432,9 +453,14 @@ func HandleStdIOClient(logName string, input io.Reader, output io.Writer) {
 		}
 	}()
 	go func() {
-		defer panichandler.PanicHandler("HandleStdIOClient:RawChLoop")
+		defer func() {
+			panichandler.PanicHandler("HandleStdIOClient:RawChLoop", recover())
+		}()
 		defer closeDoneCh()
 		for msg := range rawCh {
+			if !bytes.HasSuffix(msg, []byte{'\n'}) {
+				msg = append(msg, '\n')
+			}
 			log.Printf("[%s:stdout] %s", logName, msg)
 		}
 	}()
@@ -445,7 +471,9 @@ func handleDomainSocketClient(conn net.Conn) {
 	var routeIdContainer atomic.Pointer[string]
 	proxy := MakeRpcProxy()
 	go func() {
-		defer panichandler.PanicHandler("handleDomainSocketClient:AdaptOutputChToStream")
+		defer func() {
+			panichandler.PanicHandler("handleDomainSocketClient:AdaptOutputChToStream", recover())
+		}()
 		writeErr := AdaptOutputChToStream(proxy.ToRemoteCh, conn)
 		if writeErr != nil {
 			log.Printf("error writing to domain socket: %v\n", writeErr)
@@ -453,9 +481,13 @@ func handleDomainSocketClient(conn net.Conn) {
 	}()
 	go func() {
 		// when input is closed, close the connection
-		defer panichandler.PanicHandler("handleDomainSocketClient:AdaptStreamToMsgCh")
+		defer func() {
+			panichandler.PanicHandler("handleDomainSocketClient:AdaptStreamToMsgCh", recover())
+		}()
 		defer func() {
 			conn.Close()
+			close(proxy.FromRemoteCh)
+			close(proxy.ToRemoteCh)
 			routeIdPtr := routeIdContainer.Load()
 			if routeIdPtr != nil && *routeIdPtr != "" {
 				DefaultRouter.UnregisterRoute(*routeIdPtr)
@@ -515,4 +547,43 @@ func ExtractUnverifiedSocketName(tokenStr string) (string, error) {
 	}
 	sockName = wavebase.ExpandHomeDirSafe(sockName)
 	return sockName, nil
+}
+
+func getShell() string {
+	if runtime.GOOS == "darwin" {
+		return shellutil.GetMacUserShell()
+	}
+	shell := os.Getenv("SHELL")
+	if shell == "" {
+		return "/bin/bash"
+	}
+	return strings.TrimSpace(shell)
+}
+
+func GetInfo() wshrpc.RemoteInfo {
+	return wshrpc.RemoteInfo{
+		ClientArch:    runtime.GOARCH,
+		ClientOs:      runtime.GOOS,
+		ClientVersion: wavebase.WaveVersion,
+		Shell:         getShell(),
+	}
+
+}
+
+func InstallRcFiles() error {
+	home := wavebase.GetHomeDir()
+	waveDir := filepath.Join(home, wavebase.RemoteWaveHomeDirName)
+	wshBinDir := filepath.Join(waveDir, wavebase.RemoteWshBinDirName)
+	return shellutil.InitRcFiles(waveDir, wshBinDir)
+}
+
+func SendErrCh[T any](err error) <-chan wshrpc.RespOrErrorUnion[T] {
+	ch := make(chan wshrpc.RespOrErrorUnion[T], 1)
+	ch <- RespErr[T](err)
+	close(ch)
+	return ch
+}
+
+func RespErr[T any](err error) wshrpc.RespOrErrorUnion[T] {
+	return wshrpc.RespOrErrorUnion[T]{Error: err}
 }

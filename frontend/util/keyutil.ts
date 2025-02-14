@@ -1,4 +1,4 @@
-// Copyright 2024, Command Line Inc.
+// Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 import * as util from "./util";
@@ -29,6 +29,35 @@ function keydownWrapper(
             event.stopPropagation();
         }
     };
+}
+
+function waveEventToKeyDesc(waveEvent: WaveKeyboardEvent): string {
+    let keyDesc: string[] = [];
+    if (waveEvent.cmd) {
+        keyDesc.push("Cmd");
+    }
+    if (waveEvent.option) {
+        keyDesc.push("Option");
+    }
+    if (waveEvent.meta) {
+        keyDesc.push("Meta");
+    }
+    if (waveEvent.control) {
+        keyDesc.push("Ctrl");
+    }
+    if (waveEvent.shift) {
+        keyDesc.push("Shift");
+    }
+    if (waveEvent.key != null && waveEvent.key != "") {
+        if (waveEvent.key == " ") {
+            keyDesc.push("Space");
+        } else {
+            keyDesc.push(waveEvent.key);
+        }
+    } else {
+        keyDesc.push("c{" + waveEvent.code + "}");
+    }
+    return keyDesc.join(":");
 }
 
 function parseKey(key: string): { key: string; type: string } {
@@ -183,7 +212,7 @@ function checkKeyPressed(event: WaveKeyboardEvent, keyDescription: string): bool
     }
     if (keyPress.keyType == KeyTypeKey) {
         eventKey = event.key;
-        if (eventKey.length == 1 && /[A-Z]/.test(eventKey.charAt(0))) {
+        if (eventKey != null && eventKey.length == 1 && /[A-Z]/.test(eventKey.charAt(0))) {
             // key is upper case A-Z, this means shift is applied, we want to allow
             // "Shift:e" as well as "Shift:E" or "E"
             eventKey = eventKey.toLocaleLowerCase();
@@ -210,6 +239,7 @@ function adaptFromReactOrNativeKeyEvent(event: React.KeyboardEvent | KeyboardEve
     rtn.code = event.code;
     rtn.key = event.key;
     rtn.location = event.location;
+    (rtn as any).nativeEvent = event;
     if (event.type == "keydown" || event.type == "keyup" || event.type == "keypress") {
         rtn.type = event.type;
     } else {
@@ -302,4 +332,5 @@ export {
     keydownWrapper,
     parseKeyDescription,
     setKeyUtilPlatform,
+    waveEventToKeyDesc,
 };

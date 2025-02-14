@@ -1,4 +1,4 @@
-// Copyright 2024, Command Line Inc.
+// Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 package panichandler
@@ -11,33 +11,33 @@ import (
 
 // to log NumPanics into the local telemetry system
 // gets around import cycles
-var PanicTelemetryHandler func()
+var PanicTelemetryHandler func(panicType string)
 
-func PanicHandlerNoTelemetry(debugStr string) {
-	r := recover()
-	if r == nil {
+func PanicHandlerNoTelemetry(debugStr string, recoverVal any) {
+	if recoverVal == nil {
 		return
 	}
-	log.Printf("[panic] in %s: %v\n", debugStr, r)
+	log.Printf("[panic] in %s: %v\n", debugStr, recoverVal)
 	debug.PrintStack()
 }
 
 // returns an error (wrapping the panic) if a panic occurred
-func PanicHandler(debugStr string) error {
-	r := recover()
-	if r == nil {
+func PanicHandler(debugStr string, recoverVal any) error {
+	if recoverVal == nil {
 		return nil
 	}
-	log.Printf("[panic] in %s: %v\n", debugStr, r)
+	log.Printf("[panic] in %s: %v\n", debugStr, recoverVal)
 	debug.PrintStack()
 	if PanicTelemetryHandler != nil {
 		go func() {
-			defer PanicHandlerNoTelemetry("PanicTelemetryHandler")
-			PanicTelemetryHandler()
+			defer func() {
+				PanicHandlerNoTelemetry("PanicTelemetryHandler", recover())
+			}()
+			PanicTelemetryHandler(debugStr)
 		}()
 	}
-	if err, ok := r.(error); ok {
+	if err, ok := recoverVal.(error); ok {
 		return fmt.Errorf("panic in %s: %w", debugStr, err)
 	}
-	return fmt.Errorf("panic in %s: %v", debugStr, r)
+	return fmt.Errorf("panic in %s: %v", debugStr, recoverVal)
 }

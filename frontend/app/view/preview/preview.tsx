@@ -1,22 +1,26 @@
-// Copyright 2024, Command Line Inc.
+// Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 import { BlockNodeModel } from "@/app/block/blocktypes";
+import { Button } from "@/app/element/button";
 import { CenteredDiv } from "@/app/element/quickelems";
 import { TypeAheadModal } from "@/app/modals/typeaheadmodal";
 import { ContextMenuModel } from "@/app/store/contextmenu";
 import { tryReinjectKey } from "@/app/store/keymodel";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
+import { BlockHeaderSuggestionControl } from "@/app/suggestion/suggestion";
 import { CodeEditor } from "@/app/view/codeeditor/codeeditor";
 import { Markdown } from "@/element/markdown";
 import {
     atoms,
     createBlock,
+    getApi,
     getConnStatusAtom,
     getOverrideConfigAtom,
     getSettingsKeyAtom,
     globalStore,
+    PLATFORM,
     refocusNode,
 } from "@/store/global";
 import * as services from "@/store/services";
@@ -24,19 +28,37 @@ import * as WOS from "@/store/wos";
 import { getWebServerEndpoint } from "@/util/endpoints";
 import { goHistory, goHistoryBack, goHistoryForward } from "@/util/historyutil";
 import { adaptFromReactOrNativeKeyEvent, checkKeyPressed, keydownWrapper } from "@/util/keyutil";
-import { base64ToString, fireAndForget, isBlank, jotaiLoadableValue, makeConnRoute, stringToBase64 } from "@/util/util";
+import {
+    base64ToString,
+    fireAndForget,
+    isBlank,
+    jotaiLoadableValue,
+    makeConnRoute,
+    makeNativeLabel,
+    stringToBase64,
+} from "@/util/util";
 import { Monaco } from "@monaco-editor/react";
 import clsx from "clsx";
 import { Atom, atom, Getter, PrimitiveAtom, useAtomValue, useSetAtom, WritableAtom } from "jotai";
 import { loadable } from "jotai/utils";
 import type * as MonacoTypes from "monaco-editor/esm/vs/editor/editor.api";
 import { createRef, memo, useCallback, useEffect, useMemo, useState } from "react";
+import { TransformComponent, TransformWrapper, useControls } from "react-zoom-pan-pinch";
 import { CSVView } from "./csvview";
 import { DirectoryPreview } from "./directorypreview";
 import "./preview.scss";
 
 const MaxFileSize = 1024 * 1024 * 10; // 10MB
 const MaxCSVSize = 1024 * 1024 * 1; // 1MB
+
+// TODO drive this using config
+const BOOKMARKS: { label: string; path: string }[] = [
+    { label: "Home", path: "~" },
+    { label: "Desktop", path: "~/Desktop" },
+    { label: "Downloads", path: "~/Downloads" },
+    { label: "Documents", path: "~/Documents" },
+    { label: "Root", path: "/" },
+];
 
 type SpecializedViewProps = {
     model: PreviewModel;
@@ -53,8 +75,8 @@ const SpecializedViewMap: { [view: string]: ({ model }: SpecializedViewProps) =>
 
 const textApplicationMimetypes = [
     "application/sql",
-    "application/pem-certificate-chain",
     "application/x-php",
+    "application/x-pem-file",
     "application/x-httpd-php",
     "application/liquid",
     "application/graphql",
@@ -108,6 +130,7 @@ export class PreviewModel implements ViewModel {
     viewType: string;
     blockId: string;
     nodeModel: BlockNodeModel;
+    noPadding?: Atom<boolean>;
     blockAtom: Atom<Block>;
     viewIcon: Atom<string | IconButtonDecl>;
     viewName: Atom<string>;
@@ -129,8 +152,9 @@ export class PreviewModel implements ViewModel {
     loadableStatFilePath: Atom<Loadable<string>>;
     loadableFileInfo: Atom<Loadable<FileInfo>>;
     connection: Atom<Promise<string>>;
+    connectionImmediate: Atom<string>;
     statFile: Atom<Promise<FileInfo>>;
-    fullFile: Atom<Promise<FullFile>>;
+    fullFile: Atom<Promise<FileData>>;
     fileMimeType: Atom<Promise<string>>;
     fileMimeTypeLoadable: Atom<Loadable<string>>;
     fileContentSaved: PrimitiveAtom<string | null>;
@@ -139,6 +163,7 @@ export class PreviewModel implements ViewModel {
     connectionError: PrimitiveAtom<string>;
 
     openFileModal: PrimitiveAtom<boolean>;
+    openFileModalDelay: PrimitiveAtom<boolean>;
     openFileError: PrimitiveAtom<string>;
     openFileModalGiveFocusRef: React.MutableRefObject<() => boolean>;
 
@@ -161,6 +186,7 @@ export class PreviewModel implements ViewModel {
         this.refreshVersion = atom(0);
         this.previewTextRef = createRef();
         this.openFileModal = atom(false);
+        this.openFileModalDelay = atom(false);
         this.openFileError = atom(null) as PrimitiveAtom<string>;
         this.openFileModalGiveFocusRef = createRef();
         this.manageConnection = atom(true);
@@ -185,27 +211,10 @@ export class PreviewModel implements ViewModel {
                     elemtype: "iconbutton",
                     icon: "folder-open",
                     longClick: (e: React.MouseEvent<any>) => {
-                        const menuItems: ContextMenuItem[] = [];
-                        menuItems.push({
-                            label: "Go to Home",
-                            click: () => this.goHistory("~"),
-                        });
-                        menuItems.push({
-                            label: "Go to Desktop",
-                            click: () => this.goHistory("~/Desktop"),
-                        });
-                        menuItems.push({
-                            label: "Go to Downloads",
-                            click: () => this.goHistory("~/Downloads"),
-                        });
-                        menuItems.push({
-                            label: "Go to Documents",
-                            click: () => this.goHistory("~/Documents"),
-                        });
-                        menuItems.push({
-                            label: "Go to Root",
-                            click: () => this.goHistory("/"),
-                        });
+                        const menuItems: ContextMenuItem[] = BOOKMARKS.map((bookmark) => ({
+                            label: `Go to ${bookmark.label} (${bookmark.path})`,
+                            click: () => this.goHistory(bookmark.path),
+                        }));
                         ContextMenuModel.showContextMenu(menuItems, e);
                     },
                 };
@@ -245,7 +254,7 @@ export class PreviewModel implements ViewModel {
                     text: headerPath,
                     ref: this.previewTextRef,
                     className: "preview-filename",
-                    onClick: () => this.updateOpenFileModalAndError(true),
+                    onClick: () => this.toggleOpenFileModal(),
                 },
             ];
             let saveClassName = "grey";
@@ -253,14 +262,35 @@ export class PreviewModel implements ViewModel {
                 saveClassName = "green";
             }
             if (isCeView) {
-                viewTextChildren.push({
-                    elemtype: "textbutton",
-                    text: "Save",
-                    className: clsx(
-                        `${saveClassName} warning border-radius-4 vertical-padding-2 horizontal-padding-10 font-size-11 font-weight-500`
-                    ),
-                    onClick: () => fireAndForget(this.handleFileSave.bind(this)),
-                });
+                const fileInfo = globalStore.get(this.loadableFileInfo);
+                if (fileInfo.state != "hasData") {
+                    viewTextChildren.push({
+                        elemtype: "textbutton",
+                        text: "Loading ...",
+                        className: clsx(
+                            `grey warning border-radius-4 vertical-padding-2 horizontal-padding-10 font-size-11 font-weight-500`
+                        ),
+                        onClick: () => {},
+                    });
+                } else if (fileInfo.data.readonly) {
+                    viewTextChildren.push({
+                        elemtype: "textbutton",
+                        text: "Read Only",
+                        className: clsx(
+                            `yellow warning border-radius-4 vertical-padding-2 horizontal-padding-10 font-size-11 font-weight-500`
+                        ),
+                        onClick: () => {},
+                    });
+                } else {
+                    viewTextChildren.push({
+                        elemtype: "textbutton",
+                        text: "Save",
+                        className: clsx(
+                            `${saveClassName} warning border-radius-4 vertical-padding-2 horizontal-padding-10 font-size-11 font-weight-500`
+                        ),
+                        onClick: () => fireAndForget(this.handleFileSave.bind(this)),
+                    });
+                }
                 if (get(this.canPreview)) {
                     viewTextChildren.push({
                         elemtype: "textbutton",
@@ -364,20 +394,27 @@ export class PreviewModel implements ViewModel {
         this.connection = atom<Promise<string>>(async (get) => {
             const connName = get(this.blockAtom)?.meta?.connection;
             try {
-                await RpcApi.ConnEnsureCommand(TabRpcClient, connName, { timeout: 60000 });
+                await RpcApi.ConnEnsureCommand(TabRpcClient, { connname: connName }, { timeout: 60000 });
                 globalStore.set(this.connectionError, "");
             } catch (e) {
                 globalStore.set(this.connectionError, e as string);
             }
             return connName;
         });
+        this.connectionImmediate = atom<string>((get) => {
+            return get(this.blockAtom)?.meta?.connection;
+        });
         this.statFile = atom<Promise<FileInfo>>(async (get) => {
             const fileName = get(this.metaFilePath);
             if (fileName == null) {
                 return null;
             }
-            const conn = (await get(this.connection)) ?? "";
-            const statFile = await services.FileService.StatFile(conn, fileName);
+            const statFile = await RpcApi.FileInfoCommand(TabRpcClient, {
+                info: {
+                    path: await this.formatRemoteUri(fileName, get),
+                },
+            });
+            console.log("stat file", statFile);
             return statFile;
         });
         this.fileMimeType = atom<Promise<string>>(async (get) => {
@@ -388,13 +425,17 @@ export class PreviewModel implements ViewModel {
         this.newFileContent = atom(null) as PrimitiveAtom<string | null>;
         this.goParentDirectory = this.goParentDirectory.bind(this);
 
-        const fullFileAtom = atom<Promise<FullFile>>(async (get) => {
+        const fullFileAtom = atom<Promise<FileData>>(async (get) => {
             const fileName = get(this.metaFilePath);
             if (fileName == null) {
                 return null;
             }
-            const conn = (await get(this.connection)) ?? "";
-            const file = await services.FileService.ReadFile(conn, fileName);
+            const file = await RpcApi.FileReadCommand(TabRpcClient, {
+                info: {
+                    path: await this.formatRemoteUri(fileName, get),
+                },
+            });
+            console.log("full file", file);
             return file;
         });
 
@@ -413,7 +454,7 @@ export class PreviewModel implements ViewModel {
                 const fullFile = await get(fullFileAtom);
                 return base64ToString(fullFile?.data64);
             },
-            (get, set, update: string) => {
+            (_, set, update: string) => {
                 set(this.fileContentSaved, update);
             }
         );
@@ -433,10 +474,16 @@ export class PreviewModel implements ViewModel {
             const connAtom = getConnStatusAtom(connName);
             return get(connAtom);
         });
+
+        this.noPadding = atom(true);
     }
 
     markdownShowTocToggle() {
         globalStore.set(this.markdownShowToc, !globalStore.get(this.markdownShowToc));
+    }
+
+    get viewComponent(): ViewComponent {
+        return PreviewView;
     }
 
     async getSpecializedView(getFn: Getter): Promise<{ specializedView?: string; errorStr?: string }> {
@@ -446,7 +493,6 @@ export class PreviewModel implements ViewModel {
         const connErr = getFn(this.connectionError);
         const editMode = getFn(this.editMode);
         const parentFileInfo = await this.getParentInfo(fileInfo);
-        console.log(parentFileInfo);
 
         if (connErr != "") {
             return { errorStr: `Connection Error: ${connErr}` };
@@ -497,6 +543,25 @@ export class PreviewModel implements ViewModel {
     updateOpenFileModalAndError(isOpen, errorMsg = null) {
         globalStore.set(this.openFileModal, isOpen);
         globalStore.set(this.openFileError, errorMsg);
+        if (isOpen) {
+            globalStore.set(this.openFileModalDelay, true);
+        } else {
+            const delayVal = globalStore.get(this.openFileModalDelay);
+            if (delayVal) {
+                setTimeout(() => {
+                    globalStore.set(this.openFileModalDelay, false);
+                }, 200);
+            }
+        }
+    }
+
+    toggleOpenFileModal() {
+        const modalOpen = globalStore.get(this.openFileModal);
+        const delayVal = globalStore.get(this.openFileModalDelay);
+        if (!modalOpen && delayVal) {
+            return;
+        }
+        this.updateOpenFileModalAndError(!modalOpen);
     }
 
     async goHistory(newPath: string) {
@@ -523,6 +588,7 @@ export class PreviewModel implements ViewModel {
             const parentFileInfo = await RpcApi.RemoteFileJoinCommand(TabRpcClient, [fileInfo.path, ".."], {
                 route: makeConnRoute(conn),
             });
+            console.log("parent file info", parentFileInfo);
             return parentFileInfo;
         } catch {
             return undefined;
@@ -549,7 +615,6 @@ export class PreviewModel implements ViewModel {
                 this.goParentDirectory({ fileInfo: newFileInfo });
                 return;
             }
-            console.log(newFileInfo.path);
             this.updateOpenFileModalAndError(false);
             await this.goHistory(newFileInfo.path);
             refocusNode(this.blockId);
@@ -599,9 +664,13 @@ export class PreviewModel implements ViewModel {
             console.log("not saving file, newFileContent is null");
             return;
         }
-        const conn = (await globalStore.get(this.connection)) ?? "";
         try {
-            await services.FileService.SaveFile(conn, filePath, stringToBase64(newFileContent));
+            await RpcApi.FileWriteCommand(TabRpcClient, {
+                info: {
+                    path: await this.formatRemoteUri(filePath, globalStore.get),
+                },
+                data64: stringToBase64(newFileContent),
+            });
             globalStore.set(this.fileContent, newFileContent);
             globalStore.set(this.newFileContent, null);
             console.log("saved file", filePath);
@@ -671,17 +740,40 @@ export class PreviewModel implements ViewModel {
                 label: "Open Terminal in New Block",
                 click: () =>
                     fireAndForget(async () => {
+                        const conn = await globalStore.get(this.connection);
                         const fileInfo = await globalStore.get(this.statFile);
                         const termBlockDef: BlockDef = {
                             meta: {
                                 view: "term",
                                 controller: "shell",
                                 "cmd:cwd": fileInfo.dir,
+                                connection: conn,
                             },
                         };
                         await createBlock(termBlockDef);
                     }),
             });
+            const conn = globalStore.get(this.connectionImmediate);
+            if (!conn) {
+                menuItems.push({
+                    label: makeNativeLabel(PLATFORM, true, true),
+                    click: async () => {
+                        const fileInfo = await globalStore.get(this.statFile);
+                        getApi().openNativePath(fileInfo.dir);
+                    },
+                });
+            }
+        } else {
+            const conn = globalStore.get(this.connectionImmediate);
+            if (!conn) {
+                menuItems.push({
+                    label: makeNativeLabel(PLATFORM, false, false),
+                    click: async () => {
+                        const fileInfo = await globalStore.get(this.statFile);
+                        getApi().openNativePath(`${fileInfo.dir}/${fileInfo.name}`);
+                    },
+                });
+            }
         }
         const loadableSV = globalStore.get(this.loadableSpecializedView);
         const wordWrapAtom = getOverrideConfigAtom(this.blockId, "editor:wordwrap");
@@ -744,12 +836,9 @@ export class PreviewModel implements ViewModel {
             fireAndForget(() => this.goParentDirectory({}));
             return true;
         }
-        const openModalOpen = globalStore.get(this.openFileModal);
-        if (!openModalOpen) {
-            if (checkKeyPressed(e, "Cmd:o")) {
-                this.updateOpenFileModalAndError(true);
-                return true;
-            }
+        if (checkKeyPressed(e, "Cmd:o")) {
+            this.toggleOpenFileModal();
+            return true;
         }
         const canPreview = globalStore.get(this.canPreview);
         if (canPreview) {
@@ -773,11 +862,11 @@ export class PreviewModel implements ViewModel {
         }
         return false;
     }
-}
 
-function makePreviewModel(blockId: string, nodeModel: BlockNodeModel): PreviewModel {
-    const previewModel = new PreviewModel(blockId, nodeModel);
-    return previewModel;
+    async formatRemoteUri(path: string, get: Getter): Promise<string> {
+        const conn = (await get(this.connection)) ?? "local";
+        return `wsh://${conn}/${path}`;
+    }
 }
 
 function MarkdownPreview({ model }: SpecializedViewProps) {
@@ -804,6 +893,41 @@ function MarkdownPreview({ model }: SpecializedViewProps) {
     );
 }
 
+function ImageZooomControls() {
+    const { zoomIn, zoomOut, resetTransform } = useControls();
+
+    return (
+        <div className="tools">
+            <Button onClick={() => zoomIn()} title="Zoom In">
+                <i className="fa-sharp fa-plus" />
+            </Button>
+            <Button onClick={() => zoomOut()} title="Zoom Out">
+                <i className="fa-sharp fa-minus" />
+            </Button>
+            <Button onClick={() => resetTransform()} title="Reset Zoom">
+                <i className="fa-sharp fa-rotate-left" />
+            </Button>
+        </div>
+    );
+}
+
+function StreamingImagePreview({ url }: { url: string }) {
+    return (
+        <div className="view-preview view-preview-image">
+            <TransformWrapper initialScale={1} centerOnInit pinch={{ step: 10 }}>
+                {({ zoomIn, zoomOut, resetTransform, ...rest }) => (
+                    <>
+                        <ImageZooomControls />
+                        <TransformComponent>
+                            <img src={url} />
+                        </TransformComponent>
+                    </>
+                )}
+            </TransformWrapper>
+        </div>
+    );
+}
+
 function StreamingPreview({ model }: SpecializedViewProps) {
     const conn = useAtomValue(model.connection);
     const fileInfo = useAtomValue(model.statFile);
@@ -817,7 +941,7 @@ function StreamingPreview({ model }: SpecializedViewProps) {
     if (fileInfo.mimetype == "application/pdf") {
         return (
             <div className="view-preview view-preview-pdf">
-                <iframe src={streamingUrl} width="95%" height="95%" name="pdfview" />
+                <iframe src={streamingUrl} width="100%" height="100%" name="pdfview" />
             </div>
         );
     }
@@ -840,11 +964,7 @@ function StreamingPreview({ model }: SpecializedViewProps) {
         );
     }
     if (fileInfo.mimetype.startsWith("image/")) {
-        return (
-            <div className="view-preview view-preview-image">
-                <img src={streamingUrl} />
-            </div>
-        );
+        return <StreamingImagePreview url={streamingUrl} />;
     }
     return <CenteredDiv>Preview Not Supported</CenteredDiv>;
 }
@@ -853,6 +973,7 @@ function CodeEditPreview({ model }: SpecializedViewProps) {
     const fileContent = useAtomValue(model.fileContent);
     const setNewFileContent = useSetAtom(model.newFileContent);
     const fileName = useAtomValue(model.statFilePath);
+    const fileInfo = useAtomValue(model.statFile);
     const blockMeta = useAtomValue(model.blockAtom)?.meta;
 
     function codeEditKeyDownHandler(e: WaveKeyboardEvent): boolean {
@@ -904,6 +1025,7 @@ function CodeEditPreview({ model }: SpecializedViewProps) {
             blockId={model.blockId}
             text={fileContent}
             filename={fileName}
+            fileinfo={fileInfo}
             meta={blockMeta}
             onChange={(text) => setNewFileContent(text)}
             onMount={onMount}
@@ -945,7 +1067,7 @@ function iconForFile(mimeType: string): string {
     }
 }
 
-function SpecializedView({ parentRef, model }: SpecializedViewProps) {
+const SpecializedView = memo(({ parentRef, model }: SpecializedViewProps) => {
     const specializedView = useAtomValue(model.specializedView);
     const mimeType = useAtomValue(model.fileMimeType);
     const setCanPreview = useSetAtom(model.canPreview);
@@ -962,7 +1084,32 @@ function SpecializedView({ parentRef, model }: SpecializedViewProps) {
         return <CenteredDiv>Invalid Specialzied View Component ({specializedView.specializedView})</CenteredDiv>;
     }
     return <SpecializedViewComponent model={model} parentRef={parentRef} />;
-}
+});
+
+const fetchSuggestions = async (
+    model: PreviewModel,
+    query: string,
+    reqContext: SuggestionRequestContext
+): Promise<FetchSuggestionsResponse> => {
+    const fileInfo = await globalStore.get(model.statFile);
+    if (fileInfo == null) {
+        return null;
+    }
+    const conn = await globalStore.get(model.connection);
+    return await RpcApi.FetchSuggestionsCommand(
+        TabRpcClient,
+        {
+            suggestiontype: "file",
+            "file:cwd": fileInfo.dir,
+            query: query,
+            widgetid: reqContext.widgetid,
+            reqnum: reqContext.reqnum,
+        },
+        {
+            route: makeConnRoute(conn),
+        }
+    );
+};
 
 function PreviewView({
     blockId,
@@ -979,14 +1126,36 @@ function PreviewView({
     if (connStatus?.status != "connected") {
         return null;
     }
+    const handleSelect = (s: SuggestionType) => {
+        model.handleOpenFile(s["file:path"]);
+    };
+    const handleTab = (s: SuggestionType, query: string): string => {
+        if (s["mime:type"] == "directory") {
+            return s["file:name"] + "/";
+        } else {
+            return s["file:name"];
+        }
+    };
+    const fetchSuggestionsFn = async (query, ctx) => {
+        return await fetchSuggestions(model, query, ctx);
+    };
     return (
         <>
-            <OpenFileModal blockId={blockId} model={model} blockRef={blockRef} />
-            <div className="full-preview scrollbar-hide-until-hover">
+            {/* <OpenFileModal blockId={blockId} model={model} blockRef={blockRef} /> */}
+            <div key="fullpreview" className="full-preview scrollbar-hide-until-hover">
                 <div ref={contentRef} className="full-preview-content">
                     <SpecializedView parentRef={contentRef} model={model} />
                 </div>
             </div>
+            <BlockHeaderSuggestionControl
+                blockRef={blockRef}
+                openAtom={model.openFileModal}
+                onClose={() => model.updateOpenFileModalAndError(false)}
+                onSelect={handleSelect}
+                onTab={handleTab}
+                fetchSuggestions={fetchSuggestionsFn}
+                placeholderText="Open File..."
+            />
         </>
     );
 }
@@ -1057,4 +1226,4 @@ const OpenFileModal = memo(
     }
 );
 
-export { makePreviewModel, PreviewView };
+export { PreviewView };

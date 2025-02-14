@@ -1,14 +1,17 @@
-// Copyright 2024, Command Line Inc.
+// Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 import { Button } from "@/app/element/button";
+import { CopyButton } from "@/app/element/copybutton";
 import { Input } from "@/app/element/input";
+import { useDimensionsWithCallbackRef } from "@/app/hook/useDimensions";
 import { ContextMenuModel } from "@/app/store/contextmenu";
 import { PLATFORM, atoms, createBlock, getApi, globalStore } from "@/app/store/global";
-import { FileService } from "@/app/store/services";
+import { RpcApi } from "@/app/store/wshclientapi";
+import { TabRpcClient } from "@/app/store/wshrpcutil";
 import type { PreviewModel } from "@/app/view/preview/preview";
 import { checkKeyPressed, isCharacterKeyEvent } from "@/util/keyutil";
-import { base64ToString, fireAndForget, isBlank } from "@/util/util";
+import { fireAndForget, isBlank, makeConnRoute, makeNativeLabel } from "@/util/util";
 import { offset, useDismiss, useFloating, useInteractions } from "@floating-ui/react";
 import {
     Column,
@@ -26,9 +29,18 @@ import dayjs from "dayjs";
 import { PrimitiveAtom, atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { OverlayScrollbarsComponent, OverlayScrollbarsComponentRef } from "overlayscrollbars-react";
 import React, { Fragment, memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useDrag, useDrop } from "react-dnd";
 import { quote as shellQuote } from "shell-quote";
 import { debounce } from "throttle-debounce";
 import "./directorypreview.scss";
+
+const PageJumpSize = 20;
+
+type FileCopyStatus = {
+    copyData: CommandFileCopyData;
+    copyError: string;
+    allowRetry: boolean;
+};
 
 declare module "@tanstack/react-table" {
     interface TableMeta<TData extends RowData> {
@@ -67,7 +79,7 @@ const displaySuffixes = {
 };
 
 function getBestUnit(bytes: number, si: boolean = false, sigfig: number = 3): string {
-    if (bytes < 0) {
+    if (bytes === undefined || bytes < 0) {
         return "-";
     }
     const units = si ? ["kB", "MB", "GB", "TB"] : ["KiB", "MiB", "GiB", "TiB"];
@@ -111,13 +123,6 @@ function isIconValid(icon: string): boolean {
         return false;
     }
     return icon.match(iconRegex) != null;
-}
-
-function getIconClass(icon: string): string {
-    if (!isIconValid(icon)) {
-        return "fa fa-solid fa-question fa-fw";
-    }
-    return `fa fa-solid fa-${icon} fa-fw`;
 }
 
 function getSortIcon(sortType: string | boolean): React.ReactNode {
@@ -290,11 +295,17 @@ function DirectoryTable({
             onSave: (newName: string) => {
                 let newPath: string;
                 if (newName !== fileName) {
-                    newPath = path.replace(fileName, newName);
+                    const lastInstance = path.lastIndexOf(fileName);
+                    newPath = path.substring(0, lastInstance) + newName;
                     console.log(`replacing ${fileName} with ${newName}: ${path}`);
                     fireAndForget(async () => {
-                        const connection = await globalStore.get(model.connection);
-                        await FileService.Rename(connection, path, newPath);
+                        await RpcApi.FileMoveCommand(TabRpcClient, {
+                            srcuri: await model.formatRemoteUri(path, globalStore.get),
+                            desturi: await model.formatRemoteUri(newPath, globalStore.get),
+                            opts: {
+                                recursive: true,
+                            },
+                        });
                         model.refreshCallback();
                     });
                 }
@@ -335,7 +346,10 @@ function DirectoryTable({
     });
 
     useEffect(() => {
-        setSelectedPath((table.getSortedRowModel()?.flatRows[focusIndex]?.getValue("path") as string) ?? null);
+        const topRows = table.getTopRows() || [];
+        const centerRows = table.getCenterRows() || [];
+        const allRows = [...topRows, ...centerRows];
+        setSelectedPath((allRows[focusIndex]?.getValue("path") as string) ?? null);
     }, [table, focusIndex, data]);
 
     useEffect(() => {
@@ -346,7 +360,7 @@ function DirectoryTable({
                 return;
             }
         }
-    }, [data]);
+    }, [table]);
     const columnSizeVars = useMemo(() => {
         const headers = table.getFlatHeaders();
         const colSizes: { [key: string]: number } = {};
@@ -483,25 +497,28 @@ function TableBody({
             const viewportHeight = viewport.offsetHeight;
             const rowElement = rowRefs.current[focusIndex];
             const rowRect = rowElement.getBoundingClientRect();
-            const parentRect = bodyRef.current.getBoundingClientRect();
+            const parentRect = viewport.getBoundingClientRect();
             const viewportScrollTop = viewport.scrollTop;
-
-            const rowTopRelativeToViewport = rowRect.top - parentRect.top;
-            const rowBottomRelativeToViewport = rowRect.bottom - parentRect.top;
-
-            if (rowTopRelativeToViewport < viewportScrollTop) {
+            const rowTopRelativeToViewport = rowRect.top - parentRect.top + viewport.scrollTop;
+            const rowBottomRelativeToViewport = rowRect.bottom - parentRect.top + viewport.scrollTop;
+            if (rowTopRelativeToViewport - 30 < viewportScrollTop) {
                 // Row is above the visible area
-                viewport.scrollTo({ top: rowTopRelativeToViewport });
-            } else if (rowBottomRelativeToViewport > viewportScrollTop + viewportHeight) {
+                let topVal = rowTopRelativeToViewport - 30;
+                if (topVal < 0) {
+                    topVal = 0;
+                }
+                viewport.scrollTo({ top: topVal });
+            } else if (rowBottomRelativeToViewport + 5 > viewportScrollTop + viewportHeight) {
                 // Row is below the visible area
-                viewport.scrollTo({ top: rowBottomRelativeToViewport - viewportHeight });
+                const topVal = rowBottomRelativeToViewport - viewportHeight + 5;
+                viewport.scrollTo({ top: topVal });
             }
         }
         // setIndexChangedFromClick(false);
     }, [focusIndex]);
 
     const handleFileContextMenu = useCallback(
-        (e: any, finfo: FileInfo) => {
+        async (e: any, finfo: FileInfo) => {
             e.preventDefault();
             e.stopPropagation();
             if (finfo == null) {
@@ -509,16 +526,14 @@ function TableBody({
             }
             const normPath = getNormFilePath(finfo);
             const fileName = finfo.path.split("/").pop();
-            let openNativeLabel = "Open File";
-            if (finfo.isdir) {
-                openNativeLabel = "Open Directory in File Manager";
-                if (PLATFORM == "darwin") {
-                    openNativeLabel = "Open Directory in Finder";
-                } else if (PLATFORM == "win32") {
-                    openNativeLabel = "Open Directory in Explorer";
-                }
-            } else {
-                openNativeLabel = "Open File in Default Application";
+            let parentFileInfo: FileInfo;
+            try {
+                parentFileInfo = await RpcApi.RemoteFileJoinCommand(TabRpcClient, [normPath, ".."], {
+                    route: makeConnRoute(conn),
+                });
+            } catch (e) {
+                console.log("could not get parent file info. using child file info as fallback");
+                parentFileInfo = finfo;
             }
             const menu: ContextMenuItem[] = [
                 {
@@ -570,16 +585,6 @@ function TableBody({
                 {
                     type: "separator",
                 },
-                // TODO: Only show this option for local files, resolve correct host path if connection is WSL
-                {
-                    label: openNativeLabel,
-                    click: () => {
-                        getApi().openNativePath(normPath);
-                    },
-                },
-                {
-                    type: "separator",
-                },
                 {
                     label: "Open Preview in New Block",
                     click: () =>
@@ -588,12 +593,33 @@ function TableBody({
                                 meta: {
                                     view: "preview",
                                     file: finfo.path,
+                                    connection: conn,
                                 },
                             };
                             await createBlock(blockDef);
                         }),
                 },
             ];
+            if (!conn) {
+                menu.push(
+                    {
+                        type: "separator",
+                    },
+                    // TODO: resolve correct host path if connection is WSL
+                    {
+                        label: makeNativeLabel(PLATFORM, finfo.isdir, false),
+                        click: () => {
+                            getApi().openNativePath(normPath);
+                        },
+                    },
+                    {
+                        label: makeNativeLabel(PLATFORM, true, true),
+                        click: () => {
+                            getApi().openNativePath(parentFileInfo.dir);
+                        },
+                    }
+                );
+            }
             if (finfo.mimetype == "directory") {
                 menu.push({
                     label: "Open Terminal in New Block",
@@ -603,7 +629,8 @@ function TableBody({
                                 meta: {
                                     controller: "shell",
                                     view: "term",
-                                    "cmd:cwd": finfo.path,
+                                    "cmd:cwd": await model.formatRemoteUri(finfo.path, globalStore.get),
+                                    connection: conn,
                                 },
                             };
                             await createBlock(termBlockDef);
@@ -618,7 +645,10 @@ function TableBody({
                     label: "Delete",
                     click: () => {
                         fireAndForget(async () => {
-                            await FileService.DeleteFile(conn, finfo.path).catch((e) => console.log(e));
+                            await RpcApi.FileDeleteCommand(TabRpcClient, {
+                                path: await model.formatRemoteUri(finfo.path, globalStore.get),
+                                recursive: false,
+                            }).catch((e) => console.log(e));
                             setRefreshVersion((current) => current + 1);
                         });
                     },
@@ -627,34 +657,6 @@ function TableBody({
             ContextMenuModel.showContextMenu(menu, e);
         },
         [setRefreshVersion, conn]
-    );
-
-    const displayRow = useCallback(
-        (row: Row<FileInfo>, idx: number) => (
-            <div
-                ref={(el) => (rowRefs.current[idx] = el)}
-                className={clsx("dir-table-body-row", { focused: focusIndex === idx })}
-                key={row.id}
-                onDoubleClick={() => {
-                    const newFileName = row.getValue("path") as string;
-                    model.goHistory(newFileName);
-                    setSearch("");
-                }}
-                onClick={() => setFocusIndex(idx)}
-                onContextMenu={(e) => handleFileContextMenu(e, row.original)}
-            >
-                {row.getVisibleCells().map((cell) => (
-                    <div
-                        className={clsx("dir-table-body-cell", "col-" + cell.column.id)}
-                        key={cell.id}
-                        style={{ width: `calc(var(--col-${cell.column.id}-size) * 1px)` }}
-                    >
-                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </div>
-                ))}
-            </div>
-        ),
-        [setSearch, handleFileContextMenu, setFocusIndex, focusIndex]
     );
 
     return (
@@ -672,12 +674,109 @@ function TableBody({
                 <div className="dummy dir-table-body-row" ref={dummyLineRef}>
                     <div className="dir-table-body-cell">dummy-data</div>
                 </div>
-                {table.getTopRows().map(displayRow)}
-                {table.getCenterRows().map((row, idx) => displayRow(row, idx + table.getTopRows().length))}
+                {table.getTopRows().map((row, idx) => (
+                    <TableRow
+                        model={model}
+                        row={row}
+                        focusIndex={focusIndex}
+                        setFocusIndex={setFocusIndex}
+                        setSearch={setSearch}
+                        idx={idx}
+                        handleFileContextMenu={handleFileContextMenu}
+                        ref={(el) => (rowRefs.current[idx] = el)}
+                        key={idx}
+                    />
+                ))}
+                {table.getCenterRows().map((row, idx) => (
+                    <TableRow
+                        model={model}
+                        row={row}
+                        focusIndex={focusIndex}
+                        setFocusIndex={setFocusIndex}
+                        setSearch={setSearch}
+                        idx={idx + table.getTopRows().length}
+                        handleFileContextMenu={handleFileContextMenu}
+                        ref={(el) => (rowRefs.current[idx] = el)}
+                        key={idx}
+                    />
+                ))}
             </div>
         </div>
     );
 }
+
+type TableRowProps = {
+    model: PreviewModel;
+    row: Row<FileInfo>;
+    focusIndex: number;
+    setFocusIndex: (_: number) => void;
+    setSearch: (_: string) => void;
+    idx: number;
+    handleFileContextMenu: (e: any, finfo: FileInfo) => Promise<void>;
+};
+
+const TableRow = React.forwardRef(function (
+    { model, row, focusIndex, setFocusIndex, setSearch, idx, handleFileContextMenu }: TableRowProps,
+    ref: React.RefObject<HTMLDivElement>
+) {
+    const dirPath = useAtomValue(model.normFilePath);
+    const connection = useAtomValue(model.connection);
+    const formatRemoteUri = useCallback(
+        (path: string) => {
+            let conn: string;
+            if (!connection) {
+                conn = "local";
+            } else {
+                conn = connection;
+            }
+            return `wsh://${conn}/${path}`;
+        },
+        [connection]
+    );
+
+    const dragItem: DraggedFile = {
+        relName: row.getValue("name") as string,
+        absParent: dirPath,
+        uri: formatRemoteUri(row.getValue("path") as string),
+    };
+    const [{ isDragging }, drag, dragPreview] = useDrag(
+        () => ({
+            type: "FILE_ITEM",
+            canDrag: true,
+            item: () => dragItem,
+            collect: (monitor) => {
+                return {
+                    isDragging: monitor.isDragging(),
+                };
+            },
+        }),
+        [dragItem]
+    );
+
+    return (
+        <div
+            className={clsx("dir-table-body-row", { focused: focusIndex === idx })}
+            onDoubleClick={() => {
+                const newFileName = row.getValue("path") as string;
+                model.goHistory(newFileName);
+                setSearch("");
+            }}
+            onClick={() => setFocusIndex(idx)}
+            onContextMenu={(e) => handleFileContextMenu(e, row.original)}
+            ref={drag}
+        >
+            {row.getVisibleCells().map((cell) => (
+                <div
+                    className={clsx("dir-table-body-cell", "col-" + cell.column.id)}
+                    key={cell.id}
+                    style={{ width: `calc(var(--col-${cell.column.id}-size) * 1px)` }}
+                >
+                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                </div>
+            ))}
+        </div>
+    );
+});
 
 const MemoizedTableBody = React.memo(
     TableBody,
@@ -699,6 +798,7 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
     const conn = useAtomValue(model.connection);
     const blockData = useAtomValue(model.blockAtom);
     const dirPath = useAtomValue(model.normFilePath);
+    const [copyStatus, setCopyStatus] = useState<FileCopyStatus>(null);
 
     useEffect(() => {
         model.refreshCallback = () => {
@@ -711,22 +811,28 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
 
     useEffect(() => {
         const getContent = async () => {
-            const file = await FileService.ReadFile(conn, dirPath);
-            const serializedContent = base64ToString(file?.data64);
-            const content: FileInfo[] = JSON.parse(serializedContent);
-            setUnfilteredData(content);
+            const file = await RpcApi.FileReadCommand(
+                TabRpcClient,
+                {
+                    info: {
+                        path: await model.formatRemoteUri(dirPath, globalStore.get),
+                    },
+                },
+                null
+            );
+            setUnfilteredData(file.entries);
         };
         getContent();
     }, [conn, dirPath, refreshVersion]);
 
     useEffect(() => {
-        const filtered = unfilteredData.filter((fileInfo) => {
+        const filtered = unfilteredData?.filter((fileInfo) => {
             if (!showHiddenFiles && fileInfo.name.startsWith(".") && fileInfo.name != "..") {
                 return false;
             }
             return fileInfo.name.toLowerCase().includes(searchText);
         });
-        setFilteredData(filtered);
+        setFilteredData(filtered ?? []);
     }, [unfilteredData, showHiddenFiles, searchText]);
 
     useEffect(() => {
@@ -741,6 +847,14 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
             }
             if (checkKeyPressed(waveEvent, "ArrowDown")) {
                 setFocusIndex((idx) => Math.min(idx + 1, filteredData.length - 1));
+                return true;
+            }
+            if (checkKeyPressed(waveEvent, "PageUp")) {
+                setFocusIndex((idx) => Math.max(idx - PageJumpSize, 0));
+                return true;
+            }
+            if (checkKeyPressed(waveEvent, "PageDown")) {
+                setFocusIndex((idx) => Math.min(idx + PageJumpSize, filteredData.length - 1));
                 return true;
             }
             if (checkKeyPressed(waveEvent, "Enter")) {
@@ -765,7 +879,6 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
                 !blockData?.meta?.connection
             ) {
                 getApi().onQuicklook(selectedPath);
-                console.log(selectedPath);
                 return true;
             }
             if (isCharacterKeyEvent(waveEvent)) {
@@ -796,6 +909,64 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
         middleware: [offset(({ rects }) => -rects.reference.height / 2 - rects.floating.height / 2)],
     });
 
+    const handleDropCopy = useCallback(
+        async (data: CommandFileCopyData) => {
+            try {
+                await RpcApi.FileCopyCommand(TabRpcClient, data, { timeout: data.opts.timeout });
+                setCopyStatus(null);
+            } catch (e) {
+                console.log("copy failed:", e);
+                const copyError = `${e}`;
+                const allowRetry = copyError.endsWith("overwrite not specified");
+                const copyStatus: FileCopyStatus = {
+                    copyError,
+                    copyData: data,
+                    allowRetry,
+                };
+                setCopyStatus(copyStatus);
+            }
+            model.refreshCallback();
+        },
+        [setCopyStatus, model.refreshCallback]
+    );
+
+    const [, drop] = useDrop(
+        () => ({
+            accept: "FILE_ITEM", //a name of file drop type
+            canDrop: (_, monitor) => {
+                const dragItem = monitor.getItem<DraggedFile>();
+                // drop if not current dir is the parent directory of the dragged item
+                // requires absolute path
+                if (monitor.isOver({ shallow: false }) && dragItem.absParent !== dirPath) {
+                    return true;
+                }
+                return false;
+            },
+            drop: async (draggedFile: DraggedFile, monitor) => {
+                if (!monitor.didDrop()) {
+                    const timeoutYear = 31536000000; // one year
+                    const opts: FileCopyOpts = {
+                        timeout: timeoutYear,
+                        recursive: true,
+                    };
+                    const desturi = await model.formatRemoteUri(dirPath, globalStore.get);
+                    const data: CommandFileCopyData = {
+                        srcuri: draggedFile.uri,
+                        desturi,
+                        opts,
+                    };
+                    await handleDropCopy(data);
+                }
+            },
+            // TODO: mabe add a hover option?
+        }),
+        [dirPath, model.formatRemoteUri, model.refreshCallback, setCopyStatus]
+    );
+
+    useEffect(() => {
+        drop(refs.reference);
+    }, [refs.reference]);
+
     const dismiss = useDismiss(context);
     const { getReferenceProps, getFloatingProps } = useInteractions([dismiss]);
 
@@ -805,8 +976,15 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
             onSave: (newName: string) => {
                 console.log(`newFile: ${newName}`);
                 fireAndForget(async () => {
-                    const connection = await globalStore.get(model.connection);
-                    await FileService.TouchFile(connection, `${dirPath}/${newName}`);
+                    await RpcApi.FileCreateCommand(
+                        TabRpcClient,
+                        {
+                            info: {
+                                path: await model.formatRemoteUri(`${dirPath}/${newName}`, globalStore.get),
+                            },
+                        },
+                        null
+                    );
                     model.refreshCallback();
                 });
                 setEntryManagerProps(undefined);
@@ -819,8 +997,11 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
             onSave: (newName: string) => {
                 console.log(`newDirectory: ${newName}`);
                 fireAndForget(async () => {
-                    const connection = await globalStore.get(model.connection);
-                    await FileService.Mkdir(connection, `${dirPath}/${newName}`);
+                    await RpcApi.FileMkdirCommand(TabRpcClient, {
+                        info: {
+                            path: await model.formatRemoteUri(`${dirPath}/${newName}`, globalStore.get),
+                        },
+                    });
                     model.refreshCallback();
                 });
                 setEntryManagerProps(undefined);
@@ -832,12 +1013,6 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
         (e: any) => {
             e.preventDefault();
             e.stopPropagation();
-            let openNativeLabel = "Open Directory in File Manager";
-            if (PLATFORM == "darwin") {
-                openNativeLabel = "Open Directory in Finder";
-            } else if (PLATFORM == "win32") {
-                openNativeLabel = "Open Directory in Explorer";
-            }
             const menu: ContextMenuItem[] = [
                 {
                     label: "New File",
@@ -854,15 +1029,16 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
                 {
                     type: "separator",
                 },
-                // TODO: Only show this option for local files, resolve correct host path if connection is WSL
-                {
-                    label: openNativeLabel,
+            ];
+            if (!conn) {
+                // TODO:  resolve correct host path if connection is WSL
+                menu.push({
+                    label: makeNativeLabel(PLATFORM, true, true),
                     click: () => {
-                        console.log(`opening ${dirPath}`);
                         getApi().openNativePath(dirPath);
                     },
-                },
-            ];
+                });
+            }
             menu.push({
                 label: "Open Terminal in New Block",
                 click: async () => {
@@ -871,6 +1047,7 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
                             controller: "shell",
                             view: "term",
                             "cmd:cwd": dirPath,
+                            connection: conn,
                         },
                     };
                     await createBlock(termBlockDef);
@@ -897,6 +1074,13 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
                 onContextMenu={(e) => handleFileContextMenu(e)}
                 onClick={() => setEntryManagerProps(undefined)}
             >
+                {copyStatus != null && (
+                    <CopyErrorOverlay
+                        copyStatus={copyStatus}
+                        setCopyStatus={setCopyStatus}
+                        handleDropCopy={handleDropCopy}
+                    />
+                )}
                 <DirectoryTable
                     model={model}
                     data={filteredData}
@@ -923,5 +1107,103 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
         </Fragment>
     );
 }
+
+const CopyErrorOverlay = React.memo(
+    ({
+        copyStatus,
+        setCopyStatus,
+        handleDropCopy,
+    }: {
+        copyStatus: FileCopyStatus;
+        setCopyStatus: (_: FileCopyStatus) => void;
+        handleDropCopy: (data: CommandFileCopyData) => Promise<void>;
+    }) => {
+        const [overlayRefCallback, _, domRect] = useDimensionsWithCallbackRef(30);
+        const width = domRect?.width;
+
+        const handleRetryCopy = React.useCallback(async () => {
+            if (!copyStatus) {
+                return;
+            }
+            const updatedData = {
+                ...copyStatus.copyData,
+                opts: { ...copyStatus.copyData.opts, overwrite: true },
+            };
+            await handleDropCopy(updatedData);
+        }, [copyStatus.copyData]);
+
+        let statusText = "Copy Error";
+        let errorMsg = `error: ${copyStatus?.copyError}`;
+        if (copyStatus?.allowRetry) {
+            statusText = "Confirm Overwrite File(s)";
+            errorMsg = "This copy operation will overwrite an existing file. Would you like to continue?";
+        }
+
+        const buttonClassName = "outlined grey font-size-11 vertical-padding-3 horizontal-padding-7";
+
+        const handleRemoveCopyError = React.useCallback(async () => {
+            setCopyStatus(null);
+        }, [setCopyStatus]);
+
+        const handleCopyToClipboard = React.useCallback(async () => {
+            await navigator.clipboard.writeText(errorMsg);
+        }, [errorMsg]);
+
+        return (
+            <div
+                ref={overlayRefCallback}
+                className="absolute top-[0] left-1.5 right-1.5 z-[var(--zindex-block-mask-inner)] overflow-hidden bg-[var(--conn-status-overlay-bg-color)] backdrop-blur-[50px] rounded-md shadow-lg"
+            >
+                <div className="flex flex-row justify-between p-2.5 pl-3 font-[var(--base-font)] text-[var(--secondary-text-color)]">
+                    <div
+                        className={clsx("flex flex-row items-center gap-3 grow min-w-0", {
+                            "items-start": true,
+                        })}
+                    >
+                        <i className="fa-solid fa-triangle-exclamation text-[#e6ba1e] text-base"></i>
+
+                        <div className="flex flex-col items-start gap-1 grow w-full">
+                            <div className="max-w-full text-xs font-semibold leading-4 tracking-[0.11px] text-white">
+                                {statusText}
+                            </div>
+
+                            <OverlayScrollbarsComponent
+                                className="group text-xs font-normal leading-[15px] tracking-[0.11px] text-wrap max-h-20 rounded-lg py-1.5 pl-0 relative w-full"
+                                options={{ scrollbars: { autoHide: "leave" } }}
+                            >
+                                <CopyButton
+                                    className="invisible group-hover:visible flex absolute top-0 right-1 rounded backdrop-blur-lg p-1 items-center justify-end gap-1"
+                                    onClick={handleCopyToClipboard}
+                                    title="Copy"
+                                />
+                                <div>{errorMsg}</div>
+                            </OverlayScrollbarsComponent>
+
+                            {copyStatus?.allowRetry && (
+                                <div className="flex flex-row gap-1.5">
+                                    <Button className={buttonClassName} onClick={handleRetryCopy}>
+                                        Override
+                                    </Button>
+                                    <Button className={buttonClassName} onClick={handleRemoveCopyError}>
+                                        Cancel
+                                    </Button>
+                                </div>
+                            )}
+                        </div>
+
+                        {!copyStatus?.allowRetry && (
+                            <div className="flex items-start">
+                                <Button
+                                    className={clsx(buttonClassName, "fa-xmark fa-solid")}
+                                    onClick={handleRemoveCopyError}
+                                />
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </div>
+        );
+    }
+);
 
 export { DirectoryPreview };

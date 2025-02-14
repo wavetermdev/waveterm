@@ -1,4 +1,4 @@
-// Copyright 2024, Command Line Inc.
+// Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 import { App } from "@/app/app";
@@ -9,7 +9,6 @@ import {
     registerGlobalKeys,
 } from "@/app/store/keymodel";
 import { modalsModel } from "@/app/store/modalmodel";
-import { FileService } from "@/app/store/services";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { initWshrpc, TabRpcClient } from "@/app/store/wshrpcutil";
 import { loadMonaco } from "@/app/view/codeeditor/codeeditor";
@@ -163,7 +162,7 @@ async function initWave(initOpts: WaveInitOpts) {
     (window as any).globalWS = globalWS;
     (window as any).TabRpcClient = TabRpcClient;
     await loadConnStatus();
-    initGlobalWaveEventSubs();
+    initGlobalWaveEventSubs(initOpts);
     subscribeToConnEvents();
 
     // ensures client/window/workspace are loaded into the cache before rendering
@@ -184,8 +183,8 @@ async function initWave(initOpts: WaveInitOpts) {
     registerGlobalKeys();
     registerElectronReinjectKeyHandler();
     registerControlShiftStateUpdateHandler();
-    setTimeout(loadMonaco, 30);
-    const fullConfig = await FileService.GetFullConfig();
+    await loadMonaco();
+    const fullConfig = await RpcApi.GetFullConfigCommand(TabRpcClient);
     console.log("fullconfig", fullConfig);
     globalStore.set(atoms.fullConfigAtom, fullConfig);
     console.log("Wave First Render");

@@ -1,4 +1,4 @@
-// Copyright 2024, Command Line Inc.
+// Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 package wconfig
@@ -65,7 +65,9 @@ func (w *Watcher) Start() {
 	w.sendInitialValues()
 
 	go func() {
-		defer panichandler.PanicHandler("filewatcher:Start")
+		defer func() {
+			panichandler.PanicHandler("filewatcher:Start", recover())
+		}()
 		for {
 			select {
 			case event, ok := <-w.watcher.Events:

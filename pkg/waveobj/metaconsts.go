@@ -1,4 +1,4 @@
-// Copyright 2024, Command Line Inc.
+// Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 // Generated Code. DO NOT EDIT.
@@ -47,11 +47,18 @@ const (
 	MetaKey_CmdCloseOnExit                   = "cmd:closeonexit"
 	MetaKey_CmdCloseOnExitForce              = "cmd:closeonexitforce"
 	MetaKey_CmdCloseOnExitDelay              = "cmd:closeonexitdelay"
-	MetaKey_CmdEnv                           = "cmd:env"
-	MetaKey_CmdCwd                           = "cmd:cwd"
 	MetaKey_CmdNoWsh                         = "cmd:nowsh"
 	MetaKey_CmdArgs                          = "cmd:args"
 	MetaKey_CmdShell                         = "cmd:shell"
+	MetaKey_CmdAllowConnChange               = "cmd:allowconnchange"
+	MetaKey_CmdEnv                           = "cmd:env"
+	MetaKey_CmdCwd                           = "cmd:cwd"
+	MetaKey_CmdInitScript                    = "cmd:initscript"
+	MetaKey_CmdInitScriptSh                  = "cmd:initscript.sh"
+	MetaKey_CmdInitScriptBash                = "cmd:initscript.bash"
+	MetaKey_CmdInitScriptZsh                 = "cmd:initscript.zsh"
+	MetaKey_CmdInitScriptPwsh                = "cmd:initscript.pwsh"
+	MetaKey_CmdInitScriptFish                = "cmd:initscript.fish"
 
 	MetaKey_AiClear                          = "ai:*"
 	MetaKey_AiPresetKey                      = "ai:preset"
@@ -93,8 +100,13 @@ const (
 	MetaKey_TermScrollback                   = "term:scrollback"
 	MetaKey_TermVDomSubBlockId               = "term:vdomblockid"
 	MetaKey_TermVDomToolbarBlockId           = "term:vdomtoolbarblockid"
+	MetaKey_TermTransparency                 = "term:transparency"
+	MetaKey_TermAllowBracketedPaste          = "term:allowbracketedpaste"
+	MetaKey_TermConnDebug                    = "term:conndebug"
 
 	MetaKey_WebZoom                          = "web:zoom"
+	MetaKey_WebHideNav                       = "web:hidenav"
+	MetaKey_WebPartition                     = "web:partition"
 
 	MetaKey_MarkdownFontSize                 = "markdown:fontsize"
 	MetaKey_MarkdownFixedFontSize            = "markdown:fixedfontsize"

@@ -1,9 +1,13 @@
-// Copyright 2024, Command Line Inc.
+// Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 package waveobj
 
+import "github.com/google/uuid"
+
 type MetaMapType map[string]any
+
+var MetaMap_DeleteSentinel = uuid.NewString()
 
 func (m MetaMapType) GetString(key string, def string) string {
 	if v, ok := m[key]; ok {
@@ -12,6 +16,22 @@ func (m MetaMapType) GetString(key string, def string) string {
 		}
 	}
 	return def
+}
+
+func (m MetaMapType) HasKey(key string) bool {
+	_, ok := m[key]
+	return ok
+}
+
+func (m MetaMapType) GetConnectionOverride(connName string) MetaMapType {
+	v, ok := m["["+connName+"]"]
+	if !ok {
+		return nil
+	}
+	if mval, ok := v.(map[string]any); ok {
+		return MetaMapType(mval)
+	}
+	return nil
 }
 
 func (m MetaMapType) GetStringList(key string) []string {
@@ -27,6 +47,26 @@ func (m MetaMapType) GetStringList(key string) []string {
 	for _, varrVal := range varr {
 		if s, ok := varrVal.(string); ok {
 			rtn = append(rtn, s)
+		}
+	}
+	return rtn
+}
+
+func (m MetaMapType) GetStringMap(key string, useDeleteSentinel bool) map[string]string {
+	mval := m.GetMap(key)
+	if len(mval) == 0 {
+		return nil
+	}
+	rtn := make(map[string]string, len(mval))
+	for k, v := range mval {
+		if v == nil {
+			if useDeleteSentinel {
+				rtn[k] = MetaMap_DeleteSentinel
+			}
+			continue
+		}
+		if s, ok := v.(string); ok {
+			rtn[k] = s
 		}
 	}
 	return rtn

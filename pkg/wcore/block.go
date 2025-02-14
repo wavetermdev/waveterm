@@ -1,4 +1,4 @@
-// Copyright 2024, Command Line Inc.
+// Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 package wcore
@@ -14,6 +14,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/filestore"
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/telemetry"
+	"github.com/wavetermdev/waveterm/pkg/telemetry/telemetrydata"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wps"
@@ -83,7 +84,7 @@ func CreateBlock(ctx context.Context, tabId string, blockDef *waveobj.BlockDef, 
 	// upload the files if present
 	if len(blockDef.Files) > 0 {
 		for fileName, fileDef := range blockDef.Files {
-			err := filestore.WFS.MakeFile(ctx, newBlockOID, fileName, fileDef.Meta, filestore.FileOptsType{})
+			err := filestore.WFS.MakeFile(ctx, newBlockOID, fileName, fileDef.Meta, wshrpc.FileOpts{})
 			if err != nil {
 				return nil, fmt.Errorf("error making blockfile %q: %w", fileName, err)
 			}
@@ -94,7 +95,9 @@ func CreateBlock(ctx context.Context, tabId string, blockDef *waveobj.BlockDef, 
 		}
 	}
 	go func() {
-		defer panichandler.PanicHandler("CreateBlock:telemetry")
+		defer func() {
+			panichandler.PanicHandler("CreateBlock:telemetry", recover())
+		}()
 		blockView := blockDef.Meta.GetString(waveobj.MetaKey_View, "")
 		if blockView == "" {
 			return
@@ -103,6 +106,12 @@ func CreateBlock(ctx context.Context, tabId string, blockDef *waveobj.BlockDef, 
 		defer cancelFn()
 		telemetry.UpdateActivity(tctx, wshrpc.ActivityUpdate{
 			Renderers: map[string]int{blockView: 1},
+		})
+		telemetry.RecordTEvent(tctx, &telemetrydata.TEvent{
+			Event: "action:createblock",
+			Props: telemetrydata.TEventProps{
+				BlockView: blockView,
+			},
 		})
 	}()
 	return blockData, nil

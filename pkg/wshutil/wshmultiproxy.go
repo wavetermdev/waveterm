@@ -1,4 +1,4 @@
-// Copyright 2024, Command Line Inc.
+// Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 package wshutil
@@ -113,7 +113,9 @@ func (p *WshRpcMultiProxy) handleUnauthMessage(msgBytes []byte) {
 		p.setRouteInfo(routeInfo.AuthToken, routeInfo)
 		p.sendAuthResponse(msg, routeId, routeInfo.AuthToken)
 		go func() {
-			defer panichandler.PanicHandler("WshRpcMultiProxy:handleUnauthMessage")
+			defer func() {
+				panichandler.PanicHandler("WshRpcMultiProxy:handleUnauthMessage", recover())
+			}()
 			for msgBytes := range routeInfo.Proxy.ToRemoteCh {
 				p.ToRemoteCh <- msgBytes
 			}
@@ -121,6 +123,7 @@ func (p *WshRpcMultiProxy) handleUnauthMessage(msgBytes []byte) {
 		DefaultRouter.RegisterRoute(routeId, routeInfo.Proxy, true)
 		return
 	}
+	// TODO implement authenticatetoken for multiproxy unauth message
 	if msg.AuthToken == "" {
 		p.sendResponseError(msg, fmt.Errorf("no auth token"))
 		return

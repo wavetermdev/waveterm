@@ -8,25 +8,141 @@ updates:
           time: "09:00"
           timezone: "America/Los_Angeles"
       groups:
-          dev-dependencies:
+          dev-dependencies-patch:
               dependency-type: "development"
               exclude-patterns:
                   - "*storybook*"
                   - "*electron*"
-          storybook:
-              patterns:
-                  - "*storybook*"
-          prod-dependencies:
-              dependency-type: "production"
+                  - "jotai"
+                  - "react"
+                  - "@types/react"
+                  - "*react-dom"
+                  - "*docusaurus*"
+              update-types:
+                  - "patch"
+          dev-dependencies-minor:
+              dependency-type: "development"
               exclude-patterns:
+                  - "*storybook*"
                   - "*electron*"
                   - "jotai"
-          electron:
+                  - "react"
+                  - "@types/react"
+                  - "*react-dom"
+                  - "*docusaurus*"
+              update-types:
+                  - "minor"
+
+          prod-dependencies-patch:
+              dependency-type: "production"
+              exclude-patterns:
+                  - "*storybook*"
+                  - "*electron*"
+                  - "jotai"
+                  - "react"
+                  - "@types/react"
+                  - "*react-dom"
+                  - "*docusaurus*"
+              update-types:
+                  - "patch"
+          prod-dependencies-minor:
+              dependency-type: "production"
+              exclude-patterns:
+                  - "*storybook*"
+                  - "*electron*"
+                  - "jotai"
+                  - "react"
+                  - "@types/react"
+                  - "*react-dom"
+                  - "*docusaurus*"
+              update-types:
+                  - "minor"
+
+          storybook-patch:
+              patterns:
+                  - "*storybook*"
+              update-types:
+                  - "patch"
+          storybook-minor:
+              patterns:
+                  - "*storybook*"
+              update-types:
+                  - "minor"
+          storybook-major:
+              patterns:
+                  - "*storybook*"
+              update-types:
+                  - "major"
+
+          electron-patch:
               patterns:
                   - "*electron*"
-          docusaurus:
+              update-types:
+                  - "patch"
+          electron-minor:
+              patterns:
+                  - "*electron*"
+              update-types:
+                  - "minor"
+          electron-major:
+              patterns:
+                  - "*electron*"
+              update-types:
+                  - "major"
+
+          docusaurus-patch:
               patterns:
                   - "*docusaurus*"
+              update-types:
+                  - "patch"
+          docusaurus-minor:
+              patterns:
+                  - "*docusaurus*"
+              update-types:
+                  - "minor"
+          docusaurus-major:
+              patterns:
+                  - "*docusaurus*"
+              update-types:
+                  - "major"
+
+          react-patch:
+              patterns:
+                  - "react"
+                  - "@types/react"
+                  - "*react-dom"
+              update-types:
+                  - "patch"
+          react-minor:
+              patterns:
+                  - "react"
+                  - "@types/react"
+                  - "*react-dom"
+              update-types:
+                  - "minor"
+          react-major:
+              patterns:
+                  - "react"
+                  - "@types/react"
+                  - "*react-dom"
+              update-types:
+                  - "major"
+
+          jotai-patch:
+              patterns:
+                  - "jotai"
+              update-types:
+                  - "patch"
+          jotai-minor:
+              patterns:
+                  - "jotai"
+              update-types:
+                  - "minor"
+          jotai-major:
+              patterns:
+                  - "jotai"
+              update-types:
+                  - "major"
     - package-ecosystem: "gomod"
       directory: "/"
       schedule:

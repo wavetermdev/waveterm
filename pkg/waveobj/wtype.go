@@ -1,4 +1,4 @@
-// Copyright 2024, Command Line Inc.
+// Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 package waveobj
@@ -202,13 +202,15 @@ func (t *Tab) GetBlockORefs() []ORef {
 }
 
 type LayoutActionData struct {
-	ActionType string `json:"actiontype"`
-	BlockId    string `json:"blockid"`
-	NodeSize   *uint  `json:"nodesize,omitempty"`
-	IndexArr   *[]int `json:"indexarr,omitempty"`
-	Focused    bool   `json:"focused"`
-	Magnified  bool   `json:"magnified"`
-	Ephemeral  bool   `json:"ephemeral"`
+	ActionType    string `json:"actiontype"`
+	BlockId       string `json:"blockid"`
+	NodeSize      *uint  `json:"nodesize,omitempty"`
+	IndexArr      *[]int `json:"indexarr,omitempty"`
+	Focused       bool   `json:"focused"`
+	Magnified     bool   `json:"magnified"`
+	Ephemeral     bool   `json:"ephemeral"`
+	TargetBlockId string `json:"targetblockid,omitempty"`
+	Position      string `json:"position,omitempty"`
 }
 
 type LeafOrderEntry struct {

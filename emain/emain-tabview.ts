@@ -1,14 +1,16 @@
-// Copyright 2024, Command Line Inc.
+// Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { FileService } from "@/app/store/services";
+import { RpcApi } from "@/app/store/wshclientapi";
 import { adaptFromElectronKeyEvent } from "@/util/keyutil";
+import { CHORD_TIMEOUT } from "@/util/sharedconst";
 import { Rectangle, shell, WebContentsView } from "electron";
 import { getWaveWindowById } from "emain/emain-window";
 import path from "path";
 import { configureAuthKeyRequestInjection } from "./authkey";
 import { setWasActive } from "./emain-activity";
 import { handleCtrlShiftFocus, handleCtrlShiftState, shFrameNavHandler, shNavHandler } from "./emain-util";
+import { ElectronWshClient } from "./emain-wsh";
 import { getElectronAppBasePath, isDevVite } from "./platform";
 
 function computeBgColor(fullConfig: FullConfigType): string {
@@ -44,6 +46,8 @@ export class WaveTabView extends WebContentsView {
     isInitialized: boolean = false;
     isWaveReady: boolean = false;
     isDestroyed: boolean = false;
+    keyboardChordMode: boolean = false;
+    resetChordModeTimeout: NodeJS.Timeout = null;
 
     constructor(fullConfig: FullConfigType) {
         console.log("createBareTabView");
@@ -88,6 +92,23 @@ export class WaveTabView extends WebContentsView {
 
     set waveTabId(waveTabId: string) {
         this._waveTabId = waveTabId;
+    }
+
+    setKeyboardChordMode(mode: boolean) {
+        this.keyboardChordMode = mode;
+        if (mode) {
+            if (this.resetChordModeTimeout) {
+                clearTimeout(this.resetChordModeTimeout);
+            }
+            this.resetChordModeTimeout = setTimeout(() => {
+                this.keyboardChordMode = false;
+            }, CHORD_TIMEOUT);
+        } else {
+            if (this.resetChordModeTimeout) {
+                clearTimeout(this.resetChordModeTimeout);
+                this.resetChordModeTimeout = null;
+            }
+        }
     }
 
     positionTabOnScreen(winBounds: Rectangle) {
@@ -200,7 +221,7 @@ export async function getOrCreateWebViewForTab(waveWindowId: string, tabId: stri
     if (tabView) {
         return [tabView, true];
     }
-    const fullConfig = await FileService.GetFullConfig();
+    const fullConfig = await RpcApi.GetFullConfigCommand(ElectronWshClient);
     tabView = getSpareTab(fullConfig);
     tabView.waveWindowId = waveWindowId;
     tabView.lastUsedTs = Date.now();
@@ -219,6 +240,11 @@ export async function getOrCreateWebViewForTab(waveWindowId: string, tabId: stri
         // console.log("WIN bie", tabView.waveTabId.substring(0, 8), waveEvent.type, waveEvent.code);
         handleCtrlShiftState(tabView.webContents, waveEvent);
         setWasActive(true);
+        if (input.type == "keyDown" && tabView.keyboardChordMode) {
+            e.preventDefault();
+            tabView.setKeyboardChordMode(false);
+            tabView.webContents.send("reinject-key", waveEvent);
+        }
     });
     tabView.webContents.on("zoom-changed", (e) => {
         tabView.webContents.send("zoom-changed");
@@ -263,7 +289,7 @@ export function ensureHotSpareTab(fullConfig: FullConfigType) {
 }
 
 export function getSpareTab(fullConfig: FullConfigType): WaveTabView {
-    setTimeout(ensureHotSpareTab, 500);
+    setTimeout(() => ensureHotSpareTab(fullConfig), 500);
     if (HotSpareTab != null) {
         const rtn = HotSpareTab;
         HotSpareTab = null;

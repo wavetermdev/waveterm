@@ -1,4 +1,4 @@
-// Copyright 2024, Command Line Inc.
+// Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 // Generated Code. DO NOT EDIT.
@@ -8,6 +8,8 @@ package wconfig
 const (
 	ConfigKey_AppClear                       = "app:*"
 	ConfigKey_AppGlobalHotkey                = "app:globalhotkey"
+	ConfigKey_AppDismissArchitectureWarning  = "app:dismissarchitecturewarning"
+	ConfigKey_AppDefaultNewBlock             = "app:defaultnewblock"
 
 	ConfigKey_AiClear                        = "ai:*"
 	ConfigKey_AiPreset                       = "ai:preset"
@@ -32,6 +34,8 @@ const (
 	ConfigKey_TermLocalShellOpts             = "term:localshellopts"
 	ConfigKey_TermScrollback                 = "term:scrollback"
 	ConfigKey_TermCopyOnSelect               = "term:copyonselect"
+	ConfigKey_TermTransparency               = "term:transparency"
+	ConfigKey_TermAllowBracketedPaste        = "term:allowbracketedpaste"
 
 	ConfigKey_EditorMinimapEnabled           = "editor:minimapenabled"
 	ConfigKey_EditorStickyScrollEnabled      = "editor:stickyscrollenabled"
@@ -77,6 +81,10 @@ const (
 	ConfigKey_WindowMagnifiedBlockSize       = "window:magnifiedblocksize"
 	ConfigKey_WindowMagnifiedBlockBlurPrimaryPx = "window:magnifiedblockblurprimarypx"
 	ConfigKey_WindowMagnifiedBlockBlurSecondaryPx = "window:magnifiedblockblursecondarypx"
+	ConfigKey_WindowConfirmClose             = "window:confirmclose"
+	ConfigKey_WindowSaveLastWindow           = "window:savelastwindow"
+	ConfigKey_WindowDimensions               = "window:dimensions"
+	ConfigKey_WindowZoom                     = "window:zoom"
 
 	ConfigKey_TelemetryClear                 = "telemetry:*"
 	ConfigKey_TelemetryEnabled               = "telemetry:enabled"

@@ -1,4 +1,4 @@
-// Copyright 2024, Command Line Inc.
+// Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 import { ChatMessage, ChatMessages } from "@/app/view/chat/chatmessages";
@@ -29,10 +29,6 @@ class ChatModel {
         const currentMessages = get(this.messagesAtom);
         set(this.messagesAtom, [...currentMessages, newMessage]);
     });
-}
-
-function makeChatModel(blockId: string): ChatModel {
-    return new ChatModel(blockId);
 }
 
 interface ChatProps {
@@ -67,4 +63,4 @@ const Chat = memo(({ model }: ChatProps) => {
     );
 });
 
-export { Chat, ChatModel, makeChatModel };
+export { Chat, ChatModel };

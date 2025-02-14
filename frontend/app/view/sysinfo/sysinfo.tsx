@@ -1,4 +1,4 @@
-// Copyright 2024, Command Line Inc.
+// Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 import { getConnStatusAtom, globalStore, WOS } from "@/store/global";
@@ -240,6 +240,10 @@ class SysinfoViewModel implements ViewModel {
         });
     }
 
+    get viewComponent(): ViewComponent {
+        return SysinfoView;
+    }
+
     async loadInitialData() {
         globalStore.set(this.loadingAtom, true);
         try {
@@ -315,11 +319,6 @@ class SysinfoViewModel implements ViewModel {
         }
         return points;
     }
-}
-
-function makeSysinfoViewModel(blockId: string, viewType: string): SysinfoViewModel {
-    const sysinfoViewModel = new SysinfoViewModel(blockId, viewType);
-    return sysinfoViewModel;
 }
 
 const plotColors = ["#58C142", "#FFC107", "#FF5722", "#2196F3", "#9C27B0", "#00BCD4", "#FFEB3B", "#795548"];
@@ -447,7 +446,7 @@ function SingleLinePlot({
     );
     if (title) {
         marks.push(
-            Plot.text([yvalMeta.name], {
+            Plot.text([yvalMeta?.name], {
                 frameAnchor: "top-left",
                 dx: 4,
                 fill: "var(--grey-text-color)",
@@ -558,4 +557,4 @@ const SysinfoViewInner = React.memo(({ model }: SysinfoViewProps) => {
     );
 });
 
-export { makeSysinfoViewModel, SysinfoView, SysinfoViewModel };
+export { SysinfoViewModel };

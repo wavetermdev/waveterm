@@ -28,9 +28,32 @@ the location of the Git Bash "bash.exe" binary. By default it is located at "C:\
 Just remember in JSON, backslashes need to be escaped. So add this to your [settings.json](./config) file:
 
 ```json
-    "term:localshellpath": "C:\\Program Files\\Git\\bin\\bash.exe"
+"term:localshellpath": "C:\\Program Files\\Git\\bin\\bash.exe"
 ```
 
 ### Can I use WSH outside of Wave?
 
 `wsh` is an internal CLI for extending control over Wave to the command line, you can learn more about it [here](./wsh). To prevent misuse by other applications, `wsh` requires an access token provided by Wave to work and will not function outside of the app.
+
+## Why does Wave warn me about ARM64 translation when it launches?
+
+macOS and Windows both have compatibility layers that allow x64 applications to run on ARM computers. This helps more apps run on these systems while developers work to add native ARM support to their applications. However, it comes with significant performance tradeoffs.
+
+To get the best experience using Wave, it is recommended that you uninstall Wave and reinstall the version that is natively compiled for your computer. You can find the right version by consulting our [Installation Instructions](./gettingstarted#installation).
+
+You can disable this warning by setting `app:dismissarchitecturewarning=true` in [your configurations](./config.mdx).
+
+## How do I join the beta builds of Wave?
+
+Wave publishes to two channels, `latest` and `beta`. If you've installed the app for macOS, Windows, or Linux via DEB or RPM, you can set the following configurations in your `settings.json` (see [Configuration](./config) for more info):
+
+```json
+"autoupdate:enabled": true,
+"autoupdate:channel": "beta"
+```
+
+If you've installed via Snap, you can use the following command:
+
+```sh
+sudo snap install waveterm --classic --beta
+```

@@ -1,6 +1,8 @@
-// Copyright 2024, Command Line Inc.
+// Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { RpcApi } from "@/app/store/wshclientapi";
+import { TabRpcClient } from "@/app/store/wshrpcutil";
 import {
     getLayoutModelForTabById,
     LayoutTreeActionType,
@@ -8,9 +10,14 @@ import {
     newLayoutNode,
 } from "@/layout/index";
 import { getLayoutModelForStaticTab } from "@/layout/lib/layoutModelHooks";
+import {
+    LayoutTreeReplaceNodeAction,
+    LayoutTreeSplitHorizontalAction,
+    LayoutTreeSplitVerticalAction,
+} from "@/layout/lib/types";
 import { getWebServerEndpoint } from "@/util/endpoints";
 import { fetch } from "@/util/fetchutil";
-import { getPrefixedSettings, isBlank } from "@/util/util";
+import { deepCompareReturnPrev, getPrefixedSettings, isBlank } from "@/util/util";
 import { atom, Atom, PrimitiveAtom, useAtomValue } from "jotai";
 import { globalStore } from "./jotaiStore";
 import { modalsModel } from "./modalmodel";
@@ -23,7 +30,7 @@ let atoms: GlobalAtomsType;
 let globalEnvironment: "electron" | "renderer";
 const blockComponentModelMap = new Map<string, BlockComponentModel>();
 const Counters = new Map<string, number>();
-const ConnStatusMap = new Map<string, PrimitiveAtom<ConnStatus>>();
+const ConnStatusMapAtom = atom(new Map<string, PrimitiveAtom<ConnStatus>>());
 
 type GlobalInitOptions = {
     tabId: string;
@@ -135,7 +142,8 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
     const typeAheadModalAtom = atom({});
     const modalOpen = atom(false);
     const allConnStatusAtom = atom<ConnStatus[]>((get) => {
-        const connStatuses = Array.from(ConnStatusMap.values()).map((atom) => get(atom));
+        const connStatusMap = get(ConnStatusMapAtom);
+        const connStatuses = Array.from(connStatusMap.values()).map((atom) => get(atom));
         return connStatuses;
     });
     const flashErrorsAtom = atom<FlashErrorType[]>([]);
@@ -164,10 +172,11 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
         notifications: notificationsAtom,
         notificationPopoverMode: notificationPopoverModeAtom,
         reinitVersion,
+        isTermMultiInput: atom(false),
     };
 }
 
-function initGlobalWaveEventSubs() {
+function initGlobalWaveEventSubs(initOpts: WaveInitOpts) {
     waveEventSubscribe(
         {
             eventType: "waveobj:update",
@@ -192,6 +201,7 @@ function initGlobalWaveEventSubs() {
                 const data: UserInputRequest = event.data;
                 modalsModel.pushModal("UserInputModal", { ...data });
             },
+            scope: initOpts.windowId,
         },
         {
             eventType: "blockfile",
@@ -314,16 +324,15 @@ function useSettingsKeyAtom<T extends keyof SettingsType>(key: T): SettingsType[
     return useAtomValue(getSettingsKeyAtom(key));
 }
 
-function useSettingsPrefixAtom(prefix: string): Atom<SettingsType> {
-    // TODO: use a shallow equal here to make this more efficient
-    let settingsPrefixAtom = settingsAtomCache.get(prefix + ":") as Atom<SettingsType>;
+function getSettingsPrefixAtom(prefix: string): Atom<SettingsType> {
+    let settingsPrefixAtom = settingsAtomCache.get(prefix + ":");
     if (settingsPrefixAtom == null) {
+        // create a stable, closured reference to use as the deepCompareReturnPrev key
+        const cacheKey = {};
         settingsPrefixAtom = atom((get) => {
             const settings = get(atoms.settingsAtom);
-            if (settings == null) {
-                return {};
-            }
-            return getPrefixedSettings(settings, prefix);
+            const newValue = getPrefixedSettings(settings, prefix);
+            return deepCompareReturnPrev(cacheKey, newValue);
         });
         settingsAtomCache.set(prefix + ":", settingsPrefixAtom);
     }
@@ -375,6 +384,54 @@ function getApi(): ElectronApi {
     return (window as any).api;
 }
 
+async function createBlockSplitHorizontally(
+    blockDef: BlockDef,
+    targetBlockId: string,
+    position: "before" | "after"
+): Promise<string> {
+    const tabId = globalStore.get(atoms.staticTabId);
+    const layoutModel = getLayoutModelForTabById(tabId);
+    const rtOpts: RuntimeOpts = { termsize: { rows: 25, cols: 80 } };
+    const newBlockId = await ObjectService.CreateBlock(blockDef, rtOpts);
+    const targetNodeId = layoutModel.getNodeByBlockId(targetBlockId)?.id;
+    if (targetNodeId == null) {
+        throw new Error(`targetNodeId not found for blockId: ${targetBlockId}`);
+    }
+    const splitAction: LayoutTreeSplitHorizontalAction = {
+        type: LayoutTreeActionType.SplitHorizontal,
+        targetNodeId: targetNodeId,
+        newNode: newLayoutNode(undefined, undefined, undefined, { blockId: newBlockId }),
+        position: position,
+        focused: true,
+    };
+    layoutModel.treeReducer(splitAction);
+    return newBlockId;
+}
+
+async function createBlockSplitVertically(
+    blockDef: BlockDef,
+    targetBlockId: string,
+    position: "before" | "after"
+): Promise<string> {
+    const tabId = globalStore.get(atoms.staticTabId);
+    const layoutModel = getLayoutModelForTabById(tabId);
+    const rtOpts: RuntimeOpts = { termsize: { rows: 25, cols: 80 } };
+    const newBlockId = await ObjectService.CreateBlock(blockDef, rtOpts);
+    const targetNodeId = layoutModel.getNodeByBlockId(targetBlockId)?.id;
+    if (targetNodeId == null) {
+        throw new Error(`targetNodeId not found for blockId: ${targetBlockId}`);
+    }
+    const splitAction: LayoutTreeSplitVerticalAction = {
+        type: LayoutTreeActionType.SplitVertical,
+        targetNodeId: targetNodeId,
+        newNode: newLayoutNode(undefined, undefined, undefined, { blockId: newBlockId }),
+        position: position,
+        focused: true,
+    };
+    layoutModel.treeReducer(splitAction);
+    return newBlockId;
+}
+
 async function createBlock(blockDef: BlockDef, magnified = false, ephemeral = false): Promise<string> {
     const tabId = globalStore.get(atoms.staticTabId);
     const layoutModel = getLayoutModelForTabById(tabId);
@@ -392,6 +449,28 @@ async function createBlock(blockDef: BlockDef, magnified = false, ephemeral = fa
     };
     layoutModel.treeReducer(insertNodeAction);
     return blockId;
+}
+
+async function replaceBlock(blockId: string, blockDef: BlockDef): Promise<string> {
+    const tabId = globalStore.get(atoms.staticTabId);
+    const layoutModel = getLayoutModelForTabById(tabId);
+    const rtOpts: RuntimeOpts = { termsize: { rows: 25, cols: 80 } };
+    const newBlockId = await ObjectService.CreateBlock(blockDef, rtOpts);
+    setTimeout(async () => {
+        await ObjectService.DeleteBlock(blockId);
+    }, 300);
+    const targetNodeId = layoutModel.getNodeByBlockId(blockId)?.id;
+    if (targetNodeId == null) {
+        throw new Error(`targetNodeId not found for blockId: ${blockId}`);
+    }
+    const replaceNodeAction: LayoutTreeReplaceNodeAction = {
+        type: LayoutTreeActionType.ReplaceNode,
+        targetNodeId: targetNodeId,
+        newNode: newLayoutNode(undefined, undefined, undefined, { blockId: newBlockId }),
+        focused: true,
+    };
+    layoutModel.treeReducer(replaceNodeAction);
+    return newBlockId;
 }
 
 // when file is not found, returns {data: null, fileInfo: null}
@@ -497,6 +576,10 @@ function getBlockComponentModel(blockId: string): BlockComponentModel {
     return blockComponentModelMap.get(blockId);
 }
 
+function getAllBlockComponentModels(): BlockComponentModel[] {
+    return Array.from(blockComponentModelMap.values());
+}
+
 function getFocusedBlockId(): string {
     const layoutModel = getLayoutModelForStaticTab();
     const focusedLayoutNode = globalStore.get(layoutModel.focusedNode);
@@ -574,7 +657,8 @@ function subscribeToConnEvents() {
 }
 
 function getConnStatusAtom(conn: string): PrimitiveAtom<ConnStatus> {
-    let rtn = ConnStatusMap.get(conn);
+    const connStatusMap = globalStore.get(ConnStatusMapAtom);
+    let rtn = connStatusMap.get(conn);
     if (rtn == null) {
         if (isBlank(conn)) {
             // create a fake "local" status atom that's always connected
@@ -600,7 +684,9 @@ function getConnStatusAtom(conn: string): PrimitiveAtom<ConnStatus> {
             };
             rtn = atom(connStatus);
         }
-        ConnStatusMap.set(conn, rtn);
+        const newConnStatusMap = new Map(connStatusMap);
+        newConnStatusMap.set(conn, rtn);
+        globalStore.set(ConnStatusMapAtom, newConnStatusMap);
     }
     return rtn;
 }
@@ -658,22 +744,34 @@ function setActiveTab(tabId: string) {
     getApi().setActiveTab(tabId);
 }
 
+function recordTEvent(event: string, props?: TEventProps) {
+    if (props == null) {
+        props = {};
+    }
+    RpcApi.RecordTEventCommand(TabRpcClient, { event, props }, { noresponse: true });
+}
+
 export {
     atoms,
     counterInc,
     countersClear,
     countersPrint,
     createBlock,
+    createBlockSplitHorizontally,
+    createBlockSplitVertically,
     createTab,
     fetchWaveFile,
+    getAllBlockComponentModels,
     getApi,
     getBlockComponentModel,
     getBlockMetaKeyAtom,
     getConnStatusAtom,
+    getFocusedBlockId,
     getHostName,
     getObjectId,
     getOverrideConfigAtom,
     getSettingsKeyAtom,
+    getSettingsPrefixAtom,
     getUserName,
     globalStore,
     initGlobal,
@@ -684,11 +782,13 @@ export {
     PLATFORM,
     pushFlashError,
     pushNotification,
+    recordTEvent,
     refocusNode,
     registerBlockComponentModel,
     removeFlashError,
     removeNotification,
     removeNotificationById,
+    replaceBlock,
     setActiveTab,
     setNodeFocus,
     setPlatform,
@@ -700,6 +800,5 @@ export {
     useBlockMetaKeyAtom,
     useOverrideConfigAtom,
     useSettingsKeyAtom,
-    useSettingsPrefixAtom,
     WOS,
 };

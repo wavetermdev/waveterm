@@ -1,4 +1,4 @@
-// Copyright 2024, Command Line Inc.
+// Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 package wshserver
@@ -23,7 +23,7 @@ func GetMainRpcClient() *wshutil.WshRpc {
 	waveSrvClient_Once.Do(func() {
 		inputCh := make(chan []byte, DefaultInputChSize)
 		outputCh := make(chan []byte, DefaultOutputChSize)
-		waveSrvClient_Singleton = wshutil.MakeWshRpc(inputCh, outputCh, wshrpc.RpcContext{}, &WshServerImpl)
+		waveSrvClient_Singleton = wshutil.MakeWshRpc(inputCh, outputCh, wshrpc.RpcContext{}, &WshServerImpl, "main-client")
 	})
 	return waveSrvClient_Singleton
 }

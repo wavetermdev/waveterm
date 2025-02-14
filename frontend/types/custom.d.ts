@@ -1,4 +1,4 @@
-// Copyright 2024, Command Line Inc.
+// Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 import { type Placement } from "@floating-ui/react";
@@ -27,6 +27,7 @@ declare global {
         notifications: jotai.PrimitiveAtom<NotificationType[]>;
         notificationPopoverMode: jotia.atom<boolean>;
         reinitVersion: jotai.PrimitiveAtom<number>;
+        isTermMultiInput: jotai.PrimitiveAtom<boolean>;
     };
 
     type WritableWaveObjectAtom<T extends WaveObj> = jotai.WritableAtom<T, [value: T], void>;
@@ -100,6 +101,8 @@ declare global {
         sendLog: (log: string) => void;
         onQuicklook: (filePath: string) => void;
         openNativePath(filePath: string): void;
+        captureScreenshot(rect: Electron.Rectangle): Promise<string>;
+        setKeyboardChordMode: () => void;
     };
 
     type ElectronContextMenuItem = {
@@ -143,6 +146,7 @@ declare global {
 
     type HeaderElem =
         | IconButtonDecl
+        | ToggleIconButtonDecl
         | HeaderText
         | HeaderInput
         | HeaderDiv
@@ -150,23 +154,32 @@ declare global {
         | ConnectionButton
         | MenuButton;
 
-    type IconButtonDecl = {
-        elemtype: "iconbutton";
+    type IconButtonCommon = {
         icon: string | React.ReactNode;
         iconColor?: string;
         iconSpin?: boolean;
         className?: string;
         title?: string;
-        click?: (e: React.MouseEvent<any>) => void;
-        longClick?: (e: React.MouseEvent<any>) => void;
         disabled?: boolean;
         noAction?: boolean;
+    };
+
+    type IconButtonDecl = IconButtonCommon & {
+        elemtype: "iconbutton";
+        click?: (e: React.MouseEvent<any>) => void;
+        longClick?: (e: React.MouseEvent<any>) => void;
+    };
+
+    type ToggleIconButtonDecl = IconButtonCommon & {
+        elemtype: "toggleiconbutton";
+        active: jotai.WritableAtom<boolean, [boolean], void>;
     };
 
     type HeaderTextButton = {
         elemtype: "textbutton";
         text: string;
         className?: string;
+        title?: string;
         onClick?: (e: React.MouseEvent<any>) => void;
     };
 
@@ -228,25 +241,79 @@ declare global {
         elemtype: "menubutton";
     } & MenuButtonProps;
 
+    type SearchAtoms = {
+        searchValue: PrimitiveAtom<string>;
+        resultsIndex: PrimitiveAtom<number>;
+        resultsCount: PrimitiveAtom<number>;
+        isOpen: PrimitiveAtom<boolean>;
+        regex?: PrimitiveAtom<boolean>;
+        caseSensitive?: PrimitiveAtom<boolean>;
+        wholeWord?: PrimitiveAtom<boolean>;
+    };
+
+    declare type ViewComponentProps<T extends ViewModel> = {
+        blockId: string;
+        blockRef: React.RefObject<HTMLDivElement>;
+        contentRef: React.RefObject<HTMLDivElement>;
+        model: T;
+    };
+
+    declare type ViewComponent = React.FC<ViewComponentProps>;
+
+    type ViewModelClass = new (blockId: string, nodeModel: BlockNodeModel) => ViewModel;
+
     interface ViewModel {
+        // The type of view, used for identifying and rendering the appropriate component.
         viewType: string;
+
+        // Icon representing the view, can be a string or an IconButton declaration.
         viewIcon?: jotai.Atom<string | IconButtonDecl>;
+
+        // Display name for the view, used in UI headers.
         viewName?: jotai.Atom<string>;
+
+        // Optional header text or elements for the view.
         viewText?: jotai.Atom<string | HeaderElem[]>;
+
+        // Icon button displayed before the title in the header.
         preIconButton?: jotai.Atom<IconButtonDecl>;
+
+        // Icon buttons displayed at the end of the block header.
         endIconButtons?: jotai.Atom<IconButtonDecl[]>;
+
+        // Background styling metadata for the block.
         blockBg?: jotai.Atom<MetaType>;
+
+        noHeader?: jotai.Atom<boolean>;
+
+        // Whether the block manages its own connection (e.g., for remote access).
         manageConnection?: jotai.Atom<boolean>;
-        noPadding?: jotai.Atom<boolean>;
+
+        // If true, filters out 'nowsh' connections (when managing connections)
         filterOutNowsh?: jotai.Atom<boolean>;
 
-        onBack?: () => void;
-        onForward?: () => void;
-        onSearchChange?: (text: string) => void;
-        onSearch?: (text: string) => void;
+        // If true, removes padding inside the block content area.
+        noPadding?: jotai.Atom<boolean>;
+
+        // Atoms used for managing search functionality within the block.
+        searchAtoms?: SearchAtoms;
+
+        // The main view component associated with this ViewModel.
+        viewComponent: ViewComponent<ViewModel>;
+
+        // Function to determine if this is a basic terminal block.
+        isBasicTerm?: (getFn: jotai.Getter) => boolean;
+
+        // Returns menu items for the settings dropdown.
         getSettingsMenuItems?: () => ContextMenuItem[];
+
+        // Attempts to give focus to the block, returning true if successful.
         giveFocus?: () => boolean;
+
+        // Handles keydown events within the block.
         keyDownHandler?: (e: WaveKeyboardEvent) => boolean;
+
+        // Cleans up resources when the block is disposed.
         dispose?: () => void;
     }
 
@@ -348,6 +415,20 @@ declare global {
         maxy?: string | number;
         miny?: string | number;
         decimalPlaces?: number;
+    };
+
+    interface SuggestionRequestContext {
+        widgetid: string;
+        reqnum: number;
+        dispose?: boolean;
+    }
+
+    type SuggestionsFnType = (query: string, reqContext: SuggestionRequestContext) => Promise<FetchSuggestionsResponse>;
+
+    type DraggedFile = {
+        uri: string;
+        absParent: string;
+        relName: string;
     };
 }
 

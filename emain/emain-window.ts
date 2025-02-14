@@ -1,9 +1,11 @@
-// Copyright 2024, Command Line Inc.
+// Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { ClientService, FileService, ObjectService, WindowService, WorkspaceService } from "@/app/store/services";
+import { ClientService, ObjectService, WindowService, WorkspaceService } from "@/app/store/services";
+import { RpcApi } from "@/app/store/wshclientapi";
 import { fireAndForget } from "@/util/util";
 import { BaseWindow, BaseWindowConstructorOptions, dialog, globalShortcut, ipcMain, screen } from "electron";
+import { globalEvents } from "emain/emain-events";
 import path from "path";
 import { debounce } from "throttle-debounce";
 import {
@@ -15,9 +17,11 @@ import {
 } from "./emain-activity";
 import { getOrCreateWebViewForTab, getWaveTabViewByWebContentsId, WaveTabView } from "./emain-tabview";
 import { delay, ensureBoundsAreVisible, waveKeyToElectronKey } from "./emain-util";
+import { ElectronWshClient } from "./emain-wsh";
 import { log } from "./log";
 import { getElectronAppBasePath, unamePlatform } from "./platform";
 import { updater } from "./updater";
+
 export type WindowOpts = {
     unamePlatform: string;
 };
@@ -72,11 +76,37 @@ export class WaveBrowserWindow extends BaseWindow {
     private actionQueue: WindowActionQueueEntry[];
 
     constructor(waveWindow: WaveWindow, fullConfig: FullConfigType, opts: WindowOpts) {
+        const settings = fullConfig?.settings;
+
         console.log("create win", waveWindow.oid);
         let winWidth = waveWindow?.winsize?.width;
         let winHeight = waveWindow?.winsize?.height;
         let winPosX = waveWindow.pos.x;
         let winPosY = waveWindow.pos.y;
+
+        if (
+            (winWidth == null || winWidth === 0 || winHeight == null || winHeight === 0) &&
+            settings?.["window:dimensions"]
+        ) {
+            const dimensions = settings["window:dimensions"];
+            const match = dimensions.match(/^(\d+)[xX](\d+)$/);
+
+            if (match) {
+                const [, dimensionWidth, dimensionHeight] = match;
+                const parsedWidth = parseInt(dimensionWidth, 10);
+                const parsedHeight = parseInt(dimensionHeight, 10);
+
+                if ((!winWidth || winWidth === 0) && Number.isFinite(parsedWidth) && parsedWidth > 0) {
+                    winWidth = parsedWidth;
+                }
+                if ((!winHeight || winHeight === 0) && Number.isFinite(parsedHeight) && parsedHeight > 0) {
+                    winHeight = parsedHeight;
+                }
+            } else {
+                console.warn('Invalid window:dimensions format. Expected "widthxheight".');
+            }
+        }
+
         if (winWidth == null || winWidth == 0) {
             const primaryDisplay = screen.getPrimaryDisplay();
             const { width } = primaryDisplay.workAreaSize;
@@ -100,7 +130,6 @@ export class WaveBrowserWindow extends BaseWindow {
             height: winHeight,
         };
         winBounds = ensureBoundsAreVisible(winBounds);
-        const settings = fullConfig?.settings;
         const winOpts: BaseWindowConstructorOptions = {
             titleBarStyle:
                 opts.unamePlatform === "darwin"
@@ -229,27 +258,25 @@ export class WaveBrowserWindow extends BaseWindow {
             e.preventDefault();
             fireAndForget(async () => {
                 const numWindows = waveWindowMap.size;
-                if (numWindows > 1) {
-                    console.log("numWindows > 1", numWindows);
-                    const workspace = await WorkspaceService.GetWorkspace(this.workspaceId);
-                    console.log("workspace", workspace);
-                    if (isNonEmptyUnsavedWorkspace(workspace)) {
-                        console.log("workspace has no name, icon, and multiple tabs", workspace);
-                        const choice = dialog.showMessageBoxSync(this, {
-                            type: "question",
-                            buttons: ["Cancel", "Close Window"],
-                            title: "Confirm",
-                            message: "Window has unsaved tabs, closing window will delete existing tabs.\n\nContinue?",
-                        });
-                        if (choice === 0) {
-                            console.log("user cancelled close window", this.waveWindowId);
-                            return;
+                const fullConfig = await RpcApi.GetFullConfigCommand(ElectronWshClient);
+                if (numWindows > 1 || !fullConfig.settings["window:savelastwindow"]) {
+                    if (fullConfig.settings["window:confirmclose"]) {
+                        const workspace = await WorkspaceService.GetWorkspace(this.workspaceId);
+                        if (isNonEmptyUnsavedWorkspace(workspace)) {
+                            const choice = dialog.showMessageBoxSync(this, {
+                                type: "question",
+                                buttons: ["Cancel", "Close Window"],
+                                title: "Confirm",
+                                message:
+                                    "Window has unsaved tabs, closing window will delete existing tabs.\n\nContinue?",
+                            });
+                            if (choice === 0) {
+                                return;
+                            }
                         }
                     }
-                    console.log("deleteAllowed = true", this.waveWindowId);
                     this.deleteAllowed = true;
                 }
-                console.log("canClose = true", this.waveWindowId);
                 this.canClose = true;
                 this.close();
             });
@@ -260,6 +287,7 @@ export class WaveBrowserWindow extends BaseWindow {
                 console.log("win quitting or updating", this.waveWindowId);
                 return;
             }
+            setTimeout(() => globalEvents.emit("windows-updated"), 50);
             waveWindowMap.delete(this.waveWindowId);
             if (focusedWaveWindow == this) {
                 focusedWaveWindow = null;
@@ -270,17 +298,13 @@ export class WaveBrowserWindow extends BaseWindow {
                 this.destroy();
                 return;
             }
-            const numWindows = waveWindowMap.size;
-            if (numWindows == 0) {
-                console.log("win no windows left", this.waveWindowId);
-                return;
-            }
             if (this.deleteAllowed) {
                 console.log("win removing window from backend DB", this.waveWindowId);
                 fireAndForget(() => WindowService.CloseWindow(this.waveWindowId, true));
             }
         });
         waveWindowMap.set(waveWindow.oid, this);
+        setTimeout(() => globalEvents.emit("windows-updated"), 50);
     }
 
     private removeAllChildViews() {
@@ -303,7 +327,8 @@ export class WaveBrowserWindow extends BaseWindow {
         const workspaceList = await WorkspaceService.ListWorkspaces();
         if (!workspaceList?.find((wse) => wse.workspaceid === workspaceId)?.windowid) {
             const curWorkspace = await WorkspaceService.GetWorkspace(this.workspaceId);
-            if (isNonEmptyUnsavedWorkspace(curWorkspace)) {
+
+            if (curWorkspace && isNonEmptyUnsavedWorkspace(curWorkspace)) {
                 console.log(
                     `existing unsaved workspace ${this.workspaceId} has content, opening workspace ${workspaceId} in new window`
                 );
@@ -594,7 +619,7 @@ export async function createWindowForWorkspace(workspaceId: string) {
     if (!newWin) {
         console.log("error creating new window", this.waveWindowId);
     }
-    const newBwin = await createBrowserWindow(newWin, await FileService.GetFullConfig(), {
+    const newBwin = await createBrowserWindow(newWin, await RpcApi.GetFullConfigCommand(ElectronWshClient), {
         unamePlatform,
     });
     newBwin.show();
@@ -693,17 +718,22 @@ ipcMain.on("delete-workspace", (event, workspaceId) => {
             type: "question",
             buttons: ["Cancel", "Delete Workspace"],
             title: "Confirm",
-            message: `Deleting workspace will also delete its contents.${workspaceHasWindow ? "\nWorkspace is open in a window, which will be closed." : ""}\n\nContinue?`,
+            message: `Deleting workspace will also delete its contents.\n\nContinue?`,
         });
         if (choice === 0) {
             console.log("user cancelled workspace delete", workspaceId, ww?.waveWindowId);
             return;
         }
-        await WorkspaceService.DeleteWorkspace(workspaceId);
+
+        const newWorkspaceId = await WorkspaceService.DeleteWorkspace(workspaceId);
         console.log("delete-workspace done", workspaceId, ww?.waveWindowId);
         if (ww?.workspaceId == workspaceId) {
-            console.log("delete-workspace closing window", workspaceId, ww?.waveWindowId);
-            ww.destroy();
+            if (newWorkspaceId) {
+                await ww.switchWorkspace(newWorkspaceId);
+            } else {
+                console.log("delete-workspace closing window", workspaceId, ww?.waveWindowId);
+                ww.destroy();
+            }
         }
     });
 });
@@ -711,7 +741,7 @@ ipcMain.on("delete-workspace", (event, workspaceId) => {
 export async function createNewWaveWindow() {
     log("createNewWaveWindow");
     const clientData = await ClientService.GetClientData();
-    const fullConfig = await FileService.GetFullConfig();
+    const fullConfig = await RpcApi.GetFullConfigCommand(ElectronWshClient);
     let recreatedWindow = false;
     const allWindows = getAllWaveWindows();
     if (allWindows.length === 0 && clientData?.windowids?.length >= 1) {
@@ -748,7 +778,7 @@ export async function relaunchBrowserWindows() {
     setGlobalIsRelaunching(false);
 
     const clientData = await ClientService.GetClientData();
-    const fullConfig = await FileService.GetFullConfig();
+    const fullConfig = await RpcApi.GetFullConfigCommand(ElectronWshClient);
     const wins: WaveBrowserWindow[] = [];
     for (const windowId of clientData.windowids.slice().reverse()) {
         const windowData: WaveWindow = await WindowService.GetWindow(windowId);

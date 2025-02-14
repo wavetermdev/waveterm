@@ -1,4 +1,4 @@
-// Copyright 2024, Command Line Inc.
+// Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 package waveai
@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"time"
 
 	"github.com/gorilla/websocket"
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
@@ -20,26 +21,30 @@ type WaveAICloudBackend struct{}
 
 var _ AIBackend = WaveAICloudBackend{}
 
-type OpenAICloudReqPacketType struct {
+const CloudWebsocketConnectTimeout = 1 * time.Minute
+const OpenAICloudReqStr = "openai-cloudreq"
+const PacketEOFStr = "EOF"
+
+type WaveAICloudReqPacketType struct {
 	Type       string                           `json:"type"`
 	ClientId   string                           `json:"clientid"`
-	Prompt     []wshrpc.OpenAIPromptMessageType `json:"prompt"`
+	Prompt     []wshrpc.WaveAIPromptMessageType `json:"prompt"`
 	MaxTokens  int                              `json:"maxtokens,omitempty"`
 	MaxChoices int                              `json:"maxchoices,omitempty"`
 }
 
-func MakeOpenAICloudReqPacket() *OpenAICloudReqPacketType {
-	return &OpenAICloudReqPacketType{
+func MakeWaveAICloudReqPacket() *WaveAICloudReqPacketType {
+	return &WaveAICloudReqPacketType{
 		Type: OpenAICloudReqStr,
 	}
 }
 
-func (WaveAICloudBackend) StreamCompletion(ctx context.Context, request wshrpc.OpenAiStreamRequest) chan wshrpc.RespOrErrorUnion[wshrpc.OpenAIPacketType] {
-	rtn := make(chan wshrpc.RespOrErrorUnion[wshrpc.OpenAIPacketType])
+func (WaveAICloudBackend) StreamCompletion(ctx context.Context, request wshrpc.WaveAIStreamRequest) chan wshrpc.RespOrErrorUnion[wshrpc.WaveAIPacketType] {
+	rtn := make(chan wshrpc.RespOrErrorUnion[wshrpc.WaveAIPacketType])
 	wsEndpoint := wcloud.GetWSEndpoint()
 	go func() {
 		defer func() {
-			panicErr := panichandler.PanicHandler("WaveAICloudBackend.StreamCompletion")
+			panicErr := panichandler.PanicHandler("WaveAICloudBackend.StreamCompletion", recover())
 			if panicErr != nil {
 				rtn <- makeAIError(panicErr)
 			}
@@ -69,14 +74,14 @@ func (WaveAICloudBackend) StreamCompletion(ctx context.Context, request wshrpc.O
 				rtn <- makeAIError(fmt.Errorf("unable to close openai channel: %v", err))
 			}
 		}()
-		var sendablePromptMsgs []wshrpc.OpenAIPromptMessageType
+		var sendablePromptMsgs []wshrpc.WaveAIPromptMessageType
 		for _, promptMsg := range request.Prompt {
 			if promptMsg.Role == "error" {
 				continue
 			}
 			sendablePromptMsgs = append(sendablePromptMsgs, promptMsg)
 		}
-		reqPk := MakeOpenAICloudReqPacket()
+		reqPk := MakeWaveAICloudReqPacket()
 		reqPk.ClientId = request.ClientId
 		reqPk.Prompt = sendablePromptMsgs
 		reqPk.MaxTokens = request.Opts.MaxTokens
@@ -101,7 +106,7 @@ func (WaveAICloudBackend) StreamCompletion(ctx context.Context, request wshrpc.O
 				rtn <- makeAIError(fmt.Errorf("OpenAI request, websocket error reading message: %v", err))
 				break
 			}
-			var streamResp *wshrpc.OpenAIPacketType
+			var streamResp *wshrpc.WaveAIPacketType
 			err = json.Unmarshal(socketMessage, &streamResp)
 			if err != nil {
 				rtn <- makeAIError(fmt.Errorf("OpenAI request, websocket response json decode error: %v", err))
@@ -115,7 +120,7 @@ func (WaveAICloudBackend) StreamCompletion(ctx context.Context, request wshrpc.O
 				rtn <- makeAIError(fmt.Errorf("%v", streamResp.Error))
 				break
 			}
-			rtn <- wshrpc.RespOrErrorUnion[wshrpc.OpenAIPacketType]{Response: *streamResp}
+			rtn <- wshrpc.RespOrErrorUnion[wshrpc.WaveAIPacketType]{Response: *streamResp}
 		}
 	}()
 	return rtn

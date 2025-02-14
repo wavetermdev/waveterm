@@ -1,4 +1,4 @@
-// Copyright 2024, Command Line Inc.
+// Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 package gogen
@@ -13,7 +13,7 @@ import (
 )
 
 func GenerateBoilerplate(buf *strings.Builder, pkgName string, imports []string) {
-	buf.WriteString("// Copyright 2024, Command Line Inc.\n")
+	buf.WriteString("// Copyright 2025, Command Line Inc.\n")
 	buf.WriteString("// SPDX-License-Identifier: Apache-2.0\n")
 	buf.WriteString("\n// Generated Code. DO NOT EDIT.\n\n")
 	buf.WriteString(fmt.Sprintf("package %s\n\n", pkgName))
@@ -33,13 +33,23 @@ func getBeforeColonPart(s string) string {
 	return s
 }
 
-func GenerateMetaMapConsts(buf *strings.Builder, constPrefix string, rtype reflect.Type) {
-	buf.WriteString("const (\n")
+func GenerateMetaMapConsts(buf *strings.Builder, constPrefix string, rtype reflect.Type, embedded bool) {
+	if !embedded {
+		buf.WriteString("const (\n")
+	} else {
+		buf.WriteString("\n")
+	}
 	var lastBeforeColon = ""
 	isFirst := true
 	for idx := 0; idx < rtype.NumField(); idx++ {
 		field := rtype.Field(idx)
 		if field.PkgPath != "" {
+			continue
+		}
+		if field.Anonymous {
+			var embeddedBuf strings.Builder
+			GenerateMetaMapConsts(&embeddedBuf, constPrefix, field.Type, true)
+			buf.WriteString(embeddedBuf.String())
 			continue
 		}
 		fieldName := field.Name
@@ -58,7 +68,9 @@ func GenerateMetaMapConsts(buf *strings.Builder, constPrefix string, rtype refle
 		buf.WriteString(fmt.Sprintf("\t%-40s = %q\n", cname, jsonTag))
 		isFirst = false
 	}
-	buf.WriteString(")\n")
+	if !embedded {
+		buf.WriteString(")\n")
+	}
 }
 
 func GenMethod_Call(buf *strings.Builder, methodDecl *wshrpc.WshRpcMethodDecl) {

@@ -1,4 +1,4 @@
-// Copyright 2024, Command Line Inc.
+// Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 package waveobj
@@ -36,21 +36,30 @@ type MetaTSType struct {
 	FrameIcon              string `json:"frame:icon,omitempty"`
 	FrameText              string `json:"frame:text,omitempty"`
 
-	CmdClear            bool              `json:"cmd:*,omitempty"`
-	Cmd                 string            `json:"cmd,omitempty"`
-	CmdInteractive      bool              `json:"cmd:interactive,omitempty"`
-	CmdLogin            bool              `json:"cmd:login,omitempty"`
-	CmdRunOnStart       bool              `json:"cmd:runonstart,omitempty"`
-	CmdClearOnStart     bool              `json:"cmd:clearonstart,omitempty"`
-	CmdRunOnce          bool              `json:"cmd:runonce,omitempty"`
-	CmdCloseOnExit      bool              `json:"cmd:closeonexit,omitempty"`
-	CmdCloseOnExitForce bool              `json:"cmd:closeonexitforce,omitempty"`
-	CmdCloseOnExitDelay float64           `json:"cmd:closeonexitdelay,omitempty"`
-	CmdEnv              map[string]string `json:"cmd:env,omitempty"`
-	CmdCwd              string            `json:"cmd:cwd,omitempty"`
-	CmdNoWsh            bool              `json:"cmd:nowsh,omitempty"`
-	CmdArgs             []string          `json:"cmd:args,omitempty"`  // args for cmd (only if cmd:shell is false)
-	CmdShell            bool              `json:"cmd:shell,omitempty"` // shell expansion for cmd+args (defaults to true)
+	CmdClear            bool     `json:"cmd:*,omitempty"`
+	Cmd                 string   `json:"cmd,omitempty"`
+	CmdInteractive      bool     `json:"cmd:interactive,omitempty"`
+	CmdLogin            bool     `json:"cmd:login,omitempty"`
+	CmdRunOnStart       bool     `json:"cmd:runonstart,omitempty"`
+	CmdClearOnStart     bool     `json:"cmd:clearonstart,omitempty"`
+	CmdRunOnce          bool     `json:"cmd:runonce,omitempty"`
+	CmdCloseOnExit      bool     `json:"cmd:closeonexit,omitempty"`
+	CmdCloseOnExitForce bool     `json:"cmd:closeonexitforce,omitempty"`
+	CmdCloseOnExitDelay float64  `json:"cmd:closeonexitdelay,omitempty"`
+	CmdNoWsh            bool     `json:"cmd:nowsh,omitempty"`
+	CmdArgs             []string `json:"cmd:args,omitempty"`  // args for cmd (only if cmd:shell is false)
+	CmdShell            bool     `json:"cmd:shell,omitempty"` // shell expansion for cmd+args (defaults to true)
+	CmdAllowConnChange  bool     `json:"cmd:allowconnchange,omitempty"`
+
+	// these can be nested under "[conn]"
+	CmdEnv            map[string]string `json:"cmd:env,omitempty"`
+	CmdCwd            string            `json:"cmd:cwd,omitempty"`
+	CmdInitScript     string            `json:"cmd:initscript,omitempty"`
+	CmdInitScriptSh   string            `json:"cmd:initscript.sh,omitempty"`
+	CmdInitScriptBash string            `json:"cmd:initscript.bash,omitempty"`
+	CmdInitScriptZsh  string            `json:"cmd:initscript.zsh,omitempty"`
+	CmdInitScriptPwsh string            `json:"cmd:initscript.pwsh,omitempty"`
+	CmdInitScriptFish string            `json:"cmd:initscript.fish,omitempty"`
 
 	// AI options match settings
 	AiClear      bool    `json:"ai:*,omitempty"`
@@ -84,18 +93,23 @@ type MetaTSType struct {
 	BgBorderColor       string  `json:"bg:bordercolor,omitempty"`       // frame:bordercolor
 	BgActiveBorderColor string  `json:"bg:activebordercolor,omitempty"` // frame:activebordercolor
 
-	TermClear              bool     `json:"term:*,omitempty"`
-	TermFontSize           int      `json:"term:fontsize,omitempty"`
-	TermFontFamily         string   `json:"term:fontfamily,omitempty"`
-	TermMode               string   `json:"term:mode,omitempty"`
-	TermTheme              string   `json:"term:theme,omitempty"`
-	TermLocalShellPath     string   `json:"term:localshellpath,omitempty"` // matches settings
-	TermLocalShellOpts     []string `json:"term:localshellopts,omitempty"` // matches settings
-	TermScrollback         *int     `json:"term:scrollback,omitempty"`
-	TermVDomSubBlockId     string   `json:"term:vdomblockid,omitempty"`
-	TermVDomToolbarBlockId string   `json:"term:vdomtoolbarblockid,omitempty"`
+	TermClear               bool     `json:"term:*,omitempty"`
+	TermFontSize            int      `json:"term:fontsize,omitempty"`
+	TermFontFamily          string   `json:"term:fontfamily,omitempty"`
+	TermMode                string   `json:"term:mode,omitempty"`
+	TermTheme               string   `json:"term:theme,omitempty"`
+	TermLocalShellPath      string   `json:"term:localshellpath,omitempty"` // matches settings
+	TermLocalShellOpts      []string `json:"term:localshellopts,omitempty"` // matches settings
+	TermScrollback          *int     `json:"term:scrollback,omitempty"`
+	TermVDomSubBlockId      string   `json:"term:vdomblockid,omitempty"`
+	TermVDomToolbarBlockId  string   `json:"term:vdomtoolbarblockid,omitempty"`
+	TermTransparency        *float64 `json:"term:transparency,omitempty"` // default 0.5
+	TermAllowBracketedPaste *bool    `json:"term:allowbracketedpaste,omitempty"`
+	TermConnDebug           string   `json:"term:conndebug,omitempty"` // null, info, debug
 
-	WebZoom float64 `json:"web:zoom,omitempty"`
+	WebZoom      float64 `json:"web:zoom,omitempty"`
+	WebHideNav   *bool   `json:"web:hidenav,omitempty"`
+	WebPartition string  `json:"web:partition,omitempty"`
 
 	MarkdownFontSize      float64 `json:"markdown:fontsize,omitempty"`
 	MarkdownFixedFontSize float64 `json:"markdown:fixedfontsize,omitempty"`

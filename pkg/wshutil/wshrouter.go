@@ -1,4 +1,4 @@
-// Copyright 2024, Command Line Inc.
+// Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 package wshutil
@@ -19,10 +19,18 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 )
 
-const DefaultRoute = "wavesrv"
-const UpstreamRoute = "upstream"
-const SysRoute = "sys" // this route doesn't exist, just a placeholder for system messages
-const ElectronRoute = "electron"
+const (
+	DefaultRoute  = "wavesrv"
+	UpstreamRoute = "upstream"
+	SysRoute      = "sys" // this route doesn't exist, just a placeholder for system messages
+	ElectronRoute = "electron"
+
+	RoutePrefix_Conn       = "conn:"
+	RoutePrefix_Controller = "controller:"
+	RoutePrefix_Proc       = "proc:"
+	RoutePrefix_Tab        = "tab:"
+	RoutePrefix_FeBlock    = "feblock:"
+)
 
 // this works like a network switch
 
@@ -92,7 +100,9 @@ func noRouteErr(routeId string) error {
 }
 
 func (router *WshRouter) SendEvent(routeId string, event wps.WaveEvent) {
-	defer panichandler.PanicHandler("WshRouter.SendEvent")
+	defer func() {
+		panichandler.PanicHandler("WshRouter.SendEvent", recover())
+	}()
 	rpc := router.GetRpc(routeId)
 	if rpc == nil {
 		return
@@ -198,6 +208,7 @@ func (router *WshRouter) sendRoutedMessage(msgBytes []byte, routeId string) bool
 		localRouteId := router.getAnnouncedRoute(routeId)
 		rpc := router.GetRpc(localRouteId)
 		if rpc == nil {
+			log.Printf("[router] no rpc for local route id %q\n", localRouteId)
 			return false
 		}
 		rpc.SendRpcMessage(msgBytes)
@@ -298,7 +309,9 @@ func (router *WshRouter) RegisterRoute(routeId string, rpc AbstractRpcClient, sh
 	}
 	router.RouteMap[routeId] = rpc
 	go func() {
-		defer panichandler.PanicHandler("WshRouter:registerRoute:recvloop")
+		defer func() {
+			panichandler.PanicHandler("WshRouter:registerRoute:recvloop", recover())
+		}()
 		// announce
 		if shouldAnnounce && !alreadyExists && router.GetUpstreamClient() != nil {
 			announceMsg := RpcMessage{Command: wshrpc.Command_RouteAnnounce, Source: routeId}
@@ -344,7 +357,9 @@ func (router *WshRouter) UnregisterRoute(routeId string) {
 		}
 	}
 	go func() {
-		defer panichandler.PanicHandler("WshRouter:unregisterRoute:routegone")
+		defer func() {
+			panichandler.PanicHandler("WshRouter:unregisterRoute:routegone", recover())
+		}()
 		wps.Broker.UnsubscribeAll(routeId)
 		wps.Broker.Publish(wps.WaveEvent{Event: wps.Event_RouteGone, Scopes: []string{routeId}})
 	}()

@@ -1,4 +1,4 @@
-// Copyright 2024, Command Line Inc.
+// Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 import { Button } from "@/app/element/button";
@@ -8,14 +8,16 @@ import { RpcResponseHelper, WshClient } from "@/app/store/wshclient";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { makeFeBlockRouteId } from "@/app/store/wshrouter";
 import { DefaultRouter, TabRpcClient } from "@/app/store/wshrpcutil";
-import { atoms, createBlock, fetchWaveFile, getApi, globalStore, useOverrideConfigAtom, WOS } from "@/store/global";
+import { atoms, createBlock, fetchWaveFile, getApi, globalStore, WOS } from "@/store/global";
 import { BlockService, ObjectService } from "@/store/services";
 import { adaptFromReactOrNativeKeyEvent, checkKeyPressed } from "@/util/keyutil";
-import { fireAndForget, isBlank, makeIconClass } from "@/util/util";
+import { fireAndForget, isBlank, makeIconClass, mergeMeta } from "@/util/util";
 import { atom, Atom, PrimitiveAtom, useAtomValue, WritableAtom } from "jotai";
+import { splitAtom } from "jotai/utils";
 import type { OverlayScrollbars } from "overlayscrollbars";
 import { OverlayScrollbarsComponent, OverlayScrollbarsComponentRef } from "overlayscrollbars-react";
 import { forwardRef, memo, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
+import { debounce, throttle } from "throttle-debounce";
 import "./waveai.scss";
 
 interface ChatMessageType {
@@ -29,11 +31,11 @@ const outline = "2px solid var(--accent-color)";
 const slidingWindowSize = 30;
 
 interface ChatItemProps {
-    chatItem: ChatMessageType;
+    chatItemAtom: Atom<ChatMessageType>;
     model: WaveAiModel;
 }
 
-function promptToMsg(prompt: OpenAIPromptMessageType): ChatMessageType {
+function promptToMsg(prompt: WaveAIPromptMessageType): ChatMessageType {
     return {
         id: crypto.randomUUID(),
         user: prompt.role,
@@ -65,13 +67,16 @@ export class WaveAiModel implements ViewModel {
     blockAtom: Atom<Block>;
     presetKey: Atom<string>;
     presetMap: Atom<{ [k: string]: MetaType }>;
-    aiOpts: Atom<OpenAIOptsType>;
+    mergedPresets: Atom<MetaType>;
+    aiOpts: Atom<WaveAIOptsType>;
     viewIcon?: Atom<string | IconButtonDecl>;
     viewName?: Atom<string>;
     viewText?: Atom<string | HeaderElem[]>;
     preIconButton?: Atom<IconButtonDecl>;
     endIconButtons?: Atom<IconButtonDecl[]>;
     messagesAtom: PrimitiveAtom<Array<ChatMessageType>>;
+    messagesSplitAtom: SplitAtom<Array<ChatMessageType>>;
+    latestMessageAtom: Atom<ChatMessageType>;
     addMessageAtom: WritableAtom<unknown, [message: ChatMessageType], void>;
     updateLastMessageAtom: WritableAtom<unknown, [text: string, isUpdating: boolean], void>;
     removeLastMessageAtom: WritableAtom<unknown, [], void>;
@@ -92,6 +97,8 @@ export class WaveAiModel implements ViewModel {
         this.viewIcon = atom("sparkles");
         this.viewName = atom("Wave AI");
         this.messagesAtom = atom([]);
+        this.messagesSplitAtom = splitAtom(this.messagesAtom);
+        this.latestMessageAtom = atom((get) => get(this.messagesAtom).slice(-1)[0]);
         this.presetKey = atom((get) => {
             const metaPresetKey = get(this.blockAtom).meta["ai:preset"];
             const globalPresetKey = get(atoms.settingsAtom)["ai:preset"];
@@ -154,22 +161,32 @@ export class WaveAiModel implements ViewModel {
             set(this.updateLastMessageAtom, "", false);
         });
 
-        this.aiOpts = atom((get) => {
+        this.mergedPresets = atom((get) => {
             const meta = get(this.blockAtom).meta;
             let settings = get(atoms.settingsAtom);
-            settings = {
-                ...settings,
-                ...meta,
-            };
-            const opts: OpenAIOptsType = {
-                model: settings["ai:model"] ?? null,
-                apitype: settings["ai:apitype"] ?? null,
-                orgid: settings["ai:orgid"] ?? null,
-                apitoken: settings["ai:apitoken"] ?? null,
-                apiversion: settings["ai:apiversion"] ?? null,
-                maxtokens: settings["ai:maxtokens"] ?? null,
-                timeoutms: settings["ai:timeoutms"] ?? 60000,
-                baseurl: settings["ai:baseurl"] ?? null,
+            let presetKey = get(this.presetKey);
+            let presets = get(atoms.fullConfigAtom).presets;
+            let selectedPresets = presets?.[presetKey] ?? {};
+
+            let mergedPresets: MetaType = {};
+            mergedPresets = mergeMeta(settings, selectedPresets, "ai");
+            mergedPresets = mergeMeta(mergedPresets, meta, "ai");
+
+            return mergedPresets;
+        });
+
+        this.aiOpts = atom((get) => {
+            const mergedPresets = get(this.mergedPresets);
+
+            const opts: WaveAIOptsType = {
+                model: mergedPresets["ai:model"] ?? null,
+                apitype: mergedPresets["ai:apitype"] ?? null,
+                orgid: mergedPresets["ai:orgid"] ?? null,
+                apitoken: mergedPresets["ai:apitoken"] ?? null,
+                apiversion: mergedPresets["ai:apiversion"] ?? null,
+                maxtokens: mergedPresets["ai:maxtokens"] ?? null,
+                timeoutms: mergedPresets["ai:timeoutms"] ?? 60000,
+                baseurl: mergedPresets["ai:baseurl"] ?? null,
             };
             return opts;
         });
@@ -238,7 +255,6 @@ export class WaveAiModel implements ViewModel {
                             onClick: () =>
                                 fireAndForget(() =>
                                     ObjectService.UpdateObjectMeta(WOS.makeORef("block", this.blockId), {
-                                        ...preset[1],
                                         "ai:preset": preset[0],
                                     })
                                 ),
@@ -278,6 +294,10 @@ export class WaveAiModel implements ViewModel {
         });
     }
 
+    get viewComponent(): ViewComponent {
+        return WaveAi;
+    }
+
     dispose() {
         DefaultRouter.unregisterRoute(makeFeBlockRouteId(this.blockId));
     }
@@ -287,12 +307,12 @@ export class WaveAiModel implements ViewModel {
         globalStore.set(this.messagesAtom, history.map(promptToMsg));
     }
 
-    async fetchAiData(): Promise<Array<OpenAIPromptMessageType>> {
+    async fetchAiData(): Promise<Array<WaveAIPromptMessageType>> {
         const { data } = await fetchWaveFile(this.blockId, "aidata");
         if (!data) {
             return [];
         }
-        const history: Array<OpenAIPromptMessageType> = JSON.parse(new TextDecoder().decode(data));
+        const history: Array<WaveAIPromptMessageType> = JSON.parse(new TextDecoder().decode(data));
         return history.slice(Math.max(history.length - slidingWindowSize, 0));
     }
 
@@ -327,7 +347,7 @@ export class WaveAiModel implements ViewModel {
         globalStore.set(this.addMessageAtom, newMessage);
         // send message to backend and get response
         const opts = globalStore.get(this.aiOpts);
-        const newPrompt: OpenAIPromptMessageType = {
+        const newPrompt: WaveAIPromptMessageType = {
             role: "user",
             content: text,
         };
@@ -341,7 +361,7 @@ export class WaveAiModel implements ViewModel {
             // Add a typing indicator
             globalStore.set(this.addMessageAtom, typingMessage);
             const history = await this.fetchAiData();
-            const beMsg: OpenAiStreamRequest = {
+            const beMsg: WaveAIStreamRequest = {
                 clientid: clientId,
                 opts: opts,
                 prompt: [...history, newPrompt],
@@ -362,7 +382,7 @@ export class WaveAiModel implements ViewModel {
                     // only save the author's prompt
                     await BlockService.SaveWaveAiData(this.blockId, [...history, newPrompt]);
                 } else {
-                    const responsePrompt: OpenAIPromptMessageType = {
+                    const responsePrompt: WaveAIPromptMessageType = {
                         role: "assistant",
                         content: fullMsg,
                     };
@@ -377,7 +397,7 @@ export class WaveAiModel implements ViewModel {
                     globalStore.set(this.removeLastMessageAtom);
                 } else {
                     globalStore.set(this.updateLastMessageAtom, "", false);
-                    const responsePrompt: OpenAIPromptMessageType = {
+                    const responsePrompt: WaveAIPromptMessageType = {
                         role: "assistant",
                         content: fullMsg,
                     };
@@ -391,7 +411,7 @@ export class WaveAiModel implements ViewModel {
                 };
                 globalStore.set(this.addMessageAtom, errorMessage);
                 globalStore.set(this.updateLastMessageAtom, "", false);
-                const errorPrompt: OpenAIPromptMessageType = {
+                const errorPrompt: WaveAIPromptMessageType = {
                     role: "error",
                     content: errMsg,
                 };
@@ -405,10 +425,8 @@ export class WaveAiModel implements ViewModel {
     }
 
     useWaveAi() {
-        const messages = useAtomValue(this.messagesAtom);
         return {
-            messages,
-            sendMessage: this.sendMessage.bind(this),
+            sendMessage: this.sendMessage.bind(this) as (text: string) => void,
         };
     }
 
@@ -426,17 +444,11 @@ export class WaveAiModel implements ViewModel {
     }
 }
 
-function makeWaveAiViewModel(blockId: string): WaveAiModel {
-    const waveAiModel = new WaveAiModel(blockId);
-    return waveAiModel;
-}
-
-const ChatItem = ({ chatItem, model }: ChatItemProps) => {
+const ChatItem = ({ chatItemAtom, model }: ChatItemProps) => {
+    const chatItem = useAtomValue(chatItemAtom);
     const { user, text } = chatItem;
-    const cssVar = "--panel-bg-color";
-    const panelBgColor = getComputedStyle(document.documentElement).getPropertyValue(cssVar).trim();
-    const fontSize = useOverrideConfigAtom(model.blockId, "ai:fontsize");
-    const fixedFontSize = useOverrideConfigAtom(model.blockId, "ai:fixedfontsize");
+    const fontSize = useAtomValue(model.mergedPresets)?.["ai:fontsize"];
+    const fixedFontSize = useAtomValue(model.mergedPresets)?.["ai:fixedfontsize"];
     const renderContent = useMemo(() => {
         if (user == "error") {
             return (
@@ -503,43 +515,64 @@ const ChatItem = ({ chatItem, model }: ChatItemProps) => {
 
 interface ChatWindowProps {
     chatWindowRef: React.RefObject<HTMLDivElement>;
-    messages: ChatMessageType[];
     msgWidths: Object;
     model: WaveAiModel;
 }
 
 const ChatWindow = memo(
-    forwardRef<OverlayScrollbarsComponentRef, ChatWindowProps>(({ chatWindowRef, messages, msgWidths, model }, ref) => {
-        const [isUserScrolling, setIsUserScrolling] = useState(false);
-
+    forwardRef<OverlayScrollbarsComponentRef, ChatWindowProps>(({ chatWindowRef, msgWidths, model }, ref) => {
+        const isUserScrolling = useRef(false);
         const osRef = useRef<OverlayScrollbarsComponentRef>(null);
-        const prevMessagesLenRef = useRef(messages.length);
+        const splitMessages = useAtomValue(model.messagesSplitAtom) as Atom<ChatMessageType>[];
+        const latestMessage = useAtomValue(model.latestMessageAtom);
+        const prevMessagesLenRef = useRef(splitMessages.length);
 
         useImperativeHandle(ref, () => osRef.current as OverlayScrollbarsComponentRef);
 
-        useEffect(() => {
-            if (osRef.current && osRef.current.osInstance()) {
-                const { viewport } = osRef.current.osInstance().elements();
-                const curMessagesLen = messages.length;
-                if (prevMessagesLenRef.current !== curMessagesLen || !isUserScrolling) {
-                    setIsUserScrolling(false);
-                    viewport.scrollTo({
-                        behavior: "auto",
-                        top: chatWindowRef.current?.scrollHeight || 0,
-                    });
+        const handleNewMessage = useCallback(
+            throttle(100, (messagesLen: number) => {
+                if (osRef.current?.osInstance()) {
+                    const { viewport } = osRef.current.osInstance().elements();
+                    if (prevMessagesLenRef.current !== messagesLen || !isUserScrolling.current) {
+                        viewport.scrollTo({
+                            behavior: "auto",
+                            top: chatWindowRef.current?.scrollHeight || 0,
+                        });
+                    }
+
+                    prevMessagesLenRef.current = messagesLen;
                 }
-
-                prevMessagesLenRef.current = curMessagesLen;
-            }
-        }, [messages, isUserScrolling]);
+            }),
+            []
+        );
 
         useEffect(() => {
-            if (osRef.current && osRef.current.osInstance()) {
-                const { viewport } = osRef.current.osInstance().elements();
+            handleNewMessage(splitMessages.length);
+        }, [splitMessages, latestMessage]);
 
-                const handleUserScroll = () => {
-                    setIsUserScrolling(true);
-                };
+        // Wait 300 ms after the user stops scrolling to determine if the user is within 300px of the bottom of the chat window.
+        // If so, unset the user scrolling flag.
+        const determineUnsetScroll = useCallback(
+            debounce(300, () => {
+                const { viewport } = osRef.current.osInstance().elements();
+                if (viewport.scrollTop > chatWindowRef.current?.clientHeight - viewport.clientHeight - 100) {
+                    isUserScrolling.current = false;
+                }
+            }),
+            []
+        );
+
+        const handleUserScroll = useCallback(
+            throttle(100, () => {
+                isUserScrolling.current = true;
+                determineUnsetScroll();
+            }),
+            []
+        );
+
+        useEffect(() => {
+            if (osRef.current?.osInstance()) {
+                const { viewport } = osRef.current.osInstance().elements();
 
                 viewport.addEventListener("wheel", handleUserScroll, { passive: true });
                 viewport.addEventListener("touchmove", handleUserScroll, { passive: true });
@@ -571,14 +604,14 @@ const ChatWindow = memo(
         return (
             <OverlayScrollbarsComponent
                 ref={osRef}
-                className="scrollable"
+                className="chat-window-container"
                 options={{ scrollbars: { autoHide: "leave" } }}
                 events={{ initialized: handleScrollbarInitialized, updated: handleScrollbarUpdated }}
             >
                 <div ref={chatWindowRef} className="chat-window" style={msgWidths}>
                     <div className="filler"></div>
-                    {messages.map((chitem, idx) => (
-                        <ChatItem key={idx} chatItem={chitem} model={model} />
+                    {splitMessages.map((chitem, idx) => (
+                        <ChatItem key={idx} chatItemAtom={chitem} model={model} />
                     ))}
                 </div>
             </OverlayScrollbarsComponent>
@@ -652,7 +685,7 @@ const ChatInput = forwardRef<HTMLTextAreaElement, ChatInputProps>(
 );
 
 const WaveAi = ({ model }: { model: WaveAiModel; blockId: string }) => {
-    const { messages, sendMessage } = model.useWaveAi();
+    const { sendMessage } = model.useWaveAi();
     const waveaiRef = useRef<HTMLDivElement>(null);
     const chatWindowRef = useRef<HTMLDivElement>(null);
     const osRef = useRef<OverlayScrollbarsComponentRef>(null);
@@ -716,7 +749,7 @@ const WaveAi = ({ model }: { model: WaveAiModel; blockId: string }) => {
         sendMessage(value);
         setValue("");
         setSelectedBlockIdx(null);
-    }, [messages, value]);
+    }, [value]);
 
     const updateScrollTop = () => {
         const pres = chatWindowRef.current?.querySelectorAll("pre");
@@ -823,13 +856,7 @@ const WaveAi = ({ model }: { model: WaveAiModel; blockId: string }) => {
     return (
         <div ref={waveaiRef} className="waveai">
             <div className="waveai-chat">
-                <ChatWindow
-                    ref={osRef}
-                    chatWindowRef={chatWindowRef}
-                    messages={messages}
-                    msgWidths={msgWidths}
-                    model={model}
-                />
+                <ChatWindow ref={osRef} chatWindowRef={chatWindowRef} msgWidths={msgWidths} model={model} />
             </div>
             <div className="waveai-controls">
                 <div className="waveai-input-wrapper">
@@ -851,4 +878,4 @@ const WaveAi = ({ model }: { model: WaveAiModel; blockId: string }) => {
     );
 };
 
-export { makeWaveAiViewModel, WaveAi };
+export { WaveAi };

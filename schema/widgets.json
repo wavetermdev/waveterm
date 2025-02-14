@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "BlockDef": {
+      "properties": {
+        "files": {
+          "additionalProperties": {
+            "$ref": "#/$defs/FileDef"
+          },
+          "type": "object"
+        },
+        "meta": {
+          "$ref": "#/$defs/MetaMapType"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "FileDef": {
+      "properties": {
+        "content": {
+          "type": "string"
+        },
+        "meta": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "MetaMapType": {
+      "type": "object"
+    },
+    "WidgetConfigType": {
+      "properties": {
+        "display:order": {
+          "type": "number"
+        },
+        "display:hidden": {
+          "type": "boolean"
+        },
+        "icon": {
+          "type": "string"
+        },
+        "color": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "magnified": {
+          "type": "boolean"
+        },
+        "blockdef": {
+          "$ref": "#/$defs/BlockDef"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "blockdef"
+      ]
+    }
+  },
+  "additionalProperties": {
+    "$ref": "#/$defs/WidgetConfigType"
+  },
+  "type": "object"
+}

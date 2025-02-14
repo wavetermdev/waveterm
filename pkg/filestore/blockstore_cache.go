@@ -1,4 +1,4 @@
-// Copyright 2024, Command Line Inc.
+// Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 package filestore
@@ -226,6 +226,9 @@ func (entry *CacheEntry) readAt(ctx context.Context, offset int64, size int64, r
 			truncateAmt := realDataOffset - offset
 			offset += truncateAmt
 			size -= truncateAmt
+		}
+		if size <= 0 {
+			return realDataOffset, nil, nil
 		}
 	}
 	partMap := file.computePartMap(offset, size)

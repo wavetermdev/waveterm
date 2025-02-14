@@ -14,6 +14,11 @@ on:
     pull_request:
         branches:
             - main
+        types:
+            - opened
+            - synchronize
+            - reopened
+            - ready_for_review
         paths:
             - "docs/**"
             - "storybook/**"
@@ -26,6 +31,7 @@ jobs:
     build:
         name: Build Docsite
         runs-on: ubuntu-latest
+        if: github.event.pull_request.draft == false
         steps:
             - uses: actions/checkout@v4
               with:
