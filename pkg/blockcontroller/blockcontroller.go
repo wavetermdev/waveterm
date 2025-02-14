@@ -747,6 +747,8 @@ func (bc *BlockController) manageRunningShellProcess(shellProc *shellexec.ShellP
 				ok := bc.TestAndSetResizeActionId(ic.FeActionId)
 				if ok {
 					updateTermSize(shellProc, bc.BlockId, *ic.TermSize)
+				} else {
+					log.Printf("resize action id already processed or out of order: %s %s %v\n", bc.BlockId, ic.FeActionId, *ic.TermSize)
 				}
 			}
 		}

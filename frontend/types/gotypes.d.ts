@@ -77,13 +77,6 @@ declare global {
         files: FileInfo[];
     };
 
-    // webcmd.BlockInputWSCommand
-    type BlockInputWSCommand = {
-        wscommand: "blockinput";
-        blockid: string;
-        inputdata64: string;
-    };
-
     // waveobj.Client
     type Client = WaveObj & {
         windowids: string[];
@@ -671,13 +664,6 @@ declare global {
         winsize?: WinSize;
     };
 
-    // webcmd.SetBlockTermSizeWSCommand
-    type SetBlockTermSizeWSCommand = {
-        wscommand: "setblocktermsize";
-        blockid: string;
-        termsize: TermSize;
-    };
-
     // wconfig.SettingsType
     type SettingsType = {
         "app:*"?: boolean;
@@ -1134,7 +1120,7 @@ declare global {
 
     type WSCommandType = {
         wscommand: string;
-    } & ( SetBlockTermSizeWSCommand | BlockInputWSCommand | WSRpcCommand );
+    } & ( WSRpcCommand );
 
     // eventbus.WSEventType
     type WSEventType = {

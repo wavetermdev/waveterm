@@ -2,12 +2,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { getFileSubject } from "@/app/store/wps";
-import { sendWSCommand } from "@/app/store/ws";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { PLATFORM, WOS, atoms, fetchWaveFile, getSettingsKeyAtom, globalStore, openLink } from "@/store/global";
 import * as services from "@/store/services";
-import { base64ToArray, fireAndForget } from "@/util/util";
+import { base64ToArray, fireAndForget, getNextActionId } from "@/util/util";
 import { SearchAddon } from "@xterm/addon-search";
 import { SerializeAddon } from "@xterm/addon-serialize";
 import { WebLinksAddon } from "@xterm/addon-web-links";
@@ -377,12 +376,13 @@ export class TermWrap {
         this.fitAddon.fit();
         if (oldRows !== this.terminal.rows || oldCols !== this.terminal.cols) {
             const termSize: TermSize = { rows: this.terminal.rows, cols: this.terminal.cols };
-            const wsCommand: SetBlockTermSizeWSCommand = {
-                wscommand: "setblocktermsize",
+            const actionId = getNextActionId();
+            RpcApi.ControllerInputCommand(TabRpcClient, {
                 blockid: this.blockId,
+                feactionid: actionId,
                 termsize: termSize,
-            };
-            sendWSCommand(wsCommand);
+                pendingptyoffset: this.pendingPtyOffset,
+            });
         }
         dlog("resize", `${this.terminal.rows}x${this.terminal.cols}`, `${oldRows}x${oldCols}`, this.hasResized);
         if (!this.hasResized) {
