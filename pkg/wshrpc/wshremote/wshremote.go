@@ -428,8 +428,10 @@ func (impl *ServerImpl) RemoteFileCopyCommand(ctx context.Context, data wshrpc.C
 		}
 
 		if srcFileStat.IsDir() {
-			srcPathPrefix := filepath.Dir(srcPathCleaned)
-			if strings.HasSuffix(srcUri, "/") {
+			var srcPathPrefix string
+			if destIsDir {
+				srcPathPrefix = filepath.Dir(srcPathCleaned)
+			} else {
 				srcPathPrefix = srcPathCleaned
 			}
 			err = filepath.Walk(srcPathCleaned, func(path string, info fs.FileInfo, err error) error {
