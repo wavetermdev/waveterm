@@ -7,7 +7,6 @@ import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { PLATFORM, WOS, atoms, fetchWaveFile, getSettingsKeyAtom, globalStore, openLink } from "@/store/global";
 import * as services from "@/store/services";
-import * as util from "@/util/util";
 import { base64ToArray, fireAndForget } from "@/util/util";
 import { SearchAddon } from "@xterm/addon-search";
 import { SerializeAddon } from "@xterm/addon-serialize";
@@ -269,14 +268,6 @@ export class TermWrap {
         if (!this.loaded) {
             return;
         }
-        const b64data = util.stringToBase64(data);
-        const actionId = util.getNextActionId();
-        RpcApi.ControllerInputCommand(TabRpcClient, {
-            blockid: this.blockId,
-            inputdata64: b64data,
-            feactionid: actionId,
-            pendingptyoffset: this.pendingPtyOffset,
-        });
         this.sendDataHandler?.(data);
     }
 

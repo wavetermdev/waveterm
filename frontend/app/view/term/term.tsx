@@ -26,7 +26,7 @@ import {
 } from "@/store/global";
 import * as services from "@/store/services";
 import * as keyutil from "@/util/keyutil";
-import { boundNumber, fireAndForget, stringToBase64, useAtomValueSafe } from "@/util/util";
+import { boundNumber, fireAndForget, getNextActionId, stringToBase64, useAtomValueSafe } from "@/util/util";
 import { computeBgStyleFromMeta } from "@/util/waveutil";
 import { ISearchOptions } from "@xterm/addon-search";
 import clsx from "clsx";
@@ -350,7 +350,13 @@ class TermViewModel implements ViewModel {
 
     sendDataToController(data: string) {
         const b64data = stringToBase64(data);
-        RpcApi.ControllerInputCommand(TabRpcClient, { blockid: this.blockId, inputdata64: b64data });
+        const actionId = getNextActionId();
+        RpcApi.ControllerInputCommand(TabRpcClient, {
+            blockid: this.blockId,
+            inputdata64: b64data,
+            feactionid: actionId,
+            pendingptyoffset: this.termRef.current.pendingPtyOffset,
+        });
     }
 
     setTermMode(mode: "term" | "vdom") {
