@@ -45,15 +45,22 @@ type TermWrapOptions = {
 };
 
 function handleOscWaveCommand(data: string, blockId: string, loaded: boolean): boolean {
-    if (!loaded) return false;
-    if (!data || data.length === 0) return false;
+    if (!loaded) {
+        return false;
+    }
+    if (!data || data.length === 0) {
+        console.log("Invalid Wave OSC command received (empty)");
+        return false;
+    }
 
     // Expected formats:
     // "setmeta;{JSONDATA}"
     // "setmeta;[wave-id];{JSONDATA}"
     const parts = data.split(";");
-    if (parts[0] !== "setmeta") return false;
-
+    if (parts[0] !== "setmeta") {
+        console.log("Invalid Wave OSC command received (bad command)", data);
+        return false;
+    }
     let jsonPayload: string;
     let waveId: string | undefined;
     if (parts.length === 2) {
@@ -62,6 +69,7 @@ function handleOscWaveCommand(data: string, blockId: string, loaded: boolean): b
         waveId = parts[1];
         jsonPayload = parts.slice(2).join(";");
     } else {
+        console.log("Invalid Wave OSC command received (1 part)", data);
         return false;
     }
 
@@ -69,7 +77,7 @@ function handleOscWaveCommand(data: string, blockId: string, loaded: boolean): b
     try {
         meta = JSON.parse(jsonPayload);
     } catch (e) {
-        console.error("Invalid JSON in OSC command:", e);
+        console.error("Invalid JSON in Wave OSC command:", e);
         return false;
     }
 
@@ -103,12 +111,14 @@ function handleOsc7Command(data: string, blockId: string, loaded: boolean): bool
         return false;
     }
     if (data == null || data.length == 0) {
+        console.log("Invalid OSC 7 command received (empty)");
         return false;
     }
     if (data.startsWith("file://")) {
         data = data.substring(7);
         const nextSlashIdx = data.indexOf("/");
         if (nextSlashIdx == -1) {
+            console.log("Invalid OSC 7 command received (bad path)", data);
             return false;
         }
         data = data.substring(nextSlashIdx);
