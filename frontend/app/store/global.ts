@@ -456,6 +456,9 @@ async function replaceBlock(blockId: string, blockDef: BlockDef): Promise<string
     const layoutModel = getLayoutModelForTabById(tabId);
     const rtOpts: RuntimeOpts = { termsize: { rows: 25, cols: 80 } };
     const newBlockId = await ObjectService.CreateBlock(blockDef, rtOpts);
+    setTimeout(async () => {
+        await ObjectService.DeleteBlock(blockId);
+    }, 300);
     const targetNodeId = layoutModel.getNodeByBlockId(blockId)?.id;
     if (targetNodeId == null) {
         throw new Error(`targetNodeId not found for blockId: ${blockId}`);
@@ -763,6 +766,7 @@ export {
     getBlockComponentModel,
     getBlockMetaKeyAtom,
     getConnStatusAtom,
+    getFocusedBlockId,
     getHostName,
     getObjectId,
     getOverrideConfigAtom,

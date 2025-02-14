@@ -4,7 +4,7 @@ id: "keybindings"
 title: "Key Bindings"
 ---
 
-import { Kbd } from "@site/src/components/kbd.tsx";
+import { Kbd, KbdChord } from "@site/src/components/kbd.tsx";
 import { PlatformProvider, PlatformSelectorButton } from "@site/src/components/platformcontext.tsx";
 
 <PlatformProvider>
@@ -15,32 +15,39 @@ Some keybindings are always active. Others are only active for certain types of 
 Note that these are the MacOS keybindings (they use "Cmd"). For Windows and Linux,
 replace "Cmd" with "Alt" (note that "Ctrl" is "Ctrl" on both Mac, Windows, and Linux).
 
+Chords are shown with a + between the keys. You have 2 seconds to hit the 2nd chord key after typing the first key. Hitting Escape after an initial chord key will always be a no-op.
+
 ## Global Keybindings
 
 <PlatformSelectorButton />
 <div style={{ marginBottom: 20 }}></div>
 
-| Key                          | Function                                                                                                                                               |
-| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| <Kbd k="Cmd:t"/>             | Open a new tab                                                                                                                                         |
-| <Kbd k="Cmd:n"/>             | Open a new block (defaults to a terminal block with the same connection and working directory). Switch to launcher using `app:defaultnewblock` setting |
-| <Kbd k="Cmd:d"/>             | Split horizontally, open a new block to the right                                                                                                      |
-| <Kbd k="Cmd:Shift:d"/>       | Split vertically, open a new block below                                                                                                               |
-| <Kbd k="Cmd:Shift:n"/>       | Open a new window                                                                                                                                      |
-| <Kbd k="Cmd:w"/>             | Close the current block                                                                                                                                |
-| <Kbd k="Cmd:Shift:w"/>       | Close the current tab                                                                                                                                  |
-| <Kbd k="Cmd:m"/>             | Magnify / Un-Magnify the current block                                                                                                                 |
-| <Kbd k="Cmd:g"/>             | Open the "connection" switcher                                                                                                                         |
-| <Kbd k="Cmd:i"/>             | Refocus the current block (useful if the block has lost input focus)                                                                                   |
-| <Kbd k="Ctrl:Shift"/>        | Show block numbers                                                                                                                                     |
-| <Kbd k="Ctrl:Shift:1-9"/>    | Switch to block number                                                                                                                                 |
-| <Kbd k="Ctrl:Shift:Arrows"/> | Move left, right, up, down between blocks                                                                                                              |
-| <Kbd k="Cmd:1-9"/>           | Switch to tab number                                                                                                                                   |
-| <Kbd k="Cmd:["/>             | Switch tab left                                                                                                                                        |
-| <Kbd k="Cmd:]"/>             | Switch tab right                                                                                                                                       |
-| <Kbd k="Cmd:Ctrl:1-9"/>      | Switch to workspace number                                                                                                                             |
-| <Kbd k="Cmd:Shift:r"/>       | Refresh the UI                                                                                                                                         |
-| <Kbd k="Ctrl:Shift:i"/>      | Toggle terminal multi-input mode                                                                                                                       |
+| Key                                               | Function                                                                                                                                               |
+| ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| <Kbd k="Cmd:t"/>                                  | Open a new tab                                                                                                                                         |
+| <Kbd k="Cmd:n"/>                                  | Open a new block (defaults to a terminal block with the same connection and working directory). Switch to launcher using `app:defaultnewblock` setting |
+| <Kbd k="Cmd:d"/>                                  | Split horizontally, open a new block to the right                                                                                                      |
+| <Kbd k="Cmd:Shift:d"/>                            | Split vertically, open a new block below                                                                                                               |
+| <KbdChord karr={["Ctrl:Shift:s", "ArrowUp"]}/>    | Split vertically, open a new block above                                                                                                               |
+| <KbdChord karr={["Ctrl:Shift:s", "ArrowDown"]}/>  | Split vertically, open a new block below                                                                                                               |
+| <KbdChord karr={["Ctrl:Shift:s", "ArrowLeft"]}/>  | Split horizontally, open a new block to the left                                                                                                       |
+| <KbdChord karr={["Ctrl:Shift:s", "ArrowRight"]}/> | Split horizontally, open a new block to the right                                                                                                      |
+| <Kbd k="Cmd:Shift:n"/>                            | Open a new window                                                                                                                                      |
+| <Kbd k="Cmd:w"/>                                  | Close the current block                                                                                                                                |
+| <Kbd k="Cmd:Shift:w"/>                            | Close the current tab                                                                                                                                  |
+| <Kbd k="Cmd:m"/>                                  | Magnify / Un-Magnify the current block                                                                                                                 |
+| <Kbd k="Cmd:g"/>                                  | Open the "connection" switcher                                                                                                                         |
+| <Kbd k="Cmd:i"/>                                  | Refocus the current block (useful if the block has lost input focus)                                                                                   |
+| <Kbd k="Ctrl:Shift"/>                             | Show block numbers                                                                                                                                     |
+| <Kbd k="Ctrl:Shift:1-9"/>                         | Switch to block number                                                                                                                                 |
+| <Kbd k="Ctrl:Shift:Arrows"/>                      | Move left, right, up, down between blocks                                                                                                              |
+| <Kbd k="Ctrl:Shift:k"/>                           | Replace the current block with a launcher block                                                                                                        |
+| <Kbd k="Cmd:1-9"/>                                | Switch to tab number                                                                                                                                   |
+| <Kbd k="Cmd:["/>                                  | Switch tab left                                                                                                                                        |
+| <Kbd k="Cmd:]"/>                                  | Switch tab right                                                                                                                                       |
+| <Kbd k="Cmd:Ctrl:1-9"/>                           | Switch to workspace number                                                                                                                             |
+| <Kbd k="Cmd:Shift:r"/>                            | Refresh the UI                                                                                                                                         |
+| <Kbd k="Ctrl:Shift:i"/>                           | Toggle terminal multi-input mode                                                                                                                       |
 
 ## File Preview Keybindings
 

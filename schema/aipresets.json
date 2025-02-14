@@ -41,6 +41,12 @@
         },
         "ai:fixedfontsize": {
           "type": "number"
+        },
+        "display:name": {
+          "type": "string"
+        },
+        "display:order": {
+          "type": "number"
         }
       },
       "additionalProperties": false,
