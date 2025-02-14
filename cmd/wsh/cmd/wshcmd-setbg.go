@@ -90,9 +90,7 @@ func setBgRun(cmd *cobra.Command, args []string) (rtnErr error) {
 		if setBgOpacity < 0 || setBgOpacity > 1 {
 			return fmt.Errorf("opacity must be between 0.0 and 1.0")
 		}
-		if cmd.Flags().Changed("opacity") {
-			meta["bg:opacity"] = setBgOpacity
-		}
+		meta["bg:opacity"] = setBgOpacity
 	} else if len(args) > 1 {
 		OutputHelpMessage(cmd)
 		return fmt.Errorf("too many arguments")
@@ -167,7 +165,11 @@ func setBgRun(cmd *cobra.Command, args []string) (rtnErr error) {
 	}
 
 	// Resolve tab reference
-	oRef, err := resolveSimpleId("tab")
+	id := blockArg
+	if id == "" {
+		id = "tab"
+	}
+	oRef, err := resolveSimpleId(id)
 	if err != nil {
 		return err
 	}

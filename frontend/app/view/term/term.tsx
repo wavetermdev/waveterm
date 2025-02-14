@@ -27,6 +27,7 @@ import {
 import * as services from "@/store/services";
 import * as keyutil from "@/util/keyutil";
 import { boundNumber, fireAndForget, stringToBase64, useAtomValueSafe } from "@/util/util";
+import { computeBgStyleFromMeta } from "@/util/waveutil";
 import { ISearchOptions } from "@xterm/addon-search";
 import clsx from "clsx";
 import debug from "debug";
@@ -1070,8 +1071,11 @@ const TerminalView = ({ blockId, model }: ViewComponentProps<TermViewModel>) => 
         blockId: blockId,
     };
 
+    const termBg = computeBgStyleFromMeta(blockData?.meta);
+
     return (
         <div className={clsx("view-term", "term-mode-" + termMode)} ref={viewRef}>
+            {termBg && <div className="absolute inset-0 z-0 pointer-events-none" style={termBg} />}
             <TermResyncHandler blockId={blockId} model={model} />
             <TermThemeUpdater blockId={blockId} model={model} termRef={model.termRef} />
             <TermStickers config={stickerConfig} />
