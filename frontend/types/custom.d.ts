@@ -427,6 +427,7 @@ declare global {
         uri: string;
         absParent: string;
         relName: string;
+        isDir: boolean;
     };
 }
 

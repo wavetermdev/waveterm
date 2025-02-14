@@ -40,6 +40,7 @@ type FileCopyStatus = {
     copyData: CommandFileCopyData;
     copyError: string;
     allowRetry: boolean;
+    isDir: boolean;
 };
 
 declare module "@tanstack/react-table" {
@@ -731,6 +732,7 @@ const TableRow = React.forwardRef(function ({
         relName: row.getValue("name") as string,
         absParent: dirPath,
         uri: formatRemoteUri(row.getValue("path") as string, connection),
+        isDir: row.original.isdir,
     };
     const [_, drag] = useDrag(
         () => ({
@@ -898,18 +900,21 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
     });
 
     const handleDropCopy = useCallback(
-        async (data: CommandFileCopyData) => {
+        async (data: CommandFileCopyData, isDir) => {
             try {
                 await RpcApi.FileCopyCommand(TabRpcClient, data, { timeout: data.opts.timeout });
                 setCopyStatus(null);
             } catch (e) {
                 console.log("copy failed:", e);
                 const copyError = `${e}`;
-                const allowRetry = copyError.endsWith("overwrite not specified");
+                const allowRetry =
+                    copyError.endsWith("overwrite not specified") ||
+                    copyError.endsWith("neither overwrite nor merge specified");
                 const copyStatus: FileCopyStatus = {
                     copyError,
                     copyData: data,
                     allowRetry,
+                    isDir: isDir,
                 };
                 setCopyStatus(copyStatus);
             }
@@ -943,7 +948,7 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
                         desturi,
                         opts,
                     };
-                    await handleDropCopy(data);
+                    await handleDropCopy(data, draggedFile.isDir);
                 }
             },
             // TODO: mabe add a hover option?
@@ -1104,21 +1109,26 @@ const CopyErrorOverlay = React.memo(
     }: {
         copyStatus: FileCopyStatus;
         setCopyStatus: (_: FileCopyStatus) => void;
-        handleDropCopy: (data: CommandFileCopyData) => Promise<void>;
+        handleDropCopy: (data: CommandFileCopyData, isDir: boolean) => Promise<void>;
     }) => {
         const [overlayRefCallback, _, domRect] = useDimensionsWithCallbackRef(30);
         const width = domRect?.width;
 
-        const handleRetryCopy = React.useCallback(async () => {
-            if (!copyStatus) {
-                return;
-            }
-            const updatedData = {
-                ...copyStatus.copyData,
-                opts: { ...copyStatus.copyData.opts, overwrite: true },
-            };
-            await handleDropCopy(updatedData);
-        }, [copyStatus.copyData]);
+        const handleRetryCopy = React.useCallback(
+            async (copyOpt?: string) => {
+                if (!copyStatus) {
+                    return;
+                }
+                let overwrite = copyOpt == "overwrite";
+                let merge = copyOpt == "merge";
+                const updatedData = {
+                    ...copyStatus.copyData,
+                    opts: { ...copyStatus.copyData.opts, overwrite, merge },
+                };
+                await handleDropCopy(updatedData, copyStatus.isDir);
+            },
+            [copyStatus.copyData]
+        );
 
         let statusText = "Copy Error";
         let errorMsg = `error: ${copyStatus?.copyError}`;
@@ -1169,9 +1179,14 @@ const CopyErrorOverlay = React.memo(
 
                             {copyStatus?.allowRetry && (
                                 <div className="flex flex-row gap-1.5">
-                                    <Button className={buttonClassName} onClick={handleRetryCopy}>
-                                        Override
+                                    <Button className={buttonClassName} onClick={() => handleRetryCopy("overwrite")}>
+                                        Delete Then Copy
                                     </Button>
+                                    {copyStatus.isDir && (
+                                        <Button className={buttonClassName} onClick={() => handleRetryCopy("merge")}>
+                                            Sync
+                                        </Button>
+                                    )}
                                     <Button className={buttonClassName} onClick={handleRemoveCopyError}>
                                         Cancel
                                     </Button>
