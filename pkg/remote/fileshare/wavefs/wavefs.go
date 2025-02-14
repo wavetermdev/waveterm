@@ -222,41 +222,35 @@ func (c WaveClient) ListEntries(ctx context.Context, conn *connparse.Connection,
 	}
 	prefix += fspath.Separator
 	var fileList []*wshrpc.FileInfo
+	dirMap := make(map[string]*wshrpc.FileInfo)
 	if err := listEntriesPrefix(ctx, zoneId, prefix, func(wf *filestore.WaveFile) error {
 		if !opts.All {
-			path, isDir := fspath.FirstLevelDirPrefix(wf.Name, prefix)
+			name, isDir := fspath.FirstLevelDir(strings.TrimPrefix(wf.Name, prefix))
 			if isDir {
-				dirMap[path] = struct{}{}
+				path := fspath.Join(conn.GetPathWithHost(), name)
+				if _, ok := dirMap[path]; ok {
+					if dirMap[path].ModTime < wf.ModTs {
+						dirMap[path].ModTime = wf.ModTs
+					}
+					return nil
+				}
+				dirMap[path] = &wshrpc.FileInfo{
+					Path:          path,
+					Name:          name,
+					Dir:           fspath.Dir(path),
+					Size:          0,
+					IsDir:         true,
+					SupportsMkdir: false,
+					Mode:          DirMode,
+				}
+				fileList = append(fileList, dirMap[path])
+				return nil
 			}
 		}
 		fileList = append(fileList, wavefileutil.WaveFileToFileInfo(wf))
 		return nil
 	}); err != nil {
 		return nil, fmt.Errorf("error listing entries: %w", err)
-	}
-	if !opts.All {
-		var filteredList []*wshrpc.FileInfo
-		dirMap := make(map[string]any) // the value is max modtime
-		for _, file := range fileList {
-			path, isDir := fspath.FirstLevelDirPrefix(file.Name, prefix)
-			if isDir {
-				dirMap[path] = struct{}{}
-			}
-			filteredList = append(filteredList, file)
-		}
-		for dir := range dirMap {
-			dirName := prefix + dir
-			filteredList = append(filteredList, &wshrpc.FileInfo{
-				Path:          fspath.Join(conn.GetPathWithHost(), dirName),
-				Name:          dirName,
-				Dir:           fsutil.GetParentPathString(dirName),
-				Size:          0,
-				IsDir:         true,
-				SupportsMkdir: false,
-				Mode:          DirMode,
-			})
-		}
-		fileList = filteredList
 	}
 	if opts.Offset > 0 {
 		if opts.Offset >= len(fileList) {
@@ -278,7 +272,7 @@ func (c WaveClient) Stat(ctx context.Context, conn *connparse.Connection) (*wshr
 	if zoneId == "" {
 		return nil, fmt.Errorf("zoneid not found in connection")
 	}
-	fileName, err := cleanPath(conn.Path)
+	fileName, err := fsutil.CleanPathPrefix(conn.Path)
 	if err != nil {
 		return nil, fmt.Errorf("error cleaning path: %w", err)
 	}

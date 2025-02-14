@@ -413,47 +413,45 @@ func (c S3Client) ListEntriesStream(ctx context.Context, conn *connparse.Connect
 				if obj.LastModified != nil {
 					lastModTime = obj.LastModified.UnixMilli()
 				}
-				if obj.Key != nil && len(*obj.Key) > len(objectKeyPrefix) {
-					// get the first level directory name or file name
-					name, isDir := fspath.FirstLevelDir(strings.TrimPrefix(*obj.Key, objectKeyPrefix))
-					path := fspath.Join(conn.GetPathWithHost(), name)
-					if isDir {
-						if entryMap[name] == nil {
-							if _, ok := prevUsedDirKeys[name]; !ok {
-								entryMap[name] = &wshrpc.FileInfo{
-									Path:    path,
-									Name:    name,
-									IsDir:   true,
-									Dir:     objectKeyPrefix,
-									ModTime: lastModTime,
-									Size:    0,
-								}
-								fileutil.AddMimeTypeToFileInfo(path, entryMap[name])
-
-								prevUsedDirKeys[name] = struct{}{}
-								numFetched++
+				// get the first level directory name or file name
+				name, isDir := fspath.FirstLevelDir(strings.TrimPrefix(*obj.Key, objectKeyPrefix))
+				path := fspath.Join(conn.GetPathWithHost(), name)
+				if isDir {
+					if entryMap[name] == nil {
+						if _, ok := prevUsedDirKeys[name]; !ok {
+							entryMap[name] = &wshrpc.FileInfo{
+								Path:    path,
+								Name:    name,
+								IsDir:   true,
+								Dir:     objectKeyPrefix,
+								ModTime: lastModTime,
+								Size:    0,
 							}
-						} else if entryMap[name].ModTime < lastModTime {
-							entryMap[name].ModTime = lastModTime
-						}
-						return true, nil
-					}
+							fileutil.AddMimeTypeToFileInfo(path, entryMap[name])
 
-					size := int64(0)
-					if obj.Size != nil {
-						size = *obj.Size
+							prevUsedDirKeys[name] = struct{}{}
+							numFetched++
+						}
+					} else if entryMap[name].ModTime < lastModTime {
+						entryMap[name].ModTime = lastModTime
 					}
-					entryMap[name] = &wshrpc.FileInfo{
-						Name:    name,
-						IsDir:   false,
-						Dir:     objectKeyPrefix,
-						Path:    path,
-						ModTime: lastModTime,
-						Size:    size,
-					}
-					fileutil.AddMimeTypeToFileInfo(path, entryMap[name])
-					numFetched++
+					return true, nil
 				}
+
+				size := int64(0)
+				if obj.Size != nil {
+					size = *obj.Size
+				}
+				entryMap[name] = &wshrpc.FileInfo{
+					Name:    name,
+					IsDir:   false,
+					Dir:     objectKeyPrefix,
+					Path:    path,
+					ModTime: lastModTime,
+					Size:    size,
+				}
+				fileutil.AddMimeTypeToFileInfo(path, entryMap[name])
+				numFetched++
 				return true, nil
 			}); err != nil {
 				rtn <- wshutil.RespErr[wshrpc.CommandRemoteListEntriesRtnData](err)
