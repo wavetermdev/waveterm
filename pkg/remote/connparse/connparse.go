@@ -94,12 +94,12 @@ func GetConnNameFromContext(ctx context.Context) (string, error) {
 
 // ParseURI parses a connection URI and returns the connection type, host/path, and parameters.
 func ParseURI(uri string) (*Connection, error) {
-	split := strings.SplitN(uri, "//", 2)
+	split := strings.SplitN(uri, "://", 2)
 	var scheme string
 	var rest string
 	if len(split) > 1 {
-		scheme = strings.TrimSuffix(split[0], ":")
-		rest = split[1]
+		scheme = split[0]
+		rest = strings.TrimPrefix(split[1], "//")
 	} else {
 		rest = split[0]
 	}
