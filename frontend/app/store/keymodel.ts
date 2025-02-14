@@ -25,6 +25,7 @@ import {
 } from "@/layout/index";
 import { getLayoutModelForStaticTab } from "@/layout/lib/layoutModelHooks";
 import * as keyutil from "@/util/keyutil";
+import { CHORD_TIMEOUT } from "@/util/sharedconst";
 import { fireAndForget } from "@/util/util";
 import * as jotai from "jotai";
 import { modalsModel } from "./modalmodel";
@@ -53,7 +54,7 @@ function setActiveChord(activeChordArg: string) {
         clearTimeout(chordTimeout);
     }
     activeChord = activeChordArg;
-    chordTimeout = setTimeout(() => resetChord(), 2000);
+    chordTimeout = setTimeout(() => resetChord(), CHORD_TIMEOUT);
 }
 
 export function keyboardMouseDownHandler(e: MouseEvent) {

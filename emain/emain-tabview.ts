@@ -3,6 +3,7 @@
 
 import { RpcApi } from "@/app/store/wshclientapi";
 import { adaptFromElectronKeyEvent } from "@/util/keyutil";
+import { CHORD_TIMEOUT } from "@/util/sharedconst";
 import { Rectangle, shell, WebContentsView } from "electron";
 import { getWaveWindowById } from "emain/emain-window";
 import path from "path";
@@ -101,7 +102,7 @@ export class WaveTabView extends WebContentsView {
             }
             this.resetChordModeTimeout = setTimeout(() => {
                 this.keyboardChordMode = false;
-            }, 2000);
+            }, CHORD_TIMEOUT);
         } else {
             if (this.resetChordModeTimeout) {
                 clearTimeout(this.resetChordModeTimeout);
