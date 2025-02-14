@@ -232,6 +232,11 @@ class RpcApiType {
         return client.wshRpcCall("getmeta", data, opts);
     }
 
+    // command "gettab" [call]
+    GetTabCommand(client: WshClient, data: string, opts?: RpcOpts): Promise<Tab> {
+        return client.wshRpcCall("gettab", data, opts);
+    }
+
     // command "getupdatechannel" [call]
     GetUpdateChannelCommand(client: WshClient, opts?: RpcOpts): Promise<string> {
         return client.wshRpcCall("getupdatechannel", null, opts);
