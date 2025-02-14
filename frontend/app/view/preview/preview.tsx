@@ -198,7 +198,7 @@ export class PreviewModel implements ViewModel {
         this.filterOutNowsh = atom(true);
         this.monacoRef = createRef();
         this.connectionError = atom("");
-        this.errorMsgAtom = atom(null) as PrimitiveAtom<ErrorMsg>;
+        this.errorMsgAtom = atom(null) as PrimitiveAtom<ErrorMsg | null>;
         this.viewIcon = atom((get) => {
             const blockData = get(this.blockAtom);
             if (blockData?.meta?.icon) {
@@ -1271,19 +1271,18 @@ const ErrorOverlay = memo(({ errorMsg, resetOverlay }: { errorMsg: ErrorMsg; res
                             />
                             <div>{errorMsg.text}</div>
                         </OverlayScrollbarsComponent>
-                        {errorMsg.buttons &&
-                            errorMsg.buttons.map((buttonDef) => (
-                                <Button
-                                    className={buttonClassName}
-                                    onClick={() => {
-                                        buttonDef.onClick();
-                                        resetOverlay();
-                                    }}
-                                    key={crypto.randomUUID()}
-                                >
-                                    {buttonDef.text}
-                                </Button>
-                            ))}
+                        {errorMsg.buttons?.map((buttonDef) => (
+                            <Button
+                                className={buttonClassName}
+                                onClick={() => {
+                                    buttonDef.onClick();
+                                    resetOverlay();
+                                }}
+                                key={crypto.randomUUID()}
+                            >
+                                {buttonDef.text}
+                            </Button>
+                        ))}
                     </div>
 
                     {showDismiss && (
@@ -1292,7 +1291,7 @@ const ErrorOverlay = memo(({ errorMsg, resetOverlay }: { errorMsg: ErrorMsg; res
                                 className={clsx(buttonClassName, "fa-xmark fa-solid")}
                                 onClick={() => {
                                     if (errorMsg.closeAction) {
-                                        errorMsg.closeAction;
+                                        errorMsg.closeAction();
                                     }
                                     resetOverlay();
                                 }}
