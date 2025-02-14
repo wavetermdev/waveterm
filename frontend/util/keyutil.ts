@@ -31,6 +31,35 @@ function keydownWrapper(
     };
 }
 
+function waveEventToKeyDesc(waveEvent: WaveKeyboardEvent): string {
+    let keyDesc: string[] = [];
+    if (waveEvent.cmd) {
+        keyDesc.push("Cmd");
+    }
+    if (waveEvent.option) {
+        keyDesc.push("Option");
+    }
+    if (waveEvent.meta) {
+        keyDesc.push("Meta");
+    }
+    if (waveEvent.control) {
+        keyDesc.push("Ctrl");
+    }
+    if (waveEvent.shift) {
+        keyDesc.push("Shift");
+    }
+    if (waveEvent.key != null && waveEvent.key != "") {
+        if (waveEvent.key == " ") {
+            keyDesc.push("Space");
+        } else {
+            keyDesc.push(waveEvent.key);
+        }
+    } else {
+        keyDesc.push("c{" + waveEvent.code + "}");
+    }
+    return keyDesc.join(":");
+}
+
 function parseKey(key: string): { key: string; type: string } {
     let regexMatch = key.match(KeyTypeCodeRegex);
     if (regexMatch != null && regexMatch.length > 1) {
@@ -183,7 +212,7 @@ function checkKeyPressed(event: WaveKeyboardEvent, keyDescription: string): bool
     }
     if (keyPress.keyType == KeyTypeKey) {
         eventKey = event.key;
-        if (eventKey.length == 1 && /[A-Z]/.test(eventKey.charAt(0))) {
+        if (eventKey != null && eventKey.length == 1 && /[A-Z]/.test(eventKey.charAt(0))) {
             // key is upper case A-Z, this means shift is applied, we want to allow
             // "Shift:e" as well as "Shift:E" or "E"
             eventKey = eventKey.toLocaleLowerCase();
@@ -303,4 +332,5 @@ export {
     keydownWrapper,
     parseKeyDescription,
     setKeyUtilPlatform,
+    waveEventToKeyDesc,
 };

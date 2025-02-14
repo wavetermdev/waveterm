@@ -212,7 +212,7 @@ const LauncherView: React.FC<ViewComponentProps<LauncherViewModel>> = ({ blockId
                 value={searchTerm}
                 onKeyDown={keydownWrapper(model.keyDownHandler.bind(model))}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="sr-only"
+                className="sr-only dummy"
                 aria-label="Search widgets"
             />
 

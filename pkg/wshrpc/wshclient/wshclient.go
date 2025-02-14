@@ -284,6 +284,12 @@ func GetMetaCommand(w *wshutil.WshRpc, data wshrpc.CommandGetMetaData, opts *wsh
 	return resp, err
 }
 
+// command "gettab", wshserver.GetTabCommand
+func GetTabCommand(w *wshutil.WshRpc, data string, opts *wshrpc.RpcOpts) (*waveobj.Tab, error) {
+	resp, err := sendRpcRequestCallHelper[*waveobj.Tab](w, "gettab", data, opts)
+	return resp, err
+}
+
 // command "getupdatechannel", wshserver.GetUpdateChannelCommand
 func GetUpdateChannelCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) (string, error) {
 	resp, err := sendRpcRequestCallHelper[string](w, "getupdatechannel", nil, opts)

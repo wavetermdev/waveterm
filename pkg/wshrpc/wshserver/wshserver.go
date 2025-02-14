@@ -914,3 +914,11 @@ func (ws *WshServer) PathCommand(ctx context.Context, data wshrpc.PathCommandDat
 func (ws *WshServer) FetchSuggestionsCommand(ctx context.Context, data wshrpc.FetchSuggestionsData) (*wshrpc.FetchSuggestionsResponse, error) {
 	return suggestion.FetchSuggestions(ctx, data)
 }
+
+func (ws *WshServer) GetTabCommand(ctx context.Context, tabId string) (*waveobj.Tab, error) {
+	tab, err := wstore.DBGet[*waveobj.Tab](ctx, tabId)
+	if err != nil {
+		return nil, fmt.Errorf("error getting tab: %w", err)
+	}
+	return tab, nil
+}

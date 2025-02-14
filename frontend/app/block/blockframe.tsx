@@ -643,13 +643,11 @@ const BlockFrame = React.memo((props: BlockFrameProps) => {
     const blockId = props.nodeModel.blockId;
     const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", blockId));
     const tabData = jotai.useAtomValue(atoms.tabAtom);
-
     if (!blockId || !blockData) {
         return null;
     }
-    const FrameElem = BlockFrame_Default;
     const numBlocks = tabData?.blockids?.length ?? 0;
-    return <FrameElem {...props} numBlocksInTab={numBlocks} />;
+    return <BlockFrame_Default {...props} numBlocksInTab={numBlocks} />;
 });
 
 export { BlockFrame, NumActiveConnColors };
