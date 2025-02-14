@@ -580,11 +580,10 @@ export class PreviewModel implements ViewModel {
     }
 
     async getParentInfo(fileInfo: FileInfo): Promise<FileInfo | undefined> {
+        const conn = await globalStore.get(this.connection);
         try {
-            const parentFileInfo = await RpcApi.FileInfoCommand(TabRpcClient, {
-                info: {
-                    path: await this.formatRemoteUri(fileInfo.dir, globalStore.get),
-                },
+            const parentFileInfo = await RpcApi.RemoteFileJoinCommand(TabRpcClient, [fileInfo.path, ".."], {
+                route: makeConnRoute(conn),
             });
             console.log("parent file info", parentFileInfo);
             return parentFileInfo;
@@ -603,14 +602,13 @@ export class PreviewModel implements ViewModel {
             this.updateOpenFileModalAndError(false);
             return true;
         }
+        const conn = await globalStore.get(this.connection);
         try {
-            const newFileInfo = await RpcApi.FileInfoCommand(TabRpcClient, {
-                info: {
-                    path: await this.formatRemoteUri(fileInfo.dir, globalStore.get),
-                },
+            const newFileInfo = await RpcApi.RemoteFileJoinCommand(TabRpcClient, [fileInfo.path, ".."], {
+                route: makeConnRoute(conn),
             });
             if (newFileInfo.path != "" && newFileInfo.notfound) {
-                console.log("parent does not exist, ", newFileInfo.path);
+                console.log("does not exist, ", newFileInfo.path);
                 this.goParentDirectory({ fileInfo: newFileInfo });
                 return;
             }
@@ -619,7 +617,7 @@ export class PreviewModel implements ViewModel {
             refocusNode(this.blockId);
         } catch (e) {
             globalStore.set(this.openFileError, e.message);
-            console.error("Error opening file", fileInfo.dir, e);
+            console.error("Error opening file", [fileInfo.dir, ".."], e);
         }
     }
 
