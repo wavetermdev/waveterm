@@ -51,31 +51,36 @@ const (
 
 // TODO generate these constants from the interface
 const (
-	Command_Authenticate         = "authenticate"      // special
-	Command_AuthenticateToken    = "authenticatetoken" // special
-	Command_Dispose              = "dispose"           // special (disposes of the route, for multiproxy only)
-	Command_RouteAnnounce        = "routeannounce"     // special (for routing)
-	Command_RouteUnannounce      = "routeunannounce"   // special (for routing)
-	Command_Message              = "message"
-	Command_GetMeta              = "getmeta"
-	Command_SetMeta              = "setmeta"
-	Command_SetView              = "setview"
-	Command_ControllerInput      = "controllerinput"
-	Command_ControllerRestart    = "controllerrestart"
-	Command_ControllerStop       = "controllerstop"
-	Command_ControllerResync     = "controllerresync"
-	Command_FileAppend           = "fileappend"
-	Command_FileAppendIJson      = "fileappendijson"
-	Command_Mkdir                = "mkdir"
-	Command_ResolveIds           = "resolveids"
-	Command_BlockInfo            = "blockinfo"
-	Command_CreateBlock          = "createblock"
-	Command_DeleteBlock          = "deleteblock"
-	Command_FileWrite            = "filewrite"
-	Command_FileRead             = "fileread"
-	Command_FileMove             = "filemove"
-	Command_FileCopy             = "filecopy"
-	Command_FileStreamTar        = "filestreamtar"
+	Command_Authenticate      = "authenticate"      // special
+	Command_AuthenticateToken = "authenticatetoken" // special
+	Command_Dispose           = "dispose"           // special (disposes of the route, for multiproxy only)
+	Command_RouteAnnounce     = "routeannounce"     // special (for routing)
+	Command_RouteUnannounce   = "routeunannounce"   // special (for routing)
+	Command_Message           = "message"
+	Command_GetMeta           = "getmeta"
+	Command_SetMeta           = "setmeta"
+	Command_SetView           = "setview"
+	Command_ControllerInput   = "controllerinput"
+	Command_ControllerRestart = "controllerrestart"
+	Command_ControllerStop    = "controllerstop"
+	Command_ControllerResync  = "controllerresync"
+	Command_Mkdir             = "mkdir"
+	Command_ResolveIds        = "resolveids"
+	Command_BlockInfo         = "blockinfo"
+	Command_CreateBlock       = "createblock"
+	Command_DeleteBlock       = "deleteblock"
+
+	Command_FileWrite           = "filewrite"
+	Command_FileRead            = "fileread"
+	Command_FileReadStream      = "filereadstream"
+	Command_FileMove            = "filemove"
+	Command_FileCopy            = "filecopy"
+	Command_FileStreamTar       = "filestreamtar"
+	Command_FileAppend          = "fileappend"
+	Command_FileAppendIJson     = "fileappendijson"
+	Command_FileJoin            = "filejoin"
+	Command_FileShareCapability = "filesharecapability"
+
 	Command_EventPublish         = "eventpublish"
 	Command_EventRecv            = "eventrecv"
 	Command_EventSub             = "eventsub"
@@ -113,6 +118,7 @@ const (
 	Command_ConnConnect      = "connconnect"
 	Command_ConnDisconnect   = "conndisconnect"
 	Command_ConnList         = "connlist"
+	Command_ConnListAWS      = "connlistaws"
 	Command_WslList          = "wsllist"
 	Command_WslDefaultDistro = "wsldefaultdistro"
 	Command_DismissWshFail   = "dismisswshfail"
@@ -159,6 +165,7 @@ type WshRpcInterface interface {
 	DeleteBlockCommand(ctx context.Context, data CommandDeleteBlockData) error
 	DeleteSubBlockCommand(ctx context.Context, data CommandDeleteBlockData) error
 	WaitForRouteCommand(ctx context.Context, data CommandWaitForRouteData) (bool, error)
+
 	FileMkdirCommand(ctx context.Context, data FileData) error
 	FileCreateCommand(ctx context.Context, data FileData) error
 	FileDeleteCommand(ctx context.Context, data CommandDeleteFileData) error
@@ -166,12 +173,16 @@ type WshRpcInterface interface {
 	FileAppendIJsonCommand(ctx context.Context, data CommandAppendIJsonData) error
 	FileWriteCommand(ctx context.Context, data FileData) error
 	FileReadCommand(ctx context.Context, data FileData) (*FileData, error)
+	FileReadStreamCommand(ctx context.Context, data FileData) <-chan RespOrErrorUnion[FileData]
 	FileStreamTarCommand(ctx context.Context, data CommandRemoteStreamTarData) <-chan RespOrErrorUnion[iochantypes.Packet]
 	FileMoveCommand(ctx context.Context, data CommandFileCopyData) error
 	FileCopyCommand(ctx context.Context, data CommandFileCopyData) error
 	FileInfoCommand(ctx context.Context, data FileData) (*FileInfo, error)
 	FileListCommand(ctx context.Context, data FileListData) ([]*FileInfo, error)
+	FileJoinCommand(ctx context.Context, paths []string) (*FileInfo, error)
 	FileListStreamCommand(ctx context.Context, data FileListData) <-chan RespOrErrorUnion[CommandRemoteListEntriesRtnData]
+
+	FileShareCapabilityCommand(ctx context.Context, path string) (FileShareCapability, error)
 	EventPublishCommand(ctx context.Context, data wps.WaveEvent) error
 	EventSubCommand(ctx context.Context, data wps.SubscriptionRequest) error
 	EventUnsubCommand(ctx context.Context, data string) error
@@ -204,6 +215,7 @@ type WshRpcInterface interface {
 	ConnConnectCommand(ctx context.Context, connRequest ConnRequest) error
 	ConnDisconnectCommand(ctx context.Context, connName string) error
 	ConnListCommand(ctx context.Context) ([]string, error)
+	ConnListAWSCommand(ctx context.Context) ([]string, error)
 	WslListCommand(ctx context.Context) ([]string, error)
 	WslDefaultDistroCommand(ctx context.Context) (string, error)
 	DismissWshFailCommand(ctx context.Context, connName string) error
@@ -215,11 +227,11 @@ type WshRpcInterface interface {
 	// remotes
 	RemoteStreamFileCommand(ctx context.Context, data CommandRemoteStreamFileData) chan RespOrErrorUnion[FileData]
 	RemoteTarStreamCommand(ctx context.Context, data CommandRemoteStreamTarData) <-chan RespOrErrorUnion[iochantypes.Packet]
-	RemoteFileCopyCommand(ctx context.Context, data CommandRemoteFileCopyData) error
+	RemoteFileCopyCommand(ctx context.Context, data CommandFileCopyData) error
 	RemoteListEntriesCommand(ctx context.Context, data CommandRemoteListEntriesData) chan RespOrErrorUnion[CommandRemoteListEntriesRtnData]
 	RemoteFileInfoCommand(ctx context.Context, path string) (*FileInfo, error)
 	RemoteFileTouchCommand(ctx context.Context, path string) error
-	RemoteFileMoveCommand(ctx context.Context, data CommandRemoteFileCopyData) error
+	RemoteFileMoveCommand(ctx context.Context, data CommandFileCopyData) error
 	RemoteFileDeleteCommand(ctx context.Context, data CommandDeleteFileData) error
 	RemoteWriteFileCommand(ctx context.Context, data FileData) error
 	RemoteFileJoinCommand(ctx context.Context, paths []string) (*FileInfo, error)
@@ -526,12 +538,6 @@ type CommandFileCopyData struct {
 	Opts    *FileCopyOpts `json:"opts,omitempty"`
 }
 
-type CommandRemoteFileCopyData struct {
-	SrcUri  string        `json:"srcuri"`
-	DestUri string        `json:"desturi"`
-	Opts    *FileCopyOpts `json:"opts,omitempty"`
-}
-
 type CommandRemoteStreamTarData struct {
 	Path string        `json:"path"`
 	Opts *FileCopyOpts `json:"opts,omitempty"`
@@ -539,8 +545,8 @@ type CommandRemoteStreamTarData struct {
 
 type FileCopyOpts struct {
 	Overwrite bool  `json:"overwrite,omitempty"`
-	Recursive bool  `json:"recursive,omitempty"`
-	Merge     bool  `json:"merge,omitempty"`
+	Recursive bool  `json:"recursive,omitempty"` // only used for move, always true for copy
+	Merge     bool  `json:"merge,omitempty"`     // only used for copy, always false for move
 	Timeout   int64 `json:"timeout,omitempty"`
 }
 
@@ -763,4 +769,12 @@ type SuggestionType struct {
 	FilePath     string `json:"file:path,omitempty"`
 	FileName     string `json:"file:name,omitempty"`
 	UrlUrl       string `json:"url:url,omitempty"`
+}
+
+// FileShareCapability represents the capabilities of a file share
+type FileShareCapability struct {
+	// CanAppend indicates whether the file share supports appending to files
+	CanAppend bool `json:"canappend"`
+	// CanMkdir indicates whether the file share supports creating directories
+	CanMkdir bool `json:"canmkdir"`
 }

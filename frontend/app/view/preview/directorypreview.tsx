@@ -9,9 +9,9 @@ import { ContextMenuModel } from "@/app/store/contextmenu";
 import { PLATFORM, atoms, createBlock, getApi, globalStore } from "@/app/store/global";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
-import type { PreviewModel } from "@/app/view/preview/preview";
+import { formatRemoteUri, type PreviewModel } from "@/app/view/preview/preview";
 import { checkKeyPressed, isCharacterKeyEvent } from "@/util/keyutil";
-import { fireAndForget, isBlank, makeConnRoute, makeNativeLabel } from "@/util/util";
+import { fireAndForget, isBlank, makeNativeLabel } from "@/util/util";
 import { offset, useDismiss, useFloating, useInteractions } from "@floating-ui/react";
 import {
     Column,
@@ -528,8 +528,10 @@ function TableBody({
             const fileName = finfo.path.split("/").pop();
             let parentFileInfo: FileInfo;
             try {
-                parentFileInfo = await RpcApi.RemoteFileJoinCommand(TabRpcClient, [normPath, ".."], {
-                    route: makeConnRoute(conn),
+                parentFileInfo = await RpcApi.FileInfoCommand(TabRpcClient, {
+                    info: {
+                        path: await model.formatRemoteUri(finfo.dir, globalStore.get),
+                    },
                 });
             } catch (e) {
                 console.log("could not get parent file info. using child file info as fallback");
@@ -683,7 +685,6 @@ function TableBody({
                         setSearch={setSearch}
                         idx={idx}
                         handleFileContextMenu={handleFileContextMenu}
-                        ref={(el) => (rowRefs.current[idx] = el)}
                         key={idx}
                     />
                 ))}
@@ -696,7 +697,6 @@ function TableBody({
                         setSearch={setSearch}
                         idx={idx + table.getTopRows().length}
                         handleFileContextMenu={handleFileContextMenu}
-                        ref={(el) => (rowRefs.current[idx] = el)}
                         key={idx}
                     />
                 ))}
@@ -715,40 +715,28 @@ type TableRowProps = {
     handleFileContextMenu: (e: any, finfo: FileInfo) => Promise<void>;
 };
 
-const TableRow = React.forwardRef(function (
-    { model, row, focusIndex, setFocusIndex, setSearch, idx, handleFileContextMenu }: TableRowProps,
-    ref: React.RefObject<HTMLDivElement>
-) {
+const TableRow = React.forwardRef(function ({
+    model,
+    row,
+    focusIndex,
+    setFocusIndex,
+    setSearch,
+    idx,
+    handleFileContextMenu,
+}: TableRowProps) {
     const dirPath = useAtomValue(model.normFilePath);
     const connection = useAtomValue(model.connection);
-    const formatRemoteUri = useCallback(
-        (path: string) => {
-            let conn: string;
-            if (!connection) {
-                conn = "local";
-            } else {
-                conn = connection;
-            }
-            return `wsh://${conn}/${path}`;
-        },
-        [connection]
-    );
 
     const dragItem: DraggedFile = {
         relName: row.getValue("name") as string,
         absParent: dirPath,
-        uri: formatRemoteUri(row.getValue("path") as string),
+        uri: formatRemoteUri(row.getValue("path") as string, connection),
     };
-    const [{ isDragging }, drag, dragPreview] = useDrag(
+    const [_, drag] = useDrag(
         () => ({
             type: "FILE_ITEM",
             canDrag: true,
             item: () => dragItem,
-            collect: (monitor) => {
-                return {
-                    isDragging: monitor.isDragging(),
-                };
-            },
         }),
         [dragItem]
     );

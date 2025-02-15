@@ -17,9 +17,9 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
+
 	"github.com/aws/smithy-go"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
-	"github.com/wavetermdev/waveterm/pkg/wconfig"
 	"gopkg.in/ini.v1"
 )
 
@@ -44,24 +44,27 @@ func GetConfig(ctx context.Context, profile string) (*aws.Config, error) {
 		}
 		profile = connMatch[1]
 		log.Printf("GetConfig: profile=%s", profile)
-		profiles, cerrs := wconfig.ReadWaveHomeConfigFile(wconfig.ProfilesFile)
-		if len(cerrs) > 0 {
-			return nil, fmt.Errorf("error reading config file: %v", cerrs[0])
-		}
-		if profiles[profile] != nil {
-			configfilepath, _ := getTempFileFromConfig(profiles, ProfileConfigKey, profile)
-			credentialsfilepath, _ := getTempFileFromConfig(profiles, ProfileCredentialsKey, profile)
-			if configfilepath != "" {
-				log.Printf("configfilepath: %s", configfilepath)
-				optfns = append(optfns, config.WithSharedConfigFiles([]string{configfilepath}))
-				tempfiles[profile+"_config"] = configfilepath
-			}
-			if credentialsfilepath != "" {
-				log.Printf("credentialsfilepath: %s", credentialsfilepath)
-				optfns = append(optfns, config.WithSharedCredentialsFiles([]string{credentialsfilepath}))
-				tempfiles[profile+"_credentials"] = credentialsfilepath
-			}
-		}
+
+		// TODO: Reimplement generic profile support
+		// profiles, cerrs := wconfig.ReadWaveHomeConfigFile(wconfig.ProfilesFile)
+		// if len(cerrs) > 0 {
+		// 	return nil, fmt.Errorf("error reading config file: %v", cerrs[0])
+		// }
+		// if profiles[profile] != nil {
+		// 	configfilepath, _ := getTempFileFromConfig(profiles, ProfileConfigKey, profile)
+		// 	credentialsfilepath, _ := getTempFileFromConfig(profiles, ProfileCredentialsKey, profile)
+		// 	if configfilepath != "" {
+		// 		log.Printf("configfilepath: %s", configfilepath)
+		// 		optfns = append(optfns, config.WithSharedConfigFiles([]string{configfilepath}))
+		// 		tempfiles[profile+"_config"] = configfilepath
+		// 	}
+		// 	if credentialsfilepath != "" {
+		// 		log.Printf("credentialsfilepath: %s", credentialsfilepath)
+		// 		optfns = append(optfns, config.WithSharedCredentialsFiles([]string{credentialsfilepath}))
+		// 		tempfiles[profile+"_credentials"] = credentialsfilepath
+		// 	}
+		// }
+		optfns = append(optfns, config.WithRegion("us-west-2"))
 		trimmedProfile := strings.TrimPrefix(profile, ProfilePrefix)
 		optfns = append(optfns, config.WithSharedConfigProfile(trimmedProfile))
 	}
@@ -112,10 +115,7 @@ func ParseProfiles() map[string]struct{} {
 	f, err = ini.Load(fname)
 	if err != nil {
 		log.Printf("error reading aws credentials file: %v", err)
-		if profiles == nil {
-			profiles = make(map[string]struct{})
-		}
-		return profiles
+		return nil
 	}
 	for _, v := range f.Sections() {
 		profiles[ProfilePrefix+v.Name()] = struct{}{}
@@ -124,13 +124,27 @@ func ParseProfiles() map[string]struct{} {
 }
 
 func ListBuckets(ctx context.Context, client *s3.Client) ([]types.Bucket, error) {
-	output, err := client.ListBuckets(ctx, &s3.ListBucketsInput{})
-	if err != nil {
-		var apiErr smithy.APIError
-		if errors.As(err, &apiErr) {
-			return nil, fmt.Errorf("error listing buckets: %v", apiErr)
+	var err error
+	var output *s3.ListBucketsOutput
+	var buckets []types.Bucket
+	bucketPaginator := s3.NewListBucketsPaginator(client, &s3.ListBucketsInput{})
+	for bucketPaginator.HasMorePages() {
+		output, err = bucketPaginator.NextPage(ctx)
+		if err != nil {
+			CheckAccessDeniedErr(&err)
+			return nil, fmt.Errorf("error listing buckets: %v", err)
+		} else {
+			buckets = append(buckets, output.Buckets...)
 		}
-		return nil, fmt.Errorf("error listing buckets: %v", err)
 	}
-	return output.Buckets, nil
+	return buckets, nil
+}
+
+func CheckAccessDeniedErr(err *error) bool {
+	var apiErr smithy.APIError
+	if err != nil && errors.As(*err, &apiErr) && apiErr.ErrorCode() == "AccessDenied" {
+		*err = apiErr
+		return true
+	}
+	return false
 }

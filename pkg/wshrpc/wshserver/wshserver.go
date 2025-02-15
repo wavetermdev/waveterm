@@ -24,6 +24,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/genconn"
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/remote"
+	"github.com/wavetermdev/waveterm/pkg/remote/awsconn"
 	"github.com/wavetermdev/waveterm/pkg/remote/conncontroller"
 	"github.com/wavetermdev/waveterm/pkg/remote/fileshare"
 	"github.com/wavetermdev/waveterm/pkg/suggestion"
@@ -31,6 +32,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/telemetry/telemetrydata"
 	"github.com/wavetermdev/waveterm/pkg/util/envutil"
 	"github.com/wavetermdev/waveterm/pkg/util/iochan/iochantypes"
+	"github.com/wavetermdev/waveterm/pkg/util/iterfn"
 	"github.com/wavetermdev/waveterm/pkg/util/shellutil"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/util/wavefileutil"
@@ -383,6 +385,10 @@ func (ws *WshServer) FileReadCommand(ctx context.Context, data wshrpc.FileData) 
 	return fileshare.Read(ctx, data)
 }
 
+func (ws *WshServer) FileReadStreamCommand(ctx context.Context, data wshrpc.FileData) <-chan wshrpc.RespOrErrorUnion[wshrpc.FileData] {
+	return fileshare.ReadStream(ctx, data)
+}
+
 func (ws *WshServer) FileCopyCommand(ctx context.Context, data wshrpc.CommandFileCopyData) error {
 	return fileshare.Copy(ctx, data)
 }
@@ -422,6 +428,20 @@ func (ws *WshServer) FileAppendIJsonCommand(ctx context.Context, data wshrpc.Com
 		},
 	})
 	return nil
+}
+
+func (ws *WshServer) FileJoinCommand(ctx context.Context, paths []string) (*wshrpc.FileInfo, error) {
+	if len(paths) < 2 {
+		if len(paths) == 0 {
+			return nil, fmt.Errorf("no paths provided")
+		}
+		return fileshare.Stat(ctx, paths[0])
+	}
+	return fileshare.Join(ctx, paths[0], paths[1:]...)
+}
+
+func (ws *WshServer) FileShareCapabilityCommand(ctx context.Context, path string) (wshrpc.FileShareCapability, error) {
+	return fileshare.GetCapability(ctx, path)
 }
 
 func (ws *WshServer) DeleteSubBlockCommand(ctx context.Context, data wshrpc.CommandDeleteBlockData) error {
@@ -550,6 +570,15 @@ func termCtxWithLogBlockId(ctx context.Context, logBlockId string) context.Conte
 }
 
 func (ws *WshServer) ConnEnsureCommand(ctx context.Context, data wshrpc.ConnExtData) error {
+	// TODO: if we add proper wsh connections via aws, we'll need to handle that here
+	if strings.HasPrefix(data.ConnName, "aws:") {
+		profiles := awsconn.ParseProfiles()
+		for profile := range profiles {
+			if strings.HasPrefix(data.ConnName, profile) {
+				return nil
+			}
+		}
+	}
 	ctx = genconn.ContextWithConnData(ctx, data.LogBlockId)
 	ctx = termCtxWithLogBlockId(ctx, data.LogBlockId)
 	if strings.HasPrefix(data.ConnName, "wsl://") {
@@ -560,6 +589,10 @@ func (ws *WshServer) ConnEnsureCommand(ctx context.Context, data wshrpc.ConnExtD
 }
 
 func (ws *WshServer) ConnDisconnectCommand(ctx context.Context, connName string) error {
+	// TODO: if we add proper wsh connections via aws, we'll need to handle that here
+	if strings.HasPrefix(connName, "aws:") {
+		return nil
+	}
 	if strings.HasPrefix(connName, "wsl://") {
 		distroName := strings.TrimPrefix(connName, "wsl://")
 		conn := wslconn.GetWslConn(distroName)
@@ -580,6 +613,10 @@ func (ws *WshServer) ConnDisconnectCommand(ctx context.Context, connName string)
 }
 
 func (ws *WshServer) ConnConnectCommand(ctx context.Context, connRequest wshrpc.ConnRequest) error {
+	// TODO: if we add proper wsh connections via aws, we'll need to handle that here
+	if strings.HasPrefix(connRequest.Host, "aws:") {
+		return nil
+	}
 	ctx = genconn.ContextWithConnData(ctx, connRequest.LogBlockId)
 	ctx = termCtxWithLogBlockId(ctx, connRequest.LogBlockId)
 	connName := connRequest.Host
@@ -603,6 +640,10 @@ func (ws *WshServer) ConnConnectCommand(ctx context.Context, connRequest wshrpc.
 }
 
 func (ws *WshServer) ConnReinstallWshCommand(ctx context.Context, data wshrpc.ConnExtData) error {
+	// TODO: if we add proper wsh connections via aws, we'll need to handle that here
+	if strings.HasPrefix(data.ConnName, "aws:") {
+		return nil
+	}
 	ctx = genconn.ContextWithConnData(ctx, data.LogBlockId)
 	ctx = termCtxWithLogBlockId(ctx, data.LogBlockId)
 	connName := data.ConnName
@@ -670,6 +711,11 @@ func (ws *WshServer) ConnUpdateWshCommand(ctx context.Context, remoteInfo wshrpc
 
 func (ws *WshServer) ConnListCommand(ctx context.Context) ([]string, error) {
 	return conncontroller.GetConnectionsList()
+}
+
+func (ws *WshServer) ConnListAWSCommand(ctx context.Context) ([]string, error) {
+	profilesMap := awsconn.ParseProfiles()
+	return iterfn.MapKeysToSorted(profilesMap), nil
 }
 
 func (ws *WshServer) WslListCommand(ctx context.Context) ([]string, error) {

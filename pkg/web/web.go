@@ -27,6 +27,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/schema"
 	"github.com/wavetermdev/waveterm/pkg/service"
+	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
@@ -258,10 +259,7 @@ func handleRemoteStreamFile(w http.ResponseWriter, req *http.Request, conn strin
 			return
 		}
 		// if loop didn't finish naturally clear it out
-		go func() {
-			for range rtnCh {
-			}
-		}()
+		utilfn.DrainChannelSafe(rtnCh, "handleRemoteStreamFile")
 	}()
 	ctx := req.Context()
 	for {

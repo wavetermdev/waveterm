@@ -248,7 +248,7 @@ export class PreviewModel implements ViewModel {
             if (loadableFileInfo.state == "hasData") {
                 headerPath = loadableFileInfo.data?.path;
                 if (headerPath == "~") {
-                    headerPath = `~ (${loadableFileInfo.data?.dir})`;
+                    headerPath = `~ (${loadableFileInfo.data?.dir + "/" + loadableFileInfo.data?.name})`;
                 }
             }
 
@@ -386,13 +386,7 @@ export class PreviewModel implements ViewModel {
         });
         this.normFilePath = atom<Promise<string>>(async (get) => {
             const fileInfo = await get(this.statFile);
-            if (fileInfo == null) {
-                return null;
-            }
-            if (fileInfo.isdir) {
-                return fileInfo.dir + "/";
-            }
-            return fileInfo.dir + "/" + fileInfo.name;
+            return fileInfo?.path;
         });
         this.loadableStatFilePath = loadable(this.statFilePath);
         this.connection = atom<Promise<string>>(async (get) => {
@@ -410,12 +404,14 @@ export class PreviewModel implements ViewModel {
         });
         this.statFile = atom<Promise<FileInfo>>(async (get) => {
             const fileName = get(this.metaFilePath);
+            console.log("stat file", fileName);
+            const path = await this.formatRemoteUri(fileName, get);
             if (fileName == null) {
                 return null;
             }
             const statFile = await RpcApi.FileInfoCommand(TabRpcClient, {
                 info: {
-                    path: await this.formatRemoteUri(fileName, get),
+                    path,
                 },
             });
             console.log("stat file", statFile);
@@ -431,12 +427,14 @@ export class PreviewModel implements ViewModel {
 
         const fullFileAtom = atom<Promise<FileData>>(async (get) => {
             const fileName = get(this.metaFilePath);
+            const path = await this.formatRemoteUri(fileName, get);
             if (fileName == null) {
                 return null;
             }
+            console.log("full file path", path);
             const file = await RpcApi.FileReadCommand(TabRpcClient, {
                 info: {
-                    path: await this.formatRemoteUri(fileName, get),
+                    path,
                 },
             });
             console.log("full file", file);
@@ -446,7 +444,6 @@ export class PreviewModel implements ViewModel {
         this.fileContentSaved = atom(null) as PrimitiveAtom<string | null>;
         const fileContentAtom = atom(
             async (get) => {
-                const _ = get(this.metaFilePath);
                 const newContent = get(this.newFileContent);
                 if (newContent != null) {
                     return newContent;
@@ -691,21 +688,16 @@ export class PreviewModel implements ViewModel {
 
     async handleOpenFile(filePath: string) {
         const fileInfo = await globalStore.get(this.statFile);
+        this.updateOpenFileModalAndError(false);
         if (fileInfo == null) {
-            this.updateOpenFileModalAndError(false);
             return true;
         }
-        const conn = await globalStore.get(this.connection);
         try {
-            const newFileInfo = await RpcApi.RemoteFileJoinCommand(TabRpcClient, [fileInfo.dir, filePath], {
-                route: makeConnRoute(conn),
-            });
-            this.updateOpenFileModalAndError(false);
-            this.goHistory(newFileInfo.path);
+            this.goHistory(filePath);
             refocusNode(this.blockId);
         } catch (e) {
             globalStore.set(this.openFileError, e.message);
-            console.error("Error opening file", fileInfo.dir, filePath, e);
+            console.error("Error opening file", filePath, e);
         }
     }
 
@@ -724,7 +716,14 @@ export class PreviewModel implements ViewModel {
                     if (filePath == null) {
                         return;
                     }
-                    await navigator.clipboard.writeText(filePath);
+                    const conn = await globalStore.get(this.connection);
+                    if (conn) {
+                        // remote path
+                        await navigator.clipboard.writeText(formatRemoteUri(filePath, conn));
+                    } else {
+                        // local path
+                        await navigator.clipboard.writeText(filePath);
+                    }
                 }),
         });
         menuItems.push({
@@ -868,8 +867,7 @@ export class PreviewModel implements ViewModel {
     }
 
     async formatRemoteUri(path: string, get: Getter): Promise<string> {
-        const conn = (await get(this.connection)) ?? "local";
-        return `wsh://${conn}/${path}`;
+        return formatRemoteUri(path, await get(this.connection));
     }
 }
 
@@ -1116,7 +1114,6 @@ const fetchSuggestions = async (
 };
 
 function PreviewView({
-    blockId,
     blockRef,
     contentRef,
     model,
@@ -1304,4 +1301,16 @@ const ErrorOverlay = memo(({ errorMsg, resetOverlay }: { errorMsg: ErrorMsg; res
     );
 });
 
-export { PreviewView };
+function formatRemoteUri(path: string, connection: string): string {
+    connection = connection ?? "local";
+    // TODO: We need a better way to handle s3 paths
+    let retVal: string;
+    if (connection.startsWith("aws:")) {
+        retVal = `${connection}:s3://${path ?? ""}`;
+    } else {
+        retVal = `wsh://${connection}/${path}`;
+    }
+    return retVal;
+}
+
+export { formatRemoteUri, PreviewView };

@@ -52,6 +52,11 @@ class RpcApiType {
         return client.wshRpcCall("connlist", null, opts);
     }
 
+    // command "connlistaws" [call]
+    ConnListAWSCommand(client: WshClient, opts?: RpcOpts): Promise<string[]> {
+        return client.wshRpcCall("connlistaws", null, opts);
+    }
+
     // command "connreinstallwsh" [call]
     ConnReinstallWshCommand(client: WshClient, data: ConnExtData, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("connreinstallwsh", data, opts);
@@ -182,6 +187,11 @@ class RpcApiType {
         return client.wshRpcCall("fileinfo", data, opts);
     }
 
+    // command "filejoin" [call]
+    FileJoinCommand(client: WshClient, data: string[], opts?: RpcOpts): Promise<FileInfo> {
+        return client.wshRpcCall("filejoin", data, opts);
+    }
+
     // command "filelist" [call]
     FileListCommand(client: WshClient, data: FileListData, opts?: RpcOpts): Promise<FileInfo[]> {
         return client.wshRpcCall("filelist", data, opts);
@@ -205,6 +215,16 @@ class RpcApiType {
     // command "fileread" [call]
     FileReadCommand(client: WshClient, data: FileData, opts?: RpcOpts): Promise<FileData> {
         return client.wshRpcCall("fileread", data, opts);
+    }
+
+    // command "filereadstream" [responsestream]
+	FileReadStreamCommand(client: WshClient, data: FileData, opts?: RpcOpts): AsyncGenerator<FileData, void, boolean> {
+        return client.wshRpcStream("filereadstream", data, opts);
+    }
+
+    // command "filesharecapability" [call]
+    FileShareCapabilityCommand(client: WshClient, data: string, opts?: RpcOpts): Promise<FileShareCapability> {
+        return client.wshRpcCall("filesharecapability", data, opts);
     }
 
     // command "filestreamtar" [responsestream]
@@ -268,7 +288,7 @@ class RpcApiType {
     }
 
     // command "remotefilecopy" [call]
-    RemoteFileCopyCommand(client: WshClient, data: CommandRemoteFileCopyData, opts?: RpcOpts): Promise<void> {
+    RemoteFileCopyCommand(client: WshClient, data: CommandFileCopyData, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("remotefilecopy", data, opts);
     }
 
@@ -288,7 +308,7 @@ class RpcApiType {
     }
 
     // command "remotefilemove" [call]
-    RemoteFileMoveCommand(client: WshClient, data: CommandRemoteFileCopyData, opts?: RpcOpts): Promise<void> {
+    RemoteFileMoveCommand(client: WshClient, data: CommandFileCopyData, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("remotefilemove", data, opts);
     }
 
