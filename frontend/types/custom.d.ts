@@ -430,6 +430,20 @@ declare global {
         absParent: string;
         relName: string;
     };
+
+    type ErrorButtonDef = {
+        text: string;
+        onClick: () => void;
+    };
+
+    type ErrorMsg = {
+        status: string;
+        text: string;
+        level?: "error" | "warning";
+        buttons?: Array<ErrorButtonDef>;
+        closeAction?: () => void;
+        showDismiss?: boolean;
+    };
 }
 
 export {};

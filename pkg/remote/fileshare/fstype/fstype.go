@@ -5,10 +5,18 @@ package fstype
 
 import (
 	"context"
+	"os"
+	"time"
 
 	"github.com/wavetermdev/waveterm/pkg/remote/connparse"
 	"github.com/wavetermdev/waveterm/pkg/util/iochan/iochantypes"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
+)
+
+const (
+	DefaultTimeout             = 30 * time.Second
+	FileMode       os.FileMode = 0644
+	DirMode        os.FileMode = 0755 | os.ModeDir
 )
 
 type FileShareClient interface {
@@ -39,7 +47,9 @@ type FileShareClient interface {
 	// Delete deletes the entry at the given path
 	Delete(ctx context.Context, conn *connparse.Connection, recursive bool) error
 	// Join joins the given parts to the connection path
-	Join(ctx context.Context, conn *connparse.Connection, parts ...string) (string, error)
+	Join(ctx context.Context, conn *connparse.Connection, parts ...string) (*wshrpc.FileInfo, error)
 	// GetConnectionType returns the type of connection for the fileshare
 	GetConnectionType() string
+	// GetCapability returns the capability of the fileshare
+	GetCapability() wshrpc.FileShareCapability
 }

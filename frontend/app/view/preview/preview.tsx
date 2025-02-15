@@ -3,6 +3,7 @@
 
 import { BlockNodeModel } from "@/app/block/blocktypes";
 import { Button } from "@/app/element/button";
+import { CopyButton } from "@/app/element/copybutton";
 import { CenteredDiv } from "@/app/element/quickelems";
 import { TypeAheadModal } from "@/app/modals/typeaheadmodal";
 import { ContextMenuModel } from "@/app/store/contextmenu";
@@ -39,9 +40,10 @@ import {
 } from "@/util/util";
 import { Monaco } from "@monaco-editor/react";
 import clsx from "clsx";
-import { Atom, atom, Getter, PrimitiveAtom, useAtomValue, useSetAtom, WritableAtom } from "jotai";
+import { Atom, atom, Getter, PrimitiveAtom, useAtom, useAtomValue, useSetAtom, WritableAtom } from "jotai";
 import { loadable } from "jotai/utils";
 import type * as MonacoTypes from "monaco-editor/esm/vs/editor/editor.api";
+import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
 import { createRef, memo, useCallback, useEffect, useMemo, useState } from "react";
 import { TransformComponent, TransformWrapper, useControls } from "react-zoom-pan-pinch";
 import { CSVView } from "./csvview";
@@ -161,6 +163,7 @@ export class PreviewModel implements ViewModel {
     fileContent: WritableAtom<Promise<string>, [string], void>;
     newFileContent: PrimitiveAtom<string | null>;
     connectionError: PrimitiveAtom<string>;
+    errorMsgAtom: PrimitiveAtom<ErrorMsg>;
 
     openFileModal: PrimitiveAtom<boolean>;
     openFileModalDelay: PrimitiveAtom<boolean>;
@@ -195,6 +198,7 @@ export class PreviewModel implements ViewModel {
         this.filterOutNowsh = atom(true);
         this.monacoRef = createRef();
         this.connectionError = atom("");
+        this.errorMsgAtom = atom(null) as PrimitiveAtom<ErrorMsg | null>;
         this.viewIcon = atom((get) => {
             const blockData = get(this.blockAtom);
             if (blockData?.meta?.icon) {
@@ -244,7 +248,7 @@ export class PreviewModel implements ViewModel {
             if (loadableFileInfo.state == "hasData") {
                 headerPath = loadableFileInfo.data?.path;
                 if (headerPath == "~") {
-                    headerPath = `~ (${loadableFileInfo.data?.dir})`;
+                    headerPath = `~ (${loadableFileInfo.data?.dir + "/" + loadableFileInfo.data?.name})`;
                 }
             }
 
@@ -382,13 +386,7 @@ export class PreviewModel implements ViewModel {
         });
         this.normFilePath = atom<Promise<string>>(async (get) => {
             const fileInfo = await get(this.statFile);
-            if (fileInfo == null) {
-                return null;
-            }
-            if (fileInfo.isdir) {
-                return fileInfo.dir + "/";
-            }
-            return fileInfo.dir + "/" + fileInfo.name;
+            return fileInfo?.path;
         });
         this.loadableStatFilePath = loadable(this.statFilePath);
         this.connection = atom<Promise<string>>(async (get) => {
@@ -406,12 +404,14 @@ export class PreviewModel implements ViewModel {
         });
         this.statFile = atom<Promise<FileInfo>>(async (get) => {
             const fileName = get(this.metaFilePath);
+            console.log("stat file", fileName);
+            const path = await this.formatRemoteUri(fileName, get);
             if (fileName == null) {
                 return null;
             }
             const statFile = await RpcApi.FileInfoCommand(TabRpcClient, {
                 info: {
-                    path: await this.formatRemoteUri(fileName, get),
+                    path,
                 },
             });
             console.log("stat file", statFile);
@@ -427,12 +427,14 @@ export class PreviewModel implements ViewModel {
 
         const fullFileAtom = atom<Promise<FileData>>(async (get) => {
             const fileName = get(this.metaFilePath);
+            const path = await this.formatRemoteUri(fileName, get);
             if (fileName == null) {
                 return null;
             }
+            console.log("full file path", path);
             const file = await RpcApi.FileReadCommand(TabRpcClient, {
                 info: {
-                    path: await this.formatRemoteUri(fileName, get),
+                    path,
                 },
             });
             console.log("full file", file);
@@ -442,7 +444,6 @@ export class PreviewModel implements ViewModel {
         this.fileContentSaved = atom(null) as PrimitiveAtom<string | null>;
         const fileContentAtom = atom(
             async (get) => {
-                const _ = get(this.metaFilePath);
                 const newContent = get(this.newFileContent);
                 if (newContent != null) {
                     return newContent;
@@ -687,21 +688,16 @@ export class PreviewModel implements ViewModel {
 
     async handleOpenFile(filePath: string) {
         const fileInfo = await globalStore.get(this.statFile);
+        this.updateOpenFileModalAndError(false);
         if (fileInfo == null) {
-            this.updateOpenFileModalAndError(false);
             return true;
         }
-        const conn = await globalStore.get(this.connection);
         try {
-            const newFileInfo = await RpcApi.RemoteFileJoinCommand(TabRpcClient, [fileInfo.dir, filePath], {
-                route: makeConnRoute(conn),
-            });
-            this.updateOpenFileModalAndError(false);
-            this.goHistory(newFileInfo.path);
+            this.goHistory(filePath);
             refocusNode(this.blockId);
         } catch (e) {
             globalStore.set(this.openFileError, e.message);
-            console.error("Error opening file", fileInfo.dir, filePath, e);
+            console.error("Error opening file", filePath, e);
         }
     }
 
@@ -720,7 +716,14 @@ export class PreviewModel implements ViewModel {
                     if (filePath == null) {
                         return;
                     }
-                    await navigator.clipboard.writeText(filePath);
+                    const conn = await globalStore.get(this.connection);
+                    if (conn) {
+                        // remote path
+                        await navigator.clipboard.writeText(formatRemoteUri(filePath, conn));
+                    } else {
+                        // local path
+                        await navigator.clipboard.writeText(filePath);
+                    }
                 }),
         });
         menuItems.push({
@@ -864,8 +867,7 @@ export class PreviewModel implements ViewModel {
     }
 
     async formatRemoteUri(path: string, get: Getter): Promise<string> {
-        const conn = (await get(this.connection)) ?? "local";
-        return `wsh://${conn}/${path}`;
+        return formatRemoteUri(path, await get(this.connection));
     }
 }
 
@@ -1112,7 +1114,6 @@ const fetchSuggestions = async (
 };
 
 function PreviewView({
-    blockId,
     blockRef,
     contentRef,
     model,
@@ -1123,6 +1124,7 @@ function PreviewView({
     model: PreviewModel;
 }) {
     const connStatus = useAtomValue(model.connStatus);
+    const [errorMsg, setErrorMsg] = useAtom(model.errorMsgAtom);
     if (connStatus?.status != "connected") {
         return null;
     }
@@ -1143,6 +1145,7 @@ function PreviewView({
         <>
             {/* <OpenFileModal blockId={blockId} model={model} blockRef={blockRef} /> */}
             <div key="fullpreview" className="full-preview scrollbar-hide-until-hover">
+                {errorMsg && <ErrorOverlay errorMsg={errorMsg} resetOverlay={() => setErrorMsg(null)} />}
                 <div ref={contentRef} className="full-preview-content">
                     <SpecializedView parentRef={contentRef} model={model} />
                 </div>
@@ -1226,4 +1229,88 @@ const OpenFileModal = memo(
     }
 );
 
-export { PreviewView };
+const ErrorOverlay = memo(({ errorMsg, resetOverlay }: { errorMsg: ErrorMsg; resetOverlay: () => void }) => {
+    const showDismiss = errorMsg.showDismiss ?? true;
+    const buttonClassName = "outlined grey font-size-11 vertical-padding-3 horizontal-padding-7";
+
+    let iconClass = "fa-solid fa-circle-exclamation text-[var(--error-color)] text-base";
+    if (errorMsg.level == "warning") {
+        iconClass = "fa-solid fa-triangle-exclamation text-[var(--warning-color)] text-base";
+    }
+
+    const handleCopyToClipboard = useCallback(async () => {
+        await navigator.clipboard.writeText(errorMsg.text);
+    }, [errorMsg.text]);
+
+    return (
+        <div className="absolute top-[0] left-1.5 right-1.5 z-[var(--zindex-block-mask-inner)] overflow-hidden bg-[var(--conn-status-overlay-bg-color)] backdrop-blur-[50px] rounded-md shadow-lg">
+            <div className="flex flex-row justify-between p-2.5 pl-3 font-[var(--base-font)] text-[var(--secondary-text-color)]">
+                <div
+                    className={clsx("flex flex-row items-center gap-3 grow min-w-0", {
+                        "items-start": true,
+                    })}
+                >
+                    <i className={iconClass}></i>
+
+                    <div className="flex flex-col items-start gap-1 grow w-full">
+                        <div className="max-w-full text-xs font-semibold leading-4 tracking-[0.11px] text-white">
+                            {errorMsg.status}
+                        </div>
+
+                        <OverlayScrollbarsComponent
+                            className="group text-xs font-normal leading-[15px] tracking-[0.11px] text-wrap max-h-20 rounded-lg py-1.5 pl-0 relative w-full"
+                            options={{ scrollbars: { autoHide: "leave" } }}
+                        >
+                            <CopyButton
+                                className="invisible group-hover:visible flex absolute top-0 right-1 rounded backdrop-blur-lg p-1 items-center justify-end gap-1"
+                                onClick={handleCopyToClipboard}
+                                title="Copy"
+                            />
+                            <div>{errorMsg.text}</div>
+                        </OverlayScrollbarsComponent>
+                        {errorMsg.buttons?.map((buttonDef) => (
+                            <Button
+                                className={buttonClassName}
+                                onClick={() => {
+                                    buttonDef.onClick();
+                                    resetOverlay();
+                                }}
+                                key={crypto.randomUUID()}
+                            >
+                                {buttonDef.text}
+                            </Button>
+                        ))}
+                    </div>
+
+                    {showDismiss && (
+                        <div className="flex items-start">
+                            <Button
+                                className={clsx(buttonClassName, "fa-xmark fa-solid")}
+                                onClick={() => {
+                                    if (errorMsg.closeAction) {
+                                        errorMsg.closeAction();
+                                    }
+                                    resetOverlay();
+                                }}
+                            />
+                        </div>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+});
+
+function formatRemoteUri(path: string, connection: string): string {
+    connection = connection ?? "local";
+    // TODO: We need a better way to handle s3 paths
+    let retVal: string;
+    if (connection.startsWith("aws:")) {
+        retVal = `${connection}:s3://${path ?? ""}`;
+    } else {
+        retVal = `wsh://${connection}/${path}`;
+    }
+    return retVal;
+}
+
+export { formatRemoteUri, PreviewView };

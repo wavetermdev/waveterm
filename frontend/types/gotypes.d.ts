@@ -199,13 +199,6 @@ declare global {
         message: string;
     };
 
-    // wshrpc.CommandRemoteFileCopyData
-    type CommandRemoteFileCopyData = {
-        srcuri: string;
-        desturi: string;
-        opts?: FileCopyOpts;
-    };
-
     // wshrpc.CommandRemoteListEntriesData
     type CommandRemoteListEntriesData = {
         path: string;
@@ -453,6 +446,12 @@ declare global {
         ijsonbudget?: number;
         truncate?: boolean;
         append?: boolean;
+    };
+
+    // wshrpc.FileShareCapability
+    type FileShareCapability = {
+        canappend: boolean;
+        canmkdir: boolean;
     };
 
     // wconfig.FullConfigType

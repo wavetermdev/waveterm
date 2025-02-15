@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/wavetermdev/waveterm/pkg/remote/awsconn"
 	"github.com/wavetermdev/waveterm/pkg/remote/connparse"
 	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/fstype"
+	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/s3fs"
 	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/wavefs"
 	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/wshfs"
 	"github.com/wavetermdev/waveterm/pkg/util/iochan/iochantypes"
@@ -28,12 +30,12 @@ func CreateFileShareClient(ctx context.Context, connection string) (fstype.FileS
 	}
 	conntype := conn.GetType()
 	if conntype == connparse.ConnectionTypeS3 {
-		// config, err := awsconn.GetConfig(ctx, connection)
-		// if err != nil {
-		// 	log.Printf("error getting aws config: %v", err)
-		// 	return nil, nil
-		// }
-		return nil, nil
+		config, err := awsconn.GetConfig(ctx, connection)
+		if err != nil {
+			log.Printf("error getting aws config: %v", err)
+			return nil, nil
+		}
+		return s3fs.NewS3Client(config), conn
 	} else if conntype == connparse.ConnectionTypeWave {
 		return wavefs.NewWaveClient(), conn
 	} else if conntype == connparse.ConnectionTypeWsh {
@@ -45,6 +47,7 @@ func CreateFileShareClient(ctx context.Context, connection string) (fstype.FileS
 }
 
 func Read(ctx context.Context, data wshrpc.FileData) (*wshrpc.FileData, error) {
+	log.Printf("Read: %v", data.Info.Path)
 	client, conn := CreateFileShareClient(ctx, data.Info.Path)
 	if conn == nil || client == nil {
 		return nil, fmt.Errorf(ErrorParsingConnection, data.Info.Path)
@@ -118,11 +121,19 @@ func Move(ctx context.Context, data wshrpc.CommandFileCopyData) error {
 		return fmt.Errorf("error creating fileshare client, could not parse destination connection %s", data.DestUri)
 	}
 	if srcConn.Host != destConn.Host {
-		err := destClient.CopyRemote(ctx, srcConn, destConn, srcClient, data.Opts)
+		finfo, err := srcClient.Stat(ctx, srcConn)
+		if err != nil {
+			return fmt.Errorf("cannot stat %q: %w", data.SrcUri, err)
+		}
+		recursive := data.Opts != nil && data.Opts.Recursive
+		if finfo.IsDir && data.Opts != nil && !recursive {
+			return fmt.Errorf("cannot move directory %q to %q without recursive flag", data.SrcUri, data.DestUri)
+		}
+		err = destClient.CopyRemote(ctx, srcConn, destConn, srcClient, data.Opts)
 		if err != nil {
 			return fmt.Errorf("cannot copy %q to %q: %w", data.SrcUri, data.DestUri, err)
 		}
-		return srcClient.Delete(ctx, srcConn, data.Opts.Recursive)
+		return srcClient.Delete(ctx, srcConn, recursive)
 	} else {
 		return srcClient.MoveInternal(ctx, srcConn, destConn, data.Opts)
 	}
@@ -152,10 +163,10 @@ func Delete(ctx context.Context, data wshrpc.CommandDeleteFileData) error {
 	return client.Delete(ctx, conn, data.Recursive)
 }
 
-func Join(ctx context.Context, path string, parts ...string) (string, error) {
+func Join(ctx context.Context, path string, parts ...string) (*wshrpc.FileInfo, error) {
 	client, conn := CreateFileShareClient(ctx, path)
 	if conn == nil || client == nil {
-		return "", fmt.Errorf(ErrorParsingConnection, path)
+		return nil, fmt.Errorf(ErrorParsingConnection, path)
 	}
 	return client.Join(ctx, conn, parts...)
 }
@@ -166,4 +177,12 @@ func Append(ctx context.Context, data wshrpc.FileData) error {
 		return fmt.Errorf(ErrorParsingConnection, data.Info.Path)
 	}
 	return client.AppendFile(ctx, conn, data)
+}
+
+func GetCapability(ctx context.Context, path string) (wshrpc.FileShareCapability, error) {
+	client, conn := CreateFileShareClient(ctx, path)
+	if conn == nil || client == nil {
+		return wshrpc.FileShareCapability{}, fmt.Errorf(ErrorParsingConnection, path)
+	}
+	return client.GetCapability(), nil
 }

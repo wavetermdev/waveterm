@@ -604,7 +604,8 @@ const BlockFrame_Default_Component = (props: BlockFrameProps) => {
                     "--magnified-block-blur": `${magnifiedBlockBlur}px`,
                 } as React.CSSProperties
             }
-            {...({ inert: preview ? "1" : undefined } as any)} // sets insert="1" ... but tricks TS into accepting it
+            // @ts-ignore: inert does exist in the DOM, just not in react
+            inert={preview ? "1" : undefined} //
         >
             <BlockMask nodeModel={nodeModel} />
             {preview || viewModel == null ? null : (
