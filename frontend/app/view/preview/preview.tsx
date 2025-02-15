@@ -751,7 +751,7 @@ export class PreviewModel implements ViewModel {
                             meta: {
                                 view: "term",
                                 controller: "shell",
-                                "cmd:cwd": fileInfo.dir,
+                                "cmd:cwd": fileInfo.path,
                                 connection: conn,
                             },
                         };
@@ -764,7 +764,7 @@ export class PreviewModel implements ViewModel {
                     label: makeNativeLabel(PLATFORM, true, true),
                     click: async () => {
                         const fileInfo = await globalStore.get(this.statFile);
-                        getApi().openNativePath(fileInfo.dir);
+                        getApi().openNativePath(fileInfo.path);
                     },
                 });
             }
@@ -775,7 +775,7 @@ export class PreviewModel implements ViewModel {
                     label: makeNativeLabel(PLATFORM, false, false),
                     click: async () => {
                         const fileInfo = await globalStore.get(this.statFile);
-                        getApi().openNativePath(`${fileInfo.dir}/${fileInfo.name}`);
+                        getApi().openNativePath(fileInfo.path);
                     },
                 });
             }
@@ -1104,7 +1104,7 @@ const fetchSuggestions = async (
         TabRpcClient,
         {
             suggestiontype: "file",
-            "file:cwd": fileInfo.dir,
+            "file:cwd": fileInfo.path,
             query: query,
             widgetid: reqContext.widgetid,
             reqnum: reqContext.reqnum,
