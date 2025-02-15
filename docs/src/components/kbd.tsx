@@ -61,3 +61,15 @@ const KbdInternal = ({ k }: { k: string }) => {
 export const Kbd = ({ k }: { k: string }) => {
     return <BrowserOnly fallback={<kbd>{k}</kbd>}>{() => <KbdInternal k={k} />}</BrowserOnly>;
 };
+
+export const KbdChord = ({ karr }: { karr: string[] }) => {
+    const elems: React.ReactNode[] = [];
+    for (let i = 0; i < karr.length; i++) {
+        if (i > 0) {
+            elems.push(<span style={{ padding: "0 2px" }}>+</span>);
+        }
+        elems.push(<Kbd key={i} k={karr[i]} />);
+    }
+    const fullElem = <span style={{ whiteSpace: "nowrap" }}>{elems}</span>;
+    return <BrowserOnly fallback={null}>{() => fullElem}</BrowserOnly>;
+};

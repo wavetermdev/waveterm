@@ -101,6 +101,8 @@ declare global {
         sendLog: (log: string) => void;
         onQuicklook: (filePath: string) => void;
         openNativePath(filePath: string): void;
+        captureScreenshot(rect: Electron.Rectangle): Promise<string>;
+        setKeyboardChordMode: () => void;
     };
 
     type ElectronContextMenuItem = {
@@ -427,6 +429,20 @@ declare global {
         uri: string;
         absParent: string;
         relName: string;
+    };
+
+    type ErrorButtonDef = {
+        text: string;
+        onClick: () => void;
+    };
+
+    type ErrorMsg = {
+        status: string;
+        text: string;
+        level?: "error" | "warning";
+        buttons?: Array<ErrorButtonDef>;
+        closeAction?: () => void;
+        showDismiss?: boolean;
     };
 }
 
