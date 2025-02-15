@@ -585,14 +585,10 @@ func (impl *ServerImpl) RemoteListEntriesCommand(ctx context.Context, data wshrp
 
 func statToFileInfo(fullPath string, finfo fs.FileInfo, extended bool) *wshrpc.FileInfo {
 	mimeType := fileutil.DetectMimeType(fullPath, finfo, extended)
-	name := finfo.Name()
-	if fullPath == wavebase.GetHomeDir() {
-		name = "~"
-	}
 	rtn := &wshrpc.FileInfo{
 		Path:          fullPath,
 		Dir:           computeDirPart(fullPath),
-		Name:          name,
+		Name:          finfo.Name(),
 		Size:          finfo.Size(),
 		Mode:          finfo.Mode(),
 		ModeStr:       finfo.Mode().String(),
