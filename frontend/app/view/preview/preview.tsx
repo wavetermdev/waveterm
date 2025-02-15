@@ -248,7 +248,7 @@ export class PreviewModel implements ViewModel {
             if (loadableFileInfo.state == "hasData") {
                 headerPath = loadableFileInfo.data?.path;
                 if (headerPath == "~") {
-                    headerPath = `~ (${loadableFileInfo.data?.path})`;
+                    headerPath = `~ (${loadableFileInfo.data?.dir + "/" + loadableFileInfo.data?.name})`;
                 }
             }
 
