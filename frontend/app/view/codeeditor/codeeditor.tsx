@@ -144,7 +144,7 @@ export function CodeEditor({ blockId, text, language, filename, fileinfo, meta, 
                 const fileInfo = await RpcApi.RemoteFileJoinCommand(TabRpcClient, [filename], {
                     route: makeConnRoute(meta.connection ?? ""),
                 });
-                setAbsPath(`${fileInfo.dir}/${fileInfo.name}`);
+                setAbsPath(fileInfo.path);
             } catch (e) {
                 setAbsPath(filename);
             }
