@@ -68,10 +68,11 @@ var globalLock = &sync.Mutex{}
 var blockControllerMap = make(map[string]*BlockController)
 
 type BlockInputUnion struct {
-	InputData  []byte            `json:"inputdata,omitempty"`
-	SigName    string            `json:"signame,omitempty"`
-	TermSize   *waveobj.TermSize `json:"termsize,omitempty"`
-	FeActionId string            `json:"feactionid,omitempty"`
+	InputData            []byte            `json:"inputdata,omitempty"`
+	SigName              string            `json:"signame,omitempty"`
+	TermSize             *waveobj.TermSize `json:"termsize,omitempty"`
+	FeActionId           string            `json:"feactionid,omitempty"`
+	PtyProcessedToOffset int64             `json:"ptyprocessedtooffset,omitempty"`
 }
 
 type BlockController struct {
@@ -87,7 +88,7 @@ type BlockController struct {
 	ShellProcExitCode  int
 	RunLock            *atomic.Bool
 	StatusVersion      int
-	ProcessedToOffset  int64
+	ProcessedToOffset  *atomic.Int64
 	LastResizeActionId string
 }
 
@@ -751,6 +752,17 @@ func (bc *BlockController) manageRunningShellProcess(shellProc *shellexec.ShellP
 					log.Printf("resize action id already processed or out of order: %s %s %v\n", bc.BlockId, ic.FeActionId, *ic.TermSize)
 				}
 			}
+			if ic.PtyProcessedToOffset != 0 {
+				for {
+					curOffset := bc.ProcessedToOffset.Load()
+					if ic.PtyProcessedToOffset <= curOffset {
+						break
+					}
+					if bc.ProcessedToOffset.CompareAndSwap(curOffset, ic.PtyProcessedToOffset) {
+						break
+					}
+				}
+			}
 		}
 	}()
 	go func() {
@@ -1015,12 +1027,13 @@ func getOrCreateBlockController(tabId string, blockId string, controllerName str
 	bc = blockControllerMap[blockId]
 	if bc == nil {
 		bc = &BlockController{
-			Lock:            &sync.Mutex{},
-			ControllerType:  controllerName,
-			TabId:           tabId,
-			BlockId:         blockId,
-			ShellProcStatus: Status_Init,
-			RunLock:         &atomic.Bool{},
+			Lock:              &sync.Mutex{},
+			ControllerType:    controllerName,
+			TabId:             tabId,
+			BlockId:           blockId,
+			ShellProcStatus:   Status_Init,
+			RunLock:           &atomic.Bool{},
+			ProcessedToOffset: &atomic.Int64{},
 		}
 		blockControllerMap[blockId] = bc
 		createdController = true
