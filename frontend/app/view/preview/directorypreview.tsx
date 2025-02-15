@@ -725,7 +725,7 @@ const TableRow = React.forwardRef(function ({
         relName: row.getValue("name") as string,
         absParent: dirPath,
         uri: formatRemoteUri(row.getValue("path") as string, connection),
-        isDir: row.getValue("mimetype") == "directory",
+        isDir: row.original.isdir,
     };
     const [_, drag] = useDrag(
         () => ({
