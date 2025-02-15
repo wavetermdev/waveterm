@@ -586,7 +586,7 @@ func (impl *ServerImpl) RemoteListEntriesCommand(ctx context.Context, data wshrp
 func statToFileInfo(fullPath string, finfo fs.FileInfo, extended bool) *wshrpc.FileInfo {
 	mimeType := fileutil.DetectMimeType(fullPath, finfo, extended)
 	rtn := &wshrpc.FileInfo{
-		Path:          fullPath,
+		Path:          wavebase.ReplaceHomeDir(fullPath),
 		Dir:           computeDirPart(fullPath),
 		Name:          finfo.Name(),
 		Size:          finfo.Size(),
@@ -644,7 +644,7 @@ func (*ServerImpl) fileInfoInternal(path string, extended bool) (*wshrpc.FileInf
 	finfo, err := os.Stat(cleanedPath)
 	if os.IsNotExist(err) {
 		return &wshrpc.FileInfo{
-			Path:          path,
+			Path:          wavebase.ReplaceHomeDir(path),
 			Dir:           computeDirPart(path),
 			NotFound:      true,
 			ReadOnly:      checkIsReadOnly(cleanedPath, finfo, false),

@@ -455,13 +455,6 @@ function DirectoryTable({
     );
 }
 
-function getNormFilePath(finfo: FileInfo): string {
-    if (finfo.isdir) {
-        return finfo.dir;
-    }
-    return finfo.dir + "/" + finfo.name;
-}
-
 interface TableBodyProps {
     bodyRef: React.RefObject<HTMLDivElement>;
     model: PreviewModel;
@@ -525,7 +518,7 @@ function TableBody({
             if (finfo == null) {
                 return;
             }
-            const normPath = getNormFilePath(finfo);
+            const normPath = finfo.path;
             const fileName = finfo.path.split("/").pop();
             let parentFileInfo: FileInfo;
             try {
@@ -618,7 +611,7 @@ function TableBody({
                     {
                         label: makeNativeLabel(PLATFORM, true, true),
                         click: () => {
-                            getApi().openNativePath(parentFileInfo.dir);
+                            getApi().openNativePath(parentFileInfo.path);
                         },
                     }
                 );
