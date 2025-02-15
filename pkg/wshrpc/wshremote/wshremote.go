@@ -587,7 +587,7 @@ func statToFileInfo(fullPath string, finfo fs.FileInfo, extended bool) *wshrpc.F
 	mimeType := fileutil.DetectMimeType(fullPath, finfo, extended)
 	rtn := &wshrpc.FileInfo{
 		Path:          wavebase.ReplaceHomeDir(fullPath),
-		Dir:           computeDirPart(fullPath, finfo.IsDir()),
+		Dir:           computeDirPart(fullPath),
 		Name:          finfo.Name(),
 		Size:          finfo.Size(),
 		Mode:          finfo.Mode(),
@@ -645,7 +645,7 @@ func (*ServerImpl) fileInfoInternal(path string, extended bool) (*wshrpc.FileInf
 	if os.IsNotExist(err) {
 		return &wshrpc.FileInfo{
 			Path:          wavebase.ReplaceHomeDir(path),
-			Dir:           computeDirPart(path, false),
+			Dir:           computeDirPart(path),
 			NotFound:      true,
 			ReadOnly:      checkIsReadOnly(cleanedPath, finfo, false),
 			SupportsMkdir: true,
