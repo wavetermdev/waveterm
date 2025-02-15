@@ -148,17 +148,6 @@ func ExpandHomeDirSafe(pathStr string) string {
 	return path
 }
 
-func ReplaceHomeDir(pathStr string) string {
-	homeDir := GetHomeDir()
-	if pathStr == homeDir {
-		return "~"
-	}
-	if strings.HasPrefix(pathStr, homeDir+"/") {
-		return "~" + pathStr[len(homeDir):]
-	}
-	return pathStr
-}
-
 func GetDomainSocketName() string {
 	return filepath.Join(GetWaveDataDir(), DomainSocketBaseName)
 }

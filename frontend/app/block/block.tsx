@@ -32,6 +32,7 @@ import { WebViewModel } from "@/view/webview/webview";
 import clsx from "clsx";
 import { atom, useAtomValue } from "jotai";
 import { memo, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { QuickTipsViewModel } from "../view/quicktipsview/quicktipsview";
 import "./block.scss";
 import { BlockFrame } from "./blockframe";
 import { blockViewToIcon, blockViewToName } from "./blockutil";
@@ -44,6 +45,7 @@ BlockRegistry.set("waveai", WaveAiModel);
 BlockRegistry.set("cpuplot", SysinfoViewModel);
 BlockRegistry.set("sysinfo", SysinfoViewModel);
 BlockRegistry.set("vdom", VDomModel);
+BlockRegistry.set("tips", QuickTipsViewModel);
 BlockRegistry.set("help", HelpViewModel);
 BlockRegistry.set("launcher", LauncherViewModel);
 

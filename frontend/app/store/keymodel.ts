@@ -10,9 +10,11 @@ import {
     getAllBlockComponentModels,
     getApi,
     getBlockComponentModel,
+    getFocusedBlockId,
     getSettingsKeyAtom,
     globalStore,
     refocusNode,
+    replaceBlock,
     WOS,
 } from "@/app/store/global";
 import {
@@ -23,12 +25,37 @@ import {
 } from "@/layout/index";
 import { getLayoutModelForStaticTab } from "@/layout/lib/layoutModelHooks";
 import * as keyutil from "@/util/keyutil";
+import { CHORD_TIMEOUT } from "@/util/sharedconst";
 import { fireAndForget } from "@/util/util";
 import * as jotai from "jotai";
 import { modalsModel } from "./modalmodel";
 
+type KeyHandler = (event: WaveKeyboardEvent) => boolean;
+
 const simpleControlShiftAtom = jotai.atom(false);
 const globalKeyMap = new Map<string, (waveEvent: WaveKeyboardEvent) => boolean>();
+const globalChordMap = new Map<string, Map<string, KeyHandler>>();
+
+// track current chord state and timeout (for resetting)
+let activeChord: string | null = null;
+let chordTimeout: NodeJS.Timeout = null;
+
+function resetChord() {
+    activeChord = null;
+    if (chordTimeout) {
+        clearTimeout(chordTimeout);
+        chordTimeout = null;
+    }
+}
+
+function setActiveChord(activeChordArg: string) {
+    getApi().setKeyboardChordMode();
+    if (chordTimeout) {
+        clearTimeout(chordTimeout);
+    }
+    activeChord = activeChordArg;
+    chordTimeout = setTimeout(() => resetChord(), CHORD_TIMEOUT);
+}
 
 export function keyboardMouseDownHandler(e: MouseEvent) {
     if (!e.ctrlKey || !e.shiftKey) {
@@ -69,7 +96,7 @@ function shouldDispatchToBlock(e: WaveKeyboardEvent): boolean {
     const activeElem = document.activeElement;
     if (activeElem != null && activeElem instanceof HTMLElement) {
         if (activeElem.tagName == "INPUT" || activeElem.tagName == "TEXTAREA" || activeElem.contentEditable == "true") {
-            if (activeElem.classList.contains("dummy-focus")) {
+            if (activeElem.classList.contains("dummy-focus") || activeElem.classList.contains("dummy")) {
                 return true;
             }
             if (keyutil.isInputEvent(e)) {
@@ -216,37 +243,72 @@ async function handleCmdN() {
     await createBlock(blockDef);
 }
 
-async function handleSplitHorizontal() {
+async function handleSplitHorizontal(position: "before" | "after") {
     const layoutModel = getLayoutModelForStaticTab();
     const focusedNode = globalStore.get(layoutModel.focusedNode);
     if (focusedNode == null) {
         return;
     }
     const blockDef = getDefaultNewBlockDef();
-    await createBlockSplitHorizontally(blockDef, focusedNode.data.blockId, "after");
+    await createBlockSplitHorizontally(blockDef, focusedNode.data.blockId, position);
 }
 
-async function handleSplitVertical() {
+async function handleSplitVertical(position: "before" | "after") {
     const layoutModel = getLayoutModelForStaticTab();
     const focusedNode = globalStore.get(layoutModel.focusedNode);
     if (focusedNode == null) {
         return;
     }
     const blockDef = getDefaultNewBlockDef();
-    await createBlockSplitVertically(blockDef, focusedNode.data.blockId, "after");
+    await createBlockSplitVertically(blockDef, focusedNode.data.blockId, position);
 }
 
 let lastHandledEvent: KeyboardEvent | null = null;
 
+// returns [keymatch, T]
+function checkKeyMap<T>(waveEvent: WaveKeyboardEvent, keyMap: Map<string, T>): [string, T] {
+    for (const key of keyMap.keys()) {
+        if (keyutil.checkKeyPressed(waveEvent, key)) {
+            const val = keyMap.get(key);
+            return [key, val];
+        }
+    }
+    return [null, null];
+}
+
 function appHandleKeyDown(waveEvent: WaveKeyboardEvent): boolean {
     const nativeEvent = (waveEvent as any).nativeEvent;
     if (lastHandledEvent != null && nativeEvent != null && lastHandledEvent === nativeEvent) {
+        console.log("lastHandledEvent return false");
         return false;
     }
     lastHandledEvent = nativeEvent;
-    const handled = handleGlobalWaveKeyboardEvents(waveEvent);
-    if (handled) {
+    if (activeChord) {
+        console.log("handle activeChord", activeChord);
+        // If we're in chord mode, look for the second key.
+        const chordBindings = globalChordMap.get(activeChord);
+        const [, handler] = checkKeyMap(waveEvent, chordBindings);
+        if (handler) {
+            resetChord();
+            return handler(waveEvent);
+        } else {
+            // invalid chord; reset state and consume key
+            resetChord();
+            return true;
+        }
+    }
+    const [chordKeyMatch] = checkKeyMap(waveEvent, globalChordMap);
+    if (chordKeyMatch) {
+        setActiveChord(chordKeyMatch);
         return true;
+    }
+
+    const [, globalHandler] = checkKeyMap(waveEvent, globalKeyMap);
+    if (globalHandler) {
+        const handled = globalHandler(waveEvent);
+        if (handled) {
+            return true;
+        }
     }
     const layoutModel = getLayoutModelForStaticTab();
     const focusedNode = globalStore.get(layoutModel.focusedNode);
@@ -319,11 +381,11 @@ function registerGlobalKeys() {
         return true;
     });
     globalKeyMap.set("Cmd:d", () => {
-        handleSplitHorizontal();
+        handleSplitHorizontal("after");
         return true;
     });
     globalKeyMap.set("Shift:Cmd:d", () => {
-        handleSplitVertical();
+        handleSplitVertical("after");
         return true;
     });
     globalKeyMap.set("Cmd:i", () => {
@@ -378,6 +440,18 @@ function registerGlobalKeys() {
     globalKeyMap.set("Ctrl:Shift:ArrowRight", () => {
         const tabId = globalStore.get(atoms.staticTabId);
         switchBlockInDirection(tabId, NavigateDirection.Right);
+        return true;
+    });
+    globalKeyMap.set("Ctrl:Shift:k", () => {
+        const blockId = getFocusedBlockId();
+        if (blockId == null) {
+            return true;
+        }
+        replaceBlock(blockId, {
+            meta: {
+                view: "launcher",
+            },
+        });
         return true;
     });
     globalKeyMap.set("Cmd:g", () => {
@@ -445,6 +519,25 @@ function registerGlobalKeys() {
     // special case keys, handled by web view
     allKeys.push("Cmd:l", "Cmd:r", "Cmd:ArrowRight", "Cmd:ArrowLeft", "Cmd:o");
     getApi().registerGlobalWebviewKeys(allKeys);
+
+    const splitBlockKeys = new Map<string, KeyHandler>();
+    splitBlockKeys.set("ArrowUp", () => {
+        handleSplitVertical("before");
+        return true;
+    });
+    splitBlockKeys.set("ArrowDown", () => {
+        handleSplitVertical("after");
+        return true;
+    });
+    splitBlockKeys.set("ArrowLeft", () => {
+        handleSplitHorizontal("before");
+        return true;
+    });
+    splitBlockKeys.set("ArrowRight", () => {
+        handleSplitHorizontal("after");
+        return true;
+    });
+    globalChordMap.set("Ctrl:Shift:s", splitBlockKeys);
 }
 
 function getAllGlobalKeyBindings(): string[] {

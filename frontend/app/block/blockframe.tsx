@@ -24,6 +24,7 @@ import { MagnifyIcon } from "@/element/magnify";
 import { MenuButton } from "@/element/menubutton";
 import { NodeModel } from "@/layout/index";
 import * as util from "@/util/util";
+import { computeBgStyleFromMeta } from "@/util/waveutil";
 import clsx from "clsx";
 import * as jotai from "jotai";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
@@ -575,15 +576,9 @@ const BlockFrame_Default_Component = (props: BlockFrameProps) => {
     }, [manageConnection, blockData]);
 
     const viewIconElem = getViewIconElem(viewIconUnion, blockData);
-    const innerStyle: React.CSSProperties = {};
-    if (!preview && customBg?.bg != null) {
-        innerStyle.background = customBg.bg;
-        if (customBg["bg:opacity"] != null) {
-            innerStyle.opacity = customBg["bg:opacity"];
-        }
-        if (customBg["bg:blendmode"] != null) {
-            innerStyle.backgroundBlendMode = customBg["bg:blendmode"];
-        }
+    let innerStyle: React.CSSProperties = {};
+    if (!preview) {
+        innerStyle = computeBgStyleFromMeta(customBg);
     }
     const previewElem = <div className="block-frame-preview">{viewIconElem}</div>;
     const headerElem = (
@@ -644,13 +639,11 @@ const BlockFrame = React.memo((props: BlockFrameProps) => {
     const blockId = props.nodeModel.blockId;
     const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", blockId));
     const tabData = jotai.useAtomValue(atoms.tabAtom);
-
     if (!blockId || !blockData) {
         return null;
     }
-    const FrameElem = BlockFrame_Default;
     const numBlocks = tabData?.blockids?.length ?? 0;
-    return <FrameElem {...props} numBlocksInTab={numBlocks} />;
+    return <BlockFrame_Default {...props} numBlocksInTab={numBlocks} />;
 });
 
 export { BlockFrame, NumActiveConnColors };
