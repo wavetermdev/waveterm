@@ -1075,6 +1075,7 @@ const SpecializedView = memo(({ parentRef, model }: SpecializedViewProps) => {
     const specializedView = useAtomValue(model.specializedView);
     const mimeType = useAtomValue(model.fileMimeType);
     const setCanPreview = useSetAtom(model.canPreview);
+    const path = useAtomValue(model.statFilePath);
 
     useEffect(() => {
         setCanPreview(canPreview(mimeType));
@@ -1087,7 +1088,7 @@ const SpecializedView = memo(({ parentRef, model }: SpecializedViewProps) => {
     if (!SpecializedViewComponent) {
         return <CenteredDiv>Invalid Specialzied View Component ({specializedView.specializedView})</CenteredDiv>;
     }
-    return <SpecializedViewComponent model={model} parentRef={parentRef} />;
+    return <SpecializedViewComponent key={path} model={model} parentRef={parentRef} />;
 });
 
 const fetchSuggestions = async (
