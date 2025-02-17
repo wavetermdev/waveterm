@@ -241,6 +241,7 @@ const BlockFrame_Header = ({
         icon: "link-slash",
         title: "wsh is not installed for this connection",
     };
+    const showNoWshButton = manageConnection && wshProblem && !util.isBlank(connName) && !connName.startsWith("aws:");
 
     return (
         <div
@@ -263,9 +264,7 @@ const BlockFrame_Header = ({
                     changeConnModalAtom={changeConnModalAtom}
                 />
             )}
-            {manageConnection && wshProblem && (
-                <IconButton decl={wshInstallButton} className="block-frame-header-iconbutton" />
-            )}
+            {showNoWshButton && <IconButton decl={wshInstallButton} className="block-frame-header-iconbutton" />}
             <div className="block-frame-textelems-wrapper">{headerTextElems}</div>
             <div className="block-frame-end-icons">{endIconsElem}</div>
         </div>
