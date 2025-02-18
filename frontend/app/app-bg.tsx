@@ -1,12 +1,13 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { PLATFORM, PlatformMacOS } from "@/util/platformutil";
 import { computeBgStyleFromMeta } from "@/util/waveutil";
 import useResizeObserver from "@react-hook/resize-observer";
 import { useAtomValue } from "jotai";
 import { CSSProperties, useCallback, useLayoutEffect, useRef } from "react";
 import { debounce } from "throttle-debounce";
-import { atoms, getApi, PLATFORM, WOS } from "./store/global";
+import { atoms, getApi, WOS } from "./store/global";
 import { useWaveObjectValue } from "./store/wos";
 
 export function AppBackground() {
@@ -18,7 +19,7 @@ export function AppBackground() {
         debounce(30, () => {
             if (
                 bgRef.current &&
-                PLATFORM !== "darwin" &&
+                PLATFORM !== PlatformMacOS &&
                 bgRef.current &&
                 "windowControlsOverlay" in window.navigator
             ) {

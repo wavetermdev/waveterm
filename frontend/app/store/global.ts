@@ -17,6 +17,7 @@ import {
 } from "@/layout/lib/types";
 import { getWebServerEndpoint } from "@/util/endpoints";
 import { fetch } from "@/util/fetchutil";
+import { setPlatform } from "@/util/platformutil";
 import { deepCompareReturnPrev, getPrefixedSettings, isBlank } from "@/util/util";
 import { atom, Atom, PrimitiveAtom, useAtomValue } from "jotai";
 import { globalStore } from "./jotaiStore";
@@ -25,7 +26,6 @@ import { ClientService, ObjectService } from "./services";
 import * as WOS from "./wos";
 import { getFileSubject, waveEventSubscribe } from "./wps";
 
-let PLATFORM: NodeJS.Platform = "darwin";
 let atoms: GlobalAtomsType;
 let globalEnvironment: "electron" | "renderer";
 const blockComponentModelMap = new Map<string, BlockComponentModel>();
@@ -44,10 +44,6 @@ function initGlobal(initOpts: GlobalInitOptions) {
     globalEnvironment = initOpts.environment;
     setPlatform(initOpts.platform);
     initGlobalAtoms(initOpts);
-}
-
-function setPlatform(platform: NodeJS.Platform) {
-    PLATFORM = platform;
 }
 
 function initGlobalAtoms(initOpts: GlobalInitOptions) {
@@ -790,7 +786,6 @@ export {
     isDev,
     loadConnStatus,
     openLink,
-    PLATFORM,
     pushFlashError,
     pushNotification,
     recordTEvent,

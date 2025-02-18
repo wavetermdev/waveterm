@@ -1,22 +1,12 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import * as util from "./util";
+import { PLATFORM, PlatformMacOS } from "./platformutil";
+import { countGraphemes } from "./util";
 
 const KeyTypeCodeRegex = /c{(.*)}/;
 const KeyTypeKey = "key";
 const KeyTypeCode = "code";
-
-let PLATFORM: NodeJS.Platform = "darwin";
-const PlatformMacOS = "darwin";
-
-function setKeyUtilPlatform(platform: NodeJS.Platform) {
-    PLATFORM = platform;
-}
-
-function getKeyUtilPlatform(): NodeJS.Platform {
-    return PLATFORM;
-}
 
 function keydownWrapper(
     fn: (waveEvent: WaveKeyboardEvent) => boolean
@@ -135,7 +125,7 @@ function isCharacterKeyEvent(event: WaveKeyboardEvent): boolean {
     if (event.alt || event.meta || event.control) {
         return false;
     }
-    return util.countGraphemes(event.key) == 1;
+    return countGraphemes(event.key) == 1;
 }
 
 const inputKeyMap = new Map<string, boolean>([
@@ -325,12 +315,10 @@ export {
     adaptFromElectronKeyEvent,
     adaptFromReactOrNativeKeyEvent,
     checkKeyPressed,
-    getKeyUtilPlatform,
     isCharacterKeyEvent,
     isInputEvent,
     keyboardEventToASCII,
     keydownWrapper,
     parseKeyDescription,
-    setKeyUtilPlatform,
     waveEventToKeyDesc,
 };

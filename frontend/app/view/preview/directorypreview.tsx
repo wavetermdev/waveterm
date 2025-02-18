@@ -6,12 +6,13 @@ import { CopyButton } from "@/app/element/copybutton";
 import { Input } from "@/app/element/input";
 import { useDimensionsWithCallbackRef } from "@/app/hook/useDimensions";
 import { ContextMenuModel } from "@/app/store/contextmenu";
-import { PLATFORM, atoms, createBlock, getApi, globalStore } from "@/app/store/global";
+import { atoms, createBlock, getApi, globalStore } from "@/app/store/global";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { type PreviewModel } from "@/app/view/preview/preview";
 import { checkKeyPressed, isCharacterKeyEvent } from "@/util/keyutil";
-import { fireAndForget, isBlank, makeNativeLabel } from "@/util/util";
+import { PLATFORM, PlatformMacOS } from "@/util/platformutil";
+import { fireAndForget, isBlank } from "@/util/util";
 import { formatRemoteUri } from "@/util/waveutil";
 import { offset, useDismiss, useFloating, useInteractions } from "@floating-ui/react";
 import {
@@ -33,6 +34,7 @@ import React, { Fragment, memo, useCallback, useEffect, useMemo, useRef, useStat
 import { useDrag, useDrop } from "react-dnd";
 import { quote as shellQuote } from "shell-quote";
 import { debounce } from "throttle-debounce";
+import { addOpenMenuItems } from "../../../util/previewutil";
 import "./directorypreview.scss";
 
 const PageJumpSize = 20;
@@ -595,43 +597,7 @@ function TableBody({
                         }),
                 },
             ];
-            if (!conn) {
-                menu.push(
-                    {
-                        type: "separator",
-                    },
-                    // TODO: resolve correct host path if connection is WSL
-                    {
-                        label: makeNativeLabel(PLATFORM, finfo.isdir, false),
-                        click: () => {
-                            getApi().openNativePath(normPath);
-                        },
-                    },
-                    {
-                        label: makeNativeLabel(PLATFORM, true, true),
-                        click: () => {
-                            getApi().openNativePath(finfo.dir);
-                        },
-                    }
-                );
-            }
-            if (finfo.mimetype == "directory") {
-                menu.push({
-                    label: "Open Terminal in New Block",
-                    click: () =>
-                        fireAndForget(async () => {
-                            const termBlockDef: BlockDef = {
-                                meta: {
-                                    controller: "shell",
-                                    view: "term",
-                                    "cmd:cwd": await model.formatRemoteUri(finfo.path, globalStore.get),
-                                    connection: conn,
-                                },
-                            };
-                            await createBlock(termBlockDef);
-                        }),
-                });
-            }
+            addOpenMenuItems(menu, conn, finfo);
             menu.push(
                 {
                     type: "separator",
@@ -787,7 +753,8 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
     const [refreshVersion, setRefreshVersion] = useAtom(model.refreshVersion);
     const conn = useAtomValue(model.connection);
     const blockData = useAtomValue(model.blockAtom);
-    const dirPath = useAtomValue(model.normFilePath);
+    const finfo = useAtomValue(model.statFile);
+    const dirPath = finfo?.path;
     const [copyStatus, setCopyStatus] = useState<FileCopyStatus>(null);
 
     useEffect(() => {
@@ -875,7 +842,7 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
             if (
                 checkKeyPressed(waveEvent, "Space") &&
                 searchText == "" &&
-                PLATFORM == "darwin" &&
+                PLATFORM == PlatformMacOS &&
                 !blockData?.meta?.connection
             ) {
                 getApi().onQuicklook(selectedPath);
@@ -1034,29 +1001,7 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
                     type: "separator",
                 },
             ];
-            if (!conn) {
-                // TODO:  resolve correct host path if connection is WSL
-                menu.push({
-                    label: makeNativeLabel(PLATFORM, true, true),
-                    click: () => {
-                        getApi().openNativePath(dirPath);
-                    },
-                });
-            }
-            menu.push({
-                label: "Open Terminal in New Block",
-                click: async () => {
-                    const termBlockDef: BlockDef = {
-                        meta: {
-                            controller: "shell",
-                            view: "term",
-                            "cmd:cwd": dirPath,
-                            connection: conn,
-                        },
-                    };
-                    await createBlock(termBlockDef);
-                },
-            });
+            addOpenMenuItems(menu, conn, finfo);
 
             ContextMenuModel.showContextMenu(menu, e);
         },

@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { MagnifyIcon } from "@/app/element/magnify";
-import { PLATFORM } from "@/app/store/global";
+import { PLATFORM, PlatformMacOS } from "@/util/platformutil";
 import "./quicktips.scss";
 
 const KeyBinding = ({ keyDecl }: { keyDecl: string }) => {
@@ -10,7 +10,7 @@ const KeyBinding = ({ keyDecl }: { keyDecl: string }) => {
     const elems: React.ReactNode[] = [];
     for (let part of parts) {
         if (part === "Cmd") {
-            if (PLATFORM === "darwin") {
+            if (PLATFORM === PlatformMacOS) {
                 elems.push(
                     <div key="cmd" className="keybinding">
                         ⌘ Cmd
