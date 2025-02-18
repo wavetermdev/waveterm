@@ -208,7 +208,7 @@ func (router *WshRouter) sendRoutedMessage(msgBytes []byte, routeId string) bool
 		localRouteId := router.getAnnouncedRoute(routeId)
 		rpc := router.GetRpc(localRouteId)
 		if rpc == nil {
-			log.Printf("[router] no rpc for local route id %q\n", localRouteId)
+			log.Printf("[router] no rpc for route id %q\n", routeId)
 			return false
 		}
 		rpc.SendRpcMessage(msgBytes)
