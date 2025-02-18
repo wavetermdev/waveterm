@@ -12,6 +12,7 @@ import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { type PreviewModel } from "@/app/view/preview/preview";
 import { checkKeyPressed, isCharacterKeyEvent } from "@/util/keyutil";
 import { PLATFORM, PlatformMacOS } from "@/util/platformutil";
+import { addOpenMenuItems } from "@/util/previewutil";
 import { fireAndForget, isBlank } from "@/util/util";
 import { formatRemoteUri } from "@/util/waveutil";
 import { offset, useDismiss, useFloating, useInteractions } from "@floating-ui/react";
@@ -34,7 +35,6 @@ import React, { Fragment, memo, useCallback, useEffect, useMemo, useRef, useStat
 import { useDrag, useDrop } from "react-dnd";
 import { quote as shellQuote } from "shell-quote";
 import { debounce } from "throttle-debounce";
-import { addOpenMenuItems } from "../../../util/previewutil";
 import "./directorypreview.scss";
 
 const PageJumpSize = 20;
