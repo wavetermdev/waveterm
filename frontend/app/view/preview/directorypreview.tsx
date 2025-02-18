@@ -576,7 +576,8 @@ function TableBody({
                 {
                     label: "Download File",
                     click: () => {
-                        getApi().downloadFile(normPath);
+                        const remoteUri = formatRemoteUri(finfo.path, conn);
+                        getApi().downloadFile(remoteUri);
                     },
                 },
                 {
