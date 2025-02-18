@@ -774,20 +774,13 @@ func (c S3Client) Delete(ctx context.Context, conn *connparse.Connection, recurs
 
 func (c S3Client) Join(ctx context.Context, conn *connparse.Connection, parts ...string) (*wshrpc.FileInfo, error) {
 	var joinParts []string
-	if conn.Host == "" || conn.Host == fspath.Separator {
-		if conn.Path == "" || conn.Path == fspath.Separator {
-			joinParts = parts
-		} else {
-			joinParts = append([]string{conn.Path}, parts...)
-		}
-	} else if conn.Path == "" || conn.Path == "/" {
-		joinParts = append([]string{conn.Host}, parts...)
+	if conn.Path == "" || conn.Path == fspath.Separator {
+		joinParts = parts
 	} else {
-		joinParts = append([]string{conn.Host, conn.Path}, parts...)
+		joinParts = append([]string{conn.Path}, parts...)
 	}
 
 	conn.Path = fspath.Join(joinParts...)
-
 	return c.Stat(ctx, conn)
 }
 

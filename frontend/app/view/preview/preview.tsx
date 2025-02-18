@@ -38,6 +38,7 @@ import {
     makeNativeLabel,
     stringToBase64,
 } from "@/util/util";
+import { formatRemoteUri } from "@/util/waveutil";
 import { Monaco } from "@monaco-editor/react";
 import clsx from "clsx";
 import { Atom, atom, Getter, PrimitiveAtom, useAtom, useAtomValue, useSetAtom, WritableAtom } from "jotai";
@@ -179,6 +180,8 @@ export class PreviewModel implements ViewModel {
     refreshCallback: () => void;
     directoryKeyDownHandler: (waveEvent: WaveKeyboardEvent) => boolean;
     codeEditKeyDownHandler: (waveEvent: WaveKeyboardEvent) => boolean;
+
+    showS3 = atom(true);
 
     constructor(blockId: string, nodeModel: BlockNodeModel) {
         this.viewType = "preview";
@@ -936,13 +939,14 @@ function StreamingPreview({ model }: SpecializedViewProps) {
     const conn = useAtomValue(model.connection);
     const fileInfo = useAtomValue(model.statFile);
     const filePath = fileInfo.path;
+    const remotePath = formatRemoteUri(filePath, conn);
     const usp = new URLSearchParams();
-    usp.set("path", filePath);
+    usp.set("path", remotePath);
     if (conn != null) {
         usp.set("connection", conn);
     }
-    const streamingUrl = getWebServerEndpoint() + "/wave/stream-file?" + usp.toString();
-    if (fileInfo.mimetype == "application/pdf") {
+    const streamingUrl = `${getWebServerEndpoint()}/wave/stream-file?${usp.toString()}`;
+    if (fileInfo.mimetype === "application/pdf") {
         return (
             <div className="view-preview view-preview-pdf">
                 <iframe src={streamingUrl} width="100%" height="100%" name="pdfview" />
@@ -1304,16 +1308,4 @@ const ErrorOverlay = memo(({ errorMsg, resetOverlay }: { errorMsg: ErrorMsg; res
     );
 });
 
-function formatRemoteUri(path: string, connection: string): string {
-    connection = connection ?? "local";
-    // TODO: We need a better way to handle s3 paths
-    let retVal: string;
-    if (connection.startsWith("aws:")) {
-        retVal = `${connection}:s3://${path ?? ""}`;
-    } else {
-        retVal = `wsh://${connection}/${path}`;
-    }
-    return retVal;
-}
-
-export { formatRemoteUri, PreviewView };
+export { PreviewView };

@@ -348,6 +348,7 @@ const ChangeConnectionBlockModal = React.memo(
         const connStatusMap = new Map<string, ConnStatus>();
         const fullConfig = jotai.useAtomValue(atoms.fullConfigAtom);
         let filterOutNowsh = util.useAtomValueSafe(viewModel.filterOutNowsh) ?? true;
+        const showS3 = util.useAtomValueSafe(viewModel.showS3) ?? false;
 
         let maxActiveConnNum = 1;
         for (const conn of allConnStatus) {
@@ -436,14 +437,17 @@ const ChangeConnectionBlockModal = React.memo(
             fullConfig,
             filterOutNowsh
         );
-        const s3Suggestions = getS3Suggestions(
-            s3List,
-            connection,
-            connSelected,
-            connStatusMap,
-            fullConfig,
-            filterOutNowsh
-        );
+        let s3Suggestions: SuggestionConnectionScope = null;
+        if (showS3) {
+            s3Suggestions = getS3Suggestions(
+                s3List,
+                connection,
+                connSelected,
+                connStatusMap,
+                fullConfig,
+                filterOutNowsh
+            );
+        }
         const connectionsEditItem = getConnectionsEditItem(changeConnModalAtom, connSelected);
         const disconnectItem = getDisconnectItem(connection, connStatusMap);
         const newConnectionSuggestionItem = getNewConnectionSuggestionItem(
