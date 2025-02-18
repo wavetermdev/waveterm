@@ -7,7 +7,9 @@ import { generate as generateCSS, parse as parseCSS, walk as walkCSS } from "css
 
 function encodeFileURL(file: string) {
     const webEndpoint = getWebServerEndpoint();
-    return webEndpoint + `/wave/stream-file?path=${encodeURIComponent(file)}&no404=1`;
+    const fileUri = formatRemoteUri(file, "local");
+    const rtn = webEndpoint + `/wave/stream-file?path=${encodeURIComponent(fileUri)}&no404=1`;
+    return rtn;
 }
 
 export function processBackgroundUrls(cssText: string): string {
@@ -85,4 +87,16 @@ export function computeBgStyleFromMeta(meta: MetaType, defaultOpacity: number = 
         console.error("error processing background", e);
         return null;
     }
+}
+
+export function formatRemoteUri(path: string, connection: string): string {
+    connection = connection ?? "local";
+    // TODO: We need a better way to handle s3 paths
+    let retVal: string;
+    if (connection.startsWith("aws:")) {
+        retVal = `${connection}:s3://${path ?? ""}`;
+    } else {
+        retVal = `wsh://${connection}/${path}`;
+    }
+    return retVal;
 }

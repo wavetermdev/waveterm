@@ -87,7 +87,10 @@ export function shFrameNavHandler(event: Electron.Event<Electron.WebContentsWill
     }
     if (
         event.frame.name == "pdfview" &&
-        (url.startsWith("blob:file:///") || url.startsWith(getWebServerEndpoint() + "/wave/stream-file?"))
+        (url.startsWith("blob:file:///") ||
+            url.startsWith(getWebServerEndpoint() + "/wave/stream-file?") ||
+            url.startsWith(getWebServerEndpoint() + "/wave/stream-file/") ||
+            url.startsWith(getWebServerEndpoint() + "/wave/stream-local-file?"))
     ) {
         // allowed
         return;
