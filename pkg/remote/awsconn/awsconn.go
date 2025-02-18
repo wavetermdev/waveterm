@@ -96,17 +96,18 @@ func getTempFileFromConfig(config waveobj.MetaMapType, key string, profile strin
 
 func ParseProfiles() map[string]struct{} {
 	profiles := make(map[string]struct{})
-	fname := config.DefaultSharedConfigFilename() // Get aws.config default shared configuration file name
-	f, err := ini.Load(fname)                     // Load ini file
+	fname := config.DefaultSharedConfigFilename()
+	errs := []error{}
+	f, err := ini.Load(fname) // Load ini file
 	if err != nil {
-		log.Printf("error reading aws config file: %v", err)
-		return nil
-	}
-	for _, v := range f.Sections() {
-		if len(v.Keys()) != 0 { // Get only the sections having Keys
-			parts := strings.Split(v.Name(), " ")
-			if len(parts) == 2 && parts[0] == "profile" { // skip default
-				profiles[ProfilePrefix+parts[1]] = struct{}{}
+		errs = append(errs, err)
+	} else {
+		for _, v := range f.Sections() {
+			if len(v.Keys()) != 0 { // Get only the sections having Keys
+				parts := strings.Split(v.Name(), " ")
+				if len(parts) == 2 && parts[0] == "profile" { // skip default
+					profiles[ProfilePrefix+parts[1]] = struct{}{}
+				}
 			}
 		}
 	}
@@ -114,11 +115,14 @@ func ParseProfiles() map[string]struct{} {
 	fname = config.DefaultSharedCredentialsFilename()
 	f, err = ini.Load(fname)
 	if err != nil {
-		log.Printf("error reading aws credentials file: %v", err)
-		return nil
+		errs = append(errs, err)
+	} else {
+		for _, v := range f.Sections() {
+			profiles[ProfilePrefix+v.Name()] = struct{}{}
+		}
 	}
-	for _, v := range f.Sections() {
-		profiles[ProfilePrefix+v.Name()] = struct{}{}
+	if len(errs) > 0 {
+		log.Printf("error reading aws config/credentials file: %v", errs)
 	}
 	return profiles
 }
