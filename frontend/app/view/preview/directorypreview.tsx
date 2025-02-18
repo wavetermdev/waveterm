@@ -529,17 +529,6 @@ function TableBody({
             }
             const normPath = finfo.path;
             const fileName = finfo.path.split("/").pop();
-            let parentFileInfo: FileInfo;
-            try {
-                parentFileInfo = await RpcApi.FileInfoCommand(TabRpcClient, {
-                    info: {
-                        path: await model.formatRemoteUri(finfo.dir, globalStore.get),
-                    },
-                });
-            } catch (e) {
-                console.log("could not get parent file info. using child file info as fallback");
-                parentFileInfo = finfo;
-            }
             const menu: ContextMenuItem[] = [
                 {
                     label: "New File",
@@ -620,9 +609,21 @@ function TableBody({
                     },
                     {
                         label: makeNativeLabel(PLATFORM, true, true),
-                        click: () => {
-                            getApi().openNativePath(parentFileInfo.path);
-                        },
+                        click: () =>
+                            fireAndForget(async () => {
+                                let parentFileInfo: FileInfo;
+                                try {
+                                    parentFileInfo = await RpcApi.FileInfoCommand(TabRpcClient, {
+                                        info: {
+                                            path: await model.formatRemoteUri(finfo.dir, globalStore.get),
+                                        },
+                                    });
+                                } catch (e) {
+                                    console.log("could not get parent file info. using child file info as fallback");
+                                    parentFileInfo = finfo;
+                                }
+                                getApi().openNativePath(parentFileInfo.path);
+                            }),
                     }
                 );
             }
