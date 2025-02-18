@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { BlockNodeModel } from "@/app/block/blocktypes";
-import { getBlockMetaKeyAtom, globalStore, PLATFORM, WOS } from "@/app/store/global";
+import { getBlockMetaKeyAtom, globalStore, WOS } from "@/app/store/global";
 import { makeORef } from "@/app/store/wos";
 import { waveEventSubscribe } from "@/app/store/wps";
 import { RpcResponseHelper, WshClient } from "@/app/store/wshclient";
@@ -13,6 +13,7 @@ import { VDomView } from "@/app/view/vdom/vdom";
 import { applyCanvasOp, mergeBackendUpdates, restoreVDomElems } from "@/app/view/vdom/vdom-utils";
 import { getWebServerEndpoint } from "@/util/endpoints";
 import { adaptFromReactOrNativeKeyEvent, checkKeyPressed } from "@/util/keyutil";
+import { PLATFORM, PlatformMacOS } from "@/util/platformutil";
 import debug from "debug";
 import * as jotai from "jotai";
 
@@ -73,7 +74,7 @@ function annotateEvent(event: VDomEvent, propName: string, reactEvent: React.Syn
             movementx: mouseEvent.movementX,
             movementy: mouseEvent.movementY,
         };
-        if (PLATFORM == "darwin") {
+        if (PLATFORM == PlatformMacOS) {
             event.mousedata.cmd = event.mousedata.meta;
             event.mousedata.option = event.mousedata.alt;
         } else {

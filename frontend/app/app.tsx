@@ -3,15 +3,7 @@
 
 import { Workspace } from "@/app/workspace/workspace";
 import { ContextMenuModel } from "@/store/contextmenu";
-import {
-    atoms,
-    createBlock,
-    getSettingsPrefixAtom,
-    globalStore,
-    isDev,
-    PLATFORM,
-    removeFlashError,
-} from "@/store/global";
+import { atoms, createBlock, getSettingsPrefixAtom, globalStore, isDev, removeFlashError } from "@/store/global";
 import { appHandleKeyDown, keyboardMouseDownHandler } from "@/store/keymodel";
 import { getElemAsStr } from "@/util/focusutil";
 import * as keyutil from "@/util/keyutil";
@@ -30,6 +22,7 @@ import { NotificationBubbles } from "./notification/notificationbubbles";
 import "./app.scss";
 
 // this should come after app.scss (don't remove the newline above otherwise prettier will reorder these imports)
+import { PLATFORM } from "@/util/platformutil";
 import "../tailwindsetup.css";
 
 const dlog = debug("wave:app");
