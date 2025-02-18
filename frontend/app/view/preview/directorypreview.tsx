@@ -9,9 +9,10 @@ import { ContextMenuModel } from "@/app/store/contextmenu";
 import { PLATFORM, atoms, createBlock, getApi, globalStore } from "@/app/store/global";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
-import { formatRemoteUri, type PreviewModel } from "@/app/view/preview/preview";
+import { type PreviewModel } from "@/app/view/preview/preview";
 import { checkKeyPressed, isCharacterKeyEvent } from "@/util/keyutil";
 import { fireAndForget, isBlank, makeNativeLabel } from "@/util/util";
+import { formatRemoteUri } from "@/util/waveutil";
 import { offset, useDismiss, useFloating, useInteractions } from "@floating-ui/react";
 import {
     Column,
@@ -575,7 +576,8 @@ function TableBody({
                 {
                     label: "Download File",
                     click: () => {
-                        getApi().downloadFile(normPath);
+                        const remoteUri = formatRemoteUri(finfo.path, conn);
+                        getApi().downloadFile(remoteUri);
                     },
                 },
                 {

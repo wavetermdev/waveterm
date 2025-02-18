@@ -25,6 +25,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/docsite"
 	"github.com/wavetermdev/waveterm/pkg/filestore"
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
+	"github.com/wavetermdev/waveterm/pkg/remote/fileshare"
 	"github.com/wavetermdev/waveterm/pkg/schema"
 	"github.com/wavetermdev/waveterm/pkg/service"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
@@ -251,6 +252,10 @@ func handleRemoteStreamFile(w http.ResponseWriter, req *http.Request, conn strin
 	route := wshutil.MakeConnectionRouteId(conn)
 	rpcOpts := &wshrpc.RpcOpts{Route: route, Timeout: 60 * 1000}
 	rtnCh := wshclient.RemoteStreamFileCommand(client, streamFileData, rpcOpts)
+	return handleRemoteStreamFileFromCh(w, req, path, rtnCh, rpcOpts.StreamCancelFn, no404)
+}
+
+func handleRemoteStreamFileFromCh(w http.ResponseWriter, req *http.Request, path string, rtnCh <-chan wshrpc.RespOrErrorUnion[wshrpc.FileData], streamCancelFn func(), no404 bool) error {
 	firstPk := true
 	var fileInfo *wshrpc.FileInfo
 	loopDone := false
@@ -265,7 +270,9 @@ func handleRemoteStreamFile(w http.ResponseWriter, req *http.Request, conn strin
 	for {
 		select {
 		case <-ctx.Done():
-			rpcOpts.StreamCancelFn()
+			if streamCancelFn != nil {
+				streamCancelFn()
+			}
 			return ctx.Err()
 		case respUnion, ok := <-rtnCh:
 			if !ok {
@@ -311,6 +318,16 @@ func handleRemoteStreamFile(w http.ResponseWriter, req *http.Request, conn strin
 	}
 }
 
+func handleStreamLocalFile(w http.ResponseWriter, r *http.Request) {
+	path := r.URL.Query().Get("path")
+	if path == "" {
+		http.Error(w, "path is required", http.StatusBadRequest)
+		return
+	}
+	no404 := r.URL.Query().Get("no404")
+	handleLocalStreamFile(w, r, path, no404 != "")
+}
+
 func handleStreamFile(w http.ResponseWriter, r *http.Request) {
 	conn := r.URL.Query().Get("connection")
 	if conn == "" {
@@ -322,14 +339,16 @@ func handleStreamFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	no404 := r.URL.Query().Get("no404")
-	if conn == wshrpc.LocalConnName {
-		handleLocalStreamFile(w, r, path, no404 != "")
-	} else {
-		err := handleRemoteStreamFile(w, r, conn, path, no404 != "")
-		if err != nil {
-			log.Printf("error streaming remote file %q %q: %v\n", conn, path, err)
-			http.Error(w, fmt.Sprintf("error streaming file: %v", err), http.StatusInternalServerError)
-		}
+	data := wshrpc.FileData{
+		Info: &wshrpc.FileInfo{
+			Path: path,
+		},
+	}
+	rtnCh := fileshare.ReadStream(r.Context(), data)
+	err := handleRemoteStreamFileFromCh(w, r, path, rtnCh, nil, no404 != "")
+	if err != nil {
+		log.Printf("error streaming file %q %q: %v\n", conn, path, err)
+		http.Error(w, fmt.Sprintf("error streaming file: %v", err), http.StatusInternalServerError)
 	}
 }
 
@@ -423,7 +442,9 @@ const schemaPrefix = "/schema/"
 // blocking
 func RunWebServer(listener net.Listener) {
 	gr := mux.NewRouter()
+	gr.HandleFunc("/wave/stream-local-file", WebFnWrap(WebFnOpts{AllowCaching: true}, handleStreamLocalFile))
 	gr.HandleFunc("/wave/stream-file", WebFnWrap(WebFnOpts{AllowCaching: true}, handleStreamFile))
+	gr.PathPrefix("/wave/stream-file/").HandlerFunc(WebFnWrap(WebFnOpts{AllowCaching: true}, handleStreamFile))
 	gr.HandleFunc("/wave/file", WebFnWrap(WebFnOpts{AllowCaching: false}, handleWaveFile))
 	gr.HandleFunc("/wave/service", WebFnWrap(WebFnOpts{JsonErrors: true}, handleService))
 	gr.HandleFunc("/vdom/{uuid}/{path:.*}", WebFnWrap(WebFnOpts{AllowCaching: true}, handleVDom))

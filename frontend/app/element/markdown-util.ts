@@ -4,7 +4,7 @@
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { getWebServerEndpoint } from "@/util/endpoints";
-import { isBlank, makeConnRoute } from "@/util/util";
+import { formatRemoteUri } from "@/util/waveutil";
 import parseSrcSet from "parse-srcset";
 
 export type MarkdownContentBlockType = {
@@ -158,19 +158,13 @@ export const resolveRemoteFile = async (filepath: string, resolveOpts: MarkdownR
     if (!filepath || filepath.startsWith("http://") || filepath.startsWith("https://")) {
         return filepath;
     }
-
     try {
-        const route = makeConnRoute(resolveOpts.connName);
-        const fileInfo = await RpcApi.RemoteFileJoinCommand(TabRpcClient, [resolveOpts.baseDir, filepath], {
-            route: route,
-        });
-
+        const baseDirUri = formatRemoteUri(resolveOpts.baseDir, resolveOpts.connName);
+        const fileInfo = await RpcApi.FileJoinCommand(TabRpcClient, [baseDirUri, filepath]);
+        const remoteUri = formatRemoteUri(fileInfo.path, resolveOpts.connName);
+        console.log("markdown resolve", resolveOpts, filepath, "=>", baseDirUri, remoteUri);
         const usp = new URLSearchParams();
-        usp.set("path", fileInfo.path);
-        if (!isBlank(resolveOpts.connName)) {
-            usp.set("connection", resolveOpts.connName);
-        }
-
+        usp.set("path", remoteUri);
         return getWebServerEndpoint() + "/wave/stream-file?" + usp.toString();
     } catch (err) {
         console.warn("Failed to resolve remote file:", filepath, err);

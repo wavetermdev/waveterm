@@ -240,7 +240,9 @@ electron.ipcMain.on("webview-image-contextmenu", (event: electron.IpcMainEvent, 
 });
 
 electron.ipcMain.on("download", (event, payload) => {
-    const streamingUrl = getWebServerEndpoint() + "/wave/stream-file?path=" + encodeURIComponent(payload.filePath);
+    const baseName = encodeURIComponent(path.basename(payload.filePath));
+    const streamingUrl =
+        getWebServerEndpoint() + "/wave/stream-file/" + baseName + "?path=" + encodeURIComponent(payload.filePath);
     event.sender.downloadURL(streamingUrl);
 });
 
