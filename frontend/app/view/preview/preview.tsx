@@ -434,13 +434,20 @@ export class PreviewModel implements ViewModel {
             if (fileName == null) {
                 return null;
             }
-            console.log("full file path", path);
-            const file = await RpcApi.FileReadCommand(TabRpcClient, {
-                info: {
-                    path,
-                },
-            });
-            console.log("full file", file);
+            let file: FileData;
+            try {
+                file = await RpcApi.FileReadCommand(TabRpcClient, {
+                    info: {
+                        path,
+                    },
+                });
+            } catch (e) {
+                const errorStatus: ErrorMsg = {
+                    status: "File Read Failed",
+                    text: `${e}`,
+                };
+                globalStore.set(this.errorMsgAtom, errorStatus);
+            }
             return file;
         });
 
@@ -593,7 +600,6 @@ export class PreviewModel implements ViewModel {
                     path: await this.formatRemoteUri(fileInfo.dir, globalStore.get),
                 },
             });
-            console.log("parent file info", parentFileInfo);
             return parentFileInfo;
         } catch {
             return undefined;
@@ -680,8 +686,12 @@ export class PreviewModel implements ViewModel {
             globalStore.set(this.fileContent, newFileContent);
             globalStore.set(this.newFileContent, null);
             console.log("saved file", filePath);
-        } catch (error) {
-            console.error("Error saving file:", error);
+        } catch (e) {
+            const errorStatus: ErrorMsg = {
+                status: "Save Failed",
+                text: `${e}`,
+            };
+            globalStore.set(this.errorMsgAtom, errorStatus);
         }
     }
 
