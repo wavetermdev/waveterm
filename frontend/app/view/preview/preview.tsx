@@ -254,7 +254,9 @@ export class PreviewModel implements ViewModel {
                     headerPath = `~ (${loadableFileInfo.data?.dir + "/" + loadableFileInfo.data?.name})`;
                 }
             }
-
+            if (!isBlank(headerPath) && headerPath != "/" && headerPath.endsWith("/")) {
+                headerPath = headerPath.slice(0, -1);
+            }
             const viewTextChildren: HeaderElem[] = [
                 {
                     elemtype: "text",
@@ -692,6 +694,12 @@ export class PreviewModel implements ViewModel {
     }
 
     async handleOpenFile(filePath: string) {
+        const conn = globalStore.get(this.connectionImmediate);
+        if (!isBlank(conn) && conn.startsWith("aws:")) {
+            if (!isBlank(filePath) && filePath != "/" && filePath.startsWith("/")) {
+                filePath = filePath.substring(1);
+            }
+        }
         const fileInfo = await globalStore.get(this.statFile);
         this.updateOpenFileModalAndError(false);
         if (fileInfo == null) {
@@ -1142,7 +1150,6 @@ function PreviewView({
         return null;
     }
     const handleSelect = (s: SuggestionType, queryStr: string): boolean => {
-        console.log("handleSelect", s, queryStr);
         if (s == null) {
             if (isBlank(queryStr)) {
                 globalStore.set(model.openFileModal, false);
