@@ -201,14 +201,14 @@ export class PreviewModel implements ViewModel {
         this.errorMsgAtom = atom(null) as PrimitiveAtom<ErrorMsg | null>;
         this.viewIcon = atom((get) => {
             const blockData = get(this.blockAtom);
-            const connStatus = get(this.connStatus);
-            const mimeTypeLoadable = get(this.fileMimeTypeLoadable);
             if (blockData?.meta?.icon) {
                 return blockData.meta.icon;
             }
+            const connStatus = get(this.connStatus);
             if (connStatus?.status != "connected") {
                 return null;
             }
+            const mimeTypeLoadable = get(this.fileMimeTypeLoadable);
             const mimeType = jotaiLoadableValue(mimeTypeLoadable, "");
             if (mimeType == "directory") {
                 return {
@@ -438,15 +438,14 @@ export class PreviewModel implements ViewModel {
         const fileContentAtom = atom(
             async (get) => {
                 const newContent = get(this.newFileContent);
-                const savedContent = get(this.fileContentSaved);
-                const fullFile = await get(fullFileAtom);
-                console.log("full file", fullFile);
                 if (newContent != null) {
                     return newContent;
                 }
+                const savedContent = get(this.fileContentSaved);
                 if (savedContent != null) {
                     return savedContent;
                 }
+                const fullFile = await get(fullFileAtom);
                 return base64ToString(fullFile?.data64);
             },
             (_, set, update: string) => {
