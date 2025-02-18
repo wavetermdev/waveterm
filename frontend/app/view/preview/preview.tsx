@@ -572,20 +572,6 @@ export class PreviewModel implements ViewModel {
         globalStore.set(this.newFileContent, null);
     }
 
-    async getParentInfo(fileInfo: FileInfo): Promise<FileInfo | undefined> {
-        try {
-            const parentFileInfo = await RpcApi.FileInfoCommand(TabRpcClient, {
-                info: {
-                    path: await this.formatRemoteUri(fileInfo.dir, globalStore.get),
-                },
-            });
-            console.log("parent file info", parentFileInfo);
-            return parentFileInfo;
-        } catch {
-            return undefined;
-        }
-    }
-
     async goParentDirectory({ fileInfo = null }: { fileInfo?: FileInfo | null }) {
         // optional parameter needed for recursive case
         const defaultFileInfo = await globalStore.get(this.statFile);
@@ -597,18 +583,8 @@ export class PreviewModel implements ViewModel {
             return true;
         }
         try {
-            const newFileInfo = await RpcApi.FileInfoCommand(TabRpcClient, {
-                info: {
-                    path: await this.formatRemoteUri(fileInfo.dir, globalStore.get),
-                },
-            });
-            if (newFileInfo.path != "" && newFileInfo.notfound) {
-                console.log("parent does not exist, ", newFileInfo.path);
-                this.goParentDirectory({ fileInfo: newFileInfo });
-                return;
-            }
             this.updateOpenFileModalAndError(false);
-            await this.goHistory(newFileInfo.path);
+            await this.goHistory(fileInfo.dir);
             refocusNode(this.blockId);
         } catch (e) {
             globalStore.set(this.openFileError, e.message);

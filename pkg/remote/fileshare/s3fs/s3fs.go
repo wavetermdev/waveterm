@@ -88,7 +88,6 @@ func (c S3Client) ReadStream(ctx context.Context, conn *connparse.Connection, da
 					Range:  aws.String(fmt.Sprintf("bytes=%d-%d", data.At.Offset, data.At.Offset+int64(data.At.Size)-1)),
 				})
 			} else {
-				log.Printf("reading %v", conn.GetFullURI())
 				result, err = c.client.GetObject(ctx, &s3.GetObjectInput{
 					Bucket: aws.String(bucket),
 					Key:    aws.String(objectKey),
@@ -116,7 +115,6 @@ func (c S3Client) ReadStream(ctx context.Context, conn *connparse.Connection, da
 				Dir:     fsutil.GetParentPath(conn),
 			}
 			fileutil.AddMimeTypeToFileInfo(finfo.Path, finfo)
-			log.Printf("file info: %v", finfo)
 			rtn <- wshrpc.RespOrErrorUnion[wshrpc.FileData]{Response: wshrpc.FileData{Info: finfo}}
 			if size == 0 {
 				log.Printf("no data to read")
@@ -125,10 +123,8 @@ func (c S3Client) ReadStream(ctx context.Context, conn *connparse.Connection, da
 			defer utilfn.GracefulClose(result.Body, "s3fs", conn.GetFullURI())
 			bytesRemaining := size
 			for {
-				log.Printf("bytes remaining: %d", bytesRemaining)
 				select {
 				case <-ctx.Done():
-					log.Printf("context done")
 					rtn <- wshutil.RespErr[wshrpc.FileData](context.Cause(ctx))
 					return
 				default:
@@ -138,7 +134,6 @@ func (c S3Client) ReadStream(ctx context.Context, conn *connparse.Connection, da
 						rtn <- wshutil.RespErr[wshrpc.FileData](err)
 						return
 					}
-					log.Printf("read %d bytes", n)
 					if n == 0 {
 						break
 					}
