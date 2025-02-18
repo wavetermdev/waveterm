@@ -301,13 +301,21 @@ function DirectoryTable({
                     newPath = path.substring(0, lastInstance) + newName;
                     console.log(`replacing ${fileName} with ${newName}: ${path}`);
                     fireAndForget(async () => {
-                        await RpcApi.FileMoveCommand(TabRpcClient, {
-                            srcuri: await model.formatRemoteUri(path, globalStore.get),
-                            desturi: await model.formatRemoteUri(newPath, globalStore.get),
-                            opts: {
-                                recursive: true,
-                            },
-                        });
+                        try {
+                            await RpcApi.FileMoveCommand(TabRpcClient, {
+                                srcuri: await model.formatRemoteUri(path, globalStore.get),
+                                desturi: await model.formatRemoteUri(newPath, globalStore.get),
+                                opts: {
+                                    recursive: true,
+                                },
+                            });
+                        } catch (e) {
+                            const errorStatus: ErrorMsg = {
+                                status: "Rename Failed",
+                                text: `${e}`,
+                            };
+                            globalStore.set(model.errorMsgAtom, errorStatus);
+                        }
                         model.refreshCallback();
                     });
                 }
@@ -643,10 +651,18 @@ function TableBody({
                     label: "Delete",
                     click: () => {
                         fireAndForget(async () => {
-                            await RpcApi.FileDeleteCommand(TabRpcClient, {
-                                path: await model.formatRemoteUri(finfo.path, globalStore.get),
-                                recursive: false,
-                            }).catch((e) => console.log(e));
+                            try {
+                                await RpcApi.FileDeleteCommand(TabRpcClient, {
+                                    path: await model.formatRemoteUri(finfo.path, globalStore.get),
+                                    recursive: false,
+                                });
+                            } catch (e) {
+                                const errorStatus: ErrorMsg = {
+                                    status: "Delete Failed",
+                                    text: `${e}`,
+                                };
+                                globalStore.set(model.errorMsgAtom, errorStatus);
+                            }
                             setRefreshVersion((current) => current + 1);
                         });
                     },
@@ -796,16 +812,26 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
 
     useEffect(() => {
         const getContent = async () => {
-            const file = await RpcApi.FileReadCommand(
-                TabRpcClient,
-                {
-                    info: {
-                        path: await model.formatRemoteUri(dirPath, globalStore.get),
+            let entries: FileInfo[];
+            try {
+                const file = await RpcApi.FileReadCommand(
+                    TabRpcClient,
+                    {
+                        info: {
+                            path: await model.formatRemoteUri(dirPath, globalStore.get),
+                        },
                     },
-                },
-                null
-            );
-            setUnfilteredData(file.entries);
+                    null
+                );
+                entries = file.entries ?? [];
+            } catch (e) {
+                const errorStatus: ErrorMsg = {
+                    status: "Cannot Read Directory",
+                    text: `${e}`,
+                };
+                globalStore.set(model.errorMsgAtom, errorStatus);
+            }
+            setUnfilteredData(entries);
         };
         getContent();
     }, [conn, dirPath, refreshVersion]);
