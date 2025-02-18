@@ -1100,24 +1100,30 @@ const fetchSuggestions = async (
     query: string,
     reqContext: SuggestionRequestContext
 ): Promise<FetchSuggestionsResponse> => {
+    const conn = await globalStore.get(model.connection);
+    let route = makeConnRoute(conn);
+    if (isBlank(conn) || conn.startsWith("aws:")) {
+        route = null;
+    }
+    if (reqContext?.dispose) {
+        RpcApi.DisposeSuggestionsCommand(TabRpcClient, reqContext.widgetid, { noresponse: true, route: route });
+        return null;
+    }
     const fileInfo = await globalStore.get(model.statFile);
     if (fileInfo == null) {
         return null;
     }
-    const conn = await globalStore.get(model.connection);
-    return await RpcApi.FetchSuggestionsCommand(
-        TabRpcClient,
-        {
-            suggestiontype: "file",
-            "file:cwd": fileInfo.path,
-            query: query,
-            widgetid: reqContext.widgetid,
-            reqnum: reqContext.reqnum,
-        },
-        {
-            route: makeConnRoute(conn),
-        }
-    );
+    const sdata = {
+        suggestiontype: "file",
+        "file:cwd": fileInfo.path,
+        query: query,
+        widgetid: reqContext.widgetid,
+        reqnum: reqContext.reqnum,
+        "file:connection": conn,
+    };
+    return await RpcApi.FetchSuggestionsCommand(TabRpcClient, sdata, {
+        route: route,
+    });
 };
 
 function PreviewView({
