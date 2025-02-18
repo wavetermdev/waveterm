@@ -150,8 +150,6 @@ export class PreviewModel implements ViewModel {
 
     metaFilePath: Atom<string>;
     statFilePath: Atom<Promise<string>>;
-    normFilePath: Atom<Promise<string>>;
-    loadableStatFilePath: Atom<Loadable<string>>;
     loadableFileInfo: Atom<Loadable<FileInfo>>;
     connection: Atom<Promise<string>>;
     connectionImmediate: Atom<string>;
@@ -385,11 +383,6 @@ export class PreviewModel implements ViewModel {
             const fileInfo = await get(this.statFile);
             return fileInfo?.path;
         });
-        this.normFilePath = atom<Promise<string>>(async (get) => {
-            const fileInfo = await get(this.statFile);
-            return fileInfo?.path;
-        });
-        this.loadableStatFilePath = loadable(this.statFilePath);
         this.connection = atom<Promise<string>>(async (get) => {
             const connName = get(this.blockAtom)?.meta?.connection;
             try {
@@ -405,7 +398,6 @@ export class PreviewModel implements ViewModel {
         });
         this.statFile = atom<Promise<FileInfo>>(async (get) => {
             const fileName = get(this.metaFilePath);
-            console.log("stat file", fileName);
             const path = await this.formatRemoteUri(fileName, get);
             if (fileName == null) {
                 return null;
@@ -492,16 +484,12 @@ export class PreviewModel implements ViewModel {
     async getSpecializedView(getFn: Getter): Promise<{ specializedView?: string; errorStr?: string }> {
         const mimeType = await getFn(this.fileMimeType);
         const fileInfo = await getFn(this.statFile);
-        const fileName = await getFn(this.statFilePath);
+        const fileName = fileInfo?.name;
         const connErr = getFn(this.connectionError);
         const editMode = getFn(this.editMode);
-        const parentFileInfo = await this.getParentInfo(fileInfo);
 
         if (connErr != "") {
             return { errorStr: `Connection Error: ${connErr}` };
-        }
-        if (parentFileInfo?.notfound ?? false) {
-            return { errorStr: `Parent Directory Not Found: ${fileInfo.path}` };
         }
         if (fileInfo?.notfound) {
             return { specializedView: "codeedit" };
@@ -716,7 +704,7 @@ export class PreviewModel implements ViewModel {
             label: "Copy Full Path",
             click: () =>
                 fireAndForget(async () => {
-                    const filePath = await globalStore.get(this.normFilePath);
+                    const filePath = await globalStore.get(this.statFilePath);
                     if (filePath == null) {
                         return;
                     }
@@ -979,8 +967,8 @@ function StreamingPreview({ model }: SpecializedViewProps) {
 function CodeEditPreview({ model }: SpecializedViewProps) {
     const fileContent = useAtomValue(model.fileContent);
     const setNewFileContent = useSetAtom(model.newFileContent);
-    const fileName = useAtomValue(model.statFilePath);
     const fileInfo = useAtomValue(model.statFile);
+    const fileName = fileInfo?.name;
     const blockMeta = useAtomValue(model.blockAtom)?.meta;
 
     function codeEditKeyDownHandler(e: WaveKeyboardEvent): boolean {

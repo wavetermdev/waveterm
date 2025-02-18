@@ -53,7 +53,6 @@ func (c S3Client) Read(ctx context.Context, conn *connparse.Connection, data wsh
 func (c S3Client) ReadStream(ctx context.Context, conn *connparse.Connection, data wshrpc.FileData) <-chan wshrpc.RespOrErrorUnion[wshrpc.FileData] {
 	bucket := conn.Host
 	objectKey := conn.Path
-	log.Printf("s3fs.ReadStream: %v", conn.GetFullURI())
 	rtn := make(chan wshrpc.RespOrErrorUnion[wshrpc.FileData], 16)
 	go func() {
 		defer close(rtn)
@@ -488,7 +487,6 @@ func (c S3Client) ListEntriesStream(ctx context.Context, conn *connparse.Connect
 }
 
 func (c S3Client) Stat(ctx context.Context, conn *connparse.Connection) (*wshrpc.FileInfo, error) {
-	log.Printf("Stat: %v", conn.GetFullURI())
 	bucketName := conn.Host
 	objectKey := conn.Path
 	if bucketName == "" || bucketName == fspath.Separator {
@@ -604,7 +602,6 @@ func (c S3Client) Stat(ctx context.Context, conn *connparse.Connection) (*wshrpc
 }
 
 func (c S3Client) PutFile(ctx context.Context, conn *connparse.Connection, data wshrpc.FileData) error {
-	log.Printf("PutFile: %v", conn.GetFullURI())
 	if data.At != nil {
 		log.Printf("PutFile: offset %d and size %d", data.At.Offset, data.At.Size)
 		return errors.Join(errors.ErrUnsupported, fmt.Errorf("file data offset and size not supported"))
