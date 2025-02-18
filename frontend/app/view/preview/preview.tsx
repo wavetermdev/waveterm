@@ -1135,8 +1135,18 @@ function PreviewView({
     if (connStatus?.status != "connected") {
         return null;
     }
-    const handleSelect = (s: SuggestionType) => {
+    const handleSelect = (s: SuggestionType, queryStr: string): boolean => {
+        console.log("handleSelect", s, queryStr);
+        if (s == null) {
+            if (isBlank(queryStr)) {
+                globalStore.set(model.openFileModal, false);
+                return true;
+            }
+            model.handleOpenFile(queryStr);
+            return true;
+        }
         model.handleOpenFile(s["file:path"]);
+        return true;
     };
     const handleTab = (s: SuggestionType, query: string): string => {
         if (s["mime:type"] == "directory") {

@@ -12,7 +12,7 @@ interface SuggestionControlProps {
     anchorRef: React.RefObject<HTMLElement>;
     isOpen: boolean;
     onClose: () => void;
-    onSelect: (item: SuggestionType, queryStr: string) => void;
+    onSelect: (item: SuggestionType, queryStr: string) => boolean;
     onTab?: (item: SuggestionType, queryStr: string) => string;
     fetchSuggestions: SuggestionsFnType;
     className?: string;
@@ -256,8 +256,11 @@ const SuggestionControlInner: React.FC<SuggestionControlInnerProps> = ({
         } else if (e.key === "Enter") {
             e.preventDefault();
             e.stopPropagation();
+            let suggestion: SuggestionType = null;
             if (selectedIndex >= 0 && selectedIndex < suggestions.length) {
-                onSelect(suggestions[selectedIndex], query);
+                suggestion = suggestions[selectedIndex];
+            }
+            if (onSelect(suggestion, query)) {
                 onClose();
             }
         } else if (e.key === "Escape") {
