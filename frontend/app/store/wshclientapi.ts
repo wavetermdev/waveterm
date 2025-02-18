@@ -122,6 +122,11 @@ class RpcApiType {
         return client.wshRpcCall("dispose", data, opts);
     }
 
+    // command "disposesuggestions" [call]
+    DisposeSuggestionsCommand(client: WshClient, data: string, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("disposesuggestions", data, opts);
+    }
+
     // command "eventpublish" [call]
     EventPublishCommand(client: WshClient, data: WaveEvent, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("eventpublish", data, opts);

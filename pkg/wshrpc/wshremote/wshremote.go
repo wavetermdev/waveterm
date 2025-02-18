@@ -868,6 +868,11 @@ func (*ServerImpl) FetchSuggestionsCommand(ctx context.Context, data wshrpc.Fetc
 	return suggestion.FetchSuggestions(ctx, data)
 }
 
+func (*ServerImpl) DisposeSuggestionsCommand(ctx context.Context, widgetId string) error {
+	suggestion.DisposeSuggestions(ctx, widgetId)
+	return nil
+}
+
 func logPrintfDev(format string, args ...interface{}) {
 	if wavebase.IsDevMode() {
 		log.Printf(format, args...)
