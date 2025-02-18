@@ -132,6 +132,10 @@ func resolveFileQuery(cwd string, query string) (string, string, string, error) 
 	return cwd, "", query, nil
 }
 
+func DisposeSuggestions(ctx context.Context, widgetId string) {
+	cacheDispose(widgetId)
+}
+
 func FetchSuggestions(ctx context.Context, data wshrpc.FetchSuggestionsData) (*wshrpc.FetchSuggestionsResponse, error) {
 	if data.SuggestionType == "file" {
 		return fetchFileSuggestions(ctx, data)
@@ -353,7 +357,7 @@ func (h *scoredEntryHeap) Pop() interface{} {
 	return x
 }
 
-func fetchFileSuggestions(_ context.Context, data wshrpc.FetchSuggestionsData) (*wshrpc.FetchSuggestionsResponse, error) {
+func fetchFileSuggestions(ctx context.Context, data wshrpc.FetchSuggestionsData) (*wshrpc.FetchSuggestionsResponse, error) {
 	// Only support file suggestions.
 	if data.SuggestionType != "file" {
 		return nil, fmt.Errorf("unsupported suggestion type: %q", data.SuggestionType)
@@ -366,12 +370,20 @@ func fetchFileSuggestions(_ context.Context, data wshrpc.FetchSuggestionsData) (
 	}
 
 	// Use a cancellable context for directory listing.
-	listingCtx, cancelFn := context.WithCancel(context.Background())
+	listingCtx, cancelFn := context.WithCancel(ctx)
 	defer cancelFn()
 
-	entriesCh, err := listDirectory(listingCtx, baseDir, 1000)
-	if err != nil {
-		return nil, fmt.Errorf("error listing directory: %w", err)
+	var entriesCh <-chan DirEntryResult
+	if strings.HasPrefix(data.FileConnection, "aws:") {
+		entriesCh, err = listS3Directory(listingCtx, data.WidgetId, data.FileConnection, baseDir, 1000)
+		if err != nil {
+			return nil, fmt.Errorf("error listing S3 directory: %w", err)
+		}
+	} else {
+		entriesCh, err = listDirectory(listingCtx, data.WidgetId, baseDir, 1000)
+		if err != nil {
+			return nil, fmt.Errorf("error listing directory: %w", err)
+		}
 	}
 
 	const maxEntries = MaxSuggestions // top-k entries

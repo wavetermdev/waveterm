@@ -812,6 +812,10 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
 
     useEffect(() => {
         const filtered = unfilteredData?.filter((fileInfo) => {
+            if (fileInfo.name == null) {
+                console.log("fileInfo.name is null", fileInfo);
+                return false;
+            }
             if (!showHiddenFiles && fileInfo.name.startsWith(".") && fileInfo.name != "..") {
                 return false;
             }

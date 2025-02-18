@@ -616,9 +616,10 @@ const BookmarkTypeahead = memo(
                 onClose={() => model.setTypeaheadOpen(false)}
                 onSelect={(suggestion) => {
                     if (suggestion == null || suggestion.type != "url") {
-                        return;
+                        return true;
                     }
                     model.loadUrl(suggestion["url:url"], "bookmark-typeahead");
+                    return true;
                 }}
                 fetchSuggestions={model.fetchBookmarkSuggestions}
                 placeholderText="Open Bookmark..."
