@@ -390,10 +390,12 @@ type CommandControllerAppendOutputData struct {
 }
 
 type CommandBlockInputData struct {
-	BlockId     string            `json:"blockid" wshcontext:"BlockId"`
-	InputData64 string            `json:"inputdata64,omitempty"`
-	SigName     string            `json:"signame,omitempty"`
-	TermSize    *waveobj.TermSize `json:"termsize,omitempty"`
+	BlockId          string            `json:"blockid" wshcontext:"BlockId"`
+	InputData64      string            `json:"inputdata64,omitempty"`
+	SigName          string            `json:"signame,omitempty"`
+	PendingPtyOffset int64             `json:"pendingptyoffset,omitempty"`
+	FeActionId       string            `json:"feactionid,omitempty"`
+	TermSize         *waveobj.TermSize `json:"termsize,omitempty"`
 }
 
 type FileDataAt struct {

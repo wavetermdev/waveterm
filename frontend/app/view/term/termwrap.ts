@@ -2,12 +2,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { getFileSubject } from "@/app/store/wps";
-import { sendWSCommand } from "@/app/store/ws";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { PLATFORM, WOS, atoms, fetchWaveFile, getSettingsKeyAtom, globalStore, openLink } from "@/store/global";
 import * as services from "@/store/services";
-import { base64ToArray, fireAndForget } from "@/util/util";
+import { base64ToArray, fireAndForget, getNextActionId } from "@/util/util";
 import { SearchAddon } from "@xterm/addon-search";
 import { SerializeAddon } from "@xterm/addon-serialize";
 import { WebLinksAddon } from "@xterm/addon-web-links";
@@ -136,6 +135,7 @@ function handleOsc7Command(data: string, blockId: string, loaded: boolean): bool
 export class TermWrap {
     blockId: string;
     ptyOffset: number;
+    pendingPtyOffset: number;
     dataBytesProcessed: number;
     terminal: Terminal;
     connectElem: HTMLDivElement;
@@ -147,6 +147,7 @@ export class TermWrap {
     heldData: Uint8Array[];
     handleResize_debounced: () => void;
     hasResized: boolean;
+    isLoadingCache: boolean;
     multiInputCallback: (data: string) => void;
     sendDataHandler: (data: string) => void;
     onSearchResultsDidChange?: (result: { resultIndex: number; resultCount: number }) => void;
@@ -159,6 +160,7 @@ export class TermWrap {
         waveOptions: TermWrapOptions
     ) {
         this.loaded = false;
+        this.isLoadingCache = false;
         this.blockId = blockId;
         this.sendDataHandler = waveOptions.sendDataHandler;
         this.ptyOffset = 0;
@@ -259,6 +261,9 @@ export class TermWrap {
     }
 
     handleTermData(data: string) {
+        if (this.isLoadingCache) {
+            return;
+        }
         if (!this.loaded) {
             return;
         }
@@ -297,11 +302,14 @@ export class TermWrap {
         let prtn = new Promise<void>((presolve, _) => {
             resolve = presolve;
         });
+        if (setPtyOffset != null) {
+            this.pendingPtyOffset = setPtyOffset;
+        } else {
+            this.pendingPtyOffset = this.ptyOffset + data.length;
+        }
         this.terminal.write(data, () => {
-            if (setPtyOffset != null) {
-                this.ptyOffset = setPtyOffset;
-            } else {
-                this.ptyOffset += data.length;
+            this.ptyOffset = this.pendingPtyOffset;
+            if (setPtyOffset == null) {
                 this.dataBytesProcessed += data.length;
             }
             resolve();
@@ -316,20 +324,25 @@ export class TermWrap {
         if (cacheFile != null) {
             ptyOffset = cacheFile.meta["ptyoffset"] ?? 0;
             if (cacheData.byteLength > 0) {
-                const curTermSize: TermSize = { rows: this.terminal.rows, cols: this.terminal.cols };
-                const fileTermSize: TermSize = cacheFile.meta["termsize"];
-                let didResize = false;
-                if (
-                    fileTermSize != null &&
-                    (fileTermSize.rows != curTermSize.rows || fileTermSize.cols != curTermSize.cols)
-                ) {
-                    console.log("terminal restore size mismatch, temp resize", fileTermSize, curTermSize);
-                    this.terminal.resize(fileTermSize.cols, fileTermSize.rows);
-                    didResize = true;
-                }
-                this.doTerminalWrite(cacheData, ptyOffset);
-                if (didResize) {
-                    this.terminal.resize(curTermSize.cols, curTermSize.rows);
+                try {
+                    this.isLoadingCache = true;
+                    const curTermSize: TermSize = { rows: this.terminal.rows, cols: this.terminal.cols };
+                    const fileTermSize: TermSize = cacheFile.meta["termsize"];
+                    let didResize = false;
+                    if (
+                        fileTermSize != null &&
+                        (fileTermSize.rows != curTermSize.rows || fileTermSize.cols != curTermSize.cols)
+                    ) {
+                        console.log("terminal restore size mismatch, temp resize", fileTermSize, curTermSize);
+                        this.terminal.resize(fileTermSize.cols, fileTermSize.rows);
+                        didResize = true;
+                    }
+                    await this.doTerminalWrite(cacheData, ptyOffset);
+                    if (didResize) {
+                        this.terminal.resize(curTermSize.cols, curTermSize.rows);
+                    }
+                } finally {
+                    this.isLoadingCache = false;
                 }
             }
         }
@@ -363,12 +376,13 @@ export class TermWrap {
         this.fitAddon.fit();
         if (oldRows !== this.terminal.rows || oldCols !== this.terminal.cols) {
             const termSize: TermSize = { rows: this.terminal.rows, cols: this.terminal.cols };
-            const wsCommand: SetBlockTermSizeWSCommand = {
-                wscommand: "setblocktermsize",
+            const actionId = getNextActionId();
+            RpcApi.ControllerInputCommand(TabRpcClient, {
                 blockid: this.blockId,
+                feactionid: actionId,
                 termsize: termSize,
-            };
-            sendWSCommand(wsCommand);
+                pendingptyoffset: this.pendingPtyOffset,
+            });
         }
         dlog("resize", `${this.terminal.rows}x${this.terminal.cols}`, `${oldRows}x${oldCols}`, this.hasResized);
         if (!this.hasResized) {

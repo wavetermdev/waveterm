@@ -302,6 +302,24 @@ function makeConnRoute(conn: string): string {
     return "conn:" + conn;
 }
 
+let lastTimestamp = 0;
+let counter = 0;
+
+// guaranteed to be monotonically increasing for each call within the same tab
+function getNextActionId(): string {
+    const now = Date.now();
+
+    if (now === lastTimestamp) {
+        counter += 1;
+    } else {
+        lastTimestamp = now;
+        counter = 0;
+    }
+
+    const paddedCounter = String(counter).padStart(5, "0");
+    return `${now}:${paddedCounter}`;
+}
+
 function sleep(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -409,6 +427,7 @@ export {
     countGraphemes,
     deepCompareReturnPrev,
     fireAndForget,
+    getNextActionId,
     getPrefixedSettings,
     getPromiseState,
     getPromiseValue,

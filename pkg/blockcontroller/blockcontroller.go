@@ -68,24 +68,28 @@ var globalLock = &sync.Mutex{}
 var blockControllerMap = make(map[string]*BlockController)
 
 type BlockInputUnion struct {
-	InputData []byte            `json:"inputdata,omitempty"`
-	SigName   string            `json:"signame,omitempty"`
-	TermSize  *waveobj.TermSize `json:"termsize,omitempty"`
+	InputData            []byte            `json:"inputdata,omitempty"`
+	SigName              string            `json:"signame,omitempty"`
+	TermSize             *waveobj.TermSize `json:"termsize,omitempty"`
+	FeActionId           string            `json:"feactionid,omitempty"`
+	PtyProcessedToOffset int64             `json:"ptyprocessedtooffset,omitempty"`
 }
 
 type BlockController struct {
-	Lock              *sync.Mutex
-	ControllerType    string
-	TabId             string
-	BlockId           string
-	BlockDef          *waveobj.BlockDef
-	CreatedHtmlFile   bool
-	ShellProc         *shellexec.ShellProc
-	ShellInputCh      chan *BlockInputUnion
-	ShellProcStatus   string
-	ShellProcExitCode int
-	RunLock           *atomic.Bool
-	StatusVersion     int
+	Lock               *sync.Mutex
+	ControllerType     string
+	TabId              string
+	BlockId            string
+	BlockDef           *waveobj.BlockDef
+	CreatedHtmlFile    bool
+	ShellProc          *shellexec.ShellProc
+	ShellInputCh       chan *BlockInputUnion
+	ShellProcStatus    string
+	ShellProcExitCode  int
+	RunLock            *atomic.Bool
+	StatusVersion      int
+	ProcessedToOffset  *atomic.Int64
+	LastResizeActionId string
 }
 
 type BlockControllerRuntimeStatus struct {
@@ -121,6 +125,16 @@ func (bc *BlockController) getShellProc() *shellexec.ShellProc {
 	bc.Lock.Lock()
 	defer bc.Lock.Unlock()
 	return bc.ShellProc
+}
+
+func (bc *BlockController) TestAndSetResizeActionId(actionId string) bool {
+	bc.Lock.Lock()
+	defer bc.Lock.Unlock()
+	if actionId <= bc.LastResizeActionId {
+		return false
+	}
+	bc.LastResizeActionId = actionId
+	return true
 }
 
 type RunShellOpts struct {
@@ -731,7 +745,23 @@ func (bc *BlockController) manageRunningShellProcess(shellProc *shellexec.ShellP
 				shellProc.Cmd.Write(ic.InputData)
 			}
 			if ic.TermSize != nil {
-				updateTermSize(shellProc, bc.BlockId, *ic.TermSize)
+				ok := bc.TestAndSetResizeActionId(ic.FeActionId)
+				if ok {
+					updateTermSize(shellProc, bc.BlockId, *ic.TermSize)
+				} else {
+					log.Printf("resize action id already processed or out of order: %s %s %v\n", bc.BlockId, ic.FeActionId, *ic.TermSize)
+				}
+			}
+			if ic.PtyProcessedToOffset != 0 {
+				for {
+					curOffset := bc.ProcessedToOffset.Load()
+					if ic.PtyProcessedToOffset <= curOffset {
+						break
+					}
+					if bc.ProcessedToOffset.CompareAndSwap(curOffset, ic.PtyProcessedToOffset) {
+						break
+					}
+				}
 			}
 		}
 	}()
@@ -997,12 +1027,13 @@ func getOrCreateBlockController(tabId string, blockId string, controllerName str
 	bc = blockControllerMap[blockId]
 	if bc == nil {
 		bc = &BlockController{
-			Lock:            &sync.Mutex{},
-			ControllerType:  controllerName,
-			TabId:           tabId,
-			BlockId:         blockId,
-			ShellProcStatus: Status_Init,
-			RunLock:         &atomic.Bool{},
+			Lock:              &sync.Mutex{},
+			ControllerType:    controllerName,
+			TabId:             tabId,
+			BlockId:           blockId,
+			ShellProcStatus:   Status_Init,
+			RunLock:           &atomic.Bool{},
+			ProcessedToOffset: &atomic.Int64{},
 		}
 		blockControllerMap[blockId] = bc
 		createdController = true
