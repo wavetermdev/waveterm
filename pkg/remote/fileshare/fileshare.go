@@ -129,11 +129,12 @@ func Move(ctx context.Context, data wshrpc.CommandFileCopyData) error {
 		return fmt.Errorf("error creating fileshare client, could not parse destination connection %s", data.DestUri)
 	}
 	if srcConn.Host != destConn.Host {
-		srcIsDir, err := destClient.CopyRemote(ctx, srcConn, destConn, srcClient, data.Opts)
+		err := destClient.CopyRemote(ctx, srcConn, destConn, srcClient, data.Opts)
 		if err != nil {
 			return fmt.Errorf("cannot copy %q to %q: %w", data.SrcUri, data.DestUri, err)
 		}
-		return srcClient.Delete(ctx, srcConn, srcIsDir)
+		recursive := data.Opts != nil && data.Opts.Recursive
+		return srcClient.Delete(ctx, srcConn, recursive)
 	} else {
 		return srcClient.MoveInternal(ctx, srcConn, destConn, data.Opts)
 	}
@@ -141,6 +142,11 @@ func Move(ctx context.Context, data wshrpc.CommandFileCopyData) error {
 
 func Copy(ctx context.Context, data wshrpc.CommandFileCopyData) error {
 	log.Printf("Copy: %v", data)
+	opts := data.Opts
+	if opts == nil {
+		opts = &wshrpc.FileCopyOpts{}
+	}
+	opts.Recursive = true
 	srcClient, srcConn := CreateFileShareClient(ctx, data.SrcUri)
 	if srcConn == nil || srcClient == nil {
 		return fmt.Errorf("error creating fileshare client, could not parse source connection %s", data.SrcUri)
@@ -150,11 +156,9 @@ func Copy(ctx context.Context, data wshrpc.CommandFileCopyData) error {
 		return fmt.Errorf("error creating fileshare client, could not parse destination connection %s", data.DestUri)
 	}
 	if srcConn.Host != destConn.Host {
-		_, err := destClient.CopyRemote(ctx, srcConn, destConn, srcClient, data.Opts)
-		return err
+		return destClient.CopyRemote(ctx, srcConn, destConn, srcClient, opts)
 	} else {
-		_, err := srcClient.CopyInternal(ctx, srcConn, destConn, data.Opts)
-		return err
+		return srcClient.CopyInternal(ctx, srcConn, destConn, opts)
 	}
 }
 

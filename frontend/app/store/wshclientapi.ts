@@ -293,7 +293,7 @@ class RpcApiType {
     }
 
     // command "remotefilecopy" [call]
-    RemoteFileCopyCommand(client: WshClient, data: CommandFileCopyData, opts?: RpcOpts): Promise<boolean> {
+    RemoteFileCopyCommand(client: WshClient, data: CommandFileCopyData, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("remotefilecopy", data, opts);
     }
 

@@ -41,9 +41,9 @@ type FileShareClient interface {
 	// Move moves the file within the same connection
 	MoveInternal(ctx context.Context, srcConn, destConn *connparse.Connection, opts *wshrpc.FileCopyOpts) error
 	// Copy copies the file within the same connection. Returns whether the copy source was a directory
-	CopyInternal(ctx context.Context, srcConn, destConn *connparse.Connection, opts *wshrpc.FileCopyOpts) (bool, error)
+	CopyInternal(ctx context.Context, srcConn, destConn *connparse.Connection, opts *wshrpc.FileCopyOpts) error
 	// CopyRemote copies the file between different connections. Returns whether the copy source was a directory
-	CopyRemote(ctx context.Context, srcConn, destConn *connparse.Connection, srcClient FileShareClient, opts *wshrpc.FileCopyOpts) (bool, error)
+	CopyRemote(ctx context.Context, srcConn, destConn *connparse.Connection, srcClient FileShareClient, opts *wshrpc.FileCopyOpts) error
 	// Delete deletes the entry at the given path
 	Delete(ctx context.Context, conn *connparse.Connection, recursive bool) error
 	// Join joins the given parts to the connection path

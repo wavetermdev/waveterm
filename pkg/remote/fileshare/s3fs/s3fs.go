@@ -150,6 +150,7 @@ func (c S3Client) ReadStream(ctx context.Context, conn *connparse.Connection, da
 }
 
 func (c S3Client) ReadTarStream(ctx context.Context, conn *connparse.Connection, opts *wshrpc.FileCopyOpts) <-chan wshrpc.RespOrErrorUnion[iochantypes.Packet] {
+	recursive := opts != nil && opts.Recursive
 	bucket := conn.Host
 	if bucket == "" || bucket == "/" {
 		return wshutil.SendErrCh[iochantypes.Packet](fmt.Errorf("bucket must be specified"))
@@ -186,6 +187,10 @@ func (c S3Client) ReadTarStream(ctx context.Context, conn *connparse.Connection,
 
 	// whether the operation is on a single file
 	singleFile := singleFileResult != nil
+
+	if !singleFile && !recursive {
+		return wshutil.SendErrCh[iochantypes.Packet](fmt.Errorf(fsutil.RecursiveCopyError))
+	}
 
 	// whether to include the directory itself in the tar
 	includeDir := (wholeBucket && conn.Path == "") || (singleFileResult == nil && conn.Path != "" && !strings.HasSuffix(conn.Path, fspath.Separator))
@@ -646,20 +651,21 @@ func (c S3Client) Mkdir(ctx context.Context, conn *connparse.Connection) error {
 }
 
 func (c S3Client) MoveInternal(ctx context.Context, srcConn, destConn *connparse.Connection, opts *wshrpc.FileCopyOpts) error {
-	isDir, err := c.CopyInternal(ctx, srcConn, destConn, opts)
+	err := c.CopyInternal(ctx, srcConn, destConn, opts)
 	if err != nil {
 		return err
 	}
-	return c.Delete(ctx, srcConn, isDir)
+	recursive := opts != nil && opts.Recursive
+	return c.Delete(ctx, srcConn, recursive)
 }
 
-func (c S3Client) CopyRemote(ctx context.Context, srcConn, destConn *connparse.Connection, srcClient fstype.FileShareClient, opts *wshrpc.FileCopyOpts) (bool, error) {
+func (c S3Client) CopyRemote(ctx context.Context, srcConn, destConn *connparse.Connection, srcClient fstype.FileShareClient, opts *wshrpc.FileCopyOpts) error {
 	if srcConn.Scheme == connparse.ConnectionTypeS3 && destConn.Scheme == connparse.ConnectionTypeS3 {
 		return c.CopyInternal(ctx, srcConn, destConn, opts)
 	}
 	destBucket := destConn.Host
 	if destBucket == "" || destBucket == fspath.Separator {
-		return false, fmt.Errorf("destination bucket must be specified")
+		return fmt.Errorf("destination bucket must be specified")
 	}
 	return fsutil.PrefixCopyRemote(ctx, srcConn, destConn, srcClient, c, func(bucket, path string, size int64, reader io.Reader) error {
 		_, err := c.client.PutObject(ctx, &s3.PutObjectInput{
@@ -672,11 +678,11 @@ func (c S3Client) CopyRemote(ctx context.Context, srcConn, destConn *connparse.C
 	}, opts)
 }
 
-func (c S3Client) CopyInternal(ctx context.Context, srcConn, destConn *connparse.Connection, opts *wshrpc.FileCopyOpts) (bool, error) {
+func (c S3Client) CopyInternal(ctx context.Context, srcConn, destConn *connparse.Connection, opts *wshrpc.FileCopyOpts) error {
 	srcBucket := srcConn.Host
 	destBucket := destConn.Host
 	if srcBucket == "" || srcBucket == fspath.Separator || destBucket == "" || destBucket == fspath.Separator {
-		return false, fmt.Errorf("source and destination bucket must be specified")
+		return fmt.Errorf("source and destination bucket must be specified")
 	}
 	return fsutil.PrefixCopyInternal(ctx, srcConn, destConn, c, opts, func(ctx context.Context, bucket, prefix string) ([]string, error) {
 		var entries []string

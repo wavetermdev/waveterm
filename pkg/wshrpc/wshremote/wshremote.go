@@ -19,6 +19,7 @@ import (
 
 	"github.com/wavetermdev/waveterm/pkg/remote/connparse"
 	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/fstype"
+	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/fsutil"
 	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/wshfs"
 	"github.com/wavetermdev/waveterm/pkg/suggestion"
 	"github.com/wavetermdev/waveterm/pkg/util/fileutil"
@@ -740,7 +741,7 @@ func (impl *ServerImpl) RemoteFileMoveCommand(ctx context.Context, data wshrpc.C
 			return fmt.Errorf("cannot stat file %q: %w", srcPathCleaned, err)
 		}
 		if finfo.IsDir() && !recursive {
-			return fmt.Errorf("cannot move directory %q, recursive option not specified", srcUri)
+			return fmt.Errorf(fsutil.RecursiveCopyError)
 		}
 		err = os.Rename(srcPathCleaned, destPathCleaned)
 		if err != nil {

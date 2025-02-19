@@ -21,6 +21,10 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 )
 
+const (
+	RecursiveCopyError = "recursive flag must be set to true for directory operations"
+)
+
 func GetParentPath(conn *connparse.Connection) string {
 	hostAndPath := conn.GetPathWithHost()
 	return GetParentPathString(hostAndPath)
@@ -43,14 +47,18 @@ func GetParentPathString(hostAndPath string) string {
 	return hostAndPath[:lastSlash+1]
 }
 
-func PrefixCopyInternal(ctx context.Context, srcConn, destConn *connparse.Connection, c fstype.FileShareClient, opts *wshrpc.FileCopyOpts, listEntriesPrefix func(ctx context.Context, host string, path string) ([]string, error), copyFunc func(ctx context.Context, host string, path string) error) (bool, error) {
+func PrefixCopyInternal(ctx context.Context, srcConn, destConn *connparse.Connection, c fstype.FileShareClient, opts *wshrpc.FileCopyOpts, listEntriesPrefix func(ctx context.Context, host string, path string) ([]string, error), copyFunc func(ctx context.Context, host string, path string) error) error {
 	log.Printf("PrefixCopyInternal: %v -> %v", srcConn.GetFullURI(), destConn.GetFullURI())
 	srcHasSlash := strings.HasSuffix(srcConn.Path, fspath.Separator)
 	srcPath, destPath, srcInfo, err := DetermineCopyDestPath(ctx, srcConn, destConn, c, c, opts)
 	if err != nil {
-		return false, err
+		return err
 	}
+	recursive := opts != nil && opts.Recursive
 	if srcInfo.IsDir {
+		if !recursive {
+			return fmt.Errorf(RecursiveCopyError)
+		}
 		if !srcHasSlash {
 			srcPath += fspath.Separator
 		}
@@ -58,7 +66,7 @@ func PrefixCopyInternal(ctx context.Context, srcConn, destConn *connparse.Connec
 		log.Printf("Copying directory: %v -> %v", srcPath, destPath)
 		entries, err := listEntriesPrefix(ctx, srcConn.Host, srcPath)
 		if err != nil {
-			return false, fmt.Errorf("error listing source directory: %w", err)
+			return fmt.Errorf("error listing source directory: %w", err)
 		}
 
 		tree := pathtree.NewTree(srcPath, fspath.Separator)
@@ -73,7 +81,7 @@ func PrefixCopyInternal(ctx context.Context, srcConn, destConn *connparse.Connec
 		if !srcHasSlash {
 			prefixToRemove = fspath.Dir(srcPath) + fspath.Separator
 		}
-		return true, tree.Walk(func(path string, numChildren int) error {
+		return tree.Walk(func(path string, numChildren int) error {
 			// since this is a prefix filesystem, we only care about leafs
 			if numChildren > 0 {
 				return nil
@@ -82,21 +90,21 @@ func PrefixCopyInternal(ctx context.Context, srcConn, destConn *connparse.Connec
 			return copyFunc(ctx, path, destFilePath)
 		})
 	} else {
-		return false, copyFunc(ctx, srcPath, destPath)
+		return copyFunc(ctx, srcPath, destPath)
 	}
 }
 
-func PrefixCopyRemote(ctx context.Context, srcConn, destConn *connparse.Connection, srcClient, destClient fstype.FileShareClient, destPutFile func(host string, path string, size int64, reader io.Reader) error, opts *wshrpc.FileCopyOpts) (bool, error) {
+func PrefixCopyRemote(ctx context.Context, srcConn, destConn *connparse.Connection, srcClient, destClient fstype.FileShareClient, destPutFile func(host string, path string, size int64, reader io.Reader) error, opts *wshrpc.FileCopyOpts) error {
 	// prefix to be used if the destination is a directory. The destPath returned in the following call only applies if the destination is not a directory.
 	destPathPrefix, err := CleanPathPrefix(destConn.Path)
 	if err != nil {
-		return false, fmt.Errorf("error cleaning destination path: %w", err)
+		return fmt.Errorf("error cleaning destination path: %w", err)
 	}
 	destPathPrefix += fspath.Separator
 
 	_, destPath, srcInfo, err := DetermineCopyDestPath(ctx, srcConn, destConn, srcClient, destClient, opts)
 	if err != nil {
-		return false, err
+		return err
 	}
 
 	log.Printf("Copying: %v -> %v", srcConn.GetFullURI(), destConn.GetFullURI())
@@ -122,9 +130,9 @@ func PrefixCopyRemote(ctx context.Context, srcConn, destConn *connparse.Connecti
 	})
 	if err != nil {
 		cancel(err)
-		return false, err
+		return err
 	}
-	return srcInfo.IsDir, nil
+	return nil
 }
 
 func DetermineCopyDestPath(ctx context.Context, srcConn, destConn *connparse.Connection, srcClient, destClient fstype.FileShareClient, opts *wshrpc.FileCopyOpts) (srcPath, destPath string, srcInfo *wshrpc.FileInfo, err error) {
