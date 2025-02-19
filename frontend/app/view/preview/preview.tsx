@@ -417,13 +417,13 @@ export class PreviewModel implements ViewModel {
             if (fileName == null) {
                 return null;
             }
-            let file: FileData;
             try {
-                file = await RpcApi.FileReadCommand(TabRpcClient, {
+                const file = await RpcApi.FileReadCommand(TabRpcClient, {
                     info: {
                         path,
                     },
                 });
+                return file;
             } catch (e) {
                 const errorStatus: ErrorMsg = {
                     status: "File Read Failed",
@@ -431,7 +431,6 @@ export class PreviewModel implements ViewModel {
                 };
                 globalStore.set(this.errorMsgAtom, errorStatus);
             }
-            return file;
         });
 
         this.fileContentSaved = atom(null) as PrimitiveAtom<string | null>;
