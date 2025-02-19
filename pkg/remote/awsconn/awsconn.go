@@ -43,7 +43,6 @@ func GetConfig(ctx context.Context, profile string) (*aws.Config, error) {
 			return nil, fmt.Errorf("invalid connection string: %s)", profile)
 		}
 		profile = connMatch[1]
-		log.Printf("GetConfig: profile=%s", profile)
 
 		// TODO: Reimplement generic profile support
 		// profiles, cerrs := wconfig.ReadWaveHomeConfigFile(wconfig.ProfilesFile)

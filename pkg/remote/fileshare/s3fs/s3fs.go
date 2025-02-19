@@ -53,7 +53,6 @@ func (c S3Client) Read(ctx context.Context, conn *connparse.Connection, data wsh
 func (c S3Client) ReadStream(ctx context.Context, conn *connparse.Connection, data wshrpc.FileData) <-chan wshrpc.RespOrErrorUnion[wshrpc.FileData] {
 	bucket := conn.Host
 	objectKey := conn.Path
-	log.Printf("s3fs.ReadStream: %v", conn.GetFullURI())
 	rtn := make(chan wshrpc.RespOrErrorUnion[wshrpc.FileData], 16)
 	go func() {
 		defer close(rtn)
@@ -89,7 +88,6 @@ func (c S3Client) ReadStream(ctx context.Context, conn *connparse.Connection, da
 					Range:  aws.String(fmt.Sprintf("bytes=%d-%d", data.At.Offset, data.At.Offset+int64(data.At.Size)-1)),
 				})
 			} else {
-				log.Printf("reading %v", conn.GetFullURI())
 				result, err = c.client.GetObject(ctx, &s3.GetObjectInput{
 					Bucket: aws.String(bucket),
 					Key:    aws.String(objectKey),
@@ -117,7 +115,6 @@ func (c S3Client) ReadStream(ctx context.Context, conn *connparse.Connection, da
 				Dir:     fsutil.GetParentPath(conn),
 			}
 			fileutil.AddMimeTypeToFileInfo(finfo.Path, finfo)
-			log.Printf("file info: %v", finfo)
 			rtn <- wshrpc.RespOrErrorUnion[wshrpc.FileData]{Response: wshrpc.FileData{Info: finfo}}
 			if size == 0 {
 				log.Printf("no data to read")
@@ -126,10 +123,8 @@ func (c S3Client) ReadStream(ctx context.Context, conn *connparse.Connection, da
 			defer utilfn.GracefulClose(result.Body, "s3fs", conn.GetFullURI())
 			bytesRemaining := size
 			for {
-				log.Printf("bytes remaining: %d", bytesRemaining)
 				select {
 				case <-ctx.Done():
-					log.Printf("context done")
 					rtn <- wshutil.RespErr[wshrpc.FileData](context.Cause(ctx))
 					return
 				default:
@@ -139,7 +134,6 @@ func (c S3Client) ReadStream(ctx context.Context, conn *connparse.Connection, da
 						rtn <- wshutil.RespErr[wshrpc.FileData](err)
 						return
 					}
-					log.Printf("read %d bytes", n)
 					if n == 0 {
 						break
 					}
@@ -488,7 +482,6 @@ func (c S3Client) ListEntriesStream(ctx context.Context, conn *connparse.Connect
 }
 
 func (c S3Client) Stat(ctx context.Context, conn *connparse.Connection) (*wshrpc.FileInfo, error) {
-	log.Printf("Stat: %v", conn.GetFullURI())
 	bucketName := conn.Host
 	objectKey := conn.Path
 	if bucketName == "" || bucketName == fspath.Separator {
@@ -604,7 +597,6 @@ func (c S3Client) Stat(ctx context.Context, conn *connparse.Connection) (*wshrpc
 }
 
 func (c S3Client) PutFile(ctx context.Context, conn *connparse.Connection, data wshrpc.FileData) error {
-	log.Printf("PutFile: %v", conn.GetFullURI())
 	if data.At != nil {
 		log.Printf("PutFile: offset %d and size %d", data.At.Offset, data.At.Size)
 		return errors.Join(errors.ErrUnsupported, fmt.Errorf("file data offset and size not supported"))

@@ -126,13 +126,11 @@ func (impl *ServerImpl) remoteStreamFileDir(ctx context.Context, path string, by
 		innerFileInfo := statToFileInfo(filepath.Join(path, innerFileInfoInt.Name()), innerFileInfoInt, false)
 		fileInfoArr = append(fileInfoArr, innerFileInfo)
 		if len(fileInfoArr) >= wshrpc.DirChunkSize {
-			logPrintfDev("sending %d entries\n", len(fileInfoArr))
 			dataCallback(fileInfoArr, nil, byteRange)
 			fileInfoArr = nil
 		}
 	}
 	if len(fileInfoArr) > 0 {
-		logPrintfDev("sending %d entries\n", len(fileInfoArr))
 		dataCallback(fileInfoArr, nil, byteRange)
 	}
 	return nil
@@ -701,7 +699,6 @@ func (impl *ServerImpl) RemoteFileTouchCommand(ctx context.Context, path string)
 }
 
 func (impl *ServerImpl) RemoteFileMoveCommand(ctx context.Context, data wshrpc.CommandFileCopyData) error {
-	logPrintfDev("RemoteFileCopyCommand: src=%s, dest=%s\n", data.SrcUri, data.DestUri)
 	opts := data.Opts
 	destUri := data.DestUri
 	srcUri := data.SrcUri
@@ -827,7 +824,6 @@ func (*ServerImpl) RemoteWriteFileCommand(ctx context.Context, data wshrpc.FileD
 	if err != nil {
 		return fmt.Errorf("cannot write to file %q: %w", path, err)
 	}
-	logPrintfDev("wrote %d bytes to file %q at offset %d\n", n, path, atOffset)
 	return nil
 }
 
@@ -871,10 +867,4 @@ func (*ServerImpl) FetchSuggestionsCommand(ctx context.Context, data wshrpc.Fetc
 func (*ServerImpl) DisposeSuggestionsCommand(ctx context.Context, widgetId string) error {
 	suggestion.DisposeSuggestions(ctx, widgetId)
 	return nil
-}
-
-func logPrintfDev(format string, args ...interface{}) {
-	if wavebase.IsDevMode() {
-		log.Printf(format, args...)
-	}
 }

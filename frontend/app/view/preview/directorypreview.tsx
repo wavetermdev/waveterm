@@ -664,7 +664,7 @@ const TableRow = React.forwardRef(function ({
     idx,
     handleFileContextMenu,
 }: TableRowProps) {
-    const dirPath = useAtomValue(model.normFilePath);
+    const dirPath = useAtomValue(model.statFilePath);
     const connection = useAtomValue(model.connection);
 
     const dragItem: DraggedFile = {

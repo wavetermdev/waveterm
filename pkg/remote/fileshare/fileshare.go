@@ -56,6 +56,7 @@ func Read(ctx context.Context, data wshrpc.FileData) (*wshrpc.FileData, error) {
 }
 
 func ReadStream(ctx context.Context, data wshrpc.FileData) <-chan wshrpc.RespOrErrorUnion[wshrpc.FileData] {
+	log.Printf("ReadStream: %v", data.Info.Path)
 	client, conn := CreateFileShareClient(ctx, data.Info.Path)
 	if conn == nil || client == nil {
 		return wshutil.SendErrCh[wshrpc.FileData](fmt.Errorf(ErrorParsingConnection, data.Info.Path))
@@ -64,6 +65,7 @@ func ReadStream(ctx context.Context, data wshrpc.FileData) <-chan wshrpc.RespOrE
 }
 
 func ReadTarStream(ctx context.Context, data wshrpc.CommandRemoteStreamTarData) <-chan wshrpc.RespOrErrorUnion[iochantypes.Packet] {
+	log.Printf("ReadTarStream: %v", data.Path)
 	client, conn := CreateFileShareClient(ctx, data.Path)
 	if conn == nil || client == nil {
 		return wshutil.SendErrCh[iochantypes.Packet](fmt.Errorf(ErrorParsingConnection, data.Path))
@@ -72,6 +74,7 @@ func ReadTarStream(ctx context.Context, data wshrpc.CommandRemoteStreamTarData) 
 }
 
 func ListEntries(ctx context.Context, path string, opts *wshrpc.FileListOpts) ([]*wshrpc.FileInfo, error) {
+	log.Printf("ListEntries: %v", path)
 	client, conn := CreateFileShareClient(ctx, path)
 	if conn == nil || client == nil {
 		return nil, fmt.Errorf(ErrorParsingConnection, path)
@@ -80,6 +83,7 @@ func ListEntries(ctx context.Context, path string, opts *wshrpc.FileListOpts) ([
 }
 
 func ListEntriesStream(ctx context.Context, path string, opts *wshrpc.FileListOpts) <-chan wshrpc.RespOrErrorUnion[wshrpc.CommandRemoteListEntriesRtnData] {
+	log.Printf("ListEntriesStream: %v", path)
 	client, conn := CreateFileShareClient(ctx, path)
 	if conn == nil || client == nil {
 		return wshutil.SendErrCh[wshrpc.CommandRemoteListEntriesRtnData](fmt.Errorf(ErrorParsingConnection, path))
@@ -88,6 +92,7 @@ func ListEntriesStream(ctx context.Context, path string, opts *wshrpc.FileListOp
 }
 
 func Stat(ctx context.Context, path string) (*wshrpc.FileInfo, error) {
+	log.Printf("Stat: %v", path)
 	client, conn := CreateFileShareClient(ctx, path)
 	if conn == nil || client == nil {
 		return nil, fmt.Errorf(ErrorParsingConnection, path)
@@ -96,6 +101,7 @@ func Stat(ctx context.Context, path string) (*wshrpc.FileInfo, error) {
 }
 
 func PutFile(ctx context.Context, data wshrpc.FileData) error {
+	log.Printf("PutFile: %v", data.Info.Path)
 	client, conn := CreateFileShareClient(ctx, data.Info.Path)
 	if conn == nil || client == nil {
 		return fmt.Errorf(ErrorParsingConnection, data.Info.Path)
@@ -104,6 +110,7 @@ func PutFile(ctx context.Context, data wshrpc.FileData) error {
 }
 
 func Mkdir(ctx context.Context, path string) error {
+	log.Printf("Mkdir: %v", path)
 	client, conn := CreateFileShareClient(ctx, path)
 	if conn == nil || client == nil {
 		return fmt.Errorf(ErrorParsingConnection, path)
@@ -112,6 +119,7 @@ func Mkdir(ctx context.Context, path string) error {
 }
 
 func Move(ctx context.Context, data wshrpc.CommandFileCopyData) error {
+	log.Printf("Move: %v", data)
 	srcClient, srcConn := CreateFileShareClient(ctx, data.SrcUri)
 	if srcConn == nil || srcClient == nil {
 		return fmt.Errorf("error creating fileshare client, could not parse source connection %s", data.SrcUri)
@@ -140,6 +148,7 @@ func Move(ctx context.Context, data wshrpc.CommandFileCopyData) error {
 }
 
 func Copy(ctx context.Context, data wshrpc.CommandFileCopyData) error {
+	log.Printf("Copy: %v", data)
 	srcClient, srcConn := CreateFileShareClient(ctx, data.SrcUri)
 	if srcConn == nil || srcClient == nil {
 		return fmt.Errorf("error creating fileshare client, could not parse source connection %s", data.SrcUri)
@@ -156,6 +165,7 @@ func Copy(ctx context.Context, data wshrpc.CommandFileCopyData) error {
 }
 
 func Delete(ctx context.Context, data wshrpc.CommandDeleteFileData) error {
+	log.Printf("Delete: %v", data)
 	client, conn := CreateFileShareClient(ctx, data.Path)
 	if conn == nil || client == nil {
 		return fmt.Errorf(ErrorParsingConnection, data.Path)
@@ -164,6 +174,7 @@ func Delete(ctx context.Context, data wshrpc.CommandDeleteFileData) error {
 }
 
 func Join(ctx context.Context, path string, parts ...string) (*wshrpc.FileInfo, error) {
+	log.Printf("Join: %v", path)
 	client, conn := CreateFileShareClient(ctx, path)
 	if conn == nil || client == nil {
 		return nil, fmt.Errorf(ErrorParsingConnection, path)
@@ -172,6 +183,7 @@ func Join(ctx context.Context, path string, parts ...string) (*wshrpc.FileInfo, 
 }
 
 func Append(ctx context.Context, data wshrpc.FileData) error {
+	log.Printf("Append: %v", data.Info.Path)
 	client, conn := CreateFileShareClient(ctx, data.Info.Path)
 	if conn == nil || client == nil {
 		return fmt.Errorf(ErrorParsingConnection, data.Info.Path)
@@ -180,6 +192,7 @@ func Append(ctx context.Context, data wshrpc.FileData) error {
 }
 
 func GetCapability(ctx context.Context, path string) (wshrpc.FileShareCapability, error) {
+	log.Printf("GetCapability: %v", path)
 	client, conn := CreateFileShareClient(ctx, path)
 	if conn == nil || client == nil {
 		return wshrpc.FileShareCapability{}, fmt.Errorf(ErrorParsingConnection, path)
