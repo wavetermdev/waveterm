@@ -1123,7 +1123,7 @@ function PreviewView({
         return true;
     };
     const handleTab = (s: SuggestionType, query: string): string => {
-        if (s["mime:type"] == "directory") {
+        if (s["file:mimetype"] == "directory") {
             return s["file:name"] + "/";
         } else {
             return s["file:name"];
