@@ -48,7 +48,7 @@ type FileCopyStatus = {
 
 declare module "@tanstack/react-table" {
     interface TableMeta<TData extends RowData> {
-        updateName: (path: string) => void;
+        updateName: (path: string, isDir: boolean) => void;
         newFile: () => void;
         newDirectory: () => void;
     }
@@ -291,7 +291,7 @@ function DirectoryTable({
 
     const setEntryManagerProps = useSetAtom(entryManagerOverlayPropsAtom);
 
-    const updateName = useCallback((path: string) => {
+    const updateName = useCallback((path: string, isDir: boolean) => {
         const fileName = path.split("/").at(-1);
         setEntryManagerProps({
             entryManagerType: EntryManagerType.EditName,
@@ -304,8 +304,12 @@ function DirectoryTable({
                     console.log(`replacing ${fileName} with ${newName}: ${path}`);
                     fireAndForget(async () => {
                         try {
+                            let srcuri = await model.formatRemoteUri(path, globalStore.get);
+                            if (isDir) {
+                                srcuri += "/";
+                            }
                             await RpcApi.FileMoveCommand(TabRpcClient, {
-                                srcuri: await model.formatRemoteUri(path, globalStore.get),
+                                srcuri,
                                 desturi: await model.formatRemoteUri(newPath, globalStore.get),
                                 opts: {
                                     recursive: true,
@@ -547,7 +551,7 @@ function TableBody({
                 {
                     label: "Rename",
                     click: () => {
-                        table.options.meta.updateName(finfo.path);
+                        table.options.meta.updateName(finfo.path, finfo.isdir);
                     },
                 },
                 {
@@ -854,7 +858,7 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
     });
 
     const handleDropCopy = useCallback(
-        async (data: CommandFileCopyData, isDir) => {
+        async (data: CommandFileCopyData, isDir: boolean) => {
             try {
                 await RpcApi.FileCopyCommand(TabRpcClient, data, { timeout: data.opts.timeout });
                 setCopyStatus(null);

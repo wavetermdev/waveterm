@@ -207,6 +207,7 @@ func (c S3Client) ReadTarStream(ctx context.Context, conn *connparse.Connection,
 			tarPathPrefix = bucket
 		}
 	} else if singleFile || includeDir {
+		log.Printf("singleFile or includeDir; tarPathPrefix: %v", tarPathPrefix)
 		// if we're including the directory itself, we need to remove the last part of the path
 		tarPathPrefix = fsutil.GetParentPathString(tarPathPrefix)
 	}
@@ -295,6 +296,7 @@ func (c S3Client) ReadTarStream(ctx context.Context, conn *connparse.Connection,
 
 		// Walk the tree and write the tar entries
 		if err := tree.Walk(func(path string, numChildren int) error {
+			log.Printf("writing %v", path)
 			mapEntry, isFile := objMap[path]
 
 			// default vals assume entry is dir, since mapEntry might not exist
@@ -738,6 +740,9 @@ func (c S3Client) Delete(ctx context.Context, conn *connparse.Connection, recurs
 				Objects: objects,
 			},
 		})
+		if err != nil {
+			log.Printf("Error deleting objects: %v", err)
+		}
 		return err
 	}
 	log.Printf("Deleting object %v:%v", bucket, objectKey)

@@ -28,7 +28,7 @@ func GetParentPath(conn *connparse.Connection) string {
 
 func GetParentPathString(hostAndPath string) string {
 	if hostAndPath == "" || hostAndPath == fspath.Separator {
-		return fspath.Separator
+		return ""
 	}
 
 	// Remove trailing slash if present
@@ -38,24 +38,9 @@ func GetParentPathString(hostAndPath string) string {
 
 	lastSlash := strings.LastIndex(hostAndPath, fspath.Separator)
 	if lastSlash <= 0 {
-		return fspath.Separator
-	}
-	return hostAndPath[:lastSlash+1]
-}
-
-const minURILength = 10 // Minimum length for a valid URI (e.g., "s3://bucket")
-
-func GetPathPrefix(conn *connparse.Connection) string {
-	fullUri := conn.GetFullURI()
-	if fullUri == "" {
 		return ""
 	}
-	pathPrefix := fullUri
-	lastSlash := strings.LastIndex(fullUri, fspath.Separator)
-	if lastSlash > minURILength && lastSlash < len(fullUri)-1 {
-		pathPrefix = fullUri[:lastSlash+1]
-	}
-	return pathPrefix
+	return hostAndPath[:lastSlash+1]
 }
 
 func PrefixCopyInternal(ctx context.Context, srcConn, destConn *connparse.Connection, c fstype.FileShareClient, opts *wshrpc.FileCopyOpts, listEntriesPrefix func(ctx context.Context, host string, path string) ([]string, error), copyFunc func(ctx context.Context, host string, path string) error) (bool, error) {
@@ -102,12 +87,18 @@ func PrefixCopyInternal(ctx context.Context, srcConn, destConn *connparse.Connec
 }
 
 func PrefixCopyRemote(ctx context.Context, srcConn, destConn *connparse.Connection, srcClient, destClient fstype.FileShareClient, destPutFile func(host string, path string, size int64, reader io.Reader) error, opts *wshrpc.FileCopyOpts) (bool, error) {
+	// prefix to be used if the destination is a directory. The destPath returned in the following call only applies if the destination is not a directory.
+	destPathPrefix, err := CleanPathPrefix(destConn.Path)
+	if err != nil {
+		return false, fmt.Errorf("error cleaning destination path: %w", err)
+	}
+	destPathPrefix += fspath.Separator
+
 	_, destPath, srcInfo, err := DetermineCopyDestPath(ctx, srcConn, destConn, srcClient, destClient, opts)
 	if err != nil {
-		if !errors.Is(err, fs.ErrNotExist) {
-			return false, err
-		}
+		return false, err
 	}
+
 	log.Printf("Copying: %v -> %v", srcConn.GetFullURI(), destConn.GetFullURI())
 	readCtx, cancel := context.WithCancelCause(ctx)
 	defer cancel(nil)
@@ -119,7 +110,7 @@ func PrefixCopyRemote(ctx context.Context, srcConn, destConn *connparse.Connecti
 		if singleFile && srcInfo.IsDir {
 			return fmt.Errorf("protocol error: source is a directory, but only a single file is being copied")
 		}
-		fileName, err := CleanPathPrefix(fspath.Join(destPath, next.Name))
+		fileName, err := CleanPathPrefix(fspath.Join(destPathPrefix, next.Name))
 		if singleFile {
 			fileName = destPath
 		}
@@ -144,10 +135,7 @@ func DetermineCopyDestPath(ctx context.Context, srcConn, destConn *connparse.Con
 	}
 
 	srcHasSlash := strings.HasSuffix(srcConn.Path, fspath.Separator)
-	srcPath, err = CleanPathPrefix(srcConn.Path)
-	if err != nil {
-		return "", "", nil, fmt.Errorf("error cleaning source path: %w", err)
-	}
+	srcPath = srcConn.Path
 	destHasSlash := strings.HasSuffix(destConn.Path, fspath.Separator)
 	destPath, err = CleanPathPrefix(destConn.Path)
 	if err != nil {
@@ -179,7 +167,7 @@ func DetermineCopyDestPath(ctx context.Context, srcConn, destConn *connparse.Con
 	}
 	if destExists {
 		if overwrite {
-			err = destClient.Delete(ctx, destConn, true)
+			err = destClient.Delete(ctx, destConn, destInfo.IsDir)
 			if err != nil {
 				return "", "", nil, fmt.Errorf("error deleting conflicting destination file: %w", err)
 			}
@@ -197,7 +185,7 @@ func DetermineCopyDestPath(ctx context.Context, srcConn, destConn *connparse.Con
 // CleanPathPrefix corrects paths for prefix filesystems (i.e. ones that don't have directories)
 func CleanPathPrefix(path string) (string, error) {
 	if path == "" {
-		return "", fmt.Errorf("path is empty")
+		return "", nil
 	}
 	if strings.HasPrefix(path, fspath.Separator) {
 		path = path[1:]
