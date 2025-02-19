@@ -707,6 +707,7 @@ func (impl *ServerImpl) RemoteFileMoveCommand(ctx context.Context, data wshrpc.C
 	destUri := data.DestUri
 	srcUri := data.SrcUri
 	overwrite := opts != nil && opts.Overwrite
+	recursive := opts != nil && opts.Recursive
 
 	destConn, err := connparse.ParseURIAndReplaceCurrentHost(ctx, destUri)
 	if err != nil {
@@ -734,6 +735,13 @@ func (impl *ServerImpl) RemoteFileMoveCommand(ctx context.Context, data wshrpc.C
 	}
 	if srcConn.Host == destConn.Host {
 		srcPathCleaned := filepath.Clean(wavebase.ExpandHomeDirSafe(srcConn.Path))
+		finfo, err := os.Stat(srcPathCleaned)
+		if err != nil {
+			return fmt.Errorf("cannot stat file %q: %w", srcPathCleaned, err)
+		}
+		if finfo.IsDir() && !recursive {
+			return fmt.Errorf("cannot move directory %q, recursive option not specified", srcUri)
+		}
 		err = os.Rename(srcPathCleaned, destPathCleaned)
 		if err != nil {
 			return fmt.Errorf("cannot move file %q to %q: %w", srcPathCleaned, destPathCleaned, err)

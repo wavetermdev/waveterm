@@ -418,6 +418,10 @@ func fileCpRun(cmd *cobra.Command, args []string) error {
 
 func fileMvRun(cmd *cobra.Command, args []string) error {
 	src, dst := args[0], args[1]
+	recursive, err := cmd.Flags().GetBool("recursive")
+	if err != nil {
+		return err
+	}
 	force, err := cmd.Flags().GetBool("force")
 	if err != nil {
 		return err
@@ -431,9 +435,9 @@ func fileMvRun(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("unable to parse dest path: %w", err)
 	}
-	log.Printf("Moving %s to %s; force: %v", srcPath, destPath, force)
+	log.Printf("Moving %s to %s; recursive: %v, force: %v", srcPath, destPath, recursive, force)
 	rpcOpts := &wshrpc.RpcOpts{Timeout: TimeoutYear}
-	err = wshclient.FileMoveCommand(RpcClient, wshrpc.CommandFileCopyData{SrcUri: srcPath, DestUri: destPath, Opts: &wshrpc.FileCopyOpts{Overwrite: force, Timeout: TimeoutYear}}, rpcOpts)
+	err = wshclient.FileMoveCommand(RpcClient, wshrpc.CommandFileCopyData{SrcUri: srcPath, DestUri: destPath, Opts: &wshrpc.FileCopyOpts{Overwrite: force, Timeout: TimeoutYear, Recursive: recursive}}, rpcOpts)
 	if err != nil {
 		return fmt.Errorf("moving file: %w", err)
 	}

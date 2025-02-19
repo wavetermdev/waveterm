@@ -387,6 +387,7 @@ declare global {
     // wshrpc.FileCopyOpts
     type FileCopyOpts = {
         overwrite?: boolean;
+        recursive?: boolean;
         merge?: boolean;
         timeout?: number;
     };
