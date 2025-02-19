@@ -14,8 +14,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/wavetermdev/waveterm/pkg/remote/fileshare"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
+	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
 	"golang.org/x/sync/singleflight"
 )
 
@@ -155,7 +155,7 @@ func listS3Directory(ctx context.Context, widgetId string, conn string, dir stri
 	// Ensure only one operation populates the cache for this key.
 	value, err, _ := group.Do(key, func() (interface{}, error) {
 		path := conn + ":s3://" + dir
-		entries, err := fileshare.ListEntries(ctx, path, &wshrpc.FileListOpts{Limit: maxFiles})
+		entries, err := wshclient.FileListCommand(wshclient.GetBareRpcClient(), wshrpc.FileListData{Path: path, Opts: &wshrpc.FileListOpts{Limit: maxFiles}}, nil)
 		if err != nil {
 			return nil, err
 		}
