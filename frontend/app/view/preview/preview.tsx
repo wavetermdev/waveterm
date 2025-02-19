@@ -1194,14 +1194,14 @@ const ErrorOverlay = memo(({ errorMsg, resetOverlay }: { errorMsg: ErrorMsg; res
         <div className="absolute top-[0] left-1.5 right-1.5 z-[var(--zindex-block-mask-inner)] overflow-hidden bg-[var(--conn-status-overlay-bg-color)] backdrop-blur-[50px] rounded-md shadow-lg">
             <div className="flex flex-row justify-between p-2.5 pl-3 font-[var(--base-font)] text-[var(--secondary-text-color)]">
                 <div
-                    className={clsx("flex flex-row items-center gap-3 grow min-w-0", {
+                    className={clsx("flex flex-row items-center gap-3 grow min-w-0 shrink", {
                         "items-start": true,
                     })}
                 >
                     <i className={iconClass}></i>
 
-                    <div className="flex flex-col items-start gap-1 grow w-full">
-                        <div className="max-w-full text-xs font-semibold leading-4 tracking-[0.11px] text-white">
+                    <div className="flex flex-col items-start gap-1 grow w-full shrink min-w-0">
+                        <div className="max-w-full text-xs font-semibold leading-4 tracking-[0.11px] text-white overflow-hidden">
                             {errorMsg.status}
                         </div>
 
