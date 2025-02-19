@@ -228,7 +228,7 @@ export class TermWrap {
         this.connectElem.addEventListener("paste", pasteEventHandler, true);
         this.toDispose.push({
             dispose: () => {
-                this.connectElem.removeEventListener("paste", pasteEventHandler);
+                this.connectElem.removeEventListener("paste", pasteEventHandler, true);
             },
         });
     }
