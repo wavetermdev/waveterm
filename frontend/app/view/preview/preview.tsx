@@ -388,13 +388,20 @@ export class PreviewModel implements ViewModel {
             if (fileName == null) {
                 return null;
             }
-            const statFile = await RpcApi.FileInfoCommand(TabRpcClient, {
-                info: {
-                    path,
-                },
-            });
-            console.log("stat file", statFile);
-            return statFile;
+            try {
+                const statFile = await RpcApi.FileInfoCommand(TabRpcClient, {
+                    info: {
+                        path,
+                    },
+                });
+                return statFile;
+            } catch (e) {
+                const errorStatus: ErrorMsg = {
+                    status: "File Read Failed",
+                    text: `${e}`,
+                };
+                globalStore.set(this.errorMsgAtom, errorStatus);
+            }
         });
         this.fileMimeType = atom<Promise<string>>(async (get) => {
             const fileInfo = await get(this.statFile);
