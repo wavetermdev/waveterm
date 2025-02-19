@@ -32,7 +32,7 @@ We have a set of recommended Visual Studio Code extensions to enforce our style 
 
 - For minor changes, you are welcome to [open a pull request](https://github.com/wavetermdev/waveterm/pulls).
 - For major changes, please [create an issue](https://github.com/wavetermdev/waveterm/issues/new) first.
-- If you are looking for a place to start take a look at [open issues](https://github.com/wavetermdev/waveterm/issues).
+- If you are looking for a place to start take a look at [Good First Issues](https://github.com/wavetermdev/waveterm/issues?q=is:issue%20state:open%20label:%22good%20first%20issue%22).
 - Join the [Discord channel](https://discord.gg/XfvZ334gwU) to collaborate with the community on your contribution.
 
 ### Development Environment
