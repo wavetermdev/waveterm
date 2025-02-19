@@ -6,7 +6,7 @@ import { CopyButton } from "@/app/element/copybutton";
 import { Input } from "@/app/element/input";
 import { useDimensionsWithCallbackRef } from "@/app/hook/useDimensions";
 import { ContextMenuModel } from "@/app/store/contextmenu";
-import { atoms, createBlock, getApi, globalStore } from "@/app/store/global";
+import { atoms, getApi, globalStore } from "@/app/store/global";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { type PreviewModel } from "@/app/view/preview/preview";
@@ -568,33 +568,6 @@ function TableBody({
                 {
                     label: "Copy Full File Name (Shell Quoted)",
                     click: () => fireAndForget(() => navigator.clipboard.writeText(shellQuote([finfo.path]))),
-                },
-                {
-                    type: "separator",
-                },
-                {
-                    label: "Download File",
-                    click: () => {
-                        const remoteUri = formatRemoteUri(finfo.path, conn);
-                        getApi().downloadFile(remoteUri);
-                    },
-                },
-                {
-                    type: "separator",
-                },
-                {
-                    label: "Open Preview in New Block",
-                    click: () =>
-                        fireAndForget(async () => {
-                            const blockDef: BlockDef = {
-                                meta: {
-                                    view: "preview",
-                                    file: finfo.path,
-                                    connection: conn,
-                                },
-                            };
-                            await createBlock(blockDef);
-                        }),
                 },
             ];
             addOpenMenuItems(menu, conn, finfo);

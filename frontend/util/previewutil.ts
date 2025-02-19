@@ -7,6 +7,9 @@ export function addOpenMenuItems(menu: ContextMenuItem[], conn: string, finfo: F
     if (!finfo) {
         return menu;
     }
+    menu.push({
+        type: "separator",
+    });
     if (!conn) {
         // TODO:  resolve correct host path if connection is WSL
         // if the entry is a directory, reveal it in the file manager, if the entry is a file, reveal its parent directory
@@ -24,6 +27,33 @@ export function addOpenMenuItems(menu: ContextMenuItem[], conn: string, finfo: F
                 },
             });
         }
+    } else {
+        menu.push({
+            label: "Download File",
+            click: () => {
+                const remoteUri = formatRemoteUri(finfo.path, conn);
+                getApi().downloadFile(remoteUri);
+            },
+        });
+    }
+    menu.push({
+        type: "separator",
+    });
+    if (!finfo.isdir) {
+        menu.push({
+            label: "Open Preview in New Block",
+            click: () =>
+                fireAndForget(async () => {
+                    const blockDef: BlockDef = {
+                        meta: {
+                            view: "preview",
+                            file: finfo.path,
+                            connection: conn,
+                        },
+                    };
+                    await createBlock(blockDef);
+                }),
+        });
     }
     menu.push({
         label: "Open Terminal in New Block",
@@ -32,7 +62,7 @@ export function addOpenMenuItems(menu: ContextMenuItem[], conn: string, finfo: F
                 meta: {
                     controller: "shell",
                     view: "term",
-                    "cmd:cwd": formatRemoteUri(finfo.path, conn),
+                    "cmd:cwd": formatRemoteUri(finfo.isdir ? finfo.path : finfo.dir, conn),
                     connection: conn,
                 },
             };
