@@ -19,6 +19,7 @@ export function addOpenMenuItems(menu: ContextMenuItem[], conn: string, finfo: F
                 getApi().openNativePath(finfo.isdir ? finfo.path : finfo.dir);
             },
         });
+        // if the entry is a file, open it in the default application
         if (!finfo.isdir) {
             menu.push({
                 label: makeNativeLabel(false),
@@ -64,7 +65,7 @@ export function addOpenMenuItems(menu: ContextMenuItem[], conn: string, finfo: F
                     meta: {
                         controller: "shell",
                         view: "term",
-                        "cmd:cwd": formatRemoteUri(finfo.isdir ? finfo.path : finfo.dir, conn),
+                        "cmd:cwd": finfo.isdir ? finfo.path : finfo.dir,
                         connection: conn,
                     },
                 };
