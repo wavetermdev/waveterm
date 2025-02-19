@@ -58,53 +58,12 @@ func GetPathPrefix(conn *connparse.Connection) string {
 	return pathPrefix
 }
 
-func PrefixCopyInternal(ctx context.Context, srcConn, destConn *connparse.Connection, c fstype.FileShareClient, opts *wshrpc.FileCopyOpts, listEntriesPrefix func(ctx context.Context, host string, path string) ([]string, error), copyFunc func(ctx context.Context, host string, path string) error) error {
+func PrefixCopyInternal(ctx context.Context, srcConn, destConn *connparse.Connection, c fstype.FileShareClient, opts *wshrpc.FileCopyOpts, listEntriesPrefix func(ctx context.Context, host string, path string) ([]string, error), copyFunc func(ctx context.Context, host string, path string) error) (bool, error) {
 	log.Printf("PrefixCopyInternal: %v -> %v", srcConn.GetFullURI(), destConn.GetFullURI())
-	merge := opts != nil && opts.Merge
-	overwrite := opts != nil && opts.Overwrite
-	if overwrite && merge {
-		return fmt.Errorf("cannot specify both overwrite and merge")
-	}
 	srcHasSlash := strings.HasSuffix(srcConn.Path, fspath.Separator)
-	srcPath, err := CleanPathPrefix(srcConn.Path)
+	srcPath, destPath, srcInfo, err := DetermineCopyDestPath(ctx, srcConn, destConn, c, c, opts)
 	if err != nil {
-		return fmt.Errorf("error cleaning source path: %w", err)
-	}
-	destHasSlash := strings.HasSuffix(destConn.Path, fspath.Separator)
-	destPath, err := CleanPathPrefix(destConn.Path)
-	if err != nil {
-		return fmt.Errorf("error cleaning destination path: %w", err)
-	}
-	if !srcHasSlash {
-		if !destHasSlash {
-			destPath += fspath.Separator
-		}
-		destPath += fspath.Base(srcPath)
-	}
-	destConn.Path = destPath
-	destInfo, err := c.Stat(ctx, destConn)
-	destExists := err == nil && !destInfo.NotFound
-	if err != nil && !errors.Is(err, fs.ErrNotExist) {
-		return fmt.Errorf("error getting destination file info: %w", err)
-	}
-
-	srcInfo, err := c.Stat(ctx, srcConn)
-	if err != nil {
-		return fmt.Errorf("error getting source file info: %w", err)
-	}
-	if destExists {
-		if overwrite {
-			err = c.Delete(ctx, destConn, true)
-			if err != nil {
-				return fmt.Errorf("error deleting conflicting destination file: %w", err)
-			}
-		} else if destInfo.IsDir && srcInfo.IsDir {
-			if !merge {
-				return fmt.Errorf("destination and source are both directories, neither merge nor overwrite specified: %v", destConn.GetFullURI())
-			}
-		} else {
-			return fmt.Errorf("destination already exists, overwrite not specified: %v", destConn.GetFullURI())
-		}
+		return false, err
 	}
 	if srcInfo.IsDir {
 		if !srcHasSlash {
@@ -114,7 +73,7 @@ func PrefixCopyInternal(ctx context.Context, srcConn, destConn *connparse.Connec
 		log.Printf("Copying directory: %v -> %v", srcPath, destPath)
 		entries, err := listEntriesPrefix(ctx, srcConn.Host, srcPath)
 		if err != nil {
-			return fmt.Errorf("error listing source directory: %w", err)
+			return false, fmt.Errorf("error listing source directory: %w", err)
 		}
 
 		tree := pathtree.NewTree(srcPath, fspath.Separator)
@@ -129,7 +88,7 @@ func PrefixCopyInternal(ctx context.Context, srcConn, destConn *connparse.Connec
 		if !srcHasSlash {
 			prefixToRemove = fspath.Dir(srcPath) + fspath.Separator
 		}
-		return tree.Walk(func(path string, numChildren int) error {
+		return true, tree.Walk(func(path string, numChildren int) error {
 			// since this is a prefix filesystem, we only care about leafs
 			if numChildren > 0 {
 				return nil
@@ -138,56 +97,15 @@ func PrefixCopyInternal(ctx context.Context, srcConn, destConn *connparse.Connec
 			return copyFunc(ctx, path, destFilePath)
 		})
 	} else {
-		return copyFunc(ctx, srcPath, destPath)
+		return false, copyFunc(ctx, srcPath, destPath)
 	}
 }
 
-func PrefixCopyRemote(ctx context.Context, srcConn, destConn *connparse.Connection, srcClient, destClient fstype.FileShareClient, destPutFile func(host string, path string, size int64, reader io.Reader) error, opts *wshrpc.FileCopyOpts) error {
-	merge := opts != nil && opts.Merge
-	overwrite := opts != nil && opts.Overwrite
-	if overwrite && merge {
-		return fmt.Errorf("cannot specify both overwrite and merge")
-	}
-	srcHasSlash := strings.HasSuffix(srcConn.Path, fspath.Separator)
-	destHasSlash := strings.HasSuffix(destConn.Path, fspath.Separator)
-	destPath, err := CleanPathPrefix(destConn.Path)
-	if err != nil {
-		return fmt.Errorf("error cleaning destination path: %w", err)
-	}
-	if !srcHasSlash {
-		if !destHasSlash {
-			destPath += fspath.Separator
-		}
-		destPath += fspath.Base(srcConn.Path)
-	}
-	destConn.Path = destPath
-	destInfo, err := destClient.Stat(ctx, destConn)
-	destExists := err == nil && !destInfo.NotFound
-	if err != nil && !errors.Is(err, fs.ErrNotExist) {
-		return fmt.Errorf("error getting destination file info: %w", err)
-	}
-
-	srcInfo, err := srcClient.Stat(ctx, srcConn)
-	if err != nil {
-		return fmt.Errorf("error getting source file info: %w", err)
-	}
-	if destExists {
-		if overwrite {
-			err = destClient.Delete(ctx, destConn, true)
-			if err != nil {
-				return fmt.Errorf("error deleting conflicting destination file: %w", err)
-			}
-		} else if destInfo.IsDir && srcInfo.IsDir {
-			if !merge {
-				return fmt.Errorf("destination and source are both directories, neither merge nor overwrite specified: %v", destConn.GetFullURI())
-			}
-		} else {
-			return fmt.Errorf("destination already exists, overwrite not specified: %v", destConn.GetFullURI())
-		}
-	}
+func PrefixCopyRemote(ctx context.Context, srcConn, destConn *connparse.Connection, srcClient, destClient fstype.FileShareClient, destPutFile func(host string, path string, size int64, reader io.Reader) error, opts *wshrpc.FileCopyOpts) (bool, error) {
+	_, destPath, srcInfo, err := DetermineCopyDestPath(ctx, srcConn, destConn, srcClient, destClient, opts)
 	if err != nil {
 		if !errors.Is(err, fs.ErrNotExist) {
-			return err
+			return false, err
 		}
 	}
 	log.Printf("Copying: %v -> %v", srcConn.GetFullURI(), destConn.GetFullURI())
@@ -202,8 +120,8 @@ func PrefixCopyRemote(ctx context.Context, srcConn, destConn *connparse.Connecti
 			return fmt.Errorf("protocol error: source is a directory, but only a single file is being copied")
 		}
 		fileName, err := CleanPathPrefix(fspath.Join(destPath, next.Name))
-		if singleFile && !destHasSlash {
-			fileName, err = CleanPathPrefix(destConn.Path)
+		if singleFile {
+			fileName = destPath
 		}
 		if err != nil {
 			return fmt.Errorf("error cleaning path: %w", err)
@@ -213,9 +131,67 @@ func PrefixCopyRemote(ctx context.Context, srcConn, destConn *connparse.Connecti
 	})
 	if err != nil {
 		cancel(err)
-		return err
+		return false, err
 	}
-	return nil
+	return srcInfo.IsDir, nil
+}
+
+func DetermineCopyDestPath(ctx context.Context, srcConn, destConn *connparse.Connection, srcClient, destClient fstype.FileShareClient, opts *wshrpc.FileCopyOpts) (srcPath, destPath string, srcInfo *wshrpc.FileInfo, err error) {
+	merge := opts != nil && opts.Merge
+	overwrite := opts != nil && opts.Overwrite
+	if overwrite && merge {
+		return "", "", nil, fmt.Errorf("cannot specify both overwrite and merge")
+	}
+
+	srcHasSlash := strings.HasSuffix(srcConn.Path, fspath.Separator)
+	srcPath, err = CleanPathPrefix(srcConn.Path)
+	if err != nil {
+		return "", "", nil, fmt.Errorf("error cleaning source path: %w", err)
+	}
+	destHasSlash := strings.HasSuffix(destConn.Path, fspath.Separator)
+	destPath, err = CleanPathPrefix(destConn.Path)
+	if err != nil {
+		return "", "", nil, fmt.Errorf("error cleaning destination path: %w", err)
+	}
+
+	srcInfo, err = srcClient.Stat(ctx, srcConn)
+	if err != nil {
+		return "", "", nil, fmt.Errorf("error getting source file info: %w", err)
+	}
+	destInfo, err := destClient.Stat(ctx, destConn)
+	destExists := err == nil && !destInfo.NotFound
+	if err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return "", "", nil, fmt.Errorf("error getting destination file info: %w", err)
+	}
+	originalDestPath := destPath
+	if !srcHasSlash {
+		if destInfo.IsDir || (!destExists && !destHasSlash && srcInfo.IsDir) {
+			destPath = fspath.Join(destPath, fspath.Base(srcConn.Path))
+		}
+	}
+	destConn.Path = destPath
+	if originalDestPath != destPath {
+		destInfo, err = destClient.Stat(ctx, destConn)
+		destExists = err == nil && !destInfo.NotFound
+		if err != nil && !errors.Is(err, fs.ErrNotExist) {
+			return "", "", nil, fmt.Errorf("error getting destination file info: %w", err)
+		}
+	}
+	if destExists {
+		if overwrite {
+			err = destClient.Delete(ctx, destConn, true)
+			if err != nil {
+				return "", "", nil, fmt.Errorf("error deleting conflicting destination file: %w", err)
+			}
+		} else if destInfo.IsDir && srcInfo.IsDir {
+			if !merge {
+				return "", "", nil, fmt.Errorf("destination and source are both directories, neither merge nor overwrite specified: %v", destConn.GetFullURI())
+			}
+		} else {
+			return "", "", nil, fmt.Errorf("destination already exists, overwrite not specified: %v", destConn.GetFullURI())
+		}
+	}
+	return srcPath, destPath, srcInfo, nil
 }
 
 // CleanPathPrefix corrects paths for prefix filesystems (i.e. ones that don't have directories)
