@@ -1071,6 +1071,12 @@ function PreviewView({
 }) {
     const connStatus = useAtomValue(model.connStatus);
     const [errorMsg, setErrorMsg] = useAtom(model.errorMsgAtom);
+    const connection = useAtomValue(model.connectionImmediate);
+
+    useEffect(() => {
+        setErrorMsg(null);
+    }, [connection]);
+
     if (connStatus?.status != "connected") {
         return null;
     }
@@ -1096,6 +1102,7 @@ function PreviewView({
     const fetchSuggestionsFn = async (query, ctx) => {
         return await fetchSuggestions(model, query, ctx);
     };
+
     return (
         <>
             {/* <OpenFileModal blockId={blockId} model={model} blockRef={blockRef} /> */}
