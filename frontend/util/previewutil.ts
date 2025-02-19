@@ -55,19 +55,22 @@ export function addOpenMenuItems(menu: ContextMenuItem[], conn: string, finfo: F
                 }),
         });
     }
-    menu.push({
-        label: "Open Terminal in New Block",
-        click: () => {
-            const termBlockDef: BlockDef = {
-                meta: {
-                    controller: "shell",
-                    view: "term",
-                    "cmd:cwd": formatRemoteUri(finfo.isdir ? finfo.path : finfo.dir, conn),
-                    connection: conn,
-                },
-            };
-            fireAndForget(() => createBlock(termBlockDef));
-        },
-    });
+    // TODO: improve behavior as we add more connection types
+    if (!conn.startsWith("aws:")) {
+        menu.push({
+            label: "Open Terminal in New Block",
+            click: () => {
+                const termBlockDef: BlockDef = {
+                    meta: {
+                        controller: "shell",
+                        view: "term",
+                        "cmd:cwd": formatRemoteUri(finfo.isdir ? finfo.path : finfo.dir, conn),
+                        connection: conn,
+                    },
+                };
+                fireAndForget(() => createBlock(termBlockDef));
+            },
+        });
+    }
     return menu;
 }
