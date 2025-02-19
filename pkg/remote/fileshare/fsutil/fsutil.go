@@ -21,10 +21,6 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 )
 
-const (
-	RecursiveCopyError = "recursive flag must be set to true for directory operations"
-)
-
 func GetParentPath(conn *connparse.Connection) string {
 	hostAndPath := conn.GetPathWithHost()
 	return GetParentPathString(hostAndPath)
@@ -57,7 +53,7 @@ func PrefixCopyInternal(ctx context.Context, srcConn, destConn *connparse.Connec
 	recursive := opts != nil && opts.Recursive
 	if srcInfo.IsDir {
 		if !recursive {
-			return fmt.Errorf(RecursiveCopyError)
+			return fmt.Errorf(fstype.RecursiveCopyError)
 		}
 		if !srcHasSlash {
 			srcPath += fspath.Separator
@@ -179,12 +175,10 @@ func DetermineCopyDestPath(ctx context.Context, srcConn, destConn *connparse.Con
 			if err != nil {
 				return "", "", nil, fmt.Errorf("error deleting conflicting destination file: %w", err)
 			}
-		} else if destInfo.IsDir && srcInfo.IsDir {
-			if !merge {
-				return "", "", nil, fmt.Errorf("destination and source are both directories, neither merge nor overwrite specified: %v", destConn.GetFullURI())
-			}
+		} else if destInfo.IsDir && srcInfo.IsDir && !merge {
+			return "", "", nil, fmt.Errorf(fstype.MergeCopyError, destConn.GetFullURI())
 		} else {
-			return "", "", nil, fmt.Errorf("destination already exists, overwrite not specified: %v", destConn.GetFullURI())
+			return "", "", nil, fmt.Errorf(fstype.OverwriteCopyError, destConn.GetFullURI())
 		}
 	}
 	return srcPath, destPath, srcInfo, nil

@@ -19,7 +19,6 @@ import (
 
 	"github.com/wavetermdev/waveterm/pkg/remote/connparse"
 	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/fstype"
-	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/fsutil"
 	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/wshfs"
 	"github.com/wavetermdev/waveterm/pkg/suggestion"
 	"github.com/wavetermdev/waveterm/pkg/util/fileutil"
@@ -307,7 +306,7 @@ func (impl *ServerImpl) RemoteTarStreamCommand(ctx context.Context, data wshrpc.
 	return rtn
 }
 
-func (impl *ServerImpl) RemoteFileCopyCommand(ctx context.Context, data wshrpc.CommandFileCopyData) (bool, error) {
+func (impl *ServerImpl) RemoteFileCopyCommand(ctx context.Context, data wshrpc.CommandFileCopyData) error {
 	log.Printf("RemoteFileCopyCommand: src=%s, dest=%s\n", data.SrcUri, data.DestUri)
 	opts := data.Opts
 	if opts == nil {
@@ -317,16 +316,19 @@ func (impl *ServerImpl) RemoteFileCopyCommand(ctx context.Context, data wshrpc.C
 	srcUri := data.SrcUri
 	merge := opts.Merge
 	overwrite := opts.Overwrite
+	if overwrite && merge {
+		return fmt.Errorf("cannot specify both overwrite and merge")
+	}
 
 	destConn, err := connparse.ParseURIAndReplaceCurrentHost(ctx, destUri)
 	if err != nil {
-		return false, fmt.Errorf("cannot parse destination URI %q: %w", srcUri, err)
+		return fmt.Errorf("cannot parse destination URI %q: %w", srcUri, err)
 	}
 	destPathCleaned := filepath.Clean(wavebase.ExpandHomeDirSafe(destConn.Path))
 	destinfo, err := os.Stat(destPathCleaned)
 	if err != nil {
 		if !errors.Is(err, fs.ErrNotExist) {
-			return false, fmt.Errorf("cannot stat destination %q: %w", destPathCleaned, err)
+			return fmt.Errorf("cannot stat destination %q: %w", destPathCleaned, err)
 		}
 	}
 
@@ -336,17 +338,17 @@ func (impl *ServerImpl) RemoteFileCopyCommand(ctx context.Context, data wshrpc.C
 
 	if destExists && !destIsDir {
 		if !overwrite {
-			return false, fmt.Errorf("file already exists at destination %q, use overwrite option", destPathCleaned)
+			return fmt.Errorf(fstype.OverwriteCopyError, destPathCleaned)
 		} else {
 			err := os.Remove(destPathCleaned)
 			if err != nil {
-				return false, fmt.Errorf("cannot remove file %q: %w", destPathCleaned, err)
+				return fmt.Errorf("cannot remove file %q: %w", destPathCleaned, err)
 			}
 		}
 	}
 	srcConn, err := connparse.ParseURIAndReplaceCurrentHost(ctx, srcUri)
 	if err != nil {
-		return false, fmt.Errorf("cannot parse source URI %q: %w", srcUri, err)
+		return fmt.Errorf("cannot parse source URI %q: %w", srcUri, err)
 	}
 
 	copyFileFunc := func(path string, finfo fs.FileInfo, srcFile io.Reader) (int64, error) {
@@ -365,28 +367,24 @@ func (impl *ServerImpl) RemoteFileCopyCommand(ctx context.Context, data wshrpc.C
 						return 0, fmt.Errorf("cannot stat file %q: %w", path, err)
 					}
 					if newdestinfo != nil && !overwrite {
-						return 0, fmt.Errorf("cannot create file %q, file exists at path, overwrite not specified", path)
+						return 0, fmt.Errorf(fstype.OverwriteCopyError, path)
 					}
-				} else if !merge && !overwrite {
-					return 0, fmt.Errorf("cannot create directory %q, directory exists at path, neither overwrite nor merge specified", path)
 				} else if overwrite {
 					err := os.RemoveAll(path)
 					if err != nil {
 						return 0, fmt.Errorf("cannot remove directory %q: %w", path, err)
 					}
+				} else if !merge {
+					return 0, fmt.Errorf(fstype.MergeCopyError, path)
 				}
 			} else {
-				if finfo.IsDir() {
-					if !overwrite {
-						return 0, fmt.Errorf("cannot create file %q, directory exists at path, overwrite not specified", path)
-					} else {
-						err := os.RemoveAll(path)
-						if err != nil {
-							return 0, fmt.Errorf("cannot remove directory %q: %w", path, err)
-						}
+				if !overwrite {
+					return 0, fmt.Errorf(fstype.OverwriteCopyError, path)
+				} else if finfo.IsDir() {
+					err := os.RemoveAll(path)
+					if err != nil {
+						return 0, fmt.Errorf("cannot remove directory %q: %w", path, err)
 					}
-				} else if !overwrite {
-					return 0, fmt.Errorf("cannot create file %q, file exists at path, overwrite not specified", path)
 				}
 			}
 		}
@@ -418,18 +416,15 @@ func (impl *ServerImpl) RemoteFileCopyCommand(ctx context.Context, data wshrpc.C
 		return finfo.Size(), nil
 	}
 
-	srcIsDir := false
-
 	if srcConn.Host == destConn.Host {
 		srcPathCleaned := filepath.Clean(wavebase.ExpandHomeDirSafe(srcConn.Path))
 
 		srcFileStat, err := os.Stat(srcPathCleaned)
 		if err != nil {
-			return false, fmt.Errorf("cannot stat file %q: %w", srcPathCleaned, err)
+			return fmt.Errorf("cannot stat file %q: %w", srcPathCleaned, err)
 		}
 
 		if srcFileStat.IsDir() {
-			srcIsDir = true
 			var srcPathPrefix string
 			if destIsDir {
 				srcPathPrefix = filepath.Dir(srcPathCleaned)
@@ -454,12 +449,12 @@ func (impl *ServerImpl) RemoteFileCopyCommand(ctx context.Context, data wshrpc.C
 				return err
 			})
 			if err != nil {
-				return false, fmt.Errorf("cannot copy %q to %q: %w", srcUri, destUri, err)
+				return fmt.Errorf("cannot copy %q to %q: %w", srcUri, destUri, err)
 			}
 		} else {
 			file, err := os.Open(srcPathCleaned)
 			if err != nil {
-				return false, fmt.Errorf("cannot open file %q: %w", srcPathCleaned, err)
+				return fmt.Errorf("cannot open file %q: %w", srcPathCleaned, err)
 			}
 			defer utilfn.GracefulClose(file, "RemoteFileCopyCommand", srcPathCleaned)
 			var destFilePath string
@@ -470,7 +465,7 @@ func (impl *ServerImpl) RemoteFileCopyCommand(ctx context.Context, data wshrpc.C
 			}
 			_, err = copyFileFunc(destFilePath, srcFileStat, file)
 			if err != nil {
-				return false, fmt.Errorf("cannot copy %q to %q: %w", srcUri, destUri, err)
+				return fmt.Errorf("cannot copy %q to %q: %w", srcUri, destUri, err)
 			}
 		}
 	} else {
@@ -491,7 +486,6 @@ func (impl *ServerImpl) RemoteFileCopyCommand(ctx context.Context, data wshrpc.C
 			numFiles++
 			nextpath := filepath.Join(destPathCleaned, next.Name)
 			log.Printf("RemoteFileCopyCommand: copying %q to %q\n", next.Name, nextpath)
-			srcIsDir = !singleFile
 			if singleFile && !destHasSlash {
 				// custom flag to indicate that the source is a single file, not a directory the contents of a directory
 				nextpath = destPathCleaned
@@ -505,7 +499,7 @@ func (impl *ServerImpl) RemoteFileCopyCommand(ctx context.Context, data wshrpc.C
 			return nil
 		})
 		if err != nil {
-			return false, fmt.Errorf("cannot copy %q to %q: %w", srcUri, destUri, err)
+			return fmt.Errorf("cannot copy %q to %q: %w", srcUri, destUri, err)
 		}
 		totalTime := time.Since(copyStart).Seconds()
 		totalMegaBytes := float64(totalBytes) / 1024 / 1024
@@ -515,7 +509,7 @@ func (impl *ServerImpl) RemoteFileCopyCommand(ctx context.Context, data wshrpc.C
 		}
 		log.Printf("RemoteFileCopyCommand: done; %d files copied in %.3fs, total of %.4f MB, %.2f MB/s, %d files skipped\n", numFiles, totalTime, totalMegaBytes, rate, numSkipped)
 	}
-	return srcIsDir, nil
+	return nil
 }
 
 func (impl *ServerImpl) RemoteListEntriesCommand(ctx context.Context, data wshrpc.CommandRemoteListEntriesData) chan wshrpc.RespOrErrorUnion[wshrpc.CommandRemoteListEntriesRtnData] {
@@ -741,7 +735,7 @@ func (impl *ServerImpl) RemoteFileMoveCommand(ctx context.Context, data wshrpc.C
 			return fmt.Errorf("cannot stat file %q: %w", srcPathCleaned, err)
 		}
 		if finfo.IsDir() && !recursive {
-			return fmt.Errorf(fsutil.RecursiveCopyError)
+			return fmt.Errorf(fstype.RecursiveCopyError)
 		}
 		err = os.Rename(srcPathCleaned, destPathCleaned)
 		if err != nil {

@@ -189,7 +189,7 @@ func (c S3Client) ReadTarStream(ctx context.Context, conn *connparse.Connection,
 	singleFile := singleFileResult != nil
 
 	if !singleFile && !recursive {
-		return wshutil.SendErrCh[iochantypes.Packet](fmt.Errorf(fsutil.RecursiveCopyError))
+		return wshutil.SendErrCh[iochantypes.Packet](fmt.Errorf(fstype.RecursiveCopyError))
 	}
 
 	// whether to include the directory itself in the tar

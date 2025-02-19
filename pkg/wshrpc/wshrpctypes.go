@@ -547,7 +547,7 @@ type CommandRemoteStreamTarData struct {
 type FileCopyOpts struct {
 	Overwrite bool  `json:"overwrite,omitempty"`
 	Recursive bool  `json:"recursive,omitempty"` // only used for move, always true for copy
-	Merge     bool  `json:"merge,omitempty"`     // only used for copy, always false for move
+	Merge     bool  `json:"merge,omitempty"`
 	Timeout   int64 `json:"timeout,omitempty"`
 }
 

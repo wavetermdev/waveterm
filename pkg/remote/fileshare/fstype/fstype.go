@@ -14,9 +14,12 @@ import (
 )
 
 const (
-	DefaultTimeout             = 30 * time.Second
-	FileMode       os.FileMode = 0644
-	DirMode        os.FileMode = 0755 | os.ModeDir
+	DefaultTimeout                 = 30 * time.Second
+	FileMode           os.FileMode = 0644
+	DirMode            os.FileMode = 0755 | os.ModeDir
+	RecursiveCopyError             = "recursive flag must be set for directory operations"
+	MergeCopyError                 = "directory already exists at %q, set overwrite flag to delete the existing contents or set merge flag to merge the contents"
+	OverwriteCopyError             = "file already exists at %q, set overwrite flag to delete the existing file"
 )
 
 type FileShareClient interface {

@@ -866,9 +866,10 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
                 console.log("copy failed:", e);
                 const copyError = `${e}`;
                 const allowRetry =
-                    copyError.includes("overwrite not specified") ||
-                    copyError.includes("neither overwrite nor merge specified") ||
-                    copyError.includes("neither merge nor overwrite specified");
+                    copyError.includes("set overwrite flag to delete the existing file") ||
+                    copyError.includes(
+                        "set overwrite flag to delete the existing contents or set merge flag to merge the contents"
+                    );
                 const copyStatus: FileCopyStatus = {
                     copyError,
                     copyData: data,
