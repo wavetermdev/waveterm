@@ -41,4 +41,22 @@
     --text-default: 14px;
 
     --radius: 8px;
+
+    /* ANSI Colors (Default Dark Palette) */
+    --ansi-black: #757575;
+    --ansi-red: #cc685c;
+    --ansi-green: #76c266;
+    --ansi-yellow: #cbca9b;
+    --ansi-blue: #85aacb;
+    --ansi-magenta: #cc72ca;
+    --ansi-cyan: #74a7cb;
+    --ansi-white: #c1c1c1;
+    --ansi-brightblack: #727272;
+    --ansi-brightred: #cc9d97;
+    --ansi-brightgreen: #a3dd97;
+    --ansi-brightyellow: #cbcaaa;
+    --ansi-brightblue: #9ab6cb;
+    --ansi-brightmagenta: #cc8ecb;
+    --ansi-brightcyan: #b7b8cb;
+    --ansi-brightwhite: #f0f0f0;
 }
