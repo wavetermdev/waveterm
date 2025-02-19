@@ -6,12 +6,14 @@ import { CopyButton } from "@/app/element/copybutton";
 import { Input } from "@/app/element/input";
 import { useDimensionsWithCallbackRef } from "@/app/hook/useDimensions";
 import { ContextMenuModel } from "@/app/store/contextmenu";
-import { PLATFORM, atoms, createBlock, getApi, globalStore } from "@/app/store/global";
+import { atoms, getApi, globalStore } from "@/app/store/global";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { type PreviewModel } from "@/app/view/preview/preview";
 import { checkKeyPressed, isCharacterKeyEvent } from "@/util/keyutil";
-import { fireAndForget, isBlank, makeNativeLabel } from "@/util/util";
+import { PLATFORM, PlatformMacOS } from "@/util/platformutil";
+import { addOpenMenuItems } from "@/util/previewutil";
+import { fireAndForget, isBlank } from "@/util/util";
 import { formatRemoteUri } from "@/util/waveutil";
 import { offset, useDismiss, useFloating, useInteractions } from "@floating-ui/react";
 import {
@@ -301,13 +303,21 @@ function DirectoryTable({
                     newPath = path.substring(0, lastInstance) + newName;
                     console.log(`replacing ${fileName} with ${newName}: ${path}`);
                     fireAndForget(async () => {
-                        await RpcApi.FileMoveCommand(TabRpcClient, {
-                            srcuri: await model.formatRemoteUri(path, globalStore.get),
-                            desturi: await model.formatRemoteUri(newPath, globalStore.get),
-                            opts: {
-                                recursive: true,
-                            },
-                        });
+                        try {
+                            await RpcApi.FileMoveCommand(TabRpcClient, {
+                                srcuri: await model.formatRemoteUri(path, globalStore.get),
+                                desturi: await model.formatRemoteUri(newPath, globalStore.get),
+                                opts: {
+                                    recursive: true,
+                                },
+                            });
+                        } catch (e) {
+                            const errorStatus: ErrorMsg = {
+                                status: "Rename Failed",
+                                text: `${e}`,
+                            };
+                            globalStore.set(model.errorMsgAtom, errorStatus);
+                        }
                         model.refreshCallback();
                     });
                 }
@@ -521,17 +531,6 @@ function TableBody({
             }
             const normPath = finfo.path;
             const fileName = finfo.path.split("/").pop();
-            let parentFileInfo: FileInfo;
-            try {
-                parentFileInfo = await RpcApi.FileInfoCommand(TabRpcClient, {
-                    info: {
-                        path: await model.formatRemoteUri(finfo.dir, globalStore.get),
-                    },
-                });
-            } catch (e) {
-                console.log("could not get parent file info. using child file info as fallback");
-                parentFileInfo = finfo;
-            }
             const menu: ContextMenuItem[] = [
                 {
                     label: "New File",
@@ -570,71 +569,8 @@ function TableBody({
                     label: "Copy Full File Name (Shell Quoted)",
                     click: () => fireAndForget(() => navigator.clipboard.writeText(shellQuote([finfo.path]))),
                 },
-                {
-                    type: "separator",
-                },
-                {
-                    label: "Download File",
-                    click: () => {
-                        const remoteUri = formatRemoteUri(finfo.path, conn);
-                        getApi().downloadFile(remoteUri);
-                    },
-                },
-                {
-                    type: "separator",
-                },
-                {
-                    label: "Open Preview in New Block",
-                    click: () =>
-                        fireAndForget(async () => {
-                            const blockDef: BlockDef = {
-                                meta: {
-                                    view: "preview",
-                                    file: finfo.path,
-                                    connection: conn,
-                                },
-                            };
-                            await createBlock(blockDef);
-                        }),
-                },
             ];
-            if (!conn) {
-                menu.push(
-                    {
-                        type: "separator",
-                    },
-                    // TODO: resolve correct host path if connection is WSL
-                    {
-                        label: makeNativeLabel(PLATFORM, finfo.isdir, false),
-                        click: () => {
-                            getApi().openNativePath(normPath);
-                        },
-                    },
-                    {
-                        label: makeNativeLabel(PLATFORM, true, true),
-                        click: () => {
-                            getApi().openNativePath(parentFileInfo.path);
-                        },
-                    }
-                );
-            }
-            if (finfo.mimetype == "directory") {
-                menu.push({
-                    label: "Open Terminal in New Block",
-                    click: () =>
-                        fireAndForget(async () => {
-                            const termBlockDef: BlockDef = {
-                                meta: {
-                                    controller: "shell",
-                                    view: "term",
-                                    "cmd:cwd": await model.formatRemoteUri(finfo.path, globalStore.get),
-                                    connection: conn,
-                                },
-                            };
-                            await createBlock(termBlockDef);
-                        }),
-                });
-            }
+            addOpenMenuItems(menu, conn, finfo);
             menu.push(
                 {
                     type: "separator",
@@ -643,10 +579,18 @@ function TableBody({
                     label: "Delete",
                     click: () => {
                         fireAndForget(async () => {
-                            await RpcApi.FileDeleteCommand(TabRpcClient, {
-                                path: await model.formatRemoteUri(finfo.path, globalStore.get),
-                                recursive: false,
-                            }).catch((e) => console.log(e));
+                            try {
+                                await RpcApi.FileDeleteCommand(TabRpcClient, {
+                                    path: await model.formatRemoteUri(finfo.path, globalStore.get),
+                                    recursive: false,
+                                });
+                            } catch (e) {
+                                const errorStatus: ErrorMsg = {
+                                    status: "Delete Failed",
+                                    text: `${e}`,
+                                };
+                                globalStore.set(model.errorMsgAtom, errorStatus);
+                            }
                             setRefreshVersion((current) => current + 1);
                         });
                     },
@@ -782,7 +726,8 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
     const [refreshVersion, setRefreshVersion] = useAtom(model.refreshVersion);
     const conn = useAtomValue(model.connection);
     const blockData = useAtomValue(model.blockAtom);
-    const dirPath = useAtomValue(model.normFilePath);
+    const finfo = useAtomValue(model.statFile);
+    const dirPath = finfo?.path;
     const [copyStatus, setCopyStatus] = useState<FileCopyStatus>(null);
 
     useEffect(() => {
@@ -796,16 +741,26 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
 
     useEffect(() => {
         const getContent = async () => {
-            const file = await RpcApi.FileReadCommand(
-                TabRpcClient,
-                {
-                    info: {
-                        path: await model.formatRemoteUri(dirPath, globalStore.get),
+            let entries: FileInfo[];
+            try {
+                const file = await RpcApi.FileReadCommand(
+                    TabRpcClient,
+                    {
+                        info: {
+                            path: await model.formatRemoteUri(dirPath, globalStore.get),
+                        },
                     },
-                },
-                null
-            );
-            setUnfilteredData(file.entries);
+                    null
+                );
+                entries = file.entries ?? [];
+            } catch (e) {
+                const errorStatus: ErrorMsg = {
+                    status: "Cannot Read Directory",
+                    text: `${e}`,
+                };
+                globalStore.set(model.errorMsgAtom, errorStatus);
+            }
+            setUnfilteredData(entries);
         };
         getContent();
     }, [conn, dirPath, refreshVersion]);
@@ -864,7 +819,7 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
             if (
                 checkKeyPressed(waveEvent, "Space") &&
                 searchText == "" &&
-                PLATFORM == "darwin" &&
+                PLATFORM == PlatformMacOS &&
                 !blockData?.meta?.connection
             ) {
                 getApi().onQuicklook(selectedPath);
@@ -1023,29 +978,7 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
                     type: "separator",
                 },
             ];
-            if (!conn) {
-                // TODO:  resolve correct host path if connection is WSL
-                menu.push({
-                    label: makeNativeLabel(PLATFORM, true, true),
-                    click: () => {
-                        getApi().openNativePath(dirPath);
-                    },
-                });
-            }
-            menu.push({
-                label: "Open Terminal in New Block",
-                click: async () => {
-                    const termBlockDef: BlockDef = {
-                        meta: {
-                            controller: "shell",
-                            view: "term",
-                            "cmd:cwd": dirPath,
-                            connection: conn,
-                        },
-                    };
-                    await createBlock(termBlockDef);
-                },
-            });
+            addOpenMenuItems(menu, conn, finfo);
 
             ContextMenuModel.showContextMenu(menu, e);
         },

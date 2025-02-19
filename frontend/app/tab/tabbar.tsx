@@ -5,7 +5,8 @@ import { Button } from "@/app/element/button";
 import { modalsModel } from "@/app/store/modalmodel";
 import { WindowDrag } from "@/element/windowdrag";
 import { deleteLayoutModelForTab } from "@/layout/index";
-import { atoms, createTab, getApi, globalStore, isDev, PLATFORM, setActiveTab } from "@/store/global";
+import { atoms, createTab, getApi, globalStore, isDev, setActiveTab } from "@/store/global";
+import { PLATFORM, PlatformMacOS } from "@/util/platformutil";
 import { fireAndForget } from "@/util/util";
 import { useAtomValue } from "jotai";
 import { OverlayScrollbars } from "overlayscrollbars";
@@ -641,7 +642,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
         </div>
     ) : undefined;
     const appMenuButton =
-        PLATFORM !== "darwin" && !settings["window:showmenubar"] ? (
+        PLATFORM !== PlatformMacOS && !settings["window:showmenubar"] ? (
             <div ref={appMenuButtonRef} className="app-menu-button" onClick={onEllipsisClick}>
                 <i className="fa fa-ellipsis" />
             </div>

@@ -15,13 +15,10 @@ import { CodeEditor } from "@/app/view/codeeditor/codeeditor";
 import { Markdown } from "@/element/markdown";
 import {
     atoms,
-    createBlock,
-    getApi,
     getConnStatusAtom,
     getOverrideConfigAtom,
     getSettingsKeyAtom,
     globalStore,
-    PLATFORM,
     refocusNode,
 } from "@/store/global";
 import * as services from "@/store/services";
@@ -29,15 +26,8 @@ import * as WOS from "@/store/wos";
 import { getWebServerEndpoint } from "@/util/endpoints";
 import { goHistory, goHistoryBack, goHistoryForward } from "@/util/historyutil";
 import { adaptFromReactOrNativeKeyEvent, checkKeyPressed, keydownWrapper } from "@/util/keyutil";
-import {
-    base64ToString,
-    fireAndForget,
-    isBlank,
-    jotaiLoadableValue,
-    makeConnRoute,
-    makeNativeLabel,
-    stringToBase64,
-} from "@/util/util";
+import { addOpenMenuItems } from "@/util/previewutil";
+import { base64ToString, fireAndForget, isBlank, jotaiLoadableValue, makeConnRoute, stringToBase64 } from "@/util/util";
 import { formatRemoteUri } from "@/util/waveutil";
 import { Monaco } from "@monaco-editor/react";
 import clsx from "clsx";
@@ -436,13 +426,20 @@ export class PreviewModel implements ViewModel {
             if (fileName == null) {
                 return null;
             }
-            console.log("full file path", path);
-            const file = await RpcApi.FileReadCommand(TabRpcClient, {
-                info: {
-                    path,
-                },
-            });
-            console.log("full file", file);
+            let file: FileData;
+            try {
+                file = await RpcApi.FileReadCommand(TabRpcClient, {
+                    info: {
+                        path,
+                    },
+                });
+            } catch (e) {
+                const errorStatus: ErrorMsg = {
+                    status: "File Read Failed",
+                    text: `${e}`,
+                };
+                globalStore.set(this.errorMsgAtom, errorStatus);
+            }
             return file;
         });
 
@@ -595,7 +592,6 @@ export class PreviewModel implements ViewModel {
                     path: await this.formatRemoteUri(fileInfo.dir, globalStore.get),
                 },
             });
-            console.log("parent file info", parentFileInfo);
             return parentFileInfo;
         } catch {
             return undefined;
@@ -682,8 +678,12 @@ export class PreviewModel implements ViewModel {
             globalStore.set(this.fileContent, newFileContent);
             globalStore.set(this.newFileContent, null);
             console.log("saved file", filePath);
-        } catch (error) {
-            console.error("Error saving file:", error);
+        } catch (e) {
+            const errorStatus: ErrorMsg = {
+                status: "Save Failed",
+                text: `${e}`,
+            };
+            globalStore.set(this.errorMsgAtom, errorStatus);
         }
     }
 
@@ -750,47 +750,8 @@ export class PreviewModel implements ViewModel {
                     await navigator.clipboard.writeText(fileInfo.name);
                 }),
         });
-        const mimeType = jotaiLoadableValue(globalStore.get(this.fileMimeTypeLoadable), "");
-        if (mimeType == "directory") {
-            menuItems.push({
-                label: "Open Terminal in New Block",
-                click: () =>
-                    fireAndForget(async () => {
-                        const conn = await globalStore.get(this.connection);
-                        const fileInfo = await globalStore.get(this.statFile);
-                        const termBlockDef: BlockDef = {
-                            meta: {
-                                view: "term",
-                                controller: "shell",
-                                "cmd:cwd": fileInfo.path,
-                                connection: conn,
-                            },
-                        };
-                        await createBlock(termBlockDef);
-                    }),
-            });
-            const conn = globalStore.get(this.connectionImmediate);
-            if (!conn) {
-                menuItems.push({
-                    label: makeNativeLabel(PLATFORM, true, true),
-                    click: async () => {
-                        const fileInfo = await globalStore.get(this.statFile);
-                        getApi().openNativePath(fileInfo.path);
-                    },
-                });
-            }
-        } else {
-            const conn = globalStore.get(this.connectionImmediate);
-            if (!conn) {
-                menuItems.push({
-                    label: makeNativeLabel(PLATFORM, false, false),
-                    click: async () => {
-                        const fileInfo = await globalStore.get(this.statFile);
-                        getApi().openNativePath(fileInfo.path);
-                    },
-                });
-            }
-        }
+        const finfo = jotaiLoadableValue(globalStore.get(this.loadableFileInfo), null);
+        addOpenMenuItems(menuItems, globalStore.get(this.connectionImmediate), finfo);
         const loadableSV = globalStore.get(this.loadableSpecializedView);
         const wordWrapAtom = getOverrideConfigAtom(this.blockId, "editor:wordwrap");
         const wordWrap = globalStore.get(wordWrapAtom) ?? false;

@@ -5,8 +5,9 @@ import { getFileSubject } from "@/app/store/wps";
 import { sendWSCommand } from "@/app/store/ws";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
-import { PLATFORM, WOS, atoms, fetchWaveFile, getSettingsKeyAtom, globalStore, openLink } from "@/store/global";
+import { WOS, atoms, fetchWaveFile, getSettingsKeyAtom, globalStore, openLink } from "@/store/global";
 import * as services from "@/store/services";
+import { PLATFORM, PlatformMacOS } from "@/util/platformutil";
 import { base64ToArray, fireAndForget } from "@/util/util";
 import { SearchAddon } from "@xterm/addon-search";
 import { SerializeAddon } from "@xterm/addon-serialize";
@@ -166,7 +167,7 @@ export class TermWrap {
         this.hasResized = false;
         this.terminal = new Terminal(options);
         this.fitAddon = new FitAddon();
-        this.fitAddon.noScrollbar = PLATFORM == "darwin";
+        this.fitAddon.noScrollbar = PLATFORM === PlatformMacOS;
         this.serializeAddon = new SerializeAddon();
         this.searchAddon = new SearchAddon();
         this.terminal.loadAddon(this.searchAddon);
@@ -176,7 +177,7 @@ export class TermWrap {
             new WebLinksAddon((e, uri) => {
                 e.preventDefault();
                 switch (PLATFORM) {
-                    case "darwin":
+                    case PlatformMacOS:
                         if (e.metaKey) {
                             fireAndForget(() => openLink(uri));
                         }
