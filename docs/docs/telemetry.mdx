@@ -1,14 +1,32 @@
 ---
+sidebar_position: 100
 title: Telemetry
+id: "telemetry"
 ---
 
-Wave Terminal collects telemetry data to help us track feature use, direct future product efforts, and generate aggregate metrics on Wave's popularity and usage. We do not collect or store any PII (personal identifiable information) and all metric data is only associated with and aggregated using your randomly generated _ClientId_. You may opt out of collection at any time.
+## tl;dr
+
+Wave Terminal collects telemetry data to help us track feature use, direct future product efforts, and generate aggregate metrics on Wave's popularity and usage. We do NOT collect personal information (PII), keystrokes, file contents, AI prompts, IP addresses, hostnames, or commands. We attach all information to an anonymous, randomly generated _ClientId_ (UUID). You may opt out of collection at any time.
+
+Here’s a quick summary of what is collected:
+
+- Basic App Info – OS, architecture, app version, update settings
+- Usage Metrics – App start/shutdown, active minutes, foreground time, tab/block counts/usage
+- Feature Interactions – When you create tabs, run commands, change settings, etc.
+- Display & System Info – Monitor resolution, number of displays, OS details
+- Connection Events – SSH/WSL connection attempts (but NOT hostnames/IPs)
+- AI Commands – Only which AI backend is used (e.g., OpenAI, Claude) – no text or prompts sent
+- Error Reports – Crash/panic events with minimal debugging info, but no stack traces or detailed errors
+
+Telemetry can be disabled at any time in settings. If not disabled it is sent on startup, on shutdown, and every 4-hours.
+
+## How to Disable Telemetry
 
 If you would like to turn telemetry on or off, the first opportunity is a button on the initial welcome page. After this, it can be turned off by adding `"telemetry:enabled": false` to the `config/settings.json` file. It can alternatively be turned on by adding `"telemetry:enabled": true` to the `config/settings.json` file.
 
-:::info
+:::tip
 
-You can also change your telemetry setting by running the wsh command:
+You can also change your telemetry setting (true/false) by running the wsh command:
 
 ```
 wsh setconfig telemetry:enabled=true
@@ -16,11 +34,27 @@ wsh setconfig telemetry:enabled=true
 
 :::
 
-This document outlines the new telemetry system. The previous telemetry documentation is still relevant and can be found [here](./telemetry-old.mdx).
+:::info
 
-## Overview
+This document outlines the new telemetry system as of v0.11.1. The previous telemetry documentation is still relevant and can be found in our [Legacy Telemetry Documentation](./telemetry-old.mdx), but in general, the new telemetry is a superset of the old.
 
-We collect telemetry events and send them to our cloud server every 4 hours, respecting the `telemetry:enabled` flag as before. Each event has a timestamp and various properties that describe user interactions and system state.
+:::
+
+## Sending Telemetry
+
+Provided that telemetry is enabled, it is sent 10 seconds after Waveterm is first booted and then again every 4 hours thereafter. It can also be sent in response to a few special cases listed below. When telemetry is sent, it is grouped into individual days as determined by your time zone. Any data from a previous day is marked as `Uploaded` so it will not need to be sent again.
+
+### Sending Once Telemetry is Enabled
+
+As soon as telemetry is enabled, a telemetry update is sent regardless of how long it has been since the last send. This does not reset the usual timer for telemetry sends.
+
+### Notifying that Telemetry is Disabled
+
+As soon as telemetry is disabled, Waveterm sends a special update that notifies us of this change. See [When Telemetry is Turned Off](#when-telemetry-is-turned-off) for more info. The timer still runs in the background but no data is sent.
+
+### When Waveterm is Closed
+
+Provided that telemetry is enabled, it will be sent when Waveterm is closed.
 
 ## Event Types
 
