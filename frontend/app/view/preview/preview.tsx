@@ -13,30 +13,14 @@ import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { BlockHeaderSuggestionControl } from "@/app/suggestion/suggestion";
 import { CodeEditor } from "@/app/view/codeeditor/codeeditor";
 import { Markdown } from "@/element/markdown";
-import {
-    createBlock,
-    getApi,
-    getConnStatusAtom,
-    getOverrideConfigAtom,
-    getSettingsKeyAtom,
-    globalStore,
-    PLATFORM,
-    refocusNode,
-} from "@/store/global";
+import { getConnStatusAtom, getOverrideConfigAtom, getSettingsKeyAtom, globalStore, refocusNode } from "@/store/global";
 import * as services from "@/store/services";
 import * as WOS from "@/store/wos";
 import { getWebServerEndpoint } from "@/util/endpoints";
 import { goHistory, goHistoryBack, goHistoryForward } from "@/util/historyutil";
 import { adaptFromReactOrNativeKeyEvent, checkKeyPressed, keydownWrapper } from "@/util/keyutil";
-import {
-    base64ToString,
-    fireAndForget,
-    isBlank,
-    jotaiLoadableValue,
-    makeConnRoute,
-    makeNativeLabel,
-    stringToBase64,
-} from "@/util/util";
+import { addOpenMenuItems } from "@/util/previewutil";
+import { base64ToString, fireAndForget, isBlank, jotaiLoadableValue, makeConnRoute, stringToBase64 } from "@/util/util";
 import { formatRemoteUri } from "@/util/waveutil";
 import { Monaco } from "@monaco-editor/react";
 import clsx from "clsx";
@@ -251,7 +235,9 @@ export class PreviewModel implements ViewModel {
                     headerPath = `~ (${loadableFileInfo.data?.dir + "/" + loadableFileInfo.data?.name})`;
                 }
             }
-
+            if (!isBlank(headerPath) && headerPath != "/" && headerPath.endsWith("/")) {
+                headerPath = headerPath.slice(0, -1);
+            }
             const viewTextChildren: HeaderElem[] = [
                 {
                     elemtype: "text",
@@ -424,13 +410,20 @@ export class PreviewModel implements ViewModel {
             if (fileName == null) {
                 return null;
             }
-            console.log("full file path", path);
-            const file = await RpcApi.FileReadCommand(TabRpcClient, {
-                info: {
-                    path,
-                },
-            });
-            console.log("full file", file);
+            let file: FileData;
+            try {
+                file = await RpcApi.FileReadCommand(TabRpcClient, {
+                    info: {
+                        path,
+                    },
+                });
+            } catch (e) {
+                const errorStatus: ErrorMsg = {
+                    status: "File Read Failed",
+                    text: `${e}`,
+                };
+                globalStore.set(this.errorMsgAtom, errorStatus);
+            }
             return file;
         });
 
@@ -642,8 +635,12 @@ export class PreviewModel implements ViewModel {
             globalStore.set(this.fileContent, newFileContent);
             globalStore.set(this.newFileContent, null);
             console.log("saved file", filePath);
-        } catch (error) {
-            console.error("Error saving file:", error);
+        } catch (e) {
+            const errorStatus: ErrorMsg = {
+                status: "Save Failed",
+                text: `${e}`,
+            };
+            globalStore.set(this.errorMsgAtom, errorStatus);
         }
     }
 
@@ -654,6 +651,12 @@ export class PreviewModel implements ViewModel {
     }
 
     async handleOpenFile(filePath: string) {
+        const conn = globalStore.get(this.connectionImmediate);
+        if (!isBlank(conn) && conn.startsWith("aws:")) {
+            if (!isBlank(filePath) && filePath != "/" && filePath.startsWith("/")) {
+                filePath = filePath.substring(1);
+            }
+        }
         const fileInfo = await globalStore.get(this.statFile);
         this.updateOpenFileModalAndError(false);
         if (fileInfo == null) {
@@ -704,47 +707,8 @@ export class PreviewModel implements ViewModel {
                     await navigator.clipboard.writeText(fileInfo.name);
                 }),
         });
-        const mimeType = jotaiLoadableValue(globalStore.get(this.fileMimeTypeLoadable), "");
-        if (mimeType == "directory") {
-            menuItems.push({
-                label: "Open Terminal in New Block",
-                click: () =>
-                    fireAndForget(async () => {
-                        const conn = await globalStore.get(this.connection);
-                        const fileInfo = await globalStore.get(this.statFile);
-                        const termBlockDef: BlockDef = {
-                            meta: {
-                                view: "term",
-                                controller: "shell",
-                                "cmd:cwd": fileInfo.path,
-                                connection: conn,
-                            },
-                        };
-                        await createBlock(termBlockDef);
-                    }),
-            });
-            const conn = globalStore.get(this.connectionImmediate);
-            if (!conn) {
-                menuItems.push({
-                    label: makeNativeLabel(PLATFORM, true, true),
-                    click: async () => {
-                        const fileInfo = await globalStore.get(this.statFile);
-                        getApi().openNativePath(fileInfo.path);
-                    },
-                });
-            }
-        } else {
-            const conn = globalStore.get(this.connectionImmediate);
-            if (!conn) {
-                menuItems.push({
-                    label: makeNativeLabel(PLATFORM, false, false),
-                    click: async () => {
-                        const fileInfo = await globalStore.get(this.statFile);
-                        getApi().openNativePath(fileInfo.path);
-                    },
-                });
-            }
-        }
+        const finfo = jotaiLoadableValue(globalStore.get(this.loadableFileInfo), null);
+        addOpenMenuItems(menuItems, globalStore.get(this.connectionImmediate), finfo);
         const loadableSV = globalStore.get(this.loadableSpecializedView);
         const wordWrapAtom = getOverrideConfigAtom(this.blockId, "editor:wordwrap");
         const wordWrap = globalStore.get(wordWrapAtom) ?? false;
@@ -1062,24 +1026,30 @@ const fetchSuggestions = async (
     query: string,
     reqContext: SuggestionRequestContext
 ): Promise<FetchSuggestionsResponse> => {
+    const conn = await globalStore.get(model.connection);
+    let route = makeConnRoute(conn);
+    if (isBlank(conn) || conn.startsWith("aws:")) {
+        route = null;
+    }
+    if (reqContext?.dispose) {
+        RpcApi.DisposeSuggestionsCommand(TabRpcClient, reqContext.widgetid, { noresponse: true, route: route });
+        return null;
+    }
     const fileInfo = await globalStore.get(model.statFile);
     if (fileInfo == null) {
         return null;
     }
-    const conn = await globalStore.get(model.connection);
-    return await RpcApi.FetchSuggestionsCommand(
-        TabRpcClient,
-        {
-            suggestiontype: "file",
-            "file:cwd": fileInfo.path,
-            query: query,
-            widgetid: reqContext.widgetid,
-            reqnum: reqContext.reqnum,
-        },
-        {
-            route: makeConnRoute(conn),
-        }
-    );
+    const sdata = {
+        suggestiontype: "file",
+        "file:cwd": fileInfo.path,
+        query: query,
+        widgetid: reqContext.widgetid,
+        reqnum: reqContext.reqnum,
+        "file:connection": conn,
+    };
+    return await RpcApi.FetchSuggestionsCommand(TabRpcClient, sdata, {
+        route: route,
+    });
 };
 
 function PreviewView({
@@ -1097,8 +1067,17 @@ function PreviewView({
     if (connStatus?.status != "connected") {
         return null;
     }
-    const handleSelect = (s: SuggestionType) => {
+    const handleSelect = (s: SuggestionType, queryStr: string): boolean => {
+        if (s == null) {
+            if (isBlank(queryStr)) {
+                globalStore.set(model.openFileModal, false);
+                return true;
+            }
+            model.handleOpenFile(queryStr);
+            return true;
+        }
         model.handleOpenFile(s["file:path"]);
+        return true;
     };
     const handleTab = (s: SuggestionType, query: string): string => {
         if (s["mime:type"] == "directory") {

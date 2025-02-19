@@ -370,6 +370,7 @@ electron.ipcMain.on("quicklook", (event, filePath: string) => {
 
 electron.ipcMain.on("open-native-path", (event, filePath: string) => {
     console.log("open-native-path", filePath);
+    filePath = filePath.replace("~", electronApp.getPath("home"));
     fireAndForget(() =>
         callWithOriginalXdgCurrentDesktopAsync(() =>
             electron.shell.openPath(filePath).then((excuse) => {

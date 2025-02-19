@@ -961,6 +961,11 @@ func (ws *WshServer) FetchSuggestionsCommand(ctx context.Context, data wshrpc.Fe
 	return suggestion.FetchSuggestions(ctx, data)
 }
 
+func (ws *WshServer) DisposeSuggestionsCommand(ctx context.Context, widgetId string) error {
+	suggestion.DisposeSuggestions(ctx, widgetId)
+	return nil
+}
+
 func (ws *WshServer) GetTabCommand(ctx context.Context, tabId string) (*waveobj.Tab, error) {
 	tab, err := wstore.DBGet[*waveobj.Tab](ctx, tabId)
 	if err != nil {

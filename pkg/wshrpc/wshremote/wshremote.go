@@ -863,3 +863,8 @@ func (*ServerImpl) RemoteInstallRcFilesCommand(ctx context.Context) error {
 func (*ServerImpl) FetchSuggestionsCommand(ctx context.Context, data wshrpc.FetchSuggestionsData) (*wshrpc.FetchSuggestionsResponse, error) {
 	return suggestion.FetchSuggestions(ctx, data)
 }
+
+func (*ServerImpl) DisposeSuggestionsCommand(ctx context.Context, widgetId string) error {
+	suggestion.DisposeSuggestions(ctx, widgetId)
+	return nil
+}
