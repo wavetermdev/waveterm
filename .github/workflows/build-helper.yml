@@ -23,8 +23,8 @@ jobs:
                       runner: "macos-latest"
                     - platform: "linux"
                       runner: "ubuntu-latest"
-                    - platform: "linux"
-                      runner: ubuntu-24.04-arm
+                    # - platform: "linux"
+                    #   runner: ubuntu-24.04-arm
                     - platform: "windows"
                       runner: "windows-latest"
                     # - platform: "windows"
