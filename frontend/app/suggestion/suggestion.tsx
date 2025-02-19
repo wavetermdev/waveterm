@@ -30,13 +30,16 @@ const SuggestionControl: React.FC<SuggestionControlProps> = ({
     isOpen,
     onClose,
     onSelect,
+    onTab,
     fetchSuggestions,
     className,
     children,
 }) => {
     if (!isOpen || !anchorRef.current || !fetchSuggestions) return null;
 
-    return <SuggestionControlInner {...{ anchorRef, onClose, onSelect, fetchSuggestions, className, children }} />;
+    return (
+        <SuggestionControlInner {...{ anchorRef, onClose, onSelect, onTab, fetchSuggestions, className, children }} />
+    );
 };
 
 function highlightPositions(target: string, positions: number[]): ReactNode[] {
