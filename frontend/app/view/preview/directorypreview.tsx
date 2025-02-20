@@ -298,65 +298,47 @@ function DirectoryTable({
                     const lastInstance = path.lastIndexOf(fileName);
                     newPath = path.substring(0, lastInstance) + newName;
                     console.log(`replacing ${fileName} with ${newName}: ${path}`);
-                    fireAndForget(async () => {
-                        try {
-                            let srcuri = await model.formatRemoteUri(path, globalStore.get);
-                            if (isDir) {
-                                srcuri += "/";
-                            }
-                            await RpcApi.FileMoveCommand(TabRpcClient, {
-                                srcuri,
-                                desturi: await model.formatRemoteUri(newPath, globalStore.get),
-                                opts: {
-                                    recursive: true,
-                                },
-                            });
-                        } catch (e) {
-                            const errorText = `${e}`;
-                            console.warn(`Rename failed: ${errorText}`);
-                            let errorStatus: ErrorMsg;
-                            if (errorText.includes(recursiveError)) {
-                                errorStatus = {
-                                    status: "Confirm Rename Directory",
-                                    text: "Renaming a directory requires the recursive flag. Proceed?",
-                                    buttons: [
-                                        {
-                                            text: "Rename Recursively",
-                                            onClick: async () => {
-                                                try {
-                                                    let srcuri = await model.formatRemoteUri(path, globalStore.get);
-                                                    if (isDir) {
-                                                        srcuri += "/";
-                                                    }
-                                                    await RpcApi.FileMoveCommand(TabRpcClient, {
-                                                        srcuri,
-                                                        desturi: await model.formatRemoteUri(newPath, globalStore.get),
-                                                        opts: {
-                                                            recursive: true,
-                                                        },
-                                                    });
-                                                } catch (e) {
-                                                    const errorStatus: ErrorMsg = {
-                                                        status: "Rename Failed",
-                                                        text: `${e}`,
-                                                    };
-                                                    globalStore.set(model.errorMsgAtom, errorStatus);
-                                                }
-                                                model.refreshCallback();
+                    const handleRename = (recursive: boolean) =>
+                        fireAndForget(async () => {
+                            try {
+                                let srcuri = await model.formatRemoteUri(path, globalStore.get);
+                                if (isDir) {
+                                    srcuri += "/";
+                                }
+                                await RpcApi.FileMoveCommand(TabRpcClient, {
+                                    srcuri,
+                                    desturi: await model.formatRemoteUri(newPath, globalStore.get),
+                                    opts: {
+                                        recursive,
+                                    },
+                                });
+                            } catch (e) {
+                                const errorText = `${e}`;
+                                console.warn(`Rename failed: ${errorText}`);
+                                let errorMsg: ErrorMsg;
+                                if (errorText.includes(recursiveError)) {
+                                    errorMsg = {
+                                        status: "Confirm Rename Directory",
+                                        text: "Renaming a directory requires the recursive flag. Proceed?",
+                                        level: "warning",
+                                        buttons: [
+                                            {
+                                                text: "Rename Recursively",
+                                                onClick: () => handleRename(true),
                                             },
-                                        },
-                                    ],
-                                };
-                            } else {
-                                errorStatus = {
-                                    status: "Rename Failed",
-                                    text: `${e}`,
-                                };
+                                        ],
+                                    };
+                                } else {
+                                    errorMsg = {
+                                        status: "Rename Failed",
+                                        text: `${e}`,
+                                    };
+                                }
+                                setErrorMsg(errorMsg);
                             }
-                            setErrorMsg(errorStatus);
-                        }
-                        model.refreshCallback();
-                    });
+                            model.refreshCallback();
+                        });
+                    handleRename(false);
                 }
                 setEntryManagerProps(undefined);
             },
@@ -579,11 +561,12 @@ function TableBody({
                     } catch (e) {
                         const errorText = `${e}`;
                         console.warn(`Delete failed: ${errorText}`);
-                        let errorStatus: ErrorMsg;
+                        let errorMsg: ErrorMsg;
                         if (errorText.includes(recursiveError)) {
-                            errorStatus = {
+                            errorMsg = {
                                 status: "Confirm Delete Directory",
                                 text: "Deleting a directory requires the recursive flag. Proceed?",
+                                level: "warning",
                                 buttons: [
                                     {
                                         text: "Delete Recursively",
@@ -592,12 +575,12 @@ function TableBody({
                                 ],
                             };
                         } else {
-                            errorStatus = {
+                            errorMsg = {
                                 status: "Delete Failed",
                                 text: `${e}`,
                             };
                         }
-                        setErrorMsg(errorStatus);
+                        setErrorMsg(errorMsg);
                     }
                     setRefreshVersion((current) => current + 1);
                 });
@@ -808,11 +791,10 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
                 );
                 entries = file.entries ?? [];
             } catch (e) {
-                const errorStatus: ErrorMsg = {
+                setErrorMsg({
                     status: "Cannot Read Directory",
                     text: `${e}`,
-                };
-                globalStore.set(model.errorMsgAtom, errorStatus);
+                });
             }
             setUnfilteredData(entries);
         };
