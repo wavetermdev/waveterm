@@ -689,7 +689,6 @@ func (c S3Client) CopyInternal(ctx context.Context, srcConn, destConn *connparse
 		})
 		return entries, err
 	}, func(ctx context.Context, srcPath, destPath string) error {
-		log.Printf("Copying file %v -> %v", srcBucket+"/"+srcPath, destBucket+"/"+destPath)
 		_, err := c.client.CopyObject(ctx, &s3.CopyObjectInput{
 			Bucket:     aws.String(destBucket),
 			Key:        aws.String(destPath),
