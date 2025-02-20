@@ -322,7 +322,7 @@ func (impl *ServerImpl) RemoteFileCopyCommand(ctx context.Context, data wshrpc.C
 
 	destConn, err := connparse.ParseURIAndReplaceCurrentHost(ctx, destUri)
 	if err != nil {
-		return false, fmt.Errorf("cannot parse destination URI %q: %w", srcUri, err)
+		return false, fmt.Errorf("cannot parse destination URI %q: %w", destUri, err)
 	}
 	destPathCleaned := filepath.Clean(wavebase.ExpandHomeDirSafe(destConn.Path))
 	destinfo, err := os.Stat(destPathCleaned)
@@ -390,7 +390,6 @@ func (impl *ServerImpl) RemoteFileCopyCommand(ctx context.Context, data wshrpc.C
 		}
 
 		if finfo.IsDir() {
-			log.Printf("RemoteFileCopyCommand: making dirs %s\n", path)
 			err := os.MkdirAll(path, finfo.Mode())
 			if err != nil {
 				return 0, fmt.Errorf("cannot create directory %q: %w", path, err)
@@ -487,7 +486,6 @@ func (impl *ServerImpl) RemoteFileCopyCommand(ctx context.Context, data wshrpc.C
 		err := tarcopy.TarCopyDest(readCtx, cancel, ioch, func(next *tar.Header, reader *tar.Reader, singleFile bool) error {
 			numFiles++
 			nextpath := filepath.Join(destPathCleaned, next.Name)
-			log.Printf("RemoteFileCopyCommand: copying %q to %q\n", next.Name, nextpath)
 			srcIsDir = !singleFile
 			if singleFile && !destHasSlash {
 				// custom flag to indicate that the source is a single file, not a directory the contents of a directory
