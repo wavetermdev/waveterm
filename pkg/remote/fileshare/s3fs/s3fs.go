@@ -694,7 +694,10 @@ func (c S3Client) CopyInternal(ctx context.Context, srcConn, destConn *connparse
 			Key:        aws.String(destPath),
 			CopySource: aws.String(fspath.Join(srcBucket, srcPath)),
 		})
-		return err
+		if err != nil {
+			return fmt.Errorf("error copying %v:%v to %v:%v: %w", srcBucket, srcPath, destBucket, destPath, err)
+		}
+		return nil
 	})
 }
 
