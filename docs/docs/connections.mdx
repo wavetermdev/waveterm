@@ -6,17 +6,32 @@ title: "Connections"
 
 # Connections
 
-Wave allows users to connect to various machines and unify them together in a way that preserves the unique behavior of each. At the moment, this extends to SSH remote connections and local WSL connections.
+Wave allows users to connect to various machines and unify them together in a way that preserves the unique behavior of each. At the moment, this extends to SSH remote connections, local WSL connections, and AWS S3 buckets.
 
 ## Access a Connection in a Block
 
-The easiest way to access connections is to click the <i className="fa-sharp fa-laptop"/> icon. From there, you can either type `[user]@[host]` for a desired SSH remote or type `wsl://<distribution name>` for a desired WSL distribution. Alternatively, if the connection already exists in the dropdown list, you can either click it or navigate to it with arrow keys and press enter to connect.
+The easiest way to access connections is to click the <i className="fa-sharp fa-laptop"/> icon. From there, you can type one of the following to depending on the connection you want:
+
+For SSH Connections:
+
+- `[user]@[host]` for a desired SSH remote or type
+
+For WSL Connections:
+
+- `wsl://<distribution name>` for a desired WSL distribution. Alternatively, if the connection already exists in the dropdown list, you can either click it or navigate to it with arrow keys and press enter to connect.
+
+For AWS S3 Connections:
+
+- aws:storage
+
+:::info
+AWS S3 connections only work in the directory widget
 
 ![a dropdown showing a list of connections that already exist](./img/connection-dropdown.png)
 
 ## What are wsh Shell Extensions?
 
-`wsh` is a small program that helps manage waveterm regardless of which machine you are currently connected to. It is always included on your host machine, but you also have the option to install it when connecting to a remote machine. If it is installed on the remote machine, it is installed at `~/.waveterm/bin/wsh`. Then, when wave connects to your connection (and only when wave connects to your connection), the following happens:
+`wsh` is a small program that helps manage waveterm regardless of which machine you are currently connected to. It is always included on your host machine, but you also have the option to install it when connecting to SSH and WSL Connections. If it is installed on the connection, it is installed at `~/.waveterm/bin/wsh`. Then, when wave connects to your connection (and only when wave connects to your connection), the following happens:
 
 - `~/.waveterm/bin` is added to your `PATH` for that individual session. This allows the user to use the `wsh` command without providing the complete path.
 - Several environment variables are injected into the session to make certain tasks with `wsh` easier. These are [listed below](#additional-environment-variables).
