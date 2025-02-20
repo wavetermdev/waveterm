@@ -860,7 +860,7 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
             try {
                 await RpcApi.FileCopyCommand(TabRpcClient, data, { timeout: data.opts.timeout });
             } catch (e) {
-                console.log("copy failed:", e);
+                console.warn("copy failed:", e);
                 const copyError = `${e}`;
                 const allowRetry =
                     copyError.includes("set overwrite flag to delete the existing file") ||
@@ -877,33 +877,15 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
                             {
                                 text: "Delete Then Copy",
                                 onClick: async () => {
-                                    await handleDropCopy(
-                                        {
-                                            srcuri: data.desturi,
-                                            desturi: data.srcuri,
-                                            opts: {
-                                                timeout: data.opts.timeout,
-                                                overwrite: true,
-                                            },
-                                        },
-                                        isDir
-                                    );
+                                    data.opts.overwrite = true;
+                                    await handleDropCopy(data, isDir);
                                 },
                             },
                             {
                                 text: "Sync",
                                 onClick: async () => {
-                                    await handleDropCopy(
-                                        {
-                                            srcuri: data.srcuri,
-                                            desturi: data.desturi,
-                                            opts: {
-                                                timeout: data.opts.timeout,
-                                                merge: true,
-                                            },
-                                        },
-                                        isDir
-                                    );
+                                    data.opts.merge = true;
+                                    await handleDropCopy(data, isDir);
                                 },
                             },
                         ],

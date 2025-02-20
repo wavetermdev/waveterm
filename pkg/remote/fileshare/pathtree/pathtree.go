@@ -32,10 +32,9 @@ func (n *Node) Walk(curPath string, walkFunc WalkFunc, delimiter string) error {
 
 func NewTree(path string, delimiter string) *Tree {
 	if len(delimiter) > 1 {
-		log.Printf("Warning: multi-character delimiter '%s' may cause unexpected behavior", delimiter)
+		log.Printf("pathtree.NewTree: Warning: multi-character delimiter '%s' may cause unexpected behavior", delimiter)
 	}
 	if path != "" && !strings.HasSuffix(path, delimiter) {
-		log.Printf("Warning: path '%s' does not end with delimiter '%s'", path, delimiter)
 		path += delimiter
 	}
 	return &Tree{
@@ -49,7 +48,6 @@ func NewTree(path string, delimiter string) *Tree {
 }
 
 func (t *Tree) Add(path string) {
-	log.Printf("tree.Add: path: %s", path)
 	// Validate input
 	if path == "" {
 		return
@@ -61,7 +59,6 @@ func (t *Tree) Add(path string) {
 		relativePath = strings.TrimPrefix(path, t.RootPath)
 
 		// If the path is not a child of the root path, ignore it
-		log.Printf("relativePath: %s", relativePath)
 		if relativePath == path {
 			return
 		}
@@ -70,7 +67,6 @@ func (t *Tree) Add(path string) {
 
 	// If the path is already in the tree, ignore it
 	if t.nodes[relativePath] != nil {
-		log.Printf("path already in tree: %s", relativePath)
 		return
 	}
 
@@ -78,18 +74,16 @@ func (t *Tree) Add(path string) {
 	// Validate path components
 	for _, component := range components {
 		if component == "" || component == "." || component == ".." {
-			log.Printf("invalid path component: %s", component)
+			log.Printf("pathtree.Add: invalid path component: %s", component)
 			return // Skip invalid paths
 		}
 	}
 
 	// Quick check to see if the parent path is already in the tree, in which case we can skip the loop
 	if parent := t.tryAddToExistingParent(components); parent {
-		log.Printf("added to existing parent: %s", strings.Join(components, t.delimiter))
 		return
 	}
 
-	log.Printf("adding new path: %s", strings.Join(components, t.delimiter))
 	t.addNewPath(components)
 }
 
@@ -124,7 +118,6 @@ func (t *Tree) addNewPath(components []string) {
 }
 
 func (t *Tree) Walk(walkFunc WalkFunc) error {
-	log.Printf("RootPath: %s", t.RootPath)
 	for key, child := range t.Root.Children {
 		if err := child.Walk(t.RootPath+key, walkFunc, t.delimiter); err != nil {
 			return err

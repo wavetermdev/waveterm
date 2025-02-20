@@ -114,11 +114,11 @@ func (c WshClient) MoveInternal(ctx context.Context, srcConn, destConn *connpars
 	return wshclient.RemoteFileMoveCommand(RpcClient, wshrpc.CommandFileCopyData{SrcUri: srcConn.GetFullURI(), DestUri: destConn.GetFullURI(), Opts: opts}, &wshrpc.RpcOpts{Route: wshutil.MakeConnectionRouteId(destConn.Host), Timeout: timeout})
 }
 
-func (c WshClient) CopyRemote(ctx context.Context, srcConn, destConn *connparse.Connection, _ fstype.FileShareClient, opts *wshrpc.FileCopyOpts) error {
+func (c WshClient) CopyRemote(ctx context.Context, srcConn, destConn *connparse.Connection, _ fstype.FileShareClient, opts *wshrpc.FileCopyOpts) (bool, error) {
 	return c.CopyInternal(ctx, srcConn, destConn, opts)
 }
 
-func (c WshClient) CopyInternal(ctx context.Context, srcConn, destConn *connparse.Connection, opts *wshrpc.FileCopyOpts) error {
+func (c WshClient) CopyInternal(ctx context.Context, srcConn, destConn *connparse.Connection, opts *wshrpc.FileCopyOpts) (bool, error) {
 	if opts == nil {
 		opts = &wshrpc.FileCopyOpts{}
 	}

@@ -43,17 +43,17 @@ func GetParentPathString(hostAndPath string) string {
 	return hostAndPath[:lastSlash+1]
 }
 
-func PrefixCopyInternal(ctx context.Context, srcConn, destConn *connparse.Connection, c fstype.FileShareClient, opts *wshrpc.FileCopyOpts, listEntriesPrefix func(ctx context.Context, host string, path string) ([]string, error), copyFunc func(ctx context.Context, host string, path string) error) error {
+func PrefixCopyInternal(ctx context.Context, srcConn, destConn *connparse.Connection, c fstype.FileShareClient, opts *wshrpc.FileCopyOpts, listEntriesPrefix func(ctx context.Context, host string, path string) ([]string, error), copyFunc func(ctx context.Context, host string, path string) error) (bool, error) {
 	log.Printf("PrefixCopyInternal: %v -> %v", srcConn.GetFullURI(), destConn.GetFullURI())
 	srcHasSlash := strings.HasSuffix(srcConn.Path, fspath.Separator)
 	srcPath, destPath, srcInfo, err := DetermineCopyDestPath(ctx, srcConn, destConn, c, c, opts)
 	if err != nil {
-		return err
+		return false, err
 	}
 	recursive := opts != nil && opts.Recursive
 	if srcInfo.IsDir {
 		if !recursive {
-			return fmt.Errorf(fstype.RecursiveCopyError)
+			return false, fmt.Errorf(fstype.RecursiveCopyError)
 		}
 		if !srcHasSlash {
 			srcPath += fspath.Separator
@@ -62,7 +62,7 @@ func PrefixCopyInternal(ctx context.Context, srcConn, destConn *connparse.Connec
 		log.Printf("Copying directory: %v -> %v", srcPath, destPath)
 		entries, err := listEntriesPrefix(ctx, srcConn.Host, srcPath)
 		if err != nil {
-			return fmt.Errorf("error listing source directory: %w", err)
+			return false, fmt.Errorf("error listing source directory: %w", err)
 		}
 
 		tree := pathtree.NewTree(srcPath, fspath.Separator)
@@ -70,14 +70,14 @@ func PrefixCopyInternal(ctx context.Context, srcConn, destConn *connparse.Connec
 			tree.Add(entry)
 		}
 
-		/* tree.Walk will return the full path in the source bucket for each item.
+		/* tree.Walk will return false, the full path in the source bucket for each item.
 		prefixToRemove specifies how much of that path we want in the destination subtree.
 		If the source path has a trailing slash, we don't want to include the source directory itself in the destination subtree.*/
 		prefixToRemove := srcPath
 		if !srcHasSlash {
 			prefixToRemove = fspath.Dir(srcPath) + fspath.Separator
 		}
-		return tree.Walk(func(path string, numChildren int) error {
+		return true, tree.Walk(func(path string, numChildren int) error {
 			// since this is a prefix filesystem, we only care about leafs
 			if numChildren > 0 {
 				return nil
@@ -86,21 +86,21 @@ func PrefixCopyInternal(ctx context.Context, srcConn, destConn *connparse.Connec
 			return copyFunc(ctx, path, destFilePath)
 		})
 	} else {
-		return copyFunc(ctx, srcPath, destPath)
+		return false, copyFunc(ctx, srcPath, destPath)
 	}
 }
 
-func PrefixCopyRemote(ctx context.Context, srcConn, destConn *connparse.Connection, srcClient, destClient fstype.FileShareClient, destPutFile func(host string, path string, size int64, reader io.Reader) error, opts *wshrpc.FileCopyOpts) error {
+func PrefixCopyRemote(ctx context.Context, srcConn, destConn *connparse.Connection, srcClient, destClient fstype.FileShareClient, destPutFile func(host string, path string, size int64, reader io.Reader) error, opts *wshrpc.FileCopyOpts) (bool, error) {
 	// prefix to be used if the destination is a directory. The destPath returned in the following call only applies if the destination is not a directory.
 	destPathPrefix, err := CleanPathPrefix(destConn.Path)
 	if err != nil {
-		return fmt.Errorf("error cleaning destination path: %w", err)
+		return false, fmt.Errorf("error cleaning destination path: %w", err)
 	}
 	destPathPrefix += fspath.Separator
 
 	_, destPath, srcInfo, err := DetermineCopyDestPath(ctx, srcConn, destConn, srcClient, destClient, opts)
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	log.Printf("Copying: %v -> %v", srcConn.GetFullURI(), destConn.GetFullURI())
@@ -126,14 +126,15 @@ func PrefixCopyRemote(ctx context.Context, srcConn, destConn *connparse.Connecti
 	})
 	if err != nil {
 		cancel(err)
-		return err
+		return false, err
 	}
-	return nil
+	return srcInfo.IsDir, nil
 }
 
 func DetermineCopyDestPath(ctx context.Context, srcConn, destConn *connparse.Connection, srcClient, destClient fstype.FileShareClient, opts *wshrpc.FileCopyOpts) (srcPath, destPath string, srcInfo *wshrpc.FileInfo, err error) {
 	merge := opts != nil && opts.Merge
 	overwrite := opts != nil && opts.Overwrite
+	recursive := opts != nil && opts.Recursive
 	if overwrite && merge {
 		return "", "", nil, fmt.Errorf("cannot specify both overwrite and merge")
 	}
@@ -171,12 +172,15 @@ func DetermineCopyDestPath(ctx context.Context, srcConn, destConn *connparse.Con
 	}
 	if destExists {
 		if overwrite {
-			err = destClient.Delete(ctx, destConn, destInfo.IsDir)
+			log.Printf("Deleting existing file: %s\n", destConn.GetFullURI())
+			err = destClient.Delete(ctx, destConn, destInfo.IsDir && recursive)
 			if err != nil {
 				return "", "", nil, fmt.Errorf("error deleting conflicting destination file: %w", err)
 			}
-		} else if destInfo.IsDir && srcInfo.IsDir && !merge {
-			return "", "", nil, fmt.Errorf(fstype.MergeCopyError, destConn.GetFullURI())
+		} else if destInfo.IsDir && srcInfo.IsDir {
+			if !merge {
+				return "", "", nil, fmt.Errorf(fstype.MergeCopyError, destConn.GetFullURI())
+			}
 		} else {
 			return "", "", nil, fmt.Errorf(fstype.OverwriteCopyError, destConn.GetFullURI())
 		}

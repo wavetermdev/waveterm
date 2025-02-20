@@ -645,21 +645,21 @@ func (c S3Client) Mkdir(ctx context.Context, conn *connparse.Connection) error {
 }
 
 func (c S3Client) MoveInternal(ctx context.Context, srcConn, destConn *connparse.Connection, opts *wshrpc.FileCopyOpts) error {
-	err := c.CopyInternal(ctx, srcConn, destConn, opts)
+	isDir, err := c.CopyInternal(ctx, srcConn, destConn, opts)
 	if err != nil {
 		return err
 	}
 	recursive := opts != nil && opts.Recursive
-	return c.Delete(ctx, srcConn, recursive)
+	return c.Delete(ctx, srcConn, recursive && isDir)
 }
 
-func (c S3Client) CopyRemote(ctx context.Context, srcConn, destConn *connparse.Connection, srcClient fstype.FileShareClient, opts *wshrpc.FileCopyOpts) error {
+func (c S3Client) CopyRemote(ctx context.Context, srcConn, destConn *connparse.Connection, srcClient fstype.FileShareClient, opts *wshrpc.FileCopyOpts) (bool, error) {
 	if srcConn.Scheme == connparse.ConnectionTypeS3 && destConn.Scheme == connparse.ConnectionTypeS3 {
 		return c.CopyInternal(ctx, srcConn, destConn, opts)
 	}
 	destBucket := destConn.Host
 	if destBucket == "" || destBucket == fspath.Separator {
-		return fmt.Errorf("destination bucket must be specified")
+		return false, fmt.Errorf("destination bucket must be specified")
 	}
 	return fsutil.PrefixCopyRemote(ctx, srcConn, destConn, srcClient, c, func(bucket, path string, size int64, reader io.Reader) error {
 		_, err := c.client.PutObject(ctx, &s3.PutObjectInput{
@@ -672,11 +672,11 @@ func (c S3Client) CopyRemote(ctx context.Context, srcConn, destConn *connparse.C
 	}, opts)
 }
 
-func (c S3Client) CopyInternal(ctx context.Context, srcConn, destConn *connparse.Connection, opts *wshrpc.FileCopyOpts) error {
+func (c S3Client) CopyInternal(ctx context.Context, srcConn, destConn *connparse.Connection, opts *wshrpc.FileCopyOpts) (bool, error) {
 	srcBucket := srcConn.Host
 	destBucket := destConn.Host
 	if srcBucket == "" || srcBucket == fspath.Separator || destBucket == "" || destBucket == fspath.Separator {
-		return fmt.Errorf("source and destination bucket must be specified")
+		return false, fmt.Errorf("source and destination bucket must be specified")
 	}
 	return fsutil.PrefixCopyInternal(ctx, srcConn, destConn, c, opts, func(ctx context.Context, bucket, prefix string) ([]string, error) {
 		var entries []string
