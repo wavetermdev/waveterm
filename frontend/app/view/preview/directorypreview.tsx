@@ -2,9 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { Button } from "@/app/element/button";
-import { CopyButton } from "@/app/element/copybutton";
 import { Input } from "@/app/element/input";
-import { useDimensionsWithCallbackRef } from "@/app/hook/useDimensions";
 import { ContextMenuModel } from "@/app/store/contextmenu";
 import { atoms, getApi, globalStore } from "@/app/store/global";
 import { RpcApi } from "@/app/store/wshclientapi";
@@ -732,7 +730,7 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
     const blockData = useAtomValue(model.blockAtom);
     const finfo = useAtomValue(model.statFile);
     const dirPath = finfo?.path;
-    const [copyStatus, setCopyStatus] = useState<FileCopyStatus>(null);
+    const setErrorMsg = useSetAtom(model.errorMsgAtom);
 
     useEffect(() => {
         model.refreshCallback = () => {
@@ -861,7 +859,6 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
         async (data: CommandFileCopyData, isDir: boolean) => {
             try {
                 await RpcApi.FileCopyCommand(TabRpcClient, data, { timeout: data.opts.timeout });
-                setCopyStatus(null);
             } catch (e) {
                 console.log("copy failed:", e);
                 const copyError = `${e}`;
@@ -870,17 +867,59 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
                     copyError.includes(
                         "set overwrite flag to delete the existing contents or set merge flag to merge the contents"
                     );
-                const copyStatus: FileCopyStatus = {
-                    copyError,
-                    copyData: data,
-                    allowRetry,
-                    isDir: isDir,
-                };
-                setCopyStatus(copyStatus);
+                let errorMsg: ErrorMsg;
+                if (allowRetry) {
+                    errorMsg = {
+                        status: "Confirm Overwrite File(s)",
+                        text: "This copy operation will overwrite an existing file. Would you like to continue?",
+                        level: "warning",
+                        buttons: [
+                            {
+                                text: "Delete Then Copy",
+                                onClick: async () => {
+                                    await handleDropCopy(
+                                        {
+                                            srcuri: data.desturi,
+                                            desturi: data.srcuri,
+                                            opts: {
+                                                timeout: data.opts.timeout,
+                                                overwrite: true,
+                                            },
+                                        },
+                                        isDir
+                                    );
+                                },
+                            },
+                            {
+                                text: "Sync",
+                                onClick: async () => {
+                                    await handleDropCopy(
+                                        {
+                                            srcuri: data.srcuri,
+                                            desturi: data.desturi,
+                                            opts: {
+                                                timeout: data.opts.timeout,
+                                                merge: true,
+                                            },
+                                        },
+                                        isDir
+                                    );
+                                },
+                            },
+                        ],
+                    };
+                } else {
+                    errorMsg = {
+                        status: "Copy Failed",
+                        text: copyError,
+                        level: "error",
+                    };
+                }
+                setErrorMsg(errorMsg);
             }
             model.refreshCallback();
         },
-        [setCopyStatus, model.refreshCallback]
+        [model.refreshCallback]
     );
 
     const [, drop] = useDrop(
@@ -913,7 +952,7 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
             },
             // TODO: mabe add a hover option?
         }),
-        [dirPath, model.formatRemoteUri, model.refreshCallback, setCopyStatus]
+        [dirPath, model.formatRemoteUri, model.refreshCallback]
     );
 
     useEffect(() => {
@@ -1005,13 +1044,6 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
                 onContextMenu={(e) => handleFileContextMenu(e)}
                 onClick={() => setEntryManagerProps(undefined)}
             >
-                {copyStatus != null && (
-                    <CopyErrorOverlay
-                        copyStatus={copyStatus}
-                        setCopyStatus={setCopyStatus}
-                        handleDropCopy={handleDropCopy}
-                    />
-                )}
                 <DirectoryTable
                     model={model}
                     data={filteredData}
@@ -1038,113 +1070,5 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
         </Fragment>
     );
 }
-
-const CopyErrorOverlay = React.memo(
-    ({
-        copyStatus,
-        setCopyStatus,
-        handleDropCopy,
-    }: {
-        copyStatus: FileCopyStatus;
-        setCopyStatus: (_: FileCopyStatus) => void;
-        handleDropCopy: (data: CommandFileCopyData, isDir: boolean) => Promise<void>;
-    }) => {
-        const [overlayRefCallback, _, domRect] = useDimensionsWithCallbackRef(30);
-        const width = domRect?.width;
-
-        const handleRetryCopy = React.useCallback(
-            async (copyOpt?: string) => {
-                if (!copyStatus) {
-                    return;
-                }
-                let overwrite = copyOpt == "overwrite";
-                let merge = copyOpt == "merge";
-                const updatedData = {
-                    ...copyStatus.copyData,
-                    opts: { ...copyStatus.copyData.opts, overwrite, merge },
-                };
-                await handleDropCopy(updatedData, copyStatus.isDir);
-            },
-            [copyStatus.copyData]
-        );
-
-        let statusText = "Copy Error";
-        let errorMsg = `error: ${copyStatus?.copyError}`;
-        if (copyStatus?.allowRetry) {
-            statusText = "Confirm Overwrite File(s)";
-            errorMsg = "This copy operation will overwrite an existing file. Would you like to continue?";
-        }
-
-        const buttonClassName = "outlined grey font-size-11 vertical-padding-3 horizontal-padding-7";
-
-        const handleRemoveCopyError = React.useCallback(async () => {
-            setCopyStatus(null);
-        }, [setCopyStatus]);
-
-        const handleCopyToClipboard = React.useCallback(async () => {
-            await navigator.clipboard.writeText(errorMsg);
-        }, [errorMsg]);
-
-        return (
-            <div
-                ref={overlayRefCallback}
-                className="absolute top-[0] left-1.5 right-1.5 z-[var(--zindex-block-mask-inner)] overflow-hidden bg-[var(--conn-status-overlay-bg-color)] backdrop-blur-[50px] rounded-md shadow-lg"
-            >
-                <div className="flex flex-row justify-between p-2.5 pl-3 font-[var(--base-font)] text-[var(--secondary-text-color)]">
-                    <div
-                        className={clsx("flex flex-row items-center gap-3 grow min-w-0", {
-                            "items-start": true,
-                        })}
-                    >
-                        <i className="fa-solid fa-triangle-exclamation text-[#e6ba1e] text-base"></i>
-
-                        <div className="flex flex-col items-start gap-1 grow w-full">
-                            <div className="max-w-full text-xs font-semibold leading-4 tracking-[0.11px] text-white">
-                                {statusText}
-                            </div>
-
-                            <OverlayScrollbarsComponent
-                                className="group text-xs font-normal leading-[15px] tracking-[0.11px] text-wrap max-h-20 rounded-lg py-1.5 pl-0 relative w-full"
-                                options={{ scrollbars: { autoHide: "leave" } }}
-                            >
-                                <CopyButton
-                                    className="invisible group-hover:visible flex absolute top-0 right-1 rounded backdrop-blur-lg p-1 items-center justify-end gap-1"
-                                    onClick={handleCopyToClipboard}
-                                    title="Copy"
-                                />
-                                <div>{errorMsg}</div>
-                            </OverlayScrollbarsComponent>
-
-                            {copyStatus?.allowRetry && (
-                                <div className="flex flex-row gap-1.5">
-                                    <Button className={buttonClassName} onClick={() => handleRetryCopy("overwrite")}>
-                                        Delete Then Copy
-                                    </Button>
-                                    {copyStatus.isDir && (
-                                        <Button className={buttonClassName} onClick={() => handleRetryCopy("merge")}>
-                                            Sync
-                                        </Button>
-                                    )}
-                                    <Button className={buttonClassName} onClick={handleRemoveCopyError}>
-                                        Cancel
-                                    </Button>
-                                </div>
-                            )}
-                        </div>
-
-                        {!copyStatus?.allowRetry && (
-                            <div className="flex items-start">
-                                <Button
-                                    className={clsx(buttonClassName, "fa-xmark fa-solid")}
-                                    onClick={handleRemoveCopyError}
-                                />
-                            </div>
-                        )}
-                    </div>
-                </div>
-            </div>
-        );
-    }
-);
 
 export { DirectoryPreview };
