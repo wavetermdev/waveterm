@@ -839,7 +839,7 @@ func (*ServerImpl) RemoteFileDeleteCommand(ctx context.Context, data wshrpc.Comm
 		finfo, _ := os.Stat(cleanedPath)
 		if finfo != nil && finfo.IsDir() {
 			if !data.Recursive {
-				return fmt.Errorf("cannot delete directory %q, recursive option not specified", data.Path)
+				return fmt.Errorf(fstype.RecursiveRequiredError)
 			}
 			err = os.RemoveAll(cleanedPath)
 			if err != nil {
