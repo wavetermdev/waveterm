@@ -152,6 +152,7 @@ export class TermWrap {
     sendDataHandler: (data: string) => void;
     onSearchResultsDidChange?: (result: { resultIndex: number; resultCount: number }) => void;
     private toDispose: TermTypes.IDisposable[] = [];
+    pasteActive: boolean = false;
 
     constructor(
         blockId: string,
@@ -217,6 +218,19 @@ export class TermWrap {
         this.handleResize_debounced = debounce(50, this.handleResize.bind(this));
         this.terminal.open(this.connectElem);
         this.handleResize();
+        let pasteEventHandler = () => {
+            this.pasteActive = true;
+            setTimeout(() => {
+                this.pasteActive = false;
+            }, 30);
+        };
+        pasteEventHandler = pasteEventHandler.bind(this);
+        this.connectElem.addEventListener("paste", pasteEventHandler, true);
+        this.toDispose.push({
+            dispose: () => {
+                this.connectElem.removeEventListener("paste", pasteEventHandler, true);
+            },
+        });
     }
 
     async initTerminal() {
@@ -262,6 +276,12 @@ export class TermWrap {
     handleTermData(data: string) {
         if (!this.loaded) {
             return;
+        }
+        if (this.pasteActive) {
+            this.pasteActive = false;
+            if (this.multiInputCallback) {
+                this.multiInputCallback(data);
+            }
         }
         this.sendDataHandler?.(data);
     }
