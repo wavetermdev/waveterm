@@ -212,7 +212,6 @@ func (c S3Client) ReadTarStream(ctx context.Context, conn *connparse.Connection,
 			tarPathPrefix = bucket
 		}
 	} else if singleFile || includeDir {
-		log.Printf("singleFile or includeDir; tarPathPrefix: %v", tarPathPrefix)
 		// if we're including the directory itself, we need to remove the last part of the path
 		tarPathPrefix = fsutil.GetParentPathString(tarPathPrefix)
 	}
@@ -229,7 +228,6 @@ func (c S3Client) ReadTarStream(ctx context.Context, conn *connparse.Connection,
 		// close the objects when we're done
 		defer func() {
 			for key, obj := range objMap {
-				log.Printf("closing object %v", key)
 				utilfn.GracefulClose(obj.Body, "s3fs", key)
 			}
 		}()
@@ -301,7 +299,6 @@ func (c S3Client) ReadTarStream(ctx context.Context, conn *connparse.Connection,
 
 		// Walk the tree and write the tar entries
 		if err := tree.Walk(func(path string, numChildren int) error {
-			log.Printf("writing %v", path)
 			mapEntry, isFile := objMap[path]
 
 			// default vals assume entry is dir, since mapEntry might not exist
@@ -605,13 +602,11 @@ func (c S3Client) Stat(ctx context.Context, conn *connparse.Connection) (*wshrpc
 
 func (c S3Client) PutFile(ctx context.Context, conn *connparse.Connection, data wshrpc.FileData) error {
 	if data.At != nil {
-		log.Printf("PutFile: offset %d and size %d", data.At.Offset, data.At.Size)
 		return errors.Join(errors.ErrUnsupported, fmt.Errorf("file data offset and size not supported"))
 	}
 	bucket := conn.Host
 	objectKey := conn.Path
 	if bucket == "" || bucket == "/" || objectKey == "" || objectKey == "/" {
-		log.Printf("PutFile: bucket and object key must be specified")
 		return errors.Join(errors.ErrUnsupported, fmt.Errorf("bucket and object key must be specified"))
 	}
 	contentMaxLength := base64.StdEncoding.DecodedLen(len(data.Data64))
@@ -622,7 +617,6 @@ func (c S3Client) PutFile(ctx context.Context, conn *connparse.Connection, data 
 		decodedBody = make([]byte, contentMaxLength)
 		contentLength, err = base64.StdEncoding.Decode(decodedBody, []byte(data.Data64))
 		if err != nil {
-			log.Printf("PutFile: error decoding data: %v", err)
 			return err
 		}
 	} else {
@@ -706,15 +700,12 @@ func (c S3Client) CopyInternal(ctx context.Context, srcConn, destConn *connparse
 }
 
 func (c S3Client) Delete(ctx context.Context, conn *connparse.Connection, recursive bool) error {
-	log.Printf("s3fs.Delete: %v", conn.GetFullURI())
 	bucket := conn.Host
 	objectKey := conn.Path
 	if bucket == "" || bucket == fspath.Separator {
-		log.Printf("Delete: bucket must be specified")
 		return errors.Join(errors.ErrUnsupported, fmt.Errorf("bucket must be specified"))
 	}
 	if objectKey == "" || objectKey == fspath.Separator {
-		log.Printf("Delete: object key must be specified")
 		return errors.Join(errors.ErrUnsupported, fmt.Errorf("object key must be specified"))
 	}
 	if recursive {
@@ -732,14 +723,11 @@ func (c S3Client) Delete(ctx context.Context, conn *connparse.Connection, recurs
 			return true, nil
 		})
 		if err != nil {
-			log.Printf("Error listing objects: %v", err)
 			return err
 		}
 		if len(objects) == 0 {
-			log.Printf("No objects found with prefix %v:%v", bucket, objectKey)
 			return nil
 		}
-		log.Printf("Deleting %d objects with prefix %v:%v", len(objects), bucket, objectKey)
 		_, err = c.client.DeleteObjects(ctx, &s3.DeleteObjectsInput{
 			Bucket: aws.String(bucket),
 			Delete: &types.Delete{
