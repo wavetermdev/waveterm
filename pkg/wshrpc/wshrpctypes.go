@@ -228,7 +228,7 @@ type WshRpcInterface interface {
 	// remotes
 	RemoteStreamFileCommand(ctx context.Context, data CommandRemoteStreamFileData) chan RespOrErrorUnion[FileData]
 	RemoteTarStreamCommand(ctx context.Context, data CommandRemoteStreamTarData) <-chan RespOrErrorUnion[iochantypes.Packet]
-	RemoteFileCopyCommand(ctx context.Context, data CommandFileCopyData) error
+	RemoteFileCopyCommand(ctx context.Context, data CommandFileCopyData) (bool, error)
 	RemoteListEntriesCommand(ctx context.Context, data CommandRemoteListEntriesData) chan RespOrErrorUnion[CommandRemoteListEntriesRtnData]
 	RemoteFileInfoCommand(ctx context.Context, path string) (*FileInfo, error)
 	RemoteFileTouchCommand(ctx context.Context, path string) error
@@ -547,7 +547,7 @@ type CommandRemoteStreamTarData struct {
 type FileCopyOpts struct {
 	Overwrite bool  `json:"overwrite,omitempty"`
 	Recursive bool  `json:"recursive,omitempty"` // only used for move, always true for copy
-	Merge     bool  `json:"merge,omitempty"`     // only used for copy, always false for move
+	Merge     bool  `json:"merge,omitempty"`
 	Timeout   int64 `json:"timeout,omitempty"`
 }
 

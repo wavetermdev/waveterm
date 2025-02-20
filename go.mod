@@ -34,6 +34,7 @@ require (
 	github.com/wavetermdev/htmltoken v0.2.0
 	golang.org/x/crypto v0.33.0
 	golang.org/x/mod v0.23.0
+	golang.org/x/sync v0.11.0
 	golang.org/x/sys v0.30.0
 	golang.org/x/term v0.29.0
 	google.golang.org/api v0.221.0
@@ -95,7 +96,6 @@ require (
 	go.uber.org/atomic v1.7.0 // indirect
 	golang.org/x/net v0.35.0 // indirect
 	golang.org/x/oauth2 v0.26.0 // indirect
-	golang.org/x/sync v0.11.0 // indirect
 	golang.org/x/text v0.22.0 // indirect
 	golang.org/x/time v0.10.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20241209162323-e6fa225c2576 // indirect

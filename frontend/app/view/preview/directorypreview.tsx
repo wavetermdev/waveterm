@@ -2,9 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { Button } from "@/app/element/button";
-import { CopyButton } from "@/app/element/copybutton";
 import { Input } from "@/app/element/input";
-import { useDimensionsWithCallbackRef } from "@/app/hook/useDimensions";
 import { ContextMenuModel } from "@/app/store/contextmenu";
 import { atoms, getApi, globalStore } from "@/app/store/global";
 import { RpcApi } from "@/app/store/wshclientapi";
@@ -39,16 +37,13 @@ import "./directorypreview.scss";
 
 const PageJumpSize = 20;
 
-type FileCopyStatus = {
-    copyData: CommandFileCopyData;
-    copyError: string;
-    allowRetry: boolean;
-    isDir: boolean;
-};
+const recursiveError = "recursive flag must be set for directory operations";
+const overwriteError = "set overwrite flag to delete the existing file";
+const mergeError = "set overwrite flag to delete the existing contents or set merge flag to merge the contents";
 
 declare module "@tanstack/react-table" {
     interface TableMeta<TData extends RowData> {
-        updateName: (path: string) => void;
+        updateName: (path: string, isDir: boolean) => void;
         newFile: () => void;
         newDirectory: () => void;
     }
@@ -216,6 +211,7 @@ function DirectoryTable({
     newDirectory,
 }: DirectoryTableProps) {
     const fullConfig = useAtomValue(atoms.fullConfigAtom);
+    const setErrorMsg = useSetAtom(model.errorMsgAtom);
     const getIconFromMimeType = useCallback(
         (mimeType: string): string => {
             while (mimeType.length > 0) {
@@ -291,7 +287,7 @@ function DirectoryTable({
 
     const setEntryManagerProps = useSetAtom(entryManagerOverlayPropsAtom);
 
-    const updateName = useCallback((path: string) => {
+    const updateName = useCallback((path: string, isDir: boolean) => {
         const fileName = path.split("/").at(-1);
         setEntryManagerProps({
             entryManagerType: EntryManagerType.EditName,
@@ -302,24 +298,47 @@ function DirectoryTable({
                     const lastInstance = path.lastIndexOf(fileName);
                     newPath = path.substring(0, lastInstance) + newName;
                     console.log(`replacing ${fileName} with ${newName}: ${path}`);
-                    fireAndForget(async () => {
-                        try {
-                            await RpcApi.FileMoveCommand(TabRpcClient, {
-                                srcuri: await model.formatRemoteUri(path, globalStore.get),
-                                desturi: await model.formatRemoteUri(newPath, globalStore.get),
-                                opts: {
-                                    recursive: true,
-                                },
-                            });
-                        } catch (e) {
-                            const errorStatus: ErrorMsg = {
-                                status: "Rename Failed",
-                                text: `${e}`,
-                            };
-                            globalStore.set(model.errorMsgAtom, errorStatus);
-                        }
-                        model.refreshCallback();
-                    });
+                    const handleRename = (recursive: boolean) =>
+                        fireAndForget(async () => {
+                            try {
+                                let srcuri = await model.formatRemoteUri(path, globalStore.get);
+                                if (isDir) {
+                                    srcuri += "/";
+                                }
+                                await RpcApi.FileMoveCommand(TabRpcClient, {
+                                    srcuri,
+                                    desturi: await model.formatRemoteUri(newPath, globalStore.get),
+                                    opts: {
+                                        recursive,
+                                    },
+                                });
+                            } catch (e) {
+                                const errorText = `${e}`;
+                                console.warn(`Rename failed: ${errorText}`);
+                                let errorMsg: ErrorMsg;
+                                if (errorText.includes(recursiveError)) {
+                                    errorMsg = {
+                                        status: "Confirm Rename Directory",
+                                        text: "Renaming a directory requires the recursive flag. Proceed?",
+                                        level: "warning",
+                                        buttons: [
+                                            {
+                                                text: "Rename Recursively",
+                                                onClick: () => handleRename(true),
+                                            },
+                                        ],
+                                    };
+                                } else {
+                                    errorMsg = {
+                                        status: "Rename Failed",
+                                        text: `${e}`,
+                                    };
+                                }
+                                setErrorMsg(errorMsg);
+                            }
+                            model.refreshCallback();
+                        });
+                    handleRename(false);
                 }
                 setEntryManagerProps(undefined);
             },
@@ -495,6 +514,7 @@ function TableBody({
     const warningBoxRef = useRef<HTMLDivElement>();
     const rowRefs = useRef<HTMLDivElement[]>([]);
     const conn = useAtomValue(model.connection);
+    const setErrorMsg = useSetAtom(model.errorMsgAtom);
 
     useEffect(() => {
         if (focusIndex !== null && rowRefs.current[focusIndex] && bodyRef.current && osRef) {
@@ -529,8 +549,41 @@ function TableBody({
             if (finfo == null) {
                 return;
             }
-            const normPath = finfo.path;
             const fileName = finfo.path.split("/").pop();
+            const handleFileDelete = (recursive: boolean) =>
+                fireAndForget(async () => {
+                    const path = await model.formatRemoteUri(finfo.path, globalStore.get);
+                    try {
+                        await RpcApi.FileDeleteCommand(TabRpcClient, {
+                            path,
+                            recursive,
+                        });
+                    } catch (e) {
+                        const errorText = `${e}`;
+                        console.warn(`Delete failed: ${errorText}`);
+                        let errorMsg: ErrorMsg;
+                        if (errorText.includes(recursiveError)) {
+                            errorMsg = {
+                                status: "Confirm Delete Directory",
+                                text: "Deleting a directory requires the recursive flag. Proceed?",
+                                level: "warning",
+                                buttons: [
+                                    {
+                                        text: "Delete Recursively",
+                                        onClick: () => handleFileDelete(true),
+                                    },
+                                ],
+                            };
+                        } else {
+                            errorMsg = {
+                                status: "Delete Failed",
+                                text: `${e}`,
+                            };
+                        }
+                        setErrorMsg(errorMsg);
+                    }
+                    setRefreshVersion((current) => current + 1);
+                });
             const menu: ContextMenuItem[] = [
                 {
                     label: "New File",
@@ -547,7 +600,7 @@ function TableBody({
                 {
                     label: "Rename",
                     click: () => {
-                        table.options.meta.updateName(finfo.path);
+                        table.options.meta.updateName(finfo.path, finfo.isdir);
                     },
                 },
                 {
@@ -577,23 +630,7 @@ function TableBody({
                 },
                 {
                     label: "Delete",
-                    click: () => {
-                        fireAndForget(async () => {
-                            try {
-                                await RpcApi.FileDeleteCommand(TabRpcClient, {
-                                    path: await model.formatRemoteUri(finfo.path, globalStore.get),
-                                    recursive: false,
-                                });
-                            } catch (e) {
-                                const errorStatus: ErrorMsg = {
-                                    status: "Delete Failed",
-                                    text: `${e}`,
-                                };
-                                globalStore.set(model.errorMsgAtom, errorStatus);
-                            }
-                            setRefreshVersion((current) => current + 1);
-                        });
-                    },
+                    click: () => handleFileDelete(false),
                 }
             );
             ContextMenuModel.showContextMenu(menu, e);
@@ -728,7 +765,7 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
     const blockData = useAtomValue(model.blockAtom);
     const finfo = useAtomValue(model.statFile);
     const dirPath = finfo?.path;
-    const [copyStatus, setCopyStatus] = useState<FileCopyStatus>(null);
+    const setErrorMsg = useSetAtom(model.errorMsgAtom);
 
     useEffect(() => {
         model.refreshCallback = () => {
@@ -754,11 +791,10 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
                 );
                 entries = file.entries ?? [];
             } catch (e) {
-                const errorStatus: ErrorMsg = {
+                setErrorMsg({
                     status: "Cannot Read Directory",
                     text: `${e}`,
-                };
-                globalStore.set(model.errorMsgAtom, errorStatus);
+                });
             }
             setUnfilteredData(entries);
         };
@@ -854,28 +890,48 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
     });
 
     const handleDropCopy = useCallback(
-        async (data: CommandFileCopyData, isDir) => {
+        async (data: CommandFileCopyData, isDir: boolean) => {
             try {
                 await RpcApi.FileCopyCommand(TabRpcClient, data, { timeout: data.opts.timeout });
-                setCopyStatus(null);
             } catch (e) {
-                console.log("copy failed:", e);
+                console.warn("Copy failed:", e);
                 const copyError = `${e}`;
-                const allowRetry =
-                    copyError.includes("overwrite not specified") ||
-                    copyError.includes("neither overwrite nor merge specified") ||
-                    copyError.includes("neither merge nor overwrite specified");
-                const copyStatus: FileCopyStatus = {
-                    copyError,
-                    copyData: data,
-                    allowRetry,
-                    isDir: isDir,
-                };
-                setCopyStatus(copyStatus);
+                const allowRetry = copyError.includes(overwriteError) || copyError.includes(mergeError);
+                let errorMsg: ErrorMsg;
+                if (allowRetry) {
+                    errorMsg = {
+                        status: "Confirm Overwrite File(s)",
+                        text: "This copy operation will overwrite an existing file. Would you like to continue?",
+                        level: "warning",
+                        buttons: [
+                            {
+                                text: "Delete Then Copy",
+                                onClick: async () => {
+                                    data.opts.overwrite = true;
+                                    await handleDropCopy(data, isDir);
+                                },
+                            },
+                            {
+                                text: "Sync",
+                                onClick: async () => {
+                                    data.opts.merge = true;
+                                    await handleDropCopy(data, isDir);
+                                },
+                            },
+                        ],
+                    };
+                } else {
+                    errorMsg = {
+                        status: "Copy Failed",
+                        text: copyError,
+                        level: "error",
+                    };
+                }
+                setErrorMsg(errorMsg);
             }
             model.refreshCallback();
         },
-        [setCopyStatus, model.refreshCallback]
+        [model.refreshCallback]
     );
 
     const [, drop] = useDrop(
@@ -908,7 +964,7 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
             },
             // TODO: mabe add a hover option?
         }),
-        [dirPath, model.formatRemoteUri, model.refreshCallback, setCopyStatus]
+        [dirPath, model.formatRemoteUri, model.refreshCallback]
     );
 
     useEffect(() => {
@@ -1000,13 +1056,6 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
                 onContextMenu={(e) => handleFileContextMenu(e)}
                 onClick={() => setEntryManagerProps(undefined)}
             >
-                {copyStatus != null && (
-                    <CopyErrorOverlay
-                        copyStatus={copyStatus}
-                        setCopyStatus={setCopyStatus}
-                        handleDropCopy={handleDropCopy}
-                    />
-                )}
                 <DirectoryTable
                     model={model}
                     data={filteredData}
@@ -1033,113 +1082,5 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
         </Fragment>
     );
 }
-
-const CopyErrorOverlay = React.memo(
-    ({
-        copyStatus,
-        setCopyStatus,
-        handleDropCopy,
-    }: {
-        copyStatus: FileCopyStatus;
-        setCopyStatus: (_: FileCopyStatus) => void;
-        handleDropCopy: (data: CommandFileCopyData, isDir: boolean) => Promise<void>;
-    }) => {
-        const [overlayRefCallback, _, domRect] = useDimensionsWithCallbackRef(30);
-        const width = domRect?.width;
-
-        const handleRetryCopy = React.useCallback(
-            async (copyOpt?: string) => {
-                if (!copyStatus) {
-                    return;
-                }
-                let overwrite = copyOpt == "overwrite";
-                let merge = copyOpt == "merge";
-                const updatedData = {
-                    ...copyStatus.copyData,
-                    opts: { ...copyStatus.copyData.opts, overwrite, merge },
-                };
-                await handleDropCopy(updatedData, copyStatus.isDir);
-            },
-            [copyStatus.copyData]
-        );
-
-        let statusText = "Copy Error";
-        let errorMsg = `error: ${copyStatus?.copyError}`;
-        if (copyStatus?.allowRetry) {
-            statusText = "Confirm Overwrite File(s)";
-            errorMsg = "This copy operation will overwrite an existing file. Would you like to continue?";
-        }
-
-        const buttonClassName = "outlined grey font-size-11 vertical-padding-3 horizontal-padding-7";
-
-        const handleRemoveCopyError = React.useCallback(async () => {
-            setCopyStatus(null);
-        }, [setCopyStatus]);
-
-        const handleCopyToClipboard = React.useCallback(async () => {
-            await navigator.clipboard.writeText(errorMsg);
-        }, [errorMsg]);
-
-        return (
-            <div
-                ref={overlayRefCallback}
-                className="absolute top-[0] left-1.5 right-1.5 z-[var(--zindex-block-mask-inner)] overflow-hidden bg-[var(--conn-status-overlay-bg-color)] backdrop-blur-[50px] rounded-md shadow-lg"
-            >
-                <div className="flex flex-row justify-between p-2.5 pl-3 font-[var(--base-font)] text-[var(--secondary-text-color)]">
-                    <div
-                        className={clsx("flex flex-row items-center gap-3 grow min-w-0", {
-                            "items-start": true,
-                        })}
-                    >
-                        <i className="fa-solid fa-triangle-exclamation text-[#e6ba1e] text-base"></i>
-
-                        <div className="flex flex-col items-start gap-1 grow w-full">
-                            <div className="max-w-full text-xs font-semibold leading-4 tracking-[0.11px] text-white">
-                                {statusText}
-                            </div>
-
-                            <OverlayScrollbarsComponent
-                                className="group text-xs font-normal leading-[15px] tracking-[0.11px] text-wrap max-h-20 rounded-lg py-1.5 pl-0 relative w-full"
-                                options={{ scrollbars: { autoHide: "leave" } }}
-                            >
-                                <CopyButton
-                                    className="invisible group-hover:visible flex absolute top-0 right-1 rounded backdrop-blur-lg p-1 items-center justify-end gap-1"
-                                    onClick={handleCopyToClipboard}
-                                    title="Copy"
-                                />
-                                <div>{errorMsg}</div>
-                            </OverlayScrollbarsComponent>
-
-                            {copyStatus?.allowRetry && (
-                                <div className="flex flex-row gap-1.5">
-                                    <Button className={buttonClassName} onClick={() => handleRetryCopy("overwrite")}>
-                                        Delete Then Copy
-                                    </Button>
-                                    {copyStatus.isDir && (
-                                        <Button className={buttonClassName} onClick={() => handleRetryCopy("merge")}>
-                                            Sync
-                                        </Button>
-                                    )}
-                                    <Button className={buttonClassName} onClick={handleRemoveCopyError}>
-                                        Cancel
-                                    </Button>
-                                </div>
-                            )}
-                        </div>
-
-                        {!copyStatus?.allowRetry && (
-                            <div className="flex items-start">
-                                <Button
-                                    className={clsx(buttonClassName, "fa-xmark fa-solid")}
-                                    onClick={handleRemoveCopyError}
-                                />
-                            </div>
-                        )}
-                    </div>
-                </div>
-            </div>
-        );
-    }
-);
 
 export { DirectoryPreview };

@@ -422,16 +422,18 @@ func (c WaveClient) MoveInternal(ctx context.Context, srcConn, destConn *connpar
 	if srcConn.Host != destConn.Host {
 		return fmt.Errorf("move internal, src and dest hosts do not match")
 	}
-	if err := c.CopyInternal(ctx, srcConn, destConn, opts); err != nil {
+	isDir, err := c.CopyInternal(ctx, srcConn, destConn, opts)
+	if err != nil {
 		return fmt.Errorf("error copying blockfile: %w", err)
 	}
-	if err := c.Delete(ctx, srcConn, opts.Recursive); err != nil {
+	recursive := opts != nil && opts.Recursive && isDir
+	if err := c.Delete(ctx, srcConn, recursive); err != nil {
 		return fmt.Errorf("error deleting blockfile: %w", err)
 	}
 	return nil
 }
 
-func (c WaveClient) CopyInternal(ctx context.Context, srcConn, destConn *connparse.Connection, opts *wshrpc.FileCopyOpts) error {
+func (c WaveClient) CopyInternal(ctx context.Context, srcConn, destConn *connparse.Connection, opts *wshrpc.FileCopyOpts) (bool, error) {
 	return fsutil.PrefixCopyInternal(ctx, srcConn, destConn, c, opts, func(ctx context.Context, zoneId, prefix string) ([]string, error) {
 		entryList := make([]string, 0)
 		if err := listFilesPrefix(ctx, zoneId, prefix, func(wf *filestore.WaveFile) error {
@@ -466,13 +468,13 @@ func (c WaveClient) CopyInternal(ctx context.Context, srcConn, destConn *connpar
 	})
 }
 
-func (c WaveClient) CopyRemote(ctx context.Context, srcConn, destConn *connparse.Connection, srcClient fstype.FileShareClient, opts *wshrpc.FileCopyOpts) error {
+func (c WaveClient) CopyRemote(ctx context.Context, srcConn, destConn *connparse.Connection, srcClient fstype.FileShareClient, opts *wshrpc.FileCopyOpts) (bool, error) {
 	if srcConn.Scheme == connparse.ConnectionTypeWave && destConn.Scheme == connparse.ConnectionTypeWave {
 		return c.CopyInternal(ctx, srcConn, destConn, opts)
 	}
 	zoneId := destConn.Host
 	if zoneId == "" {
-		return fmt.Errorf("zoneid not found in connection")
+		return false, fmt.Errorf("zoneid not found in connection")
 	}
 	return fsutil.PrefixCopyRemote(ctx, srcConn, destConn, srcClient, c, func(zoneId, path string, size int64, reader io.Reader) error {
 		dataBuf := make([]byte, size)

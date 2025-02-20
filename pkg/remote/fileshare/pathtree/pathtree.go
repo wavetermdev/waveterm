@@ -32,7 +32,7 @@ func (n *Node) Walk(curPath string, walkFunc WalkFunc, delimiter string) error {
 
 func NewTree(path string, delimiter string) *Tree {
 	if len(delimiter) > 1 {
-		log.Printf("Warning: multi-character delimiter '%s' may cause unexpected behavior", delimiter)
+		log.Printf("pathtree.NewTree: Warning: multi-character delimiter '%s' may cause unexpected behavior", delimiter)
 	}
 	if path != "" && !strings.HasSuffix(path, delimiter) {
 		path += delimiter
@@ -48,7 +48,6 @@ func NewTree(path string, delimiter string) *Tree {
 }
 
 func (t *Tree) Add(path string) {
-	log.Printf("tree.Add: path: %s", path)
 	// Validate input
 	if path == "" {
 		return
@@ -75,6 +74,7 @@ func (t *Tree) Add(path string) {
 	// Validate path components
 	for _, component := range components {
 		if component == "" || component == "." || component == ".." {
+			log.Printf("pathtree.Add: invalid path component: %s", component)
 			return // Skip invalid paths
 		}
 	}
@@ -118,7 +118,6 @@ func (t *Tree) addNewPath(components []string) {
 }
 
 func (t *Tree) Walk(walkFunc WalkFunc) error {
-	log.Printf("RootPath: %s", t.RootPath)
 	for key, child := range t.Root.Children {
 		if err := child.Walk(t.RootPath+key, walkFunc, t.delimiter); err != nil {
 			return err

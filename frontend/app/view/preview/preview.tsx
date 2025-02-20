@@ -1229,18 +1229,22 @@ const ErrorOverlay = memo(({ errorMsg, resetOverlay }: { errorMsg: ErrorMsg; res
                             />
                             <div>{errorMsg.text}</div>
                         </OverlayScrollbarsComponent>
-                        {errorMsg.buttons?.map((buttonDef) => (
-                            <Button
-                                className={buttonClassName}
-                                onClick={() => {
-                                    buttonDef.onClick();
-                                    resetOverlay();
-                                }}
-                                key={crypto.randomUUID()}
-                            >
-                                {buttonDef.text}
-                            </Button>
-                        ))}
+                        {!!errorMsg.buttons && (
+                            <div className="flex flex-row gap-2">
+                                {errorMsg.buttons?.map((buttonDef) => (
+                                    <Button
+                                        className={buttonClassName}
+                                        onClick={() => {
+                                            buttonDef.onClick();
+                                            resetOverlay();
+                                        }}
+                                        key={crypto.randomUUID()}
+                                    >
+                                        {buttonDef.text}
+                                    </Button>
+                                ))}
+                            </div>
+                        )}
                     </div>
 
                     {showDismiss && (

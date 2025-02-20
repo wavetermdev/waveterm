@@ -150,6 +150,7 @@ func (c S3Client) ReadStream(ctx context.Context, conn *connparse.Connection, da
 }
 
 func (c S3Client) ReadTarStream(ctx context.Context, conn *connparse.Connection, opts *wshrpc.FileCopyOpts) <-chan wshrpc.RespOrErrorUnion[iochantypes.Packet] {
+	recursive := opts != nil && opts.Recursive
 	bucket := conn.Host
 	if bucket == "" || bucket == "/" {
 		return wshutil.SendErrCh[iochantypes.Packet](fmt.Errorf("bucket must be specified"))
@@ -187,6 +188,10 @@ func (c S3Client) ReadTarStream(ctx context.Context, conn *connparse.Connection,
 	// whether the operation is on a single file
 	singleFile := singleFileResult != nil
 
+	if !singleFile && !recursive {
+		return wshutil.SendErrCh[iochantypes.Packet](fmt.Errorf(fstype.RecursiveRequiredError))
+	}
+
 	// whether to include the directory itself in the tar
 	includeDir := (wholeBucket && conn.Path == "") || (singleFileResult == nil && conn.Path != "" && !strings.HasSuffix(conn.Path, fspath.Separator))
 
@@ -223,7 +228,6 @@ func (c S3Client) ReadTarStream(ctx context.Context, conn *connparse.Connection,
 		// close the objects when we're done
 		defer func() {
 			for key, obj := range objMap {
-				log.Printf("closing object %v", key)
 				utilfn.GracefulClose(obj.Body, "s3fs", key)
 			}
 		}()
@@ -598,13 +602,11 @@ func (c S3Client) Stat(ctx context.Context, conn *connparse.Connection) (*wshrpc
 
 func (c S3Client) PutFile(ctx context.Context, conn *connparse.Connection, data wshrpc.FileData) error {
 	if data.At != nil {
-		log.Printf("PutFile: offset %d and size %d", data.At.Offset, data.At.Size)
 		return errors.Join(errors.ErrUnsupported, fmt.Errorf("file data offset and size not supported"))
 	}
 	bucket := conn.Host
 	objectKey := conn.Path
 	if bucket == "" || bucket == "/" || objectKey == "" || objectKey == "/" {
-		log.Printf("PutFile: bucket and object key must be specified")
 		return errors.Join(errors.ErrUnsupported, fmt.Errorf("bucket and object key must be specified"))
 	}
 	contentMaxLength := base64.StdEncoding.DecodedLen(len(data.Data64))
@@ -615,7 +617,6 @@ func (c S3Client) PutFile(ctx context.Context, conn *connparse.Connection, data 
 		decodedBody = make([]byte, contentMaxLength)
 		contentLength, err = base64.StdEncoding.Decode(decodedBody, []byte(data.Data64))
 		if err != nil {
-			log.Printf("PutFile: error decoding data: %v", err)
 			return err
 		}
 	} else {
@@ -644,20 +645,21 @@ func (c S3Client) Mkdir(ctx context.Context, conn *connparse.Connection) error {
 }
 
 func (c S3Client) MoveInternal(ctx context.Context, srcConn, destConn *connparse.Connection, opts *wshrpc.FileCopyOpts) error {
-	err := c.CopyInternal(ctx, srcConn, destConn, opts)
+	isDir, err := c.CopyInternal(ctx, srcConn, destConn, opts)
 	if err != nil {
 		return err
 	}
-	return c.Delete(ctx, srcConn, true)
+	recursive := opts != nil && opts.Recursive
+	return c.Delete(ctx, srcConn, recursive && isDir)
 }
 
-func (c S3Client) CopyRemote(ctx context.Context, srcConn, destConn *connparse.Connection, srcClient fstype.FileShareClient, opts *wshrpc.FileCopyOpts) error {
+func (c S3Client) CopyRemote(ctx context.Context, srcConn, destConn *connparse.Connection, srcClient fstype.FileShareClient, opts *wshrpc.FileCopyOpts) (bool, error) {
 	if srcConn.Scheme == connparse.ConnectionTypeS3 && destConn.Scheme == connparse.ConnectionTypeS3 {
 		return c.CopyInternal(ctx, srcConn, destConn, opts)
 	}
 	destBucket := destConn.Host
 	if destBucket == "" || destBucket == fspath.Separator {
-		return fmt.Errorf("destination bucket must be specified")
+		return false, fmt.Errorf("destination bucket must be specified")
 	}
 	return fsutil.PrefixCopyRemote(ctx, srcConn, destConn, srcClient, c, func(bucket, path string, size int64, reader io.Reader) error {
 		_, err := c.client.PutObject(ctx, &s3.PutObjectInput{
@@ -670,11 +672,11 @@ func (c S3Client) CopyRemote(ctx context.Context, srcConn, destConn *connparse.C
 	}, opts)
 }
 
-func (c S3Client) CopyInternal(ctx context.Context, srcConn, destConn *connparse.Connection, opts *wshrpc.FileCopyOpts) error {
+func (c S3Client) CopyInternal(ctx context.Context, srcConn, destConn *connparse.Connection, opts *wshrpc.FileCopyOpts) (bool, error) {
 	srcBucket := srcConn.Host
 	destBucket := destConn.Host
 	if srcBucket == "" || srcBucket == fspath.Separator || destBucket == "" || destBucket == fspath.Separator {
-		return fmt.Errorf("source and destination bucket must be specified")
+		return false, fmt.Errorf("source and destination bucket must be specified")
 	}
 	return fsutil.PrefixCopyInternal(ctx, srcConn, destConn, c, opts, func(ctx context.Context, bucket, prefix string) ([]string, error) {
 		var entries []string
@@ -687,14 +689,76 @@ func (c S3Client) CopyInternal(ctx context.Context, srcConn, destConn *connparse
 		})
 		return entries, err
 	}, func(ctx context.Context, srcPath, destPath string) error {
-		log.Printf("Copying file %v -> %v", srcBucket+"/"+srcPath, destBucket+"/"+destPath)
 		_, err := c.client.CopyObject(ctx, &s3.CopyObjectInput{
 			Bucket:     aws.String(destBucket),
 			Key:        aws.String(destPath),
 			CopySource: aws.String(fspath.Join(srcBucket, srcPath)),
 		})
-		return err
+		if err != nil {
+			return fmt.Errorf("error copying %v:%v to %v:%v: %w", srcBucket, srcPath, destBucket, destPath, err)
+		}
+		return nil
 	})
+}
+
+func (c S3Client) Delete(ctx context.Context, conn *connparse.Connection, recursive bool) error {
+	bucket := conn.Host
+	objectKey := conn.Path
+	if bucket == "" || bucket == fspath.Separator {
+		return errors.Join(errors.ErrUnsupported, fmt.Errorf("bucket must be specified"))
+	}
+	if objectKey == "" || objectKey == fspath.Separator {
+		return errors.Join(errors.ErrUnsupported, fmt.Errorf("object key must be specified"))
+	}
+	var err error
+	if recursive {
+		log.Printf("Deleting objects with prefix %v:%v", bucket, objectKey)
+		if !strings.HasSuffix(objectKey, fspath.Separator) {
+			objectKey = objectKey + fspath.Separator
+		}
+		objects := make([]types.ObjectIdentifier, 0)
+		err = c.listFilesPrefix(ctx, &s3.ListObjectsV2Input{
+			Bucket: aws.String(bucket),
+			Prefix: aws.String(objectKey),
+		}, func(obj *types.Object) (bool, error) {
+			objects = append(objects, types.ObjectIdentifier{Key: obj.Key})
+			return true, nil
+		})
+		if err != nil {
+			return err
+		}
+		if len(objects) == 0 {
+			return nil
+		}
+		_, err = c.client.DeleteObjects(ctx, &s3.DeleteObjectsInput{
+			Bucket: aws.String(bucket),
+			Delete: &types.Delete{
+				Objects: objects,
+			},
+		})
+	} else {
+		log.Printf("Deleting object %v:%v", bucket, objectKey)
+		_, err = c.client.DeleteObject(ctx, &s3.DeleteObjectInput{
+			Bucket: aws.String(bucket),
+			Key:    aws.String(objectKey),
+		})
+	}
+	if err != nil {
+		return err
+	}
+
+	// verify the object was deleted
+	finfo, err := c.Stat(ctx, conn)
+	if err != nil {
+		return err
+	}
+	if !finfo.NotFound {
+		if finfo.IsDir {
+			return fmt.Errorf(fstype.RecursiveRequiredError)
+		}
+		return fmt.Errorf("object was not successfully deleted %v:%v", bucket, objectKey)
+	}
+	return nil
 }
 
 func (c S3Client) listFilesPrefix(ctx context.Context, input *s3.ListObjectsV2Input, fileCallback func(*types.Object) (bool, error)) error {
@@ -720,48 +784,6 @@ func (c S3Client) listFilesPrefix(ctx context.Context, input *s3.ListObjectsV2In
 		}
 	}
 	return nil
-}
-
-func (c S3Client) Delete(ctx context.Context, conn *connparse.Connection, recursive bool) error {
-	bucket := conn.Host
-	objectKey := conn.Path
-	if bucket == "" || bucket == fspath.Separator {
-		return errors.Join(errors.ErrUnsupported, fmt.Errorf("bucket must be specified"))
-	}
-	if objectKey == "" || objectKey == fspath.Separator {
-		return errors.Join(errors.ErrUnsupported, fmt.Errorf("object key must be specified"))
-	}
-	if recursive {
-		if !strings.HasSuffix(objectKey, fspath.Separator) {
-			objectKey = objectKey + fspath.Separator
-		}
-		entries, err := c.client.ListObjectsV2(ctx, &s3.ListObjectsV2Input{
-			Bucket: aws.String(bucket),
-			Prefix: aws.String(objectKey),
-		})
-		if err != nil {
-			return err
-		}
-		if len(entries.Contents) == 0 {
-			return nil
-		}
-		objects := make([]types.ObjectIdentifier, 0, len(entries.Contents))
-		for _, obj := range entries.Contents {
-			objects = append(objects, types.ObjectIdentifier{Key: obj.Key})
-		}
-		_, err = c.client.DeleteObjects(ctx, &s3.DeleteObjectsInput{
-			Bucket: aws.String(bucket),
-			Delete: &types.Delete{
-				Objects: objects,
-			},
-		})
-		return err
-	}
-	_, err := c.client.DeleteObject(ctx, &s3.DeleteObjectInput{
-		Bucket: aws.String(bucket),
-		Key:    aws.String(objectKey),
-	})
-	return err
 }
 
 func (c S3Client) Join(ctx context.Context, conn *connparse.Connection, parts ...string) (*wshrpc.FileInfo, error) {

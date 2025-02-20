@@ -73,8 +73,6 @@ func TarCopySrc(ctx context.Context, pathPrefix string) (outputChan chan wshrpc.
 			}
 			header.Name = path
 
-			log.Printf("TarCopySrc: header name: %v\n", header.Name)
-
 			// write header
 			if err := tarWriter.WriteHeader(header); err != nil {
 				return err
