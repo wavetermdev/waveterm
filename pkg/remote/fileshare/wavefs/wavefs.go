@@ -422,8 +422,7 @@ func (c WaveClient) MoveInternal(ctx context.Context, srcConn, destConn *connpar
 	if srcConn.Host != destConn.Host {
 		return fmt.Errorf("move internal, src and dest hosts do not match")
 	}
-	err := c.CopyInternal(ctx, srcConn, destConn, opts)
-	if err != nil {
+	if err := c.CopyInternal(ctx, srcConn, destConn, opts); err != nil {
 		return fmt.Errorf("error copying blockfile: %w", err)
 	}
 	recursive := opts != nil && opts.Recursive
