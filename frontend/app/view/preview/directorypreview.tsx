@@ -37,12 +37,9 @@ import "./directorypreview.scss";
 
 const PageJumpSize = 20;
 
-type FileCopyStatus = {
-    copyData: CommandFileCopyData;
-    copyError: string;
-    allowRetry: boolean;
-    isDir: boolean;
-};
+const recursiveError = "recursive flag must be set for directory operations";
+const overwriteError = "set overwrite flag to delete the existing file";
+const mergeError = "set overwrite flag to delete the existing contents or set merge flag to merge the contents";
 
 declare module "@tanstack/react-table" {
     interface TableMeta<TData extends RowData> {
@@ -214,6 +211,7 @@ function DirectoryTable({
     newDirectory,
 }: DirectoryTableProps) {
     const fullConfig = useAtomValue(atoms.fullConfigAtom);
+    const setErrorMsg = useSetAtom(model.errorMsgAtom);
     const getIconFromMimeType = useCallback(
         (mimeType: string): string => {
             while (mimeType.length > 0) {
@@ -314,11 +312,48 @@ function DirectoryTable({
                                 },
                             });
                         } catch (e) {
-                            const errorStatus: ErrorMsg = {
-                                status: "Rename Failed",
-                                text: `${e}`,
-                            };
-                            globalStore.set(model.errorMsgAtom, errorStatus);
+                            const errorText = `${e}`;
+                            console.warn(`Rename failed: ${errorText}`);
+                            let errorStatus: ErrorMsg;
+                            if (errorText.includes(recursiveError)) {
+                                errorStatus = {
+                                    status: "Confirm Rename Directory",
+                                    text: "Renaming a directory requires the recursive flag. Proceed?",
+                                    buttons: [
+                                        {
+                                            text: "Rename Recursively",
+                                            onClick: async () => {
+                                                try {
+                                                    let srcuri = await model.formatRemoteUri(path, globalStore.get);
+                                                    if (isDir) {
+                                                        srcuri += "/";
+                                                    }
+                                                    await RpcApi.FileMoveCommand(TabRpcClient, {
+                                                        srcuri,
+                                                        desturi: await model.formatRemoteUri(newPath, globalStore.get),
+                                                        opts: {
+                                                            recursive: true,
+                                                        },
+                                                    });
+                                                } catch (e) {
+                                                    const errorStatus: ErrorMsg = {
+                                                        status: "Rename Failed",
+                                                        text: `${e}`,
+                                                    };
+                                                    globalStore.set(model.errorMsgAtom, errorStatus);
+                                                }
+                                                model.refreshCallback();
+                                            },
+                                        },
+                                    ],
+                                };
+                            } else {
+                                errorStatus = {
+                                    status: "Rename Failed",
+                                    text: `${e}`,
+                                };
+                            }
+                            setErrorMsg(errorStatus);
                         }
                         model.refreshCallback();
                     });
@@ -497,6 +532,7 @@ function TableBody({
     const warningBoxRef = useRef<HTMLDivElement>();
     const rowRefs = useRef<HTMLDivElement[]>([]);
     const conn = useAtomValue(model.connection);
+    const setErrorMsg = useSetAtom(model.errorMsgAtom);
 
     useEffect(() => {
         if (focusIndex !== null && rowRefs.current[focusIndex] && bodyRef.current && osRef) {
@@ -531,8 +567,40 @@ function TableBody({
             if (finfo == null) {
                 return;
             }
-            const normPath = finfo.path;
             const fileName = finfo.path.split("/").pop();
+            const handleFileDelete = (recursive: boolean) =>
+                fireAndForget(async () => {
+                    const path = await model.formatRemoteUri(finfo.path, globalStore.get);
+                    try {
+                        await RpcApi.FileDeleteCommand(TabRpcClient, {
+                            path,
+                            recursive,
+                        });
+                    } catch (e) {
+                        const errorText = `${e}`;
+                        console.warn(`Delete failed: ${errorText}`);
+                        let errorStatus: ErrorMsg;
+                        if (errorText.includes(recursiveError)) {
+                            errorStatus = {
+                                status: "Confirm Delete Directory",
+                                text: "Deleting a directory requires the recursive flag. Proceed?",
+                                buttons: [
+                                    {
+                                        text: "Delete Recursively",
+                                        onClick: () => handleFileDelete(true),
+                                    },
+                                ],
+                            };
+                        } else {
+                            errorStatus = {
+                                status: "Delete Failed",
+                                text: `${e}`,
+                            };
+                        }
+                        setErrorMsg(errorStatus);
+                    }
+                    setRefreshVersion((current) => current + 1);
+                });
             const menu: ContextMenuItem[] = [
                 {
                     label: "New File",
@@ -579,23 +647,7 @@ function TableBody({
                 },
                 {
                     label: "Delete",
-                    click: () => {
-                        fireAndForget(async () => {
-                            try {
-                                await RpcApi.FileDeleteCommand(TabRpcClient, {
-                                    path: await model.formatRemoteUri(finfo.path, globalStore.get),
-                                    recursive: false,
-                                });
-                            } catch (e) {
-                                const errorStatus: ErrorMsg = {
-                                    status: "Delete Failed",
-                                    text: `${e}`,
-                                };
-                                globalStore.set(model.errorMsgAtom, errorStatus);
-                            }
-                            setRefreshVersion((current) => current + 1);
-                        });
-                    },
+                    click: () => handleFileDelete(false),
                 }
             );
             ContextMenuModel.showContextMenu(menu, e);
@@ -860,13 +912,9 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
             try {
                 await RpcApi.FileCopyCommand(TabRpcClient, data, { timeout: data.opts.timeout });
             } catch (e) {
-                console.warn("copy failed:", e);
+                console.warn("Copy failed:", e);
                 const copyError = `${e}`;
-                const allowRetry =
-                    copyError.includes("set overwrite flag to delete the existing file") ||
-                    copyError.includes(
-                        "set overwrite flag to delete the existing contents or set merge flag to merge the contents"
-                    );
+                const allowRetry = copyError.includes(overwriteError) || copyError.includes(mergeError);
                 let errorMsg: ErrorMsg;
                 if (allowRetry) {
                     errorMsg = {

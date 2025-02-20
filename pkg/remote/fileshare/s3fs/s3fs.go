@@ -189,7 +189,7 @@ func (c S3Client) ReadTarStream(ctx context.Context, conn *connparse.Connection,
 	singleFile := singleFileResult != nil
 
 	if !singleFile && !recursive {
-		return wshutil.SendErrCh[iochantypes.Packet](fmt.Errorf(fstype.RecursiveCopyError))
+		return wshutil.SendErrCh[iochantypes.Packet](fmt.Errorf(fstype.RecursiveRequiredError))
 	}
 
 	// whether to include the directory itself in the tar
@@ -708,17 +708,17 @@ func (c S3Client) Delete(ctx context.Context, conn *connparse.Connection, recurs
 	if objectKey == "" || objectKey == fspath.Separator {
 		return errors.Join(errors.ErrUnsupported, fmt.Errorf("object key must be specified"))
 	}
+	var err error
 	if recursive {
 		log.Printf("Deleting objects with prefix %v:%v", bucket, objectKey)
 		if !strings.HasSuffix(objectKey, fspath.Separator) {
 			objectKey = objectKey + fspath.Separator
 		}
 		objects := make([]types.ObjectIdentifier, 0)
-		err := c.listFilesPrefix(ctx, &s3.ListObjectsV2Input{
+		err = c.listFilesPrefix(ctx, &s3.ListObjectsV2Input{
 			Bucket: aws.String(bucket),
 			Prefix: aws.String(objectKey),
 		}, func(obj *types.Object) (bool, error) {
-			log.Printf("Deleting object %v:%v", bucket, *obj.Key)
 			objects = append(objects, types.ObjectIdentifier{Key: obj.Key})
 			return true, nil
 		})
@@ -734,17 +734,29 @@ func (c S3Client) Delete(ctx context.Context, conn *connparse.Connection, recurs
 				Objects: objects,
 			},
 		})
-		if err != nil {
-			log.Printf("Error deleting objects: %v", err)
-		}
+	} else {
+		log.Printf("Deleting object %v:%v", bucket, objectKey)
+		_, err = c.client.DeleteObject(ctx, &s3.DeleteObjectInput{
+			Bucket: aws.String(bucket),
+			Key:    aws.String(objectKey),
+		})
+	}
+	if err != nil {
 		return err
 	}
-	log.Printf("Deleting object %v:%v", bucket, objectKey)
-	_, err := c.client.DeleteObject(ctx, &s3.DeleteObjectInput{
-		Bucket: aws.String(bucket),
-		Key:    aws.String(objectKey),
-	})
-	return err
+
+	// verify the object was deleted
+	finfo, err := c.Stat(ctx, conn)
+	if err != nil {
+		return err
+	}
+	if !finfo.NotFound {
+		if finfo.IsDir {
+			return fmt.Errorf(fstype.RecursiveRequiredError)
+		}
+		return fmt.Errorf("object was not successfully deleted %v:%v", bucket, objectKey)
+	}
+	return nil
 }
 
 func (c S3Client) listFilesPrefix(ctx context.Context, input *s3.ListObjectsV2Input, fileCallback func(*types.Object) (bool, error)) error {

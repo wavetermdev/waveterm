@@ -53,7 +53,7 @@ func PrefixCopyInternal(ctx context.Context, srcConn, destConn *connparse.Connec
 	recursive := opts != nil && opts.Recursive
 	if srcInfo.IsDir {
 		if !recursive {
-			return false, fmt.Errorf(fstype.RecursiveCopyError)
+			return false, fmt.Errorf(fstype.RecursiveRequiredError)
 		}
 		if !srcHasSlash {
 			srcPath += fspath.Separator
@@ -179,10 +179,10 @@ func DetermineCopyDestPath(ctx context.Context, srcConn, destConn *connparse.Con
 			}
 		} else if destInfo.IsDir && srcInfo.IsDir {
 			if !merge {
-				return "", "", nil, fmt.Errorf(fstype.MergeCopyError, destConn.GetFullURI())
+				return "", "", nil, fmt.Errorf(fstype.MergeRequiredError, destConn.GetFullURI())
 			}
 		} else {
-			return "", "", nil, fmt.Errorf(fstype.OverwriteCopyError, destConn.GetFullURI())
+			return "", "", nil, fmt.Errorf(fstype.OverwriteRequiredError, destConn.GetFullURI())
 		}
 	}
 	return srcPath, destPath, srcInfo, nil

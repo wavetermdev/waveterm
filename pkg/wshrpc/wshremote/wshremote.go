@@ -338,7 +338,7 @@ func (impl *ServerImpl) RemoteFileCopyCommand(ctx context.Context, data wshrpc.C
 
 	if destExists && !destIsDir {
 		if !overwrite {
-			return false, fmt.Errorf(fstype.OverwriteCopyError, destPathCleaned)
+			return false, fmt.Errorf(fstype.OverwriteRequiredError, destPathCleaned)
 		} else {
 			err := os.Remove(destPathCleaned)
 			if err != nil {
@@ -367,7 +367,7 @@ func (impl *ServerImpl) RemoteFileCopyCommand(ctx context.Context, data wshrpc.C
 						return 0, fmt.Errorf("cannot stat file %q: %w", path, err)
 					}
 					if newdestinfo != nil && !overwrite {
-						return 0, fmt.Errorf(fstype.OverwriteCopyError, path)
+						return 0, fmt.Errorf(fstype.OverwriteRequiredError, path)
 					}
 				} else if overwrite {
 					err := os.RemoveAll(path)
@@ -375,11 +375,11 @@ func (impl *ServerImpl) RemoteFileCopyCommand(ctx context.Context, data wshrpc.C
 						return 0, fmt.Errorf("cannot remove directory %q: %w", path, err)
 					}
 				} else if !merge {
-					return 0, fmt.Errorf(fstype.MergeCopyError, path)
+					return 0, fmt.Errorf(fstype.MergeRequiredError, path)
 				}
 			} else {
 				if !overwrite {
-					return 0, fmt.Errorf(fstype.OverwriteCopyError, path)
+					return 0, fmt.Errorf(fstype.OverwriteRequiredError, path)
 				} else if finfo.IsDir() {
 					err := os.RemoveAll(path)
 					if err != nil {
@@ -736,7 +736,7 @@ func (impl *ServerImpl) RemoteFileMoveCommand(ctx context.Context, data wshrpc.C
 			return fmt.Errorf("cannot stat file %q: %w", srcPathCleaned, err)
 		}
 		if finfo.IsDir() && !recursive {
-			return fmt.Errorf(fstype.RecursiveCopyError)
+			return fmt.Errorf(fstype.RecursiveRequiredError)
 		}
 		err = os.Rename(srcPathCleaned, destPathCleaned)
 		if err != nil {
