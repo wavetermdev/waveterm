@@ -62,6 +62,20 @@ func (c S3Client) ReadStream(ctx context.Context, conn *connparse.Connection, da
 			return
 		}
 		rtn <- wshrpc.RespOrErrorUnion[wshrpc.FileData]{Response: wshrpc.FileData{Info: finfo}}
+		if finfo.NotFound {
+			rtn <- wshrpc.RespOrErrorUnion[wshrpc.FileData]{Response: wshrpc.FileData{Entries: []*wshrpc.FileInfo{
+				{
+					Path:     finfo.Dir,
+					Dir:      fspath.Dir(finfo.Dir),
+					Name:     "..",
+					IsDir:    true,
+					Size:     0,
+					ModTime:  time.Now().Unix(),
+					MimeType: "directory",
+				},
+			}}}
+			return
+		}
 		if finfo.IsDir {
 			listEntriesCh := c.ListEntriesStream(ctx, conn, nil)
 			defer func() {
@@ -575,6 +589,7 @@ func (c S3Client) Stat(ctx context.Context, conn *connparse.Connection) (*wshrpc
 				Name:     objectKey,
 				Path:     conn.GetPathWithHost(),
 				Dir:      fsutil.GetParentPath(conn),
+				IsDir:    true,
 				NotFound: true,
 			}, nil
 		}
