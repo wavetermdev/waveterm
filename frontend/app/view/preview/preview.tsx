@@ -388,13 +388,20 @@ export class PreviewModel implements ViewModel {
             if (fileName == null) {
                 return null;
             }
-            const statFile = await RpcApi.FileInfoCommand(TabRpcClient, {
-                info: {
-                    path,
-                },
-            });
-            console.log("stat file", statFile);
-            return statFile;
+            try {
+                const statFile = await RpcApi.FileInfoCommand(TabRpcClient, {
+                    info: {
+                        path,
+                    },
+                });
+                return statFile;
+            } catch (e) {
+                const errorStatus: ErrorMsg = {
+                    status: "File Read Failed",
+                    text: `${e}`,
+                };
+                globalStore.set(this.errorMsgAtom, errorStatus);
+            }
         });
         this.fileMimeType = atom<Promise<string>>(async (get) => {
             const fileInfo = await get(this.statFile);
@@ -410,13 +417,13 @@ export class PreviewModel implements ViewModel {
             if (fileName == null) {
                 return null;
             }
-            let file: FileData;
             try {
-                file = await RpcApi.FileReadCommand(TabRpcClient, {
+                const file = await RpcApi.FileReadCommand(TabRpcClient, {
                     info: {
                         path,
                     },
                 });
+                return file;
             } catch (e) {
                 const errorStatus: ErrorMsg = {
                     status: "File Read Failed",
@@ -424,7 +431,6 @@ export class PreviewModel implements ViewModel {
                 };
                 globalStore.set(this.errorMsgAtom, errorStatus);
             }
-            return file;
         });
 
         this.fileContentSaved = atom(null) as PrimitiveAtom<string | null>;
@@ -1064,6 +1070,12 @@ function PreviewView({
 }) {
     const connStatus = useAtomValue(model.connStatus);
     const [errorMsg, setErrorMsg] = useAtom(model.errorMsgAtom);
+    const connection = useAtomValue(model.connectionImmediate);
+
+    useEffect(() => {
+        setErrorMsg(null);
+    }, [connection]);
+
     if (connStatus?.status != "connected") {
         return null;
     }
@@ -1089,6 +1101,7 @@ function PreviewView({
     const fetchSuggestionsFn = async (query, ctx) => {
         return await fetchSuggestions(model, query, ctx);
     };
+
     return (
         <>
             {/* <OpenFileModal blockId={blockId} model={model} blockRef={blockRef} /> */}
