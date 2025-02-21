@@ -14,20 +14,27 @@ The easiest way to access connections is to click the <i className="fa-sharp fa-
 
 For SSH Connections:
 
-- `[user]@[host]` for a desired SSH remote or type
+- `[user]@[host]`
+- `[host]`
+- `[user]@[host]:[port]`
 
 For WSL Connections:
 
-- `wsl://<distribution name>` for a desired WSL distribution. Alternatively, if the connection already exists in the dropdown list, you can either click it or navigate to it with arrow keys and press enter to connect.
+- `wsl://<distribution name>`
 
 For AWS S3 Connections:
 
-- aws:storage
+- `aws:[profile]`
 
-:::info
-AWS S3 connections only work in the directory widget
+Alternatively, if the connection already exists in the dropdown list, you can either click it or navigate to it with arrow keys and press enter to connect.
 
 ![a dropdown showing a list of connections that already exist](./img/connection-dropdown.png)
+
+## Different Types of Connections
+
+As there are several different types of connections, not all of the types have access to the same features. For instance, AWS S3 connections can only be used in preview widgets (directory, image viewer, code editor, etc.). Meanwhile, SSH and WSL connections can always work in terminal widgets, and if `wsh` shell extensions are installed, they can also work in preview widgets and the sysinfo widget.
+
+As such, certain features will not be available for certain types of connections. As an example, AWS S3 connections cannot run startup scripts as they are not capable of running scripts.
 
 ## What are wsh Shell Extensions?
 
@@ -79,7 +86,9 @@ The SSH values that are loaded into the dropdown by default are obtained by pars
 - manually typing your connection into the connection box (if this successfully connects, the connection will be added to the internal `config/connections.json` file)
 - use `wsh ssh [user]@[host]` in your terminal (if this successfully connects, the connection will be added to the internal `config/connections.json` file)
 
-WSL values are added by searching the installed WSL distributions as they appear in the Windows Registry.
+WSL connections are added by searching the installed WSL distributions as they appear in the Windows Registry. They also exist in the `config/connections.json` file similarly to SSH connections.
+
+AWS S3 Connections are added by parsing the `~/.aws/config` file. Unlike the SSH and WSL connections, these are not stored in the `config/connections.json` file.
 
 ## SSH Config Parsing
 
