@@ -77,10 +77,12 @@ const config = {
         synopsis: pkg.description,
         description: null,
         desktop: {
-            Name: pkg.productName,
-            Comment: pkg.description,
-            Keywords: "developer;terminal;emulator;",
-            category: "Development;Utility;",
+            entry: {
+                Name: pkg.productName,
+                Comment: pkg.description,
+                Keywords: "developer;terminal;emulator;",
+                Categories: "Development;Utility;",
+            },
         },
         executableArgs: ["--enable-features", "UseOzonePlatform", "--ozone-platform-hint", "auto"], // Hint Electron to use Ozone abstraction layer for native Wayland support
     },
