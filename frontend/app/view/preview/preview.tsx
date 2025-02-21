@@ -485,7 +485,11 @@ export class PreviewModel implements ViewModel {
         const fileName = fileInfo?.name;
         const connErr = getFn(this.connectionError);
         const editMode = getFn(this.editMode);
+        const genErr = getFn(this.errorMsgAtom);
 
+        if (!fileInfo) {
+            return { errorStr: `Load Error: ${genErr?.text}` };
+        }
         if (connErr != "") {
             return { errorStr: `Connection Error: ${connErr}` };
         }
@@ -1072,10 +1076,14 @@ function PreviewView({
     const filePath = useAtomValue(model.metaFilePath);
     const [errorMsg, setErrorMsg] = useAtom(model.errorMsgAtom);
     const connection = useAtomValue(model.connectionImmediate);
+    const fileInfo = useAtomValue(model.statFile);
 
     useEffect(() => {
+        if (!fileInfo) {
+            return;
+        }
         setErrorMsg(null);
-    }, [connection, filePath]);
+    }, [connection, filePath, fileInfo]);
 
     if (connStatus?.status != "connected") {
         return null;
