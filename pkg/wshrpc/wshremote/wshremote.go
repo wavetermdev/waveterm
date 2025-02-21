@@ -108,13 +108,6 @@ func (impl *ServerImpl) remoteStreamFileDir(ctx context.Context, path string, by
 		}
 	}
 	var fileInfoArr []*wshrpc.FileInfo
-	parent := filepath.Dir(path)
-	parentFileInfo, err := impl.fileInfoInternal(parent, false)
-	if err == nil && parent != path {
-		parentFileInfo.Name = ".."
-		parentFileInfo.Size = -1
-		fileInfoArr = append(fileInfoArr, parentFileInfo)
-	}
 	for _, innerFileEntry := range innerFilesEntries {
 		if ctx.Err() != nil {
 			return ctx.Err()

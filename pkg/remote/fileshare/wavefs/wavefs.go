@@ -106,7 +106,6 @@ func (c WaveClient) Read(ctx context.Context, conn *connparse.Connection, data w
 		return nil, fmt.Errorf("error listing blockfiles: %w", err)
 	}
 	if len(list) == 0 {
-		dirPath := fspath.Dir(fileName)
 		return &wshrpc.FileData{
 			Info: &wshrpc.FileInfo{
 				Name:     fspath.Base(fileName),
@@ -114,17 +113,6 @@ func (c WaveClient) Read(ctx context.Context, conn *connparse.Connection, data w
 				Dir:      fspath.Dir(fileName),
 				NotFound: true,
 				IsDir:    true,
-			},
-			Entries: []*wshrpc.FileInfo{
-				{
-					Path:     dirPath,
-					Dir:      fspath.Dir(dirPath),
-					Name:     "..",
-					IsDir:    true,
-					Size:     0,
-					ModTime:  time.Now().Unix(),
-					MimeType: "directory",
-				},
 			}}, nil
 	}
 	return &wshrpc.FileData{Info: data.Info, Entries: list}, nil

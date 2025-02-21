@@ -469,20 +469,6 @@ func (c S3Client) ListEntriesStream(ctx context.Context, conn *connparse.Connect
 				rtn <- wshutil.RespErr[wshrpc.CommandRemoteListEntriesRtnData](err)
 				return
 			}
-			parentPath := fsutil.GetParentPath(conn)
-			if parentPath != "" {
-				rtn <- wshrpc.RespOrErrorUnion[wshrpc.CommandRemoteListEntriesRtnData]{Response: wshrpc.CommandRemoteListEntriesRtnData{FileInfo: []*wshrpc.FileInfo{
-					{
-						Path:     parentPath,
-						Dir:      fsutil.GetParentPathString(parentPath),
-						Name:     "..",
-						IsDir:    true,
-						Size:     0,
-						ModTime:  time.Now().Unix(),
-						MimeType: "directory",
-					},
-				}}}
-			}
 			entries := make([]*wshrpc.FileInfo, 0, wshrpc.DirChunkSize)
 			for _, entry := range entryMap {
 				entries = append(entries, entry)

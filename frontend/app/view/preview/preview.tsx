@@ -5,7 +5,6 @@ import { BlockNodeModel } from "@/app/block/blocktypes";
 import { Button } from "@/app/element/button";
 import { CopyButton } from "@/app/element/copybutton";
 import { CenteredDiv } from "@/app/element/quickelems";
-import { TypeAheadModal } from "@/app/modals/typeaheadmodal";
 import { ContextMenuModel } from "@/app/store/contextmenu";
 import { tryReinjectKey } from "@/app/store/keymodel";
 import { RpcApi } from "@/app/store/wshclientapi";
@@ -18,7 +17,7 @@ import * as services from "@/store/services";
 import * as WOS from "@/store/wos";
 import { getWebServerEndpoint } from "@/util/endpoints";
 import { goHistory, goHistoryBack, goHistoryForward } from "@/util/historyutil";
-import { adaptFromReactOrNativeKeyEvent, checkKeyPressed, keydownWrapper } from "@/util/keyutil";
+import { adaptFromReactOrNativeKeyEvent, checkKeyPressed } from "@/util/keyutil";
 import { addOpenMenuItems } from "@/util/previewutil";
 import { base64ToString, fireAndForget, isBlank, jotaiLoadableValue, makeConnRoute, stringToBase64 } from "@/util/util";
 import { formatRemoteUri } from "@/util/waveutil";
@@ -28,7 +27,7 @@ import { Atom, atom, Getter, PrimitiveAtom, useAtom, useAtomValue, useSetAtom, W
 import { loadable } from "jotai/utils";
 import type * as MonacoTypes from "monaco-editor/esm/vs/editor/editor.api";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
-import { createRef, memo, useCallback, useEffect, useMemo, useState } from "react";
+import { createRef, memo, useCallback, useEffect, useMemo } from "react";
 import { TransformComponent, TransformWrapper, useControls } from "react-zoom-pan-pinch";
 import { CSVView } from "./csvview";
 import { DirectoryPreview } from "./directorypreview";
@@ -1073,17 +1072,17 @@ function PreviewView({
     model: PreviewModel;
 }) {
     const connStatus = useAtomValue(model.connStatus);
-    const filePath = useAtomValue(model.metaFilePath);
     const [errorMsg, setErrorMsg] = useAtom(model.errorMsgAtom);
     const connection = useAtomValue(model.connectionImmediate);
     const fileInfo = useAtomValue(model.statFile);
 
     useEffect(() => {
+        console.log("fileInfo or connection changed", fileInfo, connection);
         if (!fileInfo) {
             return;
         }
         setErrorMsg(null);
-    }, [connection, filePath, fileInfo]);
+    }, [connection, fileInfo]);
 
     if (connStatus?.status != "connected") {
         return null;
@@ -1113,7 +1112,6 @@ function PreviewView({
 
     return (
         <>
-            {/* <OpenFileModal blockId={blockId} model={model} blockRef={blockRef} /> */}
             <div key="fullpreview" className="full-preview scrollbar-hide-until-hover">
                 {errorMsg && <ErrorOverlay errorMsg={errorMsg} resetOverlay={() => setErrorMsg(null)} />}
                 <div ref={contentRef} className="full-preview-content">
@@ -1132,72 +1130,6 @@ function PreviewView({
         </>
     );
 }
-
-const OpenFileModal = memo(
-    ({
-        model,
-        blockRef,
-        blockId,
-    }: {
-        model: PreviewModel;
-        blockRef: React.RefObject<HTMLDivElement>;
-        blockId: string;
-    }) => {
-        const openFileModal = useAtomValue(model.openFileModal);
-        const curFileName = useAtomValue(model.metaFilePath);
-        const [filePath, setFilePath] = useState("");
-        const isNodeFocused = useAtomValue(model.nodeModel.isFocused);
-        const handleKeyDown = useCallback(
-            keydownWrapper((waveEvent: WaveKeyboardEvent): boolean => {
-                if (checkKeyPressed(waveEvent, "Escape")) {
-                    model.updateOpenFileModalAndError(false);
-                    return true;
-                }
-
-                const handleCommandOperations = async () => {
-                    if (checkKeyPressed(waveEvent, "Enter")) {
-                        await model.handleOpenFile(filePath);
-                        return true;
-                    }
-                    return false;
-                };
-
-                handleCommandOperations().catch((error) => {
-                    console.error("Error handling key down:", error);
-                    model.updateOpenFileModalAndError(true, "An error occurred during operation.");
-                    return false;
-                });
-                return false;
-            }),
-            [model, blockId, filePath, curFileName]
-        );
-        const handleFileSuggestionSelect = (value) => {
-            globalStore.set(model.openFileModal, false);
-        };
-        const handleFileSuggestionChange = (value) => {
-            setFilePath(value);
-        };
-        const handleBackDropClick = () => {
-            globalStore.set(model.openFileModal, false);
-        };
-        if (!openFileModal) {
-            return null;
-        }
-        return (
-            <TypeAheadModal
-                label="Open path"
-                blockRef={blockRef}
-                anchorRef={model.previewTextRef}
-                onKeyDown={handleKeyDown}
-                onSelect={handleFileSuggestionSelect}
-                onChange={handleFileSuggestionChange}
-                onClickBackdrop={handleBackDropClick}
-                autoFocus={isNodeFocused}
-                giveFocusRef={model.openFileModalGiveFocusRef}
-            />
-        );
-    }
-);
 
 const ErrorOverlay = memo(({ errorMsg, resetOverlay }: { errorMsg: ErrorMsg; resetOverlay: () => void }) => {
     const showDismiss = errorMsg.showDismiss ?? true;
