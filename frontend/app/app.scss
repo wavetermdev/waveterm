@@ -72,11 +72,12 @@ a.plain-link {
 }
 
 .error-boundary {
+    white-space: pre-wrap;
     color: var(--error-color);
 }
 
 .error-color {
-	color: var(--error-color);
+    color: var(--error-color);
 }
 
 /* OverlayScrollbars styling */
