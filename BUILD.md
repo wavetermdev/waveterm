@@ -45,6 +45,7 @@ For packaging, the following additional packages are required:
 - `lxd` &mdash; [Installation instructions](https://canonical.com/lxd/install)
 - `snapcraft` &mdash; Run `sudo snap install snapcraft --classic`
 - `libarchive-tools` &mdash; Install via your package manager
+- `binutils` &mdash; Install via your package manager
 - `libopenjp2-tools` &mdash; Install via your package manager
 - `squashfs-tools` &mdash; Install via your package manager
 

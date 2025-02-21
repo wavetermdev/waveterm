@@ -127,12 +127,10 @@ function createS3SuggestionItems(
     // behavior
     return s3Profiles.map((profileName) => {
         const connStatus = connStatusMap.get(profileName);
-        const connColorNum = computeConnColorNum(connStatus);
         const item: SuggestionConnectionItem = {
             status: "connected",
-            icon: "arrow-right-arrow-left",
-            iconColor:
-                connStatus?.status == "connected" ? `var(--conn-icon-color-${connColorNum})` : "var(--grey-text-color)",
+            icon: "database",
+            iconColor: "var(--accent-color)",
             value: profileName,
             label: profileName,
             current: profileName == connection,
