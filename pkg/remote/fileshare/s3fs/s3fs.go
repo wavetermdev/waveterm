@@ -532,6 +532,7 @@ func (c S3Client) Stat(ctx context.Context, conn *connparse.Connection) (*wshrpc
 				Path:     bucketName,
 				Dir:      fspath.Separator,
 				NotFound: true,
+				IsDir:    true,
 			}, nil
 		}
 	}
@@ -556,7 +557,7 @@ func (c S3Client) Stat(ctx context.Context, conn *connparse.Connection) (*wshrpc
 				MaxKeys: aws.Int32(1),
 			})
 			if err == nil {
-				if entries.Contents != nil && len(entries.Contents) > 0 {
+				if entries.Contents != nil {
 					return &wshrpc.FileInfo{
 						Name:     objectKey,
 						Path:     conn.GetPathWithHost(),
