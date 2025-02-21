@@ -244,11 +244,10 @@ func UpdateCmdEnv(cmd *exec.Cmd, envVars map[string]string) {
 		envKey := GetEnvStrKey(envStr)
 		newEnvVal, ok := envVars[envKey]
 		if ok {
-			if newEnvVal == "" {
-				continue
-			}
-			newEnv = append(newEnv, envKey+"="+newEnvVal)
 			found[envKey] = true
+			if newEnvVal != "" {
+				newEnv = append(newEnv, envKey+"="+newEnvVal)
+			}
 		} else {
 			newEnv = append(newEnv, envStr)
 		}

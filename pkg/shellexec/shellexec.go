@@ -534,7 +534,7 @@ func StartLocalShellProc(logCtx context.Context, termSize waveobj.TermSize, cmdS
 		if len(pamEnvs) > 0 {
 			// We only want to set the XDG variables from the PAM environment, all others should already be correct or may have been overridden by something else out of our control
 			for k := range pamEnvs {
-				if _, ok := varsToReplace[k]; ok && len(pamEnvs[k]) > 0 {
+				if _, ok := varsToReplace[k]; ok {
 					varsToReplace[k] = pamEnvs[k]
 				}
 			}
