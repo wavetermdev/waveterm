@@ -38,6 +38,9 @@ jobs:
                   sudo apt-get update
                   sudo apt-get install --no-install-recommends -y libarchive-tools libopenjp2-tools rpm squashfs-tools
                   sudo snap install snapcraft --classic
+                  sudo snap install lxd --classic
+                  lxd init --auto
+                  sudo snap refresh
             - name: Install Zig (not Mac)
               if: matrix.platform != 'darwin'
               uses: mlugg/setup-zig@v1
