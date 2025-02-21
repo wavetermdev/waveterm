@@ -64,7 +64,7 @@
         "@vitest/coverage-istanbul": "^3.0.5",
         "electron": "^34.0.2",
         "electron-builder": "^25.1.8",
-        "electron-vite": "^2.3.0",
+        "electron-vite": "^3.0.0",
         "eslint": "^9.20.1",
         "eslint-config-prettier": "^10.0.1",
         "postcss": "^8.5.2",
