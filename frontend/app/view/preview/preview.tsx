@@ -1069,12 +1069,13 @@ function PreviewView({
     model: PreviewModel;
 }) {
     const connStatus = useAtomValue(model.connStatus);
+    const filePath = useAtomValue(model.metaFilePath);
     const [errorMsg, setErrorMsg] = useAtom(model.errorMsgAtom);
     const connection = useAtomValue(model.connectionImmediate);
 
     useEffect(() => {
         setErrorMsg(null);
-    }, [connection]);
+    }, [connection, filePath]);
 
     if (connStatus?.status != "connected") {
         return null;
