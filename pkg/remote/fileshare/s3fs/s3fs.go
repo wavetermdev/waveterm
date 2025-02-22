@@ -62,6 +62,20 @@ func (c S3Client) ReadStream(ctx context.Context, conn *connparse.Connection, da
 			return
 		}
 		rtn <- wshrpc.RespOrErrorUnion[wshrpc.FileData]{Response: wshrpc.FileData{Info: finfo}}
+		if finfo.NotFound {
+			rtn <- wshrpc.RespOrErrorUnion[wshrpc.FileData]{Response: wshrpc.FileData{Entries: []*wshrpc.FileInfo{
+				{
+					Path:     finfo.Dir,
+					Dir:      fspath.Dir(finfo.Dir),
+					Name:     "..",
+					IsDir:    true,
+					Size:     0,
+					ModTime:  time.Now().Unix(),
+					MimeType: "directory",
+				},
+			}}}
+			return
+		}
 		if finfo.IsDir {
 			listEntriesCh := c.ListEntriesStream(ctx, conn, nil)
 			defer func() {
@@ -455,20 +469,6 @@ func (c S3Client) ListEntriesStream(ctx context.Context, conn *connparse.Connect
 				rtn <- wshutil.RespErr[wshrpc.CommandRemoteListEntriesRtnData](err)
 				return
 			}
-			parentPath := fsutil.GetParentPath(conn)
-			if parentPath != "" {
-				rtn <- wshrpc.RespOrErrorUnion[wshrpc.CommandRemoteListEntriesRtnData]{Response: wshrpc.CommandRemoteListEntriesRtnData{FileInfo: []*wshrpc.FileInfo{
-					{
-						Path:     parentPath,
-						Dir:      fsutil.GetParentPathString(parentPath),
-						Name:     "..",
-						IsDir:    true,
-						Size:     0,
-						ModTime:  time.Now().Unix(),
-						MimeType: "directory",
-					},
-				}}}
-			}
 			entries := make([]*wshrpc.FileInfo, 0, wshrpc.DirChunkSize)
 			for _, entry := range entryMap {
 				entries = append(entries, entry)
@@ -532,6 +532,7 @@ func (c S3Client) Stat(ctx context.Context, conn *connparse.Connection) (*wshrpc
 				Path:     bucketName,
 				Dir:      fspath.Separator,
 				NotFound: true,
+				IsDir:    true,
 			}, nil
 		}
 	}
@@ -556,7 +557,7 @@ func (c S3Client) Stat(ctx context.Context, conn *connparse.Connection) (*wshrpc
 				MaxKeys: aws.Int32(1),
 			})
 			if err == nil {
-				if entries.Contents != nil && len(entries.Contents) > 0 {
+				if entries.Contents != nil {
 					return &wshrpc.FileInfo{
 						Name:     objectKey,
 						Path:     conn.GetPathWithHost(),
@@ -575,6 +576,7 @@ func (c S3Client) Stat(ctx context.Context, conn *connparse.Connection) (*wshrpc
 				Name:     objectKey,
 				Path:     conn.GetPathWithHost(),
 				Dir:      fsutil.GetParentPath(conn),
+				IsDir:    true,
 				NotFound: true,
 			}, nil
 		}

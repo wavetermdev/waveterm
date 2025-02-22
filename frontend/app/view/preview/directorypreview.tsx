@@ -757,7 +757,6 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
     const [searchText, setSearchText] = useState("");
     const [focusIndex, setFocusIndex] = useState(0);
     const [unfilteredData, setUnfilteredData] = useState<FileInfo[]>([]);
-    const [filteredData, setFilteredData] = useState<FileInfo[]>([]);
     const showHiddenFiles = useAtomValue(model.showHiddenFiles);
     const [selectedPath, setSelectedPath] = useState("");
     const [refreshVersion, setRefreshVersion] = useAtom(model.refreshVersion);
@@ -776,44 +775,53 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
         };
     }, [setRefreshVersion]);
 
-    useEffect(() => {
-        const getContent = async () => {
-            let entries: FileInfo[];
-            try {
-                const file = await RpcApi.FileReadCommand(
-                    TabRpcClient,
-                    {
-                        info: {
-                            path: await model.formatRemoteUri(dirPath, globalStore.get),
+    useEffect(
+        () =>
+            fireAndForget(async () => {
+                let entries: FileInfo[];
+                try {
+                    const file = await RpcApi.FileReadCommand(
+                        TabRpcClient,
+                        {
+                            info: {
+                                path: await model.formatRemoteUri(dirPath, globalStore.get),
+                            },
                         },
-                    },
-                    null
-                );
-                entries = file.entries ?? [];
-            } catch (e) {
-                setErrorMsg({
-                    status: "Cannot Read Directory",
-                    text: `${e}`,
-                });
-            }
-            setUnfilteredData(entries);
-        };
-        getContent();
-    }, [conn, dirPath, refreshVersion]);
+                        null
+                    );
+                    entries = file.entries ?? [];
+                    entries.unshift({
+                        name: "..",
+                        path: file?.info?.dir,
+                        isdir: true,
+                        modtime: new Date().getTime(),
+                        mimetype: "directory",
+                    });
+                } catch (e) {
+                    setErrorMsg({
+                        status: "Cannot Read Directory",
+                        text: `${e}`,
+                    });
+                }
+                setUnfilteredData(entries);
+            }),
+        [conn, dirPath, refreshVersion]
+    );
 
-    useEffect(() => {
-        const filtered = unfilteredData?.filter((fileInfo) => {
-            if (fileInfo.name == null) {
-                console.log("fileInfo.name is null", fileInfo);
-                return false;
-            }
-            if (!showHiddenFiles && fileInfo.name.startsWith(".") && fileInfo.name != "..") {
-                return false;
-            }
-            return fileInfo.name.toLowerCase().includes(searchText);
-        });
-        setFilteredData(filtered ?? []);
-    }, [unfilteredData, showHiddenFiles, searchText]);
+    const filteredData = useMemo(
+        () =>
+            unfilteredData?.filter((fileInfo) => {
+                if (fileInfo.name == null) {
+                    console.log("fileInfo.name is null", fileInfo);
+                    return false;
+                }
+                if (!showHiddenFiles && fileInfo.name.startsWith(".") && fileInfo.name != "..") {
+                    return false;
+                }
+                return fileInfo.name.toLowerCase().includes(searchText);
+            }) ?? [],
+        [unfilteredData, showHiddenFiles, searchText]
+    );
 
     useEffect(() => {
         model.directoryKeyDownHandler = (waveEvent: WaveKeyboardEvent): boolean => {

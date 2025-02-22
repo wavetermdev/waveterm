@@ -105,6 +105,16 @@ func (c WaveClient) Read(ctx context.Context, conn *connparse.Connection, data w
 	if err != nil {
 		return nil, fmt.Errorf("error listing blockfiles: %w", err)
 	}
+	if len(list) == 0 {
+		return &wshrpc.FileData{
+			Info: &wshrpc.FileInfo{
+				Name:     fspath.Base(fileName),
+				Path:     fileName,
+				Dir:      fspath.Dir(fileName),
+				NotFound: true,
+				IsDir:    true,
+			}}, nil
+	}
 	return &wshrpc.FileData{Info: data.Info, Entries: list}, nil
 }
 

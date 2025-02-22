@@ -150,6 +150,8 @@ func DetermineCopyDestPath(ctx context.Context, srcConn, destConn *connparse.Con
 	srcInfo, err = srcClient.Stat(ctx, srcConn)
 	if err != nil {
 		return "", "", nil, fmt.Errorf("error getting source file info: %w", err)
+	} else if srcInfo.NotFound {
+		return "", "", nil, fmt.Errorf("source file not found: %w", err)
 	}
 	destInfo, err := destClient.Stat(ctx, destConn)
 	destExists := err == nil && !destInfo.NotFound
@@ -158,7 +160,7 @@ func DetermineCopyDestPath(ctx context.Context, srcConn, destConn *connparse.Con
 	}
 	originalDestPath := destPath
 	if !srcHasSlash {
-		if destInfo.IsDir || (!destExists && !destHasSlash && srcInfo.IsDir) {
+		if (destExists && destInfo.IsDir) || (!destExists && !destHasSlash && srcInfo.IsDir) {
 			destPath = fspath.Join(destPath, fspath.Base(srcConn.Path))
 		}
 	}
