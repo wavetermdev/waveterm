@@ -790,7 +790,7 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
                         null
                     );
                     entries = file.entries ?? [];
-                    if (file?.info && file?.info?.path !== file?.info?.dir) {
+                    if (file?.info && file.info.dir && file.info?.path !== file.info?.dir) {
                         entries.unshift({
                             name: "..",
                             path: file?.info?.dir,
