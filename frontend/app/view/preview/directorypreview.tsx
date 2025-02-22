@@ -29,7 +29,7 @@ import clsx from "clsx";
 import dayjs from "dayjs";
 import { PrimitiveAtom, atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { OverlayScrollbarsComponent, OverlayScrollbarsComponentRef } from "overlayscrollbars-react";
-import React, { Fragment, memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { Fragment, memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useDrag, useDrop } from "react-dnd";
 import { quote as shellQuote } from "shell-quote";
 import { debounce } from "throttle-debounce";
@@ -383,7 +383,7 @@ function DirectoryTable({
         setSelectedPath((allRows[focusIndex]?.getValue("path") as string) ?? null);
     }, [table, focusIndex, data]);
 
-    useEffect(() => {
+    useLayoutEffect(() => {
         const rows = table.getRowModel()?.flatRows;
         for (const row of rows) {
             if (row.getValue("name") == "..") {
@@ -391,7 +391,7 @@ function DirectoryTable({
                 return;
             }
         }
-    }, [table]);
+    }, [table, data]);
     const columnSizeVars = useMemo(() => {
         const headers = table.getFlatHeaders();
         const colSizes: { [key: string]: number } = {};
