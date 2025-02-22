@@ -789,7 +789,14 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
                     },
                     null
                 );
-                entries = file.entries ?? [];
+                entries = file?.entries ?? [];
+                entries.unshift({
+                    name: "..",
+                    path: file?.info?.dir,
+                    isdir: true,
+                    modtime: new Date().getTime(),
+                    mimetype: "directory",
+                });
             } catch (e) {
                 setErrorMsg({
                     status: "Cannot Read Directory",
