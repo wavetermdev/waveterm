@@ -377,7 +377,7 @@ function SysinfoView({ model, blockId }: SysinfoViewProps) {
         return () => {
             unsubFn();
         };
-    }, [connName]);
+    }, [connName, addContinuousData]);
     if (connStatus?.status != "connected") {
         return null;
     }
