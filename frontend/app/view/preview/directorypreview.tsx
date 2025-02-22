@@ -790,13 +790,15 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
                         null
                     );
                     entries = file.entries ?? [];
-                    entries.unshift({
-                        name: "..",
-                        path: file?.info?.dir,
-                        isdir: true,
-                        modtime: new Date().getTime(),
-                        mimetype: "directory",
-                    });
+                    if (file?.info && file.info.dir && file.info?.path !== file.info?.dir) {
+                        entries.unshift({
+                            name: "..",
+                            path: file?.info?.dir,
+                            isdir: true,
+                            modtime: new Date().getTime(),
+                            mimetype: "directory",
+                        });
+                    }
                 } catch (e) {
                     setErrorMsg({
                         status: "Cannot Read Directory",
