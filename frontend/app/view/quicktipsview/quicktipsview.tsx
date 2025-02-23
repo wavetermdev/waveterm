@@ -16,13 +16,13 @@ class QuickTipsViewModel implements ViewModel {
         this.showTocAtom = atom(false);
     }
 
+    get viewComponent(): ViewComponent {
+        return QuickTipsView;
+    }
+
     showTocToggle() {
         globalStore.set(this.showTocAtom, !globalStore.get(this.showTocAtom));
     }
-}
-
-function makeQuickTipsViewModel() {
-    return new QuickTipsViewModel();
 }
 
 function QuickTipsView({ model }: { model: QuickTipsViewModel }) {
@@ -33,4 +33,4 @@ function QuickTipsView({ model }: { model: QuickTipsViewModel }) {
     );
 }
 
-export { makeQuickTipsViewModel, QuickTipsView, QuickTipsViewModel };
+export { QuickTipsViewModel };

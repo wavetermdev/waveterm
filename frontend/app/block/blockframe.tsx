@@ -12,6 +12,7 @@ import {
     getConnStatusAtom,
     getSettingsKeyAtom,
     globalStore,
+    recordTEvent,
     useBlockAtom,
     WOS,
 } from "@/app/store/global";
@@ -23,6 +24,7 @@ import { MagnifyIcon } from "@/element/magnify";
 import { MenuButton } from "@/element/menubutton";
 import { NodeModel } from "@/layout/index";
 import * as util from "@/util/util";
+import { computeBgStyleFromMeta } from "@/util/waveutil";
 import clsx from "clsx";
 import * as jotai from "jotai";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
@@ -182,6 +184,7 @@ const BlockFrame_Header = ({
             return;
         }
         RpcApi.ActivityCommand(TabRpcClient, { nummagnify: 1 });
+        recordTEvent("action:magnify", { "block:view": viewName });
     }, [magnified]);
 
     if (blockData?.meta?.["frame:title"]) {
@@ -238,9 +241,15 @@ const BlockFrame_Header = ({
         icon: "link-slash",
         title: "wsh is not installed for this connection",
     };
+    const showNoWshButton = manageConnection && wshProblem && !util.isBlank(connName) && !connName.startsWith("aws:");
 
     return (
-        <div className="block-frame-default-header" ref={dragHandleRef} onContextMenu={onContextMenu}>
+        <div
+            className="block-frame-default-header"
+            data-role="block-header"
+            ref={dragHandleRef}
+            onContextMenu={onContextMenu}
+        >
             {preIconButtonElem}
             <div className="block-frame-default-header-iconview">
                 {viewIconElem}
@@ -255,9 +264,7 @@ const BlockFrame_Header = ({
                     changeConnModalAtom={changeConnModalAtom}
                 />
             )}
-            {manageConnection && wshProblem && (
-                <IconButton decl={wshInstallButton} className="block-frame-header-iconbutton" />
-            )}
+            {showNoWshButton && <IconButton decl={wshInstallButton} className="block-frame-header-iconbutton" />}
             <div className="block-frame-textelems-wrapper">{headerTextElems}</div>
             <div className="block-frame-end-icons">{endIconsElem}</div>
         </div>
@@ -530,6 +537,8 @@ const BlockFrame_Default_Component = (props: BlockFrameProps) => {
     const [magnifiedBlockOpacityAtom] = React.useState(() => getSettingsKeyAtom("window:magnifiedblockopacity"));
     const magnifiedBlockOpacity = jotai.useAtomValue(magnifiedBlockOpacityAtom);
     const connBtnRef = React.useRef<HTMLDivElement>();
+    const noHeader = util.useAtomValueSafe(viewModel?.noHeader);
+
     React.useEffect(() => {
         if (!manageConnection) {
             return;
@@ -566,15 +575,9 @@ const BlockFrame_Default_Component = (props: BlockFrameProps) => {
     }, [manageConnection, blockData]);
 
     const viewIconElem = getViewIconElem(viewIconUnion, blockData);
-    const innerStyle: React.CSSProperties = {};
-    if (!preview && customBg?.bg != null) {
-        innerStyle.background = customBg.bg;
-        if (customBg["bg:opacity"] != null) {
-            innerStyle.opacity = customBg["bg:opacity"];
-        }
-        if (customBg["bg:blendmode"] != null) {
-            innerStyle.backgroundBlendMode = customBg["bg:blendmode"];
-        }
+    let innerStyle: React.CSSProperties = {};
+    if (!preview) {
+        innerStyle = computeBgStyleFromMeta(customBg);
     }
     const previewElem = <div className="block-frame-preview">{viewIconElem}</div>;
     const headerElem = (
@@ -600,6 +603,8 @@ const BlockFrame_Default_Component = (props: BlockFrameProps) => {
                     "--magnified-block-blur": `${magnifiedBlockBlur}px`,
                 } as React.CSSProperties
             }
+            // @ts-ignore: inert does exist in the DOM, just not in react
+            inert={preview ? "1" : undefined} //
         >
             <BlockMask nodeModel={nodeModel} />
             {preview || viewModel == null ? null : (
@@ -610,7 +615,7 @@ const BlockFrame_Default_Component = (props: BlockFrameProps) => {
                 />
             )}
             <div className="block-frame-default-inner" style={innerStyle}>
-                <ErrorBoundary fallback={headerElemNoView}>{headerElem}</ErrorBoundary>
+                {noHeader || <ErrorBoundary fallback={headerElemNoView}>{headerElem}</ErrorBoundary>}
                 {preview ? previewElem : children}
             </div>
             {preview || viewModel == null || !connModalOpen ? null : (
@@ -633,13 +638,11 @@ const BlockFrame = React.memo((props: BlockFrameProps) => {
     const blockId = props.nodeModel.blockId;
     const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", blockId));
     const tabData = jotai.useAtomValue(atoms.tabAtom);
-
     if (!blockId || !blockData) {
         return null;
     }
-    const FrameElem = BlockFrame_Default;
     const numBlocks = tabData?.blockids?.length ?? 0;
-    return <FrameElem {...props} numBlocksInTab={numBlocks} />;
+    return <BlockFrame_Default {...props} numBlocksInTab={numBlocks} />;
 });
 
 export { BlockFrame, NumActiveConnColors };

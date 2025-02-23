@@ -13,7 +13,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"hash/fnv"
 	"io"
+	"log"
 	"math"
 	mathrand "math/rand"
 	"os"
@@ -31,6 +33,15 @@ import (
 )
 
 var HexDigits = []byte{'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'}
+var PTLoc *time.Location
+
+func init() {
+	loc, err := time.LoadLocation("America/Los_Angeles")
+	if err != nil {
+		loc = time.FixedZone("PT", -8*60*60)
+	}
+	PTLoc = loc
+}
 
 func GetStrArr(v interface{}, field string) []string {
 	if v == nil {
@@ -74,6 +85,35 @@ func GetBool(v interface{}, field string) bool {
 		return false
 	}
 	return bval
+}
+
+// converts an int, int64, or float64 to an int64
+// nil or bad type returns 0
+func ConvertInt(val any) int64 {
+	if val == 0 {
+		return 0
+	}
+	switch typedVal := val.(type) {
+	case int:
+		return int64(typedVal)
+	case int64:
+		return typedVal
+	case float64:
+		return int64(typedVal)
+	default:
+		return 0
+	}
+}
+
+func ConvertMap(val any) map[string]any {
+	if val == nil {
+		return nil
+	}
+	m, ok := val.(map[string]any)
+	if !ok {
+		return nil
+	}
+	return m
 }
 
 var needsQuoteRe = regexp.MustCompile(`[^\w@%:,./=+-]`)
@@ -926,6 +966,29 @@ func FilterValidArch(arch string) (string, error) {
 	return "", fmt.Errorf("unknown architecture: %s", formatted)
 }
 
+func ConvertUUIDv4Tov7(uuidv4 string) (string, error) {
+	// Parse the UUIDv4
+	parts := strings.Split(uuidv4, "-")
+	if len(parts) != 5 {
+		return "", fmt.Errorf("invalid UUIDv4 format")
+	}
+
+	// Section 1 and 2: Fixed timestamp for Jan 1, 2024
+	section1 := "01823a80" // High 32 bits of the timestamp
+	section2 := "0000"     // Middle 16 bits of the timestamp
+
+	// Section 3: Version (7) and the last 3 bytes of randomness from UUIDv4
+	section3 := "7" + parts[2][1:] // Replace the first nibble with '7' for version
+
+	// Section 4 and 5: Copy from the original UUIDv4
+	section4 := parts[3]
+	section5 := parts[4]
+
+	// Combine sections to form UUIDv7
+	uuidv7 := fmt.Sprintf("%s-%s-%s-%s-%s", section1, section2, section3, section4, section5)
+	return uuidv7, nil
+}
+
 func TimeoutFromContext(ctx context.Context, defaultTimeout time.Duration) time.Duration {
 	deadline, ok := ctx.Deadline()
 	if !ok {
@@ -947,4 +1010,67 @@ func DumpGoRoutineStacks() {
 	buf := make([]byte, 1<<20)
 	n := runtime.Stack(buf, true)
 	os.Stdout.Write(buf[:n])
+}
+
+func ConvertToWallClockPT(t time.Time) time.Time {
+	year, month, day := t.Date()
+	hour, min, sec := t.Clock()
+	pstTime := time.Date(year, month, day, hour, min, sec, 0, PTLoc)
+	return pstTime
+}
+
+func QuickHashString(s string) string {
+	h := fnv.New64a()
+	h.Write([]byte(s))
+	return base64.RawURLEncoding.EncodeToString(h.Sum(nil))
+}
+
+func SendWithCtxCheck[T any](ctx context.Context, ch chan<- T, val T) bool {
+	select {
+	case <-ctx.Done():
+		return false
+	case ch <- val:
+		return true
+	}
+}
+
+const (
+	maxRetries = 5
+	retryDelay = 10 * time.Millisecond
+)
+
+func GracefulClose(closer io.Closer, debugName, closerName string) bool {
+	closed := false
+	for retries := 0; retries < maxRetries; retries++ {
+		if err := closer.Close(); err != nil {
+			log.Printf("%s: error closing %s: %v, trying again in %dms\n", debugName, closerName, err, retryDelay.Milliseconds())
+			time.Sleep(retryDelay)
+			continue
+		}
+		closed = true
+		break
+	}
+	if !closed {
+		log.Printf("%s: unable to close %s after %d retries\n", debugName, closerName, maxRetries)
+	}
+	return closed
+}
+
+// DrainChannelSafe will drain a channel until it is empty or until a timeout is reached.
+// WARNING: This function will panic if the channel is not drained within the timeout.
+func DrainChannelSafe[T any](ch <-chan T, debugName string) {
+	drainTimeoutCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	go func() {
+		defer cancel()
+		for {
+			select {
+			case <-drainTimeoutCtx.Done():
+				panic(debugName + ": timeout draining channel")
+			case _, ok := <-ch:
+				if !ok {
+					return
+				}
+			}
+		}
+	}()
 }

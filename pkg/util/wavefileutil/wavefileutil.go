@@ -4,6 +4,8 @@ import (
 	"fmt"
 
 	"github.com/wavetermdev/waveterm/pkg/filestore"
+	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/fsutil"
+	"github.com/wavetermdev/waveterm/pkg/util/fileutil"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 )
 
@@ -13,14 +15,17 @@ const (
 
 func WaveFileToFileInfo(wf *filestore.WaveFile) *wshrpc.FileInfo {
 	path := fmt.Sprintf(WaveFilePathPattern, wf.ZoneId, wf.Name)
-	return &wshrpc.FileInfo{
+	rtn := &wshrpc.FileInfo{
 		Path:          path,
+		Dir:           fsutil.GetParentPathString(path),
 		Name:          wf.Name,
 		Opts:          &wf.Opts,
 		Size:          wf.Size,
 		Meta:          &wf.Meta,
 		SupportsMkdir: false,
 	}
+	fileutil.AddMimeTypeToFileInfo(path, rtn)
+	return rtn
 }
 
 func WaveFileListToFileInfoList(wfList []*filestore.WaveFile) []*wshrpc.FileInfo {

@@ -6,27 +6,31 @@ package fileutil
 import (
 	"io"
 	"io/fs"
-	"log"
 	"mime"
 	"net/http"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
+	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 )
 
 func FixPath(path string) (string, error) {
+	origPath := path
+	var err error
 	if strings.HasPrefix(path, "~") {
 		path = filepath.Join(wavebase.GetHomeDir(), path[1:])
 	} else if !filepath.IsAbs(path) {
-		log.Printf("FixPath: path is not absolute: %s", path)
-		path, err := filepath.Abs(path)
+		path, err = filepath.Abs(path)
 		if err != nil {
 			return "", err
 		}
-		log.Printf("FixPath: fixed path: %s", path)
+	}
+	if strings.HasSuffix(origPath, "/") && !strings.HasSuffix(path, "/") {
+		path += "/"
 	}
 	return path, nil
 }
@@ -68,7 +72,6 @@ func WinSymlinkDir(path string, bits os.FileMode) bool {
 // does not return "application/octet-stream" as this is considered a detection failure
 // can pass an existing fileInfo to avoid re-statting the file
 // falls back to text/plain for 0 byte files
-
 func DetectMimeType(path string, fileInfo fs.FileInfo, extended bool) string {
 	if fileInfo == nil {
 		statRtn, err := os.Stat(path)
@@ -123,6 +126,39 @@ func DetectMimeType(path string, fileInfo fs.FileInfo, extended bool) string {
 	return rtn
 }
 
+func DetectMimeTypeWithDirEnt(path string, dirEnt fs.DirEntry) string {
+	if dirEnt != nil {
+		if dirEnt.IsDir() {
+			return "directory"
+		}
+		mode := dirEnt.Type()
+		if mode&os.ModeNamedPipe == os.ModeNamedPipe {
+			return "pipe"
+		}
+		charDevice := os.ModeDevice | os.ModeCharDevice
+		if mode&charDevice == charDevice {
+			return "character-special"
+		}
+		if mode&os.ModeDevice == os.ModeDevice {
+			return "block-special"
+		}
+	}
+	ext := filepath.Ext(path)
+	if mimeType, ok := StaticMimeTypeMap[ext]; ok {
+		return mimeType
+	}
+	return ""
+}
+
+func AddMimeTypeToFileInfo(path string, fileInfo *wshrpc.FileInfo) {
+	if fileInfo == nil {
+		return
+	}
+	if fileInfo.MimeType == "" {
+		fileInfo.MimeType = DetectMimeType(path, ToFsFileInfo(fileInfo), false)
+	}
+}
+
 var (
 	systemBinDirs = []string{
 		"/bin/",
@@ -170,4 +206,53 @@ func IsInitScriptPath(input string) bool {
 	}
 
 	return true
+}
+
+type FsFileInfo struct {
+	NameInternal    string
+	ModeInternal    os.FileMode
+	SizeInternal    int64
+	ModTimeInternal int64
+	IsDirInternal   bool
+}
+
+func (f FsFileInfo) Name() string {
+	return f.NameInternal
+}
+
+func (f FsFileInfo) Size() int64 {
+	return f.SizeInternal
+}
+
+func (f FsFileInfo) Mode() os.FileMode {
+	return f.ModeInternal
+}
+
+func (f FsFileInfo) ModTime() time.Time {
+	return time.Unix(0, f.ModTimeInternal)
+}
+
+func (f FsFileInfo) IsDir() bool {
+	return f.IsDirInternal
+}
+
+func (f FsFileInfo) Sys() interface{} {
+	return nil
+}
+
+var _ fs.FileInfo = FsFileInfo{}
+
+// ToFsFileInfo converts wshrpc.FileInfo to FsFileInfo.
+// It panics if fi is nil.
+func ToFsFileInfo(fi *wshrpc.FileInfo) FsFileInfo {
+	if fi == nil {
+		panic("ToFsFileInfo: nil FileInfo")
+	}
+	return FsFileInfo{
+		NameInternal:    fi.Name,
+		ModeInternal:    fi.Mode,
+		SizeInternal:    fi.Size,
+		ModTimeInternal: fi.ModTime,
+		IsDirInternal:   fi.IsDir,
+	}
 }

@@ -32,10 +32,29 @@ const AnySchema = `
 }
 `
 
+type AiSettingsType struct {
+	AiClear         bool    `json:"ai:*,omitempty"`
+	AiPreset        string  `json:"ai:preset,omitempty"`
+	AiApiType       string  `json:"ai:apitype,omitempty"`
+	AiBaseURL       string  `json:"ai:baseurl,omitempty"`
+	AiApiToken      string  `json:"ai:apitoken,omitempty"`
+	AiName          string  `json:"ai:name,omitempty"`
+	AiModel         string  `json:"ai:model,omitempty"`
+	AiOrgID         string  `json:"ai:orgid,omitempty"`
+	AIApiVersion    string  `json:"ai:apiversion,omitempty"`
+	AiMaxTokens     float64 `json:"ai:maxtokens,omitempty"`
+	AiTimeoutMs     float64 `json:"ai:timeoutms,omitempty"`
+	AiFontSize      float64 `json:"ai:fontsize,omitempty"`
+	AiFixedFontSize float64 `json:"ai:fixedfontsize,omitempty"`
+	DisplayName     string  `json:"display:name,omitempty"`
+	DisplayOrder    float64 `json:"display:order,omitempty"`
+}
+
 type SettingsType struct {
 	AppClear                      bool   `json:"app:*,omitempty"`
 	AppGlobalHotkey               string `json:"app:globalhotkey,omitempty"`
 	AppDismissArchitectureWarning bool   `json:"app:dismissarchitecturewarning,omitempty"`
+	AppDefaultNewBlock            string `json:"app:defaultnewblock,omitempty"`
 
 	AiClear         bool    `json:"ai:*,omitempty"`
 	AiPreset        string  `json:"ai:preset,omitempty"`
@@ -125,6 +144,15 @@ type ConfigError struct {
 	Err  string `json:"err"`
 }
 
+type WebBookmark struct {
+	Url          string  `json:"url"`
+	Title        string  `json:"title,omitempty"`
+	Icon         string  `json:"icon,omitempty"`
+	IconColor    string  `json:"iconcolor,omitempty"`
+	IconUrl      string  `json:"iconurl,omitempty"`
+	DisplayOrder float64 `json:"display:order,omitempty"`
+}
+
 type FullConfigType struct {
 	Settings       SettingsType                   `json:"settings" merge:"meta"`
 	MimeTypes      map[string]MimeTypeConfigType  `json:"mimetypes"`
@@ -133,6 +161,7 @@ type FullConfigType struct {
 	Presets        map[string]waveobj.MetaMapType `json:"presets"`
 	TermThemes     map[string]TermThemeType       `json:"termthemes"`
 	Connections    map[string]ConnKeywords        `json:"connections"`
+	Bookmarks      map[string]WebBookmark         `json:"bookmarks"`
 	ConfigErrors   []ConfigError                  `json:"configerrors" configfile:"-"`
 }
 type ConnKeywords struct {
@@ -582,13 +611,14 @@ func SetConnectionsConfigValue(connName string, toMerge waveobj.MetaMapType) err
 }
 
 type WidgetConfigType struct {
-	DisplayOrder float64          `json:"display:order,omitempty"`
-	Icon         string           `json:"icon,omitempty"`
-	Color        string           `json:"color,omitempty"`
-	Label        string           `json:"label,omitempty"`
-	Description  string           `json:"description,omitempty"`
-	Magnified    bool             `json:"magnified,omitempty"`
-	BlockDef     waveobj.BlockDef `json:"blockdef"`
+	DisplayOrder  float64          `json:"display:order,omitempty"`
+	DisplayHidden bool             `json:"display:hidden,omitempty"`
+	Icon          string           `json:"icon,omitempty"`
+	Color         string           `json:"color,omitempty"`
+	Label         string           `json:"label,omitempty"`
+	Description   string           `json:"description,omitempty"`
+	Magnified     bool             `json:"magnified,omitempty"`
+	BlockDef      waveobj.BlockDef `json:"blockdef"`
 }
 
 type MimeTypeConfigType struct {

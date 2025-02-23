@@ -1,0 +1,64 @@
+{
+    "format_on_save": "on",
+    "languages": {
+        "JavaScript": {
+            "formatter": {
+                "external": {
+                    "command": "./node_modules/.bin/prettier",
+                    "arguments": ["--stdin-filepath", "{buffer_path}"]
+                }
+            }
+        },
+        "JSON": {
+            "formatter": {
+                "external": {
+                    "command": "./node_modules/.bin/prettier",
+                    "arguments": ["--stdin-filepath", "{buffer_path}"]
+                }
+            }
+        },
+        "TypeScript": {
+            "formatter": {
+                "external": {
+                    "command": "./node_modules/.bin/prettier",
+                    "arguments": ["--stdin-filepath", "{buffer_path}"]
+                }
+            }
+        },
+        "CSS": {
+            "formatter": {
+                "external": {
+                    "command": "./node_modules/.bin/prettier",
+                    "arguments": ["--stdin-filepath", "{buffer_path}"]
+                }
+            }
+        },
+        "SCSS": {
+            "formatter": {
+                "external": {
+                    "command": "./node_modules/.bin/prettier",
+                    "arguments": ["--stdin-filepath", "{buffer_path}"]
+                }
+            }
+        },
+        "YAML": {
+            "formatter": {
+                "external": {
+                    "command": "./node_modules/.bin/prettier",
+                    "arguments": ["--stdin-filepath", "{buffer_path}"]
+                }
+            }
+        }
+    },
+    "lsp": {
+        "eslint": {
+            "settings": {
+                "codeActionOnSave": {
+                    "rules": ["import/order"]
+                },
+                "nodePath": "./node_modules/.bin",
+                "language_ids": ["typescript", "javascript", "typescriptreact", "javascriptreact"]
+            }
+        }
+    }
+}

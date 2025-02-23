@@ -20,6 +20,8 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/wshfs"
 	"github.com/wavetermdev/waveterm/pkg/util/packetparser"
+	"github.com/wavetermdev/waveterm/pkg/util/sigutil"
+	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
@@ -161,9 +163,7 @@ func serverRunRouter(jwtToken string) error {
 		// just ignore and drain the rawCh (stdin)
 		// when stdin is closed, shutdown
 		defer wshutil.DoShutdown("", 0, true)
-		for range rawCh {
-			// ignore
-		}
+		utilfn.DrainChannelSafe(rawCh, "serverRunRouter:stdin")
 	}()
 	go func() {
 		for msg := range termProxy.FromRemoteCh {
@@ -261,6 +261,9 @@ func serverRun(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+
+	sigutil.InstallSIGUSR1Handler()
+
 	if singleServerRouter {
 		return serverRunSingle(jwtToken)
 	} else if connServerRouter {

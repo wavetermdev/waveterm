@@ -1,0 +1,132 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "ConnKeywords": {
+      "properties": {
+        "conn:wshenabled": {
+          "type": "boolean"
+        },
+        "conn:askbeforewshinstall": {
+          "type": "boolean"
+        },
+        "conn:wshpath": {
+          "type": "string"
+        },
+        "conn:shellpath": {
+          "type": "string"
+        },
+        "conn:ignoresshconfig": {
+          "type": "boolean"
+        },
+        "display:hidden": {
+          "type": "boolean"
+        },
+        "display:order": {
+          "type": "number"
+        },
+        "term:*": {
+          "type": "boolean"
+        },
+        "term:fontsize": {
+          "type": "number"
+        },
+        "term:fontfamily": {
+          "type": "string"
+        },
+        "term:theme": {
+          "type": "string"
+        },
+        "cmd:env": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "type": "object"
+        },
+        "cmd:initscript": {
+          "type": "string"
+        },
+        "cmd:initscript.sh": {
+          "type": "string"
+        },
+        "cmd:initscript.bash": {
+          "type": "string"
+        },
+        "cmd:initscript.zsh": {
+          "type": "string"
+        },
+        "cmd:initscript.pwsh": {
+          "type": "string"
+        },
+        "cmd:initscript.fish": {
+          "type": "string"
+        },
+        "ssh:user": {
+          "type": "string"
+        },
+        "ssh:hostname": {
+          "type": "string"
+        },
+        "ssh:port": {
+          "type": "string"
+        },
+        "ssh:identityfile": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "ssh:batchmode": {
+          "type": "boolean"
+        },
+        "ssh:pubkeyauthentication": {
+          "type": "boolean"
+        },
+        "ssh:passwordauthentication": {
+          "type": "boolean"
+        },
+        "ssh:kbdinteractiveauthentication": {
+          "type": "boolean"
+        },
+        "ssh:preferredauthentications": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "ssh:addkeystoagent": {
+          "type": "boolean"
+        },
+        "ssh:identityagent": {
+          "type": "string"
+        },
+        "ssh:identitiesonly": {
+          "type": "boolean"
+        },
+        "ssh:proxyjump": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "ssh:userknownhostsfile": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "ssh:globalknownhostsfile": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    }
+  },
+  "additionalProperties": {
+    "$ref": "#/$defs/ConnKeywords"
+  },
+  "type": "object"
+}

@@ -18,6 +18,8 @@ import (
 	"syscall"
 	"time"
 
+	"maps"
+
 	"github.com/creack/pty"
 	"github.com/wavetermdev/waveterm/pkg/blocklogger"
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
@@ -633,11 +635,10 @@ func tryGetPamEnvVars() map[string]string {
 	if err != nil {
 		log.Printf("error parsing %s: %v", userEnvironmentPath, err)
 	}
-	for k, v := range envVars2 {
-		envVars[k] = v
-	}
-	for k, v := range envVars3 {
-		envVars[k] = v
+	maps.Copy(envVars, envVars2)
+	maps.Copy(envVars, envVars3)
+	if runtime_dir, ok := envVars["XDG_RUNTIME_DIR"]; !ok || runtime_dir == "" {
+		envVars["XDG_RUNTIME_DIR"] = "/run/user/" + fmt.Sprint(os.Getuid())
 	}
 	return envVars
 }

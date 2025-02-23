@@ -27,6 +27,7 @@ import {
 import * as services from "@/store/services";
 import * as keyutil from "@/util/keyutil";
 import { boundNumber, fireAndForget, stringToBase64, useAtomValueSafe } from "@/util/util";
+import { computeBgStyleFromMeta } from "@/util/waveutil";
 import { ISearchOptions } from "@xterm/addon-search";
 import clsx from "clsx";
 import debug from "debug";
@@ -316,6 +317,10 @@ class TermViewModel implements ViewModel {
             const fullStatus = get(this.shellProcFullStatus);
             return fullStatus?.shellprocstatus ?? "init";
         });
+    }
+
+    get viewComponent(): ViewComponent {
+        return TerminalView;
     }
 
     isBasicTerm(getFn: jotai.Getter): boolean {
@@ -873,7 +878,7 @@ const TermToolbarVDomNode = ({ blockId, model }: TerminalViewProps) => {
     );
 };
 
-const TerminalView = ({ blockId, model }: TerminalViewProps) => {
+const TerminalView = ({ blockId, model }: ViewComponentProps<TermViewModel>) => {
     const viewRef = React.useRef<HTMLDivElement>(null);
     const connectElemRef = React.useRef<HTMLDivElement>(null);
     const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", blockId));
@@ -1066,8 +1071,11 @@ const TerminalView = ({ blockId, model }: TerminalViewProps) => {
         blockId: blockId,
     };
 
+    const termBg = computeBgStyleFromMeta(blockData?.meta);
+
     return (
         <div className={clsx("view-term", "term-mode-" + termMode)} ref={viewRef}>
+            {termBg && <div className="absolute inset-0 z-0 pointer-events-none" style={termBg} />}
             <TermResyncHandler blockId={blockId} model={model} />
             <TermThemeUpdater blockId={blockId} model={model} termRef={model.termRef} />
             <TermStickers config={stickerConfig} />

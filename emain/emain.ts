@@ -240,7 +240,9 @@ electron.ipcMain.on("webview-image-contextmenu", (event: electron.IpcMainEvent, 
 });
 
 electron.ipcMain.on("download", (event, payload) => {
-    const streamingUrl = getWebServerEndpoint() + "/wave/stream-file?path=" + encodeURIComponent(payload.filePath);
+    const baseName = encodeURIComponent(path.basename(payload.filePath));
+    const streamingUrl =
+        getWebServerEndpoint() + "/wave/stream-file/" + baseName + "?path=" + encodeURIComponent(payload.filePath);
     event.sender.downloadURL(streamingUrl);
 });
 
@@ -257,6 +259,16 @@ electron.ipcMain.on("get-cursor-point", (event) => {
         y: screenPoint.y - windowRect.y,
     };
     event.returnValue = retVal;
+});
+
+electron.ipcMain.handle("capture-screenshot", async (event, rect) => {
+    const tabView = getWaveTabViewByWebContentsId(event.sender.id);
+    if (!tabView) {
+        throw new Error("No tab view found for the given webContents id");
+    }
+    const image = await tabView.webContents.capturePage(rect);
+    const base64String = image.toPNG().toString("base64");
+    return `data:image/png;base64,${base64String}`;
 });
 
 electron.ipcMain.on("get-env", (event, varName) => {
@@ -312,6 +324,12 @@ electron.ipcMain.on("register-global-webview-keys", (event, keys: string[]) => {
     webviewKeys = keys ?? [];
 });
 
+electron.ipcMain.on("set-keyboard-chord-mode", (event) => {
+    event.returnValue = null;
+    const tabView = getWaveTabViewByWebContentsId(event.sender.id);
+    tabView?.setKeyboardChordMode(true);
+});
+
 if (unamePlatform !== "darwin") {
     const fac = new FastAverageColor();
 
@@ -352,6 +370,7 @@ electron.ipcMain.on("quicklook", (event, filePath: string) => {
 
 electron.ipcMain.on("open-native-path", (event, filePath: string) => {
     console.log("open-native-path", filePath);
+    filePath = filePath.replace("~", electronApp.getPath("home"));
     fireAndForget(() =>
         callWithOriginalXdgCurrentDesktopAsync(() =>
             electron.shell.openPath(filePath).then((excuse) => {
@@ -459,6 +478,31 @@ function getActivityDisplays(): ActivityDisplayType[] {
     return rtn;
 }
 
+async function sendDisplaysTDataEvent() {
+    const displays = getActivityDisplays();
+    if (displays.length === 0) {
+        return;
+    }
+    const props: TEventProps = {};
+    props["display:count"] = displays.length;
+    props["display:height"] = displays[0].height;
+    props["display:width"] = displays[0].width;
+    props["display:dpr"] = displays[0].dpr;
+    props["display:all"] = displays;
+    try {
+        await RpcApi.RecordTEventCommand(
+            ElectronWshClient,
+            {
+                event: "app:display",
+                props,
+            },
+            { noresponse: true }
+        );
+    } catch (e) {
+        console.log("error sending display tdata event", e);
+    }
+}
+
 function logActiveState() {
     fireAndForget(async () => {
         const astate = getActivityState();
@@ -472,6 +516,18 @@ function logActiveState() {
         activity.displays = getActivityDisplays();
         try {
             await RpcApi.ActivityCommand(ElectronWshClient, activity, { noresponse: true });
+            await RpcApi.RecordTEventCommand(
+                ElectronWshClient,
+                {
+                    event: "app:activity",
+                    props: {
+                        "activity:activeminutes": activity.activeminutes,
+                        "activity:fgminutes": activity.fgminutes,
+                        "activity:openminutes": activity.openminutes,
+                    },
+                },
+                { noresponse: true }
+            );
         } catch (e) {
             console.log("error logging active state", e);
         } finally {
@@ -621,6 +677,7 @@ async function appMain() {
     await relaunchBrowserWindows();
     await initDocsite();
     setTimeout(runActiveTimer, 5000); // start active timer, wait 5s just to be safe
+    setTimeout(sendDisplaysTDataEvent, 5000);
 
     makeAppMenu();
     makeDockTaskbar();

@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	"github.com/google/uuid"
+	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/util/shellutil"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
@@ -247,7 +248,11 @@ func (p *WshRpcProxy) HandleAuthentication() (*wshrpc.RpcContext, error) {
 	}
 }
 
+// TODO: Figure out who is sending to closed routes and why we're not catching it
 func (p *WshRpcProxy) SendRpcMessage(msg []byte) {
+	defer func() {
+		panichandler.PanicHandler("WshRpcProxy.SendRpcMessage", recover())
+	}()
 	p.ToRemoteCh <- msg
 }
 

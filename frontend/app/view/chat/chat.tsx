@@ -31,10 +31,6 @@ class ChatModel {
     });
 }
 
-function makeChatModel(blockId: string): ChatModel {
-    return new ChatModel(blockId);
-}
-
 interface ChatProps {
     model: ChatModel;
 }
@@ -67,4 +63,4 @@ const Chat = memo(({ model }: ChatProps) => {
     );
 });
 
-export { Chat, ChatModel, makeChatModel };
+export { Chat, ChatModel };

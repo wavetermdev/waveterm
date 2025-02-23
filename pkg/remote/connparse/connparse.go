@@ -47,6 +47,9 @@ func (c *Connection) GetPathWithHost() string {
 	if c.Host == "" {
 		return ""
 	}
+	if c.Path == "" {
+		return c.Host
+	}
 	if strings.HasPrefix(c.Path, "/") {
 		return c.Host + c.Path
 	}
@@ -55,6 +58,10 @@ func (c *Connection) GetPathWithHost() string {
 
 func (c *Connection) GetFullURI() string {
 	return c.Scheme + "://" + c.GetPathWithHost()
+}
+
+func (c *Connection) GetSchemeAndHost() string {
+	return c.Scheme + "://" + c.Host
 }
 
 func ParseURIAndReplaceCurrentHost(ctx context.Context, uri string) (*Connection, error) {
@@ -87,12 +94,12 @@ func GetConnNameFromContext(ctx context.Context) (string, error) {
 
 // ParseURI parses a connection URI and returns the connection type, host/path, and parameters.
 func ParseURI(uri string) (*Connection, error) {
-	split := strings.SplitN(uri, "//", 2)
+	split := strings.SplitN(uri, "://", 2)
 	var scheme string
 	var rest string
 	if len(split) > 1 {
-		scheme = strings.TrimSuffix(split[0], ":")
-		rest = split[1]
+		scheme = split[0]
+		rest = strings.TrimPrefix(split[1], "//")
 	} else {
 		rest = split[0]
 	}
@@ -103,16 +110,13 @@ func ParseURI(uri string) (*Connection, error) {
 	parseGenericPath := func() {
 		split = strings.SplitN(rest, "/", 2)
 		host = split[0]
-		if len(split) > 1 {
+		if len(split) > 1 && split[1] != "" {
 			remotePath = split[1]
+		} else if strings.HasSuffix(rest, "/") {
+			// preserve trailing slash
+			remotePath = "/"
 		} else {
-			split = strings.SplitN(rest, "/", 2)
-			host = split[0]
-			if len(split) > 1 {
-				remotePath = split[1]
-			} else {
-				remotePath = "/"
-			}
+			remotePath = ""
 		}
 	}
 	parseWshPath := func() {
@@ -124,8 +128,11 @@ func ParseURI(uri string) (*Connection, error) {
 		}
 	}
 
+	addPrecedingSlash := true
+
 	if scheme == "" {
 		scheme = ConnectionTypeWsh
+		addPrecedingSlash = false
 		if len(rest) != len(uri) {
 			// This accounts for when the uri starts with "//", which would get trimmed in the first split.
 			parseWshPath()
@@ -148,7 +155,7 @@ func ParseURI(uri string) (*Connection, error) {
 		}
 		if strings.HasPrefix(remotePath, "/~") {
 			remotePath = strings.TrimPrefix(remotePath, "/")
-		} else if len(remotePath) > 1 && !windowsDriveRegex.MatchString(remotePath) && !strings.HasPrefix(remotePath, "/") && !strings.HasPrefix(remotePath, "~") {
+		} else if addPrecedingSlash && (len(remotePath) > 1 && !windowsDriveRegex.MatchString(remotePath) && !strings.HasPrefix(remotePath, "/") && !strings.HasPrefix(remotePath, "~") && !strings.HasPrefix(remotePath, "./") && !strings.HasPrefix(remotePath, "../") && !strings.HasPrefix(remotePath, ".\\") && !strings.HasPrefix(remotePath, "..\\") && remotePath != "..") {
 			remotePath = "/" + remotePath
 		}
 	}
