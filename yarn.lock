@@ -16971,12 +16971,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"prettier@npm:^3.4.2":
-  version: 3.4.2
-  resolution: "prettier@npm:3.4.2"
+"prettier@npm:^3.5.1":
+  version: 3.5.1
+  resolution: "prettier@npm:3.5.1"
   bin:
     prettier: bin/prettier.cjs
-  checksum: 10c0/99e076a26ed0aba4ebc043880d0f08bbb8c59a4c6641cdee6cdadf2205bdd87aa1d7823f50c3aea41e015e99878d37c58d7b5f0e663bba0ef047f94e36b96446
+  checksum: 10c0/9f6f810eae455d6e4213845151a484a2338f2e0d6a8b84ee8e13a83af8a2421ef6c1e31e61e4b135671fb57b9541f6624648880cc2061ac803e243ac898c0123
   languageName: node
   linkType: hard
 
@@ -21657,7 +21657,7 @@ __metadata:
     eslint: "npm:^9.20.1"
     eslint-config-prettier: "npm:^10.0.1"
     eslint-plugin-mdx: "npm:^3.1.5"
-    prettier: "npm:^3.4.2"
+    prettier: "npm:^3.5.1"
     prettier-plugin-jsdoc: "npm:^1.3.2"
     prettier-plugin-organize-imports: "npm:^4.1.0"
     prism-react-renderer: "npm:^2.4.1"
@@ -21757,7 +21757,7 @@ __metadata:
     parse-srcset: "npm:^1.0.2"
     pngjs: "npm:^7.0.0"
     postcss: "npm:^8.5.2"
-    prettier: "npm:^3.4.2"
+    prettier: "npm:^3.5.1"
     prettier-plugin-jsdoc: "npm:^1.3.2"
     prettier-plugin-organize-imports: "npm:^4.1.0"
     prop-types: "npm:^15.8.1"
