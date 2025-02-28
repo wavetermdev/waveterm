@@ -6,6 +6,34 @@ sidebar_position: 200
 
 # Release Notes
 
+### v0.11.1 &mdash; Feb 28, 2025
+
+Wave Terminal v0.11.1 adds a lot of new functionality over v0.11.0 (it could have almost been a v0.12)!
+
+The headline feature is our files/preview widget now supports browsing S3 buckets. We read credential information directly from your ~/.aws/config, and you can now easily select any of your AWS profiles in our connections drop down to start viewing S3 files. We even support editing S3 text files using our built-in editor.
+
+Lots of other features and bug fixes as well:
+
+- **S3 Bucket** directory viewing and file previews
+- **Drag and Drop Files and Directories** between Wave directory views. This works across machines and between remote machines and S3 conections.
+- Added json-schema support for some of our config files. You'll now get auto-complete popups for fields in our settings.json, widgets.json, ai.json, and connections.json file.
+- New block splitting support -- Use Cmd-D and Cmd-Shift-D to split horizontally and vertically. For more control you can use Ctrl-Shift-S and then Up/Down/Left/Right to split in the given direction.
+- Delete block (without removing it from the layout). You can use Ctrl-Shift-D to remove a block, while keeping it in the layout. you can then launch a new widget in its place.
+- `wsh file` now supports copying files between your local machine, remote machines, and to/from S3
+- New analytics framework (event based as opposed to counter based). See Telemetry Docs for more information.
+- Web bookmarks! Edit in your bookmarks.json file, can open them in the web widget using Cmd+O
+- Edits to your ai.json presets file will now take effect _immediately_ in AI widgets
+- Much better error handling and messaging when errors occur in the preview or editor widget
+- `wsh ssh --new` added to open the new ssh connection in a new widget
+- new `wsh launch` command to open any custom widget defined in widget.json
+- When using terminal multi-input (Ctrl-Shift-I), pasting text will now be sent to all terminals
+- [bugfix] Fix some hanging goroutines when commands failed or timed out
+- [bugfix] Fix some file extension mimetypes to enable the editor for more file types
+- [bugfix] Hitting "tab" would sometimes scroll a widget off screen making it unusable
+- [bugfix] XDG variables will no longer leak to terminal widgets
+- Added tailwind CSS and shadcn support to help build new widgets faster
+- Better internal widget abstractions
+
 ### v0.11.0 &mdash; Jan 24, 2025
 
 Wave Terminal v0.11.0 includes a major rewrite of our connections infrastructure, with changes to both our backend and remote file protocol systems, alongside numerous features, bug fixes, and stability improvements.
