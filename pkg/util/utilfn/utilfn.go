@@ -1057,15 +1057,16 @@ func GracefulClose(closer io.Closer, debugName, closerName string) bool {
 }
 
 // DrainChannelSafe will drain a channel until it is empty or until a timeout is reached.
-// WARNING: This function will panic if the channel is not drained within the timeout.
 func DrainChannelSafe[T any](ch <-chan T, debugName string) {
 	drainTimeoutCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	go func() {
 		defer cancel()
+	outer:
 		for {
 			select {
 			case <-drainTimeoutCtx.Done():
-				panic(debugName + ": timeout draining channel")
+				log.Printf("[error] timeout draining channel: %s\n", debugName)
+				break outer
 			case _, ok := <-ch:
 				if !ok {
 					return
