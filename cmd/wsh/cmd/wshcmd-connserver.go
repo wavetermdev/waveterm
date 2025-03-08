@@ -21,7 +21,6 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/wshfs"
 	"github.com/wavetermdev/waveterm/pkg/util/packetparser"
 	"github.com/wavetermdev/waveterm/pkg/util/sigutil"
-	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
@@ -163,7 +162,9 @@ func serverRunRouter(jwtToken string) error {
 		// just ignore and drain the rawCh (stdin)
 		// when stdin is closed, shutdown
 		defer wshutil.DoShutdown("", 0, true)
-		utilfn.DrainChannelSafe(rawCh, "serverRunRouter:stdin")
+		for range rawCh {
+			// ignore
+		}
 	}()
 	go func() {
 		for msg := range termProxy.FromRemoteCh {
