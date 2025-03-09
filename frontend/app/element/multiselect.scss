@@ -1,0 +1,44 @@
+// Copyright 2024, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
+.multi-select {
+    border-radius: 7px;
+    background: rgb(from var(--block-bg-color) r g b / 70%);
+    color: var(--main-text-color);
+    padding: 4px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 3px;
+    align-self: stretch;
+    border: 1px solid rgb(from var(--main-text-color) r g b / 15%);
+    width: 100%;
+
+    .option {
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 9px 12px;
+        border-radius: 4px;
+        align-self: stretch;
+        border: 1px solid transparent;
+
+        &:hover {
+            background-color: rgb(from var(--main-bg-color) r g b / 60%);
+        }
+
+        &.selected {
+            border: 1px solid var(--success-color);
+            background: rgb(from var(--success-color) r g b / 15%);
+
+            i {
+                color: var(--success-color);
+            }
+        }
+    }
+
+    i {
+        font-size: 1rem;
+    }
+}
