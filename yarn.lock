@@ -1493,9 +1493,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@chromatic-com/storybook@npm:^3.2.4":
-  version: 3.2.4
-  resolution: "@chromatic-com/storybook@npm:3.2.4"
+"@chromatic-com/storybook@npm:^3.2.5":
+  version: 3.2.5
+  resolution: "@chromatic-com/storybook@npm:3.2.5"
   dependencies:
     chromatic: "npm:^11.15.0"
     filesize: "npm:^10.0.12"
@@ -1504,7 +1504,7 @@ __metadata:
     strip-ansi: "npm:^7.1.0"
   peerDependencies:
     storybook: ^8.2.0 || ^8.3.0-0 || ^8.4.0-0 || ^8.5.0-0 || ^8.6.0-0
-  checksum: 10c0/57d466644d859ca58a853cc8316d3b0a64c617216ccf30d743c5fbf24c90859271a5708f05253a3b48c9ce64bc12749dd5a5b00fd1310f5d8a2ee64da9ceebe3
+  checksum: 10c0/a8064e433caf8842079a676a9ecc0e423b6599e2549d14f9d69cef19d0a4f527c819c9577975436463925dcc8046278fc2f1f3d2bb2d1c250df14e37b0ae44a4
   languageName: node
   linkType: hard
 
@@ -21681,7 +21681,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "waveterm@workspace:."
   dependencies:
-    "@chromatic-com/storybook": "npm:^3.2.4"
+    "@chromatic-com/storybook": "npm:^3.2.5"
     "@eslint/js": "npm:^9.20.0"
     "@floating-ui/react": "npm:^0.27.4"
     "@monaco-editor/loader": "npm:^1.4.0"
