@@ -45,11 +45,6 @@ declare global {
         limit?: number;
     };
 
-    // wshrpc.AiGetMessagesResponse
-    type AiGetMessagesResponse = {
-        messages: AiMessage[];
-    };
-
     // wshrpc.AiMessage
     type AiMessage = {
         role: string;

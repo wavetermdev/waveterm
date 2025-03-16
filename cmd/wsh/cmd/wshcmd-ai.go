@@ -14,6 +14,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
+	"encoding/json"
 )
 
 var aiCmd = &cobra.Command{
@@ -200,19 +201,18 @@ func aigetRun(cmd *cobra.Command, args []string) (rtnErr error) {
         Limit: aigetLimit,
     }
 
-    var response wshrpc.AiGetMessagesResponse
-    response, err = wshclient.AiGetMessagesCommand(RpcClient, messageData, &wshrpc.RpcOpts{
+    response, err := wshclient.AiGetMessagesCommand(RpcClient, messageData, &wshrpc.RpcOpts{
         Route:   route,
         Timeout: 2000,
     })
     if err != nil {
         return fmt.Errorf("getting messages: %w", err)
     }
-
-	// Print messages
-	for _, msg := range response.Messages {
-		fmt.Printf("%s: %s\n", msg.Role, msg.Content)
+	jsonBytes, err := json.Marshal(response)
+	if err != nil {
+		return fmt.Errorf("marshalling response: %w", err)
 	}
+	fmt.Print(string(jsonBytes))
 
-    return nil
+	return nil
 }

@@ -256,7 +256,7 @@ type WshRpcInterface interface {
 
 	// ai
 	AiSendMessageCommand(ctx context.Context, data AiMessageData) error
-	AiGetMessagesCommand(ctx context.Context, data AiGetMessagesData) (AiGetMessagesResponse, error)
+	AiGetMessagesCommand(ctx context.Context, data AiGetMessagesData) ([]AiMessage, error)
 
 	// proc
 	VDomRenderCommand(ctx context.Context, data vdom.VDomFrontendUpdate) chan RespOrErrorUnion[*vdom.VDomBackendUpdate]
@@ -690,10 +690,6 @@ type AiMessage struct {
 
 type AiGetMessagesData struct {
 	Limit int `json:"limit,omitempty"` // If 0, defaults to 10
-}
-
-type AiGetMessagesResponse struct {
-	Messages []AiMessage `json:"messages"`
 }
 
 type CommandVarData struct {
