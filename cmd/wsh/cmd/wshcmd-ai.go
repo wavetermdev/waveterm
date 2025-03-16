@@ -208,11 +208,11 @@ func aigetRun(cmd *cobra.Command, args []string) (rtnErr error) {
     if err != nil {
         return fmt.Errorf("getting messages: %w", err)
     }
-	jsonBytes, err := json.Marshal(response)
-	if err != nil {
-		return fmt.Errorf("marshalling response: %w", err)
-	}
-	fmt.Print(string(jsonBytes))
+    jsonBytes, err := json.Marshal(response)
+    if err != nil {
+        return fmt.Errorf("marshalling response: %w", err)
+    }
+    fmt.Print(string(jsonBytes))
 
 	return nil
 }
