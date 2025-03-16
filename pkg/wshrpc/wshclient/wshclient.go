@@ -22,6 +22,12 @@ func ActivityCommand(w *wshutil.WshRpc, data wshrpc.ActivityUpdate, opts *wshrpc
 	return err
 }
 
+// command "aigetmessages", wshserver.AiGetMessagesCommand
+func AiGetMessagesCommand(w *wshutil.WshRpc, data wshrpc.AiGetMessagesData, opts *wshrpc.RpcOpts) (wshrpc.AiGetMessagesResponse, error) {
+	resp, err := sendRpcRequestCallHelper[wshrpc.AiGetMessagesResponse](w, "aigetmessages", data, opts)
+	return resp, err
+}
+
 // command "aisendmessage", wshserver.AiSendMessageCommand
 func AiSendMessageCommand(w *wshutil.WshRpc, data wshrpc.AiMessageData, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "aisendmessage", data, opts)

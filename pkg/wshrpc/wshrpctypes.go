@@ -137,6 +137,7 @@ const (
 	Command_VDomUrlRequest      = "vdomurlrequest"
 
 	Command_AiSendMessage = "aisendmessage"
+	Command_AiGetMessages = "aigetmessages"
 )
 
 type RespOrErrorUnion[T any] struct {
@@ -255,6 +256,7 @@ type WshRpcInterface interface {
 
 	// ai
 	AiSendMessageCommand(ctx context.Context, data AiMessageData) error
+	AiGetMessagesCommand(ctx context.Context, data AiGetMessagesData) (AiGetMessagesResponse, error)
 
 	// proc
 	VDomRenderCommand(ctx context.Context, data vdom.VDomFrontendUpdate) chan RespOrErrorUnion[*vdom.VDomBackendUpdate]
@@ -679,6 +681,19 @@ type WorkspaceInfoData struct {
 
 type AiMessageData struct {
 	Message string `json:"message,omitempty"`
+}
+
+type AiMessage struct {
+	Role    string `json:"role"`
+	Content string `json:"content"`
+}
+
+type AiGetMessagesData struct {
+	Limit int `json:"limit,omitempty"` // If 0, defaults to 10
+}
+
+type AiGetMessagesResponse struct {
+	Messages []AiMessage `json:"messages"`
 }
 
 type CommandVarData struct {

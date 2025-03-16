@@ -12,6 +12,11 @@ class RpcApiType {
         return client.wshRpcCall("activity", data, opts);
     }
 
+    // command "aigetmessages" [call]
+    AiGetMessagesCommand(client: WshClient, data: AiGetMessagesData, opts?: RpcOpts): Promise<AiGetMessagesResponse> {
+        return client.wshRpcCall("aigetmessages", data, opts);
+    }
+
     // command "aisendmessage" [call]
     AiSendMessageCommand(client: WshClient, data: AiMessageData, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("aisendmessage", data, opts);

@@ -40,6 +40,22 @@ declare global {
         conn?: {[key: string]: number};
     };
 
+    // wshrpc.AiGetMessagesData
+    type AiGetMessagesData = {
+        limit?: number;
+    };
+
+    // wshrpc.AiGetMessagesResponse
+    type AiGetMessagesResponse = {
+        messages: AiMessage[];
+    };
+
+    // wshrpc.AiMessage
+    type AiMessage = {
+        role: string;
+        content: string;
+    };
+
     // wshrpc.AiMessageData
     type AiMessageData = {
         message?: string;
