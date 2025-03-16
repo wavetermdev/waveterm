@@ -14,6 +14,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
+	"encoding/json"
 )
 
 var aiCmd = &cobra.Command{
@@ -158,4 +159,60 @@ func aiRun(cmd *cobra.Command, args []string) (rtnErr error) {
 	}
 
 	return nil
+}
+
+// AI Get Command implementation section
+var aigetCmd = &cobra.Command{
+    Use:                   "aiget [blockid]",
+    Short:                 "Get messages from an AI block",
+    Long:                  "Get messages from an AI block. Use --limit or -n to specify maximum number of messages to retrieve (default: 10)",
+    RunE:                  aigetRun,
+    PreRunE:               preRunSetupRpcClient,
+    DisableFlagsInUseLine: true,
+}
+
+var aigetLimit int
+
+func init() {
+    rootCmd.AddCommand(aigetCmd)
+    aigetCmd.Flags().IntVarP(&aigetLimit, "limit", "n", 10, "maximum number of messages to retrieve")
+}
+
+func aigetRun(cmd *cobra.Command, args []string) (rtnErr error) {
+    defer func() {
+        sendActivity("aiget", rtnErr == nil)
+    }()
+
+    // Default to "waveai" block
+    isDefaultBlock := blockArg == ""
+    if isDefaultBlock {
+        blockArg = "view@waveai"
+    }
+
+    fullORef, err := resolveSimpleId(blockArg)
+    if err != nil {
+        return fmt.Errorf("resolving block: %w", err)
+    }
+
+    // Create the route for this block
+    route := wshutil.MakeFeBlockRouteId(fullORef.OID)
+
+    messageData := wshrpc.AiGetMessagesData{
+        Limit: aigetLimit,
+    }
+
+    response, err := wshclient.AiGetMessagesCommand(RpcClient, messageData, &wshrpc.RpcOpts{
+        Route:   route,
+        Timeout: 2000,
+    })
+    if err != nil {
+        return fmt.Errorf("getting messages: %w", err)
+    }
+    jsonBytes, err := json.Marshal(response)
+    if err != nil {
+        return fmt.Errorf("marshalling response: %w", err)
+    }
+    fmt.Print(string(jsonBytes))
+
+    return nil
 }
