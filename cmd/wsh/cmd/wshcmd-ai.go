@@ -214,5 +214,5 @@ func aigetRun(cmd *cobra.Command, args []string) (rtnErr error) {
     }
     fmt.Print(string(jsonBytes))
 
-	return nil
+    return nil
 }
