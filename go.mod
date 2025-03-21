@@ -11,7 +11,7 @@ require (
 	github.com/creack/pty v1.1.21
 	github.com/emirpasic/gods v1.18.1
 	github.com/fsnotify/fsnotify v1.8.0
-	github.com/golang-jwt/jwt/v5 v5.2.1
+	github.com/golang-jwt/jwt/v5 v5.2.2
 	github.com/golang-migrate/migrate/v4 v4.18.2
 	github.com/google/generative-ai-go v0.19.0
 	github.com/google/uuid v1.6.0
