@@ -716,6 +716,18 @@ export class PreviewModel implements ViewModel {
                     await navigator.clipboard.writeText(fileInfo.name);
                 }),
         });
+        const fontSizeSubMenu: ContextMenuItem[] = [6, 7, 8, 9, 10].map((fontsize: number) => {
+            return {
+                label: fontsize.toString() + "px",
+                type: "checkbox",
+                checked: false,
+                click: () => {},
+            };
+        });
+        menuItems.push({
+            label: "Font Size",
+            submenu: fontSizeSubMenu,
+        });
         const finfo = jotaiLoadableValue(globalStore.get(this.loadableFileInfo), null);
         addOpenMenuItems(menuItems, globalStore.get(this.connectionImmediate), finfo);
         const loadableSV = globalStore.get(this.loadableSpecializedView);
@@ -749,6 +761,7 @@ export class PreviewModel implements ViewModel {
                 });
             }
         }
+
         return menuItems;
     }
 

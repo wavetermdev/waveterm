@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { useOverrideConfigAtom } from "@/app/store/global";
-import { boundNumber } from "@/util/util";
 import loader from "@monaco-editor/loader";
 import { Editor, Monaco } from "@monaco-editor/react";
 import type * as MonacoTypes from "monaco-editor/esm/vs/editor/editor.api";
@@ -125,7 +124,8 @@ export function CodeEditor({ blockId, text, language, filename, fileinfo, meta, 
     const minimapEnabled = useOverrideConfigAtom(blockId, "editor:minimapenabled") ?? false;
     const stickyScrollEnabled = useOverrideConfigAtom(blockId, "editor:stickyscrollenabled") ?? false;
     const wordWrap = useOverrideConfigAtom(blockId, "editor:wordwrap") ?? false;
-    const fontSize = boundNumber(useOverrideConfigAtom(blockId, "editor:fontsize"), 6, 64);
+    // const fontSize = boundNumber(useOverrideConfigAtom(blockId, "editor:fontsize"), 6, 64);
+    const fontSize = 30;
     const theme = "wave-theme-dark";
     const [absPath, setAbsPath] = React.useState("");
 
@@ -181,6 +181,7 @@ export function CodeEditor({ blockId, text, language, filename, fileinfo, meta, 
     return (
         <div className="code-editor-wrapper">
             <div className="code-editor" ref={divRef}>
+                111
                 <Editor
                     theme={theme}
                     value={text}
