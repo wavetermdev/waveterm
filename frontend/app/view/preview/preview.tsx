@@ -686,6 +686,9 @@ export class PreviewModel implements ViewModel {
     }
 
     getSettingsMenuItems(): ContextMenuItem[] {
+        const defaultFontSize = globalStore.get(getSettingsKeyAtom("editor:fontsize")) ?? 12;
+        const blockData = globalStore.get(this.blockAtom);
+        const overrideFontSize = blockData?.meta?.["editor:fontsize"];
         const menuItems: ContextMenuItem[] = [];
         menuItems.push({
             label: "Copy Full Path",
@@ -716,13 +719,32 @@ export class PreviewModel implements ViewModel {
                     await navigator.clipboard.writeText(fileInfo.name);
                 }),
         });
-        const fontSizeSubMenu: ContextMenuItem[] = [6, 7, 8, 9, 10].map((fontsize: number) => {
-            return {
-                label: fontsize.toString() + "px",
-                type: "checkbox",
-                checked: false,
-                click: () => {},
-            };
+        menuItems.push({ type: "separator" });
+        const fontSizeSubMenu: ContextMenuItem[] = [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18].map(
+            (fontSize: number) => {
+                return {
+                    label: fontSize.toString() + "px",
+                    type: "checkbox",
+                    checked: overrideFontSize == fontSize,
+                    click: () => {
+                        RpcApi.SetMetaCommand(TabRpcClient, {
+                            oref: WOS.makeORef("block", this.blockId),
+                            meta: { "editor:fontsize": fontSize },
+                        });
+                    },
+                };
+            }
+        );
+        fontSizeSubMenu.unshift({
+            label: "Default (" + defaultFontSize + "px)",
+            type: "checkbox",
+            checked: overrideFontSize == null,
+            click: () => {
+                RpcApi.SetMetaCommand(TabRpcClient, {
+                    oref: WOS.makeORef("block", this.blockId),
+                    meta: { "editor:fontsize": null },
+                });
+            },
         });
         menuItems.push({
             label: "Font Size",
