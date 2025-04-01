@@ -10,7 +10,7 @@ import React, { useMemo, useRef } from "react";
 
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
-import { makeConnRoute } from "@/util/util";
+import { boundNumber, makeConnRoute } from "@/util/util";
 import editorWorker from "monaco-editor/esm/vs/editor/editor.worker?worker";
 import cssWorker from "monaco-editor/esm/vs/language/css/css.worker?worker";
 import htmlWorker from "monaco-editor/esm/vs/language/html/html.worker?worker";
@@ -124,8 +124,7 @@ export function CodeEditor({ blockId, text, language, filename, fileinfo, meta, 
     const minimapEnabled = useOverrideConfigAtom(blockId, "editor:minimapenabled") ?? false;
     const stickyScrollEnabled = useOverrideConfigAtom(blockId, "editor:stickyscrollenabled") ?? false;
     const wordWrap = useOverrideConfigAtom(blockId, "editor:wordwrap") ?? false;
-    // const fontSize = boundNumber(useOverrideConfigAtom(blockId, "editor:fontsize"), 6, 64);
-    const fontSize = 30;
+    const fontSize = boundNumber(useOverrideConfigAtom(blockId, "editor:fontsize"), 6, 64);
     const theme = "wave-theme-dark";
     const [absPath, setAbsPath] = React.useState("");
 
@@ -181,7 +180,6 @@ export function CodeEditor({ blockId, text, language, filename, fileinfo, meta, 
     return (
         <div className="code-editor-wrapper">
             <div className="code-editor" ref={divRef}>
-                111
                 <Editor
                     theme={theme}
                     value={text}

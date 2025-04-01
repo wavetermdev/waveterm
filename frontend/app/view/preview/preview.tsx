@@ -747,7 +747,7 @@ export class PreviewModel implements ViewModel {
             },
         });
         menuItems.push({
-            label: "Font Size",
+            label: "Editor Font Size",
             submenu: fontSizeSubMenu,
         });
         const finfo = jotaiLoadableValue(globalStore.get(this.loadableFileInfo), null);
