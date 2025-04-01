@@ -783,7 +783,6 @@ export class PreviewModel implements ViewModel {
                 });
             }
         }
-
         return menuItems;
     }
 
