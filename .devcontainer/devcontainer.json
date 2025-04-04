@@ -1,0 +1,41 @@
+{pip install flask,
+  "image": "mcr.microsoft.com/devcontainers/universal:2",
+  "features": {}from flask import Flask, request, jsonify
+import pandas as pd
+from sklearn.preprocessing import StandardScaler
+
+# Initialize Flask app
+app = Flask(__name__)
+
+# Pre-trained model (make sure to load your actual trained model here)
+from sklearn.ensemble import RandomForestClassifier
+
+# Load model (replace this with your actual model loading process)
+# model = load_your_trained_model()
+
+# For example, if using a Random Forest:
+model = RandomForestClassifier(n_estimators=100, random_state=42)
+
+# Pre-process input data (standardize it based on your training process)
+scaler = StandardScaler()
+
+@app.route('/predict', methods=['POST'])
+def predict():
+    # Get data from the request
+    data = request.get_json(force=True)
+    
+    # Ensure the data has the correct format (this will depend on your feature set)
+    features = pd.DataFrame(data['features'])
+
+    # Standardize features
+    features = scaler.transform(features)
+
+    # Make prediction
+    prediction = model.predict(features)
+
+    # Return the prediction as JSON
+    return jsonify({'prediction': prediction.tolist()})
+
+if __name__ == '__main__':
+    app.run(debug=True)
+}curl -X POST http://127.0.0.1:5000/predict -H "Content-Type: application/json" -d '{"features": [[1.5, 2.3, 3.1]]}'
