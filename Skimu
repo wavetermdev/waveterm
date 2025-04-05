@@ -1,0 +1,75 @@
+pip install scikit-learnfrom sklearn.ensemble import RandomForestClassifier
+from sklearn.datasets import load_iris
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import f1_score
+from sklearn.model_selection import cross_val_score
+
+class StatefulWeightedDomainGraph:
+    def __init__(self, model, retrain_f1_threshold=0.8):
+        """
+        Initializes the graph with the model and the F1 threshold for retraining.
+
+        :param model: A machine learning model (e.g., RandomForest, SVM, etc.)
+        :param retrain_f1_threshold: F1 score threshold below which retraining is triggered
+        """
+        self.model = model
+        self.retrain_f1_threshold = retrain_f1_threshold
+    
+    def train_model(self, X_train, y_train, X_test, y_test):
+        """
+        Trains the model, performs cross-validation, evaluates it, 
+        and triggers retraining if necessary.
+
+        :param X_train: Training feature set
+        :param y_train: Training labels
+        :param X_test: Test feature set
+        :param y_test: Test labels
+        """
+        # Train the model on the training data
+        self.model.fit(X_train, y_train)
+        
+        # Perform cross-validation to evaluate model performance
+        cv_scores = cross_val_score(self.model, X_train, y_train, cv=5, scoring='f1_weighted')
+        print(f"Cross-Validation F1 Scores: {cv_scores}")
+        print(f"Mean Cross-Validation F1 Score: {cv_scores.mean():.4f}")
+        
+        # Evaluate the model on the test set
+        y_pred = self.model.predict(X_test)
+        f1 = f1_score(y_test, y_pred, average='weighted')
+        print(f"Test F1 Score: {f1:.4f}")
+
+        # Trigger retraining if F1 score is below the threshold
+        if f1 < self.retrain_f1_threshold:
+            print("Retraining triggered due to low F1 score.")
+            self.model.fit(X_train, y_train)
+    
+    def check_retrain(self, X_test, y_test):
+        """
+        Checks whether retraining is needed based on the F1 score.
+
+        :param X_test: Test feature set
+        :param y_test: Test labels
+        :return: True if retraining is needed, False otherwise
+        """
+        if self.model:
+            y_pred = self.model.predict(X_test)
+            f1 = f1_score(y_test, y_pred, average='weighted')
+            return f1 < self.retrain_f1_threshold
+        return False
+
+# Load a sample dataset (e.g., Iris dataset)
+data = load_iris()
+X = data.data
+y = data.target
+
+# Split into training and testing sets
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
+
+# Initialize the model
+model = RandomForestClassifier()
+
+# Create an instance of StatefulWeightedDomainGraph
+graph = StatefulWeightedDomainGraph(model, retrain_f1_threshold=0.75)
+
+# Train and evaluate the model
+graph.train_model(X_train, y_train, X_test, y_test)
