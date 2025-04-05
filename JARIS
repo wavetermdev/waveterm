@@ -1,0 +1,67 @@
+import random
+
+class StatefulWeightedDomainGraph(WeightedDomainGraph):
+    def __init__(self):
+        super().__init__()
+        self.node_states = {}
+        self.activation_threshold = 2  # Threshold for state change
+        self.decay_rate = 0.1  # Rate at which inactive nodes decay
+
+    def add_node(self, node, domain=None, initial_state="inactive"):
+        super().add_node(node, domain)
+        self.node_states[node] = initial_state
+
+    def update_node_state(self, node, new_state):
+        if node in self.node_states:
+            self.node_states[node] = new_state
+
+    def simulate_feedback(self):
+        new_states = self.node_states.copy()
+
+        for node in self.graph:
+            neighbors = self.get_neighbors(node)
+            total_influence = 0
+
+            for neighbor, weight in neighbors.items():
+                if self.node_states[neighbor] == "active":
+                    total_influence += weight
+
+            # Thresholding: Node activates if influence exceeds threshold
+            if total_influence > self.activation_threshold:
+                new_states[node] = "active"
+            else:
+                # Decay: Node decays if inactive
+                if self.node_states[node] == "inactive":
+                    if random.random() < self.decay_rate:
+                        new_states[node] = "very inactive"
+                if self.node_states[node] == "very inactive":
+                    new_states[node] = "inactive"
+
+        self.node_states = new_states
+
+    def get_node_state(self, node):
+        return self.node_states.get(node, "inactive")
+
+# Initialize the stateful graph
+stateful_graph = StatefulWeightedDomainGraph()
+
+# Add nodes and their domains with initial states
+stateful_graph.add_node("VIN", ["Identity", "Medical", "Electrical", "Tracking"], initial_state="active")
+stateful_graph.add_node("SLB", ["Stabilization", "Logistics", "Bio-Physical Systems"])
+stateful_graph.add_node("CLARITY", ["Output", "Signal Processing", "Decision Layer"])
+stateful_graph.add_node("YTIRALC", ["Feedback", "Error Correction", "Symbolic Inversion"])
+
+# Add edges with weights
+stateful_graph.add_edge("VIN", "SLB", 3)
+stateful_graph.add_edge("SLB", "CLARITY", 1)
+stateful_graph.add_edge("CLARITY", "YTIRALC", 2)
+stateful_graph.add_edge("YTIRALC", "VIN", 4)
+
+# Simulate feedback over multiple iterations
+for _ in range(5):  # Simulate 5 time steps
+    stateful_graph.simulate_feedback()
+    print("States after simulation step:")
+    print("VIN:", stateful_graph.get_node_state("VIN"))
+    print("SLB:", stateful_graph.get_node_state("SLB"))
+    print("CLARITY:", stateful_graph.get_node_state("CLARITY"))
+    print("YTIRALC:", stateful_graph.get_node_state("YTIRALC"))
