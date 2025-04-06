@@ -1,0 +1,31 @@
+Here are some methods to determine the directory location of a Bash script during its execution:
+
+1. Using `$0` and `dirname`:
+```bash
+#!/bin/bash
+script_dir=$(dirname "$0")
+echo "Script directory: $script_dir"
+```
+
+2. Using `$BASH_SOURCE`:
+```bash
+#!/bin/bash
+script_dir=$(dirname "${BASH_SOURCE[0]}")
+echo "Script directory: $script_dir"
+```
+
+3. Using `readlink` to handle symbolic links:
+```bash
+#!/bin/bash
+script_dir=$(dirname "$(readlink -f "$0")")
+echo "Script directory: $script_dir"
+```
+
+4. Combining `cd`, `pwd`, and `$0`:
+```bash
+#!/bin/bash
+script_dir="$(cd "$(dirname "$0")" && pwd)"
+echo "Script directory: $script_dir"
+```
+
+Each of these methods can be used to reliably determine the directory location of the executing Bash script.
