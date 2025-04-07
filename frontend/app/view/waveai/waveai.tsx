@@ -82,6 +82,7 @@ export class WaveAiModel implements ViewModel {
     simulateAssistantResponseAtom: WritableAtom<unknown, [userMessage: ChatMessageType], Promise<void>>;
     textAreaRef: React.RefObject<HTMLTextAreaElement>;
     locked: PrimitiveAtom<boolean>;
+    noPadding: PrimitiveAtom<boolean>;
     cancel: boolean;
     aiWshClient: AiWshClient;
 
@@ -95,6 +96,7 @@ export class WaveAiModel implements ViewModel {
         this.blockAtom = WOS.getWaveObjectAtom<Block>(`block:${blockId}`);
         this.viewIcon = atom("sparkles");
         this.viewName = atom("Wave AI");
+        this.noPadding = atom(true);
         this.messagesAtom = atom([]);
         this.messagesSplitAtom = splitAtom(this.messagesAtom);
         this.latestMessageAtom = atom((get) => get(this.messagesAtom).slice(-1)[0]);
@@ -351,35 +353,6 @@ export class WaveAiModel implements ViewModel {
     }
 }
 
-export interface StreamingTextProps {
-    text: string;
-    completed?: boolean;
-    style?: React.CSSProperties;
-    className?: string;
-    fontSize?: number;
-    fixedFontSize?: boolean;
-}
-
-export const StreamingText: React.FC<StreamingTextProps> = ({
-    text,
-    completed = false,
-    style,
-    className,
-    fontSize,
-    fixedFontSize = false,
-}) => {
-    return (
-        <div className={`streaming-text ${className || ""}`} style={style}>
-            <Markdown
-                text={text}
-                fontSizeOverride={fontSize}
-                fixedFontSizeOverride={fixedFontSize ? 1 : undefined}
-                scrollable={false}
-            />
-        </div>
-    );
-};
-
 const ChatItem = ({ chatItemAtom, model }: ChatItemProps) => {
     const chatItem = useAtomValue(chatItemAtom);
     const { user, text, id } = chatItem;
@@ -514,21 +487,12 @@ const ChatItem = ({ chatItemAtom, model }: ChatItemProps) => {
             return text ? (
                 <>
                     <div className="chat-msg chat-msg-assistant">
-                        {chatItem.isUpdating ? (
-                            <StreamingText
-                                text={text}
-                                completed={!chatItem.isUpdating}
-                                fontSize={fontSize}
-                                fixedFontSize={fixedFontSize}
-                            />
-                        ) : (
-                            <Markdown
-                                text={text}
-                                scrollable={false}
-                                fontSizeOverride={fontSize}
-                                fixedFontSizeOverride={fixedFontSize}
-                            />
-                        )}
+                        <Markdown
+                            text={text}
+                            scrollable={false}
+                            fontSizeOverride={fontSize}
+                            fixedFontSizeOverride={fixedFontSize}
+                        />
                     </div>
                     <div className="msg-actions">
                         <button
@@ -794,10 +758,10 @@ const ChatInput = forwardRef<HTMLTextAreaElement, ChatInputProps>(
         }, [value, adjustTextAreaHeight]);
 
         let buttonIcon = makeIconClass("arrow-up", false);
-        let buttonTitle = "run";
+        let buttonTitle = "Ask";
         if (locked) {
             buttonIcon = makeIconClass("stop", false);
-            buttonTitle = "stop";
+            buttonTitle = "Stop";
         }
 
         const toggleModelMenu = (e: React.MouseEvent) => {
