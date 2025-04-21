@@ -85,22 +85,41 @@ const CodeBlock = ({ children, onClickExecute }: CodeBlockProps) => {
     const handleExecute = (e: React.MouseEvent) => {
         let textToCopy = getTextContent(children);
         textToCopy = textToCopy.replace(/\n$/, ""); // remove trailing newline
+        console.log("%c CodeBlock handleExecute with text:", "background: #00f; color: #fff", textToCopy);
         if (onClickExecute) {
-            onClickExecute(textToCopy);
+            console.log("%c CodeBlock calling onClickExecute", "background: #00f; color: #fff");
+            try {
+                onClickExecute(textToCopy);
+            } catch (error) {
+                console.error("Error executing command:", error);
+                alert("Error executing command. See console for details.");
+            }
             return;
+        } else {
+            console.log("%c CodeBlock onClickExecute is not available", "background: #00f; color: #fff");
         }
     };
+
+    // Determine if this is likely a command that could be executed
+    const text = getTextContent(children);
+    const isLikelyCommand =
+        text &&
+        text.split("\n").length <= 5 && // Not too many lines
+        !text.includes("function") && // Not function definitions
+        !text.includes("class") && // Not class definitions
+        !text.includes("<"); // Not HTML/JSX
 
     return (
         <pre className="codeblock">
             {children}
             <div className="codeblock-actions">
                 <CopyButton onClick={handleCopy} title="Copy" />
-                {onClickExecute && (
+                {(onClickExecute || isLikelyCommand) && (
                     <IconButton
                         decl={{
                             elemtype: "iconbutton",
                             icon: "regular@square-terminal",
+                            title: "Run in terminal",
                             click: handleExecute,
                         }}
                     />

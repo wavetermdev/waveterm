@@ -11,7 +11,7 @@ import { DefaultRouter, TabRpcClient } from "@/app/store/wshrpcutil";
 import { atoms, createBlock, fetchWaveFile, getApi, globalStore, WOS } from "@/store/global";
 import { BlockService, ObjectService } from "@/store/services";
 import { adaptFromReactOrNativeKeyEvent, checkKeyPressed } from "@/util/keyutil";
-import { fireAndForget, isBlank, makeIconClass, mergeMeta } from "@/util/util";
+import { fireAndForget, isBlank, makeIconClass, mergeMeta, stringToBase64 } from "@/util/util";
 import { atom, Atom, PrimitiveAtom, useAtomValue, WritableAtom } from "jotai";
 import { splitAtom } from "jotai/utils";
 import type { OverlayScrollbars } from "overlayscrollbars";
@@ -19,6 +19,243 @@ import { OverlayScrollbarsComponent, OverlayScrollbarsComponentRef } from "overl
 import { forwardRef, memo, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import { debounce, throttle } from "throttle-debounce";
 import "./waveai.scss";
+
+// Debug function to test command execution from the console
+// Usage: window.testWaveAICommand("echo hello")
+(window as any).testWaveAICommand = async (command: string) => {
+    console.log("Test command execution:", command);
+
+    try {
+        // Get current tab from user using prompt
+        const tabId = prompt("Enter tab ID (leave empty to create in current tab)");
+
+        if (!tabId) {
+            console.error("No tab ID provided");
+            return;
+        }
+
+        console.log("Using tab ID:", tabId);
+
+        // Create a new terminal block with the command
+        const result = await RpcApi.CreateBlockCommand(TabRpcClient, {
+            tabid: tabId,
+            blockdef: {
+                meta: {
+                    view: "term",
+                    controller: "cmd",
+                    cmd: command,
+                    "cmd:runonstart": true,
+                    "cmd:clearonstart": true,
+                    "cmd:shell": true,
+                },
+            },
+        });
+
+        console.log("Created new terminal block:", result);
+    } catch (err) {
+        console.error("Error in test command:", err);
+    }
+};
+
+// Debug function to check block state and parent tab
+// Usage: window.debugBlockState('block-id-here')
+(window as any).debugBlockState = (blockId: string) => {
+    try {
+        const blockAtom = WOS.getWaveObjectAtom<Block>(`block:${blockId}`);
+        const blockState = globalStore.get(blockAtom);
+        console.log("Block state:", blockState);
+
+        const tabId = blockState?.meta?.["parent"];
+        console.log("Tab ID from block:", tabId);
+
+        return { blockState, tabId };
+    } catch (err) {
+        console.error("Error in debug block state:", err);
+        return null;
+    }
+};
+
+// Debug function to directly test the terminal execution from console
+// Usage: window.debugExecuteInTerminal("echo hello")
+(window as any).debugExecuteInTerminal = (command: string) => {
+    console.log("%c Debug: Execute In Terminal:", "background: #ff0; color: #000", command);
+
+    // Get workspace info
+    try {
+        const workspace = globalStore.get(atoms.workspace);
+        console.log("%c Debug: Workspace:", "background: #ff0; color: #000", workspace);
+    } catch (err) {
+        console.error("Error getting workspace info:", err);
+    }
+
+    // Get all WaveAI blocks from the DOM
+    const blocks = document.querySelectorAll('[data-view="waveai"]');
+    console.log("%c Debug: Found WaveAI blocks:", "background: #ff0; color: #000", blocks);
+
+    if (blocks.length === 0) {
+        console.error("No WaveAI blocks found in DOM");
+        alert("No WaveAI blocks found");
+        return;
+    }
+
+    // Get the blockId from the first WaveAI block
+    const blockId = blocks[0].getAttribute("data-blockid");
+    console.log("%c Debug: Using blockId:", "background: #ff0; color: #000", blockId);
+
+    if (!blockId) {
+        console.error("Could not get blockId from WaveAI component");
+        alert("Could not get blockId");
+        return;
+    }
+
+    // Create a WaveAiModel instance
+    const model = new WaveAiModel(blockId);
+    console.log("%c Debug: Created WaveAiModel instance:", "background: #ff0; color: #000", model);
+
+    // Execute the command
+    console.log("%c Debug: Attempting to execute command:", "background: #ff0; color: #000", command);
+    model.executeInTerminal(command);
+};
+
+// Debug function to find valid tab IDs
+// Usage: window.findTabIds()
+(window as any).findTabIds = () => {
+    console.log("%c ===== Finding Tab IDs ====", "background: #f00; color: #fff");
+
+    try {
+        // Try to get the static tab ID from atoms
+        const staticTabId = globalStore.get(atoms.staticTabId);
+        console.log("%c Static Tab ID:", "background: #f00; color: #fff", staticTabId);
+
+        // Try to get all the tabs from the workspace
+        const workspace = globalStore.get(atoms.workspace);
+        console.log("%c Workspace:", "background: #f00; color: #fff", workspace);
+
+        // Look for any tab-related properties
+        if (workspace) {
+            // Print all the keys in the workspace
+            console.log("%c Workspace Keys:", "background: #f00; color: #fff", Object.keys(workspace));
+
+            // Print all properties one by one for inspection
+            for (const key in workspace) {
+                console.log(`%c Workspace["${key}"] =`, "background: #f00; color: #fff", workspace[key]);
+            }
+        }
+
+        // Try to find blocks in the DOM
+        const blocks = document.querySelectorAll("[data-blockid]");
+        console.log("%c All Blocks in DOM:", "background: #f00; color: #fff", blocks);
+
+        // Extract the block IDs
+        const blockIds = Array.from(blocks).map((block) => {
+            return {
+                blockId: block.getAttribute("data-blockid"),
+                view: block.getAttribute("data-view"),
+            };
+        });
+        console.log("%c Block IDs in DOM:", "background: #f00; color: #fff", blockIds);
+
+        // Get tab IDs from HTML elements that might have them
+        const tabElements = document.querySelectorAll("[data-tabid]");
+        console.log("%c Tab Elements:", "background: #f00; color: #fff", tabElements);
+        const tabIds = Array.from(tabElements).map((el) => el.getAttribute("data-tabid"));
+        console.log("%c Tab IDs from DOM:", "background: #f00; color: #fff", tabIds);
+
+        return {
+            staticTabId,
+            workspace,
+            blockIds,
+            tabIds,
+        };
+    } catch (err) {
+        console.error("Error finding tab IDs:", err);
+        return null;
+    }
+};
+
+// Debug function to execute a command with an explicit tab ID
+// Usage: window.executeWithTabId("tab:1234", "echo hello")
+(window as any).executeWithTabId = async (tabId: string, command: string) => {
+    console.log("%c Executing command with explicit tab ID:", "background: #f0f; color: #fff", { tabId, command });
+
+    try {
+        if (!TabRpcClient) {
+            console.error("TabRpcClient is not available");
+            alert("TabRpcClient is not available");
+            return;
+        }
+
+        // Create a new terminal block that executes the command
+        const blockId = await RpcApi.CreateBlockCommand(TabRpcClient, {
+            tabid: tabId,
+            blockdef: {
+                meta: {
+                    view: "term",
+                    controller: "cmd",
+                    cmd: command,
+                    "cmd:runonstart": true,
+                    "cmd:clearonstart": true,
+                    "cmd:shell": true,
+                },
+            },
+        });
+
+        console.log("%c Created new terminal block:", "background: #f0f; color: #fff", blockId);
+        return blockId;
+    } catch (err) {
+        console.error("Error creating terminal block:", err);
+        alert(`Error: ${err.message}`);
+        return null;
+    }
+};
+
+// Debug function to test getting tab info and blocks
+// Usage: window.debugGetTabInfo("tab:1234")
+(window as any).debugGetTabInfo = async (tabId: string) => {
+    console.log("%c Getting tab info for:", "background: #0ff; color: #000", tabId);
+
+    try {
+        if (!TabRpcClient) {
+            console.error("TabRpcClient is not available");
+            return null;
+        }
+
+        // Get tab info
+        const tabInfo = await RpcApi.GetTabCommand(TabRpcClient, tabId);
+        console.log("%c Tab info:", "background: #0ff; color: #000", tabInfo);
+
+        // Extract block IDs from the tab
+        const blockIds = tabInfo?.blockids || [];
+        console.log("%c Block IDs in tab:", "background: #0ff; color: #000", blockIds);
+
+        // Get info for each block
+        const blocks = [];
+        for (const blockId of blockIds) {
+            try {
+                const blockInfo = await RpcApi.BlockInfoCommand(TabRpcClient, blockId);
+                blocks.push({
+                    id: blockId,
+                    meta: blockInfo?.block?.meta,
+                    isTerminal: blockInfo?.block?.meta?.view === "term",
+                });
+            } catch (err) {
+                console.error(`Error getting info for block ${blockId}:`, err);
+                blocks.push({ id: blockId, error: err.message });
+            }
+        }
+
+        console.log("%c Blocks in tab:", "background: #0ff; color: #000", blocks);
+
+        // Get terminal blocks
+        const terminalBlocks = blocks.filter((b) => b.isTerminal);
+        console.log("%c Terminal blocks:", "background: #0ff; color: #000", terminalBlocks);
+
+        return { tabInfo, blocks, terminalBlocks };
+    } catch (err) {
+        console.error("Error getting tab info:", err);
+        return null;
+    }
+};
 
 interface ChatMessageType {
     id: string;
@@ -442,6 +679,126 @@ export class WaveAiModel implements ViewModel {
         }
         return false;
     }
+
+    executeInTerminal(command: string) {
+        console.log("%c executeInTerminal called with command:", "background: #ff0; color: #000", command);
+
+        fireAndForget(async () => {
+            try {
+                // First, check if the TabRpcClient is available
+                if (!TabRpcClient) {
+                    console.error("TabRpcClient is not available");
+                    alert("Failed to execute command: TabRpcClient is not available");
+                    return;
+                }
+
+                // Get the tab ID from the block state
+                const blockState = globalStore.get(this.blockAtom);
+                console.log("%c Block state:", "background: #ff0; color: #000", blockState);
+
+                // First try to get tab ID from the "parent" property in meta
+                let tabId = blockState?.meta?.["parent"];
+                console.log("%c Tab ID from block parent:", "background: #ff0; color: #000", tabId);
+
+                // If that fails, try to use the staticTabId from global atoms (this is the current tab)
+                if (!tabId) {
+                    try {
+                        tabId = globalStore.get(atoms.staticTabId);
+                        console.log("%c Using static tab ID:", "background: #ff0; color: #000", tabId);
+                    } catch (err) {
+                        console.error("Error getting static tab ID:", err);
+                    }
+                }
+
+                // If still no tab ID, fail gracefully
+                if (!tabId) {
+                    console.error("Could not determine tab ID from any source");
+                    alert("Failed to execute command: Could not determine which tab to use. Please report this issue.");
+                    return;
+                }
+
+                // Try to find existing terminal blocks in the tab
+                let existingTerminalBlockId = null;
+                try {
+                    // Get tab info which should include blocks
+                    const tabInfo = await RpcApi.GetTabCommand(TabRpcClient, tabId);
+                    console.log("%c Tab info:", "background: #ff0; color: #000", tabInfo);
+
+                    // Look for terminal blocks in this tab
+                    const allBlockIds = tabInfo?.blockids || [];
+
+                    // Find the most recently used terminal block, if any exists
+                    for (let i = allBlockIds.length - 1; i >= 0; i--) {
+                        const blockId = allBlockIds[i];
+                        try {
+                            const blockInfo = await RpcApi.BlockInfoCommand(TabRpcClient, blockId);
+
+                            if (blockInfo?.block?.meta?.view === "term") {
+                                existingTerminalBlockId = blockId;
+                                console.log(
+                                    "%c Found existing terminal block:",
+                                    "background: #ff0; color: #000",
+                                    existingTerminalBlockId
+                                );
+                                break;
+                            }
+                        } catch (blockErr) {
+                            console.error("Error getting block info:", blockErr);
+                        }
+                    }
+                } catch (tabErr) {
+                    console.error("Error getting tab info:", tabErr);
+                }
+
+                if (existingTerminalBlockId) {
+                    // Reuse an existing terminal block by sending the command as input
+                    console.log(
+                        "%c Sending command to existing terminal block:",
+                        "background: #ff0; color: #000",
+                        existingTerminalBlockId
+                    );
+
+                    // Add a newline to the command so it executes
+                    const commandWithNewline = command + "\n";
+                    const inputData64 = stringToBase64(commandWithNewline);
+
+                    // Send the command to the terminal
+                    await RpcApi.ControllerInputCommand(TabRpcClient, {
+                        blockid: existingTerminalBlockId,
+                        inputdata64: inputData64,
+                    });
+
+                    console.log(
+                        "%c Command sent to terminal block:",
+                        "background: #ff0; color: #000",
+                        existingTerminalBlockId
+                    );
+                } else {
+                    // No existing terminal block found, create a new one
+                    console.log("%c Creating new terminal block:", "background: #ff0; color: #000");
+
+                    const blockId = await RpcApi.CreateBlockCommand(TabRpcClient, {
+                        tabid: tabId,
+                        blockdef: {
+                            meta: {
+                                view: "term",
+                                controller: "cmd",
+                                cmd: command,
+                                "cmd:runonstart": true,
+                                "cmd:clearonstart": true,
+                                "cmd:shell": true,
+                            },
+                        },
+                    });
+
+                    console.log("%c Created new terminal block:", "background: #ff0; color: #000", blockId);
+                }
+            } catch (err) {
+                console.error("Error executing command in terminal:", err);
+                alert(`Failed to execute command: ${err.message}`);
+            }
+        });
+    }
 }
 
 const ChatItem = ({ chatItemAtom, model }: ChatItemProps) => {
@@ -449,6 +806,15 @@ const ChatItem = ({ chatItemAtom, model }: ChatItemProps) => {
     const { user, text } = chatItem;
     const fontSize = useAtomValue(model.mergedPresets)?.["ai:fontsize"];
     const fixedFontSize = useAtomValue(model.mergedPresets)?.["ai:fixedfontsize"];
+
+    const handleExecuteCommand = useCallback(
+        (command: string) => {
+            console.log("%c handleExecuteCommand with command:", "background: #0f0; color: #000", command);
+            model.executeInTerminal(command);
+        },
+        [model]
+    );
+
     const renderContent = useMemo(() => {
         if (user == "error") {
             return (
@@ -483,6 +849,7 @@ const ChatItem = ({ chatItemAtom, model }: ChatItemProps) => {
                             scrollable={false}
                             fontSizeOverride={fontSize}
                             fixedFontSizeOverride={fixedFontSize}
+                            onClickExecute={handleExecuteCommand}
                         />
                     </div>
                 </>
@@ -508,7 +875,7 @@ const ChatItem = ({ chatItemAtom, model }: ChatItemProps) => {
                 </div>
             </>
         );
-    }, [text, user, fontSize, fixedFontSize]);
+    }, [text, user, fontSize, fixedFontSize, handleExecuteCommand]);
 
     return <div className={"chat-msg-container"}>{renderContent}</div>;
 };

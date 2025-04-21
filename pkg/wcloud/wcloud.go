@@ -68,6 +68,11 @@ func checkEndpointVar(endpoint string, debugName string, varName string) error {
 	if !wavebase.IsDevMode() {
 		return nil
 	}
+	// Allow any value in dev mode for testing purposes
+	if os.Getenv("SKIP_WCLOUD_CHECK") == "true" {
+		log.Printf("Skipping %s check due to SKIP_WCLOUD_CHECK=true", debugName)
+		return nil
+	}
 	if endpoint == "" || !strings.HasPrefix(endpoint, "https://") {
 		return fmt.Errorf("invalid %s, %s not set or invalid", debugName, varName)
 	}
@@ -76,6 +81,11 @@ func checkEndpointVar(endpoint string, debugName string, varName string) error {
 
 func checkWSEndpointVar(endpoint string, debugName string, varName string) error {
 	if !wavebase.IsDevMode() {
+		return nil
+	}
+	// Allow any value in dev mode for testing purposes
+	if os.Getenv("SKIP_WCLOUD_CHECK") == "true" {
+		log.Printf("Skipping %s check due to SKIP_WCLOUD_CHECK=true", debugName)
 		return nil
 	}
 	log.Printf("checking endpoint %q\n", endpoint)

@@ -17,10 +17,12 @@ if (typeof window === "undefined") {
 type ComboWebSocket = NodeWebSocketType | WebSocket;
 
 function newWebSocket(url: string, headers: { [key: string]: string }): ComboWebSocket {
-    if (NodeWebSocket) {
+    if (typeof window === "undefined" && NodeWebSocket) {
         return new NodeWebSocket(url, { headers });
-    } else {
+    } else if (typeof WebSocket !== "undefined") {
         return new WebSocket(url);
+    } else {
+        throw new Error("WebSocket is not available in this environment");
     }
 }
 
