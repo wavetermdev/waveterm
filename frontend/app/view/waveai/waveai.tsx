@@ -19,6 +19,10 @@ import { OverlayScrollbarsComponent, OverlayScrollbarsComponentRef } from "overl
 import { forwardRef, memo, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import { debounce, throttle } from "throttle-debounce";
 import "./waveai.scss";
+// Import directly with relative paths
+import AutonomousModeToggle from "./autonomousmodetoggle";
+import { FileAttachmentButton, FileAttachmentList } from "./fileattachment";
+import { FilePicker } from "./filepicker";
 
 // Debug function to test command execution from the console
 // Usage: window.testWaveAICommand("echo hello")
@@ -322,6 +326,10 @@ export class WaveAiModel implements ViewModel {
     locked: PrimitiveAtom<boolean>;
     cancel: boolean;
     aiWshClient: AiWshClient;
+    fileAttachmentsAtom: PrimitiveAtom<FileAttachment[]>;
+    addFileAttachmentAtom: WritableAtom<unknown, [attachment: FileAttachment], void>;
+    removeFileAttachmentAtom: WritableAtom<unknown, [filePath: string], void>;
+    clearFileAttachmentsAtom: WritableAtom<unknown, [], void>;
 
     constructor(blockId: string) {
         this.aiWshClient = new AiWshClient(blockId, this);
@@ -336,6 +344,29 @@ export class WaveAiModel implements ViewModel {
         this.messagesAtom = atom([]);
         this.messagesSplitAtom = splitAtom(this.messagesAtom);
         this.latestMessageAtom = atom((get) => get(this.messagesAtom).slice(-1)[0]);
+
+        // File attachment atoms
+        this.fileAttachmentsAtom = atom<FileAttachment[]>([]);
+
+        // Add file attachment
+        this.addFileAttachmentAtom = atom(null, (get, set, attachment: FileAttachment) => {
+            const attachments = get(this.fileAttachmentsAtom);
+            set(this.fileAttachmentsAtom, [...attachments, attachment]);
+        });
+
+        // Remove file attachment
+        this.removeFileAttachmentAtom = atom(null, (get, set, filePath: string) => {
+            const attachments = get(this.fileAttachmentsAtom);
+            set(
+                this.fileAttachmentsAtom,
+                attachments.filter((a) => a.file_path !== filePath)
+            );
+        });
+
+        // Clear all file attachments
+        this.clearFileAttachmentsAtom = atom(null, (_, set) => {
+            set(this.fileAttachmentsAtom, []);
+        });
         this.presetKey = atom((get) => {
             const metaPresetKey = get(this.blockAtom).meta["ai:preset"];
             const globalPresetKey = get(atoms.settingsAtom)["ai:preset"];
@@ -584,10 +615,18 @@ export class WaveAiModel implements ViewModel {
         globalStore.set(this.addMessageAtom, newMessage);
         // send message to backend and get response
         const opts = globalStore.get(this.aiOpts);
+
+        // Get file attachments
+        const fileAttachments = globalStore.get(this.fileAttachmentsAtom);
+
         const newPrompt: WaveAIPromptMessageType = {
             role: "user",
             content: text,
+            file_attachments: fileAttachments.length > 0 ? fileAttachments : undefined,
         };
+
+        // Clear file attachments after sending
+        globalStore.set(this.clearFileAttachmentsAtom);
         const handleAiStreamingResponse = async () => {
             const typingMessage: ChatMessageType = {
                 id: crypto.randomUUID(),
@@ -664,6 +703,10 @@ export class WaveAiModel implements ViewModel {
     useWaveAi() {
         return {
             sendMessage: this.sendMessage.bind(this) as (text: string) => void,
+            addFileAttachment: (attachment: FileAttachment) => globalStore.set(this.addFileAttachmentAtom, attachment),
+            removeFileAttachment: (filePath: string) => globalStore.set(this.removeFileAttachmentAtom, filePath),
+            clearFileAttachments: () => globalStore.set(this.clearFileAttachmentsAtom),
+            getFileAttachments: () => globalStore.get(this.fileAttachmentsAtom),
         };
     }
 
@@ -807,10 +850,48 @@ const ChatItem = ({ chatItemAtom, model }: ChatItemProps) => {
     const fontSize = useAtomValue(model.mergedPresets)?.["ai:fontsize"];
     const fixedFontSize = useAtomValue(model.mergedPresets)?.["ai:fixedfontsize"];
 
+    // Function to check if a message contains executable commands
+    const hasExecutableCommands = useMemo(() => {
+        if (!text) return false;
+
+        // Check for code blocks
+        const codeBlockRegex = /```(?:bash|shell|sh)?\n([\s\S]*?)```/g;
+        let hasCommands = codeBlockRegex.test(text);
+
+        // If no code blocks, check for $ prefixed commands
+        if (!hasCommands) {
+            const dollarRegex = /\$\s+([^\n]+)/g;
+            hasCommands = dollarRegex.test(text);
+        }
+
+        // If still no commands, check for lines that look like commands
+        if (!hasCommands) {
+            const lines = text.split("\n");
+            for (const line of lines) {
+                const trimmedLine = line.trim();
+                if (
+                    trimmedLine &&
+                    !trimmedLine.startsWith("#") &&
+                    !trimmedLine.includes("```") &&
+                    !trimmedLine.includes("**") &&
+                    /^(git|cd|ls|mkdir|rm|mv|cp|cat|echo|touch|find|grep|curl|wget|npm|yarn|python|node|go)/i.test(
+                        trimmedLine
+                    )
+                ) {
+                    hasCommands = true;
+                    break;
+                }
+            }
+        }
+
+        return hasCommands;
+    }, [text]);
+
     const handleExecuteCommand = useCallback(
-        (command: string) => {
+        async (command: string) => {
             console.log("%c handleExecuteCommand with command:", "background: #0f0; color: #000", command);
             model.executeInTerminal(command);
+            return new Promise<void>((resolve) => setTimeout(resolve, 500));
         },
         [model]
     );
@@ -837,7 +918,7 @@ const ChatItem = ({ chatItemAtom, model }: ChatItemProps) => {
         }
         if (user == "assistant") {
             return text ? (
-                <>
+                <div className="assistant-message-wrapper">
                     <div className="chat-msg chat-msg-header">
                         <div className="icon-box">
                             <i className="fa-sharp fa-solid fa-sparkles"></i>
@@ -852,7 +933,13 @@ const ChatItem = ({ chatItemAtom, model }: ChatItemProps) => {
                             onClickExecute={handleExecuteCommand}
                         />
                     </div>
-                </>
+                    {/* Only show autonomous mode toggle when message contains commands */}
+                    {hasExecutableCommands && (
+                        <div className="autonomous-mode-container">
+                            <AutonomousModeToggle messageText={text} onExecuteCommand={handleExecuteCommand} />
+                        </div>
+                    )}
+                </div>
             ) : (
                 <>
                     <div className="chat-msg-header">
@@ -993,10 +1080,11 @@ interface ChatInputProps {
     onKeyDown: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
     onMouseDown: (e: React.MouseEvent<HTMLTextAreaElement>) => void;
     model: WaveAiModel;
+    onAtCharacter: (position: number) => void;
 }
 
 const ChatInput = forwardRef<HTMLTextAreaElement, ChatInputProps>(
-    ({ value, onChange, onKeyDown, onMouseDown, baseFontSize, model }, ref) => {
+    ({ value, onChange, onKeyDown, onMouseDown, baseFontSize, model, onAtCharacter }, ref) => {
         const textAreaRef = useRef<HTMLTextAreaElement>(null);
 
         useImperativeHandle(ref, () => textAreaRef.current as HTMLTextAreaElement);
@@ -1034,6 +1122,19 @@ const ChatInput = forwardRef<HTMLTextAreaElement, ChatInputProps>(
             adjustTextAreaHeight(value);
         }, [value]);
 
+        // Handle input to detect '@' character
+        const handleInput = (e: React.FormEvent<HTMLTextAreaElement>) => {
+            const target = e.target as HTMLTextAreaElement;
+            const value = target.value;
+            const cursorPosition = target.selectionStart;
+
+            // Check if the character at the current cursor position is "@"
+            if (value.charAt(cursorPosition - 1) === "@") {
+                console.log("@ character detected at position:", cursorPosition);
+                onAtCharacter(cursorPosition);
+            }
+        };
+
         return (
             <textarea
                 ref={textAreaRef}
@@ -1043,8 +1144,9 @@ const ChatInput = forwardRef<HTMLTextAreaElement, ChatInputProps>(
                 onMouseDown={onMouseDown} // When the user clicks on the textarea
                 onChange={onChange}
                 onKeyDown={onKeyDown}
+                onInput={handleInput}
                 style={{ fontSize: baseFontSize }}
-                placeholder="Ask anything..."
+                placeholder="Ask anything... (type @ to select files)"
                 value={value}
             ></textarea>
         );
@@ -1052,7 +1154,7 @@ const ChatInput = forwardRef<HTMLTextAreaElement, ChatInputProps>(
 );
 
 const WaveAi = ({ model }: { model: WaveAiModel; blockId: string }) => {
-    const { sendMessage } = model.useWaveAi();
+    const { sendMessage, addFileAttachment, removeFileAttachment, getFileAttachments } = model.useWaveAi();
     const waveaiRef = useRef<HTMLDivElement>(null);
     const chatWindowRef = useRef<HTMLDivElement>(null);
     const osRef = useRef<OverlayScrollbarsComponentRef>(null);
@@ -1060,10 +1162,129 @@ const WaveAi = ({ model }: { model: WaveAiModel; blockId: string }) => {
 
     const [value, setValue] = useState("");
     const [selectedBlockIdx, setSelectedBlockIdx] = useState<number | null>(null);
+    const [showFilePicker, setShowFilePicker] = useState(false);
+    const [currentDir, setCurrentDir] = useState("");
+    const [atCharPosition, setAtCharPosition] = useState<number | null>(null);
+
+    // Get the current working directory from the active terminal
+    useEffect(() => {
+        const getCurrentWorkingDir = async () => {
+            try {
+                console.log("Getting current working directory for block:", model.blockId);
+
+                // Get the parent tab ID from the block
+                const blockInfo = await RpcApi.BlockInfoCommand(TabRpcClient, model.blockId);
+                console.log("Block info:", blockInfo);
+
+                // Get the parent tab ID from the block's metadata
+                let tabId = blockInfo?.block?.meta?.["parent"];
+                console.log("Parent tab ID:", tabId);
+
+                // If that fails, try to use the staticTabId from global atoms (this is the current tab)
+                if (!tabId) {
+                    try {
+                        const staticTabId = globalStore.get(atoms.staticTabId);
+                        console.log("Using static tab ID:", staticTabId);
+                        if (staticTabId) {
+                            tabId = staticTabId;
+                        }
+                    } catch (err) {
+                        console.error("Error getting static tab ID:", err);
+                    }
+                }
+
+                if (tabId) {
+                    // Get tab info to find terminal blocks
+                    const tabInfo = await RpcApi.GetTabCommand(TabRpcClient, tabId);
+                    console.log("Tab info:", tabInfo);
+
+                    if (tabInfo?.blockids?.length) {
+                        console.log("Found", tabInfo.blockids.length, "blocks in tab");
+
+                        // Find the most recently used terminal block, if any exists
+                        // This matches the approach used in executeInTerminal
+                        let existingTerminalBlockId = null;
+                        const allBlockIds = tabInfo?.blockids || [];
+
+                        for (let i = allBlockIds.length - 1; i >= 0; i--) {
+                            const blockId = allBlockIds[i];
+                            try {
+                                const blockInfo = await RpcApi.BlockInfoCommand(TabRpcClient, blockId);
+
+                                if (blockInfo?.block?.meta?.view === "term") {
+                                    existingTerminalBlockId = blockId;
+                                    console.log("Found existing terminal block:", existingTerminalBlockId);
+                                    break;
+                                }
+                            } catch (blockErr) {
+                                console.error("Error getting block info:", blockErr);
+                            }
+                        }
+
+                        // If we found a terminal block, get its current state
+                        if (existingTerminalBlockId) {
+                            try {
+                                // Get the terminal block info to find the current working directory
+                                // We'll use the block metadata directly since that's the most reliable source
+                                const blockInfo = await RpcApi.BlockInfoCommand(TabRpcClient, existingTerminalBlockId);
+                                console.log("Terminal block metadata:", blockInfo?.block?.meta);
+
+                                // Try to get the current working directory from the block metadata
+                                const possibleKeys = ["cwd", "term:cwd", "cmd:cwd", "shell:cwd", "pwd", "dir", "path"];
+
+                                for (const key of possibleKeys) {
+                                    if (blockInfo?.block?.meta?.[key]) {
+                                        const cwd = blockInfo.block.meta[key];
+                                        console.log(`Found CWD in metadata key "${key}":`, cwd);
+                                        setCurrentDir(cwd);
+                                        return;
+                                    }
+                                }
+                            } catch (err) {
+                                console.error("Error getting terminal state:", err);
+                            }
+                        }
+                    }
+                }
+
+                // If we still don't have a directory, try to get the workspace directory
+                try {
+                    const workspace = globalStore.get(atoms.workspace);
+                    console.log("Workspace:", workspace);
+
+                    // Try to find a directory property in the workspace object
+                    if (workspace) {
+                        // Check various possible property names for the directory
+                        const dirProps = ["dir", "directory", "path", "workingDir", "cwd"];
+                        for (const prop of dirProps) {
+                            if (workspace[prop]) {
+                                console.log(`Found workspace directory in property "${prop}":`, workspace[prop]);
+                                setCurrentDir(workspace[prop]);
+                                return;
+                            }
+                        }
+                    }
+                } catch (workspaceError) {
+                    console.error("Error getting workspace directory:", workspaceError);
+                }
+
+                // Try to use the source directory from the environment
+                const sourceDir = "/Users/alex/source/waveterm";
+                console.log("Using source directory:", sourceDir);
+                setCurrentDir(sourceDir);
+            } catch (error) {
+                console.error("Error getting current working directory:", error);
+                setCurrentDir(".");
+            }
+        };
+
+        getCurrentWorkingDir();
+    }, [model.blockId]);
 
     const baseFontSize: number = 14;
     const msgWidths = {};
     const locked = useAtomValue(model.locked);
+    const fileAttachments = useAtomValue(model.fileAttachmentsAtom);
 
     // a weird workaround to initialize ansynchronously
     useEffect(() => {
@@ -1072,6 +1293,60 @@ const WaveAi = ({ model }: { model: WaveAiModel; blockId: string }) => {
 
     const handleTextAreaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
         setValue(e.target.value);
+    };
+
+    const handleFileSelect = async (filePath: string) => {
+        try {
+            console.log("File selected:", filePath);
+            console.log("Current atCharPosition:", atCharPosition);
+            console.log("Current value:", value);
+
+            const attachment = await RpcApi.AiAttachFileCommand(TabRpcClient, filePath, {});
+            if (attachment) {
+                addFileAttachment(attachment);
+                setShowFilePicker(false);
+
+                // Insert the file name at the position of the "@" character
+                if (atCharPosition !== null) {
+                    const fileName = attachment.file_name;
+                    console.log("File name to insert:", fileName);
+
+                    // Get the parts of the string before and after the "@" character
+                    const beforeAt = value.substring(0, atCharPosition - 1);
+                    const afterAt = value.substring(atCharPosition);
+
+                    // Create the new value with the file name inserted
+                    const newValue = beforeAt + `@${fileName}` + afterAt;
+                    console.log("New value after insertion:", newValue);
+
+                    // Update the input value
+                    setValue(newValue);
+
+                    // Focus the input field after insertion
+                    setTimeout(() => {
+                        if (inputRef.current) {
+                            inputRef.current.focus();
+                            // Place cursor at the end of the inserted file name
+                            const newCursorPosition = atCharPosition + fileName.length;
+                            inputRef.current.setSelectionRange(newCursorPosition, newCursorPosition);
+                        }
+                    }, 0);
+
+                    // Reset the position
+                    setAtCharPosition(null);
+                } else {
+                    console.log("atCharPosition is null, cannot insert file name");
+                }
+            }
+        } catch (error) {
+            console.error("Error attaching file:", error);
+        }
+    };
+
+    const handleShowFilePicker = (position: number) => {
+        console.log("Setting atCharPosition to:", position);
+        setAtCharPosition(position);
+        setShowFilePicker(true);
     };
 
     const updatePreTagOutline = (clickedPre?: HTMLElement | null) => {
@@ -1227,6 +1502,12 @@ const WaveAi = ({ model }: { model: WaveAiModel; blockId: string }) => {
             </div>
             <div className="waveai-controls">
                 <div className="waveai-input-wrapper">
+                    {fileAttachments.length > 0 && (
+                        <div className="file-attachments-container">
+                            <div className="file-attachments-label">Attached Files:</div>
+                            <FileAttachmentList attachments={fileAttachments} onRemove={removeFileAttachment} />
+                        </div>
+                    )}
                     <ChatInput
                         ref={inputRef}
                         value={value}
@@ -1234,9 +1515,19 @@ const WaveAi = ({ model }: { model: WaveAiModel; blockId: string }) => {
                         onChange={handleTextAreaChange}
                         onKeyDown={handleTextAreaKeyDown}
                         onMouseDown={handleTextAreaMouseDown}
+                        onAtCharacter={handleShowFilePicker}
                         baseFontSize={baseFontSize}
                     />
+                    <FileAttachmentButton onAttach={handleFileSelect} currentDir={currentDir} />
                 </div>
+                {showFilePicker && (
+                    <FilePicker
+                        isOpen={showFilePicker}
+                        onClose={() => setShowFilePicker(false)}
+                        onSelect={handleFileSelect}
+                        currentDir={currentDir}
+                    />
+                )}
                 <Button className={buttonClass} onClick={handleButtonPress}>
                     <i className={buttonIcon} title={buttonTitle} />
                 </Button>

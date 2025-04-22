@@ -384,6 +384,13 @@ declare global {
         suggestions: SuggestionType[];
     };
 
+    // wshrpc.FileAttachment
+    type FileAttachment = {
+        file_path: string;
+        file_content: string;
+        file_name: string;
+    };
+
     // wshrpc.FileCopyOpts
     type FileCopyOpts = {
         overwrite?: boolean;
@@ -1182,6 +1189,7 @@ declare global {
         index?: number;
         text?: string;
         error?: string;
+        run_in_autonomous_mode?: boolean;
     };
 
     // wshrpc.WaveAIPromptMessageType
@@ -1189,6 +1197,7 @@ declare global {
         role: string;
         content: string;
         name?: string;
+        file_attachments?: FileAttachment[];
     };
 
     // wshrpc.WaveAIStreamRequest

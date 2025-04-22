@@ -75,6 +75,23 @@ func convertPrompt(prompt []wshrpc.WaveAIPromptMessageType) []openaiapi.ChatComp
 	var rtn []openaiapi.ChatCompletionMessage
 	for _, p := range prompt {
 		msg := openaiapi.ChatCompletionMessage{Role: p.Role, Content: p.Content, Name: p.Name}
+
+		// Handle file attachments by adding them to the content
+		if len(p.FileAttachments) > 0 {
+			var contentBuilder strings.Builder
+			contentBuilder.WriteString(p.Content)
+
+			for _, attachment := range p.FileAttachments {
+				contentBuilder.WriteString("\n\n")
+				contentBuilder.WriteString("File: " + attachment.FileName + "\n")
+				contentBuilder.WriteString("```\n")
+				contentBuilder.WriteString(attachment.FileContent)
+				contentBuilder.WriteString("\n```")
+			}
+
+			msg.Content = contentBuilder.String()
+		}
+
 		rtn = append(rtn, msg)
 	}
 	return rtn
@@ -105,6 +122,25 @@ func convertPromptWithValidation(prompt []wshrpc.WaveAIPromptMessageType) []open
 			Content: p.Content,
 			Name:    p.Name,
 		}
+
+		// Handle file attachments by adding them to the content
+		if len(p.FileAttachments) > 0 {
+			log.Printf("Message %d has %d file attachments", i, len(p.FileAttachments))
+
+			var contentBuilder strings.Builder
+			contentBuilder.WriteString(p.Content)
+
+			for _, attachment := range p.FileAttachments {
+				contentBuilder.WriteString("\n\n")
+				contentBuilder.WriteString("File: " + attachment.FileName + "\n")
+				contentBuilder.WriteString("```\n")
+				contentBuilder.WriteString(attachment.FileContent)
+				contentBuilder.WriteString("\n```")
+			}
+
+			msg.Content = contentBuilder.String()
+		}
+
 		rtn = append(rtn, msg)
 	}
 

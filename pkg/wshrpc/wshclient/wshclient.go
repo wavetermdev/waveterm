@@ -22,6 +22,12 @@ func ActivityCommand(w *wshutil.WshRpc, data wshrpc.ActivityUpdate, opts *wshrpc
 	return err
 }
 
+// command "aiattachfile", wshserver.AiAttachFileCommand
+func AiAttachFileCommand(w *wshutil.WshRpc, data string, opts *wshrpc.RpcOpts) (*wshrpc.FileAttachment, error) {
+	resp, err := sendRpcRequestCallHelper[*wshrpc.FileAttachment](w, "aiattachfile", data, opts)
+	return resp, err
+}
+
 // command "aisendmessage", wshserver.AiSendMessageCommand
 func AiSendMessageCommand(w *wshutil.WshRpc, data wshrpc.AiMessageData, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "aisendmessage", data, opts)

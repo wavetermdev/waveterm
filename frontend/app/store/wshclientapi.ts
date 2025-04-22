@@ -12,6 +12,11 @@ class RpcApiType {
         return client.wshRpcCall("activity", data, opts);
     }
 
+    // command "aiattachfile" [call]
+    AiAttachFileCommand(client: WshClient, data: string, opts?: RpcOpts): Promise<FileAttachment> {
+        return client.wshRpcCall("aiattachfile", data, opts);
+    }
+
     // command "aisendmessage" [call]
     AiSendMessageCommand(client: WshClient, data: AiMessageData, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("aisendmessage", data, opts);

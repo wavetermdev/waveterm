@@ -5,10 +5,15 @@ package waveai
 
 import (
 	"context"
+	"fmt"
+	"io/ioutil"
 	"log"
+	"os"
+	"path/filepath"
 
 	"github.com/wavetermdev/waveterm/pkg/telemetry"
 	"github.com/wavetermdev/waveterm/pkg/telemetry/telemetrydata"
+	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 )
 
@@ -27,7 +32,7 @@ type WaveAICmdInfoPacketOutputType struct {
 }
 
 func MakeWaveAIPacket() *wshrpc.WaveAIPacketType {
-	return &wshrpc.WaveAIPacketType{Type: WaveAIPacketstr}
+	return &wshrpc.WaveAIPacketType{Type: WaveAIPacketstr, RunInAutonomousMode: false}
 }
 
 type WaveAICmdInfoChatMessage struct {
@@ -97,4 +102,45 @@ func RunAICommand(ctx context.Context, request wshrpc.WaveAIStreamRequest) chan 
 
 	log.Printf("sending ai chat message to %s endpoint %q using model %s\n", request.Opts.APIType, endpoint, request.Opts.Model)
 	return backend.StreamCompletion(ctx, request)
+}
+
+// ReadFileForAIAttachment reads a file for AI context attachment with size limits
+func ReadFileForAIAttachment(filePath string) (wshrpc.FileAttachment, error) {
+	attachment := wshrpc.FileAttachment{
+		FilePath: filePath,
+		FileName: filepath.Base(filePath),
+	}
+
+	// Expand home directory if needed
+	expandedPath, err := wavebase.ExpandHomeDir(filePath)
+	if err != nil {
+		return attachment, err
+	}
+
+	// Check if file exists and get info
+	fileInfo, err := os.Stat(expandedPath)
+	if err != nil {
+		return attachment, err
+	}
+
+	// Don't allow very large files (limit to 100KB)
+	const maxFileSize = 100 * 1024
+	if fileInfo.Size() > maxFileSize {
+		return attachment, fmt.Errorf("file too large for attachment: %s (%d bytes, max %d bytes)",
+			filePath, fileInfo.Size(), maxFileSize)
+	}
+
+	// Don't allow directories
+	if fileInfo.IsDir() {
+		return attachment, fmt.Errorf("directories cannot be attached: %s", filePath)
+	}
+
+	// Read file content
+	content, err := ioutil.ReadFile(expandedPath)
+	if err != nil {
+		return attachment, err
+	}
+
+	attachment.FileContent = string(content)
+	return attachment, nil
 }

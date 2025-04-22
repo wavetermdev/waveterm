@@ -255,6 +255,7 @@ type WshRpcInterface interface {
 
 	// ai
 	AiSendMessageCommand(ctx context.Context, data AiMessageData) error
+	AiAttachFileCommand(ctx context.Context, filePath string) (*FileAttachment, error)
 
 	// proc
 	VDomRenderCommand(ctx context.Context, data vdom.VDomFrontendUpdate) chan RespOrErrorUnion[*vdom.VDomBackendUpdate]
@@ -484,9 +485,16 @@ type WaveAIStreamRequest struct {
 }
 
 type WaveAIPromptMessageType struct {
-	Role    string `json:"role"`
-	Content string `json:"content"`
-	Name    string `json:"name,omitempty"`
+	Role            string           `json:"role"`
+	Content         string           `json:"content"`
+	Name            string           `json:"name,omitempty"`
+	FileAttachments []FileAttachment `json:"file_attachments,omitempty"`
+}
+
+type FileAttachment struct {
+	FilePath    string `json:"file_path"`
+	FileContent string `json:"file_content"`
+	FileName    string `json:"file_name"`
 }
 
 type WaveAIOptsType struct {
@@ -502,14 +510,15 @@ type WaveAIOptsType struct {
 }
 
 type WaveAIPacketType struct {
-	Type         string           `json:"type"`
-	Model        string           `json:"model,omitempty"`
-	Created      int64            `json:"created,omitempty"`
-	FinishReason string           `json:"finish_reason,omitempty"`
-	Usage        *WaveAIUsageType `json:"usage,omitempty"`
-	Index        int              `json:"index,omitempty"`
-	Text         string           `json:"text,omitempty"`
-	Error        string           `json:"error,omitempty"`
+	Type                string           `json:"type"`
+	Model               string           `json:"model,omitempty"`
+	Created             int64            `json:"created,omitempty"`
+	FinishReason        string           `json:"finish_reason,omitempty"`
+	Usage               *WaveAIUsageType `json:"usage,omitempty"`
+	Index               int              `json:"index,omitempty"`
+	Text                string           `json:"text,omitempty"`
+	Error               string           `json:"error,omitempty"`
+	RunInAutonomousMode bool             `json:"run_in_autonomous_mode,omitempty"`
 }
 
 type WaveAIUsageType struct {
