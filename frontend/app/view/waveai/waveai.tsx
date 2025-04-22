@@ -908,7 +908,7 @@ const ChatItem = ({ chatItemAtom, model }: ChatItemProps) => {
                     <div className="chat-msg chat-msg-error">
                         <Markdown
                             text={text}
-                            scrollable={false}
+                            scrollable={true}
                             fontSizeOverride={fontSize}
                             fixedFontSizeOverride={fixedFontSize}
                         />
@@ -927,7 +927,7 @@ const ChatItem = ({ chatItemAtom, model }: ChatItemProps) => {
                     <div className="chat-msg chat-msg-assistant">
                         <Markdown
                             text={text}
-                            scrollable={false}
+                            scrollable={true}
                             fontSizeOverride={fontSize}
                             fixedFontSizeOverride={fixedFontSize}
                             onClickExecute={handleExecuteCommand}
@@ -955,7 +955,7 @@ const ChatItem = ({ chatItemAtom, model }: ChatItemProps) => {
                     <Markdown
                         className="msg-text"
                         text={text}
-                        scrollable={false}
+                        scrollable={true}
                         fontSizeOverride={fontSize}
                         fixedFontSizeOverride={fixedFontSize}
                     />

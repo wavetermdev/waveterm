@@ -1,7 +1,7 @@
 {
     "ai:preset": "ai@global",
     "ai:model": "gpt-4o-mini",
-    "ai:maxtokens": 2048,
+    "ai:maxtokens": 8000,
     "ai:timeoutms": 60000,
     "app:defaultnewblock": "term",
     "autoupdate:enabled": true,

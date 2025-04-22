@@ -112,7 +112,7 @@ func customDirectAzureRequest(ctx context.Context, url string, apiKey string, me
 	// Create request body exactly as in the curl example
 	requestBody := RequestBody{
 		Messages:            requestMessages,
-		MaxCompletionTokens: 800,
+		MaxCompletionTokens: 8000,
 		Temperature:         1.0,
 		TopP:                1.0,
 		FrequencyPenalty:    0.0,
@@ -217,7 +217,7 @@ func customDirectAzureStreamRequest(ctx context.Context, url string, apiKey stri
 	// Create request body for streaming
 	requestBody := RequestBody{
 		Messages:            requestMessages,
-		MaxCompletionTokens: 800,
+		MaxCompletionTokens: 8000,
 		Temperature:         1.0,
 		TopP:                1.0,
 		FrequencyPenalty:    0.0,

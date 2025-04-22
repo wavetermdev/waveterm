@@ -66,9 +66,12 @@
                             margin-right: auto;
                             padding: 10px;
                             max-width: 85%;
+                            max-height: 80vh;
+                            overflow: auto;
 
                             .markdown {
                                 width: 100%;
+                                height: auto;
 
                                 pre {
                                     white-space: pre-wrap;
@@ -83,6 +86,8 @@
                             margin-left: auto;
                             padding: 10px;
                             max-width: 85%;
+                            max-height: 80vh;
+                            overflow: auto;
                             background-color: rgb(from var(--accent-color) r g b / 0.15);
                         }
 
@@ -92,9 +97,12 @@
                             margin-right: auto;
                             padding: 10px;
                             max-width: 85%;
+                            max-height: 80vh;
+                            overflow: auto;
 
                             .markdown {
                                 width: 100%;
+                                height: auto;
 
                                 pre {
                                     white-space: pre-wrap;
