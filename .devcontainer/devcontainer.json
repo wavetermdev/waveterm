@@ -1,0 +1,56 @@
+
+You’re referencing a devcontainer.json snippet used with Visual Studio Code Dev Containers. That image line:
+
+"image": "mcr.microsoft.com/devcontainers/universal:2"
+
+…means you’re using the universal base image from Microsoft’s dev container library, which includes a bunch of pre-installed developer tools (Node.js, Python, Git, etc.).
+
+⸻
+
+What This Image Includes
+
+mcr.microsoft.com/devcontainers/universal:2 is a pre-configured all-in-one development image, good for:
+	•	Python, JavaScript/TypeScript, Node.js
+	•	Docker CLI
+	•	Git, curl, wget, zsh, and common Linux tools
+	•	VS Code remote extensions
+
+⸻
+
+Tips & Tricks for Dev Containers
+	1.	Add Features (e.g., Jupyter, Docker-in-Docker, Poetry):
+
+"features": {
+  "ghcr.io/devcontainers/features/python:1": {
+    "version": "3.11"
+  },
+  "ghcr.io/devcontainers/features/jupyterlab:1": {}
+}
+
+
+	2.	Custom Post-Start Commands:
+Add in your devcontainer.json:
+
+"postStartCommand": "pip install -r requirements.txt"
+
+
+	3.	Mount local folders/data using volumes in docker-compose.yml if you’re running it that way.
+	4.	Auto-run Jupyter on container start:
+Add a script like:
+
+jupyter notebook --ip=0.0.0.0 --allow-root --NotebookApp.token=''
+
+
+	5.	Access Jupyter from browser:
+Use localhost:8888 or 127.0.0.1:8888 if forwarded correctly by VS Code.
+
+⸻
+
+Want Me to Build You a Full devcontainer.json?
+
+Just tell me:
+	•	What languages/tools you need
+	•	If you want Jupyter auto-starting
+	•	Any GitHub repos or requirements.txt you’re using
+
+I’ll send you the full setup, ready to drop in and launch.
