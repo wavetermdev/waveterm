@@ -385,11 +385,19 @@ function DirectoryTable({
 
     useLayoutEffect(() => {
         const rows = table.getRowModel()?.flatRows;
+        let foundParentDir = false;
+        
         for (const row of rows) {
             if (row.getValue("name") == "..") {
                 row.pin("top");
-                return;
+                foundParentDir = true;
+                break;
             }
+        }
+        
+        // If we didn't find the ".." row, reset the pinning to avoid stale references
+        if (!foundParentDir) {
+            table.resetRowPinning();
         }
     }, [table, data]);
     const columnSizeVars = useMemo(() => {
