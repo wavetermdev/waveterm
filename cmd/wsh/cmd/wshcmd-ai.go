@@ -135,6 +135,14 @@ func aiRun(cmd *cobra.Command, args []string) (rtnErr error) {
 			return fmt.Errorf("reading from stdin: %w", err)
 		}
 		message.Write(data)
+		
+		// Also include any remaining arguments (excluding the "-" itself)
+		if len(args) > 1 {
+			if message.Len() > 0 {
+				message.WriteString(" ")
+			}
+			message.WriteString(strings.Join(args[1:], " "))
+		}
 	} else {
 		message.WriteString(strings.Join(args, " "))
 	}
