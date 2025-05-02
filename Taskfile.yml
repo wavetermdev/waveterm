@@ -8,7 +8,7 @@ vars:
     BIN_DIR: "bin"
     VERSION:
         sh: node version.cjs
-    RM: '{{if eq OS "windows"}}cmd --% /c del /S{{else}}rm {{end}}'
+    RM: '{{if eq OS "windows"}}powershell Remove-Item -Force{{else}}rm{{end}}'
     RMRF: '{{if eq OS "windows"}}powershell Remove-Item -Force -Recurse{{else}}rm -rf{{end}}'
     DATE: '{{if eq OS "windows"}}powershell Get-Date -UFormat{{else}}date{{end}}'
     ARTIFACTS_BUCKET: waveterm-github-artifacts/staging-w2
