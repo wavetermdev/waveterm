@@ -10153,16 +10153,16 @@ __metadata:
   languageName: node
   linkType: hard
 
-"electron@npm:^34.0.2":
-  version: 34.0.2
-  resolution: "electron@npm:34.0.2"
+"electron@npm:34.5.4":
+  version: 34.5.4
+  resolution: "electron@npm:34.5.4"
   dependencies:
     "@electron/get": "npm:^2.0.0"
     "@types/node": "npm:^20.9.0"
     extract-zip: "npm:^2.0.1"
   bin:
     electron: cli.js
-  checksum: 10c0/c1708b7a01a1490fb9162823a95b4ebdcae237c624c4f9836fc9cb6bde063a650422f2219eb56a38ca1e8e50f0d178961c2224879cf0dc334f9e9891e85e817d
+  checksum: 10c0/e232e1295c5c77e26caa07e836509d63aeb3dd1a4c0135a47e67683a145e2684aa34cbdf30c864938f10b4377bbe1babf853b986ef83b3321bac89c50c203585
   languageName: node
   linkType: hard
 
@@ -15371,6 +15371,15 @@ __metadata:
   dependencies:
     semver: "npm:^7.3.5"
   checksum: 10c0/dbd0792ea729329cd9d099f28a5681ff9e8a6db48cf64e1437bf6a7fd669009d1e758a784619a1c4cc8bfd1ed17162f042c787654edf19a1f64b5018457c9c1f
+  languageName: node
+  linkType: hard
+
+"node-abi@npm:^4.6.0":
+  version: 4.6.0
+  resolution: "node-abi@npm:4.6.0"
+  dependencies:
+    semver: "npm:^7.6.3"
+  checksum: 10c0/07cd9ac7637f79ed56898082168deac35e9ee3f3e466302690e8459978c3e85af31e39f072a73a4cedd4444cb1c06cad38521726944dffaa4457aaa36f8edf97
   languageName: node
   linkType: hard
 
@@ -21506,7 +21515,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"vite@npm:^5.0.0 || ^6.0.0":
+"vite@npm:^5.0.0 || ^6.0.0, vite@npm:^6.1.5":
   version: 6.3.3
   resolution: "vite@npm:6.3.3"
   dependencies:
@@ -21782,7 +21791,7 @@ __metadata:
     css-tree: "npm:^3.1.0"
     dayjs: "npm:^1.11.13"
     debug: "npm:^4.4.0"
-    electron: "npm:^34.0.2"
+    electron: "npm:34.5.4"
     electron-builder: "npm:^26.0"
     electron-updater: "npm:^6.6"
     electron-vite: "npm:^2.3.0"
@@ -21796,6 +21805,7 @@ __metadata:
     jotai: "npm:2.9.3"
     monaco-editor: "npm:^0.52.2"
     monaco-yaml: "npm:^5.2.3"
+    node-abi: "npm:^4.6.0"
     overlayscrollbars: "npm:^2.10.1"
     overlayscrollbars-react: "npm:^0.5.6"
     papaparse: "npm:^5.5.2"
@@ -21843,6 +21853,7 @@ __metadata:
     typescript: "npm:^5.7.3"
     typescript-eslint: "npm:^8.24.0"
     use-device-pixel-ratio: "npm:^1.1.2"
+    vite: "npm:^6.1.5"
     vite-plugin-image-optimizer: "npm:^1.1.8"
     vite-plugin-static-copy: "npm:^2.2.0"
     vite-plugin-svgr: "npm:^4.3.0"
