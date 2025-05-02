@@ -234,8 +234,6 @@ tasks:
         sources:
             - "cmd/wsh/**/*.go"
             - "pkg/**/*.go"
-        generates:
-            - dist/bin/wsh-*
 
     build:wsh:internal:
         vars:
