@@ -141,7 +141,7 @@ jobs:
                   STATIC_DOCSITE_PATH: ${{env.STATIC_DOCSITE_PATH}}
             - name: Build (Windows)
               if: matrix.platform == 'windows'
-              run: task package
+              run: task -v package
               env:
                   USE_SYSTEM_FPM: true # Ensure that the installed version of FPM is used rather than the bundled one.
                   CSC_LINK: ${{ steps.variables.outputs.SM_CLIENT_CERT_FILE }}
