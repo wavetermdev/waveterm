@@ -736,6 +736,7 @@ declare global {
         "window:tilegapsize"?: number;
         "window:showmenubar"?: boolean;
         "window:nativetitlebar"?: boolean;
+        "window:tabbarposition"?: string;
         "window:disablehardwareacceleration"?: boolean;
         "window:maxtabcachesize"?: number;
         "window:magnifiedblockopacity"?: number;
