@@ -183,7 +183,9 @@
           "type": "boolean"
         },
         "window:tabbarposition": {
-          "type": "string"
+          "type": { 
+            "enum": ["top", "bottom"]
+          }
         },
         "window:disablehardwareacceleration": {
           "type": "boolean"
