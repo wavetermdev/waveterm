@@ -43,7 +43,7 @@ jobs:
                   sudo snap refresh
             - name: Install Zig (not Mac)
               if: matrix.platform != 'darwin'
-              uses: mlugg/setup-zig@v1
+              uses: mlugg/setup-zig@v2
 
             # The pre-installed version of the AWS CLI has a segfault problem so we'll install it via Homebrew instead.
             - name: Upgrade AWS CLI (Mac only)
