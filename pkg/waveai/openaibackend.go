@@ -55,6 +55,10 @@ func setApiType(opts *wshrpc.WaveAIOptsType, clientConfig *openaiapi.ClientConfi
 func convertPrompt(prompt []wshrpc.WaveAIPromptMessageType) []openaiapi.ChatCompletionMessage {
 	var rtn []openaiapi.ChatCompletionMessage
 	for _, p := range prompt {
+		// Filter out "error" role messages - they are not valid OpenAI roles
+		if p.Role == "error" {
+			continue
+		}
 		msg := openaiapi.ChatCompletionMessage{Role: p.Role, Content: p.Content, Name: p.Name}
 		rtn = append(rtn, msg)
 	}
@@ -106,8 +110,11 @@ func (OpenAIBackend) StreamCompletion(ctx context.Context, request wshrpc.WaveAI
 			Messages: convertPrompt(request.Prompt),
 		}
 
-		// Handle o1 models differently - use non-streaming API
-		if strings.HasPrefix(request.Opts.Model, "o1-") {
+		// Handle o1 and newer models (gpt-4.1+, o4+, o3+) - use non-streaming API with max_completion_tokens
+		if strings.HasPrefix(request.Opts.Model, "o1-") || 
+		   strings.HasPrefix(request.Opts.Model, "gpt-4.1") ||
+		   strings.HasPrefix(request.Opts.Model, "o4-") ||
+		   strings.HasPrefix(request.Opts.Model, "o3-") {
 			req.MaxCompletionTokens = request.Opts.MaxTokens
 			req.Stream = false
 
