@@ -27,8 +27,16 @@ Add the following snippets to your shell startup/config file and restart Wave (o
 Add to `~/.bashrc` or `~/.bash_profile`:
 
 ```bash
-# Emit OSC 7 on each prompt
-export PROMPT_COMMAND='printf "\033]7;file://$HOSTNAME$PWD\007"'
+# Emit OSC 7 on each prompt to tell terminal about new working directory
+__update_cwd() {
+  # Only run in interactive shells
+  [[ $- == *i* ]] || return
+  # Only run if attached to a terminal
+  [ -t 1 ] || return\
+  # Redirect to tty so output doesn't show in shell
+  printf "\033]7;file://%s%s\007" "$HOSTNAME" "${PWD// /%20}" > /dev/tty
+}
+export PROMPT_COMMAND="__update_cwd"
 ```
 
 ### Zsh
@@ -36,17 +44,14 @@ export PROMPT_COMMAND='printf "\033]7;file://$HOSTNAME$PWD\007"'
 Add to `~/.zshrc`:
 
 ```zsh
-# Function to emit OSC 7
+# Emit OSC 7 on each prompt to tell terminal about new working directory
 function _wave_emit_cwd() {
-  printf "\033]7;file://%s%s\007" "$HOST" "${PWD// /%20}"
+  printf "\033]7;file://%s%s\007" \
+    "$HOST" "${PWD// /%20}" > /dev/tty
 }
-
-# Emit when directory changes
 autoload -U add-zsh-hook
-add-zsh-hook chpwd _wave_emit_cwd
-
-# Emit once on startup
-_wave_emit_cwd
+add-zsh-hook chpwd  _wave_emit_cwd
+add-zsh-hook precmd _wave_emit_cwd
 ```
 
 ### Fish
@@ -56,12 +61,10 @@ _wave_emit_cwd
 If you are running an older fish release, you can add the following to `~/.config/fish/config.fish`:
 
 ```fish
+# Emit OSC 7 on each prompt to tell terminal about new working directory
 function _wave_emit_cwd --on-variable PWD
-    printf "\033]7;file://%s%s\007" (hostname) (string replace ' ' '%20' $PWD)
+    printf "\033]7;file://%s%s\007" (hostname) (string replace ' ' '%20' $PWD) > /dev/tty
 end
-
-# Emit on startup
-_wave_emit_cwd
 ```
 
 ## Verifying in Wave
