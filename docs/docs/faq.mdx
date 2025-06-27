@@ -49,13 +49,20 @@ Not all shells emit this escape sequence, so new blocks or splits may start in y
 Add to `~/.bashrc` or `~/.bash_profile`:
 
 ```bash
-# Emit OSC 7 escape on each prompt, sending directly to the terminal
+# Emit OSC 7 on each prompt to tell terminal about new working directory
 __update_cwd() {
+  # Only run in interactive shells
   [[ $- == *i* ]] || return
+  # Only run if attached to a terminal
   [ -t 1 ] || return
+  # Redirect to tty so output doesn't show in shell
   printf "\033]7;file://%s%s\007" "$HOSTNAME" "${PWD// /%20}" > /dev/tty
 }
-export PROMPT_COMMAND="__update_cwd"
+if [[ -n "$PROMPT_COMMAND" ]]; then
+  export PROMPT_COMMAND="__update_cwd; $PROMPT_COMMAND"
+else
+  export PROMPT_COMMAND="__update_cwd"
+fi
 ```
 
 #### Zsh
@@ -65,7 +72,7 @@ Add to `~/.zshrc`:
 ```zsh
 # Emit OSC 7 escape on directory change and prompt
 function _wave_emit_cwd() {
-  printf "\033]7;file://%s%s\007" "$HOST" "${PWD// /%20}" > /dev/tty
+  printf "\033]7;file://%s%s\007" "$HOSTNAME" "${PWD// /%20}" > /dev/tty
 }
 autoload -U add-zsh-hook
 add-zsh-hook chpwd  _wave_emit_cwd
