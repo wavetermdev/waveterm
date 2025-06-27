@@ -35,13 +35,88 @@ Just remember in JSON, backslashes need to be escaped. So add this to your [sett
 
 `wsh` is an internal CLI for extending control over Wave to the command line, you can learn more about it [here](./wsh). To prevent misuse by other applications, `wsh` requires an access token provided by Wave to work and will not function outside of the app.
 
+### How do I make new tabs or splits inherit my shell’s current directory?
+
+Wave uses a special escape sequence (OSC 7) to track the shell’s working directory and maintain the working directory of new terminal blocks and splits. Wave listens for these sequences to update its `cmd:cwd` metadata. That metadata is copied to new blocks when you:
+
+- Open a new terminal block (Alt N / Cmd N)
+- Split a pane (Cmd D / Cmd Shift D)
+
+Not all shells emit this escape sequence, so new tabs or splits may start in your home directory instead. To ensure your shell emits the OSC 7 escape sequence, add the following to your shell startup/config file and restart Wave (or source your config).
+
+#### Bash
+
+Add to `~/.bashrc` or `~/.bash_profile`:
+
+```bash
+# Emit OSC 7 escape on each prompt, sending directly to the terminal
+__update_cwd() {
+  [[ $- == *i* ]] || return
+  [ -t 1 ] || return
+  printf "\033]7;file://%s%s\007" "$HOSTNAME" "${PWD// /%20}" > /dev/tty
+}
+export PROMPT_COMMAND="__update_cwd"
+```
+
+#### Zsh
+
+Add to `~/.zshrc`:
+
+```zsh
+# Emit OSC 7 escape on directory change and prompt
+function _wave_emit_cwd() {
+  printf "\033]7;file://%s%s\007" "$HOST" "${PWD// /%20}" > /dev/tty
+}
+autoload -U add-zsh-hook
+add-zsh-hook chpwd  _wave_emit_cwd
+add-zsh-hook precmd _wave_emit_cwd
+```
+
+#### Fish
+
+> Fish shell (v4.0.0 and later) emits OSC 7 by default—no config required.
+
+For older Fish versions, add to `~/.config/fish/config.fish`:
+
+```fish
+# Emit OSC 7 on each PWD change
+function _wave_emit_cwd --on-variable PWD
+    printf "\033]7;file://%s%s\007" (hostname) (string replace ' ' '%20' $PWD) > /dev/tty
+end
+```
+
+After configuring, open a new tab or split (Alt T / Cmd T, Alt N / Cmd N, Cmd D / Cmd Shift D) and verify blocks start in your current directory.
+
+#### Verifying Current Directory Preservation
+
+1. Open a Wave terminal block.
+2. `cd` into a project folder, e.g. `cd ~/projects/foo`.
+3. Right-click on the block's title bar and select "Copy BlockId" to retrieve the block’s ID.
+4. Use the copied BlockId to retrieve the block’s metadata:
+
+   ```bash
+   # Example: replace BLOCK_ID with your actual block reference
+   wsh getmeta --block BLOCK_ID
+   ```
+
+5. Confirm the output JSON contains a `cmd:cwd` field, for example:
+
+   ```json
+   {
+     "cmd:cwd": "/Users/you/projects/foo",
+     ...
+   }
+   ```
+
+6. Open a new tab or split the pane—both should start in `/Users/you/projects/foo`.
+
 ## Why does Wave warn me about ARM64 translation when it launches?
 
 macOS and Windows both have compatibility layers that allow x64 applications to run on ARM computers. This helps more apps run on these systems while developers work to add native ARM support to their applications. However, it comes with significant performance tradeoffs.
 
 To get the best experience using Wave, it is recommended that you uninstall Wave and reinstall the version that is natively compiled for your computer. You can find the right version by consulting our [Installation Instructions](./gettingstarted#installation).
 
-You can disable this warning by setting `app:dismissarchitecturewarning=true` in [your configurations](./config.mdx).
+You can disable this warning by setting `app:dismissarchitecturewarning=true` in [your configurations](./config).
 
 ## How do I join the beta builds of Wave?
 
