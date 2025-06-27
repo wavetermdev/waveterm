@@ -35,14 +35,14 @@ Just remember in JSON, backslashes need to be escaped. So add this to your [sett
 
 `wsh` is an internal CLI for extending control over Wave to the command line, you can learn more about it [here](./wsh). To prevent misuse by other applications, `wsh` requires an access token provided by Wave to work and will not function outside of the app.
 
-### How do I make new tabs or splits inherit my shell’s current directory?
+### How do I make new blocks or splits inherit my shell’s current directory?
 
 Wave uses a special escape sequence (OSC 7) to track the shell’s working directory and maintain the working directory of new terminal blocks and splits. Wave listens for these sequences to update its `cmd:cwd` metadata. That metadata is copied to new blocks when you:
 
 - Open a new terminal block (Alt N / Cmd N)
 - Split a pane (Cmd D / Cmd Shift D)
 
-Not all shells emit this escape sequence, so new tabs or splits may start in your home directory instead. To ensure your shell emits the OSC 7 escape sequence, add the following to your shell startup/config file and restart Wave (or source your config).
+Not all shells emit this escape sequence, so new blocks or splits may start in your home directory instead. To ensure your shell emits the OSC 7 escape sequence, add the following to your shell startup/config file and restart Wave (or source your config).
 
 #### Bash
 
@@ -85,7 +85,7 @@ function _wave_emit_cwd --on-variable PWD
 end
 ```
 
-After configuring, open a new tab or split (Alt T / Cmd T, Alt N / Cmd N, Cmd D / Cmd Shift D) and verify blocks start in your current directory.
+After configuring, open a new block or split (Alt T / Cmd T, Alt N / Cmd N, Cmd D / Cmd Shift D) and verify blocks start in your current directory.
 
 #### Verifying Current Directory Preservation
 
@@ -108,7 +108,7 @@ After configuring, open a new tab or split (Alt T / Cmd T, Alt N / Cmd N, Cmd D 
    }
    ```
 
-6. Open a new tab or split the pane—both should start in `/Users/you/projects/foo`.
+6. Open a new block or split the pane—both should start in `/Users/you/projects/foo`.
 
 ## Why does Wave warn me about ARM64 translation when it launches?
 
