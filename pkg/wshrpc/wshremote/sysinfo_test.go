@@ -66,10 +66,16 @@ func TestMacOSGpuFunctions(t *testing.T) {
 	// Test VRAM parsing
 	vram := parseVRAMFromSystemProfiler(output)
 	t.Logf("Parsed VRAM: %f GB", vram)
+	if vram != 1.5 {
+		t.Errorf("Expected VRAM to be 1536, got %f", vram)
+	}
 
 	// Test memory pressure
 	memPressure := getMemoryPressureFromVMStat()
 	t.Logf("Memory pressure: %f GB", memPressure)
+	if memPressure != 0 {
+		t.Errorf("Expected memory pressure to be 0, got %f", memPressure)
+	}
 }
 
 func TestWindowsGpuFunctions(t *testing.T) {
@@ -81,9 +87,24 @@ func TestWindowsGpuFunctions(t *testing.T) {
 	for i, gpu := range gpuList {
 		t.Logf("GPU %d: %s (%.2f GB)", i, gpu.Name, gpu.MemTotal)
 	}
+	if len(gpuList) != 1 {
+		t.Errorf("Expected 1 GPU, got %d", len(gpuList))
+	}
+	if gpuList[0].Name != "NVIDIA GeForce RTX 3080" {
+		t.Errorf("Expected GPU name to be NVIDIA GeForce RTX 3080, got %s", gpuList[0].Name)
+	}
+	if gpuList[0].MemTotal != 10 {
+		t.Errorf("Expected GPU memory total to be 10, got %f", gpuList[0].MemTotal)
+	}
+	if gpuList[0].MemUsed != 0 {
+		t.Errorf("Expected GPU memory used to be 0, got %f", gpuList[0].MemUsed)
+	}
 
 	// Test Windows GPU memory output parsing
 	memOutput := `{"NVIDIA GeForce RTX 3080":2.45}`
 	memUsage := parseWindowsGpuMemoryOutput(memOutput)
 	t.Logf("Memory usage: %v", memUsage)
+	if memUsage["NVIDIA GeForce RTX 3080"] != 2.45 {
+		t.Errorf("Expected GPU memory usage to be 2.45, got %f", memUsage["NVIDIA GeForce RTX 3080"])
+	}
 }
