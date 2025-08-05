@@ -8,6 +8,7 @@ import (
 	"log"
 	"os/exec"
 	"regexp"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -22,6 +23,20 @@ import (
 
 const BYTES_PER_GB = 1073741824
 
+const PS_GPU_COMMAND = `
+	$gpus = Get-WmiObject -Class Win32_VideoController | Where-Object { $_.Name -notlike "*Basic*" -and $_.Name -notlike "*Standard*" }
+	$gpuInfo = @()
+	foreach ($gpu in $gpus) {
+		$gpuInfo += [PSCustomObject]@{
+			Name = $gpu.Name
+			AdapterRAM = $gpu.AdapterRAM
+			VideoProcessor = $gpu.VideoProcessor
+			DriverVersion = $gpu.DriverVersion
+		}
+	}
+	$gpuInfo | ConvertTo-Json -Compress
+`
+
 // GPU data structure to hold parsed GPU information
 type GpuData struct {
 	Index    int     `json:"index"`
@@ -33,22 +48,12 @@ type GpuData struct {
 
 // Platform detection
 func detectPlatform() string {
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-	defer cancel()
-
-	cmd := exec.CommandContext(ctx, "uname", "-s")
-	output, err := cmd.Output()
-	if err != nil {
-		return "unknown"
-	}
-
-	os := strings.ToLower(strings.TrimSpace(string(output)))
-	switch {
-	case strings.Contains(os, "linux"):
+	switch runtime.GOOS {
+	case "linux":
 		return "linux"
-	case strings.Contains(os, "darwin"):
+	case "darwin":
 		return "darwin"
-	case strings.Contains(os, "windows"):
+	case "windows":
 		return "windows"
 	default:
 		return "unknown"
@@ -90,8 +95,16 @@ func getNvidiaGpuData() ([]GpuData, error) {
 	for _, line := range lines {
 		fields := strings.Split(line, ", ")
 		if len(fields) >= 5 {
-			index, _ := strconv.Atoi(strings.TrimSpace(fields[0]))
-			util, _ := strconv.ParseFloat(strings.TrimSpace(fields[1]), 64)
+			index, err := strconv.Atoi(strings.TrimSpace(fields[0]))
+			if err != nil {
+				log.Printf("Error parsing nvidia-smi output: %v", err)
+				continue
+			}
+			util, err := strconv.ParseFloat(strings.TrimSpace(fields[1]), 64)
+			if err != nil {
+				log.Printf("Error parsing nvidia-smi output: %v", err)
+				continue
+			}
 			memUsed, _ := strconv.ParseFloat(strings.TrimSpace(fields[2]), 64)
 			memTotal, _ := strconv.ParseFloat(strings.TrimSpace(fields[3]), 64)
 			temp, _ := strconv.ParseFloat(strings.TrimSpace(fields[4]), 64)
@@ -396,6 +409,7 @@ func estimateGPUMemory() float64 {
 			totalGB := float64(memSize) / (1024 * 1024 * 1024)
 			// Estimate GPU memory as a fraction of system memory
 			// This is a rough estimate and varies by GPU
+			// Actual GPU memory varies significantly and this should be treated as unreliable
 			return totalGB * 0.1 // Assume 10% of system memory for GPU
 		}
 	}
@@ -412,21 +426,8 @@ func getWindowsGpuData() ([]GpuData, error) {
 	defer cancel()
 
 	// PowerShell command to get GPU information
-	psCommand := `
-		$gpus = Get-WmiObject -Class Win32_VideoController | Where-Object { $_.Name -notlike "*Basic*" -and $_.Name -notlike "*Standard*" }
-		$gpuInfo = @()
-		foreach ($gpu in $gpus) {
-			$gpuInfo += [PSCustomObject]@{
-				Name = $gpu.Name
-				AdapterRAM = $gpu.AdapterRAM
-				VideoProcessor = $gpu.VideoProcessor
-				DriverVersion = $gpu.DriverVersion
-			}
-		}
-		$gpuInfo | ConvertTo-Json -Compress
-	`
 
-	cmd := exec.CommandContext(ctx, "powershell", "-Command", psCommand)
+	cmd := exec.CommandContext(ctx, "powershell", "-Command", PS_GPU_COMMAND)
 	output, err := cmd.Output()
 	if err != nil {
 		return nil, err
@@ -460,7 +461,6 @@ func getWindowsGpuData() ([]GpuData, error) {
 			Temp:     0, // Temperature requires additional tools on Windows
 		}
 		gpus = append(gpus, gpuData)
-		log.Printf("Found Windows GPU: %s (%.2f GB total, %.2f GB used)", gpu.Name, gpu.MemTotal, memUsed)
 	}
 
 	// If no GPUs found, create a default entry
@@ -639,6 +639,9 @@ func getGpuData(values map[string]float64) {
 	}
 
 	if err != nil || len(gpus) == 0 {
+		if err != nil {
+			log.Printf("Error getting GPU data: %v", err)
+		}
 		return
 	}
 
@@ -694,7 +697,7 @@ func generateSingleServerData(client *wshutil.WshRpc, connName string) {
 	values := make(map[string]float64)
 	getCpuData(values)
 	getMemData(values)
-	getGpuData(values) // Add this line to get GPU data
+	getGpuData(values)
 	tsData := wshrpc.TimeSeriesData{Ts: now.UnixMilli(), Values: values}
 	event := wps.WaveEvent{
 		Event:   wps.Event_SysInfo,

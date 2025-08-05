@@ -138,7 +138,6 @@ The tests will check:
 
 ## Future Enhancements
 
-- Windows GPU monitoring support
 - More detailed macOS GPU monitoring
 - GPU power consumption metrics
 - GPU fan speed monitoring
