@@ -74,7 +74,7 @@ The frontend supports the following GPU-related plot types:
 ## Implementation Details
 
 ### Platform Detection
-The system automatically detects the platform using `uname -s` and selects the appropriate GPU monitoring method.
+The system automatically detects the platform using Go's `runtime.GOOS` and selects the appropriate GPU monitoring method.
 
 ### Tool Availability Detection
 Before attempting to collect GPU data, the system checks if the required tools (`nvidia-smi` or `rocm-smi`) are available on the system.

@@ -70,10 +70,6 @@ func TestMacOSGpuFunctions(t *testing.T) {
 	// Test memory pressure
 	memPressure := getMemoryPressureFromVMStat()
 	t.Logf("Memory pressure: %f GB", memPressure)
-
-	// Test GPU memory estimation
-	estimatedMem := estimateGPUMemory()
-	t.Logf("Estimated GPU memory: %f GB", estimatedMem)
 }
 
 func TestWindowsGpuFunctions(t *testing.T) {

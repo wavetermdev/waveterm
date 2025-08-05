@@ -143,10 +143,23 @@ func getRocmGpuData() ([]GpuData, error) {
 
 	for _, match := range matches {
 		if len(match) >= 5 {
-			index, _ := strconv.Atoi(match[1])
-			memTotal, _ := strconv.ParseFloat(match[2], 64)
-			memUsed, _ := strconv.ParseFloat(match[3], 64)
-			temp, _ := strconv.ParseFloat(match[4], 64)
+			index, err := strconv.Atoi(match[1])
+			if err != nil {
+				log.Printf("Error parsing rocm-smi output: %v", err)
+				continue
+			}
+			memTotal, err := strconv.ParseFloat(match[2], 64)
+			if err != nil {
+				log.Printf("Error parsing rocm-smi output: %v", err)
+			}
+			memUsed, err := strconv.ParseFloat(match[3], 64)
+			if err != nil {
+				log.Printf("Error parsing rocm-smi output: %v", err)
+			}
+			temp, err := strconv.ParseFloat(match[4], 64)
+			if err != nil {
+				log.Printf("Error parsing rocm-smi output: %v", err)
+			}
 
 			// Convert MB to GB
 			memTotal = memTotal / 1024
@@ -292,11 +305,6 @@ func getMacGpuMemory() GpuMemoryInfo {
 		memInfo.Used = vmStat
 	}
 
-	// If we couldn't get total VRAM, estimate based on system memory
-	if memInfo.Total == 0 {
-		memInfo.Total = estimateGPUMemory()
-	}
-
 	return memInfo
 }
 
@@ -388,33 +396,6 @@ func getMemoryPressureFromVMStat() float64 {
 	// Calculate used memory in GB
 	usedBytes := (activePages + inactivePages + wiredPages) * pageSize
 	return float64(usedBytes) / (1024 * 1024 * 1024) // Convert to GB
-}
-
-// Estimate GPU memory based on system memory
-func estimateGPUMemory() float64 {
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
-
-	cmd := exec.CommandContext(ctx, "sysctl", "hw.memsize")
-	output, err := cmd.Output()
-	if err != nil {
-		return 4.0 // Default estimate
-	}
-
-	// Parse total system memory
-	re := regexp.MustCompile(`hw\.memsize:\s+(\d+)`)
-	matches := re.FindStringSubmatch(string(output))
-	if len(matches) >= 2 {
-		if memSize, err := strconv.ParseInt(matches[1], 10, 64); err == nil {
-			totalGB := float64(memSize) / (1024 * 1024 * 1024)
-			// Estimate GPU memory as a fraction of system memory
-			// This is a rough estimate and varies by GPU
-			// Actual GPU memory varies significantly and this should be treated as unreliable
-			return totalGB * 0.1 // Assume 10% of system memory for GPU
-		}
-	}
-
-	return 4.0 // Default estimate
 }
 
 // Get GPU data for Windows using PowerShell commands
@@ -518,7 +499,7 @@ func parseWindowsGpuOutput(output string) []WindowsGpuInfo {
 				gpuInfo := WindowsGpuInfo{
 					Name:     name,
 					MemTotal: memTotal,
-					MemUsed:  0, // Will be estimated based on utilization
+					MemUsed:  0,
 				}
 				gpuList = append(gpuList, gpuInfo)
 			}
