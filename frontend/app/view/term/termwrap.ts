@@ -134,6 +134,55 @@ function handleOsc7Command(data: string, blockId: string, loaded: boolean): bool
     return true;
 }
 
+function handleOsc52Command(data: string, terminal: Terminal, loaded: boolean): boolean {
+    if (!loaded) {
+        return false;
+    }
+    if (!data || data.length === 0) {
+        console.log("Invalid OSC 52 command received (empty)");
+        return false;
+    }
+
+    // OSC 52 format: "c;{base64_data}" or "c;?" (query) or "c" (clear)
+    const parts = data.split(";", 2);
+    if (parts.length < 1 || parts[0] !== "c") {
+        console.log("Invalid OSC 52 command received (unsupported clipboard)", data);
+        return false;
+    }
+
+    if (parts.length === 1 || parts[1] === "") {
+        // Clear clipboard - not implemented
+        return true;
+    }
+
+    if (parts[1] === "?") {
+        // Query clipboard - read from clipboard and send back
+        navigator.clipboard.readText().then((text) => {
+            const base64Data = btoa(unescape(encodeURIComponent(text)));
+            // Send OSC 52 response back to terminal
+            terminal.write(`\x1b]52;c;${base64Data}\x07`);
+        }).catch((e) => {
+            console.log("Failed to read clipboard:", e);
+        });
+        return true;
+    }
+
+    // Set clipboard data
+    try {
+        const decodedData = decodeURIComponent(escape(atob(parts[1])));
+        navigator.clipboard.writeText(decodedData).then(() => {
+            // Successfully wrote to clipboard
+        }).catch((e) => {
+            console.log("Failed to write to clipboard:", e);
+        });
+    } catch (e) {
+        console.log("Failed to decode OSC 52 data:", e);
+        return false;
+    }
+
+    return true;
+}
+
 export class TermWrap {
     blockId: string;
     ptyOffset: number;
@@ -210,6 +259,9 @@ export class TermWrap {
         });
         this.terminal.parser.registerOscHandler(7, (data: string) => {
             return handleOsc7Command(data, this.blockId, this.loaded);
+        });
+        this.terminal.parser.registerOscHandler(52, (data: string) => {
+            return handleOsc52Command(data, this.terminal, this.loaded);
         });
         this.terminal.attachCustomKeyEventHandler(waveOptions.keydownHandler);
         this.connectElem = connectElem;

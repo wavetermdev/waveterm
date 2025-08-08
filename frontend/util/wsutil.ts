@@ -6,12 +6,14 @@ import type { WebSocket as NodeWebSocketType } from "ws";
 let NodeWebSocket: typeof NodeWebSocketType = null;
 
 if (typeof window === "undefined") {
-    // Necessary to avoid issues with Rollup: https://github.com/websockets/ws/issues/2057
-    import("ws")
-        .then((ws) => (NodeWebSocket = ws.default))
-        .catch((e) => {
-            console.log("Error importing 'ws':", e);
-        });
+    // Synchronous require in Node.js (Electron main process)
+    // The async import was causing timing issues where newWebSocket was called
+    // before the dynamic import resolved, falling back to browser WebSocket which doesn't exist in Node.js
+    try {
+        NodeWebSocket = require("ws");
+    } catch (e) {
+        console.log("Error importing 'ws':", e);
+    }
 }
 
 type ComboWebSocket = NodeWebSocketType | WebSocket;
