@@ -47,6 +47,9 @@
         "ai:maxtokens": {
           "type": "number"
         },
+        "ai:maxtokensfield": {
+          "type": "string"
+        },
         "ai:timeoutms": {
           "type": "number"
         },

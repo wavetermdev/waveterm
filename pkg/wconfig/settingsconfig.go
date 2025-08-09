@@ -43,6 +43,7 @@ type AiSettingsType struct {
 	AiOrgID         string  `json:"ai:orgid,omitempty"`
 	AIApiVersion    string  `json:"ai:apiversion,omitempty"`
 	AiMaxTokens     float64 `json:"ai:maxtokens,omitempty"`
+	AiMaxTokensField string  `json:"ai:maxtokensfield,omitempty"`
 	AiTimeoutMs     float64 `json:"ai:timeoutms,omitempty"`
 	AiFontSize      float64 `json:"ai:fontsize,omitempty"`
 	AiFixedFontSize float64 `json:"ai:fixedfontsize,omitempty"`
@@ -66,6 +67,7 @@ type SettingsType struct {
 	AiOrgID         string  `json:"ai:orgid,omitempty"`
 	AIApiVersion    string  `json:"ai:apiversion,omitempty"`
 	AiMaxTokens     float64 `json:"ai:maxtokens,omitempty"`
+	AiMaxTokensField string  `json:"ai:maxtokensfield,omitempty"`
 	AiTimeoutMs     float64 `json:"ai:timeoutms,omitempty"`
 	AiFontSize      float64 `json:"ai:fontsize,omitempty"`
 	AiFixedFontSize float64 `json:"ai:fixedfontsize,omitempty"`
@@ -405,6 +407,9 @@ func ReadFullConfig() FullConfigType {
 			continue
 		} else {
 			configPart, errs = readConfigPart(jsonTag, simpleMerge)
+			if jsonTag == "settings" {
+				configPart = normalizeSettingsAliases(configPart)
+			}
 		}
 		fullConfig.ConfigErrors = append(fullConfig.ConfigErrors, errs...)
 		if configPart != nil {
@@ -456,6 +461,32 @@ func getConfigKeyNamespace(key string) string {
 		return ""
 	}
 	return key[:colonIdx]
+}
+
+// Alias map for settings keys to support alternate names in user config.
+// Canonical key is on the right-hand side.
+var settingsAliasKeyMap = map[string]string{
+	"ai:max_tokens":       "ai:maxtokens",
+	"ai:max_tokens_param": "ai:maxtokensfield",
+	"ai:max_tokens_field": "ai:maxtokensfield",
+	"ai:maxtokenfields":   "ai:maxtokensfield",
+}
+
+// normalizeSettingsAliases rewrites known alias keys in-place to their canonical forms.
+// If both alias and canonical exist, the canonical value wins and the alias is removed.
+func normalizeSettingsAliases(m waveobj.MetaMapType) waveobj.MetaMapType {
+	if m == nil {
+		return nil
+	}
+	for alias, canonical := range settingsAliasKeyMap {
+		if val, ok := m[alias]; ok {
+			if _, exists := m[canonical]; !exists {
+				m[canonical] = val
+			}
+			delete(m, alias)
+		}
+	}
+	return m
 }
 
 func orderConfigKeys(m waveobj.MetaMapType) []string {
@@ -561,6 +592,7 @@ func SetBaseConfigValue(toMerge waveobj.MetaMapType) error {
 	if m == nil {
 		m = make(waveobj.MetaMapType)
 	}
+	toMerge = normalizeSettingsAliases(toMerge)
 	for configKey, val := range toMerge {
 		ctype := getConfigKeyType(configKey)
 		if ctype == nil {

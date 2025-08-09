@@ -21,6 +21,7 @@ const (
 	ConfigKey_AiOrgID                        = "ai:orgid"
 	ConfigKey_AIApiVersion                   = "ai:apiversion"
 	ConfigKey_AiMaxTokens                    = "ai:maxtokens"
+	ConfigKey_AiMaxTokensField               = "ai:maxtokensfield"
 	ConfigKey_AiTimeoutMs                    = "ai:timeoutms"
 	ConfigKey_AiFontSize                     = "ai:fontsize"
 	ConfigKey_AiFixedFontSize                = "ai:fixedfontsize"
