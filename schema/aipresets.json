@@ -36,6 +36,21 @@
         "ai:maxtokensfield": {
           "type": "string"
         },
+        "ai:max_tokens_field": {
+          "type": "string",
+          "deprecated": true,
+          "description": "Alias of ai:maxtokensfield"
+        },
+        "ai:max_tokens_param": {
+          "type": "string",
+          "deprecated": true,
+          "description": "Alias of ai:maxtokensfield"
+        },
+        "ai:maxtokenfields": {
+          "type": "string",
+          "deprecated": true,
+          "description": "Alias of ai:maxtokensfield"
+        },
         "ai:timeoutms": {
           "type": "number"
         },
