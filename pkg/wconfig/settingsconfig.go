@@ -470,8 +470,8 @@ var settingsAliasKeyMap = map[string]string{
 	"ai:max_tokens_param": "ai:maxtokensfield",
 	"ai:max_tokens_field": "ai:maxtokensfield",
 	"ai:maxtokenfields":   "ai:maxtokensfield",
+	"ai:maxtokenfield":    "ai:maxtokensfield",
 }
-
 // normalizeSettingsAliases rewrites known alias keys in-place to their canonical forms.
 // If both alias and canonical exist, the canonical value wins and the alias is removed.
 func normalizeSettingsAliases(m waveobj.MetaMapType) waveobj.MetaMapType {
