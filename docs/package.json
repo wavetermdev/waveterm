@@ -33,18 +33,18 @@
         "rehype-highlight": "^7.0.2",
         "remark-gfm": "^4.0.1",
         "remark-typescript-code-import": "^1.0.1",
-        "sass": "^1.84.0"
+        "sass": "^1.90.0"
     },
     "devDependencies": {
         "@docusaurus/module-type-aliases": "3.7.0",
         "@docusaurus/tsconfig": "3.7.0",
         "@docusaurus/types": "3.7.0",
-        "@eslint/js": "^9.20.0",
+        "@eslint/js": "^9.33.0",
         "@mdx-js/typescript-plugin": "^0.0.8",
         "@types/eslint": "^9.6.1",
         "@types/eslint-config-prettier": "^6.11.3",
-        "eslint": "^9.20.1",
-        "eslint-config-prettier": "^10.0.1",
+        "eslint": "^9.33.0",
+        "eslint-config-prettier": "^10.1.8",
         "eslint-plugin-mdx": "^3.1.5",
         "prettier": "^3.4.2",
         "prettier-plugin-jsdoc": "^1.3.2",
@@ -54,8 +54,8 @@
         "remark-mdx": "^3.1.0",
         "remark-preset-lint-consistent": "^6.0.1",
         "remark-preset-lint-recommended": "^7.0.1",
-        "typescript": "^5.7.3",
-        "typescript-eslint": "^8.24.0"
+        "typescript": "^5.9.2",
+        "typescript-eslint": "^8.39.1"
     },
     "resolutions": {
         "path-to-regexp@npm:2.2.1": "^3",
