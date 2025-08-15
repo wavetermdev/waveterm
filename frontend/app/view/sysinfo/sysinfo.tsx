@@ -66,6 +66,33 @@ const PlotTypes: Object = {
                 return valA - valB;
             });
     },
+    GPU: function (dataItem: DataItem): Array<string> {
+        return ["gpu"];
+    },
+    "All GPU": function (dataItem: DataItem): Array<string> {
+        return Object.keys(dataItem)
+            .filter((item) => item.startsWith("gpu:") && item.includes(":util"))
+            .sort((a, b) => {
+                const valA = parseInt(a.replace("gpu:", "").replace(":util", ""));
+                const valB = parseInt(b.replace("gpu:", "").replace(":util", ""));
+                return valA - valB;
+            });
+    },
+    "GPU Memory": function (dataItem: DataItem): Array<string> {
+        return Object.keys(dataItem)
+            .filter((item) => item.startsWith("gpu:") && item.includes(":mem_used"))
+            .sort((a, b) => {
+                const valA = parseInt(a.replace("gpu:", "").replace(":mem_used", ""));
+                const valB = parseInt(b.replace("gpu:", "").replace(":mem_used", ""));
+                return valA - valB;
+            });
+    },
+    "CPU + GPU": function (dataItem: DataItem): Array<string> {
+        return ["cpu", "gpu"];
+    },
+    "CPU + GPU + Mem": function (dataItem: DataItem): Array<string> {
+        return ["cpu", "gpu", "mem:used"];
+    },
 };
 
 const DefaultPlotMeta = {
@@ -74,9 +101,23 @@ const DefaultPlotMeta = {
     "mem:used": defaultMemMeta("Memory Used", "mem:total"),
     "mem:free": defaultMemMeta("Memory Free", "mem:total"),
     "mem:available": defaultMemMeta("Memory Available", "mem:total"),
+    gpu: defaultCpuMeta("GPU %"),
 };
 for (let i = 0; i < 32; i++) {
     DefaultPlotMeta[`cpu:${i}`] = defaultCpuMeta(`Core ${i}`);
+}
+for (let i = 0; i < 8; i++) {
+    DefaultPlotMeta[`gpu:${i}:util`] = defaultCpuMeta(`GPU ${i} %`);
+    DefaultPlotMeta[`gpu:${i}:mem_used`] = defaultMemMeta(`GPU ${i} Memory Used`, "gpu:0:mem_total");
+    DefaultPlotMeta[`gpu:${i}:mem_total`] = defaultMemMeta(`GPU ${i} Memory Total`, "gpu:0:mem_total");
+    DefaultPlotMeta[`gpu:${i}:temp`] = {
+        name: `GPU ${i} Temperature`,
+        label: "°C",
+        miny: 0,
+        maxy: 100,
+        color: "var(--sysinfo-gpu-color)",
+        decimalPlaces: 0,
+    };
 }
 
 function convertWaveEventToDataItem(event: WaveEvent): DataItem {
