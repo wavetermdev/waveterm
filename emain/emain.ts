@@ -73,13 +73,14 @@ let webviewKeys: string[] = []; // the keys to trap when webview has focus
 console.log = log;
 console.log(
     sprintf(
-        "waveterm-app starting, data_dir=%s, config_dir=%s electronpath=%s gopath=%s arch=%s/%s",
+        "waveterm-app starting, data_dir=%s, config_dir=%s electronpath=%s gopath=%s arch=%s/%s electron=%s",
         waveDataDir,
         waveConfigDir,
         getElectronAppBasePath(),
         getElectronAppUnpackedBasePath(),
         unamePlatform,
-        unameArch
+        unameArch,
+        process.versions.electron
     )
 );
 if (isDev) {
