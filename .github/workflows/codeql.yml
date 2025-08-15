@@ -14,8 +14,16 @@ name: "CodeQL"
 on:
     push:
         branches: ["main"]
+        paths:
+            - "**/*.go"
+            - "**/*.ts"
+            - "**/*.tsx"
     pull_request:
         branches: ["main"]
+        paths:
+            - "**/*.go"
+            - "**/*.ts"
+            - "**/*.tsx"
         types:
             - opened
             - synchronize
