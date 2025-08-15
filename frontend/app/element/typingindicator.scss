@@ -1,46 +1,54 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-$dot-width: 11px;
-$dot-color: var(--success-color);
-$speed: 1.5s;
+.typing-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    padding: 0;
 
-.typing {
-    position: relative;
-    height: $dot-width;
+    &-bubble {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: rgba(from var(--accent-color) r g b / 0.1);
+        border-radius: 20px;
+        padding: 6px 12px;
+        gap: 4px;
+    }
 
-    span {
-        content: "";
-        animation: blink $speed infinite;
-        animation-fill-mode: both;
-        height: $dot-width;
-        width: $dot-width;
-        background: $dot-color;
-        position: absolute;
-        left: 0;
-        top: 0;
+    &-dot {
+        width: 6px;
+        height: 6px;
         border-radius: 50%;
+        background-color: var(--accent-color);
+        opacity: 0.7;
+
+        &:nth-child(1) {
+            animation: typing-animation 1.4s infinite ease-in-out;
+            animation-delay: 0s;
+        }
 
         &:nth-child(2) {
+            animation: typing-animation 1.4s infinite ease-in-out;
             animation-delay: 0.2s;
-            margin-left: $dot-width * 1.5;
         }
 
         &:nth-child(3) {
+            animation: typing-animation 1.4s infinite ease-in-out;
             animation-delay: 0.4s;
-            margin-left: $dot-width * 3;
         }
     }
 }
 
-@keyframes blink {
-    0% {
-        opacity: 0.1;
-    }
-    20% {
-        opacity: 1;
-    }
+@keyframes typing-animation {
+    0%,
     100% {
-        opacity: 0.1;
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-2.5px);
+        opacity: 1;
     }
 }
