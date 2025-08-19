@@ -559,7 +559,6 @@ declare global {
         "editor:minimapenabled"?: boolean;
         "editor:stickyscrollenabled"?: boolean;
         "editor:wordwrap"?: boolean;
-        "editor:fontsize"?: number;
         "graph:*"?: boolean;
         "graph:numpoints"?: number;
         "graph:metrics"?: string[];
@@ -693,6 +692,7 @@ declare global {
         "ai:apiversion"?: string;
         "ai:maxtokens"?: number;
         "ai:timeoutms"?: number;
+        "ai:proxyurl"?: string;
         "ai:fontsize"?: number;
         "ai:fixedfontsize"?: number;
         "term:*"?: boolean;
