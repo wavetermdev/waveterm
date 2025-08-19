@@ -20,7 +20,7 @@ var _ AIBackend = GoogleBackend{}
 func (GoogleBackend) StreamCompletion(ctx context.Context, request wshrpc.WaveAIStreamRequest) chan wshrpc.RespOrErrorUnion[wshrpc.WaveAIPacketType] {
 	var clientOptions []option.ClientOption
 	clientOptions = append(clientOptions, option.WithAPIKey(request.Opts.APIToken))
-	
+
 	// Configure proxy if specified
 	if request.Opts.ProxyURL != "" {
 		proxyURL, err := url.Parse(request.Opts.ProxyURL)
@@ -65,11 +65,9 @@ func (GoogleBackend) StreamCompletion(ctx context.Context, request wshrpc.WaveAI
 		defer close(rtn)
 		for {
 			// Check for context cancellation
-			select {
-			case <-ctx.Done():
-				rtn <- makeAIError(fmt.Errorf("request cancelled: %v", ctx.Err()))
+			if err := ctx.Err(); err != nil {
+				rtn <- makeAIError(fmt.Errorf("request cancelled: %v", err))
 				break
-			default:
 			}
 
 			resp, err := iter.Next()
