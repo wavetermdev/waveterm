@@ -691,6 +691,7 @@ declare global {
         "ai:orgid"?: string;
         "ai:apiversion"?: string;
         "ai:maxtokens"?: number;
+        "ai:maxtokensfield"?: string;
         "ai:timeoutms"?: number;
         "ai:proxyurl"?: string;
         "ai:fontsize"?: number;
