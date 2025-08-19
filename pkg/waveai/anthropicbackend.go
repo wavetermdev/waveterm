@@ -43,14 +43,14 @@ func buildAnthropicEndpoint(baseURL string) (string, error) {
 
 	// Handle different path patterns:
 	// - https://custom -> https://custom/v1/messages
-	// - https://custom/ -> https://custom/v1/messages  
+	// - https://custom/ -> https://custom/v1/messages
 	// - https://custom/v1 -> https://custom/v1/messages
 	// - https://custom/v1/ -> https://custom/v1/messages
 	// - https://custom/v1/messages -> https://custom/v1/messages
 	// - https://custom/v1/messages/ -> https://custom/v1/messages
 
 	currentPath := strings.TrimRight(parsedURL.Path, "/")
-	
+
 	var targetPath string
 	if strings.HasSuffix(currentPath, "/messages") {
 		targetPath = currentPath
@@ -240,7 +240,20 @@ func (AnthropicBackend) StreamCompletion(ctx context.Context, request wshrpc.Wav
 		}
 		req.Header.Set("anthropic-version", version)
 
+		// Configure HTTP client with proxy if specified
 		client := &http.Client{}
+		if request.Opts.ProxyURL != "" {
+			proxyURL, err := url.Parse(request.Opts.ProxyURL)
+			if err != nil {
+				rtn <- makeAIError(fmt.Errorf("invalid proxy URL: %v", err))
+				return
+			}
+			transport := &http.Transport{
+				Proxy: http.ProxyURL(proxyURL),
+			}
+			client.Transport = transport
+		}
+
 		resp, err := client.Do(req)
 		if err != nil {
 			rtn <- makeAIError(fmt.Errorf("failed to send anthropic request: %v", err))

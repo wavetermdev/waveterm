@@ -22,6 +22,7 @@ const (
 	ConfigKey_AIApiVersion                   = "ai:apiversion"
 	ConfigKey_AiMaxTokens                    = "ai:maxtokens"
 	ConfigKey_AiTimeoutMs                    = "ai:timeoutms"
+	ConfigKey_AiProxyUrl                     = "ai:proxyurl"
 	ConfigKey_AiFontSize                     = "ai:fontsize"
 	ConfigKey_AiFixedFontSize                = "ai:fixedfontsize"
 
