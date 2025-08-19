@@ -22,7 +22,6 @@ type AnthropicBackend struct{}
 
 var _ AIBackend = AnthropicBackend{}
 
-
 // Claude API request types
 type anthropicMessage struct {
 	Role    string `json:"role"`
