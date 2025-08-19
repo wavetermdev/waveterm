@@ -44,6 +44,7 @@ type AiSettingsType struct {
 	AIApiVersion    string  `json:"ai:apiversion,omitempty"`
 	AiMaxTokens     float64 `json:"ai:maxtokens,omitempty"`
 	AiTimeoutMs     float64 `json:"ai:timeoutms,omitempty"`
+	AiProxyUrl      string  `json:"ai:proxyurl,omitempty"`
 	AiFontSize      float64 `json:"ai:fontsize,omitempty"`
 	AiFixedFontSize float64 `json:"ai:fixedfontsize,omitempty"`
 	DisplayName     string  `json:"display:name,omitempty"`
@@ -67,6 +68,7 @@ type SettingsType struct {
 	AIApiVersion    string  `json:"ai:apiversion,omitempty"`
 	AiMaxTokens     float64 `json:"ai:maxtokens,omitempty"`
 	AiTimeoutMs     float64 `json:"ai:timeoutms,omitempty"`
+	AiProxyUrl      string  `json:"ai:proxyurl,omitempty"`
 	AiFontSize      float64 `json:"ai:fontsize,omitempty"`
 	AiFixedFontSize float64 `json:"ai:fixedfontsize,omitempty"`
 

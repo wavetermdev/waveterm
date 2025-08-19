@@ -50,6 +50,9 @@
         "ai:timeoutms": {
           "type": "number"
         },
+        "ai:proxyurl": {
+          "type": "string"
+        },
         "ai:fontsize": {
           "type": "number"
         },
