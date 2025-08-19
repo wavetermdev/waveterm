@@ -12,7 +12,6 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"path"
 	"strings"
 
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
@@ -23,48 +22,6 @@ type AnthropicBackend struct{}
 
 var _ AIBackend = AnthropicBackend{}
 
-// buildAnthropicEndpoint safely constructs the Anthropic API endpoint from a base URL
-// It validates the scheme, preserves query parameters and host, and handles common path patterns
-func buildAnthropicEndpoint(baseURL string) (string, error) {
-	if baseURL == "" {
-		return "", errors.New("base URL cannot be empty")
-	}
-
-	// Parse the base URL
-	parsedURL, err := url.Parse(baseURL)
-	if err != nil {
-		return "", fmt.Errorf("failed to parse base URL: %v", err)
-	}
-
-	// Validate scheme
-	if parsedURL.Scheme != "http" && parsedURL.Scheme != "https" {
-		return "", errors.New("base URL must use http or https scheme")
-	}
-
-	// Handle different path patterns:
-	// - https://custom -> https://custom/v1/messages
-	// - https://custom/ -> https://custom/v1/messages
-	// - https://custom/v1 -> https://custom/v1/messages
-	// - https://custom/v1/ -> https://custom/v1/messages
-	// - https://custom/v1/messages -> https://custom/v1/messages
-	// - https://custom/v1/messages/ -> https://custom/v1/messages
-
-	currentPath := strings.TrimRight(parsedURL.Path, "/")
-
-	var targetPath string
-	if strings.HasSuffix(currentPath, "/messages") {
-		targetPath = currentPath
-	} else if strings.HasSuffix(currentPath, "/v1") {
-		targetPath = currentPath + "/messages"
-	} else {
-		// Empty path or any other path gets /v1/messages appended
-		targetPath = path.Join(currentPath, "/v1/messages")
-	}
-
-	// Construct the final URL preserving query parameters
-	parsedURL.Path = targetPath
-	return parsedURL.String(), nil
-}
 
 // Claude API request types
 type anthropicMessage struct {
@@ -217,12 +174,7 @@ func (AnthropicBackend) StreamCompletion(ctx context.Context, request wshrpc.Wav
 		// Build endpoint allowing custom base URL from presets/settings
 		endpoint := "https://api.anthropic.com/v1/messages"
 		if request.Opts.BaseURL != "" {
-			customEndpoint, err := buildAnthropicEndpoint(strings.TrimSpace(request.Opts.BaseURL))
-			if err != nil {
-				rtn <- makeAIError(fmt.Errorf("invalid base URL: %v", err))
-				return
-			}
-			endpoint = customEndpoint
+			endpoint = strings.TrimSpace(request.Opts.BaseURL)
 		}
 
 		req, err := http.NewRequestWithContext(ctx, "POST", endpoint, strings.NewReader(string(reqBody)))
