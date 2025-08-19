@@ -54,5 +54,12 @@
     },
     "files.associations": {
         "*.css": "tailwindcss"
+    },
+    "go.lintTool": "staticcheck",
+    "go.lintFlags": ["-checks=all,-ST1005,-QF1003,-ST1000,-ST1003"],
+    "gopls": {
+        "analyses": {
+            "QF1003": false
+        }
     }
 }
