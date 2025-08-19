@@ -29,6 +29,14 @@ func defaultAzureMapperFn(model string) string {
 	return regexp.MustCompile(`[.:]`).ReplaceAllString(model, "")
 }
 
+func isReasoningModel(model string) bool {
+	m := strings.ToLower(model)
+	return strings.HasPrefix(m, "o1") ||
+		strings.HasPrefix(m, "o3") ||
+		strings.HasPrefix(m, "o4") ||
+		strings.HasPrefix(m, "gpt-5")
+}
+
 func setApiType(opts *wshrpc.WaveAIOptsType, clientConfig *openaiapi.ClientConfig) error {
 	ourApiType := strings.ToLower(opts.APIType)
 	if ourApiType == "" || ourApiType == APIType_OpenAI || ourApiType == strings.ToLower(string(openaiapi.APITypeOpenAI)) {
@@ -123,38 +131,14 @@ func (OpenAIBackend) StreamCompletion(ctx context.Context, request wshrpc.WaveAI
 			Messages: convertPrompt(request.Prompt),
 		}
 
-		// Handle o1 models differently - use non-streaming API
-		if strings.HasPrefix(request.Opts.Model, "o1-") {
+		// Set MaxCompletionTokens for reasoning models, MaxTokens for others
+		if isReasoningModel(request.Opts.Model) {
 			req.MaxCompletionTokens = request.Opts.MaxTokens
-			req.Stream = false
-
-			// Make non-streaming API call
-			resp, err := client.CreateChatCompletion(ctx, req)
-			if err != nil {
-				rtn <- makeAIError(fmt.Errorf("error calling openai API: %v", err))
-				return
-			}
-
-			// Send header packet
-			headerPk := MakeWaveAIPacket()
-			headerPk.Model = resp.Model
-			headerPk.Created = resp.Created
-			rtn <- wshrpc.RespOrErrorUnion[wshrpc.WaveAIPacketType]{Response: *headerPk}
-
-			// Send content packet(s)
-			for i, choice := range resp.Choices {
-				pk := MakeWaveAIPacket()
-				pk.Index = i
-				pk.Text = choice.Message.Content
-				pk.FinishReason = string(choice.FinishReason)
-				rtn <- wshrpc.RespOrErrorUnion[wshrpc.WaveAIPacketType]{Response: *pk}
-			}
-			return
+		} else {
+			req.MaxTokens = request.Opts.MaxTokens
 		}
 
-		// Original streaming implementation for non-o1 models
 		req.Stream = true
-		req.MaxTokens = request.Opts.MaxTokens
 		if request.Opts.MaxChoices > 1 {
 			req.N = request.Opts.MaxChoices
 		}
