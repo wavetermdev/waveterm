@@ -187,6 +187,7 @@ export class WaveAiModel implements ViewModel {
                 maxtokens: mergedPresets["ai:maxtokens"] ?? null,
                 timeoutms: mergedPresets["ai:timeoutms"] ?? 60000,
                 baseurl: mergedPresets["ai:baseurl"] ?? null,
+                proxyurl: mergedPresets["ai:proxyurl"] ?? null,
             };
             return opts;
         });

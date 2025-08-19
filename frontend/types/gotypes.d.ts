@@ -1168,6 +1168,7 @@ declare global {
         orgid?: string;
         apiversion?: string;
         baseurl?: string;
+        proxyurl?: string;
         maxtokens?: number;
         maxchoices?: number;
         timeoutms?: number;
