@@ -262,6 +262,10 @@ tasks:
             - "pkg/**/*.go"
         # don't add generates key (otherwise will always execute)
 
+    outdated:
+        desc: Check for outdated packages using npm-check-updates.
+        cmd: yarn dlx npm-check-updates
+
     version:
         desc: Get the current package version, or bump version if args are present. To pass args to `version.cjs`, add them after `--`. See `version.cjs` for usage definitions for the arguments.
         cmd: node version.cjs {{.CLI_ARGS}}
