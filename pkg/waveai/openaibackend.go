@@ -8,6 +8,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/http"
+	"net/url"
 	"regexp"
 	"strings"
 
@@ -98,6 +100,21 @@ func (OpenAIBackend) StreamCompletion(ctx context.Context, request wshrpc.WaveAI
 		}
 		if request.Opts.APIVersion != "" {
 			clientConfig.APIVersion = request.Opts.APIVersion
+		}
+
+		// Configure proxy if specified
+		if request.Opts.ProxyURL != "" {
+			proxyURL, err := url.Parse(request.Opts.ProxyURL)
+			if err != nil {
+				rtn <- makeAIError(fmt.Errorf("invalid proxy URL: %v", err))
+				return
+			}
+			transport := &http.Transport{
+				Proxy: http.ProxyURL(proxyURL),
+			}
+			clientConfig.HTTPClient = &http.Client{
+				Transport: transport,
+			}
 		}
 
 		client := openaiapi.NewClientWithConfig(clientConfig)
