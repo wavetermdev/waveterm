@@ -27,6 +27,8 @@ const (
 	UseChatConnection     = "keep-alive"
 )
 
+// see /aiprompts/usechat-streamingproto.md for protocol
+
 type UseChatMessagePart struct {
 	Type string `json:"type"`
 	Text string `json:"text"`
