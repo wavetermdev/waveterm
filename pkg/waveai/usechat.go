@@ -322,20 +322,23 @@ func streamOpenAIToUseChat(sseHandler *SSEHandler, ctx context.Context, opts *ws
 	// Send message start
 	writeMessageStart(sseHandler, messageId)
 
-	// Track whether we've started text streaming
+	// Track whether we've started text streaming and finished
 	textStarted := false
 	textEnded := false
+	finished := false
 
 	// Stream responses
 	for {
 		response, err := stream.Recv()
 		if err == io.EOF {
-			// Send text end and finish if text was started but not ended
+			// Send text end and finish if text was started but not ended, and we haven't finished yet
 			if textStarted && !textEnded {
 				writeTextEnd(sseHandler, textId)
 				textEnded = true
 			}
-			writeOpenAIFinish(sseHandler, "stop", nil)
+			if !finished {
+				writeOpenAIFinish(sseHandler, "stop", nil)
+			}
 			sseHandler.WriteDone()
 			return
 		}
@@ -354,7 +357,7 @@ func streamOpenAIToUseChat(sseHandler *SSEHandler, ctx context.Context, opts *ws
 				}
 				writeUseChatTextDelta(sseHandler, textId, choice.Delta.Content)
 			}
-			if choice.FinishReason != "" {
+			if choice.FinishReason != "" && !finished {
 				usage := &OpenAIUsageResponse{}
 				if response.Usage != nil && response.Usage.PromptTokens > 0 {
 					usage.PromptTokens = response.Usage.PromptTokens
@@ -366,6 +369,7 @@ func streamOpenAIToUseChat(sseHandler *SSEHandler, ctx context.Context, opts *ws
 					textEnded = true
 				}
 				writeOpenAIFinish(sseHandler, string(choice.FinishReason), usage)
+				finished = true
 			}
 		}
 	}
