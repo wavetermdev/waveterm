@@ -38,7 +38,7 @@ type OpenAIUsageResponse struct {
 	TotalTokens      int `json:"total_tokens"`
 }
 
-func streamOpenAIChatCompletions(sseHandler *SSEHandlerCh, ctx context.Context, opts *wshrpc.WaveAIOptsType, messages []UseChatMessage) {
+func StreamOpenAIChatCompletions(sseHandler *SSEHandlerCh, ctx context.Context, opts *wshrpc.WaveAIOptsType, messages []UseChatMessage) {
 	// Set up OpenAI client options
 	clientOpts := []option.RequestOption{
 		option.WithAPIKey(opts.APIToken),
@@ -82,7 +82,11 @@ func streamOpenAIChatCompletions(sseHandler *SSEHandlerCh, ctx context.Context, 
 	}
 
 	if opts.MaxTokens > 0 {
-		req.MaxTokens = openai.Int(int64(opts.MaxTokens))
+		if isReasoningModel(opts.Model) {
+			req.MaxCompletionTokens = openai.Int(int64(opts.MaxTokens))
+		} else {
+			req.MaxTokens = openai.Int(int64(opts.MaxTokens))
+		}
 	}
 
 	// Create stream using Chat Completions API

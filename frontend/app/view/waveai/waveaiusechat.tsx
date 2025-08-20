@@ -5,8 +5,8 @@ import { Button } from "@/app/element/button";
 import { Markdown } from "@/app/element/markdown";
 import { TypingIndicator } from "@/app/element/typingindicator";
 import { atoms, fetchWaveFile, WOS } from "@/store/global";
-import { getWebServerEndpoint } from "@/util/endpoints";
 import { BlockService, ObjectService } from "@/store/services";
+import { getWebServerEndpoint } from "@/util/endpoints";
 import { checkKeyPressed } from "@/util/keyutil";
 import { fireAndForget, isBlank, mergeMeta } from "@/util/util";
 import { useChat } from "@ai-sdk/react";
@@ -25,6 +25,7 @@ interface ChatMessage {
     id: string;
     role: "user" | "assistant" | "system";
     content: string;
+    reasoning?: string;
 }
 
 const slidingWindowSize = 30;
@@ -355,7 +356,7 @@ ChatWindow.displayName = "ChatWindow";
 
 const ChatItem = memo(
     ({ message, fontSize, fixedFontSize }: { message: ChatMessage; fontSize?: string; fixedFontSize?: string }) => {
-        const { role, content } = message;
+        const { role, content, reasoning } = message;
 
         if (role === "user") {
             return (
@@ -381,13 +382,29 @@ const ChatItem = memo(
                     <div className="flex-shrink-0 w-8 h-8 bg-accent/10 rounded-md flex items-center justify-center">
                         <i className="fa-sharp fa-solid fa-sparkles text-accent"></i>
                     </div>
-                    <div className="bg-secondary/10 rounded-lg p-3 max-w-[85%]">
-                        <Markdown
-                            text={content}
-                            scrollable={false}
-                            fontSizeOverride={fontSize ? parseInt(fontSize) : undefined}
-                            fixedFontSizeOverride={fixedFontSize ? parseInt(fixedFontSize) : undefined}
-                        />
+                    <div className="flex flex-col gap-2 max-w-[85%]">
+                        {reasoning && (
+                            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                                <div className="flex items-center gap-2 mb-2">
+                                    <i className="fa-sharp fa-solid fa-brain text-yellow-600 text-sm"></i>
+                                    <span className="text-yellow-800 text-sm font-medium">Reasoning</span>
+                                </div>
+                                <Markdown
+                                    text={reasoning}
+                                    scrollable={false}
+                                    fontSizeOverride={fontSize ? parseInt(fontSize) : undefined}
+                                    fixedFontSizeOverride={fixedFontSize ? parseInt(fixedFontSize) : undefined}
+                                />
+                            </div>
+                        )}
+                        <div className="bg-secondary/10 rounded-lg p-3">
+                            <Markdown
+                                text={content}
+                                scrollable={false}
+                                fontSizeOverride={fontSize ? parseInt(fontSize) : undefined}
+                                fixedFontSizeOverride={fixedFontSize ? parseInt(fixedFontSize) : undefined}
+                            />
+                        </div>
                     </div>
                 </div>
             );
@@ -498,16 +515,16 @@ const WaveAiUseChat = ({ blockId, model }: WaveAiUseChatProps) => {
     const [input, setInput] = useState("");
     const { messages, sendMessage, status, error, setMessages, stop } = useChat({
         id: `chat-${blockId}`,
-        messages: initialMessages.map(m => ({
+        messages: initialMessages.map((m) => ({
             id: m.id,
             role: m.role,
-            parts: [{ type: 'text', text: m.content }]
+            parts: [{ type: "text", text: m.content }],
         })),
         transport: new DefaultChatTransport({
             api: `${getWebServerEndpoint()}/api/aichat?blockid=${blockId}&preset=${encodeURIComponent(presetKey)}`,
             body: () => ({
                 blockId,
-                preset: presetKey
+                preset: presetKey,
             }),
             headers: async () => ({
                 "X-Block-ID": blockId,
@@ -526,11 +543,16 @@ const WaveAiUseChat = ({ blockId, model }: WaveAiUseChatProps) => {
             // Save conversation after each completion
             try {
                 const allMessages = [...messages, message];
-                const chatMessages = allMessages.map(m => ({
-                    id: m.id,
-                    role: m.role as "user" | "assistant" | "system",
-                    content: m.parts.map(p => p.type === 'text' ? p.text : '').join('')
-                }));
+                const chatMessages = allMessages.map((m) => {
+                    const text = m.parts?.filter((p: any) => p.type === 'text').map((p: any) => p.text).join('') ?? '';
+                    const reasoning = m.parts?.filter((p: any) => p.type === 'reasoning').map((p: any) => p.text).join('') ?? '';
+                    return {
+                        id: m.id,
+                        role: m.role as "user" | "assistant" | "system",
+                        content: text,
+                        reasoning,
+                    };
+                });
                 await model.saveMessages(chatMessages);
             } catch (error) {
                 console.error("Failed to save messages:", error);
@@ -547,13 +569,16 @@ const WaveAiUseChat = ({ blockId, model }: WaveAiUseChatProps) => {
         setInput(e.target.value);
     }, []);
 
-    const handleSubmit = useCallback((e: React.FormEvent) => {
-        e.preventDefault();
-        if (!input.trim() || isLoading) return;
-        
-        sendMessage({ text: input });
-        setInput("");
-    }, [input, isLoading, sendMessage]);
+    const handleSubmit = useCallback(
+        (e: React.FormEvent) => {
+            e.preventDefault();
+            if (!input.trim() || isLoading) return;
+
+            sendMessage({ text: input });
+            setInput("");
+        },
+        [input, isLoading, sendMessage]
+    );
 
     // Clear messages handler
     const handleClearMessages = useCallback(async () => {
@@ -581,11 +606,24 @@ const WaveAiUseChat = ({ blockId, model }: WaveAiUseChatProps) => {
     return (
         <div className="flex flex-col h-full w-full bg-background">
             <ChatWindow
-                messages={messages.map(m => ({
-                    id: m.id,
-                    role: m.role as "user" | "assistant" | "system",
-                    content: m.parts.map(p => p.type === 'text' ? p.text : '').join('')
-                }))}
+                messages={messages.map((m) => {
+                    const text = m.parts
+                        .filter((p: any) => p.type === 'text')
+                        .map((p: any) => p.text)
+                        .join('');
+
+                    const reasoning = m.parts
+                        .filter((p: any) => p.type === 'reasoning')
+                        .map((p: any) => p.text)
+                        .join('');
+
+                    return {
+                        id: m.id,
+                        role: m.role as "user" | "assistant" | "system",
+                        content: text,
+                        reasoning,
+                    };
+                })}
                 isLoading={isLoading}
                 error={error}
                 fontSize={fontSize}

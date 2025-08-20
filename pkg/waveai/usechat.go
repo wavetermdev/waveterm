@@ -152,14 +152,14 @@ func shouldUseChatCompletionsAPI(model string) bool {
 		strings.HasPrefix(m, "o1-")
 }
 
-func streamOpenAIToUseChat(sseHandler *SSEHandlerCh, ctx context.Context, opts *wshrpc.WaveAIOptsType, messages []UseChatMessage) {
+func StreamOpenAIToUseChat(sseHandler *SSEHandlerCh, ctx context.Context, opts *wshrpc.WaveAIOptsType, messages []UseChatMessage) {
 	// Route to appropriate API based on model
 	if shouldUseChatCompletionsAPI(opts.Model) {
 		// Older models (gpt-3.5, gpt-4, gpt-4-turbo, o1-*) use Chat Completions API
-		streamOpenAIChatCompletions(sseHandler, ctx, opts, messages)
+		StreamOpenAIChatCompletions(sseHandler, ctx, opts, messages)
 	} else {
 		// Newer models (gpt-4.1, gpt-4o, gpt-5, o3, o4, etc.) use Responses API for reasoning support
-		streamOpenAIResponsesAPI(sseHandler, ctx, opts, messages)
+		StreamOpenAIResponsesAPI(sseHandler, ctx, opts, messages)
 	}
 }
 
@@ -227,5 +227,5 @@ func HandleAIChat(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Stream OpenAI response
-	streamOpenAIToUseChat(sseHandler, r.Context(), aiOpts, req.Messages)
+	StreamOpenAIToUseChat(sseHandler, r.Context(), aiOpts, req.Messages)
 }

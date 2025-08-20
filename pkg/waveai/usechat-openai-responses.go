@@ -11,10 +11,12 @@ import (
 	"github.com/openai/openai-go/v2"
 	"github.com/openai/openai-go/v2/option"
 	"github.com/openai/openai-go/v2/responses"
+	"github.com/openai/openai-go/v2/shared"
+	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 )
 
-func streamOpenAIResponsesAPI(sseHandler *SSEHandlerCh, ctx context.Context, opts *wshrpc.WaveAIOptsType, messages []UseChatMessage) {
+func createOpenAIRequest(opts *wshrpc.WaveAIOptsType, messages []UseChatMessage) (openai.Client, responses.ResponseNewParams) {
 	// Set up OpenAI client options
 	clientOpts := []option.RequestOption{
 		option.WithAPIKey(opts.APIToken),
@@ -62,9 +64,23 @@ func streamOpenAIResponsesAPI(sseHandler *SSEHandlerCh, ctx context.Context, opt
 		},
 	}
 
+	// Only set reasoning parameter for reasoning models
+	if isReasoningModel(opts.Model) {
+		req.Reasoning = shared.ReasoningParam{
+			Effort:  openai.ReasoningEffortMedium,
+			Summary: openai.ReasoningSummaryAuto,
+		}
+	}
+
 	if opts.MaxTokens > 0 {
 		req.MaxOutputTokens = openai.Int(int64(opts.MaxTokens))
 	}
+
+	return client, req
+}
+
+func StreamOpenAIResponsesAPI(sseHandler *SSEHandlerCh, ctx context.Context, opts *wshrpc.WaveAIOptsType, messages []UseChatMessage) {
+	client, req := createOpenAIRequest(opts, messages)
 
 	// Create stream using Responses API
 	stream := client.Responses.NewStreaming(ctx, req)
@@ -89,11 +105,44 @@ func streamOpenAIResponsesAPI(sseHandler *SSEHandlerCh, ctx context.Context, opt
 	for stream.Next() {
 		event := stream.Current()
 
+		// fmt.Printf("DEBUG: Received event type: %s\n", event.Type)
+
 		switch event.Type {
+		case "response.output_item.added":
+			outputItem := event.AsResponseOutputItemAdded()
+			// fmt.Printf("DEBUG: output_item.added - Type: %s\n", outputItem.Item.Type)
+			if outputItem.Item.Type == "reasoning" && !reasoningStarted {
+				sseHandler.AiMsgReasoningStart(reasoningId)
+				reasoningStarted = true
+			}
+
+		case "response.reasoning_summary_part.added":
+			// Optional; first empty part—no-op
+
+		case "response.reasoning_summary_text.delta":
+			reasoningDelta := event.AsResponseReasoningSummaryTextDelta()
+			if reasoningDelta.Delta != "" {
+				sseHandler.AiMsgReasoningDelta(reasoningId, reasoningDelta.Delta)
+			}
+
+		case "response.reasoning_summary_text.done":
+			if reasoningStarted && !reasoningEnded {
+				sseHandler.AiMsgReasoningEnd(reasoningId)
+				reasoningEnded = true
+			}
+
+		case "response.reasoning_summary_part.done":
+			// Reasoning summary part done - no action needed
+
+		case "response.content_part.added":
+			// First output_text part for message—no-op
+
+		case "response.content_part.done":
+			// Content part done - no action needed
+
 		case "response.output_text.delta":
 			textDelta := event.AsResponseOutputTextDelta()
 			if textDelta.Delta != "" {
-				// Send text start only when we have actual content
 				if !textStarted {
 					sseHandler.AiMsgTextStart(textId)
 					textStarted = true
@@ -101,19 +150,12 @@ func streamOpenAIResponsesAPI(sseHandler *SSEHandlerCh, ctx context.Context, opt
 				sseHandler.AiMsgTextDelta(textId, textDelta.Delta)
 			}
 
-		case "response.reasoning_text.delta":
-			reasoningDelta := event.AsResponseReasoningTextDelta()
-			if reasoningDelta.Delta != "" {
-				// Send reasoning start only when we have actual reasoning content
-				if !reasoningStarted {
-					sseHandler.AiMsgReasoningStart(reasoningId)
-					reasoningStarted = true
-				}
-				sseHandler.AiMsgReasoningDelta(reasoningId, reasoningDelta.Delta)
-			}
+		case "response.output_text.done":
+			// Finalize text if needed
 
-		case "response.reasoning_text.done":
-			// End reasoning when reasoning text is done
+		case "response.output_item.done":
+			// Item-level close (reasoning or message)
+			// If we had started reasoning but haven't ended it, end it now
 			if reasoningStarted && !reasoningEnded {
 				sseHandler.AiMsgReasoningEnd(reasoningId)
 				reasoningEnded = true
@@ -148,6 +190,12 @@ func streamOpenAIResponsesAPI(sseHandler *SSEHandlerCh, ctx context.Context, opt
 				finished = true
 			}
 			return
+
+		default:
+			// Log unhandled event types in dev mode
+			if wavebase.IsDevMode() {
+				fmt.Printf("DEBUG: Unhandled event type: %s\n", event.Type)
+			}
 		}
 	}
 
