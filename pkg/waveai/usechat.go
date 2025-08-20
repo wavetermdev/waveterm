@@ -9,12 +9,10 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"io"
 	"log"
 	"net/http"
 	"strings"
 
-	openaiapi "github.com/sashabaranov/go-openai"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wconfig"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
@@ -52,31 +50,6 @@ func (m *UseChatMessage) GetContent() string {
 type UseChatRequest struct {
 	Messages []UseChatMessage        `json:"messages"`
 	Options  *wconfig.AiSettingsType `json:"options,omitempty"`
-}
-
-// OpenAI Chat Completion streaming response format
-type OpenAIStreamChoice struct {
-	Index int `json:"index"`
-	Delta struct {
-		Content   string `json:"content,omitempty"`
-		Reasoning string `json:"reasoning,omitempty"`
-	} `json:"delta"`
-	FinishReason *string `json:"finish_reason"`
-}
-
-type OpenAIStreamResponse struct {
-	ID      string               `json:"id"`
-	Object  string               `json:"object"`
-	Created int64                `json:"created"`
-	Model   string               `json:"model"`
-	Choices []OpenAIStreamChoice `json:"choices"`
-	Usage   *OpenAIUsageResponse `json:"usage,omitempty"`
-}
-
-type OpenAIUsageResponse struct {
-	PromptTokens     int `json:"prompt_tokens"`
-	CompletionTokens int `json:"completion_tokens"`
-	TotalTokens      int `json:"total_tokens"`
 }
 
 func resolveAIConfig(ctx context.Context, blockId, presetKey string, requestOptions *wconfig.AiSettingsType) (*wshrpc.WaveAIOptsType, error) {
@@ -170,141 +143,23 @@ func mustMarshal(v any) []byte {
 	return data
 }
 
+func shouldUseChatCompletionsAPI(model string) bool {
+	m := strings.ToLower(model)
+	// Chat Completions API is required for older models: gpt-3.5-*, gpt-4, gpt-4-turbo, o1-*
+	return strings.HasPrefix(m, "gpt-3.5") ||
+		strings.HasPrefix(m, "gpt-4-") ||
+		m == "gpt-4" ||
+		strings.HasPrefix(m, "o1-")
+}
+
 func streamOpenAIToUseChat(sseHandler *SSEHandlerCh, ctx context.Context, opts *wshrpc.WaveAIOptsType, messages []UseChatMessage) {
-
-	// Set up OpenAI client
-	clientConfig := openaiapi.DefaultConfig(opts.APIToken)
-	if opts.BaseURL != "" {
-		clientConfig.BaseURL = opts.BaseURL
-	}
-	if opts.OrgID != "" {
-		clientConfig.OrgID = opts.OrgID
-	}
-	if opts.APIVersion != "" {
-		clientConfig.APIVersion = opts.APIVersion
-	}
-
-	client := openaiapi.NewClientWithConfig(clientConfig)
-
-	// Convert messages, filtering out empty content
-	var openaiMessages []openaiapi.ChatCompletionMessage
-	for _, msg := range messages {
-		content := msg.GetContent()
-		// Skip messages with empty content as OpenAI requires non-empty content
-		if strings.TrimSpace(content) == "" {
-			continue
-		}
-		openaiMessages = append(openaiMessages, openaiapi.ChatCompletionMessage{
-			Role:    msg.Role,
-			Content: content,
-		})
-	}
-
-	// Create request
-	req := openaiapi.ChatCompletionRequest{
-		Model:    opts.Model,
-		Messages: openaiMessages,
-		Stream:   true,
-	}
-
-	if opts.MaxTokens > 0 {
-		if isReasoningModel(opts.Model) {
-			req.MaxCompletionTokens = opts.MaxTokens
-		} else {
-			req.MaxTokens = opts.MaxTokens
-		}
-	}
-
-	// Create stream
-	stream, err := client.CreateChatCompletionStream(ctx, req)
-	if err != nil {
-		sseHandler.WriteError(fmt.Sprintf("OpenAI API error: %v", err))
-		return
-	}
-	defer stream.Close()
-
-	// Generate IDs for the streaming protocol - use shorter, simpler IDs
-	messageId := generateID()
-	textId := generateID()
-	reasoningId := generateID()
-
-	// Send message start
-	sseHandler.AiMsgStart(messageId)
-
-	// Track whether we've started text/reasoning streaming and finished
-	textStarted := false
-	textEnded := false
-	reasoningStarted := false
-	reasoningEnded := false
-	finished := false
-
-	// Stream responses
-	for {
-		response, err := stream.Recv()
-		if err == io.EOF {
-			// Send reasoning end if reasoning was started but not ended
-			if reasoningStarted && !reasoningEnded {
-				sseHandler.AiMsgReasoningEnd(reasoningId)
-				reasoningEnded = true
-			}
-			// Send text end if text was started but not ended
-			if textStarted && !textEnded {
-				sseHandler.AiMsgTextEnd(textId)
-				textEnded = true
-			}
-			if !finished {
-				sseHandler.AiMsgFinish("stop", nil)
-			}
-			return
-		}
-		if err != nil {
-			sseHandler.WriteError(fmt.Sprintf("Stream error: %v", err))
-			return
-		}
-
-		// Process choices
-		for _, choice := range response.Choices {
-			// Handle reasoning tokens
-			if choice.Delta.ReasoningContent != "" {
-				// Send reasoning start only when we have actual reasoning content
-				if !reasoningStarted {
-					sseHandler.AiMsgReasoningStart(reasoningId)
-					reasoningStarted = true
-				}
-				sseHandler.AiMsgReasoningDelta(reasoningId, choice.Delta.ReasoningContent)
-			}
-
-			// Handle regular content tokens
-			if choice.Delta.Content != "" {
-				// Send text start only when we have actual content
-				if !textStarted {
-					sseHandler.AiMsgTextStart(textId)
-					textStarted = true
-				}
-				sseHandler.AiMsgTextDelta(textId, choice.Delta.Content)
-			}
-
-			if choice.FinishReason != "" && !finished {
-				usage := &OpenAIUsageResponse{}
-				if response.Usage != nil && response.Usage.PromptTokens > 0 {
-					usage.PromptTokens = response.Usage.PromptTokens
-					usage.CompletionTokens = response.Usage.CompletionTokens
-					usage.TotalTokens = response.Usage.TotalTokens
-				}
-				// End reasoning if it was started but not ended
-				if reasoningStarted && !reasoningEnded {
-					sseHandler.AiMsgReasoningEnd(reasoningId)
-					reasoningEnded = true
-				}
-				// End text if it was started but not ended
-				if textStarted && !textEnded {
-					sseHandler.AiMsgTextEnd(textId)
-					textEnded = true
-				}
-				sseHandler.AiMsgFinish(string(choice.FinishReason), usage)
-				finished = true
-			}
-		}
+	// Route to appropriate API based on model
+	if shouldUseChatCompletionsAPI(opts.Model) {
+		// Older models (gpt-3.5, gpt-4, gpt-4-turbo, o1-*) use Chat Completions API
+		streamOpenAIChatCompletions(sseHandler, ctx, opts, messages)
+	} else {
+		// Newer models (gpt-4.1, gpt-4o, gpt-5, o3, o4, etc.) use Responses API for reasoning support
+		streamOpenAIResponsesAPI(sseHandler, ctx, opts, messages)
 	}
 }
 
