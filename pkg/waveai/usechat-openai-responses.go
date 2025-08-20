@@ -121,7 +121,7 @@ func StreamOpenAIResponsesAPI(sseHandler *SSEHandlerCh, ctx context.Context, opt
 
 		case "response.reasoning_summary_text.delta":
 			reasoningDelta := event.AsResponseReasoningSummaryTextDelta()
-			if reasoningDelta.Delta != "" {
+			if reasoningDelta.Delta != "" && !reasoningEnded {
 				sseHandler.AiMsgReasoningDelta(reasoningId, reasoningDelta.Delta)
 			}
 
@@ -142,7 +142,7 @@ func StreamOpenAIResponsesAPI(sseHandler *SSEHandlerCh, ctx context.Context, opt
 
 		case "response.output_text.delta":
 			textDelta := event.AsResponseOutputTextDelta()
-			if textDelta.Delta != "" {
+			if textDelta.Delta != "" && !textEnded {
 				if !textStarted {
 					sseHandler.AiMsgTextStart(textId)
 					textStarted = true
@@ -151,7 +151,10 @@ func StreamOpenAIResponsesAPI(sseHandler *SSEHandlerCh, ctx context.Context, opt
 			}
 
 		case "response.output_text.done":
-			// Finalize text if needed
+			if textStarted && !textEnded {
+				sseHandler.AiMsgTextEnd(textId)
+				textEnded = true
+			}
 
 		case "response.output_item.done":
 			// Item-level close (reasoning or message)
