@@ -42,6 +42,16 @@ tasks:
             WCLOUD_ENDPOINT: "https://api-dev.waveterm.dev"
             WCLOUD_WS_ENDPOINT: "wss://wsapi-dev.waveterm.dev"
 
+    electron:quickdev:
+        desc: Run the Electron application via the Vite dev server (quick dev - no docsite, arm64 only, no generate, no wsh).
+        cmd: yarn dev
+        deps:
+            - yarn
+            - build:backend:quickdev
+        env:
+            WCLOUD_ENDPOINT: "https://api-dev.waveterm.dev/central"
+            WCLOUD_WS_ENDPOINT: "wss://wsapi-dev.waveterm.dev/"
+
     storybook:
         desc: Start the Storybook server.
         cmd: yarn storybook
@@ -114,6 +124,11 @@ tasks:
             - task: build:server
             - task: build:wsh
 
+    build:backend:quickdev:
+        desc: Build only the wavesrv component for quickdev (arm64 macOS only, no generate, no wsh).
+        cmds:
+            - task: build:server:quickdev
+
     build:schema:
         desc: Build the schema for configuration.
         sources:
@@ -152,6 +167,24 @@ tasks:
             - task: build:server:internal
               vars:
                   ARCHS: arm64,amd64
+
+    build:server:quickdev:
+        desc: Build the wavesrv component for quickdev (arm64 macOS only, no generate).
+        platforms: [darwin]
+        cmds:
+            - cmd: "{{.RM}} dist/bin/wavesrv*"
+              ignore_error: true
+            - task: build:server:internal
+              vars:
+                  ARCHS: arm64
+        deps:
+            - go:mod:tidy
+        sources:
+            - "cmd/server/*.go"
+            - "pkg/**/*.go"
+            - "pkg/**/*.json"
+        generates:
+            - dist/bin/wavesrv.*
 
     build:server:windows:
         desc: Build the wavesrv component for Windows platforms (only generates artifacts for the current architecture).
