@@ -5,10 +5,14 @@ package waveai
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
+	"time"
 
 	openaiapi "github.com/sashabaranov/go-openai"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
@@ -23,9 +27,32 @@ const (
 	UseChatConnection     = "keep-alive"
 )
 
+type UseChatMessagePart struct {
+	Type string `json:"type"`
+	Text string `json:"text"`
+}
+
 type UseChatMessage struct {
-	Role    string `json:"role"`
-	Content string `json:"content"`
+	Role    string               `json:"role"`
+	Content string               `json:"content,omitempty"`
+	Parts   []UseChatMessagePart `json:"parts,omitempty"`
+}
+
+// GetContent extracts the text content from either content field or parts array
+func (m *UseChatMessage) GetContent() string {
+	if m.Content != "" {
+		return m.Content
+	}
+	if len(m.Parts) > 0 {
+		var content strings.Builder
+		for _, part := range m.Parts {
+			if part.Type == "text" {
+				content.WriteString(part.Text)
+			}
+		}
+		return content.String()
+	}
+	return ""
 }
 
 type UseChatRequest struct {
@@ -33,26 +60,28 @@ type UseChatRequest struct {
 	Options  map[string]any   `json:"options,omitempty"`
 }
 
-type UseChatTextResponse struct {
-	Type string `json:"type"`
-	Text string `json:"text"`
+// OpenAI Chat Completion streaming response format
+type OpenAIStreamChoice struct {
+	Index int `json:"index"`
+	Delta struct {
+		Content string `json:"content,omitempty"`
+	} `json:"delta"`
+	FinishReason *string `json:"finish_reason"`
 }
 
-type UseChatFinishResponse struct {
-	Type         string                `json:"type"`
-	FinishReason string                `json:"finish_reason"`
-	Usage        *UseChatUsageResponse `json:"usage,omitempty"`
+type OpenAIStreamResponse struct {
+	ID      string               `json:"id"`
+	Object  string               `json:"object"`
+	Created int64                `json:"created"`
+	Model   string               `json:"model"`
+	Choices []OpenAIStreamChoice `json:"choices"`
+	Usage   *OpenAIUsageResponse `json:"usage,omitempty"`
 }
 
-type UseChatUsageResponse struct {
+type OpenAIUsageResponse struct {
 	PromptTokens     int `json:"prompt_tokens"`
 	CompletionTokens int `json:"completion_tokens"`
 	TotalTokens      int `json:"total_tokens"`
-}
-
-type UseChatErrorResponse struct {
-	Type  string `json:"type"`
-	Error string `json:"error"`
 }
 
 func resolveAIConfig(ctx context.Context, blockId, presetKey string, requestOptions map[string]any) (*wshrpc.WaveAIOptsType, error) {
@@ -84,7 +113,14 @@ func resolveAIConfig(ctx context.Context, blockId, presetKey string, requestOpti
 	// Load preset configuration
 	var presetConfig map[string]any
 	if finalPreset != "default" {
-		if preset, ok := fullConfig.Presets[fmt.Sprintf("ai@%s", finalPreset)]; ok {
+		// Check if preset already has ai@ prefix
+		var presetKey string
+		if strings.HasPrefix(finalPreset, "ai@") {
+			presetKey = finalPreset
+		} else {
+			presetKey = fmt.Sprintf("ai@%s", finalPreset)
+		}
+		if preset, ok := fullConfig.Presets[presetKey]; ok {
 			presetConfig = preset
 		}
 	}
@@ -210,9 +246,13 @@ func resolveAIConfig(ctx context.Context, blockId, presetKey string, requestOpti
 func convertUseChatMessagesToPrompt(messages []UseChatMessage) []wshrpc.WaveAIPromptMessageType {
 	var prompt []wshrpc.WaveAIPromptMessageType
 	for _, msg := range messages {
+		content := msg.GetContent()
+		if strings.TrimSpace(content) == "" {
+			continue
+		}
 		prompt = append(prompt, wshrpc.WaveAIPromptMessageType{
 			Role:    msg.Role,
-			Content: msg.Content,
+			Content: content,
 		})
 	}
 	return prompt
@@ -233,12 +273,17 @@ func streamOpenAIToUseChat(w http.ResponseWriter, ctx context.Context, opts *wsh
 
 	client := openaiapi.NewClientWithConfig(clientConfig)
 
-	// Convert messages
+	// Convert messages, filtering out empty content
 	var openaiMessages []openaiapi.ChatCompletionMessage
 	for _, msg := range messages {
+		content := msg.GetContent()
+		// Skip messages with empty content as OpenAI requires non-empty content
+		if strings.TrimSpace(content) == "" {
+			continue
+		}
 		openaiMessages = append(openaiMessages, openaiapi.ChatCompletionMessage{
 			Role:    msg.Role,
-			Content: msg.Content,
+			Content: content,
 		})
 	}
 
@@ -260,36 +305,59 @@ func streamOpenAIToUseChat(w http.ResponseWriter, ctx context.Context, opts *wsh
 	// Create stream
 	stream, err := client.CreateChatCompletionStream(ctx, req)
 	if err != nil {
-		writeUseChatError(w, fmt.Sprintf("OpenAI API error: %v", err))
+		// Return HTTP error instead of streaming error
+		http.Error(w, fmt.Sprintf("OpenAI API error: %v", err), http.StatusBadRequest)
 		return
 	}
 	defer stream.Close()
+
+	// Generate IDs for the streaming protocol
+	messageId := "msg_" + generateID()
+	textId := "text_" + generateID()
+
+	// Send message start
+	writeMessageStart(w, messageId)
+	if flusher, ok := w.(http.Flusher); ok {
+		flusher.Flush()
+	}
+
+	// Send text start
+	writeTextStart(w, textId)
+	if flusher, ok := w.(http.Flusher); ok {
+		flusher.Flush()
+	}
 
 	// Stream responses
 	for {
 		response, err := stream.Recv()
 		if err == io.EOF {
+			// Send text end and finish
+			writeTextEnd(w, textId)
+			writeOpenAIFinish(w, "stop", nil)
 			writeUseChatDone(w)
 			return
 		}
 		if err != nil {
-			writeUseChatError(w, fmt.Sprintf("Stream error: %v", err))
+			// For streaming errors, we can't send HTTP errors anymore since headers are sent
+			// Just log and break the stream
+			fmt.Printf("Stream error: %v\n", err)
 			return
 		}
 
 		// Process choices
 		for _, choice := range response.Choices {
 			if choice.Delta.Content != "" {
-				writeUseChatText(w, choice.Delta.Content)
+				writeUseChatTextDelta(w, textId, choice.Delta.Content)
 			}
 			if choice.FinishReason != "" {
-				usage := &UseChatUsageResponse{}
-				if response.Usage.PromptTokens > 0 {
+				usage := &OpenAIUsageResponse{}
+				if response.Usage != nil && response.Usage.PromptTokens > 0 {
 					usage.PromptTokens = response.Usage.PromptTokens
 					usage.CompletionTokens = response.Usage.CompletionTokens
 					usage.TotalTokens = response.Usage.TotalTokens
 				}
-				writeUseChatFinish(w, string(choice.FinishReason), usage)
+				writeTextEnd(w, textId)
+				writeOpenAIFinish(w, string(choice.FinishReason), usage)
 			}
 		}
 
@@ -300,33 +368,65 @@ func streamOpenAIToUseChat(w http.ResponseWriter, ctx context.Context, opts *wsh
 	}
 }
 
-func writeUseChatText(w http.ResponseWriter, text string) {
-	resp := UseChatTextResponse{
-		Type: "text",
-		Text: text,
+func writeMessageStart(w http.ResponseWriter, messageId string) {
+	resp := map[string]interface{}{
+		"type":      "start",
+		"messageId": messageId,
 	}
 	data, _ := json.Marshal(resp)
 	fmt.Fprintf(w, "data: %s\n\n", data)
 }
 
-func writeUseChatFinish(w http.ResponseWriter, finishReason string, usage *UseChatUsageResponse) {
-	resp := UseChatFinishResponse{
-		Type:         "finish",
-		FinishReason: finishReason,
-		Usage:        usage,
+func writeTextStart(w http.ResponseWriter, textId string) {
+	resp := map[string]interface{}{
+		"type": "text-start",
+		"id":   textId,
+	}
+	data, _ := json.Marshal(resp)
+	fmt.Fprintf(w, "data: %s\n\n", data)
+}
+
+func writeUseChatTextDelta(w http.ResponseWriter, textId string, text string) {
+	resp := map[string]interface{}{
+		"type":  "text-delta",
+		"id":    textId,
+		"delta": text,
+	}
+	data, _ := json.Marshal(resp)
+	fmt.Fprintf(w, "data: %s\n\n", data)
+}
+
+func writeTextEnd(w http.ResponseWriter, textId string) {
+	resp := map[string]interface{}{
+		"type": "text-end",
+		"id":   textId,
+	}
+	data, _ := json.Marshal(resp)
+	fmt.Fprintf(w, "data: %s\n\n", data)
+}
+
+func writeOpenAIFinish(w http.ResponseWriter, finishReason string, usage *OpenAIUsageResponse) {
+	resp := map[string]interface{}{
+		"type": "finish",
 	}
 	data, _ := json.Marshal(resp)
 	fmt.Fprintf(w, "data: %s\n\n", data)
 }
 
 func writeUseChatError(w http.ResponseWriter, errorMsg string) {
-	resp := UseChatErrorResponse{
-		Type:  "error",
-		Error: errorMsg,
-	}
-	data, _ := json.Marshal(resp)
-	fmt.Fprintf(w, "data: %s\n\n", data)
-	writeUseChatDone(w)
+	// For errors, return HTTP error instead of streaming format
+	// This prevents the AI SDK validation error
+	http.Error(w, errorMsg, http.StatusInternalServerError)
+}
+
+func generateID() string {
+	bytes := make([]byte, 16)
+	rand.Read(bytes)
+	return hex.EncodeToString(bytes)
+}
+
+func getCurrentTimestamp() int64 {
+	return time.Now().Unix()
 }
 
 func writeUseChatDone(w http.ResponseWriter) {
@@ -384,6 +484,7 @@ func HandleAIChat(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", UseChatContentTypeSSE)
 	w.Header().Set("Cache-Control", UseChatCacheControl)
 	w.Header().Set("Connection", UseChatConnection)
+	w.Header().Set("x-vercel-ai-ui-message-stream", "v1")
 
 	// Stream OpenAI response
 	streamOpenAIToUseChat(w, r.Context(), aiOpts, req.Messages)
