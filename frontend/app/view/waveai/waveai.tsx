@@ -889,7 +889,7 @@ const WaveAiOld = ({ model }: { model: WaveAiModel; blockId: string }) => {
 };
 
 const WaveAi = ({ model, blockId }: { model: WaveAiModel; blockId: string }) => {
-    const useNewImplementation = false;
+    const useNewImplementation = true;
 
     if (useNewImplementation) {
         const useChatModel = useMemo(() => new WaveAiUseChatModel(blockId), [blockId]);

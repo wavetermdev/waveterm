@@ -10,10 +10,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"strings"
-	"time"
 
 	openaiapi "github.com/sashabaranov/go-openai"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
@@ -261,30 +259,10 @@ func convertUseChatMessagesToPrompt(messages []UseChatMessage) []wshrpc.WaveAIPr
 	return prompt
 }
 
-func streamOpenAIToUseChat(w http.ResponseWriter, ctx context.Context, opts *wshrpc.WaveAIOptsType, messages []UseChatMessage) {
-	// Set up keepalive ticker immediately
-	keepaliveTicker := time.NewTicker(1 * time.Second)
-	defer keepaliveTicker.Stop()
-
-	// Create a channel to signal when streaming is done
-	done := make(chan bool)
-	defer close(done)
-
-	// Start keepalive goroutine immediately
-	go func() {
-		for {
-			select {
-			case <-keepaliveTicker.C:
-				// Send SSE keepalive comment
-				fmt.Fprintf(w, ": keepalive\n\n")
-				tryFlush(w)
-			case <-done:
-				return
-			case <-ctx.Done():
-				return
-			}
-		}
-	}()
+func streamOpenAIToUseChat(sseHandler *SSEHandler, ctx context.Context, opts *wshrpc.WaveAIOptsType, messages []UseChatMessage) {
+	// Start keepalive
+	sseHandler.StartKeepalive()
+	defer sseHandler.StopKeepalive()
 
 	// Set up OpenAI client
 	clientConfig := openaiapi.DefaultConfig(opts.APIToken)
@@ -332,9 +310,7 @@ func streamOpenAIToUseChat(w http.ResponseWriter, ctx context.Context, opts *wsh
 	// Create stream
 	stream, err := client.CreateChatCompletionStream(ctx, req)
 	if err != nil {
-		// Send error in SSE format since headers are already sent
-		writeUseChatError(w, fmt.Sprintf("OpenAI API error: %v", err))
-		done <- true
+		sseHandler.WriteError(fmt.Sprintf("OpenAI API error: %v", err))
 		return
 	}
 	defer stream.Close()
@@ -344,8 +320,7 @@ func streamOpenAIToUseChat(w http.ResponseWriter, ctx context.Context, opts *wsh
 	textId := generateID()
 
 	// Send message start
-	writeMessageStart(w, messageId)
-	tryFlush(w)
+	writeMessageStart(sseHandler, messageId)
 
 	// Track whether we've started text streaming
 	textStarted := false
@@ -357,18 +332,15 @@ func streamOpenAIToUseChat(w http.ResponseWriter, ctx context.Context, opts *wsh
 		if err == io.EOF {
 			// Send text end and finish if text was started but not ended
 			if textStarted && !textEnded {
-				writeTextEnd(w, textId)
+				writeTextEnd(sseHandler, textId)
 				textEnded = true
 			}
-			writeOpenAIFinish(w, "stop", nil)
-			writeUseChatDone(w)
-			done <- true
+			writeOpenAIFinish(sseHandler, "stop", nil)
+			sseHandler.WriteDone()
 			return
 		}
 		if err != nil {
-			// Send error in SSE format since headers are already sent
-			writeUseChatError(w, fmt.Sprintf("Stream error: %v", err))
-			done <- true
+			sseHandler.WriteError(fmt.Sprintf("Stream error: %v", err))
 			return
 		}
 
@@ -377,10 +349,10 @@ func streamOpenAIToUseChat(w http.ResponseWriter, ctx context.Context, opts *wsh
 			if choice.Delta.Content != "" {
 				// Send text start only when we have actual content
 				if !textStarted {
-					writeTextStart(w, textId)
+					writeTextStart(sseHandler, textId)
 					textStarted = true
 				}
-				writeUseChatTextDelta(w, textId, choice.Delta.Content)
+				writeUseChatTextDelta(sseHandler, textId, choice.Delta.Content)
 			}
 			if choice.FinishReason != "" {
 				usage := &OpenAIUsageResponse{}
@@ -390,97 +362,59 @@ func streamOpenAIToUseChat(w http.ResponseWriter, ctx context.Context, opts *wsh
 					usage.TotalTokens = response.Usage.TotalTokens
 				}
 				if textStarted && !textEnded {
-					writeTextEnd(w, textId)
+					writeTextEnd(sseHandler, textId)
 					textEnded = true
 				}
-				writeOpenAIFinish(w, string(choice.FinishReason), usage)
+				writeOpenAIFinish(sseHandler, string(choice.FinishReason), usage)
 			}
 		}
-
-		// Flush the response
-		tryFlush(w)
 	}
 }
 
-func writeMessageStart(w http.ResponseWriter, messageId string) {
+func writeMessageStart(sseHandler *SSEHandler, messageId string) {
 	resp := map[string]interface{}{
 		"type":      "start",
 		"messageId": messageId,
 	}
-	data, _ := json.Marshal(resp)
-	fmt.Fprintf(w, "data: %s\n\n", data)
-	tryFlush(w)
+	sseHandler.WriteJsonData(resp)
 }
 
-func writeTextStart(w http.ResponseWriter, textId string) {
+func writeTextStart(sseHandler *SSEHandler, textId string) {
 	resp := map[string]interface{}{
 		"type": "text-start",
 		"id":   textId,
 	}
-	data, _ := json.Marshal(resp)
-	fmt.Fprintf(w, "data: %s\n\n", data)
-	tryFlush(w)
+	sseHandler.WriteJsonData(resp)
 }
 
-func writeUseChatTextDelta(w http.ResponseWriter, textId string, text string) {
+func writeUseChatTextDelta(sseHandler *SSEHandler, textId string, text string) {
 	resp := map[string]interface{}{
 		"type":  "text-delta",
 		"id":    textId,
 		"delta": text,
 	}
-	data, _ := json.Marshal(resp)
-	fmt.Fprintf(w, "data: %s\n\n", data)
-	tryFlush(w)
+	sseHandler.WriteJsonData(resp)
 }
 
-func writeTextEnd(w http.ResponseWriter, textId string) {
+func writeTextEnd(sseHandler *SSEHandler, textId string) {
 	resp := map[string]interface{}{
 		"type": "text-end",
 		"id":   textId,
 	}
-	data, _ := json.Marshal(resp)
-	fmt.Fprintf(w, "data: %s\n\n", data)
-	tryFlush(w)
+	sseHandler.WriteJsonData(resp)
 }
 
-func writeOpenAIFinish(w http.ResponseWriter, finishReason string, usage *OpenAIUsageResponse) {
+func writeOpenAIFinish(sseHandler *SSEHandler, finishReason string, usage *OpenAIUsageResponse) {
 	resp := map[string]interface{}{
 		"type": "finish",
 	}
-	data, _ := json.Marshal(resp)
-	fmt.Fprintf(w, "data: %s\n\n", data)
-	tryFlush(w)
-}
-
-func writeUseChatError(w http.ResponseWriter, errorMsg string) {
-	// Send error in SSE format
-	resp := map[string]interface{}{
-		"type":      "error",
-		"errorText": errorMsg,
-	}
-	data, _ := json.Marshal(resp)
-	fmt.Fprintf(w, "data: %s\n\n", data)
-	fmt.Fprintf(w, "data: [DONE]\n\n")
-	tryFlush(w)
-}
-
-func tryFlush(w http.ResponseWriter) {
-	rc := http.NewResponseController(w)
-	if err := rc.Flush(); err != nil {
-		// client closed connection, or flush not supported
-		return
-	}
+	sseHandler.WriteJsonData(resp)
 }
 
 func generateID() string {
 	bytes := make([]byte, 16)
 	rand.Read(bytes)
 	return hex.EncodeToString(bytes)
-}
-
-func writeUseChatDone(w http.ResponseWriter) {
-	fmt.Fprintf(w, "data: [DONE]\n\n")
-	tryFlush(w)
 }
 
 func HandleAIChat(w http.ResponseWriter, r *http.Request) {
@@ -530,25 +464,15 @@ func HandleAIChat(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Reset write deadline for streaming to prevent timeouts
-	rc := http.NewResponseController(w)
-	if err := rc.SetWriteDeadline(time.Time{}); err != nil {
-		log.Printf("failed to reset write deadline for streaming: %v", err)
+	// Create SSE handler and set up streaming
+	sseHandler := MakeSSEHandler(w, r.Context())
+	defer sseHandler.Close()
+
+	if err := sseHandler.SetupSSE(); err != nil {
+		http.Error(w, fmt.Sprintf("Failed to setup SSE: %v", err), http.StatusInternalServerError)
+		return
 	}
 
-	// NOW set SSE headers after all validation and body parsing is complete
-	w.Header().Set("Content-Type", UseChatContentTypeSSE)
-	w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
-	w.Header().Set("Connection", UseChatConnection)
-	w.Header().Set("x-vercel-ai-ui-message-stream", "v1")
-	w.Header().Set("X-Accel-Buffering", "no")       // Disable nginx buffering
-	w.Header().Set("Cache-Control", "no-transform") // Prevent proxy transformation
-
-	// Send headers and a tiny first chunk to establish streaming
-	w.WriteHeader(http.StatusOK)
-	fmt.Fprintf(w, ": stream-start\n\n") // Send initial SSE comment
-	tryFlush(w)
-
 	// Stream OpenAI response
-	streamOpenAIToUseChat(w, r.Context(), aiOpts, req.Messages)
+	streamOpenAIToUseChat(sseHandler, r.Context(), aiOpts, req.Messages)
 }
