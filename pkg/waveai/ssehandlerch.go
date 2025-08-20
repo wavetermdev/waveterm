@@ -35,12 +35,15 @@ const (
 
 // AI message type constants
 const (
-	AiMsgStart     = "start"
-	AiMsgTextStart = "text-start"
-	AiMsgTextDelta = "text-delta"
-	AiMsgTextEnd   = "text-end"
-	AiMsgFinish    = "finish"
-	AiMsgError     = "error"
+	AiMsgStart          = "start"
+	AiMsgTextStart      = "text-start"
+	AiMsgTextDelta      = "text-delta"
+	AiMsgTextEnd        = "text-end"
+	AiMsgReasoningStart = "reasoning-start"
+	AiMsgReasoningDelta = "reasoning-delta"
+	AiMsgReasoningEnd   = "reasoning-end"
+	AiMsgFinish         = "finish"
+	AiMsgError          = "error"
 )
 
 // SSEMessage represents a message to be written to the SSE stream
@@ -357,6 +360,31 @@ func (h *SSEHandlerCh) AiMsgTextEnd(textId string) error {
 func (h *SSEHandlerCh) AiMsgFinish(finishReason string, usage interface{}) error {
 	resp := map[string]interface{}{
 		"type": AiMsgFinish,
+	}
+	return h.WriteJsonData(resp)
+}
+
+func (h *SSEHandlerCh) AiMsgReasoningStart(reasoningId string) error {
+	resp := map[string]interface{}{
+		"type": AiMsgReasoningStart,
+		"id":   reasoningId,
+	}
+	return h.WriteJsonData(resp)
+}
+
+func (h *SSEHandlerCh) AiMsgReasoningDelta(reasoningId string, reasoning string) error {
+	resp := map[string]interface{}{
+		"type":  AiMsgReasoningDelta,
+		"id":    reasoningId,
+		"delta": reasoning,
+	}
+	return h.WriteJsonData(resp)
+}
+
+func (h *SSEHandlerCh) AiMsgReasoningEnd(reasoningId string) error {
+	resp := map[string]interface{}{
+		"type": AiMsgReasoningEnd,
+		"id":   reasoningId,
 	}
 	return h.WriteJsonData(resp)
 }

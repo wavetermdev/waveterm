@@ -58,7 +58,8 @@ type UseChatRequest struct {
 type OpenAIStreamChoice struct {
 	Index int `json:"index"`
 	Delta struct {
-		Content string `json:"content,omitempty"`
+		Content   string `json:"content,omitempty"`
+		Reasoning string `json:"reasoning,omitempty"`
 	} `json:"delta"`
 	FinishReason *string `json:"finish_reason"`
 }
@@ -225,20 +226,28 @@ func streamOpenAIToUseChat(sseHandler *SSEHandlerCh, ctx context.Context, opts *
 	// Generate IDs for the streaming protocol - use shorter, simpler IDs
 	messageId := generateID()
 	textId := generateID()
+	reasoningId := generateID()
 
 	// Send message start
 	sseHandler.AiMsgStart(messageId)
 
-	// Track whether we've started text streaming and finished
+	// Track whether we've started text/reasoning streaming and finished
 	textStarted := false
 	textEnded := false
+	reasoningStarted := false
+	reasoningEnded := false
 	finished := false
 
 	// Stream responses
 	for {
 		response, err := stream.Recv()
 		if err == io.EOF {
-			// Send text end and finish if text was started but not ended, and we haven't finished yet
+			// Send reasoning end if reasoning was started but not ended
+			if reasoningStarted && !reasoningEnded {
+				sseHandler.AiMsgReasoningEnd(reasoningId)
+				reasoningEnded = true
+			}
+			// Send text end if text was started but not ended
 			if textStarted && !textEnded {
 				sseHandler.AiMsgTextEnd(textId)
 				textEnded = true
@@ -255,6 +264,17 @@ func streamOpenAIToUseChat(sseHandler *SSEHandlerCh, ctx context.Context, opts *
 
 		// Process choices
 		for _, choice := range response.Choices {
+			// Handle reasoning tokens
+			if choice.Delta.ReasoningContent != "" {
+				// Send reasoning start only when we have actual reasoning content
+				if !reasoningStarted {
+					sseHandler.AiMsgReasoningStart(reasoningId)
+					reasoningStarted = true
+				}
+				sseHandler.AiMsgReasoningDelta(reasoningId, choice.Delta.ReasoningContent)
+			}
+
+			// Handle regular content tokens
 			if choice.Delta.Content != "" {
 				// Send text start only when we have actual content
 				if !textStarted {
@@ -263,6 +283,7 @@ func streamOpenAIToUseChat(sseHandler *SSEHandlerCh, ctx context.Context, opts *
 				}
 				sseHandler.AiMsgTextDelta(textId, choice.Delta.Content)
 			}
+
 			if choice.FinishReason != "" && !finished {
 				usage := &OpenAIUsageResponse{}
 				if response.Usage != nil && response.Usage.PromptTokens > 0 {
@@ -270,6 +291,12 @@ func streamOpenAIToUseChat(sseHandler *SSEHandlerCh, ctx context.Context, opts *
 					usage.CompletionTokens = response.Usage.CompletionTokens
 					usage.TotalTokens = response.Usage.TotalTokens
 				}
+				// End reasoning if it was started but not ended
+				if reasoningStarted && !reasoningEnded {
+					sseHandler.AiMsgReasoningEnd(reasoningId)
+					reasoningEnded = true
+				}
+				// End text if it was started but not ended
 				if textStarted && !textEnded {
 					sseHandler.AiMsgTextEnd(textId)
 					textEnded = true
