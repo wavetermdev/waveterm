@@ -19,7 +19,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/wavetermdev/waveterm/pkg/authkey"
 	"github.com/wavetermdev/waveterm/pkg/docsite"
@@ -29,6 +28,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/schema"
 	"github.com/wavetermdev/waveterm/pkg/service"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
+	"github.com/wavetermdev/waveterm/pkg/waveai"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
@@ -404,6 +404,13 @@ func WebFnWrap(opts WebFnOpts, fn WebFnType) WebFnType {
 			w.Header().Set(CacheControlHeaderKey, CacheControlHeaderNoCache)
 		}
 		w.Header().Set("Access-Control-Expose-Headers", "X-ZoneFileInfo")
+
+		// Handle CORS preflight OPTIONS requests without auth validation
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
 		err := authkey.ValidateIncomingRequest(r)
 		if err != nil {
 			w.WriteHeader(http.StatusUnauthorized)
@@ -447,12 +454,31 @@ func RunWebServer(listener net.Listener) {
 	gr.PathPrefix("/wave/stream-file/").HandlerFunc(WebFnWrap(WebFnOpts{AllowCaching: true}, handleStreamFile))
 	gr.HandleFunc("/wave/file", WebFnWrap(WebFnOpts{AllowCaching: false}, handleWaveFile))
 	gr.HandleFunc("/wave/service", WebFnWrap(WebFnOpts{JsonErrors: true}, handleService))
+	gr.HandleFunc("/api/aichat", WebFnWrap(WebFnOpts{AllowCaching: false}, waveai.HandleAIChat))
 	gr.HandleFunc("/vdom/{uuid}/{path:.*}", WebFnWrap(WebFnOpts{AllowCaching: true}, handleVDom))
 	gr.PathPrefix(docsitePrefix).Handler(http.StripPrefix(docsitePrefix, docsite.GetDocsiteHandler()))
 	gr.PathPrefix(schemaPrefix).Handler(http.StripPrefix(schemaPrefix, schema.GetSchemaHandler()))
+
 	handler := http.TimeoutHandler(gr, HttpTimeoutDuration, "Timeout")
 	if wavebase.IsDevMode() {
-		handler = handlers.CORS(handlers.AllowedOrigins([]string{"*"}))(handler)
+		originalHandler := handler
+		handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			origin := r.Header.Get("Origin")
+			if origin != "" {
+				w.Header().Set("Access-Control-Allow-Origin", origin)
+			}
+			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, X-Session-Id, X-AuthKey, Authorization, X-Requested-With, Accept")
+			w.Header().Set("Access-Control-Expose-Headers", "X-ZoneFileInfo, Content-Length, Content-Type")
+			w.Header().Set("Access-Control-Allow-Credentials", "true")
+			
+			if r.Method == "OPTIONS" {
+				w.WriteHeader(204)
+				return
+			}
+			
+			originalHandler.ServeHTTP(w, r)
+		})
 	}
 	server := &http.Server{
 		ReadTimeout:    HttpReadTimeout,
