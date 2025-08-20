@@ -449,7 +449,7 @@ const schemaPrefix = "/schema/"
 // blocking
 func RunWebServer(listener net.Listener) {
 	gr := mux.NewRouter()
-	
+
 	// Create separate routers for different timeout requirements
 	waveRouter := mux.NewRouter()
 	waveRouter.HandleFunc("/wave/stream-local-file", WebFnWrap(WebFnOpts{AllowCaching: true}, handleStreamLocalFile))
@@ -457,17 +457,17 @@ func RunWebServer(listener net.Listener) {
 	waveRouter.PathPrefix("/wave/stream-file/").HandlerFunc(WebFnWrap(WebFnOpts{AllowCaching: true}, handleStreamFile))
 	waveRouter.HandleFunc("/wave/file", WebFnWrap(WebFnOpts{AllowCaching: false}, handleWaveFile))
 	waveRouter.HandleFunc("/wave/service", WebFnWrap(WebFnOpts{JsonErrors: true}, handleService))
-	
+
 	vdomRouter := mux.NewRouter()
 	vdomRouter.HandleFunc("/vdom/{uuid}/{path:.*}", WebFnWrap(WebFnOpts{AllowCaching: true}, handleVDom))
-	
+
 	// Routes that need timeout handling
 	gr.PathPrefix("/wave/").Handler(http.TimeoutHandler(waveRouter, HttpTimeoutDuration, "Timeout"))
 	gr.PathPrefix("/vdom/").Handler(http.TimeoutHandler(vdomRouter, HttpTimeoutDuration, "Timeout"))
-	
+
 	// Routes that should NOT have timeout handling (for streaming)
 	gr.HandleFunc("/api/aichat", WebFnWrap(WebFnOpts{AllowCaching: false}, waveai.HandleAIChat))
-	
+
 	// Other routes without timeout
 	gr.PathPrefix(docsitePrefix).Handler(http.StripPrefix(docsitePrefix, docsite.GetDocsiteHandler()))
 	gr.PathPrefix(schemaPrefix).Handler(http.StripPrefix(schemaPrefix, schema.GetSchemaHandler()))
@@ -484,12 +484,12 @@ func RunWebServer(listener net.Listener) {
 			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, X-Session-Id, X-AuthKey, Authorization, X-Requested-With, Accept, x-vercel-ai-ui-message-stream")
 			w.Header().Set("Access-Control-Expose-Headers", "X-ZoneFileInfo, Content-Length, Content-Type, x-vercel-ai-ui-message-stream")
 			w.Header().Set("Access-Control-Allow-Credentials", "true")
-			
+
 			if r.Method == "OPTIONS" {
 				w.WriteHeader(204)
 				return
 			}
-			
+
 			originalHandler.ServeHTTP(w, r)
 		})
 	}

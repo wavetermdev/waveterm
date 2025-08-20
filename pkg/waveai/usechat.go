@@ -478,10 +478,6 @@ func generateID() string {
 	return hex.EncodeToString(bytes)
 }
 
-func getCurrentTimestamp() int64 {
-	return time.Now().Unix()
-}
-
 func writeUseChatDone(w http.ResponseWriter) {
 	fmt.Fprintf(w, "data: [DONE]\n\n")
 	tryFlush(w)
