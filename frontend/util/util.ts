@@ -2,9 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0s
 
 import base64 from "base64-js";
-import clsx from "clsx";
+import clsx, { type ClassValue } from "clsx";
 import { Atom, atom, Getter, SetStateAction, Setter, useAtomValue } from "jotai";
 import { debounce, throttle } from "throttle-debounce";
+import { twMerge } from "tailwind-merge";
 const prevValueCache = new WeakMap<any, any>(); // stores a previous value for a deep equal comparison (used with the deepCompareReturnPrev function)
 
 function isBlank(str: string): boolean {
@@ -377,12 +378,17 @@ function mergeMeta(meta: MetaType, metaUpdate: MetaType, prefix?: string): MetaT
     return rtn;
 }
 
+function cn(...inputs: ClassValue[]) {
+    return twMerge(clsx(inputs));
+}
+
 export {
     atomWithDebounce,
     atomWithThrottle,
     base64ToArray,
     base64ToString,
     boundNumber,
+    cn,
     countGraphemes,
     deepCompareReturnPrev,
     fireAndForget,
