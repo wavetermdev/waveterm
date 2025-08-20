@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"strings"
 
@@ -19,7 +20,6 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wstore"
 )
-
 
 // see /aiprompts/usechat-streamingproto.md for protocol
 
@@ -52,8 +52,8 @@ func (m *UseChatMessage) GetContent() string {
 }
 
 type UseChatRequest struct {
-	Messages []UseChatMessage `json:"messages"`
-	Options  map[string]any   `json:"options,omitempty"`
+	Messages []UseChatMessage        `json:"messages"`
+	Options  *wconfig.AiSettingsType `json:"options,omitempty"`
 }
 
 // OpenAI Chat Completion streaming response format
@@ -80,7 +80,7 @@ type OpenAIUsageResponse struct {
 	TotalTokens      int `json:"total_tokens"`
 }
 
-func resolveAIConfig(ctx context.Context, blockId, presetKey string, requestOptions map[string]any) (*wshrpc.WaveAIOptsType, error) {
+func resolveAIConfig(ctx context.Context, blockId, presetKey string, requestOptions *wconfig.AiSettingsType) (*wshrpc.WaveAIOptsType, error) {
 	// Get block metadata
 	block, err := wstore.DBMustGet[*waveobj.Block](ctx, blockId)
 	if err != nil {
@@ -89,6 +89,7 @@ func resolveAIConfig(ctx context.Context, blockId, presetKey string, requestOpti
 
 	// Get global settings
 	fullConfig := wconfig.GetWatcher().GetFullConfig()
+	globalAiSettings := fullConfig.Settings.GetAiSettings()
 
 	// Resolve preset hierarchy
 	finalPreset := presetKey
@@ -98,18 +99,15 @@ func resolveAIConfig(ctx context.Context, blockId, presetKey string, requestOpti
 		}
 	}
 	if finalPreset == "" {
-		if globalPreset := fullConfig.Settings.AiPreset; globalPreset != "" {
-			finalPreset = globalPreset
-		}
+		finalPreset = globalAiSettings.AiPreset
 	}
 	if finalPreset == "" {
 		finalPreset = "default"
 	}
 
 	// Load preset configuration
-	var presetConfig map[string]any
+	var presetAiSettings *wconfig.AiSettingsType
 	if finalPreset != "default" {
-		// Check if preset already has ai@ prefix
 		var presetKey string
 		if strings.HasPrefix(finalPreset, "ai@") {
 			presetKey = finalPreset
@@ -117,117 +115,43 @@ func resolveAIConfig(ctx context.Context, blockId, presetKey string, requestOpti
 			presetKey = fmt.Sprintf("ai@%s", finalPreset)
 		}
 		if preset, ok := fullConfig.Presets[presetKey]; ok {
-			presetConfig = preset
+			presetAiSettings = &wconfig.AiSettingsType{}
+			if err := json.Unmarshal(mustMarshal(preset), presetAiSettings); err == nil {
+				// Successfully unmarshaled preset
+			} else {
+				presetAiSettings = nil
+			}
 		}
 	}
 
-	// Build AI options with hierarchy: global < preset < block < request
-	aiOpts := &wshrpc.WaveAIOptsType{}
-
-	// Helper function to get string value from hierarchy
-	getString := func(key string) string {
-		// Request options (highest priority)
-		if val, ok := requestOptions[key]; ok {
-			if str, ok := val.(string); ok {
-				return str
-			}
+	// Extract block AI settings from metadata
+	var blockAiSettings *wconfig.AiSettingsType
+	if block != nil && block.Meta != nil {
+		blockAiSettings = &wconfig.AiSettingsType{}
+		if err := json.Unmarshal(mustMarshal(block.Meta), blockAiSettings); err != nil {
+			blockAiSettings = nil
 		}
-		// Block metadata
-		if block != nil && block.Meta != nil {
-			if val, ok := block.Meta[key]; ok {
-				if str, ok := val.(string); ok {
-					return str
-				}
-			}
-		}
-		// Preset config
-		if presetConfig != nil {
-			if val, ok := presetConfig[key]; ok {
-				if str, ok := val.(string); ok {
-					return str
-				}
-			}
-		}
-		// Global settings - use struct fields
-		switch key {
-		case "ai:preset":
-			return fullConfig.Settings.AiPreset
-		case "ai:apitype":
-			return fullConfig.Settings.AiApiType
-		case "ai:apitoken":
-			return fullConfig.Settings.AiApiToken
-		case "ai:baseurl":
-			return fullConfig.Settings.AiBaseURL
-		case "ai:model":
-			return fullConfig.Settings.AiModel
-		case "ai:orgid":
-			return fullConfig.Settings.AiOrgID
-		case "ai:apiversion":
-			return fullConfig.Settings.AIApiVersion
-		case "ai:proxyurl":
-			return fullConfig.Settings.AiProxyUrl
-		}
-		return ""
 	}
 
-	// Helper function to get int value from hierarchy
-	getInt := func(key string) int {
-		// Request options (highest priority)
-		if val, ok := requestOptions[key]; ok {
-			if num, ok := val.(float64); ok {
-				return int(num)
-			}
-			if num, ok := val.(int); ok {
-				return num
-			}
-		}
-		// Block metadata
-		if block != nil && block.Meta != nil {
-			if val, ok := block.Meta[key]; ok {
-				if num, ok := val.(float64); ok {
-					return int(num)
-				}
-				if num, ok := val.(int); ok {
-					return num
-				}
-			}
-		}
-		// Preset config
-		if presetConfig != nil {
-			if val, ok := presetConfig[key]; ok {
-				if num, ok := val.(float64); ok {
-					return int(num)
-				}
-				if num, ok := val.(int); ok {
-					return num
-				}
-			}
-		}
-		// Global settings - use struct fields
-		switch key {
-		case "ai:maxtokens":
-			return int(fullConfig.Settings.AiMaxTokens)
-		case "ai:timeoutms":
-			return int(fullConfig.Settings.AiTimeoutMs)
-		}
-		return 0
-	}
+	// Merge settings with hierarchy: global < preset < block < request
+	finalSettings := wconfig.MergeAiSettings(globalAiSettings, presetAiSettings, blockAiSettings, requestOptions)
 
-	// Populate AI options
-	aiOpts.Model = getString("ai:model")
-	aiOpts.APIType = getString("ai:apitype")
-	aiOpts.APIToken = getString("ai:apitoken")
-	aiOpts.BaseURL = getString("ai:baseurl")
-	aiOpts.OrgID = getString("ai:orgid")
-	aiOpts.APIVersion = getString("ai:apiversion")
-	aiOpts.ProxyURL = getString("ai:proxyurl")
-	aiOpts.MaxTokens = getInt("ai:maxtokens")
-	aiOpts.MaxChoices = getInt("ai:maxchoices")
-	aiOpts.TimeoutMs = getInt("ai:timeoutms")
+	// Convert to WaveAIOptsType
+	aiOpts := &wshrpc.WaveAIOptsType{
+		Model:      finalSettings.AiModel,
+		APIType:    finalSettings.AiApiType,
+		APIToken:   finalSettings.AiApiToken,
+		BaseURL:    finalSettings.AiBaseURL,
+		OrgID:      finalSettings.AiOrgID,
+		APIVersion: finalSettings.AIApiVersion,
+		ProxyURL:   finalSettings.AiProxyUrl,
+		MaxTokens:  int(finalSettings.AiMaxTokens),
+		TimeoutMs:  int(finalSettings.AiTimeoutMs),
+	}
 
 	// Set defaults
 	if aiOpts.Model == "" {
-		aiOpts.Model = "gpt-4"
+		aiOpts.Model = "gpt-4.1"
 	}
 	if aiOpts.APIType == "" {
 		aiOpts.APIType = APIType_OpenAI
@@ -237,6 +161,14 @@ func resolveAIConfig(ctx context.Context, blockId, presetKey string, requestOpti
 	}
 
 	return aiOpts, nil
+}
+
+func mustMarshal(v any) []byte {
+	data, err := json.Marshal(v)
+	if err != nil {
+		return []byte("{}")
+	}
+	return data
 }
 
 func streamOpenAIToUseChat(sseHandler *SSEHandlerCh, ctx context.Context, opts *wshrpc.WaveAIOptsType, messages []UseChatMessage) {
@@ -432,6 +364,7 @@ func HandleAIChat(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "No AI model specified", http.StatusBadRequest)
 		return
 	}
+	log.Printf("using AI model: %s (%s)", aiOpts.Model, aiOpts.BaseURL)
 
 	// For now, only support OpenAI
 	if aiOpts.APIType != APIType_OpenAI && aiOpts.APIType != "" {

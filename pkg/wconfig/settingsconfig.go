@@ -141,6 +141,91 @@ type SettingsType struct {
 	ConnWshEnabled          bool  `json:"conn:wshenabled,omitempty"`
 }
 
+func (s *SettingsType) GetAiSettings() *AiSettingsType {
+	return &AiSettingsType{
+		AiClear:         s.AiClear,
+		AiPreset:        s.AiPreset,
+		AiApiType:       s.AiApiType,
+		AiBaseURL:       s.AiBaseURL,
+		AiApiToken:      s.AiApiToken,
+		AiName:          s.AiName,
+		AiModel:         s.AiModel,
+		AiOrgID:         s.AiOrgID,
+		AIApiVersion:    s.AIApiVersion,
+		AiMaxTokens:     s.AiMaxTokens,
+		AiTimeoutMs:     s.AiTimeoutMs,
+		AiProxyUrl:      s.AiProxyUrl,
+		AiFontSize:      s.AiFontSize,
+		AiFixedFontSize: s.AiFixedFontSize,
+	}
+}
+
+func MergeAiSettings(settings ...*AiSettingsType) *AiSettingsType {
+	result := &AiSettingsType{}
+
+	for _, s := range settings {
+		if s == nil {
+			continue
+		}
+
+		// If this setting has AiClear=true, replace result with this entire setting
+		if s.AiClear {
+			result = s
+			result.AiClear = false
+			continue
+		}
+
+		// Merge non-empty values
+		if s.AiPreset != "" {
+			result.AiPreset = s.AiPreset
+		}
+		if s.AiApiType != "" {
+			result.AiApiType = s.AiApiType
+		}
+		if s.AiBaseURL != "" {
+			result.AiBaseURL = s.AiBaseURL
+		}
+		if s.AiApiToken != "" {
+			result.AiApiToken = s.AiApiToken
+		}
+		if s.AiName != "" {
+			result.AiName = s.AiName
+		}
+		if s.AiModel != "" {
+			result.AiModel = s.AiModel
+		}
+		if s.AiOrgID != "" {
+			result.AiOrgID = s.AiOrgID
+		}
+		if s.AIApiVersion != "" {
+			result.AIApiVersion = s.AIApiVersion
+		}
+		if s.AiProxyUrl != "" {
+			result.AiProxyUrl = s.AiProxyUrl
+		}
+		if s.AiMaxTokens != 0 {
+			result.AiMaxTokens = s.AiMaxTokens
+		}
+		if s.AiTimeoutMs != 0 {
+			result.AiTimeoutMs = s.AiTimeoutMs
+		}
+		if s.AiFontSize != 0 {
+			result.AiFontSize = s.AiFontSize
+		}
+		if s.AiFixedFontSize != 0 {
+			result.AiFixedFontSize = s.AiFixedFontSize
+		}
+		if s.DisplayName != "" {
+			result.DisplayName = s.DisplayName
+		}
+		if s.DisplayOrder != 0 {
+			result.DisplayOrder = s.DisplayOrder
+		}
+	}
+
+	return result
+}
+
 type ConfigError struct {
 	File string `json:"file"`
 	Err  string `json:"err"`
