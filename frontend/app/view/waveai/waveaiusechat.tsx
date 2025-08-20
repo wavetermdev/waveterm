@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { Button } from "@/app/element/button";
-import { Markdown } from "@/app/element/markdown";
+import { Streamdown } from "streamdown";
 import { TypingIndicator } from "@/app/element/typingindicator";
 import { atoms, fetchWaveFile, WOS } from "@/store/global";
 import { BlockService, ObjectService } from "@/store/services";
@@ -362,12 +362,9 @@ const ChatItem = memo(
             return (
                 <div className="flex items-start gap-3 justify-end">
                     <div className="bg-accent/15 rounded-lg p-3 max-w-[85%] ml-auto">
-                        <Markdown
-                            text={content}
-                            scrollable={false}
-                            fontSizeOverride={fontSize ? parseInt(fontSize) : undefined}
-                            fixedFontSizeOverride={fixedFontSize ? parseInt(fixedFontSize) : undefined}
-                        />
+                        <Streamdown className="size-full [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
+                            {content}
+                        </Streamdown>
                     </div>
                     <div className="flex-shrink-0 w-8 h-8 bg-accent/10 rounded-md flex items-center justify-center">
                         <i className="fa-sharp fa-solid fa-user text-accent"></i>
@@ -384,26 +381,20 @@ const ChatItem = memo(
                     </div>
                     <div className="flex flex-col gap-2 max-w-[85%]">
                         {reasoning && (
-                            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                            <div className="bg-accent/10 border border-accent/20 rounded-lg p-3">
                                 <div className="flex items-center gap-2 mb-2">
-                                    <i className="fa-sharp fa-solid fa-brain text-yellow-600 text-sm"></i>
-                                    <span className="text-yellow-800 text-sm font-medium">Reasoning</span>
+                                    <i className="fa-sharp fa-solid fa-brain text-accent text-sm"></i>
+                                    <span className="text-foreground text-sm font-medium">Reasoning</span>
                                 </div>
-                                <Markdown
-                                    text={reasoning}
-                                    scrollable={false}
-                                    fontSizeOverride={fontSize ? parseInt(fontSize) : undefined}
-                                    fixedFontSizeOverride={fixedFontSize ? parseInt(fixedFontSize) : undefined}
-                                />
+                                <Streamdown className="size-full [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
+                                    {reasoning}
+                                </Streamdown>
                             </div>
                         )}
                         <div className="bg-secondary/10 rounded-lg p-3">
-                            <Markdown
-                                text={content}
-                                scrollable={false}
-                                fontSizeOverride={fontSize ? parseInt(fontSize) : undefined}
-                                fixedFontSizeOverride={fixedFontSize ? parseInt(fixedFontSize) : undefined}
-                            />
+                            <Streamdown className="size-full [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
+                                {content}
+                            </Streamdown>
                         </div>
                     </div>
                 </div>
