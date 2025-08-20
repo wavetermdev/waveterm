@@ -311,9 +311,9 @@ func streamOpenAIToUseChat(w http.ResponseWriter, ctx context.Context, opts *wsh
 	}
 	defer stream.Close()
 
-	// Generate IDs for the streaming protocol
-	messageId := "msg_" + generateID()
-	textId := "text_" + generateID()
+	// Generate IDs for the streaming protocol - use shorter, simpler IDs
+	messageId := generateID()
+	textId := generateID()
 
 	// Send message start
 	writeMessageStart(w, messageId)
@@ -321,18 +321,19 @@ func streamOpenAIToUseChat(w http.ResponseWriter, ctx context.Context, opts *wsh
 		flusher.Flush()
 	}
 
-	// Send text start
-	writeTextStart(w, textId)
-	if flusher, ok := w.(http.Flusher); ok {
-		flusher.Flush()
-	}
+	// Track whether we've started text streaming
+	textStarted := false
+	textEnded := false
 
 	// Stream responses
 	for {
 		response, err := stream.Recv()
 		if err == io.EOF {
-			// Send text end and finish
-			writeTextEnd(w, textId)
+			// Send text end and finish if text was started but not ended
+			if textStarted && !textEnded {
+				writeTextEnd(w, textId)
+				textEnded = true
+			}
 			writeOpenAIFinish(w, "stop", nil)
 			writeUseChatDone(w)
 			return
@@ -347,6 +348,14 @@ func streamOpenAIToUseChat(w http.ResponseWriter, ctx context.Context, opts *wsh
 		// Process choices
 		for _, choice := range response.Choices {
 			if choice.Delta.Content != "" {
+				// Send text start only when we have actual content
+				if !textStarted {
+					writeTextStart(w, textId)
+					textStarted = true
+					if flusher, ok := w.(http.Flusher); ok {
+						flusher.Flush()
+					}
+				}
 				writeUseChatTextDelta(w, textId, choice.Delta.Content)
 			}
 			if choice.FinishReason != "" {
@@ -356,7 +365,10 @@ func streamOpenAIToUseChat(w http.ResponseWriter, ctx context.Context, opts *wsh
 					usage.CompletionTokens = response.Usage.CompletionTokens
 					usage.TotalTokens = response.Usage.TotalTokens
 				}
-				writeTextEnd(w, textId)
+				if textStarted && !textEnded {
+					writeTextEnd(w, textId)
+					textEnded = true
+				}
 				writeOpenAIFinish(w, string(choice.FinishReason), usage)
 			}
 		}
