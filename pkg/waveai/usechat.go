@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -464,8 +465,10 @@ func writeUseChatError(w http.ResponseWriter, errorMsg string) {
 }
 
 func tryFlush(w http.ResponseWriter) {
-	if flusher, ok := w.(http.Flusher); ok {
-		flusher.Flush()
+	rc := http.NewResponseController(w)
+	if err := rc.Flush(); err != nil {
+		// client closed connection, or flush not supported
+		return
 	}
 }
 
@@ -491,55 +494,64 @@ func HandleAIChat(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Set SSE headers immediately
-	w.Header().Set("Content-Type", UseChatContentTypeSSE)
-	w.Header().Set("Cache-Control", UseChatCacheControl)
-	w.Header().Set("Connection", UseChatConnection)
-	w.Header().Set("x-vercel-ai-ui-message-stream", "v1")
-
-	// Send headers immediately
-	w.WriteHeader(http.StatusOK)
-	tryFlush(w)
-
-	// Parse query parameters
+	// Parse query parameters first
 	blockId := r.URL.Query().Get("blockid")
 	presetKey := r.URL.Query().Get("preset")
 
 	if blockId == "" {
-		writeUseChatError(w, "blockid query parameter is required")
+		http.Error(w, "blockid query parameter is required", http.StatusBadRequest)
 		return
 	}
 
-	// Parse request body
+	// Parse request body completely before sending any response
 	var req UseChatRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeUseChatError(w, fmt.Sprintf("Invalid request body: %v", err))
+		http.Error(w, fmt.Sprintf("Invalid request body: %v", err), http.StatusBadRequest)
 		return
 	}
 
 	// Resolve AI configuration
 	aiOpts, err := resolveAIConfig(r.Context(), blockId, presetKey, req.Options)
 	if err != nil {
-		writeUseChatError(w, fmt.Sprintf("Configuration error: %v", err))
+		http.Error(w, fmt.Sprintf("Configuration error: %v", err), http.StatusInternalServerError)
 		return
 	}
 
 	// Validate configuration
 	if aiOpts.Model == "" {
-		writeUseChatError(w, "No AI model specified")
+		http.Error(w, "No AI model specified", http.StatusBadRequest)
 		return
 	}
 
 	// For now, only support OpenAI
 	if aiOpts.APIType != APIType_OpenAI && aiOpts.APIType != "" {
-		writeUseChatError(w, fmt.Sprintf("Unsupported API type: %s (only OpenAI supported in POC)", aiOpts.APIType))
+		http.Error(w, fmt.Sprintf("Unsupported API type: %s (only OpenAI supported in POC)", aiOpts.APIType), http.StatusBadRequest)
 		return
 	}
 
 	if aiOpts.APIToken == "" {
-		writeUseChatError(w, "No API token provided")
+		http.Error(w, "No API token provided", http.StatusBadRequest)
 		return
 	}
+
+	// Reset write deadline for streaming to prevent timeouts
+	rc := http.NewResponseController(w)
+	if err := rc.SetWriteDeadline(time.Time{}); err != nil {
+		log.Printf("failed to reset write deadline for streaming: %v", err)
+	}
+
+	// NOW set SSE headers after all validation and body parsing is complete
+	w.Header().Set("Content-Type", UseChatContentTypeSSE)
+	w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
+	w.Header().Set("Connection", UseChatConnection)
+	w.Header().Set("x-vercel-ai-ui-message-stream", "v1")
+	w.Header().Set("X-Accel-Buffering", "no")       // Disable nginx buffering
+	w.Header().Set("Cache-Control", "no-transform") // Prevent proxy transformation
+
+	// Send headers and a tiny first chunk to establish streaming
+	w.WriteHeader(http.StatusOK)
+	fmt.Fprintf(w, ": stream-start\n\n") // Send initial SSE comment
+	tryFlush(w)
 
 	// Stream OpenAI response
 	streamOpenAIToUseChat(w, r.Context(), aiOpts, req.Messages)
