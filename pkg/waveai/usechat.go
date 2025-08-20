@@ -21,8 +21,6 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wstore"
 )
 
-// see /aiprompts/usechat-streamingproto.md for protocol
-
 type UseChatMessagePart struct {
 	Type string `json:"type"`
 	Text string `json:"text"`
@@ -229,7 +227,7 @@ func streamOpenAIToUseChat(sseHandler *SSEHandlerCh, ctx context.Context, opts *
 	textId := generateID()
 
 	// Send message start
-	writeMessageStart(sseHandler, messageId)
+	sseHandler.AiMsgStart(messageId)
 
 	// Track whether we've started text streaming and finished
 	textStarted := false
@@ -242,11 +240,11 @@ func streamOpenAIToUseChat(sseHandler *SSEHandlerCh, ctx context.Context, opts *
 		if err == io.EOF {
 			// Send text end and finish if text was started but not ended, and we haven't finished yet
 			if textStarted && !textEnded {
-				writeTextEnd(sseHandler, textId)
+				sseHandler.AiMsgTextEnd(textId)
 				textEnded = true
 			}
 			if !finished {
-				writeOpenAIFinish(sseHandler, "stop", nil)
+				sseHandler.AiMsgFinish("stop", nil)
 			}
 			return
 		}
@@ -260,10 +258,10 @@ func streamOpenAIToUseChat(sseHandler *SSEHandlerCh, ctx context.Context, opts *
 			if choice.Delta.Content != "" {
 				// Send text start only when we have actual content
 				if !textStarted {
-					writeTextStart(sseHandler, textId)
+					sseHandler.AiMsgTextStart(textId)
 					textStarted = true
 				}
-				writeUseChatTextDelta(sseHandler, textId, choice.Delta.Content)
+				sseHandler.AiMsgTextDelta(textId, choice.Delta.Content)
 			}
 			if choice.FinishReason != "" && !finished {
 				usage := &OpenAIUsageResponse{}
@@ -273,54 +271,14 @@ func streamOpenAIToUseChat(sseHandler *SSEHandlerCh, ctx context.Context, opts *
 					usage.TotalTokens = response.Usage.TotalTokens
 				}
 				if textStarted && !textEnded {
-					writeTextEnd(sseHandler, textId)
+					sseHandler.AiMsgTextEnd(textId)
 					textEnded = true
 				}
-				writeOpenAIFinish(sseHandler, string(choice.FinishReason), usage)
+				sseHandler.AiMsgFinish(string(choice.FinishReason), usage)
 				finished = true
 			}
 		}
 	}
-}
-
-func writeMessageStart(sseHandler *SSEHandlerCh, messageId string) {
-	resp := map[string]interface{}{
-		"type":      "start",
-		"messageId": messageId,
-	}
-	sseHandler.WriteJsonData(resp)
-}
-
-func writeTextStart(sseHandler *SSEHandlerCh, textId string) {
-	resp := map[string]interface{}{
-		"type": "text-start",
-		"id":   textId,
-	}
-	sseHandler.WriteJsonData(resp)
-}
-
-func writeUseChatTextDelta(sseHandler *SSEHandlerCh, textId string, text string) {
-	resp := map[string]interface{}{
-		"type":  "text-delta",
-		"id":    textId,
-		"delta": text,
-	}
-	sseHandler.WriteJsonData(resp)
-}
-
-func writeTextEnd(sseHandler *SSEHandlerCh, textId string) {
-	resp := map[string]interface{}{
-		"type": "text-end",
-		"id":   textId,
-	}
-	sseHandler.WriteJsonData(resp)
-}
-
-func writeOpenAIFinish(sseHandler *SSEHandlerCh, finishReason string, usage *OpenAIUsageResponse) {
-	resp := map[string]interface{}{
-		"type": "finish",
-	}
-	sseHandler.WriteJsonData(resp)
 }
 
 func generateID() string {

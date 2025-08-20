@@ -12,13 +12,15 @@ import (
 	"time"
 )
 
+// see /aiprompts/usechat-streamingproto.md for protocol
+
 const (
-	SSEContentType        = "text/event-stream"
-	SSECacheControl       = "no-cache"
-	SSEConnection         = "keep-alive"
-	SSEKeepaliveMsg       = ": keepalive\n\n"
-	SSEStreamStartMsg     = ": stream-start\n\n"
-	SSEKeepaliveInterval  = 1 * time.Second
+	SSEContentType       = "text/event-stream"
+	SSECacheControl      = "no-cache"
+	SSEConnection        = "keep-alive"
+	SSEKeepaliveMsg      = ": keepalive\n\n"
+	SSEStreamStartMsg    = ": stream-start\n\n"
+	SSEKeepaliveInterval = 1 * time.Second
 )
 
 // SSEMessageType represents the type of message to write
@@ -29,6 +31,16 @@ const (
 	SSEMsgEvent   SSEMessageType = "event"
 	SSEMsgComment SSEMessageType = "comment"
 	SSEMsgError   SSEMessageType = "error"
+)
+
+// AI message type constants
+const (
+	AiMsgStart     = "start"
+	AiMsgTextStart = "text-start"
+	AiMsgTextDelta = "text-delta"
+	AiMsgTextEnd   = "text-end"
+	AiMsgFinish    = "finish"
+	AiMsgError     = "error"
 )
 
 // SSEMessage represents a message to be written to the SSE stream
@@ -45,11 +57,11 @@ type SSEHandlerCh struct {
 	ctx     context.Context
 	writeCh chan SSEMessage
 	errCh   chan error
-	
+
 	mu     sync.RWMutex
 	closed bool
 	err    error
-	
+
 	wg sync.WaitGroup
 }
 
@@ -68,16 +80,16 @@ func MakeSSEHandlerCh(w http.ResponseWriter, ctx context.Context) *SSEHandlerCh 
 func (h *SSEHandlerCh) SetupSSE() error {
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	
+
 	if h.closed {
 		return fmt.Errorf("SSE handler is closed")
 	}
-	
+
 	// Reset write deadline for streaming
 	if err := h.rc.SetWriteDeadline(time.Time{}); err != nil {
 		return fmt.Errorf("failed to reset write deadline: %v", err)
 	}
-	
+
 	// Set SSE headers
 	h.w.Header().Set("Content-Type", SSEContentType)
 	h.w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
@@ -85,28 +97,28 @@ func (h *SSEHandlerCh) SetupSSE() error {
 	h.w.Header().Set("x-vercel-ai-ui-message-stream", "v1")
 	h.w.Header().Set("X-Accel-Buffering", "no")
 	h.w.Header().Set("Cache-Control", "no-transform")
-	
+
 	// Send headers and establish streaming
 	h.w.WriteHeader(http.StatusOK)
 	fmt.Fprint(h.w, SSEStreamStartMsg)
 	if err := h.flush(); err != nil {
 		return err
 	}
-	
+
 	// Start the writer goroutine
 	h.wg.Add(1)
 	go h.writerLoop()
-	
+
 	return nil
 }
 
 // writerLoop handles all writes and keepalives in a single goroutine
 func (h *SSEHandlerCh) writerLoop() {
 	defer h.wg.Done()
-	
+
 	keepaliveTicker := time.NewTicker(SSEKeepaliveInterval)
 	defer keepaliveTicker.Stop()
-	
+
 	for {
 		select {
 		case msg, ok := <-h.writeCh:
@@ -115,18 +127,18 @@ func (h *SSEHandlerCh) writerLoop() {
 				h.writeDirectly("[DONE]", SSEMsgData)
 				return
 			}
-			
+
 			if err := h.writeMessage(msg); err != nil {
 				h.setError(err)
 				return
 			}
-			
+
 		case <-keepaliveTicker.C:
 			if err := h.writeDirectly("keepalive", SSEMsgComment); err != nil {
 				h.setError(err)
 				return
 			}
-			
+
 		case <-h.ctx.Done():
 			return
 		}
@@ -190,7 +202,7 @@ func (h *SSEHandlerCh) flush() error {
 func (h *SSEHandlerCh) setError(err error) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	
+
 	if h.err == nil {
 		h.err = err
 		// Send error to error channel if there's space
@@ -206,11 +218,11 @@ func (h *SSEHandlerCh) WriteData(data string) error {
 	h.mu.RLock()
 	closed := h.closed
 	h.mu.RUnlock()
-	
+
 	if closed {
 		return fmt.Errorf("SSE handler is closed")
 	}
-	
+
 	select {
 	case h.writeCh <- SSEMessage{Type: SSEMsgData, Data: data}:
 		return nil
@@ -233,7 +245,7 @@ func (h *SSEHandlerCh) WriteJsonData(data interface{}) error {
 // WriteError queues an error message and closes the handler
 func (h *SSEHandlerCh) WriteError(errorMsg string) error {
 	errorResp := map[string]interface{}{
-		"type":      "error",
+		"type":      AiMsgError,
 		"errorText": errorMsg,
 	}
 	if err := h.WriteJsonData(errorResp); err != nil {
@@ -248,11 +260,11 @@ func (h *SSEHandlerCh) WriteEvent(eventType, data string) error {
 	h.mu.RLock()
 	closed := h.closed
 	h.mu.RUnlock()
-	
+
 	if closed {
 		return fmt.Errorf("SSE handler is closed")
 	}
-	
+
 	select {
 	case h.writeCh <- SSEMessage{Type: SSEMsgEvent, Data: data, EventType: eventType}:
 		return nil
@@ -268,11 +280,11 @@ func (h *SSEHandlerCh) WriteComment(comment string) error {
 	h.mu.RLock()
 	closed := h.closed
 	h.mu.RUnlock()
-	
+
 	if closed {
 		return fmt.Errorf("SSE handler is closed")
 	}
-	
+
 	select {
 	case h.writeCh <- SSEMessage{Type: SSEMsgComment, Data: comment}:
 		return nil
@@ -298,11 +310,53 @@ func (h *SSEHandlerCh) Close() {
 		return
 	}
 	h.closed = true
-	
+
 	// Close the write channel, which will trigger [DONE] in writerLoop
 	close(h.writeCh)
 	h.mu.Unlock()
-	
+
 	// Wait for writer goroutine to finish (without holding the lock)
 	h.wg.Wait()
+}
+
+// AI message writing methods
+
+func (h *SSEHandlerCh) AiMsgStart(messageId string) error {
+	resp := map[string]interface{}{
+		"type":      AiMsgStart,
+		"messageId": messageId,
+	}
+	return h.WriteJsonData(resp)
+}
+
+func (h *SSEHandlerCh) AiMsgTextStart(textId string) error {
+	resp := map[string]interface{}{
+		"type": AiMsgTextStart,
+		"id":   textId,
+	}
+	return h.WriteJsonData(resp)
+}
+
+func (h *SSEHandlerCh) AiMsgTextDelta(textId string, text string) error {
+	resp := map[string]interface{}{
+		"type":  AiMsgTextDelta,
+		"id":    textId,
+		"delta": text,
+	}
+	return h.WriteJsonData(resp)
+}
+
+func (h *SSEHandlerCh) AiMsgTextEnd(textId string) error {
+	resp := map[string]interface{}{
+		"type": AiMsgTextEnd,
+		"id":   textId,
+	}
+	return h.WriteJsonData(resp)
+}
+
+func (h *SSEHandlerCh) AiMsgFinish(finishReason string, usage interface{}) error {
+	resp := map[string]interface{}{
+		"type": AiMsgFinish,
+	}
+	return h.WriteJsonData(resp)
 }
