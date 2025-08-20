@@ -541,7 +541,7 @@ const WaveAiUseChat = ({ blockId, model }: WaveAiUseChatProps) => {
         },
     });
 
-    const isLoading = status === "streaming" || status === "submitted";
+    const isLoading = status === "submitted";
 
     const handleInputChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
         setInput(e.target.value);
