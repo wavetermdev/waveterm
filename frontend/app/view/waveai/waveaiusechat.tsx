@@ -15,6 +15,7 @@ import { atom, Atom, useAtomValue } from "jotai";
 import { OverlayScrollbarsComponent, OverlayScrollbarsComponentRef } from "overlayscrollbars-react";
 import React, { forwardRef, memo, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import { debounce, throttle } from "throttle-debounce";
+import { Reasoning, ReasoningContent, ReasoningTrigger } from "./reasoning";
 
 interface WaveAiUseChatProps {
     blockId: string;
@@ -318,14 +319,21 @@ const ChatWindow = memo(
                     events={{ scroll: handleScroll }}
                 >
                     <div className="flex flex-col gap-4 p-4">
-                        {messages.map((message) => (
-                            <ChatItem
-                                key={message.id}
-                                message={message}
-                                fontSize={fontSize}
-                                fixedFontSize={fixedFontSize}
-                            />
-                        ))}
+                        {messages.map((message, index) => {
+                            // Only the last assistant message should be streaming when isLoading is true
+                            const isLastAssistantMessage = message.role === "assistant" && index === messages.length - 1;
+                            const isCurrentlyStreaming = isLoading && isLastAssistantMessage;
+                            
+                            return (
+                                <ChatItem
+                                    key={message.id}
+                                    message={message}
+                                    fontSize={fontSize}
+                                    fixedFontSize={fixedFontSize}
+                                    isStreaming={isCurrentlyStreaming}
+                                />
+                            );
+                        })}
                         {isLoading && (
                             <div className="flex items-start gap-3">
                                 <div className="flex-shrink-0 w-8 h-8 bg-accent/10 rounded-md flex items-center justify-center">
@@ -355,7 +363,12 @@ const ChatWindow = memo(
 ChatWindow.displayName = "ChatWindow";
 
 const ChatItem = memo(
-    ({ message, fontSize, fixedFontSize }: { message: ChatMessage; fontSize?: string; fixedFontSize?: string }) => {
+    ({ message, fontSize, fixedFontSize, isStreaming = false }: {
+        message: ChatMessage;
+        fontSize?: string;
+        fixedFontSize?: string;
+        isStreaming?: boolean;
+    }) => {
         const { role, content, reasoning } = message;
 
         if (role === "user") {
@@ -380,22 +393,19 @@ const ChatItem = memo(
                         <i className="fa-sharp fa-solid fa-sparkles text-accent"></i>
                     </div>
                     <div className="flex flex-col gap-2 max-w-[85%]">
-                        {reasoning && (
-                            <div className="bg-accent/10 border border-accent/20 rounded-lg p-3">
-                                <div className="flex items-center gap-2 mb-2">
-                                    <i className="fa-sharp fa-solid fa-brain text-accent text-sm"></i>
-                                    <span className="text-foreground text-sm font-medium">Reasoning</span>
-                                </div>
+                        {(reasoning || isStreaming) && (
+                            <Reasoning isStreaming={isStreaming}>
+                                <ReasoningTrigger />
+                                <ReasoningContent>{reasoning || ""}</ReasoningContent>
+                            </Reasoning>
+                        )}
+                        {content && (
+                            <div className="bg-secondary/10 rounded-lg p-3">
                                 <Streamdown className="size-full [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
-                                    {reasoning}
+                                    {content}
                                 </Streamdown>
                             </div>
                         )}
-                        <div className="bg-secondary/10 rounded-lg p-3">
-                            <Streamdown className="size-full [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
-                                {content}
-                            </Streamdown>
-                        </div>
                     </div>
                 </div>
             );
