@@ -105,7 +105,7 @@ func StreamOpenAIResponsesAPI(sseHandler *SSEHandlerCh, ctx context.Context, opt
 	for stream.Next() {
 		event := stream.Current()
 
-		// fmt.Printf("DEBUG: Received event type: %s\n", event.Type)
+		fmt.Printf("DEBUG: Received event type: %s\n", event.Type)
 
 		switch event.Type {
 		case "response.output_item.added":
@@ -121,15 +121,15 @@ func StreamOpenAIResponsesAPI(sseHandler *SSEHandlerCh, ctx context.Context, opt
 
 		case "response.reasoning_summary_text.delta":
 			reasoningDelta := event.AsResponseReasoningSummaryTextDelta()
+			fmt.Printf("DEBUG: reasoning delta - reasoningEnded=%t, delta='%s'\n", reasoningEnded, reasoningDelta.Delta)
 			if reasoningDelta.Delta != "" && !reasoningEnded {
 				sseHandler.AiMsgReasoningDelta(reasoningId, reasoningDelta.Delta)
 			}
 
 		case "response.reasoning_summary_text.done":
-			if reasoningStarted && !reasoningEnded {
-				sseHandler.AiMsgReasoningEnd(reasoningId)
-				reasoningEnded = true
-			}
+			fmt.Printf("DEBUG: reasoning summary text done - reasoningStarted=%t, reasoningEnded=%t (not ending here, waiting for output_item.done)\n", reasoningStarted, reasoningEnded)
+			// Don't end reasoning here - there may be multiple reasoning parts
+			// Wait for response.output_item.done to end reasoning
 
 		case "response.reasoning_summary_part.done":
 			// Reasoning summary part done - no action needed
