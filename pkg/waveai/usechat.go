@@ -20,11 +20,6 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wstore"
 )
 
-const (
-	UseChatContentTypeSSE = "text/event-stream"
-	UseChatCacheControl   = "no-cache"
-	UseChatConnection     = "keep-alive"
-)
 
 // see /aiprompts/usechat-streamingproto.md for protocol
 
@@ -244,25 +239,7 @@ func resolveAIConfig(ctx context.Context, blockId, presetKey string, requestOpti
 	return aiOpts, nil
 }
 
-func convertUseChatMessagesToPrompt(messages []UseChatMessage) []wshrpc.WaveAIPromptMessageType {
-	var prompt []wshrpc.WaveAIPromptMessageType
-	for _, msg := range messages {
-		content := msg.GetContent()
-		if strings.TrimSpace(content) == "" {
-			continue
-		}
-		prompt = append(prompt, wshrpc.WaveAIPromptMessageType{
-			Role:    msg.Role,
-			Content: content,
-		})
-	}
-	return prompt
-}
-
-func streamOpenAIToUseChat(sseHandler *SSEHandler, ctx context.Context, opts *wshrpc.WaveAIOptsType, messages []UseChatMessage) {
-	// Start keepalive
-	sseHandler.StartKeepalive()
-	defer sseHandler.StopKeepalive()
+func streamOpenAIToUseChat(sseHandler *SSEHandlerCh, ctx context.Context, opts *wshrpc.WaveAIOptsType, messages []UseChatMessage) {
 
 	// Set up OpenAI client
 	clientConfig := openaiapi.DefaultConfig(opts.APIToken)
@@ -339,7 +316,6 @@ func streamOpenAIToUseChat(sseHandler *SSEHandler, ctx context.Context, opts *ws
 			if !finished {
 				writeOpenAIFinish(sseHandler, "stop", nil)
 			}
-			sseHandler.WriteDone()
 			return
 		}
 		if err != nil {
@@ -375,7 +351,7 @@ func streamOpenAIToUseChat(sseHandler *SSEHandler, ctx context.Context, opts *ws
 	}
 }
 
-func writeMessageStart(sseHandler *SSEHandler, messageId string) {
+func writeMessageStart(sseHandler *SSEHandlerCh, messageId string) {
 	resp := map[string]interface{}{
 		"type":      "start",
 		"messageId": messageId,
@@ -383,7 +359,7 @@ func writeMessageStart(sseHandler *SSEHandler, messageId string) {
 	sseHandler.WriteJsonData(resp)
 }
 
-func writeTextStart(sseHandler *SSEHandler, textId string) {
+func writeTextStart(sseHandler *SSEHandlerCh, textId string) {
 	resp := map[string]interface{}{
 		"type": "text-start",
 		"id":   textId,
@@ -391,7 +367,7 @@ func writeTextStart(sseHandler *SSEHandler, textId string) {
 	sseHandler.WriteJsonData(resp)
 }
 
-func writeUseChatTextDelta(sseHandler *SSEHandler, textId string, text string) {
+func writeUseChatTextDelta(sseHandler *SSEHandlerCh, textId string, text string) {
 	resp := map[string]interface{}{
 		"type":  "text-delta",
 		"id":    textId,
@@ -400,7 +376,7 @@ func writeUseChatTextDelta(sseHandler *SSEHandler, textId string, text string) {
 	sseHandler.WriteJsonData(resp)
 }
 
-func writeTextEnd(sseHandler *SSEHandler, textId string) {
+func writeTextEnd(sseHandler *SSEHandlerCh, textId string) {
 	resp := map[string]interface{}{
 		"type": "text-end",
 		"id":   textId,
@@ -408,7 +384,7 @@ func writeTextEnd(sseHandler *SSEHandler, textId string) {
 	sseHandler.WriteJsonData(resp)
 }
 
-func writeOpenAIFinish(sseHandler *SSEHandler, finishReason string, usage *OpenAIUsageResponse) {
+func writeOpenAIFinish(sseHandler *SSEHandlerCh, finishReason string, usage *OpenAIUsageResponse) {
 	resp := map[string]interface{}{
 		"type": "finish",
 	}
@@ -469,7 +445,7 @@ func HandleAIChat(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Create SSE handler and set up streaming
-	sseHandler := MakeSSEHandler(w, r.Context())
+	sseHandler := MakeSSEHandlerCh(w, r.Context())
 	defer sseHandler.Close()
 
 	if err := sseHandler.SetupSSE(); err != nil {
