@@ -53,7 +53,7 @@ const Tab = memo(
             const [isEditable, setIsEditable] = useState(false);
 
             const editableRef = useRef<HTMLDivElement>(null);
-            const editableTimeoutRef = useRef<NodeJS.Timeout>();
+            const editableTimeoutRef = useRef<NodeJS.Timeout>(null);
             const loadedRef = useRef(false);
             const tabRef = useRef<HTMLDivElement>(null);
 

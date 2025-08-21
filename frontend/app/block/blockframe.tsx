@@ -82,7 +82,7 @@ function handleHeaderContextMenu(
     ContextMenuModel.showContextMenu(menu, e);
 }
 
-function getViewIconElem(viewIconUnion: string | IconButtonDecl, blockData: Block): JSX.Element {
+function getViewIconElem(viewIconUnion: string | IconButtonDecl, blockData: Block): React.ReactElement {
     if (viewIconUnion == null || typeof viewIconUnion === "string") {
         const viewIcon = viewIconUnion as string;
         return <div className="block-frame-view-icon">{getBlockHeaderIcon(viewIcon, blockData)}</div>;
@@ -108,8 +108,8 @@ function computeEndIcons(
     viewModel: ViewModel,
     nodeModel: NodeModel,
     onContextMenu: (e: React.MouseEvent<HTMLDivElement>) => void
-): JSX.Element[] {
-    const endIconsElem: JSX.Element[] = [];
+): React.ReactElement[] {
+    const endIconsElem: React.ReactElement[] = [];
     const endIconButtons = util.useAtomValueSafe(viewModel?.endIconButtons);
     const magnified = jotai.useAtomValue(nodeModel.isMagnified);
     const ephemeral = jotai.useAtomValue(nodeModel.isEphemeral);
@@ -206,12 +206,12 @@ const BlockFrame_Header = ({
 
     const endIconsElem = computeEndIcons(viewModel, nodeModel, onContextMenu);
     const viewIconElem = getViewIconElem(viewIconUnion, blockData);
-    let preIconButtonElem: JSX.Element = null;
+    let preIconButtonElem: React.ReactElement = null;
     if (preIconButton) {
         preIconButtonElem = <IconButton decl={preIconButton} className="block-frame-preicon-button" />;
     }
 
-    const headerTextElems: JSX.Element[] = [];
+    const headerTextElems: React.ReactElement[] = [];
     if (typeof headerTextUnion === "string") {
         if (!util.isBlank(headerTextUnion)) {
             headerTextElems.push(
@@ -310,8 +310,8 @@ const HeaderTextElem = React.memo(({ elem, preview }: { elem: HeaderElem; previe
     return null;
 });
 
-function renderHeaderElements(headerTextUnion: HeaderElem[], preview: boolean): JSX.Element[] {
-    const headerTextElems: JSX.Element[] = [];
+function renderHeaderElements(headerTextUnion: HeaderElem[], preview: boolean): React.ReactElement[] {
+    const headerTextElems: React.ReactElement[] = [];
     for (let idx = 0; idx < headerTextUnion.length; idx++) {
         const elem = headerTextUnion[idx];
         const renderedElement = <HeaderTextElem elem={elem} key={idx} preview={preview} />;
@@ -536,7 +536,7 @@ const BlockFrame_Default_Component = (props: BlockFrameProps) => {
     const magnifiedBlockBlur = jotai.useAtomValue(magnifiedBlockBlurAtom);
     const [magnifiedBlockOpacityAtom] = React.useState(() => getSettingsKeyAtom("window:magnifiedblockopacity"));
     const magnifiedBlockOpacity = jotai.useAtomValue(magnifiedBlockOpacityAtom);
-    const connBtnRef = React.useRef<HTMLDivElement>();
+    const connBtnRef = React.useRef<HTMLDivElement>(null);
     const noHeader = util.useAtomValueSafe(viewModel?.noHeader);
 
     React.useEffect(() => {

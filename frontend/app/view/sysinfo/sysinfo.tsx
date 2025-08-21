@@ -408,7 +408,7 @@ function SingleLinePlot({
     sparkline = false,
     targetLen,
 }: SingleLinePlotProps) {
-    const containerRef = React.useRef<HTMLInputElement>();
+    const containerRef = React.useRef<HTMLInputElement>(null);
     const domRect = useDimensionsWithExistingRef(containerRef, 300);
     const plotHeight = domRect?.height ?? 0;
     const plotWidth = domRect?.width ?? 0;
@@ -520,7 +520,7 @@ const SysinfoViewInner = React.memo(({ model }: SysinfoViewProps) => {
     const plotData = jotai.useAtomValue(model.dataAtom);
     const yvals = jotai.useAtomValue(model.metrics);
     const plotMeta = jotai.useAtomValue(model.plotMetaAtom);
-    const osRef = React.useRef<OverlayScrollbarsComponentRef>();
+    const osRef = React.useRef<OverlayScrollbarsComponentRef>(null);
     const targetLen = jotai.useAtomValue(model.numPoints) + 1;
     let title = false;
     let cols2 = false;

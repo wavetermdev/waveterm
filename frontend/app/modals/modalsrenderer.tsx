@@ -12,7 +12,7 @@ const ModalsRenderer = () => {
     const clientData = jotai.useAtomValue(atoms.client);
     const [tosOpen, setTosOpen] = jotai.useAtom(modalsModel.tosOpen);
     const [modals] = jotai.useAtom(modalsModel.modalsAtom);
-    const rtn: JSX.Element[] = [];
+    const rtn: React.ReactElement[] = [];
     for (const modal of modals) {
         const ModalComponent = getModalComponent(modal.displayName);
         if (ModalComponent) {
