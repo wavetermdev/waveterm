@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { Button } from "@/app/element/button";
-import { Streamdown } from "streamdown";
 import { TypingIndicator } from "@/app/element/typingindicator";
 import { atoms, fetchWaveFile, WOS } from "@/store/global";
 import { BlockService, ObjectService } from "@/store/services";
@@ -14,6 +13,7 @@ import { DefaultChatTransport } from "ai";
 import { atom, Atom, useAtomValue } from "jotai";
 import { OverlayScrollbarsComponent, OverlayScrollbarsComponentRef } from "overlayscrollbars-react";
 import React, { forwardRef, memo, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
+import { Streamdown } from "streamdown";
 import { debounce, throttle } from "throttle-debounce";
 import { Reasoning, ReasoningContent, ReasoningTrigger } from "./reasoning";
 
@@ -321,9 +321,10 @@ const ChatWindow = memo(
                     <div className="flex flex-col gap-4 p-4">
                         {messages.map((message, index) => {
                             // Only the last assistant message should be streaming when isLoading is true
-                            const isLastAssistantMessage = message.role === "assistant" && index === messages.length - 1;
+                            const isLastAssistantMessage =
+                                message.role === "assistant" && index === messages.length - 1;
                             const isCurrentlyStreaming = isLoading && isLastAssistantMessage;
-                            
+
                             return (
                                 <ChatItem
                                     key={message.id}
@@ -334,14 +335,6 @@ const ChatWindow = memo(
                                 />
                             );
                         })}
-                        {isLoading && (
-                            <div className="flex items-start gap-3">
-                                <div className="flex-shrink-0 w-8 h-8 bg-accent/10 rounded-md flex items-center justify-center">
-                                    <i className="fa-sharp fa-solid fa-sparkles text-accent"></i>
-                                </div>
-                                <TypingIndicator className="mt-1" />
-                            </div>
-                        )}
                         {error && (
                             <div className="flex items-start gap-3">
                                 <div className="flex-shrink-0 w-8 h-8 bg-red-100 rounded-md flex items-center justify-center">
@@ -363,7 +356,12 @@ const ChatWindow = memo(
 ChatWindow.displayName = "ChatWindow";
 
 const ChatItem = memo(
-    ({ message, fontSize, fixedFontSize, isStreaming = false }: {
+    ({
+        message,
+        fontSize,
+        fixedFontSize,
+        isStreaming = false,
+    }: {
         message: ChatMessage;
         fontSize?: string;
         fixedFontSize?: string;
@@ -393,17 +391,23 @@ const ChatItem = memo(
                         <i className="fa-sharp fa-solid fa-sparkles text-accent"></i>
                     </div>
                     <div className="flex flex-col gap-2 max-w-[85%]">
-                        {(reasoning || isStreaming) && (
-                            <Reasoning isStreaming={isStreaming}>
-                                <ReasoningTrigger />
-                                <ReasoningContent>{reasoning || ""}</ReasoningContent>
-                            </Reasoning>
+                        {reasoning && (
+                            <div className="flex items-center min-h-8">
+                                <Reasoning isStreaming={isStreaming}>
+                                    <ReasoningTrigger />
+                                    <ReasoningContent>{reasoning || ""}</ReasoningContent>
+                                </Reasoning>
+                            </div>
                         )}
-                        {content && (
+                        {content ? (
                             <div className="bg-secondary/10 rounded-lg p-3">
                                 <Streamdown className="size-full [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
                                     {content}
                                 </Streamdown>
+                            </div>
+                        ) : (
+                            <div className="flex items-center min-h-8">
+                                <TypingIndicator />
                             </div>
                         )}
                     </div>
@@ -545,8 +549,16 @@ const WaveAiUseChat = ({ blockId, model }: WaveAiUseChatProps) => {
             try {
                 const allMessages = [...messages, message];
                 const chatMessages = allMessages.map((m) => {
-                    const text = m.parts?.filter((p: any) => p.type === 'text').map((p: any) => p.text).join('') ?? '';
-                    const reasoning = m.parts?.filter((p: any) => p.type === 'reasoning').map((p: any) => p.text).join('') ?? '';
+                    const text =
+                        m.parts
+                            ?.filter((p: any) => p.type === "text")
+                            .map((p: any) => p.text)
+                            .join("") ?? "";
+                    const reasoning =
+                        m.parts
+                            ?.filter((p: any) => p.type === "reasoning")
+                            .map((p: any) => p.text)
+                            .join("") ?? "";
                     return {
                         id: m.id,
                         role: m.role as "user" | "assistant" | "system",
@@ -564,7 +576,7 @@ const WaveAiUseChat = ({ blockId, model }: WaveAiUseChatProps) => {
         },
     });
 
-    const isLoading = status === "submitted";
+    const isLoading = status === "submitted" || status === "streaming";
 
     const handleInputChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
         setInput(e.target.value);
@@ -609,14 +621,14 @@ const WaveAiUseChat = ({ blockId, model }: WaveAiUseChatProps) => {
             <ChatWindow
                 messages={messages.map((m) => {
                     const text = m.parts
-                        .filter((p: any) => p.type === 'text')
+                        .filter((p: any) => p.type === "text")
                         .map((p: any) => p.text)
-                        .join('');
+                        .join("");
 
                     const reasoning = m.parts
-                        .filter((p: any) => p.type === 'reasoning')
+                        .filter((p: any) => p.type === "reasoning")
                         .map((p: any) => p.text)
-                        .join('');
+                        .join("");
 
                     return {
                         id: m.id,

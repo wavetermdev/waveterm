@@ -1,8 +1,8 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { Streamdown } from "streamdown";
 import React, { createContext, memo, useCallback, useContext, useEffect, useState } from "react";
+import { Streamdown } from "streamdown";
 
 type ReasoningContextValue = {
     isStreaming: boolean;
@@ -16,7 +16,7 @@ const ReasoningContext = createContext<ReasoningContextValue | null>(null);
 const useReasoning = () => {
     const context = useContext(ReasoningContext);
     if (!context) {
-        throw new Error('Reasoning components must be used within Reasoning');
+        throw new Error("Reasoning components must be used within Reasoning");
     }
     return context;
 };
@@ -42,14 +42,17 @@ export const Reasoning = memo(
         children: React.ReactNode;
     }) => {
         const [isOpen, setIsOpenState] = useState(defaultOpen);
-        const [duration, setDuration] = useState(durationProp);
+        const [duration, setDuration] = useState(0);
         const [hasAutoClosedRef, setHasAutoClosedRef] = useState(false);
         const [startTime, setStartTime] = useState<number | null>(null);
 
-        const setIsOpen = useCallback((newOpen: boolean) => {
-            setIsOpenState(newOpen);
-            onOpenChange?.(newOpen);
-        }, [onOpenChange]);
+        const setIsOpen = useCallback(
+            (newOpen: boolean) => {
+                setIsOpenState(newOpen);
+                onOpenChange?.(newOpen);
+            },
+            [onOpenChange]
+        );
 
         // Track duration when streaming starts and ends
         useEffect(() => {
@@ -63,18 +66,7 @@ export const Reasoning = memo(
             }
         }, [isStreaming, startTime]);
 
-        // Auto-open when streaming starts, auto-close when streaming ends (once only)
-        useEffect(() => {
-            if (isStreaming && !isOpen) {
-                setIsOpen(true);
-            } else if (!isStreaming && isOpen && !defaultOpen && !hasAutoClosedRef) {
-                const timer = setTimeout(() => {
-                    setIsOpen(false);
-                    setHasAutoClosedRef(true);
-                }, AUTO_CLOSE_DELAY);
-                return () => clearTimeout(timer);
-            }
-        }, [isStreaming, isOpen, defaultOpen, setIsOpen, hasAutoClosedRef]);
+        // Don't auto-open or auto-close - let user control the state manually
 
         // Handle controlled open state
         useEffect(() => {
@@ -84,12 +76,8 @@ export const Reasoning = memo(
         }, [open]);
 
         return (
-            <ReasoningContext.Provider
-                value={{ isStreaming, isOpen, setIsOpen, duration }}
-            >
-                <div className={`not-prose ${className || ''}`}>
-                    {children}
-                </div>
+            <ReasoningContext.Provider value={{ isStreaming, isOpen, setIsOpen, duration }}>
+                <div className={`not-prose ${className || ""}`}>{children}</div>
             </ReasoningContext.Provider>
         );
     }
@@ -98,7 +86,7 @@ export const Reasoning = memo(
 export const ReasoningTrigger = memo(
     ({
         className,
-        title = 'Reasoning',
+        title = "Reasoning",
         children,
         onClick,
     }: {
@@ -116,19 +104,15 @@ export const ReasoningTrigger = memo(
 
         return (
             <button
-                className={`flex items-center gap-2 text-muted-foreground text-sm cursor-pointer ${className || ''}`}
+                className={`flex items-center gap-2 text-muted-foreground text-sm cursor-pointer ${className || ""}`}
                 onClick={handleClick}
             >
                 {children ?? (
                     <>
-                        {isStreaming || duration === 0 ? (
-                            <p>Thinking...</p>
-                        ) : (
-                            <p>Thought for {duration} seconds</p>
-                        )}
+                        {isStreaming ? <p>Thinking...</p> : <p>Thinking Done</p>}
                         <i
-                            className={`fa-sharp fa-solid fa-chevron-down text-sm transition-transform ${
-                                isOpen ? 'rotate-180' : 'rotate-0'
+                            className={`fa-sharp fa-solid fa-chevron-right text-sm transition-transform ${
+                                isOpen ? "rotate-90" : "rotate-0"
                             }`}
                         />
                     </>
@@ -138,26 +122,22 @@ export const ReasoningTrigger = memo(
     }
 );
 
-export const ReasoningContent = memo(
-    ({ className, children }: { className?: string; children: string }) => {
-        const { isOpen } = useReasoning();
+export const ReasoningContent = memo(({ className, children }: { className?: string; children: string }) => {
+    const { isOpen } = useReasoning();
 
-        if (!isOpen) return null;
+    if (!isOpen) return null;
 
-        return (
-            <div
-                className={`mt-4 text-sm transition-all duration-200 ease-in-out ${
-                    isOpen ? 'animate-in slide-in-from-top-2' : 'animate-out slide-out-to-top-2'
-                } text-popover-foreground outline-none ${className || ''}`}
-            >
-                <Streamdown className="grid gap-2 [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
-                    {children}
-                </Streamdown>
-            </div>
-        );
-    }
-);
+    return (
+        <div
+            className={`mt-4 text-sm transition-all duration-200 ease-in-out ${
+                isOpen ? "animate-in slide-in-from-top-2" : "animate-out slide-out-to-top-2"
+            } text-popover-foreground outline-none ${className || ""}`}
+        >
+            <Streamdown className="grid gap-2 [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">{children}</Streamdown>
+        </div>
+    );
+});
 
-Reasoning.displayName = 'Reasoning';
-ReasoningTrigger.displayName = 'ReasoningTrigger';
-ReasoningContent.displayName = 'ReasoningContent';
+Reasoning.displayName = "Reasoning";
+ReasoningTrigger.displayName = "ReasoningTrigger";
+ReasoningContent.displayName = "ReasoningContent";
