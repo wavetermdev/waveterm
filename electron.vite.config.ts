@@ -69,6 +69,9 @@ export default defineConfig({
         },
         server: {
             open: false,
+            watch: {
+                ignored: ["**/*.go", "**/go.mod", "**/go.sum", "**/*.md", "**/*.json"],
+            },
         },
         css: {
             preprocessorOptions: {
