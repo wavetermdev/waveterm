@@ -44,7 +44,7 @@ The frontend uses yarn (berry).
 
 ### Styling
 
-- We use tailwind v4 to style. Custom stuff is defined in tailwindsetup.css.
+- We use **Tailwind v4** to style. Custom stuff is defined in frontend/tailwindsetup.css
 - _never_ use cursor-help (it looks terrible)
 - We have custom CSS setup as well, so it is a hybrid system. For new code we prefer tailwind, and are working to migrate code to all use tailwind.
 
