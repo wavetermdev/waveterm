@@ -732,6 +732,10 @@ const TableRow = React.forwardRef(function ({
         [dragItem]
     );
 
+    const dragRef = useCallback((node: HTMLDivElement | null) => {
+        drag(node);
+    }, [drag]);
+
     return (
         <div
             className={clsx("dir-table-body-row", { focused: focusIndex === idx })}
@@ -743,7 +747,7 @@ const TableRow = React.forwardRef(function ({
             }}
             onClick={() => setFocusIndex(idx)}
             onContextMenu={(e) => handleFileContextMenu(e, row.original)}
-            ref={drag}
+            ref={dragRef}
         >
             {row.getVisibleCells().map((cell) => (
                 <div
