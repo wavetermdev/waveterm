@@ -378,6 +378,22 @@ function mergeMeta(meta: MetaType, metaUpdate: MetaType, prefix?: string): MetaT
     return rtn;
 }
 
+function escapeBytes(str: string): string {
+    return str.replace(/[\s\S]/g, ch => {
+        const code = ch.charCodeAt(0);
+        switch (ch) {
+            case "\n": return "\\n";
+            case "\r": return "\\r";
+            case "\t": return "\\t";
+            case "\b": return "\\b";
+            case "\f": return "\\f";
+        }
+        if (code === 0x1b) return "\\x1b"; // escape
+        if (code < 0x20 || code === 0x7f) return `\\x${code.toString(16).padStart(2,"0")}`;
+        return ch;
+    });
+}
+
 function cn(...inputs: ClassValue[]) {
     return twMerge(clsx(inputs));
 }
@@ -391,6 +407,7 @@ export {
     cn,
     countGraphemes,
     deepCompareReturnPrev,
+    escapeBytes,
     fireAndForget,
     getPrefixedSettings,
     getPromiseState,

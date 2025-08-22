@@ -95,6 +95,9 @@
         "term:allowbracketedpaste": {
           "type": "boolean"
         },
+        "term:shiftenternewline": {
+          "type": "boolean"
+        },
         "editor:minimapenabled": {
           "type": "boolean"
         },
