@@ -60,3 +60,19 @@
     --ansi-brightcyan: #b7b8cb;
     --ansi-brightwhite: #f0f0f0;
 }
+
+/* Chart tooltip styling for sysinfo plots */
+svg [aria-label="tip"] g path {
+    color: var(--border-color);
+}
+
+/* Monaco editor scrollbar styling */
+.monaco-editor .slider {
+    background: rgba(255, 255, 255, 0.4);
+    border-radius: 4px;
+    transition: background 0.2s ease;
+}
+
+.monaco-editor .slider:hover {
+    background: rgba(255, 255, 255, 0.6);
+}

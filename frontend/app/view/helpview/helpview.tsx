@@ -9,7 +9,6 @@ import { WebView, WebViewModel } from "@/app/view/webview/webview";
 import { fireAndForget } from "@/util/util";
 import { atom, useAtomValue } from "jotai";
 import { useCallback } from "react";
-import "./helpview.scss";
 
 const docsiteWebUrl = "https://docs.waveterm.dev/";
 const baseUrlRegex = /http[s]?:\/\/([^:\/])+(:\d+)?/;
@@ -166,7 +165,7 @@ function HelpView(props: ViewComponentProps<HelpViewModel>) {
         [homepageUrl]
     );
     return (
-        <div className="help-view">
+        <div className="w-full h-full">
             <WebView {...props} onFailLoad={onFailLoad} />
         </div>
     );
