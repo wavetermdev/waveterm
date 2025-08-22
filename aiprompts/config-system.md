@@ -56,6 +56,35 @@ waveterm/
 
 Settings cascade from defaults → user settings → block overrides.
 
+### Block-Level Metadata Override System
+
+Wave Terminal supports block-level configuration overrides through the metadata system. This allows settings to be applied globally, per-connection, or per-block:
+
+1. **Global Settings** (`~/.config/waveterm/settings.json`) - Apply to all blocks by default
+2. **Connection Settings** (in connections config) - Apply to all blocks using a specific connection
+3. **Block Metadata** - Override settings for individual blocks
+
+**Key Files for Block Overrides:**
+- **[`pkg/waveobj/wtypemeta.go`](pkg/waveobj/wtypemeta.go)** - Defines the `MetaTSType` struct for block-level metadata
+- Block metadata fields should match the corresponding settings fields for consistency
+
+**Frontend Usage:**
+```typescript
+// Use getOverrideConfigAtom for hierarchical config resolution
+const settingValue = useAtomValue(getOverrideConfigAtom(blockId, "namespace:setting"));
+
+// This automatically resolves in order: block metadata → connection config → global settings → default
+```
+
+**Setting Block Metadata:**
+```bash
+# Set for current block
+wsh setmeta namespace:setting=value
+
+# Set for specific block
+wsh setmeta --block BLOCK_ID namespace:setting=value
+```
+
 ## How to Add a New Configuration Value
 
 Follow these steps to add a new configuration setting:
@@ -93,6 +122,30 @@ type SettingsType struct {
 - Use `string` for text values
 - Use `[]string` for arrays
 - Use `float64` for numbers that can be decimals
+
+### Step 1.5: Add to Block Metadata (Optional)
+
+If your setting should support block-level overrides, also add it to [`pkg/waveobj/wtypemeta.go`](pkg/waveobj/wtypemeta.go):
+
+```go
+type MetaTSType struct {
+    // ... existing fields ...
+
+    // Add your new field with matching JSON tag and type
+    MyNewSetting *string `json:"mynew:setting,omitempty"`  // Use pointer for optional values
+
+    // For different types:
+    MyBoolSetting   *bool    `json:"mynew:boolsetting,omitempty"`
+    MyNumberSetting *float64 `json:"mynew:numbersetting,omitempty"`
+    MyIntSetting    *int     `json:"mynew:intsetting,omitempty"`
+    MyArraySetting  []string `json:"mynew:arraysetting,omitempty"`
+}
+```
+
+**Block Metadata Guidelines:**
+- Use pointer types (`*string`, `*bool`, `*int`, `*float64`) for optional overrides
+- JSON tags should exactly match the corresponding settings field
+- This enables the hierarchical config system: block metadata → connection config → global settings
 
 ### Step 2: Add to JSON Schema
 
@@ -201,18 +254,33 @@ This will update the schema files and [`frontend/types/gotypes.d.ts`](frontend/t
 Access your new setting in React components:
 
 ```typescript
-import { useSettingsKeyAtom } from "@/app/store/global";
+import { getOverrideConfigAtom, useAtomValue } from "@/store/global";
 
 // In a React component
-const MyComponent = () => {
-    // Read global setting with fallback
-    const mySetting = useSettingsKeyAtom("mynew:setting") ?? "fallback value";
+const MyComponent = ({ blockId }: { blockId: string }) => {
+    // Use override config atom for hierarchical resolution
+    // This automatically checks: block metadata → connection config → global settings → default
+    const mySettingAtom = getOverrideConfigAtom(blockId, "mynew:setting");
+    const mySetting = useAtomValue(mySettingAtom) ?? "fallback value";
 
-    // For block-specific overrides
-    const myBlockSetting = useOverrideConfigAtom(blockId, "mynew:setting") ?? "fallback";
+    // For global-only settings (no block overrides)
+    const globalOnlySetting = useAtomValue(getSettingsKeyAtom("mynew:globalsetting")) ?? "fallback";
 
     return <div>Setting value: {mySetting}</div>;
 };
+```
+
+**Frontend Configuration Patterns:**
+
+```typescript
+// 1. Settings with block-level overrides (recommended)
+const termFontSize = useAtomValue(getOverrideConfigAtom(blockId, "term:fontsize")) ?? 12;
+
+// 2. Global-only settings
+const appGlobalHotkey = useAtomValue(getSettingsKeyAtom("app:globalhotkey")) ?? "";
+
+// 3. Connection-specific settings
+const connStatus = useAtomValue(getConnStatusAtom(connectionName));
 ```
 
 ### Step 7: Use in Backend Code
@@ -270,7 +338,7 @@ await RpcApi.SetMetaCommand(TabRpcClient, {
 
 ## Example: Adding a New Terminal Setting
 
-Let's walk through adding a new terminal setting `term:bellsound`:
+Let's walk through adding a new terminal setting `term:bellsound` with block-level override support:
 
 ### 1. Go Struct (settingsconfig.go)
 
@@ -281,7 +349,16 @@ type SettingsType struct {
 }
 ```
 
-### 2. JSON Schema (schema/settings.json)
+### 2. Block Metadata (wtypemeta.go)
+
+```go
+type MetaTSType struct {
+    // ... existing fields ...
+    TermBellSound *string `json:"term:bellsound,omitempty"`  // Pointer for optional override
+}
+```
+
+### 3. JSON Schema (schema/settings.json)
 
 ```json
 {
@@ -293,7 +370,7 @@ type SettingsType struct {
 }
 ```
 
-### 3. Default Value (defaultconfig/settings.json)
+### 4. Default Value (defaultconfig/settings.json)
 
 ```json
 {
@@ -301,16 +378,31 @@ type SettingsType struct {
 }
 ```
 
-### 4. Documentation (docs/config.mdx)
+### 5. Documentation (docs/config.mdx)
 
 ```markdown
 | term:bellsound | string | Sound to play for terminal bell ("default", "none", or custom sound file path) |
 ```
 
-### 5. Frontend Usage
+### 6. Frontend Usage
 
 ```typescript
-const bellSound = useOverrideConfigAtom(blockId, "term:bellsound") ?? "default";
+// Use override config for hierarchical resolution
+const bellSoundAtom = getOverrideConfigAtom(blockId, "term:bellsound");
+const bellSound = useAtomValue(bellSoundAtom) ?? "default";
+```
+
+### 7. Usage Examples
+
+```bash
+# Set globally
+wsh setconfig term:bellsound="custom.wav"
+
+# Set for current block only
+wsh setmeta term:bellsound="none"
+
+# Set for specific block
+wsh setmeta --block BLOCK_ID term:bellsound="beep"
 ```
 
 ## Testing Your Configuration
