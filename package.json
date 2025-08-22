@@ -62,7 +62,7 @@
         "@types/ws": "^8",
         "@vitejs/plugin-react-swc": "^4.0.0",
         "@vitest/coverage-istanbul": "^3.0.9",
-        "electron": "^37.3.0",
+        "electron": "^37.3.1",
         "electron-builder": "^26.0",
         "electron-vite": "^4.0.0",
         "eslint": "^8.57.0",
