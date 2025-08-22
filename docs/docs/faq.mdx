@@ -12,6 +12,25 @@ Wave supports various AI providers including local LLMs (via Ollama), Azure Open
 
 See our [AI Presets documentation](/ai-presets) for detailed setup instructions for each provider.
 
+### How do I enable Claude Code support with Shift+Enter?
+
+Wave supports Claude Code and similar AI coding tools that expect Shift+Enter to send an escape sequence + newline (`\u001b\n`) instead of a regular carriage return. This can be enabled using the `term:shiftenternewline` configuration setting.
+
+To enable this globally for all terminals:
+```bash
+wsh setconfig term:shiftenternewline=true
+```
+
+To enable this for just a specific terminal block:
+```bash
+wsh setmeta term:shiftenternewline=true
+```
+
+You can also set this in your [settings.json](./config) file:
+```json
+"term:shiftenternewline": true
+```
+
 ### How can I see the block numbers?
 
 The block numbers will appear when you hold down Ctrl-Shift (and disappear once you release the key combo).

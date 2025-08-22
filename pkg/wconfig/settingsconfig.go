@@ -83,6 +83,7 @@ type SettingsType struct {
 	TermCopyOnSelect        *bool    `json:"term:copyonselect,omitempty"`
 	TermTransparency        *float64 `json:"term:transparency,omitempty"`
 	TermAllowBracketedPaste *bool    `json:"term:allowbracketedpaste,omitempty"`
+	TermShiftEnterNewline   *bool    `json:"term:shiftenternewline,omitempty"`
 
 	EditorMinimapEnabled      bool    `json:"editor:minimapenabled,omitempty"`
 	EditorStickyScrollEnabled bool    `json:"editor:stickyscrollenabled,omitempty"`
