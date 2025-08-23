@@ -125,22 +125,31 @@
             }
 
             .codeblock-actions {
-                visibility: hidden;
-                display: flex;
                 position: absolute;
-                top: 0;
-                right: 0;
+                top: 5px;
+                right: 5px;
+                display: flex;
+                gap: 4px;
+                opacity: 0;
+                transition: opacity 0.1s ease-in-out;
+                background-color: rgba(0, 0, 0, 0.2);
+                backdrop-filter: blur(2px);
                 border-radius: 4px;
-                backdrop-filter: blur(8px);
-                margin: 0.143em;
-                padding: 0.286em;
-                align-items: center;
-                justify-content: flex-end;
-                gap: 0.286em;
+                padding: 2px 4px;
+
+                .iconbutton {
+                    font-size: 14px;
+                    padding: 3px;
+                    border-radius: 3px;
+
+                    &:hover {
+                        background-color: rgba(255, 255, 255, 0.1);
+                    }
+                }
             }
 
             &:hover .codeblock-actions {
-                visibility: visible;
+                opacity: 1;
             }
         }
 
