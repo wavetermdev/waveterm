@@ -50,6 +50,7 @@ type MetaTSType struct {
 	CmdArgs             []string `json:"cmd:args,omitempty"`  // args for cmd (only if cmd:shell is false)
 	CmdShell            bool     `json:"cmd:shell,omitempty"` // shell expansion for cmd+args (defaults to true)
 	CmdAllowConnChange  bool     `json:"cmd:allowconnchange,omitempty"`
+	CmdJwt              bool     `json:"cmd:jwt,omitempty"` // force adding JWT to environment
 
 	// these can be nested under "[conn]"
 	CmdEnv            map[string]string `json:"cmd:env,omitempty"`

@@ -271,6 +271,16 @@ func grabAndRemoveEnvVars() error {
 	if err != nil {
 		return err
 	}
+
+	// Remove WAVETERM env vars that leak from prod => dev
+	os.Unsetenv("WAVETERM_CLIENTID")
+	os.Unsetenv("WAVETERM_WORKSPACEID")
+	os.Unsetenv("WAVETERM_TABID")
+	os.Unsetenv("WAVETERM_BLOCKID")
+	os.Unsetenv("WAVETERM_CONN")
+	os.Unsetenv("WAVETERM_JWT")
+	os.Unsetenv("WAVETERM_VERSION")
+
 	return nil
 }
 
