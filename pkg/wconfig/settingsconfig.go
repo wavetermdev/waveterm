@@ -766,7 +766,7 @@ func (fc *FullConfigType) CountCustomAIPresets() int {
 	return count
 }
 
-// CountCustomSettings returns the number of settings the user has customized from the defaults.
+// CountCustomSettings returns the number of settings in the user's settings file.
 // This excludes telemetry:enabled which doesn't count as a customization.
 func CountCustomSettings() int {
 	// Load user settings

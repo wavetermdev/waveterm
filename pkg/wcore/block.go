@@ -99,16 +99,16 @@ func CreateBlockWithTelemetry(ctx context.Context, tabId string, blockDef *waveo
 		}
 	}
 	if recordTelemetry {
-		go recordBlockCreationTelemetry(blockDef)
+		blockView := blockDef.Meta.GetString(waveobj.MetaKey_View, "")
+		go recordBlockCreationTelemetry(blockView)
 	}
 	return blockData, nil
 }
 
-func recordBlockCreationTelemetry(blockDef *waveobj.BlockDef) {
+func recordBlockCreationTelemetry(blockView string) {
 	defer func() {
 		panichandler.PanicHandler("CreateBlock:telemetry", recover())
 	}()
-	blockView := blockDef.Meta.GetString(waveobj.MetaKey_View, "")
 	if blockView == "" {
 		return
 	}

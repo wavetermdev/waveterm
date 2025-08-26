@@ -127,7 +127,6 @@ func QueueLayoutActionForTab(ctx context.Context, tabId string, actions ...waveo
 }
 
 func ApplyPortableLayout(ctx context.Context, tabId string, layout PortableLayout, recordTelemetry bool) error {
-	log.Printf("ApplyPortableLayout, tabId: %s, layout: %v\n", tabId, layout)
 	actions := make([]waveobj.LayoutActionData, len(layout)+1)
 	actions[0] = waveobj.LayoutActionData{ActionType: LayoutActionDataType_ClearTree}
 	for i := 0; i < len(layout); i++ {
