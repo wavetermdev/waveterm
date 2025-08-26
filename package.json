@@ -92,7 +92,7 @@
         "vitest": "^3.0.9"
     },
     "dependencies": {
-        "@floating-ui/react": "^0.27.15",
+        "@floating-ui/react": "^0.27.16",
         "@monaco-editor/loader": "^1.5.0",
         "@monaco-editor/react": "^4.7.0",
         "@observablehq/plot": "^0.6.17",
