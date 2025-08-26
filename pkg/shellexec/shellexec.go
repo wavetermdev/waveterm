@@ -167,8 +167,6 @@ func StartWslShellProcNoWsh(ctx context.Context, termSize waveobj.TermSize, cmdS
 	conn.Infof(ctx, "WSL-NEWSESSION (StartWslShellProcNoWsh)")
 
 	ecmd := exec.Command("wsl.exe", "~", "-d", client.Name())
-	ecmd.Env = os.Environ()
-	shellutil.UpdateCmdEnv(ecmd, cmdOpts.Env)
 
 	if termSize.Rows == 0 || termSize.Cols == 0 {
 		termSize.Rows = shellutil.DefaultTermRows
@@ -334,12 +332,9 @@ func StartRemoteShellProcNoWsh(ctx context.Context, termSize waveobj.TermSize, c
 	session.Stdout = remoteStdoutWrite
 	session.Stderr = remoteStdoutWrite
 
-	envPrefix := makeEnvPrefix(cmdOpts.Env)
-	shellCmd := fmt.Sprintf("%s$SHELL", envPrefix)
-
 	session.RequestPty("xterm-256color", termSize.Rows, termSize.Cols, nil)
-	sessionWrap := MakeSessionWrap(session, shellCmd, pipePty)
-	err = sessionWrap.Start()
+	sessionWrap := MakeSessionWrap(session, "", pipePty)
+	err = session.Shell()
 	if err != nil {
 		pipePty.Close()
 		return nil, err
