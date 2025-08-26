@@ -136,6 +136,12 @@ func updateActivityTEvent(ctx context.Context, tevent *telemetrydata.TEvent) err
 	eventTs := time.Now()
 	// compute to hour boundary, and round up to next hour
 	eventTs = eventTs.Truncate(time.Hour).Add(time.Hour)
+	
+	fullConfig := wconfig.GetWatcher().GetFullConfig()
+	customWidgets := fullConfig.CountCustomWidgets()
+	customAIPresets := fullConfig.CountCustomAIPresets()
+	customSettings := wconfig.CountCustomSettings()
+	
 	return wstore.WithTx(ctx, func(tx *wstore.TxWrap) error {
 		// find event that matches this timestamp with event name "app:activity"
 		var hasRow bool
@@ -151,6 +157,14 @@ func updateActivityTEvent(ctx context.Context, tevent *telemetrydata.TEvent) err
 			}
 		}
 		mergeActivity(&curActivity, tevent.Props)
+		
+		if curActivity.UserSet == nil {
+			curActivity.UserSet = &telemetrydata.TEventUserProps{}
+		}
+		curActivity.UserSet.SettingsCustomWidgets = customWidgets
+		curActivity.UserSet.SettingsCustomAIPresets = customAIPresets
+		curActivity.UserSet.SettingsCustomSettings = customSettings
+		
 		if hasRow {
 			query := `UPDATE db_tevent SET props = ? WHERE uuid = ?`
 			tx.Exec(query, dbutil.QuickJson(curActivity), uuidStr)

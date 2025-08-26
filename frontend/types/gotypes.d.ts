@@ -824,6 +824,9 @@ declare global {
         "autoupdate:enabled"?: boolean;
         "loc:countrycode"?: string;
         "loc:regioncode"?: string;
+        "settings:customwidgets"?: number;
+        "settings:customaipresets"?: number;
+        "settings:customsettings"?: number;
         "activity:activeminutes"?: number;
         "activity:fgminutes"?: number;
         "activity:openminutes"?: number;
@@ -863,6 +866,9 @@ declare global {
         "autoupdate:enabled"?: boolean;
         "loc:countrycode"?: string;
         "loc:regioncode"?: string;
+        "settings:customwidgets"?: number;
+        "settings:customaipresets"?: number;
+        "settings:customsettings"?: number;
     };
 
     // waveobj.Tab

@@ -741,3 +741,48 @@ type TermThemeType struct {
 	Background          string  `json:"background"`
 	Cursor              string  `json:"cursor"`
 }
+
+// CountCustomWidgets returns the number of custom widgets the user has defined.
+// Custom widgets are identified as widgets whose ID doesn't start with "defwidget@".
+func (fc *FullConfigType) CountCustomWidgets() int {
+	count := 0
+	for widgetID := range fc.Widgets {
+		if !strings.HasPrefix(widgetID, "defwidget@") {
+			count++
+		}
+	}
+	return count
+}
+
+// CountCustomAIPresets returns the number of custom AI presets the user has defined.
+// Custom AI presets are identified as presets that start with "ai@" but aren't "ai@global" or "ai@wave".
+func (fc *FullConfigType) CountCustomAIPresets() int {
+	count := 0
+	for presetID := range fc.Presets {
+		if strings.HasPrefix(presetID, "ai@") && presetID != "ai@global" && presetID != "ai@wave" {
+			count++
+		}
+	}
+	return count
+}
+
+// CountCustomSettings returns the number of settings the user has customized from the defaults.
+// This excludes telemetry:enabled which doesn't count as a customization.
+func CountCustomSettings() int {
+	// Load user settings
+	userSettings, _ := ReadWaveHomeConfigFile("settings.json")
+	if userSettings == nil {
+		return 0
+	}
+
+	// Count all keys except telemetry:enabled
+	count := 0
+	for key := range userSettings {
+		if key == "telemetry:enabled" {
+			continue
+		}
+		count++
+	}
+
+	return count
+}
