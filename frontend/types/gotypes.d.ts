@@ -824,9 +824,13 @@ declare global {
         "autoupdate:enabled"?: boolean;
         "loc:countrycode"?: string;
         "loc:regioncode"?: string;
+        "settings:customwidgets"?: number;
+        "settings:customaipresets"?: number;
+        "settings:customsettings"?: number;
         "activity:activeminutes"?: number;
         "activity:fgminutes"?: number;
         "activity:openminutes"?: number;
+        "app:firstday"?: boolean;
         "action:initiator"?: "keyboard" | "mouse";
         "debug:panictype"?: string;
         "block:view"?: string;
@@ -862,6 +866,9 @@ declare global {
         "autoupdate:enabled"?: boolean;
         "loc:countrycode"?: string;
         "loc:regioncode"?: string;
+        "settings:customwidgets"?: number;
+        "settings:customaipresets"?: number;
+        "settings:customsettings"?: number;
     };
 
     // waveobj.Tab

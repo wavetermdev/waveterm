@@ -51,10 +51,16 @@ type TEventUserProps struct {
 	ClientBuildTime      string `json:"client:buildtime,omitempty"`
 	ClientOSRelease      string `json:"client:osrelease,omitempty"`
 	ClientIsDev          bool   `json:"client:isdev,omitempty"`
-	AutoUpdateChannel    string `json:"autoupdate:channel,omitempty"`
-	AutoUpdateEnabled    bool   `json:"autoupdate:enabled,omitempty"`
-	LocCountryCode       string `json:"loc:countrycode,omitempty"`
-	LocRegionCode        string `json:"loc:regioncode,omitempty"`
+
+	AutoUpdateChannel string `json:"autoupdate:channel,omitempty"`
+	AutoUpdateEnabled bool   `json:"autoupdate:enabled,omitempty"`
+
+	LocCountryCode string `json:"loc:countrycode,omitempty"`
+	LocRegionCode  string `json:"loc:regioncode,omitempty"`
+
+	SettingsCustomWidgets   int `json:"settings:customwidgets,omitempty"`
+	SettingsCustomAIPresets int `json:"settings:customaipresets,omitempty"`
+	SettingsCustomSettings  int `json:"settings:customsettings,omitempty"`
 }
 
 type TEventProps struct {
@@ -63,6 +69,8 @@ type TEventProps struct {
 	ActiveMinutes int `json:"activity:activeminutes,omitempty"`
 	FgMinutes     int `json:"activity:fgminutes,omitempty"`
 	OpenMinutes   int `json:"activity:openminutes,omitempty"`
+
+	AppFirstDay bool `json:"app:firstday,omitempty"`
 
 	ActionInitiator string `json:"action:initiator,omitempty" tstype:"\"keyboard\" | \"mouse\""`
 	PanicType       string `json:"debug:panictype,omitempty"`
