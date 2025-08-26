@@ -481,6 +481,7 @@ const BlockMask = React.memo(({ nodeModel }: { nodeModel: NodeModel }) => {
     const isFocused = jotai.useAtomValue(nodeModel.isFocused);
     const blockNum = jotai.useAtomValue(nodeModel.blockNum);
     const isLayoutMode = jotai.useAtomValue(atoms.controlShiftDelayAtom);
+    const showOverlayBlockNums = jotai.useAtomValue(getSettingsKeyAtom("app:showoverlayblocknums")) ?? true;
     const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", nodeModel.blockId));
     const style: React.CSSProperties = {};
     let showBlockMask = false;
@@ -504,7 +505,7 @@ const BlockMask = React.memo(({ nodeModel }: { nodeModel: NodeModel }) => {
         }
     }
     let innerElem = null;
-    if (isLayoutMode) {
+    if (isLayoutMode && showOverlayBlockNums) {
         showBlockMask = true;
         innerElem = (
             <div className="block-mask-inner">

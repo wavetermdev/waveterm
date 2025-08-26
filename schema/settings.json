@@ -17,6 +17,9 @@
         "app:defaultnewblock": {
           "type": "string"
         },
+        "app:showoverlayblocknums": {
+          "type": "boolean"
+        },
         "ai:*": {
           "type": "boolean"
         },

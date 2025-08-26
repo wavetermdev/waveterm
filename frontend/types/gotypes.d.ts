@@ -683,6 +683,7 @@ declare global {
         "app:globalhotkey"?: string;
         "app:dismissarchitecturewarning"?: boolean;
         "app:defaultnewblock"?: string;
+        "app:showoverlayblocknums"?: boolean;
         "ai:*"?: boolean;
         "ai:preset"?: string;
         "ai:apitype"?: string;
