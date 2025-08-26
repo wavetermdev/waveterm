@@ -136,7 +136,7 @@ files as well: `termthemes.json`, `presets.json`, and `widgets.json`.
 
 ## Environment Variable Resolution
 
-To avoid putting secrets directly in config files, Wave supports environment variable resolution using `$ENV:VARIABLE_NAME` or `$ENV:VARIABLE_NAME:fallback` syntax.
+To avoid putting secrets directly in config files, Wave supports environment variable resolution using `$ENV:VARIABLE_NAME` or `$ENV:VARIABLE_NAME:fallback` syntax.  This works for any string value in any config file (settings.json, presets.json, ai.json, etc.).
 
 ```json
 {
