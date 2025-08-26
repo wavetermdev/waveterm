@@ -1,7 +1,7 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { clsx } from "clsx";
+import clsx from "clsx";
 import React, { forwardRef } from "react";
 
 import "./windowdrag.scss";
@@ -19,5 +19,6 @@ const WindowDrag = forwardRef<HTMLDivElement, WindowDragProps>(({ children, clas
         </div>
     );
 });
+WindowDrag.displayName = "WindowDrag";
 
 export { WindowDrag };

@@ -411,8 +411,8 @@ function DirectoryTable({
         return colSizes;
     }, [table.getState().columnSizingInfo]);
 
-    const osRef = useRef<OverlayScrollbarsComponentRef>();
-    const bodyRef = useRef<HTMLDivElement>();
+    const osRef = useRef<OverlayScrollbarsComponentRef>(null);
+    const bodyRef = useRef<HTMLDivElement>(null);
     const [scrollHeight, setScrollHeight] = useState(0);
 
     const onScroll = useCallback(
@@ -518,8 +518,8 @@ function TableBody({
     setRefreshVersion,
     osRef,
 }: TableBodyProps) {
-    const dummyLineRef = useRef<HTMLDivElement>();
-    const warningBoxRef = useRef<HTMLDivElement>();
+    const dummyLineRef = useRef<HTMLDivElement>(null);
+    const warningBoxRef = useRef<HTMLDivElement>(null);
     const conn = useAtomValue(model.connection);
     const setErrorMsg = useSetAtom(model.errorMsgAtom);
 
@@ -732,6 +732,10 @@ const TableRow = React.forwardRef(function ({
         [dragItem]
     );
 
+    const dragRef = useCallback((node: HTMLDivElement | null) => {
+        drag(node);
+    }, [drag]);
+
     return (
         <div
             className={clsx("dir-table-body-row", { focused: focusIndex === idx })}
@@ -743,7 +747,7 @@ const TableRow = React.forwardRef(function ({
             }}
             onClick={() => setFocusIndex(idx)}
             onContextMenu={(e) => handleFileContextMenu(e, row.original)}
-            ref={drag}
+            ref={dragRef}
         >
             {row.getVisibleCells().map((cell) => (
                 <div
