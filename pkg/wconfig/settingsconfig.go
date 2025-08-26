@@ -375,7 +375,7 @@ func resolveEnvValue(value string) (string, bool) {
 	}
 	
 	// Get the environment variable value
-	if envValue := os.Getenv(envVar); envValue != "" {
+	if envValue, exists := os.LookupEnv(envVar); exists {
 		return envValue, true
 	}
 	
