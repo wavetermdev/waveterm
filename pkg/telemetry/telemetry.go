@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"sync/atomic"
 	"time"
 
 	"github.com/google/uuid"
@@ -26,6 +27,25 @@ import (
 
 const MaxTzNameLen = 50
 const ActivityEventName = "app:activity"
+
+var cachedTosAgreedTs atomic.Int64
+
+func GetTosAgreedTs() int64 {
+	cached := cachedTosAgreedTs.Load()
+	if cached != 0 {
+		return cached
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	client, err := wstore.DBGetSingleton[*waveobj.Client](ctx)
+	if err != nil || client == nil || client.TosAgreed == 0 {
+		return 0
+	}
+
+	cachedTosAgreedTs.Store(client.TosAgreed)
+	return client.TosAgreed
+}
 
 type ActivityType struct {
 	Day           string        `json:"day"`
@@ -136,7 +156,7 @@ func updateActivityTEvent(ctx context.Context, tevent *telemetrydata.TEvent) err
 	eventTs := time.Now()
 	// compute to hour boundary, and round up to next hour
 	eventTs = eventTs.Truncate(time.Hour).Add(time.Hour)
-	
+
 	return wstore.WithTx(ctx, func(tx *wstore.TxWrap) error {
 		// find event that matches this timestamp with event name "app:activity"
 		var hasRow bool
@@ -152,7 +172,7 @@ func updateActivityTEvent(ctx context.Context, tevent *telemetrydata.TEvent) err
 			}
 		}
 		mergeActivity(&curActivity, tevent.Props)
-		
+
 		if hasRow {
 			query := `UPDATE db_tevent SET props = ? WHERE uuid = ?`
 			tx.Exec(query, dbutil.QuickJson(curActivity), uuidStr)
@@ -212,17 +232,13 @@ func RecordTEvent(ctx context.Context, tevent *telemetrydata.TEvent) error {
 		return err
 	}
 	tevent.EnsureTimestamps()
-	
+
 	// Set AppFirstDay if within first day of TOS agreement
-	client, err := wstore.DBGetSingleton[*waveobj.Client](ctx)
-	if err == nil && client != nil && client.TosAgreed != 0 {
-		now := time.Now().UnixMilli()
-		oneDayMs := int64(24 * 60 * 60 * 1000)
-		if now-client.TosAgreed <= oneDayMs {
-			tevent.Props.AppFirstDay = true
-		}
+	tosAgreedTs := GetTosAgreedTs()
+	if tosAgreedTs == 0 || (tosAgreedTs != 0 && time.Now().UnixMilli()-tosAgreedTs <= int64(24*60*60*1000)) {
+		tevent.Props.AppFirstDay = true
 	}
-	
+
 	if tevent.Event == ActivityEventName {
 		return updateActivityTEvent(ctx, tevent)
 	}
