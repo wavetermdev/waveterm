@@ -18,6 +18,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/util/dbutil"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
+	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wconfig"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wstore"
@@ -209,6 +210,17 @@ func RecordTEvent(ctx context.Context, tevent *telemetrydata.TEvent) error {
 		return err
 	}
 	tevent.EnsureTimestamps()
+	
+	// Set AppFirstDay if within first day of TOS agreement
+	client, err := wstore.DBGetSingleton[*waveobj.Client](ctx)
+	if err == nil && client != nil && client.TosAgreed != 0 {
+		now := time.Now().UnixMilli()
+		oneDayMs := int64(24 * 60 * 60 * 1000)
+		if now-client.TosAgreed <= oneDayMs {
+			tevent.Props.AppFirstDay = true
+		}
+	}
+	
 	if tevent.Event == ActivityEventName {
 		return updateActivityTEvent(ctx, tevent)
 	}

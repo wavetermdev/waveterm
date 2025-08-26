@@ -64,6 +64,8 @@ type TEventProps struct {
 	FgMinutes     int `json:"activity:fgminutes,omitempty"`
 	OpenMinutes   int `json:"activity:openminutes,omitempty"`
 
+	AppFirstDay bool `json:"app:firstday,omitempty"`
+
 	ActionInitiator string `json:"action:initiator,omitempty" tstype:"\"keyboard\" | \"mouse\""`
 	PanicType       string `json:"debug:panictype,omitempty"`
 	BlockView       string `json:"block:view,omitempty"`

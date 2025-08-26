@@ -827,6 +827,7 @@ declare global {
         "activity:activeminutes"?: number;
         "activity:fgminutes"?: number;
         "activity:openminutes"?: number;
+        "app:firstday"?: boolean;
         "action:initiator"?: "keyboard" | "mouse";
         "debug:panictype"?: string;
         "block:view"?: string;
