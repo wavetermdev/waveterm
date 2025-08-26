@@ -4,7 +4,6 @@
 import { QuickTips } from "@/app/element/quicktips";
 import { globalStore } from "@/app/store/global";
 import { Atom, atom, PrimitiveAtom } from "jotai";
-import "./quicktipsview.scss";
 
 class QuickTipsViewModel implements ViewModel {
     viewType: string;
@@ -27,7 +26,7 @@ class QuickTipsViewModel implements ViewModel {
 
 function QuickTipsView({ model }: { model: QuickTipsViewModel }) {
     return (
-        <div className="quicktips-view">
+        <div className="px-[5px] py-[10px] overflow-auto w-full">
             <QuickTips />
         </div>
     );

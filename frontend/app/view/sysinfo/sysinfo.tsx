@@ -16,7 +16,6 @@ import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { atoms } from "@/store/global";
 import { OverlayScrollbarsComponent, OverlayScrollbarsComponentRef } from "overlayscrollbars-react";
-import "./sysinfo.scss";
 
 const DefaultNumPoints = 120;
 
@@ -513,7 +512,7 @@ function SingleLinePlot({
         };
     }, [plot, plotWidth, plotHeight]);
 
-    return <div ref={containerRef} className="sysinfo-plot-content" />;
+    return <div ref={containerRef} className="min-h-[100px]" />;
 }
 
 const SysinfoViewInner = React.memo(({ model }: SysinfoViewProps) => {
@@ -534,10 +533,10 @@ const SysinfoViewInner = React.memo(({ model }: SysinfoViewProps) => {
     return (
         <OverlayScrollbarsComponent
             ref={osRef}
-            className="sysinfo-view"
+            className="flex flex-col flex-grow mb-0 overflow-y-auto"
             options={{ scrollbars: { autoHide: "leave" } }}
         >
-            <div className={clsx("sysinfo-inner", { "two-columns": cols2 })}>
+            <div className={clsx("w-full h-full grid grid-rows-[repeat(auto-fit,minmax(100px,1fr))] gap-[10px]", { "grid-cols-2": cols2 })}>
                 {yvals.map((yval, idx) => {
                     return (
                         <SingleLinePlot

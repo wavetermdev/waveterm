@@ -19,7 +19,6 @@ import tsWorker from "monaco-editor/esm/vs/language/typescript/ts.worker?worker"
 import { SchemaEndpoints, getSchemaEndpointInfo } from "./schemaendpoints";
 import ymlWorker from "./yamlworker?worker";
 
-import "./codeeditor.scss";
 
 // there is a global monaco variable (TODO get the correct TS type)
 declare var monaco: Monaco;
@@ -178,8 +177,8 @@ export function CodeEditor({ blockId, text, language, filename, fileinfo, meta, 
     }, [minimapEnabled, stickyScrollEnabled, wordWrap, fontSize, fileinfo.readonly]);
 
     return (
-        <div className="code-editor-wrapper">
-            <div className="code-editor" ref={divRef}>
+        <div className="flex flex-col w-full h-full overflow-hidden items-center justify-center">
+            <div className="flex flex-col h-full w-full" ref={divRef}>
                 <Editor
                     theme={theme}
                     value={text}

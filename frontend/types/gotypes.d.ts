@@ -581,6 +581,7 @@ declare global {
         "term:vdomtoolbarblockid"?: string;
         "term:transparency"?: number;
         "term:allowbracketedpaste"?: boolean;
+        "term:shiftenternewline"?: boolean;
         "term:conndebug"?: string;
         "web:zoom"?: number;
         "web:hidenav"?: boolean;
@@ -706,6 +707,7 @@ declare global {
         "term:copyonselect"?: boolean;
         "term:transparency"?: number;
         "term:allowbracketedpaste"?: boolean;
+        "term:shiftenternewline"?: boolean;
         "editor:minimapenabled"?: boolean;
         "editor:stickyscrollenabled"?: boolean;
         "editor:wordwrap"?: boolean;
