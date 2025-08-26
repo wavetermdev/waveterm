@@ -63,7 +63,7 @@ function getViewElem(
     contentRef: React.RefObject<HTMLDivElement>,
     blockView: string,
     viewModel: ViewModel
-): JSX.Element {
+): React.ReactElement {
     if (isBlank(blockView)) {
         return <CenteredDiv>No View</CenteredDiv>;
     }

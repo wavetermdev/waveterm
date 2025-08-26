@@ -263,7 +263,7 @@ export const CustomRenderer: Story = {
             </div>
         );
 
-        const renderMenu = (subMenu: JSX.Element) => <div>{subMenu}</div>;
+        const renderMenu = (subMenu: React.ReactElement) => <div>{subMenu}</div>;
 
         const modifiedArgs = {
             ...args,

@@ -14,8 +14,8 @@ type MenuProps = {
     placement?: Placement;
     onOpenChange?: (isOpen: boolean) => void;
     children: ReactNode | ReactNode[];
-    renderMenu?: (subMenu: JSX.Element, props: any) => JSX.Element;
-    renderMenuItem?: (item: MenuItem, props: any) => JSX.Element;
+    renderMenu?: (subMenu: React.ReactElement, props: any) => React.ReactElement;
+    renderMenuItem?: (item: MenuItem, props: any) => React.ReactElement;
 };
 
 const FlyoutMenuComponent = memo(
@@ -214,8 +214,8 @@ type SubMenuProps = {
         item: MenuItem
     ) => void;
     handleOnClick: (e: React.MouseEvent<HTMLDivElement>, item: MenuItem) => void;
-    renderMenu?: (subMenu: JSX.Element, props: any) => JSX.Element;
-    renderMenuItem?: (item: MenuItem, props: any) => JSX.Element;
+    renderMenu?: (subMenu: React.ReactElement, props: any) => React.ReactElement;
+    renderMenuItem?: (item: MenuItem, props: any) => React.ReactElement;
 };
 
 const SubMenu = memo(

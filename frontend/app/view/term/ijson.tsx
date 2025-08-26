@@ -12,7 +12,7 @@ type IJsonNode = {
 
 const TagMap: Record<string, React.ComponentType<{ node: IJsonNode }>> = {};
 
-function convertNodeToTag(node: IJsonNode | string, idx?: number): JSX.Element | string {
+function convertNodeToTag(node: IJsonNode | string, idx?: number): React.ReactElement | string {
     if (node == null) {
         return null;
     }
@@ -44,7 +44,7 @@ function IJsonHtmlTag({ node }: { node: IJsonNode }) {
             }
         }
     }
-    let childrenComps: (string | JSX.Element)[] = [];
+    let childrenComps: (string | React.ReactElement)[] = [];
     if (children != null) {
         for (let idx = 0; idx < children.length; idx++) {
             let comp = convertNodeToTag(children[idx], idx);

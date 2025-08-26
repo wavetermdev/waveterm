@@ -120,7 +120,7 @@ interface PopoverButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
     isActive?: boolean;
     children: React.ReactNode;
     getReferenceProps?: () => any;
-    as?: keyof JSX.IntrinsicElements | React.ComponentType<any>;
+    as?: keyof React.JSX.IntrinsicElements | React.ComponentType<any>;
 }
 
 const PopoverButton = forwardRef<HTMLButtonElement | HTMLDivElement, PopoverButtonProps>(
