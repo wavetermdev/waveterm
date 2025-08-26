@@ -327,6 +327,65 @@ func isTrailingCommaError(barr []byte, offset int) bool {
 	return false
 }
 
+func resolveEnvReplacements(m waveobj.MetaMapType) {
+	if m == nil {
+		return
+	}
+	
+	for key, value := range m {
+		switch v := value.(type) {
+		case string:
+			if resolved, ok := resolveEnvValue(v); ok {
+				m[key] = resolved
+			}
+		case map[string]interface{}:
+			resolveEnvReplacements(waveobj.MetaMapType(v))
+		case []interface{}:
+			resolveEnvArray(v)
+		}
+	}
+}
+
+func resolveEnvArray(arr []interface{}) {
+	for i, value := range arr {
+		switch v := value.(type) {
+		case string:
+			if resolved, ok := resolveEnvValue(v); ok {
+				arr[i] = resolved
+			}
+		case map[string]interface{}:
+			resolveEnvReplacements(waveobj.MetaMapType(v))
+		case []interface{}:
+			resolveEnvArray(v)
+		}
+	}
+}
+
+func resolveEnvValue(value string) (string, bool) {
+	if !strings.HasPrefix(value, "$ENV:") {
+		return "", false
+	}
+	
+	envSpec := value[5:] // Remove "$ENV:" prefix
+	parts := strings.SplitN(envSpec, ":", 2)
+	envVar := parts[0]
+	var fallback string
+	if len(parts) > 1 {
+		fallback = parts[1]
+	}
+	
+	// Get the environment variable value
+	if envValue, exists := os.LookupEnv(envVar); exists {
+		return envValue, true
+	}
+	
+	// Return fallback if provided, otherwise return empty string
+	if fallback != "" {
+		return fallback, true
+	}
+	return "", true
+}
+
 func readConfigHelper(fileName string, barr []byte, readErr error) (waveobj.MetaMapType, []ConfigError) {
 	var cerrs []ConfigError
 	if readErr != nil && !os.IsNotExist(readErr) {
@@ -353,6 +412,12 @@ func readConfigHelper(fileName string, barr []byte, readErr error) (waveobj.Meta
 		}
 		cerrs = append(cerrs, ConfigError{File: fileName, Err: err.Error()})
 	}
+	
+	// Resolve environment variable replacements
+	if rtn != nil {
+		resolveEnvReplacements(rtn)
+	}
+	
 	return rtn, cerrs
 }
 
