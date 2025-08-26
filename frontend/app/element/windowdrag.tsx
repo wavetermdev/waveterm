@@ -19,5 +19,6 @@ const WindowDrag = forwardRef<HTMLDivElement, WindowDragProps>(({ children, clas
         </div>
     );
 });
+WindowDrag.displayName = "WindowDrag";
 
 export { WindowDrag };
