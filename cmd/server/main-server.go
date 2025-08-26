@@ -145,6 +145,18 @@ func updateTelemetryCounts(lastCounts telemetrydata.TEventProps) telemetrydata.T
 	props.CountSSHConn = conncontroller.GetNumSSHHasConnected()
 	props.CountWSLConn = wslconn.GetNumWSLHasConnected()
 	props.CountViews, _ = wstore.DBGetBlockViewCounts(ctx)
+
+	fullConfig := wconfig.GetWatcher().GetFullConfig()
+	customWidgets := fullConfig.CountCustomWidgets()
+	customAIPresets := fullConfig.CountCustomAIPresets()
+	customSettings := wconfig.CountCustomSettings()
+
+	props.UserSet = &telemetrydata.TEventUserProps{
+		SettingsCustomWidgets:   customWidgets,
+		SettingsCustomAIPresets: customAIPresets,
+		SettingsCustomSettings:  customSettings,
+	}
+
 	if utilfn.CompareAsMarshaledJson(props, lastCounts) {
 		return lastCounts
 	}
