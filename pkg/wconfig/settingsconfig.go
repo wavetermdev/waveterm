@@ -56,6 +56,7 @@ type SettingsType struct {
 	AppGlobalHotkey               string `json:"app:globalhotkey,omitempty"`
 	AppDismissArchitectureWarning bool   `json:"app:dismissarchitecturewarning,omitempty"`
 	AppDefaultNewBlock            string `json:"app:defaultnewblock,omitempty"`
+	AppShowOverlayBlockNums       *bool  `json:"app:showoverlayblocknums,omitempty"`
 
 	AiClear         bool    `json:"ai:*,omitempty"`
 	AiPreset        string  `json:"ai:preset,omitempty"`
