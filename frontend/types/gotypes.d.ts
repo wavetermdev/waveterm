@@ -536,6 +536,7 @@ declare global {
         "cmd:args"?: string[];
         "cmd:shell"?: boolean;
         "cmd:allowconnchange"?: boolean;
+        "cmd:jwt"?: boolean;
         "cmd:env"?: {[key: string]: string};
         "cmd:cwd"?: string;
         "cmd:initscript"?: string;
