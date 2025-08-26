@@ -9,7 +9,7 @@ import {
     getSortedRowModel,
     useReactTable,
 } from "@tanstack/react-table";
-import { clsx } from "clsx";
+import clsx from "clsx";
 import Papa from "papaparse";
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -193,7 +193,14 @@ const CSVView = ({ parentRef, filename, content }: CSVViewProps) => {
                 </thead>
                 <tbody style={{ height: `${state.tbodyHeight}px` }} ref={tbodyRef}>
                     {table.getRowModel().rows.map((row, index) => (
-                        <tr key={row.id} ref={(el) => { rowRef.current[index] = el; }} id={row.id} tabIndex={index}>
+                        <tr
+                            key={row.id}
+                            ref={(el) => {
+                                rowRef.current[index] = el;
+                            }}
+                            id={row.id}
+                            tabIndex={index}
+                        >
                             {row.getVisibleCells().map((cell) => (
                                 <td key={cell.id} id={cell.id} tabIndex={index}>
                                     {flexRender(cell.column.columnDef.cell, cell.getContext())}

@@ -7,7 +7,7 @@ import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { Button } from "@/element/button";
 import { ContextMenuModel } from "@/store/contextmenu";
 import { fireAndForget } from "@/util/util";
-import { clsx } from "clsx";
+import clsx from "clsx";
 import { forwardRef, memo, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { ObjectService } from "../store/services";
 import { makeORef, useWaveObjectValue } from "../store/wos";

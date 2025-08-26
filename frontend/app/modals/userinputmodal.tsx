@@ -115,7 +115,7 @@ const UserInputModal = (userInputRequest: UserInputRequest) => {
                         className="userinput-checkbox"
                         ref={checkboxRef}
                     />
-                    <label htmlFor={`uicheckbox-${userInputRequest.requestid}}`}>{userInputRequest.checkboxmsg}</label>
+                    <label htmlFor={`uicheckbox-${userInputRequest.requestid}`}>{userInputRequest.checkboxmsg}</label>
                 </div>
             </div>
         );

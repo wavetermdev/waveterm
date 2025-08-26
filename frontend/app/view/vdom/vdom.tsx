@@ -169,7 +169,7 @@ function convertVDomFunc(model: VDomModel, fnDecl: VDomFunc, compId: string, pro
     };
 }
 
-function convertElemToTag(elem: VDomElem, model: VDomModel): React.ReactElement | string {
+function convertElemToTag(elem: VDomElem, model: VDomModel): React.ReactNode {
     if (elem == null) {
         return null;
     }
@@ -295,11 +295,11 @@ function convertProps(elem: VDomElem, model: VDomModel): [GenericPropsType, Set<
     return [props, atomKeys];
 }
 
-function convertChildren(elem: VDomElem, model: VDomModel): (string | React.ReactElement)[] {
+function convertChildren(elem: VDomElem, model: VDomModel): React.ReactNode[] {
     if (elem.children == null || elem.children.length == 0) {
         return null;
     }
-    let childrenComps: (string | React.ReactElement)[] = [];
+    let childrenComps: React.ReactNode[] = [];
     for (let child of elem.children) {
         if (child == null) {
             continue;

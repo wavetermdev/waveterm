@@ -1,7 +1,7 @@
 // Copyright 2025, Command Line
 // SPDX-License-Identifier: Apache-2.0
 
-import { clsx } from "clsx";
+import clsx from "clsx";
 import { atom, useAtom } from "jotai";
 import { Children, ReactElement, ReactNode, cloneElement, isValidElement, useRef } from "react";
 
