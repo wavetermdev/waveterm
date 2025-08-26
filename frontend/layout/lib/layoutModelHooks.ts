@@ -11,6 +11,7 @@ import { LayoutModel } from "./layoutModel";
 import { LayoutNode, NodeModel, TileLayoutContents } from "./types";
 
 const layoutModelMap: Map<string, LayoutModel> = new Map();
+const timeoutMap: Map<string, NodeJS.Timeout> = new Map();
 
 export function getLayoutModelForTab(tabAtom: Atom<Tab>): LayoutModel {
     const tabData = globalStore.get(tabAtom);
@@ -73,25 +74,26 @@ export function useDebouncedNodeInnerRect(nodeModel: NodeModel): CSSProperties {
     const isResizing = useAtomValue(nodeModel.isResizing);
     const prefersReducedMotion = useAtomValue(atoms.prefersReducedMotionAtom);
     const [innerRect, setInnerRect] = useState<CSSProperties>();
-    const [innerRectDebounceTimeout, setInnerRectDebounceTimeout] = useState<NodeJS.Timeout>();
 
     const setInnerRectDebounced = useCallback(
         (nodeInnerRect: CSSProperties) => {
             clearInnerRectDebounce();
-            setInnerRectDebounceTimeout(
-                setTimeout(() => {
-                    setInnerRect(nodeInnerRect);
-                }, animationTimeS * 1000)
-            );
+            const timeout = setTimeout(() => {
+                setInnerRect(nodeInnerRect);
+            }, animationTimeS * 1000);
+            timeoutMap.set(nodeModel.blockId, timeout);
         },
         [animationTimeS]
     );
-    const clearInnerRectDebounce = useCallback(() => {
-        if (innerRectDebounceTimeout) {
-            clearTimeout(innerRectDebounceTimeout);
-            setInnerRectDebounceTimeout(undefined);
+    const clearInnerRectDebounce = function () {
+        if (timeoutMap.has(nodeModel.blockId)) {
+            const innerRectDebounceTimeout = timeoutMap.get(nodeModel.blockId);
+            if (innerRectDebounceTimeout) {
+                clearTimeout(innerRectDebounceTimeout);
+            }
+            timeoutMap.delete(nodeModel.blockId);
         }
-    }, [innerRectDebounceTimeout]);
+    };
 
     useEffect(() => {
         if (prefersReducedMotion || isMagnified || isResizing) {
