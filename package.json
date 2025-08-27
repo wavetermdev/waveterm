@@ -46,7 +46,6 @@
         "@types/color": "^4.2.0",
         "@types/css-tree": "^2",
         "@types/debug": "^4",
-        "@types/electron": "^1.6.12",
         "@types/node": "^22.13.17",
         "@types/papaparse": "^5",
         "@types/pngjs": "^6.0.5",
