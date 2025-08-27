@@ -41,6 +41,7 @@ waveterm/
 ```
 
 **Key Files:**
+
 - **[`pkg/wconfig/settingsconfig.go`](pkg/wconfig/settingsconfig.go)** - Defines the `SettingsType` struct with all configuration fields
 - **[`schema/settings.json`](schema/settings.json)** - JSON Schema for validation and type checking
 - **[`pkg/wconfig/defaultconfig/settings.json`](pkg/wconfig/defaultconfig/settings.json)** - Default values for all settings
@@ -65,10 +66,12 @@ Wave Terminal supports block-level configuration overrides through the metadata 
 3. **Block Metadata** - Override settings for individual blocks
 
 **Key Files for Block Overrides:**
+
 - **[`pkg/waveobj/wtypemeta.go`](pkg/waveobj/wtypemeta.go)** - Defines the `MetaTSType` struct for block-level metadata
 - Block metadata fields should match the corresponding settings fields for consistency
 
 **Frontend Usage:**
+
 ```typescript
 // Use getOverrideConfigAtom for hierarchical config resolution
 const settingValue = useAtomValue(getOverrideConfigAtom(blockId, "namespace:setting"));
@@ -77,6 +80,7 @@ const settingValue = useAtomValue(getOverrideConfigAtom(blockId, "namespace:sett
 ```
 
 **Setting Block Metadata:**
+
 ```bash
 # Set for current block
 wsh setmeta namespace:setting=value
@@ -143,6 +147,7 @@ type MetaTSType struct {
 ```
 
 **Block Metadata Guidelines:**
+
 - Use pointer types (`*string`, `*bool`, `*int`, `*float64`) for optional overrides
 - JSON tags should exactly match the corresponding settings field
 - This enables the hierarchical config system: block metadata → connection config → global settings
@@ -197,7 +202,7 @@ If your setting should have a default value, add it to [`pkg/wconfig/defaultconf
 ```json
 {
   "ai:preset": "ai@global",
-  "ai:model": "gpt-4o-mini",
+  "ai:model": "gpt-5-mini",
   // ... existing defaults ...
 
   "mynew:setting": "default value",
@@ -239,6 +244,7 @@ task generate
 ```
 
 Or run them individually:
+
 ```bash
 # Regenerate JSON schema
 task build:schema
