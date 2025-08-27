@@ -110,10 +110,9 @@ tasks:
     package:
         desc: Package the application for the current platform.
         cmds:
-            - cmd: '{{.RMRF}} "make"'
-              ignore_error: true
             - yarn build:prod && yarn electron-builder -c electron-builder.config.cjs -p never {{.CLI_ARGS}}
         deps:
+            - clean
             - yarn
             - docsite:build:embedded
             - build:backend
@@ -267,6 +266,8 @@ tasks:
         sources:
             - "cmd/wsh/**/*.go"
             - "pkg/**/*.go"
+        generates:
+            - "dist/bin/wsh*"
 
     build:wsh:internal:
         vars:
@@ -429,3 +430,11 @@ tasks:
         desc: Recursively copy directory and its contents.
         internal: true
         cmd: '{{if eq OS "windows"}}powershell Copy-Item -Recurse -Force -Path {{index .MATCH 0}} -Destination {{index .MATCH 1}}{{else}}mkdir -p "$(dirname {{index .MATCH 1}})" && cp -r {{index .MATCH 0}} {{index .MATCH 1}}{{end}}'
+
+    clean:
+        desc: clean make/dist directories
+        cmds:
+            - cmd: '{{.RMRF}} "make"'
+              ignore_error: true
+            - cmd: '{{.RMRF}} "dist"'
+              ignore_error: true

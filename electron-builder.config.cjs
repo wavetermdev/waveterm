@@ -42,11 +42,11 @@ const config = {
         target: [
             {
                 target: "zip",
-                arch: ["universal", "arm64", "x64"],
+                arch: ["arm64", "x64"],
             },
             {
                 target: "dmg",
-                arch: ["universal", "arm64", "x64"],
+                arch: ["arm64", "x64"],
             },
         ],
         category: "public.app-category.developer-tools",
