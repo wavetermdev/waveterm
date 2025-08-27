@@ -52,7 +52,7 @@ const config = {
         category: "public.app-category.developer-tools",
         minimumSystemVersion: "10.15.0",
         mergeASARs: true,
-        singleArchFiles: "dist/bin/wavesrv.*",
+        singleArchFiles: "**/dist/bin/wavesrv.*",
         entitlements: "build/entitlements.mac.plist",
         entitlementsInherit: "build/entitlements.mac.plist",
         extendInfo: {
