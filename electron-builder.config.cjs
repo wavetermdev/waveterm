@@ -84,10 +84,6 @@ const config = {
                 Categories: "Development;Utility;",
             },
         },
-        rpm: {
-            // this should remove /usr/lib/.build-id/ links which can conflict with other electron apps like slack
-            fpm: ["--rpm-rpmbuild-define", "_build_id_links none"],
-        },
         executableArgs: ["--enable-features", "UseOzonePlatform", "--ozone-platform-hint", "auto"], // Hint Electron to use Ozone abstraction layer for native Wayland support
     },
     deb: {
@@ -110,6 +106,10 @@ const config = {
         confinement: "classic",
         allowNativeWayland: true,
         artifactName: "${name}_${version}_${arch}.${ext}",
+    },
+    rpm: {
+        // this should remove /usr/lib/.build-id/ links which can conflict with other electron apps like slack
+        fpm: ["--rpm-rpmbuild-define", "_build_id_links none"],
     },
     publish: {
         provider: "generic",
