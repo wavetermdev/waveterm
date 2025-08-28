@@ -199,7 +199,7 @@ func beforeSendActivityUpdate(ctx context.Context) {
 	}
 }
 
-func startupActivityUpdate() {
+func startupActivityUpdate(firstLaunch bool) {
 	ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancelFn()
 	activity := wshrpc.ActivityUpdate{Startup: 1}
@@ -209,7 +209,7 @@ func startupActivityUpdate() {
 	}
 	autoUpdateChannel := telemetry.AutoUpdateChannel()
 	autoUpdateEnabled := telemetry.IsAutoUpdateEnabled()
-	tevent := telemetrydata.MakeTEvent("app:startup", telemetrydata.TEventProps{
+	props := telemetrydata.TEventProps{
 		UserSet: &telemetrydata.TEventUserProps{
 			ClientVersion:     "v" + WaveVersion,
 			ClientBuildTime:   BuildTime,
@@ -222,7 +222,11 @@ func startupActivityUpdate() {
 		UserSetOnce: &telemetrydata.TEventUserProps{
 			ClientInitialVersion: "v" + WaveVersion,
 		},
-	})
+	}
+	if firstLaunch {
+		props.AppFirstLaunch = true
+	}
+	tevent := telemetrydata.MakeTEvent("app:startup", props)
 	err = telemetry.RecordTEvent(ctx, tevent)
 	if err != nil {
 		log.Printf("error recording startup event: %v\n", err)
@@ -367,10 +371,13 @@ func main() {
 			log.Printf("error initializing wsh and shell-integration files: %v\n", err)
 		}
 	}()
-	err = wcore.EnsureInitialData()
+	firstLaunch, err := wcore.EnsureInitialData()
 	if err != nil {
 		log.Printf("error ensuring initial data: %v\n", err)
 		return
+	}
+	if firstLaunch {
+		log.Printf("first launch detected")
 	}
 	err = clearTempFiles()
 	if err != nil {
@@ -385,7 +392,7 @@ func main() {
 	go stdinReadWatch()
 	go telemetryLoop()
 	go updateTelemetryCountsLoop()
-	startupActivityUpdate() // must be after startConfigWatcher()
+	startupActivityUpdate(firstLaunch) // must be after startConfigWatcher()
 	blocklogger.InitBlockLogger()
 
 	webListener, err := web.MakeTCPListener("web")
