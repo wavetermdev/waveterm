@@ -832,6 +832,7 @@ declare global {
         "activity:fgminutes"?: number;
         "activity:openminutes"?: number;
         "app:firstday"?: boolean;
+        "app:firstlaunch"?: boolean;
         "action:initiator"?: "keyboard" | "mouse";
         "debug:panictype"?: string;
         "block:view"?: string;
