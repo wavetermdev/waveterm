@@ -9849,10 +9849,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"dayjs@npm:^1.11.13":
-  version: 1.11.13
-  resolution: "dayjs@npm:1.11.13"
-  checksum: 10c0/a3caf6ac8363c7dade9d1ee797848ddcf25c1ace68d9fe8678ecf8ba0675825430de5d793672ec87b24a69bf04a1544b176547b2539982275d5542a7955f35b7
+"dayjs@npm:^1.11.15":
+  version: 1.11.15
+  resolution: "dayjs@npm:1.11.15"
+  checksum: 10c0/bb66cd5419fff017f3950b95fc27643cf4e0ce22a087cef1f67398f18126ed07bf36d6911f33b19029a1621c64090b8ecaef660477de7678287fe8c0f4e68d29
   languageName: node
   linkType: hard
 
@@ -22427,7 +22427,7 @@ __metadata:
     color: "npm:^4.2.3"
     colord: "npm:^2.9.3"
     css-tree: "npm:^3.1.0"
-    dayjs: "npm:^1.11.13"
+    dayjs: "npm:^1.11.15"
     debug: "npm:^4.4.1"
     electron: "npm:^37.3.1"
     electron-builder: "npm:^26.0"
