@@ -50,6 +50,7 @@ type MetaTSType struct {
 	CmdArgs             []string `json:"cmd:args,omitempty"`  // args for cmd (only if cmd:shell is false)
 	CmdShell            bool     `json:"cmd:shell,omitempty"` // shell expansion for cmd+args (defaults to true)
 	CmdAllowConnChange  bool     `json:"cmd:allowconnchange,omitempty"`
+	CmdJwt              bool     `json:"cmd:jwt,omitempty"` // force adding JWT to environment
 
 	// these can be nested under "[conn]"
 	CmdEnv            map[string]string `json:"cmd:env,omitempty"`
@@ -74,10 +75,11 @@ type MetaTSType struct {
 	AiMaxTokens  float64 `json:"ai:maxtokens,omitempty"`
 	AiTimeoutMs  float64 `json:"ai:timeoutms,omitempty"`
 
-	EditorClear               bool `json:"editor:*,omitempty"`
-	EditorMinimapEnabled      bool `json:"editor:minimapenabled,omitempty"`
-	EditorStickyScrollEnabled bool `json:"editor:stickyscrollenabled,omitempty"`
-	EditorWordWrap            bool `json:"editor:wordwrap,omitempty"`
+	EditorClear               bool    `json:"editor:*,omitempty"`
+	EditorMinimapEnabled      bool    `json:"editor:minimapenabled,omitempty"`
+	EditorStickyScrollEnabled bool    `json:"editor:stickyscrollenabled,omitempty"`
+	EditorWordWrap            bool    `json:"editor:wordwrap,omitempty"`
+	EditorFontSize            float64 `json:"editor:fontsize,omitempty"`
 
 	GraphClear     bool     `json:"graph:*,omitempty"`
 	GraphNumPoints int      `json:"graph:numpoints,omitempty"`
@@ -105,6 +107,7 @@ type MetaTSType struct {
 	TermVDomToolbarBlockId  string   `json:"term:vdomtoolbarblockid,omitempty"`
 	TermTransparency        *float64 `json:"term:transparency,omitempty"` // default 0.5
 	TermAllowBracketedPaste *bool    `json:"term:allowbracketedpaste,omitempty"`
+	TermShiftEnterNewline   *bool    `json:"term:shiftenternewline,omitempty"`
 	TermConnDebug           string   `json:"term:conndebug,omitempty"` // null, info, debug
 
 	WebZoom      float64 `json:"web:zoom,omitempty"`

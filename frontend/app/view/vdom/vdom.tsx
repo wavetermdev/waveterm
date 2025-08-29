@@ -31,7 +31,7 @@ const VDomObjType_Func = "func";
 
 const dlog = debug("wave:vdom");
 
-type VDomReactTagType = (props: { elem: VDomElem; model: VDomModel }) => JSX.Element;
+type VDomReactTagType = (props: { elem: VDomElem; model: VDomModel }) => React.ReactElement;
 
 const WaveTagMap: Record<string, VDomReactTagType> = {
     "wave:markdown": WaveMarkdown,
@@ -169,7 +169,7 @@ function convertVDomFunc(model: VDomModel, fnDecl: VDomFunc, compId: string, pro
     };
 }
 
-function convertElemToTag(elem: VDomElem, model: VDomModel): JSX.Element | string {
+function convertElemToTag(elem: VDomElem, model: VDomModel): React.ReactNode {
     if (elem == null) {
         return null;
     }
@@ -295,11 +295,11 @@ function convertProps(elem: VDomElem, model: VDomModel): [GenericPropsType, Set<
     return [props, atomKeys];
 }
 
-function convertChildren(elem: VDomElem, model: VDomModel): (string | JSX.Element)[] {
+function convertChildren(elem: VDomElem, model: VDomModel): React.ReactNode[] {
     if (elem.children == null || elem.children.length == 0) {
         return null;
     }
-    let childrenComps: (string | JSX.Element)[] = [];
+    let childrenComps: React.ReactNode[] = [];
     for (let child of elem.children) {
         if (child == null) {
             continue;

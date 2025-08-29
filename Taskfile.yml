@@ -42,6 +42,16 @@ tasks:
             WCLOUD_ENDPOINT: "https://api-dev.waveterm.dev"
             WCLOUD_WS_ENDPOINT: "wss://wsapi-dev.waveterm.dev"
 
+    electron:quickdev:
+        desc: Run the Electron application via the Vite dev server (quick dev - no docsite, arm64 only, no generate, no wsh).
+        cmd: yarn dev
+        deps:
+            - yarn
+            - build:backend:quickdev
+        env:
+            WCLOUD_ENDPOINT: "https://api-dev.waveterm.dev/central"
+            WCLOUD_WS_ENDPOINT: "wss://wsapi-dev.waveterm.dev/"
+
     storybook:
         desc: Start the Storybook server.
         cmd: yarn storybook
@@ -100,10 +110,9 @@ tasks:
     package:
         desc: Package the application for the current platform.
         cmds:
-            - cmd: '{{.RMRF}} "make"'
-              ignore_error: true
             - yarn build:prod && yarn electron-builder -c electron-builder.config.cjs -p never {{.CLI_ARGS}}
         deps:
+            - clean
             - yarn
             - docsite:build:embedded
             - build:backend
@@ -113,6 +122,11 @@ tasks:
         cmds:
             - task: build:server
             - task: build:wsh
+
+    build:backend:quickdev:
+        desc: Build only the wavesrv component for quickdev (arm64 macOS only, no generate, no wsh).
+        cmds:
+            - task: build:server:quickdev
 
     build:schema:
         desc: Build the schema for configuration.
@@ -152,6 +166,24 @@ tasks:
             - task: build:server:internal
               vars:
                   ARCHS: arm64,amd64
+
+    build:server:quickdev:
+        desc: Build the wavesrv component for quickdev (arm64 macOS only, no generate).
+        platforms: [darwin]
+        cmds:
+            - cmd: "{{.RM}} dist/bin/wavesrv*"
+              ignore_error: true
+            - task: build:server:internal
+              vars:
+                  ARCHS: arm64
+        deps:
+            - go:mod:tidy
+        sources:
+            - "cmd/server/*.go"
+            - "pkg/**/*.go"
+            - "pkg/**/*.json"
+        generates:
+            - dist/bin/wavesrv.*
 
     build:server:windows:
         desc: Build the wavesrv component for Windows platforms (only generates artifacts for the current architecture).
@@ -234,6 +266,8 @@ tasks:
         sources:
             - "cmd/wsh/**/*.go"
             - "pkg/**/*.go"
+        generates:
+            - "dist/bin/wsh*"
 
     build:wsh:internal:
         vars:
@@ -261,6 +295,10 @@ tasks:
             - "cmd/generatets/*.go"
             - "pkg/**/*.go"
         # don't add generates key (otherwise will always execute)
+
+    outdated:
+        desc: Check for outdated packages using npm-check-updates.
+        cmd: yarn dlx npm-check-updates
 
     version:
         desc: Get the current package version, or bump version if args are present. To pass args to `version.cjs`, add them after `--`. See `version.cjs` for usage definitions for the arguments.
@@ -392,3 +430,11 @@ tasks:
         desc: Recursively copy directory and its contents.
         internal: true
         cmd: '{{if eq OS "windows"}}powershell Copy-Item -Recurse -Force -Path {{index .MATCH 0}} -Destination {{index .MATCH 1}}{{else}}mkdir -p "$(dirname {{index .MATCH 1}})" && cp -r {{index .MATCH 0}} {{index .MATCH 1}}{{end}}'
+
+    clean:
+        desc: clean make/dist directories
+        cmds:
+            - cmd: '{{.RMRF}} "make"'
+              ignore_error: true
+            - cmd: '{{.RMRF}} "dist"'
+              ignore_error: true

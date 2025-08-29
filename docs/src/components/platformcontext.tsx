@@ -46,7 +46,7 @@ const PlatformProviderInternal = ({ children }: { children: ReactNode }) => {
     );
 };
 
-export const PlatformProvider: React.FC = ({ children }: { children: ReactNode }) => {
+export const PlatformProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     return (
         <BrowserOnly fallback={<div />}>
             {() => <PlatformProviderInternal>{children}</PlatformProviderInternal>}

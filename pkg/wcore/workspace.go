@@ -128,9 +128,6 @@ func DeleteWorkspace(ctx context.Context, workspaceId string, force bool) (bool,
 		return false, "", fmt.Errorf("error retrieving workspaceList: %w", err)
 	}
 
-	if err != nil {
-		return false, "", fmt.Errorf("error getting workspace: %w", err)
-	}
 	if workspace.Name != "" && workspace.Icon != "" && !force && (len(workspace.TabIds) > 0 || len(workspace.PinnedTabIds) > 0) {
 		log.Printf("Ignoring DeleteWorkspace for workspace %s as it is named\n", workspaceId)
 		return false, "", nil
@@ -144,7 +141,7 @@ func DeleteWorkspace(ctx context.Context, workspaceId string, force bool) (bool,
 			return false, "", fmt.Errorf("error closing tab: %w", err)
 		}
 	}
-	windowId, err := wstore.DBFindWindowForWorkspaceId(ctx, workspaceId)
+	windowId, _ := wstore.DBFindWindowForWorkspaceId(ctx, workspaceId)
 	err = wstore.DBDelete(ctx, waveobj.OType_Workspace, workspaceId)
 	if err != nil {
 		return false, "", fmt.Errorf("error deleting workspace: %w", err)
@@ -224,14 +221,14 @@ func CreateTab(ctx context.Context, workspaceId string, tabName string, activate
 
 	// No need to apply an initial layout for the initial launch, since the starter layout will get applied after TOS modal dismissal
 	if !isInitialLaunch {
-		err = ApplyPortableLayout(ctx, tab.OID, GetNewTabLayout())
+		err = ApplyPortableLayout(ctx, tab.OID, GetNewTabLayout(), true)
 		if err != nil {
 			return tab.OID, fmt.Errorf("error applying new tab layout: %w", err)
 		}
 		presetMeta, presetErr := getTabPresetMeta()
 		if presetErr != nil {
 			log.Printf("error getting tab preset meta: %v\n", presetErr)
-		} else if presetMeta != nil && len(presetMeta) > 0 {
+		} else if len(presetMeta) > 0 {
 			tabORef := waveobj.ORefFromWaveObj(tab)
 			wstore.UpdateObjectMeta(ctx, *tabORef, presetMeta, true)
 		}

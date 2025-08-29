@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import React from "react";
+import clsx from "clsx";
+
 import "./typingindicator.scss";
 
 export interface TypingIndicatorProps {

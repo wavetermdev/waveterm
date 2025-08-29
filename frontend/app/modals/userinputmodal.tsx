@@ -13,7 +13,7 @@ import "./userinputmodal.scss";
 const UserInputModal = (userInputRequest: UserInputRequest) => {
     const [responseText, setResponseText] = useState("");
     const [countdown, setCountdown] = useState(Math.floor(userInputRequest.timeoutms / 1000));
-    const checkboxRef = useRef<HTMLInputElement>();
+    const checkboxRef = useRef<HTMLInputElement>(null);
 
     const handleSendErrResponse = useCallback(() => {
         fireAndForget(() =>
@@ -115,7 +115,7 @@ const UserInputModal = (userInputRequest: UserInputRequest) => {
                         className="userinput-checkbox"
                         ref={checkboxRef}
                     />
-                    <label htmlFor={`uicheckbox-${userInputRequest.requestid}}`}>{userInputRequest.checkboxmsg}</label>
+                    <label htmlFor={`uicheckbox-${userInputRequest.requestid}`}>{userInputRequest.checkboxmsg}</label>
                 </div>
             </div>
         );

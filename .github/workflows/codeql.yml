@@ -14,8 +14,16 @@ name: "CodeQL"
 on:
     push:
         branches: ["main"]
+        paths:
+            - "**/*.go"
+            - "**/*.ts"
+            - "**/*.tsx"
     pull_request:
         branches: ["main"]
+        paths:
+            - "**/*.go"
+            - "**/*.ts"
+            - "**/*.tsx"
         types:
             - opened
             - synchronize
@@ -55,7 +63,7 @@ jobs:
 
         steps:
             - name: Checkout repository
-              uses: actions/checkout@v4
+              uses: actions/checkout@v5
 
             - name: Install Task
               uses: arduino/setup-task@v2
