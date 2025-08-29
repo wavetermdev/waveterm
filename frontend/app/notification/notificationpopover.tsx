@@ -49,7 +49,7 @@ const NotificationPopover = () => {
 
     return (
         <Popover
-            className="w-full py-2 pl-0 pr-0.5 flex items-center justify-center"
+            className="w-full pb-2 pt-1 pl-0 pr-0.5 flex items-center justify-center"
             placement="left-end"
             offset={{ mainAxis: 20, crossAxis: 2 }}
             onDismiss={handleTogglePopover}
