@@ -10,7 +10,7 @@ import {
     transformBlocks,
 } from "@/app/element/markdown-util";
 import { boundNumber, useAtomValueSafe } from "@/util/util";
-import { clsx } from "clsx";
+import clsx from "clsx";
 import { Atom } from "jotai";
 import { OverlayScrollbarsComponent, OverlayScrollbarsComponentRef } from "overlayscrollbars-react";
 import { useEffect, useMemo, useRef, useState } from "react";

@@ -38,6 +38,11 @@
         "editor.insertSpaces": true,
         "editor.autoIndent": "keep"
     },
+    "[github-actions-workflow]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "editor.insertSpaces": true,
+        "editor.autoIndent": "keep"
+    },
     "[go]": {
         "editor.defaultFormatter": "golang.go"
     },
@@ -49,5 +54,11 @@
     },
     "files.associations": {
         "*.css": "tailwindcss"
+    },
+    "go.lintTool": "staticcheck",
+    "gopls": {
+        "analyses": {
+            "QF1003": false
+        }
     }
 }

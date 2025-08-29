@@ -6,6 +6,30 @@ sidebar_position: 200
 
 # Release Notes
 
+### v0.11.5 &mdash; Aug 28, 2025
+
+Another housekeeping release to modernize Wave and bring it more up to date.
+
+* Wave AI Cloud Proxy now uses gpt-5-mini (upgraded from gpt-4o-mini)
+* Fixed JWT issue with running "Wave Apps" from widgets
+* Added an "$ENV:envvar:fallback" syntax to the config files to allow Wave's config to pick up values from the environment (mostly to allow moving secrets out of the config files)
+* New setting to disable showing overlay blocknums when holding Ctrl:Shift (`app:showoverlayblocknums`)
+* New setting to allow Shift-Enter to work with tools like Claude Code (`term:shiftenternewline`)
+* Upgraded frontend to React 19
+* Migrated more of the frontend to Tailwind v4 (work in progress)
+* Removed Universal MacOS build. 90% of Mac users are now on Apple Silicon, so universal build is less important (has a larger file size, and complicates the build process).
+* [bugfix] Removed build-ids in RPM build to try to fix conflicts with Slack
+* Removed some Wave v7 aware upgrades and old code paths
+* Internal cleanup, TypeScript errors, linting fixes, etc.
+* Other assorted Go/npm package bumps
+
+### v0.11.4 &mdash; Aug 19, 2025
+
+Quick patch release to update packages, fix some security issues (with dependent packages), and some small bug fixes.
+
+* Update AI Libraries, GPT-5 now supported in WaveAI
+* Added `ai:proxyurl` setting to allow proxy access (e.g. SOCKS) for AI access
+
 ### v0.11.3 &mdash; May 2, 2025
 
 Quick patch release to update packages, fix some security issues (with dependent packages), and some small bug fixes.

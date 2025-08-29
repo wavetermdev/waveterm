@@ -56,7 +56,9 @@ export function handleCtrlShiftState(sender: Electron.WebContents, waveEvent: Wa
 }
 
 export function shNavHandler(event: Electron.Event<Electron.WebContentsWillNavigateEventParams>, url: string) {
-    if (url.startsWith("http://127.0.0.1:5173/index.html") || url.startsWith("http://localhost:5173/index.html")) {
+    const isDev = !electron.app.isPackaged;
+    if (isDev && (url.startsWith("http://127.0.0.1:5173/index.html") || url.startsWith("http://localhost:5173/index.html") ||
+                  url.startsWith("http://127.0.0.1:5174/index.html") || url.startsWith("http://localhost:5174/index.html"))) {
         // this is a dev-mode hot-reload, ignore it
         console.log("allowing hot-reload of index.html");
         return;

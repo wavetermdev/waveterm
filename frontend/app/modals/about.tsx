@@ -8,7 +8,6 @@ import { Modal } from "./modal";
 import { isDev } from "@/util/isdev";
 import { useState } from "react";
 import { getApi } from "../store/global";
-import "./about.scss";
 
 interface AboutModalProps {}
 
@@ -18,24 +17,24 @@ const AboutModal = ({}: AboutModalProps) => {
     const [updaterChannel] = useState(() => getApi().getUpdaterChannel());
 
     return (
-        <Modal className="about-modal" onClose={() => modalsModel.popModal()}>
-            <div className="section-wrapper">
-                <div className="section logo-section">
+        <Modal className="pb-[34px]" onClose={() => modalsModel.popModal()}>
+            <div className="flex flex-col gap-[26px] w-full">
+                <div className="flex flex-col items-center justify-center gap-4 self-stretch w-full text-center">
                     <Logo />
-                    <div className="app-name">Wave Terminal</div>
-                    <div className="text-standard">
+                    <div className="text-[25px]">Wave Terminal</div>
+                    <div className="leading-5">
                         Open-Source AI-Native Terminal
                         <br />
                         Built for Seamless Workflows
                     </div>
                 </div>
-                <div className="section text-standard">
+                <div className="items-center gap-4 self-stretch w-full text-center">
                     Client Version {details.version} ({isDev() ? "dev-" : ""}
                     {details.buildTime})
                     <br />
                     Update Channel: {updaterChannel}
                 </div>
-                <div className="section links">
+                <div className="flex items-start gap-[10px] self-stretch w-full text-center">
                     <a
                         href="https://github.com/wavetermdev/waveterm"
                         target="_blank"
@@ -61,7 +60,7 @@ const AboutModal = ({}: AboutModalProps) => {
                         <i className="fa-sharp fa-light fa-heart mr-2"></i>Acknowledgements
                     </a>
                 </div>
-                <div className="section text-standard">&copy; {currentDate.getFullYear()} Command Line Inc.</div>
+                <div className="items-center gap-4 self-stretch w-full text-center">&copy; {currentDate.getFullYear()} Command Line Inc.</div>
             </div>
         </Modal>
     );

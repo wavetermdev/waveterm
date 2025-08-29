@@ -17,6 +17,9 @@
         "app:defaultnewblock": {
           "type": "string"
         },
+        "app:showoverlayblocknums": {
+          "type": "boolean"
+        },
         "ai:*": {
           "type": "boolean"
         },
@@ -49,6 +52,9 @@
         },
         "ai:timeoutms": {
           "type": "number"
+        },
+        "ai:proxyurl": {
+          "type": "string"
         },
         "ai:fontsize": {
           "type": "number"
@@ -90,6 +96,9 @@
           "type": "number"
         },
         "term:allowbracketedpaste": {
+          "type": "boolean"
+        },
+        "term:shiftenternewline": {
           "type": "boolean"
         },
         "editor:minimapenabled": {

@@ -74,7 +74,7 @@ export class WaveTabView extends WebContentsView {
         });
         wcIdToWaveTabMap.set(this.webContents.id, this);
         if (isDevVite) {
-            this.webContents.loadURL(`${process.env.ELECTRON_RENDERER_URL}/index.html}`);
+            this.webContents.loadURL(`${process.env.ELECTRON_RENDERER_URL}/index.html`);
         } else {
             this.webContents.loadFile(path.join(getElectronAppBasePath(), "frontend", "index.html"));
         }
