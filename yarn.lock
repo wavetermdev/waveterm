@@ -16331,10 +16331,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"overlayscrollbars@npm:^2.11.5":
-  version: 2.11.5
-  resolution: "overlayscrollbars@npm:2.11.5"
-  checksum: 10c0/2f9e6b12d29bfee15ac7fa96e1d53b26de4cbf891e96d1a140f1eeb6a307340d55f8bdef1e5fbc7f2bc1cb3033e390e7a714971fe6a06743d7b79f252c2ae8a0
+"overlayscrollbars@npm:^2.12.0":
+  version: 2.12.0
+  resolution: "overlayscrollbars@npm:2.12.0"
+  checksum: 10c0/b036eef6446673b7a16bcba3940f754c3148080bbb1b9dbce30abe06250f9155a00d10b096ded6e5aafd0bd45bd29bfa96b215eb88d6d7cfacc78625df418279
   languageName: node
   linkType: hard
 
@@ -19710,9 +19710,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"sass@npm:^1.90.0":
-  version: 1.90.0
-  resolution: "sass@npm:1.90.0"
+"sass@npm:^1.91.0":
+  version: 1.91.0
+  resolution: "sass@npm:1.91.0"
   dependencies:
     "@parcel/watcher": "npm:^2.4.1"
     chokidar: "npm:^4.0.0"
@@ -19723,7 +19723,7 @@ __metadata:
       optional: true
   bin:
     sass: sass.js
-  checksum: 10c0/cd882a61811447c079cdc78b41f3be8164f2a2ced56e0b256b33da2de383a5f10e11ed15f8080bd832e6df302238e11649b07eb5f6e7d257d9b6982a8325d269
+  checksum: 10c0/5be1c98f7a618cb5f90b62f63d2aa0f78f9bf369c93ec7cd9880752a26b0ead19aa63cc341e8a26ce6c74d080baa5705f1685dff52fe6a3f28a7828ae50182b6
   languageName: node
   linkType: hard
 
@@ -22364,7 +22364,7 @@ __metadata:
     remark-preset-lint-consistent: "npm:^6.0.1"
     remark-preset-lint-recommended: "npm:^7.0.1"
     remark-typescript-code-import: "npm:^1.0.1"
-    sass: "npm:^1.90.0"
+    sass: "npm:^1.91.0"
     typescript: "npm:^5.9.2"
     typescript-eslint: "npm:^8.39.1"
   languageName: unknown
@@ -22444,7 +22444,7 @@ __metadata:
     monaco-editor: "npm:^0.52.2"
     monaco-yaml: "npm:^5.4.0"
     node-abi: "npm:^4.6.0"
-    overlayscrollbars: "npm:^2.11.5"
+    overlayscrollbars: "npm:^2.12.0"
     overlayscrollbars-react: "npm:^0.5.6"
     papaparse: "npm:^5.5.3"
     parse-srcset: "npm:^1.0.2"
@@ -22473,7 +22473,7 @@ __metadata:
     remark-github-blockquote-alert: "npm:^1.3.1"
     rollup-plugin-flow: "npm:^1.1.1"
     rxjs: "npm:^7.8.2"
-    sass: "npm:^1.90.0"
+    sass: "npm:^1.91.0"
     semver: "npm:^7.7.2"
     shell-quote: "npm:^1.8.3"
     sprintf-js: "npm:^1.1.3"
