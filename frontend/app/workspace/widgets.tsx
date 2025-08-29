@@ -28,18 +28,18 @@ async function handleWidgetSelect(widget: WidgetConfigType) {
     createBlock(blockDef, widget.magnified);
 }
 
-const Widget = memo(({ widget, compact = false }: { widget: WidgetConfigType; compact?: boolean }) => {
+const Widget = memo(({ widget, mode }: { widget: WidgetConfigType; mode: "normal" | "compact" | "supercompact" }) => {
     const [isTruncated, setIsTruncated] = useState(false);
     const labelRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
-        if (!compact && labelRef.current) {
+        if (mode === "normal" && labelRef.current) {
             const element = labelRef.current;
             setIsTruncated(element.scrollWidth > element.clientWidth);
         }
-    }, [compact, widget.label]);
+    }, [mode, widget.label]);
 
-    const shouldDisableTooltip = compact ? false : !isTruncated;
+    const shouldDisableTooltip = mode !== "normal" ? false : !isTruncated;
 
     return (
         <Tooltip
@@ -47,7 +47,8 @@ const Widget = memo(({ widget, compact = false }: { widget: WidgetConfigType; co
             placement="left"
             disable={shouldDisableTooltip}
             divClassName={clsx(
-                "flex flex-col justify-center items-center w-full py-1.5 pr-0.5 text-secondary text-lg overflow-hidden rounded-sm hover:bg-hoverbg hover:text-white cursor-pointer",
+                "flex flex-col justify-center items-center w-full py-1.5 pr-0.5 text-secondary overflow-hidden rounded-sm hover:bg-hoverbg hover:text-white cursor-pointer",
+                mode === "supercompact" ? "text-sm" : "text-lg",
                 widget["display:hidden"] && "hidden"
             )}
             divOnClick={() => handleWidgetSelect(widget)}
@@ -55,7 +56,7 @@ const Widget = memo(({ widget, compact = false }: { widget: WidgetConfigType; co
             <div style={{ color: widget.color }}>
                 <i className={makeIconClass(widget.icon, true, { defaultIcon: "browser" })}></i>
             </div>
-            {!compact && !isBlank(widget.label) ? (
+            {mode === "normal" && !isBlank(widget.label) ? (
                 <div
                     ref={labelRef}
                     className="text-xxs mt-0.5 w-full px-0.5 text-center whitespace-nowrap overflow-hidden text-ellipsis"
@@ -69,7 +70,7 @@ const Widget = memo(({ widget, compact = false }: { widget: WidgetConfigType; co
 
 const Widgets = memo(() => {
     const fullConfig = useAtomValue(atoms.fullConfigAtom);
-    const [isCompact, setIsCompact] = useState(false);
+    const [mode, setMode] = useState<"normal" | "compact" | "supercompact">("normal");
     const containerRef = useRef<HTMLDivElement>(null);
     const measurementRef = useRef<HTMLDivElement>(null);
 
@@ -94,23 +95,36 @@ const Widgets = memo(() => {
     const showHelp = fullConfig?.settings?.["widget:showhelp"] ?? true;
     const widgets = sortByDisplayOrder(fullConfig?.widgets);
 
-    const checkIfCompactNeeded = useCallback(() => {
+    const checkModeNeeded = useCallback(() => {
         if (!containerRef.current || !measurementRef.current) return;
 
         const containerHeight = containerRef.current.clientHeight;
-        const measurementHeight = measurementRef.current.scrollHeight;
+        const normalHeight = measurementRef.current.scrollHeight;
         const gracePeriod = 10;
 
-        const shouldBeCompact = measurementHeight > containerHeight - gracePeriod;
+        let newMode: "normal" | "compact" | "supercompact" = "normal";
 
-        if (shouldBeCompact !== isCompact) {
-            setIsCompact(shouldBeCompact);
+        if (normalHeight > containerHeight - gracePeriod) {
+            newMode = "compact";
+            
+            // Calculate total widget count for supercompact check
+            const totalWidgets = (widgets?.length || 0) + (showHelp ? 2 : 0);
+            const minHeightPerWidget = 32;
+            const requiredHeight = totalWidgets * minHeightPerWidget;
+            
+            if (requiredHeight > containerHeight) {
+                newMode = "supercompact";
+            }
         }
-    }, [isCompact]);
+
+        if (newMode !== mode) {
+            setMode(newMode);
+        }
+    }, [mode, widgets, showHelp]);
 
     useEffect(() => {
         const resizeObserver = new ResizeObserver(() => {
-            checkIfCompactNeeded();
+            checkModeNeeded();
         });
 
         if (containerRef.current) {
@@ -120,11 +134,11 @@ const Widgets = memo(() => {
         return () => {
             resizeObserver.disconnect();
         };
-    }, [checkIfCompactNeeded]);
+    }, [checkModeNeeded]);
 
     useEffect(() => {
-        checkIfCompactNeeded();
-    }, [widgets, showHelp, checkIfCompactNeeded]);
+        checkModeNeeded();
+    }, [widgets, showHelp, checkModeNeeded]);
 
     const handleWidgetsBarContextMenu = (e: React.MouseEvent) => {
         e.preventDefault();
@@ -177,14 +191,31 @@ const Widgets = memo(() => {
                 className="flex flex-col w-12 overflow-hidden py-1 -ml-1 select-none"
                 onContextMenu={handleWidgetsBarContextMenu}
             >
-                {widgets?.map((data, idx) => <Widget key={`widget-${idx}`} widget={data} compact={isCompact} />)}
-                <div className="flex-grow" />
-                {showHelp ? (
+                {mode === "supercompact" ? (
                     <>
-                        <Widget key="tips" widget={tipsWidget} compact={isCompact} />
-                        <Widget key="help" widget={helpWidget} compact={isCompact} />
+                        <div className="grid grid-cols-2 gap-0 w-full">
+                            {widgets?.map((data, idx) => <Widget key={`widget-${idx}`} widget={data} mode={mode} />)}
+                        </div>
+                        <div className="flex-grow" />
+                        {showHelp ? (
+                            <div className="grid grid-cols-2 gap-0 w-full">
+                                <Widget key="tips" widget={tipsWidget} mode={mode} />
+                                <Widget key="help" widget={helpWidget} mode={mode} />
+                            </div>
+                        ) : null}
                     </>
-                ) : null}
+                ) : (
+                    <>
+                        {widgets?.map((data, idx) => <Widget key={`widget-${idx}`} widget={data} mode={mode} />)}
+                        <div className="flex-grow" />
+                        {showHelp ? (
+                            <>
+                                <Widget key="tips" widget={tipsWidget} mode={mode} />
+                                <Widget key="help" widget={helpWidget} mode={mode} />
+                            </>
+                        ) : null}
+                    </>
+                )}
                 {isDev() ? <NotificationPopover /> : null}
             </div>
 
@@ -193,17 +224,18 @@ const Widgets = memo(() => {
                 className="flex flex-col w-12 py-1 -ml-1 select-none absolute -z-10 opacity-0 pointer-events-none"
             >
                 {widgets?.map((data, idx) => (
-                    <Widget key={`measurement-widget-${idx}`} widget={data} compact={false} />
+                    <Widget key={`measurement-widget-${idx}`} widget={data} mode="normal" />
                 ))}
                 <div className="flex-grow" />
                 {showHelp ? (
                     <>
-                        <Widget key="measurement-tips" widget={tipsWidget} compact={false} />
-                        <Widget key="measurement-help" widget={helpWidget} compact={false} />
+                        <Widget key="measurement-tips" widget={tipsWidget} mode="normal" />
+                        <Widget key="measurement-help" widget={helpWidget} mode="normal" />
                     </>
                 ) : null}
                 {isDev() ? <NotificationPopover /> : null}
             </div>
+
         </>
     );
 });
