@@ -1,6 +1,7 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { cn } from "@/util/util";
 import {
     FloatingPortal,
     autoUpdate,
@@ -11,7 +12,6 @@ import {
     useHover,
     useInteractions,
 } from "@floating-ui/react";
-import { cn } from "@/util/util";
 import { useEffect, useRef, useState } from "react";
 
 interface TooltipProps {
@@ -19,12 +19,13 @@ interface TooltipProps {
     content: React.ReactNode;
     placement?: "top" | "bottom" | "left" | "right";
     forceOpen?: boolean;
+    disable?: boolean;
     divClassName?: string;
     divStyle?: React.CSSProperties;
     divOnClick?: (e: React.MouseEvent<HTMLDivElement>) => void;
 }
 
-export function Tooltip({
+function TooltipInner({
     children,
     content,
     placement = "top",
@@ -32,7 +33,7 @@ export function Tooltip({
     divClassName,
     divStyle,
     divOnClick,
-}: TooltipProps) {
+}: Omit<TooltipProps, 'disable'>) {
     const [isOpen, setIsOpen] = useState(forceOpen);
     const [isVisible, setIsVisible] = useState(false);
     const timeoutRef = useRef<number | null>(null);
@@ -63,11 +64,7 @@ export function Tooltip({
             }
         },
         placement,
-        middleware: [
-            offset(10),
-            flip(),
-            shift({ padding: 12 }),
-        ],
+        middleware: [offset(10), flip(), shift({ padding: 12 })],
         whileElementsMounted: autoUpdate,
     });
 
@@ -140,5 +137,40 @@ export function Tooltip({
                 </FloatingPortal>
             )}
         </>
+    );
+}
+
+export function Tooltip({
+    children,
+    content,
+    placement = "top",
+    forceOpen = false,
+    disable = false,
+    divClassName,
+    divStyle,
+    divOnClick,
+}: TooltipProps) {
+    if (disable) {
+        return (
+            <div
+                className={divClassName}
+                style={divStyle}
+                onClick={divOnClick}
+            >
+                {children}
+            </div>
+        );
+    }
+
+    return (
+        <TooltipInner
+            children={children}
+            content={content}
+            placement={placement}
+            forceOpen={forceOpen}
+            divClassName={divClassName}
+            divStyle={divStyle}
+            divOnClick={divOnClick}
+        />
     );
 }
