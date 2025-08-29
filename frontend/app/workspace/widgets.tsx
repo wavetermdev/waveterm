@@ -30,23 +30,23 @@ async function handleWidgetSelect(widget: WidgetConfigType) {
 
 const Widget = memo(({ widget }: { widget: WidgetConfigType }) => {
     return (
-        <Tooltip content={widget.description || widget.label} placement="left">
-            <div
-                className={clsx(
-                    "flex flex-col justify-center items-center w-full py-1.5 pr-0.5 text-secondary text-lg overflow-hidden rounded-sm hover:bg-hoverbg hover:text-white cursor-pointer",
-                    widget["display:hidden"] && "hidden"
-                )}
-                onClick={() => handleWidgetSelect(widget)}
-            >
-                <div style={{ color: widget.color }}>
-                    <i className={makeIconClass(widget.icon, true, { defaultIcon: "browser" })}></i>
-                </div>
-                {!isBlank(widget.label) ? (
-                    <div className="text-xxs mt-0.5 w-full px-0.5 text-center whitespace-nowrap overflow-hidden">
-                        {widget.label}
-                    </div>
-                ) : null}
+        <Tooltip
+            content={widget.description || widget.label}
+            placement="left"
+            divClassName={clsx(
+                "flex flex-col justify-center items-center w-full py-1.5 pr-0.5 text-secondary text-lg overflow-hidden rounded-sm hover:bg-hoverbg hover:text-white cursor-pointer",
+                widget["display:hidden"] && "hidden"
+            )}
+            divOnClick={() => handleWidgetSelect(widget)}
+        >
+            <div style={{ color: widget.color }}>
+                <i className={makeIconClass(widget.icon, true, { defaultIcon: "browser" })}></i>
             </div>
+            {!isBlank(widget.label) ? (
+                <div className="text-xxs mt-0.5 w-full px-0.5 text-center whitespace-nowrap overflow-hidden">
+                    {widget.label}
+                </div>
+            ) : null}
         </Tooltip>
     );
 });
