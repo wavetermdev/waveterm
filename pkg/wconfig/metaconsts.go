@@ -10,6 +10,7 @@ const (
 	ConfigKey_AppGlobalHotkey                = "app:globalhotkey"
 	ConfigKey_AppDismissArchitectureWarning  = "app:dismissarchitecturewarning"
 	ConfigKey_AppDefaultNewBlock             = "app:defaultnewblock"
+	ConfigKey_AppShowOverlayBlockNums        = "app:showoverlayblocknums"
 
 	ConfigKey_AiClear                        = "ai:*"
 	ConfigKey_AiPreset                       = "ai:preset"
@@ -37,6 +38,7 @@ const (
 	ConfigKey_TermCopyOnSelect               = "term:copyonselect"
 	ConfigKey_TermTransparency               = "term:transparency"
 	ConfigKey_TermAllowBracketedPaste        = "term:allowbracketedpaste"
+	ConfigKey_TermShiftEnterNewline          = "term:shiftenternewline"
 
 	ConfigKey_EditorMinimapEnabled           = "editor:minimapenabled"
 	ConfigKey_EditorStickyScrollEnabled      = "editor:stickyscrollenabled"

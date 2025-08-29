@@ -369,6 +369,7 @@ func createCmdStrAndOpts(blockId string, blockMeta waveobj.MetaMapType, connName
 			cmdStr = cmdStr + " " + utilfn.ShellQuote(arg, false, -1)
 		}
 	}
+	cmdOpts.ForceJwt = blockMeta.GetBool(waveobj.MetaKey_CmdJwt, false)
 	return cmdStr, &cmdOpts, nil
 }
 

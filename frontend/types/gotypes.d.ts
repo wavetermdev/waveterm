@@ -536,6 +536,7 @@ declare global {
         "cmd:args"?: string[];
         "cmd:shell"?: boolean;
         "cmd:allowconnchange"?: boolean;
+        "cmd:jwt"?: boolean;
         "cmd:env"?: {[key: string]: string};
         "cmd:cwd"?: string;
         "cmd:initscript"?: string;
@@ -559,6 +560,7 @@ declare global {
         "editor:minimapenabled"?: boolean;
         "editor:stickyscrollenabled"?: boolean;
         "editor:wordwrap"?: boolean;
+        "editor:fontsize"?: number;
         "graph:*"?: boolean;
         "graph:numpoints"?: number;
         "graph:metrics"?: string[];
@@ -581,6 +583,7 @@ declare global {
         "term:vdomtoolbarblockid"?: string;
         "term:transparency"?: number;
         "term:allowbracketedpaste"?: boolean;
+        "term:shiftenternewline"?: boolean;
         "term:conndebug"?: string;
         "web:zoom"?: number;
         "web:hidenav"?: boolean;
@@ -681,6 +684,7 @@ declare global {
         "app:globalhotkey"?: string;
         "app:dismissarchitecturewarning"?: boolean;
         "app:defaultnewblock"?: string;
+        "app:showoverlayblocknums"?: boolean;
         "ai:*"?: boolean;
         "ai:preset"?: string;
         "ai:apitype"?: string;
@@ -706,6 +710,7 @@ declare global {
         "term:copyonselect"?: boolean;
         "term:transparency"?: number;
         "term:allowbracketedpaste"?: boolean;
+        "term:shiftenternewline"?: boolean;
         "editor:minimapenabled"?: boolean;
         "editor:stickyscrollenabled"?: boolean;
         "editor:wordwrap"?: boolean;
@@ -820,9 +825,14 @@ declare global {
         "autoupdate:enabled"?: boolean;
         "loc:countrycode"?: string;
         "loc:regioncode"?: string;
+        "settings:customwidgets"?: number;
+        "settings:customaipresets"?: number;
+        "settings:customsettings"?: number;
         "activity:activeminutes"?: number;
         "activity:fgminutes"?: number;
         "activity:openminutes"?: number;
+        "app:firstday"?: boolean;
+        "app:firstlaunch"?: boolean;
         "action:initiator"?: "keyboard" | "mouse";
         "debug:panictype"?: string;
         "block:view"?: string;
@@ -858,6 +868,9 @@ declare global {
         "autoupdate:enabled"?: boolean;
         "loc:countrycode"?: string;
         "loc:regioncode"?: string;
+        "settings:customwidgets"?: number;
+        "settings:customaipresets"?: number;
+        "settings:customsettings"?: number;
     };
 
     // waveobj.Tab

@@ -42,17 +42,17 @@ const config = {
         target: [
             {
                 target: "zip",
-                arch: ["universal", "arm64", "x64"],
+                arch: ["arm64", "x64"],
             },
             {
                 target: "dmg",
-                arch: ["universal", "arm64", "x64"],
+                arch: ["arm64", "x64"],
             },
         ],
         category: "public.app-category.developer-tools",
         minimumSystemVersion: "10.15.0",
         mergeASARs: true,
-        singleArchFiles: "dist/bin/wavesrv.*",
+        singleArchFiles: "**/dist/bin/wavesrv.*",
         entitlements: "build/entitlements.mac.plist",
         entitlementsInherit: "build/entitlements.mac.plist",
         extendInfo: {
@@ -106,6 +106,10 @@ const config = {
         confinement: "classic",
         allowNativeWayland: true,
         artifactName: "${name}_${version}_${arch}.${ext}",
+    },
+    rpm: {
+        // this should remove /usr/lib/.build-id/ links which can conflict with other electron apps like slack
+        fpm: ["--rpm-rpmbuild-define", "_build_id_links none"],
     },
     publish: {
         provider: "generic",

@@ -51,6 +51,7 @@ const (
 	MetaKey_CmdArgs                          = "cmd:args"
 	MetaKey_CmdShell                         = "cmd:shell"
 	MetaKey_CmdAllowConnChange               = "cmd:allowconnchange"
+	MetaKey_CmdJwt                           = "cmd:jwt"
 	MetaKey_CmdEnv                           = "cmd:env"
 	MetaKey_CmdCwd                           = "cmd:cwd"
 	MetaKey_CmdInitScript                    = "cmd:initscript"
@@ -76,6 +77,7 @@ const (
 	MetaKey_EditorMinimapEnabled             = "editor:minimapenabled"
 	MetaKey_EditorStickyScrollEnabled        = "editor:stickyscrollenabled"
 	MetaKey_EditorWordWrap                   = "editor:wordwrap"
+	MetaKey_EditorFontSize                   = "editor:fontsize"
 
 	MetaKey_GraphClear                       = "graph:*"
 	MetaKey_GraphNumPoints                   = "graph:numpoints"
@@ -102,6 +104,7 @@ const (
 	MetaKey_TermVDomToolbarBlockId           = "term:vdomtoolbarblockid"
 	MetaKey_TermTransparency                 = "term:transparency"
 	MetaKey_TermAllowBracketedPaste          = "term:allowbracketedpaste"
+	MetaKey_TermShiftEnterNewline            = "term:shiftenternewline"
 	MetaKey_TermConnDebug                    = "term:conndebug"
 
 	MetaKey_WebZoom                          = "web:zoom"

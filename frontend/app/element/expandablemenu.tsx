@@ -1,7 +1,7 @@
 // Copyright 2025, Command Line
 // SPDX-License-Identifier: Apache-2.0
 
-import { clsx } from "clsx";
+import clsx from "clsx";
 import { atom, useAtom } from "jotai";
 import { Children, ReactElement, ReactNode, cloneElement, isValidElement, useRef } from "react";
 
@@ -109,7 +109,7 @@ const ExpandableMenuItemGroup = ({
     const [openGroups, setOpenGroups] = useAtom(openGroupsAtom);
 
     // Generate a unique ID for this group using useRef
-    const idRef = useRef<string>();
+    const idRef = useRef<string>(null);
 
     if (!idRef.current) {
         // Generate a unique ID when the component is first rendered
@@ -146,10 +146,11 @@ const ExpandableMenuItemGroup = ({
 
     const renderChildren = Children.map(children, (child: ReactElement) => {
         if (child && child.type === ExpandableMenuItemGroupTitle) {
-            return cloneElement(child, {
-                ...child.props,
+            const childProps = child.props as ExpandableMenuItemGroupTitleProps;
+            return cloneElement(child as ReactElement<ExpandableMenuItemGroupTitleProps>, {
+                ...childProps,
                 onClick: () => {
-                    child.props.onClick?.();
+                    childProps.onClick?.();
                     toggleOpen();
                 },
             });

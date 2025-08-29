@@ -141,7 +141,7 @@ func DeleteWorkspace(ctx context.Context, workspaceId string, force bool) (bool,
 			return false, "", fmt.Errorf("error closing tab: %w", err)
 		}
 	}
-	windowId, err := wstore.DBFindWindowForWorkspaceId(ctx, workspaceId)
+	windowId, _ := wstore.DBFindWindowForWorkspaceId(ctx, workspaceId)
 	err = wstore.DBDelete(ctx, waveobj.OType_Workspace, workspaceId)
 	if err != nil {
 		return false, "", fmt.Errorf("error deleting workspace: %w", err)
@@ -221,7 +221,7 @@ func CreateTab(ctx context.Context, workspaceId string, tabName string, activate
 
 	// No need to apply an initial layout for the initial launch, since the starter layout will get applied after TOS modal dismissal
 	if !isInitialLaunch {
-		err = ApplyPortableLayout(ctx, tab.OID, GetNewTabLayout())
+		err = ApplyPortableLayout(ctx, tab.OID, GetNewTabLayout(), true)
 		if err != nil {
 			return tab.OID, fmt.Errorf("error applying new tab layout: %w", err)
 		}
