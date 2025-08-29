@@ -5,6 +5,7 @@ import { NotificationPopover } from "@/app/notification/notificationpopover";
 import { ContextMenuModel } from "@/app/store/contextmenu";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
+import { Tooltip } from "@/app/element/tooltip";
 import { atoms, createBlock, getApi, isDev } from "@/store/global";
 import { fireAndForget, isBlank, makeIconClass } from "@/util/util";
 import clsx from "clsx";
@@ -29,23 +30,24 @@ async function handleWidgetSelect(widget: WidgetConfigType) {
 
 const Widget = memo(({ widget }: { widget: WidgetConfigType }) => {
     return (
-        <div
-            className={clsx(
-                "flex flex-col justify-center items-center w-full py-1.5 pr-0.5 text-secondary text-lg overflow-hidden rounded-sm hover:bg-hoverbg hover:text-white cursor-pointer",
-                widget["display:hidden"] && "hidden"
-            )}
-            onClick={() => handleWidgetSelect(widget)}
-            title={widget.description || widget.label}
-        >
-            <div style={{ color: widget.color }}>
-                <i className={makeIconClass(widget.icon, true, { defaultIcon: "browser" })}></i>
-            </div>
-            {!isBlank(widget.label) ? (
-                <div className="text-xxs mt-0.5 w-full px-0.5 text-center whitespace-nowrap overflow-hidden">
-                    {widget.label}
+        <Tooltip content={widget.description || widget.label} placement="left">
+            <div
+                className={clsx(
+                    "flex flex-col justify-center items-center w-full py-1.5 pr-0.5 text-secondary text-lg overflow-hidden rounded-sm hover:bg-hoverbg hover:text-white cursor-pointer",
+                    widget["display:hidden"] && "hidden"
+                )}
+                onClick={() => handleWidgetSelect(widget)}
+            >
+                <div style={{ color: widget.color }}>
+                    <i className={makeIconClass(widget.icon, true, { defaultIcon: "browser" })}></i>
                 </div>
-            ) : null}
-        </div>
+                {!isBlank(widget.label) ? (
+                    <div className="text-xxs mt-0.5 w-full px-0.5 text-center whitespace-nowrap overflow-hidden">
+                        {widget.label}
+                    </div>
+                ) : null}
+            </div>
+        </Tooltip>
     );
 });
 

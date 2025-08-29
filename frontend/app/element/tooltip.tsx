@@ -132,7 +132,7 @@ export function Tooltip({
                         }}
                         {...getFloatingProps()}
                         className={cn(
-                            "bg-white dark:bg-panel border border-border rounded-md px-2 py-1 text-xs text-foreground shadow-xl z-50"
+                            "bg-gray-800 border border-border rounded-md px-2 py-1 text-xs text-foreground shadow-xl z-50"
                         )}
                     >
                         {content}
