@@ -77,6 +77,7 @@ type TEventProps struct {
 	PanicType       string `json:"debug:panictype,omitempty"`
 	BlockView       string `json:"block:view,omitempty"`
 	AiBackendType   string `json:"ai:backendtype,omitempty"`
+	AiLocal         bool   `json:"ai:local,omitempty"`
 	WshCmd          string `json:"wsh:cmd,omitempty"`
 	WshHadError     bool   `json:"wsh:haderror,omitempty"`
 	ConnType        string `json:"conn:conntype,omitempty"`
