@@ -148,7 +148,7 @@ func H(tag string, props map[string]any, children ...any) *VDomElem {
 	rtn := &VDomElem{Tag: tag, Props: props}
 	if len(children) > 0 {
 		for _, part := range children {
-			elems := partToElems(part)
+			elems := PartToElems(part)
 			rtn.Children = append(rtn.Children, elems...)
 		}
 	}
@@ -180,7 +180,7 @@ func E(tag string, parts ...any) *VDomElem {
 			mergeClassAttr(&rtn.Props, classAttr)
 			continue
 		}
-		elems := partToElems(part)
+		elems := PartToElems(part)
 		rtn.Children = append(rtn.Children, elems...)
 	}
 	return rtn
@@ -287,24 +287,9 @@ func P(propName string, propVal any) any {
 	return map[string]any{propName: propVal}
 }
 
-func getHookFromCtx(ctx context.Context) (*VDomContextVal, *Hook) {
-	vc := getRenderContext(ctx)
-	if vc == nil {
-		panic("UseState must be called within a component (no context)")
-	}
-	if vc.Comp == nil {
-		panic("UseState must be called within a component (vc.Comp is nil)")
-	}
-	for len(vc.Comp.Hooks) <= vc.HookIdx {
-		vc.Comp.Hooks = append(vc.Comp.Hooks, &Hook{Idx: len(vc.Comp.Hooks)})
-	}
-	hookVal := vc.Comp.Hooks[vc.HookIdx]
-	vc.HookIdx++
-	return vc, hookVal
-}
-
 func UseState[T any](ctx context.Context, initialVal T) (T, func(T)) {
-	vc, hookVal := getHookFromCtx(ctx)
+	vc := GetRenderContext(ctx)
+	hookVal := vc.GetOrderedHook()
 	if !hookVal.Init {
 		hookVal.Init = true
 		hookVal.Val = initialVal
@@ -316,13 +301,14 @@ func UseState[T any](ctx context.Context, initialVal T) (T, func(T)) {
 	}
 	setVal := func(newVal T) {
 		hookVal.Val = newVal
-		vc.Root.AddRenderWork(vc.Comp.WaveId)
+		vc.AddRenderWork(vc.GetCompWaveId())
 	}
 	return rtnVal, setVal
 }
 
 func UseStateWithFn[T any](ctx context.Context, initialVal T) (T, func(T), func(func(T) T)) {
-	vc, hookVal := getHookFromCtx(ctx)
+	vc := GetRenderContext(ctx)
+	hookVal := vc.GetOrderedHook()
 	if !hookVal.Init {
 		hookVal.Init = true
 		hookVal.Val = initialVal
@@ -335,29 +321,30 @@ func UseStateWithFn[T any](ctx context.Context, initialVal T) (T, func(T), func(
 
 	setVal := func(newVal T) {
 		hookVal.Val = newVal
-		vc.Root.AddRenderWork(vc.Comp.WaveId)
+		vc.AddRenderWork(vc.GetCompWaveId())
 	}
 
 	setFuncVal := func(updateFunc func(T) T) {
 		hookVal.Val = updateFunc(hookVal.Val.(T))
-		vc.Root.AddRenderWork(vc.Comp.WaveId)
+		vc.AddRenderWork(vc.GetCompWaveId())
 	}
 
 	return rtnVal, setVal, setFuncVal
 }
 
 func UseAtom[T any](ctx context.Context, atomName string) (T, func(T)) {
-	vc, hookVal := getHookFromCtx(ctx)
+	vc := GetRenderContext(ctx)
+	hookVal := vc.GetOrderedHook()
 	if !hookVal.Init {
 		hookVal.Init = true
-		closedWaveId := vc.Comp.WaveId
+		closedWaveId := vc.GetCompWaveId()
 		hookVal.UnmountFn = func() {
-			atom := vc.Root.GetAtom(atomName)
+			atom := vc.GetAtom(atomName)
 			delete(atom.UsedBy, closedWaveId)
 		}
 	}
-	atom := vc.Root.GetAtom(atomName)
-	atom.UsedBy[vc.Comp.WaveId] = true
+	atom := vc.GetAtom(atomName)
+	atom.UsedBy[vc.GetCompWaveId()] = true
 	atomVal, ok := atom.Val.(T)
 	if !ok {
 		panic(fmt.Sprintf("UseAtom %q value type mismatch (expected %T, got %T)", atomName, atomVal, atom.Val))
@@ -365,17 +352,18 @@ func UseAtom[T any](ctx context.Context, atomName string) (T, func(T)) {
 	setVal := func(newVal T) {
 		atom.Val = newVal
 		for waveId := range atom.UsedBy {
-			vc.Root.AddRenderWork(waveId)
+			vc.AddRenderWork(waveId)
 		}
 	}
 	return atomVal, setVal
 }
 
 func UseVDomRef(ctx context.Context) *VDomRef {
-	vc, hookVal := getHookFromCtx(ctx)
+	vc := GetRenderContext(ctx)
+	hookVal := vc.GetOrderedHook()
 	if !hookVal.Init {
 		hookVal.Init = true
-		refId := vc.Comp.WaveId + ":" + strconv.Itoa(hookVal.Idx)
+		refId := vc.GetCompWaveId() + ":" + strconv.Itoa(hookVal.Idx)
 		hookVal.Val = &VDomRef{Type: ObjectType_Ref, RefId: refId}
 	}
 	refVal, ok := hookVal.Val.(*VDomRef)
@@ -386,7 +374,8 @@ func UseVDomRef(ctx context.Context) *VDomRef {
 }
 
 func UseRef[T any](ctx context.Context, val T) *VDomSimpleRef[T] {
-	_, hookVal := getHookFromCtx(ctx)
+	vc := GetRenderContext(ctx)
+	hookVal := vc.GetOrderedHook()
 	if !hookVal.Init {
 		hookVal.Init = true
 		hookVal.Val = &VDomSimpleRef[T]{Current: val}
@@ -399,33 +388,19 @@ func UseRef[T any](ctx context.Context, val T) *VDomSimpleRef[T] {
 }
 
 func UseId(ctx context.Context) string {
-	vc := getRenderContext(ctx)
+	vc := GetRenderContext(ctx)
 	if vc == nil {
 		panic("UseId must be called within a component (no context)")
 	}
-	return vc.Comp.WaveId
+	return vc.GetCompWaveId()
 }
 
 func UseRenderTs(ctx context.Context) int64 {
-	vc := getRenderContext(ctx)
+	vc := GetRenderContext(ctx)
 	if vc == nil {
 		panic("UseRenderTs must be called within a component (no context)")
 	}
-	return vc.Root.RenderTs
-}
-
-func QueueRefOp(ctx context.Context, ref *VDomRef, op VDomRefOperation) {
-	if ref == nil || !ref.HasCurrent {
-		return
-	}
-	vc := getRenderContext(ctx)
-	if vc == nil {
-		panic("QueueRefOp must be called within a component (no context)")
-	}
-	if op.RefId == "" {
-		op.RefId = ref.RefId
-	}
-	vc.Root.QueueRefOp(op)
+	return vc.GetRenderTs()
 }
 
 func depsEqual(deps1 []any, deps2 []any) bool {
@@ -442,12 +417,13 @@ func depsEqual(deps1 []any, deps2 []any) bool {
 
 func UseEffect(ctx context.Context, fn func() func(), deps []any) {
 	// note UseEffect never actually runs anything, it just queues the effect to run later
-	vc, hookVal := getHookFromCtx(ctx)
+	vc := GetRenderContext(ctx)
+	hookVal := vc.GetOrderedHook()
 	if !hookVal.Init {
 		hookVal.Init = true
 		hookVal.Fn = fn
 		hookVal.Deps = deps
-		vc.Root.AddEffectWork(vc.Comp.WaveId, hookVal.Idx)
+		vc.AddEffectWork(vc.GetCompWaveId(), hookVal.Idx)
 		return
 	}
 	if depsEqual(hookVal.Deps, deps) {
@@ -455,10 +431,10 @@ func UseEffect(ctx context.Context, fn func() func(), deps []any) {
 	}
 	hookVal.Fn = fn
 	hookVal.Deps = deps
-	vc.Root.AddEffectWork(vc.Comp.WaveId, hookVal.Idx)
+	vc.AddEffectWork(vc.GetCompWaveId(), hookVal.Idx)
 }
 
-func partToElems(part any) []VDomElem {
+func PartToElems(part any) []VDomElem {
 	if part == nil {
 		return nil
 	}
@@ -485,7 +461,7 @@ func partToElems(part any) []VDomElem {
 	case []any:
 		var rtn []VDomElem
 		for _, subPart := range partTyped {
-			rtn = append(rtn, partToElems(subPart)...)
+			rtn = append(rtn, PartToElems(subPart)...)
 		}
 		return rtn
 	default:
@@ -493,7 +469,7 @@ func partToElems(part any) []VDomElem {
 		if partVal.Kind() == reflect.Slice {
 			var rtn []VDomElem
 			for i := 0; i < partVal.Len(); i++ {
-				rtn = append(rtn, partToElems(partVal.Index(i).Interface())...)
+				rtn = append(rtn, PartToElems(partVal.Index(i).Interface())...)
 			}
 			return rtn
 		}
@@ -505,7 +481,7 @@ func partToElems(part any) []VDomElem {
 	}
 }
 
-func isBaseTag(tag string) bool {
+func IsBaseTag(tag string) bool {
 	if tag == "" {
 		return false
 	}

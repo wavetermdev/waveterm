@@ -1,7 +1,7 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-package vdom
+package comp
 
 import (
 	"context"
@@ -12,9 +12,22 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
+	"github.com/wavetermdev/waveterm/tsunami/rpctypes"
 	"github.com/wavetermdev/waveterm/tsunami/util"
+	"github.com/wavetermdev/waveterm/tsunami/vdom"
 )
 
+type RootElem struct {
+	OuterCtx        context.Context
+	Root            *ComponentImpl
+	RenderTs        int64
+	CFuncs          map[string]any
+	CompMap         map[string]*ComponentImpl // component waveid -> component
+	EffectWorkQueue []*vdom.EffectWorkElem
+	NeedsRenderMap  map[string]bool
+	Atoms           map[string]*vdom.Atom
+	RefOperations   []rpctypes.VDomRefOperation
+}
 
 func (r *RootElem) AddRenderWork(id string) {
 	if r.NeedsRenderMap == nil {
@@ -24,7 +37,7 @@ func (r *RootElem) AddRenderWork(id string) {
 }
 
 func (r *RootElem) AddEffectWork(id string, effectIndex int) {
-	r.EffectWorkQueue = append(r.EffectWorkQueue, &EffectWorkElem{Id: id, EffectIndex: effectIndex})
+	r.EffectWorkQueue = append(r.EffectWorkQueue, &vdom.EffectWorkElem{Id: id, EffectIndex: effectIndex})
 }
 
 func MakeRoot() *RootElem {
@@ -32,14 +45,14 @@ func MakeRoot() *RootElem {
 		Root:    nil,
 		CFuncs:  make(map[string]any),
 		CompMap: make(map[string]*ComponentImpl),
-		Atoms:   make(map[string]*Atom),
+		Atoms:   make(map[string]*vdom.Atom),
 	}
 }
 
-func (r *RootElem) GetAtom(name string) *Atom {
+func (r *RootElem) GetAtom(name string) *vdom.Atom {
 	atom, ok := r.Atoms[name]
 	if !ok {
-		atom = &Atom{UsedBy: make(map[string]bool)}
+		atom = &vdom.Atom{UsedBy: make(map[string]bool)}
 		r.Atoms[name] = atom
 	}
 	return atom
@@ -50,11 +63,11 @@ func (r *RootElem) GetAtomVal(name string) any {
 	return atom.Val
 }
 
-func (r *RootElem) GetStateSync(full bool) []VDomStateSync {
-	stateSync := make([]VDomStateSync, 0)
+func (r *RootElem) GetStateSync(full bool) []rpctypes.VDomStateSync {
+	stateSync := make([]rpctypes.VDomStateSync, 0)
 	for atomName, atom := range r.Atoms {
 		if atom.Dirty || full {
-			stateSync = append(stateSync, VDomStateSync{Atom: atomName, Value: atom.Val})
+			stateSync = append(stateSync, rpctypes.VDomStateSync{Atom: atomName, Value: atom.Val})
 			atom.Dirty = false
 		}
 	}
@@ -123,35 +136,16 @@ func (r *RootElem) RegisterComponent(name string, cfunc any) error {
 	return nil
 }
 
-func (r *RootElem) Render(elem *VDomElem) {
+func (r *RootElem) Render(elem *vdom.VDomElem) {
 	r.render(elem, &r.Root)
 }
 
-func (vdf *VDomFunc) CallFn(event VDomEvent) {
-	if vdf.Fn == nil {
-		return
-	}
-	rval := reflect.ValueOf(vdf.Fn)
-	if rval.Kind() != reflect.Func {
-		return
-	}
-	rtype := rval.Type()
-	if rtype.NumIn() == 0 {
-		rval.Call(nil)
-	}
-	if rtype.NumIn() == 1 {
-		if rtype.In(0) == reflect.TypeOf((*VDomEvent)(nil)).Elem() {
-			rval.Call([]reflect.Value{reflect.ValueOf(event)})
-		}
-	}
-}
-
-func callVDomFn(fnVal any, data VDomEvent) {
+func callVDomFn(fnVal any, data rpctypes.VDomEvent) {
 	if fnVal == nil {
 		return
 	}
 	fn := fnVal
-	if vdf, ok := fnVal.(*VDomFunc); ok {
+	if vdf, ok := fnVal.(*vdom.VDomFunc); ok {
 		fn = vdf.Fn
 	}
 	if fn == nil {
@@ -172,7 +166,7 @@ func callVDomFn(fnVal any, data VDomEvent) {
 	}
 }
 
-func (r *RootElem) Event(id string, propName string, event VDomEvent) {
+func (r *RootElem) Event(id string, propName string, event rpctypes.VDomEvent) {
 	comp := r.CompMap[id]
 	if comp == nil || comp.Elem == nil {
 		return
@@ -215,7 +209,7 @@ func (r *RootElem) RunWork() {
 	}
 }
 
-func (r *RootElem) render(elem *VDomElem, comp **ComponentImpl) {
+func (r *RootElem) render(elem *vdom.VDomElem, comp **ComponentImpl) {
 	if elem == nil || elem.Tag == "" {
 		r.unmount(comp)
 		return
@@ -226,11 +220,11 @@ func (r *RootElem) render(elem *VDomElem, comp **ComponentImpl) {
 		r.createComp(elem.Tag, elemKey, comp)
 	}
 	(*comp).Elem = elem
-	if elem.Tag == TextTag {
+	if elem.Tag == vdom.TextTag {
 		r.renderText(elem.Text, comp)
 		return
 	}
-	if isBaseTag(elem.Tag) {
+	if vdom.IsBaseTag(elem.Tag) {
 		// simple vdom, fragment, wave element
 		r.renderSimple(elem, comp)
 		return
@@ -278,7 +272,7 @@ func (r *RootElem) renderText(text string, comp **ComponentImpl) {
 	}
 }
 
-func (r *RootElem) renderChildren(elems []VDomElem, curChildren []*ComponentImpl) []*ComponentImpl {
+func (r *RootElem) renderChildren(elems []vdom.VDomElem, curChildren []*ComponentImpl) []*ComponentImpl {
 	newChildren := make([]*ComponentImpl, len(elems))
 	curCM := make(map[ChildKey]*ComponentImpl)
 	usedMap := make(map[*ComponentImpl]bool)
@@ -309,30 +303,11 @@ func (r *RootElem) renderChildren(elems []VDomElem, curChildren []*ComponentImpl
 	return newChildren
 }
 
-func (r *RootElem) renderSimple(elem *VDomElem, comp **ComponentImpl) {
+func (r *RootElem) renderSimple(elem *vdom.VDomElem, comp **ComponentImpl) {
 	if (*comp).Comp != nil {
 		r.unmount(&(*comp).Comp)
 	}
 	(*comp).Children = r.renderChildren(elem.Children, (*comp).Children)
-}
-
-func (r *RootElem) makeRenderContext(comp *ComponentImpl) context.Context {
-	var ctx context.Context
-	if r.OuterCtx != nil {
-		ctx = r.OuterCtx
-	} else {
-		ctx = context.Background()
-	}
-	ctx = context.WithValue(ctx, vdomContextKey, &VDomContextVal{Root: r, Comp: comp, HookIdx: 0})
-	return ctx
-}
-
-func getRenderContext(ctx context.Context) *VDomContextVal {
-	v := ctx.Value(vdomContextKey)
-	if v == nil {
-		return nil
-	}
-	return v.(*VDomContextVal)
 }
 
 func callCFunc(cfunc any, ctx context.Context, props map[string]any) any {
@@ -362,7 +337,7 @@ func callCFunc(cfunc any, ctx context.Context, props map[string]any) any {
 	return rtnVal[0].Interface()
 }
 
-func (r *RootElem) renderComponent(cfunc any, elem *VDomElem, comp **ComponentImpl) {
+func (r *RootElem) renderComponent(cfunc any, elem *vdom.VDomElem, comp **ComponentImpl) {
 	if (*comp).Children != nil {
 		for _, child := range (*comp).Children {
 			r.unmount(&child)
@@ -373,24 +348,25 @@ func (r *RootElem) renderComponent(cfunc any, elem *VDomElem, comp **ComponentIm
 	for k, v := range elem.Props {
 		props[k] = v
 	}
-	props[ChildrenPropKey] = elem.Children
-	ctx := r.makeRenderContext(*comp)
+	props[vdom.ChildrenPropKey] = elem.Children
+	vc := MakeContextVal(r, *comp)
+	ctx := vdom.WithRenderContext(r.OuterCtx, vc)
 	renderedElem := callCFunc(cfunc, ctx, props)
-	rtnElemArr := partToElems(renderedElem)
+	rtnElemArr := vdom.PartToElems(renderedElem)
 	if len(rtnElemArr) == 0 {
 		r.unmount(&(*comp).Comp)
 		return
 	}
-	var rtnElem *VDomElem
+	var rtnElem *vdom.VDomElem
 	if len(rtnElemArr) == 1 {
 		rtnElem = &rtnElemArr[0]
 	} else {
-		rtnElem = &VDomElem{Tag: FragmentTag, Children: rtnElemArr}
+		rtnElem = &vdom.VDomElem{Tag: vdom.FragmentTag, Children: rtnElemArr}
 	}
 	r.render(rtnElem, &(*comp).Comp)
 }
 
-func (r *RootElem) UpdateRef(updateRef VDomRefUpdate) {
+func (r *RootElem) UpdateRef(updateRef rpctypes.VDomRefUpdate) {
 	refId := updateRef.RefId
 	split := strings.SplitN(refId, ":", 2)
 	if len(split) != 2 {
@@ -414,7 +390,7 @@ func (r *RootElem) UpdateRef(updateRef VDomRefUpdate) {
 	if hook == nil {
 		return
 	}
-	ref, ok := hook.Val.(*VDomRef)
+	ref, ok := hook.Val.(*vdom.VDomRef)
 	if !ok {
 		return
 	}
@@ -423,11 +399,11 @@ func (r *RootElem) UpdateRef(updateRef VDomRefUpdate) {
 	r.AddRenderWork(waveId)
 }
 
-func (r *RootElem) QueueRefOp(op VDomRefOperation) {
+func (r *RootElem) QueueRefOp(op rpctypes.VDomRefOperation) {
 	r.RefOperations = append(r.RefOperations, op)
 }
 
-func (r *RootElem) GetRefOperations() []VDomRefOperation {
+func (r *RootElem) GetRefOperations() []rpctypes.VDomRefOperation {
 	ops := r.RefOperations
 	r.RefOperations = nil
 	return ops
@@ -444,7 +420,7 @@ func convertPropsToVDom(props map[string]any) map[string]any {
 		}
 		val := reflect.ValueOf(v)
 		if val.Kind() == reflect.Func {
-			vdomProps[k] = VDomFunc{Type: ObjectType_Func}
+			vdomProps[k] = vdom.VDomFunc{Type: vdom.ObjectType_Func}
 			continue
 		}
 		vdomProps[k] = v
@@ -452,8 +428,8 @@ func convertPropsToVDom(props map[string]any) map[string]any {
 	return vdomProps
 }
 
-func convertBaseToVDom(c *ComponentImpl) *VDomElem {
-	elem := &VDomElem{WaveId: c.WaveId, Tag: c.Tag}
+func convertBaseToVDom(c *ComponentImpl) *vdom.VDomElem {
+	elem := &vdom.VDomElem{WaveId: c.WaveId, Tag: c.Tag}
 	if c.Elem != nil {
 		elem.Props = convertPropsToVDom(c.Elem.Props)
 	}
@@ -463,13 +439,13 @@ func convertBaseToVDom(c *ComponentImpl) *VDomElem {
 			elem.Children = append(elem.Children, *childElem)
 		}
 	}
-	if c.Tag == TextTag {
+	if c.Tag == vdom.TextTag {
 		elem.Text = c.Text
 	}
 	return elem
 }
 
-func convertCompToVDom(c *ComponentImpl) *VDomElem {
+func convertCompToVDom(c *ComponentImpl) *vdom.VDomElem {
 	if c == nil {
 		return nil
 	}
@@ -479,17 +455,17 @@ func convertCompToVDom(c *ComponentImpl) *VDomElem {
 	return convertBaseToVDom(c)
 }
 
-func (r *RootElem) MakeVDom() *VDomElem {
+func (r *RootElem) MakeVDom() *vdom.VDomElem {
 	if r.Root == nil {
 		return nil
 	}
 	return convertCompToVDom(r.Root)
 }
 
-func ConvertElemsToTransferElems(elems []VDomElem) []VDomTransferElem {
-	transferElems := make([]VDomTransferElem, 0)
+func ConvertElemsToTransferElems(elems []vdom.VDomElem) []rpctypes.VDomTransferElem {
+	transferElems := make([]rpctypes.VDomTransferElem, 0)
 	for _, elem := range elems {
-		transferElem := VDomTransferElem{
+		transferElem := rpctypes.VDomTransferElem{
 			WaveId: elem.WaveId,
 			Tag:    elem.Tag,
 			Props:  elem.Props,
@@ -505,15 +481,36 @@ func ConvertElemsToTransferElems(elems []VDomElem) []VDomTransferElem {
 	return transferElems
 }
 
-func DedupTransferElems(elems []VDomTransferElem) []VDomTransferElem {
-	seen := make(map[string]bool)
-	result := make([]VDomTransferElem, 0)
-	for _, elem := range elems {
-		if !seen[elem.WaveId] {
-			seen[elem.WaveId] = true
-			result = append(result, elem)
+func VDomFuncCallFn(vdf *vdom.VDomFunc, event rpctypes.VDomEvent) {
+	if vdf.Fn == nil {
+		return
+	}
+	rval := reflect.ValueOf(vdf.Fn)
+	if rval.Kind() != reflect.Func {
+		return
+	}
+	rtype := rval.Type()
+	if rtype.NumIn() == 0 {
+		rval.Call(nil)
+	}
+	if rtype.NumIn() == 1 {
+		if rtype.In(0) == reflect.TypeOf((*rpctypes.VDomEvent)(nil)).Elem() {
+			rval.Call([]reflect.Value{reflect.ValueOf(event)})
 		}
 	}
-	return result
 }
 
+func QueueRefOp(ctx context.Context, ref *vdom.VDomRef, op rpctypes.VDomRefOperation) {
+	if ref == nil || !ref.HasCurrent {
+		return
+	}
+	vcIf := vdom.GetRenderContext(ctx)
+	if vcIf == nil {
+		panic("QueueRefOp must be called within a component (no context)")
+	}
+	vc := vcIf.(*VDomContextVal)
+	if op.RefId == "" {
+		op.RefId = ref.RefId
+	}
+	vc.Root.QueueRefOp(op)
+}

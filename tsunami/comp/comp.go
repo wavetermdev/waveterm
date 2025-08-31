@@ -1,7 +1,9 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-package vdom
+package comp
+
+import "github.com/wavetermdev/waveterm/tsunami/vdom"
 
 // so components either render to another component (or fragment)
 // or to a base element (text or vdom).  base elements can then render children
@@ -16,11 +18,11 @@ type ComponentImpl struct {
 	WaveId  string
 	Tag     string
 	Key     string
-	Elem    *VDomElem
+	Elem    *vdom.VDomElem
 	Mounted bool
 
 	// hooks
-	Hooks []*Hook
+	Hooks []*vdom.Hook
 
 	// #text component
 	Text string

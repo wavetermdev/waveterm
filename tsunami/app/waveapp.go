@@ -20,6 +20,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
+	"github.com/wavetermdev/waveterm/tsunami/comp"
 	"github.com/wavetermdev/waveterm/tsunami/rpc"
 	"github.com/wavetermdev/waveterm/tsunami/rpcclient"
 	"github.com/wavetermdev/waveterm/tsunami/rpctypes"
@@ -34,13 +35,13 @@ type AppOpts struct {
 	RootComponentName    string // defaults to "App"
 	NewBlockFlag         string // defaults to "n" (set to "-" to disable)
 	TargetNewBlock       bool
-	TargetToolbar        *vdom.VDomTargetToolbar
+	TargetToolbar        *rpctypes.VDomTargetToolbar
 }
 
 type Client struct {
 	Lock               *sync.Mutex
 	AppOpts            AppOpts
-	Root               *vdom.RootElem
+	Root               *comp.RootElem
 	RootElem           *vdom.VDomElem
 	RpcClient          *rpcclient.RpcClient
 	RpcContext         *rpc.RpcContext
@@ -50,8 +51,8 @@ type Client struct {
 	VDomContextBlockId string
 	DoneReason         string
 	DoneCh             chan struct{}
-	Opts               vdom.VDomBackendOpts
-	GlobalEventHandler func(client *Client, event vdom.VDomEvent)
+	Opts               rpctypes.VDomBackendOpts
+	GlobalEventHandler func(client *Client, event rpctypes.VDomEvent)
 	GlobalStylesOption *FileHandlerOption
 	UrlHandlerMux      *mux.Router
 	OverrideUrlHandler http.Handler
@@ -76,7 +77,7 @@ func (c *Client) doShutdown(reason string) {
 	close(c.DoneCh)
 }
 
-func (c *Client) SetGlobalEventHandler(handler func(client *Client, event vdom.VDomEvent)) {
+func (c *Client) SetGlobalEventHandler(handler func(client *Client, event rpctypes.VDomEvent)) {
 	c.GlobalEventHandler = handler
 }
 
@@ -94,11 +95,11 @@ func MakeClient(appOpts AppOpts) *Client {
 	client := &Client{
 		Lock:          &sync.Mutex{},
 		AppOpts:       appOpts,
-		Root:          vdom.MakeRoot(),
+		Root:          comp.MakeRoot(),
 		RpcClient:     rpcclient.MakeRpcClient(),
 		DoneCh:        make(chan struct{}),
 		UrlHandlerMux: mux.NewRouter(),
-		Opts: vdom.VDomBackendOpts{
+		Opts: rpctypes.VDomBackendOpts{
 			CloseOnCtrlC:         appOpts.CloseOnCtrlC,
 			GlobalKeyboardEvents: appOpts.GlobalKeyboardEvents,
 		},
@@ -119,7 +120,7 @@ func (c *Client) runMainE() error {
 	if err != nil {
 		return err
 	}
-	target := &vdom.VDomTarget{}
+	target := &rpctypes.VDomTarget{}
 	if c.AppOpts.TargetNewBlock || c.NewBlockFlag {
 		target.NewBlock = c.NewBlockFlag
 	}
@@ -167,7 +168,7 @@ func (c *Client) SetRootElem(elem *vdom.VDomElem) {
 	c.RootElem = elem
 }
 
-func (c *Client) CreateVDomContext(target *vdom.VDomTarget) error {
+func (c *Client) CreateVDomContext(target *rpctypes.VDomTarget) error {
 	blockORef, err := rpcclient.VDomCreateContextCommand(
 		c.RpcClient,
 		rpctypes.VDomCreateContext{Target: target},
@@ -262,7 +263,7 @@ func (c *Client) fullRender() (*rpctypes.VDomBackendUpdate, error) {
 		BlockId: c.RpcContext.BlockId,
 		HasWork: len(c.Root.EffectWorkQueue) > 0,
 		Opts:    &c.Opts,
-		RenderUpdates: []vdom.VDomRenderUpdate{
+		RenderUpdates: []rpctypes.VDomRenderUpdate{
 			{UpdateType: "root", VDom: renderedVDom},
 		},
 		RefOperations: c.Root.GetRefOperations(),
@@ -280,7 +281,7 @@ func (c *Client) incrementalRender() (*rpctypes.VDomBackendUpdate, error) {
 		Type:    "backendupdate",
 		Ts:      time.Now().UnixMilli(),
 		BlockId: c.RpcContext.BlockId,
-		RenderUpdates: []vdom.VDomRenderUpdate{
+		RenderUpdates: []rpctypes.VDomRenderUpdate{
 			{UpdateType: "root", VDom: renderedVDom},
 		},
 		RefOperations: c.Root.GetRefOperations(),

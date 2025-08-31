@@ -356,7 +356,7 @@ outer:
 			if token.Data == Html_BindParamTagName {
 				keyAttr := getAttrString(token, "key")
 				dataVal := params[keyAttr]
-				elemList := partToElems(dataVal)
+				elemList := PartToElems(dataVal)
 				for _, elem := range elemList {
 					appendChildToStack(elemStack, &elem)
 				}
