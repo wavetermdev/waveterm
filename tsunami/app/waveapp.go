@@ -39,7 +39,6 @@ type AppOpts struct {
 	RootComponentName    string // defaults to "App"
 	NewBlockFlag         string // defaults to "n" (set to "-" to disable)
 	TargetNewBlock       bool
-	TargetToolbar        *rpctypes.VDomTargetToolbar
 }
 
 type Client struct {
@@ -260,7 +259,6 @@ func (c *Client) fullRender() (*rpctypes.VDomBackendUpdate, error) {
 	return &rpctypes.VDomBackendUpdate{
 		Type:    "backendupdate",
 		Ts:      time.Now().UnixMilli(),
-		BlockId: c.RpcContext.BlockId,
 		HasWork: len(c.Root.EffectWorkQueue) > 0,
 		Opts:    &c.Opts,
 		RenderUpdates: []rpctypes.VDomRenderUpdate{
@@ -278,9 +276,8 @@ func (c *Client) incrementalRender() (*rpctypes.VDomBackendUpdate, error) {
 		renderedVDom = makeNullVDom()
 	}
 	return &rpctypes.VDomBackendUpdate{
-		Type:    "backendupdate",
-		Ts:      time.Now().UnixMilli(),
-		BlockId: c.RpcContext.BlockId,
+		Type: "backendupdate",
+		Ts:   time.Now().UnixMilli(),
 		RenderUpdates: []rpctypes.VDomRenderUpdate{
 			{UpdateType: "root", VDom: renderedVDom},
 		},

@@ -3,10 +3,6 @@
 
 package rpc
 
-import (
-	"github.com/wavetermdev/waveterm/tsunami/rpctypes"
-)
-
 type RespOrErrorUnion[T any] struct {
 	Response T
 	Error    error
@@ -35,8 +31,3 @@ type ORef struct {
 func (oref ORef) String() string {
 	return oref.OType + ":" + oref.OID
 }
-
-// Types moved to rpctypes package
-type VDomUrlRequestData = rpctypes.VDomUrlRequestData
-type VDomUrlRequestResponse = rpctypes.VDomUrlRequestResponse
-type CommandWaitForRouteData = rpctypes.CommandWaitForRouteData

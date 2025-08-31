@@ -7,39 +7,13 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/wavetermdev/waveterm/tsunami/util"
 	"github.com/wavetermdev/waveterm/tsunami/vdom"
 )
-
-const (
-	BackendUpdate_InitialChunkSize = 50  // Size for initial chunks that contain both TransferElems and StateSync
-	BackendUpdate_ChunkSize        = 100 // Size for subsequent chunks
-)
-
-type VDomUrlRequestData struct {
-	Method  string            `json:"method"`
-	URL     string            `json:"url"`
-	Headers map[string]string `json:"headers"`
-	Body    []byte            `json:"body,omitempty"`
-}
 
 type VDomUrlRequestResponse struct {
 	StatusCode int               `json:"statuscode,omitempty"`
 	Headers    map[string]string `json:"headers,omitempty"`
 	Body       []byte            `json:"body,omitempty"`
-}
-
-type CommandWaitForRouteData struct {
-	RouteId string `json:"routeid"`
-	WaitMs  int    `json:"waitms"`
-}
-
-type VDomCreateContext struct {
-	Type    string         `json:"type" tstype:"\"createcontext\""`
-	Ts      int64          `json:"ts"`
-	Meta    map[string]any `json:"meta,omitempty"`
-	Target  *VDomTarget    `json:"target,omitempty"`
-	Persist bool           `json:"persist,omitempty"`
 }
 
 type VDomAsyncInitiationRequest struct {
@@ -73,7 +47,6 @@ type VDomFrontendUpdate struct {
 type VDomBackendUpdate struct {
 	Type          string             `json:"type" tstype:"\"backendupdate\""`
 	Ts            int64              `json:"ts"`
-	BlockId       string             `json:"blockid"`
 	Opts          *VDomBackendOpts   `json:"opts,omitempty"`
 	HasWork       bool               `json:"haswork,omitempty"`
 	RenderUpdates []VDomRenderUpdate `json:"renderupdates,omitempty"`
@@ -172,52 +145,6 @@ func DedupTransferElems(elems []VDomTransferElem) []VDomTransferElem {
 	return result
 }
 
-// SplitBackendUpdate splits a large VDomBackendUpdate into multiple smaller updates
-// The first update contains all the core fields, while subsequent updates only contain
-// array elements that need to be appended
-func SplitBackendUpdate(update *VDomBackendUpdate) []*VDomBackendUpdate {
-	if len(update.TransferElems) <= BackendUpdate_InitialChunkSize && len(update.StateSync) <= BackendUpdate_InitialChunkSize {
-		return []*VDomBackendUpdate{update}
-	}
-
-	updates := make([]*VDomBackendUpdate, 0)
-	transferElemChunks := util.ChunkSlice(update.TransferElems, BackendUpdate_ChunkSize)
-	stateSyncChunks := util.ChunkSlice(update.StateSync, BackendUpdate_ChunkSize)
-
-	maxChunks := len(transferElemChunks)
-	if len(stateSyncChunks) > maxChunks {
-		maxChunks = len(stateSyncChunks)
-	}
-
-	for i := 0; i < maxChunks; i++ {
-		newUpdate := &VDomBackendUpdate{
-			Type:    update.Type,
-			Ts:      update.Ts,
-			BlockId: update.BlockId,
-		}
-
-		if i == 0 {
-			newUpdate.Opts = update.Opts
-			newUpdate.HasWork = update.HasWork
-			newUpdate.RenderUpdates = update.RenderUpdates
-			newUpdate.RefOperations = update.RefOperations
-			newUpdate.Messages = update.Messages
-		}
-
-		if i < len(transferElemChunks) {
-			newUpdate.TransferElems = transferElemChunks[i]
-		}
-
-		if i < len(stateSyncChunks) {
-			newUpdate.StateSync = stateSyncChunks[i]
-		}
-
-		updates = append(updates, newUpdate)
-	}
-
-	return updates
-}
-
 type VDomEvent struct {
 	WaveId          string             `json:"waveid"`
 	EventType       string             `json:"eventtype"` // usually the prop name (e.g. onClick, onKeyDown)
@@ -276,19 +203,6 @@ type VDomMessage struct {
 	Message     string `json:"message"`
 	StackTrace  string `json:"stacktrace,omitempty"`
 	Params      []any  `json:"params,omitempty"`
-}
-
-// target -- to support new targets in the future, like toolbars, partial blocks, splits, etc.
-// default is vdom context inside of a terminal block
-type VDomTarget struct {
-	NewBlock  bool               `json:"newblock,omitempty"`
-	Magnified bool               `json:"magnified,omitempty"`
-	Toolbar   *VDomTargetToolbar `json:"toolbar,omitempty"`
-}
-
-type VDomTargetToolbar struct {
-	Toolbar bool   `json:"toolbar"`
-	Height  string `json:"height,omitempty"`
 }
 
 // matches WaveKeyboardEvent
