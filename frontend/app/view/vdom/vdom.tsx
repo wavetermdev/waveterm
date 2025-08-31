@@ -16,7 +16,6 @@ import {
     validateAndWrapCss,
     validateAndWrapReactStyle,
 } from "@/app/view/vdom/vdom-utils";
-import "./vdom.scss";
 
 const TextTag = "#text";
 const FragmentTag = "#fragment";
@@ -506,7 +505,7 @@ function VDomView({ blockId, model }: VDomViewProps) {
     model.viewRef = viewRef;
     const vdomClass = "vdom-" + blockId;
     return (
-        <div className={clsx("view-vdom", vdomClass)} ref={viewRef}>
+        <div className={clsx("overflow-auto w-full min-h-full", vdomClass)} ref={viewRef}>
             {contextActive ? <VDomInnerView blockId={blockId} model={model} /> : null}
         </div>
     );
