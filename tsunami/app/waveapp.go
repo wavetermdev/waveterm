@@ -22,7 +22,6 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/wavetermdev/waveterm/tsunami/comp"
 	"github.com/wavetermdev/waveterm/tsunami/rpc"
-	"github.com/wavetermdev/waveterm/tsunami/rpcclient"
 	"github.com/wavetermdev/waveterm/tsunami/rpctypes"
 	"github.com/wavetermdev/waveterm/tsunami/util"
 	"github.com/wavetermdev/waveterm/tsunami/vdom"
@@ -48,7 +47,6 @@ type Client struct {
 	AppOpts            AppOpts
 	Root               *comp.RootElem
 	RootElem           *vdom.VDomElem
-	RpcClient          *rpcclient.RpcClient
 	RpcContext         *rpc.RpcContext
 	IsDone             bool
 	RouteId            string
@@ -101,7 +99,6 @@ func MakeClient(appOpts AppOpts) *Client {
 		Lock:          &sync.Mutex{},
 		AppOpts:       appOpts,
 		Root:          comp.MakeRoot(),
-		RpcClient:     rpcclient.MakeRpcClient(),
 		DoneCh:        make(chan struct{}),
 		SSEventCh:     make(chan SSEvent, 100),
 		UrlHandlerMux: mux.NewRouter(),
@@ -123,20 +120,6 @@ func (c *Client) runMainE() error {
 		c.SetupFn()
 	}
 	err := c.ListenAndServe(context.Background())
-	if err != nil {
-		return err
-	}
-	target := &rpctypes.VDomTarget{}
-	if c.AppOpts.TargetNewBlock || c.NewBlockFlag {
-		target.NewBlock = c.NewBlockFlag
-	}
-	if c.AppOpts.TargetToolbar != nil {
-		target.Toolbar = c.AppOpts.TargetToolbar
-	}
-	if target.NewBlock && target.Toolbar != nil {
-		return fmt.Errorf("cannot specify both new block and toolbar target")
-	}
-	err = c.CreateVDomContext(target)
 	if err != nil {
 		return err
 	}
@@ -213,36 +196,6 @@ func (c *Client) SetRootElem(elem *vdom.VDomElem) {
 	c.RootElem = elem
 }
 
-func (c *Client) CreateVDomContext(target *rpctypes.VDomTarget) error {
-	blockORef, err := rpcclient.VDomCreateContextCommand(
-		c.RpcClient,
-		rpctypes.VDomCreateContext{Target: target},
-		&rpc.RpcOpts{Route: rpc.MakeFeBlockRouteId(c.RpcContext.BlockId)},
-	)
-	if err != nil {
-		return err
-	}
-	c.VDomContextBlockId = blockORef.OID
-	log.Printf("created vdom context: %v\n", blockORef)
-	gotRoute, err := rpcclient.WaitForRouteCommand(c.RpcClient, rpc.CommandWaitForRouteData{
-		RouteId: rpc.MakeFeBlockRouteId(blockORef.OID),
-		WaitMs:  4000,
-	}, &rpc.RpcOpts{Timeout: 5000})
-	if err != nil {
-		return fmt.Errorf("error waiting for vdom context route: %v", err)
-	}
-	if !gotRoute {
-		return fmt.Errorf("vdom context route could not be established")
-	}
-	rpcclient.EventSubCommand(c.RpcClient, rpc.SubscriptionRequest{Event: rpc.Event_BlockClose, Scopes: []string{
-		blockORef.String(),
-	}}, nil)
-	c.RpcClient.EventListener.On("blockclose", func(event *rpc.WaveEvent) {
-		c.doShutdown("got blockclose event")
-	})
-	return nil
-}
-
 func (c *Client) SendAsyncInitiation() error {
 	if c.VDomContextBlockId == "" {
 		return fmt.Errorf("no vdom context block id")
@@ -250,11 +203,13 @@ func (c *Client) SendAsyncInitiation() error {
 	if c.GetIsDone() {
 		return fmt.Errorf("client is done")
 	}
-	return rpcclient.VDomAsyncInitiationCommand(
-		c.RpcClient,
-		rpctypes.MakeAsyncInitiationRequest(c.RpcContext.BlockId),
-		&rpc.RpcOpts{Route: rpc.MakeFeBlockRouteId(c.VDomContextBlockId)},
-	)
+
+	select {
+	case c.SSEventCh <- SSEvent{Event: "asyncinitiation", Data: nil}:
+		return nil
+	default:
+		return fmt.Errorf("SSEvent channel is full")
+	}
 }
 
 func (c *Client) SetAtomVals(m map[string]any) {

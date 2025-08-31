@@ -180,10 +180,10 @@ func (h *HTTPHandlers) handleSSE(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprintf(w, ": keepalive\n\n")
 			flusher.Flush()
 		case event := <-h.Client.SSEventCh:
-			// Send actual event
-			if event.Event != "" {
-				fmt.Fprintf(w, "event: %s\n", event.Event)
+			if event.Event == "" {
+				break
 			}
+			fmt.Fprintf(w, "event: %s\n", event.Event)
 			if len(event.Data) > 0 {
 				fmt.Fprintf(w, "data: %s\n", string(event.Data))
 			}
