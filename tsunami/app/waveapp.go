@@ -5,12 +5,12 @@ package waveapp
 
 import (
 	"context"
-	"errors"
 	"flag"
 	"fmt"
 	"io"
 	"io/fs"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"strings"
@@ -116,7 +116,7 @@ func (c *Client) runMainE() error {
 	if c.SetupFn != nil {
 		c.SetupFn()
 	}
-	err := c.Connect()
+	err := c.ListenAndServe(context.Background())
 	if err != nil {
 		return err
 	}
@@ -160,8 +160,47 @@ func (c *Client) RunMain() {
 	}
 }
 
-func (c *Client) Connect() error {
-	return errors.New("unimplemented")
+func (c *Client) ListenAndServe(ctx context.Context) error {
+	// Create HTTP handlers
+	handlers := NewHTTPHandlers(c, c.RpcContext.BlockId)
+	
+	// Create a new ServeMux and register handlers
+	mux := http.NewServeMux()
+	handlers.RegisterHandlers(mux)
+	
+	// Create server and listen on any available port on localhost
+	server := &http.Server{
+		Addr:    "localhost:0",
+		Handler: mux,
+	}
+	
+	// Start listening
+	listener, err := net.Listen("tcp", "localhost:0")
+	if err != nil {
+		return fmt.Errorf("failed to listen: %v", err)
+	}
+	
+	// Log the port we're listening on
+	port := listener.Addr().(*net.TCPAddr).Port
+	log.Printf("Wave app server listening on port %d", port)
+	
+	// Serve in a goroutine so we don't block
+	go func() {
+		if err := server.Serve(listener); err != nil && err != http.ErrServerClosed {
+			log.Printf("HTTP server error: %v", err)
+		}
+	}()
+	
+	// Wait for context cancellation and shutdown server gracefully
+	go func() {
+		<-ctx.Done()
+		log.Printf("Context canceled, shutting down server...")
+		if err := server.Shutdown(context.Background()); err != nil {
+			log.Printf("Server shutdown error: %v", err)
+		}
+	}()
+	
+	return nil
 }
 
 func (c *Client) SetRootElem(elem *vdom.VDomElem) {
