@@ -11,8 +11,8 @@ import (
 	"net/http"
 
 	"github.com/wavetermdev/waveterm/tsunami/rpc"
+	"github.com/wavetermdev/waveterm/tsunami/rpctypes"
 	"github.com/wavetermdev/waveterm/tsunami/util"
-	"github.com/wavetermdev/waveterm/tsunami/vdom"
 )
 
 type WaveAppServerImpl struct {
@@ -22,12 +22,12 @@ type WaveAppServerImpl struct {
 
 func (*WaveAppServerImpl) WshServerImpl() {}
 
-func (impl *WaveAppServerImpl) VDomRenderCommand(ctx context.Context, feUpdate vdom.VDomFrontendUpdate) chan rpc.RespOrErrorUnion[*vdom.VDomBackendUpdate] {
-	respChan := make(chan rpc.RespOrErrorUnion[*vdom.VDomBackendUpdate], 5)
+func (impl *WaveAppServerImpl) VDomRenderCommand(ctx context.Context, feUpdate rpctypes.VDomFrontendUpdate) chan rpc.RespOrErrorUnion[*rpctypes.VDomBackendUpdate] {
+	respChan := make(chan rpc.RespOrErrorUnion[*rpctypes.VDomBackendUpdate], 5)
 	defer func() {
 		panicErr := util.PanicHandler("VDomRenderCommand", recover())
 		if panicErr != nil {
-			respChan <- rpc.RespOrErrorUnion[*vdom.VDomBackendUpdate]{
+			respChan <- rpc.RespOrErrorUnion[*rpctypes.VDomBackendUpdate]{
 				Error: panicErr,
 			}
 			close(respChan)
@@ -67,7 +67,7 @@ func (impl *WaveAppServerImpl) VDomRenderCommand(ctx context.Context, feUpdate v
 		impl.Client.Root.UpdateRef(ref)
 	}
 
-	var update *vdom.VDomBackendUpdate
+	var update *rpctypes.VDomBackendUpdate
 	var err error
 
 	if feUpdate.Resync || true {
@@ -78,7 +78,7 @@ func (impl *WaveAppServerImpl) VDomRenderCommand(ctx context.Context, feUpdate v
 	update.CreateTransferElems()
 
 	if err != nil {
-		respChan <- rpc.RespOrErrorUnion[*vdom.VDomBackendUpdate]{
+		respChan <- rpc.RespOrErrorUnion[*rpctypes.VDomBackendUpdate]{
 			Error: err,
 		}
 		close(respChan)
@@ -86,14 +86,14 @@ func (impl *WaveAppServerImpl) VDomRenderCommand(ctx context.Context, feUpdate v
 	}
 
 	// Split the update into chunks and send them sequentially
-	updates := vdom.SplitBackendUpdate(update)
+	updates := rpctypes.SplitBackendUpdate(update)
 	go func() {
 		defer func() {
 			util.PanicHandler("VDomRenderCommand:splitUpdates", recover())
 		}()
 		defer close(respChan)
 		for _, splitUpdate := range updates {
-			respChan <- rpc.RespOrErrorUnion[*vdom.VDomBackendUpdate]{
+			respChan <- rpc.RespOrErrorUnion[*rpctypes.VDomBackendUpdate]{
 				Response: splitUpdate,
 			}
 		}

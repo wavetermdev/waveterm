@@ -22,6 +22,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/wavetermdev/waveterm/tsunami/rpc"
 	"github.com/wavetermdev/waveterm/tsunami/rpcclient"
+	"github.com/wavetermdev/waveterm/tsunami/rpctypes"
 	"github.com/wavetermdev/waveterm/tsunami/util"
 	"github.com/wavetermdev/waveterm/tsunami/vdom"
 )
@@ -110,55 +111,55 @@ func MakeClient(appOpts AppOpts) *Client {
 	return client
 }
 
-func (client *Client) runMainE() error {
-	if client.SetupFn != nil {
-		client.SetupFn()
+func (c *Client) runMainE() error {
+	if c.SetupFn != nil {
+		c.SetupFn()
 	}
-	err := client.Connect()
+	err := c.Connect()
 	if err != nil {
 		return err
 	}
 	target := &vdom.VDomTarget{}
-	if client.AppOpts.TargetNewBlock || client.NewBlockFlag {
-		target.NewBlock = client.NewBlockFlag
+	if c.AppOpts.TargetNewBlock || c.NewBlockFlag {
+		target.NewBlock = c.NewBlockFlag
 	}
-	if client.AppOpts.TargetToolbar != nil {
-		target.Toolbar = client.AppOpts.TargetToolbar
+	if c.AppOpts.TargetToolbar != nil {
+		target.Toolbar = c.AppOpts.TargetToolbar
 	}
 	if target.NewBlock && target.Toolbar != nil {
 		return fmt.Errorf("cannot specify both new block and toolbar target")
 	}
-	err = client.CreateVDomContext(target)
+	err = c.CreateVDomContext(target)
 	if err != nil {
 		return err
 	}
-	<-client.DoneCh
+	<-c.DoneCh
 	return nil
 }
 
-func (client *Client) AddSetupFn(fn func()) {
-	client.SetupFn = fn
+func (c *Client) AddSetupFn(fn func()) {
+	c.SetupFn = fn
 }
 
-func (client *Client) RegisterDefaultFlags() {
-	if client.AppOpts.NewBlockFlag != "-" {
-		flag.BoolVar(&client.NewBlockFlag, client.AppOpts.NewBlockFlag, false, "new block")
+func (c *Client) RegisterDefaultFlags() {
+	if c.AppOpts.NewBlockFlag != "-" {
+		flag.BoolVar(&c.NewBlockFlag, c.AppOpts.NewBlockFlag, false, "new block")
 	}
 }
 
-func (client *Client) RunMain() {
+func (c *Client) RunMain() {
 	if !flag.Parsed() {
-		client.RegisterDefaultFlags()
+		c.RegisterDefaultFlags()
 		flag.Parse()
 	}
-	err := client.runMainE()
+	err := c.runMainE()
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
 }
 
-func (client *Client) Connect() error {
+func (c *Client) Connect() error {
 	return errors.New("unimplemented")
 }
 
@@ -169,7 +170,7 @@ func (c *Client) SetRootElem(elem *vdom.VDomElem) {
 func (c *Client) CreateVDomContext(target *vdom.VDomTarget) error {
 	blockORef, err := rpcclient.VDomCreateContextCommand(
 		c.RpcClient,
-		vdom.VDomCreateContext{Target: target},
+		rpctypes.VDomCreateContext{Target: target},
 		&rpc.RpcOpts{Route: rpc.MakeFeBlockRouteId(c.RpcContext.BlockId)},
 	)
 	if err != nil {
@@ -205,7 +206,7 @@ func (c *Client) SendAsyncInitiation() error {
 	}
 	return rpcclient.VDomAsyncInitiationCommand(
 		c.RpcClient,
-		vdom.MakeAsyncInitiationRequest(c.RpcContext.BlockId),
+		rpctypes.MakeAsyncInitiationRequest(c.RpcContext.BlockId),
 		&rpc.RpcOpts{Route: rpc.MakeFeBlockRouteId(c.VDomContextBlockId)},
 	)
 }
@@ -248,14 +249,14 @@ func (c *Client) RegisterComponent(name string, cfunc any) error {
 	return c.Root.RegisterComponent(name, cfunc)
 }
 
-func (c *Client) fullRender() (*vdom.VDomBackendUpdate, error) {
+func (c *Client) fullRender() (*rpctypes.VDomBackendUpdate, error) {
 	c.Root.RunWork()
 	c.Root.Render(c.RootElem)
 	renderedVDom := c.Root.MakeVDom()
 	if renderedVDom == nil {
 		renderedVDom = makeNullVDom()
 	}
-	return &vdom.VDomBackendUpdate{
+	return &rpctypes.VDomBackendUpdate{
 		Type:    "backendupdate",
 		Ts:      time.Now().UnixMilli(),
 		BlockId: c.RpcContext.BlockId,
@@ -269,13 +270,13 @@ func (c *Client) fullRender() (*vdom.VDomBackendUpdate, error) {
 	}, nil
 }
 
-func (c *Client) incrementalRender() (*vdom.VDomBackendUpdate, error) {
+func (c *Client) incrementalRender() (*rpctypes.VDomBackendUpdate, error) {
 	c.Root.RunWork()
 	renderedVDom := c.Root.MakeVDom()
 	if renderedVDom == nil {
 		renderedVDom = makeNullVDom()
 	}
-	return &vdom.VDomBackendUpdate{
+	return &rpctypes.VDomBackendUpdate{
 		Type:    "backendupdate",
 		Ts:      time.Now().UnixMilli(),
 		BlockId: c.RpcContext.BlockId,

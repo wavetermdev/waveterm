@@ -5,7 +5,6 @@ package vdom
 
 import (
 	"context"
-	"time"
 )
 
 const TextTag = "#text"
@@ -89,54 +88,6 @@ type VDomTransferElem struct {
 
 //// protocol messages
 
-type VDomCreateContext struct {
-	Type    string         `json:"type" tstype:"\"createcontext\""`
-	Ts      int64          `json:"ts"`
-	Meta    map[string]any `json:"meta,omitempty"`
-	Target  *VDomTarget    `json:"target,omitempty"`
-	Persist bool           `json:"persist,omitempty"`
-}
-
-type VDomAsyncInitiationRequest struct {
-	Type    string `json:"type" tstype:"\"asyncinitiationrequest\""`
-	Ts      int64  `json:"ts"`
-	BlockId string `json:"blockid,omitempty"`
-}
-
-func MakeAsyncInitiationRequest(blockId string) VDomAsyncInitiationRequest {
-	return VDomAsyncInitiationRequest{
-		Type:    "asyncinitiationrequest",
-		Ts:      time.Now().UnixMilli(),
-		BlockId: blockId,
-	}
-}
-
-type VDomFrontendUpdate struct {
-	Type          string            `json:"type" tstype:"\"frontendupdate\""`
-	Ts            int64             `json:"ts"`
-	BlockId       string            `json:"blockid"`
-	CorrelationId string            `json:"correlationid,omitempty"`
-	Dispose       bool              `json:"dispose,omitempty"` // the vdom context was closed
-	Resync        bool              `json:"resync,omitempty"`  // resync (send all backend data).  useful when the FE reloads
-	RenderContext VDomRenderContext `json:"rendercontext,omitempty"`
-	Events        []VDomEvent       `json:"events,omitempty"`
-	StateSync     []VDomStateSync   `json:"statesync,omitempty"`
-	RefUpdates    []VDomRefUpdate   `json:"refupdates,omitempty"`
-	Messages      []VDomMessage     `json:"messages,omitempty"`
-}
-
-type VDomBackendUpdate struct {
-	Type          string             `json:"type" tstype:"\"backendupdate\""`
-	Ts            int64              `json:"ts"`
-	BlockId       string             `json:"blockid"`
-	Opts          *VDomBackendOpts   `json:"opts,omitempty"`
-	HasWork       bool               `json:"haswork,omitempty"`
-	RenderUpdates []VDomRenderUpdate `json:"renderupdates,omitempty"`
-	TransferElems []VDomTransferElem `json:"transferelems,omitempty"`
-	StateSync     []VDomStateSync    `json:"statesync,omitempty"`
-	RefOperations []VDomRefOperation `json:"refoperations,omitempty"`
-	Messages      []VDomMessage      `json:"messages,omitempty"`
-}
 
 ///// prop types
 

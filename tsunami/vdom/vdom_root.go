@@ -15,10 +15,6 @@ import (
 	"github.com/wavetermdev/waveterm/tsunami/util"
 )
 
-const (
-	BackendUpdate_InitialChunkSize = 50  // Size for initial chunks that contain both TransferElems and StateSync
-	BackendUpdate_ChunkSize        = 100 // Size for subsequent chunks
-)
 
 func (r *RootElem) AddRenderWork(id string) {
 	if r.NeedsRenderMap == nil {
@@ -521,74 +517,3 @@ func DedupTransferElems(elems []VDomTransferElem) []VDomTransferElem {
 	return result
 }
 
-func (beUpdate *VDomBackendUpdate) CreateTransferElems() {
-	var allElems []VDomElem
-	for _, renderUpdate := range beUpdate.RenderUpdates {
-		if renderUpdate.VDom != nil {
-			allElems = append(allElems, *renderUpdate.VDom)
-		}
-	}
-	transferElems := ConvertElemsToTransferElems(allElems)
-	beUpdate.TransferElems = DedupTransferElems(transferElems)
-	for i := range beUpdate.RenderUpdates {
-		beUpdate.RenderUpdates[i].VDom = nil
-	}
-}
-
-func SplitBackendUpdate(update *VDomBackendUpdate) []*VDomBackendUpdate {
-	if len(update.TransferElems) <= BackendUpdate_InitialChunkSize && len(update.StateSync) <= BackendUpdate_InitialChunkSize {
-		return []*VDomBackendUpdate{update}
-	}
-
-	updates := make([]*VDomBackendUpdate, 0)
-	transferElemChunks := chunkSlice(update.TransferElems, BackendUpdate_ChunkSize)
-	stateSyncChunks := chunkSlice(update.StateSync, BackendUpdate_ChunkSize)
-
-	maxChunks := len(transferElemChunks)
-	if len(stateSyncChunks) > maxChunks {
-		maxChunks = len(stateSyncChunks)
-	}
-
-	for i := 0; i < maxChunks; i++ {
-		newUpdate := &VDomBackendUpdate{
-			Type:    update.Type,
-			Ts:      update.Ts,
-			BlockId: update.BlockId,
-		}
-
-		if i == 0 {
-			newUpdate.Opts = update.Opts
-			newUpdate.HasWork = update.HasWork
-			newUpdate.RenderUpdates = update.RenderUpdates
-			newUpdate.RefOperations = update.RefOperations
-			newUpdate.Messages = update.Messages
-		}
-
-		if i < len(transferElemChunks) {
-			newUpdate.TransferElems = transferElemChunks[i]
-		}
-
-		if i < len(stateSyncChunks) {
-			newUpdate.StateSync = stateSyncChunks[i]
-		}
-
-		updates = append(updates, newUpdate)
-	}
-
-	return updates
-}
-
-func chunkSlice[T any](slice []T, chunkSize int) [][]T {
-	if len(slice) == 0 {
-		return nil
-	}
-	chunks := make([][]T, 0)
-	for i := 0; i < len(slice); i += chunkSize {
-		end := i + chunkSize
-		if end > len(slice) {
-			end = len(slice)
-		}
-		chunks = append(chunks, slice[i:end])
-	}
-	return chunks
-}

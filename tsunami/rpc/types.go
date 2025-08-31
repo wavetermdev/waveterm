@@ -3,22 +3,13 @@
 
 package rpc
 
+import (
+	"github.com/wavetermdev/waveterm/tsunami/rpctypes"
+)
+
 type RespOrErrorUnion[T any] struct {
 	Response T
 	Error    error
-}
-
-type VDomUrlRequestData struct {
-	Method  string            `json:"method"`
-	URL     string            `json:"url"`
-	Headers map[string]string `json:"headers"`
-	Body    []byte            `json:"body,omitempty"`
-}
-
-type VDomUrlRequestResponse struct {
-	StatusCode int               `json:"statuscode,omitempty"`
-	Headers    map[string]string `json:"headers,omitempty"`
-	Body       []byte            `json:"body,omitempty"`
 }
 
 type RpcOpts struct {
@@ -36,11 +27,6 @@ type RpcContext struct {
 	Conn       string `json:"conn,omitempty"`
 }
 
-type CommandWaitForRouteData struct {
-	RouteId string `json:"routeid"`
-	WaitMs  int    `json:"waitms"`
-}
-
 type ORef struct {
 	OType string `json:"otype"`
 	OID   string `json:"oid"`
@@ -49,3 +35,8 @@ type ORef struct {
 func (oref ORef) String() string {
 	return oref.OType + ":" + oref.OID
 }
+
+// Types moved to rpctypes package
+type VDomUrlRequestData = rpctypes.VDomUrlRequestData
+type VDomUrlRequestResponse = rpctypes.VDomUrlRequestResponse
+type CommandWaitForRouteData = rpctypes.CommandWaitForRouteData

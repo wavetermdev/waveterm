@@ -50,3 +50,18 @@ func ExpandHomeDirSafe(pathStr string) string {
 	path, _ := ExpandHomeDir(pathStr)
 	return path
 }
+
+func ChunkSlice[T any](slice []T, chunkSize int) [][]T {
+	if len(slice) == 0 {
+		return nil
+	}
+	chunks := make([][]T, 0)
+	for i := 0; i < len(slice); i += chunkSize {
+		end := i + chunkSize
+		if end > len(slice) {
+			end = len(slice)
+		}
+		chunks = append(chunks, slice[i:end])
+	}
+	return chunks
+}

@@ -7,10 +7,10 @@ import (
 	"errors"
 
 	"github.com/wavetermdev/waveterm/tsunami/rpc"
-	"github.com/wavetermdev/waveterm/tsunami/vdom"
+	"github.com/wavetermdev/waveterm/tsunami/rpctypes"
 )
 
-func VDomCreateContextCommand(rpcClient *RpcClient, data vdom.VDomCreateContext, opts *rpc.RpcOpts) (rpc.ORef, error) {
+func VDomCreateContextCommand(rpcClient *RpcClient, data rpctypes.VDomCreateContext, opts *rpc.RpcOpts) (rpc.ORef, error) {
 	return rpc.ORef{}, errors.New("VDomCreateContextCommand: unimplemented")
 }
 
@@ -22,6 +22,6 @@ func EventSubCommand(rpcClient *RpcClient, data rpc.SubscriptionRequest, opts *r
 	return errors.New("EventSubCommand: unimplemented")
 }
 
-func VDomAsyncInitiationCommand(rpcClient *RpcClient, data vdom.VDomAsyncInitiationRequest, opts *rpc.RpcOpts) error {
+func VDomAsyncInitiationCommand(rpcClient *RpcClient, data rpctypes.VDomAsyncInitiationRequest, opts *rpc.RpcOpts) error {
 	return errors.New("VDomAsyncInitiationCommand: unimplemented")
 }

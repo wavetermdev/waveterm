@@ -1,6 +1,6 @@
 module github.com/wavetermdev/waveterm/tsunami
 
-go 1.22.4
+go 1.23.0
 
 toolchain go1.24.6
 
@@ -10,4 +10,4 @@ require (
 	github.com/wavetermdev/htmltoken v0.2.0
 )
 
-require golang.org/x/net v0.27.0 // indirect
+require golang.org/x/net v0.43.0 // indirect
