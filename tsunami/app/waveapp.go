@@ -61,6 +61,25 @@ func (c *Client) GetIsDone() bool {
 	return c.IsDone
 }
 
+func (c *Client) CheckClientId(clientId string) error {
+	if clientId == "" {
+		return fmt.Errorf("client id cannot be empty")
+	}
+	c.Lock.Lock()
+	defer c.Lock.Unlock()
+	if c.CurrentClientId == "" || c.CurrentClientId == clientId {
+		c.CurrentClientId = clientId
+		return nil
+	}
+	return fmt.Errorf("client id mismatch: expected %s, got %s", c.CurrentClientId, clientId)
+}
+
+func (c *Client) ClientTakeover(clientId string) {
+	c.Lock.Lock()
+	defer c.Lock.Unlock()
+	c.CurrentClientId = clientId
+}
+
 func (c *Client) doShutdown(reason string) {
 	c.Lock.Lock()
 	defer c.Lock.Unlock()

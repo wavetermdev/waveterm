@@ -59,6 +59,15 @@ func (h *HTTPHandlers) handleRender(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if feUpdate.ForceTakeover {
+		h.Client.ClientTakeover(feUpdate.ClientId)
+	}
+
+	if err := h.Client.CheckClientId(feUpdate.ClientId); err != nil {
+		http.Error(w, fmt.Sprintf("client id error: %v", err), http.StatusBadRequest)
+		return
+	}
+
 	if feUpdate.Dispose {
 		log.Printf("got dispose from frontend\n")
 		h.Client.doShutdown("got dispose from frontend")
@@ -149,6 +158,12 @@ func (h *HTTPHandlers) handleSSE(w http.ResponseWriter, r *http.Request) {
 
 	if r.Method != http.MethodGet {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	clientId := r.URL.Query().Get("clientId")
+	if err := h.Client.CheckClientId(clientId); err != nil {
+		http.Error(w, fmt.Sprintf("client id error: %v", err), http.StatusBadRequest)
 		return
 	}
 

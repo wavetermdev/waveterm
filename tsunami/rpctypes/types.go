@@ -34,6 +34,7 @@ type VDomFrontendUpdate struct {
 	Type          string            `json:"type" tstype:"\"frontendupdate\""`
 	Ts            int64             `json:"ts"`
 	ClientId      string            `json:"clientid"`
+	ForceTakeover bool              `json:"forcetakeover,omitempty"`
 	CorrelationId string            `json:"correlationid,omitempty"`
 	Dispose       bool              `json:"dispose,omitempty"` // the vdom context was closed
 	Resync        bool              `json:"resync,omitempty"`  // resync (send all backend data).  useful when the FE reloads
