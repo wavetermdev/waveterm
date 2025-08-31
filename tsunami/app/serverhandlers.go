@@ -10,6 +10,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/wavetermdev/waveterm/tsunami/rpctypes"
@@ -19,7 +20,8 @@ import (
 const SSEKeepAliveDuration = 5 * time.Second
 
 type HTTPHandlers struct {
-	Client *Client
+	Client     *Client
+	renderLock sync.Mutex
 }
 
 func NewHTTPHandlers(client *Client) *HTTPHandlers {
@@ -68,16 +70,34 @@ func (h *HTTPHandlers) handleRender(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if feUpdate.Dispose {
-		log.Printf("got dispose from frontend\n")
-		h.Client.doShutdown("got dispose from frontend")
+	update, err := h.processFrontendUpdate(&feUpdate)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("render error: %v", err), http.StatusInternalServerError)
+		return
+	}
+	if update == nil {
 		w.WriteHeader(http.StatusOK)
 		return
 	}
 
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(update); err != nil {
+		log.Printf("failed to encode response: %v", err)
+	}
+}
+
+func (h *HTTPHandlers) processFrontendUpdate(feUpdate *rpctypes.VDomFrontendUpdate) (*rpctypes.VDomBackendUpdate, error) {
+	h.renderLock.Lock()
+	defer h.renderLock.Unlock()
+
+	if feUpdate.Dispose {
+		log.Printf("got dispose from frontend\n")
+		h.Client.doShutdown("got dispose from frontend")
+		return nil, nil
+	}
+
 	if h.Client.GetIsDone() {
-		w.WriteHeader(http.StatusOK)
-		return
+		return nil, nil
 	}
 
 	h.Client.Root.RenderTs = feUpdate.Ts
@@ -111,16 +131,11 @@ func (h *HTTPHandlers) handleRender(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if renderErr != nil {
-		http.Error(w, fmt.Sprintf("render error: %v", renderErr), http.StatusInternalServerError)
-		return
+		return nil, renderErr
 	}
 
 	update.CreateTransferElems()
-
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(update); err != nil {
-		log.Printf("failed to encode response: %v", err)
-	}
+	return update, nil
 }
 
 func (h *HTTPHandlers) handleVDomUrl(w http.ResponseWriter, r *http.Request) {
