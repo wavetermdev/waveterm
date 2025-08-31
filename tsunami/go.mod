@@ -1,4 +1,4 @@
-module tsunami
+module github.com/wavetermdev/waveterm/tsunami
 
 go 1.22.4
 
@@ -6,6 +6,7 @@ toolchain go1.24.6
 
 require (
 	github.com/google/uuid v1.6.0
+	github.com/gorilla/mux v1.8.1
 	github.com/wavetermdev/htmltoken v0.2.0
 )
 

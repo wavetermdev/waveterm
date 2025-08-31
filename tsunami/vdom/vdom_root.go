@@ -12,7 +12,7 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	"tsunami/util"
+	"github.com/wavetermdev/waveterm/tsunami/util"
 )
 
 const (

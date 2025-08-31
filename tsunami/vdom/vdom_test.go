@@ -8,7 +8,7 @@ import (
 	"reflect"
 	"testing"
 
-	"tsunami/util"
+	"github.com/wavetermdev/waveterm/tsunami/util"
 )
 
 type renderContextKeyType struct{}

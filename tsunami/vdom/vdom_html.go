@@ -10,7 +10,7 @@ import (
 	"io"
 	"strings"
 
-	"tsunami/vdom/cssparser"
+	"github.com/wavetermdev/waveterm/tsunami/vdom/cssparser"
 
 	"github.com/wavetermdev/htmltoken"
 )

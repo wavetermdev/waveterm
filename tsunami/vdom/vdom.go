@@ -12,7 +12,7 @@ import (
 	"strings"
 	"unicode"
 
-	"tsunami/util"
+	"github.com/wavetermdev/waveterm/tsunami/util"
 )
 
 // ReactNode types = nil | string | Elem
@@ -457,7 +457,6 @@ func UseEffect(ctx context.Context, fn func() func(), deps []any) {
 	hookVal.Deps = deps
 	vc.Root.AddEffectWork(vc.Comp.WaveId, hookVal.Idx)
 }
-
 
 func partToElems(part any) []VDomElem {
 	if part == nil {
