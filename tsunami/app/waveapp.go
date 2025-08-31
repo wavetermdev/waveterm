@@ -28,6 +28,11 @@ import (
 	"github.com/wavetermdev/waveterm/tsunami/vdom"
 )
 
+type SSEvent struct {
+	Event string
+	Data  []byte
+}
+
 type AppOpts struct {
 	CloseOnCtrlC         bool
 	GlobalKeyboardEvents bool
@@ -50,6 +55,7 @@ type Client struct {
 	VDomContextBlockId string
 	DoneReason         string
 	DoneCh             chan struct{}
+	SSEventCh          chan SSEvent
 	Opts               rpctypes.VDomBackendOpts
 	GlobalEventHandler func(client *Client, event rpctypes.VDomEvent)
 	GlobalStylesOption *FileHandlerOption
@@ -97,6 +103,7 @@ func MakeClient(appOpts AppOpts) *Client {
 		Root:          comp.MakeRoot(),
 		RpcClient:     rpcclient.MakeRpcClient(),
 		DoneCh:        make(chan struct{}),
+		SSEventCh:     make(chan SSEvent, 100),
 		UrlHandlerMux: mux.NewRouter(),
 		Opts: rpctypes.VDomBackendOpts{
 			CloseOnCtrlC:         appOpts.CloseOnCtrlC,
@@ -161,7 +168,7 @@ func (c *Client) RunMain() {
 
 func (c *Client) ListenAndServe(ctx context.Context) error {
 	// Create HTTP handlers
-	handlers := NewHTTPHandlers(c, c.RpcContext.BlockId)
+	handlers := NewHTTPHandlers(c)
 
 	// Create a new ServeMux and register handlers
 	mux := http.NewServeMux()

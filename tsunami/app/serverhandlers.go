@@ -10,25 +10,27 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/wavetermdev/waveterm/tsunami/rpctypes"
 	"github.com/wavetermdev/waveterm/tsunami/util"
 )
 
+const SSEKeepAliveDuration = 5 * time.Second
+
 type HTTPHandlers struct {
-	Client  *Client
-	BlockId string
+	Client *Client
 }
 
-func NewHTTPHandlers(client *Client, blockId string) *HTTPHandlers {
+func NewHTTPHandlers(client *Client) *HTTPHandlers {
 	return &HTTPHandlers{
-		Client:  client,
-		BlockId: blockId,
+		Client: client,
 	}
 }
 
 func (h *HTTPHandlers) RegisterHandlers(mux *http.ServeMux) {
 	mux.HandleFunc("/api/render", h.handleRender)
+	mux.HandleFunc("/api/updates", h.handleSSE)
 	mux.HandleFunc("/vdom/", h.handleVDomUrl)
 }
 
@@ -135,4 +137,58 @@ func (h *HTTPHandlers) handleVDomUrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	h.Client.UrlHandlerMux.ServeHTTP(w, r)
+}
+
+func (h *HTTPHandlers) handleSSE(w http.ResponseWriter, r *http.Request) {
+	defer func() {
+		panicErr := util.PanicHandler("handleSSE", recover())
+		if panicErr != nil {
+			http.Error(w, fmt.Sprintf("internal server error: %v", panicErr), http.StatusInternalServerError)
+		}
+	}()
+
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Set SSE headers
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+	w.Header().Set("X-Accel-Buffering", "no")
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+
+	// Flush headers immediately
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		http.Error(w, "streaming not supported", http.StatusInternalServerError)
+		return
+	}
+	flusher.Flush()
+
+	// Create a ticker for keepalive packets
+	keepaliveTicker := time.NewTicker(SSEKeepAliveDuration)
+	defer keepaliveTicker.Stop()
+
+	for {
+		select {
+		case <-r.Context().Done():
+			return
+		case <-keepaliveTicker.C:
+			// Send keepalive comment
+			fmt.Fprintf(w, ": keepalive\n\n")
+			flusher.Flush()
+		case event := <-h.Client.SSEventCh:
+			// Send actual event
+			if event.Event != "" {
+				fmt.Fprintf(w, "event: %s\n", event.Event)
+			}
+			if len(event.Data) > 0 {
+				fmt.Fprintf(w, "data: %s\n", string(event.Data))
+			}
+			fmt.Fprintf(w, "\n")
+			flusher.Flush()
+		}
+	}
 }
