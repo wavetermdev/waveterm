@@ -5,7 +5,6 @@ package waveapp
 
 import (
 	"context"
-	"flag"
 	"fmt"
 	"io"
 	"io/fs"
@@ -21,7 +20,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/wavetermdev/waveterm/tsunami/comp"
-	"github.com/wavetermdev/waveterm/tsunami/rpc"
 	"github.com/wavetermdev/waveterm/tsunami/rpctypes"
 	"github.com/wavetermdev/waveterm/tsunami/util"
 	"github.com/wavetermdev/waveterm/tsunami/vdom"
@@ -37,8 +35,6 @@ type AppOpts struct {
 	GlobalKeyboardEvents bool
 	GlobalStyles         []byte
 	RootComponentName    string // defaults to "App"
-	NewBlockFlag         string // defaults to "n" (set to "-" to disable)
-	TargetNewBlock       bool
 }
 
 type Client struct {
@@ -46,10 +42,8 @@ type Client struct {
 	AppOpts            AppOpts
 	Root               *comp.RootElem
 	RootElem           *vdom.VDomElem
-	RpcContext         *rpc.RpcContext
+	CurrentClientId    string
 	IsDone             bool
-	RouteId            string
-	VDomContextBlockId string
 	DoneReason         string
 	DoneCh             chan struct{}
 	SSEventCh          chan SSEvent
@@ -58,7 +52,6 @@ type Client struct {
 	GlobalStylesOption *FileHandlerOption
 	UrlHandlerMux      *mux.Router
 	OverrideUrlHandler http.Handler
-	NewBlockFlag       bool
 	SetupFn            func()
 }
 
@@ -90,9 +83,6 @@ func (c *Client) SetOverrideUrlHandler(handler http.Handler) {
 func MakeClient(appOpts AppOpts) *Client {
 	if appOpts.RootComponentName == "" {
 		appOpts.RootComponentName = "App"
-	}
-	if appOpts.NewBlockFlag == "" {
-		appOpts.NewBlockFlag = "n"
 	}
 	client := &Client{
 		Lock:          &sync.Mutex{},
@@ -130,17 +120,7 @@ func (c *Client) AddSetupFn(fn func()) {
 	c.SetupFn = fn
 }
 
-func (c *Client) RegisterDefaultFlags() {
-	if c.AppOpts.NewBlockFlag != "-" {
-		flag.BoolVar(&c.NewBlockFlag, c.AppOpts.NewBlockFlag, false, "new block")
-	}
-}
-
 func (c *Client) RunMain() {
-	if !flag.Parsed() {
-		c.RegisterDefaultFlags()
-		flag.Parse()
-	}
 	err := c.runMainE()
 	if err != nil {
 		fmt.Println(err)
@@ -196,9 +176,6 @@ func (c *Client) SetRootElem(elem *vdom.VDomElem) {
 }
 
 func (c *Client) SendAsyncInitiation() error {
-	if c.VDomContextBlockId == "" {
-		return fmt.Errorf("no vdom context block id")
-	}
 	if c.GetIsDone() {
 		return fmt.Errorf("client is done")
 	}

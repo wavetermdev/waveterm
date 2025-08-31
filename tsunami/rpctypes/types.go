@@ -33,7 +33,7 @@ func MakeAsyncInitiationRequest(blockId string) VDomAsyncInitiationRequest {
 type VDomFrontendUpdate struct {
 	Type          string            `json:"type" tstype:"\"frontendupdate\""`
 	Ts            int64             `json:"ts"`
-	BlockId       string            `json:"blockid"`
+	ClientId      string            `json:"clientid"`
 	CorrelationId string            `json:"correlationid,omitempty"`
 	Dispose       bool              `json:"dispose,omitempty"` // the vdom context was closed
 	Resync        bool              `json:"resync,omitempty"`  // resync (send all backend data).  useful when the FE reloads
