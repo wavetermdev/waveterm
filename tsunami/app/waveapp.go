@@ -45,7 +45,6 @@ type Client struct {
 	RootElem           *vdom.VDomElem
 	RpcClient          *rpcclient.RpcClient
 	RpcContext         *rpc.RpcContext
-	ServerImpl         *WaveAppServerImpl
 	IsDone             bool
 	RouteId            string
 	VDomContextBlockId string
@@ -163,34 +162,34 @@ func (c *Client) RunMain() {
 func (c *Client) ListenAndServe(ctx context.Context) error {
 	// Create HTTP handlers
 	handlers := NewHTTPHandlers(c, c.RpcContext.BlockId)
-	
+
 	// Create a new ServeMux and register handlers
 	mux := http.NewServeMux()
 	handlers.RegisterHandlers(mux)
-	
+
 	// Create server and listen on any available port on localhost
 	server := &http.Server{
 		Addr:    "localhost:0",
 		Handler: mux,
 	}
-	
+
 	// Start listening
 	listener, err := net.Listen("tcp", "localhost:0")
 	if err != nil {
 		return fmt.Errorf("failed to listen: %v", err)
 	}
-	
+
 	// Log the port we're listening on
 	port := listener.Addr().(*net.TCPAddr).Port
 	log.Printf("Wave app server listening on port %d", port)
-	
+
 	// Serve in a goroutine so we don't block
 	go func() {
 		if err := server.Serve(listener); err != nil && err != http.ErrServerClosed {
 			log.Printf("HTTP server error: %v", err)
 		}
 	}()
-	
+
 	// Wait for context cancellation and shutdown server gracefully
 	go func() {
 		<-ctx.Done()
@@ -199,7 +198,7 @@ func (c *Client) ListenAndServe(ctx context.Context) error {
 			log.Printf("Server shutdown error: %v", err)
 		}
 	}()
-	
+
 	return nil
 }
 
