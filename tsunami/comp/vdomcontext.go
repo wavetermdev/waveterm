@@ -6,18 +6,14 @@ package comp
 import "github.com/wavetermdev/waveterm/tsunami/vdom"
 
 type VDomContextVal struct {
-	Root    *RootElem
-	Comp    *ComponentImpl
-	HookIdx int
-	Resync  bool
+	Root       *RootElem
+	Comp       *ComponentImpl
+	HookIdx    int
+	RenderOpts *RenderOpts
 }
 
 func MakeContextVal(root *RootElem, comp *ComponentImpl, opts *RenderOpts) *VDomContextVal {
-	resync := false
-	if opts != nil {
-		resync = opts.Resync
-	}
-	return &VDomContextVal{Root: root, Comp: comp, HookIdx: 0, Resync: resync}
+	return &VDomContextVal{Root: root, Comp: comp, HookIdx: 0, RenderOpts: opts}
 }
 
 // Compile-time check to ensure VDomContextVal implements vdom.VDomContext
@@ -59,5 +55,8 @@ func (vc *VDomContextVal) GetOrderedHook() *vdom.Hook {
 }
 
 func (vc *VDomContextVal) IsResync() bool {
-	return vc.Resync
+	if vc.RenderOpts == nil {
+		return false
+	}
+	return vc.RenderOpts.Resync
 }
