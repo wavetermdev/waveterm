@@ -25,6 +25,9 @@ import (
 	"github.com/wavetermdev/waveterm/tsunami/vdom"
 )
 
+const TsunamiListenAddrEnvVar = "TSUNAMI_LISTENADDR"
+const DefaultListenAddr = "localhost:0"
+
 type SSEvent struct {
 	Event string
 	Data  []byte
@@ -155,14 +158,20 @@ func (c *Client) ListenAndServe(ctx context.Context) error {
 	mux := http.NewServeMux()
 	handlers.RegisterHandlers(mux)
 
-	// Create server and listen on any available port on localhost
+	// Determine listen address from environment variable or use default
+	listenAddr := os.Getenv(TsunamiListenAddrEnvVar)
+	if listenAddr == "" {
+		listenAddr = DefaultListenAddr
+	}
+
+	// Create server and listen on specified address
 	server := &http.Server{
-		Addr:    "localhost:0",
+		Addr:    listenAddr,
 		Handler: mux,
 	}
 
 	// Start listening
-	listener, err := net.Listen("tcp", "localhost:0")
+	listener, err := net.Listen("tcp", listenAddr)
 	if err != nil {
 		return fmt.Errorf("failed to listen: %v", err)
 	}
