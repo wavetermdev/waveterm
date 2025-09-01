@@ -140,7 +140,7 @@ func (r *RootElem) Render(elem *vdom.VDomElem) {
 	r.render(elem, &r.Root)
 }
 
-func callVDomFn(fnVal any, data rpctypes.VDomEvent) {
+func callVDomFn(fnVal any, data vdom.VDomEvent) {
 	if fnVal == nil {
 		return
 	}
@@ -166,7 +166,7 @@ func callVDomFn(fnVal any, data rpctypes.VDomEvent) {
 	}
 }
 
-func (r *RootElem) Event(id string, propName string, event rpctypes.VDomEvent) {
+func (r *RootElem) Event(id string, propName string, event vdom.VDomEvent) {
 	comp := r.CompMap[id]
 	if comp == nil || comp.Elem == nil {
 		return
@@ -481,7 +481,7 @@ func ConvertElemsToTransferElems(elems []vdom.VDomElem) []rpctypes.VDomTransferE
 	return transferElems
 }
 
-func VDomFuncCallFn(vdf *vdom.VDomFunc, event rpctypes.VDomEvent) {
+func VDomFuncCallFn(vdf *vdom.VDomFunc, event vdom.VDomEvent) {
 	if vdf.Fn == nil {
 		return
 	}
@@ -494,7 +494,7 @@ func VDomFuncCallFn(vdf *vdom.VDomFunc, event rpctypes.VDomEvent) {
 		rval.Call(nil)
 	}
 	if rtype.NumIn() == 1 {
-		if rtype.In(0) == reflect.TypeOf((*rpctypes.VDomEvent)(nil)).Elem() {
+		if rtype.In(0) == reflect.TypeOf((*vdom.VDomEvent)(nil)).Elem() {
 			rval.Call([]reflect.Value{reflect.ValueOf(event)})
 		}
 	}

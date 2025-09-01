@@ -1,7 +1,7 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-package waveapp
+package app
 
 import (
 	"context"
@@ -51,7 +51,7 @@ type Client struct {
 	DoneCh             chan struct{}
 	SSEventCh          chan SSEvent
 	Opts               rpctypes.VDomBackendOpts
-	GlobalEventHandler func(client *Client, event rpctypes.VDomEvent)
+	GlobalEventHandler func(client *Client, event vdom.VDomEvent)
 	GlobalStylesOption *FileHandlerOption
 	UrlHandlerMux      *mux.Router
 	OverrideUrlHandler http.Handler
@@ -94,7 +94,7 @@ func (c *Client) doShutdown(reason string) {
 	close(c.DoneCh)
 }
 
-func (c *Client) SetGlobalEventHandler(handler func(client *Client, event rpctypes.VDomEvent)) {
+func (c *Client) SetGlobalEventHandler(handler func(client *Client, event vdom.VDomEvent)) {
 	c.GlobalEventHandler = handler
 }
 

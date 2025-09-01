@@ -176,7 +176,7 @@ export class TsunamiModel {
         getDefaultStore().set(this.contextActive, false);
     }
 
-    keyDownHandler(e: WaveKeyboardEvent): boolean {
+    keyDownHandler(e: VDomKeyboardEvent): boolean {
         if (this.backendOpts?.closeonctrlc && checkKeyPressed(e, "Ctrl:c")) {
             this.shouldDispose = true;
             this.queueUpdate(true);

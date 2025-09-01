@@ -61,8 +61,8 @@ type VDomEvent = {
     targetchecked?: boolean;
     targetname?: string;
     targetid?: string;
-    keydata?: WaveKeyboardEvent;
-    mousedata?: WavePointerData;
+    keydata?: VDomKeyboardEvent;
+    mousedata?: VDomPointerData;
 };
 
 // vdom.VDomFrontendUpdate
@@ -208,21 +208,7 @@ type VDomKeyboardEvent = {
     location?: number;
 };
 
-type WaveKeyboardEvent = {
-    type: "keydown" | "keyup" | "keypress" | "unknown";
-    key: string;
-    code: string;
-    repeat?: boolean;
-    location?: number;
-    shift?: boolean;
-    control?: boolean;
-    alt?: boolean;
-    meta?: boolean;
-    cmd?: boolean;
-    option?: boolean;
-};
-
-type WavePointerData = {
+type VDomPointerData = {
     button: number;
     buttons: number;
     clientx?: number;

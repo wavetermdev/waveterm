@@ -17,7 +17,7 @@ function getKeyUtilPlatform(): NodeJS.Platform {
 }
 
 function keydownWrapper(
-    fn: (waveEvent: WaveKeyboardEvent) => boolean
+    fn: (waveEvent: VDomKeyboardEvent) => boolean
 ): (event: KeyboardEvent | React.KeyboardEvent) => void {
     return (event: KeyboardEvent | React.KeyboardEvent) => {
         const waveEvent = adaptFromReactOrNativeKeyEvent(event);
@@ -29,7 +29,7 @@ function keydownWrapper(
     };
 }
 
-function waveEventToKeyDesc(waveEvent: WaveKeyboardEvent): string {
+function waveEventToKeyDesc(waveEvent: VDomKeyboardEvent): string {
     let keyDesc: string[] = [];
     if (waveEvent.cmd) {
         keyDesc.push("Cmd");
@@ -138,7 +138,7 @@ function countGraphemes(str: string): number {
     return Array.from(seg.segment(str)).length;
 }
 
-function isCharacterKeyEvent(event: WaveKeyboardEvent): boolean {
+function isCharacterKeyEvent(event: VDomKeyboardEvent): boolean {
     if (event.alt || event.meta || event.control) {
         return false;
     }
@@ -181,7 +181,7 @@ const inputKeyMap = new Map<string, boolean>([
     ["Cmd:Shift:ArrowDown", true],
 ]);
 
-function isInputEvent(event: WaveKeyboardEvent): boolean {
+function isInputEvent(event: VDomKeyboardEvent): boolean {
     if (isCharacterKeyEvent(event)) {
         return true;
     }
@@ -192,7 +192,7 @@ function isInputEvent(event: WaveKeyboardEvent): boolean {
     }
 }
 
-function checkKeyPressed(event: WaveKeyboardEvent, keyDescription: string): boolean {
+function checkKeyPressed(event: VDomKeyboardEvent, keyDescription: string): boolean {
     let keyPress = parseKeyDescription(keyDescription);
     if (notMod(keyPress.mods.Option, event.option)) {
         return false;
@@ -235,8 +235,8 @@ function checkKeyPressed(event: WaveKeyboardEvent, keyDescription: string): bool
     return true;
 }
 
-function adaptFromReactOrNativeKeyEvent(event: React.KeyboardEvent | KeyboardEvent): WaveKeyboardEvent {
-    let rtn: WaveKeyboardEvent = {} as WaveKeyboardEvent;
+function adaptFromReactOrNativeKeyEvent(event: React.KeyboardEvent | KeyboardEvent): VDomKeyboardEvent {
+    let rtn: VDomKeyboardEvent = {} as VDomKeyboardEvent;
     rtn.control = event.ctrlKey;
     rtn.shift = event.shiftKey;
     rtn.cmd = PLATFORM == PlatformMacOS ? event.metaKey : event.altKey;
@@ -256,8 +256,8 @@ function adaptFromReactOrNativeKeyEvent(event: React.KeyboardEvent | KeyboardEve
     return rtn;
 }
 
-function adaptFromElectronKeyEvent(event: any): WaveKeyboardEvent {
-    let rtn: WaveKeyboardEvent = {} as WaveKeyboardEvent;
+function adaptFromElectronKeyEvent(event: any): VDomKeyboardEvent {
+    let rtn: VDomKeyboardEvent = {} as VDomKeyboardEvent;
     if (event.type == "keyUp") {
         rtn.type = "keyup";
     } else if (event.type == "keyDown") {
@@ -295,7 +295,7 @@ const keyMap = {
     PageDown: "\x1b[6~",
 };
 
-function keyboardEventToASCII(event: WaveKeyboardEvent): string {
+function keyboardEventToASCII(event: VDomKeyboardEvent): string {
     // check modifiers
     // if no modifiers are set, just send the key
     if (!event.alt && !event.control && !event.meta) {

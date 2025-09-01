@@ -39,7 +39,7 @@ type VDomFrontendUpdate struct {
 	Dispose       bool              `json:"dispose,omitempty"` // the vdom context was closed
 	Resync        bool              `json:"resync,omitempty"`  // resync (send all backend data).  useful when the FE reloads
 	RenderContext VDomRenderContext `json:"rendercontext,omitempty"`
-	Events        []VDomEvent       `json:"events,omitempty"`
+	Events        []vdom.VDomEvent  `json:"events,omitempty"`
 	StateSync     []VDomStateSync   `json:"statesync,omitempty"`
 	RefUpdates    []VDomRefUpdate   `json:"refupdates,omitempty"`
 	Messages      []VDomMessage     `json:"messages,omitempty"`
@@ -146,18 +146,6 @@ func DedupTransferElems(elems []VDomTransferElem) []VDomTransferElem {
 	return result
 }
 
-type VDomEvent struct {
-	WaveId          string             `json:"waveid"`
-	EventType       string             `json:"eventtype"` // usually the prop name (e.g. onClick, onKeyDown)
-	GlobalEventType string             `json:"globaleventtype,omitempty"`
-	TargetValue     string             `json:"targetvalue,omitempty"`
-	TargetChecked   bool               `json:"targetchecked,omitempty"`
-	TargetName      string             `json:"targetname,omitempty"`
-	TargetId        string             `json:"targetid,omitempty"`
-	KeyData         *WaveKeyboardEvent `json:"keydata,omitempty"`
-	MouseData       *WavePointerData   `json:"mousedata,omitempty"`
-}
-
 type VDomRenderContext struct {
 	Focused    bool   `json:"focused"`
 	Width      int    `json:"width"`
@@ -203,57 +191,4 @@ type VDomMessage struct {
 	Message     string `json:"message"`
 	StackTrace  string `json:"stacktrace,omitempty"`
 	Params      []any  `json:"params,omitempty"`
-}
-
-// matches WaveKeyboardEvent
-type VDomKeyboardEvent struct {
-	Type     string `json:"type"`
-	Key      string `json:"key"`
-	Code     string `json:"code"`
-	Shift    bool   `json:"shift,omitempty"`
-	Control  bool   `json:"ctrl,omitempty"`
-	Alt      bool   `json:"alt,omitempty"`
-	Meta     bool   `json:"meta,omitempty"`
-	Cmd      bool   `json:"cmd,omitempty"`
-	Option   bool   `json:"option,omitempty"`
-	Repeat   bool   `json:"repeat,omitempty"`
-	Location int    `json:"location,omitempty"`
-}
-
-type WaveKeyboardEvent struct {
-	Type     string `json:"type" tstype:"\"keydown\"|\"keyup\"|\"keypress\"|\"unknown\""`
-	Key      string `json:"key"`  // KeyboardEvent.key
-	Code     string `json:"code"` // KeyboardEvent.code
-	Repeat   bool   `json:"repeat,omitempty"`
-	Location int    `json:"location,omitempty"` // KeyboardEvent.location
-
-	// modifiers
-	Shift   bool `json:"shift,omitempty"`
-	Control bool `json:"control,omitempty"`
-	Alt     bool `json:"alt,omitempty"`
-	Meta    bool `json:"meta,omitempty"`
-	Cmd     bool `json:"cmd,omitempty"`    // special (on mac it is meta, on windows/linux it is alt)
-	Option  bool `json:"option,omitempty"` // special (on mac it is alt, on windows/linux it is meta)
-}
-
-type WavePointerData struct {
-	Button  int `json:"button"`
-	Buttons int `json:"buttons"`
-
-	ClientX   int `json:"clientx,omitempty"`
-	ClientY   int `json:"clienty,omitempty"`
-	PageX     int `json:"pagex,omitempty"`
-	PageY     int `json:"pagey,omitempty"`
-	ScreenX   int `json:"screenx,omitempty"`
-	ScreenY   int `json:"screeny,omitempty"`
-	MovementX int `json:"movementx,omitempty"`
-	MovementY int `json:"movementy,omitempty"`
-
-	// Modifiers
-	Shift   bool `json:"shift,omitempty"`
-	Control bool `json:"control,omitempty"`
-	Alt     bool `json:"alt,omitempty"`
-	Meta    bool `json:"meta,omitempty"`
-	Cmd     bool `json:"cmd,omitempty"`    // special (on mac it is meta, on windows/linux it is alt)
-	Option  bool `json:"option,omitempty"` // special (on mac it is alt, on windows/linux it is meta)
 }

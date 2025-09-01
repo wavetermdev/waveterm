@@ -10,7 +10,6 @@ import (
 	"log"
 	"testing"
 
-	"github.com/wavetermdev/waveterm/tsunami/rpctypes"
 	"github.com/wavetermdev/waveterm/tsunami/vdom"
 )
 
@@ -93,7 +92,7 @@ func Test1(t *testing.T) {
 	printVDom(root)
 	root.RunWork()
 	printVDom(root)
-	root.Event(testContext.ButtonId, "onClick", rpctypes.VDomEvent{EventType: "onClick"})
+	root.Event(testContext.ButtonId, "onClick", vdom.VDomEvent{EventType: "onClick"})
 	root.RunWork()
 	printVDom(root)
 }
