@@ -67,17 +67,18 @@ type VDomTransferElem struct {
 }
 
 func (beUpdate *VDomBackendUpdate) CreateTransferElems() {
-	var allElems []vdom.VDomElem
-	for _, renderUpdate := range beUpdate.RenderUpdates {
-		if renderUpdate.VDom != nil {
-			allElems = append(allElems, *renderUpdate.VDom)
+	var vdomElems []vdom.VDomElem
+	for idx, reUpdate := range beUpdate.RenderUpdates {
+		if reUpdate.VDom == nil {
+			continue
 		}
+		vdomElems = append(vdomElems, *reUpdate.VDom)
+		beUpdate.RenderUpdates[idx].VDomWaveId = reUpdate.VDom.WaveId
+		beUpdate.RenderUpdates[idx].VDom = nil
 	}
-	transferElems := ConvertElemsToTransferElems(allElems)
-	beUpdate.TransferElems = DedupTransferElems(transferElems)
-	for i := range beUpdate.RenderUpdates {
-		beUpdate.RenderUpdates[i].VDom = nil
-	}
+	transferElems := ConvertElemsToTransferElems(vdomElems)
+	transferElems = DedupTransferElems(transferElems)
+	beUpdate.TransferElems = transferElems
 }
 
 func ConvertElemsToTransferElems(elems []vdom.VDomElem) []VDomTransferElem {

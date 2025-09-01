@@ -15,6 +15,16 @@ export default defineConfig({
     server: {
         port: 12025,
         open: true,
+        proxy: {
+            "/api": {
+                target: "http://localhost:12026",
+                changeOrigin: true,
+            },
+            "/assets": {
+                target: "http://localhost:12026",
+                changeOrigin: true,
+            },
+        },
     },
     build: {
         outDir: "dist",

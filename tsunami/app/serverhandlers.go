@@ -33,7 +33,7 @@ func NewHTTPHandlers(client *Client) *HTTPHandlers {
 func (h *HTTPHandlers) RegisterHandlers(mux *http.ServeMux) {
 	mux.HandleFunc("/api/render", h.handleRender)
 	mux.HandleFunc("/api/updates", h.handleSSE)
-	mux.HandleFunc("/vdom/", h.handleVDomUrl)
+	mux.HandleFunc("/assets/", h.handleAssetsUrl)
 }
 
 func (h *HTTPHandlers) handleRender(w http.ResponseWriter, r *http.Request) {
@@ -138,21 +138,21 @@ func (h *HTTPHandlers) processFrontendUpdate(feUpdate *rpctypes.VDomFrontendUpda
 	return update, nil
 }
 
-func (h *HTTPHandlers) handleVDomUrl(w http.ResponseWriter, r *http.Request) {
+func (h *HTTPHandlers) handleAssetsUrl(w http.ResponseWriter, r *http.Request) {
 	defer func() {
-		panicErr := util.PanicHandler("handleVDomUrl", recover())
+		panicErr := util.PanicHandler("handleAssetsUrl", recover())
 		if panicErr != nil {
 			http.Error(w, fmt.Sprintf("internal server error: %v", panicErr), http.StatusInternalServerError)
 		}
 	}()
 
-	// Strip /vdom prefix and update the request URL
-	r.URL.Path = strings.TrimPrefix(r.URL.Path, "/vdom")
+	// Strip /assets prefix and update the request URL
+	r.URL.Path = strings.TrimPrefix(r.URL.Path, "/assets")
 	if r.URL.Path == "" {
 		r.URL.Path = "/"
 	}
 
-	if r.URL.Path == "/wave/global.css" && h.Client.GlobalStylesOption != nil {
+	if r.URL.Path == "/global.css" && h.Client.GlobalStylesOption != nil {
 		ServeFileOption(w, r, *h.Client.GlobalStylesOption)
 		return
 	}

@@ -438,3 +438,15 @@ tasks:
               ignore_error: true
             - cmd: '{{.RMRF}} "dist"'
               ignore_error: true
+
+    tsunami:demo:todo:
+        desc: Run the tsunami todo demo application
+        cmd: go run demo/todo/main-todo.go
+        dir: tsunami
+        env:
+            TSUNAMI_LISTENADDR: "localhost:12026"
+
+    tsunami:frontend:dev:
+        desc: Run the tsunami frontend vite dev server
+        cmd: npm run dev
+        dir: tsunami/frontend
