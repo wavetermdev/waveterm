@@ -422,10 +422,9 @@ function VDomRoot({ model }: { model: TsunamiModel }) {
 
 type VDomViewProps = {
     model: TsunamiModel;
-    blockId: string;
 };
 
-function VDomInnerView({ blockId, model }: VDomViewProps) {
+function VDomInnerView({ model }: VDomViewProps) {
     let [styleMounted, setStyleMounted] = React.useState(!model.backendOpts?.globalstyles);
     const handleStylesMounted = () => {
         setStyleMounted(true);
@@ -440,13 +439,13 @@ function VDomInnerView({ blockId, model }: VDomViewProps) {
     );
 }
 
-function VDomView({ blockId, model }: VDomViewProps) {
+function VDomView({ model }: VDomViewProps) {
     let viewRef = React.useRef(null);
     let contextActive = jotai.useAtomValue(model.contextActive);
     model.viewRef = viewRef;
     return (
         <div className={clsx("overflow-auto w-full min-h-full")} ref={viewRef}>
-            {contextActive ? <VDomInnerView blockId={blockId} model={model} /> : null}
+            {contextActive ? <VDomInnerView model={model} /> : null}
         </div>
     );
 }

@@ -4,8 +4,6 @@
 import debug from "debug";
 import * as jotai from "jotai";
 
-import { RpcResponseHelper, WshClient } from "@/app/store/wshclient";
-import { makeFeBlockRouteId } from "@/app/store/wshrouter";
 import { getOrCreateClientId } from "@/util/clientid";
 import { adaptFromReactOrNativeKeyEvent, checkKeyPressed } from "@/util/keyutil";
 import { PLATFORM, PlatformMacOS } from "@/util/platformutil";
@@ -83,20 +81,6 @@ function annotateEvent(event: VDomEvent, propName: string, reactEvent: React.Syn
     }
 }
 
-class VDomWshClient extends WshClient {
-    model: TsunamiModel;
-
-    constructor(model: TsunamiModel) {
-        super(makeFeBlockRouteId(model.blockId));
-        this.model = model;
-    }
-
-    handle_vdomasyncinitiation(rh: RpcResponseHelper, data: VDomAsyncInitiationRequest) {
-        dlog("async-initiation", rh.getSource(), data);
-        this.model.queueUpdate(true);
-    }
-}
-
 export class TsunamiModel {
     clientId: string;
     viewRef: React.RefObject<HTMLDivElement> = { current: null };
@@ -119,7 +103,7 @@ export class TsunamiModel {
     lastUpdateTs: number = 0;
     queuedUpdate: { timeoutId: any; ts: number; quick: boolean };
     contextActive: jotai.PrimitiveAtom<boolean>;
-    wshClient: VDomWshClient;
+    serverEventSource: EventSource;
     refOutputStore: Map<string, any> = new Map();
     globalVersion: jotai.PrimitiveAtom<number> = jotai.atom(0);
     hasBackendWork: boolean = false;
@@ -130,12 +114,44 @@ export class TsunamiModel {
         this.contextActive = jotai.atom(false);
         this.reset();
         this.noPadding = jotai.atom(true);
+        this.setupServerEventSource();
         this.queueUpdate(true);
     }
 
-    dispose() {}
+    dispose() {
+        if (this.serverEventSource) {
+            this.serverEventSource.close();
+            this.serverEventSource = null;
+        }
+    }
+
+    setupServerEventSource() {
+        if (this.serverEventSource) {
+            this.serverEventSource.close();
+        }
+
+        const url = `/api/updates?clientId=${encodeURIComponent(this.clientId)}`;
+        this.serverEventSource = new EventSource(url);
+
+        this.serverEventSource.addEventListener("asyncinitiation", (event) => {
+            dlog("async-initiation SSE event received", event);
+            this.queueUpdate(true);
+        });
+
+        this.serverEventSource.addEventListener("error", (event) => {
+            console.error("SSE connection error:", event);
+        });
+
+        this.serverEventSource.addEventListener("open", (event) => {
+            dlog("SSE connection opened", event);
+        });
+    }
 
     reset() {
+        if (this.serverEventSource) {
+            this.serverEventSource.close();
+            this.serverEventSource = null;
+        }
         getDefaultStore().set(this.vdomRoot, null);
         this.atoms.clear();
         this.refs.clear();
@@ -289,6 +305,12 @@ export class TsunamiModel {
 
             if (!response.ok) {
                 throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+
+            // Check if EventSource connection is closed and reconnect if needed
+            if (this.serverEventSource && this.serverEventSource.readyState === EventSource.CLOSED) {
+                dlog("EventSource connection closed, reconnecting");
+                this.setupServerEventSource();
             }
 
             const backendUpdate: VDomBackendUpdate = await response.json();
