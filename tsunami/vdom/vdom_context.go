@@ -18,6 +18,7 @@ type VDomContext interface {
 	GetRenderTs() int64
 	GetCompWaveId() string
 	GetOrderedHook() *Hook
+	IsResync() bool
 }
 
 func WithRenderContext(ctx context.Context, vc VDomContext) context.Context {

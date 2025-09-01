@@ -85,14 +85,14 @@ func Test1(t *testing.T) {
 	root.SetOuterCtx(ctx)
 	root.RegisterComponent("Page", Page)
 	root.RegisterComponent("Button", Button)
-	root.Render(vdom.E("Page"))
+	root.Render(vdom.E("Page"), &RenderOpts{Resync: false})
 	if root.Root == nil {
 		t.Fatalf("root.Root is nil")
 	}
 	printVDom(root)
-	root.RunWork()
+	root.RunWork(&RenderOpts{Resync: false})
 	printVDom(root)
 	root.Event(testContext.ButtonId, "onClick", vdom.VDomEvent{EventType: "onClick"})
-	root.RunWork()
+	root.RunWork(&RenderOpts{Resync: false})
 	printVDom(root)
 }

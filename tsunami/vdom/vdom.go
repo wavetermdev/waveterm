@@ -403,6 +403,14 @@ func UseRenderTs(ctx context.Context) int64 {
 	return vc.GetRenderTs()
 }
 
+func UseResync(ctx context.Context) bool {
+	vc := GetRenderContext(ctx)
+	if vc == nil {
+		panic("UseResync must be called within a component (no context)")
+	}
+	return vc.IsResync()
+}
+
 func depsEqual(deps1 []any, deps2 []any) bool {
 	if len(deps1) != len(deps2) {
 		return false

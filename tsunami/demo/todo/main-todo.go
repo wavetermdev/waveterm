@@ -9,10 +9,10 @@ import (
 	"github.com/wavetermdev/waveterm/tsunami/vdom"
 )
 
-//go:embed style.css
+//go:embed tw.css
 var styleCSS []byte
 
-// Initialize client with embedded styles and ctrl-c handling
+// Initialize client with embedded Tailwind styles and ctrl-c handling
 var AppClient = app.MakeClient(app.AppOpts{
 	CloseOnCtrlC: true,
 	GlobalStyles: styleCSS,
@@ -58,7 +58,7 @@ var InputField = app.DefineComponent(AppClient, "InputField",
 		}
 
 		return vdom.H("input", map[string]any{
-			"className":   "todo-input",
+			"className":   "flex-1 p-2 border border-border rounded",
 			"type":        "text",
 			"placeholder": "What needs to be done?",
 			"value":       props.Value,
@@ -74,19 +74,19 @@ var InputField = app.DefineComponent(AppClient, "InputField",
 var TodoItem = app.DefineComponent(AppClient, "TodoItem",
 	func(ctx context.Context, props TodoItemProps) any {
 		return vdom.H("div", map[string]any{
-			"className": vdom.Classes("todo-item", vdom.If(props.Todo.Completed, "completed")),
+			"className": vdom.Classes("flex items-center gap-2.5 p-2 border border-border rounded", vdom.If(props.Todo.Completed, "opacity-70")),
 		},
 			vdom.H("input", map[string]any{
-				"className": "todo-checkbox",
+				"className": "w-4 h-4",
 				"type":      "checkbox",
 				"checked":   props.Todo.Completed,
 				"onChange":  props.OnToggle,
 			}),
 			vdom.H("span", map[string]any{
-				"className": "todo-text",
+				"className": vdom.Classes("flex-1", vdom.If(props.Todo.Completed, "line-through")),
 			}, props.Todo.Text),
 			vdom.H("button", map[string]any{
-				"className": "todo-delete",
+				"className": "text-red-500 cursor-pointer px-2 py-1 rounded",
 				"onClick":   props.OnDelete,
 			}, "×"),
 		)
@@ -97,7 +97,7 @@ var TodoItem = app.DefineComponent(AppClient, "TodoItem",
 var TodoList = app.DefineComponent(AppClient, "TodoList",
 	func(ctx context.Context, props TodoListProps) any {
 		return vdom.H("div", map[string]any{
-			"className": "todo-list",
+			"className": "flex flex-col gap-2",
 		}, vdom.ForEach(props.Todos, func(todo Todo) any {
 			return TodoItem(TodoItemProps{
 				Todo:     todo,
@@ -155,14 +155,16 @@ var App = app.DefineComponent(AppClient, "App",
 		}
 
 		return vdom.H("div", map[string]any{
-			"className": "todo-app",
+			"className": "max-w-[500px] m-5 font-sans",
 		},
 			vdom.H("div", map[string]any{
-				"className": "todo-header",
-			}, vdom.H("h1", nil, "Todo List")),
+				"className": "mb-5",
+			}, vdom.H("h1", map[string]any{
+				"className": "text-2xl font-bold",
+			}, "Todo List")),
 
 			vdom.H("div", map[string]any{
-				"className": "todo-form",
+				"className": "flex gap-2.5 mb-5",
 			},
 				InputField(InputFieldProps{
 					Value:    inputText,
@@ -170,7 +172,7 @@ var App = app.DefineComponent(AppClient, "App",
 					OnEnter:  addTodo,
 				}),
 				vdom.H("button", map[string]any{
-					"className": "todo-button",
+					"className": "px-4 py-2 border border-border rounded cursor-pointer",
 					"onClick":   addTodo,
 				}, "Add Todo"),
 			),

@@ -34,11 +34,11 @@ type SSEvent struct {
 }
 
 type AppOpts struct {
+	Title                string // window title
 	CloseOnCtrlC         bool
 	GlobalKeyboardEvents bool
 	GlobalStyles         []byte
 	RootComponentName    string // defaults to "App"
-	Title                string
 }
 
 type Client struct {
@@ -257,8 +257,9 @@ func (c *Client) RegisterComponent(name string, cfunc any) error {
 }
 
 func (c *Client) fullRender() (*rpctypes.VDomBackendUpdate, error) {
-	c.Root.RunWork()
-	c.Root.Render(c.RootElem)
+	opts := &comp.RenderOpts{Resync: true}
+	c.Root.RunWork(opts)
+	c.Root.Render(c.RootElem, opts)
 	renderedVDom := c.Root.MakeVDom()
 	if renderedVDom == nil {
 		renderedVDom = makeNullVDom()
@@ -277,7 +278,8 @@ func (c *Client) fullRender() (*rpctypes.VDomBackendUpdate, error) {
 }
 
 func (c *Client) incrementalRender() (*rpctypes.VDomBackendUpdate, error) {
-	c.Root.RunWork()
+	opts := &comp.RenderOpts{Resync: false}
+	c.Root.RunWork(opts)
 	renderedVDom := c.Root.MakeVDom()
 	if renderedVDom == nil {
 		renderedVDom = makeNullVDom()

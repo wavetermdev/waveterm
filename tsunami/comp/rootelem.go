@@ -17,6 +17,10 @@ import (
 	"github.com/wavetermdev/waveterm/tsunami/vdom"
 )
 
+type RenderOpts struct {
+	Resync bool
+}
+
 type RootElem struct {
 	OuterCtx        context.Context
 	Root            *ComponentImpl
@@ -136,8 +140,8 @@ func (r *RootElem) RegisterComponent(name string, cfunc any) error {
 	return nil
 }
 
-func (r *RootElem) Render(elem *vdom.VDomElem) {
-	r.render(elem, &r.Root)
+func (r *RootElem) Render(elem *vdom.VDomElem, opts *RenderOpts) {
+	r.render(elem, &r.Root, opts)
 }
 
 func callVDomFn(fnVal any, data vdom.VDomEvent) {
@@ -177,7 +181,7 @@ func (r *RootElem) Event(id string, propName string, event vdom.VDomEvent) {
 
 // this will be called by the frontend to say the DOM has been mounted
 // it will eventually send any updated "refs" to the backend as well
-func (r *RootElem) RunWork() {
+func (r *RootElem) RunWork(opts *RenderOpts) {
 	workQueue := r.EffectWorkQueue
 	r.EffectWorkQueue = nil
 	// first, run effect cleanups
@@ -205,11 +209,11 @@ func (r *RootElem) RunWork() {
 	// now check if we need a render
 	if len(r.NeedsRenderMap) > 0 {
 		r.NeedsRenderMap = nil
-		r.render(r.Root.Elem, &r.Root)
+		r.render(r.Root.Elem, &r.Root, opts)
 	}
 }
 
-func (r *RootElem) render(elem *vdom.VDomElem, comp **ComponentImpl) {
+func (r *RootElem) render(elem *vdom.VDomElem, comp **ComponentImpl, opts *RenderOpts) {
 	if elem == nil || elem.Tag == "" {
 		r.unmount(comp)
 		return
@@ -226,7 +230,7 @@ func (r *RootElem) render(elem *vdom.VDomElem, comp **ComponentImpl) {
 	}
 	if vdom.IsBaseTag(elem.Tag) {
 		// simple vdom, fragment, wave element
-		r.renderSimple(elem, comp)
+		r.renderSimple(elem, comp, opts)
 		return
 	}
 	cfunc := r.CFuncs[elem.Tag]
@@ -235,7 +239,7 @@ func (r *RootElem) render(elem *vdom.VDomElem, comp **ComponentImpl) {
 		r.renderText(text, comp)
 		return
 	}
-	r.renderComponent(cfunc, elem, comp)
+	r.renderComponent(cfunc, elem, comp, opts)
 }
 
 func (r *RootElem) unmount(comp **ComponentImpl) {
@@ -272,7 +276,7 @@ func (r *RootElem) renderText(text string, comp **ComponentImpl) {
 	}
 }
 
-func (r *RootElem) renderChildren(elems []vdom.VDomElem, curChildren []*ComponentImpl) []*ComponentImpl {
+func (r *RootElem) renderChildren(elems []vdom.VDomElem, curChildren []*ComponentImpl, opts *RenderOpts) []*ComponentImpl {
 	newChildren := make([]*ComponentImpl, len(elems))
 	curCM := make(map[ChildKey]*ComponentImpl)
 	usedMap := make(map[*ComponentImpl]bool)
@@ -293,7 +297,7 @@ func (r *RootElem) renderChildren(elems []vdom.VDomElem, curChildren []*Componen
 		}
 		usedMap[curChild] = true
 		newChildren[idx] = curChild
-		r.render(&elem, &newChildren[idx])
+		r.render(&elem, &newChildren[idx], opts)
 	}
 	for _, child := range curChildren {
 		if !usedMap[child] {
@@ -303,11 +307,11 @@ func (r *RootElem) renderChildren(elems []vdom.VDomElem, curChildren []*Componen
 	return newChildren
 }
 
-func (r *RootElem) renderSimple(elem *vdom.VDomElem, comp **ComponentImpl) {
+func (r *RootElem) renderSimple(elem *vdom.VDomElem, comp **ComponentImpl, opts *RenderOpts) {
 	if (*comp).Comp != nil {
 		r.unmount(&(*comp).Comp)
 	}
-	(*comp).Children = r.renderChildren(elem.Children, (*comp).Children)
+	(*comp).Children = r.renderChildren(elem.Children, (*comp).Children, opts)
 }
 
 func callCFunc(cfunc any, ctx context.Context, props map[string]any) any {
@@ -337,7 +341,7 @@ func callCFunc(cfunc any, ctx context.Context, props map[string]any) any {
 	return rtnVal[0].Interface()
 }
 
-func (r *RootElem) renderComponent(cfunc any, elem *vdom.VDomElem, comp **ComponentImpl) {
+func (r *RootElem) renderComponent(cfunc any, elem *vdom.VDomElem, comp **ComponentImpl, opts *RenderOpts) {
 	if (*comp).Children != nil {
 		for _, child := range (*comp).Children {
 			r.unmount(&child)
@@ -349,7 +353,7 @@ func (r *RootElem) renderComponent(cfunc any, elem *vdom.VDomElem, comp **Compon
 		props[k] = v
 	}
 	props[vdom.ChildrenPropKey] = elem.Children
-	vc := MakeContextVal(r, *comp)
+	vc := MakeContextVal(r, *comp, opts)
 	ctx := vdom.WithRenderContext(r.OuterCtx, vc)
 	renderedElem := callCFunc(cfunc, ctx, props)
 	rtnElemArr := vdom.PartToElems(renderedElem)
@@ -363,7 +367,7 @@ func (r *RootElem) renderComponent(cfunc any, elem *vdom.VDomElem, comp **Compon
 	} else {
 		rtnElem = &vdom.VDomElem{Tag: vdom.FragmentTag, Children: rtnElemArr}
 	}
-	r.render(rtnElem, &(*comp).Comp)
+	r.render(rtnElem, &(*comp).Comp, opts)
 }
 
 func (r *RootElem) UpdateRef(updateRef rpctypes.VDomRefUpdate) {

@@ -9,10 +9,15 @@ type VDomContextVal struct {
 	Root    *RootElem
 	Comp    *ComponentImpl
 	HookIdx int
+	Resync  bool
 }
 
-func MakeContextVal(root *RootElem, comp *ComponentImpl) *VDomContextVal {
-	return &VDomContextVal{Root: root, Comp: comp, HookIdx: 0}
+func MakeContextVal(root *RootElem, comp *ComponentImpl, opts *RenderOpts) *VDomContextVal {
+	resync := false
+	if opts != nil {
+		resync = opts.Resync
+	}
+	return &VDomContextVal{Root: root, Comp: comp, HookIdx: 0, Resync: resync}
 }
 
 // Compile-time check to ensure VDomContextVal implements vdom.VDomContext
@@ -51,4 +56,8 @@ func (vc *VDomContextVal) GetOrderedHook() *vdom.Hook {
 	hookVal := vc.Comp.Hooks[vc.HookIdx]
 	vc.HookIdx++
 	return hookVal
+}
+
+func (vc *VDomContextVal) IsResync() bool {
+	return vc.Resync
 }
