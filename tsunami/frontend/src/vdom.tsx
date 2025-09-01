@@ -6,10 +6,9 @@ import debug from "debug";
 import * as jotai from "jotai";
 import * as React from "react";
 
-import { BlockNodeModel } from "@/app/block/blocktypes";
 import { Markdown } from "@/element/markdown";
-import { convertVDomId, getTextChildren, validateAndWrapCss, validateAndWrapReactStyle } from "@/model/model-utils";
-import { TsunamiModel } from "@/model/tsunami-model";
+import { getTextChildren } from "@/model/model-utils";
+import type { TsunamiModel } from "@/model/tsunami-model";
 import { adaptFromReactOrNativeKeyEvent, checkKeyPressed } from "@/util/keyutil";
 
 const TextTag = "#text";
@@ -251,37 +250,7 @@ function convertProps(elem: VDomElem, model: TsunamiModel): [GenericPropsType, S
                     }
                 }
             }
-            val = validateAndWrapReactStyle(model, val);
             props[key] = val;
-            continue;
-        }
-        if (IdAttributes[key]) {
-            props[key] = convertVDomId(model, val);
-            continue;
-        }
-        if (AllowedSvgTags[elem.tag]) {
-            if ((elem.tag == "use" && key == "href") || (elem.tag == "textPath" && key == "href")) {
-                if (val == null || !val.startsWith("#")) {
-                    continue;
-                }
-                props[key] = convertVDomId(model, "#" + val.substring(1));
-                continue;
-            }
-            if (SvgUrlIdAttributes[key]) {
-                if (val == null || !val.startsWith("url(#") || !val.endsWith(")")) {
-                    continue;
-                }
-                props[key] = "url(#" + convertVDomId(model, val.substring(4, val.length - 1)) + ")";
-                continue;
-            }
-        }
-        if (key == "src" && val != null && val.startsWith("vdom://")) {
-            // transform vdom:// urls
-            const newUrl = model.transformVDomUrl(val);
-            if (newUrl == null) {
-                continue;
-            }
-            props[key] = newUrl;
             continue;
         }
         props[key] = val;
@@ -341,13 +310,7 @@ function useVDom(model: TsunamiModel, elem: VDomElem): GenericPropsType {
 function WaveMarkdown({ elem, model }: { elem: VDomElem; model: TsunamiModel }) {
     const props = useVDom(model, elem);
     return (
-        <Markdown
-            text={props?.text}
-            style={props?.style}
-            className={props?.className}
-            scrollable={props?.scrollable}
-            rehype={props?.rehype}
-        />
+        <Markdown text={props?.text} style={props?.style} className={props?.className} scrollable={props?.scrollable} />
     );
 }
 
@@ -356,19 +319,13 @@ function StyleTag({ elem, model }: { elem: VDomElem; model: TsunamiModel }) {
     if (styleText == null) {
         return null;
     }
-    const wrapperClassName = "vdom-" + model.blockId;
-    // TODO handle errors
-    const sanitizedCss = validateAndWrapCss(model, styleText, wrapperClassName);
-    if (sanitizedCss == null) {
-        return null;
-    }
-    return <style>{sanitizedCss}</style>;
+    return <style>{styleText}</style>;
 }
 
 function WaveStyle({ src, model, onMount }: { src: string; model: TsunamiModel; onMount?: () => void }) {
     const [styleContent, setStyleContent] = React.useState<string | null>(null);
     React.useEffect(() => {
-        async function fetchAndSanitizeCss() {
+        async function fetchCss() {
             try {
                 const response = await fetch(src);
                 if (!response.ok) {
@@ -376,20 +333,13 @@ function WaveStyle({ src, model, onMount }: { src: string; model: TsunamiModel; 
                     return;
                 }
                 const cssText = await response.text();
-                const wrapperClassName = "vdom-" + model.blockId;
-                const sanitizedCss = validateAndWrapCss(model, cssText, wrapperClassName);
-                if (sanitizedCss) {
-                    setStyleContent(sanitizedCss);
-                } else {
-                    onMount?.();
-                    console.error("Failed to sanitize CSS");
-                }
+                setStyleContent(cssText);
             } catch (error) {
                 console.error("Error fetching CSS:", error);
                 onMount?.();
             }
         }
-        fetchAndSanitizeCss();
+        fetchCss();
     }, [src, model]);
     // Trigger onMount after styleContent has been set and mounted
     React.useEffect(() => {
@@ -470,10 +420,6 @@ function VDomRoot({ model }: { model: TsunamiModel }) {
     return <div className="vdom">{rtn}</div>;
 }
 
-function makeVDomModel(blockId: string, nodeModel: BlockNodeModel): TsunamiModel {
-    return new TsunamiModel(blockId, nodeModel);
-}
-
 type VDomViewProps = {
     model: TsunamiModel;
     blockId: string;
@@ -487,7 +433,7 @@ function VDomInnerView({ blockId, model }: VDomViewProps) {
     return (
         <>
             {model.backendOpts?.globalstyles ? (
-                <WaveStyle src={model.makeVDomUrl("/wave/global.css")} model={model} onMount={handleStylesMounted} />
+                <WaveStyle src="/vdom/global.css" model={model} onMount={handleStylesMounted} />
             ) : null}
             {styleMounted ? <VDomRoot model={model} /> : null}
         </>
@@ -498,12 +444,11 @@ function VDomView({ blockId, model }: VDomViewProps) {
     let viewRef = React.useRef(null);
     let contextActive = jotai.useAtomValue(model.contextActive);
     model.viewRef = viewRef;
-    const vdomClass = "vdom-" + blockId;
     return (
-        <div className={clsx("overflow-auto w-full min-h-full", vdomClass)} ref={viewRef}>
+        <div className={clsx("overflow-auto w-full min-h-full")} ref={viewRef}>
             {contextActive ? <VDomInnerView blockId={blockId} model={model} /> : null}
         </div>
     );
 }
 
-export { makeVDomModel, VDomView };
+export { VDomView };

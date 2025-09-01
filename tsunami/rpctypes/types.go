@@ -159,7 +159,6 @@ type VDomEvent struct {
 }
 
 type VDomRenderContext struct {
-	BlockId    string `json:"blockid"`
 	Focused    bool   `json:"focused"`
 	Width      int    `json:"width"`
 	Height     int    `json:"height"`

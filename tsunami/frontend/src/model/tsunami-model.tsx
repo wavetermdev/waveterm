@@ -4,18 +4,13 @@
 import debug from "debug";
 import * as jotai from "jotai";
 
-import { BlockNodeModel } from "@/app/block/blocktypes";
-import { getBlockMetaKeyAtom, globalStore, WOS } from "@/app/store/global";
-import { makeORef } from "@/app/store/wos";
-import { waveEventSubscribe } from "@/app/store/wps";
 import { RpcResponseHelper, WshClient } from "@/app/store/wshclient";
-import { RpcApi } from "@/app/store/wshclientapi";
 import { makeFeBlockRouteId } from "@/app/store/wshrouter";
-import { DefaultRouter, TabRpcClient } from "@/app/store/wshrpcutil";
-import { VDomView } from "@/app/view/vdom/vdom";
+import { getOrCreateClientId } from "@/util/clientid";
 import { adaptFromReactOrNativeKeyEvent, checkKeyPressed } from "@/util/keyutil";
 import { PLATFORM, PlatformMacOS } from "@/util/platformutil";
-import { applyCanvasOp, mergeBackendUpdates, restoreVDomElems } from "./model-utils";
+import { getDefaultStore } from "jotai";
+import { applyCanvasOp, restoreVDomElems } from "./model-utils";
 
 const dlog = debug("wave:vdom");
 
@@ -103,11 +98,7 @@ class VDomWshClient extends WshClient {
 }
 
 export class TsunamiModel {
-    blockId: string;
-    nodeModel: BlockNodeModel;
-    viewType: string;
-    viewIcon: jotai.Atom<string>;
-    viewName: jotai.Atom<string>;
+    clientId: string;
     viewRef: React.RefObject<HTMLDivElement> = { current: null };
     vdomRoot: jotai.PrimitiveAtom<VDomElem> = jotai.atom();
     atoms: Map<string, AtomContainer> = new Map(); // key is atomname
@@ -118,7 +109,6 @@ export class TsunamiModel {
     vdomNodeVersion: WeakMap<VDomElem, jotai.PrimitiveAtom<number>> = new WeakMap();
     compoundAtoms: Map<string, jotai.PrimitiveAtom<{ [key: string]: any }>> = new Map();
     rootRefId: string = crypto.randomUUID();
-    backendRoute: jotai.Atom<string>;
     backendOpts: VDomBackendOpts;
     shouldDispose: boolean;
     disposed: boolean;
@@ -130,72 +120,23 @@ export class TsunamiModel {
     queuedUpdate: { timeoutId: any; ts: number; quick: boolean };
     contextActive: jotai.PrimitiveAtom<boolean>;
     wshClient: VDomWshClient;
-    persist: jotai.Atom<boolean>;
-    routeGoneUnsub: () => void;
-    routeConfirmed: boolean = false;
     refOutputStore: Map<string, any> = new Map();
     globalVersion: jotai.PrimitiveAtom<number> = jotai.atom(0);
     hasBackendWork: boolean = false;
     noPadding: jotai.PrimitiveAtom<boolean>;
 
-    constructor(blockId: string, nodeModel: BlockNodeModel) {
-        this.viewType = "vdom";
-        this.blockId = blockId;
-        this.nodeModel = nodeModel;
+    constructor() {
+        this.clientId = getOrCreateClientId();
         this.contextActive = jotai.atom(false);
         this.reset();
-        this.viewIcon = jotai.atom("bolt");
-        this.viewName = jotai.atom("Wave App");
-        this.backendRoute = jotai.atom((get) => {
-            const blockData = get(WOS.getWaveObjectAtom<Block>(makeORef("block", this.blockId)));
-            return blockData?.meta?.["vdom:route"];
-        });
         this.noPadding = jotai.atom(true);
-        this.persist = getBlockMetaKeyAtom(this.blockId, "vdom:persist");
-        this.wshClient = new VDomWshClient(this);
-        DefaultRouter.registerRoute(this.wshClient.routeId, this.wshClient);
-        const curBackendRoute = globalStore.get(this.backendRoute);
-        if (curBackendRoute) {
-            this.queueUpdate(true);
-        }
-        this.routeGoneUnsub = waveEventSubscribe({
-            eventType: "route:gone",
-            scope: curBackendRoute,
-            handler: (event: WaveEvent) => {
-                this.disposed = true;
-                const shouldPersist = globalStore.get(this.persist);
-                if (!shouldPersist) {
-                    this.nodeModel?.onClose?.();
-                }
-            },
-        });
-        RpcApi.WaitForRouteCommand(TabRpcClient, { routeid: curBackendRoute, waitms: 4000 }, { timeout: 5000 }).then(
-            (routeOk: boolean) => {
-                if (routeOk) {
-                    this.routeConfirmed = true;
-                    this.queueUpdate(true);
-                } else {
-                    this.disposed = true;
-                    const shouldPersist = globalStore.get(this.persist);
-                    if (!shouldPersist) {
-                        this.nodeModel?.onClose?.();
-                    }
-                }
-            }
-        );
+        this.queueUpdate(true);
     }
 
-    get viewComponent(): ViewComponent {
-        return VDomView;
-    }
-
-    dispose() {
-        DefaultRouter.unregisterRoute(this.wshClient.routeId);
-        this.routeGoneUnsub?.();
-    }
+    dispose() {}
 
     reset() {
-        globalStore.set(this.vdomRoot, null);
+        getDefaultStore().set(this.vdomRoot, null);
         this.atoms.clear();
         this.refs.clear();
         this.batchedEvents = [];
@@ -216,38 +157,7 @@ export class TsunamiModel {
         this.refOutputStore.clear();
         this.globalVersion = jotai.atom(0);
         this.hasBackendWork = false;
-        globalStore.set(this.contextActive, false);
-    }
-
-    getBackendRoute(): string {
-        const blockData = globalStore.get(WOS.getWaveObjectAtom<Block>(makeORef("block", this.blockId)));
-        return blockData?.meta?.["vdom:route"];
-    }
-
-    transformVDomUrl(url: string): string {
-        if (url == null || url == "") {
-            return null;
-        }
-        if (!url.startsWith("vdom://")) {
-            return url;
-        }
-        const absUrl = url.substring(7);
-        return this.makeVDomUrl(absUrl);
-    }
-
-    makeVDomUrl(path: string): string {
-        if (path == null || path == "") {
-            return null;
-        }
-        if (!path.startsWith("/")) {
-            return null;
-        }
-        const backendRouteId = this.getBackendRouteId();
-        if (backendRouteId == null) {
-            return null;
-        }
-        const fullUrl = "/vdom/" + backendRouteId + path;
-        return fullUrl;
+        getDefaultStore().set(this.contextActive, false);
     }
 
     keyDownHandler(e: WaveKeyboardEvent): boolean {
@@ -351,7 +261,7 @@ export class TsunamiModel {
 
     async _sendRenderRequest(force: boolean) {
         this.queuedUpdate = null;
-        if (this.disposed || !this.routeConfirmed) {
+        if (this.disposed) {
             return;
         }
         if (this.hasPendingRequest) {
@@ -363,29 +273,29 @@ export class TsunamiModel {
         if (!force && !this.needsUpdate) {
             return;
         }
-        const backendRoute = globalStore.get(this.backendRoute);
-        if (backendRoute == null) {
-            console.log("vdom-model", "no backend route");
-            return;
-        }
         this.hasPendingRequest = true;
         this.needsImmediateUpdate = false;
         try {
             const feUpdate = this.createFeUpdate();
             dlog("fe-update", feUpdate);
-            const beUpdateGen = await RpcApi.VDomRenderCommand(TabRpcClient, feUpdate, { route: backendRoute });
-            let baseUpdate: VDomBackendUpdate = null;
-            for await (const beUpdate of beUpdateGen) {
-                if (baseUpdate === null) {
-                    baseUpdate = beUpdate;
-                } else {
-                    mergeBackendUpdates(baseUpdate, beUpdate);
-                }
+
+            const response = await fetch("/api/render", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(feUpdate),
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
-            if (baseUpdate !== null) {
-                restoreVDomElems(baseUpdate);
-                dlog("be-update", baseUpdate);
-                this.handleBackendUpdate(baseUpdate);
+
+            const backendUpdate: VDomBackendUpdate = await response.json();
+            if (backendUpdate !== null) {
+                restoreVDomElems(backendUpdate);
+                dlog("be-update", backendUpdate);
+                this.handleBackendUpdate(backendUpdate);
             }
             dlog("update cycle done");
         } finally {
@@ -459,7 +369,7 @@ export class TsunamiModel {
             return;
         }
         const atom = this.getVDomNodeVersionAtom(vdom);
-        globalStore.set(atom, globalStore.get(atom) + 1);
+        getDefaultStore().set(atom, getDefaultStore().get(atom) + 1);
     }
 
     addErrorMessage(message: string) {
@@ -475,7 +385,7 @@ export class TsunamiModel {
         }
         for (let renderUpdate of update.renderupdates) {
             if (renderUpdate.updatetype == "root") {
-                globalStore.set(this.vdomRoot, renderUpdate.vdom);
+                getDefaultStore().set(this.vdomRoot, renderUpdate.vdom);
                 continue;
             }
             if (renderUpdate.updatetype == "append") {
@@ -603,9 +513,9 @@ export class TsunamiModel {
         if (update == null) {
             return;
         }
-        globalStore.set(this.contextActive, true);
+        getDefaultStore().set(this.contextActive, true);
         const idMap = new Map<string, VDomElem>();
-        const vdomRoot = globalStore.get(this.vdomRoot);
+        const vdomRoot = getDefaultStore().get(this.vdomRoot);
         if (update.opts != null) {
             this.backendOpts = update.opts;
         }
@@ -615,13 +525,13 @@ export class TsunamiModel {
         this.handleRefOperations(update, idMap);
         if (update.messages) {
             for (let message of update.messages) {
-                console.log("vdom-message", this.blockId, message.messagetype, message.message);
+                console.log("vdom-message", message.messagetype, message.message);
                 if (message.stacktrace) {
                     console.log("vdom-message-stacktrace", message.stacktrace);
                 }
             }
         }
-        globalStore.set(this.globalVersion, globalStore.get(this.globalVersion) + 1);
+        getDefaultStore().set(this.globalVersion, getDefaultStore().get(this.globalVersion) + 1);
         if (update.haswork) {
             this.hasBackendWork = true;
         }
@@ -650,13 +560,9 @@ export class TsunamiModel {
     }
 
     createFeUpdate(): VDomFrontendUpdate {
-        const blockORef = makeORef("block", this.blockId);
-        const blockAtom = WOS.getWaveObjectAtom<Block>(blockORef);
-        const blockData = globalStore.get(blockAtom);
-        const isBlockFocused = globalStore.get(this.nodeModel.isFocused);
+        const isFocused = document.hasFocus();
         const renderContext: VDomRenderContext = {
-            blockid: this.blockId,
-            focused: isBlockFocused,
+            focused: isFocused,
             width: this.viewRef?.current?.offsetWidth ?? 0,
             height: this.viewRef?.current?.offsetHeight ?? 0,
             rootrefid: this.rootRefId,
@@ -665,7 +571,7 @@ export class TsunamiModel {
         const feUpdate: VDomFrontendUpdate = {
             type: "frontendupdate",
             ts: Date.now(),
-            blockid: this.blockId,
+            clientid: this.clientId,
             rendercontext: renderContext,
             dispose: this.shouldDispose,
             resync: this.needsResync,
@@ -678,13 +584,5 @@ export class TsunamiModel {
             this.disposed = true;
         }
         return feUpdate;
-    }
-
-    getBackendRouteId(): string {
-        const fullRoute = globalStore.get(this.backendRoute);
-        if (fullRoute == null || !fullRoute.startsWith("proc:")) {
-            return null;
-        }
-        return fullRoute?.split(":")[1];
     }
 }

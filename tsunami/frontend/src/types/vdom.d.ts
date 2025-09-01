@@ -134,7 +134,6 @@ type VDomRefUpdate = {
 
 // vdom.VDomRenderContext
 type VDomRenderContext = {
-    blockid: string;
     focused: boolean;
     width: number;
     height: number;
