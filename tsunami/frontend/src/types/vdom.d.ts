@@ -13,6 +13,7 @@ type VDomBackendOpts = {
     closeonctrlc?: boolean;
     globalkeyboardevents?: boolean;
     globalstyles?: boolean;
+    title?: string;
 };
 
 // vdom.VDomBackendUpdate

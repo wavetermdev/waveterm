@@ -540,6 +540,9 @@ export class TsunamiModel {
         const vdomRoot = getDefaultStore().get(this.vdomRoot);
         if (update.opts != null) {
             this.backendOpts = update.opts;
+            if (update.opts.title && update.opts.title.trim() !== "") {
+                document.title = update.opts.title;
+            }
         }
         makeVDomIdMap(vdomRoot, idMap);
         this.handleRenderUpdates(update, idMap);

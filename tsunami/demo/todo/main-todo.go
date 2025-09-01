@@ -16,6 +16,7 @@ var styleCSS []byte
 var AppClient = app.MakeClient(app.AppOpts{
 	CloseOnCtrlC: true,
 	GlobalStyles: styleCSS,
+	Title:        "Todo App (Tsunami Demo)",
 })
 
 // Basic domain types with json tags for props
@@ -45,7 +46,7 @@ type InputFieldProps struct {
 }
 
 // Reusable input component showing keyboard event handling
-var InputField = app.DefineComponent[InputFieldProps](AppClient, "InputField",
+var InputField = app.DefineComponent(AppClient, "InputField",
 	func(ctx context.Context, props InputFieldProps) any {
 		// Example of special key handling with VDomFunc
 		keyDown := &vdom.VDomFunc{

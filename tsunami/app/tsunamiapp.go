@@ -38,6 +38,7 @@ type AppOpts struct {
 	GlobalKeyboardEvents bool
 	GlobalStyles         []byte
 	RootComponentName    string // defaults to "App"
+	Title                string
 }
 
 type Client struct {
@@ -116,6 +117,7 @@ func MakeClient(appOpts AppOpts) *Client {
 		Opts: rpctypes.VDomBackendOpts{
 			CloseOnCtrlC:         appOpts.CloseOnCtrlC,
 			GlobalKeyboardEvents: appOpts.GlobalKeyboardEvents,
+			Title:                appOpts.Title,
 		},
 	}
 	if len(appOpts.GlobalStyles) > 0 {
