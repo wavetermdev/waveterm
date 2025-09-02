@@ -4,8 +4,8 @@ id: "config"
 title: "Configuration"
 ---
 
-import { Kbd } from "@site/src/components/kbd.tsx";
-import { PlatformProvider, PlatformSelectorButton } from "@site/src/components/platformcontext.tsx";
+import { Kbd } from "@site/src/components/kbd";
+import { PlatformProvider, PlatformSelectorButton } from "@site/src/components/platformcontext";
 
 <PlatformProvider>
 
@@ -36,6 +36,7 @@ wsh editconfig
 | app:globalhotkey                     | string   | A systemwide keybinding to open your most recent wave window. This is a set of key names separated by `:`. For more info, see [Customizable Systemwide Global Hotkey](#customizable-systemwide-global-hotkey)                                                 |
 | app:dismissarchitecturewarning       | bool     | Disable warnings on app start when you are using a non-native architecture for Wave. For more info, see [Why does Wave warn me about ARM64 translation when it launches?](./faq#why-does-wave-warn-me-about-arm64-translation-when-it-launches).              |
 | app:defaultnewblock                  | string   | Sets the default new block (Cmd:n, Cmd:d). "term" for terminal block, "launcher" for launcher block (default = "term")                                                                                                                                        |
+| app:showoverlayblocknums             | bool     | Set to false to disable the Ctrl+Shift block number overlay that appears when holding Ctrl+Shift (defaults to true)                                                                                                                                           |
 | ai:preset                            | string   | the default AI preset to use                                                                                                                                                                                                                                  |
 | ai:baseurl                           | string   | Set the AI Base Url (must be OpenAI compatible)                                                                                                                                                                                                               |
 | ai:apitoken                          | string   | your AI api token                                                                                                                                                                                                                                             |
@@ -44,8 +45,9 @@ wsh editconfig
 | ai:model                             | string   | model name to pass to API                                                                                                                                                                                                                                     |
 | ai:apiversion                        | string   | for Azure AI only (when apitype is "azure", this will default to "2023-05-15")                                                                                                                                                                                |
 | ai:orgid                             | string   |                                                                                                                                                                                                                                                               |
-| ai:maxtokens                         | int      | max tokens to pass to API                                                                                                                                                                                                                                     |
-| ai:timeoutms                         | int      | timeout (in milliseconds) for AI calls                                                                                                                                                                                                                        |
+| ai:maxtokens                         | int      | max tokens to pass to API                                                                                                                                                     |
+| ai:timeoutms                         | int      | timeout (in milliseconds) for AI calls                                                                                                                                        |
+| ai:proxyurl                          | string   | HTTP proxy URL for AI API requests (does not apply to Wave Cloud AI)                                                                                                          |
 | conn:askbeforewshinstall             | bool     | set to false to disable popup asking if you want to install wsh extensions on new machines                                                                                                                                                                    |
 | term:fontsize                        | float    | the fontsize for the terminal block                                                                                                                                                                                                                           |
 | term:fontfamily                      | string   | font family to use for terminal block                                                                                                                                                                                                                         |
@@ -57,6 +59,7 @@ wsh editconfig
 | term:theme                           | string   | preset name of terminal theme to apply by default (default is "default-dark")                                                                                                                                                                                 |
 | term:transparency                    | float64  | set the background transparency of terminal theme (default 0.5, 0 = not transparent, 1.0 = fully transparent)                                                                                                                                                 |
 | term:allowbracketedpaste             | bool     | allow bracketed paste mode in terminal (default false)                                                                                                                                                                                                        |
+| term:shiftenternewline               | bool     | when enabled, Shift+Enter sends escape sequence + newline (\u001b\n) instead of carriage return, useful for claude code and similar AI coding tools (default false)                                                                                         |
 | editor:minimapenabled                | bool     | set to false to disable editor minimap                                                                                                                                                                                                                        |
 | editor:stickyscrollenabled           | bool     | enables monaco editor's stickyScroll feature (pinning headers of current context, e.g. class names, method names, etc.), defaults to false                                                                                                                    |
 | editor:wordwrap                      | bool     | set to true to enable word wrapping in the editor (defaults to false)                                                                                                                                                                                         |
@@ -92,34 +95,34 @@ wsh editconfig
 | window:dimensions                    | string   | set the default dimensions for new windows using the format "WIDTHxHEIGHT" (e.g. "1920x1080"). when a new window is created, these dimensions will be automatically applied. The width and height values should be specified in pixels.                       |
 | telemetry:enabled                    | bool     | set to enable/disable telemetry                                                                                                                                                                                                                               |
 
-For reference, this is the current default configuration (v0.10.4):
+For reference, this is the current default configuration (v0.11.5):
 
 ```json
 {
-  "ai:preset": "ai@global",
-  "ai:model": "gpt-4o-mini",
-  "ai:maxtokens": 2048,
-  "ai:timeoutms": 60000,
-  "app:defaultnewblock": "term",
-  "autoupdate:enabled": true,
-  "autoupdate:installonquit": true,
-  "autoupdate:intervalms": 3600000,
-  "conn:askbeforewshinstall": true,
-  "conn:wshenabled": true,
-  "editor:minimapenabled": true,
-  "web:defaulturl": "https://github.com/wavetermdev/waveterm",
-  "web:defaultsearch": "https://www.google.com/search?q={query}",
-  "window:tilegapsize": 3,
-  "window:maxtabcachesize": 10,
-  "window:nativetitlebar": true,
-  "window:magnifiedblockopacity": 0.6,
-  "window:magnifiedblocksize": 0.9,
-  "window:magnifiedblockblurprimarypx": 10,
-  "window:magnifiedblockblursecondarypx": 2,
-  "window:confirmclose": true,
-  "window:savelastwindow": true,
-  "telemetry:enabled": true,
-  "term:copyonselect": true
+    "ai:preset": "ai@global",
+    "ai:model": "gpt-5-mini",
+    "ai:maxtokens": 4000,
+    "ai:timeoutms": 60000,
+    "app:defaultnewblock": "term",
+    "autoupdate:enabled": true,
+    "autoupdate:installonquit": true,
+    "autoupdate:intervalms": 3600000,
+    "conn:askbeforewshinstall": true,
+    "conn:wshenabled": true,
+    "editor:minimapenabled": true,
+    "web:defaulturl": "https://github.com/wavetermdev/waveterm",
+    "web:defaultsearch": "https://www.google.com/search?q={query}",
+    "window:tilegapsize": 3,
+    "window:maxtabcachesize": 10,
+    "window:nativetitlebar": true,
+    "window:magnifiedblockopacity": 0.6,
+    "window:magnifiedblocksize": 0.9,
+    "window:magnifiedblockblurprimarypx": 10,
+    "window:magnifiedblockblursecondarypx": 2,
+    "window:confirmclose": true,
+    "window:savelastwindow": true,
+    "telemetry:enabled": true,
+    "term:copyonselect": true
 }
 ```
 
@@ -130,6 +133,17 @@ If you installed Wave pre-v0.9.0 your configuration file will be located at
 files as well: `termthemes.json`, `presets.json`, and `widgets.json`.
 
 :::
+
+## Environment Variable Resolution
+
+To avoid putting secrets directly in config files, Wave supports environment variable resolution using `$ENV:VARIABLE_NAME` or `$ENV:VARIABLE_NAME:fallback` syntax.  This works for any string value in any config file (settings.json, presets.json, ai.json, etc.).
+
+```json
+{
+  "ai:apitoken": "$ENV:OPENAI_APIKEY",
+  "ai:baseurl": "$ENV:AI_BASEURL:https://api.openai.com/v1"
+}
+```
 
 ## WebBookmarks Configuration
 

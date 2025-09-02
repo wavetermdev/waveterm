@@ -386,7 +386,7 @@ function DirectoryTable({
     useLayoutEffect(() => {
         const rows = table.getRowModel()?.flatRows;
         let foundParentDir = false;
-        
+
         for (const row of rows) {
             if (row.getValue("name") == "..") {
                 row.pin("top");
@@ -394,7 +394,7 @@ function DirectoryTable({
                 break;
             }
         }
-        
+
         // If we didn't find the ".." row, reset the pinning to avoid stale references
         if (!foundParentDir) {
             table.resetRowPinning();
@@ -411,8 +411,8 @@ function DirectoryTable({
         return colSizes;
     }, [table.getState().columnSizingInfo]);
 
-    const osRef = useRef<OverlayScrollbarsComponentRef>();
-    const bodyRef = useRef<HTMLDivElement>();
+    const osRef = useRef<OverlayScrollbarsComponentRef>(null);
+    const bodyRef = useRef<HTMLDivElement>(null);
     const [scrollHeight, setScrollHeight] = useState(0);
 
     const onScroll = useCallback(
@@ -518,36 +518,41 @@ function TableBody({
     setRefreshVersion,
     osRef,
 }: TableBodyProps) {
-    const dummyLineRef = useRef<HTMLDivElement>();
-    const warningBoxRef = useRef<HTMLDivElement>();
-    const rowRefs = useRef<HTMLDivElement[]>([]);
+    const dummyLineRef = useRef<HTMLDivElement>(null);
+    const warningBoxRef = useRef<HTMLDivElement>(null);
     const conn = useAtomValue(model.connection);
     const setErrorMsg = useSetAtom(model.errorMsgAtom);
 
     useEffect(() => {
-        if (focusIndex !== null && rowRefs.current[focusIndex] && bodyRef.current && osRef) {
-            const viewport = osRef.osInstance().elements().viewport;
-            const viewportHeight = viewport.offsetHeight;
-            const rowElement = rowRefs.current[focusIndex];
-            const rowRect = rowElement.getBoundingClientRect();
-            const parentRect = viewport.getBoundingClientRect();
-            const viewportScrollTop = viewport.scrollTop;
-            const rowTopRelativeToViewport = rowRect.top - parentRect.top + viewport.scrollTop;
-            const rowBottomRelativeToViewport = rowRect.bottom - parentRect.top + viewport.scrollTop;
-            if (rowTopRelativeToViewport - 30 < viewportScrollTop) {
-                // Row is above the visible area
-                let topVal = rowTopRelativeToViewport - 30;
-                if (topVal < 0) {
-                    topVal = 0;
-                }
-                viewport.scrollTo({ top: topVal });
-            } else if (rowBottomRelativeToViewport + 5 > viewportScrollTop + viewportHeight) {
-                // Row is below the visible area
-                const topVal = rowBottomRelativeToViewport - viewportHeight + 5;
-                viewport.scrollTo({ top: topVal });
-            }
+        if (focusIndex === null || !bodyRef.current || !osRef) {
+            return;
         }
-        // setIndexChangedFromClick(false);
+        
+        const rowElement = bodyRef.current.querySelector(`[data-rowindex="${focusIndex}"]`) as HTMLDivElement;
+        if (!rowElement) {
+            return;
+        }
+        
+        const viewport = osRef.osInstance().elements().viewport;
+        const viewportHeight = viewport.offsetHeight;
+        const rowRect = rowElement.getBoundingClientRect();
+        const parentRect = viewport.getBoundingClientRect();
+        const viewportScrollTop = viewport.scrollTop;
+        const rowTopRelativeToViewport = rowRect.top - parentRect.top + viewport.scrollTop;
+        const rowBottomRelativeToViewport = rowRect.bottom - parentRect.top + viewport.scrollTop;
+        
+        if (rowTopRelativeToViewport - 30 < viewportScrollTop) {
+            // Row is above the visible area
+            let topVal = rowTopRelativeToViewport - 30;
+            if (topVal < 0) {
+                topVal = 0;
+            }
+            viewport.scrollTo({ top: topVal });
+        } else if (rowBottomRelativeToViewport + 5 > viewportScrollTop + viewportHeight) {
+            // Row is below the visible area
+            const topVal = rowBottomRelativeToViewport - viewportHeight + 5;
+            viewport.scrollTo({ top: topVal });
+        }
     }, [focusIndex]);
 
     const handleFileContextMenu = useCallback(
@@ -727,9 +732,14 @@ const TableRow = React.forwardRef(function ({
         [dragItem]
     );
 
+    const dragRef = useCallback((node: HTMLDivElement | null) => {
+        drag(node);
+    }, [drag]);
+
     return (
         <div
             className={clsx("dir-table-body-row", { focused: focusIndex === idx })}
+            data-rowindex={idx}
             onDoubleClick={() => {
                 const newFileName = row.getValue("path") as string;
                 model.goHistory(newFileName);
@@ -737,7 +747,7 @@ const TableRow = React.forwardRef(function ({
             }}
             onClick={() => setFocusIndex(idx)}
             onContextMenu={(e) => handleFileContextMenu(e, row.original)}
-            ref={drag}
+            ref={dragRef}
         >
             {row.getVisibleCells().map((cell) => (
                 <div

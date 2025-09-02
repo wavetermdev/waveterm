@@ -145,6 +145,18 @@ func updateTelemetryCounts(lastCounts telemetrydata.TEventProps) telemetrydata.T
 	props.CountSSHConn = conncontroller.GetNumSSHHasConnected()
 	props.CountWSLConn = wslconn.GetNumWSLHasConnected()
 	props.CountViews, _ = wstore.DBGetBlockViewCounts(ctx)
+
+	fullConfig := wconfig.GetWatcher().GetFullConfig()
+	customWidgets := fullConfig.CountCustomWidgets()
+	customAIPresets := fullConfig.CountCustomAIPresets()
+	customSettings := wconfig.CountCustomSettings()
+
+	props.UserSet = &telemetrydata.TEventUserProps{
+		SettingsCustomWidgets:   customWidgets,
+		SettingsCustomAIPresets: customAIPresets,
+		SettingsCustomSettings:  customSettings,
+	}
+
 	if utilfn.CompareAsMarshaledJson(props, lastCounts) {
 		return lastCounts
 	}
@@ -187,7 +199,7 @@ func beforeSendActivityUpdate(ctx context.Context) {
 	}
 }
 
-func startupActivityUpdate() {
+func startupActivityUpdate(firstLaunch bool) {
 	ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancelFn()
 	activity := wshrpc.ActivityUpdate{Startup: 1}
@@ -197,7 +209,7 @@ func startupActivityUpdate() {
 	}
 	autoUpdateChannel := telemetry.AutoUpdateChannel()
 	autoUpdateEnabled := telemetry.IsAutoUpdateEnabled()
-	tevent := telemetrydata.MakeTEvent("app:startup", telemetrydata.TEventProps{
+	props := telemetrydata.TEventProps{
 		UserSet: &telemetrydata.TEventUserProps{
 			ClientVersion:     "v" + WaveVersion,
 			ClientBuildTime:   BuildTime,
@@ -210,7 +222,11 @@ func startupActivityUpdate() {
 		UserSetOnce: &telemetrydata.TEventUserProps{
 			ClientInitialVersion: "v" + WaveVersion,
 		},
-	})
+	}
+	if firstLaunch {
+		props.AppFirstLaunch = true
+	}
+	tevent := telemetrydata.MakeTEvent("app:startup", props)
 	err = telemetry.RecordTEvent(ctx, tevent)
 	if err != nil {
 		log.Printf("error recording startup event: %v\n", err)
@@ -259,6 +275,16 @@ func grabAndRemoveEnvVars() error {
 	if err != nil {
 		return err
 	}
+
+	// Remove WAVETERM env vars that leak from prod => dev
+	os.Unsetenv("WAVETERM_CLIENTID")
+	os.Unsetenv("WAVETERM_WORKSPACEID")
+	os.Unsetenv("WAVETERM_TABID")
+	os.Unsetenv("WAVETERM_BLOCKID")
+	os.Unsetenv("WAVETERM_CONN")
+	os.Unsetenv("WAVETERM_JWT")
+	os.Unsetenv("WAVETERM_VERSION")
+
 	return nil
 }
 
@@ -345,10 +371,13 @@ func main() {
 			log.Printf("error initializing wsh and shell-integration files: %v\n", err)
 		}
 	}()
-	err = wcore.EnsureInitialData()
+	firstLaunch, err := wcore.EnsureInitialData()
 	if err != nil {
 		log.Printf("error ensuring initial data: %v\n", err)
 		return
+	}
+	if firstLaunch {
+		log.Printf("first launch detected")
 	}
 	err = clearTempFiles()
 	if err != nil {
@@ -363,7 +392,7 @@ func main() {
 	go stdinReadWatch()
 	go telemetryLoop()
 	go updateTelemetryCountsLoop()
-	startupActivityUpdate() // must be after startConfigWatcher()
+	startupActivityUpdate(firstLaunch) // must be after startConfigWatcher()
 	blocklogger.InitBlockLogger()
 
 	webListener, err := web.MakeTCPListener("web")

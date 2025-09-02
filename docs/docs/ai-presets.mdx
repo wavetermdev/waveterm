@@ -70,6 +70,22 @@ To use Claude models, create a preset like this:
 }
 ```
 
+### OpenAI
+
+To use OpenAI's models:
+
+```json
+{
+  "ai@openai-gpt41": {
+    "display:name": "GPT-4.1",
+    "display:order": 2,
+    "ai:*": true,
+    "ai:model": "gpt-4.1",
+    "ai:apitoken": "<your OpenAI API key>"
+  }
+}
+```
+
 ### Local LLMs (Ollama)
 
 To connect to a local Ollama instance:
@@ -78,7 +94,7 @@ To connect to a local Ollama instance:
 {
   "ai@ollama-llama": {
     "display:name": "Ollama - Llama2",
-    "display:order": 2,
+    "display:order": 3,
     "ai:*": true,
     "ai:baseurl": "http://localhost:11434/v1",
     "ai:name": "llama2",
@@ -98,7 +114,7 @@ To connect to Azure AI services:
 {
   "ai@azure-gpt4": {
     "display:name": "Azure GPT-4",
-    "display:order": 3,
+    "display:order": 4,
     "ai:*": true,
     "ai:apitype": "azure",
     "ai:baseurl": "<your Azure AI base URL>",
@@ -118,7 +134,7 @@ To use Perplexity's models:
 {
   "ai@perplexity-sonar": {
     "display:name": "Perplexity Sonar",
-    "display:order": 4,
+    "display:order": 5,
     "ai:*": true,
     "ai:apitype": "perplexity",
     "ai:model": "llama-3.1-sonar-small-128k-online",
@@ -135,7 +151,7 @@ To use Google's Gemini models from [Google AI Studio](https://aistudio.google.co
 {
   "ai@gemini-2.0": {
     "display:name": "Gemini 2.0",
-    "display:order": 5,
+    "display:order": 6,
     "ai:*": true,
     "ai:apitype": "google",
     "ai:model": "gemini-2.0-flash-exp",
@@ -158,9 +174,16 @@ You can define multiple presets in your `ai.json` file:
     "ai:model": "claude-3-5-sonnet-latest",
     "ai:apitoken": "<your anthropic API key>"
   },
+  "ai@openai-gpt41": {
+    "display:name": "GPT-4.1",
+    "display:order": 2,
+    "ai:*": true,
+    "ai:model": "gpt-4.1",
+    "ai:apitoken": "<your OpenAI API key>"
+  },
   "ai@ollama-llama": {
     "display:name": "Ollama - Llama2",
-    "display:order": 2,
+    "display:order": 3,
     "ai:*": true,
     "ai:baseurl": "http://localhost:11434/v1",
     "ai:name": "llama2",
@@ -169,7 +192,7 @@ You can define multiple presets in your `ai.json` file:
   },
   "ai@perplexity-sonar": {
     "display:name": "Perplexity Sonar",
-    "display:order": 3,
+    "display:order": 4,
     "ai:*": true,
     "ai:apitype": "perplexity",
     "ai:model": "llama-3.1-sonar-small-128k-online",
@@ -187,3 +210,23 @@ Remember to set your default preset in `settings.json`:
   "ai:preset": "ai@claude-sonnet"
 }
 ```
+
+## Using a Proxy
+
+If you need to route AI requests through an HTTP proxy, you can add the `ai:proxyurl` setting to any preset:
+
+```json
+{
+  "ai@claude-with-proxy": {
+    "display:name": "Claude 3 Sonnet (via Proxy)",
+    "display:order": 1,
+    "ai:*": true,
+    "ai:apitype": "anthropic",
+    "ai:model": "claude-3-5-sonnet-latest",
+    "ai:apitoken": "<your anthropic API key>",
+    "ai:proxyurl": "http://proxy.example.com:8080"
+  }
+}
+```
+
+The proxy URL should be in the format `http://host:port` or `https://host:port`. This setting works with all AI providers except Wave Cloud AI (the default).

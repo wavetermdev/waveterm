@@ -13,8 +13,6 @@ import { NotificationItem } from "./notificationitem";
 import { useUpdateNotifier } from "./updatenotifier";
 import { useNotification } from "./usenotification";
 
-import "./notificationpopover.scss";
-
 const NotificationPopover = () => {
     useUpdateNotifier();
     const {
@@ -51,14 +49,14 @@ const NotificationPopover = () => {
 
     return (
         <Popover
-            className="notification-popover"
+            className="w-full pb-2 pt-1 pl-0 pr-0.5 flex items-center justify-center"
             placement="left-end"
             offset={{ mainAxis: 20, crossAxis: 2 }}
             onDismiss={handleTogglePopover}
         >
             <PopoverButton
                 className={clsx(
-                    "notification-trigger-button horizontal-padding-6 vertical-padding-4 border-radius-",
+                    "w-[27px] h-[26px] flex justify-center [&>i]:text-[17px] horizontal-padding-6 vertical-padding-4 border-radius-",
                     addOnClassNames
                 )}
                 disabled={notifications.length === 0}
@@ -67,11 +65,11 @@ const NotificationPopover = () => {
                 {getIcon()}
             </PopoverButton>
             {notifications.length > 0 && (
-                <PopoverContent className="notification-content">
-                    <div className="header">
-                        <span>Notifications</span>
+                <PopoverContent className="flex w-[380px] pt-2.5 pb-0 px-0 flex-col items-start gap-x-2 rounded-lg border-[0.5px] border-white/12 bg-[#232323] shadow-[0px_8px_32px_0px_rgba(0,0,0,0.25)]">
+                    <div className="flex items-center justify-between w-full px-2.5 pb-2 border-b border-white/8">
+                        <span className="text-foreground text-sm font-semibold leading-4">Notifications</span>
                         <Button
-                            className="ghost grey close-all-btn horizontal-padding-3 vertical-padding-3"
+                            className="ghost grey text-[13px] font-normal leading-4 text-white/40 horizontal-padding-3 vertical-padding-3"
                             onClick={(e) => {
                                 e.stopPropagation();
                                 removeAllNotifications();
@@ -98,7 +96,7 @@ const NotificationPopover = () => {
                                     onMouseEnter={() => setHoveredId(notif.id)}
                                     onMouseLeave={() => setHoveredId(null)}
                                 />
-                                {index !== notifications.length - 1 && <div className="divider"></div>}
+                                {index !== notifications.length - 1 && <div className="bg-white/8 h-px w-full"></div>}
                             </Fragment>
                         ))}
                     </OverlayScrollbarsComponent>

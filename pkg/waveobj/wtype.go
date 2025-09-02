@@ -127,7 +127,7 @@ type Client struct {
 	Version       int         `json:"version"`
 	WindowIds     []string    `json:"windowids"`
 	Meta          MetaMapType `json:"meta"`
-	TosAgreed     int64       `json:"tosagreed,omitempty"`
+	TosAgreed     int64       `json:"tosagreed,omitempty"` // unix milli
 	HasOldHistory bool        `json:"hasoldhistory,omitempty"`
 	TempOID       string      `json:"tempoid,omitempty"`
 }

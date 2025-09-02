@@ -27,6 +27,9 @@ export default defineConfig({
                 "@": "frontend",
             },
         },
+        server: {
+            open: false,
+        },
         define: {
             "process.env.WS_NO_BUFFER_UTIL": "true",
             "process.env.WS_NO_UTF_8_VALIDATE": "true",
@@ -47,6 +50,9 @@ export default defineConfig({
             },
             outDir: "dist/preload",
         },
+        server: {
+            open: false,
+        },
         plugins: [tsconfigPaths(), flow()],
     },
     renderer: {
@@ -63,6 +69,9 @@ export default defineConfig({
         },
         server: {
             open: false,
+            watch: {
+                ignored: ["**/*.go", "**/go.mod", "**/go.sum", "**/*.md", "**/*.json"],
+            },
         },
         css: {
             preprocessorOptions: {

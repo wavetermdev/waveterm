@@ -7,7 +7,7 @@ import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { Button } from "@/element/button";
 import { ContextMenuModel } from "@/store/contextmenu";
 import { fireAndForget } from "@/util/util";
-import { clsx } from "clsx";
+import clsx from "clsx";
 import { forwardRef, memo, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { ObjectService } from "../store/services";
 import { makeORef, useWaveObjectValue } from "../store/wos";
@@ -53,7 +53,7 @@ const Tab = memo(
             const [isEditable, setIsEditable] = useState(false);
 
             const editableRef = useRef<HTMLDivElement>(null);
-            const editableTimeoutRef = useRef<NodeJS.Timeout>();
+            const editableTimeoutRef = useRef<NodeJS.Timeout>(null);
             const loadedRef = useRef(false);
             const tabRef = useRef<HTMLDivElement>(null);
 

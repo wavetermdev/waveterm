@@ -41,7 +41,7 @@ jobs:
         runs-on: windows-latest
         if: github.event.pull_request.draft == false
         steps:
-            - uses: actions/checkout@v4
+            - uses: actions/checkout@v5
 
             # General build dependencies
             - uses: actions/setup-go@v5
@@ -64,7 +64,7 @@ jobs:
                   version: 3.x
                   repo-token: ${{ secrets.GITHUB_TOKEN }}
             - name: Install Zig
-              uses: mlugg/setup-zig@v1
+              uses: mlugg/setup-zig@v2
 
             - name: Build
               run: task package

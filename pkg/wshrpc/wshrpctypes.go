@@ -496,6 +496,7 @@ type WaveAIOptsType struct {
 	OrgID      string `json:"orgid,omitempty"`
 	APIVersion string `json:"apiversion,omitempty"`
 	BaseURL    string `json:"baseurl,omitempty"`
+	ProxyURL   string `json:"proxyurl,omitempty"`
 	MaxTokens  int    `json:"maxtokens,omitempty"`
 	MaxChoices int    `json:"maxchoices,omitempty"`
 	TimeoutMs  int    `json:"timeoutms,omitempty"`

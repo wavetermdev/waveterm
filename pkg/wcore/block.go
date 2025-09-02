@@ -57,6 +57,10 @@ func createSubBlockObj(ctx context.Context, parentBlockId string, blockDef *wave
 }
 
 func CreateBlock(ctx context.Context, tabId string, blockDef *waveobj.BlockDef, rtOpts *waveobj.RuntimeOpts) (rtnBlock *waveobj.Block, rtnErr error) {
+	return CreateBlockWithTelemetry(ctx, tabId, blockDef, rtOpts, true)
+}
+
+func CreateBlockWithTelemetry(ctx context.Context, tabId string, blockDef *waveobj.BlockDef, rtOpts *waveobj.RuntimeOpts, recordTelemetry bool) (rtnBlock *waveobj.Block, rtnErr error) {
 	var blockCreated bool
 	var newBlockOID string
 	defer func() {
@@ -94,27 +98,31 @@ func CreateBlock(ctx context.Context, tabId string, blockDef *waveobj.BlockDef, 
 			}
 		}
 	}
-	go func() {
-		defer func() {
-			panichandler.PanicHandler("CreateBlock:telemetry", recover())
-		}()
+	if recordTelemetry {
 		blockView := blockDef.Meta.GetString(waveobj.MetaKey_View, "")
-		if blockView == "" {
-			return
-		}
-		tctx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)
-		defer cancelFn()
-		telemetry.UpdateActivity(tctx, wshrpc.ActivityUpdate{
-			Renderers: map[string]int{blockView: 1},
-		})
-		telemetry.RecordTEvent(tctx, &telemetrydata.TEvent{
-			Event: "action:createblock",
-			Props: telemetrydata.TEventProps{
-				BlockView: blockView,
-			},
-		})
-	}()
+		go recordBlockCreationTelemetry(blockView)
+	}
 	return blockData, nil
+}
+
+func recordBlockCreationTelemetry(blockView string) {
+	defer func() {
+		panichandler.PanicHandler("CreateBlock:telemetry", recover())
+	}()
+	if blockView == "" {
+		return
+	}
+	tctx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancelFn()
+	telemetry.UpdateActivity(tctx, wshrpc.ActivityUpdate{
+		Renderers: map[string]int{blockView: 1},
+	})
+	telemetry.RecordTEvent(tctx, &telemetrydata.TEvent{
+		Event: "action:createblock",
+		Props: telemetrydata.TEventProps{
+			BlockView: blockView,
+		},
+	})
 }
 
 func createBlockObj(ctx context.Context, tabId string, blockDef *waveobj.BlockDef, rtOpts *waveobj.RuntimeOpts) (*waveobj.Block, error) {

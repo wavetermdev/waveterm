@@ -8,6 +8,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/http"
+	"net/url"
 	"regexp"
 	"strings"
 
@@ -25,6 +27,14 @@ const DefaultAzureAPIVersion = "2023-05-15"
 // copied from go-openai/config.go
 func defaultAzureMapperFn(model string) string {
 	return regexp.MustCompile(`[.:]`).ReplaceAllString(model, "")
+}
+
+func isReasoningModel(model string) bool {
+	m := strings.ToLower(model)
+	return strings.HasPrefix(m, "o1") ||
+		strings.HasPrefix(m, "o3") ||
+		strings.HasPrefix(m, "o4") ||
+		strings.HasPrefix(m, "gpt-5")
 }
 
 func setApiType(opts *wshrpc.WaveAIOptsType, clientConfig *openaiapi.ClientConfig) error {
@@ -100,44 +110,35 @@ func (OpenAIBackend) StreamCompletion(ctx context.Context, request wshrpc.WaveAI
 			clientConfig.APIVersion = request.Opts.APIVersion
 		}
 
+		// Configure proxy if specified
+		if request.Opts.ProxyURL != "" {
+			proxyURL, err := url.Parse(request.Opts.ProxyURL)
+			if err != nil {
+				rtn <- makeAIError(fmt.Errorf("invalid proxy URL: %v", err))
+				return
+			}
+			transport := &http.Transport{
+				Proxy: http.ProxyURL(proxyURL),
+			}
+			clientConfig.HTTPClient = &http.Client{
+				Transport: transport,
+			}
+		}
+
 		client := openaiapi.NewClientWithConfig(clientConfig)
 		req := openaiapi.ChatCompletionRequest{
 			Model:    request.Opts.Model,
 			Messages: convertPrompt(request.Prompt),
 		}
 
-		// Handle o1 models differently - use non-streaming API
-		if strings.HasPrefix(request.Opts.Model, "o1-") {
+		// Set MaxCompletionTokens for reasoning models, MaxTokens for others
+		if isReasoningModel(request.Opts.Model) {
 			req.MaxCompletionTokens = request.Opts.MaxTokens
-			req.Stream = false
-
-			// Make non-streaming API call
-			resp, err := client.CreateChatCompletion(ctx, req)
-			if err != nil {
-				rtn <- makeAIError(fmt.Errorf("error calling openai API: %v", err))
-				return
-			}
-
-			// Send header packet
-			headerPk := MakeWaveAIPacket()
-			headerPk.Model = resp.Model
-			headerPk.Created = resp.Created
-			rtn <- wshrpc.RespOrErrorUnion[wshrpc.WaveAIPacketType]{Response: *headerPk}
-
-			// Send content packet(s)
-			for i, choice := range resp.Choices {
-				pk := MakeWaveAIPacket()
-				pk.Index = i
-				pk.Text = choice.Message.Content
-				pk.FinishReason = string(choice.FinishReason)
-				rtn <- wshrpc.RespOrErrorUnion[wshrpc.WaveAIPacketType]{Response: *pk}
-			}
-			return
+		} else {
+			req.MaxTokens = request.Opts.MaxTokens
 		}
 
-		// Original streaming implementation for non-o1 models
 		req.Stream = true
-		req.MaxTokens = request.Opts.MaxTokens
 		if request.Opts.MaxChoices > 1 {
 			req.N = request.Opts.MaxChoices
 		}

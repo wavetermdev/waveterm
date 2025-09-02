@@ -457,6 +457,18 @@ class TermViewModel implements ViewModel {
             return false;
         }
         // deal with terminal specific keybindings
+        if (keyutil.checkKeyPressed(waveEvent, "Shift:Enter")) {
+            // Check if shift+enter newline is enabled via config
+            const shiftEnterNewlineAtom = getOverrideConfigAtom(this.blockId, "term:shiftenternewline");
+            const shiftEnterNewlineEnabled = globalStore.get(shiftEnterNewlineAtom) ?? false;
+            if (shiftEnterNewlineEnabled) {
+                // Support for claude code - send escape sequence + newline instead of carriage return
+                this.sendDataToController("\u001b\n");
+                event.preventDefault();
+                event.stopPropagation();
+                return false;
+            }
+        }
         if (keyutil.checkKeyPressed(waveEvent, "Ctrl:Shift:v")) {
             const p = navigator.clipboard.readText();
             p.then((text) => {

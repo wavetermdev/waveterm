@@ -14,7 +14,6 @@ import { atoms, getApi } from "@/app/store/global";
 import { modalsModel } from "@/app/store/modalmodel";
 import { fireAndForget } from "@/util/util";
 import { atom, PrimitiveAtom, useAtom, useAtomValue, useSetAtom } from "jotai";
-import "./tos.scss";
 
 const pageNumAtom: PrimitiveAtom<number> = atom<number>(1);
 
@@ -43,22 +42,22 @@ const ModalPage1 = () => {
 
     return (
         <>
-            <header className="modal-header tos-header unselectable">
-                <div className="logo">
+            <header className="flex flex-col gap-2 border-b-0 p-0 mb-9 w-full unselectable">
+                <div className="mb-2.5 flex justify-center">
                     <Logo />
                 </div>
-                <div className="modal-title">Welcome to Wave Terminal</div>
+                <div className="text-center text-[25px] font-normal text-foreground">Welcome to Wave Terminal</div>
             </header>
-            <div className="modal-content tos-content unselectable">
-                <div className="content-section">
-                    <div className="icon-wrapper">
+            <div className="flex flex-col items-start gap-8 w-full mb-5 unselectable">
+                <div className="flex w-full items-center gap-[18px]">
+                    <div>
                         <a target="_blank" href="https://github.com/wavetermdev/waveterm" rel={"noopener"}>
-                            <i className="icon fa-brands fa-github"></i>
+                            <i className="text-[32px] text-white/50 fa-brands fa-github"></i>
                         </a>
                     </div>
-                    <div className="content-section-inner">
-                        <div className="content-section-title">Support us on GitHub</div>
-                        <div className="content-section-text">
+                    <div className="flex flex-col items-start gap-1 flex-1">
+                        <div className="text-foreground text-base leading-[18px] mb-1.5">Support us on GitHub</div>
+                        <div className="text-secondary leading-5">
                             We're <i>open source</i> and committed to providing a free terminal for individual users.
                             Please show your support by giving us a star on{" "}
                             <a target="_blank" href="https://github.com/wavetermdev/waveterm" rel={"noopener"}>
@@ -67,15 +66,15 @@ const ModalPage1 = () => {
                         </div>
                     </div>
                 </div>
-                <div className="content-section">
-                    <div className="icon-wrapper">
+                <div className="flex w-full items-center gap-[18px]">
+                    <div>
                         <a target="_blank" href="https://discord.gg/XfvZ334gwU" rel={"noopener"}>
-                            <i className="icon fa-solid fa-people-group"></i>
+                            <i className="text-[25px] text-white/50 fa-solid fa-people-group"></i>
                         </a>
                     </div>
-                    <div className="content-section-inner">
-                        <div className="content-section-title">Join our Community</div>
-                        <div className="content-section-text">
+                    <div className="flex flex-col items-start gap-1 flex-1">
+                        <div className="text-foreground text-base leading-[18px] mb-1.5">Join our Community</div>
+                        <div className="text-secondary leading-5">
                             Get help, submit feature requests, report bugs, or just chat with fellow terminal
                             enthusiasts.
                             <br />
@@ -85,13 +84,13 @@ const ModalPage1 = () => {
                         </div>
                     </div>
                 </div>
-                <div className="content-section">
-                    <div className="icon-wrapper">
-                        <i className="icon fa-solid fa-chart-line"></i>
+                <div className="flex w-full items-center gap-[18px]">
+                    <div>
+                        <i className="text-[32px] text-white/50 fa-solid fa-chart-line"></i>
                     </div>
-                    <div className="content-section-inner">
-                        <div className="content-section-title">Telemetry</div>
-                        <div className="content-section-text">
+                    <div className="flex flex-col items-start gap-1 flex-1">
+                        <div className="text-foreground text-base leading-[18px] mb-1.5">Telemetry</div>
+                        <div className="text-secondary leading-5">
                             We collect minimal anonymous{" "}
                             <a target="_blank" href="https://docs.waveterm.dev/telemetry" rel={"noopener"}>
                                 telemetry data
@@ -112,7 +111,7 @@ const ModalPage1 = () => {
                 </div>
             </div>
             <footer className="unselectable">
-                <div className="button-wrapper">
+                <div className="flex flex-row items-center justify-center [&>button]:!px-5 [&>button]:!py-2 [&>button]:text-sm [&>button:not(:first-child)]:ml-2.5">
                     <Button className="font-weight-600" onClick={acceptTos}>
                         Continue
                     </Button>
@@ -131,17 +130,17 @@ const ModalPage2 = () => {
 
     return (
         <>
-            <header className="modal-header tos-header unselectable">
-                <div className="logo">
+            <header className="flex flex-col gap-2 border-b-0 p-0 mb-9 w-full unselectable">
+                <div className="mb-2.5 flex justify-center">
                     <Logo />
                 </div>
-                <div className="modal-title">Icons and Keybindings</div>
+                <div className="text-center text-[25px] font-normal text-foreground">Icons and Keybindings</div>
             </header>
-            <div className="modal-content tos-content unselectable">
+            <div className="flex flex-col items-start gap-8 w-full mb-5 unselectable">
                 <QuickTips />
             </div>
             <footer className="unselectable">
-                <div className="button-wrapper">
+                <div className="flex flex-row items-center justify-center [&>button]:!px-5 [&>button]:!py-2 [&>button]:text-sm [&>button:not(:first-child)]:ml-2.5">
                     <Button className="font-weight-600" onClick={handleGetStarted}>
                         Get Started
                     </Button>
@@ -151,57 +150,6 @@ const ModalPage2 = () => {
     );
 };
 
-const ModalPageLegacy = () => {
-    const setPageNum = useSetAtom(pageNumAtom);
-    const handleContinue = () => {
-        setPageNum(1);
-    };
-    const handleDownloadLegacy = () => {
-        getApi().openExternal("https://waveterm.dev/download-legacy?ref=v7upgrade");
-    };
-    return (
-        <>
-            <header className="modal-header tos-header unselectable">
-                <div className="logo">
-                    <Logo />
-                </div>
-                <div className="modal-title">Welcome to Wave v0.9</div>
-            </header>
-            <div className="modal-content tos-content unselectable">
-                <div className="item">
-                    We’re excited to announce the release of Wave Terminal v0.9. This update introduces a brand-new
-                    layout engine, featuring drag-and-drop screen splitting with flexible block sizing and positioning.
-                    We've also integrated powerful tools like file previews, an editor, web integration, and AI, all
-                    designed to keep you focused and minimize context switching. And for the first time, Wave Terminal
-                    runs <b>natively on Windows</b>!
-                </div>
-                <div>
-                    Wave v0.9 is less opinionated, giving you the freedom to use your standard terminal prompt and
-                    command completions, while supporting all shells (not just bash/zsh). We've also improved
-                    compatibility with ohmyzsh packages, removing some of the friction users experienced. It’s faster,
-                    more performant, and provides a stronger foundation for you to build your own blocks and widgets in
-                    the future.
-                </div>
-                <div className="item">
-                    The new build is a fresh start, and a clean break from the current version. As such, your history,
-                    settings, and configuration will <i>not</i> be carried over. If you'd like to continue to run the
-                    legacy version, you will need to download it separately.
-                </div>
-            </div>
-            <footer className="unselectable">
-                <div className="button-wrapper">
-                    <Button className="outlined grey" onClick={handleDownloadLegacy}>
-                        Download WaveLegacy
-                    </Button>
-
-                    <Button className="font-weight-600" onClick={handleContinue}>
-                        Continue
-                    </Button>
-                </div>
-            </footer>
-        </>
-    );
-};
 
 const TosModal = () => {
     const modalRef = useRef<HTMLDivElement | null>(null);
@@ -223,9 +171,7 @@ const TosModal = () => {
 
     useEffect(() => {
         // on unmount, always reset pagenum
-        if (!clientData.tosagreed && clientData.hasoldhistory) {
-            setPageNum(0);
-        } else if (clientData.tosagreed) {
+        if (clientData.tosagreed) {
             setPageNum(2);
         }
         return () => {
@@ -243,9 +189,6 @@ const TosModal = () => {
     }, []);
     let pageComp: React.JSX.Element = null;
     switch (pageNum) {
-        case 0:
-            pageComp = <ModalPageLegacy />;
-            break;
         case 1:
             pageComp = <ModalPage1 />;
             break;
@@ -257,8 +200,11 @@ const TosModal = () => {
         return null;
     }
     return (
-        <FlexiModal className="tos-modal" ref={modalRef}>
-            <OverlayScrollbarsComponent className="modal-inner" options={{ scrollbars: { autoHide: "leave" } }}>
+        <FlexiModal className="w-[560px] rounded-[10px] p-0" ref={modalRef}>
+            <OverlayScrollbarsComponent
+                className="flex flex-col overflow-y-auto p-[30px] w-full"
+                options={{ scrollbars: { autoHide: "leave" } }}
+            >
                 {pageComp}
             </OverlayScrollbarsComponent>
         </FlexiModal>

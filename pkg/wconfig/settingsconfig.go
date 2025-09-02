@@ -44,6 +44,7 @@ type AiSettingsType struct {
 	AIApiVersion    string  `json:"ai:apiversion,omitempty"`
 	AiMaxTokens     float64 `json:"ai:maxtokens,omitempty"`
 	AiTimeoutMs     float64 `json:"ai:timeoutms,omitempty"`
+	AiProxyUrl      string  `json:"ai:proxyurl,omitempty"`
 	AiFontSize      float64 `json:"ai:fontsize,omitempty"`
 	AiFixedFontSize float64 `json:"ai:fixedfontsize,omitempty"`
 	DisplayName     string  `json:"display:name,omitempty"`
@@ -55,6 +56,7 @@ type SettingsType struct {
 	AppGlobalHotkey               string `json:"app:globalhotkey,omitempty"`
 	AppDismissArchitectureWarning bool   `json:"app:dismissarchitecturewarning,omitempty"`
 	AppDefaultNewBlock            string `json:"app:defaultnewblock,omitempty"`
+	AppShowOverlayBlockNums       *bool  `json:"app:showoverlayblocknums,omitempty"`
 
 	AiClear         bool    `json:"ai:*,omitempty"`
 	AiPreset        string  `json:"ai:preset,omitempty"`
@@ -67,6 +69,7 @@ type SettingsType struct {
 	AIApiVersion    string  `json:"ai:apiversion,omitempty"`
 	AiMaxTokens     float64 `json:"ai:maxtokens,omitempty"`
 	AiTimeoutMs     float64 `json:"ai:timeoutms,omitempty"`
+	AiProxyUrl      string  `json:"ai:proxyurl,omitempty"`
 	AiFontSize      float64 `json:"ai:fontsize,omitempty"`
 	AiFixedFontSize float64 `json:"ai:fixedfontsize,omitempty"`
 
@@ -81,6 +84,7 @@ type SettingsType struct {
 	TermCopyOnSelect        *bool    `json:"term:copyonselect,omitempty"`
 	TermTransparency        *float64 `json:"term:transparency,omitempty"`
 	TermAllowBracketedPaste *bool    `json:"term:allowbracketedpaste,omitempty"`
+	TermShiftEnterNewline   *bool    `json:"term:shiftenternewline,omitempty"`
 
 	EditorMinimapEnabled      bool    `json:"editor:minimapenabled,omitempty"`
 	EditorStickyScrollEnabled bool    `json:"editor:stickyscrollenabled,omitempty"`
@@ -137,6 +141,91 @@ type SettingsType struct {
 	ConnClear               bool  `json:"conn:*,omitempty"`
 	ConnAskBeforeWshInstall *bool `json:"conn:askbeforewshinstall,omitempty"`
 	ConnWshEnabled          bool  `json:"conn:wshenabled,omitempty"`
+}
+
+func (s *SettingsType) GetAiSettings() *AiSettingsType {
+	return &AiSettingsType{
+		AiClear:         s.AiClear,
+		AiPreset:        s.AiPreset,
+		AiApiType:       s.AiApiType,
+		AiBaseURL:       s.AiBaseURL,
+		AiApiToken:      s.AiApiToken,
+		AiName:          s.AiName,
+		AiModel:         s.AiModel,
+		AiOrgID:         s.AiOrgID,
+		AIApiVersion:    s.AIApiVersion,
+		AiMaxTokens:     s.AiMaxTokens,
+		AiTimeoutMs:     s.AiTimeoutMs,
+		AiProxyUrl:      s.AiProxyUrl,
+		AiFontSize:      s.AiFontSize,
+		AiFixedFontSize: s.AiFixedFontSize,
+	}
+}
+
+func MergeAiSettings(settings ...*AiSettingsType) *AiSettingsType {
+	result := &AiSettingsType{}
+
+	for _, s := range settings {
+		if s == nil {
+			continue
+		}
+
+		// If this setting has AiClear=true, replace result with this entire setting
+		if s.AiClear {
+			result = s
+			result.AiClear = false
+			continue
+		}
+
+		// Merge non-empty values
+		if s.AiPreset != "" {
+			result.AiPreset = s.AiPreset
+		}
+		if s.AiApiType != "" {
+			result.AiApiType = s.AiApiType
+		}
+		if s.AiBaseURL != "" {
+			result.AiBaseURL = s.AiBaseURL
+		}
+		if s.AiApiToken != "" {
+			result.AiApiToken = s.AiApiToken
+		}
+		if s.AiName != "" {
+			result.AiName = s.AiName
+		}
+		if s.AiModel != "" {
+			result.AiModel = s.AiModel
+		}
+		if s.AiOrgID != "" {
+			result.AiOrgID = s.AiOrgID
+		}
+		if s.AIApiVersion != "" {
+			result.AIApiVersion = s.AIApiVersion
+		}
+		if s.AiProxyUrl != "" {
+			result.AiProxyUrl = s.AiProxyUrl
+		}
+		if s.AiMaxTokens != 0 {
+			result.AiMaxTokens = s.AiMaxTokens
+		}
+		if s.AiTimeoutMs != 0 {
+			result.AiTimeoutMs = s.AiTimeoutMs
+		}
+		if s.AiFontSize != 0 {
+			result.AiFontSize = s.AiFontSize
+		}
+		if s.AiFixedFontSize != 0 {
+			result.AiFixedFontSize = s.AiFixedFontSize
+		}
+		if s.DisplayName != "" {
+			result.DisplayName = s.DisplayName
+		}
+		if s.DisplayOrder != 0 {
+			result.DisplayOrder = s.DisplayOrder
+		}
+	}
+
+	return result
 }
 
 type ConfigError struct {
@@ -238,6 +327,65 @@ func isTrailingCommaError(barr []byte, offset int) bool {
 	return false
 }
 
+func resolveEnvReplacements(m waveobj.MetaMapType) {
+	if m == nil {
+		return
+	}
+	
+	for key, value := range m {
+		switch v := value.(type) {
+		case string:
+			if resolved, ok := resolveEnvValue(v); ok {
+				m[key] = resolved
+			}
+		case map[string]interface{}:
+			resolveEnvReplacements(waveobj.MetaMapType(v))
+		case []interface{}:
+			resolveEnvArray(v)
+		}
+	}
+}
+
+func resolveEnvArray(arr []interface{}) {
+	for i, value := range arr {
+		switch v := value.(type) {
+		case string:
+			if resolved, ok := resolveEnvValue(v); ok {
+				arr[i] = resolved
+			}
+		case map[string]interface{}:
+			resolveEnvReplacements(waveobj.MetaMapType(v))
+		case []interface{}:
+			resolveEnvArray(v)
+		}
+	}
+}
+
+func resolveEnvValue(value string) (string, bool) {
+	if !strings.HasPrefix(value, "$ENV:") {
+		return "", false
+	}
+	
+	envSpec := value[5:] // Remove "$ENV:" prefix
+	parts := strings.SplitN(envSpec, ":", 2)
+	envVar := parts[0]
+	var fallback string
+	if len(parts) > 1 {
+		fallback = parts[1]
+	}
+	
+	// Get the environment variable value
+	if envValue, exists := os.LookupEnv(envVar); exists {
+		return envValue, true
+	}
+	
+	// Return fallback if provided, otherwise return empty string
+	if fallback != "" {
+		return fallback, true
+	}
+	return "", true
+}
+
 func readConfigHelper(fileName string, barr []byte, readErr error) (waveobj.MetaMapType, []ConfigError) {
 	var cerrs []ConfigError
 	if readErr != nil && !os.IsNotExist(readErr) {
@@ -264,6 +412,12 @@ func readConfigHelper(fileName string, barr []byte, readErr error) (waveobj.Meta
 		}
 		cerrs = append(cerrs, ConfigError{File: fileName, Err: err.Error()})
 	}
+	
+	// Resolve environment variable replacements
+	if rtn != nil {
+		resolveEnvReplacements(rtn)
+	}
+	
 	return rtn, cerrs
 }
 
@@ -651,4 +805,49 @@ type TermThemeType struct {
 	SelectionBackground string  `json:"selectionBackground"`
 	Background          string  `json:"background"`
 	Cursor              string  `json:"cursor"`
+}
+
+// CountCustomWidgets returns the number of custom widgets the user has defined.
+// Custom widgets are identified as widgets whose ID doesn't start with "defwidget@".
+func (fc *FullConfigType) CountCustomWidgets() int {
+	count := 0
+	for widgetID := range fc.Widgets {
+		if !strings.HasPrefix(widgetID, "defwidget@") {
+			count++
+		}
+	}
+	return count
+}
+
+// CountCustomAIPresets returns the number of custom AI presets the user has defined.
+// Custom AI presets are identified as presets that start with "ai@" but aren't "ai@global" or "ai@wave".
+func (fc *FullConfigType) CountCustomAIPresets() int {
+	count := 0
+	for presetID := range fc.Presets {
+		if strings.HasPrefix(presetID, "ai@") && presetID != "ai@global" && presetID != "ai@wave" {
+			count++
+		}
+	}
+	return count
+}
+
+// CountCustomSettings returns the number of settings in the user's settings file.
+// This excludes telemetry:enabled which doesn't count as a customization.
+func CountCustomSettings() int {
+	// Load user settings
+	userSettings, _ := ReadWaveHomeConfigFile("settings.json")
+	if userSettings == nil {
+		return 0
+	}
+
+	// Count all keys except telemetry:enabled
+	count := 0
+	for key := range userSettings {
+		if key == "telemetry:enabled" {
+			continue
+		}
+		count++
+	}
+
+	return count
 }

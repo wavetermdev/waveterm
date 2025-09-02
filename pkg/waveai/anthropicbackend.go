@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
@@ -169,7 +170,13 @@ func (AnthropicBackend) StreamCompletion(ctx context.Context, request wshrpc.Wav
 			return
 		}
 
-		req, err := http.NewRequestWithContext(ctx, "POST", "https://api.anthropic.com/v1/messages", strings.NewReader(string(reqBody)))
+		// Build endpoint allowing custom base URL from presets/settings
+		endpoint := "https://api.anthropic.com/v1/messages"
+		if request.Opts.BaseURL != "" {
+			endpoint = strings.TrimSpace(request.Opts.BaseURL)
+		}
+
+		req, err := http.NewRequestWithContext(ctx, "POST", endpoint, strings.NewReader(string(reqBody)))
 		if err != nil {
 			rtn <- makeAIError(fmt.Errorf("failed to create anthropic request: %v", err))
 			return
@@ -178,9 +185,26 @@ func (AnthropicBackend) StreamCompletion(ctx context.Context, request wshrpc.Wav
 		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set("Accept", "text/event-stream")
 		req.Header.Set("x-api-key", request.Opts.APIToken)
-		req.Header.Set("anthropic-version", "2023-06-01")
+		version := "2023-06-01"
+		if request.Opts.APIVersion != "" {
+			version = request.Opts.APIVersion
+		}
+		req.Header.Set("anthropic-version", version)
 
+		// Configure HTTP client with proxy if specified
 		client := &http.Client{}
+		if request.Opts.ProxyURL != "" {
+			proxyURL, err := url.Parse(request.Opts.ProxyURL)
+			if err != nil {
+				rtn <- makeAIError(fmt.Errorf("invalid proxy URL: %v", err))
+				return
+			}
+			transport := &http.Transport{
+				Proxy: http.ProxyURL(proxyURL),
+			}
+			client.Transport = transport
+		}
+
 		resp, err := client.Do(req)
 		if err != nil {
 			rtn <- makeAIError(fmt.Errorf("failed to send anthropic request: %v", err))

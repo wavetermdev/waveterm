@@ -289,7 +289,7 @@ func unameKernelRelease() string {
 	}
 	releaseStr := strings.TrimSpace(string(out))
 	m := releaseRegex.FindStringSubmatch(releaseStr)
-	if m == nil || len(m) < 2 {
+	if len(m) < 2 {
 		log.Printf("invalid uname -r output: [%s]\n", releaseStr)
 		return "-"
 	}
