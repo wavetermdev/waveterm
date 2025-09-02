@@ -441,7 +441,7 @@ tasks:
 
     tsunami:demo:todo:
         desc: Run the tsunami todo demo application
-        cmd: go run demo/todo/main-todo.go
+        cmd: go run demo/todo/*.go
         dir: tsunami
         env:
             TSUNAMI_LISTENADDR: "localhost:12026"

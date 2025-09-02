@@ -4,10 +4,12 @@
 package app
 
 import (
+	"embed"
 	"encoding/json"
 	"fmt"
 	"io"
 	"log"
+	"mime"
 	"net/http"
 	"strings"
 	"sync"
@@ -18,6 +20,11 @@ import (
 )
 
 const SSEKeepAliveDuration = 5 * time.Second
+
+func init() {
+	// Add explicit mapping for .json files
+	mime.AddExtensionType(".json", "application/json")
+}
 
 type HTTPHandlers struct {
 	Client     *Client
@@ -30,10 +37,15 @@ func NewHTTPHandlers(client *Client) *HTTPHandlers {
 	}
 }
 
-func (h *HTTPHandlers) RegisterHandlers(mux *http.ServeMux) {
+func (h *HTTPHandlers) RegisterHandlers(mux *http.ServeMux, embeddedFS *embed.FS) {
 	mux.HandleFunc("/api/render", h.handleRender)
 	mux.HandleFunc("/api/updates", h.handleSSE)
-	mux.HandleFunc("/assets/", h.handleAssetsUrl)
+	mux.HandleFunc("/files/", h.handleAssetsUrl)
+	
+	// Add fallback handler for embedded static files in production mode
+	if embeddedFS != nil {
+		mux.HandleFunc("/", h.handleStaticFiles(embeddedFS))
+	}
 }
 
 func (h *HTTPHandlers) handleRender(w http.ResponseWriter, r *http.Request) {
@@ -220,5 +232,33 @@ func (h *HTTPHandlers) handleSSE(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprintf(w, "\n")
 			flusher.Flush()
 		}
+	}
+}
+
+func (h *HTTPHandlers) handleStaticFiles(embeddedFS *embed.FS) http.HandlerFunc {
+	// Create a file server from the embedded FS
+	fileServer := http.FileServer(http.FS(embeddedFS))
+	
+	return func(w http.ResponseWriter, r *http.Request) {
+		defer func() {
+			panicErr := util.PanicHandler("handleStaticFiles", recover())
+			if panicErr != nil {
+				http.Error(w, fmt.Sprintf("internal server error: %v", panicErr), http.StatusInternalServerError)
+			}
+		}()
+
+		// Skip if this is an API or files request (already handled by other handlers)
+		if strings.HasPrefix(r.URL.Path, "/api/") || strings.HasPrefix(r.URL.Path, "/files/") {
+			http.NotFound(w, r)
+			return
+		}
+
+		// Handle root "/" => "/index.html"
+		if r.URL.Path == "/" {
+			r.URL.Path = "/index.html"
+		}
+
+		// Serve the file using Go's file server
+		fileServer.ServeHTTP(w, r)
 	}
 }

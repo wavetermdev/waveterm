@@ -432,7 +432,7 @@ function VDomInnerView({ model }: VDomViewProps) {
     return (
         <>
             {model.backendOpts?.globalstyles ? (
-                <WaveStyle src="/assets/global.css" model={model} onMount={handleStylesMounted} />
+                <WaveStyle src="/files/global.css" model={model} onMount={handleStylesMounted} />
             ) : null}
             {styleMounted ? <VDomRoot model={model} /> : null}
         </>
