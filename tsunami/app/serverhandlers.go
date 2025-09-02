@@ -37,14 +37,19 @@ func NewHTTPHandlers(client *Client) *HTTPHandlers {
 	}
 }
 
-func (h *HTTPHandlers) RegisterHandlers(mux *http.ServeMux, embeddedFS *embed.FS) {
+func (h *HTTPHandlers) RegisterHandlers(mux *http.ServeMux, assetsFS *embed.FS, staticFS *embed.FS) {
 	mux.HandleFunc("/api/render", h.handleRender)
 	mux.HandleFunc("/api/updates", h.handleSSE)
 	mux.HandleFunc("/files/", h.handleAssetsUrl)
-	
+
+	// Add handler for static files at /static/ path
+	if staticFS != nil {
+		mux.HandleFunc("/static/", h.handleStaticPathFiles(staticFS))
+	}
+
 	// Add fallback handler for embedded static files in production mode
-	if embeddedFS != nil {
-		mux.HandleFunc("/", h.handleStaticFiles(embeddedFS))
+	if assetsFS != nil {
+		mux.HandleFunc("/", h.handleStaticFiles(assetsFS))
 	}
 }
 
@@ -238,7 +243,7 @@ func (h *HTTPHandlers) handleSSE(w http.ResponseWriter, r *http.Request) {
 func (h *HTTPHandlers) handleStaticFiles(embeddedFS *embed.FS) http.HandlerFunc {
 	// Create a file server from the embedded FS
 	fileServer := http.FileServer(http.FS(embeddedFS))
-	
+
 	return func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			panicErr := util.PanicHandler("handleStaticFiles", recover())
@@ -256,6 +261,29 @@ func (h *HTTPHandlers) handleStaticFiles(embeddedFS *embed.FS) http.HandlerFunc 
 		// Handle root "/" => "/index.html"
 		if r.URL.Path == "/" {
 			r.URL.Path = "/index.html"
+		}
+
+		// Serve the file using Go's file server
+		fileServer.ServeHTTP(w, r)
+	}
+}
+
+func (h *HTTPHandlers) handleStaticPathFiles(staticFS *embed.FS) http.HandlerFunc {
+	// Create a file server from the embedded FS
+	fileServer := http.FileServer(http.FS(staticFS))
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		defer func() {
+			panicErr := util.PanicHandler("handleStaticPathFiles", recover())
+			if panicErr != nil {
+				http.Error(w, fmt.Sprintf("internal server error: %v", panicErr), http.StatusInternalServerError)
+			}
+		}()
+
+		// Strip /static/ prefix from the path
+		r.URL.Path = strings.TrimPrefix(r.URL.Path, "/static")
+		if r.URL.Path == "" {
+			r.URL.Path = "/"
 		}
 
 		// Serve the file using Go's file server

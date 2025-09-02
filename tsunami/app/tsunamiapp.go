@@ -30,6 +30,7 @@ const TsunamiListenAddrEnvVar = "TSUNAMI_LISTENADDR"
 const DefaultListenAddr = "localhost:0"
 
 var assetsFS *embed.FS
+var staticFS *embed.FS
 
 type SSEvent struct {
 	Event string
@@ -135,7 +136,7 @@ func (c *Client) runMainE() error {
 	if c.SetupFn != nil {
 		c.SetupFn()
 	}
-	err := c.ListenAndServe(context.Background(), assetsFS)
+	err := c.ListenAndServe(context.Background())
 	if err != nil {
 		return err
 	}
@@ -155,13 +156,13 @@ func (c *Client) RunMain() {
 	}
 }
 
-func (c *Client) ListenAndServe(ctx context.Context, embeddedFS *embed.FS) error {
+func (c *Client) ListenAndServe(ctx context.Context) error {
 	// Create HTTP handlers
 	handlers := NewHTTPHandlers(c)
 
 	// Create a new ServeMux and register handlers
 	mux := http.NewServeMux()
-	handlers.RegisterHandlers(mux, embeddedFS)
+	handlers.RegisterHandlers(mux, assetsFS, staticFS)
 
 	// Determine listen address from environment variable or use default
 	listenAddr := os.Getenv(TsunamiListenAddrEnvVar)
@@ -456,4 +457,8 @@ func (c *Client) RegisterFileHandler(path string, option FileHandlerOption) {
 
 func RegisterAssetsFS(fs embed.FS) {
 	assetsFS = &fs
+}
+
+func RegisterStaticFS(fs embed.FS) {
+	staticFS = &fs
 }
