@@ -450,3 +450,17 @@ tasks:
         desc: Run the tsunami frontend vite dev server
         cmd: npm run dev
         dir: tsunami/frontend
+
+    tsunami:build:
+        desc: Build the tsunami binary.
+        cmds:
+            - cmd: "{{.RM}} bin/tsunami*"
+              ignore_error: true
+            - mkdir -p bin
+            - cd tsunami && go build -ldflags "-X main.BuildTime=$({{.DATE}} +'%Y%m%d%H%M') -X main.TsunamiVersion={{.VERSION}}" -o ../bin/tsunami{{exeExt}} cmd/main-tsunami.go
+        sources:
+            - "tsunami/**/*.go"
+            - "tsunami/go.mod"
+            - "tsunami/go.sum"
+        generates:
+            - "bin/tsunami{{exeExt}}"
