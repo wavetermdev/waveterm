@@ -287,26 +287,7 @@ func P(propName string, propVal any) any {
 	return map[string]any{propName: propVal}
 }
 
-func UseState[T any](ctx context.Context, initialVal T) (T, func(T)) {
-	vc := GetRenderContext(ctx)
-	hookVal := vc.GetOrderedHook()
-	if !hookVal.Init {
-		hookVal.Init = true
-		hookVal.Val = initialVal
-	}
-	var rtnVal T
-	rtnVal, ok := hookVal.Val.(T)
-	if !ok {
-		panic("UseState hook value is not a state (possible out of order or conditional hooks)")
-	}
-	setVal := func(newVal T) {
-		hookVal.Val = newVal
-		vc.AddRenderWork(vc.GetCompWaveId())
-	}
-	return rtnVal, setVal
-}
-
-func UseStateWithFn[T any](ctx context.Context, initialVal T) (T, func(T), func(func(T) T)) {
+func UseState[T any](ctx context.Context, initialVal T) (T, func(T), func(func(T) T)) {
 	vc := GetRenderContext(ctx)
 	hookVal := vc.GetOrderedHook()
 	if !hookVal.Init {
@@ -332,7 +313,7 @@ func UseStateWithFn[T any](ctx context.Context, initialVal T) (T, func(T), func(
 	return rtnVal, setVal, setFuncVal
 }
 
-func UseAtom[T any](ctx context.Context, atomName string) (T, func(T)) {
+func UseSharedAtom[T any](ctx context.Context, atomName string) (T, func(T), func(func(T) T)) {
 	vc := GetRenderContext(ctx)
 	hookVal := vc.GetOrderedHook()
 	if !hookVal.Init {
@@ -355,7 +336,13 @@ func UseAtom[T any](ctx context.Context, atomName string) (T, func(T)) {
 			vc.AddRenderWork(waveId)
 		}
 	}
-	return atomVal, setVal
+	setFuncVal := func(updateFunc func(T) T) {
+		atom.Val = updateFunc(atom.Val.(T))
+		for waveId := range atom.UsedBy {
+			vc.AddRenderWork(waveId)
+		}
+	}
+	return atomVal, setVal, setFuncVal
 }
 
 func UseVDomRef(ctx context.Context) *VDomRef {

@@ -112,12 +112,12 @@ var TodoList = app.DefineComponent(AppClient, "TodoList",
 var App = app.DefineComponent(AppClient, "App",
 	func(ctx context.Context, _ any) any {
 		// Multiple state hooks example
-		todos, setTodos := vdom.UseState(ctx, []Todo{
+		todos, setTodos, _ := vdom.UseState(ctx, []Todo{
 			{Id: 1, Text: "Learn VDOM", Completed: false},
 			{Id: 2, Text: "Build a todo app", Completed: false},
 		})
-		nextId, setNextId := vdom.UseState(ctx, 3)
-		inputText, setInputText := vdom.UseState(ctx, "")
+		nextId, setNextId, _ := vdom.UseState(ctx, 3)
+		inputText, setInputText, _ := vdom.UseState(ctx, "")
 
 		// Event handlers modifying multiple pieces of state
 		addTodo := func() {
