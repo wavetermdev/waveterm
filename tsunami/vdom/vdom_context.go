@@ -14,7 +14,10 @@ var vdomContextKey = vdomContextKeyType{}
 type VDomContext interface {
 	AddRenderWork(id string)
 	AddEffectWork(id string, effectIndex int)
-	GetAtom(atomName string) *Atom
+	AtomSetUsedBy(atomName string, waveId string, used bool)
+	AtomAddRenderWork(atomName string)
+	GetAtomVal(atomName string) any
+	SetAtomVal(atomName string, val any, markDirty bool)
 	GetRenderTs() int64
 	GetCompWaveId() string
 	GetOrderedHook() *Hook

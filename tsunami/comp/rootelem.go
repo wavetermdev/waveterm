@@ -10,6 +10,7 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/google/uuid"
 	"github.com/wavetermdev/waveterm/tsunami/rpctypes"
@@ -30,6 +31,7 @@ type RootElem struct {
 	EffectWorkQueue []*vdom.EffectWorkElem
 	NeedsRenderMap  map[string]bool
 	Atoms           map[string]*vdom.Atom
+	atomLock        sync.Mutex
 	RefOperations   []rpctypes.VDomRefOperation
 }
 
@@ -44,6 +46,20 @@ func (r *RootElem) AddEffectWork(id string, effectIndex int) {
 	r.EffectWorkQueue = append(r.EffectWorkQueue, &vdom.EffectWorkElem{Id: id, EffectIndex: effectIndex})
 }
 
+func (r *RootElem) GetDataMap() map[string]any {
+	r.atomLock.Lock()
+	defer r.atomLock.Unlock()
+
+	result := make(map[string]any)
+	for atomName, atom := range r.Atoms {
+		if strings.HasPrefix(atomName, "$data.") {
+			strippedName := strings.TrimPrefix(atomName, "$data.")
+			result[strippedName] = atom.Val
+		}
+	}
+	return result
+}
+
 func MakeRoot() *RootElem {
 	return &RootElem{
 		Root:    nil,
@@ -53,7 +69,7 @@ func MakeRoot() *RootElem {
 	}
 }
 
-func (r *RootElem) GetAtom(name string) *vdom.Atom {
+func (r *RootElem) ensureAtomNoLock(name string) *vdom.Atom {
 	atom, ok := r.Atoms[name]
 	if !ok {
 		atom = &vdom.Atom{UsedBy: make(map[string]bool)}
@@ -62,12 +78,47 @@ func (r *RootElem) GetAtom(name string) *vdom.Atom {
 	return atom
 }
 
+
+func (r *RootElem) AtomSetUsedBy(atomName string, waveId string, used bool) {
+	r.atomLock.Lock()
+	defer r.atomLock.Unlock()
+	
+	atom := r.ensureAtomNoLock(atomName)
+	if used {
+		atom.UsedBy[waveId] = true
+	} else {
+		delete(atom.UsedBy, waveId)
+	}
+}
+
+func (r *RootElem) AtomAddRenderWork(atomName string) {
+	r.atomLock.Lock()
+	defer r.atomLock.Unlock()
+	
+	atom, ok := r.Atoms[atomName]
+	if !ok {
+		return
+	}
+	for compId := range atom.UsedBy {
+		r.AddRenderWork(compId)
+	}
+}
+
 func (r *RootElem) GetAtomVal(name string) any {
-	atom := r.GetAtom(name)
+	r.atomLock.Lock()
+	defer r.atomLock.Unlock()
+
+	atom, ok := r.Atoms[name]
+	if !ok {
+		return nil
+	}
 	return atom.Val
 }
 
 func (r *RootElem) GetStateSync(full bool) []rpctypes.VDomStateSync {
+	r.atomLock.Lock()
+	defer r.atomLock.Unlock()
+
 	stateSync := make([]rpctypes.VDomStateSync, 0)
 	for atomName, atom := range r.Atoms {
 		if atom.Dirty || full {
@@ -79,7 +130,10 @@ func (r *RootElem) GetStateSync(full bool) []rpctypes.VDomStateSync {
 }
 
 func (r *RootElem) SetAtomVal(name string, val any, markDirty bool) {
-	atom := r.GetAtom(name)
+	r.atomLock.Lock()
+	defer r.atomLock.Unlock()
+
+	atom := r.ensureAtomNoLock(name)
 	if !markDirty {
 		atom.Val = val
 		return

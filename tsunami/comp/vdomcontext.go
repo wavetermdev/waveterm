@@ -27,8 +27,20 @@ func (vc *VDomContextVal) AddEffectWork(id string, effectIndex int) {
 	vc.Root.AddEffectWork(id, effectIndex)
 }
 
-func (vc *VDomContextVal) GetAtom(atomName string) *vdom.Atom {
-	return vc.Root.GetAtom(atomName)
+func (vc *VDomContextVal) AtomSetUsedBy(atomName string, waveId string, used bool) {
+	vc.Root.AtomSetUsedBy(atomName, waveId, used)
+}
+
+func (vc *VDomContextVal) AtomAddRenderWork(atomName string) {
+	vc.Root.AtomAddRenderWork(atomName)
+}
+
+func (vc *VDomContextVal) GetAtomVal(atomName string) any {
+	return vc.Root.GetAtomVal(atomName)
+}
+
+func (vc *VDomContextVal) SetAtomVal(atomName string, val any, markDirty bool) {
+	vc.Root.SetAtomVal(atomName, val, markDirty)
 }
 
 func (vc *VDomContextVal) GetRenderTs() int64 {

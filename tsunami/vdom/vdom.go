@@ -320,27 +320,25 @@ func useAtom[T any](ctx context.Context, atomName string) (T, func(T), func(func
 		hookVal.Init = true
 		closedWaveId := vc.GetCompWaveId()
 		hookVal.UnmountFn = func() {
-			atom := vc.GetAtom(atomName)
-			delete(atom.UsedBy, closedWaveId)
+			vc.AtomSetUsedBy(atomName, closedWaveId, false)
 		}
 	}
-	atom := vc.GetAtom(atomName)
-	atom.UsedBy[vc.GetCompWaveId()] = true
-	atomVal, ok := atom.Val.(T)
+	vc.AtomSetUsedBy(atomName, vc.GetCompWaveId(), true)
+	atomVal, ok := vc.GetAtomVal(atomName).(T)
 	if !ok {
-		panic(fmt.Sprintf("UseAtom %q value type mismatch (expected %T, got %T)", atomName, atomVal, atom.Val))
+		panic(fmt.Sprintf("UseAtom %q value type mismatch (expected %T, got %T)", atomName, atomVal, vc.GetAtomVal(atomName)))
 	}
 	setVal := func(newVal T) {
-		atom.Val = newVal
-		for waveId := range atom.UsedBy {
-			vc.AddRenderWork(waveId)
-		}
+		vc.SetAtomVal(atomName, newVal, true)
+		vc.AtomAddRenderWork(atomName)
 	}
 	setFuncVal := func(updateFunc func(T) T) {
-		atom.Val = updateFunc(atom.Val.(T))
-		for waveId := range atom.UsedBy {
-			vc.AddRenderWork(waveId)
+		currentVal, ok := vc.GetAtomVal(atomName).(T)
+		if !ok {
+			panic(fmt.Sprintf("UseAtom %q value type mismatch in setFuncVal", atomName))
 		}
+		vc.SetAtomVal(atomName, updateFunc(currentVal), true)
+		vc.AtomAddRenderWork(atomName)
 	}
 	return atomVal, setVal, setFuncVal
 }

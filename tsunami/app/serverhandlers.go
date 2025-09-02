@@ -40,6 +40,7 @@ func NewHTTPHandlers(client *Client) *HTTPHandlers {
 func (h *HTTPHandlers) RegisterHandlers(mux *http.ServeMux, assetsFS *embed.FS, staticFS *embed.FS) {
 	mux.HandleFunc("/api/render", h.handleRender)
 	mux.HandleFunc("/api/updates", h.handleSSE)
+	mux.HandleFunc("/api/data", h.handleData)
 	mux.HandleFunc("/files/", h.handleAssetsUrl)
 
 	// Add handler for static files at /static/ path
@@ -153,6 +154,28 @@ func (h *HTTPHandlers) processFrontendUpdate(feUpdate *rpctypes.VDomFrontendUpda
 
 	update.CreateTransferElems()
 	return update, nil
+}
+
+func (h *HTTPHandlers) handleData(w http.ResponseWriter, r *http.Request) {
+	defer func() {
+		panicErr := util.PanicHandler("handleData", recover())
+		if panicErr != nil {
+			http.Error(w, fmt.Sprintf("internal server error: %v", panicErr), http.StatusInternalServerError)
+		}
+	}()
+
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	result := h.Client.Root.GetDataMap()
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(result); err != nil {
+		log.Printf("failed to encode data response: %v", err)
+		http.Error(w, "failed to encode response", http.StatusInternalServerError)
+	}
 }
 
 func (h *HTTPHandlers) handleAssetsUrl(w http.ResponseWriter, r *http.Request) {
