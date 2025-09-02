@@ -246,14 +246,14 @@ func makeNullVDom() *vdom.VDomElem {
 	return &vdom.VDomElem{WaveId: uuid.New().String(), Tag: vdom.WaveNullTag}
 }
 
-func DefineComponent[P any](client *Client, name string, renderFn func(ctx context.Context, props P) any) vdom.Component[P] {
+func DefineComponentEx[P any](client *Client, name string, renderFn func(ctx context.Context, props P) any) vdom.Component[P] {
 	if name == "" {
 		panic("Component name cannot be empty")
 	}
 	if !unicode.IsUpper(rune(name[0])) {
 		panic("Component name must start with an uppercase letter")
 	}
-	err := client.RegisterComponent(name, renderFn)
+	err := client.registerComponent(name, renderFn)
 	if err != nil {
 		panic(err)
 	}
@@ -262,7 +262,7 @@ func DefineComponent[P any](client *Client, name string, renderFn func(ctx conte
 	}
 }
 
-func (c *Client) RegisterComponent(name string, cfunc any) error {
+func (c *Client) registerComponent(name string, cfunc any) error {
 	return c.Root.RegisterComponent(name, cfunc)
 }
 

@@ -4,6 +4,7 @@
 package util
 
 import (
+	"math"
 	"reflect"
 	"strconv"
 )
@@ -162,5 +163,78 @@ func NumToString[T any](value T) (string, bool) {
 		return strconv.FormatFloat(v, 'f', -1, 64), true
 	default:
 		return "", false
+	}
+}
+
+// FromFloat64 converts a float64 to the specified numeric type T
+// Returns the converted value and a bool indicating if the conversion was successful
+func FromFloat64[T any](val float64) (T, bool) {
+	var zero T
+	
+	// Check for NaN or infinity
+	if math.IsNaN(val) || math.IsInf(val, 0) {
+		return zero, false
+	}
+	
+	switch any(zero).(type) {
+	case int:
+		if val != float64(int64(val)) || val < math.MinInt || val > math.MaxInt {
+			return zero, false
+		}
+		return any(int(val)).(T), true
+	case int8:
+		if val != float64(int64(val)) || val < math.MinInt8 || val > math.MaxInt8 {
+			return zero, false
+		}
+		return any(int8(val)).(T), true
+	case int16:
+		if val != float64(int64(val)) || val < math.MinInt16 || val > math.MaxInt16 {
+			return zero, false
+		}
+		return any(int16(val)).(T), true
+	case int32:
+		if val != float64(int64(val)) || val < math.MinInt32 || val > math.MaxInt32 {
+			return zero, false
+		}
+		return any(int32(val)).(T), true
+	case int64:
+		if val != float64(int64(val)) || val < math.MinInt64 || val > math.MaxInt64 {
+			return zero, false
+		}
+		return any(int64(val)).(T), true
+	case uint:
+		if val < 0 || val != float64(uint64(val)) || val > math.MaxUint {
+			return zero, false
+		}
+		return any(uint(val)).(T), true
+	case uint8:
+		if val < 0 || val != float64(uint64(val)) || val > math.MaxUint8 {
+			return zero, false
+		}
+		return any(uint8(val)).(T), true
+	case uint16:
+		if val < 0 || val != float64(uint64(val)) || val > math.MaxUint16 {
+			return zero, false
+		}
+		return any(uint16(val)).(T), true
+	case uint32:
+		if val < 0 || val != float64(uint64(val)) || val > math.MaxUint32 {
+			return zero, false
+		}
+		return any(uint32(val)).(T), true
+	case uint64:
+		if val < 0 || val != float64(uint64(val)) || val > math.MaxUint64 {
+			return zero, false
+		}
+		return any(uint64(val)).(T), true
+	case float32:
+		if math.Abs(val) > math.MaxFloat32 {
+			return zero, false
+		}
+		return any(float32(val)).(T), true
+	case float64:
+		return any(val).(T), true
+	default:
+		return zero, false
 	}
 }

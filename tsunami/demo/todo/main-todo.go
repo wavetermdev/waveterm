@@ -12,12 +12,14 @@ import (
 //go:embed tw.css
 var styleCSS []byte
 
-// Initialize client with embedded Tailwind styles and ctrl-c handling
-var AppClient = app.MakeClient(app.AppOpts{
-	CloseOnCtrlC: true,
-	GlobalStyles: styleCSS,
-	Title:        "Todo App (Tsunami Demo)",
-})
+func init() {
+	// Set up the default client with embedded Tailwind styles and ctrl-c handling
+	app.SetAppOpts(app.AppOpts{
+		CloseOnCtrlC: true,
+		GlobalStyles: styleCSS,
+		Title:        "Todo App (Tsunami Demo)",
+	})
+}
 
 // Basic domain types with json tags for props
 type Todo struct {
@@ -46,7 +48,7 @@ type InputFieldProps struct {
 }
 
 // Reusable input component showing keyboard event handling
-var InputField = app.DefineComponent(AppClient, "InputField",
+var InputField = app.DefineComponent("InputField",
 	func(ctx context.Context, props InputFieldProps) any {
 		// Example of special key handling with VDomFunc
 		keyDown := &vdom.VDomFunc{
@@ -71,7 +73,7 @@ var InputField = app.DefineComponent(AppClient, "InputField",
 )
 
 // Item component showing conditional classes and event handling
-var TodoItem = app.DefineComponent(AppClient, "TodoItem",
+var TodoItem = app.DefineComponent("TodoItem",
 	func(ctx context.Context, props TodoItemProps) any {
 		return vdom.H("div", map[string]any{
 			"className": vdom.Classes("flex items-center gap-2.5 p-2 border border-border rounded", vdom.If(props.Todo.Completed, "opacity-70")),
@@ -94,7 +96,7 @@ var TodoItem = app.DefineComponent(AppClient, "TodoItem",
 )
 
 // List component demonstrating mapping over data, using WithKey to set key on a component
-var TodoList = app.DefineComponent(AppClient, "TodoList",
+var TodoList = app.DefineComponent("TodoList",
 	func(ctx context.Context, props TodoListProps) any {
 		return vdom.H("div", map[string]any{
 			"className": "flex flex-col gap-2",
@@ -109,7 +111,7 @@ var TodoList = app.DefineComponent(AppClient, "TodoList",
 )
 
 // Root component showing state management and composition
-var App = app.DefineComponent(AppClient, "App",
+var App = app.DefineComponent("App",
 	func(ctx context.Context, _ any) any {
 		// Multiple state hooks example
 		todos, setTodos, _ := vdom.UseState(ctx, []Todo{
@@ -187,5 +189,5 @@ var App = app.DefineComponent(AppClient, "App",
 )
 
 func main() {
-	AppClient.RunMain()
+	app.RunMain()
 }

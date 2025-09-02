@@ -313,6 +313,26 @@ func UseState[T any](ctx context.Context, initialVal T) (T, func(T), func(func(T
 	return rtnVal, setVal, setFuncVal
 }
 
+func getTypedAtomValue[T any](rawVal any, atomName string) T {
+	var result T
+	if rawVal == nil {
+		return *new(T)
+	}
+
+	var ok bool
+	result, ok = rawVal.(T)
+	if !ok {
+		// Try converting from float64 if rawVal is float64
+		if f64Val, isFloat64 := rawVal.(float64); isFloat64 {
+			if converted, convOk := util.FromFloat64[T](f64Val); convOk {
+				return converted
+			}
+		}
+		panic(fmt.Sprintf("UseAtom %q value type mismatch (expected %T, got %T)", atomName, *new(T), rawVal))
+	}
+	return result
+}
+
 func useAtom[T any](ctx context.Context, atomName string) (T, func(T), func(func(T) T)) {
 	vc := GetRenderContext(ctx)
 	hookVal := vc.GetOrderedHook()
@@ -324,19 +344,13 @@ func useAtom[T any](ctx context.Context, atomName string) (T, func(T), func(func
 		}
 	}
 	vc.AtomSetUsedBy(atomName, vc.GetCompWaveId(), true)
-	atomVal, ok := vc.GetAtomVal(atomName).(T)
-	if !ok {
-		panic(fmt.Sprintf("UseAtom %q value type mismatch (expected %T, got %T)", atomName, atomVal, vc.GetAtomVal(atomName)))
-	}
+	atomVal := getTypedAtomValue[T](vc.GetAtomVal(atomName), atomName)
 	setVal := func(newVal T) {
 		vc.SetAtomVal(atomName, newVal, true)
 		vc.AtomAddRenderWork(atomName)
 	}
 	setFuncVal := func(updateFunc func(T) T) {
-		currentVal, ok := vc.GetAtomVal(atomName).(T)
-		if !ok {
-			panic(fmt.Sprintf("UseAtom %q value type mismatch in setFuncVal", atomName))
-		}
+		currentVal := getTypedAtomValue[T](vc.GetAtomVal(atomName), atomName)
 		vc.SetAtomVal(atomName, updateFunc(currentVal), true)
 		vc.AtomAddRenderWork(atomName)
 	}
