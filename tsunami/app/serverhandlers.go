@@ -26,6 +26,12 @@ func init() {
 	mime.AddExtensionType(".json", "application/json")
 }
 
+type HandlerOpts struct {
+	AssetsFS     *embed.FS
+	StaticFS     *embed.FS
+	ManifestFile *FileHandlerOption
+}
+
 type HTTPHandlers struct {
 	Client     *Client
 	renderLock sync.Mutex
@@ -37,21 +43,22 @@ func NewHTTPHandlers(client *Client) *HTTPHandlers {
 	}
 }
 
-func (h *HTTPHandlers) RegisterHandlers(mux *http.ServeMux, assetsFS *embed.FS, staticFS *embed.FS) {
+func (h *HTTPHandlers) RegisterHandlers(mux *http.ServeMux, opts HandlerOpts) {
 	mux.HandleFunc("/api/render", h.handleRender)
 	mux.HandleFunc("/api/updates", h.handleSSE)
 	mux.HandleFunc("/api/data", h.handleData)
 	mux.HandleFunc("/api/config", h.handleConfig)
+	mux.HandleFunc("/api/manifest", h.handleManifest(opts.ManifestFile))
 	mux.HandleFunc("/files/", h.handleAssetsUrl)
 
 	// Add handler for static files at /static/ path
-	if staticFS != nil {
-		mux.HandleFunc("/static/", h.handleStaticPathFiles(staticFS))
+	if opts.StaticFS != nil {
+		mux.HandleFunc("/static/", h.handleStaticPathFiles(opts.StaticFS))
 	}
 
 	// Add fallback handler for embedded static files in production mode
-	if assetsFS != nil {
-		mux.HandleFunc("/", h.handleStaticFiles(assetsFS))
+	if opts.AssetsFS != nil {
+		mux.HandleFunc("/", h.handleStaticFiles(opts.AssetsFS))
 	}
 }
 
@@ -334,6 +341,29 @@ func (h *HTTPHandlers) handleStaticFiles(embeddedFS *embed.FS) http.HandlerFunc 
 
 		// Serve the file using Go's file server
 		fileServer.ServeHTTP(w, r)
+	}
+}
+
+func (h *HTTPHandlers) handleManifest(manifestFile *FileHandlerOption) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		defer func() {
+			panicErr := util.PanicHandler("handleManifest", recover())
+			if panicErr != nil {
+				http.Error(w, fmt.Sprintf("internal server error: %v", panicErr), http.StatusInternalServerError)
+			}
+		}()
+
+		if r.Method != http.MethodGet {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		if manifestFile == nil {
+			http.NotFound(w, r)
+			return
+		}
+
+		ServeFileOption(w, r, *manifestFile)
 	}
 }
 
