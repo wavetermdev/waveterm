@@ -81,10 +81,10 @@ func (h *HTTPHandlers) handleRender(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if feUpdate.ForceTakeover {
-		h.Client.ClientTakeover(feUpdate.ClientId)
+		h.Client.clientTakeover(feUpdate.ClientId)
 	}
 
-	if err := h.Client.CheckClientId(feUpdate.ClientId); err != nil {
+	if err := h.Client.checkClientId(feUpdate.ClientId); err != nil {
 		http.Error(w, fmt.Sprintf("client id error: %v", err), http.StatusBadRequest)
 		return
 	}
@@ -197,7 +197,7 @@ func (h *HTTPHandlers) handleConfig(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (h *HTTPHandlers) handleConfigGet(w http.ResponseWriter, r *http.Request) {
+func (h *HTTPHandlers) handleConfigGet(w http.ResponseWriter, _ *http.Request) {
 	result := h.Client.Root.GetConfigMap()
 
 	w.Header().Set("Content-Type", "application/json")
@@ -246,10 +246,6 @@ func (h *HTTPHandlers) handleAssetsUrl(w http.ResponseWriter, r *http.Request) {
 		ServeFileOption(w, r, *h.Client.GlobalStylesOption)
 		return
 	}
-	if h.Client.OverrideUrlHandler != nil {
-		h.Client.OverrideUrlHandler.ServeHTTP(w, r)
-		return
-	}
 	h.Client.UrlHandlerMux.ServeHTTP(w, r)
 }
 
@@ -267,7 +263,7 @@ func (h *HTTPHandlers) handleSSE(w http.ResponseWriter, r *http.Request) {
 	}
 
 	clientId := r.URL.Query().Get("clientId")
-	if err := h.Client.CheckClientId(clientId); err != nil {
+	if err := h.Client.checkClientId(clientId); err != nil {
 		http.Error(w, fmt.Sprintf("client id error: %v", err), http.StatusBadRequest)
 		return
 	}

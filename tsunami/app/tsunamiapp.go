@@ -59,8 +59,19 @@ type Client struct {
 	GlobalEventHandler func(client *Client, event vdom.VDomEvent)
 	GlobalStylesOption *FileHandlerOption
 	UrlHandlerMux      *mux.Router
-	OverrideUrlHandler http.Handler
 	SetupFn            func()
+}
+
+func MakeClient(appOpts AppOpts) *Client {
+	client := &Client{
+		Lock:          &sync.Mutex{},
+		Root:          comp.MakeRoot(),
+		DoneCh:        make(chan struct{}),
+		SSEventCh:     make(chan SSEvent, 100),
+		UrlHandlerMux: mux.NewRouter(),
+	}
+	client.SetAppOpts(appOpts)
+	return client
 }
 
 func (c *Client) GetIsDone() bool {
@@ -69,7 +80,7 @@ func (c *Client) GetIsDone() bool {
 	return c.IsDone
 }
 
-func (c *Client) CheckClientId(clientId string) error {
+func (c *Client) checkClientId(clientId string) error {
 	if clientId == "" {
 		return fmt.Errorf("client id cannot be empty")
 	}
@@ -82,7 +93,7 @@ func (c *Client) CheckClientId(clientId string) error {
 	return fmt.Errorf("client id mismatch: expected %s, got %s", c.CurrentClientId, clientId)
 }
 
-func (c *Client) ClientTakeover(clientId string) {
+func (c *Client) clientTakeover(clientId string) {
 	c.Lock.Lock()
 	defer c.Lock.Unlock()
 	c.CurrentClientId = clientId
@@ -103,40 +114,39 @@ func (c *Client) SetGlobalEventHandler(handler func(client *Client, event vdom.V
 	c.GlobalEventHandler = handler
 }
 
-func (c *Client) SetOverrideUrlHandler(handler http.Handler) {
-	c.OverrideUrlHandler = handler
-}
+func (c *Client) SetAppOpts(appOpts AppOpts) {
+	c.Lock.Lock()
+	defer c.Lock.Unlock()
 
-func MakeClient(appOpts AppOpts) *Client {
 	if appOpts.RootComponentName == "" {
 		appOpts.RootComponentName = "App"
 	}
-	client := &Client{
-		Lock:          &sync.Mutex{},
-		AppOpts:       appOpts,
-		Root:          comp.MakeRoot(),
-		DoneCh:        make(chan struct{}),
-		SSEventCh:     make(chan SSEvent, 100),
-		UrlHandlerMux: mux.NewRouter(),
-		Opts: rpctypes.VDomBackendOpts{
-			CloseOnCtrlC:         appOpts.CloseOnCtrlC,
-			GlobalKeyboardEvents: appOpts.GlobalKeyboardEvents,
-			Title:                appOpts.Title,
-		},
-	}
+
+	c.AppOpts = appOpts
+
+	// Update the VDomBackendOpts
+	c.Opts.CloseOnCtrlC = appOpts.CloseOnCtrlC
+	c.Opts.GlobalKeyboardEvents = appOpts.GlobalKeyboardEvents
+	c.Opts.Title = appOpts.Title
+
+	// Update RootElem if component name changed
+	c.RootElem = vdom.E(appOpts.RootComponentName)
+
+	// Update global styles
 	if len(appOpts.GlobalStyles) > 0 {
-		client.Opts.GlobalStyles = true
-		client.GlobalStylesOption = &FileHandlerOption{Data: appOpts.GlobalStyles, MimeType: "text/css"}
+		c.Opts.GlobalStyles = true
+		c.GlobalStylesOption = &FileHandlerOption{Data: appOpts.GlobalStyles, MimeType: "text/css"}
+	} else {
+		c.Opts.GlobalStyles = false
+		c.GlobalStylesOption = nil
 	}
-	client.SetRootElem(vdom.E(appOpts.RootComponentName))
-	return client
 }
 
 func (c *Client) runMainE() error {
 	if c.SetupFn != nil {
 		c.SetupFn()
 	}
-	err := c.ListenAndServe(context.Background())
+	err := c.listenAndServe(context.Background())
 	if err != nil {
 		return err
 	}
@@ -156,7 +166,7 @@ func (c *Client) RunMain() {
 	}
 }
 
-func (c *Client) ListenAndServe(ctx context.Context) error {
+func (c *Client) listenAndServe(ctx context.Context) error {
 	// Create HTTP handlers
 	handlers := NewHTTPHandlers(c)
 
@@ -203,10 +213,6 @@ func (c *Client) ListenAndServe(ctx context.Context) error {
 	}()
 
 	return nil
-}
-
-func (c *Client) SetRootElem(elem *vdom.VDomElem) {
-	c.RootElem = elem
 }
 
 func (c *Client) SendAsyncInitiation() error {
