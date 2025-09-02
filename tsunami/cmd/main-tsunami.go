@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
+	"github.com/wavetermdev/waveterm/tsunami/build"
 	"github.com/wavetermdev/waveterm/tsunami/tsunamibase"
 )
 
@@ -27,8 +28,50 @@ var versionCmd = &cobra.Command{
 	},
 }
 
+var buildCmd = &cobra.Command{
+	Use:   "build [directory]",
+	Short: "Build a Tsunami application",
+	Long:  `Build a Tsunami application from the specified directory.`,
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		verbose, _ := cmd.Flags().GetBool("verbose")
+		opts := build.BuildOpts{
+			Dir:     args[0],
+			Verbose: verbose,
+		}
+		if err := build.TsunamiBuild(opts); err != nil {
+			fmt.Printf("Build failed: %v\n", err)
+			os.Exit(1)
+		}
+	},
+}
+
+var runCmd = &cobra.Command{
+	Use:   "run [directory]",
+	Short: "Build and run a Tsunami application",
+	Long:  `Build and run a Tsunami application from the specified directory.`,
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		verbose, _ := cmd.Flags().GetBool("verbose")
+		opts := build.BuildOpts{
+			Dir:     args[0],
+			Verbose: verbose,
+		}
+		if err := build.TsunamiRun(opts); err != nil {
+			fmt.Printf("Run failed: %v\n", err)
+			os.Exit(1)
+		}
+	},
+}
+
 func init() {
 	rootCmd.AddCommand(versionCmd)
+
+	buildCmd.Flags().BoolP("verbose", "v", false, "Enable verbose output")
+	rootCmd.AddCommand(buildCmd)
+
+	runCmd.Flags().BoolP("verbose", "v", false, "Enable verbose output")
+	rootCmd.AddCommand(runCmd)
 }
 
 func main() {
