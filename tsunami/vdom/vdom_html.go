@@ -84,6 +84,23 @@ func getAttrString(token htmltoken.Token, key string) string {
 	return ""
 }
 
+func isValidBindingKey(bindKey string) bool {
+	if bindKey == "" {
+		return false
+	}
+	// validate that bindKey starts with valid atom prefix and has at least one char after the dot
+	if strings.HasPrefix(bindKey, "$shared.") && len(bindKey) > 8 {
+		return true
+	}
+	if strings.HasPrefix(bindKey, "$config.") && len(bindKey) > 8 {
+		return true
+	}
+	if strings.HasPrefix(bindKey, "$data.") && len(bindKey) > 6 {
+		return true
+	}
+	return false
+}
+
 func attrToProp(attrVal string, isJson bool, params map[string]any) any {
 	if isJson {
 		var val any
@@ -108,7 +125,7 @@ func attrToProp(attrVal string, isJson bool, params map[string]any) any {
 	}
 	if strings.HasPrefix(attrVal, Html_BindPrefix) {
 		bindKey := attrVal[len(Html_BindPrefix):]
-		if bindKey == "" {
+		if bindKey == "" || !isValidBindingKey(bindKey) {
 			return nil
 		}
 		return &VDomBinding{Type: ObjectType_Binding, Bind: bindKey}
@@ -364,6 +381,12 @@ outer:
 			}
 			if token.Data == Html_BindTagName {
 				keyAttr := getAttrString(token, "key")
+				if !isValidBindingKey(keyAttr) {
+					errText := fmt.Sprintf("invalid binding key: %q (must start with $shared., $config., or $data.)", keyAttr)
+					errTextElem := TextElem(errText)
+					appendChildToStack(elemStack, &errTextElem)
+					continue
+				}
 				binding := &VDomBinding{Type: ObjectType_Binding, Bind: keyAttr}
 				appendChildToStack(elemStack, &VDomElem{Tag: WaveTextTag, Props: map[string]any{"text": binding}})
 				continue

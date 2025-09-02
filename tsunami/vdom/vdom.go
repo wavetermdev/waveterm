@@ -313,7 +313,7 @@ func UseState[T any](ctx context.Context, initialVal T) (T, func(T), func(func(T
 	return rtnVal, setVal, setFuncVal
 }
 
-func UseSharedAtom[T any](ctx context.Context, atomName string) (T, func(T), func(func(T) T)) {
+func useAtom[T any](ctx context.Context, atomName string) (T, func(T), func(func(T) T)) {
 	vc := GetRenderContext(ctx)
 	hookVal := vc.GetOrderedHook()
 	if !hookVal.Init {
@@ -343,6 +343,18 @@ func UseSharedAtom[T any](ctx context.Context, atomName string) (T, func(T), fun
 		}
 	}
 	return atomVal, setVal, setFuncVal
+}
+
+func UseSharedAtom[T any](ctx context.Context, atomName string) (T, func(T), func(func(T) T)) {
+	return useAtom[T](ctx, "$shared."+atomName)
+}
+
+func UseConfig[T any](ctx context.Context, atomName string) (T, func(T), func(func(T) T)) {
+	return useAtom[T](ctx, "$config."+atomName)
+}
+
+func UseData[T any](ctx context.Context, atomName string) (T, func(T), func(func(T) T)) {
+	return useAtom[T](ctx, "$data."+atomName)
 }
 
 func UseVDomRef(ctx context.Context) *VDomRef {

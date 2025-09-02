@@ -185,19 +185,20 @@ function resolveBinding(binding: VDomBinding, model: TsunamiModel): [any, string
     if (bindName == null || bindName == "") {
         return [null, []];
     }
-    // for now we only recognize $.[atomname] bindings
-    if (!bindName.startsWith("$.")) {
+    // validate that bindName starts with valid atom prefix and has at least one char after the dot
+    const isValidBinding = (bindName.startsWith("$shared.") && bindName.length > 8) ||
+                          (bindName.startsWith("$config.") && bindName.length > 8) ||
+                          (bindName.startsWith("$data.") && bindName.length > 6);
+    
+    if (!isValidBinding) {
         return [null, []];
     }
-    const atomName = bindName.substring(2);
-    if (atomName == "") {
-        return [null, []];
-    }
-    const atom = model.getAtomContainer(atomName);
+    
+    const atom = model.getAtomContainer(bindName);
     if (atom == null) {
         return [null, []];
     }
-    return [atom.val, [atomName]];
+    return [atom.val, [bindName]];
 }
 
 type GenericPropsType = { [key: string]: any };
