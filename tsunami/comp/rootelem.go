@@ -60,6 +60,20 @@ func (r *RootElem) GetDataMap() map[string]any {
 	return result
 }
 
+func (r *RootElem) GetConfigMap() map[string]any {
+	r.atomLock.Lock()
+	defer r.atomLock.Unlock()
+	
+	result := make(map[string]any)
+	for atomName, atom := range r.Atoms {
+		if strings.HasPrefix(atomName, "$config.") {
+			strippedName := strings.TrimPrefix(atomName, "$config.")
+			result[strippedName] = atom.Val
+		}
+	}
+	return result
+}
+
 func MakeRoot() *RootElem {
 	return &RootElem{
 		Root:    nil,

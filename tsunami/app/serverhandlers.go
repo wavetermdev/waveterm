@@ -41,6 +41,7 @@ func (h *HTTPHandlers) RegisterHandlers(mux *http.ServeMux, assetsFS *embed.FS, 
 	mux.HandleFunc("/api/render", h.handleRender)
 	mux.HandleFunc("/api/updates", h.handleSSE)
 	mux.HandleFunc("/api/data", h.handleData)
+	mux.HandleFunc("/api/config", h.handleConfig)
 	mux.HandleFunc("/files/", h.handleAssetsUrl)
 
 	// Add handler for static files at /static/ path
@@ -176,6 +177,55 @@ func (h *HTTPHandlers) handleData(w http.ResponseWriter, r *http.Request) {
 		log.Printf("failed to encode data response: %v", err)
 		http.Error(w, "failed to encode response", http.StatusInternalServerError)
 	}
+}
+
+func (h *HTTPHandlers) handleConfig(w http.ResponseWriter, r *http.Request) {
+	defer func() {
+		panicErr := util.PanicHandler("handleConfig", recover())
+		if panicErr != nil {
+			http.Error(w, fmt.Sprintf("internal server error: %v", panicErr), http.StatusInternalServerError)
+		}
+	}()
+
+	switch r.Method {
+	case http.MethodGet:
+		h.handleConfigGet(w, r)
+	case http.MethodPost:
+		h.handleConfigPost(w, r)
+	default:
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+	}
+}
+
+func (h *HTTPHandlers) handleConfigGet(w http.ResponseWriter, r *http.Request) {
+	result := h.Client.Root.GetConfigMap()
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(result); err != nil {
+		log.Printf("failed to encode config response: %v", err)
+		http.Error(w, "failed to encode response", http.StatusInternalServerError)
+	}
+}
+
+func (h *HTTPHandlers) handleConfigPost(w http.ResponseWriter, r *http.Request) {
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("failed to read request body: %v", err), http.StatusBadRequest)
+		return
+	}
+
+	var configData map[string]any
+	if err := json.Unmarshal(body, &configData); err != nil {
+		http.Error(w, fmt.Sprintf("failed to parse JSON: %v", err), http.StatusBadRequest)
+		return
+	}
+
+	for key, value := range configData {
+		atomName := "$config." + key
+		h.Client.Root.SetAtomVal(atomName, value, true)
+	}
+
+	w.WriteHeader(http.StatusOK)
 }
 
 func (h *HTTPHandlers) handleAssetsUrl(w http.ResponseWriter, r *http.Request) {
