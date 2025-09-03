@@ -28,51 +28,63 @@ var versionCmd = &cobra.Command{
 	},
 }
 
+func validateEnvironmentVars(opts *build.BuildOpts) error {
+	distPath := os.Getenv("TSUNAMI_DISTPATH")
+	if distPath == "" {
+		return fmt.Errorf("TSUNAMI_DISTPATH environment variable must be set")
+	}
+	
+	sdkReplacePath := os.Getenv("TSUNAMI_SDKREPLACEPATH")
+	if sdkReplacePath == "" {
+		return fmt.Errorf("TSUNAMI_SDKREPLACEPATH environment variable must be set")
+	}
+	
+	opts.DistPath = distPath
+	opts.SdkReplacePath = sdkReplacePath
+	return nil
+}
+
 var buildCmd = &cobra.Command{
-	Use:   "build [directory]",
-	Short: "Build a Tsunami application",
-	Long:  `Build a Tsunami application from the specified directory.`,
-	Args:  cobra.ExactArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
+	Use:          "build [directory]",
+	Short:        "Build a Tsunami application",
+	Long:         `Build a Tsunami application from the specified directory.`,
+	Args:         cobra.ExactArgs(1),
+	SilenceUsage: true,
+	RunE: func(cmd *cobra.Command, args []string) error {
 		verbose, _ := cmd.Flags().GetBool("verbose")
-		distPath := os.Getenv("TSUNAMI_DISTPATH")
-		if distPath == "" {
-			fmt.Printf("Error: TSUNAMI_DISTPATH environment variable must be set\n")
-			os.Exit(1)
-		}
 		opts := build.BuildOpts{
-			Dir:      args[0],
-			Verbose:  verbose,
-			DistPath: distPath,
+			Dir:     args[0],
+			Verbose: verbose,
+		}
+		if err := validateEnvironmentVars(&opts); err != nil {
+			return err
 		}
 		if err := build.TsunamiBuild(opts); err != nil {
-			fmt.Printf("Build failed: %v\n", err)
-			os.Exit(1)
+			return fmt.Errorf("build failed: %w", err)
 		}
+		return nil
 	},
 }
 
 var runCmd = &cobra.Command{
-	Use:   "run [directory]",
-	Short: "Build and run a Tsunami application",
-	Long:  `Build and run a Tsunami application from the specified directory.`,
-	Args:  cobra.ExactArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
+	Use:          "run [directory]",
+	Short:        "Build and run a Tsunami application",
+	Long:         `Build and run a Tsunami application from the specified directory.`,
+	Args:         cobra.ExactArgs(1),
+	SilenceUsage: true,
+	RunE: func(cmd *cobra.Command, args []string) error {
 		verbose, _ := cmd.Flags().GetBool("verbose")
-		distPath := os.Getenv("TSUNAMI_DISTPATH")
-		if distPath == "" {
-			fmt.Printf("Error: TSUNAMI_DISTPATH environment variable must be set\n")
-			os.Exit(1)
-		}
 		opts := build.BuildOpts{
-			Dir:      args[0],
-			Verbose:  verbose,
-			DistPath: distPath,
+			Dir:     args[0],
+			Verbose: verbose,
+		}
+		if err := validateEnvironmentVars(&opts); err != nil {
+			return err
 		}
 		if err := build.TsunamiRun(opts); err != nil {
-			fmt.Printf("Run failed: %v\n", err)
-			os.Exit(1)
+			return fmt.Errorf("run failed: %w", err)
 		}
+		return nil
 	},
 }
 

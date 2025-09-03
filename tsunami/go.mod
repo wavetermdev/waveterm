@@ -7,6 +7,7 @@ require (
 	github.com/gorilla/mux v1.8.1
 	github.com/spf13/cobra v1.10.1
 	github.com/wavetermdev/htmltoken v0.2.0
+	golang.org/x/mod v0.27.0
 )
 
 require (

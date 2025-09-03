@@ -9,26 +9,33 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+
+	"golang.org/x/mod/modfile"
 )
 
 type BuildOpts struct {
-	Dir      string
-	Verbose  bool
-	DistPath string
+	Dir            string
+	Verbose        bool
+	DistPath       string
+	SdkReplacePath string
 }
 
-func verifyEnvironment(verbose bool) error {
+type BuildEnv struct {
+	GoVersion string
+}
+
+func verifyEnvironment(verbose bool) (*BuildEnv, error) {
 	// Check if go is in PATH
 	goPath, err := exec.LookPath("go")
 	if err != nil {
-		return fmt.Errorf("go command not found in PATH: %w", err)
+		return nil, fmt.Errorf("go command not found in PATH: %w", err)
 	}
 
 	// Run go version command
 	cmd := exec.Command(goPath, "version")
 	output, err := cmd.Output()
 	if err != nil {
-		return fmt.Errorf("failed to run 'go version': %w", err)
+		return nil, fmt.Errorf("failed to run 'go version': %w", err)
 	}
 
 	// Parse go version output and check for 1.21+
@@ -38,21 +45,30 @@ func verifyEnvironment(verbose bool) error {
 	}
 
 	// Extract version like "go1.21.0" from output
-	versionRegex := regexp.MustCompile(`go1\.(\d+)`)
+	versionRegex := regexp.MustCompile(`go(1\.\d+)`)
 	matches := versionRegex.FindStringSubmatch(versionStr)
 	if len(matches) < 2 {
-		return fmt.Errorf("unable to parse go version from: %s", versionStr)
+		return nil, fmt.Errorf("unable to parse go version from: %s", versionStr)
 	}
 
-	minor, err := strconv.Atoi(matches[1])
+	goVersion := matches[1]
+
+	// Check if version is 1.21+
+	minorRegex := regexp.MustCompile(`1\.(\d+)`)
+	minorMatches := minorRegex.FindStringSubmatch(goVersion)
+	if len(minorMatches) < 2 {
+		return nil, fmt.Errorf("unable to parse minor version from: %s", goVersion)
+	}
+
+	minor, err := strconv.Atoi(minorMatches[1])
 	if err != nil || minor < 21 {
-		return fmt.Errorf("go version 1.21 or higher required, found: %s", versionStr)
+		return nil, fmt.Errorf("go version 1.21 or higher required, found: %s", versionStr)
 	}
 
 	// Check if npx is in PATH
 	_, err = exec.LookPath("npx")
 	if err != nil {
-		return fmt.Errorf("npx command not found in PATH: %w", err)
+		return nil, fmt.Errorf("npx command not found in PATH: %w", err)
 	}
 
 	if verbose {
@@ -63,13 +79,13 @@ func verifyEnvironment(verbose bool) error {
 	tailwindCmd := exec.Command("npx", "@tailwindcss/cli")
 	tailwindOutput, err := tailwindCmd.CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("failed to run 'npx @tailwindcss/cli': %w", err)
+		return nil, fmt.Errorf("failed to run 'npx @tailwindcss/cli': %w", err)
 	}
 
 	tailwindStr := strings.TrimSpace(string(tailwindOutput))
 	lines := strings.Split(tailwindStr, "\n")
 	if len(lines) == 0 {
-		return fmt.Errorf("no output from tailwindcss command")
+		return nil, fmt.Errorf("no output from tailwindcss command")
 	}
 
 	firstLine := lines[0]
@@ -79,14 +95,76 @@ func verifyEnvironment(verbose bool) error {
 
 	// Check for v4 (format: "≈ tailwindcss v4.1.12")
 	tailwindRegex := regexp.MustCompile(`tailwindcss v(\d+)`)
-	matches = tailwindRegex.FindStringSubmatch(firstLine)
-	if len(matches) < 2 {
-		return fmt.Errorf("unable to parse tailwindcss version from: %s", firstLine)
+	tailwindMatches := tailwindRegex.FindStringSubmatch(firstLine)
+	if len(tailwindMatches) < 2 {
+		return nil, fmt.Errorf("unable to parse tailwindcss version from: %s", firstLine)
 	}
 
-	majorVersion, err := strconv.Atoi(matches[1])
+	majorVersion, err := strconv.Atoi(tailwindMatches[1])
 	if err != nil || majorVersion != 4 {
-		return fmt.Errorf("tailwindcss v4 required, found: %s", firstLine)
+		return nil, fmt.Errorf("tailwindcss v4 required, found: %s", firstLine)
+	}
+
+	return &BuildEnv{GoVersion: goVersion}, nil
+}
+
+func createGoMod(tempDir, appDirName, goVersion string, opts BuildOpts, verbose bool) error {
+	modulePath := fmt.Sprintf("tsunami/app/%s", appDirName)
+
+	// Create new modfile
+	modFile := &modfile.File{}
+	if err := modFile.AddModuleStmt(modulePath); err != nil {
+		return fmt.Errorf("failed to add module statement: %w", err)
+	}
+
+	if err := modFile.AddGoStmt(goVersion); err != nil {
+		return fmt.Errorf("failed to add go version: %w", err)
+	}
+
+	// Add requirement for tsunami SDK
+	if err := modFile.AddRequire("github.com/wavetermdev/waveterm/tsunami", "v0.0.0"); err != nil {
+		return fmt.Errorf("failed to add require directive: %w", err)
+	}
+
+	// Add replace directive for tsunami SDK
+	if err := modFile.AddReplace("github.com/wavetermdev/waveterm/tsunami", "", opts.SdkReplacePath, ""); err != nil {
+		return fmt.Errorf("failed to add replace directive: %w", err)
+	}
+
+	// Format and write the file
+	modFile.Cleanup()
+	goModContent, err := modFile.Format()
+	if err != nil {
+		return fmt.Errorf("failed to format go.mod: %w", err)
+	}
+
+	goModPath := filepath.Join(tempDir, "go.mod")
+	if err := os.WriteFile(goModPath, goModContent, 0644); err != nil {
+		return fmt.Errorf("failed to write go.mod file: %w", err)
+	}
+
+	if verbose {
+		log.Printf("Created go.mod with module path: %s", modulePath)
+		log.Printf("Added require: github.com/wavetermdev/waveterm/tsunami v0.0.0")
+		log.Printf("Added replace directive: github.com/wavetermdev/waveterm/tsunami => %s", opts.SdkReplacePath)
+	}
+
+	// Run go mod tidy to clean up dependencies
+	tidyCmd := exec.Command("go", "mod", "tidy")
+	tidyCmd.Dir = tempDir
+
+	if verbose {
+		log.Printf("Running go mod tidy in %s", tempDir)
+	}
+
+	output, err := tidyCmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("failed to run go mod tidy: %w\nOutput: %s", err, string(output))
+	}
+
+	if verbose {
+		log.Printf("go mod tidy output:\n%s", string(output))
+		log.Printf("Successfully ran go mod tidy")
 	}
 
 	return nil
@@ -171,7 +249,8 @@ func verifyDistPath(distPath string) error {
 }
 
 func TsunamiBuild(opts BuildOpts) error {
-	if err := verifyEnvironment(opts.Verbose); err != nil {
+	buildEnv, err := verifyEnvironment(opts.Verbose)
+	if err != nil {
 		return err
 	}
 
@@ -224,9 +303,57 @@ func TsunamiBuild(opts BuildOpts) error {
 		return fmt.Errorf("failed to copy main.go.tmpl: %w", err)
 	}
 
+	// Create go.mod file
+	appDirName := filepath.Base(opts.Dir)
+	if err := createGoMod(tempDir, appDirName, buildEnv.GoVersion, opts, opts.Verbose); err != nil {
+		return fmt.Errorf("failed to create go.mod: %w", err)
+	}
+
 	// Generate Tailwind CSS
 	if err := generateAppTailwindCss(opts.DistPath, tempDir, opts.Verbose); err != nil {
 		return fmt.Errorf("failed to generate tailwind css: %w", err)
+	}
+
+	// Build the Go application
+	if err := runGoBuild(tempDir, opts.Verbose); err != nil {
+		return fmt.Errorf("failed to build application: %w", err)
+	}
+
+	return nil
+}
+
+func runGoBuild(tempDir string, verbose bool) error {
+	binDir := filepath.Join(tempDir, "bin")
+	if err := os.MkdirAll(binDir, 0755); err != nil {
+		return fmt.Errorf("failed to create bin directory: %w", err)
+	}
+
+	goFiles, err := listGoFilesInDir(tempDir)
+	if err != nil {
+		return fmt.Errorf("failed to list go files: %w", err)
+	}
+
+	if len(goFiles) == 0 {
+		return fmt.Errorf("no .go files found in %s", tempDir)
+	}
+
+	// Build command with explicit go files
+	args := append([]string{"build", "-o", "bin/app"}, goFiles...)
+	buildCmd := exec.Command("go", args...)
+	buildCmd.Dir = tempDir
+
+	if verbose {
+		log.Printf("Running: %s in %s", strings.Join(buildCmd.Args, " "), tempDir)
+		buildCmd.Stdout = os.Stdout
+		buildCmd.Stderr = os.Stderr
+	}
+
+	if err := buildCmd.Run(); err != nil {
+		return fmt.Errorf("failed to build application: %w", err)
+	}
+
+	if verbose {
+		log.Printf("Application built successfully at %s", filepath.Join(binDir, "app"))
 	}
 
 	return nil
@@ -236,18 +363,18 @@ func generateAppTailwindCss(distPath, tempDir string, verbose bool) error {
 	tailwindInput := filepath.Join(distPath, "templates", "tailwind.css")
 	tailwindOutput := filepath.Join(tempDir, "static", "tw.css")
 	contentGlob := filepath.Join(tempDir, "*.go")
-	
+
 	tailwindCmd := exec.Command("npx", "@tailwindcss/cli",
 		"-i", tailwindInput,
 		"-o", tailwindOutput,
 		"--content", contentGlob)
-	
+
 	if verbose {
 		log.Printf("Running: %s", strings.Join(tailwindCmd.Args, " "))
 		tailwindCmd.Stdout = os.Stdout
 		tailwindCmd.Stderr = os.Stderr
 	}
-	
+
 	if err := tailwindCmd.Run(); err != nil {
 		return fmt.Errorf("failed to run tailwind command: %w", err)
 	}

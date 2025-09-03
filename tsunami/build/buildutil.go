@@ -114,3 +114,19 @@ func copyFile(srcPath, destPath string) error {
 	// Set the same mode as source file
 	return os.Chmod(destPath, srcInfo.Mode())
 }
+
+func listGoFilesInDir(dirPath string) ([]string, error) {
+	entries, err := os.ReadDir(dirPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read directory %s: %w", dirPath, err)
+	}
+
+	var goFiles []string
+	for _, entry := range entries {
+		if !entry.IsDir() && filepath.Ext(entry.Name()) == ".go" {
+			goFiles = append(goFiles, entry.Name())
+		}
+	}
+
+	return goFiles, nil
+}
