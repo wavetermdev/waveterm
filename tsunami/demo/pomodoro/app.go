@@ -9,7 +9,6 @@ import (
 	"github.com/wavetermdev/waveterm/tsunami/vdom"
 )
 
-
 type Mode struct {
 	Name     string `json:"name"`
 	Duration int    `json:"duration"` // in minutes
@@ -44,14 +43,14 @@ type TimerState struct {
 
 var TimerDisplay = app.DefineComponent("TimerDisplay",
 	func(ctx context.Context, props TimerDisplayProps) any {
-		return vdom.E("div",
-			vdom.Class("bg-slate-700 p-8 rounded-lg mb-8 text-center"),
-			vdom.E("div",
-				vdom.Class("text-xl text-blue-400 mb-2"),
+		return vdom.H("div",
+			map[string]any{"className": "bg-slate-700 p-8 rounded-lg mb-8 text-center"},
+			vdom.H("div",
+				map[string]any{"className": "text-xl text-blue-400 mb-2"},
 				props.Mode,
 			),
-			vdom.E("div",
-				vdom.Class("text-6xl font-bold font-mono text-slate-100"),
+			vdom.H("div",
+				map[string]any{"className": "text-6xl font-bold font-mono text-slate-100"},
 				fmt.Sprintf("%02d:%02d", props.Minutes, props.Seconds),
 			),
 		)
@@ -60,35 +59,45 @@ var TimerDisplay = app.DefineComponent("TimerDisplay",
 
 var ControlButtons = app.DefineComponent("ControlButtons",
 	func(ctx context.Context, props ControlButtonsProps) any {
-		return vdom.E("div",
-			vdom.Class("flex flex-col gap-4"),
+		return vdom.H("div",
+			map[string]any{"className": "flex flex-col gap-4"},
 			vdom.IfElse(props.IsRunning,
-				vdom.E("button",
-					vdom.Class("px-6 py-3 text-lg border-none rounded bg-blue-500 text-white cursor-pointer hover:bg-blue-600 transition-colors duration-200"),
-					vdom.P("onClick", props.OnPause),
+				vdom.H("button",
+					map[string]any{
+						"className": "px-6 py-3 text-lg border-none rounded bg-blue-500 text-white cursor-pointer hover:bg-blue-600 transition-colors duration-200",
+						"onClick":   props.OnPause,
+					},
 					"Pause",
 				),
-				vdom.E("button",
-					vdom.Class("px-6 py-3 text-lg border-none rounded bg-blue-500 text-white cursor-pointer hover:bg-blue-600 transition-colors duration-200"),
-					vdom.P("onClick", props.OnStart),
+				vdom.H("button",
+					map[string]any{
+						"className": "px-6 py-3 text-lg border-none rounded bg-blue-500 text-white cursor-pointer hover:bg-blue-600 transition-colors duration-200",
+						"onClick":   props.OnStart,
+					},
 					"Start",
 				),
 			),
-			vdom.E("button",
-				vdom.Class("px-6 py-3 text-lg border-none rounded bg-blue-500 text-white cursor-pointer hover:bg-blue-600 transition-colors duration-200"),
-				vdom.P("onClick", props.OnReset),
+			vdom.H("button",
+				map[string]any{
+					"className": "px-6 py-3 text-lg border-none rounded bg-blue-500 text-white cursor-pointer hover:bg-blue-600 transition-colors duration-200",
+					"onClick":   props.OnReset,
+				},
 				"Reset",
 			),
-			vdom.E("div",
-				vdom.Class("flex gap-4 mt-4"),
-				vdom.E("button",
-					vdom.Class("flex-1 px-3 py-3 text-base border-none rounded bg-green-500 text-white cursor-pointer hover:bg-green-600 transition-colors duration-200"),
-					vdom.P("onClick", func() { props.OnMode(WorkMode.Duration) }),
+			vdom.H("div",
+				map[string]any{"className": "flex gap-4 mt-4"},
+				vdom.H("button",
+					map[string]any{
+						"className": "flex-1 px-3 py-3 text-base border-none rounded bg-green-500 text-white cursor-pointer hover:bg-green-600 transition-colors duration-200",
+						"onClick":   func() { props.OnMode(WorkMode.Duration) },
+					},
 					"Work Mode",
 				),
-				vdom.E("button",
-					vdom.Class("flex-1 px-3 py-3 text-base border-none rounded bg-green-500 text-white cursor-pointer hover:bg-green-600 transition-colors duration-200"),
-					vdom.P("onClick", func() { props.OnMode(BreakMode.Duration) }),
+				vdom.H("button",
+					map[string]any{
+						"className": "flex-1 px-3 py-3 text-base border-none rounded bg-green-500 text-white cursor-pointer hover:bg-green-600 transition-colors duration-200",
+						"onClick":   func() { props.OnMode(BreakMode.Duration) },
+					},
 					"Break Mode",
 				),
 			),
@@ -99,7 +108,7 @@ var ControlButtons = app.DefineComponent("ControlButtons",
 var App = app.DefineComponent("App",
 	func(ctx context.Context, _ any) any {
 		vdom.UseSetAppTitle(ctx, "Pomodoro Timer (Tsunami Demo)")
-		
+
 		isRunning, setIsRunning, _ := vdom.UseState(ctx, false)
 		minutes, setMinutes, _ := vdom.UseState(ctx, WorkMode.Duration)
 		seconds, setSeconds, _ := vdom.UseState(ctx, 0)
@@ -210,10 +219,10 @@ var App = app.DefineComponent("App",
 			}
 		}, []any{})
 
-		return vdom.E("div",
-			vdom.Class("max-w-sm mx-auto my-8 p-8 bg-slate-800 rounded-xl text-slate-100 font-sans"),
-			vdom.E("h1",
-				vdom.Class("text-center text-slate-100 mb-8 text-3xl"),
+		return vdom.H("div",
+			map[string]any{"className": "max-w-sm mx-auto my-8 p-8 bg-slate-800 rounded-xl text-slate-100 font-sans"},
+			vdom.H("h1",
+				map[string]any{"className": "text-center text-slate-100 mb-8 text-3xl"},
 				"Pomodoro Timer",
 			),
 			TimerDisplay(TimerDisplayProps{

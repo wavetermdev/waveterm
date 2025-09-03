@@ -19,20 +19,6 @@ import (
 
 type Component[P any] func(props P) *VDomElem
 
-type styleAttrWrapper struct {
-	StyleAttr string
-	Val       any
-}
-
-type classAttrWrapper struct {
-	ClassName string
-	Cond      bool
-}
-
-type styleAttrMapWrapper struct {
-	StyleAttrMap map[string]any
-}
-
 func (e *VDomElem) Key() string {
 	keyVal, ok := e.Props[KeyPropKey]
 	if !ok {
@@ -60,74 +46,6 @@ func TextElem(text string) VDomElem {
 	return VDomElem{Tag: TextTag, Text: text}
 }
 
-func mergeProps(props *map[string]any, newProps map[string]any) {
-	if *props == nil {
-		*props = make(map[string]any)
-	}
-	for k, v := range newProps {
-		if v == nil {
-			delete(*props, k)
-			continue
-		}
-		(*props)[k] = v
-	}
-}
-
-func mergeStyleAttr(props *map[string]any, styleAttr styleAttrWrapper) {
-	if *props == nil {
-		*props = make(map[string]any)
-	}
-	if (*props)["style"] == nil {
-		(*props)["style"] = make(map[string]any)
-	}
-	styleMap, ok := (*props)["style"].(map[string]any)
-	if !ok {
-		return
-	}
-	styleMap[styleAttr.StyleAttr] = styleAttr.Val
-}
-
-func mergeClassAttr(props *map[string]any, classAttr classAttrWrapper) {
-	if *props == nil {
-		*props = make(map[string]any)
-	}
-	if classAttr.Cond {
-		if (*props)["className"] == nil {
-			(*props)["className"] = classAttr.ClassName
-			return
-		}
-		classVal, ok := (*props)["className"].(string)
-		if !ok {
-			return
-		}
-		// check if class already exists (must split, contains won't work)
-		splitArr := strings.Split(classVal, " ")
-		for _, class := range splitArr {
-			if class == classAttr.ClassName {
-				return
-			}
-		}
-		(*props)["className"] = classVal + " " + classAttr.ClassName
-	} else {
-		classVal, ok := (*props)["className"].(string)
-		if !ok {
-			return
-		}
-		splitArr := strings.Split(classVal, " ")
-		for i, class := range splitArr {
-			if class == classAttr.ClassName {
-				splitArr = append(splitArr[:i], splitArr[i+1:]...)
-				break
-			}
-		}
-		if len(splitArr) == 0 {
-			delete(*props, "className")
-		} else {
-			(*props)["className"] = strings.Join(splitArr, " ")
-		}
-	}
-}
-
 func Classes(classes ...any) string {
 	var parts []string
 	for _, class := range classes {
@@ -153,52 +71,6 @@ func H(tag string, props map[string]any, children ...any) *VDomElem {
 		}
 	}
 	return rtn
-}
-
-func E(tag string, parts ...any) *VDomElem {
-	rtn := &VDomElem{Tag: tag}
-	for _, part := range parts {
-		if part == nil {
-			continue
-		}
-		props, ok := part.(map[string]any)
-		if ok {
-			mergeProps(&rtn.Props, props)
-			continue
-		}
-		if styleAttr, ok := part.(styleAttrWrapper); ok {
-			mergeStyleAttr(&rtn.Props, styleAttr)
-			continue
-		}
-		if styleAttrMap, ok := part.(styleAttrMapWrapper); ok {
-			for k, v := range styleAttrMap.StyleAttrMap {
-				mergeStyleAttr(&rtn.Props, styleAttrWrapper{StyleAttr: k, Val: v})
-			}
-			continue
-		}
-		if classAttr, ok := part.(classAttrWrapper); ok {
-			mergeClassAttr(&rtn.Props, classAttr)
-			continue
-		}
-		elems := PartToElems(part)
-		rtn.Children = append(rtn.Children, elems...)
-	}
-	return rtn
-}
-
-func Class(name string) classAttrWrapper {
-	return classAttrWrapper{ClassName: name, Cond: true}
-}
-
-func ClassIf(cond bool, name string) classAttrWrapper {
-	return classAttrWrapper{ClassName: name, Cond: cond}
-}
-
-func ClassIfElse(cond bool, name string, elseName string) classAttrWrapper {
-	if cond {
-		return classAttrWrapper{ClassName: name, Cond: true}
-	}
-	return classAttrWrapper{ClassName: elseName, Cond: true}
 }
 
 func If(cond bool, part any) any {
@@ -259,32 +131,6 @@ func Props(props any) map[string]any {
 		return nil
 	}
 	return m
-}
-
-func PStyle(styleAttr string, propVal any) any {
-	return styleAttrWrapper{StyleAttr: styleAttr, Val: propVal}
-}
-
-func Fragment(parts ...any) any {
-	return parts
-}
-
-func P(propName string, propVal any) any {
-	if propVal == nil {
-		return map[string]any{propName: nil}
-	}
-	if propName == "style" {
-		strVal, ok := propVal.(string)
-		if ok {
-			styleMap, err := styleAttrStrToStyleMap(strVal, nil)
-			if err == nil {
-				return styleAttrMapWrapper{StyleAttrMap: styleMap}
-			}
-			log.Printf("Error parsing style attribute: %v\n", err)
-			return nil
-		}
-	}
-	return map[string]any{propName: propVal}
 }
 
 func UseState[T any](ctx context.Context, initialVal T) (T, func(T), func(func(T) T)) {
@@ -459,13 +305,13 @@ func UseSetAppTitle(ctx context.Context, title string) {
 		log.Printf("UseSetAppTitle must be called within a component (no context)")
 		return
 	}
-	
+
 	// Check if this is being called from the App component
 	if vc.GetCompName() != "App" {
 		log.Printf("UseSetAppTitle can only be called from the App component")
 		return
 	}
-	
+
 	// Set the title on the RootElem
 	vc.SetAppTitle(title)
 }

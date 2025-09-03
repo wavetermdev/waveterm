@@ -18,7 +18,6 @@ import (
 	"unicode"
 
 	"github.com/google/uuid"
-	"github.com/gorilla/mux"
 	"github.com/wavetermdev/waveterm/tsunami/comp"
 	"github.com/wavetermdev/waveterm/tsunami/rpctypes"
 	"github.com/wavetermdev/waveterm/tsunami/util"
@@ -46,7 +45,7 @@ type Client struct {
 	SSEventCh          chan SSEvent
 	GlobalEventHandler func(client *Client, event vdom.VDomEvent)
 	GlobalStylesOption *FileHandlerOption
-	UrlHandlerMux      *mux.Router
+	UrlHandlerMux      *http.ServeMux
 	SetupFn            func()
 }
 
@@ -56,9 +55,9 @@ func MakeClient() *Client {
 		Root:          comp.MakeRoot(),
 		DoneCh:        make(chan struct{}),
 		SSEventCh:     make(chan SSEvent, 100),
-		UrlHandlerMux: mux.NewRouter(),
+		UrlHandlerMux: http.NewServeMux(),
 		ServerId:      uuid.New().String(),
-		RootElem:      vdom.E(DefaultComponentName),
+		RootElem:      vdom.H(DefaultComponentName, nil),
 	}
 	return client
 }
@@ -102,7 +101,6 @@ func (c *Client) doShutdown(reason string) {
 func (c *Client) SetGlobalEventHandler(handler func(client *Client, event vdom.VDomEvent)) {
 	c.GlobalEventHandler = handler
 }
-
 
 func getFaviconPath() string {
 	if staticFS != nil {
@@ -244,7 +242,7 @@ func DefineComponentEx[P any](client *Client, name string, renderFn func(ctx con
 		panic(err)
 	}
 	return func(props P) *vdom.VDomElem {
-		return vdom.E(name, vdom.Props(props))
+		return vdom.H(name, vdom.Props(props))
 	}
 }
 
@@ -426,7 +424,11 @@ func ServeFileOption(w http.ResponseWriter, r *http.Request, option FileHandlerO
 }
 
 func (c *Client) RegisterFilePrefixHandler(prefix string, optionProvider func(path string) (*FileHandlerOption, error)) {
-	c.UrlHandlerMux.PathPrefix(prefix).HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	c.UrlHandlerMux.HandleFunc(prefix, func(w http.ResponseWriter, r *http.Request) {
+		if !strings.HasPrefix(r.URL.Path, prefix) {
+			http.NotFound(w, r)
+			return
+		}
 		option, err := optionProvider(r.URL.Path)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)

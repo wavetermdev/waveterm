@@ -9,35 +9,36 @@ import (
 	"github.com/wavetermdev/waveterm/tsunami/util"
 )
 
-func TestBind(t *testing.T) {
-	elem := Bind(`<div>clicked</div>`, nil)
+func TestH(t *testing.T) {
+	elem := H("div", nil, "clicked")
 	jsonBytes, _ := json.MarshalIndent(elem, "", "  ")
 	log.Printf("%s\n", string(jsonBytes))
 
-	elem = Bind(`
-	<div>
-	    clicked
-    </div>`, nil)
+	elem = H("div", nil, "clicked")
 	jsonBytes, _ = json.MarshalIndent(elem, "", "  ")
 	log.Printf("%s\n", string(jsonBytes))
 
-	elem = Bind(`<Button>foo</Button>`, nil)
+	elem = H("Button", nil, "foo")
 	jsonBytes, _ = json.MarshalIndent(elem, "", "  ")
 	log.Printf("%s\n", string(jsonBytes))
 
-	elem = Bind(`
-<div>
-    <h1>hello world</h1>
-	<Button onClick="#param:clickFn">hello</Button>
-	<bindparam key="clickedDiv"/>
-</div>
-`, nil)
+	clickFn := "test-click-function"
+	clickedDiv := H("div", nil, "test-content")
+	elem = H("div", nil,
+		H("h1", nil, "hello world"),
+		H("Button", map[string]any{"onClick": clickFn}, "hello"),
+		clickedDiv,
+	)
 	jsonBytes, _ = json.MarshalIndent(elem, "", "  ")
 	log.Printf("%s\n", string(jsonBytes))
 }
 
-func TestJsonBind(t *testing.T) {
-	elem := Bind(`<div data1={5} data2={[1,2,3]} data3={{"a": 1}}/>`, nil)
+func TestJsonH(t *testing.T) {
+	elem := H("div", map[string]any{
+		"data1": 5,
+		"data2": []any{1, 2, 3},
+		"data3": map[string]any{"a": 1},
+	})
 	if elem == nil {
 		t.Fatalf("elem is nil")
 	}

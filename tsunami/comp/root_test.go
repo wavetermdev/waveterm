@@ -25,21 +25,16 @@ func Page(ctx context.Context, props map[string]any) any {
 	clicked, setClicked, _ := vdom.UseState(ctx, false)
 	var clickedDiv *vdom.VDomElem
 	if clicked {
-		clickedDiv = vdom.Bind(`<div>clicked</div>`, nil)
+		clickedDiv = vdom.H("div", nil, "clicked")
 	}
 	clickFn := func() {
 		log.Printf("run clickFn\n")
 		setClicked(true)
 	}
-	return vdom.Bind(
-		`
-<div>
-    <h1>hello world</h1>
-	<Button onClick="#param:clickFn">hello</Button>
-	<bindparam key="clickedDiv"/>
-</div>
-`,
-		map[string]any{"clickFn": clickFn, "clickedDiv": clickedDiv},
+	return vdom.H("div", nil,
+		vdom.H("h1", nil, "hello world"),
+		vdom.H("Button", map[string]any{"onClick": clickFn}, "hello"),
+		clickedDiv,
 	)
 }
 
@@ -56,11 +51,11 @@ func Button(ctx context.Context, props map[string]any) any {
 	if testContext != nil {
 		testContext.ButtonId = compId
 	}
-	return vdom.Bind(`
-		<div className="#param:clName" ref="#param:ref" onClick="#param:onClick">
-			<bindparam key="children"/>
-		</div>
-	`, map[string]any{"clName": clName, "ref": ref, "onClick": props["onClick"], "children": props["children"]})
+	return vdom.H("div", map[string]any{
+		"className": clName,
+		"ref":       ref,
+		"onClick":   props["onClick"],
+	}, props["children"])
 }
 
 func printVDom(root *RootElem) {
@@ -85,7 +80,7 @@ func Test1(t *testing.T) {
 	root.SetOuterCtx(ctx)
 	root.RegisterComponent("Page", Page)
 	root.RegisterComponent("Button", Button)
-	root.Render(vdom.E("Page"), &RenderOpts{Resync: false})
+	root.Render(vdom.H("Page", nil), &RenderOpts{Resync: false})
 	if root.Root == nil {
 		t.Fatalf("root.Root is nil")
 	}
