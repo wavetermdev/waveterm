@@ -22,6 +22,7 @@ type BuildOpts struct {
 
 type BuildEnv struct {
 	GoVersion string
+	TempDir   string
 }
 
 func verifyEnvironment(verbose bool) (*BuildEnv, error) {
@@ -154,16 +155,16 @@ func createGoMod(tempDir, appDirName, goVersion string, opts BuildOpts, verbose 
 	tidyCmd.Dir = tempDir
 
 	if verbose {
-		log.Printf("Running go mod tidy in %s", tempDir)
+		log.Printf("Running go mod tidy")
+		tidyCmd.Stdout = os.Stdout
+		tidyCmd.Stderr = os.Stderr
 	}
 
-	output, err := tidyCmd.CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("failed to run go mod tidy: %w\nOutput: %s", err, string(output))
+	if err := tidyCmd.Run(); err != nil {
+		return fmt.Errorf("failed to run go mod tidy: %w", err)
 	}
 
 	if verbose {
-		log.Printf("go mod tidy output:\n%s", string(output))
 		log.Printf("Successfully ran go mod tidy")
 	}
 
@@ -248,25 +249,27 @@ func verifyDistPath(distPath string) error {
 	return nil
 }
 
-func TsunamiBuild(opts BuildOpts) error {
+func TsunamiBuild(opts BuildOpts) (*BuildEnv, error) {
 	buildEnv, err := verifyEnvironment(opts.Verbose)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if err := verifyTsunamiDir(opts.Dir); err != nil {
-		return err
+		return nil, err
 	}
 
 	if err := verifyDistPath(opts.DistPath); err != nil {
-		return err
+		return nil, err
 	}
 
 	// Create temporary directory
 	tempDir, err := os.MkdirTemp("", "tsunami-build-*")
 	if err != nil {
-		return fmt.Errorf("failed to create temp directory: %w", err)
+		return nil, fmt.Errorf("failed to create temp directory: %w", err)
 	}
+
+	buildEnv.TempDir = tempDir
 
 	log.Printf("Building tsunami app from %s\n", opts.Dir)
 
@@ -277,49 +280,55 @@ func TsunamiBuild(opts BuildOpts) error {
 	// Copy all *.go files from the root directory
 	goCount, err := copyGoFiles(opts.Dir, tempDir)
 	if err != nil {
-		return fmt.Errorf("failed to copy go files: %w", err)
+		return nil, fmt.Errorf("failed to copy go files: %w", err)
 	}
 
 	// Copy static directory
 	staticCount, err := copyStaticDir(opts.Dir, tempDir)
 	if err != nil {
-		return fmt.Errorf("failed to copy static directory: %w", err)
+		return nil, fmt.Errorf("failed to copy static directory: %w", err)
 	}
 
 	// Create dist directory
 	distDir := filepath.Join(tempDir, "dist")
 	if err := os.MkdirAll(distDir, 0755); err != nil {
-		return fmt.Errorf("failed to create dist directory: %w", err)
+		return nil, fmt.Errorf("failed to create dist directory: %w", err)
+	}
+
+	// Copy dist directory contents
+	distCount, err := copyDirRecursive(opts.DistPath, distDir)
+	if err != nil {
+		return nil, fmt.Errorf("failed to copy dist directory: %w", err)
 	}
 
 	if opts.Verbose {
-		log.Printf("Copied %d go files, %d static files\n", goCount, staticCount)
+		log.Printf("Copied %d go files, %d static files, %d dist files\n", goCount, staticCount, distCount)
 	}
 
 	// Copy main.go.tmpl from dist/templates to temp dir as main-app.go
 	mainTmplSrc := filepath.Join(opts.DistPath, "templates", "main.go.tmpl")
 	mainTmplDest := filepath.Join(tempDir, "main-app.go")
 	if err := copyFile(mainTmplSrc, mainTmplDest); err != nil {
-		return fmt.Errorf("failed to copy main.go.tmpl: %w", err)
+		return nil, fmt.Errorf("failed to copy main.go.tmpl: %w", err)
 	}
 
 	// Create go.mod file
 	appDirName := filepath.Base(opts.Dir)
 	if err := createGoMod(tempDir, appDirName, buildEnv.GoVersion, opts, opts.Verbose); err != nil {
-		return fmt.Errorf("failed to create go.mod: %w", err)
+		return nil, fmt.Errorf("failed to create go.mod: %w", err)
 	}
 
 	// Generate Tailwind CSS
 	if err := generateAppTailwindCss(opts.DistPath, tempDir, opts.Verbose); err != nil {
-		return fmt.Errorf("failed to generate tailwind css: %w", err)
+		return nil, fmt.Errorf("failed to generate tailwind css: %w", err)
 	}
 
 	// Build the Go application
 	if err := runGoBuild(tempDir, opts.Verbose); err != nil {
-		return fmt.Errorf("failed to build application: %w", err)
+		return nil, fmt.Errorf("failed to build application: %w", err)
 	}
 
-	return nil
+	return buildEnv, nil
 }
 
 func runGoBuild(tempDir string, verbose bool) error {
@@ -343,7 +352,7 @@ func runGoBuild(tempDir string, verbose bool) error {
 	buildCmd.Dir = tempDir
 
 	if verbose {
-		log.Printf("Running: %s in %s", strings.Join(buildCmd.Args, " "), tempDir)
+		log.Printf("Running: %s", strings.Join(buildCmd.Args, " "))
 		buildCmd.Stdout = os.Stdout
 		buildCmd.Stderr = os.Stderr
 	}
@@ -360,14 +369,19 @@ func runGoBuild(tempDir string, verbose bool) error {
 }
 
 func generateAppTailwindCss(distPath, tempDir string, verbose bool) error {
-	tailwindInput := filepath.Join(distPath, "templates", "tailwind.css")
+	// Copy tailwind.css from dist/templates to temp dir
+	tailwindSrc := filepath.Join(distPath, "templates", "tailwind.css")
+	tailwindDest := filepath.Join(tempDir, "tailwind.css")
+	if err := copyFile(tailwindSrc, tailwindDest); err != nil {
+		return fmt.Errorf("failed to copy tailwind.css: %w", err)
+	}
+
 	tailwindOutput := filepath.Join(tempDir, "static", "tw.css")
-	contentGlob := filepath.Join(tempDir, "*.go")
 
 	tailwindCmd := exec.Command("npx", "@tailwindcss/cli",
-		"-i", tailwindInput,
-		"-o", tailwindOutput,
-		"--content", contentGlob)
+		"-i", "./tailwind.css",
+		"-o", tailwindOutput)
+	tailwindCmd.Dir = tempDir
 
 	if verbose {
 		log.Printf("Running: %s", strings.Join(tailwindCmd.Args, " "))
@@ -429,9 +443,28 @@ func copyGoFiles(srcDir, destDir string) (int, error) {
 }
 
 func TsunamiRun(opts BuildOpts) error {
-	if err := TsunamiBuild(opts); err != nil {
+	buildEnv, err := TsunamiBuild(opts)
+	if err != nil {
 		return err
 	}
 
-	return fmt.Errorf("TsunamiRun not implemented yet")
+	// Run the built application
+	appPath := filepath.Join(buildEnv.TempDir, "bin", "app")
+	runCmd := exec.Command(appPath)
+	runCmd.Dir = buildEnv.TempDir
+
+	log.Printf("Running tsunami app from %s", opts.Dir)
+
+	runCmd.Stdin = os.Stdin
+	if opts.Verbose {
+		log.Printf("Executing: %s", appPath)
+		runCmd.Stdout = os.Stdout
+		runCmd.Stderr = os.Stderr
+	}
+
+	if err := runCmd.Run(); err != nil {
+		return fmt.Errorf("failed to run application: %w", err)
+	}
+
+	return nil
 }

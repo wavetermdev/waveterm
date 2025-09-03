@@ -5,15 +5,15 @@ package app
 
 import (
 	"context"
-	"embed"
+	"io/fs"
 	"net/http"
 
 	"github.com/wavetermdev/waveterm/tsunami/vdom"
 )
 
 var defaultClient = MakeClient(AppOpts{})
-var assetsFS *embed.FS
-var staticFS *embed.FS
+var assetsFS fs.FS
+var staticFS fs.FS
 var manifestFile *FileHandlerOption
 
 // Default client methods that operate on the global defaultClient
@@ -66,12 +66,12 @@ func RegisterFileHandler(path string, option FileHandlerOption) {
 	defaultClient.RegisterFileHandler(path, option)
 }
 
-func RegisterAssetsFS(fs embed.FS) {
-	assetsFS = &fs
+func RegisterAssetsFS(filesystem fs.FS) {
+	assetsFS = filesystem
 }
 
-func RegisterStaticFS(fs embed.FS) {
-	staticFS = &fs
+func RegisterStaticFS(filesystem fs.FS) {
+	staticFS = filesystem
 }
 
 func RegisterManifestFile(option FileHandlerOption) {

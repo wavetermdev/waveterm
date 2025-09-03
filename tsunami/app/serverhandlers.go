@@ -4,10 +4,10 @@
 package app
 
 import (
-	"embed"
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/fs"
 	"log"
 	"mime"
 	"net/http"
@@ -27,8 +27,8 @@ func init() {
 }
 
 type HandlerOpts struct {
-	AssetsFS     *embed.FS
-	StaticFS     *embed.FS
+	AssetsFS     fs.FS
+	StaticFS     fs.FS
 	ManifestFile *FileHandlerOption
 }
 
@@ -316,8 +316,39 @@ func (h *HTTPHandlers) handleSSE(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (h *HTTPHandlers) handleStaticFiles(embeddedFS *embed.FS) http.HandlerFunc {
-	// Create a file server from the embedded FS
+// serveFileDirectly serves a file directly from an embed.FS to avoid redirect loops
+// when serving directory paths that end with "/"
+func serveFileDirectly(w http.ResponseWriter, r *http.Request, embeddedFS fs.FS, requestPath, fileName string) bool {
+	if !strings.HasSuffix(requestPath, "/") {
+		return false
+	}
+	
+	// Try to serve the specified file from that directory
+	var filePath string
+	if requestPath == "/" {
+		filePath = fileName
+	} else {
+		filePath = strings.TrimPrefix(requestPath, "/") + fileName
+	}
+	
+	file, err := embeddedFS.Open(filePath)
+	if err != nil {
+		return false
+	}
+	defer file.Close()
+	
+	// Get file info for modification time
+	fileInfo, err := file.Stat()
+	if err != nil {
+		return false
+	}
+	
+	// Serve the file directly with proper mod time
+	http.ServeContent(w, r, fileName, fileInfo.ModTime(), file.(io.ReadSeeker))
+	return true
+}
+
+func (h *HTTPHandlers) handleStaticFiles(embeddedFS fs.FS) http.HandlerFunc {
 	fileServer := http.FileServer(http.FS(embeddedFS))
 
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -328,18 +359,26 @@ func (h *HTTPHandlers) handleStaticFiles(embeddedFS *embed.FS) http.HandlerFunc 
 			}
 		}()
 
-		// Skip if this is an API or files request (already handled by other handlers)
-		if strings.HasPrefix(r.URL.Path, "/api/") || strings.HasPrefix(r.URL.Path, "/files/") {
+		// Skip if this is an API, files, or static request (already handled by other handlers)
+		if strings.HasPrefix(r.URL.Path, "/api/") || strings.HasPrefix(r.URL.Path, "/files/") || strings.HasPrefix(r.URL.Path, "/static/") {
 			http.NotFound(w, r)
 			return
 		}
 
-		// Handle root "/" => "/index.html"
-		if r.URL.Path == "/" {
-			r.URL.Path = "/index.html"
+		// Handle any path ending with "/" to avoid redirect loops
+		if serveFileDirectly(w, r, embeddedFS, r.URL.Path, "index.html") {
+			return
 		}
 
-		// Serve the file using Go's file server
+		// For other files, check if they exist before serving
+		filePath := strings.TrimPrefix(r.URL.Path, "/")
+		_, err := embeddedFS.Open(filePath)
+		if err != nil {
+			http.NotFound(w, r)
+			return
+		}
+
+		// Serve the file using the file server
 		fileServer.ServeHTTP(w, r)
 	}
 }
@@ -367,10 +406,7 @@ func (h *HTTPHandlers) handleManifest(manifestFile *FileHandlerOption) http.Hand
 	}
 }
 
-func (h *HTTPHandlers) handleStaticPathFiles(staticFS *embed.FS) http.HandlerFunc {
-	// Create a file server from the embedded FS
-	fileServer := http.FileServer(http.FS(staticFS))
-
+func (h *HTTPHandlers) handleStaticPathFiles(staticFS fs.FS) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			panicErr := util.PanicHandler("handleStaticPathFiles", recover())
@@ -380,12 +416,36 @@ func (h *HTTPHandlers) handleStaticPathFiles(staticFS *embed.FS) http.HandlerFun
 		}()
 
 		// Strip /static/ prefix from the path
-		r.URL.Path = strings.TrimPrefix(r.URL.Path, "/static")
-		if r.URL.Path == "" {
-			r.URL.Path = "/"
+		filePath := strings.TrimPrefix(r.URL.Path, "/static/")
+		if filePath == "" {
+			// Handle requests to "/static/" directly
+			if serveFileDirectly(w, r, staticFS, "/", "index.html") {
+				return
+			}
+			http.NotFound(w, r)
+			return
 		}
 
-		// Serve the file using Go's file server
+		// Handle directory paths ending with "/" to avoid redirect loops
+		strippedPath := "/" + filePath
+		if serveFileDirectly(w, r, staticFS, strippedPath, "index.html") {
+			return
+		}
+
+		// Check if file exists in staticFS
+		_, err := staticFS.Open(filePath)
+		if err != nil {
+			http.NotFound(w, r)
+			return
+		}
+
+		// Create a file server and serve the file
+		fileServer := http.FileServer(http.FS(staticFS))
+
+		// Temporarily modify the URL path for the file server
+		originalPath := r.URL.Path
+		r.URL.Path = "/" + filePath
 		fileServer.ServeHTTP(w, r)
+		r.URL.Path = originalPath
 	}
 }

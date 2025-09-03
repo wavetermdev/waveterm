@@ -59,7 +59,7 @@ var buildCmd = &cobra.Command{
 		if err := validateEnvironmentVars(&opts); err != nil {
 			return err
 		}
-		if err := build.TsunamiBuild(opts); err != nil {
+		if _, err := build.TsunamiBuild(opts); err != nil {
 			return fmt.Errorf("build failed: %w", err)
 		}
 		return nil

@@ -195,7 +195,7 @@ func (c *Client) listenAndServe(ctx context.Context) error {
 
 	// Log the port we're listening on
 	port := listener.Addr().(*net.TCPAddr).Port
-	log.Printf("Wave app server listening on port %d", port)
+	log.Printf("[tsunami] listening on port %d", port)
 
 	// Serve in a goroutine so we don't block
 	go func() {
