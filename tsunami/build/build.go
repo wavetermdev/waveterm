@@ -7,10 +7,13 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
+	"syscall"
 	"time"
 
 	"github.com/wavetermdev/waveterm/tsunami/util"
@@ -28,8 +31,9 @@ type BuildOpts struct {
 }
 
 type BuildEnv struct {
-	GoVersion string
-	TempDir   string
+	GoVersion   string
+	TempDir     string
+	cleanupOnce *sync.Once
 }
 
 func verifyEnvironment(verbose bool) (*BuildEnv, error) {
@@ -113,7 +117,10 @@ func verifyEnvironment(verbose bool) (*BuildEnv, error) {
 		return nil, fmt.Errorf("tailwindcss v4 required, found: %s", firstLine)
 	}
 
-	return &BuildEnv{GoVersion: goVersion}, nil
+	return &BuildEnv{
+		GoVersion:   goVersion,
+		cleanupOnce: &sync.Once{},
+	}, nil
 }
 
 func createGoMod(tempDir, appDirName, goVersion string, opts BuildOpts, verbose bool) error {
@@ -276,8 +283,49 @@ func verifyScaffoldPath(scaffoldPath string) error {
 	return nil
 }
 
-func TsunamiBuild(opts BuildOpts) (*BuildEnv, error) {
-	return tsunamiBuildInternal(opts)
+func (be *BuildEnv) cleanupTempDir(keepTemp bool, verbose bool) {
+	if be == nil || be.cleanupOnce == nil {
+		return
+	}
+
+	be.cleanupOnce.Do(func() {
+		if keepTemp || be.TempDir == "" {
+			log.Printf("NOT cleaning tempdir\n")
+			return
+		}
+		if err := os.RemoveAll(be.TempDir); err != nil {
+			log.Printf("Failed to remove temp directory %s: %v", be.TempDir, err)
+		} else if verbose {
+			log.Printf("Removed temp directory: %s", be.TempDir)
+		}
+	})
+}
+
+func setupSignalCleanup(buildEnv *BuildEnv, keepTemp, verbose bool) {
+	if keepTemp {
+		return
+	}
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
+	go func() {
+		defer signal.Stop(sigChan)
+		sig := <-sigChan
+		if verbose {
+			log.Printf("Received signal %v, cleaning up temp directory", sig)
+		}
+		buildEnv.cleanupTempDir(keepTemp, verbose)
+		os.Exit(1)
+	}()
+}
+
+func TsunamiBuild(opts BuildOpts) error {
+	buildEnv, err := tsunamiBuildInternal(opts)
+	defer buildEnv.cleanupTempDir(opts.KeepTemp, opts.Verbose)
+	if err != nil {
+		return err
+	}
+	setupSignalCleanup(buildEnv, opts.KeepTemp, opts.Verbose)
+	return nil
 }
 
 func tsunamiBuildInternal(opts BuildOpts) (*BuildEnv, error) {
@@ -311,7 +359,7 @@ func tsunamiBuildInternal(opts BuildOpts) (*BuildEnv, error) {
 	// Copy all *.go files from the root directory
 	goCount, err := copyGoFiles(opts.Dir, tempDir)
 	if err != nil {
-		return nil, fmt.Errorf("failed to copy go files: %w", err)
+		return buildEnv, fmt.Errorf("failed to copy go files: %w", err)
 	}
 
 	// Copy static directory
@@ -319,13 +367,13 @@ func tsunamiBuildInternal(opts BuildOpts) (*BuildEnv, error) {
 	staticDestDir := filepath.Join(tempDir, "static")
 	staticCount, err := copyDirRecursive(staticSrcDir, staticDestDir, true)
 	if err != nil {
-		return nil, fmt.Errorf("failed to copy static directory: %w", err)
+		return buildEnv, fmt.Errorf("failed to copy static directory: %w", err)
 	}
 
 	// Copy scaffold directory contents selectively
 	scaffoldCount, err := copyScaffoldSelective(opts.ScaffoldPath, tempDir)
 	if err != nil {
-		return nil, fmt.Errorf("failed to copy scaffold directory: %w", err)
+		return buildEnv, fmt.Errorf("failed to copy scaffold directory: %w", err)
 	}
 
 	if opts.Verbose {
@@ -336,23 +384,23 @@ func tsunamiBuildInternal(opts BuildOpts) (*BuildEnv, error) {
 	appMainSrc := filepath.Join(tempDir, "app-main.go")
 	appMainDest := filepath.Join(tempDir, "main-app.go")
 	if err := os.Rename(appMainSrc, appMainDest); err != nil {
-		return nil, fmt.Errorf("failed to rename app-main.go to main-app.go: %w", err)
+		return buildEnv, fmt.Errorf("failed to rename app-main.go to main-app.go: %w", err)
 	}
 
 	// Create go.mod file
 	appDirName := filepath.Base(opts.Dir)
 	if err := createGoMod(tempDir, appDirName, buildEnv.GoVersion, opts, opts.Verbose); err != nil {
-		return nil, fmt.Errorf("failed to create go.mod: %w", err)
+		return buildEnv, fmt.Errorf("failed to create go.mod: %w", err)
 	}
 
 	// Generate Tailwind CSS
 	if err := generateAppTailwindCss(tempDir, opts.Verbose); err != nil {
-		return nil, fmt.Errorf("failed to generate tailwind css: %w", err)
+		return buildEnv, fmt.Errorf("failed to generate tailwind css: %w", err)
 	}
 
 	// Build the Go application
 	if err := runGoBuild(tempDir, opts); err != nil {
-		return nil, fmt.Errorf("failed to build application: %w", err)
+		return buildEnv, fmt.Errorf("failed to build application: %w", err)
 	}
 
 	return buildEnv, nil
@@ -421,8 +469,6 @@ func generateAppTailwindCss(tempDir string, verbose bool) error {
 
 	if verbose {
 		log.Printf("Running: %s", strings.Join(tailwindCmd.Args, " "))
-		tailwindCmd.Stdout = os.Stdout
-		tailwindCmd.Stderr = os.Stderr
 	}
 
 	if err := tailwindCmd.Run(); err != nil {
@@ -464,9 +510,11 @@ func copyGoFiles(srcDir, destDir string) (int, error) {
 
 func TsunamiRun(opts BuildOpts) error {
 	buildEnv, err := tsunamiBuildInternal(opts)
+	defer buildEnv.cleanupTempDir(opts.KeepTemp, opts.Verbose)
 	if err != nil {
 		return err
 	}
+	setupSignalCleanup(buildEnv, opts.KeepTemp, opts.Verbose)
 
 	// Run the built application
 	appPath := filepath.Join(buildEnv.TempDir, "bin", "app")
@@ -503,8 +551,12 @@ func TsunamiRun(opts BuildOpts) error {
 			runCmd.Stderr = os.Stderr
 		}
 
-		if err := runCmd.Run(); err != nil {
-			return fmt.Errorf("failed to run application: %w", err)
+		if err := runCmd.Start(); err != nil {
+			return fmt.Errorf("failed to start application: %w", err)
+		}
+
+		if err := runCmd.Wait(); err != nil {
+			return fmt.Errorf("application exited with error: %w", err)
 		}
 	}
 

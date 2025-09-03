@@ -33,12 +33,12 @@ func validateEnvironmentVars(opts *build.BuildOpts) error {
 	if scaffoldPath == "" {
 		return fmt.Errorf("TSUNAMI_SCAFFOLDPATH environment variable must be set")
 	}
-	
+
 	sdkReplacePath := os.Getenv("TSUNAMI_SDKREPLACEPATH")
 	if sdkReplacePath == "" {
 		return fmt.Errorf("TSUNAMI_SDKREPLACEPATH environment variable must be set")
 	}
-	
+
 	opts.ScaffoldPath = scaffoldPath
 	opts.SdkReplacePath = sdkReplacePath
 	return nil
@@ -50,7 +50,7 @@ var buildCmd = &cobra.Command{
 	Long:         `Build a Tsunami application from the specified directory.`,
 	Args:         cobra.ExactArgs(1),
 	SilenceUsage: true,
-	RunE: func(cmd *cobra.Command, args []string) error {
+	Run: func(cmd *cobra.Command, args []string) {
 		verbose, _ := cmd.Flags().GetBool("verbose")
 		keepTemp, _ := cmd.Flags().GetBool("keeptemp")
 		output, _ := cmd.Flags().GetString("output")
@@ -61,12 +61,13 @@ var buildCmd = &cobra.Command{
 			OutputFile: output,
 		}
 		if err := validateEnvironmentVars(&opts); err != nil {
-			return err
+			fmt.Println(err)
+			os.Exit(1)
 		}
-		if _, err := build.TsunamiBuild(opts); err != nil {
-			return fmt.Errorf("build failed: %w", err)
+		if err := build.TsunamiBuild(opts); err != nil {
+			fmt.Println(err)
+			os.Exit(1)
 		}
-		return nil
 	},
 }
 
@@ -76,7 +77,7 @@ var runCmd = &cobra.Command{
 	Long:         `Build and run a Tsunami application from the specified directory.`,
 	Args:         cobra.ExactArgs(1),
 	SilenceUsage: true,
-	RunE: func(cmd *cobra.Command, args []string) error {
+	Run: func(cmd *cobra.Command, args []string) {
 		verbose, _ := cmd.Flags().GetBool("verbose")
 		open, _ := cmd.Flags().GetBool("open")
 		keepTemp, _ := cmd.Flags().GetBool("keeptemp")
@@ -87,12 +88,13 @@ var runCmd = &cobra.Command{
 			KeepTemp: keepTemp,
 		}
 		if err := validateEnvironmentVars(&opts); err != nil {
-			return err
+			fmt.Println(err)
+			os.Exit(1)
 		}
 		if err := build.TsunamiRun(opts); err != nil {
-			return fmt.Errorf("run failed: %w", err)
+			fmt.Println(err)
+			os.Exit(1)
 		}
-		return nil
 	},
 }
 
