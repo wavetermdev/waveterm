@@ -83,7 +83,9 @@ function annotateEvent(event: VDomEvent, propName: string, reactEvent: React.Syn
 
 export class TsunamiModel {
     clientId: string;
+    serverId: string;
     viewRef: React.RefObject<HTMLDivElement> = { current: null };
+    remountCallback: (() => void) | null = null;
     vdomRoot: jotai.PrimitiveAtom<VDomElem> = jotai.atom();
     atoms: Map<string, AtomContainer> = new Map(); // key is atomname
     refs: Map<string, RefContainer> = new Map(); // key is refid
@@ -108,6 +110,7 @@ export class TsunamiModel {
     globalVersion: jotai.PrimitiveAtom<number> = jotai.atom(0);
     hasBackendWork: boolean = false;
     noPadding: jotai.PrimitiveAtom<boolean>;
+    cachedFaviconPath: string | null = null;
 
     constructor() {
         this.clientId = getOrCreateClientId();
@@ -531,10 +534,46 @@ export class TsunamiModel {
         }
     }
 
+    updateFavicon(faviconPath: string | null) {
+        if (faviconPath === this.cachedFaviconPath) {
+            return;
+        }
+        
+        this.cachedFaviconPath = faviconPath;
+        
+        let existingFavicon = document.querySelector('link[rel="icon"]') as HTMLLinkElement;
+        
+        if (faviconPath) {
+            if (existingFavicon) {
+                existingFavicon.href = faviconPath;
+            } else {
+                const link = document.createElement('link');
+                link.rel = 'icon';
+                link.href = faviconPath;
+                document.head.appendChild(link);
+            }
+        } else {
+            if (existingFavicon) {
+                existingFavicon.remove();
+            }
+        }
+    }
+
     handleBackendUpdate(update: VDomBackendUpdate) {
         if (update == null) {
             return;
         }
+        
+        // Check if serverId is changing and trigger remount if needed
+        if (this.serverId != null && this.serverId !== update.serverid) {
+            // Server ID changed - need to remount the entire app
+            if (this.remountCallback) {
+                this.remountCallback();
+            }
+            return;
+        }
+        
+        this.serverId = update.serverid;
         getDefaultStore().set(this.contextActive, true);
         const idMap = new Map<string, VDomElem>();
         const vdomRoot = getDefaultStore().get(this.vdomRoot);
@@ -542,6 +581,9 @@ export class TsunamiModel {
             this.backendOpts = update.opts;
             if (update.opts.title && update.opts.title.trim() !== "") {
                 document.title = update.opts.title;
+            }
+            if (update.opts.faviconpath !== undefined) {
+                this.updateFavicon(update.opts.faviconpath);
             }
         }
         makeVDomIdMap(vdomRoot, idMap);

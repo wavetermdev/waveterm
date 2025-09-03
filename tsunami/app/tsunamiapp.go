@@ -27,6 +27,7 @@ import (
 
 const TsunamiListenAddrEnvVar = "TSUNAMI_LISTENADDR"
 const DefaultListenAddr = "localhost:0"
+const DefaultComponentName = "App"
 
 type SSEvent struct {
 	Event string
@@ -37,8 +38,6 @@ type AppOpts struct {
 	Title                string // window title
 	CloseOnCtrlC         bool
 	GlobalKeyboardEvents bool
-	GlobalStyles         []byte
-	RootComponentName    string // defaults to "App"
 }
 
 type Client struct {
@@ -47,11 +46,11 @@ type Client struct {
 	Root               *comp.RootElem
 	RootElem           *vdom.VDomElem
 	CurrentClientId    string
+	ServerId           string
 	IsDone             bool
 	DoneReason         string
 	DoneCh             chan struct{}
 	SSEventCh          chan SSEvent
-	Opts               rpctypes.VDomBackendOpts
 	GlobalEventHandler func(client *Client, event vdom.VDomEvent)
 	GlobalStylesOption *FileHandlerOption
 	UrlHandlerMux      *mux.Router
@@ -65,6 +64,8 @@ func MakeClient(appOpts AppOpts) *Client {
 		DoneCh:        make(chan struct{}),
 		SSEventCh:     make(chan SSEvent, 100),
 		UrlHandlerMux: mux.NewRouter(),
+		ServerId:      uuid.New().String(),
+		RootElem:      vdom.E(DefaultComponentName),
 	}
 	client.SetAppOpts(appOpts)
 	return client
@@ -114,27 +115,27 @@ func (c *Client) SetAppOpts(appOpts AppOpts) {
 	c.Lock.Lock()
 	defer c.Lock.Unlock()
 
-	if appOpts.RootComponentName == "" {
-		appOpts.RootComponentName = "App"
-	}
-
 	c.AppOpts = appOpts
+}
 
-	// Update the VDomBackendOpts
-	c.Opts.CloseOnCtrlC = appOpts.CloseOnCtrlC
-	c.Opts.GlobalKeyboardEvents = appOpts.GlobalKeyboardEvents
-	c.Opts.Title = appOpts.Title
+func getFaviconPath() string {
+	if staticFS != nil {
+		faviconNames := []string{"favicon.ico", "favicon.png", "favicon.svg", "favicon.gif", "favicon.jpg"}
+		for _, name := range faviconNames {
+			if _, err := staticFS.Open(name); err == nil {
+				return "/static/" + name
+			}
+		}
+	}
+	return "/wave-logo-256.png"
+}
 
-	// Update RootElem if component name changed
-	c.RootElem = vdom.E(appOpts.RootComponentName)
-
-	// Update global styles
-	if len(appOpts.GlobalStyles) > 0 {
-		c.Opts.GlobalStyles = true
-		c.GlobalStylesOption = &FileHandlerOption{Data: appOpts.GlobalStyles, MimeType: "text/css"}
-	} else {
-		c.Opts.GlobalStyles = false
-		c.GlobalStylesOption = nil
+func (c *Client) makeBackendOpts() *rpctypes.VDomBackendOpts {
+	return &rpctypes.VDomBackendOpts{
+		Title:                c.AppOpts.Title,
+		CloseOnCtrlC:         c.AppOpts.CloseOnCtrlC,
+		GlobalKeyboardEvents: c.AppOpts.GlobalKeyboardEvents,
+		FaviconPath:          getFaviconPath(),
 	}
 }
 
@@ -275,10 +276,11 @@ func (c *Client) fullRender() (*rpctypes.VDomBackendUpdate, error) {
 		renderedVDom = makeNullVDom()
 	}
 	return &rpctypes.VDomBackendUpdate{
-		Type:    "backendupdate",
-		Ts:      time.Now().UnixMilli(),
-		HasWork: len(c.Root.EffectWorkQueue) > 0,
-		Opts:    &c.Opts,
+		Type:     "backendupdate",
+		Ts:       time.Now().UnixMilli(),
+		ServerId: c.ServerId,
+		HasWork:  len(c.Root.EffectWorkQueue) > 0,
+		Opts:     c.makeBackendOpts(),
 		RenderUpdates: []rpctypes.VDomRenderUpdate{
 			{UpdateType: "root", VDom: renderedVDom},
 		},
@@ -295,8 +297,9 @@ func (c *Client) incrementalRender() (*rpctypes.VDomBackendUpdate, error) {
 		renderedVDom = makeNullVDom()
 	}
 	return &rpctypes.VDomBackendUpdate{
-		Type: "backendupdate",
-		Ts:   time.Now().UnixMilli(),
+		Type:     "backendupdate",
+		Ts:       time.Now().UnixMilli(),
+		ServerId: c.ServerId,
 		RenderUpdates: []rpctypes.VDomRenderUpdate{
 			{UpdateType: "root", VDom: renderedVDom},
 		},

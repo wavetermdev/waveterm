@@ -12,14 +12,15 @@ type VDomAsyncInitiationRequest = {
 type VDomBackendOpts = {
     closeonctrlc?: boolean;
     globalkeyboardevents?: boolean;
-    globalstyles?: boolean;
     title?: string;
+    faviconpath?: string;
 };
 
 // vdom.VDomBackendUpdate
 type VDomBackendUpdate = {
     type: "backendupdate";
     ts: number;
+    serverid: string;
     opts?: VDomBackendOpts;
     haswork?: boolean;
     renderupdates?: VDomRenderUpdate[];

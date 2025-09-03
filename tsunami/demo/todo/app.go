@@ -9,14 +9,10 @@ import (
 	"github.com/wavetermdev/waveterm/tsunami/vdom"
 )
 
-//go:embed tw.css
-var styleCSS []byte
-
 func init() {
 	// Set up the default client with embedded Tailwind styles and ctrl-c handling
 	app.SetAppOpts(app.AppOpts{
 		CloseOnCtrlC: true,
-		GlobalStyles: styleCSS,
 		Title:        "Todo App (Tsunami Demo)",
 	})
 }

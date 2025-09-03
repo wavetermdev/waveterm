@@ -4,13 +4,91 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"regexp"
+	"strconv"
 	"strings"
 )
 
 type BuildOpts struct {
 	Dir     string
 	Verbose bool
+}
+
+func verifyEnvironment(verbose bool) error {
+	// Check if go is in PATH
+	goPath, err := exec.LookPath("go")
+	if err != nil {
+		return fmt.Errorf("go command not found in PATH: %w", err)
+	}
+
+	// Run go version command
+	cmd := exec.Command(goPath, "version")
+	output, err := cmd.Output()
+	if err != nil {
+		return fmt.Errorf("failed to run 'go version': %w", err)
+	}
+
+	// Parse go version output and check for 1.21+
+	versionStr := strings.TrimSpace(string(output))
+	if verbose {
+		log.Printf("Found %s", versionStr)
+	}
+
+	// Extract version like "go1.21.0" from output
+	versionRegex := regexp.MustCompile(`go1\.(\d+)`)
+	matches := versionRegex.FindStringSubmatch(versionStr)
+	if len(matches) < 2 {
+		return fmt.Errorf("unable to parse go version from: %s", versionStr)
+	}
+
+	minor, err := strconv.Atoi(matches[1])
+	if err != nil || minor < 21 {
+		return fmt.Errorf("go version 1.21 or higher required, found: %s", versionStr)
+	}
+
+	// Check if npx is in PATH
+	_, err = exec.LookPath("npx")
+	if err != nil {
+		return fmt.Errorf("npx command not found in PATH: %w", err)
+	}
+
+	if verbose {
+		log.Printf("Found npx in PATH")
+	}
+
+	// Check Tailwind CSS version
+	tailwindCmd := exec.Command("npx", "@tailwindcss/cli")
+	tailwindOutput, err := tailwindCmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("failed to run 'npx @tailwindcss/cli': %w", err)
+	}
+
+	tailwindStr := strings.TrimSpace(string(tailwindOutput))
+	lines := strings.Split(tailwindStr, "\n")
+	if len(lines) == 0 {
+		return fmt.Errorf("no output from tailwindcss command")
+	}
+
+	firstLine := lines[0]
+	if verbose {
+		log.Printf("Found %s", firstLine)
+	}
+
+	// Check for v4 (format: "≈ tailwindcss v4.1.12")
+	tailwindRegex := regexp.MustCompile(`tailwindcss v(\d+)`)
+	matches = tailwindRegex.FindStringSubmatch(firstLine)
+	if len(matches) < 2 {
+		return fmt.Errorf("unable to parse tailwindcss version from: %s", firstLine)
+	}
+
+	majorVersion, err := strconv.Atoi(matches[1])
+	if err != nil || majorVersion != 4 {
+		return fmt.Errorf("tailwindcss v4 required, found: %s", firstLine)
+	}
+
+	return nil
 }
 
 func verifyTsunamiDir(dir string) error {
@@ -53,6 +131,10 @@ func verifyTsunamiDir(dir string) error {
 }
 
 func TsunamiBuild(opts BuildOpts) error {
+	if err := verifyEnvironment(opts.Verbose); err != nil {
+		return err
+	}
+
 	if err := verifyTsunamiDir(opts.Dir); err != nil {
 		return err
 	}

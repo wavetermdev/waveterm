@@ -48,6 +48,7 @@ type VDomFrontendUpdate struct {
 type VDomBackendUpdate struct {
 	Type          string             `json:"type" tstype:"\"backendupdate\""`
 	Ts            int64              `json:"ts"`
+	ServerId      string             `json:"serverid"`
 	Opts          *VDomBackendOpts   `json:"opts,omitempty"`
 	HasWork       bool               `json:"haswork,omitempty"`
 	RenderUpdates []VDomRenderUpdate `json:"renderupdates,omitempty"`
@@ -167,10 +168,10 @@ type VDomRefUpdate struct {
 }
 
 type VDomBackendOpts struct {
+	Title                string `json:"title,omitempty"`
 	CloseOnCtrlC         bool   `json:"closeonctrlc,omitempty"`
 	GlobalKeyboardEvents bool   `json:"globalkeyboardevents,omitempty"`
-	GlobalStyles         bool   `json:"globalstyles,omitempty"`
-	Title                string `json:"title,omitempty"`
+	FaviconPath          string `json:"faviconpath,omitempty"`
 }
 
 type VDomRenderUpdate struct {

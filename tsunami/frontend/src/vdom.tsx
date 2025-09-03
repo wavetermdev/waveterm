@@ -16,7 +16,6 @@ const FragmentTag = "#fragment";
 const WaveTextTag = "wave:text";
 const WaveNullTag = "wave:null";
 const StyleTagName = "style";
-const WaveStyleTagName = "wave:style";
 
 const VDomObjType_Ref = "ref";
 const VDomObjType_Binding = "binding";
@@ -186,14 +185,15 @@ function resolveBinding(binding: VDomBinding, model: TsunamiModel): [any, string
         return [null, []];
     }
     // validate that bindName starts with valid atom prefix and has at least one char after the dot
-    const isValidBinding = (bindName.startsWith("$shared.") && bindName.length > 8) ||
-                          (bindName.startsWith("$config.") && bindName.length > 8) ||
-                          (bindName.startsWith("$data.") && bindName.length > 6);
-    
+    const isValidBinding =
+        (bindName.startsWith("$shared.") && bindName.length > 8) ||
+        (bindName.startsWith("$config.") && bindName.length > 8) ||
+        (bindName.startsWith("$data.") && bindName.length > 6);
+
     if (!isValidBinding) {
         return [null, []];
     }
-    
+
     const atom = model.getAtomContainer(bindName);
     if (atom == null) {
         return [null, []];
@@ -323,37 +323,6 @@ function StyleTag({ elem, model }: { elem: VDomElem; model: TsunamiModel }) {
     return <style>{styleText}</style>;
 }
 
-function WaveStyle({ src, model, onMount }: { src: string; model: TsunamiModel; onMount?: () => void }) {
-    const [styleContent, setStyleContent] = React.useState<string | null>(null);
-    React.useEffect(() => {
-        async function fetchCss() {
-            try {
-                const response = await fetch(src);
-                if (!response.ok) {
-                    console.error(`Failed to load CSS from ${src}`);
-                    return;
-                }
-                const cssText = await response.text();
-                setStyleContent(cssText);
-            } catch (error) {
-                console.error("Error fetching CSS:", error);
-                onMount?.();
-            }
-        }
-        fetchCss();
-    }, [src, model]);
-    // Trigger onMount after styleContent has been set and mounted
-    React.useEffect(() => {
-        if (styleContent) {
-            onMount?.();
-        }
-    }, [styleContent, onMount]);
-    if (!styleContent) {
-        return null;
-    }
-    return <style>{styleContent}</style>;
-}
-
 function VDomTag({ elem, model }: { elem: VDomElem; model: TsunamiModel }) {
     const props = useVDom(model, elem);
     if (elem.tag == WaveNullTag) {
@@ -368,9 +337,6 @@ function VDomTag({ elem, model }: { elem: VDomElem; model: TsunamiModel }) {
     }
     if (elem.tag == StyleTagName) {
         return <StyleTag elem={elem} model={model} />;
-    }
-    if (elem.tag == WaveStyleTagName) {
-        return <WaveStyle src={props.src} model={model} />;
     }
     if (!AllowedSimpleTags[elem.tag] && !AllowedSvgTags[elem.tag]) {
         return <div>{"Invalid Tag <" + elem.tag + ">"}</div>;
@@ -426,15 +392,13 @@ type VDomViewProps = {
 };
 
 function VDomInnerView({ model }: VDomViewProps) {
-    let [styleMounted, setStyleMounted] = React.useState(!model.backendOpts?.globalstyles);
-    const handleStylesMounted = () => {
+    let [styleMounted, setStyleMounted] = React.useState(false);
+    const handleStyleLoad = () => {
         setStyleMounted(true);
     };
     return (
         <>
-            {model.backendOpts?.globalstyles ? (
-                <WaveStyle src="/files/global.css" model={model} onMount={handleStylesMounted} />
-            ) : null}
+            <link rel="stylesheet" href={`/static/tw.css?x=${model.serverId}`} onLoad={handleStyleLoad} />
             {styleMounted ? <VDomRoot model={model} /> : null}
         </>
     );
