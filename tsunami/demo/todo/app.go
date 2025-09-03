@@ -183,7 +183,3 @@ var App = app.DefineComponent("App",
 		)
 	},
 )
-
-func main() {
-	app.RunMain()
-}

@@ -12,8 +12,9 @@ import (
 )
 
 type BuildOpts struct {
-	Dir     string
-	Verbose bool
+	Dir      string
+	Verbose  bool
+	DistPath string
 }
 
 func verifyEnvironment(verbose bool) error {
@@ -130,12 +131,43 @@ func verifyTsunamiDir(dir string) error {
 	return nil
 }
 
+func verifyDistPath(distPath string) error {
+	if distPath == "" {
+		return fmt.Errorf("distPath cannot be empty")
+	}
+
+	// Check if directory exists
+	info, err := os.Stat(distPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return fmt.Errorf("distPath directory %q does not exist", distPath)
+		}
+		return fmt.Errorf("error accessing distPath directory %q: %w", distPath, err)
+	}
+
+	if !info.IsDir() {
+		return fmt.Errorf("distPath %q is not a directory", distPath)
+	}
+
+	// Check for index.html file
+	indexPath := filepath.Join(distPath, "index.html")
+	if err := CheckFileExists(indexPath); err != nil {
+		return fmt.Errorf("index.html check failed in distPath %q: %w", distPath, err)
+	}
+
+	return nil
+}
+
 func TsunamiBuild(opts BuildOpts) error {
 	if err := verifyEnvironment(opts.Verbose); err != nil {
 		return err
 	}
 
 	if err := verifyTsunamiDir(opts.Dir); err != nil {
+		return err
+	}
+
+	if err := verifyDistPath(opts.DistPath); err != nil {
 		return err
 	}
 

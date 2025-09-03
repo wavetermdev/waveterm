@@ -35,9 +35,15 @@ var buildCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		verbose, _ := cmd.Flags().GetBool("verbose")
+		distPath := os.Getenv("TSUNAMI_DISTPATH")
+		if distPath == "" {
+			fmt.Printf("Error: TSUNAMI_DISTPATH environment variable must be set\n")
+			os.Exit(1)
+		}
 		opts := build.BuildOpts{
-			Dir:     args[0],
-			Verbose: verbose,
+			Dir:      args[0],
+			Verbose:  verbose,
+			DistPath: distPath,
 		}
 		if err := build.TsunamiBuild(opts); err != nil {
 			fmt.Printf("Build failed: %v\n", err)
@@ -53,9 +59,15 @@ var runCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		verbose, _ := cmd.Flags().GetBool("verbose")
+		distPath := os.Getenv("TSUNAMI_DISTPATH")
+		if distPath == "" {
+			fmt.Printf("Error: TSUNAMI_DISTPATH environment variable must be set\n")
+			os.Exit(1)
+		}
 		opts := build.BuildOpts{
-			Dir:     args[0],
-			Verbose: verbose,
+			Dir:      args[0],
+			Verbose:  verbose,
+			DistPath: distPath,
 		}
 		if err := build.TsunamiRun(opts); err != nil {
 			fmt.Printf("Run failed: %v\n", err)
