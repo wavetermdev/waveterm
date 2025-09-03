@@ -155,6 +155,18 @@ func verifyDistPath(distPath string) error {
 		return fmt.Errorf("index.html check failed in distPath %q: %w", distPath, err)
 	}
 
+	// Check for templates/tailwind.css file
+	tailwindPath := filepath.Join(distPath, "templates", "tailwind.css")
+	if err := CheckFileExists(tailwindPath); err != nil {
+		return fmt.Errorf("templates/tailwind.css check failed in distPath %q: %w", distPath, err)
+	}
+
+	// Check for templates/main.go.tmpl file
+	mainTmplPath := filepath.Join(distPath, "templates", "main.go.tmpl")
+	if err := CheckFileExists(mainTmplPath); err != nil {
+		return fmt.Errorf("templates/main.go.tmpl check failed in distPath %q: %w", distPath, err)
+	}
+
 	return nil
 }
 
@@ -204,6 +216,46 @@ func TsunamiBuild(opts BuildOpts) error {
 	if opts.Verbose {
 		log.Printf("Copied %d go files, %d static files\n", goCount, staticCount)
 	}
+
+	// Copy main.go.tmpl from dist/templates to temp dir as main-app.go
+	mainTmplSrc := filepath.Join(opts.DistPath, "templates", "main.go.tmpl")
+	mainTmplDest := filepath.Join(tempDir, "main-app.go")
+	if err := copyFile(mainTmplSrc, mainTmplDest); err != nil {
+		return fmt.Errorf("failed to copy main.go.tmpl: %w", err)
+	}
+
+	// Generate Tailwind CSS
+	if err := generateAppTailwindCss(opts.DistPath, tempDir, opts.Verbose); err != nil {
+		return fmt.Errorf("failed to generate tailwind css: %w", err)
+	}
+
+	return nil
+}
+
+func generateAppTailwindCss(distPath, tempDir string, verbose bool) error {
+	tailwindInput := filepath.Join(distPath, "templates", "tailwind.css")
+	tailwindOutput := filepath.Join(tempDir, "static", "tw.css")
+	contentGlob := filepath.Join(tempDir, "*.go")
+	
+	tailwindCmd := exec.Command("npx", "@tailwindcss/cli",
+		"-i", tailwindInput,
+		"-o", tailwindOutput,
+		"--content", contentGlob)
+	
+	if verbose {
+		log.Printf("Running: %s", strings.Join(tailwindCmd.Args, " "))
+		tailwindCmd.Stdout = os.Stdout
+		tailwindCmd.Stderr = os.Stderr
+	}
+	
+	if err := tailwindCmd.Run(); err != nil {
+		return fmt.Errorf("failed to run tailwind command: %w", err)
+	}
+
+	if verbose {
+		log.Printf("Tailwind CSS generated successfully")
+	}
+
 	return nil
 }
 
