@@ -9,12 +9,6 @@ import (
 	"github.com/wavetermdev/waveterm/tsunami/vdom"
 )
 
-func init() {
-	// Set up the default client with embedded Tailwind styles
-	app.SetAppOpts(app.AppOpts{
-		Title: "Todo App (Tsunami Demo)",
-	})
-}
 
 // Basic domain types with json tags for props
 type Todo struct {
@@ -108,6 +102,8 @@ var TodoList = app.DefineComponent("TodoList",
 // Root component showing state management and composition
 var App = app.DefineComponent("App",
 	func(ctx context.Context, _ any) any {
+		vdom.UseSetAppTitle(ctx, "Todo App (Tsunami Demo)")
+		
 		// Multiple state hooks example
 		todos, setTodos, _ := vdom.UseState(ctx, []Todo{
 			{Id: 1, Text: "Learn VDOM", Completed: false},

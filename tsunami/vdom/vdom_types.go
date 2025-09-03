@@ -61,8 +61,8 @@ type VDomBinding struct {
 type VDomFunc struct {
 	Fn              any      `json:"-"` // server side function (called with reflection)
 	Type            string   `json:"type" tstype:"\"func\""`
-	StopPropagation bool     `json:"stoppropagation,omitempty"`
-	PreventDefault  bool     `json:"preventdefault,omitempty"`
+	StopPropagation bool     `json:"stoppropagation,omitempty"` // set to call e.stopPropagation() on the client side
+	PreventDefault  bool     `json:"preventdefault,omitempty"`  // set to call e.preventDefault() on the client side
 	GlobalEvent     string   `json:"globalevent,omitempty"`
 	Keys            []string `json:"#keys,omitempty"` // special for keyDown events a list of keys to "capture"
 }

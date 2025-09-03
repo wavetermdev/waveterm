@@ -20,6 +20,8 @@ import (
 	"golang.org/x/mod/modfile"
 )
 
+const MinSupportedGoMinorVersion = 22
+
 type BuildOpts struct {
 	Dir            string
 	Verbose        bool
@@ -50,13 +52,13 @@ func verifyEnvironment(verbose bool) (*BuildEnv, error) {
 		return nil, fmt.Errorf("failed to run 'go version': %w", err)
 	}
 
-	// Parse go version output and check for 1.21+
+	// Parse go version output and check for 1.22+
 	versionStr := strings.TrimSpace(string(output))
 	if verbose {
 		log.Printf("Found %s", versionStr)
 	}
 
-	// Extract version like "go1.21.0" from output
+	// Extract version like "go1.22.0" from output
 	versionRegex := regexp.MustCompile(`go(1\.\d+)`)
 	matches := versionRegex.FindStringSubmatch(versionStr)
 	if len(matches) < 2 {
@@ -65,7 +67,7 @@ func verifyEnvironment(verbose bool) (*BuildEnv, error) {
 
 	goVersion := matches[1]
 
-	// Check if version is 1.21+
+	// Check if version is 1.22+
 	minorRegex := regexp.MustCompile(`1\.(\d+)`)
 	minorMatches := minorRegex.FindStringSubmatch(goVersion)
 	if len(minorMatches) < 2 {
@@ -73,8 +75,8 @@ func verifyEnvironment(verbose bool) (*BuildEnv, error) {
 	}
 
 	minor, err := strconv.Atoi(minorMatches[1])
-	if err != nil || minor < 21 {
-		return nil, fmt.Errorf("go version 1.21 or higher required, found: %s", versionStr)
+	if err != nil || minor < MinSupportedGoMinorVersion {
+		return nil, fmt.Errorf("go version 1.%d or higher required, found: %s", MinSupportedGoMinorVersion, versionStr)
 	}
 
 	// Check if npx is in PATH

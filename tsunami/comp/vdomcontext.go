@@ -72,3 +72,14 @@ func (vc *VDomContextVal) IsResync() bool {
 	}
 	return vc.RenderOpts.Resync
 }
+
+func (vc *VDomContextVal) GetCompName() string {
+	if vc.Comp == nil || vc.Comp.Elem == nil {
+		return ""
+	}
+	return vc.Comp.Elem.Tag
+}
+
+func (vc *VDomContextVal) SetAppTitle(title string) {
+	vc.Root.AppTitle = title
+}

@@ -22,6 +22,8 @@ type VDomContext interface {
 	GetCompWaveId() string
 	GetOrderedHook() *Hook
 	IsResync() bool
+	GetCompName() string
+	SetAppTitle(title string)
 }
 
 func WithRenderContext(ctx context.Context, vc VDomContext) context.Context {

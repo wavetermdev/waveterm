@@ -16,20 +16,24 @@ The included todo-main.go provides a complete example application showing these 
 
 ## App Setup and Registration
 
-Tsunami applications use a default client configured through `app.SetAppOpts()` in an `init()` function:
+Tsunami applications define components using the default client:
 
 ```go
-func init() {
-    // Set up the default client with options
-    app.SetAppOpts(app.AppOpts{
-        Title: "My Tsunami App",
-    })
-}
-
 // Components are defined using the default client
 var MyComponent = app.DefineComponent("MyComponent",
     func(ctx context.Context, props MyProps) any {
         // component logic
+    },
+)
+
+// The main "App" component can set the app title
+var App = app.DefineComponent("App",
+    func(ctx context.Context, _ struct{}) any {
+        vdom.UseSetAppTitle(ctx, "My Tsunami App")  // Only works in top-level App component
+
+        return vdom.H("div", nil,
+            // app content
+        )
     },
 )
 ```
@@ -183,7 +187,7 @@ Helper functions:
 
 ## Style Handling
 
-Tsunami applications use Tailwind v4 CSS by default for styling. You can also define inline styles using a map[string]any in the props:
+Tsunami applications use Tailwind v4 CSS by default for styling (className prop). You can also define inline styles using a map[string]any in the props:
 
 ```go
 vdom.H("div", map[string]any{
@@ -385,7 +389,7 @@ func MyComponent(ctx context.Context, props MyProps) any {
     vdom.UseEffect(ctx, func() func() {
         // Example: set counter to 10 on mount
         setCounter(10)
-        
+
         return func() {
             // cleanup
         }
@@ -587,15 +591,9 @@ vdom.H("div", map[string]any{
 2. Global keyboard event handling:
 
 ```go
+// Global keyboard events are automatically enabled when you set a global event handler
 func init() {
-    app.SetAppOpts(app.AppOpts{
-        GlobalKeyboardEvents: true,  // Enable global keyboard events
-        Title:                "My Tsunami App",
-    })
-}
-
-// In main() or an effect:
-app.SetGlobalEventHandler(func(event vdom.VDomEvent) {
+    app.SetGlobalEventHandler(func(event vdom.VDomEvent) {
     if event.EventType != "onKeyDown" || event.KeyData == nil {
         return
     }
@@ -645,10 +643,9 @@ type WaveKeyboardEvent struct {
 }
 ```
 
-When using global keyboard events, remember to:
+When using global keyboard events:
 
-1. Enable GlobalKeyboardEvents in AppOpts
-2. Set up the handler in a place where you have access to necessary state updates
+Global keyboard events are automatically enabled when you set a global event handler. Set up the handler in a place where you have access to necessary state updates.
 
 ## File Handling
 
@@ -712,12 +709,8 @@ import (
     "github.com/wavetermdev/waveterm/tsunami/vdom"
 )
 
-func init() {
-    // Set up the default client with Tailwind styles
-    app.SetAppOpts(app.AppOpts{
-        Title: "My Tsunami App",
-    })
-}
+// Tsunami applications automatically include Tailwind v4 CSS
+// No setup required - just use Tailwind classes in your components
 
 // Basic domain types with json tags for props
 type Todo struct {
@@ -843,16 +836,9 @@ var App = app.DefineComponent("App",
 Key points:
 
 1. Root component must be named "App"
-2. Use `init()` function to configure app options
-3. No main() function is needed - the framework handles app lifecycle
+2. Use `vdom.UseSetAppTitle()` in the main App component to set the window title
+3. Do NOT write a main() function - the framework handles app lifecycle
 4. File handlers can be registered in init() if needed
-
-```
-type AppOpts struct {
-    Title                string // window title
-    GlobalKeyboardEvents bool
-}
-```
 
 ## Important Technical Details
 
@@ -863,7 +849,7 @@ type AppOpts struct {
 - Provide keys when using ForEach() with lists (using WithKey() method)
 - Use Classes() with If() for combining static and conditional class names
 - Consider cleanup functions in UseEffect() for async operations
-- <script> tags are not supported
+- <script> tags are NOT supported
 - Applications consist of a single file: app.go containing all Go code and component definitions
 - Styling is handled through Tailwind v4 CSS classes
 - No main() function is needed - use init() for configuration

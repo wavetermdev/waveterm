@@ -49,7 +49,7 @@ func (h *HTTPHandlers) RegisterHandlers(mux *http.ServeMux, opts HandlerOpts) {
 	mux.HandleFunc("/api/data", h.handleData)
 	mux.HandleFunc("/api/config", h.handleConfig)
 	mux.HandleFunc("/api/manifest", h.handleManifest(opts.ManifestFile))
-	mux.HandleFunc("/files/", h.handleAssetsUrl)
+	mux.HandleFunc("/dyn/", h.handleDynContent)
 
 	// Add handler for static files at /static/ path
 	if opts.StaticFS != nil {
@@ -235,24 +235,20 @@ func (h *HTTPHandlers) handleConfigPost(w http.ResponseWriter, r *http.Request) 
 	w.WriteHeader(http.StatusOK)
 }
 
-func (h *HTTPHandlers) handleAssetsUrl(w http.ResponseWriter, r *http.Request) {
+func (h *HTTPHandlers) handleDynContent(w http.ResponseWriter, r *http.Request) {
 	defer func() {
-		panicErr := util.PanicHandler("handleAssetsUrl", recover())
+		panicErr := util.PanicHandler("handleDynContent", recover())
 		if panicErr != nil {
 			http.Error(w, fmt.Sprintf("internal server error: %v", panicErr), http.StatusInternalServerError)
 		}
 	}()
 
 	// Strip /assets prefix and update the request URL
-	r.URL.Path = strings.TrimPrefix(r.URL.Path, "/assets")
+	r.URL.Path = strings.TrimPrefix(r.URL.Path, "/dyn")
 	if r.URL.Path == "" {
 		r.URL.Path = "/"
 	}
 
-	if r.URL.Path == "/global.css" && h.Client.GlobalStylesOption != nil {
-		ServeFileOption(w, r, *h.Client.GlobalStylesOption)
-		return
-	}
 	h.Client.UrlHandlerMux.ServeHTTP(w, r)
 }
 

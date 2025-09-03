@@ -26,6 +26,7 @@ type RootElem struct {
 	OuterCtx        context.Context
 	Root            *ComponentImpl
 	RenderTs        int64
+	AppTitle        string
 	CFuncs          map[string]any
 	CompMap         map[string]*ComponentImpl // component waveid -> component
 	EffectWorkQueue []*vdom.EffectWorkElem

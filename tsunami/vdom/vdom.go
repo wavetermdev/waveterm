@@ -453,6 +453,23 @@ func UseEffect(ctx context.Context, fn func() func(), deps []any) {
 	vc.AddEffectWork(vc.GetCompWaveId(), hookVal.Idx)
 }
 
+func UseSetAppTitle(ctx context.Context, title string) {
+	vc := GetRenderContext(ctx)
+	if vc == nil {
+		log.Printf("UseSetAppTitle must be called within a component (no context)")
+		return
+	}
+	
+	// Check if this is being called from the App component
+	if vc.GetCompName() != "App" {
+		log.Printf("UseSetAppTitle can only be called from the App component")
+		return
+	}
+	
+	// Set the title on the RootElem
+	vc.SetAppTitle(title)
+}
+
 func PartToElems(part any) []VDomElem {
 	if part == nil {
 		return nil

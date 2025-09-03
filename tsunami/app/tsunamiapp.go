@@ -34,14 +34,8 @@ type SSEvent struct {
 	Data  []byte
 }
 
-type AppOpts struct {
-	Title                string // window title
-	GlobalKeyboardEvents bool
-}
-
 type Client struct {
 	Lock               *sync.Mutex
-	AppOpts            AppOpts
 	Root               *comp.RootElem
 	RootElem           *vdom.VDomElem
 	CurrentClientId    string
@@ -56,7 +50,7 @@ type Client struct {
 	SetupFn            func()
 }
 
-func MakeClient(appOpts AppOpts) *Client {
+func MakeClient() *Client {
 	client := &Client{
 		Lock:          &sync.Mutex{},
 		Root:          comp.MakeRoot(),
@@ -66,7 +60,6 @@ func MakeClient(appOpts AppOpts) *Client {
 		ServerId:      uuid.New().String(),
 		RootElem:      vdom.E(DefaultComponentName),
 	}
-	client.SetAppOpts(appOpts)
 	return client
 }
 
@@ -110,12 +103,6 @@ func (c *Client) SetGlobalEventHandler(handler func(client *Client, event vdom.V
 	c.GlobalEventHandler = handler
 }
 
-func (c *Client) SetAppOpts(appOpts AppOpts) {
-	c.Lock.Lock()
-	defer c.Lock.Unlock()
-
-	c.AppOpts = appOpts
-}
 
 func getFaviconPath() string {
 	if staticFS != nil {
@@ -131,8 +118,8 @@ func getFaviconPath() string {
 
 func (c *Client) makeBackendOpts() *rpctypes.VDomBackendOpts {
 	return &rpctypes.VDomBackendOpts{
-		Title:                c.AppOpts.Title,
-		GlobalKeyboardEvents: c.AppOpts.GlobalKeyboardEvents,
+		Title:                c.Root.AppTitle,
+		GlobalKeyboardEvents: c.GlobalEventHandler != nil,
 		FaviconPath:          getFaviconPath(),
 	}
 }
@@ -298,6 +285,7 @@ func (c *Client) incrementalRender() (*rpctypes.VDomBackendUpdate, error) {
 		Type:     "backendupdate",
 		Ts:       time.Now().UnixMilli(),
 		ServerId: c.ServerId,
+		Opts:     c.makeBackendOpts(),
 		RenderUpdates: []rpctypes.VDomRenderUpdate{
 			{UpdateType: "root", VDom: renderedVDom},
 		},

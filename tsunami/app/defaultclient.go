@@ -11,7 +11,7 @@ import (
 	"github.com/wavetermdev/waveterm/tsunami/vdom"
 )
 
-var defaultClient = MakeClient(AppOpts{})
+var defaultClient = MakeClient()
 var assetsFS fs.FS
 var staticFS fs.FS
 var manifestFile *FileHandlerOption
@@ -26,9 +26,6 @@ func SetGlobalEventHandler(handler func(client *Client, event vdom.VDomEvent)) {
 	defaultClient.SetGlobalEventHandler(handler)
 }
 
-func SetAppOpts(appOpts AppOpts) {
-	defaultClient.SetAppOpts(appOpts)
-}
 
 func AddSetupFn(fn func()) {
 	defaultClient.AddSetupFn(fn)

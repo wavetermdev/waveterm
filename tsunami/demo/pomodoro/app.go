@@ -9,11 +9,6 @@ import (
 	"github.com/wavetermdev/waveterm/tsunami/vdom"
 )
 
-func init() {
-	app.SetAppOpts(app.AppOpts{
-		Title: "Pomodoro Timer (Tsunami Demo)",
-	})
-}
 
 type Mode struct {
 	Name     string `json:"name"`
@@ -103,6 +98,8 @@ var ControlButtons = app.DefineComponent("ControlButtons",
 
 var App = app.DefineComponent("App",
 	func(ctx context.Context, _ any) any {
+		vdom.UseSetAppTitle(ctx, "Pomodoro Timer (Tsunami Demo)")
+		
 		isRunning, setIsRunning, _ := vdom.UseState(ctx, false)
 		minutes, setMinutes, _ := vdom.UseState(ctx, WorkMode.Duration)
 		seconds, setSeconds, _ := vdom.UseState(ctx, 0)
