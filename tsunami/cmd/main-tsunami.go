@@ -52,9 +52,13 @@ var buildCmd = &cobra.Command{
 	SilenceUsage: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		verbose, _ := cmd.Flags().GetBool("verbose")
+		keepTemp, _ := cmd.Flags().GetBool("keeptemp")
+		output, _ := cmd.Flags().GetString("output")
 		opts := build.BuildOpts{
-			Dir:     args[0],
-			Verbose: verbose,
+			Dir:        args[0],
+			Verbose:    verbose,
+			KeepTemp:   keepTemp,
+			OutputFile: output,
 		}
 		if err := validateEnvironmentVars(&opts); err != nil {
 			return err
@@ -75,10 +79,12 @@ var runCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		verbose, _ := cmd.Flags().GetBool("verbose")
 		open, _ := cmd.Flags().GetBool("open")
+		keepTemp, _ := cmd.Flags().GetBool("keeptemp")
 		opts := build.BuildOpts{
-			Dir:     args[0],
-			Verbose: verbose,
-			Open:    open,
+			Dir:      args[0],
+			Verbose:  verbose,
+			Open:     open,
+			KeepTemp: keepTemp,
 		}
 		if err := validateEnvironmentVars(&opts); err != nil {
 			return err
@@ -94,10 +100,13 @@ func init() {
 	rootCmd.AddCommand(versionCmd)
 
 	buildCmd.Flags().BoolP("verbose", "v", false, "Enable verbose output")
+	buildCmd.Flags().Bool("keeptemp", false, "Keep temporary build directory")
+	buildCmd.Flags().StringP("output", "o", "", "Output file path for the built application")
 	rootCmd.AddCommand(buildCmd)
 
 	runCmd.Flags().BoolP("verbose", "v", false, "Enable verbose output")
 	runCmd.Flags().Bool("open", false, "Open the application in the browser after starting")
+	runCmd.Flags().Bool("keeptemp", false, "Keep temporary build directory")
 	rootCmd.AddCommand(runCmd)
 }
 

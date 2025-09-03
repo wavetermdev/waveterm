@@ -21,6 +21,8 @@ type BuildOpts struct {
 	Dir            string
 	Verbose        bool
 	Open           bool
+	KeepTemp       bool
+	OutputFile     string
 	ScaffoldPath   string
 	SdkReplacePath string
 }
@@ -275,6 +277,10 @@ func verifyScaffoldPath(scaffoldPath string) error {
 }
 
 func TsunamiBuild(opts BuildOpts) (*BuildEnv, error) {
+	return tsunamiBuildInternal(opts)
+}
+
+func tsunamiBuildInternal(opts BuildOpts) (*BuildEnv, error) {
 	buildEnv, err := verifyEnvironment(opts.Verbose)
 	if err != nil {
 		return nil, err
@@ -345,17 +351,28 @@ func TsunamiBuild(opts BuildOpts) (*BuildEnv, error) {
 	}
 
 	// Build the Go application
-	if err := runGoBuild(tempDir, opts.Verbose); err != nil {
+	if err := runGoBuild(tempDir, opts); err != nil {
 		return nil, fmt.Errorf("failed to build application: %w", err)
 	}
 
 	return buildEnv, nil
 }
 
-func runGoBuild(tempDir string, verbose bool) error {
-	binDir := filepath.Join(tempDir, "bin")
-	if err := os.MkdirAll(binDir, 0755); err != nil {
-		return fmt.Errorf("failed to create bin directory: %w", err)
+func runGoBuild(tempDir string, opts BuildOpts) error {
+	var outputPath string
+	if opts.OutputFile != "" {
+		// Convert to absolute path resolved against current working directory
+		var err error
+		outputPath, err = filepath.Abs(opts.OutputFile)
+		if err != nil {
+			return fmt.Errorf("failed to resolve output path: %w", err)
+		}
+	} else {
+		binDir := filepath.Join(tempDir, "bin")
+		if err := os.MkdirAll(binDir, 0755); err != nil {
+			return fmt.Errorf("failed to create bin directory: %w", err)
+		}
+		outputPath = "bin/app"
 	}
 
 	goFiles, err := listGoFilesInDir(tempDir)
@@ -368,11 +385,11 @@ func runGoBuild(tempDir string, verbose bool) error {
 	}
 
 	// Build command with explicit go files
-	args := append([]string{"build", "-o", "bin/app"}, goFiles...)
+	args := append([]string{"build", "-o", outputPath}, goFiles...)
 	buildCmd := exec.Command("go", args...)
 	buildCmd.Dir = tempDir
 
-	if verbose {
+	if opts.Verbose {
 		log.Printf("Running: %s", strings.Join(buildCmd.Args, " "))
 		buildCmd.Stdout = os.Stdout
 		buildCmd.Stderr = os.Stderr
@@ -382,8 +399,12 @@ func runGoBuild(tempDir string, verbose bool) error {
 		return fmt.Errorf("failed to build application: %w", err)
 	}
 
-	if verbose {
-		log.Printf("Application built successfully at %s", filepath.Join(binDir, "app"))
+	if opts.Verbose {
+		if opts.OutputFile != "" {
+			log.Printf("Application built successfully at %s", outputPath)
+		} else {
+			log.Printf("Application built successfully at %s", filepath.Join(tempDir, "bin", "app"))
+		}
 	}
 
 	return nil
@@ -442,7 +463,7 @@ func copyGoFiles(srcDir, destDir string) (int, error) {
 }
 
 func TsunamiRun(opts BuildOpts) error {
-	buildEnv, err := TsunamiBuild(opts)
+	buildEnv, err := tsunamiBuildInternal(opts)
 	if err != nil {
 		return err
 	}
