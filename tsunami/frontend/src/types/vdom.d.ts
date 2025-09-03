@@ -10,7 +10,6 @@ type VDomAsyncInitiationRequest = {
 
 // vdom.VDomBackendOpts
 type VDomBackendOpts = {
-    closeonctrlc?: boolean;
     globalkeyboardevents?: boolean;
     title?: string;
     faviconpath?: string;

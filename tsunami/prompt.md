@@ -22,8 +22,7 @@ Tsunami applications use a default client configured through `app.SetAppOpts()` 
 func init() {
     // Set up the default client with options
     app.SetAppOpts(app.AppOpts{
-        CloseOnCtrlC: true,
-        Title:        "My Tsunami App",
+        Title: "My Tsunami App",
     })
 }
 
@@ -590,7 +589,6 @@ vdom.H("div", map[string]any{
 ```go
 func init() {
     app.SetAppOpts(app.AppOpts{
-        CloseOnCtrlC:         true,
         GlobalKeyboardEvents: true,  // Enable global keyboard events
         Title:                "My Tsunami App",
     })
@@ -715,10 +713,9 @@ import (
 )
 
 func init() {
-    // Set up the default client with Tailwind styles and ctrl-c handling
+    // Set up the default client with Tailwind styles
     app.SetAppOpts(app.AppOpts{
-        CloseOnCtrlC: true,
-        Title:        "My Tsunami App",
+        Title: "My Tsunami App",
     })
 }
 
@@ -853,7 +850,6 @@ Key points:
 ```
 type AppOpts struct {
     Title                string // window title
-    CloseOnCtrlC         bool
     GlobalKeyboardEvents bool
 }
 ```

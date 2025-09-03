@@ -10,10 +10,9 @@ import (
 )
 
 func init() {
-	// Set up the default client with embedded Tailwind styles and ctrl-c handling
+	// Set up the default client with embedded Tailwind styles
 	app.SetAppOpts(app.AppOpts{
-		CloseOnCtrlC: true,
-		Title:        "Todo App (Tsunami Demo)",
+		Title: "Todo App (Tsunami Demo)",
 	})
 }
 

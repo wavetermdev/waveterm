@@ -180,11 +180,6 @@ export class TsunamiModel {
     }
 
     keyDownHandler(e: VDomKeyboardEvent): boolean {
-        if (this.backendOpts?.closeonctrlc && checkKeyPressed(e, "Ctrl:c")) {
-            this.shouldDispose = true;
-            this.queueUpdate(true);
-            return true;
-        }
         if (this.backendOpts?.globalkeyboardevents) {
             if (e.cmd || e.meta) {
                 return false;

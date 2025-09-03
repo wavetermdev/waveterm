@@ -11,8 +11,7 @@ import (
 
 func init() {
 	app.SetAppOpts(app.AppOpts{
-		CloseOnCtrlC: true,
-		Title:        "Pomodoro Timer (Tsunami Demo)",
+		Title: "Pomodoro Timer (Tsunami Demo)",
 	})
 }
 

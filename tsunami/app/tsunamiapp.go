@@ -36,7 +36,6 @@ type SSEvent struct {
 
 type AppOpts struct {
 	Title                string // window title
-	CloseOnCtrlC         bool
 	GlobalKeyboardEvents bool
 }
 
@@ -133,7 +132,6 @@ func getFaviconPath() string {
 func (c *Client) makeBackendOpts() *rpctypes.VDomBackendOpts {
 	return &rpctypes.VDomBackendOpts{
 		Title:                c.AppOpts.Title,
-		CloseOnCtrlC:         c.AppOpts.CloseOnCtrlC,
 		GlobalKeyboardEvents: c.AppOpts.GlobalKeyboardEvents,
 		FaviconPath:          getFaviconPath(),
 	}
