@@ -193,9 +193,9 @@ func (c *Client) listenAndServe(ctx context.Context) error {
 		return fmt.Errorf("failed to listen: %v", err)
 	}
 
-	// Log the port we're listening on
+	// Log the address we're listening on
 	port := listener.Addr().(*net.TCPAddr).Port
-	log.Printf("[tsunami] listening on port %d", port)
+	log.Printf("[tsunami] listening at http://localhost:%d", port)
 
 	// Serve in a goroutine so we don't block
 	go func() {

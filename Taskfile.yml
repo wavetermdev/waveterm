@@ -451,6 +451,31 @@ tasks:
         cmd: npm run dev
         dir: tsunami/frontend
 
+    tsunami:frontend:build:
+        desc: Build the tsunami frontend
+        cmd: yarn build
+        dir: tsunami/frontend
+
+    tsunami:scaffold:
+        desc: Build scaffold for tsunami frontend development
+        dir: tsunami/frontend
+        deps:
+            - tsunami:frontend:build
+        cmds:
+            - cmd: "{{.RMRF}} scaffold"
+              ignore_error: true
+            - mkdir scaffold
+            - cd scaffold && npm --no-workspaces init -y --init-license Apache-2.0
+            - cd scaffold && npm pkg set name=tsunami-scaffold
+            - cd scaffold && npm pkg delete author
+            - cd scaffold && npm pkg set author.name="Command Line Inc"
+            - cd scaffold && npm pkg set author.email="info@commandline.dev"
+            - cd scaffold && npm --no-workspaces install tailwindcss @tailwindcss/cli
+            - cp -r dist scaffold/
+            - cp ../templates/app-main.go.tmpl scaffold/app-main.go
+            - cp ../templates/tailwind.css scaffold/
+            - cp ../templates/gitignore.tmpl scaffold/.gitignore
+
     tsunami:build:
         desc: Build the tsunami binary.
         cmds:

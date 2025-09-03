@@ -1,0 +1,60 @@
+/* Copyright 2025, Command Line Inc. */
+/* SPDX-License-Identifier: Apache-2.0 */
+
+@import "tailwindcss";
+@source inline("bg-background text-primary");
+
+@theme {
+    --color-background: rgb(34, 34, 34); /* default background color */
+    --color-primary: rgb(247, 247, 247); /* primary text color (headers, bold text) */
+    --color-secondary: rgba(215, 218, 224, 0.7); /* secondary text */
+    --color-muted: rgba(215, 218, 224, 0.5); /* muted, faint, small text */
+    --color-accent-50: rgb(236, 253, 232);
+    --color-accent-100: rgb(209, 250, 202);
+    --color-accent-200: rgb(167, 243, 168);
+    --color-accent-300: rgb(110, 231, 133);
+    --color-accent-400: rgb(88, 193, 66); /* main accent color */
+    --color-accent-500: rgb(63, 162, 51);
+    --color-accent-600: rgb(47, 133, 47);
+    --color-accent-700: rgb(34, 104, 43);
+    --color-accent-800: rgb(22, 81, 35);
+    --color-accent-900: rgb(15, 61, 29);
+    --color-error: rgb(229, 77, 46); /* use as bg w/ primary text */
+    --color-warning: rgb(181, 137, 0); /* use as bg w/ primary text */
+    --color-success: rgb(78, 154, 6); /* use as bg w/ primary text */
+    --color-panel: rgba(255, 255, 255, 0.12); /* use a bg for panels */
+    --color-hoverbg: rgba(255, 255, 255, 0.16); /* on hover, can use as a bg to highlight */
+    --color-border: rgba(255, 255, 255, 0.16); /* fine border color */
+    --color-strongborder: rgba(255, 255, 255, 0.24); /* stronger border / divider color */
+    --color-accentbg: rgba(88, 193, 66, 0.4); /* accented bg color */
+    --color-accent: rgb(88, 193, 66); /* accent text color */
+    --color-accenthover: rgb(118, 223, 96); /* brighter accent text color (hover effect) */
+
+    --font-sans: "Inter", sans-serif; /* regular text font */
+    --font-mono: "Hack", monospace; /* monospace, code, terminal, command font */
+    --font-markdown: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif,
+        "Apple Color Emoji", "Segoe UI Emoji";
+
+    --text-xxs: 10px; /* small, very fine text */
+    --text-title: 18px; /* font size for titles */
+    --text-default: 14px; /* default font size */
+    --radius: 8px; /* default border radius */
+
+    /* ANSI Terminal Colors (Default Dark Palette) */
+    --ansi-black: #757575;
+    --ansi-red: #cc685c;
+    --ansi-green: #76c266;
+    --ansi-yellow: #cbca9b;
+    --ansi-blue: #85aacb;
+    --ansi-magenta: #cc72ca;
+    --ansi-cyan: #74a7cb;
+    --ansi-white: #c1c1c1;
+    --ansi-brightblack: #727272;
+    --ansi-brightred: #cc9d97;
+    --ansi-brightgreen: #a3dd97;
+    --ansi-brightyellow: #cbcaaa;
+    --ansi-brightblue: #9ab6cb;
+    --ansi-brightmagenta: #cc8ecb;
+    --ansi-brightcyan: #b7b8cb;
+    --ansi-brightwhite: #f0f0f0;
+}

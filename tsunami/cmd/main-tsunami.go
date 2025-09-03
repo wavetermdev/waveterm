@@ -29,9 +29,9 @@ var versionCmd = &cobra.Command{
 }
 
 func validateEnvironmentVars(opts *build.BuildOpts) error {
-	distPath := os.Getenv("TSUNAMI_DISTPATH")
-	if distPath == "" {
-		return fmt.Errorf("TSUNAMI_DISTPATH environment variable must be set")
+	scaffoldPath := os.Getenv("TSUNAMI_SCAFFOLDPATH")
+	if scaffoldPath == "" {
+		return fmt.Errorf("TSUNAMI_SCAFFOLDPATH environment variable must be set")
 	}
 	
 	sdkReplacePath := os.Getenv("TSUNAMI_SDKREPLACEPATH")
@@ -39,7 +39,7 @@ func validateEnvironmentVars(opts *build.BuildOpts) error {
 		return fmt.Errorf("TSUNAMI_SDKREPLACEPATH environment variable must be set")
 	}
 	
-	opts.DistPath = distPath
+	opts.ScaffoldPath = scaffoldPath
 	opts.SdkReplacePath = sdkReplacePath
 	return nil
 }
@@ -74,9 +74,11 @@ var runCmd = &cobra.Command{
 	SilenceUsage: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		verbose, _ := cmd.Flags().GetBool("verbose")
+		open, _ := cmd.Flags().GetBool("open")
 		opts := build.BuildOpts{
 			Dir:     args[0],
 			Verbose: verbose,
+			Open:    open,
 		}
 		if err := validateEnvironmentVars(&opts); err != nil {
 			return err
@@ -95,6 +97,7 @@ func init() {
 	rootCmd.AddCommand(buildCmd)
 
 	runCmd.Flags().BoolP("verbose", "v", false, "Enable verbose output")
+	runCmd.Flags().Bool("open", false, "Open the application in the browser after starting")
 	rootCmd.AddCommand(runCmd)
 }
 

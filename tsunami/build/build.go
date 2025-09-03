@@ -1,7 +1,9 @@
 package build
 
 import (
+	"bufio"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"os/exec"
@@ -9,14 +11,17 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
+	"github.com/wavetermdev/waveterm/tsunami/util"
 	"golang.org/x/mod/modfile"
 )
 
 type BuildOpts struct {
 	Dir            string
 	Verbose        bool
-	DistPath       string
+	Open           bool
+	ScaffoldPath   string
 	SdkReplacePath string
 }
 
@@ -210,40 +215,60 @@ func verifyTsunamiDir(dir string) error {
 	return nil
 }
 
-func verifyDistPath(distPath string) error {
-	if distPath == "" {
-		return fmt.Errorf("distPath cannot be empty")
+func verifyScaffoldPath(scaffoldPath string) error {
+	if scaffoldPath == "" {
+		return fmt.Errorf("scaffoldPath cannot be empty")
 	}
 
 	// Check if directory exists
-	info, err := os.Stat(distPath)
+	info, err := os.Stat(scaffoldPath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return fmt.Errorf("distPath directory %q does not exist", distPath)
+			return fmt.Errorf("scaffoldPath directory %q does not exist", scaffoldPath)
 		}
-		return fmt.Errorf("error accessing distPath directory %q: %w", distPath, err)
+		return fmt.Errorf("error accessing scaffoldPath directory %q: %w", scaffoldPath, err)
 	}
 
 	if !info.IsDir() {
-		return fmt.Errorf("distPath %q is not a directory", distPath)
+		return fmt.Errorf("scaffoldPath %q is not a directory", scaffoldPath)
 	}
 
-	// Check for index.html file
-	indexPath := filepath.Join(distPath, "index.html")
-	if err := CheckFileExists(indexPath); err != nil {
-		return fmt.Errorf("index.html check failed in distPath %q: %w", distPath, err)
+	// Check for dist directory
+	distPath := filepath.Join(scaffoldPath, "dist")
+	if err := IsDirOrNotFound(distPath); err != nil {
+		return fmt.Errorf("dist directory check failed in scaffoldPath %q: %w", scaffoldPath, err)
+	}
+	info, err = os.Stat(distPath)
+	if err != nil || !info.IsDir() {
+		return fmt.Errorf("dist directory must exist in scaffoldPath %q", scaffoldPath)
 	}
 
-	// Check for templates/tailwind.css file
-	tailwindPath := filepath.Join(distPath, "templates", "tailwind.css")
+	// Check for app-main.go file
+	appMainPath := filepath.Join(scaffoldPath, "app-main.go")
+	if err := CheckFileExists(appMainPath); err != nil {
+		return fmt.Errorf("app-main.go check failed in scaffoldPath %q: %w", scaffoldPath, err)
+	}
+
+	// Check for tailwind.css file
+	tailwindPath := filepath.Join(scaffoldPath, "tailwind.css")
 	if err := CheckFileExists(tailwindPath); err != nil {
-		return fmt.Errorf("templates/tailwind.css check failed in distPath %q: %w", distPath, err)
+		return fmt.Errorf("tailwind.css check failed in scaffoldPath %q: %w", scaffoldPath, err)
 	}
 
-	// Check for templates/main.go.tmpl file
-	mainTmplPath := filepath.Join(distPath, "templates", "main.go.tmpl")
-	if err := CheckFileExists(mainTmplPath); err != nil {
-		return fmt.Errorf("templates/main.go.tmpl check failed in distPath %q: %w", distPath, err)
+	// Check for package.json file
+	packageJsonPath := filepath.Join(scaffoldPath, "package.json")
+	if err := CheckFileExists(packageJsonPath); err != nil {
+		return fmt.Errorf("package.json check failed in scaffoldPath %q: %w", scaffoldPath, err)
+	}
+
+	// Check for node_modules directory
+	nodeModulesPath := filepath.Join(scaffoldPath, "node_modules")
+	if err := IsDirOrNotFound(nodeModulesPath); err != nil {
+		return fmt.Errorf("node_modules directory check failed in scaffoldPath %q: %w", scaffoldPath, err)
+	}
+	info, err = os.Stat(nodeModulesPath)
+	if err != nil || !info.IsDir() {
+		return fmt.Errorf("node_modules directory must exist in scaffoldPath %q", scaffoldPath)
 	}
 
 	return nil
@@ -259,7 +284,7 @@ func TsunamiBuild(opts BuildOpts) (*BuildEnv, error) {
 		return nil, err
 	}
 
-	if err := verifyDistPath(opts.DistPath); err != nil {
+	if err := verifyScaffoldPath(opts.ScaffoldPath); err != nil {
 		return nil, err
 	}
 
@@ -284,32 +309,28 @@ func TsunamiBuild(opts BuildOpts) (*BuildEnv, error) {
 	}
 
 	// Copy static directory
-	staticCount, err := copyStaticDir(opts.Dir, tempDir)
+	staticSrcDir := filepath.Join(opts.Dir, "static")
+	staticDestDir := filepath.Join(tempDir, "static")
+	staticCount, err := copyDirRecursive(staticSrcDir, staticDestDir, true)
 	if err != nil {
 		return nil, fmt.Errorf("failed to copy static directory: %w", err)
 	}
 
-	// Create dist directory
-	distDir := filepath.Join(tempDir, "dist")
-	if err := os.MkdirAll(distDir, 0755); err != nil {
-		return nil, fmt.Errorf("failed to create dist directory: %w", err)
-	}
-
-	// Copy dist directory contents
-	distCount, err := copyDirRecursive(opts.DistPath, distDir)
+	// Copy scaffold directory contents selectively
+	scaffoldCount, err := copyScaffoldSelective(opts.ScaffoldPath, tempDir)
 	if err != nil {
-		return nil, fmt.Errorf("failed to copy dist directory: %w", err)
+		return nil, fmt.Errorf("failed to copy scaffold directory: %w", err)
 	}
 
 	if opts.Verbose {
-		log.Printf("Copied %d go files, %d static files, %d dist files\n", goCount, staticCount, distCount)
+		log.Printf("Copied %d go files, %d static files, %d scaffold files\n", goCount, staticCount, scaffoldCount)
 	}
 
-	// Copy main.go.tmpl from dist/templates to temp dir as main-app.go
-	mainTmplSrc := filepath.Join(opts.DistPath, "templates", "main.go.tmpl")
-	mainTmplDest := filepath.Join(tempDir, "main-app.go")
-	if err := copyFile(mainTmplSrc, mainTmplDest); err != nil {
-		return nil, fmt.Errorf("failed to copy main.go.tmpl: %w", err)
+	// Copy app-main.go from scaffold to main-app.go in temp dir
+	appMainSrc := filepath.Join(tempDir, "app-main.go")
+	appMainDest := filepath.Join(tempDir, "main-app.go")
+	if err := os.Rename(appMainSrc, appMainDest); err != nil {
+		return nil, fmt.Errorf("failed to rename app-main.go to main-app.go: %w", err)
 	}
 
 	// Create go.mod file
@@ -319,7 +340,7 @@ func TsunamiBuild(opts BuildOpts) (*BuildEnv, error) {
 	}
 
 	// Generate Tailwind CSS
-	if err := generateAppTailwindCss(opts.DistPath, tempDir, opts.Verbose); err != nil {
+	if err := generateAppTailwindCss(tempDir, opts.Verbose); err != nil {
 		return nil, fmt.Errorf("failed to generate tailwind css: %w", err)
 	}
 
@@ -368,14 +389,8 @@ func runGoBuild(tempDir string, verbose bool) error {
 	return nil
 }
 
-func generateAppTailwindCss(distPath, tempDir string, verbose bool) error {
-	// Copy tailwind.css from dist/templates to temp dir
-	tailwindSrc := filepath.Join(distPath, "templates", "tailwind.css")
-	tailwindDest := filepath.Join(tempDir, "tailwind.css")
-	if err := copyFile(tailwindSrc, tailwindDest); err != nil {
-		return fmt.Errorf("failed to copy tailwind.css: %w", err)
-	}
-
+func generateAppTailwindCss(tempDir string, verbose bool) error {
+	// tailwind.css is already in tempDir from scaffold copy
 	tailwindOutput := filepath.Join(tempDir, "static", "tw.css")
 
 	tailwindCmd := exec.Command("npx", "@tailwindcss/cli",
@@ -398,22 +413,6 @@ func generateAppTailwindCss(distPath, tempDir string, verbose bool) error {
 	}
 
 	return nil
-}
-
-func copyStaticDir(srcDir, destDir string) (int, error) {
-	// Always create static directory in temp dir
-	staticDestDir := filepath.Join(destDir, "static")
-	if err := os.MkdirAll(staticDestDir, 0755); err != nil {
-		return 0, fmt.Errorf("failed to create static directory: %w", err)
-	}
-
-	// Copy static/ directory contents if it exists
-	staticSrcDir := filepath.Join(srcDir, "static")
-	if _, err := os.Stat(staticSrcDir); err == nil {
-		return copyDirRecursive(staticSrcDir, staticDestDir)
-	}
-
-	return 0, nil
 }
 
 func copyGoFiles(srcDir, destDir string) (int, error) {
@@ -456,15 +455,72 @@ func TsunamiRun(opts BuildOpts) error {
 	log.Printf("Running tsunami app from %s", opts.Dir)
 
 	runCmd.Stdin = os.Stdin
-	if opts.Verbose {
-		log.Printf("Executing: %s", appPath)
-		runCmd.Stdout = os.Stdout
-		runCmd.Stderr = os.Stderr
-	}
 
-	if err := runCmd.Run(); err != nil {
-		return fmt.Errorf("failed to run application: %w", err)
+	if opts.Open {
+		// If --open flag is set, we need to capture stderr to parse the listening message
+		stderr, err := runCmd.StderrPipe()
+		if err != nil {
+			return fmt.Errorf("failed to create stderr pipe: %w", err)
+		}
+		runCmd.Stdout = os.Stdout
+
+		if err := runCmd.Start(); err != nil {
+			return fmt.Errorf("failed to start application: %w", err)
+		}
+
+		// Monitor stderr for the listening message
+		go monitorAndOpenBrowser(stderr, opts.Verbose)
+
+		if err := runCmd.Wait(); err != nil {
+			return fmt.Errorf("application exited with error: %w", err)
+		}
+	} else {
+		// Normal execution without browser opening
+		if opts.Verbose {
+			log.Printf("Executing: %s", appPath)
+			runCmd.Stdout = os.Stdout
+			runCmd.Stderr = os.Stderr
+		}
+
+		if err := runCmd.Run(); err != nil {
+			return fmt.Errorf("failed to run application: %w", err)
+		}
 	}
 
 	return nil
+}
+
+func monitorAndOpenBrowser(stdout io.ReadCloser, verbose bool) {
+	defer stdout.Close()
+
+	scanner := bufio.NewScanner(stdout)
+	urlRegex := regexp.MustCompile(`\[tsunami\] listening at (http://[^\s]+)`)
+	browserOpened := false
+	if verbose {
+		log.Printf("monitoring for browser open\n")
+	}
+
+	for scanner.Scan() {
+		line := scanner.Text()
+		if verbose {
+			log.Println(line)
+		}
+
+		if !browserOpened && len(urlRegex.FindStringSubmatch(line)) > 1 {
+			matches := urlRegex.FindStringSubmatch(line)
+			url := matches[1]
+			if verbose {
+				log.Printf("Opening browser to %s", url)
+			}
+			go util.OpenBrowser(url, 100*time.Millisecond)
+			browserOpened = true
+		}
+	}
+
+	// Continue reading and printing output if verbose
+	if verbose {
+		for scanner.Scan() {
+			log.Println(scanner.Text())
+		}
+	}
 }

@@ -4,10 +4,12 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"runtime/debug"
 	"strings"
+	"time"
 )
 
 func PanicHandler(debugStr string, recoverVal any) error {
@@ -64,4 +66,27 @@ func ChunkSlice[T any](slice []T, chunkSize int) [][]T {
 		chunks = append(chunks, slice[i:end])
 	}
 	return chunks
+}
+
+func OpenBrowser(url string, delay time.Duration) {
+	if delay > 0 {
+		time.Sleep(delay)
+	}
+	
+	var cmd string
+	var args []string
+
+	switch runtime.GOOS {
+	case "windows":
+		cmd = "cmd"
+		args = []string{"/c", "start", url}
+	case "darwin":
+		cmd = "open"
+		args = []string{url}
+	default: // "linux", "freebsd", "openbsd", "netbsd"
+		cmd = "xdg-open"
+		args = []string{url}
+	}
+
+	exec.Command(cmd, args...).Start()
 }

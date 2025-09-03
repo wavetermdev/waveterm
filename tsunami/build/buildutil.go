@@ -48,9 +48,29 @@ func FileMustNotExist(path string) error {
 	return nil // Not found is OK
 }
 
-func copyDirRecursive(srcDir, destDir string) (int, error) {
+func copyDirRecursive(srcDir, destDir string, forceCreateDestDir bool) (int, error) {
+	// Check if source directory exists
+	srcInfo, err := os.Stat(srcDir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			if forceCreateDestDir {
+				// Create destination directory even if source doesn't exist
+				if err := os.MkdirAll(destDir, 0755); err != nil {
+					return 0, fmt.Errorf("failed to create destination directory %s: %w", destDir, err)
+				}
+			}
+			return 0, nil // Source doesn't exist, return 0 files copied
+		}
+		return 0, fmt.Errorf("error accessing source directory %s: %w", srcDir, err)
+	}
+
+	// Check if source is actually a directory
+	if !srcInfo.IsDir() {
+		return 0, fmt.Errorf("source %s is not a directory", srcDir)
+	}
+
 	fileCount := 0
-	err := filepath.Walk(srcDir, func(path string, info os.FileInfo, err error) error {
+	err = filepath.Walk(srcDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
@@ -129,4 +149,80 @@ func listGoFilesInDir(dirPath string) ([]string, error) {
 	}
 
 	return goFiles, nil
+}
+
+func copyScaffoldSelective(scaffoldPath, destDir string) (int, error) {
+	fileCount := 0
+
+	// Create symlinks for node_modules directory
+	symlinkItems := []string{"node_modules"}
+	for _, item := range symlinkItems {
+		srcPath := filepath.Join(scaffoldPath, item)
+		destPath := filepath.Join(destDir, item)
+
+		// Check if source exists
+		if _, err := os.Stat(srcPath); err != nil {
+			if os.IsNotExist(err) {
+				continue // Skip if doesn't exist
+			}
+			return 0, fmt.Errorf("error checking %s: %w", item, err)
+		}
+
+		// Create symlink
+		if err := os.Symlink(srcPath, destPath); err != nil {
+			return 0, fmt.Errorf("failed to create symlink for %s: %w", item, err)
+		}
+		fileCount++
+	}
+
+	// Copy package files instead of symlinking
+	packageFiles := []string{"package.json", "package-lock.json"}
+	for _, fileName := range packageFiles {
+		srcPath := filepath.Join(scaffoldPath, fileName)
+		destPath := filepath.Join(destDir, fileName)
+
+		// Check if source exists
+		if _, err := os.Stat(srcPath); err != nil {
+			if os.IsNotExist(err) {
+				continue // Skip if doesn't exist
+			}
+			return 0, fmt.Errorf("error checking %s: %w", fileName, err)
+		}
+
+		// Copy file
+		if err := copyFile(srcPath, destPath); err != nil {
+			return 0, fmt.Errorf("failed to copy %s: %w", fileName, err)
+		}
+		fileCount++
+	}
+
+	// Copy dist directory that needs to be fully copied for go embed
+	distSrcPath := filepath.Join(scaffoldPath, "dist")
+	distDestPath := filepath.Join(destDir, "dist")
+	dirCount, err := copyDirRecursive(distSrcPath, distDestPath, false)
+	if err != nil {
+		return 0, fmt.Errorf("failed to copy dist directory: %w", err)
+	}
+	fileCount += dirCount
+
+	// Copy files by pattern (*.go, *.md, *.json, tailwind.css)
+	patterns := []string{"*.go", "*.md", "*.json", "tailwind.css"}
+	for _, pattern := range patterns {
+		matches, err := filepath.Glob(filepath.Join(scaffoldPath, pattern))
+		if err != nil {
+			return 0, fmt.Errorf("failed to glob pattern %s: %w", pattern, err)
+		}
+
+		for _, srcPath := range matches {
+			fileName := filepath.Base(srcPath)
+			destPath := filepath.Join(destDir, fileName)
+
+			if err := copyFile(srcPath, destPath); err != nil {
+				return 0, fmt.Errorf("failed to copy %s: %w", fileName, err)
+			}
+			fileCount++
+		}
+	}
+
+	return fileCount, nil
 }
