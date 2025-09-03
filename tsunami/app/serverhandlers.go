@@ -277,18 +277,18 @@ func (h *HTTPHandlers) handleSSE(w http.ResponseWriter, r *http.Request) {
 
 	// Set SSE headers
 	w.Header().Set("Content-Type", "text/event-stream")
-	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Cache-Control", "no-cache, no-transform")
 	w.Header().Set("Connection", "keep-alive")
 	w.Header().Set("X-Accel-Buffering", "no")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
+	w.Header().Set("X-Accel-Buffering", "no") // nginx hint
 
-	// Flush headers immediately
-	flusher, ok := w.(http.Flusher)
-	if !ok {
+	// Use ResponseController for better flushing control
+	rc := http.NewResponseController(w)
+	if err := rc.Flush(); err != nil {
 		http.Error(w, "streaming not supported", http.StatusInternalServerError)
 		return
 	}
-	flusher.Flush()
 
 	// Create a ticker for keepalive packets
 	keepaliveTicker := time.NewTicker(SSEKeepAliveDuration)
@@ -301,17 +301,15 @@ func (h *HTTPHandlers) handleSSE(w http.ResponseWriter, r *http.Request) {
 		case <-keepaliveTicker.C:
 			// Send keepalive comment
 			fmt.Fprintf(w, ": keepalive\n\n")
-			flusher.Flush()
+			rc.Flush()
 		case event := <-h.Client.SSEventCh:
 			if event.Event == "" {
 				break
 			}
 			fmt.Fprintf(w, "event: %s\n", event.Event)
-			if len(event.Data) > 0 {
-				fmt.Fprintf(w, "data: %s\n", string(event.Data))
-			}
+			fmt.Fprintf(w, "data: %s\n", string(event.Data))
 			fmt.Fprintf(w, "\n")
-			flusher.Flush()
+			rc.Flush()
 		}
 	}
 }
@@ -322,7 +320,7 @@ func serveFileDirectly(w http.ResponseWriter, r *http.Request, embeddedFS fs.FS,
 	if !strings.HasSuffix(requestPath, "/") {
 		return false
 	}
-	
+
 	// Try to serve the specified file from that directory
 	var filePath string
 	if requestPath == "/" {
@@ -330,19 +328,19 @@ func serveFileDirectly(w http.ResponseWriter, r *http.Request, embeddedFS fs.FS,
 	} else {
 		filePath = strings.TrimPrefix(requestPath, "/") + fileName
 	}
-	
+
 	file, err := embeddedFS.Open(filePath)
 	if err != nil {
 		return false
 	}
 	defer file.Close()
-	
+
 	// Get file info for modification time
 	fileInfo, err := file.Stat()
 	if err != nil {
 		return false
 	}
-	
+
 	// Serve the file directly with proper mod time
 	http.ServeContent(w, r, fileName, fileInfo.ModTime(), file.(io.ReadSeeker))
 	return true
