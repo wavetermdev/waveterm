@@ -489,3 +489,12 @@ tasks:
             - "tsunami/go.sum"
         generates:
             - "bin/tsunami{{exeExt}}"
+
+    godoc:
+        desc: Start the Go documentation server for the root module
+        cmd: $(go env GOPATH)/bin/pkgsite -http=:6060
+
+    tsunami:godoc:
+        desc: Start the Go documentation server for the tsunami module
+        cmd: $(go env GOPATH)/bin/pkgsite -http=:6060
+        dir: tsunami
