@@ -7,10 +7,10 @@ The Tsunami framework brings React-style UI development to Go, letting you build
 Tsunami mirrors React's developer experience:
 
 - **Components**: Define reusable UI pieces with typed props structs
-- **JSX-like syntax**: Use `vdom.H()` to build element trees (like `React.createElement`)
-- **Hooks**: `UseState`, `UseEffect`, `UseRef` work exactly like React hooks
+- **JSX-like syntax**: Use vdom.H to build element trees (like React.createElement)
+- **Hooks**: vdom.UseState, vdom.UseEffect, vdom.UseRef work exactly like React hooks
 - **Props and state**: Familiar patterns for data flow and updates
-- **Conditional rendering**: `vdom.If()` and `vdom.IfElse()` for dynamic UIs
+- **Conditional rendering**: vdom.If and vdom.IfElse for dynamic UIs
 - **Event handling**: onClick, onChange, onKeyDown with React-like event objects
 - **Styling**: Built-in Tailwind v4 CSS classes, plus inline styles via `style` prop
 
@@ -77,7 +77,7 @@ Key Points:
 
 ## Building Elements with vdom.H()
 
-The H function creates virtual DOM elements following a React-like pattern (`React.createElement`). It takes a tag name, a props map, and any number of children:
+The vdom.H function creates virtual DOM elements following a React-like pattern (React.createElement). It takes a tag name, a props map, and any number of children:
 
 ```go
 // Basic element with no props
@@ -175,11 +175,11 @@ Arguments to H:
 
 Best practices:
 
-- Use Classes() with If() for conditional classes (similar to React's conditional className patterns)
+- Use vdom.Classes with vdom.If for conditional classes (similar to React's conditional className patterns)
 - Use camelCase for style properties (exactly like React)
 - Numbers in style are automatically converted to pixel values (like React)
 - Always create new slices when updating arrays in state (like React's immutability principle)
-- Use ForEach for list rendering (always passes index, like React's map with index)
+- Use vdom.ForEach for list rendering (always passes index, like React's map with index)
 - Include key prop when rendering lists (essential for React-like reconciliation)
 
 ## Conditional Rendering and Lists
@@ -232,7 +232,7 @@ Functions starting with `vdom.Use*` are hooks in Tsunami, following the exact sa
 
 **Key Rules:**
 
-- ✅ Only call hooks inside `app.DefineComponent` functions
+- ✅ Only call hooks inside app.DefineComponent functions
 - ✅ Always call hooks at the **top level** of your component function
 - ✅ Call hooks before any early returns or conditional logic
 - 🔴 Never call hooks inside loops, conditions, or after conditional returns
@@ -366,8 +366,8 @@ Components in Tsunami:
 
 - Use Go structs with json tags for props
 - Take a context and props as arguments
-- Return elements created with vdom.H()
-- Can use all hooks (useState, useRef, etc)
+- Return elements created with vdom.H
+- Can use all hooks (vdom.UseState, vdom.UseRef, etc)
 - Are registered with the default client and given a name
 - Are called as functions with their props struct
 
@@ -523,7 +523,7 @@ func MyComponent(ctx context.Context, props MyProps) any {
 
 The system provides three main types of hooks:
 
-1. `UseState` - For values that trigger re-renders when changed:
+1. vdom.UseState - For values that trigger re-renders when changed:
 
    - Returns current value, direct setter, and functional setter
    - Direct setter triggers component re-render
@@ -540,7 +540,7 @@ The system provides three main types of hooks:
    })
    ```
 
-2. `UseRef` - For values that persist between renders without triggering updates:
+2. vdom.UseRef - For values that persist between renders without triggering updates:
 
    - Holds mutable values that survive re-renders
    - Changes don't cause re-renders
@@ -556,7 +556,7 @@ The system provides three main types of hooks:
    })
    ```
 
-3. `UseVDomRef` - For accessing DOM elements directly:
+3. vdom.UseVDomRef - For accessing DOM elements directly:
    - Creates refs for DOM interaction
    - Useful for:
      - Accessing DOM element properties
@@ -573,10 +573,10 @@ The system provides three main types of hooks:
 
 Best Practices:
 
-- Use `UseState` for all UI state - it provides both direct and functional setters
+- Use vdom.UseState for all UI state - it provides both direct and functional setters
 - Use functional setter when updating state from goroutines or based on current value
-- Use `UseRef` for complex state that goroutines need to access
-- Always clean up timers, channels, and goroutines in UseEffect cleanup functions
+- Use vdom.UseRef for complex state that goroutines need to access
+- Always clean up timers, channels, and goroutines in vdom.UseEffect cleanup functions
 
 ## State Management and Async Updates
 
@@ -599,7 +599,7 @@ var TodoApp = app.DefineComponent("TodoApp",
         // Local state for UI updates
         count, setCount := vdom.UseState(ctx, 0)
 
-        // UseState returns value, setter, and functional setter
+        // vdom.UseState returns value, setter, and functional setter
         seconds, setSeconds, setSecondsFn := vdom.UseState(ctx, 0)
 
         // Use refs to store complex state that goroutines need to access
@@ -644,7 +644,7 @@ var TodoApp = app.DefineComponent("TodoApp",
             }
         }
 
-        // Use UseEffect for cleanup on unmount
+        // Use vdom.UseEffect for cleanup on unmount
         vdom.UseEffect(ctx, func() func() {
             return func() {
                 stopAsync()
@@ -665,8 +665,8 @@ Key points for state management:
 - Global state is fine for simple data structures
 - Use functional setter when updating state based on its current value, especially in goroutines
 - Store complex state in refs when it needs to be accessed by goroutines
-- Use `UseEffect` cleanup function to handle component unmount
-- Call `SendAsyncInitiation()` after state changes in goroutines (consider round trip performance, so don't call at very high speeds)
+- Use vdom.UseEffect cleanup function to handle component unmount
+- Call app.SendAsyncInitiation after state changes in goroutines (consider round trip performance, so don't call at very high speeds)
 - Use atomic operations if globals are modified from multiple goroutines (or locks)
 
 ## Global Keyboard Handling
@@ -931,7 +931,7 @@ var App = app.DefineComponent("App",
 Key points:
 
 1. Root component must be named "App"
-2. Use `vdom.UseSetAppTitle()` in the main App component to set the window title
+2. Use vdom.UseSetAppTitle in the main App component to set the window title
 3. Do NOT write a main() function - the framework handles app lifecycle
 4. File handlers can be registered in init() if needed
 
@@ -940,15 +940,15 @@ Key points:
 - Props must be defined as Go structs with json tags
 - Components take their props type directly: `func MyComponent(ctx context.Context, props MyProps) any`
 - Always use app.DefineComponent for component registration
-- Call app.SendAsyncInitiation() after async state updates
-- Provide keys when using ForEach() with lists (using WithKey() method)
-- Use Classes() with If() for combining static and conditional class names
-- Consider cleanup functions in UseEffect() for async operations
+- Call app.SendAsyncInitiation after async state updates
+- Provide keys when using vdom.ForEach with lists (using WithKey method)
+- Use vdom.Classes with vdom.If for combining static and conditional class names
+- Consider cleanup functions in vdom.UseEffect for async operations
 - <script> tags are NOT supported
 - Applications consist of a single file: app.go containing all Go code and component definitions
 - Styling is handled through Tailwind v4 CSS classes
 - No main() function is needed - use init() for configuration
 - This is a pure Go system - do not attempt to write React components or JavaScript code
-- All UI rendering, including complex visualizations, should be done through Go using vdom.H()
+- All UI rendering, including complex visualizations, should be done through Go using vdom.H
 
 The todo demo demonstrates all these patterns in a complete application.
