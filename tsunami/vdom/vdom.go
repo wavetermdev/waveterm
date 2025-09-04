@@ -87,40 +87,19 @@ func IfElse(cond bool, part any, elsePart any) any {
 	return elsePart
 }
 
-func ForEach[T any](items []T, fn func(T) any) []any {
-	var elems []any
-	for _, item := range items {
-		fnResult := fn(item)
-		elems = append(elems, fnResult)
+func Ternary[T any](cond bool, trueRtn T, falseRtn T) T {
+	if cond {
+		return trueRtn
+	} else {
+		return falseRtn
 	}
-	return elems
 }
 
-func ForEachIdx[T any](items []T, fn func(T, int) any) []any {
-	var elems []any
+func ForEach[T any](items []T, fn func(T, int) any) []any {
+	elems := make([]any, len(items))
 	for idx, item := range items {
 		fnResult := fn(item, idx)
 		elems = append(elems, fnResult)
-	}
-	return elems
-}
-
-func Filter[T any](items []T, fn func(T) bool) []T {
-	var elems []T
-	for _, item := range items {
-		if fn(item) {
-			elems = append(elems, item)
-		}
-	}
-	return elems
-}
-
-func FilterIdx[T any](items []T, fn func(T, int) bool) []T {
-	var elems []T
-	for idx, item := range items {
-		if fn(item, idx) {
-			elems = append(elems, item)
-		}
 	}
 	return elems
 }

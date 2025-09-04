@@ -9,7 +9,6 @@ import (
 	"github.com/wavetermdev/waveterm/tsunami/vdom"
 )
 
-
 // Basic domain types with json tags for props
 type Todo struct {
 	Id        int    `json:"id"`
@@ -89,7 +88,7 @@ var TodoList = app.DefineComponent("TodoList",
 	func(ctx context.Context, props TodoListProps) any {
 		return vdom.H("div", map[string]any{
 			"className": "flex flex-col gap-2",
-		}, vdom.ForEach(props.Todos, func(todo Todo) any {
+		}, vdom.ForEach(props.Todos, func(todo Todo, _ int) any {
 			return TodoItem(TodoItemProps{
 				Todo:     todo,
 				OnToggle: func() { props.OnToggle(todo.Id) },
@@ -103,7 +102,7 @@ var TodoList = app.DefineComponent("TodoList",
 var App = app.DefineComponent("App",
 	func(ctx context.Context, _ any) any {
 		vdom.UseSetAppTitle(ctx, "Todo App (Tsunami Demo)")
-		
+
 		// Multiple state hooks example
 		todos, setTodos, _ := vdom.UseState(ctx, []Todo{
 			{Id: 1, Text: "Learn VDOM", Completed: false},
@@ -139,11 +138,13 @@ var App = app.DefineComponent("App",
 			setTodos(newTodos)
 		}
 
-		// Filter pattern for deletion
 		deleteTodo := func(id int) {
-			newTodos := vdom.Filter(todos, func(todo Todo) bool {
-				return todo.Id != id
-			})
+			newTodos := make([]Todo, 0, len(todos)-1)
+			for _, todo := range todos {
+				if todo.Id != id {
+					newTodos = append(newTodos, todo)
+				}
+			}
 			setTodos(newTodos)
 		}
 
