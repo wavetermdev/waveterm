@@ -280,6 +280,50 @@ Most applications won't need these specialty hooks, but they're available for ad
 
 This ensures hooks are called in the same order every render, which is essential for Tsunami's state management.
 
+## Global State Management
+
+Tsunami provides three types of global atoms for sharing state across components and with external systems:
+
+### Atom Types
+
+**UseSharedAtom** - Basic shared state between components:
+
+```go
+// Shared between components, not shared externally
+// Triggers re-renders when updated
+isLoading, setIsLoading, _ := vdom.UseSharedAtom[bool](ctx, "isLoading")
+```
+
+**UseConfig** - Configuration that external systems can read/write:
+
+```go
+// External tools can GET/POST to /api/config to read/modify these
+// Triggers re-renders when updated (internally or externally)
+theme, setTheme, _ := vdom.UseConfig[string](ctx, "theme")
+apiKey, _, _ := vdom.UseConfig[string](ctx, "apiKey")
+```
+
+**UseData** - Application data that external systems can read:
+
+```go
+// External tools can GET /api/data to inspect app state
+// Triggers re-renders when updated
+userStats, setUserStats, _ := vdom.UseData[UserStats](ctx, "currentUser")
+apiResult, setLastPoll, setLastPollFn := vdom.UseData[APIResult](ctx, "lastPoll")
+```
+
+All atom types work exactly like UseState - they return the current value, a setter function, and a functional setter. The key difference is their scope and external API accessibility.
+
+### External API Integration
+
+The UseConfig and UseData atoms automatically create REST endpoints:
+
+- `GET /api/config` - Returns all config atom values
+- `POST /api/config` - Updates (merges) config atom values
+- `GET /api/data` - Returns all data atom values
+
+This makes Tsunami applications naturally suitable for integration with external tools, monitoring systems, and AI agents that need to inspect or configure the application.
+
 ## Style Handling
 
 Tsunami applications use Tailwind v4 CSS by default for styling (className prop). You can also define inline styles using a map[string]any in the props:
