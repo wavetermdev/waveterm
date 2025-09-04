@@ -77,7 +77,7 @@ Key Points:
 
 ## Building Elements with vdom.H()
 
-The H function creates virtual DOM elements following a React-like pattern. It takes a tag name, a props map, and any number of children:
+The H function creates virtual DOM elements following a React-like pattern (`React.createElement`). It takes a tag name, a props map, and any number of children:
 
 ```go
 // Basic element with no props
@@ -85,7 +85,7 @@ vdom.H("div", nil, "Hello world")
 
 // Element with props
 vdom.H("div", map[string]any{
-    "className": "container",
+    "className": "max-w-4xl mx-auto p-4",
     "id": "main",
     "onClick": func() {
         fmt.Println("clicked!")
@@ -94,38 +94,39 @@ vdom.H("div", map[string]any{
     "child content",
 )
 
-// Element with style
+// Element with style (for custom CSS properties not available in Tailwind)
 vdom.H("div", map[string]any{
     "style": map[string]any{
-        "marginTop": 10,      // Numbers automatically convert to px
-        "color": "red",
-        "display": "flex",
+        "marginTop": 10,      // Numbers automatically convert to px (like React)
+        "zIndex": 1000,
+        "transform": "rotate(45deg)",
     },
 })
 
-// Working with classes
+// Working with Tailwind classes
 vdom.H("div", map[string]any{
     "className": vdom.Classes(
-        "base",                     // Static classes
-        vdom.If(isActive, "active"),    // Conditional class: condition first, then class
-        vdom.If(isDisabled, "disabled"), // Another conditional
+        "p-4 bg-white rounded-lg",                    // Static Tailwind classes
+        vdom.If(isActive, "bg-blue-500 text-white"),     // Conditional class: condition first, then class
+        vdom.If(isDisabled, "opacity-50 cursor-not-allowed"), // Another conditional
     ),
 })
 
 // Nesting elements
 vdom.H("div", map[string]any{
-    "className": "container",
+    "className": "max-w-4xl mx-auto",
 },
     vdom.H("h1", map[string]any{
-        "className": "title",
+        "className": "text-2xl font-bold mb-4",
     }, "Hello"),
     vdom.H("p", map[string]any{
-        "className": "content",
+        "className": "text-gray-600 leading-relaxed",
     }, "Some content"),
 )
 
 // Handling events
 vdom.H("button", map[string]any{
+    "className": "px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600",
     "onClick": func() {
         handleClick()
     },
@@ -137,18 +138,22 @@ vdom.H("button", map[string]any{
 })
 
 // List rendering
-vdom.H("ul", nil,
-    vdom.ForEachIdx(items, func(item string, idx int) any {
+vdom.H("ul", map[string]any{
+    "className": "space-y-2",
+},
+    vdom.ForEach(items, func(item string, idx int) any {
         return vdom.H("li", map[string]any{
             "key": idx,
-            "className": "list-item",
+            "className": "py-2 px-4 bg-gray-100 rounded",
         }, item)
     }),
 )
 
 // Conditional rendering
 vdom.H("div", nil,
-    vdom.If(isVisible, vdom.H("span", nil, "Visible content")),
+    vdom.If(isVisible, vdom.H("span", map[string]any{
+        "className": "text-green-500 font-semibold",
+    }, "Visible content")),
 )
 ```
 
@@ -156,8 +161,8 @@ Arguments to H:
 
 1. `tag` (string): The HTML tag name
 2. `props` (map[string]any or nil): Props map including:
-   - className: String of space-separated classes
-   - style: map[string]any of CSS properties
+   - className: String of space-separated classes (like React)
+   - style: map[string]any of CSS properties (like React)
    - Event handlers (onClick, onChange, etc)
    - Any other valid HTML attributes
 3. `children` (...any): Any number of child elements:
@@ -170,12 +175,12 @@ Arguments to H:
 
 Best practices:
 
-- Use Classes() with If() for conditional classes
-- Use camelCase for style properties (matching React)
-- Numbers in style are automatically converted to pixel values
-- Always create new slices when updating arrays in state
-- Use ForEach or ForEachIdx for list rendering
-- Include key prop when rendering lists
+- Use Classes() with If() for conditional classes (similar to React's conditional className patterns)
+- Use camelCase for style properties (exactly like React)
+- Numbers in style are automatically converted to pixel values (like React)
+- Always create new slices when updating arrays in state (like React's immutability principle)
+- Use ForEach for list rendering (always passes index, like React's map with index)
+- Include key prop when rendering lists (essential for React-like reconciliation)
 
 ## Conditional Rendering and Lists
 
@@ -200,7 +205,7 @@ vdom.H("div", nil,
 // List rendering (adding "key" prop to li element)
 items := []string{"A", "B", "C"}
 vdom.H("ul", nil,
-    vdom.ForEachIdx(items, func(item string, idx int) any {
+    vdom.ForEach(items, func(item string, idx int) any {
         return vdom.H("li", map[string]any{
             "key": idx,
             "className": "list-item",
@@ -506,7 +511,7 @@ func MyComponent(ctx context.Context, props MyProps) any {
             },
         }),
         vdom.H("ul", nil,
-            vdom.ForEach(items, func(item string) any {
+            vdom.ForEach(items, func(item string, _ int) any {
                 return vdom.H("li", nil, item)
             }),
         ),
@@ -647,7 +652,7 @@ var TodoApp = app.DefineComponent("TodoApp",
         }, []any{})
 
         return vdom.H("div", nil,
-            vdom.ForEach(globalTodos, func(todo Todo) any {
+            vdom.ForEach(globalTodos, func(todo Todo, _ int) any {
                 return TodoItem(TodoItemProps{Todo: todo})
             }),
         )
@@ -910,7 +915,7 @@ var App = app.DefineComponent("App",
 
             vdom.H("div", map[string]any{
                 "className": "flex flex-col gap-2",
-            }, vdom.ForEach(todos, func(todo Todo) any {
+            }, vdom.ForEach(todos, func(todo Todo, _ int) any {
                 return TodoItem(TodoItemProps{
                     Todo:     todo,
                     OnToggle: func() { toggleTodo(todo.Id) },

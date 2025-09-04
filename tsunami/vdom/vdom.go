@@ -145,7 +145,7 @@ func Ternary[T any](cond bool, trueRtn T, falseRtn T) T {
 // ForEach applies a function to each item in a slice and returns a slice of results.
 // The function receives the item and its index, and can return any type for flexible VDOM generation.
 func ForEach[T any](items []T, fn func(T, int) any) []any {
-	elems := make([]any, len(items))
+	elems := make([]any, 0, len(items))
 	for idx, item := range items {
 		fnResult := fn(item, idx)
 		elems = append(elems, fnResult)
