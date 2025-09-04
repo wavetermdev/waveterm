@@ -6,8 +6,6 @@ package app
 import (
 	"context"
 	"fmt"
-	"io"
-	"io/fs"
 	"log"
 	"net"
 	"net/http"
@@ -44,7 +42,6 @@ type clientImpl struct {
 	DoneCh             chan struct{}
 	SSEventCh          chan ssEvent
 	GlobalEventHandler func(event vdom.VDomEvent)
-	GlobalStylesOption *FileHandlerOption
 	UrlHandlerMux      *http.ServeMux
 	SetupFn            func()
 }
@@ -134,7 +131,7 @@ func (c *clientImpl) runMainE() error {
 	return nil
 }
 
-func (c *clientImpl) AddSetupFn(fn func()) {
+func (c *clientImpl) RegisterSetupFn(fn func()) {
 	c.SetupFn = fn
 }
 
@@ -152,14 +149,10 @@ func (c *clientImpl) listenAndServe(ctx context.Context) error {
 
 	// Create a new ServeMux and register handlers
 	mux := http.NewServeMux()
-	var manifestOption *FileHandlerOption
-	if len(manifestFileBytes) > 0 {
-		manifestOption = &FileHandlerOption{Data: manifestFileBytes}
-	}
 	handlers.registerHandlers(mux, handlerOpts{
 		AssetsFS:     assetsFS,
 		StaticFS:     staticFS,
-		ManifestFile: manifestOption,
+		ManifestFile: manifestFileBytes,
 	})
 
 	// Determine listen address from environment variable or use default
@@ -304,162 +297,10 @@ func (c *clientImpl) incrementalRender() (*rpctypes.VDomBackendUpdate, error) {
 	}, nil
 }
 
-func (c *clientImpl) RegisterUrlPathHandler(path string, handler http.Handler) {
-	c.UrlHandlerMux.Handle(path, handler)
-}
-
-type FileHandlerOption struct {
-	FilePath string    // optional file path on disk
-	Data     []byte    // optional byte slice content
-	Reader   io.Reader // optional reader for content
-	File     fs.File   // optional embedded or opened file
-	MimeType string    // optional mime type
-	ETag     string    // optional ETag (if set, resource may be cached)
-}
-
-func determineMimeType(option FileHandlerOption) (string, []byte) {
-	// If MimeType is set, use it directly
-	if option.MimeType != "" {
-		return option.MimeType, nil
+func (c *clientImpl) HandleDynFunc(pattern string, fn func(http.ResponseWriter, *http.Request)) {
+	if !strings.HasPrefix(pattern, "/dyn/") {
+		log.Printf("invalid dyn pattern: %s (must start with /dyn/)", pattern)
+		return
 	}
-
-	// Detect from Data if available, no need to buffer
-	if option.Data != nil {
-		return http.DetectContentType(option.Data), nil
-	}
-
-	// Detect from FilePath, no buffering necessary
-	if option.FilePath != "" {
-		filePath := util.ExpandHomeDirSafe(option.FilePath)
-		file, err := os.Open(filePath)
-		if err != nil {
-			return "application/octet-stream", nil // Fallback on error
-		}
-		defer file.Close()
-
-		// Read first 512 bytes for MIME detection
-		buf := make([]byte, 512)
-		_, err = file.Read(buf)
-		if err != nil && err != io.EOF {
-			return "application/octet-stream", nil
-		}
-		return http.DetectContentType(buf), nil
-	}
-
-	// Buffer for File (fs.File), since it lacks Seek
-	if option.File != nil {
-		buf := make([]byte, 512)
-		n, err := option.File.Read(buf)
-		if err != nil && err != io.EOF {
-			return "application/octet-stream", nil
-		}
-		return http.DetectContentType(buf[:n]), buf[:n]
-	}
-
-	// Buffer for Reader (io.Reader), same as File
-	if option.Reader != nil {
-		buf := make([]byte, 512)
-		n, err := option.Reader.Read(buf)
-		if err != nil && err != io.EOF {
-			return "application/octet-stream", nil
-		}
-		return http.DetectContentType(buf[:n]), buf[:n]
-	}
-
-	// Default MIME type if none specified
-	return "application/octet-stream", nil
-}
-
-// serveFileOption handles serving content based on the provided FileHandlerOption
-func serveFileOption(w http.ResponseWriter, r *http.Request, option FileHandlerOption) error {
-	// Determine MIME type and get buffered data if needed
-	contentType, bufferedData := determineMimeType(option)
-	w.Header().Set("Content-Type", contentType)
-	// Handle ETag
-	if option.ETag != "" {
-		w.Header().Set("ETag", option.ETag)
-
-		// Check If-None-Match header
-		if inm := r.Header.Get("If-None-Match"); inm != "" {
-			// Strip W/ prefix and quotes if present
-			inm = strings.Trim(inm, `"`)
-			inm = strings.TrimPrefix(inm, "W/")
-			etag := strings.Trim(option.ETag, `"`)
-			etag = strings.TrimPrefix(etag, "W/")
-
-			if inm == etag {
-				// Resource not modified
-				w.WriteHeader(http.StatusNotModified)
-				return nil
-			}
-		}
-	}
-
-	// Handle the content based on the option type
-	switch {
-	case option.FilePath != "":
-		filePath := util.ExpandHomeDirSafe(option.FilePath)
-		http.ServeFile(w, r, filePath)
-
-	case option.Data != nil:
-		w.Header().Set("Content-Length", fmt.Sprintf("%d", len(option.Data)))
-		w.WriteHeader(http.StatusOK)
-		if _, err := w.Write(option.Data); err != nil {
-			return fmt.Errorf("failed to write data: %v", err)
-		}
-
-	case option.File != nil:
-		if bufferedData != nil {
-			if _, err := w.Write(bufferedData); err != nil {
-				return fmt.Errorf("failed to write buffered data: %v", err)
-			}
-		}
-		if _, err := io.Copy(w, option.File); err != nil {
-			return fmt.Errorf("failed to copy from file: %v", err)
-		}
-
-	case option.Reader != nil:
-		if bufferedData != nil {
-			if _, err := w.Write(bufferedData); err != nil {
-				return fmt.Errorf("failed to write buffered data: %v", err)
-			}
-		}
-		if _, err := io.Copy(w, option.Reader); err != nil {
-			return fmt.Errorf("failed to copy from reader: %v", err)
-		}
-
-	default:
-		return fmt.Errorf("no content available")
-	}
-
-	return nil
-}
-
-func (c *clientImpl) RegisterFilePrefixHandler(prefix string, optionProvider func(path string) (*FileHandlerOption, error)) {
-	c.UrlHandlerMux.HandleFunc(prefix, func(w http.ResponseWriter, r *http.Request) {
-		if !strings.HasPrefix(r.URL.Path, prefix) {
-			http.NotFound(w, r)
-			return
-		}
-		option, err := optionProvider(r.URL.Path)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		if option == nil {
-			http.Error(w, "no content available", http.StatusNotFound)
-			return
-		}
-		if err := serveFileOption(w, r, *option); err != nil {
-			http.Error(w, fmt.Sprintf("Failed to serve content: %v", err), http.StatusInternalServerError)
-		}
-	})
-}
-
-func (c *clientImpl) RegisterFileHandler(path string, option FileHandlerOption) {
-	c.UrlHandlerMux.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
-		if err := serveFileOption(w, r, option); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-		}
-	})
+	c.UrlHandlerMux.HandleFunc(pattern, fn)
 }

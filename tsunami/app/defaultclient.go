@@ -26,10 +26,17 @@ func SetGlobalEventHandler(handler func(event vdom.VDomEvent)) {
 	defaultClient.SetGlobalEventHandler(handler)
 }
 
-func AddSetupFn(fn func()) {
-	defaultClient.AddSetupFn(fn)
+// RegisterSetupFn registers a single setup function that is called before the app starts running.
+// Only one setup function is allowed, so calling this will replace any previously registered
+// setup function.
+func RegisterSetupFn(fn func()) {
+	defaultClient.RegisterSetupFn(fn)
 }
 
+// SendAsyncInitiation notifies the frontend that the backend has updated state
+// and requires a re-render. Normally the frontend calls the backend in response
+// to events, but when the backend changes state independently (e.g., from a
+// background process), this function gives the frontend a "nudge" to update.
 func SendAsyncInitiation() error {
 	return defaultClient.SendAsyncInitiation()
 }
@@ -46,16 +53,11 @@ func GetAtomVal(name string) any {
 	return defaultClient.GetAtomVal(name)
 }
 
-func RegisterUrlPathHandler(path string, handler http.Handler) {
-	defaultClient.RegisterUrlPathHandler(path, handler)
-}
-
-func RegisterFilePrefixHandler(prefix string, optionProvider func(path string) (*FileHandlerOption, error)) {
-	defaultClient.RegisterFilePrefixHandler(prefix, optionProvider)
-}
-
-func RegisterFileHandler(path string, option FileHandlerOption) {
-	defaultClient.RegisterFileHandler(path, option)
+// HandleDynFunc registers a dynamic HTTP handler function with the internal http.ServeMux.
+// The pattern MUST start with "/dyn/" to be valid. This allows registration of dynamic
+// routes that can be handled at runtime.
+func HandleDynFunc(pattern string, fn func(http.ResponseWriter, *http.Request)) {
+	defaultClient.HandleDynFunc(pattern, fn)
 }
 
 // RunMain is used internally by generated code and should not be called directly.

@@ -29,7 +29,7 @@ func init() {
 type handlerOpts struct {
 	AssetsFS     fs.FS
 	StaticFS     fs.FS
-	ManifestFile *FileHandlerOption
+	ManifestFile []byte
 }
 
 type httpHandlers struct {
@@ -377,7 +377,7 @@ func (h *httpHandlers) handleStaticFiles(embeddedFS fs.FS) http.HandlerFunc {
 	}
 }
 
-func (h *httpHandlers) handleManifest(manifestFile *FileHandlerOption) http.HandlerFunc {
+func (h *httpHandlers) handleManifest(manifestFileBytes []byte) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			panicErr := util.PanicHandler("handleManifest", recover())
@@ -391,12 +391,13 @@ func (h *httpHandlers) handleManifest(manifestFile *FileHandlerOption) http.Hand
 			return
 		}
 
-		if manifestFile == nil {
+		if manifestFileBytes == nil {
 			http.NotFound(w, r)
 			return
 		}
 
-		serveFileOption(w, r, *manifestFile)
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(manifestFileBytes)
 	}
 }
 

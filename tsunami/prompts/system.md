@@ -744,51 +744,79 @@ Global keyboard events are automatically enabled when you set a global event han
 
 ## File Handling
 
-The Tsunami framework can serve files to components. Any URL starting with `vdom://` will be handled by the registered handlers:
+The Tsunami framework provides two simple approaches for serving content:
+
+### Static Files
+
+For static assets (images, CSS, fonts, etc.), simply create a `static/` directory in your application directory. All files in this directory are automatically served under the `/static/` URL path:
+
+```
+your-app/
+├── app.go
+└── static/
+    ├── logo.png
+    ├── styles.css
+    └── images/
+        └── icon.svg
+```
+
+Use these files in your components with `/static/` URLs:
 
 ```go
-// Register handlers for files (in the main func)
-app.RegisterFileHandler("/logo.png", app.FileHandlerOption{
-    FilePath: "./assets/logo.png",
-})
-
-// returning nil will produce a 404, path will be the full path, including the prefix
-app.RegisterFilePrefixHandler("/img/", func(path string) (*app.FileHandlerOption, error) {
-    return &app.FileHandlerOption{Data: data, MimeType: "image/png"}
-})
-
-// Use in components with vdom:// prefix
 vdom.H("img", map[string]any{
-    "src": "vdom:///logo.png",  // Note the vdom:// prefix
+    "src": "/static/logo.png",
     "alt": "Logo",
+})
+
+vdom.H("div", map[string]any{
     "style": map[string]any{
-        "background": "url(vdom:///logo.png)", // vdom urls can be used in CSS as well
+        "background": "url(/static/images/icon.svg)",
     },
 })
 ```
 
-Files can come from:
+### Dynamic URL Handlers
 
-- Disk (FilePath)
-- Memory (Data + MimeType)
-- Stream (Reader)
+For dynamic content or API endpoints, use app.HandleDynFunc to register standard http.ServeMux handlers. All dynamic routes MUST be registered under the `/dyn/` path:
 
+```go
+// Register dynamic handlers (typically in init() or setup function)
+app.HandleDynFunc("/dyn/api/data", func(w http.ResponseWriter, r *http.Request) {
+    w.Header().Set("Content-Type", "application/json")
+    json.NewEncoder(w).Encode(map[string]any{"status": "ok"})
+})
+
+app.HandleDynFunc("/dyn/generate-image", func(w http.ResponseWriter, r *http.Request) {
+    // Generate dynamic content
+    img := generateImage()
+    w.Header().Set("Content-Type", "image/png")
+    png.Encode(w, img)
+})
+
+// Use standard http.ServeMux patterns
+app.HandleDynFunc("/dyn/files/{id}", func(w http.ResponseWriter, r *http.Request) {
+    id := r.PathValue("id")
+    // Handle file by ID
+})
 ```
-type FileHandlerOption struct {
-	FilePath string    // optional file path on disk
-	Data     []byte    // optional byte slice content (easy to use with go:embed)
-	Reader   io.Reader // optional reader for content
-	File     fs.File   // optional embedded or opened file
-	MimeType string    // optional mime type
-	ETag     string    // optional ETag (if set, resource may be cached)
-}
+
+Use dynamic endpoints in your components:
+
+```go
+vdom.H("img", map[string]any{
+    "src": "/dyn/generate-image?type=chart&data=123",
+    "alt": "Dynamic Chart",
+})
 ```
 
-Any URL passed to src attributes that starts with vdom:// will be handled by the registered handlers. All registered paths should be absolute (start with "/").
+Key points:
 
-Note that the system will attempt to detect the file type using the first 512 bytes of content. This works great for images, videos, and binary files. For text files which might be ambiguous (CSS, JSON, YAML, TOML, JavaScript, Go Code, Java, other programming languages) it can make sense to specify the mimetype (but usually only required if the frontend needs it for some reason).
-
-By default, files will not be cached. If you'd like to enable caching, pass an ETag. If a subsequent request comes and the ETag matches the system will used the cached content.
+- **Static files**: Create `static/` directory, use `/static/` URLs
+- **Dynamic content**: Use app.HandleDynFunc with `/dyn/` prefix
+- Dynamic handlers use standard Go http.Handler interface
+- You can use any http.ServeMux pattern in the route
+- Content-Type is automatically detected for static files
+- For dynamic handlers, set Content-Type explicitly when needed
 
 ## Tsunami App Template
 
@@ -933,7 +961,7 @@ Key points:
 1. Root component must be named "App"
 2. Use vdom.UseSetAppTitle in the main App component to set the window title
 3. Do NOT write a main() function - the framework handles app lifecycle
-4. File handlers can be registered in init() if needed
+4. Use init() for setup like registering dynamic handlers with app.HandleDynFunc
 
 ## Important Technical Details
 
@@ -944,10 +972,10 @@ Key points:
 - Provide keys when using vdom.ForEach with lists (using WithKey method)
 - Use vdom.Classes with vdom.If for combining static and conditional class names
 - Consider cleanup functions in vdom.UseEffect for async operations
-- <script> tags are NOT supported
+- `<script>` tags are NOT supported
 - Applications consist of a single file: app.go containing all Go code and component definitions
 - Styling is handled through Tailwind v4 CSS classes
-- No main() function is needed - use init() for configuration
+- Do NOT write a main() function - use init() for setup like dynamic handlers
 - This is a pure Go system - do not attempt to write React components or JavaScript code
 - All UI rendering, including complex visualizations, should be done through Go using vdom.H
 
