@@ -1,42 +1,79 @@
 # Tsunami Framework Guide
 
-Wave Terminal includes a powerful Tsunami framework that lets developers create rich HTML/React-based UI applications directly from Go code. The system translates Go components and elements into React components that are rendered within Wave Terminal's UI. It's particularly well-suited for administrative interfaces, monitoring dashboards, data visualization, configuration managers, and form-based applications where you want a graphical interface but don't need complex browser-side interactions.
+The Tsunami framework brings React-style UI development to Go, letting you build rich graphical applications that run inside Wave Terminal. If you know React, you already understand Tsunami's core concepts - it uses the same patterns for components, props, hooks, state management, and styling, but implemented entirely in Go.
 
-This guide explains how to use the Tsunami framework (and corresponding VDOM, virtual DOM, component) to create interactive applications that run in Wave Terminal. While the patterns will feel familiar to React developers (components, props, hooks), the implementation is pure Go and takes advantage of Go's strengths like goroutines for async operations. Note that complex browser-side interactions like drag-and-drop, rich text editing, or heavy JavaScript functionality are not supported - the framework is designed for straightforward, practical applications.
+## React Patterns in Go
 
-You'll learn how to:
+Tsunami mirrors React's developer experience:
 
-- Create and compose components
-- Manage state and handle events
-- Work with styles and CSS
-- Handle async operations with goroutines
-- Create rich UIs that render in Wave Terminal
+- **Components**: Define reusable UI pieces with typed props structs
+- **JSX-like syntax**: Use `vdom.H()` to build element trees (like `React.createElement`)
+- **Hooks**: `UseState`, `UseEffect`, `UseRef` work exactly like React hooks
+- **Props and state**: Familiar patterns for data flow and updates
+- **Conditional rendering**: `vdom.If()` and `vdom.IfElse()` for dynamic UIs
+- **Event handling**: onClick, onChange, onKeyDown with React-like event objects
+- **Styling**: Built-in Tailwind v4 CSS classes, plus inline styles via `style` prop
 
-The included todo-main.go provides a complete example application showing these patterns in action.
+The key difference: everything is pure Go code. No JavaScript, no build tools, no transpilation. You get React's mental model with Go's type safety, performance, and ecosystem.
 
-## App Setup and Registration
+## Built for AI Development
 
-Tsunami applications define components using the default client:
+Tsunami is designed with AI code generation in mind. The framework maps directly to React concepts that AI models understand well:
 
 ```go
-// Components are defined using the default client
-var MyComponent = app.DefineComponent("MyComponent",
-    func(ctx context.Context, props MyProps) any {
-        // component logic
-    },
+// This feels like React JSX, but it's pure Go
+return vdom.H("div", map[string]any{
+    "className": "flex items-center gap-4 p-4",
+},
+    vdom.H("input", map[string]any{
+        "type": "checkbox",
+        "checked": todo.Completed,
+        "onChange": handleToggle,
+    }),
+    vdom.H("span", map[string]any{
+        "className": vdom.Classes("flex-1", vdom.If(todo.Completed, "line-through")),
+    }, todo.Text),
+)
+```
+
+AI models can leverage their React knowledge to generate Tsunami applications, while developers get the benefits of Go's concurrency, error handling, and type system.
+
+## How It Works
+
+Tsunami applications run as Go programs that generate virtual DOM structures. Wave Terminal renders these as HTML/CSS in its interface, handling the React-like reconciliation and updates. You write Go code using familiar React patterns, and Wave Terminal handles the browser complexity.
+
+## Creating a Tsunami Application
+
+A Tsunami application is simply a Go package with an `App` component. Here's a minimal "Hello World" example:
+
+```go
+package main
+
+import (
+    "context"
+    "github.com/wavetermdev/waveterm/tsunami/app"
+    "github.com/wavetermdev/waveterm/tsunami/vdom"
 )
 
-// The main "App" component can set the app title
+// The App component is the required entry point for every Tsunami application
 var App = app.DefineComponent("App",
     func(ctx context.Context, _ struct{}) any {
-        vdom.UseSetAppTitle(ctx, "My Tsunami App")  // Only works in top-level App component
+        vdom.UseSetAppTitle(ctx, "Hello World")
 
-        return vdom.H("div", nil,
-            // app content
-        )
+        return vdom.H("div", map[string]any{
+            "className": "flex items-center justify-center h-screen text-xl font-bold",
+        }, "Hello, Tsunami!")
     },
 )
 ```
+
+Key Points:
+
+- Must use package main.
+- The `App` component is required. It serves as the entry point to your application.
+- Do NOT add a `main()` function, that is provided by the framework when building.
+- Uses Tailwind v4 for styling - you can use any Tailwind classes in your components.
+- Use React-style camel case props (`className`, `onClick`)
 
 ## Building Elements with vdom.H()
 
@@ -174,16 +211,69 @@ vdom.H("ul", nil,
 
 Helper functions:
 
-- `vdom.Fragment(...any)` - Combines elements into a group without adding a DOM node. Useful with conditional functions.
 - `vdom.If(cond bool, part any) any` - Returns part if condition is true, nil otherwise
-- `vdom.IfElse(cond bool, truePart any, falsePart any) any` - Returns truePart if condition is true, falsePart otherwise
-- `vdom.ForEach[T any](items []T, fn func(T) any) []any` - Maps over items without index
-- `vdom.ForEachIdx[T any](items []T, fn func(T, int) any) []any` - Maps over items with index
-- `vdom.Filter[T any](items []T, fn func(T) bool) []T` - Filters items based on condition
-- `vdom.FilterIdx[T any](items []T, fn func(T, int) bool) []T` - Filters items with index access
+- `vdom.IfElse(cond bool, part any, elsePart any) any` - Returns part if condition is true, elsePart otherwise
+- `vdom.Ternary[T any](cond bool, trueRtn T, falseRtn T) T` - Type-safe ternary operation, returns trueRtn if condition is true, falseRtn otherwise
+- `vdom.ForEach[T any](items []T, fn func(T, int) any) []any` - Maps over items with index, function receives item and index
+- `vdom.Classes(classes ...any) string` - Combines multiple class values into a single space-separated string, similar to JavaScript clsx library (accepts string, []string, and map[string]bool params)
 
-- The same If/IfElse functions are used for both conditional rendering and conditional classes, always following the pattern of condition first, then value(s).
-- Remember to use vdom.IfElse if you need a true ternary condition. vdom.If will return nil on false and does not allow a 3rd argument.
+- The vdom.If and vdom.IfElse functions can be used for both conditional rendering of elements, conditional classes, and conditional props.
+- For vdom.If and vdom.IfElse, always follow the pattern of condition first (bool), then value(s).
+- Use vdom.IfElse for conditions that return different types, use Ternary when the return values are the same type.
+
+## Using Hooks in Tsunami
+
+Functions starting with `vdom.Use*` are hooks in Tsunami, following the exact same rules as React hooks.
+
+**Key Rules:**
+
+- ✅ Only call hooks inside `app.DefineComponent` functions
+- ✅ Always call hooks at the **top level** of your component function
+- ✅ Call hooks before any early returns or conditional logic
+- 🔴 Never call hooks inside loops, conditions, or after conditional returns
+
+```go
+var MyComponent = app.DefineComponent("MyComponent",
+    func(ctx context.Context, props MyProps) any {
+        // ✅ Good: hooks at top level
+        count := vdom.UseState(ctx, 0)
+        vdom.UseEffect(ctx, func() { /* effect */ }, nil)
+
+        // Now safe to have conditional logic
+        if someCondition {
+            return vdom.H("div", nil, "Early return")
+        }
+
+        return vdom.H("div", nil, "Content")
+    },
+)
+```
+
+**Common Hooks (React-like):**
+
+- `UseState[T any](ctx context.Context, initialVal T) (T, func(T), func(func(T) T))` - Component state management (React `useState`)
+- `UseEffect(ctx context.Context, fn func() func(), deps []any)` - Side effects after render (React `useEffect`)
+- `UseRef[T any](ctx context.Context, val T) *VDomSimpleRef[T]` - Mutable refs for arbitrary values (React `useRef`)
+- `UseVDomRef(ctx context.Context) *VDomRef` - DOM element references (React `useRef` for DOM elements)
+- `UseSetAppTitle(ctx context.Context, title string)` - Sets the application title (used in every app, only works in top-level "App" component)
+
+**Global Data Hooks (Jotai-like atoms):**
+
+- `UseSharedAtom[T any](ctx context.Context, atomName string) (T, func(T), func(func(T) T))` - Shared state across components
+- `UseConfig[T any](ctx context.Context, atomName string) (T, func(T), func(func(T) T))` - Access to global config values
+- `UseData[T any](ctx context.Context, atomName string) (T, func(T), func(func(T) T))` - Access to global data values
+
+These allow applications to easily share data between components. When an atom is updated, all components using it will re-render.
+
+**Specialty Hooks (less common):**
+
+- `UseId(ctx context.Context) string` - Component's unique identifier
+- `UseRenderTs(ctx context.Context) int64` - Current render timestamp
+- `UseResync(ctx context.Context) bool` - Whether current render is a resync operation
+
+Most applications won't need these specialty hooks, but they're available for advanced use cases.
+
+This ensures hooks are called in the same order every render, which is essential for Tsunami's state management.
 
 ## Style Handling
 
