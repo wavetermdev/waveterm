@@ -182,25 +182,6 @@ func UseState[T any](ctx context.Context, initialVal T) (T, func(T), func(func(T
 	return rtnVal, typedSetVal, typedSetFuncVal
 }
 
-func getTypedAtomValue[T any](rawVal any, atomName string) T {
-	var result T
-	if rawVal == nil {
-		return *new(T)
-	}
-
-	var ok bool
-	result, ok = rawVal.(T)
-	if !ok {
-		// Try converting from float64 if rawVal is float64
-		if f64Val, isFloat64 := rawVal.(float64); isFloat64 {
-			if converted, convOk := util.FromFloat64[T](f64Val); convOk {
-				return converted
-			}
-		}
-		panic(fmt.Sprintf("UseAtom %q value type mismatch (expected %T, got %T)", atomName, *new(T), rawVal))
-	}
-	return result
-}
 
 func useAtom[T any](ctx context.Context, hookName string, atomName string) (T, func(T), func(func(T) T)) {
 	rc := vdomctx.GetRenderContext(ctx)
@@ -210,7 +191,7 @@ func useAtom[T any](ctx context.Context, hookName string, atomName string) (T, f
 	val, setVal, setFn := rc.UseAtom(ctx, atomName)
 
 	// Adapt the "any" values to type "T"
-	atomVal := getTypedAtomValue[T](val, atomName)
+	atomVal := util.GetTypedAtomValue[T](val, atomName)
 
 	typedSetVal := func(newVal T) {
 		setVal(newVal)
@@ -218,7 +199,7 @@ func useAtom[T any](ctx context.Context, hookName string, atomName string) (T, f
 
 	typedSetFuncVal := func(updateFunc func(T) T) {
 		setFn(func(oldVal any) any {
-			typedOldVal := getTypedAtomValue[T](oldVal, atomName)
+			typedOldVal := util.GetTypedAtomValue[T](oldVal, atomName)
 			return updateFunc(typedOldVal)
 		})
 	}

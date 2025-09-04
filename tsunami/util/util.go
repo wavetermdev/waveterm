@@ -90,3 +90,23 @@ func OpenBrowser(url string, delay time.Duration) {
 
 	exec.Command(cmd, args...).Start()
 }
+
+func GetTypedAtomValue[T any](rawVal any, atomName string) T {
+	var result T
+	if rawVal == nil {
+		return *new(T)
+	}
+
+	var ok bool
+	result, ok = rawVal.(T)
+	if !ok {
+		// Try converting from float64 if rawVal is float64
+		if f64Val, isFloat64 := rawVal.(float64); isFloat64 {
+			if converted, convOk := FromFloat64[T](f64Val); convOk {
+				return converted
+			}
+		}
+		panic(fmt.Sprintf("GetTypedAtomValue %q value type mismatch (expected %T, got %T)", atomName, *new(T), rawVal))
+	}
+	return result
+}

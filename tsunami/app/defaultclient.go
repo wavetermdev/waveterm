@@ -8,6 +8,7 @@ import (
 	"io/fs"
 	"net/http"
 
+	"github.com/wavetermdev/waveterm/tsunami/util"
 	"github.com/wavetermdev/waveterm/tsunami/vdom"
 )
 
@@ -41,16 +42,31 @@ func SendAsyncInitiation() error {
 	return defaultClient.SendAsyncInitiation()
 }
 
-func SetAtomVals(m map[string]any) {
-	defaultClient.SetAtomVals(m)
+func GetSharedAtom[T any](name string) T {
+	rawVal := defaultClient.GetAtomVal("$shared." + name)
+	return util.GetTypedAtomValue[T](rawVal, "$shared."+name)
 }
 
-func SetAtomVal(name string, val any) {
-	defaultClient.SetAtomVal(name, val)
+func SetSharedAtom[T any](name string, val T) {
+	defaultClient.SetAtomVal("$shared."+name, val)
 }
 
-func GetAtomVal(name string) any {
-	return defaultClient.GetAtomVal(name)
+func GetConfig[T any](name string) T {
+	rawVal := defaultClient.GetAtomVal("$config." + name)
+	return util.GetTypedAtomValue[T](rawVal, "$config."+name)
+}
+
+func SetConfig[T any](name string, val T) {
+	defaultClient.SetAtomVal("$config."+name, val)
+}
+
+func GetData[T any](name string) T {
+	rawVal := defaultClient.GetAtomVal("$data." + name)
+	return util.GetTypedAtomValue[T](rawVal, "$data."+name)
+}
+
+func SetData[T any](name string, val T) {
+	defaultClient.SetAtomVal("$data."+name, val)
 }
 
 // HandleDynFunc registers a dynamic HTTP handler function with the internal http.ServeMux.
