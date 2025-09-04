@@ -106,7 +106,7 @@ func H(tag string, props map[string]any, children ...any) *VDomElem {
 	rtn := &VDomElem{Tag: tag, Props: props}
 	if len(children) > 0 {
 		for _, part := range children {
-			elems := PartToElems(part)
+			elems := ToElems(part)
 			rtn.Children = append(rtn.Children, elems...)
 		}
 	}
@@ -355,12 +355,12 @@ func QueueRefOp(ctx context.Context, ref *VDomRef, op VDomRefOperation) {
 	vc.QueueRefOp(ctx, op)
 }
 
-// PartToElems converts various types into VDomElem slices for use in VDOM children.
+// ToElems converts various types into VDomElem slices for use in VDOM children.
 // It handles strings, booleans, VDomElems, *VDomElem, slices, and other types
 // by converting them to appropriate VDomElem representations.
 // nil values are ignored and removed from the final slice.
 // This is primarily an internal function and not typically called directly by application code.
-func PartToElems(part any) []VDomElem {
+func ToElems(part any) []VDomElem {
 	if part == nil {
 		return nil
 	}
@@ -385,7 +385,7 @@ func PartToElems(part any) []VDomElem {
 		if partVal.Kind() == reflect.Slice {
 			var rtn []VDomElem
 			for i := 0; i < partVal.Len(); i++ {
-				rtn = append(rtn, PartToElems(partVal.Index(i).Interface())...)
+				rtn = append(rtn, ToElems(partVal.Index(i).Interface())...)
 			}
 			return rtn
 		}

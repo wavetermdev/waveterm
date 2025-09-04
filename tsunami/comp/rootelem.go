@@ -439,7 +439,7 @@ func (r *RootElem) renderComponent(cfunc any, elem *vdom.VDomElem, comp **Compon
 	vc := MakeContextVal(r, *comp, opts)
 	ctx := vdomctx.WithRenderContext(r.OuterCtx, vc)
 	renderedElem := callCFunc(cfunc, ctx, props)
-	rtnElemArr := vdom.PartToElems(renderedElem)
+	rtnElemArr := vdom.ToElems(renderedElem)
 	if len(rtnElemArr) == 0 {
 		r.unmount(&(*comp).Comp)
 		return
