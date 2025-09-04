@@ -22,7 +22,7 @@ type ComponentImpl struct {
 	Mounted bool
 
 	// hooks
-	Hooks []*vdom.Hook
+	Hooks []*Hook
 
 	// #text component
 	Text string

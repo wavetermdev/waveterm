@@ -46,16 +46,16 @@ type VDomFrontendUpdate struct {
 }
 
 type VDomBackendUpdate struct {
-	Type          string             `json:"type" tstype:"\"backendupdate\""`
-	Ts            int64              `json:"ts"`
-	ServerId      string             `json:"serverid"`
-	Opts          *VDomBackendOpts   `json:"opts,omitempty"`
-	HasWork       bool               `json:"haswork,omitempty"`
-	RenderUpdates []VDomRenderUpdate `json:"renderupdates,omitempty"`
-	TransferElems []VDomTransferElem `json:"transferelems,omitempty"`
-	StateSync     []VDomStateSync    `json:"statesync,omitempty"`
-	RefOperations []VDomRefOperation `json:"refoperations,omitempty"`
-	Messages      []VDomMessage      `json:"messages,omitempty"`
+	Type          string                  `json:"type" tstype:"\"backendupdate\""`
+	Ts            int64                   `json:"ts"`
+	ServerId      string                  `json:"serverid"`
+	Opts          *VDomBackendOpts        `json:"opts,omitempty"`
+	HasWork       bool                    `json:"haswork,omitempty"`
+	RenderUpdates []VDomRenderUpdate      `json:"renderupdates,omitempty"`
+	TransferElems []VDomTransferElem      `json:"transferelems,omitempty"`
+	StateSync     []VDomStateSync         `json:"statesync,omitempty"`
+	RefOperations []vdom.VDomRefOperation `json:"refoperations,omitempty"`
+	Messages      []VDomMessage           `json:"messages,omitempty"`
 }
 
 // the over the wire format for a vdom element
@@ -179,13 +179,6 @@ type VDomRenderUpdate struct {
 	VDomWaveId string         `json:"vdomwaveid,omitempty"`
 	VDom       *vdom.VDomElem `json:"vdom,omitempty"` // these get removed for transfer (encoded to transferelems)
 	Index      *int           `json:"index,omitempty"`
-}
-
-type VDomRefOperation struct {
-	RefId     string `json:"refid"`
-	Op        string `json:"op"`
-	Params    []any  `json:"params,omitempty"`
-	OutputRef string `json:"outputref,omitempty"`
 }
 
 type VDomMessage struct {

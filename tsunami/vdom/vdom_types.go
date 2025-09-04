@@ -7,40 +7,12 @@ const TextTag = "#text"
 const WaveTextTag = "wave:text"
 const WaveNullTag = "wave:null"
 const FragmentTag = "#fragment"
-const BindTag = "#bind"
 
-const ChildrenPropKey = "children"
 const KeyPropKey = "key"
 
 const ObjectType_Ref = "ref"
 const ObjectType_Binding = "binding"
 const ObjectType_Func = "func"
-
-// generic hook structure
-type Hook struct {
-	Init      bool          // is initialized
-	Idx       int           // index in the hook array
-	Fn        func() func() // for useEffect
-	UnmountFn func()        // for useEffect
-	Val       any           // for useState, useMemo, useRef
-	Deps      []any
-}
-
-type Atom struct {
-	Val    any
-	Dirty  bool
-	UsedBy map[string]bool // component waveid -> true
-}
-
-const (
-	WorkType_Render = "render"
-	WorkType_Effect = "effect"
-)
-
-type EffectWorkElem struct {
-	Id          string
-	EffectIndex int
-}
 
 // vdom element
 type VDomElem struct {
@@ -146,4 +118,11 @@ type VDomPointerData struct {
 	Meta    bool `json:"meta,omitempty"`
 	Cmd     bool `json:"cmd,omitempty"`    // special (on mac it is meta, on windows/linux it is alt)
 	Option  bool `json:"option,omitempty"` // special (on mac it is alt, on windows/linux it is meta)
+}
+
+type VDomRefOperation struct {
+	RefId     string `json:"refid"`
+	Op        string `json:"op"`
+	Params    []any  `json:"params,omitempty"`
+	OutputRef string `json:"outputref,omitempty"`
 }

@@ -6,13 +6,11 @@ package vdom
 import (
 	"context"
 	"fmt"
-	"log"
 	"reflect"
-	"strconv"
 	"strings"
-	"unicode"
 
 	"github.com/wavetermdev/waveterm/tsunami/util"
+	"github.com/wavetermdev/waveterm/tsunami/vdomctx"
 )
 
 // ReactNode types = nil | string | Elem
@@ -113,29 +111,27 @@ func Props(props any) map[string]any {
 }
 
 func UseState[T any](ctx context.Context, initialVal T) (T, func(T), func(func(T) T)) {
-	vc := GetRenderContext(ctx)
-	hookVal := vc.GetOrderedHook()
-	if !hookVal.Init {
-		hookVal.Init = true
-		hookVal.Val = initialVal
+	rc := vdomctx.GetRenderContext(ctx)
+	if rc == nil {
+		panic("UseState must be called within a component (no context)")
 	}
+	val, setVal, setFn := rc.UseState(ctx, initialVal)
+
+	// Adapt the "any" values to type "T"
 	var rtnVal T
-	rtnVal, ok := hookVal.Val.(T)
+	rtnVal, ok := val.(T)
 	if !ok {
 		panic("UseState hook value is not a state (possible out of order or conditional hooks)")
 	}
-
-	setVal := func(newVal T) {
-		hookVal.Val = newVal
-		vc.AddRenderWork(vc.GetCompWaveId())
+	typedSetVal := func(newVal T) {
+		setVal(newVal)
 	}
-
-	setFuncVal := func(updateFunc func(T) T) {
-		hookVal.Val = updateFunc(hookVal.Val.(T))
-		vc.AddRenderWork(vc.GetCompWaveId())
+	typedSetFuncVal := func(updateFunc func(T) T) {
+		setFn(func(oldVal any) any {
+			return updateFunc(oldVal.(T))
+		})
 	}
-
-	return rtnVal, setVal, setFuncVal
+	return rtnVal, typedSetVal, typedSetFuncVal
 }
 
 func getTypedAtomValue[T any](rawVal any, atomName string) T {
@@ -158,141 +154,115 @@ func getTypedAtomValue[T any](rawVal any, atomName string) T {
 	return result
 }
 
-func useAtom[T any](ctx context.Context, atomName string) (T, func(T), func(func(T) T)) {
-	vc := GetRenderContext(ctx)
-	hookVal := vc.GetOrderedHook()
-	if !hookVal.Init {
-		hookVal.Init = true
-		closedWaveId := vc.GetCompWaveId()
-		hookVal.UnmountFn = func() {
-			vc.AtomSetUsedBy(atomName, closedWaveId, false)
-		}
+func useAtom[T any](ctx context.Context, hookName string, atomName string) (T, func(T), func(func(T) T)) {
+	rc := vdomctx.GetRenderContext(ctx)
+	if rc == nil {
+		panic(hookName + " must be called within a component (no context)")
 	}
-	vc.AtomSetUsedBy(atomName, vc.GetCompWaveId(), true)
-	atomVal := getTypedAtomValue[T](vc.GetAtomVal(atomName), atomName)
-	setVal := func(newVal T) {
-		vc.SetAtomVal(atomName, newVal, true)
-		vc.AtomAddRenderWork(atomName)
+	val, setVal, setFn := rc.UseAtom(ctx, atomName)
+
+	// Adapt the "any" values to type "T"
+	atomVal := getTypedAtomValue[T](val, atomName)
+
+	typedSetVal := func(newVal T) {
+		setVal(newVal)
 	}
-	setFuncVal := func(updateFunc func(T) T) {
-		currentVal := getTypedAtomValue[T](vc.GetAtomVal(atomName), atomName)
-		vc.SetAtomVal(atomName, updateFunc(currentVal), true)
-		vc.AtomAddRenderWork(atomName)
+
+	typedSetFuncVal := func(updateFunc func(T) T) {
+		setFn(func(oldVal any) any {
+			typedOldVal := getTypedAtomValue[T](oldVal, atomName)
+			return updateFunc(typedOldVal)
+		})
 	}
-	return atomVal, setVal, setFuncVal
+
+	return atomVal, typedSetVal, typedSetFuncVal
 }
 
 func UseSharedAtom[T any](ctx context.Context, atomName string) (T, func(T), func(func(T) T)) {
-	return useAtom[T](ctx, "$shared."+atomName)
+	return useAtom[T](ctx, "UseSharedAtom", "$shared."+atomName)
 }
 
 func UseConfig[T any](ctx context.Context, atomName string) (T, func(T), func(func(T) T)) {
-	return useAtom[T](ctx, "$config."+atomName)
+	return useAtom[T](ctx, "UseConfig", "$config."+atomName)
 }
 
 func UseData[T any](ctx context.Context, atomName string) (T, func(T), func(func(T) T)) {
-	return useAtom[T](ctx, "$data."+atomName)
+	return useAtom[T](ctx, "UseData", "$data."+atomName)
 }
 
 func UseVDomRef(ctx context.Context) *VDomRef {
-	vc := GetRenderContext(ctx)
-	hookVal := vc.GetOrderedHook()
-	if !hookVal.Init {
-		hookVal.Init = true
-		refId := vc.GetCompWaveId() + ":" + strconv.Itoa(hookVal.Idx)
-		hookVal.Val = &VDomRef{Type: ObjectType_Ref, RefId: refId}
-	}
-	refVal, ok := hookVal.Val.(*VDomRef)
+	rc := vdomctx.GetRenderContext(ctx)
+	val := rc.UseVDomRef(ctx)
+	refVal, ok := val.(*VDomRef)
 	if !ok {
-		panic("UseRef hook value is not a ref (possible out of order or conditional hooks)")
+		panic("UseVDomRef hook value is not a ref (possible out of order or conditional hooks)")
 	}
 	return refVal
 }
 
 func UseRef[T any](ctx context.Context, val T) *VDomSimpleRef[T] {
-	vc := GetRenderContext(ctx)
-	hookVal := vc.GetOrderedHook()
-	if !hookVal.Init {
-		hookVal.Init = true
-		hookVal.Val = &VDomSimpleRef[T]{Current: val}
-	}
-	refVal, ok := hookVal.Val.(*VDomSimpleRef[T])
+	rc := vdomctx.GetRenderContext(ctx)
+	refVal := rc.UseRef(ctx, &VDomSimpleRef[T]{Current: val})
+	typedRef, ok := refVal.(*VDomSimpleRef[T])
 	if !ok {
 		panic("UseRef hook value is not a ref (possible out of order or conditional hooks)")
 	}
-	return refVal
+	return typedRef
 }
 
 func UseId(ctx context.Context) string {
-	vc := GetRenderContext(ctx)
-	if vc == nil {
+	rc := vdomctx.GetRenderContext(ctx)
+	if rc == nil {
 		panic("UseId must be called within a component (no context)")
 	}
-	return vc.GetCompWaveId()
+	return rc.UseId(ctx)
 }
 
 func UseRenderTs(ctx context.Context) int64 {
-	vc := GetRenderContext(ctx)
-	if vc == nil {
+	rc := vdomctx.GetRenderContext(ctx)
+	if rc == nil {
 		panic("UseRenderTs must be called within a component (no context)")
 	}
-	return vc.GetRenderTs()
+	return rc.UseRenderTs(ctx)
 }
 
 func UseResync(ctx context.Context) bool {
-	vc := GetRenderContext(ctx)
-	if vc == nil {
+	rc := vdomctx.GetRenderContext(ctx)
+	if rc == nil {
 		panic("UseResync must be called within a component (no context)")
 	}
-	return vc.IsResync()
-}
-
-func depsEqual(deps1 []any, deps2 []any) bool {
-	if len(deps1) != len(deps2) {
-		return false
-	}
-	for i := range deps1 {
-		if deps1[i] != deps2[i] {
-			return false
-		}
-	}
-	return true
+	return rc.UseResync(ctx)
 }
 
 func UseEffect(ctx context.Context, fn func() func(), deps []any) {
 	// note UseEffect never actually runs anything, it just queues the effect to run later
-	vc := GetRenderContext(ctx)
-	hookVal := vc.GetOrderedHook()
-	if !hookVal.Init {
-		hookVal.Init = true
-		hookVal.Fn = fn
-		hookVal.Deps = deps
-		vc.AddEffectWork(vc.GetCompWaveId(), hookVal.Idx)
-		return
+	rc := vdomctx.GetRenderContext(ctx)
+	if rc == nil {
+		panic("UseEffect must be called within a component (no context)")
 	}
-	if depsEqual(hookVal.Deps, deps) {
-		return
-	}
-	hookVal.Fn = fn
-	hookVal.Deps = deps
-	vc.AddEffectWork(vc.GetCompWaveId(), hookVal.Idx)
+	rc.UseEffect(ctx, fn, deps)
 }
 
 func UseSetAppTitle(ctx context.Context, title string) {
-	vc := GetRenderContext(ctx)
+	rc := vdomctx.GetRenderContext(ctx)
+	if rc == nil {
+		panic("UseSetAppTitle must be called within a component (no context)")
+	}
+	rc.UseSetAppTitle(ctx, title)
+}
+
+func QueueRefOp(ctx context.Context, ref *VDomRef, op VDomRefOperation) {
+	if ref == nil || !ref.HasCurrent {
+		return
+	}
+	vc := vdomctx.GetRenderContext(ctx)
 	if vc == nil {
-		log.Printf("UseSetAppTitle must be called within a component (no context)")
-		return
+		panic("QueueRefOp must be called within a component (no context)")
 	}
-
-	// Check if this is being called from the App component
-	if vc.GetCompName() != "App" {
-		log.Printf("UseSetAppTitle can only be called from the App component")
-		return
+	if op.RefId == "" {
+		op.RefId = ref.RefId
 	}
-
-	// Set the title on the RootElem
-	vc.SetAppTitle(title)
+	vc.QueueRefOp(ctx, op)
 }
 
 func PartToElems(part any) []VDomElem {
@@ -302,6 +272,12 @@ func PartToElems(part any) []VDomElem {
 	switch partTyped := part.(type) {
 	case string:
 		return []VDomElem{TextElem(partTyped)}
+	case bool:
+		// matches react
+		if partTyped {
+			return []VDomElem{TextElem("true")}
+		}
+		return nil
 	case VDomElem:
 		return []VDomElem{partTyped}
 	case *VDomElem:
@@ -309,22 +285,6 @@ func PartToElems(part any) []VDomElem {
 			return nil
 		}
 		return []VDomElem{*partTyped}
-	case []VDomElem:
-		return partTyped
-	case []*VDomElem:
-		var rtn []VDomElem
-		for _, elem := range partTyped {
-			if elem != nil {
-				rtn = append(rtn, *elem)
-			}
-		}
-		return rtn
-	case []any:
-		var rtn []VDomElem
-		for _, subPart := range partTyped {
-			rtn = append(rtn, PartToElems(subPart)...)
-		}
-		return rtn
 	default:
 		partVal := reflect.ValueOf(part)
 		if partVal.Kind() == reflect.Slice {
@@ -334,24 +294,6 @@ func PartToElems(part any) []VDomElem {
 			}
 			return rtn
 		}
-		strVal, ok := util.NumToString(part)
-		if ok {
-			return []VDomElem{TextElem(strVal)}
-		}
-		return nil
+		return []VDomElem{TextElem(fmt.Sprint(part))}
 	}
-}
-
-func IsBaseTag(tag string) bool {
-	if tag == "" {
-		return false
-	}
-	if tag == TextTag || tag == WaveTextTag || tag == WaveNullTag || tag == FragmentTag {
-		return true
-	}
-	if tag[0] == '#' {
-		return true
-	}
-	firstChar := rune(tag[0])
-	return unicode.IsLower(firstChar)
 }
