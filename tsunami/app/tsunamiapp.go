@@ -230,6 +230,14 @@ func makeNullVDom() *vdom.VDomElem {
 	return &vdom.VDomElem{WaveId: uuid.New().String(), Tag: vdom.WaveNullTag}
 }
 
+func structToProps(props any) map[string]any {
+	m, err := util.StructToMap(props)
+	if err != nil {
+		return nil
+	}
+	return m
+}
+
 func DefineComponentEx[P any](client *Client, name string, renderFn func(ctx context.Context, props P) any) vdom.Component[P] {
 	if name == "" {
 		panic("Component name cannot be empty")
@@ -242,7 +250,7 @@ func DefineComponentEx[P any](client *Client, name string, renderFn func(ctx con
 		panic(err)
 	}
 	return func(props P) *vdom.VDomElem {
-		return vdom.H(name, vdom.Props(props))
+		return vdom.H(name, structToProps(props))
 	}
 }
 
