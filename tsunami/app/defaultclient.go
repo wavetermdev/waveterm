@@ -11,28 +11,23 @@ import (
 	"github.com/wavetermdev/waveterm/tsunami/vdom"
 )
 
-var defaultClient = MakeClient()
+var defaultClient = makeClient()
 var assetsFS fs.FS
 var staticFS fs.FS
-var manifestFile *FileHandlerOption
+var manifestFileBytes []byte
 
 // Default client methods that operate on the global defaultClient
 
 func DefineComponent[P any](name string, renderFn func(ctx context.Context, props P) any) vdom.Component[P] {
-	return DefineComponentEx(defaultClient, name, renderFn)
+	return defineComponentEx(defaultClient, name, renderFn)
 }
 
-func SetGlobalEventHandler(handler func(client *Client, event vdom.VDomEvent)) {
+func SetGlobalEventHandler(handler func(event vdom.VDomEvent)) {
 	defaultClient.SetGlobalEventHandler(handler)
 }
 
-
 func AddSetupFn(fn func()) {
 	defaultClient.AddSetupFn(fn)
-}
-
-func RunMain() {
-	defaultClient.RunMain()
 }
 
 func SendAsyncInitiation() error {
@@ -63,14 +58,14 @@ func RegisterFileHandler(path string, option FileHandlerOption) {
 	defaultClient.RegisterFileHandler(path, option)
 }
 
-func RegisterAssetsFS(filesystem fs.FS) {
-	assetsFS = filesystem
+// RunMain is used internally by generated code and should not be called directly.
+func RunMain() {
+	defaultClient.RunMain()
 }
 
-func RegisterStaticFS(filesystem fs.FS) {
-	staticFS = filesystem
-}
-
-func RegisterManifestFile(option FileHandlerOption) {
-	manifestFile = &option
+// RegisterEmbeds is used internally by generated code and should not be called directly.
+func RegisterEmbeds(assetsFilesystem fs.FS, staticFilesystem fs.FS, manifest []byte) {
+	assetsFS = assetsFilesystem
+	staticFS = staticFilesystem
+	manifestFileBytes = manifest
 }

@@ -15,8 +15,7 @@ var staticFS embed.FS
 
 func main() {
 	subDistFS, _ := fs.Sub(distFS, "dist")
-	app.RegisterAssetsFS(subDistFS)
 	subStaticFS, _ := fs.Sub(staticFS, "static")
-	app.RegisterStaticFS(subStaticFS)
+	app.RegisterEmbeds(subDistFS, subStaticFS, nil)
 	app.RunMain()
 }

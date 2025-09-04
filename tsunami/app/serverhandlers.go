@@ -26,24 +26,24 @@ func init() {
 	mime.AddExtensionType(".json", "application/json")
 }
 
-type HandlerOpts struct {
+type handlerOpts struct {
 	AssetsFS     fs.FS
 	StaticFS     fs.FS
 	ManifestFile *FileHandlerOption
 }
 
-type HTTPHandlers struct {
-	Client     *Client
+type httpHandlers struct {
+	Client     *clientImpl
 	renderLock sync.Mutex
 }
 
-func NewHTTPHandlers(client *Client) *HTTPHandlers {
-	return &HTTPHandlers{
+func newHTTPHandlers(client *clientImpl) *httpHandlers {
+	return &httpHandlers{
 		Client: client,
 	}
 }
 
-func (h *HTTPHandlers) RegisterHandlers(mux *http.ServeMux, opts HandlerOpts) {
+func (h *httpHandlers) registerHandlers(mux *http.ServeMux, opts handlerOpts) {
 	mux.HandleFunc("/api/render", h.handleRender)
 	mux.HandleFunc("/api/updates", h.handleSSE)
 	mux.HandleFunc("/api/data", h.handleData)
@@ -62,7 +62,7 @@ func (h *HTTPHandlers) RegisterHandlers(mux *http.ServeMux, opts HandlerOpts) {
 	}
 }
 
-func (h *HTTPHandlers) handleRender(w http.ResponseWriter, r *http.Request) {
+func (h *httpHandlers) handleRender(w http.ResponseWriter, r *http.Request) {
 	defer func() {
 		panicErr := util.PanicHandler("handleRender", recover())
 		if panicErr != nil {
@@ -112,7 +112,7 @@ func (h *HTTPHandlers) handleRender(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (h *HTTPHandlers) processFrontendUpdate(feUpdate *rpctypes.VDomFrontendUpdate) (*rpctypes.VDomBackendUpdate, error) {
+func (h *httpHandlers) processFrontendUpdate(feUpdate *rpctypes.VDomFrontendUpdate) (*rpctypes.VDomBackendUpdate, error) {
 	h.renderLock.Lock()
 	defer h.renderLock.Unlock()
 
@@ -136,7 +136,7 @@ func (h *HTTPHandlers) processFrontendUpdate(feUpdate *rpctypes.VDomFrontendUpda
 	for _, event := range feUpdate.Events {
 		if event.GlobalEventType != "" {
 			if h.Client.GlobalEventHandler != nil {
-				h.Client.GlobalEventHandler(h.Client, event)
+				h.Client.GlobalEventHandler(event)
 			}
 		} else {
 			h.Client.Root.Event(event.WaveId, event.EventType, event)
@@ -164,7 +164,7 @@ func (h *HTTPHandlers) processFrontendUpdate(feUpdate *rpctypes.VDomFrontendUpda
 	return update, nil
 }
 
-func (h *HTTPHandlers) handleData(w http.ResponseWriter, r *http.Request) {
+func (h *httpHandlers) handleData(w http.ResponseWriter, r *http.Request) {
 	defer func() {
 		panicErr := util.PanicHandler("handleData", recover())
 		if panicErr != nil {
@@ -186,7 +186,7 @@ func (h *HTTPHandlers) handleData(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (h *HTTPHandlers) handleConfig(w http.ResponseWriter, r *http.Request) {
+func (h *httpHandlers) handleConfig(w http.ResponseWriter, r *http.Request) {
 	defer func() {
 		panicErr := util.PanicHandler("handleConfig", recover())
 		if panicErr != nil {
@@ -204,7 +204,7 @@ func (h *HTTPHandlers) handleConfig(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (h *HTTPHandlers) handleConfigGet(w http.ResponseWriter, _ *http.Request) {
+func (h *httpHandlers) handleConfigGet(w http.ResponseWriter, _ *http.Request) {
 	result := h.Client.Root.GetConfigMap()
 
 	w.Header().Set("Content-Type", "application/json")
@@ -214,7 +214,7 @@ func (h *HTTPHandlers) handleConfigGet(w http.ResponseWriter, _ *http.Request) {
 	}
 }
 
-func (h *HTTPHandlers) handleConfigPost(w http.ResponseWriter, r *http.Request) {
+func (h *httpHandlers) handleConfigPost(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("failed to read request body: %v", err), http.StatusBadRequest)
@@ -235,7 +235,7 @@ func (h *HTTPHandlers) handleConfigPost(w http.ResponseWriter, r *http.Request) 
 	w.WriteHeader(http.StatusOK)
 }
 
-func (h *HTTPHandlers) handleDynContent(w http.ResponseWriter, r *http.Request) {
+func (h *httpHandlers) handleDynContent(w http.ResponseWriter, r *http.Request) {
 	defer func() {
 		panicErr := util.PanicHandler("handleDynContent", recover())
 		if panicErr != nil {
@@ -252,7 +252,7 @@ func (h *HTTPHandlers) handleDynContent(w http.ResponseWriter, r *http.Request) 
 	h.Client.UrlHandlerMux.ServeHTTP(w, r)
 }
 
-func (h *HTTPHandlers) handleSSE(w http.ResponseWriter, r *http.Request) {
+func (h *httpHandlers) handleSSE(w http.ResponseWriter, r *http.Request) {
 	defer func() {
 		panicErr := util.PanicHandler("handleSSE", recover())
 		if panicErr != nil {
@@ -342,7 +342,7 @@ func serveFileDirectly(w http.ResponseWriter, r *http.Request, embeddedFS fs.FS,
 	return true
 }
 
-func (h *HTTPHandlers) handleStaticFiles(embeddedFS fs.FS) http.HandlerFunc {
+func (h *httpHandlers) handleStaticFiles(embeddedFS fs.FS) http.HandlerFunc {
 	fileServer := http.FileServer(http.FS(embeddedFS))
 
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -377,7 +377,7 @@ func (h *HTTPHandlers) handleStaticFiles(embeddedFS fs.FS) http.HandlerFunc {
 	}
 }
 
-func (h *HTTPHandlers) handleManifest(manifestFile *FileHandlerOption) http.HandlerFunc {
+func (h *httpHandlers) handleManifest(manifestFile *FileHandlerOption) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			panicErr := util.PanicHandler("handleManifest", recover())
@@ -396,11 +396,11 @@ func (h *HTTPHandlers) handleManifest(manifestFile *FileHandlerOption) http.Hand
 			return
 		}
 
-		ServeFileOption(w, r, *manifestFile)
+		serveFileOption(w, r, *manifestFile)
 	}
 }
 
-func (h *HTTPHandlers) handleStaticPathFiles(staticFS fs.FS) http.HandlerFunc {
+func (h *httpHandlers) handleStaticPathFiles(staticFS fs.FS) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			panicErr := util.PanicHandler("handleStaticPathFiles", recover())

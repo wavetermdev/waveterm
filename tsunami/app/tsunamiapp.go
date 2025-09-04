@@ -28,12 +28,12 @@ const TsunamiListenAddrEnvVar = "TSUNAMI_LISTENADDR"
 const DefaultListenAddr = "localhost:0"
 const DefaultComponentName = "App"
 
-type SSEvent struct {
+type ssEvent struct {
 	Event string
 	Data  []byte
 }
 
-type Client struct {
+type clientImpl struct {
 	Lock               *sync.Mutex
 	Root               *comp.RootElem
 	RootElem           *vdom.VDomElem
@@ -42,19 +42,19 @@ type Client struct {
 	IsDone             bool
 	DoneReason         string
 	DoneCh             chan struct{}
-	SSEventCh          chan SSEvent
-	GlobalEventHandler func(client *Client, event vdom.VDomEvent)
+	SSEventCh          chan ssEvent
+	GlobalEventHandler func(event vdom.VDomEvent)
 	GlobalStylesOption *FileHandlerOption
 	UrlHandlerMux      *http.ServeMux
 	SetupFn            func()
 }
 
-func MakeClient() *Client {
-	client := &Client{
+func makeClient() *clientImpl {
+	client := &clientImpl{
 		Lock:          &sync.Mutex{},
 		Root:          comp.MakeRoot(),
 		DoneCh:        make(chan struct{}),
-		SSEventCh:     make(chan SSEvent, 100),
+		SSEventCh:     make(chan ssEvent, 100),
 		UrlHandlerMux: http.NewServeMux(),
 		ServerId:      uuid.New().String(),
 		RootElem:      vdom.H(DefaultComponentName, nil),
@@ -62,13 +62,13 @@ func MakeClient() *Client {
 	return client
 }
 
-func (c *Client) GetIsDone() bool {
+func (c *clientImpl) GetIsDone() bool {
 	c.Lock.Lock()
 	defer c.Lock.Unlock()
 	return c.IsDone
 }
 
-func (c *Client) checkClientId(clientId string) error {
+func (c *clientImpl) checkClientId(clientId string) error {
 	if clientId == "" {
 		return fmt.Errorf("client id cannot be empty")
 	}
@@ -81,13 +81,13 @@ func (c *Client) checkClientId(clientId string) error {
 	return fmt.Errorf("client id mismatch: expected %s, got %s", c.CurrentClientId, clientId)
 }
 
-func (c *Client) clientTakeover(clientId string) {
+func (c *clientImpl) clientTakeover(clientId string) {
 	c.Lock.Lock()
 	defer c.Lock.Unlock()
 	c.CurrentClientId = clientId
 }
 
-func (c *Client) doShutdown(reason string) {
+func (c *clientImpl) doShutdown(reason string) {
 	c.Lock.Lock()
 	defer c.Lock.Unlock()
 	if c.IsDone {
@@ -98,7 +98,7 @@ func (c *Client) doShutdown(reason string) {
 	close(c.DoneCh)
 }
 
-func (c *Client) SetGlobalEventHandler(handler func(client *Client, event vdom.VDomEvent)) {
+func (c *clientImpl) SetGlobalEventHandler(handler func(event vdom.VDomEvent)) {
 	c.GlobalEventHandler = handler
 }
 
@@ -114,7 +114,7 @@ func getFaviconPath() string {
 	return "/wave-logo-256.png"
 }
 
-func (c *Client) makeBackendOpts() *rpctypes.VDomBackendOpts {
+func (c *clientImpl) makeBackendOpts() *rpctypes.VDomBackendOpts {
 	return &rpctypes.VDomBackendOpts{
 		Title:                c.Root.AppTitle,
 		GlobalKeyboardEvents: c.GlobalEventHandler != nil,
@@ -122,7 +122,7 @@ func (c *Client) makeBackendOpts() *rpctypes.VDomBackendOpts {
 	}
 }
 
-func (c *Client) runMainE() error {
+func (c *clientImpl) runMainE() error {
 	if c.SetupFn != nil {
 		c.SetupFn()
 	}
@@ -134,11 +134,11 @@ func (c *Client) runMainE() error {
 	return nil
 }
 
-func (c *Client) AddSetupFn(fn func()) {
+func (c *clientImpl) AddSetupFn(fn func()) {
 	c.SetupFn = fn
 }
 
-func (c *Client) RunMain() {
+func (c *clientImpl) RunMain() {
 	err := c.runMainE()
 	if err != nil {
 		fmt.Println(err)
@@ -146,16 +146,20 @@ func (c *Client) RunMain() {
 	}
 }
 
-func (c *Client) listenAndServe(ctx context.Context) error {
+func (c *clientImpl) listenAndServe(ctx context.Context) error {
 	// Create HTTP handlers
-	handlers := NewHTTPHandlers(c)
+	handlers := newHTTPHandlers(c)
 
 	// Create a new ServeMux and register handlers
 	mux := http.NewServeMux()
-	handlers.RegisterHandlers(mux, HandlerOpts{
+	var manifestOption *FileHandlerOption
+	if len(manifestFileBytes) > 0 {
+		manifestOption = &FileHandlerOption{Data: manifestFileBytes}
+	}
+	handlers.registerHandlers(mux, handlerOpts{
 		AssetsFS:     assetsFS,
 		StaticFS:     staticFS,
-		ManifestFile: manifestFile,
+		ManifestFile: manifestOption,
 	})
 
 	// Determine listen address from environment variable or use default
@@ -199,30 +203,30 @@ func (c *Client) listenAndServe(ctx context.Context) error {
 	return nil
 }
 
-func (c *Client) SendAsyncInitiation() error {
+func (c *clientImpl) SendAsyncInitiation() error {
 	if c.GetIsDone() {
 		return fmt.Errorf("client is done")
 	}
 
 	select {
-	case c.SSEventCh <- SSEvent{Event: "asyncinitiation", Data: nil}:
+	case c.SSEventCh <- ssEvent{Event: "asyncinitiation", Data: nil}:
 		return nil
 	default:
 		return fmt.Errorf("SSEvent channel is full")
 	}
 }
 
-func (c *Client) SetAtomVals(m map[string]any) {
+func (c *clientImpl) SetAtomVals(m map[string]any) {
 	for k, v := range m {
 		c.Root.SetAtomVal(k, v, true)
 	}
 }
 
-func (c *Client) SetAtomVal(name string, val any) {
+func (c *clientImpl) SetAtomVal(name string, val any) {
 	c.Root.SetAtomVal(name, val, true)
 }
 
-func (c *Client) GetAtomVal(name string) any {
+func (c *clientImpl) GetAtomVal(name string) any {
 	return c.Root.GetAtomVal(name)
 }
 
@@ -238,7 +242,7 @@ func structToProps(props any) map[string]any {
 	return m
 }
 
-func DefineComponentEx[P any](client *Client, name string, renderFn func(ctx context.Context, props P) any) vdom.Component[P] {
+func defineComponentEx[P any](client *clientImpl, name string, renderFn func(ctx context.Context, props P) any) vdom.Component[P] {
 	if name == "" {
 		panic("Component name cannot be empty")
 	}
@@ -254,11 +258,11 @@ func DefineComponentEx[P any](client *Client, name string, renderFn func(ctx con
 	}
 }
 
-func (c *Client) registerComponent(name string, cfunc any) error {
+func (c *clientImpl) registerComponent(name string, cfunc any) error {
 	return c.Root.RegisterComponent(name, cfunc)
 }
 
-func (c *Client) fullRender() (*rpctypes.VDomBackendUpdate, error) {
+func (c *clientImpl) fullRender() (*rpctypes.VDomBackendUpdate, error) {
 	opts := &comp.RenderOpts{Resync: true}
 	c.Root.RunWork(opts)
 	c.Root.Render(c.RootElem, opts)
@@ -280,7 +284,7 @@ func (c *Client) fullRender() (*rpctypes.VDomBackendUpdate, error) {
 	}, nil
 }
 
-func (c *Client) incrementalRender() (*rpctypes.VDomBackendUpdate, error) {
+func (c *clientImpl) incrementalRender() (*rpctypes.VDomBackendUpdate, error) {
 	opts := &comp.RenderOpts{Resync: false}
 	c.Root.RunWork(opts)
 	renderedVDom := c.Root.MakeVDom()
@@ -300,7 +304,7 @@ func (c *Client) incrementalRender() (*rpctypes.VDomBackendUpdate, error) {
 	}, nil
 }
 
-func (c *Client) RegisterUrlPathHandler(path string, handler http.Handler) {
+func (c *clientImpl) RegisterUrlPathHandler(path string, handler http.Handler) {
 	c.UrlHandlerMux.Handle(path, handler)
 }
 
@@ -366,8 +370,8 @@ func determineMimeType(option FileHandlerOption) (string, []byte) {
 	return "application/octet-stream", nil
 }
 
-// ServeFileOption handles serving content based on the provided FileHandlerOption
-func ServeFileOption(w http.ResponseWriter, r *http.Request, option FileHandlerOption) error {
+// serveFileOption handles serving content based on the provided FileHandlerOption
+func serveFileOption(w http.ResponseWriter, r *http.Request, option FileHandlerOption) error {
 	// Determine MIME type and get buffered data if needed
 	contentType, bufferedData := determineMimeType(option)
 	w.Header().Set("Content-Type", contentType)
@@ -431,7 +435,7 @@ func ServeFileOption(w http.ResponseWriter, r *http.Request, option FileHandlerO
 	return nil
 }
 
-func (c *Client) RegisterFilePrefixHandler(prefix string, optionProvider func(path string) (*FileHandlerOption, error)) {
+func (c *clientImpl) RegisterFilePrefixHandler(prefix string, optionProvider func(path string) (*FileHandlerOption, error)) {
 	c.UrlHandlerMux.HandleFunc(prefix, func(w http.ResponseWriter, r *http.Request) {
 		if !strings.HasPrefix(r.URL.Path, prefix) {
 			http.NotFound(w, r)
@@ -446,15 +450,15 @@ func (c *Client) RegisterFilePrefixHandler(prefix string, optionProvider func(pa
 			http.Error(w, "no content available", http.StatusNotFound)
 			return
 		}
-		if err := ServeFileOption(w, r, *option); err != nil {
+		if err := serveFileOption(w, r, *option); err != nil {
 			http.Error(w, fmt.Sprintf("Failed to serve content: %v", err), http.StatusInternalServerError)
 		}
 	})
 }
 
-func (c *Client) RegisterFileHandler(path string, option FileHandlerOption) {
+func (c *clientImpl) RegisterFileHandler(path string, option FileHandlerOption) {
 	c.UrlHandlerMux.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
-		if err := ServeFileOption(w, r, option); err != nil {
+		if err := serveFileOption(w, r, option); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 	})
