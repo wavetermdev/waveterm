@@ -326,7 +326,7 @@ This makes Tsunami applications naturally suitable for integration with external
 
 ## Style Handling
 
-Tsunami applications use Tailwind v4 CSS by default for styling (className prop) and you should favor styling with Tailwind whenever possible. However, you may also define inline styles using a map[string]any in the props:
+Tsunami applications use Tailwind v4 CSS by default for styling (className prop) and you should favor styling with Tailwind whenever possible. Also Tsunami Apps are built to run inside of Wave Terminal which is a dark mode application. Please create your styles in tailwind specifically to support DARK mode (so dark backgrounds and light text colors). You may also define inline styles using a map[string]any in the props:
 
 ```go
 vdom.H("div", map[string]any{
@@ -1000,6 +1000,7 @@ Key points:
 - `<script>` tags are NOT supported
 - Applications consist of a single file: app.go containing all Go code and component definitions
 - Styling is handled through Tailwind v4 CSS classes
+- Create Apps that work well in DARK mode (dark backgrounds, and light text)
 - Do NOT write a main() function - use init() for setup like dynamic handlers
 - This is a pure Go system - do not attempt to write React components or JavaScript code
 - All UI rendering, including complex visualizations, should be done through Go using vdom.H

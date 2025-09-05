@@ -405,7 +405,55 @@ func tsunamiBuildInternal(opts BuildOpts) (*BuildEnv, error) {
 		return buildEnv, fmt.Errorf("failed to build application: %w", err)
 	}
 
+	// Move generated files back to original directory
+	if err := moveFilesBack(tempDir, opts.Dir, opts.Verbose); err != nil {
+		return buildEnv, fmt.Errorf("failed to move files back: %w", err)
+	}
+
 	return buildEnv, nil
+}
+
+func moveFilesBack(tempDir, originalDir string, verbose bool) error {
+	// Move go.mod back to original directory
+	goModSrc := filepath.Join(tempDir, "go.mod")
+	goModDest := filepath.Join(originalDir, "go.mod")
+	if err := copyFile(goModSrc, goModDest); err != nil {
+		return fmt.Errorf("failed to copy go.mod back: %w", err)
+	}
+	if verbose {
+		log.Printf("Moved go.mod back to %s", goModDest)
+	}
+
+	// Move go.sum back to original directory
+	goSumSrc := filepath.Join(tempDir, "go.sum")
+	goSumDest := filepath.Join(originalDir, "go.sum")
+	if err := copyFile(goSumSrc, goSumDest); err != nil {
+		return fmt.Errorf("failed to copy go.sum back: %w", err)
+	}
+	if verbose {
+		log.Printf("Moved go.sum back to %s", goSumDest)
+	}
+
+	// Ensure static directory exists in original directory
+	staticDir := filepath.Join(originalDir, "static")
+	if err := os.MkdirAll(staticDir, 0755); err != nil {
+		return fmt.Errorf("failed to create static directory: %w", err)
+	}
+	if verbose {
+		log.Printf("Ensured static directory exists at %s", staticDir)
+	}
+
+	// Move tw.css back to original directory
+	twCssSrc := filepath.Join(tempDir, "static", "tw.css")
+	twCssDest := filepath.Join(originalDir, "static", "tw.css")
+	if err := copyFile(twCssSrc, twCssDest); err != nil {
+		return fmt.Errorf("failed to copy tw.css back: %w", err)
+	}
+	if verbose {
+		log.Printf("Moved tw.css back to %s", twCssDest)
+	}
+
+	return nil
 }
 
 func runGoBuild(tempDir string, opts BuildOpts) error {
