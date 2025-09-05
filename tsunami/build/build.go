@@ -128,19 +128,54 @@ func verifyEnvironment(verbose bool) (*BuildEnv, error) {
 func createGoMod(tempDir, appDirName, goVersion string, opts BuildOpts, verbose bool) error {
 	modulePath := fmt.Sprintf("tsunami/app/%s", appDirName)
 
-	// Create new modfile
-	modFile := &modfile.File{}
-	if err := modFile.AddModuleStmt(modulePath); err != nil {
-		return fmt.Errorf("failed to add module statement: %w", err)
-	}
+	// Check if go.mod already exists in original directory
+	originalGoModPath := filepath.Join(opts.Dir, "go.mod")
+	var modFile *modfile.File
+	var err error
 
-	if err := modFile.AddGoStmt(goVersion); err != nil {
-		return fmt.Errorf("failed to add go version: %w", err)
-	}
+	if _, err := os.Stat(originalGoModPath); err == nil {
+		// go.mod exists, copy and parse it
+		if verbose {
+			log.Printf("Found existing go.mod, copying from %s", originalGoModPath)
+		}
+		
+		// Copy existing go.mod to temp directory
+		tempGoModPath := filepath.Join(tempDir, "go.mod")
+		if err := copyFile(originalGoModPath, tempGoModPath); err != nil {
+			return fmt.Errorf("failed to copy existing go.mod: %w", err)
+		}
 
-	// Add requirement for tsunami SDK
-	if err := modFile.AddRequire("github.com/wavetermdev/waveterm/tsunami", "v0.0.0"); err != nil {
-		return fmt.Errorf("failed to add require directive: %w", err)
+		// Parse the existing go.mod
+		goModContent, err := os.ReadFile(tempGoModPath)
+		if err != nil {
+			return fmt.Errorf("failed to read copied go.mod: %w", err)
+		}
+
+		modFile, err = modfile.Parse("go.mod", goModContent, nil)
+		if err != nil {
+			return fmt.Errorf("failed to parse existing go.mod: %w", err)
+		}
+	} else if os.IsNotExist(err) {
+		// go.mod doesn't exist, create new one
+		if verbose {
+			log.Printf("No existing go.mod found, creating new one")
+		}
+		
+		modFile = &modfile.File{}
+		if err := modFile.AddModuleStmt(modulePath); err != nil {
+			return fmt.Errorf("failed to add module statement: %w", err)
+		}
+
+		if err := modFile.AddGoStmt(goVersion); err != nil {
+			return fmt.Errorf("failed to add go version: %w", err)
+		}
+
+		// Add requirement for tsunami SDK
+		if err := modFile.AddRequire("github.com/wavetermdev/waveterm/tsunami", "v0.0.0"); err != nil {
+			return fmt.Errorf("failed to add require directive: %w", err)
+		}
+	} else {
+		return fmt.Errorf("error checking for existing go.mod: %w", err)
 	}
 
 	// Add replace directive for tsunami SDK
