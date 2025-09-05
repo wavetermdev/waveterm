@@ -633,12 +633,20 @@ Best Practices:
 
 ## State Management and Async Updates
 
-While React patterns typically avoid globals, in Go Tsunami applications it's perfectly fine and often clearer to use global variables. However, when dealing with async operations and goroutines, special care must be taken:
+For global state management, use the atoms system (SharedAtom, Config, or Data as appropriate). This provides global reactive state that components can subscribe to:
 
 ```go
-// Global state is fine!
-var globalTodos []Todo
-var globalFilter string
+// Use func init() to set atom defaults
+func init() {
+    app.SetData("todos", []Todo{})
+    app.SetConfig("filter", "")
+}
+
+type Todo struct {
+    Id   int    `json:"id"`
+    Text string `json:"text"`
+    Done bool   `json:"done"`
+}
 
 // For async operations, consider using a state struct
 type TimerState struct {
@@ -649,11 +657,12 @@ type TimerState struct {
 
 var TodoApp = app.DefineComponent("TodoApp",
     func(ctx context.Context, _ struct{}) any {
-        // Local state for UI updates
-        count, setCount := vdom.UseState(ctx, 0)
+        // Use atoms for global state (prefixes must match init functions)
+        todos, setTodos, _ := vdom.UseData[[]Todo](ctx, "todos")
+        filter, setFilter, _ := vdom.UseConfig[string](ctx, "filter")
 
-        // vdom.UseState returns value, setter, and functional setter
-        seconds, setSeconds, setSecondsFn := vdom.UseState(ctx, 0)
+        // Local state for async timer demo
+        seconds, _, setSecondsFn := vdom.UseState[int](ctx, 0)
 
         // Use refs to store complex state that goroutines need to access
         stateRef := vdom.UseRef(ctx, &TimerState{
@@ -699,15 +708,43 @@ var TodoApp = app.DefineComponent("TodoApp",
 
         // Use vdom.UseEffect for cleanup on unmount
         vdom.UseEffect(ctx, func() func() {
+            startAsync() // Start the timer when component mounts
             return func() {
                 stopAsync()
             }
         }, []any{})
 
-        return vdom.H("div", nil,
-            vdom.ForEach(globalTodos, func(todo Todo, idx int) any {
-                // Use WithKey() for adding keys to components
-                return TodoItem(TodoItemProps{Todo: todo}).WithKey(idx)
+        addTodo := func(text string) {
+            newTodo := Todo{
+                Id:   len(todos) + 1,
+                Text: text,
+                Done: false,
+            }
+            setTodos(append(todos, newTodo))
+        }
+
+        return vdom.H("div", map[string]any{"className": "todo-app"},
+            vdom.H("h1", nil, "Todo App"),
+            vdom.H("p", nil, "Timer: ", seconds, " seconds"),
+            vdom.H("input", map[string]any{
+                "placeholder": "Filter todos...",
+                "value":       filter,
+                "onChange":    func(e vdom.VDomEvent) { setFilter(e.TargetValue) },
+            }),
+            vdom.H("button", map[string]any{
+                "onClick": func() { addTodo("New todo") },
+            }, "Add Todo"),
+            vdom.ForEach(todos, func(todo Todo, idx int) any {
+                // Only show todos that contain the filter text
+                if filter != "" && !strings.Contains(strings.ToLower(todo.Text), strings.ToLower(filter)) {
+                    return nil
+                }
+                return vdom.H("div", map[string]any{
+                    "key":       todo.Id,
+                    "className": "todo-item",
+                },
+                    vdom.H("span", nil, todo.Text),
+                )
             }),
         )
     },
@@ -895,9 +932,12 @@ var App = app.DefineComponent("App",
         }
 
         deleteTodo := func(id int) {
-            newTodos := vdom.Filter(todos, func(todo Todo) bool {
-                return todo.Id != id
-            })
+            newTodos := make([]Todo, 0)
+            for _, todo := range todos {
+                if todo.Id != id {
+                    newTodos = append(newTodos, todo)
+                }
+            }
             setTodos(newTodos)
         }
 
