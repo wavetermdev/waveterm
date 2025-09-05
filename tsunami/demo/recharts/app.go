@@ -51,6 +51,157 @@ func generateNewDataPoint(currentData []DataPoint) DataPoint {
 	}
 }
 
+var InfoSection = app.DefineComponent("InfoSection",
+	func(ctx context.Context, _ struct{}) any {
+		return vdom.H("div", map[string]any{
+			"className": "bg-blue-50 border border-blue-200 rounded-lg p-4",
+		},
+			vdom.H("h3", map[string]any{
+				"className": "text-lg font-semibold text-blue-900 mb-2",
+			}, "Recharts Integration Features"),
+			vdom.H("ul", map[string]any{
+				"className": "space-y-2 text-blue-800",
+			},
+				vdom.H("li", map[string]any{
+					"className": "flex items-start gap-2",
+				},
+					vdom.H("span", map[string]any{
+						"className": "text-blue-500 mt-1",
+					}, "•"),
+					"Support for all major Recharts components (LineChart, AreaChart, BarChart, etc.)",
+				),
+				vdom.H("li", map[string]any{
+					"className": "flex items-start gap-2",
+				},
+					vdom.H("span", map[string]any{
+						"className": "text-blue-500 mt-1",
+					}, "•"),
+					"Live data updates with animation support",
+				),
+				vdom.H("li", map[string]any{
+					"className": "flex items-start gap-2",
+				},
+					vdom.H("span", map[string]any{
+						"className": "text-blue-500 mt-1",
+					}, "•"),
+					"Responsive containers that resize with the window",
+				),
+				vdom.H("li", map[string]any{
+					"className": "flex items-start gap-2",
+				},
+					vdom.H("span", map[string]any{
+						"className": "text-blue-500 mt-1",
+					}, "•"),
+					"Full prop support for customization and styling",
+				),
+				vdom.H("li", map[string]any{
+					"className": "flex items-start gap-2",
+				},
+					vdom.H("span", map[string]any{
+						"className": "text-blue-500 mt-1",
+					}, "•"),
+					"Uses recharts: namespace to dispatch to the recharts handler",
+				),
+			),
+		)
+	},
+)
+
+type MiniChartsProps struct {
+	ChartData []DataPoint `json:"chartData"`
+}
+
+var MiniCharts = app.DefineComponent("MiniCharts",
+	func(ctx context.Context, props MiniChartsProps) any {
+		return vdom.H("div", map[string]any{
+			"className": "grid grid-cols-1 md:grid-cols-3 gap-6 mb-6",
+		},
+			// CPU Mini Chart
+			vdom.H("div", map[string]any{
+				"className": "bg-white rounded-lg shadow-sm border p-4",
+			},
+				vdom.H("h3", map[string]any{
+					"className": "text-lg font-medium text-gray-900 mb-3",
+				}, "CPU Usage"),
+				vdom.H("div", map[string]any{
+					"className": "h-32",
+				},
+					vdom.H("recharts:ResponsiveContainer", map[string]any{
+						"width":  "100%",
+						"height": "100%",
+					},
+						vdom.H("recharts:LineChart", map[string]any{
+							"data": props.ChartData,
+						},
+							vdom.H("recharts:Line", map[string]any{
+								"type":            "monotone",
+								"dataKey":         "cpu",
+								"stroke":          "#8884d8",
+								"strokeWidth":     2,
+								"dot":             false,
+							}),
+						),
+					),
+				),
+			),
+
+			// Memory Mini Chart
+			vdom.H("div", map[string]any{
+				"className": "bg-white rounded-lg shadow-sm border p-4",
+			},
+				vdom.H("h3", map[string]any{
+					"className": "text-lg font-medium text-gray-900 mb-3",
+				}, "Memory Usage"),
+				vdom.H("div", map[string]any{
+					"className": "h-32",
+				},
+					vdom.H("recharts:ResponsiveContainer", map[string]any{
+						"width":  "100%",
+						"height": "100%",
+					},
+						vdom.H("recharts:AreaChart", map[string]any{
+							"data": props.ChartData,
+						},
+							vdom.H("recharts:Area", map[string]any{
+								"type":    "monotone",
+								"dataKey": "mem",
+								"stroke":  "#82ca9d",
+								"fill":    "#82ca9d",
+							}),
+						),
+					),
+				),
+			),
+
+			// Disk Mini Chart
+			vdom.H("div", map[string]any{
+				"className": "bg-white rounded-lg shadow-sm border p-4",
+			},
+				vdom.H("h3", map[string]any{
+					"className": "text-lg font-medium text-gray-900 mb-3",
+				}, "Disk Usage"),
+				vdom.H("div", map[string]any{
+					"className": "h-32",
+				},
+					vdom.H("recharts:ResponsiveContainer", map[string]any{
+						"width":  "100%",
+						"height": "100%",
+					},
+						vdom.H("recharts:BarChart", map[string]any{
+							"data": props.ChartData,
+						},
+							vdom.H("recharts:Bar", map[string]any{
+								"dataKey": "disk",
+								"fill":    "#ffc658",
+							}),
+						),
+					),
+				),
+			),
+		)
+	},
+)
+
 var App = app.DefineComponent("App",
 	func(ctx context.Context, _ struct{}) any {
 		vdom.UseSetAppTitle(ctx, "Recharts Demo")
@@ -324,145 +475,12 @@ var App = app.DefineComponent("App",
 				),
 
 				// Mini charts row
-				vdom.H("div", map[string]any{
-					"className": "grid grid-cols-1 md:grid-cols-3 gap-6 mb-6",
-				},
-					// CPU Mini Chart
-					vdom.H("div", map[string]any{
-						"className": "bg-white rounded-lg shadow-sm border p-4",
-					},
-						vdom.H("h3", map[string]any{
-							"className": "text-lg font-medium text-gray-900 mb-3",
-						}, "CPU Usage"),
-						vdom.H("div", map[string]any{
-							"className": "h-32",
-						},
-							vdom.H("recharts:ResponsiveContainer", map[string]any{
-								"width":  "100%",
-								"height": "100%",
-							},
-								vdom.H("recharts:LineChart", map[string]any{
-									"data": chartData,
-								},
-									vdom.H("recharts:Line", map[string]any{
-										"type":            "monotone",
-										"dataKey":         "cpu",
-										"stroke":          "#8884d8",
-										"strokeWidth":     2,
-										"dot":             false,
-									}),
-								),
-							),
-						),
-					),
-
-					// Memory Mini Chart
-					vdom.H("div", map[string]any{
-						"className": "bg-white rounded-lg shadow-sm border p-4",
-					},
-						vdom.H("h3", map[string]any{
-							"className": "text-lg font-medium text-gray-900 mb-3",
-						}, "Memory Usage"),
-						vdom.H("div", map[string]any{
-							"className": "h-32",
-						},
-							vdom.H("recharts:ResponsiveContainer", map[string]any{
-								"width":  "100%",
-								"height": "100%",
-							},
-								vdom.H("recharts:AreaChart", map[string]any{
-									"data": chartData,
-								},
-									vdom.H("recharts:Area", map[string]any{
-										"type":    "monotone",
-										"dataKey": "mem",
-										"stroke":  "#82ca9d",
-										"fill":    "#82ca9d",
-									}),
-								),
-							),
-						),
-					),
-
-					// Disk Mini Chart  
-					vdom.H("div", map[string]any{
-						"className": "bg-white rounded-lg shadow-sm border p-4",
-					},
-						vdom.H("h3", map[string]any{
-							"className": "text-lg font-medium text-gray-900 mb-3",
-						}, "Disk Usage"),
-						vdom.H("div", map[string]any{
-							"className": "h-32",
-						},
-							vdom.H("recharts:ResponsiveContainer", map[string]any{
-								"width":  "100%",
-								"height": "100%",
-							},
-								vdom.H("recharts:BarChart", map[string]any{
-									"data": chartData,
-								},
-									vdom.H("recharts:Bar", map[string]any{
-										"dataKey": "disk",
-										"fill":    "#ffc658",
-									}),
-								),
-							),
-						),
-					),
-				),
+				MiniCharts(MiniChartsProps{
+					ChartData: chartData,
+				}),
 
 				// Info section
-				vdom.H("div", map[string]any{
-					"className": "bg-blue-50 border border-blue-200 rounded-lg p-4",
-				},
-					vdom.H("h3", map[string]any{
-						"className": "text-lg font-semibold text-blue-900 mb-2",
-					}, "Recharts Integration Features"),
-					vdom.H("ul", map[string]any{
-						"className": "space-y-2 text-blue-800",
-					},
-						vdom.H("li", map[string]any{
-							"className": "flex items-start gap-2",
-						},
-							vdom.H("span", map[string]any{
-								"className": "text-blue-500 mt-1",
-							}, "•"),
-							"Support for all major Recharts components (LineChart, AreaChart, BarChart, etc.)",
-						),
-						vdom.H("li", map[string]any{
-							"className": "flex items-start gap-2",
-						},
-							vdom.H("span", map[string]any{
-								"className": "text-blue-500 mt-1",
-							}, "•"),
-							"Live data updates with animation support",
-						),
-						vdom.H("li", map[string]any{
-							"className": "flex items-start gap-2",
-						},
-							vdom.H("span", map[string]any{
-								"className": "text-blue-500 mt-1",
-							}, "•"),
-							"Responsive containers that resize with the window",
-						),
-						vdom.H("li", map[string]any{
-							"className": "flex items-start gap-2",
-						},
-							vdom.H("span", map[string]any{
-								"className": "text-blue-500 mt-1",
-							}, "•"),
-							"Full prop support for customization and styling",
-						),
-						vdom.H("li", map[string]any{
-							"className": "flex items-start gap-2",
-						},
-							vdom.H("span", map[string]any{
-								"className": "text-blue-500 mt-1",
-							}, "•"),
-							"Uses recharts: namespace to dispatch to the recharts handler",
-						),
-					),
-				),
+				InfoSection(struct{}{}),
 			),
 		)
 	},
