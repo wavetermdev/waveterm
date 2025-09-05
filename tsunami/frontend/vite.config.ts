@@ -28,5 +28,7 @@ export default defineConfig({
     },
     build: {
         outDir: "dist",
+        minify: process.env.NODE_ENV === "development" ? false : "esbuild",
+        sourcemap: process.env.NODE_ENV === "development" ? true : false,
     },
 });

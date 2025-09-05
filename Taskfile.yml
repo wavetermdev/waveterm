@@ -456,11 +456,29 @@ tasks:
         cmd: yarn build
         dir: tsunami/frontend
 
+    tsunami:frontend:devbuild:
+        desc: Build the tsunami frontend in development mode (with source maps and symbols)
+        cmd: yarn build:dev
+        dir: tsunami/frontend
+
     tsunami:scaffold:
         desc: Build scaffold for tsunami frontend development
-        dir: tsunami/frontend
         deps:
             - tsunami:frontend:build
+        cmds:
+            - task: tsunami:scaffold:internal
+
+    tsunami:devscaffold:
+        desc: Build scaffold for tsunami frontend development (with source maps and symbols)
+        deps:
+            - tsunami:frontend:devbuild
+        cmds:
+            - task: tsunami:scaffold:internal
+
+    tsunami:scaffold:internal:
+        desc: Internal task to create scaffold directory structure
+        dir: tsunami/frontend
+        internal: true
         cmds:
             - cmd: "{{.RMRF}} scaffold"
               ignore_error: true
@@ -489,6 +507,15 @@ tasks:
             - "tsunami/go.sum"
         generates:
             - "bin/tsunami{{exeExt}}"
+
+    tsunami:clean:
+        desc: Clean tsunami frontend build artifacts
+        dir: tsunami/frontend
+        cmds:
+            - cmd: "{{.RMRF}} dist"
+              ignore_error: true
+            - cmd: "{{.RMRF}} scaffold"
+              ignore_error: true
 
     godoc:
         desc: Start the Go documentation server for the root module

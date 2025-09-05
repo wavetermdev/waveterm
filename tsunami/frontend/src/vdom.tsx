@@ -10,6 +10,7 @@ import { Markdown } from "@/element/markdown";
 import { getTextChildren } from "@/model/model-utils";
 import type { TsunamiModel } from "@/model/tsunami-model";
 import { adaptFromReactOrNativeKeyEvent, checkKeyPressed } from "@/util/keyutil";
+import { RechartsTag } from "@/recharts/recharts";
 
 const TextTag = "#text";
 const FragmentTag = "#fragment";
@@ -161,7 +162,7 @@ function convertVDomFunc(model: TsunamiModel, fnDecl: VDomFunc, compId: string, 
     };
 }
 
-function convertElemToTag(elem: VDomElem, model: TsunamiModel): React.ReactNode {
+export function convertElemToTag(elem: VDomElem, model: TsunamiModel): React.ReactNode {
     if (elem == null) {
         return null;
     }
@@ -331,6 +332,12 @@ function VDomTag({ elem, model }: { elem: VDomElem; model: TsunamiModel }) {
     if (elem.tag == WaveTextTag) {
         return props.text;
     }
+    
+    // Dispatch recharts: prefixed tags to RechartsTag
+    if (elem.tag.startsWith("recharts:")) {
+        return <RechartsTag elem={elem} model={model} />;
+    }
+    
     const waveTag = WaveTagMap[elem.tag];
     if (waveTag) {
         return waveTag({ elem, model });
