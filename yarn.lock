@@ -10487,16 +10487,16 @@ __metadata:
   languageName: node
   linkType: hard
 
-"electron@npm:^37.3.1":
-  version: 37.3.1
-  resolution: "electron@npm:37.3.1"
+"electron@npm:^38.0.0":
+  version: 38.0.0
+  resolution: "electron@npm:38.0.0"
   dependencies:
     "@electron/get": "npm:^2.0.0"
     "@types/node": "npm:^22.7.7"
     extract-zip: "npm:^2.0.1"
   bin:
     electron: cli.js
-  checksum: 10c0/1b171804646f229768c29413629b70b968c4c06686913b69e8615da09c58d63a95817021c31ed3c3bdbba0ad360ad4469773b9dda2662884d7df2866559f95f1
+  checksum: 10c0/df3e4eaead2b0de4612a1b593f46667dfd4aff4755727371b5630aada40094cddf82b3837ce0ba3babed8c503275da59187f11da9f4ab26cd20e1362dc103ea6
   languageName: node
   linkType: hard
 
@@ -22417,7 +22417,7 @@ __metadata:
     css-tree: "npm:^3.1.0"
     dayjs: "npm:^1.11.15"
     debug: "npm:^4.4.1"
-    electron: "npm:^37.3.1"
+    electron: "npm:^38.0.0"
     electron-builder: "npm:^26.0"
     electron-updater: "npm:^6.6"
     electron-vite: "npm:^4.0.0"
