@@ -162,6 +162,14 @@ func (vc *VDomContextImpl) UseEffect(ctx context.Context, fn func() func(), deps
 		vc.Root.AddEffectWork(vc.getCompWaveId(), hookVal.Idx)
 		return
 	}
+	// If deps is nil, always run (like React with no dependency array)
+	if deps == nil {
+		hookVal.Fn = fn
+		hookVal.Deps = deps
+		vc.Root.AddEffectWork(vc.getCompWaveId(), hookVal.Idx)
+		return
+	}
+
 	if depsEqual(hookVal.Deps, deps) {
 		return
 	}

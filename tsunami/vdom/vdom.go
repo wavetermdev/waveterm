@@ -30,14 +30,14 @@ func (e *VDomElem) Key() string {
 // WithKey sets the key property of the VDomElem and returns the element.
 // This is particularly useful for defined components since their prop types won't include keys.
 // Returns nil if the element is nil, otherwise returns the same element for chaining.
-func (e *VDomElem) WithKey(key string) *VDomElem {
+func (e *VDomElem) WithKey(key any) *VDomElem {
 	if e == nil {
 		return nil
 	}
 	if e.Props == nil {
 		e.Props = make(map[string]any)
 	}
-	e.Props[KeyPropKey] = key
+	e.Props[KeyPropKey] = fmt.Sprint(key)
 	return e
 }
 

@@ -208,7 +208,7 @@ vdom.H("ul", nil,
     vdom.ForEach(items, func(item string, idx int) any {
         return vdom.H("li", map[string]any{
             "key": idx,
-            "className": "list-item",
+            "className": "py-2 px-3 border-b border-gray-100",
         }, item)
     }),
 )
@@ -326,7 +326,7 @@ This makes Tsunami applications naturally suitable for integration with external
 
 ## Style Handling
 
-Tsunami applications use Tailwind v4 CSS by default for styling (className prop). You can also define inline styles using a map[string]any in the props:
+Tsunami applications use Tailwind v4 CSS by default for styling (className prop) and you should favor styling with Tailwind whenever possible. However, you may also define inline styles using a map[string]any in the props:
 
 ```go
 vdom.H("div", map[string]any{
@@ -359,6 +359,14 @@ Properties use camelCase (must match React) and values can be:
 
 The style map in props mirrors React's style object pattern, making it familiar to React developers while maintaining type safety in Go.
 
+### External Styles and Stylesheets
+
+Quick styles can be added using a vdom.H("style", nil, "...") tag. You may also place CSS files in the `static` directory, and serve them directly with:
+
+```go
+vdom.H("link", map[string]any{"rel": "stylesheet", "src": "/static/mystyles.css"})
+```
+
 ## Component Definition Pattern
 
 Create typed, reusable components using the client:
@@ -376,21 +384,17 @@ var TodoItem = app.DefineComponent("TodoItem",
     func(ctx context.Context, props TodoItemProps) any {
         return vdom.H("div", map[string]any{
             "className": vdom.Classes(
-                "todo-item",
-                vdom.If(props.IsActive, "active"),
+                "p-3 border-b border-gray-200 cursor-pointer transition-opacity",
+                vdom.If(props.IsActive, "opacity-100 bg-blue-50", "opacity-70 hover:bg-gray-50"),
             ),
             "onClick": props.OnToggle,
-            "style": map[string]any{
-                "cursor": "pointer",
-                "opacity": vdom.If(props.IsActive, 1.0, 0.7),
-            },
         }, props.Todo.Text)
     },
 )
 
 // Usage in parent component:
 vdom.H("div", map[string]any{
-    "className": "todo-list",
+    "className": "bg-white rounded-lg shadow-sm border",
 },
     TodoItem(TodoItemProps{
         Todo: todo,
@@ -403,7 +407,7 @@ vdom.H("div", map[string]any{
 TodoItem(TodoItemProps{
     Todo: todo,
     OnToggle: handleToggle,
-}).WithKey(fmt.Sprint(idx))
+}).WithKey(idx)
 ```
 
 Components in Tsunami:
@@ -417,10 +421,11 @@ Components in Tsunami:
 
 Special Handling for Component "key" prop:
 
-- Use the WithKey(key string) chaining func to set a key on a component
+- Use the `WithKey(key any)` chaining func to set a key on a component
 - Keys must be added for components rendered in lists (just like in React)
 - Keys should be unique among siblings and stable across renders
 - Keys are handled at the framework level and should not be declared in component props
+- `WithKey` accepts any type and automatically converts it to a string using fmt.Sprint
 
 This pattern matches React's functional components while maintaining Go's type safety and explicit props definition.
 
@@ -466,7 +471,7 @@ keyHandler := &vdom.VDomFunc{
 }
 
 vdom.H("input", map[string]any{
-    "className": "special-input",
+    "className": "px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500",
     "onKeyDown": keyHandler,
 })
 
@@ -555,8 +560,10 @@ func MyComponent(ctx context.Context, props MyProps) any {
             },
         }),
         vdom.H("ul", nil,
-            vdom.ForEach(items, func(item string, _ int) any {
-                return vdom.H("li", nil, item)
+            vdom.ForEach(items, func(item string, idx int) any {
+                return vdom.H("li", map[string]any{
+                    "key": idx,
+                }, item)
             }),
         ),
     )
@@ -584,7 +591,7 @@ The system provides three main types of hooks:
    })
    ```
 
-2. vdom.UseRef - For values that persist between renders without triggering updates:
+2. vdom.UseRef - For values that persist between renders without triggering updates (like React.useRef):
 
    - Holds mutable values that survive re-renders
    - Changes don't cause re-renders
@@ -593,6 +600,7 @@ The system provides three main types of hooks:
      - Storing timers/channels
      - Tracking subscriptions
      - Holding complex state structures
+   - Unlike React, this ref CANNOT be set as the ref prop on an element
 
    ```go
    timerRef := vdom.UseRef(ctx, &TimerState{
@@ -607,6 +615,7 @@ The system provides three main types of hooks:
      - Managing focus
      - Measuring elements
      - Direct DOM manipulation when needed
+   - These ref objects SHOULD be set as ref prop on elements.
    ```go
    inputRef := vdom.UseVDomRef(ctx)
    vdom.H("input", map[string]any{
@@ -696,8 +705,9 @@ var TodoApp = app.DefineComponent("TodoApp",
         }, []any{})
 
         return vdom.H("div", nil,
-            vdom.ForEach(globalTodos, func(todo Todo, _ int) any {
-                return TodoItem(TodoItemProps{Todo: todo})
+            vdom.ForEach(globalTodos, func(todo Todo, idx int) any {
+                // Use WithKey() for adding keys to components
+                return TodoItem(TodoItemProps{Todo: todo}).WithKey(idx)
             }),
         )
     },
@@ -923,7 +933,7 @@ var App = app.DefineComponent("App",
                     Todo:     todo,
                     OnToggle: func() { toggleTodo(todo.Id) },
                     OnDelete: func() { deleteTodo(todo.Id) },
-                }).WithKey(strconv.Itoa(todo.Id))
+                }).WithKey(todo.Id)
             })),
         )
     },
