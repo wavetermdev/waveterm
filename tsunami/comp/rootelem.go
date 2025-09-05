@@ -515,13 +515,13 @@ func convertPropsToVDom(props map[string]any) map[string]any {
 	return vdomProps
 }
 
-func convertBaseToVDom(c *ComponentImpl) *vdom.VDomElem {
+func (r *RootElem) convertBaseToVDom(c *ComponentImpl) *vdom.VDomElem {
 	elem := &vdom.VDomElem{WaveId: c.WaveId, Tag: c.Tag}
 	if c.Elem != nil {
 		elem.Props = convertPropsToVDom(c.Elem.Props)
 	}
 	for _, child := range c.Children {
-		childElem := convertCompToVDom(child)
+		childElem := r.convertCompToVDom(child)
 		if childElem != nil {
 			elem.Children = append(elem.Children, *childElem)
 		}
@@ -532,21 +532,26 @@ func convertBaseToVDom(c *ComponentImpl) *vdom.VDomElem {
 	return elem
 }
 
-func convertCompToVDom(c *ComponentImpl) *vdom.VDomElem {
+func (r *RootElem) convertCompToVDom(c *ComponentImpl) *vdom.VDomElem {
 	if c == nil {
 		return nil
 	}
 	if c.Comp != nil {
-		return convertCompToVDom(c.Comp)
+		return r.convertCompToVDom(c.Comp)
 	}
-	return convertBaseToVDom(c)
+	// If this is a registered component that was unmounted (c.Comp == nil) and has no children, return nil
+	// This prevents unmounted components from being serialized as their original tag names
+	if len(c.Children) == 0 && r.CFuncs[c.Tag] != nil {
+		return nil
+	}
+	return r.convertBaseToVDom(c)
 }
 
 func (r *RootElem) MakeVDom() *vdom.VDomElem {
 	if r.Root == nil {
 		return nil
 	}
-	return convertCompToVDom(r.Root)
+	return r.convertCompToVDom(r.Root)
 }
 
 func ConvertElemsToTransferElems(elems []vdom.VDomElem) []rpctypes.VDomTransferElem {
