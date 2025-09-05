@@ -3954,6 +3954,18 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@mdx-js/react@npm:^3.1.1":
+  version: 3.1.1
+  resolution: "@mdx-js/react@npm:3.1.1"
+  dependencies:
+    "@types/mdx": "npm:^2.0.0"
+  peerDependencies:
+    "@types/react": ">=16"
+    react: ">=16"
+  checksum: 10c0/34ca98bc2a0f969894ea144dc5c8a5294690505458cd24965cd9be854d779c193ad9192bf9143c4c18438fafd1902e100d99067e045c69319288562d497558c6
+  languageName: node
+  linkType: hard
+
 "@mdx-js/typescript-plugin@npm:^0.0.8":
   version: 0.0.8
   resolution: "@mdx-js/typescript-plugin@npm:0.0.8"
@@ -9837,10 +9849,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"dayjs@npm:^1.11.15":
-  version: 1.11.15
-  resolution: "dayjs@npm:1.11.15"
-  checksum: 10c0/bb66cd5419fff017f3950b95fc27643cf4e0ce22a087cef1f67398f18126ed07bf36d6911f33b19029a1621c64090b8ecaef660477de7678287fe8c0f4e68d29
+"dayjs@npm:^1.11.18":
+  version: 1.11.18
+  resolution: "dayjs@npm:1.11.18"
+  checksum: 10c0/83b67f5d977e2634edf4f5abdd91d9041a696943143638063016915d2cd8c7e57e0751e40379a07ebca8be7a48dd380bef8752d22a63670f2d15970e34f96d7a
   languageName: node
   linkType: hard
 
@@ -13086,10 +13098,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"immer@npm:^10.1.1":
-  version: 10.1.1
-  resolution: "immer@npm:10.1.1"
-  checksum: 10c0/b749e10d137ccae91788f41bd57e9387f32ea6d6ea8fd7eb47b23fd7766681575efc7f86ceef7fe24c3bc9d61e38ff5d2f49c2663b2b0c056e280a4510923653
+"immer@npm:^10.1.3":
+  version: 10.1.3
+  resolution: "immer@npm:10.1.3"
+  checksum: 10c0/b3929022c1999935c9c5e9491fce20d883c15a04072628056f3b8c51a63ac0876d1c1f25cec146e325c30c906bc7f15a636c29ed53156f0a3049150f152df4c8
   languageName: node
   linkType: hard
 
@@ -22326,7 +22338,7 @@ __metadata:
     "@docusaurus/tsconfig": "npm:3.7.0"
     "@docusaurus/types": "npm:3.7.0"
     "@eslint/js": "npm:^8.57.0"
-    "@mdx-js/react": "npm:^3.0.0"
+    "@mdx-js/react": "npm:^3.1.1"
     "@mdx-js/typescript-plugin": "npm:^0.0.8"
     "@types/eslint": "npm:^9.6.1"
     "@types/eslint-config-prettier": "npm:^6.11.3"
@@ -22415,7 +22427,7 @@ __metadata:
     color: "npm:^4.2.3"
     colord: "npm:^2.9.3"
     css-tree: "npm:^3.1.0"
-    dayjs: "npm:^1.11.15"
+    dayjs: "npm:^1.11.18"
     debug: "npm:^4.4.1"
     electron: "npm:^37.3.1"
     electron-builder: "npm:^26.0"
@@ -22427,7 +22439,7 @@ __metadata:
     fast-average-color: "npm:^9.5.0"
     htl: "npm:^0.3.1"
     html-to-image: "npm:^1.11.13"
-    immer: "npm:^10.1.1"
+    immer: "npm:^10.1.3"
     jotai: "npm:2.9.3"
     monaco-editor: "npm:^0.52.2"
     monaco-yaml: "npm:^5.4.0"
