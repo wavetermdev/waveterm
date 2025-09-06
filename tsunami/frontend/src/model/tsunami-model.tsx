@@ -5,7 +5,7 @@ import debug from "debug";
 import * as jotai from "jotai";
 
 import { getOrCreateClientId } from "@/util/clientid";
-import { adaptFromReactOrNativeKeyEvent, checkKeyPressed } from "@/util/keyutil";
+import { adaptFromReactOrNativeKeyEvent } from "@/util/keyutil";
 import { PLATFORM, PlatformMacOS } from "@/util/platformutil";
 import { getDefaultStore } from "jotai";
 import { applyCanvasOp, restoreVDomElems } from "./model-utils";
@@ -473,6 +473,9 @@ export class TsunamiModel {
     setAtomValue(atomName: string, value: any, fromBe: boolean, idMap: Map<string, VDomElem>) {
         dlog("setAtomValue", atomName, value, fromBe);
         let container = this.getAtomContainer(atomName);
+        if (container.val === value) {
+            return;
+        }
         container.val = value;
         if (fromBe) {
             container.beVal = value;
@@ -533,17 +536,17 @@ export class TsunamiModel {
         if (faviconPath === this.cachedFaviconPath) {
             return;
         }
-        
+
         this.cachedFaviconPath = faviconPath;
-        
+
         let existingFavicon = document.querySelector('link[rel="icon"]') as HTMLLinkElement;
-        
+
         if (faviconPath) {
             if (existingFavicon) {
                 existingFavicon.href = faviconPath;
             } else {
-                const link = document.createElement('link');
-                link.rel = 'icon';
+                const link = document.createElement("link");
+                link.rel = "icon";
                 link.href = faviconPath;
                 document.head.appendChild(link);
             }
@@ -558,7 +561,7 @@ export class TsunamiModel {
         if (update == null) {
             return;
         }
-        
+
         // Check if serverId is changing and trigger remount if needed
         if (this.serverId != null && this.serverId !== update.serverid) {
             // Server ID changed - need to remount the entire app
@@ -567,7 +570,7 @@ export class TsunamiModel {
             }
             return;
         }
-        
+
         this.serverId = update.serverid;
         getDefaultStore().set(this.contextActive, true);
         const idMap = new Map<string, VDomElem>();
