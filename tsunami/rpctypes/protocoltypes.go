@@ -51,6 +51,7 @@ type VDomBackendUpdate struct {
 	ServerId      string                  `json:"serverid"`
 	Opts          *VDomBackendOpts        `json:"opts,omitempty"`
 	HasWork       bool                    `json:"haswork,omitempty"`
+	FullUpdate    bool                    `json:"fullupdate,omitempty"`
 	RenderUpdates []VDomRenderUpdate      `json:"renderupdates,omitempty"`
 	TransferElems []VDomTransferElem      `json:"transferelems,omitempty"`
 	StateSync     []VDomStateSync         `json:"statesync,omitempty"`

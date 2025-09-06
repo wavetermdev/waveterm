@@ -22,6 +22,7 @@ type VDomBackendUpdate = {
     serverid: string;
     opts?: VDomBackendOpts;
     haswork?: boolean;
+    fullupdate?: boolean;
     renderupdates?: VDomRenderUpdate[];
     transferelems?: VDomTransferElem[];
     statesync?: VDomStateSync[];

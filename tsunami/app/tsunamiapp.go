@@ -264,11 +264,12 @@ func (c *clientImpl) fullRender() (*rpctypes.VDomBackendUpdate, error) {
 		renderedVDom = makeNullVDom()
 	}
 	return &rpctypes.VDomBackendUpdate{
-		Type:     "backendupdate",
-		Ts:       time.Now().UnixMilli(),
-		ServerId: c.ServerId,
-		HasWork:  len(c.Root.EffectWorkQueue) > 0,
-		Opts:     c.makeBackendOpts(),
+		Type:       "backendupdate",
+		Ts:         time.Now().UnixMilli(),
+		ServerId:   c.ServerId,
+		HasWork:    len(c.Root.EffectWorkQueue) > 0,
+		FullUpdate: true,
+		Opts:       c.makeBackendOpts(),
 		RenderUpdates: []rpctypes.VDomRenderUpdate{
 			{UpdateType: "root", VDom: renderedVDom},
 		},
@@ -285,10 +286,11 @@ func (c *clientImpl) incrementalRender() (*rpctypes.VDomBackendUpdate, error) {
 		renderedVDom = makeNullVDom()
 	}
 	return &rpctypes.VDomBackendUpdate{
-		Type:     "backendupdate",
-		Ts:       time.Now().UnixMilli(),
-		ServerId: c.ServerId,
-		Opts:     c.makeBackendOpts(),
+		Type:       "backendupdate",
+		Ts:         time.Now().UnixMilli(),
+		ServerId:   c.ServerId,
+		FullUpdate: false,
+		Opts:       c.makeBackendOpts(),
 		RenderUpdates: []rpctypes.VDomRenderUpdate{
 			{UpdateType: "root", VDom: renderedVDom},
 		},

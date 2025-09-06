@@ -85,7 +85,6 @@ export class TsunamiModel {
     clientId: string;
     serverId: string;
     viewRef: React.RefObject<HTMLDivElement> = { current: null };
-    remountCallback: (() => void) | null = null;
     vdomRoot: jotai.PrimitiveAtom<VDomElem> = jotai.atom();
     atoms: Map<string, AtomContainer> = new Map(); // key is atomname
     refs: Map<string, RefContainer> = new Map(); // key is refid
@@ -486,11 +485,35 @@ export class TsunamiModel {
     }
 
     handleStateSync(update: VDomBackendUpdate, idMap: Map<string, VDomElem>) {
-        if (update.statesync == null) {
-            return;
-        }
-        for (let sync of update.statesync) {
-            this.setAtomValue(sync.atom, sync.value, true, idMap);
+        if (update.fullupdate) {
+            if (update.statesync == null) {
+                this.atoms.clear();
+                return;
+            }
+
+            const sentAtoms = new Set<string>();
+            for (let sync of update.statesync) {
+                sentAtoms.add(sync.atom);
+                this.setAtomValue(sync.atom, sync.value, true, idMap);
+            }
+
+            const atomsToRemove: string[] = [];
+            for (let atomName of this.atoms.keys()) {
+                if (!sentAtoms.has(atomName)) {
+                    atomsToRemove.push(atomName);
+                }
+            }
+
+            for (let atomName of atomsToRemove) {
+                this.atoms.delete(atomName);
+            }
+        } else {
+            if (update.statesync == null) {
+                return;
+            }
+            for (let sync of update.statesync) {
+                this.setAtomValue(sync.atom, sync.value, true, idMap);
+            }
         }
     }
 
@@ -562,13 +585,11 @@ export class TsunamiModel {
             return;
         }
 
-        // Check if serverId is changing and trigger remount if needed
+        // Check if serverId is changing and reset if needed
         if (this.serverId != null && this.serverId !== update.serverid) {
-            // Server ID changed - need to remount the entire app
-            if (this.remountCallback) {
-                this.remountCallback();
-            }
-            return;
+            // Server ID changed - reset the model state
+            this.reset();
+            this.setupServerEventSource();
         }
 
         this.serverId = update.serverid;
