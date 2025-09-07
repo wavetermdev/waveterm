@@ -38,7 +38,7 @@ func MakeContextVal(root *RootElem, comp *ComponentImpl, opts *RenderOpts) *VDom
 	return &VDomContextImpl{Root: root, Comp: comp, HookIdx: 0, RenderOpts: opts}
 }
 
-func (vc *VDomContextImpl) getCompWaveId() string {
+func (vc *VDomContextImpl) GetCompWaveId() string {
 	if vc.Comp == nil {
 		return ""
 	}
@@ -69,7 +69,7 @@ func (vc *VDomContextImpl) UseRenderTs(ctx context.Context) int64 {
 }
 
 func (vc *VDomContextImpl) UseId(ctx context.Context) string {
-	return vc.getCompWaveId()
+	return vc.GetCompWaveId()
 }
 
 func (vc *VDomContextImpl) UseState(ctx context.Context, initialVal any) (any, func(any), func(func(any) any)) {
@@ -81,12 +81,12 @@ func (vc *VDomContextImpl) UseState(ctx context.Context, initialVal any) (any, f
 
 	setVal := func(newVal any) {
 		hookVal.Val = newVal
-		vc.Root.AddRenderWork(vc.getCompWaveId())
+		vc.Root.AddRenderWork(vc.GetCompWaveId())
 	}
 
 	setFuncVal := func(updateFunc func(any) any) {
 		hookVal.Val = updateFunc(hookVal.Val)
-		vc.Root.AddRenderWork(vc.getCompWaveId())
+		vc.Root.AddRenderWork(vc.GetCompWaveId())
 	}
 
 	return hookVal.Val, setVal, setFuncVal
@@ -96,12 +96,12 @@ func (vc *VDomContextImpl) UseAtom(ctx context.Context, atomName string) (any, f
 	hookVal := vc.getOrderedHook()
 	if !hookVal.Init {
 		hookVal.Init = true
-		closedWaveId := vc.getCompWaveId()
+		closedWaveId := vc.GetCompWaveId()
 		hookVal.UnmountFn = func() {
 			vc.Root.AtomSetUsedBy(atomName, closedWaveId, false)
 		}
 	}
-	vc.Root.AtomSetUsedBy(atomName, vc.getCompWaveId(), true)
+	vc.Root.AtomSetUsedBy(atomName, vc.GetCompWaveId(), true)
 	atomVal := vc.Root.GetAtomVal(atomName)
 
 	setVal := func(newVal any) {
@@ -122,7 +122,7 @@ func (vc *VDomContextImpl) UseVDomRef(ctx context.Context) any {
 	hookVal := vc.getOrderedHook()
 	if !hookVal.Init {
 		hookVal.Init = true
-		refId := vc.getCompWaveId() + ":" + strconv.Itoa(hookVal.Idx)
+		refId := vc.GetCompWaveId() + ":" + strconv.Itoa(hookVal.Idx)
 		hookVal.Val = &vdom.VDomRef{Type: vdom.ObjectType_Ref, RefId: refId}
 	}
 	refVal, ok := hookVal.Val.(*vdom.VDomRef)
@@ -159,14 +159,14 @@ func (vc *VDomContextImpl) UseEffect(ctx context.Context, fn func() func(), deps
 		hookVal.Init = true
 		hookVal.Fn = fn
 		hookVal.Deps = deps
-		vc.Root.AddEffectWork(vc.getCompWaveId(), hookVal.Idx)
+		vc.Root.AddEffectWork(vc.GetCompWaveId(), hookVal.Idx)
 		return
 	}
 	// If deps is nil, always run (like React with no dependency array)
 	if deps == nil {
 		hookVal.Fn = fn
 		hookVal.Deps = deps
-		vc.Root.AddEffectWork(vc.getCompWaveId(), hookVal.Idx)
+		vc.Root.AddEffectWork(vc.GetCompWaveId(), hookVal.Idx)
 		return
 	}
 
@@ -175,7 +175,7 @@ func (vc *VDomContextImpl) UseEffect(ctx context.Context, fn func() func(), deps
 	}
 	hookVal.Fn = fn
 	hookVal.Deps = deps
-	vc.Root.AddEffectWork(vc.getCompWaveId(), hookVal.Idx)
+	vc.Root.AddEffectWork(vc.GetCompWaveId(), hookVal.Idx)
 }
 
 func (vc *VDomContextImpl) UseResync(ctx context.Context) bool {

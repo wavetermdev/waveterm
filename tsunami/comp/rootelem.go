@@ -22,11 +22,15 @@ import (
 
 const ChildrenPropKey = "children"
 
+// is set ONLY when we're in the render function of a component
+// used for hooks, and automatic dependency tracking
+var globalVC *VDomContextImpl
+
 type RenderOpts struct {
 	Resync bool
 }
 
-type Atom struct {
+type atomImpl struct {
 	Val    any
 	Dirty  bool
 	UsedBy map[string]bool // component waveid -> true
@@ -46,7 +50,7 @@ type RootElem struct {
 	CompMap         map[string]*ComponentImpl // component waveid -> component
 	EffectWorkQueue []*EffectWorkElem
 	NeedsRenderMap  map[string]bool
-	Atoms           map[string]*Atom
+	Atoms           map[string]*atomImpl
 	atomLock        sync.Mutex
 	RefOperations   []vdom.VDomRefOperation
 }
@@ -95,17 +99,28 @@ func MakeRoot() *RootElem {
 		Root:    nil,
 		CFuncs:  make(map[string]any),
 		CompMap: make(map[string]*ComponentImpl),
-		Atoms:   make(map[string]*Atom),
+		Atoms:   make(map[string]*atomImpl),
 	}
 }
 
-func (r *RootElem) ensureAtomNoLock(name string) *Atom {
+func (r *RootElem) ensureAtomNoLock(name string) *atomImpl {
 	atom, ok := r.Atoms[name]
 	if !ok {
-		atom = &Atom{UsedBy: make(map[string]bool)}
+		atom = &atomImpl{UsedBy: make(map[string]bool)}
 		r.Atoms[name] = atom
 	}
 	return atom
+}
+
+// we can do better here with an inverted map, but
+// this will work fine for now to clean up dependencies from atom.Get()
+func (r *RootElem) cleanupUsedByForUnmount(waveId string) {
+	r.atomLock.Lock()
+	defer r.atomLock.Unlock()
+
+	for _, atom := range r.Atoms {
+		delete(atom.UsedBy, waveId)
+	}
 }
 
 func (r *RootElem) AtomSetUsedBy(atomName string, waveId string, used bool) {
@@ -329,6 +344,7 @@ func (r *RootElem) unmount(comp **ComponentImpl) {
 	if *comp == nil {
 		return
 	}
+	waveId := (*comp).WaveId
 	// parent clean up happens first
 	for _, hook := range (*comp).Hooks {
 		if hook.UnmountFn != nil {
@@ -344,7 +360,8 @@ func (r *RootElem) unmount(comp **ComponentImpl) {
 			r.unmount(&child)
 		}
 	}
-	delete(r.CompMap, (*comp).WaveId)
+	delete(r.CompMap, waveId)
+	r.cleanupUsedByForUnmount(waveId)
 	*comp = nil
 }
 
@@ -424,6 +441,18 @@ func callCFunc(cfunc any, ctx context.Context, props map[string]any) any {
 	return rtnVal[0].Interface()
 }
 
+func withGlobalCtx[T any](vc *VDomContextImpl, fn func() T) T {
+	globalVC = vc
+	defer func() {
+		globalVC = nil
+	}()
+	return fn()
+}
+
+func GetGlobalContext() *VDomContextImpl {
+	return globalVC
+}
+
 func (r *RootElem) renderComponent(cfunc any, elem *vdom.VDomElem, comp **ComponentImpl, opts *RenderOpts) {
 	if (*comp).Children != nil {
 		for _, child := range (*comp).Children {
@@ -437,9 +466,11 @@ func (r *RootElem) renderComponent(cfunc any, elem *vdom.VDomElem, comp **Compon
 	}
 	props[ChildrenPropKey] = elem.Children
 	vc := MakeContextVal(r, *comp, opts)
-	ctx := vdomctx.WithRenderContext(r.OuterCtx, vc)
-	renderedElem := callCFunc(cfunc, ctx, props)
-	rtnElemArr := vdom.ToElems(renderedElem)
+	rtnElemArr := withGlobalCtx(vc, func() []vdom.VDomElem {
+		ctx := vdomctx.WithRenderContext(r.OuterCtx, vc)
+		renderedElem := callCFunc(cfunc, ctx, props)
+		return vdom.ToElems(renderedElem)
+	})
 	if len(rtnElemArr) == 0 {
 		r.unmount(&(*comp).Comp)
 		return

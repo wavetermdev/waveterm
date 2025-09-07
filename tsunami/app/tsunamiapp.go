@@ -306,27 +306,3 @@ func (c *clientImpl) HandleDynFunc(pattern string, fn func(http.ResponseWriter, 
 	}
 	c.UrlHandlerMux.HandleFunc(pattern, fn)
 }
-
-// Atom[T] represents a typed atom implementation
-type Atom[T any] struct {
-	name   string
-	client *clientImpl
-}
-
-// AtomName implements the vdom.Atom interface
-func (a Atom[T]) AtomName() string {
-	return a.name
-}
-
-// Get returns the current value of the atom
-func (a Atom[T]) Get() T {
-	val := a.client.GetAtomVal(a.name)
-	return util.GetTypedAtomValue[T](val, a.name)
-}
-
-// Set updates the atom's value
-func (a Atom[T]) Set(newVal T) {
-	a.client.SetAtomVal(a.name, newVal)
-}
-
-
