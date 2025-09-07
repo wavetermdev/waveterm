@@ -15,6 +15,11 @@ import (
 	"github.com/wavetermdev/waveterm/tsunami/vdom"
 )
 
+// Global atoms for config
+var (
+	serverURLAtom = app.ConfigAtom("serverURL", "")
+)
+
 type URLInputProps struct {
 	Value     string       `json:"value"`
 	OnChange  func(string) `json:"onChange"`
@@ -253,7 +258,7 @@ var App = app.DefineComponent("App",
 		vdom.UseSetAppTitle(ctx, "Tsunami Config Manager")
 
 		// Use UseConfig for the URL input so it persists
-		urlInput, setURLInput, _ := vdom.UseConfig[string](ctx, "serverURL")
+		urlInput, setURLInput, _ := vdom.UseAtom[string](ctx, serverURLAtom)
 		jsonContent, setJSONContent, _ := vdom.UseState(ctx, "")
 		errorMessage, setErrorMessage, _ := vdom.UseState(ctx, "")
 		successMessage, setSuccessMessage, _ := vdom.UseState(ctx, "")

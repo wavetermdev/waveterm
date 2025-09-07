@@ -182,7 +182,6 @@ func UseState[T any](ctx context.Context, initialVal T) (T, func(T), func(func(T
 	return rtnVal, typedSetVal, typedSetFuncVal
 }
 
-
 func useAtom[T any](ctx context.Context, hookName string, atomName string) (T, func(T), func(func(T) T)) {
 	rc := vdomctx.GetRenderContext(ctx)
 	if rc == nil {
@@ -207,28 +206,12 @@ func useAtom[T any](ctx context.Context, hookName string, atomName string) (T, f
 	return atomVal, typedSetVal, typedSetFuncVal
 }
 
-// UseSharedAtom provides access to a shared atom state across components.
+// UseAtom provides access to atom values using an Atom interface.
 // It returns the current atom value, a setter function, and an updater function.
-// Setting a new value causes a re-render of any component using this atom.
+// Setting a new value causes a re-render of all components using this atom.
 // This hook must be called within a component context.
-func UseSharedAtom[T any](ctx context.Context, atomName string) (T, func(T), func(func(T) T)) {
-	return useAtom[T](ctx, "UseSharedAtom", "$shared."+atomName)
-}
-
-// UseConfig provides access to config values (atom names are global across the app).
-// It returns the current config value, a setter function, and an updater function.
-// Setting a new value causes a re-render of all components using this config atom.
-// This hook must be called within a component context.
-func UseConfig[T any](ctx context.Context, atomName string) (T, func(T), func(func(T) T)) {
-	return useAtom[T](ctx, "UseConfig", "$config."+atomName)
-}
-
-// UseData provides access to data values (atom names are global across the app).
-// It returns the current data value, a setter function, and an updater function.
-// Setting a new value causes a re-render of all components using this data atom.
-// This hook must be called within a component context.
-func UseData[T any](ctx context.Context, atomName string) (T, func(T), func(func(T) T)) {
-	return useAtom[T](ctx, "UseData", "$data."+atomName)
+func UseAtom[T any](ctx context.Context, atom Atom) (T, func(T), func(func(T) T)) {
+	return useAtom[T](ctx, "UseAtom", atom.AtomName())
 }
 
 // UseVDomRef provides a reference to a DOM element in the VDOM tree.

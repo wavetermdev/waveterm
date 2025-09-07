@@ -9,12 +9,12 @@ import (
 	"github.com/wavetermdev/waveterm/tsunami/vdom"
 )
 
-// Use func init() to set atom defaults
-func init() {
-	app.SetData("chartData", generateInitialData())
-	app.SetConfig("chartType", "line")
-	app.SetSharedAtom("isAnimating", false)
-}
+// Global atoms for config and data
+var (
+	chartDataAtom   = app.DataAtom("chartData", generateInitialData())
+	chartTypeAtom   = app.ConfigAtom("chartType", "line")
+	isAnimatingAtom = app.SharedAtom("isAnimating", false)
+)
 
 type DataPoint struct {
 	Time int     `json:"time"`
@@ -206,10 +206,10 @@ var App = app.DefineComponent("App",
 	func(ctx context.Context, _ struct{}) any {
 		vdom.UseSetAppTitle(ctx, "Recharts Demo")
 
-		// Global state
-		chartData, setChartData, setChartDataFn := vdom.UseData[[]DataPoint](ctx, "chartData")
-		chartType, setChartType, _ := vdom.UseConfig[string](ctx, "chartType")
-		isAnimating, setIsAnimating, _ := vdom.UseSharedAtom[bool](ctx, "isAnimating")
+		// Global state using atoms
+		chartData, setChartData, setChartDataFn := vdom.UseAtom[[]DataPoint](ctx, chartDataAtom)
+		chartType, setChartType, _ := vdom.UseAtom[string](ctx, chartTypeAtom)
+		isAnimating, setIsAnimating, _ := vdom.UseAtom[bool](ctx, isAnimatingAtom)
 
 		// Local state for timer
 		_, _, setTickerFn := vdom.UseState[int](ctx, 0)

@@ -16,16 +16,17 @@ import (
 	"github.com/wavetermdev/waveterm/tsunami/vdom"
 )
 
-func init() {
-	app.SetConfig("pollInterval", 5)
-	app.SetConfig("repository", "wavetermdev/waveterm")
-	app.SetConfig("workflow", "build-helper.yml")
-	app.SetConfig("maxWorkflowRuns", 10)
-	app.SetData("workflowRuns", []WorkflowRun{})
-	app.SetData("lastError", "")
-	app.SetData("isLoading", true)
-	app.SetData("lastRefreshTime", time.Time{})
-}
+// Global atoms for config and data
+var (
+	pollIntervalAtom    = app.ConfigAtom("pollInterval", 5)
+	repositoryAtom      = app.ConfigAtom("repository", "wavetermdev/waveterm")
+	workflowAtom        = app.ConfigAtom("workflow", "build-helper.yml")
+	maxWorkflowRunsAtom = app.ConfigAtom("maxWorkflowRuns", 10)
+	workflowRunsAtom    = app.DataAtom("workflowRuns", []WorkflowRun{})
+	lastErrorAtom       = app.DataAtom("lastError", "")
+	isLoadingAtom       = app.DataAtom("isLoading", true)
+	lastRefreshTimeAtom = app.DataAtom("lastRefreshTime", time.Time{})
+)
 
 type WorkflowRun struct {
 	ID         int64     `json:"id"`
@@ -223,14 +224,14 @@ var App = app.DefineComponent("App",
 	func(ctx context.Context, _ struct{}) any {
 		vdom.UseSetAppTitle(ctx, "GitHub Actions Monitor")
 
-		workflowRuns, setWorkflowRuns, _ := vdom.UseData[[]WorkflowRun](ctx, "workflowRuns")
-		lastError, setLastError, _ := vdom.UseData[string](ctx, "lastError")
-		isLoading, setIsLoading, _ := vdom.UseData[bool](ctx, "isLoading")
-		lastRefreshTime, setLastRefreshTime, _ := vdom.UseData[time.Time](ctx, "lastRefreshTime")
-		pollInterval, _, _ := vdom.UseConfig[int](ctx, "pollInterval")
-		repository, _, _ := vdom.UseConfig[string](ctx, "repository")
-		workflow, _, _ := vdom.UseConfig[string](ctx, "workflow")
-		maxWorkflowRuns, _, _ := vdom.UseConfig[int](ctx, "maxWorkflowRuns")
+		workflowRuns, setWorkflowRuns, _ := vdom.UseAtom[[]WorkflowRun](ctx, workflowRunsAtom)
+		lastError, setLastError, _ := vdom.UseAtom[string](ctx, lastErrorAtom)
+		isLoading, setIsLoading, _ := vdom.UseAtom[bool](ctx, isLoadingAtom)
+		lastRefreshTime, setLastRefreshTime, _ := vdom.UseAtom[time.Time](ctx, lastRefreshTimeAtom)
+		pollInterval, _, _ := vdom.UseAtom[int](ctx, pollIntervalAtom)
+		repository, _, _ := vdom.UseAtom[string](ctx, repositoryAtom)
+		workflow, _, _ := vdom.UseAtom[string](ctx, workflowAtom)
+		maxWorkflowRuns, _, _ := vdom.UseAtom[int](ctx, maxWorkflowRunsAtom)
 
 		_, _, setTickerFn := vdom.UseState[int](ctx, 0)
 
@@ -239,7 +240,7 @@ var App = app.DefineComponent("App",
 			done := make(chan bool)
 
 			fetchData := func() {
-				currentMaxRuns := app.GetConfig[int]("maxWorkflowRuns")
+				currentMaxRuns := maxWorkflowRunsAtom.Get()
 				runs, err := fetchWorkflowRuns(repository, workflow, currentMaxRuns)
 				if err != nil {
 					log.Printf("Error fetching workflow runs: %v", err)
@@ -279,7 +280,7 @@ var App = app.DefineComponent("App",
 		handleRefresh := func() {
 			setIsLoading(true)
 			go func() {
-				currentMaxRuns := app.GetConfig[int]("maxWorkflowRuns")
+				currentMaxRuns := maxWorkflowRunsAtom.Get()
 				runs, err := fetchWorkflowRuns(repository, workflow, currentMaxRuns)
 				if err != nil {
 					log.Printf("Error fetching workflow runs: %v", err)

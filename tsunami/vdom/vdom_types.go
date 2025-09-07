@@ -126,3 +126,8 @@ type VDomRefOperation struct {
 	Params    []any  `json:"params,omitempty"`
 	OutputRef string `json:"outputref,omitempty"`
 }
+
+// Atom interface for atom implementations
+type Atom interface {
+	AtomName() string
+}

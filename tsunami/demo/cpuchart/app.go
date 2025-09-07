@@ -10,23 +10,23 @@ import (
 	"github.com/wavetermdev/waveterm/tsunami/vdom"
 )
 
-// Use func init() to set atom defaults
-func init() {
-	// Set default configuration
-	app.SetConfig("dataPointCount", 60)
-	
-	// Initialize with empty data points to maintain consistent chart size
-	dataPointCount := 60 // Default value for initialization
-	initialData := make([]CPUDataPoint, dataPointCount)
-	for i := range initialData {
-		initialData[i] = CPUDataPoint{
-			Time:      0,
-			CPUUsage:  nil, // Use nil to represent empty slots
-			Timestamp: "",
+// Global atoms for config and data
+var (
+	dataPointCountAtom = app.ConfigAtom("dataPointCount", 60)
+	cpuDataAtom        = app.DataAtom("cpuData", func() []CPUDataPoint {
+		// Initialize with empty data points to maintain consistent chart size
+		dataPointCount := 60 // Default value for initialization
+		initialData := make([]CPUDataPoint, dataPointCount)
+		for i := range initialData {
+			initialData[i] = CPUDataPoint{
+				Time:      0,
+				CPUUsage:  nil, // Use nil to represent empty slots
+				Timestamp: "",
+			}
 		}
-	}
-	app.SetData("cpuData", initialData)
-}
+		return initialData
+	}())
+)
 
 type CPUDataPoint struct {
 	Time      int64    `json:"time"`      // Unix timestamp in seconds
@@ -145,9 +145,9 @@ var App = app.DefineComponent("App",
 	func(ctx context.Context, _ struct{}) any {
 		vdom.UseSetAppTitle(ctx, "CPU Usage Monitor")
 
-		// Global state
-		cpuData, setCpuData, setCpuDataFn := vdom.UseData[[]CPUDataPoint](ctx, "cpuData")
-		dataPointCount, _, _ := vdom.UseConfig[int](ctx, "dataPointCount")
+		// Global state using atoms
+		cpuData, setCpuData, setCpuDataFn := vdom.UseAtom[[]CPUDataPoint](ctx, cpuDataAtom)
+		dataPointCount, _, _ := vdom.UseAtom[int](ctx, dataPointCountAtom)
 
 		// Local state for forcing re-renders
 		_, _, setTickerFn := vdom.UseState[int](ctx, 0)
@@ -167,7 +167,7 @@ var App = app.DefineComponent("App",
 						setCpuDataFn(func(currentData []CPUDataPoint) []CPUDataPoint {
 							newPoint := generateCPUDataPoint()
 							// Read current config inside the loop to get live updates
-							currentDataPointCount := app.GetConfig[int]("dataPointCount")
+							currentDataPointCount := dataPointCountAtom.Get()
 							
 							// Ensure we have the right size array
 							if len(currentData) != currentDataPointCount {
@@ -208,7 +208,7 @@ var App = app.DefineComponent("App",
 
 		handleClear := func() {
 			// Reset with empty data points based on current config
-			currentDataPointCount := app.GetConfig[int]("dataPointCount")
+			currentDataPointCount := dataPointCountAtom.Get()
 			initialData := make([]CPUDataPoint, currentDataPointCount)
 			for i := range initialData {
 				initialData[i] = CPUDataPoint{

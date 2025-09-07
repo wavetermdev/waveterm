@@ -8,7 +8,6 @@ import (
 	"io/fs"
 	"net/http"
 
-	"github.com/wavetermdev/waveterm/tsunami/util"
 	"github.com/wavetermdev/waveterm/tsunami/vdom"
 )
 
@@ -42,31 +41,31 @@ func SendAsyncInitiation() error {
 	return defaultClient.SendAsyncInitiation()
 }
 
-func GetSharedAtom[T any](name string) T {
-	rawVal := defaultClient.GetAtomVal("$shared." + name)
-	return util.GetTypedAtomValue[T](rawVal, "$shared."+name)
+func ConfigAtom[T any](name string, defaultValue T) Atom[T] {
+	fullName := "$config." + name
+	// Set the default value if not already set
+	if defaultClient.GetAtomVal(fullName) == nil {
+		defaultClient.SetAtomVal(fullName, defaultValue)
+	}
+	return Atom[T]{name: fullName, client: defaultClient}
 }
 
-func SetSharedAtom[T any](name string, val T) {
-	defaultClient.SetAtomVal("$shared."+name, val)
+func DataAtom[T any](name string, defaultValue T) Atom[T] {
+	fullName := "$data." + name
+	// Set the default value if not already set
+	if defaultClient.GetAtomVal(fullName) == nil {
+		defaultClient.SetAtomVal(fullName, defaultValue)
+	}
+	return Atom[T]{name: fullName, client: defaultClient}
 }
 
-func GetConfig[T any](name string) T {
-	rawVal := defaultClient.GetAtomVal("$config." + name)
-	return util.GetTypedAtomValue[T](rawVal, "$config."+name)
-}
-
-func SetConfig[T any](name string, val T) {
-	defaultClient.SetAtomVal("$config."+name, val)
-}
-
-func GetData[T any](name string) T {
-	rawVal := defaultClient.GetAtomVal("$data." + name)
-	return util.GetTypedAtomValue[T](rawVal, "$data."+name)
-}
-
-func SetData[T any](name string, val T) {
-	defaultClient.SetAtomVal("$data."+name, val)
+func SharedAtom[T any](name string, defaultValue T) Atom[T] {
+	fullName := "$shared." + name
+	// Set the default value if not already set
+	if defaultClient.GetAtomVal(fullName) == nil {
+		defaultClient.SetAtomVal(fullName, defaultValue)
+	}
+	return Atom[T]{name: fullName, client: defaultClient}
 }
 
 // HandleDynFunc registers a dynamic HTTP handler function with the internal http.ServeMux.
