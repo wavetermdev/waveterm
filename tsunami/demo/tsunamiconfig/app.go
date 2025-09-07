@@ -257,8 +257,8 @@ var App = app.DefineComponent("App",
 	func(ctx context.Context, _ any) any {
 		vdom.UseSetAppTitle(ctx, "Tsunami Config Manager")
 
-		// Use UseConfig for the URL input so it persists
-		urlInput, setURLInput, _ := vdom.UseAtom[string](ctx, serverURLAtom)
+		// Get atom value once at the top
+		urlInput := serverURLAtom.Get()
 		jsonContent, setJSONContent, _ := vdom.UseState(ctx, "")
 		errorMessage, setErrorMessage, _ := vdom.UseState(ctx, "")
 		successMessage, setSuccessMessage, _ := vdom.UseState(ctx, "")
@@ -342,7 +342,7 @@ var App = app.DefineComponent("App",
 
 			URLInput(URLInputProps{
 				Value:     urlInput,
-				OnChange:  setURLInput,
+				OnChange:  serverURLAtom.Set,
 				OnSubmit:  fetchConfigData,
 				IsLoading: isLoading,
 			}),

@@ -223,37 +223,27 @@ var WorkflowRunItem = app.DefineComponent("WorkflowRunItem",
 var App = app.DefineComponent("App",
 	func(ctx context.Context, _ struct{}) any {
 		vdom.UseSetAppTitle(ctx, "GitHub Actions Monitor")
-
-		workflowRuns, setWorkflowRuns, _ := vdom.UseAtom[[]WorkflowRun](ctx, workflowRunsAtom)
-		lastError, setLastError, _ := vdom.UseAtom[string](ctx, lastErrorAtom)
-		isLoading, setIsLoading, _ := vdom.UseAtom[bool](ctx, isLoadingAtom)
-		lastRefreshTime, setLastRefreshTime, _ := vdom.UseAtom[time.Time](ctx, lastRefreshTimeAtom)
-		pollInterval, _, _ := vdom.UseAtom[int](ctx, pollIntervalAtom)
-		repository, _, _ := vdom.UseAtom[string](ctx, repositoryAtom)
-		workflow, _, _ := vdom.UseAtom[string](ctx, workflowAtom)
-		maxWorkflowRuns, _, _ := vdom.UseAtom[int](ctx, maxWorkflowRunsAtom)
-
-		_, _, setTickerFn := vdom.UseState[int](ctx, 0)
+		_, _, setTickerFn := vdom.UseState(ctx, 0)
 
 		vdom.UseEffect(ctx, func() func() {
-			ticker := time.NewTicker(time.Duration(pollInterval) * time.Second)
+			ticker := time.NewTicker(time.Duration(pollIntervalAtom.Get()) * time.Second)
 			done := make(chan bool)
 
 			fetchData := func() {
 				currentMaxRuns := maxWorkflowRunsAtom.Get()
-				runs, err := fetchWorkflowRuns(repository, workflow, currentMaxRuns)
+				runs, err := fetchWorkflowRuns(repositoryAtom.Get(), workflowAtom.Get(), currentMaxRuns)
 				if err != nil {
 					log.Printf("Error fetching workflow runs: %v", err)
-					setLastError(err.Error())
+					lastErrorAtom.Set(err.Error())
 				} else {
 					sort.Slice(runs, func(i, j int) bool {
 						return runs[i].CreatedAt.After(runs[j].CreatedAt)
 					})
-					setWorkflowRuns(runs)
-					setLastError("")
+					workflowRunsAtom.Set(runs)
+					lastErrorAtom.Set("")
 				}
-				setLastRefreshTime(time.Now())
-				setIsLoading(false)
+				lastRefreshTimeAtom.Set(time.Now())
+				isLoadingAtom.Set(false)
 			}
 
 			fetchData()
@@ -275,28 +265,37 @@ var App = app.DefineComponent("App",
 				ticker.Stop()
 				close(done)
 			}
-		}, []any{pollInterval})
+		}, []any{pollIntervalAtom.Get()})
 
 		handleRefresh := func() {
-			setIsLoading(true)
+			isLoadingAtom.Set(true)
 			go func() {
 				currentMaxRuns := maxWorkflowRunsAtom.Get()
-				runs, err := fetchWorkflowRuns(repository, workflow, currentMaxRuns)
+				runs, err := fetchWorkflowRuns(repositoryAtom.Get(), workflowAtom.Get(), currentMaxRuns)
 				if err != nil {
 					log.Printf("Error fetching workflow runs: %v", err)
-					setLastError(err.Error())
+					lastErrorAtom.Set(err.Error())
 				} else {
 					sort.Slice(runs, func(i, j int) bool {
 						return runs[i].CreatedAt.After(runs[j].CreatedAt)
 					})
-					setWorkflowRuns(runs)
-					setLastError("")
+					workflowRunsAtom.Set(runs)
+					lastErrorAtom.Set("")
 				}
-				setLastRefreshTime(time.Now())
-				setIsLoading(false)
+				lastRefreshTimeAtom.Set(time.Now())
+				isLoadingAtom.Set(false)
 				app.SendAsyncInitiation()
 			}()
 		}
+
+		workflowRuns := workflowRunsAtom.Get()
+		lastError := lastErrorAtom.Get()
+		isLoading := isLoadingAtom.Get()
+		lastRefreshTime := lastRefreshTimeAtom.Get()
+		pollInterval := pollIntervalAtom.Get()
+		repository := repositoryAtom.Get()
+		workflow := workflowAtom.Get()
+		maxWorkflowRuns := maxWorkflowRunsAtom.Get()
 
 		return vdom.H("div", map[string]any{
 			"className": "min-h-screen bg-gray-900 text-white p-6",
@@ -312,7 +311,7 @@ var App = app.DefineComponent("App",
 					}, "GitHub Actions Monitor"),
 					vdom.H("p", map[string]any{
 						"className": "text-gray-400",
-					}, "Monitoring ", repository, " ", workflow, " workflow"),
+					}, "Monitoring ", repositoryAtom.Get(), " ", workflowAtom.Get(), " workflow"),
 				),
 
 				vdom.H("div", map[string]any{
@@ -327,11 +326,11 @@ var App = app.DefineComponent("App",
 							vdom.H("button", map[string]any{
 								"className": vdom.Classes(
 									"px-4 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer",
-									vdom.IfElse(isLoading, "bg-gray-600 text-gray-400", "bg-blue-600 hover:bg-blue-700 text-white"),
+									vdom.IfElse(isLoadingAtom.Get(), "bg-gray-600 text-gray-400", "bg-blue-600 hover:bg-blue-700 text-white"),
 								),
-								"onClick":  vdom.If(!isLoading, handleRefresh),
-								"disabled": isLoading,
-							}, vdom.IfElse(isLoading, "Refreshing...", "Refresh")),
+								"onClick":  vdom.If(!isLoadingAtom.Get(), handleRefresh),
+								"disabled": isLoadingAtom.Get(),
+							}, vdom.IfElse(isLoadingAtom.Get(), "Refreshing...", "Refresh")),
 
 							vdom.H("div", map[string]any{
 								"className": "flex items-center gap-2",

@@ -206,10 +206,10 @@ var App = app.DefineComponent("App",
 	func(ctx context.Context, _ struct{}) any {
 		vdom.UseSetAppTitle(ctx, "Recharts Demo")
 
-		// Global state using atoms
-		chartData, setChartData, setChartDataFn := vdom.UseAtom[[]DataPoint](ctx, chartDataAtom)
-		chartType, setChartType, _ := vdom.UseAtom[string](ctx, chartTypeAtom)
-		isAnimating, setIsAnimating, _ := vdom.UseAtom[bool](ctx, isAnimatingAtom)
+		// Get atom values once at the top
+		chartData := chartDataAtom.Get()
+		chartType := chartTypeAtom.Get()
+		isAnimating := isAnimatingAtom.Get()
 
 		// Local state for timer
 		_, _, setTickerFn := vdom.UseState[int](ctx, 0)
@@ -230,7 +230,7 @@ var App = app.DefineComponent("App",
 						return
 					case <-ticker.C:
 						// Add new data point and keep only last 20 points
-						setChartDataFn(func(currentData []DataPoint) []DataPoint {
+						chartDataAtom.SetFn(func(currentData []DataPoint) []DataPoint {
 							newData := append(currentData, generateNewDataPoint(currentData))
 							if len(newData) > 20 {
 								newData = newData[1:]
@@ -251,16 +251,16 @@ var App = app.DefineComponent("App",
 		}, []any{isAnimating})
 
 		handleStartStop := func() {
-			setIsAnimating(!isAnimating)
+			isAnimatingAtom.Set(!isAnimating)
 		}
 
 		handleReset := func() {
-			setChartData(generateInitialData())
-			setIsAnimating(false)
+			chartDataAtom.Set(generateInitialData())
+			isAnimatingAtom.Set(false)
 		}
 
 		handleChartTypeChange := func(newType string) {
-			setChartType(newType)
+			chartTypeAtom.Set(newType)
 		}
 
 		return vdom.H("div", map[string]any{

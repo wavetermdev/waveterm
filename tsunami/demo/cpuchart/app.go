@@ -77,7 +77,7 @@ var StatsPanel = app.DefineComponent("StatsPanel",
 			if lastPoint.CPUUsage != nil {
 				currentUsage = *lastPoint.CPUUsage
 			}
-			
+
 			// Calculate average and max from non-nil values
 			total := 0.0
 			for _, point := range props.Data {
@@ -145,12 +145,8 @@ var App = app.DefineComponent("App",
 	func(ctx context.Context, _ struct{}) any {
 		vdom.UseSetAppTitle(ctx, "CPU Usage Monitor")
 
-		// Global state using atoms
-		cpuData, setCpuData, setCpuDataFn := vdom.UseAtom[[]CPUDataPoint](ctx, cpuDataAtom)
-		dataPointCount, _, _ := vdom.UseAtom[int](ctx, dataPointCountAtom)
-
 		// Local state for forcing re-renders
-		_, _, setTickerFn := vdom.UseState[int](ctx, 0)
+		_, _, setTickerFn := vdom.UseState(ctx, 0)
 
 		// Timer effect for continuous CPU data collection
 		vdom.UseEffect(ctx, func() func() {
@@ -164,11 +160,11 @@ var App = app.DefineComponent("App",
 						return
 					case <-ticker.C:
 						// Collect new CPU data point and shift the data window
-						setCpuDataFn(func(currentData []CPUDataPoint) []CPUDataPoint {
+						cpuDataAtom.SetFn(func(currentData []CPUDataPoint) []CPUDataPoint {
 							newPoint := generateCPUDataPoint()
 							// Read current config inside the loop to get live updates
 							currentDataPointCount := dataPointCountAtom.Get()
-							
+
 							// Ensure we have the right size array
 							if len(currentData) != currentDataPointCount {
 								// Resize array if config changed
@@ -217,7 +213,7 @@ var App = app.DefineComponent("App",
 					Timestamp: "",
 				}
 			}
-			setCpuData(initialData)
+			cpuDataAtom.Set(initialData)
 		}
 
 		return vdom.H("div", map[string]any{
@@ -263,7 +259,7 @@ var App = app.DefineComponent("App",
 							}, "Live Monitoring"),
 							vdom.H("span", map[string]any{
 								"className": "text-sm text-gray-500 ml-2",
-							}, "(", len(cpuData), "/", dataPointCount, " data points)"),
+							}, "(", len(cpuDataAtom.Get()), "/", dataPointCountAtom.Get(), " data points)"),
 						),
 					),
 				),
@@ -272,7 +268,7 @@ var App = app.DefineComponent("App",
 				StatsPanel(struct {
 					Data []CPUDataPoint `json:"data"`
 				}{
-					Data: cpuData,
+					Data: cpuDataAtom.Get(),
 				}),
 
 				// Main chart
@@ -290,8 +286,8 @@ var App = app.DefineComponent("App",
 							"height": "100%",
 						},
 							vdom.H("recharts:LineChart", map[string]any{
-								"data":               cpuData,
-								"isAnimationActive":  false,
+								"data":              cpuDataAtom.Get(),
+								"isAnimationActive": false,
 							},
 								vdom.H("recharts:CartesianGrid", map[string]any{
 									"strokeDasharray": "3 3",
@@ -319,13 +315,13 @@ var App = app.DefineComponent("App",
 									},
 								}),
 								vdom.H("recharts:Line", map[string]any{
-									"type":               "monotone",
-									"dataKey":            "cpuUsage",
-									"stroke":             "#3B82F6",
-									"strokeWidth":        2,
-									"dot":                false,
-									"name":               "CPU Usage (%)",
-									"isAnimationActive":  false,
+									"type":              "monotone",
+									"dataKey":           "cpuUsage",
+									"stroke":            "#3B82F6",
+									"strokeWidth":       2,
+									"dot":               false,
+									"name":              "CPU Usage (%)",
+									"isAnimationActive": false,
 								}),
 							),
 						),

@@ -9,7 +9,6 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/wavetermdev/waveterm/tsunami/util"
 	"github.com/wavetermdev/waveterm/tsunami/vdomctx"
 )
 
@@ -180,38 +179,6 @@ func UseState[T any](ctx context.Context, initialVal T) (T, func(T), func(func(T
 		})
 	}
 	return rtnVal, typedSetVal, typedSetFuncVal
-}
-
-func useAtom[T any](ctx context.Context, hookName string, atomName string) (T, func(T), func(func(T) T)) {
-	rc := vdomctx.GetRenderContext(ctx)
-	if rc == nil {
-		panic(hookName + " must be called within a component (no context)")
-	}
-	val, setVal, setFn := rc.UseAtom(ctx, atomName)
-
-	// Adapt the "any" values to type "T"
-	atomVal := util.GetTypedAtomValue[T](val, atomName)
-
-	typedSetVal := func(newVal T) {
-		setVal(newVal)
-	}
-
-	typedSetFuncVal := func(updateFunc func(T) T) {
-		setFn(func(oldVal any) any {
-			typedOldVal := util.GetTypedAtomValue[T](oldVal, atomName)
-			return updateFunc(typedOldVal)
-		})
-	}
-
-	return atomVal, typedSetVal, typedSetFuncVal
-}
-
-// UseAtom provides access to atom values using an Atom interface.
-// It returns the current atom value, a setter function, and an updater function.
-// Setting a new value causes a re-render of all components using this atom.
-// This hook must be called within a component context.
-func UseAtom[T any](ctx context.Context, atom Atom) (T, func(T), func(func(T) T)) {
-	return useAtom[T](ctx, "UseAtom", atom.AtomName())
 }
 
 // UseVDomRef provides a reference to a DOM element in the VDOM tree.

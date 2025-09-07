@@ -14,6 +14,7 @@ import (
 	"unicode"
 
 	"github.com/google/uuid"
+	"github.com/outrigdev/goid"
 	"github.com/wavetermdev/waveterm/tsunami/rpctypes"
 	"github.com/wavetermdev/waveterm/tsunami/util"
 	"github.com/wavetermdev/waveterm/tsunami/vdom"
@@ -25,6 +26,7 @@ const ChildrenPropKey = "children"
 // is set ONLY when we're in the render function of a component
 // used for hooks, and automatic dependency tracking
 var globalVC *VDomContextImpl
+var globalRenderGoId uint64
 
 type RenderOpts struct {
 	Resync bool
@@ -443,13 +445,19 @@ func callCFunc(cfunc any, ctx context.Context, props map[string]any) any {
 
 func withGlobalCtx[T any](vc *VDomContextImpl, fn func() T) T {
 	globalVC = vc
+	globalRenderGoId = goid.Get()
 	defer func() {
 		globalVC = nil
+		globalRenderGoId = 0
 	}()
 	return fn()
 }
 
 func GetGlobalContext() *VDomContextImpl {
+	gid := goid.Get()
+	if gid != globalRenderGoId {
+		return nil
+	}
 	return globalVC
 }
 
