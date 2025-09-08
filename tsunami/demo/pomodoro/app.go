@@ -107,14 +107,14 @@ var ControlButtons = app.DefineComponent("ControlButtons",
 
 var App = app.DefineComponent("App",
 	func(ctx context.Context, _ any) any {
-		vdom.UseSetAppTitle(ctx, "Pomodoro Timer (Tsunami Demo)")
+		app.UseSetAppTitle("Pomodoro Timer (Tsunami Demo)")
 
-		isRunning, setIsRunning, _ := vdom.UseState(ctx, false)
-		minutes, setMinutes, _ := vdom.UseState(ctx, WorkMode.Duration)
-		seconds, setSeconds, _ := vdom.UseState(ctx, 0)
-		mode, setMode, _ := vdom.UseState(ctx, WorkMode.Name)
-		_, setIsComplete, _ := vdom.UseState(ctx, false)
-		timerRef := vdom.UseRef(ctx, &TimerState{
+		isRunning, setIsRunning, _ := app.UseState(false)
+		minutes, setMinutes, _ := app.UseState(WorkMode.Duration)
+		seconds, setSeconds, _ := app.UseState(0)
+		mode, setMode, _ := app.UseState(WorkMode.Name)
+		_, setIsComplete, _ := app.UseState(false)
+		timerRef := app.UseRef(&TimerState{
 			done: make(chan bool),
 		})
 
@@ -213,7 +213,7 @@ var App = app.DefineComponent("App",
 		}
 
 		// Cleanup on unmount
-		vdom.UseEffect(ctx, func() func() {
+		app.UseEffect(func() func() {
 			return func() {
 				stopTimer()
 			}

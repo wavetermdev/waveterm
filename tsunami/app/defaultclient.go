@@ -100,3 +100,18 @@ func DeepCopy[T any](v T) T {
 	}
 	return result
 }
+
+// QueueRefOp queues a reference operation to be executed on the DOM element.
+// Operations include actions like "focus", "scrollIntoView", etc.
+// If the ref is nil or not current, the operation is ignored.
+// This function must be called within a component context.
+func QueueRefOp(ref *vdom.VDomRef, op vdom.VDomRefOperation) {
+	if ref == nil || !ref.HasCurrent {
+		return
+	}
+	if op.RefId == "" {
+		op.RefId = ref.RefId
+	}
+	client := engine.GetDefaultClient()
+	client.Root.QueueRefOp(op)
+}

@@ -15,15 +15,23 @@ var globalVC *VDomContextImpl
 var globalRenderGoId uint64
 var globalCtxMutex sync.Mutex
 
-func withGlobalCtx[T any](vc *VDomContextImpl, fn func() T) T {
+func setGlobalContext(vc *VDomContextImpl) {
 	globalCtxMutex.Lock()
 	defer globalCtxMutex.Unlock()
 	globalVC = vc
 	globalRenderGoId = goid.Get()
-	defer func() {
-		globalVC = nil
-		globalRenderGoId = 0
-	}()
+}
+
+func clearGlobalContext() {
+	globalCtxMutex.Lock()
+	defer globalCtxMutex.Unlock()
+	globalVC = nil
+	globalRenderGoId = 0
+}
+
+func withGlobalCtx[T any](vc *VDomContextImpl, fn func() T) T {
+	setGlobalContext(vc)
+	defer clearGlobalContext()
 	return fn()
 }
 

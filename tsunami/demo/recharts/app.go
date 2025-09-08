@@ -204,7 +204,7 @@ var MiniCharts = app.DefineComponent("MiniCharts",
 
 var App = app.DefineComponent("App",
 	func(ctx context.Context, _ struct{}) any {
-		vdom.UseSetAppTitle(ctx, "Recharts Demo")
+		app.UseSetAppTitle("Recharts Demo")
 
 		// Get atom values once at the top
 		chartData := chartDataAtom.Get()
@@ -212,10 +212,10 @@ var App = app.DefineComponent("App",
 		isAnimating := isAnimatingAtom.Get()
 
 		// Local state for timer
-		_, _, setTickerFn := vdom.UseState[int](ctx, 0)
+		_, _, setTickerFn := app.UseState(0)
 
 		// Timer effect for live data updates
-		vdom.UseEffect(ctx, func() func() {
+		app.UseEffect(func() func() {
 			if !isAnimating {
 				return nil
 			}

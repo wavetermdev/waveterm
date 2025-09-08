@@ -143,13 +143,13 @@ var StatsPanel = app.DefineComponent("StatsPanel",
 
 var App = app.DefineComponent("App",
 	func(ctx context.Context, _ struct{}) any {
-		vdom.UseSetAppTitle(ctx, "CPU Usage Monitor")
+		app.UseSetAppTitle("CPU Usage Monitor")
 
 		// Local state for forcing re-renders
-		_, _, setTickerFn := vdom.UseState(ctx, 0)
+		_, _, setTickerFn := app.UseState(0)
 
 		// Timer effect for continuous CPU data collection
-		vdom.UseEffect(ctx, func() func() {
+		app.UseEffect(func() func() {
 			ticker := time.NewTicker(1 * time.Second)
 			done := make(chan bool)
 

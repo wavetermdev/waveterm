@@ -4,12 +4,10 @@
 package engine
 
 import (
-	"context"
 	"log"
 	"strconv"
 
 	"github.com/wavetermdev/waveterm/tsunami/vdom"
-	"github.com/wavetermdev/waveterm/tsunami/vdomctx"
 )
 
 // generic hook structure
@@ -29,12 +27,7 @@ type VDomContextImpl struct {
 	RenderOpts *RenderOpts
 }
 
-// Compile-time check to ensure VDomContextImpl implements vdomctx.VDomContext
-var _ vdomctx.VDomContext = (*VDomContextImpl)(nil)
-
-// Implement vdomctx.VDomContext interface methods on VDomContextImpl
-
-func MakeContextVal(root *RootElem, comp *ComponentImpl, opts *RenderOpts) *VDomContextImpl {
+func makeContextVal(root *RootElem, comp *ComponentImpl, opts *RenderOpts) *VDomContextImpl {
 	return &VDomContextImpl{Root: root, Comp: comp, HookIdx: 0, RenderOpts: opts}
 }
 
@@ -64,15 +57,15 @@ func (vc *VDomContextImpl) getCompName() string {
 	return vc.Comp.Elem.Tag
 }
 
-func (vc *VDomContextImpl) UseRenderTs(ctx context.Context) int64 {
+func UseRenderTs(vc *VDomContextImpl) int64 {
 	return vc.Root.RenderTs
 }
 
-func (vc *VDomContextImpl) UseId(ctx context.Context) string {
+func UseId(vc *VDomContextImpl) string {
 	return vc.GetCompWaveId()
 }
 
-func (vc *VDomContextImpl) UseState(ctx context.Context, initialVal any) (any, func(any), func(func(any) any)) {
+func UseState(vc *VDomContextImpl, initialVal any) (any, func(any), func(func(any) any)) {
 	hookVal := vc.getOrderedHook()
 	if !hookVal.Init {
 		hookVal.Init = true
@@ -92,7 +85,7 @@ func (vc *VDomContextImpl) UseState(ctx context.Context, initialVal any) (any, f
 	return hookVal.Val, setVal, setFuncVal
 }
 
-func (vc *VDomContextImpl) UseAtom(ctx context.Context, atomName string) (any, func(any), func(func(any) any)) {
+func UseAtom(vc *VDomContextImpl, atomName string) (any, func(any), func(func(any) any)) {
 	hookVal := vc.getOrderedHook()
 	if !hookVal.Init {
 		hookVal.Init = true
@@ -118,7 +111,7 @@ func (vc *VDomContextImpl) UseAtom(ctx context.Context, atomName string) (any, f
 	return atomVal, setVal, setFuncVal
 }
 
-func (vc *VDomContextImpl) UseVDomRef(ctx context.Context) any {
+func UseVDomRef(vc *VDomContextImpl) any {
 	hookVal := vc.getOrderedHook()
 	if !hookVal.Init {
 		hookVal.Init = true
@@ -132,7 +125,7 @@ func (vc *VDomContextImpl) UseVDomRef(ctx context.Context) any {
 	return refVal
 }
 
-func (vc *VDomContextImpl) UseRef(ctx context.Context, hookInitialVal any) any {
+func UseRef(vc *VDomContextImpl, hookInitialVal any) any {
 	hookVal := vc.getOrderedHook()
 	if !hookVal.Init {
 		hookVal.Init = true
@@ -153,7 +146,7 @@ func depsEqual(deps1 []any, deps2 []any) bool {
 	return true
 }
 
-func (vc *VDomContextImpl) UseEffect(ctx context.Context, fn func() func(), deps []any) {
+func UseEffect(vc *VDomContextImpl, fn func() func(), deps []any) {
 	hookVal := vc.getOrderedHook()
 	if !hookVal.Init {
 		hookVal.Init = true
@@ -178,22 +171,17 @@ func (vc *VDomContextImpl) UseEffect(ctx context.Context, fn func() func(), deps
 	vc.Root.AddEffectWork(vc.GetCompWaveId(), hookVal.Idx)
 }
 
-func (vc *VDomContextImpl) UseResync(ctx context.Context) bool {
+func UseResync(vc *VDomContextImpl) bool {
 	if vc.RenderOpts == nil {
 		return false
 	}
 	return vc.RenderOpts.Resync
 }
 
-func (vc *VDomContextImpl) UseSetAppTitle(ctx context.Context, title string) {
+func UseSetAppTitle(vc *VDomContextImpl, title string) {
 	if vc.getCompName() != "App" {
 		log.Printf("UseSetAppTitle can only be called from the App component")
 		return
 	}
 	vc.Root.AppTitle = title
-}
-
-func (vc *VDomContextImpl) QueueRefOp(ctx context.Context, op any) {
-	typedOp := op.(vdom.VDomRefOperation)
-	vc.Root.QueueRefOp(typedOp)
 }

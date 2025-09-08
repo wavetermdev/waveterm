@@ -101,15 +101,15 @@ var TodoList = app.DefineComponent("TodoList",
 // Root component showing state management and composition
 var App = app.DefineComponent("App",
 	func(ctx context.Context, _ any) any {
-		vdom.UseSetAppTitle(ctx, "Todo App (Tsunami Demo)")
+		app.UseSetAppTitle("Todo App (Tsunami Demo)")
 
 		// Multiple state hooks example
-		todos, setTodos, _ := vdom.UseState(ctx, []Todo{
+		todos, setTodos, _ := app.UseState([]Todo{
 			{Id: 1, Text: "Learn VDOM", Completed: false},
 			{Id: 2, Text: "Build a todo app", Completed: false},
 		})
-		nextId, setNextId, _ := vdom.UseState(ctx, 3)
-		inputText, setInputText, _ := vdom.UseState(ctx, "")
+		nextId, setNextId, _ := app.UseState(3)
+		inputText, setInputText, _ := app.UseState("")
 
 		// Event handlers modifying multiple pieces of state
 		addTodo := func() {

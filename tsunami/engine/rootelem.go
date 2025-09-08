@@ -17,10 +17,20 @@ import (
 	"github.com/wavetermdev/waveterm/tsunami/rpctypes"
 	"github.com/wavetermdev/waveterm/tsunami/util"
 	"github.com/wavetermdev/waveterm/tsunami/vdom"
-	"github.com/wavetermdev/waveterm/tsunami/vdomctx"
 )
 
 const ChildrenPropKey = "children"
+
+func getElemKey(elem *vdom.VDomElem) string {
+	if elem == nil {
+		return ""
+	}
+	keyVal, ok := elem.Props[vdom.KeyPropKey]
+	if !ok {
+		return ""
+	}
+	return fmt.Sprint(keyVal)
+}
 
 type RenderOpts struct {
 	Resync bool
@@ -312,7 +322,7 @@ func (r *RootElem) render(elem *vdom.VDomElem, comp **ComponentImpl, opts *Rende
 		r.unmount(comp)
 		return
 	}
-	elemKey := elem.Key()
+	elemKey := getElemKey(elem)
 	if *comp == nil || !(*comp).compMatch(elem.Tag, elemKey) {
 		r.unmount(comp)
 		r.createComp(elem.Tag, elemKey, comp)
@@ -384,7 +394,7 @@ func (r *RootElem) renderChildren(elems []vdom.VDomElem, curChildren []*Componen
 		}
 	}
 	for idx, elem := range elems {
-		elemKey := elem.Key()
+		elemKey := getElemKey(&elem)
 		var curChild *ComponentImpl
 		if elemKey != "" {
 			curChild = curCM[ChildKey{Tag: elem.Tag, Idx: 0, Key: elemKey}]
@@ -449,9 +459,12 @@ func (r *RootElem) renderComponent(cfunc any, elem *vdom.VDomElem, comp **Compon
 		props[k] = v
 	}
 	props[ChildrenPropKey] = elem.Children
-	vc := MakeContextVal(r, *comp, opts)
+	vc := makeContextVal(r, *comp, opts)
 	rtnElemArr := withGlobalCtx(vc, func() []vdom.VDomElem {
-		ctx := vdomctx.WithRenderContext(r.OuterCtx, vc)
+		ctx := r.OuterCtx
+		if ctx == nil {
+			ctx = context.Background()
+		}
 		renderedElem := callCFunc(cfunc, ctx, props)
 		return vdom.ToElems(renderedElem)
 	})

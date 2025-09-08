@@ -222,10 +222,10 @@ var WorkflowRunItem = app.DefineComponent("WorkflowRunItem",
 
 var App = app.DefineComponent("App",
 	func(ctx context.Context, _ struct{}) any {
-		vdom.UseSetAppTitle(ctx, "GitHub Actions Monitor")
-		_, _, setTickerFn := vdom.UseState(ctx, 0)
+		app.UseSetAppTitle("GitHub Actions Monitor")
+		_, _, setTickerFn := app.UseState(0)
 
-		vdom.UseEffect(ctx, func() func() {
+		app.UseEffect(func() func() {
 			ticker := time.NewTicker(time.Duration(pollIntervalAtom.Get()) * time.Second)
 			done := make(chan bool)
 

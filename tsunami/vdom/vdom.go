@@ -4,27 +4,14 @@
 package vdom
 
 import (
-	"context"
 	"fmt"
 	"reflect"
 	"strings"
-
-	"github.com/wavetermdev/waveterm/tsunami/vdomctx"
 )
 
 // ReactNode types = nil | string | Elem
 
 type Component[P any] func(props P) *VDomElem
-
-// Key returns the key property of the VDomElem as a string.
-// Returns an empty string if the key is not set, otherwise converts the key value to string using fmt.Sprint.
-func (e *VDomElem) Key() string {
-	keyVal, ok := e.Props[KeyPropKey]
-	if !ok {
-		return ""
-	}
-	return fmt.Sprint(keyVal)
-}
 
 // WithKey sets the key property of the VDomElem and returns the element.
 // This is particularly useful for defined components since their prop types won't include keys.
@@ -188,22 +175,4 @@ func ToElems(part any) []VDomElem {
 		}
 		return []VDomElem{textElem(fmt.Sprint(part))}
 	}
-}
-
-// QueueRefOp queues a reference operation to be executed on the DOM element.
-// Operations include actions like "focus", "scrollIntoView", etc.
-// If the ref is nil or not current, the operation is ignored.
-// This function must be called within a component context.
-func QueueRefOp(ctx context.Context, ref *VDomRef, op VDomRefOperation) {
-	if ref == nil || !ref.HasCurrent {
-		return
-	}
-	vc := vdomctx.GetRenderContext(ctx)
-	if vc == nil {
-		panic("QueueRefOp must be called within a component (no context)")
-	}
-	if op.RefId == "" {
-		op.RefId = ref.RefId
-	}
-	vc.QueueRefOp(ctx, op)
 }

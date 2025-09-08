@@ -255,16 +255,16 @@ var SuccessDisplay = app.DefineComponent("SuccessDisplay",
 
 var App = app.DefineComponent("App",
 	func(ctx context.Context, _ any) any {
-		vdom.UseSetAppTitle(ctx, "Tsunami Config Manager")
+		app.UseSetAppTitle("Tsunami Config Manager")
 
 		// Get atom value once at the top
 		urlInput := serverURLAtom.Get()
-		jsonContent, setJSONContent, _ := vdom.UseState(ctx, "")
-		errorMessage, setErrorMessage, _ := vdom.UseState(ctx, "")
-		successMessage, setSuccessMessage, _ := vdom.UseState(ctx, "")
-		isLoading, setIsLoading, _ := vdom.UseState(ctx, false)
-		lastFetch, setLastFetch, _ := vdom.UseState(ctx, "")
-		currentBaseURL, setCurrentBaseURL, _ := vdom.UseState(ctx, "")
+		jsonContent, setJSONContent, _ := app.UseState("")
+		errorMessage, setErrorMessage, _ := app.UseState("")
+		successMessage, setSuccessMessage, _ := app.UseState("")
+		isLoading, setIsLoading, _ := app.UseState(false)
+		lastFetch, setLastFetch, _ := app.UseState("")
+		currentBaseURL, setCurrentBaseURL, _ := app.UseState("")
 
 		clearMessages := func() {
 			setErrorMessage("")
