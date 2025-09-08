@@ -196,6 +196,13 @@ func (r *RootElem) SetAtomVal(name string, val any, markDirty bool) {
 	atom.Dirty = true
 }
 
+func (r *RootElem) RemoveAtom(name string) {
+	r.atomLock.Lock()
+	defer r.atomLock.Unlock()
+
+	delete(r.Atoms, name)
+}
+
 func (r *RootElem) SetOuterCtx(ctx context.Context) {
 	r.OuterCtx = ctx
 }

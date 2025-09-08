@@ -123,3 +123,18 @@ func UseSetAppTitle(title string) {
 	}
 	engine.UseSetAppTitle(rc, title)
 }
+
+// UseLocal creates a component-local atom that is automatically cleaned up when the component unmounts.
+// The atom is created with a unique name based on the component's wave ID and hook index.
+// This hook must be called within a component context.
+func UseLocal[T any](initialVal T) Atom[T] {
+	rc := engine.GetGlobalContext()
+	if rc == nil {
+		panic("UseLocal must be called within a component (no context)")
+	}
+	atomName := engine.UseLocal(rc, initialVal)
+	return Atom[T]{
+		name:   atomName,
+		client: engine.GetDefaultClient(),
+	}
+}

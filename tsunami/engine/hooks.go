@@ -111,6 +111,20 @@ func UseAtom(vc *VDomContextImpl, atomName string) (any, func(any), func(func(an
 	return atomVal, setVal, setFuncVal
 }
 
+func UseLocal(vc *VDomContextImpl, initialVal any) string {
+	hookVal := vc.getOrderedHook()
+	atomName := "$local." + vc.GetCompWaveId() + "#" + strconv.Itoa(hookVal.Idx)
+	if !hookVal.Init {
+		hookVal.Init = true
+		vc.Root.SetAtomVal(atomName, initialVal, false)
+		closedAtomName := atomName
+		hookVal.UnmountFn = func() {
+			vc.Root.RemoveAtom(closedAtomName)
+		}
+	}
+	return atomName
+}
+
 func UseVDomRef(vc *VDomContextImpl) any {
 	hookVal := vc.getOrderedHook()
 	if !hookVal.Init {
