@@ -1,11 +1,14 @@
 package util
 
 import (
+	"encoding"
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"runtime"
 	"runtime/debug"
 	"strings"
@@ -72,7 +75,7 @@ func OpenBrowser(url string, delay time.Duration) {
 	if delay > 0 {
 		time.Sleep(delay)
 	}
-	
+
 	var cmd string
 	var args []string
 
@@ -109,4 +112,116 @@ func GetTypedAtomValue[T any](rawVal any, atomName string) T {
 		panic(fmt.Sprintf("GetTypedAtomValue %q value type mismatch (expected %T, got %T)", atomName, *new(T), rawVal))
 	}
 	return result
+}
+
+var (
+	jsonMarshalerT = reflect.TypeOf((*json.Marshaler)(nil)).Elem()
+	textMarshalerT = reflect.TypeOf((*encoding.TextMarshaler)(nil)).Elem()
+)
+
+func implementsJSON(t reflect.Type) bool {
+	if t.Implements(jsonMarshalerT) || t.Implements(textMarshalerT) {
+		return true
+	}
+	if t.Kind() != reflect.Pointer {
+		pt := reflect.PointerTo(t)
+		return pt.Implements(jsonMarshalerT) || pt.Implements(textMarshalerT)
+	}
+	return false
+}
+
+func ValidateAtomType(t reflect.Type, atomName string) error {
+	seen := make(map[reflect.Type]bool)
+	return validateAtomTypeRecursive(t, seen, atomName, "")
+}
+
+func makeAtomError(atomName string, parentName string, message string) error {
+	if parentName != "" {
+		return fmt.Errorf("atom %s: in %s: %s", atomName, parentName, message)
+	}
+	return fmt.Errorf("atom %s: %s", atomName, message)
+}
+
+func validateAtomTypeRecursive(t reflect.Type, seen map[reflect.Type]bool, atomName string, parentName string) error {
+	if t == nil {
+		return makeAtomError(atomName, parentName, "nil type")
+	}
+
+	if seen[t] {
+		return nil
+	}
+	seen[t] = true
+
+	// Check if type implements json.Marshaler or encoding.TextMarshaler
+	if implementsJSON(t) {
+		return nil
+	}
+
+	switch t.Kind() {
+	case reflect.Bool, reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
+		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64,
+		reflect.Float32, reflect.Float64, reflect.String:
+		return nil
+
+	case reflect.Ptr:
+		return validateAtomTypeRecursive(t.Elem(), seen, atomName, parentName)
+
+	case reflect.Array, reflect.Slice:
+		elemType := t.Elem()
+		// Allow []any as a JSON value slot
+		if elemType.Kind() == reflect.Interface && elemType.NumMethod() == 0 {
+			return nil
+		}
+		return validateAtomTypeRecursive(elemType, seen, atomName, parentName)
+
+	case reflect.Map:
+		if t.Key().Kind() != reflect.String {
+			return makeAtomError(atomName, parentName, fmt.Sprintf("map key must be string, got %s", t.Key().Kind()))
+		}
+		elemType := t.Elem()
+		// Allow map[string]any as a JSON value slot
+		if elemType.Kind() == reflect.Interface && elemType.NumMethod() == 0 {
+			return nil
+		}
+		return validateAtomTypeRecursive(elemType, seen, atomName, parentName)
+
+	case reflect.Struct:
+		structName := t.Name()
+		if structName == "" {
+			structName = "anonymous struct"
+		}
+		for i := 0; i < t.NumField(); i++ {
+			field := t.Field(i)
+			fieldPath := fmt.Sprintf("%s.%s", structName, field.Name)
+
+			if !field.IsExported() {
+				return makeAtomError(atomName, fieldPath, "field is not exported (cannot round trip)")
+			}
+
+			// Check for json:"-" tag
+			if tag := field.Tag.Get("json"); tag != "" {
+				if name, _, _ := strings.Cut(tag, ","); name == "-" {
+					return makeAtomError(atomName, fieldPath, `field has json:"-" (breaks round trip)`)
+				}
+			}
+
+			if err := validateAtomTypeRecursive(field.Type, seen, atomName, fieldPath); err != nil {
+				return err
+			}
+		}
+		return nil
+
+	case reflect.Interface:
+		// Allow empty interface (any) as JSON value slot
+		if t.NumMethod() == 0 {
+			return nil
+		}
+		return makeAtomError(atomName, parentName, "non-empty interface types are not JSON serializable (cannot round trip)")
+
+	case reflect.Func, reflect.Chan, reflect.UnsafePointer, reflect.Uintptr, reflect.Complex64, reflect.Complex128:
+		return makeAtomError(atomName, parentName, fmt.Sprintf("type %s is not JSON serializable", t.Kind()))
+
+	default:
+		return makeAtomError(atomName, parentName, fmt.Sprintf("unsupported type %s", t.Kind()))
+	}
 }
