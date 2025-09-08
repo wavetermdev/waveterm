@@ -1,11 +1,12 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-package app
+package engine
 
 import (
 	"context"
 	"fmt"
+	"io/fs"
 	"log"
 	"net"
 	"net/http"
@@ -16,7 +17,6 @@ import (
 	"unicode"
 
 	"github.com/google/uuid"
-	"github.com/wavetermdev/waveterm/tsunami/engine"
 	"github.com/wavetermdev/waveterm/tsunami/rpctypes"
 	"github.com/wavetermdev/waveterm/tsunami/util"
 	"github.com/wavetermdev/waveterm/tsunami/vdom"
@@ -31,9 +31,11 @@ type ssEvent struct {
 	Data  []byte
 }
 
-type clientImpl struct {
+var defaultClient = makeClient()
+
+type ClientImpl struct {
 	Lock               *sync.Mutex
-	Root               *engine.RootElem
+	Root               *RootElem
 	RootElem           *vdom.VDomElem
 	CurrentClientId    string
 	ServerId           string
@@ -44,12 +46,15 @@ type clientImpl struct {
 	GlobalEventHandler func(event vdom.VDomEvent)
 	UrlHandlerMux      *http.ServeMux
 	SetupFn            func()
+	AssetsFS           fs.FS
+	StaticFS           fs.FS
+	ManifestFileBytes  []byte
 }
 
-func makeClient() *clientImpl {
-	client := &clientImpl{
+func makeClient() *ClientImpl {
+	client := &ClientImpl{
 		Lock:          &sync.Mutex{},
-		Root:          engine.MakeRoot(),
+		Root:          MakeRoot(),
 		DoneCh:        make(chan struct{}),
 		SSEventCh:     make(chan ssEvent, 100),
 		UrlHandlerMux: http.NewServeMux(),
@@ -59,13 +64,17 @@ func makeClient() *clientImpl {
 	return client
 }
 
-func (c *clientImpl) GetIsDone() bool {
+func GetDefaultClient() *ClientImpl {
+	return defaultClient
+}
+
+func (c *ClientImpl) GetIsDone() bool {
 	c.Lock.Lock()
 	defer c.Lock.Unlock()
 	return c.IsDone
 }
 
-func (c *clientImpl) checkClientId(clientId string) error {
+func (c *ClientImpl) checkClientId(clientId string) error {
 	if clientId == "" {
 		return fmt.Errorf("client id cannot be empty")
 	}
@@ -78,13 +87,13 @@ func (c *clientImpl) checkClientId(clientId string) error {
 	return fmt.Errorf("client id mismatch: expected %s, got %s", c.CurrentClientId, clientId)
 }
 
-func (c *clientImpl) clientTakeover(clientId string) {
+func (c *ClientImpl) clientTakeover(clientId string) {
 	c.Lock.Lock()
 	defer c.Lock.Unlock()
 	c.CurrentClientId = clientId
 }
 
-func (c *clientImpl) doShutdown(reason string) {
+func (c *ClientImpl) doShutdown(reason string) {
 	c.Lock.Lock()
 	defer c.Lock.Unlock()
 	if c.IsDone {
@@ -95,15 +104,15 @@ func (c *clientImpl) doShutdown(reason string) {
 	close(c.DoneCh)
 }
 
-func (c *clientImpl) SetGlobalEventHandler(handler func(event vdom.VDomEvent)) {
+func (c *ClientImpl) SetGlobalEventHandler(handler func(event vdom.VDomEvent)) {
 	c.GlobalEventHandler = handler
 }
 
-func getFaviconPath() string {
-	if staticFS != nil {
+func (c *ClientImpl) getFaviconPath() string {
+	if c.StaticFS != nil {
 		faviconNames := []string{"favicon.ico", "favicon.png", "favicon.svg", "favicon.gif", "favicon.jpg"}
 		for _, name := range faviconNames {
-			if _, err := staticFS.Open(name); err == nil {
+			if _, err := c.StaticFS.Open(name); err == nil {
 				return "/static/" + name
 			}
 		}
@@ -111,15 +120,15 @@ func getFaviconPath() string {
 	return "/wave-logo-256.png"
 }
 
-func (c *clientImpl) makeBackendOpts() *rpctypes.VDomBackendOpts {
+func (c *ClientImpl) makeBackendOpts() *rpctypes.VDomBackendOpts {
 	return &rpctypes.VDomBackendOpts{
 		Title:                c.Root.AppTitle,
 		GlobalKeyboardEvents: c.GlobalEventHandler != nil,
-		FaviconPath:          getFaviconPath(),
+		FaviconPath:          c.getFaviconPath(),
 	}
 }
 
-func (c *clientImpl) runMainE() error {
+func (c *ClientImpl) runMainE() error {
 	if c.SetupFn != nil {
 		c.SetupFn()
 	}
@@ -131,11 +140,11 @@ func (c *clientImpl) runMainE() error {
 	return nil
 }
 
-func (c *clientImpl) RegisterSetupFn(fn func()) {
+func (c *ClientImpl) RegisterSetupFn(fn func()) {
 	c.SetupFn = fn
 }
 
-func (c *clientImpl) RunMain() {
+func (c *ClientImpl) RunMain() {
 	err := c.runMainE()
 	if err != nil {
 		fmt.Println(err)
@@ -143,16 +152,16 @@ func (c *clientImpl) RunMain() {
 	}
 }
 
-func (c *clientImpl) listenAndServe(ctx context.Context) error {
+func (c *ClientImpl) listenAndServe(ctx context.Context) error {
 	// Create HTTP handlers
 	handlers := newHTTPHandlers(c)
 
 	// Create a new ServeMux and register handlers
 	mux := http.NewServeMux()
 	handlers.registerHandlers(mux, handlerOpts{
-		AssetsFS:     assetsFS,
-		StaticFS:     staticFS,
-		ManifestFile: manifestFileBytes,
+		AssetsFS:     c.AssetsFS,
+		StaticFS:     c.StaticFS,
+		ManifestFile: c.ManifestFileBytes,
 	})
 
 	// Determine listen address from environment variable or use default
@@ -196,7 +205,7 @@ func (c *clientImpl) listenAndServe(ctx context.Context) error {
 	return nil
 }
 
-func (c *clientImpl) SendAsyncInitiation() error {
+func (c *ClientImpl) SendAsyncInitiation() error {
 	if c.GetIsDone() {
 		return fmt.Errorf("client is done")
 	}
@@ -209,17 +218,17 @@ func (c *clientImpl) SendAsyncInitiation() error {
 	}
 }
 
-func (c *clientImpl) SetAtomVals(m map[string]any) {
+func (c *ClientImpl) SetAtomVals(m map[string]any) {
 	for k, v := range m {
 		c.Root.SetAtomVal(k, v, true)
 	}
 }
 
-func (c *clientImpl) SetAtomVal(name string, val any) {
+func (c *ClientImpl) SetAtomVal(name string, val any) {
 	c.Root.SetAtomVal(name, val, true)
 }
 
-func (c *clientImpl) GetAtomVal(name string) any {
+func (c *ClientImpl) GetAtomVal(name string) any {
 	return c.Root.GetAtomVal(name)
 }
 
@@ -235,7 +244,7 @@ func structToProps(props any) map[string]any {
 	return m
 }
 
-func defineComponentEx[P any](client *clientImpl, name string, renderFn func(ctx context.Context, props P) any) vdom.Component[P] {
+func DefineComponentEx[P any](client *ClientImpl, name string, renderFn func(ctx context.Context, props P) any) vdom.Component[P] {
 	if name == "" {
 		panic("Component name cannot be empty")
 	}
@@ -251,12 +260,12 @@ func defineComponentEx[P any](client *clientImpl, name string, renderFn func(ctx
 	}
 }
 
-func (c *clientImpl) registerComponent(name string, cfunc any) error {
+func (c *ClientImpl) registerComponent(name string, cfunc any) error {
 	return c.Root.RegisterComponent(name, cfunc)
 }
 
-func (c *clientImpl) fullRender() (*rpctypes.VDomBackendUpdate, error) {
-	opts := &engine.RenderOpts{Resync: true}
+func (c *ClientImpl) fullRender() (*rpctypes.VDomBackendUpdate, error) {
+	opts := &RenderOpts{Resync: true}
 	c.Root.RunWork(opts)
 	c.Root.Render(c.RootElem, opts)
 	renderedVDom := c.Root.MakeVDom()
@@ -278,8 +287,8 @@ func (c *clientImpl) fullRender() (*rpctypes.VDomBackendUpdate, error) {
 	}, nil
 }
 
-func (c *clientImpl) incrementalRender() (*rpctypes.VDomBackendUpdate, error) {
-	opts := &engine.RenderOpts{Resync: false}
+func (c *ClientImpl) incrementalRender() (*rpctypes.VDomBackendUpdate, error) {
+	opts := &RenderOpts{Resync: false}
 	c.Root.RunWork(opts)
 	renderedVDom := c.Root.MakeVDom()
 	if renderedVDom == nil {
@@ -299,7 +308,7 @@ func (c *clientImpl) incrementalRender() (*rpctypes.VDomBackendUpdate, error) {
 	}, nil
 }
 
-func (c *clientImpl) HandleDynFunc(pattern string, fn func(http.ResponseWriter, *http.Request)) {
+func (c *ClientImpl) HandleDynFunc(pattern string, fn func(http.ResponseWriter, *http.Request)) {
 	if !strings.HasPrefix(pattern, "/dyn/") {
 		log.Printf("invalid dyn pattern: %s (must start with /dyn/)", pattern)
 		return

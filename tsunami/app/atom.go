@@ -24,7 +24,7 @@ func logInvalidAtomSet(atomName string) {
 // Atom[T] represents a typed atom implementation
 type Atom[T any] struct {
 	name   string
-	client *clientImpl
+	client *engine.ClientImpl
 }
 
 // AtomName implements the vdom.Atom interface

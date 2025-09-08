@@ -1,7 +1,7 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-package app
+package engine
 
 import (
 	"encoding/json"
@@ -33,11 +33,11 @@ type handlerOpts struct {
 }
 
 type httpHandlers struct {
-	Client     *clientImpl
+	Client     *ClientImpl
 	renderLock sync.Mutex
 }
 
-func newHTTPHandlers(client *clientImpl) *httpHandlers {
+func newHTTPHandlers(client *ClientImpl) *httpHandlers {
 	return &httpHandlers{
 		Client: client,
 	}
