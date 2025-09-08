@@ -38,7 +38,6 @@ type RenderOpts struct {
 
 type atomImpl struct {
 	Val    any
-	Dirty  bool
 	UsedBy map[string]bool // component waveid -> true
 }
 
@@ -165,20 +164,6 @@ func (r *RootElem) GetAtomVal(name string) any {
 	return atom.Val
 }
 
-func (r *RootElem) GetStateSync(full bool) []rpctypes.VDomStateSync {
-	r.atomLock.Lock()
-	defer r.atomLock.Unlock()
-
-	stateSync := make([]rpctypes.VDomStateSync, 0)
-	for atomName, atom := range r.Atoms {
-		if atom.Dirty || full {
-			stateSync = append(stateSync, rpctypes.VDomStateSync{Atom: atomName, Value: atom.Val})
-			atom.Dirty = false
-		}
-	}
-	return stateSync
-}
-
 func (r *RootElem) SetAtomVal(name string, val any, markDirty bool) {
 	r.atomLock.Lock()
 	defer r.atomLock.Unlock()
@@ -193,7 +178,6 @@ func (r *RootElem) SetAtomVal(name string, val any, markDirty bool) {
 		return
 	}
 	atom.Val = val
-	atom.Dirty = true
 }
 
 func (r *RootElem) RemoveAtom(name string) {

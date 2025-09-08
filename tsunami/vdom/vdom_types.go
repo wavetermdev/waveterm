@@ -11,7 +11,6 @@ const FragmentTag = "#fragment"
 const KeyPropKey = "key"
 
 const ObjectType_Ref = "ref"
-const ObjectType_Binding = "binding"
 const ObjectType_Func = "func"
 
 // vdom element
@@ -21,12 +20,6 @@ type VDomElem struct {
 	Props    map[string]any `json:"props,omitempty"`
 	Children []VDomElem     `json:"children,omitempty"`
 	Text     string         `json:"text,omitempty"`
-}
-
-// used in props
-type VDomBinding struct {
-	Type string `json:"type" tstype:"\"binding\""`
-	Bind string `json:"bind"`
 }
 
 // used in props

@@ -12,12 +12,6 @@ import { applyCanvasOp, restoreVDomElems } from "./model-utils";
 
 const dlog = debug("wave:vdom");
 
-type AtomContainer = {
-    val: any;
-    beVal: any;
-    usedBy: Set<string>;
-};
-
 type RefContainer = {
     refFn: (elem: HTMLElement) => void;
     vdomRef: VDomRef;
@@ -86,13 +80,11 @@ export class TsunamiModel {
     serverId: string;
     viewRef: React.RefObject<HTMLDivElement> = { current: null };
     vdomRoot: jotai.PrimitiveAtom<VDomElem> = jotai.atom();
-    atoms: Map<string, AtomContainer> = new Map(); // key is atomname
     refs: Map<string, RefContainer> = new Map(); // key is refid
     batchedEvents: VDomEvent[] = [];
     messages: VDomMessage[] = [];
     needsResync: boolean = true;
     vdomNodeVersion: WeakMap<VDomElem, jotai.PrimitiveAtom<number>> = new WeakMap();
-    compoundAtoms: Map<string, jotai.PrimitiveAtom<{ [key: string]: any }>> = new Map();
     rootRefId: string = crypto.randomUUID();
     backendOpts: VDomBackendOpts;
     shouldDispose: boolean;
@@ -155,13 +147,11 @@ export class TsunamiModel {
             this.serverEventSource = null;
         }
         getDefaultStore().set(this.vdomRoot, null);
-        this.atoms.clear();
         this.refs.clear();
         this.batchedEvents = [];
         this.messages = [];
         this.needsResync = true;
         this.vdomNodeVersion = new WeakMap();
-        this.compoundAtoms.clear();
         this.rootRefId = crypto.randomUUID();
         this.backendOpts = {};
         this.shouldDispose = false;
@@ -326,18 +316,6 @@ export class TsunamiModel {
         }
     }
 
-    getAtomContainer(atomName: string): AtomContainer {
-        let container = this.atoms.get(atomName);
-        if (container == null) {
-            container = {
-                val: null,
-                beVal: null,
-                usedBy: new Set(),
-            };
-            this.atoms.set(atomName, container);
-        }
-        return container;
-    }
 
     getOrCreateRefContainer(vdomRef: VDomRef): RefContainer {
         let container = this.refs.get(vdomRef.refid);
@@ -360,19 +338,6 @@ export class TsunamiModel {
         return container;
     }
 
-    tagUseAtoms(waveId: string, atomNames: Set<string>) {
-        for (let atomName of atomNames) {
-            let container = this.getAtomContainer(atomName);
-            container.usedBy.add(waveId);
-        }
-    }
-
-    tagUnuseAtoms(waveId: string, atomNames: Set<string>) {
-        for (let atomName of atomNames) {
-            let container = this.getAtomContainer(atomName);
-            container.usedBy.delete(waveId);
-        }
-    }
 
     getVDomNodeVersionAtom(vdom: VDomElem) {
         let atom = this.vdomNodeVersion.get(vdom);
@@ -469,53 +434,6 @@ export class TsunamiModel {
         }
     }
 
-    setAtomValue(atomName: string, value: any, fromBe: boolean, idMap: Map<string, VDomElem>) {
-        dlog("setAtomValue", atomName, value, fromBe);
-        let container = this.getAtomContainer(atomName);
-        if (container.val === value) {
-            return;
-        }
-        container.val = value;
-        if (fromBe) {
-            container.beVal = value;
-        }
-        for (let id of container.usedBy) {
-            this.incVDomNodeVersion(idMap.get(id));
-        }
-    }
-
-    handleStateSync(update: VDomBackendUpdate, idMap: Map<string, VDomElem>) {
-        if (update.fullupdate) {
-            if (update.statesync == null) {
-                this.atoms.clear();
-                return;
-            }
-
-            const sentAtoms = new Set<string>();
-            for (let sync of update.statesync) {
-                sentAtoms.add(sync.atom);
-                this.setAtomValue(sync.atom, sync.value, true, idMap);
-            }
-
-            const atomsToRemove: string[] = [];
-            for (let atomName of this.atoms.keys()) {
-                if (!sentAtoms.has(atomName)) {
-                    atomsToRemove.push(atomName);
-                }
-            }
-
-            for (let atomName of atomsToRemove) {
-                this.atoms.delete(atomName);
-            }
-        } else {
-            if (update.statesync == null) {
-                return;
-            }
-            for (let sync of update.statesync) {
-                this.setAtomValue(sync.atom, sync.value, true, idMap);
-            }
-        }
-    }
 
     getRefElem(refId: string): HTMLElement {
         if (refId == this.rootRefId) {
@@ -607,7 +525,6 @@ export class TsunamiModel {
         }
         makeVDomIdMap(vdomRoot, idMap);
         this.handleRenderUpdates(update, idMap);
-        this.handleStateSync(update, idMap);
         this.handleRefOperations(update, idMap);
         if (update.messages) {
             for (let message of update.messages) {

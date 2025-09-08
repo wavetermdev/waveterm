@@ -128,10 +128,6 @@ func (h *httpHandlers) processFrontendUpdate(feUpdate *rpctypes.VDomFrontendUpda
 
 	h.Client.Root.RenderTs = feUpdate.Ts
 
-	// set atoms
-	for _, ss := range feUpdate.StateSync {
-		h.Client.Root.SetAtomVal(ss.Atom, ss.Value, false)
-	}
 	// run events
 	for _, event := range feUpdate.Events {
 		if event.GlobalEventType != "" {

@@ -25,15 +25,8 @@ type VDomBackendUpdate = {
     fullupdate?: boolean;
     renderupdates?: VDomRenderUpdate[];
     transferelems?: VDomTransferElem[];
-    statesync?: VDomStateSync[];
     refoperations?: VDomRefOperation[];
     messages?: VDomMessage[];
-};
-
-// vdom.VDomBinding
-type VDomBinding = {
-    type: "binding";
-    bind: string;
 };
 
 // vdom.VDomCreateContext
@@ -78,7 +71,6 @@ type VDomFrontendUpdate = {
     resync?: boolean;
     rendercontext: VDomRenderContext;
     events?: VDomEvent[];
-    statesync?: VDomStateSync[];
     refupdates?: VDomRefUpdate[];
     messages?: VDomMessage[];
 };
@@ -150,12 +142,6 @@ type VDomRenderUpdate = {
     vdomwaveid?: string;
     vdom?: VDomElem;
     index?: number;
-};
-
-// vdom.VDomStateSync
-type VDomStateSync = {
-    atom: string;
-    value: any;
 };
 
 // vdom.VDomTarget

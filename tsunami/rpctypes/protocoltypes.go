@@ -40,7 +40,6 @@ type VDomFrontendUpdate struct {
 	Resync        bool              `json:"resync,omitempty"`  // resync (send all backend data).  useful when the FE reloads
 	RenderContext VDomRenderContext `json:"rendercontext,omitempty"`
 	Events        []vdom.VDomEvent  `json:"events,omitempty"`
-	StateSync     []VDomStateSync   `json:"statesync,omitempty"`
 	RefUpdates    []VDomRefUpdate   `json:"refupdates,omitempty"`
 	Messages      []VDomMessage     `json:"messages,omitempty"`
 }
@@ -54,7 +53,6 @@ type VDomBackendUpdate struct {
 	FullUpdate    bool                    `json:"fullupdate,omitempty"`
 	RenderUpdates []VDomRenderUpdate      `json:"renderupdates,omitempty"`
 	TransferElems []VDomTransferElem      `json:"transferelems,omitempty"`
-	StateSync     []VDomStateSync         `json:"statesync,omitempty"`
 	RefOperations []vdom.VDomRefOperation `json:"refoperations,omitempty"`
 	Messages      []VDomMessage           `json:"messages,omitempty"`
 }
@@ -157,10 +155,6 @@ type VDomRenderContext struct {
 	Background bool   `json:"background,omitempty"`
 }
 
-type VDomStateSync struct {
-	Atom  string `json:"atom"`
-	Value any    `json:"value"`
-}
 
 type VDomRefUpdate struct {
 	RefId      string                `json:"refid"`
