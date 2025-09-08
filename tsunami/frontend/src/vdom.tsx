@@ -19,7 +19,6 @@ const WaveNullTag = "wave:null";
 const StyleTagName = "style";
 
 const VDomObjType_Ref = "ref";
-const VDomObjType_Binding = "binding";
 const VDomObjType_Func = "func";
 
 const dlog = debug("wave:vdom");
@@ -180,36 +179,12 @@ function isArray(v: any): boolean {
     return Array.isArray(v);
 }
 
-function resolveBinding(binding: VDomBinding, model: TsunamiModel): [any, string[]] {
-    const bindName = binding.bind;
-    if (bindName == null || bindName == "") {
-        return [null, []];
-    }
-    // validate that bindName starts with valid atom prefix and has at least one char after the dot
-    const isValidBinding =
-        (bindName.startsWith("$shared.") && bindName.length > 8) ||
-        (bindName.startsWith("$config.") && bindName.length > 8) ||
-        (bindName.startsWith("$data.") && bindName.length > 6);
-
-    if (!isValidBinding) {
-        return [null, []];
-    }
-
-    const atom = model.getAtomContainer(bindName);
-    if (atom == null) {
-        return [null, []];
-    }
-    return [atom.val, [bindName]];
-}
-
 type GenericPropsType = { [key: string]: any };
 
-// returns props, and a set of atom keys used in the props
-function convertProps(elem: VDomElem, model: TsunamiModel): [GenericPropsType, Set<string>] {
+function convertProps(elem: VDomElem, model: TsunamiModel): GenericPropsType {
     let props: GenericPropsType = {};
-    let atomKeys = new Set<string>();
     if (elem.props == null) {
-        return [props, atomKeys];
+        return props;
     }
     for (let key in elem.props) {
         let val = elem.props[key];
@@ -232,32 +207,9 @@ function convertProps(elem: VDomElem, model: TsunamiModel): [GenericPropsType, S
             props[key] = convertVDomFunc(model, valFunc, elem.waveid, key);
             continue;
         }
-        if (isObject(val) && val.type == VDomObjType_Binding) {
-            const [propVal, atomDeps] = resolveBinding(val as VDomBinding, model);
-            props[key] = propVal;
-            for (let atomDep of atomDeps) {
-                atomKeys.add(atomDep);
-            }
-            continue;
-        }
-        if (key == "style" && isObject(val)) {
-            // assuming the entire style prop wasn't bound, look through the individual keys and bind them
-            for (let styleKey in val) {
-                let styleVal = val[styleKey];
-                if (isObject(styleVal) && styleVal.type == VDomObjType_Binding) {
-                    const [stylePropVal, styleAtomDeps] = resolveBinding(styleVal as VDomBinding, model);
-                    val[styleKey] = stylePropVal;
-                    for (let styleAtomDep of styleAtomDeps) {
-                        atomKeys.add(styleAtomDep);
-                    }
-                }
-            }
-            props[key] = val;
-            continue;
-        }
         props[key] = val;
     }
-    return [props, atomKeys];
+    return props;
 }
 
 function convertChildren(elem: VDomElem, model: TsunamiModel): React.ReactNode[] {
@@ -277,35 +229,9 @@ function convertChildren(elem: VDomElem, model: TsunamiModel): React.ReactNode[]
     return childrenComps;
 }
 
-function stringSetsEqual(set1: Set<string>, set2: Set<string>): boolean {
-    if (set1.size != set2.size) {
-        return false;
-    }
-    for (let elem of set1) {
-        if (!set2.has(elem)) {
-            return false;
-        }
-    }
-    return true;
-}
-
 function useVDom(model: TsunamiModel, elem: VDomElem): GenericPropsType {
-    const version = jotai.useAtomValue(model.getVDomNodeVersionAtom(elem));
-    const [oldAtomKeys, setOldAtomKeys] = React.useState<Set<string>>(new Set());
-    let [props, atomKeys] = convertProps(elem, model);
-    React.useEffect(() => {
-        if (stringSetsEqual(atomKeys, oldAtomKeys)) {
-            return;
-        }
-        model.tagUnuseAtoms(elem.waveid, oldAtomKeys);
-        model.tagUseAtoms(elem.waveid, atomKeys);
-        setOldAtomKeys(atomKeys);
-    }, [atomKeys]);
-    React.useEffect(() => {
-        return () => {
-            model.tagUnuseAtoms(elem.waveid, oldAtomKeys);
-        };
-    }, []);
+    const version = jotai.useAtomValue(model.getVDomNodeVersionAtom(elem)); // this triggers updates when vdom nodes change
+    let props = convertProps(elem, model);
     return props;
 }
 
