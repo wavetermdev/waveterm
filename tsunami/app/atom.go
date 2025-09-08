@@ -7,7 +7,7 @@ import (
 	"log"
 	"runtime"
 
-	"github.com/wavetermdev/waveterm/tsunami/comp"
+	"github.com/wavetermdev/waveterm/tsunami/engine"
 	"github.com/wavetermdev/waveterm/tsunami/util"
 )
 
@@ -34,7 +34,7 @@ func (a Atom[T]) AtomName() string {
 
 // Get returns the current value of the atom
 func (a Atom[T]) Get() T {
-	vc := comp.GetGlobalContext()
+	vc := engine.GetGlobalContext()
 	if vc != nil {
 		compWaveId := vc.GetCompWaveId()
 		vc.Root.AtomSetUsedBy(a.name, compWaveId, true)
@@ -45,7 +45,7 @@ func (a Atom[T]) Get() T {
 
 // Set updates the atom's value
 func (a Atom[T]) Set(newVal T) {
-	vc := comp.GetGlobalContext()
+	vc := engine.GetGlobalContext()
 	if vc != nil {
 		logInvalidAtomSet(a.name)
 		return
@@ -55,7 +55,7 @@ func (a Atom[T]) Set(newVal T) {
 }
 
 func (a Atom[T]) SetFn(fn func(T) T) {
-	vc := comp.GetGlobalContext()
+	vc := engine.GetGlobalContext()
 	if vc != nil {
 		logInvalidAtomSet(a.name)
 		return

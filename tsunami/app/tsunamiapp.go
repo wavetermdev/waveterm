@@ -16,7 +16,7 @@ import (
 	"unicode"
 
 	"github.com/google/uuid"
-	"github.com/wavetermdev/waveterm/tsunami/comp"
+	"github.com/wavetermdev/waveterm/tsunami/engine"
 	"github.com/wavetermdev/waveterm/tsunami/rpctypes"
 	"github.com/wavetermdev/waveterm/tsunami/util"
 	"github.com/wavetermdev/waveterm/tsunami/vdom"
@@ -33,7 +33,7 @@ type ssEvent struct {
 
 type clientImpl struct {
 	Lock               *sync.Mutex
-	Root               *comp.RootElem
+	Root               *engine.RootElem
 	RootElem           *vdom.VDomElem
 	CurrentClientId    string
 	ServerId           string
@@ -49,7 +49,7 @@ type clientImpl struct {
 func makeClient() *clientImpl {
 	client := &clientImpl{
 		Lock:          &sync.Mutex{},
-		Root:          comp.MakeRoot(),
+		Root:          engine.MakeRoot(),
 		DoneCh:        make(chan struct{}),
 		SSEventCh:     make(chan ssEvent, 100),
 		UrlHandlerMux: http.NewServeMux(),
@@ -256,7 +256,7 @@ func (c *clientImpl) registerComponent(name string, cfunc any) error {
 }
 
 func (c *clientImpl) fullRender() (*rpctypes.VDomBackendUpdate, error) {
-	opts := &comp.RenderOpts{Resync: true}
+	opts := &engine.RenderOpts{Resync: true}
 	c.Root.RunWork(opts)
 	c.Root.Render(c.RootElem, opts)
 	renderedVDom := c.Root.MakeVDom()
@@ -279,7 +279,7 @@ func (c *clientImpl) fullRender() (*rpctypes.VDomBackendUpdate, error) {
 }
 
 func (c *clientImpl) incrementalRender() (*rpctypes.VDomBackendUpdate, error) {
-	opts := &comp.RenderOpts{Resync: false}
+	opts := &engine.RenderOpts{Resync: false}
 	c.Root.RunWork(opts)
 	renderedVDom := c.Root.MakeVDom()
 	if renderedVDom == nil {
