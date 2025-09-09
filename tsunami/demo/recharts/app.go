@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"math"
 	"time"
 
@@ -42,7 +41,7 @@ func generateNewDataPoint(currentData []DataPoint) DataPoint {
 		lastTime = currentData[len(currentData)-1].Time
 	}
 	newTime := lastTime + 1
-	
+
 	return DataPoint{
 		Time: newTime,
 		CPU:  50 + 30*math.Sin(float64(newTime)*0.3) + 10*math.Sin(float64(newTime)*0.7),
@@ -51,60 +50,59 @@ func generateNewDataPoint(currentData []DataPoint) DataPoint {
 	}
 }
 
-var InfoSection = app.DefineComponent("InfoSection",
-	func(ctx context.Context, _ struct{}) any {
-		return vdom.H("div", map[string]any{
-			"className": "bg-blue-50 border border-blue-200 rounded-lg p-4",
-		},
-			vdom.H("h3", map[string]any{
-				"className": "text-lg font-semibold text-blue-900 mb-2",
-			}, "Recharts Integration Features"),
-			vdom.H("ul", map[string]any{
-				"className": "space-y-2 text-blue-800",
-			},
-				vdom.H("li", map[string]any{
-					"className": "flex items-start gap-2",
-				},
-					vdom.H("span", map[string]any{
-						"className": "text-blue-500 mt-1",
-					}, "•"),
-					"Support for all major Recharts components (LineChart, AreaChart, BarChart, etc.)",
-				),
-				vdom.H("li", map[string]any{
-					"className": "flex items-start gap-2",
-				},
-					vdom.H("span", map[string]any{
-						"className": "text-blue-500 mt-1",
-					}, "•"),
-					"Live data updates with animation support",
-				),
-				vdom.H("li", map[string]any{
-					"className": "flex items-start gap-2",
-				},
-					vdom.H("span", map[string]any{
-						"className": "text-blue-500 mt-1",
-					}, "•"),
-					"Responsive containers that resize with the window",
-				),
-				vdom.H("li", map[string]any{
-					"className": "flex items-start gap-2",
-				},
-					vdom.H("span", map[string]any{
-						"className": "text-blue-500 mt-1",
-					}, "•"),
-					"Full prop support for customization and styling",
-				),
-				vdom.H("li", map[string]any{
-					"className": "flex items-start gap-2",
-				},
-					vdom.H("span", map[string]any{
-						"className": "text-blue-500 mt-1",
-					}, "•"),
-					"Uses recharts: namespace to dispatch to the recharts handler",
-				),
-			),
-		)
+var InfoSection = app.DefineComponent("InfoSection", func(_ struct{}) any {
+	return vdom.H("div", map[string]any{
+		"className": "bg-blue-50 border border-blue-200 rounded-lg p-4",
 	},
+		vdom.H("h3", map[string]any{
+			"className": "text-lg font-semibold text-blue-900 mb-2",
+		}, "Recharts Integration Features"),
+		vdom.H("ul", map[string]any{
+			"className": "space-y-2 text-blue-800",
+		},
+			vdom.H("li", map[string]any{
+				"className": "flex items-start gap-2",
+			},
+				vdom.H("span", map[string]any{
+					"className": "text-blue-500 mt-1",
+				}, "•"),
+				"Support for all major Recharts components (LineChart, AreaChart, BarChart, etc.)",
+			),
+			vdom.H("li", map[string]any{
+				"className": "flex items-start gap-2",
+			},
+				vdom.H("span", map[string]any{
+					"className": "text-blue-500 mt-1",
+				}, "•"),
+				"Live data updates with animation support",
+			),
+			vdom.H("li", map[string]any{
+				"className": "flex items-start gap-2",
+			},
+				vdom.H("span", map[string]any{
+					"className": "text-blue-500 mt-1",
+				}, "•"),
+				"Responsive containers that resize with the window",
+			),
+			vdom.H("li", map[string]any{
+				"className": "flex items-start gap-2",
+			},
+				vdom.H("span", map[string]any{
+					"className": "text-blue-500 mt-1",
+				}, "•"),
+				"Full prop support for customization and styling",
+			),
+			vdom.H("li", map[string]any{
+				"className": "flex items-start gap-2",
+			},
+				vdom.H("span", map[string]any{
+					"className": "text-blue-500 mt-1",
+				}, "•"),
+				"Uses recharts: namespace to dispatch to the recharts handler",
+			),
+		),
+	)
+},
 )
 
 type MiniChartsProps struct {
@@ -112,7 +110,7 @@ type MiniChartsProps struct {
 }
 
 var MiniCharts = app.DefineComponent("MiniCharts",
-	func(ctx context.Context, props MiniChartsProps) any {
+	func(props MiniChartsProps) any {
 		return vdom.H("div", map[string]any{
 			"className": "grid grid-cols-1 md:grid-cols-3 gap-6 mb-6",
 		},
@@ -134,11 +132,11 @@ var MiniCharts = app.DefineComponent("MiniCharts",
 							"data": props.ChartData,
 						},
 							vdom.H("recharts:Line", map[string]any{
-								"type":            "monotone",
-								"dataKey":         "cpu",
-								"stroke":          "#8884d8",
-								"strokeWidth":     2,
-								"dot":             false,
+								"type":        "monotone",
+								"dataKey":     "cpu",
+								"stroke":      "#8884d8",
+								"strokeWidth": 2,
+								"dot":         false,
 							}),
 						),
 					),
@@ -203,55 +201,27 @@ var MiniCharts = app.DefineComponent("MiniCharts",
 )
 
 var App = app.DefineComponent("App",
-	func(ctx context.Context, _ struct{}) any {
+	func(_ struct{}) any {
 		app.UseSetAppTitle("Recharts Demo")
 
-		// Get atom values once at the top
-		chartData := chartDataAtom.Get()
-		chartType := chartTypeAtom.Get()
-		isAnimating := isAnimatingAtom.Get()
-
-		// Local state for timer
-		_, _, setTickerFn := app.UseState(0)
-
-		// Timer effect for live data updates
-		app.UseEffect(func() func() {
-			if !isAnimating {
-				return nil
+		tickerFn := func() {
+			if !isAnimatingAtom.Get() {
+				return
 			}
-
-			ticker := time.NewTicker(1 * time.Second)
-			done := make(chan bool)
-
-			go func() {
-				for {
-					select {
-					case <-done:
-						return
-					case <-ticker.C:
-						// Add new data point and keep only last 20 points
-						chartDataAtom.SetFn(func(currentData []DataPoint) []DataPoint {
-							newData := append(currentData, generateNewDataPoint(currentData))
-							if len(newData) > 20 {
-								newData = newData[1:]
-							}
-							return newData
-						})
-						// Trigger a re-render
-						setTickerFn(func(t int) int { return t + 1 })
-						app.SendAsyncInitiation()
-					}
+			chartDataAtom.SetFn(func(currentData []DataPoint) []DataPoint {
+				currentData = app.DeepCopy(currentData)
+				newData := append(currentData, generateNewDataPoint(currentData))
+				if len(newData) > 20 {
+					newData = newData[1:]
 				}
-			}()
-
-			return func() {
-				ticker.Stop()
-				close(done)
-			}
-		}, []any{isAnimating})
+				return newData
+			})
+			app.SendAsyncInitiation()
+		}
+		app.UseTicker(time.Second, tickerFn, []any{})
 
 		handleStartStop := func() {
-			isAnimatingAtom.Set(!isAnimating)
+			isAnimatingAtom.Set(!isAnimatingAtom.Get())
 		}
 
 		handleReset := func() {
@@ -262,6 +232,10 @@ var App = app.DefineComponent("App",
 		handleChartTypeChange := func(newType string) {
 			chartTypeAtom.Set(newType)
 		}
+
+		chartData := chartDataAtom.Get()
+		chartType := chartTypeAtom.Get()
+		isAnimating := isAnimatingAtom.Get()
 
 		return vdom.H("div", map[string]any{
 			"className": "min-h-screen bg-gray-50 p-6",
@@ -372,22 +346,22 @@ var App = app.DefineComponent("App",
 									vdom.H("recharts:Tooltip", nil),
 									vdom.H("recharts:Legend", nil),
 									vdom.H("recharts:Line", map[string]any{
-										"type":     "monotone",
-										"dataKey":  "cpu",
-										"stroke":   "#8884d8",
-										"name":     "CPU %",
+										"type":    "monotone",
+										"dataKey": "cpu",
+										"stroke":  "#8884d8",
+										"name":    "CPU %",
 									}),
 									vdom.H("recharts:Line", map[string]any{
-										"type":     "monotone",
-										"dataKey":  "mem",
-										"stroke":   "#82ca9d",
-										"name":     "Memory %",
+										"type":    "monotone",
+										"dataKey": "mem",
+										"stroke":  "#82ca9d",
+										"name":    "Memory %",
 									}),
 									vdom.H("recharts:Line", map[string]any{
-										"type":     "monotone",
-										"dataKey":  "disk",
-										"stroke":   "#ffc658",
-										"name":     "Disk %",
+										"type":    "monotone",
+										"dataKey": "disk",
+										"stroke":  "#ffc658",
+										"name":    "Disk %",
 									}),
 								),
 							),
@@ -410,28 +384,28 @@ var App = app.DefineComponent("App",
 										vdom.H("recharts:Tooltip", nil),
 										vdom.H("recharts:Legend", nil),
 										vdom.H("recharts:Area", map[string]any{
-											"type":     "monotone",
-											"dataKey":  "cpu",
-											"stackId":  "1",
-											"stroke":   "#8884d8",
-											"fill":     "#8884d8",
-											"name":     "CPU %",
+											"type":    "monotone",
+											"dataKey": "cpu",
+											"stackId": "1",
+											"stroke":  "#8884d8",
+											"fill":    "#8884d8",
+											"name":    "CPU %",
 										}),
 										vdom.H("recharts:Area", map[string]any{
-											"type":     "monotone",
-											"dataKey":  "mem",
-											"stackId":  "1",
-											"stroke":   "#82ca9d",
-											"fill":     "#82ca9d",
-											"name":     "Memory %",
+											"type":    "monotone",
+											"dataKey": "mem",
+											"stackId": "1",
+											"stroke":  "#82ca9d",
+											"fill":    "#82ca9d",
+											"name":    "Memory %",
 										}),
 										vdom.H("recharts:Area", map[string]any{
-											"type":     "monotone",
-											"dataKey":  "disk",
-											"stackId":  "1",
-											"stroke":   "#ffc658",
-											"fill":     "#ffc658",
-											"name":     "Disk %",
+											"type":    "monotone",
+											"dataKey": "disk",
+											"stackId": "1",
+											"stroke":  "#ffc658",
+											"fill":    "#ffc658",
+											"name":    "Disk %",
 										}),
 									),
 								),
