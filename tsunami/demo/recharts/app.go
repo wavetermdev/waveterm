@@ -209,7 +209,6 @@ var App = app.DefineComponent("App",
 				return
 			}
 			chartDataAtom.SetFn(func(currentData []DataPoint) []DataPoint {
-				currentData = app.DeepCopy(currentData)
 				newData := append(currentData, generateNewDataPoint(currentData))
 				if len(newData) > 20 {
 					newData = newData[1:]
