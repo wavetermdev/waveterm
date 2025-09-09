@@ -1,6 +1,8 @@
 # Tsunami Framework Guide
 
-The Tsunami framework brings React-style UI development to Go, letting you build rich graphical applications that run inside Wave Terminal. If you know React, you already understand Tsunami's core concepts - it uses the same patterns for components, props, hooks, state management, and styling, but implemented entirely in Go.
+The Tsunami framework brings React-style UI development to Go, letting you build rich graphical applications that run inside Wave Terminal. Tsunami is designed for quick, widget-like applications - think dashboards, utilities, and small tools rather than large monolithic apps. Everything lives in a single Go file to keep things simple and focused.
+
+If you know React, you already understand Tsunami's core concepts - it uses the same patterns for components, props, hooks, state management, and styling, but implemented entirely in Go.
 
 ## React Patterns in Go
 
@@ -526,6 +528,89 @@ ConfigAtom and DataAtom automatically create REST endpoints:
 
 This makes Tsunami applications naturally suitable for integration with external tools, monitoring systems, and AI agents that need to inspect or configure the application.
 
+## Component Code Conventions
+
+Tsunami follows specific patterns that make code predictable for both developers and AI code generation. Following these conventions ensures consistent, maintainable code and prevents common bugs.
+
+Always organize components in this exact order to prevent stale closure bugs and maintain clarity:
+
+```go
+type ToggleCounterProps struct {
+	Title string `json:"title"`
+}
+
+var ToggleCounter = app.DefineComponent("ToggleCounter", func(props ToggleCounterProps) any {
+	// 1. Atoms and Refs defined at the top
+	visibleAtom := app.UseLocal(true)
+	renderCountRef := app.UseRef(0)
+
+	// 2. Effects and GoRoutines next. Two steps, first define the function, then call the hook
+	//    Only closure atoms and refs, do not closure values (as they can be stale)
+	incrementCounterFn := func() func() {
+		renderCountRef.Current = renderCountRef.Current + 1
+		return nil
+	}
+	app.UseEffect(incrementCounterFn, []any{})
+
+	// 3. Event handlers (closure atoms, not values)
+	handleToggle := func() {
+		visibleAtom.SetFn(func(isVisible bool) bool { return !isVisible })
+	}
+
+	handleReset := func() {
+		renderCountRef.Current = 0
+		visibleAtom.Set(true)
+	}
+
+	// 4. Atom reads (fresh values right before render)
+	//    Read here to prevent accidentally using these values in the closures above
+	isVisible := visibleAtom.Get()
+	renderCount := renderCountRef.Current
+
+	// 5. Render (return statement)
+	return vdom.H("div", map[string]any{
+		"className": "p-4 border border-gray-300 rounded-lg",
+	},
+		vdom.H("h3", map[string]any{
+			"className": "text-lg font-bold mb-2",
+		}, props.Title),
+
+		vdom.H("div", map[string]any{
+			"className": "mb-4 space-x-2",
+		},
+			vdom.H("button", map[string]any{
+				"className": "px-3 py-1 bg-blue-500 text-white rounded cursor-pointer",
+				"onClick":   handleToggle,
+			}, vdom.IfElse(isVisible, "Hide", "Show")),
+
+			vdom.H("button", map[string]any{
+				"className": "px-3 py-1 bg-gray-500 text-white rounded cursor-pointer",
+				"onClick":   handleReset,
+			}, "Reset"),
+		),
+
+		vdom.H("div", map[string]any{
+			"className": vdom.Classes("p-3 bg-gray-100 rounded", vdom.If(!isVisible, "hidden")),
+		},
+			vdom.H("p", nil, "This content can be toggled!"),
+			vdom.H("p", map[string]any{
+				"className": "text-sm text-gray-600 mt-2",
+			}, "Render count: ", renderCount),
+		),
+	)
+})
+```
+
+**Why this order matters:**
+
+- **Props**: Always declare a Props type for your component (matching the component name + Props)
+- **Define Component**: Always use DefineComponent to register your components. Variable name, and component name should match.
+- **UseLocal / UseRef Hooks first**: React rule - always call hooks at the top level, can use these values in closures later
+- **UseEffect / UseGoRoutine Hooks next**: React rule - always call hooks at the top level, can use atoms and refs from above
+- **Handlers next**: Can safely reference atoms without stale closures
+- **Atom reads last**: Fresh values right before render
+- **Render final**: Clean separation of logic and presentation. Can also conditionally return at this point based on the data, as all the hooks have been declared.
+
 ## Style Handling
 
 Tsunami applications use Tailwind v4 CSS by default for styling (className prop) and you should favor styling with Tailwind whenever possible. Also Tsunami Apps are built to run inside of Wave Terminal which is a dark mode application. Please create your styles in tailwind specifically to support DARK mode (so dark backgrounds and light text colors). You may also define inline styles using a map[string]any in the props:
@@ -741,7 +826,7 @@ var MyComponent = app.DefineComponent("MyComponent", func(_ struct{}) any {
 
 ### References with app.UseRef
 
-app.UseRef creates mutable values that persist across renders without triggering re-renders:
+app.UseRef creates mutable values that persist across renders without triggering re-renders. Access and modify the value using the `Current` field. The ref is type-safe - the type of `Current` is automatically inferred from the initial value you provide.
 
 ```go
 var MyComponent = app.DefineComponent("MyComponent", func(_ struct{}) any {
@@ -771,8 +856,9 @@ var MyComponent = app.DefineComponent("MyComponent", func(_ struct{}) any {
 
 **Key Points:**
 
+- Access and modify values using the `Current` field
+- Type safety: `Current` has the same type as your initial value
 - Changes to ref.Current don't trigger re-renders
-- Perfect for storing goroutine state, timers, subscriptions
 - Cannot be used as the ref prop on DOM elements
 
 ### DOM References with app.UseVDomRef
@@ -958,7 +1044,7 @@ vdom.H("div", map[string]any{
 
 ### Dynamic URL Handlers
 
-For dynamic content or API endpoints, use app.HandleDynFunc to register standard http.ServeMux handlers. All dynamic routes MUST be registered under the `/dyn/` path:
+For dynamic content and file operations, use app.HandleDynFunc to register standard http.ServeMux handlers. Common use cases include serving generated images/charts, downloading CSV exports, serving external data fetched from 3rd party APIs (GitHub artifacts, APIs), file transfers, and format conversions (Markdown, Graphviz diagrams). All dynamic routes MUST be registered under the `/dyn/` path to avoid conflicts with framework routes (`/api/`, `/static/`, etc.):
 
 ```go
 // Register dynamic handlers (typically in init() or setup function)
@@ -992,7 +1078,7 @@ vdom.H("img", map[string]any{
 
 Key points:
 
-- **Static files**: Create `static/` directory, use `/static/` URLs
+- **Static files**: Create `static` directory, use `/static/` URLs
 - **Dynamic content**: Use app.HandleDynFunc with `/dyn/` prefix
 - Dynamic handlers use standard Go http.Handler interface
 - You can use any http.ServeMux pattern in the route
