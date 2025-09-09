@@ -234,7 +234,7 @@ func structToProps(props any) map[string]any {
 	return m
 }
 
-func DefineComponentEx[P any](client *ClientImpl, name string, renderFn func(ctx context.Context, props P) any) vdom.Component[P] {
+func DefineComponentEx[P any](client *ClientImpl, name string, renderFn func(props P) any) vdom.Component[P] {
 	if name == "" {
 		panic("Component name cannot be empty")
 	}

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"log"
 	"time"
 
@@ -64,7 +63,7 @@ func generateCPUDataPoint() CPUDataPoint {
 }
 
 var StatsPanel = app.DefineComponent("StatsPanel",
-	func(ctx context.Context, props struct {
+	func(props struct {
 		Data []CPUDataPoint `json:"data"`
 	}) any {
 		var currentUsage float64
@@ -142,7 +141,7 @@ var StatsPanel = app.DefineComponent("StatsPanel",
 )
 
 var App = app.DefineComponent("App",
-	func(ctx context.Context, _ struct{}) any {
+	func(_ struct{}) any {
 		app.UseSetAppTitle("CPU Usage Monitor")
 
 		// Local state for forcing re-renders

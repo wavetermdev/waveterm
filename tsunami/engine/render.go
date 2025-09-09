@@ -4,7 +4,6 @@
 package engine
 
 import (
-	"context"
 	"fmt"
 	"reflect"
 	"unicode"
@@ -100,11 +99,7 @@ func (r *RootElem) renderComponent(cfunc any, elem *vdom.VDomElem, comp **Compon
 	props[ChildrenPropKey] = elem.Children
 	vc := makeContextVal(r, *comp, opts)
 	rtnElemArr := withGlobalCtx(vc, func() []vdom.VDomElem {
-		ctx := r.OuterCtx
-		if ctx == nil {
-			ctx = context.Background()
-		}
-		renderedElem := callCFunc(cfunc, ctx, props)
+		renderedElem := callCFunc(cfunc, props)
 		return vdom.ToElems(renderedElem)
 	})
 	var rtnElem *vdom.VDomElem
@@ -180,25 +175,32 @@ func (r *RootElem) renderChildren(elems []vdom.VDomElem, curChildren []*Componen
 }
 
 // uses reflection to call the component function
-func callCFunc(cfunc any, ctx context.Context, props map[string]any) any {
+func callCFunc(cfunc any, props map[string]any) any {
 	rval := reflect.ValueOf(cfunc)
-	arg2Type := rval.Type().In(1)
+	rtype := rval.Type()
 
-	var arg2Val reflect.Value
-	if arg2Type.Kind() == reflect.Interface && arg2Type.NumMethod() == 0 {
-		arg2Val = reflect.New(arg2Type)
+	if rtype.NumIn() != 1 {
+		fmt.Printf("component function must have exactly 1 parameter, got %d\n", rtype.NumIn())
+		return nil
+	}
+
+	argType := rtype.In(0)
+
+	var arg1Val reflect.Value
+	if argType.Kind() == reflect.Interface && argType.NumMethod() == 0 {
+		arg1Val = reflect.New(argType)
 	} else {
-		arg2Val = reflect.New(arg2Type)
-		if arg2Type.Kind() == reflect.Map {
-			arg2Val.Elem().Set(reflect.ValueOf(props))
+		arg1Val = reflect.New(argType)
+		if argType.Kind() == reflect.Map {
+			arg1Val.Elem().Set(reflect.ValueOf(props))
 		} else {
-			err := util.MapToStruct(props, arg2Val.Interface())
+			err := util.MapToStruct(props, arg1Val.Interface())
 			if err != nil {
-				fmt.Printf("error unmarshalling props: %v\n", err)
+				fmt.Printf("error converting props: %v\n", err)
 			}
 		}
 	}
-	rtnVal := rval.Call([]reflect.Value{reflect.ValueOf(ctx), arg2Val.Elem()})
+	rtnVal := rval.Call([]reflect.Value{arg1Val.Elem()})
 	if len(rtnVal) == 0 {
 		return nil
 	}

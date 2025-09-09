@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -173,7 +172,7 @@ type WorkflowRunItemProps struct {
 }
 
 var WorkflowRunItem = app.DefineComponent("WorkflowRunItem",
-	func(ctx context.Context, props WorkflowRunItemProps) any {
+	func(props WorkflowRunItemProps) any {
 		run := props.Run
 		isRunning := run.Status == "in_progress" || run.Status == "queued" || run.Status == "pending"
 
@@ -221,7 +220,7 @@ var WorkflowRunItem = app.DefineComponent("WorkflowRunItem",
 )
 
 var App = app.DefineComponent("App",
-	func(ctx context.Context, _ struct{}) any {
+	func(_ struct{}) any {
 		app.UseSetAppTitle("GitHub Actions Monitor")
 		_, _, setTickerFn := app.UseState(0)
 

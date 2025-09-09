@@ -50,14 +50,13 @@ A Tsunami application is simply a Go package with an `App` component. Here's a m
 package main
 
 import (
-    "context"
     "github.com/wavetermdev/waveterm/tsunami/app"
     "github.com/wavetermdev/waveterm/tsunami/vdom"
 )
 
 // The App component is the required entry point for every Tsunami application
 var App = app.DefineComponent("App",
-    func(ctx context.Context, _ struct{}) any {
+    func(_ struct{}) any {
         app.UseSetAppTitle("Hello World")
 
         return vdom.H("div", map[string]any{
@@ -239,7 +238,7 @@ Functions starting with `app.Use*` are hooks in Tsunami, following the exact sam
 
 ```go
 var MyComponent = app.DefineComponent("MyComponent",
-    func(ctx context.Context, props MyProps) any {
+    func(props MyProps) any {
         // ✅ Good: hooks at top level
         count := app.UseState(0)
         app.UseEffect(func() { /* effect */ }, nil)
@@ -381,7 +380,7 @@ type TodoItemProps struct {
 
 // Create component with typed props
 var TodoItem = app.DefineComponent("TodoItem",
-    func(ctx context.Context, props TodoItemProps) any {
+    func(props TodoItemProps) any {
         return vdom.H("div", map[string]any{
             "className": vdom.Classes(
                 "p-3 border-b border-gray-200 cursor-pointer transition-opacity",
@@ -413,7 +412,7 @@ TodoItem(TodoItemProps{
 Components in Tsunami:
 
 - Use Go structs with json tags for props
-- Take a context and props as arguments
+- Take props as their single argument
 - Return elements created with vdom.H
 - Can use all hooks (app.UseState, app.UseRef, etc)
 - Are registered with the default client and given a name

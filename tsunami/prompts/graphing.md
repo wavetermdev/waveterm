@@ -190,7 +190,7 @@ Charts automatically re-render when their data changes through Tsunami's reactiv
 
 ```go
 var App = app.DefineComponent("App",
-    func(ctx context.Context, _ struct{}) any {
+    func(_ struct{}) any {
         // State management
         chartData, setChartData, setChartDataFn := app.UseData[[]MetricsData]("metrics")
 

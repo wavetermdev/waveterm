@@ -4,7 +4,6 @@
 package engine
 
 import (
-	"context"
 	"fmt"
 	"log"
 	"reflect"
@@ -17,7 +16,6 @@ import (
 )
 
 const ChildrenPropKey = "children"
-
 
 type EffectWorkElem struct {
 	Id          string
@@ -32,7 +30,6 @@ type genAtom interface {
 }
 
 type RootElem struct {
-	OuterCtx        context.Context
 	Root            *ComponentImpl
 	RenderTs        int64
 	AppTitle        string
@@ -167,10 +164,6 @@ func (r *RootElem) RemoveAtom(name string) {
 	delete(r.Atoms, name)
 }
 
-func (r *RootElem) SetOuterCtx(ctx context.Context) {
-	r.OuterCtx = ctx
-}
-
 func validateCFunc(cfunc any) error {
 	if cfunc == nil {
 		return fmt.Errorf("Component function cannot b nil")
@@ -180,29 +173,25 @@ func validateCFunc(cfunc any) error {
 		return fmt.Errorf("Component function must be a function")
 	}
 	rtype := rval.Type()
-	if rtype.NumIn() != 2 {
-		return fmt.Errorf("Component function must take exactly 2 arguments")
+	if rtype.NumIn() != 1 {
+		return fmt.Errorf("Component function must take exactly 1 argument")
 	}
 	if rtype.NumOut() != 1 {
 		return fmt.Errorf("Component function must return exactly 1 value")
 	}
-	// first arg must be context.Context
-	if rtype.In(0) != reflect.TypeOf((*context.Context)(nil)).Elem() {
-		return fmt.Errorf("Component function first argument must be context.Context")
+	// first argument can be a map[string]any, or a struct, or ptr to struct (we'll reflect the value into it)
+	arg1Type := rtype.In(0)
+	if arg1Type.Kind() == reflect.Ptr {
+		arg1Type = arg1Type.Elem()
 	}
-	// second can a map[string]any, or a struct, or ptr to struct (we'll reflect the value into it)
-	arg2Type := rtype.In(1)
-	if arg2Type.Kind() == reflect.Ptr {
-		arg2Type = arg2Type.Elem()
-	}
-	if arg2Type.Kind() == reflect.Map {
-		if arg2Type.Key().Kind() != reflect.String ||
-			!(arg2Type.Elem().Kind() == reflect.Interface && arg2Type.Elem().NumMethod() == 0) {
+	if arg1Type.Kind() == reflect.Map {
+		if arg1Type.Key().Kind() != reflect.String ||
+			!(arg1Type.Elem().Kind() == reflect.Interface && arg1Type.Elem().NumMethod() == 0) {
 			return fmt.Errorf("Map argument must be map[string]any")
 		}
-	} else if arg2Type.Kind() != reflect.Struct &&
-		!(arg2Type.Kind() == reflect.Interface && arg2Type.NumMethod() == 0) {
-		return fmt.Errorf("Component function second argument must be map[string]any, struct, or any")
+	} else if arg1Type.Kind() != reflect.Struct &&
+		!(arg1Type.Kind() == reflect.Interface && arg1Type.NumMethod() == 0) {
+		return fmt.Errorf("Component function argument must be map[string]any, struct, or any")
 	}
 	return nil
 }

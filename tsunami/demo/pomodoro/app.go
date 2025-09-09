@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"time"
 
@@ -42,7 +41,7 @@ type TimerState struct {
 }
 
 var TimerDisplay = app.DefineComponent("TimerDisplay",
-	func(ctx context.Context, props TimerDisplayProps) any {
+	func(props TimerDisplayProps) any {
 		return vdom.H("div",
 			map[string]any{"className": "bg-slate-700 p-8 rounded-lg mb-8 text-center"},
 			vdom.H("div",
@@ -58,7 +57,7 @@ var TimerDisplay = app.DefineComponent("TimerDisplay",
 )
 
 var ControlButtons = app.DefineComponent("ControlButtons",
-	func(ctx context.Context, props ControlButtonsProps) any {
+	func(props ControlButtonsProps) any {
 		return vdom.H("div",
 			map[string]any{"className": "flex flex-col gap-4"},
 			vdom.IfElse(props.IsRunning,
@@ -106,7 +105,7 @@ var ControlButtons = app.DefineComponent("ControlButtons",
 )
 
 var App = app.DefineComponent("App",
-	func(ctx context.Context, _ any) any {
+	func(_ any) any {
 		app.UseSetAppTitle("Pomodoro Timer (Tsunami Demo)")
 
 		isRunning, setIsRunning, _ := app.UseState(false)

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	_ "embed"
 	"strconv"
 
@@ -37,7 +36,7 @@ type InputFieldProps struct {
 
 // Reusable input component showing keyboard event handling
 var InputField = app.DefineComponent("InputField",
-	func(ctx context.Context, props InputFieldProps) any {
+	func(props InputFieldProps) any {
 		// Example of special key handling with VDomFunc
 		keyDown := &vdom.VDomFunc{
 			Type:            vdom.ObjectType_Func,
@@ -62,7 +61,7 @@ var InputField = app.DefineComponent("InputField",
 
 // Item component showing conditional classes and event handling
 var TodoItem = app.DefineComponent("TodoItem",
-	func(ctx context.Context, props TodoItemProps) any {
+	func(props TodoItemProps) any {
 		return vdom.H("div", map[string]any{
 			"className": vdom.Classes("flex items-center gap-2.5 p-2 border border-border rounded", vdom.If(props.Todo.Completed, "opacity-70")),
 		},
@@ -85,7 +84,7 @@ var TodoItem = app.DefineComponent("TodoItem",
 
 // List component demonstrating mapping over data, using WithKey to set key on a component
 var TodoList = app.DefineComponent("TodoList",
-	func(ctx context.Context, props TodoListProps) any {
+	func(props TodoListProps) any {
 		return vdom.H("div", map[string]any{
 			"className": "flex flex-col gap-2",
 		}, vdom.ForEach(props.Todos, func(todo Todo, _ int) any {
@@ -100,7 +99,7 @@ var TodoList = app.DefineComponent("TodoList",
 
 // Root component showing state management and composition
 var App = app.DefineComponent("App",
-	func(ctx context.Context, _ any) any {
+	func(_ any) any {
 		app.UseSetAppTitle("Todo App (Tsunami Demo)")
 
 		// Multiple state hooks example

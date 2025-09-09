@@ -4,7 +4,6 @@
 package app
 
 import (
-	"context"
 	"encoding/json"
 	"io/fs"
 	"net/http"
@@ -13,7 +12,7 @@ import (
 	"github.com/wavetermdev/waveterm/tsunami/vdom"
 )
 
-func DefineComponent[P any](name string, renderFn func(ctx context.Context, props P) any) vdom.Component[P] {
+func DefineComponent[P any](name string, renderFn func(props P) any) vdom.Component[P] {
 	return engine.DefineComponentEx(engine.GetDefaultClient(), name, renderFn)
 }
 
