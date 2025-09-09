@@ -76,7 +76,7 @@ Key Points:
 - Uses Tailwind v4 for styling - you can use any Tailwind classes in your components.
 - Use React-style camel case props (`className`, `onClick`)
 
-## Building Elements with vdom.H()
+## Building Elements with vdom.H
 
 The vdom.H function creates virtual DOM elements following a React-like pattern (React.createElement). It takes a tag name, a props map, and any number of children:
 
@@ -274,13 +274,130 @@ Most applications won't need these specialty hooks, but they're available for ad
 
 This ensures hooks are called in the same order every render, which is essential for Tsunami's state management.
 
-## Global State Management
+## State Management with Atoms
 
-Tsunami provides three types of global atoms for sharing state across components and with external systems. These atoms are declared as global variables using type-safe constructor functions.
+Tsunami uses **atoms** as the unified approach to state management. Whether you're managing local component state or global application state, you work with the same atom interface that prevents common bugs and provides type safety.
 
-### Declaring Global Atoms
+### What Are Atoms?
 
-Global atoms are declared using constructor functions that take a name and default value:
+An atom is an object that holds a value and provides methods to read and update it:
+
+```go
+// Create an atom (local component state)
+count := app.UseLocal(0)
+
+// Read the current value (always up-to-date)
+currentValue := count.Get()
+
+// Update the value (only in event handlers, effects, or async code)
+count.Set(42)
+
+// Functional update based on current value
+count.SetFn(func(current int) int {
+    return current + 1
+})
+```
+
+### The Atom Interface
+
+All atoms implement the same interface:
+
+- **`Get()`** - Returns the current value, registers render dependency
+- **`Set(value)`** - Updates the atom with a new value
+- **`SetFn(func(current) new)`** - Updates the atom using a function that receives the current value
+
+### Key Benefits
+
+**Prevents Stale Closures**: Unlike React's useState where captured values become stale, `atom.Get()` always returns the current value:
+
+```javascript
+// React problem: count is stale in setTimeout
+const [count, setCount] = useState(0);
+setTimeout(() => console.log(count), 1000); // Always logs 0
+```
+
+```go
+// Tsunami solution: always current
+count := app.UseLocal(0)
+time.AfterFunc(time.Second, func() {
+    fmt.Println(count.Get()) // Always logs current value
+})
+```
+
+**Type Safety**: Atoms are strongly typed. If you declare an atom as app.Atom[int], it can only hold integers:
+
+```go
+userCount := app.SharedAtom("userCount", 0)
+// userCount.Set("hello") // Compile error - can't assign string to int atom
+```
+
+**No Stale References**: When atoms are shared across components, everyone gets the same typed object with no typos or type mismatches.
+
+### Important Rules
+
+**Read with Get()**: Always use `atom.Get()` to read values in your render code:
+
+```go
+var MyComponent = app.DefineComponent("MyComponent", func(_ struct{}) any {
+    count := app.UseLocal(0)
+
+    // ✅ Correct: Read with Get()
+    currentCount := count.Get()
+
+    return vdom.H("div", nil, "Count: ", currentCount)
+})
+```
+
+**Write in handlers only**: Never call `atom.Set()` or `atom.SetFn()` in render code - only in event handlers, effects, or async code:
+
+```go
+var MyComponent = app.DefineComponent("MyComponent", func(_ struct{}) any {
+    count := app.UseLocal(0)
+
+    // ✅ Correct: Update in event handler
+    handleClick := func() {
+        count.Set(count.Get() + 1)
+    }
+
+    // ❌ Wrong: Never update in render code
+    // count.Set(42) // This would cause infinite re-renders
+
+    return vdom.H("button", map[string]any{
+        "onClick": handleClick,
+    }, "Click me")
+})
+```
+
+### Local State with app.UseLocal
+
+For component-specific state, use app.UseLocal:
+
+```go
+var MyComponent = app.DefineComponent("MyComponent", func(_ struct{}) any {
+    // Like React.useState, but with atom interface
+    name := app.UseLocal("John")
+    items := app.UseLocal([]string{})
+
+    // Read values in render code
+    currentName := name.Get()
+    currentItems := items.Get()
+
+    // Update in event handlers
+    handleAddItem := func(item string) {
+        items.SetFn(func(current []string) []string {
+            return append(current, item)
+        })
+    }
+
+    return vdom.H("div", nil, "Name: ", currentName)
+})
+```
+
+### Global State Management
+
+For state shared across components or accessible to external systems, declare global atoms as package variables:
+
+#### Declaring Global Atoms
 
 ```go
 // Declare global atoms as package-level variables
@@ -300,57 +417,53 @@ var (
 )
 ```
 
-### Using Atoms in Components
+#### Using Global Atoms
 
-Atoms provide simple Get/Set methods that automatically handle render dependencies:
+Global atoms work exactly like local atoms - same Get/Set interface:
 
 ```go
-// Reading atom values (registers render dependency)
-loading := isLoading.Get()
-currentTheme := theme.Get()
-user := currentUser.Get()
+var MyComponent = app.DefineComponent("MyComponent", func(_ struct{}) any {
+    // Reading atom values (registers render dependency)
+    loading := isLoading.Get()
+    currentTheme := theme.Get()
+    user := currentUser.Get()
 
-// Setting atom values (only in event handlers, effects, or async code)
-handleToggle := func() {
-    isLoading.Set(true) // Direct value setting
-}
+    // Setting atom values (only in event handlers)
+    handleToggle := func() {
+        isLoading.Set(true) // Direct value setting
+    }
 
-handleRetry := func() {
-    maxRetries.SetFn(func(current int) int {
-        return current + 1  // Functional update
-    })
-}
+    handleRetry := func() {
+        maxRetries.SetFn(func(current int) int {
+            return current + 1  // Functional update
+        })
+    }
+
+    return vdom.H("div", nil, "Loading: ", loading)
+})
 ```
 
-### Important Rules
-
-- **Declaration**: Atoms must be declared as global variables using the constructor functions
-- **Reading**: Call `.Get()` to read values - this automatically registers render dependencies
-- **Writing**: Call `.Set(value)` or `.SetFn(func(T) T)` to update values
-- **Render Safety**: NEVER call Set or SetFn in render code - only in event handlers, effects, or async code
-- **Type Safety**: Atoms are type-safe with `Atom[T]` - the type is established at declaration time
-
-### Atom Types
+#### Global Atom Types
 
 **SharedAtom** - Basic shared state between components:
 
-- Shared between components within the application
+- Shared within the application only
 - Not accessible to external systems
-- Triggers re-renders when updated
+- Perfect for UI state, user preferences, app-wide flags
 
 **ConfigAtom** - Configuration that external systems can read/write:
 
 - External tools can GET/POST to `/api/config` to read/modify these
-- Triggers re-renders when updated (internally or externally)
 - Perfect for user settings, API keys, feature flags
+- Triggers re-renders when updated internally or externally
 
 **DataAtom** - Application data that external systems can read:
 
 - External tools can GET `/api/data` to inspect app state
-- Triggers re-renders when updated
 - Ideal for application state, user data, API results
+- Read-only from external perspective
 
-### External API Integration
+#### External API Integration
 
 ConfigAtom and DataAtom automatically create REST endpoints:
 
