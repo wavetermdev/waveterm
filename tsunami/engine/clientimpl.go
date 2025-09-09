@@ -222,8 +222,8 @@ func (c *ClientImpl) GetAtomVal(name string) any {
 	return c.Root.GetAtomVal(name)
 }
 
-func makeNullVDom() *vdom.VDomElem {
-	return &vdom.VDomElem{WaveId: uuid.New().String(), Tag: vdom.WaveNullTag}
+func makeNullRendered() *rpctypes.RenderedElem {
+	return &rpctypes.RenderedElem{WaveId: uuid.New().String(), Tag: vdom.WaveNullTag}
 }
 
 func structToProps(props any) map[string]any {
@@ -258,9 +258,9 @@ func (c *ClientImpl) fullRender() (*rpctypes.VDomBackendUpdate, error) {
 	opts := &RenderOpts{Resync: true}
 	c.Root.RunWork(opts)
 	c.Root.Render(c.RootElem, opts)
-	renderedVDom := c.Root.MakeVDom()
+	renderedVDom := c.Root.MakeRendered()
 	if renderedVDom == nil {
-		renderedVDom = makeNullVDom()
+		renderedVDom = makeNullRendered()
 	}
 	return &rpctypes.VDomBackendUpdate{
 		Type:       "backendupdate",
@@ -279,9 +279,9 @@ func (c *ClientImpl) fullRender() (*rpctypes.VDomBackendUpdate, error) {
 func (c *ClientImpl) incrementalRender() (*rpctypes.VDomBackendUpdate, error) {
 	opts := &RenderOpts{Resync: false}
 	c.Root.RunWork(opts)
-	renderedVDom := c.Root.MakeVDom()
+	renderedVDom := c.Root.MakeRendered()
 	if renderedVDom == nil {
-		renderedVDom = makeNullVDom()
+		renderedVDom = makeNullRendered()
 	}
 	return &rpctypes.VDomBackendUpdate{
 		Type:       "backendupdate",

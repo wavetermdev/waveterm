@@ -1,21 +1,14 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-// vdom.VDomAsyncInitiationRequest
-type VDomAsyncInitiationRequest = {
-    type: "asyncinitiationrequest";
-    ts: number;
-    blockid?: string;
-};
-
-// vdom.VDomBackendOpts
+// rpctypes.VDomBackendOpts
 type VDomBackendOpts = {
     globalkeyboardevents?: boolean;
     title?: string;
     faviconpath?: string;
 };
 
-// vdom.VDomBackendUpdate
+// rpctypes.VDomBackendUpdate
 type VDomBackendUpdate = {
     type: "backendupdate";
     ts: number;
@@ -29,16 +22,7 @@ type VDomBackendUpdate = {
     messages?: VDomMessage[];
 };
 
-// vdom.VDomCreateContext
-type VDomCreateContext = {
-    type: "createcontext";
-    ts: number;
-    meta?: MetaType;
-    target?: VDomTarget;
-    persist?: boolean;
-};
-
-// vdom.VDomElem
+// rpctypes.RenderedElem
 type VDomElem = {
     waveid?: string;
     tag: string;
@@ -81,7 +65,7 @@ type VDomFunc = {
     stoppropagation?: boolean;
     preventdefault?: boolean;
     globalevent?: string;
-    "#keys"?: string[];
+    keys?: string[];
 };
 
 // vdom.VDomMessage
@@ -119,14 +103,14 @@ type VDomRefPosition = {
     boundingclientrect: DomRect;
 };
 
-// vdom.VDomRefUpdate
+// rpctypes.VDomRefUpdate
 type VDomRefUpdate = {
     refid: string;
     hascurrent: boolean;
     position?: VDomRefPosition;
 };
 
-// vdom.VDomRenderContext
+// rpctypes.VDomRenderContext
 type VDomRenderContext = {
     focused: boolean;
     width: number;
@@ -135,7 +119,7 @@ type VDomRenderContext = {
     background?: boolean;
 };
 
-// vdom.VDomRenderUpdate
+// rpctypes.VDomRenderUpdate
 type VDomRenderUpdate = {
     updatetype: "root" | "append" | "replace" | "remove" | "insert";
     waveid?: string;
@@ -144,20 +128,7 @@ type VDomRenderUpdate = {
     index?: number;
 };
 
-// vdom.VDomTarget
-type VDomTarget = {
-    newblock?: boolean;
-    magnified?: boolean;
-    toolbar?: VDomTargetToolbar;
-};
-
-// vdom.VDomTargetToolbar
-type VDomTargetToolbar = {
-    toolbar: boolean;
-    height?: string;
-};
-
-// vdom.VDomTransferElem
+// rpctypes.VDomTransferElem
 type VDomTransferElem = {
     waveid?: string;
     tag: string;
@@ -166,22 +137,14 @@ type VDomTransferElem = {
     text?: string;
 };
 
-// wshrpc.VDomUrlRequestData
-type VDomUrlRequestData = {
-    method: string;
-    url: string;
-    headers: { [key: string]: string };
-    body?: string;
-};
-
-// wshrpc.VDomUrlRequestResponse
+// rpctypes.VDomUrlRequestResponse
 type VDomUrlRequestResponse = {
     statuscode?: number;
     headers?: { [key: string]: string };
     body?: Uint8Array;
 };
 
-// Additional types from rpctypes that were missing
+// vdom.VDomKeyboardEvent
 type VDomKeyboardEvent = {
     type: string;
     key: string;
@@ -196,6 +159,7 @@ type VDomKeyboardEvent = {
     location?: number;
 };
 
+// vdom.VDomPointerData
 type VDomPointerData = {
     button: number;
     buttons: number;

@@ -60,7 +60,7 @@ func Button(ctx context.Context, props map[string]any) any {
 }
 
 func printVDom(root *engine.RootElem) {
-	vd := root.MakeVDom()
+	vd := root.MakeRendered()
 	jsonBytes, _ := json.MarshalIndent(vd, "", "  ")
 	fmt.Printf("%s\n", string(jsonBytes))
 }

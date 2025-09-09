@@ -15,7 +15,6 @@ const ObjectType_Func = "func"
 
 // vdom element
 type VDomElem struct {
-	WaveId   string         `json:"waveid,omitempty"` // required, except for #text nodes
 	Tag      string         `json:"tag"`
 	Props    map[string]any `json:"props,omitempty"`
 	Children []VDomElem     `json:"children,omitempty"`
@@ -29,7 +28,7 @@ type VDomFunc struct {
 	StopPropagation bool     `json:"stoppropagation,omitempty"` // set to call e.stopPropagation() on the client side
 	PreventDefault  bool     `json:"preventdefault,omitempty"`  // set to call e.preventDefault() on the client side
 	GlobalEvent     string   `json:"globalevent,omitempty"`
-	Keys            []string `json:"#keys,omitempty"` // special for keyDown events a list of keys to "capture"
+	Keys            []string `json:"keys,omitempty"` // special for keyDown events a list of keys to "capture"
 }
 
 // used in props

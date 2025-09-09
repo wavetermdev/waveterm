@@ -14,24 +14,30 @@ type ChildKey struct {
 	Key string
 }
 
+// ComponentImpl represents a node in the persistent shadow component tree.
+// This is Tsunami's equivalent to React's Fiber nodes - it maintains component
+// identity, state, and lifecycle across renders while the VDomElem input/output
+// structures are ephemeral.
 type ComponentImpl struct {
-	WaveId  string
-	Tag     string
-	Key     string
-	Elem    *vdom.VDomElem
-	Mounted bool
+	WaveId  string         // Unique identifier for this component instance
+	Tag     string         // Component type (HTML tag, custom component name, "#text", etc.)
+	Key     string         // User-provided key for reconciliation (like React keys)
+	Elem    *vdom.VDomElem // Reference to the current input VDomElem being rendered
+	Mounted bool           // Whether this component is currently mounted
 
-	// hooks
-	Hooks []*Hook
+	// Hooks system (React-like)
+	Hooks []*Hook // Array of hooks (state, effects, etc.) attached to this component
 
-	// #text component
-	Text string
+	// Component content - exactly ONE of these patterns is used:
 
-	// base component -- vdom, wave elem, or #fragment
-	Children []*ComponentImpl
+	// Pattern 1: Text nodes
+	Text string // For "#text" components - stores the actual text content
 
-	// component -> component
-	Comp *ComponentImpl
+	// Pattern 2: Base/DOM elements with children
+	Children []*ComponentImpl // For HTML tags, fragments - array of child components
+
+	// Pattern 3: Custom components that render to other components
+	RenderedComp *ComponentImpl // For custom components - points to what this component rendered to
 }
 
 func (c *ComponentImpl) compMatch(tag string, key string) bool {

@@ -5,29 +5,23 @@ package rpctypes
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/wavetermdev/waveterm/tsunami/vdom"
 )
+
+// rendered element (output from rendering pipeline)
+type RenderedElem struct {
+	WaveId   string         `json:"waveid,omitempty"` // required, except for #text nodes
+	Tag      string         `json:"tag"`
+	Props    map[string]any `json:"props,omitempty"`
+	Children []RenderedElem `json:"children,omitempty"`
+	Text     string         `json:"text,omitempty"`
+}
 
 type VDomUrlRequestResponse struct {
 	StatusCode int               `json:"statuscode,omitempty"`
 	Headers    map[string]string `json:"headers,omitempty"`
 	Body       []byte            `json:"body,omitempty"`
-}
-
-type VDomAsyncInitiationRequest struct {
-	Type    string `json:"type" tstype:"\"asyncinitiationrequest\""`
-	Ts      int64  `json:"ts"`
-	BlockId string `json:"blockid,omitempty"`
-}
-
-func MakeAsyncInitiationRequest(blockId string) VDomAsyncInitiationRequest {
-	return VDomAsyncInitiationRequest{
-		Type:    "asyncinitiationrequest",
-		Ts:      time.Now().UnixMilli(),
-		BlockId: blockId,
-	}
 }
 
 type VDomFrontendUpdate struct {
@@ -67,27 +61,27 @@ type VDomTransferElem struct {
 }
 
 func (beUpdate *VDomBackendUpdate) CreateTransferElems() {
-	var vdomElems []vdom.VDomElem
+	var renderedElems []RenderedElem
 	for idx, reUpdate := range beUpdate.RenderUpdates {
 		if reUpdate.VDom == nil {
 			continue
 		}
-		vdomElems = append(vdomElems, *reUpdate.VDom)
+		renderedElems = append(renderedElems, *reUpdate.VDom)
 		beUpdate.RenderUpdates[idx].VDomWaveId = reUpdate.VDom.WaveId
 		beUpdate.RenderUpdates[idx].VDom = nil
 	}
-	transferElems := ConvertElemsToTransferElems(vdomElems)
+	transferElems := ConvertElemsToTransferElems(renderedElems)
 	transferElems = DedupTransferElems(transferElems)
 	beUpdate.TransferElems = transferElems
 }
 
-func ConvertElemsToTransferElems(elems []vdom.VDomElem) []VDomTransferElem {
+func ConvertElemsToTransferElems(elems []RenderedElem) []VDomTransferElem {
 	var transferElems []VDomTransferElem
 	textCounter := 0 // Counter for generating unique IDs for #text nodes
 
-	// Helper function to recursively process each VDomElem in preorder
-	var processElem func(elem vdom.VDomElem) string
-	processElem = func(elem vdom.VDomElem) string {
+	// Helper function to recursively process each RenderedElem in preorder
+	var processElem func(elem RenderedElem) string
+	processElem = func(elem RenderedElem) string {
 		// Handle #text nodes by generating a unique placeholder ID
 		if elem.Tag == "#text" {
 			textId := fmt.Sprintf("text-%d", textCounter)
@@ -155,7 +149,6 @@ type VDomRenderContext struct {
 	Background bool   `json:"background,omitempty"`
 }
 
-
 type VDomRefUpdate struct {
 	RefId      string                `json:"refid"`
 	HasCurrent bool                  `json:"hascurrent"`
@@ -169,11 +162,11 @@ type VDomBackendOpts struct {
 }
 
 type VDomRenderUpdate struct {
-	UpdateType string         `json:"updatetype" tstype:"\"root\"|\"append\"|\"replace\"|\"remove\"|\"insert\""`
-	WaveId     string         `json:"waveid,omitempty"`
-	VDomWaveId string         `json:"vdomwaveid,omitempty"`
-	VDom       *vdom.VDomElem `json:"vdom,omitempty"` // these get removed for transfer (encoded to transferelems)
-	Index      *int           `json:"index,omitempty"`
+	UpdateType string        `json:"updatetype" tstype:"\"root\"|\"append\"|\"replace\"|\"remove\"|\"insert\""`
+	WaveId     string        `json:"waveid,omitempty"`
+	VDomWaveId string        `json:"vdomwaveid,omitempty"`
+	VDom       *RenderedElem `json:"vdom,omitempty"` // these get removed for transfer (encoded to transferelems)
+	Index      *int          `json:"index,omitempty"`
 }
 
 type VDomMessage struct {
