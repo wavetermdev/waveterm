@@ -102,49 +102,55 @@ var App = app.DefineComponent("App",
 	func(_ any) any {
 		app.UseSetAppTitle("Todo App (Tsunami Demo)")
 
-		// Multiple state hooks example
-		todos, setTodos, _ := app.UseState([]Todo{
+		// Multiple local atoms example
+		todosAtom := app.UseLocal([]Todo{
 			{Id: 1, Text: "Learn VDOM", Completed: false},
 			{Id: 2, Text: "Build a todo app", Completed: false},
 		})
-		nextId, setNextId, _ := app.UseState(3)
-		inputText, setInputText, _ := app.UseState("")
+		nextIdAtom := app.UseLocal(3)
+		inputTextAtom := app.UseLocal("")
 
 		// Event handlers modifying multiple pieces of state
 		addTodo := func() {
-			if inputText == "" {
+			if inputTextAtom.Get() == "" {
 				return
 			}
-			setTodos(append(todos, Todo{
-				Id:        nextId,
-				Text:      inputText,
-				Completed: false,
-			}))
-			setNextId(nextId + 1)
-			setInputText("")
+			todosAtom.SetFn(func(todos []Todo) []Todo {
+				newTodos := app.DeepCopy(todos)
+				return append(newTodos, Todo{
+					Id:        nextIdAtom.Get(),
+					Text:      inputTextAtom.Get(),
+					Completed: false,
+				})
+			})
+			nextIdAtom.Set(nextIdAtom.Get() + 1)
+			inputTextAtom.Set("")
 		}
 
 		// Immutable state update pattern
 		toggleTodo := func(id int) {
-			newTodos := make([]Todo, len(todos))
-			copy(newTodos, todos)
-			for i := range newTodos {
-				if newTodos[i].Id == id {
-					newTodos[i].Completed = !newTodos[i].Completed
-					break
+			todosAtom.SetFn(func(todos []Todo) []Todo {
+				newTodos := app.DeepCopy(todos)
+				for i := range newTodos {
+					if newTodos[i].Id == id {
+						newTodos[i].Completed = !newTodos[i].Completed
+						break
+					}
 				}
-			}
-			setTodos(newTodos)
+				return newTodos
+			})
 		}
 
 		deleteTodo := func(id int) {
-			newTodos := make([]Todo, 0, len(todos)-1)
-			for _, todo := range todos {
-				if todo.Id != id {
-					newTodos = append(newTodos, todo)
+			todosAtom.SetFn(func(todos []Todo) []Todo {
+				newTodos := make([]Todo, 0, len(todos)-1)
+				for _, todo := range todos {
+					if todo.Id != id {
+						newTodos = append(newTodos, todo)
+					}
 				}
-			}
-			setTodos(newTodos)
+				return newTodos
+			})
 		}
 
 		return vdom.H("div", map[string]any{
@@ -160,8 +166,8 @@ var App = app.DefineComponent("App",
 				"className": "flex gap-2.5 mb-5",
 			},
 				InputField(InputFieldProps{
-					Value:    inputText,
-					OnChange: setInputText,
+					Value:    inputTextAtom.Get(),
+					OnChange: inputTextAtom.Set,
 					OnEnter:  addTodo,
 				}),
 				vdom.H("button", map[string]any{
@@ -171,7 +177,7 @@ var App = app.DefineComponent("App",
 			),
 
 			TodoList(TodoListProps{
-				Todos:    todos,
+				Todos:    todosAtom.Get(),
 				OnToggle: toggleTodo,
 				OnDelete: deleteTodo,
 			}),
