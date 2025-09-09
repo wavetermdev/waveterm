@@ -74,6 +74,16 @@ Key Points:
 - Uses Tailwind v4 for styling - you can use any Tailwind classes in your components.
 - Use React-style camel case props (`className`, `onClick`)
 
+## Quick Reference
+
+- Component: app.DefineComponent("Name", func(props PropsType) any { ... })
+- Element: vdom.H("div", map[string]any{"className": "..."}, children...)
+- Local state: atom := app.UseLocal(initialValue); atom.Get(); atom.Set(value)
+- Event handler: "onClick": func() { ... }
+- Conditional: vdom.If(condition, element)
+- Lists: vdom.ForEach(items, func(item, idx) any { return ... })
+- Styling: "className": vdom.Classes("bg-gray-900 text-white p-4", vdom.If(cond, "bg-blue-800")) // Tailwind + dark mode
+
 ## Building Elements with vdom.H
 
 The vdom.H function creates virtual DOM elements following a React-like pattern (React.createElement). It takes a tag name, a props map, and any number of children:
@@ -220,7 +230,6 @@ Helper functions:
 - `vdom.Ternary[T any](cond bool, trueRtn T, falseRtn T) T` - Type-safe ternary operation, returns trueRtn if condition is true, falseRtn otherwise
 - `vdom.ForEach[T any](items []T, fn func(T, int) any) []any` - Maps over items with index, function receives item and index
 - `vdom.Classes(classes ...any) string` - Combines multiple class values into a single space-separated string, similar to JavaScript clsx library (accepts string, []string, and map[string]bool params)
-- `app.DeepCopy[T any](value T) T` - Creates a deep copy of slices, maps, and other complex types for safe state updates
 
 - The vdom.If and vdom.IfElse functions can be used for both conditional rendering of elements, conditional classes, and conditional props.
 - For vdom.If and vdom.IfElse, always follow the pattern of condition first (bool), then value(s).
@@ -352,6 +361,65 @@ var MyComponent = app.DefineComponent("MyComponent", func(_ struct{}) any {
     }, "Click me")
 })
 ```
+
+**Never mutate values from Get()**: For complex data types, never modify the value returned from `atom.Get()`. Always use `app.DeepCopy()` before mutations:
+
+```go
+var MyComponent = app.DefineComponent("MyComponent", func(_ struct{}) any {
+    todos := app.UseLocal([]Todo{{Text: "Learn Tsunami"}})
+
+    addTodo := func() {
+        // ✅ Correct: Copy before modifying
+        todos.SetFn(func(current []Todo) []Todo {
+            todosCopy := app.DeepCopy(current)
+            return append(todosCopy, Todo{Text: "New task"})
+        })
+    }
+
+    // ❌ Wrong: Never mutate the original
+    // badUpdate := func() {
+    //     current := todos.Get()
+    //     current[0].Text = "Modified" // Dangerous mutation!
+    //     todos.Set(current)
+    // }
+
+    return vdom.H("div", nil, "Todo count: ", len(todos.Get()))
+})
+```
+
+**Capture atoms, not values**: In closures and async code, always capture the atom itself, never captured values from render:
+
+```go
+var MyComponent = app.DefineComponent("MyComponent", func(_ struct{}) any {
+    count := app.UseLocal(0)
+    currentCount := count.Get() // Read in render
+
+    // ✅ Correct: Capture the atom
+    handleDelayedIncrement := func() {
+        time.AfterFunc(time.Second, func() {
+            count.SetFn(func(current int) int { return current + 1 })
+        })
+    }
+
+    // ❌ Wrong: Capturing stale value from render
+    // handleStaleIncrement := func() {
+    //     time.AfterFunc(time.Second, func() {
+    //         count.Set(currentCount + 1) // Uses stale currentCount!
+    //     })
+    // }
+
+    return vdom.H("button", map[string]any{
+        "onClick": handleDelayedIncrement,
+    }, "Count: ", currentCount)
+})
+```
+
+**Key Points:**
+
+- Use `app.DeepCopy(value)` before modifying complex data from `atom.Get()`
+- Always capture atoms in closures, never captured render values
+- This prevents stale closures and shared reference bugs
+- `app.DeepCopy[T any](value T) T` works with slices, maps, structs, and nested combinations
 
 ### Local State with app.UseLocal
 
@@ -677,38 +745,26 @@ app.UseRef creates mutable values that persist across renders without triggering
 
 ```go
 var MyComponent = app.DefineComponent("MyComponent", func(_ struct{}) any {
-    // Store complex state that goroutines need to access
-    timerRef := app.UseRef(&TimerState{
-        active: false,
-        done:   make(chan bool),
-    })
-
     // Count renders without triggering re-renders
     renderCount := app.UseRef(0)
     renderCount.Current++
 
-    startTimer := func() {
-        if timerRef.Current.active {
-            return
-        }
+    // Store previous values for comparison
+    prevCount := app.UseRef(0)
+    count := app.UseLocal(0)
 
-        timerRef.Current.active = true
-        go func() {
-            // Goroutine can safely access ref
-            for timerRef.Current.active {
-                time.Sleep(time.Second)
-                // Update UI state from goroutine
-                // count.Set(someValue)
-                app.SendAsyncInitiation()
-            }
-        }()
+    currentCount := count.Get()
+    if prevCount.Current != currentCount {
+        fmt.Printf("Count changed from %d to %d\n", prevCount.Current, currentCount)
+        prevCount.Current = currentCount
     }
 
     return vdom.H("div", nil,
         vdom.H("p", nil, "Render #", renderCount.Current),
+        vdom.H("p", nil, "Count: ", currentCount),
         vdom.H("button", map[string]any{
-            "onClick": startTimer,
-        }, "Start Timer"),
+            "onClick": func() { count.Set(currentCount + 1) },
+        }, "Increment"),
     )
 })
 ```
@@ -943,6 +999,19 @@ Key points:
 - Content-Type is automatically detected for static files
 - For dynamic handlers, set Content-Type explicitly when needed
 
+## CRITICAL RULES (Must Follow)
+
+### Hooks (Same as React)
+
+- ✅ Only call hooks at component top level, before any returns
+- ❌ Never call hooks in loops, conditions, or after early returns
+
+### Atoms (Tsunami-specific)
+
+- ✅ Read with atom.Get() in render code
+- ❌ Never call atom.Set() in render code - only in handlers/effects
+- ✅ Always use SetFn() for concurrent updates from goroutines
+
 ## Tsunami App Template
 
 ```go
@@ -1020,18 +1089,18 @@ var App = app.DefineComponent("App", func(_ struct{}) any {
 		inputText.Set("")
 	}
 
-	toggleTodo := func(id int) {
-		currentTodos := todos.Get()
-		newTodos := make([]Todo, len(currentTodos))
-		copy(newTodos, currentTodos)
-		for i := range newTodos {
-			if newTodos[i].Id == id {
-				newTodos[i].Completed = !newTodos[i].Completed
-				break
-			}
-		}
-		todos.Set(newTodos)
-	}
+    toggleTodo := func(id int) {
+        todos.SetFn(func(current []Todo) []Todo {
+            todosCopy := app.DeepCopy(current)
+            for i := range todosCopy {
+                if todosCopy[i].Id == id {
+                    todosCopy[i].Completed = !todosCopy[i].Completed
+                    break
+                }
+            }
+            return todosCopy
+        })
+    }
 
 	deleteTodo := func(id int) {
 		currentTodos := todos.Get()
@@ -1093,15 +1162,29 @@ Key points:
 3. Do NOT write a main() function - the framework handles app lifecycle
 4. Use init() for setup like registering dynamic handlers with app.HandleDynFunc
 
+## Common Mistakes to Avoid
+
+1. **Calling Set in render**: `countAtom.Set(42)` in component body causes infinite loops
+2. **Missing keys in lists**: Always use `.WithKey(id)` for list items
+3. **Stale closures in goroutines**: Use `atom.Get()` inside event handlers, effects, and goroutines, not captured values
+4. **Wrong prop format**: Use `"className"` not `"class"`, `"onClick"` not `"onclick"` (matching React prop and style names)
+5. **Mutating state**: Always create new slices/objects when updating atoms (can use app.DeepCopy helper)
+
+## Styling Requirements
+
+**IMPORTANT**: Tsunami apps run in Wave Terminal (dark mode). Always use dark-friendly styles:
+
+- ✅ `"bg-gray-900 text-white"`
+- ✅ `"bg-slate-800 border-gray-600"`
+- ❌ `"bg-white text-black"` (avoid light backgrounds)
+
 ## Important Technical Details
 
 - Props must be defined as Go structs with json tags
-- Components take their props type directly.
+- Components take their props type directly as a parameter
 - Always use app.DefineComponent for component registration
-- Call app.SendAsyncInitiation after async state updates
 - Provide keys when using vdom.ForEach with lists (using WithKey method)
 - Use vdom.Classes with vdom.If for combining static and conditional class names
-- Consider cleanup functions in app.UseEffect for async operations
 - `<script>` tags are NOT supported
 - Applications consist of a single file: app.go containing all Go code and component definitions
 - Styling is handled through Tailwind v4 CSS classes
@@ -1110,4 +1193,9 @@ Key points:
 - This is a pure Go system - do not attempt to write React components or JavaScript code
 - All UI rendering, including complex visualizations, should be done through Go using vdom.H
 
-The todo demo demonstrates all these patterns in a complete application.
+**Async Operation Guidelines**
+
+- Use app.UseGoRoutine instead of raw go statements for component-related async work
+- Always respect ctx.Done() in app.UseGoRoutine functions to prevent goroutine leaks
+- Use app.UseEffect with cleanup functions for subscriptions, timers, and other lifecycle management
+- Call app.SendAsyncInitiation after state updates to trigger re-rendering
