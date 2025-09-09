@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"log"
 	"time"
 
@@ -145,49 +144,39 @@ var StatsPanel = app.DefineComponent("StatsPanel", func(props StatsPanelProps) a
 var App = app.DefineComponent("App", func(_ struct{}) any {
 	app.UseSetAppTitle("CPU Usage Monitor")
 
-	// Timer function for continuous CPU data collection
-	timerFn := func(ctx context.Context) {
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case <-time.After(time.Second):
-				// Collect new CPU data point and shift the data window
-				cpuDataAtom.SetFn(func(currentData []CPUDataPoint) []CPUDataPoint {
-					newPoint := generateCPUDataPoint()
-					currentDataPointCount := dataPointCountAtom.Get()
+	// Use UseTicker for continuous CPU data collection - automatically cleaned up on unmount
+	app.UseTicker(time.Second, func() {
+		// Collect new CPU data point and shift the data window
+		cpuDataAtom.SetFn(func(currentData []CPUDataPoint) []CPUDataPoint {
+			newPoint := generateCPUDataPoint()
+			currentDataPointCount := dataPointCountAtom.Get()
 
-					// Make a safe copy to avoid mutation issues
-					data := app.DeepCopy(currentData)
+			// Make a safe copy to avoid mutation issues
+			data := app.DeepCopy(currentData)
 
-					// Ensure we have the right size array
-					if len(data) != currentDataPointCount {
-						// Resize array if config changed
-						resized := make([]CPUDataPoint, currentDataPointCount)
-						copyCount := currentDataPointCount
-						if len(data) < copyCount {
-							copyCount = len(data)
-						}
-						if copyCount > 0 {
-							copy(resized[currentDataPointCount-copyCount:], data[len(data)-copyCount:])
-						}
-						data = resized
-					}
-
-					// Append new point and keep only the last currentDataPointCount elements
-					data = append(data, newPoint)
-					if len(data) > currentDataPointCount {
-						data = data[len(data)-currentDataPointCount:]
-					}
-					return data
-				})
-				app.SendAsyncInitiation()
+			// Ensure we have the right size array
+			if len(data) != currentDataPointCount {
+				// Resize array if config changed
+				resized := make([]CPUDataPoint, currentDataPointCount)
+				copyCount := currentDataPointCount
+				if len(data) < copyCount {
+					copyCount = len(data)
+				}
+				if copyCount > 0 {
+					copy(resized[currentDataPointCount-copyCount:], data[len(data)-copyCount:])
+				}
+				data = resized
 			}
-		}
-	}
 
-	// Use UseGoRoutine for managed goroutine lifecycle
-	app.UseGoRoutine(timerFn, []any{})
+			// Append new point and keep only the last currentDataPointCount elements
+			data = append(data, newPoint)
+			if len(data) > currentDataPointCount {
+				data = data[len(data)-currentDataPointCount:]
+			}
+			return data
+		})
+		app.SendAsyncInitiation()
+	}, []any{})
 
 	handleClear := func() {
 		// Reset with empty data points based on current config
