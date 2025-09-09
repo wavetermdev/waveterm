@@ -11,6 +11,7 @@ import { getTextChildren } from "@/model/model-utils";
 import type { TsunamiModel } from "@/model/tsunami-model";
 import { RechartsTag } from "@/recharts/recharts";
 import { adaptFromReactOrNativeKeyEvent, checkKeyPressed } from "@/util/keyutil";
+import OptimisticInput from "./input";
 
 const TextTag = "#text";
 const FragmentTag = "#fragment";
@@ -278,6 +279,17 @@ function VDomTag({ elem, model }: { elem: VDomElem; model: TsunamiModel }) {
     if (elem.tag == FragmentTag) {
         return childrenComps;
     }
+    
+    // Use OptimisticInput for input and textarea elements
+    if (elem.tag === "input" || elem.tag === "textarea") {
+        props.key = "e-" + elem.waveid;
+        const optimisticProps = {
+            ...props,
+            _tagName: elem.tag as "input" | "textarea"
+        };
+        return React.createElement(OptimisticInput, optimisticProps, childrenComps);
+    }
+    
     props.key = "e-" + elem.waveid;
     return React.createElement(elem.tag, props, childrenComps);
 }
