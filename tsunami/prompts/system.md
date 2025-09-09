@@ -364,17 +364,18 @@ var MyComponent = app.DefineComponent("MyComponent", func(_ struct{}) any {
 })
 ```
 
-**Never mutate values from Get()**: For complex data types, never modify the value returned from `atom.Get()`. Always use `app.DeepCopy()` before mutations:
+**Never mutate values from Get()**: For complex data types, never modify the value returned from `atom.Get()`.
+
+**Use SetFn() for safe mutations**: `SetFn()` automatically handles deep copying, making it safe to modify complex data:
 
 ```go
 var MyComponent = app.DefineComponent("MyComponent", func(_ struct{}) any {
     todos := app.UseLocal([]Todo{{Text: "Learn Tsunami"}})
 
     addTodo := func() {
-        // ✅ Correct: Copy before modifying
+        // ✅ Correct: SetFn automatically deep copies the current value
         todos.SetFn(func(current []Todo) []Todo {
-            todosCopy := app.DeepCopy(current)
-            return append(todosCopy, Todo{Text: "New task"})
+            return append(current, Todo{Text: "New task"})
         })
     }
 
@@ -418,7 +419,8 @@ var MyComponent = app.DefineComponent("MyComponent", func(_ struct{}) any {
 
 **Key Points:**
 
-- Use `app.DeepCopy(value)` before modifying complex data from `atom.Get()`
+- `SetFn()` automatically deep copies the current value before passing it to your function
+- For direct mutations using `Set()`, manually use `app.DeepCopy(value)` before modifying complex data from `atom.Get()`
 - Always capture atoms in closures, never captured render values
 - This prevents stale closures and shared reference bugs
 - `app.DeepCopy[T any](value T) T` works with slices, maps, structs, and nested combinations
@@ -1009,7 +1011,7 @@ var DataPollerComponent = app.DefineComponent("DataPollerComponent", func(_ stru
                     status.Set("error")
                 } else {
                     data.SetFn(func(current []APIResult) []APIResult {
-                        // Merge new data with existing, handle deduplication
+                        // SetFn automatically deep copies current, safe to modify
                         return mergeResults(current, newData)
                     })
                     status.Set("success")
@@ -1073,8 +1075,8 @@ Atoms are internally synchronized, so multiple goroutines can safely call Get() 
 // Safe pattern for concurrent updates using SetFn
 updateTodos := func() {
     todosAtom.SetFn(func(current []Todo) []Todo {
-        todosCopy := app.DeepCopy(current)
-        return append(todosCopy, newTodo)
+        // SetFn automatically deep copies current value
+        return append(current, newTodo)
     })
 }
 ```
@@ -1172,7 +1174,7 @@ Key points:
 
 - ✅ Read with atom.Get() in render code
 - ❌ Never call atom.Set() in render code - only in handlers/effects
-- ✅ Always use SetFn() for concurrent updates from goroutines
+- ✅ Always use SetFn() for concurrent updates from goroutines (automatically deep copies the value)
 
 ## Tsunami App Template
 
@@ -1253,14 +1255,14 @@ var App = app.DefineComponent("App", func(_ struct{}) any {
 
     toggleTodo := func(id int) {
         todos.SetFn(func(current []Todo) []Todo {
-            todosCopy := app.DeepCopy(current)
-            for i := range todosCopy {
-                if todosCopy[i].Id == id {
-                    todosCopy[i].Completed = !todosCopy[i].Completed
+            // SetFn automatically deep copies current value
+            for i := range current {
+                if current[i].Id == id {
+                    current[i].Completed = !current[i].Completed
                     break
                 }
             }
-            return todosCopy
+            return current
         })
     }
 
@@ -1330,7 +1332,7 @@ Key points:
 2. **Missing keys in lists**: Always use `.WithKey(id)` for list items
 3. **Stale closures in goroutines**: Use `atom.Get()` inside event handlers, effects, and goroutines, not captured values
 4. **Wrong prop format**: Use `"className"` not `"class"`, `"onClick"` not `"onclick"` (matching React prop and style names)
-5. **Mutating state**: Always create new slices/objects when updating atoms (can use app.DeepCopy helper)
+5. **Mutating state**: With `SetFn()`, you can safely modify the current value as it's automatically deep copied. With `Set()`, create new slices/objects or use app.DeepCopy helper
 
 ## Styling Requirements
 

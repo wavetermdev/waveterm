@@ -112,8 +112,7 @@ var App = app.DefineComponent("App", func(_ any) any {
 			return
 		}
 		todosAtom.SetFn(func(todos []Todo) []Todo {
-			newTodos := app.DeepCopy(todos)
-			return append(newTodos, Todo{
+			return append(todos, Todo{
 				Id:        nextIdAtom.Get(),
 				Text:      inputTextAtom.Get(),
 				Completed: false,
@@ -126,14 +125,13 @@ var App = app.DefineComponent("App", func(_ any) any {
 	// Immutable state update pattern
 	toggleTodo := func(id int) {
 		todosAtom.SetFn(func(todos []Todo) []Todo {
-			newTodos := app.DeepCopy(todos)
-			for i := range newTodos {
-				if newTodos[i].Id == id {
-					newTodos[i].Completed = !newTodos[i].Completed
+			for i := range todos {
+				if todos[i].Id == id {
+					todos[i].Completed = !todos[i].Completed
 					break
 				}
 			}
-			return newTodos
+			return todos
 		})
 	}
 

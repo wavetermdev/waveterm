@@ -147,12 +147,9 @@ var App = app.DefineComponent("App", func(_ struct{}) any {
 	// Use UseTicker for continuous CPU data collection - automatically cleaned up on unmount
 	app.UseTicker(time.Second, func() {
 		// Collect new CPU data point and shift the data window
-		cpuDataAtom.SetFn(func(currentData []CPUDataPoint) []CPUDataPoint {
+		cpuDataAtom.SetFn(func(data []CPUDataPoint) []CPUDataPoint {
 			newPoint := generateCPUDataPoint()
 			currentDataPointCount := dataPointCountAtom.Get()
-
-			// Make a safe copy to avoid mutation issues
-			data := app.DeepCopy(currentData)
 
 			// Ensure we have the right size array
 			if len(data) != currentDataPointCount {
