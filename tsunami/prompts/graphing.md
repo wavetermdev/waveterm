@@ -26,7 +26,9 @@ vdom.H("recharts:ResponsiveContainer", map[string]any{
 ## Key Concepts
 
 ### Namespace Usage
+
 All recharts components use the `recharts:` prefix and have the same names as their React counterparts:
+
 - `recharts:ResponsiveContainer` - Container that responds to parent size changes
 - `recharts:LineChart`, `recharts:AreaChart`, `recharts:BarChart` - Chart types
 - `recharts:XAxis`, `recharts:YAxis` - Axis components
@@ -36,6 +38,7 @@ All recharts components use the `recharts:` prefix and have the same names as th
 Every Recharts component from the React library is available with the `recharts:` prefix.
 
 ### Data Structure
+
 Charts expect Go structs or slices that can be serialized to JSON. Use json tags to control field names:
 
 ```go
@@ -53,6 +56,7 @@ data := []DataPoint{
 ```
 
 ### Props and Configuration
+
 Recharts components accept the same props as the React version, passed as Go map[string]any:
 
 ```go
@@ -188,13 +192,13 @@ Charts automatically re-render when their data changes through Tsunami's reactiv
 var App = app.DefineComponent("App",
     func(ctx context.Context, _ struct{}) any {
         // State management
-        chartData, setChartData, setChartDataFn := vdom.UseData[[]MetricsData](ctx, "metrics")
-        
+        chartData, setChartData, setChartDataFn := app.UseData[[]MetricsData]("metrics")
+
         // Timer for live updates
-        vdom.UseEffect(ctx, func() func() {
+        app.UseEffect(func() func() {
             ticker := time.NewTicker(1 * time.Second)
             done := make(chan bool)
-            
+
             go func() {
                 for {
                     select {
@@ -215,13 +219,13 @@ var App = app.DefineComponent("App",
                     }
                 }
             }()
-            
+
             return func() {
                 ticker.Stop()
                 close(done)
             }
         }, []any{})
-        
+
         return renderLineChart(chartData)
     },
 )
@@ -230,6 +234,7 @@ var App = app.DefineComponent("App",
 ## Responsive Design
 
 ### Container Sizing
+
 Always use `ResponsiveContainer` for charts that should adapt to their container:
 
 ```go
@@ -247,6 +252,7 @@ vdom.H("recharts:ResponsiveContainer", map[string]any{
 ```
 
 ### Mobile-Friendly Charts
+
 Use Tailwind classes to create responsive chart layouts:
 
 ```go
@@ -265,6 +271,7 @@ vdom.H("div", map[string]any{
 ## Advanced Features
 
 ### Custom Styling
+
 You can customize chart appearance through props:
 
 ```go
@@ -280,6 +287,7 @@ vdom.H("recharts:Tooltip", map[string]any{
 ```
 
 ### Event Handling
+
 Charts support interaction events:
 
 ```go
@@ -295,24 +303,28 @@ vdom.H("recharts:LineChart", map[string]any{
 ## Best Practices
 
 ### Data Management
-- Use global atoms (`UseData`) for chart data that updates frequently
+
+- Use global atoms (app.UseData) for chart data that updates frequently
 - Implement data windowing for large datasets to maintain performance
 - Structure data with appropriate json tags for clean field names
 
 ### Performance
+
 - Limit data points for real-time charts (typically 20-100 points)
-- Use `UseEffect` cleanup functions to prevent memory leaks with timers
+- Use app.UseEffect cleanup functions to prevent memory leaks with timers
 - Consider data aggregation for historical views
 
 ### Styling
+
 - Use consistent color schemes across charts
 - Leverage Tailwind classes for chart containers and surrounding UI
 - Consider dark/light theme support in color choices
 
 ### State Updates
+
 - Use functional setters (`setDataFn`) for complex data transformations
-- Call `app.SendAsyncInitiation()` after async state updates
-- Implement proper cleanup in `UseEffect` for timers and goroutines
+- Call app.SendAsyncInitiation() after async state updates
+- Implement proper cleanup in app.UseEffect for timers and goroutines
 
 ## Differences from React Recharts
 
