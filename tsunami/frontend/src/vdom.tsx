@@ -279,44 +279,20 @@ function VDomTag({ elem, model }: { elem: VDomElem; model: TsunamiModel }) {
     if (elem.tag == FragmentTag) {
         return childrenComps;
     }
-    
+
     // Use OptimisticInput for input and textarea elements
     if (elem.tag === "input" || elem.tag === "textarea") {
         props.key = "e-" + elem.waveid;
         const optimisticProps = {
             ...props,
-            _tagName: elem.tag as "input" | "textarea"
+            _tagName: elem.tag as "input" | "textarea",
         };
         return React.createElement(OptimisticInput, optimisticProps, childrenComps);
     }
-    
+
     props.key = "e-" + elem.waveid;
     return React.createElement(elem.tag, props, childrenComps);
 }
-
-function vdomText(text: string): VDomElem {
-    return {
-        tag: "#text",
-        text: text,
-    };
-}
-
-const testVDom: VDomElem = {
-    waveid: "testid1",
-    tag: "div",
-    children: [
-        {
-            waveid: "testh1",
-            tag: "h1",
-            children: [vdomText("Hello World")],
-        },
-        {
-            waveid: "testp",
-            tag: "p",
-            children: [vdomText("This is a paragraph (from VDOM)")],
-        },
-    ],
-};
 
 function VDomRoot({ model }: { model: TsunamiModel }) {
     let version = jotai.useAtomValue(model.globalVersion);

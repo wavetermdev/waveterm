@@ -18,6 +18,7 @@ type VDomBackendUpdate = {
     fullupdate?: boolean;
     renderupdates?: VDomRenderUpdate[];
     transferelems?: VDomTransferElem[];
+    transfertext?: VDomText[];
     refoperations?: VDomRefOperation[];
     messages?: VDomMessage[];
 };
@@ -135,6 +136,12 @@ type VDomTransferElem = {
     props?: { [key: string]: any };
     children?: string[];
     text?: string;
+};
+
+// rpctypes.VDomText
+type VDomText = {
+    id: number;
+    text: string;
 };
 
 // rpctypes.VDomUrlRequestResponse

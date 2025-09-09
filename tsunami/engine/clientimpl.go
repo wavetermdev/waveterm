@@ -287,6 +287,7 @@ func (c *ClientImpl) incrementalRender() (*rpctypes.VDomBackendUpdate, error) {
 		Type:       "backendupdate",
 		Ts:         time.Now().UnixMilli(),
 		ServerId:   c.ServerId,
+		HasWork:    len(c.Root.EffectWorkQueue) > 0,
 		FullUpdate: false,
 		Opts:       c.makeBackendOpts(),
 		RenderUpdates: []rpctypes.VDomRenderUpdate{

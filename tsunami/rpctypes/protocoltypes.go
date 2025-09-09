@@ -47,6 +47,7 @@ type VDomBackendUpdate struct {
 	FullUpdate    bool                    `json:"fullupdate,omitempty"`
 	RenderUpdates []VDomRenderUpdate      `json:"renderupdates,omitempty"`
 	TransferElems []VDomTransferElem      `json:"transferelems,omitempty"`
+	TransferText  []VDomText              `json:"transfertext,omitempty"`
 	RefOperations []vdom.VDomRefOperation `json:"refoperations,omitempty"`
 	Messages      []VDomMessage           `json:"messages,omitempty"`
 }
@@ -60,6 +61,11 @@ type VDomTransferElem struct {
 	Text     string         `json:"text,omitempty"`
 }
 
+type VDomText struct {
+	Id   int    `json:"id"`
+	Text string `json:"text"`
+}
+
 func (beUpdate *VDomBackendUpdate) CreateTransferElems() {
 	var renderedElems []RenderedElem
 	for idx, reUpdate := range beUpdate.RenderUpdates {
@@ -70,30 +76,36 @@ func (beUpdate *VDomBackendUpdate) CreateTransferElems() {
 		beUpdate.RenderUpdates[idx].VDomWaveId = reUpdate.VDom.WaveId
 		beUpdate.RenderUpdates[idx].VDom = nil
 	}
-	transferElems := ConvertElemsToTransferElems(renderedElems)
+	transferElems, transferText := ConvertElemsToTransferElems(renderedElems)
 	transferElems = DedupTransferElems(transferElems)
 	beUpdate.TransferElems = transferElems
+	beUpdate.TransferText = transferText
 }
 
-func ConvertElemsToTransferElems(elems []RenderedElem) []VDomTransferElem {
+func ConvertElemsToTransferElems(elems []RenderedElem) ([]VDomTransferElem, []VDomText) {
 	var transferElems []VDomTransferElem
-	textCounter := 0 // Counter for generating unique IDs for #text nodes
+	var transferText []VDomText
+	textMap := make(map[string]int) // map text content to ID for deduplication
 
 	// Helper function to recursively process each RenderedElem in preorder
 	var processElem func(elem RenderedElem) string
 	processElem = func(elem RenderedElem) string {
-		// Handle #text nodes by generating a unique placeholder ID
+		// Handle #text nodes with deduplication
 		if elem.Tag == "#text" {
-			textId := fmt.Sprintf("text-%d", textCounter)
-			textCounter++
-			transferElems = append(transferElems, VDomTransferElem{
-				WaveId:   textId,
-				Tag:      elem.Tag,
-				Text:     elem.Text,
-				Props:    nil,
-				Children: nil,
-			})
-			return textId
+			textId, exists := textMap[elem.Text]
+			if !exists {
+				// New text content, create new entry
+				textId = len(textMap) + 1
+				textMap[elem.Text] = textId
+				transferText = append(transferText, VDomText{
+					Id:   textId,
+					Text: elem.Text,
+				})
+			}
+
+			// Return sentinel string with ID (no VDomTransferElem created)
+			textIdStr := fmt.Sprintf("t:%d", textId)
+			return textIdStr
 		}
 
 		// Convert children to WaveId references, handling potential #text nodes
@@ -120,7 +132,7 @@ func ConvertElemsToTransferElems(elems []RenderedElem) []VDomTransferElem {
 		processElem(elem)
 	}
 
-	return transferElems
+	return transferElems, transferText
 }
 
 func DedupTransferElems(elems []VDomTransferElem) []VDomTransferElem {

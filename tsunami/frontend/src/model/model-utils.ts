@@ -22,7 +22,15 @@ export function restoreVDomElems(backendUpdate: VDomBackendUpdate) {
         return;
     }
 
-    // Step 1: Map of waveid to VDomElem, skipping any without a waveid
+    // Step 1: Create text map from transfertext
+    const textMap = new Map<number, string>();
+    if (backendUpdate.transfertext) {
+        backendUpdate.transfertext.forEach((textEntry) => {
+            textMap.set(textEntry.id, textEntry.text);
+        });
+    }
+
+    // Step 2: Map of waveid to VDomElem, skipping any without a waveid
     const elemMap = new Map<string, VDomElem>();
     backendUpdate.transferelems.forEach((transferElem) => {
         if (!transferElem.waveid) {
@@ -37,16 +45,33 @@ export function restoreVDomElems(backendUpdate: VDomBackendUpdate) {
         });
     });
 
-    // Step 2: Build VDomElem trees by linking children
+    // Step 3: Build VDomElem trees by linking children
     backendUpdate.transferelems.forEach((transferElem) => {
         const parent = elemMap.get(transferElem.waveid);
         if (!parent || !transferElem.children || transferElem.children.length === 0) {
             return;
         }
-        parent.children = transferElem.children.map((childId) => elemMap.get(childId)).filter((child) => child != null); // Explicit null check
+        parent.children = transferElem.children
+            .map((childId) => {
+                // Check if this is a text reference
+                if (childId.startsWith("t:")) {
+                    const textId = parseInt(childId.slice(2));
+                    const textContent = textMap.get(textId);
+                    if (textContent != null) {
+                        return {
+                            tag: TextTag,
+                            text: textContent,
+                        };
+                    }
+                    return null;
+                }
+                // Regular element reference
+                return elemMap.get(childId);
+            })
+            .filter((child) => child != null); // Explicit null check
     });
 
-    // Step 3: Update renderupdates with rebuilt VDomElem trees
+    // Step 4: Update renderupdates with rebuilt VDomElem trees
     backendUpdate.renderupdates.forEach((update) => {
         if (update.vdomwaveid) {
             update.vdom = elemMap.get(update.vdomwaveid);
