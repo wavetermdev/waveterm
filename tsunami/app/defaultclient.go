@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"io/fs"
 	"net/http"
-	"reflect"
 
 	"github.com/wavetermdev/waveterm/tsunami/engine"
 	"github.com/wavetermdev/waveterm/tsunami/vdom"
@@ -40,21 +39,24 @@ func SendAsyncInitiation() error {
 func ConfigAtom[T any](name string, defaultValue T) Atom[T] {
 	fullName := "$config." + name
 	client := engine.GetDefaultClient()
-	client.Root.CreateAtom(fullName, defaultValue, reflect.TypeOf(defaultValue))
+	atom := engine.MakeAtomImpl(defaultValue)
+	client.Root.RegisterAtom(fullName, atom)
 	return Atom[T]{name: fullName, client: client}
 }
 
 func DataAtom[T any](name string, defaultValue T) Atom[T] {
 	fullName := "$data." + name
 	client := engine.GetDefaultClient()
-	client.Root.CreateAtom(fullName, defaultValue, reflect.TypeOf(defaultValue))
+	atom := engine.MakeAtomImpl(defaultValue)
+	client.Root.RegisterAtom(fullName, atom)
 	return Atom[T]{name: fullName, client: client}
 }
 
 func SharedAtom[T any](name string, defaultValue T) Atom[T] {
 	fullName := "$shared." + name
 	client := engine.GetDefaultClient()
-	client.Root.CreateAtom(fullName, defaultValue, reflect.TypeOf(defaultValue))
+	atom := engine.MakeAtomImpl(defaultValue)
+	client.Root.RegisterAtom(fullName, atom)
 	return Atom[T]{name: fullName, client: client}
 }
 

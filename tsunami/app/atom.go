@@ -50,8 +50,11 @@ func (a Atom[T]) Set(newVal T) {
 		logInvalidAtomSet(a.name)
 		return
 	}
+	if err := a.client.Root.SetAtomVal(a.name, newVal); err != nil {
+		log.Printf("Failed to set atom value for %s: %v", a.name, err)
+		return
+	}
 	a.client.Root.AtomAddRenderWork(a.name)
-	a.client.Root.SetAtomVal(a.name, newVal)
 }
 
 func (a Atom[T]) SetFn(fn func(T) T) {
@@ -63,6 +66,9 @@ func (a Atom[T]) SetFn(fn func(T) T) {
 	val := a.client.GetAtomVal(a.name)
 	typedVal := util.GetTypedAtomValue[T](val, a.name)
 	newVal := fn(typedVal)
+	if err := a.client.Root.SetAtomVal(a.name, newVal); err != nil {
+		log.Printf("Failed to set atom value for %s: %v", a.name, err)
+		return
+	}
 	a.client.Root.AtomAddRenderWork(a.name)
-	a.client.Root.SetAtomVal(a.name, newVal)
 }

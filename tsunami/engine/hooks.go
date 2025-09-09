@@ -5,7 +5,6 @@ package engine
 
 import (
 	"log"
-	"reflect"
 	"strconv"
 
 	"github.com/wavetermdev/waveterm/tsunami/vdom"
@@ -99,13 +98,19 @@ func UseAtom(vc *VDomContextImpl, atomName string) (any, func(any), func(func(an
 	atomVal := vc.Root.GetAtomVal(atomName)
 
 	setVal := func(newVal any) {
-		vc.Root.SetAtomVal(atomName, newVal)
+		if err := vc.Root.SetAtomVal(atomName, newVal); err != nil {
+			log.Printf("Failed to set atom value for %s: %v", atomName, err)
+			return
+		}
 		vc.Root.AtomAddRenderWork(atomName)
 	}
 
 	setFuncVal := func(updateFunc func(any) any) {
 		currentVal := vc.Root.GetAtomVal(atomName)
-		vc.Root.SetAtomVal(atomName, updateFunc(currentVal))
+		if err := vc.Root.SetAtomVal(atomName, updateFunc(currentVal)); err != nil {
+			log.Printf("Failed to set atom value for %s: %v", atomName, err)
+			return
+		}
 		vc.Root.AtomAddRenderWork(atomName)
 	}
 
@@ -117,7 +122,8 @@ func UseLocal(vc *VDomContextImpl, initialVal any) string {
 	atomName := "$local." + vc.GetCompWaveId() + "#" + strconv.Itoa(hookVal.Idx)
 	if !hookVal.Init {
 		hookVal.Init = true
-		vc.Root.CreateAtom(atomName, initialVal, reflect.TypeOf(initialVal))
+		atom := MakeAtomImpl(initialVal)
+		vc.Root.RegisterAtom(atomName, atom)
 		closedAtomName := atomName
 		hookVal.UnmountFn = func() {
 			vc.Root.RemoveAtom(closedAtomName)

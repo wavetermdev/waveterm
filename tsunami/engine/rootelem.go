@@ -43,7 +43,7 @@ type EffectWorkElem struct {
 
 type genAtom interface {
 	GetVal() any
-	SetVal(any)
+	SetVal(any) error
 	SetUsedBy(string, bool)
 	GetUsedBy() []string
 }
@@ -110,14 +110,14 @@ func MakeRoot() *RootElem {
 	}
 }
 
-func (r *RootElem) CreateAtom(name string, initialVal any, typ reflect.Type) {
+func (r *RootElem) RegisterAtom(name string, atom genAtom) {
 	r.atomLock.Lock()
 	defer r.atomLock.Unlock()
 
 	if _, ok := r.Atoms[name]; ok {
 		panic(fmt.Sprintf("atom %s already exists", name))
 	}
-	r.Atoms[name] = makeAtom(initialVal, typ)
+	r.Atoms[name] = atom
 }
 
 // we can do better here with an inverted map, but
@@ -166,15 +166,15 @@ func (r *RootElem) GetAtomVal(name string) any {
 	return atom.GetVal()
 }
 
-func (r *RootElem) SetAtomVal(name string, val any) {
+func (r *RootElem) SetAtomVal(name string, val any) error {
 	r.atomLock.Lock()
 	defer r.atomLock.Unlock()
 
 	atom, ok := r.Atoms[name]
 	if !ok {
-		return
+		return fmt.Errorf("atom %q not found", name)
 	}
-	atom.SetVal(val)
+	return atom.SetVal(val)
 }
 
 func (r *RootElem) RemoveAtom(name string) {

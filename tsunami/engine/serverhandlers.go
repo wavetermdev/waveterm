@@ -223,12 +223,30 @@ func (h *httpHandlers) handleConfigPost(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	var failedKeys []string
 	for key, value := range configData {
 		atomName := "$config." + key
-		h.Client.Root.SetAtomVal(atomName, value)
+		if err := h.Client.Root.SetAtomVal(atomName, value); err != nil {
+			failedKeys = append(failedKeys, key)
+		}
 	}
 
+	w.Header().Set("Content-Type", "application/json")
+	
+	var response map[string]any
+	if len(failedKeys) > 0 {
+		response = map[string]any{
+			"error": fmt.Sprintf("Failed to update keys: %s", strings.Join(failedKeys, ", ")),
+		}
+	} else {
+		response = map[string]any{
+			"success": true,
+		}
+	}
+	
 	w.WriteHeader(http.StatusOK)
+	
+	json.NewEncoder(w).Encode(response)
 }
 
 func (h *httpHandlers) handleDynContent(w http.ResponseWriter, r *http.Request) {
