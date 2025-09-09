@@ -256,6 +256,7 @@ var MyComponent = app.DefineComponent("MyComponent", func(props MyProps) any {
 
 - **State Management**: app.UseLocal creates local component atoms (covered in State Management with Atoms)
 - **Component Lifecycle**: app.UseEffect, app.UseRef, app.UseVDomRef (covered in Component Lifecycle Hooks)
+- **Async Operations**: app.UseGoRoutine manages goroutine lifecycle (covered in Async Operations and Goroutines)
 - **Utility**: app.UseSetAppTitle, app.UseId, app.UseRenderTs, app.UseResync
 
 ## State Management with Atoms
@@ -782,67 +783,61 @@ var App = app.DefineComponent("App", func(_ struct{}) any {
 
 When working with goroutines, timers, or other async operations in Tsunami, follow these patterns to safely update state and manage cleanup:
 
-### Goroutine State Management
+### Goroutine Management
 
-Use app.UseRef for data that goroutines need to access but shouldn't trigger re-renders (like channels, flags, or complex state). Use atoms when you want goroutine updates to trigger UI re-renders:
+For async operations like timers, background tasks, or data polling, use app.UseGoRoutine to safely manage goroutine lifecycle:
 
 ```go
-type TimerState struct {
-    done     chan bool
-    isActive bool
-}
-
 var MyComponent = app.DefineComponent("MyComponent", func(_ struct{}) any {
     seconds := app.UseLocal(0)
 
-    // Store goroutine state in a ref
-    timerRef := app.UseRef(&TimerState{
-        done: make(chan bool),
-    })
-
-    startTimer := func() {
-        if timerRef.Current.isActive {
-            return // Prevent multiple goroutines
-        }
-
-        timerRef.Current.isActive = true
-        go func() {
-            defer func() {
-                timerRef.Current.isActive = false
-            }()
-
-            for {
-                select {
-                case <-timerRef.Current.done:
-                    return
-                case <-time.After(time.Second):
-                    // Update state from goroutine
-                    seconds.SetFn(func(s int) int { return s + 1 })
-                    app.SendAsyncInitiation() // Trigger UI update
-                }
+    timerFn := func(ctx context.Context) {
+        for {
+            select {
+            case <-ctx.Done():
+                return
+            case <-time.After(time.Second):
+                // Update state from goroutine
+                seconds.SetFn(func(s int) int { return s + 1 })
+                app.SendAsyncInitiation() // Trigger UI update
             }
-        }()
+        }
     }
 
-    // Start timer on mount and cleanup on unmount
-    app.UseEffect(func() func() {
-        startTimer() // Start the timer when component mounts
-        return func() {
-            if timerRef.Current.isActive {
-                close(timerRef.Current.done)
-            }
-        }
-    }, []any{})
+    // Start timer on mount, cleanup on unmount
+    app.UseGoRoutine(timerFn, []any{})
 
     return vdom.H("div", nil, "Seconds: ", seconds.Get())
 })
 ```
 
+app.UseGoRoutine handles the complex lifecycle automatically:
+
+- Spawns a new goroutine with your function
+- Provides a context that cancels on dependency changes or component unmount
+- Prevents goroutine leaks through automatic cleanup
+- Cancels existing goroutines before starting new ones when dependencies change
+
 ### Key Patterns
 
-**app.SendAsyncInitiation()**: Call this after updating atoms from goroutines to trigger UI re-renders. Don't call it at high frequency - consider batching updates.
+**Context cancellation**: Always check ctx.Done() in your goroutine loops for clean shutdown:
 
-**Functional setters in goroutines**: Always use atom.SetFn() when updating state from goroutines to avoid race conditions:
+```go
+pollData := func(ctx context.Context) {
+    for {
+        select {
+        case <-ctx.Done():
+            return // Clean exit when component unmounts or deps change
+        case <-time.After(5 * time.Second):
+            // Do work
+        }
+    }
+}
+```
+
+**app.SendAsyncInitiation()**: Call this after updating atoms from goroutines to trigger UI re-renders. Don't call at high frequency - consider batching updates.
+
+**Functional setters**: Always use atom.SetFn() when updating state from goroutines to avoid race conditions:
 
 ```go
 // Safe: uses current value
@@ -851,10 +846,6 @@ count.SetFn(func(current int) int { return current + 1 })
 // Risky: might use stale value
 count.Set(count.Get() + 1)
 ```
-
-**Cleanup channels**: Use channels and select statements for clean goroutine shutdown. Always clean up in app.UseEffect return functions.
-
-**Prevent duplicate goroutines**: Use ref state to track if async operations are already running.
 
 ### Thread Safety
 

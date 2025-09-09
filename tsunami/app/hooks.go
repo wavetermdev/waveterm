@@ -4,6 +4,8 @@
 package app
 
 import (
+	"context"
+
 	"github.com/wavetermdev/waveterm/tsunami/engine"
 	"github.com/wavetermdev/waveterm/tsunami/vdom"
 )
@@ -137,4 +139,38 @@ func UseLocal[T any](initialVal T) Atom[T] {
 		name:   atomName,
 		client: engine.GetDefaultClient(),
 	}
+}
+
+// UseGoRoutine manages a goroutine lifecycle within a component.
+// It spawns a new goroutine with the provided function when dependencies change,
+// and automatically cancels the context on dependency changes or component unmount.
+// This hook must be called within a component context.
+func UseGoRoutine(fn func(ctx context.Context), deps []any) {
+	rc := engine.GetGlobalContext()
+	if rc == nil {
+		panic("UseGoRoutine must be called within a component (no context)")
+	}
+
+	// Use UseRef to store the cancel function
+	cancelRef := UseRef[context.CancelFunc](nil)
+
+	UseEffect(func() func() {
+		// Cancel any existing goroutine
+		if cancelRef.Current != nil {
+			cancelRef.Current()
+		}
+
+		// Create new context and start goroutine
+		ctx, cancel := context.WithCancel(context.Background())
+		cancelRef.Current = cancel
+
+		go fn(ctx)
+
+		// Return cleanup function that cancels the context
+		return func() {
+			if cancel != nil {
+				cancel()
+			}
+		}
+	}, deps)
 }
