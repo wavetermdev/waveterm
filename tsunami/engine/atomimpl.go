@@ -29,10 +29,7 @@ func (a *AtomImpl[T]) GetVal() any {
 	return a.val
 }
 
-func (a *AtomImpl[T]) SetVal(val any) error {
-	a.lock.Lock()
-	defer a.lock.Unlock()
-
+func (a *AtomImpl[T]) setVal_nolock(val any) error {
 	if val == nil {
 		var zero T
 		a.val = zero
@@ -59,6 +56,20 @@ func (a *AtomImpl[T]) SetVal(val any) error {
 
 	a.val = result
 	return nil
+}
+
+func (a *AtomImpl[T]) SetVal(val any) error {
+	a.lock.Lock()
+	defer a.lock.Unlock()
+	return a.setVal_nolock(val)
+}
+
+func (a *AtomImpl[T]) SetFnVal(setFn func(any) any) error {
+	a.lock.Lock()
+	defer a.lock.Unlock()
+	
+	newVal := setFn(a.val)
+	return a.setVal_nolock(newVal)
 }
 
 func (a *AtomImpl[T]) SetUsedBy(waveId string, used bool) {

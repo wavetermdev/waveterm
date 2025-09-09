@@ -218,10 +218,6 @@ func (c *ClientImpl) SendAsyncInitiation() error {
 	}
 }
 
-func (c *ClientImpl) GetAtomVal(name string) any {
-	return c.Root.GetAtomVal(name)
-}
-
 func makeNullRendered() *rpctypes.RenderedElem {
 	return &rpctypes.RenderedElem{WaveId: uuid.New().String(), Tag: vdom.WaveNullTag}
 }

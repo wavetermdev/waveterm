@@ -39,8 +39,9 @@ func (a Atom[T]) Get() T {
 		compWaveId := vc.GetCompWaveId()
 		vc.Root.AtomSetUsedBy(a.name, compWaveId, true)
 	}
-	val := a.client.GetAtomVal(a.name)
-	return util.GetTypedAtomValue[T](val, a.name)
+	val := a.client.Root.GetAtomVal(a.name)
+	typedVal := util.GetTypedAtomValue[T](val, a.name)
+	return typedVal
 }
 
 // Set updates the atom's value
@@ -63,10 +64,11 @@ func (a Atom[T]) SetFn(fn func(T) T) {
 		logInvalidAtomSet(a.name)
 		return
 	}
-	val := a.client.GetAtomVal(a.name)
-	typedVal := util.GetTypedAtomValue[T](val, a.name)
-	newVal := fn(typedVal)
-	if err := a.client.Root.SetAtomVal(a.name, newVal); err != nil {
+	err := a.client.Root.SetFnAtomVal(a.name, func(val any) any {
+		typedVal := util.GetTypedAtomValue[T](val, a.name)
+		return fn(typedVal)
+	})
+	if err != nil {
 		log.Printf("Failed to set atom value for %s: %v", a.name, err)
 		return
 	}
