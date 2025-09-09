@@ -59,6 +59,16 @@ class AiWshClient extends WshClient {
         }
         this.model.sendMessage(data.message);
     }
+
+    handle_aigetmessages(rh: RpcResponseHelper, data: AiGetMessagesData) {
+        const messages = globalStore.get(this.model.messagesAtom);
+        const limit = data.limit || 10;
+        const limitedMessages = messages.slice(-limit).map((msg) => ({
+            role: msg.user,
+            content: msg.text,
+        }));
+        rh.sendResponse({ data: limitedMessages });
+    }
 }
 
 export class WaveAiModel implements ViewModel {
