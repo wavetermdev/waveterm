@@ -8,7 +8,7 @@ Tsunami mirrors React's developer experience:
 
 - **Components**: Define reusable UI pieces with typed props structs
 - **JSX-like syntax**: Use vdom.H to build element trees (like React.createElement)
-- **Hooks**: vdom.UseState, vdom.UseEffect, vdom.UseRef work exactly like React hooks
+- **Hooks**: app.UseState, app.UseEffect, app.UseRef work exactly like React hooks
 - **Props and state**: Familiar patterns for data flow and updates
 - **Conditional rendering**: vdom.If and vdom.IfElse for dynamic UIs
 - **Event handling**: onClick, onChange, onKeyDown with React-like event objects
@@ -58,7 +58,7 @@ import (
 // The App component is the required entry point for every Tsunami application
 var App = app.DefineComponent("App",
     func(ctx context.Context, _ struct{}) any {
-        vdom.UseSetAppTitle(ctx, "Hello World")
+        app.UseSetAppTitle("Hello World")
 
         return vdom.H("div", map[string]any{
             "className": "flex items-center justify-center h-screen text-xl font-bold",
@@ -228,7 +228,7 @@ Helper functions:
 
 ## Using Hooks in Tsunami
 
-Functions starting with `vdom.Use*` are hooks in Tsunami, following the exact same rules as React hooks.
+Functions starting with `app.Use*` are hooks in Tsunami, following the exact same rules as React hooks.
 
 **Key Rules:**
 
@@ -241,8 +241,8 @@ Functions starting with `vdom.Use*` are hooks in Tsunami, following the exact sa
 var MyComponent = app.DefineComponent("MyComponent",
     func(ctx context.Context, props MyProps) any {
         // ✅ Good: hooks at top level
-        count := vdom.UseState(ctx, 0)
-        vdom.UseEffect(ctx, func() { /* effect */ }, nil)
+        count := app.UseState(0)
+        app.UseEffect(func() { /* effect */ }, nil)
 
         // Now safe to have conditional logic
         if someCondition {
@@ -256,25 +256,25 @@ var MyComponent = app.DefineComponent("MyComponent",
 
 **Common Hooks (React-like):**
 
-- `UseState[T any](ctx context.Context, initialVal T) (T, func(T), func(func(T) T))` - Component state management (React `useState`)
-- `UseEffect(ctx context.Context, fn func() func(), deps []any)` - Side effects after render (React `useEffect`)
-- `UseRef[T any](ctx context.Context, val T) *VDomSimpleRef[T]` - Mutable refs for arbitrary values (React `useRef`)
-- `UseVDomRef(ctx context.Context) *VDomRef` - DOM element references (React `useRef` for DOM elements)
-- `UseSetAppTitle(ctx context.Context, title string)` - Sets the application title (used in every app, only works in top-level "App" component)
+- `app.UseState[T any](initialVal T) (T, func(T), func(func(T) T))` - Component state management (React `useState`)
+- `app.UseEffect(fn func() func(), deps []any)` - Side effects after render (React `useEffect`)
+- `app.UseRef[T any](val T) *VDomSimpleRef[T]` - Mutable refs for arbitrary values (React `useRef`)
+- `app.UseVDomRef() *VDomRef` - DOM element references (React `useRef` for DOM elements)
+- `app.UseSetAppTitle(title string)` - Sets the application title (used in every app, only works in top-level "App" component)
 
 **Global Data Hooks (Jotai-like atoms):**
 
-- `UseSharedAtom[T any](ctx context.Context, atomName string) (T, func(T), func(func(T) T))` - Shared state across components
-- `UseConfig[T any](ctx context.Context, atomName string) (T, func(T), func(func(T) T))` - Access to global config values
-- `UseData[T any](ctx context.Context, atomName string) (T, func(T), func(func(T) T))` - Access to global data values
+- `UseSharedAtom[T any](atomName string) (T, func(T), func(func(T) T))` - Shared state across components
+- `UseConfig[T any](atomName string) (T, func(T), func(func(T) T))` - Access to global config values
+- `UseData[T any](atomName string) (T, func(T), func(func(T) T))` - Access to global data values
 
 These allow applications to easily share data between components. When an atom is updated, all components using it will re-render.
 
 **Specialty Hooks (less common):**
 
-- `UseId(ctx context.Context) string` - Component's unique identifier
-- `UseRenderTs(ctx context.Context) int64` - Current render timestamp
-- `UseResync(ctx context.Context) bool` - Whether current render is a resync operation
+- `app.UseId() string` - Component's unique identifier
+- `app.UseRenderTs() int64` - Current render timestamp
+- `app.UseResync() bool` - Whether current render is a resync operation
 
 Most applications won't need these specialty hooks, but they're available for advanced use cases.
 
@@ -291,7 +291,7 @@ Tsunami provides three types of global atoms for sharing state across components
 ```go
 // Shared between components, not shared externally
 // Triggers re-renders when updated
-isLoading, setIsLoading, _ := vdom.UseSharedAtom[bool](ctx, "isLoading")
+isLoading, setIsLoading, _ := app.UseSharedAtom[bool]("isLoading")
 ```
 
 **UseConfig** - Configuration that external systems can read/write:
@@ -299,8 +299,8 @@ isLoading, setIsLoading, _ := vdom.UseSharedAtom[bool](ctx, "isLoading")
 ```go
 // External tools can GET/POST to /api/config to read/modify these
 // Triggers re-renders when updated (internally or externally)
-theme, setTheme, _ := vdom.UseConfig[string](ctx, "theme")
-apiKey, _, _ := vdom.UseConfig[string](ctx, "apiKey")
+theme, setTheme, _ := app.UseConfig[string]("theme")
+apiKey, _, _ := app.UseConfig[string]("apiKey")
 ```
 
 **UseData** - Application data that external systems can read:
@@ -308,15 +308,15 @@ apiKey, _, _ := vdom.UseConfig[string](ctx, "apiKey")
 ```go
 // External tools can GET /api/data to inspect app state
 // Triggers re-renders when updated
-userStats, setUserStats, _ := vdom.UseData[UserStats](ctx, "currentUser")
-apiResult, setLastPoll, setLastPollFn := vdom.UseData[APIResult](ctx, "lastPoll")
+userStats, setUserStats, _ := app.UseData[UserStats]("currentUser")
+apiResult, setLastPoll, setLastPollFn := app.UseData[APIResult]("lastPoll")
 ```
 
-All atom types work exactly like UseState - they return the current value, a setter function, and a functional setter. The key difference is their scope and external API accessibility.
+All atom types work exactly like app.UseState - they return the current value, a setter function, and a functional setter. The key difference is their scope and external API accessibility.
 
 ### External API Integration
 
-The UseConfig and UseData atoms automatically create REST endpoints:
+The app.UseConfig and app.UseData atoms automatically create REST endpoints:
 
 - `GET /api/config` - Returns all config atom values
 - `POST /api/config` - Updates (merges) config atom values
@@ -415,7 +415,7 @@ Components in Tsunami:
 - Use Go structs with json tags for props
 - Take a context and props as arguments
 - Return elements created with vdom.H
-- Can use all hooks (vdom.UseState, vdom.UseRef, etc)
+- Can use all hooks (app.UseState, app.UseRef, etc)
 - Are registered with the default client and given a name
 - Are called as functions with their props struct
 
@@ -500,11 +500,11 @@ Event handlers follow React patterns while providing additional type safety and 
 ```go
 func MyComponent(ctx context.Context, props MyProps) any {
     // UseState: returns current value, setter function, and functional setter
-    count, setCount, _ := vdom.UseState(ctx, 0)     // Initial value of 0
-    items, setItems, _ := vdom.UseState(ctx, []string{}) // Initial value of empty slice
+    count, setCount, _ := app.UseState(0)     // Initial value of 0
+    items, setItems, _ := app.UseState([]string{}) // Initial value of empty slice
 
     // When you need the functional setter, use all 3 return values
-    counter, setCounter, setCounterFn := vdom.UseState(ctx, 0)
+    counter, setCounter, setCounterFn := app.UseState(0)
 
     // Event handlers that update state (called from onClick, onChange, etc.)
     incrementCount := func() {
@@ -523,14 +523,14 @@ func MyComponent(ctx context.Context, props MyProps) any {
     }
 
     // Refs for values that persist between renders but don't trigger updates
-    renderCounter := vdom.UseRef(ctx, 0)
+    renderCounter := app.UseRef(0)
     renderCounter.Current++  // Doesn't cause re-render
 
     // DOM refs for accessing elements directly
-    inputRef := vdom.UseVDomRef(ctx)
+    inputRef := app.UseVDomRef()
 
     // Side effects (can call setters here)
-    vdom.UseEffect(ctx, func() func() {
+    app.UseEffect(func() func() {
         // Example: set counter to 10 on mount
         setCounter(10)
 
@@ -574,7 +574,7 @@ func MyComponent(ctx context.Context, props MyProps) any {
 
 The system provides three main types of hooks:
 
-1. vdom.UseState - For values that trigger re-renders when changed:
+1. app.UseState - For values that trigger re-renders when changed:
 
    - Returns current value, direct setter, and functional setter
    - Direct setter triggers component re-render
@@ -582,7 +582,7 @@ The system provides three main types of hooks:
    - Create new values for slices/maps when updating
 
    ```go
-   count, setCount, setCountFn := vdom.UseState(ctx, 0)
+   count, setCount, setCountFn := app.UseState(0)
    // Direct update when you have the value:
    setCount(42)
    // Functional update when you need current value:
@@ -591,7 +591,7 @@ The system provides three main types of hooks:
    })
    ```
 
-2. vdom.UseRef - For values that persist between renders without triggering updates (like React.useRef):
+2. app.UseRef - For values that persist between renders without triggering updates (like React.useRef):
 
    - Holds mutable values that survive re-renders
    - Changes don't cause re-renders
@@ -603,12 +603,12 @@ The system provides three main types of hooks:
    - Unlike React, this ref CANNOT be set as the ref prop on an element
 
    ```go
-   timerRef := vdom.UseRef(ctx, &TimerState{
+   timerRef := app.UseRef(&TimerState{
        done: make(chan bool),
    })
    ```
 
-3. vdom.UseVDomRef - For accessing DOM elements directly:
+3. app.UseVDomRef - For accessing DOM elements directly:
    - Creates refs for DOM interaction
    - Useful for:
      - Accessing DOM element properties
@@ -617,7 +617,7 @@ The system provides three main types of hooks:
      - Direct DOM manipulation when needed
    - These ref objects SHOULD be set as ref prop on elements.
    ```go
-   inputRef := vdom.UseVDomRef(ctx)
+   inputRef := app.UseVDomRef()
    vdom.H("input", map[string]any{
        "ref": inputRef,
        "type": "text",
@@ -626,10 +626,10 @@ The system provides three main types of hooks:
 
 Best Practices:
 
-- Use vdom.UseState for all UI state - it provides both direct and functional setters
+- Use app.UseState for all UI state - it provides both direct and functional setters
 - Use functional setter when updating state from goroutines or based on current value
-- Use vdom.UseRef for complex state that goroutines need to access
-- Always clean up timers, channels, and goroutines in vdom.UseEffect cleanup functions
+- Use app.UseRef for complex state that goroutines need to access
+- Always clean up timers, channels, and goroutines in app.UseEffect cleanup functions
 
 ## State Management and Async Updates
 
@@ -658,14 +658,14 @@ type TimerState struct {
 var TodoApp = app.DefineComponent("TodoApp",
     func(ctx context.Context, _ struct{}) any {
         // Use atoms for global state (prefixes must match init functions)
-        todos, setTodos, _ := vdom.UseData[[]Todo](ctx, "todos")
-        filter, setFilter, _ := vdom.UseConfig[string](ctx, "filter")
+        todos, setTodos, _ := app.UseData[[]Todo]("todos")
+        filter, setFilter, _ := app.UseConfig[string]("filter")
 
         // Local state for async timer demo
-        seconds, _, setSecondsFn := vdom.UseState[int](ctx, 0)
+        seconds, _, setSecondsFn := app.UseState[int](0)
 
         // Use refs to store complex state that goroutines need to access
-        stateRef := vdom.UseRef(ctx, &TimerState{
+        stateRef := app.UseRef(&TimerState{
             done: make(chan bool),
         })
 
@@ -706,8 +706,8 @@ var TodoApp = app.DefineComponent("TodoApp",
             }
         }
 
-        // Use vdom.UseEffect for cleanup on unmount
-        vdom.UseEffect(ctx, func() func() {
+        // Use app.UseEffect for cleanup on unmount
+        app.UseEffect(func() func() {
             startAsync() // Start the timer when component mounts
             return func() {
                 stopAsync()
@@ -756,7 +756,7 @@ Key points for state management:
 - Global state is fine for simple data structures
 - Use functional setter when updating state based on its current value, especially in goroutines
 - Store complex state in refs when it needs to be accessed by goroutines
-- Use vdom.UseEffect cleanup function to handle component unmount
+- Use app.UseEffect cleanup function to handle component unmount
 - Call app.SendAsyncInitiation after state changes in goroutines (consider round trip performance, so don't call at very high speeds)
 - Use atomic operations if globals are modified from multiple goroutines (or locks)
 
@@ -898,12 +898,12 @@ var App = app.DefineComponent("App",
     func(ctx context.Context, _ any) any {
         // UseState returns 3 values: value, setter, functional setter
         // Use ", _" to ignore the functional setter when not needed
-        todos, setTodos, _ := vdom.UseState(ctx, []Todo{
+        todos, setTodos, _ := app.UseState([]Todo{
             {Id: 1, Text: "Learn Tsunami", Completed: false},
             {Id: 2, Text: "Build an app", Completed: false},
         })
-        nextId, setNextId, _ := vdom.UseState(ctx, 3)
-        inputText, setInputText, _ := vdom.UseState(ctx, "")
+        nextId, setNextId, _ := app.UseState(3)
+        inputText, setInputText, _ := app.UseState("")
 
         // Event handlers
         addTodo := func() {
@@ -984,7 +984,7 @@ var App = app.DefineComponent("App",
 Key points:
 
 1. Root component must be named "App"
-2. Use vdom.UseSetAppTitle in the main App component to set the window title
+2. Use app.UseSetAppTitle in the main App component to set the window title
 3. Do NOT write a main() function - the framework handles app lifecycle
 4. Use init() for setup like registering dynamic handlers with app.HandleDynFunc
 
@@ -996,7 +996,7 @@ Key points:
 - Call app.SendAsyncInitiation after async state updates
 - Provide keys when using vdom.ForEach with lists (using WithKey method)
 - Use vdom.Classes with vdom.If for combining static and conditional class names
-- Consider cleanup functions in vdom.UseEffect for async operations
+- Consider cleanup functions in app.UseEffect for async operations
 - `<script>` tags are NOT supported
 - Applications consist of a single file: app.go containing all Go code and component definitions
 - Styling is handled through Tailwind v4 CSS classes
