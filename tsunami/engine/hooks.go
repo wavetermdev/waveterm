@@ -99,13 +99,13 @@ func UseAtom(vc *VDomContextImpl, atomName string) (any, func(any), func(func(an
 	atomVal := vc.Root.GetAtomVal(atomName)
 
 	setVal := func(newVal any) {
-		vc.Root.SetAtomVal(atomName, newVal, true)
+		vc.Root.SetAtomVal(atomName, newVal)
 		vc.Root.AtomAddRenderWork(atomName)
 	}
 
 	setFuncVal := func(updateFunc func(any) any) {
 		currentVal := vc.Root.GetAtomVal(atomName)
-		vc.Root.SetAtomVal(atomName, updateFunc(currentVal), true)
+		vc.Root.SetAtomVal(atomName, updateFunc(currentVal))
 		vc.Root.AtomAddRenderWork(atomName)
 	}
 

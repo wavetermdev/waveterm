@@ -35,3 +35,24 @@ func (a *atomImpl) SetVal(val any) {
 	defer a.lock.Unlock()
 	a.val = val
 }
+
+func (a *atomImpl) SetUsedBy(waveId string, used bool) {
+	a.lock.Lock()
+	defer a.lock.Unlock()
+	if used {
+		a.UsedBy[waveId] = true
+	} else {
+		delete(a.UsedBy, waveId)
+	}
+}
+
+func (a *atomImpl) GetUsedBy() []string {
+	a.lock.Lock()
+	defer a.lock.Unlock()
+
+	keys := make([]string, 0, len(a.UsedBy))
+	for compId := range a.UsedBy {
+		keys = append(keys, compId)
+	}
+	return keys
+}

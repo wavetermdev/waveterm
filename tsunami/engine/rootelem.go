@@ -41,6 +41,13 @@ type EffectWorkElem struct {
 	EffectIndex int
 }
 
+type genAtom interface {
+	GetVal() any
+	SetVal(any)
+	SetUsedBy(string, bool)
+	GetUsedBy() []string
+}
+
 type RootElem struct {
 	OuterCtx        context.Context
 	Root            *ComponentImpl
@@ -50,7 +57,7 @@ type RootElem struct {
 	CompMap         map[string]*ComponentImpl // component waveid -> component
 	EffectWorkQueue []*EffectWorkElem
 	NeedsRenderMap  map[string]bool
-	Atoms           map[string]*atomImpl
+	Atoms           map[string]genAtom
 	atomLock        sync.Mutex
 	RefOperations   []vdom.VDomRefOperation
 }
@@ -99,7 +106,7 @@ func MakeRoot() *RootElem {
 		Root:    nil,
 		CFuncs:  make(map[string]any),
 		CompMap: make(map[string]*ComponentImpl),
-		Atoms:   make(map[string]*atomImpl),
+		Atoms:   make(map[string]genAtom),
 	}
 }
 
@@ -120,7 +127,7 @@ func (r *RootElem) cleanupUsedByForUnmount(waveId string) {
 	defer r.atomLock.Unlock()
 
 	for _, atom := range r.Atoms {
-		delete(atom.UsedBy, waveId)
+		atom.SetUsedBy(waveId, false)
 	}
 }
 
@@ -132,11 +139,7 @@ func (r *RootElem) AtomSetUsedBy(atomName string, waveId string, used bool) {
 	if !ok {
 		return
 	}
-	if used {
-		atom.UsedBy[waveId] = true
-	} else {
-		delete(atom.UsedBy, waveId)
-	}
+	atom.SetUsedBy(waveId, used)
 }
 
 func (r *RootElem) AtomAddRenderWork(atomName string) {
@@ -147,7 +150,7 @@ func (r *RootElem) AtomAddRenderWork(atomName string) {
 	if !ok {
 		return
 	}
-	for compId := range atom.UsedBy {
+	for _, compId := range atom.GetUsedBy() {
 		r.AddRenderWork(compId)
 	}
 }
@@ -163,7 +166,7 @@ func (r *RootElem) GetAtomVal(name string) any {
 	return atom.GetVal()
 }
 
-func (r *RootElem) SetAtomVal(name string, val any, markDirty bool) {
+func (r *RootElem) SetAtomVal(name string, val any) {
 	r.atomLock.Lock()
 	defer r.atomLock.Unlock()
 

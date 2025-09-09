@@ -218,10 +218,6 @@ func (c *ClientImpl) SendAsyncInitiation() error {
 	}
 }
 
-func (c *ClientImpl) SetAtomVal(name string, val any) {
-	c.Root.SetAtomVal(name, val, true)
-}
-
 func (c *ClientImpl) GetAtomVal(name string) any {
 	return c.Root.GetAtomVal(name)
 }

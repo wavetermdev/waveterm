@@ -225,7 +225,7 @@ func (h *httpHandlers) handleConfigPost(w http.ResponseWriter, r *http.Request) 
 
 	for key, value := range configData {
 		atomName := "$config." + key
-		h.Client.Root.SetAtomVal(atomName, value, true)
+		h.Client.Root.SetAtomVal(atomName, value)
 	}
 
 	w.WriteHeader(http.StatusOK)

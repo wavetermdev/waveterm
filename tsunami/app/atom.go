@@ -51,7 +51,7 @@ func (a Atom[T]) Set(newVal T) {
 		return
 	}
 	a.client.Root.AtomAddRenderWork(a.name)
-	a.client.SetAtomVal(a.name, newVal)
+	a.client.Root.SetAtomVal(a.name, newVal)
 }
 
 func (a Atom[T]) SetFn(fn func(T) T) {
@@ -64,5 +64,5 @@ func (a Atom[T]) SetFn(fn func(T) T) {
 	typedVal := util.GetTypedAtomValue[T](val, a.name)
 	newVal := fn(typedVal)
 	a.client.Root.AtomAddRenderWork(a.name)
-	a.client.SetAtomVal(a.name, newVal)
+	a.client.Root.SetAtomVal(a.name, newVal)
 }
