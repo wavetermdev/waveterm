@@ -52,20 +52,18 @@ A Tsunami application is simply a Go package with an `App` component. Here's a m
 package main
 
 import (
-    "github.com/wavetermdev/waveterm/tsunami/app"
-    "github.com/wavetermdev/waveterm/tsunami/vdom"
+	"github.com/wavetermdev/waveterm/tsunami/app"
+	"github.com/wavetermdev/waveterm/tsunami/vdom"
 )
 
 // The App component is the required entry point for every Tsunami application
-var App = app.DefineComponent("App",
-    func(_ struct{}) any {
-        app.UseSetAppTitle("Hello World")
+var App = app.DefineComponent("App", func(_ struct{}) any {
+	app.UseSetAppTitle("Hello World")
 
-        return vdom.H("div", map[string]any{
-            "className": "flex items-center justify-center h-screen text-xl font-bold",
-        }, "Hello, Tsunami!")
-    },
-)
+	return vdom.H("div", map[string]any{
+		"className": "flex items-center justify-center h-screen text-xl font-bold",
+	}, "Hello, Tsunami!")
+})
 ```
 
 Key Points:
@@ -240,20 +238,18 @@ Functions starting with `app.Use*` are hooks in Tsunami, following the exact sam
 - 🔴 Never call hooks inside loops, conditions, or after conditional returns
 
 ```go
-var MyComponent = app.DefineComponent("MyComponent",
-    func(props MyProps) any {
-        // ✅ Good: hooks at top level
-        count := app.UseLocal(0)
-        app.UseEffect(func() { /* effect */ }, nil)
+var MyComponent = app.DefineComponent("MyComponent", func(props MyProps) any {
+	// ✅ Good: hooks at top level
+	count := app.UseLocal(0)
+	app.UseEffect(func() { /* effect */ }, nil)
 
-        // Now safe to have conditional logic
-        if someCondition {
-            return vdom.H("div", nil, "Early return")
-        }
+	// Now safe to have conditional logic
+	if someCondition {
+		return vdom.H("div", nil, "Early return")
+	}
 
-        return vdom.H("div", nil, "Content")
-    },
-)
+	return vdom.H("div", nil, "Content")
+})
 ```
 
 **Common Hooks (React-like):**
@@ -529,17 +525,15 @@ type TodoItemProps struct {
 }
 
 // Create component with typed props
-var TodoItem = app.DefineComponent("TodoItem",
-    func(props TodoItemProps) any {
-        return vdom.H("div", map[string]any{
-            "className": vdom.Classes(
-                "p-3 border-b border-gray-200 cursor-pointer transition-opacity",
-                vdom.If(props.IsActive, "opacity-100 bg-blue-50", "opacity-70 hover:bg-gray-50"),
-            ),
-            "onClick": props.OnToggle,
-        }, props.Todo.Text)
-    },
-)
+var TodoItem = app.DefineComponent("TodoItem", func(props TodoItemProps) any {
+	return vdom.H("div", map[string]any{
+		"className": vdom.Classes(
+			"p-3 border-b border-gray-200 cursor-pointer transition-opacity",
+			vdom.IfElse(props.IsActive, "opacity-100 bg-blue-50", "opacity-70 hover:bg-gray-50"),
+		),
+		"onClick": props.OnToggle,
+	}, props.Todo.Text)
+})
 
 // Usage in parent component:
 vdom.H("div", map[string]any{
@@ -647,82 +641,80 @@ Event handlers follow React patterns while providing additional type safety and 
 ## State Management with Hooks
 
 ```go
-var MyComponent = app.DefineComponent("MyComponent",
-    func(props struct{}) any {
-        // UseLocal: returns Atom[T] with Get(), Set(), and SetFn() methods
-        count := app.UseLocal(0)     // Initial value of 0
-        items := app.UseLocal([]string{}) // Initial value of empty slice
+var MyComponent = app.DefineComponent("MyComponent", func(props struct{}) any {
+	// UseLocal: returns Atom[T] with Get(), Set(), and SetFn() methods
+	count := app.UseLocal(0)          // Initial value of 0
+	items := app.UseLocal([]string{}) // Initial value of empty slice
 
-        // Reading values in render code
-        currentCount := count.Get()
-        currentItems := items.Get()
+	// Reading values in render code
+	currentCount := count.Get()
+	currentItems := items.Get()
 
-        // Event handlers that update state (called from onClick, onChange, etc.)
-        incrementCount := func() {
-            count.Set(currentCount + 1)  // Direct update when you have the value
-        }
+	// Event handlers that update state (called from onClick, onChange, etc.)
+	incrementCount := func() {
+		count.Set(currentCount + 1) // Direct update when you have the value
+	}
 
-        incrementCountFn := func() {
-            count.SetFn(func(current int) int {
-                return current + 1  // Functional update based on current value
-            })
-        }
+	incrementCountFn := func() {
+		count.SetFn(func(current int) int {
+			return current + 1 // Functional update based on current value
+		})
+	}
 
-        addItem := func(item string) {
-            // When updating slices/maps, create new value
-            items.SetFn(func(current []string) []string {
-                newItems := app.DeepCopy(current)
-                return append(newItems, item)
-            })
-        }
+	addItem := func(item string) {
+		// When updating slices/maps, create new value
+		items.SetFn(func(current []string) []string {
+			newItems := app.DeepCopy(current)
+			return append(newItems, item)
+		})
+	}
 
-        // Refs for values that persist between renders but don't trigger updates
-        renderCounter := app.UseRef(0)
-        renderCounter.Current++  // Doesn't cause re-render
+	// Refs for values that persist between renders but don't trigger updates
+	renderCounter := app.UseRef(0)
+	renderCounter.Current++ // Doesn't cause re-render
 
-        // DOM refs for accessing elements directly
-        inputRef := app.UseVDomRef()
+	// DOM refs for accessing elements directly
+	inputRef := app.UseVDomRef()
 
-        // Side effects (can call setters here)
-        app.UseEffect(func() func() {
-            // Example: set counter to 10 on mount
-            count.Set(10)
+	// Side effects (can call setters here)
+	app.UseEffect(func() func() {
+		// Example: set counter to 10 on mount
+		count.Set(10)
 
-            return func() {
-                // cleanup
-            }
-        }, []any{}) // Empty dependency array means run once on mount
+		return func() {
+			// cleanup
+		}
+	}, []any{}) // Empty dependency array means run once on mount
 
-        return vdom.H("div", nil,
-            vdom.H("button", map[string]any{
-                "onClick": incrementCount,  // State setter called in event handler
-            }, "Increment: ", currentCount),
-            vdom.H("button", map[string]any{
-                "onClick": incrementCountFn,  // Functional setter in event handler
-            }, "Functional Increment: ", currentCount),
-            vdom.H("input", map[string]any{
-                "ref": inputRef,
-                "type": "text",
-                "placeholder": "Add item",
-                "onKeyDown": &vdom.VDomFunc{
-                    Fn: func(e vdom.VDomEvent) {
-                        if e.TargetValue != "" {
-                            addItem(e.TargetValue)  // State setter in event handler
-                        }
-                    },
-                    Keys: []string{"Enter"},
-                },
-            }),
-            vdom.H("ul", nil,
-                vdom.ForEach(currentItems, func(item string, idx int) any {
-                    return vdom.H("li", map[string]any{
-                        "key": idx,
-                    }, item)
-                }),
-            ),
-        )
-    },
-)
+	return vdom.H("div", nil,
+		vdom.H("button", map[string]any{
+			"onClick": incrementCount, // State setter called in event handler
+		}, "Increment: ", currentCount),
+		vdom.H("button", map[string]any{
+			"onClick": incrementCountFn, // Functional setter in event handler
+		}, "Functional Increment: ", currentCount),
+		vdom.H("input", map[string]any{
+			"ref":         inputRef,
+			"type":        "text",
+			"placeholder": "Add item",
+			"onKeyDown": &vdom.VDomFunc{
+				Fn: func(e vdom.VDomEvent) {
+					if e.TargetValue != "" {
+						addItem(e.TargetValue) // State setter in event handler
+					}
+				},
+				Keys: []string{"Enter"},
+			},
+		}),
+		vdom.H("ul", nil,
+			vdom.ForEach(currentItems, func(item string, idx int) any {
+				return vdom.H("li", map[string]any{
+					"key": idx,
+				}, item)
+			}),
+		),
+	)
+})
 ```
 
 ## Available Hooks
@@ -805,120 +797,118 @@ For global state management, use the atoms system (SharedAtom, Config, or Data a
 
 ```go
 type Todo struct {
-    Id   int    `json:"id"`
-    Text string `json:"text"`
-    Done bool   `json:"done"`
+	Id   int    `json:"id"`
+	Text string `json:"text"`
+	Done bool   `json:"done"`
 }
 
 // For async operations, consider using a state struct
 type TimerState struct {
-    ticker   *time.Ticker
-    done     chan bool
-    isActive bool
+	ticker   *time.Ticker
+	done     chan bool
+	isActive bool
 }
 
 // Declare global atoms as package variables
 var (
-    todosAtom = app.DataAtom("todos", []Todo{})
-    filterAtom = app.ConfigAtom("filter", "")
+	todosAtom  = app.DataAtom("todos", []Todo{})
+	filterAtom = app.ConfigAtom("filter", "")
 )
 
-var TodoApp = app.DefineComponent("TodoApp",
-    func(_ struct{}) any {
-        // Local state for async timer demo
-        seconds := app.UseLocal(0)
+var TodoApp = app.DefineComponent("TodoApp", func(_ struct{}) any {
+	// Local state for async timer demo
+	seconds := app.UseLocal(0)
 
-        // Use refs to store complex state that goroutines need to access
-        stateRef := app.UseRef(&TimerState{
-            done: make(chan bool),
-        })
+	// Use refs to store complex state that goroutines need to access
+	stateRef := app.UseRef(&TimerState{
+		done: make(chan bool),
+	})
 
-        // Example of safe goroutine management
-        startAsync := func() {
-            if stateRef.Current.isActive {
-                return // Prevent multiple goroutines
-            }
+	// Example of safe goroutine management
+	startAsync := func() {
+		if stateRef.Current.isActive {
+			return // Prevent multiple goroutines
+		}
 
-            stateRef.Current.isActive = true
-            go func() {
-                defer func() {
-                    stateRef.Current.isActive = false
-                }()
+		stateRef.Current.isActive = true
+		go func() {
+			defer func() {
+				stateRef.Current.isActive = false
+			}()
 
-                // Use channels for cleanup
-                for {
-                    select {
-                    case <-stateRef.Current.done:
-                        return
-                    case <-time.After(time.Second):
-                        // Use functional updates for state that depends on current value
-                        seconds.SetFn(func(s int) int {
-                            return s + 1
-                        })
-                        // Notify UI of update
-                        app.SendAsyncInitiation()
-                    }
-                }
-            }()
-        }
+			// Use channels for cleanup
+			for {
+				select {
+				case <-stateRef.Current.done:
+					return
+				case <-time.After(time.Second):
+					// Use functional updates for state that depends on current value
+					seconds.SetFn(func(s int) int {
+						return s + 1
+					})
+					// Notify UI of update
+					app.SendAsyncInitiation()
+				}
+			}
+		}()
+	}
 
-        // Always clean up goroutines
-        stopAsync := func() {
-            if stateRef.Current.isActive {
-                close(stateRef.Current.done)
-                stateRef.Current.done = make(chan bool)
-            }
-        }
+	// Always clean up goroutines
+	stopAsync := func() {
+		if stateRef.Current.isActive {
+			close(stateRef.Current.done)
+			stateRef.Current.done = make(chan bool)
+		}
+	}
 
-        // Use app.UseEffect for cleanup on unmount
-        app.UseEffect(func() func() {
-            startAsync() // Start the timer when component mounts
-            return func() {
-                stopAsync()
-            }
-        }, []any{})
+	// Use app.UseEffect for cleanup on unmount
+	app.UseEffect(func() func() {
+		startAsync() // Start the timer when component mounts
+		return func() {
+			stopAsync()
+		}
+	}, []any{})
 
-        addTodo := func(text string) {
-            currentTodos := todosAtom.Get()
-            newTodo := Todo{
-                Id:   len(currentTodos) + 1,
-                Text: text,
-                Done: false,
-            }
-            todosAtom.Set(append(currentTodos, newTodo))
-        }
+	addTodo := func(text string) {
+		currentTodos := todosAtom.Get()
+		newTodo := Todo{
+			Id:   len(currentTodos) + 1,
+			Text: text,
+			Done: false,
+		}
+		todosAtom.Set(append(currentTodos, newTodo))
+	}
 
-        // Read atom values in render code
-        todos := todosAtom.Get()
-        filter := filterAtom.Get()
-        currentSeconds := seconds.Get()
+	// Read atom values in render code
+	todos := todosAtom.Get()
+	filter := filterAtom.Get()
+	currentSeconds := seconds.Get()
 
-        return vdom.H("div", map[string]any{"className": "todo-app"},
-            vdom.H("h1", nil, "Todo App"),
-            vdom.H("p", nil, "Timer: ", currentSeconds, " seconds"),
-            vdom.H("input", map[string]any{
-                "placeholder": "Filter todos...",
-                "value":       filter,
-                "onChange":    func(e vdom.VDomEvent) { filterAtom.Set(e.TargetValue) },
-            }),
-            vdom.H("button", map[string]any{
-                "onClick": func() { addTodo("New todo") },
-            }, "Add Todo"),
-            vdom.ForEach(todos, func(todo Todo, idx int) any {
-                // Only show todos that contain the filter text
-                if filter != "" && !strings.Contains(strings.ToLower(todo.Text), strings.ToLower(filter)) {
-                    return nil
-                }
-                return vdom.H("div", map[string]any{
-                    "key":       todo.Id,
-                    "className": "todo-item",
-                },
-                    vdom.H("span", nil, todo.Text),
-                )
-            }),
-        )
-    },
-)
+	return vdom.H("div", map[string]any{"className": "todo-app"},
+		vdom.H("h1", nil, "Todo App"),
+		vdom.H("p", nil, "Timer: ", currentSeconds, " seconds"),
+		vdom.H("input", map[string]any{
+			"placeholder": "Filter todos...",
+			"value":       filter,
+			"onChange":    func(e vdom.VDomEvent) { filterAtom.Set(e.TargetValue) },
+		}),
+		vdom.H("button", map[string]any{
+			"onClick": func() { addTodo("New todo") },
+		}, "Add Todo"),
+		vdom.ForEach(todos, func(todo Todo, idx int) any {
+			// Only show todos that contain the filter text
+			if filter != "" && !strings.Contains(strings.ToLower(todo.Text), strings.ToLower(filter)) {
+				return nil
+			}
+			return vdom.H("div", map[string]any{
+				"key":       todo.Id,
+				"className": "todo-item",
+			},
+				vdom.H("span", nil, todo.Text),
+			)
+		}),
+	)
+})
 ```
 
 Key points for state management:
@@ -1016,12 +1006,10 @@ Key points:
 package main
 
 import (
-    "context"
-    _ "embed"
-    "strconv"
+	_ "embed"
 
-    "github.com/wavetermdev/waveterm/tsunami/app"
-    "github.com/wavetermdev/waveterm/tsunami/vdom"
+	"github.com/wavetermdev/waveterm/tsunami/app"
+	"github.com/wavetermdev/waveterm/tsunami/vdom"
 )
 
 // Tsunami applications automatically include Tailwind v4 CSS
@@ -1029,134 +1017,130 @@ import (
 
 // Basic domain types with json tags for props
 type Todo struct {
-    Id        int    `json:"id"`
-    Text      string `json:"text"`
-    Completed bool   `json:"completed"`
+	Id        int    `json:"id"`
+	Text      string `json:"text"`
+	Completed bool   `json:"completed"`
 }
 
 type TodoItemProps struct {
-    Todo     Todo   `json:"todo"`
-    OnToggle func() `json:"onToggle"`
-    OnDelete func() `json:"onDelete"`
+	Todo     Todo   `json:"todo"`
+	OnToggle func() `json:"onToggle"`
+	OnDelete func() `json:"onDelete"`
 }
 
 // Reusable components
-var TodoItem = app.DefineComponent("TodoItem",
-    func(props TodoItemProps) any {
-        return vdom.H("div", map[string]any{
-            "className": vdom.Classes("flex items-center gap-2.5 p-2 border border-border rounded", vdom.If(props.Todo.Completed, "opacity-70")),
-        },
-            vdom.H("input", map[string]any{
-                "className": "w-4 h-4",
-                "type":      "checkbox",
-                "checked":   props.Todo.Completed,
-                "onChange":  props.OnToggle,
-            }),
-            vdom.H("span", map[string]any{
-                "className": vdom.Classes("flex-1", vdom.If(props.Todo.Completed, "line-through")),
-            }, props.Todo.Text),
-            vdom.H("button", map[string]any{
-                "className": "text-red-500 cursor-pointer px-2 py-1 rounded",
-                "onClick":   props.OnDelete,
-            }, "×"),
-        )
-    },
-)
+var TodoItem = app.DefineComponent("TodoItem", func(props TodoItemProps) any {
+	return vdom.H("div", map[string]any{
+		"className": vdom.Classes("flex items-center gap-2.5 p-2 border border-border rounded", vdom.If(props.Todo.Completed, "opacity-70")),
+	},
+		vdom.H("input", map[string]any{
+			"className": "w-4 h-4",
+			"type":      "checkbox",
+			"checked":   props.Todo.Completed,
+			"onChange":  props.OnToggle,
+		}),
+		vdom.H("span", map[string]any{
+			"className": vdom.Classes("flex-1", vdom.If(props.Todo.Completed, "line-through")),
+		}, props.Todo.Text),
+		vdom.H("button", map[string]any{
+			"className": "text-red-500 cursor-pointer px-2 py-1 rounded",
+			"onClick":   props.OnDelete,
+		}, "×"),
+	)
+})
 
 // Root component must be named "App"
-var App = app.DefineComponent("App",
-    func(_ struct{}) any {
-        // UseLocal returns Atom[T] with Get() and Set() methods
-        todos := app.UseLocal([]Todo{
-            {Id: 1, Text: "Learn Tsunami", Completed: false},
-            {Id: 2, Text: "Build an app", Completed: false},
-        })
-        nextId := app.UseLocal(3)
-        inputText := app.UseLocal("")
+var App = app.DefineComponent("App", func(_ struct{}) any {
+	// UseLocal returns Atom[T] with Get() and Set() methods
+	todos := app.UseLocal([]Todo{
+		{Id: 1, Text: "Learn Tsunami", Completed: false},
+		{Id: 2, Text: "Build an app", Completed: false},
+	})
+	nextId := app.UseLocal(3)
+	inputText := app.UseLocal("")
 
-        // Event handlers
-        addTodo := func() {
-            currentInput := inputText.Get()
-            if currentInput == "" {
-                return
-            }
-            currentTodos := todos.Get()
-            currentNextId := nextId.Get()
+	// Event handlers
+	addTodo := func() {
+		currentInput := inputText.Get()
+		if currentInput == "" {
+			return
+		}
+		currentTodos := todos.Get()
+		currentNextId := nextId.Get()
 
-            todos.Set(append(currentTodos, Todo{
-                Id:        currentNextId,
-                Text:      currentInput,
-                Completed: false,
-            }))
-            nextId.Set(currentNextId + 1)
-            inputText.Set("")
-        }
+		todos.Set(append(currentTodos, Todo{
+			Id:        currentNextId,
+			Text:      currentInput,
+			Completed: false,
+		}))
+		nextId.Set(currentNextId + 1)
+		inputText.Set("")
+	}
 
-        toggleTodo := func(id int) {
-            currentTodos := todos.Get()
-            newTodos := make([]Todo, len(currentTodos))
-            copy(newTodos, currentTodos)
-            for i := range newTodos {
-                if newTodos[i].Id == id {
-                    newTodos[i].Completed = !newTodos[i].Completed
-                    break
-                }
-            }
-            todos.Set(newTodos)
-        }
+	toggleTodo := func(id int) {
+		currentTodos := todos.Get()
+		newTodos := make([]Todo, len(currentTodos))
+		copy(newTodos, currentTodos)
+		for i := range newTodos {
+			if newTodos[i].Id == id {
+				newTodos[i].Completed = !newTodos[i].Completed
+				break
+			}
+		}
+		todos.Set(newTodos)
+	}
 
-        deleteTodo := func(id int) {
-            currentTodos := todos.Get()
-            newTodos := make([]Todo, 0)
-            for _, todo := range currentTodos {
-                if todo.Id != id {
-                    newTodos = append(newTodos, todo)
-                }
-            }
-            todos.Set(newTodos)
-        }
+	deleteTodo := func(id int) {
+		currentTodos := todos.Get()
+		newTodos := make([]Todo, 0)
+		for _, todo := range currentTodos {
+			if todo.Id != id {
+				newTodos = append(newTodos, todo)
+			}
+		}
+		todos.Set(newTodos)
+	}
 
-        // Read atom values in render code
-        todoList := todos.Get()
-        currentInput := inputText.Get()
+	// Read atom values in render code
+	todoList := todos.Get()
+	currentInput := inputText.Get()
 
-        return vdom.H("div", map[string]any{
-            "className": "max-w-[500px] m-5 font-sans",
-        },
-            vdom.H("h1", map[string]any{
-                "className": "text-2xl font-bold mb-5",
-            }, "My Tsunami App"),
+	return vdom.H("div", map[string]any{
+		"className": "max-w-[500px] m-5 font-sans",
+	},
+		vdom.H("h1", map[string]any{
+			"className": "text-2xl font-bold mb-5",
+		}, "My Tsunami App"),
 
-            vdom.H("div", map[string]any{
-                "className": "flex gap-2.5 mb-5",
-            },
-                vdom.H("input", map[string]any{
-                    "className":   "flex-1 p-2 border border-border rounded",
-                    "type":        "text",
-                    "placeholder": "Add new item...",
-                    "value":       currentInput,
-                    "onChange": func(e vdom.VDomEvent) {
-                        inputText.Set(e.TargetValue)
-                    },
-                }),
-                vdom.H("button", map[string]any{
-                    "className": "px-4 py-2 border border-border rounded cursor-pointer",
-                    "onClick":   addTodo,
-                }, "Add"),
-            ),
+		vdom.H("div", map[string]any{
+			"className": "flex gap-2.5 mb-5",
+		},
+			vdom.H("input", map[string]any{
+				"className":   "flex-1 p-2 border border-border rounded",
+				"type":        "text",
+				"placeholder": "Add new item...",
+				"value":       currentInput,
+				"onChange": func(e vdom.VDomEvent) {
+					inputText.Set(e.TargetValue)
+				},
+			}),
+			vdom.H("button", map[string]any{
+				"className": "px-4 py-2 border border-border rounded cursor-pointer",
+				"onClick":   addTodo,
+			}, "Add"),
+		),
 
-            vdom.H("div", map[string]any{
-                "className": "flex flex-col gap-2",
-            }, vdom.ForEach(todoList, func(todo Todo, _ int) any {
-                return TodoItem(TodoItemProps{
-                    Todo:     todo,
-                    OnToggle: func() { toggleTodo(todo.Id) },
-                    OnDelete: func() { deleteTodo(todo.Id) },
-                }).WithKey(todo.Id)
-            })),
-        )
-    },
-)
+		vdom.H("div", map[string]any{
+			"className": "flex flex-col gap-2",
+		}, vdom.ForEach(todoList, func(todo Todo, _ int) any {
+			return TodoItem(TodoItemProps{
+				Todo:     todo,
+				OnToggle: func() { toggleTodo(todo.Id) },
+				OnDelete: func() { deleteTodo(todo.Id) },
+			}).WithKey(todo.Id)
+		})),
+	)
+})
 ```
 
 Key points:
