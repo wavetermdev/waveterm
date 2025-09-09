@@ -162,32 +162,31 @@ var App = app.DefineComponent("App",
 						// Collect new CPU data point and shift the data window
 						cpuDataAtom.SetFn(func(currentData []CPUDataPoint) []CPUDataPoint {
 							newPoint := generateCPUDataPoint()
-							// Read current config inside the loop to get live updates
 							currentDataPointCount := dataPointCountAtom.Get()
 
+							// Make a safe copy to avoid mutation issues
+							data := app.DeepCopy(currentData)
+
 							// Ensure we have the right size array
-							if len(currentData) != currentDataPointCount {
+							if len(data) != currentDataPointCount {
 								// Resize array if config changed
-								newData := make([]CPUDataPoint, currentDataPointCount)
+								resized := make([]CPUDataPoint, currentDataPointCount)
 								copyCount := currentDataPointCount
-								if len(currentData) < copyCount {
-									copyCount = len(currentData)
+								if len(data) < copyCount {
+									copyCount = len(data)
 								}
 								if copyCount > 0 {
-									copy(newData[currentDataPointCount-copyCount:], currentData[len(currentData)-copyCount:])
+									copy(resized[currentDataPointCount-copyCount:], data[len(data)-copyCount:])
 								}
-								currentData = newData
+								data = resized
 							}
-							// Create a new slice with exact point count
-							newData := make([]CPUDataPoint, currentDataPointCount)
-							// Shift existing data left by 1 and add new point at the end
-							if currentDataPointCount > 1 {
-								copy(newData, currentData[1:])
+
+							// Append new point and keep only the last currentDataPointCount elements
+							data = append(data, newPoint)
+							if len(data) > currentDataPointCount {
+								data = data[len(data)-currentDataPointCount:]
 							}
-							if currentDataPointCount > 0 {
-								newData[currentDataPointCount-1] = newPoint
-							}
-							return newData
+							return data
 						})
 						// Trigger a re-render
 						setTickerFn(func(t int) int { return t + 1 })
