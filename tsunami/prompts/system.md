@@ -222,6 +222,7 @@ Helper functions:
 - `vdom.Ternary[T any](cond bool, trueRtn T, falseRtn T) T` - Type-safe ternary operation, returns trueRtn if condition is true, falseRtn otherwise
 - `vdom.ForEach[T any](items []T, fn func(T, int) any) []any` - Maps over items with index, function receives item and index
 - `vdom.Classes(classes ...any) string` - Combines multiple class values into a single space-separated string, similar to JavaScript clsx library (accepts string, []string, and map[string]bool params)
+- `app.DeepCopy[T any](value T) T` - Creates a deep copy of slices, maps, and other complex types for safe state updates
 
 - The vdom.If and vdom.IfElse functions can be used for both conditional rendering of elements, conditional classes, and conditional props.
 - For vdom.If and vdom.IfElse, always follow the pattern of condition first (bool), then value(s).
@@ -534,7 +535,7 @@ Event handlers follow React patterns while providing additional type safety and 
 
 ```go
 var MyComponent = app.DefineComponent("MyComponent",
-    func(props MyProps) any {
+    func(props struct{}) any {
         // UseLocal: returns Atom[T] with Get(), Set(), and SetFn() methods
         count := app.UseLocal(0)     // Initial value of 0
         items := app.UseLocal([]string{}) // Initial value of empty slice
@@ -556,7 +557,10 @@ var MyComponent = app.DefineComponent("MyComponent",
 
         addItem := func(item string) {
             // When updating slices/maps, create new value
-            items.Set(append([]string{}, currentItems..., item))
+            items.SetFn(func(current []string) []string {
+                newItems := app.DeepCopy(current)
+                return append(newItems, item)
+            })
         }
 
         // Refs for values that persist between renders but don't trigger updates
