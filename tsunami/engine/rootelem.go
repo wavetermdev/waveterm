@@ -103,14 +103,14 @@ func MakeRoot() *RootElem {
 	}
 }
 
-func (r *RootElem) CreateAtom(name string, initialVal any) {
+func (r *RootElem) CreateAtom(name string, initialVal any, typ reflect.Type) {
 	r.atomLock.Lock()
 	defer r.atomLock.Unlock()
 
 	if _, ok := r.Atoms[name]; ok {
 		panic(fmt.Sprintf("atom %s already exists", name))
 	}
-	r.Atoms[name] = makeAtom(initialVal)
+	r.Atoms[name] = makeAtom(initialVal, typ)
 }
 
 // we can do better here with an inverted map, but
@@ -169,14 +169,6 @@ func (r *RootElem) SetAtomVal(name string, val any, markDirty bool) {
 
 	atom, ok := r.Atoms[name]
 	if !ok {
-		return
-	}
-	if !markDirty {
-		atom.SetVal(val)
-		return
-	}
-	// try to avoid setting the value and marking as dirty if it's the "same"
-	if util.JsonValEqual(val, atom.GetVal()) {
 		return
 	}
 	atom.SetVal(val)

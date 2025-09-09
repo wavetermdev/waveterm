@@ -5,6 +5,7 @@ package engine
 
 import (
 	"log"
+	"reflect"
 	"strconv"
 
 	"github.com/wavetermdev/waveterm/tsunami/vdom"
@@ -116,7 +117,7 @@ func UseLocal(vc *VDomContextImpl, initialVal any) string {
 	atomName := "$local." + vc.GetCompWaveId() + "#" + strconv.Itoa(hookVal.Idx)
 	if !hookVal.Init {
 		hookVal.Init = true
-		vc.Root.CreateAtom(atomName, initialVal)
+		vc.Root.CreateAtom(atomName, initialVal, reflect.TypeOf(initialVal))
 		closedAtomName := atomName
 		hookVal.UnmountFn = func() {
 			vc.Root.RemoveAtom(closedAtomName)
