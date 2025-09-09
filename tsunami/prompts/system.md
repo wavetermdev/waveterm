@@ -267,7 +267,7 @@ var MyComponent = app.DefineComponent("MyComponent", func(props MyProps) any {
 
 - **State Management**: app.UseLocal creates local component atoms (covered in State Management with Atoms)
 - **Component Lifecycle**: app.UseEffect, app.UseRef, app.UseVDomRef (covered in Component Lifecycle Hooks)
-- **Async Operations**: app.UseGoRoutine manages goroutine lifecycle (covered in Async Operations and Goroutines)
+- **Async Operations**: app.UseGoRoutine, app.UseTicker, app.UseAfter manage goroutine and timer lifecycle (covered in Async Operations and Goroutines)
 - **Utility**: app.UseSetAppTitle, app.UseId, app.UseRenderTs, app.UseResync
 
 ## State Management with Atoms
@@ -925,31 +925,107 @@ var App = app.DefineComponent("App", func(_ struct{}) any {
 
 When working with goroutines, timers, or other async operations in Tsunami, follow these patterns to safely update state and manage cleanup:
 
-### Goroutine Management
+### Timer Hooks
 
-For async operations like timers, background tasks, or data polling, use app.UseGoRoutine to safely manage goroutine lifecycle:
+For common timing operations, Tsunami provides simplified hooks that handle cleanup automatically:
+
+#### UseTicker for Recurring Operations
+
+Use `app.UseTicker` for operations that need to run at regular intervals:
 
 ```go
-var MyComponent = app.DefineComponent("MyComponent", func(_ struct{}) any {
-    seconds := app.UseLocal(0)
+var ClockComponent = app.DefineComponent("ClockComponent", func(_ struct{}) any {
+    currentTime := app.UseLocal(time.Now().Format("15:04:05"))
 
-    timerFn := func(ctx context.Context) {
+    // Update every second - automatically cleaned up on unmount
+    app.UseTicker(time.Second, func() {
+        currentTime.Set(time.Now().Format("15:04:05"))
+        app.SendAsyncInitiation()
+    }, []any{})
+
+    return vdom.H("div", map[string]any{
+        "className": "text-2xl font-mono",
+    }, "Current time: ", currentTime.Get())
+})
+```
+
+#### UseAfter for Delayed Operations
+
+Use `app.UseAfter` for one-time delayed operations:
+
+```go
+type ToastComponentProps struct {
+    Message string
+    Duration time.Duration
+}
+
+var ToastComponent = app.DefineComponent("ToastComponent", func(props ToastComponentProps) any {
+    visible := app.UseLocal(true)
+
+    // Auto-hide after specified duration - cancelled if component unmounts
+    app.UseAfter(props.Duration, func() {
+        visible.Set(false)
+        app.SendAsyncInitiation()
+    }, []any{props.Duration})
+
+    if !visible.Get() {
+        return nil
+    }
+
+    return vdom.H("div", map[string]any{
+        "className": "bg-blue-500 text-white p-4 rounded",
+    }, props.Message)
+})
+```
+
+**Benefits of Timer Hooks:**
+
+- **Automatic cleanup**: Timers are stopped when component unmounts or dependencies change
+- **No goroutine leaks**: Built on top of `UseGoRoutine` with proper context cancellation
+- **Simpler API**: No need to manually manage ticker channels or timer cleanup
+- **Dependency tracking**: Change dependencies to restart timers with new intervals
+
+### Complex Async Operations with UseGoRoutine
+
+For more complex async operations like data polling, background processing, or custom timing logic, use `app.UseGoRoutine` directly:
+
+```go
+var DataPollerComponent = app.DefineComponent("DataPollerComponent", func(_ struct{}) any {
+    data := app.UseLocal([]APIResult{})
+    status := app.UseLocal("idle")
+
+    pollDataFn := func(ctx context.Context) {
         for {
             select {
             case <-ctx.Done():
                 return
-            case <-time.After(time.Second):
-                // Update state from goroutine
-                seconds.SetFn(func(s int) int { return s + 1 })
-                app.SendAsyncInitiation() // Trigger UI update
+            case <-time.After(30 * time.Second):
+                status.Set("fetching")
+                app.SendAsyncInitiation()
+
+                // Complex async operation: fetch, process, validate
+                newData, err := fetchAndProcessData()
+                if err != nil {
+                    status.Set("error")
+                } else {
+                    data.SetFn(func(current []APIResult) []APIResult {
+                        // Merge new data with existing, handle deduplication
+                        return mergeResults(current, newData)
+                    })
+                    status.Set("success")
+                }
+                app.SendAsyncInitiation()
             }
         }
     }
 
-    // Start timer on mount, cleanup on unmount
-    app.UseGoRoutine(timerFn, []any{})
+    // Start polling on mount, cleanup on unmount
+    app.UseGoRoutine(pollDataFn, []any{})
 
-    return vdom.H("div", nil, "Seconds: ", seconds.Get())
+    return vdom.H("div", nil,
+        vdom.H("div", nil, "Status: ", status.Get()),
+        vdom.H("div", nil, "Data count: ", len(data.Get())),
+    )
 })
 ```
 
@@ -1282,6 +1358,8 @@ Key points:
 **Async Operation Guidelines**
 
 - Use app.UseGoRoutine instead of raw go statements for component-related async work
+- Use app.UseTicker instead of manual time.Ticker management for recurring operations
+- Use app.UseAfter instead of time.AfterFunc for delayed operations
 - Always respect ctx.Done() in app.UseGoRoutine functions to prevent goroutine leaks
-- Use app.UseEffect with cleanup functions for subscriptions, timers, and other lifecycle management
+- All timer and goroutine cleanup is handled automatically on component unmount or dependency changes
 - Call app.SendAsyncInitiation after state updates to trigger re-rendering

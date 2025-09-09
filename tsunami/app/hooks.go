@@ -5,6 +5,7 @@ package app
 
 import (
 	"context"
+	"time"
 
 	"github.com/wavetermdev/waveterm/tsunami/engine"
 	"github.com/wavetermdev/waveterm/tsunami/vdom"
@@ -171,6 +172,44 @@ func UseGoRoutine(fn func(ctx context.Context), deps []any) {
 			if cancel != nil {
 				cancel()
 			}
+		}
+	}, deps)
+}
+
+// UseTicker manages a ticker lifecycle within a component.
+// It creates a ticker that calls the provided function at regular intervals.
+// The ticker is automatically stopped on dependency changes or component unmount.
+// This hook must be called within a component context.
+func UseTicker(interval time.Duration, tickFn func(), deps []any) {
+	UseGoRoutine(func(ctx context.Context) {
+		ticker := time.NewTicker(interval)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				tickFn()
+			}
+		}
+	}, deps)
+}
+
+// UseAfter manages a timeout lifecycle within a component.
+// It creates a timer that calls the provided function after the specified duration.
+// The timer is automatically canceled on dependency changes or component unmount.
+// This hook must be called within a component context.
+func UseAfter(duration time.Duration, timeoutFn func(), deps []any) {
+	UseGoRoutine(func(ctx context.Context) {
+		timer := time.NewTimer(duration)
+		defer timer.Stop()
+
+		select {
+		case <-ctx.Done():
+			return
+		case <-timer.C:
+			timeoutFn()
 		}
 	}, deps)
 }
