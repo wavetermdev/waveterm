@@ -8,7 +8,9 @@ Tsunami mirrors React's developer experience:
 
 - **Components**: Define reusable UI pieces with typed props structs
 - **JSX-like syntax**: Use vdom.H to build element trees (like React.createElement)
-- **Hooks**: app.UseState, app.UseEffect, app.UseRef work exactly like React hooks
+- **Hooks**: app.UseEffect, app.UseRef work exactly like React hooks
+- **Local state**: Use app.UseLocal as a replacement for React.useState
+- **Global state**: Use app.ConfigAtom, app.DataAtom, app.SharedAtom for cross-component state
 - **Props and state**: Familiar patterns for data flow and updates
 - **Conditional rendering**: vdom.If and vdom.IfElse for dynamic UIs
 - **Event handling**: onClick, onChange, onKeyDown with React-like event objects
@@ -240,7 +242,7 @@ Functions starting with `app.Use*` are hooks in Tsunami, following the exact sam
 var MyComponent = app.DefineComponent("MyComponent",
     func(props MyProps) any {
         // ✅ Good: hooks at top level
-        count := app.UseState(0)
+        count := app.UseLocal(0)
         app.UseEffect(func() { /* effect */ }, nil)
 
         // Now safe to have conditional logic
@@ -255,19 +257,11 @@ var MyComponent = app.DefineComponent("MyComponent",
 
 **Common Hooks (React-like):**
 
-- `app.UseState[T any](initialVal T) (T, func(T), func(func(T) T))` - Component state management (React `useState`)
-- `app.UseEffect(fn func() func(), deps []any)` - Side effects after render (React `useEffect`)
-- `app.UseRef[T any](val T) *VDomSimpleRef[T]` - Mutable refs for arbitrary values (React `useRef`)
-- `app.UseVDomRef() *VDomRef` - DOM element references (React `useRef` for DOM elements)
+- `app.UseLocal[T any](initialVal T) Atom[T]` - Component state management (replacement for React.useState)
+- `app.UseEffect(fn func() func(), deps []any)` - Side effects after render (React.useEffect)
+- `app.UseRef[T any](val T) *VDomSimpleRef[T]` - Mutable refs for arbitrary values (React.useRef)
+- `app.UseVDomRef() *VDomRef` - DOM element references (React.useRef for DOM elements)
 - `app.UseSetAppTitle(title string)` - Sets the application title (used in every app, only works in top-level "App" component)
-
-**Global Data Hooks (Jotai-like atoms):**
-
-- `UseSharedAtom[T any](atomName string) (T, func(T), func(func(T) T))` - Shared state across components
-- `UseConfig[T any](atomName string) (T, func(T), func(func(T) T))` - Access to global config values
-- `UseData[T any](atomName string) (T, func(T), func(func(T) T))` - Access to global data values
-
-These allow applications to easily share data between components. When an atom is updated, all components using it will re-render.
 
 **Specialty Hooks (less common):**
 
@@ -281,41 +275,83 @@ This ensures hooks are called in the same order every render, which is essential
 
 ## Global State Management
 
-Tsunami provides three types of global atoms for sharing state across components and with external systems:
+Tsunami provides three types of global atoms for sharing state across components and with external systems. These atoms are declared as global variables using type-safe constructor functions.
+
+### Declaring Global Atoms
+
+Global atoms are declared using constructor functions that take a name and default value:
+
+```go
+// Declare global atoms as package-level variables
+var (
+    // SharedAtom - Basic shared state between components
+    isLoading = app.SharedAtom("isLoading", false)
+    userPrefs = app.SharedAtom("userPrefs", UserPreferences{})
+
+    // ConfigAtom - Configuration that external systems can read/write
+    theme = app.ConfigAtom("theme", "dark")
+    apiKey = app.ConfigAtom("apiKey", "")
+    maxRetries = app.ConfigAtom("maxRetries", 3)
+
+    // DataAtom - Application data that external systems can read
+    currentUser = app.DataAtom("currentUser", UserStats{})
+    lastPollResult = app.DataAtom("lastPoll", APIResult{})
+)
+```
+
+### Using Atoms in Components
+
+Atoms provide simple Get/Set methods that automatically handle render dependencies:
+
+```go
+// Reading atom values (registers render dependency)
+loading := isLoading.Get()
+currentTheme := theme.Get()
+user := currentUser.Get()
+
+// Setting atom values (only in event handlers, effects, or async code)
+handleToggle := func() {
+    isLoading.Set(true) // Direct value setting
+}
+
+handleRetry := func() {
+    maxRetries.SetFn(func(current int) int {
+        return current + 1  // Functional update
+    })
+}
+```
+
+### Important Rules
+
+- **Declaration**: Atoms must be declared as global variables using the constructor functions
+- **Reading**: Call `.Get()` to read values - this automatically registers render dependencies
+- **Writing**: Call `.Set(value)` or `.SetFn(func(T) T)` to update values
+- **Render Safety**: NEVER call Set or SetFn in render code - only in event handlers, effects, or async code
+- **Type Safety**: Atoms are type-safe with `Atom[T]` - the type is established at declaration time
 
 ### Atom Types
 
-**UseSharedAtom** - Basic shared state between components:
+**SharedAtom** - Basic shared state between components:
 
-```go
-// Shared between components, not shared externally
-// Triggers re-renders when updated
-isLoading, setIsLoading, _ := app.UseSharedAtom[bool]("isLoading")
-```
+- Shared between components within the application
+- Not accessible to external systems
+- Triggers re-renders when updated
 
-**UseConfig** - Configuration that external systems can read/write:
+**ConfigAtom** - Configuration that external systems can read/write:
 
-```go
-// External tools can GET/POST to /api/config to read/modify these
-// Triggers re-renders when updated (internally or externally)
-theme, setTheme, _ := app.UseConfig[string]("theme")
-apiKey, _, _ := app.UseConfig[string]("apiKey")
-```
+- External tools can GET/POST to `/api/config` to read/modify these
+- Triggers re-renders when updated (internally or externally)
+- Perfect for user settings, API keys, feature flags
 
-**UseData** - Application data that external systems can read:
+**DataAtom** - Application data that external systems can read:
 
-```go
-// External tools can GET /api/data to inspect app state
-// Triggers re-renders when updated
-userStats, setUserStats, _ := app.UseData[UserStats]("currentUser")
-apiResult, setLastPoll, setLastPollFn := app.UseData[APIResult]("lastPoll")
-```
-
-All atom types work exactly like app.UseState - they return the current value, a setter function, and a functional setter. The key difference is their scope and external API accessibility.
+- External tools can GET `/api/data` to inspect app state
+- Triggers re-renders when updated
+- Ideal for application state, user data, API results
 
 ### External API Integration
 
-The app.UseConfig and app.UseData atoms automatically create REST endpoints:
+ConfigAtom and DataAtom automatically create REST endpoints:
 
 - `GET /api/config` - Returns all config atom values
 - `POST /api/config` - Updates (merges) config atom values
@@ -414,7 +450,7 @@ Components in Tsunami:
 - Use Go structs with json tags for props
 - Take props as their single argument
 - Return elements created with vdom.H
-- Can use all hooks (app.UseState, app.UseRef, etc)
+- Can use all hooks (app.UseLocal, app.UseRef, etc)
 - Are registered with the default client and given a name
 - Are called as functions with their props struct
 
@@ -497,97 +533,113 @@ Event handlers follow React patterns while providing additional type safety and 
 ## State Management with Hooks
 
 ```go
-func MyComponent(ctx context.Context, props MyProps) any {
-    // UseState: returns current value, setter function, and functional setter
-    count, setCount, _ := app.UseState(0)     // Initial value of 0
-    items, setItems, _ := app.UseState([]string{}) // Initial value of empty slice
+var MyComponent = app.DefineComponent("MyComponent",
+    func(props MyProps) any {
+        // UseLocal: returns Atom[T] with Get(), Set(), and SetFn() methods
+        count := app.UseLocal(0)     // Initial value of 0
+        items := app.UseLocal([]string{}) // Initial value of empty slice
 
-    // When you need the functional setter, use all 3 return values
-    counter, setCounter, setCounterFn := app.UseState(0)
+        // Reading values in render code
+        currentCount := count.Get()
+        currentItems := items.Get()
 
-    // Event handlers that update state (called from onClick, onChange, etc.)
-    incrementCount := func() {
-        setCount(count + 1)  // Direct update when you have the value
-    }
-
-    incrementCounterFn := func() {
-        setCounterFn(func(current int) int {
-            return current + 1  // Functional update based on current value
-        })
-    }
-
-    addItem := func(item string) {
-        // When updating slices/maps, create new value
-        setItems(append([]string{}, items..., item))
-    }
-
-    // Refs for values that persist between renders but don't trigger updates
-    renderCounter := app.UseRef(0)
-    renderCounter.Current++  // Doesn't cause re-render
-
-    // DOM refs for accessing elements directly
-    inputRef := app.UseVDomRef()
-
-    // Side effects (can call setters here)
-    app.UseEffect(func() func() {
-        // Example: set counter to 10 on mount
-        setCounter(10)
-
-        return func() {
-            // cleanup
+        // Event handlers that update state (called from onClick, onChange, etc.)
+        incrementCount := func() {
+            count.Set(currentCount + 1)  // Direct update when you have the value
         }
-    }, []any{}) // Empty dependency array means run once on mount
 
-    return vdom.H("div", nil,
-        vdom.H("button", map[string]any{
-            "onClick": incrementCount,  // State setter called in event handler
-        }, "Increment: ", count),
-        vdom.H("button", map[string]any{
-            "onClick": incrementCounterFn,  // Functional setter in event handler
-        }, "Functional Increment: ", counter),
-        vdom.H("input", map[string]any{
-            "ref": inputRef,
-            "type": "text",
-            "placeholder": "Add item",
-            "onKeyDown": &vdom.VDomFunc{
-                Fn: func(e vdom.VDomEvent) {
-                    if e.TargetValue != "" {
-                        addItem(e.TargetValue)  // State setter in event handler
-                    }
+        incrementCountFn := func() {
+            count.SetFn(func(current int) int {
+                return current + 1  // Functional update based on current value
+            })
+        }
+
+        addItem := func(item string) {
+            // When updating slices/maps, create new value
+            items.Set(append([]string{}, currentItems..., item))
+        }
+
+        // Refs for values that persist between renders but don't trigger updates
+        renderCounter := app.UseRef(0)
+        renderCounter.Current++  // Doesn't cause re-render
+
+        // DOM refs for accessing elements directly
+        inputRef := app.UseVDomRef()
+
+        // Side effects (can call setters here)
+        app.UseEffect(func() func() {
+            // Example: set counter to 10 on mount
+            count.Set(10)
+
+            return func() {
+                // cleanup
+            }
+        }, []any{}) // Empty dependency array means run once on mount
+
+        return vdom.H("div", nil,
+            vdom.H("button", map[string]any{
+                "onClick": incrementCount,  // State setter called in event handler
+            }, "Increment: ", currentCount),
+            vdom.H("button", map[string]any{
+                "onClick": incrementCountFn,  // Functional setter in event handler
+            }, "Functional Increment: ", currentCount),
+            vdom.H("input", map[string]any{
+                "ref": inputRef,
+                "type": "text",
+                "placeholder": "Add item",
+                "onKeyDown": &vdom.VDomFunc{
+                    Fn: func(e vdom.VDomEvent) {
+                        if e.TargetValue != "" {
+                            addItem(e.TargetValue)  // State setter in event handler
+                        }
+                    },
+                    Keys: []string{"Enter"},
                 },
-                Keys: []string{"Enter"},
-            },
-        }),
-        vdom.H("ul", nil,
-            vdom.ForEach(items, func(item string, idx int) any {
-                return vdom.H("li", map[string]any{
-                    "key": idx,
-                }, item)
             }),
-        ),
-    )
-}
+            vdom.H("ul", nil,
+                vdom.ForEach(currentItems, func(item string, idx int) any {
+                    return vdom.H("li", map[string]any{
+                        "key": idx,
+                    }, item)
+                }),
+            ),
+        )
+    },
+)
 ```
 
 ## Available Hooks
 
 The system provides three main types of hooks:
 
-1. app.UseState - For values that trigger re-renders when changed:
+1. app.UseLocal - Component state management (Tsunami's equivalent to React.useState):
 
-   - Returns current value, direct setter, and functional setter
-   - Direct setter triggers component re-render
-   - Functional setter ensures you're working with latest state value
+   - Returns an Atom[T] with Get(), Set(), and SetFn() methods instead of React's [value, setter] tuple
+   - Use Get() to read the current value (triggers re-render dependency)
+   - Use Set() for direct value updates or SetFn() for functional updates
    - Create new values for slices/maps when updating
+   - AI models familiar with React.useState should adapt their patterns to use UseLocal with .Get()/.Set()/.SetFn()
 
    ```go
-   count, setCount, setCountFn := app.UseState(0)
-   // Direct update when you have the value:
-   setCount(42)
-   // Functional update when you need current value:
-   setCountFn(func(current int) int {
-       return current + 1
-   })
+   // React.useState equivalent:
+   // const [count, setCount] = useState(0);
+   count := app.UseLocal(0)
+
+   // Reading the current value (in render code):
+   currentValue := count.Get()  // Instead of just using `count`
+
+   // IMPORTANT: Set/SetFn should NEVER be called in render code!
+   // Only call them in event handlers, effects, or async code:
+
+   handleClick := func() {
+       count.Set(42)  // Instead of setCount(42)
+   }
+
+   handleIncrement := func() {
+       count.SetFn(func(current int) int {  // Instead of setCount(prev => prev + 1)
+           return current + 1
+       })
+   }
    ```
 
 2. app.UseRef - For values that persist between renders without triggering updates (like React.useRef):
@@ -625,7 +677,7 @@ The system provides three main types of hooks:
 
 Best Practices:
 
-- Use app.UseState for all UI state - it provides both direct and functional setters
+- Use app.UseLocal for all UI state - use .Get() for reading and .Set()/.SetFn() for updating
 - Use functional setter when updating state from goroutines or based on current value
 - Use app.UseRef for complex state that goroutines need to access
 - Always clean up timers, channels, and goroutines in app.UseEffect cleanup functions
@@ -635,12 +687,6 @@ Best Practices:
 For global state management, use the atoms system (SharedAtom, Config, or Data as appropriate). This provides global reactive state that components can subscribe to:
 
 ```go
-// Use func init() to set atom defaults
-func init() {
-    app.SetData("todos", []Todo{})
-    app.SetConfig("filter", "")
-}
-
 type Todo struct {
     Id   int    `json:"id"`
     Text string `json:"text"`
@@ -654,14 +700,16 @@ type TimerState struct {
     isActive bool
 }
 
-var TodoApp = app.DefineComponent("TodoApp",
-    func(ctx context.Context, _ struct{}) any {
-        // Use atoms for global state (prefixes must match init functions)
-        todos, setTodos, _ := app.UseData[[]Todo]("todos")
-        filter, setFilter, _ := app.UseConfig[string]("filter")
+// Declare global atoms as package variables
+var (
+    todosAtom = app.DataAtom("todos", []Todo{})
+    filterAtom = app.ConfigAtom("filter", "")
+)
 
+var TodoApp = app.DefineComponent("TodoApp",
+    func(_ struct{}) any {
         // Local state for async timer demo
-        seconds, _, setSecondsFn := app.UseState[int](0)
+        seconds := app.UseLocal(0)
 
         // Use refs to store complex state that goroutines need to access
         stateRef := app.UseRef(&TimerState{
@@ -687,7 +735,7 @@ var TodoApp = app.DefineComponent("TodoApp",
                         return
                     case <-time.After(time.Second):
                         // Use functional updates for state that depends on current value
-                        setSecondsFn(func(s int) int {
+                        seconds.SetFn(func(s int) int {
                             return s + 1
                         })
                         // Notify UI of update
@@ -714,21 +762,27 @@ var TodoApp = app.DefineComponent("TodoApp",
         }, []any{})
 
         addTodo := func(text string) {
+            currentTodos := todosAtom.Get()
             newTodo := Todo{
-                Id:   len(todos) + 1,
+                Id:   len(currentTodos) + 1,
                 Text: text,
                 Done: false,
             }
-            setTodos(append(todos, newTodo))
+            todosAtom.Set(append(currentTodos, newTodo))
         }
+
+        // Read atom values in render code
+        todos := todosAtom.Get()
+        filter := filterAtom.Get()
+        currentSeconds := seconds.Get()
 
         return vdom.H("div", map[string]any{"className": "todo-app"},
             vdom.H("h1", nil, "Todo App"),
-            vdom.H("p", nil, "Timer: ", seconds, " seconds"),
+            vdom.H("p", nil, "Timer: ", currentSeconds, " seconds"),
             vdom.H("input", map[string]any{
                 "placeholder": "Filter todos...",
                 "value":       filter,
-                "onChange":    func(e vdom.VDomEvent) { setFilter(e.TargetValue) },
+                "onChange":    func(e vdom.VDomEvent) { filterAtom.Set(e.TargetValue) },
             }),
             vdom.H("button", map[string]any{
                 "onClick": func() { addTodo("New todo") },
@@ -871,7 +925,7 @@ type TodoItemProps struct {
 
 // Reusable components
 var TodoItem = app.DefineComponent("TodoItem",
-    func(ctx context.Context, props TodoItemProps) any {
+    func(props TodoItemProps) any {
         return vdom.H("div", map[string]any{
             "className": vdom.Classes("flex items-center gap-2.5 p-2 border border-border rounded", vdom.If(props.Todo.Completed, "opacity-70")),
         },
@@ -894,51 +948,60 @@ var TodoItem = app.DefineComponent("TodoItem",
 
 // Root component must be named "App"
 var App = app.DefineComponent("App",
-    func(ctx context.Context, _ any) any {
-        // UseState returns 3 values: value, setter, functional setter
-        // Use ", _" to ignore the functional setter when not needed
-        todos, setTodos, _ := app.UseState([]Todo{
+    func(_ struct{}) any {
+        // UseLocal returns Atom[T] with Get() and Set() methods
+        todos := app.UseLocal([]Todo{
             {Id: 1, Text: "Learn Tsunami", Completed: false},
             {Id: 2, Text: "Build an app", Completed: false},
         })
-        nextId, setNextId, _ := app.UseState(3)
-        inputText, setInputText, _ := app.UseState("")
+        nextId := app.UseLocal(3)
+        inputText := app.UseLocal("")
 
         // Event handlers
         addTodo := func() {
-            if inputText == "" {
+            currentInput := inputText.Get()
+            if currentInput == "" {
                 return
             }
-            setTodos(append(todos, Todo{
-                Id:        nextId,
-                Text:      inputText,
+            currentTodos := todos.Get()
+            currentNextId := nextId.Get()
+
+            todos.Set(append(currentTodos, Todo{
+                Id:        currentNextId,
+                Text:      currentInput,
                 Completed: false,
             }))
-            setNextId(nextId + 1)
-            setInputText("")
+            nextId.Set(currentNextId + 1)
+            inputText.Set("")
         }
 
         toggleTodo := func(id int) {
-            newTodos := make([]Todo, len(todos))
-            copy(newTodos, todos)
+            currentTodos := todos.Get()
+            newTodos := make([]Todo, len(currentTodos))
+            copy(newTodos, currentTodos)
             for i := range newTodos {
                 if newTodos[i].Id == id {
                     newTodos[i].Completed = !newTodos[i].Completed
                     break
                 }
             }
-            setTodos(newTodos)
+            todos.Set(newTodos)
         }
 
         deleteTodo := func(id int) {
+            currentTodos := todos.Get()
             newTodos := make([]Todo, 0)
-            for _, todo := range todos {
+            for _, todo := range currentTodos {
                 if todo.Id != id {
                     newTodos = append(newTodos, todo)
                 }
             }
-            setTodos(newTodos)
+            todos.Set(newTodos)
         }
+
+        // Read atom values in render code
+        todoList := todos.Get()
+        currentInput := inputText.Get()
 
         return vdom.H("div", map[string]any{
             "className": "max-w-[500px] m-5 font-sans",
@@ -954,9 +1017,9 @@ var App = app.DefineComponent("App",
                     "className":   "flex-1 p-2 border border-border rounded",
                     "type":        "text",
                     "placeholder": "Add new item...",
-                    "value":       inputText,
+                    "value":       currentInput,
                     "onChange": func(e vdom.VDomEvent) {
-                        setInputText(e.TargetValue)
+                        inputText.Set(e.TargetValue)
                     },
                 }),
                 vdom.H("button", map[string]any{
@@ -967,7 +1030,7 @@ var App = app.DefineComponent("App",
 
             vdom.H("div", map[string]any{
                 "className": "flex flex-col gap-2",
-            }, vdom.ForEach(todos, func(todo Todo, _ int) any {
+            }, vdom.ForEach(todoList, func(todo Todo, _ int) any {
                 return TodoItem(TodoItemProps{
                     Todo:     todo,
                     OnToggle: func() { toggleTodo(todo.Id) },
@@ -977,7 +1040,6 @@ var App = app.DefineComponent("App",
         )
     },
 )
-
 ```
 
 Key points:
@@ -990,7 +1052,7 @@ Key points:
 ## Important Technical Details
 
 - Props must be defined as Go structs with json tags
-- Components take their props type directly: `func MyComponent(ctx context.Context, props MyProps) any`
+- Components take their props type directly.
 - Always use app.DefineComponent for component registration
 - Call app.SendAsyncInitiation after async state updates
 - Provide keys when using vdom.ForEach with lists (using WithKey method)
