@@ -228,12 +228,12 @@ Helper functions:
 
 ## Using Hooks in Tsunami
 
-Functions starting with `app.Use*` are hooks in Tsunami, following the exact same rules as React hooks.
+Functions starting with app.Use\* are hooks in Tsunami, following the exact same rules as React hooks.
 
-**Key Rules:**
+**Key Rules (identical to React):**
 
 - ✅ Only call hooks inside app.DefineComponent functions
-- ✅ Always call hooks at the **top level** of your component function
+- ✅ Always call hooks at the top level of your component function
 - ✅ Call hooks before any early returns or conditional logic
 - 🔴 Never call hooks inside loops, conditions, or after conditional returns
 
@@ -252,23 +252,11 @@ var MyComponent = app.DefineComponent("MyComponent", func(props MyProps) any {
 })
 ```
 
-**Common Hooks (React-like):**
+**Hook Categories:**
 
-- `app.UseLocal[T any](initialVal T) Atom[T]` - Component state management (replacement for React.useState)
-- `app.UseEffect(fn func() func(), deps []any)` - Side effects after render (React.useEffect)
-- `app.UseRef[T any](val T) *VDomSimpleRef[T]` - Mutable refs for arbitrary values (React.useRef)
-- `app.UseVDomRef() *VDomRef` - DOM element references (React.useRef for DOM elements)
-- `app.UseSetAppTitle(title string)` - Sets the application title (used in every app, only works in top-level "App" component)
-
-**Specialty Hooks (less common):**
-
-- `app.UseId() string` - Component's unique identifier
-- `app.UseRenderTs() int64` - Current render timestamp
-- `app.UseResync() bool` - Whether current render is a resync operation
-
-Most applications won't need these specialty hooks, but they're available for advanced use cases.
-
-This ensures hooks are called in the same order every render, which is essential for Tsunami's state management.
+- **State Management**: app.UseLocal creates local component atoms (covered in State Management with Atoms)
+- **Component Lifecycle**: app.UseEffect, app.UseRef, app.UseVDomRef (covered in Component Lifecycle Hooks)
+- **Utility**: app.UseSetAppTitle, app.UseId, app.UseRenderTs, app.UseResync
 
 ## State Management with Atoms
 
@@ -638,287 +626,251 @@ The Keys field on VDomFunc:
 
 Event handlers follow React patterns while providing additional type safety and explicit control over event behavior through VDomFunc.
 
-## State Management with Hooks
+## Component Lifecycle Hooks
+
+Beyond state management with atoms, Tsunami provides hooks for component lifecycle, side effects, and DOM interaction. These work exactly like their React counterparts.
+
+### Side Effects with app.UseEffect
+
+app.UseEffect lets you perform side effects after render - data fetching, subscriptions, timers, or any cleanup operations:
 
 ```go
-var MyComponent = app.DefineComponent("MyComponent", func(props struct{}) any {
-	// UseLocal: returns Atom[T] with Get(), Set(), and SetFn() methods
-	count := app.UseLocal(0)          // Initial value of 0
-	items := app.UseLocal([]string{}) // Initial value of empty slice
+var MyComponent = app.DefineComponent("MyComponent", func(_ struct{}) any {
+    count := app.UseLocal(0)
 
-	// Reading values in render code
-	currentCount := count.Get()
-	currentItems := items.Get()
+    // Effect that runs once on mount
+    app.UseEffect(func() func() {
+        fmt.Println("Component mounted")
 
-	// Event handlers that update state (called from onClick, onChange, etc.)
-	incrementCount := func() {
-		count.Set(currentCount + 1) // Direct update when you have the value
-	}
+        // Return cleanup function (runs on unmount)
+        return func() {
+            fmt.Println("Component unmounting")
+        }
+    }, []any{}) // Empty deps = run once
 
-	incrementCountFn := func() {
-		count.SetFn(func(current int) int {
-			return current + 1 // Functional update based on current value
-		})
-	}
+    // Effect that runs when count changes
+    app.UseEffect(func() func() {
+        fmt.Printf("Count changed to: %d\n", count.Get())
+        return nil // No cleanup needed
+    }, []any{count.Get()}) // Runs when count.Get() value changes
 
-	addItem := func(item string) {
-		// When updating slices/maps, create new value
-		items.SetFn(func(current []string) []string {
-			newItems := app.DeepCopy(current)
-			return append(newItems, item)
-		})
-	}
-
-	// Refs for values that persist between renders but don't trigger updates
-	renderCounter := app.UseRef(0)
-	renderCounter.Current++ // Doesn't cause re-render
-
-	// DOM refs for accessing elements directly
-	inputRef := app.UseVDomRef()
-
-	// Side effects (can call setters here)
-	app.UseEffect(func() func() {
-		// Example: set counter to 10 on mount
-		count.Set(10)
-
-		return func() {
-			// cleanup
-		}
-	}, []any{}) // Empty dependency array means run once on mount
-
-	return vdom.H("div", nil,
-		vdom.H("button", map[string]any{
-			"onClick": incrementCount, // State setter called in event handler
-		}, "Increment: ", currentCount),
-		vdom.H("button", map[string]any{
-			"onClick": incrementCountFn, // Functional setter in event handler
-		}, "Functional Increment: ", currentCount),
-		vdom.H("input", map[string]any{
-			"ref":         inputRef,
-			"type":        "text",
-			"placeholder": "Add item",
-			"onKeyDown": &vdom.VDomFunc{
-				Fn: func(e vdom.VDomEvent) {
-					if e.TargetValue != "" {
-						addItem(e.TargetValue) // State setter in event handler
-					}
-				},
-				Keys: []string{"Enter"},
-			},
-		}),
-		vdom.H("ul", nil,
-			vdom.ForEach(currentItems, func(item string, idx int) any {
-				return vdom.H("li", map[string]any{
-					"key": idx,
-				}, item)
-			}),
-		),
-	)
+    return vdom.H("div", nil, "Count: ", count.Get())
 })
 ```
 
-## Available Hooks
+**Dependency Array Rules (exactly like React):**
 
-The system provides three main types of hooks:
+- `[]any{}` - Runs once on mount
+- `[]any{value1, value2}` - Runs when any dependency changes (shallow equality comparison)
+- `nil` - Runs on every render (usually not what you want)
 
-1. app.UseLocal - Component state management (Tsunami's equivalent to React.useState):
+**Cleanup Functions (same rules as React):**
 
-   - Returns an Atom[T] with Get(), Set(), and SetFn() methods instead of React's [value, setter] tuple
-   - Use Get() to read the current value (triggers re-render dependency)
-   - Use Set() for direct value updates or SetFn() for functional updates
-   - Create new values for slices/maps when updating
-   - AI models familiar with React.useState should adapt their patterns to use UseLocal with .Get()/.Set()/.SetFn()
+- Return a function from your effect to handle cleanup
+- Cleanup runs before the effect runs again and when component unmounts
+- Essential for preventing memory leaks with timers, subscriptions, goroutines
 
-   ```go
-   // React.useState equivalent:
-   // const [count, setCount] = useState(0);
-   count := app.UseLocal(0)
+### References with app.UseRef
 
-   // Reading the current value (in render code):
-   currentValue := count.Get()  // Instead of just using `count`
-
-   // IMPORTANT: Set/SetFn should NEVER be called in render code!
-   // Only call them in event handlers, effects, or async code:
-
-   handleClick := func() {
-       count.Set(42)  // Instead of setCount(42)
-   }
-
-   handleIncrement := func() {
-       count.SetFn(func(current int) int {  // Instead of setCount(prev => prev + 1)
-           return current + 1
-       })
-   }
-   ```
-
-2. app.UseRef - For values that persist between renders without triggering updates (like React.useRef):
-
-   - Holds mutable values that survive re-renders
-   - Changes don't cause re-renders
-   - Perfect for:
-     - Managing goroutine state
-     - Storing timers/channels
-     - Tracking subscriptions
-     - Holding complex state structures
-   - Unlike React, this ref CANNOT be set as the ref prop on an element
-
-   ```go
-   timerRef := app.UseRef(&TimerState{
-       done: make(chan bool),
-   })
-   ```
-
-3. app.UseVDomRef - For accessing DOM elements directly:
-   - Creates refs for DOM interaction
-   - Useful for:
-     - Accessing DOM element properties
-     - Managing focus
-     - Measuring elements
-     - Direct DOM manipulation when needed
-   - These ref objects SHOULD be set as ref prop on elements.
-   ```go
-   inputRef := app.UseVDomRef()
-   vdom.H("input", map[string]any{
-       "ref": inputRef,
-       "type": "text",
-   })
-   ```
-
-Best Practices:
-
-- Use app.UseLocal for all UI state - use .Get() for reading and .Set()/.SetFn() for updating
-- Use functional setter when updating state from goroutines or based on current value
-- Use app.UseRef for complex state that goroutines need to access
-- Always clean up timers, channels, and goroutines in app.UseEffect cleanup functions
-
-## State Management and Async Updates
-
-For global state management, use the atoms system (SharedAtom, Config, or Data as appropriate). This provides global reactive state that components can subscribe to:
+app.UseRef creates mutable values that persist across renders without triggering re-renders:
 
 ```go
-type Todo struct {
-	Id   int    `json:"id"`
-	Text string `json:"text"`
-	Done bool   `json:"done"`
-}
+var MyComponent = app.DefineComponent("MyComponent", func(_ struct{}) any {
+    // Store complex state that goroutines need to access
+    timerRef := app.UseRef(&TimerState{
+        active: false,
+        done:   make(chan bool),
+    })
 
-// For async operations, consider using a state struct
+    // Count renders without triggering re-renders
+    renderCount := app.UseRef(0)
+    renderCount.Current++
+
+    startTimer := func() {
+        if timerRef.Current.active {
+            return
+        }
+
+        timerRef.Current.active = true
+        go func() {
+            // Goroutine can safely access ref
+            for timerRef.Current.active {
+                time.Sleep(time.Second)
+                // Update UI state from goroutine
+                // count.Set(someValue)
+                app.SendAsyncInitiation()
+            }
+        }()
+    }
+
+    return vdom.H("div", nil,
+        vdom.H("p", nil, "Render #", renderCount.Current),
+        vdom.H("button", map[string]any{
+            "onClick": startTimer,
+        }, "Start Timer"),
+    )
+})
+```
+
+**Key Points:**
+
+- Changes to ref.Current don't trigger re-renders
+- Perfect for storing goroutine state, timers, subscriptions
+- Cannot be used as the ref prop on DOM elements
+
+### DOM References with app.UseVDomRef
+
+app.UseVDomRef provides access to DOM elements, similar to React's useRef for DOM references. Use it when you need direct DOM manipulation:
+
+```go
+var MyComponent = app.DefineComponent("MyComponent", func(_ struct{}) any {
+    inputRef := app.UseVDomRef()
+
+    focusInput := func() {
+        // Access DOM element properties/methods
+        if inputRef.Current != nil {
+            inputRef.Current.Focus()
+        }
+    }
+
+    return vdom.H("div", nil,
+        vdom.H("input", map[string]any{
+            "ref":  inputRef, // Attach ref to DOM element
+            "type": "text",
+        }),
+        vdom.H("button", map[string]any{
+            "onClick": focusInput,
+        }, "Focus Input"),
+    )
+})
+```
+
+**Use Cases:**
+
+- Managing focus programmatically
+- Measuring element dimensions
+- Direct DOM manipulation when needed
+- Integration with third-party DOM libraries
+
+### Utility Hooks
+
+**app.UseSetAppTitle** - Sets the application window title:
+
+```go
+var App = app.DefineComponent("App", func(_ struct{}) any {
+    app.UseSetAppTitle("My Tsunami App")
+    // Only works in the top-level App component
+    return vdom.H("div", nil, "Hello World")
+})
+```
+
+**Specialty Hooks** (rarely needed):
+
+- `app.UseId()` - Unique component identifier
+- `app.UseRenderTs()` - Current render timestamp
+- `app.UseResync()` - Whether this is a resync render
+
+## Best Practices
+
+- **Effects**: Always include proper dependency arrays to avoid infinite loops
+- **Cleanup**: Return cleanup functions from effects for timers, subscriptions, goroutines
+- **Refs**: Use app.UseRef for goroutine communication, app.UseVDomRef for DOM access
+- **Async Updates**: Call app.SendAsyncInitiation after updating atoms from goroutines
+- **Performance**: Don't overuse effects - most logic should be in event handlers
+
+## Async Operations and Goroutines
+
+When working with goroutines, timers, or other async operations in Tsunami, follow these patterns to safely update state and manage cleanup:
+
+### Goroutine State Management
+
+Use app.UseRef for data that goroutines need to access but shouldn't trigger re-renders (like channels, flags, or complex state). Use atoms when you want goroutine updates to trigger UI re-renders:
+
+```go
 type TimerState struct {
-	ticker   *time.Ticker
-	done     chan bool
-	isActive bool
+    done     chan bool
+    isActive bool
 }
 
-// Declare global atoms as package variables
-var (
-	todosAtom  = app.DataAtom("todos", []Todo{})
-	filterAtom = app.ConfigAtom("filter", "")
-)
+var MyComponent = app.DefineComponent("MyComponent", func(_ struct{}) any {
+    seconds := app.UseLocal(0)
 
-var TodoApp = app.DefineComponent("TodoApp", func(_ struct{}) any {
-	// Local state for async timer demo
-	seconds := app.UseLocal(0)
+    // Store goroutine state in a ref
+    timerRef := app.UseRef(&TimerState{
+        done: make(chan bool),
+    })
 
-	// Use refs to store complex state that goroutines need to access
-	stateRef := app.UseRef(&TimerState{
-		done: make(chan bool),
-	})
+    startTimer := func() {
+        if timerRef.Current.isActive {
+            return // Prevent multiple goroutines
+        }
 
-	// Example of safe goroutine management
-	startAsync := func() {
-		if stateRef.Current.isActive {
-			return // Prevent multiple goroutines
-		}
+        timerRef.Current.isActive = true
+        go func() {
+            defer func() {
+                timerRef.Current.isActive = false
+            }()
 
-		stateRef.Current.isActive = true
-		go func() {
-			defer func() {
-				stateRef.Current.isActive = false
-			}()
+            for {
+                select {
+                case <-timerRef.Current.done:
+                    return
+                case <-time.After(time.Second):
+                    // Update state from goroutine
+                    seconds.SetFn(func(s int) int { return s + 1 })
+                    app.SendAsyncInitiation() // Trigger UI update
+                }
+            }
+        }()
+    }
 
-			// Use channels for cleanup
-			for {
-				select {
-				case <-stateRef.Current.done:
-					return
-				case <-time.After(time.Second):
-					// Use functional updates for state that depends on current value
-					seconds.SetFn(func(s int) int {
-						return s + 1
-					})
-					// Notify UI of update
-					app.SendAsyncInitiation()
-				}
-			}
-		}()
-	}
+    // Start timer on mount and cleanup on unmount
+    app.UseEffect(func() func() {
+        startTimer() // Start the timer when component mounts
+        return func() {
+            if timerRef.Current.isActive {
+                close(timerRef.Current.done)
+            }
+        }
+    }, []any{})
 
-	// Always clean up goroutines
-	stopAsync := func() {
-		if stateRef.Current.isActive {
-			close(stateRef.Current.done)
-			stateRef.Current.done = make(chan bool)
-		}
-	}
-
-	// Use app.UseEffect for cleanup on unmount
-	app.UseEffect(func() func() {
-		startAsync() // Start the timer when component mounts
-		return func() {
-			stopAsync()
-		}
-	}, []any{})
-
-	addTodo := func(text string) {
-		currentTodos := todosAtom.Get()
-		newTodo := Todo{
-			Id:   len(currentTodos) + 1,
-			Text: text,
-			Done: false,
-		}
-		todosAtom.Set(append(currentTodos, newTodo))
-	}
-
-	// Read atom values in render code
-	todos := todosAtom.Get()
-	filter := filterAtom.Get()
-	currentSeconds := seconds.Get()
-
-	return vdom.H("div", map[string]any{"className": "todo-app"},
-		vdom.H("h1", nil, "Todo App"),
-		vdom.H("p", nil, "Timer: ", currentSeconds, " seconds"),
-		vdom.H("input", map[string]any{
-			"placeholder": "Filter todos...",
-			"value":       filter,
-			"onChange":    func(e vdom.VDomEvent) { filterAtom.Set(e.TargetValue) },
-		}),
-		vdom.H("button", map[string]any{
-			"onClick": func() { addTodo("New todo") },
-		}, "Add Todo"),
-		vdom.ForEach(todos, func(todo Todo, idx int) any {
-			// Only show todos that contain the filter text
-			if filter != "" && !strings.Contains(strings.ToLower(todo.Text), strings.ToLower(filter)) {
-				return nil
-			}
-			return vdom.H("div", map[string]any{
-				"key":       todo.Id,
-				"className": "todo-item",
-			},
-				vdom.H("span", nil, todo.Text),
-			)
-		}),
-	)
+    return vdom.H("div", nil, "Seconds: ", seconds.Get())
 })
 ```
 
-Key points for state management:
+### Key Patterns
 
-- Global state is fine for simple data structures
-- Use functional setter when updating state based on its current value, especially in goroutines
-- Store complex state in refs when it needs to be accessed by goroutines
-- Use app.UseEffect cleanup function to handle component unmount
-- Call app.SendAsyncInitiation after state changes in goroutines (consider round trip performance, so don't call at very high speeds)
-- Use atomic operations if globals are modified from multiple goroutines (or locks)
+**app.SendAsyncInitiation()**: Call this after updating atoms from goroutines to trigger UI re-renders. Don't call it at high frequency - consider batching updates.
+
+**Functional setters in goroutines**: Always use atom.SetFn() when updating state from goroutines to avoid race conditions:
+
+```go
+// Safe: uses current value
+count.SetFn(func(current int) int { return current + 1 })
+
+// Risky: might use stale value
+count.Set(count.Get() + 1)
+```
+
+**Cleanup channels**: Use channels and select statements for clean goroutine shutdown. Always clean up in app.UseEffect return functions.
+
+**Prevent duplicate goroutines**: Use ref state to track if async operations are already running.
+
+### Thread Safety
+
+Atoms are internally synchronized, so multiple goroutines can safely call Get() and Set() on the same atom. However, never mutate data returned from atom.Get() - always use app.DeepCopy() for modifications:
+
+```go
+// Safe pattern for concurrent updates using SetFn
+updateTodos := func() {
+    todosAtom.SetFn(func(current []Todo) []Todo {
+        todosCopy := app.DeepCopy(current)
+        return append(todosCopy, newTodo)
+    })
+}
+```
+
+Atoms handle the synchronization internally, so you don't need additional locking for basic read/write operations.
 
 ## Global Keyboard Handling
 
