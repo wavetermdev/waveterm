@@ -222,67 +222,40 @@ var WorkflowRunItem = app.DefineComponent("WorkflowRunItem",
 var App = app.DefineComponent("App",
 	func(_ struct{}) any {
 		app.UseSetAppTitle("GitHub Actions Monitor")
-		_, _, setTickerFn := app.UseState(0)
 
+		fetchData := func() {
+			currentMaxRuns := maxWorkflowRunsAtom.Get()
+			runs, err := fetchWorkflowRuns(repositoryAtom.Get(), workflowAtom.Get(), currentMaxRuns)
+			if err != nil {
+				log.Printf("Error fetching workflow runs: %v", err)
+				lastErrorAtom.Set(err.Error())
+			} else {
+				sort.Slice(runs, func(i, j int) bool {
+					return runs[i].CreatedAt.After(runs[j].CreatedAt)
+				})
+				workflowRunsAtom.Set(runs)
+				lastErrorAtom.Set("")
+			}
+			lastRefreshTimeAtom.Set(time.Now())
+			isLoadingAtom.Set(false)
+		}
+
+		// Initial fetch on mount
 		app.UseEffect(func() func() {
-			ticker := time.NewTicker(time.Duration(pollIntervalAtom.Get()) * time.Second)
-			done := make(chan bool)
-
-			fetchData := func() {
-				currentMaxRuns := maxWorkflowRunsAtom.Get()
-				runs, err := fetchWorkflowRuns(repositoryAtom.Get(), workflowAtom.Get(), currentMaxRuns)
-				if err != nil {
-					log.Printf("Error fetching workflow runs: %v", err)
-					lastErrorAtom.Set(err.Error())
-				} else {
-					sort.Slice(runs, func(i, j int) bool {
-						return runs[i].CreatedAt.After(runs[j].CreatedAt)
-					})
-					workflowRunsAtom.Set(runs)
-					lastErrorAtom.Set("")
-				}
-				lastRefreshTimeAtom.Set(time.Now())
-				isLoadingAtom.Set(false)
-			}
-
 			fetchData()
+			return nil
+		}, []any{})
 
-			go func() {
-				for {
-					select {
-					case <-done:
-						return
-					case <-ticker.C:
-						fetchData()
-						setTickerFn(func(t int) int { return t + 1 })
-						app.SendAsyncInitiation()
-					}
-				}
-			}()
-
-			return func() {
-				ticker.Stop()
-				close(done)
-			}
+		// Automatic polling with UseTicker - automatically cleaned up on unmount
+		app.UseTicker(time.Duration(pollIntervalAtom.Get())*time.Second, func() {
+			fetchData()
+			app.SendAsyncInitiation()
 		}, []any{pollIntervalAtom.Get()})
 
 		handleRefresh := func() {
 			isLoadingAtom.Set(true)
 			go func() {
-				currentMaxRuns := maxWorkflowRunsAtom.Get()
-				runs, err := fetchWorkflowRuns(repositoryAtom.Get(), workflowAtom.Get(), currentMaxRuns)
-				if err != nil {
-					log.Printf("Error fetching workflow runs: %v", err)
-					lastErrorAtom.Set(err.Error())
-				} else {
-					sort.Slice(runs, func(i, j int) bool {
-						return runs[i].CreatedAt.After(runs[j].CreatedAt)
-					})
-					workflowRunsAtom.Set(runs)
-					lastErrorAtom.Set("")
-				}
-				lastRefreshTimeAtom.Set(time.Now())
-				isLoadingAtom.Set(false)
+				fetchData()
 				app.SendAsyncInitiation()
 			}()
 		}
