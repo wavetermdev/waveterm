@@ -36,11 +36,6 @@ type RenderOpts struct {
 	Resync bool
 }
 
-type atomImpl struct {
-	Val    any
-	UsedBy map[string]bool // component waveid -> true
-}
-
 type EffectWorkElem struct {
 	Id          string
 	EffectIndex int
@@ -79,7 +74,7 @@ func (r *RootElem) GetDataMap() map[string]any {
 	for atomName, atom := range r.Atoms {
 		if strings.HasPrefix(atomName, "$data.") {
 			strippedName := strings.TrimPrefix(atomName, "$data.")
-			result[strippedName] = atom.Val
+			result[strippedName] = atom.GetVal()
 		}
 	}
 	return result
@@ -93,7 +88,7 @@ func (r *RootElem) GetConfigMap() map[string]any {
 	for atomName, atom := range r.Atoms {
 		if strings.HasPrefix(atomName, "$config.") {
 			strippedName := strings.TrimPrefix(atomName, "$config.")
-			result[strippedName] = atom.Val
+			result[strippedName] = atom.GetVal()
 		}
 	}
 	return result
@@ -108,13 +103,14 @@ func MakeRoot() *RootElem {
 	}
 }
 
-func (r *RootElem) ensureAtomNoLock(name string) *atomImpl {
-	atom, ok := r.Atoms[name]
-	if !ok {
-		atom = &atomImpl{UsedBy: make(map[string]bool)}
-		r.Atoms[name] = atom
+func (r *RootElem) CreateAtom(name string, initialVal any) {
+	r.atomLock.Lock()
+	defer r.atomLock.Unlock()
+
+	if _, ok := r.Atoms[name]; ok {
+		panic(fmt.Sprintf("atom %s already exists", name))
 	}
-	return atom
+	r.Atoms[name] = makeAtom(initialVal)
 }
 
 // we can do better here with an inverted map, but
@@ -132,7 +128,10 @@ func (r *RootElem) AtomSetUsedBy(atomName string, waveId string, used bool) {
 	r.atomLock.Lock()
 	defer r.atomLock.Unlock()
 
-	atom := r.ensureAtomNoLock(atomName)
+	atom, ok := r.Atoms[atomName]
+	if !ok {
+		return
+	}
 	if used {
 		atom.UsedBy[waveId] = true
 	} else {
@@ -161,23 +160,26 @@ func (r *RootElem) GetAtomVal(name string) any {
 	if !ok {
 		return nil
 	}
-	return atom.Val
+	return atom.GetVal()
 }
 
 func (r *RootElem) SetAtomVal(name string, val any, markDirty bool) {
 	r.atomLock.Lock()
 	defer r.atomLock.Unlock()
 
-	atom := r.ensureAtomNoLock(name)
+	atom, ok := r.Atoms[name]
+	if !ok {
+		return
+	}
 	if !markDirty {
-		atom.Val = val
+		atom.SetVal(val)
 		return
 	}
 	// try to avoid setting the value and marking as dirty if it's the "same"
-	if util.JsonValEqual(val, atom.Val) {
+	if util.JsonValEqual(val, atom.GetVal()) {
 		return
 	}
-	atom.Val = val
+	atom.SetVal(val)
 }
 
 func (r *RootElem) RemoveAtom(name string) {

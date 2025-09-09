@@ -39,30 +39,21 @@ func SendAsyncInitiation() error {
 func ConfigAtom[T any](name string, defaultValue T) Atom[T] {
 	fullName := "$config." + name
 	client := engine.GetDefaultClient()
-	// Set the default value if not already set
-	if client.GetAtomVal(fullName) == nil {
-		client.SetAtomVal(fullName, defaultValue)
-	}
+	client.CreateAtom(fullName, defaultValue)
 	return Atom[T]{name: fullName, client: client}
 }
 
 func DataAtom[T any](name string, defaultValue T) Atom[T] {
 	fullName := "$data." + name
 	client := engine.GetDefaultClient()
-	// Set the default value if not already set
-	if client.GetAtomVal(fullName) == nil {
-		client.SetAtomVal(fullName, defaultValue)
-	}
+	client.CreateAtom(fullName, defaultValue)
 	return Atom[T]{name: fullName, client: client}
 }
 
 func SharedAtom[T any](name string, defaultValue T) Atom[T] {
 	fullName := "$shared." + name
 	client := engine.GetDefaultClient()
-	// Set the default value if not already set
-	if client.GetAtomVal(fullName) == nil {
-		client.SetAtomVal(fullName, defaultValue)
-	}
+	client.CreateAtom(fullName, defaultValue)
 	return Atom[T]{name: fullName, client: client}
 }
 

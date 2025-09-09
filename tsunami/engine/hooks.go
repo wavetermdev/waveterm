@@ -116,7 +116,7 @@ func UseLocal(vc *VDomContextImpl, initialVal any) string {
 	atomName := "$local." + vc.GetCompWaveId() + "#" + strconv.Itoa(hookVal.Idx)
 	if !hookVal.Init {
 		hookVal.Init = true
-		vc.Root.SetAtomVal(atomName, initialVal, false)
+		vc.Root.CreateAtom(atomName, initialVal)
 		closedAtomName := atomName
 		hookVal.UnmountFn = func() {
 			vc.Root.RemoveAtom(closedAtomName)
