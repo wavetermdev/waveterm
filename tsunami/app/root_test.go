@@ -58,7 +58,7 @@ var buttonId string
 
 func Test1(t *testing.T) {
 	log.Printf("hello!\n")
-	root := engine.MakeRoot()
+	root := engine.MakeRoot(nil)
 	root.RegisterComponent("Page", Page)
 	root.RegisterComponent("Button", Button)
 	root.Render(vdom.H("Page", nil), &engine.RenderOpts{Resync: false})

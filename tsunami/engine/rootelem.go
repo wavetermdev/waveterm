@@ -43,6 +43,7 @@ type RootElem struct {
 	Atoms           map[string]genAtom
 	atomLock        sync.Mutex
 	RefOperations   []vdom.VDomRefOperation
+	Client          *ClientImpl
 }
 
 func (r *RootElem) AddRenderWork(id string) {
@@ -84,12 +85,13 @@ func (r *RootElem) GetConfigMap() map[string]any {
 	return result
 }
 
-func MakeRoot() *RootElem {
+func MakeRoot(client *ClientImpl) *RootElem {
 	return &RootElem{
 		Root:    nil,
 		CFuncs:  make(map[string]any),
 		CompMap: make(map[string]*ComponentImpl),
 		Atoms:   make(map[string]genAtom),
+		Client:  client,
 	}
 }
 

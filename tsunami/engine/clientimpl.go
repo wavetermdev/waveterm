@@ -54,13 +54,13 @@ type ClientImpl struct {
 func makeClient() *ClientImpl {
 	client := &ClientImpl{
 		Lock:          &sync.Mutex{},
-		Root:          MakeRoot(),
 		DoneCh:        make(chan struct{}),
 		SSEventCh:     make(chan ssEvent, 100),
 		UrlHandlerMux: http.NewServeMux(),
 		ServerId:      uuid.New().String(),
 		RootElem:      vdom.H(DefaultComponentName, nil),
 	}
+	client.Root = MakeRoot(client)
 	return client
 }
 
