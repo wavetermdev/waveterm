@@ -300,3 +300,9 @@ func (c *ClientImpl) HandleDynFunc(pattern string, fn func(http.ResponseWriter, 
 	}
 	c.UrlHandlerMux.HandleFunc(pattern, fn)
 }
+
+func (c *ClientImpl) RunEvents(events []vdom.VDomEvent) {
+	for _, event := range events {
+		c.Root.Event(event, c.GlobalEventHandler)
+	}
+}

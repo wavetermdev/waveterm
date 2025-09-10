@@ -98,7 +98,7 @@ func (r *RootElem) renderComponent(cfunc any, elem *vdom.VDomElem, comp **Compon
 	}
 	props[ChildrenPropKey] = elem.Children
 	vc := makeContextVal(r, *comp, opts)
-	rtnElemArr := withGlobalCtx(vc, func() []vdom.VDomElem {
+	rtnElemArr := withGlobalRenderCtx(vc, func() []vdom.VDomElem {
 		renderedElem := callCFuncWithErrorGuard(cfunc, props, elem.Tag)
 		return vdom.ToElems(renderedElem)
 	})

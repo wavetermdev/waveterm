@@ -149,15 +149,7 @@ func (h *httpHandlers) processFrontendUpdate(feUpdate *rpctypes.VDomFrontendUpda
 	h.Client.Root.RenderTs = feUpdate.Ts
 
 	// run events
-	for _, event := range feUpdate.Events {
-		if event.GlobalEventType != "" {
-			if h.Client.GlobalEventHandler != nil {
-				h.Client.GlobalEventHandler(event)
-			}
-		} else {
-			h.Client.Root.Event(event.WaveId, event.EventType, event)
-		}
-	}
+	h.Client.RunEvents(feUpdate.Events)
 	// update refs
 	for _, ref := range feUpdate.RefUpdates {
 		h.Client.Root.UpdateRef(ref)

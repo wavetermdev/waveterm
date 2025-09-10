@@ -68,7 +68,7 @@ func Test1(t *testing.T) {
 	printVDom(root)
 	root.RunWork(&engine.RenderOpts{Resync: false})
 	printVDom(root)
-	root.Event(buttonId, "onClick", vdom.VDomEvent{EventType: "onClick"})
+	root.Event(vdom.VDomEvent{WaveId: buttonId, EventType: "onClick"}, nil)
 	root.RunWork(&engine.RenderOpts{Resync: false})
 	printVDom(root)
 }

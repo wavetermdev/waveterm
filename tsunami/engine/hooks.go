@@ -20,25 +20,25 @@ type Hook struct {
 	Deps      []any
 }
 
-type VDomContextImpl struct {
+type RenderContextImpl struct {
 	Root       *RootElem
 	Comp       *ComponentImpl
 	HookIdx    int
 	RenderOpts *RenderOpts
 }
 
-func makeContextVal(root *RootElem, comp *ComponentImpl, opts *RenderOpts) *VDomContextImpl {
-	return &VDomContextImpl{Root: root, Comp: comp, HookIdx: 0, RenderOpts: opts}
+func makeContextVal(root *RootElem, comp *ComponentImpl, opts *RenderOpts) *RenderContextImpl {
+	return &RenderContextImpl{Root: root, Comp: comp, HookIdx: 0, RenderOpts: opts}
 }
 
-func (vc *VDomContextImpl) GetCompWaveId() string {
+func (vc *RenderContextImpl) GetCompWaveId() string {
 	if vc.Comp == nil {
 		return ""
 	}
 	return vc.Comp.WaveId
 }
 
-func (vc *VDomContextImpl) getOrderedHook() *Hook {
+func (vc *RenderContextImpl) getOrderedHook() *Hook {
 	if vc.Comp == nil {
 		panic("tsunami hooks must be called within a component (vc.Comp is nil)")
 	}
@@ -50,22 +50,22 @@ func (vc *VDomContextImpl) getOrderedHook() *Hook {
 	return hookVal
 }
 
-func (vc *VDomContextImpl) getCompName() string {
+func (vc *RenderContextImpl) getCompName() string {
 	if vc.Comp == nil || vc.Comp.Elem == nil {
 		return ""
 	}
 	return vc.Comp.Elem.Tag
 }
 
-func UseRenderTs(vc *VDomContextImpl) int64 {
+func UseRenderTs(vc *RenderContextImpl) int64 {
 	return vc.Root.RenderTs
 }
 
-func UseId(vc *VDomContextImpl) string {
+func UseId(vc *RenderContextImpl) string {
 	return vc.GetCompWaveId()
 }
 
-func UseState(vc *VDomContextImpl, initialVal any) (any, func(any), func(func(any) any)) {
+func UseState(vc *RenderContextImpl, initialVal any) (any, func(any), func(func(any) any)) {
 	hookVal := vc.getOrderedHook()
 	if !hookVal.Init {
 		hookVal.Init = true
@@ -85,7 +85,7 @@ func UseState(vc *VDomContextImpl, initialVal any) (any, func(any), func(func(an
 	return hookVal.Val, setVal, setFuncVal
 }
 
-func UseAtom(vc *VDomContextImpl, atomName string) (any, func(any), func(func(any) any)) {
+func UseAtom(vc *RenderContextImpl, atomName string) (any, func(any), func(func(any) any)) {
 	hookVal := vc.getOrderedHook()
 	if !hookVal.Init {
 		hookVal.Init = true
@@ -117,7 +117,7 @@ func UseAtom(vc *VDomContextImpl, atomName string) (any, func(any), func(func(an
 	return atomVal, setVal, setFuncVal
 }
 
-func UseLocal(vc *VDomContextImpl, initialVal any) string {
+func UseLocal(vc *RenderContextImpl, initialVal any) string {
 	hookVal := vc.getOrderedHook()
 	atomName := "$local." + vc.GetCompWaveId() + "#" + strconv.Itoa(hookVal.Idx)
 	if !hookVal.Init {
@@ -132,7 +132,7 @@ func UseLocal(vc *VDomContextImpl, initialVal any) string {
 	return atomName
 }
 
-func UseVDomRef(vc *VDomContextImpl) any {
+func UseVDomRef(vc *RenderContextImpl) any {
 	hookVal := vc.getOrderedHook()
 	if !hookVal.Init {
 		hookVal.Init = true
@@ -146,7 +146,7 @@ func UseVDomRef(vc *VDomContextImpl) any {
 	return refVal
 }
 
-func UseRef(vc *VDomContextImpl, hookInitialVal any) any {
+func UseRef(vc *RenderContextImpl, hookInitialVal any) any {
 	hookVal := vc.getOrderedHook()
 	if !hookVal.Init {
 		hookVal.Init = true
@@ -167,7 +167,7 @@ func depsEqual(deps1 []any, deps2 []any) bool {
 	return true
 }
 
-func UseEffect(vc *VDomContextImpl, fn func() func(), deps []any) {
+func UseEffect(vc *RenderContextImpl, fn func() func(), deps []any) {
 	hookVal := vc.getOrderedHook()
 	if !hookVal.Init {
 		hookVal.Init = true
@@ -192,14 +192,14 @@ func UseEffect(vc *VDomContextImpl, fn func() func(), deps []any) {
 	vc.Root.AddEffectWork(vc.GetCompWaveId(), hookVal.Idx)
 }
 
-func UseResync(vc *VDomContextImpl) bool {
+func UseResync(vc *RenderContextImpl) bool {
 	if vc.RenderOpts == nil {
 		return false
 	}
 	return vc.RenderOpts.Resync
 }
 
-func UseSetAppTitle(vc *VDomContextImpl, title string) {
+func UseSetAppTitle(vc *RenderContextImpl, title string) {
 	if vc.getCompName() != "App" {
 		log.Printf("UseSetAppTitle can only be called from the App component")
 		return

@@ -243,22 +243,44 @@ func callVDomFn(fnVal any, data vdom.VDomEvent) {
 	}
 }
 
-func (r *RootElem) Event(id string, propName string, event vdom.VDomEvent) {
-	comp := r.CompMap[id]
-	if comp == nil || comp.Elem == nil {
-		return
-	}
-	
+func (r *RootElem) Event(event vdom.VDomEvent, globalEventHandler func(vdom.VDomEvent)) {
 	defer func() {
-		tag := ""
-		if comp.Elem != nil {
-			tag = comp.Elem.Tag
+		if event.GlobalEventType != "" {
+			util.PanicHandler(fmt.Sprintf("Global event handler - event:%s", event.GlobalEventType), recover())
+		} else {
+			comp := r.CompMap[event.WaveId]
+			tag := ""
+			if comp != nil && comp.Elem != nil {
+				tag = comp.Elem.Tag
+			}
+			compName := ""
+			if comp != nil {
+				compName = comp.ContainingComp
+			}
+			util.PanicHandler(fmt.Sprintf("Event handler - comp: %s, tag: %s, prop: %s", compName, tag, event.EventType), recover())
 		}
-		util.PanicHandler(fmt.Sprintf("Event handler - comp: %s, tag: %s, prop: %s", comp.ContainingComp, tag, propName), recover())
 	}()
 	
-	fnVal := comp.Elem.Props[propName]
-	callVDomFn(fnVal, event)
+	eventCtx := &EventContextImpl{Event: event}
+	withGlobalEventCtx(eventCtx, func() any {
+		if event.GlobalEventType != "" {
+			if globalEventHandler == nil {
+				log.Printf("global event %s but no handler", event.GlobalEventType)
+				return nil
+			}
+			globalEventHandler(event)
+			return nil
+		}
+		
+		comp := r.CompMap[event.WaveId]
+		if comp == nil || comp.Elem == nil {
+			return nil
+		}
+		
+		fnVal := comp.Elem.Props[event.EventType]
+		callVDomFn(fnVal, event)
+		return nil
+	})
 }
 
 // this will be called by the frontend to say the DOM has been mounted

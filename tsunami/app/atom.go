@@ -73,7 +73,7 @@ func (a Atom[T]) AtomName() string {
 // it automatically registers the component as a dependency for this atom, ensuring
 // the component re-renders when the atom value changes.
 func (a Atom[T]) Get() T {
-	vc := engine.GetGlobalContext()
+	vc := engine.GetGlobalRenderContext()
 	if vc != nil {
 		compWaveId := vc.GetCompWaveId()
 		vc.Root.AtomSetUsedBy(a.name, compWaveId, true)
@@ -87,7 +87,7 @@ func (a Atom[T]) Get() T {
 // of any components that depend on this atom. This method cannot be called during
 // render cycles - use effects or event handlers instead.
 func (a Atom[T]) Set(newVal T) {
-	vc := engine.GetGlobalContext()
+	vc := engine.GetGlobalRenderContext()
 	if vc != nil {
 		logInvalidAtomSet(a.name)
 		return
@@ -112,7 +112,7 @@ func (a Atom[T]) Set(newVal T) {
 // without affecting the original data. The return value from the function becomes the
 // new atom value. This method cannot be called during render cycles.
 func (a Atom[T]) SetFn(fn func(T) T) {
-	vc := engine.GetGlobalContext()
+	vc := engine.GetGlobalRenderContext()
 	if vc != nil {
 		logInvalidAtomSet(a.name)
 		return

@@ -19,7 +19,7 @@ import (
 // Setting a new value causes a re-render of the component.
 // This hook must be called within a component context.
 func UseState[T any](initialVal T) (T, func(T), func(func(T) T)) {
-	rc := engine.GetGlobalContext()
+	rc := engine.GetGlobalRenderContext()
 	if rc == nil {
 		panic("UseState must be called within a component (no context)")
 	}
@@ -48,7 +48,7 @@ func UseState[T any](initialVal T) (T, func(T), func(func(T) T)) {
 // current after client-side mounting.
 // This hook must be called within a component context.
 func UseVDomRef() *vdom.VDomRef {
-	rc := engine.GetGlobalContext()
+	rc := engine.GetGlobalRenderContext()
 	val := engine.UseVDomRef(rc)
 	refVal, ok := val.(*vdom.VDomRef)
 	if !ok {
@@ -62,7 +62,7 @@ func UseVDomRef() *vdom.VDomRef {
 // Unlike UseVDomRef, this is not tied to DOM elements but holds arbitrary values.
 // This hook must be called within a component context.
 func UseRef[T any](val T) *vdom.VDomSimpleRef[T] {
-	rc := engine.GetGlobalContext()
+	rc := engine.GetGlobalRenderContext()
 	refVal := engine.UseRef(rc, &vdom.VDomSimpleRef[T]{Current: val})
 	typedRef, ok := refVal.(*vdom.VDomSimpleRef[T])
 	if !ok {
@@ -76,7 +76,7 @@ func UseRef[T any](val T) *vdom.VDomSimpleRef[T] {
 // is recreated, following React component lifecycle.
 // This hook must be called within a component context.
 func UseId() string {
-	rc := engine.GetGlobalContext()
+	rc := engine.GetGlobalRenderContext()
 	if rc == nil {
 		panic("UseId must be called within a component (no context)")
 	}
@@ -86,7 +86,7 @@ func UseId() string {
 // UseRenderTs returns the timestamp of the current render.
 // This hook must be called within a component context.
 func UseRenderTs() int64 {
-	rc := engine.GetGlobalContext()
+	rc := engine.GetGlobalRenderContext()
 	if rc == nil {
 		panic("UseRenderTs must be called within a component (no context)")
 	}
@@ -98,7 +98,7 @@ func UseRenderTs() int64 {
 // incremental renders which happen otherwise.
 // This hook must be called within a component context.
 func UseResync() bool {
-	rc := engine.GetGlobalContext()
+	rc := engine.GetGlobalRenderContext()
 	if rc == nil {
 		panic("UseResync must be called within a component (no context)")
 	}
@@ -112,7 +112,7 @@ func UseResync() bool {
 // This hook must be called within a component context.
 func UseEffect(fn func() func(), deps []any) {
 	// note UseEffect never actually runs anything, it just queues the effect to run later
-	rc := engine.GetGlobalContext()
+	rc := engine.GetGlobalRenderContext()
 	if rc == nil {
 		panic("UseEffect must be called within a component (no context)")
 	}
@@ -122,7 +122,7 @@ func UseEffect(fn func() func(), deps []any) {
 // UseSetAppTitle sets the application title for the current component.
 // This hook must be called within a component context.
 func UseSetAppTitle(title string) {
-	rc := engine.GetGlobalContext()
+	rc := engine.GetGlobalRenderContext()
 	if rc == nil {
 		panic("UseSetAppTitle must be called within a component (no context)")
 	}
@@ -133,7 +133,7 @@ func UseSetAppTitle(title string) {
 // The atom is created with a unique name based on the component's wave ID and hook index.
 // This hook must be called within a component context.
 func UseLocal[T any](initialVal T) Atom[T] {
-	rc := engine.GetGlobalContext()
+	rc := engine.GetGlobalRenderContext()
 	if rc == nil {
 		panic("UseLocal must be called within a component (no context)")
 	}
@@ -149,7 +149,7 @@ func UseLocal[T any](initialVal T) Atom[T] {
 // and automatically cancels the context on dependency changes or component unmount.
 // This hook must be called within a component context.
 func UseGoRoutine(fn func(ctx context.Context), deps []any) {
-	rc := engine.GetGlobalContext()
+	rc := engine.GetGlobalRenderContext()
 	if rc == nil {
 		panic("UseGoRoutine must be called within a component (no context)")
 	}
