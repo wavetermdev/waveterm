@@ -430,6 +430,16 @@ func tsunamiBuildInternal(opts BuildOpts) (*BuildEnv, error) {
 		return buildEnv, fmt.Errorf("failed to create go.mod: %w", err)
 	}
 
+	// Create symlink to SDK ui directory so Tailwind can see those classes
+	uiLinkPath := filepath.Join(tempDir, "ui")
+	uiTargetPath := filepath.Join(opts.SdkReplacePath, "ui")
+	if err := os.Symlink(uiTargetPath, uiLinkPath); err != nil {
+		return buildEnv, fmt.Errorf("failed to create ui symlink: %w", err)
+	}
+	if opts.Verbose {
+		log.Printf("Created symlink: %s -> %s", uiLinkPath, uiTargetPath)
+	}
+
 	// Generate Tailwind CSS
 	if err := generateAppTailwindCss(tempDir, opts.Verbose); err != nil {
 		return buildEnv, fmt.Errorf("failed to generate tailwind css: %w", err)
