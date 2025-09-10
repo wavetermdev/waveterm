@@ -25,11 +25,13 @@ var globalCtxMutex sync.Mutex
 
 type EventContextImpl struct {
 	Event vdom.VDomEvent
+	Root  *RootElem
 }
 
 type EffectContextImpl struct {
 	WorkElem EffectWorkElem
 	WorkType string // "run" or "unmount"
+	Root     *RootElem
 }
 
 func setGlobalRenderContext(vc *RenderContextImpl) {

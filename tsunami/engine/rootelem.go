@@ -262,7 +262,7 @@ func (r *RootElem) Event(event vdom.VDomEvent, globalEventHandler func(vdom.VDom
 		}
 	}()
 
-	eventCtx := &EventContextImpl{Event: event}
+	eventCtx := &EventContextImpl{Event: event, Root: r}
 	withGlobalEventCtx(eventCtx, func() any {
 		if event.GlobalEventType != "" {
 			if globalEventHandler == nil {
@@ -299,6 +299,7 @@ func (r *RootElem) runEffectUnmount(work *EffectWorkElem, hook *Hook) {
 	effectCtx := &EffectContextImpl{
 		WorkElem: *work,
 		WorkType: "unmount",
+		Root:     r,
 	}
 	withGlobalEffectCtx(effectCtx, func() any {
 		hook.UnmountFn()
@@ -321,6 +322,7 @@ func (r *RootElem) runEffect(work *EffectWorkElem, hook *Hook) {
 	effectCtx := &EffectContextImpl{
 		WorkElem: *work,
 		WorkType: "run",
+		Root:     r,
 	}
 	unmountFn := withGlobalEffectCtx(effectCtx, func() func() {
 		return hook.Fn()
