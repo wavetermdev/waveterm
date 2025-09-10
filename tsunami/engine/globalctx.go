@@ -18,10 +18,18 @@ var globalRenderGoId uint64
 var globalEventContext *EventContextImpl
 var globalEventGoId uint64
 
+var globalEffectContext *EffectContextImpl
+var globalEffectGoId uint64
+
 var globalCtxMutex sync.Mutex
 
 type EventContextImpl struct {
 	Event vdom.VDomEvent
+}
+
+type EffectContextImpl struct {
+	WorkElem EffectWorkElem
+	WorkType string // "run" or "unmount"
 }
 
 func setGlobalRenderContext(vc *RenderContextImpl) {
@@ -82,4 +90,34 @@ func GetGlobalEventContext() *EventContextImpl {
 		return nil
 	}
 	return globalEventContext
+}
+
+func setGlobalEffectContext(ec *EffectContextImpl) {
+	globalCtxMutex.Lock()
+	defer globalCtxMutex.Unlock()
+	globalEffectContext = ec
+	globalEffectGoId = goid.Get()
+}
+
+func clearGlobalEffectContext() {
+	globalCtxMutex.Lock()
+	defer globalCtxMutex.Unlock()
+	globalEffectContext = nil
+	globalEffectGoId = 0
+}
+
+func withGlobalEffectCtx[T any](ec *EffectContextImpl, fn func() T) T {
+	setGlobalEffectContext(ec)
+	defer clearGlobalEffectContext()
+	return fn()
+}
+
+func GetGlobalEffectContext() *EffectContextImpl {
+	globalCtxMutex.Lock()
+	defer globalCtxMutex.Unlock()
+	gid := goid.Get()
+	if gid != globalEffectGoId {
+		return nil
+	}
+	return globalEffectContext
 }

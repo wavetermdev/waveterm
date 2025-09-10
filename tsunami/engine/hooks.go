@@ -169,18 +169,22 @@ func depsEqual(deps1 []any, deps2 []any) bool {
 
 func UseEffect(vc *RenderContextImpl, fn func() func(), deps []any) {
 	hookVal := vc.getOrderedHook()
+	compTag := ""
+	if vc.Comp != nil {
+		compTag = vc.Comp.Tag
+	}
 	if !hookVal.Init {
 		hookVal.Init = true
 		hookVal.Fn = fn
 		hookVal.Deps = deps
-		vc.Root.AddEffectWork(vc.GetCompWaveId(), hookVal.Idx)
+		vc.Root.AddEffectWork(vc.GetCompWaveId(), hookVal.Idx, compTag)
 		return
 	}
 	// If deps is nil, always run (like React with no dependency array)
 	if deps == nil {
 		hookVal.Fn = fn
 		hookVal.Deps = deps
-		vc.Root.AddEffectWork(vc.GetCompWaveId(), hookVal.Idx)
+		vc.Root.AddEffectWork(vc.GetCompWaveId(), hookVal.Idx, compTag)
 		return
 	}
 
@@ -189,7 +193,7 @@ func UseEffect(vc *RenderContextImpl, fn func() func(), deps []any) {
 	}
 	hookVal.Fn = fn
 	hookVal.Deps = deps
-	vc.Root.AddEffectWork(vc.GetCompWaveId(), hookVal.Idx)
+	vc.Root.AddEffectWork(vc.GetCompWaveId(), hookVal.Idx, compTag)
 }
 
 func UseResync(vc *RenderContextImpl) bool {

@@ -19,8 +19,9 @@ import (
 const ChildrenPropKey = "children"
 
 type EffectWorkElem struct {
-	Id          string
+	WaveId      string
 	EffectIndex int
+	CompTag     string
 }
 
 type genAtom interface {
@@ -51,8 +52,8 @@ func (r *RootElem) AddRenderWork(id string) {
 	r.NeedsRenderMap[id] = true
 }
 
-func (r *RootElem) AddEffectWork(id string, effectIndex int) {
-	r.EffectWorkQueue = append(r.EffectWorkQueue, &EffectWorkElem{Id: id, EffectIndex: effectIndex})
+func (r *RootElem) AddEffectWork(id string, effectIndex int, compTag string) {
+	r.EffectWorkQueue = append(r.EffectWorkQueue, &EffectWorkElem{WaveId: id, EffectIndex: effectIndex, CompTag: compTag})
 }
 
 func (r *RootElem) GetDataMap() map[string]any {
@@ -260,7 +261,7 @@ func (r *RootElem) Event(event vdom.VDomEvent, globalEventHandler func(vdom.VDom
 			util.PanicHandler(fmt.Sprintf("Event handler - comp: %s, tag: %s, prop: %s", compName, tag, event.EventType), recover())
 		}
 	}()
-	
+
 	eventCtx := &EventContextImpl{Event: event}
 	withGlobalEventCtx(eventCtx, func() any {
 		if event.GlobalEventType != "" {
@@ -271,16 +272,60 @@ func (r *RootElem) Event(event vdom.VDomEvent, globalEventHandler func(vdom.VDom
 			globalEventHandler(event)
 			return nil
 		}
-		
+
 		comp := r.CompMap[event.WaveId]
 		if comp == nil || comp.Elem == nil {
 			return nil
 		}
-		
+
 		fnVal := comp.Elem.Props[event.EventType]
 		callVDomFn(fnVal, event)
 		return nil
 	})
+}
+
+func (r *RootElem) runEffectUnmount(work *EffectWorkElem, hook *Hook) {
+	defer func() {
+		comp := r.CompMap[work.WaveId]
+		compName := ""
+		if comp != nil {
+			compName = comp.ContainingComp
+		}
+		util.PanicHandler(fmt.Sprintf("UseEffect unmount - comp: %s", compName), recover())
+	}()
+	if hook.UnmountFn == nil {
+		return
+	}
+	effectCtx := &EffectContextImpl{
+		WorkElem: *work,
+		WorkType: "unmount",
+	}
+	withGlobalEffectCtx(effectCtx, func() any {
+		hook.UnmountFn()
+		return nil
+	})
+}
+
+func (r *RootElem) runEffect(work *EffectWorkElem, hook *Hook) {
+	defer func() {
+		comp := r.CompMap[work.WaveId]
+		compName := ""
+		if comp != nil {
+			compName = comp.ContainingComp
+		}
+		util.PanicHandler(fmt.Sprintf("UseEffect run - comp: %s", compName), recover())
+	}()
+	if hook.Fn == nil {
+		return
+	}
+	effectCtx := &EffectContextImpl{
+		WorkElem: *work,
+		WorkType: "run",
+	}
+	unmountFn := withGlobalEffectCtx(effectCtx, func() func() {
+		return hook.Fn()
+	})
+	hook.UnmountFn = unmountFn
 }
 
 // this will be called by the frontend to say the DOM has been mounted
@@ -290,25 +335,21 @@ func (r *RootElem) RunWork(opts *RenderOpts) {
 	r.EffectWorkQueue = nil
 	// first, run effect cleanups
 	for _, work := range workQueue {
-		comp := r.CompMap[work.Id]
+		comp := r.CompMap[work.WaveId]
 		if comp == nil {
 			continue
 		}
 		hook := comp.Hooks[work.EffectIndex]
-		if hook.UnmountFn != nil {
-			hook.UnmountFn()
-		}
+		r.runEffectUnmount(work, hook)
 	}
 	// now run, new effects
 	for _, work := range workQueue {
-		comp := r.CompMap[work.Id]
+		comp := r.CompMap[work.WaveId]
 		if comp == nil {
 			continue
 		}
 		hook := comp.Hooks[work.EffectIndex]
-		if hook.Fn != nil {
-			hook.UnmountFn = hook.Fn()
-		}
+		r.runEffect(work, hook)
 	}
 	// now check if we need a render
 	if len(r.NeedsRenderMap) > 0 {
