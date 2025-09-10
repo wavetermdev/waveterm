@@ -65,58 +65,6 @@ func UseId(vc *RenderContextImpl) string {
 	return vc.GetCompWaveId()
 }
 
-func UseState(vc *RenderContextImpl, initialVal any) (any, func(any), func(func(any) any)) {
-	hookVal := vc.getOrderedHook()
-	if !hookVal.Init {
-		hookVal.Init = true
-		hookVal.Val = initialVal
-	}
-
-	setVal := func(newVal any) {
-		hookVal.Val = newVal
-		vc.Root.AddRenderWork(vc.GetCompWaveId())
-	}
-
-	setFuncVal := func(updateFunc func(any) any) {
-		hookVal.Val = updateFunc(hookVal.Val)
-		vc.Root.AddRenderWork(vc.GetCompWaveId())
-	}
-
-	return hookVal.Val, setVal, setFuncVal
-}
-
-func UseAtom(vc *RenderContextImpl, atomName string) (any, func(any), func(func(any) any)) {
-	hookVal := vc.getOrderedHook()
-	if !hookVal.Init {
-		hookVal.Init = true
-		closedWaveId := vc.GetCompWaveId()
-		hookVal.UnmountFn = func() {
-			vc.Root.AtomSetUsedBy(atomName, closedWaveId, false)
-		}
-	}
-	vc.Root.AtomSetUsedBy(atomName, vc.GetCompWaveId(), true)
-	atomVal := vc.Root.GetAtomVal(atomName)
-
-	setVal := func(newVal any) {
-		if err := vc.Root.SetAtomVal(atomName, newVal); err != nil {
-			log.Printf("Failed to set atom value for %s: %v", atomName, err)
-			return
-		}
-		vc.Root.AtomAddRenderWork(atomName)
-	}
-
-	setFuncVal := func(updateFunc func(any) any) {
-		currentVal := vc.Root.GetAtomVal(atomName)
-		if err := vc.Root.SetAtomVal(atomName, updateFunc(currentVal)); err != nil {
-			log.Printf("Failed to set atom value for %s: %v", atomName, err)
-			return
-		}
-		vc.Root.AtomAddRenderWork(atomName)
-	}
-
-	return atomVal, setVal, setFuncVal
-}
-
 func UseLocal(vc *RenderContextImpl, initialVal any) string {
 	hookVal := vc.getOrderedHook()
 	atomName := "$local." + vc.GetCompWaveId() + "#" + strconv.Itoa(hookVal.Idx)

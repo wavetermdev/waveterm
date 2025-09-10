@@ -13,35 +13,6 @@ import (
 	"github.com/wavetermdev/waveterm/tsunami/vdom"
 )
 
-// UseState is the tsunami analog to React's useState hook.
-// It provides persistent state management within a VDOM component, returning the current
-// state value, a setter function, and an updater function.
-// Setting a new value causes a re-render of the component.
-// This hook must be called within a component context.
-func UseState[T any](initialVal T) (T, func(T), func(func(T) T)) {
-	rc := engine.GetGlobalRenderContext()
-	if rc == nil {
-		panic("UseState must be called within a component (no context)")
-	}
-	val, setVal, setFn := engine.UseState(rc, initialVal)
-
-	// Adapt the "any" values to type "T"
-	var rtnVal T
-	rtnVal, ok := val.(T)
-	if !ok {
-		panic("UseState hook value is not a state (possible out of order or conditional hooks)")
-	}
-	typedSetVal := func(newVal T) {
-		setVal(newVal)
-	}
-	typedSetFuncVal := func(updateFunc func(T) T) {
-		setFn(func(oldVal any) any {
-			return updateFunc(oldVal.(T))
-		})
-	}
-	return rtnVal, typedSetVal, typedSetFuncVal
-}
-
 // UseVDomRef provides a reference to a DOM element in the VDOM tree.
 // It returns a VDomRef that can be attached to elements for direct DOM access.
 // The ref will not be current on the first render - refs are set and become
