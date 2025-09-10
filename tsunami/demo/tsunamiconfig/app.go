@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -137,7 +136,7 @@ func postConfig(baseURL, jsonContent string) error {
 }
 
 var URLInput = app.DefineComponent("URLInput",
-	func(ctx context.Context, props URLInputProps) any {
+	func(props URLInputProps) any {
 		keyHandler := &vdom.VDomFunc{
 			Type: "func",
 			Fn: func(event vdom.VDomEvent) {
@@ -179,7 +178,7 @@ var URLInput = app.DefineComponent("URLInput",
 )
 
 var JSONEditor = app.DefineComponent("JSONEditor",
-	func(ctx context.Context, props JSONEditorProps) any {
+	func(props JSONEditorProps) any {
 		if props.Value == "" && props.Placeholder == "" {
 			return vdom.H("div", map[string]any{
 				"className": "text-slate-400 text-center py-8",
@@ -216,7 +215,7 @@ var JSONEditor = app.DefineComponent("JSONEditor",
 )
 
 var ErrorDisplay = app.DefineComponent("ErrorDisplay",
-	func(ctx context.Context, props ErrorDisplayProps) any {
+	func(props ErrorDisplayProps) any {
 		if props.Message == "" {
 			return nil
 		}
@@ -235,7 +234,7 @@ var ErrorDisplay = app.DefineComponent("ErrorDisplay",
 )
 
 var SuccessDisplay = app.DefineComponent("SuccessDisplay",
-	func(ctx context.Context, props SuccessDisplayProps) any {
+	func(props SuccessDisplayProps) any {
 		if props.Message == "" {
 			return nil
 		}
@@ -254,75 +253,75 @@ var SuccessDisplay = app.DefineComponent("SuccessDisplay",
 )
 
 var App = app.DefineComponent("App",
-	func(ctx context.Context, _ any) any {
+	func(_ struct{}) any {
 		app.UseSetAppTitle("Tsunami Config Manager")
 
 		// Get atom value once at the top
 		urlInput := serverURLAtom.Get()
-		jsonContent, setJSONContent, _ := app.UseState("")
-		errorMessage, setErrorMessage, _ := app.UseState("")
-		successMessage, setSuccessMessage, _ := app.UseState("")
-		isLoading, setIsLoading, _ := app.UseState(false)
-		lastFetch, setLastFetch, _ := app.UseState("")
-		currentBaseURL, setCurrentBaseURL, _ := app.UseState("")
+		jsonContent := app.UseLocal("")
+		errorMessage := app.UseLocal("")
+		successMessage := app.UseLocal("")
+		isLoading := app.UseLocal(false)
+		lastFetch := app.UseLocal("")
+		currentBaseURL := app.UseLocal("")
 
 		clearMessages := func() {
-			setErrorMessage("")
-			setSuccessMessage("")
+			errorMessage.Set("")
+			successMessage.Set("")
 		}
 
 		fetchConfigData := func() {
 			clearMessages()
 
-			baseURL, err := parseURL(urlInput)
+			baseURL, err := parseURL(serverURLAtom.Get())
 			if err != nil {
-				setErrorMessage(err.Error())
+				errorMessage.Set(err.Error())
 				return
 			}
 
-			setIsLoading(true)
-			setCurrentBaseURL(baseURL)
+			isLoading.Set(true)
+			currentBaseURL.Set(baseURL)
 
 			go func() {
 				defer func() {
-					setIsLoading(false)
+					isLoading.Set(false)
 					app.SendAsyncInitiation()
 				}()
 
 				content, err := fetchConfig(baseURL)
 				if err != nil {
-					setErrorMessage(err.Error())
+					errorMessage.Set(err.Error())
 					return
 				}
 
-				setJSONContent(content)
-				setLastFetch(time.Now().Format("2006-01-02 15:04:05"))
-				setSuccessMessage(fmt.Sprintf("Successfully fetched config from %s", baseURL))
+				jsonContent.Set(content)
+				lastFetch.Set(time.Now().Format("2006-01-02 15:04:05"))
+				successMessage.Set(fmt.Sprintf("Successfully fetched config from %s", baseURL))
 			}()
 		}
 
 		submitConfigData := func() {
-			if currentBaseURL == "" {
-				setErrorMessage("No base URL available. Please fetch config first.")
+			if currentBaseURL.Get() == "" {
+				errorMessage.Set("No base URL available. Please fetch config first.")
 				return
 			}
 
 			clearMessages()
-			setIsLoading(true)
+			isLoading.Set(true)
 
 			go func() {
 				defer func() {
-					setIsLoading(false)
+					isLoading.Set(false)
 					app.SendAsyncInitiation()
 				}()
 
-				err := postConfig(currentBaseURL, jsonContent)
+				err := postConfig(currentBaseURL.Get(), jsonContent.Get())
 				if err != nil {
-					setErrorMessage(fmt.Sprintf("Failed to submit config: %v", err))
+					errorMessage.Set(fmt.Sprintf("Failed to submit config: %v", err))
 					return
 				}
 
-				setSuccessMessage(fmt.Sprintf("Successfully submitted config to %s", currentBaseURL))
+				successMessage.Set(fmt.Sprintf("Successfully submitted config to %s", currentBaseURL.Get()))
 			}()
 		}
 
@@ -344,28 +343,28 @@ var App = app.DefineComponent("App",
 				Value:     urlInput,
 				OnChange:  serverURLAtom.Set,
 				OnSubmit:  fetchConfigData,
-				IsLoading: isLoading,
+				IsLoading: isLoading.Get(),
 			}),
 
 			ErrorDisplay(ErrorDisplayProps{
-				Message: errorMessage,
+				Message: errorMessage.Get(),
 			}),
 
 			SuccessDisplay(SuccessDisplayProps{
-				Message: successMessage,
+				Message: successMessage.Get(),
 			}),
 
-			vdom.If(lastFetch != "",
+			vdom.If(lastFetch.Get() != "",
 				vdom.H("div", map[string]any{
 					"className": "text-sm text-slate-400 mb-4",
-				}, fmt.Sprintf("Last fetched: %s from %s", lastFetch, currentBaseURL)),
+				}, fmt.Sprintf("Last fetched: %s from %s", lastFetch.Get(), currentBaseURL.Get())),
 			),
 
 			JSONEditor(JSONEditorProps{
-				Value:       jsonContent,
-				OnChange:    setJSONContent,
+				Value:       jsonContent.Get(),
+				OnChange:    jsonContent.Set,
 				OnSubmit:    submitConfigData,
-				IsLoading:   isLoading,
+				IsLoading:   isLoading.Get(),
 				Placeholder: "JSON configuration will appear here after fetching...",
 			}),
 		)

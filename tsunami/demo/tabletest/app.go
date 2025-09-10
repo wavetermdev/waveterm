@@ -19,8 +19,8 @@ type Person struct {
 // Create the table component for Person data
 var PersonTable = ui.MakeTableComponent[Person]("PersonTable")
 
-// Sample data
-var sampleData = []Person{
+// Sample data exposed as DataAtom for external system access
+var sampleData = app.DataAtom("sampleData", []Person{
 	{Name: "Alice Johnson", Age: 28, Email: "alice@example.com", City: "New York"},
 	{Name: "Bob Smith", Age: 34, Email: "bob@example.com", City: "Los Angeles"},
 	{Name: "Carol Davis", Age: 22, Email: "carol@example.com", City: "Chicago"},
@@ -31,7 +31,7 @@ var sampleData = []Person{
 	{Name: "Henry Taylor", Age: 33, Email: "henry@example.com", City: "San Diego"},
 	{Name: "Ivy Chen", Age: 26, Email: "ivy@example.com", City: "Dallas"},
 	{Name: "Jack Anderson", Age: 31, Email: "jack@example.com", City: "San Jose"},
-}
+})
 
 // The App component is the required entry point for every Tsunami application
 var App = app.DefineComponent("App", func(_ struct{}) any {
@@ -93,7 +93,7 @@ var App = app.DefineComponent("App", func(_ struct{}) any {
 			"className": "bg-gray-800 p-4 rounded-lg",
 		},
 			PersonTable(ui.TableProps[Person]{
-				Data:        sampleData,
+				Data:        sampleData.Get(),
 				Columns:     columns,
 				OnRowClick:  handleRowClick,
 				OnSort:      handleSort,

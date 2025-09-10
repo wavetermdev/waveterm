@@ -314,11 +314,11 @@ func genTableRenderFunc[T any](props TableProps[T]) any {
 			"className": "overflow-auto border border-gray-600 rounded-lg",
 		},
 			vdom.H("table", map[string]any{
-				"className": "w-full bg-gray-900 text-white",
+				"className": "w-full bg-gray-900 text-gray-200",
 			},
 				// Header
 				vdom.H("thead", map[string]any{
-					"className": "bg-gray-800 border-b border-gray-600",
+					"className": "bg-gray-800 border-b border-gray-600 text-white",
 				},
 					vdom.H("tr", nil,
 						vdom.If(props.Selectable,
@@ -512,7 +512,7 @@ func renderPagination(totalRows int, config *PaginationConfig, onPageChange func
 					"px-3 py-1.5 rounded text-sm transition-colors",
 					vdom.IfElse(currentPage > 0,
 						"bg-blue-600 hover:bg-blue-700 text-white cursor-pointer",
-						"bg-gray-600 text-gray-500 cursor-not-allowed"),
+						"bg-gray-600 text-gray-500"),
 				),
 				"disabled": currentPage <= 0,
 				"onClick": func() {
@@ -521,17 +521,17 @@ func renderPagination(totalRows int, config *PaginationConfig, onPageChange func
 					}
 				},
 			}, "Previous"),
-
+	
 			vdom.H("span", map[string]any{
 				"className": "text-sm text-gray-400 px-2",
 			}, fmt.Sprintf("Page %d of %d", currentPage+1, totalPages)),
-
+	
 			vdom.H("button", map[string]any{
 				"className": vdom.Classes(
 					"px-3 py-1.5 rounded text-sm transition-colors",
 					vdom.IfElse(currentPage < totalPages-1,
 						"bg-blue-600 hover:bg-blue-700 text-white cursor-pointer",
-						"bg-gray-600 text-gray-500 cursor-not-allowed"),
+						"bg-gray-600 text-gray-500"),
 				),
 				"disabled": currentPage >= totalPages-1,
 				"onClick": func() {
