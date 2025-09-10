@@ -30,6 +30,7 @@ type VDomFrontendUpdate struct {
 	ClientId      string            `json:"clientid"`
 	ForceTakeover bool              `json:"forcetakeover,omitempty"`
 	CorrelationId string            `json:"correlationid,omitempty"`
+	Reason        string            `json:"reason,omitempty"`
 	Dispose       bool              `json:"dispose,omitempty"` // the vdom context was closed
 	Resync        bool              `json:"resync,omitempty"`  // resync (send all backend data).  useful when the FE reloads
 	RenderContext VDomRenderContext `json:"rendercontext,omitempty"`

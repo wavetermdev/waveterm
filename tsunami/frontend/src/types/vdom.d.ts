@@ -52,6 +52,7 @@ type VDomFrontendUpdate = {
     clientid: string;
     forcetakeover?: boolean;
     correlationid?: string;
+    reason?: string;
     dispose?: boolean;
     resync?: boolean;
     rendercontext: VDomRenderContext;

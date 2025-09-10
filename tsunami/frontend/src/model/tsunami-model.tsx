@@ -102,6 +102,7 @@ export class TsunamiModel {
     hasBackendWork: boolean = false;
     noPadding: jotai.PrimitiveAtom<boolean>;
     cachedFaviconPath: string | null = null;
+    reason: string | null = null;
 
     constructor() {
         this.clientId = getOrCreateClientId();
@@ -109,7 +110,7 @@ export class TsunamiModel {
         this.reset();
         this.noPadding = jotai.atom(true);
         this.setupServerEventSource();
-        this.queueUpdate(true);
+        this.queueUpdate(true, "initial");
     }
 
     dispose() {
@@ -129,7 +130,7 @@ export class TsunamiModel {
 
         this.serverEventSource.addEventListener("asyncinitiation", (event) => {
             dlog("async-initiation SSE event received", event);
-            this.queueUpdate(true);
+            this.queueUpdate(true, "asyncinitiation");
         });
 
         this.serverEventSource.addEventListener("error", (event) => {
@@ -165,24 +166,25 @@ export class TsunamiModel {
         this.refOutputStore.clear();
         this.globalVersion = jotai.atom(0);
         this.hasBackendWork = false;
+        this.reason = null;
         getDefaultStore().set(this.contextActive, false);
     }
 
     keyDownHandler(e: VDomKeyboardEvent): boolean {
-        if (this.backendOpts?.globalkeyboardevents) {
-            if (e.cmd || e.meta) {
-                return false;
-            }
-            this.batchedEvents.push({
-                globaleventtype: "onKeyDown",
-                waveid: null,
-                eventtype: "onKeyDown",
-                keydata: e,
-            });
-            this.queueUpdate();
-            return true;
+        if (!this.backendOpts?.globalkeyboardevents) {
+            return false;
         }
-        return false;
+        if (e.cmd || e.meta) {
+            return false;
+        }
+        this.batchedEvents.push({
+            globaleventtype: "onKeyDown",
+            waveid: null,
+            eventtype: "onKeyDown",
+            keydata: e,
+        });
+        this.queueUpdate(false, "globalkeyboard");
+        return true;
     }
 
     hasRefUpdates() {
@@ -219,11 +221,29 @@ export class TsunamiModel {
         return updates;
     }
 
-    queueUpdate(quick: boolean = false, delay: number = 10) {
+    mergeReasons(newReason: string): string {
+        if (!this.reason) {
+            return newReason;
+        }
+        const existingReasons = this.reason.split(",");
+        const newReasons = newReason.split(",");
+        for (const reason of newReasons) {
+            if (!existingReasons.includes(reason)) {
+                existingReasons.push(reason);
+            }
+        }
+        return existingReasons.join(",");
+    }
+
+    queueUpdate(quick: boolean = false, reason: string | null) {
         if (this.disposed) {
             return;
         }
+        if (reason) {
+            this.reason = this.mergeReasons(reason);
+        }
         this.needsUpdate = true;
+        let delay = 10;
         let nowTs = Date.now();
         if (delay > this.maxNormalUpdateIntervalMs) {
             delay = this.maxNormalUpdateIntervalMs;
@@ -312,10 +332,9 @@ export class TsunamiModel {
             this.hasPendingRequest = false;
         }
         if (this.needsImmediateUpdate) {
-            this.queueUpdate(true);
+            this.queueUpdate(true, null); // reason should already be set, dont try to add a new one
         }
     }
-
 
     getOrCreateRefContainer(vdomRef: VDomRef): RefContainer {
         let container = this.refs.get(vdomRef.refid);
@@ -337,7 +356,6 @@ export class TsunamiModel {
         }
         return container;
     }
-
 
     getVDomNodeVersionAtom(vdom: VDomElem) {
         let atom = this.vdomNodeVersion.get(vdom);
@@ -433,7 +451,6 @@ export class TsunamiModel {
             this.addErrorMessage(`Unknown updatetype ${renderUpdate.updatetype}`);
         }
     }
-
 
     getRefElem(refId: string): HTMLElement {
         if (refId == this.rootRefId) {
@@ -543,9 +560,19 @@ export class TsunamiModel {
     renderDone(version: number) {
         // called when the render is done
         dlog("renderDone", version);
-        if (this.hasRefUpdates() || this.hasBackendWork) {
+        let reasons: string[] = [];
+        let needsQueue = false;
+        if (this.hasRefUpdates()) {
+            reasons.push("refupdates");
+            needsQueue = true;
+        }
+        if (this.hasBackendWork) {
+            reasons.push("backendwork");
+            needsQueue = true;
             this.hasBackendWork = false;
-            this.queueUpdate(true);
+        }
+        if (needsQueue) {
+            this.queueUpdate(true, reasons.join(","));
         }
     }
 
@@ -559,7 +586,7 @@ export class TsunamiModel {
         }
         annotateEvent(vdomEvent, propName, e);
         this.batchedEvents.push(vdomEvent);
-        this.queueUpdate(true);
+        this.queueUpdate(true, "event");
     }
 
     createFeUpdate(): VDomFrontendUpdate {
@@ -580,9 +607,11 @@ export class TsunamiModel {
             resync: this.needsResync,
             events: this.batchedEvents,
             refupdates: this.getRefUpdates(),
+            reason: this.reason,
         };
         this.needsResync = false;
         this.batchedEvents = [];
+        this.reason = null;
         if (this.shouldDispose) {
             this.disposed = true;
         }
