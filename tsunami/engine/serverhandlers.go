@@ -99,19 +99,19 @@ func (h *httpHandlers) handleRender(w http.ResponseWriter, r *http.Request) {
 	startTime := time.Now()
 	update, err := h.processFrontendUpdate(&feUpdate)
 	duration := time.Since(startTime)
-	
+
 	if err != nil {
 		http.Error(w, fmt.Sprintf("render error: %v", err), http.StatusInternalServerError)
 		return
 	}
 	if update == nil {
 		w.WriteHeader(http.StatusOK)
-		log.Printf("render %4dms %4dk %s", duration.Milliseconds(), 0, feUpdate.Reason)
+		log.Printf("render %4s %4dms %4dk %s", "none", duration.Milliseconds(), 0, feUpdate.Reason)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	
+
 	// Encode to bytes first to calculate size
 	responseBytes, err := json.Marshal(update)
 	if err != nil {
@@ -119,10 +119,14 @@ func (h *httpHandlers) handleRender(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "failed to encode response", http.StatusInternalServerError)
 		return
 	}
-	
+
 	updateSizeKB := len(responseBytes) / 1024
-	log.Printf("render %4dms %4dk %s", duration.Milliseconds(), updateSizeKB, feUpdate.Reason)
-	
+	renderType := "inc"
+	if update.FullUpdate {
+		renderType = "full"
+	}
+	log.Printf("render %4s %4dms %4dk %s", renderType, duration.Milliseconds(), updateSizeKB, feUpdate.Reason)
+
 	if _, err := w.Write(responseBytes); err != nil {
 		log.Printf("failed to write response: %v", err)
 	}
@@ -248,7 +252,7 @@ func (h *httpHandlers) handleConfigPost(w http.ResponseWriter, r *http.Request) 
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	
+
 	var response map[string]any
 	if len(failedKeys) > 0 {
 		response = map[string]any{
@@ -259,9 +263,9 @@ func (h *httpHandlers) handleConfigPost(w http.ResponseWriter, r *http.Request) 
 			"success": true,
 		}
 	}
-	
+
 	w.WriteHeader(http.StatusOK)
-	
+
 	json.NewEncoder(w).Encode(response)
 }
 
