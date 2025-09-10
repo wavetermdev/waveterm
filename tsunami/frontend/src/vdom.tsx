@@ -5,6 +5,7 @@ import clsx from "clsx";
 import debug from "debug";
 import * as jotai from "jotai";
 import * as React from "react";
+import { twMerge } from "tailwind-merge";
 
 import { Markdown } from "@/element/markdown";
 import { getTextChildren } from "@/model/model-utils";
@@ -201,6 +202,10 @@ function convertProps(elem: VDomElem, model: TsunamiModel): GenericPropsType {
                 const refContainer = model.getOrCreateRefContainer(valRef);
                 props[key] = refContainer.refFn;
             }
+            continue;
+        }
+        if (key == "className" && typeof val === "string") {
+            props[key] = twMerge(val);
             continue;
         }
         if (isObject(val) && val.type == VDomObjType_Func) {
