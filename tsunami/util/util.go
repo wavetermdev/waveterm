@@ -15,6 +15,12 @@ import (
 	"time"
 )
 
+// PanicHandler handles panic recovery and logging.
+// It can be called directly with recover() without checking for nil first.
+// Example usage:
+//   defer func() {
+//       util.PanicHandler("operation name", recover())
+//   }()
 func PanicHandler(debugStr string, recoverVal any) error {
 	if recoverVal == nil {
 		return nil

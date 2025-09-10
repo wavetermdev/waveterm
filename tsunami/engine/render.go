@@ -6,7 +6,6 @@ package engine
 import (
 	"fmt"
 	"reflect"
-	"runtime/debug"
 	"unicode"
 
 	"github.com/google/uuid"
@@ -190,11 +189,8 @@ func renderErrorComponent(componentName string, errorMsg string) any {
 // safely calls the component function with panic recovery
 func callCFuncWithErrorGuard(cfunc any, props map[string]any, componentName string) (result any) {
 	defer func() {
-		if r := recover(); r != nil {
-			errorMsg := fmt.Sprintf("Error: %v", r)
-			result = renderErrorComponent(componentName, errorMsg)
-			stackTrace := string(debug.Stack())
-			fmt.Printf("Render panic in component '%s': %v\n%s\n", componentName, r, stackTrace)
+		if panicErr := util.PanicHandler(fmt.Sprintf("render component '%s'", componentName), recover()); panicErr != nil {
+			result = renderErrorComponent(componentName, panicErr.Error())
 		}
 	}()
 

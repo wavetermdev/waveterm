@@ -5,9 +5,11 @@ package app
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/wavetermdev/waveterm/tsunami/engine"
+	"github.com/wavetermdev/waveterm/tsunami/util"
 	"github.com/wavetermdev/waveterm/tsunami/vdom"
 )
 
@@ -165,7 +167,17 @@ func UseGoRoutine(fn func(ctx context.Context), deps []any) {
 		ctx, cancel := context.WithCancel(context.Background())
 		cancelRef.Current = cancel
 
-		go fn(ctx)
+		componentName := "unknown"
+		if rc.Comp != nil && rc.Comp.Elem != nil {
+			componentName = rc.Comp.Elem.Tag
+		}
+
+		go func() {
+			defer func() {
+				util.PanicHandler(fmt.Sprintf("UseGoRoutine in component '%s'", componentName), recover())
+			}()
+			fn(ctx)
+		}()
 
 		// Return cleanup function that cancels the context
 		return func() {

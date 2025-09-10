@@ -7,12 +7,12 @@ import (
 	"fmt"
 	"log"
 	"reflect"
-	"runtime/debug"
 	"strconv"
 	"strings"
 	"sync"
 
 	"github.com/wavetermdev/waveterm/tsunami/rpctypes"
+	"github.com/wavetermdev/waveterm/tsunami/util"
 	"github.com/wavetermdev/waveterm/tsunami/vdom"
 )
 
@@ -250,14 +250,11 @@ func (r *RootElem) Event(id string, propName string, event vdom.VDomEvent) {
 	}
 	
 	defer func() {
-		if r := recover(); r != nil {
-			tag := ""
-			if comp.Elem != nil {
-				tag = comp.Elem.Tag
-			}
-			log.Printf("PANIC in Event handler - comp: %s, tag: %s, prop: %s, error: %v\n", comp.ContainingComp, tag, propName, r)
-			log.Printf("Stack trace:\n%s", debug.Stack())
+		tag := ""
+		if comp.Elem != nil {
+			tag = comp.Elem.Tag
 		}
+		util.PanicHandler(fmt.Sprintf("Event handler - comp: %s, tag: %s, prop: %s", comp.ContainingComp, tag, propName), recover())
 	}()
 	
 	fnVal := comp.Elem.Props[propName]
