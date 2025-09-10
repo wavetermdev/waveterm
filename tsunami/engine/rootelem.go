@@ -36,24 +36,50 @@ type RootElem struct {
 	Root            *ComponentImpl
 	RenderTs        int64
 	AppTitle        string
-	CFuncs          map[string]any
+	CFuncs          map[string]any            // component name => render function
 	CompMap         map[string]*ComponentImpl // component waveid -> component
 	EffectWorkQueue []*EffectWorkElem
-	NeedsRenderMap  map[string]bool
-	Atoms           map[string]genAtom
+	needsRenderMap  map[string]bool // key: waveid
+	needsRenderLock sync.Mutex
+	Atoms           map[string]genAtom // key: atomName
 	atomLock        sync.Mutex
 	RefOperations   []vdom.VDomRefOperation
 	Client          *ClientImpl
 }
 
-func (r *RootElem) AddRenderWork(id string) {
-	if r.NeedsRenderMap == nil {
-		r.NeedsRenderMap = make(map[string]bool)
+func (r *RootElem) addRenderWork(id string) {
+	defer func() {
+		if inContextType() == GlobalContextType_async {
+			r.Client.notifyAsyncRenderWork()
+		}
+	}()
+	
+	r.needsRenderLock.Lock()
+	defer r.needsRenderLock.Unlock()
+
+	if r.needsRenderMap == nil {
+		r.needsRenderMap = make(map[string]bool)
 	}
-	r.NeedsRenderMap[id] = true
+	r.needsRenderMap[id] = true
 }
 
-func (r *RootElem) AddEffectWork(id string, effectIndex int, compTag string) {
+func (r *RootElem) getAndClearRenderWork() []string {
+	r.needsRenderLock.Lock()
+	defer r.needsRenderLock.Unlock()
+
+	if len(r.needsRenderMap) == 0 {
+		return nil
+	}
+
+	ids := make([]string, 0, len(r.needsRenderMap))
+	for id := range r.needsRenderMap {
+		ids = append(ids, id)
+	}
+	r.needsRenderMap = nil
+	return ids
+}
+
+func (r *RootElem) addEffectWork(id string, effectIndex int, compTag string) {
 	r.EffectWorkQueue = append(r.EffectWorkQueue, &EffectWorkElem{WaveId: id, EffectIndex: effectIndex, CompTag: compTag})
 }
 
@@ -135,8 +161,12 @@ func (r *RootElem) AtomAddRenderWork(atomName string) {
 	if !ok {
 		return
 	}
-	for _, compId := range atom.GetUsedBy() {
-		r.AddRenderWork(compId)
+	usedBy := atom.GetUsedBy()
+	if len(usedBy) == 0 {
+		return
+	}
+	for _, compId := range usedBy {
+		r.addRenderWork(compId)
 	}
 }
 
@@ -356,8 +386,8 @@ func (r *RootElem) RunWork(opts *RenderOpts) {
 		r.runEffect(work, hook)
 	}
 	// now check if we need a render
-	if len(r.NeedsRenderMap) > 0 {
-		r.NeedsRenderMap = nil
+	renderIds := r.getAndClearRenderWork()
+	if len(renderIds) > 0 {
 		r.render(r.Root.Elem, &r.Root, "root", opts)
 	}
 }
@@ -392,7 +422,7 @@ func (r *RootElem) UpdateRef(updateRef rpctypes.VDomRefUpdate) {
 	}
 	ref.HasCurrent = updateRef.HasCurrent
 	ref.Position = updateRef.Position
-	r.AddRenderWork(waveId)
+	r.addRenderWork(waveId)
 }
 
 func (r *RootElem) QueueRefOp(op vdom.VDomRefOperation) {

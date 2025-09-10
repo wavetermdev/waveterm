@@ -125,14 +125,14 @@ func UseEffect(vc *RenderContextImpl, fn func() func(), deps []any) {
 		hookVal.Init = true
 		hookVal.Fn = fn
 		hookVal.Deps = deps
-		vc.Root.AddEffectWork(vc.GetCompWaveId(), hookVal.Idx, compTag)
+		vc.Root.addEffectWork(vc.GetCompWaveId(), hookVal.Idx, compTag)
 		return
 	}
 	// If deps is nil, always run (like React with no dependency array)
 	if deps == nil {
 		hookVal.Fn = fn
 		hookVal.Deps = deps
-		vc.Root.AddEffectWork(vc.GetCompWaveId(), hookVal.Idx, compTag)
+		vc.Root.addEffectWork(vc.GetCompWaveId(), hookVal.Idx, compTag)
 		return
 	}
 
@@ -141,7 +141,7 @@ func UseEffect(vc *RenderContextImpl, fn func() func(), deps []any) {
 	}
 	hookVal.Fn = fn
 	hookVal.Deps = deps
-	vc.Root.AddEffectWork(vc.GetCompWaveId(), hookVal.Idx, compTag)
+	vc.Root.addEffectWork(vc.GetCompWaveId(), hookVal.Idx, compTag)
 }
 
 func UseResync(vc *RenderContextImpl) bool {

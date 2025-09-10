@@ -26,6 +26,10 @@ const TsunamiListenAddrEnvVar = "TSUNAMI_LISTENADDR"
 const DefaultListenAddr = "localhost:0"
 const DefaultComponentName = "App"
 
+const NotifyMaxCadence = 10 * time.Millisecond
+const NotifyDebounceTime = 500 * time.Microsecond
+const NotifyMaxDebounceTime = 2 * time.Millisecond
+
 type ssEvent struct {
 	Event string
 	Data  []byte
@@ -216,6 +220,10 @@ func (c *ClientImpl) SendAsyncInitiation() error {
 	default:
 		return fmt.Errorf("SSEvent channel is full")
 	}
+}
+
+func (c *ClientImpl) notifyAsyncRenderWork() {
+	// TODO
 }
 
 func makeNullRendered() *rpctypes.RenderedElem {

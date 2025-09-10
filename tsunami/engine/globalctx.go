@@ -10,6 +10,13 @@ import (
 	"github.com/wavetermdev/waveterm/tsunami/vdom"
 )
 
+const (
+	GlobalContextType_async  = "async"
+	GlobalContextType_render = "render"
+	GlobalContextType_effect = "effect"
+	GlobalContextType_event  = "event"
+)
+
 // is set ONLY when we're in the render function of a component
 // used for hooks, and automatic dependency tracking
 var globalRenderContext *RenderContextImpl
@@ -122,4 +129,31 @@ func GetGlobalEffectContext() *EffectContextImpl {
 		return nil
 	}
 	return globalEffectContext
+}
+
+// inContextType returns the current global context type.
+// Returns one of:
+//   - GlobalContextType_render: when in a component render function
+//   - GlobalContextType_event: when in an event handler
+//   - GlobalContextType_effect: when in an effect function
+//   - GlobalContextType_async: when not in any specific context (default/async)
+func inContextType() string {
+	globalCtxMutex.Lock()
+	defer globalCtxMutex.Unlock()
+	
+	gid := goid.Get()
+	
+	if globalRenderContext != nil && gid == globalRenderGoId {
+		return GlobalContextType_render
+	}
+	
+	if globalEventContext != nil && gid == globalEventGoId {
+		return GlobalContextType_event
+	}
+	
+	if globalEffectContext != nil && gid == globalEffectGoId {
+		return GlobalContextType_effect
+	}
+	
+	return GlobalContextType_async
 }
