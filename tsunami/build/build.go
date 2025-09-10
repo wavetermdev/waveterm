@@ -3,6 +3,8 @@ package build
 import (
 	"bufio"
 	"fmt"
+	"go/parser"
+	"go/token"
 	"io"
 	"log"
 	"os"
@@ -21,6 +23,7 @@ import (
 )
 
 const MinSupportedGoMinorVersion = 22
+const TsunamiUIImportPath = "github.com/wavetermdev/waveterm/tsunami/ui"
 
 type BuildOpts struct {
 	Dir            string
@@ -138,7 +141,7 @@ func createGoMod(tempDir, appDirName, goVersion string, opts BuildOpts, verbose 
 		if verbose {
 			log.Printf("Found existing go.mod, copying from %s", originalGoModPath)
 		}
-		
+
 		// Copy existing go.mod to temp directory
 		tempGoModPath := filepath.Join(tempDir, "go.mod")
 		if err := copyFile(originalGoModPath, tempGoModPath); err != nil {
@@ -160,7 +163,7 @@ func createGoMod(tempDir, appDirName, goVersion string, opts BuildOpts, verbose 
 		if verbose {
 			log.Printf("No existing go.mod found, creating new one")
 		}
-		
+
 		modFile = &modfile.File{}
 		if err := modFile.AddModuleStmt(modulePath); err != nil {
 			return fmt.Errorf("failed to add module statement: %w", err)
@@ -320,6 +323,31 @@ func verifyScaffoldPath(scaffoldPath string) error {
 	return nil
 }
 
+func buildImportsMap(dir string) (map[string]bool, error) {
+	imports := make(map[string]bool)
+
+	files, err := filepath.Glob(filepath.Join(dir, "*.go"))
+	if err != nil {
+		return nil, fmt.Errorf("failed to list go files: %w", err)
+	}
+
+	fset := token.NewFileSet()
+	for _, file := range files {
+		node, err := parser.ParseFile(fset, file, nil, parser.ImportsOnly)
+		if err != nil {
+			continue // Skip files that can't be parsed
+		}
+
+		for _, imp := range node.Imports {
+			// Remove quotes from import path
+			importPath := strings.Trim(imp.Path.Value, `"`)
+			imports[importPath] = true
+		}
+	}
+
+	return imports, nil
+}
+
 func (be *BuildEnv) cleanupTempDir(keepTemp bool, verbose bool) {
 	if be == nil || be.cleanupOnce == nil {
 		return
@@ -430,14 +458,24 @@ func tsunamiBuildInternal(opts BuildOpts) (*BuildEnv, error) {
 		return buildEnv, fmt.Errorf("failed to create go.mod: %w", err)
 	}
 
-	// Create symlink to SDK ui directory so Tailwind can see those classes
-	uiLinkPath := filepath.Join(tempDir, "ui")
-	uiTargetPath := filepath.Join(opts.SdkReplacePath, "ui")
-	if err := os.Symlink(uiTargetPath, uiLinkPath); err != nil {
-		return buildEnv, fmt.Errorf("failed to create ui symlink: %w", err)
+	// Build imports map from Go files
+	imports, err := buildImportsMap(tempDir)
+	if err != nil {
+		return buildEnv, fmt.Errorf("failed to build imports map: %w", err)
 	}
-	if opts.Verbose {
-		log.Printf("Created symlink: %s -> %s", uiLinkPath, uiTargetPath)
+
+	// Create symlink to SDK ui directory only if UI package is imported
+	if imports[TsunamiUIImportPath] {
+		uiLinkPath := filepath.Join(tempDir, "ui")
+		uiTargetPath := filepath.Join(opts.SdkReplacePath, "ui")
+		if err := os.Symlink(uiTargetPath, uiLinkPath); err != nil {
+			return buildEnv, fmt.Errorf("failed to create ui symlink: %w", err)
+		}
+		if opts.Verbose {
+			log.Printf("Created UI symlink: %s -> %s", uiLinkPath, uiTargetPath)
+		}
+	} else if opts.Verbose {
+		log.Printf("Skipping UI symlink creation - no UI package imports found")
 	}
 
 	// Generate Tailwind CSS

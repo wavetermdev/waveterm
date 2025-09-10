@@ -9,6 +9,11 @@ import (
 	"github.com/wavetermdev/waveterm/tsunami/tsunamibase"
 )
 
+const (
+	EnvTsunamiScaffoldPath   = "TSUNAMI_SCAFFOLDPATH"
+	EnvTsunamiSdkReplacePath = "TSUNAMI_SDKREPLACEPATH"
+)
+
 // these are set at build time
 var TsunamiVersion = "0.0.0"
 var BuildTime = "0"
@@ -29,14 +34,14 @@ var versionCmd = &cobra.Command{
 }
 
 func validateEnvironmentVars(opts *build.BuildOpts) error {
-	scaffoldPath := os.Getenv("TSUNAMI_SCAFFOLDPATH")
+	scaffoldPath := os.Getenv(EnvTsunamiScaffoldPath)
 	if scaffoldPath == "" {
-		return fmt.Errorf("TSUNAMI_SCAFFOLDPATH environment variable must be set")
+		return fmt.Errorf("%s environment variable must be set", EnvTsunamiScaffoldPath)
 	}
 
-	sdkReplacePath := os.Getenv("TSUNAMI_SDKREPLACEPATH")
+	sdkReplacePath := os.Getenv(EnvTsunamiSdkReplacePath)
 	if sdkReplacePath == "" {
-		return fmt.Errorf("TSUNAMI_SDKREPLACEPATH environment variable must be set")
+		return fmt.Errorf("%s environment variable must be set", EnvTsunamiSdkReplacePath)
 	}
 
 	opts.ScaffoldPath = scaffoldPath
