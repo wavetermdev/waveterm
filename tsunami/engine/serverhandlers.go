@@ -96,19 +96,35 @@ func (h *httpHandlers) handleRender(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	startTime := time.Now()
 	update, err := h.processFrontendUpdate(&feUpdate)
+	duration := time.Since(startTime)
+	
 	if err != nil {
 		http.Error(w, fmt.Sprintf("render error: %v", err), http.StatusInternalServerError)
 		return
 	}
 	if update == nil {
 		w.WriteHeader(http.StatusOK)
+		log.Printf("render %4dms %4dk %s", duration.Milliseconds(), 0, feUpdate.Reason)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(update); err != nil {
+	
+	// Encode to bytes first to calculate size
+	responseBytes, err := json.Marshal(update)
+	if err != nil {
 		log.Printf("failed to encode response: %v", err)
+		http.Error(w, "failed to encode response", http.StatusInternalServerError)
+		return
+	}
+	
+	updateSizeKB := len(responseBytes) / 1024
+	log.Printf("render %4dms %4dk %s", duration.Milliseconds(), updateSizeKB, feUpdate.Reason)
+	
+	if _, err := w.Write(responseBytes); err != nil {
+		log.Printf("failed to write response: %v", err)
 	}
 }
 
