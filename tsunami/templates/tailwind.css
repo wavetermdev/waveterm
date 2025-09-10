@@ -2,7 +2,8 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 
 @import "tailwindcss";
-@source inline("bg-background text-primary");
+@source inline("bg-background text-primary"); /* index.html */
+@source inline("p-4 border border-red-500 bg-red-100 text-red-800 rounded font-mono font-bold mb-2"); /* error component */
 
 @theme {
     --color-background: rgb(34, 34, 34); /* default background color */

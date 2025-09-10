@@ -6,6 +6,7 @@ package engine
 import (
 	"fmt"
 	"reflect"
+	"runtime/debug"
 	"unicode"
 
 	"github.com/google/uuid"
@@ -21,7 +22,7 @@ type RenderOpts struct {
 }
 
 func (r *RootElem) Render(elem *vdom.VDomElem, opts *RenderOpts) {
-	r.render(elem, &r.Root, opts)
+	r.render(elem, &r.Root, "root", opts)
 }
 
 func getElemKey(elem *vdom.VDomElem) string {
@@ -35,7 +36,7 @@ func getElemKey(elem *vdom.VDomElem) string {
 	return fmt.Sprint(keyVal)
 }
 
-func (r *RootElem) render(elem *vdom.VDomElem, comp **ComponentImpl, opts *RenderOpts) {
+func (r *RootElem) render(elem *vdom.VDomElem, comp **ComponentImpl, containingComp string, opts *RenderOpts) {
 	if elem == nil || elem.Tag == "" {
 		r.unmount(comp)
 		return
@@ -43,7 +44,7 @@ func (r *RootElem) render(elem *vdom.VDomElem, comp **ComponentImpl, opts *Rende
 	elemKey := getElemKey(elem)
 	if *comp == nil || !(*comp).compMatch(elem.Tag, elemKey) {
 		r.unmount(comp)
-		r.createComp(elem.Tag, elemKey, comp)
+		r.createComp(elem.Tag, elemKey, containingComp, comp)
 	}
 	(*comp).Elem = elem
 	if elem.Tag == vdom.TextTag {
@@ -53,7 +54,7 @@ func (r *RootElem) render(elem *vdom.VDomElem, comp **ComponentImpl, opts *Rende
 	}
 	if isBaseTag(elem.Tag) {
 		// Pattern 2: Base elements
-		r.renderSimple(elem, comp, opts)
+		r.renderSimple(elem, comp, containingComp, opts)
 		return
 	}
 	cfunc := r.CFuncs[elem.Tag]
@@ -75,12 +76,12 @@ func (r *RootElem) renderText(text string, comp **ComponentImpl) {
 }
 
 // Pattern 2
-func (r *RootElem) renderSimple(elem *vdom.VDomElem, comp **ComponentImpl, opts *RenderOpts) {
+func (r *RootElem) renderSimple(elem *vdom.VDomElem, comp **ComponentImpl, containingComp string, opts *RenderOpts) {
 	if (*comp).RenderedComp != nil {
 		// Clear Comp since base elements don't use it
 		r.unmount(&(*comp).RenderedComp)
 	}
-	(*comp).Children = r.renderChildren(elem.Children, (*comp).Children, opts)
+	(*comp).Children = r.renderChildren(elem.Children, (*comp).Children, containingComp, opts)
 }
 
 // Pattern 3
@@ -99,7 +100,7 @@ func (r *RootElem) renderComponent(cfunc any, elem *vdom.VDomElem, comp **Compon
 	props[ChildrenPropKey] = elem.Children
 	vc := makeContextVal(r, *comp, opts)
 	rtnElemArr := withGlobalCtx(vc, func() []vdom.VDomElem {
-		renderedElem := callCFunc(cfunc, props)
+		renderedElem := callCFuncWithErrorGuard(cfunc, props, elem.Tag)
 		return vdom.ToElems(renderedElem)
 	})
 	var rtnElem *vdom.VDomElem
@@ -110,7 +111,7 @@ func (r *RootElem) renderComponent(cfunc any, elem *vdom.VDomElem, comp **Compon
 	} else {
 		rtnElem = &vdom.VDomElem{Tag: vdom.FragmentTag, Children: rtnElemArr}
 	}
-	r.render(rtnElem, &(*comp).RenderedComp, opts)
+	r.render(rtnElem, &(*comp).RenderedComp, elem.Tag, opts)
 }
 
 func (r *RootElem) unmount(comp **ComponentImpl) {
@@ -136,14 +137,14 @@ func (r *RootElem) unmount(comp **ComponentImpl) {
 	*comp = nil
 }
 
-func (r *RootElem) createComp(tag string, key string, comp **ComponentImpl) {
-	*comp = &ComponentImpl{WaveId: uuid.New().String(), Tag: tag, Key: key}
+func (r *RootElem) createComp(tag string, key string, containingComp string, comp **ComponentImpl) {
+	*comp = &ComponentImpl{WaveId: uuid.New().String(), Tag: tag, Key: key, ContainingComp: containingComp}
 	r.CompMap[(*comp).WaveId] = *comp
 }
 
 // handles reconcilation
 // maps children via key or index (exclusively)
-func (r *RootElem) renderChildren(elems []vdom.VDomElem, curChildren []*ComponentImpl, opts *RenderOpts) []*ComponentImpl {
+func (r *RootElem) renderChildren(elems []vdom.VDomElem, curChildren []*ComponentImpl, containingComp string, opts *RenderOpts) []*ComponentImpl {
 	newChildren := make([]*ComponentImpl, len(elems))
 	curCM := make(map[ChildKey]*ComponentImpl)
 	usedMap := make(map[*ComponentImpl]bool)
@@ -164,7 +165,7 @@ func (r *RootElem) renderChildren(elems []vdom.VDomElem, curChildren []*Componen
 		}
 		usedMap[curChild] = true
 		newChildren[idx] = curChild
-		r.render(&elem, &newChildren[idx], opts)
+		r.render(&elem, &newChildren[idx], containingComp, opts)
 	}
 	for _, child := range curChildren {
 		if !usedMap[child] {
@@ -172,6 +173,33 @@ func (r *RootElem) renderChildren(elems []vdom.VDomElem, curChildren []*Componen
 		}
 	}
 	return newChildren
+}
+
+// creates an error component for display when a component panics
+func renderErrorComponent(componentName string, errorMsg string) any {
+	return vdom.H("div", map[string]any{
+		"className": "p-4 border border-red-500 bg-red-100 text-red-800 rounded font-mono",
+	},
+		vdom.H("div", map[string]any{
+			"className": "font-bold mb-2",
+		}, fmt.Sprintf("Component Error: %s", componentName)),
+		vdom.H("div", nil, errorMsg),
+	)
+}
+
+// safely calls the component function with panic recovery
+func callCFuncWithErrorGuard(cfunc any, props map[string]any, componentName string) (result any) {
+	defer func() {
+		if r := recover(); r != nil {
+			errorMsg := fmt.Sprintf("Error: %v", r)
+			result = renderErrorComponent(componentName, errorMsg)
+			stackTrace := string(debug.Stack())
+			fmt.Printf("Render panic in component '%s': %v\n%s\n", componentName, r, stackTrace)
+		}
+	}()
+
+	result = callCFunc(cfunc, props)
+	return result
 }
 
 // uses reflection to call the component function

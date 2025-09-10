@@ -19,11 +19,12 @@ type ChildKey struct {
 // identity, state, and lifecycle across renders while the VDomElem input/output
 // structures are ephemeral.
 type ComponentImpl struct {
-	WaveId  string         // Unique identifier for this component instance
-	Tag     string         // Component type (HTML tag, custom component name, "#text", etc.)
-	Key     string         // User-provided key for reconciliation (like React keys)
-	Elem    *vdom.VDomElem // Reference to the current input VDomElem being rendered
-	Mounted bool           // Whether this component is currently mounted
+	WaveId         string         // Unique identifier for this component instance
+	Tag            string         // Component type (HTML tag, custom component name, "#text", etc.)
+	Key            string         // User-provided key for reconciliation (like React keys)
+	ContainingComp string         // Which vdom component's render function created this ComponentImpl
+	Elem           *vdom.VDomElem // Reference to the current input VDomElem being rendered
+	Mounted        bool           // Whether this component is currently mounted
 
 	// Hooks system (React-like)
 	Hooks []*Hook // Array of hooks (state, effects, etc.) attached to this component

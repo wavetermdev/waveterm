@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"reflect"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"sync"
@@ -247,6 +248,18 @@ func (r *RootElem) Event(id string, propName string, event vdom.VDomEvent) {
 	if comp == nil || comp.Elem == nil {
 		return
 	}
+	
+	defer func() {
+		if r := recover(); r != nil {
+			tag := ""
+			if comp.Elem != nil {
+				tag = comp.Elem.Tag
+			}
+			log.Printf("PANIC in Event handler - comp: %s, tag: %s, prop: %s, error: %v\n", comp.ContainingComp, tag, propName, r)
+			log.Printf("Stack trace:\n%s", debug.Stack())
+		}
+	}()
+	
 	fnVal := comp.Elem.Props[propName]
 	callVDomFn(fnVal, event)
 }
@@ -281,7 +294,7 @@ func (r *RootElem) RunWork(opts *RenderOpts) {
 	// now check if we need a render
 	if len(r.NeedsRenderMap) > 0 {
 		r.NeedsRenderMap = nil
-		r.render(r.Root.Elem, &r.Root, opts)
+		r.render(r.Root.Elem, &r.Root, "root", opts)
 	}
 }
 
