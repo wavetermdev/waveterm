@@ -206,9 +206,9 @@ func HandleAIChat(w http.ResponseWriter, r *http.Request) {
 	}
 	log.Printf("using AI model: %s (%s)", aiOpts.Model, aiOpts.BaseURL)
 
-	// For now, only support OpenAI
-	if aiOpts.APIType != APIType_OpenAI && aiOpts.APIType != "" {
-		http.Error(w, fmt.Sprintf("Unsupported API type: %s (only OpenAI supported in POC)", aiOpts.APIType), http.StatusBadRequest)
+	// Support OpenAI and Anthropic
+	if aiOpts.APIType != APIType_OpenAI && aiOpts.APIType != APIType_Anthropic && aiOpts.APIType != "" {
+		http.Error(w, fmt.Sprintf("Unsupported API type: %s (only OpenAI and Anthropic supported)", aiOpts.APIType), http.StatusBadRequest)
 		return
 	}
 
@@ -226,6 +226,14 @@ func HandleAIChat(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Stream OpenAI response
-	StreamOpenAIToUseChat(sseHandler, r.Context(), aiOpts, req.Messages)
+	// Stream response based on API type
+	if aiOpts.APIType == APIType_Anthropic {
+		_, err := StreamAnthropicResponses(r.Context(), sseHandler, aiOpts, req.Messages)
+		if err != nil {
+			log.Printf("Anthropic streaming error: %v", err)
+		}
+	} else {
+		// Default to OpenAI
+		StreamOpenAIToUseChat(sseHandler, r.Context(), aiOpts, req.Messages)
+	}
 }
