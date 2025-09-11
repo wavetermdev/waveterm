@@ -4,7 +4,6 @@
 package engine
 
 import (
-	"log"
 	"time"
 )
 
@@ -13,7 +12,6 @@ const NotifyDebounceTime = 500 * time.Microsecond
 const NotifyMaxDebounceTime = 2 * time.Millisecond
 
 func (c *ClientImpl) notifyAsyncRenderWork() {
-	log.Printf("notify async work\n")
 	c.notifyOnce.Do(func() {
 		c.notifyWakeCh = make(chan struct{}, 1)
 		go c.asyncInitiationLoop()

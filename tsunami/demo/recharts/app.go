@@ -215,7 +215,6 @@ var App = app.DefineComponent("App",
 				}
 				return newData
 			})
-			app.SendAsyncInitiation()
 		}
 		app.UseTicker(time.Second, tickerFn, []any{})
 

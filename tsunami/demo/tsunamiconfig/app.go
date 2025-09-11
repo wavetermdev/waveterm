@@ -285,7 +285,6 @@ var App = app.DefineComponent("App",
 			go func() {
 				defer func() {
 					isLoading.Set(false)
-					app.SendAsyncInitiation()
 				}()
 
 				content, err := fetchConfig(baseURL)
@@ -312,7 +311,6 @@ var App = app.DefineComponent("App",
 			go func() {
 				defer func() {
 					isLoading.Set(false)
-					app.SendAsyncInitiation()
 				}()
 
 				err := postConfig(currentBaseURL.Get(), jsonContent.Get())

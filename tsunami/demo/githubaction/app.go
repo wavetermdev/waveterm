@@ -249,14 +249,12 @@ var App = app.DefineComponent("App",
 		// Automatic polling with UseTicker - automatically cleaned up on unmount
 		app.UseTicker(time.Duration(pollIntervalAtom.Get())*time.Second, func() {
 			fetchData()
-			app.SendAsyncInitiation()
 		}, []any{pollIntervalAtom.Get()})
 
 		handleRefresh := func() {
 			isLoadingAtom.Set(true)
 			go func() {
 				fetchData()
-				app.SendAsyncInitiation()
 			}()
 		}
 

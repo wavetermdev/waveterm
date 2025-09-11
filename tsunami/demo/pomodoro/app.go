@@ -32,13 +32,6 @@ type ControlButtonsProps struct {
 	OnMode    func(int) `json:"onMode"`
 }
 
-type TimerState struct {
-	ticker    *time.Ticker
-	done      chan bool
-	startTime time.Time
-	duration  time.Duration
-	isActive  bool // Track if the timer goroutine is running
-}
 
 var TimerDisplay = app.DefineComponent("TimerDisplay",
 	func(props TimerDisplayProps) any {
@@ -105,118 +98,82 @@ var ControlButtons = app.DefineComponent("ControlButtons",
 )
 
 var App = app.DefineComponent("App",
-	func(_ any) any {
+	func(_ struct{}) any {
 		app.UseSetAppTitle("Pomodoro Timer (Tsunami Demo)")
 
-		isRunning, setIsRunning, _ := app.UseState(false)
-		minutes, setMinutes, _ := app.UseState(WorkMode.Duration)
-		seconds, setSeconds, _ := app.UseState(0)
-		mode, setMode, _ := app.UseState(WorkMode.Name)
-		_, setIsComplete, _ := app.UseState(false)
-		timerRef := app.UseRef(&TimerState{
-			done: make(chan bool),
-		})
+		isRunning := app.UseLocal(false)
+		minutes := app.UseLocal(WorkMode.Duration)
+		seconds := app.UseLocal(0)
+		mode := app.UseLocal(WorkMode.Name)
+		isComplete := app.UseLocal(false)
+		startTime := app.UseRef(time.Time{})
+		totalDuration := app.UseRef(time.Duration(0))
 
-		stopTimer := func() {
-			if timerRef.Current.ticker != nil {
-				timerRef.Current.ticker.Stop()
-				timerRef.Current.ticker = nil
+		// Timer that updates every second using the new pattern
+		app.UseTicker(time.Second, func() {
+			if !isRunning.Get() {
+				return
 			}
-			if timerRef.Current.isActive {
-				close(timerRef.Current.done)
-				timerRef.Current.isActive = false
+
+			elapsed := time.Since(startTime.Current)
+			remaining := totalDuration.Current - elapsed
+
+			if remaining <= 0 {
+				// Timer completed
+				isRunning.Set(false)
+				minutes.Set(0)
+				seconds.Set(0)
+				isComplete.Set(true)
+				return
 			}
-			timerRef.Current.done = make(chan bool)
-		}
+
+			m := int(remaining.Minutes())
+			s := int(remaining.Seconds()) % 60
+
+			// Only send update if values actually changed
+			if m != minutes.Get() || s != seconds.Get() {
+				minutes.Set(m)
+				seconds.Set(s)
+			}
+		}, []any{isRunning.Get()})
 
 		startTimer := func() {
-			if timerRef.Current.isActive {
+			if isRunning.Get() {
 				return // Timer already running
 			}
 
-			// Stop any existing timer first
-			stopTimer()
-
-			setIsComplete(false)
-			timerRef.Current.startTime = time.Now()
-			timerRef.Current.duration = time.Duration(minutes) * time.Minute
-			timerRef.Current.isActive = true
-			setIsRunning(true)
-			timerRef.Current.ticker = time.NewTicker(1 * time.Second)
-
-			go func() {
-				for {
-					select {
-					case <-timerRef.Current.done:
-						return
-					case <-timerRef.Current.ticker.C:
-						elapsed := time.Since(timerRef.Current.startTime)
-						remaining := timerRef.Current.duration - elapsed
-
-						if remaining <= 0 {
-							// Timer completed
-							setIsRunning(false)
-							setMinutes(0)
-							setSeconds(0)
-							setIsComplete(true)
-							stopTimer()
-							app.SendAsyncInitiation()
-							return
-						}
-
-						m := int(remaining.Minutes())
-						s := int(remaining.Seconds()) % 60
-
-						// Only send update if values actually changed
-						if m != minutes || s != seconds {
-							setMinutes(m)
-							setSeconds(s)
-							app.SendAsyncInitiation()
-						}
-					}
-				}
-			}()
+			isComplete.Set(false)
+			startTime.Current = time.Now()
+			totalDuration.Current = time.Duration(minutes.Get()) * time.Minute
+			isRunning.Set(true)
 		}
 
 		pauseTimer := func() {
-			stopTimer()
-			setIsRunning(false)
-			app.SendAsyncInitiation()
+			isRunning.Set(false)
 		}
 
 		resetTimer := func() {
-			stopTimer()
-			setIsRunning(false)
-			setIsComplete(false)
-			if mode == WorkMode.Name {
-				setMinutes(WorkMode.Duration)
+			isRunning.Set(false)
+			isComplete.Set(false)
+			if mode.Get() == WorkMode.Name {
+				minutes.Set(WorkMode.Duration)
 			} else {
-				setMinutes(BreakMode.Duration)
+				minutes.Set(BreakMode.Duration)
 			}
-			setSeconds(0)
-			app.SendAsyncInitiation()
+			seconds.Set(0)
 		}
 
 		changeMode := func(duration int) {
-			stopTimer()
-			setIsRunning(false)
-			setIsComplete(false)
-			setMinutes(duration)
-			setSeconds(0)
+			isRunning.Set(false)
+			isComplete.Set(false)
+			minutes.Set(duration)
+			seconds.Set(0)
 			if duration == WorkMode.Duration {
-				setMode(WorkMode.Name)
+				mode.Set(WorkMode.Name)
 			} else {
-				setMode(BreakMode.Name)
+				mode.Set(BreakMode.Name)
 			}
-			app.SendAsyncInitiation()
 		}
-
-		// Cleanup on unmount
-		app.UseEffect(func() func() {
-			return func() {
-				stopTimer()
-			}
-		}, []any{})
 
 		return vdom.H("div",
 			map[string]any{"className": "max-w-sm mx-auto my-8 p-8 bg-slate-800 rounded-xl text-slate-100 font-sans"},
@@ -225,12 +182,12 @@ var App = app.DefineComponent("App",
 				"Pomodoro Timer",
 			),
 			TimerDisplay(TimerDisplayProps{
-				Minutes: minutes,
-				Seconds: seconds,
-				Mode:    mode,
+				Minutes: minutes.Get(),
+				Seconds: seconds.Get(),
+				Mode:    mode.Get(),
 			}),
 			ControlButtons(ControlButtonsProps{
-				IsRunning: isRunning,
+				IsRunning: isRunning.Get(),
 				OnStart:   startTimer,
 				OnPause:   pauseTimer,
 				OnReset:   resetTimer,
