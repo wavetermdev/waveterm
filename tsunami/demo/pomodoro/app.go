@@ -16,12 +16,14 @@ type Mode struct {
 var (
 	WorkMode  = Mode{Name: "Work", Duration: 25}
 	BreakMode = Mode{Name: "Break", Duration: 5}
+
+	// Data atom to expose remaining seconds to external systems
+	remainingSecondsAtom = app.DataAtom("remainingSeconds", WorkMode.Duration*60)
 )
 
 type TimerDisplayProps struct {
-	Minutes int    `json:"minutes"`
-	Seconds int    `json:"seconds"`
-	Mode    string `json:"mode"`
+	RemainingSeconds int    `json:"remainingSeconds"`
+	Mode             string `json:"mode"`
 }
 
 type ControlButtonsProps struct {
@@ -35,6 +37,8 @@ type ControlButtonsProps struct {
 
 var TimerDisplay = app.DefineComponent("TimerDisplay",
 	func(props TimerDisplayProps) any {
+		minutes := props.RemainingSeconds / 60
+		seconds := props.RemainingSeconds % 60
 		return vdom.H("div",
 			map[string]any{"className": "bg-slate-700 p-8 rounded-lg mb-8 text-center"},
 			vdom.H("div",
@@ -43,7 +47,7 @@ var TimerDisplay = app.DefineComponent("TimerDisplay",
 			),
 			vdom.H("div",
 				map[string]any{"className": "text-6xl font-bold font-mono text-slate-100"},
-				fmt.Sprintf("%02d:%02d", props.Minutes, props.Seconds),
+				fmt.Sprintf("%02d:%02d", minutes, seconds),
 			),
 		)
 	},
@@ -102,8 +106,6 @@ var App = app.DefineComponent("App",
 		app.UseSetAppTitle("Pomodoro Timer (Tsunami Demo)")
 
 		isRunning := app.UseLocal(false)
-		minutes := app.UseLocal(WorkMode.Duration)
-		seconds := app.UseLocal(0)
 		mode := app.UseLocal(WorkMode.Name)
 		isComplete := app.UseLocal(false)
 		startTime := app.UseRef(time.Time{})
@@ -121,19 +123,16 @@ var App = app.DefineComponent("App",
 			if remaining <= 0 {
 				// Timer completed
 				isRunning.Set(false)
-				minutes.Set(0)
-				seconds.Set(0)
+				remainingSecondsAtom.Set(0)
 				isComplete.Set(true)
 				return
 			}
 
-			m := int(remaining.Minutes())
-			s := int(remaining.Seconds()) % 60
+			newSeconds := int(remaining.Seconds())
 
-			// Only send update if values actually changed
-			if m != minutes.Get() || s != seconds.Get() {
-				minutes.Set(m)
-				seconds.Set(s)
+			// Only send update if value actually changed
+			if newSeconds != remainingSecondsAtom.Get() {
+				remainingSecondsAtom.Set(newSeconds)
 			}
 		}, []any{isRunning.Get()})
 
@@ -144,11 +143,21 @@ var App = app.DefineComponent("App",
 
 			isComplete.Set(false)
 			startTime.Current = time.Now()
-			totalDuration.Current = time.Duration(minutes.Get()) * time.Minute
+			totalDuration.Current = time.Duration(remainingSecondsAtom.Get()) * time.Second
 			isRunning.Set(true)
 		}
 
 		pauseTimer := func() {
+			if !isRunning.Get() {
+				return
+			}
+			
+			// Calculate remaining time and update remainingSeconds
+			elapsed := time.Since(startTime.Current)
+			remaining := totalDuration.Current - elapsed
+			if remaining > 0 {
+				remainingSecondsAtom.Set(int(remaining.Seconds()))
+			}
 			isRunning.Set(false)
 		}
 
@@ -156,18 +165,16 @@ var App = app.DefineComponent("App",
 			isRunning.Set(false)
 			isComplete.Set(false)
 			if mode.Get() == WorkMode.Name {
-				minutes.Set(WorkMode.Duration)
+				remainingSecondsAtom.Set(WorkMode.Duration * 60)
 			} else {
-				minutes.Set(BreakMode.Duration)
+				remainingSecondsAtom.Set(BreakMode.Duration * 60)
 			}
-			seconds.Set(0)
 		}
 
 		changeMode := func(duration int) {
 			isRunning.Set(false)
 			isComplete.Set(false)
-			minutes.Set(duration)
-			seconds.Set(0)
+			remainingSecondsAtom.Set(duration * 60)
 			if duration == WorkMode.Duration {
 				mode.Set(WorkMode.Name)
 			} else {
@@ -182,9 +189,8 @@ var App = app.DefineComponent("App",
 				"Pomodoro Timer",
 			),
 			TimerDisplay(TimerDisplayProps{
-				Minutes: minutes.Get(),
-				Seconds: seconds.Get(),
-				Mode:    mode.Get(),
+				RemainingSeconds: remainingSecondsAtom.Get(),
+				Mode:            mode.Get(),
 			}),
 			ControlButtons(ControlButtonsProps{
 				IsRunning: isRunning.Get(),
