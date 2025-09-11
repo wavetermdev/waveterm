@@ -709,7 +709,7 @@ func monitorAndOpenBrowser(stdout io.ReadCloser, verbose bool) {
 	for scanner.Scan() {
 		line := scanner.Text()
 		if verbose {
-			log.Println(line)
+			fmt.Println(line)
 		}
 
 		if !browserOpened && len(urlRegex.FindStringSubmatch(line)) > 1 {
@@ -726,7 +726,7 @@ func monitorAndOpenBrowser(stdout io.ReadCloser, verbose bool) {
 	// Continue reading and printing output if verbose
 	if verbose {
 		for scanner.Scan() {
-			log.Println(scanner.Text())
+			fmt.Println(scanner.Text())
 		}
 	}
 }
