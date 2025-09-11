@@ -6,7 +6,9 @@
     --font-sans: "Inter", sans-serif;
     --font-mono: "Hack", monospace;
     --color-red-100: oklch(93.6% 0.032 17.717);
+    --color-red-500: oklch(63.7% 0.237 25.331);
     --color-red-700: oklch(50.5% 0.213 27.518);
+    --color-red-800: oklch(44.4% 0.177 26.899);
     --color-red-900: oklch(39.6% 0.141 25.723);
     --color-green-100: oklch(96.2% 0.044 156.743);
     --color-green-600: oklch(62.7% 0.194 149.214);
@@ -603,6 +605,9 @@
   .border-green-700 {
     border-color: var(--color-green-700);
   }
+  .border-red-500 {
+    border-color: var(--color-red-500);
+  }
   .border-red-700 {
     border-color: var(--color-red-700);
   }
@@ -623,6 +628,9 @@
   }
   .bg-panel {
     background-color: var(--color-panel);
+  }
+  .bg-red-100 {
+    background-color: var(--color-red-100);
   }
   .bg-red-900 {
     background-color: var(--color-red-900);
@@ -743,6 +751,9 @@
   }
   .text-red-100 {
     color: var(--color-red-100);
+  }
+  .text-red-800 {
+    color: var(--color-red-800);
   }
   .text-secondary {
     color: var(--color-secondary);
