@@ -920,7 +920,6 @@ var App = app.DefineComponent("App", func(_ struct{}) any {
 - **Effects**: Always include proper dependency arrays to avoid infinite loops
 - **Cleanup**: Return cleanup functions from effects for timers, subscriptions, goroutines
 - **Refs**: Use app.UseRef for goroutine communication, app.UseVDomRef for DOM access
-- **Async Updates**: Call app.SendAsyncInitiation after updating atoms from goroutines
 - **Performance**: Don't overuse effects - most logic should be in event handlers
 
 ## Async Operations and Goroutines
@@ -942,7 +941,6 @@ var ClockComponent = app.DefineComponent("ClockComponent", func(_ struct{}) any 
     // Update every second - automatically cleaned up on unmount
     app.UseTicker(time.Second, func() {
         currentTime.Set(time.Now().Format("15:04:05"))
-        app.SendAsyncInitiation()
     }, []any{})
 
     return vdom.H("div", map[string]any{
@@ -967,7 +965,6 @@ var ToastComponent = app.DefineComponent("ToastComponent", func(props ToastCompo
     // Auto-hide after specified duration - cancelled if component unmounts
     app.UseAfter(props.Duration, func() {
         visible.Set(false)
-        app.SendAsyncInitiation()
     }, []any{props.Duration})
 
     if !visible.Get() {
@@ -1003,7 +1000,6 @@ var DataPollerComponent = app.DefineComponent("DataPollerComponent", func(_ stru
                 return
             case <-time.After(30 * time.Second):
                 status.Set("fetching")
-                app.SendAsyncInitiation()
 
                 // Complex async operation: fetch, process, validate
                 newData, err := fetchAndProcessData()
@@ -1016,7 +1012,6 @@ var DataPollerComponent = app.DefineComponent("DataPollerComponent", func(_ stru
                     })
                     status.Set("success")
                 }
-                app.SendAsyncInitiation()
             }
         }
     }
@@ -1054,8 +1049,6 @@ pollData := func(ctx context.Context) {
     }
 }
 ```
-
-**app.SendAsyncInitiation()**: Call this after updating atoms from goroutines to trigger UI re-renders. Don't call at high frequency - consider batching updates.
 
 **Functional setters**: Always use atom.SetFn() when updating state from goroutines to avoid race conditions:
 
@@ -1364,4 +1357,3 @@ Key points:
 - Use app.UseAfter instead of time.AfterFunc for delayed operations
 - Always respect ctx.Done() in app.UseGoRoutine functions to prevent goroutine leaks
 - All timer and goroutine cleanup is handled automatically on component unmount or dependency changes
-- Call app.SendAsyncInitiation after state updates to trigger re-rendering
