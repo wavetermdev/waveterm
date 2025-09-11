@@ -438,3 +438,90 @@ tasks:
               ignore_error: true
             - cmd: '{{.RMRF}} "dist"'
               ignore_error: true
+
+    tsunami:demo:todo:
+        desc: Run the tsunami todo demo application
+        cmd: go run demo/todo/*.go
+        dir: tsunami
+        env:
+            TSUNAMI_LISTENADDR: "localhost:12026"
+
+    tsunami:frontend:dev:
+        desc: Run the tsunami frontend vite dev server
+        cmd: npm run dev
+        dir: tsunami/frontend
+
+    tsunami:frontend:build:
+        desc: Build the tsunami frontend
+        cmd: yarn build
+        dir: tsunami/frontend
+
+    tsunami:frontend:devbuild:
+        desc: Build the tsunami frontend in development mode (with source maps and symbols)
+        cmd: yarn build:dev
+        dir: tsunami/frontend
+
+    tsunami:scaffold:
+        desc: Build scaffold for tsunami frontend development
+        deps:
+            - tsunami:frontend:build
+        cmds:
+            - task: tsunami:scaffold:internal
+
+    tsunami:devscaffold:
+        desc: Build scaffold for tsunami frontend development (with source maps and symbols)
+        deps:
+            - tsunami:frontend:devbuild
+        cmds:
+            - task: tsunami:scaffold:internal
+
+    tsunami:scaffold:internal:
+        desc: Internal task to create scaffold directory structure
+        dir: tsunami/frontend
+        internal: true
+        cmds:
+            - cmd: "{{.RMRF}} scaffold"
+              ignore_error: true
+            - mkdir scaffold
+            - cd scaffold && npm --no-workspaces init -y --init-license Apache-2.0
+            - cd scaffold && npm pkg set name=tsunami-scaffold
+            - cd scaffold && npm pkg delete author
+            - cd scaffold && npm pkg set author.name="Command Line Inc"
+            - cd scaffold && npm pkg set author.email="info@commandline.dev"
+            - cd scaffold && npm --no-workspaces install tailwindcss @tailwindcss/cli
+            - cp -r dist scaffold/
+            - cp ../templates/app-main.go.tmpl scaffold/app-main.go
+            - cp ../templates/tailwind.css scaffold/
+            - cp ../templates/gitignore.tmpl scaffold/.gitignore
+
+    tsunami:build:
+        desc: Build the tsunami binary.
+        cmds:
+            - cmd: "{{.RM}} bin/tsunami*"
+              ignore_error: true
+            - mkdir -p bin
+            - cd tsunami && go build -ldflags "-X main.BuildTime=$({{.DATE}} +'%Y%m%d%H%M') -X main.TsunamiVersion={{.VERSION}}" -o ../bin/tsunami{{exeExt}} cmd/main-tsunami.go
+        sources:
+            - "tsunami/**/*.go"
+            - "tsunami/go.mod"
+            - "tsunami/go.sum"
+        generates:
+            - "bin/tsunami{{exeExt}}"
+
+    tsunami:clean:
+        desc: Clean tsunami frontend build artifacts
+        dir: tsunami/frontend
+        cmds:
+            - cmd: "{{.RMRF}} dist"
+              ignore_error: true
+            - cmd: "{{.RMRF}} scaffold"
+              ignore_error: true
+
+    godoc:
+        desc: Start the Go documentation server for the root module
+        cmd: $(go env GOPATH)/bin/pkgsite -http=:6060
+
+    tsunami:godoc:
+        desc: Start the Go documentation server for the tsunami module
+        cmd: $(go env GOPATH)/bin/pkgsite -http=:6060
+        dir: tsunami

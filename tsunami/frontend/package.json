@@ -1,0 +1,39 @@
+{
+    "name": "tsunami-frontend",
+    "author": {
+        "name": "Command Line Inc",
+        "email": "info@commandline.dev"
+    },
+    "description": "Tsunami Frontend - React application",
+    "license": "Apache-2.0",
+    "version": "0.1.0",
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "dev": "vite",
+        "build": "vite build",
+        "build:dev": "NODE_ENV=development vite build --mode development",
+        "preview": "vite preview",
+        "type-check": "tsc --noEmit"
+    },
+    "dependencies": {
+        "clsx": "^2.1.1",
+        "debug": "^4.4.1",
+        "jotai": "^2.13.1",
+        "react": "^19.1.1",
+        "react-dom": "^19.1.1",
+        "react-markdown": "^10.1.0",
+        "recharts": "^3.1.2",
+        "tailwind-merge": "^3.3.1"
+    },
+    "devDependencies": {
+        "@tailwindcss/cli": "^4.1.12",
+        "@tailwindcss/vite": "^4.0.17",
+        "@types/react": "^19",
+        "@types/react-dom": "^19",
+        "@vitejs/plugin-react-swc": "^4.0.1",
+        "tailwindcss": "^4.1.12",
+        "typescript": "^5.9.2",
+        "vite": "^6.3.6"
+    }
+}
