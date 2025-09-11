@@ -5,6 +5,9 @@
   :root, :host {
     --font-sans: "Inter", sans-serif;
     --font-mono: "Hack", monospace;
+    --color-red-100: oklch(93.6% 0.032 17.717);
+    --color-red-500: oklch(63.7% 0.237 25.331);
+    --color-red-800: oklch(44.4% 0.177 26.899);
     --color-green-500: oklch(72.3% 0.219 149.579);
     --color-green-600: oklch(62.7% 0.194 149.214);
     --color-blue-400: oklch(70.7% 0.165 254.624);
@@ -590,6 +593,9 @@
   .border-border {
     border-color: var(--color-border);
   }
+  .border-red-500 {
+    border-color: var(--color-red-500);
+  }
   .bg-background {
     background-color: var(--color-background);
   }
@@ -601,6 +607,9 @@
   }
   .bg-panel {
     background-color: var(--color-panel);
+  }
+  .bg-red-100 {
+    background-color: var(--color-red-100);
   }
   .bg-slate-700 {
     background-color: var(--color-slate-700);
@@ -715,6 +724,9 @@
   }
   .text-primary {
     color: var(--color-primary);
+  }
+  .text-red-800 {
+    color: var(--color-red-800);
   }
   .text-secondary {
     color: var(--color-secondary);
