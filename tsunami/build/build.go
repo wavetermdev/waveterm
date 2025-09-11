@@ -12,6 +12,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -41,11 +42,48 @@ type BuildEnv struct {
 	cleanupOnce *sync.Once
 }
 
+func findGoExecutable() (string, error) {
+	// First try the standard PATH lookup
+	if goPath, err := exec.LookPath("go"); err == nil {
+		return goPath, nil
+	}
+
+	// Define platform-specific paths to check
+	var pathsToCheck []string
+	
+	if runtime.GOOS == "windows" {
+		pathsToCheck = []string{
+			`c:\go\bin\go.exe`,
+			`c:\program files\go\bin\go.exe`,
+		}
+	} else {
+		// Unix-like systems (macOS, Linux, etc.)
+		pathsToCheck = []string{
+			"/opt/homebrew/bin/go",     // Homebrew on Apple Silicon
+			"/usr/local/bin/go",        // Traditional Homebrew or manual install
+			"/usr/local/go/bin/go",     // Official Go installation
+			"/usr/bin/go",              // System package manager
+		}
+	}
+
+	// Check each path
+	for _, path := range pathsToCheck {
+		if _, err := os.Stat(path); err == nil {
+			// File exists, check if it's executable
+			if info, err := os.Stat(path); err == nil && !info.IsDir() {
+				return path, nil
+			}
+		}
+	}
+
+	return "", fmt.Errorf("go command not found in PATH or common installation locations")
+}
+
 func verifyEnvironment(verbose bool) (*BuildEnv, error) {
-	// Check if go is in PATH
-	goPath, err := exec.LookPath("go")
+	// Find Go executable using enhanced search
+	goPath, err := findGoExecutable()
 	if err != nil {
-		return nil, fmt.Errorf("go command not found in PATH: %w", err)
+		return nil, fmt.Errorf("go command not found: %w", err)
 	}
 
 	// Run go version command
