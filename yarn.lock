@@ -19920,9 +19920,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"sass@npm:^1.91.0":
-  version: 1.91.0
-  resolution: "sass@npm:1.91.0"
+"sass@npm:^1.92.0":
+  version: 1.92.0
+  resolution: "sass@npm:1.92.0"
   dependencies:
     "@parcel/watcher": "npm:^2.4.1"
     chokidar: "npm:^4.0.0"
@@ -19933,7 +19933,7 @@ __metadata:
       optional: true
   bin:
     sass: sass.js
-  checksum: 10c0/5be1c98f7a618cb5f90b62f63d2aa0f78f9bf369c93ec7cd9880752a26b0ead19aa63cc341e8a26ce6c74d080baa5705f1685dff52fe6a3f28a7828ae50182b6
+  checksum: 10c0/bdff9fa6988620e2a81962efdd016e3894d19934cfadc105cf41db767f59dd47afd8ff32840e612ef700cb67e19d9e83c108f1724eb8f0bef56c4877dbe6f14d
   languageName: node
   linkType: hard
 
@@ -22596,7 +22596,7 @@ __metadata:
     remark-preset-lint-consistent: "npm:^6.0.1"
     remark-preset-lint-recommended: "npm:^7.0.1"
     remark-typescript-code-import: "npm:^1.0.1"
-    sass: "npm:^1.91.0"
+    sass: "npm:^1.92.0"
     typescript: "npm:^5.9.2"
     typescript-eslint: "npm:^8.39.1"
   languageName: unknown
@@ -22705,7 +22705,7 @@ __metadata:
     remark-github-blockquote-alert: "npm:^1.3.1"
     rollup-plugin-flow: "npm:^1.1.1"
     rxjs: "npm:^7.8.2"
-    sass: "npm:^1.91.0"
+    sass: "npm:^1.92.0"
     semver: "npm:^7.7.2"
     shell-quote: "npm:^1.8.3"
     sprintf-js: "npm:^1.1.3"
