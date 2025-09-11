@@ -748,10 +748,10 @@ func TsunamiRun(opts BuildOpts) error {
 	return nil
 }
 
-func monitorAndOpenBrowser(stdout io.ReadCloser, verbose bool) {
-	defer stdout.Close()
+func monitorAndOpenBrowser(r io.ReadCloser, verbose bool) {
+	defer r.Close()
 
-	scanner := bufio.NewScanner(stdout)
+	scanner := bufio.NewScanner(r)
 	urlRegex := regexp.MustCompile(`\[tsunami\] listening at (http://[^\s]+)`)
 	browserOpened := false
 	if verbose {
@@ -760,9 +760,7 @@ func monitorAndOpenBrowser(stdout io.ReadCloser, verbose bool) {
 
 	for scanner.Scan() {
 		line := scanner.Text()
-		if verbose {
-			fmt.Println(line)
-		}
+		fmt.Println(line)
 
 		if !browserOpened && len(urlRegex.FindStringSubmatch(line)) > 1 {
 			matches := urlRegex.FindStringSubmatch(line)
@@ -772,13 +770,6 @@ func monitorAndOpenBrowser(stdout io.ReadCloser, verbose bool) {
 			}
 			go util.OpenBrowser(url, 100*time.Millisecond)
 			browserOpened = true
-		}
-	}
-
-	// Continue reading and printing output if verbose
-	if verbose {
-		for scanner.Scan() {
-			fmt.Println(scanner.Text())
 		}
 	}
 }
