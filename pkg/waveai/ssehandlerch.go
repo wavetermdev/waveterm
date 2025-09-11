@@ -35,15 +35,21 @@ const (
 
 // AI message type constants
 const (
-	AiMsgStart          = "start"
-	AiMsgTextStart      = "text-start"
-	AiMsgTextDelta      = "text-delta"
-	AiMsgTextEnd        = "text-end"
-	AiMsgReasoningStart = "reasoning-start"
-	AiMsgReasoningDelta = "reasoning-delta"
-	AiMsgReasoningEnd   = "reasoning-end"
-	AiMsgFinish         = "finish"
-	AiMsgError          = "error"
+	AiMsgStart               = "start"
+	AiMsgTextStart           = "text-start"
+	AiMsgTextDelta           = "text-delta"
+	AiMsgTextEnd             = "text-end"
+	AiMsgReasoningStart      = "reasoning-start"
+	AiMsgReasoningDelta      = "reasoning-delta"
+	AiMsgReasoningEnd        = "reasoning-end"
+	AiMsgToolInputStart      = "tool-input-start"
+	AiMsgToolInputDelta      = "tool-input-delta"
+	AiMsgToolInputAvailable  = "tool-input-available"
+	AiMsgToolOutputAvailable = "tool-output-available" // not used here, but reserved
+	AiMsgStartStep           = "start-step"
+	AiMsgFinishStep          = "finish-step"
+	AiMsgFinish              = "finish"
+	AiMsgError               = "error"
 )
 
 // SSEMessage represents a message to be written to the SSE stream
@@ -385,6 +391,49 @@ func (h *SSEHandlerCh) AiMsgReasoningEnd(reasoningId string) error {
 	resp := map[string]interface{}{
 		"type": AiMsgReasoningEnd,
 		"id":   reasoningId,
+	}
+	return h.WriteJsonData(resp)
+}
+
+func (h *SSEHandlerCh) AiMsgToolInputStart(toolCallId, toolName string) error {
+	resp := map[string]interface{}{
+		"type":       AiMsgToolInputStart,
+		"toolCallId": toolCallId,
+		"toolName":   toolName,
+	}
+	return h.WriteJsonData(resp)
+}
+
+func (h *SSEHandlerCh) AiMsgToolInputDelta(toolCallId, inputTextDelta string) error {
+	resp := map[string]interface{}{
+		"type":           AiMsgToolInputDelta,
+		"toolCallId":     toolCallId,
+		"inputTextDelta": inputTextDelta,
+	}
+	return h.WriteJsonData(resp)
+}
+
+func (h *SSEHandlerCh) AiMsgToolInputAvailable(toolCallId, toolName string, input json.RawMessage) error {
+	resp := map[string]interface{}{
+		"type":       AiMsgToolInputAvailable,
+		"toolCallId": toolCallId,
+		"toolName":   toolName,
+		"input":      json.RawMessage(input),
+	}
+	return h.WriteJsonData(resp)
+}
+
+func (h *SSEHandlerCh) AiMsgFinishStep() error {
+	resp := map[string]interface{}{
+		"type": AiMsgFinishStep,
+	}
+	return h.WriteJsonData(resp)
+}
+
+func (h *SSEHandlerCh) AiMsgError(errText string) error {
+	resp := map[string]interface{}{
+		"type":      AiMsgError,
+		"errorText": errText,
 	}
 	return h.WriteJsonData(resp)
 }
