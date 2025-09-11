@@ -23,7 +23,7 @@
         "@docusaurus/plugin-svgr": "^3.7.0",
         "@docusaurus/theme-classic": "^3.7.0",
         "@docusaurus/theme-search-algolia": "^3.7.0",
-        "@mdx-js/react": "^3.0.0",
+        "@mdx-js/react": "^3.1.1",
         "@waveterm/docusaurus-og": "https://github.com/wavetermdev/docusaurus-og.git",
         "clsx": "^2.1.1",
         "docusaurus-plugin-sass": "^0.2.6",
@@ -33,7 +33,7 @@
         "rehype-highlight": "^7.0.2",
         "remark-gfm": "^4.0.1",
         "remark-typescript-code-import": "^1.0.1",
-        "sass": "^1.92.0"
+        "sass": "^1.92.1"
     },
     "devDependencies": {
         "@docusaurus/module-type-aliases": "3.7.0",
