@@ -27,7 +27,6 @@ type EffectWorkElem struct {
 type genAtom interface {
 	GetVal() any
 	SetVal(any) error
-	SetFnVal(func(any) any) error
 	SetUsedBy(string, bool)
 	GetUsedBy() []string
 }
@@ -53,7 +52,7 @@ func (r *RootElem) addRenderWork(id string) {
 			r.Client.notifyAsyncRenderWork()
 		}
 	}()
-	
+
 	r.needsRenderLock.Lock()
 	defer r.needsRenderLock.Unlock()
 
@@ -190,17 +189,6 @@ func (r *RootElem) SetAtomVal(name string, val any) error {
 		return fmt.Errorf("atom %q not found", name)
 	}
 	return atom.SetVal(val)
-}
-
-func (r *RootElem) SetFnAtomVal(name string, setFn func(any) any) error {
-	r.atomLock.Lock()
-	defer r.atomLock.Unlock()
-
-	atom, ok := r.Atoms[name]
-	if !ok {
-		return fmt.Errorf("atom %q not found", name)
-	}
-	return atom.SetFnVal(setFn)
 }
 
 func (r *RootElem) RemoveAtom(name string) {

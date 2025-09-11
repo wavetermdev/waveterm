@@ -13,6 +13,7 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 	"unicode"
 
@@ -25,10 +26,6 @@ import (
 const TsunamiListenAddrEnvVar = "TSUNAMI_LISTENADDR"
 const DefaultListenAddr = "localhost:0"
 const DefaultComponentName = "App"
-
-const NotifyMaxCadence = 10 * time.Millisecond
-const NotifyDebounceTime = 500 * time.Microsecond
-const NotifyMaxDebounceTime = 2 * time.Millisecond
 
 type ssEvent struct {
 	Event string
@@ -53,6 +50,14 @@ type ClientImpl struct {
 	AssetsFS           fs.FS
 	StaticFS           fs.FS
 	ManifestFileBytes  []byte
+
+	// for notification
+	// Atomics so we never drop "last event" timing info even if wakeCh is full.
+	// 0 means "no pending batch".
+	notifyOnce         sync.Once
+	notifyWakeCh       chan struct{}
+	notifyBatchStartNs atomic.Int64 // ns of first event in current batch
+	notifyLastEventNs  atomic.Int64 // ns of most recent event
 }
 
 func makeClient() *ClientImpl {
@@ -210,6 +215,7 @@ func (c *ClientImpl) listenAndServe(ctx context.Context) error {
 }
 
 func (c *ClientImpl) SendAsyncInitiation() error {
+	log.Printf("send async initiation\n")
 	if c.GetIsDone() {
 		return fmt.Errorf("client is done")
 	}
@@ -220,10 +226,6 @@ func (c *ClientImpl) SendAsyncInitiation() error {
 	default:
 		return fmt.Errorf("SSEvent channel is full")
 	}
-}
-
-func (c *ClientImpl) notifyAsyncRenderWork() {
-	// TODO
 }
 
 func makeNullRendered() *rpctypes.RenderedElem {

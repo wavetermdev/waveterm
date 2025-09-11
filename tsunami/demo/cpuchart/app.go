@@ -172,7 +172,6 @@ var App = app.DefineComponent("App", func(_ struct{}) any {
 			}
 			return data
 		})
-		app.SendAsyncInitiation()
 	}, []any{})
 
 	handleClear := func() {

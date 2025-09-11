@@ -117,13 +117,8 @@ func (a Atom[T]) SetFn(fn func(T) T) {
 		logInvalidAtomSet(a.name)
 		return
 	}
-	err := a.client.Root.SetFnAtomVal(a.name, func(val any) any {
-		typedVal := util.GetTypedAtomValue[T](val, a.name)
-		return fn(typedVal)
-	})
-	if err != nil {
-		log.Printf("Failed to set atom value for %s: %v", a.name, err)
-		return
-	}
-	a.client.Root.AtomAddRenderWork(a.name)
+	currentVal := a.Get()
+	copiedVal := DeepCopy(currentVal)
+	newVal := fn(copiedVal)
+	a.Set(newVal)
 }

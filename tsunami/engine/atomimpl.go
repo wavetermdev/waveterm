@@ -64,14 +64,6 @@ func (a *AtomImpl[T]) SetVal(val any) error {
 	return a.setVal_nolock(val)
 }
 
-func (a *AtomImpl[T]) SetFnVal(setFn func(any) any) error {
-	a.lock.Lock()
-	defer a.lock.Unlock()
-	
-	newVal := setFn(a.val)
-	return a.setVal_nolock(newVal)
-}
-
 func (a *AtomImpl[T]) SetUsedBy(waveId string, used bool) {
 	a.lock.Lock()
 	defer a.lock.Unlock()
