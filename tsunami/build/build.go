@@ -186,6 +186,18 @@ func createGoMod(tempDir, appDirName, goVersion string, opts BuildOpts, verbose 
 			return fmt.Errorf("failed to copy existing go.mod: %w", err)
 		}
 
+		// Also copy go.sum if it exists
+		originalGoSumPath := filepath.Join(opts.Dir, "go.sum")
+		if _, err := os.Stat(originalGoSumPath); err == nil {
+			tempGoSumPath := filepath.Join(tempDir, "go.sum")
+			if err := copyFile(originalGoSumPath, tempGoSumPath); err != nil {
+				return fmt.Errorf("failed to copy existing go.sum: %w", err)
+			}
+			if verbose {
+				log.Printf("Found and copied existing go.sum from %s", originalGoSumPath)
+			}
+		}
+
 		// Parse the existing go.mod
 		goModContent, err := os.ReadFile(tempGoModPath)
 		if err != nil {
@@ -545,14 +557,16 @@ func moveFilesBack(tempDir, originalDir string, verbose bool) error {
 		log.Printf("Moved go.mod back to %s", goModDest)
 	}
 
-	// Move go.sum back to original directory
+	// Move go.sum back to original directory (only if it exists)
 	goSumSrc := filepath.Join(tempDir, "go.sum")
-	goSumDest := filepath.Join(originalDir, "go.sum")
-	if err := copyFile(goSumSrc, goSumDest); err != nil {
-		return fmt.Errorf("failed to copy go.sum back: %w", err)
-	}
-	if verbose {
-		log.Printf("Moved go.sum back to %s", goSumDest)
+	if _, err := os.Stat(goSumSrc); err == nil {
+		goSumDest := filepath.Join(originalDir, "go.sum")
+		if err := copyFile(goSumSrc, goSumDest); err != nil {
+			return fmt.Errorf("failed to copy go.sum back: %w", err)
+		}
+		if verbose {
+			log.Printf("Moved go.sum back to %s", goSumDest)
+		}
 	}
 
 	// Ensure static directory exists in original directory
