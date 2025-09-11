@@ -19,6 +19,7 @@ import { OverlayScrollbarsComponent, OverlayScrollbarsComponentRef } from "overl
 import { forwardRef, memo, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import { debounce, throttle } from "throttle-debounce";
 import "./waveai.scss";
+import { WaveAiUseChat, WaveAiUseChatModel } from "./waveaiusechat";
 
 interface ChatMessageType {
     id: string;
@@ -296,7 +297,15 @@ export class WaveAiModel implements ViewModel {
     }
 
     get viewComponent(): ViewComponent {
-        return WaveAi;
+        // Check if we should use the new useChat implementation
+        const useNewImplementation = this.shouldUseNewImplementation();
+        return useNewImplementation ? WaveAiUseChat : WaveAi;
+    }
+
+    private shouldUseNewImplementation(): boolean {
+        // For now, check for a meta flag to enable the new implementation
+        const blockMeta = globalStore.get(this.blockAtom)?.meta ?? {};
+        return blockMeta["ai:usechat"] === "true" || blockMeta["ai:usechat"] === true;
     }
 
     dispose() {
@@ -685,7 +694,7 @@ const ChatInput = forwardRef<HTMLTextAreaElement, ChatInputProps>(
     }
 );
 
-const WaveAi = ({ model }: { model: WaveAiModel; blockId: string }) => {
+const WaveAiOld = ({ model }: { model: WaveAiModel; blockId: string }) => {
     const { sendMessage } = model.useWaveAi();
     const waveaiRef = useRef<HTMLDivElement>(null);
     const chatWindowRef = useRef<HTMLDivElement>(null);
@@ -877,6 +886,17 @@ const WaveAi = ({ model }: { model: WaveAiModel; blockId: string }) => {
             </div>
         </div>
     );
+};
+
+const WaveAi = ({ model, blockId }: { model: WaveAiModel; blockId: string }) => {
+    const useNewImplementation = true;
+
+    if (useNewImplementation) {
+        const useChatModel = useMemo(() => new WaveAiUseChatModel(blockId), [blockId]);
+        return <WaveAiUseChat model={useChatModel} blockId={blockId} />;
+    }
+
+    return <WaveAiOld model={model} blockId={blockId} />;
 };
 
 export { WaveAi };
