@@ -19,7 +19,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/wavetermdev/waveterm/pkg/authkey"
 	"github.com/wavetermdev/waveterm/pkg/docsite"
@@ -29,6 +28,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/schema"
 	"github.com/wavetermdev/waveterm/pkg/service"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
+	"github.com/wavetermdev/waveterm/pkg/waveai"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
@@ -404,6 +404,13 @@ func WebFnWrap(opts WebFnOpts, fn WebFnType) WebFnType {
 			w.Header().Set(CacheControlHeaderKey, CacheControlHeaderNoCache)
 		}
 		w.Header().Set("Access-Control-Expose-Headers", "X-ZoneFileInfo")
+
+		// Handle CORS preflight OPTIONS requests without auth validation
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
 		err := authkey.ValidateIncomingRequest(r)
 		if err != nil {
 			w.WriteHeader(http.StatusUnauthorized)
@@ -442,17 +449,49 @@ const schemaPrefix = "/schema/"
 // blocking
 func RunWebServer(listener net.Listener) {
 	gr := mux.NewRouter()
-	gr.HandleFunc("/wave/stream-local-file", WebFnWrap(WebFnOpts{AllowCaching: true}, handleStreamLocalFile))
-	gr.HandleFunc("/wave/stream-file", WebFnWrap(WebFnOpts{AllowCaching: true}, handleStreamFile))
-	gr.PathPrefix("/wave/stream-file/").HandlerFunc(WebFnWrap(WebFnOpts{AllowCaching: true}, handleStreamFile))
-	gr.HandleFunc("/wave/file", WebFnWrap(WebFnOpts{AllowCaching: false}, handleWaveFile))
-	gr.HandleFunc("/wave/service", WebFnWrap(WebFnOpts{JsonErrors: true}, handleService))
-	gr.HandleFunc("/vdom/{uuid}/{path:.*}", WebFnWrap(WebFnOpts{AllowCaching: true}, handleVDom))
+
+	// Create separate routers for different timeout requirements
+	waveRouter := mux.NewRouter()
+	waveRouter.HandleFunc("/wave/stream-local-file", WebFnWrap(WebFnOpts{AllowCaching: true}, handleStreamLocalFile))
+	waveRouter.HandleFunc("/wave/stream-file", WebFnWrap(WebFnOpts{AllowCaching: true}, handleStreamFile))
+	waveRouter.PathPrefix("/wave/stream-file/").HandlerFunc(WebFnWrap(WebFnOpts{AllowCaching: true}, handleStreamFile))
+	waveRouter.HandleFunc("/wave/file", WebFnWrap(WebFnOpts{AllowCaching: false}, handleWaveFile))
+	waveRouter.HandleFunc("/wave/service", WebFnWrap(WebFnOpts{JsonErrors: true}, handleService))
+
+	vdomRouter := mux.NewRouter()
+	vdomRouter.HandleFunc("/vdom/{uuid}/{path:.*}", WebFnWrap(WebFnOpts{AllowCaching: true}, handleVDom))
+
+	// Routes that need timeout handling
+	gr.PathPrefix("/wave/").Handler(http.TimeoutHandler(waveRouter, HttpTimeoutDuration, "Timeout"))
+	gr.PathPrefix("/vdom/").Handler(http.TimeoutHandler(vdomRouter, HttpTimeoutDuration, "Timeout"))
+
+	// Routes that should NOT have timeout handling (for streaming)
+	gr.HandleFunc("/api/aichat", WebFnWrap(WebFnOpts{AllowCaching: false}, waveai.HandleAIChat))
+
+	// Other routes without timeout
 	gr.PathPrefix(docsitePrefix).Handler(http.StripPrefix(docsitePrefix, docsite.GetDocsiteHandler()))
 	gr.PathPrefix(schemaPrefix).Handler(http.StripPrefix(schemaPrefix, schema.GetSchemaHandler()))
-	handler := http.TimeoutHandler(gr, HttpTimeoutDuration, "Timeout")
+
+	handler := http.Handler(gr)
 	if wavebase.IsDevMode() {
-		handler = handlers.CORS(handlers.AllowedOrigins([]string{"*"}))(handler)
+		originalHandler := handler
+		handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			origin := r.Header.Get("Origin")
+			if origin != "" {
+				w.Header().Set("Access-Control-Allow-Origin", origin)
+			}
+			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, X-Session-Id, X-AuthKey, Authorization, X-Requested-With, Accept, x-vercel-ai-ui-message-stream")
+			w.Header().Set("Access-Control-Expose-Headers", "X-ZoneFileInfo, Content-Length, Content-Type, x-vercel-ai-ui-message-stream")
+			w.Header().Set("Access-Control-Allow-Credentials", "true")
+
+			if r.Method == "OPTIONS" {
+				w.WriteHeader(204)
+				return
+			}
+
+			originalHandler.ServeHTTP(w, r)
+		})
 	}
 	server := &http.Server{
 		ReadTimeout:    HttpReadTimeout,
