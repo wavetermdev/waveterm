@@ -75,8 +75,7 @@ func (a Atom[T]) AtomName() string {
 func (a Atom[T]) Get() T {
 	vc := engine.GetGlobalRenderContext()
 	if vc != nil {
-		compWaveId := vc.GetCompWaveId()
-		vc.Root.AtomSetUsedBy(a.name, compWaveId, true)
+		vc.UsedAtoms[a.name] = true
 	}
 	val := a.client.Root.GetAtomVal(a.name)
 	typedVal := util.GetTypedAtomValue[T](val, a.name)

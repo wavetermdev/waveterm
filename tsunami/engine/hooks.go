@@ -25,10 +25,17 @@ type RenderContextImpl struct {
 	Comp       *ComponentImpl
 	HookIdx    int
 	RenderOpts *RenderOpts
+	UsedAtoms  map[string]bool // Track atoms used during this render
 }
 
 func makeContextVal(root *RootElem, comp *ComponentImpl, opts *RenderOpts) *RenderContextImpl {
-	return &RenderContextImpl{Root: root, Comp: comp, HookIdx: 0, RenderOpts: opts}
+	return &RenderContextImpl{
+		Root:       root,
+		Comp:       comp,
+		HookIdx:    0,
+		RenderOpts: opts,
+		UsedAtoms:  make(map[string]bool),
+	}
 }
 
 func (vc *RenderContextImpl) GetCompWaveId() string {

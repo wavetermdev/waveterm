@@ -102,6 +102,10 @@ func (r *RootElem) renderComponent(cfunc any, elem *vdom.VDomElem, comp **Compon
 		renderedElem := callCFuncWithErrorGuard(cfunc, props, elem.Tag)
 		return vdom.ToElems(renderedElem)
 	})
+	
+	// Process atom usage after render
+	r.updateComponentAtomUsage(*comp, vc.UsedAtoms)
+	
 	var rtnElem *vdom.VDomElem
 	if len(rtnElemArr) == 0 {
 		rtnElem = nil
@@ -132,7 +136,7 @@ func (r *RootElem) unmount(comp **ComponentImpl) {
 		}
 	}
 	delete(r.CompMap, waveId)
-	r.cleanupUsedByForUnmount(waveId)
+	r.cleanupUsedByForUnmount(*comp)
 	*comp = nil
 }
 

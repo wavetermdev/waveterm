@@ -29,6 +29,9 @@ type ComponentImpl struct {
 	// Hooks system (React-like)
 	Hooks []*Hook // Array of hooks (state, effects, etc.) attached to this component
 
+	// Atom dependency tracking
+	UsedAtoms map[string]bool // atomName -> true, tracks which atoms this component uses
+
 	// Component content - exactly ONE of these patterns is used:
 
 	// Pattern 1: Text nodes

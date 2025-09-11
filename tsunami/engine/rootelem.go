@@ -130,26 +130,55 @@ func (r *RootElem) RegisterAtom(name string, atom genAtom) {
 	r.Atoms[name] = atom
 }
 
-// we can do better here with an inverted map, but
-// this will work fine for now to clean up dependencies from atom.Get()
-func (r *RootElem) cleanupUsedByForUnmount(waveId string) {
+// cleanupUsedByForUnmount uses the reverse mapping for efficient cleanup
+func (r *RootElem) cleanupUsedByForUnmount(comp *ComponentImpl) {
 	r.atomLock.Lock()
 	defer r.atomLock.Unlock()
 
-	for _, atom := range r.Atoms {
-		atom.SetUsedBy(waveId, false)
+	// Use reverse mapping for efficient cleanup
+	for atomName := range comp.UsedAtoms {
+		if atom, ok := r.Atoms[atomName]; ok {
+			atom.SetUsedBy(comp.WaveId, false)
+		}
 	}
+	
+	// Clear the component's atom tracking
+	comp.UsedAtoms = nil
 }
 
-func (r *RootElem) AtomSetUsedBy(atomName string, waveId string, used bool) {
+func (r *RootElem) updateComponentAtomUsage(comp *ComponentImpl, newUsedAtoms map[string]bool) {
 	r.atomLock.Lock()
 	defer r.atomLock.Unlock()
 
-	atom, ok := r.Atoms[atomName]
-	if !ok {
-		return
+	oldUsedAtoms := comp.UsedAtoms
+
+	// Remove component from atoms it no longer uses
+	for atomName := range oldUsedAtoms {
+		if !newUsedAtoms[atomName] {
+			if atom, ok := r.Atoms[atomName]; ok {
+				atom.SetUsedBy(comp.WaveId, false)
+			}
+		}
 	}
-	atom.SetUsedBy(waveId, used)
+
+	// Add component to atoms it now uses
+	for atomName := range newUsedAtoms {
+		if !oldUsedAtoms[atomName] {
+			if atom, ok := r.Atoms[atomName]; ok {
+				atom.SetUsedBy(comp.WaveId, true)
+			}
+		}
+	}
+
+	// Update component's atom usage map
+	if len(newUsedAtoms) == 0 {
+		comp.UsedAtoms = nil
+	} else {
+		comp.UsedAtoms = make(map[string]bool)
+		for atomName := range newUsedAtoms {
+			comp.UsedAtoms[atomName] = true
+		}
+	}
 }
 
 func (r *RootElem) AtomAddRenderWork(atomName string) {
