@@ -114,8 +114,8 @@ github.com/invopop/jsonschema v0.13.0/go.mod h1:ffZ5Km5SWWRAIN6wbDXItl95euhFz2uO
 github.com/jmoiron/sqlx v1.4.0 h1:1PLqN7S1UYp5t4SrVVnt4nUVNemrDAtxlulVe+Qgm3o=
 github.com/jmoiron/sqlx v1.4.0/go.mod h1:ZrZ7UsYB/weZdl2Bxg6jCRO9c3YHl8r3ahlKmRT4JLY=
 github.com/josharian/intern v1.0.0/go.mod h1:5DoeVV0s6jJacbCEi61lwdGj/aVlrQvzHFFd8Hwg//Y=
-github.com/junegunn/fzf v0.65.1 h1:vOr8+CeNGo38b8SXepDgiBEgjuDRTFAD+mNVyYFg55Q=
-github.com/junegunn/fzf v0.65.1/go.mod h1:0PctWYfS0aCfyLFEIUjtE+PIXD2UFKaHgbIHiECG7Bo=
+github.com/junegunn/fzf v0.65.2 h1:Uz6Qey1K4JoGNMskYlwRDnGuCEu/sAh+NxQ4YdX3yn0=
+github.com/junegunn/fzf v0.65.2/go.mod h1:0PctWYfS0aCfyLFEIUjtE+PIXD2UFKaHgbIHiECG7Bo=
 github.com/kr/pretty v0.3.1 h1:flRD4NNwYAUpkphVc1HcthR4KEIFJ65n8Mw5qdRn3LE=
 github.com/kr/pretty v0.3.1/go.mod h1:hoEshYVHaxMs3cyo3Yncou5ZscifuDolrwPKZanG3xk=
 github.com/kr/text v0.2.0 h1:5Nx0Ya0ZqY2ygV366QzturHI13Jq95ApcVaJBhpS+AY=
