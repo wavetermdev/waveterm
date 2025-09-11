@@ -837,6 +837,7 @@ declare global {
         "debug:panictype"?: string;
         "block:view"?: string;
         "ai:backendtype"?: string;
+        "ai:local"?: boolean;
         "wsh:cmd"?: string;
         "wsh:haderror"?: boolean;
         "conn:conntype"?: string;

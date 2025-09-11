@@ -1,6 +1,6 @@
 module github.com/wavetermdev/waveterm
 
-go 1.24.2
+go 1.24.6
 
 require (
 	github.com/alexflint/go-filemutex v1.3.0
