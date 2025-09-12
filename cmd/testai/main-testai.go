@@ -97,7 +97,7 @@ func getToolDefinitions() []waveai.ToolDefinition {
 	}
 }
 
-func testOpenAI(model, message string, tools []waveai.ToolDefinition) {
+func testOpenAI(ctx context.Context, model, message string, tools []waveai.ToolDefinition) {
 	apiKey := os.Getenv("OPENAI_API_KEY")
 	if apiKey == "" {
 		fmt.Println("Error: OPENAI_API_KEY environment variable not set")
@@ -121,7 +121,6 @@ func testOpenAI(model, message string, tools []waveai.ToolDefinition) {
 	fmt.Printf("Message: %s\n", message)
 	fmt.Println("---")
 
-	ctx := context.Background()
 	testWriter := &TestResponseWriter{}
 	sseHandler := waveai.MakeSSEHandlerCh(testWriter, ctx)
 
@@ -132,13 +131,16 @@ func testOpenAI(model, message string, tools []waveai.ToolDefinition) {
 	}
 	defer sseHandler.Close()
 
-	_, err = waveai.StreamOpenAIToUseChat(ctx, sseHandler, opts, messages, tools)
+	stopReason, err := waveai.StreamOpenAIToUseChat(ctx, sseHandler, opts, messages, tools)
 	if err != nil {
-		fmt.Printf("Error streaming OpenAI: %v\n", err)
+		fmt.Printf("OpenAI streaming error: %v\n", err)
+	}
+	if stopReason != nil {
+		fmt.Printf("Stop reason: %+v\n", stopReason)
 	}
 }
 
-func testAnthropic(model, message string, tools []waveai.ToolDefinition) {
+func testAnthropic(ctx context.Context, model, message string, tools []waveai.ToolDefinition) {
 	apiKey := os.Getenv("ANTHROPIC_API_KEY")
 	if apiKey == "" {
 		fmt.Println("Error: ANTHROPIC_API_KEY environment variable not set")
@@ -162,7 +164,6 @@ func testAnthropic(model, message string, tools []waveai.ToolDefinition) {
 	fmt.Printf("Message: %s\n", message)
 	fmt.Println("---")
 
-	ctx := context.Background()
 	testWriter := &TestResponseWriter{}
 	sseHandler := waveai.MakeSSEHandlerCh(testWriter, ctx)
 
@@ -213,9 +214,12 @@ func main() {
 		toolDefs = getToolDefinitions()
 	}
 
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+
 	if anthropic {
-		testAnthropic(model, message, toolDefs)
+		testAnthropic(ctx, model, message, toolDefs)
 	} else {
-		testOpenAI(model, message, toolDefs)
+		testOpenAI(ctx, model, message, toolDefs)
 	}
 }
