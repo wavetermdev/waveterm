@@ -16,7 +16,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 )
 
-func createOpenAIRequest(opts *wshrpc.WaveAIOptsType, messages []UseChatMessage) (openai.Client, responses.ResponseNewParams) {
+func createOpenAIRequest(opts *wshrpc.WaveAIOptsType, messages []UseChatMessage, tools []ToolDefinition) (openai.Client, responses.ResponseNewParams) {
 	// Set up OpenAI client options
 	clientOpts := []option.RequestOption{
 		option.WithAPIKey(opts.APIToken),
@@ -64,6 +64,16 @@ func createOpenAIRequest(opts *wshrpc.WaveAIOptsType, messages []UseChatMessage)
 		},
 	}
 
+	// Convert tools if provided
+	if len(tools) > 0 {
+		var responseTools []responses.ToolUnionParam
+		for _, tool := range tools {
+			responseTool := responses.ToolParamOfFunction(tool.Name, tool.InputSchema, false)
+			responseTools = append(responseTools, responseTool)
+		}
+		req.Tools = responseTools
+	}
+
 	// Only set reasoning parameter for reasoning models
 	if isReasoningModel(opts.Model) {
 		req.Reasoning = shared.ReasoningParam{
@@ -79,8 +89,8 @@ func createOpenAIRequest(opts *wshrpc.WaveAIOptsType, messages []UseChatMessage)
 	return client, req
 }
 
-func StreamOpenAIResponsesAPI(sseHandler *SSEHandlerCh, ctx context.Context, opts *wshrpc.WaveAIOptsType, messages []UseChatMessage) {
-	client, req := createOpenAIRequest(opts, messages)
+func StreamOpenAIResponsesAPI(sseHandler *SSEHandlerCh, ctx context.Context, opts *wshrpc.WaveAIOptsType, messages []UseChatMessage, tools []ToolDefinition) {
+	client, req := createOpenAIRequest(opts, messages, tools)
 
 	// Create stream using Responses API
 	stream := client.Responses.NewStreaming(ctx, req)

@@ -58,18 +58,27 @@ func (w *TestResponseWriter) SetReadDeadline(deadline time.Time) error {
 }
 
 func getToolDefinitions() []waveai.ToolDefinition {
-	var schemas map[string]interface{}
+	var schemas map[string]any
 	if err := json.Unmarshal([]byte(testSchemaJSON), &schemas); err != nil {
 		fmt.Printf("Error parsing schema: %v\n", err)
 		return nil
 	}
 
-	configSchema := schemas["config"]
+	var configSchema map[string]any
+	if rawSchema, ok := schemas["config"]; ok && rawSchema != nil {
+		if schema, ok := rawSchema.(map[string]any); ok {
+			configSchema = schema
+		}
+	}
+	if configSchema == nil {
+		configSchema = map[string]any{"type": "object"}
+	}
+
 	return []waveai.ToolDefinition{
 		{
 			Name:        "get_config",
 			Description: "Get the current GitHub Actions Monitor configuration settings including repository, workflow, polling interval, and max workflow runs",
-			InputSchema: map[string]interface{}{
+			InputSchema: map[string]any{
 				"type": "object",
 			},
 		},
@@ -81,7 +90,7 @@ func getToolDefinitions() []waveai.ToolDefinition {
 		{
 			Name:        "get_data",
 			Description: "Get the current GitHub Actions workflow run data including workflow runs, loading state, and errors",
-			InputSchema: map[string]interface{}{
+			InputSchema: map[string]any{
 				"type": "object",
 			},
 		},
@@ -123,7 +132,10 @@ func testOpenAI(model, message string, withTools bool) {
 	}
 	defer sseHandler.Close()
 
-	waveai.StreamOpenAIToUseChat(sseHandler, ctx, opts, messages)
+	_, err = waveai.StreamOpenAIToUseChat(ctx, sseHandler, opts, messages, nil)
+	if err != nil {
+		fmt.Printf("Error streaming OpenAI: %v\n", err)
+	}
 }
 
 func testAnthropic(model, message string, withTools bool) {

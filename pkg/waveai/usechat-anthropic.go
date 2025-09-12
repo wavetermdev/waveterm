@@ -38,32 +38,11 @@ const (
 	StopKindError     StopReasonKind = "error"
 )
 
-type ToolCall struct {
-	ID    string          `json:"id"`              // Anthropic tool_use.id
-	Name  string          `json:"name,omitempty"`  // tool name (if provided)
-	Input json.RawMessage `json:"input,omitempty"` // accumulated input JSON
-}
-
-type StopReason struct {
-	Kind      StopReasonKind `json:"kind"`
-	RawReason string         `json:"raw_reason,omitempty"`
-	MessageID string         `json:"message_id,omitempty"`
-	Model     string         `json:"model,omitempty"`
-
-	ToolCalls []ToolCall `json:"tool_calls,omitempty"`
-
-	ErrorType string `json:"error_type,omitempty"`
-	ErrorText string `json:"error_text,omitempty"`
-
-	FinishStep bool `json:"finish_step,omitempty"`
-}
-
-// ToolDefinition represents a tool that can be used by the AI model
-type ToolDefinition struct {
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	InputSchema any    `json:"input_schema"`
-}
+const (
+	AnthropicDefaultBaseURL    = "https://api.anthropic.com"
+	AnthropicDefaultAPIVersion = "2023-06-01"
+	AnthropicDefaultMaxTokens  = 1024
+)
 
 // ---------- Anthropic wire types (subset) ----------
 // Derived from anthropic-messages-api.md and anthropic-streaming.md. :contentReference[oaicite:6]{index=6} :contentReference[oaicite:7]{index=7}
@@ -194,6 +173,37 @@ func (p *partialJSON) FinalObject() (json.RawMessage, error) {
 // - If final stop_reason == "tool_use": emit AiMsgFinishStep and return StopReason{Kind:ToolUse, ...} WITHOUT AiMsgFinish
 // - If message_stop with stop_reason == "end_turn" or nil: emit AiMsgFinish then [DONE]
 // - On Anthropic error event: AiMsgError and return StopKindError. :contentReference[oaicite:9]{index=9} :contentReference[oaicite:10]{index=10}
+
+// parseAnthropicHTTPError parses Anthropic API HTTP error responses
+func parseAnthropicHTTPError(resp *http.Response) error {
+	var eresp struct {
+		Type  string `json:"type"`
+		Error struct {
+			Type    string `json:"type"`
+			Message string `json:"message"`
+		} `json:"error"`
+	}
+	slurp, _ := io.ReadAll(resp.Body)
+	_ = json.Unmarshal(slurp, &eresp)
+	
+	var msg string
+	if eresp.Error.Message != "" {
+		msg = eresp.Error.Message
+	} else {
+		// Limit raw response to avoid giant messages
+		rawMsg := strings.TrimSpace(string(slurp))
+		if len(rawMsg) > 500 {
+			rawMsg = rawMsg[:500] + "..."
+		}
+		if rawMsg == "" {
+			msg = "unknown error"
+		} else {
+			msg = rawMsg
+		}
+	}
+	return fmt.Errorf("anthropic %s: %s", resp.Status, msg)
+}
+
 func StreamAnthropicResponses(
 	ctx context.Context,
 	sse *SSEHandlerCh,
@@ -204,37 +214,16 @@ func StreamAnthropicResponses(
 	if sse == nil {
 		return nil, errors.New("sse handler is nil")
 	}
-	if opts == nil {
-		return nil, errors.New("opts is nil")
-	}
-	if opts.APIToken == "" {
-		return nil, errors.New("Anthropic API token missing")
-	}
-	baseURL := opts.BaseURL
-	if baseURL == "" {
-		baseURL = "https://api.anthropic.com"
-	}
-	endpoint := strings.TrimRight(baseURL, "/") + "/v1/messages" // :contentReference[oaicite:11]{index=11}
-	apiVersion := opts.APIVersion
-	if apiVersion == "" {
-		apiVersion = "2023-06-01" // default from examples :contentReference[oaicite:12]{index=12}
-	}
-	maxTokens := opts.MaxTokens
-	if maxTokens <= 0 {
-		maxTokens = 1024 // safe default per docs/examples :contentReference[oaicite:13]{index=13}
-	}
-
-	reqBody, err := buildAnthropicRequest(opts.Model, maxTokens, messages, tools)
-	if err != nil {
-		return nil, err
-	}
-	bodyBytes, _ := json.Marshal(reqBody)
-
 	// Context with timeout if provided.
 	if opts.TimeoutMs > 0 {
 		var cancel context.CancelFunc
 		ctx, cancel = context.WithTimeout(ctx, time.Duration(opts.TimeoutMs)*time.Millisecond)
 		defer cancel()
+	}
+
+	req, err := buildAnthropicHTTPRequest(ctx, opts, messages, tools)
+	if err != nil {
+		return nil, err
 	}
 
 	httpClient := &http.Client{
@@ -250,57 +239,15 @@ func StreamAnthropicResponses(
 		}
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(bodyBytes))
+	resp, err := httpClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("content-type", "application/json")
-	req.Header.Set("x-api-key", opts.APIToken)
-	req.Header.Set("anthropic-version", apiVersion)
-	// Request streaming SSE. :contentReference[oaicite:14]{index=14}
-	req.Header.Set("accept", "text/event-stream")
-
-	resp, err := httpClient.Do(req)
-	if err != nil {
-		// Distinguish context cancellation.
-		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
-			return &StopReason{
-				Kind:       StopKindCanceled,
-				RawReason:  "canceled",
-				ErrorText:  err.Error(),
-				FinishStep: false,
-			}, err
-		}
-		_ = sse.AiMsgError(err.Error())
-		return &StopReason{
-			Kind:      StopKindError,
-			ErrorType: "transport",
-			ErrorText: err.Error(),
-		}, err
-	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode/100 != 2 {
-		// Try to decode Anthropic error JSON schema then surface it. :contentReference[oaicite:15]{index=15}
-		var eresp struct {
-			Type  string `json:"type"`
-			Error struct {
-				Type    string `json:"type"`
-				Message string `json:"message"`
-			} `json:"error"`
-		}
-		slurp, _ := io.ReadAll(resp.Body)
-		_ = json.Unmarshal(slurp, &eresp)
-		msg := strings.TrimSpace(string(slurp))
-		if eresp.Error.Message != "" {
-			msg = eresp.Error.Message
-		}
-		_ = sse.AiMsgError(msg)
-		return &StopReason{
-			Kind:      StopKindError,
-			ErrorType: eresp.Error.Type,
-			ErrorText: msg,
-		}, fmt.Errorf("anthropic %s: %s", resp.Status, msg)
+	ct := resp.Header.Get("Content-Type")
+	if resp.StatusCode != http.StatusOK || !strings.HasPrefix(ct, "text/event-stream") {
+		return nil, parseAnthropicHTTPError(resp)
 	}
 
 	// Stream decoding state
@@ -317,7 +264,7 @@ func StreamAnthropicResponses(
 	// Per-response state
 	blockMap := map[int]*blockState{}
 	var toolCalls []ToolCall
-	var finalStop string
+	var stopFromDelta string
 	var msgID string
 	var model string
 
@@ -340,13 +287,13 @@ func StreamAnthropicResponses(
 		if line == "" {
 			// dispatch event
 			if curEvent != "" {
-				if stop, ret := handleAnthropicEvent(curEvent, dataBuf.String(), sse, blockMap, &toolCalls, &msgID, &model, finalStop); ret != nil {
+				if stop, ret := handleAnthropicEvent(curEvent, dataBuf.String(), sse, blockMap, &toolCalls, &msgID, &model, stopFromDelta); ret != nil {
 					// Either error or message_stop triggered return
 					return ret, nil
 				} else {
 					// maybe updated final stop reason (from message_delta)
 					if stop != nil && *stop != "" {
-						finalStop = *stop
+						stopFromDelta = *stop
 					}
 				}
 			}
@@ -372,7 +319,7 @@ func StreamAnthropicResponses(
 	_ = sse.AiMsgFinish("", nil)
 	return &StopReason{
 		Kind:      StopKindDone,
-		RawReason: finalStop,
+		RawReason: stopFromDelta,
 		MessageID: msgID,
 		Model:     model,
 	}, nil
@@ -394,7 +341,7 @@ func handleAnthropicEvent(
 	toolCalls *[]ToolCall,
 	msgID *string,
 	model *string,
-	finalStop string,
+	stopFromPreviousDelta string,
 ) (stopFromDelta *string, final *StopReason) {
 	switch eventName {
 	case "ping":
@@ -551,8 +498,8 @@ func handleAnthropicEvent(
 		// Decide finalization based on last known stop_reason.
 		// If we didn't capture it in message_delta, treat as end_turn.
 		reason := "end_turn"
-		if stopFromDelta != nil && *stopFromDelta != "" {
-			reason = *stopFromDelta
+		if stopFromPreviousDelta != "" {
+			reason = stopFromPreviousDelta
 		}
 		switch reason {
 		case "tool_use":
@@ -599,20 +546,45 @@ func handleAnthropicEvent(
 	}
 }
 
-// buildAnthropicRequest converts our UseChatMessage[] to Anthropic's request
-// body with stream=true and configured model/max_tokens. :contentReference[oaicite:23]{index=23}
-func buildAnthropicRequest(model string, maxTokens int, msgs []UseChatMessage, tools []ToolDefinition) (*anthropicStreamRequest, error) {
-	if model == "" {
+// buildAnthropicHTTPRequest creates a complete HTTP request for the Anthropic API
+func buildAnthropicHTTPRequest(ctx context.Context, opts *wshrpc.WaveAIOptsType, msgs []UseChatMessage, tools []ToolDefinition) (*http.Request, error) {
+	if opts == nil {
+		return nil, errors.New("opts is nil")
+	}
+	if opts.APIToken == "" {
+		return nil, errors.New("Anthropic API token missing")
+	}
+	if opts.Model == "" {
 		return nil, errors.New("opts.model is required")
 	}
-	out := &anthropicStreamRequest{
-		Model:     model,
+
+	// Set defaults
+	baseURL := opts.BaseURL
+	if baseURL == "" {
+		baseURL = AnthropicDefaultBaseURL
+	}
+	endpoint := strings.TrimRight(baseURL, "/") + "/v1/messages"
+
+	apiVersion := opts.APIVersion
+	if apiVersion == "" {
+		apiVersion = AnthropicDefaultAPIVersion
+	}
+
+	maxTokens := opts.MaxTokens
+	if maxTokens <= 0 {
+		maxTokens = AnthropicDefaultMaxTokens
+	}
+
+	// Build request body
+	reqBody := &anthropicStreamRequest{
+		Model:     opts.Model,
 		MaxTokens: maxTokens,
 		Stream:    true,
 	}
 	if len(tools) > 0 {
-		out.Tools = tools
+		reqBody.Tools = tools
 	}
+
 	for _, m := range msgs {
 		aim := anthropicInputMessage{Role: m.Role}
 		// Content may be a string or array of blocks; support text only. :contentReference[oaicite:24]{index=24}
@@ -635,9 +607,25 @@ func buildAnthropicRequest(model string, maxTokens int, msgs []UseChatMessage, t
 			}
 			aim.Content = json.RawMessage(fmt.Sprintf("%q", m.Content))
 		}
-		out.Messages = append(out.Messages, aim)
+		reqBody.Messages = append(reqBody.Messages, aim)
 	}
-	return out, nil
+
+	bodyBytes, err := json.Marshal(reqBody)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(bodyBytes))
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set("content-type", "application/json")
+	req.Header.Set("x-api-key", opts.APIToken)
+	req.Header.Set("anthropic-version", apiVersion)
+	req.Header.Set("accept", "text/event-stream")
+
+	return req, nil
 }
 
 func genID(prefix string) string {

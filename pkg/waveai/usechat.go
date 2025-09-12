@@ -30,6 +30,33 @@ type UseChatMessage struct {
 	Parts   []UseChatMessagePart `json:"parts,omitempty"`
 }
 
+type ToolCall struct {
+	ID    string          `json:"id"`              // Anthropic tool_use.id
+	Name  string          `json:"name,omitempty"`  // tool name (if provided)
+	Input json.RawMessage `json:"input,omitempty"` // accumulated input JSON
+}
+
+type StopReason struct {
+	Kind      StopReasonKind `json:"kind"`
+	RawReason string         `json:"raw_reason,omitempty"`
+	MessageID string         `json:"message_id,omitempty"`
+	Model     string         `json:"model,omitempty"`
+
+	ToolCalls []ToolCall `json:"tool_calls,omitempty"`
+
+	ErrorType string `json:"error_type,omitempty"`
+	ErrorText string `json:"error_text,omitempty"`
+
+	FinishStep bool `json:"finish_step,omitempty"`
+}
+
+// ToolDefinition represents a tool that can be used by the AI model
+type ToolDefinition struct {
+	Name        string         `json:"name"`
+	Description string         `json:"description"`
+	InputSchema map[string]any `json:"input_schema"`
+}
+
 // GetContent extracts the text content from either content field or parts array
 func (m *UseChatMessage) GetContent() string {
 	if m.Content != "" {
@@ -152,15 +179,19 @@ func shouldUseChatCompletionsAPI(model string) bool {
 		strings.HasPrefix(m, "o1-")
 }
 
-func StreamOpenAIToUseChat(sseHandler *SSEHandlerCh, ctx context.Context, opts *wshrpc.WaveAIOptsType, messages []UseChatMessage) {
+func StreamOpenAIToUseChat(ctx context.Context, sseHandler *SSEHandlerCh, opts *wshrpc.WaveAIOptsType, messages []UseChatMessage, tools []ToolDefinition) (*StopReason, error) {
 	// Route to appropriate API based on model
 	if shouldUseChatCompletionsAPI(opts.Model) {
 		// Older models (gpt-3.5, gpt-4, gpt-4-turbo, o1-*) use Chat Completions API
 		StreamOpenAIChatCompletions(sseHandler, ctx, opts, messages)
 	} else {
 		// Newer models (gpt-4.1, gpt-4o, gpt-5, o3, o4, etc.) use Responses API for reasoning support
-		StreamOpenAIResponsesAPI(sseHandler, ctx, opts, messages)
+		StreamOpenAIResponsesAPI(sseHandler, ctx, opts, messages, tools)
 	}
+
+	return &StopReason{
+		Kind: StopKindDone,
+	}, nil
 }
 
 func generateID() string {
@@ -234,6 +265,9 @@ func HandleAIChat(w http.ResponseWriter, r *http.Request) {
 		}
 	} else {
 		// Default to OpenAI
-		StreamOpenAIToUseChat(sseHandler, r.Context(), aiOpts, req.Messages)
+		_, err := StreamOpenAIToUseChat(r.Context(), sseHandler, aiOpts, req.Messages, nil)
+		if err != nil {
+			log.Printf("OpenAI streaming error: %v", err)
+		}
 	}
 }
