@@ -14,21 +14,24 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
 )
 
+// Command-line flags for the blocks commands
 var (
-	blocksWindowId    string
-	blocksWorkspaceId string
-	blocksTabId       string
-	blocksView        string
-	blocksJSON        bool
+	blocksWindowId    string // Window ID to filter blocks by
+	blocksWorkspaceId string // Workspace ID to filter blocks by
+	blocksTabId       string // Tab ID to filter blocks by
+	blocksView        string // View type to filter blocks by (term, web, etc.)
+	blocksJSON        bool   // Whether to output as JSON
 )
 
+// BlockDetails represents the information about a block returned by the list command
 type BlockDetails struct {
-	BlockId     string              `json:"blockid"`
-	WorkspaceId string              `json:"workspaceid"`
-	TabId       string              `json:"tabid"`
-	Meta        waveobj.MetaMapType `json:"meta"`
+	BlockId     string              `json:"blockid"`     // Unique identifier for the block
+	WorkspaceId string              `json:"workspaceid"` // ID of the workspace containing the block
+	TabId       string              `json:"tabid"`       // ID of the tab containing the block
+	Meta        waveobj.MetaMapType `json:"meta"`        // Block metadata including view type
 }
 
+// blocksListCmd represents the 'blocks list' command
 var blocksListCmd = &cobra.Command{
 	Use:     "list",
 	Aliases: []string{"ls", "get"},
@@ -36,7 +39,7 @@ var blocksListCmd = &cobra.Command{
 	Long:    `List blocks with optional filtering by workspace, window, tab, or view type.
 
 Examples:
-  # List blocks in the current workspace
+  # List blocks from all workspaces
   wsh blocks list
 
   # List only terminal blocks
@@ -45,12 +48,17 @@ Examples:
   # Filter by window ID (get IDs from 'wsh workspace list')
   wsh blocks list --window=dbca23b5-f89b-4780-a0fe-452f5bc7d900
 
+  # Filter by workspace ID
+  wsh blocks list --workspace=12d0c067-378e-454c-872e-77a314248114
+
   # Output as JSON for scripting
   wsh blocks list --json`,
 	RunE:    blocksListRun,
 	PreRunE: preRunSetupRpcClient,
 }
 
+// init registers the blocks commands with the root command
+// It configures all the flags and command options
 func init() {
 	blocksListCmd.Flags().StringVar(&blocksWindowId, "window", "", "restrict to window id")
 	blocksListCmd.Flags().StringVar(&blocksWorkspaceId, "workspace", "", "restrict to workspace id")
@@ -75,6 +83,8 @@ func init() {
 	rootCmd.AddCommand(blocksCmd)
 }
 
+// blocksListRun implements the 'blocks list' command
+// It retrieves and displays blocks with optional filtering by workspace, window, tab, or view type
 func blocksListRun(cmd *cobra.Command, args []string) error {
 	var allBlocks []BlockDetails
 
@@ -85,11 +95,6 @@ func blocksListRun(cmd *cobra.Command, args []string) error {
 
 	if len(workspaces) == 0 {
 		return fmt.Errorf("no workspaces found")
-	}
-
-	var currentWorkspaceId string
-	if len(workspaces) > 0 {
-		currentWorkspaceId = workspaces[0].WorkspaceData.OID
 	}
 
 	var workspaceIdsToQuery []string
@@ -110,14 +115,11 @@ func blocksListRun(cmd *cobra.Command, args []string) error {
 		if !windowFound {
 			return fmt.Errorf("window %s not found", blocksWindowId)
 		}
-	} else if blocksTabId != "" {
-		// When filtering by tab, we need to check all workspaces
+	} else {
+		// Default to all workspaces
 		for _, ws := range workspaces {
 			workspaceIdsToQuery = append(workspaceIdsToQuery, ws.WorkspaceData.OID)
 		}
-	} else {
-		// Default to current workspace
-		workspaceIdsToQuery = []string{currentWorkspaceId}
 	}
 
 	// Query each selected workspace
@@ -158,7 +160,10 @@ func blocksListRun(cmd *cobra.Command, args []string) error {
 
 	// Output results
 	if blocksJSON {
-		bytes, _ := json.MarshalIndent(allBlocks, "", "  ")
+		bytes, err := json.MarshalIndent(allBlocks, "", "  ")
+		if err != nil {
+			return fmt.Errorf("failed to marshal JSON: %v", err)
+		}
 		WriteStdout("%s\n", string(bytes))
 		return nil
 	}
@@ -203,6 +208,8 @@ func blocksListRun(cmd *cobra.Command, args []string) error {
 }
 
 // matchesViewType checks if a view type matches a filter, supporting aliases
+// It handles different aliases for the same view type, allowing flexible filtering
+// Examples: "term" matches "terminal", "shell", "console"; "web" matches "browser", "url"
 func matchesViewType(actual, filter string) bool {
 	// Direct match (case insensitive)
 	if strings.EqualFold(actual, filter) {
