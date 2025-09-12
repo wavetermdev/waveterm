@@ -5,6 +5,8 @@ package main
 
 import (
 	"context"
+	_ "embed"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"net/http"
@@ -14,6 +16,9 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/waveai"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 )
+
+//go:embed testschema.json
+var testSchemaJSON string
 
 // TestResponseWriter implements http.ResponseWriter and additional interfaces for testing
 type TestResponseWriter struct {
@@ -52,7 +57,41 @@ func (w *TestResponseWriter) SetReadDeadline(deadline time.Time) error {
 	return nil
 }
 
-func testOpenAI(model, message string) {
+func getToolDefinitions() []interface{} {
+	var schemas map[string]interface{}
+	if err := json.Unmarshal([]byte(testSchemaJSON), &schemas); err != nil {
+		fmt.Printf("Error parsing schema: %v\n", err)
+		return nil
+	}
+
+	configSchema := schemas["config"]
+	return []interface{}{
+		map[string]interface{}{
+			"type": "function",
+			"function": map[string]interface{}{
+				"name":        "get_config",
+				"description": "Get the current GitHub Actions Monitor configuration settings including repository, workflow, polling interval, and max workflow runs",
+			},
+		},
+		map[string]interface{}{
+			"type": "function",
+			"function": map[string]interface{}{
+				"name":        "update_config",
+				"description": "Update GitHub Actions Monitor configuration settings",
+				"parameters":  configSchema,
+			},
+		},
+		map[string]interface{}{
+			"type": "function",
+			"function": map[string]interface{}{
+				"name":        "get_data",
+				"description": "Get the current GitHub Actions workflow run data including workflow runs, loading state, and errors",
+			},
+		},
+	}
+}
+
+func testOpenAI(model, message string, withTools bool) {
 	apiKey := os.Getenv("OPENAI_API_KEY")
 	if apiKey == "" {
 		fmt.Println("Error: OPENAI_API_KEY environment variable not set")
@@ -90,7 +129,7 @@ func testOpenAI(model, message string) {
 	waveai.StreamOpenAIToUseChat(sseHandler, ctx, opts, messages)
 }
 
-func testAnthropic(model, message string) {
+func testAnthropic(model, message string, withTools bool) {
 	apiKey := os.Getenv("ANTHROPIC_API_KEY")
 	if apiKey == "" {
 		fmt.Println("Error: ANTHROPIC_API_KEY environment variable not set")
@@ -135,16 +174,18 @@ func testAnthropic(model, message string) {
 }
 
 func main() {
-	var anthropic bool
+	var anthropic, tools bool
 	flag.BoolVar(&anthropic, "anthropic", false, "Use Anthropic API instead of OpenAI")
+	flag.BoolVar(&tools, "tools", false, "Enable GitHub Actions Monitor tools for testing")
 	flag.Parse()
 
 	args := flag.Args()
 	if len(args) < 1 {
-		fmt.Println("Usage: go run main-testai.go [--anthropic] <model> [message]")
+		fmt.Println("Usage: go run main-testai.go [--anthropic] [--tools] <model> [message]")
 		fmt.Println("Examples:")
 		fmt.Println("  go run main-testai.go o4-mini 'What is 2+2?'")
 		fmt.Println("  go run main-testai.go --anthropic claude-3-5-sonnet-20241022 'What is 2+2?'")
+		fmt.Println("  go run main-testai.go --tools o4-mini 'Help me configure GitHub Actions monitoring'")
 		fmt.Println("")
 		fmt.Println("Environment variables:")
 		fmt.Println("  OPENAI_API_KEY (for OpenAI models)")
@@ -159,8 +200,8 @@ func main() {
 	}
 
 	if anthropic {
-		testAnthropic(model, message)
+		testAnthropic(model, message, tools)
 	} else {
-		testOpenAI(model, message)
+		testOpenAI(model, message, tools)
 	}
 }
