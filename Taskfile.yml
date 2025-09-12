@@ -125,7 +125,7 @@ tasks:
             - npm run build:prod && npm exec electron-builder -- -c electron-builder.config.cjs -p never {{.CLI_ARGS}}
         deps:
             - clean
-            - npm:ci
+            - npm:install
             - docsite:build:embedded
             - build:backend
 
@@ -426,16 +426,6 @@ tasks:
             - package-lock.json
             - package.json
         cmd: npm install
-
-    npm:ci:
-        desc: Runs `npm ci`
-        internal: true
-        generates:
-            - node_modules/**/*
-        sources:
-            - package-lock.json
-            - package.json
-        cmd: npm ci
 
     go:mod:tidy:
         desc: Runs `go mod tidy`
