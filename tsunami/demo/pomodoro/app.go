@@ -18,7 +18,12 @@ var (
 	BreakMode = Mode{Name: "Break", Duration: 5}
 
 	// Data atom to expose remaining seconds to external systems
-	remainingSecondsAtom = app.DataAtom("remainingSeconds", WorkMode.Duration*60)
+	remainingSecondsAtom = app.DataAtom("remainingSeconds", WorkMode.Duration*60, &app.AtomMeta{
+		Desc:  "Remaining seconds in current pomodoro timer",
+		Units: "s",
+		Min:   app.FloatPtr(0),
+		Max:   app.FloatPtr(3600),
+	})
 )
 
 type TimerDisplayProps struct {

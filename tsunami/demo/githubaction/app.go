@@ -17,14 +17,37 @@ import (
 
 // Global atoms for config and data
 var (
-	pollIntervalAtom    = app.ConfigAtom("pollInterval", 5)
-	repositoryAtom      = app.ConfigAtom("repository", "wavetermdev/waveterm")
-	workflowAtom        = app.ConfigAtom("workflow", "build-helper.yml")
-	maxWorkflowRunsAtom = app.ConfigAtom("maxWorkflowRuns", 10)
-	workflowRunsAtom    = app.DataAtom("workflowRuns", []WorkflowRun{})
-	lastErrorAtom       = app.DataAtom("lastError", "")
-	isLoadingAtom       = app.DataAtom("isLoading", true)
-	lastRefreshTimeAtom = app.DataAtom("lastRefreshTime", time.Time{})
+	pollIntervalAtom = app.ConfigAtom("pollInterval", 5, &app.AtomMeta{
+		Desc: "Polling interval for GitHub API requests",
+		Units: "s",
+		Min:   app.FloatPtr(1),
+		Max:   app.FloatPtr(300),
+	})
+	repositoryAtom = app.ConfigAtom("repository", "wavetermdev/waveterm", &app.AtomMeta{
+		Desc:    "GitHub repository in owner/repo format",
+		Pattern: `^[a-zA-Z0-9._-]+/[a-zA-Z0-9._-]+$`,
+	})
+	workflowAtom = app.ConfigAtom("workflow", "build-helper.yml", &app.AtomMeta{
+		Desc:    "GitHub Actions workflow file name",
+		Pattern: `^.+\.(yml|yaml)$`,
+	})
+	maxWorkflowRunsAtom = app.ConfigAtom("maxWorkflowRuns", 10, &app.AtomMeta{
+		Desc: "Maximum number of workflow runs to fetch",
+		Min:  app.FloatPtr(1),
+		Max:  app.FloatPtr(100),
+	})
+	workflowRunsAtom = app.DataAtom("workflowRuns", []WorkflowRun{}, &app.AtomMeta{
+		Desc: "List of GitHub Actions workflow runs",
+	})
+	lastErrorAtom = app.DataAtom("lastError", "", &app.AtomMeta{
+		Desc: "Last error message from GitHub API",
+	})
+	isLoadingAtom = app.DataAtom("isLoading", true, &app.AtomMeta{
+		Desc: "Loading state for workflow data fetch",
+	})
+	lastRefreshTimeAtom = app.DataAtom("lastRefreshTime", time.Time{}, &app.AtomMeta{
+		Desc: "Timestamp of last successful data refresh",
+	})
 )
 
 type WorkflowRun struct {

@@ -11,8 +11,12 @@ import (
 
 // Global atoms for config and data
 var (
-	dataPointCountAtom = app.ConfigAtom("dataPointCount", 60)
-	cpuDataAtom        = app.DataAtom("cpuData", func() []CPUDataPoint {
+	dataPointCountAtom = app.ConfigAtom("dataPointCount", 60, &app.AtomMeta{
+		Desc: "Number of CPU data points to display in the chart",
+		Min:  app.FloatPtr(10),
+		Max:  app.FloatPtr(300),
+	})
+	cpuDataAtom = app.DataAtom("cpuData", func() []CPUDataPoint {
 		// Initialize with empty data points to maintain consistent chart size
 		dataPointCount := 60 // Default value for initialization
 		initialData := make([]CPUDataPoint, dataPointCount)
@@ -24,7 +28,9 @@ var (
 			}
 		}
 		return initialData
-	}())
+	}(), &app.AtomMeta{
+		Desc: "Historical CPU usage data points for charting",
+	})
 )
 
 type CPUDataPoint struct {

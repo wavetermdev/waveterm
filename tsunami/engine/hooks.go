@@ -77,7 +77,7 @@ func UseLocal(vc *RenderContextImpl, initialVal any) string {
 	atomName := "$local." + vc.GetCompWaveId() + "#" + strconv.Itoa(hookVal.Idx)
 	if !hookVal.Init {
 		hookVal.Init = true
-		atom := MakeAtomImpl(initialVal)
+		atom := MakeAtomImpl(initialVal, nil)
 		vc.Root.RegisterAtom(atomName, atom)
 		closedAtomName := atomName
 		hookVal.UnmountFn = func() {

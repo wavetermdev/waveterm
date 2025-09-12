@@ -12,6 +12,22 @@ import (
 	"github.com/wavetermdev/waveterm/tsunami/util"
 )
 
+// AtomMeta provides metadata about an atom for validation and documentation
+type AtomMeta struct {
+	Desc    string   // short, user-facing
+	Units   string   // "ms", "GiB", etc.
+	Min     *float64 // optional minimum (numeric types)
+	Max     *float64 // optional maximum (numeric types)
+	Enum    []string // allowed values if finite set
+	Pattern string   // regex constraint for strings
+}
+
+// Atom[T] represents a typed atom implementation
+type Atom[T any] struct {
+	name   string
+	client *engine.ClientImpl
+}
+
 // logInvalidAtomSet logs an error when an atom is being set during component render
 func logInvalidAtomSet(atomName string) {
 	_, file, line, ok := runtime.Caller(2)
@@ -56,12 +72,6 @@ func logMutationWarning(atomName string) {
 	} else {
 		log.Printf("WARNING: atom '%s' appears to be mutated instead of copied - use app.DeepCopy to create a copy before mutating", atomName)
 	}
-}
-
-// Atom[T] represents a typed atom implementation
-type Atom[T any] struct {
-	name   string
-	client *engine.ClientImpl
 }
 
 // AtomName implements the vdom.Atom interface

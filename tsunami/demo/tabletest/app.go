@@ -31,6 +31,8 @@ var sampleData = app.DataAtom("sampleData", []Person{
 	{Name: "Henry Taylor", Age: 33, Email: "henry@example.com", City: "San Diego"},
 	{Name: "Ivy Chen", Age: 26, Email: "ivy@example.com", City: "Dallas"},
 	{Name: "Jack Anderson", Age: 31, Email: "jack@example.com", City: "San Jose"},
+}, &app.AtomMeta{
+	Desc: "Sample person data for table display testing",
 })
 
 // The App component is the required entry point for every Tsunami application

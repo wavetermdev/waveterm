@@ -9,17 +9,29 @@ import (
 	"sync"
 )
 
+// AtomMeta provides metadata about an atom for validation and documentation
+type AtomMeta struct {
+	Description string   // short, user-facing
+	Units       string   // "ms", "GiB", etc.
+	Min         *float64 // optional minimum (numeric types)
+	Max         *float64 // optional maximum (numeric types)
+	Enum        []string // allowed values if finite set
+	Pattern     string   // regex constraint for strings
+}
+
 type AtomImpl[T any] struct {
 	lock   *sync.Mutex
 	val    T
 	usedBy map[string]bool // component waveid -> true
+	meta   *AtomMeta       // optional metadata
 }
 
-func MakeAtomImpl[T any](initialVal T) *AtomImpl[T] {
+func MakeAtomImpl[T any](initialVal T, meta *AtomMeta) *AtomImpl[T] {
 	return &AtomImpl[T]{
 		lock:   &sync.Mutex{},
 		val:    initialVal,
 		usedBy: make(map[string]bool),
+		meta:   meta,
 	}
 }
 
