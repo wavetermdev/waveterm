@@ -498,7 +498,7 @@ tasks:
             - cd scaffold && npm pkg delete author
             - cd scaffold && npm pkg set author.name="Command Line Inc"
             - cd scaffold && npm pkg set author.email="info@commandline.dev"
-            - cd scaffold && npm --no-workspaces install tailwindcss @tailwindcss/cli
+            - cd scaffold && npm --no-workspaces install tailwindcss@4.1.12 @tailwindcss/cli@4.1.12
             - cp -r dist scaffold/
             - cp ../templates/app-main.go.tmpl scaffold/app-main.go
             - cp ../templates/tailwind.css scaffold/

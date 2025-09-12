@@ -34,12 +34,20 @@ type BuildOpts struct {
 	OutputFile     string
 	ScaffoldPath   string
 	SdkReplacePath string
+	NodePath       string
 }
 
 type BuildEnv struct {
 	GoVersion   string
 	TempDir     string
 	cleanupOnce *sync.Once
+}
+
+func (opts BuildOpts) getNodePath() string {
+	if opts.NodePath != "" {
+		return opts.NodePath
+	}
+	return "node"
 }
 
 func findGoExecutable() (string, error) {
@@ -50,7 +58,7 @@ func findGoExecutable() (string, error) {
 
 	// Define platform-specific paths to check
 	var pathsToCheck []string
-	
+
 	if runtime.GOOS == "windows" {
 		pathsToCheck = []string{
 			`c:\go\bin\go.exe`,
@@ -59,10 +67,10 @@ func findGoExecutable() (string, error) {
 	} else {
 		// Unix-like systems (macOS, Linux, etc.)
 		pathsToCheck = []string{
-			"/opt/homebrew/bin/go",     // Homebrew on Apple Silicon
-			"/usr/local/bin/go",        // Traditional Homebrew or manual install
-			"/usr/local/go/bin/go",     // Official Go installation
-			"/usr/bin/go",              // System package manager
+			"/opt/homebrew/bin/go", // Homebrew on Apple Silicon
+			"/usr/local/bin/go",    // Traditional Homebrew or manual install
+			"/usr/local/go/bin/go", // Official Go installation
+			"/usr/bin/go",          // System package manager
 		}
 	}
 
@@ -79,7 +87,7 @@ func findGoExecutable() (string, error) {
 	return "", fmt.Errorf("go command not found in PATH or common installation locations")
 }
 
-func verifyEnvironment(verbose bool) (*BuildEnv, error) {
+func verifyEnvironment(verbose bool, opts BuildOpts) (*BuildEnv, error) {
 	// Find Go executable using enhanced search
 	goPath, err := findGoExecutable()
 	if err != nil {
@@ -120,45 +128,42 @@ func verifyEnvironment(verbose bool) (*BuildEnv, error) {
 		return nil, fmt.Errorf("go version 1.%d or higher required, found: %s", MinSupportedGoMinorVersion, versionStr)
 	}
 
-	// Check if npx is in PATH
-	_, err = exec.LookPath("npx")
-	if err != nil {
-		return nil, fmt.Errorf("npx command not found in PATH: %w", err)
+	// Check if node is available
+	if opts.NodePath != "" {
+		// Custom node path specified - verify it's absolute and executable
+		if !filepath.IsAbs(opts.NodePath) {
+			return nil, fmt.Errorf("NodePath must be an absolute path, got: %s", opts.NodePath)
+		}
+		
+		info, err := os.Stat(opts.NodePath)
+		if err != nil {
+			return nil, fmt.Errorf("NodePath does not exist: %s: %w", opts.NodePath, err)
+		}
+		
+		if info.IsDir() {
+			return nil, fmt.Errorf("NodePath is a directory, not an executable: %s", opts.NodePath)
+		}
+		
+		// Check if file is executable (Unix-like systems)
+		if runtime.GOOS != "windows" && info.Mode()&0111 == 0 {
+			return nil, fmt.Errorf("NodePath is not executable: %s", opts.NodePath)
+		}
+		
+		if verbose {
+			log.Printf("Using custom node path: %s", opts.NodePath)
+		}
+	} else {
+		// Use standard PATH lookup
+		_, err = exec.LookPath("node")
+		if err != nil {
+			return nil, fmt.Errorf("node command not found in PATH: %w", err)
+		}
+		
+		if verbose {
+			log.Printf("Found node in PATH")
+		}
 	}
 
-	if verbose {
-		log.Printf("Found npx in PATH")
-	}
-
-	// Check Tailwind CSS version
-	tailwindCmd := exec.Command("npx", "@tailwindcss/cli")
-	tailwindOutput, err := tailwindCmd.CombinedOutput()
-	if err != nil {
-		return nil, fmt.Errorf("failed to run 'npx @tailwindcss/cli': %w", err)
-	}
-
-	tailwindStr := strings.TrimSpace(string(tailwindOutput))
-	lines := strings.Split(tailwindStr, "\n")
-	if len(lines) == 0 {
-		return nil, fmt.Errorf("no output from tailwindcss command")
-	}
-
-	firstLine := lines[0]
-	if verbose {
-		log.Printf("Found %s", firstLine)
-	}
-
-	// Check for v4 (format: "≈ tailwindcss v4.1.12")
-	tailwindRegex := regexp.MustCompile(`tailwindcss v(\d+)`)
-	tailwindMatches := tailwindRegex.FindStringSubmatch(firstLine)
-	if len(tailwindMatches) < 2 {
-		return nil, fmt.Errorf("unable to parse tailwindcss version from: %s", firstLine)
-	}
-
-	majorVersion, err := strconv.Atoi(tailwindMatches[1])
-	if err != nil || majorVersion != 4 {
-		return nil, fmt.Errorf("tailwindcss v4 required, found: %s", firstLine)
-	}
 
 	return &BuildEnv{
 		GoVersion:   goVersion,
@@ -444,7 +449,7 @@ func TsunamiBuild(opts BuildOpts) error {
 }
 
 func tsunamiBuildInternal(opts BuildOpts) (*BuildEnv, error) {
-	buildEnv, err := verifyEnvironment(opts.Verbose)
+	buildEnv, err := verifyEnvironment(opts.Verbose, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -467,7 +472,7 @@ func tsunamiBuildInternal(opts BuildOpts) (*BuildEnv, error) {
 
 	log.Printf("Building tsunami app from %s\n", opts.Dir)
 
-	if opts.Verbose {
+	if opts.Verbose || opts.KeepTemp {
 		log.Printf("Temp dir: %s\n", tempDir)
 	}
 
@@ -529,7 +534,7 @@ func tsunamiBuildInternal(opts BuildOpts) (*BuildEnv, error) {
 	}
 
 	// Generate Tailwind CSS
-	if err := generateAppTailwindCss(tempDir, opts.Verbose); err != nil {
+	if err := generateAppTailwindCss(tempDir, opts.Verbose, opts); err != nil {
 		return buildEnv, fmt.Errorf("failed to generate tailwind css: %w", err)
 	}
 
@@ -643,14 +648,15 @@ func runGoBuild(tempDir string, opts BuildOpts) error {
 	return nil
 }
 
-func generateAppTailwindCss(tempDir string, verbose bool) error {
+func generateAppTailwindCss(tempDir string, verbose bool, opts BuildOpts) error {
 	// tailwind.css is already in tempDir from scaffold copy
 	tailwindOutput := filepath.Join(tempDir, "static", "tw.css")
 
-	tailwindCmd := exec.Command("npx", "@tailwindcss/cli",
+	tailwindCmd := exec.Command(opts.getNodePath(), "node_modules/@tailwindcss/cli/dist/index.mjs",
 		"-i", "./tailwind.css",
 		"-o", tailwindOutput)
 	tailwindCmd.Dir = tempDir
+	tailwindCmd.Env = append(os.Environ(), "ELECTRON_RUN_AS_NODE=1")
 
 	if verbose {
 		log.Printf("Running: %s", strings.Join(tailwindCmd.Args, " "))

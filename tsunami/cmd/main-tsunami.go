@@ -12,6 +12,7 @@ import (
 const (
 	EnvTsunamiScaffoldPath   = "TSUNAMI_SCAFFOLDPATH"
 	EnvTsunamiSdkReplacePath = "TSUNAMI_SDKREPLACEPATH"
+	EnvTsunamiNodePath       = "TSUNAMI_NODEPATH"
 )
 
 // these are set at build time
@@ -46,6 +47,12 @@ func validateEnvironmentVars(opts *build.BuildOpts) error {
 
 	opts.ScaffoldPath = scaffoldPath
 	opts.SdkReplacePath = sdkReplacePath
+	
+	// NodePath is optional
+	if nodePath := os.Getenv(EnvTsunamiNodePath); nodePath != "" {
+		opts.NodePath = nodePath
+	}
+	
 	return nil
 }
 
