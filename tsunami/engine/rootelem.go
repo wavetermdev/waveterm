@@ -29,6 +29,8 @@ type genAtom interface {
 	SetVal(any) error
 	SetUsedBy(string, bool)
 	GetUsedBy() []string
+	GetMeta() *AtomMeta
+	GetAtomType() reflect.Type
 }
 
 type RootElem struct {
@@ -82,30 +84,35 @@ func (r *RootElem) addEffectWork(id string, effectIndex int, compTag string) {
 	r.EffectWorkQueue = append(r.EffectWorkQueue, &EffectWorkElem{WaveId: id, EffectIndex: effectIndex, CompTag: compTag})
 }
 
-func (r *RootElem) GetDataMap() map[string]any {
+// getAtomsByPrefix extracts all atoms that match the given prefix from RootElem
+func (r *RootElem) getAtomsByPrefix(prefix string) map[string]genAtom {
 	r.atomLock.Lock()
 	defer r.atomLock.Unlock()
-
-	result := make(map[string]any)
+	
+	result := make(map[string]genAtom)
 	for atomName, atom := range r.Atoms {
-		if strings.HasPrefix(atomName, "$data.") {
-			strippedName := strings.TrimPrefix(atomName, "$data.")
-			result[strippedName] = atom.GetVal()
+		if strings.HasPrefix(atomName, prefix) {
+			strippedName := strings.TrimPrefix(atomName, prefix)
+			result[strippedName] = atom
 		}
 	}
 	return result
 }
 
-func (r *RootElem) GetConfigMap() map[string]any {
-	r.atomLock.Lock()
-	defer r.atomLock.Unlock()
-
+func (r *RootElem) GetDataMap() map[string]any {
+	atoms := r.getAtomsByPrefix("$data.")
 	result := make(map[string]any)
-	for atomName, atom := range r.Atoms {
-		if strings.HasPrefix(atomName, "$config.") {
-			strippedName := strings.TrimPrefix(atomName, "$config.")
-			result[strippedName] = atom.GetVal()
-		}
+	for name, atom := range atoms {
+		result[name] = atom.GetVal()
+	}
+	return result
+}
+
+func (r *RootElem) GetConfigMap() map[string]any {
+	atoms := r.getAtomsByPrefix("$config.")
+	result := make(map[string]any)
+	for name, atom := range atoms {
+		result[name] = atom.GetVal()
 	}
 	return result
 }

@@ -16,7 +16,10 @@ import (
 
 // Global atoms for config
 var (
-	serverURLAtom = app.ConfigAtom("serverURL", "")
+	serverURLAtom = app.ConfigAtom("serverURL", "", &app.AtomMeta{
+		Desc:    "Server URL for config API (can be full URL, hostname:port, or just port)",
+		Pattern: `^(https?://.*|[a-zA-Z0-9.-]+:\d+|\d+|[a-zA-Z0-9.-]+)$`,
+	})
 )
 
 type URLInputProps struct {

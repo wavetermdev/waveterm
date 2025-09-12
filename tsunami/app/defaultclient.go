@@ -16,6 +16,10 @@ func DefineComponent[P any](name string, renderFn func(props P) any) vdom.Compon
 	return engine.DefineComponentEx(engine.GetDefaultClient(), name, renderFn)
 }
 
+func Ptr[T any](v T) *T {
+	return &v
+}
+
 func SetGlobalEventHandler(handler func(event vdom.VDomEvent)) {
 	engine.GetDefaultClient().SetGlobalEventHandler(handler)
 }
@@ -35,18 +39,20 @@ func SendAsyncInitiation() error {
 	return engine.GetDefaultClient().SendAsyncInitiation()
 }
 
-func ConfigAtom[T any](name string, defaultValue T) Atom[T] {
+func ConfigAtom[T any](name string, defaultValue T, meta *AtomMeta) Atom[T] {
 	fullName := "$config." + name
 	client := engine.GetDefaultClient()
-	atom := engine.MakeAtomImpl(defaultValue)
+	engineMeta := convertAppMetaToEngineMeta(meta)
+	atom := engine.MakeAtomImpl(defaultValue, engineMeta)
 	client.Root.RegisterAtom(fullName, atom)
 	return Atom[T]{name: fullName, client: client}
 }
 
-func DataAtom[T any](name string, defaultValue T) Atom[T] {
+func DataAtom[T any](name string, defaultValue T, meta *AtomMeta) Atom[T] {
 	fullName := "$data." + name
 	client := engine.GetDefaultClient()
-	atom := engine.MakeAtomImpl(defaultValue)
+	engineMeta := convertAppMetaToEngineMeta(meta)
+	atom := engine.MakeAtomImpl(defaultValue, engineMeta)
 	client.Root.RegisterAtom(fullName, atom)
 	return Atom[T]{name: fullName, client: client}
 }
@@ -54,9 +60,23 @@ func DataAtom[T any](name string, defaultValue T) Atom[T] {
 func SharedAtom[T any](name string, defaultValue T) Atom[T] {
 	fullName := "$shared." + name
 	client := engine.GetDefaultClient()
-	atom := engine.MakeAtomImpl(defaultValue)
+	atom := engine.MakeAtomImpl(defaultValue, nil)
 	client.Root.RegisterAtom(fullName, atom)
 	return Atom[T]{name: fullName, client: client}
+}
+
+func convertAppMetaToEngineMeta(appMeta *AtomMeta) *engine.AtomMeta {
+	if appMeta == nil {
+		return nil
+	}
+	return &engine.AtomMeta{
+		Description: appMeta.Desc,
+		Units:       appMeta.Units,
+		Min:         appMeta.Min,
+		Max:         appMeta.Max,
+		Enum:        appMeta.Enum,
+		Pattern:     appMeta.Pattern,
+	}
 }
 
 // HandleDynFunc registers a dynamic HTTP handler function with the internal http.ServeMux.

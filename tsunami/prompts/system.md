@@ -454,6 +454,21 @@ var MyComponent = app.DefineComponent("MyComponent", func(_ struct{}) any {
 
 For state shared across components or accessible to external systems, declare global atoms as package variables:
 
+#### app.AtomMeta for External Integration
+
+app.ConfigAtom and app.DataAtom require an app.AtomMeta parameter (can pass nil if not needed) to provide schema information for external tools and AI agents. app.SharedAtom does not use app.AtomMeta since it's only for internal state sharing.
+
+```go
+type AtomMeta struct {
+    Desc    string   // Short, user-facing description
+    Units   string   // Units of measurement: "ms", "px", "GiB", etc. Leave blank for counts and unitless values
+    Min     *float64 // Optional minimum value (numeric types only)
+    Max     *float64 // Optional maximum value (numeric types only)
+    Enum    []string // Allowed values if finite set
+    Pattern string   // Regex constraint for strings
+}
+```
+
 #### Declaring Global Atoms
 
 ```go
@@ -464,41 +479,37 @@ var (
     userPrefs = app.SharedAtom("userPrefs", UserPreferences{})
 
     // ConfigAtom - Configuration that external systems can read/write
-    theme = app.ConfigAtom("theme", "dark")
-    apiKey = app.ConfigAtom("apiKey", "")
-    maxRetries = app.ConfigAtom("maxRetries", 3)
+    theme = app.ConfigAtom("theme", "dark", &app.AtomMeta{
+        Desc: "UI theme preference",
+        Enum: []string{"light", "dark"},
+    })
+    apiKey = app.ConfigAtom("apiKey", "", &app.AtomMeta{
+        Desc: "Authentication key for external services",
+        Pattern: "^[A-Za-z0-9]{32}$",
+    })
+    maxRetries = app.ConfigAtom("maxRetries", 3, &app.AtomMeta{
+        Desc: "Maximum retry attempts for failed requests",
+        Min: app.Ptr(0.0),
+        Max: app.Ptr(10.0),
+    })
 
     // DataAtom - Application data that external systems can read
-    currentUser = app.DataAtom("currentUser", UserStats{})
-    lastPollResult = app.DataAtom("lastPoll", APIResult{})
+    currentUser = app.DataAtom("currentUser", UserStats{}, &app.AtomMeta{
+        Desc: "Current user statistics and profile data",
+    })
+    lastPollResult = app.DataAtom("lastPoll", APIResult{}, &app.AtomMeta{
+        Desc: "Result from the most recent API polling operation",
+    })
 )
 ```
 
+- `app.Ptr(value)` - Helper to create pointers for Min/Max fields. Remember to use float64 literals like `app.Ptr(10.0)` since Min/Max expect \*float64.
+
+app.AtomMeta provides top-level constraints for the atom value. For complex struct types, use struct tags on individual fields (covered in Schema Generation section).
+
 #### Using Global Atoms
 
-Global atoms work exactly like local atoms - same Get/Set interface:
-
-```go
-var MyComponent = app.DefineComponent("MyComponent", func(_ struct{}) any {
-    // Reading atom values (registers render dependency)
-    loading := isLoading.Get()
-    currentTheme := theme.Get()
-    user := currentUser.Get()
-
-    // Setting atom values (only in event handlers)
-    handleToggle := func() {
-        isLoading.Set(true) // Direct value setting
-    }
-
-    handleRetry := func() {
-        maxRetries.SetFn(func(current int) int {
-            return current + 1  // Functional update
-        })
-    }
-
-    return vdom.H("div", nil, "Loading: ", loading)
-})
-```
+Global atoms work exactly like local atoms - same Get/Set/SetFn interface.
 
 #### Global Atom Types
 
@@ -527,8 +538,36 @@ ConfigAtom and DataAtom automatically create REST endpoints:
 - `GET /api/config` - Returns all config atom values
 - `POST /api/config` - Updates (merges) config atom values
 - `GET /api/data` - Returns all data atom values
+- `GET /api/schemas` - Returns JSON schema information for the /api/config and /api/data endpoints based on app.AtomMeta and type reflection information
 
 This makes Tsunami applications naturally suitable for integration with external tools, monitoring systems, and AI agents that need to inspect or configure the application.
+
+#### Schema Generation for External Tools
+
+When using ConfigAtom and DataAtom, you can provide schema metadata to help external AI tools understand your atom structure. Use the optional app.AtomMeta parameter and struct tags for detailed field schemas:
+
+```go
+type UserPrefs struct {
+    Theme       string `json:"theme" desc:"UI theme preference" enum:"light,dark"`
+    FontSize    int    `json:"fontSize" desc:"Font size in pixels" units:"px" min:"8" max:"32"`
+    APIEndpoint string `json:"apiEndpoint" desc:"API base URL" pattern:"^https?://.*"`
+}
+
+userPrefs := app.ConfigAtom("userPrefs", UserPrefs{}, &app.AtomMeta{
+    Desc: "User interface and behavior preferences",
+})
+```
+
+**Supported schema tags:**
+
+- `desc:"..."` - Human-readable description of the field
+- `units:"..."` - Units of measurement (ms, px, MB, GB, etc.)
+- `min:"123"` - Minimum value for numeric types (parsed as a float)
+- `max:"456"` - Maximum value for numeric types (parsed as a float)
+- `enum:"val1,val2,val3"` - Comma-separated list of allowed string values
+- `pattern:"regex"` - Regular expression for string validation
+
+For complex validation rules or special cases, document them in the app.AtomMeta description (e.g., "Note: 'retryDelays' must contain exactly 3 values in ascending order").
 
 ## Component Code Conventions
 
@@ -653,7 +692,7 @@ The style map in props mirrors React's style object pattern, making it familiar 
 Quick styles can be added using a vdom.H("style", nil, "...") tag. You may also place CSS files in the `static` directory, and serve them directly with:
 
 ```go
-vdom.H("link", map[string]any{"rel": "stylesheet", "src": "/static/mystyles.css"})
+vdom.H("link", map[string]any{"rel": "stylesheet", "href": "/static/mystyles.css"})
 ```
 
 ## Component Definition Pattern
@@ -1191,6 +1230,14 @@ type Todo struct {
 	Completed bool   `json:"completed"`
 }
 
+// Global state using DataAtom for external integration
+var todosAtom = app.DataAtom("todos", []Todo{
+	{Id: 1, Text: "Learn Tsunami", Completed: false},
+	{Id: 2, Text: "Build an app", Completed: false},
+}, &app.AtomMeta{
+	Desc: "List of todo items with completion status",
+})
+
 type TodoItemProps struct {
 	Todo     Todo   `json:"todo"`
 	OnToggle func() `json:"onToggle"`
@@ -1220,59 +1267,55 @@ var TodoItem = app.DefineComponent("TodoItem", func(props TodoItemProps) any {
 
 // Root component must be named "App"
 var App = app.DefineComponent("App", func(_ struct{}) any {
-	// UseLocal returns Atom[T] with Get() and Set() methods
-	todos := app.UseLocal([]Todo{
-		{Id: 1, Text: "Learn Tsunami", Completed: false},
-		{Id: 2, Text: "Build an app", Completed: false},
-	})
-	nextId := app.UseLocal(3)
-	inputText := app.UseLocal("")
+	// Local state for form and ID management
+	nextIdAtom := app.UseLocal(3)
+	inputTextAtom := app.UseLocal("")
 
 	// Event handlers
 	addTodo := func() {
-		currentInput := inputText.Get()
+		currentInput := inputTextAtom.Get()
 		if currentInput == "" {
 			return
 		}
-		currentTodos := todos.Get()
-		currentNextId := nextId.Get()
+		currentTodos := todosAtom.Get()
+		currentNextId := nextIdAtom.Get()
 
-		todos.Set(append(currentTodos, Todo{
+		todosAtom.Set(append(currentTodos, Todo{
 			Id:        currentNextId,
 			Text:      currentInput,
 			Completed: false,
 		}))
-		nextId.Set(currentNextId + 1)
-		inputText.Set("")
+		nextIdAtom.Set(currentNextId + 1)
+		inputTextAtom.Set("")
 	}
 
-    toggleTodo := func(id int) {
-        todos.SetFn(func(current []Todo) []Todo {
-            // SetFn automatically deep copies current value
-            for i := range current {
-                if current[i].Id == id {
-                    current[i].Completed = !current[i].Completed
-                    break
-                }
-            }
-            return current
-        })
-    }
+	toggleTodo := func(id int) {
+		todosAtom.SetFn(func(current []Todo) []Todo {
+			// SetFn automatically deep copies current value
+			for i := range current {
+				if current[i].Id == id {
+					current[i].Completed = !current[i].Completed
+					break
+				}
+			}
+			return current
+		})
+	}
 
 	deleteTodo := func(id int) {
-		currentTodos := todos.Get()
+		currentTodos := todosAtom.Get()
 		newTodos := make([]Todo, 0)
 		for _, todo := range currentTodos {
 			if todo.Id != id {
 				newTodos = append(newTodos, todo)
 			}
 		}
-		todos.Set(newTodos)
+		todosAtom.Set(newTodos)
 	}
 
 	// Read atom values in render code
-	todoList := todos.Get()
-	currentInput := inputText.Get()
+	todoList := todosAtom.Get()
+	currentInput := inputTextAtom.Get()
 
 	return vdom.H("div", map[string]any{
 		"className": "max-w-[500px] m-5 font-sans",
@@ -1290,7 +1333,7 @@ var App = app.DefineComponent("App", func(_ struct{}) any {
 				"placeholder": "Add new item...",
 				"value":       currentInput,
 				"onChange": func(e vdom.VDomEvent) {
-					inputText.Set(e.TargetValue)
+					inputTextAtom.Set(e.TargetValue)
 				},
 			}),
 			vdom.H("button", map[string]any{
