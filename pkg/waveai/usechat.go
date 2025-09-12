@@ -228,7 +228,7 @@ func HandleAIChat(w http.ResponseWriter, r *http.Request) {
 
 	// Stream response based on API type
 	if aiOpts.APIType == APIType_Anthropic {
-		_, err := StreamAnthropicResponses(r.Context(), sseHandler, aiOpts, req.Messages)
+		_, err := StreamAnthropicResponses(r.Context(), sseHandler, aiOpts, req.Messages, nil)
 		if err != nil {
 			log.Printf("Anthropic streaming error: %v", err)
 		}

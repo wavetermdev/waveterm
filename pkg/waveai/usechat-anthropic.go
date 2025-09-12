@@ -58,6 +58,13 @@ type StopReason struct {
 	FinishStep bool `json:"finish_step,omitempty"`
 }
 
+// ToolDefinition represents a tool that can be used by the AI model
+type ToolDefinition struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	InputSchema any    `json:"input_schema"`
+}
+
 // ---------- Anthropic wire types (subset) ----------
 // Derived from anthropic-messages-api.md and anthropic-streaming.md. :contentReference[oaicite:6]{index=6} :contentReference[oaicite:7]{index=7}
 
@@ -71,10 +78,10 @@ type anthropicStreamRequest struct {
 	Messages   []anthropicInputMessage `json:"messages"`
 	MaxTokens  int                     `json:"max_tokens"`
 	Stream     bool                    `json:"stream"`
-	System     interface{}             `json:"system,omitempty"`
-	ToolChoice interface{}             `json:"tool_choice,omitempty"`
-	Tools      interface{}             `json:"tools,omitempty"`
-	Thinking   interface{}             `json:"thinking,omitempty"`
+	System     any                     `json:"system,omitempty"`
+	ToolChoice any                     `json:"tool_choice,omitempty"`
+	Tools      []ToolDefinition        `json:"tools,omitempty"`
+	Thinking   any                     `json:"thinking,omitempty"`
 }
 
 type anthropicMessageObj struct {
@@ -84,34 +91,42 @@ type anthropicMessageObj struct {
 	StopSequence *string `json:"stop_sequence"`
 }
 
+type anthropicContentBlockType struct {
+	Type     string          `json:"type"`
+	Text     string          `json:"text,omitempty"`
+	Thinking string          `json:"thinking,omitempty"`
+	ID       string          `json:"id,omitempty"`
+	Name     string          `json:"name,omitempty"`
+	Input    json.RawMessage `json:"input,omitempty"`
+}
+
+type anthropicDeltaType struct {
+	Type        string  `json:"type"`
+	Text        string  `json:"text,omitempty"`     // text_delta.text
+	Thinking    string  `json:"thinking,omitempty"` // thinking_delta.thinking
+	PartialJSON string  `json:"partial_json,omitempty"`
+	Signature   string  `json:"signature,omitempty"`
+	StopReason  *string `json:"stop_reason,omitempty"`   // message_delta.delta.stop_reason
+	StopSeq     *string `json:"stop_sequence,omitempty"` // message_delta.delta.stop_sequence
+}
+
+type anthropicUsageType struct {
+	OutputTokens int `json:"output_tokens,omitempty"` // cumulative
+}
+
+type anthropicErrorType struct {
+	Type    string `json:"type"`
+	Message string `json:"message"`
+}
+
 type anthropicFullStreamEvent struct {
-	Type         string               `json:"type"`
-	Message      *anthropicMessageObj `json:"message,omitempty"`
-	Index        *int                 `json:"index,omitempty"`
-	ContentBlock *struct {
-		Type     string          `json:"type"`
-		Text     string          `json:"text,omitempty"`
-		Thinking string          `json:"thinking,omitempty"`
-		ID       string          `json:"id,omitempty"`
-		Name     string          `json:"name,omitempty"`
-		Input    json.RawMessage `json:"input,omitempty"`
-	} `json:"content_block,omitempty"`
-	Delta *struct {
-		Type        string  `json:"type"`
-		Text        string  `json:"text,omitempty"`     // text_delta.text
-		Thinking    string  `json:"thinking,omitempty"` // thinking_delta.thinking
-		PartialJSON string  `json:"partial_json,omitempty"`
-		Signature   string  `json:"signature,omitempty"`
-		StopReason  *string `json:"stop_reason,omitempty"`   // message_delta.delta.stop_reason
-		StopSeq     *string `json:"stop_sequence,omitempty"` // message_delta.delta.stop_sequence
-	} `json:"delta,omitempty"`
-	Usage *struct {
-		OutputTokens int `json:"output_tokens,omitempty"` // cumulative
-	} `json:"usage,omitempty"`
-	Error *struct {
-		Type    string `json:"type"`
-		Message string `json:"message"`
-	} `json:"error,omitempty"`
+	Type         string                      `json:"type"`
+	Message      *anthropicMessageObj        `json:"message,omitempty"`
+	Index        *int                        `json:"index,omitempty"`
+	ContentBlock *anthropicContentBlockType  `json:"content_block,omitempty"`
+	Delta        *anthropicDeltaType         `json:"delta,omitempty"`
+	Usage        *anthropicUsageType         `json:"usage,omitempty"`
+	Error        *anthropicErrorType         `json:"error,omitempty"`
 }
 
 // ---------- per-index content block bookkeeping ----------
@@ -184,6 +199,7 @@ func StreamAnthropicResponses(
 	sse *SSEHandlerCh,
 	opts *wshrpc.WaveAIOptsType,
 	messages []UseChatMessage,
+	tools []ToolDefinition,
 ) (*StopReason, error) {
 	if sse == nil {
 		return nil, errors.New("sse handler is nil")
@@ -208,7 +224,7 @@ func StreamAnthropicResponses(
 		maxTokens = 1024 // safe default per docs/examples :contentReference[oaicite:13]{index=13}
 	}
 
-	reqBody, err := buildAnthropicRequest(opts.Model, maxTokens, messages)
+	reqBody, err := buildAnthropicRequest(opts.Model, maxTokens, messages, tools)
 	if err != nil {
 		return nil, err
 	}
@@ -324,7 +340,7 @@ func StreamAnthropicResponses(
 		if line == "" {
 			// dispatch event
 			if curEvent != "" {
-				if stop, ret, rerr := handleAnthropicEvent(curEvent, dataBuf.String(), sse, blockMap, &toolCalls, &msgID, &model); rerr != nil {
+				if stop, ret, rerr := handleAnthropicEvent(curEvent, dataBuf.String(), sse, blockMap, &toolCalls, &msgID, &model, finalStop); rerr != nil {
 					// Anthropic sent error event or malformed JSON.
 					return stop, rerr
 				} else if ret != nil {
@@ -382,6 +398,7 @@ func handleAnthropicEvent(
 	toolCalls *[]ToolCall,
 	msgID *string,
 	model *string,
+	finalStop string,
 ) (stopFromDelta *StopReason, final *StopReason, err error) {
 
 	switch eventName {
@@ -593,7 +610,7 @@ func handleAnthropicEvent(
 
 // buildAnthropicRequest converts our UseChatMessage[] to Anthropic's request
 // body with stream=true and configured model/max_tokens. :contentReference[oaicite:23]{index=23}
-func buildAnthropicRequest(model string, maxTokens int, msgs []UseChatMessage) (*anthropicStreamRequest, error) {
+func buildAnthropicRequest(model string, maxTokens int, msgs []UseChatMessage, tools []ToolDefinition) (*anthropicStreamRequest, error) {
 	if model == "" {
 		return nil, errors.New("opts.model is required")
 	}
@@ -601,6 +618,9 @@ func buildAnthropicRequest(model string, maxTokens int, msgs []UseChatMessage) (
 		Model:     model,
 		MaxTokens: maxTokens,
 		Stream:    true,
+	}
+	if len(tools) > 0 {
+		out.Tools = tools
 	}
 	for _, m := range msgs {
 		aim := anthropicInputMessage{Role: m.Role}

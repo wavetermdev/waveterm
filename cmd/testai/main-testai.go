@@ -57,7 +57,7 @@ func (w *TestResponseWriter) SetReadDeadline(deadline time.Time) error {
 	return nil
 }
 
-func getToolDefinitions() []interface{} {
+func getToolDefinitions() []waveai.ToolDefinition {
 	var schemas map[string]interface{}
 	if err := json.Unmarshal([]byte(testSchemaJSON), &schemas); err != nil {
 		fmt.Printf("Error parsing schema: %v\n", err)
@@ -65,27 +65,24 @@ func getToolDefinitions() []interface{} {
 	}
 
 	configSchema := schemas["config"]
-	return []interface{}{
-		map[string]interface{}{
-			"type": "function",
-			"function": map[string]interface{}{
-				"name":        "get_config",
-				"description": "Get the current GitHub Actions Monitor configuration settings including repository, workflow, polling interval, and max workflow runs",
+	return []waveai.ToolDefinition{
+		{
+			Name:        "get_config",
+			Description: "Get the current GitHub Actions Monitor configuration settings including repository, workflow, polling interval, and max workflow runs",
+			InputSchema: map[string]interface{}{
+				"type": "object",
 			},
 		},
-		map[string]interface{}{
-			"type": "function",
-			"function": map[string]interface{}{
-				"name":        "update_config",
-				"description": "Update GitHub Actions Monitor configuration settings",
-				"parameters":  configSchema,
-			},
+		{
+			Name:        "update_config",
+			Description: "Update GitHub Actions Monitor configuration settings",
+			InputSchema: configSchema,
 		},
-		map[string]interface{}{
-			"type": "function",
-			"function": map[string]interface{}{
-				"name":        "get_data",
-				"description": "Get the current GitHub Actions workflow run data including workflow runs, loading state, and errors",
+		{
+			Name:        "get_data",
+			Description: "Get the current GitHub Actions workflow run data including workflow runs, loading state, and errors",
+			InputSchema: map[string]interface{}{
+				"type": "object",
 			},
 		},
 	}
@@ -164,7 +161,12 @@ func testAnthropic(model, message string, withTools bool) {
 	}
 	defer sseHandler.Close()
 
-	stopReason, err := waveai.StreamAnthropicResponses(ctx, sseHandler, opts, messages)
+	var tools []waveai.ToolDefinition
+	if withTools {
+		tools = getToolDefinitions()
+	}
+	
+	stopReason, err := waveai.StreamAnthropicResponses(ctx, sseHandler, opts, messages, tools)
 	if err != nil {
 		fmt.Printf("Anthropic streaming error: %v\n", err)
 	}
