@@ -110,7 +110,7 @@ tasks:
     package:
         desc: Package the application for the current platform.
         cmds:
-            - npm run build:prod && npm run electron-builder -- -c electron-builder.config.cjs -p never {{.CLI_ARGS}}
+            - npm run build:prod && npm exec electron-builder -- -c electron-builder.config.cjs -p never {{.CLI_ARGS}}
         deps:
             - clean
             - npm:install
