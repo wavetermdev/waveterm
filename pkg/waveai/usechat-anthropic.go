@@ -10,7 +10,6 @@
 package waveai
 
 import (
-	"bufio"
 	"bytes"
 	"context"
 	"crypto/rand"
@@ -24,6 +23,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/launchdarkly/eventsource"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 )
 
@@ -250,17 +250,9 @@ func StreamAnthropicResponses(
 		return nil, parseAnthropicHTTPError(resp)
 	}
 
-	// Stream decoding state
-	scanner := bufio.NewScanner(resp.Body)
-	scanner.Buffer(make([]byte, 64*1024), 8*1024*1024) // allow large lines
-	var curEvent string
-	var dataBuf bytes.Buffer
-
-	reset := func() {
-		curEvent = ""
-		dataBuf.Reset()
-	}
-
+	// Use eventsource decoder for proper SSE parsing
+	decoder := eventsource.NewDecoder(resp.Body)
+	
 	// Per-response state
 	blockMap := map[int]*blockState{}
 	var toolCalls []ToolCall
@@ -268,51 +260,32 @@ func StreamAnthropicResponses(
 	var msgID string
 	var model string
 
-	// SSE loop per RFC: collect "event:" and multi-line "data:" until blank line.
+	// SSE event processing loop
 	for {
-		if !scanner.Scan() {
-			// EOF or read error: treat as end of stream.
-			if err := scanner.Err(); err != nil && !errors.Is(err, io.EOF) {
-				// transport error mid-stream
-				_ = sse.AiMsgError(err.Error())
-				return &StopReason{
-					Kind:      StopKindError,
-					ErrorType: "stream",
-					ErrorText: err.Error(),
-				}, err
+		event, err := decoder.Decode()
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				// Normal end of stream
+				break
 			}
-			break
-		}
-		line := scanner.Text()
-		if line == "" {
-			// dispatch event
-			if curEvent != "" {
-				if stop, ret := handleAnthropicEvent(curEvent, dataBuf.String(), sse, blockMap, &toolCalls, &msgID, &model, stopFromDelta); ret != nil {
-					// Either error or message_stop triggered return
-					return ret, nil
-				} else {
-					// maybe updated final stop reason (from message_delta)
-					if stop != nil && *stop != "" {
-						stopFromDelta = *stop
-					}
-				}
-			}
-			reset()
-			continue
+			// transport error mid-stream
+			_ = sse.AiMsgError(err.Error())
+			return &StopReason{
+				Kind:      StopKindError,
+				ErrorType: "stream",
+				ErrorText: err.Error(),
+			}, err
 		}
 
-		if strings.HasPrefix(line, "event:") {
-			curEvent = strings.TrimSpace(strings.TrimPrefix(line, "event:"))
-			continue
-		}
-		if strings.HasPrefix(line, "data:") {
-			if dataBuf.Len() > 0 {
-				dataBuf.WriteByte('\n')
+		if stop, ret := handleAnthropicEvent(event, sse, blockMap, &toolCalls, &msgID, &model, stopFromDelta); ret != nil {
+			// Either error or message_stop triggered return
+			return ret, nil
+		} else {
+			// maybe updated final stop reason (from message_delta)
+			if stop != nil && *stop != "" {
+				stopFromDelta = *stop
 			}
-			dataBuf.WriteString(strings.TrimPrefix(line, "data: "))
-			continue
 		}
-		// ignore comments and retry: lines
 	}
 
 	// If we got here without a message_stop, close as done.
@@ -334,8 +307,7 @@ func StreamAnthropicResponses(
 //
 // Event model: anthropic-streaming.md. :contentReference[oaicite:16]{index=16}
 func handleAnthropicEvent(
-	eventName string,
-	data string,
+	event eventsource.Event,
 	sse *SSEHandlerCh,
 	blocks map[int]*blockState,
 	toolCalls *[]ToolCall,
@@ -343,6 +315,8 @@ func handleAnthropicEvent(
 	model *string,
 	stopFromPreviousDelta string,
 ) (stopFromDelta *string, final *StopReason) {
+	eventName := event.Event()
+	data := event.Data()
 	switch eventName {
 	case "ping":
 		return nil, nil // ignore
