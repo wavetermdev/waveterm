@@ -6,8 +6,10 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"sort"
 	"strings"
+	"text/tabwriter"
 
 	"github.com/spf13/cobra"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
@@ -30,6 +32,7 @@ type BlockDetails struct {
 	BlockId     string              `json:"blockid"`     // Unique identifier for the block
 	WorkspaceId string              `json:"workspaceid"` // ID of the workspace containing the block
 	TabId       string              `json:"tabid"`       // ID of the tab containing the block
+	View        string              `json:"view"`        // Canonical view type (term, web, preview, edit, sysinfo, waveai)
 	Meta        waveobj.MetaMapType `json:"meta"`        // Block metadata including view type
 }
 
@@ -53,8 +56,14 @@ Examples:
   # Filter by workspace ID
   wsh blocks list --workspace=12d0c067-378e-454c-872e-77a314248114
 
+  # Filter by tab ID
+  wsh blocks list --tab=a0459921-cc1a-48cc-ae7b-5f4821e1c9e1
+
   # Output as JSON for scripting
-  wsh blocks list --json`,
+  wsh blocks list --json
+
+  # Set a different timeout (in milliseconds)
+  wsh blocks list --timeout=10000`,
 	RunE:    blocksListRun,
 	PreRunE: preRunSetupRpcClient,
 	SilenceUsage: true,
@@ -65,10 +74,10 @@ Examples:
 func init() {
 	blocksListCmd.Flags().StringVar(&blocksWindowId, "window", "", "restrict to window id")
 	blocksListCmd.Flags().StringVar(&blocksWorkspaceId, "workspace", "", "restrict to workspace id")
-	blocksListCmd.Flags().StringVar(&blocksTabId, "tab", "", "restrict to tab id")
+	blocksListCmd.Flags().StringVar(&blocksTabId, "tab", "", "restrict to specific tab id")
 	blocksListCmd.Flags().StringVar(&blocksView, "view", "", "restrict to view type (term/terminal, web/browser, preview/edit, sysinfo, waveai)")
 	blocksListCmd.Flags().BoolVar(&blocksJSON, "json", false, "output as JSON")
-	blocksListCmd.Flags().IntVar(&blocksTimeout, "timeout", 5, "timeout in seconds for RPC calls")
+	blocksListCmd.Flags().IntVar(&blocksTimeout, "timeout", 5000, "timeout in milliseconds for RPC calls (default: 5000)")
 
 	for _, cmd := range rootCmd.Commands() {
 		if cmd.Use == "blocks" {
@@ -92,7 +101,7 @@ func init() {
 func blocksListRun(cmd *cobra.Command, args []string) error {
 	var allBlocks []BlockDetails
 
-	workspaces, err := wshclient.WorkspaceListCommand(RpcClient, &wshrpc.RpcOpts{Timeout: int64(blocksTimeout * 1000)})
+	workspaces, err := wshclient.WorkspaceListCommand(RpcClient, &wshrpc.RpcOpts{Timeout: int64(blocksTimeout)})
 	if err != nil {
 		return fmt.Errorf("failed to list workspaces: %v", err)
 	}
@@ -130,21 +139,23 @@ func blocksListRun(cmd *cobra.Command, args []string) error {
 	}
 
 	// Query each selected workspace
+	hadSuccess := false
 	for _, wsId := range workspaceIdsToQuery {
 		req := wshrpc.BlocksListRequest{WorkspaceId: wsId}
 		if blocksWindowId != "" {
 			req.WindowId = blocksWindowId
 		}
 
-		blocks, err := wshclient.BlocksListCommand(RpcClient, req, &wshrpc.RpcOpts{Timeout: int64(blocksTimeout * 1000)})
+		blocks, err := wshclient.BlocksListCommand(RpcClient, req, &wshrpc.RpcOpts{Timeout: int64(blocksTimeout)})
 		if err != nil {
 			WriteStderr("Warning: couldn't list blocks for workspace %s: %v\n", wsId, err)
 			continue
 		}
+		hadSuccess = true
 
 		// Apply filters
 		for _, b := range blocks {
-			if blocksTabId != "" && blocksTabId != "current" && b.TabId != blocksTabId {
+			if blocksTabId != "" && b.TabId != blocksTabId {
 				continue
 			}
 
@@ -157,14 +168,36 @@ func blocksListRun(cmd *cobra.Command, args []string) error {
 				}
 			}
 
+			v := b.Meta.GetString(waveobj.MetaKey_View, "")
 			allBlocks = append(allBlocks, BlockDetails{
 				BlockId:     b.BlockId,
 				WorkspaceId: b.WorkspaceId,
 				TabId:       b.TabId,
+				View:        v,
 				Meta:        b.Meta,
 			})
 		}
 	}
+
+	// No blocks found check
+	if len(allBlocks) == 0 {
+		if !hadSuccess {
+			return fmt.Errorf("failed to list blocks from all %d workspace(s)", len(workspaceIdsToQuery))
+		}
+		WriteStdout("No blocks found\n")
+		return nil
+	}
+
+	// Stable ordering for both JSON and table output
+	sort.Slice(allBlocks, func(i, j int) bool {
+		if allBlocks[i].WorkspaceId != allBlocks[j].WorkspaceId {
+			return allBlocks[i].WorkspaceId < allBlocks[j].WorkspaceId
+		}
+		if allBlocks[i].TabId != allBlocks[j].TabId {
+			return allBlocks[i].TabId < allBlocks[j].TabId
+		}
+		return allBlocks[i].BlockId < allBlocks[j].BlockId
+	})
 
 	// Output results
 	if blocksJSON {
@@ -175,31 +208,19 @@ func blocksListRun(cmd *cobra.Command, args []string) error {
 		WriteStdout("%s\n", string(bytes))
 		return nil
 	}
-
-	if len(allBlocks) == 0 {
-		WriteStdout("No blocks found\n")
-		return nil
-	}
-
-	// Stable ordering
-	sort.Slice(allBlocks, func(i, j int) bool {
-		if allBlocks[i].WorkspaceId != allBlocks[j].WorkspaceId {
-			return allBlocks[i].WorkspaceId < allBlocks[j].WorkspaceId
-		}
-		if allBlocks[i].TabId != allBlocks[j].TabId {
-			return allBlocks[i].TabId < allBlocks[j].TabId
-		}
-		return allBlocks[i].BlockId < allBlocks[j].BlockId
-	})
-	format := "%-36s  %-10s  %-36s  %-15s  %s\n"
-	WriteStdout(format, "BLOCK ID", "WORKSPACE", "TAB ID", "VIEW", "CONTENT")
+	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	defer w.Flush()
+	fmt.Fprintf(w, "BLOCK ID\tWORKSPACE\tTAB ID\tVIEW\tCONTENT\n")
 
 	for _, b := range allBlocks {
 		blockID := b.BlockId
 		if len(blockID) > 36 {
 			blockID = blockID[:34] + ".."
 		}
-		view := b.Meta.GetString(waveobj.MetaKey_View, "<unknown>")
+		view := b.View
+		if view == "" {
+			view = "<unknown>"
+		}
 		var content string
 
 		switch view {
@@ -214,8 +235,8 @@ func blocksListRun(cmd *cobra.Command, args []string) error {
 		}
 
 		wsID := b.WorkspaceId
-		if len(wsID) > 10 {
-			wsID = wsID[0:8] + ".."
+		if len(wsID) > 36 {
+			wsID = wsID[:34] + ".."
 		}
 
 		tabID := b.TabId
@@ -223,7 +244,7 @@ func blocksListRun(cmd *cobra.Command, args []string) error {
 			tabID = tabID[0:34] + ".."
 		}
 
-		WriteStdout(format, blockID, wsID, tabID, view, content)
+		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n", blockID, wsID, tabID, view, content)
 	}
 
 	return nil
