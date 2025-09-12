@@ -12,6 +12,7 @@ import {
 import { boundNumber, useAtomValueSafe } from "@/util/util";
 import clsx from "clsx";
 import { Atom } from "jotai";
+import mermaid from "mermaid";
 import { OverlayScrollbarsComponent, OverlayScrollbarsComponentRef } from "overlayscrollbars-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown, { Components } from "react-markdown";
@@ -24,6 +25,15 @@ import remarkGfm from "remark-gfm";
 import { openLink } from "../store/global";
 import { IconButton } from "./iconbutton";
 import "./markdown.scss";
+
+let mermaidInitialized = false;
+
+const initializeMermaid = () => {
+    if (!mermaidInitialized) {
+        mermaid.initialize({ startOnLoad: false, theme: "dark" });
+        mermaidInitialized = true;
+    }
+};
 
 const Link = ({
     setFocusedHeading,
@@ -55,7 +65,35 @@ const Heading = ({ props, hnum }: { props: React.HTMLAttributes<HTMLHeadingEleme
     );
 };
 
-const Code = ({ className, children }: { className: string; children: React.ReactNode }) => {
+const Mermaid = ({ chart }: { chart: string }) => {
+    const ref = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        initializeMermaid();
+        if (!ref.current) {
+            return;
+        }
+
+        // Normalize the chart text
+        let normalizedChart = chart
+            .replace(/<br\s*\/?>/gi, "\n") // Convert <br/> and <br> to newlines
+            .replace(/\r\n/g, "\n") // Normalize \r\n to \n
+            .replace(/\n$/, ""); // Remove final newline
+
+        ref.current.removeAttribute("data-processed");
+        ref.current.textContent = normalizedChart;
+        console.log("mermaid", normalizedChart);
+        mermaid.run({ nodes: [ref.current] });
+    }, [chart]);
+
+    return <div className="mermaid" ref={ref} />;
+};
+
+const Code = ({ className = "", children }: { className?: string; children: React.ReactNode }) => {
+    if (/\blanguage-mermaid\b/.test(className)) {
+        const text = Array.isArray(children) ? children.join("") : String(children ?? "");
+        return <Mermaid chart={text} />;
+    }
     return <code className={className}>{children}</code>;
 };
 
