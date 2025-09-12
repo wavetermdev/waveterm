@@ -9,10 +9,15 @@ import { viteStaticCopy } from "vite-plugin-static-copy";
 import svgr from "vite-plugin-svgr";
 import tsconfigPaths from "vite-tsconfig-paths";
 
+// from our electron build
+const CHROME = "chrome140";
+const NODE = "node22";
+
 export default defineConfig({
     main: {
         root: ".",
         build: {
+            target: NODE,
             rollupOptions: {
                 input: {
                     index: "emain/emain.ts",
@@ -37,6 +42,7 @@ export default defineConfig({
     preload: {
         root: ".",
         build: {
+            target: NODE,
             sourcemap: true,
             rollupOptions: {
                 input: {
@@ -57,7 +63,7 @@ export default defineConfig({
     renderer: {
         root: ".",
         build: {
-            target: "es6",
+            target: CHROME,
             sourcemap: true,
             outDir: "dist/frontend",
             rollupOptions: {
@@ -72,7 +78,7 @@ export default defineConfig({
         server: {
             open: false,
             watch: {
-                ignored: ["**/*.go", "**/go.mod", "**/go.sum", "**/*.md", "**/*.json"],
+                ignored: ["dist/**", "**/*.go", "**/go.mod", "**/go.sum", "**/*.md", "**/*.json"],
             },
         },
         css: {
@@ -83,8 +89,8 @@ export default defineConfig({
             },
         },
         plugins: [
-            ViteImageOptimizer(),
             tsconfigPaths(),
+            ViteImageOptimizer(),
             svgr({
                 svgrOptions: { exportType: "default", ref: true, svgo: false, titleProp: true },
                 include: "**/*.svg",
