@@ -34,9 +34,9 @@ var (
 )
 
 type CPUDataPoint struct {
-	Time      int64    `json:"time"`      // Unix timestamp in seconds
-	CPUUsage  *float64 `json:"cpuUsage"`  // CPU usage percentage (nil for empty slots)
-	Timestamp string   `json:"timestamp"` // Human readable timestamp
+	Time      int64    `json:"time" desc:"Unix timestamp (seconds since epoch)" units:"s"`
+	CPUUsage  *float64 `json:"cpuUsage" desc:"CPU usage percentage" units:"%" min:"0" max:"100"`
+	Timestamp string   `json:"timestamp" desc:"Human-readable HH:MM:SS"`
 }
 
 type StatsPanelProps struct {
@@ -213,7 +213,7 @@ var App = app.DefineComponent("App", func(_ struct{}) any {
 				}, "Real-Time CPU Usage Monitor"),
 				vdom.H("p", map[string]any{
 					"className": "text-gray-400",
-				}, "Live CPU usage data collected using gopsutil, displaying 60 seconds of history"),
+				}, "Live CPU usage data collected using gopsutil, displaying ", dataPointCount, " seconds of history"),
 			),
 
 			// Controls
@@ -340,7 +340,7 @@ var App = app.DefineComponent("App", func(_ struct{}) any {
 						vdom.H("span", map[string]any{
 							"className": "text-blue-400 mt-1",
 						}, "•"),
-						"Rolling window of 60 seconds of historical data",
+						"Rolling window of ", dataPointCount, " seconds of historical data",
 					),
 					vdom.H("li", map[string]any{
 						"className": "flex items-start gap-2",

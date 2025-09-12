@@ -78,6 +78,13 @@ func createStructDefinition(t reflect.Type) map[string]any {
 			}
 		}
 
+		// Add pattern constraint for string types
+		if fieldSchema["type"] == "string" {
+			if pattern := field.Tag.Get("pattern"); pattern != "" {
+				fieldSchema["pattern"] = pattern
+			}
+		}
+
 		properties[fieldInfo.FieldName] = fieldSchema
 
 		// Add to required if not a pointer and not marked as omitempty
@@ -195,7 +202,8 @@ func generateShallowJSONSchema(t reflect.Type, meta *AtomMeta) map[string]any {
 	// Special case for []byte - treat as string with base64 encoding
 	if t.Kind() == reflect.Slice && t.Elem().Kind() == reflect.Uint8 {
 		schema["type"] = "string"
-		schema["format"] = "base64"
+		schema["contentEncoding"] = "base64"
+		schema["contentMediaType"] = "application/octet-stream"
 		return schema
 	}
 
@@ -233,17 +241,6 @@ func generateShallowJSONSchema(t reflect.Type, meta *AtomMeta) map[string]any {
 	return schema
 }
 
-
-
-// getAtomValueType returns the reflect.Type of the atom's value
-func getAtomValueType(atom genAtom) reflect.Type {
-	val := atom.GetVal()
-	if val == nil {
-		return nil
-	}
-	return reflect.TypeOf(val)
-}
-
 // getAtomMeta extracts AtomMeta from the atom
 func getAtomMeta(atom genAtom) *AtomMeta {
 	return atom.GetMeta()
@@ -254,22 +251,22 @@ func generateSchemaFromAtoms(atoms map[string]genAtom, title, description string
 	// Collect all struct definitions
 	defs := make(map[reflect.Type]any)
 	for _, atom := range atoms {
-		atomType := getAtomValueType(atom)
+		atomType := atom.GetAtomType()
 		if atomType != nil {
 			collectStructDefs(atomType, defs)
 		}
 	}
-	
+
 	// Generate properties for each atom
 	properties := make(map[string]any)
 	for atomName, atom := range atoms {
-		atomType := getAtomValueType(atom)
+		atomType := atom.GetAtomType()
 		if atomType != nil {
 			atomMeta := getAtomMeta(atom)
 			properties[atomName] = generateShallowJSONSchema(atomType, atomMeta)
 		}
 	}
-	
+
 	// Build the final schema
 	schema := map[string]any{
 		"$schema":     "https://json-schema.org/draft/2020-12/schema",
@@ -278,7 +275,7 @@ func generateSchemaFromAtoms(atoms map[string]genAtom, title, description string
 		"description": description,
 		"properties":  properties,
 	}
-	
+
 	// Add definitions if any
 	if len(defs) > 0 {
 		definitions := make(map[string]any)
@@ -287,7 +284,7 @@ func generateSchemaFromAtoms(atoms map[string]genAtom, title, description string
 		}
 		schema["definitions"] = definitions
 	}
-	
+
 	return schema
 }
 

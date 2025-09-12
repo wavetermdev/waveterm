@@ -6,6 +6,7 @@ package engine
 import (
 	"encoding/json"
 	"fmt"
+	"reflect"
 	"sync"
 )
 
@@ -101,4 +102,9 @@ func (a *AtomImpl[T]) GetMeta() *AtomMeta {
 	a.lock.Lock()
 	defer a.lock.Unlock()
 	return a.meta
+}
+
+func (a *AtomImpl[T]) GetAtomType() reflect.Type {
+	var zero T
+	return reflect.TypeOf(zero)
 }

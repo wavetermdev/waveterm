@@ -30,6 +30,7 @@ type genAtom interface {
 	SetUsedBy(string, bool)
 	GetUsedBy() []string
 	GetMeta() *AtomMeta
+	GetAtomType() reflect.Type
 }
 
 type RootElem struct {

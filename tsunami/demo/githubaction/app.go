@@ -411,7 +411,7 @@ var App = app.DefineComponent("App",
 							vdom.H("span", map[string]any{
 								"className": "text-blue-400 mt-1",
 							}, "•"),
-							"Polls GitHub API every 5 seconds for real-time updates",
+							"Polls GitHub API every ", pollInterval, " seconds for real-time updates",
 						),
 						vdom.H("li", map[string]any{
 							"className": "flex items-start gap-2",

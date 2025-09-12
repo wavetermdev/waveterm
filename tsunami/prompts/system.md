@@ -456,7 +456,7 @@ For state shared across components or accessible to external systems, declare gl
 
 #### AtomMeta for External Integration
 
-ConfigAtom and DataAtom require an AtomMeta parameter to provide schema information for external tools and AI agents. SharedAtom does not use AtomMeta since it's only for internal state sharing.
+ConfigAtom and DataAtom require an AtomMeta parameter (can pass nil if not not needed) to provide schema information for external tools and AI agents. SharedAtom does not use AtomMeta since it's only for internal state sharing.
 
 ```go
 type AtomMeta struct {
@@ -692,7 +692,7 @@ The style map in props mirrors React's style object pattern, making it familiar 
 Quick styles can be added using a vdom.H("style", nil, "...") tag. You may also place CSS files in the `static` directory, and serve them directly with:
 
 ```go
-vdom.H("link", map[string]any{"rel": "stylesheet", "src": "/static/mystyles.css"})
+vdom.H("link", map[string]any{"rel": "stylesheet", "href": "/static/mystyles.css"})
 ```
 
 ## Component Definition Pattern
