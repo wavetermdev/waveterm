@@ -9,7 +9,6 @@ import { stringToBase64 } from "@/util/util";
 import clsx from "clsx";
 import * as jotai from "jotai";
 import * as React from "react";
-import GaugeChart from "react-gauge-chart";
 import "./term.scss";
 
 type StickerType = {
@@ -56,18 +55,6 @@ function convertHeightDimToPx(dim: number, config: StickerTermConfig) {
 }
 
 var valueAtom = jotai.atom(Math.random() * 100);
-
-function GaugeSticker() {
-    let [value, setValue] = jotai.useAtom(valueAtom);
-    React.useEffect(() => {
-        let interval = setInterval(() => {
-            var amt = Math.random() * 10 - 5;
-            setValue((value) => Math.max(0, Math.min(100, value + amt)));
-        }, 1000);
-        return () => clearInterval(interval);
-    });
-    return <GaugeChart id="gauge-chart1" nrOfLevels={20} percent={value / 100} />;
-}
 
 function TermSticker({ sticker, config }: { sticker: StickerType; config: StickerTermConfig }) {
     let style: React.CSSProperties = {
@@ -124,13 +111,6 @@ function TermSticker({ sticker, config }: { sticker: StickerType; config: Sticke
         return (
             <div className="term-sticker term-sticker-image" style={style} onClick={clickHandler}>
                 <img src={streamingUrl} />
-            </div>
-        );
-    }
-    if (sticker.stickertype == "gauge") {
-        return (
-            <div className="term-sticker term-sticker-gauge" style={style}>
-                <GaugeSticker />
             </div>
         );
     }

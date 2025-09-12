@@ -67,6 +67,9 @@ export default defineConfig({
                 },
             },
         },
+        optimizeDeps: {
+            include: ["monaco-yaml/yaml.worker.js"],
+        },
         server: {
             open: false,
             watch: {
