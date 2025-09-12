@@ -44,10 +44,8 @@ jobs:
               with:
                   version: 3.x
                   repo-token: ${{ secrets.GITHUB_TOKEN }}
-            - name: Install yarn
-              run: |
-                  corepack enable
-                  yarn install
+            - name: npm ci
+              run: npm ci
             - name: Build docsite
               run: task docsite:build:public
             - name: Upload Build Artifact

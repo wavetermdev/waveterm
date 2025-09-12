@@ -42,10 +42,8 @@ jobs:
             - uses: actions/setup-node@v5
               with:
                   node-version: ${{env.NODE_VERSION}}
-            - name: Install Yarn
-              run: |
-                  corepack enable
-                  yarn install
+            - name: npm ci
+              run: npm ci
             - name: Install Task
               uses: arduino/setup-task@v2
               with:

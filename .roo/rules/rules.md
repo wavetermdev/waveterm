@@ -4,8 +4,6 @@ Wave Terminal is a modern terminal which provides graphical blocks, dynamic layo
 
 It has a TypeScript/React frontend and a Go backend. They talk together over `wshrpc` a custom RPC protocol that is implemented over websocket (and domain sockets).
 
-The frontend uses yarn (berry).
-
 ### Coding Guidelines
 
 - **Go Conventions**:
