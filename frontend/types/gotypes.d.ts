@@ -590,6 +590,10 @@ declare global {
         "web:partition"?: string;
         "markdown:fontsize"?: number;
         "markdown:fixedfontsize"?: number;
+        "tsunami:*"?: boolean;
+        "tsunami:sdkreplacepath"?: string;
+        "tsunami:appdir"?: string;
+        "tsunami:scaffoldpath"?: string;
         "vdom:*"?: boolean;
         "vdom:initialized"?: boolean;
         "vdom:correlationid"?: string;
