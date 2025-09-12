@@ -229,7 +229,7 @@ func generateShallowJSONSchema(t reflect.Type, meta *AtomMeta) map[string]any {
 		}
 	case reflect.Struct:
 		// Reference the definition instead of recursing
-		schema["$ref"] = fmt.Sprintf("#/definitions/%s", t.Name())
+		schema["$ref"] = fmt.Sprintf("#/$defs/%s", t.Name())
 	case reflect.Ptr:
 		return generateShallowJSONSchema(t.Elem(), meta)
 	case reflect.Interface:
@@ -282,7 +282,7 @@ func generateSchemaFromAtoms(atoms map[string]genAtom, title, description string
 		for t, def := range defs {
 			definitions[t.Name()] = def
 		}
-		schema["definitions"] = definitions
+		schema["$defs"] = definitions
 	}
 
 	return schema

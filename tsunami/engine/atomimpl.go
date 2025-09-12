@@ -105,6 +105,5 @@ func (a *AtomImpl[T]) GetMeta() *AtomMeta {
 }
 
 func (a *AtomImpl[T]) GetAtomType() reflect.Type {
-	var zero T
-	return reflect.TypeOf(zero)
+	return reflect.TypeOf((*T)(nil)).Elem()
 }

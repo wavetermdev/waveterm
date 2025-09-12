@@ -454,9 +454,9 @@ var MyComponent = app.DefineComponent("MyComponent", func(_ struct{}) any {
 
 For state shared across components or accessible to external systems, declare global atoms as package variables:
 
-#### AtomMeta for External Integration
+#### app.AtomMeta for External Integration
 
-ConfigAtom and DataAtom require an AtomMeta parameter (can pass nil if not not needed) to provide schema information for external tools and AI agents. SharedAtom does not use AtomMeta since it's only for internal state sharing.
+app.ConfigAtom and app.DataAtom require an app.AtomMeta parameter (can pass nil if not not needed) to provide schema information for external tools and AI agents. app.SharedAtom does not use app.AtomMeta since it's only for internal state sharing.
 
 ```go
 type AtomMeta struct {
@@ -479,25 +479,25 @@ var (
     userPrefs = app.SharedAtom("userPrefs", UserPreferences{})
 
     // ConfigAtom - Configuration that external systems can read/write
-    theme = app.ConfigAtom("theme", "dark", &AtomMeta{
+    theme = app.ConfigAtom("theme", "dark", &app.AtomMeta{
         Desc: "UI theme preference",
         Enum: []string{"light", "dark"},
     })
-    apiKey = app.ConfigAtom("apiKey", "", &AtomMeta{
+    apiKey = app.ConfigAtom("apiKey", "", &app.AtomMeta{
         Desc: "Authentication key for external services",
         Pattern: "^[A-Za-z0-9]{32}$",
     })
-    maxRetries = app.ConfigAtom("maxRetries", 3, &AtomMeta{
+    maxRetries = app.ConfigAtom("maxRetries", 3, &app.AtomMeta{
         Desc: "Maximum retry attempts for failed requests",
         Min: app.Ptr(0.0),
         Max: app.Ptr(10.0),
     })
 
     // DataAtom - Application data that external systems can read
-    currentUser = app.DataAtom("currentUser", UserStats{}, &AtomMeta{
+    currentUser = app.DataAtom("currentUser", UserStats{}, &app.AtomMeta{
         Desc: "Current user statistics and profile data",
     })
-    lastPollResult = app.DataAtom("lastPoll", APIResult{}, &AtomMeta{
+    lastPollResult = app.DataAtom("lastPoll", APIResult{}, &app.AtomMeta{
         Desc: "Result from the most recent API polling operation",
     })
 )
@@ -505,7 +505,7 @@ var (
 
 - `app.Ptr(value)` - Helper to create pointers for Min/Max fields. Remember to use float64 literals like `app.Ptr(10.0)` since Min/Max expect \*float64.
 
-AtomMeta provides top-level constraints for the atom value. For complex struct types, use struct tags on individual fields (covered in Schema Generation section).
+app.AtomMeta provides top-level constraints for the atom value. For complex struct types, use struct tags on individual fields (covered in Schema Generation section).
 
 #### Using Global Atoms
 
@@ -538,13 +538,13 @@ ConfigAtom and DataAtom automatically create REST endpoints:
 - `GET /api/config` - Returns all config atom values
 - `POST /api/config` - Updates (merges) config atom values
 - `GET /api/data` - Returns all data atom values
-- `GET /api/schemas` - Returns JSON schema information for the /api/config and /api/data endpoints based on AtomMeta and type reflection information
+- `GET /api/schemas` - Returns JSON schema information for the /api/config and /api/data endpoints based on app.AtomMeta and type reflection information
 
 This makes Tsunami applications naturally suitable for integration with external tools, monitoring systems, and AI agents that need to inspect or configure the application.
 
 #### Schema Generation for External Tools
 
-When using ConfigAtom and DataAtom, you can provide schema metadata to help external AI tools understand your atom structure. Use the optional AtomMeta parameter and struct tags for detailed field schemas:
+When using ConfigAtom and DataAtom, you can provide schema metadata to help external AI tools understand your atom structure. Use the optional app.AtomMeta parameter and struct tags for detailed field schemas:
 
 ```go
 type UserPrefs struct {
@@ -553,7 +553,7 @@ type UserPrefs struct {
     APIEndpoint string `json:"apiEndpoint" desc:"API base URL" pattern:"^https?://.*"`
 }
 
-userPrefs := app.ConfigAtom("userPrefs", UserPrefs{}, &AtomMeta{
+userPrefs := app.ConfigAtom("userPrefs", UserPrefs{}, &app.AtomMeta{
     Desc: "User interface and behavior preferences",
 })
 ```
@@ -567,7 +567,7 @@ userPrefs := app.ConfigAtom("userPrefs", UserPrefs{}, &AtomMeta{
 - `enum:"val1,val2,val3"` - Comma-separated list of allowed string values
 - `pattern:"regex"` - Regular expression for string validation
 
-For complex validation rules or special cases, document them in the AtomMeta description (e.g., "Note: 'retryDelays' must contain exactly 3 values in ascending order").
+For complex validation rules or special cases, document them in the app.AtomMeta description (e.g., "Note: 'retryDelays' must contain exactly 3 values in ascending order").
 
 ## Component Code Conventions
 
