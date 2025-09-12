@@ -18,7 +18,12 @@ var (
 	BreakMode = Mode{Name: "Break", Duration: 5}
 
 	// Data atom to expose remaining seconds to external systems
-	remainingSecondsAtom = app.DataAtom("remainingSeconds", WorkMode.Duration*60)
+	remainingSecondsAtom = app.DataAtom("remainingSeconds", WorkMode.Duration*60, &app.AtomMeta{
+		Desc:  "Remaining seconds in current pomodoro timer",
+		Units: "s",
+		Min:   app.Ptr(0.0),
+		Max:   app.Ptr(3600.0),
+	})
 )
 
 type TimerDisplayProps struct {
@@ -33,7 +38,6 @@ type ControlButtonsProps struct {
 	OnReset   func()    `json:"onReset"`
 	OnMode    func(int) `json:"onMode"`
 }
-
 
 var TimerDisplay = app.DefineComponent("TimerDisplay",
 	func(props TimerDisplayProps) any {
@@ -151,7 +155,7 @@ var App = app.DefineComponent("App",
 			if !isRunning.Get() {
 				return
 			}
-			
+
 			// Calculate remaining time and update remainingSeconds
 			elapsed := time.Since(startTime.Current)
 			remaining := totalDuration.Current - elapsed
@@ -190,7 +194,7 @@ var App = app.DefineComponent("App",
 			),
 			TimerDisplay(TimerDisplayProps{
 				RemainingSeconds: remainingSecondsAtom.Get(),
-				Mode:            mode.Get(),
+				Mode:             mode.Get(),
 			}),
 			ControlButtons(ControlButtonsProps{
 				IsRunning: isRunning.Get(),

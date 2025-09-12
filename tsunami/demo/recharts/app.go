@@ -10,9 +10,16 @@ import (
 
 // Global atoms for config and data
 var (
-	chartDataAtom   = app.DataAtom("chartData", generateInitialData())
-	chartTypeAtom   = app.ConfigAtom("chartType", "line")
-	isAnimatingAtom = app.SharedAtom("isAnimating", false)
+	chartDataAtom = app.DataAtom("chartData", generateInitialData(), &app.AtomMeta{
+		Desc: "Chart data points for system metrics visualization",
+	})
+	chartTypeAtom = app.ConfigAtom("chartType", "line", &app.AtomMeta{
+		Desc: "Type of chart to display",
+		Enum: []string{"line", "area", "bar"},
+	})
+	isAnimatingAtom = app.ConfigAtom("isAnimating", false, &app.AtomMeta{
+		Desc: "Whether the chart is currently animating with live data",
+	})
 )
 
 type DataPoint struct {

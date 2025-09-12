@@ -43,11 +43,18 @@ func newHTTPHandlers(client *ClientImpl) *httpHandlers {
 	}
 }
 
+func setNoCacheHeaders(w http.ResponseWriter) {
+	w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
+	w.Header().Set("Pragma", "no-cache")
+	w.Header().Set("Expires", "0")
+}
+
 func (h *httpHandlers) registerHandlers(mux *http.ServeMux, opts handlerOpts) {
 	mux.HandleFunc("/api/render", h.handleRender)
 	mux.HandleFunc("/api/updates", h.handleSSE)
 	mux.HandleFunc("/api/data", h.handleData)
 	mux.HandleFunc("/api/config", h.handleConfig)
+	mux.HandleFunc("/api/schemas", h.handleSchemas)
 	mux.HandleFunc("/api/manifest", h.handleManifest(opts.ManifestFile))
 	mux.HandleFunc("/dyn/", h.handleDynContent)
 
@@ -69,6 +76,8 @@ func (h *httpHandlers) handleRender(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, fmt.Sprintf("internal server error: %v", panicErr), http.StatusInternalServerError)
 		}
 	}()
+
+	setNoCacheHeaders(w)
 
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -180,6 +189,8 @@ func (h *httpHandlers) handleData(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
+	setNoCacheHeaders(w)
+
 	if r.Method != http.MethodGet {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
@@ -201,6 +212,8 @@ func (h *httpHandlers) handleConfig(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, fmt.Sprintf("internal server error: %v", panicErr), http.StatusInternalServerError)
 		}
 	}()
+
+	setNoCacheHeaders(w)
 
 	switch r.Method {
 	case http.MethodGet:
@@ -261,6 +274,36 @@ func (h *httpHandlers) handleConfigPost(w http.ResponseWriter, r *http.Request) 
 	json.NewEncoder(w).Encode(response)
 }
 
+func (h *httpHandlers) handleSchemas(w http.ResponseWriter, r *http.Request) {
+	defer func() {
+		panicErr := util.PanicHandler("handleSchemas", recover())
+		if panicErr != nil {
+			http.Error(w, fmt.Sprintf("internal server error: %v", panicErr), http.StatusInternalServerError)
+		}
+	}()
+
+	setNoCacheHeaders(w)
+
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	configSchema := GenerateConfigSchema(h.Client.Root)
+	dataSchema := GenerateDataSchema(h.Client.Root)
+
+	result := map[string]any{
+		"config": configSchema,
+		"data":   dataSchema,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(result); err != nil {
+		log.Printf("failed to encode schemas response: %v", err)
+		http.Error(w, "failed to encode response", http.StatusInternalServerError)
+	}
+}
+
 func (h *httpHandlers) handleDynContent(w http.ResponseWriter, r *http.Request) {
 	defer func() {
 		panicErr := util.PanicHandler("handleDynContent", recover())
@@ -298,12 +341,11 @@ func (h *httpHandlers) handleSSE(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Set SSE headers
+	setNoCacheHeaders(w)
 	w.Header().Set("Content-Type", "text/event-stream")
-	w.Header().Set("Cache-Control", "no-cache, no-transform")
 	w.Header().Set("Connection", "keep-alive")
 	w.Header().Set("X-Accel-Buffering", "no")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
-	w.Header().Set("X-Accel-Buffering", "no") // nginx hint
 
 	// Use ResponseController for better flushing control
 	rc := http.NewResponseController(w)
@@ -411,6 +453,8 @@ func (h *httpHandlers) handleManifest(manifestFileBytes []byte) http.HandlerFunc
 				http.Error(w, fmt.Sprintf("internal server error: %v", panicErr), http.StatusInternalServerError)
 			}
 		}()
+
+		setNoCacheHeaders(w)
 
 		if r.Method != http.MethodGet {
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)

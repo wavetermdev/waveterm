@@ -18,9 +18,10 @@ import (
 // PanicHandler handles panic recovery and logging.
 // It can be called directly with recover() without checking for nil first.
 // Example usage:
-//   defer func() {
-//       util.PanicHandler("operation name", recover())
-//   }()
+//
+//	defer func() {
+//	    util.PanicHandler("operation name", recover())
+//	}()
 func PanicHandler(debugStr string, recoverVal any) error {
 	if recoverVal == nil {
 		return nil
@@ -123,6 +124,7 @@ func GetTypedAtomValue[T any](rawVal any, atomName string) T {
 var (
 	jsonMarshalerT = reflect.TypeOf((*json.Marshaler)(nil)).Elem()
 	textMarshalerT = reflect.TypeOf((*encoding.TextMarshaler)(nil)).Elem()
+	timeType       = reflect.TypeOf(time.Time{})
 )
 
 func implementsJSON(t reflect.Type) bool {
@@ -160,6 +162,11 @@ func validateAtomTypeRecursive(t reflect.Type, seen map[reflect.Type]bool, atomN
 
 	// Check if type implements json.Marshaler or encoding.TextMarshaler
 	if implementsJSON(t) {
+		return nil
+	}
+
+	// Allow time.Time explicitly
+	if t == timeType {
 		return nil
 	}
 
@@ -230,4 +237,49 @@ func validateAtomTypeRecursive(t reflect.Type, seen map[reflect.Type]bool, atomN
 	default:
 		return makeAtomError(atomName, parentName, fmt.Sprintf("unsupported type %s", t.Kind()))
 	}
+}
+
+type JsonFieldInfo struct {
+	FieldName string
+	OmitEmpty bool
+	AsString  bool
+	Options   []string
+}
+
+func ParseJSONTag(field reflect.StructField) (JsonFieldInfo, bool) {
+	tag := field.Tag.Get("json")
+
+	// Ignore field
+	if tag == "-" {
+		return JsonFieldInfo{}, false
+	}
+
+	name := field.Name
+	var opts []string
+	var omitEmpty, asString bool
+
+	if tag != "" {
+		parts := strings.Split(tag, ",")
+		if parts[0] != "" {
+			name = parts[0]
+		}
+		if len(parts) > 1 {
+			opts = parts[1:]
+			for _, opt := range opts {
+				switch opt {
+				case "omitempty":
+					omitEmpty = true
+				case "string":
+					asString = true
+				}
+			}
+		}
+	}
+
+	return JsonFieldInfo{
+		FieldName: name,
+		OmitEmpty: omitEmpty,
+		AsString:  asString,
+		Options:   opts,
+	}, true
 }
