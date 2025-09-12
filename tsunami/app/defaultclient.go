@@ -57,11 +57,10 @@ func DataAtom[T any](name string, defaultValue T, meta *AtomMeta) Atom[T] {
 	return Atom[T]{name: fullName, client: client}
 }
 
-func SharedAtom[T any](name string, defaultValue T, meta *AtomMeta) Atom[T] {
+func SharedAtom[T any](name string, defaultValue T) Atom[T] {
 	fullName := "$shared." + name
 	client := engine.GetDefaultClient()
-	engineMeta := convertAppMetaToEngineMeta(meta)
-	atom := engine.MakeAtomImpl(defaultValue, engineMeta)
+	atom := engine.MakeAtomImpl(defaultValue, nil)
 	client.Root.RegisterAtom(fullName, atom)
 	return Atom[T]{name: fullName, client: client}
 }

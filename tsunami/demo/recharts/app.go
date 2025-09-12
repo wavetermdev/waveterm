@@ -17,7 +17,7 @@ var (
 		Desc: "Type of chart to display",
 		Enum: []string{"line", "area", "bar"},
 	})
-	isAnimatingAtom = app.SharedAtom("isAnimating", false, &app.AtomMeta{
+	isAnimatingAtom = app.ConfigAtom("isAnimating", false, &app.AtomMeta{
 		Desc: "Whether the chart is currently animating with live data",
 	})
 )
