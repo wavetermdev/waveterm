@@ -45,8 +45,8 @@ func createStructDefinition(t reflect.Type) map[string]any {
 			fieldSchema["description"] = desc
 		}
 
-		// Add enum values from "enum" tag if present
-		if enumTag := field.Tag.Get("enum"); enumTag != "" {
+		// Add enum values from "enum" tag if present (only for string types)
+		if enumTag := field.Tag.Get("enum"); enumTag != "" && fieldSchema["type"] == "string" {
 			enumValues := make([]any, 0)
 			for _, val := range strings.Split(enumTag, ",") {
 				trimmed := strings.TrimSpace(val)
@@ -170,8 +170,8 @@ func annotateSchemaWithAtomMeta(schema map[string]any, meta *AtomMeta) {
 		}
 	}
 
-	// Add enum values if specified
-	if len(meta.Enum) > 0 {
+	// Add enum values if specified (only for string types)
+	if len(meta.Enum) > 0 && schema["type"] == "string" {
 		enumValues := make([]any, len(meta.Enum))
 		for i, v := range meta.Enum {
 			enumValues[i] = v
@@ -269,11 +269,12 @@ func generateSchemaFromAtoms(atoms map[string]genAtom, title, description string
 
 	// Build the final schema
 	schema := map[string]any{
-		"$schema":     "https://json-schema.org/draft/2020-12/schema",
-		"type":        "object",
-		"title":       title,
-		"description": description,
-		"properties":  properties,
+		"$schema":              "https://json-schema.org/draft/2020-12/schema",
+		"type":                 "object",
+		"title":                title,
+		"description":          description,
+		"properties":           properties,
+		"additionalProperties": false,
 	}
 
 	// Add definitions if any

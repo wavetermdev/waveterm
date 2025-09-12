@@ -456,7 +456,7 @@ For state shared across components or accessible to external systems, declare gl
 
 #### app.AtomMeta for External Integration
 
-app.ConfigAtom and app.DataAtom require an app.AtomMeta parameter (can pass nil if not not needed) to provide schema information for external tools and AI agents. app.SharedAtom does not use app.AtomMeta since it's only for internal state sharing.
+app.ConfigAtom and app.DataAtom require an app.AtomMeta parameter (can pass nil if not needed) to provide schema information for external tools and AI agents. app.SharedAtom does not use app.AtomMeta since it's only for internal state sharing.
 
 ```go
 type AtomMeta struct {
