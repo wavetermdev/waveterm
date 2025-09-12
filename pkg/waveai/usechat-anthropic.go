@@ -185,7 +185,7 @@ func parseAnthropicHTTPError(resp *http.Response) error {
 	}
 	slurp, _ := io.ReadAll(resp.Body)
 	_ = json.Unmarshal(slurp, &eresp)
-	
+
 	var msg string
 	if eresp.Error.Message != "" {
 		msg = eresp.Error.Message
@@ -252,7 +252,7 @@ func StreamAnthropicResponses(
 
 	// Use eventsource decoder for proper SSE parsing
 	decoder := eventsource.NewDecoder(resp.Body)
-	
+
 	// Per-response state
 	blockMap := map[int]*blockState{}
 	var toolCalls []ToolCall
@@ -262,6 +262,16 @@ func StreamAnthropicResponses(
 
 	// SSE event processing loop
 	for {
+		// Check for context cancellation
+		if err := ctx.Err(); err != nil {
+			_ = sse.AiMsgError("request cancelled")
+			return &StopReason{
+				Kind:      StopKindCanceled,
+				ErrorType: "cancelled",
+				ErrorText: "request cancelled",
+			}, err
+		}
+
 		event, err := decoder.Decode()
 		if err != nil {
 			if errors.Is(err, io.EOF) {
