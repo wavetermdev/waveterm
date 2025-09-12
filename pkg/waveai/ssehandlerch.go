@@ -101,11 +101,10 @@ func (h *SSEHandlerCh) SetupSSE() error {
 
 	// Set SSE headers
 	h.w.Header().Set("Content-Type", SSEContentType)
-	h.w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
+	h.w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate, no-transform")
 	h.w.Header().Set("Connection", SSEConnection)
 	h.w.Header().Set("x-vercel-ai-ui-message-stream", "v1")
 	h.w.Header().Set("X-Accel-Buffering", "no")
-	h.w.Header().Set("Cache-Control", "no-transform")
 
 	// Send headers and establish streaming
 	h.w.WriteHeader(http.StatusOK)

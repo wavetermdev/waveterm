@@ -120,13 +120,13 @@ type anthropicErrorType struct {
 }
 
 type anthropicFullStreamEvent struct {
-	Type         string                      `json:"type"`
-	Message      *anthropicMessageObj        `json:"message,omitempty"`
-	Index        *int                        `json:"index,omitempty"`
-	ContentBlock *anthropicContentBlockType  `json:"content_block,omitempty"`
-	Delta        *anthropicDeltaType         `json:"delta,omitempty"`
-	Usage        *anthropicUsageType         `json:"usage,omitempty"`
-	Error        *anthropicErrorType         `json:"error,omitempty"`
+	Type         string                     `json:"type"`
+	Message      *anthropicMessageObj       `json:"message,omitempty"`
+	Index        *int                       `json:"index,omitempty"`
+	ContentBlock *anthropicContentBlockType `json:"content_block,omitempty"`
+	Delta        *anthropicDeltaType        `json:"delta,omitempty"`
+	Usage        *anthropicUsageType        `json:"usage,omitempty"`
+	Error        *anthropicErrorType        `json:"error,omitempty"`
 }
 
 // ---------- per-index content block bookkeeping ----------
@@ -340,16 +340,13 @@ func StreamAnthropicResponses(
 		if line == "" {
 			// dispatch event
 			if curEvent != "" {
-				if stop, ret, rerr := handleAnthropicEvent(curEvent, dataBuf.String(), sse, blockMap, &toolCalls, &msgID, &model, finalStop); rerr != nil {
-					// Anthropic sent error event or malformed JSON.
-					return stop, rerr
-				} else if ret != nil {
-					// message_stop triggered return
+				if stop, ret := handleAnthropicEvent(curEvent, dataBuf.String(), sse, blockMap, &toolCalls, &msgID, &model, finalStop); ret != nil {
+					// Either error or message_stop triggered return
 					return ret, nil
 				} else {
 					// maybe updated final stop reason (from message_delta)
-					if stop != nil && stop.RawReason != "" {
-						finalStop = stop.RawReason
+					if stop != nil && *stop != "" {
+						finalStop = *stop
 					}
 				}
 			}
@@ -385,9 +382,8 @@ func StreamAnthropicResponses(
 // and/or return a StopReason when the stream is complete.
 //
 // Return tuple:
-//   - stopFromDelta: a *StopReason with only RawReason set when message_delta updates stop_reason
-//   - final: a *StopReason to return immediately (e.g., after message_stop)
-//   - err: non-nil if an error event occurred or parsing failed.
+//   - stopFromDelta: a *string with stop reason when message_delta updates stop_reason
+//   - final: a *StopReason to return immediately (e.g., after message_stop or error)
 //
 // Event model: anthropic-streaming.md. :contentReference[oaicite:16]{index=16}
 func handleAnthropicEvent(
@@ -399,19 +395,18 @@ func handleAnthropicEvent(
 	msgID *string,
 	model *string,
 	finalStop string,
-) (stopFromDelta *StopReason, final *StopReason, err error) {
-
+) (stopFromDelta *string, final *StopReason) {
 	switch eventName {
 	case "ping":
-		return nil, nil, nil // ignore
+		return nil, nil // ignore
 
 	case "error":
 		// Example: data: {"type":"error","error":{"type":"overloaded_error","message":"Overloaded"}} :contentReference[oaicite:17]{index=17}
 		var ev anthropicFullStreamEvent
 		if jerr := json.Unmarshal([]byte(data), &ev); jerr != nil {
-			err = fmt.Errorf("error event decode: %w", jerr)
+			err := fmt.Errorf("error event decode: %w", jerr)
 			_ = sse.AiMsgError(err.Error())
-			return &StopReason{Kind: StopKindError, ErrorType: "decode", ErrorText: err.Error()}, nil, err
+			return nil, &StopReason{Kind: StopKindError, ErrorType: "decode", ErrorText: err.Error()}
 		}
 		msg := "unknown error"
 		etype := "error"
@@ -420,37 +415,33 @@ func handleAnthropicEvent(
 			etype = ev.Error.Type
 		}
 		_ = sse.AiMsgError(msg)
-		return &StopReason{
-				Kind:      StopKindError,
-				ErrorType: etype,
-				ErrorText: msg,
-			}, &StopReason{
-				Kind:      StopKindError,
-				ErrorType: etype,
-				ErrorText: msg,
-			}, fmt.Errorf("anthropic error: %s", msg)
+		return nil, &StopReason{
+			Kind:      StopKindError,
+			ErrorType: etype,
+			ErrorText: msg,
+		}
 
 	case "message_start":
 		var ev anthropicFullStreamEvent
-		if err = json.Unmarshal([]byte(data), &ev); err != nil {
+		if err := json.Unmarshal([]byte(data), &ev); err != nil {
 			_ = sse.AiMsgError(err.Error())
-			return &StopReason{Kind: StopKindError, ErrorType: "decode", ErrorText: err.Error()}, nil, err
+			return nil, &StopReason{Kind: StopKindError, ErrorType: "decode", ErrorText: err.Error()}
 		}
 		if ev.Message != nil {
 			*msgID = ev.Message.ID
 			*model = ev.Message.Model
 		}
 		_ = sse.AiMsgStart(*msgID)
-		return nil, nil, nil
+		return nil, nil
 
 	case "content_block_start":
 		var ev anthropicFullStreamEvent
-		if err = json.Unmarshal([]byte(data), &ev); err != nil {
+		if err := json.Unmarshal([]byte(data), &ev); err != nil {
 			_ = sse.AiMsgError(err.Error())
-			return &StopReason{Kind: StopKindError, ErrorType: "decode", ErrorText: err.Error()}, nil, err
+			return nil, &StopReason{Kind: StopKindError, ErrorType: "decode", ErrorText: err.Error()}
 		}
 		if ev.Index == nil || ev.ContentBlock == nil {
-			return nil, nil, nil
+			return nil, nil
 		}
 		idx := *ev.Index
 		switch ev.ContentBlock.Type {
@@ -476,20 +467,20 @@ func handleAnthropicEvent(
 		default:
 			// ignore other block types gracefully per Anthropic guidance :contentReference[oaicite:18]{index=18}
 		}
-		return nil, nil, nil
+		return nil, nil
 
 	case "content_block_delta":
 		var ev anthropicFullStreamEvent
-		if err = json.Unmarshal([]byte(data), &ev); err != nil {
+		if err := json.Unmarshal([]byte(data), &ev); err != nil {
 			_ = sse.AiMsgError(err.Error())
-			return &StopReason{Kind: StopKindError, ErrorType: "decode", ErrorText: err.Error()}, nil, err
+			return nil, &StopReason{Kind: StopKindError, ErrorType: "decode", ErrorText: err.Error()}
 		}
 		if ev.Index == nil || ev.Delta == nil {
-			return nil, nil, nil
+			return nil, nil
 		}
 		st := blocks[*ev.Index]
 		if st == nil {
-			return nil, nil, nil
+			return nil, nil
 		}
 		switch ev.Delta.Type {
 		case "text_delta":
@@ -510,20 +501,20 @@ func handleAnthropicEvent(
 		default:
 			// ignore unknown deltas gracefully. :contentReference[oaicite:20]{index=20}
 		}
-		return nil, nil, nil
+		return nil, nil
 
 	case "content_block_stop":
 		var ev anthropicFullStreamEvent
-		if err = json.Unmarshal([]byte(data), &ev); err != nil {
+		if err := json.Unmarshal([]byte(data), &ev); err != nil {
 			_ = sse.AiMsgError(err.Error())
-			return &StopReason{Kind: StopKindError, ErrorType: "decode", ErrorText: err.Error()}, nil, err
+			return nil, &StopReason{Kind: StopKindError, ErrorType: "decode", ErrorText: err.Error()}
 		}
 		if ev.Index == nil {
-			return nil, nil, nil
+			return nil, nil
 		}
 		st := blocks[*ev.Index]
 		if st == nil {
-			return nil, nil, nil
+			return nil, nil
 		}
 		switch st.kind {
 		case blockText:
@@ -534,7 +525,7 @@ func handleAnthropicEvent(
 			raw, jerr := st.accumJSON.FinalObject()
 			if jerr != nil {
 				_ = sse.AiMsgError(jerr.Error())
-				return &StopReason{Kind: StopKindError, ErrorType: "parse", ErrorText: jerr.Error()}, nil, jerr
+				return nil, &StopReason{Kind: StopKindError, ErrorType: "parse", ErrorText: jerr.Error()}
 			}
 			_ = sse.AiMsgToolInputAvailable(st.toolCallID, st.toolName, raw)
 			*toolCalls = append(*toolCalls, ToolCall{
@@ -543,25 +534,25 @@ func handleAnthropicEvent(
 				Input: raw,
 			})
 		}
-		return nil, nil, nil
+		return nil, nil
 
 	case "message_delta":
 		var ev anthropicFullStreamEvent
-		if err = json.Unmarshal([]byte(data), &ev); err != nil {
+		if err := json.Unmarshal([]byte(data), &ev); err != nil {
 			_ = sse.AiMsgError(err.Error())
-			return &StopReason{Kind: StopKindError, ErrorType: "decode", ErrorText: err.Error()}, nil, err
+			return nil, &StopReason{Kind: StopKindError, ErrorType: "decode", ErrorText: err.Error()}
 		}
 		if ev.Delta != nil && ev.Delta.StopReason != nil {
-			stopFromDelta = &StopReason{RawReason: *ev.Delta.StopReason}
+			stopFromDelta = ev.Delta.StopReason
 		}
-		return stopFromDelta, nil, nil
+		return stopFromDelta, nil
 
 	case "message_stop":
 		// Decide finalization based on last known stop_reason.
 		// If we didn't capture it in message_delta, treat as end_turn.
 		reason := "end_turn"
-		if stopFromDelta != nil && stopFromDelta.RawReason != "" {
-			reason = stopFromDelta.RawReason
+		if stopFromDelta != nil && *stopFromDelta != "" {
+			reason = *stopFromDelta
 		}
 		switch reason {
 		case "tool_use":
@@ -574,7 +565,7 @@ func handleAnthropicEvent(
 				Model:      *model,
 				ToolCalls:  *toolCalls,
 				FinishStep: true,
-			}, nil
+			}
 		case "max_tokens":
 			_ = sse.AiMsgFinish(reason, nil)
 			return nil, &StopReason{
@@ -582,7 +573,7 @@ func handleAnthropicEvent(
 				RawReason: reason,
 				MessageID: *msgID,
 				Model:     *model,
-			}, nil
+			}
 		case "refusal":
 			_ = sse.AiMsgFinish(reason, nil)
 			return nil, &StopReason{
@@ -590,7 +581,7 @@ func handleAnthropicEvent(
 				RawReason: reason,
 				MessageID: *msgID,
 				Model:     *model,
-			}, nil
+			}
 		default:
 			// end_turn, stop_sequence, pause_turn (treat as end of this call)
 			_ = sse.AiMsgFinish(reason, nil)
@@ -599,12 +590,12 @@ func handleAnthropicEvent(
 				RawReason: reason,
 				MessageID: *msgID,
 				Model:     *model,
-			}, nil
+			}
 		}
 
 	default:
 		// Unknown event names may appear over time; ignore. :contentReference[oaicite:22]{index=22}
-		return nil, nil, nil
+		return nil, nil
 	}
 }
 

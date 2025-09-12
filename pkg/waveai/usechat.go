@@ -56,7 +56,7 @@ func resolveAIConfig(ctx context.Context, blockId, presetKey string, requestOpti
 	// Get block metadata
 	block, err := wstore.DBMustGet[*waveobj.Block](ctx, blockId)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get block: %v", err)
+		return nil, fmt.Errorf("failed to get block: %w", err)
 	}
 
 	// Get global settings
