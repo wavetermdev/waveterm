@@ -6,6 +6,7 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -21,6 +22,7 @@ var (
 	blocksTabId       string // Tab ID to filter blocks by
 	blocksView        string // View type to filter blocks by (term, web, etc.)
 	blocksJSON        bool   // Whether to output as JSON
+	blocksTimeout     int    // Timeout in seconds for RPC calls
 )
 
 // BlockDetails represents the information about a block returned by the list command
@@ -55,6 +57,7 @@ Examples:
   wsh blocks list --json`,
 	RunE:    blocksListRun,
 	PreRunE: preRunSetupRpcClient,
+	SilenceUsage: true,
 }
 
 // init registers the blocks commands with the root command
@@ -65,6 +68,7 @@ func init() {
 	blocksListCmd.Flags().StringVar(&blocksTabId, "tab", "", "restrict to tab id")
 	blocksListCmd.Flags().StringVar(&blocksView, "view", "", "restrict to view type (term/terminal, web/browser, preview/edit, sysinfo, waveai)")
 	blocksListCmd.Flags().BoolVar(&blocksJSON, "json", false, "output as JSON")
+	blocksListCmd.Flags().IntVar(&blocksTimeout, "timeout", 5, "timeout in seconds for RPC calls")
 
 	for _, cmd := range rootCmd.Commands() {
 		if cmd.Use == "blocks" {
@@ -88,7 +92,7 @@ func init() {
 func blocksListRun(cmd *cobra.Command, args []string) error {
 	var allBlocks []BlockDetails
 
-	workspaces, err := wshclient.WorkspaceListCommand(RpcClient, &wshrpc.RpcOpts{Timeout: 5000})
+	workspaces, err := wshclient.WorkspaceListCommand(RpcClient, &wshrpc.RpcOpts{Timeout: int64(blocksTimeout * 1000)})
 	if err != nil {
 		return fmt.Errorf("failed to list workspaces: %v", err)
 	}
@@ -100,6 +104,9 @@ func blocksListRun(cmd *cobra.Command, args []string) error {
 	var workspaceIdsToQuery []string
 
 	// Determine which workspaces to query
+	if blocksWorkspaceId != "" && blocksWindowId != "" {
+		return fmt.Errorf("--workspace and --window are mutually exclusive; specify only one")
+	}
 	if blocksWorkspaceId != "" {
 		workspaceIdsToQuery = []string{blocksWorkspaceId}
 	} else if blocksWindowId != "" {
@@ -124,11 +131,12 @@ func blocksListRun(cmd *cobra.Command, args []string) error {
 
 	// Query each selected workspace
 	for _, wsId := range workspaceIdsToQuery {
-		req := wshrpc.BlocksListRequest{
-			WorkspaceId: wsId,
+		req := wshrpc.BlocksListRequest{WorkspaceId: wsId}
+		if blocksWindowId != "" {
+			req.WindowId = blocksWindowId
 		}
 
-		blocks, err := wshclient.BlocksListCommand(RpcClient, req, &wshrpc.RpcOpts{Timeout: 5000})
+		blocks, err := wshclient.BlocksListCommand(RpcClient, req, &wshrpc.RpcOpts{Timeout: int64(blocksTimeout * 1000)})
 		if err != nil {
 			WriteStderr("Warning: couldn't list blocks for workspace %s: %v\n", wsId, err)
 			continue
@@ -173,10 +181,24 @@ func blocksListRun(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
+	// Stable ordering
+	sort.Slice(allBlocks, func(i, j int) bool {
+		if allBlocks[i].WorkspaceId != allBlocks[j].WorkspaceId {
+			return allBlocks[i].WorkspaceId < allBlocks[j].WorkspaceId
+		}
+		if allBlocks[i].TabId != allBlocks[j].TabId {
+			return allBlocks[i].TabId < allBlocks[j].TabId
+		}
+		return allBlocks[i].BlockId < allBlocks[j].BlockId
+	})
 	format := "%-36s  %-10s  %-36s  %-15s  %s\n"
 	WriteStdout(format, "BLOCK ID", "WORKSPACE", "TAB ID", "VIEW", "CONTENT")
 
 	for _, b := range allBlocks {
+		blockID := b.BlockId
+		if len(blockID) > 36 {
+			blockID = blockID[:34] + ".."
+		}
 		view := b.Meta.GetString(waveobj.MetaKey_View, "<unknown>")
 		var content string
 
@@ -201,15 +223,13 @@ func blocksListRun(cmd *cobra.Command, args []string) error {
 			tabID = tabID[0:34] + ".."
 		}
 
-		WriteStdout(format, b.BlockId, wsID, tabID, view, content)
+		WriteStdout(format, blockID, wsID, tabID, view, content)
 	}
 
 	return nil
 }
 
 // matchesViewType checks if a view type matches a filter, supporting aliases
-// It handles different aliases for the same view type, allowing flexible filtering
-// Examples: "term" matches "terminal", "shell", "console"; "web" matches "browser", "url"
 func matchesViewType(actual, filter string) bool {
 	// Direct match (case insensitive)
 	if strings.EqualFold(actual, filter) {
