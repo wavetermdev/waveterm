@@ -6,10 +6,6 @@ This is the home for Wave Terminal's documentation site. This README is specific
 
 Our docs are built using [Docusaurus](https://docusaurus.io/), a modern static website generator.
 
-```sh
-yarn
-```
-
 ### Local Development
 
 ```sh

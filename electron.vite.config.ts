@@ -4,16 +4,20 @@
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react-swc";
 import { defineConfig } from "electron-vite";
-import flow from "rollup-plugin-flow";
 import { ViteImageOptimizer } from "vite-plugin-image-optimizer";
 import { viteStaticCopy } from "vite-plugin-static-copy";
 import svgr from "vite-plugin-svgr";
 import tsconfigPaths from "vite-tsconfig-paths";
 
+// from our electron build
+const CHROME = "chrome140";
+const NODE = "node22";
+
 export default defineConfig({
     main: {
         root: ".",
         build: {
+            target: NODE,
             rollupOptions: {
                 input: {
                     index: "emain/emain.ts",
@@ -21,7 +25,7 @@ export default defineConfig({
             },
             outDir: "dist/main",
         },
-        plugins: [tsconfigPaths(), flow()],
+        plugins: [tsconfigPaths()],
         resolve: {
             alias: {
                 "@": "frontend",
@@ -38,6 +42,7 @@ export default defineConfig({
     preload: {
         root: ".",
         build: {
+            target: NODE,
             sourcemap: true,
             rollupOptions: {
                 input: {
@@ -53,12 +58,12 @@ export default defineConfig({
         server: {
             open: false,
         },
-        plugins: [tsconfigPaths(), flow()],
+        plugins: [tsconfigPaths()],
     },
     renderer: {
         root: ".",
         build: {
-            target: "es6",
+            target: CHROME,
             sourcemap: true,
             outDir: "dist/frontend",
             rollupOptions: {
@@ -67,10 +72,13 @@ export default defineConfig({
                 },
             },
         },
+        optimizeDeps: {
+            include: ["monaco-yaml/yaml.worker.js"],
+        },
         server: {
             open: false,
             watch: {
-                ignored: ["**/*.go", "**/go.mod", "**/go.sum", "**/*.md", "**/*.json"],
+                ignored: ["dist/**", "**/*.go", "**/go.mod", "**/go.sum", "**/*.md", "**/*.json"],
             },
         },
         css: {
@@ -81,9 +89,8 @@ export default defineConfig({
             },
         },
         plugins: [
-            ViteImageOptimizer(),
             tsconfigPaths(),
-            flow(),
+            { ...ViteImageOptimizer(), apply: "build" },
             svgr({
                 svgrOptions: { exportType: "default", ref: true, svgo: false, titleProp: true },
                 include: "**/*.svg",
