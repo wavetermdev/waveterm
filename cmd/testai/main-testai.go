@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"time"
@@ -60,7 +61,7 @@ func (w *TestResponseWriter) SetReadDeadline(deadline time.Time) error {
 func getToolDefinitions() []waveai.ToolDefinition {
 	var schemas map[string]any
 	if err := json.Unmarshal([]byte(testSchemaJSON), &schemas); err != nil {
-		fmt.Printf("Error parsing schema: %v\n", err)
+		log.Printf("Error parsing schema: %v\n", err)
 		return nil
 	}
 
