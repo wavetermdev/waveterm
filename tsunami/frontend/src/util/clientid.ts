@@ -9,6 +9,14 @@ const CLIENT_ID_KEY = "tsunami:clientid";
  * If no client ID exists, a new UUID is generated and stored.
  */
 export function getOrCreateClientId(): string {
+    // First check for URL parameter
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlClientId = urlParams.get("clientid");
+    if (urlClientId) {
+        return urlClientId;
+    }
+    
+    // Fall back to session storage
     let clientId = sessionStorage.getItem(CLIENT_ID_KEY);
     if (!clientId) {
         clientId = crypto.randomUUID();
