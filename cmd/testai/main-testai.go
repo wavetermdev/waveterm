@@ -97,7 +97,7 @@ func getToolDefinitions() []waveai.ToolDefinition {
 	}
 }
 
-func testOpenAI(model, message string, withTools bool) {
+func testOpenAI(model, message string, tools []waveai.ToolDefinition) {
 	apiKey := os.Getenv("OPENAI_API_KEY")
 	if apiKey == "" {
 		fmt.Println("Error: OPENAI_API_KEY environment variable not set")
@@ -132,13 +132,13 @@ func testOpenAI(model, message string, withTools bool) {
 	}
 	defer sseHandler.Close()
 
-	_, err = waveai.StreamOpenAIToUseChat(ctx, sseHandler, opts, messages, nil)
+	_, err = waveai.StreamOpenAIToUseChat(ctx, sseHandler, opts, messages, tools)
 	if err != nil {
 		fmt.Printf("Error streaming OpenAI: %v\n", err)
 	}
 }
 
-func testAnthropic(model, message string, withTools bool) {
+func testAnthropic(model, message string, tools []waveai.ToolDefinition) {
 	apiKey := os.Getenv("ANTHROPIC_API_KEY")
 	if apiKey == "" {
 		fmt.Println("Error: ANTHROPIC_API_KEY environment variable not set")
@@ -173,11 +173,6 @@ func testAnthropic(model, message string, withTools bool) {
 	}
 	defer sseHandler.Close()
 
-	var tools []waveai.ToolDefinition
-	if withTools {
-		tools = getToolDefinitions()
-	}
-	
 	stopReason, err := waveai.StreamAnthropicResponses(ctx, sseHandler, opts, messages, tools)
 	if err != nil {
 		fmt.Printf("Anthropic streaming error: %v\n", err)
@@ -213,9 +208,14 @@ func main() {
 		message = args[1]
 	}
 
+	var toolDefs []waveai.ToolDefinition
+	if tools {
+		toolDefs = getToolDefinitions()
+	}
+
 	if anthropic {
-		testAnthropic(model, message, tools)
+		testAnthropic(model, message, toolDefs)
 	} else {
-		testOpenAI(model, message, tools)
+		testOpenAI(model, message, toolDefs)
 	}
 }

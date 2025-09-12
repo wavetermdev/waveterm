@@ -31,9 +31,9 @@ type UseChatMessage struct {
 }
 
 type ToolCall struct {
-	ID    string          `json:"id"`              // Anthropic tool_use.id
-	Name  string          `json:"name,omitempty"`  // tool name (if provided)
-	Input json.RawMessage `json:"input,omitempty"` // accumulated input JSON
+	ID    string `json:"id"`              // Anthropic tool_use.id
+	Name  string `json:"name,omitempty"`  // tool name (if provided)
+	Input any    `json:"input,omitempty"` // accumulated input JSON
 }
 
 type StopReason struct {

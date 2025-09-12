@@ -458,11 +458,19 @@ func handleAnthropicEvent(
 				_ = sse.AiMsgError(jerr.Error())
 				return nil, &StopReason{Kind: StopKindError, ErrorType: "parse", ErrorText: jerr.Error()}
 			}
+			var input any
+			if len(raw) > 0 {
+				jerr = json.Unmarshal(raw, &input)
+				if jerr != nil {
+					_ = sse.AiMsgError(jerr.Error())
+					return nil, &StopReason{Kind: StopKindError, ErrorType: "parse", ErrorText: jerr.Error()}
+				}
+			}
 			_ = sse.AiMsgToolInputAvailable(st.toolCallID, st.toolName, raw)
 			*toolCalls = append(*toolCalls, ToolCall{
 				ID:    st.toolCallID,
 				Name:  st.toolName,
-				Input: raw,
+				Input: input,
 			})
 		}
 		return nil, nil
