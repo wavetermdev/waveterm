@@ -90,7 +90,7 @@ export default defineConfig({
         },
         plugins: [
             tsconfigPaths(),
-            ViteImageOptimizer(),
+            { ...ViteImageOptimizer(), apply: "build" },
             svgr({
                 svgrOptions: { exportType: "default", ref: true, svgo: false, titleProp: true },
                 include: "**/*.svg",

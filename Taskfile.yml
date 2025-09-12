@@ -66,6 +66,18 @@ tasks:
         deps:
             - npm:install
 
+    docs:npm:install:
+        desc: Runs `npm install` in docs directory
+        internal: true
+        generates:
+            - docs/node_modules/**/*
+            - docs/package-lock.json
+        sources:
+            - docs/package-lock.json
+            - docs/package.json
+        cmd: npm install
+        dir: docs
+
     docsite:start:
         desc: Start the docsite dev server.
         cmd: npm run start
@@ -73,7 +85,7 @@ tasks:
         aliases:
             - docsite
         deps:
-            - npm:install
+            - docs:npm:install
 
     docsite:build:public:
         desc: Build the full docsite.
@@ -89,7 +101,7 @@ tasks:
         generates:
             - "docs/build/**/*"
         deps:
-            - npm:install
+            - docs:npm:install
             - storybook:build
 
     docsite:build:embedded:
@@ -105,7 +117,7 @@ tasks:
             - cd docs && npm run build-embedded
             - task: copyfiles:'docs/build/':'dist/docsite'
         deps:
-            - npm:install
+            - docs:npm:install
 
     package:
         desc: Package the application for the current platform.
@@ -113,7 +125,7 @@ tasks:
             - npm run build:prod && npm exec electron-builder -- -c electron-builder.config.cjs -p never {{.CLI_ARGS}}
         deps:
             - clean
-            - npm:install
+            - npm:ci
             - docsite:build:embedded
             - build:backend
 
@@ -298,7 +310,7 @@ tasks:
 
     outdated:
         desc: Check for outdated packages using npm-check-updates.
-        cmd: npx npm-check-updates
+        cmd: npx npm-check-updates@latest
 
     version:
         desc: Get the current package version, or bump version if args are present. To pass args to `version.cjs`, add them after `--`. See `version.cjs` for usage definitions for the arguments.
@@ -414,6 +426,16 @@ tasks:
             - package-lock.json
             - package.json
         cmd: npm install
+
+    npm:ci:
+        desc: Runs `npm ci`
+        internal: true
+        generates:
+            - node_modules/**/*
+        sources:
+            - package-lock.json
+            - package.json
+        cmd: npm ci
 
     go:mod:tidy:
         desc: Runs `go mod tidy`
