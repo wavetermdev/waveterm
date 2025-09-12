@@ -48,6 +48,7 @@ func (h *httpHandlers) registerHandlers(mux *http.ServeMux, opts handlerOpts) {
 	mux.HandleFunc("/api/updates", h.handleSSE)
 	mux.HandleFunc("/api/data", h.handleData)
 	mux.HandleFunc("/api/config", h.handleConfig)
+	mux.HandleFunc("/api/schemas", h.handleSchemas)
 	mux.HandleFunc("/api/manifest", h.handleManifest(opts.ManifestFile))
 	mux.HandleFunc("/dyn/", h.handleDynContent)
 
@@ -259,6 +260,34 @@ func (h *httpHandlers) handleConfigPost(w http.ResponseWriter, r *http.Request) 
 	w.WriteHeader(http.StatusOK)
 
 	json.NewEncoder(w).Encode(response)
+}
+
+func (h *httpHandlers) handleSchemas(w http.ResponseWriter, r *http.Request) {
+	defer func() {
+		panicErr := util.PanicHandler("handleSchemas", recover())
+		if panicErr != nil {
+			http.Error(w, fmt.Sprintf("internal server error: %v", panicErr), http.StatusInternalServerError)
+		}
+	}()
+
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	configSchema := GenerateConfigSchema(h.Client.Root)
+	dataSchema := GenerateDataSchema(h.Client.Root)
+
+	result := map[string]any{
+		"config": configSchema,
+		"data":   dataSchema,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(result); err != nil {
+		log.Printf("failed to encode schemas response: %v", err)
+		http.Error(w, "failed to encode response", http.StatusInternalServerError)
+	}
 }
 
 func (h *httpHandlers) handleDynContent(w http.ResponseWriter, r *http.Request) {

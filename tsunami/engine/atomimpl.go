@@ -96,3 +96,9 @@ func (a *AtomImpl[T]) GetUsedBy() []string {
 	}
 	return keys
 }
+
+func (a *AtomImpl[T]) GetMeta() *AtomMeta {
+	a.lock.Lock()
+	defer a.lock.Unlock()
+	return a.meta
+}

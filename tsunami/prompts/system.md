@@ -538,7 +538,7 @@ ConfigAtom and DataAtom automatically create REST endpoints:
 - `GET /api/config` - Returns all config atom values
 - `POST /api/config` - Updates (merges) config atom values
 - `GET /api/data` - Returns all data atom values
-- `GET /api/schema` - Returns JSON schema information for the /api/config and /api/data endpoints based on AtomMeta and type reflection information
+- `GET /api/schemas` - Returns JSON schema information for the /api/config and /api/data endpoints based on AtomMeta and type reflection information
 
 This makes Tsunami applications naturally suitable for integration with external tools, monitoring systems, and AI agents that need to inspect or configure the application.
 

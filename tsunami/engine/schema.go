@@ -108,6 +108,11 @@ func collectStructDefs(t reflect.Type, defs map[reflect.Type]any) {
 			collectStructDefs(t.Elem(), defs)
 		}
 	case reflect.Struct:
+		// Skip time.Time since we handle it specially
+		if t == reflect.TypeOf(time.Time{}) {
+			return
+		}
+
 		// Skip if we already have this struct definition
 		if _, exists := defs[t]; exists {
 			return
@@ -226,4 +231,74 @@ func generateShallowJSONSchema(t reflect.Type, meta *AtomMeta) map[string]any {
 	}
 
 	return schema
+}
+
+
+
+// getAtomValueType returns the reflect.Type of the atom's value
+func getAtomValueType(atom genAtom) reflect.Type {
+	val := atom.GetVal()
+	if val == nil {
+		return nil
+	}
+	return reflect.TypeOf(val)
+}
+
+// getAtomMeta extracts AtomMeta from the atom
+func getAtomMeta(atom genAtom) *AtomMeta {
+	return atom.GetMeta()
+}
+
+// generateSchemaFromAtoms generates a JSON schema from a map of atoms
+func generateSchemaFromAtoms(atoms map[string]genAtom, title, description string) map[string]any {
+	// Collect all struct definitions
+	defs := make(map[reflect.Type]any)
+	for _, atom := range atoms {
+		atomType := getAtomValueType(atom)
+		if atomType != nil {
+			collectStructDefs(atomType, defs)
+		}
+	}
+	
+	// Generate properties for each atom
+	properties := make(map[string]any)
+	for atomName, atom := range atoms {
+		atomType := getAtomValueType(atom)
+		if atomType != nil {
+			atomMeta := getAtomMeta(atom)
+			properties[atomName] = generateShallowJSONSchema(atomType, atomMeta)
+		}
+	}
+	
+	// Build the final schema
+	schema := map[string]any{
+		"$schema":     "https://json-schema.org/draft/2020-12/schema",
+		"type":        "object",
+		"title":       title,
+		"description": description,
+		"properties":  properties,
+	}
+	
+	// Add definitions if any
+	if len(defs) > 0 {
+		definitions := make(map[string]any)
+		for t, def := range defs {
+			definitions[t.Name()] = def
+		}
+		schema["definitions"] = definitions
+	}
+	
+	return schema
+}
+
+// GenerateConfigSchema generates a JSON schema for all config atoms
+func GenerateConfigSchema(root *RootElem) map[string]any {
+	configAtoms := root.getAtomsByPrefix("$config.")
+	return generateSchemaFromAtoms(configAtoms, "Application Configuration", "Application configuration settings")
+}
+
+// GenerateDataSchema generates a JSON schema for all data atoms
+func GenerateDataSchema(root *RootElem) map[string]any {
+	dataAtoms := root.getAtomsByPrefix("$data.")
+	return generateSchemaFromAtoms(dataAtoms, "Application Data", "Application data schema")
 }
