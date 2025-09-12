@@ -16137,11 +16137,11 @@ __metadata:
   linkType: hard
 
 "node-abi@npm:^4.6.0":
-  version: 4.6.0
-  resolution: "node-abi@npm:4.6.0"
+  version: 4.14.0
+  resolution: "node-abi@npm:4.14.0"
   dependencies:
     semver: "npm:^7.6.3"
-  checksum: 10c0/07cd9ac7637f79ed56898082168deac35e9ee3f3e466302690e8459978c3e85af31e39f072a73a4cedd4444cb1c06cad38521726944dffaa4457aaa36f8edf97
+  checksum: 10c0/928bcd5f02d85aa7b6b87bc295e1cb991984ffb29dce97ac9bddedd7338a439236ea3dc9d6f9aff61fc3968f869b9bde0914bd71a3437ddd99832587d561c7e4
   languageName: node
   linkType: hard
 
