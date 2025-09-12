@@ -6,7 +6,6 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"sort"
 	"strings"
 	"text/tabwriter"
@@ -24,7 +23,7 @@ var (
 	blocksTabId       string // Tab ID to filter blocks by
 	blocksView        string // View type to filter blocks by (term, web, etc.)
 	blocksJSON        bool   // Whether to output as JSON
-	blocksTimeout     int    // Timeout in seconds for RPC calls
+	blocksTimeout     int    // Timeout in milliseconds for RPC calls
 )
 
 // BlockDetails represents the information about a block returned by the list command
@@ -99,6 +98,12 @@ func init() {
 // blocksListRun implements the 'blocks list' command
 // It retrieves and displays blocks with optional filtering by workspace, window, tab, or view type
 func blocksListRun(cmd *cobra.Command, args []string) error {
+	if v := strings.TrimSpace(blocksView); v != "" {
+		if !isKnownViewFilter(v) {
+			return fmt.Errorf("unknown --view %q; try one of: term, web, preview, edit, sysinfo, waveai", v)
+		}
+	}
+
 	var allBlocks []BlockDetails
 
 	workspaces, err := wshclient.WorkspaceListCommand(RpcClient, &wshrpc.RpcOpts{Timeout: int64(blocksTimeout)})
@@ -189,7 +194,7 @@ func blocksListRun(cmd *cobra.Command, args []string) error {
 	}
 
 	// Stable ordering for both JSON and table output
-	sort.Slice(allBlocks, func(i, j int) bool {
+	sort.SliceStable(allBlocks, func(i, j int) bool {
 		if allBlocks[i].WorkspaceId != allBlocks[j].WorkspaceId {
 			return allBlocks[i].WorkspaceId < allBlocks[j].WorkspaceId
 		}
@@ -208,7 +213,7 @@ func blocksListRun(cmd *cobra.Command, args []string) error {
 		WriteStdout("%s\n", string(bytes))
 		return nil
 	}
-	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	w := tabwriter.NewWriter(WrappedStdout, 0, 0, 2, ' ', 0)
 	defer w.Flush()
 	fmt.Fprintf(w, "BLOCK ID\tWORKSPACE\tTAB ID\tVIEW\tCONTENT\n")
 
@@ -217,7 +222,7 @@ func blocksListRun(cmd *cobra.Command, args []string) error {
 		if len(blockID) > 36 {
 			blockID = blockID[:34] + ".."
 		}
-		view := b.View
+		view := strings.ToLower(b.View)
 		if view == "" {
 			view = "<unknown>"
 		}
@@ -272,4 +277,18 @@ func matchesViewType(actual, filter string) bool {
 	}
 
 	return false
+}
+
+// isKnownViewFilter checks if a filter value is recognized
+func isKnownViewFilter(f string) bool {
+	switch strings.ToLower(strings.TrimSpace(f)) {
+	case "term", "terminal", "shell", "console",
+		"web", "browser", "url",
+		"preview", "edit",
+		"sysinfo", "sys", "system",
+		"waveai", "ai", "assistant":
+		return true
+	default:
+		return false
+	}
 }
