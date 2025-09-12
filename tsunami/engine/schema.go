@@ -6,6 +6,8 @@ package engine
 import (
 	"fmt"
 	"reflect"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/wavetermdev/waveterm/tsunami/util"
@@ -31,12 +33,52 @@ func createStructDefinition(t reflect.Type) map[string]any {
 		}
 
 		// If field has "string" option, force schema type to string
+		var fieldSchema map[string]any
 		if fieldInfo.AsString {
-			fieldSchema := map[string]any{"type": "string"}
-			properties[fieldInfo.FieldName] = fieldSchema
+			fieldSchema = map[string]any{"type": "string"}
 		} else {
-			properties[fieldInfo.FieldName] = generateShallowJSONSchema(field.Type, nil)
+			fieldSchema = generateShallowJSONSchema(field.Type, nil)
 		}
+
+		// Add description from "desc" tag if present
+		if desc := field.Tag.Get("desc"); desc != "" {
+			fieldSchema["description"] = desc
+		}
+
+		// Add enum values from "enum" tag if present
+		if enumTag := field.Tag.Get("enum"); enumTag != "" {
+			enumValues := make([]any, 0)
+			for _, val := range strings.Split(enumTag, ",") {
+				trimmed := strings.TrimSpace(val)
+				if trimmed != "" {
+					enumValues = append(enumValues, trimmed)
+				}
+			}
+			if len(enumValues) > 0 {
+				fieldSchema["enum"] = enumValues
+			}
+		}
+
+		// Add units from "units" tag if present
+		if units := field.Tag.Get("units"); units != "" {
+			fieldSchema["units"] = units
+		}
+
+		// Add min/max constraints for numeric types
+		if fieldSchema["type"] == "number" || fieldSchema["type"] == "integer" {
+			if minTag := field.Tag.Get("min"); minTag != "" {
+				if minVal, err := strconv.ParseFloat(minTag, 64); err == nil {
+					fieldSchema["minimum"] = minVal
+				}
+			}
+			if maxTag := field.Tag.Get("max"); maxTag != "" {
+				if maxVal, err := strconv.ParseFloat(maxTag, 64); err == nil {
+					fieldSchema["maximum"] = maxVal
+				}
+			}
+		}
+
+		properties[fieldInfo.FieldName] = fieldSchema
 
 		// Add to required if not a pointer and not marked as omitempty
 		if field.Type.Kind() != reflect.Ptr && !fieldInfo.OmitEmpty {

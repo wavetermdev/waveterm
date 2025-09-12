@@ -13,8 +13,8 @@ import (
 var (
 	dataPointCountAtom = app.ConfigAtom("dataPointCount", 60, &app.AtomMeta{
 		Desc: "Number of CPU data points to display in the chart",
-		Min:  app.FloatPtr(10),
-		Max:  app.FloatPtr(300),
+		Min:  app.Ptr(10.0),
+		Max:  app.Ptr(300.0),
 	})
 	cpuDataAtom = app.DataAtom("cpuData", func() []CPUDataPoint {
 		// Initialize with empty data points to maintain consistent chart size

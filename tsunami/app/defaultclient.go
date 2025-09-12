@@ -16,8 +16,8 @@ func DefineComponent[P any](name string, renderFn func(props P) any) vdom.Compon
 	return engine.DefineComponentEx(engine.GetDefaultClient(), name, renderFn)
 }
 
-func FloatPtr(f float64) *float64 {
-	return &f
+func Ptr[T any](v T) *T {
+	return &v
 }
 
 func SetGlobalEventHandler(handler func(event vdom.VDomEvent)) {

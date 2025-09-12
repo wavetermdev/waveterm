@@ -18,10 +18,10 @@ import (
 // Global atoms for config and data
 var (
 	pollIntervalAtom = app.ConfigAtom("pollInterval", 5, &app.AtomMeta{
-		Desc: "Polling interval for GitHub API requests",
+		Desc:  "Polling interval for GitHub API requests",
 		Units: "s",
-		Min:   app.FloatPtr(1),
-		Max:   app.FloatPtr(300),
+		Min:   app.Ptr(1.0),
+		Max:   app.Ptr(300.0),
 	})
 	repositoryAtom = app.ConfigAtom("repository", "wavetermdev/waveterm", &app.AtomMeta{
 		Desc:    "GitHub repository in owner/repo format",
@@ -33,8 +33,8 @@ var (
 	})
 	maxWorkflowRunsAtom = app.ConfigAtom("maxWorkflowRuns", 10, &app.AtomMeta{
 		Desc: "Maximum number of workflow runs to fetch",
-		Min:  app.FloatPtr(1),
-		Max:  app.FloatPtr(100),
+		Min:  app.Ptr(1.0),
+		Max:  app.Ptr(100.0),
 	})
 	workflowRunsAtom = app.DataAtom("workflowRuns", []WorkflowRun{}, &app.AtomMeta{
 		Desc: "List of GitHub Actions workflow runs",
