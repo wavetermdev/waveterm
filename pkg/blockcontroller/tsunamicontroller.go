@@ -127,6 +127,7 @@ func isBuildCacheUpToDate(appPath string) (bool, error) {
 }
 
 func (c *TsunamiController) Start(ctx context.Context, blockMeta waveobj.MetaMapType, rtOpts *waveobj.RuntimeOpts, force bool) error {
+	log.Printf("TsunamiController.Start called for block %s", c.blockId)
 	c.runLock.Lock()
 	defer c.runLock.Unlock()
 
@@ -198,6 +199,7 @@ func (c *TsunamiController) Start(ctx context.Context, blockMeta waveobj.MetaMap
 
 		err = build.TsunamiBuild(opts)
 		if err != nil {
+			log.Printf("TsunamiController build error for block %s: %v", c.blockId, err)
 			return fmt.Errorf("failed to build tsunami app: %w", err)
 		}
 	}
@@ -225,7 +227,7 @@ func (c *TsunamiController) Start(ctx context.Context, blockMeta waveobj.MetaMap
 		c.port = tsunamiProc.Port
 	})
 	go c.sendStatusUpdate()
-	
+
 	// Monitor process completion
 	go func() {
 		<-tsunamiProc.WaitCh
@@ -246,6 +248,7 @@ func (c *TsunamiController) Start(ctx context.Context, blockMeta waveobj.MetaMap
 }
 
 func (c *TsunamiController) Stop(graceful bool, newStatus string) error {
+	log.Printf("TsunamiController.Stop called for block %s (graceful: %t, newStatus: %s)", c.blockId, graceful, newStatus)
 	c.runLock.Lock()
 	defer c.runLock.Unlock()
 
@@ -283,12 +286,12 @@ func (c *TsunamiController) GetRuntimeStatus() *BlockControllerRuntimeStatus {
 			ShellProcStatus:   c.status,
 			ShellProcExitCode: c.exitCode,
 		}
-		
+
 		if c.status == Status_Running && c.port > 0 {
 			rtn.TsunamiPort = c.port
 		}
 	})
-	
+
 	return rtn
 }
 
@@ -388,6 +391,7 @@ func runTsunamiAppBinary(ctx context.Context, appBinPath string) (*TsunamiAppPro
 }
 
 func MakeTsunamiController(tabId string, blockId string) Controller {
+	log.Printf("make tsunami controller: %s %s\n", tabId, blockId)
 	return &TsunamiController{
 		blockId: blockId,
 		tabId:   tabId,

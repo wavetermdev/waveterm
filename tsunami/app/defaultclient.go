@@ -8,6 +8,7 @@ import (
 	"flag"
 	"io"
 	"io/fs"
+	"log"
 	"net/http"
 	"os"
 
@@ -98,6 +99,7 @@ func RunMain() {
 		go func() {
 			// Read stdin until EOF/close, then exit the process
 			io.ReadAll(os.Stdin)
+			log.Printf("[tsunami] shutting down due to close of stdin\n")
 			os.Exit(0)
 		}()
 	}
