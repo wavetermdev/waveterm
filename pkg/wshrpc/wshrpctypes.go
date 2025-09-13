@@ -67,6 +67,7 @@ const (
 	Command_Mkdir             = "mkdir"
 	Command_ResolveIds        = "resolveids"
 	Command_BlockInfo         = "blockinfo"
+	Command_BlocksList        = "blockslist"
 	Command_CreateBlock       = "createblock"
 	Command_DeleteBlock       = "deleteblock"
 
@@ -196,6 +197,7 @@ type WshRpcInterface interface {
 	SetConnectionsConfigCommand(ctx context.Context, data ConnConfigRequest) error
 	GetFullConfigCommand(ctx context.Context) (wconfig.FullConfigType, error)
 	BlockInfoCommand(ctx context.Context, blockId string) (*BlockInfoData, error)
+	BlocksListCommand(ctx context.Context, data BlocksListRequest) ([]BlocksListEntry, error)
 	WaveInfoCommand(ctx context.Context) (*WaveInfoData, error)
 	WshActivityCommand(ct context.Context, data map[string]int) error
 	ActivityCommand(ctx context.Context, data ActivityUpdate) error
@@ -676,6 +678,19 @@ type WaveInfoData struct {
 type WorkspaceInfoData struct {
 	WindowId      string             `json:"windowid"`
 	WorkspaceData *waveobj.Workspace `json:"workspacedata"`
+}
+
+type BlocksListRequest struct {
+	WindowId    string `json:"windowid,omitempty"`
+	WorkspaceId string `json:"workspaceid,omitempty"`
+}
+
+type BlocksListEntry struct {
+	WindowId    string              `json:"windowid"`
+	WorkspaceId string              `json:"workspaceid"`
+	TabId       string              `json:"tabid"`
+	BlockId     string              `json:"blockid"`
+	Meta        waveobj.MetaMapType `json:"meta"`
 }
 
 type AiMessageData struct {

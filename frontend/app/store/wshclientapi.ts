@@ -32,6 +32,11 @@ class RpcApiType {
         return client.wshRpcCall("blockinfo", data, opts);
     }
 
+    // command "blockslist" [call]
+    BlocksListCommand(client: WshClient, data: BlocksListRequest, opts?: RpcOpts): Promise<BlocksListEntry[]> {
+        return client.wshRpcCall("blockslist", data, opts);
+    }
+
     // command "connconnect" [call]
     ConnConnectCommand(client: WshClient, data: ConnRequest, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("connconnect", data, opts);
