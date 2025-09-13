@@ -7,6 +7,7 @@ import (
 	"go/token"
 	"io"
 	"log"
+	"net/url"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -317,6 +318,15 @@ func verifyTsunamiDir(dir string) error {
 	}
 
 	return nil
+}
+
+func GetAppModTime(appPath string) (time.Time, error) {
+	appGoPath := filepath.Join(appPath, "app.go")
+	info, err := os.Stat(appGoPath)
+	if err != nil {
+		return time.Time{}, fmt.Errorf("failed to get app.go mod time: %w", err)
+	}
+	return info.ModTime(), nil
 }
 
 func verifyScaffoldPath(scaffoldPath string) error {
@@ -760,7 +770,6 @@ func monitorAndOpenBrowser(r io.ReadCloser, verbose bool) {
 	defer r.Close()
 
 	scanner := bufio.NewScanner(r)
-	urlRegex := regexp.MustCompile(`\[tsunami\] listening at (http://[^\s]+)`)
 	browserOpened := false
 	if verbose {
 		log.Printf("monitoring for browser open\n")
@@ -770,14 +779,41 @@ func monitorAndOpenBrowser(r io.ReadCloser, verbose bool) {
 		line := scanner.Text()
 		fmt.Println(line)
 
-		if !browserOpened && len(urlRegex.FindStringSubmatch(line)) > 1 {
-			matches := urlRegex.FindStringSubmatch(line)
-			url := matches[1]
-			if verbose {
-				log.Printf("Opening browser to %s", url)
+		if !browserOpened {
+			port := ParseTsunamiPort(line)
+			if port > 0 {
+				url := fmt.Sprintf("http://localhost:%d", port)
+				if verbose {
+					log.Printf("Opening browser to %s", url)
+				}
+				go util.OpenBrowser(url, 100*time.Millisecond)
+				browserOpened = true
 			}
-			go util.OpenBrowser(url, 100*time.Millisecond)
-			browserOpened = true
 		}
 	}
+}
+
+func ParseTsunamiPort(line string) int {
+	urlRegex := regexp.MustCompile(`\[tsunami\] listening at (http://[^\s]+)`)
+	matches := urlRegex.FindStringSubmatch(line)
+	if len(matches) < 2 {
+		return 0
+	}
+
+	u, err := url.Parse(matches[1])
+	if err != nil {
+		return 0
+	}
+
+	portStr := u.Port()
+	if portStr == "" {
+		return 0
+	}
+
+	port, err := strconv.Atoi(portStr)
+	if err != nil {
+		return 0
+	}
+
+	return port
 }

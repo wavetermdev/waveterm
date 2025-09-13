@@ -147,8 +147,6 @@ func (sc *ShellController) SendInput(inputUnion *BlockInputUnion) error {
 	return nil
 }
 
-// All the existing private methods remain unchanged
-
 func (sc *ShellController) WithLock(f func()) {
 	sc.Lock.Lock()
 	defer sc.Lock.Unlock()
