@@ -119,7 +119,7 @@ type MetaTSType struct {
 
 	TsunamiClear           bool   `json:"tsunami:*,omitempty"`
 	TsunamiSdkReplacePath  string `json:"tsunami:sdkreplacepath,omitempty"`
-	TsunamiAppDir          string `json:"tsunami:appdir,omitempty"`
+	TsunamiAppPath         string `json:"tsunami:apppath,omitempty"`
 	TsunamiScaffoldPath    string `json:"tsunami:scaffoldpath,omitempty"`
 
 	VDomClear         bool   `json:"vdom:*,omitempty"`

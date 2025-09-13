@@ -592,7 +592,7 @@ declare global {
         "markdown:fixedfontsize"?: number;
         "tsunami:*"?: boolean;
         "tsunami:sdkreplacepath"?: string;
-        "tsunami:appdir"?: string;
+        "tsunami:apppath"?: string;
         "tsunami:scaffoldpath"?: string;
         "vdom:*"?: boolean;
         "vdom:initialized"?: boolean;

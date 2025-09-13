@@ -47,19 +47,19 @@ func validateEnvironmentVars(opts *build.BuildOpts) error {
 
 	opts.ScaffoldPath = scaffoldPath
 	opts.SdkReplacePath = sdkReplacePath
-	
+
 	// NodePath is optional
 	if nodePath := os.Getenv(EnvTsunamiNodePath); nodePath != "" {
 		opts.NodePath = nodePath
 	}
-	
+
 	return nil
 }
 
 var buildCmd = &cobra.Command{
-	Use:          "build [directory]",
+	Use:          "build [apppath]",
 	Short:        "Build a Tsunami application",
-	Long:         `Build a Tsunami application from the specified directory.`,
+	Long:         `Build a Tsunami application.`,
 	Args:         cobra.ExactArgs(1),
 	SilenceUsage: true,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -67,7 +67,7 @@ var buildCmd = &cobra.Command{
 		keepTemp, _ := cmd.Flags().GetBool("keeptemp")
 		output, _ := cmd.Flags().GetString("output")
 		opts := build.BuildOpts{
-			Dir:        args[0],
+			AppPath:    args[0],
 			Verbose:    verbose,
 			KeepTemp:   keepTemp,
 			OutputFile: output,
@@ -84,9 +84,9 @@ var buildCmd = &cobra.Command{
 }
 
 var runCmd = &cobra.Command{
-	Use:          "run [directory]",
+	Use:          "run [apppath]",
 	Short:        "Build and run a Tsunami application",
-	Long:         `Build and run a Tsunami application from the specified directory.`,
+	Long:         `Build and run a Tsunami application.`,
 	Args:         cobra.ExactArgs(1),
 	SilenceUsage: true,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -94,7 +94,7 @@ var runCmd = &cobra.Command{
 		open, _ := cmd.Flags().GetBool("open")
 		keepTemp, _ := cmd.Flags().GetBool("keeptemp")
 		opts := build.BuildOpts{
-			Dir:      args[0],
+			AppPath:  args[0],
 			Verbose:  verbose,
 			Open:     open,
 			KeepTemp: keepTemp,

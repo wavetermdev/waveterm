@@ -22,9 +22,9 @@ func runTsunami(blockMeta waveobj.MetaMapType) error {
 		return fmt.Errorf("tsunami:sdkreplacepath is required")
 	}
 
-	appDir := blockMeta.GetString(waveobj.MetaKey_TsunamiAppDir, "")
-	if appDir == "" {
-		return fmt.Errorf("tsunami:appdir is required")
+	appPath := blockMeta.GetString(waveobj.MetaKey_TsunamiAppPath, "")
+	if appPath == "" {
+		return fmt.Errorf("tsunami:apppath is required")
 	}
 
 	// Get Electron executable path
@@ -34,7 +34,7 @@ func runTsunami(blockMeta waveobj.MetaMapType) error {
 	}
 
 	opts := build.BuildOpts{
-		Dir:            appDir,
+		Dir:            appPath,
 		Verbose:        true,
 		Open:           false,
 		KeepTemp:       false,

@@ -27,7 +27,7 @@ const MinSupportedGoMinorVersion = 22
 const TsunamiUIImportPath = "github.com/wavetermdev/waveterm/tsunami/ui"
 
 type BuildOpts struct {
-	Dir            string
+	AppPath        string
 	Verbose        bool
 	Open           bool
 	KeepTemp       bool
@@ -174,7 +174,7 @@ func createGoMod(tempDir, appDirName, goVersion string, opts BuildOpts, verbose 
 	modulePath := fmt.Sprintf("tsunami/app/%s", appDirName)
 
 	// Check if go.mod already exists in original directory
-	originalGoModPath := filepath.Join(opts.Dir, "go.mod")
+	originalGoModPath := filepath.Join(opts.AppPath, "go.mod")
 	var modFile *modfile.File
 	var err error
 
@@ -191,7 +191,7 @@ func createGoMod(tempDir, appDirName, goVersion string, opts BuildOpts, verbose 
 		}
 
 		// Also copy go.sum if it exists
-		originalGoSumPath := filepath.Join(opts.Dir, "go.sum")
+		originalGoSumPath := filepath.Join(opts.AppPath, "go.sum")
 		if _, err := os.Stat(originalGoSumPath); err == nil {
 			tempGoSumPath := filepath.Join(tempDir, "go.sum")
 			if err := copyFile(originalGoSumPath, tempGoSumPath); err != nil {
@@ -453,7 +453,7 @@ func tsunamiBuildInternal(opts BuildOpts) (*BuildEnv, error) {
 		return nil, err
 	}
 
-	if err := verifyTsunamiDir(opts.Dir); err != nil {
+	if err := verifyTsunamiDir(opts.AppPath); err != nil {
 		return nil, err
 	}
 
@@ -469,20 +469,20 @@ func tsunamiBuildInternal(opts BuildOpts) (*BuildEnv, error) {
 
 	buildEnv.TempDir = tempDir
 
-	log.Printf("Building tsunami app from %s\n", opts.Dir)
+	log.Printf("Building tsunami app from %s\n", opts.AppPath)
 
 	if opts.Verbose || opts.KeepTemp {
 		log.Printf("Temp dir: %s\n", tempDir)
 	}
 
 	// Copy all *.go files from the root directory
-	goCount, err := copyGoFiles(opts.Dir, tempDir)
+	goCount, err := copyGoFiles(opts.AppPath, tempDir)
 	if err != nil {
 		return buildEnv, fmt.Errorf("failed to copy go files: %w", err)
 	}
 
 	// Copy static directory
-	staticSrcDir := filepath.Join(opts.Dir, "static")
+	staticSrcDir := filepath.Join(opts.AppPath, "static")
 	staticDestDir := filepath.Join(tempDir, "static")
 	staticCount, err := copyDirRecursive(staticSrcDir, staticDestDir, true)
 	if err != nil {
@@ -507,7 +507,7 @@ func tsunamiBuildInternal(opts BuildOpts) (*BuildEnv, error) {
 	}
 
 	// Create go.mod file
-	appDirName := filepath.Base(opts.Dir)
+	appDirName := filepath.Base(opts.AppPath)
 	if err := createGoMod(tempDir, appDirName, buildEnv.GoVersion, opts, opts.Verbose); err != nil {
 		return buildEnv, fmt.Errorf("failed to create go.mod: %w", err)
 	}
@@ -543,7 +543,7 @@ func tsunamiBuildInternal(opts BuildOpts) (*BuildEnv, error) {
 	}
 
 	// Move generated files back to original directory
-	if err := moveFilesBack(tempDir, opts.Dir, opts.Verbose); err != nil {
+	if err := moveFilesBack(tempDir, opts.AppPath, opts.Verbose); err != nil {
 		return buildEnv, fmt.Errorf("failed to move files back: %w", err)
 	}
 
@@ -711,7 +711,7 @@ func TsunamiRun(opts BuildOpts) error {
 	runCmd := exec.Command(appPath)
 	runCmd.Dir = buildEnv.TempDir
 
-	log.Printf("Running tsunami app from %s", opts.Dir)
+	log.Printf("Running tsunami app from %s", opts.AppPath)
 
 	runCmd.Stdin = os.Stdin
 
