@@ -9,8 +9,11 @@ import {
     resolveSrcSet,
     transformBlocks,
 } from "@/app/element/markdown-util";
-import { boundNumber, useAtomValueSafe } from "@/util/util";
-import clsx from "clsx";
+import { ContextMenuModel as contextMenuModel } from "@/app/store/contextmenu";
+import { RpcApi } from "@/app/store/wshclientapi";
+import { TabRpcClient } from "@/app/store/wshrpcutil";
+import { boundNumber, stringToBase64, useAtomValueSafe } from "@/util/util";
+import { clsx } from "clsx";
 import { Atom } from "jotai";
 import { OverlayScrollbarsComponent, OverlayScrollbarsComponentRef } from "overlayscrollbars-react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -21,7 +24,7 @@ import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
 import rehypeSlug from "rehype-slug";
 import RemarkFlexibleToc, { TocItem } from "remark-flexible-toc";
 import remarkGfm from "remark-gfm";
-import { openLink } from "../store/global";
+import { atoms, getAllBlockComponentModels, globalStore, openLink } from "../store/global";
 import { IconButton } from "./iconbutton";
 import "./markdown.scss";
 
@@ -91,6 +94,64 @@ const CodeBlock = ({ children, onClickExecute }: CodeBlockProps) => {
         }
     };
 
+    const handleSendToTerminal = async (e: React.MouseEvent) => {
+        let textToSend = getTextContent(children);
+        textToSend = textToSend.replace(/\n$/, "");
+
+        const allBCMs = getAllBlockComponentModels();
+        const terminalBlocks = [];
+
+        for (const bcm of allBCMs) {
+            if (bcm?.viewModel?.viewType === "term") {
+                terminalBlocks.push({
+                    id: (bcm.viewModel as any).blockId || "",
+                    title: `Terminal ${terminalBlocks.length + 1}`,
+                });
+            }
+        }
+
+        const menuItems: ContextMenuItem[] = terminalBlocks.map((terminal) => ({
+            label: terminal.title,
+            click: () => sendTextToTerminal(terminal.id, textToSend),
+        }));
+
+        menuItems.push({ type: "separator" });
+        menuItems.push({
+            label: "Create New Terminal",
+            click: async () => {
+                const termBlockDef = {
+                    meta: {
+                        controller: "shell",
+                        view: "term",
+                    },
+                };
+                try {
+                    const tabId = globalStore.get(atoms.staticTabId);
+                    const oref = await RpcApi.CreateBlockCommand(TabRpcClient, {
+                        tabid: tabId,
+                        blockdef: termBlockDef,
+                    });
+
+                    const blockId = oref.split(":")[1];
+                    setTimeout(() => sendTextToTerminal(blockId, textToSend), 500);
+                } catch (error) {
+                    console.error("Failed to create new terminal block:", error);
+                }
+            },
+        });
+
+        contextMenuModel.showContextMenu(menuItems, e);
+    };
+
+    const sendTextToTerminal = (blockId: string, text: string) => {
+        const textWithReturn = text + "\n";
+        const b64data = stringToBase64(textWithReturn);
+        RpcApi.ControllerInputCommand(TabRpcClient, {
+            blockid: blockId,
+            inputdata64: b64data,
+        });
+    };
+
     return (
         <pre className="codeblock">
             {children}
@@ -105,6 +166,14 @@ const CodeBlock = ({ children, onClickExecute }: CodeBlockProps) => {
                         }}
                     />
                 )}
+                <IconButton
+                    decl={{
+                        elemtype: "iconbutton",
+                        icon: "regular@terminal",
+                        click: handleSendToTerminal,
+                        title: "Send to Terminal",
+                    }}
+                />
             </div>
         </pre>
     );
