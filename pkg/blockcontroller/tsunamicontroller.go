@@ -27,7 +27,7 @@ type TsunamiAppProc struct {
 	StdoutBuffer *utilds.ReaderLineBuffer
 	StderrBuffer *utilds.ReaderLineBuffer // May be nil if stderr was consumed for port detection
 	StdinWriter  io.WriteCloser
-	Port         int // Port the tsunami app is listening on
+	Port         int           // Port the tsunami app is listening on
 	WaitCh       chan struct{} // Channel that gets closed when cmd.Wait() returns
 	WaitRtn      error         // Error returned by cmd.Wait()
 }
@@ -41,6 +41,7 @@ type TsunamiController struct {
 	status        string
 	statusVersion int
 	exitCode      int
+	port          int
 }
 
 func getCachesDir() string {
@@ -198,7 +199,10 @@ func (c *TsunamiController) Start(ctx context.Context, blockMeta waveobj.MetaMap
 	}
 
 	c.tsunamiProc = tsunamiProc
-	c.updateStatus(Status_Running)
+	c.WithStatusLock(func() {
+		c.status = Status_Running
+		c.port = tsunamiProc.Port
+	})
 	go c.sendStatusUpdate()
 	
 	// Monitor process completion
@@ -207,12 +211,16 @@ func (c *TsunamiController) Start(ctx context.Context, blockMeta waveobj.MetaMap
 		c.runLock.Lock()
 		if c.tsunamiProc == tsunamiProc {
 			c.tsunamiProc = nil
-			c.updateStatusWithExitCode(Status_Done, tsunamiProc.WaitRtn)
+			c.WithStatusLock(func() {
+				c.status = Status_Done
+				c.port = 0
+				c.exitCode = exitCodeFromWaitErr(tsunamiProc.WaitRtn)
+			})
 			go c.sendStatusUpdate()
 		}
 		c.runLock.Unlock()
 	}()
-	
+
 	return nil
 }
 
@@ -236,22 +244,31 @@ func (c *TsunamiController) Stop(graceful bool, newStatus string) error {
 	if newStatus == "" {
 		newStatus = Status_Done
 	}
-	c.updateStatus(newStatus)
+	c.WithStatusLock(func() {
+		c.status = newStatus
+		c.port = 0
+	})
 	go c.sendStatusUpdate()
 	return nil
 }
 
 func (c *TsunamiController) GetRuntimeStatus() *BlockControllerRuntimeStatus {
-	c.statusLock.Lock()
-	defer c.statusLock.Unlock()
+	var rtn *BlockControllerRuntimeStatus
+	c.WithStatusLock(func() {
+		c.statusVersion++
+		rtn = &BlockControllerRuntimeStatus{
+			BlockId:           c.blockId,
+			Version:           c.statusVersion,
+			ShellProcStatus:   c.status,
+			ShellProcExitCode: c.exitCode,
+		}
+		
+		if c.status == Status_Running && c.port > 0 {
+			rtn.TsunamiPort = c.port
+		}
+	})
 	
-	c.statusVersion++
-	return &BlockControllerRuntimeStatus{
-		BlockId:           c.blockId,
-		Version:           c.statusVersion,
-		ShellProcStatus:   c.status,
-		ShellProcExitCode: c.exitCode,
-	}
+	return rtn
 }
 
 func (c *TsunamiController) SendInput(input *BlockInputUnion) error {
@@ -293,7 +310,7 @@ func runTsunamiAppBinary(ctx context.Context, appBinPath string) (*TsunamiAppPro
 		StdinWriter:  stdinPipe,
 		WaitCh:       waitCh,
 	}
-	
+
 	// Start goroutine to handle cmd.Wait()
 	go func() {
 		tsunamiProc.WaitRtn = cmd.Wait()
@@ -371,24 +388,20 @@ func (c *TsunamiController) sendStatusUpdate() {
 	})
 }
 
-func (c *TsunamiController) updateStatus(newStatus string) {
+func (c *TsunamiController) WithStatusLock(fn func()) {
 	c.statusLock.Lock()
 	defer c.statusLock.Unlock()
-	c.status = newStatus
+	fn()
 }
 
-func (c *TsunamiController) updateStatusWithExitCode(newStatus string, waitErr error) {
-	c.statusLock.Lock()
-	defer c.statusLock.Unlock()
-	
-	c.status = newStatus
+func exitCodeFromWaitErr(waitErr error) int {
 	if waitErr != nil {
 		if exitError, ok := waitErr.(*exec.ExitError); ok {
-			c.exitCode = exitError.ExitCode()
+			return exitError.ExitCode()
 		} else {
-			c.exitCode = 1
+			return 1
 		}
 	} else {
-		c.exitCode = 0
+		return 0
 	}
 }
