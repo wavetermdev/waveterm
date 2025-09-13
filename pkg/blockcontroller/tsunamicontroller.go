@@ -4,12 +4,41 @@
 package blockcontroller
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/tsunami/build"
 )
+
+type TsunamiController struct {
+	blockId string
+	tabId   string
+}
+
+func (tc *TsunamiController) Start(ctx context.Context, blockMeta waveobj.MetaMapType, rtOpts *waveobj.RuntimeOpts, force bool) error {
+	return fmt.Errorf("tsunami controller start not implemented")
+}
+
+func (tc *TsunamiController) Stop(graceful bool, newStatus string) error {
+	return fmt.Errorf("tsunami controller stop not implemented")
+}
+
+func (tc *TsunamiController) GetRuntimeStatus() *BlockControllerRuntimeStatus {
+	return nil
+}
+
+func (tc *TsunamiController) SendInput(input *BlockInputUnion) error {
+	return fmt.Errorf("tsunami controller send input not implemented")
+}
+
+func MakeTsunamiController(tabId string, blockId string) Controller {
+	return &TsunamiController{
+		blockId: blockId,
+		tabId:   tabId,
+	}
+}
 
 func runTsunami(blockMeta waveobj.MetaMapType) error {
 	scaffoldPath := blockMeta.GetString(waveobj.MetaKey_TsunamiScaffoldPath, "")
@@ -34,7 +63,7 @@ func runTsunami(blockMeta waveobj.MetaMapType) error {
 	}
 
 	opts := build.BuildOpts{
-		Dir:            appPath,
+		AppPath:        appPath,
 		Verbose:        true,
 		Open:           false,
 		KeepTemp:       false,

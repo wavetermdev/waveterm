@@ -301,11 +301,7 @@ func (ws *WshServer) SetViewCommand(ctx context.Context, data wshrpc.CommandBloc
 }
 
 func (ws *WshServer) ControllerStopCommand(ctx context.Context, blockId string) error {
-	bc := blockcontroller.GetBlockController(blockId)
-	if bc == nil {
-		return nil
-	}
-	bc.StopShellProc(true)
+	blockcontroller.StopBlockController(blockId)
 	return nil
 }
 
@@ -316,10 +312,6 @@ func (ws *WshServer) ControllerResyncCommand(ctx context.Context, data wshrpc.Co
 }
 
 func (ws *WshServer) ControllerInputCommand(ctx context.Context, data wshrpc.CommandBlockInputData) error {
-	bc := blockcontroller.GetBlockController(data.BlockId)
-	if bc == nil {
-		return fmt.Errorf("block controller not found for block %q", data.BlockId)
-	}
 	inputUnion := &blockcontroller.BlockInputUnion{
 		SigName:  data.SigName,
 		TermSize: data.TermSize,
@@ -332,7 +324,7 @@ func (ws *WshServer) ControllerInputCommand(ctx context.Context, data wshrpc.Com
 		}
 		inputUnion.InputData = inputBuf[:nw]
 	}
-	return bc.SendInput(inputUnion)
+	return blockcontroller.SendInput(data.BlockId, inputUnion)
 }
 
 func (ws *WshServer) ControllerAppendOutputCommand(ctx context.Context, data wshrpc.CommandControllerAppendOutputData) error {

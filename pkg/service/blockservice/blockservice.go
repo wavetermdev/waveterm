@@ -31,11 +31,7 @@ func (bs *BlockService) SendCommand_Meta() tsgenmeta.MethodMeta {
 }
 
 func (bs *BlockService) GetControllerStatus(ctx context.Context, blockId string) (*blockcontroller.BlockControllerRuntimeStatus, error) {
-	bc := blockcontroller.GetBlockController(blockId)
-	if bc == nil {
-		return nil, nil
-	}
-	return bc.GetRuntimeStatus(), nil
+	return blockcontroller.GetBlockControllerRuntimeStatus(blockId), nil
 }
 
 func (*BlockService) SaveTerminalState_Meta() tsgenmeta.MethodMeta {
