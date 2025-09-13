@@ -35,6 +35,7 @@ type BuildOpts struct {
 	ScaffoldPath   string
 	SdkReplacePath string
 	NodePath       string
+	MoveFileBack   bool
 }
 
 type BuildEnv struct {
@@ -438,7 +439,7 @@ func setupSignalCleanup(buildEnv *BuildEnv, keepTemp, verbose bool) {
 }
 
 func TsunamiBuild(opts BuildOpts) error {
-	buildEnv, err := tsunamiBuildInternal(opts)
+	buildEnv, err := TsunamiBuildInternal(opts)
 	defer buildEnv.cleanupTempDir(opts.KeepTemp, opts.Verbose)
 	if err != nil {
 		return err
@@ -447,7 +448,7 @@ func TsunamiBuild(opts BuildOpts) error {
 	return nil
 }
 
-func tsunamiBuildInternal(opts BuildOpts) (*BuildEnv, error) {
+func TsunamiBuildInternal(opts BuildOpts) (*BuildEnv, error) {
 	buildEnv, err := verifyEnvironment(opts.Verbose, opts)
 	if err != nil {
 		return nil, err
@@ -543,8 +544,10 @@ func tsunamiBuildInternal(opts BuildOpts) (*BuildEnv, error) {
 	}
 
 	// Move generated files back to original directory
-	if err := moveFilesBack(tempDir, opts.AppPath, opts.Verbose); err != nil {
-		return buildEnv, fmt.Errorf("failed to move files back: %w", err)
+	if opts.MoveFileBack {
+		if err := moveFilesBack(tempDir, opts.AppPath, opts.Verbose); err != nil {
+			return buildEnv, fmt.Errorf("failed to move files back: %w", err)
+		}
 	}
 
 	return buildEnv, nil
@@ -699,7 +702,7 @@ func copyGoFiles(srcDir, destDir string) (int, error) {
 }
 
 func TsunamiRun(opts BuildOpts) error {
-	buildEnv, err := tsunamiBuildInternal(opts)
+	buildEnv, err := TsunamiBuildInternal(opts)
 	defer buildEnv.cleanupTempDir(opts.KeepTemp, opts.Verbose)
 	if err != nil {
 		return err

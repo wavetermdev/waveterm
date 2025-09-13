@@ -67,10 +67,11 @@ var buildCmd = &cobra.Command{
 		keepTemp, _ := cmd.Flags().GetBool("keeptemp")
 		output, _ := cmd.Flags().GetString("output")
 		opts := build.BuildOpts{
-			AppPath:    args[0],
-			Verbose:    verbose,
-			KeepTemp:   keepTemp,
-			OutputFile: output,
+			AppPath:      args[0],
+			Verbose:      verbose,
+			KeepTemp:     keepTemp,
+			OutputFile:   output,
+			MoveFileBack: true,
 		}
 		if err := validateEnvironmentVars(&opts); err != nil {
 			fmt.Println(err)
@@ -94,10 +95,11 @@ var runCmd = &cobra.Command{
 		open, _ := cmd.Flags().GetBool("open")
 		keepTemp, _ := cmd.Flags().GetBool("keeptemp")
 		opts := build.BuildOpts{
-			AppPath:  args[0],
-			Verbose:  verbose,
-			Open:     open,
-			KeepTemp: keepTemp,
+			AppPath:      args[0],
+			Verbose:      verbose,
+			Open:         open,
+			KeepTemp:     keepTemp,
+			MoveFileBack: true,
 		}
 		if err := validateEnvironmentVars(&opts); err != nil {
 			fmt.Println(err)
