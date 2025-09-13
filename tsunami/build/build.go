@@ -134,21 +134,21 @@ func verifyEnvironment(verbose bool, opts BuildOpts) (*BuildEnv, error) {
 		if !filepath.IsAbs(opts.NodePath) {
 			return nil, fmt.Errorf("NodePath must be an absolute path, got: %s", opts.NodePath)
 		}
-		
+
 		info, err := os.Stat(opts.NodePath)
 		if err != nil {
 			return nil, fmt.Errorf("NodePath does not exist: %s: %w", opts.NodePath, err)
 		}
-		
+
 		if info.IsDir() {
 			return nil, fmt.Errorf("NodePath is a directory, not an executable: %s", opts.NodePath)
 		}
-		
+
 		// Check if file is executable (Unix-like systems)
 		if runtime.GOOS != "windows" && info.Mode()&0111 == 0 {
 			return nil, fmt.Errorf("NodePath is not executable: %s", opts.NodePath)
 		}
-		
+
 		if verbose {
 			log.Printf("Using custom node path: %s", opts.NodePath)
 		}
@@ -158,12 +158,11 @@ func verifyEnvironment(verbose bool, opts BuildOpts) (*BuildEnv, error) {
 		if err != nil {
 			return nil, fmt.Errorf("node command not found in PATH: %w", err)
 		}
-		
+
 		if verbose {
 			log.Printf("Found node in PATH")
 		}
 	}
-
 
 	return &BuildEnv{
 		GoVersion:   goVersion,

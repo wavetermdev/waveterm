@@ -7,7 +7,7 @@ import * as readline from "readline";
 import { WebServerEndpointVarName, WSServerEndpointVarName } from "../frontend/util/endpoints";
 import { AuthKey, WaveAuthKeyEnv } from "./authkey";
 import { setForceQuit } from "./emain-activity";
-import { WaveAppPathVarName } from "./emain-util";
+import { WaveAppPathVarName, WaveAppElectronExecPath, getElectronExecPath } from "./emain-util";
 import {
     getElectronAppUnpackedBasePath,
     getWaveConfigDir,
@@ -59,6 +59,7 @@ export function runWaveSrv(handleWSEvent: (evtMsg: WSEventType) => void): Promis
         envCopy["XDG_CURRENT_DESKTOP"] = xdgCurrentDesktop;
     }
     envCopy[WaveAppPathVarName] = getElectronAppUnpackedBasePath();
+    envCopy[WaveAppElectronExecPath] = getElectronExecPath();
     envCopy[WaveAuthKeyEnv] = AuthKey;
     envCopy[WaveDataHomeVarName] = getWaveDataDir();
     envCopy[WaveConfigHomeVarName] = getWaveConfigDir();

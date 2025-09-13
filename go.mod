@@ -33,6 +33,7 @@ require (
 	github.com/spf13/cobra v1.10.1
 	github.com/ubuntu/gowsl v0.0.0-20240906163211-049fd49bd93b
 	github.com/wavetermdev/htmltoken v0.2.0
+	github.com/wavetermdev/waveterm/tsunami v0.0.0-00010101000000-000000000000
 	golang.org/x/crypto v0.42.0
 	golang.org/x/mod v0.28.0
 	golang.org/x/sync v0.17.0
@@ -112,3 +113,5 @@ require (
 replace github.com/kevinburke/ssh_config => github.com/wavetermdev/ssh_config v0.0.0-20241219203747-6409e4292f34
 
 replace github.com/creack/pty => github.com/photostorm/pty v1.1.19-0.20230903182454-31354506054b
+
+replace github.com/wavetermdev/waveterm/tsunami => ./tsunami
