@@ -134,15 +134,36 @@ func (c *TsunamiController) Start(ctx context.Context, blockMeta waveobj.MetaMap
 	if scaffoldPath == "" {
 		return fmt.Errorf("tsunami:scaffoldpath is required")
 	}
+	scaffoldPath, err := wavebase.ExpandHomeDir(scaffoldPath)
+	if err != nil {
+		return fmt.Errorf("tsunami:scaffoldpath invalid: %w", err)
+	}
+	if !filepath.IsAbs(scaffoldPath) {
+		return fmt.Errorf("tsunami:scaffoldpath must be absolute: %s", scaffoldPath)
+	}
 
 	sdkReplacePath := blockMeta.GetString(waveobj.MetaKey_TsunamiSdkReplacePath, "")
 	if sdkReplacePath == "" {
 		return fmt.Errorf("tsunami:sdkreplacepath is required")
 	}
+	sdkReplacePath, err = wavebase.ExpandHomeDir(sdkReplacePath)
+	if err != nil {
+		return fmt.Errorf("tsunami:sdkreplacepath invalid: %w", err)
+	}
+	if !filepath.IsAbs(sdkReplacePath) {
+		return fmt.Errorf("tsunami:sdkreplacepath must be absolute: %s", sdkReplacePath)
+	}
 
 	appPath := blockMeta.GetString(waveobj.MetaKey_TsunamiAppPath, "")
 	if appPath == "" {
 		return fmt.Errorf("tsunami:apppath is required")
+	}
+	appPath, err = wavebase.ExpandHomeDir(appPath)
+	if err != nil {
+		return fmt.Errorf("tsunami:apppath invalid: %w", err)
+	}
+	if !filepath.IsAbs(appPath) {
+		return fmt.Errorf("tsunami:apppath must be absolute: %s", appPath)
 	}
 
 	appName := filepath.Base(appPath)

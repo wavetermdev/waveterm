@@ -60,6 +60,7 @@ declare global {
         shellprocstatus?: string;
         shellprocconnname?: string;
         shellprocexitcode: number;
+        tsunamiport?: number;
     };
 
     // waveobj.BlockDef
