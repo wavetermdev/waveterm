@@ -107,6 +107,10 @@ export function shFrameNavHandler(event: Electron.Event<Electron.WebContentsWill
         // allowed
         return;
     }
+    if (event.frame.name != null && event.frame.name.startsWith("tsunami")) {
+        // allowed
+        return;
+    }
     event.preventDefault();
     console.log("frame navigation canceled");
 }

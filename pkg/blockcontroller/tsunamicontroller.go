@@ -14,6 +14,7 @@ import (
 	"runtime"
 	"strings"
 	"sync"
+	"syscall"
 
 	"github.com/wavetermdev/waveterm/pkg/utilds"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
@@ -300,7 +301,7 @@ func (c *TsunamiController) SendInput(input *BlockInputUnion) error {
 }
 
 func runTsunamiAppBinary(ctx context.Context, appBinPath string) (*TsunamiAppProc, error) {
-	cmd := exec.CommandContext(ctx, appBinPath, "--close-on-stdin")
+	cmd := exec.Command(appBinPath, "--close-on-stdin")
 
 	stdoutPipe, err := cmd.StdoutPipe()
 	if err != nil {
@@ -338,6 +339,22 @@ func runTsunamiAppBinary(ctx context.Context, appBinPath string) (*TsunamiAppPro
 	// Start goroutine to handle cmd.Wait()
 	go func() {
 		tsunamiProc.WaitRtn = cmd.Wait()
+		log.Printf("WAIT RETURN: %v\n", tsunamiProc.WaitRtn)
+		if err := tsunamiProc.WaitRtn; err != nil {
+			if ee, ok := err.(*exec.ExitError); ok {
+				if ws, ok := ee.ProcessState.Sys().(syscall.WaitStatus); ok {
+					if ws.Signaled() {
+						sig := ws.Signal()
+						log.Printf("tsunami proc killed by signal: %s (%d)", sig, int(sig))
+					} else {
+						log.Printf("tsunami proc exited with code %d", ee.ExitCode())
+					}
+				}
+			} else {
+				log.Printf("tsunami proc error: %v", err)
+			}
+		}
+
 		close(waitCh)
 	}()
 
@@ -354,6 +371,7 @@ func runTsunamiAppBinary(ctx context.Context, appBinPath string) (*TsunamiAppPro
 				errChan <- fmt.Errorf("stderr buffer error: %w", err)
 				return
 			}
+			log.Printf("[stderr-readline] %s\n", line)
 
 			port := build.ParseTsunamiPort(line)
 			if port > 0 {

@@ -39,6 +39,10 @@ type BuildOpts struct {
 	MoveFileBack   bool
 }
 
+func (b BuildOpts) AppName() string {
+	return filepath.Base(b.AppPath)
+}
+
 type BuildEnv struct {
 	GoVersion   string
 	TempDir     string
