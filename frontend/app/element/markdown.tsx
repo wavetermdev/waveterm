@@ -3,13 +3,13 @@
 
 import { CopyButton } from "@/app/element/copybutton";
 import { createContentBlockPlugin } from "@/app/element/markdown-contentblock-plugin";
-import remarkMermaidToTag from "@/app/element/remark-mermaid-to-tag";
 import {
     MarkdownContentBlockType,
     resolveRemoteFile,
     resolveSrcSet,
     transformBlocks,
 } from "@/app/element/markdown-util";
+import remarkMermaidToTag from "@/app/element/remark-mermaid-to-tag";
 import { boundNumber, useAtomValueSafe } from "@/util/util";
 import clsx from "clsx";
 import { Atom } from "jotai";
@@ -33,7 +33,7 @@ const initializeMermaid = async () => {
     if (!mermaidInitialized) {
         const mermaid = await import("mermaid");
         mermaidInstance = mermaid.default;
-        mermaidInstance.initialize({ startOnLoad: false, theme: "dark" });
+        mermaidInstance.initialize({ startOnLoad: false, theme: "dark", securityLevel: "strict" });
         mermaidInitialized = true;
     }
 };
@@ -377,7 +377,7 @@ const Markdown = ({
             }
             return String(children || "");
         };
-        
+
         const chartText = getTextContent(props.children);
         return <Mermaid chart={chartText} />;
     };
@@ -421,7 +421,14 @@ const Markdown = ({
                         ],
                         waveblock: [["blockkey"]],
                     },
-                    tagNames: [...(defaultSchema.tagNames || []), "span", "waveblock", "picture", "source", "mermaidblock"],
+                    tagNames: [
+                        ...(defaultSchema.tagNames || []),
+                        "span",
+                        "waveblock",
+                        "picture",
+                        "source",
+                        "mermaidblock",
+                    ],
                 }),
             () => rehypeSlug({ prefix: idPrefix }),
         ];
