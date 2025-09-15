@@ -1,8 +1,6 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { Button } from "@/app/element/button";
-import { Input } from "@/app/element/input";
 import { ContextMenuModel } from "@/app/store/contextmenu";
 import { atoms, getApi, globalStore } from "@/app/store/global";
 import { RpcApi } from "@/app/store/wshclientapi";
@@ -10,11 +8,10 @@ import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { checkKeyPressed, isCharacterKeyEvent } from "@/util/keyutil";
 import { PLATFORM, PlatformMacOS } from "@/util/platformutil";
 import { addOpenMenuItems } from "@/util/previewutil";
-import { fireAndForget, isBlank } from "@/util/util";
+import { fireAndForget } from "@/util/util";
 import { formatRemoteUri } from "@/util/waveutil";
 import { offset, useDismiss, useFloating, useInteractions } from "@floating-ui/react";
 import {
-    Column,
     Row,
     RowData,
     Table,
@@ -25,21 +22,27 @@ import {
     useReactTable,
 } from "@tanstack/react-table";
 import clsx from "clsx";
-import dayjs from "dayjs";
 import { PrimitiveAtom, atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { OverlayScrollbarsComponent, OverlayScrollbarsComponentRef } from "overlayscrollbars-react";
-import React, { Fragment, memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import React, { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useDrag, useDrop } from "react-dnd";
 import { quote as shellQuote } from "shell-quote";
 import { debounce } from "throttle-debounce";
 import "./directorypreview.scss";
+import { EntryManagerOverlay, EntryManagerOverlayProps, EntryManagerType } from "./entry-manager";
+import {
+    cleanMimetype,
+    getBestUnit,
+    getLastModifiedTime,
+    getSortIcon,
+    isIconValid,
+    mergeError,
+    overwriteError,
+    recursiveError,
+} from "./preview-directory-utils";
 import { type PreviewModel } from "./preview-model";
 
 const PageJumpSize = 20;
-
-const recursiveError = "recursive flag must be set for directory operations";
-const overwriteError = "set overwrite flag to delete the existing file";
-const mergeError = "set overwrite flag to delete the existing contents or set merge flag to merge the contents";
 
 declare module "@tanstack/react-table" {
     interface TableMeta<TData extends RowData> {
@@ -64,138 +67,6 @@ interface DirectoryTableProps {
 }
 
 const columnHelper = createColumnHelper<FileInfo>();
-
-const displaySuffixes = {
-    B: "b",
-    kB: "k",
-    MB: "m",
-    GB: "g",
-    TB: "t",
-    KiB: "k",
-    MiB: "m",
-    GiB: "g",
-    TiB: "t",
-};
-
-function getBestUnit(bytes: number, si: boolean = false, sigfig: number = 3): string {
-    if (bytes === undefined || bytes < 0) {
-        return "-";
-    }
-    const units = si ? ["kB", "MB", "GB", "TB"] : ["KiB", "MiB", "GiB", "TiB"];
-    const divisor = si ? 1000 : 1024;
-
-    let currentUnit = "B";
-    let currentValue = bytes;
-    let idx = 0;
-    while (currentValue > divisor && idx < units.length - 1) {
-        currentUnit = units[idx];
-        currentValue /= divisor;
-        idx += 1;
-    }
-
-    return `${parseFloat(currentValue.toPrecision(sigfig))}${displaySuffixes[currentUnit]}`;
-}
-
-function getLastModifiedTime(unixMillis: number, column: Column<FileInfo, number>): string {
-    const fileDatetime = dayjs(new Date(unixMillis));
-    const nowDatetime = dayjs(new Date());
-
-    let datePortion: string;
-    if (nowDatetime.isSame(fileDatetime, "date")) {
-        datePortion = "Today";
-    } else if (nowDatetime.subtract(1, "day").isSame(fileDatetime, "date")) {
-        datePortion = "Yesterday";
-    } else {
-        datePortion = dayjs(fileDatetime).format("M/D/YY");
-    }
-
-    if (column.getSize() > 120) {
-        return `${datePortion}, ${dayjs(fileDatetime).format("h:mm A")}`;
-    }
-    return datePortion;
-}
-
-const iconRegex = /^[a-z0-9- ]+$/;
-
-function isIconValid(icon: string): boolean {
-    if (isBlank(icon)) {
-        return false;
-    }
-    return icon.match(iconRegex) != null;
-}
-
-function getSortIcon(sortType: string | boolean): React.ReactNode {
-    switch (sortType) {
-        case "asc":
-            return <i className="fa-solid fa-chevron-up dir-table-head-direction"></i>;
-        case "desc":
-            return <i className="fa-solid fa-chevron-down dir-table-head-direction"></i>;
-        default:
-            return null;
-    }
-}
-
-function cleanMimetype(input: string): string {
-    const truncated = input.split(";")[0];
-    return truncated.trim();
-}
-
-enum EntryManagerType {
-    NewFile = "New File",
-    NewDirectory = "New Folder",
-    EditName = "Rename",
-}
-
-type EntryManagerOverlayProps = {
-    forwardRef?: React.Ref<HTMLDivElement>;
-    entryManagerType: EntryManagerType;
-    startingValue?: string;
-    onSave: (newValue: string) => void;
-    onCancel?: () => void;
-    style?: React.CSSProperties;
-    getReferenceProps?: () => any;
-};
-
-const EntryManagerOverlay = memo(
-    ({
-        entryManagerType,
-        startingValue,
-        onSave,
-        onCancel,
-        forwardRef,
-        style,
-        getReferenceProps,
-    }: EntryManagerOverlayProps) => {
-        const [value, setValue] = useState(startingValue);
-        return (
-            <div className="entry-manager-overlay" ref={forwardRef} style={style} {...getReferenceProps()}>
-                <div className="entry-manager-type">{entryManagerType}</div>
-                <div className="entry-manager-input">
-                    <Input
-                        value={value}
-                        onChange={setValue}
-                        autoFocus={true}
-                        onKeyDown={(e) => {
-                            if (e.key === "Enter") {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                onSave(value);
-                            }
-                        }}
-                    />
-                </div>
-                <div className="entry-manager-buttons">
-                    <Button className="vertical-padding-4" onClick={() => onSave(value)}>
-                        Save
-                    </Button>
-                    <Button className="vertical-padding-4 red outlined" onClick={onCancel}>
-                        Cancel
-                    </Button>
-                </div>
-            </div>
-        );
-    }
-);
 
 function DirectoryTable({
     model,
