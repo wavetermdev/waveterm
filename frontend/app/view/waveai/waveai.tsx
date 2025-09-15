@@ -1,7 +1,6 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { Button } from "@/app/element/button";
 import { Markdown } from "@/app/element/markdown";
 import { TypingIndicator } from "@/app/element/typingindicator";
 import { RpcResponseHelper, WshClient } from "@/app/store/wshclient";
@@ -83,6 +82,7 @@ export class WaveAiModel implements ViewModel {
     simulateAssistantResponseAtom: WritableAtom<unknown, [userMessage: ChatMessageType], Promise<void>>;
     textAreaRef: React.RefObject<HTMLTextAreaElement>;
     locked: PrimitiveAtom<boolean>;
+    noPadding: PrimitiveAtom<boolean>;
     cancel: boolean;
     aiWshClient: AiWshClient;
 
@@ -96,6 +96,7 @@ export class WaveAiModel implements ViewModel {
         this.blockAtom = WOS.getWaveObjectAtom<Block>(`block:${blockId}`);
         this.viewIcon = atom("sparkles");
         this.viewName = atom("Wave AI");
+        this.noPadding = atom(true);
         this.messagesAtom = atom([]);
         this.messagesSplitAtom = splitAtom(this.messagesAtom);
         this.latestMessageAtom = atom((get) => get(this.messagesAtom).slice(-1)[0]);
@@ -191,99 +192,7 @@ export class WaveAiModel implements ViewModel {
             };
             return opts;
         });
-
-        this.viewText = atom((get) => {
-            const viewTextChildren: HeaderElem[] = [];
-            const aiOpts = get(this.aiOpts);
-            const presets = get(this.presetMap);
-            const presetKey = get(this.presetKey);
-            const presetName = presets[presetKey]?.["display:name"] ?? "";
-            const isCloud = isBlank(aiOpts.apitoken) && isBlank(aiOpts.baseurl);
-
-            // Handle known API providers
-            switch (aiOpts?.apitype) {
-                case "anthropic":
-                    viewTextChildren.push({
-                        elemtype: "iconbutton",
-                        icon: "globe",
-                        title: `Using Remote Anthropic API (${aiOpts.model})`,
-                        noAction: true,
-                    });
-                    break;
-                case "perplexity":
-                    viewTextChildren.push({
-                        elemtype: "iconbutton",
-                        icon: "globe",
-                        title: `Using Remote Perplexity API (${aiOpts.model})`,
-                        noAction: true,
-                    });
-                    break;
-                default:
-                    if (isCloud) {
-                        viewTextChildren.push({
-                            elemtype: "iconbutton",
-                            icon: "cloud",
-                            title: "Using Wave's AI Proxy (gpt-5-mini)",
-                            noAction: true,
-                        });
-                    } else {
-                        const baseUrl = aiOpts.baseurl ?? "OpenAI Default Endpoint";
-                        const modelName = aiOpts.model;
-                        if (baseUrl.startsWith("http://localhost") || baseUrl.startsWith("http://127.0.0.1")) {
-                            viewTextChildren.push({
-                                elemtype: "iconbutton",
-                                icon: "location-dot",
-                                title: `Using Local Model @ ${baseUrl} (${modelName})`,
-                                noAction: true,
-                            });
-                        } else {
-                            viewTextChildren.push({
-                                elemtype: "iconbutton",
-                                icon: "globe",
-                                title: `Using Remote Model @ ${baseUrl} (${modelName})`,
-                                noAction: true,
-                            });
-                        }
-                    }
-            }
-
-            const dropdownItems = Object.entries(presets)
-                .sort((a, b) => ((a[1]["display:order"] ?? 0) > (b[1]["display:order"] ?? 0) ? 1 : -1))
-                .map(
-                    (preset) =>
-                        ({
-                            label: preset[1]["display:name"],
-                            onClick: () =>
-                                fireAndForget(() =>
-                                    ObjectService.UpdateObjectMeta(WOS.makeORef("block", this.blockId), {
-                                        "ai:preset": preset[0],
-                                    })
-                                ),
-                        }) as MenuItem
-                );
-            dropdownItems.push({
-                label: "Add AI preset...",
-                onClick: () => {
-                    fireAndForget(async () => {
-                        const path = `${getApi().getConfigDir()}/presets/ai.json`;
-                        const blockDef: BlockDef = {
-                            meta: {
-                                view: "preview",
-                                file: path,
-                            },
-                        };
-                        await createBlock(blockDef, false, true);
-                    });
-                },
-            });
-            viewTextChildren.push({
-                elemtype: "menubutton",
-                text: presetName,
-                title: "Select AI Configuration",
-                items: dropdownItems,
-            });
-            return viewTextChildren;
-        });
+      
         this.endIconButtons = atom((_) => {
             let clearButton: IconButtonDecl = {
                 elemtype: "iconbutton",
@@ -447,18 +356,114 @@ export class WaveAiModel implements ViewModel {
 
 const ChatItem = ({ chatItemAtom, model }: ChatItemProps) => {
     const chatItem = useAtomValue(chatItemAtom);
-    const { user, text } = chatItem;
+    const { user, text, id } = chatItem;
     const fontSize = useAtomValue(model.mergedPresets)?.["ai:fontsize"];
     const fixedFontSize = useAtomValue(model.mergedPresets)?.["ai:fixedfontsize"];
+    const [editing, setEditing] = useState(false);
+    const [editText, setEditText] = useState(text);
+    const [copied, setCopied] = useState(false);
+    const textAreaRef = useRef<HTMLTextAreaElement>(null);
+
+    useEffect(() => {
+        if (editing && textAreaRef.current) {
+            textAreaRef.current.focus();
+            textAreaRef.current.style.height = "auto";
+            textAreaRef.current.style.height = `${textAreaRef.current.scrollHeight}px`;
+        }
+    }, [editing]);
+
+    useEffect(() => {
+        setEditText(text);
+    }, [text]);
+
+    const handleTextAreaInput = (e: React.FormEvent<HTMLTextAreaElement>) => {
+        const target = e.target as HTMLTextAreaElement;
+        target.style.height = "auto";
+        target.style.height = `${target.scrollHeight}px`;
+        setEditText(target.value);
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+        // submit
+        if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            saveEdit();
+        }
+        // cancel
+        else if (e.key === "Escape") {
+            e.preventDefault();
+            cancelEditing();
+        }
+    };
+
+    const copyToClipboard = () => {
+        if (text) {
+            navigator.clipboard
+                .writeText(text)
+                .then(() => {
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 2000);
+                })
+                .catch((err) => {
+                    console.error("Failed to copy text: ", err);
+                });
+        }
+    };
+
+    const startEditing = () => {
+        if (user === "user") {
+            setEditing(true);
+            setEditText(text);
+        }
+    };
+
+    const cancelEditing = () => {
+        setEditing(false);
+    };
+
+    const saveEdit = () => {
+        if (editText.trim() === "") {
+            return;
+        }
+
+        setEditing(false);
+        fireAndForget(async () => {
+            const history = await model.fetchAiData();
+            const msgIndex = history.findIndex((msg) => msg.role === user && msg.content === text);
+
+            if (msgIndex !== -1) {
+                const updatedHistory = history.slice(0, msgIndex);
+                await BlockService.SaveWaveAiData(model.blockId, updatedHistory);
+                await model.populateMessages();
+                model.sendMessage(editText, user);
+            }
+        });
+    };
+
+    const handleRepeat = () => {
+        if (user === "user") {
+            fireAndForget(async () => {
+                const history = await model.fetchAiData();
+                const msgIndex = history.findIndex((msg) => msg.role === user && msg.content === text);
+
+                if (msgIndex !== -1) {
+                    const updatedHistory = history.slice(0, msgIndex);
+                    await BlockService.SaveWaveAiData(model.blockId, updatedHistory);
+                    await model.populateMessages();
+                    model.sendMessage(text, user);
+                }
+            });
+        }
+    };
+
+    const containerClass = `chat-msg-container ${
+        user === "user" ? "user-msg-container" : user === "error" ? "error-msg-container" : ""
+    }`;
+
     const renderContent = useMemo(() => {
         if (user == "error") {
             return (
                 <>
-                    <div className="chat-msg chat-msg-header">
-                        <div className="icon-box">
-                            <i className="fa-sharp fa-solid fa-circle-exclamation"></i>
-                        </div>
-                    </div>
                     <div className="chat-msg chat-msg-error">
                         <Markdown
                             text={text}
@@ -467,17 +472,21 @@ const ChatItem = ({ chatItemAtom, model }: ChatItemProps) => {
                             fixedFontSizeOverride={fixedFontSize}
                         />
                     </div>
+                    <div className="msg-actions">
+                        <button
+                            className={`msg-action-btn copy-btn`}
+                            onClick={copyToClipboard}
+                            title="Copy to clipboard"
+                        >
+                            <i className={`fa-sharp fa-solid ${copied ? "fa-check" : "fa-copy"}`}></i>
+                        </button>
+                    </div>
                 </>
             );
         }
         if (user == "assistant") {
             return text ? (
                 <>
-                    <div className="chat-msg chat-msg-header">
-                        <div className="icon-box">
-                            <i className="fa-sharp fa-solid fa-sparkles"></i>
-                        </div>
-                    </div>
                     <div className="chat-msg chat-msg-assistant">
                         <Markdown
                             text={text}
@@ -486,16 +495,59 @@ const ChatItem = ({ chatItemAtom, model }: ChatItemProps) => {
                             fixedFontSizeOverride={fixedFontSize}
                         />
                     </div>
+                    <div className="msg-actions">
+                        <button
+                            className={`msg-action-btn copy-btn ${copied ? "copied" : ""}`}
+                            onClick={copyToClipboard}
+                            title="Copy to clipboard"
+                        >
+                            <i className={`fa-sharp fa-solid ${copied ? "fa-check" : "fa-copy"}`}></i>
+                        </button>
+                    </div>
                 </>
             ) : (
                 <>
-                    <div className="chat-msg-header">
-                        <i className="fa-sharp fa-solid fa-sparkles"></i>
-                    </div>
                     <TypingIndicator className="chat-msg typing-indicator" />
                 </>
             );
         }
+
+        if (editing) {
+            return (
+                <>
+                    <div className="chat-msg chat-msg-edit">
+                        <textarea
+                            ref={textAreaRef}
+                            className="edit-input"
+                            value={editText}
+                            onChange={(e) => setEditText(e.target.value)}
+                            onInput={handleTextAreaInput}
+                            onKeyDown={handleKeyDown}
+                            style={{
+                                fontSize: fontSize || undefined,
+                                fontFamily: fixedFontSize ? "monospace" : undefined,
+                            }}
+                        />
+                    </div>
+                    <div className="msg-actions">
+                        <button
+                            className="msg-action-btn repeat-btn"
+                            onClick={handleRepeat}
+                            title="Repeat (deletes this and all following messages)"
+                        >
+                            <i className="fa-sharp fa-solid fa-rotate"></i>
+                        </button>
+                        <button className="msg-action-btn edit-btn" onClick={cancelEditing} title="Cancel">
+                            <i className="fa-sharp fa-solid fa-xmark"></i>
+                        </button>
+                        <button className="msg-action-btn copy-btn" onClick={saveEdit} title="Save">
+                            <i className="fa-sharp fa-solid fa-check"></i>
+                        </button>
+                    </div>
+                </>
+            );
+        }
+
         return (
             <>
                 <div className="chat-msg chat-msg-user">
@@ -507,11 +559,30 @@ const ChatItem = ({ chatItemAtom, model }: ChatItemProps) => {
                         fixedFontSizeOverride={fixedFontSize}
                     />
                 </div>
+                <div className="msg-actions">
+                    <button
+                        className="msg-action-btn repeat-btn"
+                        onClick={handleRepeat}
+                        title="Repeat (deletes this and all following messages)"
+                    >
+                        <i className="fa-sharp fa-solid fa-rotate"></i>
+                    </button>
+                    <button className="msg-action-btn edit-btn" onClick={startEditing} title="Edit">
+                        <i className="fa-sharp fa-solid fa-pen"></i>
+                    </button>
+                    <button
+                        className={`msg-action-btn copy-btn ${copied ? "copied" : ""}`}
+                        onClick={copyToClipboard}
+                        title="Copy to clipboard"
+                    >
+                        <i className={`fa-sharp fa-solid ${copied ? "fa-check" : "fa-copy"}`}></i>
+                    </button>
+                </div>
             </>
         );
-    }, [text, user, fontSize, fixedFontSize]);
+    }, [text, user, fontSize, fixedFontSize, editing, editText, copied]);
 
-    return <div className={"chat-msg-container"}>{renderContent}</div>;
+    return <div className={containerClass}>{renderContent}</div>;
 };
 
 interface ChatWindowProps {
@@ -627,16 +698,36 @@ interface ChatInputProps {
     onKeyDown: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
     onMouseDown: (e: React.MouseEvent<HTMLTextAreaElement>) => void;
     model: WaveAiModel;
+    onButtonPress: () => void;
+    locked: boolean;
 }
 
 const ChatInput = forwardRef<HTMLTextAreaElement, ChatInputProps>(
-    ({ value, onChange, onKeyDown, onMouseDown, baseFontSize, model }, ref) => {
+    ({ value, onChange, onKeyDown, onMouseDown, baseFontSize, model, onButtonPress, locked }, ref) => {
         const textAreaRef = useRef<HTMLTextAreaElement>(null);
+        const presetKey = useAtomValue(model.presetKey);
+        const presetMap = useAtomValue(model.presetMap);
+        const [showModelMenu, setShowModelMenu] = useState(false);
+        const presetMenuRef = useRef<HTMLDivElement>(null);
+        const presetName = presetMap[presetKey]?.["display:name"] ?? "Default";
 
         useImperativeHandle(ref, () => textAreaRef.current as HTMLTextAreaElement);
 
         useEffect(() => {
             model.textAreaRef = textAreaRef;
+        }, []);
+
+        useEffect(() => {
+            const handleClickOutside = (event: MouseEvent) => {
+                if (presetMenuRef.current && !presetMenuRef.current.contains(event.target as Node)) {
+                    setShowModelMenu(false);
+                }
+            };
+
+            document.addEventListener("mousedown", handleClickOutside);
+            return () => {
+                document.removeEventListener("mousedown", handleClickOutside);
+            };
         }, []);
 
         const adjustTextAreaHeight = useCallback(
@@ -645,7 +736,6 @@ const ChatInput = forwardRef<HTMLTextAreaElement, ChatInputProps>(
                     return;
                 }
 
-                // Adjust the height of the textarea to fit the text
                 const textAreaMaxLines = 5;
                 const textAreaLineHeight = baseFontSize * 1.5;
                 const textAreaMinHeight = textAreaLineHeight;
@@ -666,21 +756,108 @@ const ChatInput = forwardRef<HTMLTextAreaElement, ChatInputProps>(
 
         useEffect(() => {
             adjustTextAreaHeight(value);
-        }, [value]);
+        }, [value, adjustTextAreaHeight]);
+
+        let buttonIcon = makeIconClass("arrow-up", false);
+        let buttonTitle = "Ask";
+        if (locked) {
+            buttonIcon = makeIconClass("stop", false);
+            buttonTitle = "Stop";
+        }
+
+        const toggleModelMenu = (e: React.MouseEvent) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setShowModelMenu(!showModelMenu);
+        };
+
+        const handleSelectModel = (presetId: string) => {
+            fireAndForget(() =>
+                ObjectService.UpdateObjectMeta(WOS.makeORef("block", model.blockId), {
+                    "ai:preset": presetId,
+                })
+            );
+            setShowModelMenu(false);
+        };
+
+        const handleAddModel = () => {
+            fireAndForget(async () => {
+                const path = `${getApi().getConfigDir()}/presets/ai.json`;
+                const blockDef: BlockDef = {
+                    meta: {
+                        view: "preview",
+                        file: path,
+                    },
+                };
+                await createBlock(blockDef, false, true);
+            });
+            setShowModelMenu(false);
+        };
+
+        // TODO: image attachment
+        // const handleAttachPhoto = () => {
+        //     const input = document.createElement('input');
+        //     input.type = 'file';
+        //     input.accept = 'image/*';
+        //     input.onchange = (e) => {
+        //         const target = e.target as HTMLInputElement;
+        //         if (target.files && target.files.length > 0) {
+        //             const file = target.files[0];
+        //
+        //         }
+        //     };
+        //     input.click();
+        // };
 
         return (
-            <textarea
-                ref={textAreaRef}
-                autoComplete="off"
-                autoCorrect="off"
-                className="waveai-input"
-                onMouseDown={onMouseDown} // When the user clicks on the textarea
-                onChange={onChange}
-                onKeyDown={onKeyDown}
-                style={{ fontSize: baseFontSize }}
-                placeholder="Ask anything..."
-                value={value}
-            ></textarea>
+            <div className="waveai-input-container">
+                <div className="waveai-input-wrapper">
+                    <textarea
+                        ref={textAreaRef}
+                        autoComplete="off"
+                        autoCorrect="off"
+                        className="waveai-input"
+                        onMouseDown={onMouseDown}
+                        onChange={onChange}
+                        onKeyDown={onKeyDown}
+                        style={{ fontSize: baseFontSize }}
+                        placeholder="Ask anything..."
+                        value={value}
+                    ></textarea>
+                </div>
+                <div className="waveai-model-selector">
+                    <div className="preset-selector" ref={presetMenuRef}>
+                        <button className={`preset-button ${showModelMenu ? "active" : ""}`} onClick={toggleModelMenu}>
+                            <span>{presetName}</span>
+                            <i className="fa-sharp fa-solid fa-chevron-down"></i>
+                        </button>
+
+                        {showModelMenu && (
+                            <div className="model-menu">
+                                {Object.entries(presetMap)
+                                    .sort((a, b) =>
+                                        (a[1]["display:order"] ?? 0) > (b[1]["display:order"] ?? 0) ? 1 : -1
+                                    )
+                                    .map(([id, preset]) => (
+                                        <div key={id} className="model-menu-item" onClick={() => handleSelectModel(id)}>
+                                            {preset["display:name"]}
+                                        </div>
+                                    ))}
+                                <div className="model-menu-item" onClick={handleAddModel}>
+                                    Add AI preset...
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                    <button
+                        className={`waveai-submit-button ${locked ? "stop" : ""}`}
+                        onClick={onButtonPress}
+                        disabled={!locked && value.trim() === ""}
+                    >
+                        <i className={buttonIcon} title={buttonTitle} />
+                    </button>
+                </div>
+            </div>
         );
     }
 );
@@ -838,14 +1015,6 @@ const WaveAi = ({ model }: { model: WaveAiModel; blockId: string }) => {
         }
     };
 
-    let buttonClass = "waveai-submit-button";
-    let buttonIcon = makeIconClass("arrow-up", false);
-    let buttonTitle = "run";
-    if (locked) {
-        buttonClass = "waveai-submit-button stop";
-        buttonIcon = makeIconClass("stop", false);
-        buttonTitle = "stop";
-    }
     const handleButtonPress = useCallback(() => {
         if (locked) {
             model.cancel = true;
@@ -859,22 +1028,17 @@ const WaveAi = ({ model }: { model: WaveAiModel; blockId: string }) => {
             <div className="waveai-chat">
                 <ChatWindow ref={osRef} chatWindowRef={chatWindowRef} msgWidths={msgWidths} model={model} />
             </div>
-            <div className="waveai-controls">
-                <div className="waveai-input-wrapper">
-                    <ChatInput
-                        ref={inputRef}
-                        value={value}
-                        model={model}
-                        onChange={handleTextAreaChange}
-                        onKeyDown={handleTextAreaKeyDown}
-                        onMouseDown={handleTextAreaMouseDown}
-                        baseFontSize={baseFontSize}
-                    />
-                </div>
-                <Button className={buttonClass} onClick={handleButtonPress}>
-                    <i className={buttonIcon} title={buttonTitle} />
-                </Button>
-            </div>
+            <ChatInput
+                ref={inputRef}
+                value={value}
+                model={model}
+                onChange={handleTextAreaChange}
+                onKeyDown={handleTextAreaKeyDown}
+                onMouseDown={handleTextAreaMouseDown}
+                baseFontSize={baseFontSize}
+                onButtonPress={handleButtonPress}
+                locked={locked}
+            />
         </div>
     );
 };
