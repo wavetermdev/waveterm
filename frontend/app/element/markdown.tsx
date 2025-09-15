@@ -9,6 +9,7 @@ import {
     resolveSrcSet,
     transformBlocks,
 } from "@/app/element/markdown-util";
+import remarkMermaidToTag from "@/app/element/remark-mermaid-to-tag";
 import { boundNumber, useAtomValueSafe } from "@/util/util";
 import clsx from "clsx";
 import { Atom } from "jotai";
@@ -24,6 +25,18 @@ import remarkGfm from "remark-gfm";
 import { openLink } from "../store/global";
 import { IconButton } from "./iconbutton";
 import "./markdown.scss";
+
+let mermaidInitialized = false;
+let mermaidInstance: any = null;
+
+const initializeMermaid = async () => {
+    if (!mermaidInitialized) {
+        const mermaid = await import("mermaid");
+        mermaidInstance = mermaid.default;
+        mermaidInstance.initialize({ startOnLoad: false, theme: "dark", securityLevel: "strict" });
+        mermaidInitialized = true;
+    }
+};
 
 const Link = ({
     setFocusedHeading,
@@ -55,7 +68,65 @@ const Heading = ({ props, hnum }: { props: React.HTMLAttributes<HTMLHeadingEleme
     );
 };
 
-const Code = ({ className, children }: { className: string; children: React.ReactNode }) => {
+const Mermaid = ({ chart }: { chart: string }) => {
+    const ref = useRef<HTMLDivElement>(null);
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+        const renderMermaid = async () => {
+            try {
+                setIsLoading(true);
+                setError(null);
+
+                await initializeMermaid();
+                if (!ref.current || !mermaidInstance) {
+                    return;
+                }
+
+                // Normalize the chart text
+                let normalizedChart = chart
+                    .replace(/<br\s*\/?>/gi, "\n") // Convert <br/> and <br> to newlines
+                    .replace(/\r\n?/g, "\n") // Normalize \r \r\n to \n
+                    .replace(/\n+$/, ""); // Remove final newline
+
+                ref.current.removeAttribute("data-processed");
+                ref.current.textContent = normalizedChart;
+                // console.log("mermaid", normalizedChart);
+                await mermaidInstance.run({ nodes: [ref.current] });
+                setIsLoading(false);
+            } catch (err) {
+                console.error("Error rendering mermaid diagram:", err);
+                setError(`Failed to render diagram: ${err.message || err}`);
+                setIsLoading(false);
+            }
+        };
+
+        renderMermaid();
+    }, [chart]);
+
+    useEffect(() => {
+        if (!ref.current) return;
+
+        if (error) {
+            ref.current.textContent = `Error: ${error}`;
+            ref.current.className = "mermaid error";
+        } else if (isLoading) {
+            ref.current.textContent = "Loading diagram...";
+            ref.current.className = "mermaid";
+        } else {
+            ref.current.className = "mermaid";
+        }
+    }, [isLoading, error]);
+
+    return <div className="mermaid" ref={ref} />;
+};
+
+const Code = ({ className = "", children }: { className?: string; children: React.ReactNode }) => {
+    if (/\blanguage-mermaid\b/.test(className)) {
+        const text = Array.isArray(children) ? children.join("") : String(children ?? "");
+        return <Mermaid chart={text} />;
+    }
     return <code className={className}>{children}</code>;
 };
 
@@ -256,7 +327,7 @@ const Markdown = ({
     // Ensure uniqueness of ids between MD preview instances.
     const [idPrefix] = useState<string>(crypto.randomUUID());
 
-    text = textAtomValue ?? text;
+    text = textAtomValue ?? text ?? "";
     const transformedOutput = transformBlocks(text);
     const transformedText = transformedOutput.content;
     const contentBlocksMap = transformedOutput.blocks;
@@ -295,6 +366,21 @@ const Markdown = ({
         ),
     };
     markdownComponents["waveblock"] = (props: any) => <WaveBlock {...props} blockmap={contentBlocksMap} />;
+    markdownComponents["mermaidblock"] = (props: any) => {
+        const getTextContent = (children: any): string => {
+            if (typeof children === "string") {
+                return children;
+            } else if (Array.isArray(children)) {
+                return children.map(getTextContent).join("");
+            } else if (children && typeof children === "object" && children.props && children.props.children) {
+                return getTextContent(children.props.children);
+            }
+            return String(children || "");
+        };
+
+        const chartText = getTextContent(props.children);
+        return <Mermaid chart={chartText} />;
+    };
 
     const toc = useMemo(() => {
         if (showToc && tocRef.current.length > 0) {
@@ -335,12 +421,20 @@ const Markdown = ({
                         ],
                         waveblock: [["blockkey"]],
                     },
-                    tagNames: [...(defaultSchema.tagNames || []), "span", "waveblock", "picture", "source"],
+                    tagNames: [
+                        ...(defaultSchema.tagNames || []),
+                        "span",
+                        "waveblock",
+                        "picture",
+                        "source",
+                        "mermaidblock",
+                    ],
                 }),
             () => rehypeSlug({ prefix: idPrefix }),
         ];
     }
     const remarkPlugins: any = [
+        remarkMermaidToTag,
         remarkGfm,
         [RemarkFlexibleToc, { tocRef: tocRef.current }],
         [createContentBlockPlugin, { blocks: contentBlocksMap }],
