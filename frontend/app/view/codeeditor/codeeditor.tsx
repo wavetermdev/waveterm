@@ -8,9 +8,7 @@ import type * as MonacoTypes from "monaco-editor/esm/vs/editor/editor.api";
 import { configureMonacoYaml } from "monaco-yaml";
 import React, { useMemo, useRef } from "react";
 
-import { RpcApi } from "@/app/store/wshclientapi";
-import { TabRpcClient } from "@/app/store/wshrpcutil";
-import { boundNumber, makeConnRoute } from "@/util/util";
+import { boundNumber } from "@/util/util";
 import editorWorker from "monaco-editor/esm/vs/editor/editor.worker?worker";
 import cssWorker from "monaco-editor/esm/vs/language/css/css.worker?worker";
 import htmlWorker from "monaco-editor/esm/vs/language/html/html.worker?worker";
@@ -18,7 +16,6 @@ import jsonWorker from "monaco-editor/esm/vs/language/json/json.worker?worker";
 import tsWorker from "monaco-editor/esm/vs/language/typescript/ts.worker?worker";
 import { SchemaEndpoints, getSchemaEndpointInfo } from "./schemaendpoints";
 import ymlWorker from "./yamlworker?worker";
-
 
 // there is a global monaco variable (TODO get the correct TS type)
 declare var monaco: Monaco;
@@ -109,15 +106,13 @@ function defaultEditorOptions(): MonacoTypes.editor.IEditorOptions {
 interface CodeEditorProps {
     blockId: string;
     text: string;
-    filename: string;
-    fileinfo: FileInfo;
+    readonly: boolean;
     language?: string;
-    meta?: MetaType;
     onChange?: (text: string) => void;
     onMount?: (monacoPtr: MonacoTypes.editor.IStandaloneCodeEditor, monaco: Monaco) => () => void;
 }
 
-export function CodeEditor({ blockId, text, language, filename, fileinfo, meta, onChange, onMount }: CodeEditorProps) {
+export function CodeEditor({ blockId, text, language, readonly, onChange, onMount }: CodeEditorProps) {
     const divRef = useRef<HTMLDivElement>(null);
     const unmountRef = useRef<() => void>(null);
     const minimapEnabled = useOverrideConfigAtom(blockId, "editor:minimapenabled") ?? false;
@@ -125,7 +120,7 @@ export function CodeEditor({ blockId, text, language, filename, fileinfo, meta, 
     const wordWrap = useOverrideConfigAtom(blockId, "editor:wordwrap") ?? false;
     const fontSize = boundNumber(useOverrideConfigAtom(blockId, "editor:fontsize"), 6, 64);
     const theme = "wave-theme-dark";
-    const [absPath, setAbsPath] = React.useState("");
+    const editorPath = useRef(crypto.randomUUID()).current;
 
     React.useEffect(() => {
         return () => {
@@ -135,24 +130,6 @@ export function CodeEditor({ blockId, text, language, filename, fileinfo, meta, 
             }
         };
     }, []);
-
-    React.useEffect(() => {
-        const inner = async () => {
-            try {
-                const fileInfo = await RpcApi.RemoteFileJoinCommand(TabRpcClient, [filename], {
-                    route: makeConnRoute(meta.connection ?? ""),
-                });
-                setAbsPath(fileInfo.path);
-            } catch (e) {
-                setAbsPath(filename);
-            }
-        };
-        inner();
-    }, [filename]);
-
-    React.useEffect(() => {
-        console.log("abspath is", absPath);
-    }, [absPath]);
 
     function handleEditorChange(text: string, ev: MonacoTypes.editor.IModelContentChangedEvent) {
         if (onChange) {
@@ -168,13 +145,13 @@ export function CodeEditor({ blockId, text, language, filename, fileinfo, meta, 
 
     const editorOpts = useMemo(() => {
         const opts = defaultEditorOptions();
-        opts.readOnly = fileinfo.readonly;
+        opts.readOnly = readonly;
         opts.minimap.enabled = minimapEnabled;
         opts.stickyScroll.enabled = stickyScrollEnabled;
         opts.wordWrap = wordWrap ? "on" : "off";
         opts.fontSize = fontSize;
         return opts;
-    }, [minimapEnabled, stickyScrollEnabled, wordWrap, fontSize, fileinfo.readonly]);
+    }, [minimapEnabled, stickyScrollEnabled, wordWrap, fontSize, readonly]);
 
     return (
         <div className="flex flex-col w-full h-full overflow-hidden items-center justify-center">
@@ -185,7 +162,7 @@ export function CodeEditor({ blockId, text, language, filename, fileinfo, meta, 
                     options={editorOpts}
                     onChange={handleEditorChange}
                     onMount={handleEditorOnMount}
-                    path={absPath}
+                    path={editorPath}
                     language={language}
                 />
             </div>

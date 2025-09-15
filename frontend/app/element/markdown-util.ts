@@ -162,7 +162,7 @@ export const resolveRemoteFile = async (filepath: string, resolveOpts: MarkdownR
         const baseDirUri = formatRemoteUri(resolveOpts.baseDir, resolveOpts.connName);
         const fileInfo = await RpcApi.FileJoinCommand(TabRpcClient, [baseDirUri, filepath]);
         const remoteUri = formatRemoteUri(fileInfo.path, resolveOpts.connName);
-        console.log("markdown resolve", resolveOpts, filepath, "=>", baseDirUri, remoteUri);
+        // console.log("markdown resolve", resolveOpts, filepath, "=>", baseDirUri, remoteUri);
         const usp = new URLSearchParams();
         usp.set("path", remoteUri);
         return getWebServerEndpoint() + "/wave/stream-file?" + usp.toString();

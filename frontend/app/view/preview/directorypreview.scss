@@ -90,16 +90,6 @@
             display: flex;
             flex-direction: column;
             padding: 0 5px 5px 5px;
-            .dir-table-body-search-display {
-                display: flex;
-                border-radius: 3px;
-                padding: 0.25rem 0.5rem;
-                background-color: var(--warning-color);
-
-                .search-display-close-button {
-                    margin-left: auto;
-                }
-            }
 
             .dir-table-body-scroll-box {
                 position: relative;
@@ -184,52 +174,6 @@
                 }
             }
         }
-    }
-
-    .dir-table-search-line {
-        display: flex;
-        justify-content: flex-end;
-        gap: 0.7rem;
-
-        .dir-table-search-box {
-            width: 0;
-            height: 0;
-            opacity: 0;
-            padding: 0;
-            border: none;
-            pointer-events: none;
-        }
-    }
-}
-
-.dir-table-button {
-    background-color: transparent;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    flex-direction: column;
-    padding: 0.2rem;
-    border-radius: 6px;
-
-    input {
-        width: 0;
-        height: 0;
-        opacity: 0;
-        padding: 0;
-        border: none;
-        pointer-events: none;
-    }
-
-    &:hover {
-        background-color: var(--highlight-bg-color);
-    }
-
-    &:focus {
-        background-color: var(--highlight-bg-color);
-    }
-
-    &:focus-within {
-        background-color: var(--highlight-bg-color);
     }
 }
 

@@ -10,7 +10,7 @@ import {
     transformBlocks,
 } from "@/app/element/markdown-util";
 import remarkMermaidToTag from "@/app/element/remark-mermaid-to-tag";
-import { boundNumber, useAtomValueSafe } from "@/util/util";
+import { boundNumber, useAtomValueSafe, cn } from "@/util/util";
 import clsx from "clsx";
 import { Atom } from "jotai";
 import { OverlayScrollbarsComponent, OverlayScrollbarsComponentRef } from "overlayscrollbars-react";
@@ -297,6 +297,7 @@ type MarkdownProps = {
     showTocAtom?: Atom<boolean>;
     style?: React.CSSProperties;
     className?: string;
+    contentClassName?: string;
     onClickExecute?: (cmd: string) => void;
     resolveOpts?: MarkdownResolveOpts;
     scrollable?: boolean;
@@ -311,6 +312,7 @@ const Markdown = ({
     showTocAtom,
     style,
     className,
+    contentClassName,
     resolveOpts,
     fontSizeOverride,
     fixedFontSizeOverride,
@@ -383,19 +385,30 @@ const Markdown = ({
     };
 
     const toc = useMemo(() => {
-        if (showToc && tocRef.current.length > 0) {
-            return tocRef.current.map((item) => {
+        if (showToc) {
+            if (tocRef.current.length > 0) {
+                return tocRef.current.map((item) => {
+                    return (
+                        <a
+                            key={item.href}
+                            className="toc-item"
+                            style={{ "--indent-factor": item.depth } as React.CSSProperties}
+                            onClick={() => setFocusedHeading(item.href)}
+                        >
+                            {item.value}
+                        </a>
+                    );
+                });
+            } else {
                 return (
-                    <a
-                        key={item.href}
-                        className="toc-item"
-                        style={{ "--indent-factor": item.depth } as React.CSSProperties}
-                        onClick={() => setFocusedHeading(item.href)}
+                    <div
+                        className="toc-item toc-empty text-secondary"
+                        style={{ "--indent-factor": 2 } as React.CSSProperties}
                     >
-                        {item.value}
-                    </a>
+                        No sub-headings found
+                    </div>
                 );
-            });
+            }
         }
     }, [showToc, tocRef]);
 
@@ -444,7 +457,7 @@ const Markdown = ({
         return (
             <OverlayScrollbarsComponent
                 ref={contentsOsRef}
-                className="content"
+                className={cn("content", contentClassName)}
                 options={{ scrollbars: { autoHide: "leave" } }}
             >
                 <ReactMarkdown
@@ -460,7 +473,7 @@ const Markdown = ({
 
     const NonScrollableMarkdown = () => {
         return (
-            <div className="content non-scrollable">
+            <div className={cn("content non-scrollable", contentClassName)}>
                 <ReactMarkdown
                     remarkPlugins={remarkPlugins}
                     rehypePlugins={rehypePlugins}
@@ -483,9 +496,9 @@ const Markdown = ({
         <div className={clsx("markdown", className)} style={mergedStyle}>
             {scrollable ? <ScrollableMarkdown /> : <NonScrollableMarkdown />}
             {toc && (
-                <OverlayScrollbarsComponent className="toc" options={{ scrollbars: { autoHide: "leave" } }}>
+                <OverlayScrollbarsComponent className="toc mt-1" options={{ scrollbars: { autoHide: "leave" } }}>
                     <div className="toc-inner">
-                        <h4>Table of Contents</h4>
+                        <h4 className="font-bold">Table of Contents</h4>
                         {toc}
                     </div>
                 </OverlayScrollbarsComponent>

@@ -16,8 +16,6 @@ function CodeEditPreview({ model }: SpecializedViewProps) {
     const fileContent = useAtomValue(model.fileContent);
     const setNewFileContent = useSetAtom(model.newFileContent);
     const fileInfo = useAtomValue(model.statFile);
-    const fileName = fileInfo?.name;
-    const blockMeta = useAtomValue(model.blockAtom)?.meta;
 
     function codeEditKeyDownHandler(e: WaveKeyboardEvent): boolean {
         if (checkKeyPressed(e, "Cmd:e")) {
@@ -67,9 +65,7 @@ function CodeEditPreview({ model }: SpecializedViewProps) {
         <CodeEditor
             blockId={model.blockId}
             text={fileContent}
-            filename={fileName}
-            fileinfo={fileInfo}
-            meta={blockMeta}
+            readonly={fileInfo.readonly}
             onChange={(text) => setNewFileContent(text)}
             onMount={onMount}
         />
