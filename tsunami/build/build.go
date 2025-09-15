@@ -183,39 +183,21 @@ func verifyEnvironment(verbose bool, opts BuildOpts) (*BuildEnv, error) {
 func createGoMod(tempDir, appDirName, goVersion string, opts BuildOpts, verbose bool) error {
 	modulePath := fmt.Sprintf("tsunami/app/%s", appDirName)
 
-	// Check if go.mod already exists in original directory
-	originalGoModPath := filepath.Join(opts.AppPath, "go.mod")
+	// Check if go.mod already exists in temp directory (copied from app path)
+	tempGoModPath := filepath.Join(tempDir, "go.mod")
 	var modFile *modfile.File
 	var err error
 
-	if _, err := os.Stat(originalGoModPath); err == nil {
-		// go.mod exists, copy and parse it
+	if _, err := os.Stat(tempGoModPath); err == nil {
+		// go.mod exists in temp dir, parse it
 		if verbose {
-			log.Printf("Found existing go.mod, copying from %s", originalGoModPath)
-		}
-
-		// Copy existing go.mod to temp directory
-		tempGoModPath := filepath.Join(tempDir, "go.mod")
-		if err := copyFile(originalGoModPath, tempGoModPath); err != nil {
-			return fmt.Errorf("failed to copy existing go.mod: %w", err)
-		}
-
-		// Also copy go.sum if it exists
-		originalGoSumPath := filepath.Join(opts.AppPath, "go.sum")
-		if _, err := os.Stat(originalGoSumPath); err == nil {
-			tempGoSumPath := filepath.Join(tempDir, "go.sum")
-			if err := copyFile(originalGoSumPath, tempGoSumPath); err != nil {
-				return fmt.Errorf("failed to copy existing go.sum: %w", err)
-			}
-			if verbose {
-				log.Printf("Found and copied existing go.sum from %s", originalGoSumPath)
-			}
+			log.Printf("Found existing go.mod in temp directory, parsing it")
 		}
 
 		// Parse the existing go.mod
 		goModContent, err := os.ReadFile(tempGoModPath)
 		if err != nil {
-			return fmt.Errorf("failed to read copied go.mod: %w", err)
+			return fmt.Errorf("failed to read go.mod: %w", err)
 		}
 
 		modFile, err = modfile.Parse("go.mod", goModContent, nil)
@@ -242,7 +224,7 @@ func createGoMod(tempDir, appDirName, goVersion string, opts BuildOpts, verbose 
 			return fmt.Errorf("failed to add require directive: %w", err)
 		}
 	} else {
-		return fmt.Errorf("error checking for existing go.mod: %w", err)
+		return fmt.Errorf("error checking for go.mod in temp directory: %w", err)
 	}
 
 	// Add replace directive for tsunami SDK
@@ -494,18 +476,10 @@ func TsunamiBuildInternal(opts BuildOpts) (*BuildEnv, error) {
 		log.Printf("Temp dir: %s\n", tempDir)
 	}
 
-	// Copy all *.go files from the root directory
-	goCount, err := copyGoFiles(opts.AppPath, tempDir)
+	// Copy files from app path (go.mod, go.sum, static/, *.go)
+	copyStats, err := copyFilesFromAppPath(opts.AppPath, tempDir, opts.Verbose)
 	if err != nil {
-		return buildEnv, fmt.Errorf("failed to copy go files: %w", err)
-	}
-
-	// Copy static directory
-	staticSrcDir := filepath.Join(opts.AppPath, "static")
-	staticDestDir := filepath.Join(tempDir, "static")
-	staticCount, err := copyDirRecursive(staticSrcDir, staticDestDir, true)
-	if err != nil {
-		return buildEnv, fmt.Errorf("failed to copy static directory: %w", err)
+		return buildEnv, fmt.Errorf("failed to copy files from app path: %w", err)
 	}
 
 	// Copy scaffold directory contents selectively
@@ -515,7 +489,8 @@ func TsunamiBuildInternal(opts BuildOpts) (*BuildEnv, error) {
 	}
 
 	if opts.Verbose {
-		log.Printf("Copied %d go files, %d static files, %d scaffold files\n", goCount, staticCount, scaffoldCount)
+		log.Printf("Copied %d go files, %d static files, %d scaffold files (go.mod: %t, go.sum: %t)\n",
+			copyStats.GoFiles, copyStats.StaticFiles, scaffoldCount, copyStats.GoMod, copyStats.GoSum)
 	}
 
 	// Copy app-main.go from scaffold to main-app.go in temp dir
@@ -691,6 +666,59 @@ func generateAppTailwindCss(tempDir string, verbose bool, opts BuildOpts) error 
 	}
 
 	return nil
+}
+
+type CopyStats struct {
+	GoFiles     int
+	StaticFiles int
+	GoMod       bool
+	GoSum       bool
+}
+
+func copyFilesFromAppPath(appPath, tempDir string, verbose bool) (*CopyStats, error) {
+	stats := &CopyStats{}
+
+	// Copy go.mod if it exists
+	goModSrc := filepath.Join(appPath, "go.mod")
+	goModDest := filepath.Join(tempDir, "go.mod")
+	copied, err := CopyFileIfExists(goModSrc, goModDest)
+	if err != nil {
+		return nil, err
+	}
+	stats.GoMod = copied
+	if copied && verbose {
+		log.Printf("Copied go.mod from %s", goModSrc)
+	}
+
+	// Copy go.sum if it exists
+	goSumSrc := filepath.Join(appPath, "go.sum")
+	goSumDest := filepath.Join(tempDir, "go.sum")
+	copied, err = CopyFileIfExists(goSumSrc, goSumDest)
+	if err != nil {
+		return nil, err
+	}
+	stats.GoSum = copied
+	if copied && verbose {
+		log.Printf("Copied go.sum from %s", goSumSrc)
+	}
+
+	// Copy static directory
+	staticSrcDir := filepath.Join(appPath, "static")
+	staticDestDir := filepath.Join(tempDir, "static")
+	staticCount, err := copyDirRecursive(staticSrcDir, staticDestDir, true)
+	if err != nil {
+		return nil, fmt.Errorf("failed to copy static directory: %w", err)
+	}
+	stats.StaticFiles = staticCount
+
+	// Copy all *.go files from the root directory
+	goCount, err := copyGoFiles(appPath, tempDir)
+	if err != nil {
+		return nil, fmt.Errorf("failed to copy go files: %w", err)
+	}
+	stats.GoFiles = goCount
+
+	return stats, nil
 }
 
 func copyGoFiles(srcDir, destDir string) (int, error) {

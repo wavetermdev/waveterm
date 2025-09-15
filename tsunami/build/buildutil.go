@@ -226,3 +226,16 @@ func copyScaffoldSelective(scaffoldPath, destDir string) (int, error) {
 
 	return fileCount, nil
 }
+
+func CopyFileIfExists(srcPath, destPath string) (bool, error) {
+	if _, err := os.Stat(srcPath); err == nil {
+		if err := copyFile(srcPath, destPath); err != nil {
+			return false, fmt.Errorf("failed to copy %s: %w", srcPath, err)
+		}
+		return true, nil
+	} else if os.IsNotExist(err) {
+		return false, nil
+	} else {
+		return false, fmt.Errorf("error checking %s: %w", srcPath, err)
+	}
+}
