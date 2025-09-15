@@ -166,6 +166,7 @@ tasks:
             - "cmd/server/*.go"
             - "pkg/**/*.go"
             - "pkg/**/*.json"
+            - tsunami/**/*.go
         generates:
             - dist/bin/wavesrv.*
 
@@ -194,6 +195,7 @@ tasks:
             - "cmd/server/*.go"
             - "pkg/**/*.go"
             - "pkg/**/*.json"
+            - "tsunami/**/*.go"
         generates:
             - dist/bin/wavesrv.*
 
