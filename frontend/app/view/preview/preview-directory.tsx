@@ -35,6 +35,7 @@ import {
     getBestUnit,
     getLastModifiedTime,
     getSortIcon,
+    handleRename,
     isIconValid,
     mergeError,
     overwriteError,
@@ -169,52 +170,12 @@ function DirectoryTable({
                     const lastInstance = path.lastIndexOf(fileName);
                     newPath = path.substring(0, lastInstance) + newName;
                     console.log(`replacing ${fileName} with ${newName}: ${path}`);
-                    const handleRename = (recursive: boolean) =>
-                        fireAndForget(async () => {
-                            try {
-                                let srcuri = await model.formatRemoteUri(path, globalStore.get);
-                                if (isDir) {
-                                    srcuri += "/";
-                                }
-                                await RpcApi.FileMoveCommand(TabRpcClient, {
-                                    srcuri,
-                                    desturi: await model.formatRemoteUri(newPath, globalStore.get),
-                                    opts: {
-                                        recursive,
-                                    },
-                                });
-                            } catch (e) {
-                                const errorText = `${e}`;
-                                console.warn(`Rename failed: ${errorText}`);
-                                let errorMsg: ErrorMsg;
-                                if (errorText.includes(recursiveError)) {
-                                    errorMsg = {
-                                        status: "Confirm Rename Directory",
-                                        text: "Renaming a directory requires the recursive flag. Proceed?",
-                                        level: "warning",
-                                        buttons: [
-                                            {
-                                                text: "Rename Recursively",
-                                                onClick: () => handleRename(true),
-                                            },
-                                        ],
-                                    };
-                                } else {
-                                    errorMsg = {
-                                        status: "Rename Failed",
-                                        text: `${e}`,
-                                    };
-                                }
-                                setErrorMsg(errorMsg);
-                            }
-                            model.refreshCallback();
-                        });
-                    handleRename(false);
+                    handleRename(model, path, newPath, isDir, false, setErrorMsg);
                 }
                 setEntryManagerProps(undefined);
             },
         });
-    }, []);
+    }, [model, setErrorMsg]);
 
     const table = useReactTable({
         data,

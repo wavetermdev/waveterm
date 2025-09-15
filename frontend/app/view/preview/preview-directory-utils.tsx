@@ -1,10 +1,14 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { isBlank } from "@/util/util";
+import { globalStore } from "@/app/store/global";
+import { RpcApi } from "@/app/store/wshclientapi";
+import { TabRpcClient } from "@/app/store/wshrpcutil";
+import { fireAndForget, isBlank } from "@/util/util";
 import { Column } from "@tanstack/react-table";
 import dayjs from "dayjs";
 import React from "react";
+import { type PreviewModel } from "./preview-model";
 
 export const recursiveError = "recursive flag must be set for directory operations";
 export const overwriteError = "set overwrite flag to delete the existing file";
@@ -83,4 +87,53 @@ export function getSortIcon(sortType: string | boolean): React.ReactNode {
 export function cleanMimetype(input: string): string {
     const truncated = input.split(";")[0];
     return truncated.trim();
+}
+
+export function handleRename(
+    model: PreviewModel,
+    path: string,
+    newPath: string,
+    isDir: boolean,
+    recursive: boolean,
+    setErrorMsg: (msg: ErrorMsg) => void
+) {
+    fireAndForget(async () => {
+        try {
+            let srcuri = await model.formatRemoteUri(path, globalStore.get);
+            if (isDir) {
+                srcuri += "/";
+            }
+            await RpcApi.FileMoveCommand(TabRpcClient, {
+                srcuri,
+                desturi: await model.formatRemoteUri(newPath, globalStore.get),
+                opts: {
+                    recursive,
+                },
+            });
+        } catch (e) {
+            const errorText = `${e}`;
+            console.warn(`Rename failed: ${errorText}`);
+            let errorMsg: ErrorMsg;
+            if (errorText.includes(recursiveError) && !recursive) {
+                errorMsg = {
+                    status: "Confirm Rename Directory",
+                    text: "Renaming a directory requires the recursive flag. Proceed?",
+                    level: "warning",
+                    buttons: [
+                        {
+                            text: "Rename Recursively",
+                            onClick: () => handleRename(model, path, newPath, isDir, true, setErrorMsg),
+                        },
+                    ],
+                };
+            } else {
+                errorMsg = {
+                    status: "Rename Failed",
+                    text: `${e}`,
+                };
+            }
+            setErrorMsg(errorMsg);
+        }
+        model.refreshCallback();
+    });
 }
