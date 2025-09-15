@@ -33,7 +33,7 @@ export const EntryManagerOverlay = memo(
     }: EntryManagerOverlayProps) => {
         const [value, setValue] = useState(startingValue);
         return (
-            <div className="entry-manager-overlay" ref={forwardRef} style={style} {...getReferenceProps()}>
+            <div className="entry-manager-overlay" ref={forwardRef} style={style} {...(getReferenceProps?.() ?? {})}>
                 <div className="entry-manager-type">{entryManagerType}</div>
                 <div className="entry-manager-input">
                     <Input

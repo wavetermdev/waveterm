@@ -26,23 +26,18 @@ export const displaySuffixes = {
     TiB: "t",
 };
 
-export function getBestUnit(bytes: number, si: boolean = false, sigfig: number = 3): string {
-    if (bytes === undefined || bytes < 0) {
-        return "-";
-    }
+export function getBestUnit(bytes: number, si = false, sigfig = 3): string {
+    if (bytes == null || !Number.isFinite(bytes) || bytes < 0) return "-";
+    if (bytes === 0) return "0B";
+
     const units = si ? ["kB", "MB", "GB", "TB"] : ["KiB", "MiB", "GiB", "TiB"];
     const divisor = si ? 1000 : 1024;
 
-    let currentUnit = "B";
-    let currentValue = bytes;
-    let idx = 0;
-    while (currentValue > divisor && idx < units.length - 1) {
-        currentUnit = units[idx];
-        currentValue /= divisor;
-        idx += 1;
-    }
+    const idx = Math.min(Math.floor(Math.log(bytes) / Math.log(divisor)), units.length);
+    const unit = idx === 0 ? "B" : units[idx - 1];
+    const value = bytes / Math.pow(divisor, idx);
 
-    return `${parseFloat(currentValue.toPrecision(sigfig))}${displaySuffixes[currentUnit]}`;
+    return `${parseFloat(value.toPrecision(sigfig))}${displaySuffixes[unit] ?? unit}`;
 }
 
 export function getLastModifiedTime(unixMillis: number, column: Column<FileInfo, number>): string {
