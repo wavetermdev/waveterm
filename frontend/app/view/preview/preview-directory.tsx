@@ -654,11 +654,19 @@ function TableBody({
     return (
         <div className="dir-table-body" ref={bodyRef}>
             {search !== "" && (
-                <div className="dir-table-body-search-display" ref={warningBoxRef}>
+                <div className="flex rounded-[3px] py-1 px-2 bg-warning" ref={warningBoxRef}>
                     <span>Searching for "{search}"</span>
-                    <div className="search-display-close-button dir-table-button" onClick={() => setSearch("")}>
+                    <div
+                        className="ml-auto bg-transparent flex justify-center items-center flex-col p-0.5 rounded-md hover:bg-hoverbg focus:bg-hoverbg focus-within:bg-hoverbg cursor-pointer"
+                        onClick={() => setSearch("")}
+                    >
                         <i className="fa-solid fa-xmark" />
-                        <input type="text" value={search} onChange={() => {}} />
+                        <input
+                            type="text"
+                            value={search}
+                            onChange={() => {}}
+                            className="w-0 h-0 opacity-0 p-0 border-none pointer-events-none"
+                        />
                     </div>
                 </div>
             )}
