@@ -9,7 +9,7 @@ import { useAtomValue } from "jotai";
 import { TransformComponent, TransformWrapper, useControls } from "react-zoom-pan-pinch";
 import type { SpecializedViewProps } from "./preview";
 
-function ImageZooomControls() {
+function ImageZoomControls() {
     const { zoomIn, zoomOut, resetTransform } = useControls();
 
     return (
@@ -33,7 +33,7 @@ function StreamingImagePreview({ url }: { url: string }) {
             <TransformWrapper initialScale={1} centerOnInit pinch={{ step: 10 }}>
                 {({ zoomIn, zoomOut, resetTransform, ...rest }) => (
                     <>
-                        <ImageZooomControls />
+                        <ImageZoomControls />
                         <TransformComponent>
                             <img src={url} />
                         </TransformComponent>

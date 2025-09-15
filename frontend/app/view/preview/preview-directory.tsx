@@ -675,7 +675,7 @@ function TableBody({
                         setSearch={setSearch}
                         idx={idx}
                         handleFileContextMenu={handleFileContextMenu}
-                        key={idx}
+                        key={"top-" + idx}
                     />
                 ))}
                 {table.getCenterRows().map((row, idx) => (
@@ -687,7 +687,7 @@ function TableBody({
                         setSearch={setSearch}
                         idx={idx + table.getTopRows().length}
                         handleFileContextMenu={handleFileContextMenu}
-                        key={idx}
+                        key={"center" + idx}
                     />
                 ))}
             </div>

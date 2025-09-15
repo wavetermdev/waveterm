@@ -502,10 +502,10 @@ export class PreviewModel implements ViewModel {
             return { errorStr: "File Not Found" + fileNameStr };
         }
         if (fileInfo.size > MaxFileSize) {
-            return { errorStr: "File Too Large to Preiview (10 MB Max)" };
+            return { errorStr: "File Too Large to Preview (10 MB Max)" };
         }
         if (mimeType == "text/csv" && fileInfo.size > MaxCSVSize) {
-            return { errorStr: "CSV File Too Large to Preiview (1 MB Max)" };
+            return { errorStr: "CSV File Too Large to Preview (1 MB Max)" };
         }
         if (mimeType == "directory") {
             return { specializedView: "directory" };
