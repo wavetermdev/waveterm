@@ -217,7 +217,7 @@ func (c *TsunamiController) Start(ctx context.Context, blockMeta waveobj.MetaMap
 		return fmt.Errorf("app cache is not executable: %s", cachePath)
 	}
 
-	tsunamiProc, err := runTsunamiAppBinary(ctx, cachePath)
+	tsunamiProc, err := runTsunamiAppBinary(ctx, cachePath, appPath)
 	if err != nil {
 		return fmt.Errorf("failed to run tsunami app: %w", err)
 	}
@@ -300,7 +300,7 @@ func (c *TsunamiController) SendInput(input *BlockInputUnion) error {
 	return fmt.Errorf("tsunami controller send input not implemented")
 }
 
-func runTsunamiAppBinary(ctx context.Context, appBinPath string) (*TsunamiAppProc, error) {
+func runTsunamiAppBinary(ctx context.Context, appBinPath string, appPath string) (*TsunamiAppProc, error) {
 	cmd := exec.Command(appBinPath, "--close-on-stdin")
 
 	stdoutPipe, err := cmd.StdoutPipe()
@@ -318,8 +318,17 @@ func runTsunamiAppBinary(ctx context.Context, appBinPath string) (*TsunamiAppPro
 		return nil, fmt.Errorf("failed to create stdin pipe: %w", err)
 	}
 
+	appName := build.GetAppName(appPath)
+	
 	stdoutBuffer := utilds.MakeReaderLineBuffer(stdoutPipe, 1000)
+	stdoutBuffer.SetLineCallback(func(line string) {
+		log.Printf("[tsunami:%s] %s\n", appName, line)
+	})
+	
 	stderrBuffer := utilds.MakeReaderLineBuffer(stderrPipe, 1000)
+	stderrBuffer.SetLineCallback(func(line string) {
+		log.Printf("[tsunami:%s] %s\n", appName, line)
+	})
 
 	err = cmd.Start()
 	if err != nil {
@@ -371,7 +380,6 @@ func runTsunamiAppBinary(ctx context.Context, appBinPath string) (*TsunamiAppPro
 				errChan <- fmt.Errorf("stderr buffer error: %w", err)
 				return
 			}
-			log.Printf("[stderr-readline] %s\n", line)
 
 			port := build.ParseTsunamiPort(line)
 			if port > 0 {

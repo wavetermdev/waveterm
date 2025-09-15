@@ -14,6 +14,7 @@ type ReaderLineBuffer struct {
 	reader         io.Reader
 	scanner        *bufio.Scanner
 	done           bool
+	lineCallback   func(string)
 }
 
 func MakeReaderLineBuffer(reader io.Reader, maxLines int) *ReaderLineBuffer {
@@ -31,6 +32,12 @@ func MakeReaderLineBuffer(reader io.Reader, maxLines int) *ReaderLineBuffer {
 	}
 
 	return rlb
+}
+
+func (rlb *ReaderLineBuffer) SetLineCallback(callback func(string)) {
+	rlb.lock.Lock()
+	defer rlb.lock.Unlock()
+	rlb.lineCallback = callback
 }
 
 func (rlb *ReaderLineBuffer) IsDone() bool {
@@ -106,9 +113,12 @@ func (rlb *ReaderLineBuffer) GetTotalLineCount() int {
 
 func (rlb *ReaderLineBuffer) ReadAll() {
 	for {
-		_, err := rlb.ReadLine()
+		line, err := rlb.ReadLine()
 		if err != nil {
 			break
+		}
+		if rlb.lineCallback != nil {
+			rlb.lineCallback(line)
 		}
 	}
 }

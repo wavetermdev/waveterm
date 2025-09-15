@@ -8,7 +8,7 @@ import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import * as services from "@/store/services";
 import * as jotai from "jotai";
-import { memo } from "react";
+import { memo, useEffect } from "react";
 
 class TsunamiViewModel implements ViewModel {
     viewType: string;
@@ -65,6 +65,15 @@ class TsunamiViewModel implements ViewModel {
         }, 300);
     }
 
+    resyncController() {
+        const prtn = RpcApi.ControllerResyncCommand(TabRpcClient, {
+            tabid: globalStore.get(atoms.staticTabId),
+            blockid: this.blockId,
+            forcerestart: false,
+        });
+        prtn.catch((e) => console.log("error controller resync", e));
+    }
+
     forceRestartController() {
         if (globalStore.get(this.isRestarting)) {
             return;
@@ -97,6 +106,10 @@ const TsunamiView = memo(({ model }: TsunamiViewProps) => {
     const shellProcFullStatus = jotai.useAtomValue(model.shellProcFullStatus);
     const blockData = jotai.useAtomValue(model.blockAtom);
     const isRestarting = jotai.useAtomValue(model.isRestarting);
+
+    useEffect(() => {
+        model.resyncController();
+    }, [model]);
 
     const appPath = blockData?.meta?.["tsunami:apppath"];
     const controller = blockData?.meta?.controller;

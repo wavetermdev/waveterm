@@ -43,6 +43,10 @@ func (b BuildOpts) AppName() string {
 	return filepath.Base(b.AppPath)
 }
 
+func GetAppName(appPath string) string {
+	return filepath.Base(appPath)
+}
+
 type BuildEnv struct {
 	GoVersion   string
 	TempDir     string
