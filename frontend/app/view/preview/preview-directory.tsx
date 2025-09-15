@@ -12,6 +12,7 @@ import { fireAndForget } from "@/util/util";
 import { formatRemoteUri } from "@/util/waveutil";
 import { offset, useDismiss, useFloating, useInteractions } from "@floating-ui/react";
 import {
+    Header,
     Row,
     RowData,
     Table,
@@ -35,15 +36,41 @@ import {
     getBestUnit,
     getLastModifiedTime,
     getSortIcon,
+    handleFileDelete,
     handleRename,
     isIconValid,
     mergeError,
     overwriteError,
-    recursiveError,
 } from "./preview-directory-utils";
 import { type PreviewModel } from "./preview-model";
 
 const PageJumpSize = 20;
+
+interface DirectoryTableHeaderCellProps {
+    header: Header<FileInfo, unknown>;
+}
+
+function DirectoryTableHeaderCell({ header }: DirectoryTableHeaderCellProps) {
+    return (
+        <div
+            className="dir-table-head-cell"
+            key={header.id}
+            style={{ width: `calc(var(--header-${header.id}-size) * 1px)` }}
+        >
+            <div className="dir-table-head-cell-content" onClick={() => header.column.toggleSorting()}>
+                {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
+                {getSortIcon(header.column.getIsSorted())}
+            </div>
+            <div className="dir-table-head-resize-box">
+                <div
+                    className="dir-table-head-resize"
+                    onMouseDown={header.getResizeHandler()}
+                    onTouchStart={header.getResizeHandler()}
+                />
+            </div>
+        </div>
+    );
+}
 
 declare module "@tanstack/react-table" {
     interface TableMeta<TData extends RowData> {
@@ -159,23 +186,26 @@ function DirectoryTable({
 
     const setEntryManagerProps = useSetAtom(entryManagerOverlayPropsAtom);
 
-    const updateName = useCallback((path: string, isDir: boolean) => {
-        const fileName = path.split("/").at(-1);
-        setEntryManagerProps({
-            entryManagerType: EntryManagerType.EditName,
-            startingValue: fileName,
-            onSave: (newName: string) => {
-                let newPath: string;
-                if (newName !== fileName) {
-                    const lastInstance = path.lastIndexOf(fileName);
-                    newPath = path.substring(0, lastInstance) + newName;
-                    console.log(`replacing ${fileName} with ${newName}: ${path}`);
-                    handleRename(model, path, newPath, isDir, false, setErrorMsg);
-                }
-                setEntryManagerProps(undefined);
-            },
-        });
-    }, [model, setErrorMsg]);
+    const updateName = useCallback(
+        (path: string, isDir: boolean) => {
+            const fileName = path.split("/").at(-1);
+            setEntryManagerProps({
+                entryManagerType: EntryManagerType.EditName,
+                startingValue: fileName,
+                onSave: (newName: string) => {
+                    let newPath: string;
+                    if (newName !== fileName) {
+                        const lastInstance = path.lastIndexOf(fileName);
+                        newPath = path.substring(0, lastInstance) + newName;
+                        console.log(`replacing ${fileName} with ${newName}: ${path}`);
+                        handleRename(model, path, newPath, isDir, false, setErrorMsg);
+                    }
+                    setEntryManagerProps(undefined);
+                },
+            });
+        },
+        [model, setErrorMsg]
+    );
 
     const table = useReactTable({
         data,
@@ -253,6 +283,9 @@ function DirectoryTable({
         }),
         []
     );
+
+    const TableComponent = table.getState().columnSizingInfo.isResizingColumn ? MemoizedTableBody : TableBody;
+
     return (
         <OverlayScrollbarsComponent
             options={{ scrollbars: { autoHide: "leave" } }}
@@ -266,61 +299,24 @@ function DirectoryTable({
                 {table.getHeaderGroups().map((headerGroup) => (
                     <div className="dir-table-head-row" key={headerGroup.id}>
                         {headerGroup.headers.map((header) => (
-                            <div
-                                className="dir-table-head-cell"
-                                key={header.id}
-                                style={{ width: `calc(var(--header-${header.id}-size) * 1px)` }}
-                            >
-                                <div
-                                    className="dir-table-head-cell-content"
-                                    onClick={() => header.column.toggleSorting()}
-                                >
-                                    {header.isPlaceholder
-                                        ? null
-                                        : flexRender(header.column.columnDef.header, header.getContext())}
-                                    {getSortIcon(header.column.getIsSorted())}
-                                </div>
-                                <div className="dir-table-head-resize-box">
-                                    <div
-                                        className="dir-table-head-resize"
-                                        onMouseDown={header.getResizeHandler()}
-                                        onTouchStart={header.getResizeHandler()}
-                                    />
-                                </div>
-                            </div>
+                            <DirectoryTableHeaderCell key={header.id} header={header} />
                         ))}
                     </div>
                 ))}
             </div>
-            {table.getState().columnSizingInfo.isResizingColumn ? (
-                <MemoizedTableBody
-                    bodyRef={bodyRef}
-                    model={model}
-                    data={data}
-                    table={table}
-                    search={search}
-                    focusIndex={focusIndex}
-                    setFocusIndex={setFocusIndex}
-                    setSearch={setSearch}
-                    setSelectedPath={setSelectedPath}
-                    setRefreshVersion={setRefreshVersion}
-                    osRef={osRef.current}
-                />
-            ) : (
-                <TableBody
-                    bodyRef={bodyRef}
-                    model={model}
-                    data={data}
-                    table={table}
-                    search={search}
-                    focusIndex={focusIndex}
-                    setFocusIndex={setFocusIndex}
-                    setSearch={setSearch}
-                    setSelectedPath={setSelectedPath}
-                    setRefreshVersion={setRefreshVersion}
-                    osRef={osRef.current}
-                />
-            )}
+            <TableComponent
+                bodyRef={bodyRef}
+                model={model}
+                data={data}
+                table={table}
+                search={search}
+                focusIndex={focusIndex}
+                setFocusIndex={setFocusIndex}
+                setSearch={setSearch}
+                setSelectedPath={setSelectedPath}
+                setRefreshVersion={setRefreshVersion}
+                osRef={osRef.current}
+            />
         </OverlayScrollbarsComponent>
     );
 }
@@ -395,40 +391,6 @@ function TableBody({
                 return;
             }
             const fileName = finfo.path.split("/").pop();
-            const handleFileDelete = (recursive: boolean) =>
-                fireAndForget(async () => {
-                    const path = await model.formatRemoteUri(finfo.path, globalStore.get);
-                    try {
-                        await RpcApi.FileDeleteCommand(TabRpcClient, {
-                            path,
-                            recursive,
-                        });
-                    } catch (e) {
-                        const errorText = `${e}`;
-                        console.warn(`Delete failed: ${errorText}`);
-                        let errorMsg: ErrorMsg;
-                        if (errorText.includes(recursiveError)) {
-                            errorMsg = {
-                                status: "Confirm Delete Directory",
-                                text: "Deleting a directory requires the recursive flag. Proceed?",
-                                level: "warning",
-                                buttons: [
-                                    {
-                                        text: "Delete Recursively",
-                                        onClick: () => handleFileDelete(true),
-                                    },
-                                ],
-                            };
-                        } else {
-                            errorMsg = {
-                                status: "Delete Failed",
-                                text: `${e}`,
-                            };
-                        }
-                        setErrorMsg(errorMsg);
-                    }
-                    setRefreshVersion((current) => current + 1);
-                });
             const menu: ContextMenuItem[] = [
                 {
                     label: "New File",
@@ -475,7 +437,7 @@ function TableBody({
                 },
                 {
                     label: "Delete",
-                    click: () => handleFileDelete(false),
+                    click: () => handleFileDelete(model, finfo.path, false, setErrorMsg),
                 }
             );
             ContextMenuModel.showContextMenu(menu, e);

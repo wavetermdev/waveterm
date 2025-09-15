@@ -137,3 +137,44 @@ export function handleRename(
         model.refreshCallback();
     });
 }
+
+export function handleFileDelete(
+    model: PreviewModel,
+    path: string,
+    recursive: boolean,
+    setErrorMsg: (msg: ErrorMsg) => void
+) {
+    fireAndForget(async () => {
+        const formattedPath = await model.formatRemoteUri(path, globalStore.get);
+        try {
+            await RpcApi.FileDeleteCommand(TabRpcClient, {
+                path: formattedPath,
+                recursive,
+            });
+        } catch (e) {
+            const errorText = `${e}`;
+            console.warn(`Delete failed: ${errorText}`);
+            let errorMsg: ErrorMsg;
+            if (errorText.includes(recursiveError) && !recursive) {
+                errorMsg = {
+                    status: "Confirm Delete Directory",
+                    text: "Deleting a directory requires the recursive flag. Proceed?",
+                    level: "warning",
+                    buttons: [
+                        {
+                            text: "Delete Recursively",
+                            onClick: () => handleFileDelete(model, path, true, setErrorMsg),
+                        },
+                    ],
+                };
+            } else {
+                errorMsg = {
+                    status: "Delete Failed",
+                    text: `${e}`,
+                };
+            }
+            setErrorMsg(errorMsg);
+        }
+        model.refreshCallback();
+    });
+}
