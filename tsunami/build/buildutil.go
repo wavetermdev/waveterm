@@ -112,37 +112,7 @@ func FileMustNotExist(path string) error {
 }
 
 func copyFile(srcPath, destPath string) error {
-	// Get source file info for mode
-	srcInfo, err := os.Stat(srcPath)
-	if err != nil {
-		return err
-	}
-
-	// Create destination directory if it doesn't exist
-	destDir := filepath.Dir(destPath)
-	if err := os.MkdirAll(destDir, 0755); err != nil {
-		return err
-	}
-
-	srcFile, err := os.Open(srcPath)
-	if err != nil {
-		return err
-	}
-	defer srcFile.Close()
-
-	destFile, err := os.Create(destPath)
-	if err != nil {
-		return err
-	}
-	defer destFile.Close()
-
-	_, err = io.Copy(destFile, srcFile)
-	if err != nil {
-		return err
-	}
-
-	// Set the same mode as source file
-	return os.Chmod(destPath, srcInfo.Mode())
+	return CopyFileFromFS(os.DirFS("/"), strings.TrimPrefix(srcPath, "/"), destPath)
 }
 
 func listGoFilesInDir(dirPath string) ([]string, error) {
