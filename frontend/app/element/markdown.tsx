@@ -3,6 +3,7 @@
 
 import { CopyButton } from "@/app/element/copybutton";
 import { createContentBlockPlugin } from "@/app/element/markdown-contentblock-plugin";
+import remarkMermaidToTag from "@/app/element/remark-mermaid-to-tag";
 import {
     MarkdownContentBlockType,
     resolveRemoteFile,
@@ -77,7 +78,7 @@ const Mermaid = ({ chart }: { chart: string }) => {
             try {
                 setIsLoading(true);
                 setError(null);
-                
+
                 await initializeMermaid();
                 if (!ref.current || !mermaidInstance) {
                     return;
@@ -106,7 +107,7 @@ const Mermaid = ({ chart }: { chart: string }) => {
 
     useEffect(() => {
         if (!ref.current) return;
-        
+
         if (error) {
             ref.current.textContent = `Error: ${error}`;
             ref.current.className = "mermaid error";
@@ -365,6 +366,21 @@ const Markdown = ({
         ),
     };
     markdownComponents["waveblock"] = (props: any) => <WaveBlock {...props} blockmap={contentBlocksMap} />;
+    markdownComponents["mermaidblock"] = (props: any) => {
+        const getTextContent = (children: any): string => {
+            if (typeof children === "string") {
+                return children;
+            } else if (Array.isArray(children)) {
+                return children.map(getTextContent).join("");
+            } else if (children && typeof children === "object" && children.props && children.props.children) {
+                return getTextContent(children.props.children);
+            }
+            return String(children || "");
+        };
+        
+        const chartText = getTextContent(props.children);
+        return <Mermaid chart={chartText} />;
+    };
 
     const toc = useMemo(() => {
         if (showToc && tocRef.current.length > 0) {
@@ -405,12 +421,13 @@ const Markdown = ({
                         ],
                         waveblock: [["blockkey"]],
                     },
-                    tagNames: [...(defaultSchema.tagNames || []), "span", "waveblock", "picture", "source"],
+                    tagNames: [...(defaultSchema.tagNames || []), "span", "waveblock", "picture", "source", "mermaidblock"],
                 }),
             () => rehypeSlug({ prefix: idPrefix }),
         ];
     }
     const remarkPlugins: any = [
+        remarkMermaidToTag,
         remarkGfm,
         [RemarkFlexibleToc, { tocRef: tocRef.current }],
         [createContentBlockPlugin, { blocks: contentBlocksMap }],

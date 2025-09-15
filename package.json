@@ -152,6 +152,7 @@
         "tailwind-merge": "^3.3.1",
         "throttle-debounce": "^5.0.2",
         "tinycolor2": "^1.6.0",
+        "unist-util-visit": "^5.0.0",
         "use-device-pixel-ratio": "^1.1.2",
         "winston": "^3.17.0",
         "ws": "^8.18.3",
