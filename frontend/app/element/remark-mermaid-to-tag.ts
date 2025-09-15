@@ -3,8 +3,7 @@
 
 import { visit } from "unist-util-visit";
 
-const escapeHTML = (s: string) =>
-    s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+const escapeHTML = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
 export default function remarkMermaidToTag() {
     return (tree: any) => {
