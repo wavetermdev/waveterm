@@ -106,13 +106,13 @@ function defaultEditorOptions(): MonacoTypes.editor.IEditorOptions {
 interface CodeEditorProps {
     blockId: string;
     text: string;
-    fileinfo: FileInfo;
+    readonly: boolean;
     language?: string;
     onChange?: (text: string) => void;
     onMount?: (monacoPtr: MonacoTypes.editor.IStandaloneCodeEditor, monaco: Monaco) => () => void;
 }
 
-export function CodeEditor({ blockId, text, language, fileinfo, onChange, onMount }: CodeEditorProps) {
+export function CodeEditor({ blockId, text, language, readonly, onChange, onMount }: CodeEditorProps) {
     const divRef = useRef<HTMLDivElement>(null);
     const unmountRef = useRef<() => void>(null);
     const minimapEnabled = useOverrideConfigAtom(blockId, "editor:minimapenabled") ?? false;
@@ -145,13 +145,13 @@ export function CodeEditor({ blockId, text, language, fileinfo, onChange, onMoun
 
     const editorOpts = useMemo(() => {
         const opts = defaultEditorOptions();
-        opts.readOnly = fileinfo.readonly;
+        opts.readOnly = readonly;
         opts.minimap.enabled = minimapEnabled;
         opts.stickyScroll.enabled = stickyScrollEnabled;
         opts.wordWrap = wordWrap ? "on" : "off";
         opts.fontSize = fontSize;
         return opts;
-    }, [minimapEnabled, stickyScrollEnabled, wordWrap, fontSize, fileinfo.readonly]);
+    }, [minimapEnabled, stickyScrollEnabled, wordWrap, fontSize, readonly]);
 
     return (
         <div className="flex flex-col w-full h-full overflow-hidden items-center justify-center">
