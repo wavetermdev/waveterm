@@ -7,7 +7,6 @@ import { ContextMenuModel } from "@/app/store/contextmenu";
 import { atoms, getApi, globalStore } from "@/app/store/global";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
-import { type PreviewModel } from "@/app/view/preview/preview";
 import { checkKeyPressed, isCharacterKeyEvent } from "@/util/keyutil";
 import { PLATFORM, PlatformMacOS } from "@/util/platformutil";
 import { addOpenMenuItems } from "@/util/previewutil";
@@ -34,6 +33,7 @@ import { useDrag, useDrop } from "react-dnd";
 import { quote as shellQuote } from "shell-quote";
 import { debounce } from "throttle-debounce";
 import "./directorypreview.scss";
+import { type PreviewModel } from "./preview-model";
 
 const PageJumpSize = 20;
 
@@ -527,12 +527,12 @@ function TableBody({
         if (focusIndex === null || !bodyRef.current || !osRef) {
             return;
         }
-        
+
         const rowElement = bodyRef.current.querySelector(`[data-rowindex="${focusIndex}"]`) as HTMLDivElement;
         if (!rowElement) {
             return;
         }
-        
+
         const viewport = osRef.osInstance().elements().viewport;
         const viewportHeight = viewport.offsetHeight;
         const rowRect = rowElement.getBoundingClientRect();
@@ -540,7 +540,7 @@ function TableBody({
         const viewportScrollTop = viewport.scrollTop;
         const rowTopRelativeToViewport = rowRect.top - parentRect.top + viewport.scrollTop;
         const rowBottomRelativeToViewport = rowRect.bottom - parentRect.top + viewport.scrollTop;
-        
+
         if (rowTopRelativeToViewport - 30 < viewportScrollTop) {
             // Row is above the visible area
             let topVal = rowTopRelativeToViewport - 30;
@@ -675,7 +675,7 @@ function TableBody({
                         setSearch={setSearch}
                         idx={idx}
                         handleFileContextMenu={handleFileContextMenu}
-                        key={idx}
+                        key={"top-" + idx}
                     />
                 ))}
                 {table.getCenterRows().map((row, idx) => (
@@ -687,7 +687,7 @@ function TableBody({
                         setSearch={setSearch}
                         idx={idx + table.getTopRows().length}
                         handleFileContextMenu={handleFileContextMenu}
-                        key={idx}
+                        key={"center" + idx}
                     />
                 ))}
             </div>
@@ -732,9 +732,12 @@ const TableRow = React.forwardRef(function ({
         [dragItem]
     );
 
-    const dragRef = useCallback((node: HTMLDivElement | null) => {
-        drag(node);
-    }, [drag]);
+    const dragRef = useCallback(
+        (node: HTMLDivElement | null) => {
+            drag(node);
+        },
+        [drag]
+    );
 
     return (
         <div

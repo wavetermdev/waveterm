@@ -10,7 +10,7 @@ import {
     SubBlockProps,
 } from "@/app/block/blocktypes";
 import { LauncherViewModel } from "@/app/view/launcher/launcher";
-import { PreviewModel } from "@/app/view/preview/preview";
+import { PreviewModel } from "@/app/view/preview/preview-model";
 import { SysinfoViewModel } from "@/app/view/sysinfo/sysinfo";
 import { VDomModel } from "@/app/view/vdom/vdom-model";
 import { ErrorBoundary } from "@/element/errorboundary";
