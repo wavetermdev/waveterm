@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/spf13/cobra"
 	"github.com/wavetermdev/waveterm/tsunami/build"
@@ -112,6 +113,34 @@ var runCmd = &cobra.Command{
 	},
 }
 
+var packageCmd = &cobra.Command{
+	Use:          "package [apppath]",
+	Short:        "Package a Tsunami application into a .tsapp file",
+	Long:         `Package a Tsunami application into a .tsapp file.`,
+	Args:         cobra.ExactArgs(1),
+	SilenceUsage: true,
+	Run: func(cmd *cobra.Command, args []string) {
+		verbose, _ := cmd.Flags().GetBool("verbose")
+		output, _ := cmd.Flags().GetString("output")
+		appPath := args[0]
+		
+		if output == "" {
+			appName := build.GetAppName(appPath)
+			output = filepath.Join(appPath, appName+".tsapp")
+		}
+		
+		appFS := build.NewDirFS(appPath)
+		if err := build.MakeAppPackage(appFS, appPath, verbose, output); err != nil {
+			fmt.Printf("Error: %v\n", err)
+			os.Exit(1)
+		}
+		
+		if verbose {
+			fmt.Printf("Successfully created package: %s\n", output)
+		}
+	},
+}
+
 func init() {
 	rootCmd.AddCommand(versionCmd)
 
@@ -124,6 +153,10 @@ func init() {
 	runCmd.Flags().Bool("open", false, "Open the application in the browser after starting")
 	runCmd.Flags().Bool("keeptemp", false, "Keep temporary build directory")
 	rootCmd.AddCommand(runCmd)
+
+	packageCmd.Flags().BoolP("verbose", "v", false, "Enable verbose output")
+	packageCmd.Flags().StringP("output", "o", "", "Output file path for the package (default: [appname].tsapp in apppath)")
+	rootCmd.AddCommand(packageCmd)
 }
 
 func main() {

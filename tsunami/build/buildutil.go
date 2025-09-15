@@ -1,11 +1,74 @@
 package build
 
 import (
+	"archive/zip"
 	"fmt"
 	"io"
+	"io/fs"
+	"log"
 	"os"
 	"path/filepath"
+	"strings"
 )
+
+type DirFS struct {
+	Root string
+	fs.FS
+}
+
+func NewDirFS(root string) DirFS {
+	return DirFS{Root: root, FS: os.DirFS(root)}
+}
+
+func (d DirFS) JoinOS(name string) string {
+	return filepath.Join(d.Root, filepath.FromSlash(name))
+}
+
+func (d DirFS) Stat(name string) (fs.FileInfo, error)      { return fs.Stat(d.FS, name) }
+func (d DirFS) ReadFile(name string) ([]byte, error)       { return fs.ReadFile(d.FS, name) }
+func (d DirFS) ReadDir(name string) ([]fs.DirEntry, error) { return fs.ReadDir(d.FS, name) }
+func (d DirFS) Glob(p string) ([]string, error)            { return fs.Glob(d.FS, p) }
+
+func pathToFS(path string) (fs.FS, bool, error) {
+	if path == "" {
+		return nil, false, fmt.Errorf("directory path cannot be empty")
+	}
+
+	// Check if path exists
+	info, err := os.Stat(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, false, fmt.Errorf("path %q does not exist", path)
+		}
+		return nil, false, fmt.Errorf("error accessing path %q: %w", path, err)
+	}
+
+	// Check if it's a .tsapp file (zip archive)
+	if strings.HasSuffix(path, ".tsapp") {
+		if info.IsDir() {
+			return nil, false, fmt.Errorf("%q is a directory, but .tsapp files must be zip archives", path)
+		}
+
+		// Open as zip file
+		zipReader, err := zip.OpenReader(path)
+		if err != nil {
+			return nil, false, fmt.Errorf("failed to open .tsapp file %q as zip archive: %w", path, err)
+		}
+
+		// Return zip filesystem (not writable)
+		return zipReader, false, nil
+	}
+
+	// Handle regular directories
+	if !info.IsDir() {
+		return nil, false, fmt.Errorf("%q is not a directory", path)
+	}
+
+	// Check if directory is writable by checking permissions
+	canWrite := info.Mode().Perm()&0200 != 0 // Check if owner has write permission
+
+	return NewDirFS(path), canWrite, nil
+}
 
 func IsDirOrNotFound(path string) error {
 	info, err := os.Stat(path)
@@ -46,59 +109,6 @@ func FileMustNotExist(path string) error {
 		return err // Other errors are not OK
 	}
 	return nil // Not found is OK
-}
-
-func copyDirRecursive(srcDir, destDir string, forceCreateDestDir bool) (int, error) {
-	// Check if source directory exists
-	srcInfo, err := os.Stat(srcDir)
-	if err != nil {
-		if os.IsNotExist(err) {
-			if forceCreateDestDir {
-				// Create destination directory even if source doesn't exist
-				if err := os.MkdirAll(destDir, 0755); err != nil {
-					return 0, fmt.Errorf("failed to create destination directory %s: %w", destDir, err)
-				}
-			}
-			return 0, nil // Source doesn't exist, return 0 files copied
-		}
-		return 0, fmt.Errorf("error accessing source directory %s: %w", srcDir, err)
-	}
-
-	// Check if source is actually a directory
-	if !srcInfo.IsDir() {
-		return 0, fmt.Errorf("source %s is not a directory", srcDir)
-	}
-
-	fileCount := 0
-	err = filepath.Walk(srcDir, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-
-		// Calculate destination path
-		relPath, err := filepath.Rel(srcDir, path)
-		if err != nil {
-			return err
-		}
-		destPath := filepath.Join(destDir, relPath)
-
-		if info.IsDir() {
-			// Create directory
-			if err := os.MkdirAll(destPath, info.Mode()); err != nil {
-				return err
-			}
-		} else {
-			// Copy file
-			if err := copyFile(path, destPath); err != nil {
-				return err
-			}
-			fileCount++
-		}
-
-		return nil
-	})
-
-	return fileCount, err
 }
 
 func copyFile(srcPath, destPath string) error {
@@ -151,85 +161,9 @@ func listGoFilesInDir(dirPath string) ([]string, error) {
 	return goFiles, nil
 }
 
-func copyScaffoldSelective(scaffoldPath, destDir string) (int, error) {
-	fileCount := 0
-
-	// Create symlinks for node_modules directory
-	symlinkItems := []string{"node_modules"}
-	for _, item := range symlinkItems {
-		srcPath := filepath.Join(scaffoldPath, item)
-		destPath := filepath.Join(destDir, item)
-
-		// Check if source exists
-		if _, err := os.Stat(srcPath); err != nil {
-			if os.IsNotExist(err) {
-				continue // Skip if doesn't exist
-			}
-			return 0, fmt.Errorf("error checking %s: %w", item, err)
-		}
-
-		// Create symlink
-		if err := os.Symlink(srcPath, destPath); err != nil {
-			return 0, fmt.Errorf("failed to create symlink for %s: %w", item, err)
-		}
-		fileCount++
-	}
-
-	// Copy package files instead of symlinking
-	packageFiles := []string{"package.json", "package-lock.json"}
-	for _, fileName := range packageFiles {
-		srcPath := filepath.Join(scaffoldPath, fileName)
-		destPath := filepath.Join(destDir, fileName)
-
-		// Check if source exists
-		if _, err := os.Stat(srcPath); err != nil {
-			if os.IsNotExist(err) {
-				continue // Skip if doesn't exist
-			}
-			return 0, fmt.Errorf("error checking %s: %w", fileName, err)
-		}
-
-		// Copy file
-		if err := copyFile(srcPath, destPath); err != nil {
-			return 0, fmt.Errorf("failed to copy %s: %w", fileName, err)
-		}
-		fileCount++
-	}
-
-	// Copy dist directory that needs to be fully copied for go embed
-	distSrcPath := filepath.Join(scaffoldPath, "dist")
-	distDestPath := filepath.Join(destDir, "dist")
-	dirCount, err := copyDirRecursive(distSrcPath, distDestPath, false)
-	if err != nil {
-		return 0, fmt.Errorf("failed to copy dist directory: %w", err)
-	}
-	fileCount += dirCount
-
-	// Copy files by pattern (*.go, *.md, *.json, tailwind.css)
-	patterns := []string{"*.go", "*.md", "*.json", "tailwind.css"}
-	for _, pattern := range patterns {
-		matches, err := filepath.Glob(filepath.Join(scaffoldPath, pattern))
-		if err != nil {
-			return 0, fmt.Errorf("failed to glob pattern %s: %w", pattern, err)
-		}
-
-		for _, srcPath := range matches {
-			fileName := filepath.Base(srcPath)
-			destPath := filepath.Join(destDir, fileName)
-
-			if err := copyFile(srcPath, destPath); err != nil {
-				return 0, fmt.Errorf("failed to copy %s: %w", fileName, err)
-			}
-			fileCount++
-		}
-	}
-
-	return fileCount, nil
-}
-
-func CopyFileIfExists(srcPath, destPath string) (bool, error) {
-	if _, err := os.Stat(srcPath); err == nil {
-		if err := copyFile(srcPath, destPath); err != nil {
+func CopyFileIfExists(fsys fs.FS, srcPath, destPath string) (bool, error) {
+	if _, err := fs.Stat(fsys, srcPath); err == nil {
+		if err := CopyFileFromFS(fsys, srcPath, destPath); err != nil {
 			return false, fmt.Errorf("failed to copy %s: %w", srcPath, err)
 		}
 		return true, nil
@@ -238,4 +172,239 @@ func CopyFileIfExists(srcPath, destPath string) (bool, error) {
 	} else {
 		return false, fmt.Errorf("error checking %s: %w", srcPath, err)
 	}
+}
+
+func CopyFileFromFS(fsys fs.FS, srcPath, destPath string) error {
+	// Open source file from filesystem
+	srcFile, err := fsys.Open(srcPath)
+	if err != nil {
+		return err
+	}
+	defer srcFile.Close()
+
+	// Get source file info
+	srcInfo, err := fs.Stat(fsys, srcPath)
+	if err != nil {
+		return err
+	}
+
+	// Create destination directory if it doesn't exist
+	destDir := filepath.Dir(destPath)
+	if err := os.MkdirAll(destDir, 0755); err != nil {
+		return err
+	}
+
+	// Create destination file
+	destFile, err := os.Create(destPath)
+	if err != nil {
+		return err
+	}
+	defer destFile.Close()
+
+	// Copy content
+	_, err = io.Copy(destFile, srcFile)
+	if err != nil {
+		return err
+	}
+
+	// Set the same mode as source file
+	return os.Chmod(destPath, srcInfo.Mode())
+}
+
+func checkFileExistsFS(fsys fs.FS, path string) error {
+	info, err := fs.Stat(fsys, path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return fmt.Errorf("file %q not found", path)
+		}
+		return fmt.Errorf("error accessing file %q: %w", path, err)
+	}
+
+	if info.IsDir() {
+		return fmt.Errorf("%q is a directory, not a file", path)
+	}
+
+	return nil
+}
+
+func isDirOrNotFoundFS(fsys fs.FS, path string) error {
+	info, err := fs.Stat(fsys, path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil // Not found is OK
+		}
+		return err // Other errors are not OK
+	}
+
+	if !info.IsDir() {
+		return fmt.Errorf("%q exists but is not a directory", path)
+	}
+
+	return nil // It's a directory, which is OK
+}
+
+func copyDirFromFS(fsys fs.FS, srcDir, destDir string, forceCreateDestDir bool) (int, error) {
+	fileCount := 0
+
+	// Check if source directory exists
+	srcInfo, err := fs.Stat(fsys, srcDir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			if forceCreateDestDir {
+				// Create destination directory even if source doesn't exist
+				if err := os.MkdirAll(destDir, 0755); err != nil {
+					return 0, fmt.Errorf("failed to create destination directory %s: %w", destDir, err)
+				}
+			}
+			return 0, nil // Source doesn't exist, return 0 files copied
+		}
+		return 0, fmt.Errorf("error accessing source directory %s: %w", srcDir, err)
+	}
+
+	// Check if source is actually a directory
+	if !srcInfo.IsDir() {
+		return 0, fmt.Errorf("source %s is not a directory", srcDir)
+	}
+
+	err = fs.WalkDir(fsys, srcDir, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
+		// Calculate destination path
+		relPath, err := filepath.Rel(srcDir, path)
+		if err != nil {
+			return err
+		}
+		destPath := filepath.Join(destDir, relPath)
+
+		if d.IsDir() {
+			// Create directory with standard permissions (0755) regardless of source permissions
+			// This is important when extracting from zip files which may have read-only dirs
+			if err := os.MkdirAll(destPath, 0755); err != nil {
+				return err
+			}
+		} else {
+			// Copy file
+			if err := CopyFileFromFS(fsys, path, destPath); err != nil {
+				return err
+			}
+			fileCount++
+		}
+
+		return nil
+	})
+
+	return fileCount, err
+}
+
+func addFileToZipIfExists(zipWriter *zip.Writer, fsys fs.FS, fileName string, fileCount *int, verbose bool) error {
+	if _, err := fs.Stat(fsys, fileName); err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return fmt.Errorf("error checking %s: %w", fileName, err)
+	}
+
+	if err := addFileToZip(zipWriter, fsys, fileName, fileName); err != nil {
+		return err
+	}
+
+	*fileCount++
+	if verbose {
+		log.Printf("Added %s to package", fileName)
+	}
+
+	return nil
+}
+
+func addGoFilesToZip(zipWriter *zip.Writer, fsys fs.FS, fileCount *int, verbose bool) error {
+	entries, err := fs.ReadDir(fsys, ".")
+	if err != nil {
+		return fmt.Errorf("failed to read directory: %w", err)
+	}
+
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+
+		if strings.HasSuffix(entry.Name(), ".go") {
+			if err := addFileToZip(zipWriter, fsys, entry.Name(), entry.Name()); err != nil {
+				return fmt.Errorf("failed to add %s: %w", entry.Name(), err)
+			}
+
+			*fileCount++
+			if verbose {
+				log.Printf("Added %s to package", entry.Name())
+			}
+		}
+	}
+
+	return nil
+}
+
+func addDirToZipIfExists(zipWriter *zip.Writer, fsys fs.FS, dirName string, fileCount *int, verbose bool) error {
+	info, err := fs.Stat(fsys, dirName)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return fmt.Errorf("error checking %s: %w", dirName, err)
+	}
+
+	if !info.IsDir() {
+		return fmt.Errorf("%s exists but is not a directory", dirName)
+	}
+
+	return fs.WalkDir(fsys, dirName, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if !d.IsDir() {
+			if err := addFileToZip(zipWriter, fsys, path, path); err != nil {
+				return fmt.Errorf("failed to add file %s: %w", path, err)
+			}
+
+			*fileCount++
+			if verbose {
+				log.Printf("Added %s to package", path)
+			}
+		}
+
+		return nil
+	})
+}
+
+func addFileToZip(zipWriter *zip.Writer, fsys fs.FS, srcPath, destPath string) error {
+	srcFile, err := fsys.Open(srcPath)
+	if err != nil {
+		return fmt.Errorf("failed to open source file %s: %w", srcPath, err)
+	}
+	defer srcFile.Close()
+
+	info, err := fs.Stat(fsys, srcPath)
+	if err != nil {
+		return fmt.Errorf("failed to get file info for %s: %w", srcPath, err)
+	}
+
+	header, err := zip.FileInfoHeader(info)
+	if err != nil {
+		return fmt.Errorf("failed to create zip header for %s: %w", srcPath, err)
+	}
+
+	header.Name = destPath
+
+	destFile, err := zipWriter.CreateHeader(header)
+	if err != nil {
+		return fmt.Errorf("failed to create zip entry for %s: %w", destPath, err)
+	}
+
+	_, err = io.Copy(destFile, srcFile)
+	if err != nil {
+		return fmt.Errorf("failed to copy content for %s: %w", srcPath, err)
+	}
+
+	return nil
 }
