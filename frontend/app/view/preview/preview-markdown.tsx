@@ -19,13 +19,14 @@ function MarkdownPreview({ model }: SpecializedViewProps) {
         };
     }, [connName, fileInfo.dir]);
     return (
-        <div className="view-preview view-preview-markdown">
+        <div className="flex flex-row h-full overflow-auto items-start justify-start">
             <Markdown
                 textAtom={model.fileContent}
                 showTocAtom={model.markdownShowToc}
                 resolveOpts={resolveOpts}
                 fontSizeOverride={fontSizeOverride}
                 fixedFontSizeOverride={fixedFontSizeOverride}
+                contentClassName="pt-[5px] pr-[15px] pb-[10px] pl-[15px]"
             />
         </div>
     );

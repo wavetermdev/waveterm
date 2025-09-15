@@ -13,14 +13,14 @@ function ImageZoomControls() {
     const { zoomIn, zoomOut, resetTransform } = useControls();
 
     return (
-        <div className="tools">
-            <Button onClick={() => zoomIn()} title="Zoom In">
+        <div className="absolute flex flex-row z-[2] top-0 right-0 p-[5px] gap-1">
+            <Button onClick={() => zoomIn()} title="Zoom In" className="py-1 px-[5px]">
                 <i className="fa-sharp fa-plus" />
             </Button>
-            <Button onClick={() => zoomOut()} title="Zoom Out">
+            <Button onClick={() => zoomOut()} title="Zoom Out" className="py-1 px-[5px]">
                 <i className="fa-sharp fa-minus" />
             </Button>
-            <Button onClick={() => resetTransform()} title="Reset Zoom">
+            <Button onClick={() => resetTransform()} title="Reset Zoom" className="py-1 px-[5px]">
                 <i className="fa-sharp fa-rotate-left" />
             </Button>
         </div>
@@ -29,13 +29,13 @@ function ImageZoomControls() {
 
 function StreamingImagePreview({ url }: { url: string }) {
     return (
-        <div className="view-preview view-preview-image">
+        <div className="flex flex-row h-full overflow-hidden items-center justify-center relative">
             <TransformWrapper initialScale={1} centerOnInit pinch={{ step: 10 }}>
                 {({ zoomIn, zoomOut, resetTransform, ...rest }) => (
                     <>
                         <ImageZoomControls />
-                        <TransformComponent>
-                            <img src={url} />
+                        <TransformComponent wrapperClass="!h-full !w-full">
+                            <img src={url} className="z-[1]" />
                         </TransformComponent>
                     </>
                 )}
@@ -57,15 +57,15 @@ function StreamingPreview({ model }: SpecializedViewProps) {
     const streamingUrl = `${getWebServerEndpoint()}/wave/stream-file?${usp.toString()}`;
     if (fileInfo.mimetype === "application/pdf") {
         return (
-            <div className="view-preview view-preview-pdf">
+            <div className="flex flex-row h-full overflow-hidden items-center justify-center p-[5px]">
                 <iframe src={streamingUrl} width="100%" height="100%" name="pdfview" />
             </div>
         );
     }
     if (fileInfo.mimetype.startsWith("video/")) {
         return (
-            <div className="view-preview view-preview-video">
-                <video controls>
+            <div className="flex flex-row h-full overflow-hidden items-center justify-center">
+                <video controls className="w-full h-full p-[10px] object-contain">
                     <source src={streamingUrl} />
                 </video>
             </div>
@@ -73,8 +73,8 @@ function StreamingPreview({ model }: SpecializedViewProps) {
     }
     if (fileInfo.mimetype.startsWith("audio/")) {
         return (
-            <div className="view-preview view-preview-audio">
-                <audio controls>
+            <div className="flex flex-row h-full overflow-hidden items-center justify-center">
+                <audio controls className="w-full h-full p-[10px] object-contain">
                     <source src={streamingUrl} />
                 </audio>
             </div>

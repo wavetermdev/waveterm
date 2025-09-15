@@ -19,7 +19,6 @@ import { CodeEditPreview } from "./preview-edit";
 import { MarkdownPreview } from "./preview-markdown";
 import type { PreviewModel } from "./preview-model";
 import { StreamingPreview } from "./preview-streaming";
-import "./preview.scss";
 
 export type SpecializedViewProps = {
     model: PreviewModel;
@@ -149,9 +148,9 @@ function PreviewView({
 
     return (
         <>
-            <div key="fullpreview" className="full-preview scrollbar-hide-until-hover">
+            <div key="fullpreview" className="flex flex-col w-full overflow-hidden scrollbar-hide-until-hover">
                 {errorMsg && <ErrorOverlay errorMsg={errorMsg} resetOverlay={() => setErrorMsg(null)} />}
-                <div ref={contentRef} className="full-preview-content">
+                <div ref={contentRef} className="flex-grow overflow-hidden">
                     <SpecializedView parentRef={contentRef} model={model} />
                 </div>
             </div>
