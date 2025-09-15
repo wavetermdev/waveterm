@@ -12,7 +12,6 @@ import {
 import { boundNumber, useAtomValueSafe } from "@/util/util";
 import clsx from "clsx";
 import { Atom } from "jotai";
-import mermaid from "mermaid";
 import { OverlayScrollbarsComponent, OverlayScrollbarsComponentRef } from "overlayscrollbars-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown, { Components } from "react-markdown";
@@ -27,10 +26,13 @@ import { IconButton } from "./iconbutton";
 import "./markdown.scss";
 
 let mermaidInitialized = false;
+let mermaidInstance: any = null;
 
-const initializeMermaid = () => {
+const initializeMermaid = async () => {
     if (!mermaidInitialized) {
-        mermaid.initialize({ startOnLoad: false, theme: "dark" });
+        const mermaid = await import("mermaid");
+        mermaidInstance = mermaid.default;
+        mermaidInstance.initialize({ startOnLoad: false, theme: "dark" });
         mermaidInitialized = true;
     }
 };
@@ -67,24 +69,54 @@ const Heading = ({ props, hnum }: { props: React.HTMLAttributes<HTMLHeadingEleme
 
 const Mermaid = ({ chart }: { chart: string }) => {
     const ref = useRef<HTMLDivElement>(null);
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        initializeMermaid();
-        if (!ref.current) {
-            return;
-        }
+        const renderMermaid = async () => {
+            try {
+                setIsLoading(true);
+                setError(null);
+                
+                await initializeMermaid();
+                if (!ref.current || !mermaidInstance) {
+                    return;
+                }
 
-        // Normalize the chart text
-        let normalizedChart = chart
-            .replace(/<br\s*\/?>/gi, "\n") // Convert <br/> and <br> to newlines
-            .replace(/\r\n/g, "\n") // Normalize \r\n to \n
-            .replace(/\n$/, ""); // Remove final newline
+                // Normalize the chart text
+                let normalizedChart = chart
+                    .replace(/<br\s*\/?>/gi, "\n") // Convert <br/> and <br> to newlines
+                    .replace(/\r\n?/g, "\n") // Normalize \r \r\n to \n
+                    .replace(/\n+$/, ""); // Remove final newline
 
-        ref.current.removeAttribute("data-processed");
-        ref.current.textContent = normalizedChart;
-        console.log("mermaid", normalizedChart);
-        mermaid.run({ nodes: [ref.current] });
+                ref.current.removeAttribute("data-processed");
+                ref.current.textContent = normalizedChart;
+                // console.log("mermaid", normalizedChart);
+                await mermaidInstance.run({ nodes: [ref.current] });
+                setIsLoading(false);
+            } catch (err) {
+                console.error("Error rendering mermaid diagram:", err);
+                setError(`Failed to render diagram: ${err.message || err}`);
+                setIsLoading(false);
+            }
+        };
+
+        renderMermaid();
     }, [chart]);
+
+    useEffect(() => {
+        if (!ref.current) return;
+        
+        if (error) {
+            ref.current.textContent = `Error: ${error}`;
+            ref.current.className = "mermaid error";
+        } else if (isLoading) {
+            ref.current.textContent = "Loading diagram...";
+            ref.current.className = "mermaid";
+        } else {
+            ref.current.className = "mermaid";
+        }
+    }, [isLoading, error]);
 
     return <div className="mermaid" ref={ref} />;
 };
@@ -294,7 +326,7 @@ const Markdown = ({
     // Ensure uniqueness of ids between MD preview instances.
     const [idPrefix] = useState<string>(crypto.randomUUID());
 
-    text = textAtomValue ?? text;
+    text = textAtomValue ?? text ?? "";
     const transformedOutput = transformBlocks(text);
     const transformedText = transformedOutput.content;
     const contentBlocksMap = transformedOutput.blocks;
