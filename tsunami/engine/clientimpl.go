@@ -43,7 +43,8 @@ type ClientImpl struct {
 	IsDone             bool
 	DoneReason         string
 	DoneCh             chan struct{}
-	SSEventCh          chan ssEvent
+	SSEChannels        map[string]chan ssEvent // map of connectionId to SSE channel
+	SSEChannelsLock    *sync.Mutex
 	GlobalEventHandler func(event vdom.VDomEvent)
 	UrlHandlerMux      *http.ServeMux
 	SetupFn            func()
@@ -62,12 +63,13 @@ type ClientImpl struct {
 
 func makeClient() *ClientImpl {
 	client := &ClientImpl{
-		Lock:          &sync.Mutex{},
-		DoneCh:        make(chan struct{}),
-		SSEventCh:     make(chan ssEvent, 100),
-		UrlHandlerMux: http.NewServeMux(),
-		ServerId:      uuid.New().String(),
-		RootElem:      vdom.H(DefaultComponentName, nil),
+		Lock:            &sync.Mutex{},
+		DoneCh:          make(chan struct{}),
+		SSEChannels:     make(map[string]chan ssEvent),
+		SSEChannelsLock: &sync.Mutex{},
+		UrlHandlerMux:   http.NewServeMux(),
+		ServerId:        uuid.New().String(),
+		RootElem:        vdom.H(DefaultComponentName, nil),
 	}
 	client.Root = MakeRoot(client)
 	return client
@@ -214,18 +216,50 @@ func (c *ClientImpl) listenAndServe(ctx context.Context) error {
 	return nil
 }
 
-func (c *ClientImpl) SendAsyncInitiation() error {
-	log.Printf("send async initiation\n")
+func (c *ClientImpl) RegisterSSEChannel(connectionId string) chan ssEvent {
+	c.SSEChannelsLock.Lock()
+	defer c.SSEChannelsLock.Unlock()
+
+	ch := make(chan ssEvent, 100)
+	c.SSEChannels[connectionId] = ch
+	return ch
+}
+
+func (c *ClientImpl) UnregisterSSEChannel(connectionId string) {
+	c.SSEChannelsLock.Lock()
+	defer c.SSEChannelsLock.Unlock()
+
+	if ch, exists := c.SSEChannels[connectionId]; exists {
+		close(ch)
+		delete(c.SSEChannels, connectionId)
+	}
+}
+
+func (c *ClientImpl) SendSSEvent(event ssEvent) error {
 	if c.GetIsDone() {
 		return fmt.Errorf("client is done")
 	}
 
-	select {
-	case c.SSEventCh <- ssEvent{Event: "asyncinitiation", Data: nil}:
-		return nil
-	default:
-		return fmt.Errorf("SSEvent channel is full")
+	c.SSEChannelsLock.Lock()
+	defer c.SSEChannelsLock.Unlock()
+
+	// Send to all registered SSE channels
+	for _, ch := range c.SSEChannels {
+		select {
+		case ch <- event:
+			// Successfully sent
+		default:
+			// silently drop (below is just for debugging).  this wont happen in general
+			// log.Printf("SSEvent channel is full for connection %s, skipping event", connectionId)
+		}
 	}
+
+	return nil
+}
+
+func (c *ClientImpl) SendAsyncInitiation() error {
+	log.Printf("send async initiation\n")
+	return c.SendSSEvent(ssEvent{Event: "asyncinitiation", Data: nil})
 }
 
 func makeNullRendered() *rpctypes.RenderedElem {

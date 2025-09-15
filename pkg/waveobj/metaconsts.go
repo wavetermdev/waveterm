@@ -114,6 +114,11 @@ const (
 	MetaKey_MarkdownFontSize                 = "markdown:fontsize"
 	MetaKey_MarkdownFixedFontSize            = "markdown:fixedfontsize"
 
+	MetaKey_TsunamiClear                     = "tsunami:*"
+	MetaKey_TsunamiSdkReplacePath            = "tsunami:sdkreplacepath"
+	MetaKey_TsunamiAppPath                   = "tsunami:apppath"
+	MetaKey_TsunamiScaffoldPath              = "tsunami:scaffoldpath"
+
 	MetaKey_VDomClear                        = "vdom:*"
 	MetaKey_VDomInitialized                  = "vdom:initialized"
 	MetaKey_VDomCorrelationId                = "vdom:correlationid"

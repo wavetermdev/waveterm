@@ -60,3 +60,51 @@
     --ansi-brightcyan: #b7b8cb;
     --ansi-brightwhite: #f0f0f0;
 }
+
+/* Disable overscroll behavior */
+html, body {
+    overscroll-behavior: none;
+    overscroll-behavior-x: none;
+    overscroll-behavior-y: none;
+}
+
+/* Custom dark theme scrollbar */
+::-webkit-scrollbar {
+    width: 6px !important;
+    height: 6px !important;
+}
+
+::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.1);
+    width: 6px !important;
+}
+
+::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 3px;
+    width: 6px !important;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.25);
+    width: 6px !important;
+}
+
+::-webkit-scrollbar-corner {
+    background: rgba(0, 0, 0, 0.1);
+}
+
+/* Force consistent scrollbar width across all states */
+::-webkit-scrollbar:horizontal {
+    height: 6px !important;
+}
+
+::-webkit-scrollbar:vertical {
+    width: 6px !important;
+}
+
+/* Firefox scrollbar styling */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.15) rgba(0, 0, 0, 0.1);
+}

@@ -340,6 +340,13 @@ func (h *httpHandlers) handleSSE(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Generate unique connection ID for this SSE connection
+	connectionId := fmt.Sprintf("%s-%d", clientId, time.Now().UnixNano())
+	
+	// Register SSE channel for this connection
+	eventCh := h.Client.RegisterSSEChannel(connectionId)
+	defer h.Client.UnregisterSSEChannel(connectionId)
+
 	// Set SSE headers
 	setNoCacheHeaders(w)
 	w.Header().Set("Content-Type", "text/event-stream")
@@ -366,7 +373,7 @@ func (h *httpHandlers) handleSSE(w http.ResponseWriter, r *http.Request) {
 			// Send keepalive comment
 			fmt.Fprintf(w, ": keepalive\n\n")
 			rc.Flush()
-		case event := <-h.Client.SSEventCh:
+		case event := <-eventCh:
 			if event.Event == "" {
 				break
 			}

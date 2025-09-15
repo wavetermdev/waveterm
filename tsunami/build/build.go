@@ -1,12 +1,15 @@
 package build
 
 import (
+	"archive/zip"
 	"bufio"
 	"fmt"
 	"go/parser"
 	"go/token"
 	"io"
+	"io/fs"
 	"log"
+	"net/url"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -27,19 +30,33 @@ const MinSupportedGoMinorVersion = 22
 const TsunamiUIImportPath = "github.com/wavetermdev/waveterm/tsunami/ui"
 
 type BuildOpts struct {
-	Dir            string
+	AppPath        string
 	Verbose        bool
 	Open           bool
 	KeepTemp       bool
 	OutputFile     string
 	ScaffoldPath   string
 	SdkReplacePath string
+	NodePath       string
+	MoveFileBack   bool
+}
+
+func GetAppName(appPath string) string {
+	baseName := filepath.Base(appPath)
+	return strings.TrimSuffix(baseName, ".tsapp")
 }
 
 type BuildEnv struct {
 	GoVersion   string
 	TempDir     string
 	cleanupOnce *sync.Once
+}
+
+func (opts BuildOpts) getNodePath() string {
+	if opts.NodePath != "" {
+		return opts.NodePath
+	}
+	return "node"
 }
 
 func findGoExecutable() (string, error) {
@@ -50,7 +67,7 @@ func findGoExecutable() (string, error) {
 
 	// Define platform-specific paths to check
 	var pathsToCheck []string
-	
+
 	if runtime.GOOS == "windows" {
 		pathsToCheck = []string{
 			`c:\go\bin\go.exe`,
@@ -59,10 +76,10 @@ func findGoExecutable() (string, error) {
 	} else {
 		// Unix-like systems (macOS, Linux, etc.)
 		pathsToCheck = []string{
-			"/opt/homebrew/bin/go",     // Homebrew on Apple Silicon
-			"/usr/local/bin/go",        // Traditional Homebrew or manual install
-			"/usr/local/go/bin/go",     // Official Go installation
-			"/usr/bin/go",              // System package manager
+			"/opt/homebrew/bin/go", // Homebrew on Apple Silicon
+			"/usr/local/bin/go",    // Traditional Homebrew or manual install
+			"/usr/local/go/bin/go", // Official Go installation
+			"/usr/bin/go",          // System package manager
 		}
 	}
 
@@ -79,7 +96,7 @@ func findGoExecutable() (string, error) {
 	return "", fmt.Errorf("go command not found in PATH or common installation locations")
 }
 
-func verifyEnvironment(verbose bool) (*BuildEnv, error) {
+func verifyEnvironment(verbose bool, opts BuildOpts) (*BuildEnv, error) {
 	// Find Go executable using enhanced search
 	goPath, err := findGoExecutable()
 	if err != nil {
@@ -120,44 +137,40 @@ func verifyEnvironment(verbose bool) (*BuildEnv, error) {
 		return nil, fmt.Errorf("go version 1.%d or higher required, found: %s", MinSupportedGoMinorVersion, versionStr)
 	}
 
-	// Check if npx is in PATH
-	_, err = exec.LookPath("npx")
-	if err != nil {
-		return nil, fmt.Errorf("npx command not found in PATH: %w", err)
-	}
+	// Check if node is available
+	if opts.NodePath != "" {
+		// Custom node path specified - verify it's absolute and executable
+		if !filepath.IsAbs(opts.NodePath) {
+			return nil, fmt.Errorf("NodePath must be an absolute path, got: %s", opts.NodePath)
+		}
 
-	if verbose {
-		log.Printf("Found npx in PATH")
-	}
+		info, err := os.Stat(opts.NodePath)
+		if err != nil {
+			return nil, fmt.Errorf("NodePath does not exist: %s: %w", opts.NodePath, err)
+		}
 
-	// Check Tailwind CSS version
-	tailwindCmd := exec.Command("npx", "@tailwindcss/cli")
-	tailwindOutput, err := tailwindCmd.CombinedOutput()
-	if err != nil {
-		return nil, fmt.Errorf("failed to run 'npx @tailwindcss/cli': %w", err)
-	}
+		if info.IsDir() {
+			return nil, fmt.Errorf("NodePath is a directory, not an executable: %s", opts.NodePath)
+		}
 
-	tailwindStr := strings.TrimSpace(string(tailwindOutput))
-	lines := strings.Split(tailwindStr, "\n")
-	if len(lines) == 0 {
-		return nil, fmt.Errorf("no output from tailwindcss command")
-	}
+		// Check if file is executable (Unix-like systems)
+		if runtime.GOOS != "windows" && info.Mode()&0111 == 0 {
+			return nil, fmt.Errorf("NodePath is not executable: %s", opts.NodePath)
+		}
 
-	firstLine := lines[0]
-	if verbose {
-		log.Printf("Found %s", firstLine)
-	}
+		if verbose {
+			log.Printf("Using custom node path: %s", opts.NodePath)
+		}
+	} else {
+		// Use standard PATH lookup
+		_, err = exec.LookPath("node")
+		if err != nil {
+			return nil, fmt.Errorf("node command not found in PATH: %w", err)
+		}
 
-	// Check for v4 (format: "≈ tailwindcss v4.1.12")
-	tailwindRegex := regexp.MustCompile(`tailwindcss v(\d+)`)
-	tailwindMatches := tailwindRegex.FindStringSubmatch(firstLine)
-	if len(tailwindMatches) < 2 {
-		return nil, fmt.Errorf("unable to parse tailwindcss version from: %s", firstLine)
-	}
-
-	majorVersion, err := strconv.Atoi(tailwindMatches[1])
-	if err != nil || majorVersion != 4 {
-		return nil, fmt.Errorf("tailwindcss v4 required, found: %s", firstLine)
+		if verbose {
+			log.Printf("Found node in PATH")
+		}
 	}
 
 	return &BuildEnv{
@@ -166,42 +179,24 @@ func verifyEnvironment(verbose bool) (*BuildEnv, error) {
 	}, nil
 }
 
-func createGoMod(tempDir, appDirName, goVersion string, opts BuildOpts, verbose bool) error {
-	modulePath := fmt.Sprintf("tsunami/app/%s", appDirName)
+func createGoMod(tempDir, appName, goVersion string, opts BuildOpts, verbose bool) error {
+	modulePath := fmt.Sprintf("tsunami/app/%s", appName)
 
-	// Check if go.mod already exists in original directory
-	originalGoModPath := filepath.Join(opts.Dir, "go.mod")
+	// Check if go.mod already exists in temp directory (copied from app path)
+	tempGoModPath := filepath.Join(tempDir, "go.mod")
 	var modFile *modfile.File
 	var err error
 
-	if _, err := os.Stat(originalGoModPath); err == nil {
-		// go.mod exists, copy and parse it
+	if _, err := os.Stat(tempGoModPath); err == nil {
+		// go.mod exists in temp dir, parse it
 		if verbose {
-			log.Printf("Found existing go.mod, copying from %s", originalGoModPath)
-		}
-
-		// Copy existing go.mod to temp directory
-		tempGoModPath := filepath.Join(tempDir, "go.mod")
-		if err := copyFile(originalGoModPath, tempGoModPath); err != nil {
-			return fmt.Errorf("failed to copy existing go.mod: %w", err)
-		}
-
-		// Also copy go.sum if it exists
-		originalGoSumPath := filepath.Join(opts.Dir, "go.sum")
-		if _, err := os.Stat(originalGoSumPath); err == nil {
-			tempGoSumPath := filepath.Join(tempDir, "go.sum")
-			if err := copyFile(originalGoSumPath, tempGoSumPath); err != nil {
-				return fmt.Errorf("failed to copy existing go.sum: %w", err)
-			}
-			if verbose {
-				log.Printf("Found and copied existing go.sum from %s", originalGoSumPath)
-			}
+			log.Printf("Found existing go.mod in temp directory, parsing it")
 		}
 
 		// Parse the existing go.mod
 		goModContent, err := os.ReadFile(tempGoModPath)
 		if err != nil {
-			return fmt.Errorf("failed to read copied go.mod: %w", err)
+			return fmt.Errorf("failed to read go.mod: %w", err)
 		}
 
 		modFile, err = modfile.Parse("go.mod", goModContent, nil)
@@ -228,7 +223,7 @@ func createGoMod(tempDir, appDirName, goVersion string, opts BuildOpts, verbose 
 			return fmt.Errorf("failed to add require directive: %w", err)
 		}
 	} else {
-		return fmt.Errorf("error checking for existing go.mod: %w", err)
+		return fmt.Errorf("error checking for go.mod in temp directory: %w", err)
 	}
 
 	// Add replace directive for tsunami SDK
@@ -275,99 +270,69 @@ func createGoMod(tempDir, appDirName, goVersion string, opts BuildOpts, verbose 
 	return nil
 }
 
-func verifyTsunamiDir(dir string) error {
-	if dir == "" {
-		return fmt.Errorf("directory path cannot be empty")
-	}
-
-	// Check if directory exists
-	info, err := os.Stat(dir)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return fmt.Errorf("directory %q does not exist", dir)
-		}
-		return fmt.Errorf("error accessing directory %q: %w", dir, err)
-	}
-
-	if !info.IsDir() {
-		return fmt.Errorf("%q is not a directory", dir)
-	}
-
+func verifyAppPathFs(fsys fs.FS) error {
 	// Check for app.go file
-	appGoPath := filepath.Join(dir, "app.go")
-	if err := CheckFileExists(appGoPath); err != nil {
-		return fmt.Errorf("app.go check failed in directory %q: %w", dir, err)
+	if err := checkFileExistsFS(fsys, "app.go"); err != nil {
+		return fmt.Errorf("app.go check failed: %w", err)
 	}
 
 	// Check static directory if it exists
-	staticPath := filepath.Join(dir, "static")
-	if err := IsDirOrNotFound(staticPath); err != nil {
-		return fmt.Errorf("static directory check failed in %q: %w", dir, err)
-	}
-
-	// Check that dist doesn't exist
-	distPath := filepath.Join(dir, "dist")
-	if err := FileMustNotExist(distPath); err != nil {
-		return fmt.Errorf("dist check failed in %q: %w", dir, err)
+	if err := isDirOrNotFoundFS(fsys, "static"); err != nil {
+		return fmt.Errorf("static directory check failed: %w", err)
 	}
 
 	return nil
 }
 
-func verifyScaffoldPath(scaffoldPath string) error {
-	if scaffoldPath == "" {
-		return fmt.Errorf("scaffoldPath cannot be empty")
-	}
-
-	// Check if directory exists
-	info, err := os.Stat(scaffoldPath)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return fmt.Errorf("scaffoldPath directory %q does not exist", scaffoldPath)
+func GetAppModTime(appPath string) (time.Time, error) {
+	if strings.HasSuffix(appPath, ".tsapp") {
+		info, err := os.Stat(appPath)
+		if err != nil {
+			return time.Time{}, fmt.Errorf("failed to get tsapp mod time: %w", err)
 		}
-		return fmt.Errorf("error accessing scaffoldPath directory %q: %w", scaffoldPath, err)
+		return info.ModTime(), nil
 	}
 
-	if !info.IsDir() {
-		return fmt.Errorf("scaffoldPath %q is not a directory", scaffoldPath)
+	appGoPath := filepath.Join(appPath, "app.go")
+	info, err := os.Stat(appGoPath)
+	if err != nil {
+		return time.Time{}, fmt.Errorf("failed to get app.go mod time: %w", err)
 	}
+	return info.ModTime(), nil
+}
 
+func verifyScaffoldFs(fsys fs.FS) error {
 	// Check for dist directory
-	distPath := filepath.Join(scaffoldPath, "dist")
-	if err := IsDirOrNotFound(distPath); err != nil {
-		return fmt.Errorf("dist directory check failed in scaffoldPath %q: %w", scaffoldPath, err)
+	if err := isDirOrNotFoundFS(fsys, "dist"); err != nil {
+		return fmt.Errorf("dist directory check failed: %w", err)
 	}
-	info, err = os.Stat(distPath)
+	info, err := fs.Stat(fsys, "dist")
 	if err != nil || !info.IsDir() {
-		return fmt.Errorf("dist directory must exist in scaffoldPath %q", scaffoldPath)
+		return fmt.Errorf("dist directory must exist in scaffold")
 	}
 
 	// Check for app-main.go file
-	appMainPath := filepath.Join(scaffoldPath, "app-main.go")
-	if err := CheckFileExists(appMainPath); err != nil {
-		return fmt.Errorf("app-main.go check failed in scaffoldPath %q: %w", scaffoldPath, err)
+	if err := checkFileExistsFS(fsys, "app-main.go"); err != nil {
+		return fmt.Errorf("app-main.go check failed: %w", err)
 	}
 
 	// Check for tailwind.css file
-	tailwindPath := filepath.Join(scaffoldPath, "tailwind.css")
-	if err := CheckFileExists(tailwindPath); err != nil {
-		return fmt.Errorf("tailwind.css check failed in scaffoldPath %q: %w", scaffoldPath, err)
+	if err := checkFileExistsFS(fsys, "tailwind.css"); err != nil {
+		return fmt.Errorf("tailwind.css check failed: %w", err)
 	}
 
 	// Check for package.json file
-	packageJsonPath := filepath.Join(scaffoldPath, "package.json")
-	if err := CheckFileExists(packageJsonPath); err != nil {
-		return fmt.Errorf("package.json check failed in scaffoldPath %q: %w", scaffoldPath, err)
+	if err := checkFileExistsFS(fsys, "package.json"); err != nil {
+		return fmt.Errorf("package.json check failed: %w", err)
 	}
 
 	// Check for node_modules directory
-	nodeModulesPath := filepath.Join(scaffoldPath, "node_modules")
-	if err := IsDirOrNotFound(nodeModulesPath); err != nil {
-		return fmt.Errorf("node_modules directory check failed in scaffoldPath %q: %w", scaffoldPath, err)
+	if err := isDirOrNotFoundFS(fsys, "node_modules"); err != nil {
+		return fmt.Errorf("node_modules directory check failed: %w", err)
 	}
-	info, err = os.Stat(nodeModulesPath)
+	info, err = fs.Stat(fsys, "node_modules")
 	if err != nil || !info.IsDir() {
-		return fmt.Errorf("node_modules directory must exist in scaffoldPath %q", scaffoldPath)
+		return fmt.Errorf("node_modules directory must exist in scaffold")
 	}
 
 	return nil
@@ -434,7 +399,7 @@ func setupSignalCleanup(buildEnv *BuildEnv, keepTemp, verbose bool) {
 }
 
 func TsunamiBuild(opts BuildOpts) error {
-	buildEnv, err := tsunamiBuildInternal(opts)
+	buildEnv, err := TsunamiBuildInternal(opts)
 	defer buildEnv.cleanupTempDir(opts.KeepTemp, opts.Verbose)
 	if err != nil {
 		return err
@@ -443,17 +408,33 @@ func TsunamiBuild(opts BuildOpts) error {
 	return nil
 }
 
-func tsunamiBuildInternal(opts BuildOpts) (*BuildEnv, error) {
-	buildEnv, err := verifyEnvironment(opts.Verbose)
+func TsunamiBuildInternal(opts BuildOpts) (*BuildEnv, error) {
+	buildEnv, err := verifyEnvironment(opts.Verbose, opts)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := verifyTsunamiDir(opts.Dir); err != nil {
-		return nil, err
+	appFS, canWrite, appCloser, err := pathToFS(opts.AppPath)
+	if err != nil {
+		return nil, fmt.Errorf("bad app path: %w", err)
+	}
+	if appCloser != nil {
+		defer appCloser()
 	}
 
-	if err := verifyScaffoldPath(opts.ScaffoldPath); err != nil {
+	if err := verifyAppPathFs(appFS); err != nil {
+		return nil, fmt.Errorf("bad app path: %w", err)
+	}
+
+	scaffoldFS, _, scaffoldCloser, err := pathToFS(opts.ScaffoldPath)
+	if err != nil {
+		return nil, fmt.Errorf("bad scaffold path: %w", err)
+	}
+	if scaffoldCloser != nil {
+		defer scaffoldCloser()
+	}
+
+	if err := verifyScaffoldFs(scaffoldFS); err != nil {
 		return nil, err
 	}
 
@@ -465,34 +446,27 @@ func tsunamiBuildInternal(opts BuildOpts) (*BuildEnv, error) {
 
 	buildEnv.TempDir = tempDir
 
-	log.Printf("Building tsunami app from %s\n", opts.Dir)
+	log.Printf("Building tsunami app from %s\n", opts.AppPath)
 
-	if opts.Verbose {
+	if opts.Verbose || opts.KeepTemp {
 		log.Printf("Temp dir: %s\n", tempDir)
 	}
 
-	// Copy all *.go files from the root directory
-	goCount, err := copyGoFiles(opts.Dir, tempDir)
+	// Copy files from app path (go.mod, go.sum, static/, *.go)
+	copyStats, err := copyFilesFromAppFS(appFS, opts.AppPath, tempDir, opts.Verbose)
 	if err != nil {
-		return buildEnv, fmt.Errorf("failed to copy go files: %w", err)
-	}
-
-	// Copy static directory
-	staticSrcDir := filepath.Join(opts.Dir, "static")
-	staticDestDir := filepath.Join(tempDir, "static")
-	staticCount, err := copyDirRecursive(staticSrcDir, staticDestDir, true)
-	if err != nil {
-		return buildEnv, fmt.Errorf("failed to copy static directory: %w", err)
+		return buildEnv, fmt.Errorf("failed to copy files from app path: %w", err)
 	}
 
 	// Copy scaffold directory contents selectively
-	scaffoldCount, err := copyScaffoldSelective(opts.ScaffoldPath, tempDir)
+	scaffoldCount, err := copyScaffoldFS(scaffoldFS, tempDir, opts.Verbose)
 	if err != nil {
 		return buildEnv, fmt.Errorf("failed to copy scaffold directory: %w", err)
 	}
 
 	if opts.Verbose {
-		log.Printf("Copied %d go files, %d static files, %d scaffold files\n", goCount, staticCount, scaffoldCount)
+		log.Printf("Copied %d go files, %d static files, %d scaffold files (go.mod: %t, go.sum: %t)\n",
+			copyStats.GoFiles, copyStats.StaticFiles, scaffoldCount, copyStats.GoMod, copyStats.GoSum)
 	}
 
 	// Copy app-main.go from scaffold to main-app.go in temp dir
@@ -503,8 +477,8 @@ func tsunamiBuildInternal(opts BuildOpts) (*BuildEnv, error) {
 	}
 
 	// Create go.mod file
-	appDirName := filepath.Base(opts.Dir)
-	if err := createGoMod(tempDir, appDirName, buildEnv.GoVersion, opts, opts.Verbose); err != nil {
+	appName := GetAppName(opts.AppPath)
+	if err := createGoMod(tempDir, appName, buildEnv.GoVersion, opts, opts.Verbose); err != nil {
 		return buildEnv, fmt.Errorf("failed to create go.mod: %w", err)
 	}
 
@@ -529,7 +503,7 @@ func tsunamiBuildInternal(opts BuildOpts) (*BuildEnv, error) {
 	}
 
 	// Generate Tailwind CSS
-	if err := generateAppTailwindCss(tempDir, opts.Verbose); err != nil {
+	if err := generateAppTailwindCss(tempDir, opts.Verbose, opts); err != nil {
 		return buildEnv, fmt.Errorf("failed to generate tailwind css: %w", err)
 	}
 
@@ -539,8 +513,14 @@ func tsunamiBuildInternal(opts BuildOpts) (*BuildEnv, error) {
 	}
 
 	// Move generated files back to original directory
-	if err := moveFilesBack(tempDir, opts.Dir, opts.Verbose); err != nil {
-		return buildEnv, fmt.Errorf("failed to move files back: %w", err)
+	if opts.MoveFileBack && canWrite {
+		if err := moveFilesBack(tempDir, opts.AppPath, opts.Verbose); err != nil {
+			return buildEnv, fmt.Errorf("failed to move files back: %w", err)
+		}
+	} else if opts.MoveFileBack && !canWrite {
+		if opts.Verbose {
+			log.Printf("Skipping move files back - app path is not writable: %s", opts.AppPath)
+		}
 	}
 
 	return buildEnv, nil
@@ -643,14 +623,15 @@ func runGoBuild(tempDir string, opts BuildOpts) error {
 	return nil
 }
 
-func generateAppTailwindCss(tempDir string, verbose bool) error {
+func generateAppTailwindCss(tempDir string, verbose bool, opts BuildOpts) error {
 	// tailwind.css is already in tempDir from scaffold copy
 	tailwindOutput := filepath.Join(tempDir, "static", "tw.css")
 
-	tailwindCmd := exec.Command("npx", "@tailwindcss/cli",
+	tailwindCmd := exec.Command(opts.getNodePath(), "node_modules/@tailwindcss/cli/dist/index.mjs",
 		"-i", "./tailwind.css",
 		"-o", tailwindOutput)
 	tailwindCmd.Dir = tempDir
+	tailwindCmd.Env = append(os.Environ(), "ELECTRON_RUN_AS_NODE=1")
 
 	if verbose {
 		log.Printf("Running: %s", strings.Join(tailwindCmd.Args, " "))
@@ -667,8 +648,15 @@ func generateAppTailwindCss(tempDir string, verbose bool) error {
 	return nil
 }
 
-func copyGoFiles(srcDir, destDir string) (int, error) {
-	entries, err := os.ReadDir(srcDir)
+type CopyStats struct {
+	GoFiles     int
+	StaticFiles int
+	GoMod       bool
+	GoSum       bool
+}
+
+func copyGoFilesFromFS(fsys fs.FS, destDir string) (int, error) {
+	entries, err := fs.ReadDir(fsys, ".")
 	if err != nil {
 		return 0, err
 	}
@@ -680,10 +668,9 @@ func copyGoFiles(srcDir, destDir string) (int, error) {
 		}
 
 		if strings.HasSuffix(entry.Name(), ".go") {
-			srcPath := filepath.Join(srcDir, entry.Name())
 			destPath := filepath.Join(destDir, entry.Name())
 
-			if err := copyFile(srcPath, destPath); err != nil {
+			if err := CopyFileFromFS(fsys, entry.Name(), destPath); err != nil {
 				return 0, fmt.Errorf("failed to copy %s: %w", entry.Name(), err)
 			}
 			fileCount++
@@ -693,8 +680,62 @@ func copyGoFiles(srcDir, destDir string) (int, error) {
 	return fileCount, nil
 }
 
+// appPath is just used for logging (we do the copies from appFS)
+func copyFilesFromAppFS(appFS fs.FS, appPath, tempDir string, verbose bool) (*CopyStats, error) {
+	stats := &CopyStats{}
+
+	// Copy go.mod if it exists
+	goModDest := filepath.Join(tempDir, "go.mod")
+	copied, err := CopyFileIfExists(appFS, "go.mod", goModDest)
+	if err != nil {
+		return nil, err
+	}
+	stats.GoMod = copied
+	if copied && verbose {
+		log.Printf("Copied go.mod from %s", filepath.Join(appPath, "go.mod"))
+	}
+
+	// Copy go.sum if it exists
+	goSumDest := filepath.Join(tempDir, "go.sum")
+	copied, err = CopyFileIfExists(appFS, "go.sum", goSumDest)
+	if err != nil {
+		return nil, err
+	}
+	stats.GoSum = copied
+	if copied && verbose {
+		log.Printf("Copied go.sum from %s", filepath.Join(appPath, "go.sum"))
+	}
+
+	// Copy manifest.json if it exists
+	manifestDest := filepath.Join(tempDir, "manifest.json")
+	copied, err = CopyFileIfExists(appFS, "manifest.json", manifestDest)
+	if err != nil {
+		return nil, err
+	}
+	if copied && verbose {
+		log.Printf("Copied manifest.json from %s", filepath.Join(appPath, "manifest.json"))
+	}
+
+	// Copy static directory
+	staticDestDir := filepath.Join(tempDir, "static")
+	staticCount, err := copyDirFromFS(appFS, "static", staticDestDir, true)
+	if err != nil {
+		return nil, fmt.Errorf("failed to copy static directory: %w", err)
+	}
+	stats.StaticFiles = staticCount
+
+	// Copy all *.go files from the root directory
+	goCount, err := copyGoFilesFromFS(appFS, tempDir)
+	if err != nil {
+		return nil, fmt.Errorf("failed to copy go files: %w", err)
+	}
+	stats.GoFiles = goCount
+
+	return stats, nil
+}
+
 func TsunamiRun(opts BuildOpts) error {
-	buildEnv, err := tsunamiBuildInternal(opts)
+	buildEnv, err := TsunamiBuildInternal(opts)
 	defer buildEnv.cleanupTempDir(opts.KeepTemp, opts.Verbose)
 	if err != nil {
 		return err
@@ -702,11 +743,11 @@ func TsunamiRun(opts BuildOpts) error {
 	setupSignalCleanup(buildEnv, opts.KeepTemp, opts.Verbose)
 
 	// Run the built application
-	appPath := filepath.Join(buildEnv.TempDir, "bin", "app")
-	runCmd := exec.Command(appPath)
+	appBinPath := filepath.Join(buildEnv.TempDir, "bin", "app")
+	runCmd := exec.Command(appBinPath)
 	runCmd.Dir = buildEnv.TempDir
 
-	log.Printf("Running tsunami app from %s", opts.Dir)
+	log.Printf("Running tsunami app from %s", opts.AppPath)
 
 	runCmd.Stdin = os.Stdin
 
@@ -731,7 +772,7 @@ func TsunamiRun(opts BuildOpts) error {
 	} else {
 		// Normal execution without browser opening
 		if opts.Verbose {
-			log.Printf("Executing: %s", appPath)
+			log.Printf("Executing: %s", appBinPath)
 			runCmd.Stdout = os.Stdout
 			runCmd.Stderr = os.Stderr
 		}
@@ -752,7 +793,6 @@ func monitorAndOpenBrowser(r io.ReadCloser, verbose bool) {
 	defer r.Close()
 
 	scanner := bufio.NewScanner(r)
-	urlRegex := regexp.MustCompile(`\[tsunami\] listening at (http://[^\s]+)`)
 	browserOpened := false
 	if verbose {
 		log.Printf("monitoring for browser open\n")
@@ -762,14 +802,177 @@ func monitorAndOpenBrowser(r io.ReadCloser, verbose bool) {
 		line := scanner.Text()
 		fmt.Println(line)
 
-		if !browserOpened && len(urlRegex.FindStringSubmatch(line)) > 1 {
-			matches := urlRegex.FindStringSubmatch(line)
-			url := matches[1]
-			if verbose {
-				log.Printf("Opening browser to %s", url)
+		if !browserOpened {
+			port := ParseTsunamiPort(line)
+			if port > 0 {
+				url := fmt.Sprintf("http://localhost:%d", port)
+				if verbose {
+					log.Printf("Opening browser to %s", url)
+				}
+				go util.OpenBrowser(url, 100*time.Millisecond)
+				browserOpened = true
 			}
-			go util.OpenBrowser(url, 100*time.Millisecond)
-			browserOpened = true
 		}
 	}
+}
+
+func ParseTsunamiPort(line string) int {
+	urlRegex := regexp.MustCompile(`\[tsunami\] listening at (http://[^\s]+)`)
+	matches := urlRegex.FindStringSubmatch(line)
+	if len(matches) < 2 {
+		return 0
+	}
+
+	u, err := url.Parse(matches[1])
+	if err != nil {
+		return 0
+	}
+
+	portStr := u.Port()
+	if portStr == "" {
+		return 0
+	}
+
+	port, err := strconv.Atoi(portStr)
+	if err != nil {
+		return 0
+	}
+
+	return port
+}
+
+func copyScaffoldFS(scaffoldFS fs.FS, destDir string, verbose bool) (int, error) {
+	fileCount := 0
+
+	// Handle node_modules directory - prefer symlink if possible, otherwise copy
+	if _, err := fs.Stat(scaffoldFS, "node_modules"); err == nil {
+		destPath := filepath.Join(destDir, "node_modules")
+
+		// Try to create symlink if we have DirFS
+		if dirFS, ok := scaffoldFS.(DirFS); ok {
+			srcPath := dirFS.JoinOS("node_modules")
+			if err := os.Symlink(srcPath, destPath); err != nil {
+				return 0, fmt.Errorf("failed to create symlink for node_modules: %w", err)
+			}
+			if verbose {
+				log.Printf("Symlinked node_modules directory\n")
+			}
+			fileCount++
+		} else {
+			// Fallback to recursive copy
+			dirCount, err := copyDirFromFS(scaffoldFS, "node_modules", destPath, false)
+			if err != nil {
+				return 0, fmt.Errorf("failed to copy node_modules directory: %w", err)
+			}
+			if verbose {
+				log.Printf("Copied node_modules directory (%d files)\n", dirCount)
+			}
+			fileCount += dirCount
+		}
+	} else if !os.IsNotExist(err) {
+		return 0, fmt.Errorf("error checking node_modules: %w", err)
+	}
+
+	// Copy package files instead of symlinking
+	packageFiles := []string{"package.json", "package-lock.json"}
+	for _, fileName := range packageFiles {
+		destPath := filepath.Join(destDir, fileName)
+
+		// Check if source exists in FS
+		if _, err := fs.Stat(scaffoldFS, fileName); err != nil {
+			if os.IsNotExist(err) {
+				continue // Skip if doesn't exist
+			}
+			return 0, fmt.Errorf("error checking %s: %w", fileName, err)
+		}
+
+		// Copy file from FS
+		if err := CopyFileFromFS(scaffoldFS, fileName, destPath); err != nil {
+			return 0, fmt.Errorf("failed to copy %s: %w", fileName, err)
+		}
+		fileCount++
+	}
+
+	// Copy dist directory using FS
+	distDestPath := filepath.Join(destDir, "dist")
+	dirCount, err := copyDirFromFS(scaffoldFS, "dist", distDestPath, false)
+	if err != nil {
+		return 0, fmt.Errorf("failed to copy dist directory: %w", err)
+	}
+	fileCount += dirCount
+
+	// Copy files by pattern (*.go, *.md, *.json, tailwind.css)
+	patterns := []string{"*.go", "*.md", "*.json", "tailwind.css"}
+
+	for _, pattern := range patterns {
+		matches, err := fs.Glob(scaffoldFS, pattern)
+		if err != nil {
+			return 0, fmt.Errorf("failed to glob pattern %s: %w", pattern, err)
+		}
+
+		for _, match := range matches {
+			destPath := filepath.Join(destDir, match)
+			if err := CopyFileFromFS(scaffoldFS, match, destPath); err != nil {
+				return 0, fmt.Errorf("failed to copy %s: %w", match, err)
+			}
+			fileCount++
+		}
+	}
+
+	return fileCount, nil
+}
+
+func MakeAppPackage(appFS fs.FS, appPath string, verbose bool, outputFile string) error {
+	if verbose {
+		log.Printf("Creating app package from %s to %s", appPath, outputFile)
+	}
+
+	// Create output directory if it doesn't exist
+	outputDir := filepath.Dir(outputFile)
+	if err := os.MkdirAll(outputDir, 0755); err != nil {
+		return fmt.Errorf("failed to create output directory: %w", err)
+	}
+
+	// Create zip file
+	zipFile, err := os.Create(outputFile)
+	if err != nil {
+		return fmt.Errorf("failed to create zip file: %w", err)
+	}
+	defer zipFile.Close()
+
+	zipWriter := zip.NewWriter(zipFile)
+	defer zipWriter.Close()
+
+	fileCount := 0
+
+	// Add go.mod if it exists
+	if err := addFileToZipIfExists(zipWriter, appFS, "go.mod", &fileCount, verbose); err != nil {
+		return fmt.Errorf("failed to add go.mod: %w", err)
+	}
+
+	// Add go.sum if it exists
+	if err := addFileToZipIfExists(zipWriter, appFS, "go.sum", &fileCount, verbose); err != nil {
+		return fmt.Errorf("failed to add go.sum: %w", err)
+	}
+
+	// Add manifest.json if it exists
+	if err := addFileToZipIfExists(zipWriter, appFS, "manifest.json", &fileCount, verbose); err != nil {
+		return fmt.Errorf("failed to add manifest.json: %w", err)
+	}
+
+	// Add all *.go files
+	if err := addGoFilesToZip(zipWriter, appFS, &fileCount, verbose); err != nil {
+		return fmt.Errorf("failed to add go files: %w", err)
+	}
+
+	// Add static directory if it exists
+	if err := addDirToZipIfExists(zipWriter, appFS, "static", &fileCount, verbose); err != nil {
+		return fmt.Errorf("failed to add static directory: %w", err)
+	}
+
+	if verbose {
+		log.Printf("Package created successfully with %d files", fileCount)
+	}
+
+	return nil
 }

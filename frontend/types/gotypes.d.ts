@@ -60,6 +60,7 @@ declare global {
         shellprocstatus?: string;
         shellprocconnname?: string;
         shellprocexitcode: number;
+        tsunamiport?: number;
     };
 
     // waveobj.BlockDef
@@ -590,6 +591,10 @@ declare global {
         "web:partition"?: string;
         "markdown:fontsize"?: number;
         "markdown:fixedfontsize"?: number;
+        "tsunami:*"?: boolean;
+        "tsunami:sdkreplacepath"?: string;
+        "tsunami:apppath"?: string;
+        "tsunami:scaffoldpath"?: string;
         "vdom:*"?: boolean;
         "vdom:initialized"?: boolean;
         "vdom:correlationid"?: string;
