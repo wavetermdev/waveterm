@@ -29,45 +29,45 @@ func (d DirFS) ReadFile(name string) ([]byte, error)       { return fs.ReadFile(
 func (d DirFS) ReadDir(name string) ([]fs.DirEntry, error) { return fs.ReadDir(d.FS, name) }
 func (d DirFS) Glob(p string) ([]string, error)            { return fs.Glob(d.FS, p) }
 
-func pathToFS(path string) (fs.FS, bool, error) {
+func pathToFS(path string) (fs.FS, bool, func() error, error) {
 	if path == "" {
-		return nil, false, fmt.Errorf("directory path cannot be empty")
+		return nil, false, nil, fmt.Errorf("directory path cannot be empty")
 	}
 
 	// Check if path exists
 	info, err := os.Stat(path)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return nil, false, fmt.Errorf("path %q does not exist", path)
+			return nil, false, nil, fmt.Errorf("path %q does not exist", path)
 		}
-		return nil, false, fmt.Errorf("error accessing path %q: %w", path, err)
+		return nil, false, nil, fmt.Errorf("error accessing path %q: %w", path, err)
 	}
 
 	// Check if it's a .tsapp file (zip archive)
 	if strings.HasSuffix(path, ".tsapp") {
 		if info.IsDir() {
-			return nil, false, fmt.Errorf("%q is a directory, but .tsapp files must be zip archives", path)
+			return nil, false, nil, fmt.Errorf("%q is a directory, but .tsapp files must be zip archives", path)
 		}
 
 		// Open as zip file
 		zipReader, err := zip.OpenReader(path)
 		if err != nil {
-			return nil, false, fmt.Errorf("failed to open .tsapp file %q as zip archive: %w", path, err)
+			return nil, false, nil, fmt.Errorf("failed to open .tsapp file %q as zip archive: %w", path, err)
 		}
 
-		// Return zip filesystem (not writable)
-		return zipReader, false, nil
+		// Return zip filesystem (not writable) with closer function
+		return zipReader, false, zipReader.Close, nil
 	}
 
 	// Handle regular directories
 	if !info.IsDir() {
-		return nil, false, fmt.Errorf("%q is not a directory", path)
+		return nil, false, nil, fmt.Errorf("%q is not a directory", path)
 	}
 
 	// Check if directory is writable by checking permissions
 	canWrite := info.Mode().Perm()&0200 != 0 // Check if owner has write permission
 
-	return NewDirFS(path), canWrite, nil
+	return NewDirFS(path), canWrite, nil, nil
 }
 
 func IsDirOrNotFound(path string) error {
@@ -162,7 +162,10 @@ func listGoFilesInDir(dirPath string) ([]string, error) {
 }
 
 func CopyFileIfExists(fsys fs.FS, srcPath, destPath string) (bool, error) {
-	if _, err := fs.Stat(fsys, srcPath); err == nil {
+	if fileInfo, err := fs.Stat(fsys, srcPath); err == nil {
+		if fileInfo.IsDir() {
+			return false, fmt.Errorf("source path %s is a directory", srcPath)
+		}
 		if err := CopyFileFromFS(fsys, srcPath, destPath); err != nil {
 			return false, fmt.Errorf("failed to copy %s: %w", srcPath, err)
 		}

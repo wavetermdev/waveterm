@@ -292,7 +292,7 @@ func GetAppModTime(appPath string) (time.Time, error) {
 		}
 		return info.ModTime(), nil
 	}
-	
+
 	appGoPath := filepath.Join(appPath, "app.go")
 	info, err := os.Stat(appGoPath)
 	if err != nil {
@@ -414,18 +414,24 @@ func TsunamiBuildInternal(opts BuildOpts) (*BuildEnv, error) {
 		return nil, err
 	}
 
-	appFS, canWrite, err := pathToFS(opts.AppPath)
+	appFS, canWrite, appCloser, err := pathToFS(opts.AppPath)
 	if err != nil {
 		return nil, fmt.Errorf("bad app path: %w", err)
+	}
+	if appCloser != nil {
+		defer appCloser()
 	}
 
 	if err := verifyAppPathFs(appFS); err != nil {
 		return nil, fmt.Errorf("bad app path: %w", err)
 	}
 
-	scaffoldFS, _, err := pathToFS(opts.ScaffoldPath)
+	scaffoldFS, _, scaffoldCloser, err := pathToFS(opts.ScaffoldPath)
 	if err != nil {
 		return nil, fmt.Errorf("bad scaffold path: %w", err)
+	}
+	if scaffoldCloser != nil {
+		defer scaffoldCloser()
 	}
 
 	if err := verifyScaffoldFs(scaffoldFS); err != nil {

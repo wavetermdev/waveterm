@@ -5,7 +5,6 @@ package app
 
 import (
 	"encoding/json"
-	"flag"
 	"io"
 	"io/fs"
 	"log"
@@ -15,6 +14,8 @@ import (
 	"github.com/wavetermdev/waveterm/tsunami/engine"
 	"github.com/wavetermdev/waveterm/tsunami/vdom"
 )
+
+const TsunamiCloseOnStdinEnvVar = "TSUNAMI_CLOSEONSTDIN"
 
 func DefineComponent[P any](name string, renderFn func(props P) any) vdom.Component[P] {
 	return engine.DefineComponentEx(engine.GetDefaultClient(), name, renderFn)
@@ -92,13 +93,12 @@ func HandleDynFunc(pattern string, fn func(http.ResponseWriter, *http.Request)) 
 
 // RunMain is used internally by generated code and should not be called directly.
 func RunMain() {
-	closeOnStdin := flag.Bool("close-on-stdin", false, "exit when stdin is closed")
-	flag.Parse()
+	closeOnStdin := os.Getenv(TsunamiCloseOnStdinEnvVar) != ""
 
-	if *closeOnStdin {
+	if closeOnStdin {
 		go func() {
 			// Read stdin until EOF/close, then exit the process
-			io.ReadAll(os.Stdin)
+			io.Copy(io.Discard, os.Stdin)
 			log.Printf("[tsunami] shutting down due to close of stdin\n")
 			os.Exit(0)
 		}()

@@ -82,13 +82,19 @@ func getController(blockId string) Controller {
 }
 
 func registerController(blockId string, controller Controller) {
+	var existingController Controller
+	
 	registryLock.Lock()
-	defer registryLock.Unlock()
-	if existing, exists := controllerRegistry[blockId]; exists {
-		// Stop existing controller before replacing
-		existing.Stop(false, Status_Done)
+	existing, exists := controllerRegistry[blockId]
+	if exists {
+		existingController = existing
 	}
 	controllerRegistry[blockId] = controller
+	registryLock.Unlock()
+	
+	if existingController != nil {
+		existingController.Stop(false, Status_Done)
+	}
 }
 
 func deleteController(blockId string) {

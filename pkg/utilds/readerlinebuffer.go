@@ -80,9 +80,7 @@ func (rlb *ReaderLineBuffer) addLine(line string) {
 	rlb.totalLineCount++
 
 	if len(rlb.lines) >= rlb.maxLines {
-		// Remove oldest line to make room
-		copy(rlb.lines, rlb.lines[1:])
-		rlb.lines[len(rlb.lines)-1] = line
+		rlb.lines = append(rlb.lines[1:], line)
 	} else {
 		rlb.lines = append(rlb.lines, line)
 	}

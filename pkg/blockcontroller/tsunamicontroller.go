@@ -301,7 +301,8 @@ func (c *TsunamiController) SendInput(input *BlockInputUnion) error {
 }
 
 func runTsunamiAppBinary(ctx context.Context, appBinPath string, appPath string) (*TsunamiAppProc, error) {
-	cmd := exec.Command(appBinPath, "--close-on-stdin")
+	cmd := exec.Command(appBinPath)
+	cmd.Env = append(os.Environ(), "TSUNAMI_CLOSEONSTDIN=1")
 
 	stdoutPipe, err := cmd.StdoutPipe()
 	if err != nil {
