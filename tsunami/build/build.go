@@ -285,6 +285,14 @@ func verifyAppPathFs(fsys fs.FS) error {
 }
 
 func GetAppModTime(appPath string) (time.Time, error) {
+	if strings.HasSuffix(appPath, ".tsapp") {
+		info, err := os.Stat(appPath)
+		if err != nil {
+			return time.Time{}, fmt.Errorf("failed to get tsapp mod time: %w", err)
+		}
+		return info.ModTime(), nil
+	}
+	
 	appGoPath := filepath.Join(appPath, "app.go")
 	info, err := os.Stat(appGoPath)
 	if err != nil {

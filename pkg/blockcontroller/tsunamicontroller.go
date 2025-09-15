@@ -101,7 +101,7 @@ func getTsunamiAppCachePath(scope string, appName string, osArch string) (string
 }
 
 func isBuildCacheUpToDate(appPath string) (bool, error) {
-	appName := filepath.Base(appPath)
+	appName := build.GetAppName(appPath)
 
 	osArch := runtime.GOOS + "-" + runtime.GOARCH
 
@@ -168,7 +168,7 @@ func (c *TsunamiController) Start(ctx context.Context, blockMeta waveobj.MetaMap
 		return fmt.Errorf("tsunami:apppath must be absolute: %s", appPath)
 	}
 
-	appName := filepath.Base(appPath)
+	appName := build.GetAppName(appPath)
 	osArch := runtime.GOOS + "-" + runtime.GOARCH
 
 	cachePath, err := getTsunamiAppCachePath("local", appName, osArch)

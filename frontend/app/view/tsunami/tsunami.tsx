@@ -147,7 +147,7 @@ const TsunamiView = memo(({ model }: TsunamiViewProps) => {
 
     if (shouldShowIframe) {
         const iframeUrl = `http://localhost:${shellProcFullStatus.tsunamiport}/?clientid=wave:${model.blockId}`;
-        return <iframe src={iframeUrl} className="w-full h-full border-0" title="Tsunami Application" name={`tsunami:${model.blockId}`} />;
+        return <iframe src={iframeUrl} className="w-full h-full border-0" title="Tsunami Application" name={`tsunami:${shellProcFullStatus.tsunamiport}:${model.blockId}`} />;
     }
 
     const status = shellProcFullStatus?.shellprocstatus ?? "init";
