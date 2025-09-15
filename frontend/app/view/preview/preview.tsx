@@ -4,31 +4,24 @@
 import { Button } from "@/app/element/button";
 import { CopyButton } from "@/app/element/copybutton";
 import { CenteredDiv } from "@/app/element/quickelems";
-import { tryReinjectKey } from "@/app/store/keymodel";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { BlockHeaderSuggestionControl } from "@/app/suggestion/suggestion";
-import { CodeEditor } from "@/app/view/codeeditor/codeeditor";
-import { Markdown } from "@/element/markdown";
-import { getOverrideConfigAtom, globalStore } from "@/store/global";
-import { getWebServerEndpoint } from "@/util/endpoints";
-import { adaptFromReactOrNativeKeyEvent, checkKeyPressed } from "@/util/keyutil";
-import { fireAndForget, isBlank, makeConnRoute } from "@/util/util";
-import { formatRemoteUri } from "@/util/waveutil";
-import { Monaco } from "@monaco-editor/react";
+import { globalStore } from "@/store/global";
+import { isBlank, makeConnRoute } from "@/util/util";
 import clsx from "clsx";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
-import type * as MonacoTypes from "monaco-editor/esm/vs/editor/editor.api";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
-import { memo, useCallback, useEffect, useMemo } from "react";
-import { TransformComponent, TransformWrapper, useControls } from "react-zoom-pan-pinch";
+import { memo, useCallback, useEffect } from "react";
 import { CSVView } from "./csvview";
-import { DirectoryPreview } from "./directorypreview";
+import { DirectoryPreview } from "./preview-directory";
+import { CodeEditPreview } from "./preview-edit";
+import { MarkdownPreview } from "./preview-markdown";
 import type { PreviewModel } from "./preview-model";
+import { StreamingPreview } from "./preview-streaming";
 import "./preview.scss";
 
-
-type SpecializedViewProps = {
+export type SpecializedViewProps = {
     model: PreviewModel;
     parentRef: React.RefObject<HTMLDivElement>;
 };
@@ -41,7 +34,6 @@ const SpecializedViewMap: { [view: string]: ({ model }: SpecializedViewProps) =>
     directory: DirectoryPreview,
 };
 
-
 function canPreview(mimeType: string): boolean {
     if (mimeType == null) {
         return false;
@@ -49,178 +41,11 @@ function canPreview(mimeType: string): boolean {
     return mimeType.startsWith("text/markdown") || mimeType.startsWith("text/csv");
 }
 
-
-function MarkdownPreview({ model }: SpecializedViewProps) {
-    const connName = useAtomValue(model.connection);
-    const fileInfo = useAtomValue(model.statFile);
-    const fontSizeOverride = useAtomValue(getOverrideConfigAtom(model.blockId, "markdown:fontsize"));
-    const fixedFontSizeOverride = useAtomValue(getOverrideConfigAtom(model.blockId, "markdown:fixedfontsize"));
-    const resolveOpts: MarkdownResolveOpts = useMemo<MarkdownResolveOpts>(() => {
-        return {
-            connName: connName,
-            baseDir: fileInfo.dir,
-        };
-    }, [connName, fileInfo.dir]);
-    return (
-        <div className="view-preview view-preview-markdown">
-            <Markdown
-                textAtom={model.fileContent}
-                showTocAtom={model.markdownShowToc}
-                resolveOpts={resolveOpts}
-                fontSizeOverride={fontSizeOverride}
-                fixedFontSizeOverride={fixedFontSizeOverride}
-            />
-        </div>
-    );
-}
-
-function ImageZooomControls() {
-    const { zoomIn, zoomOut, resetTransform } = useControls();
-
-    return (
-        <div className="tools">
-            <Button onClick={() => zoomIn()} title="Zoom In">
-                <i className="fa-sharp fa-plus" />
-            </Button>
-            <Button onClick={() => zoomOut()} title="Zoom Out">
-                <i className="fa-sharp fa-minus" />
-            </Button>
-            <Button onClick={() => resetTransform()} title="Reset Zoom">
-                <i className="fa-sharp fa-rotate-left" />
-            </Button>
-        </div>
-    );
-}
-
-function StreamingImagePreview({ url }: { url: string }) {
-    return (
-        <div className="view-preview view-preview-image">
-            <TransformWrapper initialScale={1} centerOnInit pinch={{ step: 10 }}>
-                {({ zoomIn, zoomOut, resetTransform, ...rest }) => (
-                    <>
-                        <ImageZooomControls />
-                        <TransformComponent>
-                            <img src={url} />
-                        </TransformComponent>
-                    </>
-                )}
-            </TransformWrapper>
-        </div>
-    );
-}
-
-function StreamingPreview({ model }: SpecializedViewProps) {
-    const conn = useAtomValue(model.connection);
-    const fileInfo = useAtomValue(model.statFile);
-    const filePath = fileInfo.path;
-    const remotePath = formatRemoteUri(filePath, conn);
-    const usp = new URLSearchParams();
-    usp.set("path", remotePath);
-    if (conn != null) {
-        usp.set("connection", conn);
-    }
-    const streamingUrl = `${getWebServerEndpoint()}/wave/stream-file?${usp.toString()}`;
-    if (fileInfo.mimetype === "application/pdf") {
-        return (
-            <div className="view-preview view-preview-pdf">
-                <iframe src={streamingUrl} width="100%" height="100%" name="pdfview" />
-            </div>
-        );
-    }
-    if (fileInfo.mimetype.startsWith("video/")) {
-        return (
-            <div className="view-preview view-preview-video">
-                <video controls>
-                    <source src={streamingUrl} />
-                </video>
-            </div>
-        );
-    }
-    if (fileInfo.mimetype.startsWith("audio/")) {
-        return (
-            <div className="view-preview view-preview-audio">
-                <audio controls>
-                    <source src={streamingUrl} />
-                </audio>
-            </div>
-        );
-    }
-    if (fileInfo.mimetype.startsWith("image/")) {
-        return <StreamingImagePreview url={streamingUrl} />;
-    }
-    return <CenteredDiv>Preview Not Supported</CenteredDiv>;
-}
-
-function CodeEditPreview({ model }: SpecializedViewProps) {
-    const fileContent = useAtomValue(model.fileContent);
-    const setNewFileContent = useSetAtom(model.newFileContent);
-    const fileInfo = useAtomValue(model.statFile);
-    const fileName = fileInfo?.name;
-    const blockMeta = useAtomValue(model.blockAtom)?.meta;
-
-    function codeEditKeyDownHandler(e: WaveKeyboardEvent): boolean {
-        if (checkKeyPressed(e, "Cmd:e")) {
-            fireAndForget(() => model.setEditMode(false));
-            return true;
-        }
-        if (checkKeyPressed(e, "Cmd:s") || checkKeyPressed(e, "Ctrl:s")) {
-            fireAndForget(model.handleFileSave.bind(model));
-            return true;
-        }
-        if (checkKeyPressed(e, "Cmd:r")) {
-            fireAndForget(model.handleFileRevert.bind(model));
-            return true;
-        }
-        return false;
-    }
-
-    useEffect(() => {
-        model.codeEditKeyDownHandler = codeEditKeyDownHandler;
-        return () => {
-            model.codeEditKeyDownHandler = null;
-            model.monacoRef.current = null;
-        };
-    }, []);
-
-    function onMount(editor: MonacoTypes.editor.IStandaloneCodeEditor, monaco: Monaco): () => void {
-        model.monacoRef.current = editor;
-
-        editor.onKeyDown((e: MonacoTypes.IKeyboardEvent) => {
-            const waveEvent = adaptFromReactOrNativeKeyEvent(e.browserEvent);
-            const handled = tryReinjectKey(waveEvent);
-            if (handled) {
-                e.stopPropagation();
-                e.preventDefault();
-            }
-        });
-
-        const isFocused = globalStore.get(model.nodeModel.isFocused);
-        if (isFocused) {
-            editor.focus();
-        }
-
-        return null;
-    }
-
-    return (
-        <CodeEditor
-            blockId={model.blockId}
-            text={fileContent}
-            filename={fileName}
-            fileinfo={fileInfo}
-            meta={blockMeta}
-            onChange={(text) => setNewFileContent(text)}
-            onMount={onMount}
-        />
-    );
-}
-
 function CSVViewPreview({ model, parentRef }: SpecializedViewProps) {
     const fileContent = useAtomValue(model.fileContent);
     const fileName = useAtomValue(model.statFilePath);
     return <CSVView parentRef={parentRef} readonly={true} content={fileContent} filename={fileName} />;
 }
-
 
 const SpecializedView = memo(({ parentRef, model }: SpecializedViewProps) => {
     const specializedView = useAtomValue(model.specializedView);
