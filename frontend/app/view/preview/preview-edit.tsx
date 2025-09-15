@@ -67,9 +67,7 @@ function CodeEditPreview({ model }: SpecializedViewProps) {
         <CodeEditor
             blockId={model.blockId}
             text={fileContent}
-            filename={fileName}
             fileinfo={fileInfo}
-            meta={blockMeta}
             onChange={(text) => setNewFileContent(text)}
             onMount={onMount}
         />
