@@ -383,19 +383,30 @@ const Markdown = ({
     };
 
     const toc = useMemo(() => {
-        if (showToc && tocRef.current.length > 0) {
-            return tocRef.current.map((item) => {
+        if (showToc) {
+            if (tocRef.current.length > 0) {
+                return tocRef.current.map((item) => {
+                    return (
+                        <a
+                            key={item.href}
+                            className="toc-item"
+                            style={{ "--indent-factor": item.depth } as React.CSSProperties}
+                            onClick={() => setFocusedHeading(item.href)}
+                        >
+                            {item.value}
+                        </a>
+                    );
+                });
+            } else {
                 return (
-                    <a
-                        key={item.href}
-                        className="toc-item"
-                        style={{ "--indent-factor": item.depth } as React.CSSProperties}
-                        onClick={() => setFocusedHeading(item.href)}
+                    <div
+                        className="toc-item toc-empty text-secondary"
+                        style={{ "--indent-factor": 2 } as React.CSSProperties}
                     >
-                        {item.value}
-                    </a>
+                        No sub-headings found
+                    </div>
                 );
-            });
+            }
         }
     }, [showToc, tocRef]);
 
@@ -483,9 +494,9 @@ const Markdown = ({
         <div className={clsx("markdown", className)} style={mergedStyle}>
             {scrollable ? <ScrollableMarkdown /> : <NonScrollableMarkdown />}
             {toc && (
-                <OverlayScrollbarsComponent className="toc" options={{ scrollbars: { autoHide: "leave" } }}>
+                <OverlayScrollbarsComponent className="toc mt-1" options={{ scrollbars: { autoHide: "leave" } }}>
                     <div className="toc-inner">
-                        <h4>Table of Contents</h4>
+                        <h4 className="font-bold">Table of Contents</h4>
                         {toc}
                     </div>
                 </OverlayScrollbarsComponent>
