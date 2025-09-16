@@ -72,10 +72,13 @@ jobs:
             - uses: nick-fields/retry@v3
               name: npm ci
               with:
-                  command: npm ci --no-audit --no-fund
+                  command: npm ci --no-audit --no-fund --timing --foreground-scripts
                   retry_on: error
                   max_attempts: 3
                   timeout_minutes: 5
+              env:
+                  GIT_ASKPASS: "echo"
+                  GIT_TERMINAL_PROMPT: "0"
             - name: Install Task
               uses: arduino/setup-task@v2
               with:
