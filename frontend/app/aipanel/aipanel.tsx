@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { cn } from "@/util/util";
+import { getWebServerEndpoint } from "@/util/endpoints";
 import { memo, useCallback, useEffect, useRef, useState } from "react";
 
 interface Message {
@@ -54,7 +55,7 @@ const AIPanelComponent = memo(({ className, onClose }: AIPanelProps) => {
             setIsLoading(true);
 
             try {
-                const response = await fetch("/api/aichat?blockid=ai-panel", {
+                const response = await fetch(`${getWebServerEndpoint()}/api/aichat?blockid=ai-panel`, {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
