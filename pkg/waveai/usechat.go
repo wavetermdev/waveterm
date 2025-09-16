@@ -222,15 +222,6 @@ func HandleAIChat(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Parse query parameters first
-	blockId := r.URL.Query().Get("blockid")
-	presetKey := r.URL.Query().Get("preset")
-
-	if blockId == "" {
-		http.Error(w, "blockid query parameter is required", http.StatusBadRequest)
-		return
-	}
-
 	// Parse request body completely before sending any response
 	var req UseChatRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -251,6 +242,14 @@ func HandleAIChat(w http.ResponseWriter, r *http.Request) {
 		}
 	} else {
 		// Use standard configuration resolution
+		blockId := r.URL.Query().Get("blockid")
+		presetKey := r.URL.Query().Get("preset")
+		
+		if blockId == "" {
+			http.Error(w, "blockid query parameter is required", http.StatusBadRequest)
+			return
+		}
+		
 		aiOpts, err = resolveAIConfig(r.Context(), blockId, presetKey, req.Options)
 		if err != nil {
 			http.Error(w, fmt.Sprintf("Configuration error: %v", err), http.StatusInternalServerError)
