@@ -4,6 +4,10 @@
 @use "reset.scss";
 @use "theme.scss";
 
+html {
+    overflow: hidden;
+}
+
 body {
     display: flex;
     flex-direction: row;
