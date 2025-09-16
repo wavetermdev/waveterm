@@ -18,6 +18,13 @@ body {
     transform: translateZ(0);
 }
 
+#main {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+}
+
 .is-transparent {
     background-color: transparent;
 }
@@ -51,24 +58,6 @@ a.plain-link {
 
 .text-fixed {
     font: var(--fixed-font);
-}
-
-#main,
-.mainapp {
-    display: flex;
-    flex-direction: column;
-    width: 100%;
-    height: 100%;
-
-    .app-background {
-        pointer-events: none;
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        z-index: var(--zindex-app-background);
-    }
 }
 
 .error-boundary {
