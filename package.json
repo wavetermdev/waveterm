@@ -137,6 +137,7 @@
         "react-frame-component": "^5.2.7",
         "react-hook-form": "^7.62.0",
         "react-markdown": "^9.0.3",
+        "react-resizable-panels": "^3.0.6",
         "react-zoom-pan-pinch": "^3.7.0",
         "recharts": "^2.15.4",
         "rehype-highlight": "^7.0.2",

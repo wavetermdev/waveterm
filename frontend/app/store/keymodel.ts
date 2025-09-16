@@ -29,6 +29,7 @@ import { CHORD_TIMEOUT } from "@/util/sharedconst";
 import { fireAndForget } from "@/util/util";
 import * as jotai from "jotai";
 import { modalsModel } from "./modalmodel";
+import { workspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
 
 type KeyHandler = (event: WaveKeyboardEvent) => boolean;
 
@@ -514,6 +515,11 @@ function registerGlobalKeys() {
             return true;
         }
         return false;
+    });
+    globalKeyMap.set("Cmd:Shift:a", () => {
+        const currentVisible = workspaceLayoutModel.getAIPanelVisible();
+        workspaceLayoutModel.setAIPanelVisible(!currentVisible);
+        return true;
     });
     const allKeys = Array.from(globalKeyMap.keys());
     // special case keys, handled by web view
