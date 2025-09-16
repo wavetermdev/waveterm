@@ -15,7 +15,7 @@ import {
 } from "@/app/suggestion/suggestion";
 import { WOS, globalStore } from "@/store/global";
 import { adaptFromReactOrNativeKeyEvent, checkKeyPressed } from "@/util/keyutil";
-import { fireAndForget } from "@/util/util";
+import { fireAndForget, useAtomValueSafe } from "@/util/util";
 import clsx from "clsx";
 import { WebviewTag } from "electron";
 import { Atom, PrimitiveAtom, atom, useAtomValue, useSetAtom } from "jotai";
@@ -60,6 +60,7 @@ export class WebViewModel implements ViewModel {
     hideNav: Atom<boolean>;
     searchAtoms?: SearchAtoms;
     typeaheadOpen: PrimitiveAtom<boolean>;
+    partitionOverride: PrimitiveAtom<string> | null;
 
     constructor(blockId: string, nodeModel: BlockNodeModel) {
         this.nodeModel = nodeModel;
@@ -85,6 +86,7 @@ export class WebViewModel implements ViewModel {
         this.domReady = atom(false);
         this.hideNav = getBlockMetaKeyAtom(blockId, "web:hidenav");
         this.typeaheadOpen = atom(false);
+        this.partitionOverride = null;
 
         this.mediaPlaying = atom(false);
         this.mediaMuted = atom(false);
@@ -399,6 +401,33 @@ export class WebViewModel implements ViewModel {
     }
 
     /**
+     * Load a new URL in the webview and return a promise.
+     * @param newUrl The new URL to load in the webview.
+     * @param reason The reason for loading the URL.
+     * @returns Promise that resolves when the URL is loaded.
+     */
+    loadUrlPromise(newUrl: string, reason: string): Promise<void> {
+        const defaultSearchAtom = getSettingsKeyAtom("web:defaultsearch");
+        const searchTemplate = globalStore.get(defaultSearchAtom);
+        const nextUrl = this.ensureUrlScheme(newUrl, searchTemplate);
+        console.log("webview loadUrlPromise", reason, nextUrl, "cur=", this.webviewRef.current?.getURL());
+        
+        if (!this.webviewRef.current) {
+            return Promise.reject(new Error("WebView ref not available"));
+        }
+        
+        if (newUrl != nextUrl) {
+            globalStore.set(this.url, nextUrl);
+        }
+        
+        if (this.webviewRef.current.getURL() != nextUrl) {
+            return this.webviewRef.current.loadURL(nextUrl);
+        }
+        
+        return Promise.resolve();
+    }
+
+    /**
      * Get the current URL from the state.
      * @returns The URL from the state.
      */
@@ -661,9 +690,10 @@ interface WebViewProps {
     onFailLoad?: (url: string) => void;
     blockRef: React.RefObject<HTMLDivElement>;
     contentRef: React.RefObject<HTMLDivElement>;
+    initialSrc?: string;
 }
 
-const WebView = memo(({ model, onFailLoad, blockRef }: WebViewProps) => {
+const WebView = memo(({ model, onFailLoad, blockRef, initialSrc }: WebViewProps) => {
     const blockData = useAtomValue(model.blockAtom);
     const defaultUrl = useAtomValue(model.homepageUrl);
     const defaultSearchAtom = getSettingsKeyAtom("web:defaultsearch");
@@ -672,7 +702,9 @@ const WebView = memo(({ model, onFailLoad, blockRef }: WebViewProps) => {
     metaUrl = model.ensureUrlScheme(metaUrl, defaultSearch);
     const metaUrlRef = useRef(metaUrl);
     const zoomFactor = useAtomValue(getBlockMetaKeyAtom(model.blockId, "web:zoom")) || 1;
-    const webPartition = useAtomValue(getBlockMetaKeyAtom(model.blockId, "web:partition")) || undefined;
+    const partitionOverride = useAtomValueSafe(model.partitionOverride);
+    const metaPartition = useAtomValue(getBlockMetaKeyAtom(model.blockId, "web:partition"));
+    const webPartition = partitionOverride || metaPartition || undefined;
 
     // Search
     const searchProps = useSearch({ anchorRef: model.webviewRef, viewModel: model });
@@ -718,7 +750,7 @@ const WebView = memo(({ model, onFailLoad, blockRef }: WebViewProps) => {
     // End Search
 
     // The initial value of the block metadata URL when the component first renders. Used to set the starting src value for the webview.
-    const [metaUrlInitial] = useState(metaUrl);
+    const [metaUrlInitial] = useState(initialSrc || metaUrl);
 
     const [webContentsId, setWebContentsId] = useState(null);
     const domReady = useAtomValue(model.domReady);
@@ -774,11 +806,15 @@ const WebView = memo(({ model, onFailLoad, blockRef }: WebViewProps) => {
 
     // Load a new URL if the block metadata is updated.
     useEffect(() => {
+        if (initialSrc) {
+            // Skip URL loading if initialSrc is provided (it's already loaded via src attribute)
+            return;
+        }
         if (metaUrlRef.current != metaUrl) {
             metaUrlRef.current = metaUrl;
             model.loadUrl(metaUrl, "meta");
         }
-    }, [metaUrl]);
+    }, [metaUrl, initialSrc]);
 
     useEffect(() => {
         const webview = model.webviewRef.current;

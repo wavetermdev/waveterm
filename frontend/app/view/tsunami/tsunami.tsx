@@ -6,27 +6,28 @@ import { atoms, globalStore, WOS } from "@/app/store/global";
 import { waveEventSubscribe } from "@/app/store/wps";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
+import { WebView, WebViewModel } from "@/app/view/webview/webview";
 import * as services from "@/store/services";
 import * as jotai from "jotai";
 import { memo, useEffect } from "react";
 
-class TsunamiViewModel implements ViewModel {
-    viewType: string;
-    blockAtom: jotai.Atom<Block>;
-    blockId: string;
-    viewIcon: jotai.Atom<string>;
-    viewName: jotai.Atom<string>;
+class TsunamiViewModel extends WebViewModel {
     shellProcFullStatus: jotai.PrimitiveAtom<BlockControllerRuntimeStatus>;
     shellProcStatusUnsubFn: () => void;
     isRestarting: jotai.PrimitiveAtom<boolean>;
 
     constructor(blockId: string, nodeModel: BlockNodeModel) {
+        super(blockId, nodeModel);
         this.viewType = "tsunami";
-        this.blockId = blockId;
-        this.blockAtom = WOS.getWaveObjectAtom<Block>(`block:${blockId}`);
         this.viewIcon = jotai.atom("cube");
         this.viewName = jotai.atom("Tsunami");
         this.isRestarting = jotai.atom(false);
+
+        // Hide navigation bar (URL bar, back/forward/home buttons)
+        this.hideNav = jotai.atom(true);
+
+        // Set custom partition for tsunami WebView isolation
+        this.partitionOverride = jotai.atom(`tsunami:${blockId}`);
 
         this.shellProcFullStatus = jotai.atom(null) as jotai.PrimitiveAtom<BlockControllerRuntimeStatus>;
         const initialShellProcStatus = services.BlockService.GetControllerStatus(blockId);
@@ -94,22 +95,31 @@ class TsunamiViewModel implements ViewModel {
     }
 
     getSettingsMenuItems(): ContextMenuItem[] {
-        return [];
+        const items = super.getSettingsMenuItems();
+        // Filter out homepage and navigation-related menu items for tsunami view
+        return items.filter((item) => {
+            const label = item.label?.toLowerCase() || "";
+            return (
+                !label.includes("homepage") &&
+                !label.includes("home page") &&
+                !label.includes("navigation") &&
+                !label.includes("nav")
+            );
+        });
     }
 }
 
-type TsunamiViewProps = {
-    model: TsunamiViewModel;
-};
-
-const TsunamiView = memo(({ model }: TsunamiViewProps) => {
+const TsunamiView = memo((props: ViewComponentProps<TsunamiViewModel>) => {
+    const { model } = props;
     const shellProcFullStatus = jotai.useAtomValue(model.shellProcFullStatus);
     const blockData = jotai.useAtomValue(model.blockAtom);
     const isRestarting = jotai.useAtomValue(model.isRestarting);
+    const domReady = jotai.useAtomValue(model.domReady);
 
     useEffect(() => {
         model.resyncController();
     }, [model]);
+
 
     const appPath = blockData?.meta?.["tsunami:apppath"];
     const controller = blockData?.meta?.controller;
@@ -139,15 +149,19 @@ const TsunamiView = memo(({ model }: TsunamiViewProps) => {
         );
     }
 
-    // Check if we should show the iframe
-    const shouldShowIframe =
+    // Check if we should show the webview
+    const shouldShowWebView =
         shellProcFullStatus?.shellprocstatus === "running" &&
         shellProcFullStatus?.tsunamiport &&
         shellProcFullStatus.tsunamiport !== 0;
 
-    if (shouldShowIframe) {
-        const iframeUrl = `http://localhost:${shellProcFullStatus.tsunamiport}/?clientid=wave:${model.blockId}`;
-        return <iframe src={iframeUrl} className="w-full h-full border-0" title="Tsunami Application" name={`tsunami:${shellProcFullStatus.tsunamiport}:${model.blockId}`} />;
+    if (shouldShowWebView) {
+        const tsunamiUrl = `http://localhost:${shellProcFullStatus.tsunamiport}/?clientid=wave:${model.blockId}`;
+        return (
+            <div className="w-full h-full">
+                <WebView {...props} initialSrc={tsunamiUrl} />
+            </div>
+        );
     }
 
     const status = shellProcFullStatus?.shellprocstatus ?? "init";
