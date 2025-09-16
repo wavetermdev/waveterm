@@ -4,8 +4,8 @@
     "scripts": {
         "docusaurus": "docusaurus",
         "start": "docusaurus start",
-        "build": "USE_SIMPLE_CSS_MINIFIER=true docusaurus build",
-        "build-embedded": "EMBEDDED=true npm run build",
+        "build": "docusaurus build",
+        "build-embedded": "npm run build",
         "swizzle": "docusaurus swizzle",
         "deploy": "docusaurus deploy",
         "clear": "docusaurus clear",
