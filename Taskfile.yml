@@ -92,6 +92,8 @@ tasks:
         cmds:
             - cd docs && npm run build
             - task: copyfiles:'storybook-static':'docs/build/storybook'
+        env:
+            USE_SIMPLE_CSS_MINIFIER: "true"
         sources:
             - "docs/*"
             - "docs/src/**/*"
@@ -116,6 +118,9 @@ tasks:
         cmds:
             - cd docs && npm run build-embedded
             - task: copyfiles:'docs/build/':'dist/docsite'
+        env:
+            EMBEDDED: "true"
+            USE_SIMPLE_CSS_MINIFIER: "true"
         deps:
             - docs:npm:install
 
