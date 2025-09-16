@@ -233,7 +233,10 @@ func HandleAIChat(w http.ResponseWriter, r *http.Request) {
 	var aiOpts *wshrpc.WaveAIOptsType
 	var err error
 
-	if req.WaveAI {
+	// Check for waveai URL parameter
+	waveaiParam := r.URL.Query().Get("waveai")
+	
+	if req.WaveAI || (waveaiParam != "") {
 		// Use WaveAI settings
 		aiOpts, err = getWaveAISettings()
 		if err != nil {
