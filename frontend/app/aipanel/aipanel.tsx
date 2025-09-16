@@ -6,6 +6,7 @@ import { cn } from "@/util/util";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { memo, useEffect, useRef, useState } from "react";
+import { Streamdown } from "streamdown";
 
 interface AIPanelProps {
     className?: string;
@@ -101,7 +102,31 @@ const AIPanelComponent = memo(({ className, onClose }: AIPanelProps) => {
                                         message.role === "user" ? "bg-accent text-white" : "bg-gray-700 text-gray-100"
                                     )}
                                 >
-                                    <div className="whitespace-pre-wrap break-words">{getMessageContent(message)}</div>
+                                    {message.role === "user" ? (
+                                        <div className="whitespace-pre-wrap break-words">
+                                            {getMessageContent(message)}
+                                        </div>
+                                    ) : (
+                                        <Streamdown
+                                            parseIncompleteMarkdown={status === "streaming"}
+                                            className="markdown-content text-gray-100"
+                                            shikiTheme={["github-dark", "github-dark"]}
+                                            controls={{
+                                                code: true,
+                                                table: true,
+                                                mermaid: true,
+                                            }}
+                                            mermaidConfig={{
+                                                theme: "dark",
+                                                darkMode: true,
+                                            }}
+                                            allowedLinkPrefixes={["https://", "http://", "#"]}
+                                            allowedImagePrefixes={["https://", "http://", "data:"]}
+                                            defaultOrigin="http://localhost"
+                                        >
+                                            {getMessageContent(message)}
+                                        </Streamdown>
+                                    )}
                                 </div>
                             </div>
                         ))

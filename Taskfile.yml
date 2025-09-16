@@ -150,6 +150,14 @@ tasks:
         desc: Build only the wavesrv component for quickdev (arm64 macOS only, no generate, no wsh).
         cmds:
             - task: build:server:quickdev
+        sources:
+            - go.mod
+            - go.sum
+            - pkg/**/*.go
+            - cmd/**/*.go
+            - tsunami/go.mod
+            - tsunami/go.sum
+            - tsunami/**/*.go
 
     build:schema:
         desc: Build the schema for configuration.
@@ -195,8 +203,6 @@ tasks:
         desc: Build the wavesrv component for quickdev (arm64 macOS only, no generate).
         platforms: [darwin]
         cmds:
-            - cmd: "{{.RM}} dist/bin/wavesrv*"
-              ignore_error: true
             - task: build:server:internal
               vars:
                   ARCHS: arm64
