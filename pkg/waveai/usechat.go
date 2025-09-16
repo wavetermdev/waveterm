@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"strings"
 
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
@@ -77,6 +78,20 @@ func (m *UseChatMessage) GetContent() string {
 type UseChatRequest struct {
 	Messages []UseChatMessage        `json:"messages"`
 	Options  *wconfig.AiSettingsType `json:"options,omitempty"`
+	WaveAI   bool                    `json:"waveai,omitempty"`
+}
+
+func getWaveAISettings() (*wshrpc.WaveAIOptsType, error) {
+	anthropicSecret := os.Getenv("WAVETERM_ANTHROPIC_SECRET")
+	if anthropicSecret == "" {
+		return nil, fmt.Errorf("no anthropic secret found")
+	}
+	return &wshrpc.WaveAIOptsType{
+		APIToken:  anthropicSecret,
+		Model:     "claude-sonnet-4-20250514",
+		APIType:   APIType_Anthropic,
+		MaxTokens: 10 * 1024,
+	}, nil
 }
 
 func resolveAIConfig(ctx context.Context, blockId, presetKey string, requestOptions *wconfig.AiSettingsType) (*wshrpc.WaveAIOptsType, error) {
@@ -224,10 +239,23 @@ func HandleAIChat(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Resolve AI configuration
-	aiOpts, err := resolveAIConfig(r.Context(), blockId, presetKey, req.Options)
-	if err != nil {
-		http.Error(w, fmt.Sprintf("Configuration error: %v", err), http.StatusInternalServerError)
-		return
+	var aiOpts *wshrpc.WaveAIOptsType
+	var err error
+
+	if req.WaveAI {
+		// Use WaveAI settings
+		aiOpts, err = getWaveAISettings()
+		if err != nil {
+			http.Error(w, fmt.Sprintf("WaveAI configuration error: %v", err), http.StatusInternalServerError)
+			return
+		}
+	} else {
+		// Use standard configuration resolution
+		aiOpts, err = resolveAIConfig(r.Context(), blockId, presetKey, req.Options)
+		if err != nil {
+			http.Error(w, fmt.Sprintf("Configuration error: %v", err), http.StatusInternalServerError)
+			return
+		}
 	}
 
 	// Validate configuration

@@ -134,6 +134,12 @@ tasks:
             - docsite:build:embedded
             - build:backend
 
+    build:frontend:dev:
+        desc: Build the frontend in development mode.
+        cmd: npm run build:dev
+        deps:
+            - npm:install
+
     build:backend:
         desc: Build the wavesrv and wsh components.
         cmds:
