@@ -1,8 +1,8 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { cn } from "@/util/util";
 import { getWebServerEndpoint } from "@/util/endpoints";
+import { cn } from "@/util/util";
 import { memo, useCallback, useEffect, useRef, useState } from "react";
 
 interface Message {
@@ -69,7 +69,24 @@ const AIPanelComponent = memo(({ className, onClose }: AIPanelProps) => {
                 });
 
                 if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
+                    let errorMessage = `HTTP ${response.status}`;
+                    try {
+                        const errorText = await response.text();
+                        if (errorText) {
+                            // Truncate to max 200 chars and 2 lines
+                            const truncated = errorText.substring(0, 200);
+                            const lines = truncated.split('\n').slice(0, 2);
+                            errorMessage = lines.join('\n');
+                        }
+                    } catch (e) {
+                        // Fall back to status text if we can't read the response body
+                        if (response.statusText) {
+                            errorMessage += ` ${response.statusText}`;
+                        }
+                    }
+                    const error = new Error(errorMessage);
+                    (error as any).status = response.status;
+                    throw error;
                 }
 
                 const reader = response.body?.getReader();
@@ -124,12 +141,25 @@ const AIPanelComponent = memo(({ className, onClose }: AIPanelProps) => {
                 }
             } catch (error) {
                 console.error("Error sending message:", error);
+                let errorMessage = "Sorry, I encountered an error. Please try again.";
+
+                if (error instanceof Error) {
+                    if (error.message.includes("Failed to fetch")) {
+                        errorMessage = "Connection error. Check your internet connection and try again.";
+                    } else {
+                        // For dev tool, show the actual error message but truncated
+                        const truncated = error.message.substring(0, 200);
+                        const lines = truncated.split('\n').slice(0, 2);
+                        errorMessage = lines.join('\n');
+                    }
+                }
+
                 setMessages((prev) => [
                     ...prev,
                     {
                         id: (Date.now() + 1).toString(),
                         role: "assistant",
-                        content: "Sorry, I encountered an error. Please try again.",
+                        content: errorMessage,
                     },
                 ]);
             } finally {
