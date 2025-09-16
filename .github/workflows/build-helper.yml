@@ -69,6 +69,10 @@ jobs:
                   node-version: ${{env.NODE_VERSION}}
                   cache: npm
                   cache-dependency-path: package-lock.json
+            - name: Force git deps to HTTPS
+              run: |
+                  git config --global url.https://github.com/.insteadof ssh://git@github.com/
+                  git config --global url.https://github.com/.insteadof git@github.com:
             - uses: nick-fields/retry@v3
               name: npm ci
               with:
