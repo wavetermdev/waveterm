@@ -12,8 +12,6 @@ package waveai
 import (
 	"bytes"
 	"context"
-	"crypto/rand"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -23,6 +21,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/launchdarkly/eventsource"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 )
@@ -377,11 +376,11 @@ func handleAnthropicEvent(
 		idx := *ev.Index
 		switch ev.ContentBlock.Type {
 		case "text":
-			id := genID("text")
+			id := uuid.New().String()
 			blocks[idx] = &blockState{kind: blockText, localID: id}
 			_ = sse.AiMsgTextStart(id)
 		case "thinking":
-			id := genID("reasoning")
+			id := uuid.New().String()
 			blocks[idx] = &blockState{kind: blockThinking, localID: id}
 			_ = sse.AiMsgReasoningStart(id)
 		case "tool_use":
@@ -618,10 +617,4 @@ func buildAnthropicHTTPRequest(ctx context.Context, opts *wshrpc.WaveAIOptsType,
 	req.Header.Set("accept", "text/event-stream")
 
 	return req, nil
-}
-
-func genID(prefix string) string {
-	var b [8]byte
-	_, _ = rand.Read(b[:])
-	return fmt.Sprintf("%s_%s", prefix, hex.EncodeToString(b[:]))
 }
