@@ -5,10 +5,11 @@ import { getWebServerEndpoint } from "@/util/endpoints";
 import { cn } from "@/util/util";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
-import { memo, useState } from "react";
+import { memo, useRef, useState } from "react";
 import { AIPanelHeader } from "./aipanelheader";
 import { AIPanelInput } from "./aipanelinput";
 import { AIPanelMessages } from "./aipanelmessages";
+import { WaveAIModel } from "./waveai-model";
 
 interface AIPanelProps {
     className?: string;
@@ -17,6 +18,8 @@ interface AIPanelProps {
 
 const AIPanelComponent = memo(({ className, onClose }: AIPanelProps) => {
     const [input, setInput] = useState("");
+    const modelRef = useRef(new WaveAIModel());
+    const model = modelRef.current;
 
     const { messages, sendMessage, status } = useChat({
         transport: new DefaultChatTransport({
@@ -44,7 +47,7 @@ const AIPanelComponent = memo(({ className, onClose }: AIPanelProps) => {
                 borderBottomRightRadius: "var(--block-border-radius)",
             }}
         >
-            <AIPanelHeader onClose={onClose} />
+            <AIPanelHeader onClose={onClose} model={model} />
 
             <div className="flex-1 flex flex-col min-h-0">
                 <AIPanelMessages messages={messages} status={status} />

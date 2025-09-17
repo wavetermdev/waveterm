@@ -1,14 +1,17 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { memo, useState } from "react";
+import { useAtom } from "jotai";
+import { memo } from "react";
+import { WaveAIModel } from "./waveai-model";
 
 interface AIPanelHeaderProps {
     onClose?: () => void;
+    model: WaveAIModel;
 }
 
-export const AIPanelHeader = memo(({ onClose }: AIPanelHeaderProps) => {
-    const [widgetAccess, setWidgetAccess] = useState(true);
+export const AIPanelHeader = memo(({ onClose, model }: AIPanelHeaderProps) => {
+    const [widgetAccess, setWidgetAccess] = useAtom(model.widgetAccess);
 
     return (
         <div className="p-2 pl-4 border-b border-gray-600 flex items-center justify-between">
