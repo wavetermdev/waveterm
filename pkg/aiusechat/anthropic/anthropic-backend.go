@@ -17,6 +17,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"strings"
@@ -573,21 +574,15 @@ func buildAnthropicHTTPRequest(ctx context.Context, opts *uctypes.AIOptsType, ms
 
 	for _, m := range msgs {
 		aim := anthropicInputMessage{Role: m.Role}
-		// Content may be a string or array of blocks; support text only. :contentReference[oaicite:24]{index=24}
 		if len(m.Parts) > 0 {
-			var blocks []map[string]string
-			for _, p := range m.Parts {
-				if strings.ToLower(p.Type) == "text" || p.Type == "" {
-					blocks = append(blocks, map[string]string{
-						"type": "text",
-						"text": p.Text,
-					})
-				}
+			blocks, err := convertPartsToAnthropicBlocks(m.Parts, m.Role)
+			if err != nil {
+				return nil, fmt.Errorf("invalid message parts: %w", err)
 			}
 			bs, _ := json.Marshal(blocks)
 			aim.Content = bs
 		} else {
-			// Shorthand: string becomes a single text block. :contentReference[oaicite:25]{index=25}
+			// Shorthand: string becomes a single text block
 			if m.Content == "" {
 				m.Content = ""
 			}
@@ -612,4 +607,152 @@ func buildAnthropicHTTPRequest(ctx context.Context, opts *uctypes.AIOptsType, ms
 	req.Header.Set("accept", "text/event-stream")
 
 	return req, nil
+}
+
+// convertPartsToAnthropicBlocks converts UseChatMessagePart array to Anthropic content blocks with role-based validation
+func convertPartsToAnthropicBlocks(parts []uctypes.UseChatMessagePart, role string) ([]interface{}, error) {
+	var blocks []interface{}
+	
+	for _, p := range parts {
+		switch strings.ToLower(p.Type) {
+		case "text", "":
+			blocks = append(blocks, map[string]interface{}{
+				"type": "text",
+				"text": p.Text,
+			})
+			
+		case "image":
+			// Anthropic expects images in user messages
+			if role != "user" {
+				log.Printf("anthropic: dropping image part in %s message (images should be in user messages)", role)
+				continue
+			}
+			if p.Source == nil {
+				return nil, errors.New("image part missing source")
+			}
+			block, err := convertImagePart(p)
+			if err != nil {
+				return nil, err
+			}
+			blocks = append(blocks, block)
+			
+		case "tool_result":
+			// Anthropic requires tool_result in user messages
+			if role != "user" {
+				log.Printf("anthropic: dropping tool_result part in %s message (tool_result must be in user messages)", role)
+				continue
+			}
+			block, err := convertToolResultPart(p)
+			if err != nil {
+				return nil, err
+			}
+			blocks = append(blocks, block)
+			
+		default:
+			// Log and skip unknown part types
+			log.Printf("anthropic: dropping unknown part type '%s'", p.Type)
+		}
+	}
+	
+	return blocks, nil
+}
+
+// convertImagePart converts an image part to Anthropic image block format
+func convertImagePart(p uctypes.UseChatMessagePart) (map[string]interface{}, error) {
+	if p.Source == nil {
+		return nil, errors.New("image part missing source")
+	}
+	
+	source := map[string]interface{}{
+		"type": p.Source.Type,
+	}
+	
+	switch p.Source.Type {
+	case "url":
+		if p.Source.URL == "" {
+			return nil, errors.New("image source type 'url' requires url field")
+		}
+		source["url"] = p.Source.URL
+		
+	case "base64":
+		if p.Source.Data == "" {
+			return nil, errors.New("image source type 'base64' requires data field")
+		}
+		if p.Source.MediaType == "" {
+			return nil, errors.New("image source type 'base64' requires media_type field")
+		}
+		source["data"] = p.Source.Data
+		source["media_type"] = p.Source.MediaType
+		
+	case "file":
+		if p.Source.FileID == "" {
+			return nil, errors.New("image source type 'file' requires file_id field")
+		}
+		source["file_id"] = p.Source.FileID
+		
+	default:
+		return nil, fmt.Errorf("unsupported image source type: %s", p.Source.Type)
+	}
+	
+	return map[string]interface{}{
+		"type":   "image",
+		"source": source,
+	}, nil
+}
+
+// convertToolResultPart converts a tool_result part to Anthropic tool_result block format
+func convertToolResultPart(p uctypes.UseChatMessagePart) (map[string]interface{}, error) {
+	if p.ToolUseID == "" {
+		return nil, errors.New("tool_result part missing tool_use_id")
+	}
+	
+	block := map[string]interface{}{
+		"type":        "tool_result",
+		"tool_use_id": p.ToolUseID,
+	}
+	
+	// Handle content field - can be string or array of content blocks
+	if len(p.Content) == 0 {
+		// No content blocks, use empty string
+		block["content"] = ""
+	} else if len(p.Content) == 1 && p.Content[0].Type == "text" {
+		// Single text block - use string format
+		block["content"] = p.Content[0].Text
+	} else {
+		// Multiple blocks or non-text - convert to Anthropic content block array
+		var contentBlocks []interface{}
+		for _, cb := range p.Content {
+			switch cb.Type {
+			case "text":
+				contentBlocks = append(contentBlocks, map[string]interface{}{
+					"type": "text",
+					"text": cb.Text,
+				})
+			default:
+				// For now, convert non-text content to text representation
+				// This handles cases like tool output data
+				text := ""
+				if cb.Text != "" {
+					text = cb.Text
+				} else if cb.Data != nil {
+					// Convert data to JSON string
+					if jsonBytes, err := json.Marshal(cb.Data); err == nil {
+						text = string(jsonBytes)
+					}
+				}
+				contentBlocks = append(contentBlocks, map[string]interface{}{
+					"type": "text",
+					"text": text,
+				})
+			}
+		}
+		block["content"] = contentBlocks
+	}
+	
+	// Add is_error if specified
+	if p.IsError != nil {
+		block["is_error"] = *p.IsError
+	}
+	
+	return block, nil
 }
