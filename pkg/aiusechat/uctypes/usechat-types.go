@@ -1,28 +1,35 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-package aiusechat
+package uctypes
 
 import (
 	"encoding/json"
 	"strings"
 )
 
-const (
-	APIType_Anthropic = "anthropic"
-	APIType_OpenAI    = "openai"
-)
+type UseChatRequest struct {
+	Messages []UseChatMessage `json:"messages"`
+}
 
-type StopReasonKind string
+type UseChatMessage struct {
+	Role    string               `json:"role"`
+	Content string               `json:"content,omitempty"`
+	Parts   []UseChatMessagePart `json:"parts,omitempty"`
+}
 
-const (
-	StopKindDone      StopReasonKind = "done"
-	StopKindToolUse   StopReasonKind = "tool_use"
-	StopKindMaxTokens StopReasonKind = "max_tokens"
-	StopKindContent   StopReasonKind = "content_filter"
-	StopKindCanceled  StopReasonKind = "canceled"
-	StopKindError     StopReasonKind = "error"
-)
+type UseChatMessagePart struct {
+	Type string `json:"type"`
+	Text string `json:"text,omitempty"`
+
+	// For images
+	Source *ImageSource `json:"source,omitempty"`
+
+	// For tool_result
+	ToolUseID string                `json:"tool_use_id,omitempty"`
+	Content   []UseChatContentBlock `json:"-"` // handled by custom marshal/unmarshal
+	IsError   *bool                 `json:"is_error,omitempty"`
+}
 
 type ImageSource struct {
 	Type      string `json:"type"`                 // "url", "base64", or "file"
@@ -30,6 +37,25 @@ type ImageSource struct {
 	Data      string `json:"data,omitempty"`       // for type="base64"
 	MediaType string `json:"media_type,omitempty"` // required for base64
 	FileID    string `json:"file_id,omitempty"`    // for type="file"
+}
+
+// ToolDefinition represents a tool that can be used by the AI model
+type ToolDefinition struct {
+	Name        string         `json:"name"`
+	Description string         `json:"description"`
+	InputSchema map[string]any `json:"input_schema"`
+}
+
+type AIOptsType struct {
+	APIType    string `json:"apitype,omitempty"`
+	Model      string `json:"model"`
+	APIToken   string `json:"apitoken"`
+	OrgID      string `json:"orgid,omitempty"`
+	APIVersion string `json:"apiversion,omitempty"`
+	BaseURL    string `json:"baseurl,omitempty"`
+	ProxyURL   string `json:"proxyurl,omitempty"`
+	MaxTokens  int    `json:"maxtokens,omitempty"`
+	TimeoutMs  int    `json:"timeoutms,omitempty"`
 }
 
 // Type can be one of these consts...
@@ -67,19 +93,6 @@ type UseChatContentBlock struct {
 
 	// Control parts (start/finish steps, errors, etc.)
 	ErrorText string `json:"errorText,omitempty"`
-}
-
-type UseChatMessagePart struct {
-	Type string `json:"type"`
-	Text string `json:"text,omitempty"`
-
-	// For images
-	Source *ImageSource `json:"source,omitempty"`
-
-	// For tool_result
-	ToolUseID string                `json:"tool_use_id,omitempty"`
-	Content   []UseChatContentBlock `json:"-"` // handled by custom marshal/unmarshal
-	IsError   *bool                 `json:"is_error,omitempty"`
 }
 
 func (p *UseChatMessagePart) MarshalJSON() ([]byte, error) {
@@ -127,12 +140,6 @@ func (p *UseChatMessagePart) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-type UseChatMessage struct {
-	Role    string               `json:"role"`
-	Content string               `json:"content,omitempty"`
-	Parts   []UseChatMessagePart `json:"parts,omitempty"`
-}
-
 // GetContent extracts the text content from either content field or parts array
 func (m *UseChatMessage) GetContent() string {
 	if m.Content != "" {
@@ -150,33 +157,27 @@ func (m *UseChatMessage) GetContent() string {
 	return ""
 }
 
-type ToolCall struct {
-	ID    string `json:"id"`              // Anthropic tool_use.id
-	Name  string `json:"name,omitempty"`  // tool name (if provided)
-	Input any    `json:"input,omitempty"` // accumulated input JSON
-}
+func parseContentFromJSON(rawContent json.RawMessage) ([]UseChatContentBlock, error) {
+	if len(rawContent) == 0 {
+		return nil, nil
+	}
 
-type StopReason struct {
-	Kind      StopReasonKind `json:"kind"`
-	RawReason string         `json:"raw_reason,omitempty"`
-	MessageID string         `json:"message_id,omitempty"`
-	Model     string         `json:"model,omitempty"`
+	// Try to unmarshal as string first
+	var contentStr string
+	if err := json.Unmarshal(rawContent, &contentStr); err == nil {
+		// It's a string - convert to single text block
+		return []UseChatContentBlock{
+			{
+				Type: "text",
+				Text: contentStr,
+			},
+		}, nil
+	}
 
-	ToolCalls []ToolCall `json:"tool_calls,omitempty"`
-
-	ErrorType string `json:"error_type,omitempty"`
-	ErrorText string `json:"error_text,omitempty"`
-
-	FinishStep bool `json:"finish_step,omitempty"`
-}
-
-// ToolDefinition represents a tool that can be used by the AI model
-type ToolDefinition struct {
-	Name        string         `json:"name"`
-	Description string         `json:"description"`
-	InputSchema map[string]any `json:"input_schema"`
-}
-
-type UseChatRequest struct {
-	Messages []UseChatMessage `json:"messages"`
+	// Not a string - unmarshal as array of blocks
+	var contentBlocks []UseChatContentBlock
+	if err := json.Unmarshal(rawContent, &contentBlocks); err != nil {
+		return nil, err
+	}
+	return contentBlocks, nil
 }

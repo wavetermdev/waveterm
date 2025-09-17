@@ -1,7 +1,7 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-package aiusechat
+package web
 
 import (
 	"context"
@@ -329,7 +329,7 @@ func (h *SSEHandlerCh) Err() error {
 // Close closes the write channel, sends [DONE], and cleans up resources
 func (h *SSEHandlerCh) Close() {
 	h.mu.Lock()
-	if h.closed {
+	if h.closed || !h.initialized {
 		h.mu.Unlock()
 		return
 	}

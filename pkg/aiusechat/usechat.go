@@ -10,18 +10,26 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 
-	"github.com/wavetermdev/waveterm/pkg/wshrpc"
+	"github.com/wavetermdev/waveterm/pkg/aiusechat/anthropic"
+	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
+	"github.com/wavetermdev/waveterm/pkg/web"
+)
+
+const (
+	APIType_Anthropic = "anthropic"
+	APIType_OpenAI    = "openai"
 )
 
 const DefaultClaudeModel = "claude-sonnet-4-20250514"
 
-func getWaveAISettings() (*wshrpc.WaveAIOptsType, error) {
+func getWaveAISettings() (*uctypes.AIOptsType, error) {
 	anthropicSecret := os.Getenv("WAVETERM_ANTHROPIC_SECRET")
 	if anthropicSecret == "" {
 		return nil, fmt.Errorf("no anthropic secret found")
 	}
-	return &wshrpc.WaveAIOptsType{
+	return &uctypes.AIOptsType{
 		APIToken:  anthropicSecret,
 		Model:     DefaultClaudeModel,
 		APIType:   APIType_Anthropic,
@@ -29,7 +37,16 @@ func getWaveAISettings() (*wshrpc.WaveAIOptsType, error) {
 	}, nil
 }
 
-func runWaveAIRequest(ctx context.Context, sseHandler *SSEHandlerCh, req *UseChatRequest) error {
+func shouldUseChatCompletionsAPI(model string) bool {
+	m := strings.ToLower(model)
+	// Chat Completions API is required for older models: gpt-3.5-*, gpt-4, gpt-4-turbo, o1-*
+	return strings.HasPrefix(m, "gpt-3.5") ||
+		strings.HasPrefix(m, "gpt-4-") ||
+		m == "gpt-4" ||
+		strings.HasPrefix(m, "o1-")
+}
+
+func runWaveAIRequest(ctx context.Context, sseHandler *web.SSEHandlerCh, req *uctypes.UseChatRequest) error {
 	// Use WaveAI settings
 	aiOpts, err := getWaveAISettings()
 	if err != nil {
@@ -54,10 +71,10 @@ func runWaveAIRequest(ctx context.Context, sseHandler *SSEHandlerCh, req *UseCha
 
 	// Stream response based on API type
 	if aiOpts.APIType == APIType_Anthropic {
-		// _, err := StreamAnthropicResponses(ctx, sseHandler, aiOpts, req.Messages, nil)
-		// if err != nil {
-		// 	return fmt.Errorf("anthropic streaming error: %v", err)
-		// }
+		_, err := anthropic.StreamAnthropicResponses(ctx, sseHandler, aiOpts, req.Messages, nil)
+		if err != nil {
+			return fmt.Errorf("anthropic streaming error: %v", err)
+		}
 		return fmt.Errorf("Anthropic provider is unimplemented")
 	} else if aiOpts.APIType == APIType_OpenAI {
 		// Default to OpenAI
@@ -82,14 +99,15 @@ func WaveAIHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Parse request body completely before sending any response
-	var req UseChatRequest
+	var req uctypes.UseChatRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, fmt.Sprintf("Invalid request body: %v", err), http.StatusBadRequest)
 		return
 	}
 
 	// Create SSE handler and set up streaming
-	sseHandler := MakeSSEHandlerCh(w, r.Context())
+	sseHandler := web.MakeSSEHandlerCh(w, r.Context())
+	defer sseHandler.Close()
 
 	// Run the AI request
 	if err := runWaveAIRequest(r.Context(), sseHandler, &req); err != nil {
