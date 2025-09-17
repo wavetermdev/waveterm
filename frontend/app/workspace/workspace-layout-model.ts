@@ -1,12 +1,12 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { atom, PrimitiveAtom } from "jotai";
-import { globalStore } from "@/store/jotaiStore";
 import { isDev } from "@/store/global";
+import { globalStore } from "@/store/jotaiStore";
+import { atom, PrimitiveAtom } from "jotai";
 
 const AI_PANEL_DEFAULT_WIDTH = 300;
-const AI_PANEL_MIN_WIDTH = 200;
+const AI_PANEL_MIN_WIDTH = 250;
 
 class WorkspaceLayoutModel {
     aiPanelVisibleAtom: PrimitiveAtom<boolean>;
@@ -51,7 +51,7 @@ class WorkspaceLayoutModel {
         }
         const clampedWidth = this.getClampedAIPanelWidth(width, windowWidth);
         this.setAIPanelWidth(clampedWidth);
-        
+
         if (!this.getAIPanelVisible()) {
             this.setAIPanelVisible(true);
         }
@@ -60,4 +60,4 @@ class WorkspaceLayoutModel {
 
 const workspaceLayoutModel = new WorkspaceLayoutModel();
 
-export { workspaceLayoutModel, WorkspaceLayoutModel, AI_PANEL_MIN_WIDTH, AI_PANEL_DEFAULT_WIDTH };
+export { AI_PANEL_DEFAULT_WIDTH, AI_PANEL_MIN_WIDTH, workspaceLayoutModel, WorkspaceLayoutModel };

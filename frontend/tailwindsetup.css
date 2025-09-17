@@ -33,8 +33,9 @@
 
     --font-sans: "Inter", sans-serif;
     --font-mono: "Hack", monospace;
-    --font-markdown: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif,
-        "Apple Color Emoji", "Segoe UI Emoji";
+    --font-markdown:
+        -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif, "Apple Color Emoji",
+        "Segoe UI Emoji";
 
     --text-xxs: 10px;
     --text-title: 18px;
@@ -59,6 +60,10 @@
     --ansi-brightmagenta: #cc8ecb;
     --ansi-brightcyan: #b7b8cb;
     --ansi-brightwhite: #f0f0f0;
+
+    --container-xs: 300px;
+    --container-xxs: 200px;
+    --container-tiny: 120px;
 }
 
 /* Chart tooltip styling for sysinfo plots */

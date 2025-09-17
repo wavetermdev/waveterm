@@ -14,15 +14,16 @@ export const AIPanelHeader = memo(({ onClose, model }: AIPanelHeaderProps) => {
     const [widgetAccess, setWidgetAccess] = useAtom(model.widgetAccess);
 
     return (
-        <div className="p-2 pl-4 border-b border-gray-600 flex items-center justify-between">
-            <h2 className="text-white text-lg font-semibold flex items-center gap-2">
+        <div className="@container py-2 pl-3 pr-1 @xs:p-2 @xs:pl-4 border-b border-gray-600 flex items-center justify-between min-w-0">
+            <h2 className="text-white text-sm @xs:text-lg font-semibold flex items-center gap-2 flex-shrink-0 whitespace-nowrap">
                 <i className="fa fa-sparkles text-accent"></i>
                 Wave AI
             </h2>
 
-            <div className="flex items-center gap-3">
-                <div className="flex items-center gap-2 text-sm">
-                    <span className="text-gray-300">Widget Access</span>
+            <div className="flex items-center flex-shrink-0 whitespace-nowrap">
+                <div className="flex items-center text-sm whitespace-nowrap">
+                    <span className="text-gray-300 @xs:hidden mr-1 text-[12px]">Context</span>
+                    <span className="text-gray-300 hidden @xs:inline mr-2 text-[12px]">Widget Context</span>
                     <button
                         onClick={() => setWidgetAccess(!widgetAccess)}
                         className={`relative inline-flex h-6 w-14 items-center rounded-full transition-colors cursor-pointer ${
@@ -48,7 +49,7 @@ export const AIPanelHeader = memo(({ onClose, model }: AIPanelHeaderProps) => {
                 {onClose && (
                     <button
                         onClick={onClose}
-                        className="text-gray-400 hover:text-white cursor-pointer transition-colors p-1 rounded"
+                        className="text-gray-400 hover:text-white cursor-pointer transition-colors p-1 rounded flex-shrink-0 ml-1"
                         title="Close AI Panel"
                     >
                         <i className="fa fa-xmark"></i>
