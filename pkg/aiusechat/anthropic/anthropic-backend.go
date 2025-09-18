@@ -30,10 +30,11 @@ import (
 )
 
 const (
-	AnthropicDefaultBaseURL    = "https://api.anthropic.com"
-	AnthropicDefaultAPIVersion = "2023-06-01"
-	AnthropicDefaultMaxTokens  = 4096
-	AnthropicThinkingBudget    = 1024
+	AnthropicDefaultBaseURL       = "https://api.anthropic.com"
+	AnthropicDefaultAPIVersion    = "2023-06-01"
+	AnthropicDefaultMaxTokens     = 4096
+	AnthropicThinkingBudget       = 1024
+	AnthropicMinThinkingBudget    = 1024
 )
 
 // ---------- Anthropic wire types (subset) ----------
@@ -52,7 +53,7 @@ type anthropicStreamRequest struct {
 	System     any                      `json:"system,omitempty"`
 	ToolChoice any                      `json:"tool_choice,omitempty"`
 	Tools      []uctypes.ToolDefinition `json:"tools,omitempty"`
-	Thinking   any                      `json:"thinking,omitempty"`
+	Thinking   *anthropicThinkingOpts   `json:"thinking,omitempty"`
 }
 
 type anthropicMessageObj struct {
@@ -103,6 +104,11 @@ type anthropicFullStreamEvent struct {
 	Delta        *anthropicDeltaType        `json:"delta,omitempty"`
 	Usage        *anthropicUsageType        `json:"usage,omitempty"`
 	Error        *anthropicErrorType        `json:"error,omitempty"`
+}
+
+type anthropicThinkingOpts struct {
+	Type         string `json:"type"`
+	BudgetTokens int    `json:"budget_tokens"`
 }
 
 // ---------- per-index content block bookkeeping ----------
@@ -157,6 +163,31 @@ func (p *partialJSON) FinalObject() (json.RawMessage, error) {
 		return json.RawMessage(raw), nil
 	default:
 		return nil, fmt.Errorf("tool input is not an object")
+	}
+}
+
+// makeThinkingOpts creates thinking options based on level and max tokens
+func makeThinkingOpts(thinkingLevel string, maxTokens int) *anthropicThinkingOpts {
+	if thinkingLevel != uctypes.ThinkingLevelMedium && thinkingLevel != uctypes.ThinkingLevelHigh {
+		return nil
+	}
+	
+	maxThinkingBudget := int(float64(maxTokens) * 0.75)
+	
+	// If 75% of maxTokens is less than minimum, disable thinking
+	if maxThinkingBudget < AnthropicMinThinkingBudget {
+		return nil
+	}
+	
+	// Use the smaller of our default budget or 75% of maxTokens
+	thinkingBudget := AnthropicThinkingBudget
+	if thinkingBudget > maxThinkingBudget {
+		thinkingBudget = maxThinkingBudget
+	}
+	
+	return &anthropicThinkingOpts{
+		Type:         "enabled",
+		BudgetTokens: thinkingBudget,
 	}
 }
 
@@ -223,10 +254,11 @@ func StreamAnthropicResponses(
 	// Proxy support
 	if opts.ProxyURL != "" {
 		pURL, perr := url.Parse(opts.ProxyURL)
-		if perr == nil {
-			httpClient.Transport = &http.Transport{
-				Proxy: http.ProxyURL(pURL),
-			}
+		if perr != nil {
+			return nil, fmt.Errorf("invalid proxy URL: %w", perr)
+		}
+		httpClient.Transport = &http.Transport{
+			Proxy: http.ProxyURL(pURL),
 		}
 	}
 
@@ -254,7 +286,15 @@ func StreamAnthropicResponses(
 	var stopFromDelta string
 	var msgID string
 	var model string
-	var finished bool
+	var stepStarted bool
+
+	// Ensure step is closed on error/cancellation
+	defer func() {
+		if stepStarted {
+			_ = sse.AiMsgFinishStep()
+			_ = sse.AiMsgFinish("", nil)
+		}
+	}()
 
 	// SSE event processing loop
 	for {
@@ -283,9 +323,8 @@ func StreamAnthropicResponses(
 			}, err
 		}
 
-		if stop, ret := handleAnthropicEvent(event, sse, blockMap, &toolCalls, &msgID, &model, stopFromDelta); ret != nil {
+		if stop, ret := handleAnthropicEvent(event, sse, blockMap, &toolCalls, &msgID, &model, stopFromDelta, &stepStarted); ret != nil {
 			// Either error or message_stop triggered return
-			finished = true
 			return ret, nil
 		} else {
 			// maybe updated final stop reason (from message_delta)
@@ -295,10 +334,7 @@ func StreamAnthropicResponses(
 		}
 	}
 
-	// If we got here without a message_stop, close as done.
-	if !finished {
-		_ = sse.AiMsgFinish("", nil)
-	}
+	// EOF - let defer handle cleanup
 	return &uctypes.StopReason{
 		Kind:      uctypes.StopKindDone,
 		RawReason: stopFromDelta,
@@ -323,6 +359,7 @@ func handleAnthropicEvent(
 	msgID *string,
 	model *string,
 	stopFromPreviousDelta string,
+	stepStarted *bool,
 ) (stopFromDelta *string, final *uctypes.StopReason) {
 	eventName := event.Event()
 	data := event.Data()
@@ -363,6 +400,7 @@ func handleAnthropicEvent(
 		}
 		_ = sse.AiMsgStart(*msgID)
 		_ = sse.AiMsgStartStep()
+		*stepStarted = true
 		return nil, nil
 
 	case "content_block_start":
@@ -493,10 +531,9 @@ func handleAnthropicEvent(
 		if stopFromPreviousDelta != "" {
 			reason = stopFromPreviousDelta
 		}
+		*stepStarted = false // defer handled
 		switch reason {
 		case "tool_use":
-			// Finish step, return tool calls (no finish). :contentReference[oaicite:21]{index=21}
-			_ = sse.AiMsgFinishStep()
 			return nil, &uctypes.StopReason{
 				Kind:       uctypes.StopKindToolUse,
 				RawReason:  reason,
@@ -506,8 +543,6 @@ func handleAnthropicEvent(
 				FinishStep: true,
 			}
 		case "max_tokens":
-			_ = sse.AiMsgFinishStep()
-			_ = sse.AiMsgFinish(reason, nil)
 			return nil, &uctypes.StopReason{
 				Kind:      uctypes.StopKindMaxTokens,
 				RawReason: reason,
@@ -515,8 +550,6 @@ func handleAnthropicEvent(
 				Model:     *model,
 			}
 		case "refusal":
-			_ = sse.AiMsgFinishStep()
-			_ = sse.AiMsgFinish(reason, nil)
 			return nil, &uctypes.StopReason{
 				Kind:      uctypes.StopKindContent,
 				RawReason: reason,
@@ -525,8 +558,6 @@ func handleAnthropicEvent(
 			}
 		default:
 			// end_turn, stop_sequence, pause_turn (treat as end of this call)
-			_ = sse.AiMsgFinishStep()
-			_ = sse.AiMsgFinish(reason, nil)
 			return nil, &uctypes.StopReason{
 				Kind:      uctypes.StopKindDone,
 				RawReason: reason,
@@ -581,13 +612,7 @@ func buildAnthropicHTTPRequest(ctx context.Context, opts *uctypes.AIOptsType, ms
 	}
 
 	// Enable extended thinking based on level
-	if opts.ThinkingLevel == uctypes.ThinkingLevelMedium || opts.ThinkingLevel == uctypes.ThinkingLevelHigh {
-		thinking := map[string]interface{}{
-			"type":          "enabled",
-			"budget_tokens": AnthropicThinkingBudget,
-		}
-		reqBody.Thinking = thinking
-	}
+	reqBody.Thinking = makeThinkingOpts(opts.ThinkingLevel, maxTokens)
 
 	for _, m := range msgs {
 		aim := anthropicInputMessage{Role: m.Role}
