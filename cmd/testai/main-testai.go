@@ -107,10 +107,11 @@ func testOpenAI(ctx context.Context, model, message string, tools []uctypes.Tool
 	}
 
 	opts := &uctypes.AIOptsType{
-		APIType:   aiusechat.APIType_OpenAI,
-		APIToken:  apiKey,
-		Model:     model,
-		MaxTokens: 1000,
+		APIType:       aiusechat.APIType_OpenAI,
+		APIToken:      apiKey,
+		Model:         model,
+		MaxTokens:     4096,
+		ThinkingLevel: uctypes.ThinkingLevelMedium,
 	}
 
 	req := &uctypes.UseChatRequest{
@@ -136,7 +137,7 @@ func testOpenAI(ctx context.Context, model, message string, tools []uctypes.Tool
 	}
 	defer sseHandler.Close()
 
-	err = aiusechat.RunWaveAIRequest(ctx, sseHandler, opts, req)
+	err = aiusechat.RunWaveAIRequest(ctx, sseHandler, opts, req, tools)
 	if err != nil {
 		fmt.Printf("OpenAI streaming error: %v\n", err)
 	}
@@ -150,10 +151,11 @@ func testAnthropic(ctx context.Context, model, message string, tools []uctypes.T
 	}
 
 	opts := &uctypes.AIOptsType{
-		APIType:   aiusechat.APIType_Anthropic,
-		APIToken:  apiKey,
-		Model:     model,
-		MaxTokens: 1000,
+		APIType:       aiusechat.APIType_Anthropic,
+		APIToken:      apiKey,
+		Model:         model,
+		MaxTokens:     4096,
+		ThinkingLevel: uctypes.ThinkingLevelMedium,
 	}
 
 	req := &uctypes.UseChatRequest{
@@ -179,36 +181,57 @@ func testAnthropic(ctx context.Context, model, message string, tools []uctypes.T
 	}
 	defer sseHandler.Close()
 
-	err = aiusechat.RunWaveAIRequest(ctx, sseHandler, opts, req)
+	err = aiusechat.RunWaveAIRequest(ctx, sseHandler, opts, req, tools)
 	if err != nil {
 		fmt.Printf("Anthropic streaming error: %v\n", err)
 	}
 }
 
+func printUsage() {
+	fmt.Println("Usage: go run main-testai.go [--anthropic] [--tools] [--model <model>] [message]")
+	fmt.Println("Examples:")
+	fmt.Println("  go run main-testai.go 'What is 2+2?'")
+	fmt.Println("  go run main-testai.go --model o4-mini 'What is 2+2?'")
+	fmt.Println("  go run main-testai.go --anthropic 'What is 2+2?'")
+	fmt.Println("  go run main-testai.go --anthropic --model claude-3-5-sonnet-20241022 'What is 2+2?'")
+	fmt.Println("  go run main-testai.go --tools 'Help me configure GitHub Actions monitoring'")
+	fmt.Println("")
+	fmt.Println("Default models:")
+	fmt.Println("  OpenAI: gpt-5")
+	fmt.Println("  Anthropic: claude-sonnet-4-20250514")
+	fmt.Println("")
+	fmt.Println("Environment variables:")
+	fmt.Println("  OPENAI_API_KEY (for OpenAI models)")
+	fmt.Println("  ANTHROPIC_API_KEY (for Anthropic models)")
+}
+
 func main() {
-	var anthropic, tools bool
+	var anthropic, tools, help bool
+	var model string
 	flag.BoolVar(&anthropic, "anthropic", false, "Use Anthropic API instead of OpenAI")
 	flag.BoolVar(&tools, "tools", false, "Enable GitHub Actions Monitor tools for testing")
+	flag.StringVar(&model, "model", "", "AI model to use (defaults: gpt-5 for OpenAI, claude-sonnet-4-20250514 for Anthropic)")
+	flag.BoolVar(&help, "help", false, "Show usage information")
 	flag.Parse()
 
-	args := flag.Args()
-	if len(args) < 1 {
-		fmt.Println("Usage: go run main-testai.go [--anthropic] [--tools] <model> [message]")
-		fmt.Println("Examples:")
-		fmt.Println("  go run main-testai.go o4-mini 'What is 2+2?'")
-		fmt.Println("  go run main-testai.go --anthropic claude-3-5-sonnet-20241022 'What is 2+2?'")
-		fmt.Println("  go run main-testai.go --tools o4-mini 'Help me configure GitHub Actions monitoring'")
-		fmt.Println("")
-		fmt.Println("Environment variables:")
-		fmt.Println("  OPENAI_API_KEY (for OpenAI models)")
-		fmt.Println("  ANTHROPIC_API_KEY (for Anthropic models)")
-		os.Exit(1)
+	if help {
+		printUsage()
+		os.Exit(0)
 	}
 
-	model := args[0]
+	// Set default model based on API type if not provided
+	if model == "" {
+		if anthropic {
+			model = "claude-sonnet-4-20250514"
+		} else {
+			model = "gpt-5"
+		}
+	}
+
+	args := flag.Args()
 	message := "What is 2+2?"
-	if len(args) > 1 {
-		message = args[1]
+	if len(args) > 0 {
+		message = args[0]
 	}
 
 	var toolDefs []uctypes.ToolDefinition
