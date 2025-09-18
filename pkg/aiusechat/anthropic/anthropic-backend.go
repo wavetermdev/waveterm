@@ -506,6 +506,7 @@ func handleAnthropicEvent(
 				FinishStep: true,
 			}
 		case "max_tokens":
+			_ = sse.AiMsgFinishStep()
 			_ = sse.AiMsgFinish(reason, nil)
 			return nil, &uctypes.StopReason{
 				Kind:      uctypes.StopKindMaxTokens,
@@ -514,6 +515,7 @@ func handleAnthropicEvent(
 				Model:     *model,
 			}
 		case "refusal":
+			_ = sse.AiMsgFinishStep()
 			_ = sse.AiMsgFinish(reason, nil)
 			return nil, &uctypes.StopReason{
 				Kind:      uctypes.StopKindContent,
@@ -523,6 +525,7 @@ func handleAnthropicEvent(
 			}
 		default:
 			// end_turn, stop_sequence, pause_turn (treat as end of this call)
+			_ = sse.AiMsgFinishStep()
 			_ = sse.AiMsgFinish(reason, nil)
 			return nil, &uctypes.StopReason{
 				Kind:      uctypes.StopKindDone,

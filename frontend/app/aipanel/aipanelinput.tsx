@@ -13,20 +13,20 @@ interface AIPanelInputProps {
 
 export const AIPanelInput = memo(({ input, setInput, onSubmit, status }: AIPanelInputProps) => {
     return (
-        <div className="border-t border-gray-600 p-4">
-            <form onSubmit={onSubmit} className="flex gap-2">
+        <div className="@container border-t border-gray-600 p-2 @xs:p-4">
+            <form onSubmit={onSubmit} className="flex gap-1 @xs:gap-2">
                 <input
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     placeholder="Ask Wave AI anything..."
-                    className="flex-1 bg-gray-700 text-white px-4 py-2 rounded-lg border border-gray-600 focus:border-accent focus:outline-none"
+                    className="flex-1 bg-gray-700 text-white px-2 @xs:px-4 py-2 rounded-lg border border-gray-600 focus:border-accent focus:outline-none text-sm @xs:text-base min-w-0"
                     disabled={status !== "ready"}
                 />
                 <button
                     type="submit"
                     disabled={status !== "ready" || !input.trim()}
                     className={cn(
-                        "px-4 py-2 rounded-lg cursor-pointer transition-colors",
+                        "px-2 @xs:px-4 py-2 rounded-lg cursor-pointer transition-colors flex-shrink-0",
                         status !== "ready" || !input.trim()
                             ? "bg-gray-600 text-gray-400 cursor-not-allowed"
                             : "bg-accent text-white hover:bg-accent/80"
