@@ -78,6 +78,7 @@ These files provide step-by-step instructions, code examples, and best practices
 - With React hooks, always complete all hook calls at the top level before any conditional returns (including jotai hook calls useAtom and useAtomValue); when a user explicitly tells you a function handles null inputs, trust them and stop trying to "protect" it with unnecessary checks or workarounds.
 - **Match response length to question complexity** - For simple, direct questions in Ask mode (especially those that can be answered in 1-2 sentences), provide equally brief answers. Save detailed explanations for complex topics or when explicitly requested.
 - **CRITICAL** - useAtomValue and useAtom are React HOOKS. They cannot be used inline in JSX code, they must appear at the top of a component in the hooks area of the react code.
+- for simple functions, we prefer `if (!cond) { return }; functionality;` pattern overn `if (cond) { functionality }` because it produces less indentation and is easier to follow.
 
 ### Strict Comment Rules
 

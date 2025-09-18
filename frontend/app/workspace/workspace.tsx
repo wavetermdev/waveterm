@@ -1,6 +1,7 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { AIPanel } from "@/app/aipanel/aipanel";
 import { ErrorBoundary } from "@/app/element/errorboundary";
 import { CenteredDiv } from "@/app/element/quickelems";
 import { ModalsRenderer } from "@/app/modals/modalsrenderer";
@@ -8,74 +9,85 @@ import { TabBar } from "@/app/tab/tabbar";
 import { TabContent } from "@/app/tab/tabcontent";
 import { Widgets } from "@/app/workspace/widgets";
 import { workspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
-import { AIPanel } from "@/app/aipanel/aipanel";
 import { atoms } from "@/store/global";
 import { useAtomValue } from "jotai";
-import { memo, useEffect, useState } from "react";
-import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
+import { memo, useEffect, useRef } from "react";
+import {
+    ImperativePanelGroupHandle,
+    ImperativePanelHandle,
+    Panel,
+    PanelGroup,
+    PanelResizeHandle,
+} from "react-resizable-panels";
 
 const WorkspaceElem = memo(() => {
     const tabId = useAtomValue(atoms.staticTabId);
     const ws = useAtomValue(atoms.workspace);
-    const aiPanelVisible = useAtomValue(workspaceLayoutModel.aiPanelVisibleAtom);
-    const aiPanelWidth = useAtomValue(workspaceLayoutModel.aiPanelWidthAtom);
-    const [windowWidth, setWindowWidth] = useState(window.innerWidth);
+    const initialAiPanelPercentage = workspaceLayoutModel.getAIPanelPercentage(window.innerWidth);
+    const panelGroupRef = useRef<ImperativePanelGroupHandle>(null);
+    const aiPanelRef = useRef<ImperativePanelHandle>(null);
+    const inResizeRef = useRef(false);
+
+    useEffect(() => {
+        if (aiPanelRef.current) {
+            workspaceLayoutModel.registerAIPanelRef(aiPanelRef.current);
+        }
+    }, []);
 
     useEffect(() => {
         const handleResize = () => {
-            setWindowWidth(window.innerWidth);
+            if (!panelGroupRef.current) {
+                return;
+            }
+            const newWindowWidth = window.innerWidth;
+            const aiPanelPercentage = workspaceLayoutModel.getAIPanelPercentage(newWindowWidth);
+            const mainContentPercentage = workspaceLayoutModel.getMainContentPercentage(newWindowWidth);
+            inResizeRef.current = true;
+            panelGroupRef.current.setLayout([aiPanelPercentage, mainContentPercentage]);
+            inResizeRef.current = false;
         };
+
         window.addEventListener("resize", handleResize);
         return () => window.removeEventListener("resize", handleResize);
     }, []);
 
-    const handlePanelResize = (sizes: number[]) => {
-        if (sizes.length >= 2 && aiPanelVisible) {
-            const aiPanelPixelWidth = (sizes[0] / 100) * windowWidth;
-            workspaceLayoutModel.handleAIPanelResize(aiPanelPixelWidth, windowWidth);
+    const handlePanelLayout = (sizes: number[]) => {
+        if (inResizeRef.current) {
+            return;
         }
+        const currentWindowWidth = window.innerWidth;
+        const aiPanelPixelWidth = (sizes[0] / 100) * currentWindowWidth;
+        workspaceLayoutModel.handleAIPanelResize(aiPanelPixelWidth, currentWindowWidth);
+        const newPercentage = workspaceLayoutModel.getAIPanelPercentage(currentWindowWidth);
+        const mainContentPercentage = 100 - newPercentage;
+        panelGroupRef.current.setLayout([newPercentage, mainContentPercentage]);
     };
 
     const handleCloseAIPanel = () => {
         workspaceLayoutModel.setAIPanelVisible(false);
     };
 
-    const aiPanelPercentage = aiPanelVisible ? Math.min((aiPanelWidth / windowWidth) * 100, 50) : 0;
-    const mainContentPercentage = aiPanelVisible ? 100 - aiPanelPercentage : 100;
-
     return (
         <div className="flex flex-col w-full flex-grow overflow-hidden">
             <TabBar key={ws.oid} workspace={ws} />
             <div className="flex flex-row flex-grow overflow-hidden">
                 <ErrorBoundary key={tabId}>
-                    {tabId === "" ? (
-                        <CenteredDiv>No Active Tab</CenteredDiv>
-                    ) : (
-                        <PanelGroup direction="horizontal" onLayout={handlePanelResize}>
-                            {aiPanelVisible && (
-                                <>
-                                    <Panel
-                                        defaultSize={aiPanelPercentage}
-                                        minSize={15}
-                                        maxSize={50}
-                                        order={1}
-                                    >
-                                        <AIPanel className="h-full" onClose={handleCloseAIPanel} />
-                                    </Panel>
-                                    <PanelResizeHandle className="w-0.5 bg-transparent hover:bg-gray-500/20 transition-colors" />
-                                </>
-                            )}
-                            <Panel
-                                defaultSize={mainContentPercentage}
-                                order={2}
-                            >
+                    <PanelGroup direction="horizontal" onLayout={handlePanelLayout} ref={panelGroupRef}>
+                        <Panel ref={aiPanelRef} collapsible defaultSize={initialAiPanelPercentage} order={1}>
+                            <AIPanel className="h-full" onClose={handleCloseAIPanel} />
+                        </Panel>
+                        <PanelResizeHandle className="w-0.5 bg-transparent hover:bg-gray-500/20 transition-colors" />
+                        <Panel order={2} defaultSize={100 - initialAiPanelPercentage}>
+                            {tabId === "" ? (
+                                <CenteredDiv>No Active Tab</CenteredDiv>
+                            ) : (
                                 <div className="flex flex-row h-full">
                                     <TabContent key={tabId} tabId={tabId} />
                                     <Widgets />
                                 </div>
-                            </Panel>
-                        </PanelGroup>
-                    )}
+                            )}
+                        </Panel>
+                    </PanelGroup>
                     <ModalsRenderer />
                 </ErrorBoundary>
             </div>

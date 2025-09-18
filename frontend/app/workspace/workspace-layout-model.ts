@@ -2,19 +2,36 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { isDev } from "@/store/global";
-import { globalStore } from "@/store/jotaiStore";
-import { atom, PrimitiveAtom } from "jotai";
+import { ImperativePanelHandle } from "react-resizable-panels";
 
 const AI_PANEL_DEFAULT_WIDTH = 300;
 const AI_PANEL_MIN_WIDTH = 250;
 
 class WorkspaceLayoutModel {
-    aiPanelVisibleAtom: PrimitiveAtom<boolean>;
-    aiPanelWidthAtom: PrimitiveAtom<number>;
+    aiPanelVisible: boolean;
+    aiPanelRef: ImperativePanelHandle | null;
+    aiPanelWidth: number;
 
     constructor() {
-        this.aiPanelVisibleAtom = atom(isDev());
-        this.aiPanelWidthAtom = atom(AI_PANEL_DEFAULT_WIDTH);
+        this.aiPanelVisible = isDev();
+        this.aiPanelRef = null;
+        this.aiPanelWidth = AI_PANEL_DEFAULT_WIDTH;
+    }
+
+    registerAIPanelRef(ref: ImperativePanelHandle): void {
+        this.aiPanelRef = ref;
+        this.syncAIPanelRef();
+    }
+
+    syncAIPanelRef(): void {
+        if (!this.aiPanelRef) {
+            return;
+        }
+        if (this.aiPanelVisible) {
+            this.aiPanelRef.expand();
+        } else {
+            this.aiPanelRef.collapse();
+        }
     }
 
     getMaxAIPanelWidth(windowWidth: number): number {
@@ -23,26 +40,46 @@ class WorkspaceLayoutModel {
 
     getClampedAIPanelWidth(width: number, windowWidth: number): number {
         const maxWidth = this.getMaxAIPanelWidth(windowWidth);
+        if (AI_PANEL_MIN_WIDTH > maxWidth) {
+            return AI_PANEL_MIN_WIDTH;
+        }
         return Math.max(AI_PANEL_MIN_WIDTH, Math.min(width, maxWidth));
     }
 
     getAIPanelVisible(): boolean {
-        return globalStore.get(this.aiPanelVisibleAtom);
+        return this.aiPanelVisible;
     }
 
     setAIPanelVisible(visible: boolean): void {
         if (!isDev() && visible) {
             return;
         }
-        globalStore.set(this.aiPanelVisibleAtom, visible);
+        this.aiPanelVisible = visible;
+        this.syncAIPanelRef();
     }
 
     getAIPanelWidth(): number {
-        return globalStore.get(this.aiPanelWidthAtom);
+        return this.aiPanelWidth;
     }
 
     setAIPanelWidth(width: number): void {
-        globalStore.set(this.aiPanelWidthAtom, width);
+        this.aiPanelWidth = width;
+    }
+
+    getAIPanelPercentage(windowWidth: number): number {
+        const isVisible = this.getAIPanelVisible();
+        if (!isVisible) {
+            return 0;
+        }
+        const aiPanelWidth = this.getAIPanelWidth();
+        const clampedWidth = this.getClampedAIPanelWidth(aiPanelWidth, windowWidth);
+        const percentage = (clampedWidth / windowWidth) * 100;
+        return Math.max(0, Math.min(percentage, 100));
+    }
+
+    getMainContentPercentage(windowWidth: number): number {
+        const aiPanelPercentage = this.getAIPanelPercentage(windowWidth);
+        return Math.max(0, 100 - aiPanelPercentage);
     }
 
     handleAIPanelResize(width: number, windowWidth: number): void {
