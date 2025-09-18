@@ -99,6 +99,72 @@ These files provide step-by-step instructions, code examples, and best practices
 - **When in doubt, leave it out**. No comment is better than a redundant comment.
 - **Never add comments explaining code changes** - The code should speak for itself, and version control tracks changes. The one exception to this rule is if it is a very unobvious implementation. Something that someone would typically implement in a different (wrong) way. Then the comment helps us remember WHY we changed it to a less obvious implementation.
 
+### Jotai Model Pattern (our rules)
+
+- **Atoms live on the model.**
+- **Simple atoms:** define as **field initializers**.
+- **Atoms that depend on values/other atoms:** create in the **constructor**.
+- Models **never use React hooks**; they use `globalStore.get/set`.
+- It’s fine to call model methods from **event handlers** or **`useEffect`**.
+
+```ts
+// model/MyModel.ts
+import { atom, type PrimitiveAtom } from "jotai";
+import { globalStore } from "@/app/store/jotaiStore";
+
+export class MyModel {
+  // simple atoms (field init)
+  statusAtom = atom<"idle" | "running" | "error">("idle");
+  outputAtom = atom("");
+
+  // ctor-built atoms (need types)
+  lengthAtom!: PrimitiveAtom<number>; // read-only derived via atom(get=>...)
+  thresholdedAtom!: PrimitiveAtom<boolean>;
+
+  constructor(initialThreshold = 20) {
+    this.lengthAtom = atom((get) => get(this.outputAtom).length);
+    this.thresholdedAtom = atom((get) => get(this.lengthAtom) > initialThreshold);
+  }
+
+  async doWork() {
+    globalStore.set(this.statusAtom, "running");
+    try {
+      for await (const chunk of this.stream()) {
+        globalStore.set(this.outputAtom, (prev) => prev + chunk);
+      }
+      globalStore.set(this.statusAtom, "idle");
+    } catch {
+      globalStore.set(this.statusAtom, "error");
+    }
+  }
+
+  private async *stream() {
+    /* ... */
+  }
+}
+```
+
+```tsx
+// component usage (events & effects OK)
+import { useAtomValue } from "jotai";
+
+function Panel({ model }: { model: MyModel }) {
+  const status = useAtomValue(model.statusAtom);
+  const isBig = useAtomValue(model.thresholdedAtom);
+
+  const onClick = () => model.doWork();
+  // useEffect(() => { model.doWork() }, [model])
+
+  return (
+    <div>
+      {status} • {String(isBig)}
+    </div>
+  );
+}
+```
+
+**Remember:** atoms on the model, simple-as-fields, ctor for dependent/derived, updates via `globalStore.set/get`.
+
 ### Tool Use
 
 Do NOT use write_to_file unless it is a new file or very short. Always prefer to use replace_in_file. Often your diffs fail when a file may be out of date in your cache vs the actual on-disk format. You should RE-READ the file and try to create diffs again if your diffs fail rather than fall back to write_to_file. If you feel like your ONLY option is to use write_to_file please ask first.
