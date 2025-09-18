@@ -70,7 +70,7 @@ func RunWaveAIRequest(ctx context.Context, sseHandler *sse.SSEHandlerCh, aiOpts 
 		if err != nil {
 			return fmt.Errorf("anthropic streaming error: %v", err)
 		}
-		return fmt.Errorf("Anthropic provider is unimplemented")
+		return nil
 	} else if aiOpts.APIType == APIType_OpenAI {
 		// Default to OpenAI
 		// Route to appropriate API based on model
@@ -81,7 +81,7 @@ func RunWaveAIRequest(ctx context.Context, sseHandler *sse.SSEHandlerCh, aiOpts 
 			// Newer models (gpt-4.1, gpt-4o, gpt-5, o3, o4, etc.) use Responses API for reasoning support
 			openai.StreamOpenAIResponsesAPI(sseHandler, ctx, aiOpts, req.Messages, tools)
 		}
-		return fmt.Errorf("OpenAI provider is unimplemented")
+		return nil
 	}
 	return fmt.Errorf("Unimplemented API Type %q", aiOpts.APIType)
 }
