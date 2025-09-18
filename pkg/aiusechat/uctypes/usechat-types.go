@@ -8,6 +8,12 @@ import (
 	"strings"
 )
 
+const (
+	ThinkingLevelLow    = "low"
+	ThinkingLevelMedium = "medium"
+	ThinkingLevelHigh   = "high"
+)
+
 type UseChatRequest struct {
 	Messages []UseChatMessage `json:"messages"`
 }
@@ -47,15 +53,16 @@ type ToolDefinition struct {
 }
 
 type AIOptsType struct {
-	APIType    string `json:"apitype,omitempty"`
-	Model      string `json:"model"`
-	APIToken   string `json:"apitoken"`
-	OrgID      string `json:"orgid,omitempty"`
-	APIVersion string `json:"apiversion,omitempty"`
-	BaseURL    string `json:"baseurl,omitempty"`
-	ProxyURL   string `json:"proxyurl,omitempty"`
-	MaxTokens  int    `json:"maxtokens,omitempty"`
-	TimeoutMs  int    `json:"timeoutms,omitempty"`
+	APIType       string `json:"apitype,omitempty"`
+	Model         string `json:"model"`
+	APIToken      string `json:"apitoken"`
+	OrgID         string `json:"orgid,omitempty"`
+	APIVersion    string `json:"apiversion,omitempty"`
+	BaseURL       string `json:"baseurl,omitempty"`
+	ProxyURL      string `json:"proxyurl,omitempty"`
+	MaxTokens     int    `json:"maxtokens,omitempty"`
+	TimeoutMs     int    `json:"timeoutms,omitempty"`
+	ThinkingLevel string `json:"thinkinglevel,omitempty"` // ThinkingLevelLow, ThinkingLevelMedium, or ThinkingLevelHigh
 }
 
 // Type can be one of these consts...

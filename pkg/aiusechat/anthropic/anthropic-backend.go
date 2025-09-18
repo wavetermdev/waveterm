@@ -30,9 +30,10 @@ import (
 )
 
 const (
-	AnthropicDefaultBaseURL    = "https://api.anthropic.com"
-	AnthropicDefaultAPIVersion = "2023-06-01"
-	AnthropicDefaultMaxTokens  = 1024
+	AnthropicDefaultBaseURL     = "https://api.anthropic.com"
+	AnthropicDefaultAPIVersion  = "2023-06-01"
+	AnthropicDefaultMaxTokens   = 4096
+	AnthropicThinkingBudget     = 1024
 )
 
 // ---------- Anthropic wire types (subset) ----------
@@ -87,6 +88,11 @@ type anthropicUsageType struct {
 type anthropicErrorType struct {
 	Type    string `json:"type"`
 	Message string `json:"message"`
+}
+
+type anthropicHTTPErrorResponse struct {
+	Type  string              `json:"type"`
+	Error anthropicErrorType `json:"error"`
 }
 
 type anthropicFullStreamEvent struct {
@@ -157,7 +163,7 @@ func (p *partialJSON) FinalObject() (json.RawMessage, error) {
 // ---------- Public entrypoint ----------
 //
 // Mapping rules recap (Anthropic → AI‑SDK):
-// - message_start → AiMsgStart
+// - message_start → AiMsgStart + AiMsgStartStep
 // - content_block_start(type=text) → AiMsgTextStart; text_delta → AiMsgTextDelta; content_block_stop → AiMsgTextEnd
 // - content_block_start(type=thinking) → AiMsgReasoningStart; thinking_delta → AiMsgReasoningDelta; stop → AiMsgReasoningEnd
 // - content_block_start(type=tool_use) → AiMsgToolInputStart; input_json_delta → AiMsgToolInputDelta; stop → AiMsgToolInputAvailable
@@ -167,13 +173,7 @@ func (p *partialJSON) FinalObject() (json.RawMessage, error) {
 
 // parseAnthropicHTTPError parses Anthropic API HTTP error responses
 func parseAnthropicHTTPError(resp *http.Response) error {
-	var eresp struct {
-		Type  string `json:"type"`
-		Error struct {
-			Type    string `json:"type"`
-			Message string `json:"message"`
-		} `json:"error"`
-	}
+	var eresp anthropicHTTPErrorResponse
 	slurp, _ := io.ReadAll(resp.Body)
 	_ = json.Unmarshal(slurp, &eresp)
 
@@ -254,6 +254,7 @@ func StreamAnthropicResponses(
 	var stopFromDelta string
 	var msgID string
 	var model string
+	var finished bool
 
 	// SSE event processing loop
 	for {
@@ -284,6 +285,7 @@ func StreamAnthropicResponses(
 
 		if stop, ret := handleAnthropicEvent(event, sse, blockMap, &toolCalls, &msgID, &model, stopFromDelta); ret != nil {
 			// Either error or message_stop triggered return
+			finished = true
 			return ret, nil
 		} else {
 			// maybe updated final stop reason (from message_delta)
@@ -294,7 +296,9 @@ func StreamAnthropicResponses(
 	}
 
 	// If we got here without a message_stop, close as done.
-	_ = sse.AiMsgFinish("", nil)
+	if !finished {
+		_ = sse.AiMsgFinish("", nil)
+	}
 	return &uctypes.StopReason{
 		Kind:      uctypes.StopKindDone,
 		RawReason: stopFromDelta,
@@ -358,6 +362,7 @@ func handleAnthropicEvent(
 			*model = ev.Message.Model
 		}
 		_ = sse.AiMsgStart(*msgID)
+		_ = sse.AiMsgStartStep()
 		return nil, nil
 
 	case "content_block_start":
@@ -528,7 +533,7 @@ func handleAnthropicEvent(
 		}
 
 	default:
-		// Unknown event names may appear over time; ignore. :contentReference[oaicite:22]{index=22}
+		log.Printf("unknown anthropic event type: %s", eventName)
 		return nil, nil
 	}
 }
@@ -572,6 +577,15 @@ func buildAnthropicHTTPRequest(ctx context.Context, opts *uctypes.AIOptsType, ms
 		reqBody.Tools = tools
 	}
 
+	// Enable extended thinking based on level
+	if opts.ThinkingLevel == uctypes.ThinkingLevelMedium || opts.ThinkingLevel == uctypes.ThinkingLevelHigh {
+		thinking := map[string]interface{}{
+			"type":          "enabled",
+			"budget_tokens": AnthropicThinkingBudget,
+		}
+		reqBody.Thinking = thinking
+	}
+
 	for _, m := range msgs {
 		aim := anthropicInputMessage{Role: m.Role}
 		if len(m.Parts) > 0 {
@@ -612,7 +626,7 @@ func buildAnthropicHTTPRequest(ctx context.Context, opts *uctypes.AIOptsType, ms
 // convertPartsToAnthropicBlocks converts UseChatMessagePart array to Anthropic content blocks with role-based validation
 func convertPartsToAnthropicBlocks(parts []uctypes.UseChatMessagePart, role string) ([]interface{}, error) {
 	var blocks []interface{}
-	
+
 	for _, p := range parts {
 		switch strings.ToLower(p.Type) {
 		case "text", "":
@@ -620,7 +634,7 @@ func convertPartsToAnthropicBlocks(parts []uctypes.UseChatMessagePart, role stri
 				"type": "text",
 				"text": p.Text,
 			})
-			
+
 		case "image":
 			// Anthropic expects images in user messages
 			if role != "user" {
@@ -635,7 +649,7 @@ func convertPartsToAnthropicBlocks(parts []uctypes.UseChatMessagePart, role stri
 				return nil, err
 			}
 			blocks = append(blocks, block)
-			
+
 		case "tool_result":
 			// Anthropic requires tool_result in user messages
 			if role != "user" {
@@ -647,13 +661,13 @@ func convertPartsToAnthropicBlocks(parts []uctypes.UseChatMessagePart, role stri
 				return nil, err
 			}
 			blocks = append(blocks, block)
-			
+
 		default:
 			// Log and skip unknown part types
 			log.Printf("anthropic: dropping unknown part type '%s'", p.Type)
 		}
 	}
-	
+
 	return blocks, nil
 }
 
@@ -662,18 +676,18 @@ func convertImagePart(p uctypes.UseChatMessagePart) (map[string]interface{}, err
 	if p.Source == nil {
 		return nil, errors.New("image part missing source")
 	}
-	
+
 	source := map[string]interface{}{
 		"type": p.Source.Type,
 	}
-	
+
 	switch p.Source.Type {
 	case "url":
 		if p.Source.URL == "" {
 			return nil, errors.New("image source type 'url' requires url field")
 		}
 		source["url"] = p.Source.URL
-		
+
 	case "base64":
 		if p.Source.Data == "" {
 			return nil, errors.New("image source type 'base64' requires data field")
@@ -683,17 +697,17 @@ func convertImagePart(p uctypes.UseChatMessagePart) (map[string]interface{}, err
 		}
 		source["data"] = p.Source.Data
 		source["media_type"] = p.Source.MediaType
-		
+
 	case "file":
 		if p.Source.FileID == "" {
 			return nil, errors.New("image source type 'file' requires file_id field")
 		}
 		source["file_id"] = p.Source.FileID
-		
+
 	default:
 		return nil, fmt.Errorf("unsupported image source type: %s", p.Source.Type)
 	}
-	
+
 	return map[string]interface{}{
 		"type":   "image",
 		"source": source,
@@ -705,12 +719,12 @@ func convertToolResultPart(p uctypes.UseChatMessagePart) (map[string]interface{}
 	if p.ToolUseID == "" {
 		return nil, errors.New("tool_result part missing tool_use_id")
 	}
-	
+
 	block := map[string]interface{}{
 		"type":        "tool_result",
 		"tool_use_id": p.ToolUseID,
 	}
-	
+
 	// Handle content field - can be string or array of content blocks
 	if len(p.Content) == 0 {
 		// No content blocks, use empty string
@@ -748,11 +762,11 @@ func convertToolResultPart(p uctypes.UseChatMessagePart) (map[string]interface{}
 		}
 		block["content"] = contentBlocks
 	}
-	
+
 	// Add is_error if specified
 	if p.IsError != nil {
 		block["is_error"] = *p.IsError
 	}
-	
+
 	return block, nil
 }

@@ -438,6 +438,13 @@ func (h *SSEHandlerCh) AiMsgToolInputAvailable(toolCallId, toolName string, inpu
 	return h.WriteJsonData(resp)
 }
 
+func (h *SSEHandlerCh) AiMsgStartStep() error {
+	resp := map[string]interface{}{
+		"type": AiMsgStartStep,
+	}
+	return h.WriteJsonData(resp)
+}
+
 func (h *SSEHandlerCh) AiMsgFinishStep() error {
 	resp := map[string]interface{}{
 		"type": AiMsgFinishStep,
