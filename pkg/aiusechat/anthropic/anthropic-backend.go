@@ -26,14 +26,14 @@ import (
 	"github.com/google/uuid"
 	"github.com/launchdarkly/eventsource"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
-	"github.com/wavetermdev/waveterm/pkg/web"
+	"github.com/wavetermdev/waveterm/pkg/web/sse"
 )
 
 const (
-	AnthropicDefaultBaseURL     = "https://api.anthropic.com"
-	AnthropicDefaultAPIVersion  = "2023-06-01"
-	AnthropicDefaultMaxTokens   = 4096
-	AnthropicThinkingBudget     = 1024
+	AnthropicDefaultBaseURL    = "https://api.anthropic.com"
+	AnthropicDefaultAPIVersion = "2023-06-01"
+	AnthropicDefaultMaxTokens  = 4096
+	AnthropicThinkingBudget    = 1024
 )
 
 // ---------- Anthropic wire types (subset) ----------
@@ -91,7 +91,7 @@ type anthropicErrorType struct {
 }
 
 type anthropicHTTPErrorResponse struct {
-	Type  string              `json:"type"`
+	Type  string             `json:"type"`
 	Error anthropicErrorType `json:"error"`
 }
 
@@ -197,7 +197,7 @@ func parseAnthropicHTTPError(resp *http.Response) error {
 
 func StreamAnthropicResponses(
 	ctx context.Context,
-	sse *web.SSEHandlerCh,
+	sse *sse.SSEHandlerCh,
 	opts *uctypes.AIOptsType,
 	messages []uctypes.UseChatMessage,
 	tools []uctypes.ToolDefinition,
@@ -317,7 +317,7 @@ func StreamAnthropicResponses(
 // Event model: anthropic-streaming.md. :contentReference[oaicite:16]{index=16}
 func handleAnthropicEvent(
 	event eventsource.Event,
-	sse *web.SSEHandlerCh,
+	sse *sse.SSEHandlerCh,
 	blocks map[int]*blockState,
 	toolCalls *[]uctypes.ToolCall,
 	msgID *string,

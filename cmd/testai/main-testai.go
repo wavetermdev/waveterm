@@ -14,8 +14,9 @@ import (
 	"os"
 	"time"
 
-	"github.com/wavetermdev/waveterm/pkg/waveai"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc"
+	"github.com/wavetermdev/waveterm/pkg/aiusechat"
+	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
+	"github.com/wavetermdev/waveterm/pkg/web/sse"
 )
 
 //go:embed testschema.json
@@ -58,7 +59,7 @@ func (w *TestResponseWriter) SetReadDeadline(deadline time.Time) error {
 	return nil
 }
 
-func getToolDefinitions() []waveai.ToolDefinition {
+func getToolDefinitions() []uctypes.ToolDefinition {
 	var schemas map[string]any
 	if err := json.Unmarshal([]byte(testSchemaJSON), &schemas); err != nil {
 		log.Printf("Error parsing schema: %v\n", err)
@@ -75,7 +76,7 @@ func getToolDefinitions() []waveai.ToolDefinition {
 		configSchema = map[string]any{"type": "object"}
 	}
 
-	return []waveai.ToolDefinition{
+	return []uctypes.ToolDefinition{
 		{
 			Name:        "get_config",
 			Description: "Get the current GitHub Actions Monitor configuration settings including repository, workflow, polling interval, and max workflow runs",
@@ -98,23 +99,26 @@ func getToolDefinitions() []waveai.ToolDefinition {
 	}
 }
 
-func testOpenAI(ctx context.Context, model, message string, tools []waveai.ToolDefinition) {
+func testOpenAI(ctx context.Context, model, message string, tools []uctypes.ToolDefinition) {
 	apiKey := os.Getenv("OPENAI_API_KEY")
 	if apiKey == "" {
 		fmt.Println("Error: OPENAI_API_KEY environment variable not set")
 		os.Exit(1)
 	}
 
-	opts := &wshrpc.WaveAIOptsType{
+	opts := &uctypes.AIOptsType{
+		APIType:   aiusechat.APIType_OpenAI,
 		APIToken:  apiKey,
 		Model:     model,
 		MaxTokens: 1000,
 	}
 
-	messages := []waveai.UseChatMessage{
-		{
-			Role:    "user",
-			Content: message,
+	req := &uctypes.UseChatRequest{
+		Messages: []uctypes.UseChatMessage{
+			{
+				Role:    "user",
+				Content: message,
+			},
 		},
 	}
 
@@ -123,7 +127,7 @@ func testOpenAI(ctx context.Context, model, message string, tools []waveai.ToolD
 	fmt.Println("---")
 
 	testWriter := &TestResponseWriter{}
-	sseHandler := waveai.MakeSSEHandlerCh(testWriter, ctx)
+	sseHandler := sse.MakeSSEHandlerCh(testWriter, ctx)
 
 	err := sseHandler.SetupSSE()
 	if err != nil {
@@ -132,32 +136,32 @@ func testOpenAI(ctx context.Context, model, message string, tools []waveai.ToolD
 	}
 	defer sseHandler.Close()
 
-	stopReason, err := waveai.StreamOpenAIToUseChat(ctx, sseHandler, opts, messages, tools)
+	err = aiusechat.RunWaveAIRequest(ctx, sseHandler, opts, req)
 	if err != nil {
 		fmt.Printf("OpenAI streaming error: %v\n", err)
 	}
-	if stopReason != nil {
-		fmt.Printf("Stop reason: %+v\n", stopReason)
-	}
 }
 
-func testAnthropic(ctx context.Context, model, message string, tools []waveai.ToolDefinition) {
+func testAnthropic(ctx context.Context, model, message string, tools []uctypes.ToolDefinition) {
 	apiKey := os.Getenv("ANTHROPIC_API_KEY")
 	if apiKey == "" {
 		fmt.Println("Error: ANTHROPIC_API_KEY environment variable not set")
 		os.Exit(1)
 	}
 
-	opts := &wshrpc.WaveAIOptsType{
+	opts := &uctypes.AIOptsType{
+		APIType:   aiusechat.APIType_Anthropic,
 		APIToken:  apiKey,
 		Model:     model,
 		MaxTokens: 1000,
 	}
 
-	messages := []waveai.UseChatMessage{
-		{
-			Role:    "user",
-			Content: message,
+	req := &uctypes.UseChatRequest{
+		Messages: []uctypes.UseChatMessage{
+			{
+				Role:    "user",
+				Content: message,
+			},
 		},
 	}
 
@@ -166,7 +170,7 @@ func testAnthropic(ctx context.Context, model, message string, tools []waveai.To
 	fmt.Println("---")
 
 	testWriter := &TestResponseWriter{}
-	sseHandler := waveai.MakeSSEHandlerCh(testWriter, ctx)
+	sseHandler := sse.MakeSSEHandlerCh(testWriter, ctx)
 
 	err := sseHandler.SetupSSE()
 	if err != nil {
@@ -175,12 +179,9 @@ func testAnthropic(ctx context.Context, model, message string, tools []waveai.To
 	}
 	defer sseHandler.Close()
 
-	stopReason, err := waveai.StreamAnthropicResponses(ctx, sseHandler, opts, messages, tools)
+	err = aiusechat.RunWaveAIRequest(ctx, sseHandler, opts, req)
 	if err != nil {
 		fmt.Printf("Anthropic streaming error: %v\n", err)
-	}
-	if stopReason != nil {
-		fmt.Printf("Stop reason: %+v\n", stopReason)
 	}
 }
 
@@ -210,7 +211,7 @@ func main() {
 		message = args[1]
 	}
 
-	var toolDefs []waveai.ToolDefinition
+	var toolDefs []uctypes.ToolDefinition
 	if tools {
 		toolDefs = getToolDefinitions()
 	}

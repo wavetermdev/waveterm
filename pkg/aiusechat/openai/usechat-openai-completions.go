@@ -1,16 +1,18 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-package waveai
+package openai
 
 import (
 	"context"
 	"fmt"
 	"strings"
 
+	"github.com/google/uuid"
 	"github.com/openai/openai-go/v2"
 	"github.com/openai/openai-go/v2/option"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc"
+	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
+	"github.com/wavetermdev/waveterm/pkg/web/sse"
 )
 
 // OpenAI Chat Completion streaming response format
@@ -38,7 +40,7 @@ type OpenAIUsageResponse struct {
 	TotalTokens      int `json:"total_tokens"`
 }
 
-func StreamOpenAIChatCompletions(sseHandler *SSEHandlerCh, ctx context.Context, opts *wshrpc.WaveAIOptsType, messages []UseChatMessage) {
+func StreamOpenAIChatCompletions(sseHandler *sse.SSEHandlerCh, ctx context.Context, opts *uctypes.AIOptsType, messages []uctypes.UseChatMessage) {
 	// Set up OpenAI client options
 	clientOpts := []option.RequestOption{
 		option.WithAPIKey(opts.APIToken),
@@ -94,8 +96,8 @@ func StreamOpenAIChatCompletions(sseHandler *SSEHandlerCh, ctx context.Context, 
 	defer stream.Close()
 
 	// Generate IDs for the streaming protocol
-	messageId := generateID()
-	textId := generateID()
+	messageId := uuid.New().String()
+	textId := uuid.New().String()
 
 	// Send message start
 	sseHandler.AiMsgStart(messageId)

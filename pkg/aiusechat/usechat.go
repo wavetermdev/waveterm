@@ -13,8 +13,9 @@ import (
 	"strings"
 
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/anthropic"
+	"github.com/wavetermdev/waveterm/pkg/aiusechat/openai"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
-	"github.com/wavetermdev/waveterm/pkg/web"
+	"github.com/wavetermdev/waveterm/pkg/web/sse"
 )
 
 const (
@@ -46,13 +47,7 @@ func shouldUseChatCompletionsAPI(model string) bool {
 		strings.HasPrefix(m, "o1-")
 }
 
-func runWaveAIRequest(ctx context.Context, sseHandler *web.SSEHandlerCh, req *uctypes.UseChatRequest) error {
-	// Use WaveAI settings
-	aiOpts, err := getWaveAISettings()
-	if err != nil {
-		return fmt.Errorf("WaveAI configuration error: %v", err)
-	}
-
+func RunWaveAIRequest(ctx context.Context, sseHandler *sse.SSEHandlerCh, aiOpts *uctypes.AIOptsType, req *uctypes.UseChatRequest) error {
 	// Validate configuration
 	if aiOpts.Model == "" {
 		return fmt.Errorf("no AI model specified")
@@ -81,10 +76,10 @@ func runWaveAIRequest(ctx context.Context, sseHandler *web.SSEHandlerCh, req *uc
 		// Route to appropriate API based on model
 		if shouldUseChatCompletionsAPI(aiOpts.Model) {
 			// Older models (gpt-3.5, gpt-4, gpt-4-turbo, o1-*) use Chat Completions API
-			// StreamOpenAIChatCompletions(sseHandler, ctx, aiOpts, req.Messages)
+			openai.StreamOpenAIChatCompletions(sseHandler, ctx, aiOpts, req.Messages)
 		} else {
 			// Newer models (gpt-4.1, gpt-4o, gpt-5, o3, o4, etc.) use Responses API for reasoning support
-			// StreamOpenAIResponsesAPI(sseHandler, ctx, aiOpts, req.Messages, tools)
+			openai.StreamOpenAIResponsesAPI(sseHandler, ctx, aiOpts, req.Messages, nil)
 		}
 		return fmt.Errorf("OpenAI provider is unimplemented")
 	}
@@ -105,12 +100,19 @@ func WaveAIHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Use WaveAI settings
+	aiOpts, err := getWaveAISettings()
+	if err != nil {
+		http.Error(w, fmt.Sprintf("WaveAI configuration error: %v", err), http.StatusBadRequest)
+		return
+	}
+
 	// Create SSE handler and set up streaming
-	sseHandler := web.MakeSSEHandlerCh(w, r.Context())
+	sseHandler := sse.MakeSSEHandlerCh(w, r.Context())
 	defer sseHandler.Close()
 
 	// Run the AI request
-	if err := runWaveAIRequest(r.Context(), sseHandler, &req); err != nil {
+	if err := RunWaveAIRequest(r.Context(), sseHandler, aiOpts, &req); err != nil {
 		http.Error(w, fmt.Sprintf("AI request error: %v", err), http.StatusInternalServerError)
 		return
 	}

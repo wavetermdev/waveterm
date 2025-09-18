@@ -1,22 +1,24 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-package waveai
+package openai
 
 import (
 	"context"
 	"fmt"
 	"strings"
 
+	"github.com/google/uuid"
 	"github.com/openai/openai-go/v2"
 	"github.com/openai/openai-go/v2/option"
 	"github.com/openai/openai-go/v2/responses"
 	"github.com/openai/openai-go/v2/shared"
+	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc"
+	"github.com/wavetermdev/waveterm/pkg/web/sse"
 )
 
-func createOpenAIRequest(opts *wshrpc.WaveAIOptsType, messages []UseChatMessage, tools []ToolDefinition) (openai.Client, responses.ResponseNewParams) {
+func createOpenAIRequest(opts *uctypes.AIOptsType, messages []uctypes.UseChatMessage, tools []uctypes.ToolDefinition) (openai.Client, responses.ResponseNewParams) {
 	// Set up OpenAI client options
 	clientOpts := []option.RequestOption{
 		option.WithAPIKey(opts.APIToken),
@@ -89,7 +91,7 @@ func createOpenAIRequest(opts *wshrpc.WaveAIOptsType, messages []UseChatMessage,
 	return client, req
 }
 
-func StreamOpenAIResponsesAPI(sseHandler *SSEHandlerCh, ctx context.Context, opts *wshrpc.WaveAIOptsType, messages []UseChatMessage, tools []ToolDefinition) {
+func StreamOpenAIResponsesAPI(sseHandler *sse.SSEHandlerCh, ctx context.Context, opts *uctypes.AIOptsType, messages []uctypes.UseChatMessage, tools []uctypes.ToolDefinition) {
 	client, req := createOpenAIRequest(opts, messages, tools)
 
 	// Create stream using Responses API
@@ -97,9 +99,9 @@ func StreamOpenAIResponsesAPI(sseHandler *SSEHandlerCh, ctx context.Context, opt
 	defer stream.Close()
 
 	// Generate IDs for the streaming protocol
-	messageId := generateID()
-	textId := generateID()
-	reasoningId := generateID()
+	messageId := uuid.New().String()
+	textId := uuid.New().String()
+	reasoningId := uuid.New().String()
 
 	// Send message start
 	sseHandler.AiMsgStart(messageId)
