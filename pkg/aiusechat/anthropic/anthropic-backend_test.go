@@ -25,164 +25,21 @@ func TestConvertPartsToAnthropicBlocks_TextOnly(t *testing.T) {
 	}
 
 	// Check first block
-	block1 := blocks[0].(map[string]interface{})
-	if block1["type"] != "text" {
-		t.Errorf("expected type 'text', got %v", block1["type"])
+	block1 := blocks[0]
+	if block1.Type != "text" {
+		t.Errorf("expected type 'text', got %v", block1.Type)
 	}
-	if block1["text"] != "Hello world" {
-		t.Errorf("expected text 'Hello world', got %v", block1["text"])
+	if block1.Text != "Hello world" {
+		t.Errorf("expected text 'Hello world', got %v", block1.Text)
 	}
 
 	// Check second block (empty type defaults to text)
-	block2 := blocks[1].(map[string]interface{})
-	if block2["type"] != "text" {
-		t.Errorf("expected type 'text', got %v", block2["type"])
+	block2 := blocks[1]
+	if block2.Type != "text" {
+		t.Errorf("expected type 'text', got %v", block2.Type)
 	}
-	if block2["text"] != "Default text" {
-		t.Errorf("expected text 'Default text', got %v", block2["text"])
-	}
-}
-
-func TestConvertImagePart_URL(t *testing.T) {
-	part := uctypes.UIMessagePart{
-		Type: "image",
-		Source: &uctypes.ImageSource{
-			Type: "url",
-			URL:  "https://example.com/image.jpg",
-		},
-	}
-
-	block, err := convertSourcePart(part)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	if block["type"] != "image" {
-		t.Errorf("expected type 'image', got %v", block["type"])
-	}
-
-	source := block["source"].(map[string]interface{})
-	if source["type"] != "url" {
-		t.Errorf("expected source type 'url', got %v", source["type"])
-	}
-	if source["url"] != "https://example.com/image.jpg" {
-		t.Errorf("expected url 'https://example.com/image.jpg', got %v", source["url"])
-	}
-}
-
-func TestConvertImagePart_Base64(t *testing.T) {
-	part := uctypes.UIMessagePart{
-		Type: "image",
-		Source: &uctypes.ImageSource{
-			Type:      "base64",
-			Data:      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==",
-			MediaType: "image/png",
-		},
-	}
-
-	block, err := convertSourcePart(part)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	source := block["source"].(map[string]interface{})
-	if source["type"] != "base64" {
-		t.Errorf("expected source type 'base64', got %v", source["type"])
-	}
-	if source["media_type"] != "image/png" {
-		t.Errorf("expected media_type 'image/png', got %v", source["media_type"])
-	}
-	if source["data"] != "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==" {
-		t.Errorf("unexpected data value")
-	}
-}
-
-func TestConvertImagePart_File(t *testing.T) {
-	part := uctypes.UIMessagePart{
-		Type: "image",
-		Source: &uctypes.ImageSource{
-			Type:   "file",
-			FileID: "file_12345",
-		},
-	}
-
-	block, err := convertSourcePart(part)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	source := block["source"].(map[string]interface{})
-	if source["type"] != "file" {
-		t.Errorf("expected source type 'file', got %v", source["type"])
-	}
-	if source["file_id"] != "file_12345" {
-		t.Errorf("expected file_id 'file_12345', got %v", source["file_id"])
-	}
-}
-
-func TestConvertImagePart_ValidationErrors(t *testing.T) {
-	tests := []struct {
-		name     string
-		part     uctypes.UIMessagePart
-		errorMsg string
-	}{
-		{
-			name:     "missing source",
-			part:     uctypes.UIMessagePart{Type: "image"},
-			errorMsg: "image part missing source",
-		},
-		{
-			name: "url missing url field",
-			part: uctypes.UIMessagePart{
-				Type:   "image",
-				Source: &uctypes.ImageSource{Type: "url"},
-			},
-			errorMsg: "image source type 'url' requires url field",
-		},
-		{
-			name: "base64 missing data",
-			part: uctypes.UIMessagePart{
-				Type:   "image",
-				Source: &uctypes.ImageSource{Type: "base64", MediaType: "image/png"},
-			},
-			errorMsg: "image source type 'base64' requires data field",
-		},
-		{
-			name: "base64 missing media_type",
-			part: uctypes.UIMessagePart{
-				Type:   "image",
-				Source: &uctypes.ImageSource{Type: "base64", Data: "data"},
-			},
-			errorMsg: "image source type 'base64' requires media_type field",
-		},
-		{
-			name: "file missing file_id",
-			part: uctypes.UIMessagePart{
-				Type:   "image",
-				Source: &uctypes.ImageSource{Type: "file"},
-			},
-			errorMsg: "image source type 'file' requires file_id field",
-		},
-		{
-			name: "unsupported source type",
-			part: uctypes.UIMessagePart{
-				Type:   "image",
-				Source: &uctypes.ImageSource{Type: "invalid"},
-			},
-			errorMsg: "unsupported image source type: invalid",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			_, err := convertSourcePart(tt.part)
-			if err == nil {
-				t.Fatalf("expected error but got none")
-			}
-			if err.Error() != tt.errorMsg {
-				t.Errorf("expected error '%s', got '%s'", tt.errorMsg, err.Error())
-			}
-		})
+	if block2.Text != "Default text" {
+		t.Errorf("expected text 'Default text', got %v", block2.Text)
 	}
 }
 
@@ -326,57 +183,6 @@ func TestConvertToolResultPart_ValidationError(t *testing.T) {
 	}
 }
 
-func TestConvertPartsToAnthropicBlocks_MixedContent(t *testing.T) {
-	parts := []uctypes.UIMessagePart{
-		{Type: "text", Text: "Here's an image:"},
-		{
-			Type: "image",
-			Source: &uctypes.ImageSource{
-				Type: "url",
-				URL:  "https://example.com/image.jpg",
-			},
-		},
-		{
-			Type:      "tool_result",
-			ToolUseID: "toolu_123",
-			Content: []uctypes.UseChatContentBlock{
-				{Type: "text", Text: "Tool result"},
-			},
-		},
-		{Type: "text", Text: "And that's the result."},
-	}
-
-	blocks, err := convertPartsToAnthropicBlocks(parts, "user")
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	if len(blocks) != 4 {
-		t.Fatalf("expected 4 blocks, got %d", len(blocks))
-	}
-
-	// Check types are preserved in order
-	block1 := blocks[0].(map[string]interface{})
-	if block1["type"] != "text" {
-		t.Errorf("expected first block to be text, got %v", block1["type"])
-	}
-
-	block2 := blocks[1].(map[string]interface{})
-	if block2["type"] != "image" {
-		t.Errorf("expected second block to be image, got %v", block2["type"])
-	}
-
-	block3 := blocks[2].(map[string]interface{})
-	if block3["type"] != "tool_result" {
-		t.Errorf("expected third block to be tool_result, got %v", block3["type"])
-	}
-
-	block4 := blocks[3].(map[string]interface{})
-	if block4["type"] != "text" {
-		t.Errorf("expected fourth block to be text, got %v", block4["type"])
-	}
-}
-
 func TestConvertPartsToAnthropicBlocks_MultipleToolResults(t *testing.T) {
 	parts := []uctypes.UIMessagePart{
 		{
@@ -404,14 +210,14 @@ func TestConvertPartsToAnthropicBlocks_MultipleToolResults(t *testing.T) {
 		t.Fatalf("expected 2 blocks, got %d", len(blocks))
 	}
 
-	block1 := blocks[0].(map[string]interface{})
-	if block1["tool_use_id"] != "toolu_first" {
-		t.Errorf("expected first tool_use_id 'toolu_first', got %v", block1["tool_use_id"])
+	block1 := blocks[0]
+	if block1.ToolUseID != "toolu_first" {
+		t.Errorf("expected first tool_use_id 'toolu_first', got %v", block1.ToolUseID)
 	}
 
-	block2 := blocks[1].(map[string]interface{})
-	if block2["tool_use_id"] != "toolu_second" {
-		t.Errorf("expected second tool_use_id 'toolu_second', got %v", block2["tool_use_id"])
+	block2 := blocks[1]
+	if block2.ToolUseID != "toolu_second" {
+		t.Errorf("expected second tool_use_id 'toolu_second', got %v", block2.ToolUseID)
 	}
 }
 
@@ -431,31 +237,14 @@ func TestConvertPartsToAnthropicBlocks_SkipsUnknownTypes(t *testing.T) {
 		t.Fatalf("expected 2 blocks (unknown type skipped), got %d", len(blocks))
 	}
 
-	block1 := blocks[0].(map[string]interface{})
-	if block1["text"] != "Valid text" {
-		t.Errorf("expected first text 'Valid text', got %v", block1["text"])
+	block1 := blocks[0]
+	if block1.Text != "Valid text" {
+		t.Errorf("expected first text 'Valid text', got %v", block1.Text)
 	}
 
-	block2 := blocks[1].(map[string]interface{})
-	if block2["text"] != "Another valid text" {
-		t.Errorf("expected second text 'Another valid text', got %v", block2["text"])
+	block2 := blocks[1]
+	if block2.Text != "Another valid text" {
+		t.Errorf("expected second text 'Another valid text', got %v", block2.Text)
 	}
 }
 
-func TestConvertPartsToAnthropicBlocks_PropagatesValidationErrors(t *testing.T) {
-	parts := []uctypes.UIMessagePart{
-		{Type: "text", Text: "Valid text"},
-		{
-			Type: "image",
-			// Missing Source - should cause validation error
-		},
-	}
-
-	_, err := convertPartsToAnthropicBlocks(parts, "user")
-	if err == nil {
-		t.Fatalf("expected validation error but got none")
-	}
-	if err.Error() != "image part missing source" {
-		t.Errorf("expected specific validation error, got %v", err.Error())
-	}
-}

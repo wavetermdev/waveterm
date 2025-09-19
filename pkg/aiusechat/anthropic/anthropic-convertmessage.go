@@ -6,15 +6,20 @@ package anthropic
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
 	"net/http"
+	"regexp"
 	"strings"
 
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
 )
+
+// these conversions are based off the anthropic spec
+// and the aiprompts/aisdk-uimessage-type.md doc (v5)
 
 // buildAnthropicHTTPRequest creates a complete HTTP request for the Anthropic API
 func buildAnthropicHTTPRequest(ctx context.Context, opts *uctypes.AIOptsType, msgs []uctypes.UIMessage, tools []uctypes.ToolDefinition) (*http.Request, error) {
@@ -64,8 +69,7 @@ func buildAnthropicHTTPRequest(ctx context.Context, opts *uctypes.AIOptsType, ms
 		if err != nil {
 			return nil, fmt.Errorf("invalid message parts: %w", err)
 		}
-		bs, _ := json.Marshal(blocks)
-		aim.Content = bs
+		aim.Content = blocks
 		reqBody.Messages = append(reqBody.Messages, aim)
 	}
 
@@ -87,99 +91,206 @@ func buildAnthropicHTTPRequest(ctx context.Context, opts *uctypes.AIOptsType, ms
 	return req, nil
 }
 
+// convertToolUsePart converts a tool-* type UIMessagePart to an Anthropic tool_use block
+func convertToolUsePart(p uctypes.UIMessagePart, role string) (*anthropicMessageContentBlock, error) {
+	if role != "assistant" {
+		return nil, fmt.Errorf("dropping tool part in %s message (tool parts should be in assistant messages)", role)
+	}
+	
+	// Sanity check that this is actually a tool-* type
+	pType := strings.ToLower(p.Type)
+	if !strings.HasPrefix(pType, "tool-") {
+		return nil, fmt.Errorf("convertToolUsePart expects 'tool-*' type, got '%s'", p.Type)
+	}
+
+	// Extract tool name from type field (format: "tool-{name}")
+	toolName := strings.TrimPrefix(pType, "tool-")
+	if toolName == "" {
+		return nil, fmt.Errorf("tool name is empty (type was '%s')", pType)
+	}
+	if len(toolName) > 200 {
+		return nil, fmt.Errorf("tool name exceeds 200 character limit: %d characters", len(toolName))
+	}
+	if p.ToolCallID == "" {
+		return nil, fmt.Errorf("tool call ID is required but missing")
+	}
+	
+	// Validate ToolCallID charset (must match ^[a-zA-Z0-9_-]+$)
+	validIDPattern := regexp.MustCompile(`^[a-zA-Z0-9_-]+$`)
+	if !validIDPattern.MatchString(p.ToolCallID) {
+		return nil, fmt.Errorf("tool call ID contains invalid characters (must be alphanumeric, underscore, or dash): %s", p.ToolCallID)
+	}
+
+	// Anthropic expects an object for input, never nil
+	input := p.Input
+	if input == nil {
+		input = map[string]interface{}{}
+	} else {
+		// Validate that input is an object (map), not string/array
+		if _, ok := input.(map[string]interface{}); !ok {
+			return nil, fmt.Errorf("tool input must be an object/map, got %T", input)
+		}
+	}
+
+	return &anthropicMessageContentBlock{
+		Type:  "tool_use",
+		ID:    p.ToolCallID,
+		Name:  toolName,
+		Input: input,
+	}, nil
+}
+
+// convertPartToAnthropicBlock converts a single UIMessagePart to an Anthropic content block
+func convertPartToAnthropicBlock(p uctypes.UIMessagePart, role string) (*anthropicMessageContentBlock, error) {
+	pType := strings.ToLower(p.Type)
+
+	if pType == "text" {
+		return &anthropicMessageContentBlock{
+			Type: "text",
+			Text: p.Text,
+		}, nil
+	} else if pType == "reasoning" {
+		return &anthropicMessageContentBlock{
+			Type: "text",
+			Text: p.Text,
+		}, nil
+	} else if pType == "file" {
+		// Anthropic expects files in user messages
+		if role != "user" {
+			return nil, fmt.Errorf("dropping file part in %s message (files should be in user messages)", role)
+		}
+		return convertFileUIMessagePart(p)
+	} else if strings.HasPrefix(pType, "tool-") {
+		return convertToolUsePart(p, role)
+	} else {
+		// Skip unknown part types
+		return nil, fmt.Errorf("dropping unknown part type '%s'", p.Type)
+	}
+}
+
 // convertPartsToAnthropicBlocks converts UseChatMessagePart array to Anthropic content blocks with role-based validation
-func convertPartsToAnthropicBlocks(parts []uctypes.UIMessagePart, role string) ([]interface{}, error) {
-	var blocks []interface{}
+func convertPartsToAnthropicBlocks(parts []uctypes.UIMessagePart, role string) ([]anthropicMessageContentBlock, error) {
+	var blocks []anthropicMessageContentBlock
 
 	for _, p := range parts {
-		pType := strings.ToLower(p.Type)
-
-		if pType == "text" {
-			blocks = append(blocks, map[string]interface{}{
-				"type": "text",
-				"text": p.Text,
-			})
-		} else if pType == "image" {
-			// Anthropic expects images in user messages
-			if role != "user" {
-				log.Printf("anthropic: dropping image part in %s message (images should be in user messages)", role)
-				continue
-			}
-			if p.Source == nil {
-				return nil, errors.New("image part missing source")
-			}
-			block, err := convertSourcePart(p)
-			if err != nil {
-				return nil, err
-			}
-			blocks = append(blocks, block)
-		} else if strings.HasPrefix(pType, "tool-") {
-			// Handle Vercel spec tool types: "tool-{name}"
-			if role != "assistant" {
-				log.Printf("anthropic: dropping tool part in %s message (tool parts should be in assistant messages)", role)
-				continue
-			}
-			// Extract tool name from type field (format: "tool-{name}")
-			toolName := strings.TrimPrefix(pType, "tool-")
-			block := map[string]interface{}{
-				"type": "tool_use",
-				"id":   p.ToolCallID,
-				"name": toolName,
-			}
-			if p.Input != nil {
-				block["input"] = p.Input
-			}
-			blocks = append(blocks, block)
-		} else {
-			// Log and skip unknown part types
-			log.Printf("anthropic: dropping unknown part type '%s'", p.Type)
+		block, err := convertPartToAnthropicBlock(p, role)
+		if err != nil {
+			log.Printf("anthropic: %v", err)
+			continue
+		}
+		if block != nil {
+			blocks = append(blocks, *block)
 		}
 	}
 
 	return blocks, nil
 }
 
-// convertSourcePart converts an image or document part to Anthropic block format
-func convertSourcePart(p uctypes.UIMessagePart) (map[string]interface{}, error) {
-	if p.Source == nil {
-		return nil, fmt.Errorf("%s part missing source", p.Type)
+// convertFileUIMessagePart converts a file part to Anthropic image or document block format
+func convertFileUIMessagePart(p uctypes.UIMessagePart) (*anthropicMessageContentBlock, error) {
+	if p.Type != "file" {
+		return nil, fmt.Errorf("convertFileUIMessagePart expects 'file' type, got '%s'", p.Type)
+	}
+	if p.URL == "" {
+		return nil, errors.New("file part missing url")
+	}
+	if p.MediaType == "" {
+		return nil, errors.New("file part missing mediaType")
 	}
 
-	source := map[string]interface{}{
-		"type": p.Source.Type,
+	// Validate URL protocol - only allow data:, http:, https:
+	if !strings.HasPrefix(p.URL, "data:") &&
+		!strings.HasPrefix(p.URL, "http://") &&
+		!strings.HasPrefix(p.URL, "https://") {
+		return nil, fmt.Errorf("unsupported URL protocol in file part: %s", p.URL)
 	}
 
-	switch p.Source.Type {
-	case "url":
-		if p.Source.URL == "" {
-			return nil, fmt.Errorf("%s source type 'url' requires url field", p.Type)
+	// Branch on mediaType first to determine block type and constraints
+	switch {
+	case strings.HasPrefix(p.MediaType, "image/"):
+		// image/* (jpeg, png, gif, webp) → Anthropic image block
+		if strings.HasPrefix(p.URL, "data:") {
+			// Data URL → base64 source
+			parts := strings.SplitN(p.URL, ",", 2)
+			if len(parts) != 2 {
+				return nil, errors.New("invalid data URL format")
+			}
+			return &anthropicMessageContentBlock{
+				Type: "image",
+				Source: &anthropicSource{
+					Type:      "base64",
+					Data:      parts[1],
+					MediaType: p.MediaType,
+				},
+			}, nil
+		} else {
+			// HTTP/HTTPS URL → url source (no media_type for image URLs)
+			return &anthropicMessageContentBlock{
+				Type: "image",
+				Source: &anthropicSource{
+					Type: "url",
+					URL:  p.URL,
+				},
+			}, nil
 		}
-		source["url"] = p.Source.URL
 
-	case "base64":
-		if p.Source.Data == "" {
-			return nil, fmt.Errorf("%s source type 'base64' requires data field", p.Type)
+	case p.MediaType == "application/pdf":
+		// application/pdf → Anthropic document block
+		if strings.HasPrefix(p.URL, "data:") {
+			// Data URL → base64 source
+			parts := strings.SplitN(p.URL, ",", 2)
+			if len(parts) != 2 {
+				return nil, errors.New("invalid data URL format")
+			}
+			return &anthropicMessageContentBlock{
+				Type: "document",
+				Source: &anthropicSource{
+					Type:      "base64",
+					Data:      parts[1],
+					MediaType: p.MediaType,
+				},
+			}, nil
+		} else {
+			// HTTP/HTTPS URL → url source (no media_type for URL sources)
+			return &anthropicMessageContentBlock{
+				Type: "document",
+				Source: &anthropicSource{
+					Type: "url",
+					URL:  p.URL,
+				},
+			}, nil
 		}
-		if p.Source.MediaType == "" {
-			return nil, fmt.Errorf("%s source type 'base64' requires media_type field", p.Type)
-		}
-		source["data"] = p.Source.Data
-		source["media_type"] = p.Source.MediaType
 
-	case "file":
-		if p.Source.FileID == "" {
-			return nil, fmt.Errorf("%s source type 'file' requires file_id field", p.Type)
+	case p.MediaType == "text/plain":
+		// text/plain → Anthropic document block, but NO URL form supported
+		if strings.HasPrefix(p.URL, "data:") {
+			// Data URL → decode base64 data and return as document with PlainTextSource
+			parts := strings.SplitN(p.URL, ",", 2)
+			if len(parts) != 2 {
+				return nil, errors.New("invalid data URL format")
+			}
+			// Decode base64 data
+			textData, err := base64.StdEncoding.DecodeString(parts[1])
+			if err != nil {
+				return nil, fmt.Errorf("failed to decode base64 data: %w", err)
+			}
+			return &anthropicMessageContentBlock{
+				Type: "document",
+				Source: &anthropicSource{
+					Type: "text",
+					Data: string(textData),
+				},
+			}, nil
+		} else {
+			// HTTP/HTTPS URL → not supported inline, would need to fetch
+			return nil, fmt.Errorf("dropping text/plain file with URL (must be fetched and converted to base64 or uploaded to Files API)")
 		}
-		source["file_id"] = p.Source.FileID
 
 	default:
-		return nil, fmt.Errorf("unsupported %s source type: %s", p.Type, p.Source.Type)
+		// Other media types → not supported inline, must upload and use file_id
+		return nil, fmt.Errorf("dropping file with unsupported media type '%s' (must be uploaded to Files API and sent as file_id)", p.MediaType)
 	}
 
-	return map[string]interface{}{
-		"type":   p.Type,
-		"source": source,
-	}, nil
 }
 
 // convertToolResultPart converts a tool_result part to Anthropic tool_result block format

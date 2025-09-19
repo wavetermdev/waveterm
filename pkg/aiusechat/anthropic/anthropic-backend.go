@@ -34,8 +34,8 @@ const (
 // Derived from anthropic-messages-api.md and anthropic-streaming.md. :contentReference[oaicite:6]{index=6} :contentReference[oaicite:7]{index=7}
 
 type anthropicInputMessage struct {
-	Role    string          `json:"role"`
-	Content json.RawMessage `json:"content"` // string or []blocks
+	Role    string                         `json:"role"`
+	Content []anthropicMessageContentBlock `json:"content"`
 }
 
 type anthropicMessageContentBlock struct {
