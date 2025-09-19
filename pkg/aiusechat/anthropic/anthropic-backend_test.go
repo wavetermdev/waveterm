@@ -49,7 +49,7 @@ func TestConvertImagePart_URL(t *testing.T) {
 		},
 	}
 
-	block, err := convertImagePart(part)
+	block, err := convertSourcePart(part)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -77,7 +77,7 @@ func TestConvertImagePart_Base64(t *testing.T) {
 		},
 	}
 
-	block, err := convertImagePart(part)
+	block, err := convertSourcePart(part)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -103,7 +103,7 @@ func TestConvertImagePart_File(t *testing.T) {
 		},
 	}
 
-	block, err := convertImagePart(part)
+	block, err := convertSourcePart(part)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -172,7 +172,7 @@ func TestConvertImagePart_ValidationErrors(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := convertImagePart(tt.part)
+			_, err := convertSourcePart(tt.part)
 			if err == nil {
 				t.Fatalf("expected error but got none")
 			}

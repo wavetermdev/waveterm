@@ -117,8 +117,13 @@ func testOpenAI(ctx context.Context, model, message string, tools []uctypes.Tool
 	req := &uctypes.UseChatRequest{
 		Messages: []uctypes.UseChatMessage{
 			{
-				Role:    "user",
-				Content: message,
+				Role: "user",
+				Parts: []uctypes.UseChatMessagePart{
+					{
+						Type: "text",
+						Text: message,
+					},
+				},
 			},
 		},
 	}
@@ -155,8 +160,13 @@ func testAnthropic(ctx context.Context, model, message string, tools []uctypes.T
 	req := &uctypes.UseChatRequest{
 		Messages: []uctypes.UseChatMessage{
 			{
-				Role:    "user",
-				Content: message,
+				Role: "user",
+				Parts: []uctypes.UseChatMessagePart{
+					{
+						Type: "text",
+						Text: message,
+					},
+				},
 			},
 		},
 	}

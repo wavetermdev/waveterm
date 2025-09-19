@@ -12,6 +12,7 @@ const (
 	StopKindContent   StopReasonKind = "content_filter"
 	StopKindCanceled  StopReasonKind = "canceled"
 	StopKindError     StopReasonKind = "error"
+	StopKindPauseTurn StopReasonKind = "pause_turn"
 )
 
 type ToolCall struct {

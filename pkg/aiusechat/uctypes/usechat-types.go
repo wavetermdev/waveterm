@@ -19,22 +19,47 @@ type UseChatRequest struct {
 }
 
 type UseChatMessage struct {
-	Role    string               `json:"role"`
-	Content string               `json:"content,omitempty"`
-	Parts   []UseChatMessagePart `json:"parts,omitempty"`
+	ID       string               `json:"id"`
+	Role     string               `json:"role"` // "system", "user", "assistant"
+	Metadata any                  `json:"metadata,omitempty"`
+	Parts    []UseChatMessagePart `json:"parts,omitempty"`
 }
 
 type UseChatMessagePart struct {
 	Type string `json:"type"`
-	Text string `json:"text,omitempty"`
 
-	// For images
-	Source *ImageSource `json:"source,omitempty"`
+	// TextUIPart & ReasoningUIPart
+	Text  string `json:"text,omitempty"`
+	State string `json:"state,omitempty"` // 'streaming' | 'done'
 
-	// For tool_result
-	ToolUseID string                `json:"tool_use_id,omitempty"`
-	Content   []UseChatContentBlock `json:"-"` // handled by custom marshal/unmarshal
-	IsError   *bool                 `json:"is_error,omitempty"`
+	// ToolUIPart
+	ToolCallID       string `json:"toolCallId,omitempty"`
+	Input            any    `json:"input,omitempty"`
+	Output           any    `json:"output,omitempty"`
+	ErrorText        string `json:"errorText,omitempty"`
+	ProviderExecuted *bool  `json:"providerExecuted,omitempty"`
+
+	// SourceUrlUIPart & SourceDocumentUIPart
+	SourceID  string `json:"sourceId,omitempty"`
+	URL       string `json:"url,omitempty"`
+	Title     string `json:"title,omitempty"`
+	Filename  string `json:"filename,omitempty"`
+	MediaType string `json:"mediaType,omitempty"`
+
+	// FileUIPart (uses URL and MediaType above)
+
+	// DataUIPart
+	ID   string `json:"id,omitempty"`
+	Data any    `json:"data,omitempty"`
+
+	// Provider metadata (ReasoningUIPart, SourceUrlUIPart, SourceDocumentUIPart)
+	ProviderMetadata map[string]any `json:"providerMetadata,omitempty"`
+
+	// Legacy fields for backward compatibility
+	Source    *ImageSource          `json:"source,omitempty"`      // For images
+	ToolUseID string                `json:"tool_use_id,omitempty"` // For tool_result (Anthropic format)
+	Content   []UseChatContentBlock `json:"-"`                     // handled by custom marshal/unmarshal
+	IsError   *bool                 `json:"is_error,omitempty"`    // For tool_result (Anthropic format)
 }
 
 type ImageSource struct {
@@ -50,6 +75,13 @@ type ToolDefinition struct {
 	Name        string         `json:"name"`
 	Description string         `json:"description"`
 	InputSchema map[string]any `json:"input_schema"`
+}
+
+type ContinueResponse struct {
+	MessageID             string         `json:"message_id,omitempty"`
+	Model                 string         `json:"model,omitempty"`
+	ContinueFromKind      StopReasonKind `json:"continue_from_kind"`
+	ContinueFromRawReason string         `json:"continue_from_raw_reason,omitempty"`
 }
 
 type AIOptsType struct {
@@ -147,11 +179,8 @@ func (p *UseChatMessagePart) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// GetContent extracts the text content from either content field or parts array
+// GetContent extracts the text content from the parts array
 func (m *UseChatMessage) GetContent() string {
-	if m.Content != "" {
-		return m.Content
-	}
 	if len(m.Parts) > 0 {
 		var content strings.Builder
 		for _, part := range m.Parts {

@@ -30,11 +30,11 @@ import (
 )
 
 const (
-	AnthropicDefaultBaseURL       = "https://api.anthropic.com"
-	AnthropicDefaultAPIVersion    = "2023-06-01"
-	AnthropicDefaultMaxTokens     = 4096
-	AnthropicThinkingBudget       = 1024
-	AnthropicMinThinkingBudget    = 1024
+	AnthropicDefaultBaseURL    = "https://api.anthropic.com"
+	AnthropicDefaultAPIVersion = "2023-06-01"
+	AnthropicDefaultMaxTokens  = 4096
+	AnthropicThinkingBudget    = 1024
+	AnthropicMinThinkingBudget = 1024
 )
 
 // ---------- Anthropic wire types (subset) ----------
@@ -43,6 +43,76 @@ const (
 type anthropicInputMessage struct {
 	Role    string          `json:"role"`
 	Content json.RawMessage `json:"content"` // string or []blocks
+}
+
+type anthropicMessageContentBlock struct {
+	// text, image, document, tool_use, tool_result, thinking, redacted_thinking,
+	// server_tool_use, web_search_tool_result, code_execution_tool_result,
+	// mcp_tool_use, mcp_tool_result, container_upload, search_result, web_search_result
+	Type string `json:"type"`
+
+	CacheControl *anthropicCacheControl `json:"cache_control,omitempty"`
+
+	// Text content
+	Text      string              `json:"text,omitempty"`
+	Citations []anthropicCitation `json:"citations,omitempty"`
+
+	// Image content
+	Source *anthropicSource `json:"source,omitempty"`
+
+	// Document content
+	Title   string `json:"title,omitempty"`
+	Context string `json:"context,omitempty"`
+
+	// Tool use content
+	ID    string      `json:"id,omitempty"`
+	Name  string      `json:"name,omitempty"`
+	Input interface{} `json:"input,omitempty"`
+
+	// Tool result content
+	ToolUseID string      `json:"tool_use_id,omitempty"`
+	IsError   bool        `json:"is_error,omitempty"`
+	Content   interface{} `json:"content,omitempty"` // string or []blocks for tool results
+
+	// Thinking content (extended thinking feature)
+	Thinking  string `json:"thinking,omitempty"`
+	Signature string `json:"signature,omitempty"`
+
+	// Server tool use/MCP (web search, code execution, MCP tools)
+	ServerName string `json:"server_name,omitempty"`
+
+	// Container upload
+	FileID string `json:"file_id,omitempty"`
+
+	// Web search result (for responses)
+	URL              string `json:"url,omitempty"`
+	EncryptedContent string `json:"encrypted_content,omitempty"`
+	PageAge          string `json:"page_age,omitempty"`
+
+	// Code execution results
+	ReturnCode int    `json:"return_code,omitempty"`
+	Stdout     string `json:"stdout,omitempty"`
+	Stderr     string `json:"stderr,omitempty"`
+}
+
+type anthropicSource struct {
+	Type      string      `json:"type"`                 // "base64", "url", "file", "text", "content"
+	Data      string      `json:"data,omitempty"`       // base64 data
+	MediaType string      `json:"media_type,omitempty"` // MIME type
+	URL       string      `json:"url,omitempty"`        // URL reference
+	FileID    string      `json:"file_id,omitempty"`    // file upload ID
+	Text      string      `json:"text,omitempty"`       // plain text (documents only)
+	Content   interface{} `json:"content,omitempty"`    // content blocks (documents only)
+}
+
+type anthropicCitation struct {
+	Type           string `json:"type"`
+	CitedText      string `json:"cited_text"`
+	DocumentIndex  int    `json:"document_index,omitempty"`
+	DocumentTitle  string `json:"document_title,omitempty"`
+	StartCharIndex int    `json:"start_char_index,omitempty"`
+	EndCharIndex   int    `json:"end_char_index,omitempty"`
+	// ... other citation type fields
 }
 
 type anthropicStreamRequest struct {
@@ -54,6 +124,11 @@ type anthropicStreamRequest struct {
 	ToolChoice any                      `json:"tool_choice,omitempty"`
 	Tools      []uctypes.ToolDefinition `json:"tools,omitempty"`
 	Thinking   *anthropicThinkingOpts   `json:"thinking,omitempty"`
+}
+
+type anthropicCacheControl struct {
+	Type string `json:"type"` // "ephemeral"
+	TTL  string `json:"ttl"`  // "5m" or "1h"
 }
 
 type anthropicMessageObj struct {
@@ -171,20 +246,20 @@ func makeThinkingOpts(thinkingLevel string, maxTokens int) *anthropicThinkingOpt
 	if thinkingLevel != uctypes.ThinkingLevelMedium && thinkingLevel != uctypes.ThinkingLevelHigh {
 		return nil
 	}
-	
+
 	maxThinkingBudget := int(float64(maxTokens) * 0.75)
-	
+
 	// If 75% of maxTokens is less than minimum, disable thinking
 	if maxThinkingBudget < AnthropicMinThinkingBudget {
 		return nil
 	}
-	
+
 	// Use the smaller of our default budget or 75% of maxTokens
 	thinkingBudget := AnthropicThinkingBudget
 	if thinkingBudget > maxThinkingBudget {
 		thinkingBudget = maxThinkingBudget
 	}
-	
+
 	return &anthropicThinkingOpts{
 		Type:         "enabled",
 		BudgetTokens: thinkingBudget,
@@ -226,13 +301,15 @@ func parseAnthropicHTTPError(resp *http.Response) error {
 	return fmt.Errorf("anthropic %s: %s", resp.Status, msg)
 }
 
+// returns (nil, err) before we start streaming
+// returns (stopReason, nil) after we start streaming
 func StreamAnthropicResponses(
 	ctx context.Context,
 	sse *sse.SSEHandlerCh,
 	opts *uctypes.AIOptsType,
 	messages []uctypes.UseChatMessage,
 	tools []uctypes.ToolDefinition,
-) (*uctypes.StopReason, error) {
+) (rtnStopReason *uctypes.StopReason, rtnErr error) {
 	if sse == nil {
 		return nil, errors.New("sse handler is nil")
 	}
@@ -290,8 +367,11 @@ func StreamAnthropicResponses(
 
 	// Ensure step is closed on error/cancellation
 	defer func() {
-		if stepStarted {
-			_ = sse.AiMsgFinishStep()
+		if !stepStarted {
+			return
+		}
+		_ = sse.AiMsgFinishStep()
+		if rtnStopReason == nil || rtnStopReason.Kind != uctypes.StopKindToolUse {
 			_ = sse.AiMsgFinish("", nil)
 		}
 	}()
@@ -305,7 +385,7 @@ func StreamAnthropicResponses(
 				Kind:      uctypes.StopKindCanceled,
 				ErrorType: "cancelled",
 				ErrorText: "request cancelled",
-			}, err
+			}, nil
 		}
 
 		event, err := decoder.Decode()
@@ -320,7 +400,7 @@ func StreamAnthropicResponses(
 				Kind:      uctypes.StopKindError,
 				ErrorType: "stream",
 				ErrorText: err.Error(),
-			}, err
+			}, nil
 		}
 
 		if stop, ret := handleAnthropicEvent(event, sse, blockMap, &toolCalls, &msgID, &model, stopFromDelta, &stepStarted); ret != nil {
@@ -531,7 +611,6 @@ func handleAnthropicEvent(
 		if stopFromPreviousDelta != "" {
 			reason = stopFromPreviousDelta
 		}
-		*stepStarted = false // defer handled
 		switch reason {
 		case "tool_use":
 			return nil, &uctypes.StopReason{
@@ -556,8 +635,15 @@ func handleAnthropicEvent(
 				MessageID: *msgID,
 				Model:     *model,
 			}
+		case "pause_turn":
+			return nil, &uctypes.StopReason{
+				Kind:      uctypes.StopKindPauseTurn,
+				RawReason: reason,
+				MessageID: *msgID,
+				Model:     *model,
+			}
 		default:
-			// end_turn, stop_sequence, pause_turn (treat as end of this call)
+			// end_turn, stop_sequence (treat as end of this call)
 			return nil, &uctypes.StopReason{
 				Kind:      uctypes.StopKindDone,
 				RawReason: reason,
@@ -616,20 +702,12 @@ func buildAnthropicHTTPRequest(ctx context.Context, opts *uctypes.AIOptsType, ms
 
 	for _, m := range msgs {
 		aim := anthropicInputMessage{Role: m.Role}
-		if len(m.Parts) > 0 {
-			blocks, err := convertPartsToAnthropicBlocks(m.Parts, m.Role)
-			if err != nil {
-				return nil, fmt.Errorf("invalid message parts: %w", err)
-			}
-			bs, _ := json.Marshal(blocks)
-			aim.Content = bs
-		} else {
-			// Shorthand: string becomes a single text block
-			if m.Content == "" {
-				m.Content = ""
-			}
-			aim.Content = json.RawMessage(fmt.Sprintf("%q", m.Content))
+		blocks, err := convertPartsToAnthropicBlocks(m.Parts, m.Role)
+		if err != nil {
+			return nil, fmt.Errorf("invalid message parts: %w", err)
 		}
+		bs, _ := json.Marshal(blocks)
+		aim.Content = bs
 		reqBody.Messages = append(reqBody.Messages, aim)
 	}
 
@@ -656,14 +734,14 @@ func convertPartsToAnthropicBlocks(parts []uctypes.UseChatMessagePart, role stri
 	var blocks []interface{}
 
 	for _, p := range parts {
-		switch strings.ToLower(p.Type) {
-		case "text", "":
+		pType := strings.ToLower(p.Type)
+		
+		if pType == "text" {
 			blocks = append(blocks, map[string]interface{}{
 				"type": "text",
 				"text": p.Text,
 			})
-
-		case "image":
+		} else if pType == "image" {
 			// Anthropic expects images in user messages
 			if role != "user" {
 				log.Printf("anthropic: dropping image part in %s message (images should be in user messages)", role)
@@ -672,25 +750,29 @@ func convertPartsToAnthropicBlocks(parts []uctypes.UseChatMessagePart, role stri
 			if p.Source == nil {
 				return nil, errors.New("image part missing source")
 			}
-			block, err := convertImagePart(p)
+			block, err := convertSourcePart(p)
 			if err != nil {
 				return nil, err
 			}
 			blocks = append(blocks, block)
-
-		case "tool_result":
-			// Anthropic requires tool_result in user messages
-			if role != "user" {
-				log.Printf("anthropic: dropping tool_result part in %s message (tool_result must be in user messages)", role)
+		} else if strings.HasPrefix(pType, "tool-") {
+			// Handle Vercel spec tool types: "tool-{name}"
+			if role != "assistant" {
+				log.Printf("anthropic: dropping tool part in %s message (tool parts should be in assistant messages)", role)
 				continue
 			}
-			block, err := convertToolResultPart(p)
-			if err != nil {
-				return nil, err
+			// Extract tool name from type field (format: "tool-{name}")
+			toolName := strings.TrimPrefix(pType, "tool-")
+			block := map[string]interface{}{
+				"type": "tool_use",
+				"id":   p.ToolCallID,
+				"name": toolName,
+			}
+			if p.Input != nil {
+				block["input"] = p.Input
 			}
 			blocks = append(blocks, block)
-
-		default:
+		} else {
 			// Log and skip unknown part types
 			log.Printf("anthropic: dropping unknown part type '%s'", p.Type)
 		}
@@ -699,10 +781,10 @@ func convertPartsToAnthropicBlocks(parts []uctypes.UseChatMessagePart, role stri
 	return blocks, nil
 }
 
-// convertImagePart converts an image part to Anthropic image block format
-func convertImagePart(p uctypes.UseChatMessagePart) (map[string]interface{}, error) {
+// convertSourcePart converts an image or document part to Anthropic block format
+func convertSourcePart(p uctypes.UseChatMessagePart) (map[string]interface{}, error) {
 	if p.Source == nil {
-		return nil, errors.New("image part missing source")
+		return nil, fmt.Errorf("%s part missing source", p.Type)
 	}
 
 	source := map[string]interface{}{
@@ -712,32 +794,32 @@ func convertImagePart(p uctypes.UseChatMessagePart) (map[string]interface{}, err
 	switch p.Source.Type {
 	case "url":
 		if p.Source.URL == "" {
-			return nil, errors.New("image source type 'url' requires url field")
+			return nil, fmt.Errorf("%s source type 'url' requires url field", p.Type)
 		}
 		source["url"] = p.Source.URL
 
 	case "base64":
 		if p.Source.Data == "" {
-			return nil, errors.New("image source type 'base64' requires data field")
+			return nil, fmt.Errorf("%s source type 'base64' requires data field", p.Type)
 		}
 		if p.Source.MediaType == "" {
-			return nil, errors.New("image source type 'base64' requires media_type field")
+			return nil, fmt.Errorf("%s source type 'base64' requires media_type field", p.Type)
 		}
 		source["data"] = p.Source.Data
 		source["media_type"] = p.Source.MediaType
 
 	case "file":
 		if p.Source.FileID == "" {
-			return nil, errors.New("image source type 'file' requires file_id field")
+			return nil, fmt.Errorf("%s source type 'file' requires file_id field", p.Type)
 		}
 		source["file_id"] = p.Source.FileID
 
 	default:
-		return nil, fmt.Errorf("unsupported image source type: %s", p.Source.Type)
+		return nil, fmt.Errorf("unsupported %s source type: %s", p.Type, p.Source.Type)
 	}
 
 	return map[string]interface{}{
-		"type":   "image",
+		"type":   p.Type,
 		"source": source,
 	}, nil
 }
