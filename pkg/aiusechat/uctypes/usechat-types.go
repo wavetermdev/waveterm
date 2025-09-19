@@ -112,7 +112,7 @@ type WaveContinueResponse struct {
 }
 
 // Wave Specific AI opts for configuration
-type WaveAIOptsType struct {
+type AIOptsType struct {
 	APIType       string `json:"apitype,omitempty"`
 	Model         string `json:"model"`
 	APIToken      string `json:"apitoken"`
@@ -123,6 +123,14 @@ type WaveAIOptsType struct {
 	MaxTokens     int    `json:"maxtokens,omitempty"`
 	TimeoutMs     int    `json:"timeoutms,omitempty"`
 	ThinkingLevel string `json:"thinkinglevel,omitempty"` // ThinkingLevelLow, ThinkingLevelMedium, or ThinkingLevelHigh
+}
+
+type AIChat struct {
+	ChatId         string `json:"chatid"`
+	APIType        string `json:"apitype"`
+	Model          string `json:"model"`
+	APIVersion     string `json:"apiversion"`
+	NativeMessages []any  `json:"nativemessages"`
 }
 
 // ---------------------

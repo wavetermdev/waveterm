@@ -23,11 +23,12 @@ import (
 )
 
 const (
-	AnthropicDefaultBaseURL    = "https://api.anthropic.com"
-	AnthropicDefaultAPIVersion = "2023-06-01"
-	AnthropicDefaultMaxTokens  = 4096
-	AnthropicThinkingBudget    = 1024
-	AnthropicMinThinkingBudget = 1024
+	AnthropicDefaultBaseURL              = "https://api.anthropic.com"
+	AnthropicDefaultAPIVersion           = "2023-06-01"
+	AnthropicDefaultMaxTokens            = 4096
+	AnthropicThinkingBudget              = 1024
+	AnthropicMinThinkingBudget           = 1024
+	ProviderMetadataThinkingSignatureKey = "anthropic:signature"
 )
 
 // ---------- Anthropic wire types (subset) ----------
@@ -308,7 +309,7 @@ func parseAnthropicHTTPError(resp *http.Response) error {
 func StreamAnthropicResponses(
 	ctx context.Context,
 	sse *sse.SSEHandlerCh,
-	opts *uctypes.WaveAIOptsType,
+	opts *uctypes.AIOptsType,
 	messages []uctypes.UIMessage,
 	tools []uctypes.ToolDefinition,
 	cont *uctypes.WaveContinueResponse,

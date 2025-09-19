@@ -25,12 +25,12 @@ const (
 
 const DefaultClaudeModel = "claude-sonnet-4-20250514"
 
-func getWaveAISettings() (*uctypes.WaveAIOptsType, error) {
+func getWaveAISettings() (*uctypes.AIOptsType, error) {
 	anthropicSecret := os.Getenv("WAVETERM_ANTHROPIC_SECRET")
 	if anthropicSecret == "" {
 		return nil, fmt.Errorf("no anthropic secret found")
 	}
-	return &uctypes.WaveAIOptsType{
+	return &uctypes.AIOptsType{
 		APIToken:  anthropicSecret,
 		Model:     DefaultClaudeModel,
 		APIType:   APIType_Anthropic,
@@ -47,7 +47,7 @@ func shouldUseChatCompletionsAPI(model string) bool {
 		strings.HasPrefix(m, "o1-")
 }
 
-func RunWaveAIRequestStep(ctx context.Context, sseHandler *sse.SSEHandlerCh, aiOpts *uctypes.WaveAIOptsType, req *uctypes.UseChatRequest, tools []uctypes.ToolDefinition, cont *uctypes.WaveContinueResponse) error {
+func RunWaveAIRequestStep(ctx context.Context, sseHandler *sse.SSEHandlerCh, aiOpts *uctypes.AIOptsType, req *uctypes.UseChatRequest, tools []uctypes.ToolDefinition, cont *uctypes.WaveContinueResponse) error {
 	// Validate configuration
 	if aiOpts.Model == "" {
 		return fmt.Errorf("no AI model specified")
@@ -90,7 +90,7 @@ func RunWaveAIRequestStep(ctx context.Context, sseHandler *sse.SSEHandlerCh, aiO
 	return fmt.Errorf("Unimplemented API Type %q", aiOpts.APIType)
 }
 
-func RunWaveAIRequest(ctx context.Context, sseHandler *sse.SSEHandlerCh, aiOpts *uctypes.WaveAIOptsType, req *uctypes.UseChatRequest, tools []uctypes.ToolDefinition) error {
+func RunWaveAIRequest(ctx context.Context, sseHandler *sse.SSEHandlerCh, aiOpts *uctypes.AIOptsType, req *uctypes.UseChatRequest, tools []uctypes.ToolDefinition) error {
 	return RunWaveAIRequestStep(ctx, sseHandler, aiOpts, req, tools, nil)
 }
 

@@ -106,7 +106,7 @@ func testOpenAI(ctx context.Context, model, message string, tools []uctypes.Tool
 		os.Exit(1)
 	}
 
-	opts := &uctypes.WaveAIOptsType{
+	opts := &uctypes.AIOptsType{
 		APIType:       aiusechat.APIType_OpenAI,
 		APIToken:      apiKey,
 		Model:         model,
@@ -149,7 +149,7 @@ func testAnthropic(ctx context.Context, model, message string, tools []uctypes.T
 		os.Exit(1)
 	}
 
-	opts := &uctypes.WaveAIOptsType{
+	opts := &uctypes.AIOptsType{
 		APIType:       aiusechat.APIType_Anthropic,
 		APIToken:      apiKey,
 		Model:         model,

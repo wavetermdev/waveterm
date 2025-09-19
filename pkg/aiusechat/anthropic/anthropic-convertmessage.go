@@ -22,7 +22,7 @@ import (
 // and the aiprompts/aisdk-uimessage-type.md doc (v5)
 
 // buildAnthropicHTTPRequest creates a complete HTTP request for the Anthropic API
-func buildAnthropicHTTPRequest(ctx context.Context, opts *uctypes.WaveAIOptsType, msgs []uctypes.UIMessage, tools []uctypes.ToolDefinition) (*http.Request, error) {
+func buildAnthropicHTTPRequest(ctx context.Context, opts *uctypes.AIOptsType, msgs []uctypes.UIMessage, tools []uctypes.ToolDefinition) (*http.Request, error) {
 	if opts == nil {
 		return nil, errors.New("opts is nil")
 	}
@@ -189,9 +189,21 @@ func convertPartToAnthropicBlocks(p uctypes.UIMessagePart, role string, blockInd
 			Text: p.Text,
 		}}, nil
 	} else if p.Type == "reasoning" {
+		// Check if we have a signature in provider metadata
+		signature, hasSignature := p.ProviderMetadata[ProviderMetadataThinkingSignatureKey]
+		if !hasSignature {
+			return nil, fmt.Errorf("reasoning part requires signature in provider metadata key '%s'", ProviderMetadataThinkingSignatureKey)
+		}
+
+		signatureStr, ok := signature.(string)
+		if !ok {
+			return nil, fmt.Errorf("reasoning part signature must be a string, got %T", signature)
+		}
+
 		return []anthropicMessageContentBlock{{
-			Type: "text",
-			Text: p.Text,
+			Type:      "thinking",
+			Thinking:  p.Text,
+			Signature: signatureStr,
 		}}, nil
 	} else if p.Type == "source-url" || p.Type == "source-document" {
 		return convertSourceToAnthropicBlocks(p, blockIndex)
