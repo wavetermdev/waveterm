@@ -153,6 +153,12 @@ func convertPartToAnthropicBlocks(p uctypes.UIMessagePart, role string, blockInd
 		}}, nil
 	} else if p.Type == "source-url" || p.Type == "source-document" {
 		return convertSourceToAnthropicBlocks(p, blockIndex)
+	} else if p.Type == "step-start" {
+		// Omit step-start parts from Anthropic
+		return nil, nil
+	} else if strings.HasPrefix(p.Type, "data-") {
+		// Omit data-* parts from Anthropic
+		return nil, nil
 	} else if p.Type == "file" {
 		// Anthropic expects files in user messages
 		if role != "user" {
