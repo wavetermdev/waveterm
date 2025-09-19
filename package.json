@@ -64,7 +64,7 @@
         "electron": "^38.1.0",
         "electron-builder": "^26.0",
         "electron-vite": "^4.0.0",
-        "eslint": "^8.57.0",
+        "eslint": "^9.36.0",
         "eslint-config-prettier": "^10.1.8",
         "node-abi": "^4.14.0",
         "postcss": "^8.5.6",
