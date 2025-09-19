@@ -98,15 +98,14 @@ func convertToolUsePart(p uctypes.UIMessagePart, role string) (*anthropicMessage
 	}
 	
 	// Sanity check that this is actually a tool-* type
-	pType := strings.ToLower(p.Type)
-	if !strings.HasPrefix(pType, "tool-") {
+	if !strings.HasPrefix(p.Type, "tool-") {
 		return nil, fmt.Errorf("convertToolUsePart expects 'tool-*' type, got '%s'", p.Type)
 	}
 
 	// Extract tool name from type field (format: "tool-{name}")
-	toolName := strings.TrimPrefix(pType, "tool-")
+	toolName := strings.TrimPrefix(p.Type, "tool-")
 	if toolName == "" {
-		return nil, fmt.Errorf("tool name is empty (type was '%s')", pType)
+		return nil, fmt.Errorf("tool name is empty (type was '%s')", p.Type)
 	}
 	if len(toolName) > 200 {
 		return nil, fmt.Errorf("tool name exceeds 200 character limit: %d characters", len(toolName))
@@ -140,28 +139,36 @@ func convertToolUsePart(p uctypes.UIMessagePart, role string) (*anthropicMessage
 	}, nil
 }
 
-// convertPartToAnthropicBlock converts a single UIMessagePart to an Anthropic content block
-func convertPartToAnthropicBlock(p uctypes.UIMessagePart, role string) (*anthropicMessageContentBlock, error) {
-	pType := strings.ToLower(p.Type)
-
-	if pType == "text" {
-		return &anthropicMessageContentBlock{
+// convertPartToAnthropicBlocks converts a single UIMessagePart to one or more Anthropic content blocks
+func convertPartToAnthropicBlocks(p uctypes.UIMessagePart, role string, blockIndex int) ([]anthropicMessageContentBlock, error) {
+	if p.Type == "text" {
+		return []anthropicMessageContentBlock{{
 			Type: "text",
 			Text: p.Text,
-		}, nil
-	} else if pType == "reasoning" {
-		return &anthropicMessageContentBlock{
+		}}, nil
+	} else if p.Type == "reasoning" {
+		return []anthropicMessageContentBlock{{
 			Type: "text",
 			Text: p.Text,
-		}, nil
-	} else if pType == "file" {
+		}}, nil
+	} else if p.Type == "source-url" || p.Type == "source-document" {
+		return convertSourceToAnthropicBlocks(p, blockIndex)
+	} else if p.Type == "file" {
 		// Anthropic expects files in user messages
 		if role != "user" {
 			return nil, fmt.Errorf("dropping file part in %s message (files should be in user messages)", role)
 		}
-		return convertFileUIMessagePart(p)
-	} else if strings.HasPrefix(pType, "tool-") {
-		return convertToolUsePart(p, role)
+		block, err := convertFileUIMessagePart(p)
+		if err != nil {
+			return nil, err
+		}
+		return []anthropicMessageContentBlock{*block}, nil
+	} else if strings.HasPrefix(p.Type, "tool-") {
+		block, err := convertToolUsePart(p, role)
+		if err != nil {
+			return nil, err
+		}
+		return []anthropicMessageContentBlock{*block}, nil
 	} else {
 		// Skip unknown part types
 		return nil, fmt.Errorf("dropping unknown part type '%s'", p.Type)
@@ -173,14 +180,12 @@ func convertPartsToAnthropicBlocks(parts []uctypes.UIMessagePart, role string) (
 	var blocks []anthropicMessageContentBlock
 
 	for _, p := range parts {
-		block, err := convertPartToAnthropicBlock(p, role)
+		partBlocks, err := convertPartToAnthropicBlocks(p, role, len(blocks))
 		if err != nil {
 			log.Printf("anthropic: %v", err)
 			continue
 		}
-		if block != nil {
-			blocks = append(blocks, *block)
-		}
+		blocks = append(blocks, partBlocks...)
 	}
 
 	return blocks, nil
@@ -348,4 +353,43 @@ func convertToolResultPart(p uctypes.UIMessagePart) (map[string]interface{}, err
 	}
 
 	return block, nil
+}
+
+// convertSourceToAnthropicBlocks converts source-url or source-document parts to Anthropic blocks
+func convertSourceToAnthropicBlocks(p uctypes.UIMessagePart, blockIndex int) ([]anthropicMessageContentBlock, error) {
+	var sourceBlock anthropicMessageContentBlock
+	
+	if p.Type == "source-url" {
+		// Convert source-url to web_search_result block
+		sourceBlock = anthropicMessageContentBlock{
+			Type:  "web_search_result",
+			URL:   p.URL,
+			Title: p.Title,
+		}
+	} else if p.Type == "source-document" {
+		// Convert source-document to document block
+		sourceBlock = anthropicMessageContentBlock{
+			Type:  "document",
+			Title: p.Title,
+			Source: &anthropicSource{
+				Type:      "text", // assuming text content for now
+				MediaType: p.MediaType,
+			},
+		}
+	} else {
+		return nil, fmt.Errorf("convertSourceToAnthropicBlocks expects 'source-url' or 'source-document', got '%s'", p.Type)
+	}
+	
+	// Create citation text block pointing to the source block
+	citationBlock := anthropicMessageContentBlock{
+		Type: "text",
+		Text: "",
+		Citations: []anthropicCitation{{
+			Type:          "source",
+			DocumentIndex: blockIndex,
+			DocumentTitle: p.Title,
+		}},
+	}
+	
+	return []anthropicMessageContentBlock{sourceBlock, citationBlock}, nil
 }
