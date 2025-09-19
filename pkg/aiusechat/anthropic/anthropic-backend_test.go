@@ -1,3 +1,6 @@
+// Copyright 2025, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
 package anthropic
 
 import (
@@ -7,7 +10,7 @@ import (
 )
 
 func TestConvertPartsToAnthropicBlocks_TextOnly(t *testing.T) {
-	parts := []uctypes.UseChatMessagePart{
+	parts := []uctypes.UIMessagePart{
 		{Type: "text", Text: "Hello world"},
 		{Type: "", Text: "Default text"},
 	}
@@ -41,7 +44,7 @@ func TestConvertPartsToAnthropicBlocks_TextOnly(t *testing.T) {
 }
 
 func TestConvertImagePart_URL(t *testing.T) {
-	part := uctypes.UseChatMessagePart{
+	part := uctypes.UIMessagePart{
 		Type: "image",
 		Source: &uctypes.ImageSource{
 			Type: "url",
@@ -68,7 +71,7 @@ func TestConvertImagePart_URL(t *testing.T) {
 }
 
 func TestConvertImagePart_Base64(t *testing.T) {
-	part := uctypes.UseChatMessagePart{
+	part := uctypes.UIMessagePart{
 		Type: "image",
 		Source: &uctypes.ImageSource{
 			Type:      "base64",
@@ -95,7 +98,7 @@ func TestConvertImagePart_Base64(t *testing.T) {
 }
 
 func TestConvertImagePart_File(t *testing.T) {
-	part := uctypes.UseChatMessagePart{
+	part := uctypes.UIMessagePart{
 		Type: "image",
 		Source: &uctypes.ImageSource{
 			Type:   "file",
@@ -120,17 +123,17 @@ func TestConvertImagePart_File(t *testing.T) {
 func TestConvertImagePart_ValidationErrors(t *testing.T) {
 	tests := []struct {
 		name     string
-		part     uctypes.UseChatMessagePart
+		part     uctypes.UIMessagePart
 		errorMsg string
 	}{
 		{
 			name:     "missing source",
-			part:     uctypes.UseChatMessagePart{Type: "image"},
+			part:     uctypes.UIMessagePart{Type: "image"},
 			errorMsg: "image part missing source",
 		},
 		{
 			name: "url missing url field",
-			part: uctypes.UseChatMessagePart{
+			part: uctypes.UIMessagePart{
 				Type:   "image",
 				Source: &uctypes.ImageSource{Type: "url"},
 			},
@@ -138,7 +141,7 @@ func TestConvertImagePart_ValidationErrors(t *testing.T) {
 		},
 		{
 			name: "base64 missing data",
-			part: uctypes.UseChatMessagePart{
+			part: uctypes.UIMessagePart{
 				Type:   "image",
 				Source: &uctypes.ImageSource{Type: "base64", MediaType: "image/png"},
 			},
@@ -146,7 +149,7 @@ func TestConvertImagePart_ValidationErrors(t *testing.T) {
 		},
 		{
 			name: "base64 missing media_type",
-			part: uctypes.UseChatMessagePart{
+			part: uctypes.UIMessagePart{
 				Type:   "image",
 				Source: &uctypes.ImageSource{Type: "base64", Data: "data"},
 			},
@@ -154,7 +157,7 @@ func TestConvertImagePart_ValidationErrors(t *testing.T) {
 		},
 		{
 			name: "file missing file_id",
-			part: uctypes.UseChatMessagePart{
+			part: uctypes.UIMessagePart{
 				Type:   "image",
 				Source: &uctypes.ImageSource{Type: "file"},
 			},
@@ -162,7 +165,7 @@ func TestConvertImagePart_ValidationErrors(t *testing.T) {
 		},
 		{
 			name: "unsupported source type",
-			part: uctypes.UseChatMessagePart{
+			part: uctypes.UIMessagePart{
 				Type:   "image",
 				Source: &uctypes.ImageSource{Type: "invalid"},
 			},
@@ -184,7 +187,7 @@ func TestConvertImagePart_ValidationErrors(t *testing.T) {
 }
 
 func TestConvertToolResultPart_StringContent(t *testing.T) {
-	part := uctypes.UseChatMessagePart{
+	part := uctypes.UIMessagePart{
 		Type:      "tool_result",
 		ToolUseID: "toolu_123",
 		Content: []uctypes.UseChatContentBlock{
@@ -209,7 +212,7 @@ func TestConvertToolResultPart_StringContent(t *testing.T) {
 }
 
 func TestConvertToolResultPart_MultipleContentBlocks(t *testing.T) {
-	part := uctypes.UseChatMessagePart{
+	part := uctypes.UIMessagePart{
 		Type:      "tool_result",
 		ToolUseID: "toolu_456",
 		Content: []uctypes.UseChatContentBlock{
@@ -241,7 +244,7 @@ func TestConvertToolResultPart_MultipleContentBlocks(t *testing.T) {
 
 func TestConvertToolResultPart_WithError(t *testing.T) {
 	isError := true
-	part := uctypes.UseChatMessagePart{
+	part := uctypes.UIMessagePart{
 		Type:      "tool_result",
 		ToolUseID: "toolu_789",
 		Content: []uctypes.UseChatContentBlock{
@@ -261,7 +264,7 @@ func TestConvertToolResultPart_WithError(t *testing.T) {
 }
 
 func TestConvertToolResultPart_EmptyContent(t *testing.T) {
-	part := uctypes.UseChatMessagePart{
+	part := uctypes.UIMessagePart{
 		Type:      "tool_result",
 		ToolUseID: "toolu_empty",
 		Content:   []uctypes.UseChatContentBlock{},
@@ -278,7 +281,7 @@ func TestConvertToolResultPart_EmptyContent(t *testing.T) {
 }
 
 func TestConvertToolResultPart_DataContent(t *testing.T) {
-	part := uctypes.UseChatMessagePart{
+	part := uctypes.UIMessagePart{
 		Type:      "tool_result",
 		ToolUseID: "toolu_data",
 		Content: []uctypes.UseChatContentBlock{
@@ -306,7 +309,7 @@ func TestConvertToolResultPart_DataContent(t *testing.T) {
 }
 
 func TestConvertToolResultPart_ValidationError(t *testing.T) {
-	part := uctypes.UseChatMessagePart{
+	part := uctypes.UIMessagePart{
 		Type: "tool_result",
 		// Missing ToolUseID
 		Content: []uctypes.UseChatContentBlock{
@@ -324,7 +327,7 @@ func TestConvertToolResultPart_ValidationError(t *testing.T) {
 }
 
 func TestConvertPartsToAnthropicBlocks_MixedContent(t *testing.T) {
-	parts := []uctypes.UseChatMessagePart{
+	parts := []uctypes.UIMessagePart{
 		{Type: "text", Text: "Here's an image:"},
 		{
 			Type: "image",
@@ -375,7 +378,7 @@ func TestConvertPartsToAnthropicBlocks_MixedContent(t *testing.T) {
 }
 
 func TestConvertPartsToAnthropicBlocks_MultipleToolResults(t *testing.T) {
-	parts := []uctypes.UseChatMessagePart{
+	parts := []uctypes.UIMessagePart{
 		{
 			Type:      "tool_result",
 			ToolUseID: "toolu_first",
@@ -413,7 +416,7 @@ func TestConvertPartsToAnthropicBlocks_MultipleToolResults(t *testing.T) {
 }
 
 func TestConvertPartsToAnthropicBlocks_SkipsUnknownTypes(t *testing.T) {
-	parts := []uctypes.UseChatMessagePart{
+	parts := []uctypes.UIMessagePart{
 		{Type: "text", Text: "Valid text"},
 		{Type: "unknown_type", Text: "Should be skipped"},
 		{Type: "text", Text: "Another valid text"},
@@ -440,7 +443,7 @@ func TestConvertPartsToAnthropicBlocks_SkipsUnknownTypes(t *testing.T) {
 }
 
 func TestConvertPartsToAnthropicBlocks_PropagatesValidationErrors(t *testing.T) {
-	parts := []uctypes.UseChatMessagePart{
+	parts := []uctypes.UIMessagePart{
 		{Type: "text", Text: "Valid text"},
 		{
 			Type: "image",

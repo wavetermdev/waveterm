@@ -15,17 +15,18 @@ const (
 )
 
 type UseChatRequest struct {
-	Messages []UseChatMessage `json:"messages"`
+	Messages []UIMessage `json:"messages"`
 }
 
-type UseChatMessage struct {
-	ID       string               `json:"id"`
-	Role     string               `json:"role"` // "system", "user", "assistant"
-	Metadata any                  `json:"metadata,omitempty"`
-	Parts    []UseChatMessagePart `json:"parts,omitempty"`
+type UIMessage struct {
+	ID       string          `json:"id"`
+	Role     string          `json:"role"` // "system", "user", "assistant"
+	Metadata any             `json:"metadata,omitempty"`
+	Parts    []UIMessagePart `json:"parts,omitempty"`
 }
 
-type UseChatMessagePart struct {
+type UIMessagePart struct {
+	// text, reasoning, tool-[toolname], source-url, source-document, file, data-[dataname], step-start
 	Type string `json:"type"`
 
 	// TextUIPart & ReasoningUIPart
@@ -134,8 +135,8 @@ type UseChatContentBlock struct {
 	ErrorText string `json:"errorText,omitempty"`
 }
 
-func (p *UseChatMessagePart) MarshalJSON() ([]byte, error) {
-	type Alias UseChatMessagePart
+func (p *UIMessagePart) MarshalJSON() ([]byte, error) {
+	type Alias UIMessagePart
 	aux := struct {
 		*Alias
 		Content interface{} `json:"content,omitempty"`
@@ -157,8 +158,8 @@ func (p *UseChatMessagePart) MarshalJSON() ([]byte, error) {
 	return json.Marshal(aux)
 }
 
-func (p *UseChatMessagePart) UnmarshalJSON(data []byte) error {
-	type Alias UseChatMessagePart
+func (p *UIMessagePart) UnmarshalJSON(data []byte) error {
+	type Alias UIMessagePart
 	aux := struct {
 		*Alias
 		Content json.RawMessage `json:"content"`
@@ -180,7 +181,7 @@ func (p *UseChatMessagePart) UnmarshalJSON(data []byte) error {
 }
 
 // GetContent extracts the text content from the parts array
-func (m *UseChatMessage) GetContent() string {
+func (m *UIMessage) GetContent() string {
 	if len(m.Parts) > 0 {
 		var content strings.Builder
 		for _, part := range m.Parts {
