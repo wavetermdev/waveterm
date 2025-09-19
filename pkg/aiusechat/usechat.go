@@ -47,7 +47,7 @@ func shouldUseChatCompletionsAPI(model string) bool {
 		strings.HasPrefix(m, "o1-")
 }
 
-func RunWaveAIRequest(ctx context.Context, sseHandler *sse.SSEHandlerCh, aiOpts *uctypes.AIOptsType, req *uctypes.UseChatRequest, tools []uctypes.ToolDefinition) error {
+func RunWaveAIRequest(ctx context.Context, sseHandler *sse.SSEHandlerCh, aiOpts *uctypes.AIOptsType, req *uctypes.UseChatRequest, tools []uctypes.ToolDefinition, cont *uctypes.ContinueResponse) error {
 	// Validate configuration
 	if aiOpts.Model == "" {
 		return fmt.Errorf("no AI model specified")
@@ -66,7 +66,7 @@ func RunWaveAIRequest(ctx context.Context, sseHandler *sse.SSEHandlerCh, aiOpts 
 
 	// Stream response based on API type
 	if aiOpts.APIType == APIType_Anthropic {
-		_, err := anthropic.StreamAnthropicResponses(ctx, sseHandler, aiOpts, req.Messages, tools)
+		_, err := anthropic.StreamAnthropicResponses(ctx, sseHandler, aiOpts, req.Messages, tools, cont)
 		if err != nil {
 			return fmt.Errorf("anthropic streaming error: %v", err)
 		}
@@ -112,7 +112,7 @@ func WaveAIHandler(w http.ResponseWriter, r *http.Request) {
 	defer sseHandler.Close()
 
 	// Run the AI request
-	if err := RunWaveAIRequest(r.Context(), sseHandler, aiOpts, &req, nil); err != nil {
+	if err := RunWaveAIRequest(r.Context(), sseHandler, aiOpts, &req, nil, nil); err != nil {
 		http.Error(w, fmt.Sprintf("AI request error: %v", err), http.StatusInternalServerError)
 		return
 	}

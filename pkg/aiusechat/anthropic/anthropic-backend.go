@@ -204,6 +204,15 @@ type partialJSON struct {
 	buf bytes.Buffer
 }
 
+type streamingState struct {
+	blockMap      map[int]*blockState
+	toolCalls     []uctypes.ToolCall
+	stopFromDelta string
+	msgID         string
+	model         string
+	stepStarted   bool
+}
+
 func (p *partialJSON) Write(s string) {
 	// The stream may send empty "" chunks; ignore if zero-length
 	if s == "" {
@@ -302,6 +311,7 @@ func StreamAnthropicResponses(
 	opts *uctypes.AIOptsType,
 	messages []uctypes.UIMessage,
 	tools []uctypes.ToolDefinition,
+	cont *uctypes.ContinueResponse,
 ) (rtnStopReason *uctypes.StopReason, rtnErr error) {
 	if sse == nil {
 		return nil, errors.New("sse handler is nil")
@@ -351,16 +361,13 @@ func StreamAnthropicResponses(
 	decoder := eventsource.NewDecoder(resp.Body)
 
 	// Per-response state
-	blockMap := map[int]*blockState{}
-	var toolCalls []uctypes.ToolCall
-	var stopFromDelta string
-	var msgID string
-	var model string
-	var stepStarted bool
+	state := &streamingState{
+		blockMap: map[int]*blockState{},
+	}
 
 	// Ensure step is closed on error/cancellation
 	defer func() {
-		if !stepStarted {
+		if !state.stepStarted {
 			return
 		}
 		_ = sse.AiMsgFinishStep()
@@ -396,13 +403,13 @@ func StreamAnthropicResponses(
 			}, nil
 		}
 
-		if stop, ret := handleAnthropicEvent(event, sse, blockMap, &toolCalls, &msgID, &model, stopFromDelta, &stepStarted); ret != nil {
+		if stop, ret := handleAnthropicEvent(event, sse, state, cont); ret != nil {
 			// Either error or message_stop triggered return
 			return ret, nil
 		} else {
 			// maybe updated final stop reason (from message_delta)
 			if stop != nil && *stop != "" {
-				stopFromDelta = *stop
+				state.stopFromDelta = *stop
 			}
 		}
 	}
@@ -410,9 +417,9 @@ func StreamAnthropicResponses(
 	// EOF - let defer handle cleanup
 	return &uctypes.StopReason{
 		Kind:      uctypes.StopKindDone,
-		RawReason: stopFromDelta,
-		MessageID: msgID,
-		Model:     model,
+		RawReason: state.stopFromDelta,
+		MessageID: state.msgID,
+		Model:     state.model,
 	}, nil
 }
 
@@ -427,12 +434,8 @@ func StreamAnthropicResponses(
 func handleAnthropicEvent(
 	event eventsource.Event,
 	sse *sse.SSEHandlerCh,
-	blocks map[int]*blockState,
-	toolCalls *[]uctypes.ToolCall,
-	msgID *string,
-	model *string,
-	stopFromPreviousDelta string,
-	stepStarted *bool,
+	state *streamingState,
+	cont *uctypes.ContinueResponse,
 ) (stopFromDelta *string, final *uctypes.StopReason) {
 	eventName := event.Event()
 	data := event.Data()
@@ -468,12 +471,14 @@ func handleAnthropicEvent(
 			return nil, &uctypes.StopReason{Kind: uctypes.StopKindError, ErrorType: "decode", ErrorText: err.Error()}
 		}
 		if ev.Message != nil {
-			*msgID = ev.Message.ID
-			*model = ev.Message.Model
+			state.msgID = ev.Message.ID
+			state.model = ev.Message.Model
 		}
-		_ = sse.AiMsgStart(*msgID)
+		if cont == nil {
+			_ = sse.AiMsgStart(state.msgID)
+		}
 		_ = sse.AiMsgStartStep()
-		*stepStarted = true
+		state.stepStarted = true
 		return nil, nil
 
 	case "content_block_start":
@@ -489,11 +494,11 @@ func handleAnthropicEvent(
 		switch ev.ContentBlock.Type {
 		case "text":
 			id := uuid.New().String()
-			blocks[idx] = &blockState{kind: blockText, localID: id}
+			state.blockMap[idx] = &blockState{kind: blockText, localID: id}
 			_ = sse.AiMsgTextStart(id)
 		case "thinking":
 			id := uuid.New().String()
-			blocks[idx] = &blockState{kind: blockThinking, localID: id}
+			state.blockMap[idx] = &blockState{kind: blockThinking, localID: id}
 			_ = sse.AiMsgReasoningStart(id)
 		case "tool_use":
 			tcID := ev.ContentBlock.ID
@@ -504,7 +509,7 @@ func handleAnthropicEvent(
 				toolName:   tName,
 				accumJSON:  &partialJSON{},
 			}
-			blocks[idx] = st
+			state.blockMap[idx] = st
 			_ = sse.AiMsgToolInputStart(tcID, tName)
 		default:
 			// ignore other block types gracefully per Anthropic guidance :contentReference[oaicite:18]{index=18}
@@ -520,7 +525,7 @@ func handleAnthropicEvent(
 		if ev.Index == nil || ev.Delta == nil {
 			return nil, nil
 		}
-		st := blocks[*ev.Index]
+		st := state.blockMap[*ev.Index]
 		if st == nil {
 			return nil, nil
 		}
@@ -554,7 +559,7 @@ func handleAnthropicEvent(
 		if ev.Index == nil {
 			return nil, nil
 		}
-		st := blocks[*ev.Index]
+		st := state.blockMap[*ev.Index]
 		if st == nil {
 			return nil, nil
 		}
@@ -578,7 +583,7 @@ func handleAnthropicEvent(
 				}
 			}
 			_ = sse.AiMsgToolInputAvailable(st.toolCallID, st.toolName, raw)
-			*toolCalls = append(*toolCalls, uctypes.ToolCall{
+			state.toolCalls = append(state.toolCalls, uctypes.ToolCall{
 				ID:    st.toolCallID,
 				Name:  st.toolName,
 				Input: input,
@@ -601,47 +606,47 @@ func handleAnthropicEvent(
 		// Decide finalization based on last known stop_reason.
 		// If we didn't capture it in message_delta, treat as end_turn.
 		reason := "end_turn"
-		if stopFromPreviousDelta != "" {
-			reason = stopFromPreviousDelta
+		if state.stopFromDelta != "" {
+			reason = state.stopFromDelta
 		}
 		switch reason {
 		case "tool_use":
 			return nil, &uctypes.StopReason{
 				Kind:       uctypes.StopKindToolUse,
 				RawReason:  reason,
-				MessageID:  *msgID,
-				Model:      *model,
-				ToolCalls:  *toolCalls,
+				MessageID:  state.msgID,
+				Model:      state.model,
+				ToolCalls:  state.toolCalls,
 				FinishStep: true,
 			}
 		case "max_tokens":
 			return nil, &uctypes.StopReason{
 				Kind:      uctypes.StopKindMaxTokens,
 				RawReason: reason,
-				MessageID: *msgID,
-				Model:     *model,
+				MessageID: state.msgID,
+				Model:     state.model,
 			}
 		case "refusal":
 			return nil, &uctypes.StopReason{
 				Kind:      uctypes.StopKindContent,
 				RawReason: reason,
-				MessageID: *msgID,
-				Model:     *model,
+				MessageID: state.msgID,
+				Model:     state.model,
 			}
 		case "pause_turn":
 			return nil, &uctypes.StopReason{
 				Kind:      uctypes.StopKindPauseTurn,
 				RawReason: reason,
-				MessageID: *msgID,
-				Model:     *model,
+				MessageID: state.msgID,
+				Model:     state.model,
 			}
 		default:
 			// end_turn, stop_sequence (treat as end of this call)
 			return nil, &uctypes.StopReason{
 				Kind:      uctypes.StopKindDone,
 				RawReason: reason,
-				MessageID: *msgID,
-				Model:     *model,
+				MessageID: state.msgID,
+				Model:     state.model,
 			}
 		}
 

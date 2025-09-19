@@ -136,7 +136,7 @@ func testOpenAI(ctx context.Context, model, message string, tools []uctypes.Tool
 	sseHandler := sse.MakeSSEHandlerCh(testWriter, ctx)
 	defer sseHandler.Close()
 
-	err := aiusechat.RunWaveAIRequest(ctx, sseHandler, opts, req, tools)
+	err := aiusechat.RunWaveAIRequest(ctx, sseHandler, opts, req, tools, nil)
 	if err != nil {
 		fmt.Printf("OpenAI streaming error: %v\n", err)
 	}
@@ -179,7 +179,7 @@ func testAnthropic(ctx context.Context, model, message string, tools []uctypes.T
 	sseHandler := sse.MakeSSEHandlerCh(testWriter, ctx)
 	defer sseHandler.Close()
 
-	err := aiusechat.RunWaveAIRequest(ctx, sseHandler, opts, req, tools)
+	err := aiusechat.RunWaveAIRequest(ctx, sseHandler, opts, req, tools, nil)
 	if err != nil {
 		fmt.Printf("Anthropic streaming error: %v\n", err)
 	}
