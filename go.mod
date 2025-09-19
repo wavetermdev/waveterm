@@ -25,7 +25,7 @@ require (
 	github.com/mattn/go-sqlite3 v1.14.32
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/openai/openai-go/v2 v2.1.1
-	github.com/sashabaranov/go-openai v1.41.1
+	github.com/sashabaranov/go-openai v1.41.2
 	github.com/sawka/txwrap v0.2.0
 	github.com/shirou/gopsutil/v4 v4.25.8
 	github.com/skeema/knownhosts v1.3.1
