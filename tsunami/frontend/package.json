@@ -18,7 +18,7 @@
     },
     "dependencies": {
         "clsx": "^2.1.1",
-        "debug": "^4.4.1",
+        "debug": "^4.4.3",
         "jotai": "^2.13.1",
         "react": "^19.1.1",
         "react-dom": "^19.1.1",
