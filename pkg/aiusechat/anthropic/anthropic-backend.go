@@ -206,7 +206,7 @@ type partialJSON struct {
 
 type streamingState struct {
 	blockMap      map[int]*blockState
-	toolCalls     []uctypes.ToolCall
+	toolCalls     []uctypes.WaveToolCall
 	stopFromDelta string
 	msgID         string
 	model         string
@@ -308,11 +308,11 @@ func parseAnthropicHTTPError(resp *http.Response) error {
 func StreamAnthropicResponses(
 	ctx context.Context,
 	sse *sse.SSEHandlerCh,
-	opts *uctypes.AIOptsType,
+	opts *uctypes.WaveAIOptsType,
 	messages []uctypes.UIMessage,
 	tools []uctypes.ToolDefinition,
-	cont *uctypes.ContinueResponse,
-) (rtnStopReason *uctypes.StopReason, rtnErr error) {
+	cont *uctypes.WaveContinueResponse,
+) (rtnStopReason *uctypes.WaveStopReason, rtnErr error) {
 	if sse == nil {
 		return nil, errors.New("sse handler is nil")
 	}
@@ -381,7 +381,7 @@ func StreamAnthropicResponses(
 		// Check for context cancellation
 		if err := ctx.Err(); err != nil {
 			_ = sse.AiMsgError("request cancelled")
-			return &uctypes.StopReason{
+			return &uctypes.WaveStopReason{
 				Kind:      uctypes.StopKindCanceled,
 				ErrorType: "cancelled",
 				ErrorText: "request cancelled",
@@ -396,7 +396,7 @@ func StreamAnthropicResponses(
 			}
 			// transport error mid-stream
 			_ = sse.AiMsgError(err.Error())
-			return &uctypes.StopReason{
+			return &uctypes.WaveStopReason{
 				Kind:      uctypes.StopKindError,
 				ErrorType: "stream",
 				ErrorText: err.Error(),
@@ -415,7 +415,7 @@ func StreamAnthropicResponses(
 	}
 
 	// EOF - let defer handle cleanup
-	return &uctypes.StopReason{
+	return &uctypes.WaveStopReason{
 		Kind:      uctypes.StopKindDone,
 		RawReason: state.stopFromDelta,
 		MessageID: state.msgID,
@@ -435,8 +435,8 @@ func handleAnthropicEvent(
 	event eventsource.Event,
 	sse *sse.SSEHandlerCh,
 	state *streamingState,
-	cont *uctypes.ContinueResponse,
-) (stopFromDelta *string, final *uctypes.StopReason) {
+	cont *uctypes.WaveContinueResponse,
+) (stopFromDelta *string, final *uctypes.WaveStopReason) {
 	eventName := event.Event()
 	data := event.Data()
 	switch eventName {
@@ -449,7 +449,7 @@ func handleAnthropicEvent(
 		if jerr := json.Unmarshal([]byte(data), &ev); jerr != nil {
 			err := fmt.Errorf("error event decode: %w", jerr)
 			_ = sse.AiMsgError(err.Error())
-			return nil, &uctypes.StopReason{Kind: uctypes.StopKindError, ErrorType: "decode", ErrorText: err.Error()}
+			return nil, &uctypes.WaveStopReason{Kind: uctypes.StopKindError, ErrorType: "decode", ErrorText: err.Error()}
 		}
 		msg := "unknown error"
 		etype := "error"
@@ -458,7 +458,7 @@ func handleAnthropicEvent(
 			etype = ev.Error.Type
 		}
 		_ = sse.AiMsgError(msg)
-		return nil, &uctypes.StopReason{
+		return nil, &uctypes.WaveStopReason{
 			Kind:      uctypes.StopKindError,
 			ErrorType: etype,
 			ErrorText: msg,
@@ -468,7 +468,7 @@ func handleAnthropicEvent(
 		var ev anthropicFullStreamEvent
 		if err := json.Unmarshal([]byte(data), &ev); err != nil {
 			_ = sse.AiMsgError(err.Error())
-			return nil, &uctypes.StopReason{Kind: uctypes.StopKindError, ErrorType: "decode", ErrorText: err.Error()}
+			return nil, &uctypes.WaveStopReason{Kind: uctypes.StopKindError, ErrorType: "decode", ErrorText: err.Error()}
 		}
 		if ev.Message != nil {
 			state.msgID = ev.Message.ID
@@ -485,7 +485,7 @@ func handleAnthropicEvent(
 		var ev anthropicFullStreamEvent
 		if err := json.Unmarshal([]byte(data), &ev); err != nil {
 			_ = sse.AiMsgError(err.Error())
-			return nil, &uctypes.StopReason{Kind: uctypes.StopKindError, ErrorType: "decode", ErrorText: err.Error()}
+			return nil, &uctypes.WaveStopReason{Kind: uctypes.StopKindError, ErrorType: "decode", ErrorText: err.Error()}
 		}
 		if ev.Index == nil || ev.ContentBlock == nil {
 			return nil, nil
@@ -520,7 +520,7 @@ func handleAnthropicEvent(
 		var ev anthropicFullStreamEvent
 		if err := json.Unmarshal([]byte(data), &ev); err != nil {
 			_ = sse.AiMsgError(err.Error())
-			return nil, &uctypes.StopReason{Kind: uctypes.StopKindError, ErrorType: "decode", ErrorText: err.Error()}
+			return nil, &uctypes.WaveStopReason{Kind: uctypes.StopKindError, ErrorType: "decode", ErrorText: err.Error()}
 		}
 		if ev.Index == nil || ev.Delta == nil {
 			return nil, nil
@@ -554,7 +554,7 @@ func handleAnthropicEvent(
 		var ev anthropicFullStreamEvent
 		if err := json.Unmarshal([]byte(data), &ev); err != nil {
 			_ = sse.AiMsgError(err.Error())
-			return nil, &uctypes.StopReason{Kind: uctypes.StopKindError, ErrorType: "decode", ErrorText: err.Error()}
+			return nil, &uctypes.WaveStopReason{Kind: uctypes.StopKindError, ErrorType: "decode", ErrorText: err.Error()}
 		}
 		if ev.Index == nil {
 			return nil, nil
@@ -572,18 +572,18 @@ func handleAnthropicEvent(
 			raw, jerr := st.accumJSON.FinalObject()
 			if jerr != nil {
 				_ = sse.AiMsgError(jerr.Error())
-				return nil, &uctypes.StopReason{Kind: uctypes.StopKindError, ErrorType: "parse", ErrorText: jerr.Error()}
+				return nil, &uctypes.WaveStopReason{Kind: uctypes.StopKindError, ErrorType: "parse", ErrorText: jerr.Error()}
 			}
 			var input any
 			if len(raw) > 0 {
 				jerr = json.Unmarshal(raw, &input)
 				if jerr != nil {
 					_ = sse.AiMsgError(jerr.Error())
-					return nil, &uctypes.StopReason{Kind: uctypes.StopKindError, ErrorType: "parse", ErrorText: jerr.Error()}
+					return nil, &uctypes.WaveStopReason{Kind: uctypes.StopKindError, ErrorType: "parse", ErrorText: jerr.Error()}
 				}
 			}
 			_ = sse.AiMsgToolInputAvailable(st.toolCallID, st.toolName, raw)
-			state.toolCalls = append(state.toolCalls, uctypes.ToolCall{
+			state.toolCalls = append(state.toolCalls, uctypes.WaveToolCall{
 				ID:    st.toolCallID,
 				Name:  st.toolName,
 				Input: input,
@@ -595,7 +595,7 @@ func handleAnthropicEvent(
 		var ev anthropicFullStreamEvent
 		if err := json.Unmarshal([]byte(data), &ev); err != nil {
 			_ = sse.AiMsgError(err.Error())
-			return nil, &uctypes.StopReason{Kind: uctypes.StopKindError, ErrorType: "decode", ErrorText: err.Error()}
+			return nil, &uctypes.WaveStopReason{Kind: uctypes.StopKindError, ErrorType: "decode", ErrorText: err.Error()}
 		}
 		if ev.Delta != nil && ev.Delta.StopReason != nil {
 			stopFromDelta = ev.Delta.StopReason
@@ -611,7 +611,7 @@ func handleAnthropicEvent(
 		}
 		switch reason {
 		case "tool_use":
-			return nil, &uctypes.StopReason{
+			return nil, &uctypes.WaveStopReason{
 				Kind:       uctypes.StopKindToolUse,
 				RawReason:  reason,
 				MessageID:  state.msgID,
@@ -620,21 +620,21 @@ func handleAnthropicEvent(
 				FinishStep: true,
 			}
 		case "max_tokens":
-			return nil, &uctypes.StopReason{
+			return nil, &uctypes.WaveStopReason{
 				Kind:      uctypes.StopKindMaxTokens,
 				RawReason: reason,
 				MessageID: state.msgID,
 				Model:     state.model,
 			}
 		case "refusal":
-			return nil, &uctypes.StopReason{
+			return nil, &uctypes.WaveStopReason{
 				Kind:      uctypes.StopKindContent,
 				RawReason: reason,
 				MessageID: state.msgID,
 				Model:     state.model,
 			}
 		case "pause_turn":
-			return nil, &uctypes.StopReason{
+			return nil, &uctypes.WaveStopReason{
 				Kind:      uctypes.StopKindPauseTurn,
 				RawReason: reason,
 				MessageID: state.msgID,
@@ -642,7 +642,7 @@ func handleAnthropicEvent(
 			}
 		default:
 			// end_turn, stop_sequence (treat as end of this call)
-			return nil, &uctypes.StopReason{
+			return nil, &uctypes.WaveStopReason{
 				Kind:      uctypes.StopKindDone,
 				RawReason: reason,
 				MessageID: state.msgID,

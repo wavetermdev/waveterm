@@ -18,7 +18,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/web/sse"
 )
 
-func createOpenAIRequest(opts *uctypes.AIOptsType, messages []uctypes.UIMessage, tools []uctypes.ToolDefinition) (openai.Client, responses.ResponseNewParams) {
+func createOpenAIRequest(opts *uctypes.WaveAIOptsType, messages []uctypes.UIMessage, tools []uctypes.ToolDefinition) (openai.Client, responses.ResponseNewParams) {
 	// Set up OpenAI client options
 	clientOpts := []option.RequestOption{
 		option.WithAPIKey(opts.APIToken),
@@ -91,7 +91,7 @@ func createOpenAIRequest(opts *uctypes.AIOptsType, messages []uctypes.UIMessage,
 	return client, req
 }
 
-func StreamOpenAIResponsesAPI(sseHandler *sse.SSEHandlerCh, ctx context.Context, opts *uctypes.AIOptsType, messages []uctypes.UIMessage, tools []uctypes.ToolDefinition) {
+func StreamOpenAIResponsesAPI(sseHandler *sse.SSEHandlerCh, ctx context.Context, opts *uctypes.WaveAIOptsType, messages []uctypes.UIMessage, tools []uctypes.ToolDefinition) {
 	client, req := createOpenAIRequest(opts, messages, tools)
 
 	// Create stream using Responses API

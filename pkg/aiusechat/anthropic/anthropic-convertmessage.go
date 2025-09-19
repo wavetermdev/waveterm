@@ -22,7 +22,7 @@ import (
 // and the aiprompts/aisdk-uimessage-type.md doc (v5)
 
 // buildAnthropicHTTPRequest creates a complete HTTP request for the Anthropic API
-func buildAnthropicHTTPRequest(ctx context.Context, opts *uctypes.AIOptsType, msgs []uctypes.UIMessage, tools []uctypes.ToolDefinition) (*http.Request, error) {
+func buildAnthropicHTTPRequest(ctx context.Context, opts *uctypes.WaveAIOptsType, msgs []uctypes.UIMessage, tools []uctypes.ToolDefinition) (*http.Request, error) {
 	if opts == nil {
 		return nil, errors.New("opts is nil")
 	}
@@ -177,22 +177,7 @@ func convertToolUsePart(p uctypes.UIMessagePart, role string) (*anthropicMessage
 		}, nil
 
 	} else {
-		// Unknown or missing state - default to tool_use for backward compatibility
-		input := p.Input
-		if input == nil {
-			input = map[string]interface{}{}
-		} else {
-			if _, ok := input.(map[string]interface{}); !ok {
-				return nil, fmt.Errorf("tool input must be an object/map, got %T", input)
-			}
-		}
-
-		return &anthropicMessageContentBlock{
-			Type:  "tool_use",
-			ID:    p.ToolCallID,
-			Name:  toolName,
-			Input: input,
-		}, nil
+		return nil, fmt.Errorf("invalid tool part state '%s' (must be 'input-streaming', 'input-available', 'output-available', or 'output-error')", p.State)
 	}
 }
 

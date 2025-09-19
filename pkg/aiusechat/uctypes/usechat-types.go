@@ -4,14 +4,7 @@
 package uctypes
 
 import (
-	"encoding/json"
 	"strings"
-)
-
-const (
-	ThinkingLevelLow    = "low"
-	ThinkingLevelMedium = "medium"
-	ThinkingLevelHigh   = "high"
 )
 
 type UseChatRequest struct {
@@ -30,8 +23,11 @@ type UIMessagePart struct {
 	Type string `json:"type"`
 
 	// TextUIPart & ReasoningUIPart
-	Text  string `json:"text,omitempty"`
-	State string `json:"state,omitempty"` // 'streaming' | 'done'
+	Text string `json:"text,omitempty"`
+	// State field:
+	// - For "text"/"reasoning" types: optional, values are "streaming" or "done"
+	// - For "tool-*" types: required, values are "input-streaming", "input-available", "output-available", or "output-error"
+	State string `json:"state,omitempty"`
 
 	// ToolUIPart
 	ToolCallID       string `json:"toolCallId,omitempty"`
@@ -57,14 +53,6 @@ type UIMessagePart struct {
 	ProviderMetadata map[string]any `json:"providerMetadata,omitempty"`
 }
 
-type ImageSource struct {
-	Type      string `json:"type"`                 // "url", "base64", or "file"
-	URL       string `json:"url,omitempty"`        // for type="url"
-	Data      string `json:"data,omitempty"`       // for type="base64"
-	MediaType string `json:"media_type,omitempty"` // required for base64
-	FileID    string `json:"file_id,omitempty"`    // for type="file"
-}
-
 // ToolDefinition represents a tool that can be used by the AI model
 type ToolDefinition struct {
 	Name         string                        `json:"name"`
@@ -73,14 +61,58 @@ type ToolDefinition struct {
 	ToolCallback func(any) (*UIMessage, error) `json:"-"`
 }
 
-type ContinueResponse struct {
+//------------------
+// Wave specific types, stop reasons, tool calls, config
+// these are used internally to coordinate the calls/steps
+
+const (
+	ThinkingLevelLow    = "low"
+	ThinkingLevelMedium = "medium"
+	ThinkingLevelHigh   = "high"
+)
+
+type StopReasonKind string
+
+const (
+	StopKindDone      StopReasonKind = "done"
+	StopKindToolUse   StopReasonKind = "tool_use"
+	StopKindMaxTokens StopReasonKind = "max_tokens"
+	StopKindContent   StopReasonKind = "content_filter"
+	StopKindCanceled  StopReasonKind = "canceled"
+	StopKindError     StopReasonKind = "error"
+	StopKindPauseTurn StopReasonKind = "pause_turn"
+)
+
+type WaveToolCall struct {
+	ID    string `json:"id"`              // Anthropic tool_use.id
+	Name  string `json:"name,omitempty"`  // tool name (if provided)
+	Input any    `json:"input,omitempty"` // accumulated input JSON
+}
+
+type WaveStopReason struct {
+	Kind      StopReasonKind `json:"kind"`
+	RawReason string         `json:"raw_reason,omitempty"`
+	MessageID string         `json:"message_id,omitempty"`
+	Model     string         `json:"model,omitempty"`
+
+	ToolCalls []WaveToolCall `json:"tool_calls,omitempty"`
+
+	ErrorType string `json:"error_type,omitempty"`
+	ErrorText string `json:"error_text,omitempty"`
+
+	FinishStep bool `json:"finish_step,omitempty"`
+}
+
+// Wave Specific parameter used to signal to our step function that this is a continuation step, not an initial step
+type WaveContinueResponse struct {
 	MessageID             string         `json:"message_id,omitempty"`
 	Model                 string         `json:"model,omitempty"`
 	ContinueFromKind      StopReasonKind `json:"continue_from_kind"`
 	ContinueFromRawReason string         `json:"continue_from_raw_reason,omitempty"`
 }
 
-type AIOptsType struct {
+// Wave Specific AI opts for configuration
+type WaveAIOptsType struct {
 	APIType       string `json:"apitype,omitempty"`
 	Model         string `json:"model"`
 	APIToken      string `json:"apitoken"`
@@ -93,6 +125,9 @@ type AIOptsType struct {
 	ThinkingLevel string `json:"thinkinglevel,omitempty"` // ThinkingLevelLow, ThinkingLevelMedium, or ThinkingLevelHigh
 }
 
+// ---------------------
+// AI SDK Streaming Protocol
+
 // Type can be one of these consts...
 // text-start, text-delta, text-end,
 // reasoning-start, reasoning-delta, reasoning-end,
@@ -101,7 +136,7 @@ type AIOptsType struct {
 // data-*,
 // tool-input-start, tool-input-delta, tool-input-available, tool-output-available,
 // error, start-step, finish-step, finish
-type UseChatContentBlock struct {
+type UseChatStreamPart struct {
 	Type string `json:"type"`
 
 	// Text
@@ -130,7 +165,6 @@ type UseChatContentBlock struct {
 	ErrorText string `json:"errorText,omitempty"`
 }
 
-
 // GetContent extracts the text content from the parts array
 func (m *UIMessage) GetContent() string {
 	if len(m.Parts) > 0 {
@@ -143,29 +177,4 @@ func (m *UIMessage) GetContent() string {
 		return content.String()
 	}
 	return ""
-}
-
-func parseContentFromJSON(rawContent json.RawMessage) ([]UseChatContentBlock, error) {
-	if len(rawContent) == 0 {
-		return nil, nil
-	}
-
-	// Try to unmarshal as string first
-	var contentStr string
-	if err := json.Unmarshal(rawContent, &contentStr); err == nil {
-		// It's a string - convert to single text block
-		return []UseChatContentBlock{
-			{
-				Type: "text",
-				Text: contentStr,
-			},
-		}, nil
-	}
-
-	// Not a string - unmarshal as array of blocks
-	var contentBlocks []UseChatContentBlock
-	if err := json.Unmarshal(rawContent, &contentBlocks); err != nil {
-		return nil, err
-	}
-	return contentBlocks, nil
 }

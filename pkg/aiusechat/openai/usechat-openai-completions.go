@@ -40,7 +40,7 @@ type OpenAIUsageResponse struct {
 	TotalTokens      int `json:"total_tokens"`
 }
 
-func StreamOpenAIChatCompletions(sseHandler *sse.SSEHandlerCh, ctx context.Context, opts *uctypes.AIOptsType, messages []uctypes.UIMessage) {
+func StreamOpenAIChatCompletions(sseHandler *sse.SSEHandlerCh, ctx context.Context, opts *uctypes.WaveAIOptsType, messages []uctypes.UIMessage) {
 	// Set up OpenAI client options
 	clientOpts := []option.RequestOption{
 		option.WithAPIKey(opts.APIToken),
