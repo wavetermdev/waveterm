@@ -135,8 +135,8 @@ github.com/mattn/go-sqlite3 v1.14.32 h1:JD12Ag3oLy1zQA+BNn74xRgaBbdhbNIDYvQUEuuE
 github.com/mattn/go-sqlite3 v1.14.32/go.mod h1:Uh1q+B4BYcTPb+yiD3kU8Ct7aC0hY9fxUwlHK0RXw+Y=
 github.com/mitchellh/mapstructure v1.5.0 h1:jeMsZIYE/09sWLaz43PL7Gy6RuMjD2eJVyuac5Z2hdY=
 github.com/mitchellh/mapstructure v1.5.0/go.mod h1:bFUtVrKA4DC2yAKiSyO/QUcy7e+RRV2QTWOzhPopBRo=
-github.com/openai/openai-go/v2 v2.1.1 h1:/RMA/V3D+yF/Cc4jHXFt6lkqSOWRf5roRi+DvZaDYQI=
-github.com/openai/openai-go/v2 v2.1.1/go.mod h1:sIUkR+Cu/PMUVkSKhkk742PRURkQOCFhiwJ7eRSBqmk=
+github.com/openai/openai-go/v2 v2.5.0 h1:5kveb/ibAddz5z79B1kb2wqWTs6kGDG1gbA+C0Aqsrg=
+github.com/openai/openai-go/v2 v2.5.0/go.mod h1:sIUkR+Cu/PMUVkSKhkk742PRURkQOCFhiwJ7eRSBqmk=
 github.com/photostorm/pty v1.1.19-0.20230903182454-31354506054b h1:cLGKfKb1uk0hxI0Q8L83UAJPpeJ+gSpn3cCU/tjd3eg=
 github.com/photostorm/pty v1.1.19-0.20230903182454-31354506054b/go.mod h1:KO+FcPtyLAiRC0hJwreJVvfwc7vnNz77UxBTIGHdPVk=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
