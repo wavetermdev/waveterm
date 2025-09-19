@@ -47,7 +47,7 @@ func shouldUseChatCompletionsAPI(model string) bool {
 		strings.HasPrefix(m, "o1-")
 }
 
-func RunWaveAIRequest(ctx context.Context, sseHandler *sse.SSEHandlerCh, aiOpts *uctypes.AIOptsType, req *uctypes.UseChatRequest, tools []uctypes.ToolDefinition, cont *uctypes.ContinueResponse) error {
+func RunWaveAIRequestStep(ctx context.Context, sseHandler *sse.SSEHandlerCh, aiOpts *uctypes.AIOptsType, req *uctypes.UseChatRequest, tools []uctypes.ToolDefinition, cont *uctypes.ContinueResponse) error {
 	// Validate configuration
 	if aiOpts.Model == "" {
 		return fmt.Errorf("no AI model specified")
@@ -60,6 +60,10 @@ func RunWaveAIRequest(ctx context.Context, sseHandler *sse.SSEHandlerCh, aiOpts 
 
 	if aiOpts.APIToken == "" {
 		return fmt.Errorf("no API token provided")
+	}
+
+	if cont != nil && aiOpts.Model != cont.Model {
+		return fmt.Errorf("cannot continue with a different model, model:%q, cont-model:%q", aiOpts.Model, cont.Model)
 	}
 
 	log.Printf("using AI model: %s (%s)", aiOpts.Model, aiOpts.BaseURL)
@@ -84,6 +88,10 @@ func RunWaveAIRequest(ctx context.Context, sseHandler *sse.SSEHandlerCh, aiOpts 
 		return nil
 	}
 	return fmt.Errorf("Unimplemented API Type %q", aiOpts.APIType)
+}
+
+func RunWaveAIRequest(ctx context.Context, sseHandler *sse.SSEHandlerCh, aiOpts *uctypes.AIOptsType, req *uctypes.UseChatRequest, tools []uctypes.ToolDefinition) error {
+	return RunWaveAIRequestStep(ctx, sseHandler, aiOpts, req, tools, nil)
 }
 
 func WaveAIHandler(w http.ResponseWriter, r *http.Request) {
@@ -112,7 +120,7 @@ func WaveAIHandler(w http.ResponseWriter, r *http.Request) {
 	defer sseHandler.Close()
 
 	// Run the AI request
-	if err := RunWaveAIRequest(r.Context(), sseHandler, aiOpts, &req, nil, nil); err != nil {
+	if err := RunWaveAIRequest(r.Context(), sseHandler, aiOpts, &req, nil); err != nil {
 		http.Error(w, fmt.Sprintf("AI request error: %v", err), http.StatusInternalServerError)
 		return
 	}

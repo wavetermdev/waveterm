@@ -55,12 +55,6 @@ type UIMessagePart struct {
 
 	// Provider metadata (ReasoningUIPart, SourceUrlUIPart, SourceDocumentUIPart)
 	ProviderMetadata map[string]any `json:"providerMetadata,omitempty"`
-
-	// Legacy fields for backward compatibility
-	Source    *ImageSource          `json:"source,omitempty"`      // For images
-	ToolUseID string                `json:"tool_use_id,omitempty"` // For tool_result (Anthropic format)
-	Content   []UseChatContentBlock `json:"-"`                     // handled by custom marshal/unmarshal
-	IsError   *bool                 `json:"is_error,omitempty"`    // For tool_result (Anthropic format)
 }
 
 type ImageSource struct {
@@ -73,9 +67,10 @@ type ImageSource struct {
 
 // ToolDefinition represents a tool that can be used by the AI model
 type ToolDefinition struct {
-	Name        string         `json:"name"`
-	Description string         `json:"description"`
-	InputSchema map[string]any `json:"input_schema"`
+	Name         string                        `json:"name"`
+	Description  string                        `json:"description"`
+	InputSchema  map[string]any                `json:"input_schema"`
+	ToolCallback func(any) (*UIMessage, error) `json:"-"`
 }
 
 type ContinueResponse struct {
@@ -135,50 +130,6 @@ type UseChatContentBlock struct {
 	ErrorText string `json:"errorText,omitempty"`
 }
 
-func (p *UIMessagePart) MarshalJSON() ([]byte, error) {
-	type Alias UIMessagePart
-	aux := struct {
-		*Alias
-		Content interface{} `json:"content,omitempty"`
-	}{
-		Alias: (*Alias)(p),
-	}
-
-	// Convert Content field for marshaling
-	if len(p.Content) == 0 {
-		// Omit empty content
-	} else if len(p.Content) == 1 && p.Content[0].Type == "text" {
-		// Single text block - marshal as simple string
-		aux.Content = p.Content[0].Text
-	} else {
-		// Multiple blocks or non-text - marshal as array
-		aux.Content = p.Content
-	}
-
-	return json.Marshal(aux)
-}
-
-func (p *UIMessagePart) UnmarshalJSON(data []byte) error {
-	type Alias UIMessagePart
-	aux := struct {
-		*Alias
-		Content json.RawMessage `json:"content"`
-	}{
-		Alias: (*Alias)(p),
-	}
-
-	if err := json.Unmarshal(data, &aux); err != nil {
-		return err
-	}
-
-	// Handle Content field
-	content, err := parseContentFromJSON(aux.Content)
-	if err != nil {
-		return err
-	}
-	p.Content = content
-	return nil
-}
 
 // GetContent extracts the text content from the parts array
 func (m *UIMessage) GetContent() string {

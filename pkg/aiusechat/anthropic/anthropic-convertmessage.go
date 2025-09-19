@@ -91,12 +91,8 @@ func buildAnthropicHTTPRequest(ctx context.Context, opts *uctypes.AIOptsType, ms
 	return req, nil
 }
 
-// convertToolUsePart converts a tool-* type UIMessagePart to an Anthropic tool_use block
+// convertToolUsePart converts a tool-* type UIMessagePart to an Anthropic tool_use or tool_result block
 func convertToolUsePart(p uctypes.UIMessagePart, role string) (*anthropicMessageContentBlock, error) {
-	if role != "assistant" {
-		return nil, fmt.Errorf("dropping tool part in %s message (tool parts should be in assistant messages)", role)
-	}
-	
 	// Sanity check that this is actually a tool-* type
 	if !strings.HasPrefix(p.Type, "tool-") {
 		return nil, fmt.Errorf("convertToolUsePart expects 'tool-*' type, got '%s'", p.Type)
@@ -113,30 +109,91 @@ func convertToolUsePart(p uctypes.UIMessagePart, role string) (*anthropicMessage
 	if p.ToolCallID == "" {
 		return nil, fmt.Errorf("tool call ID is required but missing")
 	}
-	
+
 	// Validate ToolCallID charset (must match ^[a-zA-Z0-9_-]+$)
 	validIDPattern := regexp.MustCompile(`^[a-zA-Z0-9_-]+$`)
 	if !validIDPattern.MatchString(p.ToolCallID) {
 		return nil, fmt.Errorf("tool call ID contains invalid characters (must be alphanumeric, underscore, or dash): %s", p.ToolCallID)
 	}
 
-	// Anthropic expects an object for input, never nil
-	input := p.Input
-	if input == nil {
-		input = map[string]interface{}{}
-	} else {
-		// Validate that input is an object (map), not string/array
-		if _, ok := input.(map[string]interface{}); !ok {
-			return nil, fmt.Errorf("tool input must be an object/map, got %T", input)
+	// Handle different states
+	if p.State == "input-streaming" || p.State == "input-available" {
+		// These states represent tool calls (tool_use blocks)
+		// Anthropic expects an object for input, never nil
+		input := p.Input
+		if input == nil {
+			input = map[string]interface{}{}
+		} else {
+			// Validate that input is an object (map), not string/array
+			if _, ok := input.(map[string]interface{}); !ok {
+				return nil, fmt.Errorf("tool input must be an object/map, got %T", input)
+			}
 		}
-	}
 
-	return &anthropicMessageContentBlock{
-		Type:  "tool_use",
-		ID:    p.ToolCallID,
-		Name:  toolName,
-		Input: input,
-	}, nil
+		return &anthropicMessageContentBlock{
+			Type:  "tool_use",
+			ID:    p.ToolCallID,
+			Name:  toolName,
+			Input: input,
+		}, nil
+
+	} else if p.State == "output-available" {
+		// This state represents successful tool execution result (tool_result block)
+		var content interface{}
+		if p.Output != nil {
+			// Try to convert output to string if it's not already
+			if outputStr, ok := p.Output.(string); ok {
+				content = outputStr
+			} else {
+				// If it's not a string, marshal it to JSON
+				outputBytes, err := json.Marshal(p.Output)
+				if err != nil {
+					return nil, fmt.Errorf("failed to marshal tool output: %w", err)
+				}
+				content = string(outputBytes)
+			}
+		} else {
+			content = ""
+		}
+
+		return &anthropicMessageContentBlock{
+			Type:      "tool_result",
+			ToolUseID: p.ToolCallID,
+			Content:   content,
+		}, nil
+
+	} else if p.State == "output-error" {
+		// This state represents failed tool execution (tool_result block with error)
+		errorContent := p.ErrorText
+		if errorContent == "" {
+			errorContent = "Tool execution failed"
+		}
+
+		return &anthropicMessageContentBlock{
+			Type:      "tool_result",
+			ToolUseID: p.ToolCallID,
+			Content:   errorContent,
+			IsError:   true,
+		}, nil
+
+	} else {
+		// Unknown or missing state - default to tool_use for backward compatibility
+		input := p.Input
+		if input == nil {
+			input = map[string]interface{}{}
+		} else {
+			if _, ok := input.(map[string]interface{}); !ok {
+				return nil, fmt.Errorf("tool input must be an object/map, got %T", input)
+			}
+		}
+
+		return &anthropicMessageContentBlock{
+			Type:  "tool_use",
+			ID:    p.ToolCallID,
+			Name:  toolName,
+			Input: input,
+		}, nil
+	}
 }
 
 // convertPartToAnthropicBlocks converts a single UIMessagePart to one or more Anthropic content blocks
@@ -304,67 +361,10 @@ func convertFileUIMessagePart(p uctypes.UIMessagePart) (*anthropicMessageContent
 
 }
 
-// convertToolResultPart converts a tool_result part to Anthropic tool_result block format
-func convertToolResultPart(p uctypes.UIMessagePart) (map[string]interface{}, error) {
-	if p.ToolUseID == "" {
-		return nil, errors.New("tool_result part missing tool_use_id")
-	}
-
-	block := map[string]interface{}{
-		"type":        "tool_result",
-		"tool_use_id": p.ToolUseID,
-	}
-
-	// Handle content field - can be string or array of content blocks
-	if len(p.Content) == 0 {
-		// No content blocks, use empty string
-		block["content"] = ""
-	} else if len(p.Content) == 1 && p.Content[0].Type == "text" {
-		// Single text block - use string format
-		block["content"] = p.Content[0].Text
-	} else {
-		// Multiple blocks or non-text - convert to Anthropic content block array
-		var contentBlocks []interface{}
-		for _, cb := range p.Content {
-			switch cb.Type {
-			case "text":
-				contentBlocks = append(contentBlocks, map[string]interface{}{
-					"type": "text",
-					"text": cb.Text,
-				})
-			default:
-				// For now, convert non-text content to text representation
-				// This handles cases like tool output data
-				text := ""
-				if cb.Text != "" {
-					text = cb.Text
-				} else if cb.Data != nil {
-					// Convert data to JSON string
-					if jsonBytes, err := json.Marshal(cb.Data); err == nil {
-						text = string(jsonBytes)
-					}
-				}
-				contentBlocks = append(contentBlocks, map[string]interface{}{
-					"type": "text",
-					"text": text,
-				})
-			}
-		}
-		block["content"] = contentBlocks
-	}
-
-	// Add is_error if specified
-	if p.IsError != nil {
-		block["is_error"] = *p.IsError
-	}
-
-	return block, nil
-}
-
 // convertSourceToAnthropicBlocks converts source-url or source-document parts to Anthropic blocks
 func convertSourceToAnthropicBlocks(p uctypes.UIMessagePart, blockIndex int) ([]anthropicMessageContentBlock, error) {
 	var sourceBlock anthropicMessageContentBlock
-	
+
 	if p.Type == "source-url" {
 		// Convert source-url to web_search_result block
 		sourceBlock = anthropicMessageContentBlock{
@@ -385,7 +385,7 @@ func convertSourceToAnthropicBlocks(p uctypes.UIMessagePart, blockIndex int) ([]
 	} else {
 		return nil, fmt.Errorf("convertSourceToAnthropicBlocks expects 'source-url' or 'source-document', got '%s'", p.Type)
 	}
-	
+
 	// Create citation text block pointing to the source block
 	citationBlock := anthropicMessageContentBlock{
 		Type: "text",
@@ -396,6 +396,6 @@ func convertSourceToAnthropicBlocks(p uctypes.UIMessagePart, blockIndex int) ([]
 			DocumentTitle: p.Title,
 		}},
 	}
-	
+
 	return []anthropicMessageContentBlock{sourceBlock, citationBlock}, nil
 }
