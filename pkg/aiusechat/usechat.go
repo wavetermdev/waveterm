@@ -33,10 +33,11 @@ func getWaveAISettings() (*uctypes.AIOptsType, error) {
 		return nil, fmt.Errorf("no anthropic secret found")
 	}
 	return &uctypes.AIOptsType{
-		APIToken:  anthropicSecret,
-		Model:     DefaultClaudeModel,
-		APIType:   APIType_Anthropic,
-		MaxTokens: 10 * 1024,
+		APIToken:      anthropicSecret,
+		Model:         DefaultClaudeModel,
+		APIType:       APIType_Anthropic,
+		MaxTokens:     4 * 1024,
+		ThinkingLevel: uctypes.ThinkingLevelMedium,
 	}, nil
 }
 
@@ -98,9 +99,12 @@ func RunWaveAIRequest(ctx context.Context, sseHandler *sse.SSEHandlerCh, aiOpts 
 
 func WaveAIPostMessage(ctx context.Context, sseHandler *sse.SSEHandlerCh, aiOpts *uctypes.AIOptsType, chatID string, tools []uctypes.ToolDefinition) error {
 	// Stream the Anthropic chat response
-	_, _, err := anthropic.StreamAnthropicChatStep(ctx, sseHandler, aiOpts, chatID, tools, nil)
+	_, rtnMessage, err := anthropic.StreamAnthropicChatStep(ctx, sseHandler, aiOpts, chatID, tools, nil)
 	if err != nil {
 		return fmt.Errorf("failed to stream anthropic chat: %w", err)
+	}
+	if rtnMessage != nil {
+		chatstore.DefaultChatStore.PostMessage(chatID, aiOpts, rtnMessage)
 	}
 	return nil
 }
@@ -172,7 +176,4 @@ func WaveAIPostMessageHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, fmt.Sprintf("Failed to post message: %v", err), http.StatusInternalServerError)
 		return
 	}
-
-	// Return success
-	w.WriteHeader(http.StatusOK)
 }

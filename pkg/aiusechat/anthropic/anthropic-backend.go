@@ -378,6 +378,13 @@ func StreamAnthropicChatStep(
 		anthropicMsgs = append(anthropicMsgs, inputMsg)
 	}
 
+	// pretty print json of anthropicMsgs
+	if jsonBytes, err := json.MarshalIndent(anthropicMsgs, "", "  "); err == nil {
+		log.Printf("anthropicMsgs JSON:\n%s", string(jsonBytes))
+	} else {
+		log.Printf("failed to marshal anthropicMsgs to JSON: %v", err)
+	}
+
 	req, err := buildAnthropicHTTPRequest(ctx, aiOpts, anthropicMsgs, tools)
 	if err != nil {
 		return nil, nil, err
