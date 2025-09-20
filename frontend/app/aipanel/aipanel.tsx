@@ -20,10 +20,19 @@ const AIPanelComponent = memo(({ className, onClose }: AIPanelProps) => {
     const [input, setInput] = useState("");
     const modelRef = useRef(new WaveAIModel());
     const model = modelRef.current;
+    const chatIdRef = useRef(crypto.randomUUID());
+    const realMessageRef = useRef<AIMessage>(null);
 
     const { messages, sendMessage, status } = useChat({
         transport: new DefaultChatTransport({
-            api: `${getWebServerEndpoint()}/api/aichat?waveai=1`,
+            api: `${getWebServerEndpoint()}/api/post-chat-message?chatid=${chatIdRef.current}`,
+            prepareSendMessagesRequest: (opts) => {
+                const msg = realMessageRef.current;
+                realMessageRef.current = null;
+                return {
+                    body: msg,
+                };
+            },
         }),
         onError: (error) => {
             console.error("AI Chat error:", error);
@@ -33,7 +42,11 @@ const AIPanelComponent = memo(({ className, onClose }: AIPanelProps) => {
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (!input.trim() || status !== "ready") return;
-
+        const realMessage: AIMessage = {
+            messageid: crypto.randomUUID(),
+            parts: [{ type: "text", text: input.trim() }],
+        };
+        realMessageRef.current = realMessage;
         sendMessage({ text: input.trim() });
         setInput("");
     };

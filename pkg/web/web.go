@@ -468,6 +468,9 @@ func RunWebServer(listener net.Listener) {
 	// Routes that should NOT have timeout handling (for streaming)
 	gr.HandleFunc("/api/aichat", WebFnWrap(WebFnOpts{AllowCaching: false}, aiusechat.WaveAIHandler))
 
+	// Routes that should NOT have timeout handling (for streaming)
+	gr.HandleFunc("/api/post-chat-message", WebFnWrap(WebFnOpts{AllowCaching: false}, aiusechat.WaveAIPostMessageHandler))
+
 	// Other routes without timeout
 	gr.PathPrefix(docsitePrefix).Handler(http.StripPrefix(docsitePrefix, docsite.GetDocsiteHandler()))
 	gr.PathPrefix(schemaPrefix).Handler(http.StripPrefix(schemaPrefix, schema.GetSchemaHandler()))

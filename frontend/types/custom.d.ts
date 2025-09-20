@@ -448,6 +448,24 @@ declare global {
         closeAction?: () => void;
         showDismiss?: boolean;
     };
+
+    type AIMessage = {
+        messageid: string;
+        parts: AIMessagePart[];
+    };
+
+    type AIMessagePart =
+        | {
+            type: "text";
+            text: string;
+        }
+        | {
+            type: "file";
+            mimetype: string; // required
+            filename?: string;
+            data?: string; // base64 encoded data
+            url?: string;
+        };
 }
 
 export {};
