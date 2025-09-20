@@ -4,6 +4,8 @@
 package uctypes
 
 import (
+	"fmt"
+	"net/url"
 	"strings"
 )
 
@@ -130,7 +132,112 @@ type AIChat struct {
 	APIType        string `json:"apitype"`
 	Model          string `json:"model"`
 	APIVersion     string `json:"apiversion"`
-	NativeMessages []any  `json:"nativemessages"`
+	NativeMessages []GenAIMessage  `json:"nativemessages"`
+}
+
+// GenAIMessage interface for messages stored in conversations
+// All messages must have a unique identifier for idempotency checks
+type GenAIMessage interface {
+	GetMessageId() string
+}
+
+const (
+	AIMessagePartTypeText = "text"
+	AIMessagePartTypeFile = "file"
+)
+
+// wave specific for POSTing a new message to a convo
+type AIMessage struct {
+	MessageId string          `json:"messageid"` // only for idempotency
+	Parts     []AIMessagePart `json:"parts"`
+}
+
+type AIMessagePart struct {
+	Type string `json:"type"` // "text", "file"
+
+	// for "text"
+	Text string `json:"text,omitempty"`
+
+	// for "file"
+	// mimetype is required, filename is not
+	// either data or url (not both) must be set
+	// url must be either an "https" or "data" url
+	FileName string `json:"filename,omitempty"`
+	MimeType string `json:"mimetype,omitempty"` // required
+	Data     []byte `json:"data,omitempty"`     // raw data (base64 on wire)
+	URL      string `json:"url,omitempty"`
+}
+
+func (m *AIMessage) GetMessageId() string {
+	return m.MessageId
+}
+
+func (m *AIMessage) Validate() error {
+	if m.MessageId == "" {
+		return fmt.Errorf("messageid must be set")
+	}
+	
+	if len(m.Parts) == 0 {
+		return fmt.Errorf("parts must not be empty")
+	}
+	
+	for i, part := range m.Parts {
+		if err := part.Validate(); err != nil {
+			return fmt.Errorf("part %d: %w", i, err)
+		}
+	}
+	
+	return nil
+}
+
+func (p *AIMessagePart) Validate() error {
+	if p.Type == AIMessagePartTypeText {
+		if p.Text == "" {
+			return fmt.Errorf("text type requires non-empty text field")
+		}
+		// Check that no file fields are set
+		if p.FileName != "" || p.MimeType != "" || len(p.Data) > 0 || p.URL != "" {
+			return fmt.Errorf("text type cannot have file fields set")
+		}
+		return nil
+	}
+	
+	if p.Type == AIMessagePartTypeFile {
+		if p.Text != "" {
+			return fmt.Errorf("file type cannot have text field set")
+		}
+		
+		if p.MimeType == "" {
+			return fmt.Errorf("file type requires mimetype")
+		}
+		
+		// Either data or url (not both) must be set
+		hasData := len(p.Data) > 0
+		hasURL := p.URL != ""
+		
+		if !hasData && !hasURL {
+			return fmt.Errorf("file type requires either data or url")
+		}
+		
+		if hasData && hasURL {
+			return fmt.Errorf("file type cannot have both data and url set")
+		}
+		
+		// If URL is set, validate it's https or data URL
+		if hasURL {
+			parsedURL, err := url.Parse(p.URL)
+			if err != nil {
+				return fmt.Errorf("invalid url: %w", err)
+			}
+			
+			if parsedURL.Scheme != "https" && parsedURL.Scheme != "data" {
+				return fmt.Errorf("url must be https or data URL, got %q", parsedURL.Scheme)
+			}
+		}
+		return nil
+	}
+	
+	return fmt.Errorf("type must be %q or %q, got %q", AIMessagePartTypeText, AIMessagePartTypeFile, p.Type)
 }
 
 // ---------------------

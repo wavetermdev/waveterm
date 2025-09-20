@@ -12,7 +12,9 @@ import (
 	"os"
 	"strings"
 
+	"github.com/google/uuid"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/anthropic"
+	"github.com/wavetermdev/waveterm/pkg/aiusechat/chatstore"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/openai"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
 	"github.com/wavetermdev/waveterm/pkg/web/sse"
@@ -124,4 +126,76 @@ func WaveAIHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, fmt.Sprintf("AI request error: %v", err), http.StatusInternalServerError)
 		return
 	}
+}
+
+func WaveAIPostMessage(ctx context.Context, sseHandler *sse.SSEHandlerCh, aiOpts *uctypes.AIOptsType, chatID string, message *uctypes.AIMessage, tools []uctypes.ToolDefinition) error {
+	// Only support Anthropic for now
+	if aiOpts.APIType != APIType_Anthropic {
+		return fmt.Errorf("only Anthropic API type is supported, got: %s", aiOpts.APIType)
+	}
+
+	// Convert AIMessage to Anthropic chat message
+	anthropicMsg, err := anthropic.ConvertAIMessageToAnthropicChatMessage(*message)
+	if err != nil {
+		return fmt.Errorf("message conversion failed: %w", err)
+	}
+
+	// Post message to chat store
+	if err := chatstore.DefaultChatStore.PostMessage(chatID, aiOpts, anthropicMsg); err != nil {
+		return fmt.Errorf("failed to store message: %w", err)
+	}
+
+	return nil
+}
+
+func WaveAIPostMessageHandler(w http.ResponseWriter, r *http.Request) {
+	// Only allow POST method
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Get chatid parameter and validate it's a UUID
+	chatID := r.URL.Query().Get("chatid")
+	if chatID == "" {
+		http.Error(w, "chatid parameter is required", http.StatusBadRequest)
+		return
+	}
+	if _, err := uuid.Parse(chatID); err != nil {
+		http.Error(w, "chatid must be a valid UUID", http.StatusBadRequest)
+		return
+	}
+
+	// Parse request body
+	var message uctypes.AIMessage
+	if err := json.NewDecoder(r.Body).Decode(&message); err != nil {
+		http.Error(w, fmt.Sprintf("Invalid request body: %v", err), http.StatusBadRequest)
+		return
+	}
+
+	// Validate the message
+	if err := message.Validate(); err != nil {
+		http.Error(w, fmt.Sprintf("Message validation failed: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	// Get WaveAI settings
+	aiOpts, err := getWaveAISettings()
+	if err != nil {
+		http.Error(w, fmt.Sprintf("WaveAI configuration error: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	// Create SSE handler and set up streaming
+	sseHandler := sse.MakeSSEHandlerCh(w, r.Context())
+	defer sseHandler.Close()
+
+	// Call the core WaveAIPostMessage function
+	if err := WaveAIPostMessage(r.Context(), sseHandler, aiOpts, chatID, &message, nil); err != nil {
+		http.Error(w, fmt.Sprintf("Failed to post message: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	// Return success
+	w.WriteHeader(http.StatusOK)
 }

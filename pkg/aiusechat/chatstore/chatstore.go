@@ -1,7 +1,7 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-package aiusechat
+package chatstore
 
 import (
 	"fmt"
@@ -34,7 +34,7 @@ func (cs *ChatStore) Get(chatId string) *uctypes.AIChat {
 		APIType:        chat.APIType,
 		Model:          chat.Model,
 		APIVersion:     chat.APIVersion,
-		NativeMessages: make([]any, len(chat.NativeMessages)),
+		NativeMessages: make([]uctypes.GenAIMessage, len(chat.NativeMessages)),
 	}
 	copy(copyChat.NativeMessages, chat.NativeMessages)
 
@@ -48,7 +48,7 @@ func (cs *ChatStore) Delete(chatId string) {
 	delete(cs.chats, chatId)
 }
 
-func (cs *ChatStore) PostMessage(chatId string, aiOpts *uctypes.AIOptsType, message any) error {
+func (cs *ChatStore) PostMessage(chatId string, aiOpts *uctypes.AIOptsType, message uctypes.GenAIMessage) error {
 	cs.lock.Lock()
 	defer cs.lock.Unlock()
 
@@ -60,7 +60,7 @@ func (cs *ChatStore) PostMessage(chatId string, aiOpts *uctypes.AIOptsType, mess
 			APIType:        aiOpts.APIType,
 			Model:          aiOpts.Model,
 			APIVersion:     aiOpts.APIVersion,
-			NativeMessages: make([]any, 0),
+			NativeMessages: make([]uctypes.GenAIMessage, 0),
 		}
 		cs.chats[chatId] = chat
 	} else {
@@ -76,7 +76,17 @@ func (cs *ChatStore) PostMessage(chatId string, aiOpts *uctypes.AIOptsType, mess
 		}
 	}
 
-	// Append the new message
+	// Check for existing message with same ID (idempotency)
+	messageId := message.GetMessageId()
+	for i, existingMessage := range chat.NativeMessages {
+		if existingMessage.GetMessageId() == messageId {
+			// Replace existing message with same ID
+			chat.NativeMessages[i] = message
+			return nil
+		}
+	}
+
+	// Append the new message if no duplicate found
 	chat.NativeMessages = append(chat.NativeMessages, message)
 
 	return nil

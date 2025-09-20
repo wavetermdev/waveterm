@@ -34,6 +34,16 @@ const (
 // ---------- Anthropic wire types (subset) ----------
 // Derived from anthropic-messages-api.md and anthropic-streaming.md. :contentReference[oaicite:6]{index=6} :contentReference[oaicite:7]{index=7}
 
+type anthropicChatMessage struct {
+	MessageId string                         `json:"messageid"` // internal field for idempotency (cannot send to anthropic)
+	Role      string                         `json:"role"`
+	Content   []anthropicMessageContentBlock `json:"content"`
+}
+
+func (m *anthropicChatMessage) GetMessageId() string {
+	return m.MessageId
+}
+
 type anthropicInputMessage struct {
 	Role    string                         `json:"role"`
 	Content []anthropicMessageContentBlock `json:"content"`
@@ -90,8 +100,8 @@ type anthropicMessageContentBlock struct {
 }
 
 type anthropicSource struct {
-	Type      string      `json:"type"`                 // "base64", "url", "file", "text", "content"
-	Data      string      `json:"data,omitempty"`       // base64 data
+	Type      string      `json:"type"` // "base64", "url", "file", "text", "content"
+	Data      string      `json:"data,omitempty"`
 	MediaType string      `json:"media_type,omitempty"` // MIME type
 	URL       string      `json:"url,omitempty"`        // URL reference
 	FileID    string      `json:"file_id,omitempty"`    // file upload ID
@@ -361,10 +371,22 @@ func StreamAnthropicResponses(
 	// Use eventsource decoder for proper SSE parsing
 	decoder := eventsource.NewDecoder(resp.Body)
 
+	return handleAnthropicStreamingResp(ctx, sse, decoder, cont)
+}
+
+// handleAnthropicStreamingResp processes the SSE stream after HTTP setup is complete
+func handleAnthropicStreamingResp(
+	ctx context.Context,
+	sse *sse.SSEHandlerCh,
+	decoder *eventsource.Decoder,
+	cont *uctypes.WaveContinueResponse,
+) (*uctypes.WaveStopReason, error) {
 	// Per-response state
 	state := &streamingState{
 		blockMap: map[int]*blockState{},
 	}
+
+	var rtnStopReason *uctypes.WaveStopReason
 
 	// Ensure step is closed on error/cancellation
 	defer func() {
@@ -406,6 +428,7 @@ func StreamAnthropicResponses(
 
 		if stop, ret := handleAnthropicEvent(event, sse, state, cont); ret != nil {
 			// Either error or message_stop triggered return
+			rtnStopReason = ret
 			return ret, nil
 		} else {
 			// maybe updated final stop reason (from message_delta)
@@ -416,12 +439,13 @@ func StreamAnthropicResponses(
 	}
 
 	// EOF - let defer handle cleanup
-	return &uctypes.WaveStopReason{
+	rtnStopReason = &uctypes.WaveStopReason{
 		Kind:      uctypes.StopKindDone,
 		RawReason: state.stopFromDelta,
 		MessageID: state.msgID,
 		Model:     state.model,
-	}, nil
+	}
+	return rtnStopReason, nil
 }
 
 // handleAnthropicEvent processes one SSE event block. It may emit SSE parts
@@ -655,4 +679,17 @@ func handleAnthropicEvent(
 		log.Printf("unknown anthropic event type: %s", eventName)
 		return nil, nil
 	}
+}
+
+// convertChatMessagesToInputMessages converts []anthropicChatMessage to []anthropicInputMessage
+// by dropping the MessageId field from each message
+func convertChatMessagesToInputMessages(chatMessages []anthropicChatMessage) []anthropicInputMessage {
+	inputMessages := make([]anthropicInputMessage, len(chatMessages))
+	for i, chatMsg := range chatMessages {
+		inputMessages[i] = anthropicInputMessage{
+			Role:    chatMsg.Role,
+			Content: chatMsg.Content,
+		}
+	}
+	return inputMessages
 }

@@ -92,7 +92,7 @@ func buildAnthropicHTTPRequest(ctx context.Context, opts *uctypes.AIOptsType, ms
 }
 
 // convertToolUsePart converts a tool-* type UIMessagePart to an Anthropic tool_use or tool_result block
-func convertToolUsePart(p uctypes.UIMessagePart, role string) (*anthropicMessageContentBlock, error) {
+func convertToolUsePart(p uctypes.UIMessagePart) (*anthropicMessageContentBlock, error) {
 	// Sanity check that this is actually a tool-* type
 	if !strings.HasPrefix(p.Type, "tool-") {
 		return nil, fmt.Errorf("convertToolUsePart expects 'tool-*' type, got '%s'", p.Type)
@@ -224,7 +224,7 @@ func convertPartToAnthropicBlocks(p uctypes.UIMessagePart, role string, blockInd
 		}
 		return []anthropicMessageContentBlock{*block}, nil
 	} else if strings.HasPrefix(p.Type, "tool-") {
-		block, err := convertToolUsePart(p, role)
+		block, err := convertToolUsePart(p)
 		if err != nil {
 			return nil, err
 		}
@@ -342,8 +342,9 @@ func convertFileUIMessagePart(p uctypes.UIMessagePart) (*anthropicMessageContent
 			return &anthropicMessageContentBlock{
 				Type: "document",
 				Source: &anthropicSource{
-					Type: "text",
-					Data: string(textData),
+					Type:      "text",
+					Data:      string(textData),
+					MediaType: "text/plain",
 				},
 			}, nil
 		} else {
@@ -395,4 +396,194 @@ func convertSourceToAnthropicBlocks(p uctypes.UIMessagePart, blockIndex int) ([]
 	}
 
 	return []anthropicMessageContentBlock{sourceBlock, citationBlock}, nil
+}
+
+// convertAIMessageToAnthropicChatMessage converts an AIMessage to anthropicChatMessage
+// These messages are ALWAYS role "user"
+func ConvertAIMessageToAnthropicChatMessage(aiMsg uctypes.AIMessage) (*anthropicChatMessage, error) {
+	if err := aiMsg.Validate(); err != nil {
+		return nil, fmt.Errorf("invalid AIMessage: %w", err)
+	}
+
+	var contentBlocks []anthropicMessageContentBlock
+
+	for i, part := range aiMsg.Parts {
+		switch part.Type {
+		case uctypes.AIMessagePartTypeText:
+			if part.Text == "" {
+				return nil, fmt.Errorf("part %d: text type requires non-empty text field", i)
+			}
+			contentBlocks = append(contentBlocks, anthropicMessageContentBlock{
+				Type: "text",
+				Text: part.Text,
+			})
+
+		case uctypes.AIMessagePartTypeFile:
+			block, err := convertFileAIMessagePart(part)
+			if err != nil {
+				return nil, fmt.Errorf("part %d: %w", i, err)
+			}
+			contentBlocks = append(contentBlocks, *block)
+
+		default:
+			return nil, fmt.Errorf("part %d: unsupported part type '%s'", i, part.Type)
+		}
+	}
+
+	return &anthropicChatMessage{
+		MessageId: aiMsg.MessageId,
+		Role:      "user",
+		Content:   contentBlocks,
+	}, nil
+}
+
+// hasInlineData checks if the part has data available for inline use (either Data field or data URL)
+func hasInlineData(part uctypes.AIMessagePart) bool {
+	hasData := len(part.Data) > 0
+	hasURL := part.URL != "" && strings.HasPrefix(part.URL, "data:")
+	return hasData || hasURL
+}
+
+// extractBase64Data extracts base64 data from either the Data field or a data URL
+func extractBase64Data(part uctypes.AIMessagePart) (string, error) {
+	hasData := len(part.Data) > 0
+	hasURL := part.URL != ""
+
+	if hasData {
+		// Raw data → base64 encode
+		return base64.StdEncoding.EncodeToString(part.Data), nil
+	} else if hasURL && strings.HasPrefix(part.URL, "data:") {
+		// Data URL → check format and extract/encode data appropriately
+		parts := strings.SplitN(part.URL, ",", 2)
+		if len(parts) != 2 {
+			return "", errors.New("invalid data URL format")
+		}
+
+		header := parts[0]
+		data := parts[1]
+
+		// Check if it's already base64 encoded: data:mediatype;base64,<data>
+		if strings.Contains(header, ";base64") {
+			// Already base64 encoded
+			return data, nil
+		} else {
+			// Raw data that needs base64 encoding: data:mediatype,<raw_data>
+			return base64.StdEncoding.EncodeToString([]byte(data)), nil
+		}
+	}
+
+	return "", errors.New("no data available for base64 extraction")
+}
+
+// convertFileAIMessagePart converts a file AIMessagePart to anthropicMessageContentBlock
+func convertFileAIMessagePart(part uctypes.AIMessagePart) (*anthropicMessageContentBlock, error) {
+	if part.Type != uctypes.AIMessagePartTypeFile {
+		return nil, fmt.Errorf("convertFileAIMessagePart expects 'file' type, got '%s'", part.Type)
+	}
+
+	if err := part.Validate(); err != nil {
+		return nil, err
+	}
+
+	// Validate URL protocol if URL is provided - only allow data:, http:, https:
+	if part.URL != "" {
+		if !strings.HasPrefix(part.URL, "data:") &&
+			!strings.HasPrefix(part.URL, "http://") &&
+			!strings.HasPrefix(part.URL, "https://") {
+			return nil, fmt.Errorf("unsupported URL protocol in file part: %s", part.URL)
+		}
+	}
+
+	// Branch on mimetype to determine block type and constraints
+	switch {
+	case strings.HasPrefix(part.MimeType, "image/"):
+		// image/* (jpeg, png, gif, webp) → Anthropic image block
+		if hasInlineData(part) {
+			// Data available → use base64 source
+			base64Data, err := extractBase64Data(part)
+			if err != nil {
+				return nil, err
+			}
+			return &anthropicMessageContentBlock{
+				Type: "image",
+				Source: &anthropicSource{
+					Type:      "base64",
+					Data:      base64Data,
+					MediaType: part.MimeType,
+				},
+			}, nil
+		} else {
+			// HTTP/HTTPS URL → url source (no media_type for image URLs)
+			return &anthropicMessageContentBlock{
+				Type: "image",
+				Source: &anthropicSource{
+					Type: "url",
+					URL:  part.URL,
+				},
+			}, nil
+		}
+
+	case part.MimeType == "application/pdf":
+		// application/pdf → Anthropic document block
+		if hasInlineData(part) {
+			// Data available → use base64 source
+			base64Data, err := extractBase64Data(part)
+			if err != nil {
+				return nil, err
+			}
+			return &anthropicMessageContentBlock{
+				Type: "document",
+				Source: &anthropicSource{
+					Type:      "base64",
+					Data:      base64Data,
+					MediaType: part.MimeType,
+				},
+			}, nil
+		} else {
+			// HTTP/HTTPS URL → url source (no media_type for URL sources)
+			return &anthropicMessageContentBlock{
+				Type: "document",
+				Source: &anthropicSource{
+					Type: "url",
+					URL:  part.URL,
+				},
+			}, nil
+		}
+
+	case part.MimeType == "text/plain":
+		// text/plain → Anthropic document block, but NO URL form supported
+		if hasInlineData(part) {
+			var textData string
+			if len(part.Data) > 0 {
+				// Raw data → convert to string directly
+				textData = string(part.Data)
+			} else {
+				// Data URL → extract base64 data and decode back to string
+				base64Data, err := extractBase64Data(part)
+				if err != nil {
+					return nil, err
+				}
+				decoded, err := base64.StdEncoding.DecodeString(base64Data)
+				if err != nil {
+					return nil, fmt.Errorf("failed to decode base64 data: %w", err)
+				}
+				textData = string(decoded)
+			}
+			return &anthropicMessageContentBlock{
+				Type: "document",
+				Source: &anthropicSource{
+					Type:      "text",
+					Data:      textData,
+					MediaType: part.MimeType,
+				},
+			}, nil
+		} else {
+			// HTTP/HTTPS URL → not supported inline, would need to fetch
+			return nil, fmt.Errorf("text/plain file with URL not supported (must be fetched and converted to base64 or uploaded to Files API)")
+		}
+
+	default:
+		// Other media types → not supported inline, must upload and use file_id
+		return nil, fmt.Errorf("unsupported media type '%s' (must be uploaded to Files API and sent as file_id)", part.MimeType)
+	}
 }
