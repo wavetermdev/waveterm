@@ -204,6 +204,8 @@ type blockState struct {
 	kind blockKind
 	// For text/reasoning: local SSE id
 	localID string
+	// Content block being built for rtnMessage
+	contentBlock *anthropicMessageContentBlock
 	// For tool_use:
 	toolCallID string // Anthropic tool_use.id
 	toolName   string
@@ -323,26 +325,26 @@ func StreamAnthropicChatStep(
 	chatId string,
 	tools []uctypes.ToolDefinition,
 	cont *uctypes.WaveContinueResponse,
-) (*uctypes.WaveStopReason, error) {
+) (*uctypes.WaveStopReason, *anthropicChatMessage, error) {
 	if sse == nil {
-		return nil, errors.New("sse handler is nil")
+		return nil, nil, errors.New("sse handler is nil")
 	}
 
 	// Get chat from store
 	chat := chatstore.DefaultChatStore.Get(chatId)
 	if chat == nil {
-		return nil, fmt.Errorf("chat not found: %s", chatId)
+		return nil, nil, fmt.Errorf("chat not found: %s", chatId)
 	}
 
 	// Validate that aiOpts match the chat's stored configuration
 	if chat.APIType != aiOpts.APIType {
-		return nil, fmt.Errorf("API type mismatch: chat has %s, aiOpts has %s", chat.APIType, aiOpts.APIType)
+		return nil, nil, fmt.Errorf("API type mismatch: chat has %s, aiOpts has %s", chat.APIType, aiOpts.APIType)
 	}
 	if chat.Model != aiOpts.Model {
-		return nil, fmt.Errorf("model mismatch: chat has %s, aiOpts has %s", chat.Model, aiOpts.Model)
+		return nil, nil, fmt.Errorf("model mismatch: chat has %s, aiOpts has %s", chat.Model, aiOpts.Model)
 	}
 	if chat.APIVersion != aiOpts.APIVersion {
-		return nil, fmt.Errorf("API version mismatch: chat has %s, aiOpts has %s", chat.APIVersion, aiOpts.APIVersion)
+		return nil, nil, fmt.Errorf("API version mismatch: chat has %s, aiOpts has %s", chat.APIVersion, aiOpts.APIVersion)
 	}
 
 	// Context with timeout if provided.
@@ -355,7 +357,7 @@ func StreamAnthropicChatStep(
 	// Validate continuation if provided
 	if cont != nil {
 		if aiOpts.Model != cont.Model {
-			return nil, fmt.Errorf("cannot continue with a different model, model:%q, cont-model:%q", aiOpts.Model, cont.Model)
+			return nil, nil, fmt.Errorf("cannot continue with a different model, model:%q, cont-model:%q", aiOpts.Model, cont.Model)
 		}
 	}
 
@@ -365,7 +367,7 @@ func StreamAnthropicChatStep(
 		// Cast to anthropicChatMessage
 		chatMsg, ok := genMsg.(*anthropicChatMessage)
 		if !ok {
-			return nil, fmt.Errorf("expected anthropicChatMessage, got %T", genMsg)
+			return nil, nil, fmt.Errorf("expected anthropicChatMessage, got %T", genMsg)
 		}
 
 		// Convert to anthropicInputMessage
@@ -378,7 +380,7 @@ func StreamAnthropicChatStep(
 
 	req, err := buildAnthropicHTTPRequest(ctx, aiOpts, anthropicMsgs, tools)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	httpClient := &http.Client{
@@ -388,7 +390,7 @@ func StreamAnthropicChatStep(
 	if aiOpts.ProxyURL != "" {
 		pURL, perr := url.Parse(aiOpts.ProxyURL)
 		if perr != nil {
-			return nil, fmt.Errorf("invalid proxy URL: %w", perr)
+			return nil, nil, fmt.Errorf("invalid proxy URL: %w", perr)
 		}
 		httpClient.Transport = &http.Transport{
 			Proxy: http.ProxyURL(pURL),
@@ -397,13 +399,13 @@ func StreamAnthropicChatStep(
 
 	resp, err := httpClient.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	defer resp.Body.Close()
 
 	ct := resp.Header.Get("Content-Type")
 	if resp.StatusCode != http.StatusOK || !strings.HasPrefix(ct, "text/event-stream") {
-		return nil, parseAnthropicHTTPError(resp)
+		return nil, nil, parseAnthropicHTTPError(resp)
 	}
 
 	// At this point we have a valid SSE stream, so setup SSE handling
@@ -413,8 +415,8 @@ func StreamAnthropicChatStep(
 	// Use eventsource decoder for proper SSE parsing
 	decoder := eventsource.NewDecoder(resp.Body)
 
-	stopReason, _, err := handleAnthropicStreamingResp(ctx, sse, decoder, cont)
-	return stopReason, err
+	stopReason, rtnMessage := handleAnthropicStreamingResp(ctx, sse, decoder, cont)
+	return stopReason, rtnMessage, nil
 }
 
 // returns (nil, err) before we start streaming
@@ -486,8 +488,8 @@ func StreamAnthropicResponses(
 	// Use eventsource decoder for proper SSE parsing
 	decoder := eventsource.NewDecoder(resp.Body)
 
-	stopReason, _, err := handleAnthropicStreamingResp(ctx, sse, decoder, cont)
-	return stopReason, err
+	stopReason, _ := handleAnthropicStreamingResp(ctx, sse, decoder, cont)
+	return stopReason, nil
 }
 
 // handleAnthropicStreamingResp processes the SSE stream after HTTP setup is complete
@@ -496,10 +498,10 @@ func handleAnthropicStreamingResp(
 	sse *sse.SSEHandlerCh,
 	decoder *eventsource.Decoder,
 	cont *uctypes.WaveContinueResponse,
-) (*uctypes.WaveStopReason, *anthropicChatMessage, error) {
+) (*uctypes.WaveStopReason, *anthropicChatMessage) {
 	// Per-response state
 	state := &streamingState{
-		blockMap:   map[int]*blockState{},
+		blockMap: map[int]*blockState{},
 		rtnMessage: &anthropicChatMessage{
 			MessageId: uuid.New().String(),
 			Role:      "assistant",
@@ -529,7 +531,7 @@ func handleAnthropicStreamingResp(
 				Kind:      uctypes.StopKindCanceled,
 				ErrorType: "cancelled",
 				ErrorText: "request cancelled",
-			}, state.rtnMessage, nil
+			}, state.rtnMessage
 		}
 
 		event, err := decoder.Decode()
@@ -544,13 +546,13 @@ func handleAnthropicStreamingResp(
 				Kind:      uctypes.StopKindError,
 				ErrorType: "stream",
 				ErrorText: err.Error(),
-			}, state.rtnMessage, nil
+			}, state.rtnMessage
 		}
 
 		if stop, ret := handleAnthropicEvent(event, sse, state, cont); ret != nil {
 			// Either error or message_stop triggered return
 			rtnStopReason = ret
-			return ret, state.rtnMessage, nil
+			return ret, state.rtnMessage
 		} else {
 			// maybe updated final stop reason (from message_delta)
 			if stop != nil && *stop != "" {
@@ -566,7 +568,7 @@ func handleAnthropicStreamingResp(
 		MessageID: state.msgID,
 		Model:     state.model,
 	}
-	return rtnStopReason, state.rtnMessage, nil
+	return rtnStopReason, state.rtnMessage
 }
 
 // handleAnthropicEvent processes one SSE event block. It may emit SSE parts
@@ -640,11 +642,25 @@ func handleAnthropicEvent(
 		switch ev.ContentBlock.Type {
 		case "text":
 			id := uuid.New().String()
-			state.blockMap[idx] = &blockState{kind: blockText, localID: id}
+			state.blockMap[idx] = &blockState{
+				kind:    blockText,
+				localID: id,
+				contentBlock: &anthropicMessageContentBlock{
+					Type: "text",
+					Text: "",
+				},
+			}
 			_ = sse.AiMsgTextStart(id)
 		case "thinking":
 			id := uuid.New().String()
-			state.blockMap[idx] = &blockState{kind: blockThinking, localID: id}
+			state.blockMap[idx] = &blockState{
+				kind:    blockThinking,
+				localID: id,
+				contentBlock: &anthropicMessageContentBlock{
+					Type:     "thinking",
+					Thinking: "",
+				},
+			}
 			_ = sse.AiMsgReasoningStart(id)
 		case "tool_use":
 			tcID := ev.ContentBlock.ID
@@ -679,10 +695,18 @@ func handleAnthropicEvent(
 		case "text_delta":
 			if st.kind == blockText {
 				_ = sse.AiMsgTextDelta(st.localID, ev.Delta.Text)
+				// Accumulate text in the content block
+				if st.contentBlock != nil {
+					st.contentBlock.Text += ev.Delta.Text
+				}
 			}
 		case "thinking_delta":
 			if st.kind == blockThinking {
 				_ = sse.AiMsgReasoningDelta(st.localID, ev.Delta.Thinking)
+				// Accumulate thinking content in the content block
+				if st.contentBlock != nil {
+					st.contentBlock.Thinking += ev.Delta.Thinking
+				}
 			}
 		case "input_json_delta":
 			if st.kind == blockToolUse {
@@ -690,7 +714,10 @@ func handleAnthropicEvent(
 				_ = sse.AiMsgToolInputDelta(st.toolCallID, ev.Delta.PartialJSON)
 			}
 		case "signature_delta":
-			// ignore; integrity metadata for thinking blocks. :contentReference[oaicite:19]{index=19}
+			// Accumulate signature for thinking blocks
+			if st.kind == blockThinking && st.contentBlock != nil {
+				st.contentBlock.Signature += ev.Delta.Signature
+			}
 		default:
 			// ignore unknown deltas gracefully. :contentReference[oaicite:20]{index=20}
 		}
@@ -712,8 +739,16 @@ func handleAnthropicEvent(
 		switch st.kind {
 		case blockText:
 			_ = sse.AiMsgTextEnd(st.localID)
+			// Add completed text block to rtnMessage
+			if st.contentBlock != nil {
+				state.rtnMessage.Content = append(state.rtnMessage.Content, *st.contentBlock)
+			}
 		case blockThinking:
 			_ = sse.AiMsgReasoningEnd(st.localID)
+			// Add completed thinking block to rtnMessage
+			if st.contentBlock != nil {
+				state.rtnMessage.Content = append(state.rtnMessage.Content, *st.contentBlock)
+			}
 		case blockToolUse:
 			raw, jerr := st.accumJSON.FinalObject()
 			if jerr != nil {

@@ -98,7 +98,7 @@ func RunWaveAIRequest(ctx context.Context, sseHandler *sse.SSEHandlerCh, aiOpts 
 
 func WaveAIPostMessage(ctx context.Context, sseHandler *sse.SSEHandlerCh, aiOpts *uctypes.AIOptsType, chatID string, tools []uctypes.ToolDefinition) error {
 	// Stream the Anthropic chat response
-	_, err := anthropic.StreamAnthropicChatStep(ctx, sseHandler, aiOpts, chatID, tools, nil)
+	_, _, err := anthropic.StreamAnthropicChatStep(ctx, sseHandler, aiOpts, chatID, tools, nil)
 	if err != nil {
 		return fmt.Errorf("failed to stream anthropic chat: %w", err)
 	}
