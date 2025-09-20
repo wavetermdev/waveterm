@@ -14,6 +14,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
 	"github.com/wavetermdev/waveterm/pkg/web/sse"
@@ -157,29 +158,30 @@ func testAnthropic(ctx context.Context, model, message string, tools []uctypes.T
 		ThinkingLevel: uctypes.ThinkingLevelMedium,
 	}
 
-	req := &uctypes.UseChatRequest{
-		Messages: []uctypes.UIMessage{
+	// Generate a chat ID
+	chatID := uuid.New().String()
+
+	// Convert to AIMessage format for WaveAIPostMessageWrap
+	aiMessage := &uctypes.AIMessage{
+		MessageId: uuid.New().String(),
+		Parts: []uctypes.AIMessagePart{
 			{
-				Role: "user",
-				Parts: []uctypes.UIMessagePart{
-					{
-						Type: "text",
-						Text: message,
-					},
-				},
+				Type: uctypes.AIMessagePartTypeText,
+				Text: message,
 			},
 		},
 	}
 
-	fmt.Printf("Testing Anthropic streaming with model: %s\n", model)
+	fmt.Printf("Testing Anthropic streaming with WaveAIPostMessageWrap, model: %s\n", model)
 	fmt.Printf("Message: %s\n", message)
+	fmt.Printf("Chat ID: %s\n", chatID)
 	fmt.Println("---")
 
 	testWriter := &TestResponseWriter{}
 	sseHandler := sse.MakeSSEHandlerCh(testWriter, ctx)
 	defer sseHandler.Close()
 
-	err := aiusechat.RunWaveAIRequest(ctx, sseHandler, opts, req, tools)
+	err := aiusechat.WaveAIPostMessageWrap(ctx, sseHandler, opts, chatID, aiMessage, tools)
 	if err != nil {
 		fmt.Printf("Anthropic streaming error: %v\n", err)
 	}

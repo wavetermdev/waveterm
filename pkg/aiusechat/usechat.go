@@ -128,7 +128,16 @@ func WaveAIHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func WaveAIPostMessage(ctx context.Context, sseHandler *sse.SSEHandlerCh, aiOpts *uctypes.AIOptsType, chatID string, message *uctypes.AIMessage, tools []uctypes.ToolDefinition) error {
+func WaveAIPostMessage(ctx context.Context, sseHandler *sse.SSEHandlerCh, aiOpts *uctypes.AIOptsType, chatID string, tools []uctypes.ToolDefinition) error {
+	// Stream the Anthropic chat response
+	_, err := anthropic.StreamAnthropicChatStep(ctx, sseHandler, aiOpts, chatID, tools, nil)
+	if err != nil {
+		return fmt.Errorf("failed to stream anthropic chat: %w", err)
+	}
+	return nil
+}
+
+func WaveAIPostMessageWrap(ctx context.Context, sseHandler *sse.SSEHandlerCh, aiOpts *uctypes.AIOptsType, chatID string, message *uctypes.AIMessage, tools []uctypes.ToolDefinition) error {
 	// Only support Anthropic for now
 	if aiOpts.APIType != APIType_Anthropic {
 		return fmt.Errorf("only Anthropic API type is supported, got: %s", aiOpts.APIType)
@@ -145,7 +154,7 @@ func WaveAIPostMessage(ctx context.Context, sseHandler *sse.SSEHandlerCh, aiOpts
 		return fmt.Errorf("failed to store message: %w", err)
 	}
 
-	return nil
+	return WaveAIPostMessage(ctx, sseHandler, aiOpts, chatID, tools)
 }
 
 func WaveAIPostMessageHandler(w http.ResponseWriter, r *http.Request) {
@@ -191,7 +200,7 @@ func WaveAIPostMessageHandler(w http.ResponseWriter, r *http.Request) {
 	defer sseHandler.Close()
 
 	// Call the core WaveAIPostMessage function
-	if err := WaveAIPostMessage(r.Context(), sseHandler, aiOpts, chatID, &message, nil); err != nil {
+	if err := WaveAIPostMessageWrap(r.Context(), sseHandler, aiOpts, chatID, &message, nil); err != nil {
 		http.Error(w, fmt.Sprintf("Failed to post message: %v", err), http.StatusInternalServerError)
 		return
 	}

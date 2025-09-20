@@ -18,6 +18,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/launchdarkly/eventsource"
+	"github.com/wavetermdev/waveterm/pkg/aiusechat/chatstore"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
 	"github.com/wavetermdev/waveterm/pkg/web/sse"
 )
@@ -314,6 +315,106 @@ func parseAnthropicHTTPError(resp *http.Response) error {
 	return fmt.Errorf("anthropic %s: %s", resp.Status, msg)
 }
 
+func StreamAnthropicChatStep(
+	ctx context.Context,
+	sse *sse.SSEHandlerCh,
+	aiOpts *uctypes.AIOptsType,
+	chatId string,
+	tools []uctypes.ToolDefinition,
+	cont *uctypes.WaveContinueResponse,
+) (*uctypes.WaveStopReason, error) {
+	if sse == nil {
+		return nil, errors.New("sse handler is nil")
+	}
+
+	// Get chat from store
+	chat := chatstore.DefaultChatStore.Get(chatId)
+	if chat == nil {
+		return nil, fmt.Errorf("chat not found: %s", chatId)
+	}
+
+	// Validate that aiOpts match the chat's stored configuration
+	if chat.APIType != aiOpts.APIType {
+		return nil, fmt.Errorf("API type mismatch: chat has %s, aiOpts has %s", chat.APIType, aiOpts.APIType)
+	}
+	if chat.Model != aiOpts.Model {
+		return nil, fmt.Errorf("model mismatch: chat has %s, aiOpts has %s", chat.Model, aiOpts.Model)
+	}
+	if chat.APIVersion != aiOpts.APIVersion {
+		return nil, fmt.Errorf("API version mismatch: chat has %s, aiOpts has %s", chat.APIVersion, aiOpts.APIVersion)
+	}
+
+	// Context with timeout if provided.
+	if aiOpts.TimeoutMs > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, time.Duration(aiOpts.TimeoutMs)*time.Millisecond)
+		defer cancel()
+	}
+
+	// Validate continuation if provided
+	if cont != nil {
+		if aiOpts.Model != cont.Model {
+			return nil, fmt.Errorf("cannot continue with a different model, model:%q, cont-model:%q", aiOpts.Model, cont.Model)
+		}
+	}
+
+	// Convert GenAIMessages to anthropicInputMessages
+	var anthropicMsgs []anthropicInputMessage
+	for _, genMsg := range chat.NativeMessages {
+		// Cast to anthropicChatMessage
+		chatMsg, ok := genMsg.(*anthropicChatMessage)
+		if !ok {
+			return nil, fmt.Errorf("expected anthropicChatMessage, got %T", genMsg)
+		}
+
+		// Convert to anthropicInputMessage
+		inputMsg := anthropicInputMessage{
+			Role:    chatMsg.Role,
+			Content: chatMsg.Content,
+		}
+		anthropicMsgs = append(anthropicMsgs, inputMsg)
+	}
+
+	req, err := buildAnthropicHTTPRequest(ctx, aiOpts, anthropicMsgs, tools)
+	if err != nil {
+		return nil, err
+	}
+
+	httpClient := &http.Client{
+		Timeout: 0, // rely on ctx; streaming can be long
+	}
+	// Proxy support
+	if aiOpts.ProxyURL != "" {
+		pURL, perr := url.Parse(aiOpts.ProxyURL)
+		if perr != nil {
+			return nil, fmt.Errorf("invalid proxy URL: %w", perr)
+		}
+		httpClient.Transport = &http.Transport{
+			Proxy: http.ProxyURL(pURL),
+		}
+	}
+
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	ct := resp.Header.Get("Content-Type")
+	if resp.StatusCode != http.StatusOK || !strings.HasPrefix(ct, "text/event-stream") {
+		return nil, parseAnthropicHTTPError(resp)
+	}
+
+	// At this point we have a valid SSE stream, so setup SSE handling
+	// From here on, errors must be returned through the SSE stream
+	sse.SetupSSE()
+
+	// Use eventsource decoder for proper SSE parsing
+	decoder := eventsource.NewDecoder(resp.Body)
+
+	return handleAnthropicStreamingResp(ctx, sse, decoder, cont)
+}
+
 // returns (nil, err) before we start streaming
 // returns (stopReason, nil) after we start streaming
 func StreamAnthropicResponses(
@@ -323,7 +424,7 @@ func StreamAnthropicResponses(
 	messages []uctypes.UIMessage,
 	tools []uctypes.ToolDefinition,
 	cont *uctypes.WaveContinueResponse,
-) (rtnStopReason *uctypes.WaveStopReason, rtnErr error) {
+) (*uctypes.WaveStopReason, error) {
 	if sse == nil {
 		return nil, errors.New("sse handler is nil")
 	}
@@ -334,7 +435,19 @@ func StreamAnthropicResponses(
 		defer cancel()
 	}
 
-	req, err := buildAnthropicHTTPRequest(ctx, opts, messages, tools)
+	// Convert UIMessages to anthropicInputMessages
+	var anthropicMsgs []anthropicInputMessage
+	for _, m := range messages {
+		aim := anthropicInputMessage{Role: m.Role}
+		blocks, err := convertPartsToAnthropicBlocks(m.Parts, m.Role)
+		if err != nil {
+			return nil, fmt.Errorf("invalid message parts: %w", err)
+		}
+		aim.Content = blocks
+		anthropicMsgs = append(anthropicMsgs, aim)
+	}
+
+	req, err := buildAnthropicHTTPRequest(ctx, opts, anthropicMsgs, tools)
 	if err != nil {
 		return nil, err
 	}
@@ -679,17 +792,4 @@ func handleAnthropicEvent(
 		log.Printf("unknown anthropic event type: %s", eventName)
 		return nil, nil
 	}
-}
-
-// convertChatMessagesToInputMessages converts []anthropicChatMessage to []anthropicInputMessage
-// by dropping the MessageId field from each message
-func convertChatMessagesToInputMessages(chatMessages []anthropicChatMessage) []anthropicInputMessage {
-	inputMessages := make([]anthropicInputMessage, len(chatMessages))
-	for i, chatMsg := range chatMessages {
-		inputMessages[i] = anthropicInputMessage{
-			Role:    chatMsg.Role,
-			Content: chatMsg.Content,
-		}
-	}
-	return inputMessages
 }

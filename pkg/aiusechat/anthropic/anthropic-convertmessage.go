@@ -22,7 +22,7 @@ import (
 // and the aiprompts/aisdk-uimessage-type.md doc (v5)
 
 // buildAnthropicHTTPRequest creates a complete HTTP request for the Anthropic API
-func buildAnthropicHTTPRequest(ctx context.Context, opts *uctypes.AIOptsType, msgs []uctypes.UIMessage, tools []uctypes.ToolDefinition) (*http.Request, error) {
+func buildAnthropicHTTPRequest(ctx context.Context, opts *uctypes.AIOptsType, msgs []anthropicInputMessage, tools []uctypes.ToolDefinition) (*http.Request, error) {
 	if opts == nil {
 		return nil, errors.New("opts is nil")
 	}
@@ -55,6 +55,7 @@ func buildAnthropicHTTPRequest(ctx context.Context, opts *uctypes.AIOptsType, ms
 		Model:     opts.Model,
 		MaxTokens: maxTokens,
 		Stream:    true,
+		Messages:  msgs,
 	}
 	if len(tools) > 0 {
 		reqBody.Tools = tools
@@ -62,16 +63,6 @@ func buildAnthropicHTTPRequest(ctx context.Context, opts *uctypes.AIOptsType, ms
 
 	// Enable extended thinking based on level
 	reqBody.Thinking = makeThinkingOpts(opts.ThinkingLevel, maxTokens)
-
-	for _, m := range msgs {
-		aim := anthropicInputMessage{Role: m.Role}
-		blocks, err := convertPartsToAnthropicBlocks(m.Parts, m.Role)
-		if err != nil {
-			return nil, fmt.Errorf("invalid message parts: %w", err)
-		}
-		aim.Content = blocks
-		reqBody.Messages = append(reqBody.Messages, aim)
-	}
 
 	bodyBytes, err := json.Marshal(reqBody)
 	if err != nil {
