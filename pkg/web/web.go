@@ -466,9 +466,6 @@ func RunWebServer(listener net.Listener) {
 	gr.PathPrefix("/vdom/").Handler(http.TimeoutHandler(vdomRouter, HttpTimeoutDuration, "Timeout"))
 
 	// Routes that should NOT have timeout handling (for streaming)
-	gr.HandleFunc("/api/aichat", WebFnWrap(WebFnOpts{AllowCaching: false}, aiusechat.WaveAIHandler))
-
-	// Routes that should NOT have timeout handling (for streaming)
 	gr.HandleFunc("/api/post-chat-message", WebFnWrap(WebFnOpts{AllowCaching: false}, aiusechat.WaveAIPostMessageHandler))
 
 	// Other routes without timeout

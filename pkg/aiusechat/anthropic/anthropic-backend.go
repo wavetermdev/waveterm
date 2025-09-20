@@ -223,6 +223,7 @@ type streamingState struct {
 	msgID         string
 	model         string
 	stepStarted   bool
+	rtnMessage    *anthropicChatMessage
 }
 
 func (p *partialJSON) Write(s string) {
@@ -412,7 +413,8 @@ func StreamAnthropicChatStep(
 	// Use eventsource decoder for proper SSE parsing
 	decoder := eventsource.NewDecoder(resp.Body)
 
-	return handleAnthropicStreamingResp(ctx, sse, decoder, cont)
+	stopReason, _, err := handleAnthropicStreamingResp(ctx, sse, decoder, cont)
+	return stopReason, err
 }
 
 // returns (nil, err) before we start streaming
@@ -484,7 +486,8 @@ func StreamAnthropicResponses(
 	// Use eventsource decoder for proper SSE parsing
 	decoder := eventsource.NewDecoder(resp.Body)
 
-	return handleAnthropicStreamingResp(ctx, sse, decoder, cont)
+	stopReason, _, err := handleAnthropicStreamingResp(ctx, sse, decoder, cont)
+	return stopReason, err
 }
 
 // handleAnthropicStreamingResp processes the SSE stream after HTTP setup is complete
@@ -493,10 +496,15 @@ func handleAnthropicStreamingResp(
 	sse *sse.SSEHandlerCh,
 	decoder *eventsource.Decoder,
 	cont *uctypes.WaveContinueResponse,
-) (*uctypes.WaveStopReason, error) {
+) (*uctypes.WaveStopReason, *anthropicChatMessage, error) {
 	// Per-response state
 	state := &streamingState{
-		blockMap: map[int]*blockState{},
+		blockMap:   map[int]*blockState{},
+		rtnMessage: &anthropicChatMessage{
+			MessageId: uuid.New().String(),
+			Role:      "assistant",
+			Content:   []anthropicMessageContentBlock{},
+		},
 	}
 
 	var rtnStopReason *uctypes.WaveStopReason
@@ -521,7 +529,7 @@ func handleAnthropicStreamingResp(
 				Kind:      uctypes.StopKindCanceled,
 				ErrorType: "cancelled",
 				ErrorText: "request cancelled",
-			}, nil
+			}, state.rtnMessage, nil
 		}
 
 		event, err := decoder.Decode()
@@ -536,13 +544,13 @@ func handleAnthropicStreamingResp(
 				Kind:      uctypes.StopKindError,
 				ErrorType: "stream",
 				ErrorText: err.Error(),
-			}, nil
+			}, state.rtnMessage, nil
 		}
 
 		if stop, ret := handleAnthropicEvent(event, sse, state, cont); ret != nil {
 			// Either error or message_stop triggered return
 			rtnStopReason = ret
-			return ret, nil
+			return ret, state.rtnMessage, nil
 		} else {
 			// maybe updated final stop reason (from message_delta)
 			if stop != nil && *stop != "" {
@@ -558,7 +566,7 @@ func handleAnthropicStreamingResp(
 		MessageID: state.msgID,
 		Model:     state.model,
 	}
-	return rtnStopReason, nil
+	return rtnStopReason, state.rtnMessage, nil
 }
 
 // handleAnthropicEvent processes one SSE event block. It may emit SSE parts
