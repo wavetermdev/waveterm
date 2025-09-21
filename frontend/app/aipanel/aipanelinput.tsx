@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { cn } from "@/util/util";
-import { memo, useRef, useEffect } from "react";
+import { memo, useEffect, useRef } from "react";
 
 interface AIPanelInputProps {
     input: string;
@@ -32,35 +32,37 @@ export const AIPanelInput = memo(({ input, setInput, onSubmit, status }: AIPanel
     }, [input]);
 
     return (
-        <div className="@container border-t border-gray-600 p-2 @xs:p-4">
-            <form onSubmit={onSubmit} className="flex gap-1 @xs:gap-2 items-end">
-                <textarea
-                    ref={textareaRef}
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    onKeyDown={handleKeyDown}
-                    placeholder="Ask Wave AI anything..."
-                    className="flex-1 bg-gray-700 text-white px-2 @xs:px-4 py-2 rounded-lg border border-gray-600 focus:border-accent focus:outline-none min-w-0 resize-none overflow-hidden"
-                    style={{ fontSize: '13px' }}
-                    disabled={status !== "ready"}
-                    rows={1}
-                />
-                <button
-                    type="submit"
-                    disabled={status !== "ready" || !input.trim()}
-                    className={cn(
-                        "px-2 @xs:px-4 py-2 rounded-lg cursor-pointer transition-colors flex-shrink-0",
-                        status !== "ready" || !input.trim()
-                            ? "bg-gray-600 text-gray-400 cursor-not-allowed"
-                            : "bg-accent text-white hover:bg-accent/80"
-                    )}
-                >
-                    {status === "streaming" ? (
-                        <i className="fa fa-spinner fa-spin"></i>
-                    ) : (
-                        <i className="fa fa-paper-plane"></i>
-                    )}
-                </button>
+        <div className="border-t border-gray-600">
+            <form onSubmit={onSubmit}>
+                <div className="relative">
+                    <textarea
+                        ref={textareaRef}
+                        value={input}
+                        onChange={(e) => setInput(e.target.value)}
+                        onKeyDown={handleKeyDown}
+                        placeholder="Ask Wave AI anything..."
+                        className="w-full bg-gray-800 text-white px-2 py-2 pr-6 focus:outline-none resize-none overflow-hidden"
+                        style={{ fontSize: "13px" }}
+                        disabled={status !== "ready"}
+                        rows={2}
+                    />
+                    <button
+                        type="submit"
+                        disabled={status !== "ready" || !input.trim()}
+                        className={cn(
+                            "absolute bottom-2 right-1 w-3.5 h-3.5 transition-colors flex items-center justify-center",
+                            status !== "ready" || !input.trim()
+                                ? "text-gray-400"
+                                : "text-accent/80 hover:text-accent cursor-pointer"
+                        )}
+                    >
+                        {status === "streaming" ? (
+                            <i className="fa fa-spinner fa-spin text-xs"></i>
+                        ) : (
+                            <i className="fa fa-paper-plane text-xs"></i>
+                        )}
+                    </button>
+                </div>
             </form>
         </div>
     );
