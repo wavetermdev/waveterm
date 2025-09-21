@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { cn } from "@/util/util";
-import { memo } from "react";
+import { memo, useRef, useEffect } from "react";
 
 interface AIPanelInputProps {
     input: string;
@@ -12,15 +12,38 @@ interface AIPanelInputProps {
 }
 
 export const AIPanelInput = memo(({ input, setInput, onSubmit, status }: AIPanelInputProps) => {
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+        if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            onSubmit(e as any);
+        }
+    };
+
+    useEffect(() => {
+        const textarea = textareaRef.current;
+        if (!textarea) return;
+
+        textarea.style.height = "auto";
+        const scrollHeight = textarea.scrollHeight;
+        const maxHeight = 6 * 24; // 6 lines * approximate line height
+        textarea.style.height = `${Math.min(scrollHeight, maxHeight)}px`;
+    }, [input]);
+
     return (
         <div className="@container border-t border-gray-600 p-2 @xs:p-4">
-            <form onSubmit={onSubmit} className="flex gap-1 @xs:gap-2">
-                <input
+            <form onSubmit={onSubmit} className="flex gap-1 @xs:gap-2 items-end">
+                <textarea
+                    ref={textareaRef}
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
+                    onKeyDown={handleKeyDown}
                     placeholder="Ask Wave AI anything..."
-                    className="flex-1 bg-gray-700 text-white px-2 @xs:px-4 py-2 rounded-lg border border-gray-600 focus:border-accent focus:outline-none text-sm @xs:text-base min-w-0"
+                    className="flex-1 bg-gray-700 text-white px-2 @xs:px-4 py-2 rounded-lg border border-gray-600 focus:border-accent focus:outline-none min-w-0 resize-none overflow-hidden"
+                    style={{ fontSize: '13px' }}
                     disabled={status !== "ready"}
+                    rows={1}
                 />
                 <button
                     type="submit"

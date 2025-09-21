@@ -71,12 +71,12 @@ const AIPanelComponent = memo(({ className, onClose }: AIPanelProps) => {
     const handleDragLeave = (e: React.DragEvent) => {
         e.preventDefault();
         e.stopPropagation();
-        
+
         // Only set drag over to false if we're actually leaving the drop zone
         const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
         const x = e.clientX;
         const y = e.clientY;
-        
+
         if (x <= rect.left || x >= rect.right || y <= rect.top || y >= rect.bottom) {
             setIsDragOver(false);
         }
@@ -90,7 +90,7 @@ const AIPanelComponent = memo(({ className, onClose }: AIPanelProps) => {
         const files = Array.from(e.dataTransfer.files);
         const acceptableFiles = files.filter(isAcceptableFile);
 
-        acceptableFiles.forEach(file => {
+        acceptableFiles.forEach((file) => {
             model.addFile(file);
         });
 
@@ -117,7 +117,7 @@ const AIPanelComponent = memo(({ className, onClose }: AIPanelProps) => {
             onDrop={handleDrop}
         >
             {isDragOver && (
-                <div className="absolute inset-0 bg-accent/20 border-2 border-dashed border-accent rounded-lg flex items-center justify-center z-10">
+                <div className="absolute inset-0 bg-accent/20 border-2 border-dashed border-accent rounded-lg flex items-center justify-center z-10 p-4">
                     <div className="text-accent text-center">
                         <i className="fa fa-upload text-3xl mb-2"></i>
                         <div className="text-lg font-semibold">Drop files here</div>
