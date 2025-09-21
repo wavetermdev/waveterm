@@ -26,8 +26,8 @@ export const AIMessage = memo(({ message, isStreaming }: AIMessageProps) => {
         <div className={cn("flex", message.role === "user" ? "justify-end" : "justify-start")}>
             <div
                 className={cn(
-                    "max-w-[80%] px-4 py-2 rounded-lg",
-                    message.role === "user" ? "bg-accent-800 text-white" : "bg-gray-800 text-gray-100"
+                    "px-2 py-2 rounded-lg",
+                    message.role === "user" ? "bg-accent-800 text-white max-w-[calc(100%-20px)]" : "bg-gray-800 text-gray-100"
                 )}
             >
                 {message.role === "user" ? (
