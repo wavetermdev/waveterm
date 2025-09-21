@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { isDev } from "@/store/global";
-import { ImperativePanelHandle } from "react-resizable-panels";
+import { ImperativePanelGroupHandle, ImperativePanelHandle } from "react-resizable-panels";
 
 const AI_PANEL_DEFAULT_WIDTH = 300;
 const AI_PANEL_MIN_WIDTH = 250;
@@ -10,28 +10,43 @@ const AI_PANEL_MIN_WIDTH = 250;
 class WorkspaceLayoutModel {
     aiPanelVisible: boolean;
     aiPanelRef: ImperativePanelHandle | null;
+    panelGroupRef: ImperativePanelGroupHandle | null;
     aiPanelWidth: number;
+    inResize: boolean;
 
     constructor() {
         this.aiPanelVisible = isDev();
         this.aiPanelRef = null;
+        this.panelGroupRef = null;
         this.aiPanelWidth = AI_PANEL_DEFAULT_WIDTH;
+        this.inResize = false;
     }
 
-    registerAIPanelRef(ref: ImperativePanelHandle): void {
-        this.aiPanelRef = ref;
+    registerRefs(aiPanelRef: ImperativePanelHandle, panelGroupRef: ImperativePanelGroupHandle): void {
+        this.aiPanelRef = aiPanelRef;
+        this.panelGroupRef = panelGroupRef;
         this.syncAIPanelRef();
     }
 
     syncAIPanelRef(): void {
-        if (!this.aiPanelRef) {
+        if (!this.aiPanelRef || !this.panelGroupRef) {
             return;
         }
+
+        const currentWindowWidth = window.innerWidth;
+        const aiPanelPercentage = this.getAIPanelPercentage(currentWindowWidth);
+        const mainContentPercentage = this.getMainContentPercentage(currentWindowWidth);
+
         if (this.aiPanelVisible) {
             this.aiPanelRef.expand();
         } else {
             this.aiPanelRef.collapse();
         }
+
+        this.inResize = true;
+        const layout = [aiPanelPercentage, mainContentPercentage];
+        this.panelGroupRef.setLayout(layout);
+        this.inResize = false;
     }
 
     getMaxAIPanelWidth(windowWidth: number): number {
@@ -84,6 +99,9 @@ class WorkspaceLayoutModel {
 
     handleAIPanelResize(width: number, windowWidth: number): void {
         if (!isDev()) {
+            return;
+        }
+        if (!this.aiPanelVisible) {
             return;
         }
         const clampedWidth = this.getClampedAIPanelWidth(width, windowWidth);

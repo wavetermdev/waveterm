@@ -26,11 +26,10 @@ const WorkspaceElem = memo(() => {
     const initialAiPanelPercentage = workspaceLayoutModel.getAIPanelPercentage(window.innerWidth);
     const panelGroupRef = useRef<ImperativePanelGroupHandle>(null);
     const aiPanelRef = useRef<ImperativePanelHandle>(null);
-    const inResizeRef = useRef(false);
 
     useEffect(() => {
-        if (aiPanelRef.current) {
-            workspaceLayoutModel.registerAIPanelRef(aiPanelRef.current);
+        if (aiPanelRef.current && panelGroupRef.current) {
+            workspaceLayoutModel.registerRefs(aiPanelRef.current, panelGroupRef.current);
         }
     }, []);
 
@@ -42,9 +41,10 @@ const WorkspaceElem = memo(() => {
             const newWindowWidth = window.innerWidth;
             const aiPanelPercentage = workspaceLayoutModel.getAIPanelPercentage(newWindowWidth);
             const mainContentPercentage = workspaceLayoutModel.getMainContentPercentage(newWindowWidth);
-            inResizeRef.current = true;
-            panelGroupRef.current.setLayout([aiPanelPercentage, mainContentPercentage]);
-            inResizeRef.current = false;
+            workspaceLayoutModel.inResize = true;
+            const layout = [aiPanelPercentage, mainContentPercentage];
+            panelGroupRef.current.setLayout(layout);
+            workspaceLayoutModel.inResize = false;
         };
 
         window.addEventListener("resize", handleResize);
@@ -52,7 +52,7 @@ const WorkspaceElem = memo(() => {
     }, []);
 
     const handlePanelLayout = (sizes: number[]) => {
-        if (inResizeRef.current) {
+        if (workspaceLayoutModel.inResize) {
             return;
         }
         const currentWindowWidth = window.innerWidth;
@@ -60,7 +60,10 @@ const WorkspaceElem = memo(() => {
         workspaceLayoutModel.handleAIPanelResize(aiPanelPixelWidth, currentWindowWidth);
         const newPercentage = workspaceLayoutModel.getAIPanelPercentage(currentWindowWidth);
         const mainContentPercentage = 100 - newPercentage;
-        panelGroupRef.current.setLayout([newPercentage, mainContentPercentage]);
+        workspaceLayoutModel.inResize = true;
+        const layout = [newPercentage, mainContentPercentage];
+        panelGroupRef.current.setLayout(layout);
+        workspaceLayoutModel.inResize = false;
     };
 
     const handleCloseAIPanel = () => {
