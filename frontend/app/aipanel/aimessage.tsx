@@ -5,6 +5,7 @@ import { cn } from "@/util/util";
 import { UIMessage } from "ai";
 import { memo } from "react";
 import { Streamdown } from "streamdown";
+import { getFileIcon } from "./ai-utils";
 
 const AIThinking = memo(() => (
     <div className="flex items-center gap-2">
@@ -19,27 +20,99 @@ const AIThinking = memo(() => (
 
 AIThinking.displayName = "AIThinking";
 
+interface UserMessageFilesProps {
+    fileParts: Array<any>;
+}
+
+const UserMessageFiles = memo(({ fileParts }: UserMessageFilesProps) => {
+    if (fileParts.length === 0) return null;
+
+    return (
+        <div className="mt-2 pt-2 border-t border-gray-600">
+            <div className="flex gap-2 overflow-x-auto pb-1">
+                {fileParts.map((file, index) => (
+                    <div key={index} className="relative bg-gray-700 rounded-lg p-2 min-w-20 flex-shrink-0">
+                        <div className="flex flex-col items-center text-center">
+                            {file.url?.startsWith('data:image') ? (
+                                <div className="w-12 h-12 mb-1">
+                                    <img
+                                        src={file.url}
+                                        alt={file.filename || 'Image'}
+                                        className="w-full h-full object-cover rounded"
+                                    />
+                                </div>
+                            ) : (
+                                <div className="w-12 h-12 mb-1 flex items-center justify-center bg-gray-600 rounded">
+                                    <i className={cn("fa text-lg text-gray-300", getFileIcon(file.filename || '', file.mediaType || ''))}></i>
+                                </div>
+                            )}
+                            <div className="text-[10px] text-gray-200 truncate w-full max-w-16" title={file.filename || 'File'}>
+                                {file.filename || 'File'}
+                            </div>
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+});
+
+UserMessageFiles.displayName = "UserMessageFiles";
+
+interface AIMessagePartProps {
+    part: any;
+    role: string;
+    isStreaming: boolean;
+}
+
+const AIMessagePart = memo(({ part, role, isStreaming }: AIMessagePartProps) => {
+    if (part.type !== "text") {
+        return null;
+    }
+
+    const content = part.text ?? "";
+
+    if (role === "user") {
+        return <div className="whitespace-pre-wrap break-words">{content}</div>;
+    } else {
+        return (
+            <Streamdown
+                parseIncompleteMarkdown={isStreaming}
+                className="markdown-content text-gray-100"
+                shikiTheme={["github-dark", "github-dark"]}
+                controls={{
+                    code: true,
+                    table: true,
+                    mermaid: true,
+                }}
+                mermaidConfig={{
+                    theme: "dark",
+                    darkMode: true,
+                }}
+                allowedLinkPrefixes={["https://", "http://", "#"]}
+                allowedImagePrefixes={["https://", "http://", "data:"]}
+                defaultOrigin="http://localhost"
+            >
+                {content}
+            </Streamdown>
+        );
+    }
+});
+
+AIMessagePart.displayName = "AIMessagePart";
+
 interface AIMessageProps {
     message: UIMessage;
     isStreaming: boolean;
 }
 
 export const AIMessage = memo(({ message, isStreaming }: AIMessageProps) => {
-    let content = (() => {
-        if (message.parts) {
-            return message.parts
-                .filter((part: any) => part.type === "text")
-                .map((part: any) => part.text)
-                .join("");
-        }
-        return "";
-    })();
+    const parts = message.parts || [];
+    const textParts = parts.filter((part: any) => part.type === "text");
+    const fileParts = parts.filter((part: any) => part.type === "file");
+    const hasTextContent = textParts.length > 0 && textParts.some((part: any) => part.text);
 
-    const showThinking = content === "" && isStreaming && message.role === "assistant";
-    
-    if (content === "" && !isStreaming) {
-        content = "(no text content)";
-    }
+    const showThinking = !hasTextContent && isStreaming && message.role === "assistant";
 
     return (
         <div className={cn("flex", message.role === "user" ? "justify-end" : "justify-start")}>
@@ -53,29 +126,15 @@ export const AIMessage = memo(({ message, isStreaming }: AIMessageProps) => {
             >
                 {showThinking ? (
                     <AIThinking />
-                ) : message.role === "user" ? (
-                    <div className="whitespace-pre-wrap break-words">{content}</div>
+                ) : !hasTextContent && !isStreaming ? (
+                    <div className="whitespace-pre-wrap break-words">(no text content)</div>
                 ) : (
-                    <Streamdown
-                        parseIncompleteMarkdown={isStreaming}
-                        className="markdown-content text-gray-100"
-                        shikiTheme={["github-dark", "github-dark"]}
-                        controls={{
-                            code: true,
-                            table: true,
-                            mermaid: true,
-                        }}
-                        mermaidConfig={{
-                            theme: "dark",
-                            darkMode: true,
-                        }}
-                        allowedLinkPrefixes={["https://", "http://", "#"]}
-                        allowedImagePrefixes={["https://", "http://", "data:"]}
-                        defaultOrigin="http://localhost"
-                    >
-                        {content}
-                    </Streamdown>
+                    textParts.map((part: any, index: number) => (
+                        <AIMessagePart key={index} part={part} role={message.role} isStreaming={isStreaming} />
+                    ))
                 )}
+                
+                {message.role === "user" && <UserMessageFiles fileParts={fileParts} />}
             </div>
         </div>
     );
