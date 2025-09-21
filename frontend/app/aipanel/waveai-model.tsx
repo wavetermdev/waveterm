@@ -16,6 +16,7 @@ export interface DroppedFile {
 export class WaveAIModel {
     widgetAccess: jotai.PrimitiveAtom<boolean> = jotai.atom(true);
     droppedFiles: jotai.PrimitiveAtom<DroppedFile[]> = jotai.atom([]);
+    chatId: jotai.PrimitiveAtom<string> = jotai.atom(crypto.randomUUID());
 
     constructor() {
         // Model initialization
@@ -65,5 +66,10 @@ export class WaveAIModel {
         });
 
         globalStore.set(this.droppedFiles, []);
+    }
+
+    clearChat() {
+        this.clearFiles();
+        globalStore.set(this.chatId, crypto.randomUUID());
     }
 }

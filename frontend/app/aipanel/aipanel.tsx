@@ -5,7 +5,9 @@ import { getWebServerEndpoint } from "@/util/endpoints";
 import { cn } from "@/util/util";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
-import { memo, useRef, useState } from "react";
+import { memo, useRef, useState, useEffect } from "react";
+import { useAtomValue } from "jotai";
+import { checkKeyPressed, keydownWrapper } from "@/util/keyutil";
 import { isAcceptableFile, normalizeMimeType, readFileAsBase64, createDataUrl } from "./ai-utils";
 import { AIDroppedFiles } from "./aidroppedfiles";
 import { AIPanelHeader } from "./aipanelheader";
@@ -24,17 +26,17 @@ const AIPanelComponent = memo(({ className, onClose }: AIPanelProps) => {
     const [isDragOver, setIsDragOver] = useState(false);
     const modelRef = useRef(new WaveAIModel());
     const model = modelRef.current;
-    const chatIdRef = useRef(crypto.randomUUID());
+    const chatId = useAtomValue(model.chatId);
     const realMessageRef = useRef<AIMessage>(null);
 
-    const { messages, sendMessage, status } = useChat({
+    const { messages, sendMessage, status, setMessages } = useChat({
         transport: new DefaultChatTransport({
-            api: `${getWebServerEndpoint()}/api/post-chat-message?chatid=${chatIdRef.current}`,
+            api: `${getWebServerEndpoint()}/api/post-chat-message`,
             prepareSendMessagesRequest: (opts) => {
                 const msg = realMessageRef.current;
                 realMessageRef.current = null;
                 return {
-                    body: msg,
+                    body: { msg, chatid: globalStore.get(model.chatId) },
                 };
             },
         }),
@@ -42,6 +44,27 @@ const AIPanelComponent = memo(({ className, onClose }: AIPanelProps) => {
             console.error("AI Chat error:", error);
         },
     });
+
+    const clearChat = () => {
+        model.clearChat();
+        setMessages([]);
+    };
+
+    const handleKeyDown = (waveEvent: WaveKeyboardEvent): boolean => {
+        if (checkKeyPressed(waveEvent, "Cmd:k")) {
+            clearChat();
+            return true;
+        }
+        return false;
+    };
+
+    useEffect(() => {
+        const keyHandler = keydownWrapper(handleKeyDown);
+        document.addEventListener("keydown", keyHandler);
+        return () => {
+            document.removeEventListener("keydown", keyHandler);
+        };
+    }, []);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();

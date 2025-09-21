@@ -129,6 +129,12 @@ func WaveAIPostMessageWrap(ctx context.Context, sseHandler *sse.SSEHandlerCh, ai
 	return WaveAIPostMessage(ctx, sseHandler, aiOpts, chatID, tools)
 }
 
+// PostMessageRequest represents the request body for posting a message
+type PostMessageRequest struct {
+	Msg    uctypes.AIMessage `json:"msg"`
+	ChatID string            `json:"chatid"`
+}
+
 func WaveAIPostMessageHandler(w http.ResponseWriter, r *http.Request) {
 	// Only allow POST method
 	if r.Method != http.MethodPost {
@@ -136,26 +142,25 @@ func WaveAIPostMessageHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get chatid parameter and validate it's a UUID
-	chatID := r.URL.Query().Get("chatid")
-	if chatID == "" {
-		http.Error(w, "chatid parameter is required", http.StatusBadRequest)
-		return
-	}
-	if _, err := uuid.Parse(chatID); err != nil {
-		http.Error(w, "chatid must be a valid UUID", http.StatusBadRequest)
-		return
-	}
-
 	// Parse request body
-	var message uctypes.AIMessage
-	if err := json.NewDecoder(r.Body).Decode(&message); err != nil {
+	var req PostMessageRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, fmt.Sprintf("Invalid request body: %v", err), http.StatusBadRequest)
 		return
 	}
 
+	// Validate chatid is present and is a UUID
+	if req.ChatID == "" {
+		http.Error(w, "chatid is required in request body", http.StatusBadRequest)
+		return
+	}
+	if _, err := uuid.Parse(req.ChatID); err != nil {
+		http.Error(w, "chatid must be a valid UUID", http.StatusBadRequest)
+		return
+	}
+
 	// Validate the message
-	if err := message.Validate(); err != nil {
+	if err := req.Msg.Validate(); err != nil {
 		http.Error(w, fmt.Sprintf("Message validation failed: %v", err), http.StatusInternalServerError)
 		return
 	}
@@ -172,7 +177,7 @@ func WaveAIPostMessageHandler(w http.ResponseWriter, r *http.Request) {
 	defer sseHandler.Close()
 
 	// Call the core WaveAIPostMessage function
-	if err := WaveAIPostMessageWrap(r.Context(), sseHandler, aiOpts, chatID, &message, nil); err != nil {
+	if err := WaveAIPostMessageWrap(r.Context(), sseHandler, aiOpts, req.ChatID, &req.Msg, nil); err != nil {
 		http.Error(w, fmt.Sprintf("Failed to post message: %v", err), http.StatusInternalServerError)
 		return
 	}
