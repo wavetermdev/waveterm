@@ -6,12 +6,13 @@ import { cn } from "@/util/util";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { memo, useRef, useState } from "react";
-import { isAcceptableFile } from "./ai-utils";
+import { isAcceptableFile, normalizeMimeType, readFileAsBase64, createDataUrl } from "./ai-utils";
 import { AIDroppedFiles } from "./aidroppedfiles";
 import { AIPanelHeader } from "./aipanelheader";
 import { AIPanelInput } from "./aipanelinput";
 import { AIPanelMessages } from "./aipanelmessages";
 import { WaveAIModel } from "./waveai-model";
+import { globalStore } from "@/app/store/jotaiStore";
 
 interface AIPanelProps {
     className?: string;
@@ -42,16 +43,56 @@ const AIPanelComponent = memo(({ className, onClose }: AIPanelProps) => {
         },
     });
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!input.trim() || status !== "ready") return;
+
+        const droppedFiles = globalStore.get(model.droppedFiles);
+
+        // Prepare AI message parts (for backend)
+        const aiMessageParts: any[] = [{ type: "text", text: input.trim() }];
+        
+        // Prepare UI message parts (for frontend display)
+        const uiMessageParts: any[] = [];
+        
+        if (input.trim()) {
+            uiMessageParts.push({ type: "text", text: input.trim() });
+        }
+
+        // Process files
+        for (const droppedFile of droppedFiles) {
+            const normalizedMimeType = normalizeMimeType(droppedFile.file);
+            const dataUrl = await createDataUrl(droppedFile.file);
+            
+            // For AI message (backend) - use data URL
+            aiMessageParts.push({
+                type: "file",
+                filename: droppedFile.name,
+                mimetype: normalizedMimeType,
+                url: dataUrl
+            });
+
+            // For UI message (frontend display) - use data URL
+            uiMessageParts.push({
+                type: "file",
+                mediaType: normalizedMimeType, // Use normalized mimetype
+                filename: droppedFile.name,
+                url: dataUrl
+            });
+        }
+
+        // realMessage uses AIMessageParts
         const realMessage: AIMessage = {
             messageid: crypto.randomUUID(),
-            parts: [{ type: "text", text: input.trim() }],
+            parts: aiMessageParts,
         };
         realMessageRef.current = realMessage;
-        sendMessage({ text: input.trim() });
+
+        // sendMessage uses UIMessageParts
+        sendMessage({ parts: uiMessageParts });
+        
         setInput("");
+        model.clearFiles();
     };
 
     const handleDragOver = (e: React.DragEvent) => {

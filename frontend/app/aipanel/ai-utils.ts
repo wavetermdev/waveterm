@@ -93,3 +93,46 @@ export const formatFileSize = (bytes: number): string => {
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
 };
+
+// Normalize MIME type for AI processing
+export const normalizeMimeType = (file: File): string => {
+    const fileType = file.type;
+    
+    // Images keep their real mimetype
+    if (fileType.startsWith('image/')) {
+        return fileType;
+    }
+    
+    // PDFs keep their mimetype
+    if (fileType === 'application/pdf') {
+        return fileType;
+    }
+    
+    // Everything else (code files, markdown, text, etc.) becomes text/plain
+    return 'text/plain';
+};
+
+// Helper function to read file as base64 for AIMessage
+export const readFileAsBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+            const result = reader.result as string;
+            // Remove data URL prefix to get just base64
+            const base64 = result.split(',')[1];
+            resolve(base64);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+};
+
+// Helper function to create data URL for UIMessage
+export const createDataUrl = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+};
