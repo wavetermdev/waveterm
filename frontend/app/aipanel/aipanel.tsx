@@ -1,20 +1,20 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { globalStore } from "@/app/store/jotaiStore";
 import { getWebServerEndpoint } from "@/util/endpoints";
+import { checkKeyPressed, keydownWrapper } from "@/util/keyutil";
 import { cn } from "@/util/util";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
-import { memo, useRef, useState, useEffect } from "react";
 import { useAtomValue } from "jotai";
-import { checkKeyPressed, keydownWrapper } from "@/util/keyutil";
-import { isAcceptableFile, normalizeMimeType, readFileAsBase64, createDataUrl } from "./ai-utils";
+import { memo, useEffect, useRef, useState } from "react";
+import { createDataUrl, isAcceptableFile, normalizeMimeType } from "./ai-utils";
 import { AIDroppedFiles } from "./aidroppedfiles";
 import { AIPanelHeader } from "./aipanelheader";
-import { AIPanelInput } from "./aipanelinput";
+import { AIPanelInput, type AIPanelInputRef } from "./aipanelinput";
 import { AIPanelMessages } from "./aipanelmessages";
 import { WaveAIModel } from "./waveai-model";
-import { globalStore } from "@/app/store/jotaiStore";
 
 interface AIPanelProps {
     className?: string;
@@ -28,6 +28,7 @@ const AIPanelComponent = memo(({ className, onClose }: AIPanelProps) => {
     const model = modelRef.current;
     const chatId = useAtomValue(model.chatId);
     const realMessageRef = useRef<AIMessage>(null);
+    const inputRef = useRef<AIPanelInputRef>(null);
 
     const { messages, sendMessage, status, setMessages } = useChat({
         transport: new DefaultChatTransport({
@@ -74,10 +75,10 @@ const AIPanelComponent = memo(({ className, onClose }: AIPanelProps) => {
 
         // Prepare AI message parts (for backend)
         const aiMessageParts: any[] = [{ type: "text", text: input.trim() }];
-        
+
         // Prepare UI message parts (for frontend display)
         const uiMessageParts: any[] = [];
-        
+
         if (input.trim()) {
             uiMessageParts.push({ type: "text", text: input.trim() });
         }
@@ -86,13 +87,13 @@ const AIPanelComponent = memo(({ className, onClose }: AIPanelProps) => {
         for (const droppedFile of droppedFiles) {
             const normalizedMimeType = normalizeMimeType(droppedFile.file);
             const dataUrl = await createDataUrl(droppedFile.file);
-            
+
             // For AI message (backend) - use data URL
             aiMessageParts.push({
                 type: "file",
                 filename: droppedFile.name,
                 mimetype: normalizedMimeType,
-                url: dataUrl
+                url: dataUrl,
             });
 
             // For UI message (frontend display) - use data URL
@@ -100,7 +101,7 @@ const AIPanelComponent = memo(({ className, onClose }: AIPanelProps) => {
                 type: "file",
                 mediaType: normalizedMimeType, // Use normalized mimetype
                 filename: droppedFile.name,
-                url: dataUrl
+                url: dataUrl,
             });
         }
 
@@ -113,9 +114,15 @@ const AIPanelComponent = memo(({ className, onClose }: AIPanelProps) => {
 
         // sendMessage uses UIMessageParts
         sendMessage({ parts: uiMessageParts });
-        
+
         setInput("");
         model.clearFiles();
+
+        // Keep focus on input after submission
+        setTimeout(() => {
+            console.log("trying to reset focus", inputRef.current);
+            inputRef.current?.focus();
+        }, 100);
     };
 
     const handleDragOver = (e: React.DragEvent) => {
@@ -194,7 +201,13 @@ const AIPanelComponent = memo(({ className, onClose }: AIPanelProps) => {
             <div className="flex-1 flex flex-col min-h-0">
                 <AIPanelMessages messages={messages} status={status} />
                 <AIDroppedFiles model={model} />
-                <AIPanelInput input={input} setInput={setInput} onSubmit={handleSubmit} status={status} />
+                <AIPanelInput
+                    ref={inputRef}
+                    input={input}
+                    setInput={setInput}
+                    onSubmit={handleSubmit}
+                    status={status}
+                />
             </div>
         </div>
     );
