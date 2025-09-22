@@ -25,12 +25,13 @@ interface AIPanelProps {
 const AIPanelComponent = memo(({ className, onClose }: AIPanelProps) => {
     const [input, setInput] = useState("");
     const [isDragOver, setIsDragOver] = useState(false);
+    const [errorMessage, setErrorMessage] = useState<string>("");
     const modelRef = useRef(new WaveAIModel());
     const model = modelRef.current;
     const realMessageRef = useRef<AIMessage>(null);
     const inputRef = useRef<AIPanelInputRef>(null);
 
-    const { messages, sendMessage, status, setMessages } = useChat({
+    const { messages, sendMessage, status, setMessages, error } = useChat({
         transport: new DefaultChatTransport({
             api: `${getWebServerEndpoint()}/api/post-chat-message`,
             prepareSendMessagesRequest: (opts) => {
@@ -48,6 +49,14 @@ const AIPanelComponent = memo(({ className, onClose }: AIPanelProps) => {
         }),
         onError: (error) => {
             console.error("AI Chat error:", error);
+            setErrorMessage(error.message || "An error occurred");
+            // Remove the last user message that failed to send
+            setMessages((prevMessages) => {
+                if (prevMessages.length > 0 && prevMessages[prevMessages.length - 1].role === "user") {
+                    return prevMessages.slice(0, -1);
+                }
+                return prevMessages;
+            });
         },
     });
 
@@ -77,6 +86,9 @@ const AIPanelComponent = memo(({ className, onClose }: AIPanelProps) => {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!input.trim() || status !== "ready") return;
+
+        // Clear any previous error when submitting
+        setErrorMessage("");
 
         const droppedFiles = globalStore.get(model.droppedFiles);
 
@@ -209,6 +221,11 @@ const AIPanelComponent = memo(({ className, onClose }: AIPanelProps) => {
 
             <div className="flex-1 flex flex-col min-h-0">
                 <AIPanelMessages messages={messages} status={status} />
+                {errorMessage && (
+                    <div className="px-4 py-2 text-red-400 bg-red-900/20 border-l-4 border-red-500 mx-2 mb-2">
+                        <div className="text-sm">{errorMessage}</div>
+                    </div>
+                )}
                 <AIDroppedFiles model={model} />
                 <AIPanelInput
                     ref={inputRef}

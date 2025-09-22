@@ -128,6 +128,7 @@ function handleOsc7Command(data: string, blockId: string, loaded: boolean): bool
         fireAndForget(() =>
             services.ObjectService.UpdateObjectMeta(WOS.makeORef("block", blockId), {
                 "cmd:cwd": data,
+                "cmd:hascurcwd": true,
             })
         );
     }, 0);

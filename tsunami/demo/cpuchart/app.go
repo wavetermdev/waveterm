@@ -9,6 +9,9 @@ import (
 	"github.com/wavetermdev/waveterm/tsunami/vdom"
 )
 
+const AppTitle = "CPU Usage Monitor"
+const AppShortDesc = "Real-time CPU usage monitoring and charting"
+
 // Global atoms for config and data
 var (
 	dataPointCountAtom = app.ConfigAtom("dataPointCount", 60, &app.AtomMeta{
@@ -148,7 +151,6 @@ var StatsPanel = app.DefineComponent("StatsPanel", func(props StatsPanelProps) a
 )
 
 var App = app.DefineComponent("App", func(_ struct{}) any {
-	app.UseSetAppTitle("CPU Usage Monitor")
 
 	// Use UseTicker for continuous CPU data collection - automatically cleaned up on unmount
 	app.UseTicker(time.Second, func() {

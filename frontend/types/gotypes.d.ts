@@ -546,6 +546,7 @@ declare global {
         "cmd:initscript.zsh"?: string;
         "cmd:initscript.pwsh"?: string;
         "cmd:initscript.fish"?: string;
+        "cmd:hascurcwd"?: boolean;
         "ai:*"?: boolean;
         "ai:preset"?: string;
         "ai:apitype"?: string;

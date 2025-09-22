@@ -60,6 +60,7 @@ const (
 	MetaKey_CmdInitScriptZsh                 = "cmd:initscript.zsh"
 	MetaKey_CmdInitScriptPwsh                = "cmd:initscript.pwsh"
 	MetaKey_CmdInitScriptFish                = "cmd:initscript.fish"
+	MetaKey_CmdHasCurCwd                     = "cmd:hascurcwd"
 
 	MetaKey_AiClear                          = "ai:*"
 	MetaKey_AiPresetKey                      = "ai:preset"

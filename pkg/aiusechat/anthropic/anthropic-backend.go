@@ -406,9 +406,10 @@ func RunAnthropicChatStep(
 
 	// pretty print json of anthropicMsgs
 	if jsonBytes, err := json.MarshalIndent(anthropicMsgs, "", "  "); err == nil {
+		log.Printf("system-prompt: %v\n", chatOpts.SystemPrompt)
 		log.Printf("anthropicMsgs JSON:\n%s", string(jsonBytes))
 	} else {
-		log.Printf("failed to marshal anthropicMsgs to JSON: %v", err)
+		return nil, nil, fmt.Errorf("failed to marshal messages to JSON: %w", err)
 	}
 
 	req, err := buildAnthropicHTTPRequest(ctx, anthropicMsgs, chatOpts)

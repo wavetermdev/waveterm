@@ -17,5 +17,7 @@ func main() {
 	subDistFS, _ := fs.Sub(distFS, "dist")
 	subStaticFS, _ := fs.Sub(staticFS, "static")
 	app.RegisterEmbeds(subDistFS, subStaticFS, nil)
+	app.SetTitle(AppTitle)
+	app.SetShortDesc(AppShortDesc)
 	app.RunMain()
 }

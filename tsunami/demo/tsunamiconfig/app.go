@@ -14,6 +14,9 @@ import (
 	"github.com/wavetermdev/waveterm/tsunami/vdom"
 )
 
+const AppTitle = "Tsunami Config Manager"
+const AppShortDesc = "Configuration editor for remote servers with JSON validation"
+
 // Global atoms for config
 var (
 	serverURLAtom = app.ConfigAtom("serverURL", "", &app.AtomMeta{
@@ -257,7 +260,6 @@ var SuccessDisplay = app.DefineComponent("SuccessDisplay",
 
 var App = app.DefineComponent("App",
 	func(_ struct{}) any {
-		app.UseSetAppTitle("Tsunami Config Manager")
 
 		// Get atom value once at the top
 		urlInput := serverURLAtom.Get()

@@ -80,7 +80,9 @@ func sshRun(cmd *cobra.Command, args []string) (rtnErr error) {
 	data := wshrpc.CommandSetMetaData{
 		ORef: waveobj.MakeORef(waveobj.OType_Block, blockId),
 		Meta: map[string]any{
-			waveobj.MetaKey_Connection: sshArg,
+			waveobj.MetaKey_Connection:   sshArg,
+			waveobj.MetaKey_CmdCwd:       nil,
+			waveobj.MetaKey_CmdHasCurCwd: nil,
 		},
 	}
 	err := wshclient.SetMetaCommand(RpcClient, data, nil)

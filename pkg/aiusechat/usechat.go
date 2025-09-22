@@ -258,23 +258,6 @@ func WaveAIPostMessageHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Create tools array with adder tool
-	tools := []uctypes.ToolDefinition{
-		GetAdderToolDefinition(),
-	}
-	tabTools, err := MakeToolsForTab(r.Context(), req.TabId, req.WidgetAccess)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	tools = append(tools, tabTools...)
-
-	// Validate the message
-	if err := req.Msg.Validate(); err != nil {
-		http.Error(w, fmt.Sprintf("Message validation failed: %v", err), http.StatusInternalServerError)
-		return
-	}
-
 	// Get WaveAI settings
 	aiOpts, err := getWaveAISettings()
 	if err != nil {
@@ -282,16 +265,33 @@ func WaveAIPostMessageHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Create SSE handler and set up streaming
-	sseHandler := sse.MakeSSEHandlerCh(w, r.Context())
-	defer sseHandler.Close()
-
 	// Call the core WaveAIPostMessage function
 	chatOpts := uctypes.WaveChatOpts{
 		ChatId: req.ChatID,
 		Config: *aiOpts,
-		Tools:  tools,
+		SystemPrompt: []string{
+			"You are Wave AI, an intelligent assistant embedded within Wave Terminal, a modern terminal application with graphical widgets. You appear as a pull-out panel on the left side of a tab, with the tab's widgets laid out on the right.",
+		},
 	}
+
+	// Create tools array with adder tool
+	chatOpts.Tools = append(chatOpts.Tools, GetAdderToolDefinition())
+	err = AddToolsForTab(r.Context(), req.TabId, req.WidgetAccess, &chatOpts)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Error trying to add tab tool context: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	// Validate the message
+	if err := req.Msg.Validate(); err != nil {
+		http.Error(w, fmt.Sprintf("Message validation failed: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	// Create SSE handler and set up streaming
+	sseHandler := sse.MakeSSEHandlerCh(w, r.Context())
+	defer sseHandler.Close()
+
 	if err := WaveAIPostMessageWrap(r.Context(), sseHandler, &req.Msg, chatOpts); err != nil {
 		http.Error(w, fmt.Sprintf("Failed to post message: %v", err), http.StatusInternalServerError)
 		return

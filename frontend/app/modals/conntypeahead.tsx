@@ -390,18 +390,18 @@ const ChangeConnectionBlockModal = React.memo(
                     return;
                 }
                 const isAws = connName?.startsWith("aws:");
-                const oldCwd = blockData?.meta?.file ?? "";
-                let newCwd: string;
-                if (oldCwd == "") {
-                    newCwd = "";
+                const oldFile = blockData?.meta?.file ?? "";
+                let newFile: string;
+                if (oldFile == "") {
+                    newFile = "";
                 } else if (isAws) {
-                    newCwd = "/";
+                    newFile = "/";
                 } else {
-                    newCwd = "~";
+                    newFile = "~";
                 }
                 await RpcApi.SetMetaCommand(TabRpcClient, {
                     oref: WOS.makeORef("block", blockId),
-                    meta: { connection: connName, file: newCwd },
+                    meta: { connection: connName, file: newFile, "cmd:cwd": null, "cmd:hascurcwd": null },
                 });
                 try {
                     await RpcApi.ConnEnsureCommand(

@@ -34,10 +34,18 @@ const UserMessageFiles = memo(({ fileParts }: UserMessageFilesProps) => {
                     <div key={index} className="relative bg-gray-700 rounded-lg p-2 min-w-20 flex-shrink-0">
                         <div className="flex flex-col items-center text-center">
                             <div className="w-12 h-12 mb-1 flex items-center justify-center bg-gray-600 rounded">
-                                <i className={cn("fa text-lg text-gray-300", getFileIcon(file.data?.filename || '', file.data?.mimetype || ''))}></i>
+                                <i
+                                    className={cn(
+                                        "fa text-lg text-gray-300",
+                                        getFileIcon(file.data?.filename || "", file.data?.mimetype || "")
+                                    )}
+                                ></i>
                             </div>
-                            <div className="text-[10px] text-gray-200 truncate w-full max-w-16" title={file.data?.filename || 'File'}>
-                                {file.data?.filename || 'File'}
+                            <div
+                                className="text-[10px] text-gray-200 truncate w-full max-w-16"
+                                title={file.data?.filename || "File"}
+                            >
+                                {file.data?.filename || "File"}
                             </div>
                         </div>
                     </div>
@@ -76,8 +84,6 @@ const AIMessagePart = memo(({ part, role, isStreaming }: AIMessagePartProps) => 
                         theme: "dark",
                         darkMode: true,
                     }}
-                    allowedLinkPrefixes={["https://", "http://", "#"]}
-                    allowedImagePrefixes={["https://", "http://", "data:"]}
                     defaultOrigin="http://localhost"
                 >
                     {content}
@@ -88,11 +94,7 @@ const AIMessagePart = memo(({ part, role, isStreaming }: AIMessagePartProps) => 
 
     if (part.type.startsWith("tool-") && "state" in part && part.state === "input-available") {
         const toolName = part.type.substring(5); // Remove "tool-" prefix
-        return (
-            <div className="text-gray-400 italic">
-                Calling tool {toolName}
-            </div>
-        );
+        return <div className="text-gray-400 italic">Calling tool {toolName}</div>;
     }
 
     return null;
@@ -106,13 +108,17 @@ interface AIMessageProps {
 }
 
 const isDisplayPart = (part: WaveUIMessagePart): boolean => {
-    return part.type === "text" || (part.type.startsWith("tool-") && "state" in part && part.state === "input-available");
+    return (
+        part.type === "text" || (part.type.startsWith("tool-") && "state" in part && part.state === "input-available")
+    );
 };
 
 export const AIMessage = memo(({ message, isStreaming }: AIMessageProps) => {
     const parts = message.parts || [];
     const displayParts = parts.filter(isDisplayPart);
-    const fileParts = parts.filter((part): part is WaveUIMessagePart & { type: "data-userfile" } => part.type === "data-userfile");
+    const fileParts = parts.filter(
+        (part): part is WaveUIMessagePart & { type: "data-userfile" } => part.type === "data-userfile"
+    );
     const hasTextContent = displayParts.length > 0 && displayParts.some((part) => part.type === "text" && part.text);
 
     const showThinking = !hasTextContent && isStreaming && message.role === "assistant";
@@ -138,7 +144,7 @@ export const AIMessage = memo(({ message, isStreaming }: AIMessageProps) => {
                         </div>
                     ))
                 )}
-                
+
                 {message.role === "user" && <UserMessageFiles fileParts={fileParts} />}
             </div>
         </div>
