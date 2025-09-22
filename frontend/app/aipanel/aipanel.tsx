@@ -8,7 +8,6 @@ import { checkKeyPressed, keydownWrapper } from "@/util/keyutil";
 import { cn } from "@/util/util";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
-import { useAtomValue } from "jotai";
 import { memo, useEffect, useRef, useState } from "react";
 import { createDataUrl, isAcceptableFile, normalizeMimeType } from "./ai-utils";
 import { AIDroppedFiles } from "./aidroppedfiles";
@@ -27,7 +26,6 @@ const AIPanelComponent = memo(({ className, onClose }: AIPanelProps) => {
     const [isDragOver, setIsDragOver] = useState(false);
     const modelRef = useRef(new WaveAIModel());
     const model = modelRef.current;
-    const chatId = useAtomValue(model.chatId);
     const realMessageRef = useRef<AIMessage>(null);
     const inputRef = useRef<AIPanelInputRef>(null);
 

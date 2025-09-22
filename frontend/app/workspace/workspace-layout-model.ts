@@ -4,8 +4,9 @@
 import { isDev } from "@/store/global";
 import { ImperativePanelGroupHandle, ImperativePanelHandle } from "react-resizable-panels";
 
-const AI_PANEL_DEFAULT_WIDTH = 300;
-const AI_PANEL_MIN_WIDTH = 250;
+const AIPANEL_DEFAULTWIDTH = 300;
+const AIPANEL_MINWIDTH = 250;
+const AIPANEL_MAXWIDTHRATIO = 0.5;
 
 class WorkspaceLayoutModel {
     aiPanelVisible: boolean;
@@ -18,7 +19,7 @@ class WorkspaceLayoutModel {
         this.aiPanelVisible = isDev();
         this.aiPanelRef = null;
         this.panelGroupRef = null;
-        this.aiPanelWidth = AI_PANEL_DEFAULT_WIDTH;
+        this.aiPanelWidth = AIPANEL_DEFAULTWIDTH;
         this.inResize = false;
     }
 
@@ -50,15 +51,15 @@ class WorkspaceLayoutModel {
     }
 
     getMaxAIPanelWidth(windowWidth: number): number {
-        return Math.floor(windowWidth * 0.5);
+        return Math.floor(windowWidth * AIPANEL_MAXWIDTHRATIO);
     }
 
     getClampedAIPanelWidth(width: number, windowWidth: number): number {
         const maxWidth = this.getMaxAIPanelWidth(windowWidth);
-        if (AI_PANEL_MIN_WIDTH > maxWidth) {
-            return AI_PANEL_MIN_WIDTH;
+        if (AIPANEL_MINWIDTH > maxWidth) {
+            return AIPANEL_MINWIDTH;
         }
-        return Math.max(AI_PANEL_MIN_WIDTH, Math.min(width, maxWidth));
+        return Math.max(AIPANEL_MINWIDTH, Math.min(width, maxWidth));
     }
 
     getAIPanelVisible(): boolean {
@@ -115,4 +116,4 @@ class WorkspaceLayoutModel {
 
 const workspaceLayoutModel = new WorkspaceLayoutModel();
 
-export { AI_PANEL_DEFAULT_WIDTH, AI_PANEL_MIN_WIDTH, workspaceLayoutModel, WorkspaceLayoutModel };
+export { workspaceLayoutModel, WorkspaceLayoutModel };
