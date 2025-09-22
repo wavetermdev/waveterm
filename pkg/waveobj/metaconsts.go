@@ -118,6 +118,7 @@ const (
 	MetaKey_TsunamiSdkReplacePath            = "tsunami:sdkreplacepath"
 	MetaKey_TsunamiAppPath                   = "tsunami:apppath"
 	MetaKey_TsunamiScaffoldPath              = "tsunami:scaffoldpath"
+	MetaKey_TsunamiEnv                       = "tsunami:env"
 
 	MetaKey_VDomClear                        = "vdom:*"
 	MetaKey_VDomInitialized                  = "vdom:initialized"

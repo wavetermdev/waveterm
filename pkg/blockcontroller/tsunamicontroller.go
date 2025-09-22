@@ -217,7 +217,7 @@ func (c *TsunamiController) Start(ctx context.Context, blockMeta waveobj.MetaMap
 		return fmt.Errorf("app cache is not executable: %s", cachePath)
 	}
 
-	tsunamiProc, err := runTsunamiAppBinary(ctx, cachePath, appPath)
+	tsunamiProc, err := runTsunamiAppBinary(ctx, cachePath, appPath, blockMeta)
 	if err != nil {
 		return fmt.Errorf("failed to run tsunami app: %w", err)
 	}
@@ -300,9 +300,17 @@ func (c *TsunamiController) SendInput(input *BlockInputUnion) error {
 	return fmt.Errorf("tsunami controller send input not implemented")
 }
 
-func runTsunamiAppBinary(ctx context.Context, appBinPath string, appPath string) (*TsunamiAppProc, error) {
+func runTsunamiAppBinary(ctx context.Context, appBinPath string, appPath string, blockMeta waveobj.MetaMapType) (*TsunamiAppProc, error) {
 	cmd := exec.Command(appBinPath)
 	cmd.Env = append(os.Environ(), "TSUNAMI_CLOSEONSTDIN=1")
+
+	// Add TsunamiEnv variables if configured
+	tsunamiEnv := blockMeta.GetMap(waveobj.MetaKey_TsunamiEnv)
+	for key, value := range tsunamiEnv {
+		if strValue, ok := value.(string); ok {
+			cmd.Env = append(cmd.Env, key+"="+strValue)
+		}
+	}
 
 	stdoutPipe, err := cmd.StdoutPipe()
 	if err != nil {
@@ -320,12 +328,12 @@ func runTsunamiAppBinary(ctx context.Context, appBinPath string, appPath string)
 	}
 
 	appName := build.GetAppName(appPath)
-	
+
 	stdoutBuffer := utilds.MakeReaderLineBuffer(stdoutPipe, 1000)
 	stdoutBuffer.SetLineCallback(func(line string) {
 		log.Printf("[tsunami:%s] %s\n", appName, line)
 	})
-	
+
 	stderrBuffer := utilds.MakeReaderLineBuffer(stderrPipe, 1000)
 	stderrBuffer.SetLineCallback(func(line string) {
 		log.Printf("[tsunami:%s] %s\n", appName, line)

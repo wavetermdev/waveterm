@@ -117,10 +117,11 @@ type MetaTSType struct {
 	MarkdownFontSize      float64 `json:"markdown:fontsize,omitempty"`
 	MarkdownFixedFontSize float64 `json:"markdown:fixedfontsize,omitempty"`
 
-	TsunamiClear           bool   `json:"tsunami:*,omitempty"`
-	TsunamiSdkReplacePath  string `json:"tsunami:sdkreplacepath,omitempty"`
-	TsunamiAppPath         string `json:"tsunami:apppath,omitempty"`
-	TsunamiScaffoldPath    string `json:"tsunami:scaffoldpath,omitempty"`
+	TsunamiClear          bool              `json:"tsunami:*,omitempty"`
+	TsunamiSdkReplacePath string            `json:"tsunami:sdkreplacepath,omitempty"`
+	TsunamiAppPath        string            `json:"tsunami:apppath,omitempty"`
+	TsunamiScaffoldPath   string            `json:"tsunami:scaffoldpath,omitempty"`
+	TsunamiEnv            map[string]string `json:"tsunami:env,omitempty"`
 
 	VDomClear         bool   `json:"vdom:*,omitempty"`
 	VDomInitialized   bool   `json:"vdom:initialized,omitempty"`
