@@ -38,7 +38,11 @@ const AIPanelComponent = memo(({ className, onClose }: AIPanelProps) => {
                 const msg = realMessageRef.current;
                 realMessageRef.current = null;
                 return {
-                    body: { msg, chatid: globalStore.get(model.chatId) },
+                    body: {
+                        msg,
+                        chatid: globalStore.get(model.chatId),
+                        widgetaccess: globalStore.get(model.widgetAccess),
+                    },
                 };
             },
         }),
