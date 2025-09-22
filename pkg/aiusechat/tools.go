@@ -9,6 +9,10 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
 )
 
+func MakeToolsForTab(tabId string, widgetAccess bool) []uctypes.ToolDefinition {
+	return nil
+}
+
 func GetAdderToolDefinition() uctypes.ToolDefinition {
 	return uctypes.ToolDefinition{
 		Name:        "adder",

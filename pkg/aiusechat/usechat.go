@@ -228,8 +228,10 @@ func WaveAIPostMessageWrap(ctx context.Context, sseHandler *sse.SSEHandlerCh, ai
 
 // PostMessageRequest represents the request body for posting a message
 type PostMessageRequest struct {
-	Msg    uctypes.AIMessage `json:"msg"`
-	ChatID string            `json:"chatid"`
+	TabId        string            `json:"tabid"`
+	ChatID       string            `json:"chatid"`
+	Msg          uctypes.AIMessage `json:"msg"`
+	WidgetAccess bool              `json:"widgetaccess,omitempty"`
 }
 
 func WaveAIPostMessageHandler(w http.ResponseWriter, r *http.Request) {
@@ -256,6 +258,16 @@ func WaveAIPostMessageHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Validate tabid is present and is a UUID
+	if req.TabId == "" {
+		http.Error(w, "tabid is required in request body", http.StatusBadRequest)
+		return
+	}
+	if _, err := uuid.Parse(req.TabId); err != nil {
+		http.Error(w, "tabid must be a valid UUID", http.StatusBadRequest)
+		return
+	}
+
 	// Validate the message
 	if err := req.Msg.Validate(); err != nil {
 		http.Error(w, fmt.Sprintf("Message validation failed: %v", err), http.StatusInternalServerError)
@@ -277,6 +289,8 @@ func WaveAIPostMessageHandler(w http.ResponseWriter, r *http.Request) {
 	tools := []uctypes.ToolDefinition{
 		GetAdderToolDefinition(),
 	}
+	tabTools := MakeToolsForTab(req.TabId, req.WidgetAccess)
+	tools = append(tools, tabTools...)
 
 	// Call the core WaveAIPostMessage function
 	if err := WaveAIPostMessageWrap(r.Context(), sseHandler, aiOpts, req.ChatID, &req.Msg, tools); err != nil {

@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { WaveUIMessagePart } from "@/app/aipanel/aitypes";
+import { atoms } from "@/app/store/global";
 import { globalStore } from "@/app/store/jotaiStore";
 import { getWebServerEndpoint } from "@/util/endpoints";
 import { checkKeyPressed, keydownWrapper } from "@/util/keyutil";
@@ -40,6 +41,7 @@ const AIPanelComponent = memo(({ className, onClose }: AIPanelProps) => {
                         msg,
                         chatid: globalStore.get(model.chatId),
                         widgetaccess: globalStore.get(model.widgetAccess),
+                        tabid: globalStore.get(atoms.staticTabId),
                     },
                 };
             },
