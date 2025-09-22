@@ -182,7 +182,12 @@ func testAnthropic(ctx context.Context, model, message string, tools []uctypes.T
 	sseHandler := sse.MakeSSEHandlerCh(testWriter, ctx)
 	defer sseHandler.Close()
 
-	err := aiusechat.WaveAIPostMessageWrap(ctx, sseHandler, opts, chatID, aiMessage, tools)
+	chatOpts := uctypes.WaveChatOpts{
+		ChatId: chatID,
+		Config: *opts,
+		Tools:  tools,
+	}
+	err := aiusechat.WaveAIPostMessageWrap(ctx, sseHandler, aiMessage, chatOpts)
 	if err != nil {
 		fmt.Printf("Anthropic streaming error: %v\n", err)
 	}

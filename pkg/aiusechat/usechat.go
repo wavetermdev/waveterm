@@ -97,12 +97,12 @@ func RunWaveAIRequest(ctx context.Context, sseHandler *sse.SSEHandlerCh, aiOpts 
 	return RunWaveAIRequestStep(ctx, sseHandler, aiOpts, req, tools, nil)
 }
 
-func WaveAIPostMessage(ctx context.Context, sseHandler *sse.SSEHandlerCh, aiOpts *uctypes.AIOptsType, chatID string, tools []uctypes.ToolDefinition) error {
+func RunAIChat(ctx context.Context, sseHandler *sse.SSEHandlerCh, chatOpts uctypes.WaveChatOpts) error {
 	// Stream the Anthropic chat response
 	firstStep := true
 	var cont *uctypes.WaveContinueResponse
 	for {
-		stopReason, rtnMessage, err := anthropic.StreamAnthropicChatStep(ctx, sseHandler, aiOpts, chatID, tools, cont)
+		stopReason, rtnMessage, err := anthropic.RunAnthropicChatStep(ctx, sseHandler, chatOpts, cont)
 		if firstStep && err != nil {
 			return fmt.Errorf("failed to stream anthropic chat: %w", err)
 		}
@@ -112,14 +112,14 @@ func WaveAIPostMessage(ctx context.Context, sseHandler *sse.SSEHandlerCh, aiOpts
 			break
 		}
 		if rtnMessage != nil {
-			chatstore.DefaultChatStore.PostMessage(chatID, aiOpts, rtnMessage)
+			chatstore.DefaultChatStore.PostMessage(chatOpts.ChatId, &chatOpts.Config, rtnMessage)
 		}
 		if stopReason != nil && stopReason.Kind == uctypes.StopKindToolUse {
 			var toolResults []uctypes.AIToolResult
 			for _, toolCall := range stopReason.ToolCalls {
 				inputJSON, _ := json.Marshal(toolCall.Input)
 				log.Printf("TOOLUSE name=%s id=%s input=%s\n", toolCall.Name, toolCall.ID, string(inputJSON))
-				result := ResolveToolCall(toolCall, tools)
+				result := ResolveToolCall(toolCall, chatOpts.Tools)
 				toolResults = append(toolResults, result)
 				if result.ErrorText != "" {
 					log.Printf("  error=%s\n", result.ErrorText)
@@ -134,12 +134,12 @@ func WaveAIPostMessage(ctx context.Context, sseHandler *sse.SSEHandlerCh, aiOpts
 				_ = sseHandler.AiMsgError(fmt.Sprintf("Failed to convert tool results to message: %v", err))
 				_ = sseHandler.AiMsgFinish("", nil)
 			} else {
-				chatstore.DefaultChatStore.PostMessage(chatID, aiOpts, toolResultMsg)
+				chatstore.DefaultChatStore.PostMessage(chatOpts.ChatId, &chatOpts.Config, toolResultMsg)
 			}
 
 			cont = &uctypes.WaveContinueResponse{
 				MessageID:             rtnMessage.MessageId,
-				Model:                 aiOpts.Model,
+				Model:                 chatOpts.Config.Model,
 				ContinueFromKind:      uctypes.StopKindToolUse,
 				ContinueFromRawReason: stopReason.RawReason,
 			}
@@ -206,10 +206,10 @@ func ResolveToolCall(toolCall uctypes.WaveToolCall, tools []uctypes.ToolDefiniti
 	return
 }
 
-func WaveAIPostMessageWrap(ctx context.Context, sseHandler *sse.SSEHandlerCh, aiOpts *uctypes.AIOptsType, chatID string, message *uctypes.AIMessage, tools []uctypes.ToolDefinition) error {
+func WaveAIPostMessageWrap(ctx context.Context, sseHandler *sse.SSEHandlerCh, message *uctypes.AIMessage, chatOpts uctypes.WaveChatOpts) error {
 	// Only support Anthropic for now
-	if aiOpts.APIType != APIType_Anthropic {
-		return fmt.Errorf("only Anthropic API type is supported, got: %s", aiOpts.APIType)
+	if chatOpts.Config.APIType != APIType_Anthropic {
+		return fmt.Errorf("only Anthropic API type is supported, got: %s", chatOpts.Config.APIType)
 	}
 
 	// Convert AIMessage to Anthropic chat message
@@ -219,11 +219,11 @@ func WaveAIPostMessageWrap(ctx context.Context, sseHandler *sse.SSEHandlerCh, ai
 	}
 
 	// Post message to chat store
-	if err := chatstore.DefaultChatStore.PostMessage(chatID, aiOpts, anthropicMsg); err != nil {
+	if err := chatstore.DefaultChatStore.PostMessage(chatOpts.ChatId, &chatOpts.Config, anthropicMsg); err != nil {
 		return fmt.Errorf("failed to store message: %w", err)
 	}
 
-	return WaveAIPostMessage(ctx, sseHandler, aiOpts, chatID, tools)
+	return RunAIChat(ctx, sseHandler, chatOpts)
 }
 
 // PostMessageRequest represents the request body for posting a message
@@ -258,15 +258,16 @@ func WaveAIPostMessageHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Validate tabid is present and is a UUID
-	if req.TabId == "" {
-		http.Error(w, "tabid is required in request body", http.StatusBadRequest)
+	// Create tools array with adder tool
+	tools := []uctypes.ToolDefinition{
+		GetAdderToolDefinition(),
+	}
+	tabTools, err := MakeToolsForTab(r.Context(), req.TabId, req.WidgetAccess)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	if _, err := uuid.Parse(req.TabId); err != nil {
-		http.Error(w, "tabid must be a valid UUID", http.StatusBadRequest)
-		return
-	}
+	tools = append(tools, tabTools...)
 
 	// Validate the message
 	if err := req.Msg.Validate(); err != nil {
@@ -285,15 +286,13 @@ func WaveAIPostMessageHandler(w http.ResponseWriter, r *http.Request) {
 	sseHandler := sse.MakeSSEHandlerCh(w, r.Context())
 	defer sseHandler.Close()
 
-	// Create tools array with adder tool
-	tools := []uctypes.ToolDefinition{
-		GetAdderToolDefinition(),
-	}
-	tabTools := MakeToolsForTab(req.TabId, req.WidgetAccess)
-	tools = append(tools, tabTools...)
-
 	// Call the core WaveAIPostMessage function
-	if err := WaveAIPostMessageWrap(r.Context(), sseHandler, aiOpts, req.ChatID, &req.Msg, tools); err != nil {
+	chatOpts := uctypes.WaveChatOpts{
+		ChatId: req.ChatID,
+		Config: *aiOpts,
+		Tools:  tools,
+	}
+	if err := WaveAIPostMessageWrap(r.Context(), sseHandler, &req.Msg, chatOpts); err != nil {
 		http.Error(w, fmt.Sprintf("Failed to post message: %v", err), http.StatusInternalServerError)
 		return
 	}

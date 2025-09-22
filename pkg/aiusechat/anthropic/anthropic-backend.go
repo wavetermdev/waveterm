@@ -149,14 +149,14 @@ type anthropicCitation struct {
 }
 
 type anthropicStreamRequest struct {
-	Model      string                   `json:"model"`
-	Messages   []anthropicInputMessage  `json:"messages"`
-	MaxTokens  int                      `json:"max_tokens"`
-	Stream     bool                     `json:"stream"`
-	System     any                      `json:"system,omitempty"`
-	ToolChoice any                      `json:"tool_choice,omitempty"`
-	Tools      []uctypes.ToolDefinition `json:"tools,omitempty"`
-	Thinking   *anthropicThinkingOpts   `json:"thinking,omitempty"`
+	Model      string                         `json:"model"`
+	Messages   []anthropicInputMessage        `json:"messages"`
+	MaxTokens  int                            `json:"max_tokens"`
+	Stream     bool                           `json:"stream"`
+	System     []anthropicMessageContentBlock `json:"system,omitempty"`
+	ToolChoice any                            `json:"tool_choice,omitempty"`
+	Tools      []uctypes.ToolDefinition       `json:"tools,omitempty"`
+	Thinking   *anthropicThinkingOpts         `json:"thinking,omitempty"`
 }
 
 type anthropicCacheControl struct {
@@ -346,12 +346,10 @@ func parseAnthropicHTTPError(resp *http.Response) error {
 	return fmt.Errorf("anthropic %s: %s", resp.Status, msg)
 }
 
-func StreamAnthropicChatStep(
+func RunAnthropicChatStep(
 	ctx context.Context,
 	sse *sse.SSEHandlerCh,
-	aiOpts *uctypes.AIOptsType,
-	chatId string,
-	tools []uctypes.ToolDefinition,
+	chatOpts uctypes.WaveChatOpts,
 	cont *uctypes.WaveContinueResponse,
 ) (*uctypes.WaveStopReason, *anthropicChatMessage, error) {
 	if sse == nil {
@@ -359,33 +357,33 @@ func StreamAnthropicChatStep(
 	}
 
 	// Get chat from store
-	chat := chatstore.DefaultChatStore.Get(chatId)
+	chat := chatstore.DefaultChatStore.Get(chatOpts.ChatId)
 	if chat == nil {
-		return nil, nil, fmt.Errorf("chat not found: %s", chatId)
+		return nil, nil, fmt.Errorf("chat not found: %s", chatOpts.ChatId)
 	}
 
-	// Validate that aiOpts match the chat's stored configuration
-	if chat.APIType != aiOpts.APIType {
-		return nil, nil, fmt.Errorf("API type mismatch: chat has %s, aiOpts has %s", chat.APIType, aiOpts.APIType)
+	// Validate that chatOpts.Config match the chat's stored configuration
+	if chat.APIType != chatOpts.Config.APIType {
+		return nil, nil, fmt.Errorf("API type mismatch: chat has %s, chatOpts has %s", chat.APIType, chatOpts.Config.APIType)
 	}
-	if chat.Model != aiOpts.Model {
-		return nil, nil, fmt.Errorf("model mismatch: chat has %s, aiOpts has %s", chat.Model, aiOpts.Model)
+	if chat.Model != chatOpts.Config.Model {
+		return nil, nil, fmt.Errorf("model mismatch: chat has %s, chatOpts has %s", chat.Model, chatOpts.Config.Model)
 	}
-	if chat.APIVersion != aiOpts.APIVersion {
-		return nil, nil, fmt.Errorf("API version mismatch: chat has %s, aiOpts has %s", chat.APIVersion, aiOpts.APIVersion)
+	if chat.APIVersion != chatOpts.Config.APIVersion {
+		return nil, nil, fmt.Errorf("API version mismatch: chat has %s, chatOpts has %s", chat.APIVersion, chatOpts.Config.APIVersion)
 	}
 
 	// Context with timeout if provided.
-	if aiOpts.TimeoutMs > 0 {
+	if chatOpts.Config.TimeoutMs > 0 {
 		var cancel context.CancelFunc
-		ctx, cancel = context.WithTimeout(ctx, time.Duration(aiOpts.TimeoutMs)*time.Millisecond)
+		ctx, cancel = context.WithTimeout(ctx, time.Duration(chatOpts.Config.TimeoutMs)*time.Millisecond)
 		defer cancel()
 	}
 
 	// Validate continuation if provided
 	if cont != nil {
-		if aiOpts.Model != cont.Model {
-			return nil, nil, fmt.Errorf("cannot continue with a different model, model:%q, cont-model:%q", aiOpts.Model, cont.Model)
+		if chatOpts.Config.Model != cont.Model {
+			return nil, nil, fmt.Errorf("cannot continue with a different model, model:%q, cont-model:%q", chatOpts.Config.Model, cont.Model)
 		}
 	}
 
@@ -413,7 +411,7 @@ func StreamAnthropicChatStep(
 		log.Printf("failed to marshal anthropicMsgs to JSON: %v", err)
 	}
 
-	req, err := buildAnthropicHTTPRequest(ctx, aiOpts, anthropicMsgs, tools)
+	req, err := buildAnthropicHTTPRequest(ctx, anthropicMsgs, chatOpts)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -422,8 +420,8 @@ func StreamAnthropicChatStep(
 		Timeout: 0, // rely on ctx; streaming can be long
 	}
 	// Proxy support
-	if aiOpts.ProxyURL != "" {
-		pURL, perr := url.Parse(aiOpts.ProxyURL)
+	if chatOpts.Config.ProxyURL != "" {
+		pURL, perr := url.Parse(chatOpts.Config.ProxyURL)
 		if perr != nil {
 			return nil, nil, fmt.Errorf("invalid proxy URL: %w", perr)
 		}
@@ -488,7 +486,7 @@ func StreamAnthropicResponses(
 		anthropicMsgs = append(anthropicMsgs, aim)
 	}
 
-	req, err := buildAnthropicHTTPRequest(ctx, opts, anthropicMsgs, tools)
+	req, err := buildAnthropicHTTPRequest(ctx, anthropicMsgs, uctypes.WaveChatOpts{Config: *opts, Tools: tools})
 	if err != nil {
 		return nil, err
 	}

@@ -4,13 +4,39 @@
 package aiusechat
 
 import (
+	"context"
 	"fmt"
 
+	"github.com/google/uuid"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
+	"github.com/wavetermdev/waveterm/pkg/waveobj"
+	"github.com/wavetermdev/waveterm/pkg/wstore"
 )
 
-func MakeToolsForTab(tabId string, widgetAccess bool) []uctypes.ToolDefinition {
-	return nil
+func MakeToolsForTab(ctx context.Context, tabid string, widgetAccess bool) ([]uctypes.ToolDefinition, error) {
+	if tabid == "" {
+		return nil, nil
+	}
+	
+	if _, err := uuid.Parse(tabid); err != nil {
+		return nil, fmt.Errorf("tabid must be a valid UUID")
+	}
+	
+	tabObj, err := wstore.DBMustGet[*waveobj.Tab](ctx, tabid)
+	if err != nil {
+		return nil, fmt.Errorf("error getting tab: %v", err)
+	}
+	
+	var blocks []*waveobj.Block
+	for _, blockId := range tabObj.BlockIds {
+		block, err := wstore.DBGet[*waveobj.Block](ctx, blockId)
+		if err != nil {
+			continue
+		}
+		blocks = append(blocks, block)
+	}
+	
+	return nil, nil
 }
 
 func GetAdderToolDefinition() uctypes.ToolDefinition {

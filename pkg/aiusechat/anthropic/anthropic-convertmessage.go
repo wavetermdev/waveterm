@@ -23,10 +23,8 @@ import (
 // and the aiprompts/aisdk-uimessage-type.md doc (v5)
 
 // buildAnthropicHTTPRequest creates a complete HTTP request for the Anthropic API
-func buildAnthropicHTTPRequest(ctx context.Context, opts *uctypes.AIOptsType, msgs []anthropicInputMessage, tools []uctypes.ToolDefinition) (*http.Request, error) {
-	if opts == nil {
-		return nil, errors.New("opts is nil")
-	}
+func buildAnthropicHTTPRequest(ctx context.Context, msgs []anthropicInputMessage, chatOpts uctypes.WaveChatOpts) (*http.Request, error) {
+	opts := chatOpts.Config
 	if opts.APIToken == "" {
 		return nil, errors.New("Anthropic API token missing")
 	}
@@ -64,9 +62,22 @@ func buildAnthropicHTTPRequest(ctx context.Context, opts *uctypes.AIOptsType, ms
 		Stream:    true,
 		Messages:  convertedMsgs,
 	}
-	if len(tools) > 0 {
-		cleanedTools := make([]uctypes.ToolDefinition, len(tools))
-		for i, tool := range tools {
+
+	// Add system prompt if provided
+	if len(chatOpts.SystemPrompt) > 0 {
+		systemBlocks := make([]anthropicMessageContentBlock, len(chatOpts.SystemPrompt))
+		for i, prompt := range chatOpts.SystemPrompt {
+			systemBlocks[i] = anthropicMessageContentBlock{
+				Type: "text",
+				Text: prompt,
+			}
+		}
+		reqBody.System = systemBlocks
+	}
+
+	if len(chatOpts.Tools) > 0 {
+		cleanedTools := make([]uctypes.ToolDefinition, len(chatOpts.Tools))
+		for i, tool := range chatOpts.Tools {
 			cleanedTools[i] = *tool.Clean()
 		}
 		reqBody.Tools = cleanedTools

@@ -320,3 +320,10 @@ func (m *UIMessage) GetContent() string {
 	}
 	return ""
 }
+
+type WaveChatOpts struct {
+	ChatId       string
+	Config       AIOptsType
+	Tools        []ToolDefinition
+	SystemPrompt []string
+}
