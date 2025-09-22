@@ -15,6 +15,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/google/uuid"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
 )
 
@@ -659,4 +660,43 @@ func convertMessageForAPI(msg anthropicInputMessage) anthropicInputMessage {
 	}
 
 	return converted
+}
+
+// ConvertToolResultsToAnthropicChatMessage converts AIToolResult slice to anthropicChatMessage
+func ConvertToolResultsToAnthropicChatMessage(toolResults []uctypes.AIToolResult) (*anthropicChatMessage, error) {
+	if len(toolResults) == 0 {
+		return nil, errors.New("toolResults cannot be empty")
+	}
+
+	var contentBlocks []anthropicMessageContentBlock
+	
+	for _, result := range toolResults {
+		if result.ToolUseID == "" {
+			return nil, fmt.Errorf("tool result missing ToolUseID")
+		}
+		
+		var content interface{}
+		var isError bool
+		
+		if result.ErrorText != "" {
+			content = result.ErrorText
+			isError = true
+		} else {
+			content = result.Text
+			isError = false
+		}
+		
+		contentBlocks = append(contentBlocks, anthropicMessageContentBlock{
+			Type:      "tool_result",
+			ToolUseID: result.ToolUseID,
+			Content:   content,
+			IsError:   isError,
+		})
+	}
+	
+	return &anthropicChatMessage{
+		MessageId: uuid.New().String(),
+		Role:      "user",
+		Content:   contentBlocks,
+	}, nil
 }

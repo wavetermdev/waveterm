@@ -788,6 +788,14 @@ func handleAnthropicEvent(
 				Name:  st.toolName,
 				Input: input,
 			})
+			// Add completed tool_use block to rtnMessage
+			toolUseBlock := anthropicMessageContentBlock{
+				Type:  "tool_use",
+				ID:    st.toolCallID,
+				Name:  st.toolName,
+				Input: input,
+			}
+			state.rtnMessage.Content = append(state.rtnMessage.Content, toolUseBlock)
 		}
 		return nil, nil
 

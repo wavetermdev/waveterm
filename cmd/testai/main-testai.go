@@ -100,6 +100,45 @@ func getToolDefinitions() []uctypes.ToolDefinition {
 	}
 }
 
+func getAdderToolDefinition() uctypes.ToolDefinition {
+	return uctypes.ToolDefinition{
+		Name:        "adder",
+		Description: "Add two numbers together and return their sum",
+		InputSchema: map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"x": map[string]any{
+					"type":        "integer",
+					"description": "First number to add",
+				},
+				"y": map[string]any{
+					"type":        "integer",
+					"description": "Second number to add",
+				},
+			},
+			"required": []string{"x", "y"},
+		},
+		ToolAnyCallback: func(input any) (any, error) {
+			inputMap, ok := input.(map[string]any)
+			if !ok {
+				return nil, fmt.Errorf("invalid input format")
+			}
+
+			x, ok := inputMap["x"].(float64)
+			if !ok {
+				return nil, fmt.Errorf("invalid or missing x parameter")
+			}
+
+			y, ok := inputMap["y"].(float64)
+			if !ok {
+				return nil, fmt.Errorf("invalid or missing y parameter")
+			}
+
+			return int(x) + int(y), nil
+		},
+	}
+}
+
 func testOpenAI(ctx context.Context, model, message string, tools []uctypes.ToolDefinition) {
 	apiKey := os.Getenv("OPENAI_API_KEY")
 	if apiKey == "" {
@@ -187,6 +226,12 @@ func testAnthropic(ctx context.Context, model, message string, tools []uctypes.T
 	}
 }
 
+func testT1(ctx context.Context) {
+	tool := getAdderToolDefinition()
+	tools := []uctypes.ToolDefinition{tool}
+	testAnthropic(ctx, "claude-sonnet-4-20250514", "what is 2+2, use the provider adder tool", tools)
+}
+
 func printUsage() {
 	fmt.Println("Usage: go run main-testai.go [--anthropic] [--tools] [--model <model>] [message]")
 	fmt.Println("Examples:")
@@ -206,17 +251,26 @@ func printUsage() {
 }
 
 func main() {
-	var anthropic, tools, help bool
+	var anthropic, tools, help, t1 bool
 	var model string
 	flag.BoolVar(&anthropic, "anthropic", false, "Use Anthropic API instead of OpenAI")
 	flag.BoolVar(&tools, "tools", false, "Enable GitHub Actions Monitor tools for testing")
 	flag.StringVar(&model, "model", "", "AI model to use (defaults: gpt-5 for OpenAI, claude-sonnet-4-20250514 for Anthropic)")
 	flag.BoolVar(&help, "help", false, "Show usage information")
+	flag.BoolVar(&t1, "t1", false, "Run preset T1 test (claude-sonnet-4-20250514 with 'what is 2+2')")
 	flag.Parse()
 
 	if help {
 		printUsage()
 		os.Exit(0)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+
+	if t1 {
+		testT1(ctx)
+		return
 	}
 
 	// Set default model based on API type if not provided
@@ -238,9 +292,6 @@ func main() {
 	if tools {
 		toolDefs = getToolDefinitions()
 	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
-	defer cancel()
 
 	if anthropic {
 		testAnthropic(ctx, model, message, toolDefs)

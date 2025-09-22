@@ -63,10 +63,11 @@ type UIMessageDataUserFile struct {
 
 // ToolDefinition represents a tool that can be used by the AI model
 type ToolDefinition struct {
-	Name         string                        `json:"name"`
-	Description  string                        `json:"description"`
-	InputSchema  map[string]any                `json:"input_schema"`
-	ToolCallback func(any) (*UIMessage, error) `json:"-"`
+	Name             string                    `json:"name"`
+	Description      string                    `json:"description"`
+	InputSchema      map[string]any            `json:"input_schema"`
+	ToolTextCallback func(any) (string, error) `json:"-"`
+	ToolAnyCallback  func(any) (any, error)    `json:"-"`
 }
 
 //------------------
@@ -173,6 +174,13 @@ type AIMessagePart struct {
 	Data     []byte `json:"data,omitempty"`     // raw data (base64 on wire)
 	URL      string `json:"url,omitempty"`
 	Size     int    `json:"size,omitempty"`
+}
+
+type AIToolResult struct {
+	ToolName  string `json:"toolname"`
+	ToolUseID string `json:"tooluseid"`
+	ErrorText string `json:"errortext,omitempty"`
+	Text      string `json:"text,omitempty"`
 }
 
 func (m *AIMessage) GetMessageId() string {

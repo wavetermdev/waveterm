@@ -99,14 +99,111 @@ func RunWaveAIRequest(ctx context.Context, sseHandler *sse.SSEHandlerCh, aiOpts 
 
 func WaveAIPostMessage(ctx context.Context, sseHandler *sse.SSEHandlerCh, aiOpts *uctypes.AIOptsType, chatID string, tools []uctypes.ToolDefinition) error {
 	// Stream the Anthropic chat response
-	_, rtnMessage, err := anthropic.StreamAnthropicChatStep(ctx, sseHandler, aiOpts, chatID, tools, nil)
-	if err != nil {
-		return fmt.Errorf("failed to stream anthropic chat: %w", err)
-	}
-	if rtnMessage != nil {
-		chatstore.DefaultChatStore.PostMessage(chatID, aiOpts, rtnMessage)
+	firstStep := true
+	var cont *uctypes.WaveContinueResponse
+	for {
+		stopReason, rtnMessage, err := anthropic.StreamAnthropicChatStep(ctx, sseHandler, aiOpts, chatID, tools, cont)
+		if firstStep && err != nil {
+			return fmt.Errorf("failed to stream anthropic chat: %w", err)
+		}
+		if err != nil {
+			_ = sseHandler.AiMsgError(err.Error())
+			_ = sseHandler.AiMsgFinish("", nil)
+			break
+		}
+		if rtnMessage != nil {
+			chatstore.DefaultChatStore.PostMessage(chatID, aiOpts, rtnMessage)
+		}
+		if stopReason != nil && stopReason.Kind == uctypes.StopKindToolUse {
+			var toolResults []uctypes.AIToolResult
+			for _, toolCall := range stopReason.ToolCalls {
+				inputJSON, _ := json.Marshal(toolCall.Input)
+				log.Printf("TOOLUSE name=%s id=%s input=%s\n", toolCall.Name, toolCall.ID, string(inputJSON))
+				result := ResolveToolCall(toolCall, tools)
+				toolResults = append(toolResults, result)
+				if result.ErrorText != "" {
+					log.Printf("  error=%s\n", result.ErrorText)
+				} else {
+					log.Printf("  result=%s\n", result.Text)
+				}
+			}
+
+			// Convert tool results to anthropic message and post to chat store
+			toolResultMsg, err := anthropic.ConvertToolResultsToAnthropicChatMessage(toolResults)
+			if err != nil {
+				_ = sseHandler.AiMsgError(fmt.Sprintf("Failed to convert tool results to message: %v", err))
+				_ = sseHandler.AiMsgFinish("", nil)
+			} else {
+				chatstore.DefaultChatStore.PostMessage(chatID, aiOpts, toolResultMsg)
+			}
+
+			cont = &uctypes.WaveContinueResponse{
+				MessageID:             rtnMessage.MessageId,
+				Model:                 aiOpts.Model,
+				ContinueFromKind:      uctypes.StopKindToolUse,
+				ContinueFromRawReason: stopReason.RawReason,
+			}
+			continue
+		}
+		break
 	}
 	return nil
+}
+
+// ResolveToolCall resolves a single tool call and returns an AIToolResult
+func ResolveToolCall(toolCall uctypes.WaveToolCall, tools []uctypes.ToolDefinition) (result uctypes.AIToolResult) {
+	result = uctypes.AIToolResult{
+		ToolName:  toolCall.Name,
+		ToolUseID: toolCall.ID,
+	}
+
+	defer func() {
+		if r := recover(); r != nil {
+			result.ErrorText = fmt.Sprintf("panic in tool execution: %v", r)
+			result.Text = ""
+		}
+	}()
+
+	// Find the matching tool definition
+	var toolDef *uctypes.ToolDefinition
+	for i := range tools {
+		if tools[i].Name == toolCall.Name {
+			toolDef = &tools[i]
+			break
+		}
+	}
+
+	if toolDef == nil {
+		result.ErrorText = fmt.Sprintf("tool '%s' not found", toolCall.Name)
+		return
+	}
+
+	// Try ToolTextCallback first, then ToolAnyCallback
+	if toolDef.ToolTextCallback != nil {
+		text, err := toolDef.ToolTextCallback(toolCall.Input)
+		if err != nil {
+			result.ErrorText = err.Error()
+		} else {
+			result.Text = text
+		}
+	} else if toolDef.ToolAnyCallback != nil {
+		output, err := toolDef.ToolAnyCallback(toolCall.Input)
+		if err != nil {
+			result.ErrorText = err.Error()
+		} else {
+			// Marshal the result to JSON
+			jsonBytes, marshalErr := json.Marshal(output)
+			if marshalErr != nil {
+				result.ErrorText = fmt.Sprintf("failed to marshal tool output: %v", marshalErr)
+			} else {
+				result.Text = string(jsonBytes)
+			}
+		}
+	} else {
+		result.ErrorText = fmt.Sprintf("tool '%s' has no callback functions", toolCall.Name)
+	}
+
+	return
 }
 
 func WaveAIPostMessageWrap(ctx context.Context, sseHandler *sse.SSEHandlerCh, aiOpts *uctypes.AIOptsType, chatID string, message *uctypes.AIMessage, tools []uctypes.ToolDefinition) error {
