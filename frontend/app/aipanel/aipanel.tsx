@@ -1,6 +1,7 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { WaveUIMessagePart } from "@/app/aipanel/aitypes";
 import { globalStore } from "@/app/store/jotaiStore";
 import { getWebServerEndpoint } from "@/util/endpoints";
 import { checkKeyPressed, keydownWrapper } from "@/util/keyutil";
@@ -74,10 +75,10 @@ const AIPanelComponent = memo(({ className, onClose }: AIPanelProps) => {
         const droppedFiles = globalStore.get(model.droppedFiles);
 
         // Prepare AI message parts (for backend)
-        const aiMessageParts: any[] = [{ type: "text", text: input.trim() }];
+        const aiMessageParts: AIMessagePart[] = [{ type: "text", text: input.trim() }];
 
         // Prepare UI message parts (for frontend display)
-        const uiMessageParts: any[] = [];
+        const uiMessageParts: WaveUIMessagePart[] = [];
 
         if (input.trim()) {
             uiMessageParts.push({ type: "text", text: input.trim() });
@@ -94,14 +95,16 @@ const AIPanelComponent = memo(({ className, onClose }: AIPanelProps) => {
                 filename: droppedFile.name,
                 mimetype: normalizedMimeType,
                 url: dataUrl,
+                size: droppedFile.file.size,
             });
 
-            // For UI message (frontend display) - use data URL
             uiMessageParts.push({
-                type: "file",
-                mediaType: normalizedMimeType, // Use normalized mimetype
-                filename: droppedFile.name,
-                url: dataUrl,
+                type: "data-userfile",
+                data: {
+                    filename: droppedFile.name,
+                    mimetype: normalizedMimeType,
+                    size: droppedFile.file.size,
+                },
             });
         }
 

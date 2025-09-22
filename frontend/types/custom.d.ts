@@ -456,16 +456,25 @@ declare global {
 
     type AIMessagePart =
         | {
-            type: "text";
-            text: string;
-        }
+              type: "text";
+              text: string;
+          }
         | {
-            type: "file";
-            mimetype: string; // required
-            filename?: string;
-            data?: string; // base64 encoded data
-            url?: string;
+              type: "file";
+              mimetype: string; // required
+              filename?: string;
+              data?: string; // base64 encoded data
+              url?: string;
+              size?: number;
+          };
+
+    type UIDataTypes = {
+        userfile: {
+            filename: string;
+            size: number;
+            mimetype: string;
         };
+    };
 }
 
 export {};

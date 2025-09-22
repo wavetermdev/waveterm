@@ -182,3 +182,40 @@ func WaveAIPostMessageHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 }
+
+func WaveAIGetChatHandler(w http.ResponseWriter, r *http.Request) {
+	// Only allow GET method
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Get chatid from URL parameters
+	chatID := r.URL.Query().Get("chatid")
+	if chatID == "" {
+		http.Error(w, "chatid parameter is required", http.StatusBadRequest)
+		return
+	}
+
+	// Validate chatid is a UUID
+	if _, err := uuid.Parse(chatID); err != nil {
+		http.Error(w, "chatid must be a valid UUID", http.StatusBadRequest)
+		return
+	}
+
+	// Get chat from store
+	chat := chatstore.DefaultChatStore.Get(chatID)
+	if chat == nil {
+		http.Error(w, "chat not found", http.StatusNotFound)
+		return
+	}
+
+	// Set response headers for JSON
+	w.Header().Set("Content-Type", "application/json")
+
+	// Encode and return the chat
+	if err := json.NewEncoder(w).Encode(chat); err != nil {
+		http.Error(w, fmt.Sprintf("Failed to encode response: %v", err), http.StatusInternalServerError)
+		return
+	}
+}

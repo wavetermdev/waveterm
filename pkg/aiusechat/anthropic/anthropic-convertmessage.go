@@ -50,12 +50,18 @@ func buildAnthropicHTTPRequest(ctx context.Context, opts *uctypes.AIOptsType, ms
 		maxTokens = AnthropicDefaultMaxTokens
 	}
 
+	// Convert messages to clear FileName fields from Source blocks
+	convertedMsgs := make([]anthropicInputMessage, len(msgs))
+	for i, msg := range msgs {
+		convertedMsgs[i] = convertMessageForAPI(msg)
+	}
+
 	// Build request body
 	reqBody := &anthropicStreamRequest{
 		Model:     opts.Model,
 		MaxTokens: maxTokens,
 		Stream:    true,
-		Messages:  msgs,
+		Messages:  convertedMsgs,
 	}
 	if len(tools) > 0 {
 		reqBody.Tools = tools
@@ -501,6 +507,7 @@ func convertFileAIMessagePart(part uctypes.AIMessagePart) (*anthropicMessageCont
 					Type:      "base64",
 					Data:      base64Data,
 					MediaType: part.MimeType,
+					FileName:  part.FileName,
 				},
 			}, nil
 		} else {
@@ -508,8 +515,9 @@ func convertFileAIMessagePart(part uctypes.AIMessagePart) (*anthropicMessageCont
 			return &anthropicMessageContentBlock{
 				Type: "image",
 				Source: &anthropicSource{
-					Type: "url",
-					URL:  part.URL,
+					Type:     "url",
+					URL:      part.URL,
+					FileName: part.FileName,
 				},
 			}, nil
 		}
@@ -528,6 +536,7 @@ func convertFileAIMessagePart(part uctypes.AIMessagePart) (*anthropicMessageCont
 					Type:      "base64",
 					Data:      base64Data,
 					MediaType: part.MimeType,
+					FileName:  part.FileName,
 				},
 			}, nil
 		} else {
@@ -535,8 +544,9 @@ func convertFileAIMessagePart(part uctypes.AIMessagePart) (*anthropicMessageCont
 			return &anthropicMessageContentBlock{
 				Type: "document",
 				Source: &anthropicSource{
-					Type: "url",
-					URL:  part.URL,
+					Type:     "url",
+					URL:      part.URL,
+					FileName: part.FileName,
 				},
 			}, nil
 		}
@@ -566,6 +576,7 @@ func convertFileAIMessagePart(part uctypes.AIMessagePart) (*anthropicMessageCont
 					Type:      "text",
 					Data:      textData,
 					MediaType: part.MimeType,
+					FileName:  part.FileName,
 				},
 			}, nil
 		} else {
@@ -577,4 +588,75 @@ func convertFileAIMessagePart(part uctypes.AIMessagePart) (*anthropicMessageCont
 		// Other media types → not supported inline, must upload and use file_id
 		return nil, fmt.Errorf("unsupported media type '%s' (must be uploaded to Files API and sent as file_id)", part.MimeType)
 	}
+}
+
+// ConvertToUIMessage converts an anthropicChatMessage to a UIMessage
+func (m *anthropicChatMessage) ConvertToUIMessage() uctypes.UIMessage {
+	var parts []uctypes.UIMessagePart
+
+	// Iterate over all content blocks
+	for _, block := range m.Content {
+		switch block.Type {
+		case "text":
+			// Convert text blocks to UIMessagePart
+			parts = append(parts, uctypes.UIMessagePart{
+				Type: "text",
+				Text: block.Text,
+			})
+		case "image":
+			// Convert image blocks to data-userfile UIMessagePart (only for user role)
+			if m.Role == "user" && block.Source != nil {
+				parts = append(parts, uctypes.UIMessagePart{
+					Type: "data-userfile",
+					Data: uctypes.UIMessageDataUserFile{
+						FileName: block.Source.FileName,
+						Size:     block.Source.Size,
+						MimeType: block.Source.MediaType,
+					},
+				})
+			}
+		case "document":
+			// Convert document blocks to data-userfile UIMessagePart (only for user role)
+			if m.Role == "user" && block.Source != nil {
+				parts = append(parts, uctypes.UIMessagePart{
+					Type: "data-userfile",
+					Data: uctypes.UIMessageDataUserFile{
+						FileName: block.Source.FileName,
+						Size:     block.Source.Size,
+						MimeType: block.Source.MediaType,
+					},
+				})
+			}
+		default:
+			// For now, skip all other types (will implement later)
+			continue
+		}
+	}
+
+	return uctypes.UIMessage{
+		ID:    m.MessageId,
+		Role:  m.Role,
+		Parts: parts,
+	}
+}
+
+// convertMessageForAPI creates a copy of the anthropicInputMessage with FileName fields cleared from Source blocks
+func convertMessageForAPI(msg anthropicInputMessage) anthropicInputMessage {
+	// Create a copy of the message
+	converted := anthropicInputMessage{
+		Role:    msg.Role,
+		Content: make([]anthropicMessageContentBlock, len(msg.Content)),
+	}
+
+	// Copy each content block and clear FileName if Source exists
+	for i, block := range msg.Content {
+		converted.Content[i] = block // Copy the block
+
+		// If this block has a Source, we need to make a copy and clear FileName
+		if block.Source != nil {
+			converted.Content[i].Source = block.Source.Clean()
+		}
+	}
+
+	return converted
 }

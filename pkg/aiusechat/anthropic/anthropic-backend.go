@@ -62,7 +62,7 @@ type anthropicMessageContentBlock struct {
 	Text      string              `json:"text,omitempty"`
 	Citations []anthropicCitation `json:"citations,omitempty"`
 
-	// Image content
+	// Image+File content
 	Source *anthropicSource `json:"source,omitempty"`
 
 	// Document content
@@ -108,6 +108,18 @@ type anthropicSource struct {
 	FileID    string      `json:"file_id,omitempty"`    // file upload ID
 	Text      string      `json:"text,omitempty"`       // plain text (documents only)
 	Content   interface{} `json:"content,omitempty"`    // content blocks (documents only)
+	FileName  string      `json:"filename,omitempty"`   // internal field (cannot marshal to API, must be stripped)
+	Size      int         `json:"size,omitempty"`       // internal field (cannot marshal to API, must be stripped)
+}
+
+func (s *anthropicSource) Clean() *anthropicSource {
+	if s == nil {
+		return nil
+	}
+	rtn := *s
+	rtn.FileName = ""
+	rtn.Size = 0
+	return &rtn
 }
 
 type anthropicCitation struct {
