@@ -100,44 +100,6 @@ func getToolDefinitions() []uctypes.ToolDefinition {
 	}
 }
 
-func getAdderToolDefinition() uctypes.ToolDefinition {
-	return uctypes.ToolDefinition{
-		Name:        "adder",
-		Description: "Add two numbers together and return their sum",
-		InputSchema: map[string]any{
-			"type": "object",
-			"properties": map[string]any{
-				"x": map[string]any{
-					"type":        "integer",
-					"description": "First number to add",
-				},
-				"y": map[string]any{
-					"type":        "integer",
-					"description": "Second number to add",
-				},
-			},
-			"required": []string{"x", "y"},
-		},
-		ToolAnyCallback: func(input any) (any, error) {
-			inputMap, ok := input.(map[string]any)
-			if !ok {
-				return nil, fmt.Errorf("invalid input format")
-			}
-
-			x, ok := inputMap["x"].(float64)
-			if !ok {
-				return nil, fmt.Errorf("invalid or missing x parameter")
-			}
-
-			y, ok := inputMap["y"].(float64)
-			if !ok {
-				return nil, fmt.Errorf("invalid or missing y parameter")
-			}
-
-			return int(x) + int(y), nil
-		},
-	}
-}
 
 func testOpenAI(ctx context.Context, model, message string, tools []uctypes.ToolDefinition) {
 	apiKey := os.Getenv("OPENAI_API_KEY")
@@ -227,7 +189,7 @@ func testAnthropic(ctx context.Context, model, message string, tools []uctypes.T
 }
 
 func testT1(ctx context.Context) {
-	tool := getAdderToolDefinition()
+	tool := aiusechat.GetAdderToolDefinition()
 	tools := []uctypes.ToolDefinition{tool}
 	testAnthropic(ctx, "claude-sonnet-4-20250514", "what is 2+2, use the provider adder tool", tools)
 }

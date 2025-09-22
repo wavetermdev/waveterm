@@ -273,8 +273,13 @@ func WaveAIPostMessageHandler(w http.ResponseWriter, r *http.Request) {
 	sseHandler := sse.MakeSSEHandlerCh(w, r.Context())
 	defer sseHandler.Close()
 
+	// Create tools array with adder tool
+	tools := []uctypes.ToolDefinition{
+		GetAdderToolDefinition(),
+	}
+
 	// Call the core WaveAIPostMessage function
-	if err := WaveAIPostMessageWrap(r.Context(), sseHandler, aiOpts, req.ChatID, &req.Msg, nil); err != nil {
+	if err := WaveAIPostMessageWrap(r.Context(), sseHandler, aiOpts, req.ChatID, &req.Msg, tools); err != nil {
 		http.Error(w, fmt.Sprintf("Failed to post message: %v", err), http.StatusInternalServerError)
 		return
 	}

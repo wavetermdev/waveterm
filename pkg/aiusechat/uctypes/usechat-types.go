@@ -64,10 +64,22 @@ type UIMessageDataUserFile struct {
 // ToolDefinition represents a tool that can be used by the AI model
 type ToolDefinition struct {
 	Name             string                    `json:"name"`
+	DisplayName      string                    `json:"displayname,omitempty"` // internal field (cannot marshal to API, must be stripped)
 	Description      string                    `json:"description"`
+	ShortDescription string                    `json:"shortdescription,omitempty"` // internal field (cannot marshal to API, must be stripped)
 	InputSchema      map[string]any            `json:"input_schema"`
 	ToolTextCallback func(any) (string, error) `json:"-"`
 	ToolAnyCallback  func(any) (any, error)    `json:"-"`
+}
+
+func (td *ToolDefinition) Clean() *ToolDefinition {
+	if td == nil {
+		return nil
+	}
+	rtn := *td
+	rtn.DisplayName = ""
+	rtn.ShortDescription = ""
+	return &rtn
 }
 
 //------------------

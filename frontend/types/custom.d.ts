@@ -467,14 +467,6 @@ declare global {
               url?: string;
               size?: number;
           };
-
-    type UIDataTypes = {
-        userfile: {
-            filename: string;
-            size: number;
-            mimetype: string;
-        };
-    };
 }
 
 export {};

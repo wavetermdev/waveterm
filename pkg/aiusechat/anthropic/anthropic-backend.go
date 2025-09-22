@@ -74,6 +74,9 @@ type anthropicMessageContentBlock struct {
 	Name  string      `json:"name,omitempty"`
 	Input interface{} `json:"input,omitempty"`
 
+	ToolUseDisplayName      string `json:"toolusedisplayname,omitempty"`      // internal field (cannot marshal to API, must be stripped)
+	ToolUseShortDescription string `json:"tooluseshortdescription,omitempty"` // internal field (cannot marshal to API, must be stripped)
+
 	// Tool result content
 	ToolUseID string      `json:"tool_use_id,omitempty"`
 	IsError   bool        `json:"is_error,omitempty"`
@@ -119,6 +122,19 @@ func (s *anthropicSource) Clean() *anthropicSource {
 	rtn := *s
 	rtn.FileName = ""
 	rtn.Size = 0
+	return &rtn
+}
+
+func (b *anthropicMessageContentBlock) Clean() *anthropicMessageContentBlock {
+	if b == nil {
+		return nil
+	}
+	rtn := *b
+	rtn.ToolUseDisplayName = ""
+	rtn.ToolUseShortDescription = ""
+	if rtn.Source != nil {
+		rtn.Source = rtn.Source.Clean()
+	}
 	return &rtn
 }
 
@@ -429,7 +445,9 @@ func StreamAnthropicChatStep(
 
 	// At this point we have a valid SSE stream, so setup SSE handling
 	// From here on, errors must be returned through the SSE stream
-	sse.SetupSSE()
+	if cont == nil {
+		sse.SetupSSE()
+	}
 
 	// Use eventsource decoder for proper SSE parsing
 	decoder := eventsource.NewDecoder(resp.Body)

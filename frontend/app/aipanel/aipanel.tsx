@@ -47,6 +47,8 @@ const AIPanelComponent = memo(({ className, onClose }: AIPanelProps) => {
         },
     });
 
+    // console.log("AICHAT messages", messages);
+
     const clearChat = () => {
         model.clearChat();
         setMessages([]);

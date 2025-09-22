@@ -56,37 +56,46 @@ interface AIMessagePartProps {
 }
 
 const AIMessagePart = memo(({ part, role, isStreaming }: AIMessagePartProps) => {
-    if (part.type !== "text") {
-        return null;
+    if (part.type === "text") {
+        const content = part.text ?? "";
+
+        if (role === "user") {
+            return <div className="whitespace-pre-wrap break-words">{content}</div>;
+        } else {
+            return (
+                <Streamdown
+                    parseIncompleteMarkdown={isStreaming}
+                    className="markdown-content text-gray-100"
+                    shikiTheme={["github-dark", "github-dark"]}
+                    controls={{
+                        code: true,
+                        table: true,
+                        mermaid: true,
+                    }}
+                    mermaidConfig={{
+                        theme: "dark",
+                        darkMode: true,
+                    }}
+                    allowedLinkPrefixes={["https://", "http://", "#"]}
+                    allowedImagePrefixes={["https://", "http://", "data:"]}
+                    defaultOrigin="http://localhost"
+                >
+                    {content}
+                </Streamdown>
+            );
+        }
     }
 
-    const content = part.text ?? "";
-
-    if (role === "user") {
-        return <div className="whitespace-pre-wrap break-words">{content}</div>;
-    } else {
+    if (part.type.startsWith("tool-") && "state" in part && part.state === "input-available") {
+        const toolName = part.type.substring(5); // Remove "tool-" prefix
         return (
-            <Streamdown
-                parseIncompleteMarkdown={isStreaming}
-                className="markdown-content text-gray-100"
-                shikiTheme={["github-dark", "github-dark"]}
-                controls={{
-                    code: true,
-                    table: true,
-                    mermaid: true,
-                }}
-                mermaidConfig={{
-                    theme: "dark",
-                    darkMode: true,
-                }}
-                allowedLinkPrefixes={["https://", "http://", "#"]}
-                allowedImagePrefixes={["https://", "http://", "data:"]}
-                defaultOrigin="http://localhost"
-            >
-                {content}
-            </Streamdown>
+            <div className="text-gray-400 italic">
+                Calling tool {toolName}
+            </div>
         );
     }
+
+    return null;
 });
 
 AIMessagePart.displayName = "AIMessagePart";
@@ -96,11 +105,15 @@ interface AIMessageProps {
     isStreaming: boolean;
 }
 
+const isDisplayPart = (part: WaveUIMessagePart): boolean => {
+    return part.type === "text" || (part.type.startsWith("tool-") && "state" in part && part.state === "input-available");
+};
+
 export const AIMessage = memo(({ message, isStreaming }: AIMessageProps) => {
     const parts = message.parts || [];
-    const textParts = parts.filter((part): part is WaveUIMessagePart & { type: "text" } => part.type === "text");
+    const displayParts = parts.filter(isDisplayPart);
     const fileParts = parts.filter((part): part is WaveUIMessagePart & { type: "data-userfile" } => part.type === "data-userfile");
-    const hasTextContent = textParts.length > 0 && textParts.some((part) => part.text);
+    const hasTextContent = displayParts.length > 0 && displayParts.some((part) => part.type === "text" && part.text);
 
     const showThinking = !hasTextContent && isStreaming && message.role === "assistant";
 
@@ -119,8 +132,10 @@ export const AIMessage = memo(({ message, isStreaming }: AIMessageProps) => {
                 ) : !hasTextContent && !isStreaming ? (
                     <div className="whitespace-pre-wrap break-words">(no text content)</div>
                 ) : (
-                    textParts.map((part, index: number) => (
-                        <AIMessagePart key={index} part={part} role={message.role} isStreaming={isStreaming} />
+                    displayParts.map((part, index: number) => (
+                        <div key={index} className={cn(index > 0 && "mt-2")}>
+                            <AIMessagePart part={part} role={message.role} isStreaming={isStreaming} />
+                        </div>
                     ))
                 )}
                 

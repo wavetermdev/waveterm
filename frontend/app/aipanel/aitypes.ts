@@ -3,5 +3,13 @@
 
 import { UIMessage, UIMessagePart } from "ai";
 
-export type WaveUIMessage = UIMessage<unknown, UIDataTypes, {}>;
-export type WaveUIMessagePart = UIMessagePart<UIDataTypes, {}>;
+type WaveUIDataTypes = {
+    userfile: {
+        filename: string;
+        size: number;
+        mimetype: string;
+    };
+};
+
+export type WaveUIMessage = UIMessage<unknown, WaveUIDataTypes, {}>;
+export type WaveUIMessagePart = UIMessagePart<WaveUIDataTypes, {}>;

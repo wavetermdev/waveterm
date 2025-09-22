@@ -65,7 +65,11 @@ func buildAnthropicHTTPRequest(ctx context.Context, opts *uctypes.AIOptsType, ms
 		Messages:  convertedMsgs,
 	}
 	if len(tools) > 0 {
-		reqBody.Tools = tools
+		cleanedTools := make([]uctypes.ToolDefinition, len(tools))
+		for i, tool := range tools {
+			cleanedTools[i] = *tool.Clean()
+		}
+		reqBody.Tools = cleanedTools
 	}
 
 	// Enable extended thinking based on level
@@ -628,6 +632,16 @@ func (m *anthropicChatMessage) ConvertToUIMessage() uctypes.UIMessage {
 					},
 				})
 			}
+		case "tool_use":
+			// Convert tool_use blocks to tool UIMessagePart with input-available state
+			if block.Name != "" && block.ID != "" {
+				parts = append(parts, uctypes.UIMessagePart{
+					Type:       "tool-" + block.Name,
+					State:      "input-available",
+					ToolCallID: block.ID,
+					Input:      block.Input,
+				})
+			}
 		default:
 			// For now, skip all other types (will implement later)
 			continue
@@ -641,7 +655,7 @@ func (m *anthropicChatMessage) ConvertToUIMessage() uctypes.UIMessage {
 	}
 }
 
-// convertMessageForAPI creates a copy of the anthropicInputMessage with FileName fields cleared from Source blocks
+// convertMessageForAPI creates a copy of the anthropicInputMessage with internal fields stripped from content blocks
 func convertMessageForAPI(msg anthropicInputMessage) anthropicInputMessage {
 	// Create a copy of the message
 	converted := anthropicInputMessage{
@@ -649,14 +663,9 @@ func convertMessageForAPI(msg anthropicInputMessage) anthropicInputMessage {
 		Content: make([]anthropicMessageContentBlock, len(msg.Content)),
 	}
 
-	// Copy each content block and clear FileName if Source exists
+	// Copy each content block and clean it (strips internal fields)
 	for i, block := range msg.Content {
-		converted.Content[i] = block // Copy the block
-
-		// If this block has a Source, we need to make a copy and clear FileName
-		if block.Source != nil {
-			converted.Content[i].Source = block.Source.Clean()
-		}
+		converted.Content[i] = *block.Clean()
 	}
 
 	return converted
@@ -669,15 +678,15 @@ func ConvertToolResultsToAnthropicChatMessage(toolResults []uctypes.AIToolResult
 	}
 
 	var contentBlocks []anthropicMessageContentBlock
-	
+
 	for _, result := range toolResults {
 		if result.ToolUseID == "" {
 			return nil, fmt.Errorf("tool result missing ToolUseID")
 		}
-		
+
 		var content interface{}
 		var isError bool
-		
+
 		if result.ErrorText != "" {
 			content = result.ErrorText
 			isError = true
@@ -685,7 +694,7 @@ func ConvertToolResultsToAnthropicChatMessage(toolResults []uctypes.AIToolResult
 			content = result.Text
 			isError = false
 		}
-		
+
 		contentBlocks = append(contentBlocks, anthropicMessageContentBlock{
 			Type:      "tool_result",
 			ToolUseID: result.ToolUseID,
@@ -693,7 +702,7 @@ func ConvertToolResultsToAnthropicChatMessage(toolResults []uctypes.AIToolResult
 			IsError:   isError,
 		})
 	}
-	
+
 	return &anthropicChatMessage{
 		MessageId: uuid.New().String(),
 		Role:      "user",
