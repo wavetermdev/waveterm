@@ -7,11 +7,13 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
 	"github.com/wavetermdev/waveterm/pkg/blockcontroller"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
+	"github.com/wavetermdev/waveterm/pkg/wcore"
 	"github.com/wavetermdev/waveterm/pkg/wstore"
 )
 
@@ -99,44 +101,42 @@ func MakeBlockShortDesc(block *waveobj.Block) string {
 	}
 }
 
-func AddToolsForTab(ctx context.Context, tabid string, widgetAccess bool, chatOpts *uctypes.WaveChatOpts) error {
+func GenerateTabStateAndTools(ctx context.Context, tabid string, widgetAccess bool) (string, []uctypes.ToolDefinition, error) {
 	if tabid == "" {
-		return nil
+		return "", nil, nil
 	}
-	if !widgetAccess {
-		chatOpts.SystemPrompt = append(chatOpts.SystemPrompt, "The user has chosen not to share widget context with you.")
-		return nil
-	}
-
-	if _, err := uuid.Parse(tabid); err != nil {
-		return fmt.Errorf("tabid must be a valid UUID")
-	}
-
-	tabObj, err := wstore.DBMustGet[*waveobj.Tab](ctx, tabid)
-	if err != nil {
-		return fmt.Errorf("error getting tab: %v", err)
-	}
-
 	var blocks []*waveobj.Block
-	for _, blockId := range tabObj.BlockIds {
-		block, err := wstore.DBGet[*waveobj.Block](ctx, blockId)
-		if err != nil {
-			continue
+	if widgetAccess {
+		if _, err := uuid.Parse(tabid); err != nil {
+			return "", nil, fmt.Errorf("tabid must be a valid UUID")
 		}
-		blocks = append(blocks, block)
+
+		tabObj, err := wstore.DBMustGet[*waveobj.Tab](ctx, tabid)
+		if err != nil {
+			return "", nil, fmt.Errorf("error getting tab: %v", err)
+		}
+
+		for _, blockId := range tabObj.BlockIds {
+			block, err := wstore.DBGet[*waveobj.Block](ctx, blockId)
+			if err != nil {
+				continue
+			}
+			blocks = append(blocks, block)
+		}
 	}
-
-	systemPrompt := generateTabSystemPrompt(blocks)
-	chatOpts.SystemPrompt = append(chatOpts.SystemPrompt, systemPrompt)
-
-	return nil
+	tabState := GenerateCurrentTabStatePrompt(blocks, widgetAccess)
+	var tools []uctypes.ToolDefinition
+	for _, block := range blocks {
+		blockTools := generateToolsForBlock(block)
+		tools = append(tools, blockTools...)
+	}
+	return tabState, tools, nil
 }
 
-func generateTabSystemPrompt(blocks []*waveobj.Block) string {
-	if len(blocks) == 0 {
-		return "This tab is empty with no widgets currently open."
+func GenerateCurrentTabStatePrompt(blocks []*waveobj.Block, widgetAccess bool) string {
+	if !widgetAccess {
+		return `<current_tab_state>The user has chosen not to share widget context with you</current_tab_state>`
 	}
-
 	var widgetDescriptions []string
 	for _, block := range blocks {
 		desc := MakeBlockShortDesc(block)
@@ -148,21 +148,86 @@ func generateTabSystemPrompt(blocks []*waveobj.Block) string {
 		widgetDescriptions = append(widgetDescriptions, fullDesc)
 	}
 
-	totalWidgets := len(widgetDescriptions)
 	var prompt strings.Builder
-	if totalWidgets == 1 {
-		prompt.WriteString("In this tab there is 1 widget open (the widgetid appears in parentheses before the description):\n")
+	prompt.WriteString("<current_tab_state>\n")
+	if len(widgetDescriptions) == 0 {
+		prompt.WriteString("No widgets open\n")
 	} else {
-		prompt.WriteString(fmt.Sprintf("In this tab there are %d widgets open (the widgetid appears in parentheses before the description):\n", totalWidgets))
+		for _, desc := range widgetDescriptions {
+			prompt.WriteString("* ")
+			prompt.WriteString(desc)
+			prompt.WriteString("\n")
+		}
 	}
-
-	for _, desc := range widgetDescriptions {
-		prompt.WriteString("* ")
-		prompt.WriteString(desc)
-		prompt.WriteString("\n")
-	}
-
+	prompt.WriteString("</current_tab_state>")
 	return prompt.String()
+}
+
+func generateToolsForBlock(block *waveobj.Block) []uctypes.ToolDefinition {
+	if block.Meta == nil {
+		return nil
+	}
+
+	viewType, ok := block.Meta["view"].(string)
+	if !ok {
+		return nil
+	}
+
+	var tools []uctypes.ToolDefinition
+	switch viewType {
+	case "web":
+		tools = append(tools, GetWebNavigateToolDefinition(block))
+	}
+
+	return tools
+}
+
+func GetWebNavigateToolDefinition(block *waveobj.Block) uctypes.ToolDefinition {
+	blockIdPrefix := block.OID[:8]
+	toolName := fmt.Sprintf("web_navigate_%s", blockIdPrefix)
+
+	return uctypes.ToolDefinition{
+		Name:        toolName,
+		DisplayName: fmt.Sprintf("Navigate Web Block %s", blockIdPrefix),
+		Description: fmt.Sprintf("Navigate the web browser widget %s to a new URL", blockIdPrefix),
+		InputSchema: map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"url": map[string]any{
+					"type":        "string",
+					"description": "URL to navigate to",
+				},
+			},
+			"required": []string{"url"},
+		},
+		ToolAnyCallback: func(input any) (any, error) {
+			inputMap, ok := input.(map[string]any)
+			if !ok {
+				return nil, fmt.Errorf("invalid input format")
+			}
+
+			url, ok := inputMap["url"].(string)
+			if !ok {
+				return nil, fmt.Errorf("missing or invalid url parameter")
+			}
+
+			ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancelFn()
+
+			blockORef := waveobj.MakeORef(waveobj.OType_Block, block.OID)
+			meta := map[string]any{
+				"url": url,
+			}
+
+			err := wstore.UpdateObjectMeta(ctx, blockORef, meta, false)
+			if err != nil {
+				return nil, fmt.Errorf("failed to update web block URL: %w", err)
+			}
+
+			wcore.SendWaveObjUpdate(blockORef)
+			return true, nil
+		},
+	}
 }
 
 func GetAdderToolDefinition() uctypes.ToolDefinition {

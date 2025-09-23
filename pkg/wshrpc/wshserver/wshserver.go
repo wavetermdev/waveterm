@@ -155,7 +155,7 @@ func (ws *WshServer) SetMetaCommand(ctx context.Context, data wshrpc.CommandSetM
 	if err != nil {
 		return fmt.Errorf("error updating object meta: %w", err)
 	}
-	sendWaveObjUpdate(oref)
+	wcore.SendWaveObjUpdate(oref)
 	return nil
 }
 
@@ -168,26 +168,6 @@ func (ws *WshServer) SetRTInfoCommand(ctx context.Context, data wshrpc.CommandSe
 	return nil
 }
 
-func sendWaveObjUpdate(oref waveobj.ORef) {
-	ctx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)
-	defer cancelFn()
-	// send a waveobj:update event
-	waveObj, err := wstore.DBGetORef(ctx, oref)
-	if err != nil {
-		log.Printf("error getting object for update event: %v", err)
-		return
-	}
-	wps.Broker.Publish(wps.WaveEvent{
-		Event:  wps.Event_WaveObjUpdate,
-		Scopes: []string{oref.String()},
-		Data: waveobj.WaveObjUpdate{
-			UpdateType: waveobj.UpdateType_Update,
-			OType:      waveObj.GetOType(),
-			OID:        waveobj.GetOID(waveObj),
-			Obj:        waveObj,
-		},
-	})
-}
 
 func (ws *WshServer) ResolveIdsCommand(ctx context.Context, data wshrpc.CommandResolveIdsData) (wshrpc.CommandResolveIdsRtnData, error) {
 	rtn := wshrpc.CommandResolveIdsRtnData{}

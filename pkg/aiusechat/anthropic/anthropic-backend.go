@@ -395,21 +395,14 @@ func RunAnthropicChatStep(
 		if !ok {
 			return nil, nil, fmt.Errorf("expected anthropicChatMessage, got %T", genMsg)
 		}
-
-		// Convert to anthropicInputMessage
+		// Convert to anthropicInputMessage with copied content
+		contentCopy := make([]anthropicMessageContentBlock, len(chatMsg.Content))
+		copy(contentCopy, chatMsg.Content)
 		inputMsg := anthropicInputMessage{
 			Role:    chatMsg.Role,
-			Content: chatMsg.Content,
+			Content: contentCopy,
 		}
 		anthropicMsgs = append(anthropicMsgs, inputMsg)
-	}
-
-	// pretty print json of anthropicMsgs
-	if jsonBytes, err := json.MarshalIndent(anthropicMsgs, "", "  "); err == nil {
-		log.Printf("system-prompt: %v\n", chatOpts.SystemPrompt)
-		log.Printf("anthropicMsgs JSON:\n%s", string(jsonBytes))
-	} else {
-		return nil, nil, fmt.Errorf("failed to marshal messages to JSON: %w", err)
 	}
 
 	req, err := buildAnthropicHTTPRequest(ctx, anthropicMsgs, chatOpts)

@@ -17,6 +17,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
+	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 )
 
 // these conversions are based off the anthropic spec
@@ -55,6 +56,23 @@ func buildAnthropicHTTPRequest(ctx context.Context, msgs []anthropicInputMessage
 		convertedMsgs[i] = convertMessageForAPI(msg)
 	}
 
+	// inject chatOpts.TabState as a "text" block at the END of the LAST "user" message found (append to Content)
+	if chatOpts.TabState != "" {
+		// Find the last "user" message
+		for i := len(convertedMsgs) - 1; i >= 0; i-- {
+			if convertedMsgs[i].Role == "user" {
+				// Create a text block with the TabState content
+				tabStateBlock := anthropicMessageContentBlock{
+					Type: "text",
+					Text: chatOpts.TabState,
+				}
+				// Append to the Content of this message
+				convertedMsgs[i].Content = append(convertedMsgs[i].Content, tabStateBlock)
+				break
+			}
+		}
+	}
+
 	// Build request body
 	reqBody := &anthropicStreamRequest{
 		Model:     opts.Model,
@@ -82,16 +100,33 @@ func buildAnthropicHTTPRequest(ctx context.Context, msgs []anthropicInputMessage
 		}
 		reqBody.Tools = cleanedTools
 	}
+	for _, tool := range chatOpts.TabTools {
+		cleanedTool := *tool.Clean()
+		reqBody.Tools = append(reqBody.Tools, cleanedTool)
+	}
 
 	// Enable extended thinking based on level
 	reqBody.Thinking = makeThinkingOpts(opts.ThinkingLevel, maxTokens)
 
-	bodyBytes, err := json.Marshal(reqBody)
+	// pretty print json of anthropicMsgs
+	if jsonStr, err := utilfn.MarshalIndentNoHTMLString(convertedMsgs, "", "  "); err == nil {
+		log.Printf("system-prompt: %v\n", chatOpts.SystemPrompt)
+		var toolNames []string
+		for _, tool := range chatOpts.Tools {
+			toolNames = append(toolNames, tool.Name)
+		}
+		log.Printf("tools: %s\n", strings.Join(toolNames, ", "))
+		log.Printf("anthropicMsgs JSON:\n%s", jsonStr)
+	}
+
+	var buf bytes.Buffer
+	encoder := json.NewEncoder(&buf)
+	encoder.SetEscapeHTML(false)
+	err := encoder.Encode(reqBody)
 	if err != nil {
 		return nil, err
 	}
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(bodyBytes))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, &buf)
 	if err != nil {
 		return nil, err
 	}

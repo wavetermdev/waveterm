@@ -4,6 +4,7 @@
 package utilfn
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"reflect"
@@ -11,6 +12,19 @@ import (
 
 	"github.com/mitchellh/mapstructure"
 )
+
+// MarshalIndentNoHTMLString marshals the value to JSON with indentation and SetEscapeHTML(false), returning a string
+func MarshalIndentNoHTMLString(v any, prefix, indent string) (string, error) {
+	var buf bytes.Buffer
+	encoder := json.NewEncoder(&buf)
+	encoder.SetEscapeHTML(false)
+	encoder.SetIndent(prefix, indent)
+	err := encoder.Encode(v)
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimRight(buf.String(), "\n"), nil
+}
 
 func ReUnmarshal(out any, in any) error {
 	barr, err := json.Marshal(in)

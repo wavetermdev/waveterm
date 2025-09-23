@@ -70,14 +70,11 @@ func generateCPUDataPoint() CPUDataPoint {
 		log.Printf("Error collecting CPU usage: %v", err)
 		cpuUsage = 0
 	}
-
 	dataPoint := CPUDataPoint{
 		Time:      now.Unix(),
 		CPUUsage:  &cpuUsage, // Convert to pointer
 		Timestamp: now.Format("15:04:05"),
 	}
-
-	log.Printf("CPU Usage: %.2f%% at %s", cpuUsage, dataPoint.Timestamp)
 	return dataPoint
 }
 

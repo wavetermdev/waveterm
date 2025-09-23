@@ -98,11 +98,19 @@ func RunWaveAIRequest(ctx context.Context, sseHandler *sse.SSEHandlerCh, aiOpts 
 }
 
 func RunAIChat(ctx context.Context, sseHandler *sse.SSEHandlerCh, chatOpts uctypes.WaveChatOpts) error {
+	log.Printf("RunAIChat\n")
 	// Stream the Anthropic chat response
 	firstStep := true
 	var cont *uctypes.WaveContinueResponse
 	for {
-		stopReason, rtnMessage, err := anthropic.RunAnthropicChatStep(ctx, sseHandler, chatOpts, cont)
+		var stopReason *uctypes.WaveStopReason
+		var rtnMessage uctypes.GenAIMessage
+		tabState, tabTools, err := chatOpts.TabStateGenerator()
+		if err == nil {
+			chatOpts.TabState = tabState
+			chatOpts.TabTools = tabTools
+			stopReason, rtnMessage, err = anthropic.RunAnthropicChatStep(ctx, sseHandler, chatOpts, cont)
+		}
 		if firstStep && err != nil {
 			return fmt.Errorf("failed to stream anthropic chat: %w", err)
 		}
@@ -119,7 +127,7 @@ func RunAIChat(ctx context.Context, sseHandler *sse.SSEHandlerCh, chatOpts uctyp
 			for _, toolCall := range stopReason.ToolCalls {
 				inputJSON, _ := json.Marshal(toolCall.Input)
 				log.Printf("TOOLUSE name=%s id=%s input=%s\n", toolCall.Name, toolCall.ID, string(inputJSON))
-				result := ResolveToolCall(toolCall, chatOpts.Tools)
+				result := ResolveToolCall(toolCall, chatOpts)
 				toolResults = append(toolResults, result)
 				if result.ErrorText != "" {
 					log.Printf("  error=%s\n", result.ErrorText)
@@ -138,7 +146,7 @@ func RunAIChat(ctx context.Context, sseHandler *sse.SSEHandlerCh, chatOpts uctyp
 			}
 
 			cont = &uctypes.WaveContinueResponse{
-				MessageID:             rtnMessage.MessageId,
+				MessageID:             rtnMessage.GetMessageId(),
 				Model:                 chatOpts.Config.Model,
 				ContinueFromKind:      uctypes.StopKindToolUse,
 				ContinueFromRawReason: stopReason.RawReason,
@@ -151,7 +159,7 @@ func RunAIChat(ctx context.Context, sseHandler *sse.SSEHandlerCh, chatOpts uctyp
 }
 
 // ResolveToolCall resolves a single tool call and returns an AIToolResult
-func ResolveToolCall(toolCall uctypes.WaveToolCall, tools []uctypes.ToolDefinition) (result uctypes.AIToolResult) {
+func ResolveToolCall(toolCall uctypes.WaveToolCall, chatOpts uctypes.WaveChatOpts) (result uctypes.AIToolResult) {
 	result = uctypes.AIToolResult{
 		ToolName:  toolCall.Name,
 		ToolUseID: toolCall.ID,
@@ -166,10 +174,18 @@ func ResolveToolCall(toolCall uctypes.WaveToolCall, tools []uctypes.ToolDefiniti
 
 	// Find the matching tool definition
 	var toolDef *uctypes.ToolDefinition
-	for i := range tools {
-		if tools[i].Name == toolCall.Name {
-			toolDef = &tools[i]
+	for _, tool := range chatOpts.Tools {
+		if tool.Name == toolCall.Name {
+			toolDef = &tool
 			break
+		}
+	}
+	if toolDef == nil {
+		for _, tool := range chatOpts.TabTools {
+			if tool.Name == toolCall.Name {
+				toolDef = &tool
+				break
+			}
 		}
 	}
 
@@ -207,6 +223,7 @@ func ResolveToolCall(toolCall uctypes.WaveToolCall, tools []uctypes.ToolDefiniti
 }
 
 func WaveAIPostMessageWrap(ctx context.Context, sseHandler *sse.SSEHandlerCh, message *uctypes.AIMessage, chatOpts uctypes.WaveChatOpts) error {
+	log.Printf("WaveAIPostMessageWrap\n")
 	// Only support Anthropic for now
 	if chatOpts.Config.APIType != APIType_Anthropic {
 		return fmt.Errorf("only Anthropic API type is supported, got: %s", chatOpts.Config.APIType)
@@ -276,10 +293,8 @@ func WaveAIPostMessageHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Create tools array with adder tool
 	chatOpts.Tools = append(chatOpts.Tools, GetAdderToolDefinition())
-	err = AddToolsForTab(r.Context(), req.TabId, req.WidgetAccess, &chatOpts)
-	if err != nil {
-		http.Error(w, fmt.Sprintf("Error trying to add tab tool context: %v", err), http.StatusInternalServerError)
-		return
+	chatOpts.TabStateGenerator = func() (string, []uctypes.ToolDefinition, error) {
+		return GenerateTabStateAndTools(r.Context(), req.TabId, req.WidgetAccess)
 	}
 
 	// Validate the message

@@ -322,8 +322,13 @@ func (m *UIMessage) GetContent() string {
 }
 
 type WaveChatOpts struct {
-	ChatId       string
-	Config       AIOptsType
-	Tools        []ToolDefinition
-	SystemPrompt []string
+	ChatId            string
+	Config            AIOptsType
+	Tools             []ToolDefinition
+	SystemPrompt      []string
+	TabStateGenerator func() (string, []ToolDefinition, error)
+
+	// emphemeral to the step
+	TabState string
+	TabTools []ToolDefinition
 }
