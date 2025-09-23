@@ -65,6 +65,9 @@ func SetRTInfo(oref waveobj.ORef, info map[string]any) {
 			// Convert and set the value
 			if valueStr, ok := value.(string); ok && fieldValue.Kind() == reflect.String {
 				fieldValue.SetString(valueStr)
+			} else if fieldValue.Kind() == reflect.Interface {
+				// Handle any/interface{} fields
+				fieldValue.Set(reflect.ValueOf(value))
 			}
 		}
 	}

@@ -5,7 +5,9 @@ package aiusechat
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"net/http"
 	"strings"
 	"time"
 
@@ -177,6 +179,19 @@ func generateToolsForBlock(block *waveobj.Block) []uctypes.ToolDefinition {
 	switch viewType {
 	case "web":
 		tools = append(tools, GetWebNavigateToolDefinition(block))
+	case "tsunami":
+		// Check if tsunami widget is running
+		status := blockcontroller.GetBlockControllerRuntimeStatus(block.OID)
+		if status != nil && status.ShellProcStatus == blockcontroller.Status_Running && status.TsunamiPort > 0 {
+			// Check if schemas are available
+			blockORef := waveobj.MakeORef(waveobj.OType_Block, block.OID)
+			rtInfo := wstore.GetRTInfo(blockORef)
+			if rtInfo != nil && rtInfo.TsunamiSchemas != nil {
+				if tool := GetTsunamiGetDataToolDefinition(block, rtInfo, status); tool != nil {
+					tools = append(tools, *tool)
+				}
+			}
+		}
 	}
 
 	return tools
@@ -226,6 +241,62 @@ func GetWebNavigateToolDefinition(block *waveobj.Block) uctypes.ToolDefinition {
 
 			wcore.SendWaveObjUpdate(blockORef)
 			return true, nil
+		},
+	}
+}
+
+func GetTsunamiGetDataToolDefinition(block *waveobj.Block, rtInfo *waveobj.ObjRTInfo, status *blockcontroller.BlockControllerRuntimeStatus) *uctypes.ToolDefinition {
+	blockIdPrefix := block.OID[:8]
+	toolName := fmt.Sprintf("tsunami_getdata_%s", blockIdPrefix)
+
+	var inputSchema map[string]any
+	if rtInfo != nil && rtInfo.TsunamiSchemas != nil {
+		if schemasMap, ok := rtInfo.TsunamiSchemas.(map[string]any); ok {
+			if dataSchema, exists := schemasMap["data"]; exists {
+				inputSchema = dataSchema.(map[string]any)
+			}
+		}
+	}
+
+	// Return nil if no data schema found
+	if inputSchema == nil {
+		return nil
+	}
+
+	return &uctypes.ToolDefinition{
+		Name:        toolName,
+		InputSchema: inputSchema,
+		ToolAnyCallback: func(input any) (any, error) {
+			if status.TsunamiPort == 0 {
+				return nil, fmt.Errorf("tsunami port not available")
+			}
+
+			url := fmt.Sprintf("http://localhost:%d/api/data", status.TsunamiPort)
+
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+
+			req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+			if err != nil {
+				return nil, fmt.Errorf("failed to create request: %w", err)
+			}
+
+			resp, err := http.DefaultClient.Do(req)
+			if err != nil {
+				return nil, fmt.Errorf("failed to make request to tsunami: %w", err)
+			}
+			defer resp.Body.Close()
+
+			if resp.StatusCode != http.StatusOK {
+				return nil, fmt.Errorf("tsunami returned status %d", resp.StatusCode)
+			}
+
+			var result any
+			if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+				return nil, fmt.Errorf("failed to decode tsunami response: %w", err)
+			}
+
+			return result, nil
 		},
 	}
 }

@@ -115,6 +115,9 @@ func buildAnthropicHTTPRequest(ctx context.Context, msgs []anthropicInputMessage
 		for _, tool := range chatOpts.Tools {
 			toolNames = append(toolNames, tool.Name)
 		}
+		for _, tool := range chatOpts.TabTools {
+			toolNames = append(toolNames, tool.Name)
+		}
 		log.Printf("tools: %s\n", strings.Join(toolNames, ", "))
 		log.Printf("anthropicMsgs JSON:\n%s", jsonStr)
 	}
