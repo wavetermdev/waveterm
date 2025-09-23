@@ -199,6 +199,11 @@ declare global {
         oref: ORef;
     };
 
+    // wshrpc.CommandGetRTInfoData
+    type CommandGetRTInfoData = {
+        oref: ORef;
+    };
+
     // wshrpc.CommandMessageData
     type CommandMessageData = {
         oref: ORef;
@@ -243,6 +248,12 @@ declare global {
     type CommandSetMetaData = {
         oref: ORef;
         meta: MetaType;
+    };
+
+    // wshrpc.CommandSetRTInfoData
+    type CommandSetRTInfoData = {
+        oref: ORef;
+        data: ObjRTInfo;
     };
 
     // wshrpc.CommandVarData
@@ -620,6 +631,12 @@ declare global {
 
     // waveobj.ORef
     type ORef = string;
+
+    // waveobj.ObjRTInfo
+    type ObjRTInfo = {
+        "tsunami:title"?: string;
+        "tsunami:shortdesc"?: string;
+    };
 
     // iochantypes.Packet
     type Packet = {

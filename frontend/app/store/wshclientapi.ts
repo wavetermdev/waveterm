@@ -257,6 +257,11 @@ class RpcApiType {
         return client.wshRpcCall("getmeta", data, opts);
     }
 
+    // command "getrtinfo" [call]
+    GetRTInfoCommand(client: WshClient, data: CommandGetRTInfoData, opts?: RpcOpts): Promise<ObjRTInfo> {
+        return client.wshRpcCall("getrtinfo", data, opts);
+    }
+
     // command "gettab" [call]
     GetTabCommand(client: WshClient, data: string, opts?: RpcOpts): Promise<Tab> {
         return client.wshRpcCall("gettab", data, opts);
@@ -395,6 +400,11 @@ class RpcApiType {
     // command "setmeta" [call]
     SetMetaCommand(client: WshClient, data: CommandSetMetaData, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("setmeta", data, opts);
+    }
+
+    // command "setrtinfo" [call]
+    SetRTInfoCommand(client: WshClient, data: CommandSetRTInfoData, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("setrtinfo", data, opts);
     }
 
     // command "setvar" [call]

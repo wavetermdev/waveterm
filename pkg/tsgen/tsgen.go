@@ -50,6 +50,7 @@ var ExtraTypes = []any{
 	vdom.VDomFrontendUpdate{},
 	vdom.VDomBackendUpdate{},
 	waveobj.MetaTSType{},
+	waveobj.ObjRTInfo{},
 }
 
 // add extra type unions to generate here

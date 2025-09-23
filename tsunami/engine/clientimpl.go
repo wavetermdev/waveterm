@@ -141,6 +141,7 @@ func (c *ClientImpl) makeBackendOpts() *rpctypes.VDomBackendOpts {
 	appMeta := c.GetAppMeta()
 	return &rpctypes.VDomBackendOpts{
 		Title:                appMeta.Title,
+		ShortDesc:            appMeta.ShortDesc,
 		GlobalKeyboardEvents: c.GlobalEventHandler != nil,
 		FaviconPath:          c.getFaviconPath(),
 	}

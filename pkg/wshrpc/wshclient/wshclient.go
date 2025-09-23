@@ -313,6 +313,12 @@ func GetMetaCommand(w *wshutil.WshRpc, data wshrpc.CommandGetMetaData, opts *wsh
 	return resp, err
 }
 
+// command "getrtinfo", wshserver.GetRTInfoCommand
+func GetRTInfoCommand(w *wshutil.WshRpc, data wshrpc.CommandGetRTInfoData, opts *wshrpc.RpcOpts) (*waveobj.ObjRTInfo, error) {
+	resp, err := sendRpcRequestCallHelper[*waveobj.ObjRTInfo](w, "getrtinfo", data, opts)
+	return resp, err
+}
+
 // command "gettab", wshserver.GetTabCommand
 func GetTabCommand(w *wshutil.WshRpc, data string, opts *wshrpc.RpcOpts) (*waveobj.Tab, error) {
 	resp, err := sendRpcRequestCallHelper[*waveobj.Tab](w, "gettab", data, opts)
@@ -474,6 +480,12 @@ func SetConnectionsConfigCommand(w *wshutil.WshRpc, data wshrpc.ConnConfigReques
 // command "setmeta", wshserver.SetMetaCommand
 func SetMetaCommand(w *wshutil.WshRpc, data wshrpc.CommandSetMetaData, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "setmeta", data, opts)
+	return err
+}
+
+// command "setrtinfo", wshserver.SetRTInfoCommand
+func SetRTInfoCommand(w *wshutil.WshRpc, data wshrpc.CommandSetRTInfoData, opts *wshrpc.RpcOpts) error {
+	_, err := sendRpcRequestCallHelper[any](w, "setrtinfo", data, opts)
 	return err
 }
 

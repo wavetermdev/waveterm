@@ -5,6 +5,7 @@
 type VDomBackendOpts = {
     globalkeyboardevents?: boolean;
     title?: string;
+    shortdesc?: string;
     faviconpath?: string;
 };
 

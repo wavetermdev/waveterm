@@ -159,6 +159,15 @@ func (ws *WshServer) SetMetaCommand(ctx context.Context, data wshrpc.CommandSetM
 	return nil
 }
 
+func (ws *WshServer) GetRTInfoCommand(ctx context.Context, data wshrpc.CommandGetRTInfoData) (*waveobj.ObjRTInfo, error) {
+	return wstore.GetRTInfo(data.ORef), nil
+}
+
+func (ws *WshServer) SetRTInfoCommand(ctx context.Context, data wshrpc.CommandSetRTInfoData) error {
+	wstore.SetRTInfo(data.ORef, data.Data)
+	return nil
+}
+
 func sendWaveObjUpdate(oref waveobj.ORef) {
 	ctx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancelFn()
