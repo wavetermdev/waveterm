@@ -6,4 +6,6 @@ package waveobj
 type ObjRTInfo struct {
 	TsunamiTitle     string `json:"tsunami:title,omitempty"`
 	TsunamiShortDesc string `json:"tsunami:shortdesc,omitempty"`
+	TsunamiSchemas   any    `json:"tsunami:schemas,omitempty"`
+	CmdHasCurCwd     bool   `json:"cmd:hascurcwd,omitempty"`
 }

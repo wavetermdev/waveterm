@@ -80,14 +80,25 @@ func sshRun(cmd *cobra.Command, args []string) (rtnErr error) {
 	data := wshrpc.CommandSetMetaData{
 		ORef: waveobj.MakeORef(waveobj.OType_Block, blockId),
 		Meta: map[string]any{
-			waveobj.MetaKey_Connection:   sshArg,
-			waveobj.MetaKey_CmdCwd:       nil,
-			waveobj.MetaKey_CmdHasCurCwd: nil,
+			waveobj.MetaKey_Connection: sshArg,
+			waveobj.MetaKey_CmdCwd:     nil,
 		},
 	}
 	err := wshclient.SetMetaCommand(RpcClient, data, nil)
 	if err != nil {
 		return fmt.Errorf("setting connection in block: %w", err)
+	}
+	
+	// Clear the cmd:hascurcwd rtinfo field
+	rtInfoData := wshrpc.CommandSetRTInfoData{
+		ORef: waveobj.MakeORef(waveobj.OType_Block, blockId),
+		Data: map[string]any{
+			"cmd:hascurcwd": nil,
+		},
+	}
+	err = wshclient.SetRTInfoCommand(RpcClient, rtInfoData, nil)
+	if err != nil {
+		return fmt.Errorf("setting RTInfo in block: %w", err)
 	}
 	WriteStderr("switched connection to %q\n", sshArg)
 	return nil

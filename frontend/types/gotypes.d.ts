@@ -557,7 +557,6 @@ declare global {
         "cmd:initscript.zsh"?: string;
         "cmd:initscript.pwsh"?: string;
         "cmd:initscript.fish"?: string;
-        "cmd:hascurcwd"?: boolean;
         "ai:*"?: boolean;
         "ai:preset"?: string;
         "ai:apitype"?: string;
@@ -636,6 +635,8 @@ declare global {
     type ObjRTInfo = {
         "tsunami:title"?: string;
         "tsunami:shortdesc"?: string;
+        "tsunami:schemas"?: any;
+        "cmd:hascurcwd"?: boolean;
     };
 
     // iochantypes.Packet

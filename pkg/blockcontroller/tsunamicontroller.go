@@ -5,9 +5,11 @@ package blockcontroller
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -15,11 +17,13 @@ import (
 	"strings"
 	"sync"
 	"syscall"
+	"time"
 
 	"github.com/wavetermdev/waveterm/pkg/utilds"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wps"
+	"github.com/wavetermdev/waveterm/pkg/wstore"
 	"github.com/wavetermdev/waveterm/tsunami/build"
 )
 
@@ -79,6 +83,46 @@ func getCachesDir() string {
 	}
 
 	return cacheDir
+}
+
+func (c *TsunamiController) fetchAndSetSchemas(port int) {
+	url := fmt.Sprintf("http://localhost:%d/api/schemas", port)
+	client := &http.Client{
+		Timeout: 10 * time.Second,
+	}
+	
+	resp, err := client.Get(url)
+	if err != nil {
+		log.Printf("TsunamiController: failed to fetch schemas from %s: %v", url, err)
+		return
+	}
+	defer resp.Body.Close()
+	
+	if resp.StatusCode != http.StatusOK {
+		log.Printf("TsunamiController: received non-200 status %d from %s", resp.StatusCode, url)
+		return
+	}
+	
+	var schemas any
+	if err := json.NewDecoder(resp.Body).Decode(&schemas); err != nil {
+		log.Printf("TsunamiController: failed to decode schemas response: %v", err)
+		return
+	}
+	
+	blockRef := waveobj.MakeORef(waveobj.OType_Block, c.blockId)
+	wstore.SetRTInfo(blockRef, map[string]any{
+		"tsunami:schemas": schemas,
+	})
+	
+	log.Printf("TsunamiController: successfully fetched and cached schemas for block %s", c.blockId)
+}
+
+func (c *TsunamiController) clearSchemas() {
+	blockRef := waveobj.MakeORef(waveobj.OType_Block, c.blockId)
+	wstore.SetRTInfo(blockRef, map[string]any{
+		"tsunami:schemas": nil,
+	})
+	log.Printf("TsunamiController: cleared schemas for block %s", c.blockId)
 }
 
 func getTsunamiAppCachePath(scope string, appName string, osArch string) (string, error) {
@@ -229,6 +273,11 @@ func (c *TsunamiController) Start(ctx context.Context, blockMeta waveobj.MetaMap
 	})
 	go c.sendStatusUpdate()
 
+	// Asynchronously fetch schemas after port is detected
+	go func() {
+		c.fetchAndSetSchemas(tsunamiProc.Port)
+	}()
+
 	// Monitor process completion
 	go func() {
 		<-tsunamiProc.WaitCh
@@ -240,6 +289,7 @@ func (c *TsunamiController) Start(ctx context.Context, blockMeta waveobj.MetaMap
 				c.port = 0
 				c.exitCode = exitCodeFromWaitErr(tsunamiProc.WaitRtn)
 			})
+			c.clearSchemas()
 			go c.sendStatusUpdate()
 		}
 		c.runLock.Unlock()
@@ -273,6 +323,7 @@ func (c *TsunamiController) Stop(graceful bool, newStatus string) error {
 		c.status = newStatus
 		c.port = 0
 	})
+	c.clearSchemas()
 	go c.sendStatusUpdate()
 	return nil
 }

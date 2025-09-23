@@ -125,12 +125,20 @@ function handleOsc7Command(data: string, blockId: string, loaded: boolean): bool
         data = data.substring(nextSlashIdx);
     }
     setTimeout(() => {
-        fireAndForget(() =>
-            services.ObjectService.UpdateObjectMeta(WOS.makeORef("block", blockId), {
+        fireAndForget(async () => {
+            await services.ObjectService.UpdateObjectMeta(WOS.makeORef("block", blockId), {
                 "cmd:cwd": data,
-                "cmd:hascurcwd": true,
-            })
-        );
+            });
+            
+            const rtInfo = { "cmd:hascurcwd": true };
+            const rtInfoData: CommandSetRTInfoData = {
+                oref: WOS.makeORef("block", blockId),
+                data: rtInfo
+            };
+            await RpcApi.SetRTInfoCommand(TabRpcClient, rtInfoData).catch((e) =>
+                console.log("error setting RT info", e)
+            );
+        });
     }, 0);
     return true;
 }

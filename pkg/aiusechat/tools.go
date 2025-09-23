@@ -10,9 +10,24 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
+	"github.com/wavetermdev/waveterm/pkg/blockcontroller"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wstore"
 )
+
+func handleTsunamiBlockDesc(block *waveobj.Block) string {
+	status := blockcontroller.GetBlockControllerRuntimeStatus(block.OID)
+	if status == nil || status.ShellProcStatus != blockcontroller.Status_Running {
+		return "tsunami framework widget that is currently not running"
+	}
+
+	blockORef := waveobj.MakeORef(waveobj.OType_Block, block.OID)
+	rtInfo := wstore.GetRTInfo(blockORef)
+	if rtInfo != nil && rtInfo.TsunamiShortDesc != "" {
+		return fmt.Sprintf("tsunami widget - %s", rtInfo.TsunamiShortDesc)
+	}
+	return "tsunami widget - unknown description"
+}
 
 func MakeBlockShortDesc(block *waveobj.Block) string {
 	if block.Meta == nil {
@@ -28,7 +43,10 @@ func MakeBlockShortDesc(block *waveobj.Block) string {
 	case "term":
 		connection, hasConnection := block.Meta["connection"].(string)
 		cwd, hasCwd := block.Meta["cmd:cwd"].(string)
-		hasCurCwd, _ := block.Meta["cmd:hascurcwd"].(bool)
+
+		blockORef := waveobj.MakeORef(waveobj.OType_Block, block.OID)
+		rtInfo := wstore.GetRTInfo(blockORef)
+		hasCurCwd := rtInfo != nil && rtInfo.CmdHasCurCwd
 
 		var desc string
 		if hasConnection && connection != "" {
@@ -75,7 +93,7 @@ func MakeBlockShortDesc(block *waveobj.Block) string {
 	case "launcher":
 		return "placeholder widget used to launch other widgets"
 	case "tsunami":
-		return "custom 'tsunami' framework widget"
+		return handleTsunamiBlockDesc(block)
 	default:
 		return fmt.Sprintf("unknown widget with type %q", viewType)
 	}

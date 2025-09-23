@@ -401,8 +401,17 @@ const ChangeConnectionBlockModal = React.memo(
                 }
                 await RpcApi.SetMetaCommand(TabRpcClient, {
                     oref: WOS.makeORef("block", blockId),
-                    meta: { connection: connName, file: newFile, "cmd:cwd": null, "cmd:hascurcwd": null },
+                    meta: { connection: connName, file: newFile, "cmd:cwd": null },
                 });
+                
+                const rtInfo = { "cmd:hascurcwd": null };
+                const rtInfoData: CommandSetRTInfoData = {
+                    oref: WOS.makeORef("block", blockId),
+                    data: rtInfo
+                };
+                RpcApi.SetRTInfoCommand(TabRpcClient, rtInfoData).catch((e) =>
+                    console.log("error setting RT info", e)
+                );
                 try {
                     await RpcApi.ConnEnsureCommand(
                         TabRpcClient,
