@@ -20,6 +20,7 @@ class TsunamiViewModel extends WebViewModel {
     shellProcFullStatus: jotai.PrimitiveAtom<BlockControllerRuntimeStatus>;
     shellProcStatusUnsubFn: () => void;
     isRestarting: jotai.PrimitiveAtom<boolean>;
+    viewName: jotai.PrimitiveAtom<string>;
 
     constructor(blockId: string, nodeModel: BlockNodeModel) {
         super(blockId, nodeModel);
@@ -162,6 +163,11 @@ const TsunamiView = memo((props: ViewComponentProps<TsunamiViewModel>) => {
                     const meta = JSON.parse(jsonStr);
                     if (meta.title || meta.shortdesc) {
                         model.setAppMeta(meta);
+                        
+                        if (meta.title) {
+                            const truncatedTitle = meta.title.length > 77 ? meta.title.substring(0, 77) + "..." : meta.title;
+                            globalStore.set(model.viewName, truncatedTitle);
+                        }
                     }
                 } catch (error) {
                     console.error('Failed to parse TSUNAMI_META message:', error);

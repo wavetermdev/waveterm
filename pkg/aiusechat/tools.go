@@ -183,13 +183,16 @@ func generateToolsForBlock(block *waveobj.Block) []uctypes.ToolDefinition {
 		// Check if tsunami widget is running
 		status := blockcontroller.GetBlockControllerRuntimeStatus(block.OID)
 		if status != nil && status.ShellProcStatus == blockcontroller.Status_Running && status.TsunamiPort > 0 {
-			// Check if schemas are available
 			blockORef := waveobj.MakeORef(waveobj.OType_Block, block.OID)
 			rtInfo := wstore.GetRTInfo(blockORef)
-			if rtInfo != nil && rtInfo.TsunamiSchemas != nil {
-				if tool := GetTsunamiGetDataToolDefinition(block, rtInfo, status); tool != nil {
-					tools = append(tools, *tool)
-				}
+			if tool := GetTsunamiGetDataToolDefinition(block, rtInfo, status); tool != nil {
+				tools = append(tools, *tool)
+			}
+			if tool := GetTsunamiGetConfigToolDefinition(block, rtInfo, status); tool != nil {
+				tools = append(tools, *tool)
+			}
+			if tool := GetTsunamiSetConfigToolDefinition(block, rtInfo, status); tool != nil {
+				tools = append(tools, *tool)
 			}
 		}
 	}
@@ -245,59 +248,131 @@ func GetWebNavigateToolDefinition(block *waveobj.Block) uctypes.ToolDefinition {
 	}
 }
 
+func makeTsunamiGetCallback(status *blockcontroller.BlockControllerRuntimeStatus, apiPath string) func(any) (any, error) {
+	return func(input any) (any, error) {
+		if status.TsunamiPort == 0 {
+			return nil, fmt.Errorf("tsunami port not available")
+		}
+
+		url := fmt.Sprintf("http://localhost:%d%s", status.TsunamiPort, apiPath)
+
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create request: %w", err)
+		}
+
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			return nil, fmt.Errorf("failed to make request to tsunami: %w", err)
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("tsunami returned status %d", resp.StatusCode)
+		}
+
+		var result any
+		if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+			return nil, fmt.Errorf("failed to decode tsunami response: %w", err)
+		}
+
+		return result, nil
+	}
+}
+
+func makeTsunamiPostCallback(status *blockcontroller.BlockControllerRuntimeStatus, apiPath string) func(any) (any, error) {
+	return func(input any) (any, error) {
+		if status.TsunamiPort == 0 {
+			return nil, fmt.Errorf("tsunami port not available")
+		}
+
+		url := fmt.Sprintf("http://localhost:%d%s", status.TsunamiPort, apiPath)
+
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		var reqBody []byte
+		var err error
+		if input != nil {
+			reqBody, err = json.Marshal(input)
+			if err != nil {
+				return nil, fmt.Errorf("failed to marshal input: %w", err)
+			}
+		}
+
+		req, err := http.NewRequestWithContext(ctx, "POST", url, strings.NewReader(string(reqBody)))
+		if err != nil {
+			return nil, fmt.Errorf("failed to create request: %w", err)
+		}
+		req.Header.Set("Content-Type", "application/json")
+
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			return nil, fmt.Errorf("failed to make request to tsunami: %w", err)
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("tsunami returned status %d", resp.StatusCode)
+		}
+
+		return true, nil
+	}
+}
+
 func GetTsunamiGetDataToolDefinition(block *waveobj.Block, rtInfo *waveobj.ObjRTInfo, status *blockcontroller.BlockControllerRuntimeStatus) *uctypes.ToolDefinition {
 	blockIdPrefix := block.OID[:8]
 	toolName := fmt.Sprintf("tsunami_getdata_%s", blockIdPrefix)
 
+	return &uctypes.ToolDefinition{
+		Name: toolName,
+		InputSchema: map[string]any{
+			"type":       "object",
+			"properties": map[string]any{},
+		},
+		ToolAnyCallback: makeTsunamiGetCallback(status, "/api/data"),
+	}
+}
+
+func GetTsunamiGetConfigToolDefinition(block *waveobj.Block, rtInfo *waveobj.ObjRTInfo, status *blockcontroller.BlockControllerRuntimeStatus) *uctypes.ToolDefinition {
+	blockIdPrefix := block.OID[:8]
+	toolName := fmt.Sprintf("tsunami_getconfig_%s", blockIdPrefix)
+
+	return &uctypes.ToolDefinition{
+		Name: toolName,
+		InputSchema: map[string]any{
+			"type":       "object",
+			"properties": map[string]any{},
+		},
+		ToolAnyCallback: makeTsunamiGetCallback(status, "/api/config"),
+	}
+}
+
+func GetTsunamiSetConfigToolDefinition(block *waveobj.Block, rtInfo *waveobj.ObjRTInfo, status *blockcontroller.BlockControllerRuntimeStatus) *uctypes.ToolDefinition {
+	blockIdPrefix := block.OID[:8]
+	toolName := fmt.Sprintf("tsunami_setconfig_%s", blockIdPrefix)
+
 	var inputSchema map[string]any
 	if rtInfo != nil && rtInfo.TsunamiSchemas != nil {
 		if schemasMap, ok := rtInfo.TsunamiSchemas.(map[string]any); ok {
-			if dataSchema, exists := schemasMap["data"]; exists {
-				inputSchema = dataSchema.(map[string]any)
+			if configSchema, exists := schemasMap["config"]; exists {
+				inputSchema = configSchema.(map[string]any)
 			}
 		}
 	}
 
-	// Return nil if no data schema found
+	// Return nil if no config schema found
 	if inputSchema == nil {
 		return nil
 	}
 
 	return &uctypes.ToolDefinition{
-		Name:        toolName,
-		InputSchema: inputSchema,
-		ToolAnyCallback: func(input any) (any, error) {
-			if status.TsunamiPort == 0 {
-				return nil, fmt.Errorf("tsunami port not available")
-			}
-
-			url := fmt.Sprintf("http://localhost:%d/api/data", status.TsunamiPort)
-
-			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-			defer cancel()
-
-			req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
-			if err != nil {
-				return nil, fmt.Errorf("failed to create request: %w", err)
-			}
-
-			resp, err := http.DefaultClient.Do(req)
-			if err != nil {
-				return nil, fmt.Errorf("failed to make request to tsunami: %w", err)
-			}
-			defer resp.Body.Close()
-
-			if resp.StatusCode != http.StatusOK {
-				return nil, fmt.Errorf("tsunami returned status %d", resp.StatusCode)
-			}
-
-			var result any
-			if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-				return nil, fmt.Errorf("failed to decode tsunami response: %w", err)
-			}
-
-			return result, nil
-		},
+		Name:            toolName,
+		InputSchema:     inputSchema,
+		ToolAnyCallback: makeTsunamiPostCallback(status, "/api/config"),
 	}
 }
 
