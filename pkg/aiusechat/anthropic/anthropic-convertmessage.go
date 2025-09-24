@@ -18,6 +18,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
+	"github.com/wavetermdev/waveterm/pkg/waveobj"
+	"github.com/wavetermdev/waveterm/pkg/wstore"
 )
 
 // these conversions are based off the anthropic spec
@@ -26,19 +28,15 @@ import (
 // buildAnthropicHTTPRequest creates a complete HTTP request for the Anthropic API
 func buildAnthropicHTTPRequest(ctx context.Context, msgs []anthropicInputMessage, chatOpts uctypes.WaveChatOpts) (*http.Request, error) {
 	opts := chatOpts.Config
-	if opts.APIToken == "" {
-		return nil, errors.New("Anthropic API token missing")
-	}
 	if opts.Model == "" {
 		return nil, errors.New("opts.model is required")
 	}
 
 	// Set defaults
-	baseURL := opts.BaseURL
-	if baseURL == "" {
-		baseURL = AnthropicDefaultBaseURL
+	endpoint := opts.BaseURL
+	if endpoint == "" {
+		endpoint = AnthropicDefaultBaseURL
 	}
-	endpoint := strings.TrimRight(baseURL, "/") + "/v1/messages"
 
 	apiVersion := opts.APIVersion
 	if apiVersion == "" {
@@ -120,6 +118,10 @@ func buildAnthropicHTTPRequest(ctx context.Context, msgs []anthropicInputMessage
 		}
 		log.Printf("tools: %s\n", strings.Join(toolNames, ", "))
 		log.Printf("anthropicMsgs JSON:\n%s", jsonStr)
+		log.Printf("has-api-key: %v\n", opts.APIToken != "")
+		if endpoint != AnthropicDefaultBaseURL {
+			log.Printf("baseurl: %s\n", endpoint)
+		}
 	}
 
 	var buf bytes.Buffer
@@ -133,11 +135,19 @@ func buildAnthropicHTTPRequest(ctx context.Context, msgs []anthropicInputMessage
 	if err != nil {
 		return nil, err
 	}
+	client, err := wstore.DBGetSingleton[*waveobj.Client](ctx)
+	if err != nil {
+		return nil, fmt.Errorf("error getting client for Wave AI request: %w", err)
+	}
 
 	req.Header.Set("content-type", "application/json")
-	req.Header.Set("x-api-key", opts.APIToken)
+	if opts.APIToken != "" {
+		req.Header.Set("x-api-key", opts.APIToken)
+	}
 	req.Header.Set("anthropic-version", apiVersion)
 	req.Header.Set("accept", "text/event-stream")
+	req.Header.Set("X-Wave-ClientId", client.OID)
+	req.Header.Set("X-Wave-APIType", "anthropic")
 
 	return req, nil
 }

@@ -96,7 +96,7 @@ class TsunamiViewModel extends WebViewModel {
 
     setAppMeta(meta: TsunamiAppMeta) {
         console.log("tsunami app meta:", meta);
-        
+
         const rtInfo: ObjRTInfo = {};
         if (meta.title) {
             rtInfo["tsunami:title"] = meta.title;
@@ -104,17 +104,15 @@ class TsunamiViewModel extends WebViewModel {
         if (meta.shortdesc) {
             rtInfo["tsunami:shortdesc"] = meta.shortdesc;
         }
-        
+
         if (Object.keys(rtInfo).length > 0) {
             const oref = WOS.makeORef("block", this.blockId);
             const data: CommandSetRTInfoData = {
                 oref: oref,
-                data: rtInfo
+                data: rtInfo,
             };
-            
-            RpcApi.SetRTInfoCommand(TabRpcClient, data).catch((e) =>
-                console.log("error setting RT info", e)
-            );
+
+            RpcApi.SetRTInfoCommand(TabRpcClient, data).catch((e) => console.log("error setting RT info", e));
         }
     }
 
@@ -157,28 +155,29 @@ const TsunamiView = memo((props: ViewComponentProps<TsunamiViewModel>) => {
 
         const handleConsoleMessage = (e: any) => {
             const message = e.message;
-            if (typeof message === 'string' && message.startsWith('TSUNAMI_META ')) {
+            if (typeof message === "string" && message.startsWith("TSUNAMI_META ")) {
                 try {
-                    const jsonStr = message.substring('TSUNAMI_META '.length);
+                    const jsonStr = message.substring("TSUNAMI_META ".length);
                     const meta = JSON.parse(jsonStr);
                     if (meta.title || meta.shortdesc) {
                         model.setAppMeta(meta);
-                        
+
                         if (meta.title) {
-                            const truncatedTitle = meta.title.length > 77 ? meta.title.substring(0, 77) + "..." : meta.title;
+                            const truncatedTitle =
+                                meta.title.length > 77 ? meta.title.substring(0, 77) + "..." : meta.title;
                             globalStore.set(model.viewName, truncatedTitle);
                         }
                     }
                 } catch (error) {
-                    console.error('Failed to parse TSUNAMI_META message:', error);
+                    console.error("Failed to parse TSUNAMI_META message:", error);
                 }
             }
         };
 
-        webviewElement.addEventListener('console-message', handleConsoleMessage);
+        webviewElement.addEventListener("console-message", handleConsoleMessage);
 
         return () => {
-            webviewElement.removeEventListener('console-message', handleConsoleMessage);
+            webviewElement.removeEventListener("console-message", handleConsoleMessage);
         };
     }, [domReady, model]);
 

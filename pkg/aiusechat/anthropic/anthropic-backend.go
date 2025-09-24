@@ -24,7 +24,7 @@ import (
 )
 
 const (
-	AnthropicDefaultBaseURL              = "https://api.anthropic.com"
+	AnthropicDefaultBaseURL              = "https://api.anthropic.com/v1/messages"
 	AnthropicDefaultAPIVersion           = "2023-06-01"
 	AnthropicDefaultMaxTokens            = 4096
 	AnthropicThinkingBudget              = 1024

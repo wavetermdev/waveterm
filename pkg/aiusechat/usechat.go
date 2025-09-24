@@ -26,18 +26,19 @@ const (
 )
 
 const DefaultClaudeModel = "claude-sonnet-4-20250514"
+const DefaultAIEndpoint = "https://cfapi.waveterm.dev/api/waveai"
 
 func getWaveAISettings() (*uctypes.AIOptsType, error) {
-	anthropicSecret := os.Getenv("WAVETERM_ANTHROPIC_SECRET")
-	if anthropicSecret == "" {
-		return nil, fmt.Errorf("no anthropic secret found")
+	baseUrl := DefaultAIEndpoint
+	if os.Getenv("WAVETERM_WAVEAI_ENDPOINT") != "" {
+		baseUrl = os.Getenv("WAVETERM_WAVEAI_ENDPOINT")
 	}
 	return &uctypes.AIOptsType{
-		APIToken:      anthropicSecret,
 		Model:         DefaultClaudeModel,
 		APIType:       APIType_Anthropic,
 		MaxTokens:     4 * 1024,
 		ThinkingLevel: uctypes.ThinkingLevelMedium,
+		BaseURL:       baseUrl,
 	}, nil
 }
 
@@ -291,8 +292,6 @@ func WaveAIPostMessageHandler(w http.ResponseWriter, r *http.Request) {
 		},
 	}
 
-	// Create tools array with adder tool
-	chatOpts.Tools = append(chatOpts.Tools, GetAdderToolDefinition())
 	chatOpts.TabStateGenerator = func() (string, []uctypes.ToolDefinition, error) {
 		return GenerateTabStateAndTools(r.Context(), req.TabId, req.WidgetAccess)
 	}

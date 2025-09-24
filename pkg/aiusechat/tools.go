@@ -376,6 +376,7 @@ func GetTsunamiSetConfigToolDefinition(block *waveobj.Block, rtInfo *waveobj.Obj
 	}
 }
 
+// for testing
 func GetAdderToolDefinition() uctypes.ToolDefinition {
 	return uctypes.ToolDefinition{
 		Name:        "adder",
