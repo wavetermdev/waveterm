@@ -92,6 +92,9 @@ const (
 	MetaKey_BgBorderColor                    = "bg:bordercolor"
 	MetaKey_BgActiveBorderColor              = "bg:activebordercolor"
 
+	MetaKey_WaveAiPanelOpen                  = "waveai:panelopen"
+	MetaKey_WaveAiPanelWidth                 = "waveai:panelwidth"
+
 	MetaKey_TermClear                        = "term:*"
 	MetaKey_TermFontSize                     = "term:fontsize"
 	MetaKey_TermFontFamily                   = "term:fontfamily"

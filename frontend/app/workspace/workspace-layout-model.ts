@@ -3,24 +3,76 @@
 
 import { isDev } from "@/store/global";
 import { ImperativePanelGroupHandle, ImperativePanelHandle } from "react-resizable-panels";
+import * as jotai from "jotai";
+import { getTabMetaKeyAtom } from "@/app/store/global";
+import { RpcApi } from "@/app/store/wshclientapi";
+import { TabRpcClient } from "@/app/store/wshrpcutil";
+import * as WOS from "@/app/store/wos";
+import { globalStore } from "@/app/store/jotaiStore";
+import { atoms } from "@/store/global";
+import { debounce } from "lodash-es";
 
 const AIPANEL_DEFAULTWIDTH = 300;
 const AIPANEL_MINWIDTH = 250;
 const AIPANEL_MAXWIDTHRATIO = 0.5;
 
 class WorkspaceLayoutModel {
-    aiPanelVisible: boolean;
     aiPanelRef: ImperativePanelHandle | null;
     panelGroupRef: ImperativePanelGroupHandle | null;
-    aiPanelWidth: number;
     inResize: boolean;
-
+    private aiPanelVisible: boolean;
+    private aiPanelWidth: number;
+    private debouncedPersistWidth: (width: number) => void;
+    private initialized: boolean = false;
+    
     constructor() {
-        this.aiPanelVisible = isDev();
         this.aiPanelRef = null;
         this.panelGroupRef = null;
-        this.aiPanelWidth = AIPANEL_DEFAULTWIDTH;
         this.inResize = false;
+        this.aiPanelVisible = isDev();
+        this.aiPanelWidth = AIPANEL_DEFAULTWIDTH;
+        
+        this.debouncedPersistWidth = debounce((width: number) => {
+            try {
+                RpcApi.SetMetaCommand(TabRpcClient, {
+                    oref: WOS.makeORef("tab", this.getTabId()),
+                    meta: { "waveai:panelwidth": width },
+                });
+            } catch (e) {
+                console.warn("Failed to persist panel width:", e);
+            }
+        }, 300);
+    }
+    
+    private initializeFromTabMeta(): void {
+        if (this.initialized) return;
+        this.initialized = true;
+        
+        try {
+            const savedVisible = globalStore.get(this.getPanelOpenAtom());
+            const savedWidth = globalStore.get(this.getPanelWidthAtom());
+            
+            if (savedVisible != null) {
+                this.aiPanelVisible = savedVisible;
+            }
+            if (savedWidth != null) {
+                this.aiPanelWidth = savedWidth;
+            }
+        } catch (e) {
+            console.warn("Failed to initialize from tab meta:", e);
+        }
+    }
+    
+    private getTabId(): string {
+        return globalStore.get(atoms.staticTabId);
+    }
+    
+    private getPanelOpenAtom(): jotai.Atom<boolean> {
+        return getTabMetaKeyAtom(this.getTabId(), "waveai:panelopen");
+    }
+    
+    private getPanelWidthAtom(): jotai.Atom<number> {
+        return getTabMetaKeyAtom(this.getTabId(), "waveai:panelwidth");
     }
 
     registerRefs(aiPanelRef: ImperativePanelHandle, panelGroupRef: ImperativePanelGroupHandle): void {
@@ -38,7 +90,7 @@ class WorkspaceLayoutModel {
         const aiPanelPercentage = this.getAIPanelPercentage(currentWindowWidth);
         const mainContentPercentage = this.getMainContentPercentage(currentWindowWidth);
 
-        if (this.aiPanelVisible) {
+        if (this.getAIPanelVisible()) {
             this.aiPanelRef.expand();
         } else {
             this.aiPanelRef.collapse();
@@ -63,6 +115,7 @@ class WorkspaceLayoutModel {
     }
 
     getAIPanelVisible(): boolean {
+        this.initializeFromTabMeta();
         return this.aiPanelVisible;
     }
 
@@ -71,15 +124,21 @@ class WorkspaceLayoutModel {
             return;
         }
         this.aiPanelVisible = visible;
+        RpcApi.SetMetaCommand(TabRpcClient, {
+            oref: WOS.makeORef("tab", this.getTabId()),
+            meta: { "waveai:panelopen": visible },
+        });
         this.syncAIPanelRef();
     }
 
     getAIPanelWidth(): number {
+        this.initializeFromTabMeta();
         return this.aiPanelWidth;
     }
 
     setAIPanelWidth(width: number): void {
         this.aiPanelWidth = width;
+        this.debouncedPersistWidth(width);
     }
 
     getAIPanelPercentage(windowWidth: number): number {
@@ -102,7 +161,7 @@ class WorkspaceLayoutModel {
         if (!isDev()) {
             return;
         }
-        if (!this.aiPanelVisible) {
+        if (!this.getAIPanelVisible()) {
             return;
         }
         const clampedWidth = this.getClampedAIPanelWidth(width, windowWidth);

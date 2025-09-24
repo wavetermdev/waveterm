@@ -26,7 +26,7 @@ const AIPanelComponent = memo(({ className, onClose }: AIPanelProps) => {
     const [input, setInput] = useState("");
     const [isDragOver, setIsDragOver] = useState(false);
     const [errorMessage, setErrorMessage] = useState<string>("");
-    const modelRef = useRef(new WaveAIModel());
+    const modelRef = useRef(new WaveAIModel(globalStore.get(atoms.staticTabId)));
     const model = modelRef.current;
     const realMessageRef = useRef<AIMessage>(null);
     const inputRef = useRef<AIPanelInputRef>(null);
