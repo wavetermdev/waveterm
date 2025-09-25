@@ -127,7 +127,7 @@ func buildOpenAIHTTPRequest(ctx context.Context, msgs []OpenAIMessage, chatOpts 
 
 	// Add system prompt as instructions if provided
 	if len(chatOpts.SystemPrompt) > 0 {
-		reqBody.Instructions = joinTextParts(chatOpts.SystemPrompt)
+		reqBody.Instructions = strings.Join(chatOpts.SystemPrompt, "\n")
 	}
 
 	// // Add tools if provided
@@ -167,13 +167,11 @@ func buildOpenAIHTTPRequest(ctx context.Context, msgs []OpenAIMessage, chatOpts 
 			toolNames = append(toolNames, tool.Name)
 		}
 		if len(toolNames) > 0 {
-			log.Printf("tools: %s\n", joinTextParts(toolNames))
+			log.Printf("tools: %s\n", strings.Join(toolNames, ","))
 		}
 		log.Printf("openaiMsgs JSON:\n%s", jsonStr)
 		log.Printf("has-api-key: %v\n", opts.APIToken != "")
-		if endpoint != OpenAIDefaultBaseURL {
-			log.Printf("baseurl: %s\n", endpoint)
-		}
+		log.Printf("baseurl: %s\n", endpoint)
 	}
 
 	// Encode request body
@@ -207,18 +205,6 @@ func buildOpenAIHTTPRequest(ctx context.Context, msgs []OpenAIMessage, chatOpts 
 	req.Header.Set("X-Wave-APIType", "openai")
 
 	return req, nil
-}
-
-// joinTextParts joins text parts with newlines
-func joinTextParts(parts []string) string {
-	var result string
-	for i, part := range parts {
-		if i > 0 {
-			result += "\n"
-		}
-		result += part
-	}
-	return result
 }
 
 // convertFileAIMessagePart converts a file AIMessagePart to OpenAI format
@@ -278,7 +264,7 @@ func convertFileAIMessagePart(part uctypes.AIMessagePart) (*OpenAIMessageContent
 	case part.MimeType == "text/plain":
 		// Handle text/plain files as input_text with special formatting
 		var textContent string
-		
+
 		if len(part.Data) > 0 {
 			textContent = string(part.Data)
 		} else if part.URL != "" {
@@ -292,7 +278,7 @@ func convertFileAIMessagePart(part uctypes.AIMessagePart) (*OpenAIMessageContent
 		if fileName == "" {
 			fileName = "untitled.txt"
 		}
-		
+
 		formattedText := fmt.Sprintf("file %q (%s)\n\n%s", fileName, part.MimeType, textContent)
 
 		return &OpenAIMessageContent{

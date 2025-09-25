@@ -46,11 +46,11 @@ var SystemPromptText_OpenAI = strings.Join([]string{
 }, " ")
 
 func getWaveAISettings() (*uctypes.AIOptsType, error) {
+	baseUrl := DefaultAIEndpoint
+	if os.Getenv("WAVETERM_WAVEAI_ENDPOINT") != "" {
+		baseUrl = os.Getenv("WAVETERM_WAVEAI_ENDPOINT")
+	}
 	if DefaultAPI == APIType_Anthropic {
-		baseUrl := DefaultAIEndpoint
-		if os.Getenv("WAVETERM_WAVEAI_ENDPOINT") != "" {
-			baseUrl = os.Getenv("WAVETERM_WAVEAI_ENDPOINT")
-		}
 		return &uctypes.AIOptsType{
 			APIType:       APIType_Anthropic,
 			Model:         DefaultAnthropicModel,
@@ -59,17 +59,12 @@ func getWaveAISettings() (*uctypes.AIOptsType, error) {
 			BaseURL:       baseUrl,
 		}, nil
 	} else {
-		apiKey := os.Getenv("OPENAI_APIKEY")
-		if apiKey == "" {
-			return nil, fmt.Errorf("must set OPENAI_APIKEY")
-		}
 		return &uctypes.AIOptsType{
 			APIType:       APIType_OpenAI,
 			Model:         DefaultOpenAIModel,
-			APIToken:      apiKey,
 			MaxTokens:     DefaultMaxTokens,
 			ThinkingLevel: uctypes.ThinkingLevelLow,
-			BaseURL:       DefaultOpenAIEndpoint,
+			BaseURL:       baseUrl,
 		}, nil
 	}
 }
