@@ -30,6 +30,19 @@ type OpenAIChatMessage struct {
 	Content   []OpenAIMessageContent `json:"content"`
 }
 
+type OpenAIMessage struct {
+	Role    string                 `json:"role"`
+	Content []OpenAIMessageContent `json:"content"`
+}
+
+type OpenAIMessageContent struct {
+	Type     string `json:"type"` // "input_text", "output_text", "input_image", "input_file"
+	Text     string `json:"text,omitempty"`
+	ImageUrl string `json:"image_url,omitempty"`
+	Filename string `json:"filename,omitempty"`
+	FileData string `json:"file_data,omitempty"`
+}
+
 type openAIErrorResponse struct {
 	Error openAIErrorType `json:"error"`
 }

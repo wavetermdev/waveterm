@@ -6,11 +6,13 @@ package openai
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
@@ -25,16 +27,6 @@ const (
 )
 
 // ---------- OpenAI Request Types ----------
-
-type OpenAIMessage struct {
-	Role    string                 `json:"role"`
-	Content []OpenAIMessageContent `json:"content"`
-}
-
-type OpenAIMessageContent struct {
-	Type string `json:"type"` // "input_text", "output_text"
-	Text string `json:"text,omitempty"`
-}
 
 type StreamOptionsType struct {
 	IncludeObfuscation bool `json:"include_obfuscation"`
@@ -229,9 +221,93 @@ func joinTextParts(parts []string) string {
 	return result
 }
 
+// convertFileAIMessagePart converts a file AIMessagePart to OpenAI format
+func convertFileAIMessagePart(part uctypes.AIMessagePart) (*OpenAIMessageContent, error) {
+	if part.Type != uctypes.AIMessagePartTypeFile {
+		return nil, fmt.Errorf("convertFileAIMessagePart expects 'file' type, got '%s'", part.Type)
+	}
+	if part.MimeType == "" {
+		return nil, fmt.Errorf("file part missing mimetype")
+	}
+
+	// Handle different file types
+	switch {
+	case strings.HasPrefix(part.MimeType, "image/"):
+		// Handle images
+		var imageUrl string
+
+		if part.URL != "" {
+			// Validate URL protocol - only allow data:, http:, https:
+			if !strings.HasPrefix(part.URL, "data:") &&
+				!strings.HasPrefix(part.URL, "http://") &&
+				!strings.HasPrefix(part.URL, "https://") {
+				return nil, fmt.Errorf("unsupported URL protocol in file part: %s", part.URL)
+			}
+			imageUrl = part.URL
+		} else if len(part.Data) > 0 {
+			// Convert raw data to base64 data URL
+			base64Data := base64.StdEncoding.EncodeToString(part.Data)
+			imageUrl = fmt.Sprintf("data:%s;base64,%s", part.MimeType, base64Data)
+		} else {
+			return nil, fmt.Errorf("file part missing both url and data")
+		}
+
+		return &OpenAIMessageContent{
+			Type:     "input_image",
+			ImageUrl: imageUrl,
+		}, nil
+
+	case part.MimeType == "application/pdf":
+		// Handle PDFs - OpenAI only supports base64 data for PDFs, not URLs
+		if len(part.Data) == 0 {
+			if part.URL != "" {
+				return nil, fmt.Errorf("dropping PDF with URL (must be fetched and converted to base64 data)")
+			}
+			return nil, fmt.Errorf("PDF file part missing data")
+		}
+
+		// Convert raw data to base64
+		base64Data := base64.StdEncoding.EncodeToString(part.Data)
+
+		return &OpenAIMessageContent{
+			Type:     "input_file",
+			Filename: part.FileName, // Optional filename
+			FileData: base64Data,
+		}, nil
+
+	case part.MimeType == "text/plain":
+		// Handle text/plain files as input_text with special formatting
+		var textContent string
+		
+		if len(part.Data) > 0 {
+			textContent = string(part.Data)
+		} else if part.URL != "" {
+			return nil, fmt.Errorf("dropping text/plain file with URL (must be fetched and converted to data)")
+		} else {
+			return nil, fmt.Errorf("text/plain file part missing data")
+		}
+
+		// Format as: file "filename" (mimetype)\n\nfile-content
+		fileName := part.FileName
+		if fileName == "" {
+			fileName = "untitled.txt"
+		}
+		
+		formattedText := fmt.Sprintf("file %q (%s)\n\n%s", fileName, part.MimeType, textContent)
+
+		return &OpenAIMessageContent{
+			Type: "input_text",
+			Text: formattedText,
+		}, nil
+
+	default:
+		return nil, fmt.Errorf("dropping file with unsupported mimetype '%s' (OpenAI supports images, PDFs, and text/plain)", part.MimeType)
+	}
+}
+
 // ConvertAIMessageToOpenAIChatMessage converts an AIMessage to OpenAIChatMessage
 // These messages are ALWAYS role "user"
-// For now, this only handles text parts and drops files/images/etc.
+// Handles text parts, images, PDFs, and text/plain files
 func ConvertAIMessageToOpenAIChatMessage(aiMsg uctypes.AIMessage) (*OpenAIChatMessage, error) {
 	if err := aiMsg.Validate(); err != nil {
 		return nil, fmt.Errorf("invalid AIMessage: %w", err)
@@ -251,9 +327,12 @@ func ConvertAIMessageToOpenAIChatMessage(aiMsg uctypes.AIMessage) (*OpenAIChatMe
 			})
 
 		case uctypes.AIMessagePartTypeFile:
-			// For now, just drop files/images as requested
-			log.Printf("openai: dropping file part (not implemented yet)")
-			continue
+			block, err := convertFileAIMessagePart(part)
+			if err != nil {
+				log.Printf("openai: %v", err)
+				continue
+			}
+			contentBlocks = append(contentBlocks, *block)
 
 		default:
 			// Drop unknown part types
