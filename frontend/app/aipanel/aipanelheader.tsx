@@ -25,7 +25,12 @@ export const AIPanelHeader = memo(({ onClose, model }: AIPanelHeaderProps) => {
                     <span className="text-gray-300 @xs:hidden mr-1 text-[12px]">Context</span>
                     <span className="text-gray-300 hidden @xs:inline mr-2 text-[12px]">Widget Context</span>
                     <button
-                        onClick={() => setWidgetAccess(!widgetAccess)}
+                        onClick={() => {
+                            setWidgetAccess(!widgetAccess);
+                            setTimeout(() => {
+                                model.focusInput();
+                            }, 0);
+                        }}
                         className={`relative inline-flex h-6 w-14 items-center rounded-full transition-colors cursor-pointer ${
                             widgetAccess ? "bg-accent-500" : "bg-gray-600"
                         }`}

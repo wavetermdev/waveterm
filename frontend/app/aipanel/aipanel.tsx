@@ -15,7 +15,7 @@ import { AIDroppedFiles } from "./aidroppedfiles";
 import { AIPanelHeader } from "./aipanelheader";
 import { AIPanelInput, type AIPanelInputRef } from "./aipanelinput";
 import { AIPanelMessages } from "./aipanelmessages";
-import { WaveAIModel } from "./waveai-model";
+import { WaveAIModel, type DroppedFile } from "./waveai-model";
 
 interface AIPanelProps {
     className?: string;
@@ -26,8 +26,7 @@ const AIPanelComponent = memo(({ className, onClose }: AIPanelProps) => {
     const [input, setInput] = useState("");
     const [isDragOver, setIsDragOver] = useState(false);
     const [errorMessage, setErrorMessage] = useState<string>("");
-    const modelRef = useRef(new WaveAIModel(globalStore.get(atoms.staticTabId)));
-    const model = modelRef.current;
+    const model = WaveAIModel.getInstance();
     const realMessageRef = useRef<AIMessage>(null);
     const inputRef = useRef<AIPanelInputRef>(null);
 
@@ -83,6 +82,10 @@ const AIPanelComponent = memo(({ className, onClose }: AIPanelProps) => {
         };
     }, []);
 
+    useEffect(() => {
+        model.registerInputRef(inputRef);
+    }, [model]);
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!input.trim() || status !== "ready") return;
@@ -90,7 +93,7 @@ const AIPanelComponent = memo(({ className, onClose }: AIPanelProps) => {
         // Clear any previous error when submitting
         setErrorMessage("");
 
-        const droppedFiles = globalStore.get(model.droppedFiles);
+        const droppedFiles = globalStore.get(model.droppedFiles) as DroppedFile[];
 
         // Prepare AI message parts (for backend)
         const aiMessageParts: AIMessagePart[] = [{ type: "text", text: input.trim() }];
@@ -191,10 +194,28 @@ const AIPanelComponent = memo(({ className, onClose }: AIPanelProps) => {
         }
     };
 
+    const handleClick = (e: React.MouseEvent) => {
+        // Check if the click target is an interactive element
+        const target = e.target as HTMLElement;
+        const isInteractive = target.closest('button, a, input, textarea, select, [role="button"], [tabindex]');
+        
+        if (isInteractive) {
+            return;
+        }
+
+        // Use setTimeout to avoid interfering with other click actions
+        setTimeout(() => {
+            const selection = window.getSelection();
+            if (!selection || selection.toString().length === 0) {
+                model.focusInput();
+            }
+        }, 0);
+    };
+
     return (
         <div
             className={cn(
-                "bg-gray-900 border-t border-gray-600 flex flex-col relative",
+                "bg-gray-900 border-t border-gray-600 flex flex-col relative mt-1",
                 className,
                 isDragOver && "bg-gray-800 border-accent"
             )}
@@ -207,6 +228,7 @@ const AIPanelComponent = memo(({ className, onClose }: AIPanelProps) => {
             onDragEnter={handleDragEnter}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
+            onClick={handleClick}
         >
             {isDragOver && (
                 <div className="absolute inset-0 bg-accent/20 border-2 border-dashed border-accent rounded-lg flex items-center justify-center z-10 p-4">
