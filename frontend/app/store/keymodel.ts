@@ -1,6 +1,7 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { waveAIModel } from "@/app/aipanel/waveai-model";
 import {
     atoms,
     createBlock,
@@ -17,6 +18,7 @@ import {
     replaceBlock,
     WOS,
 } from "@/app/store/global";
+import { workspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
 import {
     deleteLayoutModelForTab,
     getLayoutModelForTab,
@@ -29,7 +31,6 @@ import { CHORD_TIMEOUT } from "@/util/sharedconst";
 import { fireAndForget } from "@/util/util";
 import * as jotai from "jotai";
 import { modalsModel } from "./modalmodel";
-import { workspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
 
 type KeyHandler = (event: WaveKeyboardEvent) => boolean;
 
@@ -137,11 +138,21 @@ function switchBlockByBlockNum(index: number) {
         return;
     }
     layoutModel.switchNodeFocusByBlockNum(index);
+    setTimeout(() => {
+        globalRefocus();
+    }, 10);
 }
 
 function switchBlockInDirection(tabId: string, direction: NavigateDirection) {
     const layoutModel = getLayoutModelForTabById(tabId);
-    layoutModel.switchNodeFocusInDirection(direction);
+    const navResult = layoutModel.switchNodeFocusInDirection(direction);
+    if (navResult.atLeft) {
+        waveAIModel.focusInput();
+        return;
+    }
+    setTimeout(() => {
+        globalRefocus();
+    }, 10);
 }
 
 function getAllTabs(ws: Workspace): string[] {
@@ -485,6 +496,14 @@ function registerGlobalKeys() {
             return true;
         });
     }
+    globalKeyMap.set("Ctrl:Shift:c{Digit0}", () => {
+        waveAIModel.focusInput();
+        return true;
+    });
+    globalKeyMap.set("Ctrl:Shift:c{Numpad0}", () => {
+        waveAIModel.focusInput();
+        return true;
+    });
     function activateSearch(event: WaveKeyboardEvent): boolean {
         const bcm = getBlockComponentModel(getFocusedBlockInStaticTab());
         // Ctrl+f is reserved in most shells
@@ -518,7 +537,12 @@ function registerGlobalKeys() {
     });
     globalKeyMap.set("Cmd:Shift:a", () => {
         const currentVisible = workspaceLayoutModel.getAIPanelVisible();
-        workspaceLayoutModel.setAIPanelVisible(!currentVisible);
+        if (!currentVisible) {
+            waveAIModel.focusInput();
+        } else {
+            workspaceLayoutModel.setAIPanelVisible(false);
+            globalRefocus();
+        }
         return true;
     });
     const allKeys = Array.from(globalKeyMap.keys());

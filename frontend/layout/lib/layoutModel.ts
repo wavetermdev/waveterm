@@ -46,6 +46,7 @@ import {
     LayoutTreeState,
     LayoutTreeSwapNodeAction,
     NavigateDirection,
+    NavigationResult,
     NodeModel,
     PreviewRenderer,
     ResizeHandleProps,
@@ -978,13 +979,13 @@ export class LayoutModel {
      * Switch focus to the next node in the given direction in the layout.
      * @param direction The direction in which to switch focus.
      */
-    switchNodeFocusInDirection(direction: NavigateDirection) {
+    switchNodeFocusInDirection(direction: NavigateDirection): NavigationResult {
         const curNodeId = this.focusedNodeId;
 
         // If no node is focused, set focus to the first leaf.
         if (!curNodeId) {
             this.focusNode(this.getter(this.leafOrder)[0].nodeid);
-            return;
+            return { success: true };
         }
 
         const offset = navigateDirectionToOffset(direction);
@@ -999,12 +1000,12 @@ export class LayoutModel {
         }
         const curNodePos = nodePositions.get(curNodeId);
         if (!curNodePos) {
-            return;
+            return { success: false };
         }
         nodePositions.delete(curNodeId);
         const boundingRect = this.displayContainerRef?.current.getBoundingClientRect();
         if (!boundingRect) {
-            return;
+            return { success: false };
         }
         const maxX = boundingRect.left + boundingRect.width;
         const maxY = boundingRect.top + boundingRect.height;
@@ -1029,12 +1030,26 @@ export class LayoutModel {
             curPoint.x += offset.x * moveAmount;
             curPoint.y += offset.y * moveAmount;
             if (curPoint.x < 0 || curPoint.x > maxX || curPoint.y < 0 || curPoint.y > maxY) {
-                return;
+                // Determine which boundary was hit
+                const result: NavigationResult = { success: false };
+                if (curPoint.x < 0) {
+                    result.atLeft = true;
+                }
+                if (curPoint.x > maxX) {
+                    result.atRight = true;
+                }
+                if (curPoint.y < 0) {
+                    result.atTop = true;
+                }
+                if (curPoint.y > maxY) {
+                    result.atBottom = true;
+                }
+                return result;
             }
             const nodeId = findNodeAtPoint(nodePositions, curPoint);
             if (nodeId != null) {
                 this.focusNode(nodeId);
-                return;
+                return { success: true };
             }
         }
     }

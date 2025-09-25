@@ -77,7 +77,7 @@ const WorkspaceElem = memo(() => {
                 <ErrorBoundary key={tabId}>
                     <PanelGroup direction="horizontal" onLayout={handlePanelLayout} ref={panelGroupRef}>
                         <Panel ref={aiPanelRef} collapsible defaultSize={initialAiPanelPercentage} order={1}>
-                            <AIPanel className="h-full" onClose={handleCloseAIPanel} />
+                            <AIPanel onClose={handleCloseAIPanel} />
                         </Panel>
                         <PanelResizeHandle className="w-0.5 bg-transparent hover:bg-gray-500/20 transition-colors" />
                         <Panel order={2} defaultSize={100 - initialAiPanelPercentage}>

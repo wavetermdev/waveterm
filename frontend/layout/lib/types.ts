@@ -386,3 +386,14 @@ export interface NodeModel {
     dragHandleRef?: React.RefObject<HTMLDivElement>;
     displayContainerRef: React.RefObject<HTMLDivElement>;
 }
+
+/**
+ * Result object returned by switchNodeFocusInDirection method.
+ */
+export interface NavigationResult {
+    success: boolean;
+    atLeft?: boolean;
+    atTop?: boolean;
+    atBottom?: boolean;
+    atRight?: boolean;
+}

@@ -2,13 +2,14 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { WaveUIMessagePart } from "@/app/aipanel/aitypes";
-import { atoms } from "@/app/store/global";
+import { atoms, getSettingsKeyAtom } from "@/app/store/global";
 import { globalStore } from "@/app/store/jotaiStore";
 import { getWebServerEndpoint } from "@/util/endpoints";
 import { checkKeyPressed, keydownWrapper } from "@/util/keyutil";
 import { cn } from "@/util/util";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
+import * as jotai from "jotai";
 import { memo, useEffect, useRef, useState } from "react";
 import { createDataUrl, isAcceptableFile, normalizeMimeType } from "./ai-utils";
 import { AIDroppedFiles } from "./aidroppedfiles";
@@ -29,6 +30,8 @@ const AIPanelComponent = memo(({ className, onClose }: AIPanelProps) => {
     const model = WaveAIModel.getInstance();
     const realMessageRef = useRef<AIMessage>(null);
     const inputRef = useRef<AIPanelInputRef>(null);
+    const isLayoutMode = jotai.useAtomValue(atoms.controlShiftDelayAtom);
+    const showOverlayBlockNums = jotai.useAtomValue(getSettingsKeyAtom("app:showoverlayblocknums")) ?? true;
 
     const { messages, sendMessage, status, setMessages, error } = useChat({
         transport: new DefaultChatTransport({
@@ -198,7 +201,7 @@ const AIPanelComponent = memo(({ className, onClose }: AIPanelProps) => {
         // Check if the click target is an interactive element
         const target = e.target as HTMLElement;
         const isInteractive = target.closest('button, a, input, textarea, select, [role="button"], [tabindex]');
-        
+
         if (isInteractive) {
             return;
         }
@@ -212,10 +215,12 @@ const AIPanelComponent = memo(({ className, onClose }: AIPanelProps) => {
         }, 0);
     };
 
+    const showBlockMask = isLayoutMode && showOverlayBlockNums;
+
     return (
         <div
             className={cn(
-                "bg-gray-900 border-t border-gray-600 flex flex-col relative mt-1",
+                "bg-gray-900 border-t border-gray-600 flex flex-col relative h-[calc(100%-3px)] mt-1",
                 className,
                 isDragOver && "bg-gray-800 border-accent"
             )}
@@ -231,7 +236,10 @@ const AIPanelComponent = memo(({ className, onClose }: AIPanelProps) => {
             onClick={handleClick}
         >
             {isDragOver && (
-                <div className="absolute inset-0 bg-accent/20 border-2 border-dashed border-accent rounded-lg flex items-center justify-center z-10 p-4">
+                <div
+                    key="drag-overlay"
+                    className="absolute inset-0 bg-accent/20 border-2 border-dashed border-accent rounded-lg flex items-center justify-center z-10 p-4"
+                >
                     <div className="text-accent text-center">
                         <i className="fa fa-upload text-3xl mb-2"></i>
                         <div className="text-lg font-semibold">Drop files here</div>
@@ -239,9 +247,28 @@ const AIPanelComponent = memo(({ className, onClose }: AIPanelProps) => {
                     </div>
                 </div>
             )}
+            {showBlockMask && (
+                <div
+                    key="block-mask"
+                    className="absolute top-0 left-0 right-0 bottom-0 border-1 border-transparent pointer-events-auto select-none p-0.5"
+                    style={{
+                        borderRadius: "var(--block-border-radius)",
+                        zIndex: "var(--zindex-block-mask-inner)",
+                    }}
+                >
+                    <div
+                        className="w-full mt-[44px] h-[calc(100%-44px)] flex items-center justify-center"
+                        style={{
+                            backgroundColor: "rgb(from var(--block-bg-color) r g b / 50%)",
+                        }}
+                    >
+                        <div className="font-bold opacity-70 mt-[-25%] text-[60px]">0</div>
+                    </div>
+                </div>
+            )}
             <AIPanelHeader onClose={onClose} model={model} />
 
-            <div className="flex-1 flex flex-col min-h-0">
+            <div key="main-content" className="flex-1 flex flex-col min-h-0">
                 <AIPanelMessages messages={messages} status={status} />
                 {errorMessage && (
                     <div className="px-4 py-2 text-red-400 bg-red-900/20 border-l-4 border-red-500 mx-2 mb-2">

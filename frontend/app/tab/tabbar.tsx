@@ -633,7 +633,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
         getApi().showContextMenu(workspace.oid);
     }
 
-    function onSparklesClick() {
+    function onWaveAIClick() {
         const currentVisible = workspaceLayoutModel.getAIPanelVisible();
         workspaceLayoutModel.setAIPanelVisible(!currentVisible);
     }
@@ -641,11 +641,12 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
     const tabsWrapperWidth = tabIds.length * tabWidthRef.current;
     const waveaiButton = isDev() ? (
         <div
-            className="flex h-[26px] px-3 justify-end items-center gap-3 rounded-md mr-1 box-border text-accent cursor-pointer bg-hover hover:bg-hoverbg transition-colors"
+            className="flex h-[26px] px-1.5 justify-end items-center rounded-md mr-1 box-border text-accent cursor-pointer bg-hover hover:bg-hoverbg transition-colors"
             style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
-            onClick={onSparklesClick}
+            onClick={onWaveAIClick}
         >
             <i className="fa fa-sparkles" />
+            <span className="font-bold ml-1 -top-px font-mono">AI</span>
         </div>
     ) : undefined;
     const appMenuButton =
