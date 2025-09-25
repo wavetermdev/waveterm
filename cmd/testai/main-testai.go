@@ -100,7 +100,6 @@ func getToolDefinitions() []uctypes.ToolDefinition {
 	}
 }
 
-
 func testOpenAI(ctx context.Context, model, message string, tools []uctypes.ToolDefinition) {
 	apiKey := os.Getenv("OPENAI_API_KEY")
 	if apiKey == "" {
@@ -116,29 +115,35 @@ func testOpenAI(ctx context.Context, model, message string, tools []uctypes.Tool
 		ThinkingLevel: uctypes.ThinkingLevelMedium,
 	}
 
-	req := &uctypes.UseChatRequest{
-		Messages: []uctypes.UIMessage{
+	// Generate a chat ID
+	chatID := uuid.New().String()
+
+	// Convert to AIMessage format for WaveAIPostMessageWrap
+	aiMessage := &uctypes.AIMessage{
+		MessageId: uuid.New().String(),
+		Parts: []uctypes.AIMessagePart{
 			{
-				Role: "user",
-				Parts: []uctypes.UIMessagePart{
-					{
-						Type: "text",
-						Text: message,
-					},
-				},
+				Type: uctypes.AIMessagePartTypeText,
+				Text: message,
 			},
 		},
 	}
 
-	fmt.Printf("Testing OpenAI streaming with model: %s\n", model)
+	fmt.Printf("Testing OpenAI streaming with WaveAIPostMessageWrap, model: %s\n", model)
 	fmt.Printf("Message: %s\n", message)
+	fmt.Printf("Chat ID: %s\n", chatID)
 	fmt.Println("---")
 
 	testWriter := &TestResponseWriter{}
 	sseHandler := sse.MakeSSEHandlerCh(testWriter, ctx)
 	defer sseHandler.Close()
 
-	err := aiusechat.RunWaveAIRequest(ctx, sseHandler, opts, req, tools)
+	chatOpts := uctypes.WaveChatOpts{
+		ChatId: chatID,
+		Config: *opts,
+		Tools:  tools,
+	}
+	err := aiusechat.WaveAIPostMessageWrap(ctx, sseHandler, aiMessage, chatOpts)
 	if err != nil {
 		fmt.Printf("OpenAI streaming error: %v\n", err)
 	}

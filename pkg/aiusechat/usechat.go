@@ -25,21 +25,53 @@ const (
 	APIType_OpenAI    = "openai"
 )
 
-const DefaultClaudeModel = "claude-sonnet-4-20250514"
+const DefaultAPI = APIType_OpenAI
+const DefaultAnthropicModel = "claude-sonnet-4-20250514"
 const DefaultAIEndpoint = "https://cfapi.waveterm.dev/api/waveai"
+const DefaultMaxTokens = 4 * 1024
+
+const DefaultOpenAIEndpoint = "https://api.openai.com/v1/responses"
+const DefaultOpenAIModel = "gpt-5-mini"
+
+var SystemPromptText = strings.Join([]string{
+	`You are Wave AI, an intelligent assistant embedded within Wave Terminal, a modern terminal application with graphical widgets.`,
+	`You appear as a pull-out panel on the left side of a tab, with the tab's widgets laid out on the right.`,
+}, " ")
+
+var SystemPromptText_OpenAI = strings.Join([]string{
+	`You are Wave AI, an intelligent assistant embedded within Wave Terminal, a modern terminal application with graphical widgets.`,
+	`You appear as a pull-out panel on the left side of a tab, with the tab's widgets laid out on the right.`,
+	`If tools are provided, those are the *only* tools you have access to.`,
+	`Do not claim any abilities beyond what the tools provide. NEVER make up fake data and present it as real.`,
+}, " ")
 
 func getWaveAISettings() (*uctypes.AIOptsType, error) {
-	baseUrl := DefaultAIEndpoint
-	if os.Getenv("WAVETERM_WAVEAI_ENDPOINT") != "" {
-		baseUrl = os.Getenv("WAVETERM_WAVEAI_ENDPOINT")
+	if DefaultAPI == APIType_Anthropic {
+		baseUrl := DefaultAIEndpoint
+		if os.Getenv("WAVETERM_WAVEAI_ENDPOINT") != "" {
+			baseUrl = os.Getenv("WAVETERM_WAVEAI_ENDPOINT")
+		}
+		return &uctypes.AIOptsType{
+			APIType:       APIType_Anthropic,
+			Model:         DefaultAnthropicModel,
+			MaxTokens:     DefaultMaxTokens,
+			ThinkingLevel: uctypes.ThinkingLevelMedium,
+			BaseURL:       baseUrl,
+		}, nil
+	} else {
+		apiKey := os.Getenv("OPENAI_APIKEY")
+		if apiKey == "" {
+			return nil, fmt.Errorf("must set OPENAI_APIKEY")
+		}
+		return &uctypes.AIOptsType{
+			APIType:       APIType_OpenAI,
+			Model:         DefaultOpenAIModel,
+			APIToken:      apiKey,
+			MaxTokens:     DefaultMaxTokens,
+			ThinkingLevel: uctypes.ThinkingLevelLow,
+			BaseURL:       DefaultOpenAIEndpoint,
+		}, nil
 	}
-	return &uctypes.AIOptsType{
-		Model:         DefaultClaudeModel,
-		APIType:       APIType_Anthropic,
-		MaxTokens:     4 * 1024,
-		ThinkingLevel: uctypes.ThinkingLevelMedium,
-		BaseURL:       baseUrl,
-	}, nil
 }
 
 func shouldUseChatCompletionsAPI(model string) bool {
@@ -51,56 +83,21 @@ func shouldUseChatCompletionsAPI(model string) bool {
 		strings.HasPrefix(m, "o1-")
 }
 
-func RunWaveAIRequestStep(ctx context.Context, sseHandler *sse.SSEHandlerCh, aiOpts *uctypes.AIOptsType, req *uctypes.UseChatRequest, tools []uctypes.ToolDefinition, cont *uctypes.WaveContinueResponse) error {
-	// Validate configuration
-	if aiOpts.Model == "" {
-		return fmt.Errorf("no AI model specified")
+func runAIChatStep(ctx context.Context, sseHandler *sse.SSEHandlerCh, chatOpts uctypes.WaveChatOpts, cont *uctypes.WaveContinueResponse) (*uctypes.WaveStopReason, uctypes.GenAIMessage, error) {
+	if chatOpts.Config.APIType == APIType_Anthropic {
+		return anthropic.RunAnthropicChatStep(ctx, sseHandler, chatOpts, cont)
 	}
-
-	// Support OpenAI and Anthropic
-	if aiOpts.APIType != APIType_OpenAI && aiOpts.APIType != APIType_Anthropic && aiOpts.APIType != "" {
-		return fmt.Errorf("unsupported API type: %s (only OpenAI and Anthropic supported)", aiOpts.APIType)
-	}
-
-	if aiOpts.APIToken == "" {
-		return fmt.Errorf("no API token provided")
-	}
-
-	if cont != nil && aiOpts.Model != cont.Model {
-		return fmt.Errorf("cannot continue with a different model, model:%q, cont-model:%q", aiOpts.Model, cont.Model)
-	}
-
-	log.Printf("using AI model: %s (%s)", aiOpts.Model, aiOpts.BaseURL)
-
-	// Stream response based on API type
-	if aiOpts.APIType == APIType_Anthropic {
-		_, err := anthropic.StreamAnthropicResponses(ctx, sseHandler, aiOpts, req.Messages, tools, cont)
-		if err != nil {
-			return fmt.Errorf("anthropic streaming error: %v", err)
+	if chatOpts.Config.APIType == APIType_OpenAI {
+		if shouldUseChatCompletionsAPI(chatOpts.Config.Model) {
+			return nil, nil, fmt.Errorf("Chat completions API not available (must use newer OpenAI models)")
 		}
-		return nil
-	} else if aiOpts.APIType == APIType_OpenAI {
-		// Default to OpenAI
-		// Route to appropriate API based on model
-		if shouldUseChatCompletionsAPI(aiOpts.Model) {
-			// Older models (gpt-3.5, gpt-4, gpt-4-turbo, o1-*) use Chat Completions API
-			openai.StreamOpenAIChatCompletions(sseHandler, ctx, aiOpts, req.Messages)
-		} else {
-			// Newer models (gpt-4.1, gpt-4o, gpt-5, o3, o4, etc.) use Responses API for reasoning support
-			openai.StreamOpenAIResponsesAPI(sseHandler, ctx, aiOpts, req.Messages, tools)
-		}
-		return nil
+		return openai.RunOpenAIChatStep(ctx, sseHandler, chatOpts, cont)
 	}
-	return fmt.Errorf("Unimplemented API Type %q", aiOpts.APIType)
-}
-
-func RunWaveAIRequest(ctx context.Context, sseHandler *sse.SSEHandlerCh, aiOpts *uctypes.AIOptsType, req *uctypes.UseChatRequest, tools []uctypes.ToolDefinition) error {
-	return RunWaveAIRequestStep(ctx, sseHandler, aiOpts, req, tools, nil)
+	return nil, nil, fmt.Errorf("Invalid APIType %q", chatOpts.Config.APIType)
 }
 
 func RunAIChat(ctx context.Context, sseHandler *sse.SSEHandlerCh, chatOpts uctypes.WaveChatOpts) error {
 	log.Printf("RunAIChat\n")
-	// Stream the Anthropic chat response
 	firstStep := true
 	var cont *uctypes.WaveContinueResponse
 	for {
@@ -110,10 +107,10 @@ func RunAIChat(ctx context.Context, sseHandler *sse.SSEHandlerCh, chatOpts uctyp
 		if err == nil {
 			chatOpts.TabState = tabState
 			chatOpts.TabTools = tabTools
-			stopReason, rtnMessage, err = anthropic.RunAnthropicChatStep(ctx, sseHandler, chatOpts, cont)
+			stopReason, rtnMessage, err = runAIChatStep(ctx, sseHandler, chatOpts, cont)
 		}
 		if firstStep && err != nil {
-			return fmt.Errorf("failed to stream anthropic chat: %w", err)
+			return fmt.Errorf("failed to stream %s chat: %w", chatOpts.Config.APIType, err)
 		}
 		if err != nil {
 			_ = sseHandler.AiMsgError(err.Error())
@@ -225,19 +222,27 @@ func ResolveToolCall(toolCall uctypes.WaveToolCall, chatOpts uctypes.WaveChatOpt
 
 func WaveAIPostMessageWrap(ctx context.Context, sseHandler *sse.SSEHandlerCh, message *uctypes.AIMessage, chatOpts uctypes.WaveChatOpts) error {
 	log.Printf("WaveAIPostMessageWrap\n")
-	// Only support Anthropic for now
-	if chatOpts.Config.APIType != APIType_Anthropic {
-		return fmt.Errorf("only Anthropic API type is supported, got: %s", chatOpts.Config.APIType)
-	}
 
 	// Convert AIMessage to Anthropic chat message
-	anthropicMsg, err := anthropic.ConvertAIMessageToAnthropicChatMessage(*message)
-	if err != nil {
-		return fmt.Errorf("message conversion failed: %w", err)
+	var convertedMessage uctypes.GenAIMessage
+	if chatOpts.Config.APIType == APIType_Anthropic {
+		var err error
+		convertedMessage, err = anthropic.ConvertAIMessageToAnthropicChatMessage(*message)
+		if err != nil {
+			return fmt.Errorf("message conversion failed: %w", err)
+		}
+	} else if chatOpts.Config.APIType == APIType_OpenAI {
+		var err error
+		convertedMessage, err = openai.ConvertAIMessageToOpenAIChatMessage(*message)
+		if err != nil {
+			return fmt.Errorf("message conversion failed: %w", err)
+		}
+	} else {
+		return fmt.Errorf("unsupported APIType %q", chatOpts.Config.APIType)
 	}
 
 	// Post message to chat store
-	if err := chatstore.DefaultChatStore.PostMessage(chatOpts.ChatId, &chatOpts.Config, anthropicMsg); err != nil {
+	if err := chatstore.DefaultChatStore.PostMessage(chatOpts.ChatId, &chatOpts.Config, convertedMessage); err != nil {
 		return fmt.Errorf("failed to store message: %w", err)
 	}
 
@@ -287,9 +292,11 @@ func WaveAIPostMessageHandler(w http.ResponseWriter, r *http.Request) {
 	chatOpts := uctypes.WaveChatOpts{
 		ChatId: req.ChatID,
 		Config: *aiOpts,
-		SystemPrompt: []string{
-			"You are Wave AI, an intelligent assistant embedded within Wave Terminal, a modern terminal application with graphical widgets. You appear as a pull-out panel on the left side of a tab, with the tab's widgets laid out on the right.",
-		},
+	}
+	if chatOpts.Config.APIType == APIType_OpenAI {
+		chatOpts.SystemPrompt = []string{SystemPromptText_OpenAI}
+	} else {
+		chatOpts.SystemPrompt = []string{SystemPromptText}
 	}
 
 	chatOpts.TabStateGenerator = func() (string, []uctypes.ToolDefinition, error) {
