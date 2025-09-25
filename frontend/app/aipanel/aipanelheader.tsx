@@ -49,7 +49,7 @@ export const AIPanelHeader = memo(({ onClose, model }: AIPanelHeaderProps) => {
                 {onClose && (
                     <button
                         onClick={onClose}
-                        className="text-gray-400 hover:text-white cursor-pointer transition-colors p-1 rounded flex-shrink-0 ml-1"
+                        className="text-gray-400 hover:text-white cursor-pointer transition-colors p-1 rounded flex-shrink-0 ml-1 focus:outline-none"
                         title="Close AI Panel"
                     >
                         <i className="fa fa-xmark"></i>

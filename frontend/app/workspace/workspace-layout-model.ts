@@ -1,16 +1,15 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { isDev } from "@/store/global";
-import { ImperativePanelGroupHandle, ImperativePanelHandle } from "react-resizable-panels";
-import * as jotai from "jotai";
 import { getTabMetaKeyAtom } from "@/app/store/global";
+import { globalStore } from "@/app/store/jotaiStore";
+import * as WOS from "@/app/store/wos";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
-import * as WOS from "@/app/store/wos";
-import { globalStore } from "@/app/store/jotaiStore";
-import { atoms } from "@/store/global";
+import { atoms, isDev } from "@/store/global";
+import * as jotai from "jotai";
 import { debounce } from "lodash-es";
+import { ImperativePanelGroupHandle, ImperativePanelHandle } from "react-resizable-panels";
 
 const AIPANEL_DEFAULTWIDTH = 300;
 const AIPANEL_MINWIDTH = 250;
@@ -21,17 +20,17 @@ class WorkspaceLayoutModel {
     panelGroupRef: ImperativePanelGroupHandle | null;
     inResize: boolean;
     private aiPanelVisible: boolean;
-    private aiPanelWidth: number;
+    private aiPanelWidth: number | null;
     private debouncedPersistWidth: (width: number) => void;
     private initialized: boolean = false;
-    
+
     constructor() {
         this.aiPanelRef = null;
         this.panelGroupRef = null;
         this.inResize = false;
         this.aiPanelVisible = isDev();
-        this.aiPanelWidth = AIPANEL_DEFAULTWIDTH;
-        
+        this.aiPanelWidth = null;
+
         this.debouncedPersistWidth = debounce((width: number) => {
             try {
                 RpcApi.SetMetaCommand(TabRpcClient, {
@@ -43,15 +42,15 @@ class WorkspaceLayoutModel {
             }
         }, 300);
     }
-    
+
     private initializeFromTabMeta(): void {
         if (this.initialized) return;
         this.initialized = true;
-        
+
         try {
             const savedVisible = globalStore.get(this.getPanelOpenAtom());
             const savedWidth = globalStore.get(this.getPanelWidthAtom());
-            
+
             if (savedVisible != null) {
                 this.aiPanelVisible = savedVisible;
             }
@@ -62,15 +61,15 @@ class WorkspaceLayoutModel {
             console.warn("Failed to initialize from tab meta:", e);
         }
     }
-    
+
     private getTabId(): string {
         return globalStore.get(atoms.staticTabId);
     }
-    
+
     private getPanelOpenAtom(): jotai.Atom<boolean> {
         return getTabMetaKeyAtom(this.getTabId(), "waveai:panelopen");
     }
-    
+
     private getPanelWidthAtom(): jotai.Atom<number> {
         return getTabMetaKeyAtom(this.getTabId(), "waveai:panelwidth");
     }
@@ -133,6 +132,9 @@ class WorkspaceLayoutModel {
 
     getAIPanelWidth(): number {
         this.initializeFromTabMeta();
+        if (this.aiPanelWidth == null) {
+            this.aiPanelWidth = Math.max(AIPANEL_DEFAULTWIDTH, window.innerWidth / 3);
+        }
         return this.aiPanelWidth;
     }
 
