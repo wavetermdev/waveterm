@@ -81,3 +81,10 @@ svg [aria-label="tip"] g path {
 .monaco-editor .slider:hover {
     background: rgba(255, 255, 255, 0.6);
 }
+
+.ellipsis {
+    display: block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
