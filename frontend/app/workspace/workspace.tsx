@@ -14,8 +14,11 @@ import { memo } from "react";
 const WorkspaceElem = memo(() => {
     const tabId = useAtomValue(atoms.staticTabId);
     const ws = useAtomValue(atoms.workspace);
+    const settings = useAtomValue(atoms.settingsAtom);
+    const tabBarPosition = settings?.["window:tabbarposition"];
+
     return (
-        <div className="flex flex-col w-full flex-grow overflow-hidden">
+        <div className={clsx("flex flex-col w-full flex-grow overflow-hidden", tabBarPosition === "bottom" && "flex-col-reverse")}>
             <TabBar key={ws.oid} workspace={ws} />
             <div className="flex flex-row flex-grow overflow-hidden">
                 <ErrorBoundary key={tabId}>

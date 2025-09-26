@@ -25,6 +25,10 @@ import { waveEventSubscribe } from "../store/wps";
 import { WorkspaceEditor } from "./workspaceeditor";
 import "./workspaceswitcher.scss";
 
+type WorkspaceSwitcherProps = {
+    placement: "top-start" | "bottom-start";
+};
+
 type WorkspaceListEntry = {
     windowId: string;
     workspace: Workspace;
@@ -34,7 +38,7 @@ type WorkspaceList = WorkspaceListEntry[];
 const workspaceMapAtom = atom<WorkspaceList>([]);
 const workspaceSplitAtom = splitAtom(workspaceMapAtom);
 const editingWorkspaceAtom = atom<string>();
-const WorkspaceSwitcher = forwardRef<HTMLDivElement>((_, ref) => {
+const WorkspaceSwitcher = forwardRef<HTMLDivElement, WorkspaceSwitcherProps>(({ placement }, ref) => {
     const setWorkspaceList = useSetAtom(workspaceMapAtom);
     const activeWorkspace = useAtomValueSafe(atoms.workspace);
     const workspaceList = useAtomValue(workspaceSplitAtom);
@@ -93,7 +97,7 @@ const WorkspaceSwitcher = forwardRef<HTMLDivElement>((_, ref) => {
     return (
         <Popover
             className="workspace-switcher-popover"
-            placement="bottom-start"
+            placement={placement}
             onDismiss={() => setEditingWorkspace(null)}
             ref={ref}
         >
