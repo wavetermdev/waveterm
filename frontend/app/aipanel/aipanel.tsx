@@ -153,18 +153,30 @@ const AIPanelComponent = memo(({ className, onClose }: AIPanelProps) => {
         }, 100);
     };
 
+    const hasFilesDragged = (dataTransfer: DataTransfer): boolean => {
+        // Check if the drag operation contains files by looking at the types
+        return dataTransfer.types.includes("Files");
+    };
+
     const handleDragOver = (e: React.DragEvent) => {
         e.preventDefault();
         e.stopPropagation();
-        if (!isDragOver) {
+        
+        const hasFiles = hasFilesDragged(e.dataTransfer);
+        if (hasFiles && !isDragOver) {
             setIsDragOver(true);
+        } else if (!hasFiles && isDragOver) {
+            setIsDragOver(false);
         }
     };
 
     const handleDragEnter = (e: React.DragEvent) => {
         e.preventDefault();
         e.stopPropagation();
-        setIsDragOver(true);
+        
+        if (hasFilesDragged(e.dataTransfer)) {
+            setIsDragOver(true);
+        }
     };
 
     const handleDragLeave = (e: React.DragEvent) => {
