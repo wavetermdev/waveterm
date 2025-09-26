@@ -148,6 +148,7 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
     const notificationsAtom = atom<NotificationType[]>([]);
     const notificationPopoverModeAtom = atom<boolean>(false);
     const reinitVersion = atom(0);
+    const waveAIFocusedAtom = atom(false);
     atoms = {
         // initialized in wave.ts (will not be null inside of application)
         clientId: clientIdAtom,
@@ -171,6 +172,7 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
         notificationPopoverMode: notificationPopoverModeAtom,
         reinitVersion,
         isTermMultiInput: atom(false),
+        waveAIFocusedAtom,
     };
 }
 

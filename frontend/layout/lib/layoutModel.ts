@@ -1,7 +1,7 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { getSettingsKeyAtom } from "@/app/store/global";
+import { atoms, getSettingsKeyAtom } from "@/app/store/global";
 import { atomWithThrottle, boundNumber, fireAndForget } from "@/util/util";
 import { Atom, atom, Getter, PrimitiveAtom, Setter } from "jotai";
 import { splitAtom } from "jotai/utils";
@@ -935,7 +935,8 @@ export class LayoutModel {
                 isFocused: atom((get) => {
                     const treeState = get(this.treeStateAtom);
                     const isFocused = treeState.focusedNodeId === nodeid;
-                    return isFocused;
+                    const waveAIFocused = get(atoms.waveAIFocusedAtom);
+                    return isFocused && !waveAIFocused;
                 }),
                 numLeafs: this.numLeafs,
                 isResizing: this.isResizing,
@@ -979,7 +980,7 @@ export class LayoutModel {
      * Switch focus to the next node in the given direction in the layout.
      * @param direction The direction in which to switch focus.
      */
-    switchNodeFocusInDirection(direction: NavigateDirection): NavigationResult {
+    switchNodeFocusInDirection(direction: NavigateDirection, inWaveAI: boolean): NavigationResult {
         const curNodeId = this.focusedNodeId;
 
         // If no node is focused, set focus to the first leaf.
@@ -998,11 +999,30 @@ export class LayoutModel {
                 nodePositions.set(leaf.id, pos);
             }
         }
-        const curNodePos = nodePositions.get(curNodeId);
-        if (!curNodePos) {
-            return { success: false };
+        let curNodePos: Dimensions;
+        if (inWaveAI) {
+            // For WaveAI, use a fake position to the left of all nodes
+            curNodePos = { left: -10, top: 10, width: 0, height: 0 };
+
+            // Only allow "right" navigation from WaveAI
+            if (direction !== NavigateDirection.Right) {
+                const result: NavigationResult = { success: false };
+                if (direction === NavigateDirection.Up) {
+                    result.atTop = true;
+                } else if (direction === NavigateDirection.Down) {
+                    result.atBottom = true;
+                } else if (direction === NavigateDirection.Left) {
+                    result.atLeft = true;
+                }
+                return result;
+            }
+        } else {
+            curNodePos = nodePositions.get(curNodeId);
+            if (!curNodePos) {
+                return { success: false };
+            }
+            nodePositions.delete(curNodeId);
         }
-        nodePositions.delete(curNodeId);
         const boundingRect = this.displayContainerRef?.current.getBoundingClientRect();
         if (!boundingRect) {
             return { success: false };

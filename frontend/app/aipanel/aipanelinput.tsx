@@ -1,8 +1,9 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { atoms, globalStore } from "@/app/store/global";
 import { cn } from "@/util/util";
-import { forwardRef, memo, useEffect, useImperativeHandle, useRef } from "react";
+import { forwardRef, memo, useCallback, useEffect, useImperativeHandle, useRef } from "react";
 
 interface AIPanelInputProps {
     input: string;
@@ -33,6 +34,14 @@ export const AIPanelInput = memo(
             }
         };
 
+        const handleFocus = useCallback(() => {
+            globalStore.set(atoms.waveAIFocusedAtom, true);
+        }, []);
+
+        const handleBlur = useCallback(() => {
+            globalStore.set(atoms.waveAIFocusedAtom, false);
+        }, []);
+
         useEffect(() => {
             const textarea = textareaRef.current;
             if (!textarea) return;
@@ -52,6 +61,8 @@ export const AIPanelInput = memo(
                             value={input}
                             onChange={(e) => setInput(e.target.value)}
                             onKeyDown={handleKeyDown}
+                            onFocus={handleFocus}
+                            onBlur={handleBlur}
                             placeholder="Ask Wave AI anything..."
                             className="w-full bg-gray-800 text-white px-2 py-2 pr-6 focus:outline-none resize-none overflow-hidden"
                             style={{ fontSize: "13px" }}

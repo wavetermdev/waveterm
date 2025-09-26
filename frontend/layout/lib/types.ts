@@ -11,6 +11,21 @@ export enum NavigateDirection {
     Left = 3,
 }
 
+export function navigateDirectionToString(dir: NavigateDirection): string {
+    switch (dir) {
+        case NavigateDirection.Up:
+            return "up";
+        case NavigateDirection.Right:
+            return "right";
+        case NavigateDirection.Down:
+            return "down";
+        case NavigateDirection.Left:
+            return "left";
+        default:
+            return "unknown";
+    }
+}
+
 export enum DropDirection {
     Top = 0,
     Right = 1,

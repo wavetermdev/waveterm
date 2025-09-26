@@ -145,7 +145,8 @@ function switchBlockByBlockNum(index: number) {
 
 function switchBlockInDirection(tabId: string, direction: NavigateDirection) {
     const layoutModel = getLayoutModelForTabById(tabId);
-    const navResult = layoutModel.switchNodeFocusInDirection(direction);
+    const inWaveAI = globalStore.get(atoms.waveAIFocusedAtom);
+    const navResult = layoutModel.switchNodeFocusInDirection(direction, inWaveAI);
     if (navResult.atLeft) {
         waveAIModel.focusInput();
         return;

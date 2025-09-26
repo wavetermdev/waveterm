@@ -32,6 +32,7 @@ const AIPanelComponent = memo(({ className, onClose }: AIPanelProps) => {
     const inputRef = useRef<AIPanelInputRef>(null);
     const isLayoutMode = jotai.useAtomValue(atoms.controlShiftDelayAtom);
     const showOverlayBlockNums = jotai.useAtomValue(getSettingsKeyAtom("app:showoverlayblocknums")) ?? true;
+    const isInputFocused = jotai.useAtomValue(atoms.waveAIFocusedAtom);
 
     const { messages, sendMessage, status, setMessages, error } = useChat({
         transport: new DefaultChatTransport({
@@ -220,12 +221,13 @@ const AIPanelComponent = memo(({ className, onClose }: AIPanelProps) => {
     return (
         <div
             className={cn(
-                "bg-gray-900 border-t border-gray-600 flex flex-col relative h-[calc(100%-3px)] mt-1",
+                "bg-gray-900 flex flex-col relative h-[calc(100%-3px)] mt-1",
                 className,
-                isDragOver && "bg-gray-800 border-accent"
+                isDragOver && "bg-gray-800 border-accent",
+                isInputFocused ? "border-t border-accent" : "border-t border-gray-600"
             )}
             style={{
-                borderRight: "1px solid rgb(75, 85, 99)",
+                borderRight: isInputFocused ? "1px solid var(--accent-color)" : "1px solid rgb(75, 85, 99)",
                 borderTopRightRadius: "var(--block-border-radius)",
                 borderBottomRightRadius: "var(--block-border-radius)",
             }}
