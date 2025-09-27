@@ -209,7 +209,7 @@ func testT1(ctx context.Context) {
 func testT2(ctx context.Context) {
 	tool := aiusechat.GetAdderToolDefinition()
 	tools := []uctypes.ToolDefinition{tool}
-	testOpenAI(ctx, "gpt-5", "what is 2+2, use the provider adder tool", tools)
+	testOpenAI(ctx, "gpt-5", "what is 2+2+8, use the provider adder tool", tools)
 }
 
 func printUsage() {

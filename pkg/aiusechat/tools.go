@@ -216,7 +216,8 @@ func GetWebNavigateToolDefinition(block *waveobj.Block) uctypes.ToolDefinition {
 					"description": "URL to navigate to",
 				},
 			},
-			"required": []string{"url"},
+			"required":             []string{"url"},
+			"additionalProperties": false,
 		},
 		ToolAnyCallback: func(input any) (any, error) {
 			inputMap, ok := input.(map[string]any)
