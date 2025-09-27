@@ -18,8 +18,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
-	"github.com/wavetermdev/waveterm/pkg/waveobj"
-	"github.com/wavetermdev/waveterm/pkg/wstore"
 )
 
 // these conversions are based off the anthropic spec
@@ -30,6 +28,9 @@ func buildAnthropicHTTPRequest(ctx context.Context, msgs []anthropicInputMessage
 	opts := chatOpts.Config
 	if opts.Model == "" {
 		return nil, errors.New("opts.model is required")
+	}
+	if chatOpts.ClientId == "" {
+		return nil, errors.New("chatOpts.ClientId is required")
 	}
 
 	// Set defaults
@@ -135,18 +136,13 @@ func buildAnthropicHTTPRequest(ctx context.Context, msgs []anthropicInputMessage
 	if err != nil {
 		return nil, err
 	}
-	client, err := wstore.DBGetSingleton[*waveobj.Client](ctx)
-	if err != nil {
-		return nil, fmt.Errorf("error getting client for Wave AI request: %w", err)
-	}
-
 	req.Header.Set("content-type", "application/json")
 	if opts.APIToken != "" {
 		req.Header.Set("x-api-key", opts.APIToken)
 	}
 	req.Header.Set("anthropic-version", apiVersion)
 	req.Header.Set("accept", "text/event-stream")
-	req.Header.Set("X-Wave-ClientId", client.OID)
+	req.Header.Set("X-Wave-ClientId", chatOpts.ClientId)
 	req.Header.Set("X-Wave-APIType", "anthropic")
 
 	return req, nil

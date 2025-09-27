@@ -130,6 +130,22 @@ type openaiResponseCompletedEvent struct {
 	Response       openaiResponse `json:"response"`
 }
 
+type openaiResponseFunctionCallArgumentsDeltaEvent struct {
+	Type           string `json:"type"`
+	SequenceNumber int    `json:"sequence_number"`
+	ItemId         string `json:"item_id"`
+	OutputIndex    int    `json:"output_index"`
+	Delta          string `json:"delta"`
+}
+
+type openaiResponseFunctionCallArgumentsDoneEvent struct {
+	Type           string `json:"type"`
+	SequenceNumber int    `json:"sequence_number"`
+	ItemId         string `json:"item_id"`
+	OutputIndex    int    `json:"output_index"`
+	Arguments      string `json:"arguments"`
+}
+
 // ---------- OpenAI Response Structure Types ----------
 
 type openaiResponse struct {
@@ -155,7 +171,7 @@ type openaiResponse struct {
 	Temperature        float64                `json:"temperature"`
 	Text               openaiTextConfig       `json:"text"`
 	ToolChoice         string                 `json:"tool_choice"`
-	Tools              []openaiTool           `json:"tools"`
+	Tools              []OpenAIRequestTool    `json:"tools"`
 	TopLogprobs        int                    `json:"top_logprobs"`
 	TopP               float64                `json:"top_p"`
 	Truncation         string                 `json:"truncation"`
@@ -171,6 +187,11 @@ type openaiOutputItem struct {
 	Content []OpenAIMessageContent `json:"content,omitempty"`
 	Role    string                 `json:"role,omitempty"`
 	Summary []string               `json:"summary,omitempty"`
+
+	// tools (type="function_call")
+	Name      string `json:"name,omitempty"`
+	CallId    string `json:"call_id,omitempty"`
+	Arguments string `json:"arguments,omitempty"`
 }
 
 type openaiReasoning struct {
@@ -185,10 +206,6 @@ type openaiTextConfig struct {
 
 type openaiTextFormat struct {
 	Type string `json:"type"`
-}
-
-type openaiTool struct {
-	// Tool definition - can be expanded later
 }
 
 type openaiUsage struct {
@@ -226,8 +243,10 @@ const (
 )
 
 type openaiBlockState struct {
-	kind    openaiBlockKind
-	localID string // For SSE streaming to UI
+	kind       openaiBlockKind
+	localID    string // For SSE streaming to UI
+	toolCallID string // For function calls
+	toolName   string // For function calls
 }
 
 type openaiStreamingState struct {
@@ -247,9 +266,6 @@ func RunOpenAIChatStep(
 ) (*uctypes.WaveStopReason, *OpenAIChatMessage, error) {
 	if sse == nil {
 		return nil, nil, errors.New("sse handler is nil")
-	}
-	if cont != nil {
-		return nil, nil, errors.New("tool/cont functionality in OpenAI backend unimplemented")
 	}
 
 	// Get chat from store
@@ -399,8 +415,13 @@ func handleOpenAIStreamingResp(ctx context.Context, sse *sse.SSEHandlerCh, decod
 		event, err := decoder.Decode()
 		if err != nil {
 			if errors.Is(err, io.EOF) {
-				// Normal end of stream
-				break
+				// EOF without proper completion - protocol error
+				_ = sse.AiMsgError("stream ended unexpectedly without completion")
+				return &uctypes.WaveStopReason{
+					Kind:      uctypes.StopKindError,
+					ErrorType: "protocol",
+					ErrorText: "stream ended unexpectedly without completion",
+				}, rtnMessage
 			}
 			// transport error mid-stream
 			_ = sse.AiMsgError(err.Error())
@@ -421,20 +442,7 @@ func handleOpenAIStreamingResp(ctx context.Context, sse *sse.SSEHandlerCh, decod
 		}
 	}
 
-	// EOF - let defer handle cleanup
-	if rtnMessage == nil {
-		rtnMessage = &OpenAIChatMessage{
-			MessageId: uuid.New().String(),
-			Role:      "assistant",
-			Content:   []OpenAIMessageContent{},
-		}
-	}
-	rtnStopReason = &uctypes.WaveStopReason{
-		Kind:      uctypes.StopKindDone,
-		MessageID: state.msgID,
-		Model:     state.model,
-	}
-	return rtnStopReason, rtnMessage
+	// unreachable
 }
 
 // handleOpenAIEvent processes one SSE event block. It may emit SSE parts
@@ -492,6 +500,13 @@ func handleOpenAIEvent(
 			_ = sse.AiMsgReasoningStart(id)
 		case "message":
 			// Message item - content parts will be handled in streaming events
+		case "function_call":
+			// Track function call info for later use
+			state.blockMap[ev.Item.Id] = &openaiBlockState{
+				kind:       openaiBlockToolUse,
+				toolCallID: ev.Item.CallId,
+				toolName:   ev.Item.Name,
+			}
 		}
 		return nil, nil
 
@@ -623,6 +638,29 @@ func handleOpenAIEvent(
 			ToolCalls: toolCalls,
 		}, finalMessage
 
+	case "response.function_call_arguments.delta":
+		var ev openaiResponseFunctionCallArgumentsDeltaEvent
+		if err := json.Unmarshal([]byte(data), &ev); err != nil {
+			_ = sse.AiMsgError(err.Error())
+			return &uctypes.WaveStopReason{Kind: uctypes.StopKindError, ErrorType: "decode", ErrorText: err.Error()}, nil
+		}
+		// Noop as requested
+		return nil, nil
+
+	case "response.function_call_arguments.done":
+		var ev openaiResponseFunctionCallArgumentsDoneEvent
+		if err := json.Unmarshal([]byte(data), &ev); err != nil {
+			_ = sse.AiMsgError(err.Error())
+			return &uctypes.WaveStopReason{Kind: uctypes.StopKindError, ErrorType: "decode", ErrorText: err.Error()}, nil
+		}
+
+		// Get the function call info from the block state
+		if st := state.blockMap[ev.ItemId]; st != nil && st.kind == openaiBlockToolUse {
+			raw := json.RawMessage(ev.Arguments)
+			_ = sse.AiMsgToolInputAvailable(st.toolCallID, st.toolName, raw)
+		}
+		return nil, nil
+
 	default:
 		// log unknown events for debugging
 		log.Printf("OpenAI: unknown event: %s, data: %s", eventName, data)
@@ -657,9 +695,17 @@ func extractMessageAndToolsFromResponse(resp openaiResponse) (*OpenAIChatMessage
 			// Extract tool call information
 			toolCall := uctypes.WaveToolCall{
 				ID:   outputItem.Id,
-				Name: "", // Will need to extract from content if available
+				Name: outputItem.Name,
 			}
-			// TODO: Extract tool name and input from outputItem.Content
+
+			// Parse arguments JSON string if present
+			if outputItem.Arguments != "" {
+				var input any
+				if err := json.Unmarshal([]byte(outputItem.Arguments), &input); err == nil {
+					toolCall.Input = input
+				}
+			}
+
 			toolCalls = append(toolCalls, toolCall)
 		}
 	}

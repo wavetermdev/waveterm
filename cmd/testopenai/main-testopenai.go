@@ -15,10 +15,11 @@ import (
 	"os"
 	"time"
 
+	"github.com/wavetermdev/waveterm/pkg/aiusechat"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/openai"
 )
 
-func makeOpenAIRequest(ctx context.Context, apiKey, model, message string) error {
+func makeOpenAIRequest(ctx context.Context, apiKey, model, message string, tools bool) error {
 	reqBody := openai.OpenAIRequest{
 		Model: model,
 		Input: []openai.OpenAIMessage{
@@ -35,6 +36,11 @@ func makeOpenAIRequest(ctx context.Context, apiKey, model, message string) error
 		Stream:        true,
 		StreamOptions: &openai.StreamOptionsType{IncludeObfuscation: false},
 		Reasoning:     &openai.ReasoningType{Effort: "medium"},
+	}
+	if tools {
+		reqBody.Tools = []openai.OpenAIRequestTool{
+			openai.ConvertToolDefinitionToOpenAI(aiusechat.GetAdderToolDefinition()),
+		}
 	}
 
 	jsonData, err := json.Marshal(reqBody)
@@ -103,10 +109,11 @@ func processSSEStream(reader io.Reader) error {
 }
 
 func printUsage() {
-	fmt.Println("Usage: go run main-testopenai.go [--model <model>] [message]")
+	fmt.Println("Usage: go run main-testopenai.go [--model <model>] [--tools] [message]")
 	fmt.Println("Examples:")
 	fmt.Println("  go run main-testopenai.go 'Stream me a limerick about gophers coding in Go.'")
 	fmt.Println("  go run main-testopenai.go --model gpt-4 'What is 2+2?'")
+	fmt.Println("  go run main-testopenai.go --tools 'What is 2+2? Use the adder tool.'")
 	fmt.Println("")
 	fmt.Println("Default model: gpt-5-mini")
 	fmt.Println("")
@@ -117,9 +124,11 @@ func printUsage() {
 func main() {
 	var model string
 	var showHelp bool
+	var tools bool
 
 	flag.StringVar(&model, "model", "gpt-5-mini", "OpenAI model to use")
 	flag.BoolVar(&showHelp, "help", false, "Show usage information")
+	flag.BoolVar(&tools, "tools", false, "Enable tools for testing")
 	flag.Parse()
 
 	if showHelp {
@@ -148,7 +157,7 @@ func main() {
 	fmt.Printf("Message: %s\n", message)
 	fmt.Println("===")
 
-	if err := makeOpenAIRequest(ctx, apiKey, model, message); err != nil {
+	if err := makeOpenAIRequest(ctx, apiKey, model, message, tools); err != nil {
 		fmt.Printf("Error: %v\n", err)
 		os.Exit(1)
 	}

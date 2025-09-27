@@ -26,6 +26,11 @@ func MarshalIndentNoHTMLString(v any, prefix, indent string) (string, error) {
 	return strings.TrimRight(buf.String(), "\n"), nil
 }
 
+func MustPrettyPrintJSON(v any) string {
+	str, _ := MarshalIndentNoHTMLString(v, "", "  ")
+	return str
+}
+
 func ReUnmarshal(out any, in any) error {
 	barr, err := json.Marshal(in)
 	if err != nil {

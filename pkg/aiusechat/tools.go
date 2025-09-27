@@ -393,7 +393,8 @@ func GetAdderToolDefinition() uctypes.ToolDefinition {
 					"description": "Array of numbers to add together",
 				},
 			},
-			"required": []string{"values"},
+			"required":             []string{"values"},
+			"additionalProperties": false,
 		},
 		ToolAnyCallback: func(input any) (any, error) {
 			inputMap, ok := input.(map[string]any)

@@ -323,6 +323,7 @@ func (m *UIMessage) GetContent() string {
 
 type WaveChatOpts struct {
 	ChatId            string
+	ClientId          string
 	Config            AIOptsType
 	Tools             []ToolDefinition
 	SystemPrompt      []string

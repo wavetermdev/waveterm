@@ -17,7 +17,9 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/chatstore"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/openai"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
+	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/web/sse"
+	"github.com/wavetermdev/waveterm/pkg/wstore"
 )
 
 const (
@@ -100,14 +102,14 @@ func RunAIChat(ctx context.Context, sseHandler *sse.SSEHandlerCh, chatOpts uctyp
 	firstStep := true
 	var cont *uctypes.WaveContinueResponse
 	for {
-		var stopReason *uctypes.WaveStopReason
-		var rtnMessage uctypes.GenAIMessage
-		tabState, tabTools, err := chatOpts.TabStateGenerator()
-		if err == nil {
-			chatOpts.TabState = tabState
-			chatOpts.TabTools = tabTools
-			stopReason, rtnMessage, err = runAIChatStep(ctx, sseHandler, chatOpts, cont)
+		if chatOpts.TabStateGenerator != nil {
+			tabState, tabTools, tabErr := chatOpts.TabStateGenerator()
+			if tabErr == nil {
+				chatOpts.TabState = tabState
+				chatOpts.TabTools = tabTools
+			}
 		}
+		stopReason, rtnMessage, err := runAIChatStep(ctx, sseHandler, chatOpts, cont)
 		if firstStep && err != nil {
 			return fmt.Errorf("failed to stream %s chat: %w", chatOpts.Config.APIType, err)
 		}
@@ -287,10 +289,18 @@ func WaveAIPostMessageHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Get client ID from database
+	client, err := wstore.DBGetSingleton[*waveobj.Client](r.Context())
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Failed to get client: %v", err), http.StatusInternalServerError)
+		return
+	}
+
 	// Call the core WaveAIPostMessage function
 	chatOpts := uctypes.WaveChatOpts{
-		ChatId: req.ChatID,
-		Config: *aiOpts,
+		ChatId:   req.ChatID,
+		ClientId: client.OID,
+		Config:   *aiOpts,
 	}
 	if chatOpts.Config.APIType == APIType_OpenAI {
 		chatOpts.SystemPrompt = []string{SystemPromptText_OpenAI}

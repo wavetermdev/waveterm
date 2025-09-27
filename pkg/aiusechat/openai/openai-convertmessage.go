@@ -16,8 +16,6 @@ import (
 
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
-	"github.com/wavetermdev/waveterm/pkg/waveobj"
-	"github.com/wavetermdev/waveterm/pkg/wstore"
 )
 
 const (
@@ -49,32 +47,52 @@ type PromptType struct {
 }
 
 type OpenAIRequest struct {
-	Background         bool               `json:"background,omitempty"`
-	Conversation       string             `json:"conversation,omitempty"`
-	Include            []string           `json:"include,omitempty"`
-	Input              []OpenAIMessage    `json:"input,omitempty"`
-	Instructions       string             `json:"instructions,omitempty"`
-	MaxOutputTokens    int                `json:"max_output_tokens,omitempty"`
-	MaxToolCalls       int                `json:"max_tool_calls,omitempty"`
-	Metadata           map[string]string  `json:"metadata,omitempty"`
-	Model              string             `json:"model,omitempty"`
-	ParallelToolCalls  bool               `json:"parallel_tool_calls,omitempty"`
-	PreviousResponseID string             `json:"previous_response_id,omitempty"`
-	Prompt             *PromptType        `json:"prompt,omitempty"`
-	PromptCacheKey     string             `json:"prompt_cache_key,omitempty"`
-	Reasoning          *ReasoningType     `json:"reasoning,omitempty"`
-	SafetyIdentifier   string             `json:"safety_identifier,omitempty"`
-	ServiceTier        string             `json:"service_tier,omitempty"` // "auto", "default", "flex", "priority"
-	Store              bool               `json:"store,omitempty"`
-	Stream             bool               `json:"stream,omitempty"`
-	StreamOptions      *StreamOptionsType `json:"stream_options,omitempty"`
-	Temperature        float64            `json:"temperature,omitempty"`
-	Text               *TextType          `json:"text,omitempty"`
-	ToolChoice         interface{}        `json:"tool_choice,omitempty"` // "none", "auto", "required", or object
-	Tools              []interface{}      `json:"tools,omitempty"`
-	TopLogprobs        int                `json:"top_logprobs,omitempty"`
-	TopP               float64            `json:"top_p,omitempty"`
-	Truncation         string             `json:"truncation,omitempty"` // "auto", "disabled"
+	Background         bool                `json:"background,omitempty"`
+	Conversation       string              `json:"conversation,omitempty"`
+	Include            []string            `json:"include,omitempty"`
+	Input              []OpenAIMessage     `json:"input,omitempty"`
+	Instructions       string              `json:"instructions,omitempty"`
+	MaxOutputTokens    int                 `json:"max_output_tokens,omitempty"`
+	MaxToolCalls       int                 `json:"max_tool_calls,omitempty"`
+	Metadata           map[string]string   `json:"metadata,omitempty"`
+	Model              string              `json:"model,omitempty"`
+	ParallelToolCalls  bool                `json:"parallel_tool_calls,omitempty"`
+	PreviousResponseID string              `json:"previous_response_id,omitempty"`
+	Prompt             *PromptType         `json:"prompt,omitempty"`
+	PromptCacheKey     string              `json:"prompt_cache_key,omitempty"`
+	Reasoning          *ReasoningType      `json:"reasoning,omitempty"`
+	SafetyIdentifier   string              `json:"safety_identifier,omitempty"`
+	ServiceTier        string              `json:"service_tier,omitempty"` // "auto", "default", "flex", "priority"
+	Store              bool                `json:"store,omitempty"`
+	Stream             bool                `json:"stream,omitempty"`
+	StreamOptions      *StreamOptionsType  `json:"stream_options,omitempty"`
+	Temperature        float64             `json:"temperature,omitempty"`
+	Text               *TextType           `json:"text,omitempty"`
+	ToolChoice         interface{}         `json:"tool_choice,omitempty"` // "none", "auto", "required", or object
+	Tools              []OpenAIRequestTool `json:"tools,omitempty"`
+	TopLogprobs        int                 `json:"top_logprobs,omitempty"`
+	TopP               float64             `json:"top_p,omitempty"`
+	Truncation         string              `json:"truncation,omitempty"` // "auto", "disabled"
+}
+
+type OpenAIRequestTool struct {
+	Name        string `json:"name"`
+	Description string `json:"description,omitempty"`
+	Parameters  any    `json:"parameters"`
+	Strict      bool   `json:"strict"`
+	Type        string `json:"type"`
+}
+
+// ConvertToolDefinitionToOpenAI converts a generic ToolDefinition to OpenAI format
+func ConvertToolDefinitionToOpenAI(tool uctypes.ToolDefinition) OpenAIRequestTool {
+	cleanedTool := tool.Clean()
+	return OpenAIRequestTool{
+		Name:        cleanedTool.Name,
+		Description: cleanedTool.Description,
+		Parameters:  cleanedTool.InputSchema,
+		Strict:      true,
+		Type:        "function",
+	}
 }
 
 // buildOpenAIHTTPRequest creates a complete HTTP request for the OpenAI API
@@ -82,6 +100,9 @@ func buildOpenAIHTTPRequest(ctx context.Context, msgs []OpenAIMessage, chatOpts 
 	opts := chatOpts.Config
 	if opts.Model == "" {
 		return nil, errors.New("opts.model is required")
+	}
+	if chatOpts.ClientId == "" {
+		return nil, errors.New("chatOpts.ClientId is required")
 	}
 
 	// Set defaults
@@ -130,18 +151,19 @@ func buildOpenAIHTTPRequest(ctx context.Context, msgs []OpenAIMessage, chatOpts 
 		reqBody.Instructions = strings.Join(chatOpts.SystemPrompt, "\n")
 	}
 
-	// // Add tools if provided
-	// if len(chatOpts.Tools) > 0 {
-	// 	tools := make([]interface{}, len(chatOpts.Tools))
-	// 	for i, tool := range chatOpts.Tools {
-	// 		tools[i] = *tool.Clean()
-	// 	}
-	// 	reqBody.Tools = tools
-	// }
-	// for _, tool := range chatOpts.TabTools {
-	// 	cleanedTool := *tool.Clean()
-	// 	reqBody.Tools = append(reqBody.Tools, cleanedTool)
-	// }
+	// Add tools if provided
+	if len(chatOpts.Tools) > 0 {
+		tools := make([]OpenAIRequestTool, len(chatOpts.Tools))
+		for i, tool := range chatOpts.Tools {
+			tools[i] = ConvertToolDefinitionToOpenAI(tool)
+		}
+		reqBody.Tools = tools
+	}
+	for _, tool := range chatOpts.TabTools {
+		convertedTool := ConvertToolDefinitionToOpenAI(tool)
+		reqBody.Tools = append(reqBody.Tools, convertedTool)
+	}
+	log.Printf("TOOLS: %s\n", utilfn.MustPrettyPrintJSON(reqBody.Tools))
 
 	// Set reasoning based on thinking level
 	if opts.ThinkingLevel != "" {
@@ -189,19 +211,15 @@ func buildOpenAIHTTPRequest(ctx context.Context, msgs []OpenAIMessage, chatOpts 
 		return nil, err
 	}
 
-	// Get client for Wave AI request
-	client, err := wstore.DBGetSingleton[*waveobj.Client](ctx)
-	if err != nil {
-		return nil, fmt.Errorf("error getting client for Wave AI request: %w", err)
-	}
-
 	// Set headers
 	req.Header.Set("Content-Type", "application/json")
 	if opts.APIToken != "" {
 		req.Header.Set("Authorization", "Bearer "+opts.APIToken)
 	}
 	req.Header.Set("Accept", "text/event-stream")
-	req.Header.Set("X-Wave-ClientId", client.OID)
+	if chatOpts.ClientId != "" {
+		req.Header.Set("X-Wave-ClientId", chatOpts.ClientId)
+	}
 	req.Header.Set("X-Wave-APIType", "openai")
 
 	return req, nil

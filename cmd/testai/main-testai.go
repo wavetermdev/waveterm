@@ -101,9 +101,9 @@ func getToolDefinitions() []uctypes.ToolDefinition {
 }
 
 func testOpenAI(ctx context.Context, model, message string, tools []uctypes.ToolDefinition) {
-	apiKey := os.Getenv("OPENAI_API_KEY")
+	apiKey := os.Getenv("OPENAI_APIKEY")
 	if apiKey == "" {
-		fmt.Println("Error: OPENAI_API_KEY environment variable not set")
+		fmt.Println("Error: OPENAI_APIKEY environment variable not set")
 		os.Exit(1)
 	}
 
@@ -139,9 +139,10 @@ func testOpenAI(ctx context.Context, model, message string, tools []uctypes.Tool
 	defer sseHandler.Close()
 
 	chatOpts := uctypes.WaveChatOpts{
-		ChatId: chatID,
-		Config: *opts,
-		Tools:  tools,
+		ChatId:   chatID,
+		ClientId: uuid.New().String(),
+		Config:   *opts,
+		Tools:    tools,
 	}
 	err := aiusechat.WaveAIPostMessageWrap(ctx, sseHandler, aiMessage, chatOpts)
 	if err != nil {
@@ -150,9 +151,9 @@ func testOpenAI(ctx context.Context, model, message string, tools []uctypes.Tool
 }
 
 func testAnthropic(ctx context.Context, model, message string, tools []uctypes.ToolDefinition) {
-	apiKey := os.Getenv("ANTHROPIC_API_KEY")
+	apiKey := os.Getenv("ANTHROPIC_APIKEY")
 	if apiKey == "" {
-		fmt.Println("Error: ANTHROPIC_API_KEY environment variable not set")
+		fmt.Println("Error: ANTHROPIC_APIKEY environment variable not set")
 		os.Exit(1)
 	}
 
@@ -188,9 +189,10 @@ func testAnthropic(ctx context.Context, model, message string, tools []uctypes.T
 	defer sseHandler.Close()
 
 	chatOpts := uctypes.WaveChatOpts{
-		ChatId: chatID,
-		Config: *opts,
-		Tools:  tools,
+		ChatId:   chatID,
+		ClientId: uuid.New().String(),
+		Config:   *opts,
+		Tools:    tools,
 	}
 	err := aiusechat.WaveAIPostMessageWrap(ctx, sseHandler, aiMessage, chatOpts)
 	if err != nil {
@@ -202,6 +204,12 @@ func testT1(ctx context.Context) {
 	tool := aiusechat.GetAdderToolDefinition()
 	tools := []uctypes.ToolDefinition{tool}
 	testAnthropic(ctx, "claude-sonnet-4-20250514", "what is 2+2, use the provider adder tool", tools)
+}
+
+func testT2(ctx context.Context) {
+	tool := aiusechat.GetAdderToolDefinition()
+	tools := []uctypes.ToolDefinition{tool}
+	testOpenAI(ctx, "gpt-5", "what is 2+2, use the provider adder tool", tools)
 }
 
 func printUsage() {
@@ -218,18 +226,19 @@ func printUsage() {
 	fmt.Println("  Anthropic: claude-sonnet-4-20250514")
 	fmt.Println("")
 	fmt.Println("Environment variables:")
-	fmt.Println("  OPENAI_API_KEY (for OpenAI models)")
-	fmt.Println("  ANTHROPIC_API_KEY (for Anthropic models)")
+	fmt.Println("  OPENAI_APIKEY (for OpenAI models)")
+	fmt.Println("  ANTHROPIC_APIKEY (for Anthropic models)")
 }
 
 func main() {
-	var anthropic, tools, help, t1 bool
+	var anthropic, tools, help, t1, t2 bool
 	var model string
 	flag.BoolVar(&anthropic, "anthropic", false, "Use Anthropic API instead of OpenAI")
 	flag.BoolVar(&tools, "tools", false, "Enable GitHub Actions Monitor tools for testing")
 	flag.StringVar(&model, "model", "", "AI model to use (defaults: gpt-5 for OpenAI, claude-sonnet-4-20250514 for Anthropic)")
 	flag.BoolVar(&help, "help", false, "Show usage information")
 	flag.BoolVar(&t1, "t1", false, "Run preset T1 test (claude-sonnet-4-20250514 with 'what is 2+2')")
+	flag.BoolVar(&t2, "t2", false, "Run preset T2 test (gpt-5 with 'what is 2+2')")
 	flag.Parse()
 
 	if help {
@@ -242,6 +251,10 @@ func main() {
 
 	if t1 {
 		testT1(ctx)
+		return
+	}
+	if t2 {
+		testT2(ctx)
 		return
 	}
 
