@@ -22,8 +22,8 @@ import (
 func makeOpenAIRequest(ctx context.Context, apiKey, model, message string, tools bool) error {
 	reqBody := openai.OpenAIRequest{
 		Model: model,
-		Input: []openai.OpenAIMessage{
-			{
+		Input: []any{
+			openai.OpenAIMessage{
 				Role: "user",
 				Content: []openai.OpenAIMessageContent{
 					{

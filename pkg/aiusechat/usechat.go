@@ -84,15 +84,21 @@ func shouldUseChatCompletionsAPI(model string) bool {
 		strings.HasPrefix(m, "o1-")
 }
 
-func runAIChatStep(ctx context.Context, sseHandler *sse.SSEHandlerCh, chatOpts uctypes.WaveChatOpts, cont *uctypes.WaveContinueResponse) (*uctypes.WaveStopReason, uctypes.GenAIMessage, error) {
+func runAIChatStep(ctx context.Context, sseHandler *sse.SSEHandlerCh, chatOpts uctypes.WaveChatOpts, cont *uctypes.WaveContinueResponse) (*uctypes.WaveStopReason, []uctypes.GenAIMessage, error) {
 	if chatOpts.Config.APIType == APIType_Anthropic {
-		return anthropic.RunAnthropicChatStep(ctx, sseHandler, chatOpts, cont)
+		stopReason, msg, err := anthropic.RunAnthropicChatStep(ctx, sseHandler, chatOpts, cont)
+		return stopReason, []uctypes.GenAIMessage{msg}, err
 	}
 	if chatOpts.Config.APIType == APIType_OpenAI {
 		if shouldUseChatCompletionsAPI(chatOpts.Config.Model) {
 			return nil, nil, fmt.Errorf("Chat completions API not available (must use newer OpenAI models)")
 		}
-		return openai.RunOpenAIChatStep(ctx, sseHandler, chatOpts, cont)
+		stopReason, msgs, err := openai.RunOpenAIChatStep(ctx, sseHandler, chatOpts, cont)
+		var messages []uctypes.GenAIMessage
+		for _, msg := range msgs {
+			messages = append(messages, msg)
+		}
+		return stopReason, messages, err
 	}
 	return nil, nil, fmt.Errorf("Invalid APIType %q", chatOpts.Config.APIType)
 }
@@ -118,8 +124,10 @@ func RunAIChat(ctx context.Context, sseHandler *sse.SSEHandlerCh, chatOpts uctyp
 			_ = sseHandler.AiMsgFinish("", nil)
 			break
 		}
-		if rtnMessage != nil {
-			chatstore.DefaultChatStore.PostMessage(chatOpts.ChatId, &chatOpts.Config, rtnMessage)
+		for _, msg := range rtnMessage {
+			if msg != nil {
+				chatstore.DefaultChatStore.PostMessage(chatOpts.ChatId, &chatOpts.Config, msg)
+			}
 		}
 		if stopReason != nil && stopReason.Kind == uctypes.StopKindToolUse {
 			var toolResults []uctypes.AIToolResult
@@ -135,17 +143,33 @@ func RunAIChat(ctx context.Context, sseHandler *sse.SSEHandlerCh, chatOpts uctyp
 				}
 			}
 
-			// Convert tool results to anthropic message and post to chat store
-			toolResultMsg, err := anthropic.ConvertToolResultsToAnthropicChatMessage(toolResults)
-			if err != nil {
-				_ = sseHandler.AiMsgError(fmt.Sprintf("Failed to convert tool results to message: %v", err))
-				_ = sseHandler.AiMsgFinish("", nil)
+			// Convert tool results to messages and post to chat store
+			if chatOpts.Config.APIType == APIType_OpenAI {
+				toolResultMsgs, err := openai.ConvertToolResultsToOpenAIChatMessage(toolResults)
+				if err != nil {
+					_ = sseHandler.AiMsgError(fmt.Sprintf("Failed to convert tool results to OpenAI messages: %v", err))
+					_ = sseHandler.AiMsgFinish("", nil)
+				} else {
+					for _, msg := range toolResultMsgs {
+						chatstore.DefaultChatStore.PostMessage(chatOpts.ChatId, &chatOpts.Config, msg)
+					}
+				}
 			} else {
-				chatstore.DefaultChatStore.PostMessage(chatOpts.ChatId, &chatOpts.Config, toolResultMsg)
+				toolResultMsg, err := anthropic.ConvertToolResultsToAnthropicChatMessage(toolResults)
+				if err != nil {
+					_ = sseHandler.AiMsgError(fmt.Sprintf("Failed to convert tool results to Anthropic message: %v", err))
+					_ = sseHandler.AiMsgFinish("", nil)
+				} else {
+					chatstore.DefaultChatStore.PostMessage(chatOpts.ChatId, &chatOpts.Config, toolResultMsg)
+				}
 			}
 
+			var messageID string
+			if len(rtnMessage) > 0 && rtnMessage[0] != nil {
+				messageID = rtnMessage[0].GetMessageId()
+			}
 			cont = &uctypes.WaveContinueResponse{
-				MessageID:             rtnMessage.GetMessageId(),
+				MessageID:             messageID,
 				Model:                 chatOpts.Config.Model,
 				ContinueFromKind:      uctypes.StopKindToolUse,
 				ContinueFromRawReason: stopReason.RawReason,

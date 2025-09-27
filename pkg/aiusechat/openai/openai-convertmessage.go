@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/google/uuid"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 )
@@ -50,7 +51,7 @@ type OpenAIRequest struct {
 	Background         bool                `json:"background,omitempty"`
 	Conversation       string              `json:"conversation,omitempty"`
 	Include            []string            `json:"include,omitempty"`
-	Input              []OpenAIMessage     `json:"input,omitempty"`
+	Input              []any               `json:"input,omitempty"` // either OpenAIMessage or OpenAIFunctionCallInput
 	Instructions       string              `json:"instructions,omitempty"`
 	MaxOutputTokens    int                 `json:"max_output_tokens,omitempty"`
 	MaxToolCalls       int                 `json:"max_tool_calls,omitempty"`
@@ -96,7 +97,7 @@ func ConvertToolDefinitionToOpenAI(tool uctypes.ToolDefinition) OpenAIRequestToo
 }
 
 // buildOpenAIHTTPRequest creates a complete HTTP request for the OpenAI API
-func buildOpenAIHTTPRequest(ctx context.Context, msgs []OpenAIMessage, chatOpts uctypes.WaveChatOpts) (*http.Request, error) {
+func buildOpenAIHTTPRequest(ctx context.Context, inputs []any, chatOpts uctypes.WaveChatOpts) (*http.Request, error) {
 	opts := chatOpts.Config
 	if opts.Model == "" {
 		return nil, errors.New("opts.model is required")
@@ -116,21 +117,18 @@ func buildOpenAIHTTPRequest(ctx context.Context, msgs []OpenAIMessage, chatOpts 
 		maxTokens = OpenAIDefaultMaxTokens
 	}
 
-	// Copy input messages and prepare for modifications
-	openaiMessages := make([]OpenAIMessage, len(msgs))
-	copy(openaiMessages, msgs)
-
 	// Inject chatOpts.TabState as a text block at the end of the last "user" message
 	if chatOpts.TabState != "" {
 		// Find the last "user" message
-		for i := len(openaiMessages) - 1; i >= 0; i-- {
-			if openaiMessages[i].Role == "user" {
+		for i := len(inputs) - 1; i >= 0; i-- {
+			if msg, ok := inputs[i].(OpenAIMessage); ok && msg.Role == "user" {
 				// Add TabState as a new text block
 				tabStateBlock := OpenAIMessageContent{
 					Type: "input_text",
 					Text: chatOpts.TabState,
 				}
-				openaiMessages[i].Content = append(openaiMessages[i].Content, tabStateBlock)
+				msg.Content = append(msg.Content, tabStateBlock)
+				inputs[i] = msg
 				break
 			}
 		}
@@ -139,7 +137,7 @@ func buildOpenAIHTTPRequest(ctx context.Context, msgs []OpenAIMessage, chatOpts 
 	// Build request body
 	reqBody := &OpenAIRequest{
 		Model:           opts.Model,
-		Input:           openaiMessages,
+		Input:           inputs,
 		Stream:          true,
 		StreamOptions:   &StreamOptionsType{IncludeObfuscation: false},
 		MaxOutputTokens: maxTokens,
@@ -179,7 +177,7 @@ func buildOpenAIHTTPRequest(ctx context.Context, msgs []OpenAIMessage, chatOpts 
 	}
 
 	// Pretty print request for debugging
-	if jsonStr, err := utilfn.MarshalIndentNoHTMLString(openaiMessages, "", "  "); err == nil {
+	if jsonStr, err := utilfn.MarshalIndentNoHTMLString(inputs, "", "  "); err == nil {
 		log.Printf("system-prompt: %v\n", chatOpts.SystemPrompt)
 		var toolNames []string
 		for _, tool := range chatOpts.Tools {
@@ -191,7 +189,7 @@ func buildOpenAIHTTPRequest(ctx context.Context, msgs []OpenAIMessage, chatOpts 
 		if len(toolNames) > 0 {
 			log.Printf("tools: %s\n", strings.Join(toolNames, ","))
 		}
-		log.Printf("openaiMsgs JSON:\n%s", jsonStr)
+		log.Printf("inputs JSON:\n%s", jsonStr)
 		log.Printf("has-api-key: %v\n", opts.APIToken != "")
 		log.Printf("baseurl: %s\n", endpoint)
 	}
@@ -347,7 +345,50 @@ func ConvertAIMessageToOpenAIChatMessage(aiMsg uctypes.AIMessage) (*OpenAIChatMe
 
 	return &OpenAIChatMessage{
 		MessageId: aiMsg.MessageId,
-		Role:      "user",
-		Content:   contentBlocks,
+		Message: &OpenAIMessage{
+			Role:    "user",
+			Content: contentBlocks,
+		},
 	}, nil
+}
+
+// ConvertToolResultsToOpenAIChatMessage converts AIToolResult slice to OpenAIChatMessage slice
+func ConvertToolResultsToOpenAIChatMessage(toolResults []uctypes.AIToolResult) ([]*OpenAIChatMessage, error) {
+	if len(toolResults) == 0 {
+		return nil, errors.New("toolResults cannot be empty")
+	}
+
+	var messages []*OpenAIChatMessage
+
+	for _, result := range toolResults {
+		if result.ToolUseID == "" {
+			return nil, fmt.Errorf("tool result missing ToolUseID")
+		}
+
+		// Create the function call output with result data
+		var outputData any
+		if result.ErrorText != "" {
+			// Use error output format for errors
+			outputData = OpenAIFunctionCallErrorOutput{
+				Ok:    "false",
+				Error: result.ErrorText,
+			}
+		} else {
+			// Use text result for success
+			outputData = result.Text
+		}
+
+		functionCallOutput := &OpenAIFunctionCallOutputInput{
+			Type:   "function_call_output",
+			CallId: result.ToolUseID,
+			Output: outputData,
+		}
+
+		messages = append(messages, &OpenAIChatMessage{
+			MessageId:          uuid.New().String(),
+			FunctionCallOutput: functionCallOutput,
+		})
+	}
+
+	return messages, nil
 }
