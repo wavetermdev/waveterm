@@ -160,11 +160,4 @@
         outline: 1px solid var(--success-color);
         outline-offset: 2px;
     }
-
-    // Include mixins
-    @include mixins.border-radius-mixin();
-    @include mixins.vertical-padding-mixin();
-    @include mixins.horizontal-padding-mixin();
-    @include mixins.font-size-mixin();
-    @include mixins.font-weight-mixin();
 }

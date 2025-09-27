@@ -137,6 +137,9 @@ const (
 	Command_VDomUrlRequest      = "vdomurlrequest"
 
 	Command_AiSendMessage = "aisendmessage"
+
+	Command_GetRTInfo = "getrtinfo"
+	Command_SetRTInfo = "setrtinfo"
 )
 
 type RespOrErrorUnion[T any] struct {
@@ -255,6 +258,10 @@ type WshRpcInterface interface {
 
 	// ai
 	AiSendMessageCommand(ctx context.Context, data AiMessageData) error
+
+	// rtinfo
+	GetRTInfoCommand(ctx context.Context, data CommandGetRTInfoData) (*waveobj.ObjRTInfo, error)
+	SetRTInfoCommand(ctx context.Context, data CommandSetRTInfoData) error
 
 	// proc
 	VDomRenderCommand(ctx context.Context, data vdom.VDomFrontendUpdate) chan RespOrErrorUnion[*vdom.VDomBackendUpdate]
@@ -779,4 +786,13 @@ type FileShareCapability struct {
 	CanAppend bool `json:"canappend"`
 	// CanMkdir indicates whether the file share supports creating directories
 	CanMkdir bool `json:"canmkdir"`
+}
+
+type CommandGetRTInfoData struct {
+	ORef waveobj.ORef `json:"oref"`
+}
+
+type CommandSetRTInfoData struct {
+	ORef waveobj.ORef     `json:"oref"`
+	Data map[string]any   `json:"data" tstype:"ObjRTInfo"`
 }

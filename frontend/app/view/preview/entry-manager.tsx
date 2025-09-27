@@ -50,10 +50,10 @@ export const EntryManagerOverlay = memo(
                     />
                 </div>
                 <div className="entry-manager-buttons">
-                    <Button className="vertical-padding-4" onClick={() => onSave(value)}>
+                    <Button className="py-[4px]" onClick={() => onSave(value)}>
                         Save
                     </Button>
-                    <Button className="vertical-padding-4 red outlined" onClick={onCancel}>
+                    <Button className="py-[4px] red outlined" onClick={onCancel}>
                         Cancel
                     </Button>
                 </div>

@@ -11,6 +11,7 @@ import (
 	"log"
 	"mime"
 	"net/http"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -115,7 +116,9 @@ func (h *httpHandlers) handleRender(w http.ResponseWriter, r *http.Request) {
 	}
 	if update == nil {
 		w.WriteHeader(http.StatusOK)
-		log.Printf("render %4s %4dms %4dk %s", "none", duration.Milliseconds(), 0, feUpdate.Reason)
+		if os.Getenv("TSUNAMI_DEBUG") != "" {
+			log.Printf("render %4s %4dms %4dk %s", "none", duration.Milliseconds(), 0, feUpdate.Reason)
+		}
 		return
 	}
 
@@ -134,7 +137,9 @@ func (h *httpHandlers) handleRender(w http.ResponseWriter, r *http.Request) {
 	if update.FullUpdate {
 		renderType = "full"
 	}
-	log.Printf("render %4s %4dms %4dk %s", renderType, duration.Milliseconds(), updateSizeKB, feUpdate.Reason)
+	if os.Getenv("TSUNAMI_DEBUG") != "" {
+		log.Printf("render %4s %4dms %4dk %s", renderType, duration.Milliseconds(), updateSizeKB, feUpdate.Reason)
+	}
 
 	if _, err := w.Write(responseBytes); err != nil {
 		log.Printf("failed to write response: %v", err)
@@ -342,7 +347,7 @@ func (h *httpHandlers) handleSSE(w http.ResponseWriter, r *http.Request) {
 
 	// Generate unique connection ID for this SSE connection
 	connectionId := fmt.Sprintf("%s-%d", clientId, time.Now().UnixNano())
-	
+
 	// Register SSE channel for this connection
 	eventCh := h.Client.RegisterSSEChannel(connectionId)
 	defer h.Client.UnregisterSSEChannel(connectionId)

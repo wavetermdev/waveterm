@@ -14,6 +14,7 @@ import (
 
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wstore"
+	"github.com/wavetermdev/waveterm/pkg/wps"
 )
 
 // the wcore package coordinates actions across the storage layer
@@ -85,4 +86,25 @@ func GetClientData(ctx context.Context) (*waveobj.Client, error) {
 		return nil, fmt.Errorf("error getting client data: %w", err)
 	}
 	return clientData, nil
+}
+
+func SendWaveObjUpdate(oref waveobj.ORef) {
+	ctx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancelFn()
+	// send a waveobj:update event
+	waveObj, err := wstore.DBGetORef(ctx, oref)
+	if err != nil {
+		log.Printf("error getting object for update event: %v", err)
+		return
+	}
+	wps.Broker.Publish(wps.WaveEvent{
+		Event:  wps.Event_WaveObjUpdate,
+		Scopes: []string{oref.String()},
+		Data: waveobj.WaveObjUpdate{
+			UpdateType: waveobj.UpdateType_Update,
+			OType:      waveObj.GetOType(),
+			OID:        waveobj.GetOID(waveObj),
+			Obj:        waveObj,
+		},
+	})
 }

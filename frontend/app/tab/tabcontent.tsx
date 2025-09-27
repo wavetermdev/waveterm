@@ -11,7 +11,6 @@ import * as WOS from "@/store/wos";
 import { atom, useAtomValue } from "jotai";
 import * as React from "react";
 import { useMemo } from "react";
-import "./tabcontent.scss";
 
 const tileGapSizeAtom = atom((get) => {
     const settings = get(atoms.settingsAtom);
@@ -48,34 +47,28 @@ const TabContent = React.memo(({ tabId }: { tabId: string }) => {
         } as TileLayoutContents;
     }, [tabId, tileGapSize]);
 
+    let innerContent;
+
     if (tabLoading) {
-        return (
-            <div className="tabcontent">
-                <CenteredDiv>Tab Loading</CenteredDiv>
-            </div>
-        );
-    }
-
-    if (!tabData) {
-        return (
-            <div className="tabcontent">
-                <CenteredDiv>Tab Not Found</CenteredDiv>
-            </div>
-        );
-    }
-
-    if (tabData?.blockids?.length == 0) {
-        return <div className="tabcontent tabcontent-empty"></div>;
-    }
-
-    return (
-        <div className="tabcontent">
+        innerContent = <CenteredDiv>Tab Loading</CenteredDiv>;
+    } else if (!tabData) {
+        innerContent = <CenteredDiv>Tab Not Found</CenteredDiv>;
+    } else if (tabData?.blockids?.length == 0) {
+        innerContent = null;
+    } else {
+        innerContent = (
             <TileLayout
                 key={tabId}
                 contents={tileLayoutContents}
                 tabAtom={tabAtom}
                 getCursorPoint={getApi().getCursorPoint}
             />
+        );
+    }
+
+    return (
+        <div className="flex flex-row flex-grow min-h-0 w-full items-center justify-center overflow-hidden relative pt-[3px] pr-[3px]">
+            {innerContent}
         </div>
     );
 });

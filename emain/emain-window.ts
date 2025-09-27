@@ -26,6 +26,9 @@ export type WindowOpts = {
     unamePlatform: string;
 };
 
+const MIN_WINDOW_WIDTH = 600;
+const MIN_WINDOW_HEIGHT = 350;
+
 export const waveWindowMap = new Map<string, WaveBrowserWindow>(); // waveWindowId -> WaveBrowserWindow
 
 // on blur we do not set this to null (but on destroy we do), so this tracks the *last* focused window
@@ -123,6 +126,10 @@ export class WaveBrowserWindow extends BaseWindow {
                 winHeight = 1200;
             }
         }
+        // Ensure dimensions meet minimum requirements
+        winWidth = Math.max(winWidth, MIN_WINDOW_WIDTH);
+        winHeight = Math.max(winHeight, MIN_WINDOW_HEIGHT);
+
         let winBounds = {
             x: winPosX,
             y: winPosY,
@@ -148,8 +155,8 @@ export class WaveBrowserWindow extends BaseWindow {
             y: winBounds.y,
             width: winBounds.width,
             height: winBounds.height,
-            minWidth: 400,
-            minHeight: 300,
+            minWidth: MIN_WINDOW_WIDTH,
+            minHeight: MIN_WINDOW_HEIGHT,
             icon:
                 opts.unamePlatform == "linux"
                     ? path.join(getElectronAppBasePath(), "public/logos/wave-logo-dark.png")

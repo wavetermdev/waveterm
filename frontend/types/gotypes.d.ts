@@ -199,6 +199,11 @@ declare global {
         oref: ORef;
     };
 
+    // wshrpc.CommandGetRTInfoData
+    type CommandGetRTInfoData = {
+        oref: ORef;
+    };
+
     // wshrpc.CommandMessageData
     type CommandMessageData = {
         oref: ORef;
@@ -243,6 +248,12 @@ declare global {
     type CommandSetMetaData = {
         oref: ORef;
         meta: MetaType;
+    };
+
+    // wshrpc.CommandSetRTInfoData
+    type CommandSetRTInfoData = {
+        oref: ORef;
+        data: ObjRTInfo;
     };
 
     // wshrpc.CommandVarData
@@ -572,6 +583,8 @@ declare global {
         "bg:blendmode"?: string;
         "bg:bordercolor"?: string;
         "bg:activebordercolor"?: string;
+        "waveai:panelopen"?: boolean;
+        "waveai:panelwidth"?: number;
         "term:*"?: boolean;
         "term:fontsize"?: number;
         "term:fontfamily"?: string;
@@ -595,6 +608,7 @@ declare global {
         "tsunami:sdkreplacepath"?: string;
         "tsunami:apppath"?: string;
         "tsunami:scaffoldpath"?: string;
+        "tsunami:env"?: {[key: string]: string};
         "vdom:*"?: boolean;
         "vdom:initialized"?: boolean;
         "vdom:correlationid"?: string;
@@ -618,6 +632,14 @@ declare global {
 
     // waveobj.ORef
     type ORef = string;
+
+    // waveobj.ObjRTInfo
+    type ObjRTInfo = {
+        "tsunami:title"?: string;
+        "tsunami:shortdesc"?: string;
+        "tsunami:schemas"?: any;
+        "cmd:hascurcwd"?: boolean;
+    };
 
     // iochantypes.Packet
     type Packet = {

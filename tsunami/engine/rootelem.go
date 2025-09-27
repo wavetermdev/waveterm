@@ -36,7 +36,6 @@ type genAtom interface {
 type RootElem struct {
 	Root            *ComponentImpl
 	RenderTs        int64
-	AppTitle        string
 	CFuncs          map[string]any            // component name => render function
 	CompMap         map[string]*ComponentImpl // component waveid -> component
 	EffectWorkQueue []*EffectWorkElem
@@ -88,7 +87,7 @@ func (r *RootElem) addEffectWork(id string, effectIndex int, compTag string) {
 func (r *RootElem) getAtomsByPrefix(prefix string) map[string]genAtom {
 	r.atomLock.Lock()
 	defer r.atomLock.Unlock()
-	
+
 	result := make(map[string]genAtom)
 	for atomName, atom := range r.Atoms {
 		if strings.HasPrefix(atomName, prefix) {
@@ -148,7 +147,7 @@ func (r *RootElem) cleanupUsedByForUnmount(comp *ComponentImpl) {
 			atom.SetUsedBy(comp.WaveId, false)
 		}
 	}
-	
+
 	// Clear the component's atom tracking
 	comp.UsedAtoms = nil
 }

@@ -92,6 +92,9 @@ const (
 	MetaKey_BgBorderColor                    = "bg:bordercolor"
 	MetaKey_BgActiveBorderColor              = "bg:activebordercolor"
 
+	MetaKey_WaveAiPanelOpen                  = "waveai:panelopen"
+	MetaKey_WaveAiPanelWidth                 = "waveai:panelwidth"
+
 	MetaKey_TermClear                        = "term:*"
 	MetaKey_TermFontSize                     = "term:fontsize"
 	MetaKey_TermFontFamily                   = "term:fontfamily"
@@ -118,6 +121,7 @@ const (
 	MetaKey_TsunamiSdkReplacePath            = "tsunami:sdkreplacepath"
 	MetaKey_TsunamiAppPath                   = "tsunami:apppath"
 	MetaKey_TsunamiScaffoldPath              = "tsunami:scaffoldpath"
+	MetaKey_TsunamiEnv                       = "tsunami:env"
 
 	MetaKey_VDomClear                        = "vdom:*"
 	MetaKey_VDomInitialized                  = "vdom:initialized"

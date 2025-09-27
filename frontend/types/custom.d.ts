@@ -25,9 +25,10 @@ declare global {
         allConnStatus: jotai.Atom<ConnStatus[]>;
         flashErrors: jotai.PrimitiveAtom<FlashErrorType[]>;
         notifications: jotai.PrimitiveAtom<NotificationType[]>;
-        notificationPopoverMode: jotia.atom<boolean>;
+        notificationPopoverMode: jotai.Atom<boolean>;
         reinitVersion: jotai.PrimitiveAtom<number>;
         isTermMultiInput: jotai.PrimitiveAtom<boolean>;
+        waveAIFocusedAtom: jotai.PrimitiveAtom<boolean>;
     };
 
     type WritableWaveObjectAtom<T extends WaveObj> = jotai.WritableAtom<T, [value: T], void>;
@@ -448,6 +449,25 @@ declare global {
         closeAction?: () => void;
         showDismiss?: boolean;
     };
+
+    type AIMessage = {
+        messageid: string;
+        parts: AIMessagePart[];
+    };
+
+    type AIMessagePart =
+        | {
+              type: "text";
+              text: string;
+          }
+        | {
+              type: "file";
+              mimetype: string; // required
+              filename?: string;
+              data?: string; // base64 encoded data
+              url?: string;
+              size?: number;
+          };
 }
 
 export {};

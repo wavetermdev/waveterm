@@ -43,7 +43,7 @@ const NotificationItem = ({
         }
         return (
             <Button
-                className="close-btn ghost grey vertical-padding-10"
+                className="close-btn ghost grey py-[10px]"
                 onClick={(e) => {
                     e.stopPropagation();
                     onRemove(id);
@@ -84,7 +84,7 @@ const NotificationItem = ({
                                     onClick={(e) => onActionClick(e, action, id)}
                                     className={clsx(
                                         action.color,
-                                        "vertical-padding-4 horizontal-padding-8 font-size-13 border-radius-4"
+                                        "py-[4px] px-[8px] text-[13px] rounded-[4px]"
                                     )}
                                     disabled={action.disabled}
                                 >

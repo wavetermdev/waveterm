@@ -34,6 +34,10 @@ function makeVDomIdMap(vdom: VDomElem, idMap: Map<string, VDomElem>) {
     }
 }
 
+function isBlank(v: string): boolean {
+    return v == null || v === "";
+}
+
 function annotateEvent(event: VDomEvent, propName: string, reactEvent: React.SyntheticEvent) {
     if (reactEvent == null) {
         return;
@@ -102,6 +106,8 @@ export class TsunamiModel {
     hasBackendWork: boolean = false;
     noPadding: jotai.PrimitiveAtom<boolean>;
     cachedFaviconPath: string | null = null;
+    cachedTitle: string | null = null;
+    cachedShortDesc: string | null = null;
     reason: string | null = null;
 
     constructor() {
@@ -167,6 +173,8 @@ export class TsunamiModel {
         this.globalVersion = jotai.atom(0);
         this.hasBackendWork = false;
         this.reason = null;
+        this.cachedTitle = null;
+        this.cachedShortDesc = null;
         getDefaultStore().set(this.contextActive, false);
     }
 
@@ -381,6 +389,33 @@ export class TsunamiModel {
         });
     }
 
+    logTsunamiMeta(opts: any) {
+        let hasChanges = false;
+        const logObj: { title?: string; shortdesc?: string } = {};
+
+        if (!isBlank(opts.title)) {
+            if (opts.title !== this.cachedTitle) {
+                hasChanges = true;
+                this.cachedTitle = opts.title;
+            }
+            logObj.title = opts.title;
+        }
+
+        if (!isBlank(opts.shortdesc)) {
+            if (opts.shortdesc !== this.cachedShortDesc) {
+                hasChanges = true;
+                this.cachedShortDesc = opts.shortdesc;
+            }
+            logObj.shortdesc = opts.shortdesc;
+        }
+
+        if (!hasChanges) {
+            return;
+        }
+
+        console.log("TSUNAMI_META " + JSON.stringify(logObj));
+    }
+
     handleRenderUpdates(update: VDomBackendUpdate, idMap: Map<string, VDomElem>) {
         if (!update.renderupdates) {
             return;
@@ -539,6 +574,7 @@ export class TsunamiModel {
             if (update.opts.faviconpath !== undefined) {
                 this.updateFavicon(update.opts.faviconpath);
             }
+            this.logTsunamiMeta(update.opts);
         }
         makeVDomIdMap(vdomRoot, idMap);
         this.handleRenderUpdates(update, idMap);

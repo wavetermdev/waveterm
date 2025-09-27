@@ -13,6 +13,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/joho/godotenv"
 	"github.com/wavetermdev/waveterm/pkg/authkey"
 	"github.com/wavetermdev/waveterm/pkg/blockcontroller"
 	"github.com/wavetermdev/waveterm/pkg/blocklogger"
@@ -52,6 +53,14 @@ const TelemetryInitialCountsWait = 5 * time.Second
 const TelemetryCountsInterval = 1 * time.Hour
 
 var shutdownOnce sync.Once
+
+func init() {
+	envFilePath := os.Getenv("WAVETERM_ENVFILE")
+	if envFilePath != "" {
+		log.Printf("applying env file: %s\n", envFilePath)
+		_ = godotenv.Load(envFilePath)
+	}
+}
 
 func doShutdown(reason string) {
 	shutdownOnce.Do(func() {

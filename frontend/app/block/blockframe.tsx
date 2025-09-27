@@ -215,7 +215,7 @@ const BlockFrame_Header = ({
     if (typeof headerTextUnion === "string") {
         if (!util.isBlank(headerTextUnion)) {
             headerTextElems.push(
-                <div key="text" className="block-frame-text">
+                <div key="text" className="block-frame-text ellipsis">
                     &lrm;{headerTextUnion}
                 </div>
             );
@@ -280,7 +280,7 @@ const HeaderTextElem = React.memo(({ elem, preview }: { elem: HeaderElem; previe
         return <Input decl={elem} className={clsx("block-frame-input", elem.className)} preview={preview} />;
     } else if (elem.elemtype == "text") {
         return (
-            <div className={clsx("block-frame-text", elem.className, { "flex-nogrow": elem.noGrow })}>
+            <div className={clsx("block-frame-text ellipsis", elem.className, { "flex-nogrow": elem.noGrow })}>
                 <span ref={preview ? null : elem.ref} onClick={(e) => elem?.onClick(e)}>
                     &lrm;{elem.text}
                 </span>
@@ -398,10 +398,10 @@ const ConnStatusOverlay = React.memo(
         let reconClassName = "outlined grey";
         if (width && width < 350) {
             reconDisplay = <i className="fa-sharp fa-solid fa-rotate-right"></i>;
-            reconClassName = clsx(reconClassName, "font-size-12 vertical-padding-5 horizontal-padding-6");
+            reconClassName = clsx(reconClassName, "text-[12px] py-[5px] px-[6px]");
         } else {
             reconDisplay = "Reconnect";
-            reconClassName = clsx(reconClassName, "font-size-11 vertical-padding-3 horizontal-padding-7");
+            reconClassName = clsx(reconClassName, "text-[11px] py-[3px] px-[7px]");
         }
         const showIcon = connStatus.status != "connecting";
 
@@ -440,7 +440,7 @@ const ConnStatusOverlay = React.memo(
                 <div className="connstatus-content">
                     <div className={clsx("connstatus-status-icon-wrapper", { "has-error": showError || showWshError })}>
                         {showIcon && <i className="fa-solid fa-triangle-exclamation"></i>}
-                        <div className="connstatus-status">
+                        <div className="connstatus-status ellipsis">
                             <div className="connstatus-status-text">{statusText}</div>
                             {(showError || showWshError) && (
                                 <OverlayScrollbarsComponent

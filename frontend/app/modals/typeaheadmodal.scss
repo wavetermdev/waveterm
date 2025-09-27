@@ -97,7 +97,6 @@
             }
 
             .typeahead-item-name {
-                @include mixins.ellipsis();
                 display: flex;
                 gap: 8px;
                 font-size: 11px;
