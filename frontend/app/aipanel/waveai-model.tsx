@@ -23,6 +23,7 @@ export class WaveAIModel {
     widgetAccess: jotai.PrimitiveAtom<boolean> = jotai.atom(true);
     droppedFiles: jotai.PrimitiveAtom<DroppedFile[]> = jotai.atom([]);
     chatId: jotai.PrimitiveAtom<string> = jotai.atom(crypto.randomUUID());
+    errorMessage: jotai.PrimitiveAtom<string> = jotai.atom(null) as jotai.PrimitiveAtom<string>;
 
     private constructor() {
         // Private constructor prevents direct instantiation
@@ -88,6 +89,14 @@ export class WaveAIModel {
     clearChat() {
         this.clearFiles();
         globalStore.set(this.chatId, crypto.randomUUID());
+    }
+
+    setError(message: string) {
+        globalStore.set(this.errorMessage, message);
+    }
+
+    clearError() {
+        globalStore.set(this.errorMessage, null);
     }
 
     registerInputRef(ref: React.RefObject<AIPanelInputRef>) {

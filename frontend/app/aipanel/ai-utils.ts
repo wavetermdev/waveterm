@@ -136,3 +136,52 @@ export const createDataUrl = (file: File): Promise<string> => {
         reader.readAsDataURL(file);
     });
 };
+
+export interface FileSizeError {
+    fileName: string;
+    fileSize: number;
+    maxSize: number;
+    fileType: 'text' | 'pdf' | 'image';
+}
+
+export const validateFileSize = (file: File): FileSizeError | null => {
+    const TEXT_FILE_LIMIT = 200 * 1024; // 200KB
+    const PDF_LIMIT = 5 * 1024 * 1024; // 5MB
+    const IMAGE_LIMIT = 10 * 1024 * 1024; // 10MB
+
+    if (file.type.startsWith('image/')) {
+        if (file.size > IMAGE_LIMIT) {
+            return {
+                fileName: file.name,
+                fileSize: file.size,
+                maxSize: IMAGE_LIMIT,
+                fileType: 'image'
+            };
+        }
+    } else if (file.type === 'application/pdf') {
+        if (file.size > PDF_LIMIT) {
+            return {
+                fileName: file.name,
+                fileSize: file.size,
+                maxSize: PDF_LIMIT,
+                fileType: 'pdf'
+            };
+        }
+    } else {
+        if (file.size > TEXT_FILE_LIMIT) {
+            return {
+                fileName: file.name,
+                fileSize: file.size,
+                maxSize: TEXT_FILE_LIMIT,
+                fileType: 'text'
+            };
+        }
+    }
+
+    return null;
+};
+
+export const formatFileSizeError = (error: FileSizeError): string => {
+    const typeLabel = error.fileType === 'image' ? 'Image' : error.fileType === 'pdf' ? 'PDF' : 'Text file';
+    return `${typeLabel} "${error.fileName}" is too large (${formatFileSize(error.fileSize)}). Maximum size is ${formatFileSize(error.maxSize)}.`;
+};

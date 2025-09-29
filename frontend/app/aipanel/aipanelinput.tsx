@@ -1,6 +1,8 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { formatFileSizeError, isAcceptableFile, validateFileSize } from "@/app/aipanel/ai-utils";
+import { type WaveAIModel } from "@/app/aipanel/waveai-model";
 import { atoms, globalStore } from "@/app/store/global";
 import { workspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
 import { cn } from "@/util/util";
@@ -12,6 +14,7 @@ interface AIPanelInputProps {
     setInput: (value: string) => void;
     onSubmit: (e: React.FormEvent) => void;
     status: string;
+    model: WaveAIModel;
 }
 
 export interface AIPanelInputRef {
@@ -20,9 +23,10 @@ export interface AIPanelInputRef {
 }
 
 export const AIPanelInput = memo(
-    forwardRef<AIPanelInputRef, AIPanelInputProps>(({ input, setInput, onSubmit, status }, ref) => {
+    forwardRef<AIPanelInputRef, AIPanelInputProps>(({ input, setInput, onSubmit, status, model }, ref) => {
         const isFocused = useAtomValue(atoms.waveAIFocusedAtom);
         const textareaRef = useRef<HTMLTextAreaElement>(null);
+        const fileInputRef = useRef<HTMLInputElement>(null);
         const isPanelOpen = useAtomValue(workspaceLayoutModel.panelVisibleAtom);
 
         const resizeTextarea = useCallback(() => {
@@ -68,8 +72,47 @@ export const AIPanelInput = memo(
             }
         }, [isPanelOpen, resizeTextarea]);
 
+        const handleUploadClick = () => {
+            fileInputRef.current?.click();
+        };
+
+        const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+            const files = Array.from(e.target.files || []);
+            const acceptableFiles = files.filter(isAcceptableFile);
+
+            for (const file of acceptableFiles) {
+                const sizeError = validateFileSize(file);
+                if (sizeError) {
+                    model.setError(formatFileSizeError(sizeError));
+                    if (e.target) {
+                        e.target.value = "";
+                    }
+                    return;
+                }
+                model.addFile(file);
+            }
+
+            if (acceptableFiles.length < files.length) {
+                console.warn(
+                    `${files.length - acceptableFiles.length} files were rejected due to unsupported file types`
+                );
+            }
+
+            if (e.target) {
+                e.target.value = "";
+            }
+        };
+
         return (
             <div className={cn("border-t", isFocused ? "border-accent/50" : "border-gray-600")}>
+                <input
+                    ref={fileInputRef}
+                    type="file"
+                    multiple
+                    accept="image/*,.pdf,.txt,.md,.js,.jsx,.ts,.tsx,.go,.py,.java,.c,.cpp,.h,.hpp,.html,.css,.scss,.sass,.json,.xml,.yaml,.yml,.sh,.bat,.sql"
+                    onChange={handleFileChange}
+                    className="hidden"
+                />
                 <form onSubmit={onSubmit}>
                     <div className="relative">
                         <textarea
@@ -81,12 +124,21 @@ export const AIPanelInput = memo(
                             onBlur={handleBlur}
                             placeholder="Ask Wave AI anything..."
                             className={cn(
-                                "w-full  text-white px-2 py-2 pr-6 focus:outline-none resize-none overflow-hidden",
+                                "w-full  text-white px-2 py-2 pr-12 focus:outline-none resize-none overflow-hidden",
                                 isFocused ? "bg-accent-900/50" : "bg-gray-800"
                             )}
                             style={{ fontSize: "13px" }}
                             rows={2}
                         />
+                        <button
+                            type="button"
+                            onClick={handleUploadClick}
+                            className={cn(
+                                "absolute bottom-6 right-1 w-3.5 h-3.5 transition-colors flex items-center justify-center text-gray-400 hover:text-accent cursor-pointer"
+                            )}
+                        >
+                            <i className="fa fa-paperclip text-xs"></i>
+                        </button>
                         <button
                             type="submit"
                             disabled={status !== "ready" || !input.trim()}

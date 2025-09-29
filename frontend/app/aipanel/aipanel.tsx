@@ -11,7 +11,7 @@ import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import * as jotai from "jotai";
 import { memo, useEffect, useRef, useState } from "react";
-import { createDataUrl, isAcceptableFile, normalizeMimeType } from "./ai-utils";
+import { createDataUrl, formatFileSizeError, isAcceptableFile, normalizeMimeType, validateFileSize } from "./ai-utils";
 import { AIDroppedFiles } from "./aidroppedfiles";
 import { AIPanelHeader } from "./aipanelheader";
 import { AIPanelInput, type AIPanelInputRef } from "./aipanelinput";
@@ -27,8 +27,8 @@ interface AIPanelProps {
 const AIPanelComponent = memo(({ className, onClose }: AIPanelProps) => {
     const [input, setInput] = useState("");
     const [isDragOver, setIsDragOver] = useState(false);
-    const [errorMessage, setErrorMessage] = useState<string>("");
     const model = WaveAIModel.getInstance();
+    const errorMessage = jotai.useAtomValue(model.errorMessage);
     const realMessageRef = useRef<AIMessage>(null);
     const inputRef = useRef<AIPanelInputRef>(null);
     const isLayoutMode = jotai.useAtomValue(atoms.controlShiftDelayAtom);
@@ -54,8 +54,7 @@ const AIPanelComponent = memo(({ className, onClose }: AIPanelProps) => {
         }),
         onError: (error) => {
             console.error("AI Chat error:", error);
-            setErrorMessage(error.message || "An error occurred");
-            // Remove the last user message that failed to send
+            model.setError(error.message || "An error occurred");
             setMessages((prevMessages) => {
                 if (prevMessages.length > 0 && prevMessages[prevMessages.length - 1].role === "user") {
                     return prevMessages.slice(0, -1);
@@ -96,8 +95,7 @@ const AIPanelComponent = memo(({ className, onClose }: AIPanelProps) => {
         e.preventDefault();
         if (!input.trim() || status !== "ready") return;
 
-        // Clear any previous error when submitting
-        setErrorMessage("");
+        model.clearError();
 
         const droppedFiles = globalStore.get(model.droppedFiles) as DroppedFile[];
 
@@ -203,9 +201,14 @@ const AIPanelComponent = memo(({ className, onClose }: AIPanelProps) => {
         const files = Array.from(e.dataTransfer.files);
         const acceptableFiles = files.filter(isAcceptableFile);
 
-        acceptableFiles.forEach((file) => {
+        for (const file of acceptableFiles) {
+            const sizeError = validateFileSize(file);
+            if (sizeError) {
+                model.setError(formatFileSizeError(sizeError));
+                return;
+            }
             model.addFile(file);
-        });
+        }
 
         if (acceptableFiles.length < files.length) {
             console.warn(`${files.length - acceptableFiles.length} files were rejected due to unsupported file types`);
@@ -291,8 +294,15 @@ const AIPanelComponent = memo(({ className, onClose }: AIPanelProps) => {
                     <>
                         <AIPanelMessages messages={messages} status={status} />
                         {errorMessage && (
-                            <div className="px-4 py-2 text-red-400 bg-red-900/20 border-l-4 border-red-500 mx-2 mb-2">
-                                <div className="text-sm">{errorMessage}</div>
+                            <div className="px-4 py-2 text-red-400 bg-red-900/20 border-l-4 border-red-500 mx-2 mb-2 relative">
+                                <button
+                                    onClick={() => model.clearError()}
+                                    className="absolute top-2 right-2 text-red-400 hover:text-red-300 cursor-pointer z-10"
+                                    aria-label="Close error"
+                                >
+                                    <i className="fa fa-times text-sm"></i>
+                                </button>
+                                <div className="text-sm pr-6 max-h-[100px] overflow-y-auto">{errorMessage}</div>
                             </div>
                         )}
                         <AIDroppedFiles model={model} />
@@ -302,6 +312,7 @@ const AIPanelComponent = memo(({ className, onClose }: AIPanelProps) => {
                             setInput={setInput}
                             onSubmit={handleSubmit}
                             status={status}
+                            model={model}
                         />
                     </>
                 )}
