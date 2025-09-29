@@ -29,6 +29,7 @@ type OpenAIChatMessage struct {
 	Message            *OpenAIMessage                 `json:"message,omitempty"`
 	FunctionCall       *OpenAIFunctionCallInput       `json:"functioncall,omitempty"`
 	FunctionCallOutput *OpenAIFunctionCallOutputInput `json:"functioncalloutput,omitempty"`
+	Usage              *OpenAIUsage
 }
 
 type OpenAIMessage struct {
@@ -83,6 +84,18 @@ type openAIErrorType struct {
 
 func (m *OpenAIChatMessage) GetMessageId() string {
 	return m.MessageId
+}
+
+func (m *OpenAIChatMessage) GetUsage() *uctypes.AIUsage {
+	if m.Usage == nil {
+		return nil
+	}
+	return &uctypes.AIUsage{
+		APIType:      "openai",
+		Model:        m.Usage.Model,
+		InputTokens:  m.Usage.InputTokens,
+		OutputTokens: m.Usage.OutputTokens,
+	}
 }
 
 // ---------- OpenAI SSE Event Types ----------
@@ -203,7 +216,7 @@ type openaiResponse struct {
 	TopLogprobs        int                    `json:"top_logprobs"`
 	TopP               float64                `json:"top_p"`
 	Truncation         string                 `json:"truncation"`
-	Usage              *openaiUsage           `json:"usage"`
+	Usage              *OpenAIUsage           `json:"usage"`
 	User               *string                `json:"user"`
 	Metadata           map[string]interface{} `json:"metadata"`
 }
@@ -236,12 +249,13 @@ type openaiTextFormat struct {
 	Type string `json:"type"`
 }
 
-type openaiUsage struct {
-	InputTokens         int                       `json:"input_tokens"`
-	InputTokensDetails  openaiInputTokensDetails  `json:"input_tokens_details"`
-	OutputTokens        int                       `json:"output_tokens"`
-	OutputTokensDetails openaiOutputTokensDetails `json:"output_tokens_details"`
-	TotalTokens         int                       `json:"total_tokens"`
+type OpenAIUsage struct {
+	InputTokens         int                        `json:"input_tokens,omitempty"`
+	OutputTokens        int                        `json:"output_tokens,omitempty"`
+	TotalTokens         int                        `json:"total_tokens,omitempty"`
+	InputTokensDetails  *openaiInputTokensDetails  `json:"input_tokens_details,omitempty"`
+	OutputTokensDetails *openaiOutputTokensDetails `json:"output_tokens_details,omitempty"`
+	Model               string                     `json:"model,omitempty"` // internal field (not from OpenAI API)
 }
 
 type openaiInputTokensDetails struct {
@@ -759,12 +773,17 @@ func extractMessageAndToolsFromResponse(resp openaiResponse) ([]*OpenAIChatMessa
 	}
 
 	// Create OpenAIChatMessage with assistant message (first in slice)
+	if resp.Usage != nil {
+		resp.Usage.Model = resp.Model
+	}
+	
 	assistantMessage := &OpenAIChatMessage{
 		MessageId: uuid.New().String(),
 		Message: &OpenAIMessage{
 			Role:    "assistant",
 			Content: messageContent,
 		},
+		Usage: resp.Usage,
 	}
 
 	// Return assistant message first, followed by function call messages

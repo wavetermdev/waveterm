@@ -36,13 +36,27 @@ const (
 // Derived from anthropic-messages-api.md and anthropic-streaming.md. :contentReference[oaicite:6]{index=6} :contentReference[oaicite:7]{index=7}
 
 type anthropicChatMessage struct {
-	MessageId string                         `json:"messageid"` // internal field for idempotency (cannot send to anthropic)
+	MessageId string                         `json:"messageid"`       // internal field for idempotency (cannot send to anthropic)
+	Usage     *anthropicUsageType            `json:"usage,omitempty"` // internal field (cannot send to anthropic)
 	Role      string                         `json:"role"`
 	Content   []anthropicMessageContentBlock `json:"content"`
 }
 
 func (m *anthropicChatMessage) GetMessageId() string {
 	return m.MessageId
+}
+
+func (m *anthropicChatMessage) GetUsage() *uctypes.AIUsage {
+	if m.Usage == nil {
+		return nil
+	}
+	
+	return &uctypes.AIUsage{
+		APIType:      "anthropic",
+		Model:        m.Usage.Model,
+		InputTokens:  m.Usage.InputTokens,
+		OutputTokens: m.Usage.OutputTokens,
+	}
 }
 
 type anthropicInputMessage struct {
@@ -59,8 +73,10 @@ type anthropicMessageContentBlock struct {
 	CacheControl *anthropicCacheControl `json:"cache_control,omitempty"`
 
 	// Text content
-	Text      string              `json:"text,omitempty"`
-	Citations []anthropicCitation `json:"citations,omitempty"`
+	Text string `json:"text,omitempty"`
+
+	// not going to support citations now
+	// Citations []anthropicCitation `json:"citations,omitempty"`
 
 	// Image+File content
 	Source *anthropicSource `json:"source,omitempty"`
@@ -190,8 +206,29 @@ type anthropicDeltaType struct {
 	StopSeq     *string `json:"stop_sequence,omitempty"` // message_delta.delta.stop_sequence
 }
 
+type anthropicCacheCreationType struct {
+	Ephemeral1hInputTokens int `json:"ephemeral_1h_input_tokens,omitempty"` // default: 0
+	Ephemeral5mInputTokens int `json:"ephemeral_5m_input_tokens,omitempty"` // default: 0
+}
+
+type anthropicServerToolUseType struct {
+	WebFetchRequests  int `json:"web_fetch_requests,omitempty"`  // default: 0
+	WebSearchRequests int `json:"web_search_requests,omitempty"` // default: 0
+}
+
 type anthropicUsageType struct {
-	OutputTokens int `json:"output_tokens,omitempty"` // cumulative
+	InputTokens              int `json:"input_tokens,omitempty"`  // cumulative
+	OutputTokens             int `json:"output_tokens,omitempty"` // cumulative
+	CacheCreationInputTokens int `json:"cache_creation_input_tokens,omitempty"`
+	CacheReadInputTokens     int `json:"cache_read_input_tokens,omitempty"`
+	
+	// internal field for Wave use (not sent to API)
+	Model string `json:"model,omitempty"`
+
+	// for reference, but we dont keep thsese up to date or track them
+	CacheCreation *anthropicCacheCreationType `json:"cache_creation,omitempty"`  // breakdown of cached tokens by TTL
+	ServerToolUse *anthropicServerToolUseType `json:"server_tool_use,omitempty"` // server tool requests
+	ServiceTier   *string                     `json:"service_tier,omitempty"`    // standard, priority, or batch
 }
 
 type anthropicErrorType struct {
@@ -254,6 +291,7 @@ type streamingState struct {
 	model         string
 	stepStarted   bool
 	rtnMessage    *anthropicChatMessage
+	usage         *anthropicUsageType
 }
 
 func (p *partialJSON) Write(s string) {
@@ -469,6 +507,13 @@ func handleAnthropicStreamingResp(
 
 	// Ensure step is closed on error/cancellation
 	defer func() {
+		// Set usage in the returned message
+		if state.usage != nil {
+			// Set model in usage for internal use
+			state.usage.Model = state.model
+			state.rtnMessage.Usage = state.usage
+		}
+		
 		if !state.stepStarted {
 			return
 		}
@@ -577,6 +622,10 @@ func handleAnthropicEvent(
 		if ev.Message != nil {
 			state.msgID = ev.Message.ID
 			state.model = ev.Message.Model
+		}
+		// Initialize usage from message_start event
+		if ev.Usage != nil {
+			state.usage = ev.Usage
 		}
 		if cont == nil {
 			_ = sse.AiMsgStart(state.msgID)
@@ -744,6 +793,25 @@ func handleAnthropicEvent(
 		}
 		if ev.Delta != nil && ev.Delta.StopReason != nil {
 			stopFromDelta = ev.Delta.StopReason
+		}
+		// Update cumulative usage from message_delta event
+		if ev.Usage != nil {
+			if state.usage == nil {
+				state.usage = &anthropicUsageType{}
+			}
+			// Update the fields we track (cumulative values)
+			if ev.Usage.InputTokens > 0 {
+				state.usage.InputTokens = ev.Usage.InputTokens
+			}
+			if ev.Usage.OutputTokens > 0 {
+				state.usage.OutputTokens = ev.Usage.OutputTokens
+			}
+			if ev.Usage.CacheCreationInputTokens > 0 {
+				state.usage.CacheCreationInputTokens = ev.Usage.CacheCreationInputTokens
+			}
+			if ev.Usage.CacheReadInputTokens > 0 {
+				state.usage.CacheReadInputTokens = ev.Usage.CacheReadInputTokens
+			}
 		}
 		return stopFromDelta, nil
 

@@ -154,10 +154,18 @@ type AIChat struct {
 	NativeMessages []GenAIMessage `json:"nativemessages"`
 }
 
+type AIUsage struct {
+	APIType      string `json:"apitype"`
+	Model        string `json:"model"`
+	InputTokens  int    `json:"inputtokens,omitempty"`
+	OutputTokens int    `json:"outputtokens,omitempty"`
+}
+
 // GenAIMessage interface for messages stored in conversations
 // All messages must have a unique identifier for idempotency checks
 type GenAIMessage interface {
 	GetMessageId() string
+	GetUsage() *AIUsage
 }
 
 const (

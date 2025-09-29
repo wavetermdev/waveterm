@@ -103,6 +103,30 @@ func runAIChatStep(ctx context.Context, sseHandler *sse.SSEHandlerCh, chatOpts u
 	return nil, nil, fmt.Errorf("Invalid APIType %q", chatOpts.Config.APIType)
 }
 
+func getUsage(msgs []uctypes.GenAIMessage) uctypes.AIUsage {
+	var rtn uctypes.AIUsage
+	var found bool
+	for _, msg := range msgs {
+		if usage := msg.GetUsage(); usage != nil {
+			if !found {
+				rtn = *usage
+				found = true
+			} else {
+				rtn.InputTokens += usage.InputTokens
+				rtn.OutputTokens += usage.OutputTokens
+			}
+		}
+	}
+	return rtn
+}
+
+func GetChatUsage(chat *uctypes.AIChat) uctypes.AIUsage {
+	usage := getUsage(chat.NativeMessages)
+	usage.APIType = chat.APIType
+	usage.Model = chat.Model
+	return usage
+}
+
 func RunAIChat(ctx context.Context, sseHandler *sse.SSEHandlerCh, chatOpts uctypes.WaveChatOpts) error {
 	log.Printf("RunAIChat\n")
 	firstStep := true
@@ -116,6 +140,10 @@ func RunAIChat(ctx context.Context, sseHandler *sse.SSEHandlerCh, chatOpts uctyp
 			}
 		}
 		stopReason, rtnMessage, err := runAIChatStep(ctx, sseHandler, chatOpts, cont)
+		if len(rtnMessage) > 0 {
+			usage := getUsage(rtnMessage)
+			log.Printf("usage: input=%d output=%d\n", usage.InputTokens, usage.OutputTokens)
+		}
 		if firstStep && err != nil {
 			return fmt.Errorf("failed to stream %s chat: %w", chatOpts.Config.APIType, err)
 		}

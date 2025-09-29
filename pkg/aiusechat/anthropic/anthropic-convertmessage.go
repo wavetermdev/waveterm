@@ -263,7 +263,8 @@ func convertPartToAnthropicBlocks(p uctypes.UIMessagePart, role string, blockInd
 			Signature: signatureStr,
 		}}, nil
 	} else if p.Type == "source-url" || p.Type == "source-document" {
-		return convertSourceToAnthropicBlocks(p, blockIndex)
+		// no longer convert citations
+		return nil, nil
 	} else if p.Type == "step-start" {
 		// Omit step-start parts from Anthropic
 		return nil, nil
@@ -414,45 +415,6 @@ func convertFileUIMessagePart(p uctypes.UIMessagePart) (*anthropicMessageContent
 		return nil, fmt.Errorf("dropping file with unsupported media type '%s' (must be uploaded to Files API and sent as file_id)", p.MediaType)
 	}
 
-}
-
-// convertSourceToAnthropicBlocks converts source-url or source-document parts to Anthropic blocks
-func convertSourceToAnthropicBlocks(p uctypes.UIMessagePart, blockIndex int) ([]anthropicMessageContentBlock, error) {
-	var sourceBlock anthropicMessageContentBlock
-
-	if p.Type == "source-url" {
-		// Convert source-url to web_search_result block
-		sourceBlock = anthropicMessageContentBlock{
-			Type:  "web_search_result",
-			URL:   p.URL,
-			Title: p.Title,
-		}
-	} else if p.Type == "source-document" {
-		// Convert source-document to document block
-		sourceBlock = anthropicMessageContentBlock{
-			Type:  "document",
-			Title: p.Title,
-			Source: &anthropicSource{
-				Type:      "text", // assuming text content for now
-				MediaType: p.MediaType,
-			},
-		}
-	} else {
-		return nil, fmt.Errorf("convertSourceToAnthropicBlocks expects 'source-url' or 'source-document', got '%s'", p.Type)
-	}
-
-	// Create citation text block pointing to the source block
-	citationBlock := anthropicMessageContentBlock{
-		Type: "text",
-		Text: "",
-		Citations: []anthropicCitation{{
-			Type:          "source",
-			DocumentIndex: blockIndex,
-			DocumentTitle: p.Title,
-		}},
-	}
-
-	return []anthropicMessageContentBlock{sourceBlock, citationBlock}, nil
 }
 
 // convertAIMessageToAnthropicChatMessage converts an AIMessage to anthropicChatMessage
