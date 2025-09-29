@@ -369,6 +369,19 @@ electron.ipcMain.on("quicklook", (event, filePath: string) => {
     }
 });
 
+electron.ipcMain.handle("clear-webview-storage", async (event, webContentsId: number) => {
+    try {
+        const wc = electron.webContents.fromId(webContentsId);
+        if (wc && wc.session) {
+            await wc.session.clearStorageData();
+            console.log("Cleared cookies and storage for webContentsId:", webContentsId);
+        }
+    } catch (e) {
+        console.error("Failed to clear cookies and storage:", e);
+        throw e;
+    }
+});
+
 electron.ipcMain.on("open-native-path", (event, filePath: string) => {
     console.log("open-native-path", filePath);
     filePath = filePath.replace("~", electronApp.getPath("home"));
