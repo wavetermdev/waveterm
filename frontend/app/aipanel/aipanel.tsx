@@ -95,6 +95,12 @@ const AIPanelComponent = memo(({ className, onClose }: AIPanelProps) => {
         e.preventDefault();
         if (!input.trim() || status !== "ready") return;
 
+        if (input.trim() === "/clear" || input.trim() === "/new") {
+            clearChat();
+            setInput("");
+            return;
+        }
+
         model.clearError();
 
         const droppedFiles = globalStore.get(model.droppedFiles) as DroppedFile[];
