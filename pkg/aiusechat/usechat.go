@@ -28,7 +28,7 @@ const (
 )
 
 const DefaultAPI = APIType_OpenAI
-const DefaultAnthropicModel = "claude-sonnet-4-20250514"
+const DefaultAnthropicModel = "claude-sonnet-4-5"
 const DefaultAIEndpoint = "https://cfapi.waveterm.dev/api/waveai"
 const DefaultMaxTokens = 4 * 1024
 const DefaultOpenAIModel = "gpt-5-mini"

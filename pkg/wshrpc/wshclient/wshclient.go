@@ -550,6 +550,12 @@ func WaitForRouteCommand(w *wshutil.WshRpc, data wshrpc.CommandWaitForRouteData,
 	return resp, err
 }
 
+// command "waveaienabletelemetry", wshserver.WaveAIEnableTelemetryCommand
+func WaveAIEnableTelemetryCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) error {
+	_, err := sendRpcRequestCallHelper[any](w, "waveaienabletelemetry", nil, opts)
+	return err
+}
+
 // command "waveinfo", wshserver.WaveInfoCommand
 func WaveInfoCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) (*wshrpc.WaveInfoData, error) {
 	resp, err := sendRpcRequestCallHelper[*wshrpc.WaveInfoData](w, "waveinfo", nil, opts)

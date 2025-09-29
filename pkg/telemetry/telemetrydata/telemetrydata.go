@@ -14,20 +14,21 @@ import (
 )
 
 var ValidEventNames = map[string]bool{
-	"app:startup":        true,
-	"app:shutdown":       true,
-	"app:activity":       true,
-	"app:display":        true,
-	"app:counts":         true,
-	"action:magnify":     true,
-	"action:settabtheme": true,
-	"action:runaicmd":    true,
-	"action:createtab":   true,
-	"action:createblock": true,
-	"wsh:run":            true,
-	"debug:panic":        true,
-	"conn:connect":       true,
-	"conn:connecterror":  true,
+	"app:startup":            true,
+	"app:shutdown":           true,
+	"app:activity":           true,
+	"app:display":            true,
+	"app:counts":             true,
+	"action:magnify":         true,
+	"action:settabtheme":     true,
+	"action:runaicmd":        true,
+	"action:createtab":       true,
+	"action:createblock":     true,
+	"wsh:run":                true,
+	"debug:panic":            true,
+	"conn:connect":           true,
+	"conn:connecterror":      true,
+	"waveai:enabletelemetry": true,
 }
 
 type TEvent struct {

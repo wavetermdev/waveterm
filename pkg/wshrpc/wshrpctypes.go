@@ -136,7 +136,8 @@ const (
 	Command_VDomRender          = "vdomrender"
 	Command_VDomUrlRequest      = "vdomurlrequest"
 
-	Command_AiSendMessage = "aisendmessage"
+	Command_AiSendMessage           = "aisendmessage"
+	Command_WaveAIEnableTelemetry   = "waveaienabletelemetry"
 
 	Command_GetRTInfo = "getrtinfo"
 	Command_SetRTInfo = "setrtinfo"
@@ -258,6 +259,7 @@ type WshRpcInterface interface {
 
 	// ai
 	AiSendMessageCommand(ctx context.Context, data AiMessageData) error
+	WaveAIEnableTelemetryCommand(ctx context.Context) error
 
 	// rtinfo
 	GetRTInfoCommand(ctx context.Context, data CommandGetRTInfoData) (*waveobj.ObjRTInfo, error)

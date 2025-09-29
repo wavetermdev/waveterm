@@ -168,7 +168,6 @@ func (ws *WshServer) SetRTInfoCommand(ctx context.Context, data wshrpc.CommandSe
 	return nil
 }
 
-
 func (ws *WshServer) ResolveIdsCommand(ctx context.Context, data wshrpc.CommandResolveIdsData) (wshrpc.CommandResolveIdsRtnData, error) {
 	rtn := wshrpc.CommandResolveIdsRtnData{}
 	rtn.ResolvedIds = make(map[string]waveobj.ORef)
@@ -827,6 +826,48 @@ func (ws WshServer) SendTelemetryCommand(ctx context.Context) error {
 		return fmt.Errorf("getting client data for telemetry: %v", err)
 	}
 	return wcloud.SendAllTelemetry(ctx, client.OID)
+}
+
+func (ws *WshServer) WaveAIEnableTelemetryCommand(ctx context.Context) error {
+	// Enable telemetry in config
+	meta := waveobj.MetaMapType{
+		wconfig.ConfigKey_TelemetryEnabled: true,
+	}
+	err := wconfig.SetBaseConfigValue(meta)
+	if err != nil {
+		return fmt.Errorf("error setting telemetry enabled: %w", err)
+	}
+
+	// Get client for telemetry operations
+	client, err := wstore.DBGetSingleton[*waveobj.Client](ctx)
+	if err != nil {
+		return fmt.Errorf("getting client data for telemetry: %v", err)
+	}
+
+	// Send no-telemetry update to cloud (async)
+	go func() {
+		ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancelFn()
+		err := wcloud.SendNoTelemetryUpdate(ctx, client.OID, false) // false means telemetry is enabled
+		if err != nil {
+			log.Printf("error sending no-telemetry update: %v", err)
+		}
+	}()
+
+	// Record the telemetry event
+	event := telemetrydata.MakeTEvent("waveai:enabletelemetry", telemetrydata.TEventProps{})
+	err = telemetry.RecordTEvent(ctx, event)
+	if err != nil {
+		log.Printf("error recording waveai:enabletelemetry event: %v", err)
+	}
+
+	// Immediately send telemetry to cloud
+	err = wcloud.SendAllTelemetry(ctx, client.OID)
+	if err != nil {
+		log.Printf("error sending telemetry after enabling: %v", err)
+	}
+
+	return nil
 }
 
 var wshActivityRe = regexp.MustCompile(`^[a-z:#]+$`)

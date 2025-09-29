@@ -23,6 +23,11 @@ import (
 //go:embed testschema.json
 var testSchemaJSON string
 
+const (
+	DefaultAnthropicModel = "claude-sonnet-4-5"
+	DefaultOpenAIModel    = "gpt-5"
+)
+
 // TestResponseWriter implements http.ResponseWriter and additional interfaces for testing
 type TestResponseWriter struct {
 	header http.Header
@@ -203,13 +208,13 @@ func testAnthropic(ctx context.Context, model, message string, tools []uctypes.T
 func testT1(ctx context.Context) {
 	tool := aiusechat.GetAdderToolDefinition()
 	tools := []uctypes.ToolDefinition{tool}
-	testAnthropic(ctx, "claude-sonnet-4-20250514", "what is 2+2, use the provider adder tool", tools)
+	testAnthropic(ctx, DefaultAnthropicModel, "what is 2+2, use the provider adder tool", tools)
 }
 
 func testT2(ctx context.Context) {
 	tool := aiusechat.GetAdderToolDefinition()
 	tools := []uctypes.ToolDefinition{tool}
-	testOpenAI(ctx, "gpt-5", "what is 2+2+8, use the provider adder tool", tools)
+	testOpenAI(ctx, DefaultOpenAIModel, "what is 2+2+8, use the provider adder tool", tools)
 }
 
 func printUsage() {
@@ -222,8 +227,8 @@ func printUsage() {
 	fmt.Println("  go run main-testai.go --tools 'Help me configure GitHub Actions monitoring'")
 	fmt.Println("")
 	fmt.Println("Default models:")
-	fmt.Println("  OpenAI: gpt-5")
-	fmt.Println("  Anthropic: claude-sonnet-4-20250514")
+	fmt.Printf("  OpenAI: %s\n", DefaultOpenAIModel)
+	fmt.Printf("  Anthropic: %s\n", DefaultAnthropicModel)
 	fmt.Println("")
 	fmt.Println("Environment variables:")
 	fmt.Println("  OPENAI_APIKEY (for OpenAI models)")
@@ -235,10 +240,10 @@ func main() {
 	var model string
 	flag.BoolVar(&anthropic, "anthropic", false, "Use Anthropic API instead of OpenAI")
 	flag.BoolVar(&tools, "tools", false, "Enable GitHub Actions Monitor tools for testing")
-	flag.StringVar(&model, "model", "", "AI model to use (defaults: gpt-5 for OpenAI, claude-sonnet-4-20250514 for Anthropic)")
+	flag.StringVar(&model, "model", "", fmt.Sprintf("AI model to use (defaults: %s for OpenAI, %s for Anthropic)", DefaultOpenAIModel, DefaultAnthropicModel))
 	flag.BoolVar(&help, "help", false, "Show usage information")
-	flag.BoolVar(&t1, "t1", false, "Run preset T1 test (claude-sonnet-4-20250514 with 'what is 2+2')")
-	flag.BoolVar(&t2, "t2", false, "Run preset T2 test (gpt-5 with 'what is 2+2')")
+	flag.BoolVar(&t1, "t1", false, fmt.Sprintf("Run preset T1 test (%s with 'what is 2+2')", DefaultAnthropicModel))
+	flag.BoolVar(&t2, "t2", false, fmt.Sprintf("Run preset T2 test (%s with 'what is 2+2')", DefaultOpenAIModel))
 	flag.Parse()
 
 	if help {
@@ -261,9 +266,9 @@ func main() {
 	// Set default model based on API type if not provided
 	if model == "" {
 		if anthropic {
-			model = "claude-sonnet-4-20250514"
+			model = DefaultAnthropicModel
 		} else {
-			model = "gpt-5"
+			model = DefaultOpenAIModel
 		}
 	}
 

@@ -16,6 +16,7 @@ import { AIDroppedFiles } from "./aidroppedfiles";
 import { AIPanelHeader } from "./aipanelheader";
 import { AIPanelInput, type AIPanelInputRef } from "./aipanelinput";
 import { AIPanelMessages } from "./aipanelmessages";
+import { TelemetryRequiredMessage } from "./telemetryrequired";
 import { WaveAIModel, type DroppedFile } from "./waveai-model";
 
 interface AIPanelProps {
@@ -33,6 +34,7 @@ const AIPanelComponent = memo(({ className, onClose }: AIPanelProps) => {
     const isLayoutMode = jotai.useAtomValue(atoms.controlShiftDelayAtom);
     const showOverlayBlockNums = jotai.useAtomValue(getSettingsKeyAtom("app:showoverlayblocknums")) ?? true;
     const isInputFocused = jotai.useAtomValue(atoms.waveAIFocusedAtom);
+    const telemetryEnabled = jotai.useAtomValue(getSettingsKeyAtom("telemetry:enabled")) ?? false;
 
     const { messages, sendMessage, status, setMessages, error } = useChat({
         transport: new DefaultChatTransport({
@@ -283,20 +285,26 @@ const AIPanelComponent = memo(({ className, onClose }: AIPanelProps) => {
             <AIPanelHeader onClose={onClose} model={model} />
 
             <div key="main-content" className="flex-1 flex flex-col min-h-0">
-                <AIPanelMessages messages={messages} status={status} />
-                {errorMessage && (
-                    <div className="px-4 py-2 text-red-400 bg-red-900/20 border-l-4 border-red-500 mx-2 mb-2">
-                        <div className="text-sm">{errorMessage}</div>
-                    </div>
+                {!telemetryEnabled ? (
+                    <TelemetryRequiredMessage />
+                ) : (
+                    <>
+                        <AIPanelMessages messages={messages} status={status} />
+                        {errorMessage && (
+                            <div className="px-4 py-2 text-red-400 bg-red-900/20 border-l-4 border-red-500 mx-2 mb-2">
+                                <div className="text-sm">{errorMessage}</div>
+                            </div>
+                        )}
+                        <AIDroppedFiles model={model} />
+                        <AIPanelInput
+                            ref={inputRef}
+                            input={input}
+                            setInput={setInput}
+                            onSubmit={handleSubmit}
+                            status={status}
+                        />
+                    </>
                 )}
-                <AIDroppedFiles model={model} />
-                <AIPanelInput
-                    ref={inputRef}
-                    input={input}
-                    setInput={setInput}
-                    onSubmit={handleSubmit}
-                    status={status}
-                />
             </div>
         </div>
     );
