@@ -21,6 +21,7 @@ export interface AIPanelInputRef {
 
 export const AIPanelInput = memo(
     forwardRef<AIPanelInputRef, AIPanelInputProps>(({ input, setInput, onSubmit, status }, ref) => {
+        const isFocused = useAtomValue(atoms.waveAIFocusedAtom);
         const textareaRef = useRef<HTMLTextAreaElement>(null);
         const isPanelOpen = useAtomValue(workspaceLayoutModel.panelVisibleAtom);
 
@@ -68,7 +69,7 @@ export const AIPanelInput = memo(
         }, [isPanelOpen, resizeTextarea]);
 
         return (
-            <div className="border-t border-gray-600">
+            <div className={cn("border-t", isFocused ? "border-accent/50" : "border-gray-600")}>
                 <form onSubmit={onSubmit}>
                     <div className="relative">
                         <textarea
@@ -79,7 +80,10 @@ export const AIPanelInput = memo(
                             onFocus={handleFocus}
                             onBlur={handleBlur}
                             placeholder="Ask Wave AI anything..."
-                            className="w-full bg-gray-800 text-white px-2 py-2 pr-6 focus:outline-none resize-none overflow-hidden"
+                            className={cn(
+                                "w-full  text-white px-2 py-2 pr-6 focus:outline-none resize-none overflow-hidden",
+                                isFocused ? "bg-accent-900/50" : "bg-gray-800"
+                            )}
                             style={{ fontSize: "13px" }}
                             rows={2}
                         />

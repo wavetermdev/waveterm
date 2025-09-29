@@ -33,7 +33,7 @@ const AIPanelComponent = memo(({ className, onClose }: AIPanelProps) => {
     const inputRef = useRef<AIPanelInputRef>(null);
     const isLayoutMode = jotai.useAtomValue(atoms.controlShiftDelayAtom);
     const showOverlayBlockNums = jotai.useAtomValue(getSettingsKeyAtom("app:showoverlayblocknums")) ?? true;
-    const isInputFocused = jotai.useAtomValue(atoms.waveAIFocusedAtom);
+    const isFocused = jotai.useAtomValue(atoms.waveAIFocusedAtom);
     const telemetryEnabled = jotai.useAtomValue(getSettingsKeyAtom("telemetry:enabled")) ?? false;
 
     const { messages, sendMessage, status, setMessages, error } = useChat({
@@ -163,7 +163,7 @@ const AIPanelComponent = memo(({ className, onClose }: AIPanelProps) => {
     const handleDragOver = (e: React.DragEvent) => {
         e.preventDefault();
         e.stopPropagation();
-        
+
         const hasFiles = hasFilesDragged(e.dataTransfer);
         if (hasFiles && !isDragOver) {
             setIsDragOver(true);
@@ -175,7 +175,7 @@ const AIPanelComponent = memo(({ className, onClose }: AIPanelProps) => {
     const handleDragEnter = (e: React.DragEvent) => {
         e.preventDefault();
         e.stopPropagation();
-        
+
         if (hasFilesDragged(e.dataTransfer)) {
             setIsDragOver(true);
         }
@@ -235,15 +235,15 @@ const AIPanelComponent = memo(({ className, onClose }: AIPanelProps) => {
     return (
         <div
             className={cn(
-                "bg-gray-900 flex flex-col relative h-[calc(100%-3px)] mt-1",
+                "bg-gray-900 flex flex-col relative h-[calc(100%-4px)] mt-1",
                 className,
                 isDragOver && "bg-gray-800 border-accent",
-                isInputFocused ? "border-t border-accent" : "border-t border-gray-600"
+                isFocused ? "border-2 border-accent" : "border-2 border-transparent"
             )}
             style={{
-                borderRight: isInputFocused ? "1px solid var(--accent-color)" : "1px solid rgb(75, 85, 99)",
-                borderTopRightRadius: "var(--block-border-radius)",
-                borderBottomRightRadius: "var(--block-border-radius)",
+                borderTopRightRadius: 10,
+                borderBottomRightRadius: 10,
+                borderBottomLeftRadius: 10,
             }}
             onDragOver={handleDragOver}
             onDragEnter={handleDragEnter}
