@@ -60,16 +60,36 @@ type OpenAIFunctionCallErrorOutput struct {
 }
 
 type OpenAIMessageContent struct {
-	Type     string `json:"type"` // "input_text", "output_text", "input_image", "input_file", "function_call"
-	Text     string `json:"text,omitempty"`
-	ImageUrl string `json:"image_url,omitempty"`
-	Filename string `json:"filename,omitempty"`
-	FileData string `json:"file_data,omitempty"`
+	Type       string `json:"type"` // "input_text", "output_text", "input_image", "input_file", "function_call"
+	Text       string `json:"text,omitempty"`
+	ImageUrl   string `json:"image_url,omitempty"`
+	PreviewUrl string `json:"previewurl,omitempty"` // internal field for 128x128 webp data url (cannot send to API)
+	Filename   string `json:"filename,omitempty"`
+	FileData   string `json:"file_data,omitempty"`
 
 	// for Tools (type will be "function_call")
 	Arguments any    `json:"arguments,omitempty"`
 	CallId    string `json:"call_id,omitempty"`
 	Name      string `json:"name,omitempty"`
+}
+
+func (c *OpenAIMessageContent) Clean() *OpenAIMessageContent {
+	if c.PreviewUrl == "" {
+		return c
+	}
+	rtn := *c
+	rtn.PreviewUrl = ""
+	return &rtn
+}
+
+func (m *OpenAIMessage) CleanAndCopy() *OpenAIMessage {
+	rtn := &OpenAIMessage{Role: m.Role}
+	rtn.Content = make([]OpenAIMessageContent, len(m.Content))
+	for idx, block := range m.Content {
+		cleaned := block.Clean()
+		rtn.Content[idx] = *cleaned
+	}
+	return rtn
 }
 
 type openAIErrorResponse struct {
@@ -352,14 +372,9 @@ func RunOpenAIChatStep(
 
 		// Convert to appropriate input type based on what's populated
 		if chatMsg.Message != nil {
-			// Copy content to avoid mutation
-			contentCopy := make([]OpenAIMessageContent, len(chatMsg.Message.Content))
-			copy(contentCopy, chatMsg.Message.Content)
-			inputMsg := OpenAIMessage{
-				Role:    chatMsg.Message.Role,
-				Content: contentCopy,
-			}
-			inputs = append(inputs, inputMsg)
+			// Clean message to remove preview URLs
+			cleanedMsg := chatMsg.Message.CleanAndCopy()
+			inputs = append(inputs, *cleanedMsg)
 		} else if chatMsg.FunctionCall != nil {
 			inputs = append(inputs, *chatMsg.FunctionCall)
 		} else if chatMsg.FunctionCallOutput != nil {
@@ -776,7 +791,7 @@ func extractMessageAndToolsFromResponse(resp openaiResponse) ([]*OpenAIChatMessa
 	if resp.Usage != nil {
 		resp.Usage.Model = resp.Model
 	}
-	
+
 	assistantMessage := &OpenAIChatMessage{
 		MessageId: uuid.New().String(),
 		Message: &OpenAIMessage{

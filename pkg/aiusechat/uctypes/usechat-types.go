@@ -56,9 +56,10 @@ type UIMessagePart struct {
 }
 
 type UIMessageDataUserFile struct {
-	FileName string `json:"filename,omitempty"`
-	Size     int    `json:"size,omitempty"`
-	MimeType string `json:"mimetype,omitempty"`
+	FileName   string `json:"filename,omitempty"`
+	Size       int    `json:"size,omitempty"`
+	MimeType   string `json:"mimetype,omitempty"`
+	PreviewUrl string `json:"previewurl,omitempty"`
 }
 
 // ToolDefinition represents a tool that can be used by the AI model
@@ -189,11 +190,12 @@ type AIMessagePart struct {
 	// mimetype is required, filename is not
 	// either data or url (not both) must be set
 	// url must be either an "https" or "data" url
-	FileName string `json:"filename,omitempty"`
-	MimeType string `json:"mimetype,omitempty"` // required
-	Data     []byte `json:"data,omitempty"`     // raw data (base64 on wire)
-	URL      string `json:"url,omitempty"`
-	Size     int    `json:"size,omitempty"`
+	FileName   string `json:"filename,omitempty"`
+	MimeType   string `json:"mimetype,omitempty"` // required
+	Data       []byte `json:"data,omitempty"`     // raw data (base64 on wire)
+	URL        string `json:"url,omitempty"`
+	Size       int    `json:"size,omitempty"`
+	PreviewUrl string `json:"previewurl,omitempty"` // 128x128 webp data url for images
 }
 
 type AIToolResult struct {

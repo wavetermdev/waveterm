@@ -33,13 +33,21 @@ const UserMessageFiles = memo(({ fileParts }: UserMessageFilesProps) => {
                 {fileParts.map((file, index) => (
                     <div key={index} className="relative bg-gray-700 rounded-lg p-2 min-w-20 flex-shrink-0">
                         <div className="flex flex-col items-center text-center">
-                            <div className="w-12 h-12 mb-1 flex items-center justify-center bg-gray-600 rounded">
-                                <i
-                                    className={cn(
-                                        "fa text-lg text-gray-300",
-                                        getFileIcon(file.data?.filename || "", file.data?.mimetype || "")
-                                    )}
-                                ></i>
+                            <div className="w-12 h-12 mb-1 flex items-center justify-center bg-gray-600 rounded overflow-hidden">
+                                {file.data?.previewurl ? (
+                                    <img
+                                        src={file.data.previewurl}
+                                        alt={file.data?.filename || "File"}
+                                        className="w-full h-full object-cover"
+                                    />
+                                ) : (
+                                    <i
+                                        className={cn(
+                                            "fa text-lg text-gray-300",
+                                            getFileIcon(file.data?.filename || "", file.data?.mimetype || "")
+                                        )}
+                                    ></i>
+                                )}
                             </div>
                             <div
                                 className="text-[10px] text-gray-200 truncate w-full max-w-16"

@@ -531,6 +531,7 @@ func convertFileAIMessagePart(part uctypes.AIMessagePart) (*anthropicMessageCont
 					MediaType: part.MimeType,
 					FileName:  part.FileName,
 				},
+				SourcePreviewUrl: part.PreviewUrl,
 			}, nil
 		} else {
 			// HTTP/HTTPS URL → url source (no media_type for image URLs)
@@ -541,6 +542,7 @@ func convertFileAIMessagePart(part uctypes.AIMessagePart) (*anthropicMessageCont
 					URL:      part.URL,
 					FileName: part.FileName,
 				},
+				SourcePreviewUrl: part.PreviewUrl,
 			}, nil
 		}
 
@@ -560,6 +562,7 @@ func convertFileAIMessagePart(part uctypes.AIMessagePart) (*anthropicMessageCont
 					MediaType: part.MimeType,
 					FileName:  part.FileName,
 				},
+				SourcePreviewUrl: part.PreviewUrl,
 			}, nil
 		} else {
 			// HTTP/HTTPS URL → url source (no media_type for URL sources)
@@ -570,6 +573,7 @@ func convertFileAIMessagePart(part uctypes.AIMessagePart) (*anthropicMessageCont
 					URL:      part.URL,
 					FileName: part.FileName,
 				},
+				SourcePreviewUrl: part.PreviewUrl,
 			}, nil
 		}
 
@@ -631,9 +635,10 @@ func (m *anthropicChatMessage) ConvertToUIMessage() uctypes.UIMessage {
 				parts = append(parts, uctypes.UIMessagePart{
 					Type: "data-userfile",
 					Data: uctypes.UIMessageDataUserFile{
-						FileName: block.Source.FileName,
-						Size:     block.Source.Size,
-						MimeType: block.Source.MediaType,
+						FileName:   block.Source.FileName,
+						Size:       block.Source.Size,
+						MimeType:   block.Source.MediaType,
+						PreviewUrl: block.SourcePreviewUrl,
 					},
 				})
 			}
@@ -643,9 +648,10 @@ func (m *anthropicChatMessage) ConvertToUIMessage() uctypes.UIMessage {
 				parts = append(parts, uctypes.UIMessagePart{
 					Type: "data-userfile",
 					Data: uctypes.UIMessageDataUserFile{
-						FileName: block.Source.FileName,
-						Size:     block.Source.Size,
-						MimeType: block.Source.MediaType,
+						FileName:   block.Source.FileName,
+						Size:       block.Source.Size,
+						MimeType:   block.Source.MediaType,
+						PreviewUrl: block.SourcePreviewUrl,
 					},
 				})
 			}

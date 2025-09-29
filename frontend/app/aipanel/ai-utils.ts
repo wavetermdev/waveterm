@@ -185,3 +185,157 @@ export const formatFileSizeError = (error: FileSizeError): string => {
     const typeLabel = error.fileType === 'image' ? 'Image' : error.fileType === 'pdf' ? 'PDF' : 'Text file';
     return `${typeLabel} "${error.fileName}" is too large (${formatFileSize(error.fileSize)}). Maximum size is ${formatFileSize(error.maxSize)}.`;
 };
+
+/**
+ * Resize an image to have a maximum edge of 4096px and convert to WebP format
+ * Returns the optimized image if it's smaller than the original, otherwise returns the original
+ */
+export const resizeImage = async (file: File): Promise<File> => {
+    // Only process actual image files (not SVG)
+    if (!file.type.startsWith('image/') || file.type === 'image/svg+xml') {
+        return file;
+    }
+
+    const MAX_EDGE = 4096;
+    const WEBP_QUALITY = 0.8;
+
+    return new Promise((resolve) => {
+        const img = new Image();
+        const url = URL.createObjectURL(file);
+
+        img.onload = async () => {
+            URL.revokeObjectURL(url);
+
+            let { width, height } = img;
+            
+            // Check if resizing is needed
+            if (width <= MAX_EDGE && height <= MAX_EDGE) {
+                // Image is already small enough, just try WebP conversion
+                const canvas = document.createElement('canvas');
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx?.drawImage(img, 0, 0);
+
+                canvas.toBlob(
+                    (blob) => {
+                        if (blob && blob.size < file.size) {
+                            const webpFile = new File([blob], file.name.replace(/\.[^.]+$/, '.webp'), {
+                                type: 'image/webp',
+                            });
+                            console.log(`Image resized (no dimension change): ${file.name} - Original: ${formatFileSize(file.size)}, WebP: ${formatFileSize(blob.size)}`);
+                            resolve(webpFile);
+                        } else {
+                            console.log(`Image kept original (WebP not smaller): ${file.name} - ${formatFileSize(file.size)}`);
+                            resolve(file);
+                        }
+                    },
+                    'image/webp',
+                    WEBP_QUALITY
+                );
+                return;
+            }
+
+            // Calculate new dimensions while maintaining aspect ratio
+            if (width > height) {
+                height = Math.round((height * MAX_EDGE) / width);
+                width = MAX_EDGE;
+            } else {
+                width = Math.round((width * MAX_EDGE) / height);
+                height = MAX_EDGE;
+            }
+
+            // Create canvas and resize
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx?.drawImage(img, 0, 0, width, height);
+
+            // Convert to WebP
+            canvas.toBlob(
+                (blob) => {
+                    if (blob && blob.size < file.size) {
+                        const webpFile = new File([blob], file.name.replace(/\.[^.]+$/, '.webp'), {
+                            type: 'image/webp',
+                        });
+                        console.log(`Image resized: ${file.name} (${img.width}x${img.height} → ${width}x${height}) - Original: ${formatFileSize(file.size)}, WebP: ${formatFileSize(blob.size)}`);
+                        resolve(webpFile);
+                    } else {
+                        console.log(`Image kept original (WebP not smaller): ${file.name} (${img.width}x${img.height} → ${width}x${height}) - ${formatFileSize(file.size)}`);
+                        resolve(file);
+                    }
+                },
+                'image/webp',
+                WEBP_QUALITY
+            );
+        };
+
+        img.onerror = () => {
+            URL.revokeObjectURL(url);
+            resolve(file);
+        };
+
+        img.src = url;
+    });
+};
+
+/**
+ * Create a 128x128 preview data URL for an image file
+ */
+export const createImagePreview = async (file: File): Promise<string | null> => {
+    if (!file.type.startsWith('image/') || file.type === 'image/svg+xml') {
+        return null;
+    }
+
+    const PREVIEW_SIZE = 128;
+    const WEBP_QUALITY = 0.8;
+
+    return new Promise((resolve) => {
+        const img = new Image();
+        const url = URL.createObjectURL(file);
+
+        img.onload = () => {
+            URL.revokeObjectURL(url);
+
+            let { width, height } = img;
+
+            if (width > height) {
+                height = Math.round((height * PREVIEW_SIZE) / width);
+                width = PREVIEW_SIZE;
+            } else {
+                width = Math.round((width * PREVIEW_SIZE) / height);
+                height = PREVIEW_SIZE;
+            }
+
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx?.drawImage(img, 0, 0, width, height);
+
+            canvas.toBlob(
+                (blob) => {
+                    if (blob) {
+                        const reader = new FileReader();
+                        reader.onloadend = () => {
+                            resolve(reader.result as string);
+                        };
+                        reader.readAsDataURL(blob);
+                    } else {
+                        resolve(null);
+                    }
+                },
+                'image/webp',
+                WEBP_QUALITY
+            );
+        };
+
+        img.onerror = () => {
+            URL.revokeObjectURL(url);
+            resolve(null);
+        };
+
+        img.src = url;
+    });
+};

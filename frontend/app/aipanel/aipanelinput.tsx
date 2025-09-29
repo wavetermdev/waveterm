@@ -76,7 +76,7 @@ export const AIPanelInput = memo(
             fileInputRef.current?.click();
         };
 
-        const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
             const files = Array.from(e.target.files || []);
             const acceptableFiles = files.filter(isAcceptableFile);
 
@@ -89,7 +89,7 @@ export const AIPanelInput = memo(
                     }
                     return;
                 }
-                model.addFile(file);
+                await model.addFile(file);
             }
 
             if (acceptableFiles.length < files.length) {

@@ -1,6 +1,7 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { ContextMenuModel } from "@/app/store/contextmenu";
 import { useAtom } from "jotai";
 import { memo } from "react";
 import { WaveAIModel } from "./waveai-model";
@@ -8,10 +9,23 @@ import { WaveAIModel } from "./waveai-model";
 interface AIPanelHeaderProps {
     onClose?: () => void;
     model: WaveAIModel;
+    onClearChat?: () => void;
 }
 
-export const AIPanelHeader = memo(({ onClose, model }: AIPanelHeaderProps) => {
+export const AIPanelHeader = memo(({ onClose, model, onClearChat }: AIPanelHeaderProps) => {
     const [widgetAccess, setWidgetAccess] = useAtom(model.widgetAccess);
+
+    const handleKebabClick = (e: React.MouseEvent) => {
+        const menu: ContextMenuItem[] = [
+            {
+                label: "Clear Chat",
+                click: () => {
+                    onClearChat?.();
+                },
+            },
+        ];
+        ContextMenuModel.showContextMenu(menu, e);
+    };
 
     return (
         <div className="@container py-2 pl-3 pr-1 @xs:p-2 @xs:pl-4 border-b border-gray-600 flex items-center justify-between min-w-0">
@@ -50,6 +64,14 @@ export const AIPanelHeader = memo(({ onClose, model }: AIPanelHeaderProps) => {
                         </span>
                     </button>
                 </div>
+
+                <button
+                    onClick={handleKebabClick}
+                    className="text-gray-400 hover:text-white cursor-pointer transition-colors p-1 rounded flex-shrink-0 ml-2 focus:outline-none"
+                    title="More options"
+                >
+                    <i className="fa fa-ellipsis-vertical"></i>
+                </button>
 
                 {onClose && (
                     <button

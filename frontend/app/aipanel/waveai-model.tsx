@@ -5,6 +5,7 @@ import { globalStore } from "@/app/store/jotaiStore";
 import { workspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
 import * as jotai from "jotai";
 import type React from "react";
+import { createImagePreview, resizeImage } from "./ai-utils";
 import type { AIPanelInputRef } from "./aipanelinput";
 
 export interface DroppedFile {
@@ -40,18 +41,24 @@ export class WaveAIModel {
         WaveAIModel.instance = null;
     }
 
-    addFile(file: File): DroppedFile {
+    async addFile(file: File): Promise<DroppedFile> {
+        // Resize images before storing
+        const processedFile = await resizeImage(file);
+
         const droppedFile: DroppedFile = {
             id: crypto.randomUUID(),
-            file,
-            name: file.name,
-            type: file.type,
-            size: file.size,
+            file: processedFile,
+            name: processedFile.name,
+            type: processedFile.type,
+            size: processedFile.size,
         };
 
-        // Create preview URL for images
-        if (file.type.startsWith("image/")) {
-            droppedFile.previewUrl = URL.createObjectURL(file);
+        // Create 128x128 preview data URL for images
+        if (processedFile.type.startsWith("image/")) {
+            const previewDataUrl = await createImagePreview(processedFile);
+            if (previewDataUrl) {
+                droppedFile.previewUrl = previewDataUrl;
+            }
         }
 
         const currentFiles = globalStore.get(this.droppedFiles);
@@ -62,13 +69,6 @@ export class WaveAIModel {
 
     removeFile(fileId: string) {
         const currentFiles = globalStore.get(this.droppedFiles);
-        const fileToRemove = currentFiles.find((f) => f.id === fileId);
-
-        // Cleanup preview URL if it exists
-        if (fileToRemove?.previewUrl) {
-            URL.revokeObjectURL(fileToRemove.previewUrl);
-        }
-
         const updatedFiles = currentFiles.filter((f) => f.id !== fileId);
         globalStore.set(this.droppedFiles, updatedFiles);
     }

@@ -255,8 +255,9 @@ func convertFileAIMessagePart(part uctypes.AIMessagePart) (*OpenAIMessageContent
 		}
 
 		return &OpenAIMessageContent{
-			Type:     "input_image",
-			ImageUrl: imageUrl,
+			Type:       "input_image",
+			ImageUrl:   imageUrl,
+			PreviewUrl: part.PreviewUrl,
 		}, nil
 
 	case part.MimeType == "application/pdf":
@@ -272,9 +273,10 @@ func convertFileAIMessagePart(part uctypes.AIMessagePart) (*OpenAIMessageContent
 		base64Data := base64.StdEncoding.EncodeToString(part.Data)
 
 		return &OpenAIMessageContent{
-			Type:     "input_file",
-			Filename: part.FileName, // Optional filename
-			FileData: base64Data,
+			Type:       "input_file",
+			Filename:   part.FileName, // Optional filename
+			FileData:   base64Data,
+			PreviewUrl: part.PreviewUrl,
 		}, nil
 
 	case part.MimeType == "text/plain":

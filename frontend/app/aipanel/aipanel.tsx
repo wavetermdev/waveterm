@@ -121,6 +121,7 @@ const AIPanelComponent = memo(({ className, onClose }: AIPanelProps) => {
                 mimetype: normalizedMimeType,
                 url: dataUrl,
                 size: droppedFile.file.size,
+                previewurl: droppedFile.previewUrl,
             });
 
             uiMessageParts.push({
@@ -129,6 +130,7 @@ const AIPanelComponent = memo(({ className, onClose }: AIPanelProps) => {
                     filename: droppedFile.name,
                     mimetype: normalizedMimeType,
                     size: droppedFile.file.size,
+                    previewurl: droppedFile.previewUrl,
                 },
             });
         }
@@ -193,7 +195,7 @@ const AIPanelComponent = memo(({ className, onClose }: AIPanelProps) => {
         }
     };
 
-    const handleDrop = (e: React.DragEvent) => {
+    const handleDrop = async (e: React.DragEvent) => {
         e.preventDefault();
         e.stopPropagation();
         setIsDragOver(false);
@@ -207,11 +209,14 @@ const AIPanelComponent = memo(({ className, onClose }: AIPanelProps) => {
                 model.setError(formatFileSizeError(sizeError));
                 return;
             }
-            model.addFile(file);
+            await model.addFile(file);
         }
 
         if (acceptableFiles.length < files.length) {
-            console.warn(`${files.length - acceptableFiles.length} files were rejected due to unsupported file types`);
+            const rejectedCount = files.length - acceptableFiles.length;
+            const rejectedFiles = files.filter(f => !isAcceptableFile(f));
+            const fileNames = rejectedFiles.map(f => f.name).join(", ");
+            model.setError(`${rejectedCount} file${rejectedCount > 1 ? 's' : ''} rejected (unsupported type): ${fileNames}. Supported: images, PDFs, and text/code files.`);
         }
     };
 
@@ -285,7 +290,7 @@ const AIPanelComponent = memo(({ className, onClose }: AIPanelProps) => {
                     </div>
                 </div>
             )}
-            <AIPanelHeader onClose={onClose} model={model} />
+            <AIPanelHeader onClose={onClose} model={model} onClearChat={clearChat} />
 
             <div key="main-content" className="flex-1 flex flex-col min-h-0">
                 {!telemetryEnabled ? (

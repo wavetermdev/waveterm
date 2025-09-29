@@ -467,6 +467,7 @@ declare global {
               data?: string; // base64 encoded data
               url?: string;
               size?: number;
+              previewurl?: string;
           };
 }
 

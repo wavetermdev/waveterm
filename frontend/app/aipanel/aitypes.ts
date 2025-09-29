@@ -8,6 +8,7 @@ type WaveUIDataTypes = {
         filename: string;
         size: number;
         mimetype: string;
+        previewurl?: string;
     };
 };
 

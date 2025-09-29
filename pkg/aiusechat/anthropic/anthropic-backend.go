@@ -50,7 +50,7 @@ func (m *anthropicChatMessage) GetUsage() *uctypes.AIUsage {
 	if m.Usage == nil {
 		return nil
 	}
-	
+
 	return &uctypes.AIUsage{
 		APIType:      "anthropic",
 		Model:        m.Usage.Model,
@@ -79,7 +79,8 @@ type anthropicMessageContentBlock struct {
 	// Citations []anthropicCitation `json:"citations,omitempty"`
 
 	// Image+File content
-	Source *anthropicSource `json:"source,omitempty"`
+	Source           *anthropicSource `json:"source,omitempty"`
+	SourcePreviewUrl string           `json:"sourcepreviewurl,omitempty"` // internal field (cannot marshal to API, must be stripped)
 
 	// Document content
 	Title   string `json:"title,omitempty"`
@@ -146,6 +147,7 @@ func (b *anthropicMessageContentBlock) Clean() *anthropicMessageContentBlock {
 		return nil
 	}
 	rtn := *b
+	rtn.SourcePreviewUrl = ""
 	rtn.ToolUseDisplayName = ""
 	rtn.ToolUseShortDescription = ""
 	if rtn.Source != nil {
@@ -221,7 +223,7 @@ type anthropicUsageType struct {
 	OutputTokens             int `json:"output_tokens,omitempty"` // cumulative
 	CacheCreationInputTokens int `json:"cache_creation_input_tokens,omitempty"`
 	CacheReadInputTokens     int `json:"cache_read_input_tokens,omitempty"`
-	
+
 	// internal field for Wave use (not sent to API)
 	Model string `json:"model,omitempty"`
 
@@ -513,7 +515,7 @@ func handleAnthropicStreamingResp(
 			state.usage.Model = state.model
 			state.rtnMessage.Usage = state.usage
 		}
-		
+
 		if !state.stepStarted {
 			return
 		}
