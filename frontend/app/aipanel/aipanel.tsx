@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { WaveUIMessagePart } from "@/app/aipanel/aitypes";
+import { ErrorBoundary } from "@/app/element/errorboundary";
 import { atoms, getSettingsKeyAtom } from "@/app/store/global";
 import { globalStore } from "@/app/store/jotaiStore";
 import { getWebServerEndpoint } from "@/util/endpoints";
@@ -24,7 +25,7 @@ interface AIPanelProps {
     onClose?: () => void;
 }
 
-const AIPanelComponent = memo(({ className, onClose }: AIPanelProps) => {
+const AIPanelComponentInner = memo(({ className, onClose }: AIPanelProps) => {
     const [input, setInput] = useState("");
     const [isDragOver, setIsDragOver] = useState(false);
     const model = WaveAIModel.getInstance();
@@ -220,9 +221,11 @@ const AIPanelComponent = memo(({ className, onClose }: AIPanelProps) => {
 
         if (acceptableFiles.length < files.length) {
             const rejectedCount = files.length - acceptableFiles.length;
-            const rejectedFiles = files.filter(f => !isAcceptableFile(f));
-            const fileNames = rejectedFiles.map(f => f.name).join(", ");
-            model.setError(`${rejectedCount} file${rejectedCount > 1 ? 's' : ''} rejected (unsupported type): ${fileNames}. Supported: images, PDFs, and text/code files.`);
+            const rejectedFiles = files.filter((f) => !isAcceptableFile(f));
+            const fileNames = rejectedFiles.map((f) => f.name).join(", ");
+            model.setError(
+                `${rejectedCount} file${rejectedCount > 1 ? "s" : ""} rejected (unsupported type): ${fileNames}. Supported: images, PDFs, and text/code files.`
+            );
         }
     };
 
@@ -331,6 +334,16 @@ const AIPanelComponent = memo(({ className, onClose }: AIPanelProps) => {
         </div>
     );
 });
+
+AIPanelComponentInner.displayName = "AIPanelInner";
+
+const AIPanelComponent = ({ className, onClose }: AIPanelProps) => {
+    return (
+        <ErrorBoundary>
+            <AIPanelComponentInner className={className} onClose={onClose} />
+        </ErrorBoundary>
+    );
+};
 
 AIPanelComponent.displayName = "AIPanel";
 
