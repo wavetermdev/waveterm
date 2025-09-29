@@ -2,7 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { atoms, globalStore } from "@/app/store/global";
+import { workspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
 import { cn } from "@/util/util";
+import { useAtomValue } from "jotai";
 import { forwardRef, memo, useCallback, useEffect, useImperativeHandle, useRef } from "react";
 
 interface AIPanelInputProps {
@@ -14,17 +16,30 @@ interface AIPanelInputProps {
 
 export interface AIPanelInputRef {
     focus: () => void;
+    resize: () => void;
 }
 
 export const AIPanelInput = memo(
     forwardRef<AIPanelInputRef, AIPanelInputProps>(({ input, setInput, onSubmit, status }, ref) => {
         const textareaRef = useRef<HTMLTextAreaElement>(null);
+        const isPanelOpen = useAtomValue(workspaceLayoutModel.panelVisibleAtom);
+
+        const resizeTextarea = useCallback(() => {
+            const textarea = textareaRef.current;
+            if (!textarea) return;
+
+            textarea.style.height = "auto";
+            const scrollHeight = textarea.scrollHeight;
+            const maxHeight = 6 * 24;
+            textarea.style.height = `${Math.min(scrollHeight, maxHeight)}px`;
+        }, []);
 
         useImperativeHandle(ref, () => ({
             focus: () => {
                 console.log("calling FOCUS", textareaRef.current);
                 textareaRef.current?.focus();
             },
+            resize: resizeTextarea,
         }));
 
         const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -43,14 +58,14 @@ export const AIPanelInput = memo(
         }, []);
 
         useEffect(() => {
-            const textarea = textareaRef.current;
-            if (!textarea) return;
+            resizeTextarea();
+        }, [input, resizeTextarea]);
 
-            textarea.style.height = "auto";
-            const scrollHeight = textarea.scrollHeight;
-            const maxHeight = 6 * 24; // 6 lines * approximate line height
-            textarea.style.height = `${Math.min(scrollHeight, maxHeight)}px`;
-        }, [input]);
+        useEffect(() => {
+            if (isPanelOpen) {
+                resizeTextarea();
+            }
+        }, [isPanelOpen, resizeTextarea]);
 
         return (
             <div className="border-t border-gray-600">

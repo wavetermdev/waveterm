@@ -1,6 +1,8 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { workspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
+import { useAtomValue } from "jotai";
 import { memo, useEffect, useRef } from "react";
 import { AIMessage } from "./aimessage";
 
@@ -16,13 +18,13 @@ const AIWelcomeMessage = memo(() => {
 
 AIWelcomeMessage.displayName = "AIWelcomeMessage";
 
-
 interface AIPanelMessagesProps {
     messages: any[];
     status: string;
 }
 
 export const AIPanelMessages = memo(({ messages, status }: AIPanelMessagesProps) => {
+    const isPanelOpen = useAtomValue(workspaceLayoutModel.panelVisibleAtom);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const messagesContainerRef = useRef<HTMLDivElement>(null);
 
@@ -37,6 +39,12 @@ export const AIPanelMessages = memo(({ messages, status }: AIPanelMessagesProps)
         scrollToBottom();
     }, [messages]);
 
+    useEffect(() => {
+        if (isPanelOpen) {
+            scrollToBottom();
+        }
+    }, [isPanelOpen]);
+
     if (messages.length == 0) {
         return (
             <div ref={messagesContainerRef} className="flex-1 overflow-y-auto p-2 space-y-4">
@@ -50,21 +58,18 @@ export const AIPanelMessages = memo(({ messages, status }: AIPanelMessagesProps)
             {messages.map((message, index) => {
                 const isLastMessage = index === messages.length - 1;
                 const isStreaming = status === "streaming" && isLastMessage && message.role === "assistant";
-                return (
-                    <AIMessage key={message.id} message={message} isStreaming={isStreaming} />
-                );
+                return <AIMessage key={message.id} message={message} isStreaming={isStreaming} />;
             })}
 
             {/* Show placeholder assistant message when streaming and last message is not assistant */}
             {status === "streaming" &&
-             (messages.length === 0 || messages[messages.length - 1].role !== "assistant") && (
-                <AIMessage
-                    key="last-message"
-                    message={{role: "assistant", parts: [], id: "last-message"} as any}
-                    isStreaming={true}
-                />
-            )}
-
+                (messages.length === 0 || messages[messages.length - 1].role !== "assistant") && (
+                    <AIMessage
+                        key="last-message"
+                        message={{ role: "assistant", parts: [], id: "last-message" } as any}
+                        isStreaming={true}
+                    />
+                )}
 
             <div ref={messagesEndRef} />
         </div>

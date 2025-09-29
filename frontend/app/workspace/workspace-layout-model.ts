@@ -23,6 +23,7 @@ class WorkspaceLayoutModel {
     private aiPanelWidth: number | null;
     private debouncedPersistWidth: (width: number) => void;
     private initialized: boolean = false;
+    panelVisibleAtom: jotai.PrimitiveAtom<boolean>;
 
     constructor() {
         this.aiPanelRef = null;
@@ -30,6 +31,7 @@ class WorkspaceLayoutModel {
         this.inResize = false;
         this.aiPanelVisible = isDev();
         this.aiPanelWidth = null;
+        this.panelVisibleAtom = jotai.atom(this.aiPanelVisible);
 
         this.debouncedPersistWidth = debounce((width: number) => {
             try {
@@ -53,6 +55,7 @@ class WorkspaceLayoutModel {
 
             if (savedVisible != null) {
                 this.aiPanelVisible = savedVisible;
+                globalStore.set(this.panelVisibleAtom, savedVisible);
             }
             if (savedWidth != null) {
                 this.aiPanelWidth = savedWidth;
@@ -123,6 +126,7 @@ class WorkspaceLayoutModel {
             return;
         }
         this.aiPanelVisible = visible;
+        globalStore.set(this.panelVisibleAtom, visible);
         RpcApi.SetMetaCommand(TabRpcClient, {
             oref: WOS.makeORef("tab", this.getTabId()),
             meta: { "waveai:panelopen": visible },

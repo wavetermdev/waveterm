@@ -173,6 +173,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
     const prevAllLoadedRef = useRef<boolean>(false);
     const activeTabId = useAtomValue(atoms.staticTabId);
     const isFullScreen = useAtomValue(atoms.isFullScreen);
+    const aiPanelOpen = useAtomValue(workspaceLayoutModel.panelVisibleAtom);
 
     const settings = useAtomValue(atoms.settingsAtom);
 
@@ -641,7 +642,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
     const tabsWrapperWidth = tabIds.length * tabWidthRef.current;
     const waveaiButton = isDev() ? (
         <div
-            className="flex h-[26px] px-1.5 justify-end items-center rounded-md mr-1 box-border text-accent cursor-pointer bg-hover hover:bg-hoverbg transition-colors"
+            className={`flex h-[26px] px-1.5 justify-end items-center rounded-md mr-1 box-border cursor-pointer bg-hover hover:bg-hoverbg transition-colors text-[12px] ${aiPanelOpen ? "text-accent" : "text-secondary"}`}
             style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
             onClick={onWaveAIClick}
         >
