@@ -411,19 +411,19 @@ export class WebViewModel implements ViewModel {
         const searchTemplate = globalStore.get(defaultSearchAtom);
         const nextUrl = this.ensureUrlScheme(newUrl, searchTemplate);
         console.log("webview loadUrlPromise", reason, nextUrl, "cur=", this.webviewRef.current?.getURL());
-        
+
         if (!this.webviewRef.current) {
             return Promise.reject(new Error("WebView ref not available"));
         }
-        
+
         if (newUrl != nextUrl) {
             globalStore.set(this.url, nextUrl);
         }
-        
+
         if (this.webviewRef.current.getURL() != nextUrl) {
             return this.webviewRef.current.loadURL(nextUrl);
         }
-        
+
         return Promise.resolve();
     }
 
@@ -492,6 +492,25 @@ export class WebViewModel implements ViewModel {
         const url = this.getUrl();
         if (url != null && url != "") {
             fireAndForget(() => navigator.clipboard.writeText(url));
+        }
+    }
+
+    clearHistory() {
+        try {
+            this.webviewRef.current?.clearHistory();
+        } catch (e) {
+            console.error("Failed to clear history", e);
+        }
+    }
+
+    async clearCookiesAndStorage() {
+        try {
+            const webContentsId = this.webviewRef.current?.getWebContentsId();
+            if (webContentsId) {
+                await getApi().clearWebviewStorage(webContentsId);
+            }
+        } catch (e) {
+            console.error("Failed to clear cookies and storage", e);
         }
     }
 
@@ -618,6 +637,17 @@ export class WebViewModel implements ViewModel {
                         }
                     }
                 },
+            },
+            {
+                type: "separator",
+            },
+            {
+                label: "Clear History",
+                click: () => this.clearHistory(),
+            },
+            {
+                label: "Clear Cookies and Storage (All Web Widgets)",
+                click: () => fireAndForget(() => this.clearCookiesAndStorage()),
             },
         ];
     }

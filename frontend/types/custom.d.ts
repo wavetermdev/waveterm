@@ -103,6 +103,7 @@ declare global {
         openNativePath(filePath: string): void;
         captureScreenshot(rect: Electron.Rectangle): Promise<string>;
         setKeyboardChordMode: () => void;
+        clearWebviewStorage: (webContentsId: number) => Promise<void>;
     };
 
     type ElectronContextMenuItem = {
