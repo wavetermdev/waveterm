@@ -13,6 +13,14 @@ type UseChatRequest struct {
 	Messages []UIMessage `json:"messages"`
 }
 
+type UIChat struct {
+	ChatId     string      `json:"chatid"`
+	APIType    string      `json:"apitype"`
+	Model      string      `json:"model"`
+	APIVersion string      `json:"apiversion"`
+	Messages   []UIMessage `json:"messages"`
+}
+
 type UIMessage struct {
 	ID       string          `json:"id"`
 	Role     string          `json:"role"` // "system", "user", "assistant"

@@ -21,9 +21,10 @@ AIWelcomeMessage.displayName = "AIWelcomeMessage";
 interface AIPanelMessagesProps {
     messages: any[];
     status: string;
+    isLoadingChat?: boolean;
 }
 
-export const AIPanelMessages = memo(({ messages, status }: AIPanelMessagesProps) => {
+export const AIPanelMessages = memo(({ messages, status, isLoadingChat }: AIPanelMessagesProps) => {
     const isPanelOpen = useAtomValue(workspaceLayoutModel.panelVisibleAtom);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -48,7 +49,7 @@ export const AIPanelMessages = memo(({ messages, status }: AIPanelMessagesProps)
     if (messages.length == 0) {
         return (
             <div ref={messagesContainerRef} className="flex-1 overflow-y-auto p-2 space-y-4">
-                <AIWelcomeMessage />
+                {!isLoadingChat && <AIWelcomeMessage />}
             </div>
         );
     }

@@ -1,7 +1,7 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { waveAIModel } from "@/app/aipanel/waveai-model";
+import { WaveAIModel } from "@/app/aipanel/waveai-model";
 import {
     atoms,
     createBlock,
@@ -148,7 +148,7 @@ function switchBlockInDirection(tabId: string, direction: NavigateDirection) {
     const inWaveAI = globalStore.get(atoms.waveAIFocusedAtom);
     const navResult = layoutModel.switchNodeFocusInDirection(direction, inWaveAI);
     if (navResult.atLeft) {
-        waveAIModel.focusInput();
+        WaveAIModel.getInstance().focusInput();
         return;
     }
     setTimeout(() => {
@@ -498,11 +498,11 @@ function registerGlobalKeys() {
         });
     }
     globalKeyMap.set("Ctrl:Shift:c{Digit0}", () => {
-        waveAIModel.focusInput();
+        WaveAIModel.getInstance().focusInput();
         return true;
     });
     globalKeyMap.set("Ctrl:Shift:c{Numpad0}", () => {
-        waveAIModel.focusInput();
+        WaveAIModel.getInstance().focusInput();
         return true;
     });
     function activateSearch(event: WaveKeyboardEvent): boolean {
@@ -539,7 +539,7 @@ function registerGlobalKeys() {
     globalKeyMap.set("Cmd:Shift:a", () => {
         const currentVisible = workspaceLayoutModel.getAIPanelVisible();
         if (!currentVisible) {
-            waveAIModel.focusInput();
+            WaveAIModel.getInstance().focusInput();
         } else {
             workspaceLayoutModel.setAIPanelVisible(false);
             globalRefocus();

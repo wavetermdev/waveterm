@@ -209,6 +209,11 @@ declare global {
         oref: ORef;
     };
 
+    // wshrpc.CommandGetWaveAIChatData
+    type CommandGetWaveAIChatData = {
+        chatid: string;
+    };
+
     // wshrpc.CommandMessageData
     type CommandMessageData = {
         oref: ORef;
@@ -591,6 +596,7 @@ declare global {
         "waveai:panelopen"?: boolean;
         "waveai:panelwidth"?: number;
         "waveai:model"?: string;
+        "waveai:chatid"?: string;
         "term:*"?: boolean;
         "term:fontsize"?: number;
         "term:fontfamily"?: string;
@@ -954,10 +960,47 @@ declare global {
         values: {[key: string]: number};
     };
 
+    // uctypes.UIChat
+    type UIChat = {
+        chatid: string;
+        apitype: string;
+        model: string;
+        apiversion: string;
+        messages: UIMessage[];
+    };
+
     // waveobj.UIContext
     type UIContext = {
         windowid: string;
         activetabid: string;
+    };
+
+    // uctypes.UIMessage
+    type UIMessage = {
+        id: string;
+        role: string;
+        metadata?: any;
+        parts?: UIMessagePart[];
+    };
+
+    // uctypes.UIMessagePart
+    type UIMessagePart = {
+        type: string;
+        text?: string;
+        state?: string;
+        toolCallId?: string;
+        input?: any;
+        output?: any;
+        errorText?: string;
+        providerExecuted?: boolean;
+        sourceId?: string;
+        url?: string;
+        title?: string;
+        filename?: string;
+        mediaType?: string;
+        id?: string;
+        data?: any;
+        providerMetadata?: {[key: string]: any};
     };
 
     // userinput.UserInputRequest

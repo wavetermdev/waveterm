@@ -409,3 +409,115 @@ func ConvertToolResultsToOpenAIChatMessage(toolResults []uctypes.AIToolResult) (
 
 	return messages, nil
 }
+
+// ConvertToUIMessage converts an OpenAIChatMessage to a UIMessage
+func (m *OpenAIChatMessage) ConvertToUIMessage() *uctypes.UIMessage {
+	var parts []uctypes.UIMessagePart
+	var role string
+
+	// Handle different message types
+	if m.Message != nil {
+		role = m.Message.Role
+		// Iterate over all content blocks
+		for _, block := range m.Message.Content {
+			switch block.Type {
+			case "input_text", "output_text":
+				// Convert text blocks to UIMessagePart
+				parts = append(parts, uctypes.UIMessagePart{
+					Type: "text",
+					Text: block.Text,
+				})
+			case "input_image":
+				// Convert image blocks to data-userfile UIMessagePart (only for user role)
+				if role == "user" {
+					parts = append(parts, uctypes.UIMessagePart{
+						Type: "data-userfile",
+						Data: uctypes.UIMessageDataUserFile{
+							MimeType:   "image/*",
+							PreviewUrl: block.PreviewUrl,
+						},
+					})
+				}
+			case "input_file":
+				// Convert file blocks to data-userfile UIMessagePart (only for user role)
+				if role == "user" {
+					parts = append(parts, uctypes.UIMessagePart{
+						Type: "data-userfile",
+						Data: uctypes.UIMessageDataUserFile{
+							FileName:   block.Filename,
+							MimeType:   "application/pdf",
+							PreviewUrl: block.PreviewUrl,
+						},
+					})
+				}
+			default:
+				// Skip unknown types
+				continue
+			}
+		}
+	} else if m.FunctionCall != nil {
+		// Handle function call input
+		role = "assistant"
+		if m.FunctionCall.Name != "" && m.FunctionCall.CallId != "" {
+			// Parse arguments JSON string to interface{}
+			var args interface{}
+			if m.FunctionCall.Arguments != "" {
+				if err := json.Unmarshal([]byte(m.FunctionCall.Arguments), &args); err != nil {
+					log.Printf("openai: failed to parse function call arguments: %v", err)
+					args = map[string]interface{}{}
+				}
+			} else {
+				args = map[string]interface{}{}
+			}
+
+			parts = append(parts, uctypes.UIMessagePart{
+				Type:       "tool-" + m.FunctionCall.Name,
+				State:      "input-available",
+				ToolCallID: m.FunctionCall.CallId,
+				Input:      args,
+			})
+		}
+	} else if m.FunctionCallOutput != nil {
+		// FunctionCallOutput messages are not converted to UIMessage
+		return nil
+	}
+
+	if len(parts) == 0 {
+		return nil
+	}
+
+	return &uctypes.UIMessage{
+		ID:    m.MessageId,
+		Role:  role,
+		Parts: parts,
+	}
+}
+
+// ConvertAIChatToUIChat converts an AIChat to a UIChat for OpenAI
+func ConvertAIChatToUIChat(aiChat uctypes.AIChat) (*uctypes.UIChat, error) {
+	if aiChat.APIType != "openai" {
+		return nil, fmt.Errorf("APIType must be 'openai', got '%s'", aiChat.APIType)
+	}
+
+	uiMessages := make([]uctypes.UIMessage, 0, len(aiChat.NativeMessages))
+
+	for i, nativeMsg := range aiChat.NativeMessages {
+		openaiMsg, ok := nativeMsg.(*OpenAIChatMessage)
+		if !ok {
+			return nil, fmt.Errorf("message %d: expected *OpenAIChatMessage, got %T", i, nativeMsg)
+		}
+
+		uiMsg := openaiMsg.ConvertToUIMessage()
+		if uiMsg != nil {
+			uiMessages = append(uiMessages, *uiMsg)
+		}
+	}
+
+	return &uctypes.UIChat{
+		ChatId:     aiChat.ChatId,
+		APIType:    aiChat.APIType,
+		Model:      aiChat.Model,
+		APIVersion: aiChat.APIVersion,
+		Messages:   uiMessages,
+	}, nil
+}

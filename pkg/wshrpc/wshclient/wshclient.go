@@ -14,6 +14,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wps"
 	"github.com/wavetermdev/waveterm/pkg/vdom"
 	"github.com/wavetermdev/waveterm/pkg/util/iochan/iochantypes"
+	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
 )
 
 // command "activity", wshserver.ActivityCommand
@@ -340,6 +341,12 @@ func GetUpdateChannelCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) (string, e
 // command "getvar", wshserver.GetVarCommand
 func GetVarCommand(w *wshutil.WshRpc, data wshrpc.CommandVarData, opts *wshrpc.RpcOpts) (*wshrpc.CommandVarResponseData, error) {
 	resp, err := sendRpcRequestCallHelper[*wshrpc.CommandVarResponseData](w, "getvar", data, opts)
+	return resp, err
+}
+
+// command "getwaveaichat", wshserver.GetWaveAIChatCommand
+func GetWaveAIChatCommand(w *wshutil.WshRpc, data wshrpc.CommandGetWaveAIChatData, opts *wshrpc.RpcOpts) (*uctypes.UIChat, error) {
+	resp, err := sendRpcRequestCallHelper[*uctypes.UIChat](w, "getwaveaichat", data, opts)
 	return resp, err
 }
 

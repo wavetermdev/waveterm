@@ -28,6 +28,7 @@ interface AIPanelProps {
 const AIPanelComponentInner = memo(({ className, onClose }: AIPanelProps) => {
     const [input, setInput] = useState("");
     const [isDragOver, setIsDragOver] = useState(false);
+    const [isLoadingChat, setIsLoadingChat] = useState(true);
     const model = WaveAIModel.getInstance();
     const errorMessage = jotai.useAtomValue(model.errorMessage);
     const realMessageRef = useRef<AIMessage>(null);
@@ -92,9 +93,18 @@ const AIPanelComponentInner = memo(({ className, onClose }: AIPanelProps) => {
         model.registerInputRef(inputRef);
     }, [model]);
 
+    useEffect(() => {
+        const loadMessages = async () => {
+            const messages = await model.loadChat();
+            setMessages(messages as any);
+            setIsLoadingChat(false);
+        };
+        loadMessages();
+    }, [model, setMessages]);
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!input.trim() || status !== "ready") return;
+        if (!input.trim() || status !== "ready" || isLoadingChat) return;
 
         if (input.trim() === "/clear" || input.trim() === "/new") {
             clearChat();
@@ -306,7 +316,7 @@ const AIPanelComponentInner = memo(({ className, onClose }: AIPanelProps) => {
                     <TelemetryRequiredMessage />
                 ) : (
                     <>
-                        <AIPanelMessages messages={messages} status={status} />
+                        <AIPanelMessages messages={messages} status={status} isLoadingChat={isLoadingChat} />
                         {errorMessage && (
                             <div className="px-4 py-2 text-red-400 bg-red-900/20 border-l-4 border-red-500 mx-2 mb-2 relative">
                                 <button

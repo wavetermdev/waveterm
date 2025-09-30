@@ -282,6 +282,11 @@ class RpcApiType {
         return client.wshRpcCall("getvar", data, opts);
     }
 
+    // command "getwaveaichat" [call]
+    GetWaveAIChatCommand(client: WshClient, data: CommandGetWaveAIChatData, opts?: RpcOpts): Promise<UIChat> {
+        return client.wshRpcCall("getwaveaichat", data, opts);
+    }
+
     // command "message" [call]
     MessageCommand(client: WshClient, data: CommandMessageData, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("message", data, opts);

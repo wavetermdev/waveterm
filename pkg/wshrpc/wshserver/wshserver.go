@@ -18,6 +18,9 @@ import (
 	"time"
 
 	"github.com/skratchdot/open-golang/open"
+	"github.com/wavetermdev/waveterm/pkg/aiusechat"
+	"github.com/wavetermdev/waveterm/pkg/aiusechat/chatstore"
+	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
 	"github.com/wavetermdev/waveterm/pkg/blockcontroller"
 	"github.com/wavetermdev/waveterm/pkg/blocklogger"
 	"github.com/wavetermdev/waveterm/pkg/filestore"
@@ -868,6 +871,18 @@ func (ws *WshServer) WaveAIEnableTelemetryCommand(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+func (ws *WshServer) GetWaveAIChatCommand(ctx context.Context, data wshrpc.CommandGetWaveAIChatData) (*uctypes.UIChat, error) {
+	aiChat := chatstore.DefaultChatStore.Get(data.ChatId)
+	if aiChat == nil {
+		return nil, nil
+	}
+	uiChat, err := aiusechat.ConvertAIChatToUIChat(aiChat)
+	if err != nil {
+		return nil, fmt.Errorf("error converting AI chat to UI chat: %w", err)
+	}
+	return uiChat, nil
 }
 
 var wshActivityRe = regexp.MustCompile(`^[a-z:#]+$`)

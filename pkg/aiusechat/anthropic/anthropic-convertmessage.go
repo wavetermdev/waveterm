@@ -617,7 +617,7 @@ func convertFileAIMessagePart(part uctypes.AIMessagePart) (*anthropicMessageCont
 }
 
 // ConvertToUIMessage converts an anthropicChatMessage to a UIMessage
-func (m *anthropicChatMessage) ConvertToUIMessage() uctypes.UIMessage {
+func (m *anthropicChatMessage) ConvertToUIMessage() *uctypes.UIMessage {
 	var parts []uctypes.UIMessagePart
 
 	// Iterate over all content blocks
@@ -671,7 +671,11 @@ func (m *anthropicChatMessage) ConvertToUIMessage() uctypes.UIMessage {
 		}
 	}
 
-	return uctypes.UIMessage{
+	if len(parts) == 0 {
+		return nil
+	}
+
+	return &uctypes.UIMessage{
 		ID:    m.MessageId,
 		Role:  m.Role,
 		Parts: parts,
@@ -758,5 +762,34 @@ func ConvertToolResultsToAnthropicChatMessage(toolResults []uctypes.AIToolResult
 		MessageId: uuid.New().String(),
 		Role:      "user",
 		Content:   contentBlocks,
+	}, nil
+}
+
+// ConvertAIChatToUIChat converts an AIChat to a UIChat for Anthropic
+func ConvertAIChatToUIChat(aiChat uctypes.AIChat) (*uctypes.UIChat, error) {
+	if aiChat.APIType != "anthropic" {
+		return nil, fmt.Errorf("APIType must be 'anthropic', got '%s'", aiChat.APIType)
+	}
+
+	uiMessages := make([]uctypes.UIMessage, 0, len(aiChat.NativeMessages))
+
+	for i, nativeMsg := range aiChat.NativeMessages {
+		anthropicMsg, ok := nativeMsg.(*anthropicChatMessage)
+		if !ok {
+			return nil, fmt.Errorf("message %d: expected *anthropicChatMessage, got %T", i, nativeMsg)
+		}
+
+		uiMsg := anthropicMsg.ConvertToUIMessage()
+		if uiMsg != nil {
+			uiMessages = append(uiMessages, *uiMsg)
+		}
+	}
+
+	return &uctypes.UIChat{
+		ChatId:     aiChat.ChatId,
+		APIType:    aiChat.APIType,
+		Model:      aiChat.Model,
+		APIVersion: aiChat.APIVersion,
+		Messages:   uiMessages,
 	}, nil
 }

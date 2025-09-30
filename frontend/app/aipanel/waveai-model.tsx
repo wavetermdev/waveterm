@@ -28,11 +28,25 @@ export class WaveAIModel {
 
     widgetAccess: jotai.PrimitiveAtom<boolean> = jotai.atom(true);
     droppedFiles: jotai.PrimitiveAtom<DroppedFile[]> = jotai.atom([]);
-    chatId: jotai.PrimitiveAtom<string> = jotai.atom(crypto.randomUUID());
+    chatId!: jotai.PrimitiveAtom<string>;
     errorMessage: jotai.PrimitiveAtom<string> = jotai.atom(null) as jotai.PrimitiveAtom<string>;
     modelAtom!: jotai.Atom<string>;
 
     private constructor() {
+        const tabId = globalStore.get(atoms.staticTabId);
+        const chatIdMetaAtom = getTabMetaKeyAtom(tabId, "waveai:chatid");
+        let chatIdValue = globalStore.get(chatIdMetaAtom);
+        
+        if (chatIdValue == null) {
+            chatIdValue = crypto.randomUUID();
+            RpcApi.SetMetaCommand(TabRpcClient, {
+                oref: WOS.makeORef("tab", tabId),
+                meta: { "waveai:chatid": chatIdValue },
+            });
+        }
+        
+        this.chatId = jotai.atom(chatIdValue);
+        
         this.modelAtom = jotai.atom((get) => {
             const tabId = get(atoms.staticTabId);
             const modelMetaAtom = getTabMetaKeyAtom(tabId, "waveai:model");
@@ -98,7 +112,14 @@ export class WaveAIModel {
 
     clearChat() {
         this.clearFiles();
-        globalStore.set(this.chatId, crypto.randomUUID());
+        const newChatId = crypto.randomUUID();
+        globalStore.set(this.chatId, newChatId);
+        
+        const tabId = globalStore.get(atoms.staticTabId);
+        RpcApi.SetMetaCommand(TabRpcClient, {
+            oref: WOS.makeORef("tab", tabId),
+            meta: { "waveai:chatid": newChatId },
+        });
     }
 
     setError(message: string) {
@@ -129,7 +150,26 @@ export class WaveAIModel {
             meta: { "waveai:model": model },
         });
     }
-}
 
-// Export singleton instance for easy access
-export const waveAIModel = WaveAIModel.getInstance();
+    async loadChat(): Promise<UIMessage[]> {
+        const chatId = globalStore.get(this.chatId);
+        try {
+            const chatData = await RpcApi.GetWaveAIChatCommand(TabRpcClient, { chatid: chatId });
+            return chatData?.messages ?? [];
+        } catch (error) {
+            console.error("Failed to load chat:", error);
+            this.setError("Failed to load chat. Starting new chat...");
+            
+            const newChatId = crypto.randomUUID();
+            globalStore.set(this.chatId, newChatId);
+            
+            const tabId = globalStore.get(atoms.staticTabId);
+            RpcApi.SetMetaCommand(TabRpcClient, {
+                oref: WOS.makeORef("tab", tabId),
+                meta: { "waveai:chatid": newChatId },
+            });
+            
+            return [];
+        }
+    }
+}

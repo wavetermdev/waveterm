@@ -12,6 +12,7 @@ import (
 	"os"
 	"reflect"
 
+	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
 	"github.com/wavetermdev/waveterm/pkg/ijson"
 	"github.com/wavetermdev/waveterm/pkg/telemetry/telemetrydata"
 	"github.com/wavetermdev/waveterm/pkg/util/iochan/iochantypes"
@@ -138,6 +139,7 @@ const (
 
 	Command_AiSendMessage           = "aisendmessage"
 	Command_WaveAIEnableTelemetry   = "waveaienabletelemetry"
+	Command_GetWaveAIChat           = "getwaveaichat"
 
 	Command_CaptureBlockScreenshot = "captureblockscreenshot"
 
@@ -262,6 +264,7 @@ type WshRpcInterface interface {
 	// ai
 	AiSendMessageCommand(ctx context.Context, data AiMessageData) error
 	WaveAIEnableTelemetryCommand(ctx context.Context) error
+	GetWaveAIChatCommand(ctx context.Context, data CommandGetWaveAIChatData) (*uctypes.UIChat, error)
 
 	// screenshot
 	CaptureBlockScreenshotCommand(ctx context.Context, data CommandCaptureBlockScreenshotData) (string, error)
@@ -694,6 +697,10 @@ type WorkspaceInfoData struct {
 
 type AiMessageData struct {
 	Message string `json:"message,omitempty"`
+}
+
+type CommandGetWaveAIChatData struct {
+	ChatId string `json:"chatid"`
 }
 
 type CommandCaptureBlockScreenshotData struct {
