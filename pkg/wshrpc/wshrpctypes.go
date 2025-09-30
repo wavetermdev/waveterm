@@ -139,6 +139,8 @@ const (
 	Command_AiSendMessage           = "aisendmessage"
 	Command_WaveAIEnableTelemetry   = "waveaienabletelemetry"
 
+	Command_CaptureBlockScreenshot = "captureblockscreenshot"
+
 	Command_GetRTInfo = "getrtinfo"
 	Command_SetRTInfo = "setrtinfo"
 )
@@ -260,6 +262,9 @@ type WshRpcInterface interface {
 	// ai
 	AiSendMessageCommand(ctx context.Context, data AiMessageData) error
 	WaveAIEnableTelemetryCommand(ctx context.Context) error
+
+	// screenshot
+	CaptureBlockScreenshotCommand(ctx context.Context, data CommandCaptureBlockScreenshotData) (string, error)
 
 	// rtinfo
 	GetRTInfoCommand(ctx context.Context, data CommandGetRTInfoData) (*waveobj.ObjRTInfo, error)
@@ -689,6 +694,10 @@ type WorkspaceInfoData struct {
 
 type AiMessageData struct {
 	Message string `json:"message,omitempty"`
+}
+
+type CommandCaptureBlockScreenshotData struct {
+	BlockId string `json:"blockid" wshcontext:"BlockId"`
 }
 
 type CommandVarData struct {

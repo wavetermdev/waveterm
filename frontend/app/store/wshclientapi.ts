@@ -32,6 +32,11 @@ class RpcApiType {
         return client.wshRpcCall("blockinfo", data, opts);
     }
 
+    // command "captureblockscreenshot" [call]
+    CaptureBlockScreenshotCommand(client: WshClient, data: CommandCaptureBlockScreenshotData, opts?: RpcOpts): Promise<string> {
+        return client.wshRpcCall("captureblockscreenshot", data, opts);
+    }
+
     // command "connconnect" [call]
     ConnConnectCommand(client: WshClient, data: ConnRequest, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("connconnect", data, opts);

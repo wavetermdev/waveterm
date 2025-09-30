@@ -148,6 +148,16 @@ func EllipsisStr(s string, maxLen int) string {
 	return s
 }
 
+func TruncateString(s string, maxLen int) string {
+	if len(s) <= maxLen {
+		return s
+	}
+	if maxLen < 4 {
+		maxLen = 4
+	}
+	return s[:maxLen-3] + "..."
+}
+
 func LongestPrefix(root string, strs []string) string {
 	if len(strs) == 0 {
 		return root

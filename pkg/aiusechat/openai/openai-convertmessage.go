@@ -16,7 +16,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
-	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 )
 
 const (
@@ -91,9 +90,26 @@ func ConvertToolDefinitionToOpenAI(tool uctypes.ToolDefinition) OpenAIRequestToo
 		Name:        cleanedTool.Name,
 		Description: cleanedTool.Description,
 		Parameters:  cleanedTool.InputSchema,
-		Strict:      true,
+		Strict:      cleanedTool.Strict,
 		Type:        "function",
 	}
+}
+
+func debugPrintReq(req *OpenAIRequest, endpoint string) {
+	var toolNames []string
+	for _, tool := range req.Tools {
+		toolNames = append(toolNames, tool.Name)
+	}
+	if len(toolNames) > 0 {
+		log.Printf("tools: %s\n", strings.Join(toolNames, ","))
+	}
+	
+	log.Printf("inputs (%d):", len(req.Input))
+	for idx, input := range req.Input {
+		debugPrintInput(idx, input)
+	}
+	
+	log.Printf("baseurl: %s\n", endpoint)
 }
 
 // buildOpenAIHTTPRequest creates a complete HTTP request for the OpenAI API
@@ -161,7 +177,6 @@ func buildOpenAIHTTPRequest(ctx context.Context, inputs []any, chatOpts uctypes.
 		convertedTool := ConvertToolDefinitionToOpenAI(tool)
 		reqBody.Tools = append(reqBody.Tools, convertedTool)
 	}
-	log.Printf("TOOLS: %s\n", utilfn.MustPrettyPrintJSON(reqBody.Tools))
 
 	// Set reasoning based on thinking level
 	if opts.ThinkingLevel != "" {
@@ -176,23 +191,7 @@ func buildOpenAIHTTPRequest(ctx context.Context, inputs []any, chatOpts uctypes.
 		// For now, using defaults
 	}
 
-	// Pretty print request for debugging
-	if jsonStr, err := utilfn.MarshalIndentNoHTMLString(inputs, "", "  "); err == nil {
-		log.Printf("system-prompt: %v\n", chatOpts.SystemPrompt)
-		var toolNames []string
-		for _, tool := range chatOpts.Tools {
-			toolNames = append(toolNames, tool.Name)
-		}
-		for _, tool := range chatOpts.TabTools {
-			toolNames = append(toolNames, tool.Name)
-		}
-		if len(toolNames) > 0 {
-			log.Printf("tools: %s\n", strings.Join(toolNames, ","))
-		}
-		log.Printf("inputs JSON:\n%s", jsonStr)
-		log.Printf("has-api-key: %v\n", opts.APIToken != "")
-		log.Printf("baseurl: %s\n", endpoint)
-	}
+	debugPrintReq(reqBody, endpoint)
 
 	// Encode request body
 	var buf bytes.Buffer
@@ -370,14 +369,30 @@ func ConvertToolResultsToOpenAIChatMessage(toolResults []uctypes.AIToolResult) (
 		// Create the function call output with result data
 		var outputData any
 		if result.ErrorText != "" {
-			// Use error output format for errors
-			outputData = OpenAIFunctionCallErrorOutput{
+			// Marshal error output to string
+			errorOutput := OpenAIFunctionCallErrorOutput{
 				Ok:    "false",
 				Error: result.ErrorText,
 			}
+			errorBytes, err := json.Marshal(errorOutput)
+			if err != nil {
+				return nil, fmt.Errorf("failed to marshal error output: %w", err)
+			}
+			outputData = string(errorBytes)
 		} else {
-			// Use text result for success
-			outputData = result.Text
+			// Check if text looks like an image data URL
+			if strings.HasPrefix(result.Text, "data:image/") {
+				// Convert to output array with input_image type
+				outputData = []OpenAIMessageContent{
+					{
+						Type:     "input_image",
+						ImageUrl: result.Text,
+					},
+				}
+			} else {
+				// Use text result for success
+				outputData = result.Text
+			}
 		}
 
 		functionCallOutput := &OpenAIFunctionCallOutputInput{

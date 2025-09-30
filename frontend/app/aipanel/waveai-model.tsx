@@ -1,8 +1,13 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { getTabMetaKeyAtom } from "@/app/store/global";
 import { globalStore } from "@/app/store/jotaiStore";
+import * as WOS from "@/app/store/wos";
+import { RpcApi } from "@/app/store/wshclientapi";
+import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { workspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
+import { atoms } from "@/store/global";
 import * as jotai from "jotai";
 import type React from "react";
 import { createImagePreview, resizeImage } from "./ai-utils";
@@ -25,9 +30,14 @@ export class WaveAIModel {
     droppedFiles: jotai.PrimitiveAtom<DroppedFile[]> = jotai.atom([]);
     chatId: jotai.PrimitiveAtom<string> = jotai.atom(crypto.randomUUID());
     errorMessage: jotai.PrimitiveAtom<string> = jotai.atom(null) as jotai.PrimitiveAtom<string>;
+    modelAtom!: jotai.Atom<string>;
 
     private constructor() {
-        // Private constructor prevents direct instantiation
+        this.modelAtom = jotai.atom((get) => {
+            const tabId = get(atoms.staticTabId);
+            const modelMetaAtom = getTabMetaKeyAtom(tabId, "waveai:model");
+            return get(modelMetaAtom) ?? "gpt-5";
+        });
     }
 
     static getInstance(): WaveAIModel {
@@ -110,6 +120,14 @@ export class WaveAIModel {
         if (this.inputRef?.current) {
             this.inputRef.current.focus();
         }
+    }
+
+    setModel(model: string) {
+        const tabId = globalStore.get(atoms.staticTabId);
+        RpcApi.SetMetaCommand(TabRpcClient, {
+            oref: WOS.makeORef("tab", tabId),
+            meta: { "waveai:model": model },
+        });
     }
 }
 

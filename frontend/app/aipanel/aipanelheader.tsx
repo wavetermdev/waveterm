@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { ContextMenuModel } from "@/app/store/contextmenu";
-import { useAtom } from "jotai";
+import { useAtom, useAtomValue } from "jotai";
 import { memo } from "react";
 import { WaveAIModel } from "./waveai-model";
 
@@ -14,13 +14,44 @@ interface AIPanelHeaderProps {
 
 export const AIPanelHeader = memo(({ onClose, model, onClearChat }: AIPanelHeaderProps) => {
     const [widgetAccess, setWidgetAccess] = useAtom(model.widgetAccess);
+    const currentModel = useAtomValue(model.modelAtom);
+
+    const modelOptions = [
+        { value: "gpt-5", label: "GPT-5" },
+        { value: "gpt-5-mini", label: "GPT-5 Mini" },
+        { value: "claude-sonnet-4-5", label: "Claude Sonnet 4.5" },
+    ];
+
+    const getModelLabel = (modelValue: string): string => {
+        const option = modelOptions.find((opt) => opt.value === modelValue);
+        return option?.label ?? modelValue;
+    };
 
     const handleKebabClick = (e: React.MouseEvent) => {
         const menu: ContextMenuItem[] = [
             {
-                label: "Clear Chat",
+                label: "New Chat",
                 click: () => {
                     onClearChat?.();
+                },
+            },
+            { type: "separator" },
+            {
+                label: `Model (${getModelLabel(currentModel)})`,
+                submenu: modelOptions.map((option) => ({
+                    label: option.label,
+                    type: currentModel === option.value ? "checkbox" : undefined,
+                    checked: currentModel === option.value,
+                    click: () => {
+                        model.setModel(option.value);
+                    },
+                })),
+            },
+            { type: "separator" },
+            {
+                label: "Hide Wave AI",
+                click: () => {
+                    onClose?.();
                 },
             },
         ];
@@ -72,16 +103,6 @@ export const AIPanelHeader = memo(({ onClose, model, onClearChat }: AIPanelHeade
                 >
                     <i className="fa fa-ellipsis-vertical"></i>
                 </button>
-
-                {onClose && (
-                    <button
-                        onClick={onClose}
-                        className="text-gray-400 hover:text-white cursor-pointer transition-colors p-1 rounded flex-shrink-0 ml-1 focus:outline-none"
-                        title="Close AI Panel"
-                    >
-                        <i className="fa fa-xmark"></i>
-                    </button>
-                )}
             </div>
         </div>
     );

@@ -133,6 +133,11 @@ declare global {
         view: string;
     };
 
+    // wshrpc.CommandCaptureBlockScreenshotData
+    type CommandCaptureBlockScreenshotData = {
+        blockid: string;
+    };
+
     // wshrpc.CommandControllerAppendOutputData
     type CommandControllerAppendOutputData = {
         blockid: string;
@@ -585,6 +590,7 @@ declare global {
         "bg:activebordercolor"?: string;
         "waveai:panelopen"?: boolean;
         "waveai:panelwidth"?: number;
+        "waveai:model"?: string;
         "term:*"?: boolean;
         "term:fontsize"?: number;
         "term:fontfamily"?: string;

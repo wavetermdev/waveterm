@@ -19,6 +19,7 @@ import (
 	"github.com/launchdarkly/eventsource"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/chatstore"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
+	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/web/sse"
 )
 
@@ -432,16 +433,21 @@ func parseOpenAIHTTPError(resp *http.Response) error {
 		return fmt.Errorf("openai %s: failed to read error response: %v", resp.Status, err)
 	}
 
-	var errorResp openAIErrorResponse
-	if err := json.Unmarshal(body, &errorResp); err != nil {
-		return fmt.Errorf("openai %s: failed to parse error response: %v", resp.Status, err)
-	}
+	log.Printf("full error: %s\n", body)
 
-	if errorResp.Error.Message != "" {
+	// Try to parse as OpenAI error format first
+	var errorResp openAIErrorResponse
+	if err := json.Unmarshal(body, &errorResp); err == nil && errorResp.Error.Message != "" {
 		return fmt.Errorf("openai %s: %s", resp.Status, errorResp.Error.Message)
 	}
 
-	return fmt.Errorf("openai %s: unknown error", resp.Status)
+	// Try to parse as proxy error format
+	var proxyErr uctypes.ProxyErrorResponse
+	if err := json.Unmarshal(body, &proxyErr); err == nil && !proxyErr.Success && proxyErr.Error != "" {
+		return fmt.Errorf("openai %s: %s", resp.Status, proxyErr.Error)
+	}
+
+	return fmt.Errorf("openai %s: %s", resp.Status, utilfn.TruncateString(string(body), 120))
 }
 
 // handleOpenAIStreamingResp handles the OpenAI SSE streaming response

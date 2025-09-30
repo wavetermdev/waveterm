@@ -69,6 +69,7 @@ type ToolDefinition struct {
 	Description      string                    `json:"description"`
 	ShortDescription string                    `json:"shortdescription,omitempty"` // internal field (cannot marshal to API, must be stripped)
 	InputSchema      map[string]any            `json:"input_schema"`
+	Strict           bool                      `json:"strict,omitempty"`
 	ToolTextCallback func(any) (string, error) `json:"-"`
 	ToolAnyCallback  func(any) (any, error)    `json:"-"`
 }
@@ -342,4 +343,9 @@ type WaveChatOpts struct {
 	// emphemeral to the step
 	TabState string
 	TabTools []ToolDefinition
+}
+
+type ProxyErrorResponse struct {
+	Success bool   `json:"success"`
+	Error   string `json:"error"`
 }

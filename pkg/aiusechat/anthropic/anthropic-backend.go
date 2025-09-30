@@ -20,6 +20,7 @@ import (
 	"github.com/launchdarkly/eventsource"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/chatstore"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
+	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/web/sse"
 )
 
@@ -364,24 +365,24 @@ func makeThinkingOpts(thinkingLevel string, maxTokens int) *anthropicThinkingOpt
 
 // parseAnthropicHTTPError parses Anthropic API HTTP error responses
 func parseAnthropicHTTPError(resp *http.Response) error {
-	var eresp anthropicHTTPErrorResponse
 	slurp, _ := io.ReadAll(resp.Body)
-	_ = json.Unmarshal(slurp, &eresp)
 
-	var msg string
-	if eresp.Error.Message != "" {
-		msg = eresp.Error.Message
-	} else {
-		// Limit raw response to avoid giant messages
-		rawMsg := strings.TrimSpace(string(slurp))
-		if len(rawMsg) > 500 {
-			rawMsg = rawMsg[:500] + "..."
-		}
-		if rawMsg == "" {
-			msg = "unknown error"
-		} else {
-			msg = rawMsg
-		}
+	// Try to parse as Anthropic error format first
+	var eresp anthropicHTTPErrorResponse
+	if err := json.Unmarshal(slurp, &eresp); err == nil && eresp.Error.Message != "" {
+		return fmt.Errorf("anthropic %s: %s", resp.Status, eresp.Error.Message)
+	}
+
+	// Try to parse as proxy error format
+	var proxyErr uctypes.ProxyErrorResponse
+	if err := json.Unmarshal(slurp, &proxyErr); err == nil && !proxyErr.Success && proxyErr.Error != "" {
+		return fmt.Errorf("anthropic %s: %s", resp.Status, proxyErr.Error)
+	}
+
+	// Fall back to truncated raw response
+	msg := utilfn.TruncateString(strings.TrimSpace(string(slurp)), 120)
+	if msg == "" {
+		msg = "unknown error"
 	}
 	return fmt.Errorf("anthropic %s: %s", resp.Status, msg)
 }

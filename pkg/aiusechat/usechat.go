@@ -17,6 +17,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/chatstore"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/openai"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
+	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/web/sse"
 	"github.com/wavetermdev/waveterm/pkg/wstore"
@@ -161,13 +162,13 @@ func RunAIChat(ctx context.Context, sseHandler *sse.SSEHandlerCh, chatOpts uctyp
 			var toolResults []uctypes.AIToolResult
 			for _, toolCall := range stopReason.ToolCalls {
 				inputJSON, _ := json.Marshal(toolCall.Input)
-				log.Printf("TOOLUSE name=%s id=%s input=%s\n", toolCall.Name, toolCall.ID, string(inputJSON))
+				log.Printf("TOOLUSE name=%s id=%s input=%s\n", toolCall.Name, toolCall.ID, utilfn.TruncateString(string(inputJSON), 40))
 				result := ResolveToolCall(toolCall, chatOpts)
 				toolResults = append(toolResults, result)
 				if result.ErrorText != "" {
 					log.Printf("  error=%s\n", result.ErrorText)
 				} else {
-					log.Printf("  result=%s\n", result.Text)
+					log.Printf("  result=%s\n", utilfn.TruncateString(result.Text, 40))
 				}
 			}
 
@@ -363,6 +364,7 @@ func WaveAIPostMessageHandler(w http.ResponseWriter, r *http.Request) {
 	chatOpts.TabStateGenerator = func() (string, []uctypes.ToolDefinition, error) {
 		return GenerateTabStateAndTools(r.Context(), req.TabId, req.WidgetAccess)
 	}
+	chatOpts.Tools = append(chatOpts.Tools, GetCaptureScreenshotToolDefinition(req.TabId))
 
 	// Validate the message
 	if err := req.Msg.Validate(); err != nil {

@@ -2,13 +2,14 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { wpsReconnectHandler } from "@/app/store/wps";
+import { TabClient } from "@/app/store/tabrpcclient";
 import { WshClient } from "@/app/store/wshclient";
 import { makeTabRouteId, WshRouter } from "@/app/store/wshrouter";
 import { getWSServerEndpoint } from "@/util/endpoints";
 import { addWSReconnectHandler, ElectronOverrideOpts, globalWS, initGlobalWS, WSControl } from "./ws";
 
 let DefaultRouter: WshRouter;
-let TabRpcClient: WshClient;
+let TabRpcClient: TabClient;
 
 async function* rpcResponseGenerator(
     openRpcs: Map<string, ClientRpcEntry>,
@@ -133,7 +134,7 @@ function initWshrpc(tabId: string): WSControl {
     };
     initGlobalWS(getWSServerEndpoint(), tabId, handleFn);
     globalWS.connectNow("connectWshrpc");
-    TabRpcClient = new WshClient(makeTabRouteId(tabId));
+    TabRpcClient = new TabClient(makeTabRouteId(tabId));
     DefaultRouter.registerRoute(TabRpcClient.routeId, TabRpcClient);
     addWSReconnectHandler(() => {
         DefaultRouter.reannounceRoutes();

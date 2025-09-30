@@ -16,6 +16,9 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/blockcontroller"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wcore"
+	"github.com/wavetermdev/waveterm/pkg/wshrpc"
+	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
+	"github.com/wavetermdev/waveterm/pkg/wshutil"
 	"github.com/wavetermdev/waveterm/pkg/wstore"
 )
 
@@ -208,6 +211,7 @@ func GetWebNavigateToolDefinition(block *waveobj.Block) uctypes.ToolDefinition {
 		Name:        toolName,
 		DisplayName: fmt.Sprintf("Navigate Web Block %s", blockIdPrefix),
 		Description: fmt.Sprintf("Navigate the web browser widget %s to a new URL", blockIdPrefix),
+		Strict:      true,
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
@@ -329,10 +333,12 @@ func GetTsunamiGetDataToolDefinition(block *waveobj.Block, rtInfo *waveobj.ObjRT
 	toolName := fmt.Sprintf("tsunami_getdata_%s", blockIdPrefix)
 
 	return &uctypes.ToolDefinition{
-		Name: toolName,
+		Name:   toolName,
+		Strict: true,
 		InputSchema: map[string]any{
-			"type":       "object",
-			"properties": map[string]any{},
+			"type":                 "object",
+			"properties":           map[string]any{},
+			"additionalProperties": false,
 		},
 		ToolAnyCallback: makeTsunamiGetCallback(status, "/api/data"),
 	}
@@ -343,10 +349,12 @@ func GetTsunamiGetConfigToolDefinition(block *waveobj.Block, rtInfo *waveobj.Obj
 	toolName := fmt.Sprintf("tsunami_getconfig_%s", blockIdPrefix)
 
 	return &uctypes.ToolDefinition{
-		Name: toolName,
+		Name:   toolName,
+		Strict: true,
 		InputSchema: map[string]any{
-			"type":       "object",
-			"properties": map[string]any{},
+			"type":                 "object",
+			"properties":           map[string]any{},
+			"additionalProperties": false,
 		},
 		ToolAnyCallback: makeTsunamiGetCallback(status, "/api/config"),
 	}
@@ -377,12 +385,87 @@ func GetTsunamiSetConfigToolDefinition(block *waveobj.Block, rtInfo *waveobj.Obj
 	}
 }
 
+func resolveBlockIdFromPrefix(tab *waveobj.Tab, blockIdPrefix string) (string, error) {
+	if len(blockIdPrefix) != 8 {
+		return "", fmt.Errorf("block ID prefix must be 8 characters")
+	}
+
+	for _, blockId := range tab.BlockIds {
+		if strings.HasPrefix(blockId, blockIdPrefix) {
+			return blockId, nil
+		}
+	}
+
+	return "", fmt.Errorf("block not found with prefix %s", blockIdPrefix)
+}
+
+func makeTabCaptureBlockScreenshot(tabId string) func(any) (string, error) {
+	return func(input any) (string, error) {
+		inputMap, ok := input.(map[string]any)
+		if !ok {
+			return "", fmt.Errorf("invalid input format")
+		}
+
+		blockIdPrefix, ok := inputMap["blockid"].(string)
+		if !ok {
+			return "", fmt.Errorf("missing or invalid blockid parameter")
+		}
+
+		ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancelFn()
+
+		tab, err := wstore.DBMustGet[*waveobj.Tab](ctx, tabId)
+		if err != nil {
+			return "", fmt.Errorf("error getting tab: %w", err)
+		}
+
+		fullBlockId, err := resolveBlockIdFromPrefix(tab, blockIdPrefix)
+		if err != nil {
+			return "", err
+		}
+
+		rpcClient := wshclient.GetBareRpcClient()
+		screenshotData, err := wshclient.CaptureBlockScreenshotCommand(
+			rpcClient,
+			wshrpc.CommandCaptureBlockScreenshotData{BlockId: fullBlockId},
+			&wshrpc.RpcOpts{Route: wshutil.MakeTabRouteId(tabId)},
+		)
+		if err != nil {
+			return "", fmt.Errorf("failed to capture screenshot: %w", err)
+		}
+
+		return screenshotData, nil
+	}
+}
+
+func GetCaptureScreenshotToolDefinition(tabId string) uctypes.ToolDefinition {
+	return uctypes.ToolDefinition{
+		Name:        "capture_screenshot",
+		DisplayName: "Capture Screenshot",
+		Description: "Capture a screenshot of a widget and return it as an image",
+		Strict:      true,
+		InputSchema: map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"blockid": map[string]any{
+					"type":        "string",
+					"description": "8-character block ID of the widget to screenshot",
+				},
+			},
+			"required":             []string{"blockid"},
+			"additionalProperties": false,
+		},
+		ToolTextCallback: makeTabCaptureBlockScreenshot(tabId),
+	}
+}
+
 // for testing
 func GetAdderToolDefinition() uctypes.ToolDefinition {
 	return uctypes.ToolDefinition{
 		Name:        "adder",
 		DisplayName: "Adder",
 		Description: "Add an array of numbers together and return their sum",
+		Strict:      true,
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
