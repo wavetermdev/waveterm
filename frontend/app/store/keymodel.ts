@@ -538,12 +538,7 @@ function registerGlobalKeys() {
     });
     globalKeyMap.set("Cmd:Shift:a", () => {
         const currentVisible = workspaceLayoutModel.getAIPanelVisible();
-        if (!currentVisible) {
-            WaveAIModel.getInstance().focusInput();
-        } else {
-            workspaceLayoutModel.setAIPanelVisible(false);
-            globalRefocus();
-        }
+        workspaceLayoutModel.setAIPanelVisible(!currentVisible);
         return true;
     });
     const allKeys = Array.from(globalKeyMap.keys());

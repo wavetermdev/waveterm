@@ -26,58 +26,34 @@ const WorkspaceElem = memo(() => {
     const initialAiPanelPercentage = workspaceLayoutModel.getAIPanelPercentage(window.innerWidth);
     const panelGroupRef = useRef<ImperativePanelGroupHandle>(null);
     const aiPanelRef = useRef<ImperativePanelHandle>(null);
+    const panelContainerRef = useRef<HTMLDivElement>(null);
+    const aiPanelWrapperRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
-        if (aiPanelRef.current && panelGroupRef.current) {
-            workspaceLayoutModel.registerRefs(aiPanelRef.current, panelGroupRef.current);
+        if (aiPanelRef.current && panelGroupRef.current && panelContainerRef.current && aiPanelWrapperRef.current) {
+            workspaceLayoutModel.registerRefs(aiPanelRef.current, panelGroupRef.current, panelContainerRef.current, aiPanelWrapperRef.current);
         }
     }, []);
 
     useEffect(() => {
-        const handleResize = () => {
-            if (!panelGroupRef.current) {
-                return;
-            }
-            const newWindowWidth = window.innerWidth;
-            const aiPanelPercentage = workspaceLayoutModel.getAIPanelPercentage(newWindowWidth);
-            const mainContentPercentage = workspaceLayoutModel.getMainContentPercentage(newWindowWidth);
-            workspaceLayoutModel.inResize = true;
-            const layout = [aiPanelPercentage, mainContentPercentage];
-            panelGroupRef.current.setLayout(layout);
-            workspaceLayoutModel.inResize = false;
-        };
-
-        window.addEventListener("resize", handleResize);
-        return () => window.removeEventListener("resize", handleResize);
+        window.addEventListener("resize", workspaceLayoutModel.handleWindowResize);
+        return () => window.removeEventListener("resize", workspaceLayoutModel.handleWindowResize);
     }, []);
-
-    const handlePanelLayout = (sizes: number[]) => {
-        if (workspaceLayoutModel.inResize) {
-            return;
-        }
-        const currentWindowWidth = window.innerWidth;
-        const aiPanelPixelWidth = (sizes[0] / 100) * currentWindowWidth;
-        workspaceLayoutModel.handleAIPanelResize(aiPanelPixelWidth, currentWindowWidth);
-        const newPercentage = workspaceLayoutModel.getAIPanelPercentage(currentWindowWidth);
-        const mainContentPercentage = 100 - newPercentage;
-        workspaceLayoutModel.inResize = true;
-        const layout = [newPercentage, mainContentPercentage];
-        panelGroupRef.current.setLayout(layout);
-        workspaceLayoutModel.inResize = false;
-    };
-
-    const handleCloseAIPanel = () => {
-        workspaceLayoutModel.setAIPanelVisible(false);
-    };
 
     return (
         <div className="flex flex-col w-full flex-grow overflow-hidden">
             <TabBar key={ws.oid} workspace={ws} />
-            <div className="flex flex-row flex-grow overflow-hidden">
+            <div ref={panelContainerRef} className="flex flex-row flex-grow overflow-hidden">
                 <ErrorBoundary key={tabId}>
-                    <PanelGroup direction="horizontal" onLayout={handlePanelLayout} ref={panelGroupRef}>
-                        <Panel ref={aiPanelRef} collapsible defaultSize={initialAiPanelPercentage} order={1}>
-                            <AIPanel onClose={handleCloseAIPanel} />
+                    <PanelGroup
+                        direction="horizontal"
+                        onLayout={workspaceLayoutModel.handlePanelLayout}
+                        ref={panelGroupRef}
+                    >
+                        <Panel ref={aiPanelRef} collapsible defaultSize={initialAiPanelPercentage} order={1} className="overflow-hidden">
+                            <div ref={aiPanelWrapperRef} className="w-full h-full">
+                                <AIPanel onClose={() => workspaceLayoutModel.setAIPanelVisible(false)} />
+                            </div>
                         </Panel>
                         <PanelResizeHandle className="w-0.5 bg-transparent hover:bg-gray-500/20 transition-colors" />
                         <Panel order={2} defaultSize={100 - initialAiPanelPercentage}>

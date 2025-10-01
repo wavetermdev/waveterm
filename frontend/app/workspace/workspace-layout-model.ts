@@ -1,15 +1,20 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { getTabMetaKeyAtom } from "@/app/store/global";
+import { WaveAIModel } from "@/app/aipanel/waveai-model";
+import { getTabMetaKeyAtom, refocusNode } from "@/app/store/global";
 import { globalStore } from "@/app/store/jotaiStore";
 import * as WOS from "@/app/store/wos";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
+import { getLayoutModelForStaticTab } from "@/layout/lib/layoutModelHooks";
 import { atoms, isDev } from "@/store/global";
+import debug from "debug";
 import * as jotai from "jotai";
 import { debounce } from "lodash-es";
 import { ImperativePanelGroupHandle, ImperativePanelHandle } from "react-resizable-panels";
+
+const dlog = debug("wave:workspace");
 
 const AIPANEL_DEFAULTWIDTH = 300;
 const AIPANEL_MINWIDTH = 250;
@@ -18,20 +23,29 @@ const AIPANEL_MAXWIDTHRATIO = 0.5;
 class WorkspaceLayoutModel {
     aiPanelRef: ImperativePanelHandle | null;
     panelGroupRef: ImperativePanelGroupHandle | null;
-    inResize: boolean;
+    panelContainerRef: HTMLDivElement | null;
+    aiPanelWrapperRef: HTMLDivElement | null;
+    inResize: boolean; // prevents recursive setLayout calls (setLayout triggers onLayout which calls setLayout)
     private aiPanelVisible: boolean;
     private aiPanelWidth: number | null;
     private debouncedPersistWidth: (width: number) => void;
     private initialized: boolean = false;
+    private transitionTimeoutRef: NodeJS.Timeout | null = null;
+    private focusTimeoutRef: NodeJS.Timeout | null = null;
     panelVisibleAtom: jotai.PrimitiveAtom<boolean>;
 
     constructor() {
         this.aiPanelRef = null;
         this.panelGroupRef = null;
+        this.panelContainerRef = null;
+        this.aiPanelWrapperRef = null;
         this.inResize = false;
         this.aiPanelVisible = isDev();
         this.aiPanelWidth = null;
         this.panelVisibleAtom = jotai.atom(this.aiPanelVisible);
+
+        this.handleWindowResize = this.handleWindowResize.bind(this);
+        this.handlePanelLayout = this.handlePanelLayout.bind(this);
 
         this.debouncedPersistWidth = debounce((width: number) => {
             try {
@@ -77,10 +91,84 @@ class WorkspaceLayoutModel {
         return getTabMetaKeyAtom(this.getTabId(), "waveai:panelwidth");
     }
 
-    registerRefs(aiPanelRef: ImperativePanelHandle, panelGroupRef: ImperativePanelGroupHandle): void {
+    registerRefs(
+        aiPanelRef: ImperativePanelHandle,
+        panelGroupRef: ImperativePanelGroupHandle,
+        panelContainerRef: HTMLDivElement,
+        aiPanelWrapperRef: HTMLDivElement
+    ): void {
         this.aiPanelRef = aiPanelRef;
         this.panelGroupRef = panelGroupRef;
+        this.panelContainerRef = panelContainerRef;
+        this.aiPanelWrapperRef = aiPanelWrapperRef;
         this.syncAIPanelRef();
+        this.updateWrapperWidth();
+    }
+
+    updateWrapperWidth(): void {
+        if (!this.aiPanelWrapperRef) {
+            return;
+        }
+        const width = this.getAIPanelWidth();
+        this.aiPanelWrapperRef.style.width = `${width}px`;
+    }
+
+    enableTransitions(duration: number): void {
+        if (!this.panelContainerRef) {
+            return;
+        }
+        const panels = this.panelContainerRef.querySelectorAll("[data-panel]");
+        dlog("set transition ease-in-out", panels);
+        panels.forEach((panel: HTMLElement) => {
+            panel.style.transition = "flex 0.2s ease-in-out";
+        });
+
+        if (this.transitionTimeoutRef) {
+            clearTimeout(this.transitionTimeoutRef);
+        }
+        this.transitionTimeoutRef = setTimeout(() => {
+            if (!this.panelContainerRef) {
+                return;
+            }
+            const panels = this.panelContainerRef.querySelectorAll("[data-panel]");
+            dlog("set transition none", panels);
+            panels.forEach((panel: HTMLElement) => {
+                panel.style.transition = "none";
+            });
+        }, duration);
+    }
+
+    handleWindowResize(): void {
+        if (!this.panelGroupRef) {
+            return;
+        }
+        const newWindowWidth = window.innerWidth;
+        const aiPanelPercentage = this.getAIPanelPercentage(newWindowWidth);
+        const mainContentPercentage = this.getMainContentPercentage(newWindowWidth);
+        this.inResize = true;
+        const layout = [aiPanelPercentage, mainContentPercentage];
+        this.panelGroupRef.setLayout(layout);
+        this.inResize = false;
+    }
+
+    handlePanelLayout(sizes: number[]): void {
+        dlog("handlePanelLayout", "inResize:", this.inResize, "sizes:", sizes);
+        if (this.inResize) {
+            return;
+        }
+        if (!this.panelGroupRef) {
+            return;
+        }
+
+        const currentWindowWidth = window.innerWidth;
+        const aiPanelPixelWidth = (sizes[0] / 100) * currentWindowWidth;
+        this.handleAIPanelResize(aiPanelPixelWidth, currentWindowWidth);
+        const newPercentage = this.getAIPanelPercentage(currentWindowWidth);
+        const mainContentPercentage = 100 - newPercentage;
+        this.inResize = true;
+        const layout = [newPercentage, mainContentPercentage];
+        this.panelGroupRef.setLayout(layout);
+        this.inResize = false;
     }
 
     syncAIPanelRef(): void {
@@ -125,13 +213,36 @@ class WorkspaceLayoutModel {
         if (!isDev() && visible) {
             return;
         }
+        if (this.focusTimeoutRef != null) {
+            clearTimeout(this.focusTimeoutRef);
+            this.focusTimeoutRef = null;
+        }
         this.aiPanelVisible = visible;
         globalStore.set(this.panelVisibleAtom, visible);
         RpcApi.SetMetaCommand(TabRpcClient, {
             oref: WOS.makeORef("tab", this.getTabId()),
             meta: { "waveai:panelopen": visible },
         });
+        this.enableTransitions(250);
         this.syncAIPanelRef();
+
+        if (visible) {
+            this.focusTimeoutRef = setTimeout(() => {
+                WaveAIModel.getInstance().focusInput();
+                this.focusTimeoutRef = null;
+            }, 350);
+        } else {
+            const layoutModel = getLayoutModelForStaticTab();
+            const focusedNode = globalStore.get(layoutModel.focusedNode);
+            if (focusedNode == null) {
+                layoutModel.focusFirstNode();
+                return;
+            }
+            const blockId = focusedNode?.data?.blockId;
+            if (blockId != null) {
+                refocusNode(blockId);
+            }
+        }
     }
 
     getAIPanelWidth(): number {
@@ -144,6 +255,7 @@ class WorkspaceLayoutModel {
 
     setAIPanelWidth(width: number): void {
         this.aiPanelWidth = width;
+        this.updateWrapperWidth();
         this.debouncedPersistWidth(width);
     }
 
@@ -172,10 +284,6 @@ class WorkspaceLayoutModel {
         }
         const clampedWidth = this.getClampedAIPanelWidth(width, windowWidth);
         this.setAIPanelWidth(clampedWidth);
-
-        if (!this.getAIPanelVisible()) {
-            this.setAIPanelVisible(true);
-        }
     }
 }
 

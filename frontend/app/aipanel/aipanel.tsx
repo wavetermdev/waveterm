@@ -4,6 +4,7 @@
 import { WaveUIMessagePart } from "@/app/aipanel/aitypes";
 import { ErrorBoundary } from "@/app/element/errorboundary";
 import { atoms, getSettingsKeyAtom } from "@/app/store/global";
+import { workspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
 import { globalStore } from "@/app/store/jotaiStore";
 import { getWebServerEndpoint } from "@/util/endpoints";
 import { checkKeyPressed, keydownWrapper } from "@/util/keyutil";
@@ -37,6 +38,7 @@ const AIPanelComponentInner = memo(({ className, onClose }: AIPanelProps) => {
     const showOverlayBlockNums = jotai.useAtomValue(getSettingsKeyAtom("app:showoverlayblocknums")) ?? true;
     const isFocused = jotai.useAtomValue(atoms.waveAIFocusedAtom);
     const telemetryEnabled = jotai.useAtomValue(getSettingsKeyAtom("telemetry:enabled")) ?? false;
+    const isPanelVisible = jotai.useAtomValue(workspaceLayoutModel.panelVisibleAtom);
 
     const { messages, sendMessage, status, setMessages, error } = useChat({
         transport: new DefaultChatTransport({
@@ -277,6 +279,7 @@ const AIPanelComponentInner = memo(({ className, onClose }: AIPanelProps) => {
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
             onClick={handleClick}
+            inert={!isPanelVisible ? true : undefined}
         >
             {isDragOver && (
                 <div
