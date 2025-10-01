@@ -280,6 +280,10 @@ electron.ipcMain.on("get-about-modal-details", (event) => {
     event.returnValue = getWaveVersion() as AboutModalDetails;
 });
 
+electron.ipcMain.on("get-zoom-factor", (event) => {
+    event.returnValue = event.sender.getZoomFactor();
+});
+
 const hasBeforeInputRegisteredMap = new Map<number, boolean>();
 
 electron.ipcMain.on("webview-focus", (event: Electron.IpcMainEvent, focusedId: number) => {

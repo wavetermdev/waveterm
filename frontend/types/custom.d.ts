@@ -74,6 +74,7 @@ declare global {
         getWebviewPreload: () => string; // get-webview-preload
         getAboutModalDetails: () => AboutModalDetails; // get-about-modal-details
         getDocsiteUrl: () => string; // get-docsite-url
+        getZoomFactor: () => number; // get-zoom-factor
         showContextMenu: (workspaceId: string, menu?: ElectronContextMenuItem[]) => void; // contextmenu-show
         onContextMenuClick: (callback: (id: string) => void) => void; // contextmenu-click
         onNavigate: (callback: (url: string) => void) => void;
@@ -81,6 +82,7 @@ declare global {
         downloadFile: (path: string) => void; // download
         openExternal: (url: string) => void; // open-external
         onFullScreenChange: (callback: (isFullScreen: boolean) => void) => void; // fullscreen-change
+        onZoomFactorChange: (callback: (zoomFactor: number) => void) => void; // zoom-factor-change
         onUpdaterStatusChange: (callback: (status: UpdaterStatus) => void) => void; // app-update-status
         getUpdaterStatus: () => UpdaterStatus; // get-app-update-status
         getUpdaterChannel: () => string; // get-updater-channel

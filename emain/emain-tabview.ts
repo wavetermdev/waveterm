@@ -83,6 +83,9 @@ export class WaveTabView extends WebContentsView {
             removeWaveTabView(this.waveTabId);
             this.isDestroyed = true;
         });
+        this.webContents.on("zoom-changed", (_event, zoomDirection) => {
+            this.webContents.send("zoom-factor-change", this.webContents.getZoomFactor());
+        });
         this.setBackgroundColor(computeBgColor(fullConfig));
     }
 
