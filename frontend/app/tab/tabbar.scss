@@ -3,7 +3,7 @@
 
 .tab-bar-wrapper {
     --default-indent: 10px;
-    --darwin-not-fullscreen-indent: 74px;
+    --darwin-not-fullscreen-indent: calc(74px * var(--zoomfactor-inv));
 }
 
 .darwin:not(.fullscreen) .tab-bar-wrapper {
@@ -29,8 +29,10 @@
     user-select: none;
     display: flex;
     flex-direction: row;
+    align-items: end;
     width: 100vw;
     -webkit-app-region: drag;
+    height: max(33px, calc(33px * var(--zoomfactor-inv)));
 
     button {
         -webkit-app-region: no-drag;
@@ -97,6 +99,10 @@
 
     .add-tab {
         padding: 0 10px;
+        height: 27px;
+    }
+
+    .workspace-switcher {
     }
 
     .window-drag {

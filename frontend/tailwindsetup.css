@@ -68,6 +68,11 @@
     --container-tiny: 120px;
 }
 
+:root {
+    --zoomfactor: 1;
+    --zoomfactor-inv: 1;
+}
+
 /* Chart tooltip styling for sysinfo plots */
 svg [aria-label="tip"] g path {
     color: var(--border-color);

@@ -17,6 +17,7 @@ import { ImperativePanelGroupHandle, ImperativePanelHandle } from "react-resizab
 const dlog = debug("wave:workspace");
 
 const AIPANEL_DEFAULTWIDTH = 300;
+const AIPANEL_DEFAULTWIDTHRATIO = 0.33;
 const AIPANEL_MINWIDTH = 250;
 const AIPANEL_MAXWIDTHRATIO = 0.5;
 
@@ -110,7 +111,8 @@ class WorkspaceLayoutModel {
             return;
         }
         const width = this.getAIPanelWidth();
-        this.aiPanelWrapperRef.style.width = `${width}px`;
+        const clampedWidth = this.getClampedAIPanelWidth(width, window.innerWidth);
+        this.aiPanelWrapperRef.style.width = `${clampedWidth}px`;
     }
 
     enableTransitions(duration: number): void {
@@ -149,6 +151,7 @@ class WorkspaceLayoutModel {
         const layout = [aiPanelPercentage, mainContentPercentage];
         this.panelGroupRef.setLayout(layout);
         this.inResize = false;
+        this.updateWrapperWidth();
     }
 
     handlePanelLayout(sizes: number[]): void {
@@ -248,7 +251,7 @@ class WorkspaceLayoutModel {
     getAIPanelWidth(): number {
         this.initializeFromTabMeta();
         if (this.aiPanelWidth == null) {
-            this.aiPanelWidth = Math.max(AIPANEL_DEFAULTWIDTH, window.innerWidth / 3);
+            this.aiPanelWidth = Math.max(AIPANEL_DEFAULTWIDTH, window.innerWidth * AIPANEL_DEFAULTWIDTHRATIO);
         }
         return this.aiPanelWidth;
     }
