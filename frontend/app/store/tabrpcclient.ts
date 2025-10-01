@@ -27,25 +27,34 @@ export class TabClient extends WshClient {
             throw new Error(`Block not found: ${blockId}`);
         }
 
-        const additionalProps = layoutModel.getNodeAdditionalProperties(node);
-        if (!additionalProps?.rect) {
-            throw new Error(`Block rect not found for: ${blockId}`);
-        }
-
         const displayContainer = layoutModel.displayContainerRef.current;
         if (!displayContainer) {
             throw new Error("Display container not found");
         }
 
         const containerRect = displayContainer.getBoundingClientRect();
-        const blockRect = additionalProps.rect;
+        const additionalProps = layoutModel.getNodeAdditionalProperties(node);
 
-        const electronRect: Electron.Rectangle = {
-            x: Math.round(containerRect.x + blockRect.left),
-            y: Math.round(containerRect.y + blockRect.top),
-            width: Math.round(blockRect.width),
-            height: Math.round(blockRect.height),
-        };
+        let electronRect: Electron.Rectangle;
+
+        if (!additionalProps?.rect) {
+            // Bug: rect is not set when there is only one block in the layout
+            // In this case, use the full container rect
+            electronRect = {
+                x: Math.round(containerRect.x),
+                y: Math.round(containerRect.y),
+                width: Math.round(containerRect.width),
+                height: Math.round(containerRect.height),
+            };
+        } else {
+            const blockRect = additionalProps.rect;
+            electronRect = {
+                x: Math.round(containerRect.x + blockRect.left),
+                y: Math.round(containerRect.y + blockRect.top),
+                width: Math.round(blockRect.width),
+                height: Math.round(blockRect.height),
+            };
+        }
 
         return await getApi().captureScreenshot(electronRect);
     }

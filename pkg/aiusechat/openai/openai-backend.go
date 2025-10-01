@@ -627,6 +627,9 @@ func handleOpenAIEvent(
 		}
 		return nil, nil
 
+	case "response.output_text.done":
+		return nil, nil
+
 	case "response.content_part.done":
 		var ev openaiResponseContentPartDoneEvent
 		if err := json.Unmarshal([]byte(data), &ev); err != nil {

@@ -100,16 +100,15 @@ func debugPrintReq(req *OpenAIRequest, endpoint string) {
 	for _, tool := range req.Tools {
 		toolNames = append(toolNames, tool.Name)
 	}
+	log.Printf("model %s\n", req.Model)
 	if len(toolNames) > 0 {
 		log.Printf("tools: %s\n", strings.Join(toolNames, ","))
 	}
-	
+
 	log.Printf("inputs (%d):", len(req.Input))
 	for idx, input := range req.Input {
 		debugPrintInput(idx, input)
 	}
-	
-	log.Printf("baseurl: %s\n", endpoint)
 }
 
 // buildOpenAIHTTPRequest creates a complete HTTP request for the OpenAI API

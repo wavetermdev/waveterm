@@ -146,6 +146,19 @@ function switchBlockByBlockNum(index: number) {
 function switchBlockInDirection(tabId: string, direction: NavigateDirection) {
     const layoutModel = getLayoutModelForTabById(tabId);
     const inWaveAI = globalStore.get(atoms.waveAIFocusedAtom);
+    
+    if (direction === NavigateDirection.Left) {
+        const numBlocks = globalStore.get(layoutModel.numLeafs);
+        if (inWaveAI) {
+            return;
+        }
+        if (numBlocks === 1) {
+            // special case: layout model doesn't set "rect" when there's only one block
+            WaveAIModel.getInstance().focusInput();
+            return;
+        }
+    }
+    
     const navResult = layoutModel.switchNodeFocusInDirection(direction, inWaveAI);
     if (navResult.atLeft) {
         WaveAIModel.getInstance().focusInput();
