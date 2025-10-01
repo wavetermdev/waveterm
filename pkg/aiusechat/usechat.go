@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync"
 
 	"github.com/google/uuid"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/anthropic"
@@ -20,6 +21,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/web/sse"
+	"github.com/wavetermdev/waveterm/pkg/wps"
 	"github.com/wavetermdev/waveterm/pkg/wstore"
 )
 
@@ -33,6 +35,11 @@ const DefaultAnthropicModel = "claude-sonnet-4-5"
 const DefaultAIEndpoint = "https://cfapi.waveterm.dev/api/waveai"
 const DefaultMaxTokens = 4 * 1024
 const DefaultOpenAIModel = "gpt-5-mini"
+
+var (
+	globalRateLimitInfo = &uctypes.RateLimitInfo{Unknown: true}
+	rateLimitLock       sync.Mutex
+)
 
 var SystemPromptText = strings.Join([]string{
 	`You are Wave AI, an intelligent assistant embedded within Wave Terminal, a modern terminal application with graphical widgets.`,
@@ -85,16 +92,40 @@ func shouldUseChatCompletionsAPI(model string) bool {
 		strings.HasPrefix(m, "o1-")
 }
 
+func updateRateLimit(info *uctypes.RateLimitInfo) {
+	log.Printf("updateRateLimit: %#v\n", info)
+	if info == nil {
+		return
+	}
+	rateLimitLock.Lock()
+	defer rateLimitLock.Unlock()
+	globalRateLimitInfo = info
+	go func() {
+		wps.Broker.Publish(wps.WaveEvent{
+			Event: wps.Event_WaveAIRateLimit,
+			Data:  info,
+		})
+	}()
+}
+
+func GetGlobalRateLimit() *uctypes.RateLimitInfo {
+	rateLimitLock.Lock()
+	defer rateLimitLock.Unlock()
+	return globalRateLimitInfo
+}
+
 func runAIChatStep(ctx context.Context, sseHandler *sse.SSEHandlerCh, chatOpts uctypes.WaveChatOpts, cont *uctypes.WaveContinueResponse) (*uctypes.WaveStopReason, []uctypes.GenAIMessage, error) {
 	if chatOpts.Config.APIType == APIType_Anthropic {
-		stopReason, msg, err := anthropic.RunAnthropicChatStep(ctx, sseHandler, chatOpts, cont)
+		stopReason, msg, rateLimitInfo, err := anthropic.RunAnthropicChatStep(ctx, sseHandler, chatOpts, cont)
+		updateRateLimit(rateLimitInfo)
 		return stopReason, []uctypes.GenAIMessage{msg}, err
 	}
 	if chatOpts.Config.APIType == APIType_OpenAI {
 		if shouldUseChatCompletionsAPI(chatOpts.Config.Model) {
 			return nil, nil, fmt.Errorf("Chat completions API not available (must use newer OpenAI models)")
 		}
-		stopReason, msgs, err := openai.RunOpenAIChatStep(ctx, sseHandler, chatOpts, cont)
+		stopReason, msgs, rateLimitInfo, err := openai.RunOpenAIChatStep(ctx, sseHandler, chatOpts, cont)
+		updateRateLimit(rateLimitInfo)
 		var messages []uctypes.GenAIMessage
 		for _, msg := range msgs {
 			messages = append(messages, msg)

@@ -326,26 +326,26 @@ func RunOpenAIChatStep(
 	sse *sse.SSEHandlerCh,
 	chatOpts uctypes.WaveChatOpts,
 	cont *uctypes.WaveContinueResponse,
-) (*uctypes.WaveStopReason, []*OpenAIChatMessage, error) {
+) (*uctypes.WaveStopReason, []*OpenAIChatMessage, *uctypes.RateLimitInfo, error) {
 	if sse == nil {
-		return nil, nil, errors.New("sse handler is nil")
+		return nil, nil, nil, errors.New("sse handler is nil")
 	}
 
 	// Get chat from store
 	chat := chatstore.DefaultChatStore.Get(chatOpts.ChatId)
 	if chat == nil {
-		return nil, nil, fmt.Errorf("chat not found: %s", chatOpts.ChatId)
+		return nil, nil, nil, fmt.Errorf("chat not found: %s", chatOpts.ChatId)
 	}
 
 	// Validate that chatOpts.Config match the chat's stored configuration
 	if chat.APIType != chatOpts.Config.APIType {
-		return nil, nil, fmt.Errorf("API type mismatch: chat has %s, chatOpts has %s", chat.APIType, chatOpts.Config.APIType)
+		return nil, nil, nil, fmt.Errorf("API type mismatch: chat has %s, chatOpts has %s", chat.APIType, chatOpts.Config.APIType)
 	}
 	if chat.Model != chatOpts.Config.Model {
-		return nil, nil, fmt.Errorf("model mismatch: chat has %s, chatOpts has %s", chat.Model, chatOpts.Config.Model)
+		return nil, nil, nil, fmt.Errorf("model mismatch: chat has %s, chatOpts has %s", chat.Model, chatOpts.Config.Model)
 	}
 	if chat.APIVersion != chatOpts.Config.APIVersion {
-		return nil, nil, fmt.Errorf("API version mismatch: chat has %s, chatOpts has %s", chat.APIVersion, chatOpts.Config.APIVersion)
+		return nil, nil, nil, fmt.Errorf("API version mismatch: chat has %s, chatOpts has %s", chat.APIVersion, chatOpts.Config.APIVersion)
 	}
 
 	// Context with timeout if provided.
@@ -358,7 +358,7 @@ func RunOpenAIChatStep(
 	// Validate continuation if provided
 	if cont != nil {
 		if chatOpts.Config.Model != cont.Model {
-			return nil, nil, fmt.Errorf("cannot continue with a different model, model:%q, cont-model:%q", chatOpts.Config.Model, cont.Model)
+			return nil, nil, nil, fmt.Errorf("cannot continue with a different model, model:%q, cont-model:%q", chatOpts.Config.Model, cont.Model)
 		}
 	}
 
@@ -368,7 +368,7 @@ func RunOpenAIChatStep(
 		// Cast to OpenAIChatMessage
 		chatMsg, ok := genMsg.(*OpenAIChatMessage)
 		if !ok {
-			return nil, nil, fmt.Errorf("expected OpenAIChatMessage, got %T", genMsg)
+			return nil, nil, nil, fmt.Errorf("expected OpenAIChatMessage, got %T", genMsg)
 		}
 
 		// Convert to appropriate input type based on what's populated
@@ -385,7 +385,7 @@ func RunOpenAIChatStep(
 
 	req, err := buildOpenAIHTTPRequest(ctx, inputs, chatOpts)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	httpClient := &http.Client{
@@ -395,7 +395,7 @@ func RunOpenAIChatStep(
 	if chatOpts.Config.ProxyURL != "" {
 		pURL, perr := url.Parse(chatOpts.Config.ProxyURL)
 		if perr != nil {
-			return nil, nil, fmt.Errorf("invalid proxy URL: %w", perr)
+			return nil, nil, nil, fmt.Errorf("invalid proxy URL: %w", perr)
 		}
 		httpClient.Transport = &http.Transport{
 			Proxy: http.ProxyURL(pURL),
@@ -404,13 +404,16 @@ func RunOpenAIChatStep(
 
 	resp, err := httpClient.Do(req)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	defer resp.Body.Close()
 
+	// Parse rate limit info from header if present (do this before error check)
+	rateLimitInfo := uctypes.ParseRateLimitHeader(resp.Header.Get("X-Wave-RateLimit"))
+
 	ct := resp.Header.Get("Content-Type")
 	if resp.StatusCode != http.StatusOK || !strings.HasPrefix(ct, "text/event-stream") {
-		return nil, nil, parseOpenAIHTTPError(resp)
+		return nil, nil, rateLimitInfo, parseOpenAIHTTPError(resp)
 	}
 
 	// At this point we have a valid SSE stream, so setup SSE handling
@@ -423,7 +426,7 @@ func RunOpenAIChatStep(
 	decoder := eventsource.NewDecoder(resp.Body)
 
 	stopReason, rtnMessages := handleOpenAIStreamingResp(ctx, sse, decoder, cont)
-	return stopReason, rtnMessages, nil
+	return stopReason, rtnMessages, rateLimitInfo, nil
 }
 
 // parseOpenAIHTTPError parses OpenAI API HTTP error responses

@@ -172,4 +172,19 @@ export class WaveAIModel {
             return [];
         }
     }
+
+    async ensureRateLimitSet() {
+        const currentInfo = globalStore.get(atoms.waveAIRateLimitInfoAtom);
+        if (currentInfo != null) {
+            return;
+        }
+        try {
+            const rateLimitInfo = await RpcApi.GetWaveAIRateLimitCommand(TabRpcClient);
+            if (rateLimitInfo != null) {
+                globalStore.set(atoms.waveAIRateLimitInfoAtom, rateLimitInfo);
+            }
+        } catch (error) {
+            console.error("Failed to fetch rate limit info:", error);
+        }
+    }
 }

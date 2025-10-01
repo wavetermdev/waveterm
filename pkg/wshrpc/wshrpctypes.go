@@ -140,6 +140,7 @@ const (
 	Command_AiSendMessage           = "aisendmessage"
 	Command_WaveAIEnableTelemetry   = "waveaienabletelemetry"
 	Command_GetWaveAIChat           = "getwaveaichat"
+	Command_GetWaveAIRateLimit      = "getwaveairatelimit"
 
 	Command_CaptureBlockScreenshot = "captureblockscreenshot"
 
@@ -265,6 +266,7 @@ type WshRpcInterface interface {
 	AiSendMessageCommand(ctx context.Context, data AiMessageData) error
 	WaveAIEnableTelemetryCommand(ctx context.Context) error
 	GetWaveAIChatCommand(ctx context.Context, data CommandGetWaveAIChatData) (*uctypes.UIChat, error)
+	GetWaveAIRateLimitCommand(ctx context.Context) (*uctypes.RateLimitInfo, error)
 
 	// screenshot
 	CaptureBlockScreenshotCommand(ctx context.Context, data CommandCaptureBlockScreenshotData) (string, error)

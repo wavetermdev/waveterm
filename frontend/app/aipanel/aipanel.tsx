@@ -104,6 +104,10 @@ const AIPanelComponentInner = memo(({ className, onClose }: AIPanelProps) => {
         loadMessages();
     }, [model, setMessages]);
 
+    useEffect(() => {
+        model.ensureRateLimitSet();
+    }, [model]);
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!input.trim() || status !== "ready" || isLoadingChat) return;

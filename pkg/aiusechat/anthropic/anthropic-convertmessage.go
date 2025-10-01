@@ -36,7 +36,7 @@ func buildAnthropicHTTPRequest(ctx context.Context, msgs []anthropicInputMessage
 	// Set defaults
 	endpoint := opts.BaseURL
 	if endpoint == "" {
-		endpoint = AnthropicDefaultBaseURL
+		return nil, errors.New("BaseURL is required")
 	}
 
 	apiVersion := opts.APIVersion
@@ -120,9 +120,6 @@ func buildAnthropicHTTPRequest(ctx context.Context, msgs []anthropicInputMessage
 		log.Printf("tools: %s\n", strings.Join(toolNames, ", "))
 		log.Printf("anthropicMsgs JSON:\n%s", jsonStr)
 		log.Printf("has-api-key: %v\n", opts.APIToken != "")
-		if endpoint != AnthropicDefaultBaseURL {
-			log.Printf("baseurl: %s\n", endpoint)
-		}
 	}
 
 	var buf bytes.Buffer
@@ -726,7 +723,7 @@ func ConvertToolResultsToAnthropicChatMessage(toolResults []uctypes.AIToolResult
 					// Extract media type from "data:image/png;base64"
 					mediaTypePart := strings.TrimPrefix(parts[0], "data:")
 					mediaType := strings.Split(mediaTypePart, ";")[0]
-					
+
 					// Create content as array with image block
 					content = []anthropicMessageContentBlock{
 						{

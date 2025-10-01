@@ -350,6 +350,12 @@ func GetWaveAIChatCommand(w *wshutil.WshRpc, data wshrpc.CommandGetWaveAIChatDat
 	return resp, err
 }
 
+// command "getwaveairatelimit", wshserver.GetWaveAIRateLimitCommand
+func GetWaveAIRateLimitCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) (*uctypes.RateLimitInfo, error) {
+	resp, err := sendRpcRequestCallHelper[*uctypes.RateLimitInfo](w, "getwaveairatelimit", nil, opts)
+	return resp, err
+}
+
 // command "message", wshserver.MessageCommand
 func MessageCommand(w *wshutil.WshRpc, data wshrpc.CommandMessageData, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "message", data, opts)

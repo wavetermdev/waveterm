@@ -156,6 +156,10 @@ type AIOptsType struct {
 	ThinkingLevel string `json:"thinkinglevel,omitempty"` // ThinkingLevelLow, ThinkingLevelMedium, or ThinkingLevelHigh
 }
 
+func (opts AIOptsType) IsWaveProxy() bool {
+	return strings.Contains(opts.BaseURL, ".waveterm.")
+}
+
 type AIChat struct {
 	ChatId         string         `json:"chatid"`
 	APIType        string         `json:"apitype"`
@@ -356,4 +360,51 @@ type WaveChatOpts struct {
 type ProxyErrorResponse struct {
 	Success bool   `json:"success"`
 	Error   string `json:"error"`
+}
+
+type RateLimitInfo struct {
+	Remaining        int   `json:"remaining"`
+	PremiumRemaining int   `json:"premiumremaining"`
+	ExpirationEpoch  int64 `json:"expirationepoch"`
+	Unknown          bool  `json:"unknown,omitempty"` // set when we haven't gotten a rate limit response yet
+}
+
+// ParseRateLimitHeader parses the X-Wave-RateLimit header
+// Format: X-Wave-RateLimit: req=<remaining>, preq=<premium_remaining>, exp=<expiration_epoch_seconds>
+// Example: X-Wave-RateLimit: req=180, preq=45, exp=1727818382
+func ParseRateLimitHeader(header string) *RateLimitInfo {
+	if header == "" {
+		return nil
+	}
+
+	info := &RateLimitInfo{}
+	parts := strings.Split(header, ",")
+
+	for _, part := range parts {
+		part = strings.TrimSpace(part)
+		kv := strings.SplitN(part, "=", 2)
+		if len(kv) != 2 {
+			continue
+		}
+
+		key := strings.TrimSpace(kv[0])
+		value := strings.TrimSpace(kv[1])
+
+		switch key {
+		case "req":
+			if val, err := fmt.Sscanf(value, "%d", &info.Remaining); err == nil && val == 1 {
+				// Successfully parsed
+			}
+		case "preq":
+			if val, err := fmt.Sscanf(value, "%d", &info.PremiumRemaining); err == nil && val == 1 {
+				// Successfully parsed
+			}
+		case "exp":
+			if val, err := fmt.Sscanf(value, "%d", &info.ExpirationEpoch); err == nil && val == 1 {
+				// Successfully parsed
+			}
+		}
+	}
+
+	return info
 }

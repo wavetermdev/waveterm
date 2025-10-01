@@ -149,6 +149,7 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
     const notificationPopoverModeAtom = atom<boolean>(false);
     const reinitVersion = atom(0);
     const waveAIFocusedAtom = atom(false);
+    const rateLimitInfoAtom = atom(null) as PrimitiveAtom<RateLimitInfo>;
     atoms = {
         // initialized in wave.ts (will not be null inside of application)
         clientId: clientIdAtom,
@@ -173,6 +174,7 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
         reinitVersion,
         isTermMultiInput: atom(false),
         waveAIFocusedAtom,
+        waveAIRateLimitInfoAtom: rateLimitInfoAtom,
     };
 }
 
@@ -212,6 +214,13 @@ function initGlobalWaveEventSubs(initOpts: WaveInitOpts) {
                 if (fileSubject != null) {
                     fileSubject.next(fileData);
                 }
+            },
+        },
+        {
+            eventType: "waveai:ratelimit",
+            handler: (event) => {
+                const rateLimitInfo: RateLimitInfo = event.data;
+                globalStore.set(atoms.waveAIRateLimitInfoAtom, rateLimitInfo);
             },
         }
     );

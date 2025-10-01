@@ -885,6 +885,10 @@ func (ws *WshServer) GetWaveAIChatCommand(ctx context.Context, data wshrpc.Comma
 	return uiChat, nil
 }
 
+func (ws *WshServer) GetWaveAIRateLimitCommand(ctx context.Context) (*uctypes.RateLimitInfo, error) {
+	return aiusechat.GetGlobalRateLimit(), nil
+}
+
 var wshActivityRe = regexp.MustCompile(`^[a-z:#]+$`)
 
 func (ws *WshServer) WshActivityCommand(ctx context.Context, data map[string]int) error {

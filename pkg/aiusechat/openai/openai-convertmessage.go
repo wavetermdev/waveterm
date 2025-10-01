@@ -19,7 +19,6 @@ import (
 )
 
 const (
-	OpenAIDefaultBaseURL    = "https://api.openai.com/v1/responses"
 	OpenAIDefaultAPIVersion = "2024-12-31"
 	OpenAIDefaultMaxTokens  = 4096
 )
@@ -124,7 +123,7 @@ func buildOpenAIHTTPRequest(ctx context.Context, inputs []any, chatOpts uctypes.
 	// Set defaults
 	endpoint := opts.BaseURL
 	if endpoint == "" {
-		endpoint = OpenAIDefaultBaseURL
+		return nil, errors.New("BaseURL is required")
 	}
 
 	maxTokens := opts.MaxTokens

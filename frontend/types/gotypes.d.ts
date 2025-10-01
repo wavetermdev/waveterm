@@ -673,6 +673,14 @@ declare global {
         y: number;
     };
 
+    // uctypes.RateLimitInfo
+    type RateLimitInfo = {
+        remaining: number;
+        premiumremaining: number;
+        expirationepoch: number;
+        unknown?: boolean;
+    };
+
     // wshrpc.RemoteInfo
     type RemoteInfo = {
         clientarch: string;

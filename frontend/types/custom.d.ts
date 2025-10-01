@@ -29,6 +29,7 @@ declare global {
         reinitVersion: jotai.PrimitiveAtom<number>;
         isTermMultiInput: jotai.PrimitiveAtom<boolean>;
         waveAIFocusedAtom: jotai.PrimitiveAtom<boolean>;
+        waveAIRateLimitInfoAtom: jotai.PrimitiveAtom<RateLimitInfo>;
     };
 
     type WritableWaveObjectAtom<T extends WaveObj> = jotai.WritableAtom<T, [value: T], void>;
