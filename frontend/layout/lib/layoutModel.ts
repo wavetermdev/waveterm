@@ -750,6 +750,7 @@ export class LayoutModel {
 
         additionalPropsMap[node.id] = {
             ...additionalProps,
+            ...(node.data?.blockId ? { rect: nodeRect } : {}),
             pixelToSizeRatio,
             resizeHandles,
         };
