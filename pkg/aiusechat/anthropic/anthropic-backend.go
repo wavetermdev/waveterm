@@ -475,6 +475,25 @@ func RunAnthropicChatStep(
 
 	ct := resp.Header.Get("Content-Type")
 	if resp.StatusCode != http.StatusOK || !strings.HasPrefix(ct, "text/event-stream") {
+		// Handle 429 rate limit with special logic
+		if resp.StatusCode == http.StatusTooManyRequests && rateLimitInfo != nil {
+			if rateLimitInfo.PReq == 0 && rateLimitInfo.Req > 0 {
+				// Premium requests exhausted, but regular requests available
+				stopReason := &uctypes.WaveStopReason{
+					Kind:          uctypes.StopKindPremiumRateLimit,
+					RateLimitInfo: rateLimitInfo,
+				}
+				return stopReason, nil, rateLimitInfo, nil
+			}
+			if rateLimitInfo.Req == 0 {
+				// All requests exhausted
+				stopReason := &uctypes.WaveStopReason{
+					Kind:          uctypes.StopKindRateLimit,
+					RateLimitInfo: rateLimitInfo,
+				}
+				return stopReason, nil, rateLimitInfo, nil
+			}
+		}
 		return nil, nil, rateLimitInfo, parseAnthropicHTTPError(resp)
 	}
 

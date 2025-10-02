@@ -12,6 +12,7 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/anthropic"
@@ -35,6 +36,7 @@ const DefaultAnthropicModel = "claude-sonnet-4-5"
 const DefaultAIEndpoint = "https://cfapi.waveterm.dev/api/waveai"
 const DefaultMaxTokens = 4 * 1024
 const DefaultOpenAIModel = "gpt-5-mini"
+const PremiumOpenAIModel = "gpt-5"
 
 var (
 	globalRateLimitInfo = &uctypes.RateLimitInfo{Unknown: true}
@@ -59,7 +61,7 @@ var SystemPromptText_OpenAI = strings.Join([]string{
 	`You have NO API access to the widgets or to Wave unless provided with an explicit tool.`,
 }, " ")
 
-func getWaveAISettings() (*uctypes.AIOptsType, error) {
+func getWaveAISettings(premium bool) (*uctypes.AIOptsType, error) {
 	baseUrl := DefaultAIEndpoint
 	if os.Getenv("WAVETERM_WAVEAI_ENDPOINT") != "" {
 		baseUrl = os.Getenv("WAVETERM_WAVEAI_ENDPOINT")
@@ -72,15 +74,20 @@ func getWaveAISettings() (*uctypes.AIOptsType, error) {
 			ThinkingLevel: uctypes.ThinkingLevelMedium,
 			BaseURL:       baseUrl,
 		}, nil
-	} else {
+	} else if DefaultAPI == APIType_OpenAI {
+		model := DefaultOpenAIModel
+		if premium {
+			model = PremiumOpenAIModel
+		}
 		return &uctypes.AIOptsType{
 			APIType:       APIType_OpenAI,
-			Model:         DefaultOpenAIModel,
+			Model:         model,
 			MaxTokens:     DefaultMaxTokens,
 			ThinkingLevel: uctypes.ThinkingLevelLow,
 			BaseURL:       baseUrl,
 		}, nil
 	}
+	return nil, fmt.Errorf("invalid API type: %s", DefaultAPI)
 }
 
 func shouldUseChatCompletionsAPI(model string) bool {
@@ -90,6 +97,21 @@ func shouldUseChatCompletionsAPI(model string) bool {
 		strings.HasPrefix(m, "gpt-4-") ||
 		m == "gpt-4" ||
 		strings.HasPrefix(m, "o1-")
+}
+
+func shouldUsePremium() bool {
+	info := GetGlobalRateLimit()
+	if info == nil || info.Unknown {
+		return true
+	}
+	if info.PReq > 0 {
+		return true
+	}
+	nowEpoch := time.Now().Unix()
+	if nowEpoch >= info.ResetEpoch {
+		return true
+	}
+	return false
 }
 
 func updateRateLimit(info *uctypes.RateLimitInfo) {
@@ -188,6 +210,18 @@ func RunAIChat(ctx context.Context, sseHandler *sse.SSEHandlerCh, chatOpts uctyp
 			if msg != nil {
 				chatstore.DefaultChatStore.PostMessage(chatOpts.ChatId, &chatOpts.Config, msg)
 			}
+		}
+		if stopReason != nil && stopReason.Kind == uctypes.StopKindPremiumRateLimit && chatOpts.Config.APIType == APIType_OpenAI && chatOpts.Config.Model == PremiumOpenAIModel {
+			log.Printf("Premium rate limit hit with gpt-5, switching to gpt-5-mini\n")
+			chatOpts.Config.Model = DefaultOpenAIModel
+			cont = &uctypes.WaveContinueResponse{
+				MessageID:             "",
+				Model:                 DefaultOpenAIModel,
+				ContinueFromKind:      uctypes.StopKindPremiumRateLimit,
+				ContinueFromRawReason: stopReason.RawReason,
+			}
+			firstStep = false
+			continue
 		}
 		if stopReason != nil && stopReason.Kind == uctypes.StopKindToolUse {
 			var toolResults []uctypes.AIToolResult
@@ -367,7 +401,8 @@ func WaveAIPostMessageHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get WaveAI settings
-	aiOpts, err := getWaveAISettings()
+	premium := shouldUsePremium()
+	aiOpts, err := getWaveAISettings(premium)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("WaveAI configuration error: %v", err), http.StatusInternalServerError)
 		return

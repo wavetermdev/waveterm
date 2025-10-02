@@ -675,9 +675,11 @@ declare global {
 
     // uctypes.RateLimitInfo
     type RateLimitInfo = {
-        remaining: number;
-        premiumremaining: number;
-        expirationepoch: number;
+        req: number;
+        reqlimit: number;
+        preq: number;
+        preqlimit: number;
+        resetepoch: number;
         unknown?: boolean;
     };
 

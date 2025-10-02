@@ -18,7 +18,7 @@ const dlog = debug("wave:workspace");
 
 const AIPANEL_DEFAULTWIDTH = 300;
 const AIPANEL_DEFAULTWIDTHRATIO = 0.33;
-const AIPANEL_MINWIDTH = 250;
+const AIPANEL_MINWIDTH = 300;
 const AIPANEL_MAXWIDTHRATIO = 0.5;
 
 class WorkspaceLayoutModel {
@@ -120,7 +120,6 @@ class WorkspaceLayoutModel {
             return;
         }
         const panels = this.panelContainerRef.querySelectorAll("[data-panel]");
-        dlog("set transition ease-in-out", panels);
         panels.forEach((panel: HTMLElement) => {
             panel.style.transition = "flex 0.2s ease-in-out";
         });
@@ -133,7 +132,6 @@ class WorkspaceLayoutModel {
                 return;
             }
             const panels = this.panelContainerRef.querySelectorAll("[data-panel]");
-            dlog("set transition none", panels);
             panels.forEach((panel: HTMLElement) => {
                 panel.style.transition = "none";
             });
@@ -155,7 +153,7 @@ class WorkspaceLayoutModel {
     }
 
     handlePanelLayout(sizes: number[]): void {
-        dlog("handlePanelLayout", "inResize:", this.inResize, "sizes:", sizes);
+        // dlog("handlePanelLayout", "inResize:", this.inResize, "sizes:", sizes);
         if (this.inResize) {
             return;
         }

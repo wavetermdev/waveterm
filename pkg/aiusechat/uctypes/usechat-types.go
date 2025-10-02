@@ -105,13 +105,15 @@ const (
 type StopReasonKind string
 
 const (
-	StopKindDone      StopReasonKind = "done"
-	StopKindToolUse   StopReasonKind = "tool_use"
-	StopKindMaxTokens StopReasonKind = "max_tokens"
-	StopKindContent   StopReasonKind = "content_filter"
-	StopKindCanceled  StopReasonKind = "canceled"
-	StopKindError     StopReasonKind = "error"
-	StopKindPauseTurn StopReasonKind = "pause_turn"
+	StopKindDone             StopReasonKind = "done"
+	StopKindToolUse          StopReasonKind = "tool_use"
+	StopKindMaxTokens        StopReasonKind = "max_tokens"
+	StopKindContent          StopReasonKind = "content_filter"
+	StopKindCanceled         StopReasonKind = "canceled"
+	StopKindError            StopReasonKind = "error"
+	StopKindPauseTurn        StopReasonKind = "pause_turn"
+	StopKindPremiumRateLimit StopReasonKind = "premium_rate_limit"
+	StopKindRateLimit        StopReasonKind = "rate_limit"
 )
 
 type WaveToolCall struct {
@@ -130,6 +132,8 @@ type WaveStopReason struct {
 
 	ErrorType string `json:"error_type,omitempty"`
 	ErrorText string `json:"error_text,omitempty"`
+
+	RateLimitInfo *RateLimitInfo `json:"ratelimitinfo,omitempty"` // set when Kind is StopKindPremiumRateLimit or StopKindRateLimit
 
 	FinishStep bool `json:"finish_step,omitempty"`
 }
@@ -158,6 +162,10 @@ type AIOptsType struct {
 
 func (opts AIOptsType) IsWaveProxy() bool {
 	return strings.Contains(opts.BaseURL, ".waveterm.")
+}
+
+func (opts AIOptsType) IsPremiumModel() bool {
+	return opts.Model == "gpt-5" || strings.Contains(opts.Model, "claude-sonnet")
 }
 
 type AIChat struct {
@@ -363,15 +371,22 @@ type ProxyErrorResponse struct {
 }
 
 type RateLimitInfo struct {
-	Remaining        int   `json:"remaining"`
-	PremiumRemaining int   `json:"premiumremaining"`
-	ExpirationEpoch  int64 `json:"expirationepoch"`
-	Unknown          bool  `json:"unknown,omitempty"` // set when we haven't gotten a rate limit response yet
+	Req        int   `json:"req"`
+	ReqLimit   int   `json:"reqlimit"`
+	PReq       int   `json:"preq"`
+	PReqLimit  int   `json:"preqlimit"`
+	ResetEpoch int64 `json:"resetepoch"`
+	Unknown    bool  `json:"unknown,omitempty"`
 }
 
 // ParseRateLimitHeader parses the X-Wave-RateLimit header
-// Format: X-Wave-RateLimit: req=<remaining>, preq=<premium_remaining>, exp=<expiration_epoch_seconds>
-// Example: X-Wave-RateLimit: req=180, preq=45, exp=1727818382
+// Format: X-Wave-RateLimit: req=<remaining>, reqlimit=<max_requests>, preq=<premium_remaining>, preqlimit=<max_premium>, reset=<expiration_epoch_seconds>
+// Example: X-Wave-RateLimit: req=180, reqlimit=200, preq=45, preqlimit=50, reset=1727818382
+// - req: remaining regular requests in the current window
+// - reqlimit: maximum regular requests allowed in the window
+// - preq: remaining premium requests in the current window
+// - preqlimit: maximum premium requests allowed in the window
+// - reset: unix timestamp (epoch seconds) when the rate limit window resets
 func ParseRateLimitHeader(header string) *RateLimitInfo {
 	if header == "" {
 		return nil
@@ -392,15 +407,23 @@ func ParseRateLimitHeader(header string) *RateLimitInfo {
 
 		switch key {
 		case "req":
-			if val, err := fmt.Sscanf(value, "%d", &info.Remaining); err == nil && val == 1 {
+			if val, err := fmt.Sscanf(value, "%d", &info.Req); err == nil && val == 1 {
+				// Successfully parsed
+			}
+		case "reqlimit":
+			if val, err := fmt.Sscanf(value, "%d", &info.ReqLimit); err == nil && val == 1 {
 				// Successfully parsed
 			}
 		case "preq":
-			if val, err := fmt.Sscanf(value, "%d", &info.PremiumRemaining); err == nil && val == 1 {
+			if val, err := fmt.Sscanf(value, "%d", &info.PReq); err == nil && val == 1 {
 				// Successfully parsed
 			}
-		case "exp":
-			if val, err := fmt.Sscanf(value, "%d", &info.ExpirationEpoch); err == nil && val == 1 {
+		case "preqlimit":
+			if val, err := fmt.Sscanf(value, "%d", &info.PReqLimit); err == nil && val == 1 {
+				// Successfully parsed
+			}
+		case "reset":
+			if val, err := fmt.Sscanf(value, "%d", &info.ResetEpoch); err == nil && val == 1 {
 				// Successfully parsed
 			}
 		}

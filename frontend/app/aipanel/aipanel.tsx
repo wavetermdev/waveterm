@@ -18,6 +18,7 @@ import { AIDroppedFiles } from "./aidroppedfiles";
 import { AIPanelHeader } from "./aipanelheader";
 import { AIPanelInput, type AIPanelInputRef } from "./aipanelinput";
 import { AIPanelMessages } from "./aipanelmessages";
+import { AIRateLimitStrip } from "./airatelimitstrip";
 import { TelemetryRequiredMessage } from "./telemetryrequired";
 import { WaveAIModel, type DroppedFile } from "./waveai-model";
 
@@ -317,6 +318,7 @@ const AIPanelComponentInner = memo(({ className, onClose }: AIPanelProps) => {
                 </div>
             )}
             <AIPanelHeader onClose={onClose} model={model} onClearChat={clearChat} />
+            <AIRateLimitStrip />
 
             <div key="main-content" className="flex-1 flex flex-col min-h-0">
                 {!telemetryEnabled ? (

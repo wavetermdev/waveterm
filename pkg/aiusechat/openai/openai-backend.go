@@ -341,7 +341,7 @@ func RunOpenAIChatStep(
 	if chat.APIType != chatOpts.Config.APIType {
 		return nil, nil, nil, fmt.Errorf("API type mismatch: chat has %s, chatOpts has %s", chat.APIType, chatOpts.Config.APIType)
 	}
-	if chat.Model != chatOpts.Config.Model {
+	if !areModelsCompatible(chat.Model, chatOpts.Config.Model) {
 		return nil, nil, nil, fmt.Errorf("model mismatch: chat has %s, chatOpts has %s", chat.Model, chatOpts.Config.Model)
 	}
 	if chat.APIVersion != chatOpts.Config.APIVersion {
@@ -357,7 +357,7 @@ func RunOpenAIChatStep(
 
 	// Validate continuation if provided
 	if cont != nil {
-		if chatOpts.Config.Model != cont.Model {
+		if !areModelsCompatible(chatOpts.Config.Model, cont.Model) {
 			return nil, nil, nil, fmt.Errorf("cannot continue with a different model, model:%q, cont-model:%q", chatOpts.Config.Model, cont.Model)
 		}
 	}
@@ -413,6 +413,25 @@ func RunOpenAIChatStep(
 
 	ct := resp.Header.Get("Content-Type")
 	if resp.StatusCode != http.StatusOK || !strings.HasPrefix(ct, "text/event-stream") {
+		// Handle 429 rate limit with special logic
+		if resp.StatusCode == http.StatusTooManyRequests && rateLimitInfo != nil {
+			if rateLimitInfo.PReq == 0 && rateLimitInfo.Req > 0 {
+				// Premium requests exhausted, but regular requests available
+				stopReason := &uctypes.WaveStopReason{
+					Kind:          uctypes.StopKindPremiumRateLimit,
+					RateLimitInfo: rateLimitInfo,
+				}
+				return stopReason, nil, rateLimitInfo, nil
+			}
+			if rateLimitInfo.Req == 0 {
+				// All requests exhausted
+				stopReason := &uctypes.WaveStopReason{
+					Kind:          uctypes.StopKindRateLimit,
+					RateLimitInfo: rateLimitInfo,
+				}
+				return stopReason, nil, rateLimitInfo, nil
+			}
+		}
 		return nil, nil, rateLimitInfo, parseOpenAIHTTPError(resp)
 	}
 
@@ -818,4 +837,22 @@ func extractMessageAndToolsFromResponse(resp openaiResponse) ([]*OpenAIChatMessa
 	allMessages = append(allMessages, messages...)
 
 	return allMessages, toolCalls
+}
+
+func areModelsCompatible(model1, model2 string) bool {
+	if model1 == model2 {
+		return true
+	}
+
+	gpt5Models := map[string]bool{
+		"gpt-5":      true,
+		"gpt-5-mini": true,
+		"gpt-5-nano": true,
+	}
+
+	if gpt5Models[model1] && gpt5Models[model2] {
+		return true
+	}
+
+	return false
 }
