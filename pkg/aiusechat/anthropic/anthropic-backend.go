@@ -406,7 +406,7 @@ func RunAnthropicChatStep(
 	if chat.APIType != chatOpts.Config.APIType {
 		return nil, nil, nil, fmt.Errorf("API type mismatch: chat has %s, chatOpts has %s", chat.APIType, chatOpts.Config.APIType)
 	}
-	if chat.Model != chatOpts.Config.Model {
+	if !uctypes.AreModelsCompatible(chat.APIType, chat.Model, chatOpts.Config.Model) {
 		return nil, nil, nil, fmt.Errorf("model mismatch: chat has %s, chatOpts has %s", chat.Model, chatOpts.Config.Model)
 	}
 	if chat.APIVersion != chatOpts.Config.APIVersion {

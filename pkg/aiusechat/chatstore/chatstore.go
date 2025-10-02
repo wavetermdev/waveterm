@@ -68,7 +68,7 @@ func (cs *ChatStore) PostMessage(chatId string, aiOpts *uctypes.AIOptsType, mess
 		if chat.APIType != aiOpts.APIType {
 			return fmt.Errorf("API type mismatch: expected %s, got %s", chat.APIType, aiOpts.APIType)
 		}
-		if chat.Model != aiOpts.Model {
+		if !uctypes.AreModelsCompatible(chat.APIType, chat.Model, aiOpts.Model) {
 			return fmt.Errorf("model mismatch: expected %s, got %s", chat.Model, aiOpts.Model)
 		}
 		if chat.APIVersion != aiOpts.APIVersion {

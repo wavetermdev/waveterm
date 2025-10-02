@@ -41,7 +41,6 @@ export const AIPanelInput = memo(
 
         useImperativeHandle(ref, () => ({
             focus: () => {
-                console.log("calling FOCUS", textareaRef.current);
                 textareaRef.current?.focus();
             },
             resize: resizeTextarea,

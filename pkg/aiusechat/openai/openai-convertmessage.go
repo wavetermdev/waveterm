@@ -111,8 +111,15 @@ func debugPrintReq(req *OpenAIRequest, endpoint string) {
 }
 
 // buildOpenAIHTTPRequest creates a complete HTTP request for the OpenAI API
-func buildOpenAIHTTPRequest(ctx context.Context, inputs []any, chatOpts uctypes.WaveChatOpts) (*http.Request, error) {
+func buildOpenAIHTTPRequest(ctx context.Context, inputs []any, chatOpts uctypes.WaveChatOpts, cont *uctypes.WaveContinueResponse) (*http.Request, error) {
 	opts := chatOpts.Config
+	
+	// If continuing from premium rate limit, downgrade to default model and low thinking
+	if cont != nil && cont.ContinueFromKind == uctypes.StopKindPremiumRateLimit {
+		opts.Model = uctypes.DefaultOpenAIModel
+		opts.ThinkingLevel = uctypes.ThinkingLevelLow
+	}
+	
 	if opts.Model == "" {
 		return nil, errors.New("opts.model is required")
 	}

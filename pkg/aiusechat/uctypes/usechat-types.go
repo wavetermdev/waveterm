@@ -9,6 +9,10 @@ import (
 	"strings"
 )
 
+const DefaultAnthropicModel = "claude-sonnet-4-5"
+const DefaultOpenAIModel = "gpt-5-mini"
+const PremiumOpenAIModel = "gpt-5"
+
 type UseChatRequest struct {
 	Messages []UIMessage `json:"messages"`
 }
@@ -430,4 +434,24 @@ func ParseRateLimitHeader(header string) *RateLimitInfo {
 	}
 
 	return info
+}
+
+func AreModelsCompatible(apiType, model1, model2 string) bool {
+	if model1 == model2 {
+		return true
+	}
+
+	if apiType == "openai" {
+		gpt5Models := map[string]bool{
+			"gpt-5":      true,
+			"gpt-5-mini": true,
+			"gpt-5-nano": true,
+		}
+
+		if gpt5Models[model1] && gpt5Models[model2] {
+			return true
+		}
+	}
+
+	return false
 }

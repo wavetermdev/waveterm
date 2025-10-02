@@ -341,7 +341,7 @@ func RunOpenAIChatStep(
 	if chat.APIType != chatOpts.Config.APIType {
 		return nil, nil, nil, fmt.Errorf("API type mismatch: chat has %s, chatOpts has %s", chat.APIType, chatOpts.Config.APIType)
 	}
-	if !areModelsCompatible(chat.Model, chatOpts.Config.Model) {
+	if !uctypes.AreModelsCompatible(chat.APIType, chat.Model, chatOpts.Config.Model) {
 		return nil, nil, nil, fmt.Errorf("model mismatch: chat has %s, chatOpts has %s", chat.Model, chatOpts.Config.Model)
 	}
 	if chat.APIVersion != chatOpts.Config.APIVersion {
@@ -357,7 +357,7 @@ func RunOpenAIChatStep(
 
 	// Validate continuation if provided
 	if cont != nil {
-		if !areModelsCompatible(chatOpts.Config.Model, cont.Model) {
+		if !uctypes.AreModelsCompatible(chat.APIType, chatOpts.Config.Model, cont.Model) {
 			return nil, nil, nil, fmt.Errorf("cannot continue with a different model, model:%q, cont-model:%q", chatOpts.Config.Model, cont.Model)
 		}
 	}
@@ -383,7 +383,7 @@ func RunOpenAIChatStep(
 		}
 	}
 
-	req, err := buildOpenAIHTTPRequest(ctx, inputs, chatOpts)
+	req, err := buildOpenAIHTTPRequest(ctx, inputs, chatOpts, cont)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -594,12 +594,15 @@ func handleOpenAIEvent(
 		case "message":
 			// Message item - content parts will be handled in streaming events
 		case "function_call":
-			// Track function call info for later use
+			// Track function call info and notify frontend
+			id := uuid.New().String()
 			state.blockMap[ev.Item.Id] = &openaiBlockState{
 				kind:       openaiBlockToolUse,
+				localID:    id,
 				toolCallID: ev.Item.CallId,
 				toolName:   ev.Item.Name,
 			}
+			_ = sse.AiMsgToolInputStart(ev.Item.CallId, ev.Item.Name)
 		}
 		return nil, nil
 
@@ -614,6 +617,9 @@ func handleOpenAIEvent(
 			switch st.kind {
 			case openaiBlockReasoning:
 				_ = sse.AiMsgReasoningEnd(st.localID)
+			case openaiBlockToolUse:
+				// Tool input completion notification was already sent in function_call_arguments.done
+				// This just marks the end of the tool item itself
 			}
 		}
 		return nil, nil
@@ -839,20 +845,3 @@ func extractMessageAndToolsFromResponse(resp openaiResponse) ([]*OpenAIChatMessa
 	return allMessages, toolCalls
 }
 
-func areModelsCompatible(model1, model2 string) bool {
-	if model1 == model2 {
-		return true
-	}
-
-	gpt5Models := map[string]bool{
-		"gpt-5":      true,
-		"gpt-5-mini": true,
-		"gpt-5-nano": true,
-	}
-
-	if gpt5Models[model1] && gpt5Models[model2] {
-		return true
-	}
-
-	return false
-}

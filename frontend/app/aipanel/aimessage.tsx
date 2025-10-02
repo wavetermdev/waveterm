@@ -127,9 +127,12 @@ export const AIMessage = memo(({ message, isStreaming }: AIMessageProps) => {
     const fileParts = parts.filter(
         (part): part is WaveUIMessagePart & { type: "data-userfile" } => part.type === "data-userfile"
     );
-    const hasTextContent = displayParts.length > 0 && displayParts.some((part) => part.type === "text" && part.text);
+    const hasContent = displayParts.length > 0 && displayParts.some((part) =>
+        (part.type === "text" && part.text) || part.type.startsWith("tool-")
+    );
 
-    const showThinking = !hasTextContent && isStreaming && message.role === "assistant";
+    const showThinkingOnly = !hasContent && isStreaming && message.role === "assistant";
+    const showThinkingInline = hasContent && isStreaming && message.role === "assistant";
 
     return (
         <div className={cn("flex", message.role === "user" ? "justify-end" : "justify-start")}>
@@ -141,16 +144,23 @@ export const AIMessage = memo(({ message, isStreaming }: AIMessageProps) => {
                         : "bg-gray-800 text-gray-100"
                 )}
             >
-                {showThinking ? (
+                {showThinkingOnly ? (
                     <AIThinking />
-                ) : !hasTextContent && !isStreaming ? (
+                ) : !hasContent && !isStreaming ? (
                     <div className="whitespace-pre-wrap break-words">(no text content)</div>
                 ) : (
-                    displayParts.map((part, index: number) => (
-                        <div key={index} className={cn(index > 0 && "mt-2")}>
-                            <AIMessagePart part={part} role={message.role} isStreaming={isStreaming} />
-                        </div>
-                    ))
+                    <>
+                        {displayParts.map((part, index: number) => (
+                            <div key={index} className={cn(index > 0 && "mt-2")}>
+                                <AIMessagePart part={part} role={message.role} isStreaming={isStreaming} />
+                            </div>
+                        ))}
+                        {showThinkingInline && (
+                            <div className="mt-2">
+                                <AIThinking />
+                            </div>
+                        )}
+                    </>
                 )}
 
                 {message.role === "user" && <UserMessageFiles fileParts={fileParts} />}

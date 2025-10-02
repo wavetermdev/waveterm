@@ -4,8 +4,8 @@
 import { WaveUIMessagePart } from "@/app/aipanel/aitypes";
 import { ErrorBoundary } from "@/app/element/errorboundary";
 import { atoms, getSettingsKeyAtom } from "@/app/store/global";
-import { workspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
 import { globalStore } from "@/app/store/jotaiStore";
+import { workspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
 import { getWebServerEndpoint } from "@/util/endpoints";
 import { checkKeyPressed, keydownWrapper } from "@/util/keyutil";
 import { cn } from "@/util/util";

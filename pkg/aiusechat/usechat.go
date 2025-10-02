@@ -32,11 +32,8 @@ const (
 )
 
 const DefaultAPI = APIType_OpenAI
-const DefaultAnthropicModel = "claude-sonnet-4-5"
 const DefaultAIEndpoint = "https://cfapi.waveterm.dev/api/waveai"
 const DefaultMaxTokens = 4 * 1024
-const DefaultOpenAIModel = "gpt-5-mini"
-const PremiumOpenAIModel = "gpt-5"
 
 var (
 	globalRateLimitInfo = &uctypes.RateLimitInfo{Unknown: true}
@@ -51,14 +48,31 @@ var SystemPromptText = strings.Join([]string{
 }, " ")
 
 var SystemPromptText_OpenAI = strings.Join([]string{
-	`You are Wave AI, an intelligent assistant embedded within Wave Terminal, a modern terminal application with graphical widgets.`,
-	`You appear as a pull-out panel on the left side of a tab, with the tab's widgets laid out on the right.`,
-	`If tools are provided, those are the *only* tools you have access to.`,
-	`Do not claim any abilities beyond what the tools provide. NEVER make up fake data and present it as real.`,
-	`If the user enables context, you may see information about widgets and applications showing in the UI.`,
-	`Do not assume any ability to interact with those widgets (reading content, executing commands, taking screenshots) unless those abilities are clearly detailed in a provided tool.`,
-	`Note that some widgets may expose NO tools, so their provided context is informational only.`,
-	`You have NO API access to the widgets or to Wave unless provided with an explicit tool.`,
+	`You are Wave AI, an assistant embedded in Wave Terminal (a terminal with graphical widgets).`,
+	`You appear as a pull-out panel on the left; widgets are on the right.`,
+
+	// Capabilities & truthfulness
+	`Tools define your only capabilities. If a capability is not provided by a tool, you cannot do it.`,
+	`Context from widgets is read-only unless a tool explicitly grants interaction.`,
+	`Never fabricate data. If you lack data or access, say so and offer the next best step (e.g., suggest enabling a tool).`,
+
+	// Crisp behavior
+	`Be concise and direct. Prefer determinism over speculation. If a brief clarifying question eliminates guesswork, ask it.`,
+
+	// Output & formatting
+	`When presenting commands or any runnable multi-line code, always use fenced Markdown code blocks.`,
+	`Use an appropriate language hint after the opening fence (e.g., "bash" for shell commands, "go" for Go, "json" for JSON).`,
+	`For shell commands, do NOT prefix lines with "$" or shell prompts. Use placeholders in ALL_CAPS (e.g., PROJECT_ID) and explain them once after the block if needed.`,
+	"Reserve inline code (single backticks) for short references like command names (`grep`, `less`), flags, env vars, file paths, or tiny snippets not meant to be executed.",
+	`You may use Markdown (lists, tables, bold/italics) to improve readability.`,
+	`Never comment on or justify your formatting choices; just follow these rules.`,
+
+	// Safety & limits
+	`If a request would execute dangerous or destructive actions, warn briefly and provide a safer alternative.`,
+	`If output is very long, prefer a brief summary plus a copy-ready fenced block or offer a follow-up chunking strategy.`,
+
+	// Final reminder
+	`You have NO API access to widgets or Wave unless provided via an explicit tool.`,
 }, " ")
 
 func getWaveAISettings(premium bool) (*uctypes.AIOptsType, error) {
@@ -69,21 +83,23 @@ func getWaveAISettings(premium bool) (*uctypes.AIOptsType, error) {
 	if DefaultAPI == APIType_Anthropic {
 		return &uctypes.AIOptsType{
 			APIType:       APIType_Anthropic,
-			Model:         DefaultAnthropicModel,
+			Model:         uctypes.DefaultAnthropicModel,
 			MaxTokens:     DefaultMaxTokens,
 			ThinkingLevel: uctypes.ThinkingLevelMedium,
 			BaseURL:       baseUrl,
 		}, nil
 	} else if DefaultAPI == APIType_OpenAI {
-		model := DefaultOpenAIModel
+		model := uctypes.DefaultOpenAIModel
+		thinkingLevel := uctypes.ThinkingLevelLow
 		if premium {
-			model = PremiumOpenAIModel
+			model = uctypes.PremiumOpenAIModel
+			thinkingLevel = uctypes.ThinkingLevelMedium
 		}
 		return &uctypes.AIOptsType{
 			APIType:       APIType_OpenAI,
 			Model:         model,
 			MaxTokens:     DefaultMaxTokens,
-			ThinkingLevel: uctypes.ThinkingLevelLow,
+			ThinkingLevel: thinkingLevel,
 			BaseURL:       baseUrl,
 		}, nil
 	}
@@ -211,12 +227,11 @@ func RunAIChat(ctx context.Context, sseHandler *sse.SSEHandlerCh, chatOpts uctyp
 				chatstore.DefaultChatStore.PostMessage(chatOpts.ChatId, &chatOpts.Config, msg)
 			}
 		}
-		if stopReason != nil && stopReason.Kind == uctypes.StopKindPremiumRateLimit && chatOpts.Config.APIType == APIType_OpenAI && chatOpts.Config.Model == PremiumOpenAIModel {
+		if stopReason != nil && stopReason.Kind == uctypes.StopKindPremiumRateLimit && chatOpts.Config.APIType == APIType_OpenAI && chatOpts.Config.Model == uctypes.PremiumOpenAIModel {
 			log.Printf("Premium rate limit hit with gpt-5, switching to gpt-5-mini\n")
-			chatOpts.Config.Model = DefaultOpenAIModel
 			cont = &uctypes.WaveContinueResponse{
 				MessageID:             "",
-				Model:                 DefaultOpenAIModel,
+				Model:                 uctypes.DefaultOpenAIModel,
 				ContinueFromKind:      uctypes.StopKindPremiumRateLimit,
 				ContinueFromRawReason: stopReason.RawReason,
 			}
