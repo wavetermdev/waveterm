@@ -1,9 +1,8 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { atoms, getApi } from "@/app/store/global";
-import { globalStore } from "@/app/store/jotaiStore";
-import { getLayoutModelForTabById } from "@/layout/index";
+import { getApi } from "@/app/store/global";
+import { getLayoutModelForStaticTab } from "@/layout/index";
 import { RpcResponseHelper, WshClient } from "./wshclient";
 
 export class TabClient extends WshClient {
@@ -16,8 +15,7 @@ export class TabClient extends WshClient {
     }
 
     async captureBlockScreenshot(blockId: string): Promise<string> {
-        const tabId = globalStore.get(atoms.staticTabId);
-        const layoutModel = getLayoutModelForTabById(tabId);
+        const layoutModel = getLayoutModelForStaticTab();
         if (!layoutModel) {
             throw new Error("Layout model not found");
         }
