@@ -9,6 +9,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wstore"
 )
@@ -102,6 +103,12 @@ func QueueLayoutAction(ctx context.Context, layoutStateId string, actions ...wav
 	layoutStateObj, err := wstore.DBGet[*waveobj.LayoutState](ctx, layoutStateId)
 	if err != nil {
 		return fmt.Errorf("unable to get layout state for given id %s: %w", layoutStateId, err)
+	}
+
+	for i := range actions {
+		if actions[i].ActionId == "" {
+			actions[i].ActionId = uuid.New().String()
+		}
 	}
 
 	if layoutStateObj.PendingBackendActions == nil {

@@ -498,6 +498,7 @@ declare global {
     // waveobj.LayoutActionData
     type LayoutActionData = {
         actiontype: string;
+        actionid: string;
         blockid: string;
         nodesize?: number;
         indexarr?: number[];

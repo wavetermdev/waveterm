@@ -312,7 +312,6 @@ export type LayoutTreeState = {
      */
     leafOrder?: LeafOrderEntry[];
     pendingBackendActions: LayoutActionData[];
-    generation: number;
 };
 
 export type WritableLayoutTreeStateAtom = WritableAtom<LayoutTreeState, [value: LayoutTreeState], void>;

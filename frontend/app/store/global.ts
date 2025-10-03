@@ -4,12 +4,11 @@
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import {
-    getLayoutModelForTabById,
+    getLayoutModelForStaticTab,
     LayoutTreeActionType,
     LayoutTreeInsertNodeAction,
     newLayoutNode,
 } from "@/layout/index";
-import { getLayoutModelForStaticTab } from "@/layout/lib/layoutModelHooks";
 import {
     LayoutTreeReplaceNodeAction,
     LayoutTreeSplitHorizontalAction,
@@ -425,8 +424,7 @@ async function createBlockSplitHorizontally(
     targetBlockId: string,
     position: "before" | "after"
 ): Promise<string> {
-    const tabId = globalStore.get(atoms.staticTabId);
-    const layoutModel = getLayoutModelForTabById(tabId);
+    const layoutModel = getLayoutModelForStaticTab();
     const rtOpts: RuntimeOpts = { termsize: { rows: 25, cols: 80 } };
     const newBlockId = await ObjectService.CreateBlock(blockDef, rtOpts);
     const targetNodeId = layoutModel.getNodeByBlockId(targetBlockId)?.id;
@@ -449,8 +447,7 @@ async function createBlockSplitVertically(
     targetBlockId: string,
     position: "before" | "after"
 ): Promise<string> {
-    const tabId = globalStore.get(atoms.staticTabId);
-    const layoutModel = getLayoutModelForTabById(tabId);
+    const layoutModel = getLayoutModelForStaticTab();
     const rtOpts: RuntimeOpts = { termsize: { rows: 25, cols: 80 } };
     const newBlockId = await ObjectService.CreateBlock(blockDef, rtOpts);
     const targetNodeId = layoutModel.getNodeByBlockId(targetBlockId)?.id;
@@ -469,8 +466,7 @@ async function createBlockSplitVertically(
 }
 
 async function createBlock(blockDef: BlockDef, magnified = false, ephemeral = false): Promise<string> {
-    const tabId = globalStore.get(atoms.staticTabId);
-    const layoutModel = getLayoutModelForTabById(tabId);
+    const layoutModel = getLayoutModelForStaticTab();
     const rtOpts: RuntimeOpts = { termsize: { rows: 25, cols: 80 } };
     const blockId = await ObjectService.CreateBlock(blockDef, rtOpts);
     if (ephemeral) {
@@ -488,8 +484,7 @@ async function createBlock(blockDef: BlockDef, magnified = false, ephemeral = fa
 }
 
 async function replaceBlock(blockId: string, blockDef: BlockDef): Promise<string> {
-    const tabId = globalStore.get(atoms.staticTabId);
-    const layoutModel = getLayoutModelForTabById(tabId);
+    const layoutModel = getLayoutModelForStaticTab();
     const rtOpts: RuntimeOpts = { termsize: { rows: 25, cols: 80 } };
     const newBlockId = await ObjectService.CreateBlock(blockDef, rtOpts);
     setTimeout(async () => {

@@ -19,13 +19,7 @@ import {
     WOS,
 } from "@/app/store/global";
 import { workspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
-import {
-    deleteLayoutModelForTab,
-    getLayoutModelForTab,
-    getLayoutModelForTabById,
-    NavigateDirection,
-} from "@/layout/index";
-import { getLayoutModelForStaticTab } from "@/layout/lib/layoutModelHooks";
+import { deleteLayoutModelForTab, getLayoutModelForStaticTab, NavigateDirection } from "@/layout/index";
 import * as keyutil from "@/util/keyutil";
 import { CHORD_TIMEOUT } from "@/util/sharedconst";
 import { fireAndForget } from "@/util/util";
@@ -66,8 +60,7 @@ export function keyboardMouseDownHandler(e: MouseEvent) {
 }
 
 function getFocusedBlockInStaticTab() {
-    const tabId = globalStore.get(atoms.staticTabId);
-    const layoutModel = getLayoutModelForTabById(tabId);
+    const layoutModel = getLayoutModelForStaticTab();
     const focusedNode = globalStore.get(layoutModel.focusedNode);
     return focusedNode.data?.blockId;
 }
@@ -110,8 +103,9 @@ function shouldDispatchToBlock(e: WaveKeyboardEvent): boolean {
     return true;
 }
 
-function genericClose(tabId: string) {
+function genericClose() {
     const ws = globalStore.get(atoms.workspace);
+    const tabId = globalStore.get(atoms.staticTabId);
     const tabORef = WOS.makeORef("tab", tabId);
     const tabAtom = WOS.getWaveObjectAtom<Tab>(tabORef);
     const tabData = globalStore.get(tabAtom);
@@ -128,7 +122,7 @@ function genericClose(tabId: string) {
         deleteLayoutModelForTab(tabId);
         return;
     }
-    const layoutModel = getLayoutModelForTab(tabAtom);
+    const layoutModel = getLayoutModelForStaticTab();
     fireAndForget(layoutModel.closeFocusedNode.bind(layoutModel));
 }
 
@@ -143,10 +137,10 @@ function switchBlockByBlockNum(index: number) {
     }, 10);
 }
 
-function switchBlockInDirection(tabId: string, direction: NavigateDirection) {
-    const layoutModel = getLayoutModelForTabById(tabId);
+function switchBlockInDirection(direction: NavigateDirection) {
+    const layoutModel = getLayoutModelForStaticTab();
     const inWaveAI = globalStore.get(atoms.waveAIFocusedAtom);
-    
+
     if (direction === NavigateDirection.Left) {
         const numBlocks = globalStore.get(layoutModel.numLeafs);
         if (inWaveAI) {
@@ -158,7 +152,7 @@ function switchBlockInDirection(tabId: string, direction: NavigateDirection) {
             return;
         }
     }
-    
+
     const navResult = layoutModel.switchNodeFocusInDirection(direction, inWaveAI);
     if (navResult.atLeft) {
         WaveAIModel.getInstance().focusInput();
@@ -423,8 +417,7 @@ function registerGlobalKeys() {
         return true;
     });
     globalKeyMap.set("Cmd:w", () => {
-        const tabId = globalStore.get(atoms.staticTabId);
-        genericClose(tabId);
+        genericClose();
         return true;
     });
     globalKeyMap.set("Cmd:Shift:w", () => {
@@ -449,23 +442,19 @@ function registerGlobalKeys() {
         return true;
     });
     globalKeyMap.set("Ctrl:Shift:ArrowUp", () => {
-        const tabId = globalStore.get(atoms.staticTabId);
-        switchBlockInDirection(tabId, NavigateDirection.Up);
+        switchBlockInDirection(NavigateDirection.Up);
         return true;
     });
     globalKeyMap.set("Ctrl:Shift:ArrowDown", () => {
-        const tabId = globalStore.get(atoms.staticTabId);
-        switchBlockInDirection(tabId, NavigateDirection.Down);
+        switchBlockInDirection(NavigateDirection.Down);
         return true;
     });
     globalKeyMap.set("Ctrl:Shift:ArrowLeft", () => {
-        const tabId = globalStore.get(atoms.staticTabId);
-        switchBlockInDirection(tabId, NavigateDirection.Left);
+        switchBlockInDirection(NavigateDirection.Left);
         return true;
     });
     globalKeyMap.set("Ctrl:Shift:ArrowRight", () => {
-        const tabId = globalStore.get(atoms.staticTabId);
-        switchBlockInDirection(tabId, NavigateDirection.Right);
+        switchBlockInDirection(NavigateDirection.Right);
         return true;
     });
     globalKeyMap.set("Ctrl:Shift:k", () => {
