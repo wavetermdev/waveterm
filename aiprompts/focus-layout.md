@@ -1,254 +1,174 @@
 # Wave Terminal Focus System - Layout State Flow
 
-This document explains how focus state changes in the layout system (`layoutState.focusedNodeId`) propagate through the application to update both the visual focus ring and physical DOM focus.
+This document explains how focus state changes in the layout system propagate through the application to update both the visual focus ring and physical DOM focus.
 
 ## Overview
 
-When layout operations modify `layoutState.focusedNodeId` (in ~10+ places throughout [`layoutTree.ts`](../frontend/layout/lib/layoutTree.ts)), a carefully orchestrated chain of updates occurs that ultimately results in:
+When layout operations modify focus state, a straightforward chain of updates occurs:
 1. **Visual feedback** - The focus ring updates immediately
 2. **Physical DOM focus** - The terminal (or other view) receives actual browser focus
 
-This is a "house of cards" architecture that works through reactive atom updates and clever React hooks.
+The system uses local atoms as the source of truth with async persistence to the backend.
 
-## The Complete Flow
+## The Flow
 
-### 1. Setting focusedNodeId in LayoutTree
+### 1. Setting Focus in Layout Operations
 
-Throughout [`layoutTree.ts`](../frontend/layout/lib/layoutTree.ts), operations set the focused node:
+Throughout [`layoutTree.ts`](../frontend/layout/lib/layoutTree.ts), operations directly mutate `layoutState.focusedNodeId`:
 
-**Example from insertNode** ([`layoutTree.ts:283-294`](../frontend/layout/lib/layoutTree.ts:283-294)):
 ```typescript
-} else {
-    const insertLoc = findNextInsertLocation(layoutState.rootNode, DEFAULT_MAX_CHILDREN);
-    addChildAt(insertLoc.node, insertLoc.index, action.node);
-    if (action.magnified) {
-        layoutState.magnifiedNodeId = action.node.id;
-        layoutState.focusedNodeId = action.node.id;  // ← Setting focusedNodeId
-    }
+// Example from insertNode
+if (action.magnified) {
+    layoutState.magnifiedNodeId = action.node.id;
+    layoutState.focusedNodeId = action.node.id;
 }
 if (action.focused) {
-    layoutState.focusedNodeId = action.node.id;      // ← Or here
+    layoutState.focusedNodeId = action.node.id;
 }
-layoutState.generation++;  // ← CRITICAL: Triggers commit
 ```
 
-**Other locations that set focusedNodeId:**
-- [`layoutTree.ts:288`](../frontend/layout/lib/layoutTree.ts:288) - insertNode (magnified)
-- [`layoutTree.ts:292`](../frontend/layout/lib/layoutTree.ts:292) - insertNode (focused)
-- [`layoutTree.ts:313`](../frontend/layout/lib/layoutTree.ts:313) - insertNodeAtIndex (magnified)
-- [`layoutTree.ts:317`](../frontend/layout/lib/layoutTree.ts:317) - insertNodeAtIndex (focused)
-- [`layoutTree.ts:370-371`](../frontend/layout/lib/layoutTree.ts:370-371) - deleteNode (clearing)
-- [`layoutTree.ts:402`](../frontend/layout/lib/layoutTree.ts:402) - focusNode action
-- [`layoutTree.ts:419`](../frontend/layout/lib/layoutTree.ts:419) - magnifyNodeToggle
-- [`layoutTree.ts:427`](../frontend/layout/lib/layoutTree.ts:427) - clearTree (clearing)
-- [`layoutTree.ts:454`](../frontend/layout/lib/layoutTree.ts:454) - replaceNode
-- [`layoutTree.ts:498`](../frontend/layout/lib/layoutTree.ts:498) - splitHorizontal
-- [`layoutTree.ts:540`](../frontend/layout/lib/layoutTree.ts:540) - splitVertical
+This happens in ~10 places: insertNode, insertNodeAtIndex, deleteNode, focusNode, magnifyNodeToggle, etc.
 
-**The Critical Part:** Every time `focusedNodeId` is set, `generation++` follows. This increment is the signal that triggers the entire propagation chain.
+### 2. Committing to Local Atom
 
-### 2. Generation Increment Commits to WaveObject
+The [`LayoutModel.treeReducer()`](../frontend/layout/lib/layoutModel.ts:547) commits changes:
 
-The `treeStateAtom` in [`layoutAtom.ts`](../frontend/layout/lib/layoutAtom.ts) is a bidirectional atom that syncs with the backend WaveObject.
-
-**The Write Path** ([`layoutAtom.ts:37-56`](../frontend/layout/lib/layoutAtom.ts:37-56)):
 ```typescript
-(get, set, value) => {
-    if (get(generationAtom) < value.generation) {  // ← Check if generation increased
-        const stateAtom = getLayoutStateAtomFromTab(tabAtom, get);
-        if (!stateAtom) return;
-        const waveObjVal = get(stateAtom);
-        if (waveObjVal == null) return;
-        
-        // Write to backend WaveObject
-        waveObjVal.rootnode = value.rootNode;
-        waveObjVal.magnifiednodeid = value.magnifiedNodeId;
-        waveObjVal.focusednodeid = value.focusedNodeId;  // ← focusedNodeId commits here
-        waveObjVal.leaforder = value.leafOrder;
-        waveObjVal.pendingbackendactions = value?.pendingBackendActions?.length
-            ? value.pendingBackendActions
-            : undefined;
-        set(generationAtom, value.generation);
-        set(stateAtom, waveObjVal);  // ← Triggers WaveObject update
+treeReducer(action: LayoutTreeAction, setState = true): boolean {
+    // Mutate tree state
+    focusNode(this.treeState, action);
+    
+    if (setState) {
+        this.updateTree();  // Compute leafOrder, etc.
+        this.setter(this.localTreeStateAtom, { ...this.treeState });  // Sync update
+        this.persistToBackend();  // Async persistence
     }
 }
 ```
 
-**Without `generation++`, the changes stay local and never propagate!**
+The key is `{ ...this.treeState }` creates a new object reference, triggering Jotai reactivity.
 
-### 3. WaveObject Update Triggers Atom Recalculation
+### 3. Derived Atoms Recalculate
 
-When the WaveObject is updated via `set(stateAtom, waveObjVal)`, all atoms that depend on it recalculate.
+Each block's `NodeModel` has an `isFocused` atom:
 
-**The Read Path** ([`layoutAtom.ts:24-35`](../frontend/layout/lib/layoutAtom.ts:24-35)):
-```typescript
-(get) => {
-    const stateAtom = getLayoutStateAtomFromTab(tabAtom, get);
-    if (!stateAtom) return;
-    const layoutStateData = get(stateAtom);  // ← Reads from WaveObject
-    const layoutTreeState: LayoutTreeState = {
-        rootNode: layoutStateData?.rootnode,
-        focusedNodeId: layoutStateData?.focusednodeid,  // ← Gets new focusedNodeId
-        magnifiedNodeId: layoutStateData?.magnifiednodeid,
-        pendingBackendActions: layoutStateData?.pendingbackendactions,
-        generation: get(generationAtom),
-    };
-    return layoutTreeState;
-}
-```
-
-The WaveObject acts as the "source of truth" that drives the reactive chain.
-
-### 4. isFocused Atoms Recalculate
-
-Each block's `NodeModel` has an `isFocused` atom that derives from `treeStateAtom`.
-
-**NodeModel Creation** ([`layoutModel.ts:936-941`](../frontend/layout/lib/layoutModel.ts:936-941)):
 ```typescript
 isFocused: atom((get) => {
-    const treeState = get(this.treeStateAtom);  // ← Depends on treeStateAtom
-    const isFocused = treeState.focusedNodeId === nodeid;  // ← Compare with this node's ID
+    const treeState = get(this.localTreeStateAtom);
+    const isFocused = treeState.focusedNodeId === nodeid;
     const waveAIFocused = get(atoms.waveAIFocusedAtom);
     return isFocused && !waveAIFocused;
 })
 ```
 
-When `treeStateAtom` updates, all `isFocused` atoms recalculate. Only the atom for the node matching `focusedNodeId` returns `true`.
+When `localTreeStateAtom` updates, all `isFocused` atoms recalculate. Only the matching node returns `true`.
 
-### 5. Visual Focus Ring Updates
+### 4. React Components Re-render
 
-React components consume the `isFocused` atom and re-render when it changes.
+**Visual Focus Ring** - Components subscribe to `isFocused`:
 
-**Block Component** ([`block.tsx:142`](../frontend/app/block/block.tsx:142)):
 ```typescript
-const isFocused = useAtomValue(nodeModel.isFocused);  // ← Subscribes to isFocused atom
+const isFocused = useAtomValue(nodeModel.isFocused);
 ```
 
-The `isFocused` value is passed to child components and CSS classes, causing the focus ring to appear/disappear immediately.
+CSS classes update immediately, showing the focus ring.
 
-### 6. Physical DOM Focus via Two-Step Effect
+**Physical DOM Focus** - Two-step effect chain:
 
-This is where it gets clever (and fragile). Physical DOM focus is achieved through a cascade of two `useLayoutEffect` hooks.
-
-**Step 1: isFocused Change Triggers blockClicked** ([`block.tsx:147-149`](../frontend/app/block/block.tsx:147-149)):
 ```typescript
+// Step 1: isFocused → blockClicked
 useLayoutEffect(() => {
-    setBlockClicked(isFocused);  // When isFocused changes to true, trigger blockClicked
+    setBlockClicked(isFocused);
 }, [isFocused]);
-```
 
-**Step 2: blockClicked Triggers Physical Focus** ([`block.tsx:151-163`](../frontend/app/block/block.tsx:151-163)):
-```typescript
+// Step 2: blockClicked → physical focus
 useLayoutEffect(() => {
-    if (!blockClicked) {
-        return;
-    }
-    setBlockClicked(false);  // Reset for next time
+    if (!blockClicked) return;
+    setBlockClicked(false);
     const focusWithin = focusedBlockId() == nodeModel.blockId;
     if (!focusWithin) {
-        setFocusTarget();  // ← PHYSICAL DOM FOCUS HAPPENS HERE
-    }
-    if (!isFocused) {
-        nodeModel.focusNode();  // Update layout state if needed
+        setFocusTarget();  // Calls viewModel.giveFocus()
     }
 }, [blockClicked, isFocused]);
 ```
 
-**Why two effects?** This separates the visual update (immediate) from the physical focus (coordinated). It also provides a single point where focus granting can be controlled (e.g., skipped if there's a selection).
+The terminal's `giveFocus()` method grants actual browser focus:
 
-**Step 3: setFocusTarget Delegates to ViewModel** ([`block.tsx:211-217`](../frontend/app/block/block.tsx:211-217)):
-```typescript
-const setFocusTarget = useCallback(() => {
-    const ok = viewModel?.giveFocus?.();  // Try view-specific focus first
-    if (ok) {
-        return;
-    }
-    focusElemRef.current?.focus({ preventScroll: true });  // Fallback to dummy input
-}, []);
-```
-
-**Step 4: Terminal's giveFocus Grants XTerm Focus** ([`term.tsx:414-427`](../frontend/app/view/term/term.tsx:414-427)):
 ```typescript
 giveFocus(): boolean {
-    if (this.searchAtoms && globalStore.get(this.searchAtoms.isOpen)) {
-        return true;  // Search panel handles focus
-    }
-    let termMode = globalStore.get(this.termMode);
-    if (termMode == "term") {
-        if (this.termRef?.current?.terminal) {
-            this.termRef.current.terminal.focus();  // ← XTerm gets actual browser focus
-            return true;
-        }
+    if (termMode == "term" && this.termRef?.current?.terminal) {
+        this.termRef.current.terminal.focus();
+        return true;
     }
     return false;
 }
 ```
 
+### 5. Background Persistence
+
+While the UI updates synchronously, persistence happens asynchronously:
+
+```typescript
+private persistToBackend() {
+    // Debounced (100ms) to avoid excessive writes
+    setTimeout(() => {
+        waveObj.rootnode = this.treeState.rootNode;
+        waveObj.focusednodeid = this.treeState.focusedNodeId;
+        waveObj.magnifiednodeid = this.treeState.magnifiedNodeId;
+        waveObj.leaforder = this.treeState.leafOrder;
+        this.setter(this.waveObjectAtom, waveObj);
+    }, 100);
+}
+```
+
+The WaveObject is used purely for persistence (tab restore, uncaching).
+
 ## The Complete Chain
 
 ```
+User action
+    ↓
 layoutState.focusedNodeId = nodeId
-           ↓
-layoutState.generation++
-           ↓
-treeStateAtom setter (checks generation)
-           ↓
-WaveObject.focusednodeid = nodeId (commit)
-           ↓
-WaveObject update notification
-           ↓
-treeStateAtom getter runs
-           ↓
-All isFocused atoms recalculate
-           ↓
-React components re-render
-           ↓
-┌──────────────────────────┬──────────────────────────┐
-│                          │                          │
-│   Visual Focus Ring      │   Physical DOM Focus     │
-│   (immediate)            │   (coordinated)          │
-│                          │                          │
-│   CSS updates based on   │   useLayoutEffect #1:    │
-│   isFocused value        │   isFocused → blockClicked│
-│                          │                          │
-│                          │   useLayoutEffect #2:    │
-│                          │   blockClicked → setFocusTarget│
-│                          │                          │
-│                          │   setFocusTarget()       │
-│                          │   ↓                      │
-│                          │   viewModel.giveFocus()  │
-│                          │   ↓                      │
-│                          │   terminal.focus()       │
-│                          │                          │
-└──────────────────────────┴──────────────────────────┘
+    ↓
+setter(localTreeStateAtom, { ...treeState })
+    ↓
+isFocused atoms recalculate
+    ↓
+React re-renders
+    ↓
+┌────────────────────┬────────────────────┐
+│ Visual Ring        │ Physical Focus     │
+│ (immediate CSS)    │ (2-step effect)    │
+└────────────────────┴────────────────────┘
+    ↓
+persistToBackend() (async, debounced)
 ```
+
+## Key Points
+
+1. **Local atoms** - `localTreeStateAtom` is the source of truth during runtime
+2. **Synchronous updates** - UI changes happen immediately in one React tick
+3. **Async persistence** - Backend writes are fire-and-forget with debouncing
+4. **Two-step focus** - Separates visual (instant) from physical (coordinated) DOM focus
+5. **View delegation** - Each view implements `giveFocus()` for custom focus behavior
 
 ## User-Initiated Focus
 
-When a user clicks a block, the flow is slightly different (see [`focus.md`](./focus.md) for details):
+When a user clicks a block:
 
-1. **`onFocusCapture`** fires on mousedown → immediately calls `nodeModel.focusNode()`
-2. This updates the layout state (visual focus ring updates)
-3. **`onClick`** fires after click → sets `blockClicked = true`
-4. The two-step effect chain grants physical DOM focus
+1. **`onFocusCapture`** (mousedown) → calls `nodeModel.focusNode()` → visual focus ring appears
+2. **`onClick`** → sets `blockClicked = true` → two-step effect chain → physical DOM focus
 
-This ensures the focus ring updates instantly on mousedown, while physical focus waits until after the click completes (protecting selections).
+This ensures visual feedback is instant while protecting selections.
 
-## Key Takeaways
+## Backend Actions
 
-1. **`generation++` is critical** - Without it, changes never commit to the WaveObject
-2. **WaveObject is the hub** - All state flows through the backend WaveObject, enabling persistence and sync
-3. **Reactive atoms propagate changes** - Jotai atoms automatically update when dependencies change
-4. **Two-step effect for physical focus** - Using `blockClicked` as a trigger separates visual from physical updates
-5. **View-specific focus** - Each view type (terminal, editor, etc.) implements its own `giveFocus()` method
+On initialization or backend updates, queued actions are processed:
 
-## Why This Architecture?
+```typescript
+if (initialState.pendingBackendActions?.length) {
+    fireAndForget(() => this.processPendingBackendActions());
+}
+```
 
-This seemingly complex flow provides several benefits:
-- **Persistence**: Changes automatically sync to the backend
-- **Consistency**: Single source of truth for focus state
-- **Flexibility**: Views can customize focus behavior via `giveFocus()`
-- **Performance**: Visual updates are immediate while physical focus is deferred
-- **Protection**: The two-step approach allows for conditional focus granting (e.g., preserving selections)
-
-However, it is indeed a "house of cards" - each piece depends on the previous one working correctly. Understanding this flow is crucial for debugging focus-related issues.
+Backend can queue layout operations (create blocks, etc.) via `PendingBackendActions`.
