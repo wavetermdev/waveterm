@@ -3,6 +3,7 @@
 ## Problem
 
 Wave AI focus handling is fragile compared to blocks:
+
 1. Only watches textarea focus/blur, missing the multi-phase handling that blocks have
 2. Selection handling breaks - selecting text causes blur → focus reverts to layout
 3. Focus ring flashing - clicking Wave AI briefly shows focus ring on layout
@@ -12,6 +13,7 @@ Wave AI focus handling is fragile compared to blocks:
 ## Solution Overview
 
 Extend the block focus system pattern to Wave AI:
+
 - Multi-phase handling (capture + click)
 - Selection protection
 - Focus manager coordination
@@ -54,14 +56,14 @@ class FocusManager {
   nodeFocusWithin(): boolean;
 
   // NEW: Protected transitions (check selections first)
-  requestNodeFocus(): void;    // from Wave AI → node
-  requestWaveAIFocus(): void;  // from node → Wave AI
+  requestNodeFocus(): void; // from Wave AI → node
+  requestWaveAIFocus(): void; // from node → Wave AI
 
   // NEW: Get current focus type
   getFocusType(): FocusStrType;
 
   // ENHANCED: Smart refocus based on focusType
-  refocusNode(): void;  // already handles both types
+  refocusNode(): void; // already handles both types
 
   // NEW: Focus ring coordination
   shouldShowWaveAIFocusRing(): boolean;
@@ -281,11 +283,13 @@ isFocused: atom((get) => {
 ```
 
 This single change coordinates the entire system:
+
 - Layout can set `focusedNodeId` freely
 - The reactive chain runs normally
 - But `isFocused` returns `false` if focus manager says "waveai"
 - Block's two-step effect doesn't run
 - Physical DOM focus stays with Wave AI
+
 ## Layout Focus Coordination
 
 **File**: [`frontend/layout/lib/layoutModel.ts`](frontend/layout/lib/layoutModel.ts)
@@ -303,40 +307,41 @@ treeReducer(action: LayoutTreeAction, setState = true): boolean {
         focusManager.requestNodeFocus();
       }
       break;
-      
+
     case LayoutTreeActionType.InsertNodeAtIndex:
       insertNodeAtIndex(this.treeState, action);
       if ((action as LayoutTreeInsertNodeAtIndexAction).focused) {
         focusManager.requestNodeFocus();
       }
       break;
-      
+
     case LayoutTreeActionType.FocusNode:
       focusNode(this.treeState, action);
       // Explicit focus change always claims focus
       focusManager.requestNodeFocus();
       break;
-      
+
     case LayoutTreeActionType.MagnifyNodeToggle:
       magnifyNodeToggle(this.treeState, action);
       // Magnifying also focuses the node
       focusManager.requestNodeFocus();
       break;
-      
+
     // ... other cases don't affect focus
   }
-  
+
   if (setState) {
     this.updateTree();
     this.setter(this.localTreeStateAtom, { ...this.treeState });
     this.persistToBackend();
   }
-  
+
   return true;
 }
 ```
 
 **Why This Works:**
+
 1. `focusManager.requestNodeFocus()` updates `focusType` synchronously
 2. Called BEFORE atoms commit (still in same function)
 3. When `localTreeStateAtom` commits, `isFocused` sees the new `focusType`
@@ -344,6 +349,7 @@ treeReducer(action: LayoutTreeAction, setState = true): boolean {
 5. No race conditions, no flash
 
 **Order of Operations:**
+
 ```
 Cmd+n pressed
   ↓
@@ -361,7 +367,6 @@ isFocused sees: focusedNodeId = newNode AND focusType = "node"
   ↓
 Two-step effect grants physical focus
 ```
-
 
 ## Keyboard Navigation Integration
 
@@ -429,6 +434,7 @@ Physical DOM focus granted ✓
 ```
 
 **Why there's no flash:**
+
 - Local atoms update synchronously
 - React batches the updates
 - Everything sees consistent state in one render
@@ -436,11 +442,13 @@ Physical DOM focus granted ✓
 ## Edge Cases
 
 ### 1. Window Blur (⌘+Tab to other app)
+
 - Textarea loses focus, triggers `handleBlur`
 - `relatedTarget` is null → detected as window blur
 - Focus state preserved
 
 ### 2. Selection in Wave AI
+
 - User selects text
 - Clicks elsewhere in Wave AI
 - `waveAIHasSelection()` returns true
@@ -448,11 +456,13 @@ Physical DOM focus granted ✓
 - Selection preserved
 
 ### 3. Copy/Paste Context Menu
+
 - Right-click causes blur
 - `relatedTarget` within Wave AI panel
 - `handleBlur` detects this, doesn't revert focus
 
 ### 4. Modal Dialogs
+
 - Modal opens, steals focus
 - Modal closes → `globalRefocus()`
 - Focus manager restores correct focus based on `focusType`
@@ -460,21 +470,25 @@ Physical DOM focus granted ✓
 ## Implementation Steps
 
 ### 1. Focus Manager Foundation
+
 - Implement enhanced `focusManager.ts` with new methods
 - Create `waveai-focus-utils.ts` with selection utilities
 - Add data attributes to Wave AI panel
 
 ### 2. Wave AI Integration
+
 - Add `onFocusCapture` to Wave AI panel
 - Update `handleBlur` with selection protection
 - Update `handleClick` with selection awareness
 
 ### 3. Layout Integration
+
 - Update `isFocused` atom to check focus manager
 - Update keyboard navigation to use focus manager
 - Update global refocus utilities
 
 ### 4. Testing
+
 - Test all transitions and edge cases
 - Verify selection protection works
 - Confirm no focus ring flashing
@@ -482,9 +496,11 @@ Physical DOM focus granted ✓
 ## Files to Create/Modify
 
 ### New Files
+
 - `frontend/app/aipanel/waveai-focus-utils.ts` - Focus utilities for Wave AI
 
 ### Modified Files
+
 - [`frontend/app/store/focusManager.ts`](frontend/app/store/focusManager.ts) - Enhanced with new methods
 - [`frontend/app/aipanel/aipanel.tsx`](frontend/app/aipanel/aipanel.tsx) - Add capture phase, improve click handler
 - [`frontend/app/aipanel/aipanelinput.tsx`](frontend/app/aipanel/aipanelinput.tsx) - Smart blur handling
@@ -510,3 +526,218 @@ Physical DOM focus granted ✓
 4. **Unified model** - Single source of truth simplifies reasoning
 5. **Simple reactivity** - Everything updates synchronously in one tick
 6. **No timing issues** - Local atoms eliminate race conditions
+
+## Phased Implementation Approach
+
+The changes can be broken into safe, independently testable phases. Each phase can be shipped and tested before proceeding to the next.
+
+### Phase 1: Foundation (Non-Breaking, Fully Testable)
+
+**Add focus manager methods WITHOUT changing existing code**
+
+```typescript
+// In focusManager.ts - ADD these methods
+class FocusManager {
+  // NEW methods that ALSO update the old waveAIFocusedAtom
+  requestWaveAIFocus(): void {
+    globalStore.set(this.focusType, "waveai");
+    globalStore.set(atoms.waveAIFocusedAtom, true); // ← Keep old atom in sync!
+  }
+
+  requestNodeFocus(): void {
+    globalStore.set(this.focusType, "node");
+    globalStore.set(atoms.waveAIFocusedAtom, false); // ← Keep old atom in sync!
+  }
+
+  getFocusType(): FocusStrType {
+    return globalStore.get(this.focusType);
+  }
+
+  waveAIFocusWithin(): boolean {
+    return waveAIHasFocusWithin();
+  }
+
+  nodeFocusWithin(): boolean {
+    // Check if focus is in a block
+    return focusedBlockId() != null;
+  }
+}
+```
+
+**Why this is safe:**
+
+- Doesn't change any existing code
+- Focus manager updates BOTH new `focusType` AND old `waveAIFocusedAtom`
+- Everything keeps working exactly as before
+- Can test focus manager methods in isolation
+- No user-visible changes
+
+**Testing:**
+
+- Call the new methods manually in console
+- Verify both atoms update correctly
+- Verify existing focus behavior unchanged
+
+---
+
+### Phase 2: Wave AI Improvements (Testable in Isolation)
+
+**Add utilities and improve Wave AI focus handling**
+
+1. Create `waveai-focus-utils.ts` with selection checking utilities
+2. Update `aipanel.tsx`:
+   - Add `data-waveai-panel` attribute
+   - Add `onFocusCapture` handler
+   - Improve click handler with selection protection
+   - Call `focusManager.requestWaveAIFocus()` instead of setting atom directly
+3. Update `aipanelinput.tsx`:
+   - Smart blur handling with selection checks
+   - Call `focusManager.requestNodeFocus()` instead of setting atom directly
+
+**Why this is safe:**
+
+- Wave AI now uses focus manager, but focus manager keeps old atom in sync
+- Blocks still read `waveAIFocusedAtom` directly - still works!
+- Can test Wave AI selection protection independently
+- If there's a bug, only Wave AI is affected
+- Blocks remain completely unchanged
+
+**Testing:**
+
+- Wave AI selection preservation when clicking within panel
+- Wave AI blur handling (window blur, context menus, etc.)
+- Verify blocks still work normally (unchanged)
+- Test transitions between Wave AI and blocks
+
+**User-visible improvements:**
+
+- Wave AI text selections no longer lost when clicking in panel
+- No focus ring flashing
+- Better window blur handling
+
+---
+
+### Phase 3: Layout isFocused Migration (Single Critical Change)
+
+**Update isFocused atom to use focus manager**
+
+```typescript
+// In layoutModel.ts - CHANGE isFocused atom
+isFocused: atom((get) => {
+  const treeState = get(this.localTreeStateAtom);
+  const isFocused = treeState.focusedNodeId === nodeid;
+  const focusType = get(focusManager.focusType); // ← Use focus manager
+  return isFocused && focusType === "node";
+});
+```
+
+**Why this is safe:**
+
+- Focus manager already keeps `waveAIFocusedAtom` in sync (Phase 1)
+- Wave AI already uses focus manager (Phase 2)
+- Blocks read the new `focusType` but it's always consistent with old atom
+- Should be completely transparent
+- Single file change - easy to revert if issues
+
+**Testing:**
+
+- Focus transitions between blocks still work
+- Wave AI → block transitions work
+- Block → Wave AI transitions work
+- Keyboard navigation still works
+- All existing functionality preserved
+
+**No user-visible changes** - just internal refactoring
+
+---
+
+### Phase 4: Layout Focus Coordination (Completes the System)
+
+**Add focus manager calls to treeReducer**
+
+```typescript
+// In layoutModel.ts treeReducer - ADD focus manager calls
+case LayoutTreeActionType.FocusNode:
+  focusNode(this.treeState, action);
+  focusManager.requestNodeFocus();  // ← NEW
+  break;
+
+case LayoutTreeActionType.InsertNode:
+  insertNode(this.treeState, action);
+  if ((action as LayoutTreeInsertNodeAction).focused) {
+    focusManager.requestNodeFocus();  // ← NEW
+  }
+  break;
+
+case LayoutTreeActionType.MagnifyNodeToggle:
+  magnifyNodeToggle(this.treeState, action);
+  focusManager.requestNodeFocus();  // ← NEW
+  break;
+```
+
+**Why this is safe:**
+
+- Just makes explicit what was already happening via Wave AI's blur handler
+- Ensures focus manager is updated even when layout programmatically changes focus
+- Makes the system more robust
+- Small, focused changes in one file
+
+**Testing:**
+
+- Cmd+n creates new block with correct focus
+- Magnify toggle works correctly
+- Programmatic focus changes work
+- Focus stays consistent during rapid operations
+
+**User-visible improvements:**
+
+- More robust focus handling during programmatic layout changes
+- Edge cases with rapid focus changes handled better
+
+---
+
+### Phase 5: Keyboard Nav & Cleanup (Optional Polish)
+
+**Use focus manager in keyboard navigation, remove old atom usage**
+
+1. Update `keymodel.ts` to use `focusManager.getFocusType()`
+2. Remove direct `atoms.waveAIFocusedAtom` usage throughout codebase
+3. (Optional) Stop syncing `waveAIFocusedAtom` in focus manager - can be deprecated
+
+**Why this is safe:**
+
+- Everything already using focus manager under the hood
+- Just cleanup/optimization
+- Can be done incrementally
+
+**Testing:**
+
+- Keyboard navigation between blocks
+- Left/Right arrow to/from Wave AI
+- All keyboard shortcuts still work
+
+---
+
+## Key Insight: Dual Atom Sync
+
+**Phase 1 is the enabler**: By having the focus manager update BOTH the new `focusType` atom AND the old `waveAIFocusedAtom`, we create a safe transition period where:
+
+- New code can use focus manager
+- Old code continues reading the old atom
+- Everything stays consistent
+- Each phase is independently testable
+- Can ship and test after each phase
+
+This dual-sync approach eliminates the "all or nothing" problem. You can stop at any phase and have a working, tested system.
+
+## Testing Between Phases
+
+After each phase, you can ship and test:
+
+- **Phase 1** → No user-visible changes, foundation in place
+- **Phase 2** → Wave AI improvements only, blocks unchanged
+- **Phase 3** → Complete system working with new architecture
+- **Phase 4** → More robust edge case handling
+- **Phase 5** → Code cleanup and optimization
+
+Each phase builds on the previous one but can be independently verified.
