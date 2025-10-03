@@ -39,6 +39,7 @@ export class TermWshClient extends WshClient {
                     },
                 },
                 magnified: data.target?.magnified,
+                focused: true,
             });
             return oref;
         } else if (data.target?.toolbar?.toolbar) {

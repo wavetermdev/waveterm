@@ -44,6 +44,7 @@ func createBlockRun(cmd *cobra.Command, args []string) error {
 			Meta: meta,
 		},
 		Magnified: createBlockMagnified,
+		Focused:   true,
 	}
 	oref, err := wshclient.CreateBlockCommand(RpcClient, data, nil)
 	if err != nil {

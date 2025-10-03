@@ -209,7 +209,7 @@ func (ws *WshServer) CreateBlockCommand(ctx context.Context, data wshrpc.Command
 				ActionType:    wcore.LayoutActionDataType_Replace,
 				TargetBlockId: data.TargetBlockId,
 				BlockId:       blockData.OID,
-				Focused:       true,
+				Focused:       data.Focused,
 			}
 			err = wcore.DeleteBlock(ctx, data.TargetBlockId, false)
 			if err != nil {
@@ -221,6 +221,7 @@ func (ws *WshServer) CreateBlockCommand(ctx context.Context, data wshrpc.Command
 				BlockId:       blockData.OID,
 				TargetBlockId: data.TargetBlockId,
 				Position:      "after",
+				Focused:       data.Focused,
 			}
 		case "splitleft":
 			layoutAction = &waveobj.LayoutActionData{
@@ -228,6 +229,7 @@ func (ws *WshServer) CreateBlockCommand(ctx context.Context, data wshrpc.Command
 				BlockId:       blockData.OID,
 				TargetBlockId: data.TargetBlockId,
 				Position:      "before",
+				Focused:       data.Focused,
 			}
 		case "splitup":
 			layoutAction = &waveobj.LayoutActionData{
@@ -235,6 +237,7 @@ func (ws *WshServer) CreateBlockCommand(ctx context.Context, data wshrpc.Command
 				BlockId:       blockData.OID,
 				TargetBlockId: data.TargetBlockId,
 				Position:      "before",
+				Focused:       data.Focused,
 			}
 		case "splitdown":
 			layoutAction = &waveobj.LayoutActionData{
@@ -242,6 +245,7 @@ func (ws *WshServer) CreateBlockCommand(ctx context.Context, data wshrpc.Command
 				BlockId:       blockData.OID,
 				TargetBlockId: data.TargetBlockId,
 				Position:      "after",
+				Focused:       data.Focused,
 			}
 		default:
 			return nil, fmt.Errorf("invalid target action: %s", data.TargetAction)
@@ -252,7 +256,7 @@ func (ws *WshServer) CreateBlockCommand(ctx context.Context, data wshrpc.Command
 			BlockId:    blockData.OID,
 			Magnified:  data.Magnified,
 			Ephemeral:  data.Ephemeral,
-			Focused:    true,
+			Focused:    data.Focused,
 		}
 	}
 	err = wcore.QueueLayoutActionForTab(ctx, tabId, *layoutAction)
@@ -984,7 +988,7 @@ func (ws *WshServer) PathCommand(ctx context.Context, data wshrpc.PathCommandDat
 		_, err := ws.CreateBlockCommand(ctx, wshrpc.CommandCreateBlockData{BlockDef: &waveobj.BlockDef{Meta: map[string]any{
 			waveobj.MetaKey_View: "preview",
 			waveobj.MetaKey_File: path,
-		}}, Ephemeral: true, TabId: data.TabId})
+		}}, Ephemeral: true, Focused: true, TabId: data.TabId})
 
 		if err != nil {
 			return path, fmt.Errorf("error opening path: %w", err)

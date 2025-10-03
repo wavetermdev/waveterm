@@ -159,6 +159,7 @@ declare global {
         rtopts?: RuntimeOpts;
         magnified?: boolean;
         ephemeral?: boolean;
+        focused?: boolean;
         targetblockid?: string;
         targetaction?: string;
     };

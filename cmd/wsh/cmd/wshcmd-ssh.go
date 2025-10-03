@@ -67,6 +67,7 @@ func sshRun(cmd *cobra.Command, args []string) (rtnErr error) {
 			BlockDef: &waveobj.BlockDef{
 				Meta: createMeta,
 			},
+			Focused: true,
 		}
 		oref, err := wshclient.CreateBlockCommand(RpcClient, createBlockData, nil)
 		if err != nil {

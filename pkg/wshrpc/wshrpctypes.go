@@ -383,6 +383,7 @@ type CommandCreateBlockData struct {
 	RtOpts        *waveobj.RuntimeOpts `json:"rtopts,omitempty"`
 	Magnified     bool                 `json:"magnified,omitempty"`
 	Ephemeral     bool                 `json:"ephemeral,omitempty"`
+	Focused       bool                 `json:"focused,omitempty"`
 	TargetBlockId string               `json:"targetblockid,omitempty"`
 	TargetAction  string               `json:"targetaction,omitempty"` // "replace", "splitright", "splitdown", "splitleft", "splitup"
 }
