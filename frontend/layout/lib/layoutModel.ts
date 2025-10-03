@@ -384,9 +384,9 @@ export class LayoutModel {
         const waveObj = this.getter(this.waveObjectAtom);
         const actions = waveObj?.pendingbackendactions;
         if (!actions?.length) return;
-        
+
         this.treeState.pendingBackendActions = undefined;
-        
+
         for (const action of actions) {
             if (!action.actionid) {
                 console.warn("Dropping layout action without actionid:", action);
@@ -554,6 +554,7 @@ export class LayoutModel {
             waveObj.focusednodeid = this.treeState.focusedNodeId;
             waveObj.magnifiednodeid = this.treeState.magnifiedNodeId;
             waveObj.leaforder = this.treeState.leafOrder;
+            waveObj.pendingbackendactions = this.treeState.pendingBackendActions;
 
             this.setter(this.waveObjectAtom, waveObj);
             this.persistDebounceTimer = null;
