@@ -18,6 +18,8 @@ declare global {
         fgminutes?: number;
         activeminutes?: number;
         openminutes?: number;
+        waveaifgminutes?: number;
+        waveaiactiveminutes?: number;
         numtabs?: number;
         newtab?: number;
         numblocks?: number;
@@ -599,6 +601,7 @@ declare global {
         "waveai:panelwidth"?: number;
         "waveai:model"?: string;
         "waveai:chatid"?: string;
+        "waveai:widgetcontext"?: boolean;
         "term:*"?: boolean;
         "term:fontsize"?: number;
         "term:fontfamily"?: string;
@@ -882,6 +885,8 @@ declare global {
         "activity:activeminutes"?: number;
         "activity:fgminutes"?: number;
         "activity:openminutes"?: number;
+        "activity:waveaiactiveminutes"?: number;
+        "activity:waveaifgminutes"?: number;
         "app:firstday"?: boolean;
         "app:firstlaunch"?: boolean;
         "action:initiator"?: "keyboard" | "mouse";
@@ -904,6 +909,22 @@ declare global {
         "count:sshconn"?: number;
         "count:wslconn"?: number;
         "count:views"?: {[key: string]: number};
+        "waveai:apitype"?: string;
+        "waveai:model"?: string;
+        "waveai:inputtokens"?: number;
+        "waveai:outputtokens"?: number;
+        "waveai:requestcount"?: number;
+        "waveai:toolusecount"?: number;
+        "waveai:premiumreq"?: number;
+        "waveai:proxyreq"?: number;
+        "waveai:haderror"?: boolean;
+        "waveai:imagecount"?: number;
+        "waveai:pdfcount"?: number;
+        "waveai:textdoccount"?: number;
+        "waveai:textlen"?: number;
+        "waveai:firstbytems"?: number;
+        "waveai:requestdurms"?: number;
+        "waveai:widgetaccess"?: boolean;
         $set?: TEventUserProps;
         $set_once?: TEventUserProps;
     };

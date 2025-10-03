@@ -25,7 +25,7 @@ export class WaveAIModel {
     private static instance: WaveAIModel | null = null;
     private inputRef: React.RefObject<AIPanelInputRef> | null = null;
 
-    widgetAccess: jotai.PrimitiveAtom<boolean> = jotai.atom(true);
+    widgetAccessAtom!: jotai.Atom<boolean>;
     droppedFiles: jotai.PrimitiveAtom<DroppedFile[]> = jotai.atom([]);
     chatId!: jotai.PrimitiveAtom<string>;
     errorMessage: jotai.PrimitiveAtom<string> = jotai.atom(null) as jotai.PrimitiveAtom<string>;
@@ -50,6 +50,13 @@ export class WaveAIModel {
             const tabId = get(atoms.staticTabId);
             const modelMetaAtom = getTabMetaKeyAtom(tabId, "waveai:model");
             return get(modelMetaAtom) ?? "gpt-5";
+        });
+
+        this.widgetAccessAtom = jotai.atom((get) => {
+            const tabId = get(atoms.staticTabId);
+            const widgetAccessMetaAtom = getTabMetaKeyAtom(tabId, "waveai:widgetcontext");
+            const value = get(widgetAccessMetaAtom);
+            return value ?? true;
         });
     }
 
@@ -147,6 +154,14 @@ export class WaveAIModel {
         RpcApi.SetMetaCommand(TabRpcClient, {
             oref: WOS.makeORef("tab", tabId),
             meta: { "waveai:model": model },
+        });
+    }
+
+    setWidgetAccess(enabled: boolean) {
+        const tabId = globalStore.get(atoms.staticTabId);
+        RpcApi.SetMetaCommand(TabRpcClient, {
+            oref: WOS.makeORef("tab", tabId),
+            meta: { "waveai:widgetcontext": enabled },
         });
     }
 

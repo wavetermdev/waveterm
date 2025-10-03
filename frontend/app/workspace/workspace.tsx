@@ -9,7 +9,7 @@ import { TabBar } from "@/app/tab/tabbar";
 import { TabContent } from "@/app/tab/tabcontent";
 import { Widgets } from "@/app/workspace/widgets";
 import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
-import { atoms } from "@/store/global";
+import { atoms, getApi } from "@/store/global";
 import { useAtomValue } from "jotai";
 import { memo, useEffect, useRef } from "react";
 import {
@@ -34,6 +34,11 @@ const WorkspaceElem = memo(() => {
         if (aiPanelRef.current && panelGroupRef.current && panelContainerRef.current && aiPanelWrapperRef.current) {
             workspaceLayoutModel.registerRefs(aiPanelRef.current, panelGroupRef.current, panelContainerRef.current, aiPanelWrapperRef.current);
         }
+    }, []);
+
+    useEffect(() => {
+        const isVisible = workspaceLayoutModel.getAIPanelVisible();
+        getApi().setWaveAIOpen(isVisible);
     }, []);
 
     useEffect(() => {

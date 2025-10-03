@@ -200,6 +200,7 @@ type AIMetrics struct {
 	TextLen           int     `json:"textlen"`
 	FirstByteLatency  int     `json:"firstbytelatency"`  // ms
 	RequestDuration   int     `json:"requestduration"`   // ms
+	WidgetAccess      bool    `json:"widgetaccess"`
 }
 
 // GenAIMessage interface for messages stored in conversations
@@ -378,6 +379,7 @@ type WaveChatOpts struct {
 	Tools             []ToolDefinition
 	SystemPrompt      []string
 	TabStateGenerator func() (string, []ToolDefinition, error)
+	WidgetAccess      bool
 
 	// emphemeral to the step
 	TabState string

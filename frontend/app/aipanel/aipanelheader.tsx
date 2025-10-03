@@ -13,7 +13,7 @@ interface AIPanelHeaderProps {
 }
 
 export const AIPanelHeader = memo(({ onClose, model, onClearChat }: AIPanelHeaderProps) => {
-    const [widgetAccess, setWidgetAccess] = useAtom(model.widgetAccess);
+    const widgetAccess = useAtomValue(model.widgetAccessAtom);
     const currentModel = useAtomValue(model.modelAtom);
 
     const modelOptions = [
@@ -71,7 +71,7 @@ export const AIPanelHeader = memo(({ onClose, model, onClearChat }: AIPanelHeade
                     <span className="text-gray-300 hidden @xs:inline mr-2 text-[12px]">Widget Context</span>
                     <button
                         onClick={() => {
-                            setWidgetAccess(!widgetAccess);
+                            model.setWidgetAccess(!widgetAccess);
                             setTimeout(() => {
                                 model.focusInput();
                             }, 0);

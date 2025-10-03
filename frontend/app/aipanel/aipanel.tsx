@@ -55,7 +55,7 @@ const AIPanelComponentInner = memo(({ className, onClose }: AIPanelProps) => {
                     body: {
                         msg,
                         chatid: globalStore.get(model.chatId),
-                        widgetaccess: globalStore.get(model.widgetAccess),
+                        widgetaccess: globalStore.get(model.widgetAccessAtom),
                         tabid: globalStore.get(atoms.staticTabId),
                     },
                 };

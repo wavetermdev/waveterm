@@ -7,7 +7,7 @@ import * as WOS from "@/app/store/wos";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { getLayoutModelForStaticTab } from "@/layout/lib/layoutModelHooks";
-import { atoms, getTabMetaKeyAtom, isDev, refocusNode } from "@/store/global";
+import { atoms, getApi, getTabMetaKeyAtom, isDev, refocusNode } from "@/store/global";
 import debug from "debug";
 import * as jotai from "jotai";
 import { debounce } from "lodash-es";
@@ -228,6 +228,7 @@ class WorkspaceLayoutModel {
         }
         this.aiPanelVisible = visible;
         globalStore.set(this.panelVisibleAtom, visible);
+        getApi().setWaveAIOpen(visible);
         RpcApi.SetMetaCommand(TabRpcClient, {
             oref: WOS.makeORef("tab", this.getTabId()),
             meta: { "waveai:panelopen": visible },

@@ -137,10 +137,10 @@ const (
 	Command_VDomRender          = "vdomrender"
 	Command_VDomUrlRequest      = "vdomurlrequest"
 
-	Command_AiSendMessage           = "aisendmessage"
-	Command_WaveAIEnableTelemetry   = "waveaienabletelemetry"
-	Command_GetWaveAIChat           = "getwaveaichat"
-	Command_GetWaveAIRateLimit      = "getwaveairatelimit"
+	Command_AiSendMessage         = "aisendmessage"
+	Command_WaveAIEnableTelemetry = "waveaienabletelemetry"
+	Command_GetWaveAIChat         = "getwaveaichat"
+	Command_GetWaveAIRateLimit    = "getwaveairatelimit"
 
 	Command_CaptureBlockScreenshot = "captureblockscreenshot"
 
@@ -739,29 +739,31 @@ type ActivityDisplayType struct {
 }
 
 type ActivityUpdate struct {
-	FgMinutes     int                   `json:"fgminutes,omitempty"`
-	ActiveMinutes int                   `json:"activeminutes,omitempty"`
-	OpenMinutes   int                   `json:"openminutes,omitempty"`
-	NumTabs       int                   `json:"numtabs,omitempty"`
-	NewTab        int                   `json:"newtab,omitempty"`
-	NumBlocks     int                   `json:"numblocks,omitempty"`
-	NumWindows    int                   `json:"numwindows,omitempty"`
-	NumWS         int                   `json:"numws,omitempty"`
-	NumWSNamed    int                   `json:"numwsnamed,omitempty"`
-	NumSSHConn    int                   `json:"numsshconn,omitempty"`
-	NumWSLConn    int                   `json:"numwslconn,omitempty"`
-	NumMagnify    int                   `json:"nummagnify,omitempty"`
-	NumPanics     int                   `json:"numpanics,omitempty"`
-	NumAIReqs     int                   `json:"numaireqs,omitempty"`
-	Startup       int                   `json:"startup,omitempty"`
-	Shutdown      int                   `json:"shutdown,omitempty"`
-	SetTabTheme   int                   `json:"settabtheme,omitempty"`
-	BuildTime     string                `json:"buildtime,omitempty"`
-	Displays      []ActivityDisplayType `json:"displays,omitempty"`
-	Renderers     map[string]int        `json:"renderers,omitempty"`
-	Blocks        map[string]int        `json:"blocks,omitempty"`
-	WshCmds       map[string]int        `json:"wshcmds,omitempty"`
-	Conn          map[string]int        `json:"conn,omitempty"`
+	FgMinutes           int                   `json:"fgminutes,omitempty"`
+	ActiveMinutes       int                   `json:"activeminutes,omitempty"`
+	OpenMinutes         int                   `json:"openminutes,omitempty"`
+	WaveAIFgMinutes     int                   `json:"waveaifgminutes,omitempty"`
+	WaveAIActiveMinutes int                   `json:"waveaiactiveminutes,omitempty"`
+	NumTabs             int                   `json:"numtabs,omitempty"`
+	NewTab              int                   `json:"newtab,omitempty"`
+	NumBlocks           int                   `json:"numblocks,omitempty"`
+	NumWindows          int                   `json:"numwindows,omitempty"`
+	NumWS               int                   `json:"numws,omitempty"`
+	NumWSNamed          int                   `json:"numwsnamed,omitempty"`
+	NumSSHConn          int                   `json:"numsshconn,omitempty"`
+	NumWSLConn          int                   `json:"numwslconn,omitempty"`
+	NumMagnify          int                   `json:"nummagnify,omitempty"`
+	NumPanics           int                   `json:"numpanics,omitempty"`
+	NumAIReqs           int                   `json:"numaireqs,omitempty"`
+	Startup             int                   `json:"startup,omitempty"`
+	Shutdown            int                   `json:"shutdown,omitempty"`
+	SetTabTheme         int                   `json:"settabtheme,omitempty"`
+	BuildTime           string                `json:"buildtime,omitempty"`
+	Displays            []ActivityDisplayType `json:"displays,omitempty"`
+	Renderers           map[string]int        `json:"renderers,omitempty"`
+	Blocks              map[string]int        `json:"blocks,omitempty"`
+	WshCmds             map[string]int        `json:"wshcmds,omitempty"`
+	Conn                map[string]int        `json:"conn,omitempty"`
 }
 
 type ConnExtData struct {
@@ -814,6 +816,6 @@ type CommandGetRTInfoData struct {
 }
 
 type CommandSetRTInfoData struct {
-	ORef waveobj.ORef     `json:"oref"`
-	Data map[string]any   `json:"data" tstype:"ObjRTInfo"`
+	ORef waveobj.ORef   `json:"oref"`
+	Data map[string]any `json:"data" tstype:"ObjRTInfo"`
 }

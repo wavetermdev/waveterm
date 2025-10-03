@@ -106,6 +106,7 @@ declare global {
         openNativePath(filePath: string): void; // open-native-path
         captureScreenshot(rect: Electron.Rectangle): Promise<string>; // capture-screenshot
         setKeyboardChordMode: () => void; // set-keyboard-chord-mode
+        setWaveAIOpen: (isOpen: boolean) => void; // set-waveai-open
     };
 
     type ElectronContextMenuItem = {

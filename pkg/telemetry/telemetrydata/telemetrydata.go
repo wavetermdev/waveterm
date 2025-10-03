@@ -68,9 +68,11 @@ type TEventUserProps struct {
 type TEventProps struct {
 	TEventUserProps `tstype:"-"` // generally don't need to set these since they will be automatically copied over
 
-	ActiveMinutes int `json:"activity:activeminutes,omitempty"`
-	FgMinutes     int `json:"activity:fgminutes,omitempty"`
-	OpenMinutes   int `json:"activity:openminutes,omitempty"`
+	ActiveMinutes        int `json:"activity:activeminutes,omitempty"`
+	FgMinutes            int `json:"activity:fgminutes,omitempty"`
+	OpenMinutes          int `json:"activity:openminutes,omitempty"`
+	WaveAIActiveMinutes  int `json:"activity:waveaiactiveminutes,omitempty"`
+	WaveAIFgMinutes      int `json:"activity:waveaifgminutes,omitempty"`
 
 	AppFirstDay    bool `json:"app:firstday,omitempty"`
 	AppFirstLaunch bool `json:"app:firstlaunch,omitempty"`
@@ -113,6 +115,7 @@ type TEventProps struct {
 	WaveAITextLen        int    `json:"waveai:textlen,omitempty"`
 	WaveAIFirstByteMs    int    `json:"waveai:firstbytems,omitempty"`    // ms
 	WaveAIRequestDurMs   int    `json:"waveai:requestdurms,omitempty"`   // ms
+	WaveAIWidgetAccess   bool   `json:"waveai:widgetaccess,omitempty"`
 
 	UserSet     *TEventUserProps `json:"$set,omitempty"`
 	UserSetOnce *TEventUserProps `json:"$set_once,omitempty"`

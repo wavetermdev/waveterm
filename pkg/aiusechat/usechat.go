@@ -241,6 +241,7 @@ func RunAIChat(ctx context.Context, sseHandler *sse.SSEHandlerCh, chatOpts uctyp
 			APIType: chatOpts.Config.APIType,
 			Model:   chatOpts.Config.Model,
 		},
+		WidgetAccess: chatOpts.WidgetAccess,
 	}
 	firstStep := true
 	var cont *uctypes.WaveContinueResponse
@@ -450,6 +451,7 @@ func sendAIMetricsTelemetry(ctx context.Context, metrics *uctypes.AIMetrics) {
 		WaveAITextLen:      metrics.TextLen,
 		WaveAIFirstByteMs:  metrics.FirstByteLatency,
 		WaveAIRequestDurMs: metrics.RequestDuration,
+		WaveAIWidgetAccess: metrics.WidgetAccess,
 	})
 	_ = telemetry.RecordTEvent(ctx, event)
 }
@@ -503,9 +505,10 @@ func WaveAIPostMessageHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Call the core WaveAIPostMessage function
 	chatOpts := uctypes.WaveChatOpts{
-		ChatId:   req.ChatID,
-		ClientId: client.OID,
-		Config:   *aiOpts,
+		ChatId:       req.ChatID,
+		ClientId:     client.OID,
+		Config:       *aiOpts,
+		WidgetAccess: req.WidgetAccess,
 	}
 	if chatOpts.Config.APIType == APIType_OpenAI {
 		chatOpts.SystemPrompt = []string{SystemPromptText_OpenAI}
