@@ -1121,6 +1121,14 @@ export class LayoutModel {
         }
     }
 
+    getFirstBlockId(): string | undefined {
+        const leafOrder = this.getter(this.leafOrder);
+        if (leafOrder.length > 0) {
+            return leafOrder[0].blockid;
+        }
+        return undefined;
+    }
+
     /**
      * Toggle magnification of a given node.
      * @param nodeId The id of the node that is being magnified.
