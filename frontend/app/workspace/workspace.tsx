@@ -8,7 +8,7 @@ import { ModalsRenderer } from "@/app/modals/modalsrenderer";
 import { TabBar } from "@/app/tab/tabbar";
 import { TabContent } from "@/app/tab/tabcontent";
 import { Widgets } from "@/app/workspace/widgets";
-import { workspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
+import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
 import { atoms } from "@/store/global";
 import { useAtomValue } from "jotai";
 import { memo, useEffect, useRef } from "react";
@@ -21,6 +21,7 @@ import {
 } from "react-resizable-panels";
 
 const WorkspaceElem = memo(() => {
+    const workspaceLayoutModel = WorkspaceLayoutModel.getInstance();
     const tabId = useAtomValue(atoms.staticTabId);
     const ws = useAtomValue(atoms.workspace);
     const initialAiPanelPercentage = workspaceLayoutModel.getAIPanelPercentage(window.innerWidth);

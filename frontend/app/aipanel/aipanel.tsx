@@ -2,17 +2,20 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { WaveUIMessagePart } from "@/app/aipanel/aitypes";
+import { waveAIHasSelection } from "@/app/aipanel/waveai-focus-utils";
 import { ErrorBoundary } from "@/app/element/errorboundary";
+import { focusManager } from "@/app/store/focusManager";
 import { atoms, getSettingsKeyAtom } from "@/app/store/global";
 import { globalStore } from "@/app/store/jotaiStore";
-import { workspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
+import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
 import { getWebServerEndpoint } from "@/util/endpoints";
+import { getElemAsStr } from "@/util/focusutil";
 import { checkKeyPressed, keydownWrapper } from "@/util/keyutil";
 import { cn } from "@/util/util";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import * as jotai from "jotai";
-import { memo, useEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { createDataUrl, formatFileSizeError, isAcceptableFile, normalizeMimeType, validateFileSize } from "./ai-utils";
 import { AIDroppedFiles } from "./aidroppedfiles";
 import { AIPanelHeader } from "./aipanelheader";
@@ -37,9 +40,10 @@ const AIPanelComponentInner = memo(({ className, onClose }: AIPanelProps) => {
     const inputRef = useRef<AIPanelInputRef>(null);
     const isLayoutMode = jotai.useAtomValue(atoms.controlShiftDelayAtom);
     const showOverlayBlockNums = jotai.useAtomValue(getSettingsKeyAtom("app:showoverlayblocknums")) ?? true;
-    const isFocused = jotai.useAtomValue(atoms.waveAIFocusedAtom);
+    const focusType = jotai.useAtomValue(focusManager.focusType);
+    const isFocused = focusType === "waveai";
     const telemetryEnabled = jotai.useAtomValue(getSettingsKeyAtom("telemetry:enabled")) ?? false;
-    const isPanelVisible = jotai.useAtomValue(workspaceLayoutModel.panelVisibleAtom);
+    const isPanelVisible = jotai.useAtomValue(WorkspaceLayoutModel.getInstance().panelVisibleAtom);
 
     const { messages, sendMessage, status, setMessages, error } = useChat({
         transport: new DefaultChatTransport({
@@ -246,8 +250,12 @@ const AIPanelComponentInner = memo(({ className, onClose }: AIPanelProps) => {
         }
     };
 
+    const handleFocusCapture = useCallback((event: React.FocusEvent) => {
+        console.log("Wave AI focus capture", getElemAsStr(event.target));
+        focusManager.requestWaveAIFocus();
+    }, []);
+
     const handleClick = (e: React.MouseEvent) => {
-        // Check if the click target is an interactive element
         const target = e.target as HTMLElement;
         const isInteractive = target.closest('button, a, input, textarea, select, [role="button"], [tabindex]');
 
@@ -255,10 +263,14 @@ const AIPanelComponentInner = memo(({ className, onClose }: AIPanelProps) => {
             return;
         }
 
-        // Use setTimeout to avoid interfering with other click actions
+        const hasSelection = waveAIHasSelection();
+        if (hasSelection) {
+            focusManager.requestWaveAIFocus();
+            return;
+        }
+
         setTimeout(() => {
-            const selection = window.getSelection();
-            if (!selection || selection.toString().length === 0) {
+            if (!waveAIHasSelection()) {
                 model.focusInput();
             }
         }, 0);
@@ -268,6 +280,7 @@ const AIPanelComponentInner = memo(({ className, onClose }: AIPanelProps) => {
 
     return (
         <div
+            data-waveai-panel="true"
             className={cn(
                 "bg-gray-900 flex flex-col relative h-[calc(100%-4px)] mt-1",
                 className,
@@ -279,6 +292,7 @@ const AIPanelComponentInner = memo(({ className, onClose }: AIPanelProps) => {
                 borderBottomRightRadius: 10,
                 borderBottomLeftRadius: 10,
             }}
+            onFocusCapture={handleFocusCapture}
             onDragOver={handleDragOver}
             onDragEnter={handleDragEnter}
             onDragLeave={handleDragLeave}

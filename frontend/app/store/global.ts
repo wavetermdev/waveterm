@@ -147,7 +147,6 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
     const notificationsAtom = atom<NotificationType[]>([]);
     const notificationPopoverModeAtom = atom<boolean>(false);
     const reinitVersion = atom(0);
-    const waveAIFocusedAtom = atom(false);
     const rateLimitInfoAtom = atom(null) as PrimitiveAtom<RateLimitInfo>;
     atoms = {
         // initialized in wave.ts (will not be null inside of application)
@@ -172,7 +171,6 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
         notificationPopoverMode: notificationPopoverModeAtom,
         reinitVersion,
         isTermMultiInput: atom(false),
-        waveAIFocusedAtom,
         waveAIRateLimitInfoAtom: rateLimitInfoAtom,
     };
 }

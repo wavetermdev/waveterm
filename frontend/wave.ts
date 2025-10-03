@@ -85,7 +85,7 @@ async function initWaveWrap(initOpts: WaveInitOpts) {
         savedInitOpts = initOpts;
         await initWave(initOpts);
     } catch (e) {
-        getApi().sendLog("Error in initWave " + e.message);
+        getApi().sendLog("Error in initWave " + e.message + "\n" + e.stack);
         console.error("Error in initWave", e);
     } finally {
         document.body.style.visibility = null;

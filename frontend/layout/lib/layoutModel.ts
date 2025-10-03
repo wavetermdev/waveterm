@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { atoms, getSettingsKeyAtom } from "@/app/store/global";
+import { focusManager } from "@/app/store/focusManager";
 import { atomWithThrottle, boundNumber, fireAndForget } from "@/util/util";
 import { Atom, atom, Getter, PrimitiveAtom, Setter } from "jotai";
 import { splitAtom } from "jotai/utils";
@@ -592,9 +593,15 @@ export class LayoutModel {
                 break;
             case LayoutTreeActionType.InsertNode:
                 insertNode(this.treeState, action as LayoutTreeInsertNodeAction);
+                if ((action as LayoutTreeInsertNodeAction).focused) {
+                    focusManager.requestNodeFocus();
+                }
                 break;
             case LayoutTreeActionType.InsertNodeAtIndex:
                 insertNodeAtIndex(this.treeState, action as LayoutTreeInsertNodeAtIndexAction);
+                if ((action as LayoutTreeInsertNodeAtIndexAction).focused) {
+                    focusManager.requestNodeFocus();
+                }
                 break;
             case LayoutTreeActionType.DeleteNode:
                 deleteNode(this.treeState, action as LayoutTreeDeleteNodeAction);
@@ -629,9 +636,11 @@ export class LayoutModel {
             }
             case LayoutTreeActionType.FocusNode:
                 focusNode(this.treeState, action as LayoutTreeFocusNodeAction);
+                focusManager.requestNodeFocus();
                 break;
             case LayoutTreeActionType.MagnifyNodeToggle:
                 magnifyNodeToggle(this.treeState, action as LayoutTreeMagnifyNodeToggleAction);
+                focusManager.requestNodeFocus();
                 break;
             case LayoutTreeActionType.ClearTree:
                 clearTree(this.treeState);
@@ -1025,8 +1034,8 @@ export class LayoutModel {
                 isFocused: atom((get) => {
                     const treeState = get(this.localTreeStateAtom);
                     const isFocused = treeState.focusedNodeId === nodeid;
-                    const waveAIFocused = get(atoms.waveAIFocusedAtom);
-                    return isFocused && !waveAIFocused;
+                    const focusType = get(focusManager.focusType);
+                    return isFocused && focusType === "node";
                 }),
                 numLeafs: this.numLeafs,
                 isResizing: this.isResizing,

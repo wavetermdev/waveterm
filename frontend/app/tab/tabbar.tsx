@@ -3,7 +3,7 @@
 
 import { Button } from "@/app/element/button";
 import { modalsModel } from "@/app/store/modalmodel";
-import { workspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
+import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
 import { WindowDrag } from "@/element/windowdrag";
 import { deleteLayoutModelForTab } from "@/layout/index";
 import { atoms, createTab, getApi, globalStore, isDev, setActiveTab } from "@/store/global";
@@ -173,7 +173,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
     const prevAllLoadedRef = useRef<boolean>(false);
     const activeTabId = useAtomValue(atoms.staticTabId);
     const isFullScreen = useAtomValue(atoms.isFullScreen);
-    const aiPanelOpen = useAtomValue(workspaceLayoutModel.panelVisibleAtom);
+    const aiPanelOpen = useAtomValue(WorkspaceLayoutModel.getInstance().panelVisibleAtom);
 
     const settings = useAtomValue(atoms.settingsAtom);
 
@@ -635,8 +635,8 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
     }
 
     function onWaveAIClick() {
-        const currentVisible = workspaceLayoutModel.getAIPanelVisible();
-        workspaceLayoutModel.setAIPanelVisible(!currentVisible);
+        const currentVisible = WorkspaceLayoutModel.getInstance().getAIPanelVisible();
+        WorkspaceLayoutModel.getInstance().setAIPanelVisible(!currentVisible);
     }
 
     const tabsWrapperWidth = tabIds.length * tabWidthRef.current;

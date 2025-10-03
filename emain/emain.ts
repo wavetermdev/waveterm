@@ -12,7 +12,7 @@ import { PNG } from "pngjs";
 import { sprintf } from "sprintf-js";
 import { Readable } from "stream";
 import * as services from "../frontend/app/store/services";
-import { initElectronWshrpc, shutdownWshrpc } from "../frontend/app/store/wshrpcutil";
+import { initElectronWshrpc, shutdownWshrpc } from "../frontend/app/store/wshrpcutil-base";
 import { getWebServerEndpoint } from "../frontend/util/endpoints";
 import * as keyutil from "../frontend/util/keyutil";
 import { fireAndForget, sleep } from "../frontend/util/util";
@@ -25,7 +25,7 @@ import {
     setForceQuit,
     setGlobalIsQuitting,
     setGlobalIsStarting,
-    setWasActive,
+setWasActive,
     setWasInFg,
 } from "./emain-activity";
 import { ensureHotSpareTab, getWaveTabViewByWebContentsId, setMaxTabCacheSize } from "./emain-tabview";

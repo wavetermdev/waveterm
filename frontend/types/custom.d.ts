@@ -28,7 +28,6 @@ declare global {
         notificationPopoverMode: jotai.Atom<boolean>;
         reinitVersion: jotai.PrimitiveAtom<number>;
         isTermMultiInput: jotai.PrimitiveAtom<boolean>;
-        waveAIFocusedAtom: jotai.PrimitiveAtom<boolean>;
         waveAIRateLimitInfoAtom: jotai.PrimitiveAtom<RateLimitInfo>;
     };
 

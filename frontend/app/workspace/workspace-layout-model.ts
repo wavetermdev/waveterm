@@ -2,13 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { WaveAIModel } from "@/app/aipanel/waveai-model";
-import { getTabMetaKeyAtom, refocusNode } from "@/app/store/global";
 import { globalStore } from "@/app/store/jotaiStore";
 import * as WOS from "@/app/store/wos";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { getLayoutModelForStaticTab } from "@/layout/lib/layoutModelHooks";
-import { atoms, isDev } from "@/store/global";
+import { atoms, getTabMetaKeyAtom, isDev, refocusNode } from "@/store/global";
 import debug from "debug";
 import * as jotai from "jotai";
 import { debounce } from "lodash-es";
@@ -22,6 +21,8 @@ const AIPANEL_MINWIDTH = 300;
 const AIPANEL_MAXWIDTHRATIO = 0.5;
 
 class WorkspaceLayoutModel {
+    private static instance: WorkspaceLayoutModel | null = null;
+
     aiPanelRef: ImperativePanelHandle | null;
     panelGroupRef: ImperativePanelGroupHandle | null;
     panelContainerRef: HTMLDivElement | null;
@@ -35,7 +36,7 @@ class WorkspaceLayoutModel {
     private focusTimeoutRef: NodeJS.Timeout | null = null;
     panelVisibleAtom: jotai.PrimitiveAtom<boolean>;
 
-    constructor() {
+    private constructor() {
         this.aiPanelRef = null;
         this.panelGroupRef = null;
         this.panelContainerRef = null;
@@ -58,6 +59,13 @@ class WorkspaceLayoutModel {
                 console.warn("Failed to persist panel width:", e);
             }
         }, 300);
+    }
+
+    static getInstance(): WorkspaceLayoutModel {
+        if (!WorkspaceLayoutModel.instance) {
+            WorkspaceLayoutModel.instance = new WorkspaceLayoutModel();
+        }
+        return WorkspaceLayoutModel.instance;
     }
 
     private initializeFromTabMeta(): void {
@@ -288,6 +296,4 @@ class WorkspaceLayoutModel {
     }
 }
 
-const workspaceLayoutModel = new WorkspaceLayoutModel();
-
-export { workspaceLayoutModel, WorkspaceLayoutModel };
+export { WorkspaceLayoutModel };

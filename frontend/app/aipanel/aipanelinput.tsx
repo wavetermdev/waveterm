@@ -2,9 +2,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { formatFileSizeError, isAcceptableFile, validateFileSize } from "@/app/aipanel/ai-utils";
+import { waveAIHasFocusWithin } from "@/app/aipanel/waveai-focus-utils";
 import { type WaveAIModel } from "@/app/aipanel/waveai-model";
 import { atoms, globalStore } from "@/app/store/global";
-import { workspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
+import { focusManager } from "@/app/store/focusManager";
+import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
 import { cn } from "@/util/util";
 import { useAtomValue } from "jotai";
 import { forwardRef, memo, useCallback, useEffect, useImperativeHandle, useRef } from "react";
@@ -24,10 +26,11 @@ export interface AIPanelInputRef {
 
 export const AIPanelInput = memo(
     forwardRef<AIPanelInputRef, AIPanelInputProps>(({ input, setInput, onSubmit, status, model }, ref) => {
-        const isFocused = useAtomValue(atoms.waveAIFocusedAtom);
+        const focusType = useAtomValue(focusManager.focusType);
+        const isFocused = focusType === "waveai";
         const textareaRef = useRef<HTMLTextAreaElement>(null);
         const fileInputRef = useRef<HTMLInputElement>(null);
-        const isPanelOpen = useAtomValue(workspaceLayoutModel.panelVisibleAtom);
+        const isPanelOpen = useAtomValue(WorkspaceLayoutModel.getInstance().panelVisibleAtom);
 
         const resizeTextarea = useCallback(() => {
             const textarea = textareaRef.current;
@@ -54,11 +57,19 @@ export const AIPanelInput = memo(
         };
 
         const handleFocus = useCallback(() => {
-            globalStore.set(atoms.waveAIFocusedAtom, true);
+            focusManager.requestWaveAIFocus();
         }, []);
 
-        const handleBlur = useCallback(() => {
-            globalStore.set(atoms.waveAIFocusedAtom, false);
+        const handleBlur = useCallback((e: React.FocusEvent) => {
+            if (e.relatedTarget === null) {
+                return;
+            }
+
+            if (waveAIHasFocusWithin()) {
+                return;
+            }
+
+            focusManager.requestNodeFocus();
         }, []);
 
         useEffect(() => {

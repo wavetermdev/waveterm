@@ -1,7 +1,7 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { workspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
+import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
 import { useAtomValue } from "jotai";
 import { memo, useEffect, useRef } from "react";
 import { AIMessage } from "./aimessage";
@@ -25,7 +25,7 @@ interface AIPanelMessagesProps {
 }
 
 export const AIPanelMessages = memo(({ messages, status, isLoadingChat }: AIPanelMessagesProps) => {
-    const isPanelOpen = useAtomValue(workspaceLayoutModel.panelVisibleAtom);
+    const isPanelOpen = useAtomValue(WorkspaceLayoutModel.getInstance().panelVisibleAtom);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const messagesContainerRef = useRef<HTMLDivElement>(null);
 

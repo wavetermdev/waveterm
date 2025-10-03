@@ -18,7 +18,8 @@ import {
     replaceBlock,
     WOS,
 } from "@/app/store/global";
-import { workspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
+import { focusManager } from "@/app/store/focusManager";
+import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
 import { deleteLayoutModelForTab, getLayoutModelForStaticTab, NavigateDirection } from "@/layout/index";
 import * as keyutil from "@/util/keyutil";
 import { CHORD_TIMEOUT } from "@/util/sharedconst";
@@ -139,23 +140,28 @@ function switchBlockByBlockNum(index: number) {
 
 function switchBlockInDirection(direction: NavigateDirection) {
     const layoutModel = getLayoutModelForStaticTab();
-    const inWaveAI = globalStore.get(atoms.waveAIFocusedAtom);
+    const focusType = focusManager.getFocusType();
 
     if (direction === NavigateDirection.Left) {
         const numBlocks = globalStore.get(layoutModel.numLeafs);
-        if (inWaveAI) {
+        if (focusType === "waveai") {
             return;
         }
         if (numBlocks === 1) {
-            // special case: layout model doesn't set "rect" when there's only one block
-            WaveAIModel.getInstance().focusInput();
+            focusManager.requestWaveAIFocus();
             return;
         }
     }
 
+    if (direction === NavigateDirection.Right && focusType === "waveai") {
+        focusManager.requestNodeFocus();
+        return;
+    }
+
+    const inWaveAI = focusType === "waveai";
     const navResult = layoutModel.switchNodeFocusInDirection(direction, inWaveAI);
     if (navResult.atLeft) {
-        WaveAIModel.getInstance().focusInput();
+        focusManager.requestWaveAIFocus();
         return;
     }
     setTimeout(() => {
@@ -539,8 +545,8 @@ function registerGlobalKeys() {
         return false;
     });
     globalKeyMap.set("Cmd:Shift:a", () => {
-        const currentVisible = workspaceLayoutModel.getAIPanelVisible();
-        workspaceLayoutModel.setAIPanelVisible(!currentVisible);
+        const currentVisible = WorkspaceLayoutModel.getInstance().getAIPanelVisible();
+        WorkspaceLayoutModel.getInstance().setAIPanelVisible(!currentVisible);
         return true;
     });
     const allKeys = Array.from(globalKeyMap.keys());

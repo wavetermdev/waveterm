@@ -1,10 +1,12 @@
+import { waveAIHasFocusWithin } from "@/app/aipanel/waveai-focus-utils";
 import { WaveAIModel } from "@/app/aipanel/waveai-model";
 import { atoms, getBlockComponentModel } from "@/app/store/global";
 import { globalStore } from "@/app/store/jotaiStore";
-import { getLayoutModelForStaticTab, getLayoutModelForTabById } from "@/layout/index";
+import { focusedBlockId } from "@/util/focusutil";
+import { getLayoutModelForStaticTab } from "@/layout/index";
 import { Atom, atom, type PrimitiveAtom } from "jotai";
 
-type FocusStrType = "node" | "waveai";
+export type FocusStrType = "node" | "waveai";
 
 class FocusManager {
     focusType: PrimitiveAtom<FocusStrType> = atom("node");
@@ -15,8 +17,7 @@ class FocusManager {
             if (get(this.focusType) == "waveai") {
                 return null;
             }
-            const tabId = globalStore.get(atoms.staticTabId);
-            const layoutModel = getLayoutModelForTabById(tabId);
+            const layoutModel = getLayoutModelForStaticTab();
             const lnode = get(layoutModel.focusedNode);
             return lnode?.data?.blockId;
         });
@@ -40,11 +41,31 @@ class FocusManager {
         this.refocusNode();
     }
 
-    // pass null to refocus the currently focused block
+    waveAIFocusWithin(): boolean {
+        return waveAIHasFocusWithin();
+    }
+
+    nodeFocusWithin(): boolean {
+        return focusedBlockId() != null;
+    }
+
+    requestNodeFocus(): void {
+        globalStore.set(this.focusType, "node");
+    }
+
+    requestWaveAIFocus(): void {
+        globalStore.set(this.focusType, "waveai");
+    }
+
+    getFocusType(): FocusStrType {
+        return globalStore.get(this.focusType);
+    }
+
     refocusNode() {
         const ftype = globalStore.get(this.focusType);
         if (ftype == "waveai") {
             WaveAIModel.getInstance().focusInput();
+            return;
         }
         const layoutModel = getLayoutModelForStaticTab();
         const lnode = globalStore.get(layoutModel.focusedNode);

@@ -1,13 +1,12 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { getTabMetaKeyAtom } from "@/app/store/global";
+import { atoms, getTabMetaKeyAtom } from "@/app/store/global";
 import { globalStore } from "@/app/store/jotaiStore";
 import * as WOS from "@/app/store/wos";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
-import { workspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
-import { atoms } from "@/store/global";
+import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
 import * as jotai from "jotai";
 import type React from "react";
 import { createImagePreview, resizeImage } from "./ai-utils";
@@ -36,7 +35,7 @@ export class WaveAIModel {
         const tabId = globalStore.get(atoms.staticTabId);
         const chatIdMetaAtom = getTabMetaKeyAtom(tabId, "waveai:chatid");
         let chatIdValue = globalStore.get(chatIdMetaAtom);
-        
+
         if (chatIdValue == null) {
             chatIdValue = crypto.randomUUID();
             RpcApi.SetMetaCommand(TabRpcClient, {
@@ -44,9 +43,9 @@ export class WaveAIModel {
                 meta: { "waveai:chatid": chatIdValue },
             });
         }
-        
+
         this.chatId = jotai.atom(chatIdValue);
-        
+
         this.modelAtom = jotai.atom((get) => {
             const tabId = get(atoms.staticTabId);
             const modelMetaAtom = getTabMetaKeyAtom(tabId, "waveai:model");
@@ -114,7 +113,7 @@ export class WaveAIModel {
         this.clearFiles();
         const newChatId = crypto.randomUUID();
         globalStore.set(this.chatId, newChatId);
-        
+
         const tabId = globalStore.get(atoms.staticTabId);
         RpcApi.SetMetaCommand(TabRpcClient, {
             oref: WOS.makeORef("tab", tabId),
@@ -135,8 +134,8 @@ export class WaveAIModel {
     }
 
     focusInput() {
-        if (!workspaceLayoutModel.getAIPanelVisible()) {
-            workspaceLayoutModel.setAIPanelVisible(true);
+        if (!WorkspaceLayoutModel.getInstance().getAIPanelVisible()) {
+            WorkspaceLayoutModel.getInstance().setAIPanelVisible(true);
         }
         if (this.inputRef?.current) {
             this.inputRef.current.focus();
@@ -159,16 +158,16 @@ export class WaveAIModel {
         } catch (error) {
             console.error("Failed to load chat:", error);
             this.setError("Failed to load chat. Starting new chat...");
-            
+
             const newChatId = crypto.randomUUID();
             globalStore.set(this.chatId, newChatId);
-            
+
             const tabId = globalStore.get(atoms.staticTabId);
             RpcApi.SetMetaCommand(TabRpcClient, {
                 oref: WOS.makeORef("tab", tabId),
                 meta: { "waveai:chatid": newChatId },
             });
-            
+
             return [];
         }
     }
