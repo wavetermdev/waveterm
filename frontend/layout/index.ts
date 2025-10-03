@@ -6,10 +6,7 @@ import { LayoutModel } from "./lib/layoutModel";
 import {
     deleteLayoutModelForTab,
     getLayoutModelForStaticTab,
-    getLayoutModelForTab,
-    getLayoutModelForTabById,
     useDebouncedNodeInnerRect,
-    useLayoutModel,
 } from "./lib/layoutModelHooks";
 import { newLayoutNode } from "./lib/layoutNode";
 import type {
@@ -38,15 +35,12 @@ export {
     deleteLayoutModelForTab,
     DropDirection,
     getLayoutModelForStaticTab,
-    getLayoutModelForTab,
-    getLayoutModelForTabById,
     LayoutModel,
     LayoutTreeActionType,
     NavigateDirection,
     newLayoutNode,
     TileLayout,
     useDebouncedNodeInnerRect,
-    useLayoutModel,
 };
 export type {
     ContentRenderer,
