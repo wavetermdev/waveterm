@@ -197,6 +197,41 @@ func GetChatUsage(chat *uctypes.AIChat) uctypes.AIUsage {
 	return usage
 }
 
+func processToolResults(stopReason *uctypes.WaveStopReason, chatOpts uctypes.WaveChatOpts, sseHandler *sse.SSEHandlerCh) {
+	var toolResults []uctypes.AIToolResult
+	for _, toolCall := range stopReason.ToolCalls {
+		inputJSON, _ := json.Marshal(toolCall.Input)
+		log.Printf("TOOLUSE name=%s id=%s input=%s\n", toolCall.Name, toolCall.ID, utilfn.TruncateString(string(inputJSON), 40))
+		result := ResolveToolCall(toolCall, chatOpts)
+		toolResults = append(toolResults, result)
+		if result.ErrorText != "" {
+			log.Printf("  error=%s\n", result.ErrorText)
+		} else {
+			log.Printf("  result=%s\n", utilfn.TruncateString(result.Text, 40))
+		}
+	}
+
+	if chatOpts.Config.APIType == APIType_OpenAI {
+		toolResultMsgs, err := openai.ConvertToolResultsToOpenAIChatMessage(toolResults)
+		if err != nil {
+			_ = sseHandler.AiMsgError(fmt.Sprintf("Failed to convert tool results to OpenAI messages: %v", err))
+			_ = sseHandler.AiMsgFinish("", nil)
+		} else {
+			for _, msg := range toolResultMsgs {
+				chatstore.DefaultChatStore.PostMessage(chatOpts.ChatId, &chatOpts.Config, msg)
+			}
+		}
+	} else {
+		toolResultMsg, err := anthropic.ConvertToolResultsToAnthropicChatMessage(toolResults)
+		if err != nil {
+			_ = sseHandler.AiMsgError(fmt.Sprintf("Failed to convert tool results to Anthropic message: %v", err))
+			_ = sseHandler.AiMsgFinish("", nil)
+		} else {
+			chatstore.DefaultChatStore.PostMessage(chatOpts.ChatId, &chatOpts.Config, toolResultMsg)
+		}
+	}
+}
+
 func RunAIChat(ctx context.Context, sseHandler *sse.SSEHandlerCh, chatOpts uctypes.WaveChatOpts) error {
 	log.Printf("RunAIChat\n")
 	firstStep := true
@@ -239,39 +274,7 @@ func RunAIChat(ctx context.Context, sseHandler *sse.SSEHandlerCh, chatOpts uctyp
 			continue
 		}
 		if stopReason != nil && stopReason.Kind == uctypes.StopKindToolUse {
-			var toolResults []uctypes.AIToolResult
-			for _, toolCall := range stopReason.ToolCalls {
-				inputJSON, _ := json.Marshal(toolCall.Input)
-				log.Printf("TOOLUSE name=%s id=%s input=%s\n", toolCall.Name, toolCall.ID, utilfn.TruncateString(string(inputJSON), 40))
-				result := ResolveToolCall(toolCall, chatOpts)
-				toolResults = append(toolResults, result)
-				if result.ErrorText != "" {
-					log.Printf("  error=%s\n", result.ErrorText)
-				} else {
-					log.Printf("  result=%s\n", utilfn.TruncateString(result.Text, 40))
-				}
-			}
-
-			// Convert tool results to messages and post to chat store
-			if chatOpts.Config.APIType == APIType_OpenAI {
-				toolResultMsgs, err := openai.ConvertToolResultsToOpenAIChatMessage(toolResults)
-				if err != nil {
-					_ = sseHandler.AiMsgError(fmt.Sprintf("Failed to convert tool results to OpenAI messages: %v", err))
-					_ = sseHandler.AiMsgFinish("", nil)
-				} else {
-					for _, msg := range toolResultMsgs {
-						chatstore.DefaultChatStore.PostMessage(chatOpts.ChatId, &chatOpts.Config, msg)
-					}
-				}
-			} else {
-				toolResultMsg, err := anthropic.ConvertToolResultsToAnthropicChatMessage(toolResults)
-				if err != nil {
-					_ = sseHandler.AiMsgError(fmt.Sprintf("Failed to convert tool results to Anthropic message: %v", err))
-					_ = sseHandler.AiMsgFinish("", nil)
-				} else {
-					chatstore.DefaultChatStore.PostMessage(chatOpts.ChatId, &chatOpts.Config, toolResultMsg)
-				}
-			}
+			processToolResults(stopReason, chatOpts, sseHandler)
 
 			var messageID string
 			if len(rtnMessage) > 0 && rtnMessage[0] != nil {
