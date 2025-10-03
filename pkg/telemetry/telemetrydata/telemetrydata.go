@@ -24,6 +24,7 @@ var ValidEventNames = map[string]bool{
 	"action:runaicmd":        true,
 	"action:createtab":       true,
 	"action:createblock":     true,
+	"action:openwaveai":      true,
 	"wsh:run":                true,
 	"debug:panic":            true,
 	"conn:connect":           true,
