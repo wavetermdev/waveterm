@@ -29,6 +29,7 @@ var ValidEventNames = map[string]bool{
 	"conn:connect":           true,
 	"conn:connecterror":      true,
 	"waveai:enabletelemetry": true,
+	"waveai:post":            true,
 }
 
 type TEvent struct {
@@ -96,6 +97,22 @@ type TEventProps struct {
 	CountSSHConn    int            `json:"count:sshconn,omitempty"`
 	CountWSLConn    int            `json:"count:wslconn,omitempty"`
 	CountViews      map[string]int `json:"count:views,omitempty"`
+
+	WaveAIAPIType        string `json:"waveai:apitype,omitempty"`
+	WaveAIModel          string `json:"waveai:model,omitempty"`
+	WaveAIInputTokens    int    `json:"waveai:inputtokens,omitempty"`
+	WaveAIOutputTokens   int    `json:"waveai:outputtokens,omitempty"`
+	WaveAIRequestCount   int    `json:"waveai:requestcount,omitempty"`
+	WaveAIToolUseCount   int    `json:"waveai:toolusecount,omitempty"`
+	WaveAIPremiumReq     int    `json:"waveai:premiumreq,omitempty"`
+	WaveAIProxyReq       int    `json:"waveai:proxyreq,omitempty"`
+	WaveAIHadError       bool   `json:"waveai:haderror,omitempty"`
+	WaveAIImageCount     int    `json:"waveai:imagecount,omitempty"`
+	WaveAIPDFCount       int    `json:"waveai:pdfcount,omitempty"`
+	WaveAITextDocCount   int    `json:"waveai:textdoccount,omitempty"`
+	WaveAITextLen        int    `json:"waveai:textlen,omitempty"`
+	WaveAIFirstByteMs    int    `json:"waveai:firstbytems,omitempty"`    // ms
+	WaveAIRequestDurMs   int    `json:"waveai:requestdurms,omitempty"`   // ms
 
 	UserSet     *TEventUserProps `json:"$set,omitempty"`
 	UserSetOnce *TEventUserProps `json:"$set_once,omitempty"`

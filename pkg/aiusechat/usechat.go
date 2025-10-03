@@ -19,6 +19,8 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/chatstore"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/openai"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
+	"github.com/wavetermdev/waveterm/pkg/telemetry"
+	"github.com/wavetermdev/waveterm/pkg/telemetry/telemetrydata"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/web/sse"
@@ -232,8 +234,14 @@ func processToolResults(stopReason *uctypes.WaveStopReason, chatOpts uctypes.Wav
 	}
 }
 
-func RunAIChat(ctx context.Context, sseHandler *sse.SSEHandlerCh, chatOpts uctypes.WaveChatOpts) error {
+func RunAIChat(ctx context.Context, sseHandler *sse.SSEHandlerCh, chatOpts uctypes.WaveChatOpts) (*uctypes.AIMetrics, error) {
 	log.Printf("RunAIChat\n")
+	metrics := &uctypes.AIMetrics{
+		Usage: uctypes.AIUsage{
+			APIType: chatOpts.Config.APIType,
+			Model:   chatOpts.Config.Model,
+		},
+	}
 	firstStep := true
 	var cont *uctypes.WaveContinueResponse
 	for {
@@ -245,14 +253,28 @@ func RunAIChat(ctx context.Context, sseHandler *sse.SSEHandlerCh, chatOpts uctyp
 			}
 		}
 		stopReason, rtnMessage, err := runAIChatStep(ctx, sseHandler, chatOpts, cont)
+		metrics.RequestCount++
+		if chatOpts.Config.IsPremiumModel() {
+			metrics.PremiumReqCount++
+		}
+		if chatOpts.Config.IsWaveProxy() {
+			metrics.ProxyReqCount++
+		}
 		if len(rtnMessage) > 0 {
 			usage := getUsage(rtnMessage)
 			log.Printf("usage: input=%d output=%d\n", usage.InputTokens, usage.OutputTokens)
+			metrics.Usage.InputTokens += usage.InputTokens
+			metrics.Usage.OutputTokens += usage.OutputTokens
+			if usage.Model != "" && metrics.Usage.Model != usage.Model {
+				metrics.Usage.Model = "mixed"
+			}
 		}
 		if firstStep && err != nil {
-			return fmt.Errorf("failed to stream %s chat: %w", chatOpts.Config.APIType, err)
+			metrics.HadError = true
+			return metrics, fmt.Errorf("failed to stream %s chat: %w", chatOpts.Config.APIType, err)
 		}
 		if err != nil {
+			metrics.HadError = true
 			_ = sseHandler.AiMsgError(err.Error())
 			_ = sseHandler.AiMsgFinish("", nil)
 			break
@@ -274,6 +296,7 @@ func RunAIChat(ctx context.Context, sseHandler *sse.SSEHandlerCh, chatOpts uctyp
 			continue
 		}
 		if stopReason != nil && stopReason.Kind == uctypes.StopKindToolUse {
+			metrics.ToolUseCount += len(stopReason.ToolCalls)
 			processToolResults(stopReason, chatOpts, sseHandler)
 
 			var messageID string
@@ -290,7 +313,7 @@ func RunAIChat(ctx context.Context, sseHandler *sse.SSEHandlerCh, chatOpts uctyp
 		}
 		break
 	}
-	return nil
+	return metrics, nil
 }
 
 // ResolveToolCall resolves a single tool call and returns an AIToolResult
@@ -359,6 +382,7 @@ func ResolveToolCall(toolCall uctypes.WaveToolCall, chatOpts uctypes.WaveChatOpt
 
 func WaveAIPostMessageWrap(ctx context.Context, sseHandler *sse.SSEHandlerCh, message *uctypes.AIMessage, chatOpts uctypes.WaveChatOpts) error {
 	log.Printf("WaveAIPostMessageWrap\n")
+	startTime := time.Now()
 
 	// Convert AIMessage to Anthropic chat message
 	var convertedMessage uctypes.GenAIMessage
@@ -383,7 +407,51 @@ func WaveAIPostMessageWrap(ctx context.Context, sseHandler *sse.SSEHandlerCh, me
 		return fmt.Errorf("failed to store message: %w", err)
 	}
 
-	return RunAIChat(ctx, sseHandler, chatOpts)
+	metrics, err := RunAIChat(ctx, sseHandler, chatOpts)
+	if metrics != nil {
+		metrics.RequestDuration = int(time.Since(startTime).Milliseconds())
+		for _, part := range message.Parts {
+			if part.Type == uctypes.AIMessagePartTypeText {
+				metrics.TextLen += len(part.Text)
+			} else if part.Type == uctypes.AIMessagePartTypeFile {
+				mimeType := strings.ToLower(part.MimeType)
+				if strings.HasPrefix(mimeType, "image/") {
+					metrics.ImageCount++
+				} else if mimeType == "application/pdf" {
+					metrics.PDFCount++
+				} else {
+					metrics.TextDocCount++
+				}
+			}
+		}
+		log.Printf("metrics: requests=%d tools=%d premium=%d proxy=%d images=%d pdfs=%d textdocs=%d textlen=%d duration=%dms error=%v\n",
+			metrics.RequestCount, metrics.ToolUseCount, metrics.PremiumReqCount, metrics.ProxyReqCount,
+			metrics.ImageCount, metrics.PDFCount, metrics.TextDocCount, metrics.TextLen, metrics.RequestDuration, metrics.HadError)
+		
+		sendAIMetricsTelemetry(ctx, metrics)
+	}
+	return err
+}
+
+func sendAIMetricsTelemetry(ctx context.Context, metrics *uctypes.AIMetrics) {
+	event := telemetrydata.MakeTEvent("waveai:post", telemetrydata.TEventProps{
+		WaveAIAPIType:      metrics.Usage.APIType,
+		WaveAIModel:        metrics.Usage.Model,
+		WaveAIInputTokens:  metrics.Usage.InputTokens,
+		WaveAIOutputTokens: metrics.Usage.OutputTokens,
+		WaveAIRequestCount: metrics.RequestCount,
+		WaveAIToolUseCount: metrics.ToolUseCount,
+		WaveAIPremiumReq:   metrics.PremiumReqCount,
+		WaveAIProxyReq:     metrics.ProxyReqCount,
+		WaveAIHadError:     metrics.HadError,
+		WaveAIImageCount:   metrics.ImageCount,
+		WaveAIPDFCount:     metrics.PDFCount,
+		WaveAITextDocCount: metrics.TextDocCount,
+		WaveAITextLen:      metrics.TextLen,
+		WaveAIFirstByteMs:  metrics.FirstByteLatency,
+		WaveAIRequestDurMs: metrics.RequestDuration,
+	})
+	_ = telemetry.RecordTEvent(ctx, event)
 }
 
 // PostMessageRequest represents the request body for posting a message

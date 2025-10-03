@@ -187,6 +187,21 @@ type AIUsage struct {
 	OutputTokens int    `json:"outputtokens,omitempty"`
 }
 
+type AIMetrics struct {
+	Usage             AIUsage `json:"usage"`
+	RequestCount      int     `json:"requestcount"`
+	ToolUseCount      int     `json:"toolusecount"`
+	PremiumReqCount   int     `json:"premiumreqcount"`
+	ProxyReqCount     int     `json:"proxyreqcount"`
+	HadError          bool    `json:"haderror"`
+	ImageCount        int     `json:"imagecount"`
+	PDFCount          int     `json:"pdfcount"`
+	TextDocCount      int     `json:"textdoccount"`
+	TextLen           int     `json:"textlen"`
+	FirstByteLatency  int     `json:"firstbytelatency"`  // ms
+	RequestDuration   int     `json:"requestduration"`   // ms
+}
+
 // GenAIMessage interface for messages stored in conversations
 // All messages must have a unique identifier for idempotency checks
 type GenAIMessage interface {
