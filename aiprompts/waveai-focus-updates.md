@@ -48,15 +48,15 @@ Add selection-aware focus methods:
 ```typescript
 class FocusManager {
   // Existing
-  focusType: PrimitiveAtom<"node" | "waveai">;
+  focusType: PrimitiveAtom<"node" | "waveai">;  // Single source of truth
   blockFocusAtom: Atom<string | null>;
 
   // NEW: Selection-aware focus checking
   waveAIFocusWithin(): boolean;
   nodeFocusWithin(): boolean;
 
-  // NEW: Protected transitions (check selections first)
-  requestNodeFocus(): void; // from Wave AI → node
+  // NEW: Focus transitions (INTENTIONALLY not defensive)
+  requestNodeFocus(): void; // from Wave AI → node (BREAKS selections - that's the point!)
   requestWaveAIFocus(): void; // from node → Wave AI
 
   // NEW: Get current focus type
@@ -64,12 +64,16 @@ class FocusManager {
 
   // ENHANCED: Smart refocus based on focusType
   refocusNode(): void; // already handles both types
-
-  // NEW: Focus ring coordination
-  shouldShowWaveAIFocusRing(): boolean;
-  shouldShowNodeFocusRing(blockId: string): boolean;
 }
 ```
+
+**Critical Design Decision: `requestNodeFocus()` is NOT defensive**
+
+When `requestNodeFocus()` is called (e.g., Cmd+n, explicit focus change), it MUST take focus even if there's a selection in Wave AI. This is intentional - the user explicitly requested a focus change. Losing the selection is the correct behavior.
+
+**Focus Manager as Source of Truth**
+
+The `focusType` atom is the single source of truth. The old `waveAIFocusedAtom` will be kept in sync during migration but should eventually be removed. All components should read `focusManager.focusType` directly (via `useAtomValue`) to determine focus ring state - this ensures synchronized, reactive focus ring updates.
 
 ## Wave AI Focus Utilities
 
@@ -191,40 +195,32 @@ Smart blur handling:
 ```typescript
 // MODIFY: handleFocus - advisory only
 const handleFocus = useCallback(() => {
-  globalStore.set(atoms.waveAIFocusedAtom, true);
   focusManager.requestWaveAIFocus();
 }, []);
 
-// MODIFY: handleBlur - smart about where focus is going
+// MODIFY: handleBlur - simplified with waveAIHasFocusWithin()
 const handleBlur = useCallback((e: React.FocusEvent) => {
-  const relatedTarget = e.relatedTarget;
-
-  // Check if focus is moving to another element within Wave AI panel
-  if (relatedTarget instanceof HTMLElement) {
-    const waveAIPanel = findWaveAIPanel(relatedTarget);
-    if (waveAIPanel) {
-      // Focus staying within Wave AI, don't revert
-      return;
-    }
-  }
-
-  // Check if there's a selection in Wave AI
-  if (waveAIHasSelection()) {
-    // Selection exists, don't revert focus
+  // Window blur - preserve state
+  if (e.relatedTarget === null) {
     return;
   }
 
-  // Check if this is a window blur (relatedTarget is null)
-  if (relatedTarget === null) {
-    // Window is losing focus (e.g., Cmd+Tab), don't change focus state
+  // Still within Wave AI (focus or selection) - don't revert
+  if (waveAIHasFocusWithin()) {
     return;
   }
 
-  // Focus is truly leaving Wave AI, revert to node focus
-  globalStore.set(atoms.waveAIFocusedAtom, false);
+  // Focus truly leaving Wave AI, revert to node focus
   focusManager.requestNodeFocus();
 }, []);
 ```
+
+**Note:** `waveAIHasFocusWithin()` checks both:
+
+1. If `relatedTarget` is within Wave AI panel (handles context menus, buttons)
+2. If there's an active selection in Wave AI (handles text selection clicks)
+
+This combines both checks from the original implementation into a single utility call.
 
 ## Block Focus Integration
 
@@ -478,20 +474,22 @@ Physical DOM focus granted ✓
 ### 2. Wave AI Integration
 
 - Add `onFocusCapture` to Wave AI panel
-- Update `handleBlur` with selection protection
+- Update `handleBlur` with simplified `waveAIHasFocusWithin()` check
 - Update `handleClick` with selection awareness
+- Components read `focusManager.focusType` directly via `useAtomValue` for focus ring display
 
 ### 3. Layout Integration
 
-- Update `isFocused` atom to check focus manager
-- Update keyboard navigation to use focus manager
-- Update global refocus utilities
+- Update `isFocused` atom to check `focusManager.focusType`
+- Add `focusManager.requestNodeFocus()` calls in `treeReducer` for focus-claiming operations
+- Update keyboard navigation to use `focusManager.getFocusType()`
 
 ### 4. Testing
 
 - Test all transitions and edge cases
 - Verify selection protection works
 - Confirm no focus ring flashing
+- Verify focus rings are synchronized through focus manager
 
 ## Files to Create/Modify
 
@@ -538,15 +536,16 @@ The changes can be broken into safe, independently testable phases. Each phase c
 ```typescript
 // In focusManager.ts - ADD these methods
 class FocusManager {
-  // NEW methods that ALSO update the old waveAIFocusedAtom
+  // NEW methods that ALSO update the old waveAIFocusedAtom during migration
   requestWaveAIFocus(): void {
     globalStore.set(this.focusType, "waveai");
-    globalStore.set(atoms.waveAIFocusedAtom, true); // ← Keep old atom in sync!
+    globalStore.set(atoms.waveAIFocusedAtom, true); // ← Keep old atom in sync during migration!
   }
 
   requestNodeFocus(): void {
+    // NO defensive checks - when called, we TAKE focus (selections may be lost)
     globalStore.set(this.focusType, "node");
-    globalStore.set(atoms.waveAIFocusedAtom, false); // ← Keep old atom in sync!
+    globalStore.set(atoms.waveAIFocusedAtom, false); // ← Keep old atom in sync during migration!
   }
 
   getFocusType(): FocusStrType {
@@ -558,7 +557,6 @@ class FocusManager {
   }
 
   nodeFocusWithin(): boolean {
-    // Check if focus is in a block
     return focusedBlockId() != null;
   }
 }
@@ -567,9 +565,10 @@ class FocusManager {
 **Why this is safe:**
 
 - Doesn't change any existing code
-- Focus manager updates BOTH new `focusType` AND old `waveAIFocusedAtom`
+- Focus manager updates BOTH new `focusType` AND old `waveAIFocusedAtom` during migration
 - Everything keeps working exactly as before
 - Can test focus manager methods in isolation
+- Components can read `focusType` directly via `useAtomValue` for reactive updates
 - No user-visible changes
 
 **Testing:**
