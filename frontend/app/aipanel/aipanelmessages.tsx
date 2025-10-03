@@ -33,6 +33,7 @@ export const AIPanelMessages = memo(({ messages, status, isLoadingChat }: AIPane
         const container = messagesContainerRef.current;
         if (container) {
             container.scrollTop = container.scrollHeight;
+            container.scrollLeft = 0;
         }
     };
 
