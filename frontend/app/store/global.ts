@@ -30,6 +30,8 @@ let globalEnvironment: "electron" | "renderer";
 const blockComponentModelMap = new Map<string, BlockComponentModel>();
 const Counters = new Map<string, number>();
 const ConnStatusMapAtom = atom(new Map<string, PrimitiveAtom<ConnStatus>>());
+const blockAtomCache = new Map<string, Map<string, Atom<any>>>();
+const tabAtomCache = new Map<string, Map<string, Atom<any>>>();
 
 type GlobalInitOptions = {
     tabId: string;
@@ -145,6 +147,7 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
     const notificationsAtom = atom<NotificationType[]>([]);
     const notificationPopoverModeAtom = atom<boolean>(false);
     const reinitVersion = atom(0);
+    const rateLimitInfoAtom = atom(null) as PrimitiveAtom<RateLimitInfo>;
     atoms = {
         // initialized in wave.ts (will not be null inside of application)
         clientId: clientIdAtom,
@@ -168,6 +171,7 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
         notificationPopoverMode: notificationPopoverModeAtom,
         reinitVersion,
         isTermMultiInput: atom(false),
+        waveAIRateLimitInfoAtom: rateLimitInfoAtom,
     };
 }
 
@@ -208,6 +212,13 @@ function initGlobalWaveEventSubs(initOpts: WaveInitOpts) {
                     fileSubject.next(fileData);
                 }
             },
+        },
+        {
+            eventType: "waveai:ratelimit",
+            handler: (event) => {
+                const rateLimitInfo: RateLimitInfo = event.data;
+                globalStore.set(atoms.waveAIRateLimitInfoAtom, rateLimitInfo);
+            },
         }
     );
 }
@@ -246,6 +257,26 @@ function getBlockMetaKeyAtom<T extends keyof MetaType>(blockId: string, key: T):
 
 function useBlockMetaKeyAtom<T extends keyof MetaType>(blockId: string, key: T): MetaType[T] {
     return useAtomValue(getBlockMetaKeyAtom(blockId, key));
+}
+
+function getTabMetaKeyAtom<T extends keyof MetaType>(tabId: string, key: T): Atom<MetaType[T]> {
+    const tabCache = getSingleTabAtomCache(tabId);
+    const metaAtomName = "#meta-" + key;
+    let metaAtom = tabCache.get(metaAtomName);
+    if (metaAtom != null) {
+        return metaAtom;
+    }
+    metaAtom = atom((get) => {
+        let tabAtom = WOS.getWaveObjectAtom(WOS.makeORef("tab", tabId));
+        let tabData = get(tabAtom);
+        return tabData?.meta?.[key];
+    });
+    tabCache.set(metaAtomName, metaAtom);
+    return metaAtom;
+}
+
+function useTabMetaKeyAtom<T extends keyof MetaType>(tabId: string, key: T): MetaType[T] {
+    return useAtomValue(getTabMetaKeyAtom(tabId, key));
 }
 
 function getConnConfigKeyAtom<T extends keyof ConnKeywords>(connName: string, key: T): Atom<ConnKeywords[T]> {
@@ -334,8 +365,6 @@ function getSettingsPrefixAtom(prefix: string): Atom<SettingsType> {
     return settingsPrefixAtom;
 }
 
-const blockAtomCache = new Map<string, Map<string, Atom<any>>>();
-
 function getSingleBlockAtomCache(blockId: string): Map<string, Atom<any>> {
     let blockCache = blockAtomCache.get(blockId);
     if (blockCache == null) {
@@ -352,6 +381,15 @@ function getSingleConnAtomCache(connName: string): Map<string, Atom<any>> {
         blockAtomCache.set(connName, blockCache);
     }
     return blockCache;
+}
+
+function getSingleTabAtomCache(tabId: string): Map<string, Atom<any>> {
+    let tabCache = tabAtomCache.get(tabId);
+    if (tabCache == null) {
+        tabCache = new Map<string, Atom<any>>();
+        tabAtomCache.set(tabId, tabCache);
+    }
+    return tabCache;
 }
 
 function useBlockAtom<T>(blockId: string, name: string, makeFn: () => Atom<T>): Atom<T> {
@@ -774,6 +812,7 @@ export {
     getOverrideConfigAtom,
     getSettingsKeyAtom,
     getSettingsPrefixAtom,
+    getTabMetaKeyAtom,
     getUserName,
     globalStore,
     initGlobal,
@@ -801,5 +840,6 @@ export {
     useBlockMetaKeyAtom,
     useOverrideConfigAtom,
     useSettingsKeyAtom,
+    useTabMetaKeyAtom,
     WOS,
 };

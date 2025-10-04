@@ -143,7 +143,7 @@ function DirectoryTable({
                 enableSorting: false,
             }),
             columnHelper.accessor("name", {
-                cell: (info) => <span className="dir-table-name">{info.getValue()}</span>,
+                cell: (info) => <span className="dir-table-name ellipsis">{info.getValue()}</span>,
                 header: () => <span className="dir-table-head-name">Name</span>,
                 sortingFn: "alphanumeric",
                 size: 200,
@@ -173,7 +173,7 @@ function DirectoryTable({
                 sortingFn: "auto",
             }),
             columnHelper.accessor("mimetype", {
-                cell: (info) => <span className="dir-table-type">{cleanMimetype(info.getValue() ?? "")}</span>,
+                cell: (info) => <span className="dir-table-type ellipsis">{cleanMimetype(info.getValue() ?? "")}</span>,
                 header: () => <span className="dir-table-head-type">Type</span>,
                 size: 97,
                 minSize: 97,

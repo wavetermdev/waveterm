@@ -9,7 +9,7 @@ import { memo, useCallback } from "react";
 
 export const ErrorOverlay = memo(({ errorMsg, resetOverlay }: { errorMsg: ErrorMsg; resetOverlay: () => void }) => {
     const showDismiss = errorMsg.showDismiss ?? true;
-    const buttonClassName = "outlined grey font-size-11 vertical-padding-3 horizontal-padding-7";
+    const buttonClassName = "outlined grey text-[11px] py-[3px] px-[7px]";
 
     let iconClass = "fa-solid fa-circle-exclamation text-error text-base";
     if (errorMsg.level == "warning") {

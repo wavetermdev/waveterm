@@ -149,7 +149,7 @@ const CSVView = ({ parentRef, filename, content }: CSVViewProps) => {
     });
 
     return (
-        <div className={clsx("csv-view", { show: tableLoaded })} style={{ height: "auto" }}>
+        <div className={clsx("csv-view ellipsis", { show: tableLoaded })} style={{ height: "auto" }}>
             <table className="probe">
                 <tbody>
                     <tr ref={probeRef}>
@@ -173,7 +173,7 @@ const CSVView = ({ parentRef, filename, content }: CSVViewProps) => {
                                         <div
                                             {...{
                                                 className: header.column.getCanSort()
-                                                    ? "inner cursor-pointer select-none"
+                                                    ? "inner cursor-pointer select-none ellipsis"
                                                     : "",
                                                 onClick: header.column.getToggleSortingHandler(),
                                             }}
@@ -202,7 +202,7 @@ const CSVView = ({ parentRef, filename, content }: CSVViewProps) => {
                             tabIndex={index}
                         >
                             {row.getVisibleCells().map((cell) => (
-                                <td key={cell.id} id={cell.id} tabIndex={index}>
+                                <td className="ellipsis" key={cell.id} id={cell.id} tabIndex={index}>
                                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
                                 </td>
                             ))}

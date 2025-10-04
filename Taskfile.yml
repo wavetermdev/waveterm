@@ -26,8 +26,9 @@ tasks:
             - docsite:build:embedded
             - build:backend
         env:
-            WCLOUD_ENDPOINT: "https://api-dev.waveterm.dev/central"
-            WCLOUD_WS_ENDPOINT: "wss://wsapi-dev.waveterm.dev/"
+            WAVETERM_ENVFILE: "{{.ROOT_DIR}}/.env"
+            WCLOUD_ENDPOINT: "https://api-dev.waveterm.dev"
+            WCLOUD_WS_ENDPOINT: "wss://wsapi-dev.waveterm.dev"
 
     electron:start:
         desc: Run the Electron application directly.
@@ -39,6 +40,7 @@ tasks:
             - docsite:build:embedded
             - build:backend
         env:
+            WAVETERM_ENVFILE: "{{.ROOT_DIR}}/.env"
             WCLOUD_ENDPOINT: "https://api-dev.waveterm.dev"
             WCLOUD_WS_ENDPOINT: "wss://wsapi-dev.waveterm.dev"
 
@@ -49,6 +51,7 @@ tasks:
             - npm:install
             - build:backend:quickdev
         env:
+            WAVETERM_ENVFILE: "{{.ROOT_DIR}}/.env"
             WCLOUD_ENDPOINT: "https://api-dev.waveterm.dev/central"
             WCLOUD_WS_ENDPOINT: "wss://wsapi-dev.waveterm.dev/"
 
@@ -134,6 +137,12 @@ tasks:
             - docsite:build:embedded
             - build:backend
 
+    build:frontend:dev:
+        desc: Build the frontend in development mode.
+        cmd: npm run build:dev
+        deps:
+            - npm:install
+
     build:backend:
         desc: Build the wavesrv and wsh components.
         cmds:
@@ -144,6 +153,14 @@ tasks:
         desc: Build only the wavesrv component for quickdev (arm64 macOS only, no generate, no wsh).
         cmds:
             - task: build:server:quickdev
+        sources:
+            - go.mod
+            - go.sum
+            - pkg/**/*.go
+            - cmd/**/*.go
+            - tsunami/go.mod
+            - tsunami/go.sum
+            - tsunami/**/*.go
 
     build:schema:
         desc: Build the schema for configuration.
@@ -189,8 +206,6 @@ tasks:
         desc: Build the wavesrv component for quickdev (arm64 macOS only, no generate).
         platforms: [darwin]
         cmds:
-            - cmd: "{{.RM}} dist/bin/wavesrv*"
-              ignore_error: true
             - task: build:server:internal
               vars:
                   ARCHS: arm64

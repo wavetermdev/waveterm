@@ -64,6 +64,7 @@ func viewRun(cmd *cobra.Command, args []string) (rtnErr error) {
 				},
 			},
 			Magnified: viewMagnified,
+			Focused:   true,
 		}
 	} else {
 		absFile, err := filepath.Abs(fileArg)
@@ -89,6 +90,7 @@ func viewRun(cmd *cobra.Command, args []string) (rtnErr error) {
 				},
 			},
 			Magnified: viewMagnified,
+			Focused:   true,
 		}
 		if cmdName == "edit" {
 			wshCmd.BlockDef.Meta[waveobj.MetaKey_Edit] = true

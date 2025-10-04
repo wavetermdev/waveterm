@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { Tooltip } from "@/app/element/tooltip";
-import { NotificationPopover } from "@/app/notification/notificationpopover";
 import { ContextMenuModel } from "@/app/store/contextmenu";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
@@ -106,12 +105,12 @@ const Widgets = memo(() => {
 
         if (normalHeight > containerHeight - gracePeriod) {
             newMode = "compact";
-            
+
             // Calculate total widget count for supercompact check
             const totalWidgets = (widgets?.length || 0) + (showHelp ? 2 : 0);
             const minHeightPerWidget = 32;
             const requiredHeight = totalWidgets * minHeightPerWidget;
-            
+
             if (requiredHeight > containerHeight) {
                 newMode = "supercompact";
             }
@@ -194,7 +193,9 @@ const Widgets = memo(() => {
                 {mode === "supercompact" ? (
                     <>
                         <div className="grid grid-cols-2 gap-0 w-full">
-                            {widgets?.map((data, idx) => <Widget key={`widget-${idx}`} widget={data} mode={mode} />)}
+                            {widgets?.map((data, idx) => (
+                                <Widget key={`widget-${idx}`} widget={data} mode={mode} />
+                            ))}
                         </div>
                         <div className="flex-grow" />
                         {showHelp ? (
@@ -206,7 +207,9 @@ const Widgets = memo(() => {
                     </>
                 ) : (
                     <>
-                        {widgets?.map((data, idx) => <Widget key={`widget-${idx}`} widget={data} mode={mode} />)}
+                        {widgets?.map((data, idx) => (
+                            <Widget key={`widget-${idx}`} widget={data} mode={mode} />
+                        ))}
                         <div className="flex-grow" />
                         {showHelp ? (
                             <>
@@ -216,7 +219,14 @@ const Widgets = memo(() => {
                         ) : null}
                     </>
                 )}
-                {isDev() ? <NotificationPopover /> : null}
+                {isDev() ? (
+                    <div
+                        className="dev-label flex justify-center items-center w-full py-1 text-accent text-[30px]"
+                        title="Running Wave Dev Build"
+                    >
+                        <i className="fa fa-brands fa-dev fa-fw" />
+                    </div>
+                ) : null}
             </div>
 
             <div
@@ -233,9 +243,15 @@ const Widgets = memo(() => {
                         <Widget key="measurement-help" widget={helpWidget} mode="normal" />
                     </>
                 ) : null}
-                {isDev() ? <NotificationPopover /> : null}
+                {isDev() ? (
+                    <div
+                        className="dev-label flex justify-center items-center w-full py-1 text-accent text-[30px]"
+                        title="Running Wave Dev Build"
+                    >
+                        <i className="fa fa-brands fa-dev fa-fw" />
+                    </div>
+                ) : null}
             </div>
-
         </>
     );
 });

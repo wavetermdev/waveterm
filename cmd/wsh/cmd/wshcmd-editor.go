@@ -63,6 +63,7 @@ func editorRun(cmd *cobra.Command, args []string) (rtnErr error) {
 			},
 		},
 		Magnified: editMagnified,
+		Focused:   true,
 	}
 	if RpcContext.Conn != "" {
 		wshCmd.BlockDef.Meta[waveobj.MetaKey_Connection] = RpcContext.Conn

@@ -1,7 +1,8 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { getSettingsKeyAtom } from "@/app/store/global";
+import { atoms, getSettingsKeyAtom } from "@/app/store/global";
+import { focusManager } from "@/app/store/focusManager";
 import { atomWithThrottle, boundNumber, fireAndForget } from "@/util/util";
 import { Atom, atom, Getter, PrimitiveAtom, Setter } from "jotai";
 import { splitAtom } from "jotai/utils";
@@ -47,6 +48,7 @@ import {
     LayoutTreeState,
     LayoutTreeSwapNodeAction,
     NavigateDirection,
+    NavigationResult,
     NodeModel,
     PreviewRenderer,
     ResizeHandleProps,
@@ -591,9 +593,15 @@ export class LayoutModel {
                 break;
             case LayoutTreeActionType.InsertNode:
                 insertNode(this.treeState, action as LayoutTreeInsertNodeAction);
+                if ((action as LayoutTreeInsertNodeAction).focused) {
+                    focusManager.requestNodeFocus();
+                }
                 break;
             case LayoutTreeActionType.InsertNodeAtIndex:
                 insertNodeAtIndex(this.treeState, action as LayoutTreeInsertNodeAtIndexAction);
+                if ((action as LayoutTreeInsertNodeAtIndexAction).focused) {
+                    focusManager.requestNodeFocus();
+                }
                 break;
             case LayoutTreeActionType.DeleteNode:
                 deleteNode(this.treeState, action as LayoutTreeDeleteNodeAction);
@@ -628,9 +636,11 @@ export class LayoutModel {
             }
             case LayoutTreeActionType.FocusNode:
                 focusNode(this.treeState, action as LayoutTreeFocusNodeAction);
+                focusManager.requestNodeFocus();
                 break;
             case LayoutTreeActionType.MagnifyNodeToggle:
                 magnifyNodeToggle(this.treeState, action as LayoutTreeMagnifyNodeToggleAction);
+                focusManager.requestNodeFocus();
                 break;
             case LayoutTreeActionType.ClearTree:
                 clearTree(this.treeState);
@@ -838,6 +848,7 @@ export class LayoutModel {
 
         additionalPropsMap[node.id] = {
             ...additionalProps,
+            ...(node.data?.blockId ? { rect: nodeRect } : {}),
             pixelToSizeRatio,
             resizeHandles,
         };
@@ -1023,7 +1034,8 @@ export class LayoutModel {
                 isFocused: atom((get) => {
                     const treeState = get(this.localTreeStateAtom);
                     const isFocused = treeState.focusedNodeId === nodeid;
-                    return isFocused;
+                    const focusType = get(focusManager.focusType);
+                    return isFocused && focusType === "node";
                 }),
                 numLeafs: this.numLeafs,
                 isResizing: this.isResizing,
@@ -1067,13 +1079,13 @@ export class LayoutModel {
      * Switch focus to the next node in the given direction in the layout.
      * @param direction The direction in which to switch focus.
      */
-    switchNodeFocusInDirection(direction: NavigateDirection) {
+    switchNodeFocusInDirection(direction: NavigateDirection, inWaveAI: boolean): NavigationResult {
         const curNodeId = this.focusedNodeId;
 
         // If no node is focused, set focus to the first leaf.
         if (!curNodeId) {
             this.focusNode(this.getter(this.leafOrder)[0].nodeid);
-            return;
+            return { success: true };
         }
 
         const offset = navigateDirectionToOffset(direction);
@@ -1086,14 +1098,33 @@ export class LayoutModel {
                 nodePositions.set(leaf.id, pos);
             }
         }
-        const curNodePos = nodePositions.get(curNodeId);
-        if (!curNodePos) {
-            return;
+        let curNodePos: Dimensions;
+        if (inWaveAI) {
+            // For WaveAI, use a fake position to the left of all nodes
+            curNodePos = { left: -10, top: 10, width: 0, height: 0 };
+
+            // Only allow "right" navigation from WaveAI
+            if (direction !== NavigateDirection.Right) {
+                const result: NavigationResult = { success: false };
+                if (direction === NavigateDirection.Up) {
+                    result.atTop = true;
+                } else if (direction === NavigateDirection.Down) {
+                    result.atBottom = true;
+                } else if (direction === NavigateDirection.Left) {
+                    result.atLeft = true;
+                }
+                return result;
+            }
+        } else {
+            curNodePos = nodePositions.get(curNodeId);
+            if (!curNodePos) {
+                return { success: false };
+            }
+            nodePositions.delete(curNodeId);
         }
-        nodePositions.delete(curNodeId);
         const boundingRect = this.displayContainerRef?.current.getBoundingClientRect();
         if (!boundingRect) {
-            return;
+            return { success: false };
         }
         const maxX = boundingRect.left + boundingRect.width;
         const maxY = boundingRect.top + boundingRect.height;
@@ -1118,12 +1149,26 @@ export class LayoutModel {
             curPoint.x += offset.x * moveAmount;
             curPoint.y += offset.y * moveAmount;
             if (curPoint.x < 0 || curPoint.x > maxX || curPoint.y < 0 || curPoint.y > maxY) {
-                return;
+                // Determine which boundary was hit
+                const result: NavigationResult = { success: false };
+                if (curPoint.x < 0) {
+                    result.atLeft = true;
+                }
+                if (curPoint.x > maxX) {
+                    result.atRight = true;
+                }
+                if (curPoint.y < 0) {
+                    result.atTop = true;
+                }
+                if (curPoint.y > maxY) {
+                    result.atBottom = true;
+                }
+                return result;
             }
             const nodeId = findNodeAtPoint(nodePositions, curPoint);
             if (nodeId != null) {
                 this.focusNode(nodeId);
-                return;
+                return { success: true };
             }
         }
     }
@@ -1172,6 +1217,14 @@ export class LayoutModel {
         if (leafOrder.length > 0) {
             this.focusNode(leafOrder[0].nodeid);
         }
+    }
+
+    getFirstBlockId(): string | undefined {
+        const leafOrder = this.getter(this.leafOrder);
+        if (leafOrder.length > 0) {
+            return leafOrder[0].blockid;
+        }
+        return undefined;
     }
 
     /**

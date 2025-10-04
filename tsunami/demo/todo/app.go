@@ -8,6 +8,9 @@ import (
 	"github.com/wavetermdev/waveterm/tsunami/vdom"
 )
 
+const AppTitle = "Todo App (Tsunami Demo)"
+const AppShortDesc = "Feature-rich todo list with component composition and state management"
+
 // Basic domain types with json tags for props
 type Todo struct {
 	Id        int    `json:"id"`
@@ -96,7 +99,6 @@ var TodoList = app.DefineComponent("TodoList", func(props TodoListProps) any {
 
 // Root component showing state management and composition
 var App = app.DefineComponent("App", func(_ any) any {
-	app.UseSetAppTitle("Todo App (Tsunami Demo)")
 
 	// Multiple local atoms example
 	todosAtom := app.UseLocal([]Todo{

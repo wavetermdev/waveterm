@@ -60,28 +60,30 @@ type ActivityType struct {
 }
 
 type TelemetryData struct {
-	ActiveMinutes int                          `json:"activeminutes"`
-	FgMinutes     int                          `json:"fgminutes"`
-	OpenMinutes   int                          `json:"openminutes"`
-	NumTabs       int                          `json:"numtabs"`
-	NumBlocks     int                          `json:"numblocks,omitempty"`
-	NumWindows    int                          `json:"numwindows,omitempty"`
-	NumWS         int                          `json:"numws,omitempty"`
-	NumWSNamed    int                          `json:"numwsnamed,omitempty"`
-	NumSSHConn    int                          `json:"numsshconn,omitempty"`
-	NumWSLConn    int                          `json:"numwslconn,omitempty"`
-	NumMagnify    int                          `json:"nummagnify,omitempty"`
-	NewTab        int                          `json:"newtab"`
-	NumStartup    int                          `json:"numstartup,omitempty"`
-	NumShutdown   int                          `json:"numshutdown,omitempty"`
-	NumPanics     int                          `json:"numpanics,omitempty"`
-	NumAIReqs     int                          `json:"numaireqs,omitempty"`
-	SetTabTheme   int                          `json:"settabtheme,omitempty"`
-	Displays      []wshrpc.ActivityDisplayType `json:"displays,omitempty"`
-	Renderers     map[string]int               `json:"renderers,omitempty"`
-	Blocks        map[string]int               `json:"blocks,omitempty"`
-	WshCmds       map[string]int               `json:"wshcmds,omitempty"`
-	Conn          map[string]int               `json:"conn,omitempty"`
+	ActiveMinutes       int                          `json:"activeminutes"`
+	FgMinutes           int                          `json:"fgminutes"`
+	OpenMinutes         int                          `json:"openminutes"`
+	WaveAIActiveMinutes int                          `json:"waveaiactiveminutes,omitempty"`
+	WaveAIFgMinutes     int                          `json:"waveaifgminutes,omitempty"`
+	NumTabs             int                          `json:"numtabs"`
+	NumBlocks           int                          `json:"numblocks,omitempty"`
+	NumWindows          int                          `json:"numwindows,omitempty"`
+	NumWS               int                          `json:"numws,omitempty"`
+	NumWSNamed          int                          `json:"numwsnamed,omitempty"`
+	NumSSHConn          int                          `json:"numsshconn,omitempty"`
+	NumWSLConn          int                          `json:"numwslconn,omitempty"`
+	NumMagnify          int                          `json:"nummagnify,omitempty"`
+	NewTab              int                          `json:"newtab"`
+	NumStartup          int                          `json:"numstartup,omitempty"`
+	NumShutdown         int                          `json:"numshutdown,omitempty"`
+	NumPanics           int                          `json:"numpanics,omitempty"`
+	NumAIReqs           int                          `json:"numaireqs,omitempty"`
+	SetTabTheme         int                          `json:"settabtheme,omitempty"`
+	Displays            []wshrpc.ActivityDisplayType `json:"displays,omitempty"`
+	Renderers           map[string]int               `json:"renderers,omitempty"`
+	Blocks              map[string]int               `json:"blocks,omitempty"`
+	WshCmds             map[string]int               `json:"wshcmds,omitempty"`
+	Conn                map[string]int               `json:"conn,omitempty"`
 }
 
 func (tdata TelemetryData) Value() (driver.Value, error) {
@@ -149,6 +151,8 @@ func mergeActivity(curActivity *telemetrydata.TEventProps, newActivity telemetry
 	curActivity.ActiveMinutes += newActivity.ActiveMinutes
 	curActivity.FgMinutes += newActivity.FgMinutes
 	curActivity.OpenMinutes += newActivity.OpenMinutes
+	curActivity.WaveAIActiveMinutes += newActivity.WaveAIActiveMinutes
+	curActivity.WaveAIFgMinutes += newActivity.WaveAIFgMinutes
 }
 
 // ignores the timestamp in tevent, and uses the current time
@@ -301,6 +305,8 @@ func UpdateActivity(ctx context.Context, update wshrpc.ActivityUpdate) error {
 		tdata.FgMinutes += update.FgMinutes
 		tdata.ActiveMinutes += update.ActiveMinutes
 		tdata.OpenMinutes += update.OpenMinutes
+		tdata.WaveAIFgMinutes += update.WaveAIFgMinutes
+		tdata.WaveAIActiveMinutes += update.WaveAIActiveMinutes
 		tdata.NewTab += update.NewTab
 		tdata.NumStartup += update.Startup
 		tdata.NumShutdown += update.Shutdown

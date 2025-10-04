@@ -39,11 +39,12 @@ It has a TypeScript/React frontend and a Go backend. They talk together over `ws
     - NEVER use cursor-help (it looks terrible)
     - useAtom() and useAtomValue() are react HOOKS, so they must be called at the component level not inline in JSX
     - If you use React.memo(), make sure to add a displayName for the component
+- In general, when writing functions, we prefer _early returns_ rather than putting the majority of a function inside of an if block.
 
 ### Styling
 
 - We use **Tailwind v4** to style. Custom stuff is defined in frontend/tailwindsetup.css
-- _never_ use cursor-help (it looks terrible)
+- _never_ use cursor-help, or cursor-not-allowed (it looks terrible)
 - We have custom CSS setup as well, so it is a hybrid system. For new code we prefer tailwind, and are working to migrate code to all use tailwind.
 
 ### Code Generation
@@ -78,6 +79,7 @@ These files provide step-by-step instructions, code examples, and best practices
 - With React hooks, always complete all hook calls at the top level before any conditional returns (including jotai hook calls useAtom and useAtomValue); when a user explicitly tells you a function handles null inputs, trust them and stop trying to "protect" it with unnecessary checks or workarounds.
 - **Match response length to question complexity** - For simple, direct questions in Ask mode (especially those that can be answered in 1-2 sentences), provide equally brief answers. Save detailed explanations for complex topics or when explicitly requested.
 - **CRITICAL** - useAtomValue and useAtom are React HOOKS. They cannot be used inline in JSX code, they must appear at the top of a component in the hooks area of the react code.
+- for simple functions, we prefer `if (!cond) { return }; functionality;` pattern overn `if (cond) { functionality }` because it produces less indentation and is easier to follow.
 
 ### Strict Comment Rules
 
@@ -97,6 +99,72 @@ These files provide step-by-step instructions, code examples, and best practices
   - Explaining complex algorithms that can't be simplified
 - **When in doubt, leave it out**. No comment is better than a redundant comment.
 - **Never add comments explaining code changes** - The code should speak for itself, and version control tracks changes. The one exception to this rule is if it is a very unobvious implementation. Something that someone would typically implement in a different (wrong) way. Then the comment helps us remember WHY we changed it to a less obvious implementation.
+
+### Jotai Model Pattern (our rules)
+
+- **Atoms live on the model.**
+- **Simple atoms:** define as **field initializers**.
+- **Atoms that depend on values/other atoms:** create in the **constructor**.
+- Models **never use React hooks**; they use `globalStore.get/set`.
+- It’s fine to call model methods from **event handlers** or **`useEffect`**.
+
+```ts
+// model/MyModel.ts
+import { atom, type PrimitiveAtom } from "jotai";
+import { globalStore } from "@/app/store/jotaiStore";
+
+export class MyModel {
+  // simple atoms (field init)
+  statusAtom = atom<"idle" | "running" | "error">("idle");
+  outputAtom = atom("");
+
+  // ctor-built atoms (need types)
+  lengthAtom!: PrimitiveAtom<number>; // read-only derived via atom(get=>...)
+  thresholdedAtom!: PrimitiveAtom<boolean>;
+
+  constructor(initialThreshold = 20) {
+    this.lengthAtom = atom((get) => get(this.outputAtom).length);
+    this.thresholdedAtom = atom((get) => get(this.lengthAtom) > initialThreshold);
+  }
+
+  async doWork() {
+    globalStore.set(this.statusAtom, "running");
+    try {
+      for await (const chunk of this.stream()) {
+        globalStore.set(this.outputAtom, (prev) => prev + chunk);
+      }
+      globalStore.set(this.statusAtom, "idle");
+    } catch {
+      globalStore.set(this.statusAtom, "error");
+    }
+  }
+
+  private async *stream() {
+    /* ... */
+  }
+}
+```
+
+```tsx
+// component usage (events & effects OK)
+import { useAtomValue } from "jotai";
+
+function Panel({ model }: { model: MyModel }) {
+  const status = useAtomValue(model.statusAtom);
+  const isBig = useAtomValue(model.thresholdedAtom);
+
+  const onClick = () => model.doWork();
+  // useEffect(() => { model.doWork() }, [model])
+
+  return (
+    <div>
+      {status} • {String(isBig)}
+    </div>
+  );
+}
+```
+
+**Remember:** atoms on the model, simple-as-fields, ctor for dependent/derived, updates via `globalStore.set/get`.
 
 ### Tool Use
 

@@ -3,6 +3,7 @@
 
 import { Button } from "@/app/element/button";
 import { modalsModel } from "@/app/store/modalmodel";
+import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
 import { WindowDrag } from "@/element/windowdrag";
 import { deleteLayoutModelForTab } from "@/layout/index";
 import { atoms, createTab, getApi, globalStore, isDev, setActiveTab } from "@/store/global";
@@ -164,7 +165,6 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
     const osInstanceRef = useRef<OverlayScrollbars>(null);
     const draggerLeftRef = useRef<HTMLDivElement>(null);
     const workspaceSwitcherRef = useRef<HTMLDivElement>(null);
-    const devLabelRef = useRef<HTMLDivElement>(null);
     const appMenuButtonRef = useRef<HTMLDivElement>(null);
     const tabWidthRef = useRef<number>(TAB_DEFAULT_WIDTH);
     const scrollableRef = useRef<boolean>(false);
@@ -173,6 +173,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
     const prevAllLoadedRef = useRef<boolean>(false);
     const activeTabId = useAtomValue(atoms.staticTabId);
     const isFullScreen = useAtomValue(atoms.isFullScreen);
+    const aiPanelOpen = useAtomValue(WorkspaceLayoutModel.getInstance().panelVisibleAtom);
 
     const settings = useAtomValue(atoms.settingsAtom);
 
@@ -232,7 +233,6 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
         const configErrorWidth = configErrorButtonRef.current?.getBoundingClientRect().width ?? 0;
         const appMenuButtonWidth = appMenuButtonRef.current?.getBoundingClientRect().width ?? 0;
         const workspaceSwitcherWidth = workspaceSwitcherRef.current?.getBoundingClientRect().width ?? 0;
-        const devLabelWidth = devLabelRef.current?.getBoundingClientRect().width ?? 0;
 
         const nonTabElementsWidth =
             windowDragLeftWidth +
@@ -240,8 +240,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
             updateStatusLabelWidth +
             configErrorWidth +
             appMenuButtonWidth +
-            workspaceSwitcherWidth +
-            devLabelWidth;
+            workspaceSwitcherWidth;
         const spaceForTabs = tabbarWrapperWidth - nonTabElementsWidth;
 
         const numberOfTabs = tabIds.length;
@@ -635,10 +634,20 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
         getApi().showContextMenu(workspace.oid);
     }
 
+    function onWaveAIClick() {
+        const currentVisible = WorkspaceLayoutModel.getInstance().getAIPanelVisible();
+        WorkspaceLayoutModel.getInstance().setAIPanelVisible(!currentVisible);
+    }
+
     const tabsWrapperWidth = tabIds.length * tabWidthRef.current;
-    const devLabel = isDev() ? (
-        <div ref={devLabelRef} className="dev-label">
-            <i className="fa fa-brands fa-dev fa-fw" />
+    const waveaiButton = isDev() ? (
+        <div
+            className={`flex h-[26px] px-1.5 justify-end items-center rounded-md mr-1 box-border cursor-pointer bg-hover hover:bg-hoverbg transition-colors text-[12px] ${aiPanelOpen ? "text-accent" : "text-secondary"}`}
+            style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
+            onClick={onWaveAIClick}
+        >
+            <i className="fa fa-sparkles" />
+            <span className="font-bold ml-1 -top-px font-mono">AI</span>
         </div>
     ) : undefined;
     const appMenuButton =
@@ -658,7 +667,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
         <div ref={tabbarWrapperRef} className="tab-bar-wrapper">
             <WindowDrag ref={draggerLeftRef} className="left" />
             {appMenuButton}
-            {devLabel}
+            {waveaiButton}
             <WorkspaceSwitcher ref={workspaceSwitcherRef} />
             <div className="tab-bar" ref={tabBarRef} data-overlayscrollbars-initialize>
                 <div className="tabs-wrapper" ref={tabsWrapperRef} style={{ width: `${tabsWrapperWidth}px` }}>

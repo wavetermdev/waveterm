@@ -215,7 +215,11 @@ async function getAppMenu(
             label: "Reset Zoom",
             accelerator: "CommandOrControl+0",
             click: (_, window) => {
-                getWindowWebContents(window ?? ww)?.setZoomFactor(1);
+                const wc = getWindowWebContents(window ?? ww);
+                if (wc) {
+                    wc.setZoomFactor(1);
+                    wc.send("zoom-factor-change", 1);
+                }
             },
         },
         {
@@ -226,7 +230,9 @@ async function getAppMenu(
                 if (wc == null) {
                     return;
                 }
-                wc.setZoomFactor(Math.min(5, wc.getZoomFactor() + 0.2));
+                const newZoom = Math.min(5, wc.getZoomFactor() + 0.2);
+                wc.setZoomFactor(newZoom);
+                wc.send("zoom-factor-change", newZoom);
             },
         },
         {
@@ -237,7 +243,9 @@ async function getAppMenu(
                 if (wc == null) {
                     return;
                 }
-                wc.setZoomFactor(Math.min(5, wc.getZoomFactor() + 0.2));
+                const newZoom = Math.min(5, wc.getZoomFactor() + 0.2);
+                wc.setZoomFactor(newZoom);
+                wc.send("zoom-factor-change", newZoom);
             },
             visible: false,
             acceleratorWorksWhenHidden: true,
@@ -250,7 +258,9 @@ async function getAppMenu(
                 if (wc == null) {
                     return;
                 }
-                wc.setZoomFactor(Math.max(0.2, wc.getZoomFactor() - 0.2));
+                const newZoom = Math.max(0.2, wc.getZoomFactor() - 0.2);
+                wc.setZoomFactor(newZoom);
+                wc.send("zoom-factor-change", newZoom);
             },
         },
         {
@@ -261,7 +271,9 @@ async function getAppMenu(
                 if (wc == null) {
                     return;
                 }
-                wc.setZoomFactor(Math.max(0.2, wc.getZoomFactor() - 0.2));
+                const newZoom = Math.max(0.2, wc.getZoomFactor() - 0.2);
+                wc.setZoomFactor(newZoom);
+                wc.send("zoom-factor-change", newZoom);
             },
             visible: false,
             acceleratorWorksWhenHidden: true,

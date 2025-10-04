@@ -37,7 +37,7 @@ const Suggestions = forwardRef<HTMLDivElement, SuggestionsProps>(
                 }}
                 className={clsx("suggestion-item", { selected: selectIndex === index })}
             >
-                <div className="typeahead-item-name">
+                <div className="typeahead-item-name ellipsis">
                     {item.icon &&
                         renderIcon(item.icon, "iconColor" in item && item.iconColor ? item.iconColor : "inherit")}
                     {item.label}

@@ -11,6 +11,21 @@ export enum NavigateDirection {
     Left = 3,
 }
 
+export function navigateDirectionToString(dir: NavigateDirection): string {
+    switch (dir) {
+        case NavigateDirection.Up:
+            return "up";
+        case NavigateDirection.Right:
+            return "right";
+        case NavigateDirection.Down:
+            return "down";
+        case NavigateDirection.Left:
+            return "left";
+        default:
+            return "unknown";
+    }
+}
+
 export enum DropDirection {
     Top = 0,
     Right = 1,
@@ -384,4 +399,15 @@ export interface NodeModel {
     onClose: () => void;
     dragHandleRef?: React.RefObject<HTMLDivElement>;
     displayContainerRef: React.RefObject<HTMLDivElement>;
+}
+
+/**
+ * Result object returned by switchNodeFocusInDirection method.
+ */
+export interface NavigationResult {
+    success: boolean;
+    atLeft?: boolean;
+    atTop?: boolean;
+    atBottom?: boolean;
+    atRight?: boolean;
 }

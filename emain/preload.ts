@@ -15,6 +15,7 @@ contextBridge.exposeInMainWorld("api", {
     getAboutModalDetails: () => ipcRenderer.sendSync("get-about-modal-details"),
     getDocsiteUrl: () => ipcRenderer.sendSync("get-docsite-url"),
     getWebviewPreload: () => ipcRenderer.sendSync("get-webview-preload"),
+    getZoomFactor: () => ipcRenderer.sendSync("get-zoom-factor"),
     openNewWindow: () => ipcRenderer.send("open-new-window"),
     showContextMenu: (workspaceId, menu) => ipcRenderer.send("contextmenu-show", workspaceId, menu),
     onContextMenuClick: (callback) => ipcRenderer.on("contextmenu-click", (_event, id) => callback(id)),
@@ -29,6 +30,8 @@ contextBridge.exposeInMainWorld("api", {
     getEnv: (varName) => ipcRenderer.sendSync("get-env", varName),
     onFullScreenChange: (callback) =>
         ipcRenderer.on("fullscreen-change", (_event, isFullScreen) => callback(isFullScreen)),
+    onZoomFactorChange: (callback) =>
+        ipcRenderer.on("zoom-factor-change", (_event, zoomFactor) => callback(zoomFactor)),
     onUpdaterStatusChange: (callback) => ipcRenderer.on("app-update-status", (_event, status) => callback(status)),
     getUpdaterStatus: () => ipcRenderer.sendSync("get-app-update-status"),
     getUpdaterChannel: () => ipcRenderer.sendSync("get-updater-channel"),
@@ -53,6 +56,7 @@ contextBridge.exposeInMainWorld("api", {
     openNativePath: (filePath: string) => ipcRenderer.send("open-native-path", filePath),
     captureScreenshot: (rect: Rectangle) => ipcRenderer.invoke("capture-screenshot", rect),
     setKeyboardChordMode: () => ipcRenderer.send("set-keyboard-chord-mode"),
+    setWaveAIOpen: (isOpen: boolean) => ipcRenderer.send("set-waveai-open", isOpen),
 });
 
 // Custom event for "new-window"

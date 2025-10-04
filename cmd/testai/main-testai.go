@@ -14,12 +14,19 @@ import (
 	"os"
 	"time"
 
-	"github.com/wavetermdev/waveterm/pkg/waveai"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc"
+	"github.com/google/uuid"
+	"github.com/wavetermdev/waveterm/pkg/aiusechat"
+	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
+	"github.com/wavetermdev/waveterm/pkg/web/sse"
 )
 
 //go:embed testschema.json
 var testSchemaJSON string
+
+const (
+	DefaultAnthropicModel = "claude-sonnet-4-5"
+	DefaultOpenAIModel    = "gpt-5"
+)
 
 // TestResponseWriter implements http.ResponseWriter and additional interfaces for testing
 type TestResponseWriter struct {
@@ -58,7 +65,7 @@ func (w *TestResponseWriter) SetReadDeadline(deadline time.Time) error {
 	return nil
 }
 
-func getToolDefinitions() []waveai.ToolDefinition {
+func getToolDefinitions() []uctypes.ToolDefinition {
 	var schemas map[string]any
 	if err := json.Unmarshal([]byte(testSchemaJSON), &schemas); err != nil {
 		log.Printf("Error parsing schema: %v\n", err)
@@ -75,7 +82,7 @@ func getToolDefinitions() []waveai.ToolDefinition {
 		configSchema = map[string]any{"type": "object"}
 	}
 
-	return []waveai.ToolDefinition{
+	return []uctypes.ToolDefinition{
 		{
 			Name:        "get_config",
 			Description: "Get the current GitHub Actions Monitor configuration settings including repository, workflow, polling interval, and max workflow runs",
@@ -98,125 +105,183 @@ func getToolDefinitions() []waveai.ToolDefinition {
 	}
 }
 
-func testOpenAI(ctx context.Context, model, message string, tools []waveai.ToolDefinition) {
-	apiKey := os.Getenv("OPENAI_API_KEY")
+func testOpenAI(ctx context.Context, model, message string, tools []uctypes.ToolDefinition) {
+	apiKey := os.Getenv("OPENAI_APIKEY")
 	if apiKey == "" {
-		fmt.Println("Error: OPENAI_API_KEY environment variable not set")
+		fmt.Println("Error: OPENAI_APIKEY environment variable not set")
 		os.Exit(1)
 	}
 
-	opts := &wshrpc.WaveAIOptsType{
-		APIToken:  apiKey,
-		Model:     model,
-		MaxTokens: 1000,
+	opts := &uctypes.AIOptsType{
+		APIType:       aiusechat.APIType_OpenAI,
+		APIToken:      apiKey,
+		Model:         model,
+		MaxTokens:     4096,
+		ThinkingLevel: uctypes.ThinkingLevelMedium,
 	}
 
-	messages := []waveai.UseChatMessage{
-		{
-			Role:    "user",
-			Content: message,
+	// Generate a chat ID
+	chatID := uuid.New().String()
+
+	// Convert to AIMessage format for WaveAIPostMessageWrap
+	aiMessage := &uctypes.AIMessage{
+		MessageId: uuid.New().String(),
+		Parts: []uctypes.AIMessagePart{
+			{
+				Type: uctypes.AIMessagePartTypeText,
+				Text: message,
+			},
 		},
 	}
 
-	fmt.Printf("Testing OpenAI streaming with model: %s\n", model)
+	fmt.Printf("Testing OpenAI streaming with WaveAIPostMessageWrap, model: %s\n", model)
 	fmt.Printf("Message: %s\n", message)
+	fmt.Printf("Chat ID: %s\n", chatID)
 	fmt.Println("---")
 
 	testWriter := &TestResponseWriter{}
-	sseHandler := waveai.MakeSSEHandlerCh(testWriter, ctx)
-
-	err := sseHandler.SetupSSE()
-	if err != nil {
-		fmt.Printf("Error setting up SSE: %v\n", err)
-		return
-	}
+	sseHandler := sse.MakeSSEHandlerCh(testWriter, ctx)
 	defer sseHandler.Close()
 
-	stopReason, err := waveai.StreamOpenAIToUseChat(ctx, sseHandler, opts, messages, tools)
+	chatOpts := uctypes.WaveChatOpts{
+		ChatId:   chatID,
+		ClientId: uuid.New().String(),
+		Config:   *opts,
+		Tools:    tools,
+	}
+	err := aiusechat.WaveAIPostMessageWrap(ctx, sseHandler, aiMessage, chatOpts)
 	if err != nil {
 		fmt.Printf("OpenAI streaming error: %v\n", err)
 	}
-	if stopReason != nil {
-		fmt.Printf("Stop reason: %+v\n", stopReason)
-	}
 }
 
-func testAnthropic(ctx context.Context, model, message string, tools []waveai.ToolDefinition) {
-	apiKey := os.Getenv("ANTHROPIC_API_KEY")
+func testAnthropic(ctx context.Context, model, message string, tools []uctypes.ToolDefinition) {
+	apiKey := os.Getenv("ANTHROPIC_APIKEY")
 	if apiKey == "" {
-		fmt.Println("Error: ANTHROPIC_API_KEY environment variable not set")
+		fmt.Println("Error: ANTHROPIC_APIKEY environment variable not set")
 		os.Exit(1)
 	}
 
-	opts := &wshrpc.WaveAIOptsType{
-		APIToken:  apiKey,
-		Model:     model,
-		MaxTokens: 1000,
+	opts := &uctypes.AIOptsType{
+		APIType:       aiusechat.APIType_Anthropic,
+		APIToken:      apiKey,
+		Model:         model,
+		MaxTokens:     4096,
+		ThinkingLevel: uctypes.ThinkingLevelMedium,
 	}
 
-	messages := []waveai.UseChatMessage{
-		{
-			Role:    "user",
-			Content: message,
+	// Generate a chat ID
+	chatID := uuid.New().String()
+
+	// Convert to AIMessage format for WaveAIPostMessageWrap
+	aiMessage := &uctypes.AIMessage{
+		MessageId: uuid.New().String(),
+		Parts: []uctypes.AIMessagePart{
+			{
+				Type: uctypes.AIMessagePartTypeText,
+				Text: message,
+			},
 		},
 	}
 
-	fmt.Printf("Testing Anthropic streaming with model: %s\n", model)
+	fmt.Printf("Testing Anthropic streaming with WaveAIPostMessageWrap, model: %s\n", model)
 	fmt.Printf("Message: %s\n", message)
+	fmt.Printf("Chat ID: %s\n", chatID)
 	fmt.Println("---")
 
 	testWriter := &TestResponseWriter{}
-	sseHandler := waveai.MakeSSEHandlerCh(testWriter, ctx)
-
-	err := sseHandler.SetupSSE()
-	if err != nil {
-		fmt.Printf("Error setting up SSE: %v\n", err)
-		return
-	}
+	sseHandler := sse.MakeSSEHandlerCh(testWriter, ctx)
 	defer sseHandler.Close()
 
-	stopReason, err := waveai.StreamAnthropicResponses(ctx, sseHandler, opts, messages, tools)
+	chatOpts := uctypes.WaveChatOpts{
+		ChatId:   chatID,
+		ClientId: uuid.New().String(),
+		Config:   *opts,
+		Tools:    tools,
+	}
+	err := aiusechat.WaveAIPostMessageWrap(ctx, sseHandler, aiMessage, chatOpts)
 	if err != nil {
 		fmt.Printf("Anthropic streaming error: %v\n", err)
 	}
-	if stopReason != nil {
-		fmt.Printf("Stop reason: %+v\n", stopReason)
-	}
+}
+
+func testT1(ctx context.Context) {
+	tool := aiusechat.GetAdderToolDefinition()
+	tools := []uctypes.ToolDefinition{tool}
+	testAnthropic(ctx, DefaultAnthropicModel, "what is 2+2, use the provider adder tool", tools)
+}
+
+func testT2(ctx context.Context) {
+	tool := aiusechat.GetAdderToolDefinition()
+	tools := []uctypes.ToolDefinition{tool}
+	testOpenAI(ctx, DefaultOpenAIModel, "what is 2+2+8, use the provider adder tool", tools)
+}
+
+func printUsage() {
+	fmt.Println("Usage: go run main-testai.go [--anthropic] [--tools] [--model <model>] [message]")
+	fmt.Println("Examples:")
+	fmt.Println("  go run main-testai.go 'What is 2+2?'")
+	fmt.Println("  go run main-testai.go --model o4-mini 'What is 2+2?'")
+	fmt.Println("  go run main-testai.go --anthropic 'What is 2+2?'")
+	fmt.Println("  go run main-testai.go --anthropic --model claude-3-5-sonnet-20241022 'What is 2+2?'")
+	fmt.Println("  go run main-testai.go --tools 'Help me configure GitHub Actions monitoring'")
+	fmt.Println("")
+	fmt.Println("Default models:")
+	fmt.Printf("  OpenAI: %s\n", DefaultOpenAIModel)
+	fmt.Printf("  Anthropic: %s\n", DefaultAnthropicModel)
+	fmt.Println("")
+	fmt.Println("Environment variables:")
+	fmt.Println("  OPENAI_APIKEY (for OpenAI models)")
+	fmt.Println("  ANTHROPIC_APIKEY (for Anthropic models)")
 }
 
 func main() {
-	var anthropic, tools bool
+	var anthropic, tools, help, t1, t2 bool
+	var model string
 	flag.BoolVar(&anthropic, "anthropic", false, "Use Anthropic API instead of OpenAI")
 	flag.BoolVar(&tools, "tools", false, "Enable GitHub Actions Monitor tools for testing")
+	flag.StringVar(&model, "model", "", fmt.Sprintf("AI model to use (defaults: %s for OpenAI, %s for Anthropic)", DefaultOpenAIModel, DefaultAnthropicModel))
+	flag.BoolVar(&help, "help", false, "Show usage information")
+	flag.BoolVar(&t1, "t1", false, fmt.Sprintf("Run preset T1 test (%s with 'what is 2+2')", DefaultAnthropicModel))
+	flag.BoolVar(&t2, "t2", false, fmt.Sprintf("Run preset T2 test (%s with 'what is 2+2')", DefaultOpenAIModel))
 	flag.Parse()
 
-	args := flag.Args()
-	if len(args) < 1 {
-		fmt.Println("Usage: go run main-testai.go [--anthropic] [--tools] <model> [message]")
-		fmt.Println("Examples:")
-		fmt.Println("  go run main-testai.go o4-mini 'What is 2+2?'")
-		fmt.Println("  go run main-testai.go --anthropic claude-3-5-sonnet-20241022 'What is 2+2?'")
-		fmt.Println("  go run main-testai.go --tools o4-mini 'Help me configure GitHub Actions monitoring'")
-		fmt.Println("")
-		fmt.Println("Environment variables:")
-		fmt.Println("  OPENAI_API_KEY (for OpenAI models)")
-		fmt.Println("  ANTHROPIC_API_KEY (for Anthropic models)")
-		os.Exit(1)
-	}
-
-	model := args[0]
-	message := "What is 2+2?"
-	if len(args) > 1 {
-		message = args[1]
-	}
-
-	var toolDefs []waveai.ToolDefinition
-	if tools {
-		toolDefs = getToolDefinitions()
+	if help {
+		printUsage()
+		os.Exit(0)
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
+
+	if t1 {
+		testT1(ctx)
+		return
+	}
+	if t2 {
+		testT2(ctx)
+		return
+	}
+
+	// Set default model based on API type if not provided
+	if model == "" {
+		if anthropic {
+			model = DefaultAnthropicModel
+		} else {
+			model = DefaultOpenAIModel
+		}
+	}
+
+	args := flag.Args()
+	message := "What is 2+2?"
+	if len(args) > 0 {
+		message = args[0]
+	}
+
+	var toolDefs []uctypes.ToolDefinition
+	if tools {
+		toolDefs = getToolDefinitions()
+	}
 
 	if anthropic {
 		testAnthropic(ctx, model, message, toolDefs)

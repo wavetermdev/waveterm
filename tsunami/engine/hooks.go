@@ -4,7 +4,6 @@
 package engine
 
 import (
-	"log"
 	"strconv"
 
 	"github.com/wavetermdev/waveterm/tsunami/vdom"
@@ -156,12 +155,4 @@ func UseResync(vc *RenderContextImpl) bool {
 		return false
 	}
 	return vc.RenderOpts.Resync
-}
-
-func UseSetAppTitle(vc *RenderContextImpl, title string) {
-	if vc.getCompName() != "App" {
-		log.Printf("UseSetAppTitle can only be called from the App component")
-		return
-	}
-	vc.Root.AppTitle = title
 }

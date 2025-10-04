@@ -232,7 +232,7 @@ export const ConnectionButton = React.memo(
                             }}
                         />
                     </span>
-                    {isLocal ? null : <div className="connection-name">{connection}</div>}
+                    {isLocal ? null : <div className="connection-name ellipsis">{connection}</div>}
                 </div>
             );
         }

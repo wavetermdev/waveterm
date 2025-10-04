@@ -39,6 +39,7 @@ export class TermWshClient extends WshClient {
                     },
                 },
                 magnified: data.target?.magnified,
+                focused: true,
             });
             return oref;
         } else if (data.target?.toolbar?.toolbar) {
@@ -101,5 +102,44 @@ export class TermWshClient extends WshClient {
             }, 50);
             return oref;
         }
+    }
+
+    async handle_termgetscrollbacklines(
+        rh: RpcResponseHelper,
+        data: CommandTermGetScrollbackLinesData
+    ): Promise<CommandTermGetScrollbackLinesRtnData> {
+        const termWrap = this.model.termRef.current;
+        if (!termWrap || !termWrap.terminal) {
+            return {
+                totallines: 0,
+                linestart: data.linestart,
+                lines: [],
+                lastupdated: 0,
+            };
+        }
+
+        const buffer = termWrap.terminal.buffer.active;
+        const totalLines = buffer.length;
+        const lines: string[] = [];
+
+        const startLine = Math.max(0, data.linestart);
+        const endLine = Math.min(totalLines, data.lineend);
+
+        for (let i = startLine; i < endLine; i++) {
+            const bufferIndex = totalLines - 1 - i;
+            const line = buffer.getLine(bufferIndex);
+            if (line) {
+                lines.push(line.translateToString(true));
+            }
+        }
+
+        lines.reverse();
+
+        return {
+            totallines: totalLines,
+            linestart: startLine,
+            lines: lines,
+            lastupdated: termWrap.lastUpdated,
+        };
     }
 }

@@ -119,6 +119,7 @@ func webOpenRun(cmd *cobra.Command, args []string) (rtnErr error) {
 			},
 		},
 		Magnified: webOpenMagnified,
+		Focused:   true,
 	}
 	if replaceBlockORef != nil {
 		wshCmd.TargetBlockId = replaceBlockORef.OID

@@ -1,6 +1,7 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { WaveAIModel } from "@/app/aipanel/waveai-model";
 import {
     atoms,
     createBlock,
@@ -17,11 +18,9 @@ import {
     replaceBlock,
     WOS,
 } from "@/app/store/global";
-import {
-    deleteLayoutModelForTab,
-    getLayoutModelForStaticTab,
-    NavigateDirection,
-} from "@/layout/index";
+import { focusManager } from "@/app/store/focusManager";
+import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
+import { deleteLayoutModelForTab, getLayoutModelForStaticTab, NavigateDirection } from "@/layout/index";
 import * as keyutil from "@/util/keyutil";
 import { CHORD_TIMEOUT } from "@/util/sharedconst";
 import { fireAndForget } from "@/util/util";
@@ -134,11 +133,40 @@ function switchBlockByBlockNum(index: number) {
         return;
     }
     layoutModel.switchNodeFocusByBlockNum(index);
+    setTimeout(() => {
+        globalRefocus();
+    }, 10);
 }
 
 function switchBlockInDirection(direction: NavigateDirection) {
     const layoutModel = getLayoutModelForStaticTab();
-    layoutModel.switchNodeFocusInDirection(direction);
+    const focusType = focusManager.getFocusType();
+
+    if (direction === NavigateDirection.Left) {
+        const numBlocks = globalStore.get(layoutModel.numLeafs);
+        if (focusType === "waveai") {
+            return;
+        }
+        if (numBlocks === 1) {
+            focusManager.requestWaveAIFocus();
+            return;
+        }
+    }
+
+    if (direction === NavigateDirection.Right && focusType === "waveai") {
+        focusManager.requestNodeFocus();
+        return;
+    }
+
+    const inWaveAI = focusType === "waveai";
+    const navResult = layoutModel.switchNodeFocusInDirection(direction, inWaveAI);
+    if (navResult.atLeft) {
+        focusManager.requestWaveAIFocus();
+        return;
+    }
+    setTimeout(() => {
+        globalRefocus();
+    }, 10);
 }
 
 function getAllTabs(ws: Workspace): string[] {
@@ -477,6 +505,14 @@ function registerGlobalKeys() {
             return true;
         });
     }
+    globalKeyMap.set("Ctrl:Shift:c{Digit0}", () => {
+        WaveAIModel.getInstance().focusInput();
+        return true;
+    });
+    globalKeyMap.set("Ctrl:Shift:c{Numpad0}", () => {
+        WaveAIModel.getInstance().focusInput();
+        return true;
+    });
     function activateSearch(event: WaveKeyboardEvent): boolean {
         const bcm = getBlockComponentModel(getFocusedBlockInStaticTab());
         // Ctrl+f is reserved in most shells
@@ -507,6 +543,11 @@ function registerGlobalKeys() {
             return true;
         }
         return false;
+    });
+    globalKeyMap.set("Cmd:Shift:a", () => {
+        const currentVisible = WorkspaceLayoutModel.getInstance().getAIPanelVisible();
+        WorkspaceLayoutModel.getInstance().setAIPanelVisible(!currentVisible);
+        return true;
     });
     const allKeys = Array.from(globalKeyMap.keys());
     // special case keys, handled by web view

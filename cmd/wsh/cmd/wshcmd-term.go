@@ -68,6 +68,7 @@ func termRun(cmd *cobra.Command, args []string) (rtnErr error) {
 			Meta: createMeta,
 		},
 		Magnified: termMagnified,
+		Focused:   true,
 	}
 	oref, err := wshclient.CreateBlockCommand(RpcClient, createBlockData, nil)
 	if err != nil {

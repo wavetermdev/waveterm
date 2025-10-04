@@ -16,6 +16,7 @@ import {
     useBlockAtom,
     WOS,
 } from "@/app/store/global";
+import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { ErrorBoundary } from "@/element/errorboundary";
@@ -215,7 +216,7 @@ const BlockFrame_Header = ({
     if (typeof headerTextUnion === "string") {
         if (!util.isBlank(headerTextUnion)) {
             headerTextElems.push(
-                <div key="text" className="block-frame-text">
+                <div key="text" className="block-frame-text ellipsis">
                     &lrm;{headerTextUnion}
                 </div>
             );
@@ -280,7 +281,7 @@ const HeaderTextElem = React.memo(({ elem, preview }: { elem: HeaderElem; previe
         return <Input decl={elem} className={clsx("block-frame-input", elem.className)} preview={preview} />;
     } else if (elem.elemtype == "text") {
         return (
-            <div className={clsx("block-frame-text", elem.className, { "flex-nogrow": elem.noGrow })}>
+            <div className={clsx("block-frame-text ellipsis", elem.className, { "flex-nogrow": elem.noGrow })}>
                 <span ref={preview ? null : elem.ref} onClick={(e) => elem?.onClick(e)}>
                     &lrm;{elem.text}
                 </span>
@@ -398,10 +399,10 @@ const ConnStatusOverlay = React.memo(
         let reconClassName = "outlined grey";
         if (width && width < 350) {
             reconDisplay = <i className="fa-sharp fa-solid fa-rotate-right"></i>;
-            reconClassName = clsx(reconClassName, "font-size-12 vertical-padding-5 horizontal-padding-6");
+            reconClassName = clsx(reconClassName, "text-[12px] py-[5px] px-[6px]");
         } else {
             reconDisplay = "Reconnect";
-            reconClassName = clsx(reconClassName, "font-size-11 vertical-padding-3 horizontal-padding-7");
+            reconClassName = clsx(reconClassName, "text-[11px] py-[3px] px-[7px]");
         }
         const showIcon = connStatus.status != "connecting";
 
@@ -440,7 +441,7 @@ const ConnStatusOverlay = React.memo(
                 <div className="connstatus-content">
                     <div className={clsx("connstatus-status-icon-wrapper", { "has-error": showError || showWshError })}>
                         {showIcon && <i className="fa-solid fa-triangle-exclamation"></i>}
-                        <div className="connstatus-status">
+                        <div className="connstatus-status ellipsis">
                             <div className="connstatus-status-text">{statusText}</div>
                             {(showError || showWshError) && (
                                 <OverlayScrollbarsComponent
@@ -524,6 +525,7 @@ const BlockFrame_Default_Component = (props: BlockFrameProps) => {
     const { nodeModel, viewModel, blockModel, preview, numBlocksInTab, children } = props;
     const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", nodeModel.blockId));
     const isFocused = jotai.useAtomValue(nodeModel.isFocused);
+    const aiPanelVisible = jotai.useAtomValue(WorkspaceLayoutModel.getInstance().panelVisibleAtom);
     const viewIconUnion = util.useAtomValueSafe(viewModel?.viewIcon) ?? blockViewToIcon(blockData?.meta?.view);
     const customBg = util.useAtomValueSafe(viewModel?.blockBg);
     const manageConnection = util.useAtomValueSafe(viewModel?.manageConnection);
@@ -590,7 +592,7 @@ const BlockFrame_Default_Component = (props: BlockFrameProps) => {
             className={clsx("block", "block-frame-default", "block-" + nodeModel.blockId, {
                 "block-focused": isFocused || preview,
                 "block-preview": preview,
-                "block-no-highlight": numBlocksInTab === 1,
+                "block-no-highlight": numBlocksInTab === 1 && !aiPanelVisible,
                 ephemeral: isEphemeral,
                 magnified: isMagnified,
             })}

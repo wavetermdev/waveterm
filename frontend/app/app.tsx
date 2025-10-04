@@ -279,7 +279,7 @@ const AppInner = () => {
 
     if (client == null || windowData == null) {
         return (
-            <div className="mainapp">
+            <div className="flex flex-col w-full h-full">
                 <AppBackground />
                 <CenteredDiv>invalid configuration, client or window was not loaded</CenteredDiv>
             </div>
@@ -288,7 +288,7 @@ const AppInner = () => {
 
     return (
         <div
-            className={clsx("mainapp", PLATFORM, {
+            className={clsx("flex flex-col w-full h-full", PLATFORM, {
                 fullscreen: isFullScreen,
                 "prefers-reduced-motion": prefersReducedMotion,
             })}

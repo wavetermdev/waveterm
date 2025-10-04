@@ -125,11 +125,20 @@ function handleOsc7Command(data: string, blockId: string, loaded: boolean): bool
         data = data.substring(nextSlashIdx);
     }
     setTimeout(() => {
-        fireAndForget(() =>
-            services.ObjectService.UpdateObjectMeta(WOS.makeORef("block", blockId), {
+        fireAndForget(async () => {
+            await services.ObjectService.UpdateObjectMeta(WOS.makeORef("block", blockId), {
                 "cmd:cwd": data,
-            })
-        );
+            });
+            
+            const rtInfo = { "cmd:hascurcwd": true };
+            const rtInfoData: CommandSetRTInfoData = {
+                oref: WOS.makeORef("block", blockId),
+                data: rtInfo
+            };
+            await RpcApi.SetRTInfoCommand(TabRpcClient, rtInfoData).catch((e) =>
+                console.log("error setting RT info", e)
+            );
+        });
     }, 0);
     return true;
 }
@@ -153,6 +162,7 @@ export class TermWrap {
     onSearchResultsDidChange?: (result: { resultIndex: number; resultCount: number }) => void;
     private toDispose: TermTypes.IDisposable[] = [];
     pasteActive: boolean = false;
+    lastUpdated: number;
 
     constructor(
         blockId: string,
@@ -166,6 +176,7 @@ export class TermWrap {
         this.ptyOffset = 0;
         this.dataBytesProcessed = 0;
         this.hasResized = false;
+        this.lastUpdated = Date.now();
         this.terminal = new Terminal(options);
         this.fitAddon = new FitAddon();
         this.fitAddon.noScrollbar = PLATFORM === PlatformMacOS;
@@ -325,6 +336,7 @@ export class TermWrap {
                 this.ptyOffset += data.length;
                 this.dataBytesProcessed += data.length;
             }
+            this.lastUpdated = Date.now();
             resolve();
         });
         return prtn;

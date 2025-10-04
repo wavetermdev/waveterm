@@ -52,6 +52,7 @@ func launchRun(cmd *cobra.Command, args []string) (rtnErr error) {
 	createBlockData := wshrpc.CommandCreateBlockData{
 		BlockDef:  &widget.BlockDef,
 		Magnified: magnifyBlock || widget.Magnified,
+		Focused:   true,
 	}
 
 	// Create the block

@@ -268,10 +268,12 @@ func generateSchemaFromAtoms(atoms map[string]genAtom, title, description string
 	}
 
 	// Build the final schema
+	// schema line unnecessary for AI (and burns tokens)
+	// also dropping title since it is mostly redundant
 	schema := map[string]any{
-		"$schema":              "https://json-schema.org/draft/2020-12/schema",
-		"type":                 "object",
-		"title":                title,
+		// "$schema":              "https://json-schema.org/draft/2020-12/schema",
+		"type": "object",
+		// "title":                title,
 		"description":          description,
 		"properties":           properties,
 		"additionalProperties": false,
