@@ -162,6 +162,7 @@ export class TermWrap {
     onSearchResultsDidChange?: (result: { resultIndex: number; resultCount: number }) => void;
     private toDispose: TermTypes.IDisposable[] = [];
     pasteActive: boolean = false;
+    lastUpdated: number;
 
     constructor(
         blockId: string,
@@ -175,6 +176,7 @@ export class TermWrap {
         this.ptyOffset = 0;
         this.dataBytesProcessed = 0;
         this.hasResized = false;
+        this.lastUpdated = Date.now();
         this.terminal = new Terminal(options);
         this.fitAddon = new FitAddon();
         this.fitAddon.noScrollbar = PLATFORM === PlatformMacOS;
@@ -334,6 +336,7 @@ export class TermWrap {
                 this.ptyOffset += data.length;
                 this.dataBytesProcessed += data.length;
             }
+            this.lastUpdated = Date.now();
             resolve();
         });
         return prtn;

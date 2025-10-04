@@ -9,7 +9,6 @@ import { atoms, getSettingsKeyAtom } from "@/app/store/global";
 import { globalStore } from "@/app/store/jotaiStore";
 import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
 import { getWebServerEndpoint } from "@/util/endpoints";
-import { getElemAsStr } from "@/util/focusutil";
 import { checkKeyPressed, keydownWrapper } from "@/util/keyutil";
 import { cn } from "@/util/util";
 import { useChat } from "@ai-sdk/react";
@@ -251,7 +250,7 @@ const AIPanelComponentInner = memo(({ className, onClose }: AIPanelProps) => {
     };
 
     const handleFocusCapture = useCallback((event: React.FocusEvent) => {
-        console.log("Wave AI focus capture", getElemAsStr(event.target));
+        // console.log("Wave AI focus capture", getElemAsStr(event.target));
         focusManager.requestWaveAIFocus();
     }, []);
 

@@ -447,6 +447,11 @@ class RpcApiType {
         return client.wshRpcStream("streamwaveai", data, opts);
     }
 
+    // command "termgetscrollbacklines" [call]
+    TermGetScrollbackLinesCommand(client: WshClient, data: CommandTermGetScrollbackLinesData, opts?: RpcOpts): Promise<CommandTermGetScrollbackLinesRtnData> {
+        return client.wshRpcCall("termgetscrollbacklines", data, opts);
+    }
+
     // command "test" [call]
     TestCommand(client: WshClient, data: string, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("test", data, opts);

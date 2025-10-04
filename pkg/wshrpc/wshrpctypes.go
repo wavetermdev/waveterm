@@ -146,6 +146,8 @@ const (
 
 	Command_GetRTInfo = "getrtinfo"
 	Command_SetRTInfo = "setrtinfo"
+
+	Command_TermGetScrollbackLines = "termgetscrollbacklines"
 )
 
 type RespOrErrorUnion[T any] struct {
@@ -274,6 +276,9 @@ type WshRpcInterface interface {
 	// rtinfo
 	GetRTInfoCommand(ctx context.Context, data CommandGetRTInfoData) (*waveobj.ObjRTInfo, error)
 	SetRTInfoCommand(ctx context.Context, data CommandSetRTInfoData) error
+
+	// terminal
+	TermGetScrollbackLinesCommand(ctx context.Context, data CommandTermGetScrollbackLinesData) (*CommandTermGetScrollbackLinesRtnData, error)
 
 	// proc
 	VDomRenderCommand(ctx context.Context, data vdom.VDomFrontendUpdate) chan RespOrErrorUnion[*vdom.VDomBackendUpdate]
@@ -818,4 +823,16 @@ type CommandGetRTInfoData struct {
 type CommandSetRTInfoData struct {
 	ORef waveobj.ORef   `json:"oref"`
 	Data map[string]any `json:"data" tstype:"ObjRTInfo"`
+}
+
+type CommandTermGetScrollbackLinesData struct {
+	LineStart int `json:"linestart"`
+	LineEnd   int `json:"lineend"`
+}
+
+type CommandTermGetScrollbackLinesRtnData struct {
+	TotalLines  int      `json:"totallines"`
+	LineStart   int      `json:"linestart"`
+	Lines       []string `json:"lines"`
+	LastUpdated int64    `json:"lastupdated"`
 }

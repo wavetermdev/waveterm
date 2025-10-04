@@ -269,6 +269,20 @@ declare global {
         data: ObjRTInfo;
     };
 
+    // wshrpc.CommandTermGetScrollbackLinesData
+    type CommandTermGetScrollbackLinesData = {
+        linestart: number;
+        lineend: number;
+    };
+
+    // wshrpc.CommandTermGetScrollbackLinesRtnData
+    type CommandTermGetScrollbackLinesRtnData = {
+        totallines: number;
+        linestart: number;
+        lines: string[];
+        lastupdated: number;
+    };
+
     // wshrpc.CommandVarData
     type CommandVarData = {
         key: string;
