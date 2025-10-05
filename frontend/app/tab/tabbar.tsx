@@ -15,6 +15,7 @@ import { debounce } from "throttle-debounce";
 import { IconButton } from "../element/iconbutton";
 import { WorkspaceService } from "../store/services";
 import { Tab } from "./tab";
+import clsx from "clsx";
 import "./tabbar.scss";
 import { UpdateStatusBanner } from "./updatebanner";
 import { WorkspaceSwitcher } from "./workspaceswitcher";
@@ -648,6 +649,9 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
             </div>
         ) : undefined;
 
+    const tabBarPosition = settings?.["window:tabbarposition"];
+    const workspaceSwitcherPlacement = tabBarPosition === "bottom" ? "top-start" : "bottom-start";
+
     const addtabButtonDecl: IconButtonDecl = {
         elemtype: "iconbutton",
         icon: "plus",
@@ -655,11 +659,11 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
         title: "Add Tab",
     };
     return (
-        <div ref={tabbarWrapperRef} className="tab-bar-wrapper">
+        <div ref={tabbarWrapperRef} className={clsx("tab-bar-wrapper", tabBarPosition === "bottom" && "tab-bar-bottom")}>
             <WindowDrag ref={draggerLeftRef} className="left" />
             {appMenuButton}
             {devLabel}
-            <WorkspaceSwitcher ref={workspaceSwitcherRef} />
+            <WorkspaceSwitcher ref={workspaceSwitcherRef} placement={workspaceSwitcherPlacement} />
             <div className="tab-bar" ref={tabBarRef} data-overlayscrollbars-initialize>
                 <div className="tabs-wrapper" ref={tabsWrapperRef} style={{ width: `${tabsWrapperWidth}px` }}>
                     {tabIds.map((tabId, index) => {

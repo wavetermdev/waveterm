@@ -78,6 +78,7 @@ const (
 	ConfigKey_WindowTileGapSize              = "window:tilegapsize"
 	ConfigKey_WindowShowMenuBar              = "window:showmenubar"
 	ConfigKey_WindowNativeTitleBar           = "window:nativetitlebar"
+	ConfigKey_WindowTabBarPosition           = "window:tabbarposition"
 	ConfigKey_WindowDisableHardwareAcceleration = "window:disablehardwareacceleration"
 	ConfigKey_WindowMaxTabCacheSize          = "window:maxtabcachesize"
 	ConfigKey_WindowMagnifiedBlockOpacity    = "window:magnifiedblockopacity"

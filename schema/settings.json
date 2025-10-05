@@ -191,6 +191,11 @@
         "window:nativetitlebar": {
           "type": "boolean"
         },
+        "window:tabbarposition": {
+          "type": { 
+            "enum": ["top", "bottom"]
+          }
+        },
         "window:disablehardwareacceleration": {
           "type": "boolean"
         },
