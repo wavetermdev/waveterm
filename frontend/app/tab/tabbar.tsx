@@ -17,6 +17,7 @@ import { WorkspaceService } from "../store/services";
 import { Tab } from "./tab";
 import "./tabbar.scss";
 import { UpdateStatusBanner } from "./updatebanner";
+import { WidgetBar } from "./widgetbar";
 import { WorkspaceSwitcher } from "./workspaceswitcher";
 
 const TAB_DEFAULT_WIDTH = 130;
@@ -688,6 +689,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
             </div>
             <IconButton className="add-tab" ref={addBtnRef} decl={addtabButtonDecl} />
             <div className="tab-bar-right">
+                <WidgetBar />
                 <UpdateStatusBanner ref={updateStatusBannerRef} />
                 <ConfigErrorIcon buttonRef={configErrorButtonRef} />
             </div>
