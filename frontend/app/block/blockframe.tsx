@@ -30,7 +30,9 @@ import * as jotai from "jotai";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
 import * as React from "react";
 import { CopyButton } from "../element/copybutton";
+import { getEffectiveTitle } from "./autotitle";
 import { BlockFrameProps } from "./blocktypes";
+import { TitleBar } from "./titlebar";
 
 const NumActiveConnColors = 8;
 
@@ -72,6 +74,44 @@ function handleHeaderContextMenu(
     ];
     const extraItems = viewModel?.getSettingsMenuItems?.();
     if (extraItems && extraItems.length > 0) menu.push({ type: "separator" }, ...extraItems);
+
+    // Add pane title menu items
+    menu.push(
+        { type: "separator" },
+        {
+            label: "Edit Pane Title",
+            click: () => {
+                // Trigger edit mode by clicking the title element
+                const titleElement = document.querySelector(
+                    `.block-${blockData.oid} .pane-title-text`
+                ) as HTMLElement;
+                if (titleElement) {
+                    titleElement.click();
+                }
+            },
+        },
+        {
+            label: "Auto-Generate Title",
+            click: async () => {
+                const { generateAutoTitle } = await import("./autotitle");
+                const autoTitle = generateAutoTitle(blockData);
+                await RpcApi.SetMetaCommand(TabRpcClient, {
+                    oref: WOS.makeORef("block", blockData.oid),
+                    meta: { "pane-title": autoTitle },
+                });
+            },
+        },
+        {
+            label: "Clear Title",
+            click: async () => {
+                await RpcApi.SetMetaCommand(TabRpcClient, {
+                    oref: WOS.makeORef("block", blockData.oid),
+                    meta: { "pane-title": "" },
+                });
+            },
+        }
+    );
+
     menu.push(
         { type: "separator" },
         {
@@ -617,6 +657,13 @@ const BlockFrame_Default_Component = (props: BlockFrameProps) => {
             )}
             <div className="block-frame-default-inner" style={innerStyle}>
                 {noHeader || <ErrorBoundary fallback={headerElemNoView}>{headerElem}</ErrorBoundary>}
+                {!preview && blockData && (
+                    <TitleBar
+                        blockId={nodeModel.blockId}
+                        blockMeta={blockData.meta}
+                        title={getEffectiveTitle(blockData, true)}
+                    />
+                )}
                 {preview ? previewElem : children}
             </div>
             {preview || viewModel == null || !connModalOpen ? null : (
