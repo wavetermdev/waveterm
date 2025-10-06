@@ -1085,3 +1085,70 @@ func DrainChannelSafe[T any](ch <-chan T, debugName string) {
 		}
 	}()
 }
+
+
+func IsBinaryContent(data []byte) bool {
+	if len(data) == 0 {
+		return false
+	}
+	sampleSize := min(8192, len(data))
+	sample := data[:sampleSize]
+	
+	nullCount := 0
+	for _, b := range sample {
+		if b == 0 {
+			nullCount++
+		}
+	}
+	if float64(nullCount)/float64(len(sample)) > 0.01 {
+		return true
+	}
+	
+	if !utf8.Valid(sample) {
+		return true
+	}
+	
+	return false
+}
+
+func FormatRelativeTime(modTime time.Time) string {
+	now := time.Now()
+	diff := now.Sub(modTime)
+	
+	if diff < time.Minute {
+		return "just now"
+	}
+	if diff < time.Hour {
+		minutes := int(diff.Minutes())
+		if minutes == 1 {
+			return "1 minute ago"
+		}
+		return fmt.Sprintf("%d minutes ago", minutes)
+	}
+	if diff < 24*time.Hour {
+		hours := int(diff.Hours())
+		if hours == 1 {
+			return "1 hour ago"
+		}
+		return fmt.Sprintf("%d hours ago", hours)
+	}
+	if diff < 30*24*time.Hour {
+		days := int(diff.Hours() / 24)
+		if days == 1 {
+			return "1 day ago"
+		}
+		return fmt.Sprintf("%d days ago", days)
+	}
+	if diff < 365*24*time.Hour {
+		months := int(diff.Hours() / 24 / 30)
+		if months == 1 {
+			return "1 month ago"
+		}
+		return fmt.Sprintf("%d months ago", months)
+	}
+	years := int(diff.Hours() / 24 / 365)
+	if years == 1 {
+		return "1 year ago"
+	}
+	return fmt.Sprintf("%d years ago", years)
+}

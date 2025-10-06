@@ -84,6 +84,7 @@ type ToolDefinition struct {
 	Strict           bool                      `json:"strict,omitempty"`
 	ToolTextCallback func(any) (string, error) `json:"-"`
 	ToolAnyCallback  func(any) (any, error)    `json:"-"`
+	ToolInputDesc    func(any) string          `json:"-"`
 }
 
 func (td *ToolDefinition) Clean() *ToolDefinition {
