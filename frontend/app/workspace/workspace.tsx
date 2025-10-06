@@ -6,7 +6,6 @@ import { CenteredDiv } from "@/app/element/quickelems";
 import { ModalsRenderer } from "@/app/modals/modalsrenderer";
 import { TabBar } from "@/app/tab/tabbar";
 import { TabContent } from "@/app/tab/tabcontent";
-import { Widgets } from "@/app/workspace/widgets";
 import { atoms } from "@/store/global";
 import { useAtomValue } from "jotai";
 import { memo } from "react";
@@ -24,7 +23,6 @@ const WorkspaceElem = memo(() => {
                     ) : (
                         <>
                             <TabContent key={tabId} tabId={tabId} />
-                            <Widgets />
                             <ModalsRenderer />
                         </>
                     )}
