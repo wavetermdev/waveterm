@@ -143,6 +143,7 @@ func runRun(cmd *cobra.Command, args []string) (rtnErr error) {
 			},
 		},
 		Magnified: magnified,
+		Focused:   true,
 	}
 
 	oref, err := wshclient.CreateBlockCommand(RpcClient, createBlockData, nil)

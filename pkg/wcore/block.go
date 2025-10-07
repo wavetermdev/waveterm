@@ -223,6 +223,11 @@ func deleteBlockObj(ctx context.Context, blockId string) (int, error) {
 			}
 		}
 		wstore.DBDelete(tx.Context(), waveobj.OType_Block, blockId)
+		
+		// Clean up block runtime info
+		blockORef := waveobj.MakeORef(waveobj.OType_Block, blockId)
+		wstore.DeleteRTInfo(blockORef)
+		
 		return parentBlockCount, nil
 	})
 }

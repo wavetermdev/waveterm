@@ -156,17 +156,10 @@
                             margin-right: 12px;
                         }
 
-                        .dir-table-type {
-                            @include mixins.ellipsis();
-                        }
-
                         .dir-table-modestr {
                             font-family: Hack;
                         }
 
-                        &:has(.dir-table-name) {
-                            @include mixins.ellipsis();
-                        }
                         .dir-table-name {
                             font-weight: 500;
                         }

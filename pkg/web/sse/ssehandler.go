@@ -1,7 +1,7 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-package waveai
+package sse
 
 import (
 	"context"
@@ -67,9 +67,10 @@ type SSEHandlerCh struct {
 	writeCh chan SSEMessage
 	errCh   chan error
 
-	mu     sync.RWMutex
-	closed bool
-	err    error
+	mu          sync.RWMutex
+	closed      bool
+	initialized bool
+	err         error
 
 	wg sync.WaitGroup
 }
@@ -93,6 +94,8 @@ func (h *SSEHandlerCh) SetupSSE() error {
 	if h.closed {
 		return fmt.Errorf("SSE handler is closed")
 	}
+
+	h.initialized = true
 
 	// Reset write deadline for streaming
 	if err := h.rc.SetWriteDeadline(time.Time{}); err != nil {
@@ -169,8 +172,18 @@ func (h *SSEHandlerCh) writeMessage(msg SSEMessage) error {
 	}
 }
 
+// isInitialized returns whether SetupSSE has been called
+func (h *SSEHandlerCh) isInitialized() bool {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	return h.initialized
+}
+
 // writeDirectly writes data directly to the response writer
 func (h *SSEHandlerCh) writeDirectly(data string, msgType SSEMessageType) error {
+	if !h.isInitialized() {
+		panic("SSEHandlerCh not initialized - call SetupSSE first")
+	}
 	switch msgType {
 	case SSEMsgData:
 		_, err := fmt.Fprintf(h.w, "data: %s\n\n", data)
@@ -183,13 +196,16 @@ func (h *SSEHandlerCh) writeDirectly(data string, msgType SSEMessageType) error 
 			return err
 		}
 	default:
-		return fmt.Errorf("unsupported direct write type: %s", msgType)
+		panic(fmt.Sprintf("unsupported direct write type: %s", msgType))
 	}
 	return h.flush()
 }
 
 // writeEvent writes an SSE event with optional event type
 func (h *SSEHandlerCh) writeEvent(eventType, data string) error {
+	if !h.isInitialized() {
+		panic("SSEHandlerCh not initialized - call SetupSSE first")
+	}
 	if eventType != "" {
 		if _, err := fmt.Fprintf(h.w, "event: %s\n", eventType); err != nil {
 			return err
@@ -313,7 +329,7 @@ func (h *SSEHandlerCh) Err() error {
 // Close closes the write channel, sends [DONE], and cleans up resources
 func (h *SSEHandlerCh) Close() {
 	h.mu.Lock()
-	if h.closed {
+	if h.closed || !h.initialized {
 		h.mu.Unlock()
 		return
 	}
@@ -418,6 +434,13 @@ func (h *SSEHandlerCh) AiMsgToolInputAvailable(toolCallId, toolName string, inpu
 		"toolCallId": toolCallId,
 		"toolName":   toolName,
 		"input":      json.RawMessage(input),
+	}
+	return h.WriteJsonData(resp)
+}
+
+func (h *SSEHandlerCh) AiMsgStartStep() error {
+	resp := map[string]interface{}{
+		"type": AiMsgStartStep,
 	}
 	return h.WriteJsonData(resp)
 }

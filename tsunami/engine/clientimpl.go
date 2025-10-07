@@ -34,11 +34,17 @@ type ssEvent struct {
 
 var defaultClient = makeClient()
 
+type AppMeta struct {
+	Title     string `json:"title"`
+	ShortDesc string `json:"shortdesc"`
+}
+
 type ClientImpl struct {
 	Lock               *sync.Mutex
 	Root               *RootElem
 	RootElem           *vdom.VDomElem
 	CurrentClientId    string
+	Meta               AppMeta
 	ServerId           string
 	IsDone             bool
 	DoneReason         string
@@ -132,8 +138,10 @@ func (c *ClientImpl) getFaviconPath() string {
 }
 
 func (c *ClientImpl) makeBackendOpts() *rpctypes.VDomBackendOpts {
+	appMeta := c.GetAppMeta()
 	return &rpctypes.VDomBackendOpts{
-		Title:                c.Root.AppTitle,
+		Title:                appMeta.Title,
+		ShortDesc:            appMeta.ShortDesc,
 		GlobalKeyboardEvents: c.GlobalEventHandler != nil,
 		FaviconPath:          c.getFaviconPath(),
 	}
@@ -258,7 +266,6 @@ func (c *ClientImpl) SendSSEvent(event ssEvent) error {
 }
 
 func (c *ClientImpl) SendAsyncInitiation() error {
-	log.Printf("send async initiation\n")
 	return c.SendSSEvent(ssEvent{Event: "asyncinitiation", Data: nil})
 }
 
@@ -349,4 +356,16 @@ func (c *ClientImpl) RunEvents(events []vdom.VDomEvent) {
 	for _, event := range events {
 		c.Root.Event(event, c.GlobalEventHandler)
 	}
+}
+
+func (c *ClientImpl) GetAppMeta() AppMeta {
+	c.Lock.Lock()
+	defer c.Lock.Unlock()
+	return c.Meta
+}
+
+func (c *ClientImpl) SetAppMeta(m AppMeta) {
+	c.Lock.Lock()
+	defer c.Lock.Unlock()
+	c.Meta = m
 }

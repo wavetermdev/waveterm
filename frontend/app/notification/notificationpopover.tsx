@@ -56,7 +56,7 @@ const NotificationPopover = () => {
         >
             <PopoverButton
                 className={clsx(
-                    "w-[27px] h-[26px] flex justify-center [&>i]:text-[17px] horizontal-padding-6 vertical-padding-4 border-radius-",
+                    "w-[27px] h-[26px] flex justify-center [&>i]:text-[17px] px-[6px] py-[4px]",
                     addOnClassNames
                 )}
                 disabled={notifications.length === 0}
@@ -69,7 +69,7 @@ const NotificationPopover = () => {
                     <div className="flex items-center justify-between w-full px-2.5 pb-2 border-b border-white/8">
                         <span className="text-foreground text-sm font-semibold leading-4">Notifications</span>
                         <Button
-                            className="ghost grey text-[13px] font-normal leading-4 text-white/40 horizontal-padding-3 vertical-padding-3"
+                            className="ghost grey text-[13px] font-normal leading-4 text-white/40 px-[3px] py-[3px]"
                             onClick={(e) => {
                                 e.stopPropagation();
                                 removeAllNotifications();

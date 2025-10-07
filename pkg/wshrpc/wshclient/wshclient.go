@@ -14,6 +14,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wps"
 	"github.com/wavetermdev/waveterm/pkg/vdom"
 	"github.com/wavetermdev/waveterm/pkg/util/iochan/iochantypes"
+	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
 )
 
 // command "activity", wshserver.ActivityCommand
@@ -43,6 +44,12 @@ func AuthenticateTokenCommand(w *wshutil.WshRpc, data wshrpc.CommandAuthenticate
 // command "blockinfo", wshserver.BlockInfoCommand
 func BlockInfoCommand(w *wshutil.WshRpc, data string, opts *wshrpc.RpcOpts) (*wshrpc.BlockInfoData, error) {
 	resp, err := sendRpcRequestCallHelper[*wshrpc.BlockInfoData](w, "blockinfo", data, opts)
+	return resp, err
+}
+
+// command "captureblockscreenshot", wshserver.CaptureBlockScreenshotCommand
+func CaptureBlockScreenshotCommand(w *wshutil.WshRpc, data wshrpc.CommandCaptureBlockScreenshotData, opts *wshrpc.RpcOpts) (string, error) {
+	resp, err := sendRpcRequestCallHelper[string](w, "captureblockscreenshot", data, opts)
 	return resp, err
 }
 
@@ -313,6 +320,12 @@ func GetMetaCommand(w *wshutil.WshRpc, data wshrpc.CommandGetMetaData, opts *wsh
 	return resp, err
 }
 
+// command "getrtinfo", wshserver.GetRTInfoCommand
+func GetRTInfoCommand(w *wshutil.WshRpc, data wshrpc.CommandGetRTInfoData, opts *wshrpc.RpcOpts) (*waveobj.ObjRTInfo, error) {
+	resp, err := sendRpcRequestCallHelper[*waveobj.ObjRTInfo](w, "getrtinfo", data, opts)
+	return resp, err
+}
+
 // command "gettab", wshserver.GetTabCommand
 func GetTabCommand(w *wshutil.WshRpc, data string, opts *wshrpc.RpcOpts) (*waveobj.Tab, error) {
 	resp, err := sendRpcRequestCallHelper[*waveobj.Tab](w, "gettab", data, opts)
@@ -328,6 +341,18 @@ func GetUpdateChannelCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) (string, e
 // command "getvar", wshserver.GetVarCommand
 func GetVarCommand(w *wshutil.WshRpc, data wshrpc.CommandVarData, opts *wshrpc.RpcOpts) (*wshrpc.CommandVarResponseData, error) {
 	resp, err := sendRpcRequestCallHelper[*wshrpc.CommandVarResponseData](w, "getvar", data, opts)
+	return resp, err
+}
+
+// command "getwaveaichat", wshserver.GetWaveAIChatCommand
+func GetWaveAIChatCommand(w *wshutil.WshRpc, data wshrpc.CommandGetWaveAIChatData, opts *wshrpc.RpcOpts) (*uctypes.UIChat, error) {
+	resp, err := sendRpcRequestCallHelper[*uctypes.UIChat](w, "getwaveaichat", data, opts)
+	return resp, err
+}
+
+// command "getwaveairatelimit", wshserver.GetWaveAIRateLimitCommand
+func GetWaveAIRateLimitCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) (*uctypes.RateLimitInfo, error) {
+	resp, err := sendRpcRequestCallHelper[*uctypes.RateLimitInfo](w, "getwaveairatelimit", nil, opts)
 	return resp, err
 }
 
@@ -477,6 +502,12 @@ func SetMetaCommand(w *wshutil.WshRpc, data wshrpc.CommandSetMetaData, opts *wsh
 	return err
 }
 
+// command "setrtinfo", wshserver.SetRTInfoCommand
+func SetRTInfoCommand(w *wshutil.WshRpc, data wshrpc.CommandSetRTInfoData, opts *wshrpc.RpcOpts) error {
+	_, err := sendRpcRequestCallHelper[any](w, "setrtinfo", data, opts)
+	return err
+}
+
 // command "setvar", wshserver.SetVarCommand
 func SetVarCommand(w *wshutil.WshRpc, data wshrpc.CommandVarData, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "setvar", data, opts)
@@ -502,6 +533,12 @@ func StreamTestCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) chan wshrpc.Resp
 // command "streamwaveai", wshserver.StreamWaveAiCommand
 func StreamWaveAiCommand(w *wshutil.WshRpc, data wshrpc.WaveAIStreamRequest, opts *wshrpc.RpcOpts) chan wshrpc.RespOrErrorUnion[wshrpc.WaveAIPacketType] {
 	return sendRpcRequestResponseStreamHelper[wshrpc.WaveAIPacketType](w, "streamwaveai", data, opts)
+}
+
+// command "termgetscrollbacklines", wshserver.TermGetScrollbackLinesCommand
+func TermGetScrollbackLinesCommand(w *wshutil.WshRpc, data wshrpc.CommandTermGetScrollbackLinesData, opts *wshrpc.RpcOpts) (*wshrpc.CommandTermGetScrollbackLinesRtnData, error) {
+	resp, err := sendRpcRequestCallHelper[*wshrpc.CommandTermGetScrollbackLinesRtnData](w, "termgetscrollbacklines", data, opts)
+	return resp, err
 }
 
 // command "test", wshserver.TestCommand
@@ -536,6 +573,12 @@ func VDomUrlRequestCommand(w *wshutil.WshRpc, data wshrpc.VDomUrlRequestData, op
 func WaitForRouteCommand(w *wshutil.WshRpc, data wshrpc.CommandWaitForRouteData, opts *wshrpc.RpcOpts) (bool, error) {
 	resp, err := sendRpcRequestCallHelper[bool](w, "waitforroute", data, opts)
 	return resp, err
+}
+
+// command "waveaienabletelemetry", wshserver.WaveAIEnableTelemetryCommand
+func WaveAIEnableTelemetryCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) error {
+	_, err := sendRpcRequestCallHelper[any](w, "waveaienabletelemetry", nil, opts)
+	return err
 }
 
 // command "waveinfo", wshserver.WaveInfoCommand

@@ -8,6 +8,9 @@ import (
 	"github.com/wavetermdev/waveterm/tsunami/vdom"
 )
 
+const AppTitle = "Table Test Demo"
+const AppShortDesc = "Testing table component with sortable columns and pagination"
+
 // Sample data structure for the table
 type Person struct {
 	Name  string `json:"name"`
@@ -37,7 +40,6 @@ var sampleData = app.DataAtom("sampleData", []Person{
 
 // The App component is the required entry point for every Tsunami application
 var App = app.DefineComponent("App", func(_ struct{}) any {
-	app.UseSetAppTitle("Table Test Demo")
 
 	// Define table columns
 	columns := []ui.TableColumn[Person]{

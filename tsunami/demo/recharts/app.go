@@ -8,6 +8,9 @@ import (
 	"github.com/wavetermdev/waveterm/tsunami/vdom"
 )
 
+const AppTitle = "Recharts Demo"
+const AppShortDesc = "Interactive charts and data visualization using Recharts"
+
 // Global atoms for config and data
 var (
 	chartDataAtom = app.DataAtom("chartData", generateInitialData(), &app.AtomMeta{
@@ -209,7 +212,6 @@ var MiniCharts = app.DefineComponent("MiniCharts",
 
 var App = app.DefineComponent("App",
 	func(_ struct{}) any {
-		app.UseSetAppTitle("Recharts Demo")
 
 		tickerFn := func() {
 			if !isAnimatingAtom.Get() {
