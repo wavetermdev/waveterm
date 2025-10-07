@@ -126,10 +126,27 @@ func GenerateTabStateAndTools(ctx context.Context, tabid string, widgetAccess bo
 	var tools []uctypes.ToolDefinition
 	if widgetAccess {
 		tools = append(tools, GetCaptureScreenshotToolDefinition(tabid))
-	}
-	for _, block := range blocks {
-		blockTools := generateToolsForBlock(tabid, block)
-		tools = append(tools, blockTools...)
+		viewTypes := make(map[string]bool)
+		for _, block := range blocks {
+			if block.Meta == nil {
+				continue
+			}
+			viewType, ok := block.Meta["view"].(string)
+			if !ok {
+				continue
+			}
+			viewTypes[viewType] = true
+			if viewType == "tsunami" {
+				blockTools := generateToolsForTsunamiBlock(block)
+				tools = append(tools, blockTools...)
+			}
+		}
+		if viewTypes["term"] {
+			tools = append(tools, GetTermGetScrollbackToolDefinition(tabid))
+		}
+		if viewTypes["web"] {
+			tools = append(tools, GetWebNavigateToolDefinition(tabid))
+		}
 	}
 	return tabState, tools, nil
 }
@@ -164,37 +181,25 @@ func GenerateCurrentTabStatePrompt(blocks []*waveobj.Block, widgetAccess bool) s
 	return prompt.String()
 }
 
-func generateToolsForBlock(tabId string, block *waveobj.Block) []uctypes.ToolDefinition {
-	if block.Meta == nil {
-		return nil
-	}
-
-	viewType, ok := block.Meta["view"].(string)
-	if !ok {
-		return nil
-	}
-
+func generateToolsForTsunamiBlock(block *waveobj.Block) []uctypes.ToolDefinition {
 	var tools []uctypes.ToolDefinition
-	switch viewType {
-	case "term":
-		tools = append(tools, GetTermGetScrollbackToolDefinition(tabId))
-	case "web":
-		tools = append(tools, GetWebNavigateToolDefinition(block))
-	case "tsunami":
-		status := blockcontroller.GetBlockControllerRuntimeStatus(block.OID)
-		if status != nil && status.ShellProcStatus == blockcontroller.Status_Running && status.TsunamiPort > 0 {
-			blockORef := waveobj.MakeORef(waveobj.OType_Block, block.OID)
-			rtInfo := wstore.GetRTInfo(blockORef)
-			if tool := GetTsunamiGetDataToolDefinition(block, rtInfo, status); tool != nil {
-				tools = append(tools, *tool)
-			}
-			if tool := GetTsunamiGetConfigToolDefinition(block, rtInfo, status); tool != nil {
-				tools = append(tools, *tool)
-			}
-			if tool := GetTsunamiSetConfigToolDefinition(block, rtInfo, status); tool != nil {
-				tools = append(tools, *tool)
-			}
-		}
+
+	status := blockcontroller.GetBlockControllerRuntimeStatus(block.OID)
+	if status == nil || status.ShellProcStatus != blockcontroller.Status_Running || status.TsunamiPort <= 0 {
+		return nil
+	}
+
+	blockORef := waveobj.MakeORef(waveobj.OType_Block, block.OID)
+	rtInfo := wstore.GetRTInfo(blockORef)
+
+	if tool := GetTsunamiGetDataToolDefinition(block, rtInfo, status); tool != nil {
+		tools = append(tools, *tool)
+	}
+	if tool := GetTsunamiGetConfigToolDefinition(block, rtInfo, status); tool != nil {
+		tools = append(tools, *tool)
+	}
+	if tool := GetTsunamiSetConfigToolDefinition(block, rtInfo, status); tool != nil {
+		tools = append(tools, *tool)
 	}
 
 	return tools
