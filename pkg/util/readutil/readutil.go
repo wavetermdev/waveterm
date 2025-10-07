@@ -10,180 +10,189 @@ import (
 	"os"
 )
 
-// ReadLineOffsets seeks to filePos in the file and reads up to readAmt lines.
-// It returns a slice of byte offsets where offsets[0] is filePos, offsets[1] is
-// the start of the next line, etc. The slice will have at most readAmt+1 elements.
-// The hasMore return value indicates whether there is more data after the lines read.
-func ReadLineOffsets(file *os.File, filePos int64, readAmt int) ([]int64, bool, error) {
-	if _, err := file.Seek(filePos, io.SeekStart); err != nil {
-		return nil, false, err
+const (
+	StopReasonBOF       = "bof"
+	StopReasonEOF       = "eof"
+	StopReasonReadLimit = "read_limit"
+)
+
+// ReadLines reads lines from the reader, optionally skipping the first skipLines lines.
+// If lineCount is 0, no line limit is applied. If readLimit is 0, no byte limit is applied.
+// Stops when either limit is reached or EOF.
+// Returns lines (with trailing newlines), stop reason, and error.
+// Stop reason is StopReasonEOF when EOF is reached, StopReasonReadLimit when byte limit is reached,
+// or empty string for natural returns (line count limit or no limits applied).
+func ReadLines(reader io.Reader, lineCount int, skipLines int, readLimit int) ([]string, string, error) {
+	bufReader := bufio.NewReader(reader)
+	lines := make([]string, 0)
+	bytesRead := 0
+	skippedLines := 0
+
+	for {
+		line, err := bufReader.ReadString('\n')
+		if len(line) > 0 {
+			bytesRead += len(line)
+			
+			if skippedLines < skipLines {
+				skippedLines++
+			} else {
+				lines = append(lines, line)
+				if lineCount > 0 && len(lines) >= lineCount {
+					return lines, "", nil
+				}
+			}
+			
+			if readLimit > 0 && bytesRead >= readLimit {
+				return lines, StopReasonReadLimit, nil
+			}
+		}
+
+		if err != nil {
+			if err == io.EOF {
+				return lines, StopReasonEOF, nil
+			}
+			return nil, "", err
+		}
+	}
+}
+
+// readLastNLineOffsets reads all line offsets from the reader, keeping only the last maxLines in a sliding window.
+// keepFirst indicates whether offset 0 should be included (true if starting from file beginning).
+// Returns the offsets and the total number of lines found.
+func ReadLastNLineOffsets(rs io.ReadSeeker, maxLines int, keepFirst bool) ([]int64, int, error) {
+	if _, err := rs.Seek(0, io.SeekStart); err != nil {
+		return nil, 0, err
 	}
 
-	offsets := make([]int64, 0, readAmt+1)
-	offsets = append(offsets, filePos)
+	var offsets []int64
+	reader := bufio.NewReader(rs)
+	var currentPos int64 = 0
+	totalLines := 0
 
-	reader := bufio.NewReader(file)
-	currentPos := filePos
+	if keepFirst {
+		offsets = append(offsets, 0)
+		totalLines = 1
+	}
 
-	for i := 0; i < readAmt; i++ {
+	for {
 		line, err := reader.ReadBytes('\n')
 
 		if len(line) > 0 {
 			currentPos += int64(len(line))
 			offsets = append(offsets, currentPos)
+			totalLines++
+			// Keep maxLines+1 for sliding window (extra slot for EOF position)
+			if len(offsets) > maxLines+1 {
+				offsets = offsets[1:]
+			}
 		}
 
+		if err == io.EOF {
+			break
+		}
 		if err != nil {
-			if err == io.EOF {
-				return offsets, false, nil
-			}
-			return nil, false, err
+			return nil, 0, err
 		}
 	}
 
-	// We successfully read readAmt lines, check if there's more
-	_, err := reader.ReadByte()
-	hasMore := (err == nil)
+	// Trim the final EOF offset if we have one
+	if len(offsets) > 0 {
+		offsets = offsets[:len(offsets)-1]
+		totalLines--
+	}
 
-	return offsets, hasMore, nil
+	return offsets, totalLines, nil
 }
 
-// ReadLines seeks to filePos in the file and reads up to readAmt lines.
-// It returns the lines as strings (without trailing newlines).
-func ReadLines(file *os.File, filePos int64, readAmt int) ([]string, error) {
-	if _, err := file.Seek(filePos, io.SeekStart); err != nil {
-		return nil, err
+// readTailLinesInternal reads the last lineCount lines from the reader, excluding the last lineOffset lines.
+// For example, lineCount=10 and lineOffset=5 would return lines -15 through -6 (the 10 lines before the last 5).
+// keepFirst indicates whether the first line should be kept (true if starting at file position 0, false otherwise).
+// Returns the lines (with trailing newlines), a hasMore flag, and any error.
+// hasMore is true if there are lines before our window (didn't hit BOF), false if we read from the very beginning.
+func readTailLinesInternal(rs io.ReadSeeker, lineCount int, lineOffset int, keepFirst bool) ([]string, bool, error) {
+	maxOffsets := lineCount + lineOffset
+	offsets, totalLines, err := ReadLastNLineOffsets(rs, maxOffsets, keepFirst)
+	if err != nil {
+		return nil, false, err
 	}
 
-	lines := make([]string, 0, readAmt)
-	reader := bufio.NewReader(file)
-
-	for i := 0; i < readAmt; i++ {
-		line, err := reader.ReadString('\n')
-		if len(line) > 0 {
-			// Remove trailing newline if present
-			if line[len(line)-1] == '\n' {
-				line = line[:len(line)-1]
-			}
-			lines = append(lines, line)
-		}
-
-		if err != nil {
-			if err == io.EOF {
-				return lines, nil
-			}
-			return nil, err
-		}
+	if totalLines <= lineOffset {
+		return []string{}, false, nil
 	}
 
-	return lines, nil
+	linesToRead := lineCount
+	if totalLines-lineOffset < lineCount {
+		linesToRead = totalLines - lineOffset
+	}
+	startIdx := len(offsets) - lineOffset - linesToRead
+	hasMore := totalLines > lineCount+lineOffset
+
+	if _, err := rs.Seek(offsets[startIdx], io.SeekStart); err != nil {
+		return nil, false, err
+	}
+
+	lines, _, err := ReadLines(rs, linesToRead, 0, 0)
+	if err != nil {
+		return nil, false, err
+	}
+
+	return lines, hasMore, nil
 }
 
-// ReadLinesFromEnd reads lines from the end of a file with a range offset.
-// lineStart and lineEnd are 0-based indices from the end of the file:
-//   - Read(0, 99) returns the last 100 lines
-//   - Read(100, 199) returns lines 100-199 from the end (with 100 lines after them)
-// maxRead limits how many bytes to read backwards from the end of the file.
-// Lines are returned in reading order (earliest line first).
-func ReadLinesFromEnd(file *os.File, lineStart int, lineEnd int, maxRead int64) ([]string, error) {
-	const chunkSize = 1024 * 1024 // 1MB
+// ReadTailLines reads the last lineCount lines from a file, excluding the last lineOffset lines.
+// It progressively reads larger windows from the end of the file (starting at 1MB, doubling up to readLimit)
+// until it finds enough lines or reaches the limit. Returns the lines, stop reason, and any error.
+// Stop reason is StopReasonBOF when beginning of file is reached, StopReasonReadLimit when byte limit is reached,
+// or empty string for natural completion (found requested line count).
+func ReadTailLines(file *os.File, lineCount int, lineOffset int, readLimit int64) ([]string, string, error) {
+	if readLimit <= 0 {
+		return nil, "", fmt.Errorf("ReadTailLines readLimit must be positive, got %d", readLimit)
+	}
 
 	fileInfo, err := file.Stat()
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	fileSize := fileInfo.Size()
 
-	if fileSize == 0 {
-		return []string{}, nil
+	readBytes := int64(1024 * 1024)
+	if readLimit < readBytes {
+		readBytes = readLimit
 	}
 
-	// Walk backwards collecting line offsets until we have enough
-	neededLines := lineEnd + 1
-	maxOffsets := neededLines + 100
-	allOffsets := make([]int64, maxOffsets)
-	writePos := maxOffsets
-	currentEndPos := fileSize
-	totalBytesRead := int64(0)
-
-	for writePos > 0 && currentEndPos > 0 {
-		chunkStart := currentEndPos - chunkSize
-		if chunkStart < 0 {
-			chunkStart = 0
+	for {
+		startPos := fileSize - readBytes
+		if startPos < 0 {
+			startPos = 0
+			readBytes = fileSize
 		}
 
-		chunkReadSize := currentEndPos - chunkStart
-		totalBytesRead += chunkReadSize
-		if totalBytesRead > maxRead {
-			return nil, fmt.Errorf("exceeded max read size (%d bytes)", maxRead)
-		}
+		sectionReader := io.NewSectionReader(file, startPos, readBytes)
+		keepFirst := startPos == 0
 
-		offsets, _, err := ReadLineOffsets(file, chunkStart, chunkSize)
+		lines, hasMoreInWindow, err := readTailLinesInternal(sectionReader, lineCount, lineOffset, keepFirst)
 		if err != nil {
-			return nil, err
+			return nil, "", err
 		}
 
-		if len(offsets) == 0 {
-			break
-		}
-
-		// If we only got 1 offset, the line is too long to fit in a chunk
-		if len(offsets) == 1 {
-			return nil, fmt.Errorf("line too long to read (exceeds chunk size)")
-		}
-
-		// Skip first offset if not at start of file (might be partial line)
-		startIdx := 0
-		if chunkStart > 0 {
-			startIdx = 1
-		}
-
-		// Write offsets backwards into allOffsets array
-		for i := len(offsets) - 1; i >= startIdx; i-- {
-			writePos--
-			allOffsets[writePos] = offsets[i]
-			if writePos == 0 {
-				break
+		if len(lines) == lineCount {
+			hasMore := startPos > 0 || hasMoreInWindow
+			if !hasMore {
+				return lines, StopReasonBOF, nil
 			}
+			return lines, "", nil
 		}
 
-		// Next iteration backs up from the first complete line
-		if startIdx < len(offsets) {
-			currentEndPos = offsets[startIdx]
+		if readBytes >= readLimit || readBytes >= fileSize {
+			if startPos > 0 {
+				return lines, StopReasonReadLimit, nil
+			}
+			return lines, StopReasonBOF, nil
 		}
 
-		if chunkStart == 0 || writePos == 0 {
-			break
+		readBytes *= 2
+		if readBytes > readLimit {
+			readBytes = readLimit
 		}
 	}
-
-	// Slice to get only the filled portion
-	allOffsets = allOffsets[writePos:]
-
-	// Calculate actual line indices
-	// allOffsets[i] is the byte offset of line i
-	totalLines := len(allOffsets) - 1
-
-	if totalLines == 0 {
-		return []string{}, nil
-	}
-
-	// Clamp to available lines
-	if lineEnd >= totalLines {
-		lineEnd = totalLines - 1
-	}
-	if lineStart >= totalLines {
-		return []string{}, nil
-	}
-
-	// Convert from "from end" indices to "from start" indices
-	// lineStart=0 means last line (index totalLines-1)
-	// lineEnd=99 means 100th line from end (index totalLines-100)
-	fromStartIndex := totalLines - lineEnd - 1
-	toStartIndex := totalLines - lineStart - 1
-
-	startOffset := allOffsets[fromStartIndex]
-	readAmt := toStartIndex - fromStartIndex + 1
-
-	return ReadLines(file, startOffset, readAmt)
 }

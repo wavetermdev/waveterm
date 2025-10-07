@@ -4,28 +4,54 @@
 package aiusechat
 
 import (
-	"bufio"
-	"bytes"
 	"fmt"
 	"io"
 	"os"
 	"strings"
 
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
+	"github.com/wavetermdev/waveterm/pkg/util/readutil"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 )
 
+const StopReasonMaxBytes = "max_bytes"
+
 type readTextFileParams struct {
-	Filename  string `json:"filename"`
-	LineStart *int   `json:"line_start"`
-	LineEnd   *int   `json:"line_end"`
-	MaxBytes  *int   `json:"max_bytes"`
-	FromEnd   bool   `json:"from_end"`
+	Filename string  `json:"filename"`
+	Origin   *string `json:"origin"`   // "start" or "end", defaults to "start"
+	Offset   *int    `json:"offset"`   // lines to skip, defaults to 0
+	Count    *int    `json:"count"`    // number of lines to read, defaults to DefaultLineCount
+	MaxBytes *int    `json:"max_bytes"`
+}
+
+// truncateData truncates data to maxBytes while respecting line boundaries.
+// For origin "start", keeps the beginning and truncates at last newline before maxBytes.
+// For origin "end", keeps the end and truncates from beginning at first newline after removing excess.
+func truncateData(data string, origin string, maxBytes int) string {
+	if len(data) <= maxBytes {
+		return data
+	}
+
+	if origin == "end" {
+		excessBytes := len(data) - maxBytes
+		truncateIdx := strings.Index(data[excessBytes:], "\n")
+		if truncateIdx == -1 {
+			return data[excessBytes:]
+		}
+		return data[excessBytes+truncateIdx+1:]
+	}
+
+	truncateIdx := strings.LastIndex(data[:maxBytes], "\n")
+	if truncateIdx == -1 {
+		return data[:maxBytes]
+	}
+	return data[:truncateIdx+1]
 }
 
 func readTextFileCallback(input any) (any, error) {
-	const DEFAULT_LINE_COUNT = 100
-	const DEFAULT_MAX_BYTES = 50 * 1024
+	const DefaultLineCount = 100
+	const DefaultMaxBytes = 50 * 1024
+	const ReadLimit = 1024 * 1024 * 1024
 
 	var params readTextFileParams
 	if err := utilfn.ReUnmarshal(&params, input); err != nil {
@@ -36,7 +62,7 @@ func readTextFileCallback(input any) (any, error) {
 		return nil, fmt.Errorf("missing filename parameter")
 	}
 
-	maxBytes := DEFAULT_MAX_BYTES
+	maxBytes := DefaultMaxBytes
 	if params.MaxBytes != nil {
 		maxBytes = *params.MaxBytes
 	}
@@ -66,90 +92,70 @@ func readTextFileCallback(input any) (any, error) {
 		return nil, fmt.Errorf("file appears to be binary content")
 	}
 
-	file.Seek(0, 0)
+	origin := "start"
+	if params.Origin != nil {
+		origin = *params.Origin
+	}
+
+	if origin != "start" && origin != "end" {
+		return nil, fmt.Errorf("invalid origin value '%s': must be 'start' or 'end'", origin)
+	}
+
+	offset := 0
+	if params.Offset != nil {
+		offset = *params.Offset
+	}
+
+	count := DefaultLineCount
+	if params.Count != nil {
+		count = *params.Count
+		if count < 1 {
+			return nil, fmt.Errorf("count must be at least 1, got %d", count)
+		}
+	}
+
+	if offset < 0 {
+		offset = 0
+	}
 
 	var lines []string
-	scanner := bufio.NewScanner(file)
-	buf := make([]byte, 0, 64*1024)
-	scanner.Buffer(buf, maxBytes)
+	var stopReason string
 
-	for scanner.Scan() {
-		lines = append(lines, scanner.Text())
+	if _, err := file.Seek(0, 0); err != nil {
+		return nil, fmt.Errorf("failed to seek to start of file: %w", err)
 	}
 
-	if err := scanner.Err(); err != nil {
-		return nil, fmt.Errorf("error reading file: %w", err)
-	}
-
-	totalLines := len(lines)
-
-	if params.FromEnd {
-		for i, j := 0, len(lines)-1; i < j; i, j = i+1, j-1 {
-			lines[i], lines[j] = lines[j], lines[i]
+	if origin == "end" {
+		lines, stopReason, err = readutil.ReadTailLines(file, count, offset, int64(ReadLimit))
+		if err != nil {
+			return nil, fmt.Errorf("error reading file from end: %w", err)
+		}
+	} else {
+		lines, stopReason, err = readutil.ReadLines(file, count, offset, ReadLimit)
+		if err != nil {
+			return nil, fmt.Errorf("error reading file: %w", err)
 		}
 	}
 
-	start := 0
-	count := DEFAULT_LINE_COUNT
-	if params.LineStart != nil {
-		start = *params.LineStart
-	}
-	if params.LineEnd != nil {
-		count = *params.LineEnd - start
+	data := strings.Join(lines, "")
+	data = strings.TrimSuffix(data, "\n")
+
+	if len(data) > maxBytes {
+		data = truncateData(data, origin, maxBytes)
+		stopReason = StopReasonMaxBytes
 	}
 
-	if start < 0 {
-		start = 0
-	}
-	if start > len(lines) {
-		start = len(lines)
-	}
-
-	end := start + count
-	if end > len(lines) {
-		end = len(lines)
-	}
-	if end < start {
-		end = start
-	}
-
-	selectedLines := lines[start:end]
-
-	var dataBuilder strings.Builder
-	for i, line := range selectedLines {
-		if i > 0 {
-			dataBuilder.WriteString("\n")
-		}
-		dataBuilder.WriteString(line)
-	}
-	data := dataBuilder.String()
-
-	truncated := ""
-	currentBytes := len(data)
-	if currentBytes >= maxBytes {
-		truncated = "max_bytes"
-		lastNewline := bytes.LastIndexByte([]byte(data[:maxBytes]), '\n')
-		if lastNewline > 0 {
-			data = data[:lastNewline]
-		} else {
-			data = data[:maxBytes]
-		}
-	} else if end >= len(lines) {
-		truncated = "eof"
-	}
-
-	if truncated == "" {
-		truncated = "null"
-	}
-
-	return map[string]any{
+	result := map[string]any{
 		"total_size":    totalSize,
-		"line_count":    totalLines,
 		"data":          data,
 		"modified":      utilfn.FormatRelativeTime(modTime),
 		"modified_time": modTime.UTC().Format("2006-01-02 15:04:05 UTC"),
-		"truncated":     truncated,
-	}, nil
+	}
+	if stopReason != "" {
+		result["truncated"] = stopReason
+	}
+
+	return result, nil
 }
 
 func GetReadTextFileToolDefinition() uctypes.ToolDefinition {
@@ -165,24 +171,29 @@ func GetReadTextFileToolDefinition() uctypes.ToolDefinition {
 					"type":        "string",
 					"description": "Path to the file to read",
 				},
-				"line_start": map[string]any{
-					"type":        "integer",
-					"minimum":     0,
-					"description": "Starting line number (0-based). If from_end is true, this is lines from the end.",
+				"origin": map[string]any{
+					"type":        "string",
+					"enum":        []string{"start", "end"},
+					"default":     "start",
+					"description": "Where to read from: 'start' (default) or 'end' of file",
 				},
-				"line_end": map[string]any{
+				"offset": map[string]any{
 					"type":        "integer",
 					"minimum":     0,
-					"description": "Ending line number (exclusive). If from_end is true, this is lines from the end.",
+					"default":     0,
+					"description": "Lines to skip. From 'start': 0-based line index. From 'end': lines to skip from the end (0 = very last line)",
+				},
+				"count": map[string]any{
+					"type":        "integer",
+					"minimum":     1,
+					"default":     100,
+					"description": "Number of lines to return",
 				},
 				"max_bytes": map[string]any{
 					"type":        "integer",
 					"minimum":     1,
-					"description": "Maximum bytes to return (default: 51200). Data will be truncated if it exceeds this.",
-				},
-				"from_end": map[string]any{
-					"type":        "boolean",
-					"description": "If true, read lines from the end of the file instead of the beginning (default: false)",
+					"default":     51200,
+					"description": "Maximum bytes to return. If the result exceeds this, it will be truncated at line boundaries",
 				},
 			},
 			"required":             []string{"filename"},
