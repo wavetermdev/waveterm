@@ -4,6 +4,7 @@
 package aiusechat
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -14,6 +15,60 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
 )
+
+type TermGetScrollbackToolInput struct {
+	LineStart int `json:"line_start,omitempty"`
+	Count     int `json:"count,omitempty"`
+}
+
+type TermGetScrollbackToolOutput struct {
+	TotalLines         int    `json:"total_lines"`
+	LineStart          int    `json:"line_start"`
+	LineEnd            int    `json:"line_end"`
+	ReturnedLines      int    `json:"returned_lines"`
+	Content            string `json:"content"`
+	SinceLastOutputSec *int   `json:"since_last_output_sec,omitempty"`
+	HasMore            bool   `json:"has_more"`
+	NextStart          *int   `json:"next_start"`
+}
+
+func parseTermGetScrollbackInput(input any) (*TermGetScrollbackToolInput, error) {
+	const (
+		DefaultCount = 200
+		MaxCount     = 1000
+	)
+
+	result := &TermGetScrollbackToolInput{
+		LineStart: 0,
+		Count:     0,
+	}
+
+	if input == nil {
+		result.Count = DefaultCount
+		return result, nil
+	}
+
+	inputBytes, err := json.Marshal(input)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal input: %w", err)
+	}
+
+	if err := json.Unmarshal(inputBytes, result); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal input: %w", err)
+	}
+
+	if result.Count == 0 {
+		result.Count = DefaultCount
+	}
+
+	if result.Count < 0 {
+		return nil, fmt.Errorf("count must be positive")
+	}
+
+	result.Count = min(result.Count, MaxCount)
+
+	return result, nil
+}
 
 func GetTermGetScrollbackToolDefinition(block *waveobj.Block) uctypes.ToolDefinition {
 	blockIdPrefix := block.OID[:8]
@@ -27,90 +82,45 @@ func GetTermGetScrollbackToolDefinition(block *waveobj.Block) uctypes.ToolDefini
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
-				"linestart": map[string]any{
+				"line_start": map[string]any{
 					"type":        "integer",
 					"minimum":     0,
 					"description": "Logical start index where 0 = most recent line (default: 0)",
 				},
-				"lineend": map[string]any{
-					"type":        "integer",
-					"minimum":     0,
-					"description": "Exclusive end index. Returns lines [linestart, lineend)",
-				},
 				"count": map[string]any{
 					"type":        "integer",
 					"minimum":     1,
-					"description": "Alternative to lineend: number of lines to return from linestart (default: 200)",
+					"description": "Number of lines to return from line_start (default: 200)",
 				},
 			},
 			"required":             []string{},
 			"additionalProperties": false,
 		},
 		ToolInputDesc: func(input any) string {
-			const DEFAULT_COUNT = 200
-			inputMap := make(map[string]any)
-			if input != nil {
-				if m, ok := input.(map[string]any); ok {
-					inputMap = m
-				}
+			parsed, err := parseTermGetScrollbackInput(input)
+			if err != nil {
+				return fmt.Sprintf("error parsing input: %v", err)
 			}
 
-			lineStart := 0
-			if val, ok := inputMap["linestart"].(float64); ok {
-				lineStart = int(val)
+			if parsed.LineStart == 0 && parsed.Count == 200 {
+				return fmt.Sprintf("reading terminal output from %s (most recent %d lines)", blockIdPrefix, parsed.Count)
 			}
-
-			count := DEFAULT_COUNT
-			if val, ok := inputMap["count"].(float64); ok {
-				count = int(val)
-			} else if lineEndVal, ok := inputMap["lineend"].(float64); ok {
-				lineEnd := int(lineEndVal)
-				count = lineEnd - lineStart
-			}
-
-			if lineStart == 0 && count == DEFAULT_COUNT {
-				return fmt.Sprintf("reading terminal output from %s (most recent %d lines)", blockIdPrefix, count)
-			}
-			lineEnd := lineStart + count
-			return fmt.Sprintf("reading terminal output from %s (lines %d-%d)", blockIdPrefix, lineStart, lineEnd)
+			lineEnd := parsed.LineStart + parsed.Count
+			return fmt.Sprintf("reading terminal output from %s (lines %d-%d)", blockIdPrefix, parsed.LineStart, lineEnd)
 		},
 		ToolAnyCallback: func(input any) (any, error) {
-			const DEFAULT_COUNT = 200
-			const MAX_COUNT = 1000
-
-			inputMap := make(map[string]any)
-			if input != nil {
-				var ok bool
-				inputMap, ok = input.(map[string]any)
-				if !ok {
-					return nil, fmt.Errorf("invalid input format")
-				}
+			parsed, err := parseTermGetScrollbackInput(input)
+			if err != nil {
+				return nil, err
 			}
 
-			lineStart := 0
-			if val, ok := inputMap["linestart"].(float64); ok {
-				lineStart = int(val)
-			}
-
-			count := DEFAULT_COUNT
-			if val, ok := inputMap["count"].(float64); ok {
-				count = int(val)
-			} else if lineEndVal, ok := inputMap["lineend"].(float64); ok {
-				lineEnd := int(lineEndVal)
-				count = lineEnd - lineStart
-			}
-
-			count = min(count, MAX_COUNT)
-			if count < 0 {
-				count = 0
-			}
-			lineEnd := lineStart + count
+			lineEnd := parsed.LineStart + parsed.Count
 
 			rpcClient := wshclient.GetBareRpcClient()
 			result, err := wshclient.TermGetScrollbackLinesCommand(
 				rpcClient,
 				wshrpc.CommandTermGetScrollbackLinesData{
-					LineStart: lineStart,
+					LineStart: parsed.LineStart,
 					LineEnd:   lineEnd,
 				},
 				&wshrpc.RpcOpts{Route: wshutil.MakeFeBlockRouteId(block.OID)},
@@ -120,19 +130,29 @@ func GetTermGetScrollbackToolDefinition(block *waveobj.Block) uctypes.ToolDefini
 			}
 
 			content := strings.Join(result.Lines, "\n")
-			sinceLastOutputSec := 0
+			effectiveLineEnd := min(lineEnd, result.TotalLines)
+			hasMore := effectiveLineEnd < result.TotalLines
+
+			var sinceLastOutputSec *int
 			if result.LastUpdated > 0 {
-				sinceLastOutputSec = max(0, int((time.Now().UnixMilli()-result.LastUpdated)/1000))
+				sec := max(0, int((time.Now().UnixMilli()-result.LastUpdated)/1000))
+				sinceLastOutputSec = &sec
 			}
 
-			return map[string]any{
-				"totallines":            result.TotalLines,
-				"linestart":             result.LineStart,
-				"lineend":               min(lineEnd, result.TotalLines),
-				"returned_lines":        len(result.Lines),
-				"content":               content,
-				"since_last_output_sec": sinceLastOutputSec,
-				"has_more":              lineEnd < result.TotalLines,
+			var nextStart *int
+			if hasMore {
+				nextStart = &effectiveLineEnd
+			}
+
+			return &TermGetScrollbackToolOutput{
+				TotalLines:         result.TotalLines,
+				LineStart:          result.LineStart,
+				LineEnd:            effectiveLineEnd,
+				ReturnedLines:      len(result.Lines),
+				Content:            content,
+				SinceLastOutputSec: sinceLastOutputSec,
+				HasMore:            hasMore,
+				NextStart:          nextStart,
 			}, nil
 		},
 	}
