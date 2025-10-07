@@ -5,9 +5,11 @@ package blockcontroller
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -15,11 +17,13 @@ import (
 	"strings"
 	"sync"
 	"syscall"
+	"time"
 
 	"github.com/wavetermdev/waveterm/pkg/utilds"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wps"
+	"github.com/wavetermdev/waveterm/pkg/wstore"
 	"github.com/wavetermdev/waveterm/tsunami/build"
 )
 
@@ -79,6 +83,46 @@ func getCachesDir() string {
 	}
 
 	return cacheDir
+}
+
+func (c *TsunamiController) fetchAndSetSchemas(port int) {
+	url := fmt.Sprintf("http://localhost:%d/api/schemas", port)
+	client := &http.Client{
+		Timeout: 10 * time.Second,
+	}
+	
+	resp, err := client.Get(url)
+	if err != nil {
+		log.Printf("TsunamiController: failed to fetch schemas from %s: %v", url, err)
+		return
+	}
+	defer resp.Body.Close()
+	
+	if resp.StatusCode != http.StatusOK {
+		log.Printf("TsunamiController: received non-200 status %d from %s", resp.StatusCode, url)
+		return
+	}
+	
+	var schemas any
+	if err := json.NewDecoder(resp.Body).Decode(&schemas); err != nil {
+		log.Printf("TsunamiController: failed to decode schemas response: %v", err)
+		return
+	}
+	
+	blockRef := waveobj.MakeORef(waveobj.OType_Block, c.blockId)
+	wstore.SetRTInfo(blockRef, map[string]any{
+		"tsunami:schemas": schemas,
+	})
+	
+	log.Printf("TsunamiController: successfully fetched and cached schemas for block %s", c.blockId)
+}
+
+func (c *TsunamiController) clearSchemas() {
+	blockRef := waveobj.MakeORef(waveobj.OType_Block, c.blockId)
+	wstore.SetRTInfo(blockRef, map[string]any{
+		"tsunami:schemas": nil,
+	})
+	log.Printf("TsunamiController: cleared schemas for block %s", c.blockId)
 }
 
 func getTsunamiAppCachePath(scope string, appName string, osArch string) (string, error) {
@@ -217,7 +261,7 @@ func (c *TsunamiController) Start(ctx context.Context, blockMeta waveobj.MetaMap
 		return fmt.Errorf("app cache is not executable: %s", cachePath)
 	}
 
-	tsunamiProc, err := runTsunamiAppBinary(ctx, cachePath, appPath)
+	tsunamiProc, err := runTsunamiAppBinary(ctx, cachePath, appPath, blockMeta)
 	if err != nil {
 		return fmt.Errorf("failed to run tsunami app: %w", err)
 	}
@@ -228,6 +272,11 @@ func (c *TsunamiController) Start(ctx context.Context, blockMeta waveobj.MetaMap
 		c.port = tsunamiProc.Port
 	})
 	go c.sendStatusUpdate()
+
+	// Asynchronously fetch schemas after port is detected
+	go func() {
+		c.fetchAndSetSchemas(tsunamiProc.Port)
+	}()
 
 	// Monitor process completion
 	go func() {
@@ -240,6 +289,7 @@ func (c *TsunamiController) Start(ctx context.Context, blockMeta waveobj.MetaMap
 				c.port = 0
 				c.exitCode = exitCodeFromWaitErr(tsunamiProc.WaitRtn)
 			})
+			c.clearSchemas()
 			go c.sendStatusUpdate()
 		}
 		c.runLock.Unlock()
@@ -273,6 +323,7 @@ func (c *TsunamiController) Stop(graceful bool, newStatus string) error {
 		c.status = newStatus
 		c.port = 0
 	})
+	c.clearSchemas()
 	go c.sendStatusUpdate()
 	return nil
 }
@@ -300,9 +351,17 @@ func (c *TsunamiController) SendInput(input *BlockInputUnion) error {
 	return fmt.Errorf("tsunami controller send input not implemented")
 }
 
-func runTsunamiAppBinary(ctx context.Context, appBinPath string, appPath string) (*TsunamiAppProc, error) {
+func runTsunamiAppBinary(ctx context.Context, appBinPath string, appPath string, blockMeta waveobj.MetaMapType) (*TsunamiAppProc, error) {
 	cmd := exec.Command(appBinPath)
 	cmd.Env = append(os.Environ(), "TSUNAMI_CLOSEONSTDIN=1")
+
+	// Add TsunamiEnv variables if configured
+	tsunamiEnv := blockMeta.GetMap(waveobj.MetaKey_TsunamiEnv)
+	for key, value := range tsunamiEnv {
+		if strValue, ok := value.(string); ok {
+			cmd.Env = append(cmd.Env, key+"="+strValue)
+		}
+	}
 
 	stdoutPipe, err := cmd.StdoutPipe()
 	if err != nil {
@@ -320,12 +379,12 @@ func runTsunamiAppBinary(ctx context.Context, appBinPath string, appPath string)
 	}
 
 	appName := build.GetAppName(appPath)
-	
+
 	stdoutBuffer := utilds.MakeReaderLineBuffer(stdoutPipe, 1000)
 	stdoutBuffer.SetLineCallback(func(line string) {
 		log.Printf("[tsunami:%s] %s\n", appName, line)
 	})
-	
+
 	stderrBuffer := utilds.MakeReaderLineBuffer(stderrPipe, 1000)
 	stderrBuffer.SetLineCallback(func(line string) {
 		log.Printf("[tsunami:%s] %s\n", appName, line)

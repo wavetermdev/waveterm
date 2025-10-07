@@ -35,6 +35,7 @@ export function getWaveTabViewByWebContentsId(webContentsId: number): WaveTabVie
 export class WaveTabView extends WebContentsView {
     waveWindowId: string; // this will be set for any tabviews that are initialized. (unset for the hot spare)
     isActiveTab: boolean;
+    isWaveAIOpen: boolean;
     private _waveTabId: string; // always set, WaveTabViews are unique per tab
     lastUsedTs: number; // ts milliseconds
     createdTs: number; // ts milliseconds
@@ -58,6 +59,7 @@ export class WaveTabView extends WebContentsView {
             },
         });
         this.createdTs = Date.now();
+        this.isWaveAIOpen = false;
         this.savedInitOpts = null;
         this.initPromise = new Promise((resolve, _) => {
             this.initResolve = resolve;
@@ -82,6 +84,9 @@ export class WaveTabView extends WebContentsView {
             wcIdToWaveTabMap.delete(this.webContents.id);
             removeWaveTabView(this.waveTabId);
             this.isDestroyed = true;
+        });
+        this.webContents.on("zoom-changed", (_event, zoomDirection) => {
+            this.webContents.send("zoom-factor-change", this.webContents.getZoomFactor());
         });
         this.setBackgroundColor(computeBgColor(fullConfig));
     }

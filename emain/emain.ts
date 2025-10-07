@@ -12,7 +12,7 @@ import { PNG } from "pngjs";
 import { sprintf } from "sprintf-js";
 import { Readable } from "stream";
 import * as services from "../frontend/app/store/services";
-import { initElectronWshrpc, shutdownWshrpc } from "../frontend/app/store/wshrpcutil";
+import { initElectronWshrpc, shutdownWshrpc } from "../frontend/app/store/wshrpcutil-base";
 import { getWebServerEndpoint } from "../frontend/util/endpoints";
 import * as keyutil from "../frontend/util/keyutil";
 import { fireAndForget, sleep } from "../frontend/util/util";
@@ -25,7 +25,7 @@ import {
     setForceQuit,
     setGlobalIsQuitting,
     setGlobalIsStarting,
-    setWasActive,
+setWasActive,
     setWasInFg,
 } from "./emain-activity";
 import { ensureHotSpareTab, getWaveTabViewByWebContentsId, setMaxTabCacheSize } from "./emain-tabview";
@@ -280,6 +280,10 @@ electron.ipcMain.on("get-about-modal-details", (event) => {
     event.returnValue = getWaveVersion() as AboutModalDetails;
 });
 
+electron.ipcMain.on("get-zoom-factor", (event) => {
+    event.returnValue = event.sender.getZoomFactor();
+});
+
 const hasBeforeInputRegisteredMap = new Map<number, boolean>();
 
 electron.ipcMain.on("webview-focus", (event: Electron.IpcMainEvent, focusedId: number) => {
@@ -521,6 +525,10 @@ function logActiveState() {
     fireAndForget(async () => {
         const astate = getActivityState();
         const activity: ActivityUpdate = { openminutes: 1 };
+        const ww = focusedWaveWindow;
+        const activeTabView = ww?.activeTabView;
+        const isWaveAIOpen = activeTabView?.isWaveAIOpen ?? false;
+        
         if (astate.wasInFg) {
             activity.fgminutes = 1;
         }
@@ -528,25 +536,33 @@ function logActiveState() {
             activity.activeminutes = 1;
         }
         activity.displays = getActivityDisplays();
+        
+        const props: TEventProps = {
+            "activity:activeminutes": activity.activeminutes,
+            "activity:fgminutes": activity.fgminutes,
+            "activity:openminutes": activity.openminutes,
+        };
+        
+        if (astate.wasActive && isWaveAIOpen) {
+            props["activity:waveaiactiveminutes"] = 1;
+        }
+        if (astate.wasInFg && isWaveAIOpen) {
+            props["activity:waveaifgminutes"] = 1;
+        }
+        
         try {
             await RpcApi.ActivityCommand(ElectronWshClient, activity, { noresponse: true });
             await RpcApi.RecordTEventCommand(
                 ElectronWshClient,
                 {
                     event: "app:activity",
-                    props: {
-                        "activity:activeminutes": activity.activeminutes,
-                        "activity:fgminutes": activity.fgminutes,
-                        "activity:openminutes": activity.openminutes,
-                    },
+                    props,
                 },
                 { noresponse: true }
             );
         } catch (e) {
             console.log("error logging active state", e);
         } finally {
-            // for next iteration
-            const ww = focusedWaveWindow;
             setWasInFg(ww?.isFocused() ?? false);
             setWasActive(false);
         }

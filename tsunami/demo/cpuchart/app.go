@@ -9,6 +9,9 @@ import (
 	"github.com/wavetermdev/waveterm/tsunami/vdom"
 )
 
+const AppTitle = "CPU Usage Monitor"
+const AppShortDesc = "Real-time CPU usage monitoring and charting"
+
 // Global atoms for config and data
 var (
 	dataPointCountAtom = app.ConfigAtom("dataPointCount", 60, &app.AtomMeta{
@@ -30,6 +33,12 @@ var (
 		return initialData
 	}(), &app.AtomMeta{
 		Desc: "Historical CPU usage data points for charting",
+	})
+	currentCpuUsageAtom = app.DataAtom("currentCpuUsage", 0.0, &app.AtomMeta{
+		Desc:  "Current CPU usage percentage",
+		Units: "%",
+		Min:   app.Ptr(0.0),
+		Max:   app.Ptr(100.0),
 	})
 )
 
@@ -61,14 +70,11 @@ func generateCPUDataPoint() CPUDataPoint {
 		log.Printf("Error collecting CPU usage: %v", err)
 		cpuUsage = 0
 	}
-
 	dataPoint := CPUDataPoint{
 		Time:      now.Unix(),
 		CPUUsage:  &cpuUsage, // Convert to pointer
 		Timestamp: now.Format("15:04:05"),
 	}
-
-	log.Printf("CPU Usage: %.2f%% at %s", cpuUsage, dataPoint.Timestamp)
 	return dataPoint
 }
 
@@ -148,12 +154,17 @@ var StatsPanel = app.DefineComponent("StatsPanel", func(props StatsPanelProps) a
 )
 
 var App = app.DefineComponent("App", func(_ struct{}) any {
-	app.UseSetAppTitle("CPU Usage Monitor")
 
 	// Use UseTicker for continuous CPU data collection - automatically cleaned up on unmount
 	app.UseTicker(time.Second, func() {
 		// Collect new CPU data point and shift the data window
 		newPoint := generateCPUDataPoint()
+
+		// Update current CPU usage atom for easy AI access
+		if newPoint.CPUUsage != nil {
+			currentCpuUsageAtom.Set(*newPoint.CPUUsage)
+		}
+
 		cpuDataAtom.SetFn(func(data []CPUDataPoint) []CPUDataPoint {
 			currentDataPointCount := dataPointCountAtom.Get()
 
@@ -192,6 +203,7 @@ var App = app.DefineComponent("App", func(_ struct{}) any {
 			}
 		}
 		cpuDataAtom.Set(initialData)
+		currentCpuUsageAtom.Set(0.0)
 	}
 
 	// Read atom values once for rendering

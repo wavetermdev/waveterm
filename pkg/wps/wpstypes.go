@@ -16,6 +16,7 @@ const (
 	Event_UserInput        = "userinput"
 	Event_RouteGone        = "route:gone"
 	Event_WorkspaceUpdate  = "workspace:update"
+	Event_WaveAIRateLimit  = "waveai:ratelimit"
 )
 
 type WaveEvent struct {

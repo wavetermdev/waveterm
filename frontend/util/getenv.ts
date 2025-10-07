@@ -1,14 +1,16 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { getApi } from "@/app/store/global";
-
 function getWindow(): Window {
     return globalThis.window;
 }
 
 function getProcess(): NodeJS.Process {
     return globalThis.process;
+}
+
+function getApi(): ElectronApi {
+    return (window as any).api;
 }
 
 /**

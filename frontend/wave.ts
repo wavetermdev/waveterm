@@ -50,6 +50,12 @@ let savedInitOpts: WaveInitOpts = null;
 (window as any).removeNotificationById = removeNotificationById;
 (window as any).modalsModel = modalsModel;
 
+function updateZoomFactor(zoomFactor: number) {
+    console.log("update zoomfactor", zoomFactor);
+    document.documentElement.style.setProperty("--zoomfactor", String(zoomFactor));
+    document.documentElement.style.setProperty("--zoomfactor-inv", String(1 / zoomFactor));
+}
+
 async function initBare() {
     getApi().sendLog("Init Bare");
     document.body.style.visibility = "hidden";
@@ -58,6 +64,10 @@ async function initBare() {
     getApi().onWaveInit(initWaveWrap);
     setKeyUtilPlatform(platform);
     loadFonts();
+    updateZoomFactor(getApi().getZoomFactor());
+    getApi().onZoomFactorChange((zoomFactor) => {
+        updateZoomFactor(zoomFactor);
+    });
     document.fonts.ready.then(() => {
         console.log("Init Bare Done");
         getApi().setWindowInitStatus("ready");
@@ -75,7 +85,7 @@ async function initWaveWrap(initOpts: WaveInitOpts) {
         savedInitOpts = initOpts;
         await initWave(initOpts);
     } catch (e) {
-        getApi().sendLog("Error in initWave " + e.message);
+        getApi().sendLog("Error in initWave " + e.message + "\n" + e.stack);
         console.error("Error in initWave", e);
     } finally {
         document.body.style.visibility = null;

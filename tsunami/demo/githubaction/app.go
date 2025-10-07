@@ -15,6 +15,9 @@ import (
 	"github.com/wavetermdev/waveterm/tsunami/vdom"
 )
 
+const AppTitle = "GitHub Actions Monitor"
+const AppShortDesc = "Real-time GitHub Actions workflow monitoring and status tracking"
+
 // Global atoms for config and data
 var (
 	pollIntervalAtom = app.ConfigAtom("pollInterval", 5, &app.AtomMeta{
@@ -244,7 +247,6 @@ var WorkflowRunItem = app.DefineComponent("WorkflowRunItem",
 
 var App = app.DefineComponent("App",
 	func(_ struct{}) any {
-		app.UseSetAppTitle("GitHub Actions Monitor")
 
 		fetchData := func() {
 			currentMaxRuns := maxWorkflowRunsAtom.Get()

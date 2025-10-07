@@ -27,6 +27,7 @@ const wsReadWaitTimeout = 15 * time.Second
 const wsWriteWaitTimeout = 10 * time.Second
 const wsPingPeriodTickTime = 10 * time.Second
 const wsInitialPingTime = 1 * time.Second
+const wsMaxMessageSize = 8 * 1024 * 1024
 
 const DefaultCommandTimeout = 2 * time.Second
 
@@ -155,7 +156,7 @@ func processMessage(jmsg map[string]any, outputCh chan any, rpcInputCh chan []by
 
 func ReadLoop(conn *websocket.Conn, outputCh chan any, closeCh chan any, rpcInputCh chan []byte, routeId string) {
 	readWait := wsReadWaitTimeout
-	conn.SetReadLimit(64 * 1024)
+	conn.SetReadLimit(wsMaxMessageSize)
 	conn.SetReadDeadline(time.Now().Add(readWait))
 	defer close(closeCh)
 	for {

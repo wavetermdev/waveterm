@@ -25,9 +25,10 @@ declare global {
         allConnStatus: jotai.Atom<ConnStatus[]>;
         flashErrors: jotai.PrimitiveAtom<FlashErrorType[]>;
         notifications: jotai.PrimitiveAtom<NotificationType[]>;
-        notificationPopoverMode: jotia.atom<boolean>;
+        notificationPopoverMode: jotai.Atom<boolean>;
         reinitVersion: jotai.PrimitiveAtom<number>;
         isTermMultiInput: jotai.PrimitiveAtom<boolean>;
+        waveAIRateLimitInfoAtom: jotai.PrimitiveAtom<RateLimitInfo>;
     };
 
     type WritableWaveObjectAtom<T extends WaveObj> = jotai.WritableAtom<T, [value: T], void>;
@@ -61,49 +62,52 @@ declare global {
     };
 
     type ElectronApi = {
-        getAuthKey(): string;
-        getIsDev(): boolean;
-        getCursorPoint: () => Electron.Point;
-        getPlatform: () => NodeJS.Platform;
-        getEnv: (varName: string) => string;
-        getUserName: () => string;
-        getHostName: () => string;
-        getDataDir: () => string;
-        getConfigDir: () => string;
-        getWebviewPreload: () => string;
-        getAboutModalDetails: () => AboutModalDetails;
-        getDocsiteUrl: () => string;
-        showContextMenu: (workspaceId: string, menu?: ElectronContextMenuItem[]) => void;
-        onContextMenuClick: (callback: (id: string) => void) => void;
+        getAuthKey(): string; // get-auth-key
+        getIsDev(): boolean; // get-is-dev
+        getCursorPoint: () => Electron.Point; // get-cursor-point
+        getPlatform: () => NodeJS.Platform; // get-platform
+        getEnv: (varName: string) => string; // get-env
+        getUserName: () => string; // get-user-name
+        getHostName: () => string; // get-host-name
+        getDataDir: () => string; // get-data-dir
+        getConfigDir: () => string; // get-config-dir
+        getWebviewPreload: () => string; // get-webview-preload
+        getAboutModalDetails: () => AboutModalDetails; // get-about-modal-details
+        getDocsiteUrl: () => string; // get-docsite-url
+        getZoomFactor: () => number; // get-zoom-factor
+        showContextMenu: (workspaceId: string, menu?: ElectronContextMenuItem[]) => void; // contextmenu-show
+        onContextMenuClick: (callback: (id: string) => void) => void; // contextmenu-click
         onNavigate: (callback: (url: string) => void) => void;
         onIframeNavigate: (callback: (url: string) => void) => void;
-        downloadFile: (path: string) => void;
-        openExternal: (url: string) => void;
-        onFullScreenChange: (callback: (isFullScreen: boolean) => void) => void;
-        onUpdaterStatusChange: (callback: (status: UpdaterStatus) => void) => void;
-        getUpdaterStatus: () => UpdaterStatus;
-        getUpdaterChannel: () => string;
-        installAppUpdate: () => void;
-        onMenuItemAbout: (callback: () => void) => void;
-        updateWindowControlsOverlay: (rect: Dimensions) => void;
-        onReinjectKey: (callback: (waveEvent: WaveKeyboardEvent) => void) => void;
-        setWebviewFocus: (focusedId: number) => void; // focusedId si the getWebContentsId of the webview
-        registerGlobalWebviewKeys: (keys: string[]) => void;
-        onControlShiftStateUpdate: (callback: (state: boolean) => void) => void;
-        createWorkspace: () => void;
-        switchWorkspace: (workspaceId: string) => void;
-        deleteWorkspace: (workspaceId: string) => void;
-        setActiveTab: (tabId: string) => void;
-        createTab: () => void;
-        closeTab: (workspaceId: string, tabId: string) => void;
-        setWindowInitStatus: (status: "ready" | "wave-ready") => void;
-        onWaveInit: (callback: (initOpts: WaveInitOpts) => void) => void;
-        sendLog: (log: string) => void;
-        onQuicklook: (filePath: string) => void;
-        openNativePath(filePath: string): void;
-        captureScreenshot(rect: Electron.Rectangle): Promise<string>;
-        setKeyboardChordMode: () => void;
-        clearWebviewStorage: (webContentsId: number) => Promise<void>;
+        downloadFile: (path: string) => void; // download
+        openExternal: (url: string) => void; // open-external
+        onFullScreenChange: (callback: (isFullScreen: boolean) => void) => void; // fullscreen-change
+        onZoomFactorChange: (callback: (zoomFactor: number) => void) => void; // zoom-factor-change
+        onUpdaterStatusChange: (callback: (status: UpdaterStatus) => void) => void; // app-update-status
+        getUpdaterStatus: () => UpdaterStatus; // get-app-update-status
+        getUpdaterChannel: () => string; // get-updater-channel
+        installAppUpdate: () => void; // install-app-update
+        onMenuItemAbout: (callback: () => void) => void; // menu-item-about
+        updateWindowControlsOverlay: (rect: Dimensions) => void; // update-window-controls-overlay
+        onReinjectKey: (callback: (waveEvent: WaveKeyboardEvent) => void) => void; // reinject-key
+        setWebviewFocus: (focusedId: number) => void; // webview-focus, focusedId is the getWebContentsId of the webview
+        registerGlobalWebviewKeys: (keys: string[]) => void; // register-global-webview-keys
+        onControlShiftStateUpdate: (callback: (state: boolean) => void) => void; // control-shift-state-update
+        createWorkspace: () => void; // create-workspace
+        switchWorkspace: (workspaceId: string) => void; // switch-workspace
+        deleteWorkspace: (workspaceId: string) => void; // delete-workspace
+        setActiveTab: (tabId: string) => void; // set-active-tab
+        createTab: () => void; // create-tab
+        closeTab: (workspaceId: string, tabId: string) => void; // close-tab
+        setWindowInitStatus: (status: "ready" | "wave-ready") => void; // set-window-init-status
+        onWaveInit: (callback: (initOpts: WaveInitOpts) => void) => void; // wave-init
+        sendLog: (log: string) => void; // fe-log
+        onQuicklook: (filePath: string) => void; // quicklook
+        openNativePath(filePath: string): void; // open-native-path
+        captureScreenshot(rect: Electron.Rectangle): Promise<string>; // capture-screenshot
+        setKeyboardChordMode: () => void; // set-keyboard-chord-mode
+        clearWebviewStorage: (webContentsId: number) => Promise<void>; // clear-webview-storage
+        setWaveAIOpen: (isOpen: boolean) => void; // set-waveai-open
     };
 
     type ElectronContextMenuItem = {
@@ -449,6 +453,26 @@ declare global {
         closeAction?: () => void;
         showDismiss?: boolean;
     };
+
+    type AIMessage = {
+        messageid: string;
+        parts: AIMessagePart[];
+    };
+
+    type AIMessagePart =
+        | {
+              type: "text";
+              text: string;
+          }
+        | {
+              type: "file";
+              mimetype: string; // required
+              filename?: string;
+              data?: string; // base64 encoded data
+              url?: string;
+              size?: number;
+              previewurl?: string;
+          };
 }
 
 export {};

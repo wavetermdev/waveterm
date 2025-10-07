@@ -4,6 +4,10 @@
 @use "reset.scss";
 @use "theme.scss";
 
+html {
+    overflow: hidden;
+}
+
 body {
     display: flex;
     flex-direction: row;
@@ -16,6 +20,13 @@ body {
     -webkit-font-smoothing: auto;
     backface-visibility: hidden;
     transform: translateZ(0);
+}
+
+#main {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
 }
 
 .is-transparent {
@@ -51,24 +62,6 @@ a.plain-link {
 
 .text-fixed {
     font: var(--fixed-font);
-}
-
-#main,
-.mainapp {
-    display: flex;
-    flex-direction: column;
-    width: 100%;
-    height: 100%;
-
-    .app-background {
-        pointer-events: none;
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        z-index: var(--zindex-app-background);
-    }
 }
 
 .error-boundary {
@@ -149,9 +142,6 @@ a {
         .flash-error-title {
             font-weight: bold;
             margin-bottom: 5px;
-        }
-
-        .flash-error-message {
         }
     }
 }

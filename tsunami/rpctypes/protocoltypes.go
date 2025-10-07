@@ -170,6 +170,7 @@ type VDomRefUpdate struct {
 
 type VDomBackendOpts struct {
 	Title                string `json:"title,omitempty"`
+	ShortDesc            string `json:"shortdesc,omitempty"`
 	GlobalKeyboardEvents bool   `json:"globalkeyboardevents,omitempty"`
 	FaviconPath          string `json:"faviconpath,omitempty"`
 }

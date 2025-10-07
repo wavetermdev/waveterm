@@ -253,7 +253,7 @@ export class PreviewModel implements ViewModel {
                         elemtype: "textbutton",
                         text: "Loading ...",
                         className: clsx(
-                            `grey warning border-radius-4 vertical-padding-2 horizontal-padding-10 font-size-11 font-weight-500`
+                            `grey warning rounded-[4px] py-[2px] px-[10px] text-[11px] font-[500]`
                         ),
                         onClick: () => {},
                     });
@@ -262,7 +262,7 @@ export class PreviewModel implements ViewModel {
                         elemtype: "textbutton",
                         text: "Read Only",
                         className: clsx(
-                            `yellow warning border-radius-4 vertical-padding-2 horizontal-padding-10 font-size-11 font-weight-500`
+                            `yellow warning rounded-[4px] py-[2px] px-[10px] text-[11px] font-[500]`
                         ),
                         onClick: () => {},
                     });
@@ -271,7 +271,7 @@ export class PreviewModel implements ViewModel {
                         elemtype: "textbutton",
                         text: "Save",
                         className: clsx(
-                            `${saveClassName} warning border-radius-4 vertical-padding-2 horizontal-padding-10 font-size-11 font-weight-500`
+                            `${saveClassName} warning rounded-[4px] py-[2px] px-[10px] text-[11px] font-[500]`
                         ),
                         onClick: () => fireAndForget(this.handleFileSave.bind(this)),
                     });
@@ -281,7 +281,7 @@ export class PreviewModel implements ViewModel {
                         elemtype: "textbutton",
                         text: "Preview",
                         className:
-                            "grey border-radius-4 vertical-padding-2 horizontal-padding-10 font-size-11 font-weight-500",
+                            "grey rounded-[4px] py-[2px] px-[10px] text-[11px] font-[500]",
                         onClick: () => fireAndForget(() => this.setEditMode(false)),
                     });
                 }
@@ -290,7 +290,7 @@ export class PreviewModel implements ViewModel {
                     elemtype: "textbutton",
                     text: "Edit",
                     className:
-                        "grey border-radius-4 vertical-padding-2 horizontal-padding-10 font-size-11 font-weight-500",
+                        "grey rounded-[4px] py-[2px] px-[10px] text-[11px] font-[500]",
                     onClick: () => fireAndForget(() => this.setEditMode(true)),
                 });
             }

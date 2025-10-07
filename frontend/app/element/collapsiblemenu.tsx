@@ -46,7 +46,7 @@ const CollapsibleMenu = memo(({ items, className, renderItem }: VerticalNavProps
                             })}
                         >
                             {item.icon && <div className="collapsible-menu-item-icon">{item.icon}</div>}
-                            <div className="collapsible-menu-item-text">{item.label}</div>
+                            <div className="collapsible-menu-item-text ellipsis">{item.label}</div>
                         </div>
                         {hasChildren && (
                             <i className={`fa-sharp fa-solid ${isOpen ? "fa-angle-up" : "fa-angle-down"}`}></i>
