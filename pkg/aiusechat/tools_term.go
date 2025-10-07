@@ -79,7 +79,6 @@ func GetTermGetScrollbackToolDefinition(tabId string) uctypes.ToolDefinition {
 		DisplayName: "Get Terminal Scrollback",
 		Description: "Fetch terminal scrollback from a widget as plain text. Index 0 is the most recent line; indices increase going upward (older lines).",
 		ToolLogName: "term:getscrollback",
-		Strict:      true,
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{

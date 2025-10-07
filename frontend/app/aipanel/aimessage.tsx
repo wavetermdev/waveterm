@@ -127,9 +127,9 @@ export const AIMessage = memo(({ message, isStreaming }: AIMessageProps) => {
     const fileParts = parts.filter(
         (part): part is WaveUIMessagePart & { type: "data-userfile" } => part.type === "data-userfile"
     );
-    const hasContent = displayParts.length > 0 && displayParts.some((part) =>
-        (part.type === "text" && part.text) || part.type.startsWith("tool-")
-    );
+    const hasContent =
+        displayParts.length > 0 &&
+        displayParts.some((part) => (part.type === "text" && part.text) || part.type.startsWith("tool-"));
 
     const showThinkingOnly = !hasContent && isStreaming && message.role === "assistant";
     const showThinkingInline = hasContent && isStreaming && message.role === "assistant";
