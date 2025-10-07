@@ -929,6 +929,7 @@ declare global {
         "waveai:outputtokens"?: number;
         "waveai:requestcount"?: number;
         "waveai:toolusecount"?: number;
+        "waveai:tooldetail"?: {[key: string]: number};
         "waveai:premiumreq"?: number;
         "waveai:proxyreq"?: number;
         "waveai:haderror"?: boolean;
