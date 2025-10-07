@@ -15,6 +15,20 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wstore"
 )
 
+func resolveBlockIdFromPrefix(tab *waveobj.Tab, blockIdPrefix string) (string, error) {
+	if len(blockIdPrefix) != 8 {
+		return "", fmt.Errorf("widget_id must be 8 characters")
+	}
+
+	for _, blockId := range tab.BlockIds {
+		if strings.HasPrefix(blockId, blockIdPrefix) {
+			return blockId, nil
+		}
+	}
+
+	return "", fmt.Errorf("widget_id not found: %q", blockIdPrefix)
+}
+
 func MakeBlockShortDesc(block *waveobj.Block) string {
 	if block.Meta == nil {
 		return ""
@@ -110,8 +124,11 @@ func GenerateTabStateAndTools(ctx context.Context, tabid string, widgetAccess bo
 	}
 	tabState := GenerateCurrentTabStatePrompt(blocks, widgetAccess)
 	var tools []uctypes.ToolDefinition
+	if widgetAccess {
+		tools = append(tools, GetCaptureScreenshotToolDefinition(tabid))
+	}
 	for _, block := range blocks {
-		blockTools := generateToolsForBlock(block)
+		blockTools := generateToolsForBlock(tabid, block)
 		tools = append(tools, blockTools...)
 	}
 	return tabState, tools, nil
@@ -147,7 +164,7 @@ func GenerateCurrentTabStatePrompt(blocks []*waveobj.Block, widgetAccess bool) s
 	return prompt.String()
 }
 
-func generateToolsForBlock(block *waveobj.Block) []uctypes.ToolDefinition {
+func generateToolsForBlock(tabId string, block *waveobj.Block) []uctypes.ToolDefinition {
 	if block.Meta == nil {
 		return nil
 	}
@@ -160,7 +177,7 @@ func generateToolsForBlock(block *waveobj.Block) []uctypes.ToolDefinition {
 	var tools []uctypes.ToolDefinition
 	switch viewType {
 	case "term":
-		tools = append(tools, GetTermGetScrollbackToolDefinition(block))
+		tools = append(tools, GetTermGetScrollbackToolDefinition(tabId))
 	case "web":
 		tools = append(tools, GetWebNavigateToolDefinition(block))
 	case "tsunami":
@@ -188,6 +205,7 @@ func GetAdderToolDefinition() uctypes.ToolDefinition {
 		Name:        "adder",
 		DisplayName: "Adder",
 		Description: "Add an array of numbers together and return their sum",
+		ToolLogName: "gen:adder",
 		Strict:      true,
 		InputSchema: map[string]any{
 			"type": "object",

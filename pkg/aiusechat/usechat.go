@@ -199,13 +199,19 @@ func GetChatUsage(chat *uctypes.AIChat) uctypes.AIUsage {
 	return usage
 }
 
-func processToolResults(stopReason *uctypes.WaveStopReason, chatOpts uctypes.WaveChatOpts, sseHandler *sse.SSEHandlerCh) {
+func processToolResults(stopReason *uctypes.WaveStopReason, chatOpts uctypes.WaveChatOpts, sseHandler *sse.SSEHandlerCh, metrics *uctypes.AIMetrics) {
 	var toolResults []uctypes.AIToolResult
 	for _, toolCall := range stopReason.ToolCalls {
 		inputJSON, _ := json.Marshal(toolCall.Input)
 		log.Printf("TOOLUSE name=%s id=%s input=%s\n", toolCall.Name, toolCall.ID, utilfn.TruncateString(string(inputJSON), 40))
 		result := ResolveToolCall(toolCall, chatOpts)
 		toolResults = append(toolResults, result)
+		
+		// Track tool usage by ToolLogName
+		toolDef := getToolDefinition(toolCall.Name, chatOpts)
+		if toolDef != nil && toolDef.ToolLogName != "" {
+			metrics.ToolDetail[toolDef.ToolLogName]++
+		}
 		if result.ErrorText != "" {
 			log.Printf("  error=%s\n", result.ErrorText)
 		} else {
@@ -242,6 +248,7 @@ func RunAIChat(ctx context.Context, sseHandler *sse.SSEHandlerCh, chatOpts uctyp
 			Model:   chatOpts.Config.Model,
 		},
 		WidgetAccess: chatOpts.WidgetAccess,
+		ToolDetail:   make(map[string]int),
 	}
 	firstStep := true
 	var cont *uctypes.WaveContinueResponse
@@ -298,7 +305,7 @@ func RunAIChat(ctx context.Context, sseHandler *sse.SSEHandlerCh, chatOpts uctyp
 		}
 		if stopReason != nil && stopReason.Kind == uctypes.StopKindToolUse {
 			metrics.ToolUseCount += len(stopReason.ToolCalls)
-			processToolResults(stopReason, chatOpts, sseHandler)
+			processToolResults(stopReason, chatOpts, sseHandler, metrics)
 
 			var messageID string
 			if len(rtnMessage) > 0 && rtnMessage[0] != nil {
@@ -318,6 +325,20 @@ func RunAIChat(ctx context.Context, sseHandler *sse.SSEHandlerCh, chatOpts uctyp
 }
 
 // ResolveToolCall resolves a single tool call and returns an AIToolResult
+func getToolDefinition(toolName string, chatOpts uctypes.WaveChatOpts) *uctypes.ToolDefinition {
+	for _, tool := range chatOpts.Tools {
+		if tool.Name == toolName {
+			return &tool
+		}
+	}
+	for _, tool := range chatOpts.TabTools {
+		if tool.Name == toolName {
+			return &tool
+		}
+	}
+	return nil
+}
+
 func ResolveToolCall(toolCall uctypes.WaveToolCall, chatOpts uctypes.WaveChatOpts) (result uctypes.AIToolResult) {
 	result = uctypes.AIToolResult{
 		ToolName:  toolCall.Name,
@@ -331,22 +352,7 @@ func ResolveToolCall(toolCall uctypes.WaveToolCall, chatOpts uctypes.WaveChatOpt
 		}
 	}()
 
-	// Find the matching tool definition
-	var toolDef *uctypes.ToolDefinition
-	for _, tool := range chatOpts.Tools {
-		if tool.Name == toolCall.Name {
-			toolDef = &tool
-			break
-		}
-	}
-	if toolDef == nil {
-		for _, tool := range chatOpts.TabTools {
-			if tool.Name == toolCall.Name {
-				toolDef = &tool
-				break
-			}
-		}
-	}
+	toolDef := getToolDefinition(toolCall.Name, chatOpts)
 
 	if toolDef == nil {
 		result.ErrorText = fmt.Sprintf("tool '%s' not found", toolCall.Name)
@@ -442,6 +448,7 @@ func sendAIMetricsTelemetry(ctx context.Context, metrics *uctypes.AIMetrics) {
 		WaveAIOutputTokens: metrics.Usage.OutputTokens,
 		WaveAIRequestCount: metrics.RequestCount,
 		WaveAIToolUseCount: metrics.ToolUseCount,
+		WaveAIToolDetail:   metrics.ToolDetail,
 		WaveAIPremiumReq:   metrics.PremiumReqCount,
 		WaveAIProxyReq:     metrics.ProxyReqCount,
 		WaveAIHadError:     metrics.HadError,
@@ -519,7 +526,6 @@ func WaveAIPostMessageHandler(w http.ResponseWriter, r *http.Request) {
 	chatOpts.TabStateGenerator = func() (string, []uctypes.ToolDefinition, error) {
 		return GenerateTabStateAndTools(r.Context(), req.TabId, req.WidgetAccess)
 	}
-	chatOpts.Tools = append(chatOpts.Tools, GetCaptureScreenshotToolDefinition(req.TabId))
 
 	// Validate the message
 	if err := req.Msg.Validate(); err != nil {

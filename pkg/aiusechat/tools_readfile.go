@@ -163,6 +163,7 @@ func GetReadTextFileToolDefinition() uctypes.ToolDefinition {
 		Name:        "read_text_file",
 		DisplayName: "Read Text File",
 		Description: "Read a text file from the filesystem. Can read specific line ranges or from the end. Detects and rejects binary files.",
+		ToolLogName: "gen:readfile",
 		Strict:      false,
 		InputSchema: map[string]any{
 			"type": "object",

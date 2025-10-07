@@ -22,6 +22,7 @@ func GetWebNavigateToolDefinition(block *waveobj.Block) uctypes.ToolDefinition {
 		Name:        toolName,
 		DisplayName: fmt.Sprintf("Navigate Web Block %s", blockIdPrefix),
 		Description: fmt.Sprintf("Navigate the web browser widget %s to a new URL", blockIdPrefix),
+		ToolLogName: "web:navigate",
 		Strict:      true,
 		InputSchema: map[string]any{
 			"type": "object",

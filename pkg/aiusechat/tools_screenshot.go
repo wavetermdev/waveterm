@@ -6,7 +6,6 @@ package aiusechat
 import (
 	"context"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
@@ -16,20 +15,6 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
 	"github.com/wavetermdev/waveterm/pkg/wstore"
 )
-
-func resolveBlockIdFromPrefix(tab *waveobj.Tab, blockIdPrefix string) (string, error) {
-	if len(blockIdPrefix) != 8 {
-		return "", fmt.Errorf("widget_id must be 8 characters")
-	}
-
-	for _, blockId := range tab.BlockIds {
-		if strings.HasPrefix(blockId, blockIdPrefix) {
-			return blockId, nil
-		}
-	}
-
-	return "", fmt.Errorf("widget_id not found: %q", blockIdPrefix)
-}
 
 func makeTabCaptureBlockScreenshot(tabId string) func(any) (string, error) {
 	return func(input any) (string, error) {
@@ -75,6 +60,7 @@ func GetCaptureScreenshotToolDefinition(tabId string) uctypes.ToolDefinition {
 		Name:        "capture_screenshot",
 		DisplayName: "Capture Screenshot",
 		Description: "Capture a screenshot of a widget and return it as an image",
+		ToolLogName: "gen:screenshot",
 		Strict:      true,
 		InputSchema: map[string]any{
 			"type": "object",

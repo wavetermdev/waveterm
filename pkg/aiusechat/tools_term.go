@@ -4,6 +4,7 @@
 package aiusechat
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -14,11 +15,13 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
+	"github.com/wavetermdev/waveterm/pkg/wstore"
 )
 
 type TermGetScrollbackToolInput struct {
-	LineStart int `json:"line_start,omitempty"`
-	Count     int `json:"count,omitempty"`
+	WidgetId  string `json:"widget_id"`
+	LineStart int    `json:"line_start,omitempty"`
+	Count     int    `json:"count,omitempty"`
 }
 
 type TermGetScrollbackToolOutput struct {
@@ -70,18 +73,20 @@ func parseTermGetScrollbackInput(input any) (*TermGetScrollbackToolInput, error)
 	return result, nil
 }
 
-func GetTermGetScrollbackToolDefinition(block *waveobj.Block) uctypes.ToolDefinition {
-	blockIdPrefix := block.OID[:8]
-	toolName := fmt.Sprintf("term_get_scrollback_%s", blockIdPrefix)
-
+func GetTermGetScrollbackToolDefinition(tabId string) uctypes.ToolDefinition {
 	return uctypes.ToolDefinition{
-		Name:        toolName,
-		DisplayName: fmt.Sprintf("Get Terminal Scrollback %s", blockIdPrefix),
-		Description: fmt.Sprintf("Fetch terminal scrollback from widget %s as plain text. Index 0 is the most recent line; indices increase going upward (older lines).", blockIdPrefix),
-		Strict:      false,
+		Name:        "term_get_scrollback",
+		DisplayName: "Get Terminal Scrollback",
+		Description: "Fetch terminal scrollback from a widget as plain text. Index 0 is the most recent line; indices increase going upward (older lines).",
+		ToolLogName: "term:getscrollback",
+		Strict:      true,
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
+				"widget_id": map[string]any{
+					"type":        "string",
+					"description": "8-character widget ID of the terminal widget",
+				},
 				"line_start": map[string]any{
 					"type":        "integer",
 					"minimum":     0,
@@ -93,7 +98,7 @@ func GetTermGetScrollbackToolDefinition(block *waveobj.Block) uctypes.ToolDefini
 					"description": "Number of lines to return from line_start (default: 200)",
 				},
 			},
-			"required":             []string{},
+			"required":             []string{"widget_id"},
 			"additionalProperties": false,
 		},
 		ToolInputDesc: func(input any) string {
@@ -103,13 +108,26 @@ func GetTermGetScrollbackToolDefinition(block *waveobj.Block) uctypes.ToolDefini
 			}
 
 			if parsed.LineStart == 0 && parsed.Count == 200 {
-				return fmt.Sprintf("reading terminal output from %s (most recent %d lines)", blockIdPrefix, parsed.Count)
+				return fmt.Sprintf("reading terminal output from %s (most recent %d lines)", parsed.WidgetId, parsed.Count)
 			}
 			lineEnd := parsed.LineStart + parsed.Count
-			return fmt.Sprintf("reading terminal output from %s (lines %d-%d)", blockIdPrefix, parsed.LineStart, lineEnd)
+			return fmt.Sprintf("reading terminal output from %s (lines %d-%d)", parsed.WidgetId, parsed.LineStart, lineEnd)
 		},
 		ToolAnyCallback: func(input any) (any, error) {
 			parsed, err := parseTermGetScrollbackInput(input)
+			if err != nil {
+				return nil, err
+			}
+
+			ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancelFn()
+
+			tab, err := wstore.DBMustGet[*waveobj.Tab](ctx, tabId)
+			if err != nil {
+				return nil, fmt.Errorf("error getting tab: %w", err)
+			}
+
+			fullBlockId, err := resolveBlockIdFromPrefix(tab, parsed.WidgetId)
 			if err != nil {
 				return nil, err
 			}
@@ -123,7 +141,7 @@ func GetTermGetScrollbackToolDefinition(block *waveobj.Block) uctypes.ToolDefini
 					LineStart: parsed.LineStart,
 					LineEnd:   lineEnd,
 				},
-				&wshrpc.RpcOpts{Route: wshutil.MakeFeBlockRouteId(block.OID)},
+				&wshrpc.RpcOpts{Route: wshutil.MakeFeBlockRouteId(fullBlockId)},
 			)
 			if err != nil {
 				return nil, fmt.Errorf("failed to get terminal scrollback: %w", err)

@@ -80,6 +80,7 @@ type ToolDefinition struct {
 	DisplayName      string                    `json:"displayname,omitempty"` // internal field (cannot marshal to API, must be stripped)
 	Description      string                    `json:"description"`
 	ShortDescription string                    `json:"shortdescription,omitempty"` // internal field (cannot marshal to API, must be stripped)
+	ToolLogName      string                    `json:"-"`                          // short name for telemetry (e.g., "term:getscrollback")
 	InputSchema      map[string]any            `json:"input_schema"`
 	Strict           bool                      `json:"strict,omitempty"`
 	ToolTextCallback func(any) (string, error) `json:"-"`
@@ -189,19 +190,20 @@ type AIUsage struct {
 }
 
 type AIMetrics struct {
-	Usage             AIUsage `json:"usage"`
-	RequestCount      int     `json:"requestcount"`
-	ToolUseCount      int     `json:"toolusecount"`
-	PremiumReqCount   int     `json:"premiumreqcount"`
-	ProxyReqCount     int     `json:"proxyreqcount"`
-	HadError          bool    `json:"haderror"`
-	ImageCount        int     `json:"imagecount"`
-	PDFCount          int     `json:"pdfcount"`
-	TextDocCount      int     `json:"textdoccount"`
-	TextLen           int     `json:"textlen"`
-	FirstByteLatency  int     `json:"firstbytelatency"`  // ms
-	RequestDuration   int     `json:"requestduration"`   // ms
-	WidgetAccess      bool    `json:"widgetaccess"`
+	Usage             AIUsage        `json:"usage"`
+	RequestCount      int            `json:"requestcount"`
+	ToolUseCount      int            `json:"toolusecount"`
+	ToolDetail        map[string]int `json:"tooldetail,omitempty"`
+	PremiumReqCount   int            `json:"premiumreqcount"`
+	ProxyReqCount     int            `json:"proxyreqcount"`
+	HadError          bool           `json:"haderror"`
+	ImageCount        int            `json:"imagecount"`
+	PDFCount          int            `json:"pdfcount"`
+	TextDocCount      int            `json:"textdoccount"`
+	TextLen           int            `json:"textlen"`
+	FirstByteLatency  int            `json:"firstbytelatency"`  // ms
+	RequestDuration   int            `json:"requestduration"`   // ms
+	WidgetAccess      bool           `json:"widgetaccess"`
 }
 
 // GenAIMessage interface for messages stored in conversations
