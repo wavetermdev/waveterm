@@ -19,7 +19,7 @@ import (
 
 func resolveBlockIdFromPrefix(tab *waveobj.Tab, blockIdPrefix string) (string, error) {
 	if len(blockIdPrefix) != 8 {
-		return "", fmt.Errorf("block ID prefix must be 8 characters")
+		return "", fmt.Errorf("widget_id must be 8 characters")
 	}
 
 	for _, blockId := range tab.BlockIds {
@@ -28,7 +28,7 @@ func resolveBlockIdFromPrefix(tab *waveobj.Tab, blockIdPrefix string) (string, e
 		}
 	}
 
-	return "", fmt.Errorf("block not found with prefix %s", blockIdPrefix)
+	return "", fmt.Errorf("widget_id not found: %q", blockIdPrefix)
 }
 
 func makeTabCaptureBlockScreenshot(tabId string) func(any) (string, error) {
@@ -38,9 +38,9 @@ func makeTabCaptureBlockScreenshot(tabId string) func(any) (string, error) {
 			return "", fmt.Errorf("invalid input format")
 		}
 
-		blockIdPrefix, ok := inputMap["blockid"].(string)
+		blockIdPrefix, ok := inputMap["widget_id"].(string)
 		if !ok {
-			return "", fmt.Errorf("missing or invalid blockid parameter")
+			return "", fmt.Errorf("missing or invalid widget_id parameter")
 		}
 
 		ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
@@ -79,68 +79,14 @@ func GetCaptureScreenshotToolDefinition(tabId string) uctypes.ToolDefinition {
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
-				"blockid": map[string]any{
+				"widget_id": map[string]any{
 					"type":        "string",
-					"description": "8-character block ID of the widget to screenshot",
+					"description": "8-character widget ID of the widget to screenshot",
 				},
 			},
-			"required":             []string{"blockid"},
+			"required":             []string{"widget_id"},
 			"additionalProperties": false,
 		},
 		ToolTextCallback: makeTabCaptureBlockScreenshot(tabId),
-	}
-}
-
-func GetAdderToolDefinition() uctypes.ToolDefinition {
-	return uctypes.ToolDefinition{
-		Name:        "adder",
-		DisplayName: "Adder",
-		Description: "Add an array of numbers together and return their sum",
-		Strict:      true,
-		InputSchema: map[string]any{
-			"type": "object",
-			"properties": map[string]any{
-				"values": map[string]any{
-					"type": "array",
-					"items": map[string]any{
-						"type": "integer",
-					},
-					"description": "Array of numbers to add together",
-				},
-			},
-			"required":             []string{"values"},
-			"additionalProperties": false,
-		},
-		ToolAnyCallback: func(input any) (any, error) {
-			inputMap, ok := input.(map[string]any)
-			if !ok {
-				return nil, fmt.Errorf("invalid input format")
-			}
-
-			valuesInterface, ok := inputMap["values"]
-			if !ok {
-				return nil, fmt.Errorf("missing values parameter")
-			}
-
-			valuesSlice, ok := valuesInterface.([]any)
-			if !ok {
-				return nil, fmt.Errorf("values must be an array")
-			}
-
-			if len(valuesSlice) == 0 {
-				return 0, nil
-			}
-
-			sum := 0
-			for i, val := range valuesSlice {
-				floatVal, ok := val.(float64)
-				if !ok {
-					return nil, fmt.Errorf("value at index %d is not a number", i)
-				}
-				sum += int(floatVal)
-			}
-
-			return sum, nil
-		},
 	}
 }
