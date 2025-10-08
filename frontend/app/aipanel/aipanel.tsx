@@ -104,6 +104,9 @@ const AIPanelComponentInner = memo(({ className, onClose }: AIPanelProps) => {
             const messages = await model.loadChat();
             setMessages(messages as any);
             setIsLoadingChat(false);
+            setTimeout(() => {
+                model.scrollToBottom();
+            }, 100);
         };
         loadMessages();
     }, [model, setMessages]);

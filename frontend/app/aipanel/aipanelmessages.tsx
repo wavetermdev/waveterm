@@ -5,6 +5,7 @@ import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
 import { useAtomValue } from "jotai";
 import { memo, useEffect, useRef } from "react";
 import { AIMessage } from "./aimessage";
+import { WaveAIModel } from "./waveai-model";
 
 const AIWelcomeMessage = memo(() => {
     return (
@@ -25,6 +26,7 @@ interface AIPanelMessagesProps {
 }
 
 export const AIPanelMessages = memo(({ messages, status, isLoadingChat }: AIPanelMessagesProps) => {
+    const model = WaveAIModel.getInstance();
     const isPanelOpen = useAtomValue(WorkspaceLayoutModel.getInstance().panelVisibleAtom);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -36,6 +38,10 @@ export const AIPanelMessages = memo(({ messages, status, isLoadingChat }: AIPane
             container.scrollLeft = 0;
         }
     };
+
+    useEffect(() => {
+        model.registerScrollToBottom(scrollToBottom);
+    }, [model]);
 
     useEffect(() => {
         scrollToBottom();

@@ -24,6 +24,7 @@ export interface DroppedFile {
 export class WaveAIModel {
     private static instance: WaveAIModel | null = null;
     private inputRef: React.RefObject<AIPanelInputRef> | null = null;
+    private scrollToBottomCallback: (() => void) | null = null;
 
     widgetAccessAtom!: jotai.Atom<boolean>;
     droppedFiles: jotai.PrimitiveAtom<DroppedFile[]> = jotai.atom([]);
@@ -138,6 +139,14 @@ export class WaveAIModel {
 
     registerInputRef(ref: React.RefObject<AIPanelInputRef>) {
         this.inputRef = ref;
+    }
+
+    registerScrollToBottom(callback: () => void) {
+        this.scrollToBottomCallback = callback;
+    }
+
+    scrollToBottom() {
+        this.scrollToBottomCallback?.();
     }
 
     focusInput() {
