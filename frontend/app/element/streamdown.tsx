@@ -14,13 +14,16 @@ export function Code({ className = "", children }: { className?: string; childre
     const [html, setHtml] = useState<string | null>(null);
     const codeRef = useRef<HTMLElement>(null);
 
+    const m = className?.match(/language-([\w+-]+)/i);
+    const isCodeBlock = !!m;
+    const lang = m?.[1] || "text";
+
     useEffect(() => {
+        if (!isCodeBlock) return;
+
         let disposed = false;
 
         const raw = codeRef.current?.textContent ?? (typeof children === "string" ? children : "");
-
-        const m = className?.match(/language-([\w+-]+)/i);
-        const lang = m?.[1] || "text";
 
         if (!raw || lang === "text") {
             setHtml(null);
@@ -30,7 +33,6 @@ export function Code({ className = "", children }: { className?: string; childre
         (async () => {
             try {
                 const full = await codeToHtml(raw, { lang, theme: ShikiTheme });
-                // strip outer <pre><code> wrapper quickly:
                 const start = full.indexOf("<code");
                 const open = full.indexOf(">", start);
                 const end = full.lastIndexOf("</code>");
@@ -45,7 +47,7 @@ export function Code({ className = "", children }: { className?: string; childre
         return () => {
             disposed = true;
         };
-    }, [children, className]);
+    }, [children, className, isCodeBlock, lang]);
 
     if (html) {
         return (
@@ -57,8 +59,19 @@ export function Code({ className = "", children }: { className?: string; childre
         );
     }
 
+    if (isCodeBlock) {
+        return (
+            <code ref={codeRef} className={cn("font-mono text-[12px]", className)}>
+                {children}
+            </code>
+        );
+    }
+
     return (
-        <code ref={codeRef} className={`${className} text-secondary font-mono rounded`}>
+        <code
+            ref={codeRef}
+            className={cn("text-secondary font-mono text-[12px] rounded-sm bg-gray-800 px-1.5 py-0.5", className)}
+        >
             {children}
         </code>
     );
@@ -81,6 +94,14 @@ const CodeBlock = ({ children, onClickExecute }: CodeBlockProps) => {
         return "";
     };
 
+    const getLanguage = (children: any): string => {
+        if (children?.props?.className) {
+            const match = children.props.className.match(/language-([\w+-]+)/i);
+            if (match) return match[1];
+        }
+        return "text";
+    };
+
     const handleCopy = async (e: React.MouseEvent) => {
         let textToCopy = getTextContent(children);
         textToCopy = textToCopy.replace(/\n$/, "");
@@ -96,22 +117,27 @@ const CodeBlock = ({ children, onClickExecute }: CodeBlockProps) => {
         }
     };
 
+    const language = getLanguage(children);
+
     return (
-        <pre className="group relative bg-panel rounded py-[0.4em] px-[0.7em] my-[0.286em] mx-[0.714em]">
-            {children}
-            <div className="invisible group-hover:visible flex absolute top-0 right-0 rounded backdrop-blur-[8px] m-[0.143em] p-[0.286em] items-center justify-end gap-[0.286em]">
-                <CopyButton onClick={handleCopy} title="Copy" />
-                {onClickExecute && (
-                    <IconButton
-                        decl={{
-                            elemtype: "iconbutton",
-                            icon: "regular@square-terminal",
-                            click: handleExecute,
-                        }}
-                    />
-                )}
+        <div className="rounded-lg overflow-hidden bg-black my-4">
+            <div className="flex items-center justify-between pl-3 pr-2 pt-2 pb-1.5">
+                <span className="text-[11px] text-white/50">{language}</span>
+                <div className="flex items-center gap-2">
+                    <CopyButton onClick={handleCopy} title="Copy" />
+                    {onClickExecute && (
+                        <IconButton
+                            decl={{
+                                elemtype: "iconbutton",
+                                icon: "regular@square-terminal",
+                                click: handleExecute,
+                            }}
+                        />
+                    )}
+                </div>
             </div>
-        </pre>
+            <pre className="px-4 pb-2 pt-0 overflow-x-auto m-0 text-secondary">{children}</pre>
+        </div>
     );
 };
 
@@ -125,7 +151,7 @@ function Collapsible({ title, children, defaultOpen = false }) {
                 onClick={() => setIsOpen(!isOpen)}
             >
                 <span className="text-[0.65rem] text-primary transition-transform duration-200 inline-block w-3">
-                    {isOpen ? "▼" : "▶"}
+                    {isOpen ? "\u25BC" : "\u25B6"} {/* ▼ ▶ */}
                 </span>
                 <span>{title}</span>
             </button>
@@ -164,22 +190,22 @@ export const WaveStreamdown = ({ text, parseIncompleteMarkdown, className, onCli
                 ),
                 p: (props: React.HTMLAttributes<HTMLParagraphElement>) => <p {...props} className="text-secondary" />,
                 h1: (props: React.HTMLAttributes<HTMLHeadingElement>) => (
-                    <h1 {...props} className="text-2xl font-bold text-primary mt-6 mb-3" />
+                    <h1 {...props} className="text-2xl font-bold text-primary mt-6 first:mt-0 mb-3" />
                 ),
                 h2: (props: React.HTMLAttributes<HTMLHeadingElement>) => (
-                    <h2 {...props} className="text-xl font-bold text-primary mt-5 mb-2" />
+                    <h2 {...props} className="text-xl font-bold text-primary mt-5 first:mt-0 mb-2" />
                 ),
                 h3: (props: React.HTMLAttributes<HTMLHeadingElement>) => (
-                    <h3 {...props} className="text-lg font-bold text-primary mt-4 mb-2" />
+                    <h3 {...props} className="text-lg font-bold text-primary mt-4 first:mt-0 mb-2" />
                 ),
                 h4: (props: React.HTMLAttributes<HTMLHeadingElement>) => (
-                    <h4 {...props} className="text-base font-semibold text-primary mt-3 mb-1" />
+                    <h4 {...props} className="text-base font-semibold text-primary mt-3 first:mt-0 mb-1" />
                 ),
                 h5: (props: React.HTMLAttributes<HTMLHeadingElement>) => (
-                    <h5 {...props} className="text-sm font-semibold text-primary mt-2 mb-1" />
+                    <h5 {...props} className="text-sm font-semibold text-primary mt-2 first:mt-0 mb-1" />
                 ),
                 h6: (props: React.HTMLAttributes<HTMLHeadingElement>) => (
-                    <h6 {...props} className="text-sm text-primary mt-2 mb-1" />
+                    <h6 {...props} className="text-sm text-primary mt-2 first:mt-0 mb-1" />
                 ),
                 table: (props: React.HTMLAttributes<HTMLTableElement>) => (
                     <table {...props} className="w-full border-collapse my-4" />
