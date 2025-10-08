@@ -12,8 +12,13 @@ import { throttle } from "throttle-debounce";
 
 const ShikiTheme = "github-dark-high-contrast";
 
-function getTextContent(node: React.ReactNode): string {
-    return typeof node === "string" ? node : "";
+function extractText(node: React.ReactNode): string {
+    if (node == null || typeof node === "boolean") return "";
+    if (typeof node === "string" || typeof node === "number") return String(node);
+    if (Array.isArray(node)) return node.map(extractText).join("");
+    // @ts-expect-error props exists on ReactElement
+    if (typeof node === "object" && node.props) return extractText(node.props.children);
+    return "";
 }
 
 function CodePlain({ className = "", isCodeBlock, text }: { className?: string; isCodeBlock: boolean; text: string }) {
@@ -104,7 +109,7 @@ export function Code({ className = "", children }: { className?: string; childre
     const m = className?.match(/language-([\w+-]+)/i);
     const isCodeBlock = !!m;
     const lang = m?.[1] || "text";
-    const text = getTextContent(children);
+    const text = extractText(children);
 
     if (isCodeBlock && lang in bundledLanguages) {
         return <CodeHighlight className={className} lang={lang} text={text} />;
@@ -121,17 +126,6 @@ type CodeBlockProps = {
 
 const CodeBlock = ({ children, onClickExecute, codeBlockMaxWidthAtom }: CodeBlockProps) => {
     const codeBlockMaxWidth = useAtomValueSafe(codeBlockMaxWidthAtom);
-    const getTextContent = (children: any): string => {
-        if (typeof children === "string") {
-            return children;
-        } else if (Array.isArray(children)) {
-            return children.map(getTextContent).join("");
-        } else if (children.props && children.props.children) {
-            return getTextContent(children.props.children);
-        }
-        return "";
-    };
-
     const getLanguage = (children: any): string => {
         if (children?.props?.className) {
             const match = children.props.className.match(/language-([\w+-]+)/i);
@@ -141,16 +135,14 @@ const CodeBlock = ({ children, onClickExecute, codeBlockMaxWidthAtom }: CodeBloc
     };
 
     const handleCopy = async (e: React.MouseEvent) => {
-        let textToCopy = getTextContent(children);
-        textToCopy = textToCopy.replace(/\n$/, "");
+        const textToCopy = extractText(children).replace(/\n$/, "");
         await navigator.clipboard.writeText(textToCopy);
     };
 
     const handleExecute = (e: React.MouseEvent) => {
-        let textToCopy = getTextContent(children);
-        textToCopy = textToCopy.replace(/\n$/, "");
+        const cmd = extractText(children).replace(/\n$/, "");
         if (onClickExecute) {
-            onClickExecute(textToCopy);
+            onClickExecute(cmd);
             return;
         }
     };
