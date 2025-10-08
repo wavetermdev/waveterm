@@ -24,12 +24,15 @@ export interface DroppedFile {
 export class WaveAIModel {
     private static instance: WaveAIModel | null = null;
     private inputRef: React.RefObject<AIPanelInputRef> | null = null;
+    private scrollToBottomCallback: (() => void) | null = null;
 
     widgetAccessAtom!: jotai.Atom<boolean>;
     droppedFiles: jotai.PrimitiveAtom<DroppedFile[]> = jotai.atom([]);
     chatId!: jotai.PrimitiveAtom<string>;
     errorMessage: jotai.PrimitiveAtom<string> = jotai.atom(null) as jotai.PrimitiveAtom<string>;
     modelAtom!: jotai.Atom<string>;
+    containerWidth: jotai.PrimitiveAtom<number> = jotai.atom(0);
+    codeBlockMaxWidth!: jotai.Atom<number>;
 
     private constructor() {
         const tabId = globalStore.get(atoms.staticTabId);
@@ -57,6 +60,11 @@ export class WaveAIModel {
             const widgetAccessMetaAtom = getTabMetaKeyAtom(tabId, "waveai:widgetcontext");
             const value = get(widgetAccessMetaAtom);
             return value ?? true;
+        });
+
+        this.codeBlockMaxWidth = jotai.atom((get) => {
+            const width = get(this.containerWidth);
+            return width > 0 ? width - 35 : 0;
         });
     }
 
@@ -138,6 +146,14 @@ export class WaveAIModel {
 
     registerInputRef(ref: React.RefObject<AIPanelInputRef>) {
         this.inputRef = ref;
+    }
+
+    registerScrollToBottom(callback: () => void) {
+        this.scrollToBottomCallback = callback;
+    }
+
+    scrollToBottom() {
+        this.scrollToBottomCallback?.();
     }
 
     focusInput() {

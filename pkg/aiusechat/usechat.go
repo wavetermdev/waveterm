@@ -68,6 +68,7 @@ var SystemPromptText_OpenAI = strings.Join([]string{
 	"Reserve inline code (single backticks) for short references like command names (`grep`, `less`), flags, env vars, file paths, or tiny snippets not meant to be executed.",
 	`You may use Markdown (lists, tables, bold/italics) to improve readability.`,
 	`Never comment on or justify your formatting choices; just follow these rules.`,
+	`When generating code or command blocks, try to keep lines under ~100 characters wide where practical (soft wrap; do not break tokens mid-word). Favor indentation and short variable names to stay compact, but correctness always takes priority.`,
 
 	// Safety & limits
 	`If a request would execute dangerous or destructive actions, warn briefly and provide a safer alternative.`,
@@ -206,7 +207,7 @@ func processToolResults(stopReason *uctypes.WaveStopReason, chatOpts uctypes.Wav
 		log.Printf("TOOLUSE name=%s id=%s input=%s\n", toolCall.Name, toolCall.ID, utilfn.TruncateString(string(inputJSON), 40))
 		result := ResolveToolCall(toolCall, chatOpts)
 		toolResults = append(toolResults, result)
-		
+
 		// Track tool usage by ToolLogName
 		toolDef := getToolDefinition(toolCall.Name, chatOpts)
 		if toolDef != nil && toolDef.ToolLogName != "" {
@@ -434,7 +435,7 @@ func WaveAIPostMessageWrap(ctx context.Context, sseHandler *sse.SSEHandlerCh, me
 		log.Printf("metrics: requests=%d tools=%d premium=%d proxy=%d images=%d pdfs=%d textdocs=%d textlen=%d duration=%dms error=%v\n",
 			metrics.RequestCount, metrics.ToolUseCount, metrics.PremiumReqCount, metrics.ProxyReqCount,
 			metrics.ImageCount, metrics.PDFCount, metrics.TextDocCount, metrics.TextLen, metrics.RequestDuration, metrics.HadError)
-		
+
 		sendAIMetricsTelemetry(ctx, metrics)
 	}
 	return err

@@ -34,6 +34,7 @@ const AIPanelComponentInner = memo(({ className, onClose }: AIPanelProps) => {
     const [isDragOver, setIsDragOver] = useState(false);
     const [isLoadingChat, setIsLoadingChat] = useState(true);
     const model = WaveAIModel.getInstance();
+    const containerRef = useRef<HTMLDivElement>(null);
     const errorMessage = jotai.useAtomValue(model.errorMessage);
     const realMessageRef = useRef<AIMessage>(null);
     const inputRef = useRef<AIPanelInputRef>(null);
@@ -104,9 +105,31 @@ const AIPanelComponentInner = memo(({ className, onClose }: AIPanelProps) => {
             const messages = await model.loadChat();
             setMessages(messages as any);
             setIsLoadingChat(false);
+            setTimeout(() => {
+                model.scrollToBottom();
+            }, 100);
         };
         loadMessages();
     }, [model, setMessages]);
+
+    useEffect(() => {
+        const updateWidth = () => {
+            if (containerRef.current) {
+                globalStore.set(model.containerWidth, containerRef.current.offsetWidth);
+            }
+        };
+
+        updateWidth();
+
+        const resizeObserver = new ResizeObserver(updateWidth);
+        if (containerRef.current) {
+            resizeObserver.observe(containerRef.current);
+        }
+
+        return () => {
+            resizeObserver.disconnect();
+        };
+    }, [model]);
 
     useEffect(() => {
         model.ensureRateLimitSet();
@@ -279,6 +302,7 @@ const AIPanelComponentInner = memo(({ className, onClose }: AIPanelProps) => {
 
     return (
         <div
+            ref={containerRef}
             data-waveai-panel="true"
             className={cn(
                 "bg-gray-900 flex flex-col relative h-[calc(100%-4px)] mt-1",
