@@ -87,6 +87,21 @@ declare global {
         inputdata64: string;
     };
 
+    // wshrpc.BlocksListEntry
+    type BlocksListEntry = {
+        windowid: string;
+        workspaceid: string;
+        tabid: string;
+        blockid: string;
+        meta: MetaType;
+    };
+
+    // wshrpc.BlocksListRequest
+    type BlocksListRequest = {
+        windowid?: string;
+        workspaceid?: string;
+    };
+
     // waveobj.Client
     type Client = WaveObj & {
         windowids: string[];
