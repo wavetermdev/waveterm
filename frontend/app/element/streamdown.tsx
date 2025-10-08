@@ -3,7 +3,8 @@
 
 import { CopyButton } from "@/app/element/copybutton";
 import { IconButton } from "@/app/element/iconbutton";
-import { cn } from "@/util/util";
+import { cn, useAtomValueSafe } from "@/util/util";
+import type { Atom } from "jotai";
 import { useEffect, useRef, useState } from "react";
 import { bundledLanguages, codeToHtml } from "shiki/bundle/web";
 import { Streamdown } from "streamdown";
@@ -14,15 +15,7 @@ function getTextContent(node: React.ReactNode): string {
     return typeof node === "string" ? node : "";
 }
 
-function CodePlain({
-    className = "",
-    isCodeBlock,
-    text,
-}: {
-    className?: string;
-    isCodeBlock: boolean;
-    text: string;
-}) {
+function CodePlain({ className = "", isCodeBlock, text }: { className?: string; isCodeBlock: boolean; text: string }) {
     if (isCodeBlock) {
         return <code className={cn("font-mono text-[12px]", className)}>{text}</code>;
     }
@@ -34,15 +27,7 @@ function CodePlain({
     );
 }
 
-function CodeHighlight({
-    className = "",
-    lang,
-    text,
-}: {
-    className?: string;
-    lang: string;
-    text: string;
-}) {
+function CodeHighlight({ className = "", lang, text }: { className?: string; lang: string; text: string }) {
     const [html, setHtml] = useState<string>("");
     const [hasError, setHasError] = useState(false);
     const codeRef = useRef<HTMLElement>(null);
@@ -120,9 +105,11 @@ export function Code({ className = "", children }: { className?: string; childre
 type CodeBlockProps = {
     children: React.ReactNode;
     onClickExecute?: (cmd: string) => void;
+    codeBlockMaxWidthAtom?: Atom<number>;
 };
 
-const CodeBlock = ({ children, onClickExecute }: CodeBlockProps) => {
+const CodeBlock = ({ children, onClickExecute, codeBlockMaxWidthAtom }: CodeBlockProps) => {
+    const codeBlockMaxWidth = useAtomValueSafe(codeBlockMaxWidthAtom);
     const getTextContent = (children: any): string => {
         if (typeof children === "string") {
             return children;
@@ -160,7 +147,10 @@ const CodeBlock = ({ children, onClickExecute }: CodeBlockProps) => {
     const language = getLanguage(children);
 
     return (
-        <div className="rounded-lg overflow-hidden bg-black my-4">
+        <div
+            className={cn("rounded-lg overflow-hidden bg-black my-4", codeBlockMaxWidth && "max-w-full")}
+            style={codeBlockMaxWidth ? { maxWidth: `${codeBlockMaxWidth}px` } : undefined}
+        >
             <div className="flex items-center justify-between pl-3 pr-2 pt-2 pb-1.5">
                 <span className="text-[11px] text-white/50">{language}</span>
                 <div className="flex items-center gap-2">
@@ -176,7 +166,7 @@ const CodeBlock = ({ children, onClickExecute }: CodeBlockProps) => {
                     )}
                 </div>
             </div>
-            <pre className="px-4 pb-2 pt-0 overflow-x-auto m-0 text-secondary">{children}</pre>
+            <pre className="px-4 pb-2 pt-0 overflow-x-auto m-0 text-secondary max-w-full">{children}</pre>
         </div>
     );
 };
@@ -205,9 +195,16 @@ interface WaveStreamdownProps {
     parseIncompleteMarkdown?: boolean;
     className?: string;
     onClickExecute?: (cmd: string) => void;
+    codeBlockMaxWidthAtom?: Atom<number>;
 }
 
-export const WaveStreamdown = ({ text, parseIncompleteMarkdown, className, onClickExecute }: WaveStreamdownProps) => {
+export const WaveStreamdown = ({
+    text,
+    parseIncompleteMarkdown,
+    className,
+    onClickExecute,
+    codeBlockMaxWidthAtom,
+}: WaveStreamdownProps) => {
     return (
         <Streamdown
             parseIncompleteMarkdown={parseIncompleteMarkdown}
@@ -229,7 +226,11 @@ export const WaveStreamdown = ({ text, parseIncompleteMarkdown, className, onCli
             components={{
                 code: Code,
                 pre: (props: React.HTMLAttributes<HTMLPreElement>) => (
-                    <CodeBlock children={props.children} onClickExecute={onClickExecute} />
+                    <CodeBlock
+                        children={props.children}
+                        onClickExecute={onClickExecute}
+                        codeBlockMaxWidthAtom={codeBlockMaxWidthAtom}
+                    />
                 ),
                 p: (props: React.HTMLAttributes<HTMLParagraphElement>) => <p {...props} className="text-secondary" />,
                 h1: (props: React.HTMLAttributes<HTMLHeadingElement>) => (

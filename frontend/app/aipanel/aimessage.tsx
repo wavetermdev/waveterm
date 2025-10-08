@@ -3,9 +3,11 @@
 
 import { WaveStreamdown } from "@/app/element/streamdown";
 import { cn } from "@/util/util";
+import { useAtomValue } from "jotai";
 import { memo } from "react";
 import { getFileIcon } from "./ai-utils";
 import { WaveUIMessage, WaveUIMessagePart } from "./aitypes";
+import { WaveAIModel } from "./waveai-model";
 
 const AIThinking = memo(() => (
     <div className="flex items-center gap-2">
@@ -72,13 +74,22 @@ interface AIMessagePartProps {
 }
 
 const AIMessagePart = memo(({ part, role, isStreaming }: AIMessagePartProps) => {
+    const model = WaveAIModel.getInstance();
+
     if (part.type === "text") {
         const content = part.text ?? "";
 
         if (role === "user") {
             return <div className="whitespace-pre-wrap break-words">{content}</div>;
         } else {
-            return <WaveStreamdown text={content} parseIncompleteMarkdown={isStreaming} className="text-gray-100" />;
+            return (
+                <WaveStreamdown
+                    text={content}
+                    parseIncompleteMarkdown={isStreaming}
+                    className="text-gray-100"
+                    codeBlockMaxWidthAtom={model.codeBlockMaxWidth}
+                />
+            );
         }
     }
 
