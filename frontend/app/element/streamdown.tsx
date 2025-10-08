@@ -171,7 +171,10 @@ export const WaveStreamdown = ({ text, parseIncompleteMarkdown, className, onCli
     return (
         <Streamdown
             parseIncompleteMarkdown={parseIncompleteMarkdown}
-            className={cn("wave-streamdown text-secondary", className)}
+            className={cn(
+                "wave-streamdown text-secondary [&>*:first-child]:mt-0 [&>*:first-child>*:first-child]:mt-0",
+                className
+            )}
             shikiTheme={[ShikiTheme, ShikiTheme]}
             controls={{
                 code: false,
@@ -190,22 +193,22 @@ export const WaveStreamdown = ({ text, parseIncompleteMarkdown, className, onCli
                 ),
                 p: (props: React.HTMLAttributes<HTMLParagraphElement>) => <p {...props} className="text-secondary" />,
                 h1: (props: React.HTMLAttributes<HTMLHeadingElement>) => (
-                    <h1 {...props} className="text-2xl font-bold text-primary mt-6 first:mt-0 mb-3" />
+                    <h1 {...props} className="text-2xl font-bold text-primary mt-6 mb-3" />
                 ),
                 h2: (props: React.HTMLAttributes<HTMLHeadingElement>) => (
-                    <h2 {...props} className="text-xl font-bold text-primary mt-5 first:mt-0 mb-2" />
+                    <h2 {...props} className="text-xl font-bold text-primary mt-5 mb-2" />
                 ),
                 h3: (props: React.HTMLAttributes<HTMLHeadingElement>) => (
-                    <h3 {...props} className="text-lg font-bold text-primary mt-4 first:mt-0 mb-2" />
+                    <h3 {...props} className="text-lg font-bold text-primary mt-4 mb-2" />
                 ),
                 h4: (props: React.HTMLAttributes<HTMLHeadingElement>) => (
-                    <h4 {...props} className="text-base font-semibold text-primary mt-3 first:mt-0 mb-1" />
+                    <h4 {...props} className="text-base font-semibold text-primary mt-3 mb-1" />
                 ),
                 h5: (props: React.HTMLAttributes<HTMLHeadingElement>) => (
-                    <h5 {...props} className="text-sm font-semibold text-primary mt-2 first:mt-0 mb-1" />
+                    <h5 {...props} className="text-sm font-semibold text-primary mt-2 mb-1" />
                 ),
                 h6: (props: React.HTMLAttributes<HTMLHeadingElement>) => (
-                    <h6 {...props} className="text-sm text-primary mt-2 first:mt-0 mb-1" />
+                    <h6 {...props} className="text-sm text-primary mt-2 mb-1" />
                 ),
                 table: (props: React.HTMLAttributes<HTMLTableElement>) => (
                     <table {...props} className="w-full border-collapse my-4" />
