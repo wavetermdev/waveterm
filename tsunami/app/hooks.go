@@ -90,16 +90,6 @@ func UseEffect(fn func() func(), deps []any) {
 	engine.UseEffect(rc, fn, deps)
 }
 
-// UseSetAppTitle sets the application title for the current component.
-// This hook must be called within a component context.
-func UseSetAppTitle(title string) {
-	rc := engine.GetGlobalRenderContext()
-	if rc == nil {
-		panic("UseSetAppTitle must be called within a component (no context)")
-	}
-	engine.UseSetAppTitle(rc, title)
-}
-
 // UseLocal creates a component-local atom that is automatically cleaned up when the component unmounts.
 // The atom is created with a unique name based on the component's wave ID and hook index.
 // This hook must be called within a component context.

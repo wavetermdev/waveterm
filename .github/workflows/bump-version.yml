@@ -42,10 +42,15 @@ jobs:
             - uses: actions/setup-node@v5
               with:
                   node-version: ${{env.NODE_VERSION}}
-            - name: Install Yarn
-              run: |
-                  corepack enable
-                  yarn install
+                  cache: npm
+                  cache-dependency-path: package-lock.json
+            - uses: nick-fields/retry@v3
+              name: npm ci
+              with:
+                  command: npm ci --no-audit --no-fund
+                  retry_on: error
+                  max_attempts: 3
+                  timeout_minutes: 5
             - name: Install Task
               uses: arduino/setup-task@v2
               with:

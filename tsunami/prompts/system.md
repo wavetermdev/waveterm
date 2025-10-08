@@ -48,7 +48,7 @@ Tsunami applications run as Go programs that generate virtual DOM structures. Wa
 
 ## Creating a Tsunami Application
 
-A Tsunami application is simply a Go package with an `App` component. Here's a minimal "Hello World" example:
+A Tsunami application is simply a Go package with an `App` component and 2 required consts (AppTitle and AppShortDesc). Here's a minimal "Hello World" example:
 
 ```go
 package main
@@ -58,10 +58,12 @@ import (
 	"github.com/wavetermdev/waveterm/tsunami/vdom"
 )
 
+// Required metadata constants - must be defined in every Tsunami app
+const AppTitle = "Hello World" // sets the HTML title
+const AppShortDesc = "A simple greeting widget" // provides a 1-line description for AI agents (max 100 chars)
+
 // The App component is the required entry point for every Tsunami application
 var App = app.DefineComponent("App", func(_ struct{}) any {
-	app.UseSetAppTitle("Hello World")
-
 	return vdom.H("div", map[string]any{
 		"className": "flex items-center justify-center h-screen text-xl font-bold",
 	}, "Hello, Tsunami!")
@@ -75,6 +77,12 @@ Key Points:
 - Do NOT add a `main()` function, that is provided by the framework when building.
 - Uses Tailwind v4 for styling - you can use any Tailwind classes in your components.
 - Use React-style camel case props (`className`, `onClick`)
+
+**Required Constants:**:
+
+- MUST add `const AppTitle`. The display name for your application (used in window titles, widget lists)
+- MUST add `const AppShortDesc`. Brief description of what the widget does (max 100 characters, used by AI agents for interaction)
+- Both constants (AppTitle and AppShortDesc) must exist and be non-empty strings. The framework will fail to build if these consts are missing.
 
 ## Quick Reference
 
@@ -268,7 +276,7 @@ var MyComponent = app.DefineComponent("MyComponent", func(props MyProps) any {
 - **State Management**: app.UseLocal creates local component atoms (covered in State Management with Atoms)
 - **Component Lifecycle**: app.UseEffect, app.UseRef, app.UseVDomRef (covered in Component Lifecycle Hooks)
 - **Async Operations**: app.UseGoRoutine, app.UseTicker, app.UseAfter manage goroutine and timer lifecycle (covered in Async Operations and Goroutines)
-- **Utility**: app.UseSetAppTitle, app.UseId, app.UseRenderTs, app.UseResync
+- **Utility**: app.UseId, app.UseRenderTs, app.UseResync
 
 ## State Management with Atoms
 
@@ -541,6 +549,8 @@ ConfigAtom and DataAtom automatically create REST endpoints:
 - `GET /api/schemas` - Returns JSON schema information for the /api/config and /api/data endpoints based on app.AtomMeta and type reflection information
 
 This makes Tsunami applications naturally suitable for integration with external tools, monitoring systems, and AI agents that need to inspect or configure the application.
+
+**Note**: You can also dynamically update your app's title and description at runtime using `app.SetTitle(title string)` and `app.SetShortDescription(shortDesc string)` when your widget becomes contextual (e.g., showing current project or file).
 
 #### Schema Generation for External Tools
 
@@ -938,16 +948,6 @@ var MyComponent = app.DefineComponent("MyComponent", func(_ struct{}) any {
 
 ### Utility Hooks
 
-**app.UseSetAppTitle** - Sets the application window title:
-
-```go
-var App = app.DefineComponent("App", func(_ struct{}) any {
-    app.UseSetAppTitle("My Tsunami App")
-    // Only works in the top-level App component
-    return vdom.H("div", nil, "Hello World")
-})
-```
-
 **Specialty Hooks** (rarely needed):
 
 - `app.UseId()` - Unique component identifier
@@ -1220,6 +1220,9 @@ import (
 	"github.com/wavetermdev/waveterm/tsunami/vdom"
 )
 
+const AppTitle = "Todos"
+const AppShortDesc = "A todo list manager"
+
 // Tsunami applications automatically include Tailwind v4 CSS
 // No setup required - just use Tailwind classes in your components
 
@@ -1358,9 +1361,8 @@ var App = app.DefineComponent("App", func(_ struct{}) any {
 Key points:
 
 1. Root component must be named "App"
-2. Use app.UseSetAppTitle in the main App component to set the window title
-3. Do NOT write a main() function - the framework handles app lifecycle
-4. Use init() for setup like registering dynamic handlers with app.HandleDynFunc
+2. Do NOT write a main() function - the framework handles app lifecycle
+3. Use init() for setup like registering dynamic handlers with app.HandleDynFunc
 
 ## Common Mistakes to Avoid
 

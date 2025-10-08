@@ -18,6 +18,9 @@ import (
 	"time"
 
 	"github.com/skratchdot/open-golang/open"
+	"github.com/wavetermdev/waveterm/pkg/aiusechat"
+	"github.com/wavetermdev/waveterm/pkg/aiusechat/chatstore"
+	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
 	"github.com/wavetermdev/waveterm/pkg/blockcontroller"
 	"github.com/wavetermdev/waveterm/pkg/blocklogger"
 	"github.com/wavetermdev/waveterm/pkg/filestore"
@@ -155,29 +158,17 @@ func (ws *WshServer) SetMetaCommand(ctx context.Context, data wshrpc.CommandSetM
 	if err != nil {
 		return fmt.Errorf("error updating object meta: %w", err)
 	}
-	sendWaveObjUpdate(oref)
+	wcore.SendWaveObjUpdate(oref)
 	return nil
 }
 
-func sendWaveObjUpdate(oref waveobj.ORef) {
-	ctx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)
-	defer cancelFn()
-	// send a waveobj:update event
-	waveObj, err := wstore.DBGetORef(ctx, oref)
-	if err != nil {
-		log.Printf("error getting object for update event: %v", err)
-		return
-	}
-	wps.Broker.Publish(wps.WaveEvent{
-		Event:  wps.Event_WaveObjUpdate,
-		Scopes: []string{oref.String()},
-		Data: waveobj.WaveObjUpdate{
-			UpdateType: waveobj.UpdateType_Update,
-			OType:      waveObj.GetOType(),
-			OID:        waveobj.GetOID(waveObj),
-			Obj:        waveObj,
-		},
-	})
+func (ws *WshServer) GetRTInfoCommand(ctx context.Context, data wshrpc.CommandGetRTInfoData) (*waveobj.ObjRTInfo, error) {
+	return wstore.GetRTInfo(data.ORef), nil
+}
+
+func (ws *WshServer) SetRTInfoCommand(ctx context.Context, data wshrpc.CommandSetRTInfoData) error {
+	wstore.SetRTInfo(data.ORef, data.Data)
+	return nil
 }
 
 func (ws *WshServer) ResolveIdsCommand(ctx context.Context, data wshrpc.CommandResolveIdsData) (wshrpc.CommandResolveIdsRtnData, error) {
@@ -218,7 +209,7 @@ func (ws *WshServer) CreateBlockCommand(ctx context.Context, data wshrpc.Command
 				ActionType:    wcore.LayoutActionDataType_Replace,
 				TargetBlockId: data.TargetBlockId,
 				BlockId:       blockData.OID,
-				Focused:       true,
+				Focused:       data.Focused,
 			}
 			err = wcore.DeleteBlock(ctx, data.TargetBlockId, false)
 			if err != nil {
@@ -230,6 +221,7 @@ func (ws *WshServer) CreateBlockCommand(ctx context.Context, data wshrpc.Command
 				BlockId:       blockData.OID,
 				TargetBlockId: data.TargetBlockId,
 				Position:      "after",
+				Focused:       data.Focused,
 			}
 		case "splitleft":
 			layoutAction = &waveobj.LayoutActionData{
@@ -237,6 +229,7 @@ func (ws *WshServer) CreateBlockCommand(ctx context.Context, data wshrpc.Command
 				BlockId:       blockData.OID,
 				TargetBlockId: data.TargetBlockId,
 				Position:      "before",
+				Focused:       data.Focused,
 			}
 		case "splitup":
 			layoutAction = &waveobj.LayoutActionData{
@@ -244,6 +237,7 @@ func (ws *WshServer) CreateBlockCommand(ctx context.Context, data wshrpc.Command
 				BlockId:       blockData.OID,
 				TargetBlockId: data.TargetBlockId,
 				Position:      "before",
+				Focused:       data.Focused,
 			}
 		case "splitdown":
 			layoutAction = &waveobj.LayoutActionData{
@@ -251,6 +245,7 @@ func (ws *WshServer) CreateBlockCommand(ctx context.Context, data wshrpc.Command
 				BlockId:       blockData.OID,
 				TargetBlockId: data.TargetBlockId,
 				Position:      "after",
+				Focused:       data.Focused,
 			}
 		default:
 			return nil, fmt.Errorf("invalid target action: %s", data.TargetAction)
@@ -261,7 +256,7 @@ func (ws *WshServer) CreateBlockCommand(ctx context.Context, data wshrpc.Command
 			BlockId:    blockData.OID,
 			Magnified:  data.Magnified,
 			Ephemeral:  data.Ephemeral,
-			Focused:    true,
+			Focused:    data.Focused,
 		}
 	}
 	err = wcore.QueueLayoutActionForTab(ctx, tabId, *layoutAction)
@@ -301,11 +296,7 @@ func (ws *WshServer) SetViewCommand(ctx context.Context, data wshrpc.CommandBloc
 }
 
 func (ws *WshServer) ControllerStopCommand(ctx context.Context, blockId string) error {
-	bc := blockcontroller.GetBlockController(blockId)
-	if bc == nil {
-		return nil
-	}
-	bc.StopShellProc(true)
+	blockcontroller.StopBlockController(blockId)
 	return nil
 }
 
@@ -316,10 +307,6 @@ func (ws *WshServer) ControllerResyncCommand(ctx context.Context, data wshrpc.Co
 }
 
 func (ws *WshServer) ControllerInputCommand(ctx context.Context, data wshrpc.CommandBlockInputData) error {
-	bc := blockcontroller.GetBlockController(data.BlockId)
-	if bc == nil {
-		return fmt.Errorf("block controller not found for block %q", data.BlockId)
-	}
 	inputUnion := &blockcontroller.BlockInputUnion{
 		SigName:  data.SigName,
 		TermSize: data.TermSize,
@@ -332,7 +319,7 @@ func (ws *WshServer) ControllerInputCommand(ctx context.Context, data wshrpc.Com
 		}
 		inputUnion.InputData = inputBuf[:nw]
 	}
-	return bc.SendInput(inputUnion)
+	return blockcontroller.SendInput(data.BlockId, inputUnion)
 }
 
 func (ws *WshServer) ControllerAppendOutputCommand(ctx context.Context, data wshrpc.CommandControllerAppendOutputData) error {
@@ -915,6 +902,64 @@ func (ws WshServer) SendTelemetryCommand(ctx context.Context) error {
 	return wcloud.SendAllTelemetry(ctx, client.OID)
 }
 
+func (ws *WshServer) WaveAIEnableTelemetryCommand(ctx context.Context) error {
+	// Enable telemetry in config
+	meta := waveobj.MetaMapType{
+		wconfig.ConfigKey_TelemetryEnabled: true,
+	}
+	err := wconfig.SetBaseConfigValue(meta)
+	if err != nil {
+		return fmt.Errorf("error setting telemetry enabled: %w", err)
+	}
+
+	// Get client for telemetry operations
+	client, err := wstore.DBGetSingleton[*waveobj.Client](ctx)
+	if err != nil {
+		return fmt.Errorf("getting client data for telemetry: %v", err)
+	}
+
+	// Send no-telemetry update to cloud (async)
+	go func() {
+		ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancelFn()
+		err := wcloud.SendNoTelemetryUpdate(ctx, client.OID, false) // false means telemetry is enabled
+		if err != nil {
+			log.Printf("error sending no-telemetry update: %v", err)
+		}
+	}()
+
+	// Record the telemetry event
+	event := telemetrydata.MakeTEvent("waveai:enabletelemetry", telemetrydata.TEventProps{})
+	err = telemetry.RecordTEvent(ctx, event)
+	if err != nil {
+		log.Printf("error recording waveai:enabletelemetry event: %v", err)
+	}
+
+	// Immediately send telemetry to cloud
+	err = wcloud.SendAllTelemetry(ctx, client.OID)
+	if err != nil {
+		log.Printf("error sending telemetry after enabling: %v", err)
+	}
+
+	return nil
+}
+
+func (ws *WshServer) GetWaveAIChatCommand(ctx context.Context, data wshrpc.CommandGetWaveAIChatData) (*uctypes.UIChat, error) {
+	aiChat := chatstore.DefaultChatStore.Get(data.ChatId)
+	if aiChat == nil {
+		return nil, nil
+	}
+	uiChat, err := aiusechat.ConvertAIChatToUIChat(aiChat)
+	if err != nil {
+		return nil, fmt.Errorf("error converting AI chat to UI chat: %w", err)
+	}
+	return uiChat, nil
+}
+
+func (ws *WshServer) GetWaveAIRateLimitCommand(ctx context.Context) (*uctypes.RateLimitInfo, error) {
+	return aiusechat.GetGlobalRateLimit(), nil
+}
+
 var wshActivityRe = regexp.MustCompile(`^[a-z:#]+$`)
 
 func (ws *WshServer) WshActivityCommand(ctx context.Context, data map[string]int) error {
@@ -1010,7 +1055,7 @@ func (ws *WshServer) PathCommand(ctx context.Context, data wshrpc.PathCommandDat
 		_, err := ws.CreateBlockCommand(ctx, wshrpc.CommandCreateBlockData{BlockDef: &waveobj.BlockDef{Meta: map[string]any{
 			waveobj.MetaKey_View: "preview",
 			waveobj.MetaKey_File: path,
-		}}, Ephemeral: true, TabId: data.TabId})
+		}}, Ephemeral: true, Focused: true, TabId: data.TabId})
 
 		if err != nil {
 			return path, fmt.Errorf("error opening path: %w", err)

@@ -112,7 +112,7 @@ const ModalPage1 = () => {
             </div>
             <footer className="unselectable">
                 <div className="flex flex-row items-center justify-center [&>button]:!px-5 [&>button]:!py-2 [&>button]:text-sm [&>button:not(:first-child)]:ml-2.5">
-                    <Button className="font-weight-600" onClick={acceptTos}>
+                    <Button className="font-[600]" onClick={acceptTos}>
                         Continue
                     </Button>
                 </div>
@@ -141,7 +141,7 @@ const ModalPage2 = () => {
             </div>
             <footer className="unselectable">
                 <div className="flex flex-row items-center justify-center [&>button]:!px-5 [&>button]:!py-2 [&>button]:text-sm [&>button:not(:first-child)]:ml-2.5">
-                    <Button className="font-weight-600" onClick={handleGetStarted}>
+                    <Button className="font-[600]" onClick={handleGetStarted}>
                         Get Started
                     </Button>
                 </div>

@@ -39,15 +39,20 @@ jobs:
             - uses: actions/setup-node@v5
               with:
                   node-version: ${{env.NODE_VERSION}}
+                  cache: npm
+                  cache-dependency-path: package-lock.json
             - name: Install Task
               uses: arduino/setup-task@v2
               with:
                   version: 3.x
                   repo-token: ${{ secrets.GITHUB_TOKEN }}
-            - name: Install yarn
-              run: |
-                  corepack enable
-                  yarn install
+            - uses: nick-fields/retry@v3
+              name: npm ci
+              with:
+                  command: npm ci --no-audit --no-fund
+                  retry_on: error
+                  max_attempts: 3
+                  timeout_minutes: 5
             - name: Build docsite
               run: task docsite:build:public
             - name: Upload Build Artifact

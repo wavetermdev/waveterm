@@ -31,7 +31,6 @@
 }
 
 .collapsible-menu-item-text {
-    @include mixins.ellipsis();
     text-decoration: none;
 }
 

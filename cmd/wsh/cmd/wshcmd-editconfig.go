@@ -52,6 +52,7 @@ func editConfigRun(cmd *cobra.Command, args []string) (rtnErr error) {
 				waveobj.MetaKey_Edit: true,
 			},
 		},
+		Focused: true,
 	}
 
 	_, err = RpcClient.SendRpcRequest(wshrpc.Command_CreateBlock, wshCmd, &wshrpc.RpcOpts{Timeout: 2000})

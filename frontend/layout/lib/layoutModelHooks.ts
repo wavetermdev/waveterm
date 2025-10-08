@@ -6,13 +6,13 @@ import { atoms, globalStore, WOS } from "@/app/store/global";
 import { fireAndForget } from "@/util/util";
 import { Atom, useAtomValue } from "jotai";
 import { CSSProperties, useCallback, useEffect, useState } from "react";
-import { withLayoutTreeStateAtomFromTab } from "./layoutAtom";
+import { getLayoutStateAtomFromTab } from "./layoutAtom";
 import { LayoutModel } from "./layoutModel";
 import { LayoutNode, NodeModel, TileLayoutContents } from "./types";
 
 const layoutModelMap: Map<string, LayoutModel> = new Map();
 
-export function getLayoutModelForTab(tabAtom: Atom<Tab>): LayoutModel {
+function getLayoutModelForTab(tabAtom: Atom<Tab>): LayoutModel {
     const tabData = globalStore.get(tabAtom);
     if (!tabData) return;
     const tabId = tabData.oid;
@@ -22,14 +22,21 @@ export function getLayoutModelForTab(tabAtom: Atom<Tab>): LayoutModel {
             return layoutModel;
         }
     }
-    const layoutTreeStateAtom = withLayoutTreeStateAtomFromTab(tabAtom);
-    const layoutModel = new LayoutModel(layoutTreeStateAtom, globalStore.get, globalStore.set);
-    globalStore.sub(layoutTreeStateAtom, () => fireAndForget(layoutModel.onTreeStateAtomUpdated.bind(layoutModel)));
+    const layoutModel = new LayoutModel(tabAtom, globalStore.get, globalStore.set);
+    
+    const staticTabId = globalStore.get(atoms.staticTabId);
+    if (tabId === staticTabId) {
+        const layoutStateAtom = getLayoutStateAtomFromTab(tabAtom, globalStore.get);
+        globalStore.sub(layoutStateAtom, () => {
+            layoutModel.onBackendUpdate();
+        });
+    }
+    
     layoutModelMap.set(tabId, layoutModel);
     return layoutModel;
 }
 
-export function getLayoutModelForTabById(tabId: string) {
+function getLayoutModelForTabById(tabId: string) {
     const tabOref = WOS.makeORef("tab", tabId);
     const tabAtom = WOS.getWaveObjectAtom<Tab>(tabOref);
     return getLayoutModelForTab(tabAtom);
@@ -44,7 +51,7 @@ export function deleteLayoutModelForTab(tabId: string) {
     if (layoutModelMap.has(tabId)) layoutModelMap.delete(tabId);
 }
 
-export function useLayoutModel(tabAtom: Atom<Tab>): LayoutModel {
+function useLayoutModel(tabAtom: Atom<Tab>): LayoutModel {
     return getLayoutModelForTab(tabAtom);
 }
 

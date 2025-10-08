@@ -6,8 +6,6 @@
 .csv-view {
     opacity: 0; /* Start with an opacity of 0, meaning it's invisible */
 
-    @include mixins.ellipsis();
-
     overflow-x: auto;
     overflow-y: hidden;
 
@@ -53,7 +51,6 @@
                         text-align: left;
                         padding-right: 15px;
                         position: relative;
-                        @include mixins.ellipsis();
 
                         .sort-icon {
                             position: absolute;
@@ -85,7 +82,6 @@
                 flex-grow: 2;
                 display: block;
                 text-align: left;
-                @include mixins.ellipsis();
             }
         }
     }

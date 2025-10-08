@@ -15,8 +15,8 @@ import (
 )
 
 const WaveAIPacketstr = "waveai"
-const ApiType_Anthropic = "anthropic"
-const ApiType_Perplexity = "perplexity"
+const APIType_Anthropic = "anthropic"
+const APIType_Perplexity = "perplexity"
 const APIType_Google = "google"
 const APIType_OpenAI = "openai"
 
@@ -81,12 +81,12 @@ func RunAICommand(ctx context.Context, request wshrpc.WaveAIStreamRequest) chan 
 	}
 	var backend AIBackend
 	var backendType string
-	if request.Opts.APIType == ApiType_Anthropic {
+	if request.Opts.APIType == APIType_Anthropic {
 		backend = AnthropicBackend{}
-		backendType = ApiType_Anthropic
-	} else if request.Opts.APIType == ApiType_Perplexity {
+		backendType = APIType_Anthropic
+	} else if request.Opts.APIType == APIType_Perplexity {
 		backend = PerplexityBackend{}
-		backendType = ApiType_Perplexity
+		backendType = APIType_Perplexity
 	} else if request.Opts.APIType == APIType_Google {
 		backend = GoogleBackend{}
 		backendType = APIType_Google

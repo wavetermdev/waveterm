@@ -2,10 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { WindowService } from "@/app/store/services";
+import { RpcResponseHelper, WshClient } from "@/app/store/wshclient";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { Notification } from "electron";
 import { getResolvedUpdateChannel } from "emain/updater";
-import { RpcResponseHelper, WshClient } from "../frontend/app/store/wshclient";
 import { getWebContentsByBlockId, webGetSelector } from "./emain-web";
 import { createBrowserWindow, getWaveWindowById, getWaveWindowByWorkspaceId } from "./emain-window";
 import { unamePlatform } from "./platform";

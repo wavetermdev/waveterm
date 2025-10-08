@@ -100,6 +100,7 @@ func aiRun(cmd *cobra.Command, args []string) (rtnErr error) {
 					waveobj.MetaKey_View: "waveai",
 				},
 			},
+			Focused: true,
 		}
 
 		newORef, err := wshclient.CreateBlockCommand(RpcClient, *data, &wshrpc.RpcOpts{Timeout: 2000})

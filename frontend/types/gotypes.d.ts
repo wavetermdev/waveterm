@@ -18,6 +18,8 @@ declare global {
         fgminutes?: number;
         activeminutes?: number;
         openminutes?: number;
+        waveaifgminutes?: number;
+        waveaiactiveminutes?: number;
         numtabs?: number;
         newtab?: number;
         numblocks?: number;
@@ -60,6 +62,7 @@ declare global {
         shellprocstatus?: string;
         shellprocconnname?: string;
         shellprocexitcode: number;
+        tsunamiport?: number;
     };
 
     // waveobj.BlockDef
@@ -147,6 +150,11 @@ declare global {
         view: string;
     };
 
+    // wshrpc.CommandCaptureBlockScreenshotData
+    type CommandCaptureBlockScreenshotData = {
+        blockid: string;
+    };
+
     // wshrpc.CommandControllerAppendOutputData
     type CommandControllerAppendOutputData = {
         blockid: string;
@@ -168,6 +176,7 @@ declare global {
         rtopts?: RuntimeOpts;
         magnified?: boolean;
         ephemeral?: boolean;
+        focused?: boolean;
         targetblockid?: string;
         targetaction?: string;
     };
@@ -211,6 +220,16 @@ declare global {
     // wshrpc.CommandGetMetaData
     type CommandGetMetaData = {
         oref: ORef;
+    };
+
+    // wshrpc.CommandGetRTInfoData
+    type CommandGetRTInfoData = {
+        oref: ORef;
+    };
+
+    // wshrpc.CommandGetWaveAIChatData
+    type CommandGetWaveAIChatData = {
+        chatid: string;
     };
 
     // wshrpc.CommandMessageData
@@ -257,6 +276,26 @@ declare global {
     type CommandSetMetaData = {
         oref: ORef;
         meta: MetaType;
+    };
+
+    // wshrpc.CommandSetRTInfoData
+    type CommandSetRTInfoData = {
+        oref: ORef;
+        data: ObjRTInfo;
+    };
+
+    // wshrpc.CommandTermGetScrollbackLinesData
+    type CommandTermGetScrollbackLinesData = {
+        linestart: number;
+        lineend: number;
+    };
+
+    // wshrpc.CommandTermGetScrollbackLinesRtnData
+    type CommandTermGetScrollbackLinesRtnData = {
+        totallines: number;
+        linestart: number;
+        lines: string[];
+        lastupdated: number;
     };
 
     // wshrpc.CommandVarData
@@ -490,6 +529,7 @@ declare global {
     // waveobj.LayoutActionData
     type LayoutActionData = {
         actiontype: string;
+        actionid: string;
         blockid: string;
         nodesize?: number;
         indexarr?: number[];
@@ -586,6 +626,11 @@ declare global {
         "bg:blendmode"?: string;
         "bg:bordercolor"?: string;
         "bg:activebordercolor"?: string;
+        "waveai:panelopen"?: boolean;
+        "waveai:panelwidth"?: number;
+        "waveai:model"?: string;
+        "waveai:chatid"?: string;
+        "waveai:widgetcontext"?: boolean;
         "term:*"?: boolean;
         "term:fontsize"?: number;
         "term:fontfamily"?: string;
@@ -605,6 +650,11 @@ declare global {
         "web:partition"?: string;
         "markdown:fontsize"?: number;
         "markdown:fixedfontsize"?: number;
+        "tsunami:*"?: boolean;
+        "tsunami:sdkreplacepath"?: string;
+        "tsunami:apppath"?: string;
+        "tsunami:scaffoldpath"?: string;
+        "tsunami:env"?: {[key: string]: string};
         "vdom:*"?: boolean;
         "vdom:initialized"?: boolean;
         "vdom:correlationid"?: string;
@@ -629,6 +679,14 @@ declare global {
     // waveobj.ORef
     type ORef = string;
 
+    // waveobj.ObjRTInfo
+    type ObjRTInfo = {
+        "tsunami:title"?: string;
+        "tsunami:shortdesc"?: string;
+        "tsunami:schemas"?: any;
+        "cmd:hascurcwd"?: boolean;
+    };
+
     // iochantypes.Packet
     type Packet = {
         Data: string;
@@ -647,6 +705,16 @@ declare global {
     type Point = {
         x: number;
         y: number;
+    };
+
+    // uctypes.RateLimitInfo
+    type RateLimitInfo = {
+        req: number;
+        reqlimit: number;
+        preq: number;
+        preqlimit: number;
+        resetepoch: number;
+        unknown?: boolean;
     };
 
     // wshrpc.RemoteInfo
@@ -846,6 +914,8 @@ declare global {
         "activity:activeminutes"?: number;
         "activity:fgminutes"?: number;
         "activity:openminutes"?: number;
+        "activity:waveaiactiveminutes"?: number;
+        "activity:waveaifgminutes"?: number;
         "app:firstday"?: boolean;
         "app:firstlaunch"?: boolean;
         "action:initiator"?: "keyboard" | "mouse";
@@ -868,6 +938,23 @@ declare global {
         "count:sshconn"?: number;
         "count:wslconn"?: number;
         "count:views"?: {[key: string]: number};
+        "waveai:apitype"?: string;
+        "waveai:model"?: string;
+        "waveai:inputtokens"?: number;
+        "waveai:outputtokens"?: number;
+        "waveai:requestcount"?: number;
+        "waveai:toolusecount"?: number;
+        "waveai:tooldetail"?: {[key: string]: number};
+        "waveai:premiumreq"?: number;
+        "waveai:proxyreq"?: number;
+        "waveai:haderror"?: boolean;
+        "waveai:imagecount"?: number;
+        "waveai:pdfcount"?: number;
+        "waveai:textdoccount"?: number;
+        "waveai:textlen"?: number;
+        "waveai:firstbytems"?: number;
+        "waveai:requestdurms"?: number;
+        "waveai:widgetaccess"?: boolean;
         $set?: TEventUserProps;
         $set_once?: TEventUserProps;
     };
@@ -936,10 +1023,47 @@ declare global {
         values: {[key: string]: number};
     };
 
+    // uctypes.UIChat
+    type UIChat = {
+        chatid: string;
+        apitype: string;
+        model: string;
+        apiversion: string;
+        messages: UIMessage[];
+    };
+
     // waveobj.UIContext
     type UIContext = {
         windowid: string;
         activetabid: string;
+    };
+
+    // uctypes.UIMessage
+    type UIMessage = {
+        id: string;
+        role: string;
+        metadata?: any;
+        parts?: UIMessagePart[];
+    };
+
+    // uctypes.UIMessagePart
+    type UIMessagePart = {
+        type: string;
+        text?: string;
+        state?: string;
+        toolCallId?: string;
+        input?: any;
+        output?: any;
+        errorText?: string;
+        providerExecuted?: boolean;
+        sourceId?: string;
+        url?: string;
+        title?: string;
+        filename?: string;
+        mediaType?: string;
+        id?: string;
+        data?: any;
+        providerMetadata?: {[key: string]: any};
     };
 
     // userinput.UserInputRequest

@@ -2,13 +2,16 @@
    SPDX-License-Identifier: Apache-2.0 */
 
 @import "tailwindcss";
+@source "../node_modules/streamdown/dist/index.js";
 
 @theme {
     --color-background: rgb(34, 34, 34);
     --color-foreground: #f7f7f7;
     --color-white: #f7f7f7;
+    --color-primary: #f7f7f7;
     --color-muted-foreground: rgb(195, 200, 194);
     --color-secondary: rgb(195, 200, 194);
+    --color-muted: rgb(140, 145, 140);
     --color-accent-50: rgb(236, 253, 232);
     --color-accent-100: rgb(209, 250, 202);
     --color-accent-200: rgb(167, 243, 168);
@@ -33,8 +36,9 @@
 
     --font-sans: "Inter", sans-serif;
     --font-mono: "Hack", monospace;
-    --font-markdown: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif,
-        "Apple Color Emoji", "Segoe UI Emoji";
+    --font-markdown:
+        -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif, "Apple Color Emoji",
+        "Segoe UI Emoji";
 
     --text-xxs: 10px;
     --text-title: 18px;
@@ -59,6 +63,15 @@
     --ansi-brightmagenta: #cc8ecb;
     --ansi-brightcyan: #b7b8cb;
     --ansi-brightwhite: #f0f0f0;
+
+    --container-xs: 300px;
+    --container-xxs: 200px;
+    --container-tiny: 120px;
+}
+
+:root {
+    --zoomfactor: 1;
+    --zoomfactor-inv: 1;
 }
 
 /* Chart tooltip styling for sysinfo plots */
@@ -75,4 +88,11 @@ svg [aria-label="tip"] g path {
 
 .monaco-editor .slider:hover {
     background: rgba(255, 255, 255, 0.6);
+}
+
+.ellipsis {
+    display: block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }

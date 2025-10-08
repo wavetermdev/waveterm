@@ -18,68 +18,85 @@ vars:
 tasks:
     electron:dev:
         desc: Run the Electron application via the Vite dev server (enables hot reloading).
-        cmd: yarn dev
+        cmd: npm run dev
         aliases:
             - dev
         deps:
-            - yarn
+            - npm:install
             - docsite:build:embedded
             - build:backend
         env:
-            WCLOUD_ENDPOINT: "https://api-dev.waveterm.dev/central"
-            WCLOUD_WS_ENDPOINT: "wss://wsapi-dev.waveterm.dev/"
+            WAVETERM_ENVFILE: "{{.ROOT_DIR}}/.env"
+            WCLOUD_ENDPOINT: "https://api-dev.waveterm.dev"
+            WCLOUD_WS_ENDPOINT: "wss://wsapi-dev.waveterm.dev"
 
     electron:start:
         desc: Run the Electron application directly.
-        cmd: yarn start
+        cmd: npm run start
         aliases:
             - start
         deps:
-            - yarn
+            - npm:install
             - docsite:build:embedded
             - build:backend
         env:
+            WAVETERM_ENVFILE: "{{.ROOT_DIR}}/.env"
             WCLOUD_ENDPOINT: "https://api-dev.waveterm.dev"
             WCLOUD_WS_ENDPOINT: "wss://wsapi-dev.waveterm.dev"
 
     electron:quickdev:
         desc: Run the Electron application via the Vite dev server (quick dev - no docsite, arm64 only, no generate, no wsh).
-        cmd: yarn dev
+        cmd: npm run dev
         deps:
-            - yarn
+            - npm:install
             - build:backend:quickdev
         env:
+            WAVETERM_ENVFILE: "{{.ROOT_DIR}}/.env"
             WCLOUD_ENDPOINT: "https://api-dev.waveterm.dev/central"
             WCLOUD_WS_ENDPOINT: "wss://wsapi-dev.waveterm.dev/"
 
     storybook:
         desc: Start the Storybook server.
-        cmd: yarn storybook
+        cmd: npm run storybook
         deps:
-            - yarn
+            - npm:install
 
     storybook:build:
         desc: Build the Storybook static site.
-        cmd: yarn build-storybook
+        cmd: npm run build-storybook
         generates:
             - storybook-static/**/*
         deps:
-            - yarn
+            - npm:install
+
+    docs:npm:install:
+        desc: Runs `npm install` in docs directory
+        internal: true
+        generates:
+            - docs/node_modules/**/*
+            - docs/package-lock.json
+        sources:
+            - docs/package-lock.json
+            - docs/package.json
+        cmd: npm install
+        dir: docs
 
     docsite:start:
         desc: Start the docsite dev server.
-        cmd: yarn start
+        cmd: npm run start
         dir: docs
         aliases:
             - docsite
         deps:
-            - yarn
+            - docs:npm:install
 
     docsite:build:public:
         desc: Build the full docsite.
         cmds:
-            - cd docs && yarn build
+            - cd docs && npm run build
             - task: copyfiles:'storybook-static':'docs/build/storybook'
+        env:
+            USE_SIMPLE_CSS_MINIFIER: "true"
         sources:
             - "docs/*"
             - "docs/src/**/*"
@@ -89,7 +106,7 @@ tasks:
         generates:
             - "docs/build/**/*"
         deps:
-            - yarn
+            - docs:npm:install
             - storybook:build
 
     docsite:build:embedded:
@@ -102,20 +119,29 @@ tasks:
         generates:
             - "dist/docsite/**/*"
         cmds:
-            - cd docs && yarn build-embedded
+            - cd docs && npm run build-embedded
             - task: copyfiles:'docs/build/':'dist/docsite'
+        env:
+            EMBEDDED: "true"
+            USE_SIMPLE_CSS_MINIFIER: "true"
         deps:
-            - yarn
+            - docs:npm:install
 
     package:
         desc: Package the application for the current platform.
         cmds:
-            - yarn build:prod && yarn electron-builder -c electron-builder.config.cjs -p never {{.CLI_ARGS}}
+            - npm run build:prod && npm exec electron-builder -- -c electron-builder.config.cjs -p never {{.CLI_ARGS}}
         deps:
             - clean
-            - yarn
+            - npm:install
             - docsite:build:embedded
             - build:backend
+
+    build:frontend:dev:
+        desc: Build the frontend in development mode.
+        cmd: npm run build:dev
+        deps:
+            - npm:install
 
     build:backend:
         desc: Build the wavesrv and wsh components.
@@ -127,6 +153,14 @@ tasks:
         desc: Build only the wavesrv component for quickdev (arm64 macOS only, no generate, no wsh).
         cmds:
             - task: build:server:quickdev
+        sources:
+            - go.mod
+            - go.sum
+            - pkg/**/*.go
+            - cmd/**/*.go
+            - tsunami/go.mod
+            - tsunami/go.sum
+            - tsunami/**/*.go
 
     build:schema:
         desc: Build the schema for configuration.
@@ -154,6 +188,7 @@ tasks:
             - "cmd/server/*.go"
             - "pkg/**/*.go"
             - "pkg/**/*.json"
+            - tsunami/**/*.go
         generates:
             - dist/bin/wavesrv.*
 
@@ -171,8 +206,6 @@ tasks:
         desc: Build the wavesrv component for quickdev (arm64 macOS only, no generate).
         platforms: [darwin]
         cmds:
-            - cmd: "{{.RM}} dist/bin/wavesrv*"
-              ignore_error: true
             - task: build:server:internal
               vars:
                   ARCHS: arm64
@@ -182,6 +215,7 @@ tasks:
             - "cmd/server/*.go"
             - "pkg/**/*.go"
             - "pkg/**/*.json"
+            - "tsunami/**/*.go"
         generates:
             - dist/bin/wavesrv.*
 
@@ -298,7 +332,7 @@ tasks:
 
     outdated:
         desc: Check for outdated packages using npm-check-updates.
-        cmd: yarn dlx npm-check-updates
+        cmd: npx npm-check-updates@latest
 
     version:
         desc: Get the current package version, or bump version if args are present. To pass args to `version.cjs`, add them after `--`. See `version.cjs` for usage definitions for the arguments.
@@ -385,9 +419,9 @@ tasks:
     init:
         desc: Initialize the project for development.
         cmds:
-            - yarn
+            - npm install
             - go mod tidy
-            - cd docs && yarn
+            - cd docs && npm install
 
     dev:cleardata:windows:
         internal: true
@@ -404,18 +438,16 @@ tasks:
         platforms: [darwin]
         cmd: 'rm -rf ~/Library/Application\ Support/waveterm-dev'
 
-    yarn:
-        desc: Runs `yarn`
+    npm:install:
+        desc: Runs `npm install`
         internal: true
         generates:
             - node_modules/**/*
-            - yarn.lock
-            - .yarn/*
+            - package-lock.json
         sources:
-            - yarn.lock
+            - package-lock.json
             - package.json
-            - .yarnrc.yml
-        cmd: yarn
+        cmd: npm install
 
     go:mod:tidy:
         desc: Runs `go mod tidy`
@@ -453,12 +485,12 @@ tasks:
 
     tsunami:frontend:build:
         desc: Build the tsunami frontend
-        cmd: yarn build
+        cmd: npm run build
         dir: tsunami/frontend
 
     tsunami:frontend:devbuild:
         desc: Build the tsunami frontend in development mode (with source maps and symbols)
-        cmd: yarn build:dev
+        cmd: npm run build:dev
         dir: tsunami/frontend
 
     tsunami:scaffold:
@@ -475,6 +507,19 @@ tasks:
         cmds:
             - task: tsunami:scaffold:internal
 
+    tsunami:scaffold:packagejson:
+        desc: Create package.json for tsunami scaffold using npm commands
+        dir: tsunami/frontend/scaffold
+        cmds:
+            - cmd: "{{.RM}} package.json"
+              ignore_error: true
+            - npm --no-workspaces init -y --init-license Apache-2.0
+            - npm pkg set name=tsunami-scaffold
+            - npm pkg delete author
+            - npm pkg set author.name="Command Line Inc"
+            - npm pkg set author.email="info@commandline.dev"
+            - npm --no-workspaces install tailwindcss@4.1.13 @tailwindcss/cli@4.1.13
+
     tsunami:scaffold:internal:
         desc: Internal task to create scaffold directory structure
         dir: tsunami/frontend
@@ -483,12 +528,8 @@ tasks:
             - cmd: "{{.RMRF}} scaffold"
               ignore_error: true
             - mkdir scaffold
-            - cd scaffold && npm --no-workspaces init -y --init-license Apache-2.0
-            - cd scaffold && npm pkg set name=tsunami-scaffold
-            - cd scaffold && npm pkg delete author
-            - cd scaffold && npm pkg set author.name="Command Line Inc"
-            - cd scaffold && npm pkg set author.email="info@commandline.dev"
-            - cd scaffold && npm --no-workspaces install tailwindcss @tailwindcss/cli
+            - cp ../templates/package.json.tmpl scaffold/package.json
+            - cd scaffold && npm install
             - cp -r dist scaffold/
             - cp ../templates/app-main.go.tmpl scaffold/app-main.go
             - cp ../templates/tailwind.css scaffold/
