@@ -2,6 +2,7 @@
    SPDX-License-Identifier: Apache-2.0 */
 
 @import "tailwindcss";
+@source "../node_modules/streamdown/dist/index.js";
 
 @theme {
     --color-background: rgb(34, 34, 34);

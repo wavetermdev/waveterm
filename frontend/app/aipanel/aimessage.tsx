@@ -1,9 +1,9 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { WaveStreamdown } from "@/app/element/streamdown";
 import { cn } from "@/util/util";
 import { memo } from "react";
-import { Streamdown } from "streamdown";
 import { getFileIcon } from "./ai-utils";
 import { WaveUIMessage, WaveUIMessagePart } from "./aitypes";
 
@@ -78,25 +78,7 @@ const AIMessagePart = memo(({ part, role, isStreaming }: AIMessagePartProps) => 
         if (role === "user") {
             return <div className="whitespace-pre-wrap break-words">{content}</div>;
         } else {
-            return (
-                <Streamdown
-                    parseIncompleteMarkdown={isStreaming}
-                    className="markdown-content text-gray-100"
-                    shikiTheme={["github-dark", "github-dark"]}
-                    controls={{
-                        code: true,
-                        table: true,
-                        mermaid: true,
-                    }}
-                    mermaidConfig={{
-                        theme: "dark",
-                        darkMode: true,
-                    }}
-                    defaultOrigin="http://localhost"
-                >
-                    {content}
-                </Streamdown>
-            );
+            return <WaveStreamdown text={content} parseIncompleteMarkdown={isStreaming} className="text-gray-100" />;
         }
     }
 
@@ -139,9 +121,7 @@ export const AIMessage = memo(({ message, isStreaming }: AIMessageProps) => {
             <div
                 className={cn(
                     "px-2 py-2 rounded-lg",
-                    message.role === "user"
-                        ? "bg-accent-800 text-white max-w-[calc(100%-20px)]"
-                        : "bg-gray-800 text-gray-100"
+                    message.role === "user" ? "bg-accent-800 text-white max-w-[calc(100%-20px)]" : null
                 )}
             >
                 {showThinkingOnly ? (
