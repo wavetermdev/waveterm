@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 )
@@ -456,6 +457,19 @@ func (h *SSEHandlerCh) AiMsgError(errText string) error {
 	resp := map[string]interface{}{
 		"type":      AiMsgError,
 		"errorText": errText,
+	}
+	return h.WriteJsonData(resp)
+}
+
+
+func (h *SSEHandlerCh) AiMsgData(dataType string, id string, data interface{}) error {
+	if !strings.HasPrefix(dataType, "data-") {
+		panic(fmt.Sprintf("AiMsgData type must start with 'data-', got: %s", dataType))
+	}
+	resp := map[string]interface{}{
+		"type": dataType,
+		"id":   id,
+		"data": data,
 	}
 	return h.WriteJsonData(resp)
 }
