@@ -87,6 +87,14 @@ function CodeHighlight({
         );
     }
 
+    if (!html && text) {
+        return (
+            <code ref={codeRef} className={cn("font-mono text-[12px] text-transparent", className)}>
+                {text}
+            </code>
+        );
+    }
+
     return (
         <code
             ref={codeRef}
