@@ -5,41 +5,71 @@ import { CopyButton } from "@/app/element/copybutton";
 import { IconButton } from "@/app/element/iconbutton";
 import { cn } from "@/util/util";
 import { useEffect, useRef, useState } from "react";
-import { codeToHtml } from "shiki/bundle/web";
+import { bundledLanguages, codeToHtml } from "shiki/bundle/web";
 import { Streamdown } from "streamdown";
 
 const ShikiTheme = "github-dark-high-contrast";
 
-export function Code({ className = "", children }: { className?: string; children: React.ReactNode }) {
-    const [html, setHtml] = useState<string | null>(null);
+function getTextContent(node: React.ReactNode): string {
+    return typeof node === "string" ? node : "";
+}
+
+function CodePlain({
+    className = "",
+    isCodeBlock,
+    text,
+}: {
+    className?: string;
+    isCodeBlock: boolean;
+    text: string;
+}) {
+    if (isCodeBlock) {
+        return <code className={cn("font-mono text-[12px]", className)}>{text}</code>;
+    }
+
+    return (
+        <code className={cn("text-secondary font-mono text-[12px] rounded-sm bg-gray-800 px-1.5 py-0.5", className)}>
+            {text}
+        </code>
+    );
+}
+
+function CodeHighlight({
+    className = "",
+    lang,
+    text,
+}: {
+    className?: string;
+    lang: string;
+    text: string;
+}) {
+    const [html, setHtml] = useState<string>("");
+    const [hasError, setHasError] = useState(false);
     const codeRef = useRef<HTMLElement>(null);
 
-    const m = className?.match(/language-([\w+-]+)/i);
-    const isCodeBlock = !!m;
-    const lang = m?.[1] || "text";
-
     useEffect(() => {
-        if (!isCodeBlock) return;
-
         let disposed = false;
 
-        const raw = codeRef.current?.textContent ?? (typeof children === "string" ? children : "");
-
-        if (!raw || lang === "text") {
-            setHtml(null);
+        if (!text) {
+            setHtml("");
             return;
         }
 
         (async () => {
             try {
-                const full = await codeToHtml(raw, { lang, theme: ShikiTheme });
+                const full = await codeToHtml(text, { lang, theme: ShikiTheme });
                 const start = full.indexOf("<code");
                 const open = full.indexOf(">", start);
                 const end = full.lastIndexOf("</code>");
-                const inner = start !== -1 && open !== -1 && end !== -1 ? full.slice(open + 1, end) : null;
-                if (!disposed) setHtml(inner);
+                const inner = start !== -1 && open !== -1 && end !== -1 ? full.slice(open + 1, end) : "";
+                if (!disposed) {
+                    setHtml(inner);
+                    setHasError(false);
+                }
             } catch (e) {
-                if (!disposed) setHtml(null);
+                if (!disposed) {
+                    setHasError(true);
+                }
                 console.warn(`Shiki highlight failed for ${lang}`, e);
             }
         })();
@@ -47,22 +77,12 @@ export function Code({ className = "", children }: { className?: string; childre
         return () => {
             disposed = true;
         };
-    }, [children, className, isCodeBlock, lang]);
+    }, [text, lang]);
 
-    if (html) {
-        return (
-            <code
-                ref={codeRef}
-                className={cn("font-mono text-[12px]", className)}
-                dangerouslySetInnerHTML={{ __html: html }}
-            />
-        );
-    }
-
-    if (isCodeBlock) {
+    if (hasError) {
         return (
             <code ref={codeRef} className={cn("font-mono text-[12px]", className)}>
-                {children}
+                {text}
             </code>
         );
     }
@@ -70,11 +90,23 @@ export function Code({ className = "", children }: { className?: string; childre
     return (
         <code
             ref={codeRef}
-            className={cn("text-secondary font-mono text-[12px] rounded-sm bg-gray-800 px-1.5 py-0.5", className)}
-        >
-            {children}
-        </code>
+            className={cn("font-mono text-[12px]", className)}
+            dangerouslySetInnerHTML={{ __html: html }}
+        />
     );
+}
+
+export function Code({ className = "", children }: { className?: string; children: React.ReactNode }) {
+    const m = className?.match(/language-([\w+-]+)/i);
+    const isCodeBlock = !!m;
+    const lang = m?.[1] || "text";
+    const text = getTextContent(children);
+
+    if (isCodeBlock && lang in bundledLanguages) {
+        return <CodeHighlight className={className} lang={lang} text={text} />;
+    }
+
+    return <CodePlain className={className} isCodeBlock={isCodeBlock} text={text} />;
 }
 
 type CodeBlockProps = {
