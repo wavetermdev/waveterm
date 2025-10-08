@@ -23,6 +23,7 @@
 .menu-item {
     display: flex;
     align-items: center;
+    justify-content: space-between;
     padding: 4px 6px;
     cursor: pointer;
     color: var(--main-text-color);
@@ -33,9 +34,6 @@
     letter-spacing: -0.12px;
     width: 100%;
     border-radius: 2px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
 
     .label {
         @include mixins.ellipsis();

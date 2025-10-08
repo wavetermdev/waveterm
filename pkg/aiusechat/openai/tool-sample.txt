@@ -1,0 +1,44 @@
+event: response.created
+data: {"type":"response.created","sequence_number":0,"response":{"id":"resp_68d72548e6f0819096e9a659a61b96c1041f8a7af432fbe9","object":"response","created_at":1758930249,"status":"in_progress","background":false,"error":null,"incomplete_details":null,"instructions":null,"max_output_tokens":null,"max_tool_calls":null,"model":"gpt-5-mini-2025-08-07","output":[],"parallel_tool_calls":true,"previous_response_id":null,"prompt_cache_key":null,"reasoning":{"effort":"medium","summary":null},"safety_identifier":null,"service_tier":"auto","store":true,"temperature":1.0,"text":{"format":{"type":"text"},"verbosity":"medium"},"tool_choice":"auto","tools":[{"type":"function","description":"Add an array of numbers together and return their sum","name":"adder","parameters":{"additionalProperties":false,"properties":{"values":{"description":"Array of numbers to add together","items":{"type":"integer"},"type":"array"}},"required":["values"],"type":"object"},"strict":true}],"top_logprobs":0,"top_p":1.0,"truncation":"disabled","usage":null,"user":null,"metadata":{}}}
+
+event: response.in_progress
+data: {"type":"response.in_progress","sequence_number":1,"response":{"id":"resp_68d72548e6f0819096e9a659a61b96c1041f8a7af432fbe9","object":"response","created_at":1758930249,"status":"in_progress","background":false,"error":null,"incomplete_details":null,"instructions":null,"max_output_tokens":null,"max_tool_calls":null,"model":"gpt-5-mini-2025-08-07","output":[],"parallel_tool_calls":true,"previous_response_id":null,"prompt_cache_key":null,"reasoning":{"effort":"medium","summary":null},"safety_identifier":null,"service_tier":"auto","store":true,"temperature":1.0,"text":{"format":{"type":"text"},"verbosity":"medium"},"tool_choice":"auto","tools":[{"type":"function","description":"Add an array of numbers together and return their sum","name":"adder","parameters":{"additionalProperties":false,"properties":{"values":{"description":"Array of numbers to add together","items":{"type":"integer"},"type":"array"}},"required":["values"],"type":"object"},"strict":true}],"top_logprobs":0,"top_p":1.0,"truncation":"disabled","usage":null,"user":null,"metadata":{}}}
+
+event: response.output_item.added
+data: {"type":"response.output_item.added","sequence_number":2,"output_index":0,"item":{"id":"rs_68d72549a9888190b9efd3f27772f130041f8a7af432fbe9","type":"reasoning","summary":[]}}
+
+event: response.output_item.done
+data: {"type":"response.output_item.done","sequence_number":3,"output_index":0,"item":{"id":"rs_68d72549a9888190b9efd3f27772f130041f8a7af432fbe9","type":"reasoning","summary":[]}}
+
+event: response.output_item.added
+data: {"type":"response.output_item.added","sequence_number":4,"output_index":1,"item":{"id":"fc_68d7254b85248190a2701b3938d772bc041f8a7af432fbe9","type":"function_call","status":"in_progress","arguments":"","call_id":"call_41sXC2VsjlN9yHucWy2980Og","name":"adder"}}
+
+event: response.function_call_arguments.delta
+data: {"type":"response.function_call_arguments.delta","sequence_number":5,"item_id":"fc_68d7254b85248190a2701b3938d772bc041f8a7af432fbe9","output_index":1,"delta":"{\""}
+
+event: response.function_call_arguments.delta
+data: {"type":"response.function_call_arguments.delta","sequence_number":6,"item_id":"fc_68d7254b85248190a2701b3938d772bc041f8a7af432fbe9","output_index":1,"delta":"values"}
+
+event: response.function_call_arguments.delta
+data: {"type":"response.function_call_arguments.delta","sequence_number":7,"item_id":"fc_68d7254b85248190a2701b3938d772bc041f8a7af432fbe9","output_index":1,"delta":"\":["}
+
+event: response.function_call_arguments.delta
+data: {"type":"response.function_call_arguments.delta","sequence_number":8,"item_id":"fc_68d7254b85248190a2701b3938d772bc041f8a7af432fbe9","output_index":1,"delta":"2"}
+
+event: response.function_call_arguments.delta
+data: {"type":"response.function_call_arguments.delta","sequence_number":9,"item_id":"fc_68d7254b85248190a2701b3938d772bc041f8a7af432fbe9","output_index":1,"delta":","}
+
+event: response.function_call_arguments.delta
+data: {"type":"response.function_call_arguments.delta","sequence_number":10,"item_id":"fc_68d7254b85248190a2701b3938d772bc041f8a7af432fbe9","output_index":1,"delta":"2"}
+
+event: response.function_call_arguments.delta
+data: {"type":"response.function_call_arguments.delta","sequence_number":11,"item_id":"fc_68d7254b85248190a2701b3938d772bc041f8a7af432fbe9","output_index":1,"delta":"]}"}
+
+event: response.function_call_arguments.done
+data: {"type":"response.function_call_arguments.done","sequence_number":12,"item_id":"fc_68d7254b85248190a2701b3938d772bc041f8a7af432fbe9","output_index":1,"arguments":"{\"values\":[2,2]}"}
+
+event: response.output_item.done
+data: {"type":"response.output_item.done","sequence_number":13,"output_index":1,"item":{"id":"fc_68d7254b85248190a2701b3938d772bc041f8a7af432fbe9","type":"function_call","status":"completed","arguments":"{\"values\":[2,2]}","call_id":"call_41sXC2VsjlN9yHucWy2980Og","name":"adder"}}
+
+event: response.completed
+data: {"type":"response.completed","sequence_number":14,"response":{"id":"resp_68d72548e6f0819096e9a659a61b96c1041f8a7af432fbe9","object":"response","created_at":1758930249,"status":"completed","background":false,"error":null,"incomplete_details":null,"instructions":null,"max_output_tokens":null,"max_tool_calls":null,"model":"gpt-5-mini-2025-08-07","output":[{"id":"rs_68d72549a9888190b9efd3f27772f130041f8a7af432fbe9","type":"reasoning","summary":[]},{"id":"fc_68d7254b85248190a2701b3938d772bc041f8a7af432fbe9","type":"function_call","status":"completed","arguments":"{\"values\":[2,2]}","call_id":"call_41sXC2VsjlN9yHucWy2980Og","name":"adder"}],"parallel_tool_calls":true,"previous_response_id":null,"prompt_cache_key":null,"reasoning":{"effort":"medium","summary":null},"safety_identifier":null,"service_tier":"default","store":true,"temperature":1.0,"text":{"format":{"type":"text"},"verbosity":"medium"},"tool_choice":"auto","tools":[{"type":"function","description":"Add an array of numbers together and return their sum","name":"adder","parameters":{"additionalProperties":false,"properties":{"values":{"description":"Array of numbers to add together","items":{"type":"integer"},"type":"array"}},"required":["values"],"type":"object"},"strict":true}],"top_logprobs":0,"top_p":1.0,"truncation":"disabled","usage":{"input_tokens":67,"input_tokens_details":{"cached_tokens":0},"output_tokens":86,"output_tokens_details":{"reasoning_tokens":64},"total_tokens":153},"user":null,"metadata":{}}}

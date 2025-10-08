@@ -34,7 +34,7 @@ on:
 
 env:
     NODE_VERSION: 22
-    GO_VERSION: "1.22.5"
+    GO_VERSION: "1.24"
 
 jobs:
     analyze:
@@ -71,16 +71,21 @@ jobs:
                   version: 3.x
                   repo-token: ${{ secrets.GITHUB_TOKEN }}
 
-            - uses: actions/setup-node@v4
+            - uses: actions/setup-node@v5
               with:
                   node-version: ${{env.NODE_VERSION}}
-            - name: Install yarn
-              run: |
-                  corepack enable
-                  yarn install
+                  cache: npm
+                  cache-dependency-path: package-lock.json
+            - uses: nick-fields/retry@v3
+              name: npm ci
+              with:
+                  command: npm ci --no-audit --no-fund
+                  retry_on: error
+                  max_attempts: 3
+                  timeout_minutes: 5
 
             - name: Setup Go
-              uses: actions/setup-go@v5
+              uses: actions/setup-go@v6
               with:
                   go-version: ${{env.GO_VERSION}}
                   cache-dependency-path: |

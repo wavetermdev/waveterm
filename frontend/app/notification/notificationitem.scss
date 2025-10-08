@@ -2,6 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 .notification {
+    &.hovered {
+        background: #292929;
+    }
+
     .notification-title {
         font-size: 13px;
         font-style: normal;
@@ -112,8 +116,5 @@
             opacity: 0.5;
             margin-bottom: 7px;
         }
-    }
-    &.hovered {
-        background: #292929;
     }
 }

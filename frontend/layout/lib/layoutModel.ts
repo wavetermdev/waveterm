@@ -1,12 +1,14 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { getSettingsKeyAtom } from "@/app/store/global";
+import { atoms, getSettingsKeyAtom } from "@/app/store/global";
+import { focusManager } from "@/app/store/focusManager";
 import { atomWithThrottle, boundNumber, fireAndForget } from "@/util/util";
 import { Atom, atom, Getter, PrimitiveAtom, Setter } from "jotai";
 import { splitAtom } from "jotai/utils";
 import { createRef, CSSProperties } from "react";
 import { debounce } from "throttle-debounce";
+import { getLayoutStateAtomFromTab } from "./layoutAtom";
 import { balanceNode, findNode, newLayoutNode, walkNodes } from "./layoutNode";
 import {
     clearTree,
@@ -46,11 +48,11 @@ import {
     LayoutTreeState,
     LayoutTreeSwapNodeAction,
     NavigateDirection,
+    NavigationResult,
     NodeModel,
     PreviewRenderer,
     ResizeHandleProps,
     TileLayoutContents,
-    WritableLayoutTreeStateAtom,
 } from "./types";
 import { getCenter, navigateDirectionToOffset, setTransform } from "./utils";
 
@@ -71,17 +73,29 @@ const DefaultAnimationTimeS = 0.15;
 
 export class LayoutModel {
     /**
-     * The jotai atom for persisting the tree state to the backend and retrieving updates from the backend.
+     * Local atom holding the current tree state (source of truth during runtime)
      */
-    treeStateAtom: WritableLayoutTreeStateAtom;
+    private localTreeStateAtom: PrimitiveAtom<LayoutTreeState>;
     /**
-     * The tree state as it is persisted on the backend.
+     * The tree state (local cache)
      */
     treeState: LayoutTreeState;
     /**
-     * The last-recorded tree state generation.
+     * Reference to the tab atom for accessing WaveObject
      */
-    lastTreeStateGeneration: number;
+    private tabAtom: Atom<Tab>;
+    /**
+     * WaveObject atom for persistence
+     */
+    private waveObjectAtom: WritableWaveObjectAtom<LayoutState>;
+    /**
+     * Debounce timer for persistence
+     */
+    private persistDebounceTimer: NodeJS.Timeout | null;
+    /**
+     * Set of action IDs that have been processed (prevents duplicate processing)
+     */
+    private processedActionIds: Set<string>;
     /**
      * The jotai getter that is used to read atom values.
      */
@@ -185,6 +199,10 @@ export class LayoutModel {
      */
     magnifiedNodeId: string;
     /**
+     * Atom for the magnified node ID (derived from local tree state)
+     */
+    magnifiedNodeIdAtom: Atom<string>;
+    /**
      * The last node to be magnified, other than the current magnified node, if set. This node should sit at a higher z-index than the others so that it floats above the other nodes as it returns to its original position.
      */
     lastMagnifiedNodeId: string;
@@ -218,7 +236,7 @@ export class LayoutModel {
     private isContainerResizing: PrimitiveAtom<boolean>;
 
     constructor(
-        treeStateAtom: WritableLayoutTreeStateAtom,
+        tabAtom: Atom<Tab>,
         getter: Getter,
         setter: Setter,
         renderContent?: ContentRenderer,
@@ -227,7 +245,7 @@ export class LayoutModel {
         gapSizePx?: number,
         animationTimeS?: number
     ) {
-        this.treeStateAtom = treeStateAtom;
+        this.tabAtom = tabAtom;
         this.getter = getter;
         this.setter = setter;
         this.renderContent = renderContent;
@@ -239,7 +257,26 @@ export class LayoutModel {
             return 2 * (gapSizePx > 5 ? gapSizePx : DefaultGapSizePx);
         });
         this.animationTimeS = atom(animationTimeS ?? DefaultAnimationTimeS);
-        this.lastTreeStateGeneration = -1;
+        this.persistDebounceTimer = null;
+        this.processedActionIds = new Set();
+
+        this.waveObjectAtom = getLayoutStateAtomFromTab(tabAtom, getter);
+
+        this.localTreeStateAtom = atom<LayoutTreeState>({
+            rootNode: undefined,
+            focusedNodeId: undefined,
+            magnifiedNodeId: undefined,
+            leafOrder: undefined,
+            pendingBackendActions: undefined,
+        });
+
+        this.treeState = {
+            rootNode: undefined,
+            focusedNodeId: undefined,
+            magnifiedNodeId: undefined,
+            leafOrder: undefined,
+            pendingBackendActions: undefined,
+        };
 
         this.leafs = atom([]);
         this.leafOrder = atom([]);
@@ -288,9 +325,14 @@ export class LayoutModel {
         this.ephemeralNode = atom();
         this.magnifiedNodeSizeAtom = getSettingsKeyAtom("window:magnifiedblocksize");
 
+        this.magnifiedNodeIdAtom = atom((get) => {
+            const treeState = get(this.localTreeStateAtom);
+            return treeState.magnifiedNodeId;
+        });
+
         this.focusedNode = atom((get) => {
             const ephemeralNode = get(this.ephemeralNode);
-            const treeState = get(this.treeStateAtom);
+            const treeState = get(this.localTreeStateAtom);
             if (ephemeralNode) {
                 return ephemeralNode;
             }
@@ -307,7 +349,218 @@ export class LayoutModel {
             return this.getPlaceholderTransform(pendingAction);
         });
 
-        this.onTreeStateAtomUpdated(true);
+        this.initializeFromWaveObject();
+    }
+
+    private initializeFromWaveObject() {
+        const waveObjState = this.getter(this.waveObjectAtom);
+
+        const initialState: LayoutTreeState = {
+            rootNode: waveObjState?.rootnode,
+            focusedNodeId: waveObjState?.focusednodeid,
+            magnifiedNodeId: waveObjState?.magnifiednodeid,
+            leafOrder: undefined,
+            pendingBackendActions: waveObjState?.pendingbackendactions,
+        };
+
+        this.treeState = initialState;
+        this.magnifiedNodeId = initialState.magnifiedNodeId;
+        this.setter(this.localTreeStateAtom, { ...initialState });
+
+        if (initialState.pendingBackendActions?.length) {
+            fireAndForget(() => this.processPendingBackendActions());
+        } else {
+            this.updateTree();
+        }
+    }
+
+    onBackendUpdate() {
+        const waveObj = this.getter(this.waveObjectAtom);
+        const pendingActions = waveObj?.pendingbackendactions;
+        if (pendingActions?.length) {
+            fireAndForget(() => this.processPendingBackendActions());
+        }
+    }
+
+    private async processPendingBackendActions() {
+        const waveObj = this.getter(this.waveObjectAtom);
+        const actions = waveObj?.pendingbackendactions;
+        if (!actions?.length) return;
+
+        this.treeState.pendingBackendActions = undefined;
+
+        for (const action of actions) {
+            if (!action.actionid) {
+                console.warn("Dropping layout action without actionid:", action);
+                continue;
+            }
+            if (this.processedActionIds.has(action.actionid)) {
+                continue;
+            }
+            this.processedActionIds.add(action.actionid);
+            await this.handleBackendAction(action);
+        }
+
+        this.updateTree();
+        this.setter(this.localTreeStateAtom, { ...this.treeState });
+        this.persistToBackend();
+    }
+
+    private async handleBackendAction(action: LayoutActionData) {
+        switch (action.actiontype) {
+            case LayoutTreeActionType.InsertNode: {
+                if (action.ephemeral) {
+                    this.newEphemeralNode(action.blockid);
+                    break;
+                }
+                const insertNodeAction: LayoutTreeInsertNodeAction = {
+                    type: LayoutTreeActionType.InsertNode,
+                    node: newLayoutNode(undefined, undefined, undefined, {
+                        blockId: action.blockid,
+                    }),
+                    magnified: action.magnified,
+                    focused: action.focused,
+                };
+                this.treeReducer(insertNodeAction, false);
+                break;
+            }
+            case LayoutTreeActionType.DeleteNode: {
+                const leaf = this?.getNodeByBlockId(action.blockid);
+                if (leaf) {
+                    await this.closeNode(leaf.id);
+                } else {
+                    console.error(
+                        "Cannot apply eventbus layout action DeleteNode, could not find leaf node with blockId",
+                        action.blockid
+                    );
+                }
+                break;
+            }
+            case LayoutTreeActionType.InsertNodeAtIndex: {
+                if (!action.indexarr) {
+                    console.error("Cannot apply eventbus layout action InsertNodeAtIndex, indexarr field is missing.");
+                    break;
+                }
+                const insertAction: LayoutTreeInsertNodeAtIndexAction = {
+                    type: LayoutTreeActionType.InsertNodeAtIndex,
+                    node: newLayoutNode(undefined, action.nodesize, undefined, {
+                        blockId: action.blockid,
+                    }),
+                    indexArr: action.indexarr,
+                    magnified: action.magnified,
+                    focused: action.focused,
+                };
+                this.treeReducer(insertAction, false);
+                break;
+            }
+            case LayoutTreeActionType.ClearTree: {
+                this.treeReducer(
+                    {
+                        type: LayoutTreeActionType.ClearTree,
+                    } as LayoutTreeClearTreeAction,
+                    false
+                );
+                break;
+            }
+            case LayoutTreeActionType.ReplaceNode: {
+                const targetNode = this?.getNodeByBlockId(action.targetblockid);
+                if (!targetNode) {
+                    console.error(
+                        "Cannot apply eventbus layout action ReplaceNode, could not find target node with blockId",
+                        action.targetblockid
+                    );
+                    break;
+                }
+                const replaceAction: LayoutTreeReplaceNodeAction = {
+                    type: LayoutTreeActionType.ReplaceNode,
+                    targetNodeId: targetNode.id,
+                    newNode: newLayoutNode(undefined, action.nodesize, undefined, {
+                        blockId: action.blockid,
+                    }),
+                };
+                this.treeReducer(replaceAction, false);
+                break;
+            }
+            case LayoutTreeActionType.SplitHorizontal: {
+                const targetNode = this?.getNodeByBlockId(action.targetblockid);
+                if (!targetNode) {
+                    console.error(
+                        "Cannot apply eventbus layout action SplitHorizontal, could not find target node with blockId",
+                        action.targetblockid
+                    );
+                    break;
+                }
+                if (action.position != "before" && action.position != "after") {
+                    console.error(
+                        "Cannot apply eventbus layout action SplitHorizontal, invalid position",
+                        action.position
+                    );
+                    break;
+                }
+                const newNode = newLayoutNode(undefined, action.nodesize, undefined, {
+                    blockId: action.blockid,
+                });
+                const splitAction: LayoutTreeSplitHorizontalAction = {
+                    type: LayoutTreeActionType.SplitHorizontal,
+                    targetNodeId: targetNode.id,
+                    newNode: newNode,
+                    position: action.position,
+                };
+                this.treeReducer(splitAction, false);
+                break;
+            }
+            case LayoutTreeActionType.SplitVertical: {
+                const targetNode = this?.getNodeByBlockId(action.targetblockid);
+                if (!targetNode) {
+                    console.error(
+                        "Cannot apply eventbus layout action SplitVertical, could not find target node with blockId",
+                        action.targetblockid
+                    );
+                    break;
+                }
+                if (action.position != "before" && action.position != "after") {
+                    console.error(
+                        "Cannot apply eventbus layout action SplitVertical, invalid position",
+                        action.position
+                    );
+                    break;
+                }
+                const newNode = newLayoutNode(undefined, action.nodesize, undefined, {
+                    blockId: action.blockid,
+                });
+                const splitAction: LayoutTreeSplitVerticalAction = {
+                    type: LayoutTreeActionType.SplitVertical,
+                    targetNodeId: targetNode.id,
+                    newNode: newNode,
+                    position: action.position,
+                };
+                this.treeReducer(splitAction, false);
+                break;
+            }
+            default:
+                console.warn("unsupported layout action", action);
+                break;
+        }
+    }
+
+    private persistToBackend() {
+        if (this.persistDebounceTimer) {
+            clearTimeout(this.persistDebounceTimer);
+        }
+
+        this.persistDebounceTimer = setTimeout(() => {
+            const waveObj = this.getter(this.waveObjectAtom);
+            if (!waveObj) return;
+
+            waveObj.rootnode = this.treeState.rootNode;
+            waveObj.focusednodeid = this.treeState.focusedNodeId;
+            waveObj.magnifiednodeid = this.treeState.magnifiedNodeId;
+            waveObj.leaforder = this.treeState.leafOrder;
+            waveObj.pendingbackendactions = this.treeState.pendingBackendActions;
+
+            this.setter(this.waveObjectAtom, waveObj);
+            this.persistDebounceTimer = null;
+        }, 100);
     }
 
     /**
@@ -340,9 +593,15 @@ export class LayoutModel {
                 break;
             case LayoutTreeActionType.InsertNode:
                 insertNode(this.treeState, action as LayoutTreeInsertNodeAction);
+                if ((action as LayoutTreeInsertNodeAction).focused) {
+                    focusManager.requestNodeFocus();
+                }
                 break;
             case LayoutTreeActionType.InsertNodeAtIndex:
                 insertNodeAtIndex(this.treeState, action as LayoutTreeInsertNodeAtIndexAction);
+                if ((action as LayoutTreeInsertNodeAtIndexAction).focused) {
+                    focusManager.requestNodeFocus();
+                }
                 break;
             case LayoutTreeActionType.DeleteNode:
                 deleteNode(this.treeState, action as LayoutTreeDeleteNodeAction);
@@ -377,9 +636,11 @@ export class LayoutModel {
             }
             case LayoutTreeActionType.FocusNode:
                 focusNode(this.treeState, action as LayoutTreeFocusNodeAction);
+                focusManager.requestNodeFocus();
                 break;
             case LayoutTreeActionType.MagnifyNodeToggle:
                 magnifyNodeToggle(this.treeState, action as LayoutTreeMagnifyNodeToggleAction);
+                focusManager.requestNodeFocus();
                 break;
             case LayoutTreeActionType.ClearTree:
                 clearTree(this.treeState);
@@ -396,14 +657,15 @@ export class LayoutModel {
             default:
                 console.error("Invalid reducer action", this.treeState, action);
         }
-        if (this.lastTreeStateGeneration < this.treeState.generation) {
-            if (this.magnifiedNodeId !== this.treeState.magnifiedNodeId) {
-                this.lastMagnifiedNodeId = this.magnifiedNodeId;
-                this.lastEphemeralNodeId = undefined;
-                this.magnifiedNodeId = this.treeState.magnifiedNodeId;
-            }
+        if (this.magnifiedNodeId !== this.treeState.magnifiedNodeId) {
+            this.lastMagnifiedNodeId = this.magnifiedNodeId;
+            this.lastEphemeralNodeId = undefined;
+            this.magnifiedNodeId = this.treeState.magnifiedNodeId;
+        }
+        if (setState) {
             this.updateTree();
-            if (setState) this.setTreeStateAtom(true);
+            this.setter(this.localTreeStateAtom, { ...this.treeState });
+            this.persistToBackend();
         }
     }
 
@@ -412,165 +674,9 @@ export class LayoutModel {
      * @param force Whether to force the local tree state to update, regardless of whether the state is already up to date.
      */
     async onTreeStateAtomUpdated(force = false) {
-        const treeState = this.getter(this.treeStateAtom);
-        // Only update the local tree state if it is different from the one in the upstream atom. This function is called even when the update was initiated by the LayoutModel, so we need to filter out false positives or we'll enter an infinite loop.
-        if (
-            force ||
-            !this.treeState?.rootNode ||
-            !this.treeState?.generation ||
-            treeState?.generation > this.treeState.generation ||
-            treeState?.pendingBackendActions?.length
-        ) {
-            this.treeState = treeState;
-            this.magnifiedNodeId = treeState.magnifiedNodeId;
-
-            if (this.treeState?.pendingBackendActions?.length) {
-                const actions = this.treeState.pendingBackendActions;
-                this.treeState.pendingBackendActions = undefined;
-                for (const action of actions) {
-                    switch (action.actiontype) {
-                        case LayoutTreeActionType.InsertNode: {
-                            if (action.ephemeral) {
-                                this.newEphemeralNode(action.blockid);
-                                break;
-                            }
-
-                            const insertNodeAction: LayoutTreeInsertNodeAction = {
-                                type: LayoutTreeActionType.InsertNode,
-                                node: newLayoutNode(undefined, undefined, undefined, {
-                                    blockId: action.blockid,
-                                }),
-                                magnified: action.magnified,
-                                focused: action.focused,
-                            };
-                            this.treeReducer(insertNodeAction, false);
-                            break;
-                        }
-                        case LayoutTreeActionType.DeleteNode: {
-                            const leaf = this?.getNodeByBlockId(action.blockid);
-                            if (leaf) {
-                                await this.closeNode(leaf.id);
-                            } else {
-                                console.error(
-                                    "Cannot apply eventbus layout action DeleteNode, could not find leaf node with blockId",
-                                    action.blockid
-                                );
-                            }
-                            break;
-                        }
-                        case LayoutTreeActionType.InsertNodeAtIndex: {
-                            if (!action.indexarr) {
-                                console.error(
-                                    "Cannot apply eventbus layout action InsertNodeAtIndex, indexarr field is missing."
-                                );
-                                break;
-                            }
-                            const insertAction: LayoutTreeInsertNodeAtIndexAction = {
-                                type: LayoutTreeActionType.InsertNodeAtIndex,
-                                node: newLayoutNode(undefined, action.nodesize, undefined, {
-                                    blockId: action.blockid,
-                                }),
-                                indexArr: action.indexarr,
-                                magnified: action.magnified,
-                                focused: action.focused,
-                            };
-                            this.treeReducer(insertAction, false);
-                            break;
-                        }
-                        case LayoutTreeActionType.ClearTree: {
-                            this.treeReducer(
-                                {
-                                    type: LayoutTreeActionType.ClearTree,
-                                } as LayoutTreeClearTreeAction,
-                                false
-                            );
-                            break;
-                        }
-                        case LayoutTreeActionType.ReplaceNode: {
-                            const targetNode = this?.getNodeByBlockId(action.targetblockid);
-                            if (!targetNode) {
-                                console.error(
-                                    "Cannot apply eventbus layout action ReplaceNode, could not find target node with blockId",
-                                    action.targetblockid
-                                );
-                                break;
-                            }
-                            const replaceAction: LayoutTreeReplaceNodeAction = {
-                                type: LayoutTreeActionType.ReplaceNode,
-                                targetNodeId: targetNode.id,
-                                newNode: newLayoutNode(undefined, action.nodesize, undefined, {
-                                    blockId: action.blockid,
-                                }),
-                            };
-                            this.treeReducer(replaceAction, false);
-                            break;
-                        }
-                        case LayoutTreeActionType.SplitHorizontal: {
-                            const targetNode = this?.getNodeByBlockId(action.targetblockid);
-                            if (!targetNode) {
-                                console.error(
-                                    "Cannot apply eventbus layout action SplitHorizontal, could not find target node with blockId",
-                                    action.targetblockid
-                                );
-                                break;
-                            }
-                            if (action.position != "before" && action.position != "after") {
-                                console.error(
-                                    "Cannot apply eventbus layout action SplitHorizontal, invalid position",
-                                    action.position
-                                );
-                                break;
-                            }
-                            const newNode = newLayoutNode(undefined, action.nodesize, undefined, {
-                                blockId: action.blockid,
-                            });
-                            const splitAction: LayoutTreeSplitHorizontalAction = {
-                                type: LayoutTreeActionType.SplitHorizontal,
-                                targetNodeId: targetNode.id,
-                                newNode: newNode,
-                                position: action.position,
-                            };
-                            this.treeReducer(splitAction, false);
-                            break;
-                        }
-                        case LayoutTreeActionType.SplitVertical: {
-                            const targetNode = this?.getNodeByBlockId(action.targetblockid);
-                            if (!targetNode) {
-                                console.error(
-                                    "Cannot apply eventbus layout action SplitVertical, could not find target node with blockId",
-                                    action.targetblockid
-                                );
-                                break;
-                            }
-                            if (action.position != "before" && action.position != "after") {
-                                console.error(
-                                    "Cannot apply eventbus layout action SplitVertical, invalid position",
-                                    action.position
-                                );
-                                break;
-                            }
-                            const newNode = newLayoutNode(undefined, action.nodesize, undefined, {
-                                blockId: action.blockid,
-                            });
-                            const splitAction: LayoutTreeSplitVerticalAction = {
-                                type: LayoutTreeActionType.SplitVertical,
-                                targetNodeId: targetNode.id,
-                                newNode: newNode,
-                                position: action.position,
-                            };
-                            this.treeReducer(splitAction, false);
-                            break;
-                        }
-                        default:
-                            console.warn("unsupported layout action", action);
-                            break;
-                    }
-                }
-                this.setTreeStateAtom(true);
-            } else {
-                this.updateTree();
-                this.setTreeStateAtom(force);
-            }
+        if (force) {
+            this.updateTree();
+            this.setter(this.localTreeStateAtom, { ...this.treeState });
         }
     }
 
@@ -578,13 +684,6 @@ export class LayoutModel {
      * Set the upstream tree state atom to the value of the local tree state.
      * @param bumpGeneration Whether to bump the generation of the tree state before setting the atom.
      */
-    setTreeStateAtom(bumpGeneration = false) {
-        if (bumpGeneration) {
-            this.treeState.generation++;
-        }
-        this.lastTreeStateGeneration = this.treeState.generation;
-        this.setter(this.treeStateAtom, this.treeState);
-    }
 
     /**
      * Recursively walks the tree to find leaf nodes, update the resize handles, and compute additional properties for each node.
@@ -749,6 +848,7 @@ export class LayoutModel {
 
         additionalPropsMap[node.id] = {
             ...additionalProps,
+            ...(node.data?.blockId ? { rect: nodeRect } : {}),
             pixelToSizeRatio,
             resizeHandles,
         };
@@ -932,14 +1032,15 @@ export class LayoutModel {
                 blockId,
                 blockNum: atom((get) => get(this.leafOrder).findIndex((leafEntry) => leafEntry.nodeid === nodeid) + 1),
                 isFocused: atom((get) => {
-                    const treeState = get(this.treeStateAtom);
+                    const treeState = get(this.localTreeStateAtom);
                     const isFocused = treeState.focusedNodeId === nodeid;
-                    return isFocused;
+                    const focusType = get(focusManager.focusType);
+                    return isFocused && focusType === "node";
                 }),
                 numLeafs: this.numLeafs,
                 isResizing: this.isResizing,
                 isMagnified: atom((get) => {
-                    const treeState = get(this.treeStateAtom);
+                    const treeState = get(this.localTreeStateAtom);
                     return treeState.magnifiedNodeId === nodeid;
                 }),
                 isEphemeral: atom((get) => {
@@ -978,13 +1079,13 @@ export class LayoutModel {
      * Switch focus to the next node in the given direction in the layout.
      * @param direction The direction in which to switch focus.
      */
-    switchNodeFocusInDirection(direction: NavigateDirection) {
+    switchNodeFocusInDirection(direction: NavigateDirection, inWaveAI: boolean): NavigationResult {
         const curNodeId = this.focusedNodeId;
 
         // If no node is focused, set focus to the first leaf.
         if (!curNodeId) {
             this.focusNode(this.getter(this.leafOrder)[0].nodeid);
-            return;
+            return { success: true };
         }
 
         const offset = navigateDirectionToOffset(direction);
@@ -997,14 +1098,33 @@ export class LayoutModel {
                 nodePositions.set(leaf.id, pos);
             }
         }
-        const curNodePos = nodePositions.get(curNodeId);
-        if (!curNodePos) {
-            return;
+        let curNodePos: Dimensions;
+        if (inWaveAI) {
+            // For WaveAI, use a fake position to the left of all nodes
+            curNodePos = { left: -10, top: 10, width: 0, height: 0 };
+
+            // Only allow "right" navigation from WaveAI
+            if (direction !== NavigateDirection.Right) {
+                const result: NavigationResult = { success: false };
+                if (direction === NavigateDirection.Up) {
+                    result.atTop = true;
+                } else if (direction === NavigateDirection.Down) {
+                    result.atBottom = true;
+                } else if (direction === NavigateDirection.Left) {
+                    result.atLeft = true;
+                }
+                return result;
+            }
+        } else {
+            curNodePos = nodePositions.get(curNodeId);
+            if (!curNodePos) {
+                return { success: false };
+            }
+            nodePositions.delete(curNodeId);
         }
-        nodePositions.delete(curNodeId);
         const boundingRect = this.displayContainerRef?.current.getBoundingClientRect();
         if (!boundingRect) {
-            return;
+            return { success: false };
         }
         const maxX = boundingRect.left + boundingRect.width;
         const maxY = boundingRect.top + boundingRect.height;
@@ -1029,12 +1149,26 @@ export class LayoutModel {
             curPoint.x += offset.x * moveAmount;
             curPoint.y += offset.y * moveAmount;
             if (curPoint.x < 0 || curPoint.x > maxX || curPoint.y < 0 || curPoint.y > maxY) {
-                return;
+                // Determine which boundary was hit
+                const result: NavigationResult = { success: false };
+                if (curPoint.x < 0) {
+                    result.atLeft = true;
+                }
+                if (curPoint.x > maxX) {
+                    result.atRight = true;
+                }
+                if (curPoint.y < 0) {
+                    result.atTop = true;
+                }
+                if (curPoint.y > maxY) {
+                    result.atBottom = true;
+                }
+                return result;
             }
             const nodeId = findNodeAtPoint(nodePositions, curPoint);
             if (nodeId != null) {
                 this.focusNode(nodeId);
-                return;
+                return { success: true };
             }
         }
     }
@@ -1085,6 +1219,14 @@ export class LayoutModel {
         }
     }
 
+    getFirstBlockId(): string | undefined {
+        const leafOrder = this.getter(this.leafOrder);
+        if (leafOrder.length > 0) {
+            return leafOrder[0].blockid;
+        }
+        return undefined;
+    }
+
     /**
      * Toggle magnification of a given node.
      * @param nodeId The id of the node that is being magnified.
@@ -1115,7 +1257,8 @@ export class LayoutModel {
                 this.setter(this.ephemeralNode, undefined);
                 this.treeState.focusedNodeId = undefined;
                 this.updateTree(false);
-                this.setTreeStateAtom(true);
+                this.setter(this.localTreeStateAtom, { ...this.treeState });
+                this.persistToBackend();
                 await this.onNodeDelete?.(ephemeralNode.data);
                 return;
             }

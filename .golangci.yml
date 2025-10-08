@@ -1,0 +1,10 @@
+linters:
+    disable:
+        - unused
+        - unusedfunc
+        - unusedparams
+issues:
+    exclude-rules:
+        - linters:
+              - unused
+          text: "unused parameter"

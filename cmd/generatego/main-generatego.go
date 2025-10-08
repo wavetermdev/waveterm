@@ -32,6 +32,7 @@ func GenerateWshClient() error {
 		"github.com/wavetermdev/waveterm/pkg/wps",
 		"github.com/wavetermdev/waveterm/pkg/vdom",
 		"github.com/wavetermdev/waveterm/pkg/util/iochan/iochantypes",
+		"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes",
 	})
 	wshDeclMap := wshrpc.GenerateWshCommandDeclMap()
 	for _, key := range utilfn.GetOrderedMapKeys(wshDeclMap) {

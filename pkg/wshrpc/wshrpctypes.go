@@ -12,6 +12,7 @@ import (
 	"os"
 	"reflect"
 
+	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
 	"github.com/wavetermdev/waveterm/pkg/ijson"
 	"github.com/wavetermdev/waveterm/pkg/telemetry/telemetrydata"
 	"github.com/wavetermdev/waveterm/pkg/util/iochan/iochantypes"
@@ -67,6 +68,7 @@ const (
 	Command_Mkdir             = "mkdir"
 	Command_ResolveIds        = "resolveids"
 	Command_BlockInfo         = "blockinfo"
+	Command_BlocksList        = "blockslist"
 	Command_CreateBlock       = "createblock"
 	Command_DeleteBlock       = "deleteblock"
 
@@ -136,7 +138,17 @@ const (
 	Command_VDomRender          = "vdomrender"
 	Command_VDomUrlRequest      = "vdomurlrequest"
 
-	Command_AiSendMessage = "aisendmessage"
+	Command_AiSendMessage         = "aisendmessage"
+	Command_WaveAIEnableTelemetry = "waveaienabletelemetry"
+	Command_GetWaveAIChat         = "getwaveaichat"
+	Command_GetWaveAIRateLimit    = "getwaveairatelimit"
+
+	Command_CaptureBlockScreenshot = "captureblockscreenshot"
+
+	Command_GetRTInfo = "getrtinfo"
+	Command_SetRTInfo = "setrtinfo"
+
+	Command_TermGetScrollbackLines = "termgetscrollbacklines"
 )
 
 type RespOrErrorUnion[T any] struct {
@@ -196,6 +208,7 @@ type WshRpcInterface interface {
 	SetConnectionsConfigCommand(ctx context.Context, data ConnConfigRequest) error
 	GetFullConfigCommand(ctx context.Context) (wconfig.FullConfigType, error)
 	BlockInfoCommand(ctx context.Context, blockId string) (*BlockInfoData, error)
+	BlocksListCommand(ctx context.Context, data BlocksListRequest) ([]BlocksListEntry, error)
 	WaveInfoCommand(ctx context.Context) (*WaveInfoData, error)
 	WshActivityCommand(ct context.Context, data map[string]int) error
 	ActivityCommand(ctx context.Context, data ActivityUpdate) error
@@ -255,6 +268,19 @@ type WshRpcInterface interface {
 
 	// ai
 	AiSendMessageCommand(ctx context.Context, data AiMessageData) error
+	WaveAIEnableTelemetryCommand(ctx context.Context) error
+	GetWaveAIChatCommand(ctx context.Context, data CommandGetWaveAIChatData) (*uctypes.UIChat, error)
+	GetWaveAIRateLimitCommand(ctx context.Context) (*uctypes.RateLimitInfo, error)
+
+	// screenshot
+	CaptureBlockScreenshotCommand(ctx context.Context, data CommandCaptureBlockScreenshotData) (string, error)
+
+	// rtinfo
+	GetRTInfoCommand(ctx context.Context, data CommandGetRTInfoData) (*waveobj.ObjRTInfo, error)
+	SetRTInfoCommand(ctx context.Context, data CommandSetRTInfoData) error
+
+	// terminal
+	TermGetScrollbackLinesCommand(ctx context.Context, data CommandTermGetScrollbackLinesData) (*CommandTermGetScrollbackLinesRtnData, error)
 
 	// proc
 	VDomRenderCommand(ctx context.Context, data vdom.VDomFrontendUpdate) chan RespOrErrorUnion[*vdom.VDomBackendUpdate]
@@ -364,6 +390,7 @@ type CommandCreateBlockData struct {
 	RtOpts        *waveobj.RuntimeOpts `json:"rtopts,omitempty"`
 	Magnified     bool                 `json:"magnified,omitempty"`
 	Ephemeral     bool                 `json:"ephemeral,omitempty"`
+	Focused       bool                 `json:"focused,omitempty"`
 	TargetBlockId string               `json:"targetblockid,omitempty"`
 	TargetAction  string               `json:"targetaction,omitempty"` // "replace", "splitright", "splitdown", "splitleft", "splitup"
 }
@@ -679,8 +706,29 @@ type WorkspaceInfoData struct {
 	WorkspaceData *waveobj.Workspace `json:"workspacedata"`
 }
 
+type BlocksListRequest struct {
+	WindowId    string `json:"windowid,omitempty"`
+	WorkspaceId string `json:"workspaceid,omitempty"`
+}
+
+type BlocksListEntry struct {
+	WindowId    string              `json:"windowid"`
+	WorkspaceId string              `json:"workspaceid"`
+	TabId       string              `json:"tabid"`
+	BlockId     string              `json:"blockid"`
+	Meta        waveobj.MetaMapType `json:"meta"`
+}
+
 type AiMessageData struct {
 	Message string `json:"message,omitempty"`
+}
+
+type CommandGetWaveAIChatData struct {
+	ChatId string `json:"chatid"`
+}
+
+type CommandCaptureBlockScreenshotData struct {
+	BlockId string `json:"blockid" wshcontext:"BlockId"`
 }
 
 type CommandVarData struct {
@@ -712,29 +760,31 @@ type ActivityDisplayType struct {
 }
 
 type ActivityUpdate struct {
-	FgMinutes     int                   `json:"fgminutes,omitempty"`
-	ActiveMinutes int                   `json:"activeminutes,omitempty"`
-	OpenMinutes   int                   `json:"openminutes,omitempty"`
-	NumTabs       int                   `json:"numtabs,omitempty"`
-	NewTab        int                   `json:"newtab,omitempty"`
-	NumBlocks     int                   `json:"numblocks,omitempty"`
-	NumWindows    int                   `json:"numwindows,omitempty"`
-	NumWS         int                   `json:"numws,omitempty"`
-	NumWSNamed    int                   `json:"numwsnamed,omitempty"`
-	NumSSHConn    int                   `json:"numsshconn,omitempty"`
-	NumWSLConn    int                   `json:"numwslconn,omitempty"`
-	NumMagnify    int                   `json:"nummagnify,omitempty"`
-	NumPanics     int                   `json:"numpanics,omitempty"`
-	NumAIReqs     int                   `json:"numaireqs,omitempty"`
-	Startup       int                   `json:"startup,omitempty"`
-	Shutdown      int                   `json:"shutdown,omitempty"`
-	SetTabTheme   int                   `json:"settabtheme,omitempty"`
-	BuildTime     string                `json:"buildtime,omitempty"`
-	Displays      []ActivityDisplayType `json:"displays,omitempty"`
-	Renderers     map[string]int        `json:"renderers,omitempty"`
-	Blocks        map[string]int        `json:"blocks,omitempty"`
-	WshCmds       map[string]int        `json:"wshcmds,omitempty"`
-	Conn          map[string]int        `json:"conn,omitempty"`
+	FgMinutes           int                   `json:"fgminutes,omitempty"`
+	ActiveMinutes       int                   `json:"activeminutes,omitempty"`
+	OpenMinutes         int                   `json:"openminutes,omitempty"`
+	WaveAIFgMinutes     int                   `json:"waveaifgminutes,omitempty"`
+	WaveAIActiveMinutes int                   `json:"waveaiactiveminutes,omitempty"`
+	NumTabs             int                   `json:"numtabs,omitempty"`
+	NewTab              int                   `json:"newtab,omitempty"`
+	NumBlocks           int                   `json:"numblocks,omitempty"`
+	NumWindows          int                   `json:"numwindows,omitempty"`
+	NumWS               int                   `json:"numws,omitempty"`
+	NumWSNamed          int                   `json:"numwsnamed,omitempty"`
+	NumSSHConn          int                   `json:"numsshconn,omitempty"`
+	NumWSLConn          int                   `json:"numwslconn,omitempty"`
+	NumMagnify          int                   `json:"nummagnify,omitempty"`
+	NumPanics           int                   `json:"numpanics,omitempty"`
+	NumAIReqs           int                   `json:"numaireqs,omitempty"`
+	Startup             int                   `json:"startup,omitempty"`
+	Shutdown            int                   `json:"shutdown,omitempty"`
+	SetTabTheme         int                   `json:"settabtheme,omitempty"`
+	BuildTime           string                `json:"buildtime,omitempty"`
+	Displays            []ActivityDisplayType `json:"displays,omitempty"`
+	Renderers           map[string]int        `json:"renderers,omitempty"`
+	Blocks              map[string]int        `json:"blocks,omitempty"`
+	WshCmds             map[string]int        `json:"wshcmds,omitempty"`
+	Conn                map[string]int        `json:"conn,omitempty"`
 }
 
 type ConnExtData struct {
@@ -780,4 +830,25 @@ type FileShareCapability struct {
 	CanAppend bool `json:"canappend"`
 	// CanMkdir indicates whether the file share supports creating directories
 	CanMkdir bool `json:"canmkdir"`
+}
+
+type CommandGetRTInfoData struct {
+	ORef waveobj.ORef `json:"oref"`
+}
+
+type CommandSetRTInfoData struct {
+	ORef waveobj.ORef   `json:"oref"`
+	Data map[string]any `json:"data" tstype:"ObjRTInfo"`
+}
+
+type CommandTermGetScrollbackLinesData struct {
+	LineStart int `json:"linestart"`
+	LineEnd   int `json:"lineend"`
+}
+
+type CommandTermGetScrollbackLinesRtnData struct {
+	TotalLines  int      `json:"totallines"`
+	LineStart   int      `json:"linestart"`
+	Lines       []string `json:"lines"`
+	LastUpdated int64    `json:"lastupdated"`
 }

@@ -160,6 +160,23 @@ To use Google's Gemini models from [Google AI Studio](https://aistudio.google.co
 }
 ```
 
+### OpenRouter
+
+To use OpenRouter's models:
+
+```json
+{
+  "ai@openrouter": {
+    "display:name": "OpenRouter (Qwen)",
+    "display:order": 7,
+    "ai:*": true,
+    "ai:model": "qwen/qwen3-next-80b-a3b-thinking",
+    "ai:apitoken": "<openrouter-key>",
+    "ai:baseurl": "https://openrouter.ai/api/v1"
+  }
+}
+```
+
 ## Multiple Presets Example
 
 You can define multiple presets in your `ai.json` file:

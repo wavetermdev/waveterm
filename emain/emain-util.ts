@@ -5,6 +5,11 @@ import * as electron from "electron";
 import { getWebServerEndpoint } from "../frontend/util/endpoints";
 
 export const WaveAppPathVarName = "WAVETERM_APP_PATH";
+export const WaveAppElectronExecPath = "WAVETERM_ELECTRONEXECPATH";
+
+export function getElectronExecPath(): string {
+    return process.execPath;
+}
 
 // not necessarily exact, but we use this to help get us unstuck in certain cases
 let lastCtrlShiftSate: boolean = false;
@@ -57,8 +62,13 @@ export function handleCtrlShiftState(sender: Electron.WebContents, waveEvent: Wa
 
 export function shNavHandler(event: Electron.Event<Electron.WebContentsWillNavigateEventParams>, url: string) {
     const isDev = !electron.app.isPackaged;
-    if (isDev && (url.startsWith("http://127.0.0.1:5173/index.html") || url.startsWith("http://localhost:5173/index.html") ||
-                  url.startsWith("http://127.0.0.1:5174/index.html") || url.startsWith("http://localhost:5174/index.html"))) {
+    if (
+        isDev &&
+        (url.startsWith("http://127.0.0.1:5173/index.html") ||
+            url.startsWith("http://localhost:5173/index.html") ||
+            url.startsWith("http://127.0.0.1:5174/index.html") ||
+            url.startsWith("http://localhost:5174/index.html"))
+    ) {
         // this is a dev-mode hot-reload, ignore it
         console.log("allowing hot-reload of index.html");
         return;
@@ -96,6 +106,30 @@ export function shFrameNavHandler(event: Electron.Event<Electron.WebContentsWill
     ) {
         // allowed
         return;
+    }
+    if (event.frame.name != null && event.frame.name.startsWith("tsunami:")) {
+        // Parse port from frame name: tsunami:[port]:[blockid]
+        const nameParts = event.frame.name.split(":");
+        const expectedPort = nameParts.length >= 2 ? nameParts[1] : null;
+
+        try {
+            const tsunamiUrl = new URL(url);
+            if (
+                tsunamiUrl.protocol === "http:" &&
+                tsunamiUrl.hostname === "localhost" &&
+                expectedPort &&
+                tsunamiUrl.port === expectedPort
+            ) {
+                // allowed
+                return;
+            }
+            // If navigation is not to expected port, open externally
+            event.preventDefault();
+            electron.shell.openExternal(url);
+            return;
+        } catch (e) {
+            // Invalid URL, fall through to prevent navigation
+        }
     }
     event.preventDefault();
     console.log("frame navigation canceled");

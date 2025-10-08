@@ -26,12 +26,13 @@ var WaveVersion = "0.0.0"
 var BuildTime = "0"
 
 const (
-	WaveConfigHomeEnvVar      = "WAVETERM_CONFIG_HOME"
-	WaveDataHomeEnvVar        = "WAVETERM_DATA_HOME"
-	WaveAppPathVarName        = "WAVETERM_APP_PATH"
-	WaveDevVarName            = "WAVETERM_DEV"
-	WaveDevViteVarName        = "WAVETERM_DEV_VITE"
-	WaveWshForceUpdateVarName = "WAVETERM_WSHFORCEUPDATE"
+	WaveConfigHomeEnvVar           = "WAVETERM_CONFIG_HOME"
+	WaveDataHomeEnvVar             = "WAVETERM_DATA_HOME"
+	WaveAppPathVarName             = "WAVETERM_APP_PATH"
+	WaveAppElectronExecPathVarName = "WAVETERM_ELECTRONEXECPATH"
+	WaveDevVarName                 = "WAVETERM_DEV"
+	WaveDevViteVarName             = "WAVETERM_DEV_VITE"
+	WaveWshForceUpdateVarName      = "WAVETERM_WSHFORCEUPDATE"
 
 	WaveJwtTokenVarName  = "WAVETERM_JWT"
 	WaveSwapTokenVarName = "WAVETERM_SWAPTOKEN"
@@ -46,10 +47,11 @@ const (
 
 const NeedJwtConst = "NEED-JWT"
 
-var ConfigHome_VarCache string // caches WAVETERM_CONFIG_HOME
-var DataHome_VarCache string   // caches WAVETERM_DATA_HOME
-var AppPath_VarCache string    // caches WAVETERM_APP_PATH
-var Dev_VarCache string        // caches WAVETERM_DEV
+var ConfigHome_VarCache string          // caches WAVETERM_CONFIG_HOME
+var DataHome_VarCache string            // caches WAVETERM_DATA_HOME
+var AppPath_VarCache string             // caches WAVETERM_APP_PATH
+var AppElectronExecPath_VarCache string // caches WAVETERM_ELECTRONEXECPATH
+var Dev_VarCache string                 // caches WAVETERM_DEV
 
 const WaveLockFile = "wave.lock"
 const DomainSocketBaseName = "wave.sock"
@@ -93,6 +95,8 @@ func CacheAndRemoveEnvVars() error {
 	os.Unsetenv(WaveDataHomeEnvVar)
 	AppPath_VarCache = os.Getenv(WaveAppPathVarName)
 	os.Unsetenv(WaveAppPathVarName)
+	AppElectronExecPath_VarCache = os.Getenv(WaveAppElectronExecPathVarName)
+	os.Unsetenv(WaveAppElectronExecPathVarName)
 	Dev_VarCache = os.Getenv(WaveDevVarName)
 	os.Unsetenv(WaveDevVarName)
 	os.Unsetenv(WaveDevViteVarName)
@@ -117,6 +121,10 @@ func GetWaveConfigDir() string {
 
 func GetWaveAppBinPath() string {
 	return filepath.Join(GetWaveAppPath(), AppPathBinDir)
+}
+
+func GetWaveAppElectronExecPath() string {
+	return AppElectronExecPath_VarCache
 }
 
 func GetHomeDir() string {

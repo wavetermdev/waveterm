@@ -1,0 +1,23 @@
+package main
+
+import (
+	"embed"
+	"io/fs"
+
+	"github.com/wavetermdev/waveterm/tsunami/app"
+)
+
+//go:embed dist/**
+var distFS embed.FS
+
+//go:embed static/**
+var staticFS embed.FS
+
+func main() {
+	subDistFS, _ := fs.Sub(distFS, "dist")
+	subStaticFS, _ := fs.Sub(staticFS, "static")
+	app.RegisterEmbeds(subDistFS, subStaticFS, nil)
+	app.SetTitle(AppTitle)
+	app.SetShortDesc(AppShortDesc)
+	app.RunMain()
+}

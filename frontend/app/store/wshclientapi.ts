@@ -32,6 +32,16 @@ class RpcApiType {
         return client.wshRpcCall("blockinfo", data, opts);
     }
 
+    // command "blockslist" [call]
+    BlocksListCommand(client: WshClient, data: BlocksListRequest, opts?: RpcOpts): Promise<BlocksListEntry[]> {
+        return client.wshRpcCall("blockslist", data, opts);
+    }
+
+    // command "captureblockscreenshot" [call]
+    CaptureBlockScreenshotCommand(client: WshClient, data: CommandCaptureBlockScreenshotData, opts?: RpcOpts): Promise<string> {
+        return client.wshRpcCall("captureblockscreenshot", data, opts);
+    }
+
     // command "connconnect" [call]
     ConnConnectCommand(client: WshClient, data: ConnRequest, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("connconnect", data, opts);
@@ -257,6 +267,11 @@ class RpcApiType {
         return client.wshRpcCall("getmeta", data, opts);
     }
 
+    // command "getrtinfo" [call]
+    GetRTInfoCommand(client: WshClient, data: CommandGetRTInfoData, opts?: RpcOpts): Promise<ObjRTInfo> {
+        return client.wshRpcCall("getrtinfo", data, opts);
+    }
+
     // command "gettab" [call]
     GetTabCommand(client: WshClient, data: string, opts?: RpcOpts): Promise<Tab> {
         return client.wshRpcCall("gettab", data, opts);
@@ -270,6 +285,16 @@ class RpcApiType {
     // command "getvar" [call]
     GetVarCommand(client: WshClient, data: CommandVarData, opts?: RpcOpts): Promise<CommandVarResponseData> {
         return client.wshRpcCall("getvar", data, opts);
+    }
+
+    // command "getwaveaichat" [call]
+    GetWaveAIChatCommand(client: WshClient, data: CommandGetWaveAIChatData, opts?: RpcOpts): Promise<UIChat> {
+        return client.wshRpcCall("getwaveaichat", data, opts);
+    }
+
+    // command "getwaveairatelimit" [call]
+    GetWaveAIRateLimitCommand(client: WshClient, opts?: RpcOpts): Promise<RateLimitInfo> {
+        return client.wshRpcCall("getwaveairatelimit", null, opts);
     }
 
     // command "message" [call]
@@ -397,6 +422,11 @@ class RpcApiType {
         return client.wshRpcCall("setmeta", data, opts);
     }
 
+    // command "setrtinfo" [call]
+    SetRTInfoCommand(client: WshClient, data: CommandSetRTInfoData, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("setrtinfo", data, opts);
+    }
+
     // command "setvar" [call]
     SetVarCommand(client: WshClient, data: CommandVarData, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("setvar", data, opts);
@@ -420,6 +450,11 @@ class RpcApiType {
     // command "streamwaveai" [responsestream]
 	StreamWaveAiCommand(client: WshClient, data: WaveAIStreamRequest, opts?: RpcOpts): AsyncGenerator<WaveAIPacketType, void, boolean> {
         return client.wshRpcStream("streamwaveai", data, opts);
+    }
+
+    // command "termgetscrollbacklines" [call]
+    TermGetScrollbackLinesCommand(client: WshClient, data: CommandTermGetScrollbackLinesData, opts?: RpcOpts): Promise<CommandTermGetScrollbackLinesRtnData> {
+        return client.wshRpcCall("termgetscrollbacklines", data, opts);
     }
 
     // command "test" [call]
@@ -450,6 +485,11 @@ class RpcApiType {
     // command "waitforroute" [call]
     WaitForRouteCommand(client: WshClient, data: CommandWaitForRouteData, opts?: RpcOpts): Promise<boolean> {
         return client.wshRpcCall("waitforroute", data, opts);
+    }
+
+    // command "waveaienabletelemetry" [call]
+    WaveAIEnableTelemetryCommand(client: WshClient, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("waveaienabletelemetry", null, opts);
     }
 
     // command "waveinfo" [call]
