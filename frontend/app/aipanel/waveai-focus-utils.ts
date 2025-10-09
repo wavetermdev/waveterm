@@ -12,7 +12,14 @@ export function findWaveAIPanel(element: HTMLElement): HTMLElement | null {
     return null;
 }
 
-export function waveAIHasFocusWithin(): boolean {
+export function waveAIHasFocusWithin(focusTarget?: Element | null): boolean {
+    if (focusTarget !== undefined) {
+        if (focusTarget instanceof HTMLElement) {
+            return findWaveAIPanel(focusTarget) != null;
+        }
+        return false;
+    }
+
     const focused = document.activeElement;
     if (focused instanceof HTMLElement) {
         const waveAIPanel = findWaveAIPanel(focused);

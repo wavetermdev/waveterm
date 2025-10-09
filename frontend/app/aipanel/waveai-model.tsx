@@ -33,6 +33,7 @@ export class WaveAIModel {
     modelAtom!: jotai.Atom<string>;
     containerWidth: jotai.PrimitiveAtom<number> = jotai.atom(0);
     codeBlockMaxWidth!: jotai.Atom<number>;
+    inputAtom: jotai.PrimitiveAtom<string> = jotai.atom("");
 
     private constructor() {
         const tabId = globalStore.get(atoms.staticTabId);

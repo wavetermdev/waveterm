@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { ContextMenuModel } from "@/app/store/contextmenu";
-import { useAtom, useAtomValue } from "jotai";
+import { useAtomValue } from "jotai";
 import { memo } from "react";
 import { WaveAIModel } from "./waveai-model";
 
@@ -14,18 +14,6 @@ interface AIPanelHeaderProps {
 
 export const AIPanelHeader = memo(({ onClose, model, onClearChat }: AIPanelHeaderProps) => {
     const widgetAccess = useAtomValue(model.widgetAccessAtom);
-    const currentModel = useAtomValue(model.modelAtom);
-
-    const modelOptions = [
-        { value: "gpt-5", label: "GPT-5" },
-        { value: "gpt-5-mini", label: "GPT-5 Mini" },
-        { value: "claude-sonnet-4-5", label: "Claude Sonnet 4.5" },
-    ];
-
-    const getModelLabel = (modelValue: string): string => {
-        const option = modelOptions.find((opt) => opt.value === modelValue);
-        return option?.label ?? modelValue;
-    };
 
     const handleKebabClick = (e: React.MouseEvent) => {
         const menu: ContextMenuItem[] = [
@@ -34,18 +22,6 @@ export const AIPanelHeader = memo(({ onClose, model, onClearChat }: AIPanelHeade
                 click: () => {
                     onClearChat?.();
                 },
-            },
-            { type: "separator" },
-            {
-                label: `Model (${getModelLabel(currentModel)})`,
-                submenu: modelOptions.map((option) => ({
-                    label: option.label,
-                    type: currentModel === option.value ? "checkbox" : undefined,
-                    checked: currentModel === option.value,
-                    click: () => {
-                        model.setModel(option.value);
-                    },
-                })),
             },
             { type: "separator" },
             {

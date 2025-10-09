@@ -26,8 +26,8 @@ export type WindowOpts = {
     unamePlatform: string;
 };
 
-const MIN_WINDOW_WIDTH = 600;
-const MIN_WINDOW_HEIGHT = 350;
+const MIN_WINDOW_WIDTH = 800;
+const MIN_WINDOW_HEIGHT = 500;
 
 export const waveWindowMap = new Map<string, WaveBrowserWindow>(); // waveWindowId -> WaveBrowserWindow
 
