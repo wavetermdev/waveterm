@@ -76,8 +76,6 @@ interface AIToolUseProps {
 const AIToolUse = memo(({ part }: AIToolUseProps) => {
     const toolData = part.data;
     const [userApprovalOverride, setUserApprovalOverride] = useState<string | null>(null);
-    
-    if (!toolData) return null;
 
     const statusIcon = toolData.status === "completed" ? "✓" : toolData.status === "error" ? "✗" : "•";
     const statusColor =
@@ -174,7 +172,7 @@ const AIMessagePart = memo(({ part, role, isStreaming }: AIMessagePartProps) => 
         }
     }
 
-    if (part.type === "data-tooluse") {
+    if (part.type === "data-tooluse" && part.data) {
         return <AIToolUse part={part as WaveUIMessagePart & { type: "data-tooluse" }} isStreaming={isStreaming} />;
     }
 

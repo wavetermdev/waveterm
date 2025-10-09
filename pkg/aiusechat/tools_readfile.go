@@ -34,7 +34,7 @@ func parseReadTextFileInput(input any) (*readTextFileParams, error) {
 		return nil, fmt.Errorf("input is required")
 	}
 
-	if err := utilfn.ReUnmarshal(&result, input); err != nil {
+	if err := utilfn.ReUnmarshal(result, input); err != nil {
 		return nil, fmt.Errorf("invalid input format: %w", err)
 	}
 
