@@ -24,6 +24,41 @@ type readTextFileParams struct {
 	MaxBytes *int    `json:"max_bytes"`
 }
 
+func parseReadTextFileInput(input any) (*readTextFileParams, error) {
+	const DefaultLineCount = 100
+
+	result := &readTextFileParams{}
+
+	if input == nil {
+		return nil, fmt.Errorf("input is required")
+	}
+
+	if err := utilfn.ReUnmarshal(&result, input); err != nil {
+		return nil, fmt.Errorf("invalid input format: %w", err)
+	}
+
+	if result.Filename == "" {
+		return nil, fmt.Errorf("missing filename parameter")
+	}
+
+	if result.Origin == nil {
+		origin := "start"
+		result.Origin = &origin
+	}
+
+	if result.Offset == nil {
+		offset := 0
+		result.Offset = &offset
+	}
+
+	if result.Count == nil {
+		count := DefaultLineCount
+		result.Count = &count
+	}
+
+	return result, nil
+}
+
 // truncateData truncates data to maxBytes while respecting line boundaries.
 // For origin "start", keeps the beginning and truncates at last newline before maxBytes.
 // For origin "end", keeps the end and truncates from beginning at first newline after removing excess.
@@ -199,6 +234,36 @@ func GetReadTextFileToolDefinition() uctypes.ToolDefinition {
 			},
 			"required":             []string{"filename"},
 			"additionalProperties": false,
+		},
+		ToolInputDesc: func(input any) string {
+			parsed, err := parseReadTextFileInput(input)
+			if err != nil {
+				return fmt.Sprintf("error parsing input: %v", err)
+			}
+
+			origin := "start"
+			if parsed.Origin != nil {
+				origin = *parsed.Origin
+			}
+			offset := 0
+			if parsed.Offset != nil {
+				offset = *parsed.Offset
+			}
+			count := 100
+			if parsed.Count != nil {
+				count = *parsed.Count
+			}
+
+			if origin == "start" && offset == 0 && count == 100 {
+				return fmt.Sprintf("reading %q (first %d lines)", parsed.Filename, count)
+			}
+			if origin == "end" && offset == 0 {
+				return fmt.Sprintf("reading %q (last %d lines)", parsed.Filename, count)
+			}
+			if origin == "end" {
+				return fmt.Sprintf("reading %q (from end: offset %d lines, count %d lines)", parsed.Filename, offset, count)
+			}
+			return fmt.Sprintf("reading %q (from start: offset %d lines, count %d lines)", parsed.Filename, offset, count)
 		},
 		ToolAnyCallback: readTextFileCallback,
 	}
