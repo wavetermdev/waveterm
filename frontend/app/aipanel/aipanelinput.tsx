@@ -67,7 +67,7 @@ export const AIPanelInput = memo(({ onSubmit, status, model }: AIPanelInputProps
             return;
         }
 
-        if (waveAIHasFocusWithin()) {
+        if (waveAIHasFocusWithin(e.relatedTarget)) {
             return;
         }
 
