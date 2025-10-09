@@ -7,6 +7,7 @@ import { Toggle } from "@/app/element/toggle";
 import * as services from "@/store/services";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
 import { useEffect, useRef, useState } from "react";
+import { debounce } from "throttle-debounce";
 import { FlexiModal } from "./modal";
 
 import { QuickTips } from "@/app/element/quicktips";
@@ -195,9 +196,10 @@ const TosModal = () => {
 
     useEffect(() => {
         updateModalHeight();
-        window.addEventListener("resize", updateModalHeight);
+        const debouncedUpdateModalHeight = debounce(150, updateModalHeight);
+        window.addEventListener("resize", debouncedUpdateModalHeight);
         return () => {
-            window.removeEventListener("resize", updateModalHeight);
+            window.removeEventListener("resize", debouncedUpdateModalHeight);
         };
     }, []);
 

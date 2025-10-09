@@ -13,6 +13,8 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
 )
 
+var editConfigMagnified bool
+
 var editConfigCmd = &cobra.Command{
 	Use:     "editconfig [configfile]",
 	Short:   "edit Wave configuration files",
@@ -23,6 +25,7 @@ var editConfigCmd = &cobra.Command{
 }
 
 func init() {
+	editConfigCmd.Flags().BoolVarP(&editConfigMagnified, "magnified", "m", false, "open config in magnified mode")
 	rootCmd.AddCommand(editConfigCmd)
 }
 
@@ -52,7 +55,8 @@ func editConfigRun(cmd *cobra.Command, args []string) (rtnErr error) {
 				waveobj.MetaKey_Edit: true,
 			},
 		},
-		Focused: true,
+		Magnified: editConfigMagnified,
+		Focused:   true,
 	}
 
 	_, err = RpcClient.SendRpcRequest(wshrpc.Command_CreateBlock, wshCmd, &wshrpc.RpcOpts{Timeout: 2000})

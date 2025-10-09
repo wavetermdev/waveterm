@@ -63,16 +63,16 @@ const QuickTips = () => {
                 <div className="font-bold mb-[5px] mt-[10px] text-base first:mt-0">Header Icons</div>
                 <div className="flex flex-row items-center">
                     <IconBox>
+                        <MagnifyIcon enabled={false} />
+                    </IconBox>
+                    Magnify a Block <KeyBinding keyDecl="Cmd:m" />
+                </div>
+                <div className="flex flex-row items-center">
+                    <IconBox>
                         <i className="fa-solid fa-sharp fa-laptop fa-fw" />
                     </IconBox>
                     Connect to a remote server
                     <KeyBinding keyDecl="Cmd:g" />
-                </div>
-                <div className="flex flex-row items-center">
-                    <IconBox>
-                        <MagnifyIcon enabled={false} />
-                    </IconBox>
-                    Magnify a Block <KeyBinding keyDecl="Cmd:m" />
                 </div>
                 <div className="flex flex-row items-center">
                     <IconBox>
