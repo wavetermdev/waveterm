@@ -18,11 +18,86 @@ import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { createDataUrl, formatFileSizeError, isAcceptableFile, normalizeMimeType, validateFileSize } from "./ai-utils";
 import { AIDroppedFiles } from "./aidroppedfiles";
 import { AIPanelHeader } from "./aipanelheader";
-import { AIPanelInput, type AIPanelInputRef } from "./aipanelinput";
+import { AIPanelInput } from "./aipanelinput";
 import { AIPanelMessages } from "./aipanelmessages";
 import { AIRateLimitStrip } from "./airatelimitstrip";
 import { TelemetryRequiredMessage } from "./telemetryrequired";
 import { WaveAIModel, type DroppedFile } from "./waveai-model";
+
+const AIBlockMask = memo(() => {
+    return (
+        <div
+            key="block-mask"
+            className="absolute top-0 left-0 right-0 bottom-0 border-1 border-transparent pointer-events-auto select-none p-0.5"
+            style={{
+                borderRadius: "var(--block-border-radius)",
+                zIndex: "var(--zindex-block-mask-inner)",
+            }}
+        >
+            <div
+                className="w-full mt-[44px] h-[calc(100%-44px)] flex items-center justify-center"
+                style={{
+                    backgroundColor: "rgb(from var(--block-bg-color) r g b / 50%)",
+                }}
+            >
+                <div className="font-bold opacity-70 mt-[-25%] text-[60px]">0</div>
+            </div>
+        </div>
+    );
+});
+
+AIBlockMask.displayName = "AIBlockMask";
+
+const AIDragOverlay = memo(() => {
+    return (
+        <div
+            key="drag-overlay"
+            className="absolute inset-0 bg-accent/20 border-2 border-dashed border-accent rounded-lg flex items-center justify-center z-10 p-4"
+        >
+            <div className="text-accent text-center">
+                <i className="fa fa-upload text-3xl mb-2"></i>
+                <div className="text-lg font-semibold">Drop files here</div>
+                <div className="text-sm">Images, PDFs, and text/code files supported</div>
+            </div>
+        </div>
+    );
+});
+
+AIDragOverlay.displayName = "AIDragOverlay";
+
+const AIWelcomeMessage = memo(() => {
+    return (
+        <div className="text-gray-400 text-center py-8">
+            <i className="fa fa-sparkles text-4xl text-accent mb-4 block"></i>
+            <p className="text-lg">Welcome to Wave AI</p>
+            <p className="text-sm mt-2">Start a conversation by typing a message below.</p>
+        </div>
+    );
+});
+
+AIWelcomeMessage.displayName = "AIWelcomeMessage";
+
+interface AIErrorMessageProps {
+    errorMessage: string;
+    onClear: () => void;
+}
+
+const AIErrorMessage = memo(({ errorMessage, onClear }: AIErrorMessageProps) => {
+    return (
+        <div className="px-4 py-2 text-red-400 bg-red-900/20 border-l-4 border-red-500 mx-2 mb-2 relative">
+            <button
+                onClick={onClear}
+                className="absolute top-2 right-2 text-red-400 hover:text-red-300 cursor-pointer z-10"
+                aria-label="Close error"
+            >
+                <i className="fa fa-times text-sm"></i>
+            </button>
+            <div className="text-sm pr-6 max-h-[100px] overflow-y-auto">{errorMessage}</div>
+        </div>
+    );
+});
+
+AIErrorMessage.displayName = "AIErrorMessage";
 
 interface AIPanelProps {
     className?: string;
@@ -30,14 +105,12 @@ interface AIPanelProps {
 }
 
 const AIPanelComponentInner = memo(({ className, onClose }: AIPanelProps) => {
-    const [input, setInput] = useState("");
     const [isDragOver, setIsDragOver] = useState(false);
     const [isLoadingChat, setIsLoadingChat] = useState(true);
     const model = WaveAIModel.getInstance();
     const containerRef = useRef<HTMLDivElement>(null);
     const errorMessage = jotai.useAtomValue(model.errorMessage);
     const realMessageRef = useRef<AIMessage>(null);
-    const inputRef = useRef<AIPanelInputRef>(null);
     const isLayoutMode = jotai.useAtomValue(atoms.controlShiftDelayAtom);
     const showOverlayBlockNums = jotai.useAtomValue(getSettingsKeyAtom("app:showoverlayblocknums")) ?? true;
     const focusType = jotai.useAtomValue(focusManager.focusType);
@@ -97,10 +170,6 @@ const AIPanelComponentInner = memo(({ className, onClose }: AIPanelProps) => {
     }, []);
 
     useEffect(() => {
-        model.registerInputRef(inputRef);
-    }, [model]);
-
-    useEffect(() => {
         const loadMessages = async () => {
             const messages = await model.loadChat();
             setMessages(messages as any);
@@ -137,11 +206,12 @@ const AIPanelComponentInner = memo(({ className, onClose }: AIPanelProps) => {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        const input = globalStore.get(model.inputAtom);
         if (!input.trim() || status !== "ready" || isLoadingChat) return;
 
         if (input.trim() === "/clear" || input.trim() === "/new") {
             clearChat();
-            setInput("");
+            globalStore.set(model.inputAtom, "");
             return;
         }
 
@@ -195,13 +265,11 @@ const AIPanelComponentInner = memo(({ className, onClose }: AIPanelProps) => {
         // sendMessage uses UIMessageParts
         sendMessage({ parts: uiMessageParts });
 
-        setInput("");
+        globalStore.set(model.inputAtom, "");
         model.clearFiles();
 
-        // Keep focus on input after submission
         setTimeout(() => {
-            console.log("trying to reset focus", inputRef.current);
-            inputRef.current?.focus();
+            model.focusInput();
         }, 100);
     };
 
@@ -323,37 +391,8 @@ const AIPanelComponentInner = memo(({ className, onClose }: AIPanelProps) => {
             onClick={handleClick}
             inert={!isPanelVisible ? true : undefined}
         >
-            {isDragOver && (
-                <div
-                    key="drag-overlay"
-                    className="absolute inset-0 bg-accent/20 border-2 border-dashed border-accent rounded-lg flex items-center justify-center z-10 p-4"
-                >
-                    <div className="text-accent text-center">
-                        <i className="fa fa-upload text-3xl mb-2"></i>
-                        <div className="text-lg font-semibold">Drop files here</div>
-                        <div className="text-sm">Images, PDFs, and text/code files supported</div>
-                    </div>
-                </div>
-            )}
-            {showBlockMask && (
-                <div
-                    key="block-mask"
-                    className="absolute top-0 left-0 right-0 bottom-0 border-1 border-transparent pointer-events-auto select-none p-0.5"
-                    style={{
-                        borderRadius: "var(--block-border-radius)",
-                        zIndex: "var(--zindex-block-mask-inner)",
-                    }}
-                >
-                    <div
-                        className="w-full mt-[44px] h-[calc(100%-44px)] flex items-center justify-center"
-                        style={{
-                            backgroundColor: "rgb(from var(--block-bg-color) r g b / 50%)",
-                        }}
-                    >
-                        <div className="font-bold opacity-70 mt-[-25%] text-[60px]">0</div>
-                    </div>
-                </div>
-            )}
+            {isDragOver && <AIDragOverlay />}
+            {showBlockMask && <AIBlockMask />}
             <AIPanelHeader onClose={onClose} model={model} onClearChat={clearChat} />
             <AIRateLimitStrip />
 
@@ -362,24 +401,16 @@ const AIPanelComponentInner = memo(({ className, onClose }: AIPanelProps) => {
                     <TelemetryRequiredMessage />
                 ) : (
                     <>
-                        <AIPanelMessages messages={messages} status={status} isLoadingChat={isLoadingChat} />
-                        {errorMessage && (
-                            <div className="px-4 py-2 text-red-400 bg-red-900/20 border-l-4 border-red-500 mx-2 mb-2 relative">
-                                <button
-                                    onClick={() => model.clearError()}
-                                    className="absolute top-2 right-2 text-red-400 hover:text-red-300 cursor-pointer z-10"
-                                    aria-label="Close error"
-                                >
-                                    <i className="fa fa-times text-sm"></i>
-                                </button>
-                                <div className="text-sm pr-6 max-h-[100px] overflow-y-auto">{errorMessage}</div>
+                        {messages.length === 0 && !isLoadingChat ? (
+                            <div className="flex-1 overflow-y-auto p-2">
+                                <AIWelcomeMessage />
                             </div>
+                        ) : (
+                            <AIPanelMessages messages={messages} status={status} />
                         )}
+                        {errorMessage && <AIErrorMessage errorMessage={errorMessage} onClear={() => model.clearError()} />}
                         <AIDroppedFiles model={model} />
                         <AIPanelInput
-                            ref={inputRef}
-                            input={input}
-                            setInput={setInput}
                             onSubmit={handleSubmit}
                             status={status}
                             model={model}
