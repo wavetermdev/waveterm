@@ -35,7 +35,7 @@ export const AIPanelInput = memo(({ onSubmit, status, model }: AIPanelInputProps
 
         textarea.style.height = "auto";
         const scrollHeight = textarea.scrollHeight;
-        const maxHeight = 6 * 24;
+        const maxHeight = 7 * 24;
         textarea.style.height = `${Math.min(scrollHeight, maxHeight)}px`;
     }, []);
 
@@ -134,7 +134,7 @@ export const AIPanelInput = memo(({ onSubmit, status, model }: AIPanelInputProps
                         onBlur={handleBlur}
                         placeholder="Ask Wave AI anything..."
                         className={cn(
-                            "w-full  text-white px-2 py-2 pr-12 focus:outline-none resize-none overflow-hidden",
+                            "w-full  text-white px-2 py-2 pr-5 focus:outline-none resize-none overflow-auto",
                             isFocused ? "bg-accent-900/50" : "bg-gray-800"
                         )}
                         style={{ fontSize: "13px" }}
