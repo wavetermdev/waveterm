@@ -76,7 +76,7 @@ jobs:
             - uses: nick-fields/retry@v3
               name: npm ci
               with:
-                  command: npm ci --no-audit --no-fund --timing --foreground-scripts
+                  command: npm ci --no-audit --no-fund
                   retry_on: error
                   max_attempts: 3
                   timeout_minutes: 5
