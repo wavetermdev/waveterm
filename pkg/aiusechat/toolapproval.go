@@ -11,19 +11,20 @@ import (
 )
 
 const (
-	InitialApprovalTimeout = 2 * time.Minute
-	KeepAliveExtension     = 1 * time.Minute
+	InitialApprovalTimeout = 10 * time.Second
+	KeepAliveExtension     = 10 * time.Second
 )
 
 type ApprovalRequest struct {
-	ToolUseData  *uctypes.UIMessageDataToolUse
-	ResponseChan chan string
-	timer        *time.Timer
-	mu           sync.Mutex
+	approval string
+	done     bool
+	doneChan chan struct{}
+	timer    *time.Timer
+	mu       sync.Mutex
 }
 
 type ApprovalRegistry struct {
-	mu       sync.RWMutex
+	mu       sync.Mutex
 	requests map[string]*ApprovalRequest
 }
 
@@ -31,34 +32,33 @@ var globalApprovalRegistry = &ApprovalRegistry{
 	requests: make(map[string]*ApprovalRequest),
 }
 
-func RegisterToolApproval(toolUseData *uctypes.UIMessageDataToolUse) chan string {
+func registerToolApprovalRequest(toolCallId string, req *ApprovalRequest) {
+	globalApprovalRegistry.mu.Lock()
+	defer globalApprovalRegistry.mu.Unlock()
+	globalApprovalRegistry.requests[toolCallId] = req
+}
+
+func getToolApprovalRequest(toolCallId string) (*ApprovalRequest, bool) {
+	globalApprovalRegistry.mu.Lock()
+	defer globalApprovalRegistry.mu.Unlock()
+	req, exists := globalApprovalRegistry.requests[toolCallId]
+	return req, exists
+}
+
+func RegisterToolApproval(toolCallId string) {
 	req := &ApprovalRequest{
-		ToolUseData:  toolUseData,
-		ResponseChan: make(chan string, 1),
+		doneChan: make(chan struct{}),
 	}
 
 	req.timer = time.AfterFunc(InitialApprovalTimeout, func() {
-		req.mu.Lock()
-		defer req.mu.Unlock()
-		select {
-		case req.ResponseChan <- uctypes.ApprovalTimeout:
-		default:
-		}
-		UnregisterToolApproval(toolUseData.ToolCallId)
+		UpdateToolApproval(toolCallId, uctypes.ApprovalTimeout, false)
 	})
 
-	globalApprovalRegistry.mu.Lock()
-	globalApprovalRegistry.requests[toolUseData.ToolCallId] = req
-	globalApprovalRegistry.mu.Unlock()
-
-	return req.ResponseChan
+	registerToolApprovalRequest(toolCallId, req)
 }
 
 func UpdateToolApproval(toolCallId string, approval string, keepAlive bool) error {
-	globalApprovalRegistry.mu.RLock()
-	req, exists := globalApprovalRegistry.requests[toolCallId]
-	globalApprovalRegistry.mu.RUnlock()
-
+	req, exists := getToolApprovalRequest(toolCallId)
 	if !exists {
 		return nil
 	}
@@ -66,33 +66,51 @@ func UpdateToolApproval(toolCallId string, approval string, keepAlive bool) erro
 	req.mu.Lock()
 	defer req.mu.Unlock()
 
+	if req.done {
+		return nil
+	}
+
 	if keepAlive && approval == "" {
 		req.timer.Reset(KeepAliveExtension)
 		return nil
 	}
 
-	req.timer.Stop()
+	req.approval = approval
+	req.done = true
 
-	select {
-	case req.ResponseChan <- approval:
-	default:
+	if req.timer != nil {
+		req.timer.Stop()
 	}
 
-	UnregisterToolApproval(toolCallId)
+	close(req.doneChan)
 	return nil
 }
-
-func UnregisterToolApproval(toolCallId string) {
-	globalApprovalRegistry.mu.Lock()
-	defer globalApprovalRegistry.mu.Unlock()
-
-	if req, exists := globalApprovalRegistry.requests[toolCallId]; exists {
-		req.mu.Lock()
-		if req.timer != nil {
-			req.timer.Stop()
-		}
-		close(req.ResponseChan)
-		req.mu.Unlock()
-		delete(globalApprovalRegistry.requests, toolCallId)
+func CurrentToolApprovalStatus(toolCallId string) string {
+	req, exists := getToolApprovalRequest(toolCallId)
+	if !exists {
+		return ""
 	}
+
+	req.mu.Lock()
+	defer req.mu.Unlock()
+	return req.approval
+}
+
+func WaitForToolApproval(toolCallId string) string {
+	req, exists := getToolApprovalRequest(toolCallId)
+	if !exists {
+		return ""
+	}
+
+	<-req.doneChan
+
+	req.mu.Lock()
+	approval := req.approval
+	req.mu.Unlock()
+
+	globalApprovalRegistry.mu.Lock()
+	delete(globalApprovalRegistry.requests, toolCallId)
+	globalApprovalRegistry.mu.Unlock()
+
+	return approval
 }

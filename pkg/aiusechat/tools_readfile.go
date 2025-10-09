@@ -12,6 +12,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
 	"github.com/wavetermdev/waveterm/pkg/util/readutil"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
+	"github.com/wavetermdev/waveterm/pkg/wavebase"
 )
 
 const StopReasonMaxBytes = "max_bytes"
@@ -102,16 +103,25 @@ func readTextFileCallback(input any) (any, error) {
 		maxBytes = *params.MaxBytes
 	}
 
-	file, err := os.Open(params.Filename)
+	expandedPath, err := wavebase.ExpandHomeDir(params.Filename)
+	if err != nil {
+		return nil, fmt.Errorf("failed to expand path: %w", err)
+	}
+
+	fileInfo, err := os.Stat(expandedPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to stat file: %w", err)
+	}
+
+	if fileInfo.IsDir() {
+		return nil, fmt.Errorf("path is a directory, cannot be read with the read_text_file tool. use the read_dir tool if available to read directories")
+	}
+
+	file, err := os.Open(expandedPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open file: %w", err)
 	}
 	defer file.Close()
-
-	fileInfo, err := file.Stat()
-	if err != nil {
-		return nil, fmt.Errorf("failed to stat file: %w", err)
-	}
 
 	totalSize := fileInfo.Size()
 	modTime := fileInfo.ModTime()
@@ -185,6 +195,7 @@ func readTextFileCallback(input any) (any, error) {
 		"data":          data,
 		"modified":      utilfn.FormatRelativeTime(modTime),
 		"modified_time": modTime.UTC().Format("2006-01-02 15:04:05 UTC"),
+		"mode":          fileInfo.Mode().String(),
 	}
 	if stopReason != "" {
 		result["truncated"] = stopReason
@@ -197,7 +208,7 @@ func GetReadTextFileToolDefinition() uctypes.ToolDefinition {
 	return uctypes.ToolDefinition{
 		Name:        "read_text_file",
 		DisplayName: "Read Text File",
-		Description: "Read a text file from the filesystem. Can read specific line ranges or from the end. Detects and rejects binary files.",
+		Description: "Read a text file from the filesystem. Can read specific line ranges or from the end. Detects and rejects binary files. Requires user approval.",
 		ToolLogName: "gen:readfile",
 		Strict:      false,
 		InputSchema: map[string]any{
@@ -254,7 +265,7 @@ func GetReadTextFileToolDefinition() uctypes.ToolDefinition {
 				count = *parsed.Count
 			}
 
-			if origin == "start" && offset == 0 && count == 100 {
+			if origin == "start" && offset == 0 {
 				return fmt.Sprintf("reading %q (first %d lines)", parsed.Filename, count)
 			}
 			if origin == "end" && offset == 0 {

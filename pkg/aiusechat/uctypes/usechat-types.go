@@ -142,6 +142,10 @@ type UIMessageDataToolUse struct {
 	Approval     string `json:"approval,omitempty"`
 }
 
+func (d *UIMessageDataToolUse) IsApproved() bool {
+	return d.Approval == "" || d.Approval == ApprovalUserApproved || d.Approval == ApprovalAutoApproved
+}
+
 type StopReasonKind string
 
 const (
@@ -412,13 +416,14 @@ func (m *UIMessage) GetContent() string {
 }
 
 type WaveChatOpts struct {
-	ChatId            string
-	ClientId          string
-	Config            AIOptsType
-	Tools             []ToolDefinition
-	SystemPrompt      []string
-	TabStateGenerator func() (string, []ToolDefinition, error)
-	WidgetAccess      bool
+	ChatId               string
+	ClientId             string
+	Config               AIOptsType
+	Tools                []ToolDefinition
+	SystemPrompt         []string
+	TabStateGenerator    func() (string, []ToolDefinition, error)
+	WidgetAccess         bool
+	RegisterToolApproval func(string)
 
 	// emphemeral to the step
 	TabState string
