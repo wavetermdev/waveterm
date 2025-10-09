@@ -6,6 +6,10 @@ import { addChildAt, addIntermediateNode, balanceNode, findNextInsertLocation, n
 import { FlexDirection, LayoutNode } from "../lib/types";
 
 test("newLayoutNode", () => {
+
+    const originalConsoleError = console.error
+    console.error = () => { /* swallow expected validation errors in tests */ }
+
     assert.throws(
         () => newLayoutNode(FlexDirection.Column),
         "Invalid node",
@@ -39,6 +43,7 @@ test("newLayoutNode", () => {
         "Invalid node",
         undefined,
         "calls to the constructor with children array containing at least one child should succeed";
+    console.error = originalConsoleError
 });
 
 test("addIntermediateNode", () => {

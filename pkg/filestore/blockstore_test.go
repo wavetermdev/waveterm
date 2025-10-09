@@ -11,6 +11,7 @@ import (
 	"io/fs"
 	"log"
 	"reflect"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -29,6 +30,9 @@ func initDb(t *testing.T) {
 	stopFlush.Store(true)
 	err := InitFilestore()
 	if err != nil {
+		if strings.Contains(err.Error(), "CGO_ENABLED=0") || strings.Contains(err.Error(), "requires cgo") {
+			t.Skipf("filestore tests require sqlite/cgo: %v", err)
+		}
 		t.Fatalf("error initializing filestore: %v", err)
 	}
 }
