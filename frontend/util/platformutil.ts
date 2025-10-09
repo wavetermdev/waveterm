@@ -5,6 +5,10 @@ export function setPlatform(platform: NodeJS.Platform) {
     PLATFORM = platform;
 }
 
+export function isMacOS(): boolean {
+    return PLATFORM == PlatformMacOS;
+}
+
 export function makeNativeLabel(isDirectory: boolean) {
     let managerName: string;
     if (!isDirectory) {

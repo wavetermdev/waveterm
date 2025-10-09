@@ -10,6 +10,7 @@ import { globalStore } from "@/app/store/jotaiStore";
 import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
 import { getWebServerEndpoint } from "@/util/endpoints";
 import { checkKeyPressed, keydownWrapper } from "@/util/keyutil";
+import { isMacOS } from "@/util/platformutil";
 import { cn } from "@/util/util";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
@@ -65,12 +66,99 @@ const AIDragOverlay = memo(() => {
 
 AIDragOverlay.displayName = "AIDragOverlay";
 
-const AIWelcomeMessage = memo(() => {
+const KeyCap = memo(({ children, className }: { children: React.ReactNode; className?: string }) => {
     return (
-        <div className="text-gray-400 text-center py-8">
-            <i className="fa fa-sparkles text-4xl text-accent mb-4 block"></i>
-            <p className="text-lg">Welcome to Wave AI</p>
-            <p className="text-sm mt-2">Start a conversation by typing a message below.</p>
+        <kbd
+            className={cn(
+                "px-1.5 py-0.5 text-xs bg-gray-700 border border-gray-600 rounded-sm shadow-sm font-mono",
+                className
+            )}
+        >
+            {children}
+        </kbd>
+    );
+});
+
+KeyCap.displayName = "KeyCap";
+
+const AIWelcomeMessage = memo(() => {
+    const modKey = isMacOS() ? "⌘" : "Alt";
+    return (
+        <div className="text-secondary py-8">
+            <div className="text-center">
+                <i className="fa fa-sparkles text-4xl text-accent mb-4 block"></i>
+                <p className="text-lg font-bold text-primary">Welcome to Wave AI</p>
+            </div>
+            <div className="mt-4 text-left max-w-md mx-auto">
+                <p className="text-sm mb-6">
+                    Wave AI is your terminal assistant with context. I can read your terminal output, analyze widgets,
+                    access files, and help you solve problems faster.
+                </p>
+                <div className="bg-accent/10 border border-accent/30 rounded-lg p-4">
+                    <div className="text-sm font-semibold mb-3 text-accent">Getting Started:</div>
+                    <div className="space-y-3 text-sm">
+                        <div className="flex items-start gap-3">
+                            <div className="w-4 text-center flex-shrink-0">
+                                <i className="fa-solid fa-plug text-accent"></i>
+                            </div>
+                            <div>
+                                <span className="font-bold">Widget Context</span>
+                                <div className="">When ON, I can read your terminal and analyze widgets.</div>
+                                <div className="">When OFF, I'm sandboxed with no system access.</div>
+                            </div>
+                        </div>
+                        <div className="flex items-start gap-3">
+                            <div className="w-4 text-center flex-shrink-0">
+                                <i className="fa-solid fa-file-import text-accent"></i>
+                            </div>
+                            <div>Drag & drop files or images for analysis</div>
+                        </div>
+                        <div className="flex items-start gap-3">
+                            <div className="w-4 text-center flex-shrink-0">
+                                <i className="fa-solid fa-keyboard text-accent"></i>
+                            </div>
+                            <div className="space-y-1">
+                                <div>
+                                    <KeyCap>{modKey}</KeyCap>
+                                    <KeyCap className="ml-1">K</KeyCap>
+                                    <span className="ml-1.5">to start a new chat</span>
+                                </div>
+                                <div>
+                                    <KeyCap>{modKey}</KeyCap>
+                                    <KeyCap className="ml-1">Shift</KeyCap>
+                                    <KeyCap className="ml-1">A</KeyCap>
+                                    <span className="ml-1.5">to toggle panel</span>
+                                </div>
+                                <div>
+                                    <KeyCap>Ctrl</KeyCap>
+                                    <KeyCap className="ml-1">Shift</KeyCap>
+                                    <KeyCap className="ml-1">0</KeyCap>
+                                    <span className="ml-1.5">to focus</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="flex items-start gap-3">
+                            <div className="w-4 text-center flex-shrink-0">
+                                <i className="fa-brands fa-discord text-accent"></i>
+                            </div>
+                            <div>
+                                Questions or feedback?{" "}
+                                <a
+                                    target="_blank"
+                                    href="https://discord.gg/XfvZ334gwU"
+                                    rel="noopener"
+                                    className="text-accent hover:underline cursor-pointer"
+                                >
+                                    Join our Discord
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div className="mt-4 text-center text-[12px] text-muted">
+                    <i className="fa-sharp fa-solid fa-rectangle-beta mr-1.5"></i>(BETA: 50 free requests daily)
+                </div>
+            </div>
         </div>
     );
 });
@@ -408,13 +496,11 @@ const AIPanelComponentInner = memo(({ className, onClose }: AIPanelProps) => {
                         ) : (
                             <AIPanelMessages messages={messages} status={status} />
                         )}
-                        {errorMessage && <AIErrorMessage errorMessage={errorMessage} onClear={() => model.clearError()} />}
+                        {errorMessage && (
+                            <AIErrorMessage errorMessage={errorMessage} onClear={() => model.clearError()} />
+                        )}
                         <AIDroppedFiles model={model} />
-                        <AIPanelInput
-                            onSubmit={handleSubmit}
-                            status={status}
-                            model={model}
-                        />
+                        <AIPanelInput onSubmit={handleSubmit} status={status} model={model} />
                     </>
                 )}
             </div>
