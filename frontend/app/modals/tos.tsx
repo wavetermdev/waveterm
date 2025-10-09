@@ -129,24 +129,29 @@ const ModalPage2 = () => {
     };
 
     return (
-        <>
-            <header className="flex flex-col gap-2 border-b-0 p-0 mb-9 w-full unselectable">
+        <div className="flex flex-col h-full">
+            <header className="flex flex-col gap-2 border-b-0 p-0 mb-9 w-full unselectable flex-shrink-0">
                 <div className="mb-2.5 flex justify-center">
                     <Logo />
                 </div>
                 <div className="text-center text-[25px] font-normal text-foreground">Icons and Keybindings</div>
             </header>
-            <div className="flex flex-col items-start gap-8 w-full mb-5 unselectable">
-                <QuickTips />
-            </div>
-            <footer className="unselectable">
+            <OverlayScrollbarsComponent
+                className="flex-1 overflow-y-auto min-h-0"
+                options={{ scrollbars: { autoHide: "never" } }}
+            >
+                <div className="flex flex-col items-start gap-8 w-full mb-5 unselectable">
+                    <QuickTips />
+                </div>
+            </OverlayScrollbarsComponent>
+            <footer className="unselectable flex-shrink-0 mt-5">
                 <div className="flex flex-row items-center justify-center [&>button]:!px-5 [&>button]:!py-2 [&>button]:text-sm [&>button:not(:first-child)]:ml-2.5">
                     <Button className="font-[600]" onClick={handleGetStarted}>
                         Get Started
                     </Button>
                 </div>
             </footer>
-        </>
+        </div>
     );
 };
 
@@ -199,6 +204,17 @@ const TosModal = () => {
     if (pageComp == null) {
         return null;
     }
+
+    if (pageNum === 2) {
+        return (
+            <FlexiModal className="w-[560px] rounded-[10px] p-0" ref={modalRef}>
+                <div className="flex flex-col p-[30px] w-full h-full">
+                    {pageComp}
+                </div>
+            </FlexiModal>
+        );
+    }
+
     return (
         <FlexiModal className="w-[560px] rounded-[10px] p-0" ref={modalRef}>
             <OverlayScrollbarsComponent
