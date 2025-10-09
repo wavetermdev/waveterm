@@ -47,14 +47,26 @@ func parseReadTextFileInput(input any) (*readTextFileParams, error) {
 		result.Origin = &origin
 	}
 
+	if *result.Origin != "start" && *result.Origin != "end" {
+		return nil, fmt.Errorf("invalid origin value '%s': must be 'start' or 'end'", *result.Origin)
+	}
+
 	if result.Offset == nil {
 		offset := 0
 		result.Offset = &offset
 	}
 
+	if *result.Offset < 0 {
+		return nil, fmt.Errorf("offset must be non-negative, got %d", *result.Offset)
+	}
+
 	if result.Count == nil {
 		count := DefaultLineCount
 		result.Count = &count
+	}
+
+	if *result.Count < 1 {
+		return nil, fmt.Errorf("count must be at least 1, got %d", *result.Count)
 	}
 
 	return result, nil
