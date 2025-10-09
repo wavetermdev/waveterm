@@ -122,10 +122,11 @@ func (m *OpenAIChatMessage) GetUsage() *uctypes.AIUsage {
 		return nil
 	}
 	return &uctypes.AIUsage{
-		APIType:      "openai",
-		Model:        m.Usage.Model,
-		InputTokens:  m.Usage.InputTokens,
-		OutputTokens: m.Usage.OutputTokens,
+		APIType:              "openai",
+		Model:                m.Usage.Model,
+		InputTokens:          m.Usage.InputTokens,
+		OutputTokens:         m.Usage.OutputTokens,
+		NativeWebSearchCount: m.Usage.NativeWebSearchCount,
 	}
 }
 
@@ -281,12 +282,13 @@ type openaiTextFormat struct {
 }
 
 type OpenAIUsage struct {
-	InputTokens         int                        `json:"input_tokens,omitempty"`
-	OutputTokens        int                        `json:"output_tokens,omitempty"`
-	TotalTokens         int                        `json:"total_tokens,omitempty"`
-	InputTokensDetails  *openaiInputTokensDetails  `json:"input_tokens_details,omitempty"`
-	OutputTokensDetails *openaiOutputTokensDetails `json:"output_tokens_details,omitempty"`
-	Model               string                     `json:"model,omitempty"` // internal field (not from OpenAI API)
+	InputTokens          int                        `json:"input_tokens,omitempty"`
+	OutputTokens         int                        `json:"output_tokens,omitempty"`
+	TotalTokens          int                        `json:"total_tokens,omitempty"`
+	InputTokensDetails   *openaiInputTokensDetails  `json:"input_tokens_details,omitempty"`
+	OutputTokensDetails  *openaiOutputTokensDetails `json:"output_tokens_details,omitempty"`
+	Model                string                     `json:"model,omitempty"`                // internal field (not from OpenAI API)
+	NativeWebSearchCount int                        `json:"nativewebsearchcount,omitempty"` // internal field (not from OpenAI API)
 }
 
 type openaiInputTokensDetails struct {
@@ -323,12 +325,13 @@ type openaiBlockState struct {
 }
 
 type openaiStreamingState struct {
-	blockMap    map[string]*openaiBlockState             // Use item_id as key for UI streaming
-	toolUseData map[string]*uctypes.UIMessageDataToolUse // Use toolCallId as key
-	msgID       string
-	model       string
-	stepStarted bool
-	chatOpts    uctypes.WaveChatOpts
+	blockMap       map[string]*openaiBlockState             // Use item_id as key for UI streaming
+	toolUseData    map[string]*uctypes.UIMessageDataToolUse // Use toolCallId as key
+	msgID          string
+	model          string
+	stepStarted    bool
+	chatOpts       uctypes.WaveChatOpts
+	webSearchCount int
 }
 
 // ---------- Public entrypoint ----------
@@ -759,7 +762,7 @@ func handleOpenAIEvent(
 			}
 
 			// Extract partial message if available
-			finalMessages, _ := extractMessageAndToolsFromResponse(ev.Response, state.toolUseData)
+			finalMessages, _ := extractMessageAndToolsFromResponse(ev.Response, state)
 
 			_ = sse.AiMsgError(errorMsg)
 			return &uctypes.WaveStopReason{
@@ -772,7 +775,7 @@ func handleOpenAIEvent(
 		}
 
 		// Extract the final message and tool calls from the response output
-		finalMessages, toolCalls := extractMessageAndToolsFromResponse(ev.Response, state.toolUseData)
+		finalMessages, toolCalls := extractMessageAndToolsFromResponse(ev.Response, state)
 
 		stopKind := uctypes.StopKindDone
 		if len(toolCalls) > 0 {
@@ -820,6 +823,19 @@ func handleOpenAIEvent(
 		}
 		return nil, nil
 
+	case "response.web_search_call.in_progress":
+		return nil, nil
+
+	case "response.web_search_call.searching":
+		return nil, nil
+
+	case "response.web_search_call.completed":
+		state.webSearchCount++
+		return nil, nil
+
+	case "response.output_text.annotation.added":
+		return nil, nil
+
 	default:
 		// log unknown events for debugging
 		log.Printf("OpenAI: unknown event: %s, data: %s", eventName, data)
@@ -857,9 +873,8 @@ func createToolUseData(toolCallID, toolName string, toolDef *uctypes.ToolDefinit
 	return toolUseData
 }
 
-
 // extractMessageAndToolsFromResponse extracts the final OpenAI message and tool calls from the completed response
-func extractMessageAndToolsFromResponse(resp openaiResponse, toolUseData map[string]*uctypes.UIMessageDataToolUse) ([]*OpenAIChatMessage, []uctypes.WaveToolCall) {
+func extractMessageAndToolsFromResponse(resp openaiResponse, state *openaiStreamingState) ([]*OpenAIChatMessage, []uctypes.WaveToolCall) {
 	var messageContent []OpenAIMessageContent
 	var toolCalls []uctypes.WaveToolCall
 	var messages []*OpenAIChatMessage
@@ -893,7 +908,7 @@ func extractMessageAndToolsFromResponse(resp openaiResponse, toolUseData map[str
 			}
 
 			// Attach UIToolUseData if available
-			if data, ok := toolUseData[outputItem.CallId]; ok {
+			if data, ok := state.toolUseData[outputItem.CallId]; ok {
 				toolCall.ToolUseData = data
 			} else {
 				log.Printf("AI no data-tooluse for %s (callid: %s)\n", outputItem.Id, outputItem.CallId)
@@ -907,7 +922,7 @@ func extractMessageAndToolsFromResponse(resp openaiResponse, toolUseData map[str
 				argsStr = outputItem.Arguments
 			}
 			var toolUseDataPtr *uctypes.UIMessageDataToolUse
-			if data, ok := toolUseData[outputItem.CallId]; ok {
+			if data, ok := state.toolUseData[outputItem.CallId]; ok {
 				toolUseDataPtr = data
 			}
 			functionCallMsg := &OpenAIChatMessage{
@@ -925,17 +940,20 @@ func extractMessageAndToolsFromResponse(resp openaiResponse, toolUseData map[str
 	}
 
 	// Create OpenAIChatMessage with assistant message (first in slice)
-	if resp.Usage != nil {
+	usage := resp.Usage
+	if usage != nil {
 		resp.Usage.Model = resp.Model
+		if state.webSearchCount > 0 {
+			usage.NativeWebSearchCount = state.webSearchCount
+		}
 	}
-
 	assistantMessage := &OpenAIChatMessage{
 		MessageId: uuid.New().String(),
 		Message: &OpenAIMessage{
 			Role:    "assistant",
 			Content: messageContent,
 		},
-		Usage: resp.Usage,
+		Usage: usage,
 	}
 
 	// Return assistant message first, followed by function call messages

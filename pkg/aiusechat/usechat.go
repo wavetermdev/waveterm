@@ -602,6 +602,7 @@ func WaveAIPostMessageHandler(w http.ResponseWriter, r *http.Request) {
 		Config:               *aiOpts,
 		WidgetAccess:         req.WidgetAccess,
 		RegisterToolApproval: RegisterToolApproval,
+		AllowNativeWebSearch: true,
 	}
 	if chatOpts.Config.APIType == APIType_OpenAI {
 		chatOpts.SystemPrompt = []string{SystemPromptText_OpenAI}
