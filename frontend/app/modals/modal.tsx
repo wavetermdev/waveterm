@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { Button } from "@/app/element/button";
+import { cn } from "@/util/util";
 import clsx from "clsx";
 import { forwardRef } from "react";
 import ReactDOM from "react-dom";
@@ -95,7 +96,7 @@ const FlexiModal = forwardRef<HTMLDivElement, FlexiModalProps>(
         const renderModal = () => (
             <div className="modal-wrapper">
                 {renderBackdrop(onClickBackdrop)}
-                <div className={`modal ${className}`} ref={ref}>
+                <div className={cn("modal pt-6 px-4 pb-4", className)} ref={ref}>
                     {children}
                 </div>
             </div>
