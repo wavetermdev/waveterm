@@ -1,0 +1,211 @@
+// Copyright 2025, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
+package aiusechat
+
+import (
+	"os"
+	"path/filepath"
+	"testing"
+)
+
+func TestReadDirCallback(t *testing.T) {
+	// Create a temporary test directory
+	tmpDir, err := os.MkdirTemp("", "readdir_test")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	// Create test files and directories
+	testFile1 := filepath.Join(tmpDir, "file1.txt")
+	testFile2 := filepath.Join(tmpDir, "file2.log")
+	testSubDir := filepath.Join(tmpDir, "subdir")
+
+	if err := os.WriteFile(testFile1, []byte("test content 1"), 0644); err != nil {
+		t.Fatalf("Failed to create test file 1: %v", err)
+	}
+	if err := os.WriteFile(testFile2, []byte("test content 2"), 0644); err != nil {
+		t.Fatalf("Failed to create test file 2: %v", err)
+	}
+	if err := os.Mkdir(testSubDir, 0755); err != nil {
+		t.Fatalf("Failed to create test subdir: %v", err)
+	}
+
+	// Test reading the directory
+	input := map[string]any{
+		"path": tmpDir,
+	}
+
+	result, err := readDirCallback(input)
+	if err != nil {
+		t.Fatalf("readDirCallback failed: %v", err)
+	}
+
+	resultMap, ok := result.(map[string]any)
+	if !ok {
+		t.Fatalf("Result is not a map")
+	}
+
+	// Verify the result contains expected fields
+	if resultMap["path"] != tmpDir {
+		t.Errorf("Expected path %q, got %q", tmpDir, resultMap["path"])
+	}
+
+	entryCount, ok := resultMap["entry_count"].(int)
+	if !ok {
+		t.Fatalf("entry_count is not an int")
+	}
+	if entryCount != 3 {
+		t.Errorf("Expected 3 entries, got %d", entryCount)
+	}
+
+	entries, ok := resultMap["entries"].([]map[string]any)
+	if !ok {
+		t.Fatalf("entries is not a slice of maps")
+	}
+
+	// Check that we have the expected entries
+	foundFiles := 0
+	foundDirs := 0
+	for _, entry := range entries {
+		if entry["is_dir"].(bool) {
+			foundDirs++
+		} else {
+			foundFiles++
+		}
+	}
+
+	if foundFiles != 2 {
+		t.Errorf("Expected 2 files, got %d", foundFiles)
+	}
+	if foundDirs != 1 {
+		t.Errorf("Expected 1 directory, got %d", foundDirs)
+	}
+}
+
+func TestReadDirOnFile(t *testing.T) {
+	// Create a temporary test file
+	tmpFile, err := os.CreateTemp("", "readdir_test_file")
+	if err != nil {
+		t.Fatalf("Failed to create temp file: %v", err)
+	}
+	defer os.Remove(tmpFile.Name())
+	tmpFile.Close()
+
+	// Test reading a file (should fail)
+	input := map[string]any{
+		"path": tmpFile.Name(),
+	}
+
+	_, err = readDirCallback(input)
+	if err == nil {
+		t.Fatalf("Expected error when reading a file with read_dir, got nil")
+	}
+
+	expectedErrSubstr := "path is not a directory"
+	if err.Error()[:len(expectedErrSubstr)] != expectedErrSubstr {
+		t.Errorf("Expected error containing %q, got %q", expectedErrSubstr, err.Error())
+	}
+}
+
+func TestReadDirMaxEntries(t *testing.T) {
+	// Create a temporary test directory with many files
+	tmpDir, err := os.MkdirTemp("", "readdir_test_max")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	// Create 10 test files
+	for i := 0; i < 10; i++ {
+		testFile := filepath.Join(tmpDir, filepath.Base(tmpDir)+string(rune('a'+i))+".txt")
+		if err := os.WriteFile(testFile, []byte("test"), 0644); err != nil {
+			t.Fatalf("Failed to create test file: %v", err)
+		}
+	}
+
+	// Test reading with max_entries=5
+	maxEntries := 5
+	input := map[string]any{
+		"path":        tmpDir,
+		"max_entries": maxEntries,
+	}
+
+	result, err := readDirCallback(input)
+	if err != nil {
+		t.Fatalf("readDirCallback failed: %v", err)
+	}
+
+	resultMap := result.(map[string]any)
+	entryCount := resultMap["entry_count"].(int)
+
+	if entryCount != maxEntries {
+		t.Errorf("Expected %d entries, got %d", maxEntries, entryCount)
+	}
+
+	if _, ok := resultMap["truncated"]; !ok {
+		t.Error("Expected truncated field to be present")
+	}
+}
+
+func TestParseReadDirInput(t *testing.T) {
+	// Test valid input
+	input := map[string]any{
+		"path": "/tmp/test",
+	}
+
+	params, err := parseReadDirInput(input)
+	if err != nil {
+		t.Fatalf("parseReadDirInput failed on valid input: %v", err)
+	}
+
+	if params.Path != "/tmp/test" {
+		t.Errorf("Expected path '/tmp/test', got %q", params.Path)
+	}
+
+	if *params.MaxEntries != ReadDirDefaultMaxEntries {
+		t.Errorf("Expected default max_entries %d, got %d", ReadDirDefaultMaxEntries, *params.MaxEntries)
+	}
+
+	// Test missing path
+	input = map[string]any{}
+	_, err = parseReadDirInput(input)
+	if err == nil {
+		t.Error("Expected error for missing path, got nil")
+	}
+
+	// Test invalid max_entries
+	input = map[string]any{
+		"path":        "/tmp/test",
+		"max_entries": 0,
+	}
+	_, err = parseReadDirInput(input)
+	if err == nil {
+		t.Error("Expected error for max_entries < 1, got nil")
+	}
+}
+
+func TestGetReadDirToolDefinition(t *testing.T) {
+	toolDef := GetReadDirToolDefinition()
+
+	if toolDef.Name != "read_dir" {
+		t.Errorf("Expected tool name 'read_dir', got %q", toolDef.Name)
+	}
+
+	if toolDef.ToolLogName != "gen:readdir" {
+		t.Errorf("Expected tool log name 'gen:readdir', got %q", toolDef.ToolLogName)
+	}
+
+	if toolDef.ToolAnyCallback == nil {
+		t.Error("ToolAnyCallback should not be nil")
+	}
+
+	if toolDef.ToolApproval == nil {
+		t.Error("ToolApproval should not be nil")
+	}
+
+	if toolDef.ToolInputDesc == nil {
+		t.Error("ToolInputDesc should not be nil")
+	}
+}
