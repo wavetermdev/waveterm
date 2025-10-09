@@ -463,23 +463,11 @@ func (m *OpenAIChatMessage) ConvertToUIMessage() *uctypes.UIMessage {
 	} else if m.FunctionCall != nil {
 		// Handle function call input
 		role = "assistant"
-		if m.FunctionCall.Name != "" && m.FunctionCall.CallId != "" {
-			// Parse arguments JSON string to interface{}
-			var args interface{}
-			if m.FunctionCall.Arguments != "" {
-				if err := json.Unmarshal([]byte(m.FunctionCall.Arguments), &args); err != nil {
-					log.Printf("openai: failed to parse function call arguments: %v", err)
-					args = map[string]interface{}{}
-				}
-			} else {
-				args = map[string]interface{}{}
-			}
-
+		if m.FunctionCall.ToolUseData != nil {
 			parts = append(parts, uctypes.UIMessagePart{
-				Type:       "tool-" + m.FunctionCall.Name,
-				State:      "input-available",
-				ToolCallID: m.FunctionCall.CallId,
-				Input:      args,
+				Type: "data-tooluse",
+				ID:   m.FunctionCall.CallId,
+				Data: *m.FunctionCall.ToolUseData,
 			})
 		}
 	} else if m.FunctionCallOutput != nil {

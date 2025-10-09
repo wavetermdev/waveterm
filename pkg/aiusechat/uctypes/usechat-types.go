@@ -98,6 +98,16 @@ func (td *ToolDefinition) Clean() *ToolDefinition {
 	return &rtn
 }
 
+func (td *ToolDefinition) Desc() string {
+	if td == nil {
+		return ""
+	}
+	if td.ShortDescription != "" {
+		return td.ShortDescription
+	}
+	return td.Description
+}
+
 //------------------
 // Wave specific types, stop reasons, tool calls, config
 // these are used internally to coordinate the calls/steps
@@ -107,6 +117,20 @@ const (
 	ThinkingLevelMedium = "medium"
 	ThinkingLevelHigh   = "high"
 )
+
+const (
+	ToolUseStatusPending   = "pending"
+	ToolUseStatusError     = "error"
+	ToolUseStatusCompleted = "completed"
+)
+
+type UIMessageDataToolUse struct {
+	ToolCallId   string `json:"toolcallid"`
+	ToolName     string `json:"toolname"`
+	ToolDesc     string `json:"tooldesc"`
+	Status       string `json:"status"`
+	ErrorMessage string `json:"errormessage,omitempty"`
+}
 
 type StopReasonKind string
 
@@ -123,9 +147,10 @@ const (
 )
 
 type WaveToolCall struct {
-	ID    string `json:"id"`              // Anthropic tool_use.id
-	Name  string `json:"name,omitempty"`  // tool name (if provided)
-	Input any    `json:"input,omitempty"` // accumulated input JSON
+	ID          string                `json:"id"`                    // Anthropic tool_use.id
+	Name        string                `json:"name,omitempty"`        // tool name (if provided)
+	Input       any                   `json:"input,omitempty"`       // accumulated input JSON
+	ToolUseData *UIMessageDataToolUse `json:"toolusedata,omitempty"` // UI tool use data
 }
 
 type WaveStopReason struct {
@@ -193,6 +218,7 @@ type AIMetrics struct {
 	Usage             AIUsage        `json:"usage"`
 	RequestCount      int            `json:"requestcount"`
 	ToolUseCount      int            `json:"toolusecount"`
+	ToolUseErrorCount int            `json:"tooluseerrorcount"`
 	ToolDetail        map[string]int `json:"tooldetail,omitempty"`
 	PremiumReqCount   int            `json:"premiumreqcount"`
 	ProxyReqCount     int            `json:"proxyreqcount"`
@@ -201,8 +227,8 @@ type AIMetrics struct {
 	PDFCount          int            `json:"pdfcount"`
 	TextDocCount      int            `json:"textdoccount"`
 	TextLen           int            `json:"textlen"`
-	FirstByteLatency  int            `json:"firstbytelatency"`  // ms
-	RequestDuration   int            `json:"requestduration"`   // ms
+	FirstByteLatency  int            `json:"firstbytelatency"` // ms
+	RequestDuration   int            `json:"requestduration"`  // ms
 	WidgetAccess      bool           `json:"widgetaccess"`
 }
 
@@ -387,6 +413,20 @@ type WaveChatOpts struct {
 	// emphemeral to the step
 	TabState string
 	TabTools []ToolDefinition
+}
+
+func (opts *WaveChatOpts) GetToolDefinition(toolName string) *ToolDefinition {
+	for _, tool := range opts.Tools {
+		if tool.Name == toolName {
+			return &tool
+		}
+	}
+	for _, tool := range opts.TabTools {
+		if tool.Name == toolName {
+			return &tool
+		}
+	}
+	return nil
 }
 
 type ProxyErrorResponse struct {

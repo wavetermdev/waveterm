@@ -3,7 +3,6 @@
 
 import { WaveStreamdown } from "@/app/element/streamdown";
 import { cn } from "@/util/util";
-import { useAtomValue } from "jotai";
 import { memo } from "react";
 import { getFileIcon } from "./ai-utils";
 import { WaveUIMessage, WaveUIMessagePart } from "./aitypes";
@@ -93,9 +92,26 @@ const AIMessagePart = memo(({ part, role, isStreaming }: AIMessagePartProps) => 
         }
     }
 
-    if (part.type.startsWith("tool-") && "state" in part && part.state === "input-available") {
-        const toolName = part.type.substring(5); // Remove "tool-" prefix
-        return <div className="text-gray-400 italic">Calling tool {toolName}</div>;
+    if (part.type === "data-tooluse" && part.data) {
+        const toolData = part.data;
+        const statusIcon = toolData.status === "completed" ? "✓" : toolData.status === "error" ? "✗" : "•";
+        const statusColor =
+            toolData.status === "completed"
+                ? "text-green-400"
+                : toolData.status === "error"
+                  ? "text-red-400"
+                  : "text-gray-400";
+
+        return (
+            <div className={cn("flex items-start gap-2 p-2 rounded bg-gray-800 border border-gray-700", statusColor)}>
+                <span className="font-bold">{statusIcon}</span>
+                <div className="flex-1">
+                    <div className="font-semibold">{toolData.toolname}</div>
+                    {toolData.tooldesc && <div className="text-sm text-gray-400">{toolData.tooldesc}</div>}
+                    {toolData.errormessage && <div className="text-sm text-red-300 mt-1">{toolData.errormessage}</div>}
+                </div>
+            </div>
+        );
     }
 
     return null;
@@ -110,7 +126,9 @@ interface AIMessageProps {
 
 const isDisplayPart = (part: WaveUIMessagePart): boolean => {
     return (
-        part.type === "text" || (part.type.startsWith("tool-") && "state" in part && part.state === "input-available")
+        part.type === "text" ||
+        part.type === "data-tooluse" ||
+        (part.type.startsWith("tool-") && "state" in part && part.state === "input-available")
     );
 };
 
@@ -122,7 +140,10 @@ export const AIMessage = memo(({ message, isStreaming }: AIMessageProps) => {
     );
     const hasContent =
         displayParts.length > 0 &&
-        displayParts.some((part) => (part.type === "text" && part.text) || part.type.startsWith("tool-"));
+        displayParts.some(
+            (part) =>
+                (part.type === "text" && part.text) || part.type.startsWith("tool-") || part.type === "data-tooluse"
+        );
 
     const showThinkingOnly = !hasContent && isStreaming && message.role === "assistant";
     const showThinkingInline = hasContent && isStreaming && message.role === "assistant";

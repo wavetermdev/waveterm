@@ -73,6 +73,17 @@ func GetCaptureScreenshotToolDefinition(tabId string) uctypes.ToolDefinition {
 			"required":             []string{"widget_id"},
 			"additionalProperties": false,
 		},
+		ToolInputDesc: func(input any) string {
+			inputMap, ok := input.(map[string]any)
+			if !ok {
+				return "error parsing input: invalid format"
+			}
+			widgetId, ok := inputMap["widget_id"].(string)
+			if !ok {
+				return "error parsing input: missing widget_id"
+			}
+			return fmt.Sprintf("capturing screenshot of widget %s", widgetId)
+		},
 		ToolTextCallback: makeTabCaptureBlockScreenshot(tabId),
 	}
 }

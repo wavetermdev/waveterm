@@ -69,11 +69,11 @@ type TEventUserProps struct {
 type TEventProps struct {
 	TEventUserProps `tstype:"-"` // generally don't need to set these since they will be automatically copied over
 
-	ActiveMinutes        int `json:"activity:activeminutes,omitempty"`
-	FgMinutes            int `json:"activity:fgminutes,omitempty"`
-	OpenMinutes          int `json:"activity:openminutes,omitempty"`
-	WaveAIActiveMinutes  int `json:"activity:waveaiactiveminutes,omitempty"`
-	WaveAIFgMinutes      int `json:"activity:waveaifgminutes,omitempty"`
+	ActiveMinutes       int `json:"activity:activeminutes,omitempty"`
+	FgMinutes           int `json:"activity:fgminutes,omitempty"`
+	OpenMinutes         int `json:"activity:openminutes,omitempty"`
+	WaveAIActiveMinutes int `json:"activity:waveaiactiveminutes,omitempty"`
+	WaveAIFgMinutes     int `json:"activity:waveaifgminutes,omitempty"`
 
 	AppFirstDay    bool `json:"app:firstday,omitempty"`
 	AppFirstLaunch bool `json:"app:firstlaunch,omitempty"`
@@ -101,23 +101,24 @@ type TEventProps struct {
 	CountWSLConn    int            `json:"count:wslconn,omitempty"`
 	CountViews      map[string]int `json:"count:views,omitempty"`
 
-	WaveAIAPIType        string         `json:"waveai:apitype,omitempty"`
-	WaveAIModel          string         `json:"waveai:model,omitempty"`
-	WaveAIInputTokens    int            `json:"waveai:inputtokens,omitempty"`
-	WaveAIOutputTokens   int            `json:"waveai:outputtokens,omitempty"`
-	WaveAIRequestCount   int            `json:"waveai:requestcount,omitempty"`
-	WaveAIToolUseCount   int            `json:"waveai:toolusecount,omitempty"`
-	WaveAIToolDetail     map[string]int `json:"waveai:tooldetail,omitempty"`
-	WaveAIPremiumReq     int            `json:"waveai:premiumreq,omitempty"`
-	WaveAIProxyReq       int            `json:"waveai:proxyreq,omitempty"`
-	WaveAIHadError       bool           `json:"waveai:haderror,omitempty"`
-	WaveAIImageCount     int            `json:"waveai:imagecount,omitempty"`
-	WaveAIPDFCount       int            `json:"waveai:pdfcount,omitempty"`
-	WaveAITextDocCount   int            `json:"waveai:textdoccount,omitempty"`
-	WaveAITextLen        int            `json:"waveai:textlen,omitempty"`
-	WaveAIFirstByteMs    int            `json:"waveai:firstbytems,omitempty"`    // ms
-	WaveAIRequestDurMs   int            `json:"waveai:requestdurms,omitempty"`   // ms
-	WaveAIWidgetAccess   bool           `json:"waveai:widgetaccess,omitempty"`
+	WaveAIAPIType           string         `json:"waveai:apitype,omitempty"`
+	WaveAIModel             string         `json:"waveai:model,omitempty"`
+	WaveAIInputTokens       int            `json:"waveai:inputtokens,omitempty"`
+	WaveAIOutputTokens      int            `json:"waveai:outputtokens,omitempty"`
+	WaveAIRequestCount      int            `json:"waveai:requestcount,omitempty"`
+	WaveAIToolUseCount      int            `json:"waveai:toolusecount,omitempty"`
+	WaveAIToolUseErrorCount int            `json:"waveai:tooluseerrorcount,omitempty"`
+	WaveAIToolDetail        map[string]int `json:"waveai:tooldetail,omitempty"`
+	WaveAIPremiumReq        int            `json:"waveai:premiumreq,omitempty"`
+	WaveAIProxyReq          int            `json:"waveai:proxyreq,omitempty"`
+	WaveAIHadError          bool           `json:"waveai:haderror,omitempty"`
+	WaveAIImageCount        int            `json:"waveai:imagecount,omitempty"`
+	WaveAIPDFCount          int            `json:"waveai:pdfcount,omitempty"`
+	WaveAITextDocCount      int            `json:"waveai:textdoccount,omitempty"`
+	WaveAITextLen           int            `json:"waveai:textlen,omitempty"`
+	WaveAIFirstByteMs       int            `json:"waveai:firstbytems,omitempty"`  // ms
+	WaveAIRequestDurMs      int            `json:"waveai:requestdurms,omitempty"` // ms
+	WaveAIWidgetAccess      bool           `json:"waveai:widgetaccess,omitempty"`
 
 	UserSet     *TEventUserProps `json:"$set,omitempty"`
 	UserSetOnce *TEventUserProps `json:"$set_once,omitempty"`
