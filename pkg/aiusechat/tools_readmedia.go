@@ -22,9 +22,9 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 )
 
-const MaxImageSize = 10 * 1024 * 1024  // 10MB
-const MaxPDFSize = 5 * 1024 * 1024     // 5MB
-const MaxImageDimension = 4096         // Max dimension for resized images
+const MaxImageSize = 10 * 1024 * 1024 // 10MB
+const MaxPDFSize = 5 * 1024 * 1024    // 5MB
+const MaxImageDimension = 4096        // Max dimension for resized images
 
 type readMediaFileParams struct {
 	Filename string `json:"filename"`
@@ -120,7 +120,7 @@ func resizeImage(img image.Image, maxDimension int) image.Image {
 
 	// Create new image with nearest-neighbor scaling
 	dst := image.NewRGBA(image.Rect(0, 0, newWidth, newHeight))
-	
+
 	// Simple scaling using nearest-neighbor
 	for y := 0; y < newHeight; y++ {
 		for x := 0; x < newWidth; x++ {
@@ -129,14 +129,14 @@ func resizeImage(img image.Image, maxDimension int) image.Image {
 			dst.Set(x, y, img.At(srcX+bounds.Min.X, srcY+bounds.Min.Y))
 		}
 	}
-	
+
 	return dst
 }
 
 // decodeImage decodes an image from bytes, supporting multiple formats
 func decodeImage(data []byte, mimeType string) (image.Image, error) {
 	reader := bytes.NewReader(data)
-	
+
 	switch mimeType {
 	case "image/png":
 		return png.Decode(reader)
@@ -154,13 +154,13 @@ func decodeImage(data []byte, mimeType string) (image.Image, error) {
 // encodeImageAsJPEG encodes an image as JPEG with quality optimization
 func encodeImageAsJPEG(img image.Image) ([]byte, string, error) {
 	var buf bytes.Buffer
-	
+
 	// Use JPEG with 80% quality for good compression while maintaining quality
 	err := jpeg.Encode(&buf, img, &jpeg.Options{Quality: 80})
 	if err != nil {
 		return nil, "", fmt.Errorf("failed to encode image: %w", err)
 	}
-	
+
 	return buf.Bytes(), "image/jpeg", nil
 }
 
@@ -237,7 +237,7 @@ func readMediaFileCallback(input any) (string, error) {
 
 		// Resize if needed
 		resizedImg := resizeImage(img, MaxImageDimension)
-		
+
 		// Encode resized image as JPEG
 		encodedData, encodedMimeType, err := encodeImageAsJPEG(resizedImg)
 		if err != nil {
