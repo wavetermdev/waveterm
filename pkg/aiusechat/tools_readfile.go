@@ -12,16 +12,69 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
 	"github.com/wavetermdev/waveterm/pkg/util/readutil"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
+	"github.com/wavetermdev/waveterm/pkg/wavebase"
 )
 
+const ReadFileDefaultLineCount = 100
+const ReadFileDefaultMaxBytes = 50 * 1024
 const StopReasonMaxBytes = "max_bytes"
 
 type readTextFileParams struct {
 	Filename string  `json:"filename"`
-	Origin   *string `json:"origin"`   // "start" or "end", defaults to "start"
-	Offset   *int    `json:"offset"`   // lines to skip, defaults to 0
-	Count    *int    `json:"count"`    // number of lines to read, defaults to DefaultLineCount
+	Origin   *string `json:"origin"` // "start" or "end", defaults to "start"
+	Offset   *int    `json:"offset"` // lines to skip, defaults to 0
+	Count    *int    `json:"count"`  // number of lines to read, defaults to DefaultLineCount
 	MaxBytes *int    `json:"max_bytes"`
+}
+
+func parseReadTextFileInput(input any) (*readTextFileParams, error) {
+	result := &readTextFileParams{}
+
+	if input == nil {
+		return nil, fmt.Errorf("input is required")
+	}
+
+	if err := utilfn.ReUnmarshal(result, input); err != nil {
+		return nil, fmt.Errorf("invalid input format: %w", err)
+	}
+
+	if result.Filename == "" {
+		return nil, fmt.Errorf("missing filename parameter")
+	}
+
+	if result.Origin == nil {
+		origin := "start"
+		result.Origin = &origin
+	}
+
+	if *result.Origin != "start" && *result.Origin != "end" {
+		return nil, fmt.Errorf("invalid origin value '%s': must be 'start' or 'end'", *result.Origin)
+	}
+
+	if result.Offset == nil {
+		offset := 0
+		result.Offset = &offset
+	}
+
+	if *result.Offset < 0 {
+		return nil, fmt.Errorf("offset must be non-negative, got %d", *result.Offset)
+	}
+
+	if result.Count == nil {
+		count := ReadFileDefaultLineCount
+		result.Count = &count
+	}
+
+	if *result.Count < 1 {
+		return nil, fmt.Errorf("count must be at least 1, got %d", *result.Count)
+	}
+
+	if result.MaxBytes == nil {
+		maxBytes := ReadFileDefaultMaxBytes
+		result.MaxBytes = &maxBytes
+	}
+
+	return result, nil
 }
 
 // truncateData truncates data to maxBytes while respecting line boundaries.
@@ -49,34 +102,32 @@ func truncateData(data string, origin string, maxBytes int) string {
 }
 
 func readTextFileCallback(input any) (any, error) {
-	const DefaultLineCount = 100
-	const DefaultMaxBytes = 50 * 1024
 	const ReadLimit = 1024 * 1024 * 1024
 
-	var params readTextFileParams
-	if err := utilfn.ReUnmarshal(&params, input); err != nil {
-		return nil, fmt.Errorf("invalid input format: %w", err)
+	params, err := parseReadTextFileInput(input)
+	if err != nil {
+		return nil, err
 	}
 
-	if params.Filename == "" {
-		return nil, fmt.Errorf("missing filename parameter")
+	expandedPath, err := wavebase.ExpandHomeDir(params.Filename)
+	if err != nil {
+		return nil, fmt.Errorf("failed to expand path: %w", err)
 	}
 
-	maxBytes := DefaultMaxBytes
-	if params.MaxBytes != nil {
-		maxBytes = *params.MaxBytes
+	fileInfo, err := os.Stat(expandedPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to stat file: %w", err)
 	}
 
-	file, err := os.Open(params.Filename)
+	if fileInfo.IsDir() {
+		return nil, fmt.Errorf("path is a directory, cannot be read with the read_text_file tool. use the read_dir tool if available to read directories")
+	}
+
+	file, err := os.Open(expandedPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open file: %w", err)
 	}
 	defer file.Close()
-
-	fileInfo, err := file.Stat()
-	if err != nil {
-		return nil, fmt.Errorf("failed to stat file: %w", err)
-	}
 
 	totalSize := fileInfo.Size()
 	modTime := fileInfo.ModTime()
@@ -92,31 +143,10 @@ func readTextFileCallback(input any) (any, error) {
 		return nil, fmt.Errorf("file appears to be binary content")
 	}
 
-	origin := "start"
-	if params.Origin != nil {
-		origin = *params.Origin
-	}
-
-	if origin != "start" && origin != "end" {
-		return nil, fmt.Errorf("invalid origin value '%s': must be 'start' or 'end'", origin)
-	}
-
-	offset := 0
-	if params.Offset != nil {
-		offset = *params.Offset
-	}
-
-	count := DefaultLineCount
-	if params.Count != nil {
-		count = *params.Count
-		if count < 1 {
-			return nil, fmt.Errorf("count must be at least 1, got %d", count)
-		}
-	}
-
-	if offset < 0 {
-		offset = 0
-	}
+	origin := *params.Origin
+	offset := *params.Offset
+	count := *params.Count
+	maxBytes := *params.MaxBytes
 
 	var lines []string
 	var stopReason string
@@ -150,6 +180,7 @@ func readTextFileCallback(input any) (any, error) {
 		"data":          data,
 		"modified":      utilfn.FormatRelativeTime(modTime),
 		"modified_time": modTime.UTC().Format("2006-01-02 15:04:05 UTC"),
+		"mode":          fileInfo.Mode().String(),
 	}
 	if stopReason != "" {
 		result["truncated"] = stopReason
@@ -162,7 +193,7 @@ func GetReadTextFileToolDefinition() uctypes.ToolDefinition {
 	return uctypes.ToolDefinition{
 		Name:        "read_text_file",
 		DisplayName: "Read Text File",
-		Description: "Read a text file from the filesystem. Can read specific line ranges or from the end. Detects and rejects binary files.",
+		Description: "Read a text file from the filesystem. Can read specific line ranges or from the end. Detects and rejects binary files. Requires user approval.",
 		ToolLogName: "gen:readfile",
 		Strict:      false,
 		InputSchema: map[string]any{
@@ -200,6 +231,30 @@ func GetReadTextFileToolDefinition() uctypes.ToolDefinition {
 			"required":             []string{"filename"},
 			"additionalProperties": false,
 		},
+		ToolInputDesc: func(input any) string {
+			parsed, err := parseReadTextFileInput(input)
+			if err != nil {
+				return fmt.Sprintf("error parsing input: %v", err)
+			}
+
+			origin := *parsed.Origin
+			offset := *parsed.Offset
+			count := *parsed.Count
+
+			if origin == "start" && offset == 0 {
+				return fmt.Sprintf("reading %q (first %d lines)", parsed.Filename, count)
+			}
+			if origin == "end" && offset == 0 {
+				return fmt.Sprintf("reading %q (last %d lines)", parsed.Filename, count)
+			}
+			if origin == "end" {
+				return fmt.Sprintf("reading %q (from end: offset %d lines, count %d lines)", parsed.Filename, offset, count)
+			}
+			return fmt.Sprintf("reading %q (from start: offset %d lines, count %d lines)", parsed.Filename, offset, count)
+		},
 		ToolAnyCallback: readTextFileCallback,
+		ToolApproval: func(input any) string {
+			return uctypes.ApprovalNeedsApproval
+		},
 	}
 }

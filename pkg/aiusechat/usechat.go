@@ -21,6 +21,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
 	"github.com/wavetermdev/waveterm/pkg/telemetry"
 	"github.com/wavetermdev/waveterm/pkg/telemetry/telemetrydata"
+	"github.com/wavetermdev/waveterm/pkg/util/ds"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/web/sse"
@@ -40,6 +41,9 @@ const DefaultMaxTokens = 4 * 1024
 var (
 	globalRateLimitInfo = &uctypes.RateLimitInfo{Unknown: true}
 	rateLimitLock       sync.Mutex
+
+	activeToolMap = ds.MakeSyncMap[bool]() // key is toolcallid
+	activeChats   = ds.MakeSyncMap[bool]() // key is chatid
 )
 
 var SystemPromptText = strings.Join([]string{
@@ -200,31 +204,121 @@ func GetChatUsage(chat *uctypes.AIChat) uctypes.AIUsage {
 	return usage
 }
 
-func processToolResults(stopReason *uctypes.WaveStopReason, chatOpts uctypes.WaveChatOpts, sseHandler *sse.SSEHandlerCh, metrics *uctypes.AIMetrics) {
+func updateToolUseDataInChat(chatOpts uctypes.WaveChatOpts, toolCallID string, toolUseData *uctypes.UIMessageDataToolUse) {
+	if chatOpts.Config.APIType == APIType_OpenAI {
+		if err := openai.UpdateToolUseData(chatOpts.ChatId, toolCallID, toolUseData); err != nil {
+			log.Printf("failed to update tool use data in chat: %v\n", err)
+		}
+	} else if chatOpts.Config.APIType == APIType_Anthropic {
+		log.Printf("warning: UpdateToolUseData not implemented for anthropic\n")
+	}
+}
+
+func processToolCall(toolCall uctypes.WaveToolCall, chatOpts uctypes.WaveChatOpts, sseHandler *sse.SSEHandlerCh, metrics *uctypes.AIMetrics) uctypes.AIToolResult {
+
+	if toolCall.ToolUseData == nil {
+		errorMsg := "Invalid Tool Call"
+		log.Printf("  error=%s\n", errorMsg)
+		metrics.ToolUseErrorCount++
+		return uctypes.AIToolResult{
+			ToolName:  toolCall.Name,
+			ToolUseID: toolCall.ID,
+			ErrorText: errorMsg,
+		}
+	}
+
+	inputJSON, _ := json.Marshal(toolCall.Input)
+	log.Printf("TOOLUSE name=%s id=%s input=%s approval=%q\n", toolCall.Name, toolCall.ID, utilfn.TruncateString(string(inputJSON), 40), toolCall.ToolUseData.Approval)
+
+	if toolCall.ToolUseData.Status == uctypes.ToolUseStatusError {
+		errorMsg := toolCall.ToolUseData.ErrorMessage
+		if errorMsg == "" {
+			errorMsg = "Unspecified Tool Error"
+		}
+		log.Printf("  error=%s\n", errorMsg)
+		metrics.ToolUseErrorCount++
+		_ = sseHandler.AiMsgData("data-tooluse", toolCall.ID, *toolCall.ToolUseData)
+		updateToolUseDataInChat(chatOpts, toolCall.ID, toolCall.ToolUseData)
+
+		return uctypes.AIToolResult{
+			ToolName:  toolCall.Name,
+			ToolUseID: toolCall.ID,
+			ErrorText: errorMsg,
+		}
+	}
+
+	if toolCall.ToolUseData.Approval == uctypes.ApprovalNeedsApproval {
+		log.Printf("  waiting for approval...\n")
+		approval := WaitForToolApproval(toolCall.ID)
+		log.Printf("  approval result: %q\n", approval)
+		if approval != "" {
+			toolCall.ToolUseData.Approval = approval
+		}
+
+		if !toolCall.ToolUseData.IsApproved() {
+			errorMsg := "Tool use denied or timed out"
+			if approval == uctypes.ApprovalUserDenied {
+				errorMsg = "Tool use denied by user"
+			} else if approval == uctypes.ApprovalTimeout {
+				errorMsg = "Tool approval timed out"
+			}
+			log.Printf("  error=%s\n", errorMsg)
+			metrics.ToolUseErrorCount++
+			toolCall.ToolUseData.Status = uctypes.ToolUseStatusError
+			toolCall.ToolUseData.ErrorMessage = errorMsg
+			_ = sseHandler.AiMsgData("data-tooluse", toolCall.ID, *toolCall.ToolUseData)
+			updateToolUseDataInChat(chatOpts, toolCall.ID, toolCall.ToolUseData)
+
+			return uctypes.AIToolResult{
+				ToolName:  toolCall.Name,
+				ToolUseID: toolCall.ID,
+				ErrorText: errorMsg,
+			}
+		}
+
+		_ = sseHandler.AiMsgData("data-tooluse", toolCall.ID, *toolCall.ToolUseData)
+		updateToolUseDataInChat(chatOpts, toolCall.ID, toolCall.ToolUseData)
+	}
+
+	result := ResolveToolCall(toolCall, chatOpts)
+
+	// Track tool usage by ToolLogName
+	toolDef := chatOpts.GetToolDefinition(toolCall.Name)
+	if toolDef != nil && toolDef.ToolLogName != "" {
+		metrics.ToolDetail[toolDef.ToolLogName]++
+	}
+
+	if result.ErrorText != "" {
+		toolCall.ToolUseData.Status = uctypes.ToolUseStatusError
+		toolCall.ToolUseData.ErrorMessage = result.ErrorText
+		log.Printf("  error=%s\n", result.ErrorText)
+		metrics.ToolUseErrorCount++
+	} else {
+		toolCall.ToolUseData.Status = uctypes.ToolUseStatusCompleted
+		log.Printf("  result=%s\n", utilfn.TruncateString(result.Text, 40))
+	}
+	_ = sseHandler.AiMsgData("data-tooluse", toolCall.ID, *toolCall.ToolUseData)
+	updateToolUseDataInChat(chatOpts, toolCall.ID, toolCall.ToolUseData)
+
+	return result
+}
+
+func processToolCalls(stopReason *uctypes.WaveStopReason, chatOpts uctypes.WaveChatOpts, sseHandler *sse.SSEHandlerCh, metrics *uctypes.AIMetrics) {
+	for _, toolCall := range stopReason.ToolCalls {
+		activeToolMap.Set(toolCall.ID, true)
+		defer activeToolMap.Delete(toolCall.ID)
+	}
+
 	var toolResults []uctypes.AIToolResult
 	for _, toolCall := range stopReason.ToolCalls {
-		inputJSON, _ := json.Marshal(toolCall.Input)
-		log.Printf("TOOLUSE name=%s id=%s input=%s\n", toolCall.Name, toolCall.ID, utilfn.TruncateString(string(inputJSON), 40))
-		result := ResolveToolCall(toolCall, chatOpts)
+		result := processToolCall(toolCall, chatOpts, sseHandler, metrics)
 		toolResults = append(toolResults, result)
-
-		// Track tool usage by ToolLogName
-		toolDef := getToolDefinition(toolCall.Name, chatOpts)
-		if toolDef != nil && toolDef.ToolLogName != "" {
-			metrics.ToolDetail[toolDef.ToolLogName]++
-		}
-		if result.ErrorText != "" {
-			log.Printf("  error=%s\n", result.ErrorText)
-		} else {
-			log.Printf("  result=%s\n", utilfn.TruncateString(result.Text, 40))
-		}
 	}
 
 	if chatOpts.Config.APIType == APIType_OpenAI {
 		toolResultMsgs, err := openai.ConvertToolResultsToOpenAIChatMessage(toolResults)
 		if err != nil {
-			_ = sseHandler.AiMsgError(fmt.Sprintf("Failed to convert tool results to OpenAI messages: %v", err))
-			_ = sseHandler.AiMsgFinish("", nil)
+			log.Printf("Failed to convert tool results to OpenAI messages: %v", err)
 		} else {
 			for _, msg := range toolResultMsgs {
 				chatstore.DefaultChatStore.PostMessage(chatOpts.ChatId, &chatOpts.Config, msg)
@@ -233,8 +327,7 @@ func processToolResults(stopReason *uctypes.WaveStopReason, chatOpts uctypes.Wav
 	} else {
 		toolResultMsg, err := anthropic.ConvertToolResultsToAnthropicChatMessage(toolResults)
 		if err != nil {
-			_ = sseHandler.AiMsgError(fmt.Sprintf("Failed to convert tool results to Anthropic message: %v", err))
-			_ = sseHandler.AiMsgFinish("", nil)
+			log.Printf("Failed to convert tool results to Anthropic message: %v", err)
 		} else {
 			chatstore.DefaultChatStore.PostMessage(chatOpts.ChatId, &chatOpts.Config, toolResultMsg)
 		}
@@ -243,6 +336,11 @@ func processToolResults(stopReason *uctypes.WaveStopReason, chatOpts uctypes.Wav
 
 func RunAIChat(ctx context.Context, sseHandler *sse.SSEHandlerCh, chatOpts uctypes.WaveChatOpts) (*uctypes.AIMetrics, error) {
 	log.Printf("RunAIChat\n")
+	if !activeChats.SetUnless(chatOpts.ChatId, true) {
+		return nil, fmt.Errorf("chat %s is already running", chatOpts.ChatId)
+	}
+	defer activeChats.Delete(chatOpts.ChatId)
+
 	metrics := &uctypes.AIMetrics{
 		Usage: uctypes.AIUsage{
 			APIType: chatOpts.Config.APIType,
@@ -306,7 +404,7 @@ func RunAIChat(ctx context.Context, sseHandler *sse.SSEHandlerCh, chatOpts uctyp
 		}
 		if stopReason != nil && stopReason.Kind == uctypes.StopKindToolUse {
 			metrics.ToolUseCount += len(stopReason.ToolCalls)
-			processToolResults(stopReason, chatOpts, sseHandler, metrics)
+			processToolCalls(stopReason, chatOpts, sseHandler, metrics)
 
 			var messageID string
 			if len(rtnMessage) > 0 && rtnMessage[0] != nil {
@@ -325,21 +423,6 @@ func RunAIChat(ctx context.Context, sseHandler *sse.SSEHandlerCh, chatOpts uctyp
 	return metrics, nil
 }
 
-// ResolveToolCall resolves a single tool call and returns an AIToolResult
-func getToolDefinition(toolName string, chatOpts uctypes.WaveChatOpts) *uctypes.ToolDefinition {
-	for _, tool := range chatOpts.Tools {
-		if tool.Name == toolName {
-			return &tool
-		}
-	}
-	for _, tool := range chatOpts.TabTools {
-		if tool.Name == toolName {
-			return &tool
-		}
-	}
-	return nil
-}
-
 func ResolveToolCall(toolCall uctypes.WaveToolCall, chatOpts uctypes.WaveChatOpts) (result uctypes.AIToolResult) {
 	result = uctypes.AIToolResult{
 		ToolName:  toolCall.Name,
@@ -353,7 +436,7 @@ func ResolveToolCall(toolCall uctypes.WaveToolCall, chatOpts uctypes.WaveChatOpt
 		}
 	}()
 
-	toolDef := getToolDefinition(toolCall.Name, chatOpts)
+	toolDef := chatOpts.GetToolDefinition(toolCall.Name)
 
 	if toolDef == nil {
 		result.ErrorText = fmt.Sprintf("tool '%s' not found", toolCall.Name)
@@ -443,23 +526,24 @@ func WaveAIPostMessageWrap(ctx context.Context, sseHandler *sse.SSEHandlerCh, me
 
 func sendAIMetricsTelemetry(ctx context.Context, metrics *uctypes.AIMetrics) {
 	event := telemetrydata.MakeTEvent("waveai:post", telemetrydata.TEventProps{
-		WaveAIAPIType:      metrics.Usage.APIType,
-		WaveAIModel:        metrics.Usage.Model,
-		WaveAIInputTokens:  metrics.Usage.InputTokens,
-		WaveAIOutputTokens: metrics.Usage.OutputTokens,
-		WaveAIRequestCount: metrics.RequestCount,
-		WaveAIToolUseCount: metrics.ToolUseCount,
-		WaveAIToolDetail:   metrics.ToolDetail,
-		WaveAIPremiumReq:   metrics.PremiumReqCount,
-		WaveAIProxyReq:     metrics.ProxyReqCount,
-		WaveAIHadError:     metrics.HadError,
-		WaveAIImageCount:   metrics.ImageCount,
-		WaveAIPDFCount:     metrics.PDFCount,
-		WaveAITextDocCount: metrics.TextDocCount,
-		WaveAITextLen:      metrics.TextLen,
-		WaveAIFirstByteMs:  metrics.FirstByteLatency,
-		WaveAIRequestDurMs: metrics.RequestDuration,
-		WaveAIWidgetAccess: metrics.WidgetAccess,
+		WaveAIAPIType:           metrics.Usage.APIType,
+		WaveAIModel:             metrics.Usage.Model,
+		WaveAIInputTokens:       metrics.Usage.InputTokens,
+		WaveAIOutputTokens:      metrics.Usage.OutputTokens,
+		WaveAIRequestCount:      metrics.RequestCount,
+		WaveAIToolUseCount:      metrics.ToolUseCount,
+		WaveAIToolUseErrorCount: metrics.ToolUseErrorCount,
+		WaveAIToolDetail:        metrics.ToolDetail,
+		WaveAIPremiumReq:        metrics.PremiumReqCount,
+		WaveAIProxyReq:          metrics.ProxyReqCount,
+		WaveAIHadError:          metrics.HadError,
+		WaveAIImageCount:        metrics.ImageCount,
+		WaveAIPDFCount:          metrics.PDFCount,
+		WaveAITextDocCount:      metrics.TextDocCount,
+		WaveAITextLen:           metrics.TextLen,
+		WaveAIFirstByteMs:       metrics.FirstByteLatency,
+		WaveAIRequestDurMs:      metrics.RequestDuration,
+		WaveAIWidgetAccess:      metrics.WidgetAccess,
 	})
 	_ = telemetry.RecordTEvent(ctx, event)
 }
@@ -513,10 +597,11 @@ func WaveAIPostMessageHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Call the core WaveAIPostMessage function
 	chatOpts := uctypes.WaveChatOpts{
-		ChatId:       req.ChatID,
-		ClientId:     client.OID,
-		Config:       *aiOpts,
-		WidgetAccess: req.WidgetAccess,
+		ChatId:               req.ChatID,
+		ClientId:             client.OID,
+		Config:               *aiOpts,
+		WidgetAccess:         req.WidgetAccess,
+		RegisterToolApproval: RegisterToolApproval,
 	}
 	if chatOpts.Config.APIType == APIType_OpenAI {
 		chatOpts.SystemPrompt = []string{SystemPromptText_OpenAI}

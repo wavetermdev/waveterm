@@ -10,6 +10,14 @@ type WaveUIDataTypes = {
         mimetype: string;
         previewurl?: string;
     };
+    tooluse: {
+        toolcallid: string;
+        toolname: string;
+        tooldesc: string;
+        status: "pending" | "error" | "completed";
+        errormessage?: string;
+        approval?: "needs-approval" | "user-approved" | "user-denied" | "auto-approved" | "timeout";
+    };
 };
 
 export type WaveUIMessage = UIMessage<unknown, WaveUIDataTypes, {}>;

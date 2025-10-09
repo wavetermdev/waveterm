@@ -6,7 +6,7 @@ import { modalsModel } from "@/app/store/modalmodel";
 import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
 import { WindowDrag } from "@/element/windowdrag";
 import { deleteLayoutModelForTab } from "@/layout/index";
-import { atoms, createTab, getApi, globalStore, isDev, setActiveTab } from "@/store/global";
+import { atoms, createTab, getApi, globalStore, setActiveTab } from "@/store/global";
 import { PLATFORM, PlatformMacOS } from "@/util/platformutil";
 import { fireAndForget } from "@/util/util";
 import { useAtomValue } from "jotai";
@@ -640,7 +640,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
     }
 
     const tabsWrapperWidth = tabIds.length * tabWidthRef.current;
-    const waveaiButton = isDev() ? (
+    const waveaiButton = (
         <div
             className={`flex h-[26px] px-1.5 justify-end items-center rounded-md mr-1 box-border cursor-pointer bg-hover hover:bg-hoverbg transition-colors text-[12px] ${aiPanelOpen ? "text-accent" : "text-secondary"}`}
             style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
@@ -649,7 +649,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
             <i className="fa fa-sparkles" />
             <span className="font-bold ml-1 -top-px font-mono">AI</span>
         </div>
-    ) : undefined;
+    );
     const appMenuButton =
         PLATFORM !== PlatformMacOS && !settings["window:showmenubar"] ? (
             <div ref={appMenuButtonRef} className="app-menu-button" onClick={onEllipsisClick}>

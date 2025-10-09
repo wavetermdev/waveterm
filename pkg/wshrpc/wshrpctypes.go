@@ -142,6 +142,7 @@ const (
 	Command_WaveAIEnableTelemetry = "waveaienabletelemetry"
 	Command_GetWaveAIChat         = "getwaveaichat"
 	Command_GetWaveAIRateLimit    = "getwaveairatelimit"
+	Command_WaveAIToolApprove     = "waveaitoolapprove"
 
 	Command_CaptureBlockScreenshot = "captureblockscreenshot"
 
@@ -271,6 +272,7 @@ type WshRpcInterface interface {
 	WaveAIEnableTelemetryCommand(ctx context.Context) error
 	GetWaveAIChatCommand(ctx context.Context, data CommandGetWaveAIChatData) (*uctypes.UIChat, error)
 	GetWaveAIRateLimitCommand(ctx context.Context) (*uctypes.RateLimitInfo, error)
+	WaveAIToolApproveCommand(ctx context.Context, data CommandWaveAIToolApproveData) error
 
 	// screenshot
 	CaptureBlockScreenshotCommand(ctx context.Context, data CommandCaptureBlockScreenshotData) (string, error)
@@ -724,6 +726,12 @@ type AiMessageData struct {
 
 type CommandGetWaveAIChatData struct {
 	ChatId string `json:"chatid"`
+}
+
+type CommandWaveAIToolApproveData struct {
+	ToolCallId string `json:"toolcallid"`
+	KeepAlive  bool   `json:"keepalive,omitempty"`
+	Approval   string `json:"approval,omitempty"`
 }
 
 type CommandCaptureBlockScreenshotData struct {

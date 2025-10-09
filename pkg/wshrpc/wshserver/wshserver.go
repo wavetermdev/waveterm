@@ -960,6 +960,10 @@ func (ws *WshServer) GetWaveAIRateLimitCommand(ctx context.Context) (*uctypes.Ra
 	return aiusechat.GetGlobalRateLimit(), nil
 }
 
+func (ws *WshServer) WaveAIToolApproveCommand(ctx context.Context, data wshrpc.CommandWaveAIToolApproveData) error {
+	return aiusechat.UpdateToolApproval(data.ToolCallId, data.Approval, data.KeepAlive)
+}
+
 var wshActivityRe = regexp.MustCompile(`^[a-z:#]+$`)
 
 func (ws *WshServer) WshActivityCommand(ctx context.Context, data map[string]int) error {

@@ -587,6 +587,12 @@ func WaveAIEnableTelemetryCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) error
 	return err
 }
 
+// command "waveaitoolapprove", wshserver.WaveAIToolApproveCommand
+func WaveAIToolApproveCommand(w *wshutil.WshRpc, data wshrpc.CommandWaveAIToolApproveData, opts *wshrpc.RpcOpts) error {
+	_, err := sendRpcRequestCallHelper[any](w, "waveaitoolapprove", data, opts)
+	return err
+}
+
 // command "waveinfo", wshserver.WaveInfoCommand
 func WaveInfoCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) (*wshrpc.WaveInfoData, error) {
 	resp, err := sendRpcRequestCallHelper[*wshrpc.WaveInfoData](w, "waveinfo", nil, opts)

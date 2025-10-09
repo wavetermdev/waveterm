@@ -2,9 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { WaveStreamdown } from "@/app/element/streamdown";
+import { RpcApi } from "@/app/store/wshclientapi";
+import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { cn } from "@/util/util";
-import { useAtomValue } from "jotai";
-import { memo } from "react";
+import { memo, useEffect, useState } from "react";
 import { getFileIcon } from "./ai-utils";
 import { WaveUIMessage, WaveUIMessagePart } from "./aitypes";
 import { WaveAIModel } from "./waveai-model";
@@ -67,6 +68,84 @@ const UserMessageFiles = memo(({ fileParts }: UserMessageFilesProps) => {
 
 UserMessageFiles.displayName = "UserMessageFiles";
 
+interface AIToolUseProps {
+    part: WaveUIMessagePart & { type: "data-tooluse" };
+    isStreaming: boolean;
+}
+
+const AIToolUse = memo(({ part }: AIToolUseProps) => {
+    const toolData = part.data;
+    const [userApprovalOverride, setUserApprovalOverride] = useState<string | null>(null);
+
+    const statusIcon = toolData.status === "completed" ? "✓" : toolData.status === "error" ? "✗" : "•";
+    const statusColor =
+        toolData.status === "completed"
+            ? "text-green-400"
+            : toolData.status === "error"
+              ? "text-red-400"
+              : "text-gray-400";
+
+    const effectiveApproval = userApprovalOverride || toolData.approval;
+
+    useEffect(() => {
+        if (effectiveApproval !== "needs-approval") return;
+
+        const interval = setInterval(() => {
+            RpcApi.WaveAIToolApproveCommand(TabRpcClient, {
+                toolcallid: toolData.toolcallid,
+                keepalive: true,
+            });
+        }, 4000);
+
+        return () => clearInterval(interval);
+    }, [effectiveApproval, toolData.toolcallid]);
+
+    const handleApprove = () => {
+        setUserApprovalOverride("user-approved");
+        RpcApi.WaveAIToolApproveCommand(TabRpcClient, {
+            toolcallid: toolData.toolcallid,
+            approval: "user-approved",
+        });
+    };
+
+    const handleDeny = () => {
+        setUserApprovalOverride("user-denied");
+        RpcApi.WaveAIToolApproveCommand(TabRpcClient, {
+            toolcallid: toolData.toolcallid,
+            approval: "user-denied",
+        });
+    };
+
+    return (
+        <div className={cn("flex items-start gap-2 p-2 rounded bg-gray-800 border border-gray-700", statusColor)}>
+            <span className="font-bold">{statusIcon}</span>
+            <div className="flex-1">
+                <div className="font-semibold">{toolData.toolname}</div>
+                {toolData.tooldesc && <div className="text-sm text-gray-400">{toolData.tooldesc}</div>}
+                {toolData.errormessage && <div className="text-sm text-red-300 mt-1">{toolData.errormessage}</div>}
+                {effectiveApproval === "needs-approval" && (
+                    <div className="mt-2 flex gap-2">
+                        <button
+                            onClick={handleApprove}
+                            className="px-3 py-1 border border-gray-600 text-gray-300 hover:border-gray-500 hover:text-white text-sm rounded cursor-pointer transition-colors"
+                        >
+                            Approve
+                        </button>
+                        <button
+                            onClick={handleDeny}
+                            className="px-3 py-1 border border-gray-600 text-gray-300 hover:border-gray-500 hover:text-white text-sm rounded cursor-pointer transition-colors"
+                        >
+                            Deny
+                        </button>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+});
+
+AIToolUse.displayName = "AIToolUse";
+
 interface AIMessagePartProps {
     part: WaveUIMessagePart;
     role: string;
@@ -93,9 +172,8 @@ const AIMessagePart = memo(({ part, role, isStreaming }: AIMessagePartProps) => 
         }
     }
 
-    if (part.type.startsWith("tool-") && "state" in part && part.state === "input-available") {
-        const toolName = part.type.substring(5); // Remove "tool-" prefix
-        return <div className="text-gray-400 italic">Calling tool {toolName}</div>;
+    if (part.type === "data-tooluse" && part.data) {
+        return <AIToolUse part={part as WaveUIMessagePart & { type: "data-tooluse" }} isStreaming={isStreaming} />;
     }
 
     return null;
@@ -110,7 +188,9 @@ interface AIMessageProps {
 
 const isDisplayPart = (part: WaveUIMessagePart): boolean => {
     return (
-        part.type === "text" || (part.type.startsWith("tool-") && "state" in part && part.state === "input-available")
+        part.type === "text" ||
+        part.type === "data-tooluse" ||
+        (part.type.startsWith("tool-") && "state" in part && part.state === "input-available")
     );
 };
 
@@ -122,7 +202,10 @@ export const AIMessage = memo(({ message, isStreaming }: AIMessageProps) => {
     );
     const hasContent =
         displayParts.length > 0 &&
-        displayParts.some((part) => (part.type === "text" && part.text) || part.type.startsWith("tool-"));
+        displayParts.some(
+            (part) =>
+                (part.type === "text" && part.text) || part.type.startsWith("tool-") || part.type === "data-tooluse"
+        );
 
     const showThinkingOnly = !hasContent && isStreaming && message.role === "assistant";
     const showThinkingInline = hasContent && isStreaming && message.role === "assistant";
