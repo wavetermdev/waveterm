@@ -7,7 +7,7 @@ import * as WOS from "@/app/store/wos";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { getLayoutModelForStaticTab } from "@/layout/lib/layoutModelHooks";
-import { atoms, getApi, getTabMetaKeyAtom, isDev, recordTEvent, refocusNode } from "@/store/global";
+import { atoms, getApi, getTabMetaKeyAtom, recordTEvent, refocusNode } from "@/store/global";
 import debug from "debug";
 import * as jotai from "jotai";
 import { debounce } from "lodash-es";
@@ -42,7 +42,7 @@ class WorkspaceLayoutModel {
         this.panelContainerRef = null;
         this.aiPanelWrapperRef = null;
         this.inResize = false;
-        this.aiPanelVisible = isDev();
+        this.aiPanelVisible = true;
         this.aiPanelWidth = null;
         this.panelVisibleAtom = jotai.atom(this.aiPanelVisible);
 
@@ -219,9 +219,6 @@ class WorkspaceLayoutModel {
     }
 
     setAIPanelVisible(visible: boolean): void {
-        if (!isDev() && visible) {
-            return;
-        }
         if (this.focusTimeoutRef != null) {
             clearTimeout(this.focusTimeoutRef);
             this.focusTimeoutRef = null;
@@ -290,9 +287,6 @@ class WorkspaceLayoutModel {
     }
 
     handleAIPanelResize(width: number, windowWidth: number): void {
-        if (!isDev()) {
-            return;
-        }
         if (!this.getAIPanelVisible()) {
             return;
         }
