@@ -4,6 +4,7 @@
 import { WaveUIMessagePart } from "@/app/aipanel/aitypes";
 import { waveAIHasSelection } from "@/app/aipanel/waveai-focus-utils";
 import { ErrorBoundary } from "@/app/element/errorboundary";
+import { ContextMenuModel } from "@/app/store/contextmenu";
 import { focusManager } from "@/app/store/focusManager";
 import { atoms, getSettingsKeyAtom } from "@/app/store/global";
 import { globalStore } from "@/app/store/jotaiStore";
@@ -454,6 +455,39 @@ const AIPanelComponentInner = memo(({ className, onClose }: AIPanelProps) => {
         }, 0);
     };
 
+    const handleMessagesContextMenu = (e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const menu: ContextMenuItem[] = [];
+
+        const hasSelection = waveAIHasSelection();
+        if (hasSelection) {
+            menu.push({
+                role: "copy",
+            });
+            menu.push({ type: "separator" });
+        }
+
+        menu.push({
+            label: "New Chat",
+            click: () => {
+                clearChat();
+            },
+        });
+
+        menu.push({ type: "separator" });
+
+        menu.push({
+            label: "Hide Wave AI",
+            click: () => {
+                onClose?.();
+            },
+        });
+
+        ContextMenuModel.showContextMenu(menu, e);
+    };
+
     const showBlockMask = isLayoutMode && showOverlayBlockNums;
 
     return (
@@ -490,11 +524,13 @@ const AIPanelComponentInner = memo(({ className, onClose }: AIPanelProps) => {
                 ) : (
                     <>
                         {messages.length === 0 && !isLoadingChat ? (
-                            <div className="flex-1 overflow-y-auto p-2">
+                            <div className="flex-1 overflow-y-auto p-2" onContextMenu={handleMessagesContextMenu}>
                                 <AIWelcomeMessage />
                             </div>
                         ) : (
-                            <AIPanelMessages messages={messages} status={status} />
+                            <div className="flex-1 min-h-0" onContextMenu={handleMessagesContextMenu}>
+                                <AIPanelMessages messages={messages} status={status} />
+                            </div>
                         )}
                         {errorMessage && (
                             <AIErrorMessage errorMessage={errorMessage} onClear={() => model.clearError()} />
