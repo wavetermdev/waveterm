@@ -86,6 +86,7 @@ type ToolDefinition struct {
 	ToolTextCallback func(any) (string, error) `json:"-"`
 	ToolAnyCallback  func(any) (any, error)    `json:"-"`
 	ToolInputDesc    func(any) string          `json:"-"`
+	ToolApproval     func(any) string          `json:"-"`
 }
 
 func (td *ToolDefinition) Clean() *ToolDefinition {
@@ -124,12 +125,21 @@ const (
 	ToolUseStatusCompleted = "completed"
 )
 
+const (
+	ApprovalNeedsApproval = "needs-approval"
+	ApprovalUserApproved  = "user-approved"
+	ApprovalUserDenied    = "user-denied"
+	ApprovalTimeout       = "timeout"
+	ApprovalAutoApproved  = "auto-approved"
+)
+
 type UIMessageDataToolUse struct {
 	ToolCallId   string `json:"toolcallid"`
 	ToolName     string `json:"toolname"`
 	ToolDesc     string `json:"tooldesc"`
 	Status       string `json:"status"`
 	ErrorMessage string `json:"errormessage,omitempty"`
+	Approval     string `json:"approval,omitempty"`
 }
 
 type StopReasonKind string

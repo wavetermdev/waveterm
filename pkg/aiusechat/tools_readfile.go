@@ -18,9 +18,9 @@ const StopReasonMaxBytes = "max_bytes"
 
 type readTextFileParams struct {
 	Filename string  `json:"filename"`
-	Origin   *string `json:"origin"`   // "start" or "end", defaults to "start"
-	Offset   *int    `json:"offset"`   // lines to skip, defaults to 0
-	Count    *int    `json:"count"`    // number of lines to read, defaults to DefaultLineCount
+	Origin   *string `json:"origin"` // "start" or "end", defaults to "start"
+	Offset   *int    `json:"offset"` // lines to skip, defaults to 0
+	Count    *int    `json:"count"`  // number of lines to read, defaults to DefaultLineCount
 	MaxBytes *int    `json:"max_bytes"`
 }
 
@@ -266,5 +266,8 @@ func GetReadTextFileToolDefinition() uctypes.ToolDefinition {
 			return fmt.Sprintf("reading %q (from start: offset %d lines, count %d lines)", parsed.Filename, offset, count)
 		},
 		ToolAnyCallback: readTextFileCallback,
+		ToolApproval: func(input any) string {
+			return uctypes.ApprovalNeedsApproval
+		},
 	}
 }

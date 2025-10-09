@@ -320,6 +320,13 @@ declare global {
         waitms: number;
     };
 
+    // wshrpc.CommandWaveAIToolApproveData
+    type CommandWaveAIToolApproveData = {
+        toolcallid: string;
+        keepalive?: boolean;
+        approval?: string;
+    };
+
     // wshrpc.CommandWebSelectorData
     type CommandWebSelectorData = {
         workspaceid: string;
@@ -944,6 +951,7 @@ declare global {
         "waveai:outputtokens"?: number;
         "waveai:requestcount"?: number;
         "waveai:toolusecount"?: number;
+        "waveai:tooluseerrorcount"?: number;
         "waveai:tooldetail"?: {[key: string]: number};
         "waveai:premiumreq"?: number;
         "waveai:proxyreq"?: number;

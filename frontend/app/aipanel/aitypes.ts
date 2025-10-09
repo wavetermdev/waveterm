@@ -16,6 +16,7 @@ type WaveUIDataTypes = {
         tooldesc: string;
         status: "pending" | "error" | "completed";
         errormessage?: string;
+        approval?: "needs-approval" | "user-approved" | "user-denied" | "auto-approved" | "timeout";
     };
 };
 

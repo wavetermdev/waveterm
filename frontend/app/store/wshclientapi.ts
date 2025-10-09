@@ -492,6 +492,11 @@ class RpcApiType {
         return client.wshRpcCall("waveaienabletelemetry", null, opts);
     }
 
+    // command "waveaitoolapprove" [call]
+    WaveAIToolApproveCommand(client: WshClient, data: CommandWaveAIToolApproveData, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("waveaitoolapprove", data, opts);
+    }
+
     // command "waveinfo" [call]
     WaveInfoCommand(client: WshClient, opts?: RpcOpts): Promise<WaveInfoData> {
         return client.wshRpcCall("waveinfo", null, opts);

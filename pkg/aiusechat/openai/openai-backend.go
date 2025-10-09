@@ -809,32 +809,8 @@ func handleOpenAIEvent(
 			// no longer send tool inputs to fe
 			// _ = sse.AiMsgToolInputAvailable(st.toolCallID, st.toolName, raw)
 
-			// Create tool use data entry
-			toolUseData := &uctypes.UIMessageDataToolUse{
-				ToolCallId: st.toolCallID,
-				ToolName:   st.toolName,
-				Status:     uctypes.ToolUseStatusPending,
-			}
-
-			// Try to get tool definition
 			toolDef := state.chatOpts.GetToolDefinition(st.toolName)
-			if toolDef == nil {
-				toolUseData.Status = uctypes.ToolUseStatusError
-				toolUseData.ErrorMessage = "tool not found"
-			} else {
-				// Try to unmarshal arguments
-				var parsedArgs any
-				if err := json.Unmarshal([]byte(ev.Arguments), &parsedArgs); err != nil {
-					toolUseData.Status = uctypes.ToolUseStatusError
-					toolUseData.ErrorMessage = fmt.Sprintf("failed to parse tool arguments: %v", err)
-				} else {
-					// Get tool description if available
-					if toolDef.ToolInputDesc != nil {
-						toolUseData.ToolDesc = toolDef.ToolInputDesc(parsedArgs)
-					}
-				}
-			}
-
+			toolUseData := createToolUseData(st.toolCallID, st.toolName, toolDef, ev.Arguments)
 			state.toolUseData[st.toolCallID] = toolUseData
 			log.Printf("AI data-tooluse %s\n", st.toolCallID)
 			_ = sse.AiMsgData("data-tooluse", st.toolCallID, *toolUseData)
@@ -847,6 +823,37 @@ func handleOpenAIEvent(
 		return nil, nil
 	}
 }
+func createToolUseData(toolCallID, toolName string, toolDef *uctypes.ToolDefinition, arguments string) *uctypes.UIMessageDataToolUse {
+	toolUseData := &uctypes.UIMessageDataToolUse{
+		ToolCallId: toolCallID,
+		ToolName:   toolName,
+		Status:     uctypes.ToolUseStatusPending,
+	}
+
+	if toolDef == nil {
+		toolUseData.Status = uctypes.ToolUseStatusError
+		toolUseData.ErrorMessage = "tool not found"
+		return toolUseData
+	}
+
+	var parsedArgs any
+	if err := json.Unmarshal([]byte(arguments), &parsedArgs); err != nil {
+		toolUseData.Status = uctypes.ToolUseStatusError
+		toolUseData.ErrorMessage = fmt.Sprintf("failed to parse tool arguments: %v", err)
+		return toolUseData
+	}
+
+	if toolDef.ToolInputDesc != nil {
+		toolUseData.ToolDesc = toolDef.ToolInputDesc(parsedArgs)
+	}
+
+	if toolDef.ToolApproval != nil {
+		toolUseData.Approval = toolDef.ToolApproval(parsedArgs)
+	}
+
+	return toolUseData
+}
+
 
 // extractMessageAndToolsFromResponse extracts the final OpenAI message and tool calls from the completed response
 func extractMessageAndToolsFromResponse(resp openaiResponse, toolUseData map[string]*uctypes.UIMessageDataToolUse) ([]*OpenAIChatMessage, []uctypes.WaveToolCall) {
