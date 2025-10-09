@@ -31,6 +31,7 @@
     --color-modalbg: #232323;
     --color-accentbg: rgba(88, 193, 66, 0.5);
     --color-hoverbg: rgba(255, 255, 255, 0.2);
+    --color-highlightbg: rgba(255, 255, 255, 0.2);
     --color-accent: rgb(88, 193, 66);
     --color-accenthover: rgb(118, 223, 96);
 

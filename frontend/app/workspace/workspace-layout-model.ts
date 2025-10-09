@@ -18,7 +18,7 @@ const dlog = debug("wave:workspace");
 const AIPANEL_DEFAULTWIDTH = 300;
 const AIPANEL_DEFAULTWIDTHRATIO = 0.33;
 const AIPANEL_MINWIDTH = 300;
-const AIPANEL_MAXWIDTHRATIO = 0.5;
+const AIPANEL_MAXWIDTHRATIO = 0.66;
 
 class WorkspaceLayoutModel {
     private static instance: WorkspaceLayoutModel | null = null;
@@ -42,7 +42,7 @@ class WorkspaceLayoutModel {
         this.panelContainerRef = null;
         this.aiPanelWrapperRef = null;
         this.inResize = false;
-        this.aiPanelVisible = true;
+        this.aiPanelVisible = false;
         this.aiPanelWidth = null;
         this.panelVisibleAtom = jotai.atom(this.aiPanelVisible);
 

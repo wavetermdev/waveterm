@@ -208,7 +208,13 @@ func CreateTab(ctx context.Context, workspaceId string, tabName string, activate
 	}
 
 	// The initial tab for the initial launch should be pinned
-	tab, err := createTabObj(ctx, workspaceId, tabName, pinned || isInitialLaunch)
+	var meta waveobj.MetaMapType
+	if isInitialLaunch {
+		meta = waveobj.MetaMapType{
+			"waveai:panelopen": true,
+		}
+	}
+	tab, err := createTabObj(ctx, workspaceId, tabName, pinned || isInitialLaunch, meta)
 	if err != nil {
 		return "", fmt.Errorf("error creating tab: %w", err)
 	}
@@ -240,7 +246,7 @@ func CreateTab(ctx context.Context, workspaceId string, tabName string, activate
 	return tab.OID, nil
 }
 
-func createTabObj(ctx context.Context, workspaceId string, name string, pinned bool) (*waveobj.Tab, error) {
+func createTabObj(ctx context.Context, workspaceId string, name string, pinned bool, meta waveobj.MetaMapType) (*waveobj.Tab, error) {
 	ws, err := GetWorkspace(ctx, workspaceId)
 	if err != nil {
 		return nil, fmt.Errorf("workspace %s not found: %w", workspaceId, err)
@@ -251,6 +257,7 @@ func createTabObj(ctx context.Context, workspaceId string, name string, pinned b
 		Name:        name,
 		BlockIds:    []string{},
 		LayoutState: layoutStateId,
+		Meta:        meta,
 	}
 	layoutState := &waveobj.LayoutState{
 		OID: layoutStateId,

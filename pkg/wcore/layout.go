@@ -56,27 +56,6 @@ func GetStarterLayout() PortableLayout {
 				waveobj.MetaKey_File: "~",
 			},
 		}},
-		{IndexArr: []int{2}, BlockDef: &waveobj.BlockDef{
-			Meta: waveobj.MetaMapType{
-				waveobj.MetaKey_View: "tips",
-			},
-		}},
-		{IndexArr: []int{2, 1}, BlockDef: &waveobj.BlockDef{
-			Meta: waveobj.MetaMapType{
-				waveobj.MetaKey_View: "help",
-			},
-		}},
-		{IndexArr: []int{2, 2}, BlockDef: &waveobj.BlockDef{
-			Meta: waveobj.MetaMapType{
-				waveobj.MetaKey_View: "waveai",
-			},
-		}},
-		// {IndexArr: []int{2, 2}, BlockDef: &wstore.BlockDef{
-		// 	Meta: wstore.MetaMapType{
-		// 		waveobj.MetaKey_View: "web",
-		// 		waveobj.MetaKey_Url:  "https://www.youtube.com/embed/cKqsw_sAsU8",
-		// 	},
-		// }},
 	}
 }
 
@@ -189,7 +168,6 @@ func BootstrapStarterLayout(ctx context.Context) error {
 	tabId := workspace.ActiveTabId
 
 	starterLayout := GetStarterLayout()
-
 	err = ApplyPortableLayout(ctx, tabId, starterLayout, false)
 	if err != nil {
 		return fmt.Errorf("error applying starter layout: %w", err)
