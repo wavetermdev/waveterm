@@ -191,6 +191,7 @@ func getUsage(msgs []uctypes.GenAIMessage) uctypes.AIUsage {
 			} else {
 				rtn.InputTokens += usage.InputTokens
 				rtn.OutputTokens += usage.OutputTokens
+				rtn.NativeWebSearchCount += usage.NativeWebSearchCount
 			}
 		}
 	}
@@ -369,9 +370,10 @@ func RunAIChat(ctx context.Context, sseHandler *sse.SSEHandlerCh, chatOpts uctyp
 		}
 		if len(rtnMessage) > 0 {
 			usage := getUsage(rtnMessage)
-			log.Printf("usage: input=%d output=%d\n", usage.InputTokens, usage.OutputTokens)
+			log.Printf("usage: input=%d output=%d websearch=%d\n", usage.InputTokens, usage.OutputTokens, usage.NativeWebSearchCount)
 			metrics.Usage.InputTokens += usage.InputTokens
 			metrics.Usage.OutputTokens += usage.OutputTokens
+			metrics.Usage.NativeWebSearchCount += usage.NativeWebSearchCount
 			if usage.Model != "" && metrics.Usage.Model != usage.Model {
 				metrics.Usage.Model = "mixed"
 			}
@@ -526,24 +528,25 @@ func WaveAIPostMessageWrap(ctx context.Context, sseHandler *sse.SSEHandlerCh, me
 
 func sendAIMetricsTelemetry(ctx context.Context, metrics *uctypes.AIMetrics) {
 	event := telemetrydata.MakeTEvent("waveai:post", telemetrydata.TEventProps{
-		WaveAIAPIType:           metrics.Usage.APIType,
-		WaveAIModel:             metrics.Usage.Model,
-		WaveAIInputTokens:       metrics.Usage.InputTokens,
-		WaveAIOutputTokens:      metrics.Usage.OutputTokens,
-		WaveAIRequestCount:      metrics.RequestCount,
-		WaveAIToolUseCount:      metrics.ToolUseCount,
-		WaveAIToolUseErrorCount: metrics.ToolUseErrorCount,
-		WaveAIToolDetail:        metrics.ToolDetail,
-		WaveAIPremiumReq:        metrics.PremiumReqCount,
-		WaveAIProxyReq:          metrics.ProxyReqCount,
-		WaveAIHadError:          metrics.HadError,
-		WaveAIImageCount:        metrics.ImageCount,
-		WaveAIPDFCount:          metrics.PDFCount,
-		WaveAITextDocCount:      metrics.TextDocCount,
-		WaveAITextLen:           metrics.TextLen,
-		WaveAIFirstByteMs:       metrics.FirstByteLatency,
-		WaveAIRequestDurMs:      metrics.RequestDuration,
-		WaveAIWidgetAccess:      metrics.WidgetAccess,
+		WaveAIAPIType:              metrics.Usage.APIType,
+		WaveAIModel:                metrics.Usage.Model,
+		WaveAIInputTokens:          metrics.Usage.InputTokens,
+		WaveAIOutputTokens:         metrics.Usage.OutputTokens,
+		WaveAINativeWebSearchCount: metrics.Usage.NativeWebSearchCount,
+		WaveAIRequestCount:         metrics.RequestCount,
+		WaveAIToolUseCount:         metrics.ToolUseCount,
+		WaveAIToolUseErrorCount:    metrics.ToolUseErrorCount,
+		WaveAIToolDetail:           metrics.ToolDetail,
+		WaveAIPremiumReq:           metrics.PremiumReqCount,
+		WaveAIProxyReq:             metrics.ProxyReqCount,
+		WaveAIHadError:             metrics.HadError,
+		WaveAIImageCount:           metrics.ImageCount,
+		WaveAIPDFCount:             metrics.PDFCount,
+		WaveAITextDocCount:         metrics.TextDocCount,
+		WaveAITextLen:              metrics.TextLen,
+		WaveAIFirstByteMs:          metrics.FirstByteLatency,
+		WaveAIRequestDurMs:         metrics.RequestDuration,
+		WaveAIWidgetAccess:         metrics.WidgetAccess,
 	})
 	_ = telemetry.RecordTEvent(ctx, event)
 }
