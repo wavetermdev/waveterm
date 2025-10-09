@@ -402,6 +402,21 @@ func ConvertToolResultsToOpenAIChatMessage(toolResults []uctypes.AIToolResult) (
 						ImageUrl: result.Text,
 					},
 				}
+			} else if strings.HasPrefix(result.Text, "data:application/pdf") {
+				// Convert to output array with input_file type for PDFs
+				// Extract base64 data from data URL
+				parts := strings.SplitN(result.Text, ",", 2)
+				if len(parts) == 2 {
+					outputData = []OpenAIMessageContent{
+						{
+							Type:     "input_file",
+							FileData: parts[1], // base64 data
+						},
+					}
+				} else {
+					// If parsing fails, use text result
+					outputData = result.Text
+				}
 			} else {
 				// Use text result for success
 				outputData = result.Text
