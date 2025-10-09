@@ -222,10 +222,11 @@ type AIChat struct {
 }
 
 type AIUsage struct {
-	APIType      string `json:"apitype"`
-	Model        string `json:"model"`
-	InputTokens  int    `json:"inputtokens,omitempty"`
-	OutputTokens int    `json:"outputtokens,omitempty"`
+	APIType              string `json:"apitype"`
+	Model                string `json:"model"`
+	InputTokens          int    `json:"inputtokens,omitempty"`
+	OutputTokens         int    `json:"outputtokens,omitempty"`
+	NativeWebSearchCount int    `json:"nativewebsearchcount,omitempty"`
 }
 
 type AIMetrics struct {
@@ -424,6 +425,7 @@ type WaveChatOpts struct {
 	TabStateGenerator    func() (string, []ToolDefinition, error)
 	WidgetAccess         bool
 	RegisterToolApproval func(string)
+	AllowNativeWebSearch bool
 
 	// emphemeral to the step
 	TabState string

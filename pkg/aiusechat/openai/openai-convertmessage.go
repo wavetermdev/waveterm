@@ -75,11 +75,11 @@ type OpenAIRequest struct {
 }
 
 type OpenAIRequestTool struct {
-	Name        string `json:"name"`
-	Description string `json:"description,omitempty"`
-	Parameters  any    `json:"parameters"`
-	Strict      bool   `json:"strict"`
 	Type        string `json:"type"`
+	Name        string `json:"name,omitempty"`
+	Description string `json:"description,omitempty"`
+	Parameters  any    `json:"parameters,omitempty"`
+	Strict      bool   `json:"strict,omitempty"`
 }
 
 // ConvertToolDefinitionToOpenAI converts a generic ToolDefinition to OpenAI format
@@ -113,13 +113,13 @@ func debugPrintReq(req *OpenAIRequest, endpoint string) {
 // buildOpenAIHTTPRequest creates a complete HTTP request for the OpenAI API
 func buildOpenAIHTTPRequest(ctx context.Context, inputs []any, chatOpts uctypes.WaveChatOpts, cont *uctypes.WaveContinueResponse) (*http.Request, error) {
 	opts := chatOpts.Config
-	
+
 	// If continuing from premium rate limit, downgrade to default model and low thinking
 	if cont != nil && cont.ContinueFromKind == uctypes.StopKindPremiumRateLimit {
 		opts.Model = uctypes.DefaultOpenAIModel
 		opts.ThinkingLevel = uctypes.ThinkingLevelLow
 	}
-	
+
 	if opts.Model == "" {
 		return nil, errors.New("opts.model is required")
 	}
@@ -181,6 +181,14 @@ func buildOpenAIHTTPRequest(ctx context.Context, inputs []any, chatOpts uctypes.
 	for _, tool := range chatOpts.TabTools {
 		convertedTool := ConvertToolDefinitionToOpenAI(tool)
 		reqBody.Tools = append(reqBody.Tools, convertedTool)
+	}
+
+	// Add native web search tool if enabled
+	if chatOpts.AllowNativeWebSearch {
+		webSearchTool := OpenAIRequestTool{
+			Type: "web_search",
+		}
+		reqBody.Tools = append(reqBody.Tools, webSearchTool)
 	}
 
 	// Set reasoning based on thinking level
