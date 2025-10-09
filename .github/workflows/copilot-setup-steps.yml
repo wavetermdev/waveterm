@@ -1,0 +1,63 @@
+name: Copilot Setup Steps
+
+on:
+    workflow_dispatch:
+    push:
+        paths: [.github/workflows/copilot-setup-steps.yml]
+    pull_request:
+        paths: [.github/workflows/copilot-setup-steps.yml]
+
+env:
+    GO_VERSION: "1.24"
+    NODE_VERSION: 22
+
+jobs:
+    copilot-setup-steps:
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+
+        steps:
+            - uses: actions/checkout@v5
+
+            # Go + Node versions match your helper
+            - uses: actions/setup-go@v6
+              with:
+                  go-version: ${{ env.GO_VERSION }}
+                  cache-dependency-path: go.sum
+
+            - uses: actions/setup-node@v5
+              with:
+                  node-version: ${{ env.NODE_VERSION }}
+                  cache: npm
+                  cache-dependency-path: package-lock.json
+
+            # Zig is used by your Linux CGO builds (kept available, but we won't build here)
+            - uses: mlugg/setup-zig@v2
+
+            # Task CLI for your Taskfile
+            - uses: arduino/setup-task@v2
+              with:
+                  version: 3.x
+                  repo-token: ${{ secrets.GITHUB_TOKEN }}
+
+            # Git HTTPS so deps resolve non-interactively
+            - name: Force git deps to HTTPS
+              run: |
+                  git config --global url.https://github.com/.insteadof ssh://git@github.com/
+                  git config --global url.https://github.com/.insteadof git@github.com:
+
+            # Warm caches only (no builds)
+            - uses: nick-fields/retry@v3
+              name: npm ci
+              with:
+                  command: npm ci --no-audit --no-fund --timing --foreground-scripts
+                  retry_on: error
+                  max_attempts: 3
+                  timeout_minutes: 5
+              env:
+                  GIT_ASKPASS: "echo"
+                  GIT_TERMINAL_PROMPT: "0"
+
+            - name: Pre-fetch Go modules
+              run: go mod download
