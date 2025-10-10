@@ -16,6 +16,7 @@ import {
     useBlockAtom,
     WOS,
 } from "@/app/store/global";
+import { uxCloseBlock } from "@/app/store/keymodel";
 import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
@@ -40,8 +41,7 @@ function handleHeaderContextMenu(
     blockData: Block,
     viewModel: ViewModel,
     magnified: boolean,
-    onMagnifyToggle: () => void,
-    onClose: () => void
+    onMagnifyToggle: () => void
 ) {
     e.preventDefault();
     e.stopPropagation();
@@ -77,7 +77,7 @@ function handleHeaderContextMenu(
         { type: "separator" },
         {
             label: "Close Block",
-            click: onClose,
+            click: () => uxCloseBlock(blockData.oid),
         }
     );
     ContextMenuModel.showContextMenu(menu, e);
@@ -152,7 +152,7 @@ function computeEndIcons(
         elemtype: "iconbutton",
         icon: "xmark-large",
         title: "Close",
-        click: nodeModel.onClose,
+        click: () => uxCloseBlock(nodeModel.blockId),
     };
     endIconsElem.push(<IconButton key="close" decl={closeDecl} className="block-frame-default-close" />);
     return endIconsElem;
@@ -200,7 +200,7 @@ const BlockFrame_Header = ({
 
     const onContextMenu = React.useCallback(
         (e: React.MouseEvent<HTMLDivElement>) => {
-            handleHeaderContextMenu(e, blockData, viewModel, magnified, nodeModel.toggleMagnify, nodeModel.onClose);
+            handleHeaderContextMenu(e, blockData, viewModel, magnified, nodeModel.toggleMagnify);
         },
         [magnified]
     );

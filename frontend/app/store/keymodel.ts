@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { WaveAIModel } from "@/app/aipanel/waveai-model";
+import { focusManager } from "@/app/store/focusManager";
 import {
     atoms,
     createBlock,
@@ -18,7 +19,6 @@ import {
     replaceBlock,
     WOS,
 } from "@/app/store/global";
-import { focusManager } from "@/app/store/focusManager";
 import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
 import { deleteLayoutModelForTab, getLayoutModelForStaticTab, NavigateDirection } from "@/layout/index";
 import * as keyutil from "@/util/keyutil";
@@ -104,6 +104,14 @@ function shouldDispatchToBlock(e: WaveKeyboardEvent): boolean {
     return true;
 }
 
+function uxCloseBlock(blockId: string) {
+    const layoutModel = getLayoutModelForStaticTab();
+    const node = layoutModel.getNodeByBlockId(blockId);
+    if (node) {
+        fireAndForget(() => layoutModel.closeNode(node.id));
+    }
+}
+
 function genericClose() {
     const focusType = focusManager.getFocusType();
     if (focusType === "waveai") {
@@ -122,7 +130,7 @@ function genericClose() {
         // don't allow closing the last block in a pinned tab
         return;
     }
-    if (tabData.blockids == null || tabData.blockids.length == 0) {
+if (tabData.blockids == null || tabData.blockids.length == 0) {
         // close tab
         getApi().closeTab(ws.oid, tabId);
         deleteLayoutModelForTab(tabId);
@@ -609,4 +617,5 @@ export {
     registerGlobalKeys,
     tryReinjectKey,
     unsetControlShift,
+    uxCloseBlock,
 };
