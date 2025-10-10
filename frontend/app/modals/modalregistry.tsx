@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { MessageModal } from "@/app/modals/messagemodal";
+import { TosModal } from "@/app/onboarding/onboarding";
 import { AboutModal } from "./about";
-import { TosModal } from "./tos";
 import { UserInputModal } from "./userinputmodal";
 
 const modalRegistry: { [key: string]: React.ComponentType<any> } = {

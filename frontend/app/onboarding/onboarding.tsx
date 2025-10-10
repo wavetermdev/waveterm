@@ -9,7 +9,7 @@ import * as services from "@/store/services";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
 import { useEffect, useRef, useState } from "react";
 import { debounce } from "throttle-debounce";
-import { FlexiModal } from "./modal";
+import { FlexiModal } from "@/app/modals/modal";
 
 import { QuickTips } from "@/app/element/quicktips";
 import { atoms, globalStore } from "@/app/store/global";

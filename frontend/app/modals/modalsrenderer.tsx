@@ -3,10 +3,10 @@
 
 import { atoms, globalStore } from "@/store/global";
 import { modalsModel } from "@/store/modalmodel";
+import { TosModal } from "@/app/onboarding/onboarding";
 import * as jotai from "jotai";
 import { useEffect } from "react";
 import { getModalComponent } from "./modalregistry";
-import { TosModal } from "./tos";
 
 const ModalsRenderer = () => {
     const clientData = jotai.useAtomValue(atoms.client);
