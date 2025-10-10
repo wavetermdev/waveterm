@@ -134,26 +134,15 @@ function uxCloseBlock(blockId: string) {
 
     const workspaceLayoutModel = WorkspaceLayoutModel.getInstance();
     const isAIPanelOpen = workspaceLayoutModel.getAIPanelVisible();
-
     if (isAIPanelOpen && getStaticTabBlockCount() === 1) {
         const aiModel = WaveAIModel.getInstance();
         const shouldSwitchToAI = !aiModel.isChatEmpty || aiModel.hasNonEmptyInput();
-
         if (shouldSwitchToAI) {
-            replaceBlock(
-                blockId,
-                {
-                    meta: {
-                        view: "launcher",
-                    },
-                },
-                false
-            );
+            replaceBlock(blockId, { meta: { view: "launcher" } }, false);
             setTimeout(() => WaveAIModel.getInstance().focusInput(), 50);
             return;
         }
     }
-
     const layoutModel = getLayoutModelForStaticTab();
     const node = layoutModel.getNodeByBlockId(blockId);
     if (node) {
@@ -170,6 +159,22 @@ function genericClose() {
     if (isStaticTabPinned() && getStaticTabBlockCount() === 1) {
         TabBarModel.getInstance().jiggleActivePinnedTab();
         return;
+    }
+
+    const workspaceLayoutModel = WorkspaceLayoutModel.getInstance();
+    const isAIPanelOpen = workspaceLayoutModel.getAIPanelVisible();
+    if (isAIPanelOpen && getStaticTabBlockCount() === 1) {
+        const aiModel = WaveAIModel.getInstance();
+        const shouldSwitchToAI = !aiModel.isChatEmpty || aiModel.hasNonEmptyInput();
+        if (shouldSwitchToAI) {
+            const layoutModel = getLayoutModelForStaticTab();
+            const focusedNode = globalStore.get(layoutModel.focusedNode);
+            if (focusedNode) {
+                replaceBlock(focusedNode.data.blockId, { meta: { view: "launcher" } }, false);
+                setTimeout(() => WaveAIModel.getInstance().focusInput(), 50);
+                return;
+            }
+        }
     }
     const blockCount = getStaticTabBlockCount();
     if (blockCount === 0) {
