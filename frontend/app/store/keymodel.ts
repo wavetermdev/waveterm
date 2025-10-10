@@ -105,6 +105,11 @@ function shouldDispatchToBlock(e: WaveKeyboardEvent): boolean {
 }
 
 function genericClose() {
+    const focusType = focusManager.getFocusType();
+    if (focusType === "waveai") {
+        WorkspaceLayoutModel.getInstance().setAIPanelVisible(false);
+        return;
+    }
     const ws = globalStore.get(atoms.workspace);
     const tabId = globalStore.get(atoms.staticTabId);
     const tabORef = WOS.makeORef("tab", tabId);

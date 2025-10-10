@@ -34,6 +34,7 @@ export class WaveAIModel {
     containerWidth: jotai.PrimitiveAtom<number> = jotai.atom(0);
     codeBlockMaxWidth!: jotai.Atom<number>;
     inputAtom: jotai.PrimitiveAtom<string> = jotai.atom("");
+    isChatEmpty: boolean = true;
 
     private constructor() {
         const tabId = globalStore.get(atoms.staticTabId);
@@ -127,6 +128,7 @@ export class WaveAIModel {
 
     clearChat() {
         this.clearFiles();
+        this.isChatEmpty = true;
         const newChatId = crypto.randomUUID();
         globalStore.set(this.chatId, newChatId);
 
@@ -166,6 +168,11 @@ export class WaveAIModel {
         }
     }
 
+    hasNonEmptyInput(): boolean {
+        const input = globalStore.get(this.inputAtom);
+        return input != null && input.trim().length > 0;
+    }
+
     setModel(model: string) {
         const tabId = globalStore.get(atoms.staticTabId);
         RpcApi.SetMetaCommand(TabRpcClient, {
@@ -186,7 +193,9 @@ export class WaveAIModel {
         const chatId = globalStore.get(this.chatId);
         try {
             const chatData = await RpcApi.GetWaveAIChatCommand(TabRpcClient, { chatid: chatId });
-            return chatData?.messages ?? [];
+            const messages = chatData?.messages ?? [];
+            this.isChatEmpty = messages.length === 0;
+            return messages;
         } catch (error) {
             console.error("Failed to load chat:", error);
             this.setError("Failed to load chat. Starting new chat...");
@@ -200,6 +209,7 @@ export class WaveAIModel {
                 meta: { "waveai:chatid": newChatId },
             });
 
+            this.isChatEmpty = true;
             return [];
         }
     }
