@@ -106,6 +106,27 @@ To connect to a local Ollama instance:
 
 Note: The `ai:apitoken` is required but can be any value as Ollama ignores it. See [Ollama OpenAI compatibility docs](https://github.com/ollama/ollama/blob/main/docs/openai.md) for more details.
 
+### Docker Model Runner
+
+If you have Docker Desktop or running Docker CE it can run LLMs the Docker Model Runner. To connect to a Docker Model Runner use a preset similar to the following:
+
+```json
+{
+  "ai@docker-gemma": {
+    "display:name": "Docker Model Runner",
+    "display:order": 3,
+    "ai:*": true,
+    "ai:baseurl": "http://localhost:12434/engines/llama.cpp/v1",
+    "ai:name": "ai/gemma3n:latest",
+    "ai:model": "ai/gemma3n:latest",
+    "ai:apitoken": "not_used"
+  }
+}
+```
+
+Note: The `ai:apitoken` is required but can be any value as the Docker model runner ignores it.
+See [Docker Model Runner docs](https://docs.docker.com/ai/model-runner/) for details how to pull models, configure model parameters like context size, and other details.
+
 ### Azure OpenAI
 
 To connect to Azure AI services:
