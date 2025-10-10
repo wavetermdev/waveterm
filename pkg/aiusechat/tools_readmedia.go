@@ -235,6 +235,12 @@ func readMediaFileCallback(input any) (string, error) {
 			return fmt.Sprintf("data:%s;base64,%s", mimeType, base64Data), nil
 		}
 
+		// Check if resizing is needed
+		bounds := img.Bounds()
+		width := bounds.Dx()
+		height := bounds.Dy()
+		needsResize := width > MaxImageDimension || height > MaxImageDimension
+
 		// Resize if needed
 		resizedImg := resizeImage(img, MaxImageDimension)
 
@@ -244,8 +250,8 @@ func readMediaFileCallback(input any) (string, error) {
 			return "", fmt.Errorf("failed to encode resized image: %w", err)
 		}
 
-		// Only use resized version if it's smaller
-		if len(encodedData) < len(fileData) {
+		// Use resized version if image needed resizing OR if JPEG encoding is smaller
+		if needsResize || len(encodedData) < len(fileData) {
 			fileData = encodedData
 			mimeType = encodedMimeType
 		}
