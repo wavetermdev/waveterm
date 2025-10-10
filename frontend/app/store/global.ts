@@ -17,7 +17,7 @@ import {
 import { getWebServerEndpoint } from "@/util/endpoints";
 import { fetch } from "@/util/fetchutil";
 import { setPlatform } from "@/util/platformutil";
-import { deepCompareReturnPrev, getPrefixedSettings, isBlank } from "@/util/util";
+import { deepCompareReturnPrev, fireAndForget, getPrefixedSettings, isBlank } from "@/util/util";
 import { atom, Atom, PrimitiveAtom, useAtomValue } from "jotai";
 import { globalStore } from "./jotaiStore";
 import { modalsModel } from "./modalmodel";
@@ -481,12 +481,12 @@ async function createBlock(blockDef: BlockDef, magnified = false, ephemeral = fa
     return blockId;
 }
 
-async function replaceBlock(blockId: string, blockDef: BlockDef): Promise<string> {
+async function replaceBlock(blockId: string, blockDef: BlockDef, focus: boolean): Promise<string> {
     const layoutModel = getLayoutModelForStaticTab();
     const rtOpts: RuntimeOpts = { termsize: { rows: 25, cols: 80 } };
     const newBlockId = await ObjectService.CreateBlock(blockDef, rtOpts);
-    setTimeout(async () => {
-        await ObjectService.DeleteBlock(blockId);
+    setTimeout(() => {
+        fireAndForget(() => ObjectService.DeleteBlock(blockId));
     }, 300);
     const targetNodeId = layoutModel.getNodeByBlockId(blockId)?.id;
     if (targetNodeId == null) {
@@ -496,7 +496,7 @@ async function replaceBlock(blockId: string, blockDef: BlockDef): Promise<string
         type: LayoutTreeActionType.ReplaceNode,
         targetNodeId: targetNodeId,
         newNode: newLayoutNode(undefined, undefined, undefined, { blockId: newBlockId }),
-        focused: true,
+        focused: focus,
     };
     layoutModel.treeReducer(replaceNodeAction);
     return newBlockId;

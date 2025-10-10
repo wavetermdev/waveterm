@@ -354,6 +354,7 @@ const AIPanelComponentInner = memo(({ className, onClose }: AIPanelProps) => {
         // sendMessage uses UIMessageParts
         sendMessage({ parts: uiMessageParts });
 
+        model.isChatEmpty = false;
         globalStore.set(model.inputAtom, "");
         model.clearFiles();
 

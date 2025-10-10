@@ -1,8 +1,8 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { atoms, getSettingsKeyAtom } from "@/app/store/global";
 import { focusManager } from "@/app/store/focusManager";
+import { getSettingsKeyAtom } from "@/app/store/global";
 import { atomWithThrottle, boundNumber, fireAndForget } from "@/util/util";
 import { Atom, atom, Getter, PrimitiveAtom, Setter } from "jotai";
 import { splitAtom } from "jotai/utils";
@@ -1051,7 +1051,7 @@ export class LayoutModel {
                 animationTimeS: this.animationTimeS,
                 ready: this.ready,
                 disablePointerEvents: this.activeDrag,
-                onClose: () => fireAndForget(() => this.closeNode(nodeid)),
+                onClose: () => fireAndForget(() => this.closeNode(nodeid)), // no longer used (instead we use keymodel uxCloseBlock)
                 toggleMagnify: () => this.magnifyNodeToggle(nodeid),
                 focusNode: () => this.focusNode(nodeid),
                 dragHandleRef: createRef(),

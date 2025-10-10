@@ -8,9 +8,11 @@ import { Button } from "@/element/button";
 import { ContextMenuModel } from "@/store/contextmenu";
 import { fireAndForget } from "@/util/util";
 import clsx from "clsx";
+import { useAtomValue } from "jotai";
 import { forwardRef, memo, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { ObjectService } from "../store/services";
 import { makeORef, useWaveObjectValue } from "../store/wos";
+import { TabBarModel } from "./tabbar-model";
 import "./tab.scss";
 
 interface TabProps {
@@ -51,6 +53,9 @@ const Tab = memo(
             const [tabData, _] = useWaveObjectValue<Tab>(makeORef("tab", id));
             const [originalName, setOriginalName] = useState("");
             const [isEditable, setIsEditable] = useState(false);
+            const [isJiggling, setIsJiggling] = useState(false);
+
+            const jiggleTrigger = useAtomValue(TabBarModel.getInstance().jigglePinAtom);
 
             const editableRef = useRef<HTMLDivElement>(null);
             const editableTimeoutRef = useRef<NodeJS.Timeout>(null);
@@ -141,6 +146,16 @@ const Tab = memo(
                 }
             }, [isNew, tabWidth]);
 
+            useEffect(() => {
+                if (active && isPinned && jiggleTrigger > 0) {
+                    setIsJiggling(true);
+                    const timeout = setTimeout(() => {
+                        setIsJiggling(false);
+                    }, 500);
+                    return () => clearTimeout(timeout);
+                }
+            }, [jiggleTrigger, active, isPinned]);
+
             // Prevent drag from being triggered on mousedown
             const handleMouseDownOnClose = (event: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
                 event.stopPropagation();
@@ -224,7 +239,7 @@ const Tab = memo(
                         </div>
                         {isPinned ? (
                             <Button
-                                className="ghost grey pin"
+                                className={clsx("ghost grey pin", { jiggling: isJiggling })}
                                 onClick={(e) => {
                                     e.stopPropagation();
                                     onPinChange();

@@ -309,8 +309,12 @@ func DeleteTab(ctx context.Context, workspaceId string, tabId string, recursive 
 	// if the tab is active, determine new active tab
 	newActiveTabId := ws.ActiveTabId
 	if ws.ActiveTabId == tabId {
-		if len(ws.TabIds) > 0 && tabIdx != -1 {
-			newActiveTabId = ws.TabIds[max(0, min(tabIdx-1, len(ws.TabIds)-1))]
+		if len(ws.TabIds) > 0 {
+			if tabIdx != -1 {
+				newActiveTabId = ws.TabIds[max(0, min(tabIdx-1, len(ws.TabIds)-1))]
+			} else {
+				newActiveTabId = ws.TabIds[0]
+			}
 		} else if len(ws.PinnedTabIds) > 0 {
 			newActiveTabId = ws.PinnedTabIds[0]
 		} else {
