@@ -130,7 +130,7 @@ function genericClose() {
         // don't allow closing the last block in a pinned tab
         return;
     }
-if (tabData.blockids == null || tabData.blockids.length == 0) {
+    if (tabData.blockids == null || tabData.blockids.length == 0) {
         // close tab
         getApi().closeTab(ws.oid, tabId);
         deleteLayoutModelForTab(tabId);
