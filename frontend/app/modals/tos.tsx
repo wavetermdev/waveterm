@@ -4,6 +4,7 @@
 import Logo from "@/app/asset/logo.svg";
 import { Button } from "@/app/element/button";
 import { Toggle } from "@/app/element/toggle";
+import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
 import * as services from "@/store/services";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
 import { useEffect, useRef, useState } from "react";
@@ -11,24 +12,36 @@ import { debounce } from "throttle-debounce";
 import { FlexiModal } from "./modal";
 
 import { QuickTips } from "@/app/element/quicktips";
-import { atoms } from "@/app/store/global";
+import { atoms, globalStore } from "@/app/store/global";
 import { modalsModel } from "@/app/store/modalmodel";
+import * as WOS from "@/app/store/wos";
+import { RpcApi } from "@/app/store/wshclientapi";
+import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { fireAndForget } from "@/util/util";
 import { atom, PrimitiveAtom, useAtom, useAtomValue, useSetAtom } from "jotai";
 
-const pageNumAtom: PrimitiveAtom<number> = atom<number>(1);
+// Page flow:
+//   init -> (telemetry enabled) -> quicktips
+//   init -> (telemetry disabled) -> notelemetrystar -> quicktips
 
-const ModalPage1 = ({ isCompact }: { isCompact: boolean }) => {
+type PageName = "init" | "notelemetrystar" | "quicktips";
+
+const pageNameAtom: PrimitiveAtom<PageName> = atom<PageName>("init");
+
+const InitPage = ({ isCompact }: { isCompact: boolean }) => {
     const settings = useAtomValue(atoms.settingsAtom);
     const clientData = useAtomValue(atoms.client);
     const [telemetryEnabled, setTelemetryEnabled] = useState<boolean>(!!settings["telemetry:enabled"]);
-    const setPageNum = useSetAtom(pageNumAtom);
+    const setPageName = useSetAtom(pageNameAtom);
 
     const acceptTos = () => {
         if (!clientData.tosagreed) {
             fireAndForget(services.ClientService.AgreeTos);
         }
-        setPageNum(2);
+        if (telemetryEnabled) {
+            WorkspaceLayoutModel.getInstance().setAIPanelVisible(true);
+        }
+        setPageName(telemetryEnabled ? "quicktips" : "notelemetrystar");
     };
 
     const setTelemetry = (value: boolean) => {
@@ -129,7 +142,65 @@ const ModalPage1 = ({ isCompact }: { isCompact: boolean }) => {
     );
 };
 
-const ModalPage2 = ({ isCompact }: { isCompact: boolean }) => {
+const NoTelemetryStarPage = ({ isCompact }: { isCompact: boolean }) => {
+    const setPageName = useSetAtom(pageNameAtom);
+
+    const handleStarClick = async () => {
+        const clientId = globalStore.get(atoms.clientId);
+        await RpcApi.SetMetaCommand(TabRpcClient, {
+            oref: WOS.makeORef("client", clientId),
+            meta: { "onboarding:githubstar": true },
+        });
+        window.open("https://github.com/wavetermdev/waveterm", "_blank");
+        setPageName("quicktips");
+    };
+
+    const handleMaybeLater = async () => {
+        const clientId = globalStore.get(atoms.clientId);
+        await RpcApi.SetMetaCommand(TabRpcClient, {
+            oref: WOS.makeORef("client", clientId),
+            meta: { "onboarding:githubstar": false },
+        });
+        setPageName("quicktips");
+    };
+
+    return (
+        <div className="flex flex-col h-full">
+            <header className={`flex flex-col gap-2 border-b-0 p-0 mt-1 mb-4 w-full unselectable flex-shrink-0`}>
+                <div className={`flex justify-center`}>
+                    <Logo />
+                </div>
+                <div className="text-center text-[25px] font-normal text-foreground">Telemetry Disabled ✓</div>
+            </header>
+            <OverlayScrollbarsComponent
+                className="flex-1 overflow-y-auto min-h-0"
+                options={{ scrollbars: { autoHide: "never" } }}
+            >
+                <div className="flex flex-col items-center gap-6 w-full mb-2 unselectable">
+                    <div className="text-center text-secondary leading-relaxed max-w-md">
+                        <p className="mb-4">No problem, we respect your privacy.</p>
+                        <p className="mb-4">
+                            But, without usage data, we're flying blind. A GitHub star helps us know Wave is useful and
+                            worth maintaining.
+                        </p>
+                    </div>
+                </div>
+            </OverlayScrollbarsComponent>
+            <footer className={`unselectable flex-shrink-0 mt-2`}>
+                <div className="flex flex-row items-center justify-center gap-2.5 [&>button]:!px-5 [&>button]:!py-2 [&>button]:text-sm [&>button]:!h-[37px]">
+                    <Button className="outlined green font-[600]" onClick={handleStarClick}>
+                        ⭐ Star on GitHub
+                    </Button>
+                    <Button className="outlined grey font-[600]" onClick={handleMaybeLater}>
+                        Maybe Later
+                    </Button>
+                </div>
+            </footer>
+        </div>
+    );
+};
+
+const QuickTipsPage = ({ isCompact }: { isCompact: boolean }) => {
     const [tosOpen, setTosOpen] = useAtom(modalsModel.tosOpen);
 
     const handleGetStarted = () => {
@@ -167,7 +238,7 @@ const ModalPage2 = ({ isCompact }: { isCompact: boolean }) => {
 
 const TosModal = () => {
     const modalRef = useRef<HTMLDivElement | null>(null);
-    const [pageNum, setPageNum] = useAtom(pageNumAtom);
+    const [pageName, setPageName] = useAtom(pageNameAtom);
     const clientData = useAtomValue(atoms.client);
     const [isCompact, setIsCompact] = useState<boolean>(window.innerHeight < 800);
 
@@ -187,10 +258,10 @@ const TosModal = () => {
 
     useEffect(() => {
         if (clientData.tosagreed) {
-            setPageNum(2);
+            setPageName("quicktips");
         }
         return () => {
-            setPageNum(1);
+            setPageName("init");
         };
     }, []);
 
@@ -204,12 +275,15 @@ const TosModal = () => {
     }, []);
 
     let pageComp: React.JSX.Element = null;
-    switch (pageNum) {
-        case 1:
-            pageComp = <ModalPage1 isCompact={isCompact} />;
+    switch (pageName) {
+        case "init":
+            pageComp = <InitPage isCompact={isCompact} />;
             break;
-        case 2:
-            pageComp = <ModalPage2 isCompact={isCompact} />;
+        case "notelemetrystar":
+            pageComp = <NoTelemetryStarPage isCompact={isCompact} />;
+            break;
+        case "quicktips":
+            pageComp = <QuickTipsPage isCompact={isCompact} />;
             break;
     }
     if (pageComp == null) {
