@@ -141,3 +141,54 @@ body.nohover .tab.active .close {
 .tab.new-tab {
     animation: expandWidthAndFadeIn 0.1s forwards;
 }
+
+@keyframes jigglePinIcon {
+    0% {
+        transform: rotate(0deg);
+        color: inherit;
+    }
+    10% {
+        transform: rotate(-30deg);
+        color: rgb(255, 193, 7);
+    }
+    20% {
+        transform: rotate(30deg);
+        color: rgb(255, 193, 7);
+    }
+    30% {
+        transform: rotate(-30deg);
+        color: rgb(255, 193, 7);
+    }
+    40% {
+        transform: rotate(30deg);
+        color: rgb(255, 193, 7);
+    }
+    50% {
+        transform: rotate(-15deg);
+        color: rgb(255, 193, 7);
+    }
+    60% {
+        transform: rotate(15deg);
+        color: rgb(255, 193, 7);
+    }
+    70% {
+        transform: rotate(-15deg);
+        color: rgb(255, 193, 7);
+    }
+    80% {
+        transform: rotate(15deg);
+        color: rgb(255, 193, 7);
+    }
+    90% {
+        transform: rotate(0deg);
+        color: rgb(255, 193, 7);
+    }
+    100% {
+        transform: rotate(0deg);
+        color: inherit;
+    }
+}
+
+.pin.jiggling i {
+    animation: jigglePinIcon 0.5s ease-in-out;
+}
