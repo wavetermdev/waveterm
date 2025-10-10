@@ -17,7 +17,7 @@ import {
 import { getWebServerEndpoint } from "@/util/endpoints";
 import { fetch } from "@/util/fetchutil";
 import { setPlatform } from "@/util/platformutil";
-import { deepCompareReturnPrev, getPrefixedSettings, isBlank } from "@/util/util";
+import { deepCompareReturnPrev, fireAndForget, getPrefixedSettings, isBlank } from "@/util/util";
 import { atom, Atom, PrimitiveAtom, useAtomValue } from "jotai";
 import { globalStore } from "./jotaiStore";
 import { modalsModel } from "./modalmodel";
@@ -485,8 +485,8 @@ async function replaceBlock(blockId: string, blockDef: BlockDef, focus: boolean)
     const layoutModel = getLayoutModelForStaticTab();
     const rtOpts: RuntimeOpts = { termsize: { rows: 25, cols: 80 } };
     const newBlockId = await ObjectService.CreateBlock(blockDef, rtOpts);
-    setTimeout(async () => {
-        await ObjectService.DeleteBlock(blockId);
+    setTimeout(() => {
+        fireAndForget(() => ObjectService.DeleteBlock(blockId));
     }, 300);
     const targetNodeId = layoutModel.getNodeByBlockId(blockId)?.id;
     if (targetNodeId == null) {
