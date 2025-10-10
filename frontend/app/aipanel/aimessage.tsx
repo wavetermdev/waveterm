@@ -79,11 +79,7 @@ const AIToolUse = memo(({ part }: AIToolUseProps) => {
 
     const statusIcon = toolData.status === "completed" ? "✓" : toolData.status === "error" ? "✗" : "•";
     const statusColor =
-        toolData.status === "completed"
-            ? "text-green-400"
-            : toolData.status === "error"
-              ? "text-red-400"
-              : "text-gray-400";
+        toolData.status === "completed" ? "text-success" : toolData.status === "error" ? "text-error" : "text-gray-400";
 
     const effectiveApproval = userApprovalOverride || toolData.approval;
 

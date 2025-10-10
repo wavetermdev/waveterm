@@ -529,9 +529,7 @@ const AIPanelComponentInner = memo(({ className, onClose }: AIPanelProps) => {
                                 <AIWelcomeMessage />
                             </div>
                         ) : (
-                            <div className="flex-1 min-h-0" onContextMenu={handleMessagesContextMenu}>
-                                <AIPanelMessages messages={messages} status={status} />
-                            </div>
+                            <AIPanelMessages messages={messages} status={status} onContextMenu={handleMessagesContextMenu} />
                         )}
                         {errorMessage && (
                             <AIErrorMessage errorMessage={errorMessage} onClear={() => model.clearError()} />

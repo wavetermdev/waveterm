@@ -152,7 +152,7 @@ const CodeBlock = ({ children, onClickExecute, codeBlockMaxWidthAtom }: CodeBloc
     return (
         <div
             className={cn("rounded-lg overflow-hidden bg-black my-4", codeBlockMaxWidth && "max-w-full")}
-            style={codeBlockMaxWidth ? { maxWidth: `${codeBlockMaxWidth}px` } : undefined}
+            style={codeBlockMaxWidth ? { maxWidth: codeBlockMaxWidth, minWidth: Math.min(400, codeBlockMaxWidth) } : undefined}
         >
             <div className="flex items-center justify-between pl-3 pr-2 pt-2 pb-1.5">
                 <span className="text-[11px] text-white/50">{language}</span>
