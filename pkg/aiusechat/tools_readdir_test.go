@@ -4,8 +4,10 @@
 package aiusechat
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -139,13 +141,91 @@ func TestReadDirMaxEntries(t *testing.T) {
 
 	resultMap := result.(map[string]any)
 	entryCount := resultMap["entry_count"].(int)
+	totalEntries := resultMap["total_entries"].(int)
 
 	if entryCount != maxEntries {
 		t.Errorf("Expected %d entries, got %d", maxEntries, entryCount)
 	}
 
+	// Verify total_entries reports the original count, not the truncated count
+	if totalEntries != 10 {
+		t.Errorf("Expected total_entries to be 10, got %d", totalEntries)
+	}
+
 	if _, ok := resultMap["truncated"]; !ok {
 		t.Error("Expected truncated field to be present")
+	}
+
+	// Verify the truncation message includes the correct total
+	truncMsg, ok := resultMap["truncated_message"].(string)
+	if !ok {
+		t.Error("Expected truncated_message to be present")
+	}
+	expectedMsg := fmt.Sprintf("Directory listing truncated to %d entries (out of %d total)", maxEntries, 10)
+	if !strings.Contains(truncMsg, expectedMsg[:len(expectedMsg)-1]) {
+		t.Errorf("Expected truncated_message to contain %q, got %q", expectedMsg, truncMsg)
+	}
+}
+
+func TestReadDirSortBeforeTruncate(t *testing.T) {
+	// Create a temporary test directory
+	tmpDir, err := os.MkdirTemp("", "readdir_test_sort")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	// Create files with names that would sort alphabetically before directories
+	// but we want directories to appear first
+	for i := 0; i < 5; i++ {
+		testFile := filepath.Join(tmpDir, fmt.Sprintf("a_file_%d.txt", i))
+		if err := os.WriteFile(testFile, []byte("test"), 0644); err != nil {
+			t.Fatalf("Failed to create test file: %v", err)
+		}
+	}
+
+	// Create directories with names that sort alphabetically after the files
+	for i := 0; i < 3; i++ {
+		testDir := filepath.Join(tmpDir, fmt.Sprintf("z_dir_%d", i))
+		if err := os.Mkdir(testDir, 0755); err != nil {
+			t.Fatalf("Failed to create test dir: %v", err)
+		}
+	}
+
+	// Test with max_entries=5 (less than total of 8)
+	// All 3 directories should still appear because they're sorted first
+	maxEntries := 5
+	input := map[string]any{
+		"path":        tmpDir,
+		"max_entries": maxEntries,
+	}
+
+	result, err := readDirCallback(input)
+	if err != nil {
+		t.Fatalf("readDirCallback failed: %v", err)
+	}
+
+	resultMap := result.(map[string]any)
+	entries := resultMap["entries"].([]map[string]any)
+
+	// Count directories in the result
+	dirCount := 0
+	for _, entry := range entries {
+		if entry["is_dir"].(bool) {
+			dirCount++
+		}
+	}
+
+	// All 3 directories should be present because sorting happens before truncation
+	if dirCount != 3 {
+		t.Errorf("Expected 3 directories in truncated results, got %d", dirCount)
+	}
+
+	// First 3 entries should be directories
+	for i := 0; i < 3; i++ {
+		if !entries[i]["is_dir"].(bool) {
+			t.Errorf("Expected entry %d to be a directory, but it was a file", i)
+		}
 	}
 }
 

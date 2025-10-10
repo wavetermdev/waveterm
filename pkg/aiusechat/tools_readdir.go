@@ -74,12 +74,8 @@ func readDirCallback(input any) (any, error) {
 		return nil, fmt.Errorf("failed to read directory: %w", err)
 	}
 
-	maxEntries := *params.MaxEntries
-	var truncated bool
-	if len(entries) > maxEntries {
-		entries = entries[:maxEntries]
-		truncated = true
-	}
+	// Keep track of the original total before truncation
+	totalEntries := len(entries)
 
 	// Sort entries: directories first, then files, alphabetically within each group
 	sort.Slice(entries, func(i, j int) bool {
@@ -88,6 +84,14 @@ func readDirCallback(input any) (any, error) {
 		}
 		return entries[i].Name() < entries[j].Name()
 	})
+
+	// Truncate after sorting to ensure directories come first
+	maxEntries := *params.MaxEntries
+	var truncated bool
+	if len(entries) > maxEntries {
+		entries = entries[:maxEntries]
+		truncated = true
+	}
 
 	var entryList []map[string]any
 	for _, entry := range entries {
@@ -131,14 +135,14 @@ func readDirCallback(input any) (any, error) {
 		"path":          params.Path,
 		"absolute_path": expandedPath,
 		"entry_count":   len(entryList),
-		"total_entries": len(entries),
+		"total_entries": totalEntries,
 		"entries":       entryList,
 		"listing":       strings.TrimSuffix(listing.String(), "\n"),
 	}
 
 	if truncated {
 		result["truncated"] = true
-		result["truncated_message"] = fmt.Sprintf("Directory listing truncated to %d entries (out of %d+ total). Increase max_entries to see more.", maxEntries, maxEntries)
+		result["truncated_message"] = fmt.Sprintf("Directory listing truncated to %d entries (out of %d total). Increase max_entries to see more.", len(entryList), totalEntries)
 	}
 
 	// Get absolute path of parent directory for context
