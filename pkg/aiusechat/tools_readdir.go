@@ -5,21 +5,33 @@ package aiusechat
 
 import (
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"sort"
-	"strings"
+	"time"
 
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 )
 
-const ReadDirDefaultMaxEntries = 1000
+const ReadDirDefaultMaxEntries = 500
+const ReadDirHardMaxEntries = 10000
 
 type readDirParams struct {
 	Path       string `json:"path"`
 	MaxEntries *int   `json:"max_entries"`
+}
+
+type DirEntryOut struct {
+	Name         string `json:"name"`
+	Dir          bool   `json:"dir,omitempty"`
+	Symlink      bool   `json:"symlink,omitempty"`
+	Size         int64  `json:"size,omitempty"`
+	Mode         string `json:"mode"`
+	Modified     string `json:"modified"`
+	ModifiedTime string `json:"modified_time"`
 }
 
 func parseReadDirInput(input any) (*readDirParams, error) {
@@ -44,6 +56,10 @@ func parseReadDirInput(input any) (*readDirParams, error) {
 
 	if *result.MaxEntries < 1 {
 		return nil, fmt.Errorf("max_entries must be at least 1, got %d", *result.MaxEntries)
+	}
+
+	if *result.MaxEntries > ReadDirHardMaxEntries {
+		return nil, fmt.Errorf("max_entries cannot exceed %d, got %d", ReadDirHardMaxEntries, *result.MaxEntries)
 	}
 
 	return result, nil
@@ -77,10 +93,34 @@ func readDirCallback(input any) (any, error) {
 	// Keep track of the original total before truncation
 	totalEntries := len(entries)
 
+	// Build a map of actual directory status, checking symlink targets
+	isDirMap := make(map[string]bool)
+	symlinkCount := 0
+	for _, entry := range entries {
+		name := entry.Name()
+		if entry.Type()&fs.ModeSymlink != 0 {
+			if symlinkCount < 1000 {
+				symlinkCount++
+				fullPath := filepath.Join(expandedPath, name)
+				if info, err := os.Stat(fullPath); err == nil {
+					isDirMap[name] = info.IsDir()
+				} else {
+					isDirMap[name] = entry.IsDir()
+				}
+			} else {
+				isDirMap[name] = entry.IsDir()
+			}
+		} else {
+			isDirMap[name] = entry.IsDir()
+		}
+	}
+
 	// Sort entries: directories first, then files, alphabetically within each group
 	sort.Slice(entries, func(i, j int) bool {
-		if entries[i].IsDir() != entries[j].IsDir() {
-			return entries[i].IsDir()
+		iIsDir := isDirMap[entries[i].Name()]
+		jIsDir := isDirMap[entries[j].Name()]
+		if iIsDir != jIsDir {
+			return iIsDir
 		}
 		return entries[i].Name() < entries[j].Name()
 	})
@@ -93,42 +133,30 @@ func readDirCallback(input any) (any, error) {
 		truncated = true
 	}
 
-	var entryList []map[string]any
+	var entryList []DirEntryOut
 	for _, entry := range entries {
 		info, err := entry.Info()
 		if err != nil {
-			// Skip entries we can't stat
 			continue
 		}
 
-		entryData := map[string]any{
-			"name":     entry.Name(),
-			"is_dir":   entry.IsDir(),
-			"mode":     info.Mode().String(),
-			"modified": utilfn.FormatRelativeTime(info.ModTime()),
+		isDir := isDirMap[entry.Name()]
+		isSymlink := entry.Type()&fs.ModeSymlink != 0
+
+		entryData := DirEntryOut{
+			Name:         entry.Name(),
+			Dir:          isDir,
+			Symlink:      isSymlink,
+			Mode:         info.Mode().String(),
+			Modified:     utilfn.FormatRelativeTime(info.ModTime()),
+			ModifiedTime: info.ModTime().UTC().Format(time.RFC3339),
 		}
 
-		if !entry.IsDir() {
-			entryData["size"] = info.Size()
+		if !isDir {
+			entryData.Size = info.Size()
 		}
 
 		entryList = append(entryList, entryData)
-	}
-
-	// Create a formatted directory listing
-	var listing strings.Builder
-	for _, entry := range entryList {
-		name := entry["name"].(string)
-		isDir := entry["is_dir"].(bool)
-		mode := entry["mode"].(string)
-		modified := entry["modified"].(string)
-
-		if isDir {
-			listing.WriteString(fmt.Sprintf("[DIR]  %-40s  %s  %s\n", name, mode, modified))
-		} else {
-			size := entry["size"].(int64)
-			listing.WriteString(fmt.Sprintf("[FILE] %-40s  %10d  %s  %s\n", name, size, mode, modified))
-		}
 	}
 
 	result := map[string]any{
@@ -137,7 +165,6 @@ func readDirCallback(input any) (any, error) {
 		"entry_count":   len(entryList),
 		"total_entries": totalEntries,
 		"entries":       entryList,
-		"listing":       strings.TrimSuffix(listing.String(), "\n"),
 	}
 
 	if truncated {
@@ -145,7 +172,6 @@ func readDirCallback(input any) (any, error) {
 		result["truncated_message"] = fmt.Sprintf("Directory listing truncated to %d entries (out of %d total). Increase max_entries to see more.", len(entryList), totalEntries)
 	}
 
-	// Get absolute path of parent directory for context
 	parentDir := filepath.Dir(expandedPath)
 	if parentDir != expandedPath {
 		result["parent_dir"] = parentDir
@@ -171,8 +197,9 @@ func GetReadDirToolDefinition() uctypes.ToolDefinition {
 				"max_entries": map[string]any{
 					"type":        "integer",
 					"minimum":     1,
-					"default":     1000,
-					"description": "Maximum number of entries to return. Defaults to 1000.",
+					"maximum":     10000,
+					"default":     500,
+					"description": "Maximum number of entries to return. Defaults to 500, max 10000.",
 				},
 			},
 			"required":             []string{"path"},
@@ -183,7 +210,7 @@ func GetReadDirToolDefinition() uctypes.ToolDefinition {
 			if err != nil {
 				return fmt.Sprintf("error parsing input: %v", err)
 			}
-			return fmt.Sprintf("reading directory %q", parsed.Path)
+			return fmt.Sprintf("reading directory %q (max_entries: %d)", parsed.Path, *parsed.MaxEntries)
 		},
 		ToolAnyCallback: readDirCallback,
 		ToolApproval: func(input any) string {

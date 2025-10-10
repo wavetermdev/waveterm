@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
 	"github.com/wavetermdev/waveterm/pkg/util/readutil"
@@ -179,7 +180,7 @@ func readTextFileCallback(input any) (any, error) {
 		"total_size":    totalSize,
 		"data":          data,
 		"modified":      utilfn.FormatRelativeTime(modTime),
-		"modified_time": modTime.UTC().Format("2006-01-02 15:04:05 UTC"),
+		"modified_time": modTime.UTC().Format(time.RFC3339),
 		"mode":          fileInfo.Mode().String(),
 	}
 	if stopReason != "" {
