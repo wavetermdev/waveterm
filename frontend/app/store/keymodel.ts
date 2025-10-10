@@ -105,6 +105,33 @@ function shouldDispatchToBlock(e: WaveKeyboardEvent): boolean {
 }
 
 function uxCloseBlock(blockId: string) {
+    const workspaceLayoutModel = WorkspaceLayoutModel.getInstance();
+    const isAIPanelOpen = workspaceLayoutModel.getAIPanelVisible();
+    
+    const tabId = globalStore.get(atoms.staticTabId);
+    const tabORef = WOS.makeORef("tab", tabId);
+    const tabAtom = WOS.getWaveObjectAtom<Tab>(tabORef);
+    const tabData = globalStore.get(tabAtom);
+    
+    if (isAIPanelOpen && tabData?.blockids?.length === 1) {
+        const aiModel = WaveAIModel.getInstance();
+        const shouldSwitchToAI = !aiModel.isChatEmpty || aiModel.hasNonEmptyInput();
+        
+        if (shouldSwitchToAI) {
+            replaceBlock(
+                blockId,
+                {
+                    meta: {
+                        view: "launcher",
+                    },
+                },
+                false
+            );
+            setTimeout(() => WaveAIModel.getInstance().focusInput(), 50);
+            return;
+        }
+    }
+    
     const layoutModel = getLayoutModelForStaticTab();
     const node = layoutModel.getNodeByBlockId(blockId);
     if (node) {
@@ -481,11 +508,15 @@ function registerGlobalKeys() {
         if (blockId == null) {
             return true;
         }
-        replaceBlock(blockId, {
-            meta: {
-                view: "launcher",
+        replaceBlock(
+            blockId,
+            {
+                meta: {
+                    view: "launcher",
+                },
             },
-        });
+            true
+        );
         return true;
     });
     globalKeyMap.set("Cmd:g", () => {

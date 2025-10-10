@@ -481,7 +481,7 @@ async function createBlock(blockDef: BlockDef, magnified = false, ephemeral = fa
     return blockId;
 }
 
-async function replaceBlock(blockId: string, blockDef: BlockDef): Promise<string> {
+async function replaceBlock(blockId: string, blockDef: BlockDef, focus: boolean): Promise<string> {
     const layoutModel = getLayoutModelForStaticTab();
     const rtOpts: RuntimeOpts = { termsize: { rows: 25, cols: 80 } };
     const newBlockId = await ObjectService.CreateBlock(blockDef, rtOpts);
@@ -496,7 +496,7 @@ async function replaceBlock(blockId: string, blockDef: BlockDef): Promise<string
         type: LayoutTreeActionType.ReplaceNode,
         targetNodeId: targetNodeId,
         newNode: newLayoutNode(undefined, undefined, undefined, { blockId: newBlockId }),
-        focused: true,
+        focused: focus,
     };
     layoutModel.treeReducer(replaceNodeAction);
     return newBlockId;

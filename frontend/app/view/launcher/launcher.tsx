@@ -124,7 +124,7 @@ export class LauncherViewModel implements ViewModel {
 
     async handleWidgetSelect(widget: WidgetConfigType) {
         try {
-            await replaceBlock(this.blockId, widget.blockdef);
+            await replaceBlock(this.blockId, widget.blockdef, true);
         } catch (error) {
             console.error("Error replacing block:", error);
         }
