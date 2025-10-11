@@ -12,6 +12,7 @@ import { debounce } from "throttle-debounce";
 import { FlexiModal } from "@/app/modals/modal";
 
 import { QuickTips } from "@/app/element/quicktips";
+import { OnboardingFeatures } from "@/app/onboarding/onboarding-features";
 import { atoms, globalStore } from "@/app/store/global";
 import { modalsModel } from "@/app/store/modalmodel";
 import * as WOS from "@/app/store/wos";
@@ -21,10 +22,10 @@ import { fireAndForget } from "@/util/util";
 import { atom, PrimitiveAtom, useAtom, useAtomValue, useSetAtom } from "jotai";
 
 // Page flow:
-//   init -> (telemetry enabled) -> quicktips
-//   init -> (telemetry disabled) -> notelemetrystar -> quicktips
+//   init -> (telemetry enabled) -> features
+//   init -> (telemetry disabled) -> notelemetrystar -> features
 
-type PageName = "init" | "notelemetrystar" | "quicktips";
+type PageName = "init" | "notelemetrystar" | "features" | "quicktips";
 
 const pageNameAtom: PrimitiveAtom<PageName> = atom<PageName>("init");
 
@@ -41,7 +42,7 @@ const InitPage = ({ isCompact }: { isCompact: boolean }) => {
         if (telemetryEnabled) {
             WorkspaceLayoutModel.getInstance().setAIPanelVisible(true);
         }
-        setPageName(telemetryEnabled ? "quicktips" : "notelemetrystar");
+        setPageName(telemetryEnabled ? "features" : "notelemetrystar");
     };
 
     const setTelemetry = (value: boolean) => {
@@ -152,7 +153,7 @@ const NoTelemetryStarPage = ({ isCompact }: { isCompact: boolean }) => {
             meta: { "onboarding:githubstar": true },
         });
         window.open("https://github.com/wavetermdev/waveterm", "_blank");
-        setPageName("quicktips");
+        setPageName("features");
     };
 
     const handleMaybeLater = async () => {
@@ -161,7 +162,7 @@ const NoTelemetryStarPage = ({ isCompact }: { isCompact: boolean }) => {
             oref: WOS.makeORef("client", clientId),
             meta: { "onboarding:githubstar": false },
         });
-        setPageName("quicktips");
+        setPageName("features");
     };
 
     return (
@@ -198,6 +199,16 @@ const NoTelemetryStarPage = ({ isCompact }: { isCompact: boolean }) => {
             </footer>
         </div>
     );
+};
+
+const FeaturesPage = () => {
+    const [tosOpen, setTosOpen] = useAtom(modalsModel.tosOpen);
+
+    const handleComplete = () => {
+        setTosOpen(false);
+    };
+
+    return <OnboardingFeatures onComplete={handleComplete} />;
 };
 
 const QuickTipsPage = ({ isCompact }: { isCompact: boolean }) => {
@@ -258,7 +269,7 @@ const TosModal = () => {
 
     useEffect(() => {
         if (clientData.tosagreed) {
-            setPageName("quicktips");
+            setPageName("features");
         }
         return () => {
             setPageName("init");
@@ -282,6 +293,9 @@ const TosModal = () => {
         case "notelemetrystar":
             pageComp = <NoTelemetryStarPage isCompact={isCompact} />;
             break;
+        case "features":
+            pageComp = <FeaturesPage />;
+            break;
         case "quicktips":
             pageComp = <QuickTipsPage isCompact={isCompact} />;
             break;
@@ -291,9 +305,10 @@ const TosModal = () => {
     }
 
     const paddingClass = isCompact ? "!py-3 !px-[30px]" : "!p-[30px]";
+    const widthClass = pageName === "features" ? "w-[800px]" : "w-[560px]";
 
     return (
-        <FlexiModal className={`w-[560px] rounded-[10px] ${paddingClass}`} ref={modalRef}>
+        <FlexiModal className={`${widthClass} rounded-[10px] ${paddingClass}`} ref={modalRef}>
             <div className="flex flex-col w-full h-full">{pageComp}</div>
         </FlexiModal>
     );

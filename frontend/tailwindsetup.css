@@ -97,3 +97,14 @@ svg [aria-label="tip"] g path {
     overflow: hidden;
     text-overflow: ellipsis;
 }
+
+@keyframes float-up {
+    0% {
+        transform: translate(-50%, 0);
+        opacity: 1;
+    }
+    100% {
+        transform: translate(-50%, -40px);
+        opacity: 0;
+    }
+}
