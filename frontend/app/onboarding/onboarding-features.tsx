@@ -9,6 +9,7 @@ import { isMacOS } from "@/util/platformutil";
 import { cn, makeIconClass } from "@/util/util";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
 import { useLayoutEffect, useRef, useState } from "react";
+import { FakeChat } from "./fakechat";
 
 type FeaturePageName = "waveai" | "magnify" | "files";
 
@@ -185,6 +186,10 @@ const OnboardingFooter = ({
 };
 
 const WaveAIPage = ({ onNext, onSkip }: { onNext: () => void; onSkip: () => void }) => {
+    const isMac = isMacOS();
+    const shortcutKey = isMac ? "⌘-Shift-A" : "Alt-Shift-A";
+    const [fireClicked, setFireClicked] = useState(false);
+
     return (
         <div className="flex flex-col h-full">
             <header className="flex items-center gap-4 mb-6 w-full unselectable flex-shrink-0">
@@ -194,21 +199,47 @@ const WaveAIPage = ({ onNext, onSkip }: { onNext: () => void; onSkip: () => void
                 <div className="text-[25px] font-normal text-foreground">Wave AI</div>
             </header>
             <div className="flex-1 flex flex-row gap-0 min-h-0">
-                <OverlayScrollbarsComponent
-                    className="flex-1 overflow-y-auto"
-                    options={{ scrollbars: { autoHide: "never" } }}
-                >
-                    <div className="flex flex-col items-start gap-4 pr-6 unselectable text-secondary">
-                        <p>Wave AI helps you work smarter with intelligent assistance directly in your terminal.</p>
-                        <p>
-                            Ask questions, get code suggestions, and leverage AI-powered features to enhance your
-                            workflow.
-                        </p>
+                <div className="flex-1 flex flex-col items-center justify-center gap-8 pr-6 unselectable">
+                    <div className="flex flex-col items-start gap-6 max-w-md">
+                        <div className="flex h-[52px] px-3 items-center rounded-lg bg-hover text-accent text-[24px]">
+                            <i className="fa fa-sparkles" />
+                            <span className="font-bold ml-2 font-mono">AI</span>
+                        </div>
+                        
+                        <div className="flex flex-col items-start gap-4 text-secondary">
+                            <p>
+                                Wave AI is your terminal assistant with context. I can read your terminal output, analyze
+                                widgets, access files, and help you solve problems faster.
+                            </p>
+                            
+                            <div className="flex items-start gap-3 w-full">
+                                <i className="fa fa-sparkles text-accent text-lg mt-1 flex-shrink-0" />
+                                <p>
+                                    Toggle the Wave AI panel with the{" "}
+                                    <span className="inline-flex h-[26px] px-1.5 items-center rounded-md box-border bg-hover text-accent text-[12px] align-middle">
+                                        <i className="fa fa-sparkles" />
+                                        <span className="font-bold ml-1 font-mono">AI</span>
+                                    </span>{" "}
+                                    button in the header (top left)
+                                </p>
+                            </div>
+                            
+                            <div className="flex items-start gap-3 w-full">
+                                <i className="fa fa-keyboard text-accent text-lg mt-1 flex-shrink-0" />
+                                <p>
+                                    Or use the keyboard shortcut <span className="font-mono font-semibold text-foreground whitespace-nowrap">{shortcutKey}</span> to quickly toggle
+                                </p>
+                            </div>
+                            
+                            <EmojiButton emoji="🔥" isClicked={fireClicked} onClick={() => setFireClicked(!fireClicked)} />
+                        </div>
                     </div>
-                </OverlayScrollbarsComponent>
+                </div>
                 <div className="w-[2px] bg-border flex-shrink-0"></div>
                 <div className="flex items-center justify-center pl-6 flex-shrink-0 w-[400px]">
-                    <div className="w-full h-[400px] bg-border/30 rounded"></div>
+                    <div className="w-full h-[400px] bg-background rounded border border-border/50 overflow-hidden">
+                        <FakeChat />
+                    </div>
                 </div>
             </div>
             <OnboardingFooter currentStep={1} totalSteps={3} onNext={onNext} onSkip={onSkip} />
