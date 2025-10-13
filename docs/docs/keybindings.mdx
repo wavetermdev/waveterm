@@ -4,8 +4,8 @@ id: "keybindings"
 title: "Key Bindings"
 ---
 
-import { Kbd, KbdChord } from "@site/src/components/kbd.tsx";
-import { PlatformProvider, PlatformSelectorButton } from "@site/src/components/platformcontext.tsx";
+import { Kbd, KbdChord } from "@site/src/components/kbd";
+import { PlatformProvider, PlatformSelectorButton } from "@site/src/components/platformcontext";
 
 <PlatformProvider>
 
@@ -26,6 +26,7 @@ Chords are shown with a + between the keys. You have 2 seconds to hit the 2nd ch
 | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | <Kbd k="Cmd:t"/>                                  | Open a new tab                                                                                                                                         |
 | <Kbd k="Cmd:n"/>                                  | Open a new block (defaults to a terminal block with the same connection and working directory). Switch to launcher using `app:defaultnewblock` setting |
+| <Kbd k="Cmd:Shift:a"/>                            | Toggle WaveAI panel visibility                                                                                                                         |
 | <Kbd k="Cmd:d"/>                                  | Split horizontally, open a new block to the right                                                                                                      |
 | <Kbd k="Cmd:Shift:d"/>                            | Split vertically, open a new block below                                                                                                               |
 | <KbdChord karr={["Ctrl:Shift:s", "ArrowUp"]}/>    | Split vertically, open a new block above                                                                                                               |
@@ -39,12 +40,13 @@ Chords are shown with a + between the keys. You have 2 seconds to hit the 2nd ch
 | <Kbd k="Cmd:g"/>                                  | Open the "connection" switcher                                                                                                                         |
 | <Kbd k="Cmd:i"/>                                  | Refocus the current block (useful if the block has lost input focus)                                                                                   |
 | <Kbd k="Ctrl:Shift"/>                             | Show block numbers                                                                                                                                     |
+| <Kbd k="Ctrl:Shift:0"/>                           | Focus WaveAI input                                                                                                                                     |
 | <Kbd k="Ctrl:Shift:1-9"/>                         | Switch to block number                                                                                                                                 |
 | <Kbd k="Ctrl:Shift:Arrows"/>                      | Move left, right, up, down between blocks                                                                                                              |
 | <Kbd k="Ctrl:Shift:k"/>                           | Replace the current block with a launcher block                                                                                                        |
 | <Kbd k="Cmd:1-9"/>                                | Switch to tab number                                                                                                                                   |
-| <Kbd k="Cmd:["/>                                  | Switch tab left                                                                                                                                        |
-| <Kbd k="Cmd:]"/>                                  | Switch tab right                                                                                                                                       |
+| <Kbd k="Cmd:["/> / <Kbd k="Shift:Cmd:["/>         | Switch tab left                                                                                                                                        |
+| <Kbd k="Cmd:]"/> / <Kbd k="Shift:Cmd:]"/>         | Switch tab right                                                                                                                                       |
 | <Kbd k="Cmd:Ctrl:1-9"/>                           | Switch to workspace number                                                                                                                             |
 | <Kbd k="Cmd:Shift:r"/>                            | Refresh the UI                                                                                                                                         |
 | <Kbd k="Ctrl:Shift:i"/>                           | Toggle terminal multi-input mode                                                                                                                       |

@@ -208,13 +208,7 @@ func CreateTab(ctx context.Context, workspaceId string, tabName string, activate
 	}
 
 	// The initial tab for the initial launch should be pinned
-	var meta waveobj.MetaMapType
-	if isInitialLaunch {
-		meta = waveobj.MetaMapType{
-			"waveai:panelopen": true,
-		}
-	}
-	tab, err := createTabObj(ctx, workspaceId, tabName, pinned || isInitialLaunch, meta)
+	tab, err := createTabObj(ctx, workspaceId, tabName, pinned || isInitialLaunch, nil)
 	if err != nil {
 		return "", fmt.Errorf("error creating tab: %w", err)
 	}
@@ -225,7 +219,7 @@ func CreateTab(ctx context.Context, workspaceId string, tabName string, activate
 		}
 	}
 
-	// No need to apply an initial layout for the initial launch, since the starter layout will get applied after TOS modal dismissal
+	// No need to apply an initial layout for the initial launch, since the starter layout will get applied after onboarding modal dismissal
 	if !isInitialLaunch {
 		err = ApplyPortableLayout(ctx, tab.OID, GetNewTabLayout(), true)
 		if err != nil {

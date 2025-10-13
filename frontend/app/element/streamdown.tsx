@@ -152,7 +152,11 @@ const CodeBlock = ({ children, onClickExecute, codeBlockMaxWidthAtom }: CodeBloc
     return (
         <div
             className={cn("rounded-lg overflow-hidden bg-black my-4", codeBlockMaxWidth && "max-w-full")}
-            style={codeBlockMaxWidth ? { maxWidth: codeBlockMaxWidth, minWidth: Math.min(400, codeBlockMaxWidth) } : undefined}
+            style={
+                codeBlockMaxWidth
+                    ? { maxWidth: codeBlockMaxWidth, minWidth: Math.min(400, codeBlockMaxWidth) }
+                    : undefined
+            }
         >
             <div className="flex items-center justify-between pl-3 pr-2 pt-2 pb-1.5">
                 <span className="text-[11px] text-white/50">{language}</span>
@@ -254,13 +258,19 @@ export const WaveStreamdown = ({
                 <td {...props} className="px-2 py-1.5 text-sm text-secondary" />
             ),
             ul: (props: React.HTMLAttributes<HTMLUListElement>) => (
-                <ul {...props} className="list-disc list-outside pl-6 my-2 text-secondary [&_ul]:my-1 [&_ol]:my-1" />
+                <ul
+                    {...props}
+                    className="list-disc list-outside pl-6 mt-1 mb-2 text-secondary [&_ul]:my-1 [&_ol]:my-1"
+                />
             ),
             ol: (props: React.HTMLAttributes<HTMLOListElement>) => (
-                <ol {...props} className="list-decimal list-outside pl-6 my-2 text-secondary [&_ul]:my-1 [&_ol]:my-1" />
+                <ol
+                    {...props}
+                    className="list-decimal list-outside pl-6 mt-1 mb-2 text-secondary [&_ul]:my-1 [&_ol]:my-1"
+                />
             ),
             li: (props: React.HTMLAttributes<HTMLLIElement>) => (
-                <li {...props} className="text-secondary leading-relaxed" />
+                <li {...props} className="text-secondary leading-snug" />
             ),
             blockquote: (props: React.HTMLAttributes<HTMLQuoteElement>) => (
                 <blockquote {...props} className="border-l-2 border-border pl-4 my-2 text-secondary italic" />
@@ -295,7 +305,7 @@ export const WaveStreamdown = ({
         <Streamdown
             parseIncompleteMarkdown={parseIncompleteMarkdown}
             className={cn(
-                "wave-streamdown text-secondary [&>*:first-child]:mt-0 [&>*:first-child>*:first-child]:mt-0",
+                "wave-streamdown text-secondary [&>*:first-child]:mt-0 [&>*:first-child>*:first-child]:mt-0 space-y-2",
                 className
             )}
             shikiTheme={[ShikiTheme, ShikiTheme]}

@@ -667,6 +667,7 @@ declare global {
         "vdom:correlationid"?: string;
         "vdom:route"?: string;
         "vdom:persist"?: boolean;
+        "onboarding:githubstar"?: boolean;
         count?: number;
     };
 
@@ -933,6 +934,7 @@ declare global {
         "wsh:cmd"?: string;
         "wsh:haderror"?: boolean;
         "conn:conntype"?: string;
+        "onboarding:feature"?: "waveai" | "magnify" | "wsh";
         "display:height"?: number;
         "display:width"?: number;
         "display:dpr"?: number;
@@ -949,6 +951,7 @@ declare global {
         "waveai:model"?: string;
         "waveai:inputtokens"?: number;
         "waveai:outputtokens"?: number;
+        "waveai:nativewebsearchcount"?: number;
         "waveai:requestcount"?: number;
         "waveai:toolusecount"?: number;
         "waveai:tooluseerrorcount"?: number;

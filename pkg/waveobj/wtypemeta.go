@@ -136,6 +136,8 @@ type MetaTSType struct {
 	VDomRoute         string `json:"vdom:route,omitempty"`
 	VDomPersist       bool   `json:"vdom:persist,omitempty"`
 
+	OnboardingGithubStar bool `json:"onboarding:githubstar,omitempty"` // for client
+
 	Count int `json:"count,omitempty"` // temp for cpu plot. will remove later
 }
 

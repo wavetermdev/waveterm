@@ -90,6 +90,7 @@ const Widgets = memo(() => {
                 view: "tips",
             },
         },
+        magnified: true,
     };
     const showHelp = fullConfig?.settings?.["widget:showhelp"] ?? true;
     const widgets = sortByDisplayOrder(fullConfig?.widgets);
