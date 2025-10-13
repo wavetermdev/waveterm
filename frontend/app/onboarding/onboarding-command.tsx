@@ -109,3 +109,22 @@ export const ViewLogoCommand = ({ onComplete }: { onComplete?: () => void }) => 
         </FakeCommand>
     );
 };
+
+export const EditBashrcCommand = ({ onComplete }: { onComplete?: () => void }) => {
+    const bashrcContent = `# Aliases
+alias ll="ls -lah"
+alias gst="git status"
+alias wave="wsh"
+
+# Custom prompt
+PS1="\\[\\e[32m\\]\\u@\\h\\[\\e[0m\\]:\\[\\e[34m\\]\\w\\[\\e[0m\\]\\$ "
+
+# PATH
+export PATH="$HOME/.local/bin:$PATH"`;
+
+    return (
+        <FakeCommand command="wsh edit ~/.bashrc" onComplete={onComplete}>
+            <FakeBlock icon="file-lines" name=".bashrc" editorText={bashrcContent} />
+        </FakeCommand>
+    );
+};

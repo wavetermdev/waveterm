@@ -3,6 +3,7 @@
 
 import { MagnifyIcon } from "@/app/element/magnify";
 import { WaveStreamdown } from "@/app/element/streamdown";
+import { CodeEditor } from "@/app/view/codeeditor/codeeditor";
 import { cn, makeIconClass } from "@/util/util";
 import { useLayoutEffect, useRef, useState } from "react";
 
@@ -13,9 +14,10 @@ export type FakeBlockProps = {
     className?: string;
     markdown?: string;
     imgsrc?: string;
+    editorText?: string;
 };
 
-export const FakeBlock = ({ icon, name, highlighted, className, markdown, imgsrc }: FakeBlockProps) => {
+export const FakeBlock = ({ icon, name, highlighted, className, markdown, imgsrc, editorText }: FakeBlockProps) => {
     return (
         <div
             className={cn(
@@ -33,7 +35,11 @@ export const FakeBlock = ({ icon, name, highlighted, className, markdown, imgsrc
                 <i className={makeIconClass("xmark-large", false) + " text-xs text-foreground/50"} />
             </div>
             <div className="flex-1 flex items-center justify-center overflow-auto p-4">
-                {imgsrc ? (
+                {editorText ? (
+                    <div className="w-full h-full">
+                        <CodeEditor blockId="fake-block" text={editorText} readonly={true} language="shell" />
+                    </div>
+                ) : imgsrc ? (
                     <img src={imgsrc} alt={name} className="max-w-full max-h-full object-contain" />
                 ) : markdown ? (
                     <div className="w-full">
