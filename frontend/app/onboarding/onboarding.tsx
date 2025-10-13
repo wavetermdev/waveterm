@@ -12,7 +12,6 @@ import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
 import { useEffect, useRef, useState } from "react";
 import { debounce } from "throttle-debounce";
 
-import { QuickTips } from "@/app/element/quicktips";
 import { OnboardingFeatures } from "@/app/onboarding/onboarding-features";
 import { atoms, globalStore } from "@/app/store/global";
 import { modalsModel } from "@/app/store/modalmodel";
@@ -26,7 +25,7 @@ import { atom, PrimitiveAtom, useAtom, useAtomValue, useSetAtom } from "jotai";
 //   init -> (telemetry enabled) -> features
 //   init -> (telemetry disabled) -> notelemetrystar -> features
 
-type PageName = "init" | "notelemetrystar" | "features" | "quicktips";
+type PageName = "init" | "notelemetrystar" | "features";
 
 const pageNameAtom: PrimitiveAtom<PageName> = atom<PageName>("init");
 
@@ -212,42 +211,6 @@ const FeaturesPage = () => {
     return <OnboardingFeatures onComplete={handleComplete} />;
 };
 
-const QuickTipsPage = ({ isCompact }: { isCompact: boolean }) => {
-    const [tosOpen, setTosOpen] = useAtom(modalsModel.tosOpen);
-
-    const handleGetStarted = () => {
-        setTosOpen(false);
-    };
-
-    return (
-        <div className="flex flex-col h-full">
-            <header
-                className={`flex flex-col gap-2 border-b-0 p-0 ${isCompact ? "mt-1 mb-4" : "mb-9"} w-full unselectable flex-shrink-0`}
-            >
-                <div className={`${isCompact ? "" : "mb-2.5"} flex justify-center`}>
-                    <Logo />
-                </div>
-                <div className="text-center text-[25px] font-normal text-foreground">Icons and Keybindings</div>
-            </header>
-            <OverlayScrollbarsComponent
-                className="flex-1 overflow-y-auto min-h-0"
-                options={{ scrollbars: { autoHide: "never" } }}
-            >
-                <div className="flex flex-col items-start gap-8 w-full mb-5 unselectable">
-                    <QuickTips />
-                </div>
-            </OverlayScrollbarsComponent>
-            <footer className={`unselectable flex-shrink-0 ${isCompact ? "mt-2" : "mt-5"}`}>
-                <div className="flex flex-row items-center justify-center [&>button]:!px-5 [&>button]:!py-2 [&>button]:text-sm [&>button:not(:first-child)]:ml-2.5">
-                    <Button className="font-[600]" onClick={handleGetStarted}>
-                        Get Started
-                    </Button>
-                </div>
-            </footer>
-        </div>
-    );
-};
-
 const OnboardingModal = () => {
     const modalRef = useRef<HTMLDivElement | null>(null);
     const [pageName, setPageName] = useAtom(pageNameAtom);
@@ -303,9 +266,6 @@ const OnboardingModal = () => {
             break;
         case "features":
             pageComp = <FeaturesPage />;
-            break;
-        case "quicktips":
-            pageComp = <QuickTipsPage isCompact={isCompact} />;
             break;
     }
     if (pageComp == null) {

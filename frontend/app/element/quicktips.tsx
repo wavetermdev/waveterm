@@ -168,6 +168,26 @@ const QuickTips = () => {
                         </a>
                     </div>
                 </div>
+                <div className="flex flex-row items-center">
+                    <IconBox>
+                        <i className="fa-solid fa-sharp fa-keyboard fa-fw" />
+                    </IconBox>
+                    <div>
+                        <a target="_blank" href="https://docs.waveterm.dev/keybindings" rel="noopener">
+                            All Keybindings
+                        </a>
+                    </div>
+                </div>
+                <div className="flex flex-row items-center">
+                    <IconBox>
+                        <i className="fa-solid fa-sharp fa-book fa-fw" />
+                    </IconBox>
+                    <div>
+                        <a target="_blank" href="https://docs.waveterm.dev" rel="noopener">
+                            Full Documentation
+                        </a>
+                    </div>
+                </div>
             </div>
         </div>
     );
