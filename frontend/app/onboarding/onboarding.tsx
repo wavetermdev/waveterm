@@ -4,13 +4,13 @@
 import Logo from "@/app/asset/logo.svg";
 import { Button } from "@/app/element/button";
 import { Toggle } from "@/app/element/toggle";
+import { FlexiModal } from "@/app/modals/modal";
 import { disableGlobalKeybindings, enableGlobalKeybindings } from "@/app/store/keymodel";
 import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
 import * as services from "@/store/services";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
 import { useEffect, useRef, useState } from "react";
 import { debounce } from "throttle-debounce";
-import { FlexiModal } from "@/app/modals/modal";
 
 import { QuickTips } from "@/app/element/quicktips";
 import { OnboardingFeatures } from "@/app/onboarding/onboarding-features";
@@ -248,7 +248,7 @@ const QuickTipsPage = ({ isCompact }: { isCompact: boolean }) => {
     );
 };
 
-const TosModal = () => {
+const OnboardingModal = () => {
     const modalRef = useRef<HTMLDivElement | null>(null);
     const [pageName, setPageName] = useAtom(pageNameAtom);
     const clientData = useAtomValue(atoms.client);
@@ -322,6 +322,6 @@ const TosModal = () => {
     );
 };
 
-TosModal.displayName = "TosModal";
+OnboardingModal.displayName = "OnboardingModal";
 
-export { TosModal };
+export { OnboardingModal };

@@ -934,6 +934,7 @@ declare global {
         "wsh:cmd"?: string;
         "wsh:haderror"?: boolean;
         "conn:conntype"?: string;
+        "onboarding:feature"?: "waveai" | "magnify" | "wsh";
         "display:height"?: number;
         "display:width"?: number;
         "display:dpr"?: number;

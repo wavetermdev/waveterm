@@ -5,8 +5,10 @@ import Logo from "@/app/asset/logo.svg";
 import { Button } from "@/app/element/button";
 import { EmojiButton } from "@/app/element/emojibutton";
 import { MagnifyIcon } from "@/app/element/magnify";
+import { RpcApi } from "@/app/store/wshclientapi";
+import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { isMacOS } from "@/util/platformutil";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { FakeChat } from "./fakechat";
 import { EditBashrcCommand, ViewLogoCommand, ViewShortcutsCommand } from "./onboarding-command";
 import { FakeLayout } from "./onboarding-layout";
@@ -33,10 +35,7 @@ const OnboardingFooter = ({
         <footer className="unselectable flex-shrink-0 mt-5 relative">
             <div className="absolute left-0 top-1/2 -translate-y-1/2 flex items-center gap-2">
                 {currentStep > 1 && onPrev && (
-                    <button
-                        className="text-muted cursor-pointer hover:text-foreground text-[13px]"
-                        onClick={onPrev}
-                    >
+                    <button className="text-muted cursor-pointer hover:text-foreground text-[13px]" onClick={onPrev}>
                         &lt; Prev
                     </button>
                 )}
@@ -65,6 +64,18 @@ const WaveAIPage = ({ onNext, onSkip }: { onNext: () => void; onSkip: () => void
     const isMac = isMacOS();
     const shortcutKey = isMac ? "⌘-Shift-A" : "Alt-Shift-A";
     const [fireClicked, setFireClicked] = useState(false);
+
+    const handleFireClick = () => {
+        setFireClicked(!fireClicked);
+        if (!fireClicked) {
+            RpcApi.RecordTEventCommand(TabRpcClient, {
+                event: "onboarding:fire",
+                props: {
+                    "onboarding:feature": "waveai",
+                },
+            });
+        }
+    };
 
     return (
         <div className="flex flex-col h-full">
@@ -111,11 +122,7 @@ const WaveAIPage = ({ onNext, onSkip }: { onNext: () => void; onSkip: () => void
                                 </p>
                             </div>
 
-                            <EmojiButton
-                                emoji="🔥"
-                                isClicked={fireClicked}
-                                onClick={() => setFireClicked(!fireClicked)}
-                            />
+                            <EmojiButton emoji="🔥" isClicked={fireClicked} onClick={handleFireClick} />
                         </div>
                     </div>
                 </div>
@@ -131,10 +138,30 @@ const WaveAIPage = ({ onNext, onSkip }: { onNext: () => void; onSkip: () => void
     );
 };
 
-const MagnifyBlocksPage = ({ onNext, onSkip, onPrev }: { onNext: () => void; onSkip: () => void; onPrev?: () => void }) => {
+const MagnifyBlocksPage = ({
+    onNext,
+    onSkip,
+    onPrev,
+}: {
+    onNext: () => void;
+    onSkip: () => void;
+    onPrev?: () => void;
+}) => {
     const isMac = isMacOS();
     const shortcutKey = isMac ? "⌘" : "Alt";
     const [fireClicked, setFireClicked] = useState(false);
+
+    const handleFireClick = () => {
+        setFireClicked(!fireClicked);
+        if (!fireClicked) {
+            RpcApi.RecordTEventCommand(TabRpcClient, {
+                event: "onboarding:fire",
+                props: {
+                    "onboarding:feature": "magnify",
+                },
+            });
+        }
+    };
 
     return (
         <div className="flex flex-col h-full">
@@ -163,7 +190,7 @@ const MagnifyBlocksPage = ({ onNext, onSkip, onPrev }: { onNext: () => void; onS
                         <p>
                             A quick {shortcutKey}-M to magnify and another {shortcutKey}-M to unmagnify
                         </p>
-                        <EmojiButton emoji="🔥" isClicked={fireClicked} onClick={() => setFireClicked(!fireClicked)} />
+                        <EmojiButton emoji="🔥" isClicked={fireClicked} onClick={handleFireClick} />
                     </div>
                 </div>
                 <div className="w-[2px] bg-border flex-shrink-0"></div>
@@ -181,6 +208,18 @@ const FilesPage = ({ onFinish, onPrev }: { onFinish: () => void; onPrev?: () => 
     const isMac = isMacOS();
     const [commandIndex, setCommandIndex] = useState(0);
     const [key, setKey] = useState(0);
+
+    const handleFireClick = () => {
+        setFireClicked(!fireClicked);
+        if (!fireClicked) {
+            RpcApi.RecordTEventCommand(TabRpcClient, {
+                event: "onboarding:fire",
+                props: {
+                    "onboarding:feature": "wsh",
+                },
+            });
+        }
+    };
 
     const commands = [
         (onComplete: () => void) => <EditBashrcCommand onComplete={onComplete} />,
@@ -243,11 +282,7 @@ const FilesPage = ({ onFinish, onPrev }: { onFinish: () => void; onPrev?: () => 
                                 and edit files wherever they are.
                             </p>
 
-                            <EmojiButton
-                                emoji="🔥"
-                                isClicked={fireClicked}
-                                onClick={() => setFireClicked(!fireClicked)}
-                            />
+                            <EmojiButton emoji="🔥" isClicked={fireClicked} onClick={handleFireClick} />
                         </div>
                     </div>
                 </div>
@@ -263,6 +298,13 @@ const FilesPage = ({ onFinish, onPrev }: { onFinish: () => void; onPrev?: () => 
 
 export const OnboardingFeatures = ({ onComplete }: { onComplete: () => void }) => {
     const [currentPage, setCurrentPage] = useState<FeaturePageName>("waveai");
+
+    useEffect(() => {
+        RpcApi.RecordTEventCommand(TabRpcClient, {
+            event: "onboarding:start",
+            props: {},
+        });
+    }, []);
 
     const handleNext = () => {
         if (currentPage === "waveai") {
@@ -281,6 +323,10 @@ export const OnboardingFeatures = ({ onComplete }: { onComplete: () => void }) =
     };
 
     const handleSkip = () => {
+        RpcApi.RecordTEventCommand(TabRpcClient, {
+            event: "onboarding:skip",
+            props: {},
+        });
         onComplete();
     };
 

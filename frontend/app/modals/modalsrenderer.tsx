@@ -1,7 +1,7 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { TosModal } from "@/app/onboarding/onboarding";
+import { OnboardingModal } from "@/app/onboarding/onboarding";
 import { atoms, globalStore } from "@/store/global";
 import { modalsModel } from "@/store/modalmodel";
 import * as jotai from "jotai";
@@ -20,10 +20,10 @@ const ModalsRenderer = () => {
         }
     }
     if (tosOpen) {
-        rtn.push(<TosModal key={TosModal.displayName} />);
+        rtn.push(<OnboardingModal key={OnboardingModal.displayName} />);
     }
     useEffect(() => {
-        if (!clientData.tosagreed || true) {
+        if (!clientData.tosagreed) {
             setTosOpen(true);
         }
     }, [clientData]);
