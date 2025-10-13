@@ -4,6 +4,7 @@
 import Logo from "@/app/asset/logo.svg";
 import { Button } from "@/app/element/button";
 import { Toggle } from "@/app/element/toggle";
+import { disableGlobalKeybindings, enableGlobalKeybindings } from "@/app/store/keymodel";
 import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
 import * as services from "@/store/services";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
@@ -282,6 +283,13 @@ const TosModal = () => {
         window.addEventListener("resize", debouncedUpdateModalHeight);
         return () => {
             window.removeEventListener("resize", debouncedUpdateModalHeight);
+        };
+    }, []);
+
+    useEffect(() => {
+        disableGlobalKeybindings();
+        return () => {
+            enableGlobalKeybindings();
         };
     }, []);
 

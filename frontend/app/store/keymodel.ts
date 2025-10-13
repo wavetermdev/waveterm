@@ -33,6 +33,7 @@ type KeyHandler = (event: WaveKeyboardEvent) => boolean;
 const simpleControlShiftAtom = jotai.atom(false);
 const globalKeyMap = new Map<string, (waveEvent: WaveKeyboardEvent) => boolean>();
 const globalChordMap = new Map<string, Map<string, KeyHandler>>();
+let globalKeybindingsDisabled = false;
 
 // track current chord state and timeout (for resetting)
 let activeChord: string | null = null;
@@ -84,6 +85,14 @@ function setControlShift() {
 function unsetControlShift() {
     globalStore.set(simpleControlShiftAtom, false);
     globalStore.set(atoms.controlShiftDelayAtom, false);
+}
+
+function disableGlobalKeybindings() {
+    globalKeybindingsDisabled = true;
+}
+
+function enableGlobalKeybindings() {
+    globalKeybindingsDisabled = false;
 }
 
 function shouldDispatchToBlock(e: WaveKeyboardEvent): boolean {
@@ -361,6 +370,9 @@ function checkKeyMap<T>(waveEvent: WaveKeyboardEvent, keyMap: Map<string, T>): [
 }
 
 function appHandleKeyDown(waveEvent: WaveKeyboardEvent): boolean {
+    if (globalKeybindingsDisabled) {
+        return false;
+    }
     const nativeEvent = (waveEvent as any).nativeEvent;
     if (lastHandledEvent != null && nativeEvent != null && lastHandledEvent === nativeEvent) {
         console.log("lastHandledEvent return false");
@@ -636,23 +648,10 @@ function getAllGlobalKeyBindings(): string[] {
     return allKeys;
 }
 
-// these keyboard events happen *anywhere*, even if you have focus in an input or somewhere else.
-function handleGlobalWaveKeyboardEvents(waveEvent: WaveKeyboardEvent): boolean {
-    for (const key of globalKeyMap.keys()) {
-        if (keyutil.checkKeyPressed(waveEvent, key)) {
-            const handler = globalKeyMap.get(key);
-            if (handler == null) {
-                return false;
-            }
-            return handler(waveEvent);
-        }
-    }
-    return false;
-}
-
 export {
     appHandleKeyDown,
-    getAllGlobalKeyBindings,
+    disableGlobalKeybindings,
+    enableGlobalKeybindings,
     getSimpleControlShiftAtom,
     globalRefocus,
     globalRefocusWithTimeout,
