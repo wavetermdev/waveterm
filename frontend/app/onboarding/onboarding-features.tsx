@@ -6,8 +6,8 @@ import { Button } from "@/app/element/button";
 import { EmojiButton } from "@/app/element/emojibutton";
 import { MagnifyIcon } from "@/app/element/magnify";
 import { isMacOS } from "@/util/platformutil";
-import { useState } from "react";
-import { CommandReveal } from "./onboarding-command";
+import { useEffect, useState } from "react";
+import { ViewShortcutsCommand, ViewLogoCommand } from "./onboarding-command";
 import { FakeLayout } from "./onboarding-layout";
 import { FakeChat } from "./fakechat";
 
@@ -166,6 +166,21 @@ const MagnifyBlocksPage = ({ onNext, onSkip }: { onNext: () => void; onSkip: () 
 
 const FilesPage = ({ onFinish }: { onFinish: () => void }) => {
     const [fireClicked, setFireClicked] = useState(false);
+    const isMac = isMacOS();
+    const [commandIndex, setCommandIndex] = useState(0);
+    const [key, setKey] = useState(0);
+
+    const commands = [
+        (onComplete: () => void) => <ViewShortcutsCommand isMac={isMac} onComplete={onComplete} />,
+        (onComplete: () => void) => <ViewLogoCommand onComplete={onComplete} />,
+    ];
+
+    const handleCommandComplete = () => {
+        setTimeout(() => {
+            setCommandIndex((prev) => (prev + 1) % commands.length);
+            setKey((prev) => prev + 1);
+        }, 1500);
+    };
 
     return (
         <div className="flex flex-col h-full">
@@ -222,9 +237,7 @@ const FilesPage = ({ onFinish }: { onFinish: () => void }) => {
                 </div>
                 <div className="w-[2px] bg-border flex-shrink-0"></div>
                 <div className="flex items-center justify-center pl-6 flex-shrink-0 w-[400px]">
-                    <div className="w-full h-[400px] bg-background rounded border border-border/50 p-4 flex flex-col">
-                        <CommandReveal command="wsh view keyboard-shortcuts.md" />
-                    </div>
+                    {commands[commandIndex](handleCommandComplete)}
                 </div>
             </div>
             <OnboardingFooter currentStep={3} totalSteps={3} onNext={onFinish} />

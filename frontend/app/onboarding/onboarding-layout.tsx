@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { MagnifyIcon } from "@/app/element/magnify";
+import { WaveStreamdown } from "@/app/element/streamdown";
 import { cn, makeIconClass } from "@/util/util";
 import { useLayoutEffect, useRef, useState } from "react";
 
@@ -10,9 +11,11 @@ export type FakeBlockProps = {
     name: string;
     highlighted?: boolean;
     className?: string;
+    markdown?: string;
+    imgsrc?: string;
 };
 
-export const FakeBlock = ({ icon, name, highlighted, className }: FakeBlockProps) => {
+export const FakeBlock = ({ icon, name, highlighted, className, markdown, imgsrc }: FakeBlockProps) => {
     return (
         <div
             className={cn(
@@ -29,8 +32,16 @@ export const FakeBlock = ({ icon, name, highlighted, className }: FakeBlockProps
                 </span>
                 <i className={makeIconClass("xmark-large", false) + " text-xs text-foreground/50"} />
             </div>
-            <div className="flex-1 flex items-center justify-center">
-                <i className={makeIconClass(icon, false) + " text-4xl text-foreground/50"} />
+            <div className="flex-1 flex items-center justify-center overflow-auto p-4">
+                {imgsrc ? (
+                    <img src={imgsrc} alt={name} className="max-w-full max-h-full object-contain" />
+                ) : markdown ? (
+                    <div className="w-full">
+                        <WaveStreamdown text={markdown} />
+                    </div>
+                ) : (
+                    <i className={makeIconClass(icon, false) + " text-4xl text-foreground/50"} />
+                )}
             </div>
         </div>
     );
