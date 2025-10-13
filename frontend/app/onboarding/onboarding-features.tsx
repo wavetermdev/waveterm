@@ -6,148 +6,12 @@ import { Button } from "@/app/element/button";
 import { EmojiButton } from "@/app/element/emojibutton";
 import { MagnifyIcon } from "@/app/element/magnify";
 import { isMacOS } from "@/util/platformutil";
-import { cn, makeIconClass } from "@/util/util";
-import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
-import { useLayoutEffect, useRef, useState } from "react";
+import { useState } from "react";
+import { CommandReveal } from "./onboarding-command";
+import { FakeLayout } from "./onboarding-layout";
 import { FakeChat } from "./fakechat";
 
 type FeaturePageName = "waveai" | "magnify" | "files";
-
-const FakeBlock = ({ icon, name, highlighted, className }: { icon: string; name: string; highlighted?: boolean; className?: string }) => {
-    return (
-        <div
-            className={cn(
-                "w-full h-full bg-background rounded flex flex-col overflow-hidden border-2",
-                highlighted ? "border-accent" : "border-border/50",
-                className
-            )}
-        >
-            <div className="flex items-center gap-2 px-2 py-1.5 bg-border/20 border-b border-border/50">
-                <i className={makeIconClass(icon, false) + " text-xs text-foreground/70"} />
-                <span className="text-xs text-foreground/70 flex-1">{name}</span>
-                <span className="inline-block [&_svg]:fill-foreground/50 [&_svg_path]:!fill-foreground/50">
-                    <MagnifyIcon enabled={false} />
-                </span>
-                <i className={makeIconClass("xmark-large", false) + " text-xs text-foreground/50"} />
-            </div>
-            <div className="flex-1 flex items-center justify-center">
-                <i className={makeIconClass(icon, false) + " text-4xl text-foreground/50"} />
-            </div>
-        </div>
-    );
-};
-
-const FakeLayout = () => {
-    const layoutRef = useRef<HTMLDivElement>(null);
-    const highlightedContainerRef = useRef<HTMLDivElement>(null);
-    const [blockRect, setBlockRect] = useState<{ left: number; top: number; width: number; height: number } | null>(null);
-    const [isExpanded, setIsExpanded] = useState(false);
-
-    useLayoutEffect(() => {
-        if (highlightedContainerRef.current) {
-            const elem = highlightedContainerRef.current;
-            setBlockRect({
-                left: elem.offsetLeft,
-                top: elem.offsetTop,
-                width: elem.offsetWidth,
-                height: elem.offsetHeight,
-            });
-        }
-    }, []);
-
-    useLayoutEffect(() => {
-        if (!blockRect) return;
-
-        const timeouts: NodeJS.Timeout[] = [];
-        
-        const addTimeout = (callback: () => void, delay: number) => {
-            const id = setTimeout(callback, delay);
-            timeouts.push(id);
-        };
-
-        const runAnimationCycle = (isFirstRun: boolean) => {
-            const initialDelay = isFirstRun ? 1500 : 3000;
-            
-            addTimeout(() => {
-                setIsExpanded(true);
-                addTimeout(() => {
-                    setIsExpanded(false);
-                    addTimeout(() => runAnimationCycle(false), 3000);
-                }, 3200);
-            }, initialDelay);
-        };
-
-        runAnimationCycle(true);
-
-        return () => {
-            timeouts.forEach(clearTimeout);
-        };
-    }, [blockRect]);
-
-    const getAnimatedStyle = () => {
-        if (!blockRect || !layoutRef.current) {
-            return {
-                left: blockRect?.left ?? 0,
-                top: blockRect?.top ?? 0,
-                width: blockRect?.width ?? 0,
-                height: blockRect?.height ?? 0,
-            };
-        }
-
-        if (isExpanded) {
-            const layoutWidth = layoutRef.current.offsetWidth;
-            const layoutHeight = layoutRef.current.offsetHeight;
-            const targetWidth = layoutWidth * 0.85;
-            const targetHeight = layoutHeight * 0.85;
-
-            return {
-                left: (layoutWidth - targetWidth) / 2,
-                top: (layoutHeight - targetHeight) / 2,
-                width: targetWidth,
-                height: targetHeight,
-            };
-        }
-
-        return {
-            left: blockRect.left,
-            top: blockRect.top,
-            width: blockRect.width,
-            height: blockRect.height,
-        };
-    };
-
-    return (
-        <div ref={layoutRef} className="w-full h-[400px] flex flex-row gap-2 relative">
-            <div className="flex-1">
-                <FakeBlock icon="terminal" name="Terminal" />
-            </div>
-            <div className="flex-1 flex flex-col gap-2">
-                <div className="flex-1">
-                    <FakeBlock icon="globe" name="Web" />
-                </div>
-                <div className="flex-1" ref={highlightedContainerRef}>
-                    <FakeBlock icon="terminal" name="Terminal" highlighted={true} className="opacity-0" />
-                </div>
-            </div>
-            {blockRect && (
-                <>
-                    <div
-                        className={cn(
-                            "absolute inset-0 bg-black/50 transition-opacity duration-200",
-                            isExpanded ? "opacity-100" : "opacity-0 pointer-events-none"
-                        )}
-                    />
-                    <div
-                        className="absolute transition-all duration-200 ease-in-out"
-                        style={getAnimatedStyle()}
-                    >
-                        <FakeBlock icon="terminal" name="Terminal" highlighted={true} />
-                    </div>
-                </>
-            )}
-        </div>
-    );
-};
 
 const OnboardingFooter = ({
     currentStep,
@@ -205,13 +69,13 @@ const WaveAIPage = ({ onNext, onSkip }: { onNext: () => void; onSkip: () => void
                             <i className="fa fa-sparkles" />
                             <span className="font-bold ml-2 font-mono">AI</span>
                         </div>
-                        
+
                         <div className="flex flex-col items-start gap-4 text-secondary">
                             <p>
-                                Wave AI is your terminal assistant with context. I can read your terminal output, analyze
-                                widgets, access files, and help you solve problems faster.
+                                Wave AI is your terminal assistant with context. I can read your terminal output,
+                                analyze widgets, access files, and help you solve problems faster.
                             </p>
-                            
+
                             <div className="flex items-start gap-3 w-full">
                                 <i className="fa fa-sparkles text-accent text-lg mt-1 flex-shrink-0" />
                                 <p>
@@ -223,15 +87,23 @@ const WaveAIPage = ({ onNext, onSkip }: { onNext: () => void; onSkip: () => void
                                     button in the header (top left)
                                 </p>
                             </div>
-                            
+
                             <div className="flex items-start gap-3 w-full">
                                 <i className="fa fa-keyboard text-accent text-lg mt-1 flex-shrink-0" />
                                 <p>
-                                    Or use the keyboard shortcut <span className="font-mono font-semibold text-foreground whitespace-nowrap">{shortcutKey}</span> to quickly toggle
+                                    Or use the keyboard shortcut{" "}
+                                    <span className="font-mono font-semibold text-foreground whitespace-nowrap">
+                                        {shortcutKey}
+                                    </span>{" "}
+                                    to quickly toggle
                                 </p>
                             </div>
-                            
-                            <EmojiButton emoji="🔥" isClicked={fireClicked} onClick={() => setFireClicked(!fireClicked)} />
+
+                            <EmojiButton
+                                emoji="🔥"
+                                isClicked={fireClicked}
+                                onClick={() => setFireClicked(!fireClicked)}
+                            />
                         </div>
                     </div>
                 </div>
@@ -293,6 +165,8 @@ const MagnifyBlocksPage = ({ onNext, onSkip }: { onNext: () => void; onSkip: () 
 };
 
 const FilesPage = ({ onFinish }: { onFinish: () => void }) => {
+    const [fireClicked, setFireClicked] = useState(false);
+
     return (
         <div className="flex flex-col h-full">
             <header className="flex items-center gap-4 mb-6 w-full unselectable flex-shrink-0">
@@ -302,20 +176,55 @@ const FilesPage = ({ onFinish }: { onFinish: () => void }) => {
                 <div className="text-[25px] font-normal text-foreground">Viewing/Editing Files</div>
             </header>
             <div className="flex-1 flex flex-row gap-0 min-h-0">
-                <OverlayScrollbarsComponent
-                    className="flex-1 overflow-y-auto"
-                    options={{ scrollbars: { autoHide: "never" } }}
-                >
-                    <div className="flex flex-col items-start gap-4 pr-6 unselectable text-secondary">
-                        <p>
-                            View and edit files directly in Wave Terminal with syntax highlighting and code completion.
-                        </p>
-                        <p>Seamlessly switch between terminal commands and file editing in one unified interface.</p>
+                <div className="flex-1 flex flex-col items-center justify-center gap-8 pr-6 unselectable">
+                    <div className="flex flex-col items-start gap-6 max-w-md">
+                        <div className="flex flex-col items-start gap-4 text-secondary">
+                            <p>Wave can preview markdown, images, and video files on both local and remote machines.</p>
+
+                            <div className="flex items-start gap-3 w-full">
+                                <i className="fa fa-eye text-accent text-lg mt-1 flex-shrink-0" />
+                                <div>
+                                    <p className="mb-2">
+                                        Use{" "}
+                                        <span className="font-mono font-semibold text-foreground">
+                                            wsh view [filename]
+                                        </span>{" "}
+                                        to preview files in Wave's graphical viewer
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="flex items-start gap-3 w-full">
+                                <i className="fa fa-pen-to-square text-accent text-lg mt-1 flex-shrink-0" />
+                                <div>
+                                    <p className="mb-2">
+                                        Use{" "}
+                                        <span className="font-mono font-semibold text-foreground">
+                                            wsh edit [filename]
+                                        </span>{" "}
+                                        to open config files or code files in Wave's graphical editor
+                                    </p>
+                                </div>
+                            </div>
+
+                            <p>
+                                These commands work seamlessly on both local and remote machines, making it easy to view
+                                and edit files wherever they are.
+                            </p>
+
+                            <EmojiButton
+                                emoji="🔥"
+                                isClicked={fireClicked}
+                                onClick={() => setFireClicked(!fireClicked)}
+                            />
+                        </div>
                     </div>
-                </OverlayScrollbarsComponent>
+                </div>
                 <div className="w-[2px] bg-border flex-shrink-0"></div>
                 <div className="flex items-center justify-center pl-6 flex-shrink-0 w-[400px]">
-                    <div className="w-full h-[400px] bg-border/30 rounded"></div>
+                    <div className="w-full h-[400px] bg-background rounded border border-border/50 p-4 flex flex-col">
+                        <CommandReveal command="wsh view keyboard-shortcuts.md" />
+                    </div>
                 </div>
             </div>
             <OnboardingFooter currentStep={3} totalSteps={3} onNext={onFinish} />
