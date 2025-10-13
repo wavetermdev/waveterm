@@ -5,7 +5,7 @@ import Logo from "@/app/asset/logo.svg";
 import { Button } from "@/app/element/button";
 import { Toggle } from "@/app/element/toggle";
 import { FlexiModal } from "@/app/modals/modal";
-import { disableGlobalKeybindings, enableGlobalKeybindings } from "@/app/store/keymodel";
+import { disableGlobalKeybindings, enableGlobalKeybindings, globalRefocus } from "@/app/store/keymodel";
 import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
 import * as services from "@/store/services";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
@@ -206,6 +206,9 @@ const FeaturesPage = () => {
 
     const handleComplete = () => {
         setTosOpen(false);
+        setTimeout(() => {
+            globalRefocus();
+        }, 10);
     };
 
     return <OnboardingFeatures onComplete={handleComplete} />;
