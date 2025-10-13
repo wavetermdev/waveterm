@@ -52,7 +52,9 @@ export const CommandReveal = ({
             <span className="text-accent">&gt;</span>
             <span className="text-foreground/80">
                 {displayedText}
-                {showCursorProp && !isComplete && showCursor && <span className="inline-block w-2 h-4 bg-foreground/80 ml-0.5 align-middle"></span>}
+                {showCursorProp && !isComplete && showCursor && (
+                    <span className="inline-block w-2 h-4 bg-foreground/80 ml-0.5 align-middle"></span>
+                )}
             </span>
         </div>
     );
@@ -105,7 +107,7 @@ Use Ctrl-Shift + Number (1-9) to focus a specific block by its position.`;
 export const ViewLogoCommand = ({ onComplete }: { onComplete?: () => void }) => {
     return (
         <FakeCommand command="wsh view public/wave-logo.png" onComplete={onComplete}>
-            <FakeBlock icon="image" name="wave-logo.png" imgsrc="public/logos/wave-logo.png" />
+            <FakeBlock icon="image" name="wave-logo.png" imgsrc="/logos/wave-logo.png" />
         </FakeCommand>
     );
 };
