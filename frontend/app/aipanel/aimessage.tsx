@@ -127,14 +127,12 @@ const AIToolUseBatchItem = memo(({ part, effectiveApproval }: AIToolUseBatchItem
 AIToolUseBatchItem.displayName = "AIToolUseBatchItem";
 
 interface AIToolUseBatchProps {
-    parts: Array<WaveUIMessagePart & { type: "data-tooluse" }>;
+    parts: Array<WaveUIMessagePart & { type: "data-tooluse" }>; // parts must not be empty
     isStreaming: boolean;
 }
 
 const AIToolUseBatch = memo(({ parts, isStreaming }: AIToolUseBatchProps) => {
     const [userApprovalOverride, setUserApprovalOverride] = useState<string | null>(null);
-
-    if (parts.length === 0) return null;
 
     const firstTool = parts[0].data;
     const baseApproval = userApprovalOverride || firstTool.approval;
