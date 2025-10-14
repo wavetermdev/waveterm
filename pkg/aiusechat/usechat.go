@@ -310,6 +310,14 @@ func processToolCalls(stopReason *uctypes.WaveStopReason, chatOpts uctypes.WaveC
 		defer activeToolMap.Delete(toolCall.ID)
 	}
 
+	// Send all data-tooluse packets at the beginning
+	for _, toolCall := range stopReason.ToolCalls {
+		if toolCall.ToolUseData != nil {
+			log.Printf("AI data-tooluse %s\n", toolCall.ID)
+			_ = sseHandler.AiMsgData("data-tooluse", toolCall.ID, *toolCall.ToolUseData)
+		}
+	}
+
 	var toolResults []uctypes.AIToolResult
 	for _, toolCall := range stopReason.ToolCalls {
 		result := processToolCall(toolCall, chatOpts, sseHandler, metrics)
