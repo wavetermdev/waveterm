@@ -6,10 +6,12 @@ import { globalStore } from "./global";
 
 class ModalsModel {
     modalsAtom: jotai.PrimitiveAtom<Array<{ displayName: string; props?: any }>>;
-    tosOpen: jotai.PrimitiveAtom<boolean>;
+    newInstallOnboardingOpen: jotai.PrimitiveAtom<boolean>;
+    upgradeOnboardingOpen: jotai.PrimitiveAtom<boolean>;
 
     constructor() {
-        this.tosOpen = jotai.atom(false);
+        this.newInstallOnboardingOpen = jotai.atom(false);
+        this.upgradeOnboardingOpen = jotai.atom(false);
         this.modalsAtom = jotai.atom([]);
     }
 

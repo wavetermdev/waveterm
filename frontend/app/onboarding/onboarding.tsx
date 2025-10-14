@@ -202,10 +202,10 @@ const NoTelemetryStarPage = ({ isCompact }: { isCompact: boolean }) => {
 };
 
 const FeaturesPage = () => {
-    const [tosOpen, setTosOpen] = useAtom(modalsModel.tosOpen);
+    const [newInstallOnboardingOpen, setNewInstallOnboardingOpen] = useAtom(modalsModel.newInstallOnboardingOpen);
 
     const handleComplete = () => {
-        setTosOpen(false);
+        setNewInstallOnboardingOpen(false);
         setTimeout(() => {
             globalRefocus();
         }, 10);
