@@ -130,6 +130,20 @@ export default defineConfig({
                 input: {
                     index: "index.html",
                 },
+                output: {
+                    manualChunks(id) {
+                        if (id.includes("node_modules/monaco") || id.includes("node_modules/@monaco")) return "monaco";
+                        if (id.includes("node_modules/mermaid") || id.includes("node_modules/@mermaid"))
+                            return "mermaid";
+                        if (id.includes("node_modules/katex") || id.includes("node_modules/@katex")) return "katex";
+                        if (id.includes("node_modules/shiki") || id.includes("node_modules/@shiki")) {
+                            return "shiki";
+                        }
+                        if (id.includes("node_modules/cytoscape") || id.includes("node_modules/@cytoscape"))
+                            return "cytoscape";
+                        return undefined;
+                    },
+                },
             },
         },
         optimizeDeps: {
