@@ -279,8 +279,9 @@ const NewInstallOnboardingModal = () => {
     const widthClass = pageName === "features" ? "w-[800px]" : "w-[560px]";
 
     return (
-        <FlexiModal className={`${widthClass} rounded-[10px] ${paddingClass}`} ref={modalRef}>
-            <div className="flex flex-col w-full h-full">{pageComp}</div>
+        <FlexiModal className={`${widthClass} rounded-[10px] ${paddingClass} relative overflow-hidden`} ref={modalRef}>
+            <div className="absolute inset-0 bg-gradient-to-br from-accent/[0.25] via-transparent to-accent/[0.05] pointer-events-none rounded-[10px]" />
+            <div className="flex flex-col w-full h-full relative z-10">{pageComp}</div>
         </FlexiModal>
     );
 };

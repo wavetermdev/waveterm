@@ -99,7 +99,7 @@ const UpgradeOnboardingModal = () => {
                     className="flex-1 overflow-y-auto min-h-0"
                     options={{ scrollbars: { autoHide: "never" } }}
                 >
-                    <div className="flex flex-col items-center gap-6 w-full mb-2 unselectable">
+                    <div className="flex flex-col items-center gap-3 w-full mb-2 unselectable">
                         <div className="flex flex-col items-center gap-4 max-w-md text-center">
                             <div className="flex h-[52px] px-3 items-center rounded-lg bg-hover text-accent text-[24px]">
                                 <i className="fa fa-sparkles" />
@@ -110,8 +110,13 @@ const UpgradeOnboardingModal = () => {
                                     Wave AI is your new terminal assistant with full context. It can read your terminal
                                     output, analyze widgets, access files, and help you solve problems&nbsp;faster.
                                 </p>
-                                <p className="mb-4">
-                                    This is our biggest feature yet, and we're excited to share it with&nbsp;you!
+                                <p className="p-3 border border-border rounded-md bg-hover/30">
+                                    Wave AI is in active beta with included AI credits while we refine the experience.
+                                    We're actively improving it and would love your feedback in{" "}
+                                    <a target="_blank" href="https://discord.gg/XfvZ334gwU" className="hover:underline">
+                                        Discord
+                                    </a>
+                                    .
                                 </p>
                             </div>
                         </div>
@@ -119,11 +124,10 @@ const UpgradeOnboardingModal = () => {
                         <div className="w-full max-w-md border-t border-border my-2"></div>
 
                         <div className="flex flex-col items-center gap-3 text-center max-w-[440px]">
-                            <div className="text-foreground text-base">
-                                If you find Wave useful, please consider supporting us with a GitHub&nbsp;star
-                            </div>
+                            <div className="text-foreground text-base">Thanks for being an early Wave adopter! ⭐</div>
                             <div className="text-secondary text-sm">
-                                We're open source and free for individual users. Your star helps us&nbsp;grow!
+                                A GitHub star shows your support for Wave (and open-source) and helps us reach more
+                                developers.
                             </div>
                         </div>
                     </div>
@@ -155,8 +159,9 @@ const UpgradeOnboardingModal = () => {
     const widthClass = pageName === "features" ? "w-[800px]" : "w-[560px]";
 
     return (
-        <FlexiModal className={`${widthClass} rounded-[10px] ${paddingClass}`} ref={modalRef}>
-            <div className="flex flex-col w-full h-full">{pageComp}</div>
+        <FlexiModal className={`${widthClass} rounded-[10px] ${paddingClass} relative overflow-hidden`} ref={modalRef}>
+            <div className="absolute inset-0 bg-gradient-to-br from-accent/[0.25] via-transparent to-accent/[0.05] pointer-events-none rounded-[10px]" />
+            <div className="flex flex-col w-full h-full relative z-10">{pageComp}</div>
         </FlexiModal>
     );
 };
