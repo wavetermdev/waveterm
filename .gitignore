@@ -17,6 +17,7 @@ make/
 artifacts/
 mikework/
 .env
+out
 
 # Yarn Modern
 .pnp.*

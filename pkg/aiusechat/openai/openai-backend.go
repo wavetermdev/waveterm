@@ -818,8 +818,6 @@ func handleOpenAIEvent(
 			if toolUseData.Approval == uctypes.ApprovalNeedsApproval && state.chatOpts.RegisterToolApproval != nil {
 				state.chatOpts.RegisterToolApproval(st.toolCallID)
 			}
-			log.Printf("AI data-tooluse %s\n", st.toolCallID)
-			_ = sse.AiMsgData("data-tooluse", st.toolCallID, *toolUseData)
 		}
 		return nil, nil
 
