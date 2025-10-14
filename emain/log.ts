@@ -75,9 +75,14 @@ function rotateLogIfNeeded() {
     }
 }
 
-rotateLogIfNeeded();
-const logsDir = path.join(getWaveDataDir(), "logs");
-pruneOldLogs(logsDir);
+let logRotateError: any = null;
+try {
+    rotateLogIfNeeded();
+    const logsDir = path.join(getWaveDataDir(), "logs");
+    pruneOldLogs(logsDir);
+} catch (e) {
+    logRotateError = e;
+}
 
 const loggerTransports: winston.transport[] = [
     new winston.transports.File({ filename: path.join(getWaveDataDir(), "waveapp.log"), level: "info" }),
@@ -94,6 +99,9 @@ const loggerConfig = {
     transports: loggerTransports,
 };
 const logger = winston.createLogger(loggerConfig);
+if (logRotateError != null) {
+    logger.error("error rotating/pruning logs (non-fatal):", logRotateError);
+}
 function log(...msg: any[]) {
     try {
         logger.info(format(...msg));
