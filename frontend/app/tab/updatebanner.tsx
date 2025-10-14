@@ -5,9 +5,11 @@ import { forwardRef, memo, useEffect, useState } from "react";
 import "./updatebanner.scss";
 
 const UpdateStatusBannerComponent = forwardRef<HTMLButtonElement>((_, ref) => {
-    const appUpdateStatus = useAtomValue(atoms.updaterStatusAtom);
+    let appUpdateStatus = useAtomValue(atoms.updaterStatusAtom);
     let [updateStatusMessage, setUpdateStatusMessage] = useState<string>();
     const [dismissBannerTimeout, setDismissBannerTimeout] = useState<NodeJS.Timeout>();
+
+    appUpdateStatus = "ready";
 
     useEffect(() => {
         let message: string;

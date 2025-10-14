@@ -85,6 +85,8 @@
         display: flex;
         flex-direction: row;
         gap: 6px;
+        height: 100%;
+        align-items: center;
         &:not(:empty) {
             margin-left: auto;
             margin-right: 6px;

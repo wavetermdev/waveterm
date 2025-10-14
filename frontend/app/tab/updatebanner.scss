@@ -1,9 +1,10 @@
-.wave-button {
+.update-available-banner {
     color: black;
     background-color: var(--accent-color);
     flex: 0 0 fit-content;
-    line-height: unset !important;
-    padding: 0 6px;
+    height: 100%;
+    padding-left: 12px;
+    padding-right: 12px;
     &:disabled {
         opacity: unset !important;
     }
