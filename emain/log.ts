@@ -27,9 +27,9 @@ function findHighestLogNumber(logsDir: string): number {
     return maxNum;
 }
 
-function pruneOldLogs(logsDir: string) {
+function pruneOldLogs(logsDir: string): string[] {
     if (!fs.existsSync(logsDir)) {
-        return;
+        return [];
     }
 
     const files = fs.readdirSync(logsDir);
@@ -43,7 +43,7 @@ function pruneOldLogs(logsDir: string) {
     }
 
     if (logFiles.length <= 5) {
-        return;
+        return [];
     }
 
     logFiles.sort((a, b) => b.num - a.num);
@@ -52,9 +52,11 @@ function pruneOldLogs(logsDir: string) {
     for (const logFile of toDelete) {
         fs.unlinkSync(path.join(logsDir, logFile.name));
     }
+
+    return toDelete.map((f) => f.name);
 }
 
-function rotateLogIfNeeded() {
+function rotateLogIfNeeded(): string | null {
     const waveDataDir = getWaveDataDir();
     const logFile = path.join(waveDataDir, "waveapp.log");
     const logsDir = path.join(waveDataDir, "logs");
@@ -64,7 +66,7 @@ function rotateLogIfNeeded() {
     }
 
     if (!fs.existsSync(logFile)) {
-        return;
+        return null;
     }
 
     const stats = fs.statSync(logFile);
@@ -72,14 +74,18 @@ function rotateLogIfNeeded() {
         const nextNum = findHighestLogNumber(logsDir) + 1;
         const rotatedPath = path.join(logsDir, `waveapp.${nextNum}.log`);
         fs.renameSync(logFile, rotatedPath);
+        return rotatedPath;
     }
+    return null;
 }
 
 let logRotateError: any = null;
+let rotatedPath: string | null = null;
+let prunedFiles: string[] = [];
 try {
-    rotateLogIfNeeded();
+    rotatedPath = rotateLogIfNeeded();
     const logsDir = path.join(getWaveDataDir(), "logs");
-    pruneOldLogs(logsDir);
+    prunedFiles = pruneOldLogs(logsDir);
 } catch (e) {
     logRotateError = e;
 }
@@ -101,6 +107,12 @@ const loggerConfig = {
 const logger = winston.createLogger(loggerConfig);
 if (logRotateError != null) {
     logger.error("error rotating/pruning logs (non-fatal):", logRotateError);
+}
+if (rotatedPath != null) {
+    logger.info("rotated old log file to:", rotatedPath);
+}
+if (prunedFiles.length > 0) {
+    logger.info("pruned old log files:", prunedFiles.join(", "));
 }
 function log(...msg: any[]) {
     try {
