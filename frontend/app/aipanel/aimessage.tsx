@@ -68,6 +68,64 @@ const UserMessageFiles = memo(({ fileParts }: UserMessageFilesProps) => {
 
 UserMessageFiles.displayName = "UserMessageFiles";
 
+interface AIToolApprovalButtonsProps {
+    count: number;
+    onApprove: () => void;
+    onDeny: () => void;
+}
+
+const AIToolApprovalButtons = memo(({ count, onApprove, onDeny }: AIToolApprovalButtonsProps) => {
+    const approveText = count > 1 ? `Approve All (${count})` : "Approve";
+    const denyText = count > 1 ? "Deny All" : "Deny";
+
+    return (
+        <div className="mt-2 flex gap-2">
+            <button
+                onClick={onApprove}
+                className="px-3 py-1 border border-gray-600 text-gray-300 hover:border-gray-500 hover:text-white text-sm rounded cursor-pointer transition-colors"
+            >
+                {approveText}
+            </button>
+            <button
+                onClick={onDeny}
+                className="px-3 py-1 border border-gray-600 text-gray-300 hover:border-gray-500 hover:text-white text-sm rounded cursor-pointer transition-colors"
+            >
+                {denyText}
+            </button>
+        </div>
+    );
+});
+
+AIToolApprovalButtons.displayName = "AIToolApprovalButtons";
+
+interface AIToolUseBatchItemProps {
+    part: WaveUIMessagePart & { type: "data-tooluse" };
+    effectiveApproval: string;
+}
+
+const AIToolUseBatchItem = memo(({ part, effectiveApproval }: AIToolUseBatchItemProps) => {
+    const statusIcon = part.data.status === "completed" ? "✓" : part.data.status === "error" ? "✗" : "•";
+    const statusColor =
+        part.data.status === "completed"
+            ? "text-success"
+            : part.data.status === "error"
+              ? "text-error"
+              : "text-gray-400";
+    const effectiveErrorMessage = part.data.errormessage || (effectiveApproval === "timeout" ? "Not approved" : null);
+
+    return (
+        <div className="text-sm pl-2 flex items-start gap-1.5">
+            <span className={cn("font-bold flex-shrink-0", statusColor)}>{statusIcon}</span>
+            <div className="flex-1">
+                <span className="text-gray-400">{part.data.tooldesc}</span>
+                {effectiveErrorMessage && <div className="text-red-300 mt-0.5">{effectiveErrorMessage}</div>}
+            </div>
+        </div>
+    );
+});
+
+AIToolUseBatchItem.displayName = "AIToolUseBatchItem";
+
 interface AIToolUseBatchProps {
     parts: Array<WaveUIMessagePart & { type: "data-tooluse" }>;
     isStreaming: boolean;
@@ -118,50 +176,17 @@ const AIToolUseBatch = memo(({ parts, isStreaming }: AIToolUseBatchProps) => {
         });
     };
 
-    const groupTitle = firstTool.toolname === "read_text_file" ? "Reading Files" : "Listing Directories";
-
     return (
         <div className="flex items-start gap-2 p-2 rounded bg-gray-800 border border-gray-700">
             <div className="flex-1">
-                <div className="font-semibold">{groupTitle}</div>
+                <div className="font-semibold">Reading Files</div>
                 <div className="mt-1 space-y-0.5">
-                    {parts.map((part, idx) => {
-                        const statusIcon =
-                            part.data.status === "completed" ? "✓" : part.data.status === "error" ? "✗" : "•";
-                        const statusColor =
-                            part.data.status === "completed"
-                                ? "text-success"
-                                : part.data.status === "error"
-                                  ? "text-error"
-                                  : "text-gray-400";
-                        const effectiveErrorMessage =
-                            part.data.errormessage || (effectiveApproval === "timeout" ? "Not approved" : null);
-                        return (
-                            <div key={idx} className="text-sm pl-2">
-                                <span className={cn("font-bold mr-1.5", statusColor)}>{statusIcon}</span>
-                                <span className="text-gray-400">{part.data.tooldesc}</span>
-                                {effectiveErrorMessage && (
-                                    <div className="text-red-300 ml-4 mt-0.5">{effectiveErrorMessage}</div>
-                                )}
-                            </div>
-                        );
-                    })}
+                    {parts.map((part, idx) => (
+                        <AIToolUseBatchItem key={idx} part={part} effectiveApproval={effectiveApproval} />
+                    ))}
                 </div>
                 {allNeedApproval && effectiveApproval === "needs-approval" && (
-                    <div className="mt-2 flex gap-2">
-                        <button
-                            onClick={handleApprove}
-                            className="px-3 py-1 border border-gray-600 text-gray-300 hover:border-gray-500 hover:text-white text-sm rounded cursor-pointer transition-colors"
-                        >
-                            Approve All ({parts.length})
-                        </button>
-                        <button
-                            onClick={handleDeny}
-                            className="px-3 py-1 border border-gray-600 text-gray-300 hover:border-gray-500 hover:text-white text-sm rounded cursor-pointer transition-colors"
-                        >
-                            Deny All
-                        </button>
-                    </div>
+                    <AIToolApprovalButtons count={parts.length} onApprove={handleApprove} onDeny={handleDeny} />
                 )}
             </div>
         </div>
@@ -225,20 +250,7 @@ const AIToolUse = memo(({ part, isStreaming }: AIToolUseProps) => {
                     <div className="text-sm text-red-300 mt-1">{toolData.errormessage || "Not approved"}</div>
                 )}
                 {effectiveApproval === "needs-approval" && (
-                    <div className="mt-2 flex gap-2">
-                        <button
-                            onClick={handleApprove}
-                            className="px-3 py-1 border border-gray-600 text-gray-300 hover:border-gray-500 hover:text-white text-sm rounded cursor-pointer transition-colors"
-                        >
-                            Approve
-                        </button>
-                        <button
-                            onClick={handleDeny}
-                            className="px-3 py-1 border border-gray-600 text-gray-300 hover:border-gray-500 hover:text-white text-sm rounded cursor-pointer transition-colors"
-                        >
-                            Deny
-                        </button>
-                    </div>
+                    <AIToolApprovalButtons count={1} onApprove={handleApprove} onDeny={handleDeny} />
                 )}
             </div>
         </div>
@@ -382,33 +394,20 @@ const getThinkingMessage = (parts: WaveUIMessagePart[], isStreaming: boolean, ro
         return "Waiting for Tool Approvals...";
     }
 
-    // Find the last "step-start" marker
-    let lastStartStepIndex = -1;
-    for (let i = parts.length - 1; i >= 0; i--) {
-        if (parts[i].type === "step-start") {
-            lastStartStepIndex = i;
-            break;
-        }
-    }
-
-    // Get parts after the last start-step (or all parts if no start-step)
-    const partsAfterLastStep = lastStartStepIndex !== -1 ? parts.slice(lastStartStepIndex + 1) : parts;
-
-    // Check if there's content after the last step
-    const hasContentAfterStep = partsAfterLastStep.some(
-        (part) => (part.type === "text" && part.text) || part.type.startsWith("tool-") || part.type === "data-tooluse"
-    );
-
-    if (hasContentAfterStep) {
-        return null;
-    }
+    const lastPart = parts[parts.length - 1];
 
     // Check if the last part is a reasoning part
-    const lastPart = parts[parts.length - 1];
     if (lastPart?.type === "reasoning") {
         return "AI is thinking...";
     }
 
+    // Only hide thinking indicator if the last part is text and not empty
+    // (this means text is actively streaming)
+    if (lastPart?.type === "text" && lastPart.text) {
+        return null;
+    }
+
+    // For all other cases (including finish-step, tooluse, etc.), show dots
     return "";
 };
 
