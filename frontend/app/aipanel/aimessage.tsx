@@ -10,14 +10,14 @@ import { getFileIcon } from "./ai-utils";
 import { WaveUIMessage, WaveUIMessagePart } from "./aitypes";
 import { WaveAIModel } from "./waveai-model";
 
-const AIThinking = memo(() => (
+const AIThinking = memo(({ message = "AI is thinking..." }: { message?: string }) => (
     <div className="flex items-center gap-2">
         <div className="animate-pulse flex items-center">
             <i className="fa fa-circle text-[10px]"></i>
             <i className="fa fa-circle text-[10px] mx-1"></i>
             <i className="fa fa-circle text-[10px]"></i>
         </div>
-        <span className="text-sm text-gray-400">AI is thinking...</span>
+        {message && <span className="text-sm text-gray-400">{message}</span>}
     </div>
 ));
 
@@ -368,35 +368,69 @@ const groupMessageParts = (parts: WaveUIMessagePart[]): MessagePart[] => {
     return grouped;
 };
 
+const getThinkingMessage = (parts: WaveUIMessagePart[], isStreaming: boolean, role: string): string | null => {
+    if (!isStreaming || role !== "assistant") {
+        return null;
+    }
+
+    // Check if there are any pending-approval tool calls - this takes priority
+    const hasPendingApprovals = parts.some(
+        (part) => part.type === "data-tooluse" && part.data?.approval === "needs-approval"
+    );
+
+    if (hasPendingApprovals) {
+        return "Waiting for Tool Approvals...";
+    }
+
+    // Find the last "step-start" marker
+    let lastStartStepIndex = -1;
+    for (let i = parts.length - 1; i >= 0; i--) {
+        if (parts[i].type === "step-start") {
+            lastStartStepIndex = i;
+            break;
+        }
+    }
+
+    // Get parts after the last start-step (or all parts if no start-step)
+    const partsAfterLastStep = lastStartStepIndex !== -1 ? parts.slice(lastStartStepIndex + 1) : parts;
+
+    // Check if there's content after the last step
+    const hasContentAfterStep = partsAfterLastStep.some(
+        (part) => (part.type === "text" && part.text) || part.type.startsWith("tool-") || part.type === "data-tooluse"
+    );
+
+    if (hasContentAfterStep) {
+        return null;
+    }
+
+    // Check if the last part is a reasoning part
+    const lastPart = parts[parts.length - 1];
+    if (lastPart?.type === "reasoning") {
+        return "AI is thinking...";
+    }
+
+    return "";
+};
+
 export const AIMessage = memo(({ message, isStreaming }: AIMessageProps) => {
     const parts = message.parts || [];
     const displayParts = parts.filter(isDisplayPart);
     const fileParts = parts.filter(
         (part): part is WaveUIMessagePart & { type: "data-userfile" } => part.type === "data-userfile"
     );
-    const hasContent =
-        displayParts.length > 0 &&
-        displayParts.some(
-            (part) =>
-                (part.type === "text" && part.text) || part.type.startsWith("tool-") || part.type === "data-tooluse"
-        );
 
-    const showThinkingOnly = !hasContent && isStreaming && message.role === "assistant";
-    const showThinkingInline = hasContent && isStreaming && message.role === "assistant";
-
+    const thinkingMessage = getThinkingMessage(parts, isStreaming, message.role);
     const groupedParts = groupMessageParts(displayParts);
 
     return (
         <div className={cn("flex", message.role === "user" ? "justify-end" : "justify-start")}>
             <div
                 className={cn(
-                    "px-2 py-2 rounded-lg [&>*:first-child]:!mt-0",
-                    message.role === "user" ? "bg-accent-800 text-white max-w-[calc(100%-20px)]" : null
+                    "px-2 rounded-lg [&>*:first-child]:!mt-0",
+                    message.role === "user" ? "py-2 bg-accent-800 text-white max-w-[calc(100%-20px)]" : null
                 )}
             >
-                {showThinkingOnly ? (
-                    <AIThinking />
-                ) : !hasContent && !isStreaming ? (
+                {displayParts.length === 0 && !isStreaming && !thinkingMessage ? (
                     <div className="whitespace-pre-wrap break-words">(no text content)</div>
                 ) : (
                     <>
@@ -409,9 +443,9 @@ export const AIMessage = memo(({ message, isStreaming }: AIMessageProps) => {
                                 </div>
                             )
                         )}
-                        {showThinkingInline && (
+                        {thinkingMessage != null && (
                             <div className="mt-2">
-                                <AIThinking />
+                                <AIThinking message={thinkingMessage} />
                             </div>
                         )}
                     </>
