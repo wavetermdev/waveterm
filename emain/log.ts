@@ -68,9 +68,7 @@ function rotateLogIfNeeded() {
     }
 
     const stats = fs.statSync(logFile);
-    const fileSizeMB = stats.size / (1024 * 1024);
-
-    if (fileSizeMB > 10) {
+    if (stats.size > 10 * 1024 * 1024) {
         const nextNum = findHighestLogNumber(logsDir) + 1;
         const rotatedPath = path.join(logsDir, `waveapp.${nextNum}.log`);
         fs.renameSync(logFile, rotatedPath);
