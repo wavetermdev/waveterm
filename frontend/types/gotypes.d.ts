@@ -668,6 +668,7 @@ declare global {
         "vdom:route"?: string;
         "vdom:persist"?: boolean;
         "onboarding:githubstar"?: boolean;
+        "onboarding:lastversion"?: boolean;
         count?: number;
     };
 
