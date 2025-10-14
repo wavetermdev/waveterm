@@ -214,7 +214,7 @@ const FeaturesPage = () => {
     return <OnboardingFeatures onComplete={handleComplete} />;
 };
 
-const OnboardingModal = () => {
+const NewInstallOnboardingModal = () => {
     const modalRef = useRef<HTMLDivElement | null>(null);
     const [pageName, setPageName] = useAtom(pageNameAtom);
     const clientData = useAtomValue(atoms.client);
@@ -285,6 +285,6 @@ const OnboardingModal = () => {
     );
 };
 
-OnboardingModal.displayName = "OnboardingModal";
+NewInstallOnboardingModal.displayName = "NewInstallOnboardingModal";
 
-export { OnboardingModal };
+export { NewInstallOnboardingModal };

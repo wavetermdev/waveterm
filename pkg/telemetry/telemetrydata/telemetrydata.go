@@ -90,6 +90,7 @@ type TEventProps struct {
 	WshHadError       bool   `json:"wsh:haderror,omitempty"`
 	ConnType          string `json:"conn:conntype,omitempty"`
 	OnboardingFeature string `json:"onboarding:feature,omitempty" tstype:"\"waveai\" | \"magnify\" | \"wsh\""`
+	OnboardingVersion string `json:"onboarding:version,omitempty"`
 
 	DisplayHeight int         `json:"display:height,omitempty"`
 	DisplayWidth  int         `json:"display:width,omitempty"`

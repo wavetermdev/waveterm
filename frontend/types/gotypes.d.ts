@@ -668,7 +668,7 @@ declare global {
         "vdom:route"?: string;
         "vdom:persist"?: boolean;
         "onboarding:githubstar"?: boolean;
-        "onboarding:lastversion"?: boolean;
+        "onboarding:lastversion"?: string;
         count?: number;
     };
 
@@ -936,6 +936,7 @@ declare global {
         "wsh:haderror"?: boolean;
         "conn:conntype"?: string;
         "onboarding:feature"?: "waveai" | "magnify" | "wsh";
+        "onboarding:version"?: string;
         "display:height"?: number;
         "display:width"?: number;
         "display:dpr"?: number;
