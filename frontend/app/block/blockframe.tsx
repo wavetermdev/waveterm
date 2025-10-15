@@ -510,6 +510,10 @@ const BlockMask = React.memo(({ nodeModel }: { nodeModel: NodeModel }) => {
         }
     }
     
+    if (blockHighlight && !style.borderColor) {
+        style.borderColor = "rgb(59, 130, 246)";
+    }
+    
     let innerElem = null;
     if (isLayoutMode && showOverlayBlockNums) {
         showBlockMask = true;
@@ -523,13 +527,13 @@ const BlockMask = React.memo(({ nodeModel }: { nodeModel: NodeModel }) => {
         const iconClass = makeIconClass(blockHighlight.icon, false);
         innerElem = (
             <div className="block-mask-inner">
-                <i className={iconClass} style={{ fontSize: "48px" }} />
+                <i className={iconClass} style={{ fontSize: "48px", opacity: 0.5 }} />
             </div>
         );
     }
     
     return (
-        <div className={clsx("block-mask", { "show-block-mask": showBlockMask, "bg-blue-500/15": blockHighlight })} style={style}>
+        <div className={clsx("block-mask", { "show-block-mask": showBlockMask, "bg-blue-500/10": blockHighlight })} style={style}>
             {innerElem}
         </div>
     );

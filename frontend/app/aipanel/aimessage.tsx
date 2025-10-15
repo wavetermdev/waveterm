@@ -1,6 +1,7 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { BlockModel } from "@/app/block/block-model";
 import { WaveStreamdown } from "@/app/element/streamdown";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
@@ -238,8 +239,29 @@ const AIToolUse = memo(({ part, isStreaming }: AIToolUseProps) => {
         });
     };
 
+    const handleMouseEnter = () => {
+        if (toolData.blockid) {
+            BlockModel.getInstance().setBlockHighlight({
+                blockId: toolData.blockid,
+                icon: "sparkles",
+            });
+        }
+    };
+
+    const handleMouseLeave = () => {
+        if (toolData.blockid) {
+            BlockModel.getInstance().setBlockHighlight(null);
+        }
+    };
+
     return (
-        <div className={cn("flex items-start gap-2 p-2 rounded bg-gray-800 border border-gray-700", statusColor)}>
+        <div
+            className={cn("flex items-start gap-2 p-2 rounded bg-gray-800 border border-gray-700", statusColor, {
+                "cursor-pointer": toolData.blockid,
+            })}
+            onMouseEnter={handleMouseEnter}
+            onMouseLeave={handleMouseLeave}
+        >
             <span className="font-bold">{statusIcon}</span>
             <div className="flex-1">
                 <div className="font-semibold">{toolData.toolname}</div>
