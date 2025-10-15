@@ -480,8 +480,8 @@ func (m *OpenAIChatMessage) ConvertToUIMessage() *uctypes.UIMessage {
 			switch block.Type {
 			case "input_text", "output_text":
 				if strings.HasPrefix(block.Text, "<AttachedTextFile_") {
-					openTagEnd := strings.Index(block.Text, ">")
-					if openTagEnd == -1 {
+					openTagEnd := strings.Index(block.Text, "\n")
+					if openTagEnd == -1 || block.Text[openTagEnd-1] != '>' {
 						continue
 					}
 
