@@ -248,21 +248,21 @@ export class WaveAIModel {
         }
     }
 
-    async handleSubmit(shouldFocus: boolean) {
+    async handleSubmit() {
         const input = globalStore.get(this.inputAtom);
         const droppedFiles = globalStore.get(this.droppedFiles);
+
+        if (input.trim() === "/clear" || input.trim() === "/new") {
+            this.clearChat();
+            globalStore.set(this.inputAtom, "");
+            return;
+        }
 
         if (
             (!input.trim() && droppedFiles.length === 0) ||
             (this.useChatStatus !== "ready" && this.useChatStatus !== "error") ||
             globalStore.get(this.isLoadingChatAtom)
         ) {
-            return;
-        }
-
-        if (input.trim() === "/clear" || input.trim() === "/new") {
-            this.clearChat();
-            globalStore.set(this.inputAtom, "");
             return;
         }
 
@@ -313,12 +313,6 @@ export class WaveAIModel {
         this.isChatEmpty = false;
         globalStore.set(this.inputAtom, "");
         this.clearFiles();
-
-        if (shouldFocus) {
-            setTimeout(() => {
-                this.focusInput();
-            }, 100);
-        }
     }
 
     async uiLoadChat() {

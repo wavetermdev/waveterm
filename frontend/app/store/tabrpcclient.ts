@@ -86,7 +86,7 @@ export class TabClient extends WshClient {
         }
 
         if (data.submit) {
-            await model.handleSubmit(false);
+            await model.handleSubmit();
         }
     }
 }

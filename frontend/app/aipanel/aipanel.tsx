@@ -289,7 +289,10 @@ const AIPanelComponentInner = memo(({ className, onClose }: AIPanelProps) => {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        await model.handleSubmit(true);
+        await model.handleSubmit();
+        setTimeout(() => {
+            model.focusInput();
+        }, 100);
     };
 
     const hasFilesDragged = (dataTransfer: DataTransfer): boolean => {
