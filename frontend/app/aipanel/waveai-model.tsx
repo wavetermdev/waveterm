@@ -173,6 +173,18 @@ export class WaveAIModel {
         return input != null && input.trim().length > 0;
     }
 
+    appendText(text: string) {
+        const currentInput = globalStore.get(this.inputAtom);
+        let newInput = currentInput;
+
+        if (newInput.length > 0 && !newInput.endsWith(" ") && !newInput.endsWith("\n")) {
+            newInput += " ";
+        }
+
+        newInput += text;
+        globalStore.set(this.inputAtom, newInput);
+    }
+
     setModel(model: string) {
         const tabId = globalStore.get(atoms.staticTabId);
         RpcApi.SetMetaCommand(TabRpcClient, {

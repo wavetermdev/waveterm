@@ -143,6 +143,7 @@ const (
 	Command_GetWaveAIChat         = "getwaveaichat"
 	Command_GetWaveAIRateLimit    = "getwaveairatelimit"
 	Command_WaveAIToolApprove     = "waveaitoolapprove"
+	Command_WaveAIAddContext      = "waveaiaddcontext"
 
 	Command_CaptureBlockScreenshot = "captureblockscreenshot"
 
@@ -273,6 +274,7 @@ type WshRpcInterface interface {
 	GetWaveAIChatCommand(ctx context.Context, data CommandGetWaveAIChatData) (*uctypes.UIChat, error)
 	GetWaveAIRateLimitCommand(ctx context.Context) (*uctypes.RateLimitInfo, error)
 	WaveAIToolApproveCommand(ctx context.Context, data CommandWaveAIToolApproveData) error
+	WaveAIAddContextCommand(ctx context.Context, data CommandWaveAIAddContextData) error
 
 	// screenshot
 	CaptureBlockScreenshotCommand(ctx context.Context, data CommandCaptureBlockScreenshotData) (string, error)
@@ -732,6 +734,19 @@ type CommandWaveAIToolApproveData struct {
 	ToolCallId string `json:"toolcallid"`
 	KeepAlive  bool   `json:"keepalive,omitempty"`
 	Approval   string `json:"approval,omitempty"`
+}
+
+type AIAttachedFile struct {
+	Name string `json:"name"`
+	Type string `json:"type"`
+	Size int    `json:"size"`
+	Data []byte `json:"data"`
+}
+
+type CommandWaveAIAddContextData struct {
+	Files  []AIAttachedFile `json:"files,omitempty"`
+	Text   string           `json:"text,omitempty"`
+	Submit bool             `json:"submit,omitempty"`
 }
 
 type CommandCaptureBlockScreenshotData struct {

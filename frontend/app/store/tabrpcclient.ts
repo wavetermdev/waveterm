@@ -1,6 +1,7 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { WaveAIModel } from "@/app/aipanel/waveai-model";
 import { getApi } from "@/app/store/global";
 import { getLayoutModelForStaticTab } from "@/layout/index";
 import { RpcResponseHelper, WshClient } from "./wshclient";
@@ -55,5 +56,25 @@ export class TabClient extends WshClient {
         }
 
         return await getApi().captureScreenshot(electronRect);
+    }
+
+    async handle_waveaiaddcontext(rh: RpcResponseHelper, data: CommandWaveAIAddContextData): Promise<void> {
+        const model = WaveAIModel.getInstance();
+
+        if (data.files && data.files.length > 0) {
+            for (const fileData of data.files) {
+                const blob = new Blob([fileData.data], { type: fileData.type });
+                const file = new File([blob], fileData.name, { type: fileData.type });
+                await model.addFile(file);
+            }
+        }
+
+        if (data.text) {
+            model.appendText(data.text);
+        }
+
+        if (data.submit) {
+            model.focusInput();
+        }
     }
 }
