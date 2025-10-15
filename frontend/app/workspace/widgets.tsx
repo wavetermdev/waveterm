@@ -69,6 +69,7 @@ const Widget = memo(({ widget, mode }: { widget: WidgetConfigType; mode: "normal
 
 const Widgets = memo(() => {
     const fullConfig = useAtomValue(atoms.fullConfigAtom);
+    const hasCustomAIPresets = useAtomValue(atoms.hasCustomAIPresetsAtom);
     const [mode, setMode] = useState<"normal" | "compact" | "supercompact">("normal");
     const containerRef = useRef<HTMLDivElement>(null);
     const measurementRef = useRef<HTMLDivElement>(null);
@@ -93,7 +94,11 @@ const Widgets = memo(() => {
         magnified: true,
     };
     const showHelp = fullConfig?.settings?.["widget:showhelp"] ?? true;
-    const widgets = sortByDisplayOrder(fullConfig?.widgets);
+    const widgetsMap = fullConfig?.widgets ?? {};
+    const filteredWidgets = hasCustomAIPresets
+        ? widgetsMap
+        : Object.fromEntries(Object.entries(widgetsMap).filter(([key]) => key !== "defwidget@ai"));
+    const widgets = sortByDisplayOrder(filteredWidgets);
 
     const checkModeNeeded = useCallback(() => {
         if (!containerRef.current || !measurementRef.current) return;
