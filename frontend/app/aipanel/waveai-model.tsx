@@ -250,7 +250,9 @@ export class WaveAIModel {
 
     async handleSubmit(shouldFocus: boolean) {
         const input = globalStore.get(this.inputAtom);
-        if (!input.trim() || this.useChatStatus !== "ready" || globalStore.get(this.isLoadingChatAtom)) {
+        const droppedFiles = globalStore.get(this.droppedFiles);
+        
+        if ((!input.trim() && droppedFiles.length === 0) || (this.useChatStatus !== "ready" && this.useChatStatus !== "error") || globalStore.get(this.isLoadingChatAtom)) {
             return;
         }
 
@@ -261,8 +263,6 @@ export class WaveAIModel {
         }
 
         this.clearError();
-
-        const droppedFiles = globalStore.get(this.droppedFiles);
 
         const aiMessageParts: AIMessagePart[] = [{ type: "text", text: input.trim() }];
 
