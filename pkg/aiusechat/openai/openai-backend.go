@@ -20,6 +20,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/chatstore"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
+	"github.com/wavetermdev/waveterm/pkg/wcore"
 	"github.com/wavetermdev/waveterm/pkg/web/sse"
 )
 
@@ -813,7 +814,7 @@ func handleOpenAIEvent(
 			// _ = sse.AiMsgToolInputAvailable(st.toolCallID, st.toolName, raw)
 
 			toolDef := state.chatOpts.GetToolDefinition(st.toolName)
-			toolUseData := createToolUseData(st.toolCallID, st.toolName, toolDef, ev.Arguments)
+			toolUseData := createToolUseData(st.toolCallID, st.toolName, toolDef, ev.Arguments, state.chatOpts)
 			state.toolUseData[st.toolCallID] = toolUseData
 			if toolUseData.Approval == uctypes.ApprovalNeedsApproval && state.chatOpts.RegisterToolApproval != nil {
 				state.chatOpts.RegisterToolApproval(st.toolCallID)
@@ -840,7 +841,8 @@ func handleOpenAIEvent(
 		return nil, nil
 	}
 }
-func createToolUseData(toolCallID, toolName string, toolDef *uctypes.ToolDefinition, arguments string) *uctypes.UIMessageDataToolUse {
+
+func createToolUseData(toolCallID, toolName string, toolDef *uctypes.ToolDefinition, arguments string, chatOpts uctypes.WaveChatOpts) *uctypes.UIMessageDataToolUse {
 	toolUseData := &uctypes.UIMessageDataToolUse{
 		ToolCallId: toolCallID,
 		ToolName:   toolName,
@@ -866,6 +868,19 @@ func createToolUseData(toolCallID, toolName string, toolDef *uctypes.ToolDefinit
 
 	if toolDef.ToolApproval != nil {
 		toolUseData.Approval = toolDef.ToolApproval(parsedArgs)
+	}
+
+	if chatOpts.TabId != "" {
+		if argsMap, ok := parsedArgs.(map[string]any); ok {
+			if widgetId, ok := argsMap["widget_id"].(string); ok && widgetId != "" {
+				ctx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)
+				defer cancelFn()
+				fullBlockId, err := wcore.ResolveBlockIdFromPrefix(ctx, chatOpts.TabId, widgetId)
+				if err == nil {
+					toolUseData.BlockId = fullBlockId
+				}
+			}
+		}
 	}
 
 	return toolUseData
