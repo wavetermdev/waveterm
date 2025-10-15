@@ -7,11 +7,13 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
-	"mime"
+	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/spf13/cobra"
+	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
@@ -47,23 +49,16 @@ func init() {
 	aiCmd.Flags().BoolVarP(&aiNewBlockFlag, "new", "n", false, "create a new AI chat instead of using existing")
 }
 
-func getMimeType(filename string) string {
-	ext := filepath.Ext(filename)
-	if ext == "" {
-		return "text/plain"
-	}
-	mimeType := mime.TypeByExtension(ext)
-	if mimeType == "" {
-		return "text/plain"
-	}
-	return mimeType
+func detectMimeType(data []byte) string {
+	mimeType := http.DetectContentType(data)
+	return strings.Split(mimeType, ";")[0]
 }
 
 func getMaxFileSize(mimeType string) (int, string) {
 	if mimeType == "application/pdf" {
 		return 5 * 1024 * 1024, "5MB"
 	}
-	if mimeType[:6] == "image/" {
+	if strings.HasPrefix(mimeType, "image/") {
 		return 7 * 1024 * 1024, "7MB"
 	}
 	return 200 * 1024, "200KB"
@@ -123,7 +118,17 @@ func aiRun(cmd *cobra.Command, args []string) (rtnErr error) {
 				return fmt.Errorf("reading file %s: %w", filePath, err)
 			}
 			fileName = filepath.Base(filePath)
-			mimeType = getMimeType(filePath)
+			mimeType = detectMimeType(data)
+		}
+
+		isPDF := mimeType == "application/pdf"
+		isImage := strings.HasPrefix(mimeType, "image/")
+		
+		if !isPDF && !isImage {
+			mimeType = "text/plain"
+			if utilfn.ContainsBinaryData(data) {
+				return fmt.Errorf("file %s contains binary data and cannot be uploaded as text", fileName)
+			}
 		}
 
 		maxSize, sizeStr := getMaxFileSize(mimeType)

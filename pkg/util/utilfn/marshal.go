@@ -201,3 +201,17 @@ func DecodeDataURL(dataURL string) (mimeType string, data []byte, err error) {
 	}
 	return mimeType, []byte(decoded), nil
 }
+
+
+// ContainsBinaryData checks if the provided data contains binary (non-text) content
+func ContainsBinaryData(data []byte) bool {
+	for _, b := range data {
+		if b == 0 {
+			return true
+		}
+		if b < 32 && b != 9 && b != 10 && b != 13 {
+			return true
+		}
+	}
+	return false
+}
