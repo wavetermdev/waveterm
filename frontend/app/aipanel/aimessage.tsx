@@ -1,11 +1,12 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { BlockModel } from "@/app/block/block-model";
 import { WaveStreamdown } from "@/app/element/streamdown";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { cn } from "@/util/util";
-import { memo, useEffect, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import { getFileIcon } from "./ai-utils";
 import { WaveUIMessage, WaveUIMessagePart } from "./aitypes";
 import { WaveAIModel } from "./waveai-model";
@@ -201,6 +202,8 @@ interface AIToolUseProps {
 const AIToolUse = memo(({ part, isStreaming }: AIToolUseProps) => {
     const toolData = part.data;
     const [userApprovalOverride, setUserApprovalOverride] = useState<string | null>(null);
+    const highlightTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const highlightedBlockIdRef = useRef<string | null>(null);
 
     const statusIcon = toolData.status === "completed" ? "✓" : toolData.status === "error" ? "✗" : "•";
     const statusColor =
@@ -222,6 +225,14 @@ const AIToolUse = memo(({ part, isStreaming }: AIToolUseProps) => {
         return () => clearInterval(interval);
     }, [isStreaming, effectiveApproval, toolData.toolcallid]);
 
+    useEffect(() => {
+        return () => {
+            if (highlightTimeoutRef.current) {
+                clearTimeout(highlightTimeoutRef.current);
+            }
+        };
+    }, []);
+
     const handleApprove = () => {
         setUserApprovalOverride("user-approved");
         RpcApi.WaveAIToolApproveCommand(TabRpcClient, {
@@ -238,8 +249,47 @@ const AIToolUse = memo(({ part, isStreaming }: AIToolUseProps) => {
         });
     };
 
+    const handleMouseEnter = () => {
+        if (!toolData.blockid) return;
+
+        if (highlightTimeoutRef.current) {
+            clearTimeout(highlightTimeoutRef.current);
+        }
+
+        highlightedBlockIdRef.current = toolData.blockid;
+        BlockModel.getInstance().setBlockHighlight({
+            blockId: toolData.blockid,
+            icon: "sparkles",
+        });
+
+        highlightTimeoutRef.current = setTimeout(() => {
+            if (highlightedBlockIdRef.current === toolData.blockid) {
+                BlockModel.getInstance().setBlockHighlight(null);
+                highlightedBlockIdRef.current = null;
+            }
+        }, 2000);
+    };
+
+    const handleMouseLeave = () => {
+        if (!toolData.blockid) return;
+
+        if (highlightTimeoutRef.current) {
+            clearTimeout(highlightTimeoutRef.current);
+            highlightTimeoutRef.current = null;
+        }
+
+        if (highlightedBlockIdRef.current === toolData.blockid) {
+            BlockModel.getInstance().setBlockHighlight(null);
+            highlightedBlockIdRef.current = null;
+        }
+    };
+
     return (
-        <div className={cn("flex items-start gap-2 p-2 rounded bg-gray-800 border border-gray-700", statusColor)}>
+        <div
+            className={cn("flex items-start gap-2 p-2 rounded bg-gray-800 border border-gray-700", statusColor)}
+            onMouseEnter={handleMouseEnter}
+            onMouseLeave={handleMouseLeave}
+        >
             <span className="font-bold">{statusIcon}</span>
             <div className="flex-1">
                 <div className="font-semibold">{toolData.toolname}</div>

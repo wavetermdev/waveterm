@@ -362,10 +362,11 @@ func RunAIChat(ctx context.Context, sseHandler *sse.SSEHandlerCh, chatOpts uctyp
 	var cont *uctypes.WaveContinueResponse
 	for {
 		if chatOpts.TabStateGenerator != nil {
-			tabState, tabTools, tabErr := chatOpts.TabStateGenerator()
+			tabState, tabTools, tabId, tabErr := chatOpts.TabStateGenerator()
 			if tabErr == nil {
 				chatOpts.TabState = tabState
 				chatOpts.TabTools = tabTools
+				chatOpts.TabId = tabId
 			}
 		}
 		stopReason, rtnMessage, err := runAIChatStep(ctx, sseHandler, chatOpts, cont)
@@ -621,8 +622,9 @@ func WaveAIPostMessageHandler(w http.ResponseWriter, r *http.Request) {
 		chatOpts.SystemPrompt = []string{SystemPromptText}
 	}
 
-	chatOpts.TabStateGenerator = func() (string, []uctypes.ToolDefinition, error) {
-		return GenerateTabStateAndTools(r.Context(), req.TabId, req.WidgetAccess)
+	chatOpts.TabStateGenerator = func() (string, []uctypes.ToolDefinition, string, error) {
+		tabState, tabTools, err := GenerateTabStateAndTools(r.Context(), req.TabId, req.WidgetAccess)
+		return tabState, tabTools, req.TabId, err
 	}
 
 	// Validate the message

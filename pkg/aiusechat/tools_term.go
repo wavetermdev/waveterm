@@ -11,11 +11,10 @@ import (
 	"time"
 
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
-	"github.com/wavetermdev/waveterm/pkg/waveobj"
+	"github.com/wavetermdev/waveterm/pkg/wcore"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
-	"github.com/wavetermdev/waveterm/pkg/wstore"
 )
 
 type TermGetScrollbackToolInput struct {
@@ -121,12 +120,7 @@ func GetTermGetScrollbackToolDefinition(tabId string) uctypes.ToolDefinition {
 			ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancelFn()
 
-			tab, err := wstore.DBMustGet[*waveobj.Tab](ctx, tabId)
-			if err != nil {
-				return nil, fmt.Errorf("error getting tab: %w", err)
-			}
-
-			fullBlockId, err := resolveBlockIdFromPrefix(tab, parsed.WidgetId)
+			fullBlockId, err := wcore.ResolveBlockIdFromPrefix(ctx, tabId, parsed.WidgetId)
 			if err != nil {
 				return nil, err
 			}

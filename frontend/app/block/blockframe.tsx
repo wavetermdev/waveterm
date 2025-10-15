@@ -1,6 +1,7 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { BlockModel } from "@/app/block/block-model";
 import { blockViewToIcon, blockViewToName, ConnectionButton, getBlockHeaderIcon, Input } from "@/app/block/blockutil";
 import { Button } from "@/app/element/button";
 import { useDimensionsWithCallbackRef } from "@/app/hook/useDimensions";
@@ -26,6 +27,7 @@ import { MagnifyIcon } from "@/element/magnify";
 import { MenuButton } from "@/element/menubutton";
 import { NodeModel } from "@/layout/index";
 import * as util from "@/util/util";
+import { makeIconClass } from "@/util/util";
 import { computeBgStyleFromMeta } from "@/util/waveutil";
 import clsx from "clsx";
 import * as jotai from "jotai";
@@ -483,9 +485,11 @@ const BlockMask = React.memo(({ nodeModel }: { nodeModel: NodeModel }) => {
     const blockNum = jotai.useAtomValue(nodeModel.blockNum);
     const isLayoutMode = jotai.useAtomValue(atoms.controlShiftDelayAtom);
     const showOverlayBlockNums = jotai.useAtomValue(getSettingsKeyAtom("app:showoverlayblocknums")) ?? true;
+    const blockHighlight = jotai.useAtomValue(BlockModel.getInstance().getBlockHighlightAtom(nodeModel.blockId));
     const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", nodeModel.blockId));
     const style: React.CSSProperties = {};
     let showBlockMask = false;
+    
     if (isFocused) {
         const tabData = jotai.useAtomValue(atoms.tabAtom);
         const tabActiveBorderColor = tabData?.meta?.["bg:activebordercolor"];
@@ -505,6 +509,11 @@ const BlockMask = React.memo(({ nodeModel }: { nodeModel: NodeModel }) => {
             style.borderColor = blockData.meta["frame:bordercolor"];
         }
     }
+    
+    if (blockHighlight && !style.borderColor) {
+        style.borderColor = "rgb(59, 130, 246)";
+    }
+    
     let innerElem = null;
     if (isLayoutMode && showOverlayBlockNums) {
         showBlockMask = true;
@@ -513,9 +522,18 @@ const BlockMask = React.memo(({ nodeModel }: { nodeModel: NodeModel }) => {
                 <div className="bignum">{blockNum}</div>
             </div>
         );
+    } else if (blockHighlight) {
+        showBlockMask = true;
+        const iconClass = makeIconClass(blockHighlight.icon, false);
+        innerElem = (
+            <div className="block-mask-inner">
+                <i className={iconClass} style={{ fontSize: "48px", opacity: 0.5 }} />
+            </div>
+        );
     }
+    
     return (
-        <div className={clsx("block-mask", { "show-block-mask": showBlockMask })} style={style}>
+        <div className={clsx("block-mask", { "show-block-mask": showBlockMask, "bg-blue-500/10": blockHighlight })} style={style}>
             {innerElem}
         </div>
     );
