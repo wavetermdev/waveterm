@@ -105,21 +105,23 @@ const loggerConfig = {
     transports: loggerTransports,
 };
 const logger = winston.createLogger(loggerConfig);
-if (logRotateError != null) {
-    logger.error("error rotating/pruning logs (non-fatal):", logRotateError);
-}
-if (rotatedPath != null) {
-    logger.info("rotated old log file to:", rotatedPath);
-}
-if (prunedFiles.length > 0) {
-    logger.info("pruned old log files:", prunedFiles.join(", "));
-}
+
 function log(...msg: any[]) {
     try {
         logger.info(format(...msg));
     } catch (e) {
         oldConsoleLog(...msg);
     }
+}
+
+if (logRotateError != null) {
+    log("error rotating/pruning logs (non-fatal):", logRotateError);
+}
+if (rotatedPath != null) {
+    log("rotated old log file to:", rotatedPath);
+}
+if (prunedFiles.length > 0) {
+    log("pruned old log files:", prunedFiles.join(", "));
 }
 
 export { log };
