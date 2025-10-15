@@ -27,7 +27,7 @@ const wsReadWaitTimeout = 15 * time.Second
 const wsWriteWaitTimeout = 10 * time.Second
 const wsPingPeriodTickTime = 10 * time.Second
 const wsInitialPingTime = 1 * time.Second
-const wsMaxMessageSize = 8 * 1024 * 1024
+const wsMaxMessageSize = 10 * 1024 * 1024
 
 const DefaultCommandTimeout = 2 * time.Second
 
