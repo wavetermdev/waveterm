@@ -6,9 +6,8 @@ title: "Presets"
 
 # Presets
 
-Wave's preset system allows you to save and apply multiple configuration settings at once. Presets can be used in two different scenarios:
+Wave's preset system allows you to save and apply multiple configuration settings at once. Presets are used for:
 
-- AI models: Configure different AI providers and models (see [AI Presets](/ai-presets))
 - Tab backgrounds: Apply visual styles to your tabs
 
 ## Managing Presets
@@ -25,7 +24,7 @@ You can easily edit your presets using the built-in editor:
 
 ```bash
 wsh editconfig presets.json        # Edit main presets file
-wsh editconfig presets/ai.json     # Edit AI presets
+wsh editconfig presets/bg.json     # Edit background presets
 ```
 
 :::
@@ -47,7 +46,6 @@ Presets follow this format:
 
 The `preset-type` determines where the preset appears in Wave's interface:
 
-- `ai`: Appears in the models dropdown in the "Wave AI" widget header (see [AI Presets](/ai-presets))
 - `bg`: Appears in the "Backgrounds" submenu when right-clicking a tab
 
 ### Common Keys
@@ -58,18 +56,8 @@ The `preset-type` determines where the preset appears in Wave's interface:
 | display:order | float  | Controls the order in the menu (optional) |
 
 :::info
-When a preset is applied, it overrides the default configuration values for that tab or block. Using `bg:*` or `ai:*` will clear any previously overridden values, setting them back to defaults. It's recommended to include these keys in your presets to ensure a clean slate.
+When a preset is applied, it overrides the default configuration values for that tab or block. Using `bg:*` will clear any previously overridden values, setting them back to defaults. It's recommended to include this key in your presets to ensure a clean slate.
 :::
-
-## AI Presets
-
-For configuring AI providers and models, see our dedicated [AI Presets](/ai-presets) documentation. It covers setting up presets for:
-
-- Local LLMs via Ollama
-- Azure OpenAI
-- Anthropic's Claude
-- Perplexity
-- And more
 
 ## Background Presets
 
