@@ -4,8 +4,8 @@
 import base64 from "base64-js";
 import clsx, { type ClassValue } from "clsx";
 import { Atom, atom, Getter, SetStateAction, Setter, useAtomValue } from "jotai";
-import { debounce, throttle } from "throttle-debounce";
 import { twMerge } from "tailwind-merge";
+import { debounce, throttle } from "throttle-debounce";
 const prevValueCache = new WeakMap<any, any>(); // stores a previous value for a deep equal comparison (used with the deepCompareReturnPrev function)
 
 function isBlank(str: string): boolean {
@@ -28,7 +28,7 @@ function stringToBase64(input: string): string {
     return base64.fromByteArray(stringBytes);
 }
 
-function base64ToArray(b64: string): Uint8Array {
+function base64ToArray(b64: string): Uint8Array<ArrayBuffer> {
     const rawStr = atob(b64);
     const rtnArr = new Uint8Array(new ArrayBuffer(rawStr.length));
     for (let i = 0; i < rawStr.length; i++) {
@@ -379,17 +379,22 @@ function mergeMeta(meta: MetaType, metaUpdate: MetaType, prefix?: string): MetaT
 }
 
 function escapeBytes(str: string): string {
-    return str.replace(/[\s\S]/g, ch => {
+    return str.replace(/[\s\S]/g, (ch) => {
         const code = ch.charCodeAt(0);
         switch (ch) {
-            case "\n": return "\\n";
-            case "\r": return "\\r";
-            case "\t": return "\\t";
-            case "\b": return "\\b";
-            case "\f": return "\\f";
+            case "\n":
+                return "\\n";
+            case "\r":
+                return "\\r";
+            case "\t":
+                return "\\t";
+            case "\b":
+                return "\\b";
+            case "\f":
+                return "\\f";
         }
         if (code === 0x1b) return "\\x1b"; // escape
-        if (code < 0x20 || code === 0x7f) return `\\x${code.toString(16).padStart(2,"0")}`;
+        if (code < 0x20 || code === 0x7f) return `\\x${code.toString(16).padStart(2, "0")}`;
         return ch;
     });
 }

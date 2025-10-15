@@ -737,16 +737,17 @@ type CommandWaveAIToolApproveData struct {
 }
 
 type AIAttachedFile struct {
-	Name string `json:"name"`
-	Type string `json:"type"`
-	Size int    `json:"size"`
-	Data []byte `json:"data"`
+	Name   string `json:"name"`
+	Type   string `json:"type"`
+	Size   int    `json:"size"`
+	Data64 string `json:"data64"`
 }
 
 type CommandWaveAIAddContextData struct {
-	Files  []AIAttachedFile `json:"files,omitempty"`
-	Text   string           `json:"text,omitempty"`
-	Submit bool             `json:"submit,omitempty"`
+	Files   []AIAttachedFile `json:"files,omitempty"`
+	Text    string           `json:"text,omitempty"`
+	Submit  bool             `json:"submit,omitempty"`
+	NewChat bool             `json:"newchat,omitempty"`
 }
 
 type CommandCaptureBlockScreenshotData struct {

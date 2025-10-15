@@ -116,16 +116,39 @@ wsh setvar -b tab SHARED_ENV=staging
 
 ### AI-Assisted Development
 
+The `wsh ai` command appends content to the Wave AI sidebar. By default, files are attached without auto-submitting, allowing you to review and add more context before sending.
+
 ```bash
-# Get AI help with code (uses "-" to read from stdin)
-git diff | wsh ai - "review these changes"
+# Pipe output to AI sidebar (ask question in UI)
+git diff | wsh ai -
 
-# Get help with a file
-wsh ai -f .zshrc "help me add ~/bin to my path"
+# Attach files with a message
+wsh ai main.go utils.go -m "find bugs in these files"
 
-# Debug issues (uses "-" to read from stdin)
-dmesg | wsh ai - "help me understand these errors"
+# Auto-submit with message
+wsh ai config.json -s -m "explain this config"
+
+# Start new chat with attached files
+wsh ai -n *.log -m "analyze these logs"
+
+# Attach multiple file types (images, PDFs, code)
+wsh ai screenshot.png report.pdf app.py -m "review these"
+
+# Debug with stdin and auto-submit
+dmesg | wsh ai -s - -m "help me understand these errors"
 ```
+
+**Flags:**
+- `-` - Read from stdin instead of a file
+- `-m, --message` - Add message text along with files
+- `-s, --submit` - Auto-submit immediately (default is to wait for user)
+- `-n, --new` - Clear chat and start fresh conversation
+
+**File Limits:**
+- Text files: 200KB max
+- PDFs: 5MB max
+- Images: 7MB max
+- Maximum 15 files per command
 
 ## Tips & Features
 

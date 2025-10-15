@@ -3,7 +3,9 @@
 
 import { WaveAIModel } from "@/app/aipanel/waveai-model";
 import { getApi } from "@/app/store/global";
+import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
 import { getLayoutModelForStaticTab } from "@/layout/index";
+import { base64ToArray } from "@/util/util";
 import { RpcResponseHelper, WshClient } from "./wshclient";
 
 export class TabClient extends WshClient {
@@ -59,11 +61,21 @@ export class TabClient extends WshClient {
     }
 
     async handle_waveaiaddcontext(rh: RpcResponseHelper, data: CommandWaveAIAddContextData): Promise<void> {
+        const workspaceLayoutModel = WorkspaceLayoutModel.getInstance();
+        if (!workspaceLayoutModel.getAIPanelVisible()) {
+            workspaceLayoutModel.setAIPanelVisible(true, { nofocus: true });
+        }
+
         const model = WaveAIModel.getInstance();
+
+        if (data.newchat) {
+            model.clearChat();
+        }
 
         if (data.files && data.files.length > 0) {
             for (const fileData of data.files) {
-                const blob = new Blob([fileData.data], { type: fileData.type });
+                const decodedData = base64ToArray(fileData.data64);
+                const blob = new Blob([decodedData], { type: fileData.type });
                 const file = new File([blob], fileData.name, { type: fileData.type });
                 await model.addFile(file);
             }
@@ -74,7 +86,7 @@ export class TabClient extends WshClient {
         }
 
         if (data.submit) {
-            model.focusInput();
+            await model.handleSubmit(false);
         }
     }
 }

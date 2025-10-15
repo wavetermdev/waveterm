@@ -110,24 +110,44 @@ wsh getmeta -b [other-tab-id] "bg:*" --clear-prefix | wsh setmeta -b tab --json 
 
 ## ai
 
-Send messages to new or existing AI blocks directly from the CLI. `-f` passes a file. note that there is a maximum size of 10k for messages and files, so use a tail/grep to cut down file sizes before passing. The `-f` option works great for small files though like shell scripts or `.zshrc` etc. You can use "-" to read input from stdin.
+Append content to the Wave AI sidebar. Files are attached as proper file attachments (supporting images, PDFs, and text), not encoded as text. By default, content is added to the sidebar without auto-submitting, allowing you to review and add more context before sending to the AI.
 
-By default the messages get sent to the first AI block (by blocknum). If no AI block exists, then a new one will be created. Use `-n` to force creation of a new AI block. Use `-b` to target a specific AI block.
+You can attach multiple files at once (up to 15 files). Use `-m` to add a message along with files, `-s` to auto-submit immediately, and `-n` to start a new chat conversation. Use "-" to read from stdin.
 
 ```sh
-wsh ai "how do i write an ls command that sorts files in reverse size order"
-wsh ai -f <(tail -n 20 "my.log") -- "any idea what these error messages mean"
-wsh ai -f README.md "help me update this readme file"
+# Pipe command output to AI (ask question in UI)
+git diff | wsh ai -
+docker logs mycontainer | wsh ai -
 
-# creates a new AI block
-wsh ai -n "tell me a story"
+# Attach files without auto-submit (review in UI first)
+wsh ai main.go utils.go
+wsh ai screenshot.png logs.txt
 
-# targets block number 5
-wsh ai -b 5 "tell me more"
+# Attach files with message
+wsh ai app.py -m "find potential bugs"
+wsh ai *.log -m "analyze these error logs"
 
-# read from stdin and also supply a message
-tail -n 50 mylog.log | wsh ai - "can you tell me what this error means?"
+# Auto-submit immediately
+wsh ai config.json -s -m "explain this configuration"
+tail -n 50 app.log | wsh ai -s - -m "what's causing these errors?"
+
+# Start new chat and attach files
+wsh ai -n report.pdf data.csv -m "summarize these reports"
+
+# Attach different file types (images, PDFs, code)
+wsh ai architecture.png api-spec.pdf server.go -m "review the system design"
 ```
+
+**File Size Limits:**
+- Text files: 200KB maximum
+- PDF files: 5MB maximum
+- Image files: 7MB maximum (accounts for base64 encoding overhead)
+- Maximum 15 files per command
+
+**Flags:**
+- `-m, --message <text>` - Add message text along with files
+- `-s, --submit` - Auto-submit immediately (default waits for user)
+- `-n, --new` - Clear current chat and start fresh conversation
 
 ---
 

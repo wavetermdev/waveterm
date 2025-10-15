@@ -10,7 +10,7 @@ declare global {
         name: string;
         type: string;
         size: number;
-        data: string;
+        data64: string;
     };
 
     // wshrpc.ActivityDisplayType
@@ -333,6 +333,7 @@ declare global {
         files?: AIAttachedFile[];
         text?: string;
         submit?: boolean;
+        newchat?: boolean;
     };
 
     // wshrpc.CommandWaveAIToolApproveData

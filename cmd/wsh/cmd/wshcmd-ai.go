@@ -4,47 +4,69 @@
 package cmd
 
 import (
+	"encoding/base64"
 	"fmt"
 	"io"
+	"mime"
 	"os"
-	"strings"
+	"path/filepath"
 
 	"github.com/spf13/cobra"
-	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
 )
 
 var aiCmd = &cobra.Command{
-	Use:                   "ai [-] [message...]",
-	Short:                 "Send a message to an AI block",
+	Use:   "ai [options] [files...]",
+	Short: "Append content to Wave AI sidebar prompt",
+	Long: `Append content to Wave AI sidebar prompt (does not auto-submit by default)
+
+Arguments:
+  files...               Files to attach (use '-' for stdin)
+
+Examples:
+  git diff | wsh ai -                    # Pipe diff to AI, ask question in UI
+  wsh ai main.go                         # Attach file, ask question in UI
+  wsh ai *.go -m "find bugs"             # Attach files with message
+  wsh ai -s - -m "review" < log.txt      # Stdin + message, auto-submit
+  wsh ai -n config.json                  # New chat with file attached`,
 	RunE:                  aiRun,
 	PreRunE:               preRunSetupRpcClient,
 	DisableFlagsInUseLine: true,
 }
 
-var aiFileFlags []string
+var aiMessageFlag string
+var aiSubmitFlag bool
 var aiNewBlockFlag bool
 
 func init() {
 	rootCmd.AddCommand(aiCmd)
-	aiCmd.Flags().BoolVarP(&aiNewBlockFlag, "new", "n", false, "create a new AI block")
-	aiCmd.Flags().StringArrayVarP(&aiFileFlags, "file", "f", nil, "attach file content (use '-' for stdin)")
+	aiCmd.Flags().StringVarP(&aiMessageFlag, "message", "m", "", "optional message/question to append after files")
+	aiCmd.Flags().BoolVarP(&aiSubmitFlag, "submit", "s", false, "submit the prompt immediately after appending")
+	aiCmd.Flags().BoolVarP(&aiNewBlockFlag, "new", "n", false, "create a new AI chat instead of using existing")
 }
 
-func encodeFile(builder *strings.Builder, file io.Reader, fileName string) error {
-	data, err := io.ReadAll(file)
-	if err != nil {
-		return fmt.Errorf("error reading file: %w", err)
+func getMimeType(filename string) string {
+	ext := filepath.Ext(filename)
+	if ext == "" {
+		return "text/plain"
 	}
-	// Start delimiter with the file name
-	builder.WriteString(fmt.Sprintf("\n@@@start file %q\n", fileName))
-	// Read the file content and write it to the builder
-	builder.Write(data)
-	// End delimiter with the file name
-	builder.WriteString(fmt.Sprintf("\n@@@end file %q\n\n", fileName))
-	return nil
+	mimeType := mime.TypeByExtension(ext)
+	if mimeType == "" {
+		return "text/plain"
+	}
+	return mimeType
+}
+
+func getMaxFileSize(mimeType string) (int, string) {
+	if mimeType == "application/pdf" {
+		return 5 * 1024 * 1024, "5MB"
+	}
+	if mimeType[:6] == "image/" {
+		return 7 * 1024 * 1024, "7MB"
+	}
+	return 200 * 1024, "200KB"
 }
 
 func aiRun(cmd *cobra.Command, args []string) (rtnErr error) {
@@ -52,118 +74,127 @@ func aiRun(cmd *cobra.Command, args []string) (rtnErr error) {
 		sendActivity("ai", rtnErr == nil)
 	}()
 
-	if len(args) == 0 {
+	if len(args) == 0 && aiMessageFlag == "" {
 		OutputHelpMessage(cmd)
-		return fmt.Errorf("no message provided")
+		return fmt.Errorf("no files or message provided")
 	}
 
-	var stdinUsed bool
-	var message strings.Builder
+	const maxBatchSize = 7 * 1024 * 1024
+	const largeFileThreshold = 1 * 1024 * 1024
+	const maxFileCount = 15
+	const rpcTimeout = 30000
 
-	// Handle file attachments first
-	for _, file := range aiFileFlags {
-		if file == "-" {
+	var allFiles []wshrpc.AIAttachedFile
+	var stdinUsed bool
+
+	if len(args) > maxFileCount {
+		return fmt.Errorf("too many files (maximum %d files allowed)", maxFileCount)
+	}
+
+	for _, filePath := range args {
+		var data []byte
+		var fileName string
+		var mimeType string
+		var err error
+
+		if filePath == "-" {
 			if stdinUsed {
 				return fmt.Errorf("stdin (-) can only be used once")
 			}
 			stdinUsed = true
-			if err := encodeFile(&message, os.Stdin, "<stdin>"); err != nil {
+
+			data, err = io.ReadAll(os.Stdin)
+			if err != nil {
 				return fmt.Errorf("reading from stdin: %w", err)
 			}
+			fileName = "stdin"
+			mimeType = "text/plain"
 		} else {
-			fd, err := os.Open(file)
+			fileInfo, err := os.Stat(filePath)
 			if err != nil {
-				return fmt.Errorf("opening file %s: %w", file, err)
+				return fmt.Errorf("accessing file %s: %w", filePath, err)
 			}
-			defer fd.Close()
-			if err := encodeFile(&message, fd, file); err != nil {
-				return fmt.Errorf("reading file %s: %w", file, err)
+			if fileInfo.IsDir() {
+				return fmt.Errorf("%s is a directory, not a file", filePath)
 			}
-		}
-	}
 
-	// Default to "waveai" block
-	isDefaultBlock := blockArg == ""
-	if isDefaultBlock {
-		blockArg = "view@waveai"
-	}
-	var fullORef *waveobj.ORef
-	var err error
-	if !aiNewBlockFlag {
-		fullORef, err = resolveSimpleId(blockArg)
-	}
-	if (err != nil && isDefaultBlock) || aiNewBlockFlag {
-		// Create new AI block if default block doesn't exist
-		data := &wshrpc.CommandCreateBlockData{
-			BlockDef: &waveobj.BlockDef{
-				Meta: map[string]interface{}{
-					waveobj.MetaKey_View: "waveai",
-				},
-			},
-			Focused: true,
-		}
-
-		newORef, err := wshclient.CreateBlockCommand(RpcClient, *data, &wshrpc.RpcOpts{Timeout: 2000})
-		if err != nil {
-			return fmt.Errorf("creating AI block: %w", err)
-		}
-		fullORef = &newORef
-		// Wait for the block's route to be available
-		gotRoute, err := wshclient.WaitForRouteCommand(RpcClient, wshrpc.CommandWaitForRouteData{
-			RouteId: wshutil.MakeFeBlockRouteId(fullORef.OID),
-			WaitMs:  4000,
-		}, &wshrpc.RpcOpts{Timeout: 5000})
-		if err != nil {
-			return fmt.Errorf("waiting for AI block: %w", err)
-		}
-		if !gotRoute {
-			return fmt.Errorf("AI block route could not be established")
-		}
-	} else if err != nil {
-		return fmt.Errorf("resolving block: %w", err)
-	}
-
-	// Create the route for this block
-	route := wshutil.MakeFeBlockRouteId(fullORef.OID)
-
-	// Then handle main message
-	if args[0] == "-" {
-		if stdinUsed {
-			return fmt.Errorf("stdin (-) can only be used once")
-		}
-		data, err := io.ReadAll(os.Stdin)
-		if err != nil {
-			return fmt.Errorf("reading from stdin: %w", err)
-		}
-		message.Write(data)
-		
-		// Also include any remaining arguments (excluding the "-" itself)
-		if len(args) > 1 {
-			if message.Len() > 0 {
-				message.WriteString(" ")
+			data, err = os.ReadFile(filePath)
+			if err != nil {
+				return fmt.Errorf("reading file %s: %w", filePath, err)
 			}
-			message.WriteString(strings.Join(args[1:], " "))
+			fileName = filepath.Base(filePath)
+			mimeType = getMimeType(filePath)
 		}
-	} else {
-		message.WriteString(strings.Join(args, " "))
+
+		maxSize, sizeStr := getMaxFileSize(mimeType)
+		if len(data) > maxSize {
+			return fmt.Errorf("file %s exceeds maximum size of %s for %s files", fileName, sizeStr, mimeType)
+		}
+
+		allFiles = append(allFiles, wshrpc.AIAttachedFile{
+			Name:   fileName,
+			Type:   mimeType,
+			Size:   len(data),
+			Data64: base64.StdEncoding.EncodeToString(data),
+		})
 	}
 
-	if message.Len() == 0 {
-		return fmt.Errorf("message is empty")
-	}
-	if message.Len() > 50*1024 {
-		return fmt.Errorf("current max message size is 50k")
+	tabId := os.Getenv("WAVETERM_TABID")
+	if tabId == "" {
+		return fmt.Errorf("WAVETERM_TABID environment variable not set")
 	}
 
-	messageData := wshrpc.AiMessageData{
-		Message: message.String(),
+	route := wshutil.MakeTabRouteId(tabId)
+
+	if aiNewBlockFlag {
+		newChatData := wshrpc.CommandWaveAIAddContextData{
+			NewChat: true,
+		}
+		err := wshclient.WaveAIAddContextCommand(RpcClient, newChatData, &wshrpc.RpcOpts{
+			Route:   route,
+			Timeout: rpcTimeout,
+		})
+		if err != nil {
+			return fmt.Errorf("creating new chat: %w", err)
+		}
 	}
-	err = wshclient.AiSendMessageCommand(RpcClient, messageData, &wshrpc.RpcOpts{
+
+	var smallFiles []wshrpc.AIAttachedFile
+	var smallFilesSize int
+
+	for _, file := range allFiles {
+		if file.Size > largeFileThreshold {
+			contextData := wshrpc.CommandWaveAIAddContextData{
+				Files: []wshrpc.AIAttachedFile{file},
+			}
+			err := wshclient.WaveAIAddContextCommand(RpcClient, contextData, &wshrpc.RpcOpts{
+				Route:   route,
+				Timeout: rpcTimeout,
+			})
+			if err != nil {
+				return fmt.Errorf("adding file %s: %w", file.Name, err)
+			}
+		} else {
+			smallFilesSize += file.Size
+			if smallFilesSize > maxBatchSize {
+				return fmt.Errorf("small files total size exceeds maximum batch size of 7MB")
+			}
+			smallFiles = append(smallFiles, file)
+		}
+	}
+
+	finalContextData := wshrpc.CommandWaveAIAddContextData{
+		Files:  smallFiles,
+		Text:   aiMessageFlag,
+		Submit: aiSubmitFlag,
+	}
+
+	err := wshclient.WaveAIAddContextCommand(RpcClient, finalContextData, &wshrpc.RpcOpts{
 		Route:   route,
-		Timeout: 2000,
+		Timeout: rpcTimeout,
 	})
 	if err != nil {
-		return fmt.Errorf("sending message: %w", err)
+		return fmt.Errorf("adding context: %w", err)
 	}
 
 	return nil

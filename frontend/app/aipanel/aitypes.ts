@@ -1,7 +1,7 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { UIMessage, UIMessagePart } from "ai";
+import { ChatRequestOptions, FileUIPart, UIMessage, UIMessagePart } from "ai";
 
 type WaveUIDataTypes = {
     userfile: {
@@ -22,3 +22,33 @@ type WaveUIDataTypes = {
 
 export type WaveUIMessage = UIMessage<unknown, WaveUIDataTypes, {}>;
 export type WaveUIMessagePart = UIMessagePart<WaveUIDataTypes, {}>;
+
+export type UseChatSetMessagesType = (
+    messages: WaveUIMessage[] | ((messages: WaveUIMessage[]) => WaveUIMessage[])
+) => void;
+
+export type UseChatSendMessageType = (
+    message?:
+        | (Omit<WaveUIMessage, "id" | "role"> & {
+              id?: string;
+              role?: "system" | "user" | "assistant";
+          } & {
+              text?: never;
+              files?: never;
+              messageId?: string;
+          })
+        | {
+              text: string;
+              files?: FileList | FileUIPart[];
+              metadata?: unknown;
+              parts?: never;
+              messageId?: string;
+          }
+        | {
+              files: FileList | FileUIPart[];
+              metadata?: unknown;
+              parts?: never;
+              messageId?: string;
+          },
+    options?: ChatRequestOptions
+) => Promise<void>;
