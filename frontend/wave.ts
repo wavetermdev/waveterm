@@ -164,6 +164,7 @@ async function initWave(initOpts: WaveInitOpts) {
         windowId: initOpts.windowId,
         platform,
         environment: "renderer",
+        primaryTabStartup: initOpts.primaryTabStartup,
     });
     (window as any).globalAtoms = atoms;
 

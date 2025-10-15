@@ -59,6 +59,7 @@ declare global {
         clientId: string;
         windowId: string;
         activate: boolean;
+        primaryTabStartup?: boolean;
     };
 
     type ElectronApi = {
