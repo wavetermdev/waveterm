@@ -205,7 +205,7 @@ const AIPanelComponentInner = memo(({ className, onClose }: AIPanelProps) => {
     const telemetryEnabled = jotai.useAtomValue(getSettingsKeyAtom("telemetry:enabled")) ?? false;
     const isPanelVisible = jotai.useAtomValue(WorkspaceLayoutModel.getInstance().panelVisibleAtom);
 
-    const { messages, sendMessage, status, setMessages, error } = useChat({
+    const { messages, sendMessage, status, setMessages, error, stop } = useChat({
         transport: new DefaultChatTransport({
             api: `${getWebServerEndpoint()}/api/post-chat-message`,
             prepareSendMessagesRequest: (opts) => {
@@ -232,7 +232,7 @@ const AIPanelComponentInner = memo(({ className, onClose }: AIPanelProps) => {
         },
     });
 
-    model.registerUseChatData(sendMessage, setMessages, status);
+    model.registerUseChatData(sendMessage, setMessages, status, stop);
 
     // console.log("AICHAT messages", messages);
 

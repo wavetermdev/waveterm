@@ -30,6 +30,7 @@ export class WaveAIModel {
     private useChatSendMessage: UseChatSendMessageType | null = null;
     private useChatSetMessages: UseChatSetMessagesType | null = null;
     private useChatStatus: ChatStatus = "ready";
+    private useChatStop: (() => void) | null = null;
     // Used for injecting Wave-specific message data into DefaultChatTransport's prepareSendMessagesRequest
     realMessage: AIMessage | null = null;
 
@@ -135,6 +136,7 @@ export class WaveAIModel {
     }
 
     clearChat() {
+        this.useChatStop?.();
         this.clearFiles();
         this.isChatEmpty = true;
         const newChatId = crypto.randomUUID();
@@ -165,10 +167,16 @@ export class WaveAIModel {
         this.scrollToBottomCallback = callback;
     }
 
-    registerUseChatData(sendMessage: UseChatSendMessageType, setMessages: UseChatSetMessagesType, status: ChatStatus) {
+    registerUseChatData(
+        sendMessage: UseChatSendMessageType,
+        setMessages: UseChatSetMessagesType,
+        status: ChatStatus,
+        stop: () => void
+    ) {
         this.useChatSendMessage = sendMessage;
         this.useChatSetMessages = setMessages;
         this.useChatStatus = status;
+        this.useChatStop = stop;
     }
 
     scrollToBottom() {
