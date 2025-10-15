@@ -286,9 +286,7 @@ const AIToolUse = memo(({ part, isStreaming }: AIToolUseProps) => {
 
     return (
         <div
-            className={cn("flex items-start gap-2 p-2 rounded bg-gray-800 border border-gray-700", statusColor, {
-                "cursor-pointer": toolData.blockid,
-            })}
+            className={cn("flex items-start gap-2 p-2 rounded bg-gray-800 border border-gray-700", statusColor)}
             onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}
         >
