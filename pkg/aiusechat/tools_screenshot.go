@@ -9,11 +9,10 @@ import (
 	"time"
 
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
-	"github.com/wavetermdev/waveterm/pkg/waveobj"
+	"github.com/wavetermdev/waveterm/pkg/wcore"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
-	"github.com/wavetermdev/waveterm/pkg/wstore"
 )
 
 func makeTabCaptureBlockScreenshot(tabId string) func(any) (string, error) {
@@ -31,12 +30,7 @@ func makeTabCaptureBlockScreenshot(tabId string) func(any) (string, error) {
 		ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancelFn()
 
-		tab, err := wstore.DBMustGet[*waveobj.Tab](ctx, tabId)
-		if err != nil {
-			return "", fmt.Errorf("error getting tab: %w", err)
-		}
-
-		fullBlockId, err := resolveBlockIdFromPrefix(tab, blockIdPrefix)
+		fullBlockId, err := wcore.ResolveBlockIdFromPrefix(ctx, tabId, blockIdPrefix)
 		if err != nil {
 			return "", err
 		}

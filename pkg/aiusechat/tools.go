@@ -15,20 +15,6 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wstore"
 )
 
-func resolveBlockIdFromPrefix(tab *waveobj.Tab, blockIdPrefix string) (string, error) {
-	if len(blockIdPrefix) != 8 {
-		return "", fmt.Errorf("widget_id must be 8 characters")
-	}
-
-	for _, blockId := range tab.BlockIds {
-		if strings.HasPrefix(blockId, blockIdPrefix) {
-			return blockId, nil
-		}
-	}
-
-	return "", fmt.Errorf("widget_id not found: %q", blockIdPrefix)
-}
-
 func MakeBlockShortDesc(block *waveobj.Block) string {
 	if block.Meta == nil {
 		return ""

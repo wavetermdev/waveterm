@@ -86,12 +86,7 @@ func GetWebNavigateToolDefinition(tabId string) uctypes.ToolDefinition {
 			ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancelFn()
 
-			tab, err := wstore.DBMustGet[*waveobj.Tab](ctx, tabId)
-			if err != nil {
-				return nil, fmt.Errorf("error getting tab: %w", err)
-			}
-
-			fullBlockId, err := resolveBlockIdFromPrefix(tab, parsed.WidgetId)
+			fullBlockId, err := wcore.ResolveBlockIdFromPrefix(ctx, tabId, parsed.WidgetId)
 			if err != nil {
 				return nil, err
 			}

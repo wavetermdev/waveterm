@@ -140,6 +140,7 @@ type UIMessageDataToolUse struct {
 	Status       string `json:"status"`
 	ErrorMessage string `json:"errormessage,omitempty"`
 	Approval     string `json:"approval,omitempty"`
+	BlockId      string `json:"blockid,omitempty"`
 }
 
 func (d *UIMessageDataToolUse) IsApproved() bool {
@@ -422,14 +423,15 @@ type WaveChatOpts struct {
 	Config               AIOptsType
 	Tools                []ToolDefinition
 	SystemPrompt         []string
-	TabStateGenerator    func() (string, []ToolDefinition, error)
+	TabStateGenerator    func() (string, []ToolDefinition, string, error)
 	WidgetAccess         bool
 	RegisterToolApproval func(string)
 	AllowNativeWebSearch bool
 
-	// emphemeral to the step
+	// ephemeral to the step
 	TabState string
 	TabTools []ToolDefinition
+	TabId    string
 }
 
 func (opts *WaveChatOpts) GetToolDefinition(toolName string) *ToolDefinition {
