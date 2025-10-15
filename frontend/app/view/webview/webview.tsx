@@ -742,6 +742,9 @@ const WebView = memo(({ model, onFailLoad, blockRef, initialSrc }: WebViewProps)
     const setSearchIndex = useSetAtom(searchProps.resultsIndex);
     const setNumSearchResults = useSetAtom(searchProps.resultsCount);
     searchProps.onSearch = useCallback((search: string) => {
+        if (!globalStore.get(model.domReady)) {
+            return;
+        }
         try {
             if (search) {
                 model.webviewRef.current?.findInPage(search, { findNext: true });
@@ -753,6 +756,9 @@ const WebView = memo(({ model, onFailLoad, blockRef, initialSrc }: WebViewProps)
         }
     }, []);
     searchProps.onNext = useCallback(() => {
+        if (!globalStore.get(model.domReady)) {
+            return;
+        }
         try {
             console.log("search next", searchVal);
             model.webviewRef.current?.findInPage(searchVal, { findNext: false, forward: true });
@@ -761,6 +767,9 @@ const WebView = memo(({ model, onFailLoad, blockRef, initialSrc }: WebViewProps)
         }
     }, [searchVal]);
     searchProps.onPrev = useCallback(() => {
+        if (!globalStore.get(model.domReady)) {
+            return;
+        }
         try {
             console.log("search prev", searchVal);
             model.webviewRef.current?.findInPage(searchVal, { findNext: false, forward: false });

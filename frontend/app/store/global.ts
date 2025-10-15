@@ -27,6 +27,7 @@ import { getFileSubject, waveEventSubscribe } from "./wps";
 
 let atoms: GlobalAtomsType;
 let globalEnvironment: "electron" | "renderer";
+let globalPrimaryTabStartup: boolean = false;
 const blockComponentModelMap = new Map<string, BlockComponentModel>();
 const Counters = new Map<string, number>();
 const ConnStatusMapAtom = atom(new Map<string, PrimitiveAtom<ConnStatus>>());
@@ -39,10 +40,12 @@ type GlobalInitOptions = {
     windowId: string;
     clientId: string;
     environment: "electron" | "renderer";
+    primaryTabStartup?: boolean;
 };
 
 function initGlobal(initOpts: GlobalInitOptions) {
     globalEnvironment = initOpts.environment;
+    globalPrimaryTabStartup = initOpts.primaryTabStartup ?? false;
     setPlatform(initOpts.platform);
     initGlobalAtoms(initOpts);
 }
@@ -814,6 +817,7 @@ export {
     getSettingsPrefixAtom,
     getTabMetaKeyAtom,
     getUserName,
+    globalPrimaryTabStartup,
     globalStore,
     initGlobal,
     initGlobalWaveEventSubs,

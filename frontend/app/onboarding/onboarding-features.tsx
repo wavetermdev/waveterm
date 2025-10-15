@@ -5,6 +5,8 @@ import Logo from "@/app/asset/logo.svg";
 import { Button } from "@/app/element/button";
 import { EmojiButton } from "@/app/element/emojibutton";
 import { MagnifyIcon } from "@/app/element/magnify";
+import { atoms, globalStore } from "@/app/store/global";
+import * as WOS from "@/app/store/wos";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { isMacOS } from "@/util/platformutil";
@@ -12,6 +14,8 @@ import { useEffect, useState } from "react";
 import { FakeChat } from "./fakechat";
 import { EditBashrcCommand, ViewLogoCommand, ViewShortcutsCommand } from "./onboarding-command";
 import { FakeLayout } from "./onboarding-layout";
+
+export const CurrentOnboardingVersion = "v0.12.0";
 
 type FeaturePageName = "waveai" | "magnify" | "files";
 
@@ -72,6 +76,7 @@ const WaveAIPage = ({ onNext, onSkip }: { onNext: () => void; onSkip: () => void
                 event: "onboarding:fire",
                 props: {
                     "onboarding:feature": "waveai",
+                    "onboarding:version": CurrentOnboardingVersion,
                 },
             });
         }
@@ -158,6 +163,7 @@ const MagnifyBlocksPage = ({
                 event: "onboarding:fire",
                 props: {
                     "onboarding:feature": "magnify",
+                    "onboarding:version": CurrentOnboardingVersion,
                 },
             });
         }
@@ -216,6 +222,7 @@ const FilesPage = ({ onFinish, onPrev }: { onFinish: () => void; onPrev?: () => 
                 event: "onboarding:fire",
                 props: {
                     "onboarding:feature": "wsh",
+                    "onboarding:version": CurrentOnboardingVersion,
                 },
             });
         }
@@ -300,9 +307,16 @@ export const OnboardingFeatures = ({ onComplete }: { onComplete: () => void }) =
     const [currentPage, setCurrentPage] = useState<FeaturePageName>("waveai");
 
     useEffect(() => {
+        const clientId = globalStore.get(atoms.clientId);
+        RpcApi.SetMetaCommand(TabRpcClient, {
+            oref: WOS.makeORef("client", clientId),
+            meta: { "onboarding:lastversion": CurrentOnboardingVersion },
+        });
         RpcApi.RecordTEventCommand(TabRpcClient, {
             event: "onboarding:start",
-            props: {},
+            props: {
+                "onboarding:version": CurrentOnboardingVersion,
+            },
         });
     }, []);
 

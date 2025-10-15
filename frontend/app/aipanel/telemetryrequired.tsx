@@ -5,6 +5,7 @@ import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { cn } from "@/util/util";
 import { useState } from "react";
+import { WaveAIModel } from "./waveai-model";
 
 interface TelemetryRequiredMessageProps {
     className?: string;
@@ -17,6 +18,9 @@ const TelemetryRequiredMessage = ({ className }: TelemetryRequiredMessageProps) 
         setIsEnabling(true);
         try {
             await RpcApi.WaveAIEnableTelemetryCommand(TabRpcClient);
+            setTimeout(() => {
+                WaveAIModel.getInstance().focusInput();
+            }, 100);
         } catch (error) {
             console.error("Failed to enable telemetry:", error);
             setIsEnabling(false);
