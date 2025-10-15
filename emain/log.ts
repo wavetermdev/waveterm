@@ -27,9 +27,9 @@ function findHighestLogNumber(logsDir: string): number {
     return maxNum;
 }
 
-function pruneOldLogs(logsDir: string): string[] {
+function pruneOldLogs(logsDir: string): { pruned: string[]; error: any } {
     if (!fs.existsSync(logsDir)) {
-        return [];
+        return { pruned: [], error: null };
     }
 
     const files = fs.readdirSync(logsDir);
@@ -43,17 +43,26 @@ function pruneOldLogs(logsDir: string): string[] {
     }
 
     if (logFiles.length <= 5) {
-        return [];
+        return { pruned: [], error: null };
     }
 
     logFiles.sort((a, b) => b.num - a.num);
     const toDelete = logFiles.slice(5);
+    const pruned: string[] = [];
+    let firstError: any = null;
 
     for (const logFile of toDelete) {
-        fs.unlinkSync(path.join(logsDir, logFile.name));
+        try {
+            fs.unlinkSync(path.join(logsDir, logFile.name));
+            pruned.push(logFile.name);
+        } catch (e) {
+            if (firstError == null) {
+                firstError = e;
+            }
+        }
     }
 
-    return toDelete.map((f) => f.name);
+    return { pruned, error: firstError };
 }
 
 function rotateLogIfNeeded(): string | null {
@@ -82,10 +91,13 @@ function rotateLogIfNeeded(): string | null {
 let logRotateError: any = null;
 let rotatedPath: string | null = null;
 let prunedFiles: string[] = [];
+let pruneError: any = null;
 try {
     rotatedPath = rotateLogIfNeeded();
     const logsDir = path.join(getWaveDataDir(), "logs");
-    prunedFiles = pruneOldLogs(logsDir);
+    const pruneResult = pruneOldLogs(logsDir);
+    prunedFiles = pruneResult.pruned;
+    pruneError = pruneResult.error;
 } catch (e) {
     logRotateError = e;
 }
@@ -122,6 +134,9 @@ if (rotatedPath != null) {
 }
 if (prunedFiles.length > 0) {
     log("pruned old log files:", prunedFiles.join(", "));
+}
+if (pruneError != null) {
+    log("error pruning some log files (non-fatal):", pruneError);
 }
 
 export { log };
