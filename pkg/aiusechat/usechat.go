@@ -22,6 +22,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/telemetry"
 	"github.com/wavetermdev/waveterm/pkg/telemetry/telemetrydata"
 	"github.com/wavetermdev/waveterm/pkg/util/ds"
+	"github.com/wavetermdev/waveterm/pkg/util/logutil"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/web/sse"
@@ -143,7 +144,6 @@ func shouldUsePremium() bool {
 }
 
 func updateRateLimit(info *uctypes.RateLimitInfo) {
-	log.Printf("updateRateLimit: %#v\n", info)
 	if info == nil {
 		return
 	}
@@ -234,7 +234,7 @@ func processToolCall(toolCall uctypes.WaveToolCall, chatOpts uctypes.WaveChatOpt
 	}
 
 	inputJSON, _ := json.Marshal(toolCall.Input)
-	log.Printf("TOOLUSE name=%s id=%s input=%s approval=%q\n", toolCall.Name, toolCall.ID, utilfn.TruncateString(string(inputJSON), 40), toolCall.ToolUseData.Approval)
+	logutil.DevPrintf("TOOLUSE name=%s id=%s input=%s approval=%q\n", toolCall.Name, toolCall.ID, utilfn.TruncateString(string(inputJSON), 40), toolCall.ToolUseData.Approval)
 
 	if toolCall.ToolUseData.Status == uctypes.ToolUseStatusError {
 		errorMsg := toolCall.ToolUseData.ErrorMessage
@@ -349,7 +349,6 @@ func processToolCalls(stopReason *uctypes.WaveStopReason, chatOpts uctypes.WaveC
 }
 
 func RunAIChat(ctx context.Context, sseHandler *sse.SSEHandlerCh, chatOpts uctypes.WaveChatOpts) (*uctypes.AIMetrics, error) {
-	log.Printf("RunAIChat\n")
 	if !activeChats.SetUnless(chatOpts.ChatId, true) {
 		return nil, fmt.Errorf("chat %s is already running", chatOpts.ChatId)
 	}
@@ -488,7 +487,6 @@ func ResolveToolCall(toolCall uctypes.WaveToolCall, chatOpts uctypes.WaveChatOpt
 }
 
 func WaveAIPostMessageWrap(ctx context.Context, sseHandler *sse.SSEHandlerCh, message *uctypes.AIMessage, chatOpts uctypes.WaveChatOpts) error {
-	log.Printf("WaveAIPostMessageWrap\n")
 	startTime := time.Now()
 
 	// Convert AIMessage to Anthropic chat message
@@ -531,7 +529,7 @@ func WaveAIPostMessageWrap(ctx context.Context, sseHandler *sse.SSEHandlerCh, me
 				}
 			}
 		}
-		log.Printf("metrics: requests=%d tools=%d premium=%d proxy=%d images=%d pdfs=%d textdocs=%d textlen=%d duration=%dms error=%v\n",
+		log.Printf("WaveAI call metrics: requests=%d tools=%d premium=%d proxy=%d images=%d pdfs=%d textdocs=%d textlen=%d duration=%dms error=%v\n",
 			metrics.RequestCount, metrics.ToolUseCount, metrics.PremiumReqCount, metrics.ProxyReqCount,
 			metrics.ImageCount, metrics.PDFCount, metrics.TextDocCount, metrics.TextLen, metrics.RequestDuration, metrics.HadError)
 

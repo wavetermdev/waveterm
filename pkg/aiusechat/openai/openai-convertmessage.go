@@ -18,6 +18,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
+	"github.com/wavetermdev/waveterm/pkg/wavebase"
 )
 
 const (
@@ -129,6 +130,9 @@ func ConvertToolDefinitionToOpenAI(tool uctypes.ToolDefinition) OpenAIRequestToo
 }
 
 func debugPrintReq(req *OpenAIRequest, endpoint string) {
+	if !wavebase.IsDevMode() {
+		return
+	}
 	var toolNames []string
 	for _, tool := range req.Tools {
 		toolNames = append(toolNames, tool.Name)
