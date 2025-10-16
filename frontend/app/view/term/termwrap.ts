@@ -154,11 +154,27 @@ function handleOsc7Command(data: string, blockId: string, loaded: boolean): bool
     return true;
 }
 
-function handleOsc16162Command(data: string, blockId: string, loaded: boolean): boolean {
+function handleOsc16162Command(data: string, blockId: string, loaded: boolean, terminal: Terminal): boolean {
     if (!loaded) {
         return true;
     }
     console.log("OSC 16162 received:", data, "blockId:", blockId);
+    
+    if (!data || data.length === 0) {
+        return true;
+    }
+    
+    const parts = data.split(";");
+    const command = parts[0];
+    
+    switch (command) {
+        case "R":
+            if (terminal.buffer.active.type === "alternate") {
+                terminal.write("\x1b[?1049l");
+            }
+            break;
+    }
+    
     return true;
 }
 
@@ -242,7 +258,7 @@ export class TermWrap {
             return handleOsc7Command(data, this.blockId, this.loaded);
         });
         this.terminal.parser.registerOscHandler(16162, (data: string) => {
-            return handleOsc16162Command(data, this.blockId, this.loaded);
+            return handleOsc16162Command(data, this.blockId, this.loaded, this.terminal);
         });
         this.terminal.attachCustomKeyEventHandler(waveOptions.keydownHandler);
         this.connectElem = connectElem;

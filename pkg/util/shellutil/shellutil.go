@@ -345,3 +345,10 @@ func GetShellTypeFromShellPath(shellPath string) string {
 	}
 	return ShellType_unknown
 }
+
+func FormatOSC(oscNum int, parts ...string) string {
+	if len(parts) == 0 {
+		return fmt.Sprintf("\x1b]%d\x07", oscNum)
+	}
+	return fmt.Sprintf("\x1b]%d;%s\x07", oscNum, strings.Join(parts, ";"))
+}

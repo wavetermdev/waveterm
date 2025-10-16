@@ -1,4 +1,4 @@
-o# add wsh to path, source dynamic script from wsh token
+# add wsh to path, source dynamic script from wsh token
 WAVETERM_WSHBINDIR={{.WSHBINDIR}}
 export PATH="$WAVETERM_WSHBINDIR:$PATH"
 source <(wsh token "$WAVETERM_SWAPTOKEN" zsh 2>/dev/null)
@@ -56,6 +56,7 @@ _waveterm_si_precmd() {
   if (( !_WAVETERM_SI_FIRSTPRECMD )); then
     printf '\033]16162;D;%d\007' $_waveterm_si_status
   else
+    printf '\033]16162;M;{"shell":"zsh","shellversion":"%s"}\007' "$ZSH_VERSION"
     _waveterm_si_osc7
   fi
   printf '\033]16162;A\007'      # start of new prompt
@@ -64,9 +65,40 @@ _waveterm_si_precmd() {
 
 _waveterm_si_preexec() {
   _waveterm_si_blocked && return
-  printf '\033]16162;B\007'      # end of prompt
-  printf '\033]16162;C\007'      # start of command output
+  local cmd64
+  cmd64=$(printf '%s' "$1" | base64 2>/dev/null)
+  if [ -n "$cmd64" ]; then
+    printf '\033]16162;C;cmd64=%s\007' "$cmd64"
+  else
+    printf '\033]16162;C\007'
+  fi
 }
+
+typeset -g WAVETERM_SI_INPUTEMPTY=1
+
+_waveterm_si_inputempty() {
+  _waveterm_si_blocked && return
+  
+  local current_empty=1
+  if [[ -n "$BUFFER" ]]; then
+    current_empty=0
+  fi
+  
+  if (( current_empty != WAVETERM_SI_INPUTEMPTY )); then
+    WAVETERM_SI_INPUTEMPTY=$current_empty
+    if (( current_empty )); then
+      printf '\033]16162;I;{"inputempty":true}\007'
+    else
+      printf '\033]16162;I;{"inputempty":false}\007'
+    fi
+  fi
+}
+
+if (( $+functions[add-zle-hook-widget] )); then
+  autoload -Uz add-zle-hook-widget
+  add-zle-hook-widget zle-line-init _waveterm_si_inputempty
+  add-zle-hook-widget zle-line-pre-redraw _waveterm_si_inputempty
+fi
 
 autoload -U add-zsh-hook
 add-zsh-hook precmd  _waveterm_si_precmd
