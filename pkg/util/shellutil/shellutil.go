@@ -5,6 +5,7 @@ package shellutil
 
 import (
 	"context"
+	_ "embed"
 	"fmt"
 	"log"
 	"os"
@@ -20,6 +21,29 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
+)
+
+var (
+	//go:embed shellintegration/zsh_zprofile.sh
+	ZshStartup_Zprofile string
+
+	//go:embed shellintegration/zsh_zshrc.sh
+	ZshStartup_Zshrc string
+
+	//go:embed shellintegration/zsh_zlogin.sh
+	ZshStartup_Zlogin string
+
+	//go:embed shellintegration/zsh_zshenv.sh
+	ZshStartup_Zshenv string
+
+	//go:embed shellintegration/bash_bashrc.sh
+	BashStartup_Bashrc string
+
+	//go:embed shellintegration/fish_wavefish.sh
+	FishStartup_Wavefish string
+
+	//go:embed shellintegration/pwsh_wavepwsh.sh
+	PwshStartup_wavepwsh string
 )
 
 const DefaultTermType = "xterm-256color"
@@ -47,122 +71,6 @@ const (
 	PwshIntegrationDir = "shell/pwsh"
 	FishIntegrationDir = "shell/fish"
 	WaveHomeBinDir     = "bin"
-
-	ZshStartup_Zprofile = `
-# Source the original zprofile
-[ -f ~/.zprofile ] && source ~/.zprofile
-`
-
-	ZshStartup_Zshrc = `
-# add wsh to path, source dynamic script from wsh token
-WAVETERM_WSHBINDIR={{.WSHBINDIR}}
-export PATH="$WAVETERM_WSHBINDIR:$PATH"
-source <(wsh token "$WAVETERM_SWAPTOKEN" zsh 2>/dev/null)
-unset WAVETERM_SWAPTOKEN
-
-# Source the original zshrc only if ZDOTDIR has not been changed
-if [ "$ZDOTDIR" = "$WAVETERM_ZDOTDIR" ]; then
-  [ -f ~/.zshrc ] && source ~/.zshrc
-fi
-
-if [[ ":$PATH:" != *":$WAVETERM_WSHBINDIR:"* ]]; then
-  export PATH="$WAVETERM_WSHBINDIR:$PATH"
-fi
-unset WAVETERM_WSHBINDIR
-
-if [[ -n ${_comps+x} ]]; then
-  source <(wsh completion zsh)
-fi
-`
-
-	ZshStartup_Zlogin = `
-# Source the original zlogin
-[ -f ~/.zlogin ] && source ~/.zlogin
-
-# Unset ZDOTDIR only if it hasn't been modified
-if [ "$ZDOTDIR" = "$WAVETERM_ZDOTDIR" ]; then
-  unset ZDOTDIR
-fi
-`
-
-	ZshStartup_Zshenv = `
-# Store the initial ZDOTDIR value
-WAVETERM_ZDOTDIR="$ZDOTDIR"
-
-# Source the original zshenv
-[ -f ~/.zshenv ] && source ~/.zshenv
-
-# Detect if ZDOTDIR has changed
-if [ "$ZDOTDIR" != "$WAVETERM_ZDOTDIR" ]; then
-  # If changed, manually source your custom zshrc from the original WAVETERM_ZDOTDIR
-  [ -f "$WAVETERM_ZDOTDIR/.zshrc" ] && source "$WAVETERM_ZDOTDIR/.zshrc"
-fi
-
-`
-
-	BashStartup_Bashrc = `
-
-# Source /etc/profile if it exists
-if [ -f /etc/profile ]; then
-    . /etc/profile
-fi
-
-WAVETERM_WSHBINDIR={{.WSHBINDIR}}
-
-# after /etc/profile which is likely to clobber the path
-export PATH="$WAVETERM_WSHBINDIR:$PATH"
-
-# Source the dynamic script from wsh token
-eval "$(wsh token "$WAVETERM_SWAPTOKEN" bash 2> /dev/null)"
-unset WAVETERM_SWAPTOKEN
-
-# Source the first of ~/.bash_profile, ~/.bash_login, or ~/.profile that exists
-if [ -f ~/.bash_profile ]; then
-    . ~/.bash_profile
-elif [ -f ~/.bash_login ]; then
-    . ~/.bash_login
-elif [ -f ~/.profile ]; then
-    . ~/.profile
-fi
-
-if [[ ":$PATH:" != *":$WAVETERM_WSHBINDIR:"* ]]; then
-    export PATH="$WAVETERM_WSHBINDIR:$PATH"
-fi
-unset WAVETERM_WSHBINDIR
-if type _init_completion &>/dev/null; then
-  source <(wsh completion bash)
-fi
-
-`
-
-	FishStartup_Wavefish = `
-# this file is sourced with -C
-# Add Wave binary directory to PATH
-set -x PATH {{.WSHBINDIR}} $PATH
-
-# Source dynamic script from wsh token (the echo is to prevent fish from complaining about empty input)
-wsh token "$WAVETERM_SWAPTOKEN" fish 2>/dev/null | source
-set -e WAVETERM_SWAPTOKEN
-
-# Load Wave completions
-wsh completion fish | source
-`
-
-	PwshStartup_wavepwsh = `
-# We source this file with -NoExit -File
-$env:PATH = {{.WSHBINDIR_PWSH}} + "{{.PATHSEP}}" + $env:PATH
-
-# Source dynamic script from wsh token
-$waveterm_swaptoken_output = wsh token $env:WAVETERM_SWAPTOKEN pwsh 2>$null | Out-String
-if ($waveterm_swaptoken_output -and $waveterm_swaptoken_output -ne "") {
-    Invoke-Expression $waveterm_swaptoken_output
-}
-Remove-Variable -Name waveterm_swaptoken_output
-Remove-Item Env:WAVETERM_SWAPTOKEN
-
-# Load Wave completions
-wsh completion powershell | Out-String | Invoke-Expression
-`
 )
 
 func DetectLocalShellPath() string {

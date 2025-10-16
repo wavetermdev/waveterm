@@ -129,17 +129,25 @@ function handleOsc7Command(data: string, blockId: string, loaded: boolean): bool
             await services.ObjectService.UpdateObjectMeta(WOS.makeORef("block", blockId), {
                 "cmd:cwd": data,
             });
-            
+
             const rtInfo = { "cmd:hascurcwd": true };
             const rtInfoData: CommandSetRTInfoData = {
                 oref: WOS.makeORef("block", blockId),
-                data: rtInfo
+                data: rtInfo,
             };
             await RpcApi.SetRTInfoCommand(TabRpcClient, rtInfoData).catch((e) =>
                 console.log("error setting RT info", e)
             );
         });
     }, 0);
+    return true;
+}
+
+function handleOsc16162Command(data: string, blockId: string, loaded: boolean): boolean {
+    if (!loaded) {
+        return false;
+    }
+    console.log("OSC 16162 received:", data, "blockId:", blockId);
     return true;
 }
 
@@ -221,6 +229,9 @@ export class TermWrap {
         });
         this.terminal.parser.registerOscHandler(7, (data: string) => {
             return handleOsc7Command(data, this.blockId, this.loaded);
+        });
+        this.terminal.parser.registerOscHandler(16162, (data: string) => {
+            return handleOsc16162Command(data, this.blockId, this.loaded);
         });
         this.terminal.attachCustomKeyEventHandler(waveOptions.keydownHandler);
         this.connectElem = connectElem;
