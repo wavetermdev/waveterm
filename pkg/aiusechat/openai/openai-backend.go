@@ -19,6 +19,7 @@ import (
 	"github.com/launchdarkly/eventsource"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/chatstore"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
+	"github.com/wavetermdev/waveterm/pkg/util/logutil"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/wcore"
 	"github.com/wavetermdev/waveterm/pkg/web/sse"
@@ -503,7 +504,7 @@ func parseOpenAIHTTPError(resp *http.Response) error {
 		return fmt.Errorf("openai %s: failed to read error response: %v", resp.Status, err)
 	}
 
-	log.Printf("full error: %s\n", body)
+	logutil.DevPrintf("openai full error: %s\n", body)
 
 	// Try to parse as OpenAI error format first
 	var errorResp openAIErrorResponse
@@ -836,8 +837,7 @@ func handleOpenAIEvent(
 		return nil, nil
 
 	default:
-		// log unknown events for debugging
-		log.Printf("OpenAI: unknown event: %s, data: %s", eventName, data)
+		logutil.DevPrintf("OpenAI: unknown event: %s, data: %s", eventName, data)
 		return nil, nil
 	}
 }
