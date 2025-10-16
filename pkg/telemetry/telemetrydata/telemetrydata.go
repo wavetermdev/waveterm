@@ -34,6 +34,7 @@ var ValidEventNames = map[string]bool{
 	"onboarding:start":       true,
 	"onboarding:skip":        true,
 	"onboarding:fire":        true,
+	"onboarding:githubstar":  true,
 }
 
 type TEvent struct {
@@ -81,16 +82,18 @@ type TEventProps struct {
 	AppFirstDay    bool `json:"app:firstday,omitempty"`
 	AppFirstLaunch bool `json:"app:firstlaunch,omitempty"`
 
-	ActionInitiator   string `json:"action:initiator,omitempty" tstype:"\"keyboard\" | \"mouse\""`
-	PanicType         string `json:"debug:panictype,omitempty"`
-	BlockView         string `json:"block:view,omitempty"`
-	AiBackendType     string `json:"ai:backendtype,omitempty"`
-	AiLocal           bool   `json:"ai:local,omitempty"`
-	WshCmd            string `json:"wsh:cmd,omitempty"`
-	WshHadError       bool   `json:"wsh:haderror,omitempty"`
-	ConnType          string `json:"conn:conntype,omitempty"`
-	OnboardingFeature string `json:"onboarding:feature,omitempty" tstype:"\"waveai\" | \"magnify\" | \"wsh\""`
-	OnboardingVersion string `json:"onboarding:version,omitempty"`
+	ActionInitiator string `json:"action:initiator,omitempty" tstype:"\"keyboard\" | \"mouse\""`
+	PanicType       string `json:"debug:panictype,omitempty"`
+	BlockView       string `json:"block:view,omitempty"`
+	AiBackendType   string `json:"ai:backendtype,omitempty"`
+	AiLocal         bool   `json:"ai:local,omitempty"`
+	WshCmd          string `json:"wsh:cmd,omitempty"`
+	WshHadError     bool   `json:"wsh:haderror,omitempty"`
+	ConnType        string `json:"conn:conntype,omitempty"`
+
+	OnboardingFeature    string `json:"onboarding:feature,omitempty" tstype:"\"waveai\" | \"magnify\" | \"wsh\""`
+	OnboardingVersion    string `json:"onboarding:version,omitempty"`
+	OnboardingGithubStar string `json:"onboarding:githubstar,omitempty" tstype:"\"already\" | \"star\" | \"later\""`
 
 	DisplayHeight int         `json:"display:height,omitempty"`
 	DisplayWidth  int         `json:"display:width,omitempty"`

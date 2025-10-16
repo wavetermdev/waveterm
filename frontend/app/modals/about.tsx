@@ -36,7 +36,7 @@ const AboutModal = ({}: AboutModalProps) => {
                 </div>
                 <div className="flex items-start gap-[10px] self-stretch w-full text-center">
                     <a
-                        href="https://github.com/wavetermdev/waveterm"
+                        href="https://github.com/wavetermdev/waveterm?ref=about"
                         target="_blank"
                         rel="noopener"
                         className="inline-flex items-center px-4 py-2 rounded border border-border hover:bg-hoverbg transition-colors duration-200"
@@ -44,7 +44,7 @@ const AboutModal = ({}: AboutModalProps) => {
                         <i className="fa-brands fa-github mr-2"></i>Github
                     </a>
                     <a
-                        href="https://www.waveterm.dev/"
+                        href="https://www.waveterm.dev/?ref=about"
                         target="_blank"
                         rel="noopener"
                         className="inline-flex items-center px-4 py-2 rounded border border-border hover:bg-hoverbg transition-colors duration-200"
@@ -60,7 +60,9 @@ const AboutModal = ({}: AboutModalProps) => {
                         <i className="fa-sharp fa-light fa-heart mr-2"></i>Acknowledgements
                     </a>
                 </div>
-                <div className="items-center gap-4 self-stretch w-full text-center">&copy; {currentDate.getFullYear()} Command Line Inc.</div>
+                <div className="items-center gap-4 self-stretch w-full text-center">
+                    &copy; {currentDate.getFullYear()} Command Line Inc.
+                </div>
             </div>
         </Modal>
     );

@@ -51,16 +51,24 @@ const UpgradeOnboardingModal = () => {
     }, []);
 
     const handleStarClick = async () => {
+        RpcApi.RecordTEventCommand(TabRpcClient, {
+            event: "onboarding:githubstar",
+            props: { "onboarding:githubstar": "star" },
+        }, { noresponse: true });
         const clientId = globalStore.get(atoms.clientId);
         await RpcApi.SetMetaCommand(TabRpcClient, {
             oref: WOS.makeORef("client", clientId),
             meta: { "onboarding:githubstar": true },
         });
-        window.open("https://github.com/wavetermdev/waveterm", "_blank");
+        window.open("https://github.com/wavetermdev/waveterm?ref=upgrade", "_blank");
         setPageName("features");
     };
 
     const handleAlreadyStarred = async () => {
+        RpcApi.RecordTEventCommand(TabRpcClient, {
+            event: "onboarding:githubstar",
+            props: { "onboarding:githubstar": "already" },
+        }, { noresponse: true });
         const clientId = globalStore.get(atoms.clientId);
         await RpcApi.SetMetaCommand(TabRpcClient, {
             oref: WOS.makeORef("client", clientId),
@@ -70,6 +78,10 @@ const UpgradeOnboardingModal = () => {
     };
 
     const handleMaybeLater = async () => {
+        RpcApi.RecordTEventCommand(TabRpcClient, {
+            event: "onboarding:githubstar",
+            props: { "onboarding:githubstar": "later" },
+        }, { noresponse: true });
         const clientId = globalStore.get(atoms.clientId);
         await RpcApi.SetMetaCommand(TabRpcClient, {
             oref: WOS.makeORef("client", clientId),
