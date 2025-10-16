@@ -74,8 +74,6 @@ func aiRun(cmd *cobra.Command, args []string) (rtnErr error) {
 		return fmt.Errorf("no files or message provided")
 	}
 
-	const maxBatchSize = 7 * 1024 * 1024
-	const largeFileThreshold = 1 * 1024 * 1024
 	const maxFileCount = 15
 	const rpcTimeout = 30000
 
@@ -164,42 +162,31 @@ func aiRun(cmd *cobra.Command, args []string) (rtnErr error) {
 		}
 	}
 
-	var smallFiles []wshrpc.AIAttachedFile
-	var smallFilesSize int
-
 	for _, file := range allFiles {
-		if file.Size > largeFileThreshold {
-			contextData := wshrpc.CommandWaveAIAddContextData{
-				Files: []wshrpc.AIAttachedFile{file},
-			}
-			err := wshclient.WaveAIAddContextCommand(RpcClient, contextData, &wshrpc.RpcOpts{
-				Route:   route,
-				Timeout: rpcTimeout,
-			})
-			if err != nil {
-				return fmt.Errorf("adding file %s: %w", file.Name, err)
-			}
-		} else {
-			smallFilesSize += file.Size
-			if smallFilesSize > maxBatchSize {
-				return fmt.Errorf("small files total size exceeds maximum batch size of 7MB")
-			}
-			smallFiles = append(smallFiles, file)
+		contextData := wshrpc.CommandWaveAIAddContextData{
+			Files: []wshrpc.AIAttachedFile{file},
+		}
+		err := wshclient.WaveAIAddContextCommand(RpcClient, contextData, &wshrpc.RpcOpts{
+			Route:   route,
+			Timeout: rpcTimeout,
+		})
+		if err != nil {
+			return fmt.Errorf("adding file %s: %w", file.Name, err)
 		}
 	}
 
-	finalContextData := wshrpc.CommandWaveAIAddContextData{
-		Files:  smallFiles,
-		Text:   aiMessageFlag,
-		Submit: aiSubmitFlag,
-	}
-
-	err := wshclient.WaveAIAddContextCommand(RpcClient, finalContextData, &wshrpc.RpcOpts{
-		Route:   route,
-		Timeout: rpcTimeout,
-	})
-	if err != nil {
-		return fmt.Errorf("adding context: %w", err)
+	if aiMessageFlag != "" || aiSubmitFlag {
+		finalContextData := wshrpc.CommandWaveAIAddContextData{
+			Text:   aiMessageFlag,
+			Submit: aiSubmitFlag,
+		}
+		err := wshclient.WaveAIAddContextCommand(RpcClient, finalContextData, &wshrpc.RpcOpts{
+			Route:   route,
+			Timeout: rpcTimeout,
+		})
+		if err != nil {
+			return fmt.Errorf("adding context: %w", err)
+		}
 	}
 
 	return nil
