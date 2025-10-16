@@ -27,7 +27,7 @@ tasks:
             - build:backend
         env:
             WAVETERM_ENVFILE: "{{.ROOT_DIR}}/.env"
-            WCLOUD_ENDPOINT: "https://api-dev.waveterm.dev"
+            WCLOUD_ENDPOINT: "https://api-dev.waveterm.dev/central"
             WCLOUD_WS_ENDPOINT: "wss://wsapi-dev.waveterm.dev"
 
     electron:start:
@@ -41,7 +41,7 @@ tasks:
             - build:backend
         env:
             WAVETERM_ENVFILE: "{{.ROOT_DIR}}/.env"
-            WCLOUD_ENDPOINT: "https://api-dev.waveterm.dev"
+            WCLOUD_ENDPOINT: "https://api-dev.waveterm.dev/central"
             WCLOUD_WS_ENDPOINT: "wss://wsapi-dev.waveterm.dev"
 
     electron:quickdev:
