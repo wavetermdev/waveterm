@@ -65,6 +65,11 @@ var SystemPromptText_OpenAI = strings.Join([]string{
 	// Crisp behavior
 	`Be concise and direct. Prefer determinism over speculation. If a brief clarifying question eliminates guesswork, ask it.`,
 
+	// Attached text files
+	`User-attached text files may appear inline as <AttachedTextFile_xxxxxxxx file_name="...">\ncontent\n</AttachedTextFile_xxxxxxxx>.`,
+	`If multiple attached files exist, treat each as a separate source file with its own file_name.`,
+	`When the user refers to these files, use their inline content directly; do NOT call any read_text_file or file-access tools to re-read them unless asked.`,
+
 	// Output & formatting
 	`When presenting commands or any runnable multi-line code, always use fenced Markdown code blocks.`,
 	`Use an appropriate language hint after the opening fence (e.g., "bash" for shell commands, "go" for Go, "json" for JSON).`,

@@ -1,15 +1,17 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { UseChatSendMessageType, UseChatSetMessagesType, WaveUIMessagePart } from "@/app/aipanel/aitypes";
 import { atoms, getTabMetaKeyAtom } from "@/app/store/global";
 import { globalStore } from "@/app/store/jotaiStore";
 import * as WOS from "@/app/store/wos";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
+import { ChatStatus } from "ai";
 import * as jotai from "jotai";
 import type React from "react";
-import { createImagePreview, resizeImage } from "./ai-utils";
+import { createDataUrl, createImagePreview, normalizeMimeType, resizeImage } from "./ai-utils";
 import type { AIPanelInputRef } from "./aipanelinput";
 
 export interface DroppedFile {
@@ -25,6 +27,12 @@ export class WaveAIModel {
     private static instance: WaveAIModel | null = null;
     private inputRef: React.RefObject<AIPanelInputRef> | null = null;
     private scrollToBottomCallback: (() => void) | null = null;
+    private useChatSendMessage: UseChatSendMessageType | null = null;
+    private useChatSetMessages: UseChatSetMessagesType | null = null;
+    private useChatStatus: ChatStatus = "ready";
+    private useChatStop: (() => void) | null = null;
+    // Used for injecting Wave-specific message data into DefaultChatTransport's prepareSendMessagesRequest
+    realMessage: AIMessage | null = null;
 
     widgetAccessAtom!: jotai.Atom<boolean>;
     droppedFiles: jotai.PrimitiveAtom<DroppedFile[]> = jotai.atom([]);
@@ -34,6 +42,7 @@ export class WaveAIModel {
     containerWidth: jotai.PrimitiveAtom<number> = jotai.atom(0);
     codeBlockMaxWidth!: jotai.Atom<number>;
     inputAtom: jotai.PrimitiveAtom<string> = jotai.atom("");
+    isLoadingChatAtom: jotai.PrimitiveAtom<boolean> = jotai.atom(false);
     isChatEmpty: boolean = true;
 
     private constructor() {
@@ -127,6 +136,7 @@ export class WaveAIModel {
     }
 
     clearChat() {
+        this.useChatStop?.();
         this.clearFiles();
         this.isChatEmpty = true;
         const newChatId = crypto.randomUUID();
@@ -137,6 +147,8 @@ export class WaveAIModel {
             oref: WOS.makeORef("tab", tabId),
             meta: { "waveai:chatid": newChatId },
         });
+
+        this.useChatSetMessages?.([]);
     }
 
     setError(message: string) {
@@ -155,6 +167,18 @@ export class WaveAIModel {
         this.scrollToBottomCallback = callback;
     }
 
+    registerUseChatData(
+        sendMessage: UseChatSendMessageType,
+        setMessages: UseChatSetMessagesType,
+        status: ChatStatus,
+        stop: () => void
+    ) {
+        this.useChatSendMessage = sendMessage;
+        this.useChatSetMessages = setMessages;
+        this.useChatStatus = status;
+        this.useChatStop = stop;
+    }
+
     scrollToBottom() {
         this.scrollToBottomCallback?.();
     }
@@ -168,9 +192,27 @@ export class WaveAIModel {
         }
     }
 
+    getAndClearMessage(): AIMessage | null {
+        const msg = this.realMessage;
+        this.realMessage = null;
+        return msg;
+    }
+
     hasNonEmptyInput(): boolean {
         const input = globalStore.get(this.inputAtom);
         return input != null && input.trim().length > 0;
+    }
+
+    appendText(text: string) {
+        const currentInput = globalStore.get(this.inputAtom);
+        let newInput = currentInput;
+
+        if (newInput.length > 0 && !newInput.endsWith(" ") && !newInput.endsWith("\n")) {
+            newInput += " ";
+        }
+
+        newInput += text;
+        globalStore.set(this.inputAtom, newInput);
     }
 
     setModel(model: string) {
@@ -212,6 +254,83 @@ export class WaveAIModel {
             this.isChatEmpty = true;
             return [];
         }
+    }
+
+    async handleSubmit() {
+        const input = globalStore.get(this.inputAtom);
+        const droppedFiles = globalStore.get(this.droppedFiles);
+
+        if (input.trim() === "/clear" || input.trim() === "/new") {
+            this.clearChat();
+            globalStore.set(this.inputAtom, "");
+            return;
+        }
+
+        if (
+            (!input.trim() && droppedFiles.length === 0) ||
+            (this.useChatStatus !== "ready" && this.useChatStatus !== "error") ||
+            globalStore.get(this.isLoadingChatAtom)
+        ) {
+            return;
+        }
+
+        this.clearError();
+
+        const aiMessageParts: AIMessagePart[] = [];
+        const uiMessageParts: WaveUIMessagePart[] = [];
+
+        if (input.trim()) {
+            aiMessageParts.push({ type: "text", text: input.trim() });
+            uiMessageParts.push({ type: "text", text: input.trim() });
+        }
+
+        for (const droppedFile of droppedFiles) {
+            const normalizedMimeType = normalizeMimeType(droppedFile.file);
+            const dataUrl = await createDataUrl(droppedFile.file);
+
+            aiMessageParts.push({
+                type: "file",
+                filename: droppedFile.name,
+                mimetype: normalizedMimeType,
+                url: dataUrl,
+                size: droppedFile.file.size,
+                previewurl: droppedFile.previewUrl,
+            });
+
+            uiMessageParts.push({
+                type: "data-userfile",
+                data: {
+                    filename: droppedFile.name,
+                    mimetype: normalizedMimeType,
+                    size: droppedFile.file.size,
+                    previewurl: droppedFile.previewUrl,
+                },
+            });
+        }
+
+        const realMessage: AIMessage = {
+            messageid: crypto.randomUUID(),
+            parts: aiMessageParts,
+        };
+        this.realMessage = realMessage;
+
+        // console.log("SUBMIT MESSAGE", realMessage);
+
+        this.useChatSendMessage?.({ parts: uiMessageParts });
+
+        this.isChatEmpty = false;
+        globalStore.set(this.inputAtom, "");
+        this.clearFiles();
+    }
+
+    async uiLoadChat() {
+        globalStore.set(this.isLoadingChatAtom, true);
+        const messages = await this.loadChat();
+        this.useChatSetMessages?.(messages as any);
+        globalStore.set(this.isLoadingChatAtom, false);
+        setTimeout(() => {
+            this.scrollToBottom();
+        }, 100);
     }
 
     async ensureRateLimitSet() {

@@ -1,7 +1,6 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { WaveUIMessagePart } from "@/app/aipanel/aitypes";
 import { waveAIHasSelection } from "@/app/aipanel/waveai-focus-utils";
 import { ErrorBoundary } from "@/app/element/errorboundary";
 import { ContextMenuModel } from "@/app/store/contextmenu";
@@ -17,14 +16,14 @@ import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import * as jotai from "jotai";
 import { memo, useCallback, useEffect, useRef, useState } from "react";
-import { createDataUrl, formatFileSizeError, isAcceptableFile, normalizeMimeType, validateFileSize } from "./ai-utils";
+import { formatFileSizeError, isAcceptableFile, validateFileSize } from "./ai-utils";
 import { AIDroppedFiles } from "./aidroppedfiles";
 import { AIPanelHeader } from "./aipanelheader";
 import { AIPanelInput } from "./aipanelinput";
 import { AIPanelMessages } from "./aipanelmessages";
 import { AIRateLimitStrip } from "./airatelimitstrip";
 import { TelemetryRequiredMessage } from "./telemetryrequired";
-import { WaveAIModel, type DroppedFile } from "./waveai-model";
+import { WaveAIModel } from "./waveai-model";
 
 const AIBlockMask = memo(() => {
     return (
@@ -195,11 +194,10 @@ interface AIPanelProps {
 
 const AIPanelComponentInner = memo(({ className, onClose }: AIPanelProps) => {
     const [isDragOver, setIsDragOver] = useState(false);
-    const [isLoadingChat, setIsLoadingChat] = useState(true);
+    const [initialLoadDone, setInitialLoadDone] = useState(false);
     const model = WaveAIModel.getInstance();
     const containerRef = useRef<HTMLDivElement>(null);
     const errorMessage = jotai.useAtomValue(model.errorMessage);
-    const realMessageRef = useRef<AIMessage>(null);
     const isLayoutMode = jotai.useAtomValue(atoms.controlShiftDelayAtom);
     const showOverlayBlockNums = jotai.useAtomValue(getSettingsKeyAtom("app:showoverlayblocknums")) ?? true;
     const focusType = jotai.useAtomValue(focusManager.focusType);
@@ -207,12 +205,11 @@ const AIPanelComponentInner = memo(({ className, onClose }: AIPanelProps) => {
     const telemetryEnabled = jotai.useAtomValue(getSettingsKeyAtom("telemetry:enabled")) ?? false;
     const isPanelVisible = jotai.useAtomValue(WorkspaceLayoutModel.getInstance().panelVisibleAtom);
 
-    const { messages, sendMessage, status, setMessages, error } = useChat({
+    const { messages, sendMessage, status, setMessages, error, stop } = useChat({
         transport: new DefaultChatTransport({
             api: `${getWebServerEndpoint()}/api/post-chat-message`,
             prepareSendMessagesRequest: (opts) => {
-                const msg = realMessageRef.current;
-                realMessageRef.current = null;
+                const msg = model.getAndClearMessage();
                 return {
                     body: {
                         msg,
@@ -235,16 +232,17 @@ const AIPanelComponentInner = memo(({ className, onClose }: AIPanelProps) => {
         },
     });
 
+    model.registerUseChatData(sendMessage, setMessages, status, stop);
+
     // console.log("AICHAT messages", messages);
 
-    const clearChat = () => {
+    const handleClearChat = useCallback(() => {
         model.clearChat();
-        setMessages([]);
-    };
+    }, [model]);
 
     const handleKeyDown = (waveEvent: WaveKeyboardEvent): boolean => {
         if (checkKeyPressed(waveEvent, "Cmd:k")) {
-            clearChat();
+            model.clearChat();
             return true;
         }
         return false;
@@ -259,16 +257,12 @@ const AIPanelComponentInner = memo(({ className, onClose }: AIPanelProps) => {
     }, []);
 
     useEffect(() => {
-        const loadMessages = async () => {
-            const messages = await model.loadChat();
-            setMessages(messages as any);
-            setIsLoadingChat(false);
-            setTimeout(() => {
-                model.scrollToBottom();
-            }, 100);
+        const loadChat = async () => {
+            await model.uiLoadChat();
+            setInitialLoadDone(true);
         };
-        loadMessages();
-    }, [model, setMessages]);
+        loadChat();
+    }, [model]);
 
     useEffect(() => {
         const updateWidth = () => {
@@ -295,69 +289,7 @@ const AIPanelComponentInner = memo(({ className, onClose }: AIPanelProps) => {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        const input = globalStore.get(model.inputAtom);
-        if (!input.trim() || status !== "ready" || isLoadingChat) return;
-
-        if (input.trim() === "/clear" || input.trim() === "/new") {
-            clearChat();
-            globalStore.set(model.inputAtom, "");
-            return;
-        }
-
-        model.clearError();
-
-        const droppedFiles = globalStore.get(model.droppedFiles) as DroppedFile[];
-
-        // Prepare AI message parts (for backend)
-        const aiMessageParts: AIMessagePart[] = [{ type: "text", text: input.trim() }];
-
-        // Prepare UI message parts (for frontend display)
-        const uiMessageParts: WaveUIMessagePart[] = [];
-
-        if (input.trim()) {
-            uiMessageParts.push({ type: "text", text: input.trim() });
-        }
-
-        // Process files
-        for (const droppedFile of droppedFiles) {
-            const normalizedMimeType = normalizeMimeType(droppedFile.file);
-            const dataUrl = await createDataUrl(droppedFile.file);
-
-            // For AI message (backend) - use data URL
-            aiMessageParts.push({
-                type: "file",
-                filename: droppedFile.name,
-                mimetype: normalizedMimeType,
-                url: dataUrl,
-                size: droppedFile.file.size,
-                previewurl: droppedFile.previewUrl,
-            });
-
-            uiMessageParts.push({
-                type: "data-userfile",
-                data: {
-                    filename: droppedFile.name,
-                    mimetype: normalizedMimeType,
-                    size: droppedFile.file.size,
-                    previewurl: droppedFile.previewUrl,
-                },
-            });
-        }
-
-        // realMessage uses AIMessageParts
-        const realMessage: AIMessage = {
-            messageid: crypto.randomUUID(),
-            parts: aiMessageParts,
-        };
-        realMessageRef.current = realMessage;
-
-        // sendMessage uses UIMessageParts
-        sendMessage({ parts: uiMessageParts });
-
-        model.isChatEmpty = false;
-        globalStore.set(model.inputAtom, "");
-        model.clearFiles();
-
+        await model.handleSubmit();
         setTimeout(() => {
             model.focusInput();
         }, 100);
@@ -473,7 +405,7 @@ const AIPanelComponentInner = memo(({ className, onClose }: AIPanelProps) => {
         menu.push({
             label: "New Chat",
             click: () => {
-                clearChat();
+                model.clearChat();
             },
         });
 
@@ -516,7 +448,7 @@ const AIPanelComponentInner = memo(({ className, onClose }: AIPanelProps) => {
         >
             {isDragOver && <AIDragOverlay />}
             {showBlockMask && <AIBlockMask />}
-            <AIPanelHeader onClose={onClose} model={model} onClearChat={clearChat} />
+            <AIPanelHeader onClose={onClose} model={model} onClearChat={handleClearChat} />
             <AIRateLimitStrip />
 
             <div key="main-content" className="flex-1 flex flex-col min-h-0">
@@ -524,7 +456,7 @@ const AIPanelComponentInner = memo(({ className, onClose }: AIPanelProps) => {
                     <TelemetryRequiredMessage />
                 ) : (
                     <>
-                        {messages.length === 0 && !isLoadingChat ? (
+                        {messages.length === 0 && initialLoadDone ? (
                             <div className="flex-1 overflow-y-auto p-2" onContextMenu={handleMessagesContextMenu}>
                                 <AIWelcomeMessage />
                             </div>

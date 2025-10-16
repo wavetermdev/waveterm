@@ -5,6 +5,14 @@
 
 declare global {
 
+    // wshrpc.AIAttachedFile
+    type AIAttachedFile = {
+        name: string;
+        type: string;
+        size: number;
+        data64: string;
+    };
+
     // wshrpc.ActivityDisplayType
     type ActivityDisplayType = {
         width: number;
@@ -318,6 +326,14 @@ declare global {
     type CommandWaitForRouteData = {
         routeid: string;
         waitms: number;
+    };
+
+    // wshrpc.CommandWaveAIAddContextData
+    type CommandWaveAIAddContextData = {
+        files?: AIAttachedFile[];
+        text?: string;
+        submit?: boolean;
+        newchat?: boolean;
     };
 
     // wshrpc.CommandWaveAIToolApproveData

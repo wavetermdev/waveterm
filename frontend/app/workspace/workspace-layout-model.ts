@@ -218,7 +218,7 @@ class WorkspaceLayoutModel {
         return this.aiPanelVisible;
     }
 
-    setAIPanelVisible(visible: boolean): void {
+    setAIPanelVisible(visible: boolean, opts?: { nofocus?: boolean }): void {
         if (this.focusTimeoutRef != null) {
             clearTimeout(this.focusTimeoutRef);
             this.focusTimeoutRef = null;
@@ -238,10 +238,12 @@ class WorkspaceLayoutModel {
         this.syncAIPanelRef();
 
         if (visible) {
-            this.focusTimeoutRef = setTimeout(() => {
-                WaveAIModel.getInstance().focusInput();
-                this.focusTimeoutRef = null;
-            }, 350);
+            if (!opts?.nofocus) {
+                this.focusTimeoutRef = setTimeout(() => {
+                    WaveAIModel.getInstance().focusInput();
+                    this.focusTimeoutRef = null;
+                }, 350);
+            }
         } else {
             const layoutModel = getLayoutModelForStaticTab();
             const focusedNode = globalStore.get(layoutModel.focusedNode);
