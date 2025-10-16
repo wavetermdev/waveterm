@@ -211,7 +211,7 @@ func sendTEvents(clientId string) (int, error) {
 	return totalEvents, nil
 }
 
-func SendAllTelemetry(ctx context.Context, clientId string) error {
+func SendAllTelemetry(clientId string) error {
 	defer func() {
 		ctx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)
 		defer cancelFn()
@@ -225,14 +225,16 @@ func SendAllTelemetry(ctx context.Context, clientId string) error {
 	if err != nil {
 		return err
 	}
-	err = sendTelemetry(ctx, clientId)
+	err = sendTelemetry(clientId)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func sendTelemetry(ctx context.Context, clientId string) error {
+func sendTelemetry(clientId string) error {
+	ctx, cancelFn := context.WithTimeout(context.Background(), WCloudDefaultTimeout)
+	defer cancelFn()
 	activity, err := telemetry.GetNonUploadedActivity(ctx)
 	if err != nil {
 		return fmt.Errorf("cannot get activity: %v", err)
