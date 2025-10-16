@@ -129,7 +129,7 @@ func sendTelemetryWrapper() {
 	defer func() {
 		panichandler.PanicHandler("sendTelemetryWrapper", recover())
 	}()
-	ctx, cancelFn := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancelFn := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancelFn()
 	beforeSendActivityUpdate(ctx)
 	client, err := wstore.DBGetSingleton[*waveobj.Client](ctx)
@@ -137,7 +137,7 @@ func sendTelemetryWrapper() {
 		log.Printf("[error] getting client data for telemetry: %v\n", err)
 		return
 	}
-	err = wcloud.SendAllTelemetry(ctx, client.OID)
+	err = wcloud.SendAllTelemetry(client.OID)
 	if err != nil {
 		log.Printf("[error] sending telemetry: %v\n", err)
 	}

@@ -177,3 +177,8 @@ Also when adding content to the end of files prefer to use the new append_file t
 - **ALWAYS verify the current working directory before executing commands**
 - Either run "pwd" first to verify the directory, or do a "cd" to the correct absolute directory before running commands
 - When running tests, do not "cd" to the pkg directory and then run the test. This screws up the cwd and you never recover. run the test from the project root instead.
+
+### Testing / Compiling Go Code
+
+No need to run a `go build` or a `go run` to just check if the Go code compiles. VSCode's errors/problems cover this well.
+If there are no Go errors in VSCode you can assume the code compiles fine.

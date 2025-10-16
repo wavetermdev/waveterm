@@ -141,6 +141,7 @@ func debugPrintReq(req *OpenAIRequest, endpoint string) {
 	if len(toolNames) > 0 {
 		log.Printf("tools: %s\n", strings.Join(toolNames, ","))
 	}
+	// log.Printf("reasoning %v\n", req.Reasoning)
 
 	log.Printf("inputs (%d):", len(req.Input))
 	for idx, input := range req.Input {
@@ -233,6 +234,9 @@ func buildOpenAIHTTPRequest(ctx context.Context, inputs []any, chatOpts uctypes.
 	if opts.ThinkingLevel != "" {
 		reqBody.Reasoning = &ReasoningType{
 			Effort: opts.ThinkingLevel, // low, medium, high map directly
+		}
+		if opts.Model == "gpt-5" {
+			reqBody.Reasoning.Summary = "auto"
 		}
 	}
 

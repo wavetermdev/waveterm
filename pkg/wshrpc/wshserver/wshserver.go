@@ -899,7 +899,7 @@ func (ws WshServer) SendTelemetryCommand(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("getting client data for telemetry: %v", err)
 	}
-	return wcloud.SendAllTelemetry(ctx, client.OID)
+	return wcloud.SendAllTelemetry(client.OID)
 }
 
 func (ws *WshServer) WaveAIEnableTelemetryCommand(ctx context.Context) error {
@@ -936,7 +936,7 @@ func (ws *WshServer) WaveAIEnableTelemetryCommand(ctx context.Context) error {
 	}
 
 	// Immediately send telemetry to cloud
-	err = wcloud.SendAllTelemetry(ctx, client.OID)
+	err = wcloud.SendAllTelemetry(client.OID)
 	if err != nil {
 		log.Printf("error sending telemetry after enabling: %v", err)
 	}
