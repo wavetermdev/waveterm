@@ -11,16 +11,41 @@ import { getFileIcon } from "./ai-utils";
 import { WaveUIMessage, WaveUIMessagePart } from "./aitypes";
 import { WaveAIModel } from "./waveai-model";
 
-const AIThinking = memo(({ message = "AI is thinking..." }: { message?: string }) => (
-    <div className="flex items-center gap-2">
-        <div className="animate-pulse flex items-center">
-            <i className="fa fa-circle text-[10px]"></i>
-            <i className="fa fa-circle text-[10px] mx-1"></i>
-            <i className="fa fa-circle text-[10px]"></i>
+const AIThinking = memo(({ message = "AI is thinking...", reasoningText }: { message?: string; reasoningText?: string }) => {
+    const scrollRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        if (scrollRef.current && reasoningText) {
+            scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+        }
+    }, [reasoningText]);
+
+    const displayText = reasoningText ? (() => {
+        const lastDoubleNewline = reasoningText.lastIndexOf("\n\n");
+        return lastDoubleNewline !== -1 ? reasoningText.substring(lastDoubleNewline + 2) : reasoningText;
+    })() : "";
+
+    return (
+        <div className="flex flex-col gap-1">
+            <div className="flex items-center gap-2">
+                <div className="animate-pulse flex items-center">
+                    <i className="fa fa-circle text-[10px]"></i>
+                    <i className="fa fa-circle text-[10px] mx-1"></i>
+                    <i className="fa fa-circle text-[10px]"></i>
+                </div>
+                {message && <span className="text-sm text-gray-400">{message}</span>}
+            </div>
+            {displayText && (
+                <div
+                    ref={scrollRef}
+                    className="text-sm text-gray-500 overflow-y-auto max-h-[2lh] max-w-[600px] pl-9"
+                >
+                    {displayText}
+                </div>
+            )}
         </div>
-        {message && <span className="text-sm text-gray-400">{message}</span>}
-    </div>
-));
+    );
+});
 
 AIThinking.displayName = "AIThinking";
 
@@ -428,35 +453,31 @@ const groupMessageParts = (parts: WaveUIMessagePart[]): MessagePart[] => {
     return grouped;
 };
 
-const getThinkingMessage = (parts: WaveUIMessagePart[], isStreaming: boolean, role: string): string | null => {
+const getThinkingMessage = (parts: WaveUIMessagePart[], isStreaming: boolean, role: string): { message: string; reasoningText?: string } | null => {
     if (!isStreaming || role !== "assistant") {
         return null;
     }
 
-    // Check if there are any pending-approval tool calls - this takes priority
     const hasPendingApprovals = parts.some(
         (part) => part.type === "data-tooluse" && part.data?.approval === "needs-approval"
     );
 
     if (hasPendingApprovals) {
-        return "Waiting for Tool Approvals...";
+        return { message: "Waiting for Tool Approvals..." };
     }
 
     const lastPart = parts[parts.length - 1];
 
-    // Check if the last part is a reasoning part
     if (lastPart?.type === "reasoning") {
-        return "AI is thinking...";
+        const reasoningContent = lastPart.text || "";
+        return { message: "AI is thinking...", reasoningText: reasoningContent };
     }
 
-    // Only hide thinking indicator if the last part is text and not empty
-    // (this means text is actively streaming)
     if (lastPart?.type === "text" && lastPart.text) {
         return null;
     }
 
-    // For all other cases (including finish-step, tooluse, etc.), show dots
-    return "";
+    return { message: "" };
 };
 
 export const AIMessage = memo(({ message, isStreaming }: AIMessageProps) => {
@@ -466,7 +487,7 @@ export const AIMessage = memo(({ message, isStreaming }: AIMessageProps) => {
         (part): part is WaveUIMessagePart & { type: "data-userfile" } => part.type === "data-userfile"
     );
 
-    const thinkingMessage = getThinkingMessage(parts, isStreaming, message.role);
+    const thinkingData = getThinkingMessage(parts, isStreaming, message.role);
     const groupedParts = groupMessageParts(displayParts);
 
     return (
@@ -477,7 +498,7 @@ export const AIMessage = memo(({ message, isStreaming }: AIMessageProps) => {
                     message.role === "user" ? "py-2 bg-accent-800 text-white max-w-[calc(100%-20px)]" : null
                 )}
             >
-                {displayParts.length === 0 && !isStreaming && !thinkingMessage ? (
+                {displayParts.length === 0 && !isStreaming && !thinkingData ? (
                     <div className="whitespace-pre-wrap break-words">(no text content)</div>
                 ) : (
                     <>
@@ -490,9 +511,9 @@ export const AIMessage = memo(({ message, isStreaming }: AIMessageProps) => {
                                 </div>
                             )
                         )}
-                        {thinkingMessage != null && (
+                        {thinkingData != null && (
                             <div className="mt-2">
-                                <AIThinking message={thinkingMessage} />
+                                <AIThinking message={thinkingData.message} reasoningText={thinkingData.reasoningText} />
                             </div>
                         )}
                     </>

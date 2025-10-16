@@ -221,6 +221,47 @@ type openaiResponseFunctionCallArgumentsDoneEvent struct {
 	Arguments      string `json:"arguments"`
 }
 
+type openaiResponseReasoningSummaryPartAddedEvent struct {
+	Type           string                     `json:"type"`
+	SequenceNumber int                        `json:"sequence_number"`
+	ItemId         string                     `json:"item_id"`
+	OutputIndex    int                        `json:"output_index"`
+	SummaryIndex   int                        `json:"summary_index"`
+	Part           openaiReasoningSummaryPart `json:"part"`
+}
+
+type openaiResponseReasoningSummaryPartDoneEvent struct {
+	Type           string                     `json:"type"`
+	SequenceNumber int                        `json:"sequence_number"`
+	ItemId         string                     `json:"item_id"`
+	OutputIndex    int                        `json:"output_index"`
+	SummaryIndex   int                        `json:"summary_index"`
+	Part           openaiReasoningSummaryPart `json:"part"`
+}
+
+type openaiReasoningSummaryPart struct {
+	Type string `json:"type"`
+	Text string `json:"text"`
+}
+
+type openaiResponseReasoningSummaryTextDeltaEvent struct {
+	Type           string `json:"type"`
+	SequenceNumber int    `json:"sequence_number"`
+	ItemId         string `json:"item_id"`
+	OutputIndex    int    `json:"output_index"`
+	SummaryIndex   int    `json:"summary_index"`
+	Delta          string `json:"delta"`
+}
+
+type openaiResponseReasoningSummaryTextDoneEvent struct {
+	Type           string `json:"type"`
+	SequenceNumber int    `json:"sequence_number"`
+	ItemId         string `json:"item_id"`
+	OutputIndex    int    `json:"output_index"`
+	SummaryIndex   int    `json:"summary_index"`
+	Text           string `json:"text"`
+}
+
 // ---------- OpenAI Response Structure Types ----------
 
 type openaiResponse struct {
@@ -256,12 +297,12 @@ type openaiResponse struct {
 }
 
 type openaiOutputItem struct {
-	Id      string                 `json:"id"`
-	Type    string                 `json:"type"`
-	Status  string                 `json:"status,omitempty"`
-	Content []OpenAIMessageContent `json:"content,omitempty"`
-	Role    string                 `json:"role,omitempty"`
-	Summary []string               `json:"summary,omitempty"`
+	Id      string                       `json:"id"`
+	Type    string                       `json:"type"`
+	Status  string                       `json:"status,omitempty"`
+	Content []OpenAIMessageContent       `json:"content,omitempty"`
+	Role    string                       `json:"role,omitempty"`
+	Summary []openaiReasoningSummaryPart `json:"summary,omitempty"`
 
 	// tools (type="function_call")
 	Name      string `json:"name,omitempty"`
@@ -320,10 +361,11 @@ const (
 )
 
 type openaiBlockState struct {
-	kind       openaiBlockKind
-	localID    string // For SSE streaming to UI
-	toolCallID string // For function calls
-	toolName   string // For function calls
+	kind         openaiBlockKind
+	localID      string // For SSE streaming to UI
+	toolCallID   string // For function calls
+	toolName     string // For function calls
+	summaryCount int    // For reasoning: number of summary parts seen
 }
 
 type openaiStreamingState struct {
@@ -635,11 +677,12 @@ func handleOpenAIEvent(
 
 		switch ev.Item.Type {
 		case "reasoning":
-			// Handle reasoning item for UI streaming
+			// Create reasoning block - emit start immediately
 			id := uuid.New().String()
 			state.blockMap[ev.Item.Id] = &openaiBlockState{
-				kind:    openaiBlockReasoning,
-				localID: id,
+				kind:         openaiBlockReasoning,
+				localID:      id,
+				summaryCount: 0,
 			}
 			_ = sse.AiMsgReasoningStart(id)
 		case "message":
@@ -834,6 +877,40 @@ func handleOpenAIEvent(
 		return nil, nil
 
 	case "response.output_text.annotation.added":
+		return nil, nil
+
+	case "response.reasoning_summary_part.added":
+		var ev openaiResponseReasoningSummaryPartAddedEvent
+		if err := json.Unmarshal([]byte(data), &ev); err != nil {
+			_ = sse.AiMsgError(err.Error())
+			return &uctypes.WaveStopReason{Kind: uctypes.StopKindError, ErrorType: "decode", ErrorText: err.Error()}, nil
+		}
+
+		if st := state.blockMap[ev.ItemId]; st != nil && st.kind == openaiBlockReasoning {
+			if st.summaryCount > 0 {
+				// Not the first summary part, emit separator
+				_ = sse.AiMsgReasoningDelta(st.localID, "\n\n")
+			}
+			st.summaryCount++
+		}
+		return nil, nil
+
+	case "response.reasoning_summary_part.done":
+		return nil, nil
+
+	case "response.reasoning_summary_text.delta":
+		var ev openaiResponseReasoningSummaryTextDeltaEvent
+		if err := json.Unmarshal([]byte(data), &ev); err != nil {
+			_ = sse.AiMsgError(err.Error())
+			return &uctypes.WaveStopReason{Kind: uctypes.StopKindError, ErrorType: "decode", ErrorText: err.Error()}, nil
+		}
+
+		if st := state.blockMap[ev.ItemId]; st != nil && st.kind == openaiBlockReasoning {
+			_ = sse.AiMsgReasoningDelta(st.localID, ev.Delta)
+		}
+		return nil, nil
+
+	case "response.reasoning_summary_text.done":
 		return nil, nil
 
 	default:
