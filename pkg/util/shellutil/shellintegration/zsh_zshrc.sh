@@ -1,4 +1,4 @@
-# add wsh to path, source dynamic script from wsh token
+o# add wsh to path, source dynamic script from wsh token
 WAVETERM_WSHBINDIR={{.WSHBINDIR}}
 export PATH="$WAVETERM_WSHBINDIR:$PATH"
 source <(wsh token "$WAVETERM_SWAPTOKEN" zsh 2>/dev/null)
@@ -25,15 +25,40 @@ _waveterm_si_blocked() {
   [[ -n "$TMUX" || -n "$STY" || "$TERM" == tmux* || "$TERM" == screen* ]]
 }
 
+_waveterm_si_urlencode() {
+  if (( $+functions[omz_urlencode] )); then
+    omz_urlencode "$1"
+  else
+    local s="$1"
+    # Escape % first
+    s=${s//%/%25}
+    # Common reserved characters in file paths
+    s=${s// /%20}
+    s=${s//#/%23}
+    s=${s//\?/%3F}
+    s=${s//&/%26}
+    s=${s//;/\%3B}
+    s=${s//+/%2B}
+    printf '%s' "$s"
+  fi
+}
+
+_waveterm_si_osc7() {
+  _waveterm_si_blocked && return
+  local encoded_pwd=$(_waveterm_si_urlencode "$PWD")
+  printf '\033]7;file://%s%s\007' "$HOST" "$encoded_pwd"  # OSC 7 - current directory
+}
+
 _waveterm_si_precmd() {
   local _waveterm_si_status=$?
   _waveterm_si_blocked && return
   # D;status for previous command (skip before first prompt)
   if (( !_WAVETERM_SI_FIRSTPRECMD )); then
     printf '\033]16162;D;%d\007' $_waveterm_si_status
+  else
+    _waveterm_si_osc7
   fi
   printf '\033]16162;A\007'      # start of new prompt
-  printf '\033]7;file://%s%s\007' "$HOST" "$PWD"  # OSC 7 - current directory
   _WAVETERM_SI_FIRSTPRECMD=0
 }
 
@@ -46,3 +71,4 @@ _waveterm_si_preexec() {
 autoload -U add-zsh-hook
 add-zsh-hook precmd  _waveterm_si_precmd
 add-zsh-hook preexec _waveterm_si_preexec
+add-zsh-hook chpwd   _waveterm_si_osc7

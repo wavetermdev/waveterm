@@ -47,11 +47,11 @@ type TermWrapOptions = {
 
 function handleOscWaveCommand(data: string, blockId: string, loaded: boolean): boolean {
     if (!loaded) {
-        return false;
+        return true;
     }
     if (!data || data.length === 0) {
         console.log("Invalid Wave OSC command received (empty)");
-        return false;
+        return true;
     }
 
     // Expected formats:
@@ -60,7 +60,7 @@ function handleOscWaveCommand(data: string, blockId: string, loaded: boolean): b
     const parts = data.split(";");
     if (parts[0] !== "setmeta") {
         console.log("Invalid Wave OSC command received (bad command)", data);
-        return false;
+        return true;
     }
     let jsonPayload: string;
     let waveId: string | undefined;
@@ -71,7 +71,7 @@ function handleOscWaveCommand(data: string, blockId: string, loaded: boolean): b
         jsonPayload = parts.slice(2).join(";");
     } else {
         console.log("Invalid Wave OSC command received (1 part)", data);
-        return false;
+        return true;
     }
 
     let meta: any;
@@ -79,7 +79,7 @@ function handleOscWaveCommand(data: string, blockId: string, loaded: boolean): b
         meta = JSON.parse(jsonPayload);
     } catch (e) {
         console.error("Invalid JSON in Wave OSC command:", e);
-        return false;
+        return true;
     }
 
     if (waveId) {
@@ -107,27 +107,38 @@ function handleOscWaveCommand(data: string, blockId: string, loaded: boolean): b
     return true;
 }
 
+// for xterm handlers, we return true always because we "own" OSC 7.
+// even if it is invalid we dont want to propagate to other handlers
 function handleOsc7Command(data: string, blockId: string, loaded: boolean): boolean {
     if (!loaded) {
-        return false;
+        return true;
     }
     if (data == null || data.length == 0) {
         console.log("Invalid OSC 7 command received (empty)");
-        return false;
+        return true;
     }
-    if (data.startsWith("file://")) {
-        data = data.substring(7);
-        const nextSlashIdx = data.indexOf("/");
-        if (nextSlashIdx == -1) {
-            console.log("Invalid OSC 7 command received (bad path)", data);
-            return false;
+    if (data.length > 1024) {
+        console.log("Invalid OSC 7, data length too long", data.length);
+        return true;
+    }
+
+    let pathPart: string;
+    try {
+        const url = new URL(data);
+        if (url.protocol !== "file:") {
+            console.log("Invalid OSC 7 command received (non-file protocol)", data);
+            return true;
         }
-        data = data.substring(nextSlashIdx);
+        pathPart = url.pathname;
+    } catch (e) {
+        console.log("Invalid OSC 7 command received (parse error)", data, e);
+        return true;
     }
+
     setTimeout(() => {
         fireAndForget(async () => {
             await services.ObjectService.UpdateObjectMeta(WOS.makeORef("block", blockId), {
-                "cmd:cwd": data,
+                "cmd:cwd": pathPart,
             });
 
             const rtInfo = { "cmd:hascurcwd": true };
@@ -145,7 +156,7 @@ function handleOsc7Command(data: string, blockId: string, loaded: boolean): bool
 
 function handleOsc16162Command(data: string, blockId: string, loaded: boolean): boolean {
     if (!loaded) {
-        return false;
+        return true;
     }
     console.log("OSC 16162 received:", data, "blockId:", blockId);
     return true;
