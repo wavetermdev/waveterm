@@ -953,6 +953,7 @@ declare global {
         "conn:conntype"?: string;
         "onboarding:feature"?: "waveai" | "magnify" | "wsh";
         "onboarding:version"?: string;
+        "onboarding:githubstar"?: "already" | "star" | "later";
         "display:height"?: number;
         "display:width"?: number;
         "display:dpr"?: number;

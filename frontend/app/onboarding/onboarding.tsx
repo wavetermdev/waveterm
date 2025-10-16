@@ -72,7 +72,11 @@ const InitPage = ({ isCompact }: { isCompact: boolean }) => {
                 <div className="flex flex-col items-start gap-8 w-full mb-5 unselectable">
                     <div className="flex w-full items-center gap-[18px]">
                         <div>
-                            <a target="_blank" href="https://github.com/wavetermdev/waveterm" rel={"noopener"}>
+                            <a
+                                target="_blank"
+                                href="https://github.com/wavetermdev/waveterm?ref=install"
+                                rel={"noopener"}
+                            >
                                 <i className="text-[32px] text-white/50 fa-brands fa-github"></i>
                             </a>
                         </div>
@@ -81,7 +85,11 @@ const InitPage = ({ isCompact }: { isCompact: boolean }) => {
                             <div className="text-secondary leading-5">
                                 We're <i>open source</i> and committed to providing a free terminal for individual
                                 users. Please show your support by giving us a star on{" "}
-                                <a target="_blank" href="https://github.com/wavetermdev/waveterm" rel={"noopener"}>
+                                <a
+                                    target="_blank"
+                                    href="https://github.com/wavetermdev/waveterm?ref=install"
+                                    rel={"noopener"}
+                                >
                                     Github&nbsp;(wavetermdev/waveterm)
                                 </a>
                             </div>
@@ -152,7 +160,7 @@ const NoTelemetryStarPage = ({ isCompact }: { isCompact: boolean }) => {
             oref: WOS.makeORef("client", clientId),
             meta: { "onboarding:githubstar": true },
         });
-        window.open("https://github.com/wavetermdev/waveterm", "_blank");
+        window.open("https://github.com/wavetermdev/waveterm?ref=not", "_blank");
         setPageName("features");
     };
 

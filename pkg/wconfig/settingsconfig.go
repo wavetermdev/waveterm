@@ -832,7 +832,7 @@ func (fc *FullConfigType) CountCustomAIPresets() int {
 }
 
 // CountCustomSettings returns the number of settings in the user's settings file.
-// This excludes telemetry:enabled which doesn't count as a customization.
+// This excludes telemetry:enabled and autoupdate:channel which don't count as customizations.
 func CountCustomSettings() int {
 	// Load user settings
 	userSettings, _ := ReadWaveHomeConfigFile("settings.json")
@@ -840,10 +840,10 @@ func CountCustomSettings() int {
 		return 0
 	}
 
-	// Count all keys except telemetry:enabled
+	// Count all keys except telemetry:enabled and autoupdate:channel
 	count := 0
 	for key := range userSettings {
-		if key == "telemetry:enabled" {
+		if key == "telemetry:enabled" || key == "autoupdate:channel" {
 			continue
 		}
 		count++
