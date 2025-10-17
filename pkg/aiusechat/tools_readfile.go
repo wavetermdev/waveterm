@@ -202,7 +202,7 @@ func GetReadTextFileToolDefinition() uctypes.ToolDefinition {
 			"properties": map[string]any{
 				"filename": map[string]any{
 					"type":        "string",
-					"description": "Path to the file to read",
+					"description": "Path to the file to read. Supports '~' for the user's home directory.",
 				},
 				"origin": map[string]any{
 					"type":        "string",

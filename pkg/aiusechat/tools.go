@@ -6,6 +6,7 @@ package aiusechat
 import (
 	"context"
 	"fmt"
+	"os/user"
 	"strings"
 
 	"github.com/google/uuid"
@@ -157,7 +158,12 @@ func GenerateCurrentTabStatePrompt(blocks []*waveobj.Block, widgetAccess bool) s
 
 	var prompt strings.Builder
 	prompt.WriteString("<current_tab_state>\n")
-	prompt.WriteString(fmt.Sprintf("Local Machine: %s\n", wavebase.GetSystemSummary()))
+	systemInfo := wavebase.GetSystemSummary()
+	if currentUser, err := user.Current(); err == nil && currentUser.Username != "" {
+		prompt.WriteString(fmt.Sprintf("Local Machine: %s, User: %s\n", systemInfo, currentUser.Username))
+	} else {
+		prompt.WriteString(fmt.Sprintf("Local Machine: %s\n", systemInfo))
+	}
 	if len(widgetDescriptions) == 0 {
 		prompt.WriteString("No widgets open\n")
 	} else {
