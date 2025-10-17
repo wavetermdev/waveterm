@@ -1,6 +1,8 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { RpcApi } from "@/app/store/wshclientapi";
+import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { cn, makeIconClass } from "@/util/util";
 import { memo, useState } from "react";
 
@@ -18,12 +20,28 @@ export const AIFeedbackButtons = memo(({ messageText }: AIFeedbackButtonsProps) 
         if (thumbsDownClicked) {
             setThumbsDownClicked(false);
         }
+        if (!thumbsUpClicked) {
+            RpcApi.RecordTEventCommand(TabRpcClient, {
+                event: "waveai:feedback",
+                props: {
+                    "waveai:feedback": "good",
+                },
+            });
+        }
     };
 
     const handleThumbsDown = () => {
         setThumbsDownClicked(!thumbsDownClicked);
         if (thumbsUpClicked) {
             setThumbsUpClicked(false);
+        }
+        if (!thumbsDownClicked) {
+            RpcApi.RecordTEventCommand(TabRpcClient, {
+                event: "waveai:feedback",
+                props: {
+                    "waveai:feedback": "bad",
+                },
+            });
         }
     };
 
@@ -43,7 +61,7 @@ export const AIFeedbackButtons = memo(({ messageText }: AIFeedbackButtonsProps) 
                         ? "text-accent"
                         : "text-secondary hover:bg-gray-700 hover:text-primary"
                 )}
-                title="Good response"
+                title="Good Response"
             >
                 <i className={makeIconClass(thumbsUpClicked ? "solid@thumbs-up" : "regular@thumbs-up", false)} />
             </button>
@@ -55,7 +73,7 @@ export const AIFeedbackButtons = memo(({ messageText }: AIFeedbackButtonsProps) 
                         ? "text-accent"
                         : "text-secondary hover:bg-gray-700 hover:text-primary"
                 )}
-                title="Bad response"
+                title="Bad Response"
             >
                 <i className={makeIconClass(thumbsDownClicked ? "solid@thumbs-down" : "regular@thumbs-down", false)} />
             </button>
@@ -67,7 +85,7 @@ export const AIFeedbackButtons = memo(({ messageText }: AIFeedbackButtonsProps) 
                         ? "text-success"
                         : "text-secondary hover:bg-gray-700 hover:text-primary"
                 )}
-                title="Copy message"
+                title="Copy Message"
             >
                 <i className={makeIconClass(copied ? "solid@check" : "regular@copy", false)} />
             </button>
