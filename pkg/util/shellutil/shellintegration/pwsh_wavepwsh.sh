@@ -21,13 +21,10 @@ function Global:_waveterm_si_blocked {
 function Global:_waveterm_si_osc7 {
     if (_waveterm_si_blocked) { return }
     
-    # Get hostname with fallback chain
+    # Get hostname (allow empty for file:/// format)
     $hostname = $env:COMPUTERNAME
     if (-not $hostname) {
         $hostname = $env:HOSTNAME
-    }
-    if (-not $hostname) {
-        $hostname = [System.Net.Dns]::GetHostName()
     }
     
     # Percent-encode the raw path as-is (handles UNC, drive letters, etc.)
