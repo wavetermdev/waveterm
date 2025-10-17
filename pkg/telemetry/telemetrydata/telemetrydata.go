@@ -62,6 +62,9 @@ type TEventUserProps struct {
 	AutoUpdateChannel string `json:"autoupdate:channel,omitempty"`
 	AutoUpdateEnabled bool   `json:"autoupdate:enabled,omitempty"`
 
+	LocalShellType    string `json:"localshell:type,omitempty"`
+	LocalShellVersion string `json:"localshell:version,omitempty"`
+
 	LocCountryCode string `json:"loc:countrycode,omitempty"`
 	LocRegionCode  string `json:"loc:regioncode,omitempty"`
 

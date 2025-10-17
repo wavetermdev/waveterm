@@ -346,6 +346,75 @@ func GetShellTypeFromShellPath(shellPath string) string {
 	return ShellType_unknown
 }
 
+var (
+	bashVersionRegexp = regexp.MustCompile(`\bversion\s+(\d+\.\d+)`)
+	zshVersionRegexp  = regexp.MustCompile(`\bzsh\s+(\d+\.\d+)`)
+	fishVersionRegexp = regexp.MustCompile(`\bversion\s+(\d+\.\d+)`)
+	pwshVersionRegexp = regexp.MustCompile(`(?:PowerShell\s+)?(\d+\.\d+)`)
+)
+
+func DetectShellTypeAndVersion() (string, string, error) {
+	shellPath := DetectLocalShellPath()
+	return DetectShellTypeAndVersionFromPath(shellPath)
+}
+
+func DetectShellTypeAndVersionFromPath(shellPath string) (string, string, error) {
+	shellType := GetShellTypeFromShellPath(shellPath)
+	if shellType == ShellType_unknown {
+		return shellType, "", fmt.Errorf("unknown shell type: %s", shellPath)
+	}
+
+	shellBase := filepath.Base(shellPath)
+	if shellType == ShellType_pwsh && strings.Contains(shellBase, "powershell") && !strings.Contains(shellBase, "pwsh") {
+		return "powershell", "", nil
+	}
+
+	version, err := getShellVersion(shellPath, shellType)
+	if err != nil {
+		return shellType, "", err
+	}
+
+	return shellType, version, nil
+}
+
+func getShellVersion(shellPath string, shellType string) (string, error) {
+	ctx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancelFn()
+
+	var cmd *exec.Cmd
+	var versionRegex *regexp.Regexp
+
+	switch shellType {
+	case ShellType_bash:
+		cmd = exec.CommandContext(ctx, shellPath, "--version")
+		versionRegex = bashVersionRegexp
+	case ShellType_zsh:
+		cmd = exec.CommandContext(ctx, shellPath, "--version")
+		versionRegex = zshVersionRegexp
+	case ShellType_fish:
+		cmd = exec.CommandContext(ctx, shellPath, "--version")
+		versionRegex = fishVersionRegexp
+	case ShellType_pwsh:
+		cmd = exec.CommandContext(ctx, shellPath, "--version")
+		versionRegex = pwshVersionRegexp
+	default:
+		return "", fmt.Errorf("unsupported shell type: %s", shellType)
+	}
+
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("failed to get version for %s: %w", shellType, err)
+	}
+
+	outputStr := strings.TrimSpace(string(output))
+	matches := versionRegex.FindStringSubmatch(outputStr)
+	if len(matches) < 2 {
+		return "", fmt.Errorf("failed to parse version from output: %q", outputStr)
+	}
+
+	return matches[1], nil
+}
+
 func FormatOSC(oscNum int, parts ...string) string {
 	if len(parts) == 0 {
 		return fmt.Sprintf("\x1b]%d\x07", oscNum)
