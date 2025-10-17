@@ -710,6 +710,13 @@ declare global {
         "tsunami:shortdesc"?: string;
         "tsunami:schemas"?: any;
         "cmd:hascurcwd"?: boolean;
+        "shell:state"?: string;
+        "shell:type"?: string;
+        "shell:version"?: string;
+        "shell:uname"?: string;
+        "shell:inputempty"?: boolean;
+        "shell:lastcmd"?: string;
+        "shell:lastcmdexitcode"?: number;
     };
 
     // iochantypes.Packet
@@ -931,6 +938,8 @@ declare global {
         "client:isdev"?: boolean;
         "autoupdate:channel"?: string;
         "autoupdate:enabled"?: boolean;
+        "localshell:type"?: string;
+        "localshell:version"?: string;
         "loc:countrycode"?: string;
         "loc:regioncode"?: string;
         "settings:customwidgets"?: number;
@@ -985,6 +994,7 @@ declare global {
         "waveai:firstbytems"?: number;
         "waveai:requestdurms"?: number;
         "waveai:widgetaccess"?: boolean;
+        "waveai:feedback"?: "good" | "bad";
         $set?: TEventUserProps;
         $set_once?: TEventUserProps;
     };
@@ -999,6 +1009,8 @@ declare global {
         "client:isdev"?: boolean;
         "autoupdate:channel"?: string;
         "autoupdate:enabled"?: boolean;
+        "localshell:type"?: string;
+        "localshell:version"?: string;
         "loc:countrycode"?: string;
         "loc:regioncode"?: string;
         "settings:customwidgets"?: number;

@@ -6,11 +6,13 @@ package aiusechat
 import (
 	"context"
 	"fmt"
+	"os/user"
 	"strings"
 
 	"github.com/google/uuid"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
 	"github.com/wavetermdev/waveterm/pkg/blockcontroller"
+	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wstore"
 )
@@ -156,9 +158,16 @@ func GenerateCurrentTabStatePrompt(blocks []*waveobj.Block, widgetAccess bool) s
 
 	var prompt strings.Builder
 	prompt.WriteString("<current_tab_state>\n")
+	systemInfo := wavebase.GetSystemSummary()
+	if currentUser, err := user.Current(); err == nil && currentUser.Username != "" {
+		prompt.WriteString(fmt.Sprintf("Local Machine: %s, User: %s\n", systemInfo, currentUser.Username))
+	} else {
+		prompt.WriteString(fmt.Sprintf("Local Machine: %s\n", systemInfo))
+	}
 	if len(widgetDescriptions) == 0 {
 		prompt.WriteString("No widgets open\n")
 	} else {
+		prompt.WriteString("Open Widgets:\n")
 		for _, desc := range widgetDescriptions {
 			prompt.WriteString("* ")
 			prompt.WriteString(desc)
@@ -166,7 +175,9 @@ func GenerateCurrentTabStatePrompt(blocks []*waveobj.Block, widgetAccess bool) s
 		}
 	}
 	prompt.WriteString("</current_tab_state>")
-	return prompt.String()
+	rtn := prompt.String()
+	// log.Printf("%s\n", rtn)
+	return rtn
 }
 
 func generateToolsForTsunamiBlock(block *waveobj.Block) []uctypes.ToolDefinition {
@@ -193,6 +204,7 @@ func generateToolsForTsunamiBlock(block *waveobj.Block) []uctypes.ToolDefinition
 	return tools
 }
 
+// Used for internal testing of tool loops
 func GetAdderToolDefinition() uctypes.ToolDefinition {
 	return uctypes.ToolDefinition{
 		Name:        "adder",

@@ -311,9 +311,61 @@ func UnameKernelRelease() string {
 	return osRelease
 }
 
+var systemSummaryOnce = &sync.Once{}
+var systemSummary string
+
+func GetSystemSummary() string {
+	systemSummaryOnce.Do(func() {
+		ctx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)
+		defer cancelFn()
+		systemSummary = getSystemSummary(ctx)
+	})
+	return systemSummary
+}
+
 func ValidateWshSupportedArch(os string, arch string) error {
 	if SupportedWshBinaries[fmt.Sprintf("%s-%s", os, arch)] {
 		return nil
 	}
 	return fmt.Errorf("unsupported wsh platform: %s-%s", os, arch)
+}
+
+func getSystemSummary(ctx context.Context) string {
+	osName := runtime.GOOS
+
+	switch osName {
+	case "darwin":
+		out, _ := exec.CommandContext(ctx, "sw_vers", "-productVersion").Output()
+		return fmt.Sprintf("macOS %s (%s)", strings.TrimSpace(string(out)), runtime.GOARCH)
+	case "linux":
+		// Read /etc/os-release directly (standard location since 2012)
+		data, err := os.ReadFile("/etc/os-release")
+		var prettyName string
+		if err == nil {
+			for _, line := range strings.Split(string(data), "\n") {
+				line = strings.TrimSpace(line)
+				if strings.HasPrefix(line, "PRETTY_NAME=") {
+					prettyName = strings.Trim(strings.TrimPrefix(line, "PRETTY_NAME="), "\"")
+					break
+				}
+			}
+		}
+		if prettyName == "" {
+			prettyName = "Linux"
+		} else if !strings.Contains(strings.ToLower(prettyName), "linux") {
+			prettyName = "Linux " + prettyName
+		}
+		return fmt.Sprintf("%s (%s)", prettyName, runtime.GOARCH)
+	case "windows":
+		var details string
+		out, err := exec.CommandContext(ctx, "powershell", "-NoProfile", "-NonInteractive", "-Command", "(Get-CimInstance Win32_OperatingSystem).Caption").Output()
+		if err == nil && len(out) > 0 {
+			details = strings.TrimSpace(string(out))
+		} else {
+			details = "Windows"
+		}
+		return fmt.Sprintf("%s (%s)", details, runtime.GOARCH)
+	default:
+		return fmt.Sprintf("%s (%s)", runtime.GOOS, runtime.GOARCH)
+	}
 }

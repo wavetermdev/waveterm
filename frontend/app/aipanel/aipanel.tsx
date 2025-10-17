@@ -156,7 +156,7 @@ const AIWelcomeMessage = memo(() => {
                     </div>
                 </div>
                 <div className="mt-4 text-center text-[12px] text-muted">
-                    <i className="fa-sharp fa-solid fa-rectangle-beta mr-1.5"></i>(BETA: 50 free requests daily)
+                    BETA: Free to use. Daily limits keep our costs in check.
                 </div>
             </div>
         </div>
