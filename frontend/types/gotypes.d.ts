@@ -938,6 +938,8 @@ declare global {
         "client:isdev"?: boolean;
         "autoupdate:channel"?: string;
         "autoupdate:enabled"?: boolean;
+        "localshell:type"?: string;
+        "localshell:version"?: string;
         "loc:countrycode"?: string;
         "loc:regioncode"?: string;
         "settings:customwidgets"?: number;
@@ -1006,6 +1008,8 @@ declare global {
         "client:isdev"?: boolean;
         "autoupdate:channel"?: string;
         "autoupdate:enabled"?: boolean;
+        "localshell:type"?: string;
+        "localshell:version"?: string;
         "loc:countrycode"?: string;
         "loc:regioncode"?: string;
         "settings:customwidgets"?: number;

@@ -410,6 +410,7 @@ func main() {
 	go updateTelemetryCountsLoop()
 	go startupActivityUpdate(firstLaunch) // must be after startConfigWatcher()
 	blocklogger.InitBlockLogger()
+	go wavebase.GetSystemSummary() // get this cached (used in AI)
 
 	webListener, err := web.MakeTCPListener("web")
 	if err != nil {
