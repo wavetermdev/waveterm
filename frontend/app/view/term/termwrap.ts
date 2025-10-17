@@ -201,7 +201,7 @@ function handleOsc16162Command(data: string, blockId: string, loaded: boolean, t
             if (cmd.data.cmd64) {
                 const decodedLen = Math.ceil(cmd.data.cmd64.length * 0.75);
                 if (decodedLen > 8192) {
-                    rtInfo["shell:lastcmd"] = `# command too large to store (${decodedLen} bytes)`;
+                    rtInfo["shell:lastcmd"] = `# command too large (${decodedLen} bytes)`;
                 } else {
                     try {
                         const decodedCmd = atob(cmd.data.cmd64);

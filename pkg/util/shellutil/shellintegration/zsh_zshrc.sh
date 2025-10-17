@@ -66,12 +66,19 @@ _waveterm_si_precmd() {
 
 _waveterm_si_preexec() {
   _waveterm_si_blocked && return
-  local cmd64
-  cmd64=$(printf '%s' "$1" | base64 2>/dev/null | tr -d '\n\r')
-  if [ -n "$cmd64" ]; then
+  local cmd_length=${#1}
+  if [ "$cmd_length" -gt 8192 ]; then
+    local cmd64
+    cmd64=$(printf '# command too large (%d bytes)' "$cmd_length" | base64 2>/dev/null | tr -d '\n\r')
     printf '\033]16162;C;{"cmd64":"%s"}\007' "$cmd64"
   else
-    printf '\033]16162;C\007'
+    local cmd64
+    cmd64=$(printf '%s' "$1" | base64 2>/dev/null | tr -d '\n\r')
+    if [ -n "$cmd64" ]; then
+      printf '\033]16162;C;{"cmd64":"%s"}\007' "$cmd64"
+    else
+      printf '\033]16162;C\007'
+    fi
   fi
 }
 
@@ -95,8 +102,8 @@ _waveterm_si_inputempty() {
   fi
 }
 
+autoload -Uz add-zle-hook-widget 2>/dev/null
 if (( $+functions[add-zle-hook-widget] )); then
-  autoload -Uz add-zle-hook-widget
   add-zle-hook-widget zle-line-init _waveterm_si_inputempty
   add-zle-hook-widget zle-line-pre-redraw _waveterm_si_inputempty
 fi
