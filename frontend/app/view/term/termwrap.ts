@@ -204,12 +204,17 @@ function handleOsc16162Command(data: string, blockId: string, loaded: boolean, t
         case "C":
             rtInfo["shell:state"] = "running-command";
             if (cmd.data.cmd64) {
-                try {
-                    const decodedCmd = atob(cmd.data.cmd64);
-                    rtInfo["shell:lastcmd"] = decodedCmd;
-                } catch (e) {
-                    console.error("Error decoding cmd64:", e);
-                    rtInfo["shell:lastcmd"] = null;
+                const decodedLen = Math.ceil(cmd.data.cmd64.length * 0.75);
+                if (decodedLen > 8192) {
+                    rtInfo["shell:lastcmd"] = `# command too large to store (${decodedLen} bytes)`;
+                } else {
+                    try {
+                        const decodedCmd = atob(cmd.data.cmd64);
+                        rtInfo["shell:lastcmd"] = decodedCmd;
+                    } catch (e) {
+                        console.error("Error decoding cmd64:", e);
+                        rtInfo["shell:lastcmd"] = null;
+                    }
                 }
             } else {
                 rtInfo["shell:lastcmd"] = null;

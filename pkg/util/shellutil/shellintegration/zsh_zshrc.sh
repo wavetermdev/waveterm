@@ -37,7 +37,7 @@ _waveterm_si_urlencode() {
     s=${s//#/%23}
     s=${s//\?/%3F}
     s=${s//&/%26}
-    s=${s//;/\%3B}
+    s=${s//;/%3B}
     s=${s//+/%2B}
     printf '%s' "$s"
   fi
