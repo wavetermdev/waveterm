@@ -18,44 +18,23 @@ function Global:_waveterm_si_blocked {
     return ($env:TMUX -or $env:STY -or $env:TERM -like "tmux*" -or $env:TERM -like "screen*")
 }
 
-function Global:_waveterm_si_urlencode {
-    param([string]$str)
-    # URL encode the path
-    # Escape % first
-    $str = $str -replace '%', '%25'
-    # Common reserved characters in file paths
-    $str = $str -replace ' ', '%20'
-    $str = $str -replace '#', '%23'
-    $str = $str -replace '\?', '%3F'
-    $str = $str -replace '&', '%26'
-    $str = $str -replace ';', '%3B'
-    $str = $str -replace '\+', '%2B'
-    return $str
-}
-
 function Global:_waveterm_si_osc7 {
     if (_waveterm_si_blocked) { return }
     
-    $pwd_str = $PWD.Path
-    
-    # Convert Windows path to file:// URL format
-    # Replace backslashes with forward slashes
-    $pwd_str = $pwd_str -replace '\\', '/'
-    
-    # Ensure it starts with / for proper file:// URL format
-    # Windows paths like C:/... need to become /C:/...
-    if ($pwd_str -match '^[a-zA-Z]:') {
-        $pwd_str = '/' + $pwd_str
-    }
-    
-    $encoded_pwd = _waveterm_si_urlencode $pwd_str
+    # Get hostname with fallback chain
     $hostname = $env:COMPUTERNAME
     if (-not $hostname) {
-        $hostname = hostname
+        $hostname = $env:HOSTNAME
+    }
+    if (-not $hostname) {
+        $hostname = [System.Net.Dns]::GetHostName()
     }
     
+    # Percent-encode the raw path as-is (handles UNC, drive letters, etc.)
+    $encoded_pwd = [System.Uri]::EscapeDataString($PWD.Path)
+    
     # OSC 7 - current directory
-    Write-Host -NoNewline "`e]7;file://$hostname$encoded_pwd`a"
+    Write-Host -NoNewline "`e]7;file://$hostname/$encoded_pwd`a"
 }
 
 # Hook OSC 7 to prompt
