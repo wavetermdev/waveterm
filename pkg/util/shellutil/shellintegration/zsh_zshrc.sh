@@ -67,7 +67,7 @@ _waveterm_si_precmd() {
 _waveterm_si_preexec() {
   _waveterm_si_blocked && return
   local cmd64
-  cmd64=$(printf '%s' "$1" | base64 2>/dev/null)
+  cmd64=$(printf '%s' "$1" | base64 2>/dev/null | tr -d '\n\r')
   if [ -n "$cmd64" ]; then
     printf '\033]16162;C;{"cmd64":"%s"}\007' "$cmd64"
   else
