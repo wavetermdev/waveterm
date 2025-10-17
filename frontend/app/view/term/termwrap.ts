@@ -131,6 +131,11 @@ function handleOsc7Command(data: string, blockId: string, loaded: boolean): bool
         }
         pathPart = decodeURIComponent(url.pathname);
 
+        // Normalize double slashes at the beginning to single slash
+        if (pathPart.startsWith("//")) {
+            pathPart = pathPart.substring(1);
+        }
+
         // Handle Windows paths (e.g., /C:/... or /D:\...)
         if (/^\/[a-zA-Z]:[\\/]/.test(pathPart)) {
             // Strip leading slash and normalize to forward slashes
