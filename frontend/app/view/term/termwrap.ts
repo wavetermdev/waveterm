@@ -129,7 +129,7 @@ function handleOsc7Command(data: string, blockId: string, loaded: boolean): bool
             console.log("Invalid OSC 7 command received (non-file protocol)", data);
             return true;
         }
-        pathPart = url.pathname;
+        pathPart = decodeURIComponent(url.pathname);
     } catch (e) {
         console.log("Invalid OSC 7 command received (parse error)", data, e);
         return true;
