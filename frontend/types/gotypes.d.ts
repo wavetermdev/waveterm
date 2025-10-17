@@ -710,6 +710,13 @@ declare global {
         "tsunami:shortdesc"?: string;
         "tsunami:schemas"?: any;
         "cmd:hascurcwd"?: boolean;
+        "shell:state"?: string;
+        "shell:type"?: string;
+        "shell:version"?: string;
+        "shell:uname"?: string;
+        "shell:inputempty"?: boolean;
+        "shell:lastcmd"?: string;
+        "shell:lastcmdexitcode"?: number;
     };
 
     // iochantypes.Packet

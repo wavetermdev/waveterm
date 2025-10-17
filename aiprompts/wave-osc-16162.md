@@ -71,16 +71,18 @@ Sends shell metadata information (typically only once at shell initialization).
 {
   shell?: string;        // Shell name (e.g., "zsh", "bash")
   shellversion?: string; // Version string of the shell
+  uname?: string;        // Output of "uname -smr" (e.g., "Darwin 23.0.0 arm64")
 }
 ```
 
 **When:** Sent during first `precmd` hook (on shell startup)
 
-**Purpose:** Provides Wave Terminal with information about the shell environment.
+**Purpose:** Provides Wave Terminal with information about the shell environment and operating system.
 
 **Example:**
 ```bash
-printf '\033]16162;M;{"shell":"zsh","shellversion":"5.9"}\007'
+uname_info=$(uname -smr 2>/dev/null)
+printf '\033]16162;M;{"shell":"zsh","shellversion":"5.9","uname":"%s"}\007' "$uname_info"
 ```
 
 ---

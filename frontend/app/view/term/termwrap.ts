@@ -159,7 +159,7 @@ function handleOsc7Command(data: string, blockId: string, loaded: boolean): bool
 type Osc16162Command =
     | { command: "A"; data: {} }
     | { command: "C"; data: { cmd64?: string } }
-    | { command: "M"; data: { shell?: string; shellversion?: string } }
+    | { command: "M"; data: { shell?: string; shellversion?: string; uname?: string } }
     | { command: "D"; data: { exitcode?: number } }
     | { command: "I"; data: { inputempty?: boolean } }
     | { command: "R"; data: {} };
@@ -189,12 +189,68 @@ function handleOsc16162Command(data: string, blockId: string, loaded: boolean, t
 
     const cmd: Osc16162Command = { command: commandStr, data: parsedData } as Osc16162Command;
 
+    const rtInfo: ObjRTInfo = {};
+
     switch (cmd.command) {
+        case "A":
+            rtInfo["shell:state"] = "ready";
+            break;
+        case "C":
+            rtInfo["shell:state"] = "running-command";
+            if (cmd.data.cmd64) {
+                try {
+                    const decodedCmd = atob(cmd.data.cmd64);
+                    rtInfo["shell:lastcmd"] = decodedCmd;
+                } catch (e) {
+                    console.error("Error decoding cmd64:", e);
+                    rtInfo["shell:lastcmd"] = null;
+                }
+            } else {
+                rtInfo["shell:lastcmd"] = null;
+            }
+            break;
+        case "M":
+            if (cmd.data.shell) {
+                rtInfo["shell:type"] = cmd.data.shell;
+            }
+            if (cmd.data.shellversion) {
+                rtInfo["shell:version"] = cmd.data.shellversion;
+            }
+            if (cmd.data.uname) {
+                rtInfo["shell:uname"] = cmd.data.uname;
+            }
+            break;
+        case "D":
+            if (cmd.data.exitcode != null) {
+                rtInfo["shell:lastcmdexitcode"] = cmd.data.exitcode;
+            } else {
+                rtInfo["shell:lastcmdexitcode"] = null;
+            }
+            break;
+        case "I":
+            if (cmd.data.inputempty != null) {
+                rtInfo["shell:inputempty"] = cmd.data.inputempty;
+            }
+            break;
         case "R":
             if (terminal.buffer.active.type === "alternate") {
                 terminal.write("\x1b[?1049l");
             }
             break;
+    }
+
+    if (Object.keys(rtInfo).length > 0) {
+        setTimeout(() => {
+            fireAndForget(async () => {
+                const rtInfoData: CommandSetRTInfoData = {
+                    oref: WOS.makeORef("block", blockId),
+                    data: rtInfo,
+                };
+                await RpcApi.SetRTInfoCommand(TabRpcClient, rtInfoData).catch((e) =>
+                    console.log("error setting RT info (OSC 16162)", e)
+                );
+            });
+        }, 0);
     }
 
     return true;

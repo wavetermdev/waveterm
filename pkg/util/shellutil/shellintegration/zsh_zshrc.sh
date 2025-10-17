@@ -56,7 +56,8 @@ _waveterm_si_precmd() {
   if (( !_WAVETERM_SI_FIRSTPRECMD )); then
     printf '\033]16162;D;{"exitcode":%d}\007' $_waveterm_si_status
   else
-    printf '\033]16162;M;{"shell":"zsh","shellversion":"%s"}\007' "$ZSH_VERSION"
+    local uname_info=$(uname -smr 2>/dev/null)
+    printf '\033]16162;M;{"shell":"zsh","shellversion":"%s","uname":"%s"}\007' "$ZSH_VERSION" "$uname_info"
     _waveterm_si_osc7
   fi
   printf '\033]16162;A\007'      # start of new prompt
