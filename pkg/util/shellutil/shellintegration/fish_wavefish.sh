@@ -11,28 +11,14 @@ wsh completion fish | source
 
 # shell integration
 function _waveterm_si_blocked
-    # Check if we're in tmux or screen
-    test -n "$TMUX" -o -n "$STY" -o "$TERM" = "tmux" -o "$TERM" = "screen"
-end
-
-function _waveterm_si_urlencode
-    set -l str $argv[1]
-    # URL encode the path
-    # Escape % first
-    set str (string replace -a '%' '%25' -- $str)
-    # Common reserved characters in file paths
-    set str (string replace -a ' ' '%20' -- $str)
-    set str (string replace -a '#' '%23' -- $str)
-    set str (string replace -a '?' '%3F' -- $str)
-    set str (string replace -a '&' '%26' -- $str)
-    set str (string replace -a ';' '%3B' -- $str)
-    set str (string replace -a '+' '%2B' -- $str)
-    echo -n $str
+    # Check if we're in tmux or screen (using fish-native checks)
+    set -q TMUX; or set -q STY; or string match -q 'tmux*' -- $TERM; or string match -q 'screen*' -- $TERM
 end
 
 function _waveterm_si_osc7
     _waveterm_si_blocked; and return
-    set -l encoded_pwd (_waveterm_si_urlencode $PWD)
+    # Use fish-native URL encoding
+    set -l encoded_pwd (string escape --style=url -- $PWD)
     printf '\033]7;file://%s%s\007' $hostname $encoded_pwd
 end
 
