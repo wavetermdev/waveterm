@@ -77,18 +77,20 @@ export const AIFeedbackButtons = memo(({ messageText }: AIFeedbackButtonsProps) 
             >
                 <i className={makeIconClass(thumbsDownClicked ? "solid@thumbs-down" : "regular@thumbs-down", false)} />
             </button>
-            <button
-                onClick={handleCopy}
-                className={cn(
-                    "p-1.5 rounded cursor-pointer transition-colors",
-                    copied
-                        ? "text-success"
-                        : "text-secondary hover:bg-gray-700 hover:text-primary"
-                )}
-                title="Copy Message"
-            >
-                <i className={makeIconClass(copied ? "solid@check" : "regular@copy", false)} />
-            </button>
+            {messageText?.trim() && (
+                <button
+                    onClick={handleCopy}
+                    className={cn(
+                        "p-1.5 rounded cursor-pointer transition-colors",
+                        copied
+                            ? "text-success"
+                            : "text-secondary hover:bg-gray-700 hover:text-primary"
+                    )}
+                    title="Copy Message"
+                >
+                    <i className={makeIconClass(copied ? "solid@check" : "regular@copy", false)} />
+                </button>
+            )}
         </div>
     );
 });

@@ -244,7 +244,7 @@ export const AIMessage = memo(({ message, isStreaming }: AIMessageProps) => {
                         messageText={parts
                             .filter((p) => p.type === "text")
                             .map((p) => p.text || "")
-                            .join("\n")}
+                            .join("\n\n")}
                     />
                 )}
             </div>
