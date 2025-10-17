@@ -1,4 +1,5 @@
 export const PlatformMacOS = "darwin";
+export const PlatformWindows = "win32";
 export let PLATFORM: NodeJS.Platform = PlatformMacOS;
 
 export function setPlatform(platform: NodeJS.Platform) {
@@ -7,6 +8,10 @@ export function setPlatform(platform: NodeJS.Platform) {
 
 export function isMacOS(): boolean {
     return PLATFORM == PlatformMacOS;
+}
+
+export function isWindows(): boolean {
+    return PLATFORM == PlatformWindows;
 }
 
 export function makeNativeLabel(isDirectory: boolean) {

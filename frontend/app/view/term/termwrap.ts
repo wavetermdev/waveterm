@@ -130,6 +130,12 @@ function handleOsc7Command(data: string, blockId: string, loaded: boolean): bool
             return true;
         }
         pathPart = decodeURIComponent(url.pathname);
+
+        // Handle Windows paths (e.g., /C:/... or /D:\...)
+        if (/^\/[a-zA-Z]:[\\/]/.test(pathPart)) {
+            // Strip leading slash and normalize to forward slashes
+            pathPart = pathPart.substring(1).replace(/\\/g, "/");
+        }
     } catch (e) {
         console.log("Invalid OSC 7 command received (parse error)", data, e);
         return true;
