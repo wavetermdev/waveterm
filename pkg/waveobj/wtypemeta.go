@@ -117,9 +117,10 @@ type MetaTSType struct {
 	TermShiftEnterNewline   *bool    `json:"term:shiftenternewline,omitempty"`
 	TermConnDebug           string   `json:"term:conndebug,omitempty"` // null, info, debug
 
-	WebZoom      float64 `json:"web:zoom,omitempty"`
-	WebHideNav   *bool   `json:"web:hidenav,omitempty"`
-	WebPartition string  `json:"web:partition,omitempty"`
+	WebZoom          float64 `json:"web:zoom,omitempty"`
+	WebHideNav       *bool   `json:"web:hidenav,omitempty"`
+	WebPartition     string  `json:"web:partition,omitempty"`
+	WebUserAgentType string  `json:"web:useragenttype,omitempty"`
 
 	MarkdownFontSize      float64 `json:"markdown:fontsize,omitempty"`
 	MarkdownFixedFontSize float64 `json:"markdown:fixedfontsize,omitempty"`
