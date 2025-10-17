@@ -54,7 +54,7 @@ _waveterm_si_precmd() {
   _waveterm_si_blocked && return
   # D;status for previous command (skip before first prompt)
   if (( !_WAVETERM_SI_FIRSTPRECMD )); then
-    printf '\033]16162;D;%d\007' $_waveterm_si_status
+    printf '\033]16162;D;{"exitcode":%d}\007' $_waveterm_si_status
   else
     printf '\033]16162;M;{"shell":"zsh","shellversion":"%s"}\007' "$ZSH_VERSION"
     _waveterm_si_osc7
@@ -68,7 +68,7 @@ _waveterm_si_preexec() {
   local cmd64
   cmd64=$(printf '%s' "$1" | base64 2>/dev/null)
   if [ -n "$cmd64" ]; then
-    printf '\033]16162;C;cmd64=%s\007' "$cmd64"
+    printf '\033]16162;C;{"cmd64":"%s"}\007' "$cmd64"
   else
     printf '\033]16162;C\007'
   fi

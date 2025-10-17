@@ -154,27 +154,49 @@ function handleOsc7Command(data: string, blockId: string, loaded: boolean): bool
     return true;
 }
 
+// OSC 16162 - Shell Integration Commands
+// See aiprompts/wave-osc-16162.md for full documentation
+type Osc16162Command =
+    | { command: "A"; data: {} }
+    | { command: "C"; data: { cmd64?: string } }
+    | { command: "M"; data: { shell?: string; shellversion?: string } }
+    | { command: "D"; data: { exitcode?: number } }
+    | { command: "I"; data: { inputempty?: boolean } }
+    | { command: "R"; data: {} };
+
 function handleOsc16162Command(data: string, blockId: string, loaded: boolean, terminal: Terminal): boolean {
     if (!loaded) {
         return true;
     }
     console.log("OSC 16162 received:", data, "blockId:", blockId);
-    
+
     if (!data || data.length === 0) {
         return true;
     }
-    
+
     const parts = data.split(";");
-    const command = parts[0];
-    
-    switch (command) {
+    const commandStr = parts[0];
+    const jsonDataStr = parts.length > 1 ? parts.slice(1).join(";") : null;
+    let parsedData: Record<string, any> = {};
+
+    if (jsonDataStr) {
+        try {
+            parsedData = JSON.parse(jsonDataStr);
+        } catch (e) {
+            console.error("Error parsing OSC 16162 JSON data:", e);
+        }
+    }
+
+    const cmd: Osc16162Command = { command: commandStr, data: parsedData } as Osc16162Command;
+
+    switch (cmd.command) {
         case "R":
             if (terminal.buffer.active.type === "alternate") {
                 terminal.write("\x1b[?1049l");
             }
             break;
     }
-    
+
     return true;
 }
 
