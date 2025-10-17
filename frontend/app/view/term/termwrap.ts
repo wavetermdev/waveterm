@@ -174,8 +174,6 @@ function handleOsc16162Command(data: string, blockId: string, loaded: boolean, t
     if (!loaded) {
         return true;
     }
-    console.log("OSC 16162 received:", data, "blockId:", blockId);
-
     if (!data || data.length === 0) {
         return true;
     }
@@ -184,7 +182,6 @@ function handleOsc16162Command(data: string, blockId: string, loaded: boolean, t
     const commandStr = parts[0];
     const jsonDataStr = parts.length > 1 ? parts.slice(1).join(";") : null;
     let parsedData: Record<string, any> = {};
-
     if (jsonDataStr) {
         try {
             parsedData = JSON.parse(jsonDataStr);
@@ -194,9 +191,7 @@ function handleOsc16162Command(data: string, blockId: string, loaded: boolean, t
     }
 
     const cmd: Osc16162Command = { command: commandStr, data: parsedData } as Osc16162Command;
-
     const rtInfo: ObjRTInfo = {};
-
     switch (cmd.command) {
         case "A":
             rtInfo["shell:state"] = "ready";
