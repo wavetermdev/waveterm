@@ -157,6 +157,7 @@ tasks:
             - go.mod
             - go.sum
             - pkg/**/*.go
+            - pkg/**/*.sh
             - cmd/**/*.go
             - tsunami/go.mod
             - tsunami/go.sum
@@ -188,6 +189,7 @@ tasks:
             - "cmd/server/*.go"
             - "pkg/**/*.go"
             - "pkg/**/*.json"
+            - "pkg/**/*.sh"
             - tsunami/**/*.go
         generates:
             - dist/bin/wavesrv.*
@@ -215,6 +217,7 @@ tasks:
             - "cmd/server/*.go"
             - "pkg/**/*.go"
             - "pkg/**/*.json"
+            - "pkg/**/*.sh"
             - "tsunami/**/*.go"
         generates:
             - dist/bin/wavesrv.*

@@ -47,11 +47,11 @@ type TermWrapOptions = {
 
 function handleOscWaveCommand(data: string, blockId: string, loaded: boolean): boolean {
     if (!loaded) {
-        return false;
+        return true;
     }
     if (!data || data.length === 0) {
         console.log("Invalid Wave OSC command received (empty)");
-        return false;
+        return true;
     }
 
     // Expected formats:
@@ -60,7 +60,7 @@ function handleOscWaveCommand(data: string, blockId: string, loaded: boolean): b
     const parts = data.split(";");
     if (parts[0] !== "setmeta") {
         console.log("Invalid Wave OSC command received (bad command)", data);
-        return false;
+        return true;
     }
     let jsonPayload: string;
     let waveId: string | undefined;
@@ -71,7 +71,7 @@ function handleOscWaveCommand(data: string, blockId: string, loaded: boolean): b
         jsonPayload = parts.slice(2).join(";");
     } else {
         console.log("Invalid Wave OSC command received (1 part)", data);
-        return false;
+        return true;
     }
 
     let meta: any;
@@ -79,7 +79,7 @@ function handleOscWaveCommand(data: string, blockId: string, loaded: boolean): b
         meta = JSON.parse(jsonPayload);
     } catch (e) {
         console.error("Invalid JSON in Wave OSC command:", e);
-        return false;
+        return true;
     }
 
     if (waveId) {
@@ -107,39 +107,158 @@ function handleOscWaveCommand(data: string, blockId: string, loaded: boolean): b
     return true;
 }
 
+// for xterm handlers, we return true always because we "own" OSC 7.
+// even if it is invalid we dont want to propagate to other handlers
 function handleOsc7Command(data: string, blockId: string, loaded: boolean): boolean {
     if (!loaded) {
-        return false;
+        return true;
     }
     if (data == null || data.length == 0) {
         console.log("Invalid OSC 7 command received (empty)");
-        return false;
+        return true;
     }
-    if (data.startsWith("file://")) {
-        data = data.substring(7);
-        const nextSlashIdx = data.indexOf("/");
-        if (nextSlashIdx == -1) {
-            console.log("Invalid OSC 7 command received (bad path)", data);
-            return false;
+    if (data.length > 1024) {
+        console.log("Invalid OSC 7, data length too long", data.length);
+        return true;
+    }
+
+    let pathPart: string;
+    try {
+        const url = new URL(data);
+        if (url.protocol !== "file:") {
+            console.log("Invalid OSC 7 command received (non-file protocol)", data);
+            return true;
         }
-        data = data.substring(nextSlashIdx);
+        pathPart = decodeURIComponent(url.pathname);
+
+        // Handle Windows paths (e.g., /C:/... or /D:\...)
+        if (/^\/[a-zA-Z]:[\\/]/.test(pathPart)) {
+            // Strip leading slash and normalize to forward slashes
+            pathPart = pathPart.substring(1).replace(/\\/g, "/");
+        }
+    } catch (e) {
+        console.log("Invalid OSC 7 command received (parse error)", data, e);
+        return true;
     }
+
     setTimeout(() => {
         fireAndForget(async () => {
             await services.ObjectService.UpdateObjectMeta(WOS.makeORef("block", blockId), {
-                "cmd:cwd": data,
+                "cmd:cwd": pathPart,
             });
-            
+
             const rtInfo = { "cmd:hascurcwd": true };
             const rtInfoData: CommandSetRTInfoData = {
                 oref: WOS.makeORef("block", blockId),
-                data: rtInfo
+                data: rtInfo,
             };
             await RpcApi.SetRTInfoCommand(TabRpcClient, rtInfoData).catch((e) =>
                 console.log("error setting RT info", e)
             );
         });
     }, 0);
+    return true;
+}
+
+// OSC 16162 - Shell Integration Commands
+// See aiprompts/wave-osc-16162.md for full documentation
+type Osc16162Command =
+    | { command: "A"; data: {} }
+    | { command: "C"; data: { cmd64?: string } }
+    | { command: "M"; data: { shell?: string; shellversion?: string; uname?: string } }
+    | { command: "D"; data: { exitcode?: number } }
+    | { command: "I"; data: { inputempty?: boolean } }
+    | { command: "R"; data: {} };
+
+function handleOsc16162Command(data: string, blockId: string, loaded: boolean, terminal: Terminal): boolean {
+    if (!loaded) {
+        return true;
+    }
+    if (!data || data.length === 0) {
+        return true;
+    }
+
+    const parts = data.split(";");
+    const commandStr = parts[0];
+    const jsonDataStr = parts.length > 1 ? parts.slice(1).join(";") : null;
+    let parsedData: Record<string, any> = {};
+    if (jsonDataStr) {
+        try {
+            parsedData = JSON.parse(jsonDataStr);
+        } catch (e) {
+            console.error("Error parsing OSC 16162 JSON data:", e);
+        }
+    }
+
+    const cmd: Osc16162Command = { command: commandStr, data: parsedData } as Osc16162Command;
+    const rtInfo: ObjRTInfo = {};
+    switch (cmd.command) {
+        case "A":
+            rtInfo["shell:state"] = "ready";
+            break;
+        case "C":
+            rtInfo["shell:state"] = "running-command";
+            if (cmd.data.cmd64) {
+                const decodedLen = Math.ceil(cmd.data.cmd64.length * 0.75);
+                if (decodedLen > 8192) {
+                    rtInfo["shell:lastcmd"] = `# command too large (${decodedLen} bytes)`;
+                } else {
+                    try {
+                        const decodedCmd = atob(cmd.data.cmd64);
+                        rtInfo["shell:lastcmd"] = decodedCmd;
+                    } catch (e) {
+                        console.error("Error decoding cmd64:", e);
+                        rtInfo["shell:lastcmd"] = null;
+                    }
+                }
+            } else {
+                rtInfo["shell:lastcmd"] = null;
+            }
+            break;
+        case "M":
+            if (cmd.data.shell) {
+                rtInfo["shell:type"] = cmd.data.shell;
+            }
+            if (cmd.data.shellversion) {
+                rtInfo["shell:version"] = cmd.data.shellversion;
+            }
+            if (cmd.data.uname) {
+                rtInfo["shell:uname"] = cmd.data.uname;
+            }
+            break;
+        case "D":
+            if (cmd.data.exitcode != null) {
+                rtInfo["shell:lastcmdexitcode"] = cmd.data.exitcode;
+            } else {
+                rtInfo["shell:lastcmdexitcode"] = null;
+            }
+            break;
+        case "I":
+            if (cmd.data.inputempty != null) {
+                rtInfo["shell:inputempty"] = cmd.data.inputempty;
+            }
+            break;
+        case "R":
+            if (terminal.buffer.active.type === "alternate") {
+                terminal.write("\x1b[?1049l");
+            }
+            break;
+    }
+
+    if (Object.keys(rtInfo).length > 0) {
+        setTimeout(() => {
+            fireAndForget(async () => {
+                const rtInfoData: CommandSetRTInfoData = {
+                    oref: WOS.makeORef("block", blockId),
+                    data: rtInfo,
+                };
+                await RpcApi.SetRTInfoCommand(TabRpcClient, rtInfoData).catch((e) =>
+                    console.log("error setting RT info (OSC 16162)", e)
+                );
+            });
+        }, 0);
+    }
+
     return true;
 }
 
@@ -221,6 +340,9 @@ export class TermWrap {
         });
         this.terminal.parser.registerOscHandler(7, (data: string) => {
             return handleOsc7Command(data, this.blockId, this.loaded);
+        });
+        this.terminal.parser.registerOscHandler(16162, (data: string) => {
+            return handleOsc16162Command(data, this.blockId, this.loaded, this.terminal);
         });
         this.terminal.attachCustomKeyEventHandler(waveOptions.keydownHandler);
         this.connectElem = connectElem;

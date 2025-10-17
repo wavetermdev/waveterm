@@ -169,7 +169,6 @@ func sendTEventsBatch(clientId string) (bool, int, error) {
 	if len(events) == 0 {
 		return true, 0, nil
 	}
-	log.Printf("[wcloud] sending %d tevents\n", len(events))
 	input := TEventsInputType{
 		ClientId: clientId,
 		Events:   events,
@@ -178,7 +177,10 @@ func sendTEventsBatch(clientId string) (bool, int, error) {
 	if err != nil {
 		return true, 0, err
 	}
+	startTime := time.Now()
 	_, err = doRequest(req, nil)
+	latency := time.Since(startTime)
+	log.Printf("[wcloud] sent %d tevents (latency: %v)\n", len(events), latency)
 	if err != nil {
 		return true, 0, err
 	}

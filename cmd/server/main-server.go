@@ -218,6 +218,11 @@ func startupActivityUpdate(firstLaunch bool) {
 	}
 	autoUpdateChannel := telemetry.AutoUpdateChannel()
 	autoUpdateEnabled := telemetry.IsAutoUpdateEnabled()
+	shellType, shellVersion, shellErr := shellutil.DetectShellTypeAndVersion()
+	if shellErr != nil {
+		shellType = "error"
+		shellVersion = ""
+	}
 	props := telemetrydata.TEventProps{
 		UserSet: &telemetrydata.TEventUserProps{
 			ClientVersion:     "v" + WaveVersion,
@@ -227,6 +232,8 @@ func startupActivityUpdate(firstLaunch bool) {
 			ClientIsDev:       wavebase.IsDevMode(),
 			AutoUpdateChannel: autoUpdateChannel,
 			AutoUpdateEnabled: autoUpdateEnabled,
+			LocalShellType:    shellType,
+			LocalShellVersion: shellVersion,
 		},
 		UserSetOnce: &telemetrydata.TEventUserProps{
 			ClientInitialVersion: "v" + WaveVersion,
@@ -401,8 +408,9 @@ func main() {
 	go stdinReadWatch()
 	go telemetryLoop()
 	go updateTelemetryCountsLoop()
-	startupActivityUpdate(firstLaunch) // must be after startConfigWatcher()
+	go startupActivityUpdate(firstLaunch) // must be after startConfigWatcher()
 	blocklogger.InitBlockLogger()
+	go wavebase.GetSystemSummary() // get this cached (used in AI)
 
 	webListener, err := web.MakeTCPListener("web")
 	if err != nil {
