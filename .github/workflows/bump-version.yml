@@ -39,7 +39,7 @@ jobs:
                   token: ${{ steps.app-token.outputs.token }}
 
             # General build dependencies
-            - uses: actions/setup-node@v5
+            - uses: actions/setup-node@v6
               with:
                   node-version: ${{env.NODE_VERSION}}
                   cache: npm
