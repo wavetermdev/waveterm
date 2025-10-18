@@ -671,6 +671,7 @@ declare global {
         "web:zoom"?: number;
         "web:hidenav"?: boolean;
         "web:partition"?: string;
+        "web:useragenttype"?: string;
         "markdown:fontsize"?: number;
         "markdown:fixedfontsize"?: number;
         "tsunami:*"?: boolean;

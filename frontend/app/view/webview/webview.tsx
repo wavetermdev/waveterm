@@ -22,6 +22,12 @@ import { Atom, PrimitiveAtom, atom, useAtomValue, useSetAtom } from "jotai";
 import { Fragment, createRef, memo, useCallback, useEffect, useRef, useState } from "react";
 import "./webview.scss";
 
+// User agent strings for mobile emulation
+const USER_AGENT_IPHONE =
+    "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1";
+const USER_AGENT_ANDROID =
+    "Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.6099.43 Mobile Safari/537.36";
+
 let webviewPreloadUrl = null;
 
 function getWebviewPreloadUrl() {
@@ -61,6 +67,7 @@ export class WebViewModel implements ViewModel {
     searchAtoms?: SearchAtoms;
     typeaheadOpen: PrimitiveAtom<boolean>;
     partitionOverride: PrimitiveAtom<string> | null;
+    userAgentType: Atom<string>;
 
     constructor(blockId: string, nodeModel: BlockNodeModel) {
         this.nodeModel = nodeModel;
@@ -87,6 +94,7 @@ export class WebViewModel implements ViewModel {
         this.hideNav = getBlockMetaKeyAtom(blockId, "web:hidenav");
         this.typeaheadOpen = atom(false);
         this.partitionOverride = null;
+        this.userAgentType = getBlockMetaKeyAtom(blockId, "web:useragenttype");
 
         this.mediaPlaying = atom(false);
         this.mediaMuted = atom(false);
@@ -161,20 +169,36 @@ export class WebViewModel implements ViewModel {
                 return null;
             }
             const url = get(this.url);
-            return [
-                {
+            const userAgentType = get(this.userAgentType);
+            const buttons: IconButtonDecl[] = [];
+
+            // Add mobile indicator icon if using mobile user agent
+            if (userAgentType === "mobile:iphone" || userAgentType === "mobile:android") {
+                const mobileIcon = userAgentType === "mobile:iphone" ? "mobile-screen" : "mobile-screen-button";
+                const mobileTitle =
+                    userAgentType === "mobile:iphone" ? "Mobile User Agent: iPhone" : "Mobile User Agent: Android";
+                buttons.push({
                     elemtype: "iconbutton",
-                    icon: "arrow-up-right-from-square",
-                    title: "Open in External Browser",
-                    click: () => {
-                        console.log("open external", url);
-                        if (url != null && url != "") {
-                            const externalUrl = this.modifyExternalUrl?.(url) ?? url;
-                            return getApi().openExternal(externalUrl);
-                        }
-                    },
+                    icon: mobileIcon,
+                    title: mobileTitle,
+                    noAction: true,
+                });
+            }
+
+            buttons.push({
+                elemtype: "iconbutton",
+                icon: "arrow-up-right-from-square",
+                title: "Open in External Browser",
+                click: () => {
+                    console.log("open external", url);
+                    if (url != null && url != "") {
+                        const externalUrl = this.modifyExternalUrl?.(url) ?? url;
+                        return getApi().openExternal(externalUrl);
+                    }
                 },
-            ];
+            });
+
+            return buttons;
         });
     }
 
@@ -595,6 +619,50 @@ export class WebViewModel implements ViewModel {
         zoomSubMenu.push(makeZoomFactorMenuItem("175%", 1.75));
         zoomSubMenu.push(makeZoomFactorMenuItem("200%", 2));
 
+        // User Agent Type submenu
+        const curUserAgentType = globalStore.get(this.userAgentType) || "default";
+        const userAgentSubMenu: ContextMenuItem[] = [
+            {
+                label: "Default",
+                type: "checkbox",
+                click: () => {
+                    fireAndForget(() => {
+                        return RpcApi.SetMetaCommand(TabRpcClient, {
+                            oref: WOS.makeORef("block", this.blockId),
+                            meta: { "web:useragenttype": null },
+                        });
+                    });
+                },
+                checked: curUserAgentType === "default" || curUserAgentType === "",
+            },
+            {
+                label: "Mobile: iPhone",
+                type: "checkbox",
+                click: () => {
+                    fireAndForget(() => {
+                        return RpcApi.SetMetaCommand(TabRpcClient, {
+                            oref: WOS.makeORef("block", this.blockId),
+                            meta: { "web:useragenttype": "mobile:iphone" },
+                        });
+                    });
+                },
+                checked: curUserAgentType === "mobile:iphone",
+            },
+            {
+                label: "Mobile: Android",
+                type: "checkbox",
+                click: () => {
+                    fireAndForget(() => {
+                        return RpcApi.SetMetaCommand(TabRpcClient, {
+                            oref: WOS.makeORef("block", this.blockId),
+                            meta: { "web:useragenttype": "mobile:android" },
+                        });
+                    });
+                },
+                checked: curUserAgentType === "mobile:android",
+            },
+        ];
+
         const isNavHidden = globalStore.get(this.hideNav);
         return [
             {
@@ -608,6 +676,13 @@ export class WebViewModel implements ViewModel {
             {
                 label: "Set Default Homepage",
                 click: () => fireAndForget(() => this.setHomepageUrl(this.getUrl(), "global")),
+            },
+            {
+                type: "separator",
+            },
+            {
+                label: "User Agent Type",
+                submenu: userAgentSubMenu,
             },
             {
                 type: "separator",
@@ -735,6 +810,15 @@ const WebView = memo(({ model, onFailLoad, blockRef, initialSrc }: WebViewProps)
     const partitionOverride = useAtomValueSafe(model.partitionOverride);
     const metaPartition = useAtomValue(getBlockMetaKeyAtom(model.blockId, "web:partition"));
     const webPartition = partitionOverride || metaPartition || undefined;
+    const userAgentType = useAtomValue(model.userAgentType) || "default";
+
+    // Determine user agent string based on type
+    let userAgent: string | undefined = undefined;
+    if (userAgentType === "mobile:iphone") {
+        userAgent = USER_AGENT_IPHONE;
+    } else if (userAgentType === "mobile:android") {
+        userAgent = USER_AGENT_ANDROID;
+    }
 
     // Search
     const searchProps = useSearch({ anchorRef: model.webviewRef, viewModel: model });
@@ -790,6 +874,7 @@ const WebView = memo(({ model, onFailLoad, blockRef, initialSrc }: WebViewProps)
 
     // The initial value of the block metadata URL when the component first renders. Used to set the starting src value for the webview.
     const [metaUrlInitial] = useState(initialSrc || metaUrl);
+    const prevUserAgentTypeRef = useRef(userAgentType);
 
     const [webContentsId, setWebContentsId] = useState(null);
     const domReady = useAtomValue(model.domReady);
@@ -854,6 +939,26 @@ const WebView = memo(({ model, onFailLoad, blockRef, initialSrc }: WebViewProps)
             model.loadUrl(metaUrl, "meta");
         }
     }, [metaUrl, initialSrc]);
+
+    // Reload webview when user agent type changes
+    useEffect(() => {
+        if (prevUserAgentTypeRef.current !== userAgentType && domReady && model.webviewRef.current) {
+            let newUserAgent: string | undefined = undefined;
+            if (userAgentType === "mobile:iphone") {
+                newUserAgent = USER_AGENT_IPHONE;
+            } else if (userAgentType === "mobile:android") {
+                newUserAgent = USER_AGENT_ANDROID;
+            }
+
+            if (newUserAgent) {
+                model.webviewRef.current.setUserAgent(newUserAgent);
+            } else {
+                model.webviewRef.current.setUserAgent("");
+            }
+            model.webviewRef.current.reload();
+        }
+        prevUserAgentTypeRef.current = userAgentType;
+    }, [userAgentType, domReady]);
 
     useEffect(() => {
         const webview = model.webviewRef.current;
@@ -957,6 +1062,7 @@ const WebView = memo(({ model, onFailLoad, blockRef, initialSrc }: WebViewProps)
                 // @ts-ignore This is a discrepancy between the React typing and the Chromium impl for webviewTag. Chrome webviewTag expects a string, while React expects a boolean.
                 allowpopups="true"
                 partition={webPartition}
+                useragent={userAgent}
             />
             {errorText && (
                 <div className="webview-error">
