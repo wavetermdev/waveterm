@@ -681,6 +681,13 @@ export class WebViewModel implements ViewModel {
                 type: "separator",
             },
             {
+                label: "User Agent Type",
+                submenu: userAgentSubMenu,
+            },
+            {
+                type: "separator",
+            },
+            {
                 label: isNavHidden ? "Un-Hide Navigation" : "Hide Navigation",
                 click: () =>
                     fireAndForget(() => {
@@ -689,10 +696,6 @@ export class WebViewModel implements ViewModel {
                             meta: { "web:hidenav": !isNavHidden },
                         });
                     }),
-            },
-            {
-                label: "User Agent Type",
-                submenu: userAgentSubMenu,
             },
             {
                 label: "Set Zoom Factor",
@@ -871,6 +874,7 @@ const WebView = memo(({ model, onFailLoad, blockRef, initialSrc }: WebViewProps)
 
     // The initial value of the block metadata URL when the component first renders. Used to set the starting src value for the webview.
     const [metaUrlInitial] = useState(initialSrc || metaUrl);
+    const prevUserAgentTypeRef = useRef(userAgentType);
 
     const [webContentsId, setWebContentsId] = useState(null);
     const domReady = useAtomValue(model.domReady);
@@ -935,6 +939,26 @@ const WebView = memo(({ model, onFailLoad, blockRef, initialSrc }: WebViewProps)
             model.loadUrl(metaUrl, "meta");
         }
     }, [metaUrl, initialSrc]);
+
+    // Reload webview when user agent type changes
+    useEffect(() => {
+        if (prevUserAgentTypeRef.current !== userAgentType && domReady && model.webviewRef.current) {
+            let newUserAgent: string | undefined = undefined;
+            if (userAgentType === "mobile:iphone") {
+                newUserAgent = USER_AGENT_IPHONE;
+            } else if (userAgentType === "mobile:android") {
+                newUserAgent = USER_AGENT_ANDROID;
+            }
+
+            if (newUserAgent) {
+                model.webviewRef.current.setUserAgent(newUserAgent);
+            } else {
+                model.webviewRef.current.setUserAgent("");
+            }
+            model.webviewRef.current.reload();
+        }
+        prevUserAgentTypeRef.current = userAgentType;
+    }, [userAgentType, domReady]);
 
     useEffect(() => {
         const webview = model.webviewRef.current;
