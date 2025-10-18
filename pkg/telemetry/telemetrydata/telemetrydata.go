@@ -31,6 +31,7 @@ var ValidEventNames = map[string]bool{
 	"conn:connecterror":      true,
 	"waveai:enabletelemetry": true,
 	"waveai:post":            true,
+	"waveai:feedback":        true,
 	"onboarding:start":       true,
 	"onboarding:skip":        true,
 	"onboarding:fire":        true,
@@ -61,6 +62,9 @@ type TEventUserProps struct {
 
 	AutoUpdateChannel string `json:"autoupdate:channel,omitempty"`
 	AutoUpdateEnabled bool   `json:"autoupdate:enabled,omitempty"`
+
+	LocalShellType    string `json:"localshell:type,omitempty"`
+	LocalShellVersion string `json:"localshell:version,omitempty"`
 
 	LocCountryCode string `json:"loc:countrycode,omitempty"`
 	LocRegionCode  string `json:"loc:regioncode,omitempty"`
@@ -128,6 +132,7 @@ type TEventProps struct {
 	WaveAIFirstByteMs          int            `json:"waveai:firstbytems,omitempty"`  // ms
 	WaveAIRequestDurMs         int            `json:"waveai:requestdurms,omitempty"` // ms
 	WaveAIWidgetAccess         bool           `json:"waveai:widgetaccess,omitempty"`
+	WaveAIFeedback             string         `json:"waveai:feedback,omitempty" tstype:"\"good\" | \"bad\""`
 
 	UserSet     *TEventUserProps `json:"$set,omitempty"`
 	UserSetOnce *TEventUserProps `json:"$set_once,omitempty"`

@@ -67,6 +67,16 @@ func SetRTInfo(oref waveobj.ORef, info map[string]any) {
 				fieldValue.SetString(valueStr)
 			} else if valueBool, ok := value.(bool); ok && fieldValue.Kind() == reflect.Bool {
 				fieldValue.SetBool(valueBool)
+			} else if fieldValue.Kind() == reflect.Int {
+				// Handle int fields - need to convert from various numeric types
+				switch v := value.(type) {
+				case int:
+					fieldValue.SetInt(int64(v))
+				case int64:
+					fieldValue.SetInt(v)
+				case float64:
+					fieldValue.SetInt(int64(v))
+				}
 			} else if fieldValue.Kind() == reflect.Interface {
 				// Handle any/interface{} fields
 				fieldValue.Set(reflect.ValueOf(value))
