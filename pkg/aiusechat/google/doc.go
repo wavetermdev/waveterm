@@ -22,7 +22,10 @@
 // To summarize a file:
 //
 //	ctx := context.Background()
-//	summary, usage, err := google.SummarizeFile(ctx, "/path/to/file.txt", "YOUR_API_KEY")
+//	summary, usage, err := google.SummarizeFile(ctx, "/path/to/file.txt", google.SummarizeOpts{
+//		APIKey: "YOUR_API_KEY",
+//		Mode:   google.ModeQuickSummary,
+//	})
 //	if err != nil {
 //	    log.Fatal(err)
 //	}

@@ -44,57 +44,14 @@ func containsMimeType(got, want string) bool {
 	return got == want || (want == "text/plain" && got == "text/plain; charset=utf-8")
 }
 
-func TestGetMaxFileSize(t *testing.T) {
-	tests := []struct {
-		name         string
-		mimeType     string
-		expectedSize int
-		expectedStr  string
-	}{
-		{
-			name:         "PDF file",
-			mimeType:     "application/pdf",
-			expectedSize: 5 * 1024 * 1024,
-			expectedStr:  "5MB",
-		},
-		{
-			name:         "PNG image",
-			mimeType:     "image/png",
-			expectedSize: 7 * 1024 * 1024,
-			expectedStr:  "7MB",
-		},
-		{
-			name:         "JPEG image",
-			mimeType:     "image/jpeg",
-			expectedSize: 7 * 1024 * 1024,
-			expectedStr:  "7MB",
-		},
-		{
-			name:         "text file",
-			mimeType:     "text/plain",
-			expectedSize: 200 * 1024,
-			expectedStr:  "200KB",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			size, sizeStr := getMaxFileSize(tt.mimeType)
-			if size != tt.expectedSize {
-				t.Errorf("getMaxFileSize() size = %v, want %v", size, tt.expectedSize)
-			}
-			if sizeStr != tt.expectedStr {
-				t.Errorf("getMaxFileSize() sizeStr = %v, want %v", sizeStr, tt.expectedStr)
-			}
-		})
-	}
-}
-
 func TestSummarizeFile_FileNotFound(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	_, _, err := SummarizeFile(ctx, "/nonexistent/file.txt", "fake-api-key")
+	_, _, err := SummarizeFile(ctx, "/nonexistent/file.txt", SummarizeOpts{
+		APIKey: "fake-api-key",
+		Mode:   ModeQuickSummary,
+	})
 	if err == nil {
 		t.Error("SummarizeFile() expected error for nonexistent file, got nil")
 	}
@@ -114,7 +71,10 @@ func TestSummarizeFile_BinaryFile(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	_, _, err := SummarizeFile(ctx, binFile, "fake-api-key")
+	_, _, err := SummarizeFile(ctx, binFile, SummarizeOpts{
+		APIKey: "fake-api-key",
+		Mode:   ModeQuickSummary,
+	})
 	if err == nil {
 		t.Error("SummarizeFile() expected error for binary file, got nil")
 	}
@@ -140,7 +100,10 @@ func TestSummarizeFile_FileTooLarge(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	_, _, err := SummarizeFile(ctx, textFile, "fake-api-key")
+	_, _, err := SummarizeFile(ctx, textFile, SummarizeOpts{
+		APIKey: "fake-api-key",
+		Mode:   ModeQuickSummary,
+	})
 	if err == nil {
 		t.Error("SummarizeFile() expected error for file too large, got nil")
 	}
