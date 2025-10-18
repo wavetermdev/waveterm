@@ -196,7 +196,7 @@ class TermViewModel implements ViewModel {
                 rtn.push({
                     elemtype: "textbutton",
                     text: "Multi Input ON",
-                    className: "yellow",
+                    className: "yellow !py-[2px] !px-[10px] text-[11px] font-[500]",
                     title: "Input will be sent to all connected terminals (click to disable)",
                     onClick: () => {
                         globalStore.set(atoms.isTermMultiInput, false);
