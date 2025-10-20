@@ -12,6 +12,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
 	"github.com/wavetermdev/waveterm/pkg/blockcontroller"
+	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wstore"
@@ -48,6 +49,14 @@ func makeTerminalBlockDesc(block *waveobj.Block) string {
 				stateStr = "waiting for input"
 			case "running-command":
 				stateStr = "running command"
+				if rtInfo.ShellLastCmd != "" {
+					cmdStr := rtInfo.ShellLastCmd
+					if len(cmdStr) > 30 {
+						cmdStr = cmdStr[:27] + "..."
+					}
+					cmdJSON := utilfn.MarshalJsonString(cmdStr)
+					stateStr = fmt.Sprintf("running command %s", cmdJSON)
+				}
 			default:
 				stateStr = "state unknown"
 			}
