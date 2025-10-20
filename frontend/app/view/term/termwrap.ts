@@ -141,6 +141,12 @@ function handleOsc7Command(data: string, blockId: string, loaded: boolean): bool
             // Strip leading slash and normalize to forward slashes
             pathPart = pathPart.substring(1).replace(/\\/g, "/");
         }
+
+        // Handle UNC paths (e.g., /\\server\share)
+        if (pathPart.startsWith("/\\\\")) {
+            // Strip leading slash but keep backslashes for UNC
+            pathPart = pathPart.substring(1);
+        }
     } catch (e) {
         console.log("Invalid OSC 7 command received (parse error)", data, e);
         return true;
