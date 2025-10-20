@@ -225,6 +225,8 @@ function handleOsc16162Command(data: string, blockId: string, loaded: boolean, t
             } else {
                 rtInfo["shell:lastcmd"] = null;
             }
+            // also clear lastcmdexitcode (since we've now started a new command)
+            rtInfo["shell:lastcmdexitcode"] = null;
             break;
         case "M":
             if (cmd.data.shell) {

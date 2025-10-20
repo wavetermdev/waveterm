@@ -216,7 +216,6 @@ func GenerateCurrentTabStatePrompt(blocks []*waveobj.Block, widgetAccess bool) s
 	}
 	prompt.WriteString("</current_tab_state>")
 	rtn := prompt.String()
-	// log.Printf("%s\n", rtn)
 	return rtn
 }
 
