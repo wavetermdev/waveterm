@@ -33,6 +33,7 @@ fi
 # extdebug breaks bash-preexec semantics; bail out cleanly
 if shopt -q extdebug; then
   # printf 'wave si: disabled (bash extdebug enabled)\n' >&2
+  printf '\033]16162;M;{"integration":false}\007'
   return 0
 fi
 
@@ -43,6 +44,13 @@ if [ -z "${bash_preexec_imported:-}" ]; then
         source "$_WAVETERM_SI_BASHRC_DIR/bash_preexec.sh"
     fi
     unset _WAVETERM_SI_BASHRC_DIR
+fi
+
+# Check if bash-preexec was successfully imported
+if [ -z "${bash_preexec_imported:-}" ]; then
+    # bash-preexec failed to import, disable shell integration
+    printf '\033]16162;M;{"integration":false}\007'
+    return 0
 fi
 
 _WAVETERM_SI_FIRSTPROMPT=1
@@ -77,7 +85,7 @@ _waveterm_si_precmd() {
     if [ "$_WAVETERM_SI_FIRSTPROMPT" -eq 1 ]; then
         local uname_info
         uname_info=$(uname -smr 2>/dev/null)
-        printf '\033]16162;M;{"shell":"bash","shellversion":"%s","uname":"%s"}\007' "$BASH_VERSION" "$uname_info"
+        printf '\033]16162;M;{"shell":"bash","shellversion":"%s","uname":"%s","integration":true}\007' "$BASH_VERSION" "$uname_info"
     else
         printf '\033]16162;D;{"exitcode":%d}\007' "$_waveterm_si_status"
     fi

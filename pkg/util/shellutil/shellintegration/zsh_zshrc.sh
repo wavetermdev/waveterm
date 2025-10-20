@@ -57,7 +57,7 @@ _waveterm_si_precmd() {
     printf '\033]16162;D;{"exitcode":%d}\007' $_waveterm_si_status
   else
     local uname_info=$(uname -smr 2>/dev/null)
-    printf '\033]16162;M;{"shell":"zsh","shellversion":"%s","uname":"%s"}\007' "$ZSH_VERSION" "$uname_info"
+    printf '\033]16162;M;{"shell":"zsh","shellversion":"%s","uname":"%s","integration":true}\007' "$ZSH_VERSION" "$uname_info"
     # OSC 7 only sent on first prompt - chpwd hook handles directory changes
     _waveterm_si_osc7
   fi

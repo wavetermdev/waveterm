@@ -715,6 +715,7 @@ declare global {
         "shell:type"?: string;
         "shell:version"?: string;
         "shell:uname"?: string;
+        "shell:integration"?: boolean;
         "shell:inputempty"?: boolean;
         "shell:lastcmd"?: string;
         "shell:lastcmdexitcode"?: number;

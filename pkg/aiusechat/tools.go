@@ -42,16 +42,20 @@ func makeTerminalBlockDesc(block *waveobj.Block) string {
 	}
 
 	if rtInfo != nil {
-		var stateStr string
-		switch rtInfo.ShellState {
-		case "ready":
-			stateStr = "waiting for input"
-		case "running-command":
-			stateStr = "running command"
-		default:
-			stateStr = "state unknown"
+		if rtInfo.ShellIntegration {
+			var stateStr string
+			switch rtInfo.ShellState {
+			case "ready":
+				stateStr = "waiting for input"
+			case "running-command":
+				stateStr = "running command"
+			default:
+				stateStr = "state unknown"
+			}
+			desc += fmt.Sprintf(", %s", stateStr)
+		} else {
+			desc += ", no shell integration"
 		}
-		desc += fmt.Sprintf(", %s", stateStr)
 	}
 
 	if hasCurCwd && hasCwd && cwd != "" {

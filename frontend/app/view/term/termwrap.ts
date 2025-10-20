@@ -176,7 +176,7 @@ function handleOsc7Command(data: string, blockId: string, loaded: boolean): bool
 type Osc16162Command =
     | { command: "A"; data: {} }
     | { command: "C"; data: { cmd64?: string } }
-    | { command: "M"; data: { shell?: string; shellversion?: string; uname?: string } }
+    | { command: "M"; data: { shell?: string; shellversion?: string; uname?: string; integration?: boolean } }
     | { command: "D"; data: { exitcode?: number } }
     | { command: "I"; data: { inputempty?: boolean } }
     | { command: "R"; data: {} };
@@ -235,6 +235,9 @@ function handleOsc16162Command(data: string, blockId: string, loaded: boolean, t
             }
             if (cmd.data.uname) {
                 rtInfo["shell:uname"] = cmd.data.uname;
+            }
+            if (cmd.data.integration != null) {
+                rtInfo["shell:integration"] = cmd.data.integration;
             }
             break;
         case "D":

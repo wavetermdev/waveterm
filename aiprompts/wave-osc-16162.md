@@ -72,6 +72,7 @@ Sends shell metadata information (typically only once at shell initialization).
   shell?: string;        // Shell name (e.g., "zsh", "bash")
   shellversion?: string; // Version string of the shell
   uname?: string;        // Output of "uname -smr" (e.g., "Darwin 23.0.0 arm64")
+  integration?: boolean; // Whether shell integration is active (true) or disabled (false)
 }
 ```
 
