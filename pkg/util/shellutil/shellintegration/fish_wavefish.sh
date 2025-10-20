@@ -30,6 +30,7 @@ function _waveterm_si_prompt --on-event fish_prompt
     if test $_WAVETERM_SI_FIRSTPROMPT -eq 1
         set -l uname_info (uname -smr 2>/dev/null)
         printf '\033]16162;M;{"shell":"fish","shellversion":"%s","uname":"%s"}\007' $FISH_VERSION "$uname_info"
+        # OSC 7 only sent on first prompt - chpwd hook handles directory changes
         _waveterm_si_osc7
     else
         printf '\033]16162;D;{"exitcode":%d}\007' $_waveterm_si_status

@@ -39,6 +39,9 @@ var (
 	//go:embed shellintegration/bash_bashrc.sh
 	BashStartup_Bashrc string
 
+	//go:embed shellintegration/bash_preexec.sh
+	BashStartup_Preexec string
+
 	//go:embed shellintegration/fish_wavefish.sh
 	FishStartup_Wavefish string
 
@@ -280,6 +283,10 @@ func InitRcFiles(waveHome string, absWshBinDir string) error {
 	err = utilfn.WriteTemplateToFile(filepath.Join(bashDir, ".bashrc"), BashStartup_Bashrc, params)
 	if err != nil {
 		return fmt.Errorf("error writing bash-integration .bashrc: %v", err)
+	}
+	err = os.WriteFile(filepath.Join(bashDir, "bash_preexec.sh"), []byte(BashStartup_Preexec), 0644)
+	if err != nil {
+		return fmt.Errorf("error writing bash-integration bash_preexec.sh: %v", err)
 	}
 	err = utilfn.WriteTemplateToFile(filepath.Join(fishDir, "wave.fish"), FishStartup_Wavefish, params)
 	if err != nil {
