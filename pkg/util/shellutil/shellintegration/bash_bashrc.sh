@@ -30,6 +30,8 @@ if type _init_completion &>/dev/null; then
   source <(wsh completion bash)
 fi
 
+_WAVETERM_SI_FIRSTPROMPT=1
+
 # shell integration
 _waveterm_si_blocked() {
   [[ -n "$TMUX" || -n "$STY" || "$TERM" == tmux* || "$TERM" == screen* ]]
@@ -55,9 +57,19 @@ _waveterm_si_osc7() {
   printf '\033]7;file://%s%s\007' "$HOSTNAME" "$encoded_pwd"
 }
 
-# Hook OSC 7 into PROMPT_COMMAND
 _waveterm_si_prompt_command() {
-  _waveterm_si_osc7
+  local _waveterm_si_status=$?
+  _waveterm_si_blocked && return
+  if [ "$_WAVETERM_SI_FIRSTPROMPT" -eq 1 ]; then
+    local uname_info
+    uname_info=$(uname -smr 2>/dev/null)
+    printf '\033]16162;M;{"shell":"bash","shellversion":"%s","uname":"%s"}\007' "$BASH_VERSION" "$uname_info"
+    _waveterm_si_osc7
+  else
+    printf '\033]16162;D;{"exitcode":%d}\007' $_waveterm_si_status
+  fi
+  printf '\033]16162;A\007'
+  _WAVETERM_SI_FIRSTPROMPT=0
 }
 
 # Append _waveterm_si_prompt_command to PROMPT_COMMAND (v3-safe)
