@@ -24,7 +24,7 @@ func makeTerminalBlockDesc(block *waveobj.Block) string {
 
 	blockORef := waveobj.MakeORef(waveobj.OType_Block, block.OID)
 	rtInfo := wstore.GetRTInfo(blockORef)
-	hasCurCwd := rtInfo != nil && rtInfo.CmdHasCurCwd
+	hasCurCwd := rtInfo != nil && rtInfo.ShellHasCurCwd
 
 	var desc string
 	if hasConnection && connection != "" {
