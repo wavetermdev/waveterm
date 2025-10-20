@@ -29,7 +29,8 @@ function computeTheme(
         }
     }
     let bgcolor = themeCopy.background;
-    themeCopy.background = "#00000000";
+    // Keep the actual background color in the theme so terminal applications
+    // like Neovim can properly detect the background color for syntax highlighting
     return [themeCopy, bgcolor];
 }
 
