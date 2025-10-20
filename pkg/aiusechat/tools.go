@@ -17,6 +17,36 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wstore"
 )
 
+func makeTerminalBlockDesc(block *waveobj.Block) string {
+	connection, hasConnection := block.Meta["connection"].(string)
+	cwd, hasCwd := block.Meta["cmd:cwd"].(string)
+
+	blockORef := waveobj.MakeORef(waveobj.OType_Block, block.OID)
+	rtInfo := wstore.GetRTInfo(blockORef)
+	hasCurCwd := rtInfo != nil && rtInfo.CmdHasCurCwd
+
+	var desc string
+	if hasConnection && connection != "" {
+		desc = fmt.Sprintf("CLI terminal on %q", connection)
+	} else {
+		desc = "local CLI terminal"
+	}
+
+	if rtInfo != nil && rtInfo.ShellType != "" {
+		desc += fmt.Sprintf(" (%s", rtInfo.ShellType)
+		if rtInfo.ShellVersion != "" {
+			desc += fmt.Sprintf(" %s", rtInfo.ShellVersion)
+		}
+		desc += ")"
+	}
+
+	if hasCurCwd && hasCwd && cwd != "" {
+		desc += fmt.Sprintf(" in directory %q", cwd)
+	}
+
+	return desc
+}
+
 func MakeBlockShortDesc(block *waveobj.Block) string {
 	if block.Meta == nil {
 		return ""
@@ -29,25 +59,7 @@ func MakeBlockShortDesc(block *waveobj.Block) string {
 
 	switch viewType {
 	case "term":
-		connection, hasConnection := block.Meta["connection"].(string)
-		cwd, hasCwd := block.Meta["cmd:cwd"].(string)
-
-		blockORef := waveobj.MakeORef(waveobj.OType_Block, block.OID)
-		rtInfo := wstore.GetRTInfo(blockORef)
-		hasCurCwd := rtInfo != nil && rtInfo.CmdHasCurCwd
-
-		var desc string
-		if hasConnection && connection != "" {
-			desc = fmt.Sprintf("CLI terminal on %q", connection)
-		} else {
-			desc = "local CLI terminal"
-		}
-
-		if hasCurCwd && hasCwd && cwd != "" {
-			desc += fmt.Sprintf(" in directory %q", cwd)
-		}
-
-		return desc
+		return makeTerminalBlockDesc(block)
 	case "preview":
 		file, hasFile := block.Meta["file"].(string)
 		connection, hasConnection := block.Meta["connection"].(string)
