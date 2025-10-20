@@ -6,6 +6,7 @@ package aiusechat
 import (
 	"context"
 	"fmt"
+	"log"
 	"os/user"
 	"strings"
 
@@ -27,7 +28,7 @@ func makeTerminalBlockDesc(block *waveobj.Block) string {
 
 	var desc string
 	if hasConnection && connection != "" {
-		desc = fmt.Sprintf("CLI terminal on %q", connection)
+		desc = fmt.Sprintf("CLI terminal connected to %q", connection)
 	} else {
 		desc = "local CLI terminal"
 	}
@@ -40,8 +41,21 @@ func makeTerminalBlockDesc(block *waveobj.Block) string {
 		desc += ")"
 	}
 
+	if rtInfo != nil {
+		var stateStr string
+		switch rtInfo.ShellState {
+		case "ready":
+			stateStr = "waiting for input"
+		case "running-command":
+			stateStr = "running command"
+		default:
+			stateStr = "state unknown"
+		}
+		desc += fmt.Sprintf(", %s", stateStr)
+	}
+
 	if hasCurCwd && hasCwd && cwd != "" {
-		desc += fmt.Sprintf(" in directory %q", cwd)
+		desc += fmt.Sprintf(", in directory %q", cwd)
 	}
 
 	return desc
@@ -123,6 +137,7 @@ func GenerateTabStateAndTools(ctx context.Context, tabid string, widgetAccess bo
 		}
 	}
 	tabState := GenerateCurrentTabStatePrompt(blocks, widgetAccess)
+	log.Printf("TABPROMPT %s\n", tabState)
 	var tools []uctypes.ToolDefinition
 	if widgetAccess {
 		tools = append(tools, GetCaptureScreenshotToolDefinition(tabid))
