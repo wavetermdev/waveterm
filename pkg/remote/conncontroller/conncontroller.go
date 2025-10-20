@@ -73,7 +73,7 @@ type SSHConn struct {
 
 var ConnServerCmdTemplate = strings.TrimSpace(
 	strings.Join([]string{
-		"%s version 2> /dev/null || (echo -n \"not-installed \"; uname -sm);",
+		"%s version 2> /dev/null || (echo -n \"not-installed \"; uname -sm; exit 0);",
 		"exec %s connserver",
 	}, "\n"))
 
