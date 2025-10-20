@@ -30,6 +30,12 @@ if type _init_completion &>/dev/null; then
   source <(wsh completion bash)
 fi
 
+# extdebug breaks bash-preexec semantics; bail out cleanly
+if shopt -q extdebug; then
+  # printf 'wave si: disabled (bash extdebug enabled)\n' >&2
+  return 0
+fi
+
 # Source bash-preexec for proper preexec/precmd hook support
 if [ -z "${bash_preexec_imported:-}" ]; then
     _WAVETERM_SI_BASHRC_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
