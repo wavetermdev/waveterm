@@ -8,7 +8,7 @@ import { atoms, globalPrimaryTabStartup, globalStore } from "@/store/global";
 import { modalsModel } from "@/store/modalmodel";
 import * as jotai from "jotai";
 import { useEffect } from "react";
-import semver from "semver";
+import * as semver from "semver";
 import { getModalComponent } from "./modalregistry";
 
 const ModalsRenderer = () => {
