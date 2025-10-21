@@ -15,9 +15,21 @@ export type FakeBlockProps = {
     markdown?: string;
     imgsrc?: string;
     editorText?: string;
+    editorFileName?: string;
+    editorLanguage?: string;
 };
 
-export const FakeBlock = ({ icon, name, highlighted, className, markdown, imgsrc, editorText }: FakeBlockProps) => {
+export const FakeBlock = ({
+    icon,
+    name,
+    highlighted,
+    className,
+    markdown,
+    imgsrc,
+    editorText,
+    editorFileName,
+    editorLanguage,
+}: FakeBlockProps) => {
     return (
         <div
             className={cn(
@@ -37,7 +49,13 @@ export const FakeBlock = ({ icon, name, highlighted, className, markdown, imgsrc
             <div className="flex-1 flex items-center justify-center overflow-auto p-4">
                 {editorText ? (
                     <div className="w-full h-full">
-                        <CodeEditor blockId="fake-block" text={editorText} readonly={true} language="shell" />
+                        <CodeEditor
+                            blockId="fake-block"
+                            text={editorText}
+                            readonly={true}
+                            fileName={editorFileName}
+                            language={editorLanguage ?? "shell"}
+                        />
                     </div>
                 ) : imgsrc ? (
                     <img src={imgsrc} alt={name} className="max-w-full max-h-full object-contain" />

@@ -121,7 +121,14 @@ export function CodeEditor({ blockId, text, language, fileName, readonly, onChan
     const wordWrap = useOverrideConfigAtom(blockId, "editor:wordwrap") ?? false;
     const fontSize = boundNumber(useOverrideConfigAtom(blockId, "editor:fontsize"), 6, 64);
     const theme = "wave-theme-dark";
-    const editorPath = useRef(fileName ?? crypto.randomUUID()).current;
+    const uuidRef = useRef(crypto.randomUUID()).current;
+    let editorPath: string;
+    if (fileName) {
+        const separator = fileName.startsWith("/") ? "" : "/";
+        editorPath = blockId + separator + fileName;
+    } else {
+        editorPath = uuidRef;
+    }
 
     React.useEffect(() => {
         return () => {

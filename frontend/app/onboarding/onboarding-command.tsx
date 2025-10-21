@@ -1,7 +1,7 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { useCallback, useLayoutEffect, useState } from "react";
+import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import { FakeBlock } from "./onboarding-layout";
 import waveLogo from "/logos/wave-logo.png";
 
@@ -114,6 +114,7 @@ export const ViewLogoCommand = ({ onComplete }: { onComplete?: () => void }) => 
 };
 
 export const EditBashrcCommand = ({ onComplete }: { onComplete?: () => void }) => {
+    const fileNameRef = useRef(`${crypto.randomUUID()}/.bashrc`);
     const bashrcContent = `# Aliases
 alias ll="ls -lah"
 alias gst="git status"
@@ -127,7 +128,13 @@ export PATH="$HOME/.local/bin:$PATH"`;
 
     return (
         <FakeCommand command="wsh edit ~/.bashrc" onComplete={onComplete}>
-            <FakeBlock icon="file-lines" name=".bashrc" editorText={bashrcContent} />
+            <FakeBlock
+                icon="file-lines"
+                name=".bashrc"
+                editorText={bashrcContent}
+                editorFileName={fileNameRef.current}
+                editorLanguage="shell"
+            />
         </FakeCommand>
     );
 };
