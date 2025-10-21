@@ -6,6 +6,26 @@ sidebar_position: 200
 
 # Release Notes
 
+### v0.12.1 &mdash; Oct 20, 2025
+
+Patch release focused on shell integration improvements and Wave AI enhancements. This release fixes syntax highlighting in the code editor and adds significant shell context tracking capabilities.
+
+**Shell Integration & Context:**
+- **OSC 7 Support** - Added OSC 7 (current working directory) support across bash, zsh, fish, and pwsh shells. Wave now automatically tracks and restores your current directory across restarts for both local and remote terminals.
+- **Shell Context Tracking** - Implemented shell integration for bash, zsh, and fish shells. Wave now tracks when your shell is ready to receive commands, the last command executed, and exit codes. This enhanced context enables better terminal management and lays the groundwork for Wave AI to write and execute commands intelligently.
+
+**Wave AI Improvements:**
+- Display reasoning summaries in the UI while waiting for AI responses
+- Added enhanced terminal context - Wave AI now has access to shell state including current directory, command history, and exit codes
+- Added feedback buttons (thumbs up/down) for AI responses to help improve the experience
+- Added copy button to easily copy AI responses to clipboard
+
+**Other Changes:**
+- Mobile user agent emulation support for web widgets [#2442](https://github.com/wavetermdev/waveterm/issues/2442)
+- [bugfix] Fixed padding for header buttons in code editor (Tailwind regression)
+- [bugfix] Restored syntax highlighting in code editor preview blocks [#2427](https://github.com/wavetermdev/waveterm/issues/2427)
+- Package updates and dependency bumps
+
 ### v0.12.0 &mdash; Oct 16, 2025
 
 **Wave v0.12 Has Arrived with Wave AI (beta)!**

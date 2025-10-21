@@ -17,7 +17,7 @@ const AboutModal = ({}: AboutModalProps) => {
     const [updaterChannel] = useState(() => getApi().getUpdaterChannel());
 
     return (
-        <Modal className="pb-[34px]" onClose={() => modalsModel.popModal()}>
+        <Modal className="pt-[34px] pb-[34px]" onClose={() => modalsModel.popModal()}>
             <div className="flex flex-col gap-[26px] w-full">
                 <div className="flex flex-col items-center justify-center gap-4 self-stretch w-full text-center">
                     <Logo />
