@@ -12,10 +12,35 @@ import type * as MonacoTypes from "monaco-editor/esm/vs/editor/editor.api";
 import { useEffect } from "react";
 import type { SpecializedViewProps } from "./preview";
 
+export const shellFileMap: Record<string, string> = {
+    ".bashrc": "shell",
+    ".bash_profile": "shell",
+    ".bash_login": "shell",
+    ".bash_logout": "shell",
+    ".profile": "shell",
+    ".zshrc": "shell",
+    ".zprofile": "shell",
+    ".zlogin": "shell",
+    ".zlogout": "shell",
+    ".kshrc": "shell",
+    ".cshrc": "shell",
+    ".tcshrc": "shell",
+    ".xonshrc": "python",
+    ".shrc": "shell",
+    ".aliases": "shell",
+    ".functions": "shell",
+    ".exports": "shell",
+    ".direnvrc": "shell",
+};
+
 function CodeEditPreview({ model }: SpecializedViewProps) {
     const fileContent = useAtomValue(model.fileContent);
     const setNewFileContent = useSetAtom(model.newFileContent);
     const fileInfo = useAtomValue(model.statFile);
+    const fileName = fileInfo?.path || fileInfo?.name;
+
+    const baseName = fileName ? fileName.split("/").pop() : null;
+    const language = baseName && shellFileMap[baseName] ? shellFileMap[baseName] : undefined;
 
     function codeEditKeyDownHandler(e: WaveKeyboardEvent): boolean {
         if (checkKeyPressed(e, "Cmd:e")) {
@@ -65,6 +90,8 @@ function CodeEditPreview({ model }: SpecializedViewProps) {
         <CodeEditor
             blockId={model.blockId}
             text={fileContent}
+            fileName={fileName}
+            language={language}
             readonly={fileInfo.readonly}
             onChange={(text) => setNewFileContent(text)}
             onMount={onMount}

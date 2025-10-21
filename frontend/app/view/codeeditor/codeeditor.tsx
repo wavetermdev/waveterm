@@ -108,11 +108,12 @@ interface CodeEditorProps {
     text: string;
     readonly: boolean;
     language?: string;
+    fileName?: string;
     onChange?: (text: string) => void;
     onMount?: (monacoPtr: MonacoTypes.editor.IStandaloneCodeEditor, monaco: Monaco) => () => void;
 }
 
-export function CodeEditor({ blockId, text, language, readonly, onChange, onMount }: CodeEditorProps) {
+export function CodeEditor({ blockId, text, language, fileName, readonly, onChange, onMount }: CodeEditorProps) {
     const divRef = useRef<HTMLDivElement>(null);
     const unmountRef = useRef<() => void>(null);
     const minimapEnabled = useOverrideConfigAtom(blockId, "editor:minimapenabled") ?? false;
@@ -120,7 +121,14 @@ export function CodeEditor({ blockId, text, language, readonly, onChange, onMoun
     const wordWrap = useOverrideConfigAtom(blockId, "editor:wordwrap") ?? false;
     const fontSize = boundNumber(useOverrideConfigAtom(blockId, "editor:fontsize"), 6, 64);
     const theme = "wave-theme-dark";
-    const editorPath = useRef(crypto.randomUUID()).current;
+    const uuidRef = useRef(crypto.randomUUID()).current;
+    let editorPath: string;
+    if (fileName) {
+        const separator = fileName.startsWith("/") ? "" : "/";
+        editorPath = blockId + separator + fileName;
+    } else {
+        editorPath = uuidRef;
+    }
 
     React.useEffect(() => {
         return () => {
