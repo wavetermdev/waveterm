@@ -68,6 +68,7 @@ var SystemPromptText_OpenAI = strings.Join([]string{
 
 	// Attached text files
 	`User-attached text files may appear inline as <AttachedTextFile_xxxxxxxx file_name="...">\ncontent\n</AttachedTextFile_xxxxxxxx>.`,
+	"User-attached directories use the tag <AttachedDirectoryListing_xxxxxxxx directory_name="...">JSON DirInfo</AttachedDirectoryListing_xxxxxxxx>",
 	`If multiple attached files exist, treat each as a separate source file with its own file_name.`,
 	`When the user refers to these files, use their inline content directly; do NOT call any read_text_file or file-access tools to re-read them unless asked.`,
 

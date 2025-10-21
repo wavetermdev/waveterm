@@ -367,9 +367,33 @@ func convertFileAIMessagePart(part uctypes.AIMessagePart) (*OpenAIMessageContent
 			Type: "input_text",
 			Text: formattedText,
 		}, nil
+	case part.MimeType == "directory":
+		var jsonContent string
+
+		if len(part.Data) > 0 {
+			jsonContent = string(part.Data)
+		} else {
+			return nil, fmt.Errorf("directory listing part missing data")
+		}
+
+		directoryName := part.FileName
+		if directoryName == "" {
+			directoryName = "unnamed-directory"
+		}
+
+		encodedDirName := strings.ReplaceAll(directoryName, `"`, "&quot;")
+		quotedDirName := strconv.Quote(encodedDirName)
+
+		randomSuffix := uuid.New().String()[0:8]
+		formattedText := fmt.Sprintf("<AttachedDirectoryListing_%s directory_name=%s>\n%s\n</AttachedDirectoryListing_%s>", randomSuffix, quotedDirName, jsonContent, randomSuffix)
+
+		return &OpenAIMessageContent{
+			Type: "input_text",
+			Text: formattedText,
+		}, nil
 
 	default:
-		return nil, fmt.Errorf("dropping file with unsupported mimetype '%s' (OpenAI supports images, PDFs, and text/plain)", part.MimeType)
+		return nil, fmt.Errorf("dropping file with unsupported mimetype '%s' (OpenAI supports images, PDFs, text/plain, and directories)", part.MimeType)
 	}
 }
 
@@ -504,6 +528,25 @@ func (m *OpenAIChatMessage) ConvertToUIMessage() *uctypes.UIMessage {
 						Data: uctypes.UIMessageDataUserFile{
 							FileName: fileName,
 							MimeType: "text/plain",
+						},
+					})
+				} else if strings.HasPrefix(block.Text, "<AttachedDirectoryListing_") {
+					openTagEnd := strings.Index(block.Text, "\n")
+					if openTagEnd == -1 || block.Text[openTagEnd-1] != '>' {
+						continue
+					}
+
+					openTag := block.Text[:openTagEnd]
+					directoryName, ok := extractXmlAttribute(openTag, "directory_name")
+					if !ok {
+						continue
+					}
+
+					parts = append(parts, uctypes.UIMessagePart{
+						Type: "data-userfile",
+						Data: uctypes.UIMessageDataUserFile{
+							FileName: directoryName,
+							MimeType: "directory",
 						},
 					})
 				} else {
