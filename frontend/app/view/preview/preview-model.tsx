@@ -79,6 +79,13 @@ function isStreamingType(mimeType: string): boolean {
     );
 }
 
+function isMarkdownLike(mimeType: string): boolean {
+    if (mimeType == null) {
+        return false;
+    }
+    return mimeType.startsWith("text/markdown") || mimeType.startsWith("text/mdx");
+}
+
 function iconForFile(mimeType: string): string {
     if (mimeType == null) {
         mimeType = "unknown";
@@ -91,7 +98,7 @@ function iconForFile(mimeType: string): string {
         return "film";
     } else if (mimeType.startsWith("audio/")) {
         return "headphones";
-    } else if (mimeType.startsWith("text/markdown")) {
+    } else if (isMarkdownLike(mimeType)) {
         return "file-lines";
     } else if (mimeType == "text/csv") {
         return "file-csv";
@@ -333,7 +340,7 @@ export class PreviewModel implements ViewModel {
                         click: () => this.refreshCallback?.(),
                     },
                 ] as IconButtonDecl[];
-            } else if (!isCeView && mimeType?.startsWith("text/markdown")) {
+            } else if (!isCeView && isMarkdownLike(mimeType)) {
                 return [
                     {
                         elemtype: "iconbutton",
@@ -508,7 +515,7 @@ export class PreviewModel implements ViewModel {
             }
             return { specializedView: "csv" };
         }
-        if (mimeType.startsWith("text/markdown") || mimeType.startsWith("text/mdx")) {
+        if (isMarkdownLike(mimeType)) {
             if (editMode) {
                 return { specializedView: "codeedit" };
             }
