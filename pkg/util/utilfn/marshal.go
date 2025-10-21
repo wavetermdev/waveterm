@@ -202,9 +202,9 @@ func DecodeDataURL(dataURL string) (mimeType string, data []byte, err error) {
 	return mimeType, []byte(decoded), nil
 }
 
-// MarshalJsonString marshals a string to JSON format, returning the properly escaped JSON string.
+// MarshalJSONString marshals a string to JSON format, returning the properly escaped JSON string.
 // Returns empty string if there's an error (rare).
-func MarshalJsonString(s string) string {
+func MarshalJSONString(s string) string {
 	jsonBytes, err := json.Marshal(s)
 	if err != nil {
 		return ""

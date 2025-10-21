@@ -54,7 +54,7 @@ func makeTerminalBlockDesc(block *waveobj.Block) string {
 					if len(cmdStr) > 30 {
 						cmdStr = cmdStr[:27] + "..."
 					}
-					cmdJSON := utilfn.MarshalJsonString(cmdStr)
+					cmdJSON := utilfn.MarshalJSONString(cmdStr)
 					stateStr = fmt.Sprintf("running command %s", cmdJSON)
 				}
 			default:
