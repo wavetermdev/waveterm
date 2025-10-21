@@ -508,7 +508,7 @@ export class PreviewModel implements ViewModel {
             }
             return { specializedView: "csv" };
         }
-        if (mimeType.startsWith("text/markdown")) {
+        if (mimeType.startsWith("text/markdown") || mimeType.startsWith("text/mdx")) {
             if (editMode) {
                 return { specializedView: "codeedit" };
             }
