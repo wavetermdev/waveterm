@@ -12,10 +12,9 @@ import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { isMacOS } from "@/util/platformutil";
 import { useEffect, useState } from "react";
 import { FakeChat } from "./fakechat";
+import { CurrentOnboardingVersion } from "./onboarding-common";
 import { EditBashrcCommand, ViewLogoCommand, ViewShortcutsCommand } from "./onboarding-command";
 import { FakeLayout } from "./onboarding-layout";
-
-export const CurrentOnboardingVersion = "v0.12.0";
 
 type FeaturePageName = "waveai" | "magnify" | "files";
 

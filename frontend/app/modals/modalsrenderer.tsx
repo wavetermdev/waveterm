@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { NewInstallOnboardingModal } from "@/app/onboarding/onboarding";
-import { CurrentOnboardingVersion } from "@/app/onboarding/onboarding-features";
+import { CurrentOnboardingVersion } from "@/app/onboarding/onboarding-common";
 import { UpgradeOnboardingModal } from "@/app/onboarding/onboarding-upgrade";
 import { atoms, globalPrimaryTabStartup, globalStore } from "@/store/global";
 import { modalsModel } from "@/store/modalmodel";
