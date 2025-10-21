@@ -52,7 +52,8 @@ export const AIPanelInput = memo(({ onSubmit, status, model }: AIPanelInputProps
     }, [model, resizeTextarea]);
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-        if (e.key === "Enter" && !e.shiftKey) {
+        const isComposing = e.nativeEvent?.isComposing || e.keyCode == 229;
+        if (e.key === "Enter" && !e.shiftKey && !isComposing) {
             e.preventDefault();
             onSubmit(e as any);
         }
