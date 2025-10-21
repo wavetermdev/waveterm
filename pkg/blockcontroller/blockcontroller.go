@@ -94,6 +94,7 @@ func registerController(blockId string, controller Controller) {
 	
 	if existingController != nil {
 		existingController.Stop(false, Status_Done)
+		wstore.DeleteRTInfo(waveobj.MakeORef(waveobj.OType_Block, blockId))
 	}
 }
 
@@ -243,6 +244,7 @@ func StopBlockController(blockId string) {
 		return
 	}
 	controller.Stop(true, Status_Done)
+	wstore.DeleteRTInfo(waveobj.MakeORef(waveobj.OType_Block, blockId))
 }
 
 func StopBlockControllerAndSetStatus(blockId string, newStatus string) {
@@ -251,6 +253,7 @@ func StopBlockControllerAndSetStatus(blockId string, newStatus string) {
 		return
 	}
 	controller.Stop(true, newStatus)
+	wstore.DeleteRTInfo(waveobj.MakeORef(waveobj.OType_Block, blockId))
 }
 
 func SendInput(blockId string, inputUnion *BlockInputUnion) error {
@@ -268,6 +271,7 @@ func StopAllBlockControllers() {
 		if status != nil && status.ShellProcStatus == Status_Running {
 			go func(id string, c Controller) {
 				c.Stop(true, Status_Done)
+				wstore.DeleteRTInfo(waveobj.MakeORef(waveobj.OType_Block, id))
 			}(blockId, controller)
 		}
 	}

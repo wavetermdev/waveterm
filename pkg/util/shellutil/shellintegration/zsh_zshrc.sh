@@ -57,28 +57,27 @@ _waveterm_si_precmd() {
     printf '\033]16162;D;{"exitcode":%d}\007' $_waveterm_si_status
   else
     local uname_info=$(uname -smr 2>/dev/null)
-    printf '\033]16162;M;{"shell":"zsh","shellversion":"%s","uname":"%s"}\007' "$ZSH_VERSION" "$uname_info"
+    printf '\033]16162;M;{"shell":"zsh","shellversion":"%s","uname":"%s","integration":true}\007' "$ZSH_VERSION" "$uname_info"
+    # OSC 7 only sent on first prompt - chpwd hook handles directory changes
     _waveterm_si_osc7
   fi
-  printf '\033]16162;A\007'      # start of new prompt
+  printf '\033]16162;A\007'
   _WAVETERM_SI_FIRSTPRECMD=0
 }
 
 _waveterm_si_preexec() {
   _waveterm_si_blocked && return
-  local cmd_length=${#1}
+  local cmd="$1"
+  local cmd_length=${#cmd}
   if [ "$cmd_length" -gt 8192 ]; then
-    local cmd64
-    cmd64=$(printf '# command too large (%d bytes)' "$cmd_length" | base64 2>/dev/null | tr -d '\n\r')
+    cmd=$(printf '# command too large (%d bytes)' "$cmd_length")
+  fi
+  local cmd64
+  cmd64=$(printf '%s' "$cmd" | base64 2>/dev/null | tr -d '\n\r')
+  if [ -n "$cmd64" ]; then
     printf '\033]16162;C;{"cmd64":"%s"}\007' "$cmd64"
   else
-    local cmd64
-    cmd64=$(printf '%s' "$1" | base64 2>/dev/null | tr -d '\n\r')
-    if [ -n "$cmd64" ]; then
-      printf '\033]16162;C;{"cmd64":"%s"}\007' "$cmd64"
-    else
-      printf '\033]16162;C\007'
-    fi
+    printf '\033]16162;C\007'
   fi
 }
 

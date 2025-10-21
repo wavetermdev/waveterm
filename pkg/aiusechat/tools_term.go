@@ -11,10 +11,12 @@ import (
 	"time"
 
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
+	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wcore"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
+	"github.com/wavetermdev/waveterm/pkg/wstore"
 )
 
 type TermGetScrollbackToolInput struct {
@@ -23,15 +25,22 @@ type TermGetScrollbackToolInput struct {
 	Count     int    `json:"count,omitempty"`
 }
 
+type CommandInfo struct {
+	Command  string `json:"command"`
+	Status   string `json:"status"`
+	ExitCode *int   `json:"exitcode,omitempty"`
+}
+
 type TermGetScrollbackToolOutput struct {
-	TotalLines         int    `json:"total_lines"`
-	LineStart          int    `json:"line_start"`
-	LineEnd            int    `json:"line_end"`
-	ReturnedLines      int    `json:"returned_lines"`
-	Content            string `json:"content"`
-	SinceLastOutputSec *int   `json:"since_last_output_sec,omitempty"`
-	HasMore            bool   `json:"has_more"`
-	NextStart          *int   `json:"next_start"`
+	TotalLines         int          `json:"totallines"`
+	LineStart          int          `json:"linestart"`
+	LineEnd            int          `json:"lineend"`
+	ReturnedLines      int          `json:"returnedlines"`
+	Content            string       `json:"content"`
+	SinceLastOutputSec *int         `json:"sincelastoutputsec,omitempty"`
+	HasMore            bool         `json:"hasmore"`
+	NextStart          *int         `json:"nextstart"`
+	LastCommand        *CommandInfo `json:"lastcommand,omitempty"`
 }
 
 func parseTermGetScrollbackInput(input any) (*TermGetScrollbackToolInput, error) {
@@ -76,7 +85,7 @@ func GetTermGetScrollbackToolDefinition(tabId string) uctypes.ToolDefinition {
 	return uctypes.ToolDefinition{
 		Name:        "term_get_scrollback",
 		DisplayName: "Get Terminal Scrollback",
-		Description: "Fetch terminal scrollback from a widget as plain text. Index 0 is the most recent line; indices increase going upward (older lines).",
+		Description: "Fetch terminal scrollback from a widget as plain text. Index 0 is the most recent line; indices increase going upward (older lines). Also returns last command and exit code if shell integration is enabled.",
 		ToolLogName: "term:getscrollback",
 		InputSchema: map[string]any{
 			"type": "object",
@@ -155,6 +164,24 @@ func GetTermGetScrollbackToolDefinition(tabId string) uctypes.ToolDefinition {
 				nextStart = &effectiveLineEnd
 			}
 
+			blockORef := waveobj.MakeORef(waveobj.OType_Block, fullBlockId)
+			rtInfo := wstore.GetRTInfo(blockORef)
+
+			var lastCommand *CommandInfo
+			if rtInfo != nil && rtInfo.ShellIntegration && rtInfo.ShellLastCmd != "" {
+				cmdInfo := &CommandInfo{
+					Command: rtInfo.ShellLastCmd,
+				}
+				if rtInfo.ShellState == "running-command" {
+					cmdInfo.Status = "running"
+				} else if rtInfo.ShellState == "ready" {
+					cmdInfo.Status = "completed"
+					exitCode := rtInfo.ShellLastCmdExitCode
+					cmdInfo.ExitCode = &exitCode
+				}
+				lastCommand = cmdInfo
+			}
+
 			return &TermGetScrollbackToolOutput{
 				TotalLines:         result.TotalLines,
 				LineStart:          result.LineStart,
@@ -164,6 +191,7 @@ func GetTermGetScrollbackToolDefinition(tabId string) uctypes.ToolDefinition {
 				SinceLastOutputSec: sinceLastOutputSec,
 				HasMore:            hasMore,
 				NextStart:          nextStart,
+				LastCommand:        lastCommand,
 			}, nil
 		},
 	}

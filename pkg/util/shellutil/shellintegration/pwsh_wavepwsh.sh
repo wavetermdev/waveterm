@@ -12,6 +12,8 @@ Remove-Item Env:WAVETERM_SWAPTOKEN
 # Load Wave completions
 wsh completion powershell | Out-String | Invoke-Expression
 
+$Global:_WAVETERM_SI_FIRSTPROMPT = $true
+
 # shell integration
 function Global:_waveterm_si_blocked {
     # Check if we're in tmux or screen
@@ -34,8 +36,16 @@ function Global:_waveterm_si_osc7 {
     Write-Host -NoNewline "`e]7;file://$hostname/$encoded_pwd`a"
 }
 
-# Hook OSC 7 to prompt
 function Global:_waveterm_si_prompt {
+    if (_waveterm_si_blocked) { return }
+    
+    if ($Global:_WAVETERM_SI_FIRSTPROMPT) {
+		# not sending uname
+		       $shellversion = $PSVersionTable.PSVersion.ToString()
+		       Write-Host -NoNewline "`e]16162;M;{`"shell`":`"pwsh`",`"shellversion`":`"$shellversion`",`"integration`":false}`a"
+        $Global:_WAVETERM_SI_FIRSTPROMPT = $false
+    }
+    
     _waveterm_si_osc7
 }
 

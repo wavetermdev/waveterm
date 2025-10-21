@@ -202,6 +202,15 @@ func DecodeDataURL(dataURL string) (mimeType string, data []byte, err error) {
 	return mimeType, []byte(decoded), nil
 }
 
+// MarshalJSONString marshals a string to JSON format, returning the properly escaped JSON string.
+// Returns empty string if there's an error (rare).
+func MarshalJSONString(s string) string {
+	jsonBytes, err := json.Marshal(s)
+	if err != nil {
+		return ""
+	}
+	return string(jsonBytes)
+}
 
 // ContainsBinaryData checks if the provided data contains binary (non-text) content
 func ContainsBinaryData(data []byte) bool {

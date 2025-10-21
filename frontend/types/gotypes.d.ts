@@ -710,11 +710,12 @@ declare global {
         "tsunami:title"?: string;
         "tsunami:shortdesc"?: string;
         "tsunami:schemas"?: any;
-        "cmd:hascurcwd"?: boolean;
+        "shell:hascurcwd"?: boolean;
         "shell:state"?: string;
         "shell:type"?: string;
         "shell:version"?: string;
         "shell:uname"?: string;
+        "shell:integration"?: boolean;
         "shell:inputempty"?: boolean;
         "shell:lastcmd"?: string;
         "shell:lastcmdexitcode"?: number;

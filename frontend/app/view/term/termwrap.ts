@@ -141,6 +141,12 @@ function handleOsc7Command(data: string, blockId: string, loaded: boolean): bool
             // Strip leading slash and normalize to forward slashes
             pathPart = pathPart.substring(1).replace(/\\/g, "/");
         }
+
+        // Handle UNC paths (e.g., /\\server\share)
+        if (pathPart.startsWith("/\\\\")) {
+            // Strip leading slash but keep backslashes for UNC
+            pathPart = pathPart.substring(1);
+        }
     } catch (e) {
         console.log("Invalid OSC 7 command received (parse error)", data, e);
         return true;
@@ -152,7 +158,7 @@ function handleOsc7Command(data: string, blockId: string, loaded: boolean): bool
                 "cmd:cwd": pathPart,
             });
 
-            const rtInfo = { "cmd:hascurcwd": true };
+            const rtInfo = { "shell:hascurcwd": true };
             const rtInfoData: CommandSetRTInfoData = {
                 oref: WOS.makeORef("block", blockId),
                 data: rtInfo,
@@ -170,7 +176,7 @@ function handleOsc7Command(data: string, blockId: string, loaded: boolean): bool
 type Osc16162Command =
     | { command: "A"; data: {} }
     | { command: "C"; data: { cmd64?: string } }
-    | { command: "M"; data: { shell?: string; shellversion?: string; uname?: string } }
+    | { command: "M"; data: { shell?: string; shellversion?: string; uname?: string; integration?: boolean } }
     | { command: "D"; data: { exitcode?: number } }
     | { command: "I"; data: { inputempty?: boolean } }
     | { command: "R"; data: {} };
@@ -219,6 +225,8 @@ function handleOsc16162Command(data: string, blockId: string, loaded: boolean, t
             } else {
                 rtInfo["shell:lastcmd"] = null;
             }
+            // also clear lastcmdexitcode (since we've now started a new command)
+            rtInfo["shell:lastcmdexitcode"] = null;
             break;
         case "M":
             if (cmd.data.shell) {
@@ -229,6 +237,9 @@ function handleOsc16162Command(data: string, blockId: string, loaded: boolean, t
             }
             if (cmd.data.uname) {
                 rtInfo["shell:uname"] = cmd.data.uname;
+            }
+            if (cmd.data.integration != null) {
+                rtInfo["shell:integration"] = cmd.data.integration;
             }
             break;
         case "D":
