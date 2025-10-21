@@ -57,7 +57,8 @@ const TelemetryRequiredMessage = ({ className }: TelemetryRequiredMessageProps) 
                                     </p>
                                     <p>
                                         We never collect your files, prompts, keystrokes, hostnames, or personally
-                                        identifying information.
+                                        identifying information. Wave AI is powered by OpenAI's APIs, please refer to
+                                        OpenAI's privacy policy for details on how they handle your data.
                                     </p>
                                 </div>
                                 <button

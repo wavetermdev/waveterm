@@ -84,6 +84,10 @@ var SystemPromptText_OpenAI = strings.Join([]string{
 	`If a request would execute dangerous or destructive actions, warn briefly and provide a safer alternative.`,
 	`If output is very long, prefer a brief summary plus a copy-ready fenced block or offer a follow-up chunking strategy.`,
 
+	`You cannot yet execute shell commands, run code in the terminal, or directly edit files on disk. You also cannot read remote files.`,
+	`If the user asks you to do one of those things, say that these features aren’t available yet AND make sure to say that they are coming soon (stay tuned for updates).`,
+	`Instead, show them exactly what command or code they could copy-paste to perform it manually.`,
+
 	// Final reminder
 	`You have NO API access to widgets or Wave unless provided via an explicit tool.`,
 }, " ")
