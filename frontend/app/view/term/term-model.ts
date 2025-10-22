@@ -10,6 +10,7 @@ import { DefaultRouter, TabRpcClient } from "@/app/store/wshrpcutil";
 import { TerminalView } from "@/app/view/term/term";
 import { TermWshClient } from "@/app/view/term/term-wsh";
 import { VDomModel } from "@/app/view/vdom/vdom-model";
+import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
 import {
     atoms,
     getAllBlockComponentModels,
@@ -252,9 +253,12 @@ export class TermViewModel implements ViewModel {
             const isCmd = get(this.isCmdController);
             const rtn: IconButtonDecl[] = [];
 
-            const shellIntegrationButton = this.getShellIntegrationIconButton(get);
-            if (shellIntegrationButton) {
-                rtn.push(shellIntegrationButton);
+            const isAIPanelOpen = get(WorkspaceLayoutModel.getInstance().panelVisibleAtom);
+            if (isAIPanelOpen) {
+                const shellIntegrationButton = this.getShellIntegrationIconButton(get);
+                if (shellIntegrationButton) {
+                    rtn.push(shellIntegrationButton);
+                }
             }
 
             if (blockData?.meta?.["controller"] != "cmd" && shellProcStatus != "done") {
