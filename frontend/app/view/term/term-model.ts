@@ -29,6 +29,7 @@ import * as jotai from "jotai";
 import * as React from "react";
 import { computeTheme, DefaultTermTheme } from "./termutil";
 import { TermWrap } from "./termwrap";
+import { getBlockingCommand } from "./shellblocking";
 
 export class TermViewModel implements ViewModel {
     viewType: string;
@@ -333,11 +334,22 @@ export class TermViewModel implements ViewModel {
             };
         }
         if (shellIntegrationStatus === "running-command") {
+            let title = "Shell busy — Wave AI unable to run commands while another command is running.";
+
+            if (this.termRef.current) {
+                const inAltBuffer = this.termRef.current.terminal?.buffer?.active?.type === "alternate";
+                const lastCommand = get(this.termRef.current.lastCommandAtom);
+                const blockingCmd = getBlockingCommand(lastCommand, inAltBuffer);
+                if (blockingCmd) {
+                    title = `Wave AI integration disabled while you're inside ${blockingCmd}.`;
+                }
+            }
+
             return {
                 elemtype: "iconbutton",
                 icon: "sparkles",
                 className: "text-warning",
-                title: "Shell busy — Wave AI unable to run commands while another command is running.",
+                title: title,
                 noAction: true,
             };
         }
