@@ -296,6 +296,7 @@ declare global {
     type CommandTermGetScrollbackLinesData = {
         linestart: number;
         lineend: number;
+        lastcommand: boolean;
     };
 
     // wshrpc.CommandTermGetScrollbackLinesRtnData
