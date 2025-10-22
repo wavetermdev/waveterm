@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -13,6 +14,7 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+	"github.com/wavetermdev/waveterm/pkg/util/fileutil"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
@@ -107,22 +109,38 @@ func aiRun(cmd *cobra.Command, args []string) (rtnErr error) {
 			if err != nil {
 				return fmt.Errorf("accessing file %s: %w", filePath, err)
 			}
-			if fileInfo.IsDir() {
-				return fmt.Errorf("%s is a directory, not a file", filePath)
+			absPath, err := filepath.Abs(filePath)
+			if err != nil {
+				return fmt.Errorf("getting absolute path for %s: %w", filePath, err)
 			}
 
-			data, err = os.ReadFile(filePath)
-			if err != nil {
-				return fmt.Errorf("reading file %s: %w", filePath, err)
+			if fileInfo.IsDir() {
+				result, err := fileutil.ReadDir(filePath, 500)
+				if err != nil {
+					return fmt.Errorf("reading directory %s: %w", filePath, err)
+				}
+				jsonData, err := json.Marshal(result)
+				if err != nil {
+					return fmt.Errorf("marshaling directory listing for %s: %w", filePath, err)
+				}
+				data = jsonData
+				fileName = absPath
+				mimeType = "directory"
+			} else {
+				data, err = os.ReadFile(filePath)
+				if err != nil {
+					return fmt.Errorf("reading file %s: %w", filePath, err)
+				}
+				fileName = absPath
+				mimeType = detectMimeType(data)
 			}
-			fileName = filepath.Base(filePath)
-			mimeType = detectMimeType(data)
 		}
 
 		isPDF := mimeType == "application/pdf"
 		isImage := strings.HasPrefix(mimeType, "image/")
-		
-		if !isPDF && !isImage {
+		isDirectory := mimeType == "directory"
+
+		if !isPDF && !isImage && !isDirectory {
 			mimeType = "text/plain"
 			if utilfn.ContainsBinaryData(data) {
 				return fmt.Errorf("file %s contains binary data and cannot be uploaded as text", fileName)
