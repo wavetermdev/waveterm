@@ -171,6 +171,32 @@ function handleOsc7Command(data: string, blockId: string, loaded: boolean): bool
     return true;
 }
 
+// some POC concept code for adding a decoration to a marker
+function addTestMarkerDecoration(terminal: Terminal, marker: TermTypes.IMarker, termWrap: TermWrap): void {
+    const decoration = terminal.registerDecoration({
+        marker: marker,
+        layer: "top",
+    });
+    if (!decoration) {
+        return;
+    }
+    decoration.onRender((el) => {
+        el.classList.add("wave-decoration");
+        el.classList.add("bg-ansi-white");
+        el.dataset.markerline = String(marker.line);
+        if (!el.querySelector(".wave-deco-line")) {
+            const line = document.createElement("div");
+            line.classList.add("wave-deco-line", "bg-accent/20");
+            line.style.position = "absolute";
+            line.style.top = "0";
+            line.style.left = "0";
+            line.style.width = "500px";
+            line.style.height = "1px";
+            el.appendChild(line);
+        }
+    });
+}
+
 // OSC 16162 - Shell Integration Commands
 // See aiprompts/wave-osc-16162.md for full documentation
 type Osc16162Command =
@@ -181,7 +207,8 @@ type Osc16162Command =
     | { command: "I"; data: { inputempty?: boolean } }
     | { command: "R"; data: {} };
 
-function handleOsc16162Command(data: string, blockId: string, loaded: boolean, terminal: Terminal): boolean {
+function handleOsc16162Command(data: string, blockId: string, loaded: boolean, termWrap: TermWrap): boolean {
+    const terminal = termWrap.terminal;
     if (!loaded) {
         return true;
     }
@@ -206,6 +233,17 @@ function handleOsc16162Command(data: string, blockId: string, loaded: boolean, t
     switch (cmd.command) {
         case "A":
             rtInfo["shell:state"] = "ready";
+            const marker = terminal.registerMarker(0);
+            if (marker) {
+                termWrap.promptMarkers.push(marker);
+                // addTestMarkerDecoration(terminal, marker, termWrap);
+                marker.onDispose(() => {
+                    const idx = termWrap.promptMarkers.indexOf(marker);
+                    if (idx !== -1) {
+                        termWrap.promptMarkers.splice(idx, 1);
+                    }
+                });
+            }
             break;
         case "C":
             rtInfo["shell:state"] = "running-command";
@@ -298,6 +336,7 @@ export class TermWrap {
     private toDispose: TermTypes.IDisposable[] = [];
     pasteActive: boolean = false;
     lastUpdated: number;
+    promptMarkers: TermTypes.IMarker[] = [];
 
     constructor(
         blockId: string,
@@ -312,6 +351,7 @@ export class TermWrap {
         this.dataBytesProcessed = 0;
         this.hasResized = false;
         this.lastUpdated = Date.now();
+        this.promptMarkers = [];
         this.terminal = new Terminal(options);
         this.fitAddon = new FitAddon();
         this.fitAddon.noScrollbar = PLATFORM === PlatformMacOS;
@@ -358,7 +398,7 @@ export class TermWrap {
             return handleOsc7Command(data, this.blockId, this.loaded);
         });
         this.terminal.parser.registerOscHandler(16162, (data: string) => {
-            return handleOsc16162Command(data, this.blockId, this.loaded, this.terminal);
+            return handleOsc16162Command(data, this.blockId, this.loaded, this);
         });
         this.terminal.attachCustomKeyEventHandler(waveOptions.keydownHandler);
         this.connectElem = connectElem;
@@ -413,6 +453,12 @@ export class TermWrap {
     }
 
     dispose() {
+        this.promptMarkers.forEach((marker) => {
+            try {
+                marker.dispose();
+            } catch (_) {}
+        });
+        this.promptMarkers = [];
         this.terminal.dispose();
         this.toDispose.forEach((d) => {
             try {
