@@ -6,7 +6,7 @@ import { makeORef, splitORef } from "@/app/store/wos";
 import { RpcResponseHelper, WshClient } from "@/app/store/wshclient";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { makeFeBlockRouteId } from "@/app/store/wshrouter";
-import { TermViewModel } from "@/app/view/term/term";
+import { TermViewModel } from "@/app/view/term/term-model";
 import { isBlank } from "@/util/util";
 import debug from "debug";
 
@@ -123,7 +123,7 @@ export class TermWshClient extends WshClient {
         const lines: string[] = [];
 
         if (data.lastcommand) {
-            if (termWrap.shellIntegrationStatus == null) {
+            if (globalStore.get(termWrap.shellIntegrationStatusAtom) == null) {
                 throw new Error("Cannot get last command data without shell integration");
             }
 

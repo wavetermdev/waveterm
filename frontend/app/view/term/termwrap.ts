@@ -16,6 +16,7 @@ import { WebglAddon } from "@xterm/addon-webgl";
 import * as TermTypes from "@xterm/xterm";
 import { Terminal } from "@xterm/xterm";
 import debug from "debug";
+import * as jotai from "jotai";
 import { debounce } from "throttle-debounce";
 import { FitAddon } from "./fitaddon";
 
@@ -235,8 +236,7 @@ function handleOsc16162Command(data: string, blockId: string, loaded: boolean, t
     switch (cmd.command) {
         case "A":
             rtInfo["shell:state"] = "ready";
-            termWrap.shellIntegrationStatus = "ready";
-            termWrap.shellIntegrationStatusCallback?.(termWrap.shellIntegrationStatus);
+            globalStore.set(termWrap.shellIntegrationStatusAtom, "ready");
             const marker = terminal.registerMarker(0);
             if (marker) {
                 termWrap.promptMarkers.push(marker);
@@ -251,23 +251,26 @@ function handleOsc16162Command(data: string, blockId: string, loaded: boolean, t
             break;
         case "C":
             rtInfo["shell:state"] = "running-command";
-            termWrap.shellIntegrationStatus = "running-command";
-            termWrap.shellIntegrationStatusCallback?.(termWrap.shellIntegrationStatus);
+            globalStore.set(termWrap.shellIntegrationStatusAtom, "running-command");
             if (cmd.data.cmd64) {
                 const decodedLen = Math.ceil(cmd.data.cmd64.length * 0.75);
                 if (decodedLen > 8192) {
                     rtInfo["shell:lastcmd"] = `# command too large (${decodedLen} bytes)`;
+                    globalStore.set(termWrap.lastCommandAtom, rtInfo["shell:lastcmd"]);
                 } else {
                     try {
                         const decodedCmd = atob(cmd.data.cmd64);
                         rtInfo["shell:lastcmd"] = decodedCmd;
+                        globalStore.set(termWrap.lastCommandAtom, decodedCmd);
                     } catch (e) {
                         console.error("Error decoding cmd64:", e);
                         rtInfo["shell:lastcmd"] = null;
+                        globalStore.set(termWrap.lastCommandAtom, null);
                     }
                 }
             } else {
                 rtInfo["shell:lastcmd"] = null;
+                globalStore.set(termWrap.lastCommandAtom, null);
             }
             // also clear lastcmdexitcode (since we've now started a new command)
             rtInfo["shell:lastcmdexitcode"] = null;
@@ -299,8 +302,7 @@ function handleOsc16162Command(data: string, blockId: string, loaded: boolean, t
             }
             break;
         case "R":
-            termWrap.shellIntegrationStatus = null;
-            termWrap.shellIntegrationStatusCallback?.(termWrap.shellIntegrationStatus);
+            globalStore.set(termWrap.shellIntegrationStatusAtom, null);
             if (terminal.buffer.active.type === "alternate") {
                 terminal.write("\x1b[?1049l");
             }
@@ -345,8 +347,8 @@ export class TermWrap {
     pasteActive: boolean = false;
     lastUpdated: number;
     promptMarkers: TermTypes.IMarker[] = [];
-    shellIntegrationStatus: ShellIntegrationStatus | null = null;
-    shellIntegrationStatusCallback?: (status: ShellIntegrationStatus | null) => void;
+    shellIntegrationStatusAtom: jotai.PrimitiveAtom<"ready" | "running-command" | null>;
+    lastCommandAtom: jotai.PrimitiveAtom<string | null>;
 
     constructor(
         blockId: string,
@@ -362,6 +364,10 @@ export class TermWrap {
         this.hasResized = false;
         this.lastUpdated = Date.now();
         this.promptMarkers = [];
+        this.shellIntegrationStatusAtom = jotai.atom(null) as jotai.PrimitiveAtom<
+            "ready" | "running-command" | null
+        >;
+        this.lastCommandAtom = jotai.atom(null) as jotai.PrimitiveAtom<string | null>;
         this.terminal = new Terminal(options);
         this.fitAddon = new FitAddon();
         this.fitAddon.noScrollbar = PLATFORM === PlatformMacOS;
@@ -454,6 +460,25 @@ export class TermWrap {
         }
         this.mainFileSubject = getFileSubject(this.blockId, TermFileName);
         this.mainFileSubject.subscribe(this.handleNewFileSubjectData.bind(this));
+        
+        try {
+            const rtInfo = await RpcApi.GetRTInfoCommand(TabRpcClient, {
+                oref: WOS.makeORef("block", this.blockId),
+            });
+            
+            if (rtInfo["shell:integration"]) {
+                const shellState = rtInfo["shell:state"] as ShellIntegrationStatus;
+                globalStore.set(this.shellIntegrationStatusAtom, shellState || null);
+            } else {
+                globalStore.set(this.shellIntegrationStatusAtom, null);
+            }
+            
+            const lastCmd = rtInfo["shell:lastcmd"];
+            globalStore.set(this.lastCommandAtom, lastCmd || null);
+        } catch (e) {
+            console.log("Error loading runtime info:", e);
+        }
+        
         try {
             await this.loadInitialTerminalData();
         } finally {
