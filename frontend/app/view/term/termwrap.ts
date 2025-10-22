@@ -199,6 +199,8 @@ function addTestMarkerDecoration(terminal: Terminal, marker: TermTypes.IMarker, 
 
 // OSC 16162 - Shell Integration Commands
 // See aiprompts/wave-osc-16162.md for full documentation
+type ShellIntegrationStatus = "ready" | "running-command";
+
 type Osc16162Command =
     | { command: "A"; data: {} }
     | { command: "C"; data: { cmd64?: string } }
@@ -233,6 +235,8 @@ function handleOsc16162Command(data: string, blockId: string, loaded: boolean, t
     switch (cmd.command) {
         case "A":
             rtInfo["shell:state"] = "ready";
+            termWrap.shellIntegrationStatus = "ready";
+            termWrap.shellIntegrationStatusCallback?.(termWrap.shellIntegrationStatus);
             const marker = terminal.registerMarker(0);
             if (marker) {
                 termWrap.promptMarkers.push(marker);
@@ -247,6 +251,8 @@ function handleOsc16162Command(data: string, blockId: string, loaded: boolean, t
             break;
         case "C":
             rtInfo["shell:state"] = "running-command";
+            termWrap.shellIntegrationStatus = "running-command";
+            termWrap.shellIntegrationStatusCallback?.(termWrap.shellIntegrationStatus);
             if (cmd.data.cmd64) {
                 const decodedLen = Math.ceil(cmd.data.cmd64.length * 0.75);
                 if (decodedLen > 8192) {
@@ -293,6 +299,8 @@ function handleOsc16162Command(data: string, blockId: string, loaded: boolean, t
             }
             break;
         case "R":
+            termWrap.shellIntegrationStatus = null;
+            termWrap.shellIntegrationStatusCallback?.(termWrap.shellIntegrationStatus);
             if (terminal.buffer.active.type === "alternate") {
                 terminal.write("\x1b[?1049l");
             }
@@ -337,6 +345,8 @@ export class TermWrap {
     pasteActive: boolean = false;
     lastUpdated: number;
     promptMarkers: TermTypes.IMarker[] = [];
+    shellIntegrationStatus: ShellIntegrationStatus | null = null;
+    shellIntegrationStatusCallback?: (status: ShellIntegrationStatus | null) => void;
 
     constructor(
         blockId: string,

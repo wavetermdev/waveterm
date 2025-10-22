@@ -70,6 +70,7 @@ class TermViewModel implements ViewModel {
     termTransparencyAtom: jotai.Atom<number>;
     noPadding: jotai.PrimitiveAtom<boolean>;
     endIconButtons: jotai.Atom<IconButtonDecl[]>;
+    shellIntegrationStatusAtom: jotai.PrimitiveAtom<"ready" | "running-command" | null>;
     shellProcFullStatus: jotai.PrimitiveAtom<BlockControllerRuntimeStatus>;
     shellProcStatus: jotai.Atom<string>;
     shellProcStatusUnsubFn: () => void;
@@ -260,16 +261,42 @@ class TermViewModel implements ViewModel {
             });
         });
         this.noPadding = jotai.atom(true);
+        this.shellIntegrationStatusAtom = jotai.atom(null) as jotai.PrimitiveAtom<"ready" | "running-command" | null>;
         this.endIconButtons = jotai.atom((get) => {
             const blockData = get(this.blockAtom);
             const shellProcStatus = get(this.shellProcStatus);
             const connStatus = get(this.connStatus);
             const isCmd = get(this.isCmdController);
+            const shellIntegrationStatus = get(this.shellIntegrationStatusAtom);
+            const rtn: IconButtonDecl[] = [];
+
+            if (shellIntegrationStatus != null) {
+                let iconColor: string;
+                let iconSpin: boolean = false;
+                let title: string;
+                if (shellIntegrationStatus === "ready") {
+                    iconColor = "var(--success-color)";
+                    title = "Ready to Run Command (Wave AI Enabled)";
+                } else {
+                    iconColor = "var(--warning-color)";
+                    iconSpin = true;
+                    title = "Running Command. Cannot run Wave AI command until completed";
+                }
+                rtn.push({
+                    elemtype: "iconbutton",
+                    icon: "sparkles",
+                    iconColor: iconColor,
+                    iconSpin: iconSpin,
+                    title: title,
+                    noAction: true,
+                });
+            }
+
             if (blockData?.meta?.["controller"] != "cmd" && shellProcStatus != "done") {
-                return [];
+                return rtn;
             }
             if (connStatus?.status != "connected") {
-                return [];
+                return rtn;
             }
             let iconName: string = null;
             let title: string = null;
@@ -284,16 +311,15 @@ class TermViewModel implements ViewModel {
                 iconName = "refresh";
                 title = noun + " Exited. Click to Restart";
             }
-            if (iconName == null) {
-                return [];
+            if (iconName != null) {
+                const buttonDecl: IconButtonDecl = {
+                    elemtype: "iconbutton",
+                    icon: iconName,
+                    click: this.forceRestartController.bind(this),
+                    title: title,
+                };
+                rtn.push(buttonDecl);
             }
-            const buttonDecl: IconButtonDecl = {
-                elemtype: "iconbutton",
-                icon: iconName,
-                click: this.forceRestartController.bind(this),
-                title: title,
-            };
-            const rtn = [buttonDecl];
             return rtn;
         });
         this.isCmdController = jotai.atom((get) => {
@@ -1023,6 +1049,9 @@ const TerminalView = ({ blockId, model }: ViewComponentProps<TermViewModel>) => 
         );
         (window as any).term = termWrap;
         model.termRef.current = termWrap;
+        termWrap.shellIntegrationStatusCallback = (status) => {
+            globalStore.set(model.shellIntegrationStatusAtom, status);
+        };
         const rszObs = new ResizeObserver(() => {
             termWrap.handleResize_debounced();
         });

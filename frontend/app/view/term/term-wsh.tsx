@@ -122,6 +122,44 @@ export class TermWshClient extends WshClient {
         const totalLines = buffer.length;
         const lines: string[] = [];
 
+        if (data.lastcommand) {
+            if (termWrap.shellIntegrationStatus == null) {
+                throw new Error("Cannot get last command data without shell integration");
+            }
+
+            let startLine = 0;
+            if (termWrap.promptMarkers.length > 0) {
+                const lastMarker = termWrap.promptMarkers[termWrap.promptMarkers.length - 1];
+                const markerLine = lastMarker.line;
+                startLine = totalLines - markerLine;
+            }
+
+            const endLine = totalLines;
+            for (let i = startLine; i < endLine; i++) {
+                const bufferIndex = totalLines - 1 - i;
+                const line = buffer.getLine(bufferIndex);
+                if (line) {
+                    lines.push(line.translateToString(true));
+                }
+            }
+
+            lines.reverse();
+
+            let returnLines = lines;
+            let returnStartLine = startLine;
+            if (lines.length > 1000) {
+                returnLines = lines.slice(lines.length - 1000);
+                returnStartLine = startLine + (lines.length - 1000);
+            }
+
+            return {
+                totallines: totalLines,
+                linestart: returnStartLine,
+                lines: returnLines,
+                lastupdated: termWrap.lastUpdated,
+            };
+        }
+
         const startLine = Math.max(0, data.linestart);
         const endLine = Math.min(totalLines, data.lineend);
 
