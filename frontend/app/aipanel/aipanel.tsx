@@ -1,6 +1,7 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import * as React from "react";
 import { waveAIHasSelection } from "@/app/aipanel/waveai-focus-utils";
 import { ErrorBoundary } from "@/app/element/errorboundary";
 import { ContextMenuModel } from "@/app/store/contextmenu";
@@ -23,7 +24,10 @@ import { AIPanelInput } from "./aipanelinput";
 import { AIPanelMessages } from "./aipanelmessages";
 import { AIRateLimitStrip } from "./airatelimitstrip";
 import { TelemetryRequiredMessage } from "./telemetryrequired";
-import { WaveAIModel } from "./waveai-model";
+import { ContextVisualizer } from "./context-visualizer";
+import { AISettings } from "./ai-settings";
+import { SecurityMonitor } from "./security-monitor";
+import { HyperIntelligentTerminal } from "./hyper-intelligent-terminal";
 
 const AIBlockMask = memo(() => {
     return (
@@ -195,6 +199,10 @@ interface AIPanelProps {
 const AIPanelComponentInner = memo(({ className, onClose }: AIPanelProps) => {
     const [isDragOver, setIsDragOver] = useState(false);
     const [initialLoadDone, setInitialLoadDone] = useState(false);
+    const [hyperIntelligentMode, setHyperIntelligentMode] = useState(false);
+    const [contextVisualizerVisible, setContextVisualizerVisible] = useState(false);
+    const [securityMonitorVisible, setSecurityMonitorVisible] = useState(false);
+    const [aiSettingsVisible, setAiSettingsVisible] = useState(false);
     const model = WaveAIModel.getInstance();
     const containerRef = useRef<HTMLDivElement>(null);
     const errorMessage = jotai.useAtomValue(model.errorMessage);
@@ -475,6 +483,23 @@ const AIPanelComponentInner = memo(({ className, onClose }: AIPanelProps) => {
                     </>
                 )}
             </div>
+
+            {/* Hyper-Intelligent Terminal Modals */}
+            <ContextVisualizer
+                isVisible={contextVisualizerVisible}
+                onClose={() => setContextVisualizerVisible(false)}
+            />
+
+            <SecurityMonitor
+                visible={securityMonitorVisible}
+                onClose={() => setSecurityMonitorVisible(false)}
+            />
+
+            <AISettings
+                visible={aiSettingsVisible}
+                onClose={() => setAiSettingsVisible(false)}
+                agents={[]} // TODO: Pass actual agents
+            />
         </div>
     );
 });

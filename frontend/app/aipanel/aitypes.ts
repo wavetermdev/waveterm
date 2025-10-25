@@ -58,6 +58,35 @@ type WaveUIDataTypes = {
         priority: number;
         context: Record<string, any>;
     };
+    // Enhanced AI types for multi-agent system
+    agent: {
+        id: string;
+        name: string;
+        type: AgentType;
+        capabilities: string[];
+        status: AgentStatus;
+        priority: number;
+        context: AgentContext;
+        settings: Record<string, any>;
+    };
+    commandSuggestion: {
+        command: string;
+        description: string;
+        confidence: number;
+        type: "completion" | "correction" | "optimization" | "alternative";
+        context: string;
+        examples: string[];
+    };
+    commandExplanation: {
+        command: string;
+        purpose: string;
+        syntax: string;
+        options: Record<string, { description: string; example: string }>;
+        examples: Array<{ command: string; description: string; output?: string }>;
+        warnings: string[];
+        relatedCommands: string[];
+        difficulty: "beginner" | "intermediate" | "advanced";
+    };
 };
 
 export type WaveUIMessage = UIMessage<unknown, WaveUIDataTypes, {}>;
@@ -93,7 +122,6 @@ export type UseChatSendMessageType = (
     options?: ChatRequestOptions
 ) => Promise<void>;
 
-// Multi-Agent System Types
 export interface AIAgent {
     id: string;
     name: string;
@@ -104,16 +132,6 @@ export interface AIAgent {
     context: AgentContext;
     settings: Record<string, any>;
 }
-
-export type AgentType =
-    | "command_analysis"
-    | "context_manager"
-    | "command_explanation"
-    | "pattern_analysis"
-    | "security_monitor"
-    | "optimization_engine"
-    | "coordinator"
-    | "mcp_integration";
 
 export type AgentStatus = "active" | "idle" | "processing" | "error" | "disabled";
 
@@ -154,6 +172,109 @@ export type MessageType =
     | "coordination_response"
     | "status_update"
     | "error_report";
+
+export interface CommandSuggestion {
+    command: string;
+    description: string;
+    confidence: number;
+    type: "completion" | "correction" | "optimization" | "alternative";
+    context: string;
+    examples: string[];
+}
+
+export interface CommandExplanation {
+    command: string;
+    purpose: string;
+    syntax: string;
+    options: Record<string, { description: string; example: string }>;
+    examples: Array<{ command: string; description: string; output?: string }>;
+    warnings: string[];
+    relatedCommands: string[];
+    difficulty: "beginner" | "intermediate" | "advanced";
+}
+
+export interface PatternAnalysis {
+    patterns: Array<{
+        pattern: string;
+        frequency: number;
+        trend: "increasing" | "decreasing" | "stable";
+        optimization: string;
+        automation: string;
+    }>;
+    workflowSuggestions: Array<{
+        name: string;
+        description: string;
+        commands: string[];
+        timeSavings: string;
+        automation: string;
+    }>;
+    commandAliases: Array<{
+        alias: string;
+        command: string;
+        description: string;
+        usage: number;
+    }>;
+}
+
+export interface SecurityAnalysis {
+    riskLevel: "low" | "medium" | "high" | "critical";
+    threats: Array<{
+        type: string;
+        severity: string;
+        description: string;
+        recommendation: string;
+    }>;
+    protections: Array<{
+        type: string;
+        status: "active" | "inactive" | "failed";
+        description: string;
+    }>;
+    recommendations: string[];
+}
+
+export interface OptimizationMetrics {
+    performance: {
+        responseTime: number;
+        throughput: number;
+        efficiency: number;
+    };
+    reliability: {
+        uptime: number;
+        errorRate: number;
+        recoveryTime: number;
+    };
+    userExperience: {
+        satisfaction: number;
+        taskCompletion: number;
+        learningCurve: number;
+    };
+    resourceUsage: {
+        memory: number;
+        cpu: number;
+        network: number;
+    };
+}
+
+export interface AgentMessage {
+    id: string;
+    from: string;
+    to: string;
+    type: MessageType;
+    payload: any;
+    timestamp: number;
+    priority: number;
+    context: AgentContext;
+}
+
+export type AgentType =
+    | "command_analysis"
+    | "context_manager"
+    | "command_explanation"
+    | "pattern_analysis"
+    | "security_monitor"
+    | "optimization_engine"
+    | "coordinator"
+    | "mcp_integration";
 
 export interface CommandSuggestion {
     command: string;
