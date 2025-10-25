@@ -35,6 +35,7 @@
         "ai:dev": "concurrently \"npm run dev\" \"python3 mcp-servers/terminal-mcp.py\" \"node scripts/monitor-agents.js\"",
         "ai:build": "npm run build:prod && npm run electron:package",
         "ai:test": "npm run test:ai && npm run test:security",
+        "electron:package": "electron-builder",
         "mcp:start": "python3 mcp-servers/terminal-mcp.py",
         "mcp:stop": "pkill -f terminal-mcp.py",
         "agents:status": "node scripts/check-agent-status.js",

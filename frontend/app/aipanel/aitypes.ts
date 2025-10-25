@@ -135,6 +135,16 @@ export interface AIAgent {
 
 export type AgentStatus = "active" | "idle" | "processing" | "error" | "disabled";
 
+export type AgentType =
+    | "command_analysis"
+    | "context_manager"
+    | "command_explanation"
+    | "pattern_analysis"
+    | "security_monitor"
+    | "optimization_engine"
+    | "coordinator"
+    | "mcp_integration";
+
 export interface AgentContext {
     sessionId: string;
     tabId: string;
@@ -172,109 +182,6 @@ export type MessageType =
     | "coordination_response"
     | "status_update"
     | "error_report";
-
-export interface CommandSuggestion {
-    command: string;
-    description: string;
-    confidence: number;
-    type: "completion" | "correction" | "optimization" | "alternative";
-    context: string;
-    examples: string[];
-}
-
-export interface CommandExplanation {
-    command: string;
-    purpose: string;
-    syntax: string;
-    options: Record<string, { description: string; example: string }>;
-    examples: Array<{ command: string; description: string; output?: string }>;
-    warnings: string[];
-    relatedCommands: string[];
-    difficulty: "beginner" | "intermediate" | "advanced";
-}
-
-export interface PatternAnalysis {
-    patterns: Array<{
-        pattern: string;
-        frequency: number;
-        trend: "increasing" | "decreasing" | "stable";
-        optimization: string;
-        automation: string;
-    }>;
-    workflowSuggestions: Array<{
-        name: string;
-        description: string;
-        commands: string[];
-        timeSavings: string;
-        automation: string;
-    }>;
-    commandAliases: Array<{
-        alias: string;
-        command: string;
-        description: string;
-        usage: number;
-    }>;
-}
-
-export interface SecurityAnalysis {
-    riskLevel: "low" | "medium" | "high" | "critical";
-    threats: Array<{
-        type: string;
-        severity: string;
-        description: string;
-        recommendation: string;
-    }>;
-    protections: Array<{
-        type: string;
-        status: "active" | "inactive" | "failed";
-        description: string;
-    }>;
-    recommendations: string[];
-}
-
-export interface OptimizationMetrics {
-    performance: {
-        responseTime: number;
-        throughput: number;
-        efficiency: number;
-    };
-    reliability: {
-        uptime: number;
-        errorRate: number;
-        recoveryTime: number;
-    };
-    userExperience: {
-        satisfaction: number;
-        taskCompletion: number;
-        learningCurve: number;
-    };
-    resourceUsage: {
-        memory: number;
-        cpu: number;
-        network: number;
-    };
-}
-
-export interface AgentMessage {
-    id: string;
-    from: string;
-    to: string;
-    type: MessageType;
-    payload: any;
-    timestamp: number;
-    priority: number;
-    context: AgentContext;
-}
-
-export type AgentType =
-    | "command_analysis"
-    | "context_manager"
-    | "command_explanation"
-    | "pattern_analysis"
-    | "security_monitor"
-    | "optimization_engine"
-    | "coordinator"
-    | "mcp_integration";
 
 export interface CommandSuggestion {
     command: string;

@@ -28,6 +28,10 @@ import { ContextVisualizer } from "./context-visualizer";
 import { AISettings } from "./ai-settings";
 import { SecurityMonitor } from "./security-monitor";
 import { HyperIntelligentTerminal } from "./hyper-intelligent-terminal";
+import { ecosystemIntegration } from "./ecosystem-integration";
+import { ecosystemOrchestrator } from "./ecosystem-orchestrator";
+import { agentCoordinator } from "./agent-coordinator";
+import { cliIntegration } from "./cli-integration";
 
 const AIBlockMask = memo(() => {
     return (
@@ -143,18 +147,22 @@ const AIWelcomeMessage = memo(() => {
                         </div>
                         <div className="flex items-start gap-3">
                             <div className="w-4 text-center flex-shrink-0">
-                                <i className="fa-brands fa-discord text-accent"></i>
+                                <i className="fa-solid fa-network-wired text-accent"></i>
                             </div>
                             <div>
-                                Questions or feedback?{" "}
-                                <a
-                                    target="_blank"
-                                    href="https://discord.gg/XfvZ334gwU"
-                                    rel="noopener"
-                                    className="text-accent hover:underline cursor-pointer"
-                                >
-                                    Join our Discord
-                                </a>
+                                <span className="font-bold">AI Ecosystem Integration</span>
+                                <div className="">Connected to your comprehensive AI ecosystem</div>
+                                <div className="">27 repositories, 47+ MCP servers, 8-agent coordination</div>
+                            </div>
+                        </div>
+                        <div className="flex items-start gap-3">
+                            <div className="w-4 text-center flex-shrink-0">
+                                <i className="fa-solid fa-terminal text-accent"></i>
+                            </div>
+                            <div>
+                                <span className="font-bold">CLI AI Integration</span>
+                                <div className="">Powerful command-line AI tools and workflows</div>
+                                <div className="">Legal research, forensics, memory systems, automation</div>
                             </div>
                         </div>
                     </div>
@@ -203,6 +211,10 @@ const AIPanelComponentInner = memo(({ className, onClose }: AIPanelProps) => {
     const [contextVisualizerVisible, setContextVisualizerVisible] = useState(false);
     const [securityMonitorVisible, setSecurityMonitorVisible] = useState(false);
     const [aiSettingsVisible, setAiSettingsVisible] = useState(false);
+    const [ecosystemVisible, setEcosystemVisible] = useState(false);
+
+    // Use singleton ecosystem components (already initialized)
+
     const model = WaveAIModel.getInstance();
     const containerRef = useRef<HTMLDivElement>(null);
     const errorMessage = jotai.useAtomValue(model.errorMessage);
@@ -498,7 +510,7 @@ const AIPanelComponentInner = memo(({ className, onClose }: AIPanelProps) => {
             <AISettings
                 visible={aiSettingsVisible}
                 onClose={() => setAiSettingsVisible(false)}
-                agents={[]} // TODO: Pass actual agents
+                agents={agentCoordinator.getAgents()}
             />
         </div>
     );

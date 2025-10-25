@@ -445,7 +445,7 @@ export class AgentCoordinator {
         return this.agents.get(id);
     }
 
-    getAllAgents(): AIAgent[] {
+    getAgents(): AIAgent[] {
         return Array.from(this.agents.values());
     }
 
@@ -483,7 +483,7 @@ export class AgentCoordinator {
         const message: AgentMessage = {
             id: `req-explain-${Date.now()}`,
             from: "user",
-            to: "command-explainer",
+            to: "command-explanation",
             type: "command_analysis_request",
             payload: { command },
             timestamp: Date.now(),
