@@ -35,3 +35,6 @@ storybook-static/
 test-results.xml
 
 docsite/
+
+# OpenMemory - IDE/Assistant specific rules
+.windsurf/rules/openmemory.md
