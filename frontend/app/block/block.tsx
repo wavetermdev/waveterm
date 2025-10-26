@@ -27,7 +27,7 @@ import { getWaveObjectAtom, makeORef, useWaveObjectValue } from "@/store/wos";
 import { focusedBlockId, getElemAsStr } from "@/util/focusutil";
 import { isBlank, useAtomValueSafe } from "@/util/util";
 import { HelpViewModel } from "@/view/helpview/helpview";
-import { TermViewModel } from "@/view/term/term";
+import { TermViewModel } from "@/view/term/term-model";
 import { WaveAiModel } from "@/view/waveai/waveai";
 import { WebViewModel } from "@/view/webview/webview";
 import clsx from "clsx";

@@ -16,6 +16,7 @@ import { WebglAddon } from "@xterm/addon-webgl";
 import * as TermTypes from "@xterm/xterm";
 import { Terminal } from "@xterm/xterm";
 import debug from "debug";
+import * as jotai from "jotai";
 import { debounce } from "throttle-debounce";
 import { FitAddon } from "./fitaddon";
 
@@ -171,8 +172,36 @@ function handleOsc7Command(data: string, blockId: string, loaded: boolean): bool
     return true;
 }
 
+// some POC concept code for adding a decoration to a marker
+function addTestMarkerDecoration(terminal: Terminal, marker: TermTypes.IMarker, termWrap: TermWrap): void {
+    const decoration = terminal.registerDecoration({
+        marker: marker,
+        layer: "top",
+    });
+    if (!decoration) {
+        return;
+    }
+    decoration.onRender((el) => {
+        el.classList.add("wave-decoration");
+        el.classList.add("bg-ansi-white");
+        el.dataset.markerline = String(marker.line);
+        if (!el.querySelector(".wave-deco-line")) {
+            const line = document.createElement("div");
+            line.classList.add("wave-deco-line", "bg-accent/20");
+            line.style.position = "absolute";
+            line.style.top = "0";
+            line.style.left = "0";
+            line.style.width = "500px";
+            line.style.height = "1px";
+            el.appendChild(line);
+        }
+    });
+}
+
 // OSC 16162 - Shell Integration Commands
 // See aiprompts/wave-osc-16162.md for full documentation
+type ShellIntegrationStatus = "ready" | "running-command";
+
 type Osc16162Command =
     | { command: "A"; data: {} }
     | { command: "C"; data: { cmd64?: string } }
@@ -181,7 +210,8 @@ type Osc16162Command =
     | { command: "I"; data: { inputempty?: boolean } }
     | { command: "R"; data: {} };
 
-function handleOsc16162Command(data: string, blockId: string, loaded: boolean, terminal: Terminal): boolean {
+function handleOsc16162Command(data: string, blockId: string, loaded: boolean, termWrap: TermWrap): boolean {
+    const terminal = termWrap.terminal;
     if (!loaded) {
         return true;
     }
@@ -206,24 +236,41 @@ function handleOsc16162Command(data: string, blockId: string, loaded: boolean, t
     switch (cmd.command) {
         case "A":
             rtInfo["shell:state"] = "ready";
+            globalStore.set(termWrap.shellIntegrationStatusAtom, "ready");
+            const marker = terminal.registerMarker(0);
+            if (marker) {
+                termWrap.promptMarkers.push(marker);
+                // addTestMarkerDecoration(terminal, marker, termWrap);
+                marker.onDispose(() => {
+                    const idx = termWrap.promptMarkers.indexOf(marker);
+                    if (idx !== -1) {
+                        termWrap.promptMarkers.splice(idx, 1);
+                    }
+                });
+            }
             break;
         case "C":
             rtInfo["shell:state"] = "running-command";
+            globalStore.set(termWrap.shellIntegrationStatusAtom, "running-command");
             if (cmd.data.cmd64) {
                 const decodedLen = Math.ceil(cmd.data.cmd64.length * 0.75);
                 if (decodedLen > 8192) {
                     rtInfo["shell:lastcmd"] = `# command too large (${decodedLen} bytes)`;
+                    globalStore.set(termWrap.lastCommandAtom, rtInfo["shell:lastcmd"]);
                 } else {
                     try {
                         const decodedCmd = atob(cmd.data.cmd64);
                         rtInfo["shell:lastcmd"] = decodedCmd;
+                        globalStore.set(termWrap.lastCommandAtom, decodedCmd);
                     } catch (e) {
                         console.error("Error decoding cmd64:", e);
                         rtInfo["shell:lastcmd"] = null;
+                        globalStore.set(termWrap.lastCommandAtom, null);
                     }
                 }
             } else {
                 rtInfo["shell:lastcmd"] = null;
+                globalStore.set(termWrap.lastCommandAtom, null);
             }
             // also clear lastcmdexitcode (since we've now started a new command)
             rtInfo["shell:lastcmdexitcode"] = null;
@@ -255,6 +302,7 @@ function handleOsc16162Command(data: string, blockId: string, loaded: boolean, t
             }
             break;
         case "R":
+            globalStore.set(termWrap.shellIntegrationStatusAtom, null);
             if (terminal.buffer.active.type === "alternate") {
                 terminal.write("\x1b[?1049l");
             }
@@ -298,6 +346,9 @@ export class TermWrap {
     private toDispose: TermTypes.IDisposable[] = [];
     pasteActive: boolean = false;
     lastUpdated: number;
+    promptMarkers: TermTypes.IMarker[] = [];
+    shellIntegrationStatusAtom: jotai.PrimitiveAtom<"ready" | "running-command" | null>;
+    lastCommandAtom: jotai.PrimitiveAtom<string | null>;
 
     constructor(
         blockId: string,
@@ -312,6 +363,11 @@ export class TermWrap {
         this.dataBytesProcessed = 0;
         this.hasResized = false;
         this.lastUpdated = Date.now();
+        this.promptMarkers = [];
+        this.shellIntegrationStatusAtom = jotai.atom(null) as jotai.PrimitiveAtom<
+            "ready" | "running-command" | null
+        >;
+        this.lastCommandAtom = jotai.atom(null) as jotai.PrimitiveAtom<string | null>;
         this.terminal = new Terminal(options);
         this.fitAddon = new FitAddon();
         this.fitAddon.noScrollbar = PLATFORM === PlatformMacOS;
@@ -358,7 +414,7 @@ export class TermWrap {
             return handleOsc7Command(data, this.blockId, this.loaded);
         });
         this.terminal.parser.registerOscHandler(16162, (data: string) => {
-            return handleOsc16162Command(data, this.blockId, this.loaded, this.terminal);
+            return handleOsc16162Command(data, this.blockId, this.loaded, this);
         });
         this.terminal.attachCustomKeyEventHandler(waveOptions.keydownHandler);
         this.connectElem = connectElem;
@@ -404,6 +460,25 @@ export class TermWrap {
         }
         this.mainFileSubject = getFileSubject(this.blockId, TermFileName);
         this.mainFileSubject.subscribe(this.handleNewFileSubjectData.bind(this));
+        
+        try {
+            const rtInfo = await RpcApi.GetRTInfoCommand(TabRpcClient, {
+                oref: WOS.makeORef("block", this.blockId),
+            });
+            
+            if (rtInfo["shell:integration"]) {
+                const shellState = rtInfo["shell:state"] as ShellIntegrationStatus;
+                globalStore.set(this.shellIntegrationStatusAtom, shellState || null);
+            } else {
+                globalStore.set(this.shellIntegrationStatusAtom, null);
+            }
+            
+            const lastCmd = rtInfo["shell:lastcmd"];
+            globalStore.set(this.lastCommandAtom, lastCmd || null);
+        } catch (e) {
+            console.log("Error loading runtime info:", e);
+        }
+        
         try {
             await this.loadInitialTerminalData();
         } finally {
@@ -413,6 +488,12 @@ export class TermWrap {
     }
 
     dispose() {
+        this.promptMarkers.forEach((marker) => {
+            try {
+                marker.dispose();
+            } catch (_) {}
+        });
+        this.promptMarkers = [];
         this.terminal.dispose();
         this.toDispose.forEach((d) => {
             try {
