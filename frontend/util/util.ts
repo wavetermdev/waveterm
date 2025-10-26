@@ -104,30 +104,48 @@ function makeIconClass(icon: string, fw: boolean, opts?: { spin?: boolean; defau
         }
         return null;
     }
+
+    let animation: string | null = null;
+    let hasFwModifier = false;
+
+    while (icon.match(/\+(spin|beat|fade|fw)$/)) {
+        const modifierMatch = icon.match(/\+(spin|beat|fade|fw)$/);
+        if (modifierMatch) {
+            const modifier = modifierMatch[1];
+            if (modifier === "fw") {
+                hasFwModifier = true;
+            } else {
+                animation = modifier;
+            }
+            icon = icon.replace(/\+(spin|beat|fade|fw)$/, "");
+        }
+    }
+
+    let baseClass: string;
     if (icon.match(/^(solid@)?[a-z0-9-]+$/)) {
-        // strip off "solid@" prefix if it exists
         icon = icon.replace(/^solid@/, "");
-        return clsx(`fa fa-solid fa-${icon}`, fw ? "fa-fw" : null, opts?.spin ? "fa-spin" : null);
-    }
-    if (icon.match(/^regular@[a-z0-9-]+$/)) {
-        // strip off the "regular@" prefix if it exists
+        baseClass = `fa fa-solid fa-${icon}`;
+    } else if (icon.match(/^regular@[a-z0-9-]+$/)) {
         icon = icon.replace(/^regular@/, "");
-        return clsx(`fa fa-sharp fa-regular fa-${icon}`, fw ? "fa-fw" : null, opts?.spin ? "fa-spin" : null);
-    }
-    if (icon.match(/^brands@[a-z0-9-]+$/)) {
-        // strip off the "brands@" prefix if it exists
+        baseClass = `fa fa-sharp fa-regular fa-${icon}`;
+    } else if (icon.match(/^brands@[a-z0-9-]+$/)) {
         icon = icon.replace(/^brands@/, "");
-        return clsx(`fa fa-brands fa-${icon}`, fw ? "fa-fw" : null, opts?.spin ? "fa-spin" : null);
-    }
-    if (icon.match(/^custom@[a-z0-9-]+$/)) {
-        // strip off the "custom@" prefix if it exists
+        baseClass = `fa fa-brands fa-${icon}`;
+    } else if (icon.match(/^custom@[a-z0-9-]+$/)) {
         icon = icon.replace(/^custom@/, "");
-        return clsx(`fa fa-kit fa-${icon}`, fw ? "fa-fw" : null, opts?.spin ? "fa-spin" : null);
+        baseClass = `fa fa-kit fa-${icon}`;
+    } else {
+        if (opts?.defaultIcon != null) {
+            return makeIconClass(opts.defaultIcon, fw, { spin: opts?.spin });
+        }
+        return null;
     }
-    if (opts?.defaultIcon != null) {
-        return makeIconClass(opts.defaultIcon, fw, { spin: opts?.spin });
-    }
-    return null;
+
+    const shouldAddFw = fw || hasFwModifier;
+    const hasSpin = animation === "spin" || opts?.spin;
+    const animationClass = animation && animation !== "spin" ? `fa-${animation}` : null;
+
+    return clsx(baseClass, shouldAddFw ? "fa-fw" : null, hasSpin ? "fa-spin" : null, animationClass);
 }
 
 /**

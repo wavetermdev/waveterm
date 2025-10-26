@@ -865,8 +865,9 @@ type CommandSetRTInfoData struct {
 }
 
 type CommandTermGetScrollbackLinesData struct {
-	LineStart int `json:"linestart"`
-	LineEnd   int `json:"lineend"`
+	LineStart   int  `json:"linestart"`
+	LineEnd     int  `json:"lineend"`
+	LastCommand bool `json:"lastcommand"`
 }
 
 type CommandTermGetScrollbackLinesRtnData struct {

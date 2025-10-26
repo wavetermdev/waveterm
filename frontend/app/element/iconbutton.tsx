@@ -5,7 +5,7 @@ import { useLongClick } from "@/app/hook/useLongClick";
 import { makeIconClass } from "@/util/util";
 import clsx from "clsx";
 import { atom, useAtom } from "jotai";
-import { forwardRef, memo, useMemo, useRef } from "react";
+import { CSSProperties, forwardRef, memo, useMemo, useRef } from "react";
 import "./iconbutton.scss";
 
 type IconButtonProps = { decl: IconButtonDecl; className?: string };
@@ -15,6 +15,10 @@ export const IconButton = memo(
         const spin = decl.iconSpin ?? false;
         useLongClick(ref, decl.click, decl.longClick, decl.disabled);
         const disabled = decl.disabled ?? false;
+        const styleVal: CSSProperties = {};
+        if (decl.iconColor) {
+            styleVal.color = decl.iconColor;
+        }
         return (
             <button
                 ref={ref}
@@ -24,7 +28,7 @@ export const IconButton = memo(
                 })}
                 title={decl.title}
                 aria-label={decl.title}
-                style={{ color: decl.iconColor ?? "inherit" }}
+                style={styleVal}
                 disabled={disabled}
             >
                 {typeof decl.icon === "string" ? <i className={makeIconClass(decl.icon, true, { spin })} /> : decl.icon}
