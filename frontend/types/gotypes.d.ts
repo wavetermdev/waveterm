@@ -722,6 +722,7 @@ declare global {
         "shell:lastcmd"?: string;
         "shell:lastcmdexitcode"?: number;
         "builder:layout"?: {[key: string]: number};
+        "waveai:chatid"?: string;
     };
 
     // iochantypes.Packet

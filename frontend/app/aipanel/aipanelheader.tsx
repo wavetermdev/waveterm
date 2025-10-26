@@ -14,6 +14,7 @@ interface AIPanelHeaderProps {
 
 export const AIPanelHeader = memo(({ onClose, model, onClearChat }: AIPanelHeaderProps) => {
     const widgetAccess = useAtomValue(model.widgetAccessAtom);
+    const inBuilder = model.inBuilder;
 
     const handleKebabClick = (e: React.MouseEvent) => {
         const menu: ContextMenuItem[] = [
@@ -42,35 +43,37 @@ export const AIPanelHeader = memo(({ onClose, model, onClearChat }: AIPanelHeade
             </h2>
 
             <div className="flex items-center flex-shrink-0 whitespace-nowrap">
-                <div className="flex items-center text-sm whitespace-nowrap">
-                    <span className="text-gray-300 @xs:hidden mr-1 text-[12px]">Context</span>
-                    <span className="text-gray-300 hidden @xs:inline mr-2 text-[12px]">Widget Context</span>
-                    <button
-                        onClick={() => {
-                            model.setWidgetAccess(!widgetAccess);
-                            setTimeout(() => {
-                                model.focusInput();
-                            }, 0);
-                        }}
-                        className={`relative inline-flex h-6 w-14 items-center rounded-full transition-colors cursor-pointer ${
-                            widgetAccess ? "bg-accent-500" : "bg-gray-600"
-                        }`}
-                        title={`Widget Access ${widgetAccess ? "ON" : "OFF"}`}
-                    >
-                        <span
-                            className={`absolute inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                                widgetAccess ? "translate-x-8" : "translate-x-1"
+                {!inBuilder && (
+                    <div className="flex items-center text-sm whitespace-nowrap">
+                        <span className="text-gray-300 @xs:hidden mr-1 text-[12px]">Context</span>
+                        <span className="text-gray-300 hidden @xs:inline mr-2 text-[12px]">Widget Context</span>
+                        <button
+                            onClick={() => {
+                                model.setWidgetAccess(!widgetAccess);
+                                setTimeout(() => {
+                                    model.focusInput();
+                                }, 0);
+                            }}
+                            className={`relative inline-flex h-6 w-14 items-center rounded-full transition-colors cursor-pointer ${
+                                widgetAccess ? "bg-accent-500" : "bg-gray-600"
                             }`}
-                        />
-                        <span
-                            className={`relative z-10 text-xs text-white transition-all ${
-                                widgetAccess ? "ml-2.5 mr-6 text-left font-bold" : "ml-6 mr-1 text-right"
-                            }`}
+                            title={`Widget Access ${widgetAccess ? "ON" : "OFF"}`}
                         >
-                            {widgetAccess ? "ON" : "OFF"}
-                        </span>
-                    </button>
-                </div>
+                            <span
+                                className={`absolute inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                                    widgetAccess ? "translate-x-8" : "translate-x-1"
+                                }`}
+                            />
+                            <span
+                                className={`relative z-10 text-xs text-white transition-all ${
+                                    widgetAccess ? "ml-2.5 mr-6 text-left font-bold" : "ml-6 mr-1 text-right"
+                                }`}
+                            >
+                                {widgetAccess ? "ON" : "OFF"}
+                            </span>
+                        </button>
+                    </div>
+                )}
 
                 <button
                     onClick={handleKebabClick}

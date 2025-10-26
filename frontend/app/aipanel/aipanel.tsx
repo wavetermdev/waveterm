@@ -162,6 +162,24 @@ const AIWelcomeMessage = memo(() => {
 
 AIWelcomeMessage.displayName = "AIWelcomeMessage";
 
+const AIBuilderWelcomeMessage = memo(() => {
+    return (
+        <div className="text-secondary py-8">
+            <div className="text-center">
+                <i className="fa fa-sparkles text-4xl text-accent mb-4 block"></i>
+                <p className="text-lg font-bold text-primary">WaveApp Builder</p>
+            </div>
+            <div className="mt-4 text-left max-w-md mx-auto">
+                <p className="text-sm mb-6">
+                    The WaveApp builder helps create wave widgets that integrate seamlessly into Wave Terminal.
+                </p>
+            </div>
+        </div>
+    );
+});
+
+AIBuilderWelcomeMessage.displayName = "AIBuilderWelcomeMessage";
+
 interface AIErrorMessageProps {
     errorMessage: string;
     onClear: () => void;
@@ -258,7 +276,7 @@ const AIPanelComponentInner = memo(({ className, onClose }: AIPanelProps) => {
 
     useEffect(() => {
         const loadChat = async () => {
-            await model.uiLoadChat();
+            await model.uiLoadInitialChat();
             setInitialLoadDone(true);
         };
         loadChat();
@@ -461,7 +479,7 @@ const AIPanelComponentInner = memo(({ className, onClose }: AIPanelProps) => {
                     <>
                         {messages.length === 0 && initialLoadDone ? (
                             <div className="flex-1 overflow-y-auto p-2" onContextMenu={handleMessagesContextMenu}>
-                                <AIWelcomeMessage />
+                                {model.inBuilder ? <AIBuilderWelcomeMessage /> : <AIWelcomeMessage />}
                             </div>
                         ) : (
                             <AIPanelMessages

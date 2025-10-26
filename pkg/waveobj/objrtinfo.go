@@ -19,4 +19,6 @@ type ObjRTInfo struct {
 	ShellLastCmdExitCode int    `json:"shell:lastcmdexitcode,omitempty"`
 
 	BuilderLayout map[string]float64 `json:"builder:layout,omitempty"`
+
+	WaveAIChatId string `json:"waveai:chatid,omitempty"`
 }

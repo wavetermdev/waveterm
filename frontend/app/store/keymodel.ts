@@ -410,16 +410,18 @@ function appHandleKeyDown(waveEvent: WaveKeyboardEvent): boolean {
             return true;
         }
     }
-    const layoutModel = getLayoutModelForStaticTab();
-    const focusedNode = globalStore.get(layoutModel.focusedNode);
-    const blockId = focusedNode?.data?.blockId;
-    if (blockId != null && shouldDispatchToBlock(waveEvent)) {
-        const bcm = getBlockComponentModel(blockId);
-        const viewModel = bcm?.viewModel;
-        if (viewModel?.keyDownHandler) {
-            const handledByBlock = viewModel.keyDownHandler(waveEvent);
-            if (handledByBlock) {
-                return true;
+    if (globalStore.get(atoms.waveWindowType) == "tab") {
+        const layoutModel = getLayoutModelForStaticTab();
+        const focusedNode = globalStore.get(layoutModel.focusedNode);
+        const blockId = focusedNode?.data?.blockId;
+        if (blockId != null && shouldDispatchToBlock(waveEvent)) {
+            const bcm = getBlockComponentModel(blockId);
+            const viewModel = bcm?.viewModel;
+            if (viewModel?.keyDownHandler) {
+                const handledByBlock = viewModel.keyDownHandler(waveEvent);
+                if (handledByBlock) {
+                    return true;
+                }
             }
         }
     }
