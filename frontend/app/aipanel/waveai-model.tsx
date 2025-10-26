@@ -341,4 +341,17 @@ export class WaveAIModel {
             console.error("Failed to fetch rate limit info:", error);
         }
     }
+
+    handleAIFeedback(feedback: "good" | "bad") {
+        RpcApi.RecordTEventCommand(
+            TabRpcClient,
+            {
+                event: "waveai:feedback",
+                props: {
+                    "waveai:feedback": feedback,
+                },
+            },
+            { noresponse: true }
+        );
+    }
 }

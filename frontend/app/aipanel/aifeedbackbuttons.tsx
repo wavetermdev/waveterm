@@ -1,10 +1,9 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { RpcApi } from "@/app/store/wshclientapi";
-import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { cn, makeIconClass } from "@/util/util";
 import { memo, useState } from "react";
+import { WaveAIModel } from "./waveai-model";
 
 interface AIFeedbackButtonsProps {
     messageText: string;
@@ -21,12 +20,7 @@ export const AIFeedbackButtons = memo(({ messageText }: AIFeedbackButtonsProps) 
             setThumbsDownClicked(false);
         }
         if (!thumbsUpClicked) {
-            RpcApi.RecordTEventCommand(TabRpcClient, {
-                event: "waveai:feedback",
-                props: {
-                    "waveai:feedback": "good",
-                },
-            });
+            WaveAIModel.getInstance().handleAIFeedback("good");
         }
     };
 
@@ -36,12 +30,7 @@ export const AIFeedbackButtons = memo(({ messageText }: AIFeedbackButtonsProps) 
             setThumbsUpClicked(false);
         }
         if (!thumbsDownClicked) {
-            RpcApi.RecordTEventCommand(TabRpcClient, {
-                event: "waveai:feedback",
-                props: {
-                    "waveai:feedback": "bad",
-                },
-            });
+            WaveAIModel.getInstance().handleAIFeedback("bad");
         }
     };
 
