@@ -29,6 +29,7 @@ const (
 	OType_LayoutState = "layout"
 	OType_Block       = "block"
 	OType_Temp        = "temp"
+	OType_Builder     = "builder" // not persisted to DB
 )
 
 var ValidOTypes = map[string]bool{
@@ -39,6 +40,7 @@ var ValidOTypes = map[string]bool{
 	OType_LayoutState: true,
 	OType_Block:       true,
 	OType_Temp:        true,
+	OType_Builder:     true,
 }
 
 type WaveObjUpdate struct {
