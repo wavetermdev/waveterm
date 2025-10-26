@@ -1,8 +1,6 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-@use "../mixins.scss";
-
 .menu {
     position: absolute;
     z-index: 1000;
@@ -36,7 +34,10 @@
     border-radius: 2px;
 
     .label {
-        @include mixins.ellipsis();
+        display: block;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
         text-decoration: none;
     }
 }
