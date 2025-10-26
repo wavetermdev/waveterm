@@ -290,6 +290,7 @@ declare global {
     type CommandSetRTInfoData = {
         oref: ORef;
         data: ObjRTInfo;
+        delete?: boolean;
     };
 
     // wshrpc.CommandTermGetScrollbackLinesData
@@ -720,6 +721,7 @@ declare global {
         "shell:inputempty"?: boolean;
         "shell:lastcmd"?: string;
         "shell:lastcmdexitcode"?: number;
+        "builder:layout"?: {[key: string]: number};
     };
 
     // iochantypes.Packet

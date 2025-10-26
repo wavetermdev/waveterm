@@ -8,6 +8,7 @@ import type * as rxjs from "rxjs";
 declare global {
     type GlobalAtomsType = {
         clientId: jotai.Atom<string>; // readonly
+        builderId: jotai.PrimitiveAtom<string>; // readonly (for builder mode)
         client: jotai.Atom<Client>; // driven from WOS
         uiContext: jotai.Atom<UIContext>; // driven from windowId, tabId
         waveWindow: jotai.Atom<WaveWindow>; // driven from WOS

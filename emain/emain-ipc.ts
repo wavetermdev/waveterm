@@ -390,10 +390,23 @@ export function initIpcHandlers() {
 
     electron.ipcMain.on("open-new-window", () => fireAndForget(createNewWaveWindow));
 
-    electron.ipcMain.on("close-builder-window", (event) => {
+    electron.ipcMain.on("close-builder-window", async (event) => {
         const bw = getBuilderWindowByWebContentsId(event.sender.id);
-        if (bw != null) {
-            bw.destroy();
+        if (bw == null) {
+            return;
         }
+        const builderId = bw.builderId;
+        if (builderId) {
+            try {
+                await RpcApi.SetRTInfoCommand(ElectronWshClient, {
+                    oref: `builder:${builderId}`,
+                    data: {} as ObjRTInfo,
+                    delete: true,
+                });
+            } catch (e) {
+                console.error("Error deleting builder rtinfo:", e);
+            }
+        }
+        bw.destroy();
     });
 }

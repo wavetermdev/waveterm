@@ -167,6 +167,10 @@ func (ws *WshServer) GetRTInfoCommand(ctx context.Context, data wshrpc.CommandGe
 }
 
 func (ws *WshServer) SetRTInfoCommand(ctx context.Context, data wshrpc.CommandSetRTInfoData) error {
+	if data.Delete {
+		wstore.DeleteRTInfo(data.ORef)
+		return nil
+	}
 	wstore.SetRTInfo(data.ORef, data.Data)
 	return nil
 }

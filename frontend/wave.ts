@@ -280,6 +280,7 @@ async function initBuilder(initOpts: BuilderInitOpts) {
         windowId: initOpts.windowId,
         platform,
         environment: "renderer",
+        builderId: initOpts.builderId,
     });
     (window as any).globalAtoms = atoms;
 
