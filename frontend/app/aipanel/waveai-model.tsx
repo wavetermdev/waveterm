@@ -38,6 +38,7 @@ export class WaveAIModel {
     private useChatStop: (() => void) | null = null;
     // Used for injecting Wave-specific message data into DefaultChatTransport's prepareSendMessagesRequest
     realMessage: AIMessage | null = null;
+    private orefContext: ORef;
 
     widgetAccessAtom!: jotai.Atom<boolean>;
     droppedFiles: jotai.PrimitiveAtom<DroppedFile[]> = jotai.atom([]);
@@ -50,16 +51,15 @@ export class WaveAIModel {
     isLoadingChatAtom: jotai.PrimitiveAtom<boolean> = jotai.atom(false);
     isChatEmpty: boolean = true;
 
-    private constructor() {
-        const tabId = globalStore.get(atoms.staticTabId);
-        const tabORef = WOS.makeORef("tab", tabId);
-        const chatIdMetaAtom = getOrefMetaKeyAtom(tabORef, "waveai:chatid");
+    private constructor(orefContext: ORef) {
+        this.orefContext = orefContext;
+        const chatIdMetaAtom = getOrefMetaKeyAtom(this.orefContext, "waveai:chatid");
         let chatIdValue = globalStore.get(chatIdMetaAtom);
 
         if (chatIdValue == null) {
             chatIdValue = crypto.randomUUID();
             RpcApi.SetMetaCommand(TabRpcClient, {
-                oref: tabORef,
+                oref: this.orefContext,
                 meta: { "waveai:chatid": chatIdValue },
             });
         }
@@ -67,16 +67,12 @@ export class WaveAIModel {
         this.chatId = jotai.atom(chatIdValue);
 
         this.modelAtom = jotai.atom((get) => {
-            const tabId = get(atoms.staticTabId);
-            const tabORef = WOS.makeORef("tab", tabId);
-            const modelMetaAtom = getOrefMetaKeyAtom(tabORef, "waveai:model");
+            const modelMetaAtom = getOrefMetaKeyAtom(this.orefContext, "waveai:model");
             return get(modelMetaAtom) ?? "gpt-5";
         });
 
         this.widgetAccessAtom = jotai.atom((get) => {
-            const tabId = get(atoms.staticTabId);
-            const tabORef = WOS.makeORef("tab", tabId);
-            const widgetAccessMetaAtom = getOrefMetaKeyAtom(tabORef, "waveai:widgetcontext");
+            const widgetAccessMetaAtom = getOrefMetaKeyAtom(this.orefContext, "waveai:widgetcontext");
             const value = get(widgetAccessMetaAtom);
             return value ?? true;
         });
@@ -89,7 +85,9 @@ export class WaveAIModel {
 
     static getInstance(): WaveAIModel {
         if (!WaveAIModel.instance) {
-            WaveAIModel.instance = new WaveAIModel();
+            const tabId = globalStore.get(atoms.staticTabId);
+            const orefContext = WOS.makeORef("tab", tabId);
+            WaveAIModel.instance = new WaveAIModel(orefContext);
         }
         return WaveAIModel.instance;
     }
@@ -150,9 +148,8 @@ export class WaveAIModel {
         const newChatId = crypto.randomUUID();
         globalStore.set(this.chatId, newChatId);
 
-        const tabId = globalStore.get(atoms.staticTabId);
         RpcApi.SetMetaCommand(TabRpcClient, {
-            oref: WOS.makeORef("tab", tabId),
+            oref: this.orefContext,
             meta: { "waveai:chatid": newChatId },
         });
 
@@ -224,17 +221,15 @@ export class WaveAIModel {
     }
 
     setModel(model: string) {
-        const tabId = globalStore.get(atoms.staticTabId);
         RpcApi.SetMetaCommand(TabRpcClient, {
-            oref: WOS.makeORef("tab", tabId),
+            oref: this.orefContext,
             meta: { "waveai:model": model },
         });
     }
 
     setWidgetAccess(enabled: boolean) {
-        const tabId = globalStore.get(atoms.staticTabId);
         RpcApi.SetMetaCommand(TabRpcClient, {
-            oref: WOS.makeORef("tab", tabId),
+            oref: this.orefContext,
             meta: { "waveai:widgetcontext": enabled },
         });
     }
