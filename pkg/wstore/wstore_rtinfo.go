@@ -12,21 +12,21 @@ import (
 )
 
 var (
-	blockRTInfoStore = make(map[waveobj.ORef]*waveobj.ObjRTInfo)
-	blockRTInfoMutex sync.RWMutex
+	rtInfoStore = make(map[waveobj.ORef]*waveobj.ObjRTInfo)
+	rtInfoMutex sync.RWMutex
 )
 
-// SetRTInfo merges the provided info map into the BlockRTInfo for the given ORef.
-// Only updates fields that exist in the BlockRTInfo struct.
+// SetRTInfo merges the provided info map into the ObjRTInfo for the given ORef.
+// Only updates fields that exist in the ObjRTInfo struct.
 // Removes fields that have nil values.
 func SetRTInfo(oref waveobj.ORef, info map[string]any) {
-	blockRTInfoMutex.Lock()
-	defer blockRTInfoMutex.Unlock()
+	rtInfoMutex.Lock()
+	defer rtInfoMutex.Unlock()
 
-	rtInfo, exists := blockRTInfoStore[oref]
+	rtInfo, exists := rtInfoStore[oref]
 	if !exists {
 		rtInfo = &waveobj.ObjRTInfo{}
-		blockRTInfoStore[oref] = rtInfo
+		rtInfoStore[oref] = rtInfo
 	}
 
 	rtInfoValue := reflect.ValueOf(rtInfo).Elem()
@@ -85,12 +85,12 @@ func SetRTInfo(oref waveobj.ORef, info map[string]any) {
 	}
 }
 
-// GetRTInfo returns the BlockRTInfo for the given ORef, or nil if not found
+// GetRTInfo returns the ObjRTInfo for the given ORef, or nil if not found
 func GetRTInfo(oref waveobj.ORef) *waveobj.ObjRTInfo {
-	blockRTInfoMutex.RLock()
-	defer blockRTInfoMutex.RUnlock()
+	rtInfoMutex.RLock()
+	defer rtInfoMutex.RUnlock()
 
-	if rtInfo, exists := blockRTInfoStore[oref]; exists {
+	if rtInfo, exists := rtInfoStore[oref]; exists {
 		// Return a copy to avoid external modification
 		copy := *rtInfo
 		return &copy
@@ -98,10 +98,10 @@ func GetRTInfo(oref waveobj.ORef) *waveobj.ObjRTInfo {
 	return nil
 }
 
-// DeleteRTInfo removes the BlockRTInfo for the given ORef
+// DeleteRTInfo removes the ObjRTInfo for the given ORef
 func DeleteRTInfo(oref waveobj.ORef) {
-	blockRTInfoMutex.Lock()
-	defer blockRTInfoMutex.Unlock()
+	rtInfoMutex.Lock()
+	defer rtInfoMutex.Unlock()
 
-	delete(blockRTInfoStore, oref)
+	delete(rtInfoStore, oref)
 }
