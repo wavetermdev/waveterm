@@ -9,6 +9,7 @@ import {
 } from "@/app/aipanel/aitypes";
 import { FocusManager } from "@/app/store/focusManager";
 import { atoms, getOrefMetaKeyAtom } from "@/app/store/global";
+import { BuilderFocusManager } from "@/builder/store/builderFocusManager";
 import { globalStore } from "@/app/store/jotaiStore";
 import * as WOS from "@/app/store/wos";
 import { RpcApi } from "@/app/store/wshclientapi";
@@ -54,6 +55,7 @@ export class WaveAIModel {
     isLoadingChatAtom: jotai.PrimitiveAtom<boolean> = jotai.atom(false);
     isChatEmpty: boolean = true;
     isWaveAIFocusedAtom!: jotai.Atom<boolean>;
+    panelVisibleAtom!: jotai.Atom<boolean>;
 
     private constructor(orefContext: ORef, inBuilder: boolean) {
         this.orefContext = orefContext;
@@ -80,12 +82,22 @@ export class WaveAIModel {
         });
 
         this.isWaveAIFocusedAtom = jotai.atom((get) => {
+            if (this.inBuilder) {
+                return get(BuilderFocusManager.getInstance().focusType) === "waveai";
+            }
             return get(FocusManager.getInstance().focusType) === "waveai";
+        });
+
+        this.panelVisibleAtom = jotai.atom((get) => {
+            if (this.inBuilder) {
+                return true;
+            }
+            return get(WorkspaceLayoutModel.getInstance().panelVisibleAtom);
         });
     }
 
     getPanelVisibleAtom(): jotai.Atom<boolean> {
-        return WorkspaceLayoutModel.getInstance().panelVisibleAtom;
+        return this.panelVisibleAtom;
     }
 
     static getInstance(): WaveAIModel {
@@ -385,11 +397,19 @@ export class WaveAIModel {
     }
 
     requestWaveAIFocus() {
-        FocusManager.getInstance().requestWaveAIFocus();
+        if (this.inBuilder) {
+            BuilderFocusManager.getInstance().setWaveAIFocused();
+        } else {
+            FocusManager.getInstance().requestWaveAIFocus();
+        }
     }
 
     requestNodeFocus() {
-        FocusManager.getInstance().requestNodeFocus();
+        if (this.inBuilder) {
+            BuilderFocusManager.getInstance().setAppFocused();
+        } else {
+            FocusManager.getInstance().requestNodeFocus();
+        }
     }
 
     toolUseKeepalive(toolcallid: string) {
