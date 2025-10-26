@@ -123,7 +123,7 @@ func PublishDraft(draftAppId string) (string, error) {
 		return "", err
 	}
 
-	return draftAppId, nil
+	return localAppId, nil
 }
 
 func RevertDraft(draftAppId string) error {
@@ -176,12 +176,14 @@ func MakeDraftFromLocal(localAppId string) (string, error) {
 	draftAppId := MakeAppId(AppNSDraft, appName)
 	draftDir, err := GetAppDir(draftAppId)
 	if err != nil {
-		// draft already exists, don't overwrite (that's what RevertDraft is for)
 		return "", err
 	}
 
 	if _, err := os.Stat(draftDir); err == nil {
+		// draft already exists, don't overwrite (that's what RevertDraft is for)
 		return draftAppId, nil
+	} else if !os.IsNotExist(err) {
+		return "", err
 	}
 
 	if err := copyDir(localDir, draftDir); err != nil {

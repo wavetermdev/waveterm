@@ -449,14 +449,15 @@ const AIPanelComponentInner = memo(({ className, onClose }: AIPanelProps) => {
             ref={containerRef}
             data-waveai-panel="true"
             className={cn(
-                "bg-gray-900 flex flex-col relative h-[calc(100%-4px)] mt-1",
+                "bg-gray-900 flex flex-col relative h-[calc(100%-4px)]",
+                model.inBuilder ? "mt-0" : "mt-1",
                 className,
                 isDragOver && "bg-gray-800 border-accent",
                 isFocused ? "border-2 border-accent" : "border-2 border-transparent"
             )}
             style={{
-                borderTopRightRadius: 10,
-                borderBottomRightRadius: 10,
+                borderTopRightRadius: model.inBuilder ? 0 : 10,
+                borderBottomRightRadius: model.inBuilder ? 0 : 10,
                 borderBottomLeftRadius: 10,
             }}
             onFocusCapture={handleFocusCapture}

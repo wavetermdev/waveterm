@@ -350,7 +350,10 @@ function getOverrideConfigAtom<T extends keyof SettingsType>(blockId: string, ke
     return overrideAtom;
 }
 
-function useOverrideConfigAtom<T extends keyof SettingsType>(blockId: string, key: T): SettingsType[T] {
+function useOverrideConfigAtom<T extends keyof SettingsType>(blockId: string | null, key: T): SettingsType[T] {
+    if (blockId == null) {
+        return useAtomValue(getSettingsKeyAtom(key));
+    }
     return useAtomValue(getOverrideConfigAtom(blockId, key));
 }
 

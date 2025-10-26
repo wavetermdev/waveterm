@@ -421,6 +421,50 @@ function cn(...inputs: ClassValue[]) {
     return twMerge(clsx(inputs));
 }
 
+type ParsedDataUrl = {
+    mimeType: string;
+    buffer: Uint8Array;
+};
+
+function parseDataUrl(dataUrl: string): ParsedDataUrl {
+    if (!dataUrl.startsWith("data:")) {
+        throw new Error("Invalid data URL: must start with 'data:'");
+    }
+    
+    const parts = dataUrl.split(",");
+    if (parts.length < 2) {
+        throw new Error("Invalid data URL: missing data component");
+    }
+    
+    const header = parts[0];
+    const data = parts[1];
+    const mimeType = header.split(";")[0].slice(5);
+    
+    const isBase64 = header.includes(";base64");
+    
+    let buffer: Uint8Array;
+    if (isBase64) {
+        try {
+            buffer = base64ToArray(data);
+            if (buffer.length === 0 && data.length > 0) {
+                throw new Error("Failed to decode base64 data");
+            }
+        } catch (err) {
+            throw new Error(`Failed to decode base64 data: ${err.message}`);
+        }
+    } else {
+        try {
+            const decodedData = decodeURIComponent(data);
+            const encoder = new TextEncoder();
+            buffer = encoder.encode(decodedData);
+        } catch (err) {
+            throw new Error(`Failed to decode percent-encoded data: ${err.message}`);
+        }
+    }
+    
+    return { mimeType, buffer };
+}
+
 export {
     atomWithDebounce,
     atomWithThrottle,
@@ -443,6 +487,7 @@ export {
     makeExternLink,
     makeIconClass,
     mergeMeta,
+    parseDataUrl,
     sleep,
     stringToBase64,
     useAtomValueSafe,

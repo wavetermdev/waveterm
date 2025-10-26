@@ -267,6 +267,10 @@ func ReplaceInFile(filePath string, edits []EditSpec) error {
 		return fmt.Errorf("failed to stat file: %w", err)
 	}
 
+	if !fileInfo.Mode().IsRegular() {
+		return fmt.Errorf("not a regular file: %s", filePath)
+	}
+
 	if fileInfo.Size() > MaxEditFileSize {
 		return fmt.Errorf("file too large for editing: %d bytes (max: %d)", fileInfo.Size(), MaxEditFileSize)
 	}

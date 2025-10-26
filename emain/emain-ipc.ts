@@ -11,7 +11,7 @@ import { Readable } from "stream";
 import { RpcApi } from "../frontend/app/store/wshclientapi";
 import { getWebServerEndpoint } from "../frontend/util/endpoints";
 import * as keyutil from "../frontend/util/keyutil";
-import { fireAndForget } from "../frontend/util/util";
+import { fireAndForget, parseDataUrl } from "../frontend/util/util";
 import { createBuilderWindow, getBuilderWindowByWebContentsId } from "./emain-builder";
 import { callWithOriginalXdgCurrentDesktopAsync, unamePlatform } from "./emain-platform";
 import { getWaveTabViewByWebContentsId } from "./emain-tabview";
@@ -63,16 +63,14 @@ function getFileNameFromUrl(url: string): string {
 function getUrlInSession(session: Electron.Session, url: string): Promise<UrlInSessionResult> {
     return new Promise((resolve, reject) => {
         if (url.startsWith("data:")) {
-            const parts = url.split(",");
-            if (parts.length < 2) {
-                return reject(new Error("Invalid data URL"));
+            try {
+                const parsed = parseDataUrl(url);
+                const buffer = Buffer.from(parsed.buffer);
+                const readable = Readable.from(buffer);
+                resolve({ stream: readable, mimeType: parsed.mimeType, fileName: "image" });
+            } catch (err) {
+                return reject(err);
             }
-            const header = parts[0];
-            const base64Data = parts[1];
-            const mimeType = header.split(";")[0].slice(5);
-            const buffer = Buffer.from(base64Data, "base64");
-            const readable = Readable.from(buffer);
-            resolve({ stream: readable, mimeType, fileName: "image" });
             return;
         }
         const request = electron.net.request({
@@ -84,6 +82,14 @@ function getUrlInSession(session: Electron.Session, url: string): Promise<UrlInS
             read() {},
         });
         request.on("response", (response) => {
+            const statusCode = response.statusCode;
+            if (statusCode < 200 || statusCode >= 300) {
+                readable.destroy();
+                request.abort();
+                reject(new Error(`HTTP request failed with status ${statusCode}: ${response.statusMessage || ""}`));
+                return;
+            }
+
             const mimeType = cleanMimeType(getSingleHeaderVal(response.headers, "content-type"));
             const fileName = getFileNameFromUrl(url) || "image";
             response.on("data", (chunk) => {
@@ -92,6 +98,10 @@ function getUrlInSession(session: Electron.Session, url: string): Promise<UrlInS
             response.on("end", () => {
                 readable.push(null);
                 resolve({ stream: readable, mimeType, fileName });
+            });
+            response.on("error", (err) => {
+                readable.destroy(err);
+                reject(err);
             });
         });
         request.on("error", (err) => {
@@ -118,6 +128,7 @@ function saveImageFileWithNativeDialog(defaultFileName: string, mimeType: string
         "image/bmp": "bmp",
         "image/tiff": "tiff",
         "image/heic": "heic",
+        "image/svg+xml": "svg",
     };
     function addExtensionIfNeeded(fileName: string, mimeType: string): string {
         const extension = mimeToExtension[mimeType];
