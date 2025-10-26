@@ -2,11 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { BlockModel } from "@/app/block/block-model";
-import { RpcApi } from "@/app/store/wshclientapi";
-import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { cn } from "@/util/util";
 import { memo, useEffect, useRef, useState } from "react";
 import { WaveUIMessagePart } from "./aitypes";
+import { WaveAIModel } from "./waveai-model";
 
 interface AIToolApprovalButtonsProps {
     count: number;
@@ -84,10 +83,7 @@ const AIToolUseBatch = memo(({ parts, isStreaming }: AIToolUseBatchProps) => {
 
         const interval = setInterval(() => {
             parts.forEach((part) => {
-                RpcApi.WaveAIToolApproveCommand(TabRpcClient, {
-                    toolcallid: part.data.toolcallid,
-                    keepalive: true,
-                });
+                WaveAIModel.getInstance().toolUseKeepalive(part.data.toolcallid);
             });
         }, 4000);
 
@@ -97,20 +93,14 @@ const AIToolUseBatch = memo(({ parts, isStreaming }: AIToolUseBatchProps) => {
     const handleApprove = () => {
         setUserApprovalOverride("user-approved");
         parts.forEach((part) => {
-            RpcApi.WaveAIToolApproveCommand(TabRpcClient, {
-                toolcallid: part.data.toolcallid,
-                approval: "user-approved",
-            });
+            WaveAIModel.getInstance().toolUseSendApproval(part.data.toolcallid, "user-approved");
         });
     };
 
     const handleDeny = () => {
         setUserApprovalOverride("user-denied");
         parts.forEach((part) => {
-            RpcApi.WaveAIToolApproveCommand(TabRpcClient, {
-                toolcallid: part.data.toolcallid,
-                approval: "user-denied",
-            });
+            WaveAIModel.getInstance().toolUseSendApproval(part.data.toolcallid, "user-denied");
         });
     };
 
@@ -155,10 +145,7 @@ const AIToolUse = memo(({ part, isStreaming }: AIToolUseProps) => {
         if (!isStreaming || effectiveApproval !== "needs-approval") return;
 
         const interval = setInterval(() => {
-            RpcApi.WaveAIToolApproveCommand(TabRpcClient, {
-                toolcallid: toolData.toolcallid,
-                keepalive: true,
-            });
+            WaveAIModel.getInstance().toolUseKeepalive(toolData.toolcallid);
         }, 4000);
 
         return () => clearInterval(interval);
@@ -174,18 +161,12 @@ const AIToolUse = memo(({ part, isStreaming }: AIToolUseProps) => {
 
     const handleApprove = () => {
         setUserApprovalOverride("user-approved");
-        RpcApi.WaveAIToolApproveCommand(TabRpcClient, {
-            toolcallid: toolData.toolcallid,
-            approval: "user-approved",
-        });
+        WaveAIModel.getInstance().toolUseSendApproval(toolData.toolcallid, "user-approved");
     };
 
     const handleDeny = () => {
         setUserApprovalOverride("user-denied");
-        RpcApi.WaveAIToolApproveCommand(TabRpcClient, {
-            toolcallid: toolData.toolcallid,
-            approval: "user-denied",
-        });
+        WaveAIModel.getInstance().toolUseSendApproval(toolData.toolcallid, "user-denied");
     };
 
     const handleMouseEnter = () => {

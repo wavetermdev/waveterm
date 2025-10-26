@@ -8,11 +8,13 @@ import {
     WaveUIMessagePart,
 } from "@/app/aipanel/aitypes";
 import { atoms, getOrefMetaKeyAtom } from "@/app/store/global";
+import { focusManager } from "@/app/store/focusManager";
 import { globalStore } from "@/app/store/jotaiStore";
 import * as WOS from "@/app/store/wos";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
+import { getWebServerEndpoint } from "@/util/endpoints";
 import { ChatStatus } from "ai";
 import * as jotai from "jotai";
 import type React from "react";
@@ -50,6 +52,7 @@ export class WaveAIModel {
     inputAtom: jotai.PrimitiveAtom<string> = jotai.atom("");
     isLoadingChatAtom: jotai.PrimitiveAtom<boolean> = jotai.atom(false);
     isChatEmpty: boolean = true;
+    isWaveAIFocusedAtom!: jotai.Atom<boolean>;
 
     private constructor(orefContext: ORef) {
         this.orefContext = orefContext;
@@ -81,6 +84,14 @@ export class WaveAIModel {
             const width = get(this.containerWidth);
             return width > 0 ? width - 35 : 0;
         });
+
+        this.isWaveAIFocusedAtom = jotai.atom((get) => {
+            return get(focusManager.focusType) === "waveai";
+        });
+    }
+
+    getPanelVisibleAtom(): jotai.Atom<boolean> {
+        return WorkspaceLayoutModel.getInstance().panelVisibleAtom;
     }
 
     static getInstance(): WaveAIModel {
@@ -94,6 +105,10 @@ export class WaveAIModel {
 
     static resetInstance(): void {
         WaveAIModel.instance = null;
+    }
+
+    getUseChatEndpointUrl(): string {
+        return `${getWebServerEndpoint()}/api/post-chat-message`;
     }
 
     async addFile(file: File): Promise<DroppedFile> {
@@ -353,5 +368,31 @@ export class WaveAIModel {
             },
             { noresponse: true }
         );
+    }
+
+    requestWaveAIFocus() {
+        focusManager.requestWaveAIFocus();
+    }
+
+    requestNodeFocus() {
+        focusManager.requestNodeFocus();
+    }
+
+    toolUseKeepalive(toolcallid: string) {
+        RpcApi.WaveAIToolApproveCommand(
+            TabRpcClient,
+            {
+                toolcallid: toolcallid,
+                keepalive: true,
+            },
+            { noresponse: true }
+        );
+    }
+
+    toolUseSendApproval(toolcallid: string, approval: string) {
+        RpcApi.WaveAIToolApproveCommand(TabRpcClient, {
+            toolcallid: toolcallid,
+            approval: approval,
+        });
     }
 }

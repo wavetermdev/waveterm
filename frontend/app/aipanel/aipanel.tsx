@@ -4,11 +4,8 @@
 import { waveAIHasSelection } from "@/app/aipanel/waveai-focus-utils";
 import { ErrorBoundary } from "@/app/element/errorboundary";
 import { ContextMenuModel } from "@/app/store/contextmenu";
-import { focusManager } from "@/app/store/focusManager";
 import { atoms, getSettingsKeyAtom } from "@/app/store/global";
 import { globalStore } from "@/app/store/jotaiStore";
-import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
-import { getWebServerEndpoint } from "@/util/endpoints";
 import { checkKeyPressed, keydownWrapper } from "@/util/keyutil";
 import { isMacOS } from "@/util/platformutil";
 import { cn } from "@/util/util";
@@ -200,14 +197,13 @@ const AIPanelComponentInner = memo(({ className, onClose }: AIPanelProps) => {
     const errorMessage = jotai.useAtomValue(model.errorMessage);
     const isLayoutMode = jotai.useAtomValue(atoms.controlShiftDelayAtom);
     const showOverlayBlockNums = jotai.useAtomValue(getSettingsKeyAtom("app:showoverlayblocknums")) ?? true;
-    const focusType = jotai.useAtomValue(focusManager.focusType);
-    const isFocused = focusType === "waveai";
+    const isFocused = jotai.useAtomValue(model.isWaveAIFocusedAtom);
     const telemetryEnabled = jotai.useAtomValue(getSettingsKeyAtom("telemetry:enabled")) ?? false;
-    const isPanelVisible = jotai.useAtomValue(WorkspaceLayoutModel.getInstance().panelVisibleAtom);
+    const isPanelVisible = jotai.useAtomValue(model.getPanelVisibleAtom());
 
     const { messages, sendMessage, status, setMessages, error, stop } = useChat({
         transport: new DefaultChatTransport({
-            api: `${getWebServerEndpoint()}/api/post-chat-message`,
+            api: model.getUseChatEndpointUrl(),
             prepareSendMessagesRequest: (opts) => {
                 const msg = model.getAndClearMessage();
                 return {
@@ -364,8 +360,8 @@ const AIPanelComponentInner = memo(({ className, onClose }: AIPanelProps) => {
 
     const handleFocusCapture = useCallback((event: React.FocusEvent) => {
         // console.log("Wave AI focus capture", getElemAsStr(event.target));
-        focusManager.requestWaveAIFocus();
-    }, []);
+        model.requestWaveAIFocus();
+    }, [model]);
 
     const handleClick = (e: React.MouseEvent) => {
         const target = e.target as HTMLElement;
@@ -377,7 +373,7 @@ const AIPanelComponentInner = memo(({ className, onClose }: AIPanelProps) => {
 
         const hasSelection = waveAIHasSelection();
         if (hasSelection) {
-            focusManager.requestWaveAIFocus();
+            model.requestWaveAIFocus();
             return;
         }
 
