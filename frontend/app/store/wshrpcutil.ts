@@ -10,15 +10,15 @@ import { DefaultRouter, setDefaultRouter } from "./wshrpcutil-base";
 
 let TabRpcClient: TabClient;
 
-function initWshrpc(tabId: string): WSControl {
+function initWshrpc(routeId: string): WSControl {
     const router = new WshRouter(new UpstreamWshRpcProxy());
     setDefaultRouter(router);
     const handleFn = (event: WSEventType) => {
         DefaultRouter.recvRpcMessage(event.data);
     };
-    initGlobalWS(getWSServerEndpoint(), tabId, handleFn);
+    initGlobalWS(getWSServerEndpoint(), routeId, handleFn);
     globalWS.connectNow("connectWshrpc");
-    TabRpcClient = new TabClient(makeTabRouteId(tabId));
+    TabRpcClient = new TabClient(routeId);
     DefaultRouter.registerRoute(TabRpcClient.routeId, TabRpcClient);
     addWSReconnectHandler(() => {
         DefaultRouter.reannounceRoutes();

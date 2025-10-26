@@ -37,7 +37,7 @@ class WSControl {
     opening: boolean = false;
     reconnectTimes: number = 0;
     msgQueue: any[] = [];
-    tabId: string;
+    routeId: string;
     messageCallback: WSEventCallback;
     watchSessionId: string = null;
     watchScreenId: string = null;
@@ -50,13 +50,13 @@ class WSControl {
 
     constructor(
         baseHostPort: string,
-        tabId: string,
+        routeId: string,
         messageCallback: WSEventCallback,
         electronOverrideOpts?: ElectronOverrideOpts
     ) {
         this.baseHostPort = baseHostPort;
         this.messageCallback = messageCallback;
-        this.tabId = tabId;
+        this.routeId = routeId;
         this.open = false;
         this.eoOpts = electronOverrideOpts;
         setInterval(this.sendPing.bind(this), 5000);
@@ -75,7 +75,7 @@ class WSControl {
         dlog("try reconnect:", desc);
         this.opening = true;
         this.wsConn = newWebSocket(
-            this.baseHostPort + "/ws?tabid=" + this.tabId,
+            this.baseHostPort + "/ws?routeid=" + this.routeId,
             this.eoOpts
                 ? {
                       [AuthKeyHeader]: this.eoOpts.authKey,
@@ -231,11 +231,11 @@ class WSControl {
 let globalWS: WSControl;
 function initGlobalWS(
     baseHostPort: string,
-    tabId: string,
+    routeId: string,
     messageCallback: WSEventCallback,
     electronOverrideOpts?: ElectronOverrideOpts
 ) {
-    globalWS = new WSControl(baseHostPort, tabId, messageCallback, electronOverrideOpts);
+    globalWS = new WSControl(baseHostPort, routeId, messageCallback, electronOverrideOpts);
 }
 
 function sendRawRpcMessage(msg: RpcMessage) {

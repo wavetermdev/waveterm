@@ -30,6 +30,7 @@ const (
 	RoutePrefix_Proc       = "proc:"
 	RoutePrefix_Tab        = "tab:"
 	RoutePrefix_FeBlock    = "feblock:"
+	RoutePrefix_Builder    = "builder:"
 )
 
 // this works like a network switch
@@ -75,6 +76,10 @@ func MakeTabRouteId(tabId string) string {
 
 func MakeFeBlockRouteId(blockId string) string {
 	return "feblock:" + blockId
+}
+
+func MakeBuilderRouteId(builderId string) string {
+	return "builder:" + builderId
 }
 
 var DefaultRouter = NewWshRouter()
