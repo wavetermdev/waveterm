@@ -9,12 +9,12 @@ import {
 } from "@/app/aipanel/aitypes";
 import { FocusManager } from "@/app/store/focusManager";
 import { atoms, getOrefMetaKeyAtom } from "@/app/store/global";
-import { BuilderFocusManager } from "@/builder/store/builderFocusManager";
 import { globalStore } from "@/app/store/jotaiStore";
 import * as WOS from "@/app/store/wos";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
+import { BuilderFocusManager } from "@/builder/store/builderFocusManager";
 import { getWebServerEndpoint } from "@/util/endpoints";
 import { ChatStatus } from "ai";
 import * as jotai from "jotai";
@@ -218,7 +218,7 @@ export class WaveAIModel {
     }
 
     focusInput() {
-        if (!WorkspaceLayoutModel.getInstance().getAIPanelVisible()) {
+        if (!this.inBuilder && !WorkspaceLayoutModel.getInstance().getAIPanelVisible()) {
             WorkspaceLayoutModel.getInstance().setAIPanelVisible(true);
         }
         if (this.inputRef?.current) {
