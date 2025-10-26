@@ -4,6 +4,7 @@
 package fileutil
 
 import (
+	"fmt"
 	"io"
 	"io/fs"
 	"mime"
@@ -248,4 +249,54 @@ func ToFsFileInfo(fi *wshrpc.FileInfo) FsFileInfo {
 		ModTimeInternal: fi.ModTime,
 		IsDirInternal:   fi.IsDir,
 	}
+}
+
+const (
+	MaxEditFileSize = 5 * 1024 * 1024 // 5MB
+)
+
+type EditSpec struct {
+	OldStr string
+	NewStr string
+	Desc   string
+}
+
+func ReplaceInFile(filePath string, edits []EditSpec) error {
+	fileInfo, err := os.Stat(filePath)
+	if err != nil {
+		return fmt.Errorf("failed to stat file: %w", err)
+	}
+
+	if fileInfo.Size() > MaxEditFileSize {
+		return fmt.Errorf("file too large for editing: %d bytes (max: %d)", fileInfo.Size(), MaxEditFileSize)
+	}
+
+	contents, err := os.ReadFile(filePath)
+	if err != nil {
+		return fmt.Errorf("failed to read file: %w", err)
+	}
+
+	modifiedContents := string(contents)
+
+	for i, edit := range edits {
+		if edit.OldStr == "" {
+			return fmt.Errorf("edit %d (%s): OldStr cannot be empty", i, edit.Desc)
+		}
+
+		count := strings.Count(modifiedContents, edit.OldStr)
+		if count == 0 {
+			return fmt.Errorf("edit %d (%s): OldStr not found in file", i, edit.Desc)
+		}
+		if count > 1 {
+			return fmt.Errorf("edit %d (%s): OldStr appears %d times, must appear exactly once", i, edit.Desc, count)
+		}
+
+		modifiedContents = strings.Replace(modifiedContents, edit.OldStr, edit.NewStr, 1)
+	}
+
+	if err := os.WriteFile(filePath, []byte(modifiedContents), fileInfo.Mode()); err != nil {
+		return fmt.Errorf("failed to write file: %w", err)
+	}
+
+	return nil
 }
