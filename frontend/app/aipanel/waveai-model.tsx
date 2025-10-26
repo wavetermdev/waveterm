@@ -7,7 +7,7 @@ import {
     WaveUIMessage,
     WaveUIMessagePart,
 } from "@/app/aipanel/aitypes";
-import { focusManager } from "@/app/store/focusManager";
+import { FocusManager } from "@/app/store/focusManager";
 import { atoms, getOrefMetaKeyAtom } from "@/app/store/global";
 import { globalStore } from "@/app/store/jotaiStore";
 import * as WOS from "@/app/store/wos";
@@ -80,7 +80,7 @@ export class WaveAIModel {
         });
 
         this.isWaveAIFocusedAtom = jotai.atom((get) => {
-            return get(focusManager.focusType) === "waveai";
+            return get(FocusManager.getInstance().focusType) === "waveai";
         });
     }
 
@@ -385,11 +385,11 @@ export class WaveAIModel {
     }
 
     requestWaveAIFocus() {
-        focusManager.requestWaveAIFocus();
+        FocusManager.getInstance().requestWaveAIFocus();
     }
 
     requestNodeFocus() {
-        focusManager.requestNodeFocus();
+        FocusManager.getInstance().requestNodeFocus();
     }
 
     toolUseKeepalive(toolcallid: string) {

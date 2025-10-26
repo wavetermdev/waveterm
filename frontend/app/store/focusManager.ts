@@ -8,11 +8,13 @@ import { Atom, atom, type PrimitiveAtom } from "jotai";
 
 export type FocusStrType = "node" | "waveai";
 
-class FocusManager {
+export class FocusManager {
+    private static instance: FocusManager | null = null;
+
     focusType: PrimitiveAtom<FocusStrType> = atom("node");
     blockFocusAtom: Atom<string | null>;
 
-    constructor() {
+    private constructor() {
         this.blockFocusAtom = atom((get) => {
             if (get(this.focusType) == "waveai") {
                 return null;
@@ -21,6 +23,13 @@ class FocusManager {
             const lnode = get(layoutModel.focusedNode);
             return lnode?.data?.blockId;
         });
+    }
+
+    static getInstance(): FocusManager {
+        if (!FocusManager.instance) {
+            FocusManager.instance = new FocusManager();
+        }
+        return FocusManager.instance;
     }
 
     setWaveAIFocused(force: boolean = false) {
@@ -82,5 +91,3 @@ class FocusManager {
         }
     }
 }
-
-export const focusManager = new FocusManager();
