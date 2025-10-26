@@ -3,12 +3,12 @@
 
 import { useEffect } from "react";
 
-type TsunamiBuilderProps = {
-    initOpts: TsunamiBuilderInitOpts;
+type BuilderAppProps = {
+    initOpts: BuilderInitOpts;
     onFirstRender: () => void;
 };
 
-export function TsunamiBuilder({ initOpts, onFirstRender }: TsunamiBuilderProps) {
+export function BuilderApp({ initOpts, onFirstRender }: BuilderAppProps) {
     useEffect(() => {
         onFirstRender();
     }, []);

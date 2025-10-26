@@ -4,21 +4,33 @@
 import { ClientService } from "@/app/store/services";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { BrowserWindow } from "electron";
+import { globalEvents } from "emain/emain-events";
 import path from "path";
 import { getElectronAppBasePath, isDevVite, unamePlatform } from "./emain-platform";
+import { calculateWindowBounds, MinWindowHeight, MinWindowWidth } from "./emain-window";
 import { ElectronWshClient } from "./emain-wsh";
 
-const tsunamiBuilderMap = new Map<string, BrowserWindow>();
+export type BuilderWindowType = BrowserWindow & {
+    builderId: string;
+    savedInitOpts: BuilderInitOpts;
+};
 
-export function getTsunamiBuilderById(builderId: string): BrowserWindow {
-    return tsunamiBuilderMap.get(builderId);
+const builderWindows: BuilderWindowType[] = [];
+export let focusedBuilderWindow: BuilderWindowType = null;
+
+export function getBuilderWindowById(builderId: string): BuilderWindowType {
+    return builderWindows.find((win) => win.builderId === builderId);
 }
 
-export function getAllTsunamiBuilders(): BrowserWindow[] {
-    return Array.from(tsunamiBuilderMap.values());
+export function getBuilderWindowByWebContentsId(webContentsId: number): BuilderWindowType {
+    return builderWindows.find((win) => win.webContents.id === webContentsId);
 }
 
-export async function createTsunamiBuilderWindow(appId: string): Promise<BrowserWindow> {
+export function getAllBuilderWindows(): BuilderWindowType[] {
+    return builderWindows;
+}
+
+export async function createBuilderWindow(appId: string): Promise<BuilderWindowType> {
     const builderId = `builder-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
 
     const fullConfig = await RpcApi.GetFullConfigCommand(ElectronWshClient);
@@ -26,11 +38,15 @@ export async function createTsunamiBuilderWindow(appId: string): Promise<Browser
     const clientId = clientData?.oid;
     const windowId = `window-builder-${builderId}`;
 
+    const winBounds = calculateWindowBounds(undefined, undefined, fullConfig.settings);
+
     const builderWindow = new BrowserWindow({
-        width: 1400,
-        height: 900,
-        minWidth: 800,
-        minHeight: 600,
+        x: winBounds.x,
+        y: winBounds.y,
+        width: winBounds.width,
+        height: winBounds.height,
+        minWidth: MinWindowWidth,
+        minHeight: MinWindowHeight,
         titleBarStyle: unamePlatform === "darwin" ? "hiddenInset" : "default",
         icon:
             unamePlatform === "linux"
@@ -50,24 +66,48 @@ export async function createTsunamiBuilderWindow(appId: string): Promise<Browser
         await builderWindow.loadFile(path.join(getElectronAppBasePath(), "frontend", "index.html"));
     }
 
-    const initOpts: TsunamiBuilderInitOpts = {
+    const initOpts: BuilderInitOpts = {
         builderId,
         clientId,
         windowId,
         appId,
     };
 
-    console.log("sending tsunami-builder-init", initOpts);
-    builderWindow.webContents.send("tsunami-builder-init", initOpts);
+    const typedBuilderWindow = builderWindow as BuilderWindowType;
+    typedBuilderWindow.builderId = builderId;
+    typedBuilderWindow.savedInitOpts = initOpts;
 
-    builderWindow.on("closed", () => {
-        console.log("tsunami builder closed", builderId);
-        tsunamiBuilderMap.delete(builderId);
+    console.log("sending builder-init", initOpts);
+    typedBuilderWindow.webContents.send("builder-init", initOpts);
+
+    typedBuilderWindow.on("focus", () => {
+        focusedBuilderWindow = typedBuilderWindow;
+        console.log("builder window focused", builderId);
+        setTimeout(() => globalEvents.emit("windows-updated"), 50);
     });
 
-    tsunamiBuilderMap.set(builderId, builderWindow);
-    builderWindow.show();
+    typedBuilderWindow.on("blur", () => {
+        if (focusedBuilderWindow === typedBuilderWindow) {
+            focusedBuilderWindow = null;
+        }
+        setTimeout(() => globalEvents.emit("windows-updated"), 50);
+    });
 
-    console.log("created tsunami builder window", builderId, appId);
-    return builderWindow;
+    typedBuilderWindow.on("closed", () => {
+        console.log("builder window closed", builderId);
+        const index = builderWindows.indexOf(typedBuilderWindow);
+        if (index !== -1) {
+            builderWindows.splice(index, 1);
+        }
+        if (focusedBuilderWindow === typedBuilderWindow) {
+            focusedBuilderWindow = null;
+        }
+        setTimeout(() => globalEvents.emit("windows-updated"), 50);
+    });
+
+    builderWindows.push(typedBuilderWindow);
+    typedBuilderWindow.show();
+
+    console.log("created builder window", builderId, appId);
+    return typedBuilderWindow;
 }

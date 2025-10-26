@@ -63,7 +63,7 @@ declare global {
         primaryTabStartup?: boolean;
     };
 
-    type TsunamiBuilderInitOpts = {
+    type BuilderInitOpts = {
         builderId: string;
         clientId: string;
         windowId: string;
@@ -110,7 +110,7 @@ declare global {
         closeTab: (workspaceId: string, tabId: string) => void; // close-tab
         setWindowInitStatus: (status: "ready" | "wave-ready") => void; // set-window-init-status
         onWaveInit: (callback: (initOpts: WaveInitOpts) => void) => void; // wave-init
-        onTsunamiBuilderInit: (callback: (initOpts: TsunamiBuilderInitOpts) => void) => void; // tsunami-builder-init
+        onBuilderInit: (callback: (initOpts: BuilderInitOpts) => void) => void; // builder-init
         sendLog: (log: string) => void; // fe-log
         onQuicklook: (filePath: string) => void; // quicklook
         openNativePath(filePath: string): void; // open-native-path

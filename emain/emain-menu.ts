@@ -5,7 +5,7 @@ import { waveEventSubscribe } from "@/app/store/wps";
 import { RpcApi } from "@/app/store/wshclientapi";
 import * as electron from "electron";
 import { fireAndForget } from "../frontend/util/util";
-import { createTsunamiBuilderWindow } from "./emain-builder";
+import { createBuilderWindow, focusedBuilderWindow } from "./emain-builder";
 import { isDev, unamePlatform } from "./emain-platform";
 import { clearTabCache } from "./emain-tabview";
 import {
@@ -29,10 +29,14 @@ function getWindowWebContents(window: electron.BaseWindow): electron.WebContents
     if (window == null) {
         return null;
     }
-    if (window instanceof electron.BaseWindow) {
-        const waveWin = window as WaveBrowserWindow;
-        if (waveWin.activeTabView) {
-            return waveWin.activeTabView.webContents;
+    // Check BrowserWindow first (for Tsunami Builder windows)
+    if (window instanceof electron.BrowserWindow) {
+        return window.webContents;
+    }
+    // Check WaveBrowserWindow (for main Wave windows with tab views)
+    if (window instanceof WaveBrowserWindow) {
+        if (window.activeTabView) {
+            return window.activeTabView.webContents;
         }
         return null;
     }
@@ -91,7 +95,7 @@ async function getAppMenu(
     if (isDev) {
         fileMenu.splice(1, 0, {
             label: "New Tsunami App",
-            click: () => fireAndForget(() => createTsunamiBuilderWindow("<new>")),
+            click: () => fireAndForget(() => createBuilderWindow("<new>")),
         });
     }
     if (numWaveWindows == 0) {
@@ -187,9 +191,10 @@ async function getAppMenu(
     ];
 
     const devToolsAccel = unamePlatform === "darwin" ? "Option+Command+I" : "Alt+Shift+I";
+    const isBuilderWindowFocused = focusedBuilderWindow != null;
     const viewMenu: Electron.MenuItemConstructorOptions[] = [
         {
-            label: "Reload Tab",
+            label: isBuilderWindowFocused ? "Reload Window" : "Reload Tab",
             accelerator: "Shift+CommandOrControl+R",
             click: (_, window) => {
                 getWindowWebContents(window ?? ww)?.reloadIgnoringCache();
@@ -324,7 +329,7 @@ async function getAppMenu(
             submenu: viewMenu,
         },
     ];
-    if (workspaceMenu != null) {
+    if (workspaceMenu != null && !isBuilderWindowFocused) {
         menuTemplate.push({
             label: "Workspace",
             id: "workspace-menu",

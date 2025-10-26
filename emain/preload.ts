@@ -51,7 +51,7 @@ contextBridge.exposeInMainWorld("api", {
     closeTab: (workspaceId, tabId) => ipcRenderer.send("close-tab", workspaceId, tabId),
     setWindowInitStatus: (status) => ipcRenderer.send("set-window-init-status", status),
     onWaveInit: (callback) => ipcRenderer.on("wave-init", (_event, initOpts) => callback(initOpts)),
-    onTsunamiBuilderInit: (callback) => ipcRenderer.on("tsunami-builder-init", (_event, initOpts) => callback(initOpts)),
+    onBuilderInit: (callback) => ipcRenderer.on("builder-init", (_event, initOpts) => callback(initOpts)),
     sendLog: (log) => ipcRenderer.send("fe-log", log),
     onQuicklook: (filePath: string) => ipcRenderer.send("quicklook", filePath),
     openNativePath: (filePath: string) => ipcRenderer.send("open-native-path", filePath),

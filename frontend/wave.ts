@@ -12,7 +12,7 @@ import { modalsModel } from "@/app/store/modalmodel";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { initWshrpc, TabRpcClient } from "@/app/store/wshrpcutil";
 import { loadMonaco } from "@/app/view/codeeditor/codeeditor";
-import { TsunamiBuilder } from "@/builder/tsunamibuilder";
+import { BuilderApp } from "@/builder/builder-app";
 import { getLayoutModelForStaticTab } from "@/layout/index";
 import {
     atoms,
@@ -37,7 +37,7 @@ import { createRoot } from "react-dom/client";
 const platform = getApi().getPlatform();
 document.title = `Wave Terminal`;
 let savedInitOpts: WaveInitOpts = null;
-let savedBuilderInitOpts: TsunamiBuilderInitOpts = null;
+let savedBuilderInitOpts: BuilderInitOpts = null;
 
 (window as any).WOS = WOS;
 (window as any).globalStore = globalStore;
@@ -64,7 +64,7 @@ async function initBare() {
     document.body.style.opacity = "0";
     document.body.classList.add("is-transparent");
     getApi().onWaveInit(initWaveWrap);
-    getApi().onTsunamiBuilderInit(initTsunamiBuilderWrap);
+    getApi().onBuilderInit(initBuilderWrap);
     setKeyUtilPlatform(platform);
     loadFonts();
     updateZoomFactor(getApi().getZoomFactor());
@@ -215,13 +215,17 @@ async function initWave(initOpts: WaveInitOpts) {
     getApi().setWindowInitStatus("wave-ready");
 }
 
-async function initTsunamiBuilderWrap(initOpts: TsunamiBuilderInitOpts) {
+async function initBuilderWrap(initOpts: BuilderInitOpts) {
     try {
+        if (savedBuilderInitOpts) {
+            await reinitBuilder();
+            return;
+        }
         savedBuilderInitOpts = initOpts;
-        await initTsunamiBuilder(initOpts);
+        await initBuilder(initOpts);
     } catch (e) {
-        getApi().sendLog("Error in initTsunamiBuilder " + e.message + "\n" + e.stack);
-        console.error("Error in initTsunamiBuilder", e);
+        getApi().sendLog("Error in initBuilder " + e.message + "\n" + e.stack);
+        console.error("Error in initBuilder", e);
     } finally {
         document.body.style.visibility = null;
         document.body.style.opacity = null;
@@ -229,8 +233,30 @@ async function initTsunamiBuilderWrap(initOpts: TsunamiBuilderInitOpts) {
     }
 }
 
-async function initTsunamiBuilder(initOpts: TsunamiBuilderInitOpts) {
-    getApi().sendLog("Init Tsunami Builder " + JSON.stringify(initOpts));
+async function reinitBuilder() {
+    console.log("Reinit Builder");
+    getApi().sendLog("Reinit Builder");
+
+    // We use this hack to prevent a flicker of the previously-hovered tab when this view was last active.
+    document.body.classList.add("nohover");
+    requestAnimationFrame(() =>
+        setTimeout(() => {
+            document.body.classList.remove("nohover");
+        }, 100)
+    );
+
+    await WOS.reloadWaveObject<Client>(WOS.makeORef("client", savedBuilderInitOpts.clientId));
+    document.title = `Tsunami Builder - ${savedBuilderInitOpts.appId}`;
+    getApi().setWindowInitStatus("wave-ready");
+    globalStore.set(atoms.reinitVersion, globalStore.get(atoms.reinitVersion) + 1);
+    globalStore.set(atoms.updaterStatusAtom, getApi().getUpdaterStatus());
+    setTimeout(() => {
+        globalRefocus();
+    }, 50);
+}
+
+async function initBuilder(initOpts: BuilderInitOpts) {
+    getApi().sendLog("Init Builder " + JSON.stringify(initOpts));
     console.log(
         "Tsunami Builder Init",
         "builderid",
@@ -275,7 +301,7 @@ async function initTsunamiBuilder(initOpts: TsunamiBuilderInitOpts) {
     let firstRenderPromise = new Promise<void>((resolve) => {
         firstRenderResolveFn = resolve;
     });
-    const reactElem = createElement(TsunamiBuilder, { initOpts, onFirstRender: firstRenderResolveFn }, null);
+    const reactElem = createElement(BuilderApp, { initOpts, onFirstRender: firstRenderResolveFn }, null);
     const elem = document.getElementById("main");
     const root = createRoot(elem);
     root.render(reactElem);
