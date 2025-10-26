@@ -6,9 +6,9 @@ import { RpcResponseHelper, WshClient } from "@/app/store/wshclient";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { Notification } from "electron";
 import { getResolvedUpdateChannel } from "emain/updater";
+import { unamePlatform } from "./emain-platform";
 import { getWebContentsByBlockId, webGetSelector } from "./emain-web";
 import { createBrowserWindow, getWaveWindowById, getWaveWindowByWorkspaceId } from "./emain-window";
-import { unamePlatform } from "./platform";
 
 export class ElectronWshClientType extends WshClient {
     constructor() {

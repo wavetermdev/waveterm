@@ -5,6 +5,8 @@ import { waveEventSubscribe } from "@/app/store/wps";
 import { RpcApi } from "@/app/store/wshclientapi";
 import * as electron from "electron";
 import { fireAndForget } from "../frontend/util/util";
+import { createTsunamiBuilderWindow } from "./emain-builder";
+import { isDev, unamePlatform } from "./emain-platform";
 import { clearTabCache } from "./emain-tabview";
 import {
     createNewWaveWindow,
@@ -16,7 +18,6 @@ import {
     WaveBrowserWindow,
 } from "./emain-window";
 import { ElectronWshClient } from "./emain-wsh";
-import { unamePlatform } from "./platform";
 import { updater } from "./updater";
 
 type AppMenuCallbacks = {
@@ -81,12 +82,18 @@ async function getAppMenu(
         },
         {
             role: "close",
-            accelerator: "", // clear the accelerator
+            accelerator: "",
             click: () => {
                 focusedWaveWindow?.close();
             },
         },
     ];
+    if (isDev) {
+        fileMenu.splice(1, 0, {
+            label: "New Tsunami App",
+            click: () => fireAndForget(() => createTsunamiBuilderWindow("<new>")),
+        });
+    }
     if (numWaveWindows == 0) {
         fileMenu.push({
             label: "New Window (hidden-1)",

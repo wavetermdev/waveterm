@@ -7,7 +7,6 @@ import * as readline from "readline";
 import { WebServerEndpointVarName, WSServerEndpointVarName } from "../frontend/util/endpoints";
 import { AuthKey, WaveAuthKeyEnv } from "./authkey";
 import { setForceQuit } from "./emain-activity";
-import { WaveAppPathVarName, WaveAppElectronExecPath, getElectronExecPath } from "./emain-util";
 import {
     getElectronAppUnpackedBasePath,
     getWaveConfigDir,
@@ -17,7 +16,8 @@ import {
     getXdgCurrentDesktop,
     WaveConfigHomeVarName,
     WaveDataHomeVarName,
-} from "./platform";
+} from "./emain-platform";
+import { getElectronExecPath, WaveAppElectronExecPath, WaveAppPathVarName } from "./emain-util";
 import { updater } from "./updater";
 
 let isWaveSrvDead = false;

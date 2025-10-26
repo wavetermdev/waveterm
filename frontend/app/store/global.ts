@@ -35,7 +35,7 @@ const blockAtomCache = new Map<string, Map<string, Atom<any>>>();
 const tabAtomCache = new Map<string, Map<string, Atom<any>>>();
 
 type GlobalInitOptions = {
-    tabId: string;
+    tabId?: string;
     platform: NodeJS.Platform;
     windowId: string;
     clientId: string;

@@ -12,6 +12,7 @@ import { modalsModel } from "@/app/store/modalmodel";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { initWshrpc, TabRpcClient } from "@/app/store/wshrpcutil";
 import { loadMonaco } from "@/app/view/codeeditor/codeeditor";
+import { TsunamiBuilder } from "@/builder/tsunamibuilder";
 import { getLayoutModelForStaticTab } from "@/layout/index";
 import {
     atoms,
@@ -36,6 +37,7 @@ import { createRoot } from "react-dom/client";
 const platform = getApi().getPlatform();
 document.title = `Wave Terminal`;
 let savedInitOpts: WaveInitOpts = null;
+let savedBuilderInitOpts: TsunamiBuilderInitOpts = null;
 
 (window as any).WOS = WOS;
 (window as any).globalStore = globalStore;
@@ -62,6 +64,7 @@ async function initBare() {
     document.body.style.opacity = "0";
     document.body.classList.add("is-transparent");
     getApi().onWaveInit(initWaveWrap);
+    getApi().onTsunamiBuilderInit(initTsunamiBuilderWrap);
     setKeyUtilPlatform(platform);
     loadFonts();
     updateZoomFactor(getApi().getZoomFactor());
@@ -209,5 +212,74 @@ async function initWave(initOpts: WaveInitOpts) {
     root.render(reactElem);
     await firstRenderPromise;
     console.log("Wave First Render Done");
+    getApi().setWindowInitStatus("wave-ready");
+}
+
+async function initTsunamiBuilderWrap(initOpts: TsunamiBuilderInitOpts) {
+    try {
+        savedBuilderInitOpts = initOpts;
+        await initTsunamiBuilder(initOpts);
+    } catch (e) {
+        getApi().sendLog("Error in initTsunamiBuilder " + e.message + "\n" + e.stack);
+        console.error("Error in initTsunamiBuilder", e);
+    } finally {
+        document.body.style.visibility = null;
+        document.body.style.opacity = null;
+        document.body.classList.remove("is-transparent");
+    }
+}
+
+async function initTsunamiBuilder(initOpts: TsunamiBuilderInitOpts) {
+    getApi().sendLog("Init Tsunami Builder " + JSON.stringify(initOpts));
+    console.log(
+        "Tsunami Builder Init",
+        "builderid",
+        initOpts.builderId,
+        "clientid",
+        initOpts.clientId,
+        "windowid",
+        initOpts.windowId,
+        "appid",
+        initOpts.appId,
+        "platform",
+        platform
+    );
+
+    document.title = `Tsunami Builder - ${initOpts.appId}`;
+
+    initGlobal({
+        clientId: initOpts.clientId,
+        windowId: initOpts.windowId,
+        platform,
+        environment: "renderer",
+    });
+    (window as any).globalAtoms = atoms;
+
+    const globalWS = initWshrpc(null);
+    (window as any).globalWS = globalWS;
+    (window as any).TabRpcClient = TabRpcClient;
+    await loadConnStatus();
+
+    const client = await WOS.loadAndPinWaveObject<Client>(WOS.makeORef("client", initOpts.clientId));
+
+    registerGlobalKeys();
+    registerElectronReinjectKeyHandler();
+    registerControlShiftStateUpdateHandler();
+    await loadMonaco();
+    const fullConfig = await RpcApi.GetFullConfigCommand(TabRpcClient);
+    console.log("fullconfig", fullConfig);
+    globalStore.set(atoms.fullConfigAtom, fullConfig);
+
+    console.log("Tsunami Builder First Render");
+    let firstRenderResolveFn: () => void = null;
+    let firstRenderPromise = new Promise<void>((resolve) => {
+        firstRenderResolveFn = resolve;
+    });
+    const reactElem = createElement(TsunamiBuilder, { initOpts, onFirstRender: firstRenderResolveFn }, null);
+    const elem = document.getElementById("main");
+    const root = createRoot(elem);
+    root.render(reactElem);
+    await firstRenderPromise;
+    console.log("Tsunami Builder First Render Done");
     getApi().setWindowInitStatus("wave-ready");
 }

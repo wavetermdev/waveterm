@@ -3,6 +3,7 @@
 
 import { RpcApi } from "@/app/store/wshclientapi";
 import * as electron from "electron";
+import { createTsunamiBuilderWindow } from "emain/emain-builder";
 import { globalEvents } from "emain/emain-events";
 import { FastAverageColor } from "fast-average-color";
 import fs from "fs";
@@ -25,9 +26,22 @@ import {
     setForceQuit,
     setGlobalIsQuitting,
     setGlobalIsStarting,
-setWasActive,
+    setWasActive,
     setWasInFg,
 } from "./emain-activity";
+import { log } from "./emain-log";
+import { makeAppMenu, makeDockTaskbar } from "./emain-menu";
+import {
+    callWithOriginalXdgCurrentDesktopAsync,
+    checkIfRunningUnderARM64Translation,
+    getElectronAppBasePath,
+    getElectronAppUnpackedBasePath,
+    getWaveConfigDir,
+    getWaveDataDir,
+    isDev,
+    unameArch,
+    unamePlatform,
+} from "./emain-platform";
 import { ensureHotSpareTab, getWaveTabViewByWebContentsId, setMaxTabCacheSize } from "./emain-tabview";
 import { handleCtrlShiftState } from "./emain-util";
 import { getIsWaveSrvDead, getWaveSrvProc, getWaveSrvReady, getWaveVersion, runWaveSrv } from "./emain-wavesrv";
@@ -45,19 +59,6 @@ import {
 } from "./emain-window";
 import { ElectronWshClient, initElectronWshClient } from "./emain-wsh";
 import { getLaunchSettings } from "./launchsettings";
-import { log } from "./log";
-import { makeAppMenu, makeDockTaskbar } from "./menu";
-import {
-    callWithOriginalXdgCurrentDesktopAsync,
-    checkIfRunningUnderARM64Translation,
-    getElectronAppBasePath,
-    getElectronAppUnpackedBasePath,
-    getWaveConfigDir,
-    getWaveDataDir,
-    isDev,
-    unameArch,
-    unamePlatform,
-} from "./platform";
 import { configureAutoUpdater, updater } from "./updater";
 
 const electronApp = electron.app;
@@ -476,6 +477,10 @@ function saveImageFileWithNativeDialog(defaultFileName: string, mimeType: string
         });
 }
 
+electron.ipcMain.on("open-tsunami-builder", (event, appId?: string) => {
+    fireAndForget(() => createTsunamiBuilderWindow(appId || "<new>"));
+});
+
 electron.ipcMain.on("open-new-window", () => fireAndForget(createNewWaveWindow));
 
 // we try to set the primary display as index [0]
@@ -531,7 +536,7 @@ function logActiveState() {
         const ww = focusedWaveWindow;
         const activeTabView = ww?.activeTabView;
         const isWaveAIOpen = activeTabView?.isWaveAIOpen ?? false;
-        
+
         if (astate.wasInFg) {
             activity.fgminutes = 1;
         }
@@ -539,20 +544,20 @@ function logActiveState() {
             activity.activeminutes = 1;
         }
         activity.displays = getActivityDisplays();
-        
+
         const props: TEventProps = {
             "activity:activeminutes": activity.activeminutes,
             "activity:fgminutes": activity.fgminutes,
             "activity:openminutes": activity.openminutes,
         };
-        
+
         if (astate.wasActive && isWaveAIOpen) {
             props["activity:waveaiactiveminutes"] = 1;
         }
         if (astate.wasInFg && isWaveAIOpen) {
             props["activity:waveaifgminutes"] = 1;
         }
-        
+
         try {
             await RpcApi.ActivityCommand(ElectronWshClient, activity, { noresponse: true });
             await RpcApi.RecordTEventCommand(

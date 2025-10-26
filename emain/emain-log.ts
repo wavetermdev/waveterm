@@ -5,7 +5,7 @@ import fs from "fs";
 import path from "path";
 import { format } from "util";
 import winston from "winston";
-import { getWaveDataDir, isDev } from "./platform";
+import { getWaveDataDir, isDev } from "./emain-platform";
 
 const oldConsoleLog = console.log;
 
