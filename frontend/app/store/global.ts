@@ -31,8 +31,7 @@ let globalPrimaryTabStartup: boolean = false;
 const blockComponentModelMap = new Map<string, BlockComponentModel>();
 const Counters = new Map<string, number>();
 const ConnStatusMapAtom = atom(new Map<string, PrimitiveAtom<ConnStatus>>());
-const blockAtomCache = new Map<string, Map<string, Atom<any>>>();
-const tabAtomCache = new Map<string, Map<string, Atom<any>>>();
+const orefAtomCache = new Map<string, Map<string, Atom<any>>>();
 
 type GlobalInitOptions = {
     tabId?: string;
@@ -278,24 +277,24 @@ function useBlockMetaKeyAtom<T extends keyof MetaType>(blockId: string, key: T):
     return useAtomValue(getBlockMetaKeyAtom(blockId, key));
 }
 
-function getTabMetaKeyAtom<T extends keyof MetaType>(tabId: string, key: T): Atom<MetaType[T]> {
-    const tabCache = getSingleTabAtomCache(tabId);
+function getOrefMetaKeyAtom<T extends keyof MetaType>(oref: string, key: T): Atom<MetaType[T]> {
+    const orefCache = getSingleOrefAtomCache(oref);
     const metaAtomName = "#meta-" + key;
-    let metaAtom = tabCache.get(metaAtomName);
+    let metaAtom = orefCache.get(metaAtomName);
     if (metaAtom != null) {
         return metaAtom;
     }
     metaAtom = atom((get) => {
-        let tabAtom = WOS.getWaveObjectAtom(WOS.makeORef("tab", tabId));
-        let tabData = get(tabAtom);
-        return tabData?.meta?.[key];
+        let objAtom = WOS.getWaveObjectAtom(oref);
+        let objData = get(objAtom);
+        return objData?.meta?.[key];
     });
-    tabCache.set(metaAtomName, metaAtom);
+    orefCache.set(metaAtomName, metaAtom);
     return metaAtom;
 }
 
-function useTabMetaKeyAtom<T extends keyof MetaType>(tabId: string, key: T): MetaType[T] {
-    return useAtomValue(getTabMetaKeyAtom(tabId, key));
+function useOrefMetaKeyAtom<T extends keyof MetaType>(oref: string, key: T): MetaType[T] {
+    return useAtomValue(getOrefMetaKeyAtom(oref, key));
 }
 
 function getConnConfigKeyAtom<T extends keyof ConnKeywords>(connName: string, key: T): Atom<ConnKeywords[T]> {
@@ -385,30 +384,23 @@ function getSettingsPrefixAtom(prefix: string): Atom<SettingsType> {
 }
 
 function getSingleBlockAtomCache(blockId: string): Map<string, Atom<any>> {
-    let blockCache = blockAtomCache.get(blockId);
-    if (blockCache == null) {
-        blockCache = new Map<string, Atom<any>>();
-        blockAtomCache.set(blockId, blockCache);
-    }
-    return blockCache;
+    const blockORef = WOS.makeORef("block", blockId);
+    return getSingleOrefAtomCache(blockORef);
 }
 
 function getSingleConnAtomCache(connName: string): Map<string, Atom<any>> {
-    let blockCache = blockAtomCache.get(connName);
-    if (blockCache == null) {
-        blockCache = new Map<string, Atom<any>>();
-        blockAtomCache.set(connName, blockCache);
-    }
-    return blockCache;
+    // this is not a real "oref", but it will work for the cache.
+    const connORef = WOS.makeORef("conn", connName);
+    return getSingleOrefAtomCache(connORef);
 }
 
-function getSingleTabAtomCache(tabId: string): Map<string, Atom<any>> {
-    let tabCache = tabAtomCache.get(tabId);
-    if (tabCache == null) {
-        tabCache = new Map<string, Atom<any>>();
-        tabAtomCache.set(tabId, tabCache);
+function getSingleOrefAtomCache(oref: string): Map<string, Atom<any>> {
+    let orefCache = orefAtomCache.get(oref);
+    if (orefCache == null) {
+        orefCache = new Map<string, Atom<any>>();
+        orefAtomCache.set(oref, orefCache);
     }
-    return tabCache;
+    return orefCache;
 }
 
 function useBlockAtom<T>(blockId: string, name: string, makeFn: () => Atom<T>): Atom<T> {
@@ -828,10 +820,10 @@ export {
     getFocusedBlockId,
     getHostName,
     getObjectId,
+    getOrefMetaKeyAtom,
     getOverrideConfigAtom,
     getSettingsKeyAtom,
     getSettingsPrefixAtom,
-    getTabMetaKeyAtom,
     getUserName,
     globalPrimaryTabStartup,
     globalStore,
@@ -858,8 +850,8 @@ export {
     useBlockCache,
     useBlockDataLoaded,
     useBlockMetaKeyAtom,
+    useOrefMetaKeyAtom,
     useOverrideConfigAtom,
     useSettingsKeyAtom,
-    useTabMetaKeyAtom,
     WOS,
 };

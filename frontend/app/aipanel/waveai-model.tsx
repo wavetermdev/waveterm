@@ -1,8 +1,13 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { UseChatSendMessageType, UseChatSetMessagesType, WaveUIMessagePart } from "@/app/aipanel/aitypes";
-import { atoms, getTabMetaKeyAtom } from "@/app/store/global";
+import {
+    UseChatSendMessageType,
+    UseChatSetMessagesType,
+    WaveUIMessage,
+    WaveUIMessagePart,
+} from "@/app/aipanel/aitypes";
+import { atoms, getOrefMetaKeyAtom } from "@/app/store/global";
 import { globalStore } from "@/app/store/jotaiStore";
 import * as WOS from "@/app/store/wos";
 import { RpcApi } from "@/app/store/wshclientapi";
@@ -47,13 +52,14 @@ export class WaveAIModel {
 
     private constructor() {
         const tabId = globalStore.get(atoms.staticTabId);
-        const chatIdMetaAtom = getTabMetaKeyAtom(tabId, "waveai:chatid");
+        const tabORef = WOS.makeORef("tab", tabId);
+        const chatIdMetaAtom = getOrefMetaKeyAtom(tabORef, "waveai:chatid");
         let chatIdValue = globalStore.get(chatIdMetaAtom);
 
         if (chatIdValue == null) {
             chatIdValue = crypto.randomUUID();
             RpcApi.SetMetaCommand(TabRpcClient, {
-                oref: WOS.makeORef("tab", tabId),
+                oref: tabORef,
                 meta: { "waveai:chatid": chatIdValue },
             });
         }
@@ -62,13 +68,15 @@ export class WaveAIModel {
 
         this.modelAtom = jotai.atom((get) => {
             const tabId = get(atoms.staticTabId);
-            const modelMetaAtom = getTabMetaKeyAtom(tabId, "waveai:model");
+            const tabORef = WOS.makeORef("tab", tabId);
+            const modelMetaAtom = getOrefMetaKeyAtom(tabORef, "waveai:model");
             return get(modelMetaAtom) ?? "gpt-5";
         });
 
         this.widgetAccessAtom = jotai.atom((get) => {
             const tabId = get(atoms.staticTabId);
-            const widgetAccessMetaAtom = getTabMetaKeyAtom(tabId, "waveai:widgetcontext");
+            const tabORef = WOS.makeORef("tab", tabId);
+            const widgetAccessMetaAtom = getOrefMetaKeyAtom(tabORef, "waveai:widgetcontext");
             const value = get(widgetAccessMetaAtom);
             return value ?? true;
         });
@@ -231,27 +239,18 @@ export class WaveAIModel {
         });
     }
 
-    async loadChat(): Promise<UIMessage[]> {
+    async loadChat(): Promise<WaveUIMessage[]> {
         const chatId = globalStore.get(this.chatId);
         try {
             const chatData = await RpcApi.GetWaveAIChatCommand(TabRpcClient, { chatid: chatId });
-            const messages = chatData?.messages ?? [];
+            const messages: UIMessage[] = chatData?.messages ?? [];
             this.isChatEmpty = messages.length === 0;
-            return messages;
+            return messages as WaveUIMessage[]; // this is safe just different RPC type vs the FE type, but they are compatible
         } catch (error) {
             console.error("Failed to load chat:", error);
             this.setError("Failed to load chat. Starting new chat...");
 
-            const newChatId = crypto.randomUUID();
-            globalStore.set(this.chatId, newChatId);
-
-            const tabId = globalStore.get(atoms.staticTabId);
-            RpcApi.SetMetaCommand(TabRpcClient, {
-                oref: WOS.makeORef("tab", tabId),
-                meta: { "waveai:chatid": newChatId },
-            });
-
-            this.isChatEmpty = true;
+            this.clearChat();
             return [];
         }
     }
@@ -326,7 +325,7 @@ export class WaveAIModel {
     async uiLoadChat() {
         globalStore.set(this.isLoadingChatAtom, true);
         const messages = await this.loadChat();
-        this.useChatSetMessages?.(messages as any);
+        this.useChatSetMessages?.(messages);
         globalStore.set(this.isLoadingChatAtom, false);
         setTimeout(() => {
             this.scrollToBottom();
