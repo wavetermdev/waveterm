@@ -130,7 +130,7 @@ export const AIPanelInput = memo(({ onSubmit, status, model }: AIPanelInputProps
                         onKeyDown={handleKeyDown}
                         onFocus={handleFocus}
                         onBlur={handleBlur}
-                        placeholder="Ask Wave AI anything..."
+                        placeholder={model.inBuilder ? "What would you like to build..." : "Ask Wave AI anything..."}
                         className={cn(
                             "w-full  text-white px-2 py-2 pr-5 focus:outline-none resize-none overflow-auto",
                             isFocused ? "bg-accent-900/50" : "bg-gray-800"

@@ -4,6 +4,7 @@
 import { AIPanel } from "@/app/aipanel/aipanel";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
+import { BuilderAppPanel } from "@/builder/builder-apppanel";
 import { atoms } from "@/store/global";
 import { useAtomValue } from "jotai";
 import { memo, useCallback, useEffect, useState } from "react";
@@ -97,9 +98,7 @@ const BuilderWorkspace = memo(() => {
                 <Panel defaultSize={100 - layout.chat} minSize={20}>
                     <PanelGroup direction="vertical" onLayout={handleVerticalLayout}>
                         <Panel defaultSize={layout.app} minSize={20}>
-                            <div className="w-full h-full flex items-center justify-center border-b border-border">
-                                <span className="text-2xl">App Panel</span>
-                            </div>
+                            <BuilderAppPanel />
                         </Panel>
                         <PanelResizeHandle className="h-0.5 bg-transparent hover:bg-gray-500/20 transition-colors" />
                         <Panel defaultSize={layout.build} minSize={20}>
