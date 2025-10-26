@@ -1,6 +1,7 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { AIPanel } from "@/app/aipanel/aipanel";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { atoms } from "@/store/global";
@@ -90,9 +91,7 @@ const BuilderWorkspace = memo(() => {
         <div className="flex-1 overflow-hidden">
             <PanelGroup direction="horizontal" onLayout={handleHorizontalLayout}>
                 <Panel defaultSize={layout.chat} minSize={20}>
-                    <div className="w-full h-full flex items-center justify-center bg-gray-900 border-r border-border">
-                        <span className="text-2xl">Chat Panel</span>
-                    </div>
+                    <AIPanel className="w-full h-full" />
                 </Panel>
                 <PanelResizeHandle className="w-0.5 bg-transparent hover:bg-gray-500/20 transition-colors" />
                 <Panel defaultSize={100 - layout.chat} minSize={20}>

@@ -206,14 +206,18 @@ const AIPanelComponentInner = memo(({ className, onClose }: AIPanelProps) => {
             api: model.getUseChatEndpointUrl(),
             prepareSendMessagesRequest: (opts) => {
                 const msg = model.getAndClearMessage();
-                return {
-                    body: {
-                        msg,
-                        chatid: globalStore.get(model.chatId),
-                        widgetaccess: globalStore.get(model.widgetAccessAtom),
-                        tabid: globalStore.get(atoms.staticTabId),
-                    },
+                const windowType = globalStore.get(atoms.waveWindowType);
+                const body: any = {
+                    msg,
+                    chatid: globalStore.get(model.chatId),
+                    widgetaccess: globalStore.get(model.widgetAccessAtom),
                 };
+                if (windowType === "builder") {
+                    body.builderid = globalStore.get(atoms.builderId);
+                } else {
+                    body.tabid = globalStore.get(atoms.staticTabId);
+                }
+                return { body };
             },
         }),
         onError: (error) => {
@@ -358,10 +362,13 @@ const AIPanelComponentInner = memo(({ className, onClose }: AIPanelProps) => {
         }
     };
 
-    const handleFocusCapture = useCallback((event: React.FocusEvent) => {
-        // console.log("Wave AI focus capture", getElemAsStr(event.target));
-        model.requestWaveAIFocus();
-    }, [model]);
+    const handleFocusCapture = useCallback(
+        (event: React.FocusEvent) => {
+            // console.log("Wave AI focus capture", getElemAsStr(event.target));
+            model.requestWaveAIFocus();
+        },
+        [model]
+    );
 
     const handleClick = (e: React.MouseEvent) => {
         const target = e.target as HTMLElement;

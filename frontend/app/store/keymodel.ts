@@ -283,6 +283,10 @@ function globalRefocusWithTimeout(timeoutVal: number) {
 }
 
 function globalRefocus() {
+    if (globalStore.get(atoms.waveWindowType) == "builder") {
+        return;
+    }
+
     const layoutModel = getLayoutModelForStaticTab();
     const focusedNode = globalStore.get(layoutModel.focusedNode);
     if (focusedNode == null) {

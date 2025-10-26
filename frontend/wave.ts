@@ -11,8 +11,8 @@ import {
 } from "@/app/store/keymodel";
 import { modalsModel } from "@/app/store/modalmodel";
 import { RpcApi } from "@/app/store/wshclientapi";
-import { initWshrpc, TabRpcClient } from "@/app/store/wshrpcutil";
 import { makeBuilderRouteId, makeTabRouteId } from "@/app/store/wshrouter";
+import { initWshrpc, TabRpcClient } from "@/app/store/wshrpcutil";
 import { loadMonaco } from "@/app/view/codeeditor/codeeditor";
 import { BuilderApp } from "@/builder/builder-app";
 import { getLayoutModelForStaticTab } from "@/layout/index";

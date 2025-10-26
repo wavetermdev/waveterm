@@ -570,7 +570,8 @@ func sendAIMetricsTelemetry(ctx context.Context, metrics *uctypes.AIMetrics) {
 
 // PostMessageRequest represents the request body for posting a message
 type PostMessageRequest struct {
-	TabId        string            `json:"tabid"`
+	TabId        string            `json:"tabid,omitempty"`
+	BuilderId    string            `json:"builderid,omitempty"`
 	ChatID       string            `json:"chatid"`
 	Msg          uctypes.AIMessage `json:"msg"`
 	WidgetAccess bool              `json:"widgetaccess,omitempty"`
