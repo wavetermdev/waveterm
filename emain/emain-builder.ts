@@ -3,6 +3,7 @@
 
 import { ClientService } from "@/app/store/services";
 import { RpcApi } from "@/app/store/wshclientapi";
+import { randomUUID } from "crypto";
 import { BrowserWindow } from "electron";
 import { globalEvents } from "emain/emain-events";
 import path from "path";
@@ -31,12 +32,12 @@ export function getAllBuilderWindows(): BuilderWindowType[] {
 }
 
 export async function createBuilderWindow(appId: string): Promise<BuilderWindowType> {
-    const builderId = `builder-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
+    const builderId = randomUUID();
 
     const fullConfig = await RpcApi.GetFullConfigCommand(ElectronWshClient);
     const clientData = await ClientService.GetClientData();
     const clientId = clientData?.oid;
-    const windowId = `window-builder-${builderId}`;
+    const windowId = randomUUID();
 
     const winBounds = calculateWindowBounds(undefined, undefined, fullConfig.settings);
 

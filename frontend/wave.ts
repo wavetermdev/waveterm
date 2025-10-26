@@ -4,6 +4,7 @@
 import { App } from "@/app/app";
 import {
     globalRefocus,
+    registerBuilderGlobalKeys,
     registerControlShiftStateUpdateHandler,
     registerElectronReinjectKeyHandler,
     registerGlobalKeys,
@@ -289,9 +290,8 @@ async function initBuilder(initOpts: BuilderInitOpts) {
 
     const client = await WOS.loadAndPinWaveObject<Client>(WOS.makeORef("client", initOpts.clientId));
 
-    registerGlobalKeys();
+    registerBuilderGlobalKeys();
     registerElectronReinjectKeyHandler();
-    registerControlShiftStateUpdateHandler();
     await loadMonaco();
     const fullConfig = await RpcApi.GetFullConfigCommand(TabRpcClient);
     console.log("fullconfig", fullConfig);

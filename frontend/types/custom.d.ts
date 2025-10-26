@@ -118,6 +118,7 @@ declare global {
         setKeyboardChordMode: () => void; // set-keyboard-chord-mode
         clearWebviewStorage: (webContentsId: number) => Promise<void>; // clear-webview-storage
         setWaveAIOpen: (isOpen: boolean) => void; // set-waveai-open
+        closeBuilderWindow: () => void; // close-builder-window
     };
 
     type ElectronContextMenuItem = {

@@ -643,6 +643,15 @@ function registerGlobalKeys() {
     globalChordMap.set("Ctrl:Shift:s", splitBlockKeys);
 }
 
+function registerBuilderGlobalKeys() {
+    globalKeyMap.set("Cmd:w", () => {
+        getApi().closeBuilderWindow();
+        return true;
+    });
+    const allKeys = Array.from(globalKeyMap.keys());
+    getApi().registerGlobalWebviewKeys(allKeys);
+}
+
 function getAllGlobalKeyBindings(): string[] {
     const allKeys = Array.from(globalKeyMap.keys());
     return allKeys;
@@ -655,6 +664,7 @@ export {
     getSimpleControlShiftAtom,
     globalRefocus,
     globalRefocusWithTimeout,
+    registerBuilderGlobalKeys,
     registerControlShiftStateUpdateHandler,
     registerElectronReinjectKeyHandler,
     registerGlobalKeys,
