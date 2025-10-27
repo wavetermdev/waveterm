@@ -95,7 +95,7 @@ async function getAppMenu(
     if (isDev) {
         fileMenu.splice(1, 0, {
             label: "New WaveApp Builder Window",
-            click: () => fireAndForget(() => createBuilderWindow("<new>")),
+            click: () => fireAndForget(() => createBuilderWindow("")),
         });
     }
     if (numWaveWindows == 0) {

@@ -2,7 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { globalStore } from "@/app/store/jotaiStore";
-import { atom, type PrimitiveAtom } from "jotai";
+import { RpcApi } from "@/app/store/wshclientapi";
+import { TabRpcClient } from "@/app/store/wshrpcutil";
+import { atom, type Atom, type PrimitiveAtom } from "jotai";
 
 export type TabType = "preview" | "files" | "code";
 
@@ -10,9 +12,18 @@ export class BuilderAppPanelModel {
     private static instance: BuilderAppPanelModel | null = null;
 
     activeTab: PrimitiveAtom<TabType> = atom<TabType>("preview");
+    codeContentAtom: PrimitiveAtom<string> = atom<string>("");
+    originalContentAtom: PrimitiveAtom<string> = atom<string>("");
+    isLoadingAtom: PrimitiveAtom<boolean> = atom<boolean>(false);
+    errorAtom: PrimitiveAtom<string> = atom<string>("");
+    saveNeededAtom!: Atom<boolean>;
     focusElemRef: { current: HTMLInputElement | null } = { current: null };
 
-    private constructor() {}
+    private constructor() {
+        this.saveNeededAtom = atom((get) => {
+            return get(this.codeContentAtom) !== get(this.originalContentAtom);
+        });
+    }
 
     static getInstance(): BuilderAppPanelModel {
         if (!BuilderAppPanelModel.instance) {
@@ -27,6 +38,54 @@ export class BuilderAppPanelModel {
 
     getActiveTab(): TabType {
         return globalStore.get(this.activeTab);
+    }
+
+    setCodeContent(content: string) {
+        globalStore.set(this.codeContentAtom, content);
+    }
+
+    async loadAppFile(appId: string) {
+        if (!appId) {
+            globalStore.set(this.errorAtom, "No app selected");
+            globalStore.set(this.isLoadingAtom, false);
+            return;
+        }
+
+        try {
+            globalStore.set(this.isLoadingAtom, true);
+            globalStore.set(this.errorAtom, "");
+            const result = await RpcApi.ReadAppFileCommand(TabRpcClient, {
+                appid: appId,
+                filename: "app.go",
+            });
+            const decoded = atob(result.data64);
+            globalStore.set(this.codeContentAtom, decoded);
+            globalStore.set(this.originalContentAtom, decoded);
+        } catch (err) {
+            console.error("Failed to load app.go:", err);
+            globalStore.set(this.errorAtom, `Failed to load app.go: ${err.message || "Unknown error"}`);
+        } finally {
+            globalStore.set(this.isLoadingAtom, false);
+        }
+    }
+
+    async saveAppFile(appId: string) {
+        if (!appId) return;
+
+        try {
+            const content = globalStore.get(this.codeContentAtom);
+            const encoded = btoa(content);
+            await RpcApi.WriteAppFileCommand(TabRpcClient, {
+                appid: appId,
+                filename: "app.go",
+                data64: encoded,
+            });
+            globalStore.set(this.originalContentAtom, content);
+            globalStore.set(this.errorAtom, "");
+        } catch (err) {
+            console.error("Failed to save app.go:", err);
+            globalStore.set(this.errorAtom, `Failed to save app.go: ${err.message || "Unknown error"}`);
+        }
     }
 
     giveFocus() {

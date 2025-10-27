@@ -6,9 +6,11 @@ import { BuilderFocusManager } from "@/builder/store/builderFocusManager";
 import { BuilderCodeTab } from "@/builder/tabs/builder-codetab";
 import { BuilderFilesTab } from "@/builder/tabs/builder-filestab";
 import { BuilderPreviewTab } from "@/builder/tabs/builder-previewtab";
+import { ErrorBoundary } from "@/element/errorboundary";
+import { atoms } from "@/store/global";
 import { cn } from "@/util/util";
 import { useAtomValue } from "jotai";
-import { memo, useRef } from "react";
+import { memo, useCallback, useRef } from "react";
 
 type TabButtonProps = {
     label: string;
@@ -42,6 +44,8 @@ const BuilderAppPanel = memo(() => {
     const activeTab = useAtomValue(model.activeTab);
     const focusType = useAtomValue(BuilderFocusManager.getInstance().focusType);
     const isAppFocused = focusType === "app";
+    const saveNeeded = useAtomValue(model.saveNeededAtom);
+    const builderAppId = useAtomValue(atoms.builderAppId);
 
     if (focusElemRef.current) {
         model.setFocusElemRef(focusElemRef.current);
@@ -58,6 +62,12 @@ const BuilderAppPanel = memo(() => {
         model.giveFocus();
     };
 
+    const handleSave = useCallback(() => {
+        if (builderAppId) {
+            model.saveAppFile(builderAppId);
+        }
+    }, [builderAppId, model]);
+
     return (
         <div className="w-full h-full flex flex-col border-b border-border" onClick={handlePanelClick}>
             <div key="focuselem" className="h-0 w-0">
@@ -70,39 +80,55 @@ const BuilderAppPanel = memo(() => {
                 />
             </div>
             <div className="shrink-0 border-b border-border">
-                <div className="flex">
-                    <TabButton
-                        label="Preview"
-                        tabType="preview"
-                        isActive={activeTab === "preview"}
-                        isAppFocused={isAppFocused}
-                        onClick={() => handleTabClick("preview")}
-                    />
-                    <TabButton
-                        label="Code"
-                        tabType="code"
-                        isActive={activeTab === "code"}
-                        isAppFocused={isAppFocused}
-                        onClick={() => handleTabClick("code")}
-                    />
-                    <TabButton
-                        label="Static Files"
-                        tabType="files"
-                        isActive={activeTab === "files"}
-                        isAppFocused={isAppFocused}
-                        onClick={() => handleTabClick("files")}
-                    />
+                <div className="flex items-center justify-between">
+                    <div className="flex">
+                        <TabButton
+                            label="Preview"
+                            tabType="preview"
+                            isActive={activeTab === "preview"}
+                            isAppFocused={isAppFocused}
+                            onClick={() => handleTabClick("preview")}
+                        />
+                        <TabButton
+                            label="Code"
+                            tabType="code"
+                            isActive={activeTab === "code"}
+                            isAppFocused={isAppFocused}
+                            onClick={() => handleTabClick("code")}
+                        />
+                        <TabButton
+                            label="Static Files"
+                            tabType="files"
+                            isActive={activeTab === "files"}
+                            isAppFocused={isAppFocused}
+                            onClick={() => handleTabClick("files")}
+                        />
+                    </div>
+                    {activeTab === "code" && saveNeeded && (
+                        <button
+                            className="mr-4 px-3 py-1 text-sm font-medium bg-accent text-white rounded hover:bg-accent-hover transition-colors cursor-pointer"
+                            onClick={handleSave}
+                        >
+                            Save
+                        </button>
+                    )}
                 </div>
             </div>
             <div className="flex-1 overflow-auto py-1">
                 <div className="w-full h-full" style={{ display: activeTab === "preview" ? "block" : "none" }}>
-                    <BuilderPreviewTab />
+                    <ErrorBoundary>
+                        <BuilderPreviewTab />
+                    </ErrorBoundary>
                 </div>
                 <div className="w-full h-full" style={{ display: activeTab === "code" ? "block" : "none" }}>
-                    <BuilderCodeTab />
+                    <ErrorBoundary>
+                        <BuilderCodeTab />
+                    </ErrorBoundary>
                 </div>
                 <div className="w-full h-full" style={{ display: activeTab === "files" ? "block" : "none" }}>
-                    <BuilderFilesTab />
+                    <ErrorBoundary>
+                        <BuilderFilesTab />
+                    </ErrorBoundary>
                 </div>
             </div>
         </div>
