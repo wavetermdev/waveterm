@@ -81,7 +81,7 @@ class TsunamiViewModel extends WebViewModel {
         prtn.catch((e) => console.log("error controller resync", e));
     }
 
-    restartController() {
+    private doControllerResync(forceRestart: boolean, logContext: string) {
         if (globalStore.get(this.isRestarting)) {
             return;
         }
@@ -89,36 +89,22 @@ class TsunamiViewModel extends WebViewModel {
         const prtn = RpcApi.ControllerResyncCommand(TabRpcClient, {
             tabid: globalStore.get(atoms.staticTabId),
             blockid: this.blockId,
-            forcerestart: false,
+            forcerestart: forceRestart,
         });
-        prtn.catch((e) => console.log("error controller resync (restart)", e));
+        prtn.catch((e) => console.log(`error controller resync (${logContext})`, e));
+    }
+
+    restartController() {
+        this.doControllerResync(false, "restart");
     }
 
     restartAndForceRebuild() {
-        if (globalStore.get(this.isRestarting)) {
-            return;
-        }
-        this.triggerRestartAtom();
-        const prtn = RpcApi.ControllerResyncCommand(TabRpcClient, {
-            tabid: globalStore.get(atoms.staticTabId),
-            blockid: this.blockId,
-            forcerestart: true,
-        });
-        prtn.catch((e) => console.log("error controller resync (force rebuild)", e));
+        this.doControllerResync(true, "force rebuild");
     }
 
     forceRestartController() {
         // Keep this for backward compatibility with the Start button
-        if (globalStore.get(this.isRestarting)) {
-            return;
-        }
-        this.triggerRestartAtom();
-        const prtn = RpcApi.ControllerResyncCommand(TabRpcClient, {
-            tabid: globalStore.get(atoms.staticTabId),
-            blockid: this.blockId,
-            forcerestart: true,
-        });
-        prtn.catch((e) => console.log("error controller resync (force restart)", e));
+        this.doControllerResync(true, "force restart");
     }
 
     setAppMeta(meta: TsunamiAppMeta) {
