@@ -91,8 +91,30 @@ class TsunamiViewModel extends WebViewModel {
         this.doControllerResync(false, "resync", false);
     }
 
-    restartController() {
-        this.doControllerResync(false, "restart");
+    stopController() {
+        const prtn = RpcApi.ControllerStopCommand(TabRpcClient, this.blockId);
+        prtn.catch((e) => console.log("error stopping controller", e));
+    }
+
+    async restartController() {
+        if (globalStore.get(this.isRestarting)) {
+            return;
+        }
+        this.triggerRestartAtom();
+        try {
+            // Stop the controller first
+            await RpcApi.ControllerStopCommand(TabRpcClient, this.blockId);
+            // Wait a bit for the controller to fully stop
+            await new Promise((resolve) => setTimeout(resolve, 300));
+            // Then resync to restart it
+            await RpcApi.ControllerResyncCommand(TabRpcClient, {
+                tabid: globalStore.get(atoms.staticTabId),
+                blockid: this.blockId,
+                forcerestart: false,
+            });
+        } catch (e) {
+            console.log("error restarting controller", e);
+        }
     }
 
     restartAndForceRebuild() {
@@ -147,6 +169,10 @@ class TsunamiViewModel extends WebViewModel {
 
         // Add tsunami-specific menu items at the beginning
         const tsunamiItems: ContextMenuItem[] = [
+            {
+                label: "Stop WaveApp",
+                click: () => this.stopController(),
+            },
             {
                 label: "Restart WaveApp",
                 click: () => this.restartController(),
