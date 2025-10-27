@@ -72,26 +72,23 @@ class TsunamiViewModel extends WebViewModel {
         }, 300);
     }
 
-    resyncController() {
-        const prtn = RpcApi.ControllerResyncCommand(TabRpcClient, {
-            tabid: globalStore.get(atoms.staticTabId),
-            blockid: this.blockId,
-            forcerestart: false,
-        });
-        prtn.catch((e) => console.log("error controller resync", e));
-    }
-
-    private doControllerResync(forceRestart: boolean, logContext: string) {
-        if (globalStore.get(this.isRestarting)) {
-            return;
+    private doControllerResync(forceRestart: boolean, logContext: string, triggerRestart: boolean = true) {
+        if (triggerRestart) {
+            if (globalStore.get(this.isRestarting)) {
+                return;
+            }
+            this.triggerRestartAtom();
         }
-        this.triggerRestartAtom();
         const prtn = RpcApi.ControllerResyncCommand(TabRpcClient, {
             tabid: globalStore.get(atoms.staticTabId),
             blockid: this.blockId,
             forcerestart: forceRestart,
         });
         prtn.catch((e) => console.log(`error controller resync (${logContext})`, e));
+    }
+
+    resyncController() {
+        this.doControllerResync(false, "resync", false);
     }
 
     restartController() {
