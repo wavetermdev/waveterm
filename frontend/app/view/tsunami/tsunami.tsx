@@ -81,7 +81,34 @@ class TsunamiViewModel extends WebViewModel {
         prtn.catch((e) => console.log("error controller resync", e));
     }
 
+    restartController() {
+        if (globalStore.get(this.isRestarting)) {
+            return;
+        }
+        this.triggerRestartAtom();
+        const prtn = RpcApi.ControllerResyncCommand(TabRpcClient, {
+            tabid: globalStore.get(atoms.staticTabId),
+            blockid: this.blockId,
+            forcerestart: false,
+        });
+        prtn.catch((e) => console.log("error controller resync (restart)", e));
+    }
+
+    restartAndForceRebuild() {
+        if (globalStore.get(this.isRestarting)) {
+            return;
+        }
+        this.triggerRestartAtom();
+        const prtn = RpcApi.ControllerResyncCommand(TabRpcClient, {
+            tabid: globalStore.get(atoms.staticTabId),
+            blockid: this.blockId,
+            forcerestart: true,
+        });
+        prtn.catch((e) => console.log("error controller resync (force rebuild)", e));
+    }
+
     forceRestartController() {
+        // Keep this for backward compatibility with the Start button
         if (globalStore.get(this.isRestarting)) {
             return;
         }
@@ -125,7 +152,7 @@ class TsunamiViewModel extends WebViewModel {
     getSettingsMenuItems(): ContextMenuItem[] {
         const items = super.getSettingsMenuItems();
         // Filter out homepage and navigation-related menu items for tsunami view
-        return items.filter((item) => {
+        const filteredItems = items.filter((item) => {
             const label = item.label?.toLowerCase() || "";
             return (
                 !label.includes("homepage") &&
@@ -134,6 +161,23 @@ class TsunamiViewModel extends WebViewModel {
                 !label.includes("nav")
             );
         });
+
+        // Add tsunami-specific menu items at the beginning
+        const tsunamiItems: ContextMenuItem[] = [
+            {
+                label: "Restart",
+                click: () => this.restartController(),
+            },
+            {
+                label: "Restart and Force Rebuild",
+                click: () => this.restartAndForceRebuild(),
+            },
+            {
+                type: "separator",
+            },
+        ];
+
+        return [...tsunamiItems, ...filteredItems];
     }
 }
 
