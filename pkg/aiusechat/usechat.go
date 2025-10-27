@@ -705,11 +705,11 @@ func WaveAIPostMessageHandler(w http.ResponseWriter, r *http.Request) {
 
 	if req.BuilderAppId != "" {
 		chatOpts.BuilderAppGenerator = func() (string, string, error) {
-			appGoFileBytes, err := waveappstore.ReadAppFile(req.BuilderAppId, "app.go")
+			fileData, err := waveappstore.ReadAppFile(req.BuilderAppId, "app.go")
 			if err != nil {
 				return "", "", err
 			}
-			appGoFile := string(appGoFileBytes)
+			appGoFile := string(fileData.Contents)
 			appBuildStatus := ""
 			return appGoFile, appBuildStatus, nil
 		}

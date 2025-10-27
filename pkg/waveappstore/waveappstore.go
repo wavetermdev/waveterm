@@ -27,6 +27,11 @@ var (
 	appNameRegex   = regexp.MustCompile(`^[a-zA-Z0-9_-]+$`)
 )
 
+type FileData struct {
+	Contents []byte
+	ModTs    int64
+}
+
 func MakeAppId(appNS string, appName string) string {
 	return appNS + "/" + appName
 }
@@ -273,7 +278,7 @@ func WriteAppFile(appId string, fileName string, contents []byte) error {
 	return nil
 }
 
-func ReadAppFile(appId string, fileName string) ([]byte, error) {
+func ReadAppFile(appId string, fileName string) (*FileData, error) {
 	if err := ValidateAppId(appId); err != nil {
 		return nil, fmt.Errorf("invalid appId: %w", err)
 	}
@@ -288,12 +293,20 @@ func ReadAppFile(appId string, fileName string) ([]byte, error) {
 		return nil, err
 	}
 
+	fileInfo, err := os.Stat(filePath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to stat file: %w", err)
+	}
+
 	contents, err := os.ReadFile(filePath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read file: %w", err)
 	}
 
-	return contents, nil
+	return &FileData{
+		Contents: contents,
+		ModTs:    fileInfo.ModTime().UnixMilli(),
+	}, nil
 }
 
 func DeleteAppFile(appId string, fileName string) error {

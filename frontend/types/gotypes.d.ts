@@ -278,6 +278,7 @@ declare global {
     type CommandReadAppFileRtnData = {
         data64: string;
         notfound?: boolean;
+        modts?: number;
     };
 
     // wshrpc.CommandRemoteListEntriesData

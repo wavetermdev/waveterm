@@ -926,7 +926,7 @@ func (ws *WshServer) ListAllAppFilesCommand(ctx context.Context, data wshrpc.Com
 }
 
 func (ws *WshServer) ReadAppFileCommand(ctx context.Context, data wshrpc.CommandReadAppFileData) (*wshrpc.CommandReadAppFileRtnData, error) {
-	contents, err := waveappstore.ReadAppFile(data.AppId, data.FileName)
+	fileData, err := waveappstore.ReadAppFile(data.AppId, data.FileName)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return &wshrpc.CommandReadAppFileRtnData{
@@ -936,7 +936,8 @@ func (ws *WshServer) ReadAppFileCommand(ctx context.Context, data wshrpc.Command
 		return nil, fmt.Errorf("failed to read app file: %w", err)
 	}
 	return &wshrpc.CommandReadAppFileRtnData{
-		Data64: base64.StdEncoding.EncodeToString(contents),
+		Data64: base64.StdEncoding.EncodeToString(fileData.Contents),
+		ModTs:  fileData.ModTs,
 	}, nil
 }
 

@@ -10,6 +10,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/util/fileutil"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/waveappstore"
+	"github.com/wavetermdev/waveterm/pkg/wps"
 )
 
 const BuilderAppFileName = "app.go"
@@ -67,6 +68,11 @@ func GetBuilderWriteAppFileToolDefinition(appId string) uctypes.ToolDefinition {
 			if err != nil {
 				return nil, err
 			}
+
+			wps.Broker.Publish(wps.WaveEvent{
+				Event:  wps.Event_WaveAppAppGoUpdated,
+				Scopes: []string{appId},
+			})
 
 			return map[string]any{
 				"success": true,
@@ -156,6 +162,11 @@ func GetBuilderEditAppFileToolDefinition(appId string) uctypes.ToolDefinition {
 			if err != nil {
 				return nil, err
 			}
+
+			wps.Broker.Publish(wps.WaveEvent{
+				Event:  wps.Event_WaveAppAppGoUpdated,
+				Scopes: []string{appId},
+			})
 
 			return map[string]any{
 				"success": true,

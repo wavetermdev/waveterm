@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { CodeEditor } from "@/app/view/codeeditor/codeeditor";
+import { waveEventSubscribe } from "@/app/store/wps";
 import { BuilderAppPanelModel } from "@/builder/store/builderAppPanelModel";
 import { atoms } from "@/store/global";
 import * as keyutil from "@/util/keyutil";
@@ -19,6 +20,20 @@ const BuilderCodeTab = memo(() => {
         if (builderAppId) {
             model.loadAppFile(builderAppId);
         }
+    }, [builderAppId, model]);
+
+    useEffect(() => {
+        if (!builderAppId) {
+            return;
+        }
+        const unsubscribe = waveEventSubscribe({
+            eventType: "waveapp:appgoupdated",
+            scope: builderAppId,
+            handler: () => {
+                model.loadAppFile(builderAppId);
+            },
+        });
+        return unsubscribe;
     }, [builderAppId, model]);
 
     const handleCodeChange = (newText: string) => {
