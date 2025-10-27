@@ -40,6 +40,7 @@ const (
 const DefaultAPI = APIType_OpenAI
 const DefaultAIEndpoint = "https://cfapi.waveterm.dev/api/waveai"
 const DefaultMaxTokens = 4 * 1024
+const BuilderMaxTokens = 24 * 1024
 
 //go:embed tsunami/system.md
 var tsunamiSystemDoc string
@@ -122,14 +123,19 @@ var BuilderSystemPromptText_OpenAI = strings.Join([]string{
 	`- When users refer to attached files, use their inline content directly; do NOT attempt to read them again`,
 	``,
 	`**Code Output:**`,
-	"- Always use fenced Markdown code blocks with language hints.",
-	`- Try to keep lines under ~100 characters where practical (soft wrap; correctness takes priority)`,
-	`- Use inline code (single backticks) only for short references like package names, method names, or file paths`,
-	`- Never comment on or justify formatting choices; just follow these rules`,
+	`- Do NOT output code in fenced code blocks or inline code snippets`,
+	`- The file editing tools handle all code generation—users see the code in the editor pane`,
+	`- After using a tool to write code, provide a brief summary of what you implemented`,
+	`- Only use code formatting when explaining specific concepts or showing small examples that are NOT the main app code`,
 	``,
-	`**Safety:**`,
-	`- If a widget would perform destructive actions (file deletion, system commands, network requests to sensitive endpoints), warn the user and suggest safer alternatives or guard rails`,
-	`- Remind users to review generated code before running it in their terminal`,
+	`**Safety & Guardrails:**`,
+	`- Build widgets that perform powerful actions, but include appropriate safeguards:`,
+	`  - Require explicit user interaction (button clicks, form submissions) before destructive operations`,
+	`  - Add confirmation dialogs for destructive actions (file deletion, system commands, data modifications)`,
+	`  - Use visual indicators: red/warning colors, warning icons, clear action labels ("Delete", "Remove", "Overwrite")`,
+	`  - Never trigger dangerous operations automatically on widget load or in render cycles`,
+	`  - For bulk operations, preview what will be affected and require confirmation`,
+	`- Example: A file manager widget should have red "Delete" buttons that show a dialog: "Delete 3 files? [Cancel] [Delete]"`,
 	``,
 	`**Your Workflow:**`,
 	`1. Understand what the user wants to build`,
@@ -144,16 +150,20 @@ var BuilderSystemPromptText_OpenAI = strings.Join([]string{
 	``,
 }, "\n")
 
-func getWaveAISettings(premium bool) (*uctypes.AIOptsType, error) {
+func getWaveAISettings(premium bool, builderMode bool) (*uctypes.AIOptsType, error) {
 	baseUrl := DefaultAIEndpoint
 	if os.Getenv("WAVETERM_WAVEAI_ENDPOINT") != "" {
 		baseUrl = os.Getenv("WAVETERM_WAVEAI_ENDPOINT")
+	}
+	maxTokens := DefaultMaxTokens
+	if builderMode {
+		maxTokens = BuilderMaxTokens
 	}
 	if DefaultAPI == APIType_Anthropic {
 		return &uctypes.AIOptsType{
 			APIType:       APIType_Anthropic,
 			Model:         uctypes.DefaultAnthropicModel,
-			MaxTokens:     DefaultMaxTokens,
+			MaxTokens:     maxTokens,
 			ThinkingLevel: uctypes.ThinkingLevelMedium,
 			BaseURL:       baseUrl,
 		}, nil
@@ -167,7 +177,7 @@ func getWaveAISettings(premium bool) (*uctypes.AIOptsType, error) {
 		return &uctypes.AIOptsType{
 			APIType:       APIType_OpenAI,
 			Model:         model,
-			MaxTokens:     DefaultMaxTokens,
+			MaxTokens:     maxTokens,
 			ThinkingLevel: thinkingLevel,
 			BaseURL:       baseUrl,
 		}, nil
@@ -662,7 +672,8 @@ func WaveAIPostMessageHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Get WaveAI settings
 	premium := shouldUsePremium()
-	aiOpts, err := getWaveAISettings(premium)
+	builderMode := req.BuilderId != ""
+	aiOpts, err := getWaveAISettings(premium, builderMode)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("WaveAI configuration error: %v", err), http.StatusInternalServerError)
 		return

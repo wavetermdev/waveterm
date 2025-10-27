@@ -79,9 +79,6 @@ func GetBuilderWriteAppFileToolDefinition(appId string) uctypes.ToolDefinition {
 				"message": fmt.Sprintf("Successfully wrote %s", BuilderAppFileName),
 			}, nil
 		},
-		ToolApproval: func(input any) string {
-			return uctypes.ApprovalNeedsApproval
-		},
 	}
 }
 
@@ -173,9 +170,6 @@ func GetBuilderEditAppFileToolDefinition(appId string) uctypes.ToolDefinition {
 				"message": fmt.Sprintf("Successfully edited %s with %d changes", BuilderAppFileName, len(params.Edits)),
 			}, nil
 		},
-		ToolApproval: func(input any) string {
-			return uctypes.ApprovalNeedsApproval
-		},
 	}
 }
 
@@ -201,9 +195,6 @@ func GetBuilderListFilesToolDefinition(appId string) uctypes.ToolDefinition {
 			}
 
 			return result, nil
-		},
-		ToolApproval: func(input any) string {
-			return uctypes.ApprovalAutoApproved
 		},
 	}
 }
