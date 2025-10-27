@@ -5,6 +5,7 @@ package engine
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io/fs"
 	"log"
@@ -26,6 +27,11 @@ import (
 const TsunamiListenAddrEnvVar = "TSUNAMI_LISTENADDR"
 const DefaultListenAddr = "localhost:0"
 const DefaultComponentName = "App"
+
+type ModalState struct {
+	Config     rpctypes.ModalConfig
+	ResultChan chan bool // Channel to receive the result (true = confirmed/ok, false = cancelled)
+}
 
 type ssEvent struct {
 	Event string
@@ -58,6 +64,10 @@ type ClientImpl struct {
 	StaticFS           fs.FS
 	ManifestFileBytes  []byte
 
+	// for modals
+	OpenModals     map[string]*ModalState // map of modalId to modal state
+	OpenModalsLock *sync.Mutex
+
 	// for notification
 	// Atomics so we never drop "last event" timing info even if wakeCh is full.
 	// 0 means "no pending batch".
@@ -73,6 +83,8 @@ func makeClient() *ClientImpl {
 		DoneCh:          make(chan struct{}),
 		SSEChannels:     make(map[string]chan ssEvent),
 		SSEChannelsLock: &sync.Mutex{},
+		OpenModals:      make(map[string]*ModalState),
+		OpenModalsLock:  &sync.Mutex{},
 		UrlHandlerMux:   http.NewServeMux(),
 		ServerId:        uuid.New().String(),
 		RootElem:        vdom.H(DefaultComponentName, nil),
@@ -235,11 +247,20 @@ func (c *ClientImpl) RegisterSSEChannel(connectionId string) chan ssEvent {
 
 func (c *ClientImpl) UnregisterSSEChannel(connectionId string) {
 	c.SSEChannelsLock.Lock()
-	defer c.SSEChannelsLock.Unlock()
+	hasChannels := len(c.SSEChannels) > 0
+	c.SSEChannelsLock.Unlock()
 
+	c.SSEChannelsLock.Lock()
 	if ch, exists := c.SSEChannels[connectionId]; exists {
 		close(ch)
 		delete(c.SSEChannels, connectionId)
+	}
+	channelsAfter := len(c.SSEChannels)
+	c.SSEChannelsLock.Unlock()
+
+	// If this was the last SSE channel, close all open modals
+	if hasChannels && channelsAfter == 0 {
+		c.CloseAllModals()
 	}
 }
 
@@ -368,4 +389,64 @@ func (c *ClientImpl) SetAppMeta(m AppMeta) {
 	c.Lock.Lock()
 	defer c.Lock.Unlock()
 	c.Meta = m
+}
+
+// ShowModal displays a modal and returns a channel that will receive the result
+func (c *ClientImpl) ShowModal(config rpctypes.ModalConfig) chan bool {
+	c.OpenModalsLock.Lock()
+	defer c.OpenModalsLock.Unlock()
+
+	resultChan := make(chan bool, 1)
+	c.OpenModals[config.ModalId] = &ModalState{
+		Config:     config,
+		ResultChan: resultChan,
+	}
+
+	// Send SSE event to show the modal
+	data, err := json.Marshal(config)
+	if err != nil {
+		log.Printf("failed to marshal modal config: %v", err)
+		// Return cancelled result on error
+		resultChan <- false
+		close(resultChan)
+		delete(c.OpenModals, config.ModalId)
+		return resultChan
+	}
+
+	err = c.SendSSEvent(ssEvent{Event: "showmodal", Data: data})
+	if err != nil {
+		log.Printf("failed to send modal SSE event: %v", err)
+		// Return cancelled result on error
+		resultChan <- false
+		close(resultChan)
+		delete(c.OpenModals, config.ModalId)
+		return resultChan
+	}
+
+	return resultChan
+}
+
+// CloseModal closes a modal with the given result
+func (c *ClientImpl) CloseModal(modalId string, result bool) {
+	c.OpenModalsLock.Lock()
+	defer c.OpenModalsLock.Unlock()
+
+	if modalState, exists := c.OpenModals[modalId]; exists {
+		modalState.ResultChan <- result
+		close(modalState.ResultChan)
+		delete(c.OpenModals, modalId)
+	}
+}
+
+// CloseAllModals closes all open modals with cancelled result
+// This is called when SSE connection is lost
+func (c *ClientImpl) CloseAllModals() {
+	c.OpenModalsLock.Lock()
+	defer c.OpenModalsLock.Unlock()
+
+	for modalId, modalState := range c.OpenModals {
+		modalState.ResultChan <- false
+		close(modalState.ResultChan)
+		delete(c.OpenModals, modalId)
+	}
 }
