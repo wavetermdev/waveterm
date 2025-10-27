@@ -382,8 +382,8 @@ func (c *ClientImpl) SetAppMeta(m AppMeta) {
 	c.Meta = m
 }
 
-// ShowModal displays a modal and returns a channel that will receive the result
-func (c *ClientImpl) ShowModal(config rpctypes.ModalConfig) chan bool {
+// addModalToMap adds a modal to the map and returns the result channel
+func (c *ClientImpl) addModalToMap(config rpctypes.ModalConfig) chan bool {
 	c.OpenModalsLock.Lock()
 	defer c.OpenModalsLock.Unlock()
 
@@ -392,40 +392,48 @@ func (c *ClientImpl) ShowModal(config rpctypes.ModalConfig) chan bool {
 		Config:     config,
 		ResultChan: resultChan,
 	}
+	return resultChan
+}
 
-	// Send SSE event to show the modal
+// ShowModal displays a modal and returns a channel that will receive the result
+func (c *ClientImpl) ShowModal(config rpctypes.ModalConfig) chan bool {
+	resultChan := c.addModalToMap(config)
+
 	data, err := json.Marshal(config)
 	if err != nil {
 		log.Printf("failed to marshal modal config: %v", err)
-		// Return cancelled result on error
-		resultChan <- false
-		close(resultChan)
-		delete(c.OpenModals, config.ModalId)
+		c.CloseModal(config.ModalId, false)
 		return resultChan
 	}
 
 	err = c.SendSSEvent(ssEvent{Event: "showmodal", Data: data})
 	if err != nil {
 		log.Printf("failed to send modal SSE event: %v", err)
-		// Return cancelled result on error
-		resultChan <- false
-		close(resultChan)
-		delete(c.OpenModals, config.ModalId)
+		c.CloseModal(config.ModalId, false)
 		return resultChan
 	}
 
 	return resultChan
 }
 
-// CloseModal closes a modal with the given result
-func (c *ClientImpl) CloseModal(modalId string, result bool) {
+// removeModalFromMap removes a modal from the map and returns its state
+func (c *ClientImpl) removeModalFromMap(modalId string) *ModalState {
 	c.OpenModalsLock.Lock()
 	defer c.OpenModalsLock.Unlock()
 
-	if modalState, exists := c.OpenModals[modalId]; exists {
+	modalState, exists := c.OpenModals[modalId]
+	if exists {
+		delete(c.OpenModals, modalId)
+	}
+	return modalState
+}
+
+// CloseModal closes a modal with the given result
+func (c *ClientImpl) CloseModal(modalId string, result bool) {
+	modalState := c.removeModalFromMap(modalId)
+	if modalState != nil {
 		modalState.ResultChan <- result
 		close(modalState.ResultChan)
-		delete(c.OpenModals, modalId)
 	}
 }
 
@@ -433,11 +441,13 @@ func (c *ClientImpl) CloseModal(modalId string, result bool) {
 // This is called when the FE requests a resync (page refresh or new client)
 func (c *ClientImpl) CloseAllModals() {
 	c.OpenModalsLock.Lock()
-	defer c.OpenModalsLock.Unlock()
+	modalIds := make([]string, 0, len(c.OpenModals))
+	for modalId := range c.OpenModals {
+		modalIds = append(modalIds, modalId)
+	}
+	c.OpenModalsLock.Unlock()
 
-	for modalId, modalState := range c.OpenModals {
-		modalState.ResultChan <- false
-		close(modalState.ResultChan)
-		delete(c.OpenModals, modalId)
+	for _, modalId := range modalIds {
+		c.CloseModal(modalId, false)
 	}
 }
