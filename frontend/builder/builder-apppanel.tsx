@@ -86,7 +86,7 @@ const BuilderAppPanel = memo(() => {
                         onClick={() => handleTabClick("code")}
                     />
                     <TabButton
-                        label="Files"
+                        label="Static Files"
                         tabType="files"
                         isActive={activeTab === "files"}
                         isAppFocused={isAppFocused}

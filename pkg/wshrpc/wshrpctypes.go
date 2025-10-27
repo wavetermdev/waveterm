@@ -155,6 +155,7 @@ const (
 	// builder
 	Command_ListAllEditableApps = "listalleditableapps"
 	Command_ListAllAppFiles     = "listallappfiles"
+	Command_ReadAppFile         = "readappfile"
 	Command_WriteAppFile        = "writeappfile"
 	Command_DeleteAppFile       = "deleteappfile"
 	Command_RenameAppFile       = "renameappfile"
@@ -296,6 +297,7 @@ type WshRpcInterface interface {
 	// builder
 	ListAllEditableAppsCommand(ctx context.Context) ([]string, error)
 	ListAllAppFilesCommand(ctx context.Context, data CommandListAllAppFilesData) (*CommandListAllAppFilesRtnData, error)
+	ReadAppFileCommand(ctx context.Context, data CommandReadAppFileData) (*CommandReadAppFileRtnData, error)
 	WriteAppFileCommand(ctx context.Context, data CommandWriteAppFileData) error
 	DeleteAppFileCommand(ctx context.Context, data CommandDeleteAppFileData) error
 	RenameAppFileCommand(ctx context.Context, data CommandRenameAppFileData) error
@@ -915,6 +917,15 @@ type DirEntryOut struct {
 	Mode         string `json:"mode"`
 	Modified     string `json:"modified"`
 	ModifiedTime string `json:"modifiedtime"`
+}
+
+type CommandReadAppFileData struct {
+	AppId    string `json:"appid"`
+	FileName string `json:"filename"`
+}
+
+type CommandReadAppFileRtnData struct {
+	Data64 string `json:"data64"`
 }
 
 type CommandWriteAppFileData struct {

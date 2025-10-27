@@ -273,6 +273,29 @@ func WriteAppFile(appId string, fileName string, contents []byte) error {
 	return nil
 }
 
+func ReadAppFile(appId string, fileName string) ([]byte, error) {
+	if err := ValidateAppId(appId); err != nil {
+		return nil, fmt.Errorf("invalid appId: %w", err)
+	}
+
+	appDir, err := GetAppDir(appId)
+	if err != nil {
+		return nil, err
+	}
+
+	filePath, err := validateAndResolveFilePath(appDir, fileName)
+	if err != nil {
+		return nil, err
+	}
+
+	contents, err := os.ReadFile(filePath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read file: %w", err)
+	}
+
+	return contents, nil
+}
+
 func DeleteAppFile(appId string, fileName string) error {
 	if err := ValidateAppId(appId); err != nil {
 		return fmt.Errorf("invalid appId: %w", err)

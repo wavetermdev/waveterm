@@ -398,6 +398,12 @@ func PathCommand(w *wshutil.WshRpc, data wshrpc.PathCommandData, opts *wshrpc.Rp
 	return resp, err
 }
 
+// command "readappfile", wshserver.ReadAppFileCommand
+func ReadAppFileCommand(w *wshutil.WshRpc, data wshrpc.CommandReadAppFileData, opts *wshrpc.RpcOpts) (*wshrpc.CommandReadAppFileRtnData, error) {
+	resp, err := sendRpcRequestCallHelper[*wshrpc.CommandReadAppFileRtnData](w, "readappfile", data, opts)
+	return resp, err
+}
+
 // command "recordtevent", wshserver.RecordTEventCommand
 func RecordTEventCommand(w *wshutil.WshRpc, data telemetrydata.TEvent, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "recordtevent", data, opts)

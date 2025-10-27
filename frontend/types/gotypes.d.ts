@@ -268,6 +268,17 @@ declare global {
         message: string;
     };
 
+    // wshrpc.CommandReadAppFileData
+    type CommandReadAppFileData = {
+        appid: string;
+        filename: string;
+    };
+
+    // wshrpc.CommandReadAppFileRtnData
+    type CommandReadAppFileRtnData = {
+        data64: string;
+    };
+
     // wshrpc.CommandRemoteListEntriesData
     type CommandRemoteListEntriesData = {
         path: string;

@@ -923,6 +923,16 @@ func (ws *WshServer) ListAllAppFilesCommand(ctx context.Context, data wshrpc.Com
 	}, nil
 }
 
+func (ws *WshServer) ReadAppFileCommand(ctx context.Context, data wshrpc.CommandReadAppFileData) (*wshrpc.CommandReadAppFileRtnData, error) {
+	contents, err := waveappstore.ReadAppFile(data.AppId, data.FileName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read app file: %w", err)
+	}
+	return &wshrpc.CommandReadAppFileRtnData{
+		Data64: base64.StdEncoding.EncodeToString(contents),
+	}, nil
+}
+
 func (ws *WshServer) WriteAppFileCommand(ctx context.Context, data wshrpc.CommandWriteAppFileData) error {
 	contents, err := base64.StdEncoding.DecodeString(data.Data64)
 	if err != nil {

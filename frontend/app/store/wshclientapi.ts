@@ -327,6 +327,11 @@ class RpcApiType {
         return client.wshRpcCall("path", data, opts);
     }
 
+    // command "readappfile" [call]
+    ReadAppFileCommand(client: WshClient, data: CommandReadAppFileData, opts?: RpcOpts): Promise<CommandReadAppFileRtnData> {
+        return client.wshRpcCall("readappfile", data, opts);
+    }
+
     // command "recordtevent" [call]
     RecordTEventCommand(client: WshClient, data: TEvent, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("recordtevent", data, opts);
