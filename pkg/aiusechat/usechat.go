@@ -25,6 +25,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/util/ds"
 	"github.com/wavetermdev/waveterm/pkg/util/logutil"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
+	"github.com/wavetermdev/waveterm/pkg/waveappstore"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/web/sse"
 	"github.com/wavetermdev/waveterm/pkg/wps"
@@ -75,6 +76,7 @@ var SystemPromptText_OpenAI = strings.Join([]string{
 	`User-attached directories use the tag <AttachedDirectoryListing_xxxxxxxx directory_name="...">JSON DirInfo</AttachedDirectoryListing_xxxxxxxx>.`,
 	`If multiple attached files exist, treat each as a separate source file with its own file_name.`,
 	`When the user refers to these files, use their inline content directly; do NOT call any read_text_file or file-access tools to re-read them unless asked.`,
+	`The current "app.go" file will be provided with the tag <CurrentAppGoFile>\ncontent\n</CurrentAppGoFile> (use this as the basis for your app.go file edits)`,
 
 	// Output & formatting
 	`When presenting commands or any runnable multi-line code, always use fenced Markdown code blocks.`,
@@ -427,6 +429,13 @@ func RunAIChat(ctx context.Context, sseHandler *sse.SSEHandlerCh, chatOpts uctyp
 				chatOpts.TabId = tabId
 			}
 		}
+		if chatOpts.BuilderAppGenerator != nil {
+			appGoFile, appBuildStatus, appErr := chatOpts.BuilderAppGenerator()
+			if appErr == nil {
+				chatOpts.AppGoFile = appGoFile
+				chatOpts.AppBuildStatus = appBuildStatus
+			}
+		}
 		stopReason, rtnMessage, err := runAIChatStep(ctx, sseHandler, chatOpts, cont)
 		metrics.RequestCount++
 		if chatOpts.Config.IsPremiumModel() {
@@ -687,9 +696,23 @@ func WaveAIPostMessageHandler(w http.ResponseWriter, r *http.Request) {
 		chatOpts.SystemPrompt = []string{SystemPromptText}
 	}
 
-	chatOpts.TabStateGenerator = func() (string, []uctypes.ToolDefinition, string, error) {
-		tabState, tabTools, err := GenerateTabStateAndTools(r.Context(), req.TabId, req.WidgetAccess)
-		return tabState, tabTools, req.TabId, err
+	if req.TabId != "" {
+		chatOpts.TabStateGenerator = func() (string, []uctypes.ToolDefinition, string, error) {
+			tabState, tabTools, err := GenerateTabStateAndTools(r.Context(), req.TabId, req.WidgetAccess)
+			return tabState, tabTools, req.TabId, err
+		}
+	}
+
+	if req.BuilderAppId != "" {
+		chatOpts.BuilderAppGenerator = func() (string, string, error) {
+			appGoFileBytes, err := waveappstore.ReadAppFile(req.BuilderAppId, "app.go")
+			if err != nil {
+				return "", "", err
+			}
+			appGoFile := string(appGoFileBytes)
+			appBuildStatus := ""
+			return appGoFile, appBuildStatus, nil
+		}
 	}
 
 	if req.BuilderAppId != "" {

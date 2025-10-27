@@ -112,7 +112,7 @@ export function AppSelectionModal() {
 
     return (
         <FlexiModal className="min-w-[600px] w-[600px] max-h-[80vh] overflow-y-auto">
-            <div className="px-2 pt-0 pb-4">
+            <div className="w-full px-2 pt-0 pb-4">
                 <h2 className="text-2xl mb-6">Select a WaveApp to Edit</h2>
 
                 {error && (
@@ -134,14 +134,23 @@ export function AppSelectionModal() {
                                     onClick={() => handleSelectApp(appId)}
                                     className="w-full text-left px-4 py-3 bg-panel hover:bg-hover border border-border rounded transition-colors cursor-pointer"
                                 >
-                                    {getAppDisplayName(appId)}
+                                    <div className="flex items-center gap-3">
+                                        <i className="fa-solid fa-cube"></i>
+                                        <span>{getAppDisplayName(appId)}</span>
+                                    </div>
                                 </button>
                             ))}
                         </div>
                     </div>
                 )}
 
-                {apps.length > 0 && <div className="border-t border-border my-6"></div>}
+                {apps.length > 0 && (
+                    <div className="flex items-center gap-4 my-6">
+                        <div className="flex-1 border-t border-border"></div>
+                        <span className="text-muted-foreground text-sm">or</span>
+                        <div className="flex-1 border-t border-border"></div>
+                    </div>
+                )}
 
                 <div className="min-h-[80px]">
                     <h3 className="text-base font-medium mb-4 text-muted-foreground">Create New WaveApp</h3>
@@ -156,7 +165,12 @@ export function AppSelectionModal() {
                                     validateAppName(value);
                                 }}
                                 onKeyDown={(e) => {
-                                    if (e.key === "Enter" && !e.nativeEvent.isComposing && newAppName.trim() && !inputError) {
+                                    if (
+                                        e.key === "Enter" &&
+                                        !e.nativeEvent.isComposing &&
+                                        newAppName.trim() &&
+                                        !inputError
+                                    ) {
                                         handleCreateNew();
                                     }
                                 }}
