@@ -18,6 +18,7 @@ export class BuilderAppPanelModel {
     errorAtom: PrimitiveAtom<string> = atom<string>("");
     saveNeededAtom!: Atom<boolean>;
     focusElemRef: { current: HTMLInputElement | null } = { current: null };
+    monacoEditorRef: { current: any | null } = { current: null };
 
     private constructor() {
         this.saveNeededAtom = atom((get) => {
@@ -89,10 +90,19 @@ export class BuilderAppPanelModel {
     }
 
     giveFocus() {
-        this.focusElemRef.current?.focus();
+        const activeTab = globalStore.get(this.activeTab);
+        if (activeTab === "code" && this.monacoEditorRef.current) {
+            this.monacoEditorRef.current.focus();
+        } else {
+            this.focusElemRef.current?.focus();
+        }
     }
 
     setFocusElemRef(ref: HTMLInputElement | null) {
         this.focusElemRef.current = ref;
+    }
+
+    setMonacoEditorRef(ref: any) {
+        this.monacoEditorRef.current = ref;
     }
 }

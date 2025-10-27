@@ -6,6 +6,7 @@ import { BuilderFocusManager } from "@/builder/store/builderFocusManager";
 import { BuilderCodeTab } from "@/builder/tabs/builder-codetab";
 import { BuilderFilesTab } from "@/builder/tabs/builder-filestab";
 import { BuilderPreviewTab } from "@/builder/tabs/builder-previewtab";
+import { builderAppHasSelection } from "@/builder/utils/builder-focus-utils";
 import { ErrorBoundary } from "@/element/errorboundary";
 import { atoms } from "@/store/global";
 import { cn } from "@/util/util";
@@ -57,10 +58,34 @@ const BuilderAppPanel = memo(() => {
         model.giveFocus();
     };
 
-    const handlePanelClick = () => {
-        BuilderFocusManager.getInstance().setAppFocused();
-        model.giveFocus();
-    };
+    const handleFocusCapture = useCallback(
+        (event: React.FocusEvent) => {
+            BuilderFocusManager.getInstance().setAppFocused();
+        },
+        []
+    );
+
+    const handlePanelClick = useCallback((e: React.MouseEvent) => {
+        const target = e.target as HTMLElement;
+        const isInteractive = target.closest('button, a, input, textarea, select, [role="button"], [tabindex]');
+
+        if (isInteractive) {
+            return;
+        }
+
+        const hasSelection = builderAppHasSelection();
+        if (hasSelection) {
+            BuilderFocusManager.getInstance().setAppFocused();
+            return;
+        }
+
+        setTimeout(() => {
+            if (!builderAppHasSelection()) {
+                BuilderFocusManager.getInstance().setAppFocused();
+                model.giveFocus();
+            }
+        }, 0);
+    }, [model]);
 
     const handleSave = useCallback(() => {
         if (builderAppId) {
@@ -69,7 +94,12 @@ const BuilderAppPanel = memo(() => {
     }, [builderAppId, model]);
 
     return (
-        <div className="w-full h-full flex flex-col border-b border-border" onClick={handlePanelClick}>
+        <div
+            className="w-full h-full flex flex-col border-b border-border"
+            data-builder-app-panel="true"
+            onClick={handlePanelClick}
+            onFocusCapture={handleFocusCapture}
+        >
             <div key="focuselem" className="h-0 w-0">
                 <input
                     type="text"

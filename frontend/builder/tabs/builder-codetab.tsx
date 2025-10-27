@@ -24,6 +24,13 @@ const BuilderCodeTab = memo(() => {
         model.setCodeContent(newText);
     };
 
+    const handleEditorMount = (editor: any) => {
+        model.setMonacoEditorRef(editor);
+        return () => {
+            model.setMonacoEditorRef(null);
+        };
+    };
+
     if (isLoading) {
         return (
             <div className="w-full h-full flex items-center justify-center">
@@ -49,6 +56,7 @@ const BuilderCodeTab = memo(() => {
                 language="go"
                 fileName="app.go"
                 onChange={handleCodeChange}
+                onMount={handleEditorMount}
             />
         </div>
     );
