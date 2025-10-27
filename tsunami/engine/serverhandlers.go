@@ -163,6 +163,11 @@ func (h *httpHandlers) processFrontendUpdate(feUpdate *rpctypes.VDomFrontendUpda
 
 	h.Client.Root.RenderTs = feUpdate.Ts
 
+	// Close all open modals on resync (e.g., page refresh)
+	if feUpdate.Resync {
+		h.Client.CloseAllModals()
+	}
+
 	// run events
 	h.Client.RunEvents(feUpdate.Events)
 	// update refs

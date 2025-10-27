@@ -247,20 +247,11 @@ func (c *ClientImpl) RegisterSSEChannel(connectionId string) chan ssEvent {
 
 func (c *ClientImpl) UnregisterSSEChannel(connectionId string) {
 	c.SSEChannelsLock.Lock()
-	hasChannels := len(c.SSEChannels) > 0
-	c.SSEChannelsLock.Unlock()
+	defer c.SSEChannelsLock.Unlock()
 
-	c.SSEChannelsLock.Lock()
 	if ch, exists := c.SSEChannels[connectionId]; exists {
 		close(ch)
 		delete(c.SSEChannels, connectionId)
-	}
-	channelsAfter := len(c.SSEChannels)
-	c.SSEChannelsLock.Unlock()
-
-	// If this was the last SSE channel, close all open modals
-	if hasChannels && channelsAfter == 0 {
-		c.CloseAllModals()
 	}
 }
 
