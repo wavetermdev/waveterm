@@ -5,7 +5,7 @@ import { WaveAIModel } from "@/app/aipanel/waveai-model";
 import { getApi } from "@/app/store/global";
 import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
 import { getLayoutModelForStaticTab } from "@/layout/index";
-import { base64ToArray } from "@/util/util";
+import { base64ToArrayBuffer } from "@/util/util";
 import { RpcResponseHelper, WshClient } from "./wshclient";
 
 export class TabClient extends WshClient {
@@ -74,7 +74,7 @@ export class TabClient extends WshClient {
 
         if (data.files && data.files.length > 0) {
             for (const fileData of data.files) {
-                const decodedData = base64ToArray(fileData.data64);
+                const decodedData = base64ToArrayBuffer(fileData.data64);
                 const blob = new Blob([decodedData], { type: fileData.type });
                 const file = new File([blob], fileData.name, { type: fileData.type });
                 await model.addFile(file);

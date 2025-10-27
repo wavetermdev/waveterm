@@ -4,6 +4,7 @@
 import { globalStore } from "@/app/store/jotaiStore";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
+import { base64ToString, stringToBase64 } from "@/util/util";
 import { atom, type Atom, type PrimitiveAtom } from "jotai";
 
 export type TabType = "preview" | "files" | "code";
@@ -63,7 +64,7 @@ export class BuilderAppPanelModel {
                 globalStore.set(this.codeContentAtom, "");
                 globalStore.set(this.originalContentAtom, "");
             } else {
-                const decoded = atob(result.data64);
+                const decoded = base64ToString(result.data64);
                 globalStore.set(this.codeContentAtom, decoded);
                 globalStore.set(this.originalContentAtom, decoded);
             }
@@ -80,7 +81,7 @@ export class BuilderAppPanelModel {
 
         try {
             const content = globalStore.get(this.codeContentAtom);
-            const encoded = btoa(content);
+            const encoded = stringToBase64(content);
             await RpcApi.WriteAppFileCommand(TabRpcClient, {
                 appid: appId,
                 filename: "app.go",

@@ -17,7 +17,7 @@ import {
 import { getWebServerEndpoint } from "@/util/endpoints";
 import { fetch } from "@/util/fetchutil";
 import { setPlatform } from "@/util/platformutil";
-import { deepCompareReturnPrev, fireAndForget, getPrefixedSettings, isBlank } from "@/util/util";
+import { base64ToString, deepCompareReturnPrev, fireAndForget, getPrefixedSettings, isBlank } from "@/util/util";
 import { atom, Atom, PrimitiveAtom, useAtomValue } from "jotai";
 import { globalStore } from "./jotaiStore";
 import { modalsModel } from "./modalmodel";
@@ -549,7 +549,7 @@ async function fetchWaveFile(
     if (fileInfo64 == null) {
         throw new Error(`missing zone file info for ${zoneId}:${fileName}`);
     }
-    const fileInfo = JSON.parse(atob(fileInfo64));
+    const fileInfo = JSON.parse(base64ToString(fileInfo64));
     const data = await resp.arrayBuffer();
     return { data: new Uint8Array(data), fileInfo };
 }

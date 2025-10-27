@@ -28,28 +28,16 @@ function stringToBase64(input: string): string {
     return base64.fromByteArray(stringBytes);
 }
 
-// browser only (uses atob)
-function base64ToArray(b64: string): Uint8Array<ArrayBuffer> {
-    const rawStr = atob(b64);
-    const rtnArr = new Uint8Array(new ArrayBuffer(rawStr.length));
-    for (let i = 0; i < rawStr.length; i++) {
-        rtnArr[i] = rawStr.charCodeAt(i);
-    }
-    return rtnArr;
+function base64ToArray(b64: string): Uint8Array<ArrayBufferLike> {
+    const cleanB64 = b64.replace(/\s+/g, "");
+    return base64.toByteArray(cleanB64);
 }
 
-function decodeBase64ToBytes(b64: string): Uint8Array {
-    // Remove whitespace that some generators insert
-    const clean = b64.replace(/\s+/g, "");
-    if (typeof Buffer !== "undefined") {
-        // Node/Electron main
-        return new Uint8Array(Buffer.from(clean, "base64"));
-    }
-    // Browser
-    const raw = atob(clean);
-    const out = new Uint8Array(raw.length);
-    for (let i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i) & 0xff;
-    return out;
+function base64ToArrayBuffer(b64: string): ArrayBuffer {
+    const cleanB64 = b64.replace(/\s+/g, "");
+    const u8 = base64.toByteArray(cleanB64); // Uint8Array<ArrayBufferLike>
+    // Force a plain ArrayBuffer slice (no SharedArrayBuffer, no offset issues)
+    return u8.buffer.slice(u8.byteOffset, u8.byteOffset + u8.byteLength) as ArrayBuffer;
 }
 
 function boundNumber(num: number, min: number, max: number): number {
@@ -454,7 +442,7 @@ function parseDataUrl(dataUrl: string): ParsedDataUrl {
 
     let buffer: Uint8Array;
     if (isBase64) {
-        buffer = decodeBase64ToBytes(data);
+        buffer = base64ToArray(data);
     } else {
         // assume text
         const decoded = decodeURIComponent(data);
@@ -468,6 +456,7 @@ export {
     atomWithDebounce,
     atomWithThrottle,
     base64ToArray,
+    base64ToArrayBuffer,
     base64ToString,
     boundNumber,
     cn,
