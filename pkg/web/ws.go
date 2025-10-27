@@ -268,9 +268,9 @@ func unregisterConn(wsConnId string, routeId string) {
 }
 
 func HandleWsInternal(w http.ResponseWriter, r *http.Request) error {
-	tabId := r.URL.Query().Get("tabid")
-	if tabId == "" {
-		return fmt.Errorf("tabid is required")
+	routeId := r.URL.Query().Get("routeid")
+	if routeId == "" {
+		return fmt.Errorf("routeid is required")
 	}
 	err := authkey.ValidateIncomingRequest(r)
 	if err != nil {
@@ -287,14 +287,8 @@ func HandleWsInternal(w http.ResponseWriter, r *http.Request) error {
 	wsConnId := uuid.New().String()
 	outputCh := make(chan any, 100)
 	closeCh := make(chan any)
-	var routeId string
-	if tabId == wshutil.ElectronRoute {
-		routeId = wshutil.ElectronRoute
-	} else {
-		routeId = wshutil.MakeTabRouteId(tabId)
-	}
-	log.Printf("[websocket] new connection: tabid:%s connid:%s routeid:%s\n", tabId, wsConnId, routeId)
-	eventbus.RegisterWSChannel(wsConnId, tabId, outputCh)
+	log.Printf("[websocket] new connection: connid:%s routeid:%s\n", wsConnId, routeId)
+	eventbus.RegisterWSChannel(wsConnId, routeId, outputCh)
 	defer eventbus.UnregisterWSChannel(wsConnId)
 	wproxy := wshutil.MakeRpcProxy() // we create a wshproxy to handle rpc messages to/from the window
 	defer close(wproxy.ToRemoteCh)

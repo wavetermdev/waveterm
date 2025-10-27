@@ -23,6 +23,10 @@ function makeTabRouteId(tabId: string): string {
     return `tab:${tabId}`;
 }
 
+function makeBuilderRouteId(builderId: string): string {
+    return `builder:${builderId}`;
+}
+
 class WshRouter {
     routeMap: Map<string, AbstractWshClient>; // routeid -> client
     upstreamClient: AbstractWshClient;
@@ -149,4 +153,4 @@ class WshRouter {
     }
 }
 
-export { makeFeBlockRouteId, makeTabRouteId, WshRouter };
+export { makeBuilderRouteId, makeFeBlockRouteId, makeTabRouteId, WshRouter };

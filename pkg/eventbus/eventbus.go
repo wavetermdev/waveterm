@@ -27,18 +27,18 @@ type WSEventType struct {
 
 type WindowWatchData struct {
 	WindowWSCh chan any
-	TabId      string
+	RouteId    string
 }
 
 var globalLock = &sync.Mutex{}
 var wsMap = make(map[string]*WindowWatchData) // websocketid => WindowWatchData
 
-func RegisterWSChannel(connId string, tabId string, ch chan any) {
+func RegisterWSChannel(connId string, routeId string, ch chan any) {
 	globalLock.Lock()
 	defer globalLock.Unlock()
 	wsMap[connId] = &WindowWatchData{
 		WindowWSCh: ch,
-		TabId:      tabId,
+		RouteId:    routeId,
 	}
 }
 
@@ -53,7 +53,7 @@ func getWindowWatchesForWindowId(windowId string) []*WindowWatchData {
 	defer globalLock.Unlock()
 	var watches []*WindowWatchData
 	for _, wdata := range wsMap {
-		if wdata.TabId == windowId {
+		if wdata.RouteId == windowId {
 			watches = append(watches, wdata)
 		}
 	}

@@ -4,8 +4,6 @@
 import { formatFileSizeError, isAcceptableFile, validateFileSize } from "@/app/aipanel/ai-utils";
 import { waveAIHasFocusWithin } from "@/app/aipanel/waveai-focus-utils";
 import { type WaveAIModel } from "@/app/aipanel/waveai-model";
-import { focusManager } from "@/app/store/focusManager";
-import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
 import { cn } from "@/util/util";
 import { useAtom, useAtomValue } from "jotai";
 import { memo, useCallback, useEffect, useRef } from "react";
@@ -23,11 +21,10 @@ export interface AIPanelInputRef {
 
 export const AIPanelInput = memo(({ onSubmit, status, model }: AIPanelInputProps) => {
     const [input, setInput] = useAtom(model.inputAtom);
-    const focusType = useAtomValue(focusManager.focusType);
-    const isFocused = focusType === "waveai";
+    const isFocused = useAtomValue(model.isWaveAIFocusedAtom);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
-    const isPanelOpen = useAtomValue(WorkspaceLayoutModel.getInstance().panelVisibleAtom);
+    const isPanelOpen = useAtomValue(model.getPanelVisibleAtom());
 
     const resizeTextarea = useCallback(() => {
         const textarea = textareaRef.current;
@@ -60,8 +57,8 @@ export const AIPanelInput = memo(({ onSubmit, status, model }: AIPanelInputProps
     };
 
     const handleFocus = useCallback(() => {
-        focusManager.requestWaveAIFocus();
-    }, []);
+        model.requestWaveAIFocus();
+    }, [model]);
 
     const handleBlur = useCallback((e: React.FocusEvent) => {
         if (e.relatedTarget === null) {
@@ -72,8 +69,8 @@ export const AIPanelInput = memo(({ onSubmit, status, model }: AIPanelInputProps
             return;
         }
 
-        focusManager.requestNodeFocus();
-    }, []);
+        model.requestNodeFocus();
+    }, [model]);
 
     useEffect(() => {
         resizeTextarea();
@@ -133,7 +130,7 @@ export const AIPanelInput = memo(({ onSubmit, status, model }: AIPanelInputProps
                         onKeyDown={handleKeyDown}
                         onFocus={handleFocus}
                         onBlur={handleBlur}
-                        placeholder="Ask Wave AI anything..."
+                        placeholder={model.inBuilder ? "What would you like to build..." : "Ask Wave AI anything..."}
                         className={cn(
                             "w-full  text-white px-2 py-2 pr-5 focus:outline-none resize-none overflow-auto",
                             isFocused ? "bg-accent-900/50" : "bg-gray-800"

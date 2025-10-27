@@ -8,6 +8,8 @@ import type * as rxjs from "rxjs";
 declare global {
     type GlobalAtomsType = {
         clientId: jotai.Atom<string>; // readonly
+        builderId: jotai.PrimitiveAtom<string>; // readonly (for builder mode)
+        waveWindowType: jotai.Atom<"tab" | "builder">; // derived from builderId
         client: jotai.Atom<Client>; // driven from WOS
         uiContext: jotai.Atom<UIContext>; // driven from windowId, tabId
         waveWindow: jotai.Atom<WaveWindow>; // driven from WOS
@@ -63,6 +65,13 @@ declare global {
         primaryTabStartup?: boolean;
     };
 
+    type BuilderInitOpts = {
+        builderId: string;
+        clientId: string;
+        windowId: string;
+        appId: string;
+    };
+
     type ElectronApi = {
         getAuthKey(): string; // get-auth-key
         getIsDev(): boolean; // get-is-dev
@@ -103,6 +112,7 @@ declare global {
         closeTab: (workspaceId: string, tabId: string) => void; // close-tab
         setWindowInitStatus: (status: "ready" | "wave-ready") => void; // set-window-init-status
         onWaveInit: (callback: (initOpts: WaveInitOpts) => void) => void; // wave-init
+        onBuilderInit: (callback: (initOpts: BuilderInitOpts) => void) => void; // builder-init
         sendLog: (log: string) => void; // fe-log
         onQuicklook: (filePath: string) => void; // quicklook
         openNativePath(filePath: string): void; // open-native-path
@@ -110,6 +120,7 @@ declare global {
         setKeyboardChordMode: () => void; // set-keyboard-chord-mode
         clearWebviewStorage: (webContentsId: number) => Promise<void>; // clear-webview-storage
         setWaveAIOpen: (isOpen: boolean) => void; // set-waveai-open
+        closeBuilderWindow: () => void; // close-builder-window
     };
 
     type ElectronContextMenuItem = {

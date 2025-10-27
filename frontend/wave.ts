@@ -4,14 +4,17 @@
 import { App } from "@/app/app";
 import {
     globalRefocus,
+    registerBuilderGlobalKeys,
     registerControlShiftStateUpdateHandler,
     registerElectronReinjectKeyHandler,
     registerGlobalKeys,
 } from "@/app/store/keymodel";
 import { modalsModel } from "@/app/store/modalmodel";
 import { RpcApi } from "@/app/store/wshclientapi";
+import { makeBuilderRouteId, makeTabRouteId } from "@/app/store/wshrouter";
 import { initWshrpc, TabRpcClient } from "@/app/store/wshrpcutil";
 import { loadMonaco } from "@/app/view/codeeditor/codeeditor";
+import { BuilderApp } from "@/builder/builder-app";
 import { getLayoutModelForStaticTab } from "@/layout/index";
 import {
     atoms,
@@ -36,6 +39,7 @@ import { createRoot } from "react-dom/client";
 const platform = getApi().getPlatform();
 document.title = `Wave Terminal`;
 let savedInitOpts: WaveInitOpts = null;
+let savedBuilderInitOpts: BuilderInitOpts = null;
 
 (window as any).WOS = WOS;
 (window as any).globalStore = globalStore;
@@ -62,6 +66,7 @@ async function initBare() {
     document.body.style.opacity = "0";
     document.body.classList.add("is-transparent");
     getApi().onWaveInit(initWaveWrap);
+    getApi().onBuilderInit(initBuilderWrap);
     setKeyUtilPlatform(platform);
     loadFonts();
     updateZoomFactor(getApi().getZoomFactor());
@@ -169,7 +174,7 @@ async function initWave(initOpts: WaveInitOpts) {
     (window as any).globalAtoms = atoms;
 
     // Init WPS event handlers
-    const globalWS = initWshrpc(initOpts.tabId);
+    const globalWS = initWshrpc(makeTabRouteId(initOpts.tabId));
     (window as any).globalWS = globalWS;
     (window as any).TabRpcClient = TabRpcClient;
     await loadConnStatus();
@@ -209,5 +214,100 @@ async function initWave(initOpts: WaveInitOpts) {
     root.render(reactElem);
     await firstRenderPromise;
     console.log("Wave First Render Done");
+    getApi().setWindowInitStatus("wave-ready");
+}
+
+async function initBuilderWrap(initOpts: BuilderInitOpts) {
+    try {
+        if (savedBuilderInitOpts) {
+            await reinitBuilder();
+            return;
+        }
+        savedBuilderInitOpts = initOpts;
+        await initBuilder(initOpts);
+    } catch (e) {
+        getApi().sendLog("Error in initBuilder " + e.message + "\n" + e.stack);
+        console.error("Error in initBuilder", e);
+    } finally {
+        document.body.style.visibility = null;
+        document.body.style.opacity = null;
+        document.body.classList.remove("is-transparent");
+    }
+}
+
+async function reinitBuilder() {
+    console.log("Reinit Builder");
+    getApi().sendLog("Reinit Builder");
+
+    // We use this hack to prevent a flicker of the previously-hovered tab when this view was last active.
+    document.body.classList.add("nohover");
+    requestAnimationFrame(() =>
+        setTimeout(() => {
+            document.body.classList.remove("nohover");
+        }, 100)
+    );
+
+    await WOS.reloadWaveObject<Client>(WOS.makeORef("client", savedBuilderInitOpts.clientId));
+    document.title = `Tsunami Builder - ${savedBuilderInitOpts.appId}`;
+    getApi().setWindowInitStatus("wave-ready");
+    globalStore.set(atoms.reinitVersion, globalStore.get(atoms.reinitVersion) + 1);
+    globalStore.set(atoms.updaterStatusAtom, getApi().getUpdaterStatus());
+    setTimeout(() => {
+        globalRefocus();
+    }, 50);
+}
+
+async function initBuilder(initOpts: BuilderInitOpts) {
+    getApi().sendLog("Init Builder " + JSON.stringify(initOpts));
+    console.log(
+        "Tsunami Builder Init",
+        "builderid",
+        initOpts.builderId,
+        "clientid",
+        initOpts.clientId,
+        "windowid",
+        initOpts.windowId,
+        "appid",
+        initOpts.appId,
+        "platform",
+        platform
+    );
+
+    document.title = `Tsunami Builder - ${initOpts.appId}`;
+
+    initGlobal({
+        clientId: initOpts.clientId,
+        windowId: initOpts.windowId,
+        platform,
+        environment: "renderer",
+        builderId: initOpts.builderId,
+    });
+    (window as any).globalAtoms = atoms;
+
+    const globalWS = initWshrpc(makeBuilderRouteId(initOpts.builderId));
+    (window as any).globalWS = globalWS;
+    (window as any).TabRpcClient = TabRpcClient;
+    await loadConnStatus();
+
+    const client = await WOS.loadAndPinWaveObject<Client>(WOS.makeORef("client", initOpts.clientId));
+
+    registerBuilderGlobalKeys();
+    registerElectronReinjectKeyHandler();
+    await loadMonaco();
+    const fullConfig = await RpcApi.GetFullConfigCommand(TabRpcClient);
+    console.log("fullconfig", fullConfig);
+    globalStore.set(atoms.fullConfigAtom, fullConfig);
+
+    console.log("Tsunami Builder First Render");
+    let firstRenderResolveFn: () => void = null;
+    let firstRenderPromise = new Promise<void>((resolve) => {
+        firstRenderResolveFn = resolve;
+    });
+    const reactElem = createElement(BuilderApp, { initOpts, onFirstRender: firstRenderResolveFn }, null);
+    const elem = document.getElementById("main");
+    const root = createRoot(elem);
+    root.render(reactElem);
+    await firstRenderPromise;
+    console.log("Tsunami Builder First Render Done");
     getApi().setWindowInitStatus("wave-ready");
 }

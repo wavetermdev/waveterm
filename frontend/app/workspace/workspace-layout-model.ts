@@ -7,7 +7,7 @@ import * as WOS from "@/app/store/wos";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { getLayoutModelForStaticTab } from "@/layout/lib/layoutModelHooks";
-import { atoms, getApi, getTabMetaKeyAtom, recordTEvent, refocusNode } from "@/store/global";
+import { atoms, getApi, getOrefMetaKeyAtom, recordTEvent, refocusNode } from "@/store/global";
 import debug from "debug";
 import * as jotai from "jotai";
 import { debounce } from "lodash-es";
@@ -93,11 +93,13 @@ class WorkspaceLayoutModel {
     }
 
     private getPanelOpenAtom(): jotai.Atom<boolean> {
-        return getTabMetaKeyAtom(this.getTabId(), "waveai:panelopen");
+        const tabORef = WOS.makeORef("tab", this.getTabId());
+        return getOrefMetaKeyAtom(tabORef, "waveai:panelopen");
     }
 
     private getPanelWidthAtom(): jotai.Atom<number> {
-        return getTabMetaKeyAtom(this.getTabId(), "waveai:panelwidth");
+        const tabORef = WOS.makeORef("tab", this.getTabId());
+        return getOrefMetaKeyAtom(tabORef, "waveai:panelwidth");
     }
 
     registerRefs(

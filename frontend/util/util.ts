@@ -28,6 +28,7 @@ function stringToBase64(input: string): string {
     return base64.fromByteArray(stringBytes);
 }
 
+// browser only (uses atob)
 function base64ToArray(b64: string): Uint8Array<ArrayBuffer> {
     const rawStr = atob(b64);
     const rtnArr = new Uint8Array(new ArrayBuffer(rawStr.length));
@@ -35,6 +36,20 @@ function base64ToArray(b64: string): Uint8Array<ArrayBuffer> {
         rtnArr[i] = rawStr.charCodeAt(i);
     }
     return rtnArr;
+}
+
+function decodeBase64ToBytes(b64: string): Uint8Array {
+    // Remove whitespace that some generators insert
+    const clean = b64.replace(/\s+/g, "");
+    if (typeof Buffer !== "undefined") {
+        // Node/Electron main
+        return new Uint8Array(Buffer.from(clean, "base64"));
+    }
+    // Browser
+    const raw = atob(clean);
+    const out = new Uint8Array(raw.length);
+    for (let i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i) & 0xff;
+    return out;
 }
 
 function boundNumber(num: number, min: number, max: number): number {
@@ -421,6 +436,34 @@ function cn(...inputs: ClassValue[]) {
     return twMerge(clsx(inputs));
 }
 
+type ParsedDataUrl = {
+    mimeType: string;
+    buffer: Uint8Array;
+};
+
+function parseDataUrl(dataUrl: string): ParsedDataUrl {
+    if (!dataUrl.startsWith("data:")) throw new Error("Invalid data URL");
+    const [header, data] = dataUrl.split(",", 2);
+    if (data === undefined) throw new Error("Invalid data URL: missing data");
+
+    const meta = header.slice(5);
+    let mimeType = "text/plain;charset=US-ASCII";
+    const parts = meta.split(";");
+    if (parts[0]) mimeType = parts[0];
+    const isBase64 = parts.some((p) => p.toLowerCase() === "base64");
+
+    let buffer: Uint8Array;
+    if (isBase64) {
+        buffer = decodeBase64ToBytes(data);
+    } else {
+        // assume text
+        const decoded = decodeURIComponent(data);
+        buffer = new TextEncoder().encode(decoded);
+    }
+
+    return { mimeType, buffer };
+}
+
 export {
     atomWithDebounce,
     atomWithThrottle,
@@ -443,6 +486,7 @@ export {
     makeExternLink,
     makeIconClass,
     mergeMeta,
+    parseDataUrl,
     sleep,
     stringToBase64,
     useAtomValueSafe,

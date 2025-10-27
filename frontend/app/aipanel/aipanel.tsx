@@ -4,11 +4,8 @@
 import { waveAIHasSelection } from "@/app/aipanel/waveai-focus-utils";
 import { ErrorBoundary } from "@/app/element/errorboundary";
 import { ContextMenuModel } from "@/app/store/contextmenu";
-import { focusManager } from "@/app/store/focusManager";
 import { atoms, getSettingsKeyAtom } from "@/app/store/global";
 import { globalStore } from "@/app/store/jotaiStore";
-import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
-import { getWebServerEndpoint } from "@/util/endpoints";
 import { checkKeyPressed, keydownWrapper } from "@/util/keyutil";
 import { isMacOS } from "@/util/platformutil";
 import { cn } from "@/util/util";
@@ -165,6 +162,24 @@ const AIWelcomeMessage = memo(() => {
 
 AIWelcomeMessage.displayName = "AIWelcomeMessage";
 
+const AIBuilderWelcomeMessage = memo(() => {
+    return (
+        <div className="text-secondary py-8">
+            <div className="text-center">
+                <i className="fa fa-sparkles text-4xl text-accent mb-4 block"></i>
+                <p className="text-lg font-bold text-primary">WaveApp Builder</p>
+            </div>
+            <div className="mt-4 text-left max-w-md mx-auto">
+                <p className="text-sm mb-6">
+                    The WaveApp builder helps create wave widgets that integrate seamlessly into Wave Terminal.
+                </p>
+            </div>
+        </div>
+    );
+});
+
+AIBuilderWelcomeMessage.displayName = "AIBuilderWelcomeMessage";
+
 interface AIErrorMessageProps {
     errorMessage: string;
     onClear: () => void;
@@ -200,24 +215,27 @@ const AIPanelComponentInner = memo(({ className, onClose }: AIPanelProps) => {
     const errorMessage = jotai.useAtomValue(model.errorMessage);
     const isLayoutMode = jotai.useAtomValue(atoms.controlShiftDelayAtom);
     const showOverlayBlockNums = jotai.useAtomValue(getSettingsKeyAtom("app:showoverlayblocknums")) ?? true;
-    const focusType = jotai.useAtomValue(focusManager.focusType);
-    const isFocused = focusType === "waveai";
+    const isFocused = jotai.useAtomValue(model.isWaveAIFocusedAtom);
     const telemetryEnabled = jotai.useAtomValue(getSettingsKeyAtom("telemetry:enabled")) ?? false;
-    const isPanelVisible = jotai.useAtomValue(WorkspaceLayoutModel.getInstance().panelVisibleAtom);
+    const isPanelVisible = jotai.useAtomValue(model.getPanelVisibleAtom());
 
     const { messages, sendMessage, status, setMessages, error, stop } = useChat({
         transport: new DefaultChatTransport({
-            api: `${getWebServerEndpoint()}/api/post-chat-message`,
+            api: model.getUseChatEndpointUrl(),
             prepareSendMessagesRequest: (opts) => {
                 const msg = model.getAndClearMessage();
-                return {
-                    body: {
-                        msg,
-                        chatid: globalStore.get(model.chatId),
-                        widgetaccess: globalStore.get(model.widgetAccessAtom),
-                        tabid: globalStore.get(atoms.staticTabId),
-                    },
+                const windowType = globalStore.get(atoms.waveWindowType);
+                const body: any = {
+                    msg,
+                    chatid: globalStore.get(model.chatId),
+                    widgetaccess: globalStore.get(model.widgetAccessAtom),
                 };
+                if (windowType === "builder") {
+                    body.builderid = globalStore.get(atoms.builderId);
+                } else {
+                    body.tabid = globalStore.get(atoms.staticTabId);
+                }
+                return { body };
             },
         }),
         onError: (error) => {
@@ -258,7 +276,7 @@ const AIPanelComponentInner = memo(({ className, onClose }: AIPanelProps) => {
 
     useEffect(() => {
         const loadChat = async () => {
-            await model.uiLoadChat();
+            await model.uiLoadInitialChat();
             setInitialLoadDone(true);
         };
         loadChat();
@@ -362,10 +380,13 @@ const AIPanelComponentInner = memo(({ className, onClose }: AIPanelProps) => {
         }
     };
 
-    const handleFocusCapture = useCallback((event: React.FocusEvent) => {
-        // console.log("Wave AI focus capture", getElemAsStr(event.target));
-        focusManager.requestWaveAIFocus();
-    }, []);
+    const handleFocusCapture = useCallback(
+        (event: React.FocusEvent) => {
+            // console.log("Wave AI focus capture", getElemAsStr(event.target));
+            model.requestWaveAIFocus();
+        },
+        [model]
+    );
 
     const handleClick = (e: React.MouseEvent) => {
         const target = e.target as HTMLElement;
@@ -377,7 +398,7 @@ const AIPanelComponentInner = memo(({ className, onClose }: AIPanelProps) => {
 
         const hasSelection = waveAIHasSelection();
         if (hasSelection) {
-            focusManager.requestWaveAIFocus();
+            model.requestWaveAIFocus();
             return;
         }
 
@@ -428,14 +449,15 @@ const AIPanelComponentInner = memo(({ className, onClose }: AIPanelProps) => {
             ref={containerRef}
             data-waveai-panel="true"
             className={cn(
-                "bg-gray-900 flex flex-col relative h-[calc(100%-4px)] mt-1",
+                "bg-gray-900 flex flex-col relative h-[calc(100%-4px)]",
+                model.inBuilder ? "mt-0" : "mt-1",
                 className,
                 isDragOver && "bg-gray-800 border-accent",
                 isFocused ? "border-2 border-accent" : "border-2 border-transparent"
             )}
             style={{
-                borderTopRightRadius: 10,
-                borderBottomRightRadius: 10,
+                borderTopRightRadius: model.inBuilder ? 0 : 10,
+                borderBottomRightRadius: model.inBuilder ? 0 : 10,
                 borderBottomLeftRadius: 10,
             }}
             onFocusCapture={handleFocusCapture}
@@ -458,7 +480,7 @@ const AIPanelComponentInner = memo(({ className, onClose }: AIPanelProps) => {
                     <>
                         {messages.length === 0 && initialLoadDone ? (
                             <div className="flex-1 overflow-y-auto p-2" onContextMenu={handleMessagesContextMenu}>
-                                <AIWelcomeMessage />
+                                {model.inBuilder ? <AIBuilderWelcomeMessage /> : <AIWelcomeMessage />}
                             </div>
                         ) : (
                             <AIPanelMessages

@@ -1,7 +1,7 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { focusManager } from "@/app/store/focusManager";
+import { FocusManager } from "@/app/store/focusManager";
 import { getSettingsKeyAtom } from "@/app/store/global";
 import { atomWithThrottle, boundNumber, fireAndForget } from "@/util/util";
 import { Atom, atom, Getter, PrimitiveAtom, Setter } from "jotai";
@@ -594,13 +594,13 @@ export class LayoutModel {
             case LayoutTreeActionType.InsertNode:
                 insertNode(this.treeState, action as LayoutTreeInsertNodeAction);
                 if ((action as LayoutTreeInsertNodeAction).focused) {
-                    focusManager.requestNodeFocus();
+                    FocusManager.getInstance().requestNodeFocus();
                 }
                 break;
             case LayoutTreeActionType.InsertNodeAtIndex:
                 insertNodeAtIndex(this.treeState, action as LayoutTreeInsertNodeAtIndexAction);
                 if ((action as LayoutTreeInsertNodeAtIndexAction).focused) {
-                    focusManager.requestNodeFocus();
+                    FocusManager.getInstance().requestNodeFocus();
                 }
                 break;
             case LayoutTreeActionType.DeleteNode:
@@ -636,11 +636,11 @@ export class LayoutModel {
             }
             case LayoutTreeActionType.FocusNode:
                 focusNode(this.treeState, action as LayoutTreeFocusNodeAction);
-                focusManager.requestNodeFocus();
+                FocusManager.getInstance().requestNodeFocus();
                 break;
             case LayoutTreeActionType.MagnifyNodeToggle:
                 magnifyNodeToggle(this.treeState, action as LayoutTreeMagnifyNodeToggleAction);
-                focusManager.requestNodeFocus();
+                FocusManager.getInstance().requestNodeFocus();
                 break;
             case LayoutTreeActionType.ClearTree:
                 clearTree(this.treeState);
@@ -1034,7 +1034,7 @@ export class LayoutModel {
                 isFocused: atom((get) => {
                     const treeState = get(this.localTreeStateAtom);
                     const isFocused = treeState.focusedNodeId === nodeid;
-                    const focusType = get(focusManager.focusType);
+                    const focusType = get(FocusManager.getInstance().focusType);
                     return isFocused && focusType === "node";
                 }),
                 numLeafs: this.numLeafs,

@@ -860,8 +860,9 @@ type CommandGetRTInfoData struct {
 }
 
 type CommandSetRTInfoData struct {
-	ORef waveobj.ORef   `json:"oref"`
-	Data map[string]any `json:"data" tstype:"ObjRTInfo"`
+	ORef   waveobj.ORef   `json:"oref"`
+	Data   map[string]any `json:"data" tstype:"ObjRTInfo"`
+	Delete bool           `json:"delete,omitempty"`
 }
 
 type CommandTermGetScrollbackLinesData struct {

@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { WaveAIModel } from "@/app/aipanel/waveai-model";
-import { focusManager } from "@/app/store/focusManager";
+import { FocusManager } from "@/app/store/focusManager";
 import {
     atoms,
     createBlock,
@@ -160,7 +160,7 @@ function uxCloseBlock(blockId: string) {
 }
 
 function genericClose() {
-    const focusType = focusManager.getFocusType();
+    const focusType = FocusManager.getInstance().getFocusType();
     if (focusType === "waveai") {
         WorkspaceLayoutModel.getInstance().setAIPanelVisible(false);
         return;
@@ -207,7 +207,7 @@ function switchBlockByBlockNum(index: number) {
 
 function switchBlockInDirection(direction: NavigateDirection) {
     const layoutModel = getLayoutModelForStaticTab();
-    const focusType = focusManager.getFocusType();
+    const focusType = FocusManager.getInstance().getFocusType();
 
     if (direction === NavigateDirection.Left) {
         const numBlocks = globalStore.get(layoutModel.numLeafs);
@@ -215,20 +215,20 @@ function switchBlockInDirection(direction: NavigateDirection) {
             return;
         }
         if (numBlocks === 1) {
-            focusManager.requestWaveAIFocus();
+            FocusManager.getInstance().requestWaveAIFocus();
             return;
         }
     }
 
     if (direction === NavigateDirection.Right && focusType === "waveai") {
-        focusManager.requestNodeFocus();
+        FocusManager.getInstance().requestNodeFocus();
         return;
     }
 
     const inWaveAI = focusType === "waveai";
     const navResult = layoutModel.switchNodeFocusInDirection(direction, inWaveAI);
     if (navResult.atLeft) {
-        focusManager.requestWaveAIFocus();
+        FocusManager.getInstance().requestWaveAIFocus();
         return;
     }
     setTimeout(() => {
@@ -283,6 +283,10 @@ function globalRefocusWithTimeout(timeoutVal: number) {
 }
 
 function globalRefocus() {
+    if (globalStore.get(atoms.waveWindowType) == "builder") {
+        return;
+    }
+
     const layoutModel = getLayoutModelForStaticTab();
     const focusedNode = globalStore.get(layoutModel.focusedNode);
     if (focusedNode == null) {
@@ -406,16 +410,18 @@ function appHandleKeyDown(waveEvent: WaveKeyboardEvent): boolean {
             return true;
         }
     }
-    const layoutModel = getLayoutModelForStaticTab();
-    const focusedNode = globalStore.get(layoutModel.focusedNode);
-    const blockId = focusedNode?.data?.blockId;
-    if (blockId != null && shouldDispatchToBlock(waveEvent)) {
-        const bcm = getBlockComponentModel(blockId);
-        const viewModel = bcm?.viewModel;
-        if (viewModel?.keyDownHandler) {
-            const handledByBlock = viewModel.keyDownHandler(waveEvent);
-            if (handledByBlock) {
-                return true;
+    if (globalStore.get(atoms.waveWindowType) == "tab") {
+        const layoutModel = getLayoutModelForStaticTab();
+        const focusedNode = globalStore.get(layoutModel.focusedNode);
+        const blockId = focusedNode?.data?.blockId;
+        if (blockId != null && shouldDispatchToBlock(waveEvent)) {
+            const bcm = getBlockComponentModel(blockId);
+            const viewModel = bcm?.viewModel;
+            if (viewModel?.keyDownHandler) {
+                const handledByBlock = viewModel.keyDownHandler(waveEvent);
+                if (handledByBlock) {
+                    return true;
+                }
             }
         }
     }
@@ -643,6 +649,15 @@ function registerGlobalKeys() {
     globalChordMap.set("Ctrl:Shift:s", splitBlockKeys);
 }
 
+function registerBuilderGlobalKeys() {
+    globalKeyMap.set("Cmd:w", () => {
+        getApi().closeBuilderWindow();
+        return true;
+    });
+    const allKeys = Array.from(globalKeyMap.keys());
+    getApi().registerGlobalWebviewKeys(allKeys);
+}
+
 function getAllGlobalKeyBindings(): string[] {
     const allKeys = Array.from(globalKeyMap.keys());
     return allKeys;
@@ -655,6 +670,7 @@ export {
     getSimpleControlShiftAtom,
     globalRefocus,
     globalRefocusWithTimeout,
+    registerBuilderGlobalKeys,
     registerControlShiftStateUpdateHandler,
     registerElectronReinjectKeyHandler,
     registerGlobalKeys,

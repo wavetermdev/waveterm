@@ -9,9 +9,9 @@ import { getWaveWindowById } from "emain/emain-window";
 import path from "path";
 import { configureAuthKeyRequestInjection } from "./authkey";
 import { setWasActive } from "./emain-activity";
+import { getElectronAppBasePath, isDevVite } from "./emain-platform";
 import { handleCtrlShiftFocus, handleCtrlShiftState, shFrameNavHandler, shNavHandler } from "./emain-util";
 import { ElectronWshClient } from "./emain-wsh";
-import { getElectronAppBasePath, isDevVite } from "./platform";
 
 function computeBgColor(fullConfig: FullConfigType): string {
     const settings = fullConfig?.settings;
