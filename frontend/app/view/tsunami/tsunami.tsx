@@ -72,26 +72,58 @@ class TsunamiViewModel extends WebViewModel {
         }, 300);
     }
 
-    resyncController() {
+    private doControllerResync(forceRestart: boolean, logContext: string, triggerRestart: boolean = true) {
+        if (triggerRestart) {
+            if (globalStore.get(this.isRestarting)) {
+                return;
+            }
+            this.triggerRestartAtom();
+        }
         const prtn = RpcApi.ControllerResyncCommand(TabRpcClient, {
             tabid: globalStore.get(atoms.staticTabId),
             blockid: this.blockId,
-            forcerestart: false,
+            forcerestart: forceRestart,
         });
-        prtn.catch((e) => console.log("error controller resync", e));
+        prtn.catch((e) => console.log(`error controller resync (${logContext})`, e));
     }
 
-    forceRestartController() {
+    resyncController() {
+        this.doControllerResync(false, "resync", false);
+    }
+
+    stopController() {
+        const prtn = RpcApi.ControllerStopCommand(TabRpcClient, this.blockId);
+        prtn.catch((e) => console.log("error stopping controller", e));
+    }
+
+    async restartController() {
         if (globalStore.get(this.isRestarting)) {
             return;
         }
         this.triggerRestartAtom();
-        const prtn = RpcApi.ControllerResyncCommand(TabRpcClient, {
-            tabid: globalStore.get(atoms.staticTabId),
-            blockid: this.blockId,
-            forcerestart: true,
-        });
-        prtn.catch((e) => console.log("error controller resync (force restart)", e));
+        try {
+            // Stop the controller first
+            await RpcApi.ControllerStopCommand(TabRpcClient, this.blockId);
+            // Wait a bit for the controller to fully stop
+            await new Promise((resolve) => setTimeout(resolve, 300));
+            // Then resync to restart it
+            await RpcApi.ControllerResyncCommand(TabRpcClient, {
+                tabid: globalStore.get(atoms.staticTabId),
+                blockid: this.blockId,
+                forcerestart: false,
+            });
+        } catch (e) {
+            console.log("error restarting controller", e);
+        }
+    }
+
+    restartAndForceRebuild() {
+        this.doControllerResync(true, "force rebuild");
+    }
+
+    forceRestartController() {
+        // Keep this for backward compatibility with the Start button
+        this.doControllerResync(true, "force restart");
     }
 
     setAppMeta(meta: TsunamiAppMeta) {
@@ -125,7 +157,7 @@ class TsunamiViewModel extends WebViewModel {
     getSettingsMenuItems(): ContextMenuItem[] {
         const items = super.getSettingsMenuItems();
         // Filter out homepage and navigation-related menu items for tsunami view
-        return items.filter((item) => {
+        const filteredItems = items.filter((item) => {
             const label = item.label?.toLowerCase() || "";
             return (
                 !label.includes("homepage") &&
@@ -134,6 +166,27 @@ class TsunamiViewModel extends WebViewModel {
                 !label.includes("nav")
             );
         });
+
+        // Add tsunami-specific menu items at the beginning
+        const tsunamiItems: ContextMenuItem[] = [
+            {
+                label: "Stop WaveApp",
+                click: () => this.stopController(),
+            },
+            {
+                label: "Restart WaveApp",
+                click: () => this.restartController(),
+            },
+            {
+                label: "Restart WaveApp and Force Rebuild",
+                click: () => this.restartAndForceRebuild(),
+            },
+            {
+                type: "separator",
+            },
+        ];
+
+        return [...tsunamiItems, ...filteredItems];
     }
 }
 

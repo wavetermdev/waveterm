@@ -12,6 +12,10 @@ Remove-Item Env:WAVETERM_SWAPTOKEN
 # Load Wave completions
 wsh completion powershell | Out-String | Invoke-Expression
 
+if ($PSVersionTable.PSVersion.Major -lt 7) {
+    return  # skip OSC setup entirely
+}
+
 $Global:_WAVETERM_SI_FIRSTPROMPT = $true
 
 # shell integration
