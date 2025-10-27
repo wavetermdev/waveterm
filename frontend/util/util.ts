@@ -28,6 +28,7 @@ function stringToBase64(input: string): string {
     return base64.fromByteArray(stringBytes);
 }
 
+// browser only (uses atob)
 function base64ToArray(b64: string): Uint8Array<ArrayBuffer> {
     const rawStr = atob(b64);
     const rtnArr = new Uint8Array(new ArrayBuffer(rawStr.length));
@@ -35,6 +36,20 @@ function base64ToArray(b64: string): Uint8Array<ArrayBuffer> {
         rtnArr[i] = rawStr.charCodeAt(i);
     }
     return rtnArr;
+}
+
+function decodeBase64ToBytes(b64: string): Uint8Array {
+    // Remove whitespace that some generators insert
+    const clean = b64.replace(/\s+/g, "");
+    if (typeof Buffer !== "undefined") {
+        // Node/Electron main
+        return new Uint8Array(Buffer.from(clean, "base64"));
+    }
+    // Browser
+    const raw = atob(clean);
+    const out = new Uint8Array(raw.length);
+    for (let i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i) & 0xff;
+    return out;
 }
 
 function boundNumber(num: number, min: number, max: number): number {
@@ -427,41 +442,25 @@ type ParsedDataUrl = {
 };
 
 function parseDataUrl(dataUrl: string): ParsedDataUrl {
-    if (!dataUrl.startsWith("data:")) {
-        throw new Error("Invalid data URL: must start with 'data:'");
-    }
-    
-    const parts = dataUrl.split(",");
-    if (parts.length < 2) {
-        throw new Error("Invalid data URL: missing data component");
-    }
-    
-    const header = parts[0];
-    const data = parts[1];
-    const mimeType = header.split(";")[0].slice(5);
-    
-    const isBase64 = header.includes(";base64");
-    
+    if (!dataUrl.startsWith("data:")) throw new Error("Invalid data URL");
+    const [header, data] = dataUrl.split(",", 2);
+    if (data === undefined) throw new Error("Invalid data URL: missing data");
+
+    const meta = header.slice(5);
+    let mimeType = "text/plain;charset=US-ASCII";
+    const parts = meta.split(";");
+    if (parts[0]) mimeType = parts[0];
+    const isBase64 = parts.some((p) => p.toLowerCase() === "base64");
+
     let buffer: Uint8Array;
     if (isBase64) {
-        try {
-            buffer = base64ToArray(data);
-            if (buffer.length === 0 && data.length > 0) {
-                throw new Error("Failed to decode base64 data");
-            }
-        } catch (err) {
-            throw new Error(`Failed to decode base64 data: ${err.message}`);
-        }
+        buffer = decodeBase64ToBytes(data);
     } else {
-        try {
-            const decodedData = decodeURIComponent(data);
-            const encoder = new TextEncoder();
-            buffer = encoder.encode(decodedData);
-        } catch (err) {
-            throw new Error(`Failed to decode percent-encoded data: ${err.message}`);
-        }
+        // assume text
+        const decoded = decodeURIComponent(data);
+        buffer = new TextEncoder().encode(decoded);
     }
-    
+
     return { mimeType, buffer };
 }
 
