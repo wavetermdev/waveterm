@@ -430,7 +430,7 @@ func (c *ClientImpl) CloseModal(modalId string, result bool) {
 }
 
 // CloseAllModals closes all open modals with cancelled result
-// This is called when SSE connection is lost
+// This is called when the FE requests a resync (page refresh or new client)
 func (c *ClientImpl) CloseAllModals() {
 	c.OpenModalsLock.Lock()
 	defer c.OpenModalsLock.Unlock()
