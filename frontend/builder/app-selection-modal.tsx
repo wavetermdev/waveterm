@@ -5,6 +5,7 @@ import { FlexiModal } from "@/app/modals/modal";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { atoms, globalStore } from "@/store/global";
+import * as WOS from "@/store/wos";
 import { useEffect, useState } from "react";
 
 const MaxAppNameLength = 50;
@@ -50,11 +51,17 @@ export function AppSelectionModal() {
         }
     };
 
-    const handleSelectApp = (appId: string) => {
+    const handleSelectApp = async (appId: string) => {
+        const builderId = globalStore.get(atoms.builderId);
+        const oref = WOS.makeORef("builder", builderId);
+        await RpcApi.SetRTInfoCommand(TabRpcClient, {
+            oref,
+            data: { "builder:appid": appId },
+        });
         globalStore.set(atoms.builderAppId, appId);
     };
 
-    const handleCreateNew = () => {
+    const handleCreateNew = async () => {
         const trimmedName = newAppName.trim();
 
         if (!trimmedName) {
@@ -73,6 +80,12 @@ export function AppSelectionModal() {
         }
 
         const draftAppId = `draft/${trimmedName}`;
+        const builderId = globalStore.get(atoms.builderId);
+        const oref = WOS.makeORef("builder", builderId);
+        await RpcApi.SetRTInfoCommand(TabRpcClient, {
+            oref,
+            data: { "builder:appid": draftAppId },
+        });
         globalStore.set(atoms.builderAppId, draftAppId);
     };
 

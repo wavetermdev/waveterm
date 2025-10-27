@@ -277,6 +277,7 @@ declare global {
     // wshrpc.CommandReadAppFileRtnData
     type CommandReadAppFileRtnData = {
         data64: string;
+        notfound?: boolean;
     };
 
     // wshrpc.CommandRemoteListEntriesData
@@ -780,6 +781,7 @@ declare global {
         "shell:lastcmd"?: string;
         "shell:lastcmdexitcode"?: number;
         "builder:layout"?: {[key: string]: number};
+        "builder:appid"?: string;
         "waveai:chatid"?: string;
     };
 

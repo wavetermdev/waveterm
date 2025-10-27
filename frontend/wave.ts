@@ -283,13 +283,24 @@ async function initBuilder(initOpts: BuilderInitOpts) {
         builderId: initOpts.builderId,
     });
     (window as any).globalAtoms = atoms;
-    
-    globalStore.set(atoms.builderAppId, initOpts.appId);
 
     const globalWS = initWshrpc(makeBuilderRouteId(initOpts.builderId));
     (window as any).globalWS = globalWS;
     (window as any).TabRpcClient = TabRpcClient;
     await loadConnStatus();
+    
+    let appIdToUse = initOpts.appId;
+    try {
+        const oref = WOS.makeORef("builder", initOpts.builderId);
+        const rtInfo = await RpcApi.GetRTInfoCommand(TabRpcClient, { oref });
+        if (rtInfo && rtInfo["builder:appid"]) {
+            appIdToUse = rtInfo["builder:appid"];
+        }
+    } catch (e) {
+        console.log("Could not load saved builder appId from rtinfo:", e);
+    }
+    
+    globalStore.set(atoms.builderAppId, appIdToUse);
 
     const client = await WOS.loadAndPinWaveObject<Client>(WOS.makeORef("client", initOpts.clientId));
 

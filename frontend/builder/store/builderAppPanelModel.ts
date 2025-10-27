@@ -59,9 +59,14 @@ export class BuilderAppPanelModel {
                 appid: appId,
                 filename: "app.go",
             });
-            const decoded = atob(result.data64);
-            globalStore.set(this.codeContentAtom, decoded);
-            globalStore.set(this.originalContentAtom, decoded);
+            if (result.notfound) {
+                globalStore.set(this.codeContentAtom, "");
+                globalStore.set(this.originalContentAtom, "");
+            } else {
+                const decoded = atob(result.data64);
+                globalStore.set(this.codeContentAtom, decoded);
+                globalStore.set(this.originalContentAtom, decoded);
+            }
         } catch (err) {
             console.error("Failed to load app.go:", err);
             globalStore.set(this.errorAtom, `Failed to load app.go: ${err.message || "Unknown error"}`);

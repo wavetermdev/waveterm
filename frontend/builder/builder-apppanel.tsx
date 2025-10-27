@@ -134,10 +134,15 @@ const BuilderAppPanel = memo(() => {
                             onClick={() => handleTabClick("files")}
                         />
                     </div>
-                    {activeTab === "code" && saveNeeded && (
+                    {activeTab === "code" && (
                         <button
-                            className="mr-4 px-3 py-1 text-sm font-medium bg-accent text-white rounded hover:bg-accent-hover transition-colors cursor-pointer"
-                            onClick={handleSave}
+                            className={cn(
+                                "mr-4 px-3 py-1 text-sm font-medium rounded transition-colors",
+                                saveNeeded
+                                    ? "bg-accent text-white hover:opacity-80 cursor-pointer"
+                                    : "bg-gray-600 text-gray-400 cursor-default"
+                            )}
+                            onClick={saveNeeded ? handleSave : undefined}
                         >
                             Save
                         </button>

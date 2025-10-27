@@ -925,7 +925,8 @@ type CommandReadAppFileData struct {
 }
 
 type CommandReadAppFileRtnData struct {
-	Data64 string `json:"data64"`
+	Data64   string `json:"data64"`
+	NotFound bool   `json:"notfound,omitempty"`
 }
 
 type CommandWriteAppFileData struct {

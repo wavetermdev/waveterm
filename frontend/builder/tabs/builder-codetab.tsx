@@ -4,6 +4,7 @@
 import { CodeEditor } from "@/app/view/codeeditor/codeeditor";
 import { BuilderAppPanelModel } from "@/builder/store/builderAppPanelModel";
 import { atoms } from "@/store/global";
+import * as keyutil from "@/util/keyutil";
 import { useAtomValue } from "jotai";
 import { memo, useEffect } from "react";
 
@@ -31,6 +32,16 @@ const BuilderCodeTab = memo(() => {
         };
     };
 
+    const handleKeyDown = keyutil.keydownWrapper((waveEvent: WaveKeyboardEvent) => {
+        if (keyutil.checkKeyPressed(waveEvent, "Cmd:s")) {
+            if (builderAppId) {
+                model.saveAppFile(builderAppId);
+            }
+            return true;
+        }
+        return false;
+    });
+
     if (isLoading) {
         return (
             <div className="w-full h-full flex items-center justify-center">
@@ -48,7 +59,7 @@ const BuilderCodeTab = memo(() => {
     }
 
     return (
-        <div className="w-full h-full">
+        <div className="w-full h-full" onKeyDown={handleKeyDown}>
             <CodeEditor
                 blockId=""
                 text={codeContent}
