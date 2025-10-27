@@ -487,6 +487,7 @@ func (conn *SSHConn) InstallWsh(ctx context.Context, osArchStr string) error {
 	}
 	if err != nil {
 		conn.Infof(ctx, "ERROR detecting client platform: %v\n", err)
+		return fmt.Errorf("error detecting client platform: %w", err)
 	}
 	conn.Infof(ctx, "detected remote platform os:%s arch:%s\n", clientOs, clientArch)
 	err = remote.CpWshToRemote(ctx, client, clientOs, clientArch)
