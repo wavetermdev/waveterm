@@ -13,7 +13,7 @@ import { memo, useCallback, useEffect, useState } from "react";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { debounce } from "throttle-debounce";
 
-const DEFAULT_LAYOUT = {
+const DefaultLayoutPercentages = {
     chat: 50,
     app: 80,
     build: 20,
@@ -29,7 +29,7 @@ const BuilderWorkspace = memo(() => {
     useEffect(() => {
         const loadLayout = async () => {
             if (!builderId) {
-                setLayout(DEFAULT_LAYOUT);
+                setLayout(DefaultLayoutPercentages);
                 setIsLoading(false);
                 return;
             }
@@ -41,11 +41,11 @@ const BuilderWorkspace = memo(() => {
                 if (rtInfo?.["builder:layout"]) {
                     setLayout(rtInfo["builder:layout"] as Record<string, number>);
                 } else {
-                    setLayout(DEFAULT_LAYOUT);
+                    setLayout(DefaultLayoutPercentages);
                 }
             } catch (error) {
                 console.error("Failed to load builder layout:", error);
-                setLayout(DEFAULT_LAYOUT);
+                setLayout(DefaultLayoutPercentages);
             } finally {
                 setIsLoading(false);
             }

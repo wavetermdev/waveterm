@@ -152,7 +152,12 @@ const (
 
 	Command_TermGetScrollbackLines = "termgetscrollbacklines"
 
+	// builder
 	Command_ListAllEditableApps = "listalleditableapps"
+	Command_ListAllAppFiles     = "listallappfiles"
+	Command_WriteAppFile        = "writeappfile"
+	Command_DeleteAppFile       = "deleteappfile"
+	Command_RenameAppFile       = "renameappfile"
 )
 
 type RespOrErrorUnion[T any] struct {
@@ -288,8 +293,12 @@ type WshRpcInterface interface {
 	// terminal
 	TermGetScrollbackLinesCommand(ctx context.Context, data CommandTermGetScrollbackLinesData) (*CommandTermGetScrollbackLinesRtnData, error)
 
-	// waveappstore
+	// builder
 	ListAllEditableAppsCommand(ctx context.Context) ([]string, error)
+	ListAllAppFilesCommand(ctx context.Context, data CommandListAllAppFilesData) (*CommandListAllAppFilesRtnData, error)
+	WriteAppFileCommand(ctx context.Context, data CommandWriteAppFileData) error
+	DeleteAppFileCommand(ctx context.Context, data CommandDeleteAppFileData) error
+	RenameAppFileCommand(ctx context.Context, data CommandRenameAppFileData) error
 
 	// proc
 	VDomRenderCommand(ctx context.Context, data vdom.VDomFrontendUpdate) chan RespOrErrorUnion[*vdom.VDomBackendUpdate]
@@ -881,4 +890,46 @@ type CommandTermGetScrollbackLinesRtnData struct {
 	LineStart   int      `json:"linestart"`
 	Lines       []string `json:"lines"`
 	LastUpdated int64    `json:"lastupdated"`
+}
+
+// builder
+type CommandListAllAppFilesData struct {
+	AppId string `json:"appid"`
+}
+
+type CommandListAllAppFilesRtnData struct {
+	Path         string        `json:"path"`
+	AbsolutePath string        `json:"absolutepath"`
+	ParentDir    string        `json:"parentdir,omitempty"`
+	Entries      []DirEntryOut `json:"entries"`
+	EntryCount   int           `json:"entrycount"`
+	TotalEntries int           `json:"totalentries"`
+	Truncated    bool          `json:"truncated,omitempty"`
+}
+
+type DirEntryOut struct {
+	Name         string `json:"name"`
+	Dir          bool   `json:"dir,omitempty"`
+	Symlink      bool   `json:"symlink,omitempty"`
+	Size         int64  `json:"size,omitempty"`
+	Mode         string `json:"mode"`
+	Modified     string `json:"modified"`
+	ModifiedTime string `json:"modifiedtime"`
+}
+
+type CommandWriteAppFileData struct {
+	AppId    string `json:"appid"`
+	FileName string `json:"filename"`
+	Data64   string `json:"data64"`
+}
+
+type CommandDeleteAppFileData struct {
+	AppId    string `json:"appid"`
+	FileName string `json:"filename"`
+}
+
+type CommandRenameAppFileData struct {
+	AppId        string `json:"appid"`
+	FromFileName string `json:"fromfilename"`
+	ToFileName   string `json:"tofilename"`
 }

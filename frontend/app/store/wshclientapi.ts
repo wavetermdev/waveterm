@@ -112,6 +112,11 @@ class RpcApiType {
         return client.wshRpcCall("createsubblock", data, opts);
     }
 
+    // command "deleteappfile" [call]
+    DeleteAppFileCommand(client: WshClient, data: CommandDeleteAppFileData, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("deleteappfile", data, opts);
+    }
+
     // command "deleteblock" [call]
     DeleteBlockCommand(client: WshClient, data: CommandDeleteBlockData, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("deleteblock", data, opts);
@@ -297,6 +302,11 @@ class RpcApiType {
         return client.wshRpcCall("getwaveairatelimit", null, opts);
     }
 
+    // command "listallappfiles" [call]
+    ListAllAppFilesCommand(client: WshClient, data: CommandListAllAppFilesData, opts?: RpcOpts): Promise<CommandListAllAppFilesRtnData> {
+        return client.wshRpcCall("listallappfiles", data, opts);
+    }
+
     // command "listalleditableapps" [call]
     ListAllEditableAppsCommand(client: WshClient, opts?: RpcOpts): Promise<string[]> {
         return client.wshRpcCall("listalleditableapps", null, opts);
@@ -390,6 +400,11 @@ class RpcApiType {
     // command "remotewritefile" [call]
     RemoteWriteFileCommand(client: WshClient, data: FileData, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("remotewritefile", data, opts);
+    }
+
+    // command "renameappfile" [call]
+    RenameAppFileCommand(client: WshClient, data: CommandRenameAppFileData, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("renameappfile", data, opts);
     }
 
     // command "resolveids" [call]
@@ -520,6 +535,11 @@ class RpcApiType {
     // command "workspacelist" [call]
     WorkspaceListCommand(client: WshClient, opts?: RpcOpts): Promise<WorkspaceInfoData[]> {
         return client.wshRpcCall("workspacelist", null, opts);
+    }
+
+    // command "writeappfile" [call]
+    WriteAppFileCommand(client: WshClient, data: CommandWriteAppFileData, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("writeappfile", data, opts);
     }
 
     // command "wshactivity" [call]
