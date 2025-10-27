@@ -5,7 +5,9 @@ import { AIPanel } from "@/app/aipanel/aipanel";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { BuilderAppPanel } from "@/builder/builder-apppanel";
+import { BuilderFocusManager } from "@/builder/store/builderFocusManager";
 import { atoms } from "@/store/global";
+import { cn } from "@/util/util";
 import { useAtomValue } from "jotai";
 import { memo, useCallback, useEffect, useState } from "react";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
@@ -21,6 +23,8 @@ const BuilderWorkspace = memo(() => {
     const builderId = useAtomValue(atoms.builderId);
     const [layout, setLayout] = useState<Record<string, number>>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const focusType = useAtomValue(BuilderFocusManager.getInstance().focusType);
+    const isAppFocused = focusType === "app";
 
     useEffect(() => {
         const loadLayout = async () => {
@@ -96,17 +100,27 @@ const BuilderWorkspace = memo(() => {
                 </Panel>
                 <PanelResizeHandle className="w-0.5 bg-transparent hover:bg-gray-500/20 transition-colors" />
                 <Panel defaultSize={100 - layout.chat} minSize={20}>
-                    <PanelGroup direction="vertical" onLayout={handleVerticalLayout}>
-                        <Panel defaultSize={layout.app} minSize={20}>
-                            <BuilderAppPanel />
-                        </Panel>
-                        <PanelResizeHandle className="h-0.5 bg-transparent hover:bg-gray-500/20 transition-colors" />
-                        <Panel defaultSize={layout.build} minSize={20}>
-                            <div className="w-full h-full flex items-center justify-center">
-                                <span className="text-2xl">Build Panel</span>
-                            </div>
-                        </Panel>
-                    </PanelGroup>
+                    <div
+                        className={cn(
+                            "flex flex-col relative h-full",
+                            isAppFocused ? "border-2 border-accent" : "border-2 border-transparent"
+                        )}
+                        style={{
+                            borderBottomRightRadius: 10,
+                        }}
+                    >
+                        <PanelGroup direction="vertical" onLayout={handleVerticalLayout}>
+                            <Panel defaultSize={layout.app} minSize={20}>
+                                <BuilderAppPanel />
+                            </Panel>
+                            <PanelResizeHandle className="h-0.5 bg-transparent hover:bg-gray-500/20 transition-colors" />
+                            <Panel defaultSize={layout.build} minSize={20} maxSize={50}>
+                                <div className="w-full h-full flex items-center justify-center">
+                                    <span className="text-2xl">Build Panel</span>
+                                </div>
+                            </Panel>
+                        </PanelGroup>
+                    </div>
                 </Panel>
             </PanelGroup>
         </div>
