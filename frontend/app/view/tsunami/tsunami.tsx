@@ -148,11 +148,11 @@ class TsunamiViewModel extends WebViewModel {
         // Add tsunami-specific menu items at the beginning
         const tsunamiItems: ContextMenuItem[] = [
             {
-                label: "Restart",
+                label: "Restart WaveApp",
                 click: () => this.restartController(),
             },
             {
-                label: "Restart and Force Rebuild",
+                label: "Restart WaveApp and Force Rebuild",
                 click: () => this.restartAndForceRebuild(),
             },
             {
