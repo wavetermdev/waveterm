@@ -6,8 +6,10 @@ package app
 import (
 	"context"
 	"fmt"
+	"log"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/wavetermdev/waveterm/tsunami/engine"
 	"github.com/wavetermdev/waveterm/tsunami/rpctypes"
 	"github.com/wavetermdev/waveterm/tsunami/util"
@@ -202,13 +204,25 @@ type ModalConfig struct {
 // UseAlertModal returns a boolean indicating if the modal is open and a function to trigger it
 func UseAlertModal() (modalOpen bool, triggerAlert func(config ModalConfig)) {
 	isOpen := UseLocal(false)
-	componentId := UseId()
 	
 	trigger := func(config ModalConfig) {
+		if isOpen.Get() {
+			log.Printf("warning: UseAlertModal trigger called while modal is already open")
+			if config.OnClose != nil {
+				go func() {
+					defer func() {
+						util.PanicHandler("UseAlertModal callback goroutine", recover())
+					}()
+					time.Sleep(10 * time.Millisecond)
+					config.OnClose()
+				}()
+			}
+			return
+		}
 		isOpen.Set(true)
 		
 		// Create modal config for backend
-		modalId := fmt.Sprintf("alert-%s-%d", componentId, time.Now().UnixNano())
+		modalId := uuid.New().String()
 		backendConfig := rpctypes.ModalConfig{
 			ModalId:    modalId,
 			ModalType:  "alert",
@@ -221,6 +235,9 @@ func UseAlertModal() (modalOpen bool, triggerAlert func(config ModalConfig)) {
 		
 		// Show modal and wait for result in a goroutine
 		go func() {
+			defer func() {
+				util.PanicHandler("UseAlertModal goroutine", recover())
+			}()
 			resultChan := engine.GetDefaultClient().ShowModal(backendConfig)
 			<-resultChan // Wait for result (always dismissed for alerts)
 			isOpen.Set(false)
@@ -236,13 +253,25 @@ func UseAlertModal() (modalOpen bool, triggerAlert func(config ModalConfig)) {
 // UseConfirmModal returns a boolean indicating if the modal is open and a function to trigger it
 func UseConfirmModal() (modalOpen bool, triggerConfirm func(config ModalConfig)) {
 	isOpen := UseLocal(false)
-	componentId := UseId()
 	
 	trigger := func(config ModalConfig) {
+		if isOpen.Get() {
+			log.Printf("warning: UseConfirmModal trigger called while modal is already open")
+			if config.OnResult != nil {
+				go func() {
+					defer func() {
+						util.PanicHandler("UseConfirmModal callback goroutine", recover())
+					}()
+					time.Sleep(10 * time.Millisecond)
+					config.OnResult(false)
+				}()
+			}
+			return
+		}
 		isOpen.Set(true)
 		
 		// Create modal config for backend
-		modalId := fmt.Sprintf("confirm-%s-%d", componentId, time.Now().UnixNano())
+		modalId := uuid.New().String()
 		backendConfig := rpctypes.ModalConfig{
 			ModalId:    modalId,
 			ModalType:  "confirm",
@@ -255,6 +284,9 @@ func UseConfirmModal() (modalOpen bool, triggerConfirm func(config ModalConfig))
 		
 		// Show modal and wait for result in a goroutine
 		go func() {
+			defer func() {
+				util.PanicHandler("UseConfirmModal goroutine", recover())
+			}()
 			resultChan := engine.GetDefaultClient().ShowModal(backendConfig)
 			result := <-resultChan
 			isOpen.Set(false)
