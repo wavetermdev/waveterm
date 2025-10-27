@@ -1,10 +1,13 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { AppSelectionModal } from "@/builder/app-selection-modal";
 import { BuilderWorkspace } from "@/builder/builder-workspace";
-import { globalStore } from "@/store/global";
+import { atoms, globalStore } from "@/store/global";
 import { appHandleKeyDown } from "@/store/keymodel";
+import { isBlank } from "@/util/util";
 import * as keyutil from "@/util/keyutil";
+import { useAtomValue } from "jotai";
 import { Provider } from "jotai";
 import { useEffect } from "react";
 
@@ -26,6 +29,8 @@ const BuilderKeyHandlers = () => {
 };
 
 export function BuilderApp({ initOpts, onFirstRender }: BuilderAppProps) {
+    const builderAppId = useAtomValue(atoms.builderAppId);
+    
     useEffect(() => {
         onFirstRender();
     }, []);
@@ -40,7 +45,7 @@ export function BuilderApp({ initOpts, onFirstRender }: BuilderAppProps) {
                 >
                     {/* Title bar - draggable area */}
                 </div>
-                <BuilderWorkspace />
+                {isBlank(builderAppId) ? <AppSelectionModal /> : <BuilderWorkspace />}
             </div>
         </Provider>
     );

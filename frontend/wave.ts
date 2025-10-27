@@ -283,6 +283,8 @@ async function initBuilder(initOpts: BuilderInitOpts) {
         builderId: initOpts.builderId,
     });
     (window as any).globalAtoms = atoms;
+    
+    globalStore.set(atoms.builderAppId, initOpts.appId);
 
     const globalWS = initWshrpc(makeBuilderRouteId(initOpts.builderId));
     (window as any).globalWS = globalWS;

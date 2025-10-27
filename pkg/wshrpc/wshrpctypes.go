@@ -151,6 +151,8 @@ const (
 	Command_SetRTInfo = "setrtinfo"
 
 	Command_TermGetScrollbackLines = "termgetscrollbacklines"
+
+	Command_ListAllEditableApps = "listalleditableapps"
 )
 
 type RespOrErrorUnion[T any] struct {
@@ -285,6 +287,9 @@ type WshRpcInterface interface {
 
 	// terminal
 	TermGetScrollbackLinesCommand(ctx context.Context, data CommandTermGetScrollbackLinesData) (*CommandTermGetScrollbackLinesRtnData, error)
+
+	// waveappstore
+	ListAllEditableAppsCommand(ctx context.Context) ([]string, error)
 
 	// proc
 	VDomRenderCommand(ctx context.Context, data vdom.VDomFrontendUpdate) chan RespOrErrorUnion[*vdom.VDomBackendUpdate]

@@ -54,6 +54,7 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
     const windowIdAtom = atom(initOpts.windowId) as PrimitiveAtom<string>;
     const clientIdAtom = atom(initOpts.clientId) as PrimitiveAtom<string>;
     const builderIdAtom = atom(initOpts.builderId) as PrimitiveAtom<string>;
+    const builderAppIdAtom = atom<string>(null) as PrimitiveAtom<string>;
     const waveWindowTypeAtom = atom((get) => {
         const builderId = get(builderIdAtom);
         return builderId != null ? "builder" : "tab";
@@ -172,6 +173,7 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
         // initialized in wave.ts (will not be null inside of application)
         clientId: clientIdAtom,
         builderId: builderIdAtom,
+        builderAppId: builderAppIdAtom,
         waveWindowType: waveWindowTypeAtom,
         uiContext: uiContextAtom,
         client: clientAtom,

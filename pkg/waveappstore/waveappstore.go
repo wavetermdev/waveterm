@@ -17,6 +17,9 @@ import (
 const (
 	AppNSLocal = "local"
 	AppNSDraft = "draft"
+
+	MaxNamespaceLen = 30
+	MaxAppNameLen   = 50
 )
 
 var (
@@ -45,6 +48,12 @@ func ValidateAppId(appId string) error {
 	appNS, appName, err := ParseAppId(appId)
 	if err != nil {
 		return err
+	}
+	if len(appNS) > MaxNamespaceLen {
+		return fmt.Errorf("namespace too long: max %d characters", MaxNamespaceLen)
+	}
+	if len(appName) > MaxAppNameLen {
+		return fmt.Errorf("app name too long: max %d characters", MaxAppNameLen)
 	}
 	if !namespaceRegex.MatchString(appNS) {
 		return fmt.Errorf("invalid namespace: must match pattern @?[a-z0-9-]+")
