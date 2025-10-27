@@ -428,6 +428,7 @@ type WaveChatOpts struct {
 	RegisterToolApproval func(string)
 	AllowNativeWebSearch bool
 	BuilderId            string
+	BuilderAppId         string
 
 	// ephemeral to the step
 	TabState string

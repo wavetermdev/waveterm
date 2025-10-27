@@ -232,6 +232,7 @@ const AIPanelComponentInner = memo(({ className, onClose }: AIPanelProps) => {
                 };
                 if (windowType === "builder") {
                     body.builderid = globalStore.get(atoms.builderId);
+                    body.builderappid = globalStore.get(atoms.builderAppId);
                 } else {
                     body.tabid = globalStore.get(atoms.staticTabId);
                 }

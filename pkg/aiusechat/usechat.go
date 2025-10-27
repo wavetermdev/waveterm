@@ -621,6 +621,7 @@ func sendAIMetricsTelemetry(ctx context.Context, metrics *uctypes.AIMetrics) {
 type PostMessageRequest struct {
 	TabId        string            `json:"tabid,omitempty"`
 	BuilderId    string            `json:"builderid,omitempty"`
+	BuilderAppId string            `json:"builderappid,omitempty"`
 	ChatID       string            `json:"chatid"`
 	Msg          uctypes.AIMessage `json:"msg"`
 	WidgetAccess bool              `json:"widgetaccess,omitempty"`
@@ -673,6 +674,8 @@ func WaveAIPostMessageHandler(w http.ResponseWriter, r *http.Request) {
 		WidgetAccess:         req.WidgetAccess,
 		RegisterToolApproval: RegisterToolApproval,
 		AllowNativeWebSearch: true,
+		BuilderId:            req.BuilderId,
+		BuilderAppId:         req.BuilderAppId,
 	}
 	if chatOpts.Config.APIType == APIType_OpenAI {
 		if chatOpts.BuilderId != "" {
@@ -687,6 +690,14 @@ func WaveAIPostMessageHandler(w http.ResponseWriter, r *http.Request) {
 	chatOpts.TabStateGenerator = func() (string, []uctypes.ToolDefinition, string, error) {
 		tabState, tabTools, err := GenerateTabStateAndTools(r.Context(), req.TabId, req.WidgetAccess)
 		return tabState, tabTools, req.TabId, err
+	}
+
+	if req.BuilderAppId != "" {
+		chatOpts.Tools = append(chatOpts.Tools,
+			GetBuilderWriteAppFileToolDefinition(req.BuilderAppId),
+			GetBuilderEditAppFileToolDefinition(req.BuilderAppId),
+			GetBuilderListFilesToolDefinition(req.BuilderAppId),
+		)
 	}
 
 	// Validate the message
