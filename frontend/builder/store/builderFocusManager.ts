@@ -17,7 +17,6 @@ export class BuilderFocusManager {
         if (!BuilderFocusManager.instance) {
             BuilderFocusManager.instance = new BuilderFocusManager();
         }
-        (window as any).builderFocusManager = BuilderFocusManager.instance;
         return BuilderFocusManager.instance;
     }
 
