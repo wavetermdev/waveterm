@@ -8,7 +8,7 @@ import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { WOS, atoms, fetchWaveFile, getSettingsKeyAtom, globalStore, openLink } from "@/store/global";
 import * as services from "@/store/services";
 import { PLATFORM, PlatformMacOS } from "@/util/platformutil";
-import { base64ToArray, fireAndForget } from "@/util/util";
+import { base64ToArray, base64ToString, fireAndForget } from "@/util/util";
 import { SearchAddon } from "@xterm/addon-search";
 import { SerializeAddon } from "@xterm/addon-serialize";
 import { WebLinksAddon } from "@xterm/addon-web-links";
@@ -259,7 +259,7 @@ function handleOsc16162Command(data: string, blockId: string, loaded: boolean, t
                     globalStore.set(termWrap.lastCommandAtom, rtInfo["shell:lastcmd"]);
                 } else {
                     try {
-                        const decodedCmd = atob(cmd.data.cmd64);
+                        const decodedCmd = base64ToString(cmd.data.cmd64);
                         rtInfo["shell:lastcmd"] = decodedCmd;
                         globalStore.set(termWrap.lastCommandAtom, decodedCmd);
                     } catch (e) {
@@ -364,9 +364,7 @@ export class TermWrap {
         this.hasResized = false;
         this.lastUpdated = Date.now();
         this.promptMarkers = [];
-        this.shellIntegrationStatusAtom = jotai.atom(null) as jotai.PrimitiveAtom<
-            "ready" | "running-command" | null
-        >;
+        this.shellIntegrationStatusAtom = jotai.atom(null) as jotai.PrimitiveAtom<"ready" | "running-command" | null>;
         this.lastCommandAtom = jotai.atom(null) as jotai.PrimitiveAtom<string | null>;
         this.terminal = new Terminal(options);
         this.fitAddon = new FitAddon();
@@ -460,25 +458,25 @@ export class TermWrap {
         }
         this.mainFileSubject = getFileSubject(this.blockId, TermFileName);
         this.mainFileSubject.subscribe(this.handleNewFileSubjectData.bind(this));
-        
+
         try {
             const rtInfo = await RpcApi.GetRTInfoCommand(TabRpcClient, {
                 oref: WOS.makeORef("block", this.blockId),
             });
-            
+
             if (rtInfo["shell:integration"]) {
                 const shellState = rtInfo["shell:state"] as ShellIntegrationStatus;
                 globalStore.set(this.shellIntegrationStatusAtom, shellState || null);
             } else {
                 globalStore.set(this.shellIntegrationStatusAtom, null);
             }
-            
+
             const lastCmd = rtInfo["shell:lastcmd"];
             globalStore.set(this.lastCommandAtom, lastCmd || null);
         } catch (e) {
             console.log("Error loading runtime info:", e);
         }
-        
+
         try {
             await this.loadInitialTerminalData();
         } finally {

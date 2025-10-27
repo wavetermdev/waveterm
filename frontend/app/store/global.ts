@@ -17,7 +17,7 @@ import {
 import { getWebServerEndpoint } from "@/util/endpoints";
 import { fetch } from "@/util/fetchutil";
 import { setPlatform } from "@/util/platformutil";
-import { deepCompareReturnPrev, fireAndForget, getPrefixedSettings, isBlank } from "@/util/util";
+import { base64ToString, deepCompareReturnPrev, fireAndForget, getPrefixedSettings, isBlank } from "@/util/util";
 import { atom, Atom, PrimitiveAtom, useAtomValue } from "jotai";
 import { globalStore } from "./jotaiStore";
 import { modalsModel } from "./modalmodel";
@@ -54,6 +54,7 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
     const windowIdAtom = atom(initOpts.windowId) as PrimitiveAtom<string>;
     const clientIdAtom = atom(initOpts.clientId) as PrimitiveAtom<string>;
     const builderIdAtom = atom(initOpts.builderId) as PrimitiveAtom<string>;
+    const builderAppIdAtom = atom<string>(null) as PrimitiveAtom<string>;
     const waveWindowTypeAtom = atom((get) => {
         const builderId = get(builderIdAtom);
         return builderId != null ? "builder" : "tab";
@@ -172,6 +173,7 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
         // initialized in wave.ts (will not be null inside of application)
         clientId: clientIdAtom,
         builderId: builderIdAtom,
+        builderAppId: builderAppIdAtom,
         waveWindowType: waveWindowTypeAtom,
         uiContext: uiContextAtom,
         client: clientAtom,
@@ -547,7 +549,7 @@ async function fetchWaveFile(
     if (fileInfo64 == null) {
         throw new Error(`missing zone file info for ${zoneId}:${fileName}`);
     }
-    const fileInfo = JSON.parse(atob(fileInfo64));
+    const fileInfo = JSON.parse(base64ToString(fileInfo64));
     const data = await resp.arrayBuffer();
     return { data: new Uint8Array(data), fileInfo };
 }

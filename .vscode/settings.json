@@ -61,5 +61,6 @@
             "QF1003": false
         },
         "directoryFilters": ["-tsunami/frontend/scaffold"]
-    }
+    },
+    "tailwindCSS.lint.suggestCanonicalClasses": "ignore"
 }

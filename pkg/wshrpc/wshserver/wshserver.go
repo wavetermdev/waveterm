@@ -9,9 +9,11 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/fs"
 	"log"
+	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -40,6 +42,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/util/wavefileutil"
 	"github.com/wavetermdev/waveterm/pkg/waveai"
+	"github.com/wavetermdev/waveterm/pkg/waveappstore"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wcloud"
@@ -888,6 +891,70 @@ func (ws *WshServer) WorkspaceListCommand(ctx context.Context) ([]wshrpc.Workspa
 		})
 	}
 	return rtn, nil
+}
+
+func (ws *WshServer) ListAllEditableAppsCommand(ctx context.Context) ([]string, error) {
+	return waveappstore.ListAllEditableApps()
+}
+
+func (ws *WshServer) ListAllAppFilesCommand(ctx context.Context, data wshrpc.CommandListAllAppFilesData) (*wshrpc.CommandListAllAppFilesRtnData, error) {
+	result, err := waveappstore.ListAllAppFiles(data.AppId)
+	if err != nil {
+		return nil, err
+	}
+	entries := make([]wshrpc.DirEntryOut, len(result.Entries))
+	for i, entry := range result.Entries {
+		entries[i] = wshrpc.DirEntryOut{
+			Name:         entry.Name,
+			Dir:          entry.Dir,
+			Symlink:      entry.Symlink,
+			Size:         entry.Size,
+			Mode:         entry.Mode,
+			Modified:     entry.Modified,
+			ModifiedTime: entry.ModifiedTime,
+		}
+	}
+	return &wshrpc.CommandListAllAppFilesRtnData{
+		Path:         result.Path,
+		AbsolutePath: result.AbsolutePath,
+		ParentDir:    result.ParentDir,
+		Entries:      entries,
+		EntryCount:   result.EntryCount,
+		TotalEntries: result.TotalEntries,
+		Truncated:    result.Truncated,
+	}, nil
+}
+
+func (ws *WshServer) ReadAppFileCommand(ctx context.Context, data wshrpc.CommandReadAppFileData) (*wshrpc.CommandReadAppFileRtnData, error) {
+	fileData, err := waveappstore.ReadAppFile(data.AppId, data.FileName)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return &wshrpc.CommandReadAppFileRtnData{
+				NotFound: true,
+			}, nil
+		}
+		return nil, fmt.Errorf("failed to read app file: %w", err)
+	}
+	return &wshrpc.CommandReadAppFileRtnData{
+		Data64: base64.StdEncoding.EncodeToString(fileData.Contents),
+		ModTs:  fileData.ModTs,
+	}, nil
+}
+
+func (ws *WshServer) WriteAppFileCommand(ctx context.Context, data wshrpc.CommandWriteAppFileData) error {
+	contents, err := base64.StdEncoding.DecodeString(data.Data64)
+	if err != nil {
+		return fmt.Errorf("failed to decode data64: %w", err)
+	}
+	return waveappstore.WriteAppFile(data.AppId, data.FileName, contents)
+}
+
+func (ws *WshServer) DeleteAppFileCommand(ctx context.Context, data wshrpc.CommandDeleteAppFileData) error {
+	return waveappstore.DeleteAppFile(data.AppId, data.FileName)
+}
+
+func (ws *WshServer) RenameAppFileCommand(ctx context.Context, data wshrpc.CommandRenameAppFileData) error {
+	return waveappstore.RenameAppFile(data.AppId, data.FromFileName, data.ToFileName)
 }
 
 func (ws *WshServer) RecordTEventCommand(ctx context.Context, data telemetrydata.TEvent) error {

@@ -9,6 +9,7 @@ declare global {
     type GlobalAtomsType = {
         clientId: jotai.Atom<string>; // readonly
         builderId: jotai.PrimitiveAtom<string>; // readonly (for builder mode)
+        builderAppId: jotai.PrimitiveAtom<string>; // app being edited in builder mode
         waveWindowType: jotai.Atom<"tab" | "builder">; // derived from builderId
         client: jotai.Atom<Client>; // driven from WOS
         uiContext: jotai.Atom<UIContext>; // driven from windowId, tabId

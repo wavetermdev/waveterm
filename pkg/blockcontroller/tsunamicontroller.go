@@ -28,13 +28,12 @@ import (
 )
 
 type TsunamiAppProc struct {
-	Cmd          *exec.Cmd
-	StdoutBuffer *utilds.ReaderLineBuffer
-	StderrBuffer *utilds.ReaderLineBuffer // May be nil if stderr was consumed for port detection
-	StdinWriter  io.WriteCloser
-	Port         int           // Port the tsunami app is listening on
-	WaitCh       chan struct{} // Channel that gets closed when cmd.Wait() returns
-	WaitRtn      error         // Error returned by cmd.Wait()
+	Cmd         *exec.Cmd
+	LineBuffer  *utilds.MultiReaderLineBuffer
+	StdinWriter io.WriteCloser
+	Port        int           // Port the tsunami app is listening on
+	WaitCh      chan struct{} // Channel that gets closed when cmd.Wait() returns
+	WaitRtn     error         // Error returned by cmd.Wait()
 }
 
 type TsunamiController struct {
@@ -90,30 +89,30 @@ func (c *TsunamiController) fetchAndSetSchemas(port int) {
 	client := &http.Client{
 		Timeout: 10 * time.Second,
 	}
-	
+
 	resp, err := client.Get(url)
 	if err != nil {
 		log.Printf("TsunamiController: failed to fetch schemas from %s: %v", url, err)
 		return
 	}
 	defer resp.Body.Close()
-	
+
 	if resp.StatusCode != http.StatusOK {
 		log.Printf("TsunamiController: received non-200 status %d from %s", resp.StatusCode, url)
 		return
 	}
-	
+
 	var schemas any
 	if err := json.NewDecoder(resp.Body).Decode(&schemas); err != nil {
 		log.Printf("TsunamiController: failed to decode schemas response: %v", err)
 		return
 	}
-	
+
 	blockRef := waveobj.MakeORef(waveobj.OType_Block, c.blockId)
 	wstore.SetRTInfo(blockRef, map[string]any{
 		"tsunami:schemas": schemas,
 	})
-	
+
 	log.Printf("TsunamiController: successfully fetched and cached schemas for block %s", c.blockId)
 }
 
@@ -380,14 +379,19 @@ func runTsunamiAppBinary(ctx context.Context, appBinPath string, appPath string,
 
 	appName := build.GetAppName(appPath)
 
-	stdoutBuffer := utilds.MakeReaderLineBuffer(stdoutPipe, 1000)
-	stdoutBuffer.SetLineCallback(func(line string) {
-		log.Printf("[tsunami:%s] %s\n", appName, line)
-	})
+	lineBuffer := utilds.MakeMultiReaderLineBuffer(1000)
+	portChan := make(chan int, 1)
+	portFound := false
 
-	stderrBuffer := utilds.MakeReaderLineBuffer(stderrPipe, 1000)
-	stderrBuffer.SetLineCallback(func(line string) {
+	lineBuffer.SetLineCallback(func(line string) {
 		log.Printf("[tsunami:%s] %s\n", appName, line)
+
+		if !portFound {
+			if port := build.ParseTsunamiPort(line); port > 0 {
+				portFound = true
+				portChan <- port
+			}
+		}
 	})
 
 	err = cmd.Start()
@@ -398,11 +402,10 @@ func runTsunamiAppBinary(ctx context.Context, appBinPath string, appPath string,
 	// Create wait channel and tsunami proc first
 	waitCh := make(chan struct{})
 	tsunamiProc := &TsunamiAppProc{
-		Cmd:          cmd,
-		StdoutBuffer: stdoutBuffer,
-		StderrBuffer: stderrBuffer,
-		StdinWriter:  stdinPipe,
-		WaitCh:       waitCh,
+		Cmd:         cmd,
+		LineBuffer:  lineBuffer,
+		StdinWriter: stdinPipe,
+		WaitCh:      waitCh,
 	}
 
 	// Start goroutine to handle cmd.Wait()
@@ -427,29 +430,12 @@ func runTsunamiAppBinary(ctx context.Context, appBinPath string, appPath string,
 		close(waitCh)
 	}()
 
-	go stdoutBuffer.ReadAll()
-
-	// Monitor stderr for port information
-	portChan := make(chan int, 1)
-	errChan := make(chan error, 1)
-
-	go func() {
-		for {
-			line, err := stderrBuffer.ReadLine()
-			if err != nil {
-				errChan <- fmt.Errorf("stderr buffer error: %w", err)
-				return
-			}
-
-			port := build.ParseTsunamiPort(line)
-			if port > 0 {
-				portChan <- port
-				return
-			}
-		}
-	}()
+	// Start reading both stdout and stderr
+	go lineBuffer.ReadAll(stdoutPipe)
+	go lineBuffer.ReadAll(stderrPipe)
 
 	// Wait for either port detection, process death, or context timeout
+	errChan := make(chan error, 1)
 	go func() {
 		<-tsunamiProc.WaitCh
 		select {
@@ -462,9 +448,6 @@ func runTsunamiAppBinary(ctx context.Context, appBinPath string, appPath string,
 
 	select {
 	case port := <-portChan:
-		// Start the stderr ReadAll goroutine now that we have the port
-		go stderrBuffer.ReadAll()
-
 		tsunamiProc.Port = port
 		return tsunamiProc, nil
 	case err := <-errChan:

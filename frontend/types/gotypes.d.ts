@@ -195,6 +195,12 @@ declare global {
         blockdef: BlockDef;
     };
 
+    // wshrpc.CommandDeleteAppFileData
+    type CommandDeleteAppFileData = {
+        appid: string;
+        filename: string;
+    };
+
     // wshrpc.CommandDeleteBlockData
     type CommandDeleteBlockData = {
         blockid: string;
@@ -240,10 +246,39 @@ declare global {
         chatid: string;
     };
 
+    // wshrpc.CommandListAllAppFilesData
+    type CommandListAllAppFilesData = {
+        appid: string;
+    };
+
+    // wshrpc.CommandListAllAppFilesRtnData
+    type CommandListAllAppFilesRtnData = {
+        path: string;
+        absolutepath: string;
+        parentdir?: string;
+        entries: DirEntryOut[];
+        entrycount: number;
+        totalentries: number;
+        truncated?: boolean;
+    };
+
     // wshrpc.CommandMessageData
     type CommandMessageData = {
         oref: ORef;
         message: string;
+    };
+
+    // wshrpc.CommandReadAppFileData
+    type CommandReadAppFileData = {
+        appid: string;
+        filename: string;
+    };
+
+    // wshrpc.CommandReadAppFileRtnData
+    type CommandReadAppFileRtnData = {
+        data64: string;
+        notfound?: boolean;
+        modts?: number;
     };
 
     // wshrpc.CommandRemoteListEntriesData
@@ -267,6 +302,13 @@ declare global {
     type CommandRemoteStreamTarData = {
         path: string;
         opts?: FileCopyOpts;
+    };
+
+    // wshrpc.CommandRenameAppFileData
+    type CommandRenameAppFileData = {
+        appid: string;
+        fromfilename: string;
+        tofilename: string;
     };
 
     // wshrpc.CommandResolveIdsData
@@ -354,6 +396,13 @@ declare global {
         opts?: WebSelectorOpts;
     };
 
+    // wshrpc.CommandWriteAppFileData
+    type CommandWriteAppFileData = {
+        appid: string;
+        filename: string;
+        data64: string;
+    };
+
     // wconfig.ConfigError
     type ConfigError = {
         file: string;
@@ -434,6 +483,17 @@ declare global {
     type CpuDataRequest = {
         id: string;
         count: number;
+    };
+
+    // wshrpc.DirEntryOut
+    type DirEntryOut = {
+        name: string;
+        dir?: boolean;
+        symlink?: boolean;
+        size?: number;
+        mode: string;
+        modified: string;
+        modifiedtime: string;
     };
 
     // vdom.DomRect
@@ -722,6 +782,7 @@ declare global {
         "shell:lastcmd"?: string;
         "shell:lastcmdexitcode"?: number;
         "builder:layout"?: {[key: string]: number};
+        "builder:appid"?: string;
         "waveai:chatid"?: string;
     };
 

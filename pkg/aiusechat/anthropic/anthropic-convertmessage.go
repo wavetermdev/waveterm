@@ -72,6 +72,23 @@ func buildAnthropicHTTPRequest(ctx context.Context, msgs []anthropicInputMessage
 		}
 	}
 
+	// inject chatOpts.AppGoFile as a "text" block at the END of the LAST "user" message found (append to Content)
+	if chatOpts.AppGoFile != "" {
+		// Find the last "user" message
+		for i := len(convertedMsgs) - 1; i >= 0; i-- {
+			if convertedMsgs[i].Role == "user" {
+				// Create a text block with the AppGoFile content wrapped in XML tag
+				appGoFileBlock := anthropicMessageContentBlock{
+					Type: "text",
+					Text: "<CurrentAppGoFile>\n" + chatOpts.AppGoFile + "\n</CurrentAppGoFile>",
+				}
+				// Append to the Content of this message
+				convertedMsgs[i].Content = append(convertedMsgs[i].Content, appGoFileBlock)
+				break
+			}
+		}
+	}
+
 	// Build request body
 	reqBody := &anthropicStreamRequest{
 		Model:     opts.Model,

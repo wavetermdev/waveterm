@@ -10,6 +10,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/util/fileutil"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/waveappstore"
+	"github.com/wavetermdev/waveterm/pkg/wps"
 )
 
 const BuilderAppFileName = "app.go"
@@ -68,13 +69,15 @@ func GetBuilderWriteAppFileToolDefinition(appId string) uctypes.ToolDefinition {
 				return nil, err
 			}
 
+			wps.Broker.Publish(wps.WaveEvent{
+				Event:  wps.Event_WaveAppAppGoUpdated,
+				Scopes: []string{appId},
+			})
+
 			return map[string]any{
 				"success": true,
 				"message": fmt.Sprintf("Successfully wrote %s", BuilderAppFileName),
 			}, nil
-		},
-		ToolApproval: func(input any) string {
-			return uctypes.ApprovalNeedsApproval
 		},
 	}
 }
@@ -105,7 +108,9 @@ func GetBuilderEditAppFileToolDefinition(appId string) uctypes.ToolDefinition {
 	return uctypes.ToolDefinition{
 		Name:        "builder_edit_app_file",
 		DisplayName: "Edit App File",
-		Description: fmt.Sprintf("Edit the app.go file for app %s using search and replace", appId),
+		Description: "Edit the app.go file for this app using precise search and replace. " +
+			"Each old_str must appear EXACTLY ONCE in the file or the edit will fail. " +
+			"All edits are applied atomically - if any single edit fails, the entire operation fails and no changes are made.",
 		ToolLogName: "builder:edit_app",
 		Strict:      false,
 		InputSchema: map[string]any{
@@ -113,13 +118,13 @@ func GetBuilderEditAppFileToolDefinition(appId string) uctypes.ToolDefinition {
 			"properties": map[string]any{
 				"edits": map[string]any{
 					"type":        "array",
-					"description": "Array of edit specifications with old and new strings",
+					"description": "Array of edit specifications. All edits are applied atomically - if any edit fails, none are applied.",
 					"items": map[string]any{
 						"type": "object",
 						"properties": map[string]any{
 							"old_str": map[string]any{
 								"type":        "string",
-								"description": "The exact string to find and replace",
+								"description": "The exact string to find and replace. MUST appear exactly once in the file - if it appears zero times or multiple times, the entire edit operation will fail.",
 							},
 							"new_str": map[string]any{
 								"type":        "string",
@@ -127,7 +132,7 @@ func GetBuilderEditAppFileToolDefinition(appId string) uctypes.ToolDefinition {
 							},
 							"desc": map[string]any{
 								"type":        "string",
-								"description": "Description of the edit",
+								"description": "Description of what this edit does",
 							},
 						},
 						"required": []string{"old_str", "new_str"},
@@ -155,13 +160,15 @@ func GetBuilderEditAppFileToolDefinition(appId string) uctypes.ToolDefinition {
 				return nil, err
 			}
 
+			wps.Broker.Publish(wps.WaveEvent{
+				Event:  wps.Event_WaveAppAppGoUpdated,
+				Scopes: []string{appId},
+			})
+
 			return map[string]any{
 				"success": true,
 				"message": fmt.Sprintf("Successfully edited %s with %d changes", BuilderAppFileName, len(params.Edits)),
 			}, nil
-		},
-		ToolApproval: func(input any) string {
-			return uctypes.ApprovalNeedsApproval
 		},
 	}
 }
@@ -188,9 +195,6 @@ func GetBuilderListFilesToolDefinition(appId string) uctypes.ToolDefinition {
 			}
 
 			return result, nil
-		},
-		ToolApproval: func(input any) string {
-			return uctypes.ApprovalAutoApproved
 		},
 	}
 }

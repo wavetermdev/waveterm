@@ -194,6 +194,23 @@ func buildOpenAIHTTPRequest(ctx context.Context, inputs []any, chatOpts uctypes.
 		}
 	}
 
+	// Inject chatOpts.AppGoFile as a text block at the end of the last "user" message
+	if chatOpts.AppGoFile != "" {
+		// Find the last "user" message
+		for i := len(inputs) - 1; i >= 0; i-- {
+			if msg, ok := inputs[i].(OpenAIMessage); ok && msg.Role == "user" {
+				// Add AppGoFile wrapped in XML tag
+				appGoFileBlock := OpenAIMessageContent{
+					Type: "input_text",
+					Text: "<CurrentAppGoFile>\n" + chatOpts.AppGoFile + "\n</CurrentAppGoFile>",
+				}
+				msg.Content = append(msg.Content, appGoFileBlock)
+				inputs[i] = msg
+				break
+			}
+		}
+	}
+
 	// Build request body
 	reqBody := &OpenAIRequest{
 		Model:           opts.Model,

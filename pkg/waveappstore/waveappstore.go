@@ -17,12 +17,20 @@ import (
 const (
 	AppNSLocal = "local"
 	AppNSDraft = "draft"
+
+	MaxNamespaceLen = 30
+	MaxAppNameLen   = 50
 )
 
 var (
 	namespaceRegex = regexp.MustCompile(`^@?[a-z0-9-]+$`)
 	appNameRegex   = regexp.MustCompile(`^[a-zA-Z0-9_-]+$`)
 )
+
+type FileData struct {
+	Contents []byte
+	ModTs    int64
+}
 
 func MakeAppId(appNS string, appName string) string {
 	return appNS + "/" + appName
@@ -45,6 +53,12 @@ func ValidateAppId(appId string) error {
 	appNS, appName, err := ParseAppId(appId)
 	if err != nil {
 		return err
+	}
+	if len(appNS) > MaxNamespaceLen {
+		return fmt.Errorf("namespace too long: max %d characters", MaxNamespaceLen)
+	}
+	if len(appName) > MaxAppNameLen {
+		return fmt.Errorf("app name too long: max %d characters", MaxAppNameLen)
 	}
 	if !namespaceRegex.MatchString(appNS) {
 		return fmt.Errorf("invalid namespace: must match pattern @?[a-z0-9-]+")
@@ -262,6 +276,37 @@ func WriteAppFile(appId string, fileName string, contents []byte) error {
 	}
 
 	return nil
+}
+
+func ReadAppFile(appId string, fileName string) (*FileData, error) {
+	if err := ValidateAppId(appId); err != nil {
+		return nil, fmt.Errorf("invalid appId: %w", err)
+	}
+
+	appDir, err := GetAppDir(appId)
+	if err != nil {
+		return nil, err
+	}
+
+	filePath, err := validateAndResolveFilePath(appDir, fileName)
+	if err != nil {
+		return nil, err
+	}
+
+	fileInfo, err := os.Stat(filePath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to stat file: %w", err)
+	}
+
+	contents, err := os.ReadFile(filePath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read file: %w", err)
+	}
+
+	return &FileData{
+		Contents: contents,
+		ModTs:    fileInfo.ModTime().UnixMilli(),
+	}, nil
 }
 
 func DeleteAppFile(appId string, fileName string) error {

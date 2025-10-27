@@ -418,20 +418,25 @@ func (m *UIMessage) GetContent() string {
 }
 
 type WaveChatOpts struct {
-	ChatId               string
-	ClientId             string
-	Config               AIOptsType
-	Tools                []ToolDefinition
-	SystemPrompt         []string
-	TabStateGenerator    func() (string, []ToolDefinition, string, error)
-	WidgetAccess         bool
-	RegisterToolApproval func(string)
-	AllowNativeWebSearch bool
+	ChatId                string
+	ClientId              string
+	Config                AIOptsType
+	Tools                 []ToolDefinition
+	SystemPrompt          []string
+	TabStateGenerator     func() (string, []ToolDefinition, string, error)
+	BuilderAppGenerator   func() (string, string, error)
+	WidgetAccess          bool
+	RegisterToolApproval  func(string)
+	AllowNativeWebSearch  bool
+	BuilderId             string
+	BuilderAppId          string
 
 	// ephemeral to the step
-	TabState string
-	TabTools []ToolDefinition
-	TabId    string
+	TabState       string
+	TabTools       []ToolDefinition
+	TabId          string
+	AppGoFile      string
+	AppBuildStatus string
 }
 
 func (opts *WaveChatOpts) GetToolDefinition(toolName string) *ToolDefinition {

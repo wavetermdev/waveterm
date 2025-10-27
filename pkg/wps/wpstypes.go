@@ -6,17 +6,18 @@ package wps
 import "github.com/wavetermdev/waveterm/pkg/util/utilfn"
 
 const (
-	Event_BlockClose       = "blockclose"
-	Event_ConnChange       = "connchange"
-	Event_SysInfo          = "sysinfo"
-	Event_ControllerStatus = "controllerstatus"
-	Event_WaveObjUpdate    = "waveobj:update"
-	Event_BlockFile        = "blockfile"
-	Event_Config           = "config"
-	Event_UserInput        = "userinput"
-	Event_RouteGone        = "route:gone"
-	Event_WorkspaceUpdate  = "workspace:update"
-	Event_WaveAIRateLimit  = "waveai:ratelimit"
+	Event_BlockClose          = "blockclose"
+	Event_ConnChange          = "connchange"
+	Event_SysInfo             = "sysinfo"
+	Event_ControllerStatus    = "controllerstatus"
+	Event_WaveObjUpdate       = "waveobj:update"
+	Event_BlockFile           = "blockfile"
+	Event_Config              = "config"
+	Event_UserInput           = "userinput"
+	Event_RouteGone           = "route:gone"
+	Event_WorkspaceUpdate     = "workspace:update"
+	Event_WaveAIRateLimit     = "waveai:ratelimit"
+	Event_WaveAppAppGoUpdated = "waveapp:appgoupdated"
 )
 
 type WaveEvent struct {

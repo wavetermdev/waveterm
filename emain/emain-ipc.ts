@@ -396,7 +396,7 @@ export function initIpcHandlers() {
     });
 
     electron.ipcMain.on("open-builder", (event, appId?: string) => {
-        fireAndForget(() => createBuilderWindow(appId || "<new>"));
+        fireAndForget(() => createBuilderWindow(appId || ""));
     });
 
     electron.ipcMain.on("open-new-window", () => fireAndForget(createNewWaveWindow));

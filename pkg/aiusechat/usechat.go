@@ -5,6 +5,7 @@ package aiusechat
 
 import (
 	"context"
+	_ "embed"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -24,6 +25,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/util/ds"
 	"github.com/wavetermdev/waveterm/pkg/util/logutil"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
+	"github.com/wavetermdev/waveterm/pkg/waveappstore"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/web/sse"
 	"github.com/wavetermdev/waveterm/pkg/wps"
@@ -38,6 +40,10 @@ const (
 const DefaultAPI = APIType_OpenAI
 const DefaultAIEndpoint = "https://cfapi.waveterm.dev/api/waveai"
 const DefaultMaxTokens = 4 * 1024
+const BuilderMaxTokens = 24 * 1024
+
+//go:embed tsunami/system.md
+var tsunamiSystemDoc string
 
 var (
 	globalRateLimitInfo = &uctypes.RateLimitInfo{Unknown: true}
@@ -71,6 +77,7 @@ var SystemPromptText_OpenAI = strings.Join([]string{
 	`User-attached directories use the tag <AttachedDirectoryListing_xxxxxxxx directory_name="...">JSON DirInfo</AttachedDirectoryListing_xxxxxxxx>.`,
 	`If multiple attached files exist, treat each as a separate source file with its own file_name.`,
 	`When the user refers to these files, use their inline content directly; do NOT call any read_text_file or file-access tools to re-read them unless asked.`,
+	`The current "app.go" file will be provided with the tag <CurrentAppGoFile>\ncontent\n</CurrentAppGoFile> (use this as the basis for your app.go file edits)`,
 
 	// Output & formatting
 	`When presenting commands or any runnable multi-line code, always use fenced Markdown code blocks.`,
@@ -93,16 +100,70 @@ var SystemPromptText_OpenAI = strings.Join([]string{
 	`You have NO API access to widgets or Wave unless provided via an explicit tool.`,
 }, " ")
 
-func getWaveAISettings(premium bool) (*uctypes.AIOptsType, error) {
+var BuilderSystemPromptText_OpenAI = strings.Join([]string{
+	`# Wave AI - WaveApp Builder`,
+	``,
+	`You are Wave AI, a specialized AI assistant designed exclusively to help users build Tsunami framework widgets for Wave Terminal.`,
+	``,
+	`**Core Directives:**`,
+	`- ONLY respond to requests related to building Tsunami/wave widgets`,
+	`- Follow the Tsunami framework documentation strictly`,
+	`- Generate complete, working Go code that compiles and runs in Wave Terminal`,
+	`- Politely decline requests to write other types of code, answer general questions, or go off-topic`,
+	`- If a user asks something unrelated, respond: "I'm Wave AI, specialized in building wave widgets for Wave Terminal. I can only help with creating WaveApps. What would you like to build?"`,
+	``,
+	`**Behavior:**`,
+	`- Be concise and direct. Prefer determinism over speculation.`,
+	`- Never fabricate data, APIs, or framework features. If unsure, say so and reference the documentation.`,
+	`- If a brief clarifying question eliminates guesswork, ask it.`,
+	``,
+	`**Attached Files:**`,
+	`- User-attached text files appear inline as <AttachedTextFile_xxxxxxxx file_name="...">\ncontent\n</AttachedTextFile_xxxxxxxx>`,
+	`- User-attached directories use <AttachedDirectoryListing_xxxxxxxx directory_name="...">JSON DirInfo</AttachedDirectoryListing_xxxxxxxx>`,
+	`- When users refer to attached files, use their inline content directly; do NOT attempt to read them again`,
+	``,
+	`**Code Output:**`,
+	`- Do NOT output code in fenced code blocks or inline code snippets`,
+	`- The file editing tools handle all code generation—users see the code in the editor pane`,
+	`- After using a tool to write code, provide a brief summary of what you implemented`,
+	`- Only use code formatting when explaining specific concepts or showing small examples that are NOT the main app code`,
+	``,
+	`**Safety & Guardrails:**`,
+	`- Build widgets that perform powerful actions, but include appropriate safeguards:`,
+	`  - Require explicit user interaction (button clicks, form submissions) before destructive operations`,
+	`  - Add confirmation dialogs for destructive actions (file deletion, system commands, data modifications)`,
+	`  - Use visual indicators: red/warning colors, warning icons, clear action labels ("Delete", "Remove", "Overwrite")`,
+	`  - Never trigger dangerous operations automatically on widget load or in render cycles`,
+	`  - For bulk operations, preview what will be affected and require confirmation`,
+	`- Example: A file manager widget should have red "Delete" buttons that show a dialog: "Delete 3 files? [Cancel] [Delete]"`,
+	``,
+	`**Your Workflow:**`,
+	`1. Understand what the user wants to build`,
+	`2. Reference the Tsunami framework documentation below`,
+	`3. Use the file editing tools to modify app.go with your implementation`,
+	`4. Compilation/linting results will be returned after each edit`,
+	`5. If there are errors, analyze them and use the tools again to fix the issues`,
+	`6. Continue iterating until the code compiles cleanly and runs successfully`,
+	`7. Verify the widget follows framework conventions and meets the user's requirements`,
+	``,
+	`-----------`,
+	``,
+}, "\n")
+
+func getWaveAISettings(premium bool, builderMode bool) (*uctypes.AIOptsType, error) {
 	baseUrl := DefaultAIEndpoint
 	if os.Getenv("WAVETERM_WAVEAI_ENDPOINT") != "" {
 		baseUrl = os.Getenv("WAVETERM_WAVEAI_ENDPOINT")
+	}
+	maxTokens := DefaultMaxTokens
+	if builderMode {
+		maxTokens = BuilderMaxTokens
 	}
 	if DefaultAPI == APIType_Anthropic {
 		return &uctypes.AIOptsType{
 			APIType:       APIType_Anthropic,
 			Model:         uctypes.DefaultAnthropicModel,
-			MaxTokens:     DefaultMaxTokens,
+			MaxTokens:     maxTokens,
 			ThinkingLevel: uctypes.ThinkingLevelMedium,
 			BaseURL:       baseUrl,
 		}, nil
@@ -116,7 +177,7 @@ func getWaveAISettings(premium bool) (*uctypes.AIOptsType, error) {
 		return &uctypes.AIOptsType{
 			APIType:       APIType_OpenAI,
 			Model:         model,
-			MaxTokens:     DefaultMaxTokens,
+			MaxTokens:     maxTokens,
 			ThinkingLevel: thinkingLevel,
 			BaseURL:       baseUrl,
 		}, nil
@@ -378,6 +439,13 @@ func RunAIChat(ctx context.Context, sseHandler *sse.SSEHandlerCh, chatOpts uctyp
 				chatOpts.TabId = tabId
 			}
 		}
+		if chatOpts.BuilderAppGenerator != nil {
+			appGoFile, appBuildStatus, appErr := chatOpts.BuilderAppGenerator()
+			if appErr == nil {
+				chatOpts.AppGoFile = appGoFile
+				chatOpts.AppBuildStatus = appBuildStatus
+			}
+		}
 		stopReason, rtnMessage, err := runAIChatStep(ctx, sseHandler, chatOpts, cont)
 		metrics.RequestCount++
 		if chatOpts.Config.IsPremiumModel() {
@@ -572,6 +640,7 @@ func sendAIMetricsTelemetry(ctx context.Context, metrics *uctypes.AIMetrics) {
 type PostMessageRequest struct {
 	TabId        string            `json:"tabid,omitempty"`
 	BuilderId    string            `json:"builderid,omitempty"`
+	BuilderAppId string            `json:"builderappid,omitempty"`
 	ChatID       string            `json:"chatid"`
 	Msg          uctypes.AIMessage `json:"msg"`
 	WidgetAccess bool              `json:"widgetaccess,omitempty"`
@@ -603,7 +672,8 @@ func WaveAIPostMessageHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Get WaveAI settings
 	premium := shouldUsePremium()
-	aiOpts, err := getWaveAISettings(premium)
+	builderMode := req.BuilderId != ""
+	aiOpts, err := getWaveAISettings(premium, builderMode)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("WaveAI configuration error: %v", err), http.StatusInternalServerError)
 		return
@@ -624,16 +694,44 @@ func WaveAIPostMessageHandler(w http.ResponseWriter, r *http.Request) {
 		WidgetAccess:         req.WidgetAccess,
 		RegisterToolApproval: RegisterToolApproval,
 		AllowNativeWebSearch: true,
+		BuilderId:            req.BuilderId,
+		BuilderAppId:         req.BuilderAppId,
 	}
 	if chatOpts.Config.APIType == APIType_OpenAI {
-		chatOpts.SystemPrompt = []string{SystemPromptText_OpenAI}
+		if chatOpts.BuilderId != "" {
+			chatOpts.SystemPrompt = []string{BuilderSystemPromptText_OpenAI + tsunamiSystemDoc}
+		} else {
+			chatOpts.SystemPrompt = []string{SystemPromptText_OpenAI}
+		}
 	} else {
 		chatOpts.SystemPrompt = []string{SystemPromptText}
 	}
 
-	chatOpts.TabStateGenerator = func() (string, []uctypes.ToolDefinition, string, error) {
-		tabState, tabTools, err := GenerateTabStateAndTools(r.Context(), req.TabId, req.WidgetAccess)
-		return tabState, tabTools, req.TabId, err
+	if req.TabId != "" {
+		chatOpts.TabStateGenerator = func() (string, []uctypes.ToolDefinition, string, error) {
+			tabState, tabTools, err := GenerateTabStateAndTools(r.Context(), req.TabId, req.WidgetAccess)
+			return tabState, tabTools, req.TabId, err
+		}
+	}
+
+	if req.BuilderAppId != "" {
+		chatOpts.BuilderAppGenerator = func() (string, string, error) {
+			fileData, err := waveappstore.ReadAppFile(req.BuilderAppId, "app.go")
+			if err != nil {
+				return "", "", err
+			}
+			appGoFile := string(fileData.Contents)
+			appBuildStatus := ""
+			return appGoFile, appBuildStatus, nil
+		}
+	}
+
+	if req.BuilderAppId != "" {
+		chatOpts.Tools = append(chatOpts.Tools,
+			GetBuilderWriteAppFileToolDefinition(req.BuilderAppId),
+			GetBuilderEditAppFileToolDefinition(req.BuilderAppId),
+			GetBuilderListFilesToolDefinition(req.BuilderAppId),
+		)
 	}
 
 	// Validate the message

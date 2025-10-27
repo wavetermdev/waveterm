@@ -1,23 +1,89 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { BuilderFocusManager } from "@/builder/store/builderFocusManager";
-import { memo, useRef } from "react";
+import { CodeEditor } from "@/app/view/codeeditor/codeeditor";
+import { waveEventSubscribe } from "@/app/store/wps";
+import { BuilderAppPanelModel } from "@/builder/store/builderAppPanelModel";
+import { atoms } from "@/store/global";
+import * as keyutil from "@/util/keyutil";
+import { useAtomValue } from "jotai";
+import { memo, useEffect } from "react";
 
 const BuilderCodeTab = memo(() => {
-    const focusElemRef = useRef<HTMLInputElement>(null);
+    const model = BuilderAppPanelModel.getInstance();
+    const builderAppId = useAtomValue(atoms.builderAppId);
+    const codeContent = useAtomValue(model.codeContentAtom);
+    const isLoading = useAtomValue(model.isLoadingAtom);
+    const error = useAtomValue(model.errorAtom);
 
-    const handleClick = () => {
-        focusElemRef.current?.focus();
-        BuilderFocusManager.getInstance().setAppFocused();
+    useEffect(() => {
+        if (builderAppId) {
+            model.loadAppFile(builderAppId);
+        }
+    }, [builderAppId, model]);
+
+    useEffect(() => {
+        if (!builderAppId) {
+            return;
+        }
+        const unsubscribe = waveEventSubscribe({
+            eventType: "waveapp:appgoupdated",
+            scope: builderAppId,
+            handler: () => {
+                model.loadAppFile(builderAppId);
+            },
+        });
+        return unsubscribe;
+    }, [builderAppId, model]);
+
+    const handleCodeChange = (newText: string) => {
+        model.setCodeContent(newText);
     };
 
-    return (
-        <div className="w-full h-full flex items-center justify-center" onClick={handleClick}>
-            <div key="focuselem" className="h-0 w-0">
-                <input type="text" value="" ref={focusElemRef} className="h-0 w-0 opacity-0 pointer-events-none" onChange={() => {}} />
+    const handleEditorMount = (editor: any) => {
+        model.setMonacoEditorRef(editor);
+        return () => {
+            model.setMonacoEditorRef(null);
+        };
+    };
+
+    const handleKeyDown = keyutil.keydownWrapper((waveEvent: WaveKeyboardEvent) => {
+        if (keyutil.checkKeyPressed(waveEvent, "Cmd:s")) {
+            if (builderAppId) {
+                model.saveAppFile(builderAppId);
+            }
+            return true;
+        }
+        return false;
+    });
+
+    if (isLoading) {
+        return (
+            <div className="w-full h-full flex items-center justify-center">
+                <div className="text-secondary">Loading app.go...</div>
             </div>
-            <h1 className="text-4xl">Code Tab</h1>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="w-full h-full flex items-center justify-center">
+                <div className="text-red-500">{error}</div>
+            </div>
+        );
+    }
+
+    return (
+        <div className="w-full h-full" onKeyDown={handleKeyDown}>
+            <CodeEditor
+                blockId=""
+                text={codeContent}
+                readonly={false}
+                language="go"
+                fileName="app.go"
+                onChange={handleCodeChange}
+                onMount={handleEditorMount}
+            />
         </div>
     );
 });
