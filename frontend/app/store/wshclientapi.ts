@@ -122,6 +122,11 @@ class RpcApiType {
         return client.wshRpcCall("deleteblock", data, opts);
     }
 
+    // command "deletebuilder" [call]
+    DeleteBuilderCommand(client: WshClient, data: string, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("deletebuilder", data, opts);
+    }
+
     // command "deletesubblock" [call]
     DeleteSubBlockCommand(client: WshClient, data: CommandDeleteBlockData, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("deletesubblock", data, opts);

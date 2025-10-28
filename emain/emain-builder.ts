@@ -103,6 +103,7 @@ export async function createBuilderWindow(appId: string): Promise<BuilderWindowT
         if (focusedBuilderWindow === typedBuilderWindow) {
             focusedBuilderWindow = null;
         }
+        RpcApi.DeleteBuilderCommand(ElectronWshClient, builderId, { noresponse: true });
         setTimeout(() => globalEvents.emit("windows-updated"), 50);
     });
 

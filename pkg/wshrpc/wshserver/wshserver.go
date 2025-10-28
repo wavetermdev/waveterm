@@ -25,6 +25,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
 	"github.com/wavetermdev/waveterm/pkg/blockcontroller"
 	"github.com/wavetermdev/waveterm/pkg/blocklogger"
+	"github.com/wavetermdev/waveterm/pkg/buildercontroller"
 	"github.com/wavetermdev/waveterm/pkg/filestore"
 	"github.com/wavetermdev/waveterm/pkg/genconn"
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
@@ -955,6 +956,11 @@ func (ws *WshServer) DeleteAppFileCommand(ctx context.Context, data wshrpc.Comma
 
 func (ws *WshServer) RenameAppFileCommand(ctx context.Context, data wshrpc.CommandRenameAppFileData) error {
 	return waveappstore.RenameAppFile(data.AppId, data.FromFileName, data.ToFileName)
+}
+
+func (ws *WshServer) DeleteBuilderCommand(ctx context.Context, builderId string) error {
+	buildercontroller.DeleteController(builderId)
+	return nil
 }
 
 func (ws *WshServer) RecordTEventCommand(ctx context.Context, data telemetrydata.TEvent) error {
