@@ -156,6 +156,8 @@ func GenerateTabStateAndTools(ctx context.Context, tabid string, widgetAccess bo
 		tools = append(tools, GetCaptureScreenshotToolDefinition(tabid))
 		tools = append(tools, GetReadTextFileToolDefinition())
 		tools = append(tools, GetReadDirToolDefinition())
+		tools = append(tools, GetWriteTextFileToolDefinition())
+		tools = append(tools, GetEditTextFileToolDefinition())
 		viewTypes := make(map[string]bool)
 		for _, block := range blocks {
 			if block.Meta == nil {
