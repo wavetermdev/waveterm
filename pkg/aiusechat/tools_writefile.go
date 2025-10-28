@@ -4,15 +4,57 @@
 package aiusechat
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
+	"github.com/google/uuid"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
 	"github.com/wavetermdev/waveterm/pkg/util/fileutil"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 )
+
+func makeFileBackup(absFilePath string) error {
+	fileData, err := os.ReadFile(absFilePath)
+	if err != nil {
+		return fmt.Errorf("failed to read file for backup: %w", err)
+	}
+
+	dir := filepath.Dir(absFilePath)
+	basename := filepath.Base(absFilePath)
+
+	hash := sha256.Sum256([]byte(dir))
+	dirHash8 := hex.EncodeToString(hash[:])[:8]
+
+	uuidV7, err := uuid.NewV7()
+	if err != nil {
+		return fmt.Errorf("failed to generate UUID: %w", err)
+	}
+	uuidStr := uuidV7.String()
+
+	now := time.Now()
+	dateStr := now.Format("2006-01-02")
+
+	backupDir := filepath.Join(wavebase.GetWaveCachesDir(), "waveai-backups", dateStr)
+	err = os.MkdirAll(backupDir, 0700)
+	if err != nil {
+		return fmt.Errorf("failed to create backup directory: %w", err)
+	}
+
+	backupName := fmt.Sprintf("%s.%s.%s.bak", basename, dirHash8, uuidStr)
+	backupPath := filepath.Join(backupDir, backupName)
+
+	err = os.WriteFile(backupPath, fileData, 0600)
+	if err != nil {
+		return fmt.Errorf("failed to write backup file: %w", err)
+	}
+
+	return nil
+}
 
 const MaxEditFileSize = 100 * 1024 // 100KB
 
@@ -52,6 +94,10 @@ func writeTextFileCallback(input any) (any, error) {
 	expandedPath, err := wavebase.ExpandHomeDir(params.Filename)
 	if err != nil {
 		return nil, fmt.Errorf("failed to expand path: %w", err)
+	}
+
+	if blocked, reason := isBlockedFile(expandedPath); blocked {
+		return nil, fmt.Errorf("access denied: potentially sensitive file: %s", reason)
 	}
 
 	contentsBytes := []byte(params.Contents)
@@ -172,6 +218,10 @@ func editTextFileCallback(input any) (any, error) {
 	expandedPath, err := wavebase.ExpandHomeDir(params.Filename)
 	if err != nil {
 		return nil, fmt.Errorf("failed to expand path: %w", err)
+	}
+
+	if blocked, reason := isBlockedFile(expandedPath); blocked {
+		return nil, fmt.Errorf("access denied: potentially sensitive file: %s", reason)
 	}
 
 	fileInfo, err := os.Stat(expandedPath)
