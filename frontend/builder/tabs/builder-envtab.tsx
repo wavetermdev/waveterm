@@ -18,6 +18,7 @@ const BuilderEnvTab = memo(() => {
     const error = useAtomValue(model.errorAtom);
 
     const [envVars, setEnvVars] = useState<EnvVar[]>([]);
+    const [visibleValues, setVisibleValues] = useState<Record<number, boolean>>({});
 
     useEffect(() => {
         setEnvVars(Object.entries(envVarsObj).map(([name, value]) => ({ name, value })));
@@ -58,6 +59,13 @@ const BuilderEnvTab = memo(() => {
         updateModel(newVars);
     }, [envVars, updateModel]);
 
+    const toggleValueVisibility = useCallback((index: number) => {
+        setVisibleValues((prev) => ({
+            ...prev,
+            [index]: !prev[index],
+        }));
+    }, []);
+
     return (
         <div className="w-full h-full flex flex-col p-4">
             <div className="flex items-center justify-between mb-2">
@@ -96,13 +104,25 @@ const BuilderEnvTab = memo(() => {
                                     placeholder="Variable Name"
                                     className="flex-1 px-3 py-2 bg-background border border-border rounded text-primary focus:outline-none focus:border-accent"
                                 />
-                                <input
-                                    type="text"
-                                    value={envVar.value}
-                                    onChange={(e) => handleValueChange(index, e.target.value)}
-                                    placeholder="Value"
-                                    className="flex-1 px-3 py-2 bg-background border border-border rounded text-primary focus:outline-none focus:border-accent"
-                                />
+                                <div className="flex-1 relative">
+                                    <input
+                                        type={visibleValues[index] ? "text" : "password"}
+                                        value={envVar.value}
+                                        onChange={(e) => handleValueChange(index, e.target.value)}
+                                        placeholder="Value"
+                                        className="w-full px-3 py-2 pr-10 bg-background border border-border rounded text-primary focus:outline-none focus:border-accent"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => toggleValueVisibility(index)}
+                                        className="absolute right-2 top-1/2 -translate-y-1/2 text-secondary hover:text-primary cursor-pointer transition-colors"
+                                        title={visibleValues[index] ? "Hide value" : "Show value"}
+                                    >
+                                        <i
+                                            className={`fa-solid ${visibleValues[index] ? "fa-eye" : "fa-eye-slash"}`}
+                                        />
+                                    </button>
+                                </div>
                                 <button
                                     className="px-3 py-2 text-sm font-medium rounded bg-red-500/20 text-red-500 hover:brightness-110 cursor-pointer"
                                     onClick={() => handleRemoveVar(index)}
