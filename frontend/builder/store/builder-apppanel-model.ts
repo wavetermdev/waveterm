@@ -8,6 +8,7 @@ import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { atoms, WOS } from "@/store/global";
 import { base64ToString, stringToBase64 } from "@/util/util";
 import { atom, type Atom, type PrimitiveAtom } from "jotai";
+import { debounce } from "throttle-debounce";
 
 export type TabType = "preview" | "files" | "code" | "env";
 
@@ -28,9 +29,13 @@ export class BuilderAppPanelModel {
     monacoEditorRef: { current: any | null } = { current: null };
     statusUnsubFn: (() => void) | null = null;
     appGoUpdateUnsubFn: (() => void) | null = null;
+    debouncedRestart: (() => void) & { cancel: () => void };
     initialized = false;
 
     private constructor() {
+        this.debouncedRestart = debounce(800, () => {
+            this.restartBuilder();
+        });
         this.saveNeededAtom = atom((get) => {
             return get(this.codeContentAtom) !== get(this.originalContentAtom);
         });
@@ -99,6 +104,7 @@ export class BuilderAppPanelModel {
             scope: appId,
             handler: () => {
                 this.loadAppFile(appId);
+                this.debouncedRestart();
             },
         });
     }
@@ -131,6 +137,7 @@ export class BuilderAppPanelModel {
             });
             globalStore.set(this.originalEnvVarsAtom, envVars);
             globalStore.set(this.errorAtom, "");
+            this.debouncedRestart();
         } catch (err) {
             console.error("Failed to save environment variables:", err);
             globalStore.set(this.errorAtom, `Failed to save environment variables: ${err.message || "Unknown error"}`);
@@ -221,6 +228,7 @@ export class BuilderAppPanelModel {
             });
             globalStore.set(this.originalContentAtom, content);
             globalStore.set(this.errorAtom, "");
+            this.debouncedRestart();
         } catch (err) {
             console.error("Failed to save app.go:", err);
             globalStore.set(this.errorAtom, `Failed to save app.go: ${err.message || "Unknown error"}`);
@@ -257,5 +265,6 @@ export class BuilderAppPanelModel {
             this.appGoUpdateUnsubFn();
             this.appGoUpdateUnsubFn = null;
         }
+        this.debouncedRestart.cancel();
     }
 }
