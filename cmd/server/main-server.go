@@ -324,6 +324,7 @@ func maybeStartPprofServer() error {
 	if pprofPortStr == "" {
 		return nil
 	}
+	defer os.Unsetenv("WAVETERM_PPROFPORT")
 	pprofPort, err := strconv.Atoi(pprofPortStr)
 	if err != nil {
 		return fmt.Errorf("invalid WAVETERM_PPROFPORT value '%s': %v", pprofPortStr, err)
