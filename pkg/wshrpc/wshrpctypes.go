@@ -159,6 +159,7 @@ const (
 	Command_WriteAppFile        = "writeappfile"
 	Command_DeleteAppFile       = "deleteappfile"
 	Command_RenameAppFile       = "renameappfile"
+	Command_DeleteBuilder       = "deletebuilder"
 )
 
 type RespOrErrorUnion[T any] struct {
@@ -301,6 +302,7 @@ type WshRpcInterface interface {
 	WriteAppFileCommand(ctx context.Context, data CommandWriteAppFileData) error
 	DeleteAppFileCommand(ctx context.Context, data CommandDeleteAppFileData) error
 	RenameAppFileCommand(ctx context.Context, data CommandRenameAppFileData) error
+	DeleteBuilderCommand(ctx context.Context, builderId string) error
 
 	// proc
 	VDomRenderCommand(ctx context.Context, data vdom.VDomFrontendUpdate) chan RespOrErrorUnion[*vdom.VDomBackendUpdate]
