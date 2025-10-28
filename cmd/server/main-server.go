@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strconv"
 
 	"runtime"
 	"sync"
@@ -40,6 +41,9 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
 	"github.com/wavetermdev/waveterm/pkg/wslconn"
 	"github.com/wavetermdev/waveterm/pkg/wstore"
+
+	"net/http"
+	_ "net/http/pprof"
 )
 
 // these are set at build time
@@ -315,13 +319,41 @@ func clearTempFiles() error {
 	return nil
 }
 
+func maybeStartPprofServer() error {
+	pprofPortStr := os.Getenv("WAVETERM_PPROFPORT")
+	if pprofPortStr == "" {
+		return nil
+	}
+	pprofPort, err := strconv.Atoi(pprofPortStr)
+	if err != nil {
+		return fmt.Errorf("invalid WAVETERM_PPROFPORT value '%s': %v", pprofPortStr, err)
+	}
+	if pprofPort < 1 || pprofPort > 65535 {
+		return fmt.Errorf("WAVETERM_PPROFPORT must be between 1 and 65535, got %d", pprofPort)
+	}
+	go func() {
+		addr := fmt.Sprintf("localhost:%d", pprofPort)
+		log.Printf("starting pprof server on %s\n", addr)
+		if err := http.ListenAndServe(addr, nil); err != nil {
+			log.Printf("[error] pprof server failed: %v\n", err)
+		}
+	}()
+	return nil
+}
+
 func main() {
+	err := maybeStartPprofServer()
+	if err != nil {
+		log.Printf("[error] %v\n", err)
+		return
+	}
+
 	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
 	log.SetPrefix("[wavesrv] ")
 	wavebase.WaveVersion = WaveVersion
 	wavebase.BuildTime = BuildTime
 
-	err := grabAndRemoveEnvVars()
+	err = grabAndRemoveEnvVars()
 	if err != nil {
 		log.Printf("[error] %v\n", err)
 		return
