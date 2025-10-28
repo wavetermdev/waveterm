@@ -77,7 +77,6 @@ var SystemPromptText_OpenAI = strings.Join([]string{
 	`User-attached directories use the tag <AttachedDirectoryListing_xxxxxxxx directory_name="...">JSON DirInfo</AttachedDirectoryListing_xxxxxxxx>.`,
 	`If multiple attached files exist, treat each as a separate source file with its own file_name.`,
 	`When the user refers to these files, use their inline content directly; do NOT call any read_text_file or file-access tools to re-read them unless asked.`,
-	`The current "app.go" file will be provided with the tag <CurrentAppGoFile>\ncontent\n</CurrentAppGoFile> (use this as the basis for your app.go file edits)`,
 
 	// Output & formatting
 	`When presenting commands or any runnable multi-line code, always use fenced Markdown code blocks.`,
@@ -121,6 +120,7 @@ var BuilderSystemPromptText_OpenAI = strings.Join([]string{
 	`- User-attached text files appear inline as <AttachedTextFile_xxxxxxxx file_name="...">\ncontent\n</AttachedTextFile_xxxxxxxx>`,
 	`- User-attached directories use <AttachedDirectoryListing_xxxxxxxx directory_name="...">JSON DirInfo</AttachedDirectoryListing_xxxxxxxx>`,
 	`- When users refer to attached files, use their inline content directly; do NOT attempt to read them again`,
+	`The current "app.go" file will be provided with the tag <CurrentAppGoFile>\ncontent\n</CurrentAppGoFile> (use this as the basis for your app.go file edits)`,
 	``,
 	`**Code Output:**`,
 	`- Do NOT output code in fenced code blocks or inline code snippets`,
