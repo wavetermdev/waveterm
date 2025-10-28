@@ -267,6 +267,11 @@ class RpcApiType {
         return client.wshRpcCall("focuswindow", data, opts);
     }
 
+    // command "getbuilderstatus" [call]
+    GetBuilderStatusCommand(client: WshClient, data: string, opts?: RpcOpts): Promise<BuilderStatusData> {
+        return client.wshRpcCall("getbuilderstatus", data, opts);
+    }
+
     // command "getfullconfig" [call]
     GetFullConfigCommand(client: WshClient, opts?: RpcOpts): Promise<FullConfigType> {
         return client.wshRpcCall("getfullconfig", null, opts);
@@ -465,6 +470,11 @@ class RpcApiType {
     // command "setview" [call]
     SetViewCommand(client: WshClient, data: CommandBlockSetViewData, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("setview", data, opts);
+    }
+
+    // command "startbuilder" [call]
+    StartBuilderCommand(client: WshClient, data: CommandStartBuilderData, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("startbuilder", data, opts);
     }
 
     // command "streamcpudata" [responsestream]

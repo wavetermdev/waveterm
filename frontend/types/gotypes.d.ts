@@ -110,6 +110,15 @@ declare global {
         workspaceid?: string;
     };
 
+    // wshrpc.BuilderStatusData
+    type BuilderStatusData = {
+        status: string;
+        port?: number;
+        exitcode?: number;
+        errormsg?: string;
+        version: number;
+    };
+
     // waveobj.Client
     type Client = WaveObj & {
         windowids: string[];
@@ -333,6 +342,11 @@ declare global {
         oref: ORef;
         data: ObjRTInfo;
         delete?: boolean;
+    };
+
+    // wshrpc.CommandStartBuilderData
+    type CommandStartBuilderData = {
+        builderid: string;
     };
 
     // wshrpc.CommandTermGetScrollbackLinesData

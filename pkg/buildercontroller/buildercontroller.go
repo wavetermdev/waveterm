@@ -15,7 +15,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/utilds"
+	"github.com/wavetermdev/waveterm/pkg/waveappstore"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wps"
@@ -150,7 +152,7 @@ func (bc *BuilderController) waitForBuildDone(ctx context.Context) error {
 	}
 }
 
-func (bc *BuilderController) Start(ctx context.Context, appId string, appPath string, scaffoldPath string, sdkReplacePath string, builderEnv map[string]string) error {
+func (bc *BuilderController) Start(ctx context.Context, appId string, builderEnv map[string]string) error {
 	if err := bc.waitForBuildDone(ctx); err != nil {
 		return err
 	}
@@ -173,13 +175,24 @@ func (bc *BuilderController) Start(ctx context.Context, appId string, appPath st
 		bc.publishOutputLine(line, false)
 	})
 
-	go bc.buildAndRun(ctx, appPath, scaffoldPath, sdkReplacePath, builderEnv)
+	buildCtx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	go func() {
+		defer cancel()
+		defer func() {
+			panichandler.PanicHandler(fmt.Sprintf("buildercontroller[%s].buildAndRun", bc.builderId), recover())
+		}()
+		bc.buildAndRun(buildCtx, appId, builderEnv)
+	}()
 
 	return nil
 }
 
-func (bc *BuilderController) buildAndRun(ctx context.Context, appPath string, scaffoldPath string, sdkReplacePath string, builderEnv map[string]string) {
-	defer panicRecover(bc.builderId)
+func (bc *BuilderController) buildAndRun(ctx context.Context, appId string, builderEnv map[string]string) {
+	appPath, err := waveappstore.GetAppDir(appId)
+	if err != nil {
+		bc.handleBuildError(fmt.Errorf("failed to get app directory: %w", err))
+		return
+	}
 
 	appName := build.GetAppName(appPath)
 
@@ -194,6 +207,9 @@ func (bc *BuilderController) buildAndRun(ctx context.Context, appPath string, sc
 		bc.handleBuildError(fmt.Errorf("electron executable path not set"))
 		return
 	}
+
+	scaffoldPath := os.Getenv("TSUNAMI_SCAFFOLDPATH")
+	sdkReplacePath := os.Getenv("TSUNAMI_SDKREPLACEPATH")
 
 	_, err = build.TsunamiBuildInternal(build.BuildOpts{
 		AppPath:        appPath,
@@ -310,7 +326,7 @@ func (bc *BuilderController) runBuilderApp(ctx context.Context, appBinPath strin
 		}
 	}()
 
-	timeout := time.NewTimer(30 * time.Second)
+	timeout := time.NewTimer(5 * time.Second)
 	defer timeout.Stop()
 
 	select {
@@ -325,7 +341,7 @@ func (bc *BuilderController) runBuilderApp(ctx context.Context, appBinPath strin
 		return nil, fmt.Errorf("timeout waiting for port")
 	case <-ctx.Done():
 		cmd.Process.Kill()
-		return nil, ctx.Err()
+		return nil, fmt.Errorf("cancelled while waiting for app port: %w", ctx.Err())
 	}
 }
 
@@ -433,8 +449,3 @@ func exitCodeFromWaitErr(waitErr error) int {
 	return 1
 }
 
-func panicRecover(builderId string) {
-	if r := recover(); r != nil {
-		log.Printf("BuilderController panic for builder %s: %v", builderId, r)
-	}
-}

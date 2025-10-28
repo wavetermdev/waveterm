@@ -11,7 +11,35 @@ import { ErrorBoundary } from "@/element/errorboundary";
 import { atoms } from "@/store/global";
 import { cn } from "@/util/util";
 import { useAtomValue } from "jotai";
-import { memo, useCallback, useRef } from "react";
+import { memo, useCallback, useEffect, useRef } from "react";
+
+const StatusDot = memo(() => {
+    const model = BuilderAppPanelModel.getInstance();
+    const builderStatus = useAtomValue(model.builderStatusAtom);
+
+    const getStatusDotColor = (status: string | null | undefined): string => {
+        if (!status) return "bg-gray-500";
+        switch (status) {
+            case "init":
+            case "stopped":
+                return "bg-gray-500";
+            case "building":
+                return "bg-warning";
+            case "running":
+                return "bg-success";
+            case "error":
+                return "bg-error";
+            default:
+                return "bg-gray-500";
+        }
+    };
+
+    const statusDotColor = getStatusDotColor(builderStatus?.status);
+
+    return <span className={cn("w-2 h-2 rounded-full", statusDotColor)} />;
+});
+
+StatusDot.displayName = "StatusDot";
 
 type TabButtonProps = {
     label: string;
@@ -19,20 +47,24 @@ type TabButtonProps = {
     isActive: boolean;
     isAppFocused: boolean;
     onClick: () => void;
+    showStatusDot?: boolean;
 };
 
-const TabButton = memo(({ label, tabType, isActive, isAppFocused, onClick }: TabButtonProps) => {
+const TabButton = memo(({ label, tabType, isActive, isAppFocused, onClick, showStatusDot }: TabButtonProps) => {
     return (
         <button
             className={cn(
                 "px-4 py-2 text-sm font-medium transition-colors cursor-pointer",
                 isActive
-                    ? `text-main-text border-b-2 ${isAppFocused ? "border-accent" : "border-gray-500"}`
-                    : "text-gray-500 hover:text-secondary border-b-2 border-transparent"
+                    ? `text-primary border-b-2 ${isAppFocused ? "border-accent" : "border-gray-500"}`
+                    : "text-secondary hover:text-primary border-b-2 border-transparent"
             )}
             onClick={onClick}
         >
-            {label}
+            <span className="flex items-center gap-2">
+                {showStatusDot && <StatusDot />}
+                {label}
+            </span>
         </button>
     );
 });
@@ -47,6 +79,10 @@ const BuilderAppPanel = memo(() => {
     const isAppFocused = focusType === "app";
     const saveNeeded = useAtomValue(model.saveNeededAtom);
     const builderAppId = useAtomValue(atoms.builderAppId);
+
+    useEffect(() => {
+        model.initialize();
+    }, []);
 
     if (focusElemRef.current) {
         model.setFocusElemRef(focusElemRef.current);
@@ -118,6 +154,7 @@ const BuilderAppPanel = memo(() => {
                             isActive={activeTab === "preview"}
                             isAppFocused={isAppFocused}
                             onClick={() => handleTabClick("preview")}
+                            showStatusDot={true}
                         />
                         <TabButton
                             label="Code"

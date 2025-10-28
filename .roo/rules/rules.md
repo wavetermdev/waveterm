@@ -34,6 +34,7 @@ It has a TypeScript/React frontend and a Go backend. They talk together over `ws
     - Use all lowercase filenames (except where case is actually important like Taskfile.yml)
     - Import the "cn" function from "@/util/util" to do classname / clsx class merge (it uses twMerge underneath)
     - For element variants use class-variance-authority
+    - Do NOT create private fields in classes (they are impossible to inspect and are a terrible for application code)
   - **Component Practices**:
     - Make sure to add cursor-pointer to buttons/links and clickable items
     - NEVER use cursor-help (it looks terrible)

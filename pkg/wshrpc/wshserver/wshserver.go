@@ -963,6 +963,31 @@ func (ws *WshServer) DeleteBuilderCommand(ctx context.Context, builderId string)
 	return nil
 }
 
+func (ws *WshServer) StartBuilderCommand(ctx context.Context, data wshrpc.CommandStartBuilderData) error {
+	bc := buildercontroller.GetOrCreateController(data.BuilderId)
+	rtInfo := wstore.GetRTInfo(waveobj.MakeORef("builder", data.BuilderId))
+	if rtInfo == nil {
+		return fmt.Errorf("builder rtinfo not found for builderid: %s", data.BuilderId)
+	}
+	appId := rtInfo.BuilderAppId
+	if appId == "" {
+		return fmt.Errorf("builder appid not set for builderid: %s", data.BuilderId)
+	}
+	return bc.Start(ctx, appId, nil)
+}
+
+func (ws *WshServer) GetBuilderStatusCommand(ctx context.Context, builderId string) (*wshrpc.BuilderStatusData, error) {
+	bc := buildercontroller.GetOrCreateController(builderId)
+	status := bc.GetStatus()
+	return &wshrpc.BuilderStatusData{
+		Status:   status.Status,
+		Port:     status.Port,
+		ExitCode: status.ExitCode,
+		ErrorMsg: status.ErrorMsg,
+		Version:  status.Version,
+	}, nil
+}
+
 func (ws *WshServer) RecordTEventCommand(ctx context.Context, data telemetrydata.TEvent) error {
 	err := telemetry.RecordTEvent(ctx, &data)
 	if err != nil {
