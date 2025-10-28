@@ -256,9 +256,9 @@ const (
 )
 
 type EditSpec struct {
-	OldStr string
-	NewStr string
-	Desc   string
+	OldStr string `json:"old_str"`
+	NewStr string `json:"new_str"`
+	Desc   string `json:"desc,omitempty"`
 }
 
 func ReplaceInFile(filePath string, edits []EditSpec) error {
