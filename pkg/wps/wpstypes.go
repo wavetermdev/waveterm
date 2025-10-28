@@ -10,6 +10,8 @@ const (
 	Event_ConnChange          = "connchange"
 	Event_SysInfo             = "sysinfo"
 	Event_ControllerStatus    = "controllerstatus"
+	Event_BuilderStatus       = "builderstatus"
+	Event_BuilderOutput       = "builderoutput"
 	Event_WaveObjUpdate       = "waveobj:update"
 	Event_BlockFile           = "blockfile"
 	Event_Config              = "config"

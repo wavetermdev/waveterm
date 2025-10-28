@@ -69,6 +69,9 @@ const AppPathBinDir = "bin"
 var baseLock = &sync.Mutex{}
 var ensureDirCache = map[string]bool{}
 
+var waveCachesDirOnce = &sync.Once{}
+var waveCachesDir string
+
 var SupportedWshBinaries = map[string]bool{
 	"darwin-x64":    true,
 	"darwin-arm64":  true,
@@ -185,6 +188,51 @@ func EnsureWaveConfigDir() error {
 
 func EnsureWavePresetsDir() error {
 	return CacheEnsureDir(filepath.Join(GetWaveConfigDir(), "presets"), "wavepresets", 0700, "wave presets directory")
+}
+
+func resolveWaveCachesDir() string {
+	var cacheDir string
+	appBundle := "waveterm"
+	if IsDevMode() {
+		appBundle = "waveterm-dev"
+	}
+
+	switch runtime.GOOS {
+	case "darwin":
+		homeDir := GetHomeDir()
+		cacheDir = filepath.Join(homeDir, "Library", "Caches", appBundle)
+	case "linux":
+		xdgCache := os.Getenv("XDG_CACHE_HOME")
+		if xdgCache != "" {
+			cacheDir = filepath.Join(xdgCache, appBundle)
+		} else {
+			homeDir := GetHomeDir()
+			cacheDir = filepath.Join(homeDir, ".cache", appBundle)
+		}
+	case "windows":
+		localAppData := os.Getenv("LOCALAPPDATA")
+		if localAppData != "" {
+			cacheDir = filepath.Join(localAppData, appBundle, "Cache")
+		}
+	}
+
+	if cacheDir == "" {
+		tmpDir := os.TempDir()
+		cacheDir = filepath.Join(tmpDir, appBundle)
+	}
+
+	return cacheDir
+}
+
+func GetWaveCachesDir() string {
+	waveCachesDirOnce.Do(func() {
+		waveCachesDir = resolveWaveCachesDir()
+	})
+	return waveCachesDir
+}
+
+func EnsureWaveCachesDir() error {
+	return CacheEnsureDir(GetWaveCachesDir(), "wavecaches", 0700, "wave caches directory")
 }
 
 func CacheEnsureDir(dirName string, cacheKey string, perm os.FileMode, dirDesc string) error {
