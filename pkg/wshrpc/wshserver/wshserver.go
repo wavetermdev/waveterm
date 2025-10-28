@@ -899,6 +899,9 @@ func (ws *WshServer) ListAllEditableAppsCommand(ctx context.Context) ([]string, 
 }
 
 func (ws *WshServer) ListAllAppFilesCommand(ctx context.Context, data wshrpc.CommandListAllAppFilesData) (*wshrpc.CommandListAllAppFilesRtnData, error) {
+	if data.AppId == "" {
+		return nil, fmt.Errorf("must provide an appId to ListAllAppFilesCommand")
+	}
 	result, err := waveappstore.ListAllAppFiles(data.AppId)
 	if err != nil {
 		return nil, err
@@ -927,6 +930,9 @@ func (ws *WshServer) ListAllAppFilesCommand(ctx context.Context, data wshrpc.Com
 }
 
 func (ws *WshServer) ReadAppFileCommand(ctx context.Context, data wshrpc.CommandReadAppFileData) (*wshrpc.CommandReadAppFileRtnData, error) {
+	if data.AppId == "" {
+		return nil, fmt.Errorf("must provide an appId to ReadAppFileCommand")
+	}
 	fileData, err := waveappstore.ReadAppFile(data.AppId, data.FileName)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
@@ -943,6 +949,9 @@ func (ws *WshServer) ReadAppFileCommand(ctx context.Context, data wshrpc.Command
 }
 
 func (ws *WshServer) WriteAppFileCommand(ctx context.Context, data wshrpc.CommandWriteAppFileData) error {
+	if data.AppId == "" {
+		return fmt.Errorf("must provide an appId to WriteAppFileCommand")
+	}
 	contents, err := base64.StdEncoding.DecodeString(data.Data64)
 	if err != nil {
 		return fmt.Errorf("failed to decode data64: %w", err)
@@ -951,19 +960,31 @@ func (ws *WshServer) WriteAppFileCommand(ctx context.Context, data wshrpc.Comman
 }
 
 func (ws *WshServer) DeleteAppFileCommand(ctx context.Context, data wshrpc.CommandDeleteAppFileData) error {
+	if data.AppId == "" {
+		return fmt.Errorf("must provide an appId to DeleteAppFileCommand")
+	}
 	return waveappstore.DeleteAppFile(data.AppId, data.FileName)
 }
 
 func (ws *WshServer) RenameAppFileCommand(ctx context.Context, data wshrpc.CommandRenameAppFileData) error {
+	if data.AppId == "" {
+		return fmt.Errorf("must provide an appId to RenameAppFileCommand")
+	}
 	return waveappstore.RenameAppFile(data.AppId, data.FromFileName, data.ToFileName)
 }
 
 func (ws *WshServer) DeleteBuilderCommand(ctx context.Context, builderId string) error {
+	if builderId == "" {
+		return fmt.Errorf("must provide a builderId to DeleteBuilderCommand")
+	}
 	buildercontroller.DeleteController(builderId)
 	return nil
 }
 
 func (ws *WshServer) StartBuilderCommand(ctx context.Context, data wshrpc.CommandStartBuilderData) error {
+	if data.BuilderId == "" {
+		return fmt.Errorf("must provide a builderId to StartBuilderCommand")
+	}
 	bc := buildercontroller.GetOrCreateController(data.BuilderId)
 	rtInfo := wstore.GetRTInfo(waveobj.MakeORef("builder", data.BuilderId))
 	if rtInfo == nil {
@@ -977,6 +998,9 @@ func (ws *WshServer) StartBuilderCommand(ctx context.Context, data wshrpc.Comman
 }
 
 func (ws *WshServer) GetBuilderStatusCommand(ctx context.Context, builderId string) (*wshrpc.BuilderStatusData, error) {
+	if builderId == "" {
+		return nil, fmt.Errorf("must provide a builderId to GetBuilderStatusCommand")
+	}
 	bc := buildercontroller.GetOrCreateController(builderId)
 	status := bc.GetStatus()
 	return &wshrpc.BuilderStatusData{
@@ -989,6 +1013,9 @@ func (ws *WshServer) GetBuilderStatusCommand(ctx context.Context, builderId stri
 }
 
 func (ws *WshServer) GetBuilderOutputCommand(ctx context.Context, builderId string) ([]string, error) {
+	if builderId == "" {
+		return nil, fmt.Errorf("must provide a builderId to GetBuilderOutputCommand")
+	}
 	bc := buildercontroller.GetOrCreateController(builderId)
 	return bc.GetOutput(), nil
 }
