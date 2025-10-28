@@ -4,57 +4,16 @@
 package aiusechat
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"fmt"
 	"os"
 	"path/filepath"
-	"time"
 
-	"github.com/google/uuid"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
+	"github.com/wavetermdev/waveterm/pkg/filebackup"
 	"github.com/wavetermdev/waveterm/pkg/util/fileutil"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 )
-
-func makeFileBackup(absFilePath string) error {
-	fileData, err := os.ReadFile(absFilePath)
-	if err != nil {
-		return fmt.Errorf("failed to read file for backup: %w", err)
-	}
-
-	dir := filepath.Dir(absFilePath)
-	basename := filepath.Base(absFilePath)
-
-	hash := sha256.Sum256([]byte(dir))
-	dirHash8 := hex.EncodeToString(hash[:])[:8]
-
-	uuidV7, err := uuid.NewV7()
-	if err != nil {
-		return fmt.Errorf("failed to generate UUID: %w", err)
-	}
-	uuidStr := uuidV7.String()
-
-	now := time.Now()
-	dateStr := now.Format("2006-01-02")
-
-	backupDir := filepath.Join(wavebase.GetWaveCachesDir(), "waveai-backups", dateStr)
-	err = os.MkdirAll(backupDir, 0700)
-	if err != nil {
-		return fmt.Errorf("failed to create backup directory: %w", err)
-	}
-
-	backupName := fmt.Sprintf("%s.%s.%s.bak", basename, dirHash8, uuidStr)
-	backupPath := filepath.Join(backupDir, backupName)
-
-	err = os.WriteFile(backupPath, fileData, 0600)
-	if err != nil {
-		return fmt.Errorf("failed to write backup file: %w", err)
-	}
-
-	return nil
-}
 
 const MaxEditFileSize = 100 * 1024 // 100KB
 
@@ -105,13 +64,23 @@ func writeTextFileCallback(input any) (any, error) {
 		return nil, fmt.Errorf("contents appear to contain binary data")
 	}
 
-	fileInfo, err := os.Stat(expandedPath)
+	fileInfo, err := os.Lstat(expandedPath)
 	if err != nil && !os.IsNotExist(err) {
 		return nil, fmt.Errorf("failed to stat file: %w", err)
 	}
 	if err == nil {
+		if fileInfo.Mode()&os.ModeSymlink != 0 {
+			target, _ := os.Readlink(expandedPath)
+			if target == "" {
+				target = "(unknown)"
+			}
+			return nil, fmt.Errorf("cannot write to symlinks (target: %s). edit the target file directly if needed", utilfn.MarshalJSONString(target))
+		}
 		if fileInfo.IsDir() {
 			return nil, fmt.Errorf("path is a directory, cannot write to it")
+		}
+		if !fileInfo.Mode().IsRegular() {
+			return nil, fmt.Errorf("path is not a regular file (devices, pipes, sockets not supported)")
 		}
 		if fileInfo.Size() > MaxEditFileSize {
 			return nil, fmt.Errorf("existing file is too large (%d bytes, max %d bytes)", fileInfo.Size(), MaxEditFileSize)
@@ -133,6 +102,13 @@ func writeTextFileCallback(input any) (any, error) {
 	err = os.MkdirAll(dirPath, 0755)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create directory: %w", err)
+	}
+
+	if fileInfo != nil {
+		err = filebackup.MakeFileBackup(expandedPath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create backup: %w", err)
+		}
 	}
 
 	err = os.WriteFile(expandedPath, contentsBytes, 0644)
@@ -251,6 +227,11 @@ func editTextFileCallback(input any) (any, error) {
 
 	if utilfn.HasBinaryData(fileData) {
 		return nil, fmt.Errorf("file appears to contain binary data")
+	}
+
+	err = filebackup.MakeFileBackup(expandedPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create backup: %w", err)
 	}
 
 	err = fileutil.ReplaceInFile(expandedPath, params.Edits)
