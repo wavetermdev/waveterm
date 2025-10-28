@@ -2,12 +2,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { CodeEditor } from "@/app/view/codeeditor/codeeditor";
-import { waveEventSubscribe } from "@/app/store/wps";
-import { BuilderAppPanelModel } from "@/builder/store/builderAppPanelModel";
+import { BuilderAppPanelModel } from "@/builder/store/builder-apppanel-model";
 import { atoms } from "@/store/global";
 import * as keyutil from "@/util/keyutil";
 import { useAtomValue } from "jotai";
-import { memo, useEffect } from "react";
+import { memo } from "react";
 
 const BuilderCodeTab = memo(() => {
     const model = BuilderAppPanelModel.getInstance();
@@ -15,26 +14,6 @@ const BuilderCodeTab = memo(() => {
     const codeContent = useAtomValue(model.codeContentAtom);
     const isLoading = useAtomValue(model.isLoadingAtom);
     const error = useAtomValue(model.errorAtom);
-
-    useEffect(() => {
-        if (builderAppId) {
-            model.loadAppFile(builderAppId);
-        }
-    }, [builderAppId, model]);
-
-    useEffect(() => {
-        if (!builderAppId) {
-            return;
-        }
-        const unsubscribe = waveEventSubscribe({
-            eventType: "waveapp:appgoupdated",
-            scope: builderAppId,
-            handler: () => {
-                model.loadAppFile(builderAppId);
-            },
-        });
-        return unsubscribe;
-    }, [builderAppId, model]);
 
     const handleCodeChange = (newText: string) => {
         model.setCodeContent(newText);
@@ -76,7 +55,7 @@ const BuilderCodeTab = memo(() => {
     return (
         <div className="w-full h-full" onKeyDown={handleKeyDown}>
             <CodeEditor
-                blockId=""
+                blockId={null}
                 text={codeContent}
                 readonly={false}
                 language="go"

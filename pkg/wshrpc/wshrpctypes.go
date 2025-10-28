@@ -159,6 +159,10 @@ const (
 	Command_WriteAppFile        = "writeappfile"
 	Command_DeleteAppFile       = "deleteappfile"
 	Command_RenameAppFile       = "renameappfile"
+	Command_DeleteBuilder       = "deletebuilder"
+	Command_StartBuilder        = "startbuilder"
+	Command_GetBuilderStatus    = "getbuilderstatus"
+	Command_GetBuilderOutput    = "getbuilderoutput"
 )
 
 type RespOrErrorUnion[T any] struct {
@@ -301,6 +305,10 @@ type WshRpcInterface interface {
 	WriteAppFileCommand(ctx context.Context, data CommandWriteAppFileData) error
 	DeleteAppFileCommand(ctx context.Context, data CommandDeleteAppFileData) error
 	RenameAppFileCommand(ctx context.Context, data CommandRenameAppFileData) error
+	DeleteBuilderCommand(ctx context.Context, builderId string) error
+	StartBuilderCommand(ctx context.Context, data CommandStartBuilderData) error
+	GetBuilderStatusCommand(ctx context.Context, builderId string) (*BuilderStatusData, error)
+	GetBuilderOutputCommand(ctx context.Context, builderId string) ([]string, error)
 
 	// proc
 	VDomRenderCommand(ctx context.Context, data vdom.VDomFrontendUpdate) chan RespOrErrorUnion[*vdom.VDomBackendUpdate]
@@ -945,4 +953,16 @@ type CommandRenameAppFileData struct {
 	AppId        string `json:"appid"`
 	FromFileName string `json:"fromfilename"`
 	ToFileName   string `json:"tofilename"`
+}
+
+type CommandStartBuilderData struct {
+	BuilderId string `json:"builderid"`
+}
+
+type BuilderStatusData struct {
+	Status   string `json:"status"`
+	Port     int    `json:"port,omitempty"`
+	ExitCode int    `json:"exitcode,omitempty"`
+	ErrorMsg string `json:"errormsg,omitempty"`
+	Version  int    `json:"version"`
 }

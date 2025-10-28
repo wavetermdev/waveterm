@@ -353,6 +353,11 @@ func main() {
 		log.Printf("error ensuring wave presets dir: %v\n", err)
 		return
 	}
+	err = wavebase.EnsureWaveCachesDir()
+	if err != nil {
+		log.Printf("error ensuring wave caches dir: %v\n", err)
+		return
+	}
 	waveLock, err := wavebase.AcquireWaveLock()
 	if err != nil {
 		log.Printf("error acquiring wave lock (another instance of Wave is likely running): %v\n", err)

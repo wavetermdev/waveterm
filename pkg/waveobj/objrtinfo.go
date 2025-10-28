@@ -20,6 +20,7 @@ type ObjRTInfo struct {
 
 	BuilderLayout map[string]float64 `json:"builder:layout,omitempty"`
 	BuilderAppId  string             `json:"builder:appid,omitempty"`
+	BuilderEnv    map[string]string  `json:"builder:env,omitempty"`
 
 	WaveAIChatId string `json:"waveai:chatid,omitempty"`
 }

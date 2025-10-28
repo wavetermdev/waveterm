@@ -14,11 +14,11 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
-	"strings"
 	"sync"
 	"syscall"
 	"time"
 
+	"github.com/wavetermdev/waveterm/pkg/tsunamiutil"
 	"github.com/wavetermdev/waveterm/pkg/utilds"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
@@ -48,41 +48,6 @@ type TsunamiController struct {
 	port          int
 }
 
-func getCachesDir() string {
-	var cacheDir string
-	appBundle := "waveterm"
-	if wavebase.IsDevMode() {
-		appBundle = "waveterm-dev"
-	}
-
-	switch runtime.GOOS {
-	case "darwin":
-		// macOS: ~/Library/Caches/<appbundle>
-		homeDir := wavebase.GetHomeDir()
-		cacheDir = filepath.Join(homeDir, "Library", "Caches", appBundle)
-	case "linux":
-		// Linux: XDG_CACHE_HOME or ~/.cache/<appbundle>
-		xdgCache := os.Getenv("XDG_CACHE_HOME")
-		if xdgCache != "" {
-			cacheDir = filepath.Join(xdgCache, appBundle)
-		} else {
-			homeDir := wavebase.GetHomeDir()
-			cacheDir = filepath.Join(homeDir, ".cache", appBundle)
-		}
-	case "windows":
-		localAppData := os.Getenv("LOCALAPPDATA")
-		if localAppData != "" {
-			cacheDir = filepath.Join(localAppData, appBundle, "Cache")
-		}
-	}
-
-	if cacheDir == "" {
-		tmpDir := os.TempDir()
-		cacheDir = filepath.Join(tmpDir, appBundle)
-	}
-
-	return cacheDir
-}
 
 func (c *TsunamiController) fetchAndSetSchemas(port int) {
 	url := fmt.Sprintf("http://localhost:%d/api/schemas", port)
@@ -124,31 +89,13 @@ func (c *TsunamiController) clearSchemas() {
 	log.Printf("TsunamiController: cleared schemas for block %s", c.blockId)
 }
 
-func getTsunamiAppCachePath(scope string, appName string, osArch string) (string, error) {
-	cachesDir := getCachesDir()
-	tsunamiCacheDir := filepath.Join(cachesDir, "tsunami-build-cache")
-	fullAppName := appName + "." + osArch
-	if strings.HasPrefix(osArch, "windows") {
-		fullAppName = fullAppName + ".exe"
-	}
-	fullPath := filepath.Join(tsunamiCacheDir, scope, fullAppName)
-
-	// Create the directory if it doesn't exist
-	dirPath := filepath.Dir(fullPath)
-	err := wavebase.TryMkdirs(dirPath, 0755, "tsunami cache directory")
-	if err != nil {
-		return "", fmt.Errorf("failed to create tsunami cache directory: %w", err)
-	}
-
-	return fullPath, nil
-}
 
 func isBuildCacheUpToDate(appPath string) (bool, error) {
 	appName := build.GetAppName(appPath)
 
 	osArch := runtime.GOOS + "-" + runtime.GOARCH
 
-	cachePath, err := getTsunamiAppCachePath("local", appName, osArch)
+	cachePath, err := tsunamiutil.GetTsunamiAppCachePath("local", appName, osArch)
 	if err != nil {
 		return false, err
 	}
@@ -214,7 +161,7 @@ func (c *TsunamiController) Start(ctx context.Context, blockMeta waveobj.MetaMap
 	appName := build.GetAppName(appPath)
 	osArch := runtime.GOOS + "-" + runtime.GOARCH
 
-	cachePath, err := getTsunamiAppCachePath("local", appName, osArch)
+	cachePath, err := tsunamiutil.GetTsunamiAppCachePath("local", appName, osArch)
 	if err != nil {
 		return fmt.Errorf("failed to get cache path: %w", err)
 	}

@@ -155,6 +155,12 @@ func DeleteBlockCommand(w *wshutil.WshRpc, data wshrpc.CommandDeleteBlockData, o
 	return err
 }
 
+// command "deletebuilder", wshserver.DeleteBuilderCommand
+func DeleteBuilderCommand(w *wshutil.WshRpc, data string, opts *wshrpc.RpcOpts) error {
+	_, err := sendRpcRequestCallHelper[any](w, "deletebuilder", data, opts)
+	return err
+}
+
 // command "deletesubblock", wshserver.DeleteSubBlockCommand
 func DeleteSubBlockCommand(w *wshutil.WshRpc, data wshrpc.CommandDeleteBlockData, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "deletesubblock", data, opts)
@@ -318,6 +324,18 @@ func FileWriteCommand(w *wshutil.WshRpc, data wshrpc.FileData, opts *wshrpc.RpcO
 func FocusWindowCommand(w *wshutil.WshRpc, data string, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "focuswindow", data, opts)
 	return err
+}
+
+// command "getbuilderoutput", wshserver.GetBuilderOutputCommand
+func GetBuilderOutputCommand(w *wshutil.WshRpc, data string, opts *wshrpc.RpcOpts) ([]string, error) {
+	resp, err := sendRpcRequestCallHelper[[]string](w, "getbuilderoutput", data, opts)
+	return resp, err
+}
+
+// command "getbuilderstatus", wshserver.GetBuilderStatusCommand
+func GetBuilderStatusCommand(w *wshutil.WshRpc, data string, opts *wshrpc.RpcOpts) (*wshrpc.BuilderStatusData, error) {
+	resp, err := sendRpcRequestCallHelper[*wshrpc.BuilderStatusData](w, "getbuilderstatus", data, opts)
+	return resp, err
 }
 
 // command "getfullconfig", wshserver.GetFullConfigCommand
@@ -553,6 +571,12 @@ func SetVarCommand(w *wshutil.WshRpc, data wshrpc.CommandVarData, opts *wshrpc.R
 // command "setview", wshserver.SetViewCommand
 func SetViewCommand(w *wshutil.WshRpc, data wshrpc.CommandBlockSetViewData, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "setview", data, opts)
+	return err
+}
+
+// command "startbuilder", wshserver.StartBuilderCommand
+func StartBuilderCommand(w *wshutil.WshRpc, data wshrpc.CommandStartBuilderData, opts *wshrpc.RpcOpts) error {
+	_, err := sendRpcRequestCallHelper[any](w, "startbuilder", data, opts)
 	return err
 }
 

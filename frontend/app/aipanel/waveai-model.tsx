@@ -14,7 +14,7 @@ import * as WOS from "@/app/store/wos";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
-import { BuilderFocusManager } from "@/builder/store/builderFocusManager";
+import { BuilderFocusManager } from "@/builder/store/builder-focusmanager";
 import { getWebServerEndpoint } from "@/util/endpoints";
 import { ChatStatus } from "ai";
 import * as jotai from "jotai";

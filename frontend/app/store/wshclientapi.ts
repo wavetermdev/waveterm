@@ -122,6 +122,11 @@ class RpcApiType {
         return client.wshRpcCall("deleteblock", data, opts);
     }
 
+    // command "deletebuilder" [call]
+    DeleteBuilderCommand(client: WshClient, data: string, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("deletebuilder", data, opts);
+    }
+
     // command "deletesubblock" [call]
     DeleteSubBlockCommand(client: WshClient, data: CommandDeleteBlockData, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("deletesubblock", data, opts);
@@ -260,6 +265,16 @@ class RpcApiType {
     // command "focuswindow" [call]
     FocusWindowCommand(client: WshClient, data: string, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("focuswindow", data, opts);
+    }
+
+    // command "getbuilderoutput" [call]
+    GetBuilderOutputCommand(client: WshClient, data: string, opts?: RpcOpts): Promise<string[]> {
+        return client.wshRpcCall("getbuilderoutput", data, opts);
+    }
+
+    // command "getbuilderstatus" [call]
+    GetBuilderStatusCommand(client: WshClient, data: string, opts?: RpcOpts): Promise<BuilderStatusData> {
+        return client.wshRpcCall("getbuilderstatus", data, opts);
     }
 
     // command "getfullconfig" [call]
@@ -460,6 +475,11 @@ class RpcApiType {
     // command "setview" [call]
     SetViewCommand(client: WshClient, data: CommandBlockSetViewData, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("setview", data, opts);
+    }
+
+    // command "startbuilder" [call]
+    StartBuilderCommand(client: WshClient, data: CommandStartBuilderData, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("startbuilder", data, opts);
     }
 
     // command "streamcpudata" [responsestream]

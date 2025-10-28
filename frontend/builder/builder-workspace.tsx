@@ -5,7 +5,8 @@ import { AIPanel } from "@/app/aipanel/aipanel";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { BuilderAppPanel } from "@/builder/builder-apppanel";
-import { BuilderFocusManager } from "@/builder/store/builderFocusManager";
+import { BuilderBuildPanel } from "@/builder/builder-buildpanel";
+import { BuilderFocusManager } from "@/builder/store/builder-focusmanager";
 import { atoms } from "@/store/global";
 import { cn } from "@/util/util";
 import { useAtomValue } from "jotai";
@@ -115,9 +116,7 @@ const BuilderWorkspace = memo(() => {
                             </Panel>
                             <PanelResizeHandle className="h-0.5 bg-transparent hover:bg-gray-500/20 transition-colors" />
                             <Panel defaultSize={layout.build} minSize={20} maxSize={50}>
-                                <div className="w-full h-full flex items-center justify-center">
-                                    <span className="text-2xl">Build Panel</span>
-                                </div>
+                                <BuilderBuildPanel />
                             </Panel>
                         </PanelGroup>
                     </div>
