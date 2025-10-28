@@ -103,7 +103,7 @@ const BuilderAppPanel = memo(() => {
     const focusType = useAtomValue(BuilderFocusManager.getInstance().focusType);
     const isAppFocused = focusType === "app";
     const saveNeeded = useAtomValue(model.saveNeededAtom);
-    const envSaveNeeded = useAtomValue(model.envSaveNeededAtom);
+    const envSaveNeeded = useAtomValue(model.envVarsDirtyAtom);
     const builderAppId = useAtomValue(atoms.builderAppId);
     const builderId = useAtomValue(atoms.builderId);
 
@@ -200,13 +200,15 @@ const BuilderAppPanel = memo(() => {
                             isAppFocused={isAppFocused}
                             onClick={() => handleTabClick("code")}
                         />
-                        <TabButton
-                            label="Static Files"
-                            tabType="files"
-                            isActive={activeTab === "files"}
-                            isAppFocused={isAppFocused}
-                            onClick={() => handleTabClick("files")}
-                        />
+                        {false && (
+                            <TabButton
+                                label="Static Files"
+                                tabType="files"
+                                isActive={activeTab === "files"}
+                                isAppFocused={isAppFocused}
+                                onClick={() => handleTabClick("files")}
+                            />
+                        )}
                         <TabButton
                             label="Env"
                             tabType="env"

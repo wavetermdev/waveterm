@@ -12,19 +12,25 @@ import { debounce } from "throttle-debounce";
 
 export type TabType = "preview" | "files" | "code" | "env";
 
+export type EnvVar = {
+    name: string;
+    value: string;
+    visible?: boolean;
+};
+
 export class BuilderAppPanelModel {
     private static instance: BuilderAppPanelModel | null = null;
 
     activeTab: PrimitiveAtom<TabType> = atom<TabType>("preview");
     codeContentAtom: PrimitiveAtom<string> = atom<string>("");
     originalContentAtom: PrimitiveAtom<string> = atom<string>("");
-    envVarsAtom: PrimitiveAtom<Record<string, string>> = atom<Record<string, string>>({});
-    originalEnvVarsAtom: PrimitiveAtom<Record<string, string>> = atom<Record<string, string>>({});
+    envVarsArrayAtom: PrimitiveAtom<EnvVar[]> = atom<EnvVar[]>([]);
+    envVarIndexAtoms: Atom<EnvVar | null>[] = [];
+    envVarsDirtyAtom: PrimitiveAtom<boolean> = atom<boolean>(false);
     isLoadingAtom: PrimitiveAtom<boolean> = atom<boolean>(false);
     errorAtom: PrimitiveAtom<string> = atom<string>("");
     builderStatusAtom = atom<BuilderStatusData>(null) as PrimitiveAtom<BuilderStatusData>;
     saveNeededAtom!: Atom<boolean>;
-    envSaveNeededAtom!: Atom<boolean>;
     focusElemRef: { current: HTMLInputElement | null } = { current: null };
     monacoEditorRef: { current: any | null } = { current: null };
     statusUnsubFn: (() => void) | null = null;
@@ -38,11 +44,6 @@ export class BuilderAppPanelModel {
         });
         this.saveNeededAtom = atom((get) => {
             return get(this.codeContentAtom) !== get(this.originalContentAtom);
-        });
-        this.envSaveNeededAtom = atom((get) => {
-            const current = get(this.envVarsAtom);
-            const original = get(this.originalEnvVarsAtom);
-            return JSON.stringify(current) !== JSON.stringify(original);
         });
     }
 
@@ -116,8 +117,9 @@ export class BuilderAppPanelModel {
                 oref: WOS.makeORef("builder", builderId),
             });
             const envVars = rtInfo?.["builder:env"] || {};
-            globalStore.set(this.envVarsAtom, envVars);
-            globalStore.set(this.originalEnvVarsAtom, envVars);
+            const envVarsArray = Object.entries(envVars).map(([name, value]) => ({ name, value, visible: false }));
+            globalStore.set(this.envVarsArrayAtom, envVarsArray);
+            globalStore.set(this.envVarsDirtyAtom, false);
         } catch (err) {
             console.error("Failed to load environment variables:", err);
         }
@@ -125,14 +127,23 @@ export class BuilderAppPanelModel {
 
     async saveEnvVars(builderId: string) {
         try {
-            const envVars = globalStore.get(this.envVarsAtom);
+            const envVarsArray = globalStore.get(this.envVarsArrayAtom);
+            const envVars: Record<string, string> = {};
+            envVarsArray.forEach((v) => {
+                const trimmedName = v.name.trim();
+                if (trimmedName) {
+                    envVars[trimmedName] = v.value;
+                }
+            });
+            const cleanedArray = Object.entries(envVars).map(([name, value]) => ({ name, value, visible: false }));
             await RpcApi.SetRTInfoCommand(TabRpcClient, {
                 oref: WOS.makeORef("builder", builderId),
                 data: {
                     "builder:env": envVars,
                 },
             });
-            globalStore.set(this.originalEnvVarsAtom, envVars);
+            globalStore.set(this.envVarsArrayAtom, cleanedArray);
+            globalStore.set(this.envVarsDirtyAtom, false);
             globalStore.set(this.errorAtom, "");
             this.debouncedRestart();
         } catch (err) {
@@ -141,8 +152,37 @@ export class BuilderAppPanelModel {
         }
     }
 
-    setEnvVars(envVars: Record<string, string>) {
-        globalStore.set(this.envVarsAtom, envVars);
+    getEnvVarIndexAtom(index: number): Atom<EnvVar | null> {
+        if (!this.envVarIndexAtoms[index]) {
+            this.envVarIndexAtoms[index] = atom((get) => {
+                const array = get(this.envVarsArrayAtom);
+                return array[index] ?? null;
+            });
+        }
+        return this.envVarIndexAtoms[index];
+    }
+
+    addEnvVar() {
+        const current = globalStore.get(this.envVarsArrayAtom);
+        globalStore.set(this.envVarsArrayAtom, [...current, { name: "", value: "", visible: false }]);
+        globalStore.set(this.envVarsDirtyAtom, true);
+    }
+
+    removeEnvVar(index: number) {
+        const current = globalStore.get(this.envVarsArrayAtom);
+        const newArray = current.filter((_, i) => i !== index);
+        globalStore.set(this.envVarsArrayAtom, newArray);
+        globalStore.set(this.envVarsDirtyAtom, true);
+    }
+
+    setEnvVarAtIndex(index: number, envVar: EnvVar, dirty: boolean) {
+        const current = globalStore.get(this.envVarsArrayAtom);
+        const newArray = [...current];
+        newArray[index] = envVar;
+        globalStore.set(this.envVarsArrayAtom, newArray);
+        if (dirty) {
+            globalStore.set(this.envVarsDirtyAtom, true);
+        }
     }
 
     async startBuilder() {
