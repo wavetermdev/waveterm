@@ -797,6 +797,7 @@ declare global {
         "shell:lastcmdexitcode"?: number;
         "builder:layout"?: {[key: string]: number};
         "builder:appid"?: string;
+        "builder:env"?: {[key: string]: string};
         "waveai:chatid"?: string;
     };
 

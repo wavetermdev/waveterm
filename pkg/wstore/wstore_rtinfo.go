@@ -16,6 +16,68 @@ var (
 	rtInfoMutex sync.RWMutex
 )
 
+func setFieldValue(fieldValue reflect.Value, value any) {
+	if value == nil {
+		fieldValue.Set(reflect.Zero(fieldValue.Type()))
+		return
+	}
+
+	if valueStr, ok := value.(string); ok && fieldValue.Kind() == reflect.String {
+		fieldValue.SetString(valueStr)
+		return
+	}
+
+	if valueBool, ok := value.(bool); ok && fieldValue.Kind() == reflect.Bool {
+		fieldValue.SetBool(valueBool)
+		return
+	}
+
+	if fieldValue.Kind() == reflect.Int {
+		switch v := value.(type) {
+		case int:
+			fieldValue.SetInt(int64(v))
+		case int64:
+			fieldValue.SetInt(v)
+		case float64:
+			fieldValue.SetInt(int64(v))
+		}
+		return
+	}
+
+	if fieldValue.Kind() == reflect.Map {
+		if fieldValue.Type().Key().Kind() == reflect.String && fieldValue.Type().Elem().Kind() == reflect.Float64 {
+			if inputMap, ok := value.(map[string]any); ok {
+				outputMap := make(map[string]float64)
+				for k, v := range inputMap {
+					if floatVal, ok := v.(float64); ok {
+						outputMap[k] = floatVal
+					}
+				}
+				fieldValue.Set(reflect.ValueOf(outputMap))
+			}
+			return
+		}
+
+		if fieldValue.Type().Key().Kind() == reflect.String && fieldValue.Type().Elem().Kind() == reflect.String {
+			if inputMap, ok := value.(map[string]any); ok {
+				outputMap := make(map[string]string)
+				for k, v := range inputMap {
+					if strVal, ok := v.(string); ok {
+						outputMap[k] = strVal
+					}
+				}
+				fieldValue.Set(reflect.ValueOf(outputMap))
+			}
+			return
+		}
+		return
+	}
+
+	if fieldValue.Kind() == reflect.Interface {
+		fieldValue.Set(reflect.ValueOf(value))
+	}
+}
+
 // SetRTInfo merges the provided info map into the ObjRTInfo for the given ORef.
 // Only updates fields that exist in the ObjRTInfo struct.
 // Removes fields that have nil values.
@@ -58,43 +120,7 @@ func SetRTInfo(oref waveobj.ORef, info map[string]any) {
 			continue
 		}
 
-		if value == nil {
-			// Set to zero value (empty string for string fields)
-			fieldValue.Set(reflect.Zero(fieldValue.Type()))
-		} else {
-			// Convert and set the value
-			if valueStr, ok := value.(string); ok && fieldValue.Kind() == reflect.String {
-				fieldValue.SetString(valueStr)
-			} else if valueBool, ok := value.(bool); ok && fieldValue.Kind() == reflect.Bool {
-				fieldValue.SetBool(valueBool)
-			} else if fieldValue.Kind() == reflect.Int {
-				// Handle int fields - need to convert from various numeric types
-				switch v := value.(type) {
-				case int:
-					fieldValue.SetInt(int64(v))
-				case int64:
-					fieldValue.SetInt(v)
-				case float64:
-					fieldValue.SetInt(int64(v))
-				}
-			} else if fieldValue.Kind() == reflect.Map {
-				// Handle map[string]float64 fields
-				if fieldValue.Type().Key().Kind() == reflect.String && fieldValue.Type().Elem().Kind() == reflect.Float64 {
-					if inputMap, ok := value.(map[string]any); ok {
-						outputMap := make(map[string]float64)
-						for k, v := range inputMap {
-							if floatVal, ok := v.(float64); ok {
-								outputMap[k] = floatVal
-							}
-						}
-						fieldValue.Set(reflect.ValueOf(outputMap))
-					}
-				}
-			} else if fieldValue.Kind() == reflect.Interface {
-				// Handle any/interface{} fields
-				fieldValue.Set(reflect.ValueOf(value))
-			}
-		}
+		setFieldValue(fieldValue, value)
 	}
 }
 

@@ -973,7 +973,7 @@ func (ws *WshServer) StartBuilderCommand(ctx context.Context, data wshrpc.Comman
 	if appId == "" {
 		return fmt.Errorf("builder appid not set for builderid: %s", data.BuilderId)
 	}
-	return bc.Start(ctx, appId, nil)
+	return bc.Start(ctx, appId, rtInfo.BuilderEnv)
 }
 
 func (ws *WshServer) GetBuilderStatusCommand(ctx context.Context, builderId string) (*wshrpc.BuilderStatusData, error) {
@@ -986,6 +986,11 @@ func (ws *WshServer) GetBuilderStatusCommand(ctx context.Context, builderId stri
 		ErrorMsg: status.ErrorMsg,
 		Version:  status.Version,
 	}, nil
+}
+
+func (ws *WshServer) GetBuilderOutputCommand(ctx context.Context, builderId string) ([]string, error) {
+	bc := buildercontroller.GetOrCreateController(builderId)
+	return bc.GetOutput(), nil
 }
 
 func (ws *WshServer) RecordTEventCommand(ctx context.Context, data telemetrydata.TEvent) error {

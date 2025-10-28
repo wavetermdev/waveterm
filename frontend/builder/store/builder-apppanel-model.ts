@@ -9,7 +9,7 @@ import { atoms, WOS } from "@/store/global";
 import { base64ToString, stringToBase64 } from "@/util/util";
 import { atom, type Atom, type PrimitiveAtom } from "jotai";
 
-export type TabType = "preview" | "files" | "code";
+export type TabType = "preview" | "files" | "code" | "env";
 
 export class BuilderAppPanelModel {
     private static instance: BuilderAppPanelModel | null = null;
@@ -17,10 +17,13 @@ export class BuilderAppPanelModel {
     activeTab: PrimitiveAtom<TabType> = atom<TabType>("preview");
     codeContentAtom: PrimitiveAtom<string> = atom<string>("");
     originalContentAtom: PrimitiveAtom<string> = atom<string>("");
+    envVarsAtom: PrimitiveAtom<Record<string, string>> = atom<Record<string, string>>({});
+    originalEnvVarsAtom: PrimitiveAtom<Record<string, string>> = atom<Record<string, string>>({});
     isLoadingAtom: PrimitiveAtom<boolean> = atom<boolean>(false);
     errorAtom: PrimitiveAtom<string> = atom<string>("");
     builderStatusAtom = atom<BuilderStatusData>(null) as PrimitiveAtom<BuilderStatusData>;
     saveNeededAtom!: Atom<boolean>;
+    envSaveNeededAtom!: Atom<boolean>;
     focusElemRef: { current: HTMLInputElement | null } = { current: null };
     monacoEditorRef: { current: any | null } = { current: null };
     statusUnsubFn: (() => void) | null = null;
@@ -30,6 +33,11 @@ export class BuilderAppPanelModel {
     private constructor() {
         this.saveNeededAtom = atom((get) => {
             return get(this.codeContentAtom) !== get(this.originalContentAtom);
+        });
+        this.envSaveNeededAtom = atom((get) => {
+            const current = get(this.envVarsAtom);
+            const original = get(this.originalEnvVarsAtom);
+            return JSON.stringify(current) !== JSON.stringify(original);
         });
     }
 
@@ -84,6 +92,7 @@ export class BuilderAppPanelModel {
 
         const appId = globalStore.get(atoms.builderAppId);
         await this.loadAppFile(appId);
+        await this.loadEnvVars(builderId);
 
         this.appGoUpdateUnsubFn = waveEventSubscribe({
             eventType: "waveapp:appgoupdated",
@@ -92,6 +101,44 @@ export class BuilderAppPanelModel {
                 this.loadAppFile(appId);
             },
         });
+    }
+
+    async loadEnvVars(builderId: string) {
+        if (!builderId) return;
+
+        try {
+            const rtInfo = await RpcApi.GetRTInfoCommand(TabRpcClient, {
+                oref: WOS.makeORef("builder", builderId),
+            });
+            const envVars = rtInfo?.["builder:env"] || {};
+            globalStore.set(this.envVarsAtom, envVars);
+            globalStore.set(this.originalEnvVarsAtom, envVars);
+        } catch (err) {
+            console.error("Failed to load environment variables:", err);
+        }
+    }
+
+    async saveEnvVars(builderId: string) {
+        if (!builderId) return;
+
+        try {
+            const envVars = globalStore.get(this.envVarsAtom);
+            await RpcApi.SetRTInfoCommand(TabRpcClient, {
+                oref: WOS.makeORef("builder", builderId),
+                data: {
+                    "builder:env": envVars,
+                },
+            });
+            globalStore.set(this.originalEnvVarsAtom, envVars);
+            globalStore.set(this.errorAtom, "");
+        } catch (err) {
+            console.error("Failed to save environment variables:", err);
+            globalStore.set(this.errorAtom, `Failed to save environment variables: ${err.message || "Unknown error"}`);
+        }
+    }
+
+    setEnvVars(envVars: Record<string, string>) {
+        globalStore.set(this.envVarsAtom, envVars);
     }
 
     async startBuilder() {
@@ -105,6 +152,20 @@ export class BuilderAppPanelModel {
         } catch (err) {
             console.error("Failed to start builder:", err);
             globalStore.set(this.errorAtom, `Failed to start builder: ${err.message || "Unknown error"}`);
+        }
+    }
+
+    async restartBuilder() {
+        const builderId = globalStore.get(atoms.builderId);
+        if (!builderId) return;
+
+        try {
+            await RpcApi.ControllerStopCommand(TabRpcClient, builderId);
+            await new Promise((resolve) => setTimeout(resolve, 500));
+            await this.startBuilder();
+        } catch (err) {
+            console.error("Failed to restart builder:", err);
+            globalStore.set(this.errorAtom, `Failed to restart builder: ${err.message || "Unknown error"}`);
         }
     }
 
@@ -133,7 +194,10 @@ export class BuilderAppPanelModel {
                 globalStore.set(this.originalContentAtom, decoded);
 
                 if (decoded.trim() !== "") {
-                    await this.startBuilder();
+                    const currentStatus = globalStore.get(this.builderStatusAtom);
+                    if (currentStatus?.status !== "running" && currentStatus?.status !== "building") {
+                        await this.startBuilder();
+                    }
                 }
             }
         } catch (err) {
@@ -161,6 +225,10 @@ export class BuilderAppPanelModel {
             console.error("Failed to save app.go:", err);
             globalStore.set(this.errorAtom, `Failed to save app.go: ${err.message || "Unknown error"}`);
         }
+    }
+
+    clearError() {
+        globalStore.set(this.errorAtom, "");
     }
 
     giveFocus() {

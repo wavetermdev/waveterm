@@ -162,6 +162,7 @@ const (
 	Command_DeleteBuilder       = "deletebuilder"
 	Command_StartBuilder        = "startbuilder"
 	Command_GetBuilderStatus    = "getbuilderstatus"
+	Command_GetBuilderOutput    = "getbuilderoutput"
 )
 
 type RespOrErrorUnion[T any] struct {
@@ -307,6 +308,7 @@ type WshRpcInterface interface {
 	DeleteBuilderCommand(ctx context.Context, builderId string) error
 	StartBuilderCommand(ctx context.Context, data CommandStartBuilderData) error
 	GetBuilderStatusCommand(ctx context.Context, builderId string) (*BuilderStatusData, error)
+	GetBuilderOutputCommand(ctx context.Context, builderId string) ([]string, error)
 
 	// proc
 	VDomRenderCommand(ctx context.Context, data vdom.VDomFrontendUpdate) chan RespOrErrorUnion[*vdom.VDomBackendUpdate]

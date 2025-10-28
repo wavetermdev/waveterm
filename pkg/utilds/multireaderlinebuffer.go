@@ -53,6 +53,11 @@ func (mrlb *MultiReaderLineBuffer) callLineCallback(line string) {
 	}
 }
 
+func (mrlb *MultiReaderLineBuffer) AddLine(line string) {
+	mrlb.addLine(line)
+	mrlb.callLineCallback(line)
+}
+
 func (mrlb *MultiReaderLineBuffer) addLine(line string) {
 	mrlb.lock.Lock()
 	defer mrlb.lock.Unlock()

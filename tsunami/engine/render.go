@@ -250,10 +250,22 @@ func convertPropsToVDom(props map[string]any) map[string]any {
 			vdomProps[k] = vdomFunc
 			continue
 		}
+		if vdomFuncPtr, ok := v.(*vdom.VDomFunc); ok {
+			// ensure Type is set on all VDomFuncs (pointer)
+			vdomFuncPtr.Type = vdom.ObjectType_Func
+			vdomProps[k] = vdomFuncPtr
+			continue
+		}
 		if vdomRef, ok := v.(vdom.VDomRef); ok {
 			// ensure Type is set on all VDomRefs
 			vdomRef.Type = vdom.ObjectType_Ref
 			vdomProps[k] = vdomRef
+			continue
+		}
+		if vdomRefPtr, ok := v.(*vdom.VDomRef); ok {
+			// ensure Type is set on all VDomRefs (pointer)
+			vdomRefPtr.Type = vdom.ObjectType_Ref
+			vdomProps[k] = vdomRefPtr
 			continue
 		}
 		val := reflect.ValueOf(v)

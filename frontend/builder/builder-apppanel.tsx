@@ -4,6 +4,7 @@
 import { BuilderAppPanelModel, type TabType } from "@/builder/store/builder-apppanel-model";
 import { BuilderFocusManager } from "@/builder/store/builder-focusmanager";
 import { BuilderCodeTab } from "@/builder/tabs/builder-codetab";
+import { BuilderEnvTab } from "@/builder/tabs/builder-envtab";
 import { BuilderFilesTab } from "@/builder/tabs/builder-filestab";
 import { BuilderPreviewTab } from "@/builder/tabs/builder-previewtab";
 import { builderAppHasSelection } from "@/builder/utils/builder-focus-utils";
@@ -71,6 +72,30 @@ const TabButton = memo(({ label, tabType, isActive, isAppFocused, onClick, showS
 
 TabButton.displayName = "TabButton";
 
+const ErrorStrip = memo(() => {
+    const model = BuilderAppPanelModel.getInstance();
+    const errorMsg = useAtomValue(model.errorAtom);
+
+    if (!errorMsg) return null;
+    return (
+        <div className="shrink-0 bg-error/10 border-b border-error/30 px-4 py-2 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3 flex-1 min-w-0">
+                <i className="fa fa-triangle-exclamation text-error text-sm" />
+                <span className="text-error text-sm flex-1 truncate">{errorMsg}</span>
+            </div>
+            <button
+                onClick={() => model.clearError()}
+                className="shrink-0 text-error hover:text-error/80 transition-colors cursor-pointer"
+                aria-label="Close error"
+            >
+                <i className="fa fa-xmark-large text-sm" />
+            </button>
+        </div>
+    );
+});
+
+ErrorStrip.displayName = "ErrorStrip";
+
 const BuilderAppPanel = memo(() => {
     const model = BuilderAppPanelModel.getInstance();
     const focusElemRef = useRef<HTMLInputElement>(null);
@@ -78,7 +103,9 @@ const BuilderAppPanel = memo(() => {
     const focusType = useAtomValue(BuilderFocusManager.getInstance().focusType);
     const isAppFocused = focusType === "app";
     const saveNeeded = useAtomValue(model.saveNeededAtom);
+    const envSaveNeeded = useAtomValue(model.envSaveNeededAtom);
     const builderAppId = useAtomValue(atoms.builderAppId);
+    const builderId = useAtomValue(atoms.builderId);
 
     useEffect(() => {
         model.initialize();
@@ -129,9 +156,19 @@ const BuilderAppPanel = memo(() => {
         }
     }, [builderAppId, model]);
 
+    const handleEnvSave = useCallback(() => {
+        if (builderId) {
+            model.saveEnvVars(builderId);
+        }
+    }, [builderId, model]);
+
+    const handleRestart = useCallback(() => {
+        model.restartBuilder();
+    }, [model]);
+
     return (
         <div
-            className="w-full h-full flex flex-col border-b border-border"
+            className="w-full h-full flex flex-col border-b-3 border-border shadow-[0_2px_4px_rgba(0,0,0,0.1)]"
             data-builder-app-panel="true"
             onClick={handlePanelClick}
             onFocusCapture={handleFocusCapture}
@@ -170,7 +207,22 @@ const BuilderAppPanel = memo(() => {
                             isAppFocused={isAppFocused}
                             onClick={() => handleTabClick("files")}
                         />
+                        <TabButton
+                            label="Env"
+                            tabType="env"
+                            isActive={activeTab === "env"}
+                            isAppFocused={isAppFocused}
+                            onClick={() => handleTabClick("env")}
+                        />
                     </div>
+                    {activeTab === "preview" && (
+                        <button
+                            className="mr-4 px-3 py-1 text-sm font-medium rounded transition-colors bg-accent/80 text-white hover:bg-accent cursor-pointer"
+                            onClick={handleRestart}
+                        >
+                            Restart App
+                        </button>
+                    )}
                     {activeTab === "code" && (
                         <button
                             className={cn(
@@ -184,8 +236,22 @@ const BuilderAppPanel = memo(() => {
                             Save
                         </button>
                     )}
+                    {activeTab === "env" && (
+                        <button
+                            className={cn(
+                                "mr-4 px-3 py-1 text-sm font-medium rounded transition-colors",
+                                envSaveNeeded
+                                    ? "bg-accent text-white hover:opacity-80 cursor-pointer"
+                                    : "bg-gray-600 text-gray-400 cursor-default"
+                            )}
+                            onClick={envSaveNeeded ? handleEnvSave : undefined}
+                        >
+                            Save
+                        </button>
+                    )}
                 </div>
             </div>
+            <ErrorStrip />
             <div className="flex-1 overflow-auto py-1">
                 <div className="w-full h-full" style={{ display: activeTab === "preview" ? "block" : "none" }}>
                     <ErrorBoundary>
@@ -200,6 +266,11 @@ const BuilderAppPanel = memo(() => {
                 <div className="w-full h-full" style={{ display: activeTab === "files" ? "block" : "none" }}>
                     <ErrorBoundary>
                         <BuilderFilesTab />
+                    </ErrorBoundary>
+                </div>
+                <div className="w-full h-full" style={{ display: activeTab === "env" ? "block" : "none" }}>
+                    <ErrorBoundary>
+                        <BuilderEnvTab />
                     </ErrorBoundary>
                 </div>
             </div>

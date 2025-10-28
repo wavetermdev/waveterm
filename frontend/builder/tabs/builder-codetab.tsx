@@ -55,7 +55,7 @@ const BuilderCodeTab = memo(() => {
     return (
         <div className="w-full h-full" onKeyDown={handleKeyDown}>
             <CodeEditor
-                blockId=""
+                blockId={null}
                 text={codeContent}
                 readonly={false}
                 language="go"

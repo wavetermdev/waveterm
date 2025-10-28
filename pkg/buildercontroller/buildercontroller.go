@@ -211,6 +211,8 @@ func (bc *BuilderController) buildAndRun(ctx context.Context, appId string, buil
 	scaffoldPath := os.Getenv("TSUNAMI_SCAFFOLDPATH")
 	sdkReplacePath := os.Getenv("TSUNAMI_SDKREPLACEPATH")
 
+	outputCapture := build.MakeOutputCapture()
+
 	_, err = build.TsunamiBuildInternal(build.BuildOpts{
 		AppPath:        appPath,
 		Verbose:        true,
@@ -220,10 +222,15 @@ func (bc *BuilderController) buildAndRun(ctx context.Context, appId string, buil
 		ScaffoldPath:   scaffoldPath,
 		SdkReplacePath: sdkReplacePath,
 		NodePath:       nodePath,
+		OutputCapture:  outputCapture,
 	})
 	if err != nil {
 		bc.handleBuildError(fmt.Errorf("build failed: %w", err))
 		return
+	}
+
+	for _, line := range outputCapture.GetLines() {
+		bc.outputBuffer.AddLine(line)
 	}
 
 	info, err := os.Stat(cachePath)
