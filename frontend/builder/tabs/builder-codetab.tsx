@@ -1,9 +1,9 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { CodeEditor } from "@/app/view/codeeditor/codeeditor";
 import { waveEventSubscribe } from "@/app/store/wps";
-import { BuilderAppPanelModel } from "@/builder/store/builderAppPanelModel";
+import { CodeEditor } from "@/app/view/codeeditor/codeeditor";
+import { BuilderAppPanelModel } from "@/builder/store/builder-apppanel-model";
 import { atoms } from "@/store/global";
 import * as keyutil from "@/util/keyutil";
 import { useAtomValue } from "jotai";

@@ -5,7 +5,7 @@ import { AIPanel } from "@/app/aipanel/aipanel";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { BuilderAppPanel } from "@/builder/builder-apppanel";
-import { BuilderFocusManager } from "@/builder/store/builderFocusManager";
+import { BuilderFocusManager } from "@/builder/store/builder-focusmanager";
 import { atoms } from "@/store/global";
 import { cn } from "@/util/util";
 import { useAtomValue } from "jotai";

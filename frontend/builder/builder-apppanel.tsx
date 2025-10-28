@@ -1,8 +1,8 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { BuilderAppPanelModel, type TabType } from "@/builder/store/builderAppPanelModel";
-import { BuilderFocusManager } from "@/builder/store/builderFocusManager";
+import { BuilderAppPanelModel, type TabType } from "@/builder/store/builder-apppanel-model";
+import { BuilderFocusManager } from "@/builder/store/builder-focusmanager";
 import { BuilderCodeTab } from "@/builder/tabs/builder-codetab";
 import { BuilderFilesTab } from "@/builder/tabs/builder-filestab";
 import { BuilderPreviewTab } from "@/builder/tabs/builder-previewtab";
@@ -58,34 +58,34 @@ const BuilderAppPanel = memo(() => {
         model.giveFocus();
     };
 
-    const handleFocusCapture = useCallback(
-        (event: React.FocusEvent) => {
-            BuilderFocusManager.getInstance().setAppFocused();
-        },
-        []
-    );
+    const handleFocusCapture = useCallback((event: React.FocusEvent) => {
+        BuilderFocusManager.getInstance().setAppFocused();
+    }, []);
 
-    const handlePanelClick = useCallback((e: React.MouseEvent) => {
-        const target = e.target as HTMLElement;
-        const isInteractive = target.closest('button, a, input, textarea, select, [role="button"], [tabindex]');
+    const handlePanelClick = useCallback(
+        (e: React.MouseEvent) => {
+            const target = e.target as HTMLElement;
+            const isInteractive = target.closest('button, a, input, textarea, select, [role="button"], [tabindex]');
 
-        if (isInteractive) {
-            return;
-        }
-
-        const hasSelection = builderAppHasSelection();
-        if (hasSelection) {
-            BuilderFocusManager.getInstance().setAppFocused();
-            return;
-        }
-
-        setTimeout(() => {
-            if (!builderAppHasSelection()) {
-                BuilderFocusManager.getInstance().setAppFocused();
-                model.giveFocus();
+            if (isInteractive) {
+                return;
             }
-        }, 0);
-    }, [model]);
+
+            const hasSelection = builderAppHasSelection();
+            if (hasSelection) {
+                BuilderFocusManager.getInstance().setAppFocused();
+                return;
+            }
+
+            setTimeout(() => {
+                if (!builderAppHasSelection()) {
+                    BuilderFocusManager.getInstance().setAppFocused();
+                    model.giveFocus();
+                }
+            }, 0);
+        },
+        [model]
+    );
 
     const handleSave = useCallback(() => {
         if (builderAppId) {

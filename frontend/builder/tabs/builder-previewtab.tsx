@@ -1,7 +1,7 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { BuilderAppPanelModel } from "@/builder/store/builderAppPanelModel";
+import { BuilderAppPanelModel } from "@/builder/store/builder-apppanel-model";
 import { useAtomValue } from "jotai";
 import { memo } from "react";
 
