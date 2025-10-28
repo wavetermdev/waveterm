@@ -5,6 +5,7 @@ package engine
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io/fs"
 	"log"
@@ -26,6 +27,11 @@ import (
 const TsunamiListenAddrEnvVar = "TSUNAMI_LISTENADDR"
 const DefaultListenAddr = "localhost:0"
 const DefaultComponentName = "App"
+
+type ModalState struct {
+	Config     rpctypes.ModalConfig
+	ResultChan chan bool // Channel to receive the result (true = confirmed/ok, false = cancelled)
+}
 
 type ssEvent struct {
 	Event string
@@ -58,6 +64,10 @@ type ClientImpl struct {
 	StaticFS           fs.FS
 	ManifestFileBytes  []byte
 
+	// for modals
+	OpenModals     map[string]*ModalState // map of modalId to modal state
+	OpenModalsLock *sync.Mutex
+
 	// for notification
 	// Atomics so we never drop "last event" timing info even if wakeCh is full.
 	// 0 means "no pending batch".
@@ -73,6 +83,8 @@ func makeClient() *ClientImpl {
 		DoneCh:          make(chan struct{}),
 		SSEChannels:     make(map[string]chan ssEvent),
 		SSEChannelsLock: &sync.Mutex{},
+		OpenModals:      make(map[string]*ModalState),
+		OpenModalsLock:  &sync.Mutex{},
 		UrlHandlerMux:   http.NewServeMux(),
 		ServerId:        uuid.New().String(),
 		RootElem:        vdom.H(DefaultComponentName, nil),
@@ -368,4 +380,74 @@ func (c *ClientImpl) SetAppMeta(m AppMeta) {
 	c.Lock.Lock()
 	defer c.Lock.Unlock()
 	c.Meta = m
+}
+
+// addModalToMap adds a modal to the map and returns the result channel
+func (c *ClientImpl) addModalToMap(config rpctypes.ModalConfig) chan bool {
+	c.OpenModalsLock.Lock()
+	defer c.OpenModalsLock.Unlock()
+
+	resultChan := make(chan bool, 1)
+	c.OpenModals[config.ModalId] = &ModalState{
+		Config:     config,
+		ResultChan: resultChan,
+	}
+	return resultChan
+}
+
+// ShowModal displays a modal and returns a channel that will receive the result
+func (c *ClientImpl) ShowModal(config rpctypes.ModalConfig) chan bool {
+	resultChan := c.addModalToMap(config)
+
+	data, err := json.Marshal(config)
+	if err != nil {
+		log.Printf("failed to marshal modal config: %v", err)
+		c.CloseModal(config.ModalId, false)
+		return resultChan
+	}
+
+	err = c.SendSSEvent(ssEvent{Event: "showmodal", Data: data})
+	if err != nil {
+		log.Printf("failed to send modal SSE event: %v", err)
+		c.CloseModal(config.ModalId, false)
+		return resultChan
+	}
+
+	return resultChan
+}
+
+// removeModalFromMap removes a modal from the map and returns its state
+func (c *ClientImpl) removeModalFromMap(modalId string) *ModalState {
+	c.OpenModalsLock.Lock()
+	defer c.OpenModalsLock.Unlock()
+
+	modalState, exists := c.OpenModals[modalId]
+	if exists {
+		delete(c.OpenModals, modalId)
+	}
+	return modalState
+}
+
+// CloseModal closes a modal with the given result
+func (c *ClientImpl) CloseModal(modalId string, result bool) {
+	modalState := c.removeModalFromMap(modalId)
+	if modalState != nil {
+		modalState.ResultChan <- result
+		close(modalState.ResultChan)
+	}
+}
+
+// CloseAllModals closes all open modals with cancelled result
+// This is called when the FE requests a resync (page refresh or new client)
+func (c *ClientImpl) CloseAllModals() {
+	c.OpenModalsLock.Lock()
+	modalIds := make([]string, 0, len(c.OpenModals))
+	for modalId := range c.OpenModals {
+		modalIds = append(modalIds, modalId)
+	}
+	c.OpenModalsLock.Unlock()
+
+	for _, modalId := range modalIds {
+		c.CloseModal(modalId, false)
+	}
 }

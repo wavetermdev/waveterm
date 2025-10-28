@@ -7,6 +7,7 @@ import * as jotai from "jotai";
 import * as React from "react";
 import { twMerge } from "tailwind-merge";
 
+import { AlertModal, ConfirmModal } from "@/element/modals";
 import { Markdown } from "@/element/markdown";
 import { getTextChildren } from "@/model/model-utils";
 import type { TsunamiModel } from "@/model/tsunami-model";
@@ -362,10 +363,27 @@ function VDomInnerView({ model }: VDomViewProps) {
 function VDomView({ model }: VDomViewProps) {
     let viewRef = React.useRef(null);
     let contextActive = jotai.useAtomValue(model.contextActive);
+    let currentModal = jotai.useAtomValue(model.currentModal);
     model.viewRef = viewRef;
+
+    const handleModalClose = React.useCallback(
+        (confirmed: boolean) => {
+            if (currentModal) {
+                model.sendModalResult(currentModal.modalid, confirmed);
+            }
+        },
+        [model, currentModal]
+    );
+
     return (
         <div className={clsx("overflow-auto w-full min-h-full")} ref={viewRef}>
             {contextActive ? <VDomInnerView model={model} /> : null}
+            {currentModal && currentModal.modaltype === "alert" && (
+                <AlertModal config={currentModal} onClose={handleModalClose} />
+            )}
+            {currentModal && currentModal.modaltype === "confirm" && (
+                <ConfirmModal config={currentModal} onClose={handleModalClose} />
+            )}
         </div>
     );
 }

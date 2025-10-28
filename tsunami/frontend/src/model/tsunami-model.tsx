@@ -109,6 +109,7 @@ export class TsunamiModel {
     cachedTitle: string | null = null;
     cachedShortDesc: string | null = null;
     reason: string | null = null;
+    currentModal: jotai.PrimitiveAtom<ModalConfig | null> = jotai.atom(null);
 
     constructor() {
         this.clientId = getOrCreateClientId();
@@ -137,6 +138,16 @@ export class TsunamiModel {
         this.serverEventSource.addEventListener("asyncinitiation", (event) => {
             dlog("async-initiation SSE event received", event);
             this.queueUpdate(true, "asyncinitiation");
+        });
+
+        this.serverEventSource.addEventListener("showmodal", (event: MessageEvent) => {
+            dlog("showmodal SSE event received", event);
+            try {
+                const config: ModalConfig = JSON.parse(event.data);
+                getDefaultStore().set(this.currentModal, config);
+            } catch (e) {
+                console.error("Failed to parse modal config:", e);
+            }
         });
 
         this.serverEventSource.addEventListener("error", (event) => {
@@ -652,5 +663,31 @@ export class TsunamiModel {
             this.disposed = true;
         }
         return feUpdate;
+    }
+
+    async sendModalResult(modalId: string, confirm: boolean) {
+        const result: ModalResult = {
+            modalid: modalId,
+            confirm: confirm,
+        };
+
+        try {
+            const response = await fetch("/api/modalresult", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(result),
+            });
+
+            if (!response.ok) {
+                console.error("Failed to send modal result:", response.statusText);
+            }
+        } catch (error) {
+            console.error("Error sending modal result:", error);
+        }
+
+        // Clear the current modal
+        getDefaultStore().set(this.currentModal, null);
     }
 }

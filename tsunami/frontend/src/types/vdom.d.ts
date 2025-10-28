@@ -79,6 +79,23 @@ type VDomMessage = {
     params?: any[];
 };
 
+// rpctypes.ModalConfig
+type ModalConfig = {
+    modalid: string;
+    modaltype: "alert" | "confirm";
+    icon?: string;
+    title: string;
+    text?: string;
+    oktext?: string;
+    canceltext?: string;
+};
+
+// rpctypes.ModalResult
+type ModalResult = {
+    modalid: string;
+    confirm: boolean;
+};
+
 // vdom.VDomRef
 type VDomRef = {
     type: "ref";
