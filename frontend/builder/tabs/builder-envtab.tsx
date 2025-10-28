@@ -49,14 +49,16 @@ const BuilderEnvTab = memo(() => {
         const newVars = [...envVars];
         newVars[index] = { ...newVars[index], name };
         setEnvVars(newVars);
-        updateModel(newVars);
-    }, [envVars, updateModel]);
+    }, [envVars]);
 
     const handleValueChange = useCallback((index: number, value: string) => {
         const newVars = [...envVars];
         newVars[index] = { ...newVars[index], value };
         setEnvVars(newVars);
-        updateModel(newVars);
+    }, [envVars]);
+
+    const handleBlur = useCallback(() => {
+        updateModel(envVars);
     }, [envVars, updateModel]);
 
     const toggleValueVisibility = useCallback((index: number) => {
@@ -101,6 +103,7 @@ const BuilderEnvTab = memo(() => {
                                     type="text"
                                     value={envVar.name}
                                     onChange={(e) => handleNameChange(index, e.target.value)}
+                                    onBlur={handleBlur}
                                     placeholder="Variable Name"
                                     className="flex-1 px-3 py-2 bg-background border border-border rounded text-primary focus:outline-none focus:border-accent"
                                 />
@@ -109,6 +112,7 @@ const BuilderEnvTab = memo(() => {
                                         type={visibleValues[index] ? "text" : "password"}
                                         value={envVar.value}
                                         onChange={(e) => handleValueChange(index, e.target.value)}
+                                        onBlur={handleBlur}
                                         placeholder="Value"
                                         className="w-full px-3 py-2 pr-10 bg-background border border-border rounded text-primary focus:outline-none focus:border-accent"
                                     />

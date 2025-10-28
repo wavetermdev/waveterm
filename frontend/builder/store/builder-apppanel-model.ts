@@ -69,8 +69,8 @@ export class BuilderAppPanelModel {
         if (this.initialized) return;
         this.initialized = true;
 
+        // builderId is set in initialization so is always available
         const builderId = globalStore.get(atoms.builderId);
-        if (!builderId) return;
 
         if (this.statusUnsubFn) {
             this.statusUnsubFn();
@@ -95,6 +95,7 @@ export class BuilderAppPanelModel {
             console.error("Failed to load builder status:", err);
         }
 
+        // the apppanel does not render until appId is set, so this will never be null during initialization
         const appId = globalStore.get(atoms.builderAppId);
         await this.loadAppFile(appId);
         await this.loadEnvVars(builderId);
@@ -110,8 +111,6 @@ export class BuilderAppPanelModel {
     }
 
     async loadEnvVars(builderId: string) {
-        if (!builderId) return;
-
         try {
             const rtInfo = await RpcApi.GetRTInfoCommand(TabRpcClient, {
                 oref: WOS.makeORef("builder", builderId),
@@ -125,8 +124,6 @@ export class BuilderAppPanelModel {
     }
 
     async saveEnvVars(builderId: string) {
-        if (!builderId) return;
-
         try {
             const envVars = globalStore.get(this.envVarsAtom);
             await RpcApi.SetRTInfoCommand(TabRpcClient, {
@@ -150,8 +147,6 @@ export class BuilderAppPanelModel {
 
     async startBuilder() {
         const builderId = globalStore.get(atoms.builderId);
-        if (!builderId) return;
-
         try {
             await RpcApi.StartBuilderCommand(TabRpcClient, {
                 builderid: builderId,
@@ -164,8 +159,6 @@ export class BuilderAppPanelModel {
 
     async restartBuilder() {
         const builderId = globalStore.get(atoms.builderId);
-        if (!builderId) return;
-
         try {
             await RpcApi.ControllerStopCommand(TabRpcClient, builderId);
             await new Promise((resolve) => setTimeout(resolve, 500));
@@ -177,12 +170,6 @@ export class BuilderAppPanelModel {
     }
 
     async loadAppFile(appId: string) {
-        if (!appId) {
-            globalStore.set(this.errorAtom, "No app selected");
-            globalStore.set(this.isLoadingAtom, false);
-            return;
-        }
-
         try {
             globalStore.set(this.isLoadingAtom, true);
             globalStore.set(this.errorAtom, "");
@@ -216,8 +203,6 @@ export class BuilderAppPanelModel {
     }
 
     async saveAppFile(appId: string) {
-        if (!appId) return;
-
         try {
             const content = globalStore.get(this.codeContentAtom);
             const encoded = stringToBase64(content);
