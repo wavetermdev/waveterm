@@ -209,6 +209,37 @@ func parseEditTextFileInput(input any) (*editTextFileParams, error) {
 	return result, nil
 }
 
+// EditTextFileDryRun applies edits to a file and returns the original and modified content
+// without writing to disk. Takes the same input format as editTextFileCallback.
+func EditTextFileDryRun(input any) ([]byte, []byte, error) {
+	params, err := parseEditTextFileInput(input)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	expandedPath, err := wavebase.ExpandHomeDir(params.Filename)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to expand path: %w", err)
+	}
+
+	_, err = validateTextFile(expandedPath, "edit", true)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	originalContent, err := os.ReadFile(expandedPath)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to read file: %w", err)
+	}
+
+	modifiedContent, err := fileutil.ApplyEdits(originalContent, params.Edits)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return originalContent, modifiedContent, nil
+}
+
 func editTextFileCallback(input any) (any, error) {
 	params, err := parseEditTextFileInput(input)
 	if err != nil {
