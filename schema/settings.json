@@ -167,6 +167,9 @@
         "window:*": {
           "type": "boolean"
         },
+        "window:fullscreenOnLaunch": {
+          "type": "boolean"
+        },
         "window:transparent": {
           "type": "boolean"
         },

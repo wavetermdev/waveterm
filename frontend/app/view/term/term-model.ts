@@ -25,7 +25,7 @@ import {
 } from "@/store/global";
 import * as services from "@/store/services";
 import * as keyutil from "@/util/keyutil";
-import { boundNumber, stringToBase64 } from "@/util/util";
+import { boundNumber, fireAndForget, stringToBase64 } from "@/util/util";
 import * as jotai from "jotai";
 import * as React from "react";
 import { computeTheme, DefaultTermTheme } from "./termutil";
@@ -713,6 +713,32 @@ export class TermViewModel implements ViewModel {
                         RpcApi.SetMetaCommand(TabRpcClient, {
                             oref: WOS.makeORef("block", this.blockId),
                             meta: { "cmd:runonstart": false },
+                        });
+                    },
+                },
+            ],
+        });
+        const fullscreenOnLaunch = fullConfig?.settings?.["window:fullscreenOnLaunch"];
+        fullMenu.push({
+            label: "Launch On Fullscreen",
+            submenu: [
+                {
+                    label: "On",
+                    type: "checkbox",
+                    checked: fullscreenOnLaunch,
+                    click: () => {
+                        fireAndForget(async () => {
+                            await RpcApi.SetConfigCommand(TabRpcClient, { "window:fullscreenOnLaunch": true });
+                        });
+                    },
+                },
+                {
+                    label: "Off",
+                    type: "checkbox",
+                    checked: !fullscreenOnLaunch,
+                    click: () => {
+                        fireAndForget(async () => {
+                            await RpcApi.SetConfigCommand(TabRpcClient, { "window:fullscreenOnLaunch": false });
                         });
                     },
                 },
