@@ -87,6 +87,7 @@ type ToolDefinition struct {
 	ToolAnyCallback  func(any) (any, error)    `json:"-"`
 	ToolInputDesc    func(any) string          `json:"-"`
 	ToolApproval     func(any) string          `json:"-"`
+	ToolVerifyInput  func(any) error           `json:"-"`
 }
 
 func (td *ToolDefinition) Clean() *ToolDefinition {
@@ -134,13 +135,14 @@ const (
 )
 
 type UIMessageDataToolUse struct {
-	ToolCallId   string `json:"toolcallid"`
-	ToolName     string `json:"toolname"`
-	ToolDesc     string `json:"tooldesc"`
-	Status       string `json:"status"`
-	ErrorMessage string `json:"errormessage,omitempty"`
-	Approval     string `json:"approval,omitempty"`
-	BlockId      string `json:"blockid,omitempty"`
+	ToolCallId          string `json:"toolcallid"`
+	ToolName            string `json:"toolname"`
+	ToolDesc            string `json:"tooldesc"`
+	Status              string `json:"status"`
+	ErrorMessage        string `json:"errormessage,omitempty"`
+	Approval            string `json:"approval,omitempty"`
+	BlockId             string `json:"blockid,omitempty"`
+	WriteBackupFileName string `json:"writebackupfilename,omitempty"`
 }
 
 func (d *UIMessageDataToolUse) IsApproved() bool {
@@ -418,18 +420,18 @@ func (m *UIMessage) GetContent() string {
 }
 
 type WaveChatOpts struct {
-	ChatId                string
-	ClientId              string
-	Config                AIOptsType
-	Tools                 []ToolDefinition
-	SystemPrompt          []string
-	TabStateGenerator     func() (string, []ToolDefinition, string, error)
-	BuilderAppGenerator   func() (string, string, error)
-	WidgetAccess          bool
-	RegisterToolApproval  func(string)
-	AllowNativeWebSearch  bool
-	BuilderId             string
-	BuilderAppId          string
+	ChatId               string
+	ClientId             string
+	Config               AIOptsType
+	Tools                []ToolDefinition
+	SystemPrompt         []string
+	TabStateGenerator    func() (string, []ToolDefinition, string, error)
+	BuilderAppGenerator  func() (string, string, error)
+	WidgetAccess         bool
+	RegisterToolApproval func(string)
+	AllowNativeWebSearch bool
+	BuilderId            string
+	BuilderAppId         string
 
 	// ephemeral to the step
 	TabState       string

@@ -26,6 +26,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/util/logutil"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/waveappstore"
+	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/web/sse"
 	"github.com/wavetermdev/waveterm/pkg/wps"
@@ -286,12 +287,20 @@ func updateToolUseDataInChat(chatOpts uctypes.WaveChatOpts, toolCallID string, t
 	}
 }
 
-func processToolCall(toolCall uctypes.WaveToolCall, chatOpts uctypes.WaveChatOpts, sseHandler *sse.SSEHandlerCh, metrics *uctypes.AIMetrics) uctypes.AIToolResult {
-
+func processToolCallInternal(toolCall uctypes.WaveToolCall, chatOpts uctypes.WaveChatOpts, toolDef *uctypes.ToolDefinition, sseHandler *sse.SSEHandlerCh) uctypes.AIToolResult {
 	if toolCall.ToolUseData == nil {
-		errorMsg := "Invalid Tool Call"
-		log.Printf("  error=%s\n", errorMsg)
-		metrics.ToolUseErrorCount++
+		return uctypes.AIToolResult{
+			ToolName:  toolCall.Name,
+			ToolUseID: toolCall.ID,
+			ErrorText: "Invalid Tool Call",
+		}
+	}
+
+	if toolCall.ToolUseData.Status == uctypes.ToolUseStatusError {
+		errorMsg := toolCall.ToolUseData.ErrorMessage
+		if errorMsg == "" {
+			errorMsg = "Unspecified Tool Error"
+		}
 		return uctypes.AIToolResult{
 			ToolName:  toolCall.Name,
 			ToolUseID: toolCall.ID,
@@ -299,23 +308,16 @@ func processToolCall(toolCall uctypes.WaveToolCall, chatOpts uctypes.WaveChatOpt
 		}
 	}
 
-	inputJSON, _ := json.Marshal(toolCall.Input)
-	logutil.DevPrintf("TOOLUSE name=%s id=%s input=%s approval=%q\n", toolCall.Name, toolCall.ID, utilfn.TruncateString(string(inputJSON), 40), toolCall.ToolUseData.Approval)
-
-	if toolCall.ToolUseData.Status == uctypes.ToolUseStatusError {
-		errorMsg := toolCall.ToolUseData.ErrorMessage
-		if errorMsg == "" {
-			errorMsg = "Unspecified Tool Error"
-		}
-		log.Printf("  error=%s\n", errorMsg)
-		metrics.ToolUseErrorCount++
-		_ = sseHandler.AiMsgData("data-tooluse", toolCall.ID, *toolCall.ToolUseData)
-		updateToolUseDataInChat(chatOpts, toolCall.ID, toolCall.ToolUseData)
-
-		return uctypes.AIToolResult{
-			ToolName:  toolCall.Name,
-			ToolUseID: toolCall.ID,
-			ErrorText: errorMsg,
+	if toolDef != nil && toolDef.ToolVerifyInput != nil {
+		if err := toolDef.ToolVerifyInput(toolCall.Input); err != nil {
+			errorMsg := fmt.Sprintf("Input validation failed: %v", err)
+			toolCall.ToolUseData.Status = uctypes.ToolUseStatusError
+			toolCall.ToolUseData.ErrorMessage = errorMsg
+			return uctypes.AIToolResult{
+				ToolName:  toolCall.Name,
+				ToolUseID: toolCall.ID,
+				ErrorText: errorMsg,
+			}
 		}
 	}
 
@@ -334,13 +336,8 @@ func processToolCall(toolCall uctypes.WaveToolCall, chatOpts uctypes.WaveChatOpt
 			} else if approval == uctypes.ApprovalTimeout {
 				errorMsg = "Tool approval timed out"
 			}
-			log.Printf("  error=%s\n", errorMsg)
-			metrics.ToolUseErrorCount++
 			toolCall.ToolUseData.Status = uctypes.ToolUseStatusError
 			toolCall.ToolUseData.ErrorMessage = errorMsg
-			_ = sseHandler.AiMsgData("data-tooluse", toolCall.ID, *toolCall.ToolUseData)
-			updateToolUseDataInChat(chatOpts, toolCall.ID, toolCall.ToolUseData)
-
 			return uctypes.AIToolResult{
 				ToolName:  toolCall.Name,
 				ToolUseID: toolCall.ID,
@@ -348,29 +345,45 @@ func processToolCall(toolCall uctypes.WaveToolCall, chatOpts uctypes.WaveChatOpt
 			}
 		}
 
+		// this still happens here because we need to update the FE to say the tool call was approved
 		_ = sseHandler.AiMsgData("data-tooluse", toolCall.ID, *toolCall.ToolUseData)
 		updateToolUseDataInChat(chatOpts, toolCall.ID, toolCall.ToolUseData)
 	}
 
 	result := ResolveToolCall(toolCall, chatOpts)
 
-	// Track tool usage by ToolLogName
+	if result.ErrorText != "" {
+		toolCall.ToolUseData.Status = uctypes.ToolUseStatusError
+		toolCall.ToolUseData.ErrorMessage = result.ErrorText
+	} else {
+		toolCall.ToolUseData.Status = uctypes.ToolUseStatusCompleted
+	}
+
+	return result
+}
+
+func processToolCall(toolCall uctypes.WaveToolCall, chatOpts uctypes.WaveChatOpts, sseHandler *sse.SSEHandlerCh, metrics *uctypes.AIMetrics) uctypes.AIToolResult {
+	inputJSON, _ := json.Marshal(toolCall.Input)
+	logutil.DevPrintf("TOOLUSE name=%s id=%s input=%s approval=%q\n", toolCall.Name, toolCall.ID, utilfn.TruncateString(string(inputJSON), 40), toolCall.ToolUseData.Approval)
+
 	toolDef := chatOpts.GetToolDefinition(toolCall.Name)
+	result := processToolCallInternal(toolCall, chatOpts, toolDef, sseHandler)
+
+	if result.ErrorText != "" {
+		log.Printf("  error=%s\n", result.ErrorText)
+		metrics.ToolUseErrorCount++
+	} else {
+		log.Printf("  result=%s\n", utilfn.TruncateString(result.Text, 40))
+	}
+
 	if toolDef != nil && toolDef.ToolLogName != "" {
 		metrics.ToolDetail[toolDef.ToolLogName]++
 	}
 
-	if result.ErrorText != "" {
-		toolCall.ToolUseData.Status = uctypes.ToolUseStatusError
-		toolCall.ToolUseData.ErrorMessage = result.ErrorText
-		log.Printf("  error=%s\n", result.ErrorText)
-		metrics.ToolUseErrorCount++
-	} else {
-		toolCall.ToolUseData.Status = uctypes.ToolUseStatusCompleted
-		log.Printf("  result=%s\n", utilfn.TruncateString(result.Text, 40))
+	if toolCall.ToolUseData != nil {
+		_ = sseHandler.AiMsgData("data-tooluse", toolCall.ID, *toolCall.ToolUseData)
+		updateToolUseDataInChat(chatOpts, toolCall.ID, toolCall.ToolUseData)
 	}
-	_ = sseHandler.AiMsgData("data-tooluse", toolCall.ID, *toolCall.ToolUseData)
-	updateToolUseDataInChat(chatOpts, toolCall.ID, toolCall.ToolUseData)
 
 	return result
 }
@@ -785,4 +798,70 @@ func WaveAIGetChatHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, fmt.Sprintf("Failed to encode response: %v", err), http.StatusInternalServerError)
 		return
 	}
+}
+
+// CreateWriteTextFileDiff generates a diff for write_text_file or edit_text_file tool calls.
+// Returns the original content, modified content, and any error.
+// For Anthropic, this returns an unimplemented error.
+func CreateWriteTextFileDiff(ctx context.Context, chatId string, toolCallId string) ([]byte, []byte, error) {
+	aiChat := chatstore.DefaultChatStore.Get(chatId)
+	if aiChat == nil {
+		return nil, nil, fmt.Errorf("chat not found: %s", chatId)
+	}
+
+	if aiChat.APIType == APIType_Anthropic {
+		return nil, nil, fmt.Errorf("CreateWriteTextFileDiff is not implemented for Anthropic")
+	}
+
+	if aiChat.APIType != APIType_OpenAI {
+		return nil, nil, fmt.Errorf("unsupported API type: %s", aiChat.APIType)
+	}
+
+	funcCallInput := openai.GetFunctionCallInputByToolCallId(*aiChat, toolCallId)
+	if funcCallInput == nil {
+		return nil, nil, fmt.Errorf("tool call not found: %s", toolCallId)
+	}
+
+	toolName := funcCallInput.Name
+	if toolName != "write_text_file" && toolName != "edit_text_file" {
+		return nil, nil, fmt.Errorf("tool call %s is not a write_text_file or edit_text_file (got: %s)", toolCallId, toolName)
+	}
+
+	var backupFileName string
+	if funcCallInput.ToolUseData != nil {
+		backupFileName = funcCallInput.ToolUseData.WriteBackupFileName
+	}
+
+	if toolName == "edit_text_file" {
+		originalContent, modifiedContent, err := EditTextFileDryRun(funcCallInput.Arguments, backupFileName)
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to generate diff: %w", err)
+		}
+		return originalContent, modifiedContent, nil
+	}
+
+	params, err := parseWriteTextFileInput(funcCallInput.Arguments)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to parse write_text_file input: %w", err)
+	}
+
+	var originalContent []byte
+	if backupFileName != "" {
+		originalContent, err = os.ReadFile(backupFileName)
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to read backup file: %w", err)
+		}
+	} else {
+		expandedPath, err := wavebase.ExpandHomeDir(params.Filename)
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to expand path: %w", err)
+		}
+		originalContent, err = os.ReadFile(expandedPath)
+		if err != nil && !os.IsNotExist(err) {
+			return nil, nil, fmt.Errorf("failed to read original file: %w", err)
+		}
+	}
+
+	modifiedContent := []byte(params.Contents)
+	return originalContent, modifiedContent, nil
 }

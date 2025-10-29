@@ -144,6 +144,7 @@ const (
 	Command_GetWaveAIRateLimit    = "getwaveairatelimit"
 	Command_WaveAIToolApprove     = "waveaitoolapprove"
 	Command_WaveAIAddContext      = "waveaiaddcontext"
+	Command_WaveAIGetToolDiff     = "waveaigettooldiff"
 
 	Command_CaptureBlockScreenshot = "captureblockscreenshot"
 
@@ -287,6 +288,7 @@ type WshRpcInterface interface {
 	GetWaveAIRateLimitCommand(ctx context.Context) (*uctypes.RateLimitInfo, error)
 	WaveAIToolApproveCommand(ctx context.Context, data CommandWaveAIToolApproveData) error
 	WaveAIAddContextCommand(ctx context.Context, data CommandWaveAIAddContextData) error
+	WaveAIGetToolDiffCommand(ctx context.Context, data CommandWaveAIGetToolDiffData) (*CommandWaveAIGetToolDiffRtnData, error)
 
 	// screenshot
 	CaptureBlockScreenshotCommand(ctx context.Context, data CommandCaptureBlockScreenshotData) (string, error)
@@ -772,6 +774,16 @@ type CommandWaveAIAddContextData struct {
 	Text    string           `json:"text,omitempty"`
 	Submit  bool             `json:"submit,omitempty"`
 	NewChat bool             `json:"newchat,omitempty"`
+}
+
+type CommandWaveAIGetToolDiffData struct {
+	ChatId     string `json:"chatid"`
+	ToolCallId string `json:"toolcallid"`
+}
+
+type CommandWaveAIGetToolDiffRtnData struct {
+	OriginalContents64 string `json:"originalcontents64"`
+	ModifiedContents64 string `json:"modifiedcontents64"`
 }
 
 type CommandCaptureBlockScreenshotData struct {

@@ -101,6 +101,26 @@ func parseWriteTextFileInput(input any) (*writeTextFileParams, error) {
 	return result, nil
 }
 
+func verifyWriteTextFileInput(input any) error {
+	params, err := parseWriteTextFileInput(input)
+	if err != nil {
+		return err
+	}
+
+	expandedPath, err := wavebase.ExpandHomeDir(params.Filename)
+	if err != nil {
+		return fmt.Errorf("failed to expand path: %w", err)
+	}
+
+	contentsBytes := []byte(params.Contents)
+	if utilfn.HasBinaryData(contentsBytes) {
+		return fmt.Errorf("contents appear to contain binary data")
+	}
+
+	_, err = validateTextFile(expandedPath, "write to", false)
+	return err
+}
+
 func writeTextFileCallback(input any) (any, error) {
 	params, err := parseWriteTextFileInput(input)
 	if err != nil {
@@ -179,6 +199,7 @@ func GetWriteTextFileToolDefinition() uctypes.ToolDefinition {
 		ToolApproval: func(input any) string {
 			return uctypes.ApprovalNeedsApproval
 		},
+		ToolVerifyInput: verifyWriteTextFileInput,
 	}
 }
 
@@ -209,9 +230,24 @@ func parseEditTextFileInput(input any) (*editTextFileParams, error) {
 	return result, nil
 }
 
+func verifyEditTextFileInput(input any) error {
+	params, err := parseEditTextFileInput(input)
+	if err != nil {
+		return err
+	}
+
+	expandedPath, err := wavebase.ExpandHomeDir(params.Filename)
+	if err != nil {
+		return fmt.Errorf("failed to expand path: %w", err)
+	}
+
+	_, err = validateTextFile(expandedPath, "edit", true)
+	return err
+}
+
 // EditTextFileDryRun applies edits to a file and returns the original and modified content
 // without writing to disk. Takes the same input format as editTextFileCallback.
-func EditTextFileDryRun(input any) ([]byte, []byte, error) {
+func EditTextFileDryRun(input any, fileOverride string) ([]byte, []byte, error) {
 	params, err := parseEditTextFileInput(input)
 	if err != nil {
 		return nil, nil, err
@@ -227,7 +263,12 @@ func EditTextFileDryRun(input any) ([]byte, []byte, error) {
 		return nil, nil, err
 	}
 
-	originalContent, err := os.ReadFile(expandedPath)
+	readPath := expandedPath
+	if fileOverride != "" {
+		readPath = fileOverride
+	}
+
+	originalContent, err := os.ReadFile(readPath)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to read file: %w", err)
 	}
@@ -326,6 +367,7 @@ func GetEditTextFileToolDefinition() uctypes.ToolDefinition {
 		ToolApproval: func(input any) string {
 			return uctypes.ApprovalNeedsApproval
 		},
+		ToolVerifyInput: verifyEditTextFileInput,
 	}
 }
 
@@ -349,6 +391,21 @@ func parseDeleteTextFileInput(input any) (*deleteTextFileParams, error) {
 	}
 
 	return result, nil
+}
+
+func verifyDeleteTextFileInput(input any) error {
+	params, err := parseDeleteTextFileInput(input)
+	if err != nil {
+		return err
+	}
+
+	expandedPath, err := wavebase.ExpandHomeDir(params.Filename)
+	if err != nil {
+		return fmt.Errorf("failed to expand path: %w", err)
+	}
+
+	_, err = validateTextFile(expandedPath, "delete", true)
+	return err
 }
 
 func deleteTextFileCallback(input any) (any, error) {
@@ -412,5 +469,6 @@ func GetDeleteTextFileToolDefinition() uctypes.ToolDefinition {
 		ToolApproval: func(input any) string {
 			return uctypes.ApprovalNeedsApproval
 		},
+		ToolVerifyInput: verifyDeleteTextFileInput,
 	}
 }

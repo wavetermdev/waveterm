@@ -394,6 +394,18 @@ declare global {
         newchat?: boolean;
     };
 
+    // wshrpc.CommandWaveAIGetToolDiffData
+    type CommandWaveAIGetToolDiffData = {
+        chatid: string;
+        toolcallid: string;
+    };
+
+    // wshrpc.CommandWaveAIGetToolDiffRtnData
+    type CommandWaveAIGetToolDiffRtnData = {
+        originalcontents64: string;
+        modifiedcontents64: string;
+    };
+
     // wshrpc.CommandWaveAIToolApproveData
     type CommandWaveAIToolApproveData = {
         toolcallid: string;

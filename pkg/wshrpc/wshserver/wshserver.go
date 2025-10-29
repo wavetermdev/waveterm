@@ -1098,6 +1098,18 @@ func (ws *WshServer) WaveAIToolApproveCommand(ctx context.Context, data wshrpc.C
 	return aiusechat.UpdateToolApproval(data.ToolCallId, data.Approval, data.KeepAlive)
 }
 
+func (ws *WshServer) WaveAIGetToolDiffCommand(ctx context.Context, data wshrpc.CommandWaveAIGetToolDiffData) (*wshrpc.CommandWaveAIGetToolDiffRtnData, error) {
+	originalContent, modifiedContent, err := aiusechat.CreateWriteTextFileDiff(ctx, data.ChatId, data.ToolCallId)
+	if err != nil {
+		return nil, err
+	}
+	
+	return &wshrpc.CommandWaveAIGetToolDiffRtnData{
+		OriginalContents64: base64.StdEncoding.EncodeToString(originalContent),
+		ModifiedContents64: base64.StdEncoding.EncodeToString(modifiedContent),
+	}, nil
+}
+
 var wshActivityRe = regexp.MustCompile(`^[a-z:#]+$`)
 
 func (ws *WshServer) WshActivityCommand(ctx context.Context, data map[string]int) error {
