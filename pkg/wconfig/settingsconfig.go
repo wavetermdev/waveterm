@@ -116,7 +116,7 @@ type SettingsType struct {
 	WidgetShowHelp *bool `json:"widget:showhelp,omitempty"`
 
 	WindowClear                         bool     `json:"window:*,omitempty"`
-	WindowFullscreenOnLaunch            bool     `json:"window:fullscreenOnLaunch,omitempty"`
+	WindowFullscreenOnLaunch            bool     `json:"window:fullscreenonlaunch,omitempty"`
 	WindowTransparent                   bool     `json:"window:transparent,omitempty"`
 	WindowBlur                          bool     `json:"window:blur,omitempty"`
 	WindowOpacity                       *float64 `json:"window:opacity,omitempty"`

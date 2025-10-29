@@ -18,7 +18,7 @@
     "window:magnifiedblockopacity": 0.6,
     "window:magnifiedblocksize": 0.9,
     "window:magnifiedblockblurprimarypx": 10,
-    "window:fullscreenOnLaunch": false,
+    "window:fullscreenonlaunch": false,
     "window:magnifiedblockblursecondarypx": 2,
     "window:confirmclose": true,
     "window:savelastwindow": true,

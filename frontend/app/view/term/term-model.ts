@@ -718,7 +718,7 @@ export class TermViewModel implements ViewModel {
                 },
             ],
         });
-        const fullscreenOnLaunch = fullConfig?.settings?.["window:fullscreenOnLaunch"];
+        const fullscreenOnLaunch = fullConfig?.settings?.["window:fullscreenonlaunch"];
         fullMenu.push({
             label: "Launch On Fullscreen",
             submenu: [
@@ -727,9 +727,7 @@ export class TermViewModel implements ViewModel {
                     type: "checkbox",
                     checked: fullscreenOnLaunch,
                     click: () => {
-                        fireAndForget(async () => {
-                            await RpcApi.SetConfigCommand(TabRpcClient, { "window:fullscreenOnLaunch": true });
-                        });
+                        fireAndForget(() => RpcApi.SetConfigCommand(TabRpcClient, { "window:fullscreenonlaunch": true }));
                     },
                 },
                 {
@@ -737,9 +735,7 @@ export class TermViewModel implements ViewModel {
                     type: "checkbox",
                     checked: !fullscreenOnLaunch,
                     click: () => {
-                        fireAndForget(async () => {
-                            await RpcApi.SetConfigCommand(TabRpcClient, { "window:fullscreenOnLaunch": false });
-                        });
+                        fireAndForget(() => RpcApi.SetConfigCommand(TabRpcClient, { "window:fullscreenonlaunch": false }));
                     },
                 },
             ],
