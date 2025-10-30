@@ -192,6 +192,8 @@ async function getAppMenu(
 
     const devToolsAccel = unamePlatform === "darwin" ? "Option+Command+I" : "Alt+Shift+I";
     const isBuilderWindowFocused = focusedBuilderWindow != null;
+    const fullConfig = await RpcApi.GetFullConfigCommand(ElectronWshClient);
+    const fullscreenOnLaunch = fullConfig?.settings["window:fullscreenonlaunch"];
     const viewMenu: Electron.MenuItemConstructorOptions[] = [
         {
             label: isBuilderWindowFocused ? "Reload Window" : "Reload Tab",
@@ -289,6 +291,27 @@ async function getAppMenu(
             },
             visible: false,
             acceleratorWorksWhenHidden: true,
+        },
+        {
+            label: "Launch On Full Screen",
+            submenu: [
+                {
+                    label: "On",
+                    type: "radio",
+                    checked: fullscreenOnLaunch,
+                    click: () => {
+                        RpcApi.SetConfigCommand(ElectronWshClient, { "window:fullscreenonlaunch": true });
+                    },
+                },
+                {
+                    label: "Off",
+                    type: "radio",
+                    checked: !fullscreenOnLaunch,
+                    click: () => {
+                        RpcApi.SetConfigCommand(ElectronWshClient, { "window:fullscreenonlaunch": false });
+                    },
+                },
+            ],
         },
         {
             type: "separator",

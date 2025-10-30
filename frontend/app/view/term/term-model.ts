@@ -1,7 +1,7 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { Block } from "@/app/block/block";
+
 import { BlockNodeModel } from "@/app/block/blocktypes";
 import { waveEventSubscribe } from "@/app/store/wps";
 import { RpcApi } from "@/app/store/wshclientapi";
@@ -25,7 +25,7 @@ import {
 } from "@/store/global";
 import * as services from "@/store/services";
 import * as keyutil from "@/util/keyutil";
-import { boundNumber, fireAndForget, stringToBase64 } from "@/util/util";
+import { boundNumber, stringToBase64 } from "@/util/util";
 import * as jotai from "jotai";
 import * as React from "react";
 import { computeTheme, DefaultTermTheme } from "./termutil";
@@ -714,28 +714,6 @@ export class TermViewModel implements ViewModel {
                             oref: WOS.makeORef("block", this.blockId),
                             meta: { "cmd:runonstart": false },
                         });
-                    },
-                },
-            ],
-        });
-        const fullscreenOnLaunch = fullConfig?.settings?.["window:fullscreenonlaunch"];
-        fullMenu.push({
-            label: "Launch On Fullscreen",
-            submenu: [
-                {
-                    label: "On",
-                    type: "checkbox",
-                    checked: fullscreenOnLaunch,
-                    click: () => {
-                        fireAndForget(() => RpcApi.SetConfigCommand(TabRpcClient, { "window:fullscreenonlaunch": true }));
-                    },
-                },
-                {
-                    label: "Off",
-                    type: "checkbox",
-                    checked: !fullscreenOnLaunch,
-                    click: () => {
-                        fireAndForget(() => RpcApi.SetConfigCommand(TabRpcClient, { "window:fullscreenonlaunch": false }));
                     },
                 },
             ],
