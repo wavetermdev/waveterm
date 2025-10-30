@@ -6,59 +6,81 @@ Want input on the roadmap? Join the discussion on [Discord](https://discord.gg/X
 
 Legend: ✅ Done | 🔧 In Progress | 🔷 Planned | 🤞 Stretch Goal
 
-## v0.11.0
+## Current AI Capabilities
 
-Released on 1/25/25
+Wave Terminal's AI assistant is already powerful and continues to evolve. Here's what works today:
 
-- ✅ File/Directory Preview improvements
-  - ✅ Reworked fileshare layer running over RPC
-  - ✅ Expanded URI types supported by `wsh file ...`
-  - ✅ EC-TIME timeout when transferring large files
-- ✅ Fixes for reducing 2FA requests on connect
-- ✅ WebLinks in the terminal working again
-- ✅ Search in Web Views
-- ✅ Search in the Terminal
-- ✅ Custom init files for widgets and terminal blocks
-- ✅ Multi-Input between terminal blocks on the same tab
-- ✅ Gemini AI support
-- ✅ Various Connection Bugs + Improvements
-- ✅ More Connection Config Options
+### AI Provider Support
 
-## v0.11.1
+- ✅ OpenAI (including gpt-5 and gpt-5-mini models)
 
-Targeting 1/31/25
+### Context & Input
 
-- 🔧 Reduce main-line 2FA requests to 1 per connection
-- 🔧 Remote S3 bucket browsing (directory + files)
-- 🔷 Drag & drop between preview blocks
-- 🔷 Drag into/out of a preview block from native file explorer
-- 🔷 Wave Apps (Go SDK)
-- 🔷 JSON schema support (basic)
-- 🤞 Frontend Only Widgets, React + Babel Transpiling in an iframe/webview
+- ✅ Widget context integration - AI sees your open terminals, web views, and other widgets
+- ✅ Image and document upload - Attach images and files to conversations
+- ✅ Local file reading - Read text files and directory listings on local machine
+- ✅ Web search - Native web search capability for current information
+- ✅ Shell integration awareness - AI understands terminal state (shell, version, OS, etc.)
 
-## v0.12
+### Widget Interaction Tools
 
-Targeting mid-February.
+- ✅ Widget screenshots - Capture visual state of any widget
+- ✅ Terminal scrollback access - Read terminal history and output
+- ✅ Web navigation - Control browser widgets
 
-- 🔷 Import/Export Tab Layouts and Widgets
-- 🔷 log viewer
-- 🔷 binary viewer
-- 🔷 New layout actions (splitting, replacing blocks)
-- 🔷 Rewrite of window/tab system
-- 🔷 Minimized / Non-Visible blocks
-- 🔷 Custom keybindings to quickly switch / invoke built-in and custom widgets
-- 🔷 More Drag & Drop support of files/URLs to create blocks
-- 🔷 Tab Templates
+## ROADMAP Enhanced AI Capabilities
 
-## Planned (Unscheduled)
+### AI Configuration & Flexibility
 
-- 🔷 Customizable Keybindings
-  - 🔷 Launch widgets with custom keybindings
-  - 🔷 Re-assign system keybindings
+- 🔷 BYOK (Bring Your Own Key) - Use your own API keys for any supported provider
+- 🔧 Enhanced provider configuration options
+
+### Expanded Provider Support
+
+Top priorities are Claude (for better coding support), and the OpenAI Completions API which will allow us to interface with
+many more local/open models.
+
+- 🔷 Anthropic Claude - Full integration with extended thinking and tool use
+- 🔷 OpenAI Completions API - Support for older model formats
+- 🤞 Google Gemini - Complete integration
+- 🤞 Local AI agents - Run AI models locally on your machine
+
+### Advanced AI Tools
+
+#### File Operations
+
+- 🔧 AI file writing with intelligent diff previews
+- 🔧 Rollback support for AI-made changes
+- 🔷 Multi-file editing workflows
+- 🔷 Safe file modification patterns
+
+#### Terminal Command Execution
+
+- 🔧 Execute commands directly from AI
+- 🔧 Intelligent terminal state detection
+- 🔧 Command result capture and parsing
+
+### Remote & Advanced Capabilities
+
+- 🔷 Remote file operations - Read and write files on SSH connections
+- 🔷 Custom AI-powered widgets (Tsunami framework)
+- 🔷 AI Can spawn Wave Blocks
+- 🔷 Drag&Drop from Preview Widgets to Wave AI
+
+### Wave AI Widget Builder
+
+- 🔷 Visual builder for creating custom AI-powered widgets
+- 🔷 Template library for common AI workflows
+- 🔷 Rapid prototyping and iteration tools
+
+## Other Platform & UX Improvements (Non AI)
+
+- 🔷 Import/Export tab layouts and widgets
+- 🔧 Enhanced layout actions (splitting, replacing blocks)
+- 🔷 Extended drag & drop for files/URLs
+- 🔷 Tab templates for quick workspace setup
+- 🔷 Advanced keybinding customization
+  - 🔷 Widget launch shortcuts
+  - 🔷 System keybinding reassignment
 - 🔷 Command Palette
-- 🔷 AI Context
-- 🔷 Monaco Theming
-- 🔷 File system watching for Preview
-- 🔷 File system watching for drag and drop
-- 🤞 Explore VSCode Extension Compatibility with standalone Monaco Editor (language servers)
-- 🤞 VSCode File Icons in Preview
+- 🔷 Monaco Editor theming
