@@ -3,7 +3,7 @@
 
 import { wpsReconnectHandler } from "@/app/store/wps";
 import { TabClient } from "@/app/store/tabrpcclient";
-import { makeTabRouteId, WshRouter } from "@/app/store/wshrouter";
+import { WshRouter } from "@/app/store/wshrouter";
 import { getWSServerEndpoint } from "@/util/endpoints";
 import { addWSReconnectHandler, globalWS, initGlobalWS, WSControl } from "./ws";
 import { DefaultRouter, setDefaultRouter } from "./wshrpcutil-base";

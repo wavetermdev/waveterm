@@ -25,7 +25,6 @@ import {
 import { log } from "./emain-log";
 import { makeAppMenu, makeDockTaskbar } from "./emain-menu";
 import {
-    callWithOriginalXdgCurrentDesktopAsync,
     checkIfRunningUnderARM64Translation,
     getElectronAppBasePath,
     getElectronAppUnpackedBasePath,
@@ -36,14 +35,13 @@ import {
     unamePlatform,
 } from "./emain-platform";
 import { ensureHotSpareTab, setMaxTabCacheSize } from "./emain-tabview";
-import { getIsWaveSrvDead, getWaveSrvProc, getWaveSrvReady, getWaveVersion, runWaveSrv } from "./emain-wavesrv";
+import { getIsWaveSrvDead, getWaveSrvProc, getWaveSrvReady, runWaveSrv } from "./emain-wavesrv";
 import {
     createBrowserWindow,
     createNewWaveWindow,
     focusedWaveWindow,
     getAllWaveWindows,
     getWaveWindowById,
-    getWaveWindowByWebContentsId,
     getWaveWindowByWorkspaceId,
     registerGlobalHotkey,
     relaunchBrowserWindows,
