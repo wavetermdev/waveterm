@@ -34,6 +34,7 @@ Wave Terminal's AI assistant is already powerful and continues to evolve. Here's
 
 - 🔷 BYOK (Bring Your Own Key) - Use your own API keys for any supported provider
 - 🔧 Enhanced provider configuration options
+- 🔷 Context (add markdown files to give persistent system context)
 
 ### Expanded Provider Support
 

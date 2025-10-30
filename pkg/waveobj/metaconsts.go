@@ -73,6 +73,9 @@ const (
 	MetaKey_AiMaxTokens                      = "ai:maxtokens"
 	MetaKey_AiTimeoutMs                      = "ai:timeoutms"
 
+	MetaKey_AiFileDiffChatId                 = "aifilediff:chatid"
+	MetaKey_AiFileDiffToolCallId             = "aifilediff:toolcallid"
+
 	MetaKey_EditorClear                      = "editor:*"
 	MetaKey_EditorMinimapEnabled             = "editor:minimapenabled"
 	MetaKey_EditorStickyScrollEnabled        = "editor:stickyscrollenabled"

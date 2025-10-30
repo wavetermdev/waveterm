@@ -346,10 +346,11 @@ func GetEditTextFileToolDefinition() uctypes.ToolDefinition {
 							},
 							"desc": map[string]any{
 								"type":        "string",
-								"description": "Description of what this edit does",
+								"description": "Description of what this edit does (keep it VERY short, one sentence max)",
 							},
 						},
-						"required": []string{"old_str", "new_str"},
+						"required":             []string{"old_str", "new_str", "desc"},
+						"additionalProperties": false,
 					},
 				},
 			},
@@ -361,7 +362,12 @@ func GetEditTextFileToolDefinition() uctypes.ToolDefinition {
 			if err != nil {
 				return fmt.Sprintf("error parsing input: %v", err)
 			}
-			return fmt.Sprintf("editing %q (%d edits)", params.Filename, len(params.Edits))
+			editCount := len(params.Edits)
+			editWord := "edits"
+			if editCount == 1 {
+				editWord = "edit"
+			}
+			return fmt.Sprintf("editing %q (%d %s)", params.Filename, editCount, editWord)
 		},
 		ToolAnyCallback: editTextFileCallback,
 		ToolApproval: func(input any) string {

@@ -296,6 +296,17 @@ func processToolCallInternal(toolCall uctypes.WaveToolCall, chatOpts uctypes.Wav
 		}
 	}
 
+	// InputFileName should already be set in processToolCalls, but double-check here
+	if toolCall.ToolUseData.InputFileName == "" {
+		if inputMap, ok := toolCall.Input.(map[string]any); ok {
+			if filename, ok := inputMap["filename"].(string); ok {
+				toolCall.ToolUseData.InputFileName = filename
+			} else if filename, ok := inputMap["file_name"].(string); ok {
+				toolCall.ToolUseData.InputFileName = filename
+			}
+		}
+	}
+
 	if toolCall.ToolUseData.Status == uctypes.ToolUseStatusError {
 		errorMsg := toolCall.ToolUseData.ErrorMessage
 		if errorMsg == "" {
@@ -397,8 +408,17 @@ func processToolCalls(stopReason *uctypes.WaveStopReason, chatOpts uctypes.WaveC
 	// Send all data-tooluse packets at the beginning
 	for _, toolCall := range stopReason.ToolCalls {
 		if toolCall.ToolUseData != nil {
+			// Extract filename from tool input for UI display before sending
+			if inputMap, ok := toolCall.Input.(map[string]any); ok {
+				if filename, ok := inputMap["filename"].(string); ok {
+					toolCall.ToolUseData.InputFileName = filename
+				} else if filename, ok := inputMap["file_name"].(string); ok {
+					toolCall.ToolUseData.InputFileName = filename
+				}
+			}
 			log.Printf("AI data-tooluse %s\n", toolCall.ID)
 			_ = sseHandler.AiMsgData("data-tooluse", toolCall.ID, *toolCall.ToolUseData)
+			updateToolUseDataInChat(chatOpts, toolCall.ID, toolCall.ToolUseData)
 		}
 	}
 
@@ -832,15 +852,20 @@ func CreateWriteTextFileDiff(ctx context.Context, chatId string, toolCallId stri
 		backupFileName = funcCallInput.ToolUseData.WriteBackupFileName
 	}
 
+	var parsedArguments any
+	if err := json.Unmarshal([]byte(funcCallInput.Arguments), &parsedArguments); err != nil {
+		return nil, nil, fmt.Errorf("failed to unmarshal arguments: %w", err)
+	}
+
 	if toolName == "edit_text_file" {
-		originalContent, modifiedContent, err := EditTextFileDryRun(funcCallInput.Arguments, backupFileName)
+		originalContent, modifiedContent, err := EditTextFileDryRun(parsedArguments, backupFileName)
 		if err != nil {
 			return nil, nil, fmt.Errorf("failed to generate diff: %w", err)
 		}
 		return originalContent, modifiedContent, nil
 	}
 
-	params, err := parseWriteTextFileInput(funcCallInput.Arguments)
+	params, err := parseWriteTextFileInput(parsedArguments)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to parse write_text_file input: %w", err)
 	}

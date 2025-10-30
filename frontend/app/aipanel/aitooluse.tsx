@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { BlockModel } from "@/app/block/block-model";
-import { cn } from "@/util/util";
+import { cn, fireAndForget } from "@/util/util";
 import { memo, useEffect, useRef, useState } from "react";
 import { WaveUIMessagePart } from "./aitypes";
 import { WaveAIModel } from "./waveai-model";
@@ -141,6 +141,8 @@ const AIToolUse = memo(({ part, isStreaming }: AIToolUseProps) => {
     const baseApproval = userApprovalOverride || toolData.approval;
     const effectiveApproval = !isStreaming && baseApproval === "needs-approval" ? "timeout" : baseApproval;
 
+    const isFileWriteTool = toolData.toolname === "write_text_file" || toolData.toolname === "edit_text_file";
+
     useEffect(() => {
         if (!isStreaming || effectiveApproval !== "needs-approval") return;
 
@@ -204,6 +206,10 @@ const AIToolUse = memo(({ part, isStreaming }: AIToolUseProps) => {
         }
     };
 
+    const handleOpenDiff = () => {
+        fireAndForget(() => WaveAIModel.getInstance().openDiff(toolData.inputfilename, toolData.toolcallid));
+    };
+
     return (
         <div
             className={cn("flex items-start gap-2 p-2 rounded bg-gray-800 border border-gray-700", statusColor)}
@@ -221,6 +227,16 @@ const AIToolUse = memo(({ part, isStreaming }: AIToolUseProps) => {
                     <AIToolApprovalButtons count={1} onApprove={handleApprove} onDeny={handleDeny} />
                 )}
             </div>
+            {isFileWriteTool && toolData.inputfilename && (
+                <button
+                    onClick={handleOpenDiff}
+                    className="flex-shrink-0 px-2 py-1 border border-gray-600 hover:border-gray-500 hover:bg-gray-700 rounded cursor-pointer transition-colors flex items-center gap-1.5 text-gray-400"
+                    title="Open in diff viewer"
+                >
+                    <span className="text-sm">Show Diff</span>
+                    <i className="fa fa-arrow-up-right-from-square text-sm"></i>
+                </button>
+            )}
         </div>
     );
 });
@@ -232,45 +248,48 @@ interface AIToolUseGroupProps {
     isStreaming: boolean;
 }
 
+type ToolGroupItem =
+    | { type: "batch"; parts: Array<WaveUIMessagePart & { type: "data-tooluse" }> }
+    | { type: "single"; part: WaveUIMessagePart & { type: "data-tooluse" } };
+
 export const AIToolUseGroup = memo(({ parts, isStreaming }: AIToolUseGroupProps) => {
     const isFileOp = (part: WaveUIMessagePart & { type: "data-tooluse" }) => {
         const toolName = part.data?.toolname;
         return toolName === "read_text_file" || toolName === "read_dir";
     };
 
-    const fileOpsNeedApproval: Array<WaveUIMessagePart & { type: "data-tooluse" }> = [];
-    const fileOpsNoApproval: Array<WaveUIMessagePart & { type: "data-tooluse" }> = [];
-    const otherTools: Array<WaveUIMessagePart & { type: "data-tooluse" }> = [];
+    const groupedItems: ToolGroupItem[] = [];
+    let currentBatch: Array<WaveUIMessagePart & { type: "data-tooluse" }> = [];
 
     for (const part of parts) {
         if (isFileOp(part)) {
-            if (part.data.approval === "needs-approval") {
-                fileOpsNeedApproval.push(part);
-            } else {
-                fileOpsNoApproval.push(part);
-            }
+            currentBatch.push(part);
         } else {
-            otherTools.push(part);
+            if (currentBatch.length > 0) {
+                groupedItems.push({ type: "batch", parts: currentBatch });
+                currentBatch = [];
+            }
+            groupedItems.push({ type: "single", part });
         }
+    }
+
+    if (currentBatch.length > 0) {
+        groupedItems.push({ type: "batch", parts: currentBatch });
     }
 
     return (
         <>
-            {fileOpsNoApproval.length > 0 && (
-                <div className="mt-2">
-                    <AIToolUseBatch parts={fileOpsNoApproval} isStreaming={isStreaming} />
-                </div>
+            {groupedItems.map((item, idx) =>
+                item.type === "batch" ? (
+                    <div key={idx} className="mt-2">
+                        <AIToolUseBatch parts={item.parts} isStreaming={isStreaming} />
+                    </div>
+                ) : (
+                    <div key={idx} className="mt-2">
+                        <AIToolUse part={item.part} isStreaming={isStreaming} />
+                    </div>
+                )
             )}
-            {fileOpsNeedApproval.length > 0 && (
-                <div className="mt-2">
-                    <AIToolUseBatch parts={fileOpsNeedApproval} isStreaming={isStreaming} />
-                </div>
-            )}
-            {otherTools.map((tool, idx) => (
-                <div key={idx} className="mt-2">
-                    <AIToolUse part={tool} isStreaming={isStreaming} />
-                </div>
-            ))}
         </>
     );
 });

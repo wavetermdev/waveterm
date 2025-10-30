@@ -8,7 +8,7 @@ import {
     WaveUIMessagePart,
 } from "@/app/aipanel/aitypes";
 import { FocusManager } from "@/app/store/focusManager";
-import { atoms, getOrefMetaKeyAtom } from "@/app/store/global";
+import { atoms, createBlock, getOrefMetaKeyAtom } from "@/app/store/global";
 import { globalStore } from "@/app/store/jotaiStore";
 import * as WOS from "@/app/store/wos";
 import { RpcApi } from "@/app/store/wshclientapi";
@@ -412,6 +412,10 @@ export class WaveAIModel {
         }
     }
 
+    getChatId(): string {
+        return globalStore.get(this.chatId);
+    }
+
     toolUseKeepalive(toolcallid: string) {
         RpcApi.WaveAIToolApproveCommand(
             TabRpcClient,
@@ -428,5 +432,24 @@ export class WaveAIModel {
             toolcallid: toolcallid,
             approval: approval,
         });
+    }
+
+    async openDiff(fileName: string, toolcallid: string) {
+        const chatId = this.getChatId();
+
+        if (!chatId || !fileName) {
+            console.error("Missing chatId or fileName for opening diff", chatId, fileName);
+            return;
+        }
+
+        const blockDef: BlockDef = {
+            meta: {
+                view: "aifilediff",
+                file: fileName,
+                "aifilediff:chatid": chatId,
+                "aifilediff:toolcallid": toolcallid,
+            },
+        };
+        await createBlock(blockDef, false, true);
     }
 }

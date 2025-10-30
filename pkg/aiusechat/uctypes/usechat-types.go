@@ -143,6 +143,7 @@ type UIMessageDataToolUse struct {
 	Approval            string `json:"approval,omitempty"`
 	BlockId             string `json:"blockid,omitempty"`
 	WriteBackupFileName string `json:"writebackupfilename,omitempty"`
+	InputFileName       string `json:"inputfilename,omitempty"`
 }
 
 func (d *UIMessageDataToolUse) IsApproved() bool {
