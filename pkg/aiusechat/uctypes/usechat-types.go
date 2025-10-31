@@ -67,6 +67,7 @@ type UIMessagePart struct {
 	ProviderMetadata map[string]any `json:"providerMetadata,omitempty"`
 }
 
+// when updating this struct, also modify frontend/app/aipanel/aitypes.ts WaveUIDataTypes.userfile
 type UIMessageDataUserFile struct {
 	FileName   string `json:"filename,omitempty"`
 	Size       int    `json:"size,omitempty"`
@@ -135,11 +136,13 @@ const (
 	ApprovalAutoApproved  = "auto-approved"
 )
 
+// when updating this struct, also modify frontend/app/aipanel/aitypes.ts WaveUIDataTypes.tooluse
 type UIMessageDataToolUse struct {
 	ToolCallId          string `json:"toolcallid"`
 	ToolName            string `json:"toolname"`
 	ToolDesc            string `json:"tooldesc"`
 	Status              string `json:"status"`
+	RunTs               int64  `json:"runts,omitempty"`
 	ErrorMessage        string `json:"errormessage,omitempty"`
 	Approval            string `json:"approval,omitempty"`
 	BlockId             string `json:"blockid,omitempty"`

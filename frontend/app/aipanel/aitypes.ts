@@ -17,6 +17,7 @@ type WaveUIDataTypes = {
         toolname: string;
         tooldesc: string;
         status: "pending" | "error" | "completed";
+        runts?: number;
         errormessage?: string;
         approval?: "needs-approval" | "user-approved" | "user-denied" | "auto-approved" | "timeout";
         blockid?: string;

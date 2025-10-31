@@ -349,7 +349,8 @@ func processToolCallInternal(toolCall uctypes.WaveToolCall, chatOpts uctypes.Wav
 		_ = sseHandler.AiMsgData("data-tooluse", toolCall.ID, *toolCall.ToolUseData)
 		updateToolUseDataInChat(chatOpts, toolCall.ID, toolCall.ToolUseData)
 	}
-
+	
+	toolCall.ToolUseData.RunTs = time.Now().UnixMilli()
 	result := ResolveToolCall(toolCall, chatOpts)
 
 	if result.ErrorText != "" {
