@@ -7,6 +7,10 @@ import { memo, useEffect, useRef, useState } from "react";
 import { WaveUIMessagePart } from "./aitypes";
 import { WaveAIModel } from "./waveai-model";
 
+function getEffectiveApprovalStatus(baseApproval: string, isStreaming: boolean): string {
+    return !isStreaming && baseApproval === "needs-approval" ? "timeout" : baseApproval;
+}
+
 interface AIToolApprovalButtonsProps {
     count: number;
     onApprove: () => void;
@@ -73,10 +77,10 @@ interface AIToolUseBatchProps {
 const AIToolUseBatch = memo(({ parts, isStreaming }: AIToolUseBatchProps) => {
     const [userApprovalOverride, setUserApprovalOverride] = useState<string | null>(null);
 
+    // All parts in a batch have the same approval status (enforced by grouping logic in AIToolUseGroup)
     const firstTool = parts[0].data;
     const baseApproval = userApprovalOverride || firstTool.approval;
-    const effectiveApproval = !isStreaming && baseApproval === "needs-approval" ? "timeout" : baseApproval;
-    const allNeedApproval = parts.every((p) => (userApprovalOverride || p.data.approval) === "needs-approval");
+    const effectiveApproval = getEffectiveApprovalStatus(baseApproval, isStreaming);
 
     useEffect(() => {
         if (!isStreaming || effectiveApproval !== "needs-approval") return;
@@ -113,7 +117,7 @@ const AIToolUseBatch = memo(({ parts, isStreaming }: AIToolUseBatchProps) => {
                         <AIToolUseBatchItem key={idx} part={part} effectiveApproval={effectiveApproval} />
                     ))}
                 </div>
-                {allNeedApproval && effectiveApproval === "needs-approval" && (
+                {effectiveApproval === "needs-approval" && (
                     <AIToolApprovalButtons count={parts.length} onApprove={handleApprove} onDeny={handleDeny} />
                 )}
             </div>
@@ -139,7 +143,7 @@ const AIToolUse = memo(({ part, isStreaming }: AIToolUseProps) => {
         toolData.status === "completed" ? "text-success" : toolData.status === "error" ? "text-error" : "text-gray-400";
 
     const baseApproval = userApprovalOverride || toolData.approval;
-    const effectiveApproval = !isStreaming && baseApproval === "needs-approval" ? "timeout" : baseApproval;
+    const effectiveApproval = getEffectiveApprovalStatus(baseApproval, isStreaming);
 
     const isFileWriteTool = toolData.toolname === "write_text_file" || toolData.toolname === "edit_text_file";
 
@@ -258,23 +262,40 @@ export const AIToolUseGroup = memo(({ parts, isStreaming }: AIToolUseGroupProps)
         return toolName === "read_text_file" || toolName === "read_dir";
     };
 
-    const groupedItems: ToolGroupItem[] = [];
-    let currentBatch: Array<WaveUIMessagePart & { type: "data-tooluse" }> = [];
+    const needsApproval = (part: WaveUIMessagePart & { type: "data-tooluse" }) => {
+        return getEffectiveApprovalStatus(part.data?.approval, isStreaming) === "needs-approval";
+    };
+
+    const readFileNeedsApproval: Array<WaveUIMessagePart & { type: "data-tooluse" }> = [];
+    const readFileOther: Array<WaveUIMessagePart & { type: "data-tooluse" }> = [];
 
     for (const part of parts) {
         if (isFileOp(part)) {
-            currentBatch.push(part);
-        } else {
-            if (currentBatch.length > 0) {
-                groupedItems.push({ type: "batch", parts: currentBatch });
-                currentBatch = [];
+            if (needsApproval(part)) {
+                readFileNeedsApproval.push(part);
+            } else {
+                readFileOther.push(part);
             }
-            groupedItems.push({ type: "single", part });
         }
     }
 
-    if (currentBatch.length > 0) {
-        groupedItems.push({ type: "batch", parts: currentBatch });
+    const groupedItems: ToolGroupItem[] = [];
+    let addedApprovalBatch = false;
+    let addedOtherBatch = false;
+
+    for (const part of parts) {
+        const isFileOpPart = isFileOp(part);
+        const partNeedsApproval = needsApproval(part);
+
+        if (isFileOpPart && partNeedsApproval && !addedApprovalBatch) {
+            groupedItems.push({ type: "batch", parts: readFileNeedsApproval });
+            addedApprovalBatch = true;
+        } else if (isFileOpPart && !partNeedsApproval && !addedOtherBatch) {
+            groupedItems.push({ type: "batch", parts: readFileOther });
+            addedOtherBatch = true;
+        } else if (!isFileOpPart) {
+            groupedItems.push({ type: "single", part });
+        }
     }
 
     return (
