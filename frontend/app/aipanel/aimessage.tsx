@@ -11,7 +11,15 @@ import { WaveUIMessage, WaveUIMessagePart } from "./aitypes";
 import { WaveAIModel } from "./waveai-model";
 
 const AIThinking = memo(
-    ({ message = "AI is thinking...", reasoningText }: { message?: string; reasoningText?: string }) => {
+    ({
+        message = "AI is thinking...",
+        reasoningText,
+        isWaitingApproval = false,
+    }: {
+        message?: string;
+        reasoningText?: string;
+        isWaitingApproval?: boolean;
+    }) => {
         const scrollRef = useRef<HTMLDivElement>(null);
 
         useEffect(() => {
@@ -30,17 +38,21 @@ const AIThinking = memo(
         return (
             <div className="flex flex-col gap-1">
                 <div className="flex items-center gap-2">
-                    <div className="animate-pulse flex items-center">
-                        <i className="fa fa-circle text-[10px]"></i>
-                        <i className="fa fa-circle text-[10px] mx-1"></i>
-                        <i className="fa fa-circle text-[10px]"></i>
-                    </div>
+                    {isWaitingApproval ? (
+                        <i className="fa fa-clock text-base text-yellow-500"></i>
+                    ) : (
+                        <div className="animate-pulse flex items-center">
+                            <i className="fa fa-circle text-[10px]"></i>
+                            <i className="fa fa-circle text-[10px] mx-1"></i>
+                            <i className="fa fa-circle text-[10px]"></i>
+                        </div>
+                    )}
                     {message && <span className="text-sm text-gray-400">{message}</span>}
                 </div>
                 {displayText && (
                     <div
                         ref={scrollRef}
-                        className="text-sm text-gray-500 overflow-y-auto max-h-[2lh] max-w-[600px] pl-9"
+                        className="text-sm text-gray-500 overflow-y-auto max-h-[3lh] max-w-[600px] pl-9"
                     >
                         {displayText}
                     </div>
@@ -172,7 +184,7 @@ const getThinkingMessage = (
     parts: WaveUIMessagePart[],
     isStreaming: boolean,
     role: string
-): { message: string; reasoningText?: string } | null => {
+): { message: string; reasoningText?: string; isWaitingApproval?: boolean } | null => {
     if (!isStreaming || role !== "assistant") {
         return null;
     }
@@ -182,7 +194,7 @@ const getThinkingMessage = (
     );
 
     if (hasPendingApprovals) {
-        return { message: "Waiting for Tool Approvals..." };
+        return { message: "Waiting for Tool Approvals...", isWaitingApproval: true };
     }
 
     const lastPart = parts[parts.length - 1];
@@ -234,7 +246,11 @@ export const AIMessage = memo(({ message, isStreaming }: AIMessageProps) => {
                         )}
                         {thinkingData != null && (
                             <div className="mt-2">
-                                <AIThinking message={thinkingData.message} reasoningText={thinkingData.reasoningText} />
+                                <AIThinking
+                                    message={thinkingData.message}
+                                    reasoningText={thinkingData.reasoningText}
+                                    isWaitingApproval={thinkingData.isWaitingApproval}
+                                />
                             </div>
                         )}
                     </>

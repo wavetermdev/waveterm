@@ -748,7 +748,6 @@ export class LayoutModel {
             // Process ephemeral node, if present.
             const ephemeralNode = this.getter(this.ephemeralNode);
             if (ephemeralNode) {
-                console.log("updateTree ephemeralNode", ephemeralNode);
                 this.updateEphemeralNodeProps(
                     ephemeralNode,
                     newAdditionalProps,

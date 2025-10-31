@@ -2,7 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { BlockModel } from "@/app/block/block-model";
+import { Modal } from "@/app/modals/modal";
 import { cn, fireAndForget } from "@/util/util";
+import { useAtomValue } from "jotai";
 import { memo, useEffect, useRef, useState } from "react";
 import { WaveUIMessagePart } from "./aitypes";
 import { WaveAIModel } from "./waveai-model";
@@ -127,6 +129,54 @@ const AIToolUseBatch = memo(({ parts, isStreaming }: AIToolUseBatchProps) => {
 
 AIToolUseBatch.displayName = "AIToolUseBatch";
 
+interface RestoreBackupModalProps {
+    part: WaveUIMessagePart & { type: "data-tooluse" };
+}
+
+const RestoreBackupModal = memo(({ part }: RestoreBackupModalProps) => {
+    const model = WaveAIModel.getInstance();
+    const toolData = part.data;
+
+    const formatTimestamp = (ts: number) => {
+        if (!ts) return "";
+        const date = new Date(ts);
+        return date.toLocaleString();
+    };
+
+    const handleConfirm = () => {
+        model.restoreBackup(toolData.toolcallid, toolData.inputfilename);
+    };
+
+    const handleCancel = () => {
+        model.closeRestoreBackupModal();
+    };
+
+    return (
+        <Modal
+            className="restore-backup-modal pb-5 pr-5"
+            onClose={handleCancel}
+            onCancel={handleCancel}
+            onOk={handleConfirm}
+            okLabel="Confirm Restore"
+            cancelLabel="Cancel"
+        >
+            <div className="flex flex-col gap-4 pt-4 pb-4 max-w-xl">
+                <div className="font-semibold text-lg">Restore File Backup</div>
+                <div className="text-sm text-gray-300 leading-relaxed">
+                    This will restore <span className="font-mono text-white break-all">{toolData.inputfilename}</span>{" "}
+                    to its state before this edit was made
+                    {toolData.runts && <span> ({formatTimestamp(toolData.runts)})</span>}.
+                </div>
+                <div className="text-sm text-gray-300 leading-relaxed">
+                    Any changes made by this edit and subsequent edits will be lost.
+                </div>
+            </div>
+        </Modal>
+    );
+});
+
+RestoreBackupModal.displayName = "RestoreBackupModal";
+
 interface AIToolUseProps {
     part: WaveUIMessagePart & { type: "data-tooluse" };
     isStreaming: boolean;
@@ -135,6 +185,9 @@ interface AIToolUseProps {
 const AIToolUse = memo(({ part, isStreaming }: AIToolUseProps) => {
     const toolData = part.data;
     const [userApprovalOverride, setUserApprovalOverride] = useState<string | null>(null);
+    const model = WaveAIModel.getInstance();
+    const restoreModalToolCallId = useAtomValue(model.restoreBackupModalToolCallId);
+    const showRestoreModal = restoreModalToolCallId === toolData.toolcallid;
     const highlightTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const highlightedBlockIdRef = useRef<string | null>(null);
 
@@ -224,6 +277,16 @@ const AIToolUse = memo(({ part, isStreaming }: AIToolUseProps) => {
                 <span className="font-bold">{statusIcon}</span>
                 <div className="font-semibold">{toolData.toolname}</div>
                 <div className="flex-1" />
+                {isFileWriteTool && toolData.inputfilename && toolData.writebackupfilename && (
+                    <button
+                        onClick={() => model.openRestoreBackupModal(toolData.toolcallid)}
+                        className="flex-shrink-0 px-1.5 py-0.5 border border-gray-600 hover:border-gray-500 hover:bg-gray-700 rounded cursor-pointer transition-colors flex items-center gap-1 text-gray-400"
+                        title="Restore backup file"
+                    >
+                        <span className="text-xs">Restore Backup</span>
+                        <i className="fa fa-clock-rotate-left text-xs"></i>
+                    </button>
+                )}
                 {isFileWriteTool && toolData.inputfilename && (
                     <button
                         onClick={handleOpenDiff}
@@ -244,6 +307,7 @@ const AIToolUse = memo(({ part, isStreaming }: AIToolUseProps) => {
                     <AIToolApprovalButtons count={1} onApprove={handleApprove} onDeny={handleDeny} />
                 </div>
             )}
+            {showRestoreModal && <RestoreBackupModal part={part} />}
         </div>
     );
 });

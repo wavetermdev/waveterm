@@ -21,6 +21,7 @@ type WaveUIDataTypes = {
         errormessage?: string;
         approval?: "needs-approval" | "user-approved" | "user-denied" | "auto-approved" | "timeout";
         blockid?: string;
+        writebackupfilename?: string;
         inputfilename?: string;
     };
 };

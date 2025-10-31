@@ -56,6 +56,7 @@ export class WaveAIModel {
     isChatEmpty: boolean = true;
     isWaveAIFocusedAtom!: jotai.Atom<boolean>;
     panelVisibleAtom!: jotai.Atom<boolean>;
+    restoreBackupModalToolCallId: jotai.PrimitiveAtom<string | null> = jotai.atom(null) as jotai.PrimitiveAtom<string | null>;
 
     private constructor(orefContext: ORef, inBuilder: boolean) {
         this.orefContext = orefContext;
@@ -451,5 +452,18 @@ export class WaveAIModel {
             },
         };
         await createBlock(blockDef, false, true);
+    }
+
+    openRestoreBackupModal(toolcallid: string) {
+        globalStore.set(this.restoreBackupModalToolCallId, toolcallid);
+    }
+
+    closeRestoreBackupModal() {
+        globalStore.set(this.restoreBackupModalToolCallId, null);
+    }
+
+    async restoreBackup(toolcallid: string, filename: string) {
+        console.log("Restore backup called for:", { toolcallid, filename });
+        this.closeRestoreBackupModal();
     }
 }
