@@ -58,7 +58,7 @@ func GetBuilderWriteAppFileToolDefinition(appId string) uctypes.ToolDefinition {
 		ToolInputDesc: func(input any) string {
 			return fmt.Sprintf("writing app.go for %s", appId)
 		},
-		ToolAnyCallback: func(input any) (any, error) {
+		ToolAnyCallback: func(input any, toolUseData *uctypes.UIMessageDataToolUse) (any, error) {
 			params, err := parseBuilderWriteAppFileInput(input)
 			if err != nil {
 				return nil, err
@@ -149,7 +149,7 @@ func GetBuilderEditAppFileToolDefinition(appId string) uctypes.ToolDefinition {
 			}
 			return fmt.Sprintf("editing app.go for %s (%d edits)", appId, len(params.Edits))
 		},
-		ToolAnyCallback: func(input any) (any, error) {
+		ToolAnyCallback: func(input any, toolUseData *uctypes.UIMessageDataToolUse) (any, error) {
 			params, err := parseBuilderEditAppFileInput(input)
 			if err != nil {
 				return nil, err
@@ -188,7 +188,7 @@ func GetBuilderListFilesToolDefinition(appId string) uctypes.ToolDefinition {
 		ToolInputDesc: func(input any) string {
 			return fmt.Sprintf("listing files for %s", appId)
 		},
-		ToolAnyCallback: func(input any) (any, error) {
+		ToolAnyCallback: func(input any, toolUseData *uctypes.UIMessageDataToolUse) (any, error) {
 			result, err := waveappstore.ListAllAppFiles(appId)
 			if err != nil {
 				return nil, err

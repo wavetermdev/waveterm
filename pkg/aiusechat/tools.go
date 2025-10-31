@@ -120,6 +120,8 @@ func MakeBlockShortDesc(block *waveobj.Block) string {
 		return "placeholder widget used to launch other widgets"
 	case "tsunami":
 		return handleTsunamiBlockDesc(block)
+	case "aifilediff":
+		return "" // AI doesn't need to see these
 	default:
 		return fmt.Sprintf("unknown widget with type %q", viewType)
 	}
@@ -156,6 +158,9 @@ func GenerateTabStateAndTools(ctx context.Context, tabid string, widgetAccess bo
 		tools = append(tools, GetCaptureScreenshotToolDefinition(tabid))
 		tools = append(tools, GetReadTextFileToolDefinition())
 		tools = append(tools, GetReadDirToolDefinition())
+		tools = append(tools, GetWriteTextFileToolDefinition())
+		tools = append(tools, GetEditTextFileToolDefinition())
+		tools = append(tools, GetDeleteTextFileToolDefinition())
 		viewTypes := make(map[string]bool)
 		for _, block := range blocks {
 			if block.Meta == nil {
@@ -266,7 +271,7 @@ func GetAdderToolDefinition() uctypes.ToolDefinition {
 			"required":             []string{"values"},
 			"additionalProperties": false,
 		},
-		ToolAnyCallback: func(input any) (any, error) {
+		ToolAnyCallback: func(input any, toolUseData *uctypes.UIMessageDataToolUse) (any, error) {
 			inputMap, ok := input.(map[string]any)
 			if !ok {
 				return nil, fmt.Errorf("invalid input format")

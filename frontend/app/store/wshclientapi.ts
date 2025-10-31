@@ -247,6 +247,11 @@ class RpcApiType {
         return client.wshRpcStream("filereadstream", data, opts);
     }
 
+    // command "filerestorebackup" [call]
+    FileRestoreBackupCommand(client: WshClient, data: CommandFileRestoreBackupData, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("filerestorebackup", data, opts);
+    }
+
     // command "filesharecapability" [call]
     FileShareCapabilityCommand(client: WshClient, data: string, opts?: RpcOpts): Promise<FileShareCapability> {
         return client.wshRpcCall("filesharecapability", data, opts);
@@ -540,6 +545,11 @@ class RpcApiType {
     // command "waveaienabletelemetry" [call]
     WaveAIEnableTelemetryCommand(client: WshClient, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("waveaienabletelemetry", null, opts);
+    }
+
+    // command "waveaigettooldiff" [call]
+    WaveAIGetToolDiffCommand(client: WshClient, data: CommandWaveAIGetToolDiffData, opts?: RpcOpts): Promise<CommandWaveAIGetToolDiffRtnData> {
+        return client.wshRpcCall("waveaigettooldiff", data, opts);
     }
 
     // command "waveaitoolapprove" [call]

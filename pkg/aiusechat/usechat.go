@@ -26,6 +26,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/util/logutil"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/waveappstore"
+	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/web/sse"
 	"github.com/wavetermdev/waveterm/pkg/wps"
@@ -77,7 +78,6 @@ var SystemPromptText_OpenAI = strings.Join([]string{
 	`User-attached directories use the tag <AttachedDirectoryListing_xxxxxxxx directory_name="...">JSON DirInfo</AttachedDirectoryListing_xxxxxxxx>.`,
 	`If multiple attached files exist, treat each as a separate source file with its own file_name.`,
 	`When the user refers to these files, use their inline content directly; do NOT call any read_text_file or file-access tools to re-read them unless asked.`,
-	`The current "app.go" file will be provided with the tag <CurrentAppGoFile>\ncontent\n</CurrentAppGoFile> (use this as the basis for your app.go file edits)`,
 
 	// Output & formatting
 	`When presenting commands or any runnable multi-line code, always use fenced Markdown code blocks.`,
@@ -92,9 +92,9 @@ var SystemPromptText_OpenAI = strings.Join([]string{
 	`If a request would execute dangerous or destructive actions, warn briefly and provide a safer alternative.`,
 	`If output is very long, prefer a brief summary plus a copy-ready fenced block or offer a follow-up chunking strategy.`,
 
-	`You cannot yet execute shell commands, run code in the terminal, or directly edit files on disk. You also cannot read remote files.`,
-	`If the user asks you to do one of those things, say that these features aren’t available yet AND make sure to say that they are coming soon (stay tuned for updates).`,
-	`Instead, show them exactly what command or code they could copy-paste to perform it manually.`,
+	`You can write and edit local files on disk using available tools, but you cannot execute shell commands, run code in the terminal, or read/write remote files.`,
+	`If the user asks you to execute commands or run code, or deal with remote files say that these features aren't available yet AND make sure to say that they are coming soon (stay tuned for updates).`,
+	`Instead, show them exactly what command or code they could copy-paste to run manually.`,
 
 	// Final reminder
 	`You have NO API access to widgets or Wave unless provided via an explicit tool.`,
@@ -121,6 +121,7 @@ var BuilderSystemPromptText_OpenAI = strings.Join([]string{
 	`- User-attached text files appear inline as <AttachedTextFile_xxxxxxxx file_name="...">\ncontent\n</AttachedTextFile_xxxxxxxx>`,
 	`- User-attached directories use <AttachedDirectoryListing_xxxxxxxx directory_name="...">JSON DirInfo</AttachedDirectoryListing_xxxxxxxx>`,
 	`- When users refer to attached files, use their inline content directly; do NOT attempt to read them again`,
+	`The current "app.go" file will be provided with the tag <CurrentAppGoFile>\ncontent\n</CurrentAppGoFile> (use this as the basis for your app.go file edits)`,
 	``,
 	`**Code Output:**`,
 	`- Do NOT output code in fenced code blocks or inline code snippets`,
@@ -286,12 +287,20 @@ func updateToolUseDataInChat(chatOpts uctypes.WaveChatOpts, toolCallID string, t
 	}
 }
 
-func processToolCall(toolCall uctypes.WaveToolCall, chatOpts uctypes.WaveChatOpts, sseHandler *sse.SSEHandlerCh, metrics *uctypes.AIMetrics) uctypes.AIToolResult {
-
+func processToolCallInternal(toolCall uctypes.WaveToolCall, chatOpts uctypes.WaveChatOpts, toolDef *uctypes.ToolDefinition, sseHandler *sse.SSEHandlerCh) uctypes.AIToolResult {
 	if toolCall.ToolUseData == nil {
-		errorMsg := "Invalid Tool Call"
-		log.Printf("  error=%s\n", errorMsg)
-		metrics.ToolUseErrorCount++
+		return uctypes.AIToolResult{
+			ToolName:  toolCall.Name,
+			ToolUseID: toolCall.ID,
+			ErrorText: "Invalid Tool Call",
+		}
+	}
+
+	if toolCall.ToolUseData.Status == uctypes.ToolUseStatusError {
+		errorMsg := toolCall.ToolUseData.ErrorMessage
+		if errorMsg == "" {
+			errorMsg = "Unspecified Tool Error"
+		}
 		return uctypes.AIToolResult{
 			ToolName:  toolCall.Name,
 			ToolUseID: toolCall.ID,
@@ -299,23 +308,16 @@ func processToolCall(toolCall uctypes.WaveToolCall, chatOpts uctypes.WaveChatOpt
 		}
 	}
 
-	inputJSON, _ := json.Marshal(toolCall.Input)
-	logutil.DevPrintf("TOOLUSE name=%s id=%s input=%s approval=%q\n", toolCall.Name, toolCall.ID, utilfn.TruncateString(string(inputJSON), 40), toolCall.ToolUseData.Approval)
-
-	if toolCall.ToolUseData.Status == uctypes.ToolUseStatusError {
-		errorMsg := toolCall.ToolUseData.ErrorMessage
-		if errorMsg == "" {
-			errorMsg = "Unspecified Tool Error"
-		}
-		log.Printf("  error=%s\n", errorMsg)
-		metrics.ToolUseErrorCount++
-		_ = sseHandler.AiMsgData("data-tooluse", toolCall.ID, *toolCall.ToolUseData)
-		updateToolUseDataInChat(chatOpts, toolCall.ID, toolCall.ToolUseData)
-
-		return uctypes.AIToolResult{
-			ToolName:  toolCall.Name,
-			ToolUseID: toolCall.ID,
-			ErrorText: errorMsg,
+	if toolDef != nil && toolDef.ToolVerifyInput != nil {
+		if err := toolDef.ToolVerifyInput(toolCall.Input, toolCall.ToolUseData); err != nil {
+			errorMsg := fmt.Sprintf("Input validation failed: %v", err)
+			toolCall.ToolUseData.Status = uctypes.ToolUseStatusError
+			toolCall.ToolUseData.ErrorMessage = errorMsg
+			return uctypes.AIToolResult{
+				ToolName:  toolCall.Name,
+				ToolUseID: toolCall.ID,
+				ErrorText: errorMsg,
+			}
 		}
 	}
 
@@ -334,13 +336,8 @@ func processToolCall(toolCall uctypes.WaveToolCall, chatOpts uctypes.WaveChatOpt
 			} else if approval == uctypes.ApprovalTimeout {
 				errorMsg = "Tool approval timed out"
 			}
-			log.Printf("  error=%s\n", errorMsg)
-			metrics.ToolUseErrorCount++
 			toolCall.ToolUseData.Status = uctypes.ToolUseStatusError
 			toolCall.ToolUseData.ErrorMessage = errorMsg
-			_ = sseHandler.AiMsgData("data-tooluse", toolCall.ID, *toolCall.ToolUseData)
-			updateToolUseDataInChat(chatOpts, toolCall.ID, toolCall.ToolUseData)
-
 			return uctypes.AIToolResult{
 				ToolName:  toolCall.Name,
 				ToolUseID: toolCall.ID,
@@ -348,29 +345,46 @@ func processToolCall(toolCall uctypes.WaveToolCall, chatOpts uctypes.WaveChatOpt
 			}
 		}
 
+		// this still happens here because we need to update the FE to say the tool call was approved
 		_ = sseHandler.AiMsgData("data-tooluse", toolCall.ID, *toolCall.ToolUseData)
 		updateToolUseDataInChat(chatOpts, toolCall.ID, toolCall.ToolUseData)
 	}
 
+	toolCall.ToolUseData.RunTs = time.Now().UnixMilli()
 	result := ResolveToolCall(toolCall, chatOpts)
-
-	// Track tool usage by ToolLogName
-	toolDef := chatOpts.GetToolDefinition(toolCall.Name)
-	if toolDef != nil && toolDef.ToolLogName != "" {
-		metrics.ToolDetail[toolDef.ToolLogName]++
-	}
 
 	if result.ErrorText != "" {
 		toolCall.ToolUseData.Status = uctypes.ToolUseStatusError
 		toolCall.ToolUseData.ErrorMessage = result.ErrorText
+	} else {
+		toolCall.ToolUseData.Status = uctypes.ToolUseStatusCompleted
+	}
+
+	return result
+}
+
+func processToolCall(toolCall uctypes.WaveToolCall, chatOpts uctypes.WaveChatOpts, sseHandler *sse.SSEHandlerCh, metrics *uctypes.AIMetrics) uctypes.AIToolResult {
+	inputJSON, _ := json.Marshal(toolCall.Input)
+	logutil.DevPrintf("TOOLUSE name=%s id=%s input=%s approval=%q\n", toolCall.Name, toolCall.ID, utilfn.TruncateString(string(inputJSON), 40), toolCall.ToolUseData.Approval)
+
+	toolDef := chatOpts.GetToolDefinition(toolCall.Name)
+	result := processToolCallInternal(toolCall, chatOpts, toolDef, sseHandler)
+
+	if result.ErrorText != "" {
 		log.Printf("  error=%s\n", result.ErrorText)
 		metrics.ToolUseErrorCount++
 	} else {
-		toolCall.ToolUseData.Status = uctypes.ToolUseStatusCompleted
 		log.Printf("  result=%s\n", utilfn.TruncateString(result.Text, 40))
 	}
-	_ = sseHandler.AiMsgData("data-tooluse", toolCall.ID, *toolCall.ToolUseData)
-	updateToolUseDataInChat(chatOpts, toolCall.ID, toolCall.ToolUseData)
+
+	if toolDef != nil && toolDef.ToolLogName != "" {
+		metrics.ToolDetail[toolDef.ToolLogName]++
+	}
+
+	if toolCall.ToolUseData != nil {
+		_ = sseHandler.AiMsgData("data-tooluse", toolCall.ID, *toolCall.ToolUseData)
+		updateToolUseDataInChat(chatOpts, toolCall.ID, toolCall.ToolUseData)
+	}
 
 	return result
 }
@@ -386,6 +400,7 @@ func processToolCalls(stopReason *uctypes.WaveStopReason, chatOpts uctypes.WaveC
 		if toolCall.ToolUseData != nil {
 			log.Printf("AI data-tooluse %s\n", toolCall.ID)
 			_ = sseHandler.AiMsgData("data-tooluse", toolCall.ID, *toolCall.ToolUseData)
+			updateToolUseDataInChat(chatOpts, toolCall.ID, toolCall.ToolUseData)
 		}
 	}
 
@@ -540,7 +555,7 @@ func ResolveToolCall(toolCall uctypes.WaveToolCall, chatOpts uctypes.WaveChatOpt
 			result.Text = text
 		}
 	} else if toolDef.ToolAnyCallback != nil {
-		output, err := toolDef.ToolAnyCallback(toolCall.Input)
+		output, err := toolDef.ToolAnyCallback(toolCall.Input, toolCall.ToolUseData)
 		if err != nil {
 			result.ErrorText = err.Error()
 		} else {
@@ -785,4 +800,75 @@ func WaveAIGetChatHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, fmt.Sprintf("Failed to encode response: %v", err), http.StatusInternalServerError)
 		return
 	}
+}
+
+// CreateWriteTextFileDiff generates a diff for write_text_file or edit_text_file tool calls.
+// Returns the original content, modified content, and any error.
+// For Anthropic, this returns an unimplemented error.
+func CreateWriteTextFileDiff(ctx context.Context, chatId string, toolCallId string) ([]byte, []byte, error) {
+	aiChat := chatstore.DefaultChatStore.Get(chatId)
+	if aiChat == nil {
+		return nil, nil, fmt.Errorf("chat not found: %s", chatId)
+	}
+
+	if aiChat.APIType == APIType_Anthropic {
+		return nil, nil, fmt.Errorf("CreateWriteTextFileDiff is not implemented for Anthropic")
+	}
+
+	if aiChat.APIType != APIType_OpenAI {
+		return nil, nil, fmt.Errorf("unsupported API type: %s", aiChat.APIType)
+	}
+
+	funcCallInput := openai.GetFunctionCallInputByToolCallId(*aiChat, toolCallId)
+	if funcCallInput == nil {
+		return nil, nil, fmt.Errorf("tool call not found: %s", toolCallId)
+	}
+
+	toolName := funcCallInput.Name
+	if toolName != "write_text_file" && toolName != "edit_text_file" {
+		return nil, nil, fmt.Errorf("tool call %s is not a write_text_file or edit_text_file (got: %s)", toolCallId, toolName)
+	}
+
+	var backupFileName string
+	if funcCallInput.ToolUseData != nil {
+		backupFileName = funcCallInput.ToolUseData.WriteBackupFileName
+	}
+
+	var parsedArguments any
+	if err := json.Unmarshal([]byte(funcCallInput.Arguments), &parsedArguments); err != nil {
+		return nil, nil, fmt.Errorf("failed to unmarshal arguments: %w", err)
+	}
+
+	if toolName == "edit_text_file" {
+		originalContent, modifiedContent, err := EditTextFileDryRun(parsedArguments, backupFileName)
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to generate diff: %w", err)
+		}
+		return originalContent, modifiedContent, nil
+	}
+
+	params, err := parseWriteTextFileInput(parsedArguments)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to parse write_text_file input: %w", err)
+	}
+
+	var originalContent []byte
+	if backupFileName != "" {
+		originalContent, err = os.ReadFile(backupFileName)
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to read backup file: %w", err)
+		}
+	} else {
+		expandedPath, err := wavebase.ExpandHomeDir(params.Filename)
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to expand path: %w", err)
+		}
+		originalContent, err = os.ReadFile(expandedPath)
+		if err != nil && !os.IsNotExist(err) {
+			return nil, nil, fmt.Errorf("failed to read original file: %w", err)
+		}
+	}
+
+	modifiedContent := []byte(params.Contents)
+	return originalContent, modifiedContent, nil
 }
