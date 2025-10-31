@@ -441,7 +441,8 @@ const AIPanelComponentInner = memo(({ className, onClose }: AIPanelProps) => {
                 await model.addFile(file);
             } catch (error) {
                 console.error("Error handling FILE_ITEM drop:", error);
-                model.setError(`Failed to add file: ${error.message || "Unknown error"}`);
+                const errorMsg = error instanceof Error ? error.message : String(error);
+                model.setError(`Failed to add file: ${errorMsg}`);
             }
         },
         [model]
@@ -464,8 +465,9 @@ const AIPanelComponentInner = memo(({ className, onClose }: AIPanelProps) => {
     useEffect(() => {
         if (isOver && canDrop) {
             setIsDragOver(true);
-        } else if (!isOver && !hasFilesDragged({ types: [] } as any)) {
-            // Only clear drag over if neither FILE_ITEM nor native files are being dragged
+        } else if (!isOver) {
+            // Clear drag over when FILE_ITEM is no longer over the panel
+            // Native file drags are handled separately by handleDragLeave
             setIsDragOver(false);
         }
     }, [isOver, canDrop]);
