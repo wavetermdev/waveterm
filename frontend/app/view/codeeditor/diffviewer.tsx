@@ -4,7 +4,7 @@
 import { useOverrideConfigAtom } from "@/app/store/global";
 import { DiffEditor } from "@monaco-editor/react";
 import type * as MonacoTypes from "monaco-editor/esm/vs/editor/editor.api";
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 
 import { boundNumber } from "@/util/util";
 

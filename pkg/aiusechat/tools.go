@@ -120,6 +120,8 @@ func MakeBlockShortDesc(block *waveobj.Block) string {
 		return "placeholder widget used to launch other widgets"
 	case "tsunami":
 		return handleTsunamiBlockDesc(block)
+	case "aifilediff":
+		return "" // AI doesn't need to see these
 	default:
 		return fmt.Sprintf("unknown widget with type %q", viewType)
 	}

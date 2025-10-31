@@ -7,6 +7,11 @@ import * as WOS from "./wos";
 
 // blockservice.BlockService (block)
 class BlockServiceType {
+    // queue a layout action to cleanup orphaned blocks in the tab
+    // @returns object updates
+    CleanupOrphanedBlocks(tabId: string): Promise<void> {
+        return WOS.callBackendService("block", "CleanupOrphanedBlocks", Array.from(arguments))
+    }
     GetControllerStatus(arg2: string): Promise<BlockControllerRuntimeStatus> {
         return WOS.callBackendService("block", "GetControllerStatus", Array.from(arguments))
     }

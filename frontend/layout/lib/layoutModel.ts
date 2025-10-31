@@ -3,6 +3,7 @@
 
 import { FocusManager } from "@/app/store/focusManager";
 import { getSettingsKeyAtom } from "@/app/store/global";
+import { BlockService } from "@/app/store/services";
 import { atomWithThrottle, boundNumber, fireAndForget } from "@/util/util";
 import { Atom, atom, Getter, PrimitiveAtom, Setter } from "jotai";
 import { splitAtom } from "jotai/utils";
@@ -406,6 +407,26 @@ export class LayoutModel {
         this.persistToBackend();
     }
 
+    private async cleanupOrphanedBlocks() {
+        const tab = this.getter(this.tabAtom);
+        const layoutBlockIds = new Set<string>();
+
+        walkNodes(this.treeState.rootNode, (node) => {
+            if (node.data?.blockId) {
+                layoutBlockIds.add(node.data.blockId);
+            }
+        });
+
+        for (const blockId of tab.blockids || []) {
+            if (!layoutBlockIds.has(blockId)) {
+                console.log("Cleaning up orphaned block:", blockId);
+                if (this.onNodeDelete) {
+                    await this.onNodeDelete({ blockId });
+                }
+            }
+        }
+    }
+
     private async handleBackendAction(action: LayoutActionData) {
         switch (action.actiontype) {
             case LayoutTreeActionType.InsertNode: {
@@ -537,6 +558,10 @@ export class LayoutModel {
                 this.treeReducer(splitAction, false);
                 break;
             }
+            case "cleanuporphaned": {
+                await this.cleanupOrphanedBlocks();
+                break;
+            }
             default:
                 console.warn("unsupported layout action", action);
                 break;
@@ -574,6 +599,8 @@ export class LayoutModel {
         if (contents.gapSizePx !== undefined) {
             this.setter(this.gapSizePx, contents.gapSizePx);
         }
+        const tab = this.getter(this.tabAtom);
+        fireAndForget(() => BlockService.CleanupOrphanedBlocks(tab.oid));
     }
 
     /**
