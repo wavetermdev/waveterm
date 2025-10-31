@@ -71,6 +71,7 @@ const (
 	ConfigKey_WidgetShowHelp                 = "widget:showhelp"
 
 	ConfigKey_WindowClear                    = "window:*"
+	ConfigKey_WindowFullscreenOnLaunch       = "window:fullscreenonlaunch"
 	ConfigKey_WindowTransparent              = "window:transparent"
 	ConfigKey_WindowBlur                     = "window:blur"
 	ConfigKey_WindowOpacity                  = "window:opacity"

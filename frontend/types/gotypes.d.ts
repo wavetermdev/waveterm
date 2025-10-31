@@ -951,6 +951,7 @@ declare global {
         "widget:*"?: boolean;
         "widget:showhelp"?: boolean;
         "window:*"?: boolean;
+        "window:fullscreenonlaunch"?: boolean;
         "window:transparent"?: boolean;
         "window:blur"?: boolean;
         "window:opacity"?: number;

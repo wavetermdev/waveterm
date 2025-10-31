@@ -192,6 +192,12 @@ export class WaveBrowserWindow extends BaseWindow {
         }
 
         super(winOpts);
+        const fullscreenOnLaunch = fullConfig?.settings["window:fullscreenonlaunch"];
+        if (fullscreenOnLaunch) {
+            this.once("show", () => {
+                this.setFullScreen(true);
+            });
+        }
         this.actionQueue = [];
         this.waveWindowId = waveWindow.oid;
         this.workspaceId = waveWindow.workspaceid;
