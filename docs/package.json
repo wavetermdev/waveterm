@@ -5,7 +5,6 @@
         "docusaurus": "docusaurus",
         "start": "docusaurus start",
         "build": "docusaurus build",
-        "build-embedded": "npm run build",
         "swizzle": "docusaurus swizzle",
         "deploy": "docusaurus deploy",
         "clear": "docusaurus clear",

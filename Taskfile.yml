@@ -23,7 +23,6 @@ tasks:
             - dev
         deps:
             - npm:install
-            - docsite:build:embedded
             - build:backend
         env:
             WAVETERM_ENVFILE: "{{.ROOT_DIR}}/.env"
@@ -37,7 +36,6 @@ tasks:
             - start
         deps:
             - npm:install
-            - docsite:build:embedded
             - build:backend
         env:
             WAVETERM_ENVFILE: "{{.ROOT_DIR}}/.env"
@@ -109,24 +107,6 @@ tasks:
             - docs:npm:install
             - storybook:build
 
-    docsite:build:embedded:
-        desc: Build the embedded docsite and copy it to dist/docsite
-        sources:
-            - "docs/*"
-            - "docs/src/**/*"
-            - "docs/docs/**/*"
-            - "docs/static/**/*"
-        generates:
-            - "dist/docsite/**/*"
-        cmds:
-            - cd docs && npm run build-embedded
-            - task: copyfiles:'docs/build/':'dist/docsite'
-        env:
-            EMBEDDED: "true"
-            USE_SIMPLE_CSS_MINIFIER: "true"
-        deps:
-            - docs:npm:install
-
     package:
         desc: Package the application for the current platform.
         cmds:
@@ -134,7 +114,6 @@ tasks:
         deps:
             - clean
             - npm:install
-            - docsite:build:embedded
             - build:backend
 
     build:frontend:dev:

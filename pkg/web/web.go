@@ -22,7 +22,6 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat"
 	"github.com/wavetermdev/waveterm/pkg/authkey"
-	"github.com/wavetermdev/waveterm/pkg/docsite"
 	"github.com/wavetermdev/waveterm/pkg/filestore"
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/remote/fileshare"
@@ -443,7 +442,6 @@ func MakeUnixListener() (net.Listener, error) {
 	return rtn, nil
 }
 
-const docsitePrefix = "/docsite/"
 const schemaPrefix = "/schema/"
 
 // blocking
@@ -470,7 +468,6 @@ func RunWebServer(listener net.Listener) {
 	gr.HandleFunc("/api/post-chat-message", WebFnWrap(WebFnOpts{AllowCaching: false}, aiusechat.WaveAIPostMessageHandler))
 
 	// Other routes without timeout
-	gr.PathPrefix(docsitePrefix).Handler(http.StripPrefix(docsitePrefix, docsite.GetDocsiteHandler()))
 	gr.PathPrefix(schemaPrefix).Handler(http.StripPrefix(schemaPrefix, schema.GetSchemaHandler()))
 
 	handler := http.Handler(gr)
