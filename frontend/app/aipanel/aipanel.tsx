@@ -323,12 +323,12 @@ const AIPanelComponentInner = memo(({ className, onClose }: AIPanelProps) => {
 
     const handleDragOver = (e: React.DragEvent) => {
         const hasFiles = hasFilesDragged(e.dataTransfer);
-        
+
         // Only handle native file drags here, let react-dnd handle FILE_ITEM drags
         if (!hasFiles) {
             return;
         }
-        
+
         e.preventDefault();
         e.stopPropagation();
 
@@ -339,12 +339,12 @@ const AIPanelComponentInner = memo(({ className, onClose }: AIPanelProps) => {
 
     const handleDragEnter = (e: React.DragEvent) => {
         const hasFiles = hasFilesDragged(e.dataTransfer);
-        
+
         // Only handle native file drags here, let react-dnd handle FILE_ITEM drags
         if (!hasFiles) {
             return;
         }
-        
+
         e.preventDefault();
         e.stopPropagation();
 
@@ -353,12 +353,12 @@ const AIPanelComponentInner = memo(({ className, onClose }: AIPanelProps) => {
 
     const handleDragLeave = (e: React.DragEvent) => {
         const hasFiles = hasFilesDragged(e.dataTransfer);
-        
+
         // Only handle native file drags here, let react-dnd handle FILE_ITEM drags
         if (!hasFiles) {
             return;
         }
-        
+
         e.preventDefault();
         e.stopPropagation();
 
@@ -424,7 +424,6 @@ const AIPanelComponentInner = memo(({ className, onClose }: AIPanelProps) => {
 
     // Update drag over state for FILE_ITEM drags
     useEffect(() => {
-        console.log("FILE_ITEM drag state:", { isOver, canDrop });
         if (isOver && canDrop) {
             setIsReactDndDragOver(true);
         } else {

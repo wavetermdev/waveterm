@@ -181,11 +181,11 @@ export interface FileSizeError {
     fileType: "text" | "pdf" | "image";
 }
 
-export const validateFileSize = (file: File): FileSizeError | null => {
-    const TEXT_FILE_LIMIT = 200 * 1024; // 200KB
-    const PDF_LIMIT = 5 * 1024 * 1024; // 5MB
-    const IMAGE_LIMIT = 10 * 1024 * 1024; // 10MB
+const TEXT_FILE_LIMIT = 200 * 1024; // 200KB
+const PDF_LIMIT = 5 * 1024 * 1024; // 5MB
+const IMAGE_LIMIT = 10 * 1024 * 1024; // 10MB
 
+export const validateFileSize = (file: File): FileSizeError | null => {
     if (file.type.startsWith("image/")) {
         if (file.size > IMAGE_LIMIT) {
             return {
@@ -213,6 +213,33 @@ export const validateFileSize = (file: File): FileSizeError | null => {
                 fileType: "text",
             };
         }
+    }
+
+    return null;
+};
+
+export const validateFileSizeFromInfo = (fileName: string, fileSize: number, mimeType: string): FileSizeError | null => {
+    let maxSize: number;
+    let fileType: "text" | "pdf" | "image";
+
+    if (mimeType.startsWith("image/")) {
+        maxSize = IMAGE_LIMIT;
+        fileType = "image";
+    } else if (mimeType === "application/pdf") {
+        maxSize = PDF_LIMIT;
+        fileType = "pdf";
+    } else {
+        maxSize = TEXT_FILE_LIMIT;
+        fileType = "text";
+    }
+
+    if (fileSize > maxSize) {
+        return {
+            fileName,
+            fileSize,
+            maxSize,
+            fileType,
+        };
     }
 
     return null;
