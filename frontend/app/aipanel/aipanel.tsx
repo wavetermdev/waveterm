@@ -6,6 +6,8 @@ import { ErrorBoundary } from "@/app/element/errorboundary";
 import { ContextMenuModel } from "@/app/store/contextmenu";
 import { atoms, getSettingsKeyAtom } from "@/app/store/global";
 import { globalStore } from "@/app/store/jotaiStore";
+import { RpcApi } from "@/app/store/wshclientapi";
+import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { checkKeyPressed, keydownWrapper } from "@/util/keyutil";
 import { isMacOS } from "@/util/platformutil";
 import { cn } from "@/util/util";
@@ -13,6 +15,7 @@ import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import * as jotai from "jotai";
 import { memo, useCallback, useEffect, useRef, useState } from "react";
+import { useDrop } from "react-dnd";
 import { formatFileSizeError, isAcceptableFile, validateFileSize } from "./ai-utils";
 import { AIDroppedFiles } from "./aidroppedfiles";
 import { AIPanelHeader } from "./aipanelheader";
@@ -380,6 +383,98 @@ const AIPanelComponentInner = memo(({ className, onClose }: AIPanelProps) => {
             );
         }
     };
+
+    // Handle FILE_ITEM drops from preview directory
+    const handleFileItemDrop = useCallback(
+        async (draggedFile: DraggedFile) => {
+            try {
+                // Don't drop directories
+                if (draggedFile.isDir) {
+                    model.setError("Cannot add directories to Wave AI. Please select a file.");
+                    return;
+                }
+
+                // Read the file from the remote URI
+                const fileData = await RpcApi.FileReadCommand(
+                    TabRpcClient,
+                    {
+                        info: {
+                            path: draggedFile.uri,
+                        },
+                    },
+                    null
+                );
+
+                if (!fileData.data64) {
+                    model.setError(`Failed to read file: ${draggedFile.relName}`);
+                    return;
+                }
+
+                // Convert base64 to Uint8Array
+                const binaryString = atob(fileData.data64);
+                const bytes = new Uint8Array(binaryString.length);
+                for (let i = 0; i < binaryString.length; i++) {
+                    bytes[i] = binaryString.charCodeAt(i);
+                }
+
+                // Determine MIME type
+                const mimeType = fileData.info?.mimetype || "application/octet-stream";
+
+                // Create a File object
+                const file = new File([bytes], draggedFile.relName, { type: mimeType });
+
+                // Validate the file
+                if (!isAcceptableFile(file)) {
+                    model.setError(
+                        `File type not supported: ${draggedFile.relName}. Supported: images, PDFs, and text/code files.`
+                    );
+                    return;
+                }
+
+                const sizeError = validateFileSize(file);
+                if (sizeError) {
+                    model.setError(formatFileSizeError(sizeError));
+                    return;
+                }
+
+                // Add the file to the AI panel
+                await model.addFile(file);
+            } catch (error) {
+                console.error("Error handling FILE_ITEM drop:", error);
+                model.setError(`Failed to add file: ${error.message || "Unknown error"}`);
+            }
+        },
+        [model]
+    );
+
+    // Set up react-dnd drop handler for FILE_ITEM
+    const [{ isOver, canDrop }, drop] = useDrop(
+        () => ({
+            accept: "FILE_ITEM",
+            drop: handleFileItemDrop,
+            collect: (monitor) => ({
+                isOver: monitor.isOver(),
+                canDrop: monitor.canDrop(),
+            }),
+        }),
+        [handleFileItemDrop]
+    );
+
+    // Update drag over state for FILE_ITEM drags
+    useEffect(() => {
+        if (isOver && canDrop) {
+            setIsDragOver(true);
+        } else if (!isOver && isDragOver && !hasFilesDragged({ types: [] } as any)) {
+            setIsDragOver(false);
+        }
+    }, [isOver, canDrop]);
+
+    // Attach the drop ref to the container
+    useEffect(() => {
+        if (containerRef.current) {
+            drop(containerRef.current);
+        }
+    }, [drop]);
 
     const handleFocusCapture = useCallback(
         (event: React.FocusEvent) => {
