@@ -82,6 +82,7 @@ const (
 	Command_FileAppendIJson     = "fileappendijson"
 	Command_FileJoin            = "filejoin"
 	Command_FileShareCapability = "filesharecapability"
+	Command_FileRestoreBackup   = "filerestorebackup"
 
 	Command_EventPublish         = "eventpublish"
 	Command_EventRecv            = "eventrecv"
@@ -144,6 +145,7 @@ const (
 	Command_GetWaveAIRateLimit    = "getwaveairatelimit"
 	Command_WaveAIToolApprove     = "waveaitoolapprove"
 	Command_WaveAIAddContext      = "waveaiaddcontext"
+	Command_WaveAIGetToolDiff     = "waveaigettooldiff"
 
 	Command_CaptureBlockScreenshot = "captureblockscreenshot"
 
@@ -209,6 +211,7 @@ type WshRpcInterface interface {
 	FileListStreamCommand(ctx context.Context, data FileListData) <-chan RespOrErrorUnion[CommandRemoteListEntriesRtnData]
 
 	FileShareCapabilityCommand(ctx context.Context, path string) (FileShareCapability, error)
+	FileRestoreBackupCommand(ctx context.Context, data CommandFileRestoreBackupData) error
 	EventPublishCommand(ctx context.Context, data wps.WaveEvent) error
 	EventSubCommand(ctx context.Context, data wps.SubscriptionRequest) error
 	EventUnsubCommand(ctx context.Context, data string) error
@@ -287,6 +290,7 @@ type WshRpcInterface interface {
 	GetWaveAIRateLimitCommand(ctx context.Context) (*uctypes.RateLimitInfo, error)
 	WaveAIToolApproveCommand(ctx context.Context, data CommandWaveAIToolApproveData) error
 	WaveAIAddContextCommand(ctx context.Context, data CommandWaveAIAddContextData) error
+	WaveAIGetToolDiffCommand(ctx context.Context, data CommandWaveAIGetToolDiffData) (*CommandWaveAIGetToolDiffRtnData, error)
 
 	// screenshot
 	CaptureBlockScreenshotCommand(ctx context.Context, data CommandCaptureBlockScreenshotData) (string, error)
@@ -595,6 +599,11 @@ type CommandFileCopyData struct {
 	Opts    *FileCopyOpts `json:"opts,omitempty"`
 }
 
+type CommandFileRestoreBackupData struct {
+	BackupFilePath     string `json:"backupfilepath"`
+	RestoreToFileName  string `json:"restoretofilename"`
+}
+
 type CommandRemoteStreamTarData struct {
 	Path string        `json:"path"`
 	Opts *FileCopyOpts `json:"opts,omitempty"`
@@ -772,6 +781,16 @@ type CommandWaveAIAddContextData struct {
 	Text    string           `json:"text,omitempty"`
 	Submit  bool             `json:"submit,omitempty"`
 	NewChat bool             `json:"newchat,omitempty"`
+}
+
+type CommandWaveAIGetToolDiffData struct {
+	ChatId     string `json:"chatid"`
+	ToolCallId string `json:"toolcallid"`
+}
+
+type CommandWaveAIGetToolDiffRtnData struct {
+	OriginalContents64 string `json:"originalcontents64"`
+	ModifiedContents64 string `json:"modifiedcontents64"`
 }
 
 type CommandCaptureBlockScreenshotData struct {

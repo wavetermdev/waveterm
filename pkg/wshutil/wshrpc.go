@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"log"
 	"reflect"
+	"runtime/pprof"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -268,6 +269,12 @@ func (w *WshRpc) cancelRequest(reqId string) {
 }
 
 func (w *WshRpc) handleRequest(req *RpcMessage) {
+	pprof.Do(context.Background(), pprof.Labels("rpc", req.Command), func(ctx context.Context) {
+		w.handleRequestInternal(req)
+	})
+}
+
+func (w *WshRpc) handleRequestInternal(req *RpcMessage) {
 	// events first
 	if req.Command == wshrpc.Command_EventRecv {
 		if req.Data == nil {

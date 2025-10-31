@@ -35,6 +35,7 @@ It has a TypeScript/React frontend and a Go backend. They talk together over `ws
     - Import the "cn" function from "@/util/util" to do classname / clsx class merge (it uses twMerge underneath)
     - For element variants use class-variance-authority
     - Do NOT create private fields in classes (they are impossible to inspect)
+    - Use PascalCase for global consts at the top of files
   - **Component Practices**:
     - Make sure to add cursor-pointer to buttons/links and clickable items
     - NEVER use cursor-help (it looks terrible)
@@ -47,6 +48,12 @@ It has a TypeScript/React frontend and a Go backend. They talk together over `ws
 - We use **Tailwind v4** to style. Custom stuff is defined in frontend/tailwindsetup.css
 - _never_ use cursor-help, or cursor-not-allowed (it looks terrible)
 - We have custom CSS setup as well, so it is a hybrid system. For new code we prefer tailwind, and are working to migrate code to all use tailwind.
+
+### RPC System
+
+To define a new RPC call, add the new definition to `pkg/wshrpc/wshrpctypes.go` including any input/output data that is required. After modifying wshrpctypes.go run `task generate` to generate the client APIs.
+
+For normal "server" RPCs (where a frontend client is calling the main server) you should implement the RPC call in `pkg/wshrpc/wshserver.go`.
 
 ### Code Generation
 

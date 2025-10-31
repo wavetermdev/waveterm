@@ -4,20 +4,25 @@
 import { ChatRequestOptions, FileUIPart, UIMessage, UIMessagePart } from "ai";
 
 type WaveUIDataTypes = {
+    // pkg/aiusechat/uctypes/usechat-types.go UIMessageDataUserFile
     userfile: {
         filename: string;
         size: number;
         mimetype: string;
         previewurl?: string;
     };
+    // pkg/aiusechat/uctypes/usechat-types.go UIMessageDataToolUse
     tooluse: {
         toolcallid: string;
         toolname: string;
         tooldesc: string;
         status: "pending" | "error" | "completed";
+        runts?: number;
         errormessage?: string;
         approval?: "needs-approval" | "user-approved" | "user-denied" | "auto-approved" | "timeout";
         blockid?: string;
+        writebackupfilename?: string;
+        inputfilename?: string;
     };
 };
 

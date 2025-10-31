@@ -654,3 +654,18 @@ func ConvertAIChatToUIChat(aiChat uctypes.AIChat) (*uctypes.UIChat, error) {
 		Messages:   uiMessages,
 	}, nil
 }
+
+// GetFunctionCallInputByToolCallId returns the OpenAIFunctionCallInput associated with the given ToolCallId,
+// or nil if not found in the AIChat
+func GetFunctionCallInputByToolCallId(aiChat uctypes.AIChat, toolCallId string) *OpenAIFunctionCallInput {
+	for _, nativeMsg := range aiChat.NativeMessages {
+		openaiMsg, ok := nativeMsg.(*OpenAIChatMessage)
+		if !ok {
+			continue
+		}
+		if openaiMsg.FunctionCall != nil && openaiMsg.FunctionCall.CallId == toolCallId {
+			return openaiMsg.FunctionCall
+		}
+	}
+	return nil
+}

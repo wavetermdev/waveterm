@@ -240,6 +240,12 @@ declare global {
         opts?: FileCopyOpts;
     };
 
+    // wshrpc.CommandFileRestoreBackupData
+    type CommandFileRestoreBackupData = {
+        backupfilepath: string;
+        restoretofilename: string;
+    };
+
     // wshrpc.CommandGetMetaData
     type CommandGetMetaData = {
         oref: ORef;
@@ -392,6 +398,18 @@ declare global {
         text?: string;
         submit?: boolean;
         newchat?: boolean;
+    };
+
+    // wshrpc.CommandWaveAIGetToolDiffData
+    type CommandWaveAIGetToolDiffData = {
+        chatid: string;
+        toolcallid: string;
+    };
+
+    // wshrpc.CommandWaveAIGetToolDiffRtnData
+    type CommandWaveAIGetToolDiffRtnData = {
+        originalcontents64: string;
+        modifiedcontents64: string;
     };
 
     // wshrpc.CommandWaveAIToolApproveData
@@ -710,6 +728,8 @@ declare global {
         "ai:apiversion"?: string;
         "ai:maxtokens"?: number;
         "ai:timeoutms"?: number;
+        "aifilediff:chatid"?: string;
+        "aifilediff:toolcallid"?: string;
         "editor:*"?: boolean;
         "editor:minimapenabled"?: boolean;
         "editor:stickyscrollenabled"?: boolean;
@@ -912,6 +932,7 @@ declare global {
         "editor:stickyscrollenabled"?: boolean;
         "editor:wordwrap"?: boolean;
         "editor:fontsize"?: number;
+        "editor:inlinediff"?: boolean;
         "web:*"?: boolean;
         "web:openlinksinternally"?: boolean;
         "web:defaulturl"?: string;

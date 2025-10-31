@@ -67,6 +67,7 @@ type UIMessagePart struct {
 	ProviderMetadata map[string]any `json:"providerMetadata,omitempty"`
 }
 
+// when updating this struct, also modify frontend/app/aipanel/aitypes.ts WaveUIDataTypes.userfile
 type UIMessageDataUserFile struct {
 	FileName   string `json:"filename,omitempty"`
 	Size       int    `json:"size,omitempty"`
@@ -76,17 +77,19 @@ type UIMessageDataUserFile struct {
 
 // ToolDefinition represents a tool that can be used by the AI model
 type ToolDefinition struct {
-	Name             string                    `json:"name"`
-	DisplayName      string                    `json:"displayname,omitempty"` // internal field (cannot marshal to API, must be stripped)
-	Description      string                    `json:"description"`
-	ShortDescription string                    `json:"shortdescription,omitempty"` // internal field (cannot marshal to API, must be stripped)
-	ToolLogName      string                    `json:"-"`                          // short name for telemetry (e.g., "term:getscrollback")
-	InputSchema      map[string]any            `json:"input_schema"`
-	Strict           bool                      `json:"strict,omitempty"`
-	ToolTextCallback func(any) (string, error) `json:"-"`
-	ToolAnyCallback  func(any) (any, error)    `json:"-"`
-	ToolInputDesc    func(any) string          `json:"-"`
-	ToolApproval     func(any) string          `json:"-"`
+	Name             string         `json:"name"`
+	DisplayName      string         `json:"displayname,omitempty"` // internal field (cannot marshal to API, must be stripped)
+	Description      string         `json:"description"`
+	ShortDescription string         `json:"shortdescription,omitempty"` // internal field (cannot marshal to API, must be stripped)
+	ToolLogName      string         `json:"-"`                          // short name for telemetry (e.g., "term:getscrollback")
+	InputSchema      map[string]any `json:"input_schema"`
+	Strict           bool           `json:"strict,omitempty"`
+
+	ToolTextCallback func(any) (string, error)                     `json:"-"`
+	ToolAnyCallback  func(any, *UIMessageDataToolUse) (any, error) `json:"-"`
+	ToolInputDesc    func(any) string                              `json:"-"`
+	ToolApproval     func(any) string                              `json:"-"`
+	ToolVerifyInput  func(any, *UIMessageDataToolUse) error        `json:"-"`
 }
 
 func (td *ToolDefinition) Clean() *ToolDefinition {
@@ -133,14 +136,18 @@ const (
 	ApprovalAutoApproved  = "auto-approved"
 )
 
+// when updating this struct, also modify frontend/app/aipanel/aitypes.ts WaveUIDataTypes.tooluse
 type UIMessageDataToolUse struct {
-	ToolCallId   string `json:"toolcallid"`
-	ToolName     string `json:"toolname"`
-	ToolDesc     string `json:"tooldesc"`
-	Status       string `json:"status"`
-	ErrorMessage string `json:"errormessage,omitempty"`
-	Approval     string `json:"approval,omitempty"`
-	BlockId      string `json:"blockid,omitempty"`
+	ToolCallId          string `json:"toolcallid"`
+	ToolName            string `json:"toolname"`
+	ToolDesc            string `json:"tooldesc"`
+	Status              string `json:"status"`
+	RunTs               int64  `json:"runts,omitempty"`
+	ErrorMessage        string `json:"errormessage,omitempty"`
+	Approval            string `json:"approval,omitempty"`
+	BlockId             string `json:"blockid,omitempty"`
+	WriteBackupFileName string `json:"writebackupfilename,omitempty"`
+	InputFileName       string `json:"inputfilename,omitempty"`
 }
 
 func (d *UIMessageDataToolUse) IsApproved() bool {
@@ -418,18 +425,18 @@ func (m *UIMessage) GetContent() string {
 }
 
 type WaveChatOpts struct {
-	ChatId                string
-	ClientId              string
-	Config                AIOptsType
-	Tools                 []ToolDefinition
-	SystemPrompt          []string
-	TabStateGenerator     func() (string, []ToolDefinition, string, error)
-	BuilderAppGenerator   func() (string, string, error)
-	WidgetAccess          bool
-	RegisterToolApproval  func(string)
-	AllowNativeWebSearch  bool
-	BuilderId             string
-	BuilderAppId          string
+	ChatId               string
+	ClientId             string
+	Config               AIOptsType
+	Tools                []ToolDefinition
+	SystemPrompt         []string
+	TabStateGenerator    func() (string, []ToolDefinition, string, error)
+	BuilderAppGenerator  func() (string, string, error)
+	WidgetAccess         bool
+	RegisterToolApproval func(string)
+	AllowNativeWebSearch bool
+	BuilderId            string
+	BuilderAppId         string
 
 	// ephemeral to the step
 	TabState       string

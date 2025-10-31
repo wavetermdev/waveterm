@@ -77,7 +77,7 @@ func GetWebNavigateToolDefinition(tabId string) uctypes.ToolDefinition {
 			}
 			return fmt.Sprintf("navigating web widget %s to %q", parsed.WidgetId, parsed.Url)
 		},
-		ToolAnyCallback: func(input any) (any, error) {
+		ToolAnyCallback: func(input any, toolUseData *uctypes.UIMessageDataToolUse) (any, error) {
 			parsed, err := parseWebNavigateInput(input)
 			if err != nil {
 				return nil, err

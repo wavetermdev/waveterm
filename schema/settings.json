@@ -113,6 +113,9 @@
         "editor:fontsize": {
           "type": "number"
         },
+        "editor:inlinediff": {
+          "type": "boolean"
+        },
         "web:*": {
           "type": "boolean"
         },

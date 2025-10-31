@@ -18,9 +18,9 @@ import {
     WOS,
 } from "@/app/store/global";
 import { uxCloseBlock } from "@/app/store/keymodel";
-import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
+import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
 import { ErrorBoundary } from "@/element/errorboundary";
 import { IconButton, ToggleIconButton } from "@/element/iconbutton";
 import { MagnifyIcon } from "@/element/magnify";
@@ -482,6 +482,7 @@ const ConnStatusOverlay = React.memo(
 
 const BlockMask = React.memo(({ nodeModel }: { nodeModel: NodeModel }) => {
     const isFocused = jotai.useAtomValue(nodeModel.isFocused);
+    const isEphemeral = jotai.useAtomValue(nodeModel.isEphemeral);
     const blockNum = jotai.useAtomValue(nodeModel.blockNum);
     const isLayoutMode = jotai.useAtomValue(atoms.controlShiftDelayAtom);
     const showOverlayBlockNums = jotai.useAtomValue(getSettingsKeyAtom("app:showoverlayblocknums")) ?? true;
@@ -489,7 +490,7 @@ const BlockMask = React.memo(({ nodeModel }: { nodeModel: NodeModel }) => {
     const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", nodeModel.blockId));
     const style: React.CSSProperties = {};
     let showBlockMask = false;
-    
+
     if (isFocused) {
         const tabData = jotai.useAtomValue(atoms.tabAtom);
         const tabActiveBorderColor = tabData?.meta?.["bg:activebordercolor"];
@@ -508,12 +509,15 @@ const BlockMask = React.memo(({ nodeModel }: { nodeModel: NodeModel }) => {
         if (blockData?.meta?.["frame:bordercolor"]) {
             style.borderColor = blockData.meta["frame:bordercolor"];
         }
+        if (isEphemeral && !style.borderColor) {
+            style.borderColor = "rgba(255, 255, 255, 0.7)";
+        }
     }
-    
+
     if (blockHighlight && !style.borderColor) {
         style.borderColor = "rgb(59, 130, 246)";
     }
-    
+
     let innerElem = null;
     if (isLayoutMode && showOverlayBlockNums) {
         showBlockMask = true;
@@ -531,9 +535,12 @@ const BlockMask = React.memo(({ nodeModel }: { nodeModel: NodeModel }) => {
             </div>
         );
     }
-    
+
     return (
-        <div className={clsx("block-mask", { "show-block-mask": showBlockMask, "bg-blue-500/10": blockHighlight })} style={style}>
+        <div
+            className={clsx("block-mask", { "show-block-mask": showBlockMask, "bg-blue-500/10": blockHighlight })}
+            style={style}
+        >
             {innerElem}
         </div>
     );

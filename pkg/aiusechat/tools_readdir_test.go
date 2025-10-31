@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
 )
 
 func TestReadDirCallback(t *testing.T) {
@@ -39,7 +41,7 @@ func TestReadDirCallback(t *testing.T) {
 		"path": tmpDir,
 	}
 
-	result, err := readDirCallback(input)
+	result, err := readDirCallback(input, &uctypes.UIMessageDataToolUse{})
 	if err != nil {
 		t.Fatalf("readDirCallback failed: %v", err)
 	}
@@ -100,7 +102,7 @@ func TestReadDirOnFile(t *testing.T) {
 		"path": tmpFile.Name(),
 	}
 
-	_, err = readDirCallback(input)
+	_, err = readDirCallback(input, &uctypes.UIMessageDataToolUse{})
 	if err == nil {
 		t.Fatalf("Expected error when reading a file with read_dir, got nil")
 	}
@@ -134,7 +136,7 @@ func TestReadDirMaxEntries(t *testing.T) {
 		"max_entries": maxEntries,
 	}
 
-	result, err := readDirCallback(input)
+	result, err := readDirCallback(input, &uctypes.UIMessageDataToolUse{})
 	if err != nil {
 		t.Fatalf("readDirCallback failed: %v", err)
 	}
@@ -200,7 +202,7 @@ func TestReadDirSortBeforeTruncate(t *testing.T) {
 		"max_entries": maxEntries,
 	}
 
-	result, err := readDirCallback(input)
+	result, err := readDirCallback(input, &uctypes.UIMessageDataToolUse{})
 	if err != nil {
 		t.Fatalf("readDirCallback failed: %v", err)
 	}

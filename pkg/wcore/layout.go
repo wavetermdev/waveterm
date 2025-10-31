@@ -22,6 +22,7 @@ const (
 	LayoutActionDataType_Replace         = "replace"
 	LayoutActionDataType_SplitHorizontal = "splithorizontal"
 	LayoutActionDataType_SplitVertical   = "splitvertical"
+	LayoutActionDataType_CleanupOrphaned = "cleanuporphaned"
 )
 
 type PortableLayout []struct {

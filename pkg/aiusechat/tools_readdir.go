@@ -50,7 +50,7 @@ func parseReadDirInput(input any) (*readDirParams, error) {
 	return result, nil
 }
 
-func readDirCallback(input any) (any, error) {
+func readDirCallback(input any, toolUseData *uctypes.UIMessageDataToolUse) (any, error) {
 	params, err := parseReadDirInput(input)
 	if err != nil {
 		return nil, err

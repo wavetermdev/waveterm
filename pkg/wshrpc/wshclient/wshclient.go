@@ -303,6 +303,12 @@ func FileReadStreamCommand(w *wshutil.WshRpc, data wshrpc.FileData, opts *wshrpc
 	return sendRpcRequestResponseStreamHelper[wshrpc.FileData](w, "filereadstream", data, opts)
 }
 
+// command "filerestorebackup", wshserver.FileRestoreBackupCommand
+func FileRestoreBackupCommand(w *wshutil.WshRpc, data wshrpc.CommandFileRestoreBackupData, opts *wshrpc.RpcOpts) error {
+	_, err := sendRpcRequestCallHelper[any](w, "filerestorebackup", data, opts)
+	return err
+}
+
 // command "filesharecapability", wshserver.FileShareCapabilityCommand
 func FileShareCapabilityCommand(w *wshutil.WshRpc, data string, opts *wshrpc.RpcOpts) (wshrpc.FileShareCapability, error) {
 	resp, err := sendRpcRequestCallHelper[wshrpc.FileShareCapability](w, "filesharecapability", data, opts)
@@ -645,6 +651,12 @@ func WaveAIAddContextCommand(w *wshutil.WshRpc, data wshrpc.CommandWaveAIAddCont
 func WaveAIEnableTelemetryCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "waveaienabletelemetry", nil, opts)
 	return err
+}
+
+// command "waveaigettooldiff", wshserver.WaveAIGetToolDiffCommand
+func WaveAIGetToolDiffCommand(w *wshutil.WshRpc, data wshrpc.CommandWaveAIGetToolDiffData, opts *wshrpc.RpcOpts) (*wshrpc.CommandWaveAIGetToolDiffRtnData, error) {
+	resp, err := sendRpcRequestCallHelper[*wshrpc.CommandWaveAIGetToolDiffRtnData](w, "waveaigettooldiff", data, opts)
+	return resp, err
 }
 
 // command "waveaitoolapprove", wshserver.WaveAIToolApproveCommand
