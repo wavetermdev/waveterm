@@ -350,7 +350,7 @@ async function appMain() {
     checkIfRunningUnderARM64Translation(fullConfig);
     ensureHotSpareTab(fullConfig);
     await relaunchBrowserWindows();
-    await initDocsite();
+    initDocsite();
     setTimeout(runActiveTimer, 5000); // start active timer, wait 5s just to be safe
     setTimeout(sendDisplaysTDataEvent, 5000);
 
