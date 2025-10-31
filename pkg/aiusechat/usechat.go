@@ -398,14 +398,6 @@ func processToolCalls(stopReason *uctypes.WaveStopReason, chatOpts uctypes.WaveC
 	// Send all data-tooluse packets at the beginning
 	for _, toolCall := range stopReason.ToolCalls {
 		if toolCall.ToolUseData != nil {
-			// Extract filename from tool input for UI display before sending
-			if inputMap, ok := toolCall.Input.(map[string]any); ok {
-				if filename, ok := inputMap["filename"].(string); ok {
-					toolCall.ToolUseData.InputFileName = filename
-				} else if filename, ok := inputMap["file_name"].(string); ok {
-					toolCall.ToolUseData.InputFileName = filename
-				}
-			}
 			log.Printf("AI data-tooluse %s\n", toolCall.ID)
 			_ = sseHandler.AiMsgData("data-tooluse", toolCall.ID, *toolCall.ToolUseData)
 			updateToolUseDataInChat(chatOpts, toolCall.ID, toolCall.ToolUseData)
