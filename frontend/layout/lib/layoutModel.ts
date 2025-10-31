@@ -411,6 +411,10 @@ export class LayoutModel {
         const tab = this.getter(this.tabAtom);
         const layoutBlockIds = new Set<string>();
 
+        if (this.treeState.rootNode == null) {
+            return;
+        }
+
         walkNodes(this.treeState.rootNode, (node) => {
             if (node.data?.blockId) {
                 layoutBlockIds.add(node.data.blockId);
