@@ -240,6 +240,12 @@ declare global {
         opts?: FileCopyOpts;
     };
 
+    // wshrpc.CommandFileRestoreBackupData
+    type CommandFileRestoreBackupData = {
+        backupfilepath: string;
+        restoretofilename: string;
+    };
+
     // wshrpc.CommandGetMetaData
     type CommandGetMetaData = {
         oref: ORef;

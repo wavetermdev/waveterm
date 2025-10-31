@@ -82,6 +82,7 @@ const (
 	Command_FileAppendIJson     = "fileappendijson"
 	Command_FileJoin            = "filejoin"
 	Command_FileShareCapability = "filesharecapability"
+	Command_FileRestoreBackup   = "filerestorebackup"
 
 	Command_EventPublish         = "eventpublish"
 	Command_EventRecv            = "eventrecv"
@@ -210,6 +211,7 @@ type WshRpcInterface interface {
 	FileListStreamCommand(ctx context.Context, data FileListData) <-chan RespOrErrorUnion[CommandRemoteListEntriesRtnData]
 
 	FileShareCapabilityCommand(ctx context.Context, path string) (FileShareCapability, error)
+	FileRestoreBackupCommand(ctx context.Context, data CommandFileRestoreBackupData) error
 	EventPublishCommand(ctx context.Context, data wps.WaveEvent) error
 	EventSubCommand(ctx context.Context, data wps.SubscriptionRequest) error
 	EventUnsubCommand(ctx context.Context, data string) error
@@ -595,6 +597,11 @@ type CommandFileCopyData struct {
 	SrcUri  string        `json:"srcuri"`
 	DestUri string        `json:"desturi"`
 	Opts    *FileCopyOpts `json:"opts,omitempty"`
+}
+
+type CommandFileRestoreBackupData struct {
+	BackupFilePath     string `json:"backupfilepath"`
+	RestoreToFileName  string `json:"restoretofilename"`
 }
 
 type CommandRemoteStreamTarData struct {

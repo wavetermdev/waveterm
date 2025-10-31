@@ -9,6 +9,9 @@ import { memo, useEffect, useRef, useState } from "react";
 import { WaveUIMessagePart } from "./aitypes";
 import { WaveAIModel } from "./waveai-model";
 
+// matches pkg/filebackup/filebackup.go
+const BackupRetentionDays = 5;
+
 function getEffectiveApprovalStatus(baseApproval: string, isStreaming: boolean): string {
     return !isStreaming && baseApproval === "needs-approval" ? "timeout" : baseApproval;
 }
@@ -136,6 +139,8 @@ interface RestoreBackupModalProps {
 const RestoreBackupModal = memo(({ part }: RestoreBackupModalProps) => {
     const model = WaveAIModel.getInstance();
     const toolData = part.data;
+    const status = useAtomValue(model.restoreBackupStatus);
+    const error = useAtomValue(model.restoreBackupError);
 
     const formatTimestamp = (ts: number) => {
         if (!ts) return "";
@@ -144,12 +149,46 @@ const RestoreBackupModal = memo(({ part }: RestoreBackupModalProps) => {
     };
 
     const handleConfirm = () => {
-        model.restoreBackup(toolData.toolcallid, toolData.inputfilename);
+        model.restoreBackup(toolData.toolcallid, toolData.writebackupfilename, toolData.inputfilename);
     };
 
     const handleCancel = () => {
         model.closeRestoreBackupModal();
     };
+
+    const handleClose = () => {
+        model.closeRestoreBackupModal();
+    };
+
+    if (status === "success") {
+        return (
+            <Modal className="restore-backup-modal pb-5 pr-5" onClose={handleClose} onOk={handleClose} okLabel="Close">
+                <div className="flex flex-col gap-4 pt-4 pb-4 max-w-xl">
+                    <div className="font-semibold text-lg text-green-500">Backup Successfully Restored</div>
+                    <div className="text-sm text-gray-300 leading-relaxed">
+                        The file <span className="font-mono text-white break-all">{toolData.inputfilename}</span> has
+                        been restored to its previous state.
+                    </div>
+                </div>
+            </Modal>
+        );
+    }
+
+    if (status === "error") {
+        return (
+            <Modal className="restore-backup-modal pb-5 pr-5" onClose={handleClose} onOk={handleClose} okLabel="Close">
+                <div className="flex flex-col gap-4 pt-4 pb-4 max-w-xl">
+                    <div className="font-semibold text-lg text-red-500">Failed to Restore Backup</div>
+                    <div className="text-sm text-gray-300 leading-relaxed">
+                        An error occurred while restoring the backup:
+                    </div>
+                    <div className="text-sm text-red-400 font-mono bg-gray-800 p-3 rounded break-all">{error}</div>
+                </div>
+            </Modal>
+        );
+    }
+
+    const isProcessing = status === "processing";
 
     return (
         <Modal
@@ -157,8 +196,10 @@ const RestoreBackupModal = memo(({ part }: RestoreBackupModalProps) => {
             onClose={handleCancel}
             onCancel={handleCancel}
             onOk={handleConfirm}
-            okLabel="Confirm Restore"
+            okLabel={isProcessing ? "Restoring..." : "Confirm Restore"}
             cancelLabel="Cancel"
+            okDisabled={isProcessing}
+            cancelDisabled={isProcessing}
         >
             <div className="flex flex-col gap-4 pt-4 pb-4 max-w-xl">
                 <div className="font-semibold text-lg">Restore File Backup</div>
@@ -277,16 +318,20 @@ const AIToolUse = memo(({ part, isStreaming }: AIToolUseProps) => {
                 <span className="font-bold">{statusIcon}</span>
                 <div className="font-semibold">{toolData.toolname}</div>
                 <div className="flex-1" />
-                {isFileWriteTool && toolData.inputfilename && toolData.writebackupfilename && (
-                    <button
-                        onClick={() => model.openRestoreBackupModal(toolData.toolcallid)}
-                        className="flex-shrink-0 px-1.5 py-0.5 border border-gray-600 hover:border-gray-500 hover:bg-gray-700 rounded cursor-pointer transition-colors flex items-center gap-1 text-gray-400"
-                        title="Restore backup file"
-                    >
-                        <span className="text-xs">Restore Backup</span>
-                        <i className="fa fa-clock-rotate-left text-xs"></i>
-                    </button>
-                )}
+                {isFileWriteTool &&
+                    toolData.inputfilename &&
+                    toolData.writebackupfilename &&
+                    toolData.runts &&
+                    Date.now() - toolData.runts < BackupRetentionDays * 24 * 60 * 60 * 1000 && (
+                        <button
+                            onClick={() => model.openRestoreBackupModal(toolData.toolcallid)}
+                            className="flex-shrink-0 px-1.5 py-0.5 border border-gray-600 hover:border-gray-500 hover:bg-gray-700 rounded cursor-pointer transition-colors flex items-center gap-1 text-gray-400"
+                            title="Restore backup file"
+                        >
+                            <span className="text-xs">Revert File</span>
+                            <i className="fa fa-clock-rotate-left text-xs"></i>
+                        </button>
+                    )}
                 {isFileWriteTool && toolData.inputfilename && (
                     <button
                         onClick={handleOpenDiff}

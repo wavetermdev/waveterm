@@ -87,6 +87,42 @@ func MakeFileBackup(absFilePath string) (string, error) {
 	return backupPath, nil
 }
 
+func RestoreBackup(backupFilePath string, restoreToFileName string) error {
+	backupData, err := os.ReadFile(backupFilePath)
+	if err != nil {
+		return fmt.Errorf("failed to read backup file: %w", err)
+	}
+
+	metadataPath := backupFilePath[:len(backupFilePath)-4] + ".json"
+	metadataData, err := os.ReadFile(metadataPath)
+	if err != nil {
+		return fmt.Errorf("failed to read backup metadata: %w", err)
+	}
+
+	var metadata BackupMetadata
+	err = json.Unmarshal(metadataData, &metadata)
+	if err != nil {
+		return fmt.Errorf("failed to unmarshal backup metadata: %w", err)
+	}
+
+	if metadata.FullPath != restoreToFileName {
+		return fmt.Errorf("backup metadata mismatch: expected %s, got %s", restoreToFileName, metadata.FullPath)
+	}
+
+	var perm os.FileMode
+	_, err = fmt.Sscanf(metadata.Perm, "%o", &perm)
+	if err != nil {
+		return fmt.Errorf("failed to parse file permissions: %w", err)
+	}
+
+	err = os.WriteFile(restoreToFileName, backupData, perm)
+	if err != nil {
+		return fmt.Errorf("failed to restore file: %w", err)
+	}
+
+	return nil
+}
+
 func CleanupOldBackups() error {
 	backupBaseDir := filepath.Join(wavebase.GetWaveCachesDir(), "waveai-backups")
 

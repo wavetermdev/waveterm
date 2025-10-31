@@ -57,6 +57,8 @@ export class WaveAIModel {
     isWaveAIFocusedAtom!: jotai.Atom<boolean>;
     panelVisibleAtom!: jotai.Atom<boolean>;
     restoreBackupModalToolCallId: jotai.PrimitiveAtom<string | null> = jotai.atom(null) as jotai.PrimitiveAtom<string | null>;
+    restoreBackupStatus: jotai.PrimitiveAtom<"idle" | "processing" | "success" | "error"> = jotai.atom("idle");
+    restoreBackupError: jotai.PrimitiveAtom<string> = jotai.atom(null) as jotai.PrimitiveAtom<string>;
 
     private constructor(orefContext: ORef, inBuilder: boolean) {
         this.orefContext = orefContext;
@@ -460,10 +462,25 @@ export class WaveAIModel {
 
     closeRestoreBackupModal() {
         globalStore.set(this.restoreBackupModalToolCallId, null);
+        globalStore.set(this.restoreBackupStatus, "idle");
+        globalStore.set(this.restoreBackupError, null);
     }
 
-    async restoreBackup(toolcallid: string, filename: string) {
-        console.log("Restore backup called for:", { toolcallid, filename });
-        this.closeRestoreBackupModal();
+    async restoreBackup(toolcallid: string, backupFilePath: string, restoreToFileName: string) {
+        globalStore.set(this.restoreBackupStatus, "processing");
+        globalStore.set(this.restoreBackupError, null);
+        try {
+            await RpcApi.FileRestoreBackupCommand(TabRpcClient, {
+                backupfilepath: backupFilePath,
+                restoretofilename: restoreToFileName,
+            });
+            console.log("Backup restored successfully:", { toolcallid, backupFilePath, restoreToFileName });
+            globalStore.set(this.restoreBackupStatus, "success");
+        } catch (error) {
+            console.error("Failed to restore backup:", error);
+            const errorMsg = error?.message || String(error);
+            globalStore.set(this.restoreBackupError, errorMsg);
+            globalStore.set(this.restoreBackupStatus, "error");
+        }
     }
 }

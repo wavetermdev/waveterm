@@ -303,6 +303,12 @@ func FileReadStreamCommand(w *wshutil.WshRpc, data wshrpc.FileData, opts *wshrpc
 	return sendRpcRequestResponseStreamHelper[wshrpc.FileData](w, "filereadstream", data, opts)
 }
 
+// command "filerestorebackup", wshserver.FileRestoreBackupCommand
+func FileRestoreBackupCommand(w *wshutil.WshRpc, data wshrpc.CommandFileRestoreBackupData, opts *wshrpc.RpcOpts) error {
+	_, err := sendRpcRequestCallHelper[any](w, "filerestorebackup", data, opts)
+	return err
+}
+
 // command "filesharecapability", wshserver.FileShareCapabilityCommand
 func FileShareCapabilityCommand(w *wshutil.WshRpc, data string, opts *wshrpc.RpcOpts) (wshrpc.FileShareCapability, error) {
 	resp, err := sendRpcRequestCallHelper[wshrpc.FileShareCapability](w, "filesharecapability", data, opts)
