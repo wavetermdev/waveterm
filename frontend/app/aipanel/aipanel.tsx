@@ -6,8 +6,6 @@ import { ErrorBoundary } from "@/app/element/errorboundary";
 import { ContextMenuModel } from "@/app/store/contextmenu";
 import { atoms, getSettingsKeyAtom } from "@/app/store/global";
 import { globalStore } from "@/app/store/jotaiStore";
-import { RpcApi } from "@/app/store/wshclientapi";
-import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { checkKeyPressed, keydownWrapper } from "@/util/keyutil";
 import { isMacOS } from "@/util/platformutil";
 import { cn } from "@/util/util";
@@ -212,6 +210,7 @@ interface AIPanelProps {
 
 const AIPanelComponentInner = memo(({ className, onClose }: AIPanelProps) => {
     const [isDragOver, setIsDragOver] = useState(false);
+    const [isReactDndDragOver, setIsReactDndDragOver] = useState(false);
     const [initialLoadDone, setInitialLoadDone] = useState(false);
     const model = WaveAIModel.getInstance();
     const containerRef = useRef<HTMLDivElement>(null);
@@ -323,27 +322,43 @@ const AIPanelComponentInner = memo(({ className, onClose }: AIPanelProps) => {
     };
 
     const handleDragOver = (e: React.DragEvent) => {
+        const hasFiles = hasFilesDragged(e.dataTransfer);
+        
+        // Only handle native file drags here, let react-dnd handle FILE_ITEM drags
+        if (!hasFiles) {
+            return;
+        }
+        
         e.preventDefault();
         e.stopPropagation();
 
-        const hasFiles = hasFilesDragged(e.dataTransfer);
-        if (hasFiles && !isDragOver) {
+        if (!isDragOver) {
             setIsDragOver(true);
-        } else if (!hasFiles && isDragOver) {
-            setIsDragOver(false);
         }
     };
 
     const handleDragEnter = (e: React.DragEvent) => {
+        const hasFiles = hasFilesDragged(e.dataTransfer);
+        
+        // Only handle native file drags here, let react-dnd handle FILE_ITEM drags
+        if (!hasFiles) {
+            return;
+        }
+        
         e.preventDefault();
         e.stopPropagation();
 
-        if (hasFilesDragged(e.dataTransfer)) {
-            setIsDragOver(true);
-        }
+        setIsDragOver(true);
     };
 
     const handleDragLeave = (e: React.DragEvent) => {
+        const hasFiles = hasFilesDragged(e.dataTransfer);
+        
+        // Only handle native file drags here, let react-dnd handle FILE_ITEM drags
+        if (!hasFiles) {
+            return;
+        }
+        
         e.preventDefault();
         e.stopPropagation();
 
@@ -358,6 +373,12 @@ const AIPanelComponentInner = memo(({ className, onClose }: AIPanelProps) => {
     };
 
     const handleDrop = async (e: React.DragEvent) => {
+        // Check if this is a FILE_ITEM drag from react-dnd
+        // If so, let react-dnd handle it instead
+        if (!e.dataTransfer.files.length) {
+            return; // Let react-dnd handle FILE_ITEM drags
+        }
+
         e.preventDefault();
         e.stopPropagation();
         setIsDragOver(false);
@@ -384,71 +405,11 @@ const AIPanelComponentInner = memo(({ className, onClose }: AIPanelProps) => {
         }
     };
 
-    // Handle FILE_ITEM drops from preview directory
     const handleFileItemDrop = useCallback(
-        async (draggedFile: DraggedFile) => {
-            try {
-                // Don't drop directories
-                if (draggedFile.isDir) {
-                    model.setError("Cannot add directories to Wave AI. Please select a file.");
-                    return;
-                }
-
-                // Read the file from the remote URI
-                const fileData = await RpcApi.FileReadCommand(
-                    TabRpcClient,
-                    {
-                        info: {
-                            path: draggedFile.uri,
-                        },
-                    },
-                    null
-                );
-
-                if (!fileData.data64) {
-                    model.setError(`Failed to read file: ${draggedFile.relName}`);
-                    return;
-                }
-
-                // Convert base64 to Uint8Array
-                const binaryString = atob(fileData.data64);
-                const bytes = new Uint8Array(binaryString.length);
-                for (let i = 0; i < binaryString.length; i++) {
-                    bytes[i] = binaryString.charCodeAt(i);
-                }
-
-                // Determine MIME type
-                const mimeType = fileData.info?.mimetype || "application/octet-stream";
-
-                // Create a File object
-                const file = new File([bytes], draggedFile.relName, { type: mimeType });
-
-                // Validate the file
-                if (!isAcceptableFile(file)) {
-                    model.setError(
-                        `File type not supported: ${draggedFile.relName}. Supported: images, PDFs, and text/code files.`
-                    );
-                    return;
-                }
-
-                const sizeError = validateFileSize(file);
-                if (sizeError) {
-                    model.setError(formatFileSizeError(sizeError));
-                    return;
-                }
-
-                // Add the file to the AI panel
-                await model.addFile(file);
-            } catch (error) {
-                console.error("Error handling FILE_ITEM drop:", error);
-                const errorMsg = error instanceof Error ? error.message : String(error);
-                model.setError(`Failed to add file: ${errorMsg}`);
-            }
-        },
+        (draggedFile: DraggedFile) => model.addFileFromRemoteUri(draggedFile),
         [model]
     );
 
-    // Set up react-dnd drop handler for FILE_ITEM
     const [{ isOver, canDrop }, drop] = useDrop(
         () => ({
             accept: "FILE_ITEM",
@@ -463,12 +424,11 @@ const AIPanelComponentInner = memo(({ className, onClose }: AIPanelProps) => {
 
     // Update drag over state for FILE_ITEM drags
     useEffect(() => {
+        console.log("FILE_ITEM drag state:", { isOver, canDrop });
         if (isOver && canDrop) {
-            setIsDragOver(true);
-        } else if (!isOver) {
-            // Clear drag over when FILE_ITEM is no longer over the panel
-            // Native file drags are handled separately by handleDragLeave
-            setIsDragOver(false);
+            setIsReactDndDragOver(true);
+        } else {
+            setIsReactDndDragOver(false);
         }
     }, [isOver, canDrop]);
 
@@ -551,7 +511,7 @@ const AIPanelComponentInner = memo(({ className, onClose }: AIPanelProps) => {
                 "bg-gray-900 flex flex-col relative h-[calc(100%-4px)]",
                 model.inBuilder ? "mt-0" : "mt-1",
                 className,
-                isDragOver && "bg-gray-800 border-accent",
+                (isDragOver || isReactDndDragOver) && "bg-gray-800 border-accent",
                 isFocused ? "border-2 border-accent" : "border-2 border-transparent"
             )}
             style={{
@@ -567,7 +527,7 @@ const AIPanelComponentInner = memo(({ className, onClose }: AIPanelProps) => {
             onClick={handleClick}
             inert={!isPanelVisible ? true : undefined}
         >
-            {isDragOver && <AIDragOverlay />}
+            {(isDragOver || isReactDndDragOver) && <AIDragOverlay />}
             {showBlockMask && <AIBlockMask />}
             <AIPanelHeader onClose={onClose} model={model} onClearChat={handleClearChat} />
             <AIRateLimitStrip />
