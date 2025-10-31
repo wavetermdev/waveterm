@@ -464,7 +464,8 @@ const AIPanelComponentInner = memo(({ className, onClose }: AIPanelProps) => {
     useEffect(() => {
         if (isOver && canDrop) {
             setIsDragOver(true);
-        } else if (!isOver && isDragOver && !hasFilesDragged({ types: [] } as any)) {
+        } else if (!isOver && !hasFilesDragged({ types: [] } as any)) {
+            // Only clear drag over if neither FILE_ITEM nor native files are being dragged
             setIsDragOver(false);
         }
     }, [isOver, canDrop]);
