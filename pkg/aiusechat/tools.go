@@ -271,7 +271,7 @@ func GetAdderToolDefinition() uctypes.ToolDefinition {
 			"required":             []string{"values"},
 			"additionalProperties": false,
 		},
-		ToolAnyCallback: func(input any) (any, error) {
+		ToolAnyCallback: func(input any, toolUseData *uctypes.UIMessageDataToolUse) (any, error) {
 			inputMap, ok := input.(map[string]any)
 			if !ok {
 				return nil, fmt.Errorf("invalid input format")

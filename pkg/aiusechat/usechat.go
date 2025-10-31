@@ -296,17 +296,6 @@ func processToolCallInternal(toolCall uctypes.WaveToolCall, chatOpts uctypes.Wav
 		}
 	}
 
-	// InputFileName should already be set in processToolCalls, but double-check here
-	if toolCall.ToolUseData.InputFileName == "" {
-		if inputMap, ok := toolCall.Input.(map[string]any); ok {
-			if filename, ok := inputMap["filename"].(string); ok {
-				toolCall.ToolUseData.InputFileName = filename
-			} else if filename, ok := inputMap["file_name"].(string); ok {
-				toolCall.ToolUseData.InputFileName = filename
-			}
-		}
-	}
-
 	if toolCall.ToolUseData.Status == uctypes.ToolUseStatusError {
 		errorMsg := toolCall.ToolUseData.ErrorMessage
 		if errorMsg == "" {
@@ -320,7 +309,7 @@ func processToolCallInternal(toolCall uctypes.WaveToolCall, chatOpts uctypes.Wav
 	}
 
 	if toolDef != nil && toolDef.ToolVerifyInput != nil {
-		if err := toolDef.ToolVerifyInput(toolCall.Input); err != nil {
+		if err := toolDef.ToolVerifyInput(toolCall.Input, toolCall.ToolUseData); err != nil {
 			errorMsg := fmt.Sprintf("Input validation failed: %v", err)
 			toolCall.ToolUseData.Status = uctypes.ToolUseStatusError
 			toolCall.ToolUseData.ErrorMessage = errorMsg
@@ -573,7 +562,7 @@ func ResolveToolCall(toolCall uctypes.WaveToolCall, chatOpts uctypes.WaveChatOpt
 			result.Text = text
 		}
 	} else if toolDef.ToolAnyCallback != nil {
-		output, err := toolDef.ToolAnyCallback(toolCall.Input)
+		output, err := toolDef.ToolAnyCallback(toolCall.Input, toolCall.ToolUseData)
 		if err != nil {
 			result.ErrorText = err.Error()
 		} else {

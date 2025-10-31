@@ -190,7 +190,7 @@ func GetTermGetScrollbackToolDefinition(tabId string) uctypes.ToolDefinition {
 			lineEnd := parsed.LineStart + parsed.Count
 			return fmt.Sprintf("reading terminal output from %s (lines %d-%d)", parsed.WidgetId, parsed.LineStart, lineEnd)
 		},
-		ToolAnyCallback: func(input any) (any, error) {
+		ToolAnyCallback: func(input any, toolUseData *uctypes.UIMessageDataToolUse) (any, error) {
 			parsed, err := parseTermGetScrollbackInput(input)
 			if err != nil {
 				return nil, err
@@ -266,7 +266,7 @@ func GetTermCommandOutputToolDefinition(tabId string) uctypes.ToolDefinition {
 			}
 			return fmt.Sprintf("reading last command output from %s", parsed.WidgetId)
 		},
-		ToolAnyCallback: func(input any) (any, error) {
+		ToolAnyCallback: func(input any, toolUseData *uctypes.UIMessageDataToolUse) (any, error) {
 			parsed, err := parseTermCommandOutputInput(input)
 			if err != nil {
 				return nil, err

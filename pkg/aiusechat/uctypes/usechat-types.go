@@ -76,18 +76,19 @@ type UIMessageDataUserFile struct {
 
 // ToolDefinition represents a tool that can be used by the AI model
 type ToolDefinition struct {
-	Name             string                    `json:"name"`
-	DisplayName      string                    `json:"displayname,omitempty"` // internal field (cannot marshal to API, must be stripped)
-	Description      string                    `json:"description"`
-	ShortDescription string                    `json:"shortdescription,omitempty"` // internal field (cannot marshal to API, must be stripped)
-	ToolLogName      string                    `json:"-"`                          // short name for telemetry (e.g., "term:getscrollback")
-	InputSchema      map[string]any            `json:"input_schema"`
-	Strict           bool                      `json:"strict,omitempty"`
-	ToolTextCallback func(any) (string, error) `json:"-"`
-	ToolAnyCallback  func(any) (any, error)    `json:"-"`
-	ToolInputDesc    func(any) string          `json:"-"`
-	ToolApproval     func(any) string          `json:"-"`
-	ToolVerifyInput  func(any) error           `json:"-"`
+	Name             string         `json:"name"`
+	DisplayName      string         `json:"displayname,omitempty"` // internal field (cannot marshal to API, must be stripped)
+	Description      string         `json:"description"`
+	ShortDescription string         `json:"shortdescription,omitempty"` // internal field (cannot marshal to API, must be stripped)
+	ToolLogName      string         `json:"-"`                          // short name for telemetry (e.g., "term:getscrollback")
+	InputSchema      map[string]any `json:"input_schema"`
+	Strict           bool           `json:"strict,omitempty"`
+
+	ToolTextCallback func(any) (string, error)                     `json:"-"`
+	ToolAnyCallback  func(any, *UIMessageDataToolUse) (any, error) `json:"-"`
+	ToolInputDesc    func(any) string                              `json:"-"`
+	ToolApproval     func(any) string                              `json:"-"`
+	ToolVerifyInput  func(any, *UIMessageDataToolUse) error        `json:"-"`
 }
 
 func (td *ToolDefinition) Clean() *ToolDefinition {

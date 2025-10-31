@@ -101,7 +101,7 @@ func parseWriteTextFileInput(input any) (*writeTextFileParams, error) {
 	return result, nil
 }
 
-func verifyWriteTextFileInput(input any) error {
+func verifyWriteTextFileInput(input any, toolUseData *uctypes.UIMessageDataToolUse) error {
 	params, err := parseWriteTextFileInput(input)
 	if err != nil {
 		return err
@@ -118,10 +118,15 @@ func verifyWriteTextFileInput(input any) error {
 	}
 
 	_, err = validateTextFile(expandedPath, "write to", false)
-	return err
+	if err != nil {
+		return err
+	}
+
+	toolUseData.InputFileName = params.Filename
+	return nil
 }
 
-func writeTextFileCallback(input any) (any, error) {
+func writeTextFileCallback(input any, toolUseData *uctypes.UIMessageDataToolUse) (any, error) {
 	params, err := parseWriteTextFileInput(input)
 	if err != nil {
 		return nil, err
@@ -149,10 +154,11 @@ func writeTextFileCallback(input any) (any, error) {
 	}
 
 	if fileInfo != nil {
-		err = filebackup.MakeFileBackup(expandedPath)
+		backupPath, err := filebackup.MakeFileBackup(expandedPath)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create backup: %w", err)
 		}
+		toolUseData.WriteBackupFileName = backupPath
 	}
 
 	err = os.WriteFile(expandedPath, contentsBytes, 0644)
@@ -230,7 +236,7 @@ func parseEditTextFileInput(input any) (*editTextFileParams, error) {
 	return result, nil
 }
 
-func verifyEditTextFileInput(input any) error {
+func verifyEditTextFileInput(input any, toolUseData *uctypes.UIMessageDataToolUse) error {
 	params, err := parseEditTextFileInput(input)
 	if err != nil {
 		return err
@@ -242,7 +248,12 @@ func verifyEditTextFileInput(input any) error {
 	}
 
 	_, err = validateTextFile(expandedPath, "edit", true)
-	return err
+	if err != nil {
+		return err
+	}
+
+	toolUseData.InputFileName = params.Filename
+	return nil
 }
 
 // EditTextFileDryRun applies edits to a file and returns the original and modified content
@@ -281,7 +292,7 @@ func EditTextFileDryRun(input any, fileOverride string) ([]byte, []byte, error) 
 	return originalContent, modifiedContent, nil
 }
 
-func editTextFileCallback(input any) (any, error) {
+func editTextFileCallback(input any, toolUseData *uctypes.UIMessageDataToolUse) (any, error) {
 	params, err := parseEditTextFileInput(input)
 	if err != nil {
 		return nil, err
@@ -297,10 +308,11 @@ func editTextFileCallback(input any) (any, error) {
 		return nil, err
 	}
 
-	err = filebackup.MakeFileBackup(expandedPath)
+	backupPath, err := filebackup.MakeFileBackup(expandedPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create backup: %w", err)
 	}
+	toolUseData.WriteBackupFileName = backupPath
 
 	err = fileutil.ReplaceInFile(expandedPath, params.Edits)
 	if err != nil {
@@ -399,7 +411,7 @@ func parseDeleteTextFileInput(input any) (*deleteTextFileParams, error) {
 	return result, nil
 }
 
-func verifyDeleteTextFileInput(input any) error {
+func verifyDeleteTextFileInput(input any, toolUseData *uctypes.UIMessageDataToolUse) error {
 	params, err := parseDeleteTextFileInput(input)
 	if err != nil {
 		return err
@@ -411,10 +423,15 @@ func verifyDeleteTextFileInput(input any) error {
 	}
 
 	_, err = validateTextFile(expandedPath, "delete", true)
-	return err
+	if err != nil {
+		return err
+	}
+
+	toolUseData.InputFileName = params.Filename
+	return nil
 }
 
-func deleteTextFileCallback(input any) (any, error) {
+func deleteTextFileCallback(input any, toolUseData *uctypes.UIMessageDataToolUse) (any, error) {
 	params, err := parseDeleteTextFileInput(input)
 	if err != nil {
 		return nil, err
@@ -430,10 +447,11 @@ func deleteTextFileCallback(input any) (any, error) {
 		return nil, err
 	}
 
-	err = filebackup.MakeFileBackup(expandedPath)
+	backupPath, err := filebackup.MakeFileBackup(expandedPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create backup: %w", err)
 	}
+	toolUseData.WriteBackupFileName = backupPath
 
 	err = os.Remove(expandedPath)
 	if err != nil {

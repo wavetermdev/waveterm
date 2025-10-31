@@ -17,21 +17,23 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 )
 
+const BackupRetentionPeriod = 5 * 24 * time.Hour
+
 type BackupMetadata struct {
 	FullPath  string `json:"fullpath"`
 	Timestamp string `json:"timestamp"`
 	Perm      string `json:"perm"`
 }
 
-func MakeFileBackup(absFilePath string) error {
+func MakeFileBackup(absFilePath string) (string, error) {
 	fileInfo, err := os.Stat(absFilePath)
 	if err != nil {
-		return fmt.Errorf("failed to stat file for backup: %w", err)
+		return "", fmt.Errorf("failed to stat file for backup: %w", err)
 	}
 
 	fileData, err := os.ReadFile(absFilePath)
 	if err != nil {
-		return fmt.Errorf("failed to read file for backup: %w", err)
+		return "", fmt.Errorf("failed to read file for backup: %w", err)
 	}
 
 	dir := filepath.Dir(absFilePath)
@@ -42,7 +44,7 @@ func MakeFileBackup(absFilePath string) error {
 
 	uuidV7, err := uuid.NewV7()
 	if err != nil {
-		return fmt.Errorf("failed to generate UUID: %w", err)
+		return "", fmt.Errorf("failed to generate UUID: %w", err)
 	}
 	uuidStr := uuidV7.String()
 
@@ -52,7 +54,7 @@ func MakeFileBackup(absFilePath string) error {
 	backupDir := filepath.Join(wavebase.GetWaveCachesDir(), "waveai-backups", dateStr)
 	err = os.MkdirAll(backupDir, 0700)
 	if err != nil {
-		return fmt.Errorf("failed to create backup directory: %w", err)
+		return "", fmt.Errorf("failed to create backup directory: %w", err)
 	}
 
 	backupName := fmt.Sprintf("%s.%s.%s.bak", basename, dirHash8, uuidStr)
@@ -60,7 +62,7 @@ func MakeFileBackup(absFilePath string) error {
 
 	err = os.WriteFile(backupPath, fileData, 0600)
 	if err != nil {
-		return fmt.Errorf("failed to write backup file: %w", err)
+		return "", fmt.Errorf("failed to write backup file: %w", err)
 	}
 
 	metadata := BackupMetadata{
@@ -71,7 +73,7 @@ func MakeFileBackup(absFilePath string) error {
 
 	metadataJSON, err := json.MarshalIndent(metadata, "", "  ")
 	if err != nil {
-		return fmt.Errorf("failed to marshal backup metadata: %w", err)
+		return "", fmt.Errorf("failed to marshal backup metadata: %w", err)
 	}
 
 	metadataName := fmt.Sprintf("%s.%s.%s.json", basename, dirHash8, uuidStr)
@@ -79,10 +81,10 @@ func MakeFileBackup(absFilePath string) error {
 
 	err = os.WriteFile(metadataPath, metadataJSON, 0600)
 	if err != nil {
-		return fmt.Errorf("failed to write backup metadata: %w", err)
+		return "", fmt.Errorf("failed to write backup metadata: %w", err)
 	}
 
-	return nil
+	return backupPath, nil
 }
 
 func CleanupOldBackups() error {
@@ -97,7 +99,7 @@ func CleanupOldBackups() error {
 		return fmt.Errorf("failed to read backup directory: %w", err)
 	}
 
-	cutoffTime := time.Now().Add(-5 * 24 * time.Hour)
+	cutoffTime := time.Now().Add(-BackupRetentionPeriod)
 	var removedCount int
 
 	for _, entry := range entries {

@@ -31,8 +31,8 @@ func handleTsunamiBlockDesc(block *waveobj.Block) string {
 	return "tsunami widget - unknown description"
 }
 
-func makeTsunamiGetCallback(status *blockcontroller.BlockControllerRuntimeStatus, apiPath string) func(any) (any, error) {
-	return func(input any) (any, error) {
+func makeTsunamiGetCallback(status *blockcontroller.BlockControllerRuntimeStatus, apiPath string) func(any, *uctypes.UIMessageDataToolUse) (any, error) {
+	return func(input any, toolUseData *uctypes.UIMessageDataToolUse) (any, error) {
 		if status.TsunamiPort == 0 {
 			return nil, fmt.Errorf("tsunami port not available")
 		}
@@ -66,8 +66,8 @@ func makeTsunamiGetCallback(status *blockcontroller.BlockControllerRuntimeStatus
 	}
 }
 
-func makeTsunamiPostCallback(status *blockcontroller.BlockControllerRuntimeStatus, apiPath string) func(any) (any, error) {
-	return func(input any) (any, error) {
+func makeTsunamiPostCallback(status *blockcontroller.BlockControllerRuntimeStatus, apiPath string) func(any, *uctypes.UIMessageDataToolUse) (any, error) {
+	return func(input any, toolUseData *uctypes.UIMessageDataToolUse) (any, error) {
 		if status.TsunamiPort == 0 {
 			return nil, fmt.Errorf("tsunami port not available")
 		}
