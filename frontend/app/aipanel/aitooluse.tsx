@@ -216,30 +216,33 @@ const AIToolUse = memo(({ part, isStreaming }: AIToolUseProps) => {
 
     return (
         <div
-            className={cn("flex items-start gap-2 p-2 rounded bg-gray-800 border border-gray-700", statusColor)}
+            className={cn("flex flex-col gap-1 p-2 rounded bg-gray-800 border border-gray-700", statusColor)}
             onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}
         >
-            <span className="font-bold">{statusIcon}</span>
-            <div className="flex-1">
+            <div className="flex items-center gap-2">
+                <span className="font-bold">{statusIcon}</span>
                 <div className="font-semibold">{toolData.toolname}</div>
-                {toolData.tooldesc && <div className="text-sm text-gray-400">{toolData.tooldesc}</div>}
-                {(toolData.errormessage || effectiveApproval === "timeout") && (
-                    <div className="text-sm text-red-300 mt-1">{toolData.errormessage || "Not approved"}</div>
-                )}
-                {effectiveApproval === "needs-approval" && (
-                    <AIToolApprovalButtons count={1} onApprove={handleApprove} onDeny={handleDeny} />
+                <div className="flex-1" />
+                {isFileWriteTool && toolData.inputfilename && (
+                    <button
+                        onClick={handleOpenDiff}
+                        className="flex-shrink-0 px-1.5 py-0.5 border border-gray-600 hover:border-gray-500 hover:bg-gray-700 rounded cursor-pointer transition-colors flex items-center gap-1 text-gray-400"
+                        title="Open in diff viewer"
+                    >
+                        <span className="text-xs">Show Diff</span>
+                        <i className="fa fa-arrow-up-right-from-square text-xs"></i>
+                    </button>
                 )}
             </div>
-            {isFileWriteTool && toolData.inputfilename && (
-                <button
-                    onClick={handleOpenDiff}
-                    className="flex-shrink-0 px-2 py-1 border border-gray-600 hover:border-gray-500 hover:bg-gray-700 rounded cursor-pointer transition-colors flex items-center gap-1.5 text-gray-400"
-                    title="Open in diff viewer"
-                >
-                    <span className="text-sm">Show Diff</span>
-                    <i className="fa fa-arrow-up-right-from-square text-sm"></i>
-                </button>
+            {toolData.tooldesc && <div className="text-sm text-gray-400 pl-6">{toolData.tooldesc}</div>}
+            {(toolData.errormessage || effectiveApproval === "timeout") && (
+                <div className="text-sm text-red-300 pl-6">{toolData.errormessage || "Not approved"}</div>
+            )}
+            {effectiveApproval === "needs-approval" && (
+                <div className="pl-6">
+                    <AIToolApprovalButtons count={1} onApprove={handleApprove} onDeny={handleDeny} />
+                </div>
             )}
         </div>
     );

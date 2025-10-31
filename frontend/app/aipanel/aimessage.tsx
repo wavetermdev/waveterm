@@ -214,7 +214,9 @@ export const AIMessage = memo(({ message, isStreaming }: AIMessageProps) => {
             <div
                 className={cn(
                     "px-2 rounded-lg [&>*:first-child]:!mt-0",
-                    message.role === "user" ? "py-2 bg-accent-800 text-white max-w-[calc(100%-20px)]" : null
+                    message.role === "user"
+                        ? "py-2 bg-accent-800 text-white max-w-[calc(100%-20px)]"
+                        : "min-w-[min(100%,500px)]"
                 )}
             >
                 {displayParts.length === 0 && !isStreaming && !thinkingData ? (
