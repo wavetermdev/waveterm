@@ -97,7 +97,7 @@ const BuilderWorkspace = memo(() => {
         <div className="flex-1 overflow-hidden">
             <PanelGroup direction="horizontal" onLayout={handleHorizontalLayout}>
                 <Panel defaultSize={layout.chat} minSize={20}>
-                    <AIPanel className="w-full h-full" />
+                    <AIPanel />
                 </Panel>
                 <PanelResizeHandle className="w-0.5 bg-transparent hover:bg-gray-500/20 transition-colors" />
                 <Panel defaultSize={100 - layout.chat} minSize={20}>
