@@ -1,6 +1,13 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+const TextFileLimit = 200 * 1024; // 200KB
+const PdfLimit = 5 * 1024 * 1024; // 5MB
+const ImageLimit = 10 * 1024 * 1024; // 10MB
+const ImagePreviewSize = 128;
+const ImagePreviewWebPQuality = 0.8;
+const ImageMaxEdge = 4096;
+
 export const isAcceptableFile = (file: File): boolean => {
     const acceptableTypes = [
         // Images
@@ -34,10 +41,15 @@ export const isAcceptableFile = (file: File): boolean => {
     const extension = file.name.split(".").pop()?.toLowerCase();
     const acceptableExtensions = [
         "txt",
+        "log",
         "md",
         "js",
+        "mjs",
+        "cjs",
         "jsx",
         "ts",
+        "mts",
+        "cts",
         "tsx",
         "go",
         "py",
@@ -47,10 +59,15 @@ export const isAcceptableFile = (file: File): boolean => {
         "h",
         "hpp",
         "html",
+        "htm",
         "css",
         "scss",
         "sass",
         "json",
+        "jsonc",
+        "json5",
+        "jsonl",
+        "ndjson",
         "xml",
         "yaml",
         "yml",
@@ -69,9 +86,116 @@ export const isAcceptableFile = (file: File): boolean => {
         "clj",
         "ex",
         "exs",
+        "ini",
+        "toml",
+        "conf",
+        "cfg",
+        "env",
+        "zsh",
+        "fish",
+        "ps1",
+        "psm1",
+        "bazel",
+        "bzl",
+        "csv",
+        "tsv",
+        "properties",
+        "ipynb",
+        "rmd",
+        "gradle",
+        "groovy",
+        "cmake",
     ];
 
-    return extension ? acceptableExtensions.includes(extension) : false;
+    if (extension && acceptableExtensions.includes(extension)) {
+        return true;
+    }
+
+    // Check for specific filenames (case-insensitive)
+    const fileName = file.name.toLowerCase();
+    const acceptableFilenames = [
+        "makefile",
+        "dockerfile",
+        "containerfile",
+        "go.mod",
+        "go.sum",
+        "go.work",
+        "go.work.sum",
+        "package.json",
+        "package-lock.json",
+        "yarn.lock",
+        "pnpm-lock.yaml",
+        "composer.json",
+        "composer.lock",
+        "gemfile",
+        "gemfile.lock",
+        "podfile",
+        "podfile.lock",
+        "cargo.toml",
+        "cargo.lock",
+        "pipfile",
+        "pipfile.lock",
+        "requirements.txt",
+        "setup.py",
+        "pyproject.toml",
+        "poetry.lock",
+        "build.gradle",
+        "settings.gradle",
+        "pom.xml",
+        "build.xml",
+        "readme",
+        "readme.md",
+        "license",
+        "license.md",
+        "changelog",
+        "changelog.md",
+        "contributing",
+        "contributing.md",
+        "authors",
+        "codeowners",
+        "procfile",
+        "jenkinsfile",
+        "vagrantfile",
+        "rakefile",
+        "gruntfile.js",
+        "gulpfile.js",
+        "webpack.config.js",
+        "rollup.config.js",
+        "vite.config.js",
+        "jest.config.js",
+        "vitest.config.js",
+        ".dockerignore",
+        ".gitignore",
+        ".gitattributes",
+        ".gitmodules",
+        ".editorconfig",
+        ".eslintrc",
+        ".prettierrc",
+        ".pylintrc",
+        ".bashrc",
+        ".bash_profile",
+        ".bash_login",
+        ".bash_logout",
+        ".profile",
+        ".zshrc",
+        ".zprofile",
+        ".zshenv",
+        ".zlogin",
+        ".zlogout",
+        ".kshrc",
+        ".cshrc",
+        ".tcshrc",
+        ".xonshrc",
+        ".shrc",
+        ".aliases",
+        ".functions",
+        ".exports",
+        ".direnvrc",
+        ".vimrc",
+        ".gvimrc",
+    ];
+
+    return acceptableFilenames.includes(fileName);
 };
 
 export const getFileIcon = (fileName: string, fileType: string): string => {
@@ -182,37 +306,64 @@ export interface FileSizeError {
 }
 
 export const validateFileSize = (file: File): FileSizeError | null => {
-    const TEXT_FILE_LIMIT = 200 * 1024; // 200KB
-    const PDF_LIMIT = 5 * 1024 * 1024; // 5MB
-    const IMAGE_LIMIT = 10 * 1024 * 1024; // 10MB
-
     if (file.type.startsWith("image/")) {
-        if (file.size > IMAGE_LIMIT) {
+        if (file.size > ImageLimit) {
             return {
                 fileName: file.name,
                 fileSize: file.size,
-                maxSize: IMAGE_LIMIT,
+                maxSize: ImageLimit,
                 fileType: "image",
             };
         }
     } else if (file.type === "application/pdf") {
-        if (file.size > PDF_LIMIT) {
+        if (file.size > PdfLimit) {
             return {
                 fileName: file.name,
                 fileSize: file.size,
-                maxSize: PDF_LIMIT,
+                maxSize: PdfLimit,
                 fileType: "pdf",
             };
         }
     } else {
-        if (file.size > TEXT_FILE_LIMIT) {
+        if (file.size > TextFileLimit) {
             return {
                 fileName: file.name,
                 fileSize: file.size,
-                maxSize: TEXT_FILE_LIMIT,
+                maxSize: TextFileLimit,
                 fileType: "text",
             };
         }
+    }
+
+    return null;
+};
+
+export const validateFileSizeFromInfo = (
+    fileName: string,
+    fileSize: number,
+    mimeType: string
+): FileSizeError | null => {
+    let maxSize: number;
+    let fileType: "text" | "pdf" | "image";
+
+    if (mimeType.startsWith("image/")) {
+        maxSize = ImageLimit;
+        fileType = "image";
+    } else if (mimeType === "application/pdf") {
+        maxSize = PdfLimit;
+        fileType = "pdf";
+    } else {
+        maxSize = TextFileLimit;
+        fileType = "text";
+    }
+
+    if (fileSize > maxSize) {
+        return {
+            fileName,
+            fileSize,
+            maxSize,
+            fileType,
+        };
     }
 
     return null;
@@ -233,9 +384,6 @@ export const resizeImage = async (file: File): Promise<File> => {
         return file;
     }
 
-    const MAX_EDGE = 4096;
-    const WEBP_QUALITY = 0.8;
-
     return new Promise((resolve) => {
         const img = new Image();
         const url = URL.createObjectURL(file);
@@ -246,7 +394,7 @@ export const resizeImage = async (file: File): Promise<File> => {
             let { width, height } = img;
 
             // Check if resizing is needed
-            if (width <= MAX_EDGE && height <= MAX_EDGE) {
+            if (width <= ImageMaxEdge && height <= ImageMaxEdge) {
                 // Image is already small enough, just try WebP conversion
                 const canvas = document.createElement("canvas");
                 canvas.width = width;
@@ -272,18 +420,18 @@ export const resizeImage = async (file: File): Promise<File> => {
                         }
                     },
                     "image/webp",
-                    WEBP_QUALITY
+                    ImagePreviewWebPQuality
                 );
                 return;
             }
 
             // Calculate new dimensions while maintaining aspect ratio
             if (width > height) {
-                height = Math.round((height * MAX_EDGE) / width);
-                width = MAX_EDGE;
+                height = Math.round((height * ImageMaxEdge) / width);
+                width = ImageMaxEdge;
             } else {
-                width = Math.round((width * MAX_EDGE) / height);
-                height = MAX_EDGE;
+                width = Math.round((width * ImageMaxEdge) / height);
+                height = ImageMaxEdge;
             }
 
             // Create canvas and resize
@@ -312,7 +460,7 @@ export const resizeImage = async (file: File): Promise<File> => {
                     }
                 },
                 "image/webp",
-                WEBP_QUALITY
+                ImagePreviewWebPQuality
             );
         };
 
@@ -333,9 +481,6 @@ export const createImagePreview = async (file: File): Promise<string | null> => 
         return null;
     }
 
-    const PREVIEW_SIZE = 128;
-    const WEBP_QUALITY = 0.8;
-
     return new Promise((resolve) => {
         const img = new Image();
         const url = URL.createObjectURL(file);
@@ -346,11 +491,11 @@ export const createImagePreview = async (file: File): Promise<string | null> => 
             let { width, height } = img;
 
             if (width > height) {
-                height = Math.round((height * PREVIEW_SIZE) / width);
-                width = PREVIEW_SIZE;
+                height = Math.round((height * ImagePreviewSize) / width);
+                width = ImagePreviewSize;
             } else {
-                width = Math.round((width * PREVIEW_SIZE) / height);
-                height = PREVIEW_SIZE;
+                width = Math.round((width * ImagePreviewSize) / height);
+                height = ImagePreviewSize;
             }
 
             const canvas = document.createElement("canvas");
@@ -372,7 +517,7 @@ export const createImagePreview = async (file: File): Promise<string | null> => 
                     }
                 },
                 "image/webp",
-                WEBP_QUALITY
+                ImagePreviewWebPQuality
             );
         };
 

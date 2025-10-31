@@ -16,10 +16,19 @@ import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
 import { BuilderFocusManager } from "@/builder/store/builder-focusmanager";
 import { getWebServerEndpoint } from "@/util/endpoints";
+import { base64ToArrayBuffer } from "@/util/util";
 import { ChatStatus } from "ai";
 import * as jotai from "jotai";
 import type React from "react";
-import { createDataUrl, createImagePreview, normalizeMimeType, resizeImage } from "./ai-utils";
+import {
+    createDataUrl,
+    createImagePreview,
+    formatFileSizeError,
+    isAcceptableFile,
+    normalizeMimeType,
+    resizeImage,
+    validateFileSizeFromInfo,
+} from "./ai-utils";
 import type { AIPanelInputRef } from "./aipanelinput";
 
 export interface DroppedFile {
@@ -152,6 +161,54 @@ export class WaveAIModel {
         globalStore.set(this.droppedFiles, [...currentFiles, droppedFile]);
 
         return droppedFile;
+    }
+
+    async addFileFromRemoteUri(draggedFile: DraggedFile): Promise<void> {
+        if (draggedFile.isDir) {
+            this.setError("Cannot add directories to Wave AI. Please select a file.");
+            return;
+        }
+
+        try {
+            const fileInfo = await RpcApi.FileInfoCommand(TabRpcClient, { info: { path: draggedFile.uri } }, null);
+            if (fileInfo.notfound) {
+                this.setError(`File not found: ${draggedFile.relName}`);
+                return;
+            }
+            if (fileInfo.isdir) {
+                this.setError("Cannot add directories to Wave AI. Please select a file.");
+                return;
+            }
+
+            const mimeType = fileInfo.mimetype || "application/octet-stream";
+            const fileSize = fileInfo.size || 0;
+            const sizeError = validateFileSizeFromInfo(draggedFile.relName, fileSize, mimeType);
+            if (sizeError) {
+                this.setError(formatFileSizeError(sizeError));
+                return;
+            }
+
+            const fileData = await RpcApi.FileReadCommand(TabRpcClient, { info: { path: draggedFile.uri } }, null);
+            if (!fileData.data64) {
+                this.setError(`Failed to read file: ${draggedFile.relName}`);
+                return;
+            }
+
+            const buffer = base64ToArrayBuffer(fileData.data64);
+            const file = new File([buffer], draggedFile.relName, { type: mimeType });
+            if (!isAcceptableFile(file)) {
+                this.setError(
+                    `File type not supported: ${draggedFile.relName}. Supported: images, PDFs, and text/code files.`
+                );
+                return;
+            }
+
+            await this.addFile(file);
+        } catch (error) {
+            console.error("Error handling FILE_ITEM drop:", error);
+            const errorMsg = error instanceof Error ? error.message : String(error);
+            this.setError(`Failed to add file: ${errorMsg}`);
+        }
     }
 
     removeFile(fileId: string) {

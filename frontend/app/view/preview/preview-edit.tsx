@@ -20,6 +20,7 @@ export const shellFileMap: Record<string, string> = {
     ".profile": "shell",
     ".zshrc": "shell",
     ".zprofile": "shell",
+    ".zshenv": "shell",
     ".zlogin": "shell",
     ".zlogout": "shell",
     ".kshrc": "shell",
@@ -31,6 +32,8 @@ export const shellFileMap: Record<string, string> = {
     ".functions": "shell",
     ".exports": "shell",
     ".direnvrc": "shell",
+    ".vimrc": "shell",
+    ".gvimrc": "shell",
 };
 
 function CodeEditPreview({ model }: SpecializedViewProps) {

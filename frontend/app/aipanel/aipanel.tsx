@@ -13,6 +13,7 @@ import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import * as jotai from "jotai";
 import { memo, useCallback, useEffect, useRef, useState } from "react";
+import { useDrop } from "react-dnd";
 import { formatFileSizeError, isAcceptableFile, validateFileSize } from "./ai-utils";
 import { AIDroppedFiles } from "./aidroppedfiles";
 import { AIPanelHeader } from "./aipanelheader";
@@ -209,6 +210,7 @@ interface AIPanelProps {
 
 const AIPanelComponentInner = memo(({ className, onClose }: AIPanelProps) => {
     const [isDragOver, setIsDragOver] = useState(false);
+    const [isReactDndDragOver, setIsReactDndDragOver] = useState(false);
     const [initialLoadDone, setInitialLoadDone] = useState(false);
     const model = WaveAIModel.getInstance();
     const containerRef = useRef<HTMLDivElement>(null);
@@ -320,27 +322,43 @@ const AIPanelComponentInner = memo(({ className, onClose }: AIPanelProps) => {
     };
 
     const handleDragOver = (e: React.DragEvent) => {
+        const hasFiles = hasFilesDragged(e.dataTransfer);
+
+        // Only handle native file drags here, let react-dnd handle FILE_ITEM drags
+        if (!hasFiles) {
+            return;
+        }
+
         e.preventDefault();
         e.stopPropagation();
 
-        const hasFiles = hasFilesDragged(e.dataTransfer);
-        if (hasFiles && !isDragOver) {
+        if (!isDragOver) {
             setIsDragOver(true);
-        } else if (!hasFiles && isDragOver) {
-            setIsDragOver(false);
         }
     };
 
     const handleDragEnter = (e: React.DragEvent) => {
+        const hasFiles = hasFilesDragged(e.dataTransfer);
+
+        // Only handle native file drags here, let react-dnd handle FILE_ITEM drags
+        if (!hasFiles) {
+            return;
+        }
+
         e.preventDefault();
         e.stopPropagation();
 
-        if (hasFilesDragged(e.dataTransfer)) {
-            setIsDragOver(true);
-        }
+        setIsDragOver(true);
     };
 
     const handleDragLeave = (e: React.DragEvent) => {
+        const hasFiles = hasFilesDragged(e.dataTransfer);
+
+        // Only handle native file drags here, let react-dnd handle FILE_ITEM drags
+        if (!hasFiles) {
+            return;
+        }
+
         e.preventDefault();
         e.stopPropagation();
 
@@ -355,6 +373,12 @@ const AIPanelComponentInner = memo(({ className, onClose }: AIPanelProps) => {
     };
 
     const handleDrop = async (e: React.DragEvent) => {
+        // Check if this is a FILE_ITEM drag from react-dnd
+        // If so, let react-dnd handle it instead
+        if (!e.dataTransfer.files.length) {
+            return; // Let react-dnd handle FILE_ITEM drags
+        }
+
         e.preventDefault();
         e.stopPropagation();
         setIsDragOver(false);
@@ -380,6 +404,39 @@ const AIPanelComponentInner = memo(({ className, onClose }: AIPanelProps) => {
             );
         }
     };
+
+    const handleFileItemDrop = useCallback(
+        (draggedFile: DraggedFile) => model.addFileFromRemoteUri(draggedFile),
+        [model]
+    );
+
+    const [{ isOver, canDrop }, drop] = useDrop(
+        () => ({
+            accept: "FILE_ITEM",
+            drop: handleFileItemDrop,
+            collect: (monitor) => ({
+                isOver: monitor.isOver(),
+                canDrop: monitor.canDrop(),
+            }),
+        }),
+        [handleFileItemDrop]
+    );
+
+    // Update drag over state for FILE_ITEM drags
+    useEffect(() => {
+        if (isOver && canDrop) {
+            setIsReactDndDragOver(true);
+        } else {
+            setIsReactDndDragOver(false);
+        }
+    }, [isOver, canDrop]);
+
+    // Attach the drop ref to the container
+    useEffect(() => {
+        if (containerRef.current) {
+            drop(containerRef.current);
+        }
+    }, [drop]);
 
     const handleFocusCapture = useCallback(
         (event: React.FocusEvent) => {
@@ -453,7 +510,7 @@ const AIPanelComponentInner = memo(({ className, onClose }: AIPanelProps) => {
                 "bg-gray-900 flex flex-col relative h-[calc(100%-4px)]",
                 model.inBuilder ? "mt-0" : "mt-1",
                 className,
-                isDragOver && "bg-gray-800 border-accent",
+                (isDragOver || isReactDndDragOver) && "bg-gray-800 border-accent",
                 isFocused ? "border-2 border-accent" : "border-2 border-transparent"
             )}
             style={{
@@ -469,7 +526,7 @@ const AIPanelComponentInner = memo(({ className, onClose }: AIPanelProps) => {
             onClick={handleClick}
             inert={!isPanelVisible ? true : undefined}
         >
-            {isDragOver && <AIDragOverlay />}
+            {(isDragOver || isReactDndDragOver) && <AIDragOverlay />}
             {showBlockMask && <AIBlockMask />}
             <AIPanelHeader onClose={onClose} model={model} onClearChat={handleClearChat} />
             <AIRateLimitStrip />
