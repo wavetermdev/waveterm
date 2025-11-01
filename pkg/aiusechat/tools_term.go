@@ -178,7 +178,7 @@ func GetTermGetScrollbackToolDefinition(tabId string) uctypes.ToolDefinition {
 			"required":             []string{"widget_id"},
 			"additionalProperties": false,
 		},
-		ToolInputDesc: func(input any) string {
+		ToolInputDesc: func(input any, toolUseData *uctypes.UIMessageDataToolUse) string {
 			parsed, err := parseTermGetScrollbackInput(input)
 			if err != nil {
 				return fmt.Sprintf("error parsing input: %v", err)
@@ -259,7 +259,7 @@ func GetTermCommandOutputToolDefinition(tabId string) uctypes.ToolDefinition {
 			"required":             []string{"widget_id"},
 			"additionalProperties": false,
 		},
-		ToolInputDesc: func(input any) string {
+		ToolInputDesc: func(input any, toolUseData *uctypes.UIMessageDataToolUse) string {
 			parsed, err := parseTermCommandOutputInput(input)
 			if err != nil {
 				return fmt.Sprintf("error parsing input: %v", err)

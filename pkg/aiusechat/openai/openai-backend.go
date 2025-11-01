@@ -940,7 +940,7 @@ func createToolUseData(toolCallID, toolName string, toolDef *uctypes.ToolDefinit
 	}
 
 	if toolDef.ToolInputDesc != nil {
-		toolUseData.ToolDesc = toolDef.ToolInputDesc(parsedArgs)
+		toolUseData.ToolDesc = toolDef.ToolInputDesc(parsedArgs, nil)
 	}
 
 	if toolDef.ToolApproval != nil {

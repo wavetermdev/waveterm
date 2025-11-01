@@ -106,7 +106,7 @@ func GetReadDirToolDefinition() uctypes.ToolDefinition {
 			"required":             []string{"path"},
 			"additionalProperties": false,
 		},
-		ToolInputDesc: func(input any) string {
+		ToolInputDesc: func(input any, toolUseData *uctypes.UIMessageDataToolUse) string {
 			parsed, err := parseReadDirInput(input)
 			if err != nil {
 				return fmt.Sprintf("error parsing input: %v", err)

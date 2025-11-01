@@ -67,7 +67,7 @@ func GetCaptureScreenshotToolDefinition(tabId string) uctypes.ToolDefinition {
 			"required":             []string{"widget_id"},
 			"additionalProperties": false,
 		},
-		ToolInputDesc: func(input any) string {
+		ToolInputDesc: func(input any, toolUseData *uctypes.UIMessageDataToolUse) string {
 			inputMap, ok := input.(map[string]any)
 			if !ok {
 				return "error parsing input: invalid format"

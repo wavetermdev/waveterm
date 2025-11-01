@@ -86,10 +86,10 @@ type ToolDefinition struct {
 	Strict           bool           `json:"strict,omitempty"`
 
 	ToolTextCallback func(any) (string, error)                     `json:"-"`
-	ToolAnyCallback  func(any, *UIMessageDataToolUse) (any, error) `json:"-"`
-	ToolInputDesc    func(any) string                              `json:"-"`
+	ToolAnyCallback  func(any, *UIMessageDataToolUse) (any, error) `json:"-"` // *UIMessageDataToolUse will NOT be nil
+	ToolInputDesc    func(any, *UIMessageDataToolUse) string       `json:"-"` // *UIMessageDataToolUse may be nil (unlike ToolAnyCallback/ToolVerifyInput where it is guaranteed not to be nil)
 	ToolApproval     func(any) string                              `json:"-"`
-	ToolVerifyInput  func(any, *UIMessageDataToolUse) error        `json:"-"`
+	ToolVerifyInput  func(any, *UIMessageDataToolUse) error        `json:"-"` // *UIMessageDataToolUse will NOT be nil
 }
 
 func (td *ToolDefinition) Clean() *ToolDefinition {
@@ -148,6 +148,7 @@ type UIMessageDataToolUse struct {
 	BlockId             string `json:"blockid,omitempty"`
 	WriteBackupFileName string `json:"writebackupfilename,omitempty"`
 	InputFileName       string `json:"inputfilename,omitempty"`
+	TotalItems          *int   `json:"totalitems,omitempty"` // metadata specific to tool call
 }
 
 func (d *UIMessageDataToolUse) IsApproved() bool {

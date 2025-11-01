@@ -55,7 +55,7 @@ func GetBuilderWriteAppFileToolDefinition(appId string) uctypes.ToolDefinition {
 			"required":             []string{"contents"},
 			"additionalProperties": false,
 		},
-		ToolInputDesc: func(input any) string {
+		ToolInputDesc: func(input any, toolUseData *uctypes.UIMessageDataToolUse) string {
 			return fmt.Sprintf("writing app.go for %s", appId)
 		},
 		ToolAnyCallback: func(input any, toolUseData *uctypes.UIMessageDataToolUse) (any, error) {
@@ -142,7 +142,7 @@ func GetBuilderEditAppFileToolDefinition(appId string) uctypes.ToolDefinition {
 			"required":             []string{"edits"},
 			"additionalProperties": false,
 		},
-		ToolInputDesc: func(input any) string {
+		ToolInputDesc: func(input any, toolUseData *uctypes.UIMessageDataToolUse) string {
 			params, err := parseBuilderEditAppFileInput(input)
 			if err != nil {
 				return fmt.Sprintf("error parsing input: %v", err)
@@ -185,7 +185,7 @@ func GetBuilderListFilesToolDefinition(appId string) uctypes.ToolDefinition {
 			"properties":           map[string]any{},
 			"additionalProperties": false,
 		},
-		ToolInputDesc: func(input any) string {
+		ToolInputDesc: func(input any, toolUseData *uctypes.UIMessageDataToolUse) string {
 			return fmt.Sprintf("listing files for %s", appId)
 		},
 		ToolAnyCallback: func(input any, toolUseData *uctypes.UIMessageDataToolUse) (any, error) {

@@ -197,7 +197,6 @@ func isBlockedFile(expandedPath string) (bool, string) {
 	return false, ""
 }
 
-
 func readTextFileCallback(input any, toolUseData *uctypes.UIMessageDataToolUse) (any, error) {
 	const ReadLimit = 1024 * 1024 * 1024
 
@@ -332,7 +331,7 @@ func GetReadTextFileToolDefinition() uctypes.ToolDefinition {
 			"required":             []string{"filename"},
 			"additionalProperties": false,
 		},
-		ToolInputDesc: func(input any) string {
+		ToolInputDesc: func(input any, toolUseData *uctypes.UIMessageDataToolUse) string {
 			parsed, err := parseReadTextFileInput(input)
 			if err != nil {
 				return fmt.Sprintf("error parsing input: %v", err)
