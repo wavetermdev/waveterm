@@ -22,5 +22,7 @@ type ObjRTInfo struct {
 	BuilderAppId  string             `json:"builder:appid,omitempty"`
 	BuilderEnv    map[string]string  `json:"builder:env,omitempty"`
 
-	WaveAIChatId string `json:"waveai:chatid,omitempty"`
+	WaveAIChatId           string `json:"waveai:chatid,omitempty"`
+	WaveAIThinkingLevel    string `json:"waveai:thinkinglevel,omitempty"`
+	WaveAIMaxOutputTokens  int    `json:"waveai:maxoutputtokens,omitempty"`
 }

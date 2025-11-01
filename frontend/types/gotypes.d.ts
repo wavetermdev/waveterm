@@ -819,6 +819,8 @@ declare global {
         "builder:appid"?: string;
         "builder:env"?: {[key: string]: string};
         "waveai:chatid"?: string;
+        "waveai:thinkinglevel"?: string;
+        "waveai:maxoutputtokens"?: number;
     };
 
     // iochantypes.Packet

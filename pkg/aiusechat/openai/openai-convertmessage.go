@@ -137,11 +137,22 @@ func debugPrintReq(req *OpenAIRequest, endpoint string) {
 	for _, tool := range req.Tools {
 		toolNames = append(toolNames, tool.Name)
 	}
-	log.Printf("model %s\n", req.Model)
+	modelInfo := req.Model
+	var details []string
+	if req.Reasoning != nil && req.Reasoning.Effort != "" {
+		details = append(details, fmt.Sprintf("reasoning: %s", req.Reasoning.Effort))
+	}
+	if req.MaxOutputTokens > 0 {
+		details = append(details, fmt.Sprintf("max_tokens: %d", req.MaxOutputTokens))
+	}
+	if len(details) > 0 {
+		log.Printf("model %s (%s)\n", modelInfo, strings.Join(details, ", "))
+	} else {
+		log.Printf("model %s\n", modelInfo)
+	}
 	if len(toolNames) > 0 {
 		log.Printf("tools: %s\n", strings.Join(toolNames, ","))
 	}
-	// log.Printf("reasoning %v\n", req.Reasoning)
 
 	log.Printf("inputs (%d):", len(req.Input))
 	for idx, input := range req.Input {

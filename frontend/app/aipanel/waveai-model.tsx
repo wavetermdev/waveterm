@@ -50,7 +50,7 @@ export class WaveAIModel {
     private useChatStop: (() => void) | null = null;
     // Used for injecting Wave-specific message data into DefaultChatTransport's prepareSendMessagesRequest
     realMessage: AIMessage | null = null;
-    private orefContext: ORef;
+    orefContext: ORef;
     inBuilder: boolean = false;
 
     widgetAccessAtom!: jotai.Atom<boolean>;
@@ -65,7 +65,9 @@ export class WaveAIModel {
     isChatEmpty: boolean = true;
     isWaveAIFocusedAtom!: jotai.Atom<boolean>;
     panelVisibleAtom!: jotai.Atom<boolean>;
-    restoreBackupModalToolCallId: jotai.PrimitiveAtom<string | null> = jotai.atom(null) as jotai.PrimitiveAtom<string | null>;
+    restoreBackupModalToolCallId: jotai.PrimitiveAtom<string | null> = jotai.atom(null) as jotai.PrimitiveAtom<
+        string | null
+    >;
     restoreBackupStatus: jotai.PrimitiveAtom<"idle" | "processing" | "success" | "error"> = jotai.atom("idle");
     restoreBackupError: jotai.PrimitiveAtom<string> = jotai.atom(null) as jotai.PrimitiveAtom<string>;
 
