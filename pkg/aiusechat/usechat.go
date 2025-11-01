@@ -151,7 +151,7 @@ var BuilderSystemPromptText_OpenAI = strings.Join([]string{
 	``,
 }, "\n")
 
-func getWaveAISettings(premium bool, builderMode bool) (*uctypes.AIOptsType, error) {
+func getWaveAISettings(premium bool, builderMode bool, rtInfo *waveobj.ObjRTInfo) (*uctypes.AIOptsType, error) {
 	baseUrl := DefaultAIEndpoint
 	if os.Getenv("WAVETERM_WAVEAI_ENDPOINT") != "" {
 		baseUrl = os.Getenv("WAVETERM_WAVEAI_ENDPOINT")
@@ -160,12 +160,19 @@ func getWaveAISettings(premium bool, builderMode bool) (*uctypes.AIOptsType, err
 	if builderMode {
 		maxTokens = BuilderMaxTokens
 	}
+	if rtInfo != nil && rtInfo.WaveAIMaxOutputTokens > 0 {
+		maxTokens = rtInfo.WaveAIMaxOutputTokens
+	}
 	if DefaultAPI == APIType_Anthropic {
+		thinkingLevel := uctypes.ThinkingLevelMedium
+		if rtInfo != nil && rtInfo.WaveAIThinkingLevel != "" {
+			thinkingLevel = rtInfo.WaveAIThinkingLevel
+		}
 		return &uctypes.AIOptsType{
 			APIType:       APIType_Anthropic,
 			Model:         uctypes.DefaultAnthropicModel,
 			MaxTokens:     maxTokens,
-			ThinkingLevel: uctypes.ThinkingLevelMedium,
+			ThinkingLevel: thinkingLevel,
 			BaseURL:       baseUrl,
 		}, nil
 	} else if DefaultAPI == APIType_OpenAI {
@@ -174,6 +181,9 @@ func getWaveAISettings(premium bool, builderMode bool) (*uctypes.AIOptsType, err
 		if premium {
 			model = uctypes.PremiumOpenAIModel
 			thinkingLevel = uctypes.ThinkingLevelMedium
+			if rtInfo != nil && rtInfo.WaveAIThinkingLevel != "" {
+				thinkingLevel = rtInfo.WaveAIThinkingLevel
+			}
 		}
 		return &uctypes.AIOptsType{
 			APIType:       APIType_OpenAI,
@@ -685,10 +695,20 @@ func WaveAIPostMessageHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Get RTInfo from TabId or BuilderId
+	var rtInfo *waveobj.ObjRTInfo
+	if req.TabId != "" {
+		oref := waveobj.MakeORef(waveobj.OType_Tab, req.TabId)
+		rtInfo = wstore.GetRTInfo(oref)
+	} else if req.BuilderId != "" {
+		oref := waveobj.MakeORef(waveobj.OType_Builder, req.BuilderId)
+		rtInfo = wstore.GetRTInfo(oref)
+	}
+
 	// Get WaveAI settings
 	premium := shouldUsePremium()
 	builderMode := req.BuilderId != ""
-	aiOpts, err := getWaveAISettings(premium, builderMode)
+	aiOpts, err := getWaveAISettings(premium, builderMode, rtInfo)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("WaveAI configuration error: %v", err), http.StatusInternalServerError)
 		return
