@@ -84,7 +84,12 @@ export const AIPanelInput = memo(({ onSubmit, status, model }: AIPanelInputProps
                 return;
             }
 
-            await model.addFile(file);
+            try {
+                await model.addFile(file);
+            } catch (error: any) {
+                console.error("Failed to add file:", error);
+                model.setError(error?.message || "Failed to add file");
+            }
         },
         [model]
     );
@@ -108,7 +113,14 @@ export const AIPanelInput = memo(({ onSubmit, status, model }: AIPanelInputProps
                     const blob = item.getAsFile();
                     if (!blob) continue;
 
-                    const file = new File([blob], `pasted-image-${Date.now()}.png`, { type: blob.type });
+                    let ext = blob.type.split("/")[1] || "png";
+                    ext = ext.toLowerCase();
+                    if (ext === "jpeg") ext = "jpg";
+                    if (!/^[a-z0-9]+$/.test(ext)) ext = "png";
+
+                    const filename = `pasted-image-${Date.now()}.${ext}`;
+                    const file = new File([blob], filename, { type: blob.type });
+
                     await processFile(file);
                 }
             }
