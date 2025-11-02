@@ -108,24 +108,30 @@ export const AIPanelInput = memo(({ onSubmit, status, model }: AIPanelInputProps
             const items = e.clipboardData?.items;
             if (!items) return;
 
-            for (const item of items) {
-                if (item.type.startsWith("image/")) {
+            const imageItems = Array.from(items).filter((item) => item.type.startsWith("image/"));
+
+            if (imageItems.length > 0) {
+                e.preventDefault();
+
+                for (const item of imageItems) {
                     const blob = item.getAsFile();
-                    if (!blob) continue;
+                    if (blob) {
+                        const mimeType = blob.type;
+                        let ext = mimeType.split("/")[1] || "png";
+                        if (ext === "jpeg") ext = "jpg";
+                        const file = new File([blob], `pasted-image.${ext}`, { type: mimeType });
 
-                    let ext = blob.type.split("/")[1] || "png";
-                    ext = ext.toLowerCase();
-                    if (ext === "jpeg") ext = "jpg";
-                    if (!/^[a-z0-9]+$/.test(ext)) ext = "png";
-
-                    const filename = `pasted-image-${Date.now()}.${ext}`;
-                    const file = new File([blob], filename, { type: blob.type });
-
-                    await processFile(file);
+                        try {
+                            await processFile(file);
+                        } catch (error) {
+                            console.error("Error processing pasted image:", error);
+                            model.setError(error instanceof Error ? error.message : "Failed to process image");
+                        }
+                    }
                 }
             }
         },
-        [processFile]
+        [processFile, model]
     );
 
     return (
