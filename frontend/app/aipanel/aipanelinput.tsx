@@ -29,7 +29,6 @@ export const AIPanelInput = memo(({ onSubmit, status, model }: AIPanelInputProps
     const resizeTextarea = useCallback(() => {
         const textarea = textareaRef.current;
         if (!textarea) return;
-
         textarea.style.height = "auto";
         const scrollHeight = textarea.scrollHeight;
         const maxHeight = 7 * 24;
@@ -72,40 +71,50 @@ export const AIPanelInput = memo(({ onSubmit, status, model }: AIPanelInputProps
 
     const handleUploadClick = () => fileInputRef.current?.click();
 
-    const processFile = async (file: File) => {
-        if (!isAcceptableFile(file)) {
-            console.warn(`Rejected unsupported file type: ${file.type}`);
-            return;
-        }
-
-        const sizeError = validateFileSize(file);
-        if (sizeError) {
-            model.setError(formatFileSizeError(sizeError));
-            return;
-        }
-
-        await model.addFile(file);
-    };
-
-    const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const files = Array.from(e.target.files || []);
-        for (const file of files) await processFile(file);
-        if (e.target) e.target.value = "";
-    };
-
-    const handlePaste = useCallback(async (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
-        const items = e.clipboardData?.items;
-        if (!items) return;
-
-        for (const item of items) {
-            if (item.type.startsWith("image/")) {
-                const blob = item.getAsFile();
-                if (!blob) continue;
-                const file = new File([blob], `pasted-image-${Date.now()}.png`, { type: blob.type });
-                await processFile(file);
+    const processFile = useCallback(
+        async (file: File) => {
+            if (!isAcceptableFile(file)) {
+                console.warn(`Rejected unsupported file type: ${file.type}`);
+                return;
             }
-        }
-    }, []);
+
+            const sizeError = validateFileSize(file);
+            if (sizeError) {
+                model.setError(formatFileSizeError(sizeError));
+                return;
+            }
+
+            await model.addFile(file);
+        },
+        [model]
+    );
+
+    const handleFileChange = useCallback(
+        async (e: React.ChangeEvent<HTMLInputElement>) => {
+            const files = Array.from(e.target.files || []);
+            for (const file of files) await processFile(file);
+            if (e.target) e.target.value = "";
+        },
+        [processFile]
+    );
+
+    const handlePaste = useCallback(
+        async (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+            const items = e.clipboardData?.items;
+            if (!items) return;
+
+            for (const item of items) {
+                if (item.type.startsWith("image/")) {
+                    const blob = item.getAsFile();
+                    if (!blob) continue;
+
+                    const file = new File([blob], `pasted-image-${Date.now()}.png`, { type: blob.type });
+                    await processFile(file);
+                }
+            }
+        },
+        [processFile]
+    );
 
     return (
         <div className={cn("border-t", isFocused ? "border-accent/50" : "border-gray-600")}>
