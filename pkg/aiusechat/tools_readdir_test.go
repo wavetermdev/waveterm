@@ -287,7 +287,7 @@ func TestGetReadDirToolDefinition(t *testing.T) {
 		t.Error("ToolApproval should not be nil")
 	}
 
-	if toolDef.ToolInputDesc == nil {
-		t.Error("ToolInputDesc should not be nil")
+	if toolDef.ToolCallDesc == nil {
+		t.Error("ToolCallDesc should not be nil")
 	}
 }

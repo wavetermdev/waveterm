@@ -106,10 +106,22 @@ func GetReadDirToolDefinition() uctypes.ToolDefinition {
 			"required":             []string{"path"},
 			"additionalProperties": false,
 		},
-		ToolInputDesc: func(input any) string {
+		ToolCallDesc: func(input any, output any, toolUseData *uctypes.UIMessageDataToolUse) string {
 			parsed, err := parseReadDirInput(input)
 			if err != nil {
 				return fmt.Sprintf("error parsing input: %v", err)
+			}
+
+			readFullDir := false
+			if output != nil {
+				if outputMap, ok := output.(map[string]any); ok {
+					_, wasTruncated := outputMap["truncated"]
+					readFullDir = !wasTruncated
+				}
+			}
+
+			if readFullDir {
+				return fmt.Sprintf("reading directory %q (entire directory)", parsed.Path)
 			}
 			return fmt.Sprintf("reading directory %q (max_entries: %d)", parsed.Path, *parsed.MaxEntries)
 		},

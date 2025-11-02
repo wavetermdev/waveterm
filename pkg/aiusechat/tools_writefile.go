@@ -194,7 +194,7 @@ func GetWriteTextFileToolDefinition() uctypes.ToolDefinition {
 			"required":             []string{"filename", "contents"},
 			"additionalProperties": false,
 		},
-		ToolInputDesc: func(input any) string {
+		ToolCallDesc: func(input any, output any, toolUseData *uctypes.UIMessageDataToolUse) string {
 			params, err := parseWriteTextFileInput(input)
 			if err != nil {
 				return fmt.Sprintf("error parsing input: %v", err)
@@ -369,7 +369,7 @@ func GetEditTextFileToolDefinition() uctypes.ToolDefinition {
 			"required":             []string{"filename", "edits"},
 			"additionalProperties": false,
 		},
-		ToolInputDesc: func(input any) string {
+		ToolCallDesc: func(input any, output any, toolUseData *uctypes.UIMessageDataToolUse) string {
 			params, err := parseEditTextFileInput(input)
 			if err != nil {
 				return fmt.Sprintf("error parsing input: %v", err)
@@ -482,7 +482,7 @@ func GetDeleteTextFileToolDefinition() uctypes.ToolDefinition {
 			"required":             []string{"filename"},
 			"additionalProperties": false,
 		},
-		ToolInputDesc: func(input any) string {
+		ToolCallDesc: func(input any, output any, toolUseData *uctypes.UIMessageDataToolUse) string {
 			params, err := parseDeleteTextFileInput(input)
 			if err != nil {
 				return fmt.Sprintf("error parsing input: %v", err)
