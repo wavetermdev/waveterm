@@ -4,6 +4,7 @@ dist/
 dist-dev/
 frontend/node_modules
 node_modules/
+package-lock.json
 frontend/bindings
 bindings/
 *.log
@@ -35,3 +36,4 @@ storybook-static/
 test-results.xml
 
 docsite/
+
