@@ -288,6 +288,6 @@ func TestGetReadDirToolDefinition(t *testing.T) {
 	}
 
 	if toolDef.ToolCallDesc == nil {
-		t.Error("ToolInputDesc should not be nil")
+		t.Error("ToolCallDesc should not be nil")
 	}
 }
