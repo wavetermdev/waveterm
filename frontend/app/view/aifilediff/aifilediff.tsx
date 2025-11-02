@@ -3,6 +3,7 @@
 
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
+import { base64ToString } from "@/util/util";
 import { DiffViewer } from "@/app/view/codeeditor/diffviewer";
 import { globalStore, WOS } from "@/store/global";
 import * as jotai from "jotai";
@@ -80,8 +81,8 @@ const AiFileDiffView: React.FC<ViewComponentProps<AiFileDiffViewModel>> = ({ blo
                     return;
                 }
 
-                const originalContent = atob(result.originalcontents64);
-                const modifiedContent = atob(result.modifiedcontents64);
+                const originalContent = base64ToString(result.originalcontents64);
+                const modifiedContent = base64ToString(result.modifiedcontents64);
 
                 globalStore.set(model.diffDataAtom, {
                     original: originalContent,
