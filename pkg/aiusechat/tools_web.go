@@ -70,7 +70,7 @@ func GetWebNavigateToolDefinition(tabId string) uctypes.ToolDefinition {
 			"required":             []string{"widget_id", "url"},
 			"additionalProperties": false,
 		},
-		ToolInputDesc: func(input any, toolUseData *uctypes.UIMessageDataToolUse) string {
+		ToolCallDesc: func(input any, output any, toolUseData *uctypes.UIMessageDataToolUse) string {
 			parsed, err := parseWebNavigateInput(input)
 			if err != nil {
 				return fmt.Sprintf("error parsing input: %v", err)

@@ -329,6 +329,9 @@ func processToolCallInternal(toolCall uctypes.WaveToolCall, chatOpts uctypes.Wav
 				ErrorText: errorMsg,
 			}
 		}
+		// ToolVerifyInput can modify the toolusedata.  re-send it here.
+		_ = sseHandler.AiMsgData("data-tooluse", toolCall.ID, *toolCall.ToolUseData)
+		updateToolUseDataInChat(chatOpts, toolCall.ID, toolCall.ToolUseData)
 	}
 
 	if toolCall.ToolUseData.Approval == uctypes.ApprovalNeedsApproval {
@@ -361,7 +364,7 @@ func processToolCallInternal(toolCall uctypes.WaveToolCall, chatOpts uctypes.Wav
 	}
 
 	toolCall.ToolUseData.RunTs = time.Now().UnixMilli()
-	result := ResolveToolCall(toolCall, chatOpts)
+	result := ResolveToolCall(toolDef, toolCall, chatOpts)
 
 	if result.ErrorText != "" {
 		toolCall.ToolUseData.Status = uctypes.ToolUseStatusError
@@ -536,7 +539,7 @@ func RunAIChat(ctx context.Context, sseHandler *sse.SSEHandlerCh, chatOpts uctyp
 	return metrics, nil
 }
 
-func ResolveToolCall(toolCall uctypes.WaveToolCall, chatOpts uctypes.WaveChatOpts) (result uctypes.AIToolResult) {
+func ResolveToolCall(toolDef *uctypes.ToolDefinition, toolCall uctypes.WaveToolCall, chatOpts uctypes.WaveChatOpts) (result uctypes.AIToolResult) {
 	result = uctypes.AIToolResult{
 		ToolName:  toolCall.Name,
 		ToolUseID: toolCall.ID,
@@ -548,8 +551,6 @@ func ResolveToolCall(toolCall uctypes.WaveToolCall, chatOpts uctypes.WaveChatOpt
 			result.Text = ""
 		}
 	}()
-
-	toolDef := chatOpts.GetToolDefinition(toolCall.Name)
 
 	if toolDef == nil {
 		result.ErrorText = fmt.Sprintf("tool '%s' not found", toolCall.Name)
@@ -563,6 +564,10 @@ func ResolveToolCall(toolCall uctypes.WaveToolCall, chatOpts uctypes.WaveChatOpt
 			result.ErrorText = err.Error()
 		} else {
 			result.Text = text
+			// Recompute tool description with the result
+			if toolDef.ToolCallDesc != nil && toolCall.ToolUseData != nil {
+				toolCall.ToolUseData.ToolDesc = toolDef.ToolCallDesc(toolCall.Input, text, toolCall.ToolUseData)
+			}
 		}
 	} else if toolDef.ToolAnyCallback != nil {
 		output, err := toolDef.ToolAnyCallback(toolCall.Input, toolCall.ToolUseData)
@@ -575,6 +580,10 @@ func ResolveToolCall(toolCall uctypes.WaveToolCall, chatOpts uctypes.WaveChatOpt
 				result.ErrorText = fmt.Sprintf("failed to marshal tool output: %v", marshalErr)
 			} else {
 				result.Text = string(jsonBytes)
+				// Recompute tool description with the result
+				if toolDef.ToolCallDesc != nil && toolCall.ToolUseData != nil {
+					toolCall.ToolUseData.ToolDesc = toolDef.ToolCallDesc(toolCall.Input, output, toolCall.ToolUseData)
+				}
 			}
 		}
 	} else {

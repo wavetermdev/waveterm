@@ -282,7 +282,7 @@ func readTextFileCallback(input any, toolUseData *uctypes.UIMessageDataToolUse) 
 		"modified_time": modTime.UTC().Format(time.RFC3339),
 		"mode":          fileInfo.Mode().String(),
 	}
-	if stopReason != "" {
+	if stopReason == "read_limit" || stopReason == StopReasonMaxBytes {
 		result["truncated"] = stopReason
 	}
 
@@ -318,20 +318,20 @@ func GetReadTextFileToolDefinition() uctypes.ToolDefinition {
 				"count": map[string]any{
 					"type":        "integer",
 					"minimum":     1,
-					"default":     100,
+					"default":     ReadFileDefaultLineCount,
 					"description": "Number of lines to return",
 				},
 				"max_bytes": map[string]any{
 					"type":        "integer",
 					"minimum":     1,
-					"default":     51200,
+					"default":     ReadFileDefaultMaxBytes,
 					"description": "Maximum bytes to return. If the result exceeds this, it will be truncated at line boundaries",
 				},
 			},
 			"required":             []string{"filename"},
 			"additionalProperties": false,
 		},
-		ToolInputDesc: func(input any, toolUseData *uctypes.UIMessageDataToolUse) string {
+		ToolCallDesc: func(input any, output any, toolUseData *uctypes.UIMessageDataToolUse) string {
 			parsed, err := parseReadTextFileInput(input)
 			if err != nil {
 				return fmt.Sprintf("error parsing input: %v", err)
@@ -341,10 +341,24 @@ func GetReadTextFileToolDefinition() uctypes.ToolDefinition {
 			offset := *parsed.Offset
 			count := *parsed.Count
 
+			readFullFile := false
+			if output != nil {
+				if outputMap, ok := output.(map[string]any); ok {
+					_, wasTruncated := outputMap["truncated"]
+					readFullFile = !wasTruncated
+				}
+			}
+
 			if origin == "start" && offset == 0 {
+				if readFullFile {
+					return fmt.Sprintf("reading %q (entire file)", parsed.Filename)
+				}
 				return fmt.Sprintf("reading %q (first %d lines)", parsed.Filename, count)
 			}
 			if origin == "end" && offset == 0 {
+				if readFullFile {
+					return fmt.Sprintf("reading %q (entire file)", parsed.Filename)
+				}
 				return fmt.Sprintf("reading %q (last %d lines)", parsed.Filename, count)
 			}
 			if origin == "end" {

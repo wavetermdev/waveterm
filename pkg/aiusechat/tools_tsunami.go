@@ -124,7 +124,7 @@ func GetTsunamiGetDataToolDefinition(block *waveobj.Block, rtInfo *waveobj.ObjRT
 			"properties":           map[string]any{},
 			"additionalProperties": false,
 		},
-		ToolInputDesc: func(input any, toolUseData *uctypes.UIMessageDataToolUse) string {
+		ToolCallDesc: func(input any, output any, toolUseData *uctypes.UIMessageDataToolUse) string {
 			return fmt.Sprintf("getting data from %s (%s)", desc, blockIdPrefix)
 		},
 		ToolAnyCallback: makeTsunamiGetCallback(status, "/api/data"),
@@ -149,7 +149,7 @@ func GetTsunamiGetConfigToolDefinition(block *waveobj.Block, rtInfo *waveobj.Obj
 			"properties":           map[string]any{},
 			"additionalProperties": false,
 		},
-		ToolInputDesc: func(input any, toolUseData *uctypes.UIMessageDataToolUse) string {
+		ToolCallDesc: func(input any, output any, toolUseData *uctypes.UIMessageDataToolUse) string {
 			return fmt.Sprintf("getting config from %s (%s)", desc, blockIdPrefix)
 		},
 		ToolAnyCallback: makeTsunamiGetCallback(status, "/api/config"),
@@ -182,7 +182,7 @@ func GetTsunamiSetConfigToolDefinition(block *waveobj.Block, rtInfo *waveobj.Obj
 		Name:        toolName,
 		ToolLogName: "tsunami:setconfig",
 		InputSchema: inputSchema,
-		ToolInputDesc: func(input any, toolUseData *uctypes.UIMessageDataToolUse) string {
+		ToolCallDesc: func(input any, output any, toolUseData *uctypes.UIMessageDataToolUse) string {
 			return fmt.Sprintf("updating config for %s (%s)", desc, blockIdPrefix)
 		},
 		ToolAnyCallback: makeTsunamiPostCallback(status, "/api/config"),

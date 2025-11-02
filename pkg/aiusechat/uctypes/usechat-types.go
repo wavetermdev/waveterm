@@ -87,7 +87,7 @@ type ToolDefinition struct {
 
 	ToolTextCallback func(any) (string, error)                     `json:"-"`
 	ToolAnyCallback  func(any, *UIMessageDataToolUse) (any, error) `json:"-"` // *UIMessageDataToolUse will NOT be nil
-	ToolInputDesc    func(any, *UIMessageDataToolUse) string       `json:"-"` // *UIMessageDataToolUse may be nil (unlike ToolAnyCallback/ToolVerifyInput where it is guaranteed not to be nil)
+	ToolCallDesc     func(any, any, *UIMessageDataToolUse) string  `json:"-"` // passed input, output (may be nil), *UIMessageDataToolUse (may be nil)
 	ToolApproval     func(any) string                              `json:"-"`
 	ToolVerifyInput  func(any, *UIMessageDataToolUse) error        `json:"-"` // *UIMessageDataToolUse will NOT be nil
 }
@@ -148,7 +148,6 @@ type UIMessageDataToolUse struct {
 	BlockId             string `json:"blockid,omitempty"`
 	WriteBackupFileName string `json:"writebackupfilename,omitempty"`
 	InputFileName       string `json:"inputfilename,omitempty"`
-	TotalItems          *int   `json:"totalitems,omitempty"` // metadata specific to tool call
 }
 
 func (d *UIMessageDataToolUse) IsApproved() bool {
