@@ -153,6 +153,9 @@ func mergeActivity(curActivity *telemetrydata.TEventProps, newActivity telemetry
 	curActivity.OpenMinutes += newActivity.OpenMinutes
 	curActivity.WaveAIActiveMinutes += newActivity.WaveAIActiveMinutes
 	curActivity.WaveAIFgMinutes += newActivity.WaveAIFgMinutes
+	if newActivity.AppFirstDay {
+		curActivity.AppFirstDay = true
+	}
 }
 
 // ignores the timestamp in tevent, and uses the current time

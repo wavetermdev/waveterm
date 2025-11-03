@@ -247,6 +247,21 @@ func startupActivityUpdate(firstLaunch bool) {
 		shellType = "error"
 		shellVersion = ""
 	}
+	userSetOnce := &telemetrydata.TEventUserProps{
+		ClientInitialVersion: "v" + WaveVersion,
+	}
+	tosTs := telemetry.GetTosAgreedTs()
+	var cohortTime time.Time
+	if tosTs > 0 {
+		cohortTime = time.UnixMilli(tosTs)
+	} else {
+		cohortTime = time.Now()
+	}
+	cohortMonth := cohortTime.Format("2006-01")
+	year, week := cohortTime.ISOWeek()
+	cohortISOWeek := fmt.Sprintf("%04d-W%02d", year, week)
+	userSetOnce.CohortMonth = cohortMonth
+	userSetOnce.CohortISOWeek = cohortISOWeek
 	props := telemetrydata.TEventProps{
 		UserSet: &telemetrydata.TEventUserProps{
 			ClientVersion:     "v" + WaveVersion,
@@ -259,9 +274,7 @@ func startupActivityUpdate(firstLaunch bool) {
 			LocalShellType:    shellType,
 			LocalShellVersion: shellVersion,
 		},
-		UserSetOnce: &telemetrydata.TEventUserProps{
-			ClientInitialVersion: "v" + WaveVersion,
-		},
+		UserSetOnce: userSetOnce,
 	}
 	if firstLaunch {
 		props.AppFirstLaunch = true
