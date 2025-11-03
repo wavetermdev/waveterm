@@ -10,11 +10,33 @@ type EndpointInfo = {
     schema: object;
 };
 
+function prependWildcard(path: string): string {
+    return path.startsWith("/") ? `*${path}` : `*/${path}`;
+}
+
+function convertToTildePath(absolutePath: string): string {
+    const homeDir = getApi().getHomeDir();
+    if (absolutePath.startsWith(homeDir)) {
+        return "~" + absolutePath.slice(homeDir.length);
+    }
+    return absolutePath;
+}
+
+function makeConfigPathMatches(suffix: string): Array<string> {
+    const configPath = `${getApi().getConfigDir()}${suffix}`;
+    const tildePath = convertToTildePath(configPath);
+    const paths = [configPath, prependWildcard(configPath)];
+    if (tildePath !== configPath) {
+        paths.push(prependWildcard(tildePath));
+    }
+    return paths;
+}
+
 const allFilepaths: Map<string, Array<string>> = new Map();
-allFilepaths.set(`${getWebServerEndpoint()}/schema/settings.json`, [`${getApi().getConfigDir()}/settings.json`]);
-allFilepaths.set(`${getWebServerEndpoint()}/schema/connections.json`, [`${getApi().getConfigDir()}/connections.json`]);
-allFilepaths.set(`${getWebServerEndpoint()}/schema/aipresets.json`, [`${getApi().getConfigDir()}/presets/ai.json`]);
-allFilepaths.set(`${getWebServerEndpoint()}/schema/widgets.json`, [`${getApi().getConfigDir()}/widgets.json`]);
+allFilepaths.set(`${getWebServerEndpoint()}/schema/settings.json`, makeConfigPathMatches("/settings.json"));
+allFilepaths.set(`${getWebServerEndpoint()}/schema/connections.json`, makeConfigPathMatches("/connections.json"));
+allFilepaths.set(`${getWebServerEndpoint()}/schema/aipresets.json`, makeConfigPathMatches("/presets/ai.json"));
+allFilepaths.set(`${getWebServerEndpoint()}/schema/widgets.json`, makeConfigPathMatches("/widgets.json"));
 
 async function getSchemaEndpointInfo(endpoint: string): Promise<EndpointInfo> {
     let schema: Object;
