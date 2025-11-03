@@ -169,7 +169,7 @@ const (
 )
 
 type WaveToolCall struct {
-	ID          string                `json:"id"`                    // Anthropic tool_use.id
+	ID          string                `json:"id"`                    // Anthropic tool_use.id, or OpenAI function_call, call_id
 	Name        string                `json:"name,omitempty"`        // tool name (if provided)
 	Input       any                   `json:"input,omitempty"`       // accumulated input JSON
 	ToolUseData *UIMessageDataToolUse `json:"toolusedata,omitempty"` // UI tool use data

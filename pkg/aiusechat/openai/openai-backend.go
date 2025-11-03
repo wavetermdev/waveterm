@@ -807,7 +807,7 @@ func handleOpenAIEvent(
 			}
 
 			// Extract partial message if available
-			finalMessages, _ := extractMessageAndToolsFromResponse(ev.Response, state)
+			finalMessages, toolCalls := extractMessageAndToolsFromResponse(ev.Response, state, true)
 
 			_ = sse.AiMsgError(errorMsg)
 			return &uctypes.WaveStopReason{
@@ -816,11 +816,12 @@ func handleOpenAIEvent(
 				ErrorText: errorMsg,
 				MessageID: state.msgID,
 				Model:     state.model,
+				ToolCalls: toolCalls,
 			}, finalMessages
 		}
 
 		// Extract the final message and tool calls from the response output
-		finalMessages, toolCalls := extractMessageAndToolsFromResponse(ev.Response, state)
+		finalMessages, toolCalls := extractMessageAndToolsFromResponse(ev.Response, state, false)
 
 		stopKind := uctypes.StopKindDone
 		if len(toolCalls) > 0 {
@@ -964,7 +965,7 @@ func createToolUseData(toolCallID, toolName string, toolDef *uctypes.ToolDefinit
 }
 
 // extractMessageAndToolsFromResponse extracts the final OpenAI message and tool calls from the completed response
-func extractMessageAndToolsFromResponse(resp openaiResponse, state *openaiStreamingState) ([]*OpenAIChatMessage, []uctypes.WaveToolCall) {
+func extractMessageAndToolsFromResponse(resp openaiResponse, state *openaiStreamingState, incomplete bool) ([]*OpenAIChatMessage, []uctypes.WaveToolCall) {
 	var messageContent []OpenAIMessageContent
 	var toolCalls []uctypes.WaveToolCall
 	var messages []*OpenAIChatMessage
@@ -990,18 +991,28 @@ func extractMessageAndToolsFromResponse(resp openaiResponse, state *openaiStream
 			}
 
 			// Parse arguments JSON string if present
-			var parsedArguments any
+			var parseError error
 			if outputItem.Arguments != "" {
-				if err := json.Unmarshal([]byte(outputItem.Arguments), &parsedArguments); err == nil {
+				var parsedArguments any
+				if err := json.Unmarshal([]byte(outputItem.Arguments), &parsedArguments); err != nil {
+					parseError = err
+				} else {
 					toolCall.Input = parsedArguments
 				}
 			}
 
 			// Attach UIToolUseData if available
+			var hasToolUseData bool
 			if data, ok := state.toolUseData[outputItem.CallId]; ok {
 				toolCall.ToolUseData = data
+				hasToolUseData = true
 			} else {
 				log.Printf("AI no data-tooluse for %s (callid: %s)\n", outputItem.Id, outputItem.CallId)
+			}
+
+			// For incomplete responses, skip tool calls without toolUseData or with JSON parsing errors
+			if incomplete && (!hasToolUseData || parseError != nil) {
+				continue
 			}
 
 			toolCalls = append(toolCalls, toolCall)
