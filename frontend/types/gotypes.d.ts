@@ -977,6 +977,9 @@ declare global {
         "conn:*"?: boolean;
         "conn:askbeforewshinstall"?: boolean;
         "conn:wshenabled"?: boolean;
+        "debug:*"?: boolean;
+        "debug:pprofport"?: number;
+        "debug:pprofmemprofilerate"?: number;
     };
 
     // waveobj.StickerClickOptsType

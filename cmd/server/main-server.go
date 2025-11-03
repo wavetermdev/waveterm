@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"strconv"
 
 	"runtime"
 	"sync"
@@ -352,18 +351,19 @@ func clearTempFiles() error {
 	return nil
 }
 
-func maybeStartPprofServer() error {
-	pprofPortStr := os.Getenv("WAVETERM_PPROFPORT")
-	if pprofPortStr == "" {
-		return nil
+func maybeStartPprofServer() {
+	settings := wconfig.GetWatcher().GetFullConfig().Settings
+	if settings.DebugPprofMemProfileRate != nil {
+		runtime.MemProfileRate = *settings.DebugPprofMemProfileRate
+		log.Printf("set runtime.MemProfileRate to %d\n", runtime.MemProfileRate)
 	}
-	defer os.Unsetenv("WAVETERM_PPROFPORT")
-	pprofPort, err := strconv.Atoi(pprofPortStr)
-	if err != nil {
-		return fmt.Errorf("invalid WAVETERM_PPROFPORT value '%s': %v", pprofPortStr, err)
+	if settings.DebugPprofPort == nil {
+		return
 	}
+	pprofPort := *settings.DebugPprofPort
 	if pprofPort < 1 || pprofPort > 65535 {
-		return fmt.Errorf("WAVETERM_PPROFPORT must be between 1 and 65535, got %d", pprofPort)
+		log.Printf("[error] debug:pprofport must be between 1 and 65535, got %d\n", pprofPort)
+		return
 	}
 	go func() {
 		addr := fmt.Sprintf("localhost:%d", pprofPort)
@@ -372,22 +372,15 @@ func maybeStartPprofServer() error {
 			log.Printf("[error] pprof server failed: %v\n", err)
 		}
 	}()
-	return nil
 }
 
 func main() {
-	err := maybeStartPprofServer()
-	if err != nil {
-		log.Printf("[error] %v\n", err)
-		return
-	}
-
 	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
 	log.SetPrefix("[wavesrv] ")
 	wavebase.WaveVersion = WaveVersion
 	wavebase.BuildTime = BuildTime
 
-	err = grabAndRemoveEnvVars()
+	err := grabAndRemoveEnvVars()
 	if err != nil {
 		log.Printf("[error] %v\n", err)
 		return
@@ -476,6 +469,7 @@ func main() {
 	sigutil.InstallShutdownSignalHandlers(doShutdown)
 	sigutil.InstallSIGUSR1Handler()
 	startConfigWatcher()
+	maybeStartPprofServer()
 	go stdinReadWatch()
 	go telemetryLoop()
 	go updateTelemetryCountsLoop()
