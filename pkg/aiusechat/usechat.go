@@ -534,6 +534,9 @@ func RunAIChat(ctx context.Context, sseHandler *sse.SSEHandlerCh, chatOpts uctyp
 			}
 			continue
 		}
+		if stopReason != nil {
+			metrics.StopReason = string(stopReason.Kind)
+		}
 		break
 	}
 	return metrics, nil
@@ -666,6 +669,7 @@ func sendAIMetricsTelemetry(ctx context.Context, metrics *uctypes.AIMetrics) {
 		WaveAIFirstByteMs:          metrics.FirstByteLatency,
 		WaveAIRequestDurMs:         metrics.RequestDuration,
 		WaveAIWidgetAccess:         metrics.WidgetAccess,
+		WaveAIStopReason:           metrics.StopReason,
 	})
 	_ = telemetry.RecordTEvent(ctx, event)
 }

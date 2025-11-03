@@ -253,6 +253,7 @@ type AIMetrics struct {
 	FirstByteLatency  int            `json:"firstbytelatency"` // ms
 	RequestDuration   int            `json:"requestduration"`  // ms
 	WidgetAccess      bool           `json:"widgetaccess"`
+	StopReason        string         `json:"stopreason,omitempty"` // final stop reason kind
 }
 
 // GenAIMessage interface for messages stored in conversations

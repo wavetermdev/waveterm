@@ -1105,6 +1105,7 @@ declare global {
         "waveai:firstbytems"?: number;
         "waveai:requestdurms"?: number;
         "waveai:widgetaccess"?: boolean;
+        "waveai:stopreason"?: string;
         "waveai:feedback"?: "good" | "bad";
         $set?: TEventUserProps;
         $set_once?: TEventUserProps;

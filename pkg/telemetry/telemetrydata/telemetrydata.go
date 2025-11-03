@@ -135,6 +135,7 @@ type TEventProps struct {
 	WaveAIFirstByteMs          int            `json:"waveai:firstbytems,omitempty"`  // ms
 	WaveAIRequestDurMs         int            `json:"waveai:requestdurms,omitempty"` // ms
 	WaveAIWidgetAccess         bool           `json:"waveai:widgetaccess,omitempty"`
+	WaveAIStopReason           string         `json:"waveai:stopreason,omitempty"`
 	WaveAIFeedback             string         `json:"waveai:feedback,omitempty" tstype:"\"good\" | \"bad\""`
 
 	UserSet     *TEventUserProps `json:"$set,omitempty"`
