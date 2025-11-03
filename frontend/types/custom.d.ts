@@ -83,6 +83,7 @@ declare global {
         getHostName: () => string; // get-host-name
         getDataDir: () => string; // get-data-dir
         getConfigDir: () => string; // get-config-dir
+        getHomeDir: () => string; // get-home-dir
         getWebviewPreload: () => string; // get-webview-preload
         getAboutModalDetails: () => AboutModalDetails; // get-about-modal-details
         getDocsiteUrl: () => string; // get-docsite-url

@@ -6,7 +6,9 @@ package openai
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -56,6 +58,16 @@ func extractXmlAttribute(tag, attrName string) (string, bool) {
 
 	value = strings.ReplaceAll(value, "&quot;", `"`)
 	return value, true
+}
+
+// generateDeterministicSuffix creates an 8-character hash from input strings
+func generateDeterministicSuffix(inputs ...string) string {
+	hasher := sha256.New()
+	for _, input := range inputs {
+		hasher.Write([]byte(input))
+	}
+	hash := hasher.Sum(nil)
+	return hex.EncodeToString(hash)[:8]
 }
 
 // ---------- OpenAI Request Types ----------
@@ -388,8 +400,8 @@ func convertFileAIMessagePart(part uctypes.AIMessagePart) (*OpenAIMessageContent
 		encodedFileName := strings.ReplaceAll(fileName, `"`, "&quot;")
 		quotedFileName := strconv.Quote(encodedFileName)
 
-		randomSuffix := uuid.New().String()[0:8]
-		formattedText := fmt.Sprintf("<AttachedTextFile_%s file_name=%s>\n%s\n</AttachedTextFile_%s>", randomSuffix, quotedFileName, textContent, randomSuffix)
+		deterministicSuffix := generateDeterministicSuffix(textContent, fileName)
+		formattedText := fmt.Sprintf("<AttachedTextFile_%s file_name=%s>\n%s\n</AttachedTextFile_%s>", deterministicSuffix, quotedFileName, textContent, deterministicSuffix)
 
 		return &OpenAIMessageContent{
 			Type: "input_text",
@@ -412,8 +424,8 @@ func convertFileAIMessagePart(part uctypes.AIMessagePart) (*OpenAIMessageContent
 		encodedDirName := strings.ReplaceAll(directoryName, `"`, "&quot;")
 		quotedDirName := strconv.Quote(encodedDirName)
 
-		randomSuffix := uuid.New().String()[0:8]
-		formattedText := fmt.Sprintf("<AttachedDirectoryListing_%s directory_name=%s>\n%s\n</AttachedDirectoryListing_%s>", randomSuffix, quotedDirName, jsonContent, randomSuffix)
+		deterministicSuffix := generateDeterministicSuffix(jsonContent, directoryName)
+		formattedText := fmt.Sprintf("<AttachedDirectoryListing_%s directory_name=%s>\n%s\n</AttachedDirectoryListing_%s>", deterministicSuffix, quotedDirName, jsonContent, deterministicSuffix)
 
 		return &OpenAIMessageContent{
 			Type: "input_text",
