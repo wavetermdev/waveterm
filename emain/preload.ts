@@ -12,6 +12,7 @@ contextBridge.exposeInMainWorld("api", {
     getHostName: () => ipcRenderer.sendSync("get-host-name"),
     getDataDir: () => ipcRenderer.sendSync("get-data-dir"),
     getConfigDir: () => ipcRenderer.sendSync("get-config-dir"),
+    getHomeDir: () => ipcRenderer.sendSync("get-home-dir"),
     getAboutModalDetails: () => ipcRenderer.sendSync("get-about-modal-details"),
     getDocsiteUrl: () => ipcRenderer.sendSync("get-docsite-url"),
     getWebviewPreload: () => ipcRenderer.sendSync("get-webview-preload"),
