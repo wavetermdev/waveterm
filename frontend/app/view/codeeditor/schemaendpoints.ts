@@ -27,6 +27,7 @@ function makeConfigPathMatches(suffix: string): Array<string> {
     const tildePath = convertToTildePath(configPath);
     const paths = [configPath, prependWildcard(configPath)];
     if (tildePath !== configPath) {
+        paths.push(tildePath);
         paths.push(prependWildcard(tildePath));
     }
     return paths;
