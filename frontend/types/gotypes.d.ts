@@ -977,6 +977,9 @@ declare global {
         "conn:*"?: boolean;
         "conn:askbeforewshinstall"?: boolean;
         "conn:wshenabled"?: boolean;
+        "debug:*"?: boolean;
+        "debug:pprofport"?: number;
+        "debug:pprofmemprofilerate"?: number;
     };
 
     // waveobj.StickerClickOptsType
@@ -1042,6 +1045,8 @@ declare global {
         "client:buildtime"?: string;
         "client:osrelease"?: string;
         "client:isdev"?: boolean;
+        "cohort:month"?: string;
+        "cohort:isoweek"?: string;
         "autoupdate:channel"?: string;
         "autoupdate:enabled"?: boolean;
         "localshell:type"?: string;
@@ -1113,6 +1118,8 @@ declare global {
         "client:buildtime"?: string;
         "client:osrelease"?: string;
         "client:isdev"?: boolean;
+        "cohort:month"?: string;
+        "cohort:isoweek"?: string;
         "autoupdate:channel"?: string;
         "autoupdate:enabled"?: boolean;
         "localshell:type"?: string;

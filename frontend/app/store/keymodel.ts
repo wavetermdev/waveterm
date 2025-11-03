@@ -152,16 +152,16 @@ function uxCloseBlock(blockId: string) {
             return;
         }
     }
-    
+
     const blockAtom = WOS.getWaveObjectAtom<Block>(WOS.makeORef("block", blockId));
     const blockData = globalStore.get(blockAtom);
     const isAIFileDiff = blockData?.meta?.view === "aifilediff";
-    
+
     const layoutModel = getLayoutModelForStaticTab();
     const node = layoutModel.getNodeByBlockId(blockId);
     if (node) {
         fireAndForget(() => layoutModel.closeNode(node.id));
-        
+
         if (isAIFileDiff && isAIPanelOpen) {
             setTimeout(() => WaveAIModel.getInstance().focusInput(), 50);
         }
@@ -199,16 +199,16 @@ function genericClose() {
         simpleCloseStaticTab();
         return;
     }
-    
+
     const layoutModel = getLayoutModelForStaticTab();
     const focusedNode = globalStore.get(layoutModel.focusedNode);
     const blockId = focusedNode?.data?.blockId;
     const blockAtom = blockId ? WOS.getWaveObjectAtom<Block>(WOS.makeORef("block", blockId)) : null;
     const blockData = blockAtom ? globalStore.get(blockAtom) : null;
     const isAIFileDiff = blockData?.meta?.view === "aifilediff";
-    
+
     fireAndForget(layoutModel.closeFocusedNode.bind(layoutModel));
-    
+
     if (isAIFileDiff && isAIPanelOpen) {
         setTimeout(() => WaveAIModel.getInstance().focusInput(), 50);
     }

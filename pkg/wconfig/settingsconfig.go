@@ -143,6 +143,10 @@ type SettingsType struct {
 	ConnClear               bool  `json:"conn:*,omitempty"`
 	ConnAskBeforeWshInstall *bool `json:"conn:askbeforewshinstall,omitempty"`
 	ConnWshEnabled          bool  `json:"conn:wshenabled,omitempty"`
+
+	DebugClear               bool `json:"debug:*,omitempty"`
+	DebugPprofPort           *int `json:"debug:pprofport,omitempty"`
+	DebugPprofMemProfileRate *int `json:"debug:pprofmemprofilerate,omitempty"`
 }
 
 func (s *SettingsType) GetAiSettings() *AiSettingsType {
@@ -333,7 +337,7 @@ func resolveEnvReplacements(m waveobj.MetaMapType) {
 	if m == nil {
 		return
 	}
-	
+
 	for key, value := range m {
 		switch v := value.(type) {
 		case string:
@@ -367,7 +371,7 @@ func resolveEnvValue(value string) (string, bool) {
 	if !strings.HasPrefix(value, "$ENV:") {
 		return "", false
 	}
-	
+
 	envSpec := value[5:] // Remove "$ENV:" prefix
 	parts := strings.SplitN(envSpec, ":", 2)
 	envVar := parts[0]
@@ -375,12 +379,12 @@ func resolveEnvValue(value string) (string, bool) {
 	if len(parts) > 1 {
 		fallback = parts[1]
 	}
-	
+
 	// Get the environment variable value
 	if envValue, exists := os.LookupEnv(envVar); exists {
 		return envValue, true
 	}
-	
+
 	// Return fallback if provided, otherwise return empty string
 	if fallback != "" {
 		return fallback, true
@@ -414,12 +418,12 @@ func readConfigHelper(fileName string, barr []byte, readErr error) (waveobj.Meta
 		}
 		cerrs = append(cerrs, ConfigError{File: fileName, Err: err.Error()})
 	}
-	
+
 	// Resolve environment variable replacements
 	if rtn != nil {
 		resolveEnvReplacements(rtn)
 	}
-	
+
 	return rtn, cerrs
 }
 

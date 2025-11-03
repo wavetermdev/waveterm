@@ -60,6 +60,9 @@ type TEventUserProps struct {
 	ClientOSRelease      string `json:"client:osrelease,omitempty"`
 	ClientIsDev          bool   `json:"client:isdev,omitempty"`
 
+	CohortMonth   string `json:"cohort:month,omitempty"`
+	CohortISOWeek string `json:"cohort:isoweek,omitempty"`
+
 	AutoUpdateChannel string `json:"autoupdate:channel,omitempty"`
 	AutoUpdateEnabled bool   `json:"autoupdate:enabled,omitempty"`
 

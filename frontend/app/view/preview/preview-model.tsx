@@ -160,6 +160,7 @@ export class PreviewModel implements ViewModel {
 
     showHiddenFiles: PrimitiveAtom<boolean>;
     refreshVersion: PrimitiveAtom<number>;
+    directorySearchActive: PrimitiveAtom<boolean>;
     refreshCallback: () => void;
     directoryKeyDownHandler: (waveEvent: WaveKeyboardEvent) => boolean;
     codeEditKeyDownHandler: (waveEvent: WaveKeyboardEvent) => boolean;
@@ -173,6 +174,7 @@ export class PreviewModel implements ViewModel {
         let showHiddenFiles = globalStore.get(getSettingsKeyAtom("preview:showhiddenfiles")) ?? true;
         this.showHiddenFiles = atom<boolean>(showHiddenFiles);
         this.refreshVersion = atom(0);
+        this.directorySearchActive = atom(false);
         this.previewTextRef = createRef();
         this.openFileModal = atom(false);
         this.openFileModalDelay = atom(false);

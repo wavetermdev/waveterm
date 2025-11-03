@@ -109,6 +109,7 @@ function DirectoryTable({
     newFile,
     newDirectory,
 }: DirectoryTableProps) {
+    const searchActive = useAtomValue(model.directorySearchActive);
     const fullConfig = useAtomValue(atoms.fullConfigAtom);
     const setErrorMsg = useSetAtom(model.errorMsgAtom);
     const getIconFromMimeType = useCallback(
@@ -346,6 +347,7 @@ function TableBody({
     setRefreshVersion,
     osRef,
 }: TableBodyProps) {
+    const searchActive = useAtomValue(model.directorySearchActive);
     const dummyLineRef = useRef<HTMLDivElement>(null);
     const warningBoxRef = useRef<HTMLDivElement>(null);
     const conn = useAtomValue(model.connection);
@@ -447,12 +449,15 @@ function TableBody({
 
     return (
         <div className="dir-table-body" ref={bodyRef}>
-            {search !== "" && (
-                <div className="flex rounded-[3px] py-1 px-2 bg-warning" ref={warningBoxRef}>
-                    <span>Searching for "{search}"</span>
+            {(searchActive || search !== "") && (
+                <div className="flex rounded-[3px] py-1 px-2 bg-warning text-black" ref={warningBoxRef}>
+                    <span>{search === "" ? "Type to search (Esc to cancel)" : `Searching for "${search}"`}</span>
                     <div
                         className="ml-auto bg-transparent flex justify-center items-center flex-col p-0.5 rounded-md hover:bg-hoverbg focus:bg-hoverbg focus-within:bg-hoverbg cursor-pointer"
-                        onClick={() => setSearch("")}
+                        onClick={() => {
+                            setSearch("");
+                            globalStore.set(model.directorySearchActive, false);
+                        }}
                     >
                         <i className="fa-solid fa-xmark" />
                         <input
@@ -549,6 +554,7 @@ const TableRow = React.forwardRef(function ({
                 const newFileName = row.getValue("path") as string;
                 model.goHistory(newFileName);
                 setSearch("");
+                globalStore.set(model.directorySearchActive, false);
             }}
             onClick={() => setFocusIndex(idx)}
             onContextMenu={(e) => handleFileContextMenu(e, row.original)}
@@ -650,8 +656,13 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
 
     useEffect(() => {
         model.directoryKeyDownHandler = (waveEvent: WaveKeyboardEvent): boolean => {
+            if (checkKeyPressed(waveEvent, "Cmd:f")) {
+                globalStore.set(model.directorySearchActive, true);
+                return true;
+            }
             if (checkKeyPressed(waveEvent, "Escape")) {
                 setSearchText("");
+                globalStore.set(model.directorySearchActive, false);
                 return;
             }
             if (checkKeyPressed(waveEvent, "ArrowUp")) {
@@ -676,6 +687,7 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
                 }
                 model.goHistory(selectedPath);
                 setSearchText("");
+                globalStore.set(model.directorySearchActive, false);
                 return true;
             }
             if (checkKeyPressed(waveEvent, "Backspace")) {
