@@ -840,6 +840,7 @@ type ActivityUpdate struct {
 	NumSSHConn          int                   `json:"numsshconn,omitempty"`
 	NumWSLConn          int                   `json:"numwslconn,omitempty"`
 	NumMagnify          int                   `json:"nummagnify,omitempty"`
+	TermCommandsRun     int                   `json:"termcommandsrun,omitempty"`
 	NumPanics           int                   `json:"numpanics,omitempty"`
 	NumAIReqs           int                   `json:"numaireqs,omitempty"`
 	Startup             int                   `json:"startup,omitempty"`

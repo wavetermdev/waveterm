@@ -85,6 +85,7 @@ type TEventProps struct {
 	OpenMinutes         int `json:"activity:openminutes,omitempty"`
 	WaveAIActiveMinutes int `json:"activity:waveaiactiveminutes,omitempty"`
 	WaveAIFgMinutes     int `json:"activity:waveaifgminutes,omitempty"`
+	TermCommandsRun     int `json:"activity:termcommandsrun,omitempty"`
 
 	AppFirstDay    bool `json:"app:firstday,omitempty"`
 	AppFirstLaunch bool `json:"app:firstlaunch,omitempty"`

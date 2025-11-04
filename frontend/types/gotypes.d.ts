@@ -37,6 +37,7 @@ declare global {
         numsshconn?: number;
         numwslconn?: number;
         nummagnify?: number;
+        termcommandsrun?: number;
         numpanics?: number;
         numaireqs?: number;
         startup?: number;
@@ -1061,6 +1062,7 @@ declare global {
         "activity:openminutes"?: number;
         "activity:waveaiactiveminutes"?: number;
         "activity:waveaifgminutes"?: number;
+        "activity:termcommandsrun"?: number;
         "app:firstday"?: boolean;
         "app:firstlaunch"?: boolean;
         "action:initiator"?: "keyboard" | "mouse";

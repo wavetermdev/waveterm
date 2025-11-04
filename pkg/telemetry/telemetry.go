@@ -153,6 +153,7 @@ func mergeActivity(curActivity *telemetrydata.TEventProps, newActivity telemetry
 	curActivity.OpenMinutes += newActivity.OpenMinutes
 	curActivity.WaveAIActiveMinutes += newActivity.WaveAIActiveMinutes
 	curActivity.WaveAIFgMinutes += newActivity.WaveAIFgMinutes
+	curActivity.TermCommandsRun += newActivity.TermCommandsRun
 	if newActivity.AppFirstDay {
 		curActivity.AppFirstDay = true
 	}

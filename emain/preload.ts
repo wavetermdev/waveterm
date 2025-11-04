@@ -3,6 +3,7 @@
 
 import { contextBridge, ipcRenderer, Rectangle, WebviewTag } from "electron";
 
+// update type in custom.d.ts (ElectronApi type)
 contextBridge.exposeInMainWorld("api", {
     getAuthKey: () => ipcRenderer.sendSync("get-auth-key"),
     getIsDev: () => ipcRenderer.sendSync("get-is-dev"),
@@ -60,6 +61,7 @@ contextBridge.exposeInMainWorld("api", {
     clearWebviewStorage: (webContentsId: number) => ipcRenderer.invoke("clear-webview-storage", webContentsId),
     setWaveAIOpen: (isOpen: boolean) => ipcRenderer.send("set-waveai-open", isOpen),
     closeBuilderWindow: () => ipcRenderer.send("close-builder-window"),
+    incrementTermCommands: () => ipcRenderer.send("increment-term-commands"),
 });
 
 // Custom event for "new-window"
