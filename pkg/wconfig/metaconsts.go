@@ -97,5 +97,9 @@ const (
 	ConfigKey_ConnClear                      = "conn:*"
 	ConfigKey_ConnAskBeforeWshInstall        = "conn:askbeforewshinstall"
 	ConfigKey_ConnWshEnabled                 = "conn:wshenabled"
+
+	ConfigKey_DebugClear                     = "debug:*"
+	ConfigKey_DebugPprofPort                 = "debug:pprofport"
+	ConfigKey_DebugPprofMemProfileRate       = "debug:pprofmemprofilerate"
 )
 

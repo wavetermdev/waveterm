@@ -241,6 +241,15 @@
         },
         "conn:wshenabled": {
           "type": "boolean"
+        },
+        "debug:*": {
+          "type": "boolean"
+        },
+        "debug:pprofport": {
+          "type": "integer"
+        },
+        "debug:pprofmemprofilerate": {
+          "type": "integer"
         }
       },
       "additionalProperties": false,

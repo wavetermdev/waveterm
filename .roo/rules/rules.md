@@ -41,6 +41,8 @@ It has a TypeScript/React frontend and a Go backend. They talk together over `ws
     - NEVER use cursor-help (it looks terrible)
     - useAtom() and useAtomValue() are react HOOKS, so they must be called at the component level not inline in JSX
     - If you use React.memo(), make sure to add a displayName for the component
+  - Other
+    - never use atob() or btoa() (not UTF-8 safe). use functions in frontend/util/util.ts for base64 decoding and encoding
 - In general, when writing functions, we prefer _early returns_ rather than putting the majority of a function inside of an if block.
 
 ### Styling

@@ -3,6 +3,7 @@
 
 
 import { BlockNodeModel } from "@/app/block/blocktypes";
+import { appHandleKeyDown } from "@/app/store/keymodel";
 import { waveEventSubscribe } from "@/app/store/wps";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { makeFeBlockRouteId } from "@/app/store/wshrouter";
@@ -526,6 +527,12 @@ export class TermViewModel implements ViewModel {
         const shellProcStatus = globalStore.get(this.shellProcStatus);
         if ((shellProcStatus == "done" || shellProcStatus == "init") && keyutil.checkKeyPressed(waveEvent, "Enter")) {
             this.forceRestartController();
+            return false;
+        }
+        const appHandled = appHandleKeyDown(waveEvent);
+        if (appHandled) {
+            event.preventDefault();
+            event.stopPropagation();
             return false;
         }
         return true;

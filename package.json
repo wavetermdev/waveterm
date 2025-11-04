@@ -7,7 +7,7 @@
     "productName": "Wave",
     "description": "Open-Source AI-Native Terminal Built for Seamless Workflows",
     "license": "Apache-2.0",
-    "version": "0.12.1",
+    "version": "0.12.2-beta.3",
     "homepage": "https://waveterm.dev",
     "build": {
         "appId": "dev.commandline.waveterm"
@@ -61,7 +61,7 @@
         "@types/ws": "^8",
         "@vitejs/plugin-react-swc": "4.2.0",
         "@vitest/coverage-istanbul": "^3.0.9",
-        "electron": "^38.1.2",
+        "electron": "^38.5.0",
         "electron-builder": "^26.0",
         "electron-vite": "^4.0.1",
         "eslint": "^8.57.0",

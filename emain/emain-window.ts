@@ -25,6 +25,7 @@ import { updater } from "./updater";
 export type WindowOpts = {
     unamePlatform: string;
     isPrimaryStartupWindow?: boolean;
+    foregroundWindow?: boolean;
 };
 
 export const MinWindowWidth = 800;
@@ -193,7 +194,7 @@ export class WaveBrowserWindow extends BaseWindow {
 
         super(winOpts);
         const fullscreenOnLaunch = fullConfig?.settings["window:fullscreenonlaunch"];
-        if (fullscreenOnLaunch) {
+        if (fullscreenOnLaunch && opts.foregroundWindow) {
             this.once("show", () => {
                 this.setFullScreen(true);
             });
@@ -852,6 +853,7 @@ export async function relaunchBrowserWindows() {
         const win = await createBrowserWindow(windowData, fullConfig, {
             unamePlatform,
             isPrimaryStartupWindow,
+            foregroundWindow: windowId === primaryWindowId,
         });
         wins.push(win);
     }

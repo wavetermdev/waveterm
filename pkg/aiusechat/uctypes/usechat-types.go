@@ -86,10 +86,10 @@ type ToolDefinition struct {
 	Strict           bool           `json:"strict,omitempty"`
 
 	ToolTextCallback func(any) (string, error)                     `json:"-"`
-	ToolAnyCallback  func(any, *UIMessageDataToolUse) (any, error) `json:"-"`
-	ToolInputDesc    func(any) string                              `json:"-"`
+	ToolAnyCallback  func(any, *UIMessageDataToolUse) (any, error) `json:"-"` // *UIMessageDataToolUse will NOT be nil
+	ToolCallDesc     func(any, any, *UIMessageDataToolUse) string  `json:"-"` // passed input, output (may be nil), *UIMessageDataToolUse (may be nil)
 	ToolApproval     func(any) string                              `json:"-"`
-	ToolVerifyInput  func(any, *UIMessageDataToolUse) error        `json:"-"`
+	ToolVerifyInput  func(any, *UIMessageDataToolUse) error        `json:"-"` // *UIMessageDataToolUse will NOT be nil
 }
 
 func (td *ToolDefinition) Clean() *ToolDefinition {

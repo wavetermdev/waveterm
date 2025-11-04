@@ -1,9 +1,9 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { handleWaveAIContextMenu } from "@/app/aipanel/aipanel-contextmenu";
 import { waveAIHasSelection } from "@/app/aipanel/waveai-focus-utils";
 import { ErrorBoundary } from "@/app/element/errorboundary";
-import { ContextMenuModel } from "@/app/store/contextmenu";
 import { atoms, getSettingsKeyAtom } from "@/app/store/global";
 import { globalStore } from "@/app/store/jotaiStore";
 import { checkKeyPressed, keydownWrapper } from "@/util/keyutil";
@@ -204,11 +204,10 @@ const AIErrorMessage = memo(({ errorMessage, onClear }: AIErrorMessageProps) => 
 AIErrorMessage.displayName = "AIErrorMessage";
 
 interface AIPanelProps {
-    className?: string;
     onClose?: () => void;
 }
 
-const AIPanelComponentInner = memo(({ className, onClose }: AIPanelProps) => {
+const AIPanelComponentInner = memo(({ onClose }: AIPanelProps) => {
     const [isDragOver, setIsDragOver] = useState(false);
     const [isReactDndDragOver, setIsReactDndDragOver] = useState(false);
     const [initialLoadDone, setInitialLoadDone] = useState(false);
@@ -467,39 +466,6 @@ const AIPanelComponentInner = memo(({ className, onClose }: AIPanelProps) => {
         }, 0);
     };
 
-    const handleMessagesContextMenu = (e: React.MouseEvent) => {
-        e.preventDefault();
-        e.stopPropagation();
-
-        const menu: ContextMenuItem[] = [];
-
-        const hasSelection = waveAIHasSelection();
-        if (hasSelection) {
-            menu.push({
-                role: "copy",
-            });
-            menu.push({ type: "separator" });
-        }
-
-        menu.push({
-            label: "New Chat",
-            click: () => {
-                model.clearChat();
-            },
-        });
-
-        menu.push({ type: "separator" });
-
-        menu.push({
-            label: "Hide Wave AI",
-            click: () => {
-                onClose?.();
-            },
-        });
-
-        ContextMenuModel.showContextMenu(menu, e);
-    };
-
     const showBlockMask = isLayoutMode && showOverlayBlockNums;
 
     return (
@@ -507,9 +473,8 @@ const AIPanelComponentInner = memo(({ className, onClose }: AIPanelProps) => {
             ref={containerRef}
             data-waveai-panel="true"
             className={cn(
-                "bg-gray-900 flex flex-col relative h-[calc(100%-4px)]",
-                model.inBuilder ? "mt-0" : "mt-1",
-                className,
+                "bg-gray-900 flex flex-col relative",
+                model.inBuilder ? "mt-0 h-full" : "mt-1 h-[calc(100%-4px)]",
                 (isDragOver || isReactDndDragOver) && "bg-gray-800 border-accent",
                 isFocused ? "border-2 border-accent" : "border-2 border-transparent"
             )}
@@ -537,14 +502,17 @@ const AIPanelComponentInner = memo(({ className, onClose }: AIPanelProps) => {
                 ) : (
                     <>
                         {messages.length === 0 && initialLoadDone ? (
-                            <div className="flex-1 overflow-y-auto p-2" onContextMenu={handleMessagesContextMenu}>
+                            <div
+                                className="flex-1 overflow-y-auto p-2"
+                                onContextMenu={(e) => handleWaveAIContextMenu(e, onClose)}
+                            >
                                 {model.inBuilder ? <AIBuilderWelcomeMessage /> : <AIWelcomeMessage />}
                             </div>
                         ) : (
                             <AIPanelMessages
                                 messages={messages}
                                 status={status}
-                                onContextMenu={handleMessagesContextMenu}
+                                onContextMenu={(e) => handleWaveAIContextMenu(e, onClose)}
                             />
                         )}
                         {errorMessage && (
@@ -561,10 +529,10 @@ const AIPanelComponentInner = memo(({ className, onClose }: AIPanelProps) => {
 
 AIPanelComponentInner.displayName = "AIPanelInner";
 
-const AIPanelComponent = ({ className, onClose }: AIPanelProps) => {
+const AIPanelComponent = ({ onClose }: AIPanelProps) => {
     return (
         <ErrorBoundary>
-            <AIPanelComponentInner className={className} onClose={onClose} />
+            <AIPanelComponentInner onClose={onClose} />
         </ErrorBoundary>
     );
 };

@@ -197,6 +197,32 @@ func isBlockedFile(expandedPath string) (bool, string) {
 	return false, ""
 }
 
+func verifyReadTextFileInput(input any, toolUseData *uctypes.UIMessageDataToolUse) error {
+	params, err := parseReadTextFileInput(input)
+	if err != nil {
+		return err
+	}
+
+	expandedPath, err := wavebase.ExpandHomeDir(params.Filename)
+	if err != nil {
+		return fmt.Errorf("failed to expand path: %w", err)
+	}
+
+	if blocked, reason := isBlockedFile(expandedPath); blocked {
+		return fmt.Errorf("access denied: potentially sensitive file: %s", reason)
+	}
+
+	fileInfo, err := os.Stat(expandedPath)
+	if err != nil {
+		return fmt.Errorf("failed to stat file: %w", err)
+	}
+
+	if fileInfo.IsDir() {
+		return fmt.Errorf("path is a directory, cannot be read with the read_text_file tool. use the read_dir tool if available to read directories")
+	}
+
+	return nil
+}
 
 func readTextFileCallback(input any, toolUseData *uctypes.UIMessageDataToolUse) (any, error) {
 	const ReadLimit = 1024 * 1024 * 1024
@@ -283,7 +309,7 @@ func readTextFileCallback(input any, toolUseData *uctypes.UIMessageDataToolUse) 
 		"modified_time": modTime.UTC().Format(time.RFC3339),
 		"mode":          fileInfo.Mode().String(),
 	}
-	if stopReason != "" {
+	if stopReason == "read_limit" || stopReason == StopReasonMaxBytes {
 		result["truncated"] = stopReason
 	}
 
@@ -319,20 +345,20 @@ func GetReadTextFileToolDefinition() uctypes.ToolDefinition {
 				"count": map[string]any{
 					"type":        "integer",
 					"minimum":     1,
-					"default":     100,
+					"default":     ReadFileDefaultLineCount,
 					"description": "Number of lines to return",
 				},
 				"max_bytes": map[string]any{
 					"type":        "integer",
 					"minimum":     1,
-					"default":     51200,
+					"default":     ReadFileDefaultMaxBytes,
 					"description": "Maximum bytes to return. If the result exceeds this, it will be truncated at line boundaries",
 				},
 			},
 			"required":             []string{"filename"},
 			"additionalProperties": false,
 		},
-		ToolInputDesc: func(input any) string {
+		ToolCallDesc: func(input any, output any, toolUseData *uctypes.UIMessageDataToolUse) string {
 			parsed, err := parseReadTextFileInput(input)
 			if err != nil {
 				return fmt.Sprintf("error parsing input: %v", err)
@@ -342,10 +368,24 @@ func GetReadTextFileToolDefinition() uctypes.ToolDefinition {
 			offset := *parsed.Offset
 			count := *parsed.Count
 
+			readFullFile := false
+			if output != nil {
+				if outputMap, ok := output.(map[string]any); ok {
+					_, wasTruncated := outputMap["truncated"]
+					readFullFile = !wasTruncated
+				}
+			}
+
 			if origin == "start" && offset == 0 {
+				if readFullFile {
+					return fmt.Sprintf("reading %q (entire file)", parsed.Filename)
+				}
 				return fmt.Sprintf("reading %q (first %d lines)", parsed.Filename, count)
 			}
 			if origin == "end" && offset == 0 {
+				if readFullFile {
+					return fmt.Sprintf("reading %q (entire file)", parsed.Filename)
+				}
 				return fmt.Sprintf("reading %q (last %d lines)", parsed.Filename, count)
 			}
 			if origin == "end" {
@@ -357,5 +397,6 @@ func GetReadTextFileToolDefinition() uctypes.ToolDefinition {
 		ToolApproval: func(input any) string {
 			return uctypes.ApprovalNeedsApproval
 		},
+		ToolVerifyInput: verifyReadTextFileInput,
 	}
 }

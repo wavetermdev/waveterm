@@ -151,7 +151,7 @@ var BuilderSystemPromptText_OpenAI = strings.Join([]string{
 	``,
 }, "\n")
 
-func getWaveAISettings(premium bool, builderMode bool) (*uctypes.AIOptsType, error) {
+func getWaveAISettings(premium bool, builderMode bool, rtInfo *waveobj.ObjRTInfo) (*uctypes.AIOptsType, error) {
 	baseUrl := DefaultAIEndpoint
 	if os.Getenv("WAVETERM_WAVEAI_ENDPOINT") != "" {
 		baseUrl = os.Getenv("WAVETERM_WAVEAI_ENDPOINT")
@@ -160,12 +160,19 @@ func getWaveAISettings(premium bool, builderMode bool) (*uctypes.AIOptsType, err
 	if builderMode {
 		maxTokens = BuilderMaxTokens
 	}
+	if rtInfo != nil && rtInfo.WaveAIMaxOutputTokens > 0 {
+		maxTokens = rtInfo.WaveAIMaxOutputTokens
+	}
 	if DefaultAPI == APIType_Anthropic {
+		thinkingLevel := uctypes.ThinkingLevelMedium
+		if rtInfo != nil && rtInfo.WaveAIThinkingLevel != "" {
+			thinkingLevel = rtInfo.WaveAIThinkingLevel
+		}
 		return &uctypes.AIOptsType{
 			APIType:       APIType_Anthropic,
 			Model:         uctypes.DefaultAnthropicModel,
 			MaxTokens:     maxTokens,
-			ThinkingLevel: uctypes.ThinkingLevelMedium,
+			ThinkingLevel: thinkingLevel,
 			BaseURL:       baseUrl,
 		}, nil
 	} else if DefaultAPI == APIType_OpenAI {
@@ -174,6 +181,9 @@ func getWaveAISettings(premium bool, builderMode bool) (*uctypes.AIOptsType, err
 		if premium {
 			model = uctypes.PremiumOpenAIModel
 			thinkingLevel = uctypes.ThinkingLevelMedium
+			if rtInfo != nil && rtInfo.WaveAIThinkingLevel != "" {
+				thinkingLevel = rtInfo.WaveAIThinkingLevel
+			}
 		}
 		return &uctypes.AIOptsType{
 			APIType:       APIType_OpenAI,
@@ -319,6 +329,9 @@ func processToolCallInternal(toolCall uctypes.WaveToolCall, chatOpts uctypes.Wav
 				ErrorText: errorMsg,
 			}
 		}
+		// ToolVerifyInput can modify the toolusedata.  re-send it here.
+		_ = sseHandler.AiMsgData("data-tooluse", toolCall.ID, *toolCall.ToolUseData)
+		updateToolUseDataInChat(chatOpts, toolCall.ID, toolCall.ToolUseData)
 	}
 
 	if toolCall.ToolUseData.Approval == uctypes.ApprovalNeedsApproval {
@@ -351,7 +364,7 @@ func processToolCallInternal(toolCall uctypes.WaveToolCall, chatOpts uctypes.Wav
 	}
 
 	toolCall.ToolUseData.RunTs = time.Now().UnixMilli()
-	result := ResolveToolCall(toolCall, chatOpts)
+	result := ResolveToolCall(toolDef, toolCall, chatOpts)
 
 	if result.ErrorText != "" {
 		toolCall.ToolUseData.Status = uctypes.ToolUseStatusError
@@ -526,7 +539,7 @@ func RunAIChat(ctx context.Context, sseHandler *sse.SSEHandlerCh, chatOpts uctyp
 	return metrics, nil
 }
 
-func ResolveToolCall(toolCall uctypes.WaveToolCall, chatOpts uctypes.WaveChatOpts) (result uctypes.AIToolResult) {
+func ResolveToolCall(toolDef *uctypes.ToolDefinition, toolCall uctypes.WaveToolCall, chatOpts uctypes.WaveChatOpts) (result uctypes.AIToolResult) {
 	result = uctypes.AIToolResult{
 		ToolName:  toolCall.Name,
 		ToolUseID: toolCall.ID,
@@ -538,8 +551,6 @@ func ResolveToolCall(toolCall uctypes.WaveToolCall, chatOpts uctypes.WaveChatOpt
 			result.Text = ""
 		}
 	}()
-
-	toolDef := chatOpts.GetToolDefinition(toolCall.Name)
 
 	if toolDef == nil {
 		result.ErrorText = fmt.Sprintf("tool '%s' not found", toolCall.Name)
@@ -553,6 +564,10 @@ func ResolveToolCall(toolCall uctypes.WaveToolCall, chatOpts uctypes.WaveChatOpt
 			result.ErrorText = err.Error()
 		} else {
 			result.Text = text
+			// Recompute tool description with the result
+			if toolDef.ToolCallDesc != nil && toolCall.ToolUseData != nil {
+				toolCall.ToolUseData.ToolDesc = toolDef.ToolCallDesc(toolCall.Input, text, toolCall.ToolUseData)
+			}
 		}
 	} else if toolDef.ToolAnyCallback != nil {
 		output, err := toolDef.ToolAnyCallback(toolCall.Input, toolCall.ToolUseData)
@@ -565,6 +580,10 @@ func ResolveToolCall(toolCall uctypes.WaveToolCall, chatOpts uctypes.WaveChatOpt
 				result.ErrorText = fmt.Sprintf("failed to marshal tool output: %v", marshalErr)
 			} else {
 				result.Text = string(jsonBytes)
+				// Recompute tool description with the result
+				if toolDef.ToolCallDesc != nil && toolCall.ToolUseData != nil {
+					toolCall.ToolUseData.ToolDesc = toolDef.ToolCallDesc(toolCall.Input, output, toolCall.ToolUseData)
+				}
 			}
 		}
 	} else {
@@ -685,10 +704,20 @@ func WaveAIPostMessageHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Get RTInfo from TabId or BuilderId
+	var rtInfo *waveobj.ObjRTInfo
+	if req.TabId != "" {
+		oref := waveobj.MakeORef(waveobj.OType_Tab, req.TabId)
+		rtInfo = wstore.GetRTInfo(oref)
+	} else if req.BuilderId != "" {
+		oref := waveobj.MakeORef(waveobj.OType_Builder, req.BuilderId)
+		rtInfo = wstore.GetRTInfo(oref)
+	}
+
 	// Get WaveAI settings
 	premium := shouldUsePremium()
 	builderMode := req.BuilderId != ""
-	aiOpts, err := getWaveAISettings(premium, builderMode)
+	aiOpts, err := getWaveAISettings(premium, builderMode, rtInfo)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("WaveAI configuration error: %v", err), http.StatusInternalServerError)
 		return

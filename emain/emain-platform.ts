@@ -193,6 +193,9 @@ ipcMain.on("get-data-dir", (event) => {
 ipcMain.on("get-config-dir", (event) => {
     event.returnValue = getWaveConfigDir();
 });
+ipcMain.on("get-home-dir", (event) => {
+    event.returnValue = app.getPath("home");
+});
 
 /**
  * Gets the value of the XDG_CURRENT_DESKTOP environment variable. If ORIGINAL_XDG_CURRENT_DESKTOP is set, it will be returned instead.

@@ -9,6 +9,8 @@ import * as keyutil from "@/util/keyutil";
 import { isBlank } from "@/util/util";
 import { Provider, useAtomValue } from "jotai";
 import { useEffect } from "react";
+import { DndProvider } from "react-dnd";
+import { HTML5Backend } from "react-dnd-html5-backend";
 
 type BuilderAppProps = {
     initOpts: BuilderInitOpts;
@@ -41,7 +43,9 @@ function BuilderAppInner() {
                     WaveApp Builder{!isBlank(builderAppId) && ` (${builderAppId})`}
                 </div>
             </div>
-            {isBlank(builderAppId) ? <AppSelectionModal /> : <BuilderWorkspace />}
+            <DndProvider backend={HTML5Backend}>
+                {isBlank(builderAppId) ? <AppSelectionModal /> : <BuilderWorkspace />}
+            </DndProvider>
         </div>
     );
 }
