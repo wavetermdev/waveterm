@@ -59,6 +59,15 @@ func (m *anthropicChatMessage) GetUsage() *uctypes.AIUsage {
 	}
 }
 
+func (m *anthropicChatMessage) ContainsText() bool {
+	for _, content := range m.Content {
+		if content.Type == "text" && content.Text != "" {
+			return true
+		}
+	}
+	return false
+}
+
 type anthropicInputMessage struct {
 	Role    string                         `json:"role"`
 	Content []anthropicMessageContentBlock `json:"content"`

@@ -261,6 +261,7 @@ type AIMetrics struct {
 type GenAIMessage interface {
 	GetMessageId() string
 	GetUsage() *AIUsage
+	ContainsText() bool
 }
 
 const (

@@ -534,6 +534,37 @@ func RunAIChat(ctx context.Context, sseHandler *sse.SSEHandlerCh, chatOpts uctyp
 			}
 			continue
 		}
+		if stopReason != nil && stopReason.Kind == uctypes.StopKindMaxTokens && len(stopReason.ToolCalls) > 0 {
+			log.Printf("MaxTokens hit with %d complete tool calls, continuing tool loop\n", len(stopReason.ToolCalls))
+			metrics.ToolUseCount += len(stopReason.ToolCalls)
+			processToolCalls(stopReason, chatOpts, sseHandler, metrics)
+
+			var messageID string
+			if len(rtnMessage) > 0 && rtnMessage[0] != nil {
+				messageID = rtnMessage[0].GetMessageId()
+			}
+			cont = &uctypes.WaveContinueResponse{
+				MessageID:             messageID,
+				Model:                 chatOpts.Config.Model,
+				ContinueFromKind:      uctypes.StopKindMaxTokens,
+				ContinueFromRawReason: stopReason.RawReason,
+			}
+			continue
+		}
+		if stopReason != nil && stopReason.Kind == uctypes.StopKindMaxTokens {
+			hasText := false
+			for _, msg := range rtnMessage {
+				if msg != nil && msg.ContainsText() {
+					hasText = true
+					break
+				}
+			}
+			continueData := map[string]bool{
+				"hastext": hasText,
+			}
+			continueID := uuid.New().String()
+			_ = sseHandler.AiMsgData("data-continue", continueID, continueData)
+		}
 		if stopReason != nil {
 			metrics.StopReason = string(stopReason.Kind)
 		}

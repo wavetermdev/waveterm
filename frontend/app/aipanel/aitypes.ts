@@ -24,6 +24,10 @@ type WaveUIDataTypes = {
         writebackupfilename?: string;
         inputfilename?: string;
     };
+    // pkg/aiusechat/usechat.go data-continue
+    continue: {
+        hastext: boolean;
+    };
 };
 
 export type WaveUIMessage = UIMessage<unknown, WaveUIDataTypes, {}>;

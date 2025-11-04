@@ -35,6 +35,18 @@ type OpenAIChatMessage struct {
 	Usage              *OpenAIUsage
 }
 
+func (m *OpenAIChatMessage) ContainsText() bool {
+	if m.Message == nil {
+		return false
+	}
+	for _, content := range m.Message.Content {
+		if (content.Type == "input_text" || content.Type == "output_text") && content.Text != "" {
+			return true
+		}
+	}
+	return false
+}
+
 type OpenAIMessage struct {
 	Role    string                 `json:"role"`
 	Content []OpenAIMessageContent `json:"content"`
