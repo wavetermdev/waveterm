@@ -12,8 +12,8 @@ import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { isMacOS } from "@/util/platformutil";
 import { useEffect, useState } from "react";
 import { FakeChat } from "./fakechat";
-import { CurrentOnboardingVersion } from "./onboarding-common";
 import { EditBashrcCommand, ViewLogoCommand, ViewShortcutsCommand } from "./onboarding-command";
+import { CurrentOnboardingVersion } from "./onboarding-common";
 import { FakeLayout } from "./onboarding-layout";
 
 type FeaturePageName = "waveai" | "magnify" | "files";
@@ -100,7 +100,7 @@ const WaveAIPage = ({ onNext, onSkip }: { onNext: () => void; onSkip: () => void
                         <div className="flex flex-col items-start gap-4 text-secondary">
                             <p>
                                 Wave AI is your terminal assistant with context. I can read your terminal output,
-                                analyze widgets, access files, and help you solve problems faster.
+                                analyze widgets, read/write files, and help you solve problems faster.
                             </p>
 
                             <div className="flex items-start gap-3 w-full">
