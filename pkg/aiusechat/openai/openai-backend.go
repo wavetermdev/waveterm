@@ -25,6 +25,22 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/web/sse"
 )
 
+// sanitizeHostnameInError removes the specific hostname from error messages
+func sanitizeHostnameInError(err error, baseURL string) error {
+	if err == nil {
+		return nil
+	}
+
+	errStr := err.Error()
+	parsedURL, parseErr := url.Parse(baseURL)
+	if parseErr == nil && parsedURL.Host != "" {
+		errStr = strings.ReplaceAll(errStr, baseURL, "AI service")
+		errStr = strings.ReplaceAll(errStr, parsedURL.Host, "host")
+	}
+
+	return fmt.Errorf("%s", errStr)
+}
+
 // ---------- OpenAI wire types (subset) ----------
 
 type OpenAIChatMessage struct {
@@ -495,7 +511,7 @@ func RunOpenAIChatStep(
 
 	resp, err := httpClient.Do(req)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, nil, sanitizeHostnameInError(err, chatOpts.Config.BaseURL)
 	}
 	defer resp.Body.Close()
 
