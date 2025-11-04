@@ -239,12 +239,6 @@ const AIPanelComponentInner = memo(() => {
         onError: (error) => {
             console.error("AI Chat error:", error);
             model.setError(error.message || "An error occurred");
-            setMessages((prevMessages) => {
-                if (prevMessages.length > 0 && prevMessages[prevMessages.length - 1].role === "user") {
-                    return prevMessages.slice(0, -1);
-                }
-                return prevMessages;
-            });
         },
     });
 
