@@ -542,4 +542,18 @@ export class WaveAIModel {
             globalStore.set(this.restoreBackupStatus, "error");
         }
     }
+
+    canCloseWaveAIPanel(): boolean {
+        if (this.inBuilder) {
+            return false;
+        }
+        return true;
+    }
+
+    closeWaveAIPanel() {
+        if (this.inBuilder) {
+            return;
+        }
+        WorkspaceLayoutModel.getInstance().setAIPanelVisible(false);
+    }
 }

@@ -3,23 +3,26 @@
 
 import { waveAIHasSelection } from "@/app/aipanel/waveai-focus-utils";
 import { ContextMenuModel } from "@/app/store/contextmenu";
+import { isDev } from "@/app/store/global";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { WaveAIModel } from "./waveai-model";
 
-export async function handleWaveAIContextMenu(e: React.MouseEvent, onClose?: () => void): Promise<void> {
+export async function handleWaveAIContextMenu(e: React.MouseEvent, showCopy: boolean): Promise<void> {
     e.preventDefault();
     e.stopPropagation();
 
     const model = WaveAIModel.getInstance();
     const menu: ContextMenuItem[] = [];
 
-    const hasSelection = waveAIHasSelection();
-    if (hasSelection) {
-        menu.push({
-            role: "copy",
-        });
-        menu.push({ type: "separator" });
+    if (showCopy) {
+        const hasSelection = waveAIHasSelection();
+        if (hasSelection) {
+            menu.push({
+                role: "copy",
+            });
+            menu.push({ type: "separator" });
+        }
     }
 
     menu.push({
@@ -103,6 +106,19 @@ export async function handleWaveAIContextMenu(e: React.MouseEvent, onClose?: () 
             }
         );
     } else {
+        if (isDev()) {
+            maxTokensSubmenu.push({
+                label: "1k (Dev Testing)",
+                type: "checkbox",
+                checked: currentMaxTokens === 1024,
+                click: () => {
+                    RpcApi.SetRTInfoCommand(TabRpcClient, {
+                        oref: model.orefContext,
+                        data: { "waveai:maxoutputtokens": 1024 },
+                    });
+                },
+            });
+        }
         maxTokensSubmenu.push(
             {
                 label: "4k",
@@ -150,14 +166,16 @@ export async function handleWaveAIContextMenu(e: React.MouseEvent, onClose?: () 
         submenu: maxTokensSubmenu,
     });
 
-    menu.push({ type: "separator" });
+    if (model.canCloseWaveAIPanel()) {
+        menu.push({ type: "separator" });
 
-    menu.push({
-        label: "Hide Wave AI",
-        click: () => {
-            onClose?.();
-        },
-    });
+        menu.push({
+            label: "Hide Wave AI",
+            click: () => {
+                model.closeWaveAIPanel();
+            },
+        });
+    }
 
     ContextMenuModel.showContextMenu(menu, e);
 }

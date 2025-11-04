@@ -1,38 +1,18 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { ContextMenuModel } from "@/app/store/contextmenu";
+import { handleWaveAIContextMenu } from "@/app/aipanel/aipanel-contextmenu";
 import { useAtomValue } from "jotai";
 import { memo } from "react";
 import { WaveAIModel } from "./waveai-model";
 
-interface AIPanelHeaderProps {
-    onClose?: () => void;
-    model: WaveAIModel;
-    onClearChat?: () => void;
-}
-
-export const AIPanelHeader = memo(({ onClose, model, onClearChat }: AIPanelHeaderProps) => {
+export const AIPanelHeader = memo(() => {
+    const model = WaveAIModel.getInstance();
     const widgetAccess = useAtomValue(model.widgetAccessAtom);
     const inBuilder = model.inBuilder;
 
     const handleKebabClick = (e: React.MouseEvent) => {
-        const menu: ContextMenuItem[] = [
-            {
-                label: "New Chat",
-                click: () => {
-                    onClearChat?.();
-                },
-            },
-            { type: "separator" },
-            {
-                label: "Hide Wave AI",
-                click: () => {
-                    onClose?.();
-                },
-            },
-        ];
-        ContextMenuModel.showContextMenu(menu, e);
+        handleWaveAIContextMenu(e, false);
     };
 
     return (

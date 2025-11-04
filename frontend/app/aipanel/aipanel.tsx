@@ -203,11 +203,7 @@ const AIErrorMessage = memo(({ errorMessage, onClear }: AIErrorMessageProps) => 
 
 AIErrorMessage.displayName = "AIErrorMessage";
 
-interface AIPanelProps {
-    onClose?: () => void;
-}
-
-const AIPanelComponentInner = memo(({ onClose }: AIPanelProps) => {
+const AIPanelComponentInner = memo(() => {
     const [isDragOver, setIsDragOver] = useState(false);
     const [isReactDndDragOver, setIsReactDndDragOver] = useState(false);
     const [initialLoadDone, setInitialLoadDone] = useState(false);
@@ -255,10 +251,6 @@ const AIPanelComponentInner = memo(({ onClose }: AIPanelProps) => {
     model.registerUseChatData(sendMessage, setMessages, status, stop);
 
     // console.log("AICHAT messages", messages);
-
-    const handleClearChat = useCallback(() => {
-        model.clearChat();
-    }, [model]);
 
     const handleKeyDown = (waveEvent: WaveKeyboardEvent): boolean => {
         if (checkKeyPressed(waveEvent, "Cmd:k")) {
@@ -493,7 +485,7 @@ const AIPanelComponentInner = memo(({ onClose }: AIPanelProps) => {
         >
             {(isDragOver || isReactDndDragOver) && <AIDragOverlay />}
             {showBlockMask && <AIBlockMask />}
-            <AIPanelHeader onClose={onClose} model={model} onClearChat={handleClearChat} />
+            <AIPanelHeader />
             <AIRateLimitStrip />
 
             <div key="main-content" className="flex-1 flex flex-col min-h-0">
@@ -504,7 +496,7 @@ const AIPanelComponentInner = memo(({ onClose }: AIPanelProps) => {
                         {messages.length === 0 && initialLoadDone ? (
                             <div
                                 className="flex-1 overflow-y-auto p-2"
-                                onContextMenu={(e) => handleWaveAIContextMenu(e, onClose)}
+                                onContextMenu={(e) => handleWaveAIContextMenu(e, true)}
                             >
                                 {model.inBuilder ? <AIBuilderWelcomeMessage /> : <AIWelcomeMessage />}
                             </div>
@@ -512,7 +504,7 @@ const AIPanelComponentInner = memo(({ onClose }: AIPanelProps) => {
                             <AIPanelMessages
                                 messages={messages}
                                 status={status}
-                                onContextMenu={(e) => handleWaveAIContextMenu(e, onClose)}
+                                onContextMenu={(e) => handleWaveAIContextMenu(e, true)}
                             />
                         )}
                         {errorMessage && (
@@ -529,10 +521,10 @@ const AIPanelComponentInner = memo(({ onClose }: AIPanelProps) => {
 
 AIPanelComponentInner.displayName = "AIPanelInner";
 
-const AIPanelComponent = ({ onClose }: AIPanelProps) => {
+const AIPanelComponent = () => {
     return (
         <ErrorBoundary>
-            <AIPanelComponentInner onClose={onClose} />
+            <AIPanelComponentInner />
         </ErrorBoundary>
     );
 };
