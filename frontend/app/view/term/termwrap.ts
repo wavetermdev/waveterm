@@ -5,7 +5,7 @@ import { getFileSubject } from "@/app/store/wps";
 import { sendWSCommand } from "@/app/store/ws";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
-import { WOS, atoms, fetchWaveFile, getSettingsKeyAtom, globalStore, openLink } from "@/store/global";
+import { WOS, atoms, fetchWaveFile, getApi, getSettingsKeyAtom, globalStore, openLink } from "@/store/global";
 import * as services from "@/store/services";
 import { PLATFORM, PlatformMacOS } from "@/util/platformutil";
 import { base64ToArray, base64ToString, fireAndForget } from "@/util/util";
@@ -252,6 +252,7 @@ function handleOsc16162Command(data: string, blockId: string, loaded: boolean, t
         case "C":
             rtInfo["shell:state"] = "running-command";
             globalStore.set(termWrap.shellIntegrationStatusAtom, "running-command");
+            getApi().incrementTermCommands();
             if (cmd.data.cmd64) {
                 const decodedLen = Math.ceil(cmd.data.cmd64.length * 0.75);
                 if (decodedLen > 8192) {

@@ -18,6 +18,7 @@ import { getWaveTabViewByWebContentsId } from "./emain-tabview";
 import { handleCtrlShiftState } from "./emain-util";
 import { getWaveVersion } from "./emain-wavesrv";
 import { createNewWaveWindow, focusedWaveWindow, getWaveWindowByWebContentsId } from "./emain-window";
+import { incrementTermCommandsRun } from "./emain-activity";
 import { ElectronWshClient } from "./emain-wsh";
 
 const electronApp = electron.app;
@@ -393,6 +394,10 @@ export function initIpcHandlers() {
 
     electron.ipcMain.on("fe-log", (event, logStr: string) => {
         console.log("fe-log", logStr);
+    });
+
+    electron.ipcMain.on("increment-term-commands", () => {
+        incrementTermCommandsRun();
     });
 
     electron.ipcMain.on("open-builder", (event, appId?: string) => {

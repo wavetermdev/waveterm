@@ -8,6 +8,7 @@ let globalIsQuitting = false;
 let globalIsStarting = true;
 let globalIsRelaunching = false;
 let forceQuit = false;
+let termCommandsRun = 0;
 
 export function setWasActive(val: boolean) {
     wasActive = val;
@@ -51,4 +52,14 @@ export function setForceQuit(val: boolean) {
 
 export function getForceQuit(): boolean {
     return forceQuit;
+}
+
+export function incrementTermCommandsRun() {
+    termCommandsRun++;
+}
+
+export function getAndClearTermCommandsRun(): number {
+    const count = termCommandsRun;
+    termCommandsRun = 0;
+    return count;
 }

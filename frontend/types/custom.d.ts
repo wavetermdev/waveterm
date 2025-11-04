@@ -122,6 +122,7 @@ declare global {
         clearWebviewStorage: (webContentsId: number) => Promise<void>; // clear-webview-storage
         setWaveAIOpen: (isOpen: boolean) => void; // set-waveai-open
         closeBuilderWindow: () => void; // close-builder-window
+        incrementTermCommands: () => void; // increment-term-commands
     };
 
     type ElectronContextMenuItem = {
