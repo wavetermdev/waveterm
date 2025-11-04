@@ -81,6 +81,8 @@ interface AIToolUseBatchProps {
 
 const AIToolUseBatch = memo(({ parts, isStreaming }: AIToolUseBatchProps) => {
     const [userApprovalOverride, setUserApprovalOverride] = useState<string | null>(null);
+    const partsRef = useRef(parts);
+    partsRef.current = parts;
 
     // All parts in a batch have the same approval status (enforced by grouping logic in AIToolUseGroup)
     const firstTool = parts[0].data;
@@ -91,13 +93,13 @@ const AIToolUseBatch = memo(({ parts, isStreaming }: AIToolUseBatchProps) => {
         if (!isStreaming || effectiveApproval !== "needs-approval") return;
 
         const interval = setInterval(() => {
-            parts.forEach((part) => {
+            partsRef.current.forEach((part) => {
                 WaveAIModel.getInstance().toolUseKeepalive(part.data.toolcallid);
             });
         }, 4000);
 
         return () => clearInterval(interval);
-    }, [isStreaming, effectiveApproval, parts]);
+    }, [isStreaming, effectiveApproval]);
 
     const handleApprove = () => {
         setUserApprovalOverride("user-approved");
@@ -231,6 +233,8 @@ const AIToolUse = memo(({ part, isStreaming }: AIToolUseProps) => {
     const showRestoreModal = restoreModalToolCallId === toolData.toolcallid;
     const highlightTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const highlightedBlockIdRef = useRef<string | null>(null);
+    const toolCallIdRef = useRef(toolData.toolcallid);
+    toolCallIdRef.current = toolData.toolcallid;
 
     const statusIcon = toolData.status === "completed" ? "✓" : toolData.status === "error" ? "✗" : "•";
     const statusColor =
@@ -245,11 +249,11 @@ const AIToolUse = memo(({ part, isStreaming }: AIToolUseProps) => {
         if (!isStreaming || effectiveApproval !== "needs-approval") return;
 
         const interval = setInterval(() => {
-            WaveAIModel.getInstance().toolUseKeepalive(toolData.toolcallid);
+            WaveAIModel.getInstance().toolUseKeepalive(toolCallIdRef.current);
         }, 4000);
 
         return () => clearInterval(interval);
-    }, [isStreaming, effectiveApproval, toolData.toolcallid]);
+    }, [isStreaming, effectiveApproval]);
 
     useEffect(() => {
         return () => {
@@ -399,13 +403,17 @@ export const AIToolUseGroup = memo(({ parts, isStreaming }: AIToolUseGroupProps)
         const isFileOpPart = isFileOp(part);
         const partNeedsApproval = needsApproval(part);
 
-        if (isFileOpPart && partNeedsApproval && !addedApprovalBatch) {
-            groupedItems.push({ type: "batch", parts: readFileNeedsApproval });
-            addedApprovalBatch = true;
-        } else if (isFileOpPart && !partNeedsApproval && !addedOtherBatch) {
-            groupedItems.push({ type: "batch", parts: readFileOther });
-            addedOtherBatch = true;
-        } else if (!isFileOpPart) {
+        if (isFileOpPart && partNeedsApproval) {
+            if (!addedApprovalBatch) {
+                groupedItems.push({ type: "batch", parts: readFileNeedsApproval });
+                addedApprovalBatch = true;
+            }
+        } else if (isFileOpPart && !partNeedsApproval) {
+            if (!addedOtherBatch) {
+                groupedItems.push({ type: "batch", parts: readFileOther });
+                addedOtherBatch = true;
+            }
+        } else {
             groupedItems.push({ type: "single", part });
         }
     }

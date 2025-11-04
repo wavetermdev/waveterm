@@ -197,6 +197,33 @@ func isBlockedFile(expandedPath string) (bool, string) {
 	return false, ""
 }
 
+func verifyReadTextFileInput(input any, toolUseData *uctypes.UIMessageDataToolUse) error {
+	params, err := parseReadTextFileInput(input)
+	if err != nil {
+		return err
+	}
+
+	expandedPath, err := wavebase.ExpandHomeDir(params.Filename)
+	if err != nil {
+		return fmt.Errorf("failed to expand path: %w", err)
+	}
+
+	if blocked, reason := isBlockedFile(expandedPath); blocked {
+		return fmt.Errorf("access denied: potentially sensitive file: %s", reason)
+	}
+
+	fileInfo, err := os.Stat(expandedPath)
+	if err != nil {
+		return fmt.Errorf("failed to stat file: %w", err)
+	}
+
+	if fileInfo.IsDir() {
+		return fmt.Errorf("path is a directory, cannot be read with the read_text_file tool. use the read_dir tool if available to read directories")
+	}
+
+	return nil
+}
+
 func readTextFileCallback(input any, toolUseData *uctypes.UIMessageDataToolUse) (any, error) {
 	const ReadLimit = 1024 * 1024 * 1024
 
@@ -370,5 +397,6 @@ func GetReadTextFileToolDefinition() uctypes.ToolDefinition {
 		ToolApproval: func(input any) string {
 			return uctypes.ApprovalNeedsApproval
 		},
+		ToolVerifyInput: verifyReadTextFileInput,
 	}
 }
