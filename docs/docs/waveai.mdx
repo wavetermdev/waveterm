@@ -42,6 +42,18 @@ Drag files onto the AI panel to attach:
 | PDFs | `.pdf` | 5 MB | Text extraction for analysis |
 | Text/Code | `.js`, `.ts`, `.py`, `.go`, `.md`, `.json`, `.yaml`, etc. | 200 KB | All common languages and configs |
 
+## CLI Integration
+
+Use `wsh ai` to send files and prompts from the command line:
+
+```bash
+git diff | wsh ai -                          # Pipe to AI
+wsh ai main.go -m "find bugs"                # Attach files with message
+wsh ai $(tail -n 500 my.log) -m "review" -s  # Auto-submit with output
+```
+
+Supports text files, images, PDFs, and directories. Use `-n` for new chat, `-s` to auto-submit.
+
 ## AI Tools (Widget Context Enabled)
 
 ### Terminal
@@ -50,6 +62,7 @@ Drag files onto the AI panel to attach:
 ### File System
 - **Read Files**: Reads text files with line range support (requires approval)
 - **List Directories**: Returns file info, sizes, permissions, timestamps (requires approval)
+- **Write Text Files**: Create or modify files with diff preview and approval (requires approval)
 
 ### Web
 - **Navigate Web**: Changes URLs in web browser widgets
@@ -72,10 +85,8 @@ File system operations require explicit approval. You control all file access.
 Wave AI is in active beta with included AI credits while we refine the experience. BYOK will be available once we've stabilized core features and gathered feedback on what works best. Share feedback in our [Discord](https://discord.gg/XfvZ334gwU).
 
 **Coming Soon:**
-- **CLI Integration**: Send files and chat prompts directly from the command line
 - **Remote File Access**: Read files on SSH-connected systems
 - **Command Execution**: Run terminal commands with approval
-- **File Editing**: Modify files with approval or open in editor widgets
 - **Web Content**: Extract text from web pages (currently screenshots only)
 :::
 

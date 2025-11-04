@@ -76,6 +76,7 @@ Below is a list of the event types collected in the new telemetry system. More e
 | `debug:panic`        | Logged when a backend (Go) panic happens. Contains a debugging string that can be used to find which panic was hit in our source code. No data is sent                                   |
 | `conn:connect`       | Logged each time a backend ssh/wsl connection connects (logs the conneciton type, no hostname or IP is sent)                                                                             |
 | `conn:connecterror`  | Logged when you try to connect but it fails (logs the connection type, no hostname or IP is set, and no detailed error information is sent)                                              |
+| `waveai:post`        | Logged after AI request completion with usage metrics (tokens, request counts, latency, etc. - no prompts or responses)                                                                  |
 
 ## Event Properties
 
@@ -115,6 +116,24 @@ Each event may contain the following properties that are relevant to the particu
 | `count:sshconn`          | Total number of SSH connections                                                                        |
 | `count:wslconn`          | Total number of WSL connections                                                                        |
 | `count:views`            | Counts of the types of blocks (views)                                                                  |
+| `waveai:apitype`         | AI API provider (OpenAI, Anthropic, etc.)                                                              |
+| `waveai:model`           | AI model name                                                                                          |
+| `waveai:inputtokens`     | Number of input tokens used                                                                            |
+| `waveai:outputtokens`    | Number of output tokens generated                                                                      |
+| `waveai:requestcount`    | Number of requests in conversation                                                                     |
+| `waveai:toolusecount`    | Number of tool uses                                                                                    |
+| `waveai:tooluseerrorcount` | Number of tool use errors                                                                            |
+| `waveai:tooldetail`      | Map of tool names to usage counts                                                                      |
+| `waveai:premiumreq`      | Number of premium API requests                                                                         |
+| `waveai:proxyreq`        | Number of proxy requests                                                                               |
+| `waveai:haderror`        | True/False if request had errors                                                                       |
+| `waveai:imagecount`      | Number of images in context                                                                            |
+| `waveai:pdfcount`        | Number of PDFs in context                                                                              |
+| `waveai:textdoccount`    | Number of text documents in context                                                                    |
+| `waveai:textlen`         | Total text length in context                                                                           |
+| `waveai:firstbytems`     | Latency to first byte in milliseconds                                                                  |
+| `waveai:requestdurms`    | Total request duration in milliseconds                                                                 |
+| `waveai:widgetaccess`    | True/False if accessed via widget                                                                      |
 
 ---
 
