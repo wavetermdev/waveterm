@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { formatFileSizeError, isAcceptableFile, validateFileSize } from "@/app/aipanel/ai-utils";
+import { AIContinuePrompt } from "@/app/aipanel/aimessage";
 import { waveAIHasFocusWithin } from "@/app/aipanel/waveai-focus-utils";
 import { type WaveAIModel } from "@/app/aipanel/waveai-model";
 import { cn } from "@/util/util";
@@ -22,9 +23,13 @@ export interface AIPanelInputRef {
 export const AIPanelInput = memo(({ onSubmit, status, model }: AIPanelInputProps) => {
     const [input, setInput] = useAtom(model.inputAtom);
     const isFocused = useAtomValue(model.isWaveAIFocusedAtom);
+    const hiddenPrompts = useAtomValue(model.hiddenContinuePrompts);
+    const lastContinuePart = useAtomValue(model.lastContinuePart);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const isPanelOpen = useAtomValue(model.getPanelVisibleAtom());
+
+    const shouldShowContinuePrompt = lastContinuePart && !hiddenPrompts.has(lastContinuePart.id);
 
     const resizeTextarea = useCallback(() => {
         const textarea = textareaRef.current;
@@ -60,17 +65,20 @@ export const AIPanelInput = memo(({ onSubmit, status, model }: AIPanelInputProps
         model.requestWaveAIFocus();
     }, [model]);
 
-    const handleBlur = useCallback((e: React.FocusEvent) => {
-        if (e.relatedTarget === null) {
-            return;
-        }
+    const handleBlur = useCallback(
+        (e: React.FocusEvent) => {
+            if (e.relatedTarget === null) {
+                return;
+            }
 
-        if (waveAIHasFocusWithin(e.relatedTarget)) {
-            return;
-        }
+            if (waveAIHasFocusWithin(e.relatedTarget)) {
+                return;
+            }
 
-        model.requestNodeFocus();
-    }, [model]);
+            model.requestNodeFocus();
+        },
+        [model]
+    );
 
     useEffect(() => {
         resizeTextarea();
@@ -113,6 +121,11 @@ export const AIPanelInput = memo(({ onSubmit, status, model }: AIPanelInputProps
 
     return (
         <div className={cn("border-t", isFocused ? "border-accent/50" : "border-gray-600")}>
+            {shouldShowContinuePrompt && (
+                <div className="px-2 pt-2">
+                    <AIContinuePrompt part={lastContinuePart} />
+                </div>
+            )}
             <input
                 ref={fileInputRef}
                 type="file"

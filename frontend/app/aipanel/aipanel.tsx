@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { handleWaveAIContextMenu } from "@/app/aipanel/aipanel-contextmenu";
+import { DataContinueUIMessagePart, WaveUIMessage } from "@/app/aipanel/aitypes";
 import { waveAIHasSelection } from "@/app/aipanel/waveai-focus-utils";
 import { ErrorBoundary } from "@/app/element/errorboundary";
 import { atoms, getSettingsKeyAtom } from "@/app/store/global";
@@ -220,7 +221,7 @@ const AIPanelComponentInner = memo(({ onClose }: AIPanelProps) => {
     const telemetryEnabled = jotai.useAtomValue(getSettingsKeyAtom("telemetry:enabled")) ?? false;
     const isPanelVisible = jotai.useAtomValue(model.getPanelVisibleAtom());
 
-    const { messages, sendMessage, status, setMessages, error, stop } = useChat({
+    const { messages, sendMessage, status, setMessages, error, stop } = useChat<WaveUIMessage>({
         transport: new DefaultChatTransport({
             api: model.getUseChatEndpointUrl(),
             prepareSendMessagesRequest: (opts) => {
@@ -253,6 +254,17 @@ const AIPanelComponentInner = memo(({ onClose }: AIPanelProps) => {
     });
 
     model.registerUseChatData(sendMessage, setMessages, status, stop);
+
+    useEffect(() => {
+        const lastMsg = messages.length > 0 ? messages[messages.length - 1] : null;
+        const continuePart =
+            lastMsg?.role === "assistant"
+                ? lastMsg.parts?.find((p) => p.type === "data-continue" && p.data?.messageid === lastMsg.id)
+                : null;
+        const typedContinuePart = continuePart as DataContinueUIMessagePart;
+        globalStore.set(model.lastMessageId, lastMsg?.id ?? null);
+        globalStore.set(model.lastContinuePart, typedContinuePart ?? null);
+    }, [messages, model]);
 
     // console.log("AICHAT messages", messages);
 

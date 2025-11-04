@@ -34,6 +34,8 @@ type WaveUIDataTypes = {
 export type WaveUIMessage = UIMessage<unknown, WaveUIDataTypes, {}>;
 export type WaveUIMessagePart = UIMessagePart<WaveUIDataTypes, {}>;
 
+export type DataContinueUIMessagePart = WaveUIMessagePart & { type: "data-continue" };
+
 export type UseChatSetMessagesType = (
     messages: WaveUIMessage[] | ((messages: WaveUIMessage[]) => WaveUIMessage[])
 ) => void;

@@ -2,12 +2,14 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { WaveStreamdown } from "@/app/element/streamdown";
+import { globalStore } from "@/app/store/jotaiStore";
 import { cn } from "@/util/util";
+import * as jotai from "jotai";
 import { memo, useEffect, useRef } from "react";
 import { getFileIcon } from "./ai-utils";
 import { AIFeedbackButtons } from "./aifeedbackbuttons";
 import { AIToolUseGroup } from "./aitooluse";
-import { WaveUIMessage, WaveUIMessagePart } from "./aitypes";
+import { DataContinueUIMessagePart, WaveUIMessage, WaveUIMessagePart } from "./aitypes";
 import { WaveAIModel } from "./waveai-model";
 
 const AIThinking = memo(
@@ -63,6 +65,61 @@ const AIThinking = memo(
 );
 
 AIThinking.displayName = "AIThinking";
+
+interface AIContinuePromptProps {
+    part: DataContinueUIMessagePart;
+}
+
+export const AIContinuePrompt = memo(({ part }: AIContinuePromptProps) => {
+    const model = WaveAIModel.getInstance();
+    const hiddenPrompts = jotai.useAtomValue(model.hiddenContinuePrompts);
+
+    if (hiddenPrompts.has(part.id)) {
+        return null;
+    }
+
+    const handleContinue = () => {
+        globalStore.set(model.hiddenContinuePrompts, (prev) => new Set([...prev, part.id]));
+        console.log("Continue button clicked - continuing generation...", part.id);
+    };
+
+    const handleCancel = () => {
+        globalStore.set(model.hiddenContinuePrompts, (prev) => new Set([...prev, part.id]));
+    };
+
+    const hasText = part.data?.hastext ?? false;
+
+    return (
+        <div className="mt-2 p-3 bg-yellow-900/20 border border-yellow-500/30 rounded-lg">
+            <div className="flex items-start gap-3">
+                <i className="fa fa-exclamation-triangle text-yellow-500 text-lg mt-0.5"></i>
+                <div className="flex-1">
+                    <div className="text-sm text-yellow-200 font-semibold mb-1">Max Output Tokens Reached</div>
+                    <div className="text-sm text-gray-300 mb-3">
+                        The model hit the maximum output token limit. {hasText && "The response was truncated. "}
+                        Would you like to continue generating?
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <button
+                            onClick={handleContinue}
+                            className="px-3 py-1.5 bg-accent/80 text-white rounded hover:bg-accent cursor-pointer text-sm font-medium"
+                        >
+                            Continue
+                        </button>
+                        <button
+                            onClick={handleCancel}
+                            className="text-sm text-gray-400 hover:text-gray-300 cursor-pointer"
+                        >
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+});
+
+AIContinuePrompt.displayName = "AIContinuePrompt";
 
 interface UserMessageFilesProps {
     fileParts: Array<WaveUIMessagePart & { type: "data-userfile" }>;

@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import {
+    DataContinueUIMessagePart,
     UseChatSendMessageType,
     UseChatSetMessagesType,
     WaveUIMessage,
@@ -70,6 +71,9 @@ export class WaveAIModel {
     >;
     restoreBackupStatus: jotai.PrimitiveAtom<"idle" | "processing" | "success" | "error"> = jotai.atom("idle");
     restoreBackupError: jotai.PrimitiveAtom<string> = jotai.atom(null) as jotai.PrimitiveAtom<string>;
+    hiddenContinuePrompts: jotai.PrimitiveAtom<Set<string>> = jotai.atom(new Set<string>());
+    lastMessageId: jotai.PrimitiveAtom<string | null> = jotai.atom(null) as jotai.PrimitiveAtom<string | null>;
+    lastContinuePart: jotai.PrimitiveAtom<DataContinueUIMessagePart | null> = jotai.atom(null) as jotai.PrimitiveAtom<DataContinueUIMessagePart | null>;
 
     private constructor(orefContext: ORef, inBuilder: boolean) {
         this.orefContext = orefContext;
