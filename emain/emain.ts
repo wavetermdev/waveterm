@@ -10,8 +10,6 @@ import * as services from "../frontend/app/store/services";
 import { initElectronWshrpc, shutdownWshrpc } from "../frontend/app/store/wshrpcutil-base";
 import { fireAndForget, sleep } from "../frontend/util/util";
 import { AuthKey, configureAuthKeyRequestInjection } from "./authkey";
-import { initDocsite } from "./docsite";
-import { initIpcHandlers } from "./emain-ipc";
 import {
     getActivityState,
     getForceQuit,
@@ -22,6 +20,7 @@ import {
     setWasActive,
     setWasInFg,
 } from "./emain-activity";
+import { initIpcHandlers } from "./emain-ipc";
 import { log } from "./emain-log";
 import { makeAppMenu, makeDockTaskbar } from "./emain-menu";
 import {
@@ -350,7 +349,6 @@ async function appMain() {
     checkIfRunningUnderARM64Translation(fullConfig);
     ensureHotSpareTab(fullConfig);
     await relaunchBrowserWindows();
-    initDocsite();
     setTimeout(runActiveTimer, 5000); // start active timer, wait 5s just to be safe
     setTimeout(sendDisplaysTDataEvent, 5000);
 
