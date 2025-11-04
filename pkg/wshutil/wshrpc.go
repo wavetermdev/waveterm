@@ -269,25 +269,26 @@ func (w *WshRpc) cancelRequest(reqId string) {
 }
 
 func (w *WshRpc) handleRequest(req *RpcMessage) {
-	pprof.Do(context.Background(), pprof.Labels("rpc", req.Command), func(ctx context.Context) {
-		w.handleRequestInternal(req)
+	pprof.Do(context.Background(), pprof.Labels("rpc", req.Command), func(pprofCtx context.Context) {
+		w.handleRequestInternal(req, pprofCtx)
 	})
 }
 
-func (w *WshRpc) handleRequestInternal(req *RpcMessage) {
-	// events first
+func (w *WshRpc) handleEventRecv(req *RpcMessage) {
+	if req.Data == nil {
+		return
+	}
+	var waveEvent wps.WaveEvent
+	err := utilfn.ReUnmarshal(&waveEvent, req.Data)
+	if err != nil {
+		return
+	}
+	w.EventListener.RecvEvent(&waveEvent)
+}
+
+func (w *WshRpc) handleRequestInternal(req *RpcMessage, pprofCtx context.Context) {
 	if req.Command == wshrpc.Command_EventRecv {
-		if req.Data == nil {
-			// invalid
-			return
-		}
-		var waveEvent wps.WaveEvent
-		err := utilfn.ReUnmarshal(&waveEvent, req.Data)
-		if err != nil {
-			// invalid
-			return
-		}
-		w.EventListener.RecvEvent(&waveEvent)
+		w.handleEventRecv(req)
 		return
 	}
 
@@ -670,12 +671,15 @@ func (handler *RpcResponseHandler) close() {
 
 // if async, caller must call finalize
 func (handler *RpcResponseHandler) Finalize() {
+	// Always unregister the handler from the map, even if already done
+	if handler.reqId != "" {
+		handler.w.unregisterResponseHandler(handler.reqId)
+	}
 	if handler.reqId == "" || handler.done.Load() {
 		return
 	}
 	handler.SendResponse(nil, true)
 	handler.close()
-	handler.w.unregisterResponseHandler(handler.reqId)
 }
 
 func (handler *RpcResponseHandler) IsDone() bool {
