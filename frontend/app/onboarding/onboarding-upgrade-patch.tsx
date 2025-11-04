@@ -19,7 +19,7 @@ import { UpgradeOnboardingModal_v0_12_2_Content } from "./onboarding-upgrade-v01
 
 interface VersionConfig {
     version: string;
-    content: React.ReactNode;
+    content: () => React.ReactNode;
     prevText?: string;
     nextText?: string;
 }
@@ -27,12 +27,12 @@ interface VersionConfig {
 const versions: VersionConfig[] = [
     {
         version: "v0.12.1",
-        content: <UpgradeOnboardingModal_v0_12_1_Content />,
+        content: () => <UpgradeOnboardingModal_v0_12_1_Content />,
         nextText: "Next (v0.12.2)",
     },
     {
         version: "v0.12.2",
-        content: <UpgradeOnboardingModal_v0_12_2_Content />,
+        content: () => <UpgradeOnboardingModal_v0_12_2_Content />,
         prevText: "Prev (v0.12.1)",
     },
 ];
@@ -119,7 +119,7 @@ const UpgradeOnboardingPatch = () => {
                         className="flex-1 overflow-y-auto min-h-0"
                         options={{ scrollbars: { autoHide: "never" } }}
                     >
-                        {currentVersion.content}
+                        {currentVersion.content()}
                     </OverlayScrollbarsComponent>
                     <footer className="unselectable flex-shrink-0 mt-4">
                         <div className="flex flex-row items-center justify-between w-full">
