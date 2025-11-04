@@ -3,6 +3,7 @@
 
 import { waveAIHasSelection } from "@/app/aipanel/waveai-focus-utils";
 import { ContextMenuModel } from "@/app/store/contextmenu";
+import { isDev } from "@/app/store/global";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { WaveAIModel } from "./waveai-model";
@@ -105,6 +106,19 @@ export async function handleWaveAIContextMenu(e: React.MouseEvent, showCopy: boo
             }
         );
     } else {
+        if (isDev()) {
+            maxTokensSubmenu.push({
+                label: "1k (Dev Testing)",
+                type: "checkbox",
+                checked: currentMaxTokens === 1024,
+                click: () => {
+                    RpcApi.SetRTInfoCommand(TabRpcClient, {
+                        oref: model.orefContext,
+                        data: { "waveai:maxoutputtokens": 1024 },
+                    });
+                },
+            });
+        }
         maxTokensSubmenu.push(
             {
                 label: "4k",
