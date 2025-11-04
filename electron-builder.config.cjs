@@ -36,7 +36,6 @@ const config = {
     },
     asarUnpack: [
         "dist/bin/**/*", // wavesrv and wsh binaries
-        "dist/docsite/**/*", // the static docsite
         "dist/schema/**/*", // schema files for Monaco editor
     ],
     mac: {

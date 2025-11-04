@@ -86,7 +86,6 @@ declare global {
         getHomeDir: () => string; // get-home-dir
         getWebviewPreload: () => string; // get-webview-preload
         getAboutModalDetails: () => AboutModalDetails; // get-about-modal-details
-        getDocsiteUrl: () => string; // get-docsite-url
         getZoomFactor: () => number; // get-zoom-factor
         showContextMenu: (workspaceId: string, menu?: ElectronContextMenuItem[]) => void; // contextmenu-show
         onContextMenuClick: (callback: (id: string) => void) => void; // contextmenu-click
