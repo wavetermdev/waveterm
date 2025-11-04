@@ -203,11 +203,7 @@ const AIErrorMessage = memo(({ errorMessage, onClear }: AIErrorMessageProps) => 
 
 AIErrorMessage.displayName = "AIErrorMessage";
 
-interface AIPanelProps {
-    onClose?: () => void;
-}
-
-const AIPanelComponentInner = memo(({ onClose }: AIPanelProps) => {
+const AIPanelComponentInner = memo(() => {
     const [isDragOver, setIsDragOver] = useState(false);
     const [isReactDndDragOver, setIsReactDndDragOver] = useState(false);
     const [initialLoadDone, setInitialLoadDone] = useState(false);
@@ -525,10 +521,10 @@ const AIPanelComponentInner = memo(({ onClose }: AIPanelProps) => {
 
 AIPanelComponentInner.displayName = "AIPanelInner";
 
-const AIPanelComponent = ({ onClose }: AIPanelProps) => {
+const AIPanelComponent = () => {
     return (
         <ErrorBoundary>
-            <AIPanelComponentInner onClose={onClose} />
+            <AIPanelComponentInner />
         </ErrorBoundary>
     );
 };

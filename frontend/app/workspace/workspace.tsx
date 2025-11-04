@@ -58,7 +58,7 @@ const WorkspaceElem = memo(() => {
                     >
                         <Panel ref={aiPanelRef} collapsible defaultSize={initialAiPanelPercentage} order={1} className="overflow-hidden">
                             <div ref={aiPanelWrapperRef} className="w-full h-full">
-                                <AIPanel onClose={() => workspaceLayoutModel.setAIPanelVisible(false)} />
+                                <AIPanel />
                             </div>
                         </Panel>
                         <PanelResizeHandle className="w-0.5 bg-transparent hover:bg-gray-500/20 transition-colors" />
