@@ -6,6 +6,26 @@ sidebar_position: 200
 
 # Release Notes
 
+### v0.12.2 &mdash; Nov 4, 2025
+
+Wave v0.12.2 adds file editing ability to Wave AI. Before approving a file edit you can easily see a diff (rendered in the Monaco Editor diff viewer), and after approving an edit you can easily roll back the change using a "Revert File" button.
+
+**Wave AI Updates:**
+- **File Write Tool** - Wave AI can now create and modify files with your approval
+- **Visual Diff Preview** - See exactly what will change before approving edits, rendered in Monaco Editor
+- **Easy Rollback** - Revert file changes with a simple "Revert File" button
+- **Drag & Drop Files** - Drag files from the preview viewer directly to Wave AI
+- **Directory Listings** - `wsh ai` can now attach directory listings to chats
+- **Adjustable Settings** - Control thinking level and max output tokens per chat
+
+**Bug Fixes & Improvements:**
+- Fixed a significant memory leak in the RPC system
+- Schema validation working again for config files
+- Improved tool descriptions and input validations (run before tool approvals)
+- Fixed issue with premature tool timeouts
+- Fixed regression with PowerShell 5.x
+- Fixed prompt caching issue when attaching files
+
 ### v0.12.1 &mdash; Oct 20, 2025
 
 Patch release focused on shell integration improvements and Wave AI enhancements. This release fixes syntax highlighting in the code editor and adds significant shell context tracking capabilities.
