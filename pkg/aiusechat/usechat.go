@@ -559,8 +559,10 @@ func RunAIChat(ctx context.Context, sseHandler *sse.SSEHandlerCh, chatOpts uctyp
 					break
 				}
 			}
-			continueData := map[string]bool{
-				"hastext": hasText,
+			// if this is updated, also update frontend/app/aipanel/aitypes.ts
+			continueData := map[string]any{
+				"hastext":   hasText,
+				"messageid": stopReason.MessageID,
 			}
 			continueID := uuid.New().String()
 			_ = sseHandler.AiMsgData("data-continue", continueID, continueData)

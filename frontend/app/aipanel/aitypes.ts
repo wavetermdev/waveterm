@@ -27,6 +27,7 @@ type WaveUIDataTypes = {
     // pkg/aiusechat/usechat.go data-continue
     continue: {
         hastext: boolean;
+        messageid: string;
     };
 };
 
