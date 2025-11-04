@@ -5,10 +5,12 @@ package aiusechat
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
 	"github.com/wavetermdev/waveterm/pkg/util/fileutil"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
+	"github.com/wavetermdev/waveterm/pkg/wavebase"
 )
 
 const ReadDirDefaultMaxEntries = 500
@@ -48,6 +50,29 @@ func parseReadDirInput(input any) (*readDirParams, error) {
 	}
 
 	return result, nil
+}
+
+func verifyReadDirInput(input any, toolUseData *uctypes.UIMessageDataToolUse) error {
+	params, err := parseReadDirInput(input)
+	if err != nil {
+		return err
+	}
+
+	expandedPath, err := wavebase.ExpandHomeDir(params.Path)
+	if err != nil {
+		return fmt.Errorf("failed to expand path: %w", err)
+	}
+
+	fileInfo, err := os.Stat(expandedPath)
+	if err != nil {
+		return fmt.Errorf("failed to stat path: %w", err)
+	}
+
+	if !fileInfo.IsDir() {
+		return fmt.Errorf("path is not a directory, cannot be read with the read_dir tool. use the read_text_file tool if available to read files")
+	}
+
+	return nil
 }
 
 func readDirCallback(input any, toolUseData *uctypes.UIMessageDataToolUse) (any, error) {
@@ -129,5 +154,6 @@ func GetReadDirToolDefinition() uctypes.ToolDefinition {
 		ToolApproval: func(input any) string {
 			return uctypes.ApprovalNeedsApproval
 		},
+		ToolVerifyInput: verifyReadDirInput,
 	}
 }
