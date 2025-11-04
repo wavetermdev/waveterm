@@ -7,19 +7,21 @@ import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { WaveAIModel } from "./waveai-model";
 
-export async function handleWaveAIContextMenu(e: React.MouseEvent, onClose?: () => void): Promise<void> {
+export async function handleWaveAIContextMenu(e: React.MouseEvent, onClose: (() => void) | undefined, showCopy: boolean): Promise<void> {
     e.preventDefault();
     e.stopPropagation();
 
     const model = WaveAIModel.getInstance();
     const menu: ContextMenuItem[] = [];
 
-    const hasSelection = waveAIHasSelection();
-    if (hasSelection) {
-        menu.push({
-            role: "copy",
-        });
-        menu.push({ type: "separator" });
+    if (showCopy) {
+        const hasSelection = waveAIHasSelection();
+        if (hasSelection) {
+            menu.push({
+                role: "copy",
+            });
+            menu.push({ type: "separator" });
+        }
     }
 
     menu.push({

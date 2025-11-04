@@ -256,10 +256,6 @@ const AIPanelComponentInner = memo(({ onClose }: AIPanelProps) => {
 
     // console.log("AICHAT messages", messages);
 
-    const handleClearChat = useCallback(() => {
-        model.clearChat();
-    }, [model]);
-
     const handleKeyDown = (waveEvent: WaveKeyboardEvent): boolean => {
         if (checkKeyPressed(waveEvent, "Cmd:k")) {
             model.clearChat();
@@ -493,7 +489,7 @@ const AIPanelComponentInner = memo(({ onClose }: AIPanelProps) => {
         >
             {(isDragOver || isReactDndDragOver) && <AIDragOverlay />}
             {showBlockMask && <AIBlockMask />}
-            <AIPanelHeader onClose={onClose} model={model} onClearChat={handleClearChat} />
+            <AIPanelHeader onClose={onClose} />
             <AIRateLimitStrip />
 
             <div key="main-content" className="flex-1 flex flex-col min-h-0">
@@ -504,7 +500,7 @@ const AIPanelComponentInner = memo(({ onClose }: AIPanelProps) => {
                         {messages.length === 0 && initialLoadDone ? (
                             <div
                                 className="flex-1 overflow-y-auto p-2"
-                                onContextMenu={(e) => handleWaveAIContextMenu(e, onClose)}
+                                onContextMenu={(e) => handleWaveAIContextMenu(e, onClose, true)}
                             >
                                 {model.inBuilder ? <AIBuilderWelcomeMessage /> : <AIWelcomeMessage />}
                             </div>
@@ -512,7 +508,7 @@ const AIPanelComponentInner = memo(({ onClose }: AIPanelProps) => {
                             <AIPanelMessages
                                 messages={messages}
                                 status={status}
-                                onContextMenu={(e) => handleWaveAIContextMenu(e, onClose)}
+                                onContextMenu={(e) => handleWaveAIContextMenu(e, onClose, true)}
                             />
                         )}
                         {errorMessage && (
