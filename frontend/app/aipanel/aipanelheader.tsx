@@ -6,17 +6,13 @@ import { useAtomValue } from "jotai";
 import { memo } from "react";
 import { WaveAIModel } from "./waveai-model";
 
-interface AIPanelHeaderProps {
-    onClose?: () => void;
-}
-
-export const AIPanelHeader = memo(({ onClose }: AIPanelHeaderProps) => {
+export const AIPanelHeader = memo(() => {
     const model = WaveAIModel.getInstance();
     const widgetAccess = useAtomValue(model.widgetAccessAtom);
     const inBuilder = model.inBuilder;
 
     const handleKebabClick = (e: React.MouseEvent) => {
-        handleWaveAIContextMenu(e, onClose, false);
+        handleWaveAIContextMenu(e, false);
     };
 
     return (

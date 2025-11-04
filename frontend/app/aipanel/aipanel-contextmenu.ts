@@ -7,7 +7,7 @@ import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { WaveAIModel } from "./waveai-model";
 
-export async function handleWaveAIContextMenu(e: React.MouseEvent, onClose: (() => void) | undefined, showCopy: boolean): Promise<void> {
+export async function handleWaveAIContextMenu(e: React.MouseEvent, showCopy: boolean): Promise<void> {
     e.preventDefault();
     e.stopPropagation();
 
@@ -152,14 +152,16 @@ export async function handleWaveAIContextMenu(e: React.MouseEvent, onClose: (() 
         submenu: maxTokensSubmenu,
     });
 
-    menu.push({ type: "separator" });
+    if (model.canCloseWaveAIPanel()) {
+        menu.push({ type: "separator" });
 
-    menu.push({
-        label: "Hide Wave AI",
-        click: () => {
-            onClose?.();
-        },
-    });
+        menu.push({
+            label: "Hide Wave AI",
+            click: () => {
+                model.closeWaveAIPanel();
+            },
+        });
+    }
 
     ContextMenuModel.showContextMenu(menu, e);
 }
