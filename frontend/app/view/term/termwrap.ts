@@ -8,7 +8,7 @@ import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { WOS, atoms, fetchWaveFile, getApi, getSettingsKeyAtom, globalStore, openLink } from "@/store/global";
 import * as services from "@/store/services";
 import { PLATFORM, PlatformMacOS } from "@/util/platformutil";
-import { base64ToArray, base64ToString, fireAndForget, stringToBase64 } from "@/util/util";
+import { base64ToArray, base64ToString, fireAndForget } from "@/util/util";
 import { SearchAddon } from "@xterm/addon-search";
 import { SerializeAddon } from "@xterm/addon-serialize";
 import { WebLinksAddon } from "@xterm/addon-web-links";
@@ -680,9 +680,27 @@ export class TermWrap {
                 return;
             }
 
-            // Generate temp filename
-            const ext = blob.type.split('/')[1] || 'png';
-            const filename = `waveterm_paste_${Date.now()}.${ext}`;
+            // Map MIME types to file extensions
+            const mimeToExt: Record<string, string> = {
+                "image/png": "png",
+                "image/jpeg": "jpg",
+                "image/jpg": "jpg",
+                "image/gif": "gif",
+                "image/webp": "webp",
+                "image/bmp": "bmp",
+                "image/svg+xml": "svg",
+                "image/tiff": "tiff",
+            };
+            const ext = mimeToExt[blob.type] || "png";
+
+            // Generate unique filename with timestamp and random component
+            const timestamp = Date.now();
+            const random = Math.random().toString(36).substring(2, 8);
+            const filename = `waveterm_paste_${timestamp}_${random}.${ext}`;
+
+            // TODO: Use platform-appropriate temp directory
+            // Currently hardcoded to /tmp/ which works on macOS/Linux
+            // Windows support would require backend API to provide temp path
             const tempPath = `/tmp/${filename}`;
 
             // Convert blob to base64 using FileReader
