@@ -81,8 +81,13 @@ func getStringFromMap(jmsg map[string]any, key string) string {
 
 func processWSCommand(jmsg map[string]any, outputCh chan any, rpcInputCh chan []byte) {
 	var rtnErr error
+	var cmdType string
 	defer func() {
-		panicErr := panichandler.PanicHandler("processWSCommand", recover())
+		panicCtx := "processWSCommand"
+		if cmdType != "" {
+			panicCtx = fmt.Sprintf("processWSCommand:%s", cmdType)
+		}
+		panicErr := panichandler.PanicHandler(panicCtx, recover())
 		if panicErr != nil {
 			rtnErr = panicErr
 		}
@@ -97,6 +102,7 @@ func processWSCommand(jmsg map[string]any, outputCh chan any, rpcInputCh chan []
 		rtnErr = fmt.Errorf("cannot parse wscommand: %v", err)
 		return
 	}
+	cmdType = wsCommand.GetWSCommand()
 	switch cmd := wsCommand.(type) {
 	case *webcmd.SetBlockTermSizeWSCommand:
 		data := wshrpc.CommandBlockInputData{
@@ -136,6 +142,9 @@ func processWSCommand(jmsg map[string]any, outputCh chan any, rpcInputCh chan []
 		rpcMsg := cmd.Message
 		if rpcMsg == nil {
 			return
+		}
+		if rpcMsg.Command != "" {
+			cmdType = fmt.Sprintf("%s:%s", cmdType, rpcMsg.Command)
 		}
 		msgBytes, err := json.Marshal(rpcMsg)
 		if err != nil {
