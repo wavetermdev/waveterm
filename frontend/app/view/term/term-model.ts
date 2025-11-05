@@ -391,6 +391,92 @@ export class TermViewModel implements ViewModel {
         RpcApi.ControllerInputCommand(TabRpcClient, { blockid: this.blockId, inputdata64: b64data });
     }
 
+    async handlePaste() {
+        console.log("🔍 handlePaste() called");
+        try {
+            const clipboardItems = await navigator.clipboard.read();
+            console.log("Clipboard items:", clipboardItems.length);
+
+            for (const item of clipboardItems) {
+                console.log("Clipboard item types:", item.types);
+
+                // Check for images first
+                const imageTypes = item.types.filter((type) => type.startsWith("image/"));
+                if (imageTypes.length > 0 && this.supportsImageInput()) {
+                    console.log("Found image, processing...");
+                    const blob = await item.getType(imageTypes[0]);
+                    await this.handleImagePasteBlob(blob);
+                    return;
+                }
+
+                // Handle text
+                if (item.types.includes("text/plain")) {
+                    const blob = await item.getType("text/plain");
+                    const text = await blob.text();
+                    console.log("Pasting text, length:", text.length);
+                    this.termRef.current?.terminal.paste(text);
+                    return;
+                }
+            }
+        } catch (err) {
+            console.error("Paste error:", err);
+            // Fallback to text-only paste
+            try {
+                const text = await navigator.clipboard.readText();
+                if (text) {
+                    this.termRef.current?.terminal.paste(text);
+                }
+            } catch (fallbackErr) {
+                console.error("Fallback paste error:", fallbackErr);
+            }
+        }
+    }
+
+    supportsImageInput(): boolean {
+        // Enable image paste for all terminals
+        // Images will be saved as temp files and the path will be pasted
+        // Claude Code and other AI tools can then read the file
+        return true;
+    }
+
+    async handleImagePasteBlob(blob: Blob): Promise<void> {
+        try {
+            // Check size limit (5MB)
+            if (blob.size > 5 * 1024 * 1024) {
+                console.error("Image too large (>5MB):", blob.size);
+                return;
+            }
+
+            // Generate temp filename
+            const ext = blob.type.split('/')[1] || 'png';
+            const filename = `waveterm_paste_${Date.now()}.${ext}`;
+            const tempPath = `/tmp/${filename}`;
+
+            // Convert blob to base64 using FileReader
+            const dataUrl = await new Promise<string>((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result as string);
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
+            });
+
+            // Extract base64 data from data URL (remove "data:image/png;base64," prefix)
+            const base64Data = dataUrl.split(',')[1];
+
+            // Write image to temp file
+            await RpcApi.FileWriteCommand(TabRpcClient, {
+                info: { path: tempPath },
+                data64: base64Data,
+            });
+
+            // Paste the file path (like iTerm2 does when you copy a file)
+            // Claude Code will read the file and display it as [Image #N]
+            this.termRef.current?.terminal.paste(tempPath + " ");
+        } catch (err) {
+            console.error("Error pasting image:", err);
+        }
+    }
+
     setTermMode(mode: "term" | "vdom") {
         if (mode == "term") {
             mode = null;
@@ -505,10 +591,7 @@ export class TermViewModel implements ViewModel {
             }
         }
         if (keyutil.checkKeyPressed(waveEvent, "Ctrl:Shift:v")) {
-            const p = navigator.clipboard.readText();
-            p.then((text) => {
-                this.termRef.current?.terminal.paste(text);
-            });
+            this.handlePaste();
             event.preventDefault();
             event.stopPropagation();
             return false;

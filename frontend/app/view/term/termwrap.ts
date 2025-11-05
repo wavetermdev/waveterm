@@ -8,7 +8,7 @@ import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { WOS, atoms, fetchWaveFile, getApi, getSettingsKeyAtom, globalStore, openLink } from "@/store/global";
 import * as services from "@/store/services";
 import { PLATFORM, PlatformMacOS } from "@/util/platformutil";
-import { base64ToArray, base64ToString, fireAndForget } from "@/util/util";
+import { base64ToArray, base64ToString, fireAndForget, stringToBase64 } from "@/util/util";
 import { SearchAddon } from "@xterm/addon-search";
 import { SerializeAddon } from "@xterm/addon-serialize";
 import { WebLinksAddon } from "@xterm/addon-web-links";
@@ -422,11 +422,68 @@ export class TermWrap {
         this.handleResize_debounced = debounce(50, this.handleResize.bind(this));
         this.terminal.open(this.connectElem);
         this.handleResize();
-        let pasteEventHandler = () => {
+        let pasteEventHandler = async (e: ClipboardEvent) => {
             this.pasteActive = true;
-            setTimeout(() => {
-                this.pasteActive = false;
-            }, 30);
+
+            try {
+                // First try using ClipboardEvent.clipboardData (works in Electron)
+                if (e.clipboardData && e.clipboardData.items) {
+                    const items = e.clipboardData.items;
+
+                    // Check for images first
+                    for (let i = 0; i < items.length; i++) {
+                        const item = items[i];
+
+                        if (item.type.startsWith("image/")) {
+                            if (this.supportsImageInput()) {
+                                e.preventDefault();
+                                const blob = item.getAsFile();
+                                if (blob) {
+                                    await this.handleImagePasteBlob(blob);
+                                    return;
+                                }
+                            }
+                        }
+                    }
+
+                    // Handle text
+                    const text = e.clipboardData.getData("text/plain");
+                    if (text) {
+                        this.terminal.paste(text);
+                        return;
+                    }
+                }
+
+                // Fallback: Try Clipboard API for newer browsers
+                const clipboardItems = await navigator.clipboard.read();
+                for (const item of clipboardItems) {
+                    const imageTypes = item.types.filter((type) => type.startsWith("image/"));
+                    if (imageTypes.length > 0 && this.supportsImageInput()) {
+                        await this.handleImagePaste(item, imageTypes[0]);
+                        return;
+                    }
+
+                    if (item.types.includes("text/plain")) {
+                        const blob = await item.getType("text/plain");
+                        const text = await blob.text();
+                        this.terminal.paste(text);
+                        return;
+                    }
+                }
+            } catch (err) {
+                console.error("Paste error:", err);
+                // Final fallback to simple text paste
+                if (e.clipboardData) {
+                    const text = e.clipboardData.getData("text/plain");
+                    if (text) {
+                        this.terminal.paste(text);
+                    }
+                }
+            } finally {
+                setTimeout(() => {
+                    this.pasteActive = false;
+                }, 30);
+            }
         };
         pasteEventHandler = pasteEventHandler.bind(this);
         this.connectElem.addEventListener("paste", pasteEventHandler, true);
@@ -605,6 +662,76 @@ export class TermWrap {
             });
         } catch (e) {
             console.log(`error controller resync (${reason})`, this.blockId, e);
+        }
+    }
+
+    supportsImageInput(): boolean {
+        // Enable image paste for all terminals
+        // Images will be saved as temp files and the path will be pasted
+        // Claude Code and other AI tools can then read the file
+        return true;
+    }
+
+    async handleImagePasteBlob(blob: Blob): Promise<void> {
+        try {
+            // Check size limit (5MB)
+            if (blob.size > 5 * 1024 * 1024) {
+                console.error("Image too large (>5MB):", blob.size);
+                return;
+            }
+
+            // Generate temp filename
+            const ext = blob.type.split('/')[1] || 'png';
+            const filename = `waveterm_paste_${Date.now()}.${ext}`;
+            const tempPath = `/tmp/${filename}`;
+
+            // Convert blob to base64 using FileReader
+            const dataUrl = await new Promise<string>((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result as string);
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
+            });
+
+            // Extract base64 data from data URL (remove "data:image/png;base64," prefix)
+            const base64Data = dataUrl.split(',')[1];
+
+            // Write image to temp file
+            await RpcApi.FileWriteCommand(TabRpcClient, {
+                info: { path: tempPath },
+                data64: base64Data,
+            });
+
+            // Paste the file path (like iTerm2 does when you copy a file)
+            // Claude Code will read the file and display it as [Image #N]
+            this.terminal.paste(tempPath + " ");
+        } catch (err) {
+            console.error("Error pasting image:", err);
+        }
+    }
+
+    async handleImagePaste(item: ClipboardItem, mimeType: string): Promise<void> {
+        try {
+            const blob = await item.getType(mimeType);
+
+            // Check size limit (5MB)
+            if (blob.size > 5 * 1024 * 1024) {
+                console.error("Image too large:", blob.size);
+                return;
+            }
+
+            // Convert to base64
+            const arrayBuffer = await blob.arrayBuffer();
+            const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+            const dataUrl = `data:${mimeType};base64,${base64}`;
+
+            console.log("Pasting image as data URL, size:", blob.size, "type:", mimeType);
+
+            // For now, just paste as data URL text
+            // TODO: Implement proper image transmission to controller when RPC support is added
+            this.terminal.paste(dataUrl);
+        } catch (err) {
+            console.error("Error processing image:", err);
         }
     }
 
