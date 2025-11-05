@@ -198,10 +198,6 @@ func writeSecretsToFile() error {
 		return fmt.Errorf("encryption timeout: %w", ctx.Err())
 	}
 
-	if result.StorageBackend != "" {
-		linuxStorageBackend = result.StorageBackend
-	}
-
 	configDir := wavebase.GetWaveConfigDir()
 	secretsPath := filepath.Join(configDir, SecretsFileName)
 
