@@ -122,7 +122,7 @@ func (router *WshRouter) SendEvent(routeId string, event wps.WaveEvent) {
 		// nothing to do
 		return
 	}
-	rpc.SendRpcMessage(msgBytes)
+	rpc.SendRpcMessage(msgBytes, "eventrecv")
 }
 
 func (router *WshRouter) handleNoRoute(msg RpcMessage) {
@@ -173,7 +173,7 @@ func (router *WshRouter) handleAnnounceMessage(msg RpcMessage, input msgAndRoute
 	// if we don't (we are the terminal router), then add it to our announced route map
 	upstream := router.GetUpstreamClient()
 	if upstream != nil {
-		upstream.SendRpcMessage(input.msgBytes)
+		upstream.SendRpcMessage(input.msgBytes, "announce-upstream")
 		return
 	}
 	if msg.Source == input.fromRouteId {
@@ -201,12 +201,12 @@ func (router *WshRouter) getAnnouncedRoute(routeId string) string {
 func (router *WshRouter) sendRoutedMessage(msgBytes []byte, routeId string) bool {
 	rpc := router.GetRpc(routeId)
 	if rpc != nil {
-		rpc.SendRpcMessage(msgBytes)
+		rpc.SendRpcMessage(msgBytes, "route")
 		return true
 	}
 	upstream := router.GetUpstreamClient()
 	if upstream != nil {
-		upstream.SendRpcMessage(msgBytes)
+		upstream.SendRpcMessage(msgBytes, "route-upstream")
 		return true
 	} else {
 		// we are the upstream, so consult our announced routes map
@@ -216,7 +216,7 @@ func (router *WshRouter) sendRoutedMessage(msgBytes []byte, routeId string) bool
 			log.Printf("[router] no rpc for route id %q\n", routeId)
 			return false
 		}
-		rpc.SendRpcMessage(msgBytes)
+		rpc.SendRpcMessage(msgBytes, "route-local")
 		return true
 	}
 }
@@ -321,7 +321,7 @@ func (router *WshRouter) RegisterRoute(routeId string, rpc AbstractRpcClient, sh
 		if shouldAnnounce && !alreadyExists && router.GetUpstreamClient() != nil {
 			announceMsg := RpcMessage{Command: wshrpc.Command_RouteAnnounce, Source: routeId}
 			announceBytes, _ := json.Marshal(announceMsg)
-			router.GetUpstreamClient().SendRpcMessage(announceBytes)
+			router.GetUpstreamClient().SendRpcMessage(announceBytes, "route-announce")
 		}
 		for {
 			msgBytes, ok := rpc.RecvRpcMessage()

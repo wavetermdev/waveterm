@@ -66,7 +66,7 @@ func (p *WshRpcProxy) sendResponseError(msg RpcMessage, sendErr error) {
 		Error: sendErr.Error(),
 	}
 	respBytes, _ := json.Marshal(resp)
-	p.SendRpcMessage(respBytes)
+	p.SendRpcMessage(respBytes, "resp-error")
 }
 
 func (p *WshRpcProxy) sendAuthenticateResponse(msg RpcMessage, routeId string) {
@@ -80,7 +80,7 @@ func (p *WshRpcProxy) sendAuthenticateResponse(msg RpcMessage, routeId string) {
 		Data:  wshrpc.CommandAuthenticateRtnData{RouteId: routeId},
 	}
 	respBytes, _ := json.Marshal(resp)
-	p.SendRpcMessage(respBytes)
+	p.SendRpcMessage(respBytes, "auth-resp")
 }
 
 func (p *WshRpcProxy) sendAuthenticateTokenResponse(msg RpcMessage, entry *shellutil.TokenSwapEntry) {
@@ -99,7 +99,7 @@ func (p *WshRpcProxy) sendAuthenticateTokenResponse(msg RpcMessage, entry *shell
 		},
 	}
 	respBytes, _ := json.Marshal(resp)
-	p.SendRpcMessage(respBytes)
+	p.SendRpcMessage(respBytes, "auth-token-resp")
 }
 
 func validateRpcContextFromAuth(newCtx *wshrpc.RpcContext) (string, error) {
@@ -249,9 +249,13 @@ func (p *WshRpcProxy) HandleAuthentication() (*wshrpc.RpcContext, error) {
 }
 
 // TODO: Figure out who is sending to closed routes and why we're not catching it
-func (p *WshRpcProxy) SendRpcMessage(msg []byte) {
+func (p *WshRpcProxy) SendRpcMessage(msg []byte, debugStr string) {
 	defer func() {
-		panichandler.PanicHandler("WshRpcProxy.SendRpcMessage", recover())
+		panicCtx := "WshRpcProxy.SendRpcMessage"
+		if debugStr != "" {
+			panicCtx = fmt.Sprintf("%s:%s", panicCtx, debugStr)
+		}
+		panichandler.PanicHandler(panicCtx, recover())
 	}()
 	p.ToRemoteCh <- msg
 }

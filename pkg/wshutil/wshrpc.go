@@ -40,7 +40,7 @@ type ServerImpl interface {
 }
 
 type AbstractRpcClient interface {
-	SendRpcMessage(msg []byte)
+	SendRpcMessage(msg []byte, debugStr string)
 	RecvRpcMessage() ([]byte, bool) // blocking
 }
 
@@ -103,7 +103,7 @@ func GetRpcResponseHandlerFromContext(ctx context.Context) *RpcResponseHandler {
 	return rtn.(*RpcResponseHandler)
 }
 
-func (w *WshRpc) SendRpcMessage(msg []byte) {
+func (w *WshRpc) SendRpcMessage(msg []byte, debugStr string) {
 	w.InputCh <- msg
 }
 
