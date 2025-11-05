@@ -18,6 +18,7 @@ import { Terminal } from "@xterm/xterm";
 import debug from "debug";
 import * as jotai from "jotai";
 import { debounce } from "throttle-debounce";
+import { createTempFileFromBlob } from "./termutil";
 import { FitAddon } from "./fitaddon";
 
 const dlog = debug("wave:termwrap");
@@ -328,17 +329,6 @@ function handleOsc16162Command(data: string, blockId: string, loaded: boolean, t
 }
 
 export class TermWrap {
-    private static readonly MIME_TO_EXT: Record<string, string> = {
-        "image/png": "png",
-        "image/jpeg": "jpg",
-        "image/jpg": "jpg",
-        "image/gif": "gif",
-        "image/webp": "webp",
-        "image/bmp": "bmp",
-        "image/svg+xml": "svg",
-        "image/tiff": "tiff",
-    };
-
     blockId: string;
     ptyOffset: number;
     dataBytesProcessed: number;
@@ -685,44 +675,7 @@ export class TermWrap {
 
     async handleImagePasteBlob(blob: Blob): Promise<void> {
         try {
-            // Check size limit (5MB)
-            if (blob.size > 5 * 1024 * 1024) {
-                console.error("Image too large (>5MB):", blob.size);
-                return;
-            }
-
-            // Get file extension from MIME type
-            const ext = TermWrap.MIME_TO_EXT[blob.type] || "png";
-
-            // Generate unique filename with timestamp and random component
-            const timestamp = Date.now();
-            const random = Math.random().toString(36).substring(2, 8);
-            const filename = `waveterm_paste_${timestamp}_${random}.${ext}`;
-
-            // Get platform-appropriate temp file path from backend
-            const tempPath = await RpcApi.GetTempDirCommand(TabRpcClient, { filename });
-
-            // Convert blob to base64 using FileReader
-            const dataUrl = await new Promise<string>((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = () => resolve(reader.result as string);
-                reader.onerror = reject;
-                reader.readAsDataURL(blob);
-            });
-
-            // Extract base64 data from data URL (remove "data:image/png;base64," prefix)
-            const parts = dataUrl.split(",");
-            if (parts.length < 2) {
-                throw new Error("Invalid data URL format");
-            }
-            const base64Data = parts[1];
-
-            // Write image to temp file
-            await RpcApi.FileWriteCommand(TabRpcClient, {
-                info: { path: tempPath },
-                data64: base64Data,
-            });
-
+            const tempPath = await createTempFileFromBlob(blob, TabRpcClient);
             // Paste the file path (like iTerm2 does when you copy a file)
             // Claude Code will read the file and display it as [Image #N]
             this.terminal.paste(tempPath + " ");
