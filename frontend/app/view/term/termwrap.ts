@@ -713,23 +713,8 @@ export class TermWrap {
     async handleImagePaste(item: ClipboardItem, mimeType: string): Promise<void> {
         try {
             const blob = await item.getType(mimeType);
-
-            // Check size limit (5MB)
-            if (blob.size > 5 * 1024 * 1024) {
-                console.error("Image too large:", blob.size);
-                return;
-            }
-
-            // Convert to base64
-            const arrayBuffer = await blob.arrayBuffer();
-            const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
-            const dataUrl = `data:${mimeType};base64,${base64}`;
-
-            console.log("Pasting image as data URL, size:", blob.size, "type:", mimeType);
-
-            // For now, just paste as data URL text
-            // TODO: Implement proper image transmission to controller when RPC support is added
-            this.terminal.paste(dataUrl);
+            // Reuse the existing handleImagePasteBlob logic
+            await this.handleImagePasteBlob(blob);
         } catch (err) {
             console.error("Error processing image:", err);
         }
