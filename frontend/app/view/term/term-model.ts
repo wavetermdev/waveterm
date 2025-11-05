@@ -496,9 +496,9 @@ export class TermViewModel implements ViewModel {
         }
         if (keyutil.checkKeyPressed(waveEvent, "Shift:Enter")) {
             const shiftEnterNewlineAtom = getOverrideConfigAtom(this.blockId, "term:shiftenternewline");
-            const shiftEnterNewlineEnabled = globalStore.get(shiftEnterNewlineAtom) ?? false;
+            const shiftEnterNewlineEnabled = globalStore.get(shiftEnterNewlineAtom) ?? true;
             if (shiftEnterNewlineEnabled) {
-                this.sendDataToController("\u001b\n");
+                this.sendDataToController("\n");
                 event.preventDefault();
                 event.stopPropagation();
                 return false;
