@@ -1273,3 +1273,11 @@ func (ws *WshServer) SetSecretsCommand(ctx context.Context, secrets map[string]s
 	}
 	return nil
 }
+
+func (ws *WshServer) GetSecretsLinuxStorageBackendCommand(ctx context.Context) (string, error) {
+	backend, err := secretstore.GetLinuxStorageBackend()
+	if err != nil {
+		return "", fmt.Errorf("error getting linux storage backend: %w", err)
+	}
+	return backend, nil
+}

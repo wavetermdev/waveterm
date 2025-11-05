@@ -171,9 +171,10 @@ const (
 	Command_ElectronDecrypt = "electrondecrypt"
 
 	// secrets
-	Command_GetSecrets      = "getsecrets"
-	Command_GetSecretsNames = "getsecretsnames"
-	Command_SetSecrets      = "setsecrets"
+	Command_GetSecrets                    = "getsecrets"
+	Command_GetSecretsNames               = "getsecretsnames"
+	Command_SetSecrets                    = "setsecrets"
+	Command_GetSecretsLinuxStorageBackend = "getsecretslinuxstoragebackend"
 )
 
 type RespOrErrorUnion[T any] struct {
@@ -291,6 +292,7 @@ type WshRpcInterface interface {
 	GetSecretsCommand(ctx context.Context, names []string) (map[string]string, error)
 	GetSecretsNamesCommand(ctx context.Context) ([]string, error)
 	SetSecretsCommand(ctx context.Context, secrets map[string]string) error
+	GetSecretsLinuxStorageBackendCommand(ctx context.Context) (string, error)
 
 	WorkspaceListCommand(ctx context.Context) ([]WorkspaceInfoData, error)
 	GetUpdateChannelCommand(ctx context.Context) (string, error)
@@ -616,8 +618,8 @@ type CommandFileCopyData struct {
 }
 
 type CommandFileRestoreBackupData struct {
-	BackupFilePath     string `json:"backupfilepath"`
-	RestoreToFileName  string `json:"restoretofilename"`
+	BackupFilePath    string `json:"backupfilepath"`
+	RestoreToFileName string `json:"restoretofilename"`
 }
 
 type CommandRemoteStreamTarData struct {
@@ -1009,7 +1011,7 @@ type CommandElectronEncryptData struct {
 
 type CommandElectronEncryptRtnData struct {
 	CipherText     string `json:"ciphertext"`
-	StorageBackend string `json:"storagebackend"`
+	StorageBackend string `json:"storagebackend"` // only returned for linux
 }
 
 type CommandElectronDecryptData struct {
@@ -1017,5 +1019,6 @@ type CommandElectronDecryptData struct {
 }
 
 type CommandElectronDecryptRtnData struct {
-	PlainText string `json:"plaintext"`
+	PlainText      string `json:"plaintext"`
+	StorageBackend string `json:"storagebackend"` // only returned for linux
 }

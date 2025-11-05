@@ -312,6 +312,11 @@ class RpcApiType {
         return client.wshRpcCall("getsecrets", data, opts);
     }
 
+    // command "getsecretslinuxstoragebackend" [call]
+    GetSecretsLinuxStorageBackendCommand(client: WshClient, opts?: RpcOpts): Promise<string> {
+        return client.wshRpcCall("getsecretslinuxstoragebackend", null, opts);
+    }
+
     // command "getsecretsnames" [call]
     GetSecretsNamesCommand(client: WshClient, opts?: RpcOpts): Promise<string[]> {
         return client.wshRpcCall("getsecretsnames", null, opts);

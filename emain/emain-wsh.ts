@@ -91,8 +91,14 @@ export class ElectronWshClientType extends WshClient {
         const encrypted = Buffer.from(data.ciphertext, "base64");
         const plaintext = safeStorage.decryptString(encrypted);
 
+        let storagebackend = "";
+        if (process.platform === "linux") {
+            storagebackend = safeStorage.getSelectedStorageBackend();
+        }
+
         return {
             plaintext,
+            storagebackend,
         };
     }
 

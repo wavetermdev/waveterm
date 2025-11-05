@@ -235,6 +235,7 @@ declare global {
     // wshrpc.CommandElectronDecryptRtnData
     type CommandElectronDecryptRtnData = {
         plaintext: string;
+        storagebackend: string;
     };
 
     // wshrpc.CommandElectronEncryptData

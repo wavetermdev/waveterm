@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"sync"
 	"time"
 
@@ -36,7 +37,43 @@ var initialized bool
 var lastInitTryTime time.Time
 var lastInitErr error
 var secretNameRegexp = regexp.MustCompile(SecretNamePattern)
+var linuxStorageBackend string
 
+// must hold lock
+func getLinuxStorageBackend() error {
+	if runtime.GOOS != "linux" {
+		return nil
+	}
+
+	rpcClient := wshclient.GetBareRpcClient()
+	ctx, cancel := context.WithTimeout(context.Background(), EncryptionTimeout*time.Millisecond)
+	defer cancel()
+
+	encryptData := wshrpc.CommandElectronEncryptData{
+		PlainText: "hello",
+	}
+	rpcOpts := &wshrpc.RpcOpts{
+		Route:   wshutil.ElectronRoute,
+		Timeout: EncryptionTimeout,
+	}
+
+	result, err := wshclient.ElectronEncryptCommand(rpcClient, encryptData, rpcOpts)
+	if err != nil {
+		return fmt.Errorf("failed to get storage backend: %w", err)
+	}
+
+	if ctx.Err() != nil {
+		return fmt.Errorf("encryption timeout: %w", ctx.Err())
+	}
+
+	if result.StorageBackend != "" {
+		linuxStorageBackend = result.StorageBackend
+	}
+
+	return nil
+}
+
+// must hold lock
 func readSecretsFromFile() (map[string]string, error) {
 	configDir := wavebase.GetWaveConfigDir()
 	secretsPath := filepath.Join(configDir, SecretsFileName)
@@ -45,6 +82,9 @@ func readSecretsFromFile() (map[string]string, error) {
 	if err != nil {
 		if !os.IsNotExist(err) {
 			log.Printf("secretstore: could not read secrets file: %v\n", err)
+		}
+		if err := getLinuxStorageBackend(); err != nil {
+			log.Printf("secretstore: could not get linux storage backend: %v\n", err)
 		}
 		return make(map[string]string), nil
 	}
@@ -68,6 +108,10 @@ func readSecretsFromFile() (map[string]string, error) {
 
 	if ctx.Err() != nil {
 		return nil, fmt.Errorf("decryption timeout: %w", ctx.Err())
+	}
+
+	if result.StorageBackend != "" {
+		linuxStorageBackend = result.StorageBackend
 	}
 
 	var decryptedSecrets map[string]string
@@ -154,6 +198,10 @@ func writeSecretsToFile() error {
 		return fmt.Errorf("encryption timeout: %w", ctx.Err())
 	}
 
+	if result.StorageBackend != "" {
+		linuxStorageBackend = result.StorageBackend
+	}
+
 	configDir := wavebase.GetWaveConfigDir()
 	secretsPath := filepath.Join(configDir, SecretsFileName)
 
@@ -218,4 +266,27 @@ func GetSecretNames() ([]string, error) {
 		names = append(names, name)
 	}
 	return names, nil
+}
+
+func GetLinuxStorageBackend() (string, error) {
+	if runtime.GOOS != "linux" {
+		return "", nil
+	}
+
+	lock.Lock()
+	defer lock.Unlock()
+
+	if linuxStorageBackend != "" {
+		return linuxStorageBackend, nil
+	}
+
+	if err := getLinuxStorageBackend(); err != nil {
+		return "", err
+	}
+
+	if linuxStorageBackend == "" {
+		return "", fmt.Errorf("failed to determine linux storage backend")
+	}
+
+	return linuxStorageBackend, nil
 }

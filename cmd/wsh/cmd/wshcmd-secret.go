@@ -4,7 +4,6 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 	"regexp"
 	"strings"
@@ -47,15 +46,11 @@ var secretListCmd = &cobra.Command{
 	PreRunE: preRunSetupRpcClient,
 }
 
-var secretGetRawOutput bool
-
 func init() {
 	rootCmd.AddCommand(secretCmd)
 	secretCmd.AddCommand(secretGetCmd)
 	secretCmd.AddCommand(secretSetCmd)
 	secretCmd.AddCommand(secretListCmd)
-
-	secretGetCmd.Flags().BoolVar(&secretGetRawOutput, "raw", false, "output value without quotes")
 }
 
 func secretGetRun(cmd *cobra.Command, args []string) (rtnErr error) {
@@ -78,16 +73,7 @@ func secretGetRun(cmd *cobra.Command, args []string) (rtnErr error) {
 		return fmt.Errorf("secret not found: %s", name)
 	}
 
-	if secretGetRawOutput {
-		WriteStdout("%s\n", value)
-		return nil
-	}
-
-	outBArr, err := json.MarshalIndent(value, "", "  ")
-	if err != nil {
-		return fmt.Errorf("formatting secret: %w", err)
-	}
-	WriteStdout("%s\n", string(outBArr))
+	WriteStdout("%s\n", value)
 	return nil
 }
 
@@ -108,8 +94,17 @@ func secretSetRun(cmd *cobra.Command, args []string) (rtnErr error) {
 		return fmt.Errorf("secret name cannot be empty")
 	}
 
+	backend, err := wshclient.GetSecretsLinuxStorageBackendCommand(RpcClient, &wshrpc.RpcOpts{Timeout: 2000})
+	if err != nil {
+		return fmt.Errorf("checking secret storage backend: %w", err)
+	}
+
+	if backend == "basic_text" || backend == "unknown" {
+		return fmt.Errorf("No appropriate secret manager found, cannot set secrets")
+	}
+
 	secrets := map[string]string{name: value}
-	err := wshclient.SetSecretsCommand(RpcClient, secrets, &wshrpc.RpcOpts{Timeout: 2000})
+	err = wshclient.SetSecretsCommand(RpcClient, secrets, &wshrpc.RpcOpts{Timeout: 2000})
 	if err != nil {
 		return fmt.Errorf("setting secret: %w", err)
 	}
@@ -128,10 +123,8 @@ func secretListRun(cmd *cobra.Command, args []string) (rtnErr error) {
 		return fmt.Errorf("listing secrets: %w", err)
 	}
 
-	outBArr, err := json.MarshalIndent(names, "", "  ")
-	if err != nil {
-		return fmt.Errorf("formatting secret names: %w", err)
+	for _, name := range names {
+		WriteStdout("%s\n", name)
 	}
-	WriteStdout("%s\n", string(outBArr))
 	return nil
 }

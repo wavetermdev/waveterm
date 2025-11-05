@@ -380,6 +380,12 @@ func GetSecretsCommand(w *wshutil.WshRpc, data []string, opts *wshrpc.RpcOpts) (
 	return resp, err
 }
 
+// command "getsecretslinuxstoragebackend", wshserver.GetSecretsLinuxStorageBackendCommand
+func GetSecretsLinuxStorageBackendCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) (string, error) {
+	resp, err := sendRpcRequestCallHelper[string](w, "getsecretslinuxstoragebackend", nil, opts)
+	return resp, err
+}
+
 // command "getsecretsnames", wshserver.GetSecretsNamesCommand
 func GetSecretsNamesCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) ([]string, error) {
 	resp, err := sendRpcRequestCallHelper[[]string](w, "getsecretsnames", nil, opts)
