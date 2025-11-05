@@ -18,7 +18,11 @@ import { Terminal } from "@xterm/xterm";
 import debug from "debug";
 import * as jotai from "jotai";
 import { debounce } from "throttle-debounce";
-import { createTempFileFromBlob } from "./termutil";
+import {
+    createTempFileFromBlob,
+    handleImagePasteBlob as handleImagePasteBlobUtil,
+    supportsImageInput as supportsImageInputUtil,
+} from "./termutil";
 import { FitAddon } from "./fitaddon";
 
 const dlog = debug("wave:termwrap");
@@ -667,21 +671,13 @@ export class TermWrap {
     }
 
     supportsImageInput(): boolean {
-        // Enable image paste for all terminals
-        // Images will be saved as temp files and the path will be pasted
-        // Claude Code and other AI tools can then read the file
-        return true;
+        return supportsImageInputUtil();
     }
 
     async handleImagePasteBlob(blob: Blob): Promise<void> {
-        try {
-            const tempPath = await createTempFileFromBlob(blob, TabRpcClient);
-            // Paste the file path (like iTerm2 does when you copy a file)
-            // Claude Code will read the file and display it as [Image #N]
-            this.terminal.paste(tempPath + " ");
-        } catch (err) {
-            console.error("Error pasting image:", err);
-        }
+        await handleImagePasteBlobUtil(blob, TabRpcClient, (text) => {
+            this.terminal.paste(text);
+        });
     }
 
     async handleImagePaste(item: ClipboardItem, mimeType: string): Promise<void> {

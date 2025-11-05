@@ -99,3 +99,36 @@ export async function createTempFileFromBlob(blob: Blob, client: WshClient): Pro
 
     return tempPath;
 }
+
+/**
+ * Checks if image input is supported.
+ * Images will be saved as temp files and the path will be pasted.
+ * Claude Code and other AI tools can then read the file.
+ *
+ * @returns true if image input is supported
+ */
+export function supportsImageInput(): boolean {
+    return true;
+}
+
+/**
+ * Handles pasting an image blob by creating a temp file and pasting its path.
+ *
+ * @param blob - The image blob to paste
+ * @param client - The WshClient for RPC calls
+ * @param pasteFn - Function to paste the file path into the terminal
+ */
+export async function handleImagePasteBlob(
+    blob: Blob,
+    client: WshClient,
+    pasteFn: (text: string) => void
+): Promise<void> {
+    try {
+        const tempPath = await createTempFileFromBlob(blob, client);
+        // Paste the file path (like iTerm2 does when you copy a file)
+        // Claude Code will read the file and display it as [Image #N]
+        pasteFn(tempPath + " ");
+    } catch (err) {
+        console.error("Error pasting image:", err);
+    }
+}

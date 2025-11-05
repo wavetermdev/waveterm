@@ -29,7 +29,13 @@ import * as keyutil from "@/util/keyutil";
 import { boundNumber, stringToBase64 } from "@/util/util";
 import * as jotai from "jotai";
 import * as React from "react";
-import { computeTheme, createTempFileFromBlob, DefaultTermTheme } from "./termutil";
+import {
+    computeTheme,
+    createTempFileFromBlob,
+    DefaultTermTheme,
+    handleImagePasteBlob as handleImagePasteBlobUtil,
+    supportsImageInput as supportsImageInputUtil,
+} from "./termutil";
 import { TermWrap } from "./termwrap";
 import { getBlockingCommand } from "./shellblocking";
 
@@ -428,21 +434,13 @@ export class TermViewModel implements ViewModel {
     }
 
     supportsImageInput(): boolean {
-        // Enable image paste for all terminals
-        // Images will be saved as temp files and the path will be pasted
-        // Claude Code and other AI tools can then read the file
-        return true;
+        return supportsImageInputUtil();
     }
 
     async handleImagePasteBlob(blob: Blob): Promise<void> {
-        try {
-            const tempPath = await createTempFileFromBlob(blob, TabRpcClient);
-            // Paste the file path (like iTerm2 does when you copy a file)
-            // Claude Code will read the file and display it as [Image #N]
-            this.termRef.current?.terminal.paste(tempPath + " ");
-        } catch (err) {
-            console.error("Error pasting image:", err);
-        }
+        await handleImagePasteBlobUtil(blob, TabRpcClient, (text) => {
+            this.termRef.current?.terminal.paste(text);
+        });
     }
 
     setTermMode(mode: "term" | "vdom") {
