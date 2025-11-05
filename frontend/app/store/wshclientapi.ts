@@ -147,6 +147,16 @@ class RpcApiType {
         return client.wshRpcCall("disposesuggestions", data, opts);
     }
 
+    // command "electrondecrypt" [call]
+    ElectronDecryptCommand(client: WshClient, data: CommandElectronDecryptData, opts?: RpcOpts): Promise<CommandElectronDecryptRtnData> {
+        return client.wshRpcCall("electrondecrypt", data, opts);
+    }
+
+    // command "electronencrypt" [call]
+    ElectronEncryptCommand(client: WshClient, data: CommandElectronEncryptData, opts?: RpcOpts): Promise<CommandElectronEncryptRtnData> {
+        return client.wshRpcCall("electronencrypt", data, opts);
+    }
+
     // command "eventpublish" [call]
     EventPublishCommand(client: WshClient, data: WaveEvent, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("eventpublish", data, opts);
@@ -295,6 +305,16 @@ class RpcApiType {
     // command "getrtinfo" [call]
     GetRTInfoCommand(client: WshClient, data: CommandGetRTInfoData, opts?: RpcOpts): Promise<ObjRTInfo> {
         return client.wshRpcCall("getrtinfo", data, opts);
+    }
+
+    // command "getsecrets" [call]
+    GetSecretsCommand(client: WshClient, data: string[], opts?: RpcOpts): Promise<{[key: string]: string}> {
+        return client.wshRpcCall("getsecrets", data, opts);
+    }
+
+    // command "getsecretsnames" [call]
+    GetSecretsNamesCommand(client: WshClient, opts?: RpcOpts): Promise<string[]> {
+        return client.wshRpcCall("getsecretsnames", null, opts);
     }
 
     // command "gettab" [call]
@@ -470,6 +490,11 @@ class RpcApiType {
     // command "setrtinfo" [call]
     SetRTInfoCommand(client: WshClient, data: CommandSetRTInfoData, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("setrtinfo", data, opts);
+    }
+
+    // command "setsecrets" [call]
+    SetSecretsCommand(client: WshClient, data: {[key: string]: string}, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("setsecrets", data, opts);
     }
 
     // command "setvar" [call]

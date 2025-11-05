@@ -4,7 +4,7 @@
 import { WindowService } from "@/app/store/services";
 import { RpcResponseHelper, WshClient } from "@/app/store/wshclient";
 import { RpcApi } from "@/app/store/wshclientapi";
-import { Notification } from "electron";
+import { Notification, safeStorage } from "electron";
 import { getResolvedUpdateChannel } from "emain/updater";
 import { unamePlatform } from "./emain-platform";
 import { getWebContentsByBlockId, webGetSelector } from "./emain-web";
@@ -58,6 +58,42 @@ export class ElectronWshClientType extends WshClient {
             });
         }
         ww.focus();
+    }
+
+    async handle_electronencrypt(
+        rh: RpcResponseHelper,
+        data: CommandElectronEncryptData
+    ): Promise<CommandElectronEncryptRtnData> {
+        if (!safeStorage.isEncryptionAvailable()) {
+            throw new Error("encryption is not available");
+        }
+        const encrypted = safeStorage.encryptString(data.plaintext);
+        const ciphertext = encrypted.toString("base64");
+
+        let storagebackend = "";
+        if (process.platform === "linux") {
+            storagebackend = safeStorage.getSelectedStorageBackend();
+        }
+
+        return {
+            ciphertext,
+            storagebackend,
+        };
+    }
+
+    async handle_electrondecrypt(
+        rh: RpcResponseHelper,
+        data: CommandElectronDecryptData
+    ): Promise<CommandElectronDecryptRtnData> {
+        if (!safeStorage.isEncryptionAvailable()) {
+            throw new Error("encryption is not available");
+        }
+        const encrypted = Buffer.from(data.ciphertext, "base64");
+        const plaintext = safeStorage.decryptString(encrypted);
+
+        return {
+            plaintext,
+        };
     }
 
     // async handle_workspaceupdate(rh: RpcResponseHelper) {

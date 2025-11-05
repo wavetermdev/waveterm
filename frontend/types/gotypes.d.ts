@@ -227,6 +227,27 @@ declare global {
         routeid: string;
     };
 
+    // wshrpc.CommandElectronDecryptData
+    type CommandElectronDecryptData = {
+        ciphertext: string;
+    };
+
+    // wshrpc.CommandElectronDecryptRtnData
+    type CommandElectronDecryptRtnData = {
+        plaintext: string;
+    };
+
+    // wshrpc.CommandElectronEncryptData
+    type CommandElectronEncryptData = {
+        plaintext: string;
+    };
+
+    // wshrpc.CommandElectronEncryptRtnData
+    type CommandElectronEncryptRtnData = {
+        ciphertext: string;
+        storagebackend: string;
+    };
+
     // wshrpc.CommandEventReadHistoryData
     type CommandEventReadHistoryData = {
         event: string;

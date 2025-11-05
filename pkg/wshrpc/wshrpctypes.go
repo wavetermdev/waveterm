@@ -165,6 +165,15 @@ const (
 	Command_StartBuilder        = "startbuilder"
 	Command_GetBuilderStatus    = "getbuilderstatus"
 	Command_GetBuilderOutput    = "getbuilderoutput"
+
+	// electron
+	Command_ElectronEncrypt = "electronencrypt"
+	Command_ElectronDecrypt = "electrondecrypt"
+
+	// secrets
+	Command_GetSecrets      = "getsecrets"
+	Command_GetSecretsNames = "getsecretsnames"
+	Command_SetSecrets      = "setsecrets"
 )
 
 type RespOrErrorUnion[T any] struct {
@@ -275,6 +284,13 @@ type WshRpcInterface interface {
 	WebSelectorCommand(ctx context.Context, data CommandWebSelectorData) ([]string, error)
 	NotifyCommand(ctx context.Context, notificationOptions WaveNotificationOptions) error
 	FocusWindowCommand(ctx context.Context, windowId string) error
+	ElectronEncryptCommand(ctx context.Context, data CommandElectronEncryptData) (*CommandElectronEncryptRtnData, error)
+	ElectronDecryptCommand(ctx context.Context, data CommandElectronDecryptData) (*CommandElectronDecryptRtnData, error)
+
+	// secrets
+	GetSecretsCommand(ctx context.Context, names []string) (map[string]string, error)
+	GetSecretsNamesCommand(ctx context.Context) ([]string, error)
+	SetSecretsCommand(ctx context.Context, secrets map[string]string) error
 
 	WorkspaceListCommand(ctx context.Context) ([]WorkspaceInfoData, error)
 	GetUpdateChannelCommand(ctx context.Context) (string, error)
@@ -985,4 +1001,21 @@ type BuilderStatusData struct {
 	ExitCode int    `json:"exitcode,omitempty"`
 	ErrorMsg string `json:"errormsg,omitempty"`
 	Version  int    `json:"version"`
+}
+
+type CommandElectronEncryptData struct {
+	PlainText string `json:"plaintext"`
+}
+
+type CommandElectronEncryptRtnData struct {
+	CipherText     string `json:"ciphertext"`
+	StorageBackend string `json:"storagebackend"`
+}
+
+type CommandElectronDecryptData struct {
+	CipherText string `json:"ciphertext"`
+}
+
+type CommandElectronDecryptRtnData struct {
+	PlainText string `json:"plaintext"`
 }
