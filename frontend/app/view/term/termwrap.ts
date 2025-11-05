@@ -698,10 +698,9 @@ export class TermWrap {
             const random = Math.random().toString(36).substring(2, 8);
             const filename = `waveterm_paste_${timestamp}_${random}.${ext}`;
 
-            // TODO: Use platform-appropriate temp directory
-            // Currently hardcoded to /tmp/ which works on macOS/Linux
-            // Windows support would require backend API to provide temp path
-            const tempPath = `/tmp/${filename}`;
+            // Get platform-appropriate temp directory from backend
+            const tempDir = await RpcApi.GetTempDirCommand(TabRpcClient);
+            const tempPath = `${tempDir}/${filename}`;
 
             // Convert blob to base64 using FileReader
             const dataUrl = await new Promise<string>((resolve, reject) => {

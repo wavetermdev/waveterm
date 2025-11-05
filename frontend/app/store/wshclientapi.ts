@@ -262,6 +262,11 @@ class RpcApiType {
         return client.wshRpcCall("filerestorebackup", data, opts);
     }
 
+    // command "gettempdir" [call]
+    GetTempDirCommand(client: WshClient, opts?: RpcOpts): Promise<string> {
+        return client.wshRpcCall("gettempdir", null, opts);
+    }
+
     // command "filesharecapability" [call]
     FileShareCapabilityCommand(client: WshClient, data: string, opts?: RpcOpts): Promise<FileShareCapability> {
         return client.wshRpcCall("filesharecapability", data, opts);
