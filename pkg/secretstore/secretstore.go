@@ -26,6 +26,7 @@ const (
 	EncryptionTimeout = 5000
 	InitRetryMs       = 1000
 	SecretNamePattern = `^[A-Za-z][A-Za-z0-9_]*$`
+	WriteTsKey        = "wave:writets"
 )
 
 var lock sync.Mutex
@@ -120,10 +121,11 @@ func writerLoop() {
 
 func writeSecretsToFile() error {
 	lock.Lock()
-	secretsCopy := make(map[string]string, len(secrets))
+	secretsCopy := make(map[string]string, len(secrets)+1)
 	for k, v := range secrets {
 		secretsCopy[k] = v
 	}
+	secretsCopy[WriteTsKey] = time.Now().UTC().Format(time.RFC3339)
 	lock.Unlock()
 
 	jsonData, err := json.Marshal(secretsCopy)
@@ -188,6 +190,9 @@ func SetSecret(name string, value string) error {
 }
 
 func GetSecret(name string) (string, bool, error) {
+	if name == WriteTsKey {
+		return "", false, nil
+	}
 	if err := initSecretStore(); err != nil {
 		return "", false, err
 	}
@@ -207,6 +212,9 @@ func GetSecretNames() ([]string, error) {
 
 	names := make([]string, 0, len(secrets))
 	for name := range secrets {
+		if name == WriteTsKey {
+			continue
+		}
 		names = append(names, name)
 	}
 	return names, nil
