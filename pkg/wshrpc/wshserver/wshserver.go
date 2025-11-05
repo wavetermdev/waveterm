@@ -445,8 +445,12 @@ func (ws *WshServer) FileRestoreBackupCommand(ctx context.Context, data wshrpc.C
 	return filebackup.RestoreBackup(data.BackupFilePath, data.RestoreToFileName)
 }
 
-func (ws *WshServer) GetTempDirCommand(ctx context.Context) (string, error) {
-	return os.TempDir(), nil
+func (ws *WshServer) GetTempDirCommand(ctx context.Context, data wshrpc.CommandGetTempDirData) (string, error) {
+	tempDir := os.TempDir()
+	if data.FileName != "" {
+		return filepath.Join(tempDir, data.FileName), nil
+	}
+	return tempDir, nil
 }
 
 func (ws *WshServer) DeleteSubBlockCommand(ctx context.Context, data wshrpc.CommandDeleteBlockData) error {

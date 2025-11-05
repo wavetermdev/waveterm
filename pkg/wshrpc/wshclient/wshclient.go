@@ -321,11 +321,6 @@ func FileRestoreBackupCommand(w *wshutil.WshRpc, data wshrpc.CommandFileRestoreB
 	return err
 }
 
-// command "gettempdir", wshserver.GetTempDirCommand
-func GetTempDirCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) (string, error) {
-	return sendRpcRequestCallHelper[string](w, "gettempdir", nil, opts)
-}
-
 // command "filesharecapability", wshserver.FileShareCapabilityCommand
 func FileShareCapabilityCommand(w *wshutil.WshRpc, data string, opts *wshrpc.RpcOpts) (wshrpc.FileShareCapability, error) {
 	resp, err := sendRpcRequestCallHelper[wshrpc.FileShareCapability](w, "filesharecapability", data, opts)
@@ -400,6 +395,12 @@ func GetSecretsNamesCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) ([]string, 
 // command "gettab", wshserver.GetTabCommand
 func GetTabCommand(w *wshutil.WshRpc, data string, opts *wshrpc.RpcOpts) (*waveobj.Tab, error) {
 	resp, err := sendRpcRequestCallHelper[*waveobj.Tab](w, "gettab", data, opts)
+	return resp, err
+}
+
+// command "gettempdir", wshserver.GetTempDirCommand
+func GetTempDirCommand(w *wshutil.WshRpc, data wshrpc.CommandGetTempDirData, opts *wshrpc.RpcOpts) (string, error) {
+	resp, err := sendRpcRequestCallHelper[string](w, "gettempdir", data, opts)
 	return resp, err
 }
 

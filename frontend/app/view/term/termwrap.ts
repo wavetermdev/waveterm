@@ -328,6 +328,17 @@ function handleOsc16162Command(data: string, blockId: string, loaded: boolean, t
 }
 
 export class TermWrap {
+    private static readonly MIME_TO_EXT: Record<string, string> = {
+        "image/png": "png",
+        "image/jpeg": "jpg",
+        "image/jpg": "jpg",
+        "image/gif": "gif",
+        "image/webp": "webp",
+        "image/bmp": "bmp",
+        "image/svg+xml": "svg",
+        "image/tiff": "tiff",
+    };
+
     blockId: string;
     ptyOffset: number;
     dataBytesProcessed: number;
@@ -680,27 +691,16 @@ export class TermWrap {
                 return;
             }
 
-            // Map MIME types to file extensions
-            const mimeToExt: Record<string, string> = {
-                "image/png": "png",
-                "image/jpeg": "jpg",
-                "image/jpg": "jpg",
-                "image/gif": "gif",
-                "image/webp": "webp",
-                "image/bmp": "bmp",
-                "image/svg+xml": "svg",
-                "image/tiff": "tiff",
-            };
-            const ext = mimeToExt[blob.type] || "png";
+            // Get file extension from MIME type
+            const ext = TermWrap.MIME_TO_EXT[blob.type] || "png";
 
             // Generate unique filename with timestamp and random component
             const timestamp = Date.now();
             const random = Math.random().toString(36).substring(2, 8);
             const filename = `waveterm_paste_${timestamp}_${random}.${ext}`;
 
-            // Get platform-appropriate temp directory from backend
-            const tempDir = await RpcApi.GetTempDirCommand(TabRpcClient);
-            const tempPath = `${tempDir}/${filename}`;
+            // Get platform-appropriate temp file path from backend
+            const tempPath = await RpcApi.GetTempDirCommand(TabRpcClient, { filename });
 
             // Convert blob to base64 using FileReader
             const dataUrl = await new Promise<string>((resolve, reject) => {
@@ -711,7 +711,11 @@ export class TermWrap {
             });
 
             // Extract base64 data from data URL (remove "data:image/png;base64," prefix)
-            const base64Data = dataUrl.split(',')[1];
+            const parts = dataUrl.split(",");
+            if (parts.length < 2) {
+                throw new Error("Invalid data URL format");
+            }
+            const base64Data = parts[1];
 
             // Write image to temp file
             await RpcApi.FileWriteCommand(TabRpcClient, {
