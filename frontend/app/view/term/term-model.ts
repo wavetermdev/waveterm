@@ -392,18 +392,13 @@ export class TermViewModel implements ViewModel {
     }
 
     async handlePaste() {
-        console.log("🔍 handlePaste() called");
         try {
             const clipboardItems = await navigator.clipboard.read();
-            console.log("Clipboard items:", clipboardItems.length);
 
             for (const item of clipboardItems) {
-                console.log("Clipboard item types:", item.types);
-
                 // Check for images first
                 const imageTypes = item.types.filter((type) => type.startsWith("image/"));
                 if (imageTypes.length > 0 && this.supportsImageInput()) {
-                    console.log("Found image, processing...");
                     const blob = await item.getType(imageTypes[0]);
                     await this.handleImagePasteBlob(blob);
                     return;
@@ -413,7 +408,6 @@ export class TermViewModel implements ViewModel {
                 if (item.types.includes("text/plain")) {
                     const blob = await item.getType("text/plain");
                     const text = await blob.text();
-                    console.log("Pasting text, length:", text.length);
                     this.termRef.current?.terminal.paste(text);
                     return;
                 }
