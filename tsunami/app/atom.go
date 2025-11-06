@@ -22,6 +22,12 @@ type AtomMeta struct {
 	Pattern string   // regex constraint for strings
 }
 
+// SecretMeta provides metadata about a secret for documentation and validation
+type SecretMeta struct {
+	Desc     string
+	Optional bool
+}
+
 // Atom[T] represents a typed atom implementation
 type Atom[T any] struct {
 	name   string

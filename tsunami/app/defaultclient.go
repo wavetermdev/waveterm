@@ -162,3 +162,9 @@ func SetShortDesc(shortDesc string) {
 	m.ShortDesc = shortDesc
 	client.SetAppMeta(m)
 }
+
+func DeclareSecret(secretName string, meta SecretMeta) string {
+	client := engine.GetDefaultClient()
+	client.DeclareSecret(secretName, meta.Desc, meta.Optional)
+	return os.Getenv(secretName)
+}
