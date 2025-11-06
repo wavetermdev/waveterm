@@ -541,6 +541,15 @@ export class TermViewModel implements ViewModel {
         if (waveEvent.type != "keydown") {
             return true;
         }
+
+        // Handle Escape key during IME composition
+        if (keyutil.checkKeyPressed(waveEvent, "Escape")) {
+            if (this.termRef.current?.isComposing) {
+                // Reset composition state when Escape is pressed during composition
+                this.termRef.current.resetCompositionState();
+            }
+        }
+
         if (this.keyDownHandler(waveEvent)) {
             event.preventDefault();
             event.stopPropagation();

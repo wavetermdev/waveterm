@@ -356,6 +356,20 @@ export class TermWrap {
     shellIntegrationStatusAtom: jotai.PrimitiveAtom<"ready" | "running-command" | null>;
     lastCommandAtom: jotai.PrimitiveAtom<string | null>;
 
+    // IME composition state tracking
+    // Prevents duplicate input when switching input methods during composition (e.g., using Capslock)
+    // xterm.js sends data during compositionupdate AND after compositionend, causing duplicates
+    isComposing: boolean = false;
+    composingData: string = "";
+    lastCompositionEnd: number = 0;
+    lastComposedText: string = "";
+    firstDataAfterCompositionSent: boolean = false;
+
+    // Paste deduplication
+    // xterm.js paste() method triggers onData event, which can cause duplicate sends
+    lastPasteData: string = "";
+    lastPasteTime: number = 0;
+
     constructor(
         blockId: string,
         connectElem: HTMLDivElement,
@@ -499,6 +513,30 @@ export class TermWrap {
         });
     }
 
+    resetCompositionState() {
+        this.isComposing = false;
+        this.composingData = "";
+    }
+
+    private handleCompositionStart = (e: CompositionEvent) => {
+        dlog("compositionstart", e.data);
+        this.isComposing = true;
+        this.composingData = "";
+    };
+
+    private handleCompositionUpdate = (e: CompositionEvent) => {
+        dlog("compositionupdate", e.data);
+        this.composingData = e.data || "";
+    };
+
+    private handleCompositionEnd = (e: CompositionEvent) => {
+        dlog("compositionend", e.data);
+        this.isComposing = false;
+        this.lastComposedText = e.data || "";
+        this.lastCompositionEnd = Date.now();
+        this.firstDataAfterCompositionSent = false;
+    };
+
     async initTerminal() {
         const copyOnSelectAtom = getSettingsKeyAtom("term:copyonselect");
         this.toDispose.push(this.terminal.onData(this.handleTermData.bind(this)));
@@ -519,6 +557,33 @@ export class TermWrap {
         if (this.onSearchResultsDidChange != null) {
             this.toDispose.push(this.searchAddon.onDidChangeResults(this.onSearchResultsDidChange.bind(this)));
         }
+
+        // Register IME composition event listeners on the xterm.js textarea
+        const textareaElem = this.connectElem.querySelector("textarea");
+        if (textareaElem) {
+            textareaElem.addEventListener("compositionstart", this.handleCompositionStart);
+            textareaElem.addEventListener("compositionupdate", this.handleCompositionUpdate);
+            textareaElem.addEventListener("compositionend", this.handleCompositionEnd);
+
+            // Handle blur during composition - reset state to avoid stale data
+            const blurHandler = () => {
+                if (this.isComposing) {
+                    dlog("Terminal lost focus during composition, resetting IME state");
+                    this.resetCompositionState();
+                }
+            };
+            textareaElem.addEventListener("blur", blurHandler);
+
+            this.toDispose.push({
+                dispose: () => {
+                    textareaElem.removeEventListener("compositionstart", this.handleCompositionStart);
+                    textareaElem.removeEventListener("compositionupdate", this.handleCompositionUpdate);
+                    textareaElem.removeEventListener("compositionend", this.handleCompositionEnd);
+                    textareaElem.removeEventListener("blur", blurHandler);
+                },
+            });
+        }
+
         this.mainFileSubject = getFileSubject(this.blockId, TermFileName);
         this.mainFileSubject.subscribe(this.handleNewFileSubjectData.bind(this));
 
@@ -568,12 +633,58 @@ export class TermWrap {
         if (!this.loaded) {
             return;
         }
+
+        // IME Composition Handling
+        // Block all data during composition - only send the final text after compositionend
+        // This prevents xterm.js from sending intermediate composition data (e.g., during compositionupdate)
+        if (this.isComposing) {
+            dlog("Blocked data during composition:", data);
+            return;
+        }
+
+        // Paste Deduplication
+        // xterm.js paste() method triggers onData event, causing handleTermData to be called twice:
+        // 1. From our paste handler (pasteActive=true)
+        // 2. From xterm.js onData (pasteActive=false)
+        // We allow the first call and block the second duplicate
+        const DEDUP_WINDOW_MS = 50;
+        const now = Date.now();
+        const timeSinceLastPaste = now - this.lastPasteTime;
+
         if (this.pasteActive) {
+            // First paste event - record it and allow through
             this.pasteActive = false;
+            this.lastPasteData = data;
+            this.lastPasteTime = now;
             if (this.multiInputCallback) {
                 this.multiInputCallback(data);
             }
+        } else if (timeSinceLastPaste < DEDUP_WINDOW_MS && data === this.lastPasteData && this.lastPasteData) {
+            // Second paste event with same data within time window - this is a duplicate, block it
+            dlog("Blocked duplicate paste data:", data);
+            this.lastPasteData = ""; // Clear to allow same data to be pasted later
+            return;
         }
+
+        // IME Deduplication (for Capslock input method switching)
+        // When switching input methods with Capslock during composition, some systems send the
+        // composed text twice. We allow the first send and block subsequent duplicates.
+        const timeSinceCompositionEnd = now - this.lastCompositionEnd;
+
+        if (timeSinceCompositionEnd < DEDUP_WINDOW_MS && data === this.lastComposedText && this.lastComposedText) {
+            if (!this.firstDataAfterCompositionSent) {
+                // First send after composition - allow it but mark as sent
+                this.firstDataAfterCompositionSent = true;
+                dlog("First data after composition, allowing:", data);
+            } else {
+                // Second send of the same data - this is a duplicate from Capslock switching, block it
+                dlog("Blocked duplicate IME data:", data);
+                this.lastComposedText = ""; // Clear to allow same text to be typed again later
+                this.firstDataAfterCompositionSent = false;
+                return;
+            }
+        }
+
         this.sendDataHandler?.(data);
     }
 
