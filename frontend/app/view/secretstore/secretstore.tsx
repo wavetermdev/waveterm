@@ -141,7 +141,9 @@ const AddSecretForm = memo(
                         type="text"
                         className={cn(
                             "px-3 py-2 bg-gray-800 border rounded focus:outline-none",
-                            isNameInvalid ? "border-red-500 focus:border-red-500" : "border-gray-600 focus:border-accent-500"
+                            isNameInvalid
+                                ? "border-red-500 focus:border-red-500"
+                                : "border-gray-600 focus:border-accent-500"
                         )}
                         value={newSecretName}
                         onChange={(e) => onNameChange(e.target.value)}
@@ -209,76 +211,92 @@ const SecretDetailView = memo(({ model }: SecretDetailViewProps) => {
 
     return (
         <div className="flex flex-col gap-4 max-w-2xl mx-auto p-4">
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                    <i className="fa-sharp fa-solid fa-key text-accent-500" />
-                    <h3 className="text-lg font-semibold">{secretName}</h3>
-                </div>
-                <button
-                    className="p-2 hover:bg-gray-700 rounded cursor-pointer"
-                    onClick={() => model.closeSecretView()}
-                    title="Close"
-                >
-                    <i className="fa-sharp fa-solid fa-xmark" />
-                </button>
+            <div className="flex items-center gap-2">
+                <i className="fa-sharp fa-solid fa-key text-accent-500" />
+                <h3 className="text-lg font-semibold">{secretName}</h3>
             </div>
             <div className="flex flex-col gap-2">
                 <label className="text-sm font-medium">Secret Value</label>
                 <textarea
+                    ref={(ref) => {
+                        model.secretValueRef = ref;
+                        if (ref) {
+                            ref.focus();
+                        }
+                    }}
                     className="px-3 py-2 bg-gray-800 border border-gray-600 rounded focus:outline-none focus:border-accent-500 font-mono text-sm"
                     value={secretValue}
                     onChange={(e) => setSecretValue(e.target.value)}
+                    onKeyDown={(e) => {
+                        if (e.key === "Escape") {
+                            model.closeSecretView();
+                        }
+                    }}
                     disabled={isLoading}
                     rows={6}
                     placeholder={!secretShown ? "Enter new secret value..." : ""}
                 />
                 {!secretShown && (
-                    <div className="flex flex-col gap-2">
-                        <div className="text-xs text-gray-400">
-                            The current secret value is not shown by default for security purposes.
-                        </div>
-                        <button
-                            className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 rounded cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 self-start text-sm"
-                            onClick={() => model.showSecret()}
-                            disabled={isLoading}
-                        >
-                            {isLoading ? (
-                                <>
-                                    <i className="fa-sharp fa-solid fa-spinner fa-spin" />
-                                    Loading...
-                                </>
-                            ) : (
-                                <>
-                                    <i className="fa-sharp fa-solid fa-eye" />
-                                    Show Secret
-                                </>
-                            )}
-                        </button>
+                    <div className="text-sm text-gray-400">
+                        The current secret value is not shown by default for security purposes.{" "}
+                        {isLoading ? (
+                            <span className="text-gray-500">
+                                <i className="fa-sharp fa-solid fa-spinner fa-spin" /> Loading...
+                            </span>
+                        ) : (
+                            <button
+                                className="text-accent-500 underline hover:text-accent-400 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                                onClick={() => model.showSecret()}
+                                disabled={isLoading}
+                            >
+                                Show Secret
+                            </button>
+                        )}
                     </div>
                 )}
             </div>
-            <div className="flex gap-2 justify-end">
+            <div className="flex gap-2 justify-between">
                 <button
-                    className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                    onClick={() => model.closeSecretView()}
+                    className="px-4 py-2 bg-red-600 hover:bg-red-500 rounded cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    onClick={() => model.deleteSecret()}
                     disabled={isLoading}
-                >
-                    Cancel
-                </button>
-                <button
-                    className="px-4 py-2 bg-accent-600 hover:bg-accent-500 rounded cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                    onClick={() => model.saveSecret()}
-                    disabled={isLoading}
+                    title="Delete this secret"
                 >
                     {isLoading ? (
                         <>
                             <i className="fa-sharp fa-solid fa-spinner fa-spin" />
-                            Saving...
+                            Deleting...
                         </>
                     ) : (
-                        "Save"
+                        <>
+                            <i className="fa-sharp fa-solid fa-trash" />
+                            Delete
+                        </>
                     )}
                 </button>
+                <div className="flex gap-2">
+                    <button
+                        className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                        onClick={() => model.closeSecretView()}
+                        disabled={isLoading}
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        className="px-4 py-2 bg-accent-600 hover:bg-accent-500 rounded cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                        onClick={() => model.saveSecret()}
+                        disabled={isLoading}
+                    >
+                        {isLoading ? (
+                            <>
+                                <i className="fa-sharp fa-solid fa-spinner fa-spin" />
+                                Saving...
+                            </>
+                        ) : (
+                            "Save"
+                        )}
+                    </button>
+                </div>
             </div>
         </div>
     );

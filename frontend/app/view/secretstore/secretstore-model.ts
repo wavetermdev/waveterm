@@ -18,7 +18,7 @@ export class SecretStoreViewModel implements ViewModel {
 
     viewIcon = jotai.atom<string>("key");
     viewName = jotai.atom<string>("Secret Store");
-    
+
     secretNames: jotai.PrimitiveAtom<string[]>;
     selectedSecret: jotai.PrimitiveAtom<string | null>;
     secretValue: jotai.PrimitiveAtom<string>;
@@ -30,7 +30,9 @@ export class SecretStoreViewModel implements ViewModel {
     isAddingNew: jotai.PrimitiveAtom<boolean>;
     newSecretName: jotai.PrimitiveAtom<string>;
     newSecretValue: jotai.PrimitiveAtom<string>;
-    
+
+    secretValueRef: HTMLTextAreaElement | null = null;
+
     endIconButtons!: jotai.Atom<IconButtonDecl[]>;
 
     constructor(blockId: string, nodeModel: BlockNodeModel) {
@@ -38,7 +40,7 @@ export class SecretStoreViewModel implements ViewModel {
         this.blockId = blockId;
         this.nodeModel = nodeModel;
         this.blockAtom = WOS.getWaveObjectAtom<Block>(`block:${blockId}`);
-        
+
         this.secretNames = jotai.atom<string[]>([]);
         this.selectedSecret = jotai.atom<string | null>(null) as jotai.PrimitiveAtom<string | null>;
         this.secretValue = jotai.atom<string>("");
@@ -50,20 +52,20 @@ export class SecretStoreViewModel implements ViewModel {
         this.isAddingNew = jotai.atom<boolean>(false);
         this.newSecretName = jotai.atom<string>("");
         this.newSecretValue = jotai.atom<string>("");
-        
+
         this.endIconButtons = jotai.atom((get) => {
             const buttons: IconButtonDecl[] = [];
-            
+
             buttons.push({
                 elemtype: "iconbutton",
                 icon: "rotate-right",
                 title: "Refresh",
                 click: () => this.refreshSecrets(),
             });
-            
+
             return buttons;
         });
-        
+
         this.checkStorageBackend();
         this.refreshSecrets();
     }
@@ -84,17 +86,14 @@ export class SecretStoreViewModel implements ViewModel {
                 globalStore.set(this.storageBackendError, null);
             }
         } catch (error) {
-            globalStore.set(
-                this.storageBackendError,
-                `Error checking storage backend: ${error.message}`
-            );
+            globalStore.set(this.storageBackendError, `Error checking storage backend: ${error.message}`);
         }
     }
 
     async refreshSecrets() {
         globalStore.set(this.isLoading, true);
         globalStore.set(this.errorMessage, null);
-        
+
         try {
             const names = await RpcApi.GetSecretsNamesCommand(TabRpcClient);
             globalStore.set(this.secretNames, names || []);
@@ -125,10 +124,10 @@ export class SecretStoreViewModel implements ViewModel {
         if (!selectedSecret) {
             return;
         }
-        
+
         globalStore.set(this.isLoading, true);
         globalStore.set(this.errorMessage, null);
-        
+
         try {
             const secrets = await RpcApi.GetSecretsCommand(TabRpcClient, [selectedSecret]);
             const value = secrets[selectedSecret];
@@ -148,19 +147,40 @@ export class SecretStoreViewModel implements ViewModel {
     async saveSecret() {
         const selectedSecret = globalStore.get(this.selectedSecret);
         const secretValue = globalStore.get(this.secretValue);
-        
+
         if (!selectedSecret) {
             return;
         }
-        
+
         globalStore.set(this.isLoading, true);
         globalStore.set(this.errorMessage, null);
-        
+
         try {
             await RpcApi.SetSecretsCommand(TabRpcClient, { [selectedSecret]: secretValue });
             this.closeSecretView();
         } catch (error) {
             globalStore.set(this.errorMessage, `Failed to save secret: ${error.message}`);
+        } finally {
+            globalStore.set(this.isLoading, false);
+        }
+    }
+
+    async deleteSecret() {
+        const selectedSecret = globalStore.get(this.selectedSecret);
+
+        if (!selectedSecret) {
+            return;
+        }
+
+        globalStore.set(this.isLoading, true);
+        globalStore.set(this.errorMessage, null);
+
+        try {
+            await RpcApi.SetSecretsCommand(TabRpcClient, { [selectedSecret]: null });
+            this.closeSecretView();
+            await this.refreshSecrets();
+        } catch (error) {
+            globalStore.set(this.errorMessage, `Failed to delete secret: ${error.message}`);
         } finally {
             globalStore.set(this.isLoading, false);
         }
@@ -183,12 +203,12 @@ export class SecretStoreViewModel implements ViewModel {
     async addNewSecret() {
         const name = globalStore.get(this.newSecretName).trim();
         const value = globalStore.get(this.newSecretValue);
-        
+
         if (!name) {
             globalStore.set(this.errorMessage, "Secret name cannot be empty");
             return;
         }
-        
+
         if (!SECRET_NAME_REGEX.test(name)) {
             globalStore.set(
                 this.errorMessage,
@@ -196,16 +216,16 @@ export class SecretStoreViewModel implements ViewModel {
             );
             return;
         }
-        
+
         const existingNames = globalStore.get(this.secretNames);
         if (existingNames.includes(name)) {
             globalStore.set(this.errorMessage, `Secret "${name}" already exists`);
             return;
         }
-        
+
         globalStore.set(this.isLoading, true);
         globalStore.set(this.errorMessage, null);
-        
+
         try {
             await RpcApi.SetSecretsCommand(TabRpcClient, { [name]: value });
             globalStore.set(this.isAddingNew, false);
@@ -220,9 +240,12 @@ export class SecretStoreViewModel implements ViewModel {
     }
 
     giveFocus(): boolean {
+        if (this.secretValueRef) {
+            this.secretValueRef.focus();
+            return true;
+        }
         return true;
     }
 
-    dispose() {
-    }
+    dispose() {}
 }
