@@ -550,7 +550,7 @@ export class TermViewModel implements ViewModel {
             const shiftEnterNewlineAtom = getOverrideConfigAtom(this.blockId, "term:shiftenternewline");
             const shiftEnterNewlineEnabled = globalStore.get(shiftEnterNewlineAtom) ?? true;
             if (shiftEnterNewlineEnabled) {
-                this.sendDataToController("\n");
+                this.sendDataToController("\u001b\n");
                 event.preventDefault();
                 event.stopPropagation();
                 return false;
