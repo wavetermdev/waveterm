@@ -50,6 +50,14 @@ type SecretMeta struct {
 	Optional bool   `json:"optional"`
 }
 
+type AppManifest struct {
+	AppTitle     string                  `json:"apptitle"`
+	AppShortDesc string                  `json:"appshortdesc"`
+	ConfigSchema map[string]any          `json:"configschema"`
+	DataSchema   map[string]any          `json:"dataschema"`
+	Secrets      map[string]SecretMeta   `json:"secrets"`
+}
+
 type ClientImpl struct {
 	Lock               *sync.Mutex
 	Root               *RootElem
@@ -483,4 +491,29 @@ func (c *ClientImpl) GetSecrets() map[string]SecretMeta {
 		secretsCopy[k] = v
 	}
 	return secretsCopy
+}
+
+func (c *ClientImpl) GetAppManifest() AppManifest {
+	appMeta := c.GetAppMeta()
+	configSchema := GenerateConfigSchema(c.Root)
+	dataSchema := GenerateDataSchema(c.Root)
+	secrets := c.GetSecrets()
+	
+	return AppManifest{
+		AppTitle:     appMeta.Title,
+		AppShortDesc: appMeta.ShortDesc,
+		ConfigSchema: configSchema,
+		DataSchema:   dataSchema,
+		Secrets:      secrets,
+	}
+}
+
+func (c *ClientImpl) PrintAppManifest() {
+	manifest := c.GetAppManifest()
+	manifestJSON, err := json.MarshalIndent(manifest, "", "  ")
+	if err != nil {
+		fmt.Printf("Error marshaling manifest: %v\n", err)
+		return
+	}
+	fmt.Println(string(manifestJSON))
 }

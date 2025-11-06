@@ -168,3 +168,8 @@ func DeclareSecret(secretName string, meta SecretMeta) string {
 	client.DeclareSecret(secretName, meta.Desc, meta.Optional)
 	return os.Getenv(secretName)
 }
+
+func PrintAppManifest() {
+	client := engine.GetDefaultClient()
+	client.PrintAppManifest()
+}

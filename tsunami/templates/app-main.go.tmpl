@@ -3,6 +3,7 @@ package main
 import (
 	"embed"
 	"io/fs"
+	"os"
 
 	"github.com/wavetermdev/waveterm/tsunami/app"
 )
@@ -19,5 +20,11 @@ func main() {
 	app.RegisterEmbeds(subDistFS, subStaticFS, nil)
 	app.SetTitle(AppTitle)
 	app.SetShortDesc(AppShortDesc)
+	
+	if len(os.Args) == 2 && os.Args[1] == "--manifest" {
+		app.PrintAppManifest()
+		os.Exit(0)
+	}
+	
 	app.RunMain()
 }
