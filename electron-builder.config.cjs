@@ -37,6 +37,7 @@ const config = {
     asarUnpack: [
         "dist/bin/**/*", // wavesrv and wsh binaries
         "dist/schema/**/*", // schema files for Monaco editor
+        "dist/tsunamiscaffold/**/*", // tsunami scaffold files
     ],
     mac: {
         target: [

@@ -19,6 +19,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/utilds"
 	"github.com/wavetermdev/waveterm/pkg/waveappstore"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
+	"github.com/wavetermdev/waveterm/pkg/wconfig"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wps"
 	"github.com/wavetermdev/waveterm/tsunami/build"
@@ -208,11 +209,19 @@ func (bc *BuilderController) buildAndRun(ctx context.Context, appId string, buil
 		return
 	}
 
-	scaffoldPath := os.Getenv("TSUNAMI_SCAFFOLDPATH")
-	sdkReplacePath := os.Getenv("TSUNAMI_SDKREPLACEPATH")
+	settings := wconfig.GetWatcher().GetFullConfig().Settings
+	scaffoldPath := settings.TsunamiScaffoldPath
+	if scaffoldPath == "" {
+		scaffoldPath = filepath.Join(wavebase.GetWaveAppPath(), "tsunamiscaffold")
+	}
+	sdkReplacePath := settings.TsunamiSdkReplacePath
+	sdkVersion := settings.TsunamiSdkVersion
+	if sdkVersion == "" {
+		sdkVersion = "v0.12.2"
+	}
+	goPath := settings.TsunamiGoPath
 
 	outputCapture := build.MakeOutputCapture()
-
 	_, err = build.TsunamiBuildInternal(build.BuildOpts{
 		AppPath:        appPath,
 		Verbose:        true,
@@ -221,7 +230,9 @@ func (bc *BuilderController) buildAndRun(ctx context.Context, appId string, buil
 		OutputFile:     cachePath,
 		ScaffoldPath:   scaffoldPath,
 		SdkReplacePath: sdkReplacePath,
+		SdkVersion:     sdkVersion,
 		NodePath:       nodePath,
+		GoPath:         goPath,
 		OutputCapture:  outputCapture,
 	})
 	if err != nil {
@@ -455,4 +466,3 @@ func exitCodeFromWaitErr(waitErr error) int {
 	}
 	return 1
 }
-

@@ -24,6 +24,7 @@ tasks:
         deps:
             - npm:install
             - build:backend
+            - build:tsunamiscaffold
         env:
             WAVETERM_ENVFILE: "{{.ROOT_DIR}}/.env"
             WCLOUD_ENDPOINT: "https://api-dev.waveterm.dev/central"
@@ -115,6 +116,7 @@ tasks:
             - clean
             - npm:install
             - build:backend
+            - build:tsunamiscaffold
 
     build:frontend:dev:
         desc: Build the frontend in development mode.
@@ -298,6 +300,20 @@ tasks:
                 - VERSION
         cmd: (CGO_ENABLED=0 GOOS={{.GOOS}} GOARCH={{.GOARCH}} go build -ldflags="-s -w -X main.BuildTime=$({{.DATE}} +'%Y%m%d%H%M') -X main.WaveVersion={{.VERSION}}" -o dist/bin/wsh-{{.VERSION}}-{{.GOOS}}.{{.NORMALIZEDARCH}}{{.EXT}} cmd/wsh/main-wsh.go)
         internal: true
+
+    build:tsunamiscaffold:
+        desc: Build and copy tsunami scaffold to dist directory.
+        cmds:
+            - cmd: "{{.RMRF}} dist/tsunamiscaffold"
+              ignore_error: true
+            - task: copyfiles:'tsunami/frontend/scaffold':'dist/tsunamiscaffold'
+        deps:
+            - tsunami:scaffold
+        sources:
+            - "tsunami/frontend/dist/**/*"
+            - "tsunami/templates/**/*"
+        generates:
+            - "dist/tsunamiscaffold/**/*"
 
     generate:
         desc: Generate Typescript bindings for the Go backend.
