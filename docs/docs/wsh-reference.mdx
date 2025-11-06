@@ -895,4 +895,90 @@ wsh blocks list --workspace=12d0c067-378e-454c-872e-77a314248114
 wsh blocks list --json
 ```
 
+
+---
+
+## secret
+
+The `secret` command provides secure storage and management of sensitive information like API keys, passwords, and tokens. Secrets are stored using your system's native secure storage backend (Keychain on macOS, Secret Service on Linux, Credential Manager on Windows).
+
+Secret names must start with a letter and contain only letters, numbers, and underscores.
+
+### get
+
+```sh
+wsh secret get [name]
+```
+
+Retrieve and display the value of a stored secret.
+
+Examples:
+
+```sh
+# Get an API key
+wsh secret get github_token
+
+# Use in scripts
+export API_KEY=$(wsh secret get my_api_key)
+```
+
+### set
+
+```sh
+wsh secret set [name]=[value]
+```
+
+Store a secret value securely. This command requires an appropriate system secret manager to be available and will fail if only basic text storage is available.
+
+Examples:
+
+```sh
+# Set an API token
+wsh secret set github_token=ghp_abc123xyz
+
+# Set a database password
+wsh secret set db_password=mySecurePassword123
+```
+
+:::warning
+The `set` command requires a proper system secret manager (Keychain, Secret Service, or Credential Manager). It will not work with basic text storage for security reasons.
+:::
+
+### list
+
+```sh
+wsh secret list
+```
+
+Display all stored secret names (values are not shown).
+
+Example:
+
+```sh
+# List all secrets
+wsh secret list
+```
+
+### delete
+
+```sh
+wsh secret delete [name]
+```
+
+Remove a secret from secure storage.
+
+Examples:
+
+```sh
+# Delete an API key
+wsh secret delete github_token
+
+# Delete multiple secrets
+wsh secret delete old_api_key
+wsh secret delete temp_token
+```
+
+:::tip
+Use secrets in your scripts to avoid hardcoding sensitive values. Secrets work across remote machines - store an API key locally with `wsh secret set`, then access it from any SSH or WSL connection with `wsh secret get`. The secret is securely retrieved from your local machine without needing to duplicate it on remote systems.
+:::
 </PlatformProvider>

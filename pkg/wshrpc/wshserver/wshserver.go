@@ -1264,11 +1264,18 @@ func (ws *WshServer) GetSecretsNamesCommand(ctx context.Context) ([]string, erro
 	return names, nil
 }
 
-func (ws *WshServer) SetSecretsCommand(ctx context.Context, secrets map[string]string) error {
+func (ws *WshServer) SetSecretsCommand(ctx context.Context, secrets map[string]*string) error {
 	for name, value := range secrets {
-		err := secretstore.SetSecret(name, value)
-		if err != nil {
-			return fmt.Errorf("error setting secret %q: %w", name, err)
+		if value == nil {
+			err := secretstore.DeleteSecret(name)
+			if err != nil {
+				return fmt.Errorf("error deleting secret %q: %w", name, err)
+			}
+		} else {
+			err := secretstore.SetSecret(name, *value)
+			if err != nil {
+				return fmt.Errorf("error setting secret %q: %w", name, err)
+			}
 		}
 	}
 	return nil
