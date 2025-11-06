@@ -442,7 +442,15 @@ func (ws *WshServer) FileShareCapabilityCommand(ctx context.Context, path string
 }
 
 func (ws *WshServer) FileRestoreBackupCommand(ctx context.Context, data wshrpc.CommandFileRestoreBackupData) error {
-	return filebackup.RestoreBackup(data.BackupFilePath, data.RestoreToFileName)
+	expandedBackupPath, err := wavebase.ExpandHomeDir(data.BackupFilePath)
+	if err != nil {
+		return fmt.Errorf("failed to expand backup file path: %w", err)
+	}
+	expandedRestorePath, err := wavebase.ExpandHomeDir(data.RestoreToFileName)
+	if err != nil {
+		return fmt.Errorf("failed to expand restore file path: %w", err)
+	}
+	return filebackup.RestoreBackup(expandedBackupPath, expandedRestorePath)
 }
 
 func (ws *WshServer) DeleteSubBlockCommand(ctx context.Context, data wshrpc.CommandDeleteBlockData) error {
