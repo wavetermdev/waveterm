@@ -135,6 +135,10 @@ func FindGoExecutable() (string, error) {
 func verifyEnvironment(verbose bool, opts BuildOpts) (*BuildEnv, error) {
 	oc := opts.OutputCapture
 
+	if opts.SdkVersion == "" && opts.SdkReplacePath == "" {
+		return nil, fmt.Errorf("either SdkVersion or SdkReplacePath must be set")
+	}
+
 	var goPath string
 	var err error
 
@@ -298,8 +302,10 @@ func createGoMod(tempDir, appName, goVersion string, opts BuildOpts, verbose boo
 
 	if verbose {
 		oc.Printf("Created go.mod with module path: %s", modulePath)
-		oc.Printf("Added require: github.com/wavetermdev/waveterm/tsunami v0.0.0")
-		oc.Printf("Added replace directive: github.com/wavetermdev/waveterm/tsunami => %s", opts.SdkReplacePath)
+		oc.Printf("Added require: github.com/wavetermdev/waveterm/tsunami %s", opts.SdkVersion)
+		if opts.SdkReplacePath != "" {
+			oc.Printf("Added replace directive: github.com/wavetermdev/waveterm/tsunami => %s", opts.SdkReplacePath)
+		}
 	}
 
 	// Run go mod tidy to clean up dependencies
