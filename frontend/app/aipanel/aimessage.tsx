@@ -49,14 +49,12 @@ const AIThinking = memo(
                     )}
                     {message && <span className="text-sm text-gray-400">{message}</span>}
                 </div>
-                {displayText && (
-                    <div
-                        ref={scrollRef}
-                        className="text-sm text-gray-500 overflow-y-auto max-h-[3lh] max-w-[600px] pl-9"
-                    >
-                        {displayText}
-                    </div>
-                )}
+                <div
+                    ref={scrollRef}
+                    className="text-sm text-gray-500 overflow-y-auto h-[3lh] max-w-[600px] pl-9"
+                >
+                    {displayText}
+                </div>
             </div>
         );
     }
