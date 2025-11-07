@@ -448,7 +448,14 @@ func (ws *WshServer) FileRestoreBackupCommand(ctx context.Context, data wshrpc.C
 func (ws *WshServer) GetTempDirCommand(ctx context.Context, data wshrpc.CommandGetTempDirData) (string, error) {
 	tempDir := os.TempDir()
 	if data.FileName != "" {
-		return filepath.Join(tempDir, data.FileName), nil
+		// Reduce to a simple file name to avoid absolute paths or traversal
+		name := filepath.Base(data.FileName)
+		// Normalize/trim any stray separators and whitespace
+		name = strings.Trim(name, `/\`+" ")
+		if name == "" || name == "." {
+			return tempDir, nil
+		}
+		return filepath.Join(tempDir, name), nil
 	}
 	return tempDir, nil
 }
