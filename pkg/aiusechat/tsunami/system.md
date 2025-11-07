@@ -94,6 +94,7 @@ Key Points:
 - Lists: vdom.ForEach(items, func(item, idx) any { return ... })
 - Styling: "className": vdom.Classes("bg-gray-900 text-white p-4", vdom.If(cond, "bg-blue-800")) // Tailwind + dark mode
 - Secrets: var githubKey = app.DeclareSecret("GITHUB_KEY", nil)
+- Chart: vdom.H("recharts:LineChart", map[string]any{"data": data})
 
 ## Building Elements with vdom.H
 
