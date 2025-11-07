@@ -612,6 +612,11 @@ class RpcApiType {
         return client.wshRpcCall("writeappfile", data, opts);
     }
 
+    // command "writetempfile" [call]
+    WriteTempFileCommand(client: WshClient, data: CommandWriteTempFileData, opts?: RpcOpts): Promise<string> {
+        return client.wshRpcCall("writetempfile", data, opts);
+    }
+
     // command "wshactivity" [call]
     WshActivityCommand(client: WshClient, data: {[key: string]: number}, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("wshactivity", data, opts);

@@ -468,6 +468,30 @@ func (ws *WshServer) GetTempDirCommand(ctx context.Context, data wshrpc.CommandG
 	return tempDir, nil
 }
 
+func (ws *WshServer) WriteTempFileCommand(ctx context.Context, data wshrpc.CommandWriteTempFileData) (string, error) {
+	if data.FileName == "" {
+		return "", fmt.Errorf("filename is required")
+	}
+	name := filepath.Base(data.FileName)
+	if name == "" || name == "." || name == ".." {
+		return "", fmt.Errorf("invalid filename")
+	}
+	tempDir, err := os.MkdirTemp("", "waveterm-")
+	if err != nil {
+		return "", fmt.Errorf("error creating temp directory: %w", err)
+	}
+	decoded, err := base64.StdEncoding.DecodeString(data.Data64)
+	if err != nil {
+		return "", fmt.Errorf("error decoding base64 data: %w", err)
+	}
+	tempPath := filepath.Join(tempDir, name)
+	err = os.WriteFile(tempPath, decoded, 0600)
+	if err != nil {
+		return "", fmt.Errorf("error writing temp file: %w", err)
+	}
+	return tempPath, nil
+}
+
 func (ws *WshServer) DeleteSubBlockCommand(ctx context.Context, data wshrpc.CommandDeleteBlockData) error {
 	err := wcore.DeleteBlock(ctx, data.BlockId, false)
 	if err != nil {

@@ -1,7 +1,6 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-
 import { BlockNodeModel } from "@/app/block/blocktypes";
 import { appHandleKeyDown } from "@/app/store/keymodel";
 import { waveEventSubscribe } from "@/app/store/wps";
@@ -29,18 +28,16 @@ import * as keyutil from "@/util/keyutil";
 import { boundNumber, stringToBase64 } from "@/util/util";
 import * as jotai from "jotai";
 import * as React from "react";
+import { getBlockingCommand } from "./shellblocking";
 import {
     computeTheme,
-    createTempFileFromBlob,
     DefaultTermTheme,
     handleImagePasteBlob as handleImagePasteBlobUtil,
     supportsImageInput as supportsImageInputUtil,
 } from "./termutil";
 import { TermWrap } from "./termwrap";
-import { getBlockingCommand } from "./shellblocking";
 
 export class TermViewModel implements ViewModel {
-
     viewType: string;
     nodeModel: BlockNodeModel;
     connected: boolean;
@@ -559,7 +556,7 @@ export class TermViewModel implements ViewModel {
             const shiftEnterNewlineAtom = getOverrideConfigAtom(this.blockId, "term:shiftenternewline");
             const shiftEnterNewlineEnabled = globalStore.get(shiftEnterNewlineAtom) ?? true;
             if (shiftEnterNewlineEnabled) {
-                this.sendDataToController("\u001b\n");
+                this.sendDataToController("\n");
                 event.preventDefault();
                 event.stopPropagation();
                 return false;

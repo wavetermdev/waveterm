@@ -463,6 +463,12 @@ declare global {
         data64: string;
     };
 
+    // wshrpc.CommandWriteTempFileData
+    type CommandWriteTempFileData = {
+        filename?: string;
+        data64: string;
+    };
+
     // wconfig.ConfigError
     type ConfigError = {
         file: string;
