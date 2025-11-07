@@ -313,6 +313,11 @@ func buildOpenAIHTTPRequest(ctx context.Context, inputs []any, chatOpts uctypes.
 		req.Header.Set("X-Wave-ClientId", chatOpts.ClientId)
 	}
 	req.Header.Set("X-Wave-APIType", "openai")
+	if chatOpts.BuilderId != "" {
+		req.Header.Set("X-Wave-RequestType", "waveapps-builder")
+	} else {
+		req.Header.Set("X-Wave-RequestType", "waveai")
+	}
 
 	return req, nil
 }
