@@ -947,6 +947,127 @@ var MyComponent = app.DefineComponent("MyComponent", func(_ struct{}) any {
 - Direct DOM manipulation when needed
 - Integration with third-party DOM libraries
 
+### Modal Dialogs
+
+Tsunami provides hooks for displaying alert and confirmation modals without boilerplate. These work like React hooks - declare them at component top level,
+then trigger them from event handlers or effects.
+
+#### Alert Modals
+
+Alert modals display messages with a single "OK" button - useful for errors, notifications, or information:
+
+```go
+var App = app.DefineComponent("App", func(_ struct{}) any {
+	alertOpen, triggerAlert := app.UseAlertModal()
+
+	handleError := func() {
+		// Trigger alert from event handler
+		triggerAlert(app.ModalConfig{
+			Icon:   "❌", // optional emoji icon
+			Title:  "Error",
+			Text:   "Failed to load data. Please try again.",
+			OkText: "OK", // optional to override the default "OK" text
+			OnClose: func() {
+				// optional callback when dismissed
+				fmt.Println("User dismissed error")
+			},
+		})
+	}
+
+	return vdom.H("button", map[string]any{
+		"onClick": handleError,
+	}, "Trigger Error")
+})
+```
+
+#### Confirm Modals
+
+Confirm modals ask for user confirmation with OK/Cancel buttons - use before destructive actions or important operations:
+
+```go
+var App = app.DefineComponent("App", func(_ struct{}) any {
+	confirmOpen, triggerConfirm := app.UseConfirmModal()
+	itemsAtom := app.UseLocal([]string{"Item 1", "Item 2", "Item 3"})
+
+	handleDelete := func(itemName string) {
+		triggerConfirm(app.ModalConfig{
+			Icon:       "🗑️", // optional emoji icon
+			Title:      "Delete Item",
+			Text:       fmt.Sprintf("Are you sure you want to delete '%s'? This cannot be undone", itemName),
+			OkText:     "Delete", // optional, to override default "OK" text
+			CancelText: "Cancel", // optional, to override default "Cancel" text
+			OnResult: func(confirmed bool) {
+				if confirmed {
+					// User confirmed - proceed with deletion
+					currentItems := itemsAtom.Get()
+					newItems := make([]string, 0)
+					for _, item := range currentItems {
+						if item != itemName {
+							newItems = append(newItems, item)
+						}
+					}
+					itemsAtom.Set(newItems)
+					fmt.Println("Item deleted:", itemName)
+				} else {
+					// User cancelled
+					fmt.Println("Delete cancelled")
+				}
+			},
+		})
+	}
+
+	items := itemsAtom.Get()
+
+	return vdom.H("div", map[string]any{
+		"className": "p-4",
+	},
+		vdom.H("h2", map[string]any{
+			"className": "text-xl mb-4",
+		}, "Items"),
+		vdom.ForEach(items, func(item string, idx int) any {
+			return vdom.H("div", map[string]any{
+				"key":       idx,
+				"className": "flex items-center justify-between p-2 mb-2 bg-gray-800 rounded",
+			},
+				vdom.H("span", nil, item),
+				vdom.H("button", map[string]any{
+					"className": "px-3 py-1 bg-red-600 text-white rounded",
+					"onClick":   func() { handleDelete(item) },
+				}, "Delete"),
+			)
+		}),
+	)
+})
+```
+
+#### ModalConfig Options
+
+This structure is shared between the alert and confirm modals.
+
+```go
+type ModalConfig struct {
+    Icon       string     // Optional emoji or icon (e.g., "⚠️", "✓", "❌", "ℹ️")
+    Title      string     // Modal title (required)
+    Text       string     // Optional body text
+    OkText     string     // OK button text (defaults to "OK")
+    CancelText string     // Cancel button text for confirm modals (defaults to "Cancel")
+    OnClose    func()     // Callback for alert modals when dismissed
+    OnResult   func(bool) // Callback for confirm modals (true = confirmed, false = cancelled)
+}
+```
+
+#### Usage Rules
+
+- ✅ Call `UseAlertModal()` / `UseConfirmModal()` at component top level (like all hooks)
+- ✅ Call `triggerAlert()` / `triggerConfirm()` from event handlers or effects
+- ❌ Never call trigger functions during render
+- The returned `modalOpen` boolean indicates if the modal is currently displayed (useful for conditional rendering), remember to assign to \_ if not used.
+
+#### When to Use
+
+- **UseAlertModal**: Error messages, success notifications, information alerts
+- **UseConfirmModal**: Delete operations, destructive actions, before API calls with side effects
+
 ### Utility Hooks
 
 **Specialty Hooks** (rarely needed):
