@@ -83,6 +83,7 @@ const (
 	Command_FileJoin            = "filejoin"
 	Command_FileShareCapability = "filesharecapability"
 	Command_FileRestoreBackup   = "filerestorebackup"
+	Command_GetTempDir          = "gettempdir"
 
 	Command_EventPublish         = "eventpublish"
 	Command_EventRecv            = "eventrecv"
@@ -222,6 +223,7 @@ type WshRpcInterface interface {
 
 	FileShareCapabilityCommand(ctx context.Context, path string) (FileShareCapability, error)
 	FileRestoreBackupCommand(ctx context.Context, data CommandFileRestoreBackupData) error
+	GetTempDirCommand(ctx context.Context, data CommandGetTempDirData) (string, error)
 	EventPublishCommand(ctx context.Context, data wps.WaveEvent) error
 	EventSubCommand(ctx context.Context, data wps.SubscriptionRequest) error
 	EventUnsubCommand(ctx context.Context, data string) error
@@ -620,6 +622,10 @@ type CommandFileCopyData struct {
 type CommandFileRestoreBackupData struct {
 	BackupFilePath    string `json:"backupfilepath"`
 	RestoreToFileName string `json:"restoretofilename"`
+}
+
+type CommandGetTempDirData struct {
+	FileName string `json:"filename,omitempty"`
 }
 
 type CommandRemoteStreamTarData struct {

@@ -29,11 +29,18 @@ import * as keyutil from "@/util/keyutil";
 import { boundNumber, stringToBase64 } from "@/util/util";
 import * as jotai from "jotai";
 import * as React from "react";
-import { computeTheme, DefaultTermTheme } from "./termutil";
+import {
+    computeTheme,
+    createTempFileFromBlob,
+    DefaultTermTheme,
+    handleImagePasteBlob as handleImagePasteBlobUtil,
+    supportsImageInput as supportsImageInputUtil,
+} from "./termutil";
 import { TermWrap } from "./termwrap";
 import { getBlockingCommand } from "./shellblocking";
 
 export class TermViewModel implements ViewModel {
+
     viewType: string;
     nodeModel: BlockNodeModel;
     connected: boolean;
@@ -391,6 +398,51 @@ export class TermViewModel implements ViewModel {
         RpcApi.ControllerInputCommand(TabRpcClient, { blockid: this.blockId, inputdata64: b64data });
     }
 
+    async handlePaste() {
+        try {
+            const clipboardItems = await navigator.clipboard.read();
+
+            for (const item of clipboardItems) {
+                // Check for images first
+                const imageTypes = item.types.filter((type) => type.startsWith("image/"));
+                if (imageTypes.length > 0 && this.supportsImageInput()) {
+                    const blob = await item.getType(imageTypes[0]);
+                    await this.handleImagePasteBlob(blob);
+                    return;
+                }
+
+                // Handle text
+                if (item.types.includes("text/plain")) {
+                    const blob = await item.getType("text/plain");
+                    const text = await blob.text();
+                    this.termRef.current?.terminal.paste(text);
+                    return;
+                }
+            }
+        } catch (err) {
+            console.error("Paste error:", err);
+            // Fallback to text-only paste
+            try {
+                const text = await navigator.clipboard.readText();
+                if (text) {
+                    this.termRef.current?.terminal.paste(text);
+                }
+            } catch (fallbackErr) {
+                console.error("Fallback paste error:", fallbackErr);
+            }
+        }
+    }
+
+    supportsImageInput(): boolean {
+        return supportsImageInputUtil();
+    }
+
+    async handleImagePasteBlob(blob: Blob): Promise<void> {
+        await handleImagePasteBlobUtil(blob, TabRpcClient, (text) => {
+            this.termRef.current?.terminal.paste(text);
+        });
+    }
+
     setTermMode(mode: "term" | "vdom") {
         if (mode == "term") {
             mode = null;
@@ -489,6 +541,15 @@ export class TermViewModel implements ViewModel {
         if (waveEvent.type != "keydown") {
             return true;
         }
+
+        // Handle Escape key during IME composition
+        if (keyutil.checkKeyPressed(waveEvent, "Escape")) {
+            if (this.termRef.current?.isComposing) {
+                // Reset composition state when Escape is pressed during composition
+                this.termRef.current.resetCompositionState();
+            }
+        }
+
         if (this.keyDownHandler(waveEvent)) {
             event.preventDefault();
             event.stopPropagation();
@@ -496,7 +557,7 @@ export class TermViewModel implements ViewModel {
         }
         if (keyutil.checkKeyPressed(waveEvent, "Shift:Enter")) {
             const shiftEnterNewlineAtom = getOverrideConfigAtom(this.blockId, "term:shiftenternewline");
-            const shiftEnterNewlineEnabled = globalStore.get(shiftEnterNewlineAtom) ?? false;
+            const shiftEnterNewlineEnabled = globalStore.get(shiftEnterNewlineAtom) ?? true;
             if (shiftEnterNewlineEnabled) {
                 this.sendDataToController("\u001b\n");
                 event.preventDefault();
@@ -505,10 +566,7 @@ export class TermViewModel implements ViewModel {
             }
         }
         if (keyutil.checkKeyPressed(waveEvent, "Ctrl:Shift:v")) {
-            const p = navigator.clipboard.readText();
-            p.then((text) => {
-                this.termRef.current?.terminal.paste(text);
-            });
+            this.handlePaste();
             event.preventDefault();
             event.stopPropagation();
             return false;

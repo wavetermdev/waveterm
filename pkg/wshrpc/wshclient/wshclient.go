@@ -398,6 +398,12 @@ func GetTabCommand(w *wshutil.WshRpc, data string, opts *wshrpc.RpcOpts) (*waveo
 	return resp, err
 }
 
+// command "gettempdir", wshserver.GetTempDirCommand
+func GetTempDirCommand(w *wshutil.WshRpc, data wshrpc.CommandGetTempDirData, opts *wshrpc.RpcOpts) (string, error) {
+	resp, err := sendRpcRequestCallHelper[string](w, "gettempdir", data, opts)
+	return resp, err
+}
+
 // command "getupdatechannel", wshserver.GetUpdateChannelCommand
 func GetUpdateChannelCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) (string, error) {
 	resp, err := sendRpcRequestCallHelper[string](w, "getupdatechannel", nil, opts)

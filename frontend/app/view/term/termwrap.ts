@@ -18,6 +18,11 @@ import { Terminal } from "@xterm/xterm";
 import debug from "debug";
 import * as jotai from "jotai";
 import { debounce } from "throttle-debounce";
+import {
+    createTempFileFromBlob,
+    handleImagePasteBlob as handleImagePasteBlobUtil,
+    supportsImageInput as supportsImageInputUtil,
+} from "./termutil";
 import { FitAddon } from "./fitaddon";
 
 const dlog = debug("wave:termwrap");
@@ -351,6 +356,20 @@ export class TermWrap {
     shellIntegrationStatusAtom: jotai.PrimitiveAtom<"ready" | "running-command" | null>;
     lastCommandAtom: jotai.PrimitiveAtom<string | null>;
 
+    // IME composition state tracking
+    // Prevents duplicate input when switching input methods during composition (e.g., using Capslock)
+    // xterm.js sends data during compositionupdate AND after compositionend, causing duplicates
+    isComposing: boolean = false;
+    composingData: string = "";
+    lastCompositionEnd: number = 0;
+    lastComposedText: string = "";
+    firstDataAfterCompositionSent: boolean = false;
+
+    // Paste deduplication
+    // xterm.js paste() method triggers onData event, which can cause duplicate sends
+    lastPasteData: string = "";
+    lastPasteTime: number = 0;
+
     constructor(
         blockId: string,
         connectElem: HTMLDivElement,
@@ -422,11 +441,68 @@ export class TermWrap {
         this.handleResize_debounced = debounce(50, this.handleResize.bind(this));
         this.terminal.open(this.connectElem);
         this.handleResize();
-        let pasteEventHandler = () => {
+        let pasteEventHandler = async (e: ClipboardEvent) => {
             this.pasteActive = true;
-            setTimeout(() => {
-                this.pasteActive = false;
-            }, 30);
+
+            try {
+                // First try using ClipboardEvent.clipboardData (works in Electron)
+                if (e.clipboardData && e.clipboardData.items) {
+                    const items = e.clipboardData.items;
+
+                    // Check for images first
+                    for (let i = 0; i < items.length; i++) {
+                        const item = items[i];
+
+                        if (item.type.startsWith("image/")) {
+                            if (this.supportsImageInput()) {
+                                e.preventDefault();
+                                const blob = item.getAsFile();
+                                if (blob) {
+                                    await this.handleImagePasteBlob(blob);
+                                    return;
+                                }
+                            }
+                        }
+                    }
+
+                    // Handle text
+                    const text = e.clipboardData.getData("text/plain");
+                    if (text) {
+                        this.terminal.paste(text);
+                        return;
+                    }
+                }
+
+                // Fallback: Try Clipboard API for newer browsers
+                const clipboardItems = await navigator.clipboard.read();
+                for (const item of clipboardItems) {
+                    const imageTypes = item.types.filter((type) => type.startsWith("image/"));
+                    if (imageTypes.length > 0 && this.supportsImageInput()) {
+                        await this.handleImagePaste(item, imageTypes[0]);
+                        return;
+                    }
+
+                    if (item.types.includes("text/plain")) {
+                        const blob = await item.getType("text/plain");
+                        const text = await blob.text();
+                        this.terminal.paste(text);
+                        return;
+                    }
+                }
+            } catch (err) {
+                console.error("Paste error:", err);
+                // Final fallback to simple text paste
+                if (e.clipboardData) {
+                    const text = e.clipboardData.getData("text/plain");
+                    if (text) {
+                        this.terminal.paste(text);
+                    }
+                }
+            } finally {
+                setTimeout(() => {
+                    this.pasteActive = false;
+                }, 30);
+            }
         };
         pasteEventHandler = pasteEventHandler.bind(this);
         this.connectElem.addEventListener("paste", pasteEventHandler, true);
@@ -436,6 +512,30 @@ export class TermWrap {
             },
         });
     }
+
+    resetCompositionState() {
+        this.isComposing = false;
+        this.composingData = "";
+    }
+
+    private handleCompositionStart = (e: CompositionEvent) => {
+        dlog("compositionstart", e.data);
+        this.isComposing = true;
+        this.composingData = "";
+    };
+
+    private handleCompositionUpdate = (e: CompositionEvent) => {
+        dlog("compositionupdate", e.data);
+        this.composingData = e.data || "";
+    };
+
+    private handleCompositionEnd = (e: CompositionEvent) => {
+        dlog("compositionend", e.data);
+        this.isComposing = false;
+        this.lastComposedText = e.data || "";
+        this.lastCompositionEnd = Date.now();
+        this.firstDataAfterCompositionSent = false;
+    };
 
     async initTerminal() {
         const copyOnSelectAtom = getSettingsKeyAtom("term:copyonselect");
@@ -457,6 +557,33 @@ export class TermWrap {
         if (this.onSearchResultsDidChange != null) {
             this.toDispose.push(this.searchAddon.onDidChangeResults(this.onSearchResultsDidChange.bind(this)));
         }
+
+        // Register IME composition event listeners on the xterm.js textarea
+        const textareaElem = this.connectElem.querySelector("textarea");
+        if (textareaElem) {
+            textareaElem.addEventListener("compositionstart", this.handleCompositionStart);
+            textareaElem.addEventListener("compositionupdate", this.handleCompositionUpdate);
+            textareaElem.addEventListener("compositionend", this.handleCompositionEnd);
+
+            // Handle blur during composition - reset state to avoid stale data
+            const blurHandler = () => {
+                if (this.isComposing) {
+                    dlog("Terminal lost focus during composition, resetting IME state");
+                    this.resetCompositionState();
+                }
+            };
+            textareaElem.addEventListener("blur", blurHandler);
+
+            this.toDispose.push({
+                dispose: () => {
+                    textareaElem.removeEventListener("compositionstart", this.handleCompositionStart);
+                    textareaElem.removeEventListener("compositionupdate", this.handleCompositionUpdate);
+                    textareaElem.removeEventListener("compositionend", this.handleCompositionEnd);
+                    textareaElem.removeEventListener("blur", blurHandler);
+                },
+            });
+        }
+
         this.mainFileSubject = getFileSubject(this.blockId, TermFileName);
         this.mainFileSubject.subscribe(this.handleNewFileSubjectData.bind(this));
 
@@ -506,12 +633,58 @@ export class TermWrap {
         if (!this.loaded) {
             return;
         }
+
+        // IME Composition Handling
+        // Block all data during composition - only send the final text after compositionend
+        // This prevents xterm.js from sending intermediate composition data (e.g., during compositionupdate)
+        if (this.isComposing) {
+            dlog("Blocked data during composition:", data);
+            return;
+        }
+
+        // Paste Deduplication
+        // xterm.js paste() method triggers onData event, causing handleTermData to be called twice:
+        // 1. From our paste handler (pasteActive=true)
+        // 2. From xterm.js onData (pasteActive=false)
+        // We allow the first call and block the second duplicate
+        const DEDUP_WINDOW_MS = 50;
+        const now = Date.now();
+        const timeSinceLastPaste = now - this.lastPasteTime;
+
         if (this.pasteActive) {
+            // First paste event - record it and allow through
             this.pasteActive = false;
+            this.lastPasteData = data;
+            this.lastPasteTime = now;
             if (this.multiInputCallback) {
                 this.multiInputCallback(data);
             }
+        } else if (timeSinceLastPaste < DEDUP_WINDOW_MS && data === this.lastPasteData && this.lastPasteData) {
+            // Second paste event with same data within time window - this is a duplicate, block it
+            dlog("Blocked duplicate paste data:", data);
+            this.lastPasteData = ""; // Clear to allow same data to be pasted later
+            return;
         }
+
+        // IME Deduplication (for Capslock input method switching)
+        // When switching input methods with Capslock during composition, some systems send the
+        // composed text twice. We allow the first send and block subsequent duplicates.
+        const timeSinceCompositionEnd = now - this.lastCompositionEnd;
+
+        if (timeSinceCompositionEnd < DEDUP_WINDOW_MS && data === this.lastComposedText && this.lastComposedText) {
+            if (!this.firstDataAfterCompositionSent) {
+                // First send after composition - allow it but mark as sent
+                this.firstDataAfterCompositionSent = true;
+                dlog("First data after composition, allowing:", data);
+            } else {
+                // Second send of the same data - this is a duplicate from Capslock switching, block it
+                dlog("Blocked duplicate IME data:", data);
+                this.lastComposedText = ""; // Clear to allow same text to be typed again later
+                this.firstDataAfterCompositionSent = false;
+                return;
+            }
+        }
+
         this.sendDataHandler?.(data);
     }
 
@@ -605,6 +778,26 @@ export class TermWrap {
             });
         } catch (e) {
             console.log(`error controller resync (${reason})`, this.blockId, e);
+        }
+    }
+
+    supportsImageInput(): boolean {
+        return supportsImageInputUtil();
+    }
+
+    async handleImagePasteBlob(blob: Blob): Promise<void> {
+        await handleImagePasteBlobUtil(blob, TabRpcClient, (text) => {
+            this.terminal.paste(text);
+        });
+    }
+
+    async handleImagePaste(item: ClipboardItem, mimeType: string): Promise<void> {
+        try {
+            const blob = await item.getType(mimeType);
+            // Reuse the existing handleImagePasteBlob logic
+            await this.handleImagePasteBlob(blob);
+        } catch (err) {
+            console.error("Error processing image:", err);
         }
     }
 

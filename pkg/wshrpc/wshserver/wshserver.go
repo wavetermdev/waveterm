@@ -453,6 +453,21 @@ func (ws *WshServer) FileRestoreBackupCommand(ctx context.Context, data wshrpc.C
 	return filebackup.RestoreBackup(expandedBackupPath, expandedRestorePath)
 }
 
+func (ws *WshServer) GetTempDirCommand(ctx context.Context, data wshrpc.CommandGetTempDirData) (string, error) {
+	tempDir := os.TempDir()
+	if data.FileName != "" {
+		// Reduce to a simple file name to avoid absolute paths or traversal
+		name := filepath.Base(data.FileName)
+		// Normalize/trim any stray separators and whitespace
+		name = strings.Trim(name, `/\`+" ")
+		if name == "" || name == "." {
+			return tempDir, nil
+		}
+		return filepath.Join(tempDir, name), nil
+	}
+	return tempDir, nil
+}
+
 func (ws *WshServer) DeleteSubBlockCommand(ctx context.Context, data wshrpc.CommandDeleteBlockData) error {
 	err := wcore.DeleteBlock(ctx, data.BlockId, false)
 	if err != nil {

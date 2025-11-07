@@ -327,6 +327,11 @@ class RpcApiType {
         return client.wshRpcCall("gettab", data, opts);
     }
 
+    // command "gettempdir" [call]
+    GetTempDirCommand(client: WshClient, data: CommandGetTempDirData, opts?: RpcOpts): Promise<string> {
+        return client.wshRpcCall("gettempdir", data, opts);
+    }
+
     // command "getupdatechannel" [call]
     GetUpdateChannelCommand(client: WshClient, opts?: RpcOpts): Promise<string> {
         return client.wshRpcCall("getupdatechannel", null, opts);
