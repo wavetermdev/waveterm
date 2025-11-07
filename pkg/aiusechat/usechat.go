@@ -39,7 +39,6 @@ const (
 )
 
 const DefaultAPI = APIType_OpenAI
-const DefaultAIEndpoint = "https://cfapi.waveterm.dev/api/waveai"
 const DefaultMaxTokens = 4 * 1024
 const BuilderMaxTokens = 24 * 1024
 
@@ -98,7 +97,7 @@ var SystemPromptText_OpenAI = strings.Join([]string{
 }, " ")
 
 func getWaveAISettings(premium bool, builderMode bool, rtInfo *waveobj.ObjRTInfo) (*uctypes.AIOptsType, error) {
-	baseUrl := DefaultAIEndpoint
+	baseUrl := uctypes.DefaultAIEndpoint
 	if os.Getenv("WAVETERM_WAVEAI_ENDPOINT") != "" {
 		baseUrl = os.Getenv("WAVETERM_WAVEAI_ENDPOINT")
 	}

@@ -145,6 +145,9 @@ func debugPrintReq(req *OpenAIRequest, endpoint string) {
 	if !wavebase.IsDevMode() {
 		return
 	}
+	if endpoint != uctypes.DefaultAIEndpoint {
+		log.Printf("endpoint: %s\n", endpoint)
+	}
 	var toolNames []string
 	for _, tool := range req.Tools {
 		toolNames = append(toolNames, tool.Name)
