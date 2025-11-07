@@ -19,16 +19,14 @@ import debug from "debug";
 import * as jotai from "jotai";
 import { debounce } from "throttle-debounce";
 import { FitAddon } from "./fitaddon";
-import {
-    handleImagePasteBlob as handleImagePasteBlobUtil,
-    supportsImageInput as supportsImageInputUtil,
-} from "./termutil";
+import { createTempFileFromBlob } from "./termutil";
 
 const dlog = debug("wave:termwrap");
 
 const TermFileName = "term";
 const TermCacheFileName = "cache:term:full";
 const MinDataProcessedForCache = 100 * 1024;
+export const SupportsImageInput = true;
 
 // detect webgl support
 function detectWebGLSupport(): boolean {
@@ -453,7 +451,7 @@ export class TermWrap {
                         const item = items[i];
 
                         if (item.type.startsWith("image/")) {
-                            if (this.supportsImageInput()) {
+                            if (SupportsImageInput) {
                                 e.preventDefault();
                                 const blob = item.getAsFile();
                                 if (blob) {
@@ -476,7 +474,7 @@ export class TermWrap {
                 const clipboardItems = await navigator.clipboard.read();
                 for (const item of clipboardItems) {
                     const imageTypes = item.types.filter((type) => type.startsWith("image/"));
-                    if (imageTypes.length > 0 && this.supportsImageInput()) {
+                    if (imageTypes.length > 0 && SupportsImageInput) {
                         await this.handleImagePaste(item, imageTypes[0]);
                         return;
                     }
@@ -780,14 +778,13 @@ export class TermWrap {
         }
     }
 
-    supportsImageInput(): boolean {
-        return supportsImageInputUtil();
-    }
-
     async handleImagePasteBlob(blob: Blob): Promise<void> {
-        await handleImagePasteBlobUtil(blob, (text) => {
-            this.terminal.paste(text);
-        });
+        try {
+            const tempPath = await createTempFileFromBlob(blob);
+            this.terminal.paste(tempPath + " ");
+        } catch (err) {
+            console.error("Error pasting image:", err);
+        }
     }
 
     async handleImagePaste(item: ClipboardItem, mimeType: string): Promise<void> {

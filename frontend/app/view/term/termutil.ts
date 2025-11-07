@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 export const DefaultTermTheme = "default-dark";
-import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { RpcApi } from "@/app/store/wshclientapi";
+import { TabRpcClient } from "@/app/store/wshrpcutil";
 import base64 from "base64-js";
 import { colord } from "colord";
 
@@ -45,6 +45,11 @@ export const MIME_TO_EXT: Record<string, string> = {
     "image/bmp": "bmp",
     "image/svg+xml": "svg",
     "image/tiff": "tiff",
+    "image/heic": "heic",
+    "image/heif": "heif",
+    "image/avif": "avif",
+    "image/x-icon": "ico",
+    "image/vnd.microsoft.icon": "ico",
 };
 
 /**
@@ -63,7 +68,10 @@ export async function createTempFileFromBlob(blob: Blob): Promise<string> {
     }
 
     // Get file extension from MIME type
-    const ext = MIME_TO_EXT[blob.type] || "png";
+    if (!blob.type.startsWith("image/") || !MIME_TO_EXT[blob.type]) {
+        throw new Error(`Unsupported or invalid image type: ${blob.type}`);
+    }
+    const ext = MIME_TO_EXT[blob.type];
 
     // Generate unique filename with timestamp and random component
     const timestamp = Date.now();
@@ -86,32 +94,4 @@ export async function createTempFileFromBlob(blob: Blob): Promise<string> {
     });
 
     return tempPath;
-}
-
-/**
- * Checks if image input is supported.
- * Images will be saved as temp files and the path will be pasted.
- * Claude Code and other AI tools can then read the file.
- *
- * @returns true if image input is supported
- */
-export function supportsImageInput(): boolean {
-    return true;
-}
-
-/**
- * Handles pasting an image blob by creating a temp file and pasting its path.
- *
- * @param blob - The image blob to paste
- * @param pasteFn - Function to paste the file path into the terminal
- */
-export async function handleImagePasteBlob(blob: Blob, pasteFn: (text: string) => void): Promise<void> {
-    try {
-        const tempPath = await createTempFileFromBlob(blob);
-        // Paste the file path (like iTerm2 does when you copy a file)
-        // Claude Code will read the file and display it as [Image #N]
-        pasteFn(tempPath + " ");
-    } catch (err) {
-        console.error("Error pasting image:", err);
-    }
 }

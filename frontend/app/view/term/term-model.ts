@@ -29,19 +29,14 @@ import { boundNumber, stringToBase64 } from "@/util/util";
 import * as jotai from "jotai";
 import * as React from "react";
 import { getBlockingCommand } from "./shellblocking";
-import {
-    computeTheme,
-    DefaultTermTheme,
-    handleImagePasteBlob as handleImagePasteBlobUtil,
-    supportsImageInput as supportsImageInputUtil,
-} from "./termutil";
-import { TermWrap } from "./termwrap";
+import { computeTheme, DefaultTermTheme } from "./termutil";
+import { SupportsImageInput, TermWrap } from "./termwrap";
 
 export class TermViewModel implements ViewModel {
     viewType: string;
     nodeModel: BlockNodeModel;
     connected: boolean;
-    termRef: React.MutableRefObject<TermWrap> = { current: null };
+    termRef: React.RefObject<TermWrap> = { current: null };
     blockAtom: jotai.Atom<Block>;
     termMode: jotai.Atom<string>;
     blockId: string;
@@ -403,9 +398,9 @@ export class TermViewModel implements ViewModel {
             for (const item of clipboardItems) {
                 // Check for images first
                 const imageTypes = item.types.filter((type) => type.startsWith("image/"));
-                if (imageTypes.length > 0 && this.supportsImageInput()) {
+                if (imageTypes.length > 0 && SupportsImageInput) {
                     const blob = await item.getType(imageTypes[0]);
-                    await this.handleImagePasteBlob(blob);
+                    await this.termRef.current?.handleImagePasteBlob(blob);
                     return;
                 }
 
@@ -431,16 +426,6 @@ export class TermViewModel implements ViewModel {
                 console.error("Fallback paste error:", fallbackErr);
             }
         }
-    }
-
-    supportsImageInput(): boolean {
-        return supportsImageInputUtil();
-    }
-
-    async handleImagePasteBlob(blob: Blob): Promise<void> {
-        await handleImagePasteBlobUtil(blob, (text) => {
-            this.termRef.current?.terminal.paste(text);
-        });
     }
 
     setTermMode(mode: "term" | "vdom") {
