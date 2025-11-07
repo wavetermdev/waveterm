@@ -93,6 +93,7 @@ Key Points:
 - Conditional: vdom.If(condition, element)
 - Lists: vdom.ForEach(items, func(item, idx) any { return ... })
 - Styling: "className": vdom.Classes("bg-gray-900 text-white p-4", vdom.If(cond, "bg-blue-800")) // Tailwind + dark mode
+- Secrets: var githubKey = app.DeclareSecret("GITHUB_KEY", nil)
 
 ## Building Elements with vdom.H
 
@@ -1195,6 +1196,65 @@ Key points:
 - Content-Type is automatically detected for static files
 - For dynamic handlers, set Content-Type explicitly when needed
 
+## Secret Management
+
+Tsunami apps declare secrets using app.DeclareSecret at package level. This allows containers to securely store and inject the correct secrets at runtime.
+
+### Declaration Syntax
+
+```go
+var secretValue = app.DeclareSecret("SECRET_NAME", &app.SecretMeta{
+    Desc:     "Human-readable description", // only required for non-standard secrets
+    Optional: bool, // omit this field completely if secret is required
+})
+```
+
+- **Returns:** Actual secret value as string (from environment)
+- **Location:** Package level only (before components) or in `init()`
+- **Never:** Inside components, handlers, or effects
+
+### Naming Convention
+
+**Pattern:** `{SERVICE}_KEY` for API keys, `{SERVICE}_URL` for connection strings (must be a valid environment variable name)
+
+**Critical Rules:**
+
+1. Service name in UPPERCASE with NO internal underscores: `GOOGLEAI_KEY` not `GOOGLE_AI_KEY`
+2. Use `_KEY` suffix for authentication tokens and API keys
+3. Use `_ID` suffix for usernames, account ids, organization names/ids when paired to a secret key (prevents misconfiguration)
+4. Use `_URL` suffix for connection strings (databases, webhooks)
+5. Use `_ACCESS_KEY` / `_SECRET_KEY` for services requiring multiple credentials
+
+### Standard Names (Use Exactly These)
+
+For these standard keys, no app.SecretMeta is required.
+
+```go
+// API Authentication
+"GITHUB_KEY"         // GitHub personal access token or API key
+"GITHUB_ID"          // GitHub username or organization name
+"GITLAB_KEY"         // GitLab API token
+"OPENAI_KEY"         // OpenAI API key
+"ANTHROPIC_KEY"      // Anthropic API key
+"GOOGLEAI_KEY"       // Google AI API key (Gemini, etc.)
+"CLOUDFLARE_KEY"     // Cloudflare API key
+"CLOUDFLARE_ID"      // Cloudflare account ID
+"SLACK_KEY"          // Slack bot token
+"DISCORD_KEY"        // Discord bot token
+"STRIPE_SECRET_KEY"  // Stripe secret key
+
+// AWS (multiple keys)
+"AWS_ACCESS_KEY"     // AWS access key ID
+"AWS_SECRET_KEY"     // AWS secret access key
+"AWS_ID"             // AWS account ID
+
+// Connection Strings
+"POSTGRES_URL"       // PostgreSQL connection string
+"MONGODB_URL"        // MongoDB connection string
+"REDIS_URL"          // Redis connection string
+"DATABASE_URL"       // Generic database connection string
+```
+
 ## CRITICAL RULES (Must Follow)
 
 ### Hooks (Same as React)
@@ -1207,6 +1267,12 @@ Key points:
 - ✅ Read with atom.Get() in render code
 - ❌ Never call atom.Set() in render code - only in handlers/effects
 - ✅ Always use SetFn() for concurrent updates from goroutines (automatically deep copies the value)
+
+### Secrets
+
+- ✅ Declare at package level or in init()
+- ❌ Never declare inside components or handlers
+- ❌ Never log or display secret values in UI
 
 ## Tsunami App Template
 
