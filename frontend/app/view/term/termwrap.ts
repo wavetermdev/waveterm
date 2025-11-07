@@ -18,12 +18,11 @@ import { Terminal } from "@xterm/xterm";
 import debug from "debug";
 import * as jotai from "jotai";
 import { debounce } from "throttle-debounce";
+import { FitAddon } from "./fitaddon";
 import {
-    createTempFileFromBlob,
     handleImagePasteBlob as handleImagePasteBlobUtil,
     supportsImageInput as supportsImageInputUtil,
 } from "./termutil";
-import { FitAddon } from "./fitaddon";
 
 const dlog = debug("wave:termwrap");
 
@@ -786,7 +785,7 @@ export class TermWrap {
     }
 
     async handleImagePasteBlob(blob: Blob): Promise<void> {
-        await handleImagePasteBlobUtil(blob, TabRpcClient, (text) => {
+        await handleImagePasteBlobUtil(blob, (text) => {
             this.terminal.paste(text);
         });
     }

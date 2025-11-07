@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 export const DefaultTermTheme = "default-dark";
-import { WshClient } from "@/app/store/wshclient";
+import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { RpcApi } from "@/app/store/wshclientapi";
 import base64 from "base64-js";
 import { colord } from "colord";
@@ -53,11 +53,10 @@ export const MIME_TO_EXT: Record<string, string> = {
  * and returns the file path.
  *
  * @param blob - The Blob to save
- * @param client - The WshClient for RPC calls
  * @returns The path to the created temporary file
  * @throws Error if blob is too large (>5MB) or data URL is invalid
  */
-export async function createTempFileFromBlob(blob: Blob, client: WshClient): Promise<string> {
+export async function createTempFileFromBlob(blob: Blob): Promise<string> {
     // Check size limit (5MB)
     if (blob.size > 5 * 1024 * 1024) {
         throw new Error("Image too large (>5MB)");
@@ -81,7 +80,7 @@ export async function createTempFileFromBlob(blob: Blob, client: WshClient): Pro
     const base64Data = base64.fromByteArray(new Uint8Array(arrayBuffer));
 
     // Write image to temp file and get path
-    const tempPath = await RpcApi.WriteTempFileCommand(client, {
+    const tempPath = await RpcApi.WriteTempFileCommand(TabRpcClient, {
         filename,
         data64: base64Data,
     });
@@ -104,16 +103,11 @@ export function supportsImageInput(): boolean {
  * Handles pasting an image blob by creating a temp file and pasting its path.
  *
  * @param blob - The image blob to paste
- * @param client - The WshClient for RPC calls
  * @param pasteFn - Function to paste the file path into the terminal
  */
-export async function handleImagePasteBlob(
-    blob: Blob,
-    client: WshClient,
-    pasteFn: (text: string) => void
-): Promise<void> {
+export async function handleImagePasteBlob(blob: Blob, pasteFn: (text: string) => void): Promise<void> {
     try {
-        const tempPath = await createTempFileFromBlob(blob, client);
+        const tempPath = await createTempFileFromBlob(blob);
         // Paste the file path (like iTerm2 does when you copy a file)
         // Claude Code will read the file and display it as [Image #N]
         pasteFn(tempPath + " ");

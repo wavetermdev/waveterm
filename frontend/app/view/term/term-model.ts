@@ -397,6 +397,7 @@ export class TermViewModel implements ViewModel {
 
     async handlePaste() {
         try {
+            // this can fail under weird circumstances (e.g. no user-gesture, which is why we have fallback to readText() which generally works everywhere)
             const clipboardItems = await navigator.clipboard.read();
 
             for (const item of clipboardItems) {
@@ -412,7 +413,9 @@ export class TermViewModel implements ViewModel {
                 if (item.types.includes("text/plain")) {
                     const blob = await item.getType("text/plain");
                     const text = await blob.text();
-                    this.termRef.current?.terminal.paste(text);
+                    if (text) {
+                        this.termRef.current?.terminal.paste(text);
+                    }
                     return;
                 }
             }
@@ -435,7 +438,7 @@ export class TermViewModel implements ViewModel {
     }
 
     async handleImagePasteBlob(blob: Blob): Promise<void> {
-        await handleImagePasteBlobUtil(blob, TabRpcClient, (text) => {
+        await handleImagePasteBlobUtil(blob, (text) => {
             this.termRef.current?.terminal.paste(text);
         });
     }
