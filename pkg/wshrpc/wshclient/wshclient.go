@@ -605,7 +605,7 @@ func SetRTInfoCommand(w *wshutil.WshRpc, data wshrpc.CommandSetRTInfoData, opts 
 }
 
 // command "setsecrets", wshserver.SetSecretsCommand
-func SetSecretsCommand(w *wshutil.WshRpc, data map[string]string, opts *wshrpc.RpcOpts) error {
+func SetSecretsCommand(w *wshutil.WshRpc, data map[string]*string, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "setsecrets", data, opts)
 	return err
 }
