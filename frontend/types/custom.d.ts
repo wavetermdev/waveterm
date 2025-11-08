@@ -87,7 +87,9 @@ declare global {
         getWebviewPreload: () => string; // get-webview-preload
         getAboutModalDetails: () => AboutModalDetails; // get-about-modal-details
         getZoomFactor: () => number; // get-zoom-factor
-        showContextMenu: (workspaceId: string, menu?: ElectronContextMenuItem[]) => void; // contextmenu-show
+        showWorkspaceAppMenu: (workspaceId: string) => void; // workspace-appmenu-show
+        showBuilderAppMenu: (builderId: string) => void; // builder-appmenu-show
+        showContextMenu: (workspaceId: string, menu: ElectronContextMenuItem[]) => void; // contextmenu-show
         onContextMenuClick: (callback: (id: string) => void) => void; // contextmenu-click
         onNavigate: (callback: (url: string) => void) => void;
         onIframeNavigate: (callback: (url: string) => void) => void;

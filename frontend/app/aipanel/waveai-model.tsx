@@ -299,12 +299,18 @@ export class WaveAIModel {
         return input != null && input.trim().length > 0;
     }
 
-    appendText(text: string) {
+    appendText(text: string, newLine?: boolean) {
         const currentInput = globalStore.get(this.inputAtom);
         let newInput = currentInput;
 
-        if (newInput.length > 0 && !newInput.endsWith(" ") && !newInput.endsWith("\n")) {
-            newInput += " ";
+        if (newInput.length > 0) {
+            if (newLine) {
+                if (!newInput.endsWith("\n")) {
+                    newInput += "\n";
+                }
+            } else if (!newInput.endsWith(" ") && !newInput.endsWith("\n")) {
+                newInput += " ";
+            }
         }
 
         newInput += text;

@@ -70,7 +70,9 @@ type BuildOpts struct {
 	OutputFile     string
 	ScaffoldPath   string
 	SdkReplacePath string
+	SdkVersion     string
 	NodePath       string
+	GoPath         string
 	MoveFileBack   bool
 	OutputCapture  *OutputCapture
 }
@@ -93,7 +95,7 @@ func (opts BuildOpts) getNodePath() string {
 	return "node"
 }
 
-func findGoExecutable() (string, error) {
+func FindGoExecutable() (string, error) {
 	// First try the standard PATH lookup
 	if goPath, err := exec.LookPath("go"); err == nil {
 		return goPath, nil
@@ -133,10 +135,33 @@ func findGoExecutable() (string, error) {
 func verifyEnvironment(verbose bool, opts BuildOpts) (*BuildEnv, error) {
 	oc := opts.OutputCapture
 
-	// Find Go executable using enhanced search
-	goPath, err := findGoExecutable()
-	if err != nil {
-		return nil, fmt.Errorf("go command not found: %w", err)
+	if opts.SdkVersion == "" && opts.SdkReplacePath == "" {
+		return nil, fmt.Errorf("either SdkVersion or SdkReplacePath must be set")
+	}
+
+	if opts.SdkVersion != "" {
+		versionRegex := regexp.MustCompile(`^v\d+\.\d+\.\d+`)
+		if !versionRegex.MatchString(opts.SdkVersion) {
+			return nil, fmt.Errorf("SdkVersion must be in semantic version format (e.g., v0.0.0), got: %s", opts.SdkVersion)
+		}
+	}
+
+	var goPath string
+	var err error
+
+	if opts.GoPath != "" {
+		goPath = opts.GoPath
+		if verbose {
+			oc.Printf("Using custom go path: %s", opts.GoPath)
+		}
+	} else {
+		goPath, err = FindGoExecutable()
+		if err != nil {
+			return nil, fmt.Errorf("go command not found: %w", err)
+		}
+		if verbose {
+			oc.Printf("Using go path: %s", goPath)
+		}
 	}
 
 	// Run go version command
@@ -256,16 +281,18 @@ func createGoMod(tempDir, appName, goVersion string, opts BuildOpts, verbose boo
 		}
 
 		// Add requirement for tsunami SDK
-		if err := modFile.AddRequire("github.com/wavetermdev/waveterm/tsunami", "v0.0.0"); err != nil {
+		if err := modFile.AddRequire("github.com/wavetermdev/waveterm/tsunami", opts.SdkVersion); err != nil {
 			return fmt.Errorf("failed to add require directive: %w", err)
 		}
 	} else {
 		return fmt.Errorf("error checking for go.mod in temp directory: %w", err)
 	}
 
-	// Add replace directive for tsunami SDK
-	if err := modFile.AddReplace("github.com/wavetermdev/waveterm/tsunami", "", opts.SdkReplacePath, ""); err != nil {
-		return fmt.Errorf("failed to add replace directive: %w", err)
+	// Add replace directive for tsunami SDK if path is provided
+	if opts.SdkReplacePath != "" {
+		if err := modFile.AddReplace("github.com/wavetermdev/waveterm/tsunami", "", opts.SdkReplacePath, ""); err != nil {
+			return fmt.Errorf("failed to add replace directive: %w", err)
+		}
 	}
 
 	// Format and write the file
@@ -282,8 +309,10 @@ func createGoMod(tempDir, appName, goVersion string, opts BuildOpts, verbose boo
 
 	if verbose {
 		oc.Printf("Created go.mod with module path: %s", modulePath)
-		oc.Printf("Added require: github.com/wavetermdev/waveterm/tsunami v0.0.0")
-		oc.Printf("Added replace directive: github.com/wavetermdev/waveterm/tsunami => %s", opts.SdkReplacePath)
+		oc.Printf("Added require: github.com/wavetermdev/waveterm/tsunami %s", opts.SdkVersion)
+		if opts.SdkReplacePath != "" {
+			oc.Printf("Added replace directive: github.com/wavetermdev/waveterm/tsunami => %s", opts.SdkReplacePath)
+		}
 	}
 
 	// Run go mod tidy to clean up dependencies
@@ -519,26 +548,6 @@ func TsunamiBuildInternal(opts BuildOpts) (*BuildEnv, error) {
 	appName := GetAppName(opts.AppPath)
 	if err := createGoMod(tempDir, appName, buildEnv.GoVersion, opts, opts.Verbose); err != nil {
 		return buildEnv, fmt.Errorf("failed to create go.mod: %w", err)
-	}
-
-	// Build imports map from Go files
-	imports, err := buildImportsMap(tempDir)
-	if err != nil {
-		return buildEnv, fmt.Errorf("failed to build imports map: %w", err)
-	}
-
-	// Create symlink to SDK ui directory only if UI package is imported
-	if imports[TsunamiUIImportPath] {
-		uiLinkPath := filepath.Join(tempDir, "ui")
-		uiTargetPath := filepath.Join(opts.SdkReplacePath, "ui")
-		if err := os.Symlink(uiTargetPath, uiLinkPath); err != nil {
-			return buildEnv, fmt.Errorf("failed to create ui symlink: %w", err)
-		}
-		if opts.Verbose {
-			oc.Printf("Created UI symlink: %s -> %s", uiLinkPath, uiTargetPath)
-		}
-	} else if opts.Verbose {
-		oc.Printf("Skipping UI symlink creation - no UI package imports found")
 	}
 
 	// Generate Tailwind CSS

@@ -1014,6 +1014,11 @@ declare global {
         "debug:*"?: boolean;
         "debug:pprofport"?: number;
         "debug:pprofmemprofilerate"?: number;
+        "tsunami:*"?: boolean;
+        "tsunami:scaffoldpath"?: string;
+        "tsunami:sdkreplacepath"?: string;
+        "tsunami:sdkversion"?: string;
+        "tsunami:gopath"?: string;
     };
 
     // waveobj.StickerClickOptsType

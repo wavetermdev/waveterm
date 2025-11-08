@@ -631,7 +631,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
     };
 
     function onEllipsisClick() {
-        getApi().showContextMenu(workspace.oid);
+        getApi().showWorkspaceAppMenu(workspace.oid);
     }
 
     function onWaveAIClick() {

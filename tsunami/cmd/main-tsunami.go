@@ -14,6 +14,7 @@ const (
 	EnvTsunamiScaffoldPath   = "TSUNAMI_SCAFFOLDPATH"
 	EnvTsunamiSdkReplacePath = "TSUNAMI_SDKREPLACEPATH"
 	EnvTsunamiNodePath       = "TSUNAMI_NODEPATH"
+	TsunamiSdkVersion        = "v0.12.2"
 )
 
 // these are set at build time
@@ -73,6 +74,7 @@ var buildCmd = &cobra.Command{
 			KeepTemp:     keepTemp,
 			OutputFile:   output,
 			MoveFileBack: true,
+			SdkVersion:   TsunamiSdkVersion,
 		}
 		if err := validateEnvironmentVars(&opts); err != nil {
 			fmt.Println(err)
@@ -101,6 +103,7 @@ var runCmd = &cobra.Command{
 			Open:         open,
 			KeepTemp:     keepTemp,
 			MoveFileBack: true,
+			SdkVersion:   TsunamiSdkVersion,
 		}
 		if err := validateEnvironmentVars(&opts); err != nil {
 			fmt.Println(err)

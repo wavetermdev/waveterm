@@ -145,6 +145,9 @@ func debugPrintReq(req *OpenAIRequest, endpoint string) {
 	if !wavebase.IsDevMode() {
 		return
 	}
+	if endpoint != uctypes.DefaultAIEndpoint {
+		log.Printf("endpoint: %s\n", endpoint)
+	}
 	var toolNames []string
 	for _, tool := range req.Tools {
 		toolNames = append(toolNames, tool.Name)
@@ -313,6 +316,11 @@ func buildOpenAIHTTPRequest(ctx context.Context, inputs []any, chatOpts uctypes.
 		req.Header.Set("X-Wave-ClientId", chatOpts.ClientId)
 	}
 	req.Header.Set("X-Wave-APIType", "openai")
+	if chatOpts.BuilderId != "" {
+		req.Header.Set("X-Wave-RequestType", "waveapps-builder")
+	} else {
+		req.Header.Set("X-Wave-RequestType", "waveai")
+	}
 
 	return req, nil
 }

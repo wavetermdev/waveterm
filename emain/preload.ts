@@ -18,6 +18,8 @@ contextBridge.exposeInMainWorld("api", {
     getWebviewPreload: () => ipcRenderer.sendSync("get-webview-preload"),
     getZoomFactor: () => ipcRenderer.sendSync("get-zoom-factor"),
     openNewWindow: () => ipcRenderer.send("open-new-window"),
+    showWorkspaceAppMenu: (workspaceId) => ipcRenderer.send("workspace-appmenu-show", workspaceId),
+    showBuilderAppMenu: (builderId) => ipcRenderer.send("builder-appmenu-show", builderId),
     showContextMenu: (workspaceId, menu) => ipcRenderer.send("contextmenu-show", workspaceId, menu),
     onContextMenuClick: (callback) => ipcRenderer.on("contextmenu-click", (_event, id) => callback(id)),
     downloadFile: (filePath) => ipcRenderer.send("download", { filePath }),

@@ -45,6 +45,19 @@ type AppMeta struct {
 	ShortDesc string `json:"shortdesc"`
 }
 
+type SecretMeta struct {
+	Desc     string `json:"desc"`
+	Optional bool   `json:"optional"`
+}
+
+type AppManifest struct {
+	AppTitle     string                  `json:"apptitle"`
+	AppShortDesc string                  `json:"appshortdesc"`
+	ConfigSchema map[string]any          `json:"configschema"`
+	DataSchema   map[string]any          `json:"dataschema"`
+	Secrets      map[string]SecretMeta   `json:"secrets"`
+}
+
 type ClientImpl struct {
 	Lock               *sync.Mutex
 	Root               *RootElem
@@ -68,6 +81,10 @@ type ClientImpl struct {
 	OpenModals     map[string]*ModalState // map of modalId to modal state
 	OpenModalsLock *sync.Mutex
 
+	// for secrets
+	Secrets     map[string]SecretMeta // map of secret name to metadata
+	SecretsLock *sync.Mutex
+
 	// for notification
 	// Atomics so we never drop "last event" timing info even if wakeCh is full.
 	// 0 means "no pending batch".
@@ -85,6 +102,8 @@ func makeClient() *ClientImpl {
 		SSEChannelsLock: &sync.Mutex{},
 		OpenModals:      make(map[string]*ModalState),
 		OpenModalsLock:  &sync.Mutex{},
+		Secrets:         make(map[string]SecretMeta),
+		SecretsLock:     &sync.Mutex{},
 		UrlHandlerMux:   http.NewServeMux(),
 		ServerId:        uuid.New().String(),
 		RootElem:        vdom.H(DefaultComponentName, nil),
@@ -450,4 +469,51 @@ func (c *ClientImpl) CloseAllModals() {
 	for _, modalId := range modalIds {
 		c.CloseModal(modalId, false)
 	}
+}
+
+func (c *ClientImpl) DeclareSecret(name string, desc string, optional bool) {
+	c.SecretsLock.Lock()
+	defer c.SecretsLock.Unlock()
+	if _, exists := c.Secrets[name]; exists {
+		panic(fmt.Sprintf("secret '%s' already declared", name))
+	}
+	c.Secrets[name] = SecretMeta{
+		Desc:     desc,
+		Optional: optional,
+	}
+}
+
+func (c *ClientImpl) GetSecrets() map[string]SecretMeta {
+	c.SecretsLock.Lock()
+	defer c.SecretsLock.Unlock()
+	secretsCopy := make(map[string]SecretMeta, len(c.Secrets))
+	for k, v := range c.Secrets {
+		secretsCopy[k] = v
+	}
+	return secretsCopy
+}
+
+func (c *ClientImpl) GetAppManifest() AppManifest {
+	appMeta := c.GetAppMeta()
+	configSchema := GenerateConfigSchema(c.Root)
+	dataSchema := GenerateDataSchema(c.Root)
+	secrets := c.GetSecrets()
+	
+	return AppManifest{
+		AppTitle:     appMeta.Title,
+		AppShortDesc: appMeta.ShortDesc,
+		ConfigSchema: configSchema,
+		DataSchema:   dataSchema,
+		Secrets:      secrets,
+	}
+}
+
+func (c *ClientImpl) PrintAppManifest() {
+	manifest := c.GetAppManifest()
+	manifestJSON, err := json.MarshalIndent(manifest, "", "  ")
+	if err != nil {
+		fmt.Printf("Error marshaling manifest: %v\n", err)
+		return
+	}
+	fmt.Println(string(manifestJSON))
 }
