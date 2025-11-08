@@ -206,7 +206,7 @@ type SubMenuProps = {
     };
     visibleSubMenus: { [key: string]: any };
     hoveredItems: string[];
-    subMenuRefs: React.MutableRefObject<{ [key: string]: React.RefObject<HTMLDivElement> }>;
+    subMenuRefs: React.RefObject<{ [key: string]: React.RefObject<HTMLDivElement> }>;
     handleMouseEnterItem: (
         event: React.MouseEvent<HTMLDivElement, MouseEvent>,
         parentKey: string | null,

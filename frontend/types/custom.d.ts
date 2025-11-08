@@ -207,7 +207,7 @@ declare global {
     type HeaderText = {
         elemtype: "text";
         text: string;
-        ref?: React.MutableRefObject<HTMLDivElement>;
+        ref?: React.RefObject<HTMLDivElement>;
         className?: string;
         noGrow?: boolean;
         onClick?: (e: React.MouseEvent<any>) => void;
@@ -218,7 +218,7 @@ declare global {
         value: string;
         className?: string;
         isDisabled?: boolean;
-        ref?: React.MutableRefObject<HTMLInputElement>;
+        ref?: React.RefObject<HTMLInputElement>;
         onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
         onKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void;
         onFocus?: (e: React.FocusEvent<HTMLInputElement>) => void;
