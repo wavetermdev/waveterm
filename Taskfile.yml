@@ -529,9 +529,13 @@ tasks:
             - cp ../templates/package.json.tmpl scaffold/package.json
             - cd scaffold && npm install
             - cp -r dist scaffold/
+            - mkdir scaffold/dist/tw
             - cp ../templates/app-main.go.tmpl scaffold/app-main.go
             - cp ../templates/tailwind.css scaffold/
             - cp ../templates/gitignore.tmpl scaffold/.gitignore
+            - cp src/element/*.tsx scaffold/dist/tw/
+            - cp ../ui/*.go scaffold/dist/tw/
+            - cp ../engine/errcomponent.go scaffold/dist/tw/
 
     tsunami:build:
         desc: Build the tsunami binary.

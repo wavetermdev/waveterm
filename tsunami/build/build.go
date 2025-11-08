@@ -543,26 +543,6 @@ func TsunamiBuildInternal(opts BuildOpts) (*BuildEnv, error) {
 		return buildEnv, fmt.Errorf("failed to create go.mod: %w", err)
 	}
 
-	// Build imports map from Go files
-	imports, err := buildImportsMap(tempDir)
-	if err != nil {
-		return buildEnv, fmt.Errorf("failed to build imports map: %w", err)
-	}
-
-	// Create symlink to SDK ui directory only if UI package is imported
-	if imports[TsunamiUIImportPath] {
-		uiLinkPath := filepath.Join(tempDir, "ui")
-		uiTargetPath := filepath.Join(opts.SdkReplacePath, "ui")
-		if err := os.Symlink(uiTargetPath, uiLinkPath); err != nil {
-			return buildEnv, fmt.Errorf("failed to create ui symlink: %w", err)
-		}
-		if opts.Verbose {
-			oc.Printf("Created UI symlink: %s -> %s", uiLinkPath, uiTargetPath)
-		}
-	} else if opts.Verbose {
-		oc.Printf("Skipping UI symlink creation - no UI package imports found")
-	}
-
 	// Generate Tailwind CSS
 	if err := generateAppTailwindCss(tempDir, opts.Verbose, opts); err != nil {
 		return buildEnv, fmt.Errorf("failed to generate tailwind css: %w", err)

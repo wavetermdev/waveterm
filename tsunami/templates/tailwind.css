@@ -2,9 +2,6 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 
 @import "tailwindcss";
-@source inline("bg-background text-primary"); /* index.html */
-@source inline("p-4 border border-red-500 bg-red-100 text-red-800 rounded font-mono font-bold mb-2"); /* error component */
-@source inline("fixed inset-0 z-50 flex items-center justify-center bg-black/50 bg-black bg-opacity-50 bg-gray-800 rounded-lg shadow-xl max-w-md w-full mx-4 p-6 border border-gray-700 flex-col gap-4 gap-3 text-4xl text-xl font-semibold text-white text-gray-300 justify-end mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-600 hover:bg-gray-700 focus:ring-gray-500 mt-2"); /* modals */
 
 @theme {
     --color-background: rgb(34, 34, 34); /* default background color */
