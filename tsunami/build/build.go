@@ -139,6 +139,13 @@ func verifyEnvironment(verbose bool, opts BuildOpts) (*BuildEnv, error) {
 		return nil, fmt.Errorf("either SdkVersion or SdkReplacePath must be set")
 	}
 
+	if opts.SdkVersion != "" {
+		versionRegex := regexp.MustCompile(`^v\d+\.\d+\.\d+`)
+		if !versionRegex.MatchString(opts.SdkVersion) {
+			return nil, fmt.Errorf("SdkVersion must be in semantic version format (e.g., v0.0.0), got: %s", opts.SdkVersion)
+		}
+	}
+
 	var goPath string
 	var err error
 
