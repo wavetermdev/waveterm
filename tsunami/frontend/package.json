@@ -27,12 +27,12 @@
         "tailwind-merge": "^3.3.1"
     },
     "devDependencies": {
-        "@tailwindcss/cli": "^4.1.16",
-        "@tailwindcss/vite": "^4.1.16",
+        "@tailwindcss/cli": "^4.1.17",
+        "@tailwindcss/vite": "^4.1.17",
         "@types/react": "^19",
         "@types/react-dom": "^19",
-        "@vitejs/plugin-react-swc": "^4.2.0",
-        "tailwindcss": "^4.1.16",
+        "@vitejs/plugin-react-swc": "^4.2.1",
+        "tailwindcss": "^4.1.17",
         "typescript": "^5.9.3",
         "vite": "^6.4.1"
     }
