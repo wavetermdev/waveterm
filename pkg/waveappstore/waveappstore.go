@@ -521,6 +521,11 @@ func DraftHasLocalVersion(draftAppId string) (bool, error) {
 	return true, nil
 }
 
+// RenameLocalApp renames a local app by renaming its directories in both the local and draft namespaces.
+// It takes the current app name and the new app name (without namespace prefixes).
+// Both local/[appName] and draft/[appName] will be renamed if they exist.
+// Returns an error if the app doesn't exist in either namespace, if the new name is invalid,
+// or if the new name conflicts with an existing app.
 func RenameLocalApp(appName string, newAppName string) error {
 	// Validate the old app name by constructing a valid appId
 	oldLocalAppId := MakeAppId(AppNSLocal, appName)
