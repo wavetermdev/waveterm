@@ -123,6 +123,7 @@ declare global {
         setWaveAIOpen: (isOpen: boolean) => void; // set-waveai-open
         closeBuilderWindow: () => void; // close-builder-window
         incrementTermCommands: () => void; // increment-term-commands
+        nativePaste: () => void; // native-paste
     };
 
     type ElectronContextMenuItem = {

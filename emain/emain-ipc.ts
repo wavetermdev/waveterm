@@ -400,6 +400,10 @@ export function initIpcHandlers() {
         incrementTermCommandsRun();
     });
 
+    electron.ipcMain.on("native-paste", (event) => {
+        event.sender.paste();
+    });
+
     electron.ipcMain.on("open-builder", (event, appId?: string) => {
         fireAndForget(() => createBuilderWindow(appId || ""));
     });

@@ -62,6 +62,7 @@ contextBridge.exposeInMainWorld("api", {
     setWaveAIOpen: (isOpen: boolean) => ipcRenderer.send("set-waveai-open", isOpen),
     closeBuilderWindow: () => ipcRenderer.send("close-builder-window"),
     incrementTermCommands: () => ipcRenderer.send("increment-term-commands"),
+    nativePaste: () => ipcRenderer.send("native-paste"),
 });
 
 // Custom event for "new-window"

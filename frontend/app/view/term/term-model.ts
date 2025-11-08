@@ -14,6 +14,7 @@ import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
 import {
     atoms,
     getAllBlockComponentModels,
+    getApi,
     getBlockComponentModel,
     getBlockMetaKeyAtom,
     getConnStatusAtom,
@@ -390,7 +391,6 @@ export class TermViewModel implements ViewModel {
         RpcApi.ControllerInputCommand(TabRpcClient, { blockid: this.blockId, inputdata64: b64data });
     }
 
-
     setTermMode(mode: "term" | "vdom") {
         if (mode == "term") {
             mode = null;
@@ -516,7 +516,8 @@ export class TermViewModel implements ViewModel {
         if (keyutil.checkKeyPressed(waveEvent, "Ctrl:Shift:v")) {
             event.preventDefault();
             event.stopPropagation();
-            this.termRef.current?.pasteHandler();
+            getApi().nativePaste();
+            // this.termRef.current?.pasteHandler();
             return false;
         } else if (keyutil.checkKeyPressed(waveEvent, "Ctrl:Shift:c")) {
             event.preventDefault();

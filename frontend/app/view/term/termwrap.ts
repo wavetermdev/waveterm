@@ -586,18 +586,9 @@ export class TermWrap {
         const timeSinceLastPaste = now - this.lastPasteTime;
 
         if (this.pasteActive) {
-            // First paste event - record it and allow through
-            this.pasteActive = false;
-            this.lastPasteData = data;
-            this.lastPasteTime = now;
             if (this.multiInputCallback) {
                 this.multiInputCallback(data);
             }
-        } else if (timeSinceLastPaste < DEDUP_WINDOW_MS && data === this.lastPasteData && this.lastPasteData) {
-            // Second paste event with same data within time window - this is a duplicate, block it
-            dlog("Blocked duplicate paste data:", data);
-            this.lastPasteData = ""; // Clear to allow same data to be pasted later
-            return;
         }
 
         // IME Deduplication (for Capslock input method switching)
@@ -764,6 +755,7 @@ export class TermWrap {
 
         try {
             const clipboardData = await extractAllClipboardData(e);
+            console.log("CLIPBOARD DATA", clipboardData);
             let firstImage = true;
             for (const data of clipboardData) {
                 if (data.image && SupportsImageInput) {
