@@ -1,7 +1,6 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-
 import { BlockNodeModel } from "@/app/block/blocktypes";
 import { appHandleKeyDown } from "@/app/store/keymodel";
 import { waveEventSubscribe } from "@/app/store/wps";
@@ -15,6 +14,7 @@ import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
 import {
     atoms,
     getAllBlockComponentModels,
+    getApi,
     getBlockComponentModel,
     getBlockMetaKeyAtom,
     getConnStatusAtom,
@@ -29,22 +29,15 @@ import * as keyutil from "@/util/keyutil";
 import { boundNumber, stringToBase64 } from "@/util/util";
 import * as jotai from "jotai";
 import * as React from "react";
-import {
-    computeTheme,
-    createTempFileFromBlob,
-    DefaultTermTheme,
-    handleImagePasteBlob as handleImagePasteBlobUtil,
-    supportsImageInput as supportsImageInputUtil,
-} from "./termutil";
-import { TermWrap } from "./termwrap";
 import { getBlockingCommand } from "./shellblocking";
+import { computeTheme, DefaultTermTheme } from "./termutil";
+import { TermWrap } from "./termwrap";
 
 export class TermViewModel implements ViewModel {
-
     viewType: string;
     nodeModel: BlockNodeModel;
     connected: boolean;
-    termRef: React.MutableRefObject<TermWrap> = { current: null };
+    termRef: React.RefObject<TermWrap> = { current: null };
     blockAtom: jotai.Atom<Block>;
     termMode: jotai.Atom<string>;
     blockId: string;
@@ -398,51 +391,6 @@ export class TermViewModel implements ViewModel {
         RpcApi.ControllerInputCommand(TabRpcClient, { blockid: this.blockId, inputdata64: b64data });
     }
 
-    async handlePaste() {
-        try {
-            const clipboardItems = await navigator.clipboard.read();
-
-            for (const item of clipboardItems) {
-                // Check for images first
-                const imageTypes = item.types.filter((type) => type.startsWith("image/"));
-                if (imageTypes.length > 0 && this.supportsImageInput()) {
-                    const blob = await item.getType(imageTypes[0]);
-                    await this.handleImagePasteBlob(blob);
-                    return;
-                }
-
-                // Handle text
-                if (item.types.includes("text/plain")) {
-                    const blob = await item.getType("text/plain");
-                    const text = await blob.text();
-                    this.termRef.current?.terminal.paste(text);
-                    return;
-                }
-            }
-        } catch (err) {
-            console.error("Paste error:", err);
-            // Fallback to text-only paste
-            try {
-                const text = await navigator.clipboard.readText();
-                if (text) {
-                    this.termRef.current?.terminal.paste(text);
-                }
-            } catch (fallbackErr) {
-                console.error("Fallback paste error:", fallbackErr);
-            }
-        }
-    }
-
-    supportsImageInput(): boolean {
-        return supportsImageInputUtil();
-    }
-
-    async handleImagePasteBlob(blob: Blob): Promise<void> {
-        await handleImagePasteBlobUtil(blob, TabRpcClient, (text) => {
-            this.termRef.current?.terminal.paste(text);
-        });
-    }
-
     setTermMode(mode: "term" | "vdom") {
         if (mode == "term") {
             mode = null;
@@ -559,22 +507,26 @@ export class TermViewModel implements ViewModel {
             const shiftEnterNewlineAtom = getOverrideConfigAtom(this.blockId, "term:shiftenternewline");
             const shiftEnterNewlineEnabled = globalStore.get(shiftEnterNewlineAtom) ?? true;
             if (shiftEnterNewlineEnabled) {
-                this.sendDataToController("\u001b\n");
+                this.sendDataToController("\n");
                 event.preventDefault();
                 event.stopPropagation();
                 return false;
             }
         }
         if (keyutil.checkKeyPressed(waveEvent, "Ctrl:Shift:v")) {
-            this.handlePaste();
             event.preventDefault();
             event.stopPropagation();
+            getApi().nativePaste();
+            // this.termRef.current?.pasteHandler();
             return false;
         } else if (keyutil.checkKeyPressed(waveEvent, "Ctrl:Shift:c")) {
-            const sel = this.termRef.current?.terminal.getSelection();
-            navigator.clipboard.writeText(sel);
             event.preventDefault();
             event.stopPropagation();
+            const sel = this.termRef.current?.terminal.getSelection();
+            if (!sel) {
+                return false;
+            }
+            navigator.clipboard.writeText(sel);
             return false;
         } else if (keyutil.checkKeyPressed(waveEvent, "Cmd:k")) {
             event.preventDefault();
