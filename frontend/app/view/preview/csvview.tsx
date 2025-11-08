@@ -23,7 +23,7 @@ type CSVRow = {
 };
 
 interface CSVViewProps {
-    parentRef: React.MutableRefObject<HTMLDivElement>;
+    parentRef: React.RefObject<HTMLDivElement>;
     content: string;
     filename: string;
     readonly: boolean;

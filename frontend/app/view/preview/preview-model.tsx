@@ -152,11 +152,11 @@ export class PreviewModel implements ViewModel {
     openFileModal: PrimitiveAtom<boolean>;
     openFileModalDelay: PrimitiveAtom<boolean>;
     openFileError: PrimitiveAtom<string>;
-    openFileModalGiveFocusRef: React.MutableRefObject<() => boolean>;
+    openFileModalGiveFocusRef: React.RefObject<() => boolean>;
 
     markdownShowToc: PrimitiveAtom<boolean>;
 
-    monacoRef: React.MutableRefObject<MonacoTypes.editor.IStandaloneCodeEditor>;
+    monacoRef: React.RefObject<MonacoTypes.editor.IStandaloneCodeEditor>;
 
     showHiddenFiles: PrimitiveAtom<boolean>;
     refreshVersion: PrimitiveAtom<number>;

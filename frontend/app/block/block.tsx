@@ -12,6 +12,7 @@ import {
 import { AiFileDiffViewModel } from "@/app/view/aifilediff/aifilediff";
 import { LauncherViewModel } from "@/app/view/launcher/launcher";
 import { PreviewModel } from "@/app/view/preview/preview-model";
+import { SecretStoreViewModel } from "@/app/view/secretstore/secretstore-model";
 import { SysinfoViewModel } from "@/app/view/sysinfo/sysinfo";
 import { TsunamiViewModel } from "@/app/view/tsunami/tsunami";
 import { VDomModel } from "@/app/view/vdom/vdom-model";
@@ -52,6 +53,7 @@ BlockRegistry.set("help", HelpViewModel);
 BlockRegistry.set("launcher", LauncherViewModel);
 BlockRegistry.set("tsunami", TsunamiViewModel);
 BlockRegistry.set("aifilediff", AiFileDiffViewModel);
+BlockRegistry.set("secretstore", SecretStoreViewModel);
 
 function makeViewModel(blockId: string, blockView: string, nodeModel: BlockNodeModel): ViewModel {
     const ctor = BlockRegistry.get(blockView);

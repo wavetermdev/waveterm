@@ -19,12 +19,14 @@ import debug from "debug";
 import * as jotai from "jotai";
 import { debounce } from "throttle-debounce";
 import { FitAddon } from "./fitaddon";
+import { createTempFileFromBlob, extractAllClipboardData } from "./termutil";
 
 const dlog = debug("wave:termwrap");
 
 const TermFileName = "term";
 const TermCacheFileName = "cache:term:full";
 const MinDataProcessedForCache = 100 * 1024;
+export const SupportsImageInput = true;
 
 // detect webgl support
 function detectWebGLSupport(): boolean {
@@ -351,6 +353,20 @@ export class TermWrap {
     shellIntegrationStatusAtom: jotai.PrimitiveAtom<"ready" | "running-command" | null>;
     lastCommandAtom: jotai.PrimitiveAtom<string | null>;
 
+    // IME composition state tracking
+    // Prevents duplicate input when switching input methods during composition (e.g., using Capslock)
+    // xterm.js sends data during compositionupdate AND after compositionend, causing duplicates
+    isComposing: boolean = false;
+    composingData: string = "";
+    lastCompositionEnd: number = 0;
+    lastComposedText: string = "";
+    firstDataAfterCompositionSent: boolean = false;
+
+    // Paste deduplication
+    // xterm.js paste() method triggers onData event, which can cause duplicate sends
+    lastPasteData: string = "";
+    lastPasteTime: number = 0;
+
     constructor(
         blockId: string,
         connectElem: HTMLDivElement,
@@ -422,20 +438,38 @@ export class TermWrap {
         this.handleResize_debounced = debounce(50, this.handleResize.bind(this));
         this.terminal.open(this.connectElem);
         this.handleResize();
-        let pasteEventHandler = () => {
-            this.pasteActive = true;
-            setTimeout(() => {
-                this.pasteActive = false;
-            }, 30);
-        };
-        pasteEventHandler = pasteEventHandler.bind(this);
-        this.connectElem.addEventListener("paste", pasteEventHandler, true);
+        const pasteHandler = this.pasteHandler.bind(this);
+        this.connectElem.addEventListener("paste", pasteHandler, true);
         this.toDispose.push({
             dispose: () => {
-                this.connectElem.removeEventListener("paste", pasteEventHandler, true);
+                this.connectElem.removeEventListener("paste", pasteHandler, true);
             },
         });
     }
+
+    resetCompositionState() {
+        this.isComposing = false;
+        this.composingData = "";
+    }
+
+    private handleCompositionStart = (e: CompositionEvent) => {
+        dlog("compositionstart", e.data);
+        this.isComposing = true;
+        this.composingData = "";
+    };
+
+    private handleCompositionUpdate = (e: CompositionEvent) => {
+        dlog("compositionupdate", e.data);
+        this.composingData = e.data || "";
+    };
+
+    private handleCompositionEnd = (e: CompositionEvent) => {
+        dlog("compositionend", e.data);
+        this.isComposing = false;
+        this.lastComposedText = e.data || "";
+        this.lastCompositionEnd = Date.now();
+        this.firstDataAfterCompositionSent = false;
+    };
 
     async initTerminal() {
         const copyOnSelectAtom = getSettingsKeyAtom("term:copyonselect");
@@ -457,6 +491,33 @@ export class TermWrap {
         if (this.onSearchResultsDidChange != null) {
             this.toDispose.push(this.searchAddon.onDidChangeResults(this.onSearchResultsDidChange.bind(this)));
         }
+
+        // Register IME composition event listeners on the xterm.js textarea
+        const textareaElem = this.connectElem.querySelector("textarea");
+        if (textareaElem) {
+            textareaElem.addEventListener("compositionstart", this.handleCompositionStart);
+            textareaElem.addEventListener("compositionupdate", this.handleCompositionUpdate);
+            textareaElem.addEventListener("compositionend", this.handleCompositionEnd);
+
+            // Handle blur during composition - reset state to avoid stale data
+            const blurHandler = () => {
+                if (this.isComposing) {
+                    dlog("Terminal lost focus during composition, resetting IME state");
+                    this.resetCompositionState();
+                }
+            };
+            textareaElem.addEventListener("blur", blurHandler);
+
+            this.toDispose.push({
+                dispose: () => {
+                    textareaElem.removeEventListener("compositionstart", this.handleCompositionStart);
+                    textareaElem.removeEventListener("compositionupdate", this.handleCompositionUpdate);
+                    textareaElem.removeEventListener("compositionend", this.handleCompositionEnd);
+                    textareaElem.removeEventListener("blur", blurHandler);
+                },
+            });
+        }
+
         this.mainFileSubject = getFileSubject(this.blockId, TermFileName);
         this.mainFileSubject.subscribe(this.handleNewFileSubjectData.bind(this));
 
@@ -506,12 +567,41 @@ export class TermWrap {
         if (!this.loaded) {
             return;
         }
+
+        // IME Composition Handling
+        // Block all data during composition - only send the final text after compositionend
+        // This prevents xterm.js from sending intermediate composition data (e.g., during compositionupdate)
+        if (this.isComposing) {
+            dlog("Blocked data during composition:", data);
+            return;
+        }
+
         if (this.pasteActive) {
-            this.pasteActive = false;
             if (this.multiInputCallback) {
                 this.multiInputCallback(data);
             }
         }
+
+        // IME Deduplication (for Capslock input method switching)
+        // When switching input methods with Capslock during composition, some systems send the
+        // composed text twice. We allow the first send and block subsequent duplicates.
+        const IMEDedupWindowMs = 50;
+        const now = Date.now();
+        const timeSinceCompositionEnd = now - this.lastCompositionEnd;
+        if (timeSinceCompositionEnd < IMEDedupWindowMs && data === this.lastComposedText && this.lastComposedText) {
+            if (!this.firstDataAfterCompositionSent) {
+                // First send after composition - allow it but mark as sent
+                this.firstDataAfterCompositionSent = true;
+                dlog("First data after composition, allowing:", data);
+            } else {
+                // Second send of the same data - this is a duplicate from Capslock switching, block it
+                dlog("Blocked duplicate IME data:", data);
+                this.lastComposedText = ""; // Clear to allow same text to be typed again later
+                this.firstDataAfterCompositionSent = false;
+                return;
+            }
+        }
+
         this.sendDataHandler?.(data);
     }
 
@@ -648,5 +738,35 @@ export class TermWrap {
                 this.runProcessIdleTimeout();
             });
         }, 5000);
+    }
+
+    async pasteHandler(e?: ClipboardEvent): Promise<void> {
+        this.pasteActive = true;
+        e?.preventDefault();
+        e?.stopPropagation();
+
+        try {
+            const clipboardData = await extractAllClipboardData(e);
+            let firstImage = true;
+            for (const data of clipboardData) {
+                if (data.image && SupportsImageInput) {
+                    if (!firstImage) {
+                        await new Promise((r) => setTimeout(r, 150));
+                    }
+                    const tempPath = await createTempFileFromBlob(data.image);
+                    this.terminal.paste(tempPath + " ");
+                    firstImage = false;
+                }
+                if (data.text) {
+                    this.terminal.paste(data.text);
+                }
+            }
+        } catch (err) {
+            console.error("Paste error:", err);
+        } finally {
+            setTimeout(() => {
+                this.pasteActive = false;
+            }, 30);
+        }
     }
 }

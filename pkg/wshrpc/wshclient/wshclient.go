@@ -398,6 +398,12 @@ func GetTabCommand(w *wshutil.WshRpc, data string, opts *wshrpc.RpcOpts) (*waveo
 	return resp, err
 }
 
+// command "gettempdir", wshserver.GetTempDirCommand
+func GetTempDirCommand(w *wshutil.WshRpc, data wshrpc.CommandGetTempDirData, opts *wshrpc.RpcOpts) (string, error) {
+	resp, err := sendRpcRequestCallHelper[string](w, "gettempdir", data, opts)
+	return resp, err
+}
+
 // command "getupdatechannel", wshserver.GetUpdateChannelCommand
 func GetUpdateChannelCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) (string, error) {
 	resp, err := sendRpcRequestCallHelper[string](w, "getupdatechannel", nil, opts)
@@ -599,7 +605,7 @@ func SetRTInfoCommand(w *wshutil.WshRpc, data wshrpc.CommandSetRTInfoData, opts 
 }
 
 // command "setsecrets", wshserver.SetSecretsCommand
-func SetSecretsCommand(w *wshutil.WshRpc, data map[string]string, opts *wshrpc.RpcOpts) error {
+func SetSecretsCommand(w *wshutil.WshRpc, data map[string]*string, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "setsecrets", data, opts)
 	return err
 }
@@ -723,6 +729,12 @@ func WorkspaceListCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) ([]wshrpc.Wor
 func WriteAppFileCommand(w *wshutil.WshRpc, data wshrpc.CommandWriteAppFileData, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "writeappfile", data, opts)
 	return err
+}
+
+// command "writetempfile", wshserver.WriteTempFileCommand
+func WriteTempFileCommand(w *wshutil.WshRpc, data wshrpc.CommandWriteTempFileData, opts *wshrpc.RpcOpts) (string, error) {
+	resp, err := sendRpcRequestCallHelper[string](w, "writetempfile", data, opts)
+	return resp, err
 }
 
 // command "wshactivity", wshserver.WshActivityCommand

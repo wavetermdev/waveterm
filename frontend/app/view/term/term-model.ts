@@ -1,7 +1,6 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-
 import { BlockNodeModel } from "@/app/block/blocktypes";
 import { appHandleKeyDown } from "@/app/store/keymodel";
 import { waveEventSubscribe } from "@/app/store/wps";
@@ -15,6 +14,7 @@ import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
 import {
     atoms,
     getAllBlockComponentModels,
+    getApi,
     getBlockComponentModel,
     getBlockMetaKeyAtom,
     getConnStatusAtom,
@@ -29,15 +29,15 @@ import * as keyutil from "@/util/keyutil";
 import { boundNumber, stringToBase64 } from "@/util/util";
 import * as jotai from "jotai";
 import * as React from "react";
+import { getBlockingCommand } from "./shellblocking";
 import { computeTheme, DefaultTermTheme } from "./termutil";
 import { TermWrap } from "./termwrap";
-import { getBlockingCommand } from "./shellblocking";
 
 export class TermViewModel implements ViewModel {
     viewType: string;
     nodeModel: BlockNodeModel;
     connected: boolean;
-    termRef: React.MutableRefObject<TermWrap> = { current: null };
+    termRef: React.RefObject<TermWrap> = { current: null };
     blockAtom: jotai.Atom<Block>;
     termMode: jotai.Atom<string>;
     blockId: string;
@@ -489,6 +489,15 @@ export class TermViewModel implements ViewModel {
         if (waveEvent.type != "keydown") {
             return true;
         }
+
+        // Handle Escape key during IME composition
+        if (keyutil.checkKeyPressed(waveEvent, "Escape")) {
+            if (this.termRef.current?.isComposing) {
+                // Reset composition state when Escape is pressed during composition
+                this.termRef.current.resetCompositionState();
+            }
+        }
+
         if (this.keyDownHandler(waveEvent)) {
             event.preventDefault();
             event.stopPropagation();
@@ -496,27 +505,28 @@ export class TermViewModel implements ViewModel {
         }
         if (keyutil.checkKeyPressed(waveEvent, "Shift:Enter")) {
             const shiftEnterNewlineAtom = getOverrideConfigAtom(this.blockId, "term:shiftenternewline");
-            const shiftEnterNewlineEnabled = globalStore.get(shiftEnterNewlineAtom) ?? false;
+            const shiftEnterNewlineEnabled = globalStore.get(shiftEnterNewlineAtom) ?? true;
             if (shiftEnterNewlineEnabled) {
-                this.sendDataToController("\u001b\n");
+                this.sendDataToController("\n");
                 event.preventDefault();
                 event.stopPropagation();
                 return false;
             }
         }
         if (keyutil.checkKeyPressed(waveEvent, "Ctrl:Shift:v")) {
-            const p = navigator.clipboard.readText();
-            p.then((text) => {
-                this.termRef.current?.terminal.paste(text);
-            });
             event.preventDefault();
             event.stopPropagation();
+            getApi().nativePaste();
+            // this.termRef.current?.pasteHandler();
             return false;
         } else if (keyutil.checkKeyPressed(waveEvent, "Ctrl:Shift:c")) {
-            const sel = this.termRef.current?.terminal.getSelection();
-            navigator.clipboard.writeText(sel);
             event.preventDefault();
             event.stopPropagation();
+            const sel = this.termRef.current?.terminal.getSelection();
+            if (!sel) {
+                return false;
+            }
+            navigator.clipboard.writeText(sel);
             return false;
         } else if (keyutil.checkKeyPressed(waveEvent, "Cmd:k")) {
             event.preventDefault();

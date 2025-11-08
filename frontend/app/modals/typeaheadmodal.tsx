@@ -82,7 +82,7 @@ interface TypeAheadModalProps {
     onSelect?: (_: string) => void;
     onClickBackdrop?: () => void;
     onKeyDown?: (_) => void;
-    giveFocusRef?: React.MutableRefObject<() => boolean>;
+    giveFocusRef?: React.RefObject<() => boolean>;
     autoFocus?: boolean;
     selectIndex?: number;
 }

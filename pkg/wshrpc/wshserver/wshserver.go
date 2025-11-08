@@ -442,7 +442,54 @@ func (ws *WshServer) FileShareCapabilityCommand(ctx context.Context, path string
 }
 
 func (ws *WshServer) FileRestoreBackupCommand(ctx context.Context, data wshrpc.CommandFileRestoreBackupData) error {
-	return filebackup.RestoreBackup(data.BackupFilePath, data.RestoreToFileName)
+	expandedBackupPath, err := wavebase.ExpandHomeDir(data.BackupFilePath)
+	if err != nil {
+		return fmt.Errorf("failed to expand backup file path: %w", err)
+	}
+	expandedRestorePath, err := wavebase.ExpandHomeDir(data.RestoreToFileName)
+	if err != nil {
+		return fmt.Errorf("failed to expand restore file path: %w", err)
+	}
+	return filebackup.RestoreBackup(expandedBackupPath, expandedRestorePath)
+}
+
+func (ws *WshServer) GetTempDirCommand(ctx context.Context, data wshrpc.CommandGetTempDirData) (string, error) {
+	tempDir := os.TempDir()
+	if data.FileName != "" {
+		// Reduce to a simple file name to avoid absolute paths or traversal
+		name := filepath.Base(data.FileName)
+		// Normalize/trim any stray separators and whitespace
+		name = strings.Trim(name, `/\`+" ")
+		if name == "" || name == "." {
+			return tempDir, nil
+		}
+		return filepath.Join(tempDir, name), nil
+	}
+	return tempDir, nil
+}
+
+func (ws *WshServer) WriteTempFileCommand(ctx context.Context, data wshrpc.CommandWriteTempFileData) (string, error) {
+	if data.FileName == "" {
+		return "", fmt.Errorf("filename is required")
+	}
+	name := filepath.Base(data.FileName)
+	if name == "" || name == "." || name == ".." {
+		return "", fmt.Errorf("invalid filename")
+	}
+	tempDir, err := os.MkdirTemp("", "waveterm-")
+	if err != nil {
+		return "", fmt.Errorf("error creating temp directory: %w", err)
+	}
+	decoded, err := base64.StdEncoding.DecodeString(data.Data64)
+	if err != nil {
+		return "", fmt.Errorf("error decoding base64 data: %w", err)
+	}
+	tempPath := filepath.Join(tempDir, name)
+	err = os.WriteFile(tempPath, decoded, 0600)
+	if err != nil {
+		return "", fmt.Errorf("error writing temp file: %w", err)
+	}
+	return tempPath, nil
 }
 
 func (ws *WshServer) DeleteSubBlockCommand(ctx context.Context, data wshrpc.CommandDeleteBlockData) error {
@@ -1264,11 +1311,18 @@ func (ws *WshServer) GetSecretsNamesCommand(ctx context.Context) ([]string, erro
 	return names, nil
 }
 
-func (ws *WshServer) SetSecretsCommand(ctx context.Context, secrets map[string]string) error {
+func (ws *WshServer) SetSecretsCommand(ctx context.Context, secrets map[string]*string) error {
 	for name, value := range secrets {
-		err := secretstore.SetSecret(name, value)
-		if err != nil {
-			return fmt.Errorf("error setting secret %q: %w", name, err)
+		if value == nil {
+			err := secretstore.DeleteSecret(name)
+			if err != nil {
+				return fmt.Errorf("error deleting secret %q: %w", name, err)
+			}
+		} else {
+			err := secretstore.SetSecret(name, *value)
+			if err != nil {
+				return fmt.Errorf("error setting secret %q: %w", name, err)
+			}
 		}
 	}
 	return nil

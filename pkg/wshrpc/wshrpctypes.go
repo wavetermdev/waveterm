@@ -83,6 +83,8 @@ const (
 	Command_FileJoin            = "filejoin"
 	Command_FileShareCapability = "filesharecapability"
 	Command_FileRestoreBackup   = "filerestorebackup"
+	Command_GetTempDir          = "gettempdir"
+	Command_WriteTempFile       = "writetempfile"
 
 	Command_EventPublish         = "eventpublish"
 	Command_EventRecv            = "eventrecv"
@@ -222,6 +224,8 @@ type WshRpcInterface interface {
 
 	FileShareCapabilityCommand(ctx context.Context, path string) (FileShareCapability, error)
 	FileRestoreBackupCommand(ctx context.Context, data CommandFileRestoreBackupData) error
+	GetTempDirCommand(ctx context.Context, data CommandGetTempDirData) (string, error)
+	WriteTempFileCommand(ctx context.Context, data CommandWriteTempFileData) (string, error)
 	EventPublishCommand(ctx context.Context, data wps.WaveEvent) error
 	EventSubCommand(ctx context.Context, data wps.SubscriptionRequest) error
 	EventUnsubCommand(ctx context.Context, data string) error
@@ -291,7 +295,7 @@ type WshRpcInterface interface {
 	// secrets
 	GetSecretsCommand(ctx context.Context, names []string) (map[string]string, error)
 	GetSecretsNamesCommand(ctx context.Context) ([]string, error)
-	SetSecretsCommand(ctx context.Context, secrets map[string]string) error
+	SetSecretsCommand(ctx context.Context, secrets map[string]*string) error
 	GetSecretsLinuxStorageBackendCommand(ctx context.Context) (string, error)
 
 	WorkspaceListCommand(ctx context.Context) ([]WorkspaceInfoData, error)
@@ -620,6 +624,15 @@ type CommandFileCopyData struct {
 type CommandFileRestoreBackupData struct {
 	BackupFilePath    string `json:"backupfilepath"`
 	RestoreToFileName string `json:"restoretofilename"`
+}
+
+type CommandGetTempDirData struct {
+	FileName string `json:"filename,omitempty"`
+}
+
+type CommandWriteTempFileData struct {
+	FileName string `json:"filename"`
+	Data64   string `json:"data64"`
 }
 
 type CommandRemoteStreamTarData struct {

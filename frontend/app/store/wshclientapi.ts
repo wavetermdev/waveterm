@@ -327,6 +327,11 @@ class RpcApiType {
         return client.wshRpcCall("gettab", data, opts);
     }
 
+    // command "gettempdir" [call]
+    GetTempDirCommand(client: WshClient, data: CommandGetTempDirData, opts?: RpcOpts): Promise<string> {
+        return client.wshRpcCall("gettempdir", data, opts);
+    }
+
     // command "getupdatechannel" [call]
     GetUpdateChannelCommand(client: WshClient, opts?: RpcOpts): Promise<string> {
         return client.wshRpcCall("getupdatechannel", null, opts);
@@ -605,6 +610,11 @@ class RpcApiType {
     // command "writeappfile" [call]
     WriteAppFileCommand(client: WshClient, data: CommandWriteAppFileData, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("writeappfile", data, opts);
+    }
+
+    // command "writetempfile" [call]
+    WriteTempFileCommand(client: WshClient, data: CommandWriteTempFileData, opts?: RpcOpts): Promise<string> {
+        return client.wshRpcCall("writetempfile", data, opts);
     }
 
     // command "wshactivity" [call]

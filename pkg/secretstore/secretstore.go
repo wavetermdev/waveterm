@@ -233,6 +233,21 @@ func SetSecret(name string, value string) error {
 	return nil
 }
 
+func DeleteSecret(name string) error {
+	if name == "" {
+		return fmt.Errorf("secret name cannot be empty")
+	}
+	if err := initSecretStore(); err != nil {
+		return err
+	}
+	lock.Lock()
+	defer lock.Unlock()
+
+	delete(secrets, name)
+	requestWrite()
+	return nil
+}
+
 func GetSecret(name string) (string, bool, error) {
 	if name == WriteTsKey {
 		return "", false, nil

@@ -46,11 +46,20 @@ var secretListCmd = &cobra.Command{
 	PreRunE: preRunSetupRpcClient,
 }
 
+var secretDeleteCmd = &cobra.Command{
+	Use:     "delete [name]",
+	Short:   "delete a secret",
+	Args:    cobra.ExactArgs(1),
+	RunE:    secretDeleteRun,
+	PreRunE: preRunSetupRpcClient,
+}
+
 func init() {
 	rootCmd.AddCommand(secretCmd)
 	secretCmd.AddCommand(secretGetCmd)
 	secretCmd.AddCommand(secretSetCmd)
 	secretCmd.AddCommand(secretListCmd)
+	secretCmd.AddCommand(secretDeleteCmd)
 }
 
 func secretGetRun(cmd *cobra.Command, args []string) (rtnErr error) {
@@ -103,7 +112,7 @@ func secretSetRun(cmd *cobra.Command, args []string) (rtnErr error) {
 		return fmt.Errorf("No appropriate secret manager found, cannot set secrets")
 	}
 
-	secrets := map[string]string{name: value}
+	secrets := map[string]*string{name: &value}
 	err = wshclient.SetSecretsCommand(RpcClient, secrets, &wshrpc.RpcOpts{Timeout: 2000})
 	if err != nil {
 		return fmt.Errorf("setting secret: %w", err)
@@ -126,5 +135,25 @@ func secretListRun(cmd *cobra.Command, args []string) (rtnErr error) {
 	for _, name := range names {
 		WriteStdout("%s\n", name)
 	}
+	return nil
+}
+
+func secretDeleteRun(cmd *cobra.Command, args []string) (rtnErr error) {
+	defer func() {
+		sendActivity("secret", rtnErr == nil)
+	}()
+
+	name := args[0]
+	if !secretNameRegex.MatchString(name) {
+		return fmt.Errorf("invalid secret name: must start with a letter and contain only letters, numbers, and underscores")
+	}
+
+	secrets := map[string]*string{name: nil}
+	err := wshclient.SetSecretsCommand(RpcClient, secrets, &wshrpc.RpcOpts{Timeout: 2000})
+	if err != nil {
+		return fmt.Errorf("deleting secret: %w", err)
+	}
+
+	WriteStdout("secret deleted: %s\n", name)
 	return nil
 }

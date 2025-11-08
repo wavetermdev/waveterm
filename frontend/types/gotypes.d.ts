@@ -279,6 +279,11 @@ declare global {
         oref: ORef;
     };
 
+    // wshrpc.CommandGetTempDirData
+    type CommandGetTempDirData = {
+        filename?: string;
+    };
+
     // wshrpc.CommandGetWaveAIChatData
     type CommandGetWaveAIChatData = {
         chatid: string;
@@ -454,6 +459,12 @@ declare global {
     // wshrpc.CommandWriteAppFileData
     type CommandWriteAppFileData = {
         appid: string;
+        filename: string;
+        data64: string;
+    };
+
+    // wshrpc.CommandWriteTempFileData
+    type CommandWriteTempFileData = {
         filename: string;
         data64: string;
     };
