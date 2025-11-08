@@ -576,15 +576,6 @@ export class TermWrap {
             return;
         }
 
-        // Paste Deduplication
-        // xterm.js paste() method triggers onData event, causing handleTermData to be called twice:
-        // 1. From our paste handler (pasteActive=true)
-        // 2. From xterm.js onData (pasteActive=false)
-        // We allow the first call and block the second duplicate
-        const DEDUP_WINDOW_MS = 50;
-        const now = Date.now();
-        const timeSinceLastPaste = now - this.lastPasteTime;
-
         if (this.pasteActive) {
             if (this.multiInputCallback) {
                 this.multiInputCallback(data);
@@ -594,9 +585,10 @@ export class TermWrap {
         // IME Deduplication (for Capslock input method switching)
         // When switching input methods with Capslock during composition, some systems send the
         // composed text twice. We allow the first send and block subsequent duplicates.
+        const IMEDedupWindowMs = 50;
+        const now = Date.now();
         const timeSinceCompositionEnd = now - this.lastCompositionEnd;
-
-        if (timeSinceCompositionEnd < DEDUP_WINDOW_MS && data === this.lastComposedText && this.lastComposedText) {
+        if (timeSinceCompositionEnd < IMEDedupWindowMs && data === this.lastComposedText && this.lastComposedText) {
             if (!this.firstDataAfterCompositionSent) {
                 // First send after composition - allow it but mark as sent
                 this.firstDataAfterCompositionSent = true;
@@ -755,7 +747,6 @@ export class TermWrap {
 
         try {
             const clipboardData = await extractAllClipboardData(e);
-            console.log("CLIPBOARD DATA", clipboardData);
             let firstImage = true;
             for (const data of clipboardData) {
                 if (data.image && SupportsImageInput) {
