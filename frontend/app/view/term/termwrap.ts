@@ -19,7 +19,7 @@ import debug from "debug";
 import * as jotai from "jotai";
 import { debounce } from "throttle-debounce";
 import { FitAddon } from "./fitaddon";
-import { createTempFileFromBlob } from "./termutil";
+import { createTempFileFromBlob, extractAllClipboardData } from "./termutil";
 
 const dlog = debug("wave:termwrap");
 
@@ -438,74 +438,11 @@ export class TermWrap {
         this.handleResize_debounced = debounce(50, this.handleResize.bind(this));
         this.terminal.open(this.connectElem);
         this.handleResize();
-        let pasteEventHandler = async (e: ClipboardEvent) => {
-            this.pasteActive = true;
-
-            try {
-                // First try using ClipboardEvent.clipboardData (works in Electron)
-                if (e.clipboardData && e.clipboardData.items) {
-                    const items = e.clipboardData.items;
-
-                    // Check for images first
-                    for (let i = 0; i < items.length; i++) {
-                        const item = items[i];
-
-                        if (item.type.startsWith("image/")) {
-                            if (SupportsImageInput) {
-                                e.preventDefault();
-                                const blob = item.getAsFile();
-                                if (blob) {
-                                    await this.handleImagePasteBlob(blob);
-                                    return;
-                                }
-                            }
-                        }
-                    }
-
-                    // Handle text
-                    const text = e.clipboardData.getData("text/plain");
-                    if (text) {
-                        this.terminal.paste(text);
-                        return;
-                    }
-                }
-
-                // Fallback: Try Clipboard API for newer browsers
-                const clipboardItems = await navigator.clipboard.read();
-                for (const item of clipboardItems) {
-                    const imageTypes = item.types.filter((type) => type.startsWith("image/"));
-                    if (imageTypes.length > 0 && SupportsImageInput) {
-                        await this.handleImagePaste(item, imageTypes[0]);
-                        return;
-                    }
-
-                    if (item.types.includes("text/plain")) {
-                        const blob = await item.getType("text/plain");
-                        const text = await blob.text();
-                        this.terminal.paste(text);
-                        return;
-                    }
-                }
-            } catch (err) {
-                console.error("Paste error:", err);
-                // Final fallback to simple text paste
-                if (e.clipboardData) {
-                    const text = e.clipboardData.getData("text/plain");
-                    if (text) {
-                        this.terminal.paste(text);
-                    }
-                }
-            } finally {
-                setTimeout(() => {
-                    this.pasteActive = false;
-                }, 30);
-            }
-        };
-        pasteEventHandler = pasteEventHandler.bind(this);
-        this.connectElem.addEventListener("paste", pasteEventHandler, true);
+        const pasteHandler = this.pasteHandler.bind(this);
+        this.connectElem.addEventListener("paste", pasteHandler, true);
         this.toDispose.push({
             dispose: () => {
-                this.connectElem.removeEventListener("paste", pasteEventHandler, true);
+                this.connectElem.removeEventListener("paste", pasteHandler, true);
             },
         });
     }
@@ -778,25 +715,6 @@ export class TermWrap {
         }
     }
 
-    async handleImagePasteBlob(blob: Blob): Promise<void> {
-        try {
-            const tempPath = await createTempFileFromBlob(blob);
-            this.terminal.paste(tempPath + " ");
-        } catch (err) {
-            console.error("Error pasting image:", err);
-        }
-    }
-
-    async handleImagePaste(item: ClipboardItem, mimeType: string): Promise<void> {
-        try {
-            const blob = await item.getType(mimeType);
-            // Reuse the existing handleImagePasteBlob logic
-            await this.handleImagePasteBlob(blob);
-        } catch (err) {
-            console.error("Error processing image:", err);
-        }
-    }
-
     handleResize() {
         const oldRows = this.terminal.rows;
         const oldCols = this.terminal.cols;
@@ -837,5 +755,35 @@ export class TermWrap {
                 this.runProcessIdleTimeout();
             });
         }, 5000);
+    }
+
+    async pasteHandler(e?: ClipboardEvent): Promise<void> {
+        this.pasteActive = true;
+        e?.preventDefault();
+        e?.stopPropagation();
+
+        try {
+            const clipboardData = await extractAllClipboardData(e);
+            let firstImage = true;
+            for (const data of clipboardData) {
+                if (data.image && SupportsImageInput) {
+                    if (!firstImage) {
+                        await new Promise((r) => setTimeout(r, 150));
+                    }
+                    const tempPath = await createTempFileFromBlob(data.image);
+                    this.terminal.paste(tempPath + " ");
+                    firstImage = false;
+                }
+                if (data.text) {
+                    this.terminal.paste(data.text);
+                }
+            }
+        } catch (err) {
+            console.error("Paste error:", err);
+        } finally {
+            setTimeout(() => {
+                this.pasteActive = false;
+            }, 30);
+        }
     }
 }

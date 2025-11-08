@@ -30,7 +30,7 @@ import * as jotai from "jotai";
 import * as React from "react";
 import { getBlockingCommand } from "./shellblocking";
 import { computeTheme, DefaultTermTheme } from "./termutil";
-import { SupportsImageInput, TermWrap } from "./termwrap";
+import { TermWrap } from "./termwrap";
 
 export class TermViewModel implements ViewModel {
     viewType: string;
@@ -390,43 +390,6 @@ export class TermViewModel implements ViewModel {
         RpcApi.ControllerInputCommand(TabRpcClient, { blockid: this.blockId, inputdata64: b64data });
     }
 
-    async handlePaste() {
-        try {
-            // this can fail under weird circumstances (e.g. no user-gesture, which is why we have fallback to readText() which generally works everywhere)
-            const clipboardItems = await navigator.clipboard.read();
-
-            for (const item of clipboardItems) {
-                // Check for images first
-                const imageTypes = item.types.filter((type) => type.startsWith("image/"));
-                if (imageTypes.length > 0 && SupportsImageInput) {
-                    const blob = await item.getType(imageTypes[0]);
-                    await this.termRef.current?.handleImagePasteBlob(blob);
-                    return;
-                }
-
-                // Handle text
-                if (item.types.includes("text/plain")) {
-                    const blob = await item.getType("text/plain");
-                    const text = await blob.text();
-                    if (text) {
-                        this.termRef.current?.terminal.paste(text);
-                    }
-                    return;
-                }
-            }
-        } catch (err) {
-            console.error("Paste error:", err);
-            // Fallback to text-only paste
-            try {
-                const text = await navigator.clipboard.readText();
-                if (text) {
-                    this.termRef.current?.terminal.paste(text);
-                }
-            } catch (fallbackErr) {
-                console.error("Fallback paste error:", fallbackErr);
-            }
-        }
-    }
 
     setTermMode(mode: "term" | "vdom") {
         if (mode == "term") {
@@ -551,15 +514,15 @@ export class TermViewModel implements ViewModel {
             }
         }
         if (keyutil.checkKeyPressed(waveEvent, "Ctrl:Shift:v")) {
-            this.handlePaste();
             event.preventDefault();
             event.stopPropagation();
+            this.termRef.current?.pasteHandler();
             return false;
         } else if (keyutil.checkKeyPressed(waveEvent, "Ctrl:Shift:c")) {
-            const sel = this.termRef.current?.terminal.getSelection();
-            navigator.clipboard.writeText(sel);
             event.preventDefault();
             event.stopPropagation();
+            const sel = this.termRef.current?.terminal.getSelection();
+            navigator.clipboard.writeText(sel);
             return false;
         } else if (keyutil.checkKeyPressed(waveEvent, "Cmd:k")) {
             event.preventDefault();
