@@ -631,7 +631,7 @@ type CommandGetTempDirData struct {
 }
 
 type CommandWriteTempFileData struct {
-	FileName string `json:"filename,omitempty"`
+	FileName string `json:"filename"`
 	Data64   string `json:"data64"`
 }
 

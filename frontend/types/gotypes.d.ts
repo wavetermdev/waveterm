@@ -465,7 +465,7 @@ declare global {
 
     // wshrpc.CommandWriteTempFileData
     type CommandWriteTempFileData = {
-        filename?: string;
+        filename: string;
         data64: string;
     };
 

@@ -523,6 +523,9 @@ export class TermViewModel implements ViewModel {
             event.preventDefault();
             event.stopPropagation();
             const sel = this.termRef.current?.terminal.getSelection();
+            if (!sel) {
+                return false;
+            }
             navigator.clipboard.writeText(sel);
             return false;
         } else if (keyutil.checkKeyPressed(waveEvent, "Cmd:k")) {
