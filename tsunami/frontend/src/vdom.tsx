@@ -9,6 +9,7 @@ import { twMerge } from "tailwind-merge";
 
 import { AlertModal, ConfirmModal } from "@/element/modals";
 import { Markdown } from "@/element/markdown";
+import { Dropdown } from "@/element/dropdown";
 import { getTextChildren } from "@/model/model-utils";
 import type { TsunamiModel } from "@/model/tsunami-model";
 import { RechartsTag } from "@/recharts/recharts";
@@ -30,6 +31,7 @@ type VDomReactTagType = (props: { elem: VDomElem; model: TsunamiModel }) => Reac
 
 const WaveTagMap: Record<string, VDomReactTagType> = {
     "wave:markdown": WaveMarkdown,
+    "wave:dropdown": WaveDropdown,
 };
 
 const AllowedSimpleTags: { [tagName: string]: boolean } = {
@@ -275,6 +277,21 @@ function WaveMarkdown({ elem, model }: { elem: VDomElem; model: TsunamiModel }) 
     const props = useVDom(model, elem);
     return (
         <Markdown text={props?.text} style={props?.style} className={props?.className} scrollable={props?.scrollable} />
+    );
+}
+
+function WaveDropdown({ elem, model }: { elem: VDomElem; model: TsunamiModel }) {
+    const props = useVDom(model, elem);
+    return (
+        <Dropdown 
+            options={props?.options} 
+            value={props?.value} 
+            placeholder={props?.placeholder}
+            disabled={props?.disabled}
+            style={props?.style} 
+            className={props?.className}
+            multiple={props?.multiple}
+        />
     );
 }
 
