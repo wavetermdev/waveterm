@@ -14,28 +14,36 @@ import (
 )
 
 var ValidEventNames = map[string]bool{
-	"app:startup":            true,
-	"app:shutdown":           true,
-	"app:activity":           true,
-	"app:display":            true,
-	"app:counts":             true,
-	"action:magnify":         true,
-	"action:settabtheme":     true,
-	"action:runaicmd":        true,
-	"action:createtab":       true,
-	"action:createblock":     true,
-	"action:openwaveai":      true,
-	"wsh:run":                true,
-	"debug:panic":            true,
-	"conn:connect":           true,
-	"conn:connecterror":      true,
+	"app:startup":  true,
+	"app:shutdown": true,
+	"app:activity": true,
+	"app:display":  true,
+	"app:counts":   true,
+
+	"action:magnify":     true,
+	"action:settabtheme": true,
+	"action:runaicmd":    true,
+	"action:createtab":   true,
+	"action:createblock": true,
+	"action:openwaveai":  true,
+
+	"wsh:run": true,
+
+	"debug:panic": true,
+
+	"conn:connect":      true,
+	"conn:connecterror": true,
+
 	"waveai:enabletelemetry": true,
 	"waveai:post":            true,
 	"waveai:feedback":        true,
-	"onboarding:start":       true,
-	"onboarding:skip":        true,
-	"onboarding:fire":        true,
-	"onboarding:githubstar":  true,
+	"waveai:showdiff":        true,
+	"waveai:revertfile":      true,
+
+	"onboarding:start":      true,
+	"onboarding:skip":       true,
+	"onboarding:fire":       true,
+	"onboarding:githubstar": true,
 }
 
 type TEvent struct {
@@ -137,6 +145,7 @@ type TEventProps struct {
 	WaveAIRequestDurMs         int            `json:"waveai:requestdurms,omitempty"` // ms
 	WaveAIWidgetAccess         bool           `json:"waveai:widgetaccess,omitempty"`
 	WaveAIFeedback             string         `json:"waveai:feedback,omitempty" tstype:"\"good\" | \"bad\""`
+	WaveAIAction               string         `json:"waveai:action,omitempty"`
 
 	UserSet     *TEventUserProps `json:"$set,omitempty"`
 	UserSetOnce *TEventUserProps `json:"$set_once,omitempty"`

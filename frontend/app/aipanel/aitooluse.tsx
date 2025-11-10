@@ -3,6 +3,7 @@
 
 import { BlockModel } from "@/app/block/block-model";
 import { Modal } from "@/app/modals/modal";
+import { recordTEvent } from "@/app/store/global";
 import { cn, fireAndForget } from "@/util/util";
 import { useAtomValue } from "jotai";
 import { memo, useEffect, useRef, useState } from "react";
@@ -151,10 +152,12 @@ const RestoreBackupModal = memo(({ part }: RestoreBackupModalProps) => {
     };
 
     const handleConfirm = () => {
+        recordTEvent("waveai:revertfile", { "waveai:action": "revertfile:confirm" });
         model.restoreBackup(toolData.toolcallid, toolData.writebackupfilename, toolData.inputfilename);
     };
 
     const handleCancel = () => {
+        recordTEvent("waveai:revertfile", { "waveai:action": "revertfile:cancel" });
         model.closeRestoreBackupModal();
     };
 
@@ -309,6 +312,7 @@ const AIToolUse = memo(({ part, isStreaming }: AIToolUseProps) => {
     };
 
     const handleOpenDiff = () => {
+        recordTEvent("waveai:showdiff");
         fireAndForget(() => WaveAIModel.getInstance().openDiff(toolData.inputfilename, toolData.toolcallid));
     };
 
@@ -328,7 +332,10 @@ const AIToolUse = memo(({ part, isStreaming }: AIToolUseProps) => {
                     toolData.runts &&
                     Date.now() - toolData.runts < BackupRetentionDays * 24 * 60 * 60 * 1000 && (
                         <button
-                            onClick={() => model.openRestoreBackupModal(toolData.toolcallid)}
+                            onClick={() => {
+                                recordTEvent("waveai:revertfile", { "waveai:action": "revertfile:open" });
+                                model.openRestoreBackupModal(toolData.toolcallid);
+                            }}
                             className="flex-shrink-0 px-1.5 py-0.5 border border-gray-600 hover:border-gray-500 hover:bg-gray-700 rounded cursor-pointer transition-colors flex items-center gap-1 text-gray-400"
                             title="Restore backup file"
                         >
