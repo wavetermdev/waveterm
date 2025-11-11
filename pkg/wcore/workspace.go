@@ -399,14 +399,10 @@ func ListWorkspaces(ctx context.Context) (waveobj.WorkspaceList, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	log.Println("got workspaces")
-
 	windows, err := wstore.DBGetAllObjsByType[*waveobj.Window](ctx, waveobj.OType_Window)
 	if err != nil {
 		return nil, err
 	}
-
 	workspaceToWindow := make(map[string]string)
 	for _, window := range windows {
 		workspaceToWindow[window.WorkspaceId] = window.OID

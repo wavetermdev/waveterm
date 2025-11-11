@@ -88,6 +88,7 @@ func (oc *OutputCapture) GetLines() []string {
 
 type BuildOpts struct {
 	AppPath        string
+	AppNS          string
 	Verbose        bool
 	Open           bool
 	KeepTemp       bool
@@ -332,9 +333,12 @@ func verifyEnvironment(verbose bool, opts BuildOpts) (*BuildEnv, error) {
 	}, nil
 }
 
-func createGoMod(tempDir, appName, goVersion string, opts BuildOpts, verbose bool) error {
+func createGoMod(tempDir, appNS, appName, goVersion string, opts BuildOpts, verbose bool) error {
 	oc := opts.OutputCapture
-	modulePath := fmt.Sprintf("tsunami/app/%s", appName)
+	if appNS == "" {
+		appNS = "app"
+	}
+	modulePath := fmt.Sprintf("tsunami/%s/%s", appNS, appName)
 
 	// Check if go.mod already exists in temp directory (copied from app path)
 	tempGoModPath := filepath.Join(tempDir, "go.mod")
@@ -648,7 +652,7 @@ func TsunamiBuildInternal(opts BuildOpts) (*BuildEnv, error) {
 
 	// Create go.mod file
 	appName := GetAppName(opts.AppPath)
-	if err := createGoMod(tempDir, appName, buildEnv.GoVersion, opts, opts.Verbose); err != nil {
+	if err := createGoMod(tempDir, opts.AppNS, appName, buildEnv.GoVersion, opts, opts.Verbose); err != nil {
 		return buildEnv, err
 	}
 
@@ -754,7 +758,8 @@ func runGoBuild(tempDir string, opts BuildOpts) error {
 	buildCmd.Dir = tempDir
 
 	if oc != nil || opts.Verbose {
-		oc.Printf("Running: %s", strings.Join(buildCmd.Args, " "))
+		oc.Printf("[debug] Running: %s", strings.Join(buildCmd.Args, " "))
+		oc.Printf("Building application...")
 	}
 	if oc != nil {
 		buildCmd.Stdout = oc
@@ -765,7 +770,7 @@ func runGoBuild(tempDir string, opts BuildOpts) error {
 	}
 
 	if err := buildCmd.Run(); err != nil {
-		return fmt.Errorf("go build compilation failed (see output for errors)")
+		return fmt.Errorf("compilation failed (see output for errors)")
 	}
 	if oc != nil {
 		oc.Flush()
@@ -786,7 +791,6 @@ func generateAppTailwindCss(tempDir string, verbose bool, opts BuildOpts) error 
 	oc := opts.OutputCapture
 	// tailwind.css is already in tempDir from scaffold copy
 	tailwindOutput := filepath.Join(tempDir, "static", "tw.css")
-
 	tailwindCmd := exec.Command(opts.getNodePath(), "node_modules/@tailwindcss/cli/dist/index.mjs",
 		"-i", "./tailwind.css",
 		"-o", tailwindOutput)
@@ -797,22 +801,32 @@ func generateAppTailwindCss(tempDir string, verbose bool, opts BuildOpts) error 
 		oc.Printf("[debug] Running: %s", strings.Join(tailwindCmd.Args, " "))
 	}
 
-	if oc != nil {
-		tailwindCmd.Stdout = oc
-		tailwindCmd.Stderr = oc
-	} else {
-		tailwindCmd.Stdout = os.Stdout
-		tailwindCmd.Stderr = os.Stderr
-	}
-
-	if err := tailwindCmd.Run(); err != nil {
+	output, err := tailwindCmd.CombinedOutput()
+	if err != nil {
 		return fmt.Errorf("tailwind CSS generation failed (see output for errors)")
 	}
 
-	if verbose {
-		oc.Printf("[debug] Tailwind CSS generated successfully")
+	// Process and filter tailwind output
+	lines := strings.Split(string(output), "\n")
+	for _, line := range lines {
+		// Skip empty lines
+		if strings.TrimSpace(line) == "" {
+			continue
+		}
+		// Skip version line (contains ≈ and tailwindcss)
+		if strings.Contains(line, "≈") && strings.Contains(line, "tailwindcss") {
+			continue
+		}
+		// Skip "Done in" timing line
+		if strings.HasPrefix(strings.TrimSpace(line), "Done in") {
+			continue
+		}
+		// Write remaining lines to output
+		oc.Printf("%s", line)
 	}
-
+	if verbose {
+		oc.Printf("Tailwind CSS generated successfully")
+	}
 	return nil
 }
 
