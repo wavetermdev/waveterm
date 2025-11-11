@@ -472,6 +472,11 @@ class RpcApiType {
         return client.wshRpcCall("resolveids", data, opts);
     }
 
+    // command "restartbuilderandwait" [call]
+    RestartBuilderAndWaitCommand(client: WshClient, data: CommandRestartBuilderAndWaitData, opts?: RpcOpts): Promise<RestartBuilderAndWaitResult> {
+        return client.wshRpcCall("restartbuilderandwait", data, opts);
+    }
+
     // command "routeannounce" [call]
     RouteAnnounceCommand(client: WshClient, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("routeannounce", null, opts);

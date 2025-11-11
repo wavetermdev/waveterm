@@ -1,7 +1,9 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { WaveAIModel } from "@/app/aipanel/waveai-model";
 import { BuilderAppPanelModel } from "@/builder/store/builder-apppanel-model";
+import { BuilderBuildPanelModel } from "@/builder/store/builder-buildpanel-model";
 import { atoms } from "@/store/global";
 import { useAtomValue } from "jotai";
 import { memo, useState } from "react";
@@ -30,6 +32,29 @@ EmptyStateView.displayName = "EmptyStateView";
 
 const ErrorStateView = memo(({ errorMsg }: { errorMsg: string }) => {
     const displayMsg = errorMsg && errorMsg.trim() ? errorMsg : "Unknown Error";
+    const waveAIModel = WaveAIModel.getInstance();
+    const buildPanelModel = BuilderBuildPanelModel.getInstance();
+    const outputLines = useAtomValue(buildPanelModel.outputLines);
+    const isStreaming = useAtomValue(waveAIModel.isAIStreaming);
+
+    const getBuildContext = () => {
+        const filteredLines = outputLines.filter((line) => !line.startsWith("[debug]"));
+        const buildOutput = filteredLines.join("\n").trim();
+        return `Build Error:\n\`\`\`\n${displayMsg}\n\`\`\`\n\nBuild Output:\n\`\`\`\n${buildOutput}\n\`\`\``;
+    };
+
+    const handleAddToContext = () => {
+        const context = getBuildContext();
+        waveAIModel.appendText(context, true);
+        waveAIModel.focusInput();
+    };
+
+    const handleAskAIToFix = async () => {
+        const context = getBuildContext();
+        waveAIModel.appendText("Please help me fix this build error:\n\n" + context, true);
+        await waveAIModel.handleSubmit();
+    };
+
     return (
         <div className="w-full h-full flex items-center justify-center bg-background">
             <div className="flex flex-col items-center gap-6 max-w-2xl text-center px-8">
@@ -38,6 +63,22 @@ const ErrorStateView = memo(({ errorMsg }: { errorMsg: string }) => {
                     <div className="text-left bg-panel border border-error/30 rounded-lg p-4 max-h-96 overflow-auto">
                         <pre className="text-sm text-secondary whitespace-pre-wrap font-mono">{displayMsg}</pre>
                     </div>
+                    {!isStreaming && (
+                        <div className="flex gap-3 mt-2 justify-center">
+                            <button
+                                onClick={handleAddToContext}
+                                className="px-4 py-2 bg-panel text-primary border border-border rounded hover:bg-panel/80 transition-colors cursor-pointer"
+                            >
+                                Add Error to AI Context
+                            </button>
+                            <button
+                                onClick={handleAskAIToFix}
+                                className="px-4 py-2 bg-accent text-primary font-semibold rounded hover:bg-accent/80 transition-colors cursor-pointer"
+                            >
+                                Ask AI to Fix
+                            </button>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>

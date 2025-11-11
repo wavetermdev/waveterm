@@ -255,6 +255,10 @@ const AIPanelComponentInner = memo(() => {
     };
 
     useEffect(() => {
+        globalStore.set(model.isAIStreaming, status == "streaming");
+    }, [status]);
+
+    useEffect(() => {
         const keyHandler = keydownWrapper(handleKeyDown);
         document.addEventListener("keydown", keyHandler);
         return () => {

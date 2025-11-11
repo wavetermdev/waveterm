@@ -717,8 +717,8 @@ func WaveAIPostMessageHandler(w http.ResponseWriter, r *http.Request) {
 
 	if req.BuilderAppId != "" {
 		chatOpts.Tools = append(chatOpts.Tools,
-			GetBuilderWriteAppFileToolDefinition(req.BuilderAppId),
-			GetBuilderEditAppFileToolDefinition(req.BuilderAppId),
+			GetBuilderWriteAppFileToolDefinition(req.BuilderAppId, req.BuilderId),
+			GetBuilderEditAppFileToolDefinition(req.BuilderAppId, req.BuilderId),
 			GetBuilderListFilesToolDefinition(req.BuilderAppId),
 		)
 	}

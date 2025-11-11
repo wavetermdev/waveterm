@@ -52,6 +52,7 @@ export class WaveAIModel {
     realMessage: AIMessage | null = null;
     orefContext: ORef;
     inBuilder: boolean = false;
+    isAIStreaming = jotai.atom(false);
 
     widgetAccessAtom!: jotai.Atom<boolean>;
     droppedFiles: jotai.PrimitiveAtom<DroppedFile[]> = jotai.atom([]);

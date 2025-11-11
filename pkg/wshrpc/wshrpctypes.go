@@ -157,17 +157,18 @@ const (
 	Command_TermGetScrollbackLines = "termgetscrollbacklines"
 
 	// builder
-	Command_ListAllEditableApps = "listalleditableapps"
-	Command_ListAllAppFiles     = "listallappfiles"
-	Command_ReadAppFile         = "readappfile"
-	Command_WriteAppFile        = "writeappfile"
-	Command_DeleteAppFile       = "deleteappfile"
-	Command_RenameAppFile       = "renameappfile"
-	Command_DeleteBuilder       = "deletebuilder"
-	Command_StartBuilder        = "startbuilder"
-	Command_GetBuilderStatus    = "getbuilderstatus"
-	Command_GetBuilderOutput    = "getbuilderoutput"
-	Command_CheckGoVersion      = "checkgoversion"
+	Command_ListAllEditableApps   = "listalleditableapps"
+	Command_ListAllAppFiles       = "listallappfiles"
+	Command_ReadAppFile           = "readappfile"
+	Command_WriteAppFile          = "writeappfile"
+	Command_DeleteAppFile         = "deleteappfile"
+	Command_RenameAppFile         = "renameappfile"
+	Command_DeleteBuilder         = "deletebuilder"
+	Command_StartBuilder          = "startbuilder"
+	Command_RestartBuilderAndWait = "restartbuilderandwait"
+	Command_GetBuilderStatus      = "getbuilderstatus"
+	Command_GetBuilderOutput      = "getbuilderoutput"
+	Command_CheckGoVersion        = "checkgoversion"
 
 	// electron
 	Command_ElectronEncrypt = "electronencrypt"
@@ -334,6 +335,7 @@ type WshRpcInterface interface {
 	RenameAppFileCommand(ctx context.Context, data CommandRenameAppFileData) error
 	DeleteBuilderCommand(ctx context.Context, builderId string) error
 	StartBuilderCommand(ctx context.Context, data CommandStartBuilderData) error
+	RestartBuilderAndWaitCommand(ctx context.Context, data CommandRestartBuilderAndWaitData) (*RestartBuilderAndWaitResult, error)
 	GetBuilderStatusCommand(ctx context.Context, builderId string) (*BuilderStatusData, error)
 	GetBuilderOutputCommand(ctx context.Context, builderId string) ([]string, error)
 	CheckGoVersionCommand(ctx context.Context) (*CommandCheckGoVersionRtnData, error)
@@ -1015,6 +1017,16 @@ type CommandRenameAppFileData struct {
 
 type CommandStartBuilderData struct {
 	BuilderId string `json:"builderid"`
+}
+
+type CommandRestartBuilderAndWaitData struct {
+	BuilderId string `json:"builderid"`
+}
+
+type RestartBuilderAndWaitResult struct {
+	Success      bool   `json:"success"`
+	ErrorMessage string `json:"errormessage,omitempty"`
+	BuildOutput  string `json:"buildoutput"`
 }
 
 type BuilderStatusData struct {
