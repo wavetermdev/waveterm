@@ -42,8 +42,10 @@ type VDomEvent = {
     targetchecked?: boolean;
     targetname?: string;
     targetid?: string;
+    targetfiles?: VDomFileData[];
     keydata?: VDomKeyboardEvent;
     mousedata?: VDomPointerData;
+    formdata?: VDomFormData;
 };
 
 // vdom.VDomFrontendUpdate
@@ -203,4 +205,25 @@ type VDomPointerData = {
     meta?: boolean;
     cmd?: boolean;
     option?: boolean;
+};
+
+// vdom.VDomFormData
+type VDomFormData = {
+    action?: string;
+    method: string;
+    enctype: string;
+    formid?: string;
+    formname?: string;
+    fields: { [key: string]: string[] };
+    files: { [key: string]: VDomFileData[] };
+};
+
+// vdom.VDomFileData
+type VDomFileData = {
+    fieldname: string;
+    name: string;
+    size: number;
+    type: string;
+    data64?: string;
+    error?: string;
 };
