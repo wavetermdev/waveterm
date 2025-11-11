@@ -40,8 +40,7 @@ func MakeOutputCapture() *OutputCapture {
 		lines: make([]string, 0),
 	}
 	oc.lineWriter = util.NewLineWriter(func(line []byte) {
-		oc.lock.Lock()
-		defer oc.lock.Unlock()
+		// synchronized via the Write/Flush functions
 		oc.lines = append(oc.lines, string(line))
 	})
 	return oc
@@ -51,6 +50,8 @@ func (oc *OutputCapture) Write(p []byte) (n int, err error) {
 	if oc == nil {
 		return os.Stdout.Write(p)
 	}
+	oc.lock.Lock()
+	defer oc.lock.Unlock()
 	return oc.lineWriter.Write(p)
 }
 
@@ -58,11 +59,13 @@ func (oc *OutputCapture) Flush() {
 	if oc == nil || oc.lineWriter == nil {
 		return
 	}
+	oc.lock.Lock()
+	defer oc.lock.Unlock()
 	oc.lineWriter.Flush()
 }
 
 func (oc *OutputCapture) Printf(format string, args ...interface{}) {
-	if oc == nil {
+	if oc == nil || oc.lineWriter == nil {
 		log.Printf(format, args...)
 		return
 	}
@@ -340,7 +343,7 @@ func createGoMod(tempDir, appName, goVersion string, opts BuildOpts, verbose boo
 	tidyCmd := exec.Command("go", "mod", "tidy")
 	tidyCmd.Dir = tempDir
 
-	if verbose {
+	if oc != nil || verbose {
 		oc.Printf("Running go mod tidy")
 		tidyCmd.Stdout = oc
 		tidyCmd.Stderr = oc
@@ -349,6 +352,7 @@ func createGoMod(tempDir, appName, goVersion string, opts BuildOpts, verbose boo
 	if err := tidyCmd.Run(); err != nil {
 		return fmt.Errorf("failed to run go mod tidy: %w", err)
 	}
+	oc.Flush()
 
 	if verbose {
 		oc.Printf("Successfully ran go mod tidy")
@@ -672,11 +676,8 @@ func runGoBuild(tempDir string, opts BuildOpts) error {
 	buildCmd := exec.Command("go", args...)
 	buildCmd.Dir = tempDir
 
-	if opts.Verbose {
-		oc.Printf("Running: %s", strings.Join(buildCmd.Args, " "))
-	}
-
 	if oc != nil || opts.Verbose {
+		oc.Printf("Running: %s", strings.Join(buildCmd.Args, " "))
 		buildCmd.Stdout = oc
 		buildCmd.Stderr = oc
 	}
@@ -684,6 +685,7 @@ func runGoBuild(tempDir string, opts BuildOpts) error {
 	if err := buildCmd.Run(); err != nil {
 		return fmt.Errorf("failed to build application: %w", err)
 	}
+	oc.Flush()
 
 	if opts.Verbose {
 		if opts.OutputFile != "" {
