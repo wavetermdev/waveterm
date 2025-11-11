@@ -124,6 +124,12 @@ const (
 )
 
 const (
+	ThinkingModeQuick    = "quick"
+	ThinkingModeBalanced = "balanced"
+	ThinkingModeDeep     = "deep"
+)
+
+const (
 	ToolUseStatusPending   = "pending"
 	ToolUseStatusError     = "error"
 	ToolUseStatusCompleted = "completed"

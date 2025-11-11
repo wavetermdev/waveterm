@@ -1,6 +1,7 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { atoms } from "@/app/store/global";
 import { useAtomValue } from "jotai";
 import { memo, useRef, useState } from "react";
 import { WaveAIModel } from "./waveai-model";
@@ -11,6 +12,7 @@ interface ThinkingModeMetadata {
     icon: string;
     name: string;
     desc: string;
+    premium: boolean;
 }
 
 const ThinkingModeData: Record<ThinkingMode, ThinkingModeMetadata> = {
@@ -18,32 +20,46 @@ const ThinkingModeData: Record<ThinkingMode, ThinkingModeMetadata> = {
         icon: "fa-bolt",
         name: "Quick",
         desc: "Fastest responses (gpt-5-mini)",
+        premium: false,
     },
     balanced: {
         icon: "fa-sparkles",
         name: "Balanced",
         desc: "Good mix of speed and accuracy\n(gpt-5 with minimal thinking)",
+        premium: true,
     },
     deep: {
         icon: "fa-lightbulb",
         name: "Deep",
         desc: "Slower but most capable\n(gpt-5 with full reasoning)",
+        premium: true,
     },
 };
 
 export const ThinkingLevelDropdown = memo(() => {
     const model = WaveAIModel.getInstance();
     const thinkingMode = useAtomValue(model.thinkingMode);
+    const rateLimitInfo = useAtomValue(atoms.waveAIRateLimitInfoAtom);
     const [isOpen, setIsOpen] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
 
+    const hasPremium = !rateLimitInfo || rateLimitInfo.unknown || rateLimitInfo.preq > 0;
+
     const handleSelect = (mode: ThinkingMode) => {
+        const metadata = ThinkingModeData[mode];
+        if (!hasPremium && metadata.premium) {
+            return;
+        }
         model.setThinkingMode(mode);
         setIsOpen(false);
     };
 
-    const currentMode = (thinkingMode as ThinkingMode) || "balanced";
+    let currentMode = (thinkingMode as ThinkingMode) || "balanced";
     const currentMetadata = ThinkingModeData[currentMode];
+    if (!hasPremium && currentMetadata.premium) {
+        currentMode = "quick";
+        model.setThinkingMode("quick");
+    }
 
     return (
         <div className="relative" ref={dropdownRef}>
@@ -63,19 +79,30 @@ export const ThinkingLevelDropdown = memo(() => {
                     <div className="absolute top-full right-0 mt-1 bg-gray-800 border border-gray-600 rounded shadow-lg z-50 min-w-[280px]">
                         {(Object.keys(ThinkingModeData) as ThinkingMode[]).map((mode, index) => {
                             const metadata = ThinkingModeData[mode];
+                            const isFirst = index === 0;
                             const isLast = index === Object.keys(ThinkingModeData).length - 1;
+                            const isDisabled = !hasPremium && metadata.premium;
+                            const isSelected = thinkingMode === mode;
                             return (
                                 <button
                                     key={mode}
                                     onClick={() => handleSelect(mode)}
-                                    className={`w-full flex flex-col gap-0.5 px-3 pt-1.5 ${isLast ? "pb-1.5" : ""} text-gray-300 hover:bg-gray-700 transition-colors cursor-pointer text-left`}
+                                    disabled={isDisabled}
+                                    className={`w-full flex flex-col gap-0.5 px-3 ${
+                                        isFirst ? "pt-1.5 pb-0.75" : isLast ? "pt-0.75 pb-1.5" : "pt-0.75 pb-0.75"
+                                    } ${
+                                        isDisabled
+                                            ? "text-gray-500 cursor-not-allowed"
+                                            : "text-gray-300 hover:bg-gray-700 cursor-pointer"
+                                    } transition-colors text-left`}
                                 >
                                     <div className="flex items-center gap-2 w-full">
                                         <i className={`fa ${metadata.icon}`}></i>
-                                        <span className={`text-sm ${thinkingMode === mode ? "font-bold" : ""}`}>
+                                        <span className={`text-sm ${isSelected ? "font-bold" : ""}`}>
                                             {metadata.name}
+                                            {isDisabled && " (premium)"}
                                         </span>
-                                        {thinkingMode === mode && <i className="fa fa-check ml-auto"></i>}
+                                        {isSelected && <i className="fa fa-check ml-auto"></i>}
                                     </div>
                                     <div className="text-xs text-muted pl-5" style={{ whiteSpace: "pre-line" }}>
                                         {metadata.desc}

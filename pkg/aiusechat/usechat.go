@@ -110,9 +110,6 @@ func getWaveAISettings(premium bool, builderMode bool, rtInfo *waveobj.ObjRTInfo
 	}
 	if DefaultAPI == APIType_Anthropic {
 		thinkingLevel := uctypes.ThinkingLevelMedium
-		if rtInfo != nil && rtInfo.WaveAIThinkingMode != "" {
-			thinkingLevel = rtInfo.WaveAIThinkingMode
-		}
 		return &uctypes.AIOptsType{
 			APIType:       APIType_Anthropic,
 			Model:         uctypes.DefaultAnthropicModel,
@@ -121,15 +118,29 @@ func getWaveAISettings(premium bool, builderMode bool, rtInfo *waveobj.ObjRTInfo
 			BaseURL:       baseUrl,
 		}, nil
 	} else if DefaultAPI == APIType_OpenAI {
-		model := uctypes.DefaultOpenAIModel
-		thinkingLevel := uctypes.ThinkingLevelLow
-		if premium {
+		thinkingMode := uctypes.ThinkingModeBalanced
+		if rtInfo != nil && rtInfo.WaveAIThinkingMode != "" {
+			thinkingMode = rtInfo.WaveAIThinkingMode
+		}
+
+		var model string
+		var thinkingLevel string
+
+		switch thinkingMode {
+		case uctypes.ThinkingModeQuick:
+			model = uctypes.DefaultOpenAIModel
+			thinkingLevel = uctypes.ThinkingLevelLow
+		case uctypes.ThinkingModeBalanced:
+			model = uctypes.PremiumOpenAIModel
+			thinkingLevel = uctypes.ThinkingLevelLow
+		case uctypes.ThinkingModeDeep:
 			model = uctypes.PremiumOpenAIModel
 			thinkingLevel = uctypes.ThinkingLevelMedium
-			if rtInfo != nil && rtInfo.WaveAIThinkingMode != "" {
-				thinkingLevel = rtInfo.WaveAIThinkingMode
-			}
+		default:
+			model = uctypes.PremiumOpenAIModel
+			thinkingLevel = uctypes.ThinkingLevelLow
 		}
+
 		return &uctypes.AIOptsType{
 			APIType:       APIType_OpenAI,
 			Model:         model,
