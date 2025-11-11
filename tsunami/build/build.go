@@ -119,6 +119,13 @@ func (opts BuildOpts) getNodePath() string {
 	return "node"
 }
 
+type GoVersionCheckResult struct {
+	GoStatus     string
+	GoPath       string
+	GoVersion    string
+	ErrorString  string
+}
+
 func FindGoExecutable() (string, error) {
 	// First try the standard PATH lookup
 	if goPath, err := exec.LookPath("go"); err == nil {
@@ -156,6 +163,88 @@ func FindGoExecutable() (string, error) {
 	return "", fmt.Errorf("go command not found in PATH or common installation locations")
 }
 
+func CheckGoVersion(customGoPath string) GoVersionCheckResult {
+	var goPath string
+	var err error
+
+	if customGoPath != "" {
+		goPath = customGoPath
+	} else {
+		goPath, err = FindGoExecutable()
+		if err != nil {
+			return GoVersionCheckResult{
+				GoStatus:    "notfound",
+				GoPath:      "",
+				GoVersion:   "",
+				ErrorString: "",
+			}
+		}
+	}
+
+	cmd := exec.Command(goPath, "version")
+	output, err := cmd.Output()
+	if err != nil {
+		return GoVersionCheckResult{
+			GoStatus:    "error",
+			GoPath:      goPath,
+			GoVersion:   "",
+			ErrorString: fmt.Sprintf("failed to run 'go version': %v", err),
+		}
+	}
+
+	versionStr := strings.TrimSpace(string(output))
+
+	versionRegex := regexp.MustCompile(`go(1\.\d+)`)
+	matches := versionRegex.FindStringSubmatch(versionStr)
+	if len(matches) < 2 {
+		return GoVersionCheckResult{
+			GoStatus:    "error",
+			GoPath:      goPath,
+			GoVersion:   versionStr,
+			ErrorString: fmt.Sprintf("unable to parse go version from: %s", versionStr),
+		}
+	}
+
+	goVersion := matches[1]
+
+	minorRegex := regexp.MustCompile(`1\.(\d+)`)
+	minorMatches := minorRegex.FindStringSubmatch(goVersion)
+	if len(minorMatches) < 2 {
+		return GoVersionCheckResult{
+			GoStatus:    "error",
+			GoPath:      goPath,
+			GoVersion:   versionStr,
+			ErrorString: fmt.Sprintf("unable to parse minor version from: %s", goVersion),
+		}
+	}
+
+	minor, err := strconv.Atoi(minorMatches[1])
+	if err != nil {
+		return GoVersionCheckResult{
+			GoStatus:    "error",
+			GoPath:      goPath,
+			GoVersion:   versionStr,
+			ErrorString: fmt.Sprintf("failed to parse minor version: %v", err),
+		}
+	}
+
+	if minor < MinSupportedGoMinorVersion {
+		return GoVersionCheckResult{
+			GoStatus:    "badversion",
+			GoPath:      goPath,
+			GoVersion:   versionStr,
+			ErrorString: "",
+		}
+	}
+
+	return GoVersionCheckResult{
+		GoStatus:    "ok",
+		GoPath:      goPath,
+		GoVersion:   versionStr,
+		ErrorString: "",
+	}
+}
+
 func verifyEnvironment(verbose bool, opts BuildOpts) (*BuildEnv, error) {
 	oc := opts.OutputCapture
 
@@ -170,57 +259,36 @@ func verifyEnvironment(verbose bool, opts BuildOpts) (*BuildEnv, error) {
 		}
 	}
 
-	var goPath string
-	var err error
+	result := CheckGoVersion(opts.GoPath)
 
-	if opts.GoPath != "" {
-		goPath = opts.GoPath
+	switch result.GoStatus {
+	case "notfound":
+		return nil, fmt.Errorf("go command not found")
+	case "badversion":
+		return nil, fmt.Errorf("go version 1.%d or higher required, found: %s", MinSupportedGoMinorVersion, result.GoVersion)
+	case "error":
+		return nil, fmt.Errorf("%s", result.ErrorString)
+	case "ok":
 		if verbose {
-			oc.Printf("Using custom go path: %s", opts.GoPath)
+			if opts.GoPath != "" {
+				oc.Printf("Using custom go path: %s", result.GoPath)
+			} else {
+				oc.Printf("Using go path: %s", result.GoPath)
+			}
+			oc.Printf("Found %s", result.GoVersion)
 		}
-	} else {
-		goPath, err = FindGoExecutable()
-		if err != nil {
-			return nil, fmt.Errorf("go command not found: %w", err)
-		}
-		if verbose {
-			oc.Printf("Using go path: %s", goPath)
-		}
+	default:
+		return nil, fmt.Errorf("unexpected go status: %s", result.GoStatus)
 	}
 
-	// Run go version command
-	cmd := exec.Command(goPath, "version")
-	output, err := cmd.Output()
-	if err != nil {
-		return nil, fmt.Errorf("failed to run 'go version': %w", err)
-	}
-
-	// Parse go version output and check for 1.22+
-	versionStr := strings.TrimSpace(string(output))
-	if verbose {
-		oc.Printf("Found %s", versionStr)
-	}
-
-	// Extract version like "go1.22.0" from output
 	versionRegex := regexp.MustCompile(`go(1\.\d+)`)
-	matches := versionRegex.FindStringSubmatch(versionStr)
+	matches := versionRegex.FindStringSubmatch(result.GoVersion)
 	if len(matches) < 2 {
-		return nil, fmt.Errorf("unable to parse go version from: %s", versionStr)
+		return nil, fmt.Errorf("unable to parse go version from: %s", result.GoVersion)
 	}
-
 	goVersion := matches[1]
 
-	// Check if version is 1.22+
-	minorRegex := regexp.MustCompile(`1\.(\d+)`)
-	minorMatches := minorRegex.FindStringSubmatch(goVersion)
-	if len(minorMatches) < 2 {
-		return nil, fmt.Errorf("unable to parse minor version from: %s", goVersion)
-	}
-
-	minor, err := strconv.Atoi(minorMatches[1])
-	if err != nil || minor < MinSupportedGoMinorVersion {
-		return nil, fmt.Errorf("go version 1.%d or higher required, found: %s", MinSupportedGoMinorVersion, versionStr)
-	}
+	var err error
 
 	// Check if node is available
 	if opts.NodePath != "" {

@@ -173,6 +173,14 @@ declare global {
         blockid: string;
     };
 
+    // wshrpc.CommandCheckGoVersionRtnData
+    type CommandCheckGoVersionRtnData = {
+        gostatus: string;
+        gopath: string;
+        goversion: string;
+        errorstring?: string;
+    };
+
     // wshrpc.CommandControllerAppendOutputData
     type CommandControllerAppendOutputData = {
         blockid: string;
