@@ -56,6 +56,7 @@ export class WaveAIModel {
     widgetAccessAtom!: jotai.Atom<boolean>;
     droppedFiles: jotai.PrimitiveAtom<DroppedFile[]> = jotai.atom([]);
     chatId!: jotai.PrimitiveAtom<string>;
+    thinkingMode: jotai.PrimitiveAtom<string> = jotai.atom("balanced");
     errorMessage: jotai.PrimitiveAtom<string> = jotai.atom(null) as jotai.PrimitiveAtom<string>;
     modelAtom!: jotai.Atom<string>;
     containerWidth: jotai.PrimitiveAtom<number> = jotai.atom(0);
@@ -331,6 +332,14 @@ export class WaveAIModel {
         });
     }
 
+    setThinkingMode(mode: string) {
+        globalStore.set(this.thinkingMode, mode);
+        RpcApi.SetRTInfoCommand(TabRpcClient, {
+            oref: this.orefContext,
+            data: { "waveai:thinkingmode": mode },
+        });
+    }
+
     async loadInitialChat(): Promise<WaveUIMessage[]> {
         const rtInfo = await RpcApi.GetRTInfoCommand(TabRpcClient, {
             oref: this.orefContext,
@@ -344,6 +353,9 @@ export class WaveAIModel {
             });
         }
         globalStore.set(this.chatId, chatIdValue);
+
+        const thinkingModeValue = rtInfo?.["waveai:thinkingmode"] ?? "balanced";
+        globalStore.set(this.thinkingMode, thinkingModeValue);
 
         try {
             const chatData = await RpcApi.GetWaveAIChatCommand(TabRpcClient, { chatid: chatIdValue });

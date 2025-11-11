@@ -853,7 +853,7 @@ declare global {
         "builder:appid"?: string;
         "builder:env"?: {[key: string]: string};
         "waveai:chatid"?: string;
-        "waveai:thinkinglevel"?: string;
+        "waveai:thinkingmode"?: string;
         "waveai:maxoutputtokens"?: number;
     };
 

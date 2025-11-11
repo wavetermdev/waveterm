@@ -21,6 +21,7 @@ import { AIPanelInput } from "./aipanelinput";
 import { AIPanelMessages } from "./aipanelmessages";
 import { AIRateLimitStrip } from "./airatelimitstrip";
 import { TelemetryRequiredMessage } from "./telemetryrequired";
+import { ThinkingLevelDropdown } from "./thinkinglevel";
 import { WaveAIModel } from "./waveai-model";
 
 const AIBlockMask = memo(() => {
@@ -489,9 +490,12 @@ const AIPanelComponentInner = memo(() => {
                     <>
                         {messages.length === 0 && initialLoadDone ? (
                             <div
-                                className="flex-1 overflow-y-auto p-2"
+                                className="flex-1 overflow-y-auto p-2 relative"
                                 onContextMenu={(e) => handleWaveAIContextMenu(e, true)}
                             >
+                                <div className="absolute top-2 right-2 z-10">
+                                    <ThinkingLevelDropdown />
+                                </div>
                                 {model.inBuilder ? <AIBuilderWelcomeMessage /> : <AIWelcomeMessage />}
                             </div>
                         ) : (

@@ -38,41 +38,41 @@ export async function handleWaveAIContextMenu(e: React.MouseEvent, showCopy: boo
         oref: model.orefContext,
     });
 
-    const currentThinkingLevel = rtInfo?.["waveai:thinkinglevel"] ?? "medium";
+    const currentThinkingMode = rtInfo?.["waveai:thinkingmode"] ?? "balanced";
     const defaultTokens = model.inBuilder ? 24576 : 4096;
     const currentMaxTokens = rtInfo?.["waveai:maxoutputtokens"] ?? defaultTokens;
 
-    const thinkingLevelSubmenu: ContextMenuItem[] = [
+    const thinkingModeSubmenu: ContextMenuItem[] = [
         {
-            label: "Low",
+            label: "Quick (gpt-5-mini)",
             type: "checkbox",
-            checked: currentThinkingLevel === "low",
+            checked: currentThinkingMode === "quick",
             click: () => {
                 RpcApi.SetRTInfoCommand(TabRpcClient, {
                     oref: model.orefContext,
-                    data: { "waveai:thinkinglevel": "low" },
+                    data: { "waveai:thinkingmode": "quick" },
                 });
             },
         },
         {
-            label: "Medium",
+            label: "Balanced (gpt-5, low thinking)",
             type: "checkbox",
-            checked: currentThinkingLevel === "medium",
+            checked: currentThinkingMode === "balanced",
             click: () => {
                 RpcApi.SetRTInfoCommand(TabRpcClient, {
                     oref: model.orefContext,
-                    data: { "waveai:thinkinglevel": "medium" },
+                    data: { "waveai:thinkingmode": "balanced" },
                 });
             },
         },
         {
-            label: "High",
+            label: "Deep (gpt-5, full thinking)",
             type: "checkbox",
-            checked: currentThinkingLevel === "high",
+            checked: currentThinkingMode === "deep",
             click: () => {
                 RpcApi.SetRTInfoCommand(TabRpcClient, {
                     oref: model.orefContext,
-                    data: { "waveai:thinkinglevel": "high" },
+                    data: { "waveai:thinkingmode": "deep" },
                 });
             },
         },
@@ -157,8 +157,8 @@ export async function handleWaveAIContextMenu(e: React.MouseEvent, showCopy: boo
     }
 
     menu.push({
-        label: "Thinking Level",
-        submenu: thinkingLevelSubmenu,
+        label: "Thinking Mode",
+        submenu: thinkingModeSubmenu,
     });
 
     menu.push({
