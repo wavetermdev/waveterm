@@ -65,7 +65,11 @@ var App = app.DefineComponent("App", func(_ struct{}) any {
 	},
 		vdom.H("h1", map[string]any{
 			"className": "text-3xl font-bold mb-6 text-white",
-		}, "Tsunami Dropdown Test"),
+		}, "Tsunami Custom Dropdown"),
+
+		vdom.H("p", map[string]any{
+			"className": "text-gray-300 mb-8",
+		}, "This is a custom-styled dropdown component (not native HTML select). Features include: keyboard navigation (↑↓ arrows, Enter, Escape), click-outside to close, disabled options, and smooth animations."),
 
 		vdom.H("div", map[string]any{
 			"className": "space-y-8",

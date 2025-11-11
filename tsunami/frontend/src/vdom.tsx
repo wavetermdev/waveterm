@@ -282,6 +282,17 @@ function WaveMarkdown({ elem, model }: { elem: VDomElem; model: TsunamiModel }) 
 
 function WaveDropdown({ elem, model }: { elem: VDomElem; model: TsunamiModel }) {
     const props = useVDom(model, elem);
+    
+    // Create a handler that wraps the onChange prop if it exists
+    const handleChange = props?.onChange ? (value: string) => {
+        // Create a synthetic event-like object for VDOM
+        const syntheticEvent = {
+            target: { value },
+            currentTarget: { value }
+        } as any;
+        props.onChange(syntheticEvent);
+    } : undefined;
+    
     return (
         <Dropdown 
             options={props?.options} 
@@ -290,7 +301,7 @@ function WaveDropdown({ elem, model }: { elem: VDomElem; model: TsunamiModel }) 
             disabled={props?.disabled}
             style={props?.style} 
             className={props?.className}
-            multiple={props?.multiple}
+            onChange={handleChange}
         />
     );
 }
