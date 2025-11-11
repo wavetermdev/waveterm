@@ -6,6 +6,7 @@ import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { atoms, globalStore } from "@/store/global";
 import * as WOS from "@/store/wos";
+import { formatRelativeTime } from "@/util/util";
 import { useEffect, useState } from "react";
 
 const MaxAppNameLength = 50;
@@ -49,7 +50,7 @@ function CreateNewWaveApp({ onCreateApp }: { onCreateApp: (appName: string) => P
 
     return (
         <div className="min-h-[80px]">
-            <h3 className="text-base font-medium mb-2 text-muted-foreground">Create New WaveApp</h3>
+            <h3 className="text-base font-medium mb-1 text-muted-foreground">Create New WaveApp</h3>
             <div className="relative">
                 <div className="flex w-full">
                     <input
@@ -163,7 +164,7 @@ export function AppSelectionModal() {
     return (
         <FlexiModal className="min-w-[600px] w-[600px] max-h-[90vh] overflow-y-auto">
             <div className="w-full px-2 pt-0 pb-4">
-                <h2 className="text-2xl mb-6">Select a WaveApp to Edit</h2>
+                <h2 className="text-2xl mb-2">Select a WaveApp to Edit</h2>
 
                 {error && (
                     <div className="mb-6 px-4 py-3 bg-panel rounded">
@@ -175,18 +176,23 @@ export function AppSelectionModal() {
                 )}
 
                 {apps.length > 0 && (
-                    <div className="mb-6">
-                        <h3 className="text-base font-medium mb-2 text-muted-foreground">Existing WaveApps</h3>
-                        <div className="space-y-2 max-h-[200px] overflow-y-auto">
+                    <div className="mb-2">
+                        <h3 className="text-base font-medium mb-1 text-muted-foreground">Existing WaveApps</h3>
+                        <div className="space-y-2 max-h-[220px] overflow-y-auto">
                             {apps.map((appInfo) => (
                                 <button
                                     key={appInfo.appid}
                                     onClick={() => handleSelectApp(appInfo.appid)}
-                                    className="w-full text-left px-4 py-3 bg-panel hover:bg-hover border border-border rounded transition-colors cursor-pointer"
+                                    className="w-full text-left px-4 py-1.5 bg-panel hover:bg-hover border border-border rounded transition-colors cursor-pointer"
                                 >
                                     <div className="flex items-center gap-3">
-                                        <i className="fa-solid fa-cube"></i>
-                                        <span>{getAppDisplayName(appInfo.appid)}</span>
+                                        <i className="fa-solid fa-cube self-center"></i>
+                                        <div className="flex flex-col">
+                                            <span>{getAppDisplayName(appInfo.appid)}</span>
+                                            <span className="text-[11px] text-muted mt-0.5">
+                                                Last updated: {formatRelativeTime(appInfo.modtime)}
+                                            </span>
+                                        </div>
                                     </div>
                                 </button>
                             ))}
