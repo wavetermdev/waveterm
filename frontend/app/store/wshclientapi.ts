@@ -42,6 +42,11 @@ class RpcApiType {
         return client.wshRpcCall("captureblockscreenshot", data, opts);
     }
 
+    // command "checkgoversion" [call]
+    CheckGoVersionCommand(client: WshClient, opts?: RpcOpts): Promise<CommandCheckGoVersionRtnData> {
+        return client.wshRpcCall("checkgoversion", null, opts);
+    }
+
     // command "connconnect" [call]
     ConnConnectCommand(client: WshClient, data: ConnRequest, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("connconnect", data, opts);

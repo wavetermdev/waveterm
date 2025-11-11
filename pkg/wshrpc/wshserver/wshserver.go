@@ -57,6 +57,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wsl"
 	"github.com/wavetermdev/waveterm/pkg/wslconn"
 	"github.com/wavetermdev/waveterm/pkg/wstore"
+	"github.com/wavetermdev/waveterm/tsunami/build"
 )
 
 var InvalidWslDistroNames = []string{"docker-desktop", "docker-desktop-data"}
@@ -1071,6 +1072,21 @@ func (ws *WshServer) GetBuilderOutputCommand(ctx context.Context, builderId stri
 	}
 	bc := buildercontroller.GetOrCreateController(builderId)
 	return bc.GetOutput(), nil
+}
+
+func (ws *WshServer) CheckGoVersionCommand(ctx context.Context) (*wshrpc.CommandCheckGoVersionRtnData, error) {
+	watcher := wconfig.GetWatcher()
+	fullConfig := watcher.GetFullConfig()
+	goPath := fullConfig.Settings.TsunamiGoPath
+
+	result := build.CheckGoVersion(goPath)
+
+	return &wshrpc.CommandCheckGoVersionRtnData{
+		GoStatus:    result.GoStatus,
+		GoPath:      result.GoPath,
+		GoVersion:   result.GoVersion,
+		ErrorString: result.ErrorString,
+	}, nil
 }
 
 func (ws *WshServer) RecordTEventCommand(ctx context.Context, data telemetrydata.TEvent) error {

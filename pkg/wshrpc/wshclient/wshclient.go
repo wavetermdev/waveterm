@@ -59,6 +59,12 @@ func CaptureBlockScreenshotCommand(w *wshutil.WshRpc, data wshrpc.CommandCapture
 	return resp, err
 }
 
+// command "checkgoversion", wshserver.CheckGoVersionCommand
+func CheckGoVersionCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) (*wshrpc.CommandCheckGoVersionRtnData, error) {
+	resp, err := sendRpcRequestCallHelper[*wshrpc.CommandCheckGoVersionRtnData](w, "checkgoversion", nil, opts)
+	return resp, err
+}
+
 // command "connconnect", wshserver.ConnConnectCommand
 func ConnConnectCommand(w *wshutil.WshRpc, data wshrpc.ConnRequest, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "connconnect", data, opts)
