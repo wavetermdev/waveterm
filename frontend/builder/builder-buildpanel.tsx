@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { WaveAIModel } from "@/app/aipanel/waveai-model";
+import { globalStore } from "@/app/store/jotaiStore";
 import { ContextMenuModel } from "@/app/store/contextmenu";
 import { BuilderBuildPanelModel } from "@/builder/store/builder-buildpanel-model";
 import { useAtomValue } from "jotai";
@@ -35,6 +36,7 @@ function handleBuildPanelContextMenu(e: React.MouseEvent, selectedText: string):
 const BuilderBuildPanel = memo(() => {
     const model = BuilderBuildPanelModel.getInstance();
     const outputLines = useAtomValue(model.outputLines);
+    const showDebug = useAtomValue(model.showDebug);
     const scrollRef = useRef<HTMLDivElement>(null);
     const preRef = useRef<HTMLPreElement>(null);
 
@@ -71,10 +73,25 @@ const BuilderBuildPanel = memo(() => {
         handleBuildPanelContextMenu(e, selectedText);
     }, []);
 
+    const handleDebugToggle = useCallback(() => {
+        globalStore.set(model.showDebug, !showDebug);
+    }, [model, showDebug]);
+
+    const filteredLines = showDebug ? outputLines : outputLines.filter((line) => !line.startsWith("[debug]"));
+
     return (
         <div className="w-full h-full flex flex-col bg-black">
-            <div className="flex-shrink-0 px-3 py-2 border-b border-gray-700">
+            <div className="flex-shrink-0 px-3 py-2 border-b border-gray-700 flex items-center justify-between">
                 <span className="text-sm font-semibold text-gray-300">Build Output</span>
+                <label className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer">
+                    <input
+                        type="checkbox"
+                        checked={showDebug}
+                        onChange={handleDebugToggle}
+                        className="cursor-pointer"
+                    />
+                    Debug
+                </label>
             </div>
             <div ref={scrollRef} className="flex-1 overflow-y-auto overflow-x-auto p-2">
                 <pre
@@ -83,10 +100,10 @@ const BuilderBuildPanel = memo(() => {
                     onMouseUp={handleMouseUp}
                     onContextMenu={handleContextMenu}
                 >
-                    {outputLines.length === 0 ? (
+                    {filteredLines.length === 0 ? (
                         <span className="text-secondary">Waiting for output...</span>
                     ) : (
-                        outputLines.join("\n")
+                        filteredLines.join("\n")
                     )}
                 </pre>
             </div>

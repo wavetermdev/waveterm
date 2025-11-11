@@ -12,6 +12,7 @@ export class BuilderBuildPanelModel {
     private static instance: BuilderBuildPanelModel | null = null;
 
     outputLines: PrimitiveAtom<string[]> = atom<string[]>([]);
+    showDebug: PrimitiveAtom<boolean> = atom<boolean>(false);
     outputUnsubFn: (() => void) | null = null;
     initialized = false;
 
