@@ -19,8 +19,8 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/utilds"
 	"github.com/wavetermdev/waveterm/pkg/waveappstore"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
-	"github.com/wavetermdev/waveterm/pkg/wconfig"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
+	"github.com/wavetermdev/waveterm/pkg/wconfig"
 	"github.com/wavetermdev/waveterm/pkg/wps"
 	"github.com/wavetermdev/waveterm/tsunami/build"
 )
@@ -189,6 +189,12 @@ func (bc *BuilderController) Start(ctx context.Context, appId string, builderEnv
 }
 
 func (bc *BuilderController) buildAndRun(ctx context.Context, appId string, builderEnv map[string]string) {
+	appNS, _, err := waveappstore.ParseAppId(appId)
+	if err != nil {
+		bc.handleBuildError(fmt.Errorf("failed to parse app id: %w", err))
+		return
+	}
+
 	appPath, err := waveappstore.GetAppDir(appId)
 	if err != nil {
 		bc.handleBuildError(fmt.Errorf("failed to get app directory: %w", err))
@@ -224,6 +230,7 @@ func (bc *BuilderController) buildAndRun(ctx context.Context, appId string, buil
 	outputCapture := build.MakeOutputCapture()
 	_, err = build.TsunamiBuildInternal(build.BuildOpts{
 		AppPath:        appPath,
+		AppNS:          appNS,
 		Verbose:        true,
 		Open:           false,
 		KeepTemp:       false,
@@ -235,13 +242,14 @@ func (bc *BuilderController) buildAndRun(ctx context.Context, appId string, buil
 		GoPath:         goPath,
 		OutputCapture:  outputCapture,
 	})
-	if err != nil {
-		bc.handleBuildError(fmt.Errorf("build failed: %w", err))
-		return
-	}
 
 	for _, line := range outputCapture.GetLines() {
 		bc.outputBuffer.AddLine(line)
+	}
+
+	if err != nil {
+		bc.handleBuildError(fmt.Errorf("build failed: %w", err))
+		return
 	}
 
 	info, err := os.Stat(cachePath)

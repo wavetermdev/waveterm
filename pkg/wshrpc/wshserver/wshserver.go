@@ -948,7 +948,7 @@ func (ws *WshServer) WorkspaceListCommand(ctx context.Context) ([]wshrpc.Workspa
 	return rtn, nil
 }
 
-func (ws *WshServer) ListAllEditableAppsCommand(ctx context.Context) ([]string, error) {
+func (ws *WshServer) ListAllEditableAppsCommand(ctx context.Context) ([]wshrpc.AppInfo, error) {
 	return waveappstore.ListAllEditableApps()
 }
 

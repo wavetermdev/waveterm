@@ -12,6 +12,7 @@ import (
 
 	"github.com/wavetermdev/waveterm/pkg/util/fileutil"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
+	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 )
 
 const (
@@ -441,12 +442,39 @@ func ListAllApps() ([]string, error) {
 
 	return appIds, nil
 }
-func ListAllEditableApps() ([]string, error) {
+func GetAppModTime(appId string) (int64, error) {
+	if err := ValidateAppId(appId); err != nil {
+		return 0, err
+	}
+
+	homeDir := wavebase.GetHomeDir()
+	appNS, appName, err := ParseAppId(appId)
+	if err != nil {
+		return 0, err
+	}
+
+	appPath := filepath.Join(homeDir, "waveapps", appNS, appName)
+	appGoPath := filepath.Join(appPath, "app.go")
+
+	fileInfo, err := os.Stat(appGoPath)
+	if err == nil {
+		return fileInfo.ModTime().UnixMilli(), nil
+	}
+
+	dirInfo, err := os.Stat(appPath)
+	if err != nil {
+		return 0, nil
+	}
+
+	return dirInfo.ModTime().UnixMilli(), nil
+}
+
+func ListAllEditableApps() ([]wshrpc.AppInfo, error) {
 	homeDir := wavebase.GetHomeDir()
 	waveappsDir := filepath.Join(homeDir, "waveapps")
 
 	if _, err := os.Stat(waveappsDir); os.IsNotExist(err) {
-		return []string{}, nil
+		return []wshrpc.AppInfo{}, nil
 	}
 
 	localApps := make(map[string]bool)
@@ -486,16 +514,31 @@ func ListAllEditableApps() ([]string, error) {
 		allAppNames[appName] = true
 	}
 
-	var appIds []string
+	var appInfos []wshrpc.AppInfo
 	for appName := range allAppNames {
+		var appId string
+		var modTimeAppId string
 		if localApps[appName] {
-			appIds = append(appIds, MakeAppId(AppNSLocal, appName))
+			appId = MakeAppId(AppNSLocal, appName)
 		} else {
-			appIds = append(appIds, MakeAppId(AppNSDraft, appName))
+			appId = MakeAppId(AppNSDraft, appName)
 		}
+
+		if draftApps[appName] {
+			modTimeAppId = MakeAppId(AppNSDraft, appName)
+		} else {
+			modTimeAppId = appId
+		}
+
+		modTime, _ := GetAppModTime(modTimeAppId)
+
+		appInfos = append(appInfos, wshrpc.AppInfo{
+			AppId:   appId,
+			ModTime: modTime,
+		})
 	}
 
-	return appIds, nil
+	return appInfos, nil
 }
 
 func DraftHasLocalVersion(draftAppId string) (bool, error) {
