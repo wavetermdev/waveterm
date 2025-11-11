@@ -498,7 +498,6 @@ func ListAllEditableApps() ([]string, error) {
 	return appIds, nil
 }
 
-
 func DraftHasLocalVersion(draftAppId string) (bool, error) {
 	if err := ValidateAppId(draftAppId); err != nil {
 		return false, fmt.Errorf("invalid appId: %w", err)
@@ -520,4 +519,85 @@ func DraftHasLocalVersion(draftAppId string) (bool, error) {
 	}
 
 	return true, nil
+}
+
+// RenameLocalApp renames a local app by renaming its directories in both the local and draft namespaces.
+// It takes the current app name and the new app name (without namespace prefixes).
+// Both local/[appName] and draft/[appName] will be renamed if they exist.
+// Returns an error if the app doesn't exist in either namespace, if the new name is invalid,
+// or if the new name conflicts with an existing app.
+func RenameLocalApp(appName string, newAppName string) error {
+	// Validate the old app name by constructing a valid appId
+	oldLocalAppId := MakeAppId(AppNSLocal, appName)
+	if err := ValidateAppId(oldLocalAppId); err != nil {
+		return fmt.Errorf("invalid app name: %w", err)
+	}
+
+	// Validate the new app name by constructing a valid appId
+	newLocalAppId := MakeAppId(AppNSLocal, newAppName)
+	if err := ValidateAppId(newLocalAppId); err != nil {
+		return fmt.Errorf("invalid new app name: %w", err)
+	}
+
+	homeDir := wavebase.GetHomeDir()
+	waveappsDir := filepath.Join(homeDir, "waveapps")
+
+	oldLocalDir := filepath.Join(waveappsDir, AppNSLocal, appName)
+	newLocalDir := filepath.Join(waveappsDir, AppNSLocal, newAppName)
+	oldDraftDir := filepath.Join(waveappsDir, AppNSDraft, appName)
+	newDraftDir := filepath.Join(waveappsDir, AppNSDraft, newAppName)
+
+	// Check if at least one of the apps exists
+	localExists := false
+	draftExists := false
+	if _, err := os.Stat(oldLocalDir); err == nil {
+		localExists = true
+	} else if !os.IsNotExist(err) {
+		return fmt.Errorf("failed to check local app: %w", err)
+	}
+
+	if _, err := os.Stat(oldDraftDir); err == nil {
+		draftExists = true
+	} else if !os.IsNotExist(err) {
+		return fmt.Errorf("failed to check draft app: %w", err)
+	}
+
+	if !localExists && !draftExists {
+		return fmt.Errorf("app '%s' does not exist in local or draft namespace", appName)
+	}
+
+	// Check if new app name already exists in either namespace
+	if _, err := os.Stat(newLocalDir); err == nil {
+		return fmt.Errorf("local app '%s' already exists", newAppName)
+	} else if !os.IsNotExist(err) {
+		return fmt.Errorf("failed to check if new local app exists: %w", err)
+	}
+
+	if _, err := os.Stat(newDraftDir); err == nil {
+		return fmt.Errorf("draft app '%s' already exists", newAppName)
+	} else if !os.IsNotExist(err) {
+		return fmt.Errorf("failed to check if new draft app exists: %w", err)
+	}
+
+	// Rename local app if it exists
+	if localExists {
+		if err := os.Rename(oldLocalDir, newLocalDir); err != nil {
+			return fmt.Errorf("failed to rename local app: %w", err)
+		}
+	}
+
+	// Rename draft app if it exists
+	if draftExists {
+		if err := os.Rename(oldDraftDir, newDraftDir); err != nil {
+			// If local was renamed but draft fails, try to rollback local rename
+			if localExists {
+				if rollbackErr := os.Rename(newLocalDir, oldLocalDir); rollbackErr != nil {
+					return fmt.Errorf("failed to rename draft app (and failed to rollback local rename: %v): %w", rollbackErr, err)
+				}
+			}
+			return fmt.Errorf("failed to rename draft app: %w", err)
+		}
+	}
+
+	return nil
 }
