@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { WaveAIModel } from "@/app/aipanel/waveai-model";
-import { globalStore } from "@/app/store/jotaiStore";
 import { ContextMenuModel } from "@/app/store/contextmenu";
+import { globalStore } from "@/app/store/jotaiStore";
 import { BuilderBuildPanelModel } from "@/builder/store/builder-buildpanel-model";
 import { useAtomValue } from "jotai";
 import { memo, useCallback, useEffect, useRef } from "react";
@@ -100,6 +100,7 @@ const BuilderBuildPanel = memo(() => {
                     onMouseUp={handleMouseUp}
                     onContextMenu={handleContextMenu}
                 >
+                    {/* */}
                     {filteredLines.length === 0 ? (
                         <span className="text-secondary">Waiting for output...</span>
                     ) : (
