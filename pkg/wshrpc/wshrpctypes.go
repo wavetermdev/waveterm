@@ -326,7 +326,7 @@ type WshRpcInterface interface {
 	TermGetScrollbackLinesCommand(ctx context.Context, data CommandTermGetScrollbackLinesData) (*CommandTermGetScrollbackLinesRtnData, error)
 
 	// builder
-	ListAllEditableAppsCommand(ctx context.Context) ([]string, error)
+	ListAllEditableAppsCommand(ctx context.Context) ([]AppInfo, error)
 	ListAllAppFilesCommand(ctx context.Context, data CommandListAllAppFilesData) (*CommandListAllAppFilesRtnData, error)
 	ReadAppFileCommand(ctx context.Context, data CommandReadAppFileData) (*CommandReadAppFileRtnData, error)
 	WriteAppFileCommand(ctx context.Context, data CommandWriteAppFileData) error
@@ -956,6 +956,11 @@ type CommandTermGetScrollbackLinesRtnData struct {
 }
 
 // builder
+type AppInfo struct {
+	AppId   string `json:"appid"`
+	ModTime int64  `json:"modtime"`
+}
+
 type CommandListAllAppFilesData struct {
 	AppId string `json:"appid"`
 }

@@ -363,7 +363,7 @@ class RpcApiType {
     }
 
     // command "listalleditableapps" [call]
-    ListAllEditableAppsCommand(client: WshClient, opts?: RpcOpts): Promise<string[]> {
+    ListAllEditableAppsCommand(client: WshClient, opts?: RpcOpts): Promise<AppInfo[]> {
         return client.wshRpcCall("listalleditableapps", null, opts);
     }
 

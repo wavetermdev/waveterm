@@ -441,8 +441,8 @@ func ListAllAppFilesCommand(w *wshutil.WshRpc, data wshrpc.CommandListAllAppFile
 }
 
 // command "listalleditableapps", wshserver.ListAllEditableAppsCommand
-func ListAllEditableAppsCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) ([]string, error) {
-	resp, err := sendRpcRequestCallHelper[[]string](w, "listalleditableapps", nil, opts)
+func ListAllEditableAppsCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) ([]wshrpc.AppInfo, error) {
+	resp, err := sendRpcRequestCallHelper[[]wshrpc.AppInfo](w, "listalleditableapps", nil, opts)
 	return resp, err
 }
 

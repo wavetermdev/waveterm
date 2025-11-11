@@ -56,6 +56,12 @@ declare global {
         message?: string;
     };
 
+    // wshrpc.AppInfo
+    type AppInfo = {
+        appid: string;
+        modtime: number;
+    };
+
     // waveobj.Block
     type Block = WaveObj & {
         parentoref?: string;

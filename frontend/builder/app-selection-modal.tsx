@@ -12,7 +12,7 @@ const MaxAppNameLength = 50;
 const AppNameRegex = /^[a-zA-Z0-9_-]+$/;
 
 export function AppSelectionModal() {
-    const [apps, setApps] = useState<string[]>([]);
+    const [apps, setApps] = useState<AppInfo[]>([]);
     const [loading, setLoading] = useState(true);
     const [newAppName, setNewAppName] = useState("");
     const [error, setError] = useState("");
@@ -42,7 +42,8 @@ export function AppSelectionModal() {
     const loadApps = async () => {
         try {
             const appList = await RpcApi.ListAllEditableAppsCommand(TabRpcClient);
-            setApps(appList || []);
+            const sortedApps = (appList || []).sort((a, b) => b.modtime - a.modtime);
+            setApps(sortedApps);
         } catch (err) {
             console.error("Failed to load apps:", err);
             setError("Failed to load apps");
@@ -128,15 +129,15 @@ export function AppSelectionModal() {
                     <div className="mb-6">
                         <h3 className="text-base font-medium mb-3 text-muted-foreground">Existing WaveApps</h3>
                         <div className="space-y-2 max-h-[200px] overflow-y-auto">
-                            {apps.map((appId) => (
+                            {apps.map((appInfo) => (
                                 <button
-                                    key={appId}
-                                    onClick={() => handleSelectApp(appId)}
+                                    key={appInfo.appid}
+                                    onClick={() => handleSelectApp(appInfo.appid)}
                                     className="w-full text-left px-4 py-3 bg-panel hover:bg-hover border border-border rounded transition-colors cursor-pointer"
                                 >
                                     <div className="flex items-center gap-3">
                                         <i className="fa-solid fa-cube"></i>
-                                        <span>{getAppDisplayName(appId)}</span>
+                                        <span>{getAppDisplayName(appInfo.appid)}</span>
                                     </div>
                                 </button>
                             ))}
