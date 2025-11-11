@@ -118,9 +118,14 @@ func getWaveAISettings(premium bool, builderMode bool, rtInfo *waveobj.ObjRTInfo
 			BaseURL:       baseUrl,
 		}, nil
 	} else if DefaultAPI == APIType_OpenAI {
-		thinkingMode := uctypes.ThinkingModeBalanced
-		if rtInfo != nil && rtInfo.WaveAIThinkingMode != "" {
-			thinkingMode = rtInfo.WaveAIThinkingMode
+		var thinkingMode string
+		if premium {
+			thinkingMode = uctypes.ThinkingModeBalanced
+			if rtInfo != nil && rtInfo.WaveAIThinkingMode != "" {
+				thinkingMode = rtInfo.WaveAIThinkingMode
+			}
+		} else {
+			thinkingMode = uctypes.ThinkingModeQuick
 		}
 
 		var model string

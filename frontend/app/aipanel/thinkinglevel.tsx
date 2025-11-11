@@ -58,7 +58,6 @@ export const ThinkingLevelDropdown = memo(() => {
     const currentMetadata = ThinkingModeData[currentMode];
     if (!hasPremium && currentMetadata.premium) {
         currentMode = "quick";
-        model.setThinkingMode("quick");
     }
 
     return (

@@ -39,12 +39,11 @@ export async function handleWaveAIContextMenu(e: React.MouseEvent, showCopy: boo
         oref: model.orefContext,
     });
 
-    const currentThinkingMode = rtInfo?.["waveai:thinkingmode"] ?? "balanced";
-    const defaultTokens = model.inBuilder ? 24576 : 4096;
-    const currentMaxTokens = rtInfo?.["waveai:maxoutputtokens"] ?? defaultTokens;
-
     const rateLimitInfo = globalStore.get(atoms.waveAIRateLimitInfoAtom);
     const hasPremium = !rateLimitInfo || rateLimitInfo.unknown || rateLimitInfo.preq > 0;
+    const currentThinkingMode = rtInfo?.["waveai:thinkingmode"] ?? (hasPremium ? "balanced" : "quick");
+    const defaultTokens = model.inBuilder ? 24576 : 4096;
+    const currentMaxTokens = rtInfo?.["waveai:maxoutputtokens"] ?? defaultTokens;
 
     const thinkingModeSubmenu: ContextMenuItem[] = [
         {
