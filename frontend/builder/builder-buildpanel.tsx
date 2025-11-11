@@ -100,7 +100,7 @@ const BuilderBuildPanel = memo(() => {
                     onMouseUp={handleMouseUp}
                     onContextMenu={handleContextMenu}
                 >
-                    {/* */}
+                    {/* this comment fixes JSX blank line in pre tag */}
                     {filteredLines.length === 0 ? (
                         <span className="text-secondary">Waiting for output...</span>
                     ) : (

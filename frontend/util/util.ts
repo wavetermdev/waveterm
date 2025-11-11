@@ -453,13 +453,16 @@ function parseDataUrl(dataUrl: string): ParsedDataUrl {
 }
 
 function formatRelativeTime(timestamp: number): string {
+    if (!timestamp) {
+        return "never";
+    }
     const now = Date.now();
     const diffInSeconds = Math.floor((now - timestamp) / 1000);
     const diffInMinutes = Math.floor(diffInSeconds / 60);
     const diffInHours = Math.floor(diffInMinutes / 60);
     const diffInDays = Math.floor(diffInHours / 24);
 
-    if (diffInMinutes === 0) {
+    if (diffInMinutes <= 0) {
         return "Just now";
     } else if (diffInMinutes < 60) {
         return `${diffInMinutes} min${diffInMinutes !== 1 ? "s" : ""} ago`;

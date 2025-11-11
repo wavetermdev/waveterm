@@ -457,11 +457,16 @@ func GetAppModTime(appId string) (int64, error) {
 	appGoPath := filepath.Join(appPath, "app.go")
 
 	fileInfo, err := os.Stat(appGoPath)
+	if err == nil {
+		return fileInfo.ModTime().UnixMilli(), nil
+	}
+
+	dirInfo, err := os.Stat(appPath)
 	if err != nil {
 		return 0, nil
 	}
 
-	return fileInfo.ModTime().UnixMilli(), nil
+	return dirInfo.ModTime().UnixMilli(), nil
 }
 
 func ListAllEditableApps() ([]wshrpc.AppInfo, error) {
