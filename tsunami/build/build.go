@@ -30,14 +30,35 @@ const MinSupportedGoMinorVersion = 22
 const TsunamiUIImportPath = "github.com/wavetermdev/waveterm/tsunami/ui"
 
 type OutputCapture struct {
-	lock  sync.Mutex
-	lines []string
+	lock       sync.Mutex
+	lines      []string
+	lineWriter *util.LineWriter
 }
 
 func MakeOutputCapture() *OutputCapture {
-	return &OutputCapture{
+	oc := &OutputCapture{
 		lines: make([]string, 0),
 	}
+	oc.lineWriter = util.NewLineWriter(func(line []byte) {
+		oc.lock.Lock()
+		defer oc.lock.Unlock()
+		oc.lines = append(oc.lines, string(line))
+	})
+	return oc
+}
+
+func (oc *OutputCapture) Write(p []byte) (n int, err error) {
+	if oc == nil {
+		return os.Stdout.Write(p)
+	}
+	return oc.lineWriter.Write(p)
+}
+
+func (oc *OutputCapture) Flush() {
+	if oc == nil || oc.lineWriter == nil {
+		return
+	}
+	oc.lineWriter.Flush()
 }
 
 func (oc *OutputCapture) Printf(format string, args ...interface{}) {
@@ -321,8 +342,8 @@ func createGoMod(tempDir, appName, goVersion string, opts BuildOpts, verbose boo
 
 	if verbose {
 		oc.Printf("Running go mod tidy")
-		tidyCmd.Stdout = os.Stdout
-		tidyCmd.Stderr = os.Stderr
+		tidyCmd.Stdout = oc
+		tidyCmd.Stderr = oc
 	}
 
 	if err := tidyCmd.Run(); err != nil {
@@ -653,8 +674,11 @@ func runGoBuild(tempDir string, opts BuildOpts) error {
 
 	if opts.Verbose {
 		oc.Printf("Running: %s", strings.Join(buildCmd.Args, " "))
-		buildCmd.Stdout = os.Stdout
-		buildCmd.Stderr = os.Stderr
+	}
+
+	if oc != nil || opts.Verbose {
+		buildCmd.Stdout = oc
+		buildCmd.Stderr = oc
 	}
 
 	if err := buildCmd.Run(); err != nil {
