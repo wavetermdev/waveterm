@@ -235,13 +235,14 @@ func (bc *BuilderController) buildAndRun(ctx context.Context, appId string, buil
 		GoPath:         goPath,
 		OutputCapture:  outputCapture,
 	})
-	if err != nil {
-		bc.handleBuildError(fmt.Errorf("build failed: %w", err))
-		return
-	}
 
 	for _, line := range outputCapture.GetLines() {
 		bc.outputBuffer.AddLine(line)
+	}
+
+	if err != nil {
+		bc.handleBuildError(fmt.Errorf("build failed: %w", err))
+		return
 	}
 
 	info, err := os.Stat(cachePath)

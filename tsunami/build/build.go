@@ -120,10 +120,10 @@ func (opts BuildOpts) getNodePath() string {
 }
 
 type GoVersionCheckResult struct {
-	GoStatus     string
-	GoPath       string
-	GoVersion    string
-	ErrorString  string
+	GoStatus    string
+	GoPath      string
+	GoVersion   string
+	ErrorString string
 }
 
 func FindGoExecutable() (string, error) {
@@ -271,11 +271,11 @@ func verifyEnvironment(verbose bool, opts BuildOpts) (*BuildEnv, error) {
 	case "ok":
 		if verbose {
 			if opts.GoPath != "" {
-				oc.Printf("Using custom go path: %s", result.GoPath)
+				oc.Printf("[debug] Using custom go path: %s", result.GoPath)
 			} else {
-				oc.Printf("Using go path: %s", result.GoPath)
+				oc.Printf("[debug] Using go path: %s", result.GoPath)
 			}
-			oc.Printf("Found %s", result.GoVersion)
+			oc.Printf("[debug] Found %s", result.GoVersion)
 		}
 	default:
 		return nil, fmt.Errorf("unexpected go status: %s", result.GoStatus)
@@ -312,7 +312,7 @@ func verifyEnvironment(verbose bool, opts BuildOpts) (*BuildEnv, error) {
 		}
 
 		if verbose {
-			oc.Printf("Using custom node path: %s", opts.NodePath)
+			oc.Printf("[debug] Using custom node path: %s", opts.NodePath)
 		}
 	} else {
 		// Use standard PATH lookup
@@ -322,7 +322,7 @@ func verifyEnvironment(verbose bool, opts BuildOpts) (*BuildEnv, error) {
 		}
 
 		if verbose {
-			oc.Printf("Found node in PATH")
+			oc.Printf("[debug] Found node in PATH")
 		}
 	}
 
@@ -344,7 +344,7 @@ func createGoMod(tempDir, appName, goVersion string, opts BuildOpts, verbose boo
 	if _, err := os.Stat(tempGoModPath); err == nil {
 		// go.mod exists in temp dir, parse it
 		if verbose {
-			oc.Printf("Found existing go.mod in temp directory, parsing it")
+			oc.Printf("[debug] Found existing go.mod in temp directory, parsing it")
 		}
 
 		// Parse the existing go.mod
@@ -360,7 +360,7 @@ func createGoMod(tempDir, appName, goVersion string, opts BuildOpts, verbose boo
 	} else if os.IsNotExist(err) {
 		// go.mod doesn't exist, create new one
 		if verbose {
-			oc.Printf("No existing go.mod found, creating new one")
+			oc.Printf("[debug] No existing go.mod found, creating new one")
 		}
 
 		modFile = &modfile.File{}
@@ -400,10 +400,10 @@ func createGoMod(tempDir, appName, goVersion string, opts BuildOpts, verbose boo
 	}
 
 	if verbose {
-		oc.Printf("Created go.mod with module path: %s", modulePath)
-		oc.Printf("Added require: github.com/wavetermdev/waveterm/tsunami %s", opts.SdkVersion)
+		oc.Printf("[debug] Created go.mod with module path: %s", modulePath)
+		oc.Printf("[debug] Added require: github.com/wavetermdev/waveterm/tsunami %s", opts.SdkVersion)
 		if opts.SdkReplacePath != "" {
-			oc.Printf("Added replace directive: github.com/wavetermdev/waveterm/tsunami => %s", opts.SdkReplacePath)
+			oc.Printf("[debug] Added replace directive: github.com/wavetermdev/waveterm/tsunami => %s", opts.SdkReplacePath)
 		}
 	}
 
@@ -411,19 +411,28 @@ func createGoMod(tempDir, appName, goVersion string, opts BuildOpts, verbose boo
 	tidyCmd := exec.Command("go", "mod", "tidy")
 	tidyCmd.Dir = tempDir
 
-	if oc != nil || verbose {
-		oc.Printf("Running go mod tidy")
+	if verbose {
+		oc.Printf("[debug] Running go mod tidy")
+	}
+
+	if oc != nil {
 		tidyCmd.Stdout = oc
 		tidyCmd.Stderr = oc
+	} else {
+		tidyCmd.Stdout = os.Stdout
+		tidyCmd.Stderr = os.Stderr
 	}
 
 	if err := tidyCmd.Run(); err != nil {
-		return fmt.Errorf("failed to run go mod tidy: %w", err)
+		return fmt.Errorf("go mod tidy failed (see output for errors)")
 	}
-	oc.Flush()
+
+	if oc != nil {
+		oc.Flush()
+	}
 
 	if verbose {
-		oc.Printf("Successfully ran go mod tidy")
+		oc.Printf("[debug] Successfully ran go mod tidy")
 	}
 
 	return nil
@@ -610,7 +619,7 @@ func TsunamiBuildInternal(opts BuildOpts) (*BuildEnv, error) {
 	oc.Printf("Building tsunami app from %s", opts.AppPath)
 
 	if opts.Verbose || opts.KeepTemp {
-		oc.Printf("Temp dir: %s", tempDir)
+		oc.Printf("[debug] Temp dir: %s", tempDir)
 	}
 
 	// Copy files from app path (go.mod, go.sum, static/, *.go)
@@ -626,7 +635,7 @@ func TsunamiBuildInternal(opts BuildOpts) (*BuildEnv, error) {
 	}
 
 	if opts.Verbose {
-		oc.Printf("Copied %d go files, %d static files, %d scaffold files (go.mod: %t, go.sum: %t)",
+		oc.Printf("[debug] Copied %d go files, %d static files, %d scaffold files (go.mod: %t, go.sum: %t)",
 			copyStats.GoFiles, copyStats.StaticFiles, scaffoldCount, copyStats.GoMod, copyStats.GoSum)
 	}
 
@@ -640,17 +649,17 @@ func TsunamiBuildInternal(opts BuildOpts) (*BuildEnv, error) {
 	// Create go.mod file
 	appName := GetAppName(opts.AppPath)
 	if err := createGoMod(tempDir, appName, buildEnv.GoVersion, opts, opts.Verbose); err != nil {
-		return buildEnv, fmt.Errorf("failed to create go.mod: %w", err)
+		return buildEnv, err
 	}
 
 	// Generate Tailwind CSS
 	if err := generateAppTailwindCss(tempDir, opts.Verbose, opts); err != nil {
-		return buildEnv, fmt.Errorf("failed to generate tailwind css: %w", err)
+		return buildEnv, err
 	}
 
 	// Build the Go application
 	if err := runGoBuild(tempDir, opts); err != nil {
-		return buildEnv, fmt.Errorf("failed to build application: %w", err)
+		return buildEnv, err
 	}
 
 	// Move generated files back to original directory
@@ -740,20 +749,27 @@ func runGoBuild(tempDir string, opts BuildOpts) error {
 	}
 
 	// Build command with explicit go files
-	args := append([]string{"build", "-o", outputPath}, goFiles...)
+	args := append([]string{"build", "-o", outputPath}, ".")
 	buildCmd := exec.Command("go", args...)
 	buildCmd.Dir = tempDir
 
 	if oc != nil || opts.Verbose {
 		oc.Printf("Running: %s", strings.Join(buildCmd.Args, " "))
+	}
+	if oc != nil {
 		buildCmd.Stdout = oc
 		buildCmd.Stderr = oc
+	} else {
+		buildCmd.Stdout = os.Stdout
+		buildCmd.Stderr = os.Stderr
 	}
 
 	if err := buildCmd.Run(); err != nil {
-		return fmt.Errorf("failed to build application: %w", err)
+		return fmt.Errorf("go build compilation failed (see output for errors)")
 	}
-	oc.Flush()
+	if oc != nil {
+		oc.Flush()
+	}
 
 	if opts.Verbose {
 		if opts.OutputFile != "" {
@@ -778,15 +794,23 @@ func generateAppTailwindCss(tempDir string, verbose bool, opts BuildOpts) error 
 	tailwindCmd.Env = append(os.Environ(), "ELECTRON_RUN_AS_NODE=1")
 
 	if verbose {
-		oc.Printf("Running: %s", strings.Join(tailwindCmd.Args, " "))
+		oc.Printf("[debug] Running: %s", strings.Join(tailwindCmd.Args, " "))
+	}
+
+	if oc != nil {
+		tailwindCmd.Stdout = oc
+		tailwindCmd.Stderr = oc
+	} else {
+		tailwindCmd.Stdout = os.Stdout
+		tailwindCmd.Stderr = os.Stderr
 	}
 
 	if err := tailwindCmd.Run(); err != nil {
-		return fmt.Errorf("failed to run tailwind command: %w", err)
+		return fmt.Errorf("tailwind CSS generation failed (see output for errors)")
 	}
 
 	if verbose {
-		oc.Printf("Tailwind CSS generated successfully")
+		oc.Printf("[debug] Tailwind CSS generated successfully")
 	}
 
 	return nil
@@ -1000,7 +1024,7 @@ func copyScaffoldFS(scaffoldFS fs.FS, destDir string, verbose bool, oc *OutputCa
 				return 0, fmt.Errorf("failed to create symlink for node_modules: %w", err)
 			}
 			if verbose {
-				oc.Printf("Symlinked node_modules directory")
+				oc.Printf("[debug] Symlinked node_modules directory")
 			}
 			fileCount++
 		} else {
