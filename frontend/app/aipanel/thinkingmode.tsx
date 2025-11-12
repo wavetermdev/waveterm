@@ -81,14 +81,14 @@ export const ThinkingLevelDropdown = memo(() => {
                             const isFirst = index === 0;
                             const isLast = index === Object.keys(ThinkingModeData).length - 1;
                             const isDisabled = !hasPremium && metadata.premium;
-                            const isSelected = thinkingMode === mode;
+                            const isSelected = currentMode === mode;
                             return (
                                 <button
                                     key={mode}
                                     onClick={() => handleSelect(mode)}
                                     disabled={isDisabled}
                                     className={`w-full flex flex-col gap-0.5 px-3 ${
-                                        isFirst ? "pt-1.5 pb-0.75" : isLast ? "pt-0.75 pb-1.5" : "pt-0.75 pb-0.75"
+                                        isFirst ? "pt-1 pb-0.5" : isLast ? "pt-0.5 pb-1" : "pt-0.5 pb-0.5"
                                     } ${
                                         isDisabled
                                             ? "text-gray-500 cursor-not-allowed"
