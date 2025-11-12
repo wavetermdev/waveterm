@@ -4,6 +4,7 @@
 import { WaveAIModel } from "@/app/aipanel/waveai-model";
 import { ContextMenuModel } from "@/app/store/contextmenu";
 import { globalStore } from "@/app/store/jotaiStore";
+import { BuilderAppPanelModel } from "@/builder/store/builder-apppanel-model";
 import { BuilderBuildPanelModel } from "@/builder/store/builder-buildpanel-model";
 import { useAtomValue } from "jotai";
 import { memo, useCallback, useEffect, useRef } from "react";
@@ -77,21 +78,33 @@ const BuilderBuildPanel = memo(() => {
         globalStore.set(model.showDebug, !showDebug);
     }, [model, showDebug]);
 
+    const handleRestart = useCallback(() => {
+        BuilderAppPanelModel.getInstance().restartBuilder();
+    }, []);
+
     const filteredLines = showDebug ? outputLines : outputLines.filter((line) => !line.startsWith("[debug]"));
 
     return (
         <div className="w-full h-full flex flex-col bg-black">
             <div className="flex-shrink-0 px-3 py-2 border-b border-gray-700 flex items-center justify-between">
                 <span className="text-sm font-semibold text-gray-300">Build Output</span>
-                <label className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer">
-                    <input
-                        type="checkbox"
-                        checked={showDebug}
-                        onChange={handleDebugToggle}
-                        className="cursor-pointer"
-                    />
-                    Debug
-                </label>
+                <div className="flex items-center gap-4">
+                    <label className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer">
+                        <input
+                            type="checkbox"
+                            checked={showDebug}
+                            onChange={handleDebugToggle}
+                            className="cursor-pointer"
+                        />
+                        Debug
+                    </label>
+                    <button
+                        className="px-3 py-1 text-sm font-medium rounded transition-colors bg-accent/80 text-white hover:bg-accent cursor-pointer"
+                        onClick={handleRestart}
+                    >
+                        Restart App
+                    </button>
+                </div>
             </div>
             <div ref={scrollRef} className="flex-1 overflow-y-auto overflow-x-auto p-2">
                 <pre

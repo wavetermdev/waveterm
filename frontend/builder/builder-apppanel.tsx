@@ -217,14 +217,6 @@ const BuilderAppPanel = memo(() => {
                             onClick={() => handleTabClick("env")}
                         />
                     </div>
-                    {activeTab === "preview" && (
-                        <button
-                            className="mr-4 px-3 py-1 text-sm font-medium rounded transition-colors bg-accent/80 text-white hover:bg-accent cursor-pointer"
-                            onClick={handleRestart}
-                        >
-                            Restart App
-                        </button>
-                    )}
                     {activeTab === "code" && (
                         <button
                             className={cn(
