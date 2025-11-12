@@ -376,6 +376,9 @@ func processToolCalls(stopReason *uctypes.WaveStopReason, chatOpts uctypes.WaveC
 			log.Printf("AI data-tooluse %s\n", toolCall.ID)
 			_ = sseHandler.AiMsgData("data-tooluse", toolCall.ID, *toolCall.ToolUseData)
 			updateToolUseDataInChat(chatOpts, toolCall.ID, toolCall.ToolUseData)
+			if toolCall.ToolUseData.Approval == uctypes.ApprovalNeedsApproval && chatOpts.RegisterToolApproval != nil {
+				chatOpts.RegisterToolApproval(toolCall.ID)
+			}
 		}
 	}
 

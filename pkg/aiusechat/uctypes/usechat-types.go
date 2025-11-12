@@ -91,6 +91,7 @@ type ToolDefinition struct {
 	ToolCallDesc     func(any, any, *UIMessageDataToolUse) string  `json:"-"` // passed input, output (may be nil), *UIMessageDataToolUse (may be nil)
 	ToolApproval     func(any) string                              `json:"-"`
 	ToolVerifyInput  func(any, *UIMessageDataToolUse) error        `json:"-"` // *UIMessageDataToolUse will NOT be nil
+	ToolProgressDesc func(any) ([]string, error)                   `json:"-"`
 }
 
 func (td *ToolDefinition) Clean() *ToolDefinition {

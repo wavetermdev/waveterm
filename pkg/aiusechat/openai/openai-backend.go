@@ -382,6 +382,7 @@ type openaiBlockState struct {
 	toolCallID   string // For function calls
 	toolName     string // For function calls
 	summaryCount int    // For reasoning: number of summary parts seen
+	partialJSON  []byte // For function calls: accumulated JSON arguments
 }
 
 type openaiStreamingState struct {
@@ -857,7 +858,25 @@ func handleOpenAIEvent(
 			_ = sse.AiMsgError(err.Error())
 			return &uctypes.WaveStopReason{Kind: uctypes.StopKindError, ErrorType: "decode", ErrorText: err.Error()}, nil
 		}
-		// Noop as requested
+		if st := state.blockMap[ev.ItemId]; st != nil && st.kind == openaiBlockToolUse {
+			st.partialJSON = append(st.partialJSON, []byte(ev.Delta)...)
+
+			toolDef := state.chatOpts.GetToolDefinition(st.toolName)
+			if toolDef != nil && toolDef.ToolProgressDesc != nil {
+				parsedJSON, err := utilfn.ParseParialJson(st.partialJSON)
+				if err == nil {
+					statusLines, err := toolDef.ToolProgressDesc(parsedJSON)
+					if err == nil {
+						progressData := &uctypes.UIMessageDataToolProgress{
+							ToolCallId:  st.toolCallID,
+							ToolName:    st.toolName,
+							StatusLines: statusLines,
+						}
+						_ = sse.AiMsgData("data-toolprogress", "progress-"+st.toolCallID, progressData)
+					}
+				}
+			}
+		}
 		return nil, nil
 
 	case "response.function_call_arguments.done":
@@ -876,8 +895,20 @@ func handleOpenAIEvent(
 			toolDef := state.chatOpts.GetToolDefinition(st.toolName)
 			toolUseData := createToolUseData(st.toolCallID, st.toolName, toolDef, ev.Arguments, state.chatOpts)
 			state.toolUseData[st.toolCallID] = toolUseData
-			if toolUseData.Approval == uctypes.ApprovalNeedsApproval && state.chatOpts.RegisterToolApproval != nil {
-				state.chatOpts.RegisterToolApproval(st.toolCallID)
+
+			if toolDef != nil && toolDef.ToolProgressDesc != nil {
+				var parsedJSON any
+				if err := json.Unmarshal([]byte(ev.Arguments), &parsedJSON); err == nil {
+					statusLines, err := toolDef.ToolProgressDesc(parsedJSON)
+					if err == nil {
+						progressData := &uctypes.UIMessageDataToolProgress{
+							ToolCallId:  st.toolCallID,
+							ToolName:    st.toolName,
+							StatusLines: statusLines,
+						}
+						_ = sse.AiMsgData("data-toolprogress", "progress-"+st.toolCallID, progressData)
+					}
+				}
 			}
 		}
 		return nil, nil
