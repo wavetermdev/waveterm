@@ -694,7 +694,7 @@ func moveFilesBack(tempDir, originalDir string, verbose bool, oc *OutputCapture)
 		return fmt.Errorf("failed to copy go.mod back: %w", err)
 	}
 	if verbose {
-		oc.Printf("Moved go.mod back to %s", goModDest)
+		oc.Printf("[debug] Moved go.mod back to %s", goModDest)
 	}
 
 	// Move go.sum back to original directory (only if it exists)
@@ -705,7 +705,7 @@ func moveFilesBack(tempDir, originalDir string, verbose bool, oc *OutputCapture)
 			return fmt.Errorf("failed to copy go.sum back: %w", err)
 		}
 		if verbose {
-			oc.Printf("Moved go.sum back to %s", goSumDest)
+			oc.Printf("[debug] Moved go.sum back to %s", goSumDest)
 		}
 	}
 
@@ -715,7 +715,7 @@ func moveFilesBack(tempDir, originalDir string, verbose bool, oc *OutputCapture)
 		return fmt.Errorf("failed to create static directory: %w", err)
 	}
 	if verbose {
-		oc.Printf("Ensured static directory exists at %s", staticDir)
+		oc.Printf("[debug] Ensured static directory exists at %s", staticDir)
 	}
 
 	// Move tw.css back to original directory
@@ -725,7 +725,7 @@ func moveFilesBack(tempDir, originalDir string, verbose bool, oc *OutputCapture)
 		return fmt.Errorf("failed to copy tw.css back: %w", err)
 	}
 	if verbose {
-		oc.Printf("Moved tw.css back to %s", twCssDest)
+		oc.Printf("[debug] Moved tw.css back to %s", twCssDest)
 	}
 
 	// Move manifest.json back to original directory (only if it exists)
@@ -736,7 +736,7 @@ func moveFilesBack(tempDir, originalDir string, verbose bool, oc *OutputCapture)
 			return fmt.Errorf("failed to copy manifest.json back: %w", err)
 		}
 		if verbose {
-			oc.Printf("Moved manifest.json back to %s", manifestDest)
+			oc.Printf("[debug] Moved manifest.json back to %s", manifestDest)
 		}
 	}
 
