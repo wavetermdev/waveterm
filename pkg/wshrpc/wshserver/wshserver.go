@@ -1079,20 +1079,13 @@ func (ws *WshServer) RestartBuilderAndWaitCommand(ctx context.Context, data wshr
 	}, nil
 }
 
-
 func (ws *WshServer) GetBuilderStatusCommand(ctx context.Context, builderId string) (*wshrpc.BuilderStatusData, error) {
 	if builderId == "" {
 		return nil, fmt.Errorf("must provide a builderId to GetBuilderStatusCommand")
 	}
 	bc := buildercontroller.GetOrCreateController(builderId)
 	status := bc.GetStatus()
-	return &wshrpc.BuilderStatusData{
-		Status:   status.Status,
-		Port:     status.Port,
-		ExitCode: status.ExitCode,
-		ErrorMsg: status.ErrorMsg,
-		Version:  status.Version,
-	}, nil
+	return &status, nil
 }
 
 func (ws *WshServer) GetBuilderOutputCommand(ctx context.Context, builderId string) ([]string, error) {

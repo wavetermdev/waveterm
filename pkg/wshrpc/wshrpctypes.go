@@ -1029,12 +1029,28 @@ type RestartBuilderAndWaitResult struct {
 	BuildOutput  string `json:"buildoutput"`
 }
 
+type SecretMeta struct {
+	Desc     string `json:"desc"`
+	Optional bool   `json:"optional"`
+}
+
+type AppManifest struct {
+	AppTitle     string                 `json:"apptitle"`
+	AppShortDesc string                 `json:"appshortdesc"`
+	ConfigSchema map[string]any         `json:"configschema"`
+	DataSchema   map[string]any         `json:"dataschema"`
+	Secrets      map[string]SecretMeta  `json:"secrets"`
+}
+
 type BuilderStatusData struct {
-	Status   string `json:"status"`
-	Port     int    `json:"port,omitempty"`
-	ExitCode int    `json:"exitcode,omitempty"`
-	ErrorMsg string `json:"errormsg,omitempty"`
-	Version  int    `json:"version"`
+	Status                 string         `json:"status"`
+	Port                   int            `json:"port,omitempty"`
+	ExitCode               int            `json:"exitcode,omitempty"`
+	ErrorMsg               string         `json:"errormsg,omitempty"`
+	Version                int            `json:"version"`
+	Manifest               *AppManifest   `json:"manifest,omitempty"`
+	SecretBindings         map[string]string `json:"secretbindings,omitempty"`
+	SecretBindingsComplete bool           `json:"secretbindingscomplete"`
 }
 
 type CommandCheckGoVersionRtnData struct {

@@ -23,8 +23,8 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wconfig"
 	"github.com/wavetermdev/waveterm/pkg/wps"
+	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/tsunami/build"
-	"github.com/wavetermdev/waveterm/tsunami/engine"
 )
 
 const (
@@ -495,12 +495,12 @@ func (bc *BuilderController) stopProcess_nolock() {
 	bc.process = nil
 }
 
-func (bc *BuilderController) GetStatus() BuilderStatusData {
+func (bc *BuilderController) GetStatus() wshrpc.BuilderStatusData {
 	bc.statusLock.Lock()
 	defer bc.statusLock.Unlock()
 
 	bc.statusVersion++
-	statusData := BuilderStatusData{
+	statusData := wshrpc.BuilderStatusData{
 		Status:   bc.status,
 		Port:     bc.port,
 		ExitCode: bc.exitCode,
@@ -510,8 +510,21 @@ func (bc *BuilderController) GetStatus() BuilderStatusData {
 
 	if bc.appId != "" {
 		manifest, err := waveappstore.ReadAppManifest(bc.appId)
-		if err == nil {
-			statusData.Manifest = manifest
+		if err == nil && manifest != nil {
+			wshrpcManifest := &wshrpc.AppManifest{
+				AppTitle:     manifest.AppTitle,
+				AppShortDesc: manifest.AppShortDesc,
+				ConfigSchema: manifest.ConfigSchema,
+				DataSchema:   manifest.DataSchema,
+				Secrets:      make(map[string]wshrpc.SecretMeta),
+			}
+			for k, v := range manifest.Secrets {
+				wshrpcManifest.Secrets[k] = wshrpc.SecretMeta{
+					Desc:     v.Desc,
+					Optional: v.Optional,
+				}
+			}
+			statusData.Manifest = wshrpcManifest
 		}
 
 		secretBindings, err := waveappstore.ReadAppSecretBindings(bc.appId)
@@ -566,16 +579,6 @@ func (bc *BuilderController) publishOutputLine(line string, reset bool) {
 	})
 }
 
-type BuilderStatusData struct {
-	Status                 string                `json:"status"`
-	Port                   int                   `json:"port,omitempty"`
-	ExitCode               int                   `json:"exitcode,omitempty"`
-	ErrorMsg               string                `json:"errormsg,omitempty"`
-	Version                int                   `json:"version"`
-	Manifest               *engine.AppManifest   `json:"manifest,omitempty"`
-	SecretBindings         map[string]string     `json:"secretbindings,omitempty"`
-	SecretBindingsComplete bool                  `json:"secretbindingscomplete"`
-}
 
 func exitCodeFromWaitErr(waitErr error) int {
 	if waitErr == nil {

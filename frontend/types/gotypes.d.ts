@@ -62,6 +62,15 @@ declare global {
         modtime: number;
     };
 
+    // engine.AppManifest
+    type AppManifest = {
+        apptitle: string;
+        appshortdesc: string;
+        configschema: {[key: string]: any};
+        dataschema: {[key: string]: any};
+        secrets: {[key: string]: SecretMeta};
+    };
+
     // waveobj.Block
     type Block = WaveObj & {
         parentoref?: string;
@@ -124,6 +133,18 @@ declare global {
         exitcode?: number;
         errormsg?: string;
         version: number;
+    };
+
+    // buildercontroller.BuilderStatusData
+    type BuilderStatusData = {
+        status: string;
+        port?: number;
+        exitcode?: number;
+        errormsg?: string;
+        version: number;
+        manifest?: AppManifest;
+        secretbindings?: {[key: string]: string};
+        secretbindingscomplete: boolean;
     };
 
     // waveobj.Client
@@ -948,6 +969,12 @@ declare global {
     type RuntimeOpts = {
         termsize?: TermSize;
         winsize?: WinSize;
+    };
+
+    // engine.SecretMeta
+    type SecretMeta = {
+        desc: string;
+        optional: boolean;
     };
 
     // webcmd.SetBlockTermSizeWSCommand
