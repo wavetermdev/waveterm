@@ -32,9 +32,17 @@ export function EditableDiv({ className, text, onChange, placeholder, ...otherPr
     };
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
-        // Prevent default Enter key behavior (single-line editing)
         if (e.key === "Enter") {
             e.preventDefault();
+            // Submit the edit - stop editing and fire onChange
+            divRef.current?.blur();
+        } else if (e.key === "Escape") {
+            e.preventDefault();
+            // Revert to original contents and stop editing
+            if (divRef.current) {
+                divRef.current.textContent = textRef.current;
+                divRef.current.blur();
+            }
         }
         
         // Call original onKeyDown if provided
