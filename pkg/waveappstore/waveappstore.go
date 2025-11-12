@@ -4,6 +4,7 @@
 package waveappstore
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -13,6 +14,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/util/fileutil"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
+	"github.com/wavetermdev/waveterm/tsunami/engine"
 )
 
 const (
@@ -21,6 +23,9 @@ const (
 
 	MaxNamespaceLen = 30
 	MaxAppNameLen   = 50
+
+	ManifestFileName       = "manifest.json"
+	SecretBindingsFileName = "secret-bindings.json"
 )
 
 var (
@@ -643,4 +648,59 @@ func RenameLocalApp(appName string, newAppName string) error {
 	}
 
 	return nil
+}
+
+func ReadAppManifest(appId string) (*engine.AppManifest, error) {
+	if err := ValidateAppId(appId); err != nil {
+		return nil, fmt.Errorf("invalid appId: %w", err)
+	}
+
+	appDir, err := GetAppDir(appId)
+	if err != nil {
+		return nil, err
+	}
+
+	manifestPath := filepath.Join(appDir, ManifestFileName)
+	data, err := os.ReadFile(manifestPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read %s: %w", ManifestFileName, err)
+	}
+
+	var manifest engine.AppManifest
+	if err := json.Unmarshal(data, &manifest); err != nil {
+		return nil, fmt.Errorf("failed to parse %s: %w", ManifestFileName, err)
+	}
+
+	return &manifest, nil
+}
+
+func ReadAppSecretBindings(appId string) (map[string]string, error) {
+	if err := ValidateAppId(appId); err != nil {
+		return nil, fmt.Errorf("invalid appId: %w", err)
+	}
+
+	appDir, err := GetAppDir(appId)
+	if err != nil {
+		return nil, err
+	}
+
+	bindingsPath := filepath.Join(appDir, SecretBindingsFileName)
+	data, err := os.ReadFile(bindingsPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return make(map[string]string), nil
+		}
+		return nil, fmt.Errorf("failed to read %s: %w", SecretBindingsFileName, err)
+	}
+
+	var bindings map[string]string
+	if err := json.Unmarshal(data, &bindings); err != nil {
+		return nil, fmt.Errorf("failed to parse %s: %w", SecretBindingsFileName, err)
+	}
+
+	if bindings == nil {
+		bindings = make(map[string]string)
+	}
+
+	return bindings, nil
 }
