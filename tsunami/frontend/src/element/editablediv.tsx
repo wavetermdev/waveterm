@@ -43,15 +43,12 @@ export function EditableDiv({ className, text, onChange, placeholder, ...otherPr
         }
     };
 
-    const isEmpty = !text || text.trim() === "";
-    const placeholderClass = isEmpty && placeholder ? "empty" : "";
-
     return (
         <div
             ref={divRef}
             contentEditable
             suppressContentEditableWarning
-            className={twMerge(className, placeholderClass)}
+            className={twMerge(className)}
             onBlur={handleBlur}
             onKeyDown={handleKeyDown}
             data-placeholder={placeholder}
