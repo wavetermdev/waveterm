@@ -82,7 +82,7 @@ const BuilderBuildPanel = memo(() => {
         BuilderAppPanelModel.getInstance().restartBuilder();
     }, []);
 
-    const filteredLines = showDebug ? outputLines : outputLines.filter((line) => !line.startsWith("[debug]"));
+    const filteredLines = showDebug ? outputLines : outputLines.filter((line) => !line.startsWith("[debug]") && line.trim().length > 0);
 
     return (
         <div className="w-full h-full flex flex-col bg-black">
