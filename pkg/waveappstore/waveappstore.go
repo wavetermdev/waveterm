@@ -11,6 +11,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/wavetermdev/waveterm/pkg/secretstore"
 	"github.com/wavetermdev/waveterm/pkg/util/fileutil"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
@@ -703,4 +704,45 @@ func ReadAppSecretBindings(appId string) (map[string]string, error) {
 	}
 
 	return bindings, nil
+}
+
+func BuildAppSecretEnv(appId string, manifest *engine.AppManifest) (map[string]string, error) {
+	if manifest == nil {
+		return make(map[string]string), nil
+	}
+
+	bindings, err := ReadAppSecretBindings(appId)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read secret bindings: %w", err)
+	}
+
+	secretEnv := make(map[string]string)
+
+	for secretName, secretMeta := range manifest.Secrets {
+		boundSecretName, hasBinding := bindings[secretName]
+
+		if !secretMeta.Optional && !hasBinding {
+			return nil, fmt.Errorf("required secret %q is not bound", secretName)
+		}
+
+		if !hasBinding {
+			continue
+		}
+
+		secretValue, exists, err := secretstore.GetSecret(boundSecretName)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get secret %q: %w", boundSecretName, err)
+		}
+
+		if !exists {
+			if !secretMeta.Optional {
+				return nil, fmt.Errorf("required secret %q is bound to %q which does not exist in secret store", secretName, boundSecretName)
+			}
+			continue
+		}
+
+		secretEnv[secretName] = secretValue
+	}
+
+	return secretEnv, nil
 }
