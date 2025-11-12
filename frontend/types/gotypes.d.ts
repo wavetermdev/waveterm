@@ -62,7 +62,7 @@ declare global {
         modtime: number;
     };
 
-    // engine.AppManifest
+    // wshrpc.AppManifest
     type AppManifest = {
         apptitle: string;
         appshortdesc: string;
@@ -127,15 +127,6 @@ declare global {
     };
 
     // wshrpc.BuilderStatusData
-    type BuilderStatusData = {
-        status: string;
-        port?: number;
-        exitcode?: number;
-        errormsg?: string;
-        version: number;
-    };
-
-    // buildercontroller.BuilderStatusData
     type BuilderStatusData = {
         status: string;
         port?: number;
@@ -501,6 +492,12 @@ declare global {
         appid: string;
         filename: string;
         data64: string;
+    };
+
+    // wshrpc.CommandWriteAppSecretBindingsData
+    type CommandWriteAppSecretBindingsData = {
+        appid: string;
+        bindings: {[key: string]: string};
     };
 
     // wshrpc.CommandWriteTempFileData
@@ -971,7 +968,7 @@ declare global {
         winsize?: WinSize;
     };
 
-    // engine.SecretMeta
+    // wshrpc.SecretMeta
     type SecretMeta = {
         desc: string;
         optional: boolean;

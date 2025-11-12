@@ -1027,6 +1027,13 @@ func (ws *WshServer) RenameAppFileCommand(ctx context.Context, data wshrpc.Comma
 	return waveappstore.RenameAppFile(data.AppId, data.FromFileName, data.ToFileName)
 }
 
+func (ws *WshServer) WriteAppSecretBindingsCommand(ctx context.Context, data wshrpc.CommandWriteAppSecretBindingsData) error {
+	if data.AppId == "" {
+		return fmt.Errorf("must provide an appId to WriteAppSecretBindingsCommand")
+	}
+	return waveappstore.WriteAppSecretBindings(data.AppId, data.Bindings)
+}
+
 func (ws *WshServer) DeleteBuilderCommand(ctx context.Context, builderId string) error {
 	if builderId == "" {
 		return fmt.Errorf("must provide a builderId to DeleteBuilderCommand")

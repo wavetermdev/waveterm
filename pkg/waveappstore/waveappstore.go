@@ -706,6 +706,33 @@ func ReadAppSecretBindings(appId string) (map[string]string, error) {
 	return bindings, nil
 }
 
+func WriteAppSecretBindings(appId string, bindings map[string]string) error {
+	if err := ValidateAppId(appId); err != nil {
+		return fmt.Errorf("invalid appId: %w", err)
+	}
+
+	appDir, err := GetAppDir(appId)
+	if err != nil {
+		return err
+	}
+
+	if bindings == nil {
+		bindings = make(map[string]string)
+	}
+
+	data, err := json.MarshalIndent(bindings, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal bindings: %w", err)
+	}
+
+	bindingsPath := filepath.Join(appDir, SecretBindingsFileName)
+	if err := os.WriteFile(bindingsPath, data, 0644); err != nil {
+		return fmt.Errorf("failed to write %s: %w", SecretBindingsFileName, err)
+	}
+
+	return nil
+}
+
 func BuildAppSecretEnv(appId string, manifest *engine.AppManifest, bindings map[string]string) (map[string]string, error) {
 	if manifest == nil {
 		return make(map[string]string), nil

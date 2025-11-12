@@ -743,6 +743,12 @@ func WriteAppFileCommand(w *wshutil.WshRpc, data wshrpc.CommandWriteAppFileData,
 	return err
 }
 
+// command "writeappsecretbindings", wshserver.WriteAppSecretBindingsCommand
+func WriteAppSecretBindingsCommand(w *wshutil.WshRpc, data wshrpc.CommandWriteAppSecretBindingsData, opts *wshrpc.RpcOpts) error {
+	_, err := sendRpcRequestCallHelper[any](w, "writeappsecretbindings", data, opts)
+	return err
+}
+
 // command "writetempfile", wshserver.WriteTempFileCommand
 func WriteTempFileCommand(w *wshutil.WshRpc, data wshrpc.CommandWriteTempFileData, opts *wshrpc.RpcOpts) (string, error) {
 	resp, err := sendRpcRequestCallHelper[string](w, "writetempfile", data, opts)
