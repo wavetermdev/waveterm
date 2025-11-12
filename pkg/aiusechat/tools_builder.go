@@ -4,19 +4,54 @@
 package aiusechat
 
 import (
+	"context"
 	"fmt"
+	"log"
+	"time"
 
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
+	"github.com/wavetermdev/waveterm/pkg/buildercontroller"
 	"github.com/wavetermdev/waveterm/pkg/util/fileutil"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/waveappstore"
+	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wps"
+	"github.com/wavetermdev/waveterm/pkg/wstore"
 )
 
 const BuilderAppFileName = "app.go"
 
 type builderWriteAppFileParams struct {
 	Contents string `json:"contents"`
+}
+
+func triggerBuildAndWait(builderId string, appId string) map[string]any {
+	bc := buildercontroller.GetOrCreateController(builderId)
+	rtInfo := wstore.GetRTInfo(waveobj.MakeORef(waveobj.OType_Builder, builderId))
+
+	var builderEnv map[string]string
+	if rtInfo != nil {
+		builderEnv = rtInfo.BuilderEnv
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+
+	result, err := bc.RestartAndWaitForBuild(ctx, appId, builderEnv)
+	if err != nil {
+		log.Printf("Build failed for %s: %v", builderId, err)
+		return map[string]any{
+			"build_success": false,
+			"build_error":   err.Error(),
+			"build_output":  "",
+		}
+	}
+
+	return map[string]any{
+		"build_success": result.Success,
+		"build_error":   result.ErrorMessage,
+		"build_output":  result.BuildOutput,
+	}
 }
 
 func parseBuilderWriteAppFileInput(input any) (*builderWriteAppFileParams, error) {
@@ -37,7 +72,7 @@ func parseBuilderWriteAppFileInput(input any) (*builderWriteAppFileParams, error
 	return result, nil
 }
 
-func GetBuilderWriteAppFileToolDefinition(appId string) uctypes.ToolDefinition {
+func GetBuilderWriteAppFileToolDefinition(appId string, builderId string) uctypes.ToolDefinition {
 	return uctypes.ToolDefinition{
 		Name:        "builder_write_app_file",
 		DisplayName: "Write App File",
@@ -74,10 +109,19 @@ func GetBuilderWriteAppFileToolDefinition(appId string) uctypes.ToolDefinition {
 				Scopes: []string{appId},
 			})
 
-			return map[string]any{
+			result := map[string]any{
 				"success": true,
 				"message": fmt.Sprintf("Successfully wrote %s", BuilderAppFileName),
-			}, nil
+			}
+
+			if builderId != "" {
+				buildResult := triggerBuildAndWait(builderId, appId)
+				result["build_success"] = buildResult["build_success"]
+				result["build_error"] = buildResult["build_error"]
+				result["build_output"] = buildResult["build_output"]
+			}
+
+			return result, nil
 		},
 	}
 }
@@ -104,7 +148,7 @@ func parseBuilderEditAppFileInput(input any) (*builderEditAppFileParams, error) 
 	return result, nil
 }
 
-func GetBuilderEditAppFileToolDefinition(appId string) uctypes.ToolDefinition {
+func GetBuilderEditAppFileToolDefinition(appId string, builderId string) uctypes.ToolDefinition {
 	return uctypes.ToolDefinition{
 		Name:        "builder_edit_app_file",
 		DisplayName: "Edit App File",
@@ -147,7 +191,12 @@ func GetBuilderEditAppFileToolDefinition(appId string) uctypes.ToolDefinition {
 			if err != nil {
 				return fmt.Sprintf("error parsing input: %v", err)
 			}
-			return fmt.Sprintf("editing app.go for %s (%d edits)", appId, len(params.Edits))
+			numEdits := len(params.Edits)
+			editStr := "edits"
+			if numEdits == 1 {
+				editStr = "edit"
+			}
+			return fmt.Sprintf("editing app.go for %s (%d %s)", appId, numEdits, editStr)
 		},
 		ToolAnyCallback: func(input any, toolUseData *uctypes.UIMessageDataToolUse) (any, error) {
 			params, err := parseBuilderEditAppFileInput(input)
@@ -165,10 +214,19 @@ func GetBuilderEditAppFileToolDefinition(appId string) uctypes.ToolDefinition {
 				Scopes: []string{appId},
 			})
 
-			return map[string]any{
+			result := map[string]any{
 				"success": true,
 				"message": fmt.Sprintf("Successfully edited %s with %d changes", BuilderAppFileName, len(params.Edits)),
-			}, nil
+			}
+
+			if builderId != "" {
+				buildResult := triggerBuildAndWait(builderId, appId)
+				result["build_success"] = buildResult["build_success"]
+				result["build_error"] = buildResult["build_error"]
+				result["build_output"] = buildResult["build_output"]
+			}
+
+			return result, nil
 		},
 	}
 }

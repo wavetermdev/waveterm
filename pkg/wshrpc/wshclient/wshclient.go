@@ -568,6 +568,12 @@ func ResolveIdsCommand(w *wshutil.WshRpc, data wshrpc.CommandResolveIdsData, opt
 	return resp, err
 }
 
+// command "restartbuilderandwait", wshserver.RestartBuilderAndWaitCommand
+func RestartBuilderAndWaitCommand(w *wshutil.WshRpc, data wshrpc.CommandRestartBuilderAndWaitData, opts *wshrpc.RpcOpts) (*wshrpc.RestartBuilderAndWaitResult, error) {
+	resp, err := sendRpcRequestCallHelper[*wshrpc.RestartBuilderAndWaitResult](w, "restartbuilderandwait", data, opts)
+	return resp, err
+}
+
 // command "routeannounce", wshserver.RouteAnnounceCommand
 func RouteAnnounceCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "routeannounce", nil, opts)

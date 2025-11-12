@@ -12,6 +12,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"sync"
 	"time"
 
@@ -39,6 +40,12 @@ type BuilderProcess struct {
 	Port        int
 	WaitCh      chan struct{}
 	WaitRtn     error
+}
+
+type BuildResult struct {
+	Success      bool   `json:"success"`
+	ErrorMessage string `json:"errormessage,omitempty"`
+	BuildOutput  string `json:"buildoutput"`
 }
 
 type BuilderController struct {
@@ -182,22 +189,22 @@ func (bc *BuilderController) Start(ctx context.Context, appId string, builderEnv
 		defer func() {
 			panichandler.PanicHandler(fmt.Sprintf("buildercontroller[%s].buildAndRun", bc.builderId), recover())
 		}()
-		bc.buildAndRun(buildCtx, appId, builderEnv)
+		bc.buildAndRun(buildCtx, appId, builderEnv, nil)
 	}()
 
 	return nil
 }
 
-func (bc *BuilderController) buildAndRun(ctx context.Context, appId string, builderEnv map[string]string) {
+func (bc *BuilderController) buildAndRun(ctx context.Context, appId string, builderEnv map[string]string, resultCh chan<- *BuildResult) {
 	appNS, _, err := waveappstore.ParseAppId(appId)
 	if err != nil {
-		bc.handleBuildError(fmt.Errorf("failed to parse app id: %w", err))
+		bc.handleBuildError(fmt.Errorf("failed to parse app id: %w", err), resultCh)
 		return
 	}
 
 	appPath, err := waveappstore.GetAppDir(appId)
 	if err != nil {
-		bc.handleBuildError(fmt.Errorf("failed to get app directory: %w", err))
+		bc.handleBuildError(fmt.Errorf("failed to get app directory: %w", err), resultCh)
 		return
 	}
 
@@ -205,13 +212,13 @@ func (bc *BuilderController) buildAndRun(ctx context.Context, appId string, buil
 
 	cachePath, err := GetBuilderAppExecutablePath(bc.builderId, appName)
 	if err != nil {
-		bc.handleBuildError(fmt.Errorf("failed to get builder executable path: %w", err))
+		bc.handleBuildError(fmt.Errorf("failed to get builder executable path: %w", err), resultCh)
 		return
 	}
 
 	nodePath := wavebase.GetWaveAppElectronExecPath()
 	if nodePath == "" {
-		bc.handleBuildError(fmt.Errorf("electron executable path not set"))
+		bc.handleBuildError(fmt.Errorf("electron executable path not set"), resultCh)
 		return
 	}
 
@@ -248,24 +255,39 @@ func (bc *BuilderController) buildAndRun(ctx context.Context, appId string, buil
 	}
 
 	if err != nil {
-		bc.handleBuildError(fmt.Errorf("build failed: %w", err))
+		bc.handleBuildError(fmt.Errorf("build failed: %w", err), resultCh)
 		return
 	}
 
 	info, err := os.Stat(cachePath)
 	if err != nil {
-		bc.handleBuildError(fmt.Errorf("build output not found: %w", err))
+		bc.handleBuildError(fmt.Errorf("build output not found: %w", err), resultCh)
 		return
 	}
 
 	if runtime.GOOS != "windows" && info.Mode()&0111 == 0 {
-		bc.handleBuildError(fmt.Errorf("build output is not executable"))
+		bc.handleBuildError(fmt.Errorf("build output is not executable"), resultCh)
 		return
+	}
+
+	if resultCh != nil {
+		buildOutput := ""
+		if bc.outputBuffer != nil {
+			lines := bc.outputBuffer.GetLines()
+			buildOutput = strings.Join(lines, "\n")
+		}
+		select {
+		case resultCh <- &BuildResult{
+			Success:     true,
+			BuildOutput: buildOutput,
+		}:
+		default:
+		}
 	}
 
 	process, err := bc.runBuilderApp(ctx, cachePath, builderEnv)
 	if err != nil {
-		bc.handleBuildError(fmt.Errorf("failed to run app: %w", err))
+		bc.handleBuildError(fmt.Errorf("failed to run app: %w", err), resultCh)
 		return
 	}
 
@@ -371,10 +393,69 @@ func (bc *BuilderController) runBuilderApp(ctx context.Context, appBinPath strin
 	}
 }
 
-func (bc *BuilderController) handleBuildError(err error) {
+func (bc *BuilderController) handleBuildError(err error, resultCh chan<- *BuildResult) {
 	bc.lock.Lock()
 	defer bc.lock.Unlock()
 	bc.setStatus_nolock(BuilderStatus_Error, 0, 1, err.Error())
+
+	if resultCh != nil {
+		buildOutput := ""
+		if bc.outputBuffer != nil {
+			lines := bc.outputBuffer.GetLines()
+			buildOutput = strings.Join(lines, "\n")
+		}
+		select {
+		case resultCh <- &BuildResult{
+			Success:      false,
+			ErrorMessage: err.Error(),
+			BuildOutput:  buildOutput,
+		}:
+		default:
+		}
+	}
+}
+
+func (bc *BuilderController) RestartAndWaitForBuild(ctx context.Context, appId string, builderEnv map[string]string) (*BuildResult, error) {
+	if err := bc.waitForBuildDone(ctx); err != nil {
+		return nil, err
+	}
+
+	resultCh := make(chan *BuildResult, 1)
+
+	bc.lock.Lock()
+	if bc.appId != appId && bc.process != nil {
+		log.Printf("BuilderController: stopping previous app %s for builder %s", bc.appId, bc.builderId)
+		bc.stopProcess_nolock()
+	}
+
+	bc.appId = appId
+	bc.outputBuffer = utilds.MakeMultiReaderLineBuffer(1000)
+	bc.setStatus_nolock(BuilderStatus_Building, 0, 0, "")
+
+	bc.publishOutputLine("", true)
+
+	bc.outputBuffer.SetLineCallback(func(line string) {
+		bc.publishOutputLine(line, false)
+	})
+	bc.lock.Unlock()
+
+	time.Sleep(500 * time.Millisecond)
+
+	buildCtx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	go func() {
+		defer cancel()
+		defer func() {
+			panichandler.PanicHandler(fmt.Sprintf("buildercontroller[%s].buildAndRun", bc.builderId), recover())
+		}()
+		bc.buildAndRun(buildCtx, appId, builderEnv, resultCh)
+	}()
+
+	select {
+	case result := <-resultCh:
+		return result, nil
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
 }
 
 func (bc *BuilderController) Stop() error {

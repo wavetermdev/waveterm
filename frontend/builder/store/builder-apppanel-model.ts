@@ -106,7 +106,6 @@ export class BuilderAppPanelModel {
             scope: appId,
             handler: () => {
                 this.loadAppFile(appId);
-                this.debouncedRestart();
             },
         });
     }

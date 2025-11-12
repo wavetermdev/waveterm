@@ -1051,6 +1051,35 @@ func (ws *WshServer) StartBuilderCommand(ctx context.Context, data wshrpc.Comman
 	return bc.Start(ctx, appId, rtInfo.BuilderEnv)
 }
 
+func (ws *WshServer) RestartBuilderAndWaitCommand(ctx context.Context, data wshrpc.CommandRestartBuilderAndWaitData) (*wshrpc.RestartBuilderAndWaitResult, error) {
+	if data.BuilderId == "" {
+		return nil, fmt.Errorf("must provide a builderId to RestartBuilderAndWaitCommand")
+	}
+
+	bc := buildercontroller.GetOrCreateController(data.BuilderId)
+	rtInfo := wstore.GetRTInfo(waveobj.MakeORef("builder", data.BuilderId))
+	if rtInfo == nil {
+		return nil, fmt.Errorf("builder rtinfo not found for builderid: %s", data.BuilderId)
+	}
+
+	appId := rtInfo.BuilderAppId
+	if appId == "" {
+		return nil, fmt.Errorf("builder appid not set for builderid: %s", data.BuilderId)
+	}
+
+	result, err := bc.RestartAndWaitForBuild(ctx, appId, rtInfo.BuilderEnv)
+	if err != nil {
+		return nil, err
+	}
+
+	return &wshrpc.RestartBuilderAndWaitResult{
+		Success:      result.Success,
+		ErrorMessage: result.ErrorMessage,
+		BuildOutput:  result.BuildOutput,
+	}, nil
+}
+
+
 func (ws *WshServer) GetBuilderStatusCommand(ctx context.Context, builderId string) (*wshrpc.BuilderStatusData, error) {
 	if builderId == "" {
 		return nil, fmt.Errorf("must provide a builderId to GetBuilderStatusCommand")

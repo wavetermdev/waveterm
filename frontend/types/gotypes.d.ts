@@ -379,6 +379,11 @@ declare global {
         resolvedids: {[key: string]: ORef};
     };
 
+    // wshrpc.CommandRestartBuilderAndWaitData
+    type CommandRestartBuilderAndWaitData = {
+        builderid: string;
+    };
+
     // wshrpc.CommandSetMetaData
     type CommandSetMetaData = {
         oref: ORef;
@@ -907,6 +912,13 @@ declare global {
         clientos: string;
         clientversion: string;
         shell: string;
+    };
+
+    // wshrpc.RestartBuilderAndWaitResult
+    type RestartBuilderAndWaitResult = {
+        success: boolean;
+        errormessage?: string;
+        buildoutput: string;
     };
 
     // wshutil.RpcMessage
