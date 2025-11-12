@@ -248,7 +248,7 @@ async function reinitBuilder() {
     );
 
     await WOS.reloadWaveObject<Client>(WOS.makeORef("client", savedBuilderInitOpts.clientId));
-    document.title = `Tsunami Builder - ${savedBuilderInitOpts.appId}`;
+    document.title = savedBuilderInitOpts.appId ? `WaveApp Builder (${savedBuilderInitOpts.appId})` : "WaveApp Builder";
     getApi().setWindowInitStatus("wave-ready");
     globalStore.set(atoms.reinitVersion, globalStore.get(atoms.reinitVersion) + 1);
     globalStore.set(atoms.updaterStatusAtom, getApi().getUpdaterStatus());
@@ -273,7 +273,7 @@ async function initBuilder(initOpts: BuilderInitOpts) {
         platform
     );
 
-    document.title = `Tsunami Builder - ${initOpts.appId}`;
+    document.title = initOpts.appId ? `WaveApp Builder (${initOpts.appId})` : "WaveApp Builder";
 
     initGlobal({
         clientId: initOpts.clientId,
@@ -288,7 +288,7 @@ async function initBuilder(initOpts: BuilderInitOpts) {
     (window as any).globalWS = globalWS;
     (window as any).TabRpcClient = TabRpcClient;
     await loadConnStatus();
-    
+
     let appIdToUse = initOpts.appId;
     try {
         const oref = WOS.makeORef("builder", initOpts.builderId);
@@ -299,7 +299,7 @@ async function initBuilder(initOpts: BuilderInitOpts) {
     } catch (e) {
         console.log("Could not load saved builder appId from rtinfo:", e);
     }
-    
+
     globalStore.set(atoms.builderAppId, appIdToUse);
 
     const client = await WOS.loadAndPinWaveObject<Client>(WOS.makeORef("client", initOpts.clientId));

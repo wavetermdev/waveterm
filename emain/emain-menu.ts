@@ -127,6 +127,7 @@ function makeFileMenu(numWaveWindows: number, callbacks: AppMenuCallbacks): Elec
     if (isDev) {
         fileMenu.splice(1, 0, {
             label: "New WaveApp Builder Window",
+            accelerator: unamePlatform === "darwin" ? "Command+Shift+B" : "Alt+Shift+B",
             click: () => fireAndForget(() => createBuilderWindow("")),
         });
     }

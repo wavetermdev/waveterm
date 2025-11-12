@@ -248,6 +248,7 @@ func (bc *BuilderController) buildAndRun(ctx context.Context, appId string, buil
 		NodePath:       nodePath,
 		GoPath:         goPath,
 		OutputCapture:  outputCapture,
+		MoveFileBack:   true,
 	})
 
 	for _, line := range outputCapture.GetLines() {
