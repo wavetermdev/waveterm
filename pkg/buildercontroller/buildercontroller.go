@@ -24,6 +24,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wconfig"
 	"github.com/wavetermdev/waveterm/pkg/wps"
 	"github.com/wavetermdev/waveterm/tsunami/build"
+	"github.com/wavetermdev/waveterm/tsunami/engine"
 )
 
 const (
@@ -300,7 +301,12 @@ func (bc *BuilderController) runBuilderApp(ctx context.Context, appId string, ap
 		return nil, fmt.Errorf("failed to read app manifest: %w", err)
 	}
 
-	secretEnv, err := waveappstore.BuildAppSecretEnv(appId, manifest)
+	secretBindings, err := waveappstore.ReadAppSecretBindings(appId)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read secret bindings: %w", err)
+	}
+
+	secretEnv, err := waveappstore.BuildAppSecretEnv(appId, manifest, secretBindings)
 	if err != nil {
 		return nil, fmt.Errorf("failed to build secret environment: %w", err)
 	}
@@ -494,13 +500,32 @@ func (bc *BuilderController) GetStatus() BuilderStatusData {
 	defer bc.statusLock.Unlock()
 
 	bc.statusVersion++
-	return BuilderStatusData{
+	statusData := BuilderStatusData{
 		Status:   bc.status,
 		Port:     bc.port,
 		ExitCode: bc.exitCode,
 		ErrorMsg: bc.errorMsg,
 		Version:  bc.statusVersion,
 	}
+
+	if bc.appId != "" {
+		manifest, err := waveappstore.ReadAppManifest(bc.appId)
+		if err == nil {
+			statusData.Manifest = manifest
+		}
+
+		secretBindings, err := waveappstore.ReadAppSecretBindings(bc.appId)
+		if err == nil {
+			statusData.SecretBindings = secretBindings
+		}
+
+		if manifest != nil && secretBindings != nil {
+			_, err := waveappstore.BuildAppSecretEnv(bc.appId, manifest, secretBindings)
+			statusData.SecretBindingsComplete = (err == nil)
+		}
+	}
+
+	return statusData
 }
 
 func (bc *BuilderController) GetOutput() []string {
@@ -542,11 +567,14 @@ func (bc *BuilderController) publishOutputLine(line string, reset bool) {
 }
 
 type BuilderStatusData struct {
-	Status   string `json:"status"`
-	Port     int    `json:"port,omitempty"`
-	ExitCode int    `json:"exitcode,omitempty"`
-	ErrorMsg string `json:"errormsg,omitempty"`
-	Version  int    `json:"version"`
+	Status                 string                `json:"status"`
+	Port                   int                   `json:"port,omitempty"`
+	ExitCode               int                   `json:"exitcode,omitempty"`
+	ErrorMsg               string                `json:"errormsg,omitempty"`
+	Version                int                   `json:"version"`
+	Manifest               *engine.AppManifest   `json:"manifest,omitempty"`
+	SecretBindings         map[string]string     `json:"secretbindings,omitempty"`
+	SecretBindingsComplete bool                  `json:"secretbindingscomplete"`
 }
 
 func exitCodeFromWaitErr(waitErr error) int {

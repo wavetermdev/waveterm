@@ -706,14 +706,13 @@ func ReadAppSecretBindings(appId string) (map[string]string, error) {
 	return bindings, nil
 }
 
-func BuildAppSecretEnv(appId string, manifest *engine.AppManifest) (map[string]string, error) {
+func BuildAppSecretEnv(appId string, manifest *engine.AppManifest, bindings map[string]string) (map[string]string, error) {
 	if manifest == nil {
 		return make(map[string]string), nil
 	}
 
-	bindings, err := ReadAppSecretBindings(appId)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read secret bindings: %w", err)
+	if bindings == nil {
+		bindings = make(map[string]string)
 	}
 
 	secretEnv := make(map[string]string)
