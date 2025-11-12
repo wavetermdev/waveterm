@@ -108,6 +108,15 @@ func getWaveAISettings(premium bool, builderMode bool, rtInfo *waveobj.ObjRTInfo
 	if rtInfo != nil && rtInfo.WaveAIMaxOutputTokens > 0 {
 		maxTokens = rtInfo.WaveAIMaxOutputTokens
 	}
+	var thinkingMode string
+	if premium {
+		thinkingMode = uctypes.ThinkingModeBalanced
+		if rtInfo != nil && rtInfo.WaveAIThinkingMode != "" {
+			thinkingMode = rtInfo.WaveAIThinkingMode
+		}
+	} else {
+		thinkingMode = uctypes.ThinkingModeQuick
+	}
 	if DefaultAPI == APIType_Anthropic {
 		thinkingLevel := uctypes.ThinkingLevelMedium
 		return &uctypes.AIOptsType{
@@ -115,19 +124,10 @@ func getWaveAISettings(premium bool, builderMode bool, rtInfo *waveobj.ObjRTInfo
 			Model:         uctypes.DefaultAnthropicModel,
 			MaxTokens:     maxTokens,
 			ThinkingLevel: thinkingLevel,
+			ThinkingMode:  thinkingMode,
 			BaseURL:       baseUrl,
 		}, nil
 	} else if DefaultAPI == APIType_OpenAI {
-		var thinkingMode string
-		if premium {
-			thinkingMode = uctypes.ThinkingModeBalanced
-			if rtInfo != nil && rtInfo.WaveAIThinkingMode != "" {
-				thinkingMode = rtInfo.WaveAIThinkingMode
-			}
-		} else {
-			thinkingMode = uctypes.ThinkingModeQuick
-		}
-
 		var model string
 		var thinkingLevel string
 
@@ -151,6 +151,7 @@ func getWaveAISettings(premium bool, builderMode bool, rtInfo *waveobj.ObjRTInfo
 			Model:         model,
 			MaxTokens:     maxTokens,
 			ThinkingLevel: thinkingLevel,
+			ThinkingMode:  thinkingMode,
 			BaseURL:       baseUrl,
 		}, nil
 	}
@@ -414,8 +415,10 @@ func RunAIChat(ctx context.Context, sseHandler *sse.SSEHandlerCh, chatOpts uctyp
 			APIType: chatOpts.Config.APIType,
 			Model:   chatOpts.Config.Model,
 		},
-		WidgetAccess: chatOpts.WidgetAccess,
-		ToolDetail:   make(map[string]int),
+		WidgetAccess:  chatOpts.WidgetAccess,
+		ToolDetail:    make(map[string]int),
+		ThinkingLevel: chatOpts.Config.ThinkingLevel,
+		ThinkingMode:  chatOpts.Config.ThinkingMode,
 	}
 	firstStep := true
 	var cont *uctypes.WaveContinueResponse
@@ -627,6 +630,8 @@ func sendAIMetricsTelemetry(ctx context.Context, metrics *uctypes.AIMetrics) {
 		WaveAIFirstByteMs:          metrics.FirstByteLatency,
 		WaveAIRequestDurMs:         metrics.RequestDuration,
 		WaveAIWidgetAccess:         metrics.WidgetAccess,
+		WaveAIThinkingLevel:        metrics.ThinkingLevel,
+		WaveAIThinkingMode:         metrics.ThinkingMode,
 	})
 	_ = telemetry.RecordTEvent(ctx, event)
 }

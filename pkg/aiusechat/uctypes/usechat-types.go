@@ -218,6 +218,7 @@ type AIOptsType struct {
 	MaxTokens     int    `json:"maxtokens,omitempty"`
 	TimeoutMs     int    `json:"timeoutms,omitempty"`
 	ThinkingLevel string `json:"thinkinglevel,omitempty"` // ThinkingLevelLow, ThinkingLevelMedium, or ThinkingLevelHigh
+	ThinkingMode  string `json:"thinkingmode,omitempty"`  // quick, balanced, or deep
 }
 
 func (opts AIOptsType) IsWaveProxy() bool {
@@ -260,6 +261,8 @@ type AIMetrics struct {
 	FirstByteLatency  int            `json:"firstbytelatency"` // ms
 	RequestDuration   int            `json:"requestduration"`  // ms
 	WidgetAccess      bool           `json:"widgetaccess"`
+	ThinkingLevel     string         `json:"thinkinglevel,omitempty"`
+	ThinkingMode      string         `json:"thinkingmode,omitempty"`
 }
 
 // GenAIMessage interface for messages stored in conversations
