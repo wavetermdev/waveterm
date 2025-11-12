@@ -144,6 +144,8 @@ type TEventProps struct {
 	WaveAIFirstByteMs          int            `json:"waveai:firstbytems,omitempty"`  // ms
 	WaveAIRequestDurMs         int            `json:"waveai:requestdurms,omitempty"` // ms
 	WaveAIWidgetAccess         bool           `json:"waveai:widgetaccess,omitempty"`
+	WaveAIThinkingLevel        string         `json:"waveai:thinkinglevel,omitempty"`
+	WaveAIThinkingMode         string         `json:"waveai:thinkingmode,omitempty"`
 	WaveAIFeedback             string         `json:"waveai:feedback,omitempty" tstype:"\"good\" | \"bad\""`
 	WaveAIAction               string         `json:"waveai:action,omitempty"`
 

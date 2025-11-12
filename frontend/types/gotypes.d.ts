@@ -872,7 +872,7 @@ declare global {
         "builder:appid"?: string;
         "builder:env"?: {[key: string]: string};
         "waveai:chatid"?: string;
-        "waveai:thinkinglevel"?: string;
+        "waveai:thinkingmode"?: string;
         "waveai:maxoutputtokens"?: number;
     };
 
@@ -1171,6 +1171,8 @@ declare global {
         "waveai:firstbytems"?: number;
         "waveai:requestdurms"?: number;
         "waveai:widgetaccess"?: boolean;
+        "waveai:thinkinglevel"?: string;
+        "waveai:thinkingmode"?: string;
         "waveai:feedback"?: "good" | "bad";
         "waveai:action"?: string;
         $set?: TEventUserProps;

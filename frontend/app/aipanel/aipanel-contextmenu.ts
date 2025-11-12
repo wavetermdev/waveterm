@@ -3,7 +3,8 @@
 
 import { waveAIHasSelection } from "@/app/aipanel/waveai-focus-utils";
 import { ContextMenuModel } from "@/app/store/contextmenu";
-import { isDev } from "@/app/store/global";
+import { atoms, isDev } from "@/app/store/global";
+import { globalStore } from "@/app/store/jotaiStore";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { WaveAIModel } from "./waveai-model";
@@ -38,41 +39,47 @@ export async function handleWaveAIContextMenu(e: React.MouseEvent, showCopy: boo
         oref: model.orefContext,
     });
 
-    const currentThinkingLevel = rtInfo?.["waveai:thinkinglevel"] ?? "medium";
+    const rateLimitInfo = globalStore.get(atoms.waveAIRateLimitInfoAtom);
+    const hasPremium = !rateLimitInfo || rateLimitInfo.unknown || rateLimitInfo.preq > 0;
+    const currentThinkingMode = rtInfo?.["waveai:thinkingmode"] ?? (hasPremium ? "balanced" : "quick");
     const defaultTokens = model.inBuilder ? 24576 : 4096;
     const currentMaxTokens = rtInfo?.["waveai:maxoutputtokens"] ?? defaultTokens;
 
-    const thinkingLevelSubmenu: ContextMenuItem[] = [
+    const thinkingModeSubmenu: ContextMenuItem[] = [
         {
-            label: "Low",
+            label: "Quick (gpt-5-mini)",
             type: "checkbox",
-            checked: currentThinkingLevel === "low",
+            checked: currentThinkingMode === "quick",
             click: () => {
                 RpcApi.SetRTInfoCommand(TabRpcClient, {
                     oref: model.orefContext,
-                    data: { "waveai:thinkinglevel": "low" },
+                    data: { "waveai:thinkingmode": "quick" },
                 });
             },
         },
         {
-            label: "Medium",
+            label: hasPremium ? "Balanced (gpt-5, low thinking)" : "Balanced (premium)",
             type: "checkbox",
-            checked: currentThinkingLevel === "medium",
+            checked: currentThinkingMode === "balanced",
+            enabled: hasPremium,
             click: () => {
+                if (!hasPremium) return;
                 RpcApi.SetRTInfoCommand(TabRpcClient, {
                     oref: model.orefContext,
-                    data: { "waveai:thinkinglevel": "medium" },
+                    data: { "waveai:thinkingmode": "balanced" },
                 });
             },
         },
         {
-            label: "High",
+            label: hasPremium ? "Deep (gpt-5, full thinking)" : "Deep (premium)",
             type: "checkbox",
-            checked: currentThinkingLevel === "high",
+            checked: currentThinkingMode === "deep",
+            enabled: hasPremium,
             click: () => {
+                if (!hasPremium) return;
                 RpcApi.SetRTInfoCommand(TabRpcClient, {
                     oref: model.orefContext,
-                    data: { "waveai:thinkinglevel": "high" },
+                    data: { "waveai:thinkingmode": "deep" },
                 });
             },
         },
@@ -157,8 +164,8 @@ export async function handleWaveAIContextMenu(e: React.MouseEvent, showCopy: boo
     }
 
     menu.push({
-        label: "Thinking Level",
-        submenu: thinkingLevelSubmenu,
+        label: "Thinking Mode",
+        submenu: thinkingModeSubmenu,
     });
 
     menu.push({

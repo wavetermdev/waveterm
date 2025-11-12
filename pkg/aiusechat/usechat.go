@@ -108,33 +108,50 @@ func getWaveAISettings(premium bool, builderMode bool, rtInfo *waveobj.ObjRTInfo
 	if rtInfo != nil && rtInfo.WaveAIMaxOutputTokens > 0 {
 		maxTokens = rtInfo.WaveAIMaxOutputTokens
 	}
+	var thinkingMode string
+	if premium {
+		thinkingMode = uctypes.ThinkingModeBalanced
+		if rtInfo != nil && rtInfo.WaveAIThinkingMode != "" {
+			thinkingMode = rtInfo.WaveAIThinkingMode
+		}
+	} else {
+		thinkingMode = uctypes.ThinkingModeQuick
+	}
 	if DefaultAPI == APIType_Anthropic {
 		thinkingLevel := uctypes.ThinkingLevelMedium
-		if rtInfo != nil && rtInfo.WaveAIThinkingLevel != "" {
-			thinkingLevel = rtInfo.WaveAIThinkingLevel
-		}
 		return &uctypes.AIOptsType{
 			APIType:       APIType_Anthropic,
 			Model:         uctypes.DefaultAnthropicModel,
 			MaxTokens:     maxTokens,
 			ThinkingLevel: thinkingLevel,
+			ThinkingMode:  thinkingMode,
 			BaseURL:       baseUrl,
 		}, nil
 	} else if DefaultAPI == APIType_OpenAI {
-		model := uctypes.DefaultOpenAIModel
-		thinkingLevel := uctypes.ThinkingLevelLow
-		if premium {
+		var model string
+		var thinkingLevel string
+
+		switch thinkingMode {
+		case uctypes.ThinkingModeQuick:
+			model = uctypes.DefaultOpenAIModel
+			thinkingLevel = uctypes.ThinkingLevelLow
+		case uctypes.ThinkingModeBalanced:
+			model = uctypes.PremiumOpenAIModel
+			thinkingLevel = uctypes.ThinkingLevelLow
+		case uctypes.ThinkingModeDeep:
 			model = uctypes.PremiumOpenAIModel
 			thinkingLevel = uctypes.ThinkingLevelMedium
-			if rtInfo != nil && rtInfo.WaveAIThinkingLevel != "" {
-				thinkingLevel = rtInfo.WaveAIThinkingLevel
-			}
+		default:
+			model = uctypes.PremiumOpenAIModel
+			thinkingLevel = uctypes.ThinkingLevelLow
 		}
+
 		return &uctypes.AIOptsType{
 			APIType:       APIType_OpenAI,
 			Model:         model,
 			MaxTokens:     maxTokens,
 			ThinkingLevel: thinkingLevel,
+			ThinkingMode:  thinkingMode,
 			BaseURL:       baseUrl,
 		}, nil
 	}
@@ -398,8 +415,10 @@ func RunAIChat(ctx context.Context, sseHandler *sse.SSEHandlerCh, chatOpts uctyp
 			APIType: chatOpts.Config.APIType,
 			Model:   chatOpts.Config.Model,
 		},
-		WidgetAccess: chatOpts.WidgetAccess,
-		ToolDetail:   make(map[string]int),
+		WidgetAccess:  chatOpts.WidgetAccess,
+		ToolDetail:    make(map[string]int),
+		ThinkingLevel: chatOpts.Config.ThinkingLevel,
+		ThinkingMode:  chatOpts.Config.ThinkingMode,
 	}
 	firstStep := true
 	var cont *uctypes.WaveContinueResponse
@@ -611,6 +630,8 @@ func sendAIMetricsTelemetry(ctx context.Context, metrics *uctypes.AIMetrics) {
 		WaveAIFirstByteMs:          metrics.FirstByteLatency,
 		WaveAIRequestDurMs:         metrics.RequestDuration,
 		WaveAIWidgetAccess:         metrics.WidgetAccess,
+		WaveAIThinkingLevel:        metrics.ThinkingLevel,
+		WaveAIThinkingMode:         metrics.ThinkingMode,
 	})
 	_ = telemetry.RecordTEvent(ctx, event)
 }
