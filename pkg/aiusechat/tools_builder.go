@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
@@ -91,7 +92,15 @@ func GetBuilderWriteAppFileToolDefinition(appId string, builderId string) uctype
 			"additionalProperties": false,
 		},
 		ToolCallDesc: func(input any, output any, toolUseData *uctypes.UIMessageDataToolUse) string {
-			return fmt.Sprintf("writing app.go for %s", appId)
+			if output != nil {
+				params, err := parseBuilderWriteAppFileInput(input)
+				if err == nil {
+					lineCount := len(strings.Split(params.Contents, "\n"))
+					return fmt.Sprintf("wrote app.go (%d lines)", lineCount)
+				}
+				return "wrote app.go"
+			}
+			return "writing app.go"
 		},
 		ToolAnyCallback: func(input any, toolUseData *uctypes.UIMessageDataToolUse) (any, error) {
 			params, err := parseBuilderWriteAppFileInput(input)
@@ -154,7 +163,7 @@ func GetBuilderEditAppFileToolDefinition(appId string, builderId string) uctypes
 		DisplayName: "Edit App File",
 		Description: "Edit the app.go file for this app using precise search and replace. " +
 			"Each old_str must appear EXACTLY ONCE in the file or the edit will fail. " +
-			"All edits are applied atomically - if any single edit fails, the entire operation fails and no changes are made.",
+			"Edits are applied sequentially - if an edit fails, all previous edits are kept and subsequent edits are skipped.",
 		ToolLogName: "builder:edit_app",
 		Strict:      false,
 		InputSchema: map[string]any{
@@ -162,13 +171,13 @@ func GetBuilderEditAppFileToolDefinition(appId string, builderId string) uctypes
 			"properties": map[string]any{
 				"edits": map[string]any{
 					"type":        "array",
-					"description": "Array of edit specifications. All edits are applied atomically - if any edit fails, none are applied.",
+					"description": "Array of edit specifications. Edits are applied sequentially - if one fails, previous edits are kept but remaining edits are skipped.",
 					"items": map[string]any{
 						"type": "object",
 						"properties": map[string]any{
 							"old_str": map[string]any{
 								"type":        "string",
-								"description": "The exact string to find and replace. MUST appear exactly once in the file - if it appears zero times or multiple times, the entire edit operation will fail.",
+								"description": "The exact string to find and replace. MUST appear exactly once in the file - if it appears zero times or multiple times, this edit will fail.",
 							},
 							"new_str": map[string]any{
 								"type":        "string",
@@ -176,7 +185,7 @@ func GetBuilderEditAppFileToolDefinition(appId string, builderId string) uctypes
 							},
 							"desc": map[string]any{
 								"type":        "string",
-								"description": "Description of what this edit does",
+								"description": "Description of what this edit does (keep short, half a line of text max)",
 							},
 						},
 						"required": []string{"old_str", "new_str"},
@@ -196,7 +205,7 @@ func GetBuilderEditAppFileToolDefinition(appId string, builderId string) uctypes
 			if numEdits == 1 {
 				editStr = "edit"
 			}
-			return fmt.Sprintf("editing app.go for %s (%d %s)", appId, numEdits, editStr)
+			return fmt.Sprintf("editing app.go (%d %s)", numEdits, editStr)
 		},
 		ToolAnyCallback: func(input any, toolUseData *uctypes.UIMessageDataToolUse) (any, error) {
 			params, err := parseBuilderEditAppFileInput(input)
@@ -204,7 +213,7 @@ func GetBuilderEditAppFileToolDefinition(appId string, builderId string) uctypes
 				return nil, err
 			}
 
-			err = waveappstore.ReplaceInAppFile(appId, BuilderAppFileName, params.Edits)
+			editResults, err := waveappstore.ReplaceInAppFilePartial(appId, BuilderAppFileName, params.Edits)
 			if err != nil {
 				return nil, err
 			}
@@ -215,8 +224,7 @@ func GetBuilderEditAppFileToolDefinition(appId string, builderId string) uctypes
 			})
 
 			result := map[string]any{
-				"success": true,
-				"message": fmt.Sprintf("Successfully edited %s with %d changes", BuilderAppFileName, len(params.Edits)),
+				"edits": editResults,
 			}
 
 			if builderId != "" {
@@ -244,7 +252,7 @@ func GetBuilderListFilesToolDefinition(appId string) uctypes.ToolDefinition {
 			"additionalProperties": false,
 		},
 		ToolCallDesc: func(input any, output any, toolUseData *uctypes.UIMessageDataToolUse) string {
-			return fmt.Sprintf("listing files for %s", appId)
+			return "listing files"
 		},
 		ToolAnyCallback: func(input any, toolUseData *uctypes.UIMessageDataToolUse) (any, error) {
 			result, err := waveappstore.ListAllAppFiles(appId)

@@ -356,6 +356,24 @@ func ReplaceInAppFile(appId string, fileName string, edits []fileutil.EditSpec) 
 	return fileutil.ReplaceInFile(filePath, edits)
 }
 
+func ReplaceInAppFilePartial(appId string, fileName string, edits []fileutil.EditSpec) ([]fileutil.EditResult, error) {
+	if err := ValidateAppId(appId); err != nil {
+		return nil, fmt.Errorf("invalid appId: %w", err)
+	}
+
+	appDir, err := GetAppDir(appId)
+	if err != nil {
+		return nil, err
+	}
+
+	filePath, err := validateAndResolveFilePath(appDir, fileName)
+	if err != nil {
+		return nil, err
+	}
+
+	return fileutil.ReplaceInFilePartial(filePath, edits)
+}
+
 func RenameAppFile(appId string, fromFileName string, toFileName string) error {
 	if err := ValidateAppId(appId); err != nil {
 		return fmt.Errorf("invalid appId: %w", err)

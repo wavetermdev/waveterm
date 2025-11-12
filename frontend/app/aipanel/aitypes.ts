@@ -24,6 +24,12 @@ type WaveUIDataTypes = {
         writebackupfilename?: string;
         inputfilename?: string;
     };
+
+    toolprogress: {
+        toolcallid: string;
+        toolname: string;
+        statuslines: string[];
+    };
 };
 
 export type WaveUIMessage = UIMessage<unknown, WaveUIDataTypes, {}>;

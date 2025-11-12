@@ -262,29 +262,86 @@ type EditSpec struct {
 	Desc   string `json:"desc,omitempty"`
 }
 
+type EditResult struct {
+	Applied bool   `json:"applied"`
+	Desc    string `json:"desc"`
+	Error   string `json:"error,omitempty"`
+}
+
+// applyEdit applies a single edit to the content and returns the modified content and result.
+func applyEdit(content []byte, edit EditSpec, index int) ([]byte, EditResult) {
+	result := EditResult{
+		Desc: edit.Desc,
+	}
+	if result.Desc == "" {
+		result.Desc = fmt.Sprintf("Edit %d", index+1)
+	}
+
+	if edit.OldStr == "" {
+		result.Applied = false
+		result.Error = "old_str cannot be empty"
+		return content, result
+	}
+
+	oldBytes := []byte(edit.OldStr)
+	count := bytes.Count(content, oldBytes)
+	if count == 0 {
+		result.Applied = false
+		result.Error = "old_str not found in file"
+		return content, result
+	}
+	if count > 1 {
+		result.Applied = false
+		result.Error = fmt.Sprintf("old_str appears %d times, must appear exactly once", count)
+		return content, result
+	}
+
+	modifiedContent := bytes.Replace(content, oldBytes, []byte(edit.NewStr), 1)
+	result.Applied = true
+	return modifiedContent, result
+}
+
 // ApplyEdits applies a series of edits to the given content and returns the modified content.
-// Each edit's OldStr must appear exactly once in the content or an error is returned.
+// This is atomic - all edits succeed or all fail.
 func ApplyEdits(originalContent []byte, edits []EditSpec) ([]byte, error) {
 	modifiedContents := originalContent
 
 	for i, edit := range edits {
-		if edit.OldStr == "" {
-			return nil, fmt.Errorf("edit %d (%s): old_str cannot be empty", i, edit.Desc)
+		var result EditResult
+		modifiedContents, result = applyEdit(modifiedContents, edit, i)
+		if !result.Applied {
+			return nil, fmt.Errorf("edit %d (%s): %s", i, result.Desc, result.Error)
 		}
-
-		oldBytes := []byte(edit.OldStr)
-		count := bytes.Count(modifiedContents, oldBytes)
-		if count == 0 {
-			return nil, fmt.Errorf("edit %d (%s): old_str not found in file", i, edit.Desc)
-		}
-		if count > 1 {
-			return nil, fmt.Errorf("edit %d (%s): old_str appears %d times, must appear exactly once", i, edit.Desc, count)
-		}
-
-		modifiedContents = bytes.Replace(modifiedContents, oldBytes, []byte(edit.NewStr), 1)
 	}
 
 	return modifiedContents, nil
+}
+
+// ApplyEditsPartial applies edits incrementally, continuing until the first failure.
+// Returns the modified content (potentially partially applied) and results for each edit.
+func ApplyEditsPartial(originalContent []byte, edits []EditSpec) ([]byte, []EditResult) {
+	modifiedContents := originalContent
+	results := make([]EditResult, len(edits))
+	failed := false
+
+	for i, edit := range edits {
+		if failed {
+			results[i].Desc = edit.Desc
+			if results[i].Desc == "" {
+				results[i].Desc = fmt.Sprintf("Edit %d", i+1)
+			}
+			results[i].Applied = false
+			results[i].Error = "previous edit failed"
+			continue
+		}
+
+		modifiedContents, results[i] = applyEdit(modifiedContents, edit, i)
+		if !results[i].Applied {
+			failed = true
+		}
+	}
+
+	return modifiedContents, results
 }
 
 func ReplaceInFile(filePath string, edits []EditSpec) error {
@@ -316,4 +373,34 @@ func ReplaceInFile(filePath string, edits []EditSpec) error {
 	}
 
 	return nil
+}
+
+// ReplaceInFilePartial applies edits incrementally up to the first failure.
+// Returns the results for each edit and writes the partially modified content.
+func ReplaceInFilePartial(filePath string, edits []EditSpec) ([]EditResult, error) {
+	fileInfo, err := os.Stat(filePath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to stat file: %w", err)
+	}
+
+	if !fileInfo.Mode().IsRegular() {
+		return nil, fmt.Errorf("not a regular file: %s", filePath)
+	}
+
+	if fileInfo.Size() > MaxEditFileSize {
+		return nil, fmt.Errorf("file too large for editing: %d bytes (max: %d)", fileInfo.Size(), MaxEditFileSize)
+	}
+
+	contents, err := os.ReadFile(filePath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read file: %w", err)
+	}
+
+	modifiedContents, results := ApplyEditsPartial(contents, edits)
+
+	if err := os.WriteFile(filePath, modifiedContents, fileInfo.Mode()); err != nil {
+		return nil, fmt.Errorf("failed to write file: %w", err)
+	}
+
+	return results, nil
 }

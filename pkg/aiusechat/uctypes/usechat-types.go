@@ -161,6 +161,13 @@ func (d *UIMessageDataToolUse) IsApproved() bool {
 	return d.Approval == "" || d.Approval == ApprovalUserApproved || d.Approval == ApprovalAutoApproved
 }
 
+// when updating this struct, also modify frontend/app/aipanel/aitypes.ts WaveUIDataTypes.toolprogress
+type UIMessageDataToolProgress struct {
+	ToolCallId  string   `json:"toolcallid"`
+	ToolName    string   `json:"toolname"`
+	StatusLines []string `json:"statuslines"`
+}
+
 type StopReasonKind string
 
 const (
