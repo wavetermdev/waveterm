@@ -21,7 +21,7 @@ import { AIPanelInput } from "./aipanelinput";
 import { AIPanelMessages } from "./aipanelmessages";
 import { AIRateLimitStrip } from "./airatelimitstrip";
 import { TelemetryRequiredMessage } from "./telemetryrequired";
-import { ThinkingLevelDropdown } from "./thinkinglevel";
+import { ThinkingLevelDropdown } from "./thinkingmode";
 import { WaveAIModel } from "./waveai-model";
 
 const AIBlockMask = memo(() => {
