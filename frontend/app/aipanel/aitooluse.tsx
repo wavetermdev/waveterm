@@ -19,37 +19,37 @@ interface ToolDescLineProps {
 
 const ToolDescLine = memo(({ text }: ToolDescLineProps) => {
     let displayText = text;
-    
     if (displayText.startsWith("* ")) {
         displayText = "• " + displayText.slice(2);
     }
-    
+
     const parts: React.ReactNode[] = [];
     let lastIndex = 0;
-    const regex = /\b([+-])(\d+)\b/g;
+    const regex = /(?<!\w)([+-])(\d+)(?!\w)/g;
     let match;
-    
+
     while ((match = regex.exec(displayText)) !== null) {
         if (match.index > lastIndex) {
             parts.push(displayText.slice(lastIndex, match.index));
         }
-        
+
         const sign = match[1];
         const number = match[2];
-        const colorClass = sign === '+' ? 'text-green-500' : 'text-red-500';
+        const colorClass = sign === "+" ? "text-green-600" : "text-red-600";
         parts.push(
             <span key={match.index} className={colorClass}>
-                {sign}{number}
+                {sign}
+                {number}
             </span>
         );
-        
+
         lastIndex = match.index + match[0].length;
     }
-    
+
     if (lastIndex < displayText.length) {
         parts.push(displayText.slice(lastIndex));
     }
-    
+
     return <div>{parts.length > 0 ? parts : displayText}</div>;
 });
 
@@ -62,9 +62,9 @@ interface ToolDescProps {
 
 const ToolDesc = memo(({ text, className }: ToolDescProps) => {
     const lines = Array.isArray(text) ? text : text.split("\n");
-    
+
     if (lines.length === 0) return null;
-    
+
     return (
         <div className={className}>
             {lines.map((line, idx) => (
@@ -439,11 +439,11 @@ interface AIToolProgressProps {
 
 const AIToolProgress = memo(({ part }: AIToolProgressProps) => {
     const progressData = part.data;
-    
+
     return (
         <div className="flex flex-col gap-1 p-2 rounded bg-gray-800 border border-gray-700">
             <div className="flex items-center gap-2">
-                <span className="font-bold text-gray-400">•</span>
+                <i className="fa fa-spinner fa-spin text-gray-400"></i>
                 <div className="font-semibold">{progressData.toolname}</div>
             </div>
             {progressData.statuslines && progressData.statuslines.length > 0 && (
@@ -466,9 +466,13 @@ type ToolGroupItem =
     | { type: "progress"; part: WaveUIMessagePart & { type: "data-toolprogress" } };
 
 export const AIToolUseGroup = memo(({ parts, isStreaming }: AIToolUseGroupProps) => {
-    const tooluseParts = parts.filter((p) => p.type === "data-tooluse") as Array<WaveUIMessagePart & { type: "data-tooluse" }>;
-    const toolprogressParts = parts.filter((p) => p.type === "data-toolprogress") as Array<WaveUIMessagePart & { type: "data-toolprogress" }>;
-    
+    const tooluseParts = parts.filter((p) => p.type === "data-tooluse") as Array<
+        WaveUIMessagePart & { type: "data-tooluse" }
+    >;
+    const toolprogressParts = parts.filter((p) => p.type === "data-toolprogress") as Array<
+        WaveUIMessagePart & { type: "data-toolprogress" }
+    >;
+
     const tooluseCallIds = new Set(tooluseParts.map((p) => p.data.toolcallid));
     const filteredProgressParts = toolprogressParts.filter((p) => !tooluseCallIds.has(p.data.toolcallid));
 

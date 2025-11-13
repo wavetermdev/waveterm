@@ -497,7 +497,7 @@ const AIPanelComponentInner = memo(() => {
                                 className="flex-1 overflow-y-auto p-2 relative"
                                 onContextMenu={(e) => handleWaveAIContextMenu(e, true)}
                             >
-                                <div className="absolute top-2 right-2 z-10">
+                                <div className="absolute top-2 left-2 z-10">
                                     <ThinkingLevelDropdown />
                                 </div>
                                 {model.inBuilder ? <AIBuilderWelcomeMessage /> : <AIWelcomeMessage />}

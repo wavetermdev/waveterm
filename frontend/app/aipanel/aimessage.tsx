@@ -49,10 +49,7 @@ const AIThinking = memo(
                     )}
                     {message && <span className="text-sm text-gray-400">{message}</span>}
                 </div>
-                <div
-                    ref={scrollRef}
-                    className="text-sm text-gray-500 overflow-y-auto h-[3lh] max-w-[600px] pl-9"
-                >
+                <div ref={scrollRef} className="text-sm text-gray-500 overflow-y-auto h-[3lh] max-w-[600px] pl-9">
                     {displayText}
                 </div>
             </div>
@@ -226,7 +223,7 @@ export const AIMessage = memo(({ message, isStreaming }: AIMessageProps) => {
                 className={cn(
                     "px-2 rounded-lg [&>*:first-child]:!mt-0",
                     message.role === "user"
-                        ? "py-2 bg-accent-800 text-white max-w-[calc(100%-20px)]"
+                        ? "py-2 bg-accent-800 text-white max-w-[calc(90%-10px)]"
                         : "min-w-[min(100%,500px)]"
                 )}
             >
