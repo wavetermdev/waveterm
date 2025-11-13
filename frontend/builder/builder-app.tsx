@@ -3,6 +3,7 @@
 
 import { AppSelectionModal } from "@/builder/app-selection-modal";
 import { BuilderWorkspace } from "@/builder/builder-workspace";
+import { ModalsRenderer } from "@/app/modals/modalsrenderer";
 import { atoms, globalStore } from "@/store/global";
 import { appHandleKeyDown } from "@/store/keymodel";
 import * as keyutil from "@/util/keyutil";
@@ -46,6 +47,7 @@ function BuilderAppInner() {
             <DndProvider backend={HTML5Backend}>
                 {isBlank(builderAppId) ? <AppSelectionModal /> : <BuilderWorkspace />}
             </DndProvider>
+            <ModalsRenderer />
         </div>
     );
 }

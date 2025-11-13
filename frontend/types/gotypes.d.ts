@@ -337,6 +337,16 @@ declare global {
         message: string;
     };
 
+    // wshrpc.CommandPublishAppData
+    type CommandPublishAppData = {
+        appid: string;
+    };
+
+    // wshrpc.CommandPublishAppRtnData
+    type CommandPublishAppRtnData = {
+        publishedappid: string;
+    };
+
     // wshrpc.CommandReadAppFileData
     type CommandReadAppFileData = {
         appid: string;

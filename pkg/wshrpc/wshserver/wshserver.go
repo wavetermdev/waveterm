@@ -1118,6 +1118,16 @@ func (ws *WshServer) CheckGoVersionCommand(ctx context.Context) (*wshrpc.Command
 	}, nil
 }
 
+func (ws *WshServer) PublishAppCommand(ctx context.Context, data wshrpc.CommandPublishAppData) (*wshrpc.CommandPublishAppRtnData, error) {
+	publishedAppId, err := waveappstore.PublishDraft(data.AppId)
+	if err != nil {
+		return nil, fmt.Errorf("error publishing app: %w", err)
+	}
+	return &wshrpc.CommandPublishAppRtnData{
+		PublishedAppId: publishedAppId,
+	}, nil
+}
+
 func (ws *WshServer) RecordTEventCommand(ctx context.Context, data telemetrydata.TEvent) error {
 	err := telemetry.RecordTEvent(ctx, &data)
 	if err != nil {

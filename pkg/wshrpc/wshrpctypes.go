@@ -170,6 +170,7 @@ const (
 	Command_GetBuilderStatus       = "getbuilderstatus"
 	Command_GetBuilderOutput       = "getbuilderoutput"
 	Command_CheckGoVersion         = "checkgoversion"
+	Command_PublishApp             = "publishapp"
 
 	// electron
 	Command_ElectronEncrypt = "electronencrypt"
@@ -341,6 +342,7 @@ type WshRpcInterface interface {
 	GetBuilderStatusCommand(ctx context.Context, builderId string) (*BuilderStatusData, error)
 	GetBuilderOutputCommand(ctx context.Context, builderId string) ([]string, error)
 	CheckGoVersionCommand(ctx context.Context) (*CommandCheckGoVersionRtnData, error)
+	PublishAppCommand(ctx context.Context, data CommandPublishAppData) (*CommandPublishAppRtnData, error)
 
 	// proc
 	VDomRenderCommand(ctx context.Context, data vdom.VDomFrontendUpdate) chan RespOrErrorUnion[*vdom.VDomBackendUpdate]
@@ -1065,6 +1067,14 @@ type CommandCheckGoVersionRtnData struct {
 	GoPath      string `json:"gopath"`
 	GoVersion   string `json:"goversion"`
 	ErrorString string `json:"errorstring,omitempty"`
+}
+
+type CommandPublishAppData struct {
+	AppId string `json:"appid"`
+}
+
+type CommandPublishAppRtnData struct {
+	PublishedAppId string `json:"publishedappid"`
 }
 
 type CommandElectronEncryptData struct {
