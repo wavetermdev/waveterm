@@ -13,6 +13,69 @@ import { WaveAIModel } from "./waveai-model";
 // matches pkg/filebackup/filebackup.go
 const BackupRetentionDays = 5;
 
+interface ToolDescLineProps {
+    text: string;
+}
+
+const ToolDescLine = memo(({ text }: ToolDescLineProps) => {
+    let displayText = text;
+    
+    if (displayText.startsWith("* ")) {
+        displayText = "• " + displayText.slice(2);
+    }
+    
+    const parts: React.ReactNode[] = [];
+    let lastIndex = 0;
+    const regex = /\b([+-])(\d+)\b/g;
+    let match;
+    
+    while ((match = regex.exec(displayText)) !== null) {
+        if (match.index > lastIndex) {
+            parts.push(displayText.slice(lastIndex, match.index));
+        }
+        
+        const sign = match[1];
+        const number = match[2];
+        const colorClass = sign === '+' ? 'text-green-500' : 'text-red-500';
+        parts.push(
+            <span key={match.index} className={colorClass}>
+                {sign}{number}
+            </span>
+        );
+        
+        lastIndex = match.index + match[0].length;
+    }
+    
+    if (lastIndex < displayText.length) {
+        parts.push(displayText.slice(lastIndex));
+    }
+    
+    return <div>{parts.length > 0 ? parts : displayText}</div>;
+});
+
+ToolDescLine.displayName = "ToolDescLine";
+
+interface ToolDescProps {
+    text: string | string[];
+    className?: string;
+}
+
+const ToolDesc = memo(({ text, className }: ToolDescProps) => {
+    const lines = Array.isArray(text) ? text : text.split("\n");
+    
+    if (lines.length === 0) return null;
+    
+    return (
+        <div className={className}>
+            {lines.map((line, idx) => (
+                <ToolDescLine key={idx} text={line} />
+            ))}
+        </div>
+    );
+});
+
+ToolDesc.displayName = "ToolDesc";
+
 function getEffectiveApprovalStatus(baseApproval: string, isStreaming: boolean): string {
     return !isStreaming && baseApproval === "needs-approval" ? "timeout" : baseApproval;
 }
@@ -354,7 +417,7 @@ const AIToolUse = memo(({ part, isStreaming }: AIToolUseProps) => {
                     </button>
                 )}
             </div>
-            {toolData.tooldesc && <div className="text-sm text-gray-400 pl-6">{toolData.tooldesc}</div>}
+            {toolData.tooldesc && <ToolDesc text={toolData.tooldesc} className="text-sm text-gray-400 pl-6" />}
             {(toolData.errormessage || effectiveApproval === "timeout") && (
                 <div className="text-sm text-red-300 pl-6">{toolData.errormessage || "Not approved"}</div>
             )}
@@ -384,11 +447,7 @@ const AIToolProgress = memo(({ part }: AIToolProgressProps) => {
                 <div className="font-semibold">{progressData.toolname}</div>
             </div>
             {progressData.statuslines && progressData.statuslines.length > 0 && (
-                <div className="text-sm text-gray-400 pl-6 space-y-0.5">
-                    {progressData.statuslines.map((line, idx) => (
-                        <div key={idx}>{line}</div>
-                    ))}
-                </div>
+                <ToolDesc text={progressData.statuslines} className="text-sm text-gray-400 pl-6 space-y-0.5" />
             )}
         </div>
     );

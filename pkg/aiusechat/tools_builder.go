@@ -92,15 +92,18 @@ func GetBuilderWriteAppFileToolDefinition(appId string, builderId string) uctype
 			"additionalProperties": false,
 		},
 		ToolCallDesc: func(input any, output any, toolUseData *uctypes.UIMessageDataToolUse) string {
-			if output != nil {
-				params, err := parseBuilderWriteAppFileInput(input)
-				if err == nil {
-					lineCount := len(strings.Split(params.Contents, "\n"))
-					return fmt.Sprintf("wrote app.go (%d lines)", lineCount)
+			params, err := parseBuilderWriteAppFileInput(input)
+			if err != nil {
+				if output != nil {
+					return "wrote app.go"
 				}
-				return "wrote app.go"
+				return "writing app.go"
 			}
-			return "writing app.go"
+			lineCount := len(strings.Split(params.Contents, "\n"))
+			if output != nil {
+				return fmt.Sprintf("wrote app.go (+%d lines)", lineCount)
+			}
+			return fmt.Sprintf("writing app.go (+%d lines)", lineCount)
 		},
 		ToolProgressDesc: func(input any) ([]string, error) {
 			params, err := parseBuilderWriteAppFileInput(input)
@@ -108,7 +111,7 @@ func GetBuilderWriteAppFileToolDefinition(appId string, builderId string) uctype
 				return nil, err
 			}
 			lineCount := len(strings.Split(params.Contents, "\n"))
-			return []string{fmt.Sprintf("writing app.go (%d lines)", lineCount)}, nil
+			return []string{fmt.Sprintf("writing app.go (+%d lines)", lineCount)}, nil
 		},
 		ToolAnyCallback: func(input any, toolUseData *uctypes.UIMessageDataToolUse) (any, error) {
 			params, err := parseBuilderWriteAppFileInput(input)
@@ -165,6 +168,28 @@ func parseBuilderEditAppFileInput(input any) (*builderEditAppFileParams, error) 
 	return result, nil
 }
 
+func formatEditDescriptions(edits []fileutil.EditSpec) []string {
+	numEdits := len(edits)
+	editStr := "edits"
+	if numEdits == 1 {
+		editStr = "edit"
+	}
+
+	result := make([]string, len(edits)+1)
+	result[0] = fmt.Sprintf("editing app.go (%d %s)", numEdits, editStr)
+
+	for i, edit := range edits {
+		newLines := len(strings.Split(edit.NewStr, "\n"))
+		oldLines := len(strings.Split(edit.OldStr, "\n"))
+		desc := edit.Desc
+		if desc == "" {
+			desc = fmt.Sprintf("edit #%d", i+1)
+		}
+		result[i+1] = fmt.Sprintf("* %s (+%d -%d)", desc, newLines, oldLines)
+	}
+	return result
+}
+
 func GetBuilderEditAppFileToolDefinition(appId string, builderId string) uctypes.ToolDefinition {
 	return uctypes.ToolDefinition{
 		Name:        "builder_edit_app_file",
@@ -208,30 +233,14 @@ func GetBuilderEditAppFileToolDefinition(appId string, builderId string) uctypes
 			if err != nil {
 				return fmt.Sprintf("error parsing input: %v", err)
 			}
-			numEdits := len(params.Edits)
-			editStr := "edits"
-			if numEdits == 1 {
-				editStr = "edit"
-			}
-			return fmt.Sprintf("editing app.go (%d %s)", numEdits, editStr)
+			return strings.Join(formatEditDescriptions(params.Edits), "\n")
 		},
 		ToolProgressDesc: func(input any) ([]string, error) {
 			params, err := parseBuilderEditAppFileInput(input)
 			if err != nil {
 				return nil, err
 			}
-			
-			result := make([]string, len(params.Edits))
-			for i, edit := range params.Edits {
-				newLines := len(strings.Split(edit.NewStr, "\n"))
-				oldLines := len(strings.Split(edit.OldStr, "\n"))
-				desc := edit.Desc
-				if desc == "" {
-					desc = "edit"
-				}
-				result[i] = fmt.Sprintf("%s (+%d -%d)", desc, newLines, oldLines)
-			}
-			return result, nil
+			return formatEditDescriptions(params.Edits), nil
 		},
 		ToolAnyCallback: func(input any, toolUseData *uctypes.UIMessageDataToolUse) (any, error) {
 			params, err := parseBuilderEditAppFileInput(input)
