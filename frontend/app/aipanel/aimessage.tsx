@@ -147,21 +147,22 @@ const isDisplayPart = (part: WaveUIMessagePart): boolean => {
     return (
         part.type === "text" ||
         part.type === "data-tooluse" ||
+        part.type === "data-toolprogress" ||
         (part.type.startsWith("tool-") && "state" in part && part.state === "input-available")
     );
 };
 
 type MessagePart =
     | { type: "single"; part: WaveUIMessagePart }
-    | { type: "toolgroup"; parts: Array<WaveUIMessagePart & { type: "data-tooluse" }> };
+    | { type: "toolgroup"; parts: Array<WaveUIMessagePart & { type: "data-tooluse" | "data-toolprogress" }> };
 
 const groupMessageParts = (parts: WaveUIMessagePart[]): MessagePart[] => {
     const grouped: MessagePart[] = [];
-    let currentToolGroup: Array<WaveUIMessagePart & { type: "data-tooluse" }> = [];
+    let currentToolGroup: Array<WaveUIMessagePart & { type: "data-tooluse" | "data-toolprogress" }> = [];
 
     for (const part of parts) {
-        if (part.type === "data-tooluse") {
-            currentToolGroup.push(part as WaveUIMessagePart & { type: "data-tooluse" });
+        if (part.type === "data-tooluse" || part.type === "data-toolprogress") {
+            currentToolGroup.push(part as WaveUIMessagePart & { type: "data-tooluse" | "data-toolprogress" });
         } else {
             if (currentToolGroup.length > 0) {
                 grouped.push({ type: "toolgroup", parts: currentToolGroup });
