@@ -85,10 +85,19 @@ function handleHeaderContextMenu(
     ContextMenuModel.showContextMenu(menu, e);
 }
 
-function getViewIconElem(viewIconUnion: string | IconButtonDecl, blockData: Block): React.ReactElement {
+function getViewIconElem(
+    viewIconUnion: string | IconButtonDecl,
+    blockData: Block,
+    iconColor?: string
+): React.ReactElement {
     if (viewIconUnion == null || typeof viewIconUnion === "string") {
         const viewIcon = viewIconUnion as string;
-        return <div className="block-frame-view-icon">{getBlockHeaderIcon(viewIcon, blockData)}</div>;
+        const style: React.CSSProperties = iconColor ? { color: iconColor, opacity: 1.0 } : {};
+        return (
+            <div className="block-frame-view-icon" style={style}>
+                {getBlockHeaderIcon(viewIcon, blockData)}
+            </div>
+        );
     } else {
         return <IconButton decl={viewIconUnion} className="block-frame-view-icon" />;
     }
@@ -172,6 +181,7 @@ const BlockFrame_Header = ({
     let viewName = util.useAtomValueSafe(viewModel?.viewName) ?? blockViewToName(blockData?.meta?.view);
     const showBlockIds = jotai.useAtomValue(getSettingsKeyAtom("blockheader:showblockids"));
     let viewIconUnion = util.useAtomValueSafe(viewModel?.viewIcon) ?? blockViewToIcon(blockData?.meta?.view);
+    const viewIconColor = util.useAtomValueSafe(viewModel?.viewIconColor);
     const preIconButton = util.useAtomValueSafe(viewModel?.preIconButton);
     let headerTextUnion = util.useAtomValueSafe(viewModel?.viewText);
     const magnified = jotai.useAtomValue(nodeModel.isMagnified);
@@ -208,7 +218,7 @@ const BlockFrame_Header = ({
     );
 
     const endIconsElem = computeEndIcons(viewModel, nodeModel, onContextMenu);
-    const viewIconElem = getViewIconElem(viewIconUnion, blockData);
+    const viewIconElem = getViewIconElem(viewIconUnion, blockData, viewIconColor);
     let preIconButtonElem: React.ReactElement = null;
     if (preIconButton) {
         preIconButtonElem = <IconButton decl={preIconButton} className="block-frame-preicon-button" />;

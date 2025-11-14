@@ -18,11 +18,11 @@ class TsunamiViewModel extends WebViewModel {
     appMetaUnsubFn: () => void;
     isRestarting: jotai.PrimitiveAtom<boolean>;
     viewName: jotai.Atom<string>;
+    viewIconColor: jotai.Atom<string>;
 
     constructor(blockId: string, nodeModel: BlockNodeModel) {
         super(blockId, nodeModel);
         this.viewType = "tsunami";
-        this.viewIcon = jotai.atom("cube");
         this.isRestarting = jotai.atom(false);
 
         // Hide navigation bar (URL bar, back/forward/home buttons)
@@ -46,6 +46,14 @@ class TsunamiViewModel extends WebViewModel {
         });
 
         this.appMeta = jotai.atom(null) as jotai.PrimitiveAtom<AppMeta>;
+        this.viewIcon = jotai.atom((get) => {
+            const meta = get(this.appMeta);
+            return meta?.icon || "cube";
+        });
+        this.viewIconColor = jotai.atom((get) => {
+            const meta = get(this.appMeta);
+            return meta?.iconcolor;
+        });
         this.viewName = jotai.atom((get) => {
             const meta = get(this.appMeta);
             return meta?.title || "WaveApp";
@@ -58,6 +66,8 @@ class TsunamiViewModel extends WebViewModel {
                 const meta: AppMeta = {
                     title: rtInfo["tsunami:title"],
                     shortdesc: rtInfo["tsunami:shortdesc"],
+                    icon: rtInfo["tsunami:icon"],
+                    iconcolor: rtInfo["tsunami:iconcolor"],
                 };
                 globalStore.set(this.appMeta, meta);
             }
@@ -151,15 +161,15 @@ class TsunamiViewModel extends WebViewModel {
     async remixInBuilder() {
         const blockData = globalStore.get(this.blockAtom);
         const appId = blockData?.meta?.["tsunami:appid"];
-        
+
         if (!appId || !appId.startsWith("local/")) {
             return;
         }
-        
+
         try {
             const result = await RpcApi.MakeDraftFromLocalCommand(TabRpcClient, { localappid: appId });
             const draftAppId = result.draftappid;
-            
+
             getApi().openBuilder(draftAppId);
         } catch (err) {
             console.error("Failed to create draft from local app:", err);
@@ -192,7 +202,7 @@ class TsunamiViewModel extends WebViewModel {
         const blockData = globalStore.get(this.blockAtom);
         const appId = blockData?.meta?.["tsunami:appid"];
         const showRemixOption = appId && appId.startsWith("local/");
-        
+
         // Add tsunami-specific menu items at the beginning
         const tsunamiItems: ContextMenuItem[] = [
             {
@@ -211,7 +221,7 @@ class TsunamiViewModel extends WebViewModel {
                 type: "separator",
             },
         ];
-        
+
         if (showRemixOption) {
             tsunamiItems.push(
                 {

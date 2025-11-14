@@ -1054,6 +1054,8 @@ type RestartBuilderAndWaitResult struct {
 type AppMeta struct {
 	Title     string `json:"title"`
 	ShortDesc string `json:"shortdesc"`
+	Icon      string `json:"icon"`
+	IconColor string `json:"iconcolor"`
 }
 
 type SecretMeta struct {

@@ -6,6 +6,8 @@ package waveobj
 type ObjRTInfo struct {
 	TsunamiTitle     string `json:"tsunami:title,omitempty"`
 	TsunamiShortDesc string `json:"tsunami:shortdesc,omitempty"`
+	TsunamiIcon      string `json:"tsunami:icon,omitempty"`
+	TsunamiIconColor string `json:"tsunami:iconcolor,omitempty"`
 	TsunamiSchemas   any    `json:"tsunami:schemas,omitempty"`
 
 	ShellHasCurCwd       bool   `json:"shell:hascurcwd,omitempty"`
@@ -22,7 +24,7 @@ type ObjRTInfo struct {
 	BuilderAppId  string             `json:"builder:appid,omitempty"`
 	BuilderEnv    map[string]string  `json:"builder:env,omitempty"`
 
-	WaveAIChatId           string `json:"waveai:chatid,omitempty"`
-	WaveAIThinkingMode     string `json:"waveai:thinkingmode,omitempty"`
-	WaveAIMaxOutputTokens  int    `json:"waveai:maxoutputtokens,omitempty"`
+	WaveAIChatId          string `json:"waveai:chatid,omitempty"`
+	WaveAIThinkingMode    string `json:"waveai:thinkingmode,omitempty"`
+	WaveAIMaxOutputTokens int    `json:"waveai:maxoutputtokens,omitempty"`
 }

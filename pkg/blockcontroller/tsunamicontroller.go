@@ -168,6 +168,12 @@ func (c *TsunamiController) Start(ctx context.Context, blockMeta waveobj.MetaMap
 			if manifest.AppMeta.ShortDesc != "" {
 				rtInfo["tsunami:shortdesc"] = manifest.AppMeta.ShortDesc
 			}
+			if manifest.AppMeta.Icon != "" {
+				rtInfo["tsunami:icon"] = manifest.AppMeta.Icon
+			}
+			if manifest.AppMeta.IconColor != "" {
+				rtInfo["tsunami:iconcolor"] = manifest.AppMeta.IconColor
+			}
 			if len(rtInfo) > 0 {
 				wstore.SetRTInfo(blockRef, rtInfo)
 				wps.Broker.Publish(wps.WaveEvent{

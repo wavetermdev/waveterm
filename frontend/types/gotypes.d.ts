@@ -74,6 +74,8 @@ declare global {
     type AppMeta = {
         title: string;
         shortdesc: string;
+        icon: string;
+        iconcolor: string;
     };
 
     // waveobj.Block
@@ -913,6 +915,8 @@ declare global {
     type ObjRTInfo = {
         "tsunami:title"?: string;
         "tsunami:shortdesc"?: string;
+        "tsunami:icon"?: string;
+        "tsunami:iconcolor"?: string;
         "tsunami:schemas"?: any;
         "shell:hascurcwd"?: boolean;
         "shell:state"?: string;
