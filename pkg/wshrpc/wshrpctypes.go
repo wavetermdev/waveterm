@@ -161,6 +161,7 @@ const (
 	Command_ListAllAppFiles        = "listallappfiles"
 	Command_ReadAppFile            = "readappfile"
 	Command_WriteAppFile           = "writeappfile"
+	Command_WriteAppGoFile         = "writeappgofile"
 	Command_DeleteAppFile          = "deleteappfile"
 	Command_RenameAppFile          = "renameappfile"
 	Command_WriteAppSecretBindings = "writeappsecretbindings"
@@ -334,6 +335,7 @@ type WshRpcInterface interface {
 	ListAllAppFilesCommand(ctx context.Context, data CommandListAllAppFilesData) (*CommandListAllAppFilesRtnData, error)
 	ReadAppFileCommand(ctx context.Context, data CommandReadAppFileData) (*CommandReadAppFileRtnData, error)
 	WriteAppFileCommand(ctx context.Context, data CommandWriteAppFileData) error
+	WriteAppGoFileCommand(ctx context.Context, data CommandWriteAppGoFileData) (*CommandWriteAppGoFileRtnData, error)
 	DeleteAppFileCommand(ctx context.Context, data CommandDeleteAppFileData) error
 	RenameAppFileCommand(ctx context.Context, data CommandRenameAppFileData) error
 	WriteAppSecretBindingsCommand(ctx context.Context, data CommandWriteAppSecretBindingsData) error
@@ -1008,6 +1010,15 @@ type CommandWriteAppFileData struct {
 	AppId    string `json:"appid"`
 	FileName string `json:"filename"`
 	Data64   string `json:"data64"`
+}
+
+type CommandWriteAppGoFileData struct {
+	AppId  string `json:"appid"`
+	Data64 string `json:"data64"`
+}
+
+type CommandWriteAppGoFileRtnData struct {
+	Data64 string `json:"data64"`
 }
 
 type CommandDeleteAppFileData struct {

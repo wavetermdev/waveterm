@@ -19,6 +19,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/utilds"
 	"github.com/wavetermdev/waveterm/pkg/waveappstore"
+	"github.com/wavetermdev/waveterm/pkg/waveapputil"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wconfig"
@@ -208,15 +209,12 @@ func (bc *BuilderController) buildAndRun(ctx context.Context, appId string, buil
 		return
 	}
 
+	scaffoldPath := waveapputil.GetTsunamiScaffoldPath()
 	settings := wconfig.GetWatcher().GetFullConfig().Settings
-	scaffoldPath := settings.TsunamiScaffoldPath
-	if scaffoldPath == "" {
-		scaffoldPath = filepath.Join(wavebase.GetWaveAppPath(), "tsunamiscaffold")
-	}
 	sdkReplacePath := settings.TsunamiSdkReplacePath
 	sdkVersion := settings.TsunamiSdkVersion
 	if sdkVersion == "" {
-		sdkVersion = "v0.12.2"
+		sdkVersion = waveapputil.DefaultTsunamiSdkVersion
 	}
 	goPath := settings.TsunamiGoPath
 

@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { BlockNodeModel } from "@/app/block/blocktypes";
-import { atoms, globalStore, WOS } from "@/app/store/global";
+import { atoms, getApi, globalStore, WOS } from "@/app/store/global";
 import { waveEventSubscribe } from "@/app/store/wps";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
@@ -148,6 +148,24 @@ class TsunamiViewModel extends WebViewModel {
         this.doControllerResync(true, "force restart");
     }
 
+    async remixInBuilder() {
+        const blockData = globalStore.get(this.blockAtom);
+        const appId = blockData?.meta?.["tsunami:appid"];
+        
+        if (!appId || !appId.startsWith("local/")) {
+            return;
+        }
+        
+        try {
+            const result = await RpcApi.MakeDraftFromLocalCommand(TabRpcClient, { localappid: appId });
+            const draftAppId = result.draftappid;
+            
+            getApi().openBuilder(draftAppId);
+        } catch (err) {
+            console.error("Failed to create draft from local app:", err);
+        }
+    }
+
     dispose() {
         if (this.shellProcStatusUnsubFn) {
             this.shellProcStatusUnsubFn();
@@ -170,6 +188,11 @@ class TsunamiViewModel extends WebViewModel {
             );
         });
 
+        // Check if we should show the Remix option
+        const blockData = globalStore.get(this.blockAtom);
+        const appId = blockData?.meta?.["tsunami:appid"];
+        const showRemixOption = appId && appId.startsWith("local/");
+        
         // Add tsunami-specific menu items at the beginning
         const tsunamiItems: ContextMenuItem[] = [
             {
@@ -188,6 +211,18 @@ class TsunamiViewModel extends WebViewModel {
                 type: "separator",
             },
         ];
+        
+        if (showRemixOption) {
+            tsunamiItems.push(
+                {
+                    label: "Remix WaveApp in Builder",
+                    click: () => this.remixInBuilder(),
+                },
+                {
+                    type: "separator",
+                }
+            );
+        }
 
         return [...tsunamiItems, ...filteredItems];
     }

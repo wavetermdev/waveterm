@@ -126,6 +126,7 @@ declare global {
         closeBuilderWindow: () => void; // close-builder-window
         incrementTermCommands: () => void; // increment-term-commands
         nativePaste: () => void; // native-paste
+        openBuilder: (appId?: string) => void; // open-builder
     };
 
     type ElectronContextMenuItem = {

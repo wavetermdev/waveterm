@@ -519,6 +519,17 @@ declare global {
         data64: string;
     };
 
+    // wshrpc.CommandWriteAppGoFileData
+    type CommandWriteAppGoFileData = {
+        appid: string;
+        data64: string;
+    };
+
+    // wshrpc.CommandWriteAppGoFileRtnData
+    type CommandWriteAppGoFileRtnData = {
+        data64: string;
+    };
+
     // wshrpc.CommandWriteAppSecretBindingsData
     type CommandWriteAppSecretBindingsData = {
         appid: string;

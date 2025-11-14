@@ -65,6 +65,7 @@ contextBridge.exposeInMainWorld("api", {
     closeBuilderWindow: () => ipcRenderer.send("close-builder-window"),
     incrementTermCommands: () => ipcRenderer.send("increment-term-commands"),
     nativePaste: () => ipcRenderer.send("native-paste"),
+    openBuilder: (appId?: string) => ipcRenderer.send("open-builder", appId),
 });
 
 // Custom event for "new-window"

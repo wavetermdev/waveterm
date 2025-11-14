@@ -21,6 +21,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/tsunamiutil"
 	"github.com/wavetermdev/waveterm/pkg/utilds"
 	"github.com/wavetermdev/waveterm/pkg/waveappstore"
+	"github.com/wavetermdev/waveterm/pkg/waveapputil"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wconfig"
@@ -28,8 +29,6 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wstore"
 	"github.com/wavetermdev/waveterm/tsunami/build"
 )
-
-const DefaultTsunamiSdkVersion = "v0.12.2"
 
 type TsunamiAppProc struct {
 	Cmd         *exec.Cmd
@@ -126,15 +125,12 @@ func (c *TsunamiController) Start(ctx context.Context, blockMeta waveobj.MetaMap
 	c.runLock.Lock()
 	defer c.runLock.Unlock()
 
+	scaffoldPath := waveapputil.GetTsunamiScaffoldPath()
 	settings := wconfig.GetWatcher().GetFullConfig().Settings
-	scaffoldPath := settings.TsunamiScaffoldPath
-	if scaffoldPath == "" {
-		scaffoldPath = filepath.Join(wavebase.GetWaveAppPath(), "tsunamiscaffold")
-	}
 	sdkReplacePath := settings.TsunamiSdkReplacePath
 	sdkVersion := settings.TsunamiSdkVersion
 	if sdkVersion == "" {
-		sdkVersion = DefaultTsunamiSdkVersion
+		sdkVersion = waveapputil.DefaultTsunamiSdkVersion
 	}
 	goPath := settings.TsunamiGoPath
 

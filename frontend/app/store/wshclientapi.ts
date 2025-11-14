@@ -632,6 +632,11 @@ class RpcApiType {
         return client.wshRpcCall("writeappfile", data, opts);
     }
 
+    // command "writeappgofile" [call]
+    WriteAppGoFileCommand(client: WshClient, data: CommandWriteAppGoFileData, opts?: RpcOpts): Promise<CommandWriteAppGoFileRtnData> {
+        return client.wshRpcCall("writeappgofile", data, opts);
+    }
+
     // command "writeappsecretbindings" [call]
     WriteAppSecretBindingsCommand(client: WshClient, data: CommandWriteAppSecretBindingsData, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("writeappsecretbindings", data, opts);

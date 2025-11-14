@@ -194,7 +194,6 @@ const BuilderAppPanel = memo(() => {
     const activeTab = useAtomValue(model.activeTab);
     const focusType = useAtomValue(BuilderFocusManager.getInstance().focusType);
     const isAppFocused = focusType === "app";
-    const saveNeeded = useAtomValue(model.saveNeededAtom);
     const envSaveNeeded = useAtomValue(model.envVarsDirtyAtom);
     const builderAppId = useAtomValue(atoms.builderAppId);
     const builderId = useAtomValue(atoms.builderId);
@@ -241,12 +240,6 @@ const BuilderAppPanel = memo(() => {
         },
         [model]
     );
-
-    const handleSave = useCallback(() => {
-        if (builderAppId) {
-            model.saveAppFile(builderAppId);
-        }
-    }, [builderAppId, model]);
 
     const handleEnvSave = useCallback(() => {
         if (builderId) {
@@ -323,19 +316,6 @@ const BuilderAppPanel = memo(() => {
                             Publish App
                         </button>
                     </div>
-                    {activeTab === "code" && (
-                        <button
-                            className={cn(
-                                "mr-4 px-3 py-1 text-sm font-medium rounded transition-colors",
-                                saveNeeded
-                                    ? "bg-accent text-white hover:opacity-80 cursor-pointer"
-                                    : "bg-gray-600 text-gray-400 cursor-default"
-                            )}
-                            onClick={saveNeeded ? handleSave : undefined}
-                        >
-                            Save
-                        </button>
-                    )}
                     {activeTab === "env" && (
                         <button
                             className={cn(
