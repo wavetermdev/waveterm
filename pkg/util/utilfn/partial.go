@@ -164,7 +164,7 @@ func repairJson(data []byte) []byte {
 	return result
 }
 
-func ParseParialJson(data []byte) (any, error) {
+func ParsePartialJson(data []byte) (any, error) {
 	fixedData := repairJson(data)
 	var output any
 	err := json.Unmarshal(fixedData, &output)

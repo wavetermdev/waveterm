@@ -863,7 +863,7 @@ func handleOpenAIEvent(
 
 			toolDef := state.chatOpts.GetToolDefinition(st.toolName)
 			if toolDef != nil && toolDef.ToolProgressDesc != nil {
-				parsedJSON, err := utilfn.ParseParialJson(st.partialJSON)
+				parsedJSON, err := utilfn.ParsePartialJson(st.partialJSON)
 				if err == nil {
 					statusLines, err := toolDef.ToolProgressDesc(parsedJSON)
 					if err == nil {

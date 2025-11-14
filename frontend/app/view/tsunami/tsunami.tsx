@@ -284,7 +284,7 @@ const TsunamiView = memo((props: ViewComponentProps<TsunamiViewModel>) => {
     return (
         <div className="w-full h-full flex flex-col items-center justify-center gap-4">
             <h1 className="text-4xl font-bold text-main-text-color">Tsunami</h1>
-            {appPath && <div className="text-sm text-main-text-color opacity-70">{appPath}</div>}
+            {(appPath || appId) && <div className="text-sm text-main-text-color opacity-70">{appPath || appId}</div>}
             {isNotRunning && !isRestarting && (
                 <button
                     onClick={() => model.forceRestartController()}

@@ -29,6 +29,8 @@ import (
 	"github.com/wavetermdev/waveterm/tsunami/build"
 )
 
+const DefaultTsunamiSdkVersion = "v0.12.2"
+
 type TsunamiAppProc struct {
 	Cmd         *exec.Cmd
 	LineBuffer  *utilds.MultiReaderLineBuffer
@@ -132,7 +134,7 @@ func (c *TsunamiController) Start(ctx context.Context, blockMeta waveobj.MetaMap
 	sdkReplacePath := settings.TsunamiSdkReplacePath
 	sdkVersion := settings.TsunamiSdkVersion
 	if sdkVersion == "" {
-		sdkVersion = "v0.12.2"
+		sdkVersion = DefaultTsunamiSdkVersion
 	}
 	goPath := settings.TsunamiGoPath
 
