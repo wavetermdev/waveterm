@@ -78,9 +78,6 @@ export async function createBuilderWindow(appId: string): Promise<BuilderWindowT
     typedBuilderWindow.builderId = builderId;
     typedBuilderWindow.savedInitOpts = initOpts;
 
-    console.log("sending builder-init", initOpts);
-    typedBuilderWindow.webContents.send("builder-init", initOpts);
-
     typedBuilderWindow.on("focus", () => {
         focusedBuilderWindow = typedBuilderWindow;
         console.log("builder window focused", builderId);
