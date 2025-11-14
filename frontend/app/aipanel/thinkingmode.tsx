@@ -75,7 +75,7 @@ export const ThinkingLevelDropdown = memo(() => {
             {isOpen && (
                 <>
                     <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
-                    <div className="absolute top-full right-0 mt-1 bg-gray-800 border border-gray-600 rounded shadow-lg z-50 min-w-[280px]">
+                    <div className="absolute top-full left-0 mt-1 bg-gray-800 border border-gray-600 rounded shadow-lg z-50 min-w-[280px]">
                         {(Object.keys(ThinkingModeData) as ThinkingMode[]).map((mode, index) => {
                             const metadata = ThinkingModeData[mode];
                             const isFirst = index === 0;

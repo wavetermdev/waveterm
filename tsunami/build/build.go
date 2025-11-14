@@ -662,7 +662,13 @@ func TsunamiBuildInternal(opts BuildOpts) (*BuildEnv, error) {
 	}
 
 	// Build the Go application
-	if err := runGoBuild(tempDir, opts); err != nil {
+	outputPath, err := runGoBuild(tempDir, opts)
+	if err != nil {
+		return buildEnv, err
+	}
+
+	// Generate manifest
+	if err := generateManifest(tempDir, outputPath, opts); err != nil {
 		return buildEnv, err
 	}
 
@@ -688,7 +694,7 @@ func moveFilesBack(tempDir, originalDir string, verbose bool, oc *OutputCapture)
 		return fmt.Errorf("failed to copy go.mod back: %w", err)
 	}
 	if verbose {
-		oc.Printf("Moved go.mod back to %s", goModDest)
+		oc.Printf("[debug] Moved go.mod back to %s", goModDest)
 	}
 
 	// Move go.sum back to original directory (only if it exists)
@@ -699,7 +705,7 @@ func moveFilesBack(tempDir, originalDir string, verbose bool, oc *OutputCapture)
 			return fmt.Errorf("failed to copy go.sum back: %w", err)
 		}
 		if verbose {
-			oc.Printf("Moved go.sum back to %s", goSumDest)
+			oc.Printf("[debug] Moved go.sum back to %s", goSumDest)
 		}
 	}
 
@@ -709,7 +715,7 @@ func moveFilesBack(tempDir, originalDir string, verbose bool, oc *OutputCapture)
 		return fmt.Errorf("failed to create static directory: %w", err)
 	}
 	if verbose {
-		oc.Printf("Ensured static directory exists at %s", staticDir)
+		oc.Printf("[debug] Ensured static directory exists at %s", staticDir)
 	}
 
 	// Move tw.css back to original directory
@@ -719,37 +725,52 @@ func moveFilesBack(tempDir, originalDir string, verbose bool, oc *OutputCapture)
 		return fmt.Errorf("failed to copy tw.css back: %w", err)
 	}
 	if verbose {
-		oc.Printf("Moved tw.css back to %s", twCssDest)
+		oc.Printf("[debug] Moved tw.css back to %s", twCssDest)
+	}
+
+	// Move manifest.json back to original directory (only if it exists)
+	manifestSrc := filepath.Join(tempDir, "manifest.json")
+	if _, err := os.Stat(manifestSrc); err == nil {
+		manifestDest := filepath.Join(originalDir, "manifest.json")
+		if err := copyFile(manifestSrc, manifestDest); err != nil {
+			return fmt.Errorf("failed to copy manifest.json back: %w", err)
+		}
+		if verbose {
+			oc.Printf("[debug] Moved manifest.json back to %s", manifestDest)
+		}
 	}
 
 	return nil
 }
 
-func runGoBuild(tempDir string, opts BuildOpts) error {
+func runGoBuild(tempDir string, opts BuildOpts) (string, error) {
 	oc := opts.OutputCapture
 	var outputPath string
+	var absOutputPath string
 	if opts.OutputFile != "" {
 		// Convert to absolute path resolved against current working directory
 		var err error
-		outputPath, err = filepath.Abs(opts.OutputFile)
+		absOutputPath, err = filepath.Abs(opts.OutputFile)
 		if err != nil {
-			return fmt.Errorf("failed to resolve output path: %w", err)
+			return "", fmt.Errorf("failed to resolve output path: %w", err)
 		}
+		outputPath = absOutputPath
 	} else {
 		binDir := filepath.Join(tempDir, "bin")
 		if err := os.MkdirAll(binDir, 0755); err != nil {
-			return fmt.Errorf("failed to create bin directory: %w", err)
+			return "", fmt.Errorf("failed to create bin directory: %w", err)
 		}
 		outputPath = "bin/app"
+		absOutputPath = filepath.Join(tempDir, "bin", "app")
 	}
 
 	goFiles, err := listGoFilesInDir(tempDir)
 	if err != nil {
-		return fmt.Errorf("failed to list go files: %w", err)
+		return "", fmt.Errorf("failed to list go files: %w", err)
 	}
 
 	if len(goFiles) == 0 {
-		return fmt.Errorf("no .go files found in %s", tempDir)
+		return "", fmt.Errorf("no .go files found in %s", tempDir)
 	}
 
 	// Build command with explicit go files
@@ -770,18 +791,44 @@ func runGoBuild(tempDir string, opts BuildOpts) error {
 	}
 
 	if err := buildCmd.Run(); err != nil {
-		return fmt.Errorf("compilation failed (see output for errors)")
+		return "", fmt.Errorf("compilation failed (see output for errors)")
 	}
 	if oc != nil {
 		oc.Flush()
 	}
 
 	if opts.Verbose {
-		if opts.OutputFile != "" {
-			oc.Printf("Application built successfully at %s", outputPath)
-		} else {
-			oc.Printf("Application built successfully at %s", filepath.Join(tempDir, "bin", "app"))
-		}
+		oc.Printf("Application built successfully")
+		oc.Printf("[debug] Output path: %s", absOutputPath)
+	}
+
+	return absOutputPath, nil
+}
+
+func generateManifest(tempDir, exePath string, opts BuildOpts) error {
+	oc := opts.OutputCapture
+
+	manifestCmd := exec.Command(exePath, "--manifest")
+	manifestCmd.Dir = tempDir
+
+	if opts.Verbose {
+		oc.Printf("[debug] Running: %s --manifest", exePath)
+		oc.Printf("Generating manifest...")
+	}
+
+	manifestOutput, err := manifestCmd.Output()
+	if err != nil {
+		return fmt.Errorf("manifest generation failed: %w", err)
+	}
+
+	manifestPath := filepath.Join(tempDir, "manifest.json")
+	if err := os.WriteFile(manifestPath, manifestOutput, 0644); err != nil {
+		return fmt.Errorf("failed to write manifest.json: %w", err)
+	}
+
+	if opts.Verbose {
+		oc.Printf("Manifest generated successfully")
+		oc.Printf("[debug] Manifest path: %s", manifestPath)
 	}
 
 	return nil

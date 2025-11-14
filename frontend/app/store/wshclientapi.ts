@@ -382,6 +382,11 @@ class RpcApiType {
         return client.wshRpcCall("path", data, opts);
     }
 
+    // command "publishapp" [call]
+    PublishAppCommand(client: WshClient, data: CommandPublishAppData, opts?: RpcOpts): Promise<CommandPublishAppRtnData> {
+        return client.wshRpcCall("publishapp", data, opts);
+    }
+
     // command "readappfile" [call]
     ReadAppFileCommand(client: WshClient, data: CommandReadAppFileData, opts?: RpcOpts): Promise<CommandReadAppFileRtnData> {
         return client.wshRpcCall("readappfile", data, opts);
@@ -620,6 +625,11 @@ class RpcApiType {
     // command "writeappfile" [call]
     WriteAppFileCommand(client: WshClient, data: CommandWriteAppFileData, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("writeappfile", data, opts);
+    }
+
+    // command "writeappsecretbindings" [call]
+    WriteAppSecretBindingsCommand(client: WshClient, data: CommandWriteAppSecretBindingsData, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("writeappsecretbindings", data, opts);
     }
 
     // command "writetempfile" [call]

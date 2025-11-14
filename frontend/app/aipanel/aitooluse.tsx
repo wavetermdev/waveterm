@@ -13,6 +13,69 @@ import { WaveAIModel } from "./waveai-model";
 // matches pkg/filebackup/filebackup.go
 const BackupRetentionDays = 5;
 
+interface ToolDescLineProps {
+    text: string;
+}
+
+const ToolDescLine = memo(({ text }: ToolDescLineProps) => {
+    let displayText = text;
+    if (displayText.startsWith("* ")) {
+        displayText = "• " + displayText.slice(2);
+    }
+
+    const parts: React.ReactNode[] = [];
+    let lastIndex = 0;
+    const regex = /(?<!\w)([+-])(\d+)(?!\w)/g;
+    let match;
+
+    while ((match = regex.exec(displayText)) !== null) {
+        if (match.index > lastIndex) {
+            parts.push(displayText.slice(lastIndex, match.index));
+        }
+
+        const sign = match[1];
+        const number = match[2];
+        const colorClass = sign === "+" ? "text-green-600" : "text-red-600";
+        parts.push(
+            <span key={match.index} className={colorClass}>
+                {sign}
+                {number}
+            </span>
+        );
+
+        lastIndex = match.index + match[0].length;
+    }
+
+    if (lastIndex < displayText.length) {
+        parts.push(displayText.slice(lastIndex));
+    }
+
+    return <div>{parts.length > 0 ? parts : displayText}</div>;
+});
+
+ToolDescLine.displayName = "ToolDescLine";
+
+interface ToolDescProps {
+    text: string | string[];
+    className?: string;
+}
+
+const ToolDesc = memo(({ text, className }: ToolDescProps) => {
+    const lines = Array.isArray(text) ? text : text.split("\n");
+
+    if (lines.length === 0) return null;
+
+    return (
+        <div className={className}>
+            {lines.map((line, idx) => (
+                <ToolDescLine key={idx} text={line} />
+            ))}
+        </div>
+    );
+});
+
+ToolDesc.displayName = "ToolDesc";
+
 function getEffectiveApprovalStatus(baseApproval: string, isStreaming: boolean): string {
     return !isStreaming && baseApproval === "needs-approval" ? "timeout" : baseApproval;
 }
@@ -354,7 +417,7 @@ const AIToolUse = memo(({ part, isStreaming }: AIToolUseProps) => {
                     </button>
                 )}
             </div>
-            {toolData.tooldesc && <div className="text-sm text-gray-400 pl-6">{toolData.tooldesc}</div>}
+            {toolData.tooldesc && <ToolDesc text={toolData.tooldesc} className="text-sm text-gray-400 pl-6" />}
             {(toolData.errormessage || effectiveApproval === "timeout") && (
                 <div className="text-sm text-red-300 pl-6">{toolData.errormessage || "Not approved"}</div>
             )}
@@ -370,16 +433,49 @@ const AIToolUse = memo(({ part, isStreaming }: AIToolUseProps) => {
 
 AIToolUse.displayName = "AIToolUse";
 
+interface AIToolProgressProps {
+    part: WaveUIMessagePart & { type: "data-toolprogress" };
+}
+
+const AIToolProgress = memo(({ part }: AIToolProgressProps) => {
+    const progressData = part.data;
+
+    return (
+        <div className="flex flex-col gap-1 p-2 rounded bg-gray-800 border border-gray-700">
+            <div className="flex items-center gap-2">
+                <i className="fa fa-spinner fa-spin text-gray-400"></i>
+                <div className="font-semibold">{progressData.toolname}</div>
+            </div>
+            {progressData.statuslines && progressData.statuslines.length > 0 && (
+                <ToolDesc text={progressData.statuslines} className="text-sm text-gray-400 pl-6 space-y-0.5" />
+            )}
+        </div>
+    );
+});
+
+AIToolProgress.displayName = "AIToolProgress";
+
 interface AIToolUseGroupProps {
-    parts: Array<WaveUIMessagePart & { type: "data-tooluse" }>;
+    parts: Array<WaveUIMessagePart & { type: "data-tooluse" | "data-toolprogress" }>;
     isStreaming: boolean;
 }
 
 type ToolGroupItem =
     | { type: "batch"; parts: Array<WaveUIMessagePart & { type: "data-tooluse" }> }
-    | { type: "single"; part: WaveUIMessagePart & { type: "data-tooluse" } };
+    | { type: "single"; part: WaveUIMessagePart & { type: "data-tooluse" } }
+    | { type: "progress"; part: WaveUIMessagePart & { type: "data-toolprogress" } };
 
 export const AIToolUseGroup = memo(({ parts, isStreaming }: AIToolUseGroupProps) => {
+    const tooluseParts = parts.filter((p) => p.type === "data-tooluse") as Array<
+        WaveUIMessagePart & { type: "data-tooluse" }
+    >;
+    const toolprogressParts = parts.filter((p) => p.type === "data-toolprogress") as Array<
+        WaveUIMessagePart & { type: "data-toolprogress" }
+    >;
+
+    const tooluseCallIds = new Set(tooluseParts.map((p) => p.data.toolcallid));
+    const filteredProgressParts = toolprogressParts.filter((p) => !tooluseCallIds.has(p.data.toolcallid));
+
     const isFileOp = (part: WaveUIMessagePart & { type: "data-tooluse" }) => {
         const toolName = part.data?.toolname;
         return toolName === "read_text_file" || toolName === "read_dir";
@@ -392,7 +488,7 @@ export const AIToolUseGroup = memo(({ parts, isStreaming }: AIToolUseGroupProps)
     const readFileNeedsApproval: Array<WaveUIMessagePart & { type: "data-tooluse" }> = [];
     const readFileOther: Array<WaveUIMessagePart & { type: "data-tooluse" }> = [];
 
-    for (const part of parts) {
+    for (const part of tooluseParts) {
         if (isFileOp(part)) {
             if (needsApproval(part)) {
                 readFileNeedsApproval.push(part);
@@ -406,7 +502,7 @@ export const AIToolUseGroup = memo(({ parts, isStreaming }: AIToolUseGroupProps)
     let addedApprovalBatch = false;
     let addedOtherBatch = false;
 
-    for (const part of parts) {
+    for (const part of tooluseParts) {
         const isFileOpPart = isFileOp(part);
         const partNeedsApproval = needsApproval(part);
 
@@ -425,19 +521,33 @@ export const AIToolUseGroup = memo(({ parts, isStreaming }: AIToolUseGroupProps)
         }
     }
 
+    filteredProgressParts.forEach((part) => {
+        groupedItems.push({ type: "progress", part });
+    });
+
     return (
         <>
-            {groupedItems.map((item, idx) =>
-                item.type === "batch" ? (
-                    <div key={idx} className="mt-2">
-                        <AIToolUseBatch parts={item.parts} isStreaming={isStreaming} />
-                    </div>
-                ) : (
-                    <div key={idx} className="mt-2">
-                        <AIToolUse part={item.part} isStreaming={isStreaming} />
-                    </div>
-                )
-            )}
+            {groupedItems.map((item, idx) => {
+                if (item.type === "batch") {
+                    return (
+                        <div key={idx} className="mt-2">
+                            <AIToolUseBatch parts={item.parts} isStreaming={isStreaming} />
+                        </div>
+                    );
+                } else if (item.type === "progress") {
+                    return (
+                        <div key={idx} className="mt-2">
+                            <AIToolProgress part={item.part} />
+                        </div>
+                    );
+                } else {
+                    return (
+                        <div key={idx} className="mt-2">
+                            <AIToolUse part={item.part} isStreaming={isStreaming} />
+                        </div>
+                    );
+                }
+            })}
         </>
     );
 });

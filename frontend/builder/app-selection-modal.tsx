@@ -127,6 +127,7 @@ export function AppSelectionModal() {
             data: { "builder:appid": appId },
         });
         globalStore.set(atoms.builderAppId, appId);
+        document.title = `WaveApp Builder (${appId})`;
     };
 
     const handleCreateNew = async (appName: string) => {
@@ -138,6 +139,7 @@ export function AppSelectionModal() {
             data: { "builder:appid": draftAppId },
         });
         globalStore.set(atoms.builderAppId, draftAppId);
+        document.title = `WaveApp Builder (${draftAppId})`;
     };
 
     const isDraftApp = (appId: string) => {

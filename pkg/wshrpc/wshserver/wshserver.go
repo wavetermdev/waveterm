@@ -1027,6 +1027,13 @@ func (ws *WshServer) RenameAppFileCommand(ctx context.Context, data wshrpc.Comma
 	return waveappstore.RenameAppFile(data.AppId, data.FromFileName, data.ToFileName)
 }
 
+func (ws *WshServer) WriteAppSecretBindingsCommand(ctx context.Context, data wshrpc.CommandWriteAppSecretBindingsData) error {
+	if data.AppId == "" {
+		return fmt.Errorf("must provide an appId to WriteAppSecretBindingsCommand")
+	}
+	return waveappstore.WriteAppSecretBindings(data.AppId, data.Bindings)
+}
+
 func (ws *WshServer) DeleteBuilderCommand(ctx context.Context, builderId string) error {
 	if builderId == "" {
 		return fmt.Errorf("must provide a builderId to DeleteBuilderCommand")
@@ -1079,20 +1086,13 @@ func (ws *WshServer) RestartBuilderAndWaitCommand(ctx context.Context, data wshr
 	}, nil
 }
 
-
 func (ws *WshServer) GetBuilderStatusCommand(ctx context.Context, builderId string) (*wshrpc.BuilderStatusData, error) {
 	if builderId == "" {
 		return nil, fmt.Errorf("must provide a builderId to GetBuilderStatusCommand")
 	}
 	bc := buildercontroller.GetOrCreateController(builderId)
 	status := bc.GetStatus()
-	return &wshrpc.BuilderStatusData{
-		Status:   status.Status,
-		Port:     status.Port,
-		ExitCode: status.ExitCode,
-		ErrorMsg: status.ErrorMsg,
-		Version:  status.Version,
-	}, nil
+	return &status, nil
 }
 
 func (ws *WshServer) GetBuilderOutputCommand(ctx context.Context, builderId string) ([]string, error) {
@@ -1115,6 +1115,16 @@ func (ws *WshServer) CheckGoVersionCommand(ctx context.Context) (*wshrpc.Command
 		GoPath:      result.GoPath,
 		GoVersion:   result.GoVersion,
 		ErrorString: result.ErrorString,
+	}, nil
+}
+
+func (ws *WshServer) PublishAppCommand(ctx context.Context, data wshrpc.CommandPublishAppData) (*wshrpc.CommandPublishAppRtnData, error) {
+	publishedAppId, err := waveappstore.PublishDraft(data.AppId)
+	if err != nil {
+		return nil, fmt.Errorf("error publishing app: %w", err)
+	}
+	return &wshrpc.CommandPublishAppRtnData{
+		PublishedAppId: publishedAppId,
 	}, nil
 }
 

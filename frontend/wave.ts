@@ -39,7 +39,6 @@ import { createRoot } from "react-dom/client";
 const platform = getApi().getPlatform();
 document.title = `Wave Terminal`;
 let savedInitOpts: WaveInitOpts = null;
-let savedBuilderInitOpts: BuilderInitOpts = null;
 
 (window as any).WOS = WOS;
 (window as any).globalStore = globalStore;
@@ -219,11 +218,6 @@ async function initWave(initOpts: WaveInitOpts) {
 
 async function initBuilderWrap(initOpts: BuilderInitOpts) {
     try {
-        if (savedBuilderInitOpts) {
-            await reinitBuilder();
-            return;
-        }
-        savedBuilderInitOpts = initOpts;
         await initBuilder(initOpts);
     } catch (e) {
         getApi().sendLog("Error in initBuilder " + e.message + "\n" + e.stack);
@@ -233,28 +227,6 @@ async function initBuilderWrap(initOpts: BuilderInitOpts) {
         document.body.style.opacity = null;
         document.body.classList.remove("is-transparent");
     }
-}
-
-async function reinitBuilder() {
-    console.log("Reinit Builder");
-    getApi().sendLog("Reinit Builder");
-
-    // We use this hack to prevent a flicker of the previously-hovered tab when this view was last active.
-    document.body.classList.add("nohover");
-    requestAnimationFrame(() =>
-        setTimeout(() => {
-            document.body.classList.remove("nohover");
-        }, 100)
-    );
-
-    await WOS.reloadWaveObject<Client>(WOS.makeORef("client", savedBuilderInitOpts.clientId));
-    document.title = `Tsunami Builder - ${savedBuilderInitOpts.appId}`;
-    getApi().setWindowInitStatus("wave-ready");
-    globalStore.set(atoms.reinitVersion, globalStore.get(atoms.reinitVersion) + 1);
-    globalStore.set(atoms.updaterStatusAtom, getApi().getUpdaterStatus());
-    setTimeout(() => {
-        globalRefocus();
-    }, 50);
 }
 
 async function initBuilder(initOpts: BuilderInitOpts) {
@@ -273,8 +245,6 @@ async function initBuilder(initOpts: BuilderInitOpts) {
         platform
     );
 
-    document.title = `Tsunami Builder - ${initOpts.appId}`;
-
     initGlobal({
         clientId: initOpts.clientId,
         windowId: initOpts.windowId,
@@ -288,7 +258,7 @@ async function initBuilder(initOpts: BuilderInitOpts) {
     (window as any).globalWS = globalWS;
     (window as any).TabRpcClient = TabRpcClient;
     await loadConnStatus();
-    
+
     let appIdToUse = initOpts.appId;
     try {
         const oref = WOS.makeORef("builder", initOpts.builderId);
@@ -299,7 +269,9 @@ async function initBuilder(initOpts: BuilderInitOpts) {
     } catch (e) {
         console.log("Could not load saved builder appId from rtinfo:", e);
     }
-    
+
+    document.title = appIdToUse ? `WaveApp Builder (${appIdToUse})` : "WaveApp Builder";
+
     globalStore.set(atoms.builderAppId, appIdToUse);
 
     const client = await WOS.loadAndPinWaveObject<Client>(WOS.makeORef("client", initOpts.clientId));
@@ -322,5 +294,4 @@ async function initBuilder(initOpts: BuilderInitOpts) {
     root.render(reactElem);
     await firstRenderPromise;
     console.log("Tsunami Builder First Render Done");
-    getApi().setWindowInitStatus("wave-ready");
 }

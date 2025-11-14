@@ -73,7 +73,7 @@ const ErrorStateView = memo(({ errorMsg }: { errorMsg: string }) => {
                             </button>
                             <button
                                 onClick={handleAskAIToFix}
-                                className="px-4 py-2 bg-accent text-primary font-semibold rounded hover:bg-accent/80 transition-colors cursor-pointer"
+                                className="px-4 py-2 bg-accent/80 text-primary font-semibold rounded hover:bg-accent transition-colors cursor-pointer"
                             >
                                 Ask AI to Fix
                             </button>

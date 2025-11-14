@@ -4,15 +4,18 @@
 package waveappstore
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
 
+	"github.com/wavetermdev/waveterm/pkg/secretstore"
 	"github.com/wavetermdev/waveterm/pkg/util/fileutil"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
+	"github.com/wavetermdev/waveterm/tsunami/engine"
 )
 
 const (
@@ -21,6 +24,9 @@ const (
 
 	MaxNamespaceLen = 30
 	MaxAppNameLen   = 50
+
+	ManifestFileName       = "manifest.json"
+	SecretBindingsFileName = "secret-bindings.json"
 )
 
 var (
@@ -350,6 +356,24 @@ func ReplaceInAppFile(appId string, fileName string, edits []fileutil.EditSpec) 
 	return fileutil.ReplaceInFile(filePath, edits)
 }
 
+func ReplaceInAppFilePartial(appId string, fileName string, edits []fileutil.EditSpec) ([]fileutil.EditResult, error) {
+	if err := ValidateAppId(appId); err != nil {
+		return nil, fmt.Errorf("invalid appId: %w", err)
+	}
+
+	appDir, err := GetAppDir(appId)
+	if err != nil {
+		return nil, err
+	}
+
+	filePath, err := validateAndResolveFilePath(appDir, fileName)
+	if err != nil {
+		return nil, err
+	}
+
+	return fileutil.ReplaceInFilePartial(filePath, edits)
+}
+
 func RenameAppFile(appId string, fromFileName string, toFileName string) error {
 	if err := ValidateAppId(appId); err != nil {
 		return fmt.Errorf("invalid appId: %w", err)
@@ -643,4 +667,126 @@ func RenameLocalApp(appName string, newAppName string) error {
 	}
 
 	return nil
+}
+
+func ReadAppManifest(appId string) (*engine.AppManifest, error) {
+	if err := ValidateAppId(appId); err != nil {
+		return nil, fmt.Errorf("invalid appId: %w", err)
+	}
+
+	appDir, err := GetAppDir(appId)
+	if err != nil {
+		return nil, err
+	}
+
+	manifestPath := filepath.Join(appDir, ManifestFileName)
+	data, err := os.ReadFile(manifestPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read %s: %w", ManifestFileName, err)
+	}
+
+	var manifest engine.AppManifest
+	if err := json.Unmarshal(data, &manifest); err != nil {
+		return nil, fmt.Errorf("failed to parse %s: %w", ManifestFileName, err)
+	}
+
+	return &manifest, nil
+}
+
+func ReadAppSecretBindings(appId string) (map[string]string, error) {
+	if err := ValidateAppId(appId); err != nil {
+		return nil, fmt.Errorf("invalid appId: %w", err)
+	}
+
+	appDir, err := GetAppDir(appId)
+	if err != nil {
+		return nil, err
+	}
+
+	bindingsPath := filepath.Join(appDir, SecretBindingsFileName)
+	data, err := os.ReadFile(bindingsPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return make(map[string]string), nil
+		}
+		return nil, fmt.Errorf("failed to read %s: %w", SecretBindingsFileName, err)
+	}
+
+	var bindings map[string]string
+	if err := json.Unmarshal(data, &bindings); err != nil {
+		return nil, fmt.Errorf("failed to parse %s: %w", SecretBindingsFileName, err)
+	}
+
+	if bindings == nil {
+		bindings = make(map[string]string)
+	}
+
+	return bindings, nil
+}
+
+func WriteAppSecretBindings(appId string, bindings map[string]string) error {
+	if err := ValidateAppId(appId); err != nil {
+		return fmt.Errorf("invalid appId: %w", err)
+	}
+
+	appDir, err := GetAppDir(appId)
+	if err != nil {
+		return err
+	}
+
+	if bindings == nil {
+		bindings = make(map[string]string)
+	}
+
+	data, err := json.MarshalIndent(bindings, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal bindings: %w", err)
+	}
+
+	bindingsPath := filepath.Join(appDir, SecretBindingsFileName)
+	if err := os.WriteFile(bindingsPath, data, 0644); err != nil {
+		return fmt.Errorf("failed to write %s: %w", SecretBindingsFileName, err)
+	}
+
+	return nil
+}
+
+func BuildAppSecretEnv(appId string, manifest *engine.AppManifest, bindings map[string]string) (map[string]string, error) {
+	if manifest == nil {
+		return make(map[string]string), nil
+	}
+
+	if bindings == nil {
+		bindings = make(map[string]string)
+	}
+
+	secretEnv := make(map[string]string)
+
+	for secretName, secretMeta := range manifest.Secrets {
+		boundSecretName, hasBinding := bindings[secretName]
+
+		if !secretMeta.Optional && !hasBinding {
+			return nil, fmt.Errorf("required secret %q is not bound", secretName)
+		}
+
+		if !hasBinding {
+			continue
+		}
+
+		secretValue, exists, err := secretstore.GetSecret(boundSecretName)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get secret %q: %w", boundSecretName, err)
+		}
+
+		if !exists {
+			if !secretMeta.Optional {
+				return nil, fmt.Errorf("required secret %q is bound to %q which does not exist in secret store", secretName, boundSecretName)
+			}
+			continue
+		}
+
+		secretEnv[secretName] = secretValue
+	}
+
+	return secretEnv, nil
 }

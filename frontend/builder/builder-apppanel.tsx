@@ -1,6 +1,10 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { Modal } from "@/app/modals/modal";
+import { modalsModel } from "@/app/store/modalmodel";
+import { RpcApi } from "@/app/store/wshclientapi";
+import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { BuilderAppPanelModel, type TabType } from "@/builder/store/builder-apppanel-model";
 import { BuilderFocusManager } from "@/builder/store/builder-focusmanager";
 import { BuilderCodeTab } from "@/builder/tabs/builder-codetab";
@@ -96,6 +100,56 @@ const ErrorStrip = memo(() => {
 
 ErrorStrip.displayName = "ErrorStrip";
 
+const PublishAppModal = memo(({ appName }: { appName: string }) => {
+    const builderAppId = useAtomValue(atoms.builderAppId);
+
+    const handlePublish = async () => {
+        if (!builderAppId) {
+            console.error("No builder app ID found");
+            modalsModel.popModal();
+            return;
+        }
+
+        try {
+            const result = await RpcApi.PublishAppCommand(TabRpcClient, { appid: builderAppId });
+            console.log("App published successfully:", result.publishedappid);
+            modalsModel.popModal();
+        } catch (error) {
+            console.error("Failed to publish app:", error);
+        }
+    };
+
+    const handleCancel = () => {
+        modalsModel.popModal();
+    };
+
+    return (
+        <Modal
+            className="p-4"
+            onOk={handlePublish}
+            onCancel={handleCancel}
+            onClose={handleCancel}
+            okLabel="Publish"
+            cancelLabel="Cancel"
+        >
+            <div className="flex flex-col gap-4 mb-4">
+                <h2 className="text-xl font-semibold">Publish App</h2>
+                <div className="flex flex-col gap-3">
+                    <p className="text-primary">
+                        This will publish your app to <span className="font-mono">local/{appName}</span>
+                    </p>
+                    <p className="text-warning">
+                        <i className="fa fa-triangle-exclamation mr-2" />
+                        This will overwrite any existing app with the same name. Are you sure?
+                    </p>
+                </div>
+            </div>
+        </Modal>
+    );
+});
+
+PublishAppModal.displayName = "PublishAppModal";
+
 const BuilderAppPanel = memo(() => {
     const model = BuilderAppPanelModel.getInstance();
     const focusElemRef = useRef<HTMLInputElement>(null);
@@ -166,6 +220,12 @@ const BuilderAppPanel = memo(() => {
         model.restartBuilder();
     }, [model]);
 
+    const handlePublishClick = useCallback(() => {
+        if (!builderAppId) return;
+        const appName = builderAppId.replace("draft/", "");
+        modalsModel.pushModal("PublishAppModal", { appName });
+    }, [builderAppId]);
+
     return (
         <div
             className="w-full h-full flex flex-col border-b-3 border-border shadow-[0_2px_4px_rgba(0,0,0,0.1)]"
@@ -217,14 +277,14 @@ const BuilderAppPanel = memo(() => {
                             onClick={() => handleTabClick("env")}
                         />
                     </div>
-                    {activeTab === "preview" && (
+                    <div className="flex items-center gap-2 mr-4">
                         <button
-                            className="mr-4 px-3 py-1 text-sm font-medium rounded transition-colors bg-accent/80 text-white hover:bg-accent cursor-pointer"
-                            onClick={handleRestart}
+                            className="px-3 py-1 text-sm font-medium rounded bg-accent/80 text-primary hover:bg-accent transition-colors cursor-pointer"
+                            onClick={handlePublishClick}
                         >
-                            Restart App
+                            Publish App
                         </button>
-                    )}
+                    </div>
                     {activeTab === "code" && (
                         <button
                             className={cn(
@@ -282,4 +342,4 @@ const BuilderAppPanel = memo(() => {
 
 BuilderAppPanel.displayName = "BuilderAppPanel";
 
-export { BuilderAppPanel };
+export { BuilderAppPanel, PublishAppModal };

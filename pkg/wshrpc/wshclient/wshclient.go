@@ -464,6 +464,12 @@ func PathCommand(w *wshutil.WshRpc, data wshrpc.PathCommandData, opts *wshrpc.Rp
 	return resp, err
 }
 
+// command "publishapp", wshserver.PublishAppCommand
+func PublishAppCommand(w *wshutil.WshRpc, data wshrpc.CommandPublishAppData, opts *wshrpc.RpcOpts) (*wshrpc.CommandPublishAppRtnData, error) {
+	resp, err := sendRpcRequestCallHelper[*wshrpc.CommandPublishAppRtnData](w, "publishapp", data, opts)
+	return resp, err
+}
+
 // command "readappfile", wshserver.ReadAppFileCommand
 func ReadAppFileCommand(w *wshutil.WshRpc, data wshrpc.CommandReadAppFileData, opts *wshrpc.RpcOpts) (*wshrpc.CommandReadAppFileRtnData, error) {
 	resp, err := sendRpcRequestCallHelper[*wshrpc.CommandReadAppFileRtnData](w, "readappfile", data, opts)
@@ -740,6 +746,12 @@ func WorkspaceListCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) ([]wshrpc.Wor
 // command "writeappfile", wshserver.WriteAppFileCommand
 func WriteAppFileCommand(w *wshutil.WshRpc, data wshrpc.CommandWriteAppFileData, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "writeappfile", data, opts)
+	return err
+}
+
+// command "writeappsecretbindings", wshserver.WriteAppSecretBindingsCommand
+func WriteAppSecretBindingsCommand(w *wshutil.WshRpc, data wshrpc.CommandWriteAppSecretBindingsData, opts *wshrpc.RpcOpts) error {
+	_, err := sendRpcRequestCallHelper[any](w, "writeappsecretbindings", data, opts)
 	return err
 }
 

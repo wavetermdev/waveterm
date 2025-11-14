@@ -23,6 +23,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wconfig"
 	"github.com/wavetermdev/waveterm/pkg/wps"
+	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/tsunami/build"
 )
 
@@ -95,30 +96,23 @@ func DeleteController(builderId string) {
 	if bc != nil {
 		bc.Stop()
 	}
-
-	cachesDir := wavebase.GetWaveCachesDir()
-	builderDir := filepath.Join(cachesDir, "builder", builderId)
-	if err := os.RemoveAll(builderDir); err != nil {
-		log.Printf("failed to remove builder cache directory for %s: %v", builderId, err)
-	}
 }
 
-func GetBuilderAppExecutablePath(builderId string, appName string) (string, error) {
-	cachesDir := wavebase.GetWaveCachesDir()
-	builderDir := filepath.Join(cachesDir, "builder", builderId)
+func GetBuilderAppExecutablePath(appPath string) (string, error) {
+	binDir := filepath.Join(appPath, "bin")
 
-	binaryName := appName
+	binaryName := "app"
 	if runtime.GOOS == "windows" {
-		binaryName = binaryName + ".exe"
+		binaryName = "app.exe"
 	}
-	cachePath := filepath.Join(builderDir, binaryName)
+	binPath := filepath.Join(binDir, binaryName)
 
-	err := wavebase.TryMkdirs(builderDir, 0755, "builder cache directory")
+	err := wavebase.TryMkdirs(binDir, 0755, "app bin directory")
 	if err != nil {
-		return "", fmt.Errorf("failed to create builder cache directory: %w", err)
+		return "", fmt.Errorf("failed to create app bin directory: %w", err)
 	}
 
-	return cachePath, nil
+	return binPath, nil
 }
 
 func Shutdown() {
@@ -131,12 +125,6 @@ func Shutdown() {
 
 	for _, bc := range controllers {
 		bc.Stop()
-	}
-
-	cachesDir := wavebase.GetWaveCachesDir()
-	builderCacheDir := filepath.Join(cachesDir, "builder")
-	if err := os.RemoveAll(builderCacheDir); err != nil {
-		log.Printf("failed to remove builder cache directory: %v", err)
 	}
 }
 
@@ -208,9 +196,7 @@ func (bc *BuilderController) buildAndRun(ctx context.Context, appId string, buil
 		return
 	}
 
-	appName := build.GetAppName(appPath)
-
-	cachePath, err := GetBuilderAppExecutablePath(bc.builderId, appName)
+	cachePath, err := GetBuilderAppExecutablePath(appPath)
 	if err != nil {
 		bc.handleBuildError(fmt.Errorf("failed to get builder executable path: %w", err), resultCh)
 		return
@@ -248,6 +234,7 @@ func (bc *BuilderController) buildAndRun(ctx context.Context, appId string, buil
 		NodePath:       nodePath,
 		GoPath:         goPath,
 		OutputCapture:  outputCapture,
+		MoveFileBack:   true,
 	})
 
 	for _, line := range outputCapture.GetLines() {
@@ -285,7 +272,7 @@ func (bc *BuilderController) buildAndRun(ctx context.Context, appId string, buil
 		}
 	}
 
-	process, err := bc.runBuilderApp(ctx, cachePath, builderEnv)
+	process, err := bc.runBuilderApp(ctx, appId, cachePath, builderEnv)
 	if err != nil {
 		bc.handleBuildError(fmt.Errorf("failed to run app: %w", err), resultCh)
 		return
@@ -308,7 +295,29 @@ func (bc *BuilderController) buildAndRun(ctx context.Context, appId string, buil
 	}()
 }
 
-func (bc *BuilderController) runBuilderApp(ctx context.Context, appBinPath string, builderEnv map[string]string) (*BuilderProcess, error) {
+func (bc *BuilderController) runBuilderApp(ctx context.Context, appId string, appBinPath string, builderEnv map[string]string) (*BuilderProcess, error) {
+	manifest, err := waveappstore.ReadAppManifest(appId)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read app manifest: %w", err)
+	}
+
+	secretBindings, err := waveappstore.ReadAppSecretBindings(appId)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read secret bindings: %w", err)
+	}
+
+	secretEnv, err := waveappstore.BuildAppSecretEnv(appId, manifest, secretBindings)
+	if err != nil {
+		return nil, fmt.Errorf("failed to build secret environment: %w", err)
+	}
+
+	if builderEnv == nil {
+		builderEnv = make(map[string]string)
+	}
+	for k, v := range secretEnv {
+		builderEnv[k] = v
+	}
+
 	cmd := exec.Command(appBinPath)
 	cmd.Env = append(os.Environ(), "TSUNAMI_CLOSEONSTDIN=1")
 
@@ -486,18 +495,50 @@ func (bc *BuilderController) stopProcess_nolock() {
 	bc.process = nil
 }
 
-func (bc *BuilderController) GetStatus() BuilderStatusData {
+func (bc *BuilderController) GetStatus() wshrpc.BuilderStatusData {
 	bc.statusLock.Lock()
 	defer bc.statusLock.Unlock()
 
 	bc.statusVersion++
-	return BuilderStatusData{
+	statusData := wshrpc.BuilderStatusData{
 		Status:   bc.status,
 		Port:     bc.port,
 		ExitCode: bc.exitCode,
 		ErrorMsg: bc.errorMsg,
 		Version:  bc.statusVersion,
 	}
+
+	if bc.appId != "" {
+		manifest, err := waveappstore.ReadAppManifest(bc.appId)
+		if err == nil && manifest != nil {
+			wshrpcManifest := &wshrpc.AppManifest{
+				AppTitle:     manifest.AppTitle,
+				AppShortDesc: manifest.AppShortDesc,
+				ConfigSchema: manifest.ConfigSchema,
+				DataSchema:   manifest.DataSchema,
+				Secrets:      make(map[string]wshrpc.SecretMeta),
+			}
+			for k, v := range manifest.Secrets {
+				wshrpcManifest.Secrets[k] = wshrpc.SecretMeta{
+					Desc:     v.Desc,
+					Optional: v.Optional,
+				}
+			}
+			statusData.Manifest = wshrpcManifest
+		}
+
+		secretBindings, err := waveappstore.ReadAppSecretBindings(bc.appId)
+		if err == nil {
+			statusData.SecretBindings = secretBindings
+		}
+
+		if manifest != nil && secretBindings != nil {
+			_, err := waveappstore.BuildAppSecretEnv(bc.appId, manifest, secretBindings)
+			statusData.SecretBindingsComplete = (err == nil)
+		}
+	}
+
+	return statusData
 }
 
 func (bc *BuilderController) GetOutput() []string {
@@ -538,13 +579,6 @@ func (bc *BuilderController) publishOutputLine(line string, reset bool) {
 	})
 }
 
-type BuilderStatusData struct {
-	Status   string `json:"status"`
-	Port     int    `json:"port,omitempty"`
-	ExitCode int    `json:"exitcode,omitempty"`
-	ErrorMsg string `json:"errormsg,omitempty"`
-	Version  int    `json:"version"`
-}
 
 func exitCodeFromWaitErr(waitErr error) int {
 	if waitErr == nil {

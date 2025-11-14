@@ -62,6 +62,15 @@ declare global {
         modtime: number;
     };
 
+    // wshrpc.AppManifest
+    type AppManifest = {
+        apptitle: string;
+        appshortdesc: string;
+        configschema: {[key: string]: any};
+        dataschema: {[key: string]: any};
+        secrets: {[key: string]: SecretMeta};
+    };
+
     // waveobj.Block
     type Block = WaveObj & {
         parentoref?: string;
@@ -124,6 +133,9 @@ declare global {
         exitcode?: number;
         errormsg?: string;
         version: number;
+        manifest?: AppManifest;
+        secretbindings?: {[key: string]: string};
+        secretbindingscomplete: boolean;
     };
 
     // waveobj.Client
@@ -325,6 +337,16 @@ declare global {
         message: string;
     };
 
+    // wshrpc.CommandPublishAppData
+    type CommandPublishAppData = {
+        appid: string;
+    };
+
+    // wshrpc.CommandPublishAppRtnData
+    type CommandPublishAppRtnData = {
+        publishedappid: string;
+    };
+
     // wshrpc.CommandReadAppFileData
     type CommandReadAppFileData = {
         appid: string;
@@ -480,6 +502,12 @@ declare global {
         appid: string;
         filename: string;
         data64: string;
+    };
+
+    // wshrpc.CommandWriteAppSecretBindingsData
+    type CommandWriteAppSecretBindingsData = {
+        appid: string;
+        bindings: {[key: string]: string};
     };
 
     // wshrpc.CommandWriteTempFileData
@@ -826,6 +854,7 @@ declare global {
         "tsunami:*"?: boolean;
         "tsunami:sdkreplacepath"?: string;
         "tsunami:apppath"?: string;
+        "tsunami:appid"?: string;
         "tsunami:scaffoldpath"?: string;
         "tsunami:env"?: {[key: string]: string};
         "vdom:*"?: boolean;
@@ -948,6 +977,12 @@ declare global {
     type RuntimeOpts = {
         termsize?: TermSize;
         winsize?: WinSize;
+    };
+
+    // wshrpc.SecretMeta
+    type SecretMeta = {
+        desc: string;
+        optional: boolean;
     };
 
     // webcmd.SetBlockTermSizeWSCommand

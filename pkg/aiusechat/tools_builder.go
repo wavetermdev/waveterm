@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
@@ -91,7 +92,26 @@ func GetBuilderWriteAppFileToolDefinition(appId string, builderId string) uctype
 			"additionalProperties": false,
 		},
 		ToolCallDesc: func(input any, output any, toolUseData *uctypes.UIMessageDataToolUse) string {
-			return fmt.Sprintf("writing app.go for %s", appId)
+			params, err := parseBuilderWriteAppFileInput(input)
+			if err != nil {
+				if output != nil {
+					return "wrote app.go"
+				}
+				return "writing app.go"
+			}
+			lineCount := len(strings.Split(params.Contents, "\n"))
+			if output != nil {
+				return fmt.Sprintf("wrote app.go (+%d lines)", lineCount)
+			}
+			return fmt.Sprintf("writing app.go (+%d lines)", lineCount)
+		},
+		ToolProgressDesc: func(input any) ([]string, error) {
+			params, err := parseBuilderWriteAppFileInput(input)
+			if err != nil {
+				return nil, err
+			}
+			lineCount := len(strings.Split(params.Contents, "\n"))
+			return []string{fmt.Sprintf("writing app.go (+%d lines)", lineCount)}, nil
 		},
 		ToolAnyCallback: func(input any, toolUseData *uctypes.UIMessageDataToolUse) (any, error) {
 			params, err := parseBuilderWriteAppFileInput(input)
@@ -148,13 +168,35 @@ func parseBuilderEditAppFileInput(input any) (*builderEditAppFileParams, error) 
 	return result, nil
 }
 
+func formatEditDescriptions(edits []fileutil.EditSpec) []string {
+	numEdits := len(edits)
+	editStr := "edits"
+	if numEdits == 1 {
+		editStr = "edit"
+	}
+
+	result := make([]string, len(edits)+1)
+	result[0] = fmt.Sprintf("editing app.go (%d %s)", numEdits, editStr)
+
+	for i, edit := range edits {
+		newLines := len(strings.Split(edit.NewStr, "\n"))
+		oldLines := len(strings.Split(edit.OldStr, "\n"))
+		desc := edit.Desc
+		if desc == "" {
+			desc = fmt.Sprintf("edit #%d", i+1)
+		}
+		result[i+1] = fmt.Sprintf("* %s (+%d -%d)", desc, newLines, oldLines)
+	}
+	return result
+}
+
 func GetBuilderEditAppFileToolDefinition(appId string, builderId string) uctypes.ToolDefinition {
 	return uctypes.ToolDefinition{
 		Name:        "builder_edit_app_file",
 		DisplayName: "Edit App File",
 		Description: "Edit the app.go file for this app using precise search and replace. " +
 			"Each old_str must appear EXACTLY ONCE in the file or the edit will fail. " +
-			"All edits are applied atomically - if any single edit fails, the entire operation fails and no changes are made.",
+			"Edits are applied sequentially - if an edit fails, all previous edits are kept and subsequent edits are skipped.",
 		ToolLogName: "builder:edit_app",
 		Strict:      false,
 		InputSchema: map[string]any{
@@ -162,13 +204,13 @@ func GetBuilderEditAppFileToolDefinition(appId string, builderId string) uctypes
 			"properties": map[string]any{
 				"edits": map[string]any{
 					"type":        "array",
-					"description": "Array of edit specifications. All edits are applied atomically - if any edit fails, none are applied.",
+					"description": "Array of edit specifications. Edits are applied sequentially - if one fails, previous edits are kept but remaining edits are skipped.",
 					"items": map[string]any{
 						"type": "object",
 						"properties": map[string]any{
 							"old_str": map[string]any{
 								"type":        "string",
-								"description": "The exact string to find and replace. MUST appear exactly once in the file - if it appears zero times or multiple times, the entire edit operation will fail.",
+								"description": "The exact string to find and replace. MUST appear exactly once in the file - if it appears zero times or multiple times, this edit will fail.",
 							},
 							"new_str": map[string]any{
 								"type":        "string",
@@ -176,7 +218,7 @@ func GetBuilderEditAppFileToolDefinition(appId string, builderId string) uctypes
 							},
 							"desc": map[string]any{
 								"type":        "string",
-								"description": "Description of what this edit does",
+								"description": "Description of what this edit does (keep short, half a line of text max)",
 							},
 						},
 						"required": []string{"old_str", "new_str"},
@@ -191,12 +233,14 @@ func GetBuilderEditAppFileToolDefinition(appId string, builderId string) uctypes
 			if err != nil {
 				return fmt.Sprintf("error parsing input: %v", err)
 			}
-			numEdits := len(params.Edits)
-			editStr := "edits"
-			if numEdits == 1 {
-				editStr = "edit"
+			return strings.Join(formatEditDescriptions(params.Edits), "\n")
+		},
+		ToolProgressDesc: func(input any) ([]string, error) {
+			params, err := parseBuilderEditAppFileInput(input)
+			if err != nil {
+				return nil, err
 			}
-			return fmt.Sprintf("editing app.go for %s (%d %s)", appId, numEdits, editStr)
+			return formatEditDescriptions(params.Edits), nil
 		},
 		ToolAnyCallback: func(input any, toolUseData *uctypes.UIMessageDataToolUse) (any, error) {
 			params, err := parseBuilderEditAppFileInput(input)
@@ -204,7 +248,7 @@ func GetBuilderEditAppFileToolDefinition(appId string, builderId string) uctypes
 				return nil, err
 			}
 
-			err = waveappstore.ReplaceInAppFile(appId, BuilderAppFileName, params.Edits)
+			editResults, err := waveappstore.ReplaceInAppFilePartial(appId, BuilderAppFileName, params.Edits)
 			if err != nil {
 				return nil, err
 			}
@@ -215,8 +259,7 @@ func GetBuilderEditAppFileToolDefinition(appId string, builderId string) uctypes
 			})
 
 			result := map[string]any{
-				"success": true,
-				"message": fmt.Sprintf("Successfully edited %s with %d changes", BuilderAppFileName, len(params.Edits)),
+				"edits": editResults,
 			}
 
 			if builderId != "" {
@@ -244,7 +287,7 @@ func GetBuilderListFilesToolDefinition(appId string) uctypes.ToolDefinition {
 			"additionalProperties": false,
 		},
 		ToolCallDesc: func(input any, output any, toolUseData *uctypes.UIMessageDataToolUse) string {
-			return fmt.Sprintf("listing files for %s", appId)
+			return "listing files"
 		},
 		ToolAnyCallback: func(input any, toolUseData *uctypes.UIMessageDataToolUse) (any, error) {
 			result, err := waveappstore.ListAllAppFiles(appId)

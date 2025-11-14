@@ -157,18 +157,20 @@ const (
 	Command_TermGetScrollbackLines = "termgetscrollbacklines"
 
 	// builder
-	Command_ListAllEditableApps   = "listalleditableapps"
-	Command_ListAllAppFiles       = "listallappfiles"
-	Command_ReadAppFile           = "readappfile"
-	Command_WriteAppFile          = "writeappfile"
-	Command_DeleteAppFile         = "deleteappfile"
-	Command_RenameAppFile         = "renameappfile"
-	Command_DeleteBuilder         = "deletebuilder"
-	Command_StartBuilder          = "startbuilder"
-	Command_RestartBuilderAndWait = "restartbuilderandwait"
-	Command_GetBuilderStatus      = "getbuilderstatus"
-	Command_GetBuilderOutput      = "getbuilderoutput"
-	Command_CheckGoVersion        = "checkgoversion"
+	Command_ListAllEditableApps    = "listalleditableapps"
+	Command_ListAllAppFiles        = "listallappfiles"
+	Command_ReadAppFile            = "readappfile"
+	Command_WriteAppFile           = "writeappfile"
+	Command_DeleteAppFile          = "deleteappfile"
+	Command_RenameAppFile          = "renameappfile"
+	Command_WriteAppSecretBindings = "writeappsecretbindings"
+	Command_DeleteBuilder          = "deletebuilder"
+	Command_StartBuilder           = "startbuilder"
+	Command_RestartBuilderAndWait  = "restartbuilderandwait"
+	Command_GetBuilderStatus       = "getbuilderstatus"
+	Command_GetBuilderOutput       = "getbuilderoutput"
+	Command_CheckGoVersion         = "checkgoversion"
+	Command_PublishApp             = "publishapp"
 
 	// electron
 	Command_ElectronEncrypt = "electronencrypt"
@@ -333,12 +335,14 @@ type WshRpcInterface interface {
 	WriteAppFileCommand(ctx context.Context, data CommandWriteAppFileData) error
 	DeleteAppFileCommand(ctx context.Context, data CommandDeleteAppFileData) error
 	RenameAppFileCommand(ctx context.Context, data CommandRenameAppFileData) error
+	WriteAppSecretBindingsCommand(ctx context.Context, data CommandWriteAppSecretBindingsData) error
 	DeleteBuilderCommand(ctx context.Context, builderId string) error
 	StartBuilderCommand(ctx context.Context, data CommandStartBuilderData) error
 	RestartBuilderAndWaitCommand(ctx context.Context, data CommandRestartBuilderAndWaitData) (*RestartBuilderAndWaitResult, error)
 	GetBuilderStatusCommand(ctx context.Context, builderId string) (*BuilderStatusData, error)
 	GetBuilderOutputCommand(ctx context.Context, builderId string) ([]string, error)
 	CheckGoVersionCommand(ctx context.Context) (*CommandCheckGoVersionRtnData, error)
+	PublishAppCommand(ctx context.Context, data CommandPublishAppData) (*CommandPublishAppRtnData, error)
 
 	// proc
 	VDomRenderCommand(ctx context.Context, data vdom.VDomFrontendUpdate) chan RespOrErrorUnion[*vdom.VDomBackendUpdate]
@@ -1015,6 +1019,11 @@ type CommandRenameAppFileData struct {
 	ToFileName   string `json:"tofilename"`
 }
 
+type CommandWriteAppSecretBindingsData struct {
+	AppId    string            `json:"appid"`
+	Bindings map[string]string `json:"bindings"`
+}
+
 type CommandStartBuilderData struct {
 	BuilderId string `json:"builderid"`
 }
@@ -1029,12 +1038,28 @@ type RestartBuilderAndWaitResult struct {
 	BuildOutput  string `json:"buildoutput"`
 }
 
+type SecretMeta struct {
+	Desc     string `json:"desc"`
+	Optional bool   `json:"optional"`
+}
+
+type AppManifest struct {
+	AppTitle     string                `json:"apptitle"`
+	AppShortDesc string                `json:"appshortdesc"`
+	ConfigSchema map[string]any        `json:"configschema"`
+	DataSchema   map[string]any        `json:"dataschema"`
+	Secrets      map[string]SecretMeta `json:"secrets"`
+}
+
 type BuilderStatusData struct {
-	Status   string `json:"status"`
-	Port     int    `json:"port,omitempty"`
-	ExitCode int    `json:"exitcode,omitempty"`
-	ErrorMsg string `json:"errormsg,omitempty"`
-	Version  int    `json:"version"`
+	Status                 string            `json:"status"`
+	Port                   int               `json:"port,omitempty"`
+	ExitCode               int               `json:"exitcode,omitempty"`
+	ErrorMsg               string            `json:"errormsg,omitempty"`
+	Version                int               `json:"version"`
+	Manifest               *AppManifest      `json:"manifest,omitempty"`
+	SecretBindings         map[string]string `json:"secretbindings,omitempty"`
+	SecretBindingsComplete bool              `json:"secretbindingscomplete"`
 }
 
 type CommandCheckGoVersionRtnData struct {
@@ -1042,6 +1067,14 @@ type CommandCheckGoVersionRtnData struct {
 	GoPath      string `json:"gopath"`
 	GoVersion   string `json:"goversion"`
 	ErrorString string `json:"errorstring,omitempty"`
+}
+
+type CommandPublishAppData struct {
+	AppId string `json:"appid"`
+}
+
+type CommandPublishAppRtnData struct {
+	PublishedAppId string `json:"publishedappid"`
 }
 
 type CommandElectronEncryptData struct {
