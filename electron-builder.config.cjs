@@ -29,7 +29,7 @@ const config = {
             to: ".",
             filter: ["package.json"],
         },
-        "!/node_modules/**", // We don't need electron-builder to package in Node modules as Vite has already bundled any code that our program is using.
+        "!node_modules", // We don't need electron-builder to package in Node modules as Vite has already bundled any code that our program is using.
     ],
     extraResources: [
         {

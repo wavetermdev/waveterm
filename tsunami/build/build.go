@@ -498,13 +498,13 @@ func verifyScaffoldFs(fsys fs.FS) error {
 		return fmt.Errorf("package.json check failed: %w", err)
 	}
 
-	// Check for node_modules directory
-	if err := isDirOrNotFoundFS(fsys, "node_modules"); err != nil {
-		return fmt.Errorf("node_modules directory check failed: %w", err)
+	// Check for nm directory
+	if err := isDirOrNotFoundFS(fsys, "nm"); err != nil {
+		return fmt.Errorf("nm (node_modules) directory check failed: %w", err)
 	}
-	info, err = fs.Stat(fsys, "node_modules")
+	info, err = fs.Stat(fsys, "nm")
 	if err != nil || !info.IsDir() {
-		return fmt.Errorf("node_modules directory must exist in scaffold")
+		return fmt.Errorf("nm (node_modules) directory must exist in scaffold")
 	}
 
 	return nil
@@ -1075,33 +1075,33 @@ func ParseTsunamiPort(line string) int {
 func copyScaffoldFS(scaffoldFS fs.FS, destDir string, verbose bool, oc *OutputCapture) (int, error) {
 	fileCount := 0
 
-	// Handle node_modules directory - prefer symlink if possible, otherwise copy
-	if _, err := fs.Stat(scaffoldFS, "node_modules"); err == nil {
+	// Handle nm (node_modules) directory - prefer symlink if possible, otherwise copy
+	if _, err := fs.Stat(scaffoldFS, "nm"); err == nil {
 		destPath := filepath.Join(destDir, "node_modules")
 
 		// Try to create symlink if we have DirFS
 		if dirFS, ok := scaffoldFS.(DirFS); ok {
-			srcPath := dirFS.JoinOS("node_modules")
+			srcPath := dirFS.JoinOS("nm")
 			if err := os.Symlink(srcPath, destPath); err != nil {
-				return 0, fmt.Errorf("failed to create symlink for node_modules: %w", err)
+				return 0, fmt.Errorf("failed to create symlink for nm (node_modules): %w", err)
 			}
 			if verbose {
-				oc.Printf("[debug] Symlinked node_modules directory")
+				oc.Printf("[debug] Symlinked nm to node_modules directory")
 			}
 			fileCount++
 		} else {
 			// Fallback to recursive copy
-			dirCount, err := copyDirFromFS(scaffoldFS, "node_modules", destPath, false)
+			dirCount, err := copyDirFromFS(scaffoldFS, "nm", destPath, false)
 			if err != nil {
-				return 0, fmt.Errorf("failed to copy node_modules directory: %w", err)
+				return 0, fmt.Errorf("failed to copy nm (node_modules) directory: %w", err)
 			}
 			if verbose {
-				oc.Printf("Copied node_modules directory (%d files)", dirCount)
+				oc.Printf("Copied nm to node_modules directory (%d files)", dirCount)
 			}
 			fileCount += dirCount
 		}
 	} else if !os.IsNotExist(err) {
-		return 0, fmt.Errorf("error checking node_modules: %w", err)
+		return 0, fmt.Errorf("error checking nm (node_modules): %w", err)
 	}
 
 	// Copy package files instead of symlinking

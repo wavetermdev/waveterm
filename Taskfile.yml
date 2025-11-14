@@ -536,6 +536,7 @@ tasks:
             - mkdir -p scaffold
             - cp ../templates/package.json.tmpl scaffold/package.json
             - cd scaffold && npm install
+            - mv scaffold/node_modules scaffold/nm
             - cp -r dist scaffold/
             - mkdir -p scaffold/dist/tw
             - cp ../templates/app-main.go.tmpl scaffold/app-main.go
@@ -556,6 +557,7 @@ tasks:
             - powershell New-Item -ItemType Directory -Force -Path scaffold
             - powershell Copy-Item -Path ../templates/package.json.tmpl -Destination scaffold/package.json
             - powershell -Command "Set-Location scaffold; npm install"
+            - powershell Move-Item -Path scaffold/node_modules -Destination scaffold/nm
             - powershell Copy-Item -Recurse -Force -Path dist -Destination scaffold/
             - powershell New-Item -ItemType Directory -Force -Path scaffold/dist/tw
             - powershell Copy-Item -Path ../templates/app-main.go.tmpl -Destination scaffold/app-main.go
