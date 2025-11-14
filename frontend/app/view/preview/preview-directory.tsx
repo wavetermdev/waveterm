@@ -25,7 +25,7 @@ import {
 import clsx from "clsx";
 import { PrimitiveAtom, atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { OverlayScrollbarsComponent, OverlayScrollbarsComponentRef } from "overlayscrollbars-react";
-import React, { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import React, { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useDrag, useDrop } from "react-dnd";
 import { quote as shellQuote } from "shell-quote";
 import { debounce } from "throttle-debounce";
@@ -225,10 +225,6 @@ function DirectoryTable({
             columnVisibility: {
                 path: false,
             },
-            rowPinning: {
-                top: [],
-                bottom: [],
-            },
         },
         enableMultiSort: false,
         enableSortingRemoval: false,
@@ -240,29 +236,10 @@ function DirectoryTable({
     });
 
     useEffect(() => {
-        const topRows = table.getTopRows() || [];
-        const centerRows = table.getCenterRows() || [];
-        const allRows = [...topRows, ...centerRows];
+        const allRows = table.getRowModel()?.flatRows || [];
         setSelectedPath((allRows[focusIndex]?.getValue("path") as string) ?? null);
     }, [table, focusIndex, data]);
 
-    useLayoutEffect(() => {
-        const rows = table.getRowModel()?.flatRows;
-        let foundParentDir = false;
-
-        for (const row of rows) {
-            if (row.getValue("name") == "..") {
-                row.pin("top");
-                foundParentDir = true;
-                break;
-            }
-        }
-
-        // If we didn't find the ".." row, reset the pinning to avoid stale references
-        if (!foundParentDir) {
-            table.resetRowPinning();
-        }
-    }, [table, data]);
     const columnSizeVars = useMemo(() => {
         const headers = table.getFlatHeaders();
         const colSizes: { [key: string]: number } = {};
@@ -447,6 +424,10 @@ function TableBody({
         [setRefreshVersion, conn]
     );
 
+    const allRows = table.getRowModel().flatRows;
+    const dotdotRow = allRows.find((row) => row.getValue("name") === "..");
+    const otherRows = allRows.filter((row) => row.getValue("name") !== "..");
+
     return (
         <div className="dir-table-body" ref={bodyRef}>
             {(searchActive || search !== "") && (
@@ -473,28 +454,28 @@ function TableBody({
                 <div className="dummy dir-table-body-row" ref={dummyLineRef}>
                     <div className="dir-table-body-cell">dummy-data</div>
                 </div>
-                {table.getTopRows().map((row, idx) => (
+                {dotdotRow && (
                     <TableRow
                         model={model}
-                        row={row}
+                        row={dotdotRow}
                         focusIndex={focusIndex}
                         setFocusIndex={setFocusIndex}
                         setSearch={setSearch}
-                        idx={idx}
+                        idx={0}
                         handleFileContextMenu={handleFileContextMenu}
-                        key={"top-" + idx}
+                        key="dotdot"
                     />
-                ))}
-                {table.getCenterRows().map((row, idx) => (
+                )}
+                {otherRows.map((row, idx) => (
                     <TableRow
                         model={model}
                         row={row}
                         focusIndex={focusIndex}
                         setFocusIndex={setFocusIndex}
                         setSearch={setSearch}
-                        idx={idx + table.getTopRows().length}
+                        idx={dotdotRow ? idx + 1 : idx}
                         handleFileContextMenu={handleFileContextMenu}
-                        key={"center" + idx}
+                        key={idx}
                     />
                 ))}
             </div>
