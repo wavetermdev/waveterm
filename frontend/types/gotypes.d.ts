@@ -60,6 +60,7 @@ declare global {
     type AppInfo = {
         appid: string;
         modtime: number;
+        manifest?: AppManifest;
     };
 
     // wshrpc.AppManifest

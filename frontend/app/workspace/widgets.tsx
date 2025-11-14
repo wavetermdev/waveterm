@@ -7,6 +7,15 @@ import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { atoms, createBlock, getApi, isDev } from "@/store/global";
 import { fireAndForget, isBlank, makeIconClass } from "@/util/util";
+import {
+    FloatingPortal,
+    autoUpdate,
+    offset,
+    shift,
+    useDismiss,
+    useFloating,
+    useInteractions,
+} from "@floating-ui/react";
 import clsx from "clsx";
 import { useAtomValue } from "jotai";
 import { memo, useCallback, useEffect, useRef, useState } from "react";
@@ -67,6 +76,132 @@ const Widget = memo(({ widget, mode }: { widget: WidgetConfigType; mode: "normal
     );
 });
 
+function calculateGridSize(appCount: number): number {
+    if (appCount <= 4) return 2;
+    if (appCount <= 9) return 3;
+    if (appCount <= 16) return 4;
+    if (appCount <= 25) return 5;
+    return 6;
+}
+
+const AppsFloatingWindow = memo(
+    ({
+        isOpen,
+        onClose,
+        referenceElement,
+    }: {
+        isOpen: boolean;
+        onClose: () => void;
+        referenceElement: HTMLElement;
+    }) => {
+        const [apps, setApps] = useState<AppInfo[]>([]);
+        const [loading, setLoading] = useState(true);
+
+        const { refs, floatingStyles, context } = useFloating({
+            open: isOpen,
+            onOpenChange: onClose,
+            placement: "left-start",
+            middleware: [offset(-2), shift({ padding: 12 })],
+            whileElementsMounted: autoUpdate,
+            elements: {
+                reference: referenceElement,
+            },
+        });
+
+        const dismiss = useDismiss(context);
+        const { getFloatingProps } = useInteractions([dismiss]);
+
+        useEffect(() => {
+            if (!isOpen) return;
+
+            const fetchApps = async () => {
+                setLoading(true);
+                try {
+                    const allApps = await RpcApi.ListAllAppsCommand(TabRpcClient);
+                    const localApps = allApps
+                        .filter((app) => !app.appid.startsWith("draft/"))
+                        .sort((a, b) => {
+                            const aName = a.appid.replace(/^local\//, "");
+                            const bName = b.appid.replace(/^local\//, "");
+                            return aName.localeCompare(bName);
+                        });
+                    setApps(localApps);
+                } catch (error) {
+                    console.error("Failed to fetch apps:", error);
+                    setApps([]);
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            fetchApps();
+        }, [isOpen]);
+
+        if (!isOpen) return null;
+
+        const gridSize = calculateGridSize(apps.length);
+
+        return (
+            <FloatingPortal>
+                <div
+                    ref={refs.setFloating}
+                    style={floatingStyles}
+                    {...getFloatingProps()}
+                    className="bg-modalbg border border-border rounded-lg shadow-xl p-4 z-50"
+                >
+                    {loading ? (
+                        <div className="flex items-center justify-center p-8">
+                            <i className="fa fa-solid fa-spinner fa-spin text-2xl text-muted"></i>
+                        </div>
+                    ) : apps.length === 0 ? (
+                        <div className="text-muted text-sm p-4 text-center">No local apps found</div>
+                    ) : (
+                        <div
+                            className="grid gap-3"
+                            style={{
+                                gridTemplateColumns: `repeat(${gridSize}, minmax(0, 1fr))`,
+                                maxWidth: `${gridSize * 80}px`,
+                            }}
+                        >
+                            {apps.map((app) => {
+                                const appMeta = app.manifest?.appmeta;
+                                const displayName = app.appid.replace(/^local\//, "");
+                                const icon = appMeta?.icon || "cube";
+                                const iconColor = appMeta?.iconcolor || "white";
+
+                                return (
+                                    <div
+                                        key={app.appid}
+                                        className="flex flex-col items-center justify-center p-2 rounded hover:bg-hoverbg cursor-pointer transition-colors"
+                                        onClick={() => {
+                                            const blockDef: BlockDef = {
+                                                meta: {
+                                                    view: "tsunami",
+                                                    controller: "tsunami",
+                                                    "tsunami:appid": app.appid,
+                                                },
+                                            };
+                                            createBlock(blockDef);
+                                            onClose();
+                                        }}
+                                    >
+                                        <div style={{ color: iconColor }} className="text-3xl mb-1">
+                                            <i className={makeIconClass(icon, false)}></i>
+                                        </div>
+                                        <div className="text-xxs text-center text-secondary break-words w-full px-1">
+                                            {displayName}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+                </div>
+            </FloatingPortal>
+        );
+    }
+);
+
 const Widgets = memo(() => {
     const fullConfig = useAtomValue(atoms.fullConfigAtom);
     const hasCustomAIPresets = useAtomValue(atoms.hasCustomAIPresetsAtom);
@@ -99,6 +234,9 @@ const Widgets = memo(() => {
         ? widgetsMap
         : Object.fromEntries(Object.entries(widgetsMap).filter(([key]) => key !== "defwidget@ai"));
     const widgets = sortByDisplayOrder(filteredWidgets);
+
+    const [isAppsOpen, setIsAppsOpen] = useState(false);
+    const appsButtonRef = useRef<HTMLDivElement>(null);
 
     const checkModeNeeded = useCallback(() => {
         if (!containerRef.current || !measurementRef.current) return;
@@ -204,10 +342,27 @@ const Widgets = memo(() => {
                             ))}
                         </div>
                         <div className="flex-grow" />
-                        {showHelp ? (
+                        {isDev() || showHelp ? (
                             <div className="grid grid-cols-2 gap-0 w-full">
-                                <Widget key="tips" widget={tipsWidget} mode={mode} />
-                                <Widget key="help" widget={helpWidget} mode={mode} />
+                                {isDev() ? (
+                                    <div
+                                        ref={appsButtonRef}
+                                        className="flex flex-col justify-center items-center w-full py-1.5 pr-0.5 text-secondary text-sm overflow-hidden rounded-sm hover:bg-hoverbg hover:text-white cursor-pointer"
+                                        onClick={() => setIsAppsOpen(!isAppsOpen)}
+                                    >
+                                        <Tooltip content="Local WaveApps" placement="left" disable={isAppsOpen}>
+                                            <div>
+                                                <i className={makeIconClass("cube", true)}></i>
+                                            </div>
+                                        </Tooltip>
+                                    </div>
+                                ) : null}
+                                {showHelp ? (
+                                    <>
+                                        <Widget key="tips" widget={tipsWidget} mode={mode} />
+                                        <Widget key="help" widget={helpWidget} mode={mode} />
+                                    </>
+                                ) : null}
                             </div>
                         ) : null}
                     </>
@@ -217,6 +372,24 @@ const Widgets = memo(() => {
                             <Widget key={`widget-${idx}`} widget={data} mode={mode} />
                         ))}
                         <div className="flex-grow" />
+                        {isDev() ? (
+                            <div
+                                ref={appsButtonRef}
+                                className="flex flex-col justify-center items-center w-full py-1.5 pr-0.5 text-secondary text-lg overflow-hidden rounded-sm hover:bg-hoverbg hover:text-white cursor-pointer"
+                                onClick={() => setIsAppsOpen(!isAppsOpen)}
+                            >
+                                <Tooltip content="Local WaveApps" placement="left" disable={isAppsOpen}>
+                                    <div>
+                                        <i className={makeIconClass("cube", true)}></i>
+                                    </div>
+                                    {mode === "normal" && (
+                                        <div className="text-xxs mt-0.5 w-full px-0.5 text-center whitespace-nowrap overflow-hidden text-ellipsis">
+                                            apps
+                                        </div>
+                                    )}
+                                </Tooltip>
+                            </div>
+                        ) : null}
                         {showHelp ? (
                             <>
                                 <Widget key="tips" widget={tipsWidget} mode={mode} />
@@ -234,6 +407,13 @@ const Widgets = memo(() => {
                     </div>
                 ) : null}
             </div>
+            {isDev() && appsButtonRef.current && (
+                <AppsFloatingWindow
+                    isOpen={isAppsOpen}
+                    onClose={() => setIsAppsOpen(false)}
+                    referenceElement={appsButtonRef.current}
+                />
+            )}
 
             <div
                 ref={measurementRef}
@@ -248,6 +428,14 @@ const Widgets = memo(() => {
                         <Widget key="measurement-tips" widget={tipsWidget} mode="normal" />
                         <Widget key="measurement-help" widget={helpWidget} mode="normal" />
                     </>
+                ) : null}
+                {isDev() ? (
+                    <div className="flex flex-col justify-center items-center w-full py-1.5 pr-0.5 text-lg">
+                        <div>
+                            <i className={makeIconClass("cube", true)}></i>
+                        </div>
+                        <div className="text-xxs mt-0.5 w-full px-0.5 text-center">apps</div>
+                    </div>
                 ) : null}
                 {isDev() ? (
                     <div

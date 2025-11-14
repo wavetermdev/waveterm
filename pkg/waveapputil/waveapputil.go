@@ -4,12 +4,12 @@
 package waveapputil
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
-	"strings"
 
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/wconfig"
@@ -69,7 +69,7 @@ func FormatGoCode(contents []byte) []byte {
 	}
 
 	cmd := exec.Command(gofmtPath)
-	cmd.Stdin = strings.NewReader(string(contents))
+	cmd.Stdin = bytes.NewReader(contents)
 	formattedOutput, err := cmd.Output()
 	if err != nil {
 		return contents
