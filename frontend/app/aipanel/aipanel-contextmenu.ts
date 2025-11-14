@@ -58,7 +58,7 @@ export async function handleWaveAIContextMenu(e: React.MouseEvent, showCopy: boo
             },
         },
         {
-            label: hasPremium ? "Balanced (gpt-5, low thinking)" : "Balanced (premium)",
+            label: hasPremium ? "Balanced (gpt-5.1, low thinking)" : "Balanced (premium)",
             type: "checkbox",
             checked: currentThinkingMode === "balanced",
             enabled: hasPremium,
@@ -71,7 +71,7 @@ export async function handleWaveAIContextMenu(e: React.MouseEvent, showCopy: boo
             },
         },
         {
-            label: hasPremium ? "Deep (gpt-5, full thinking)" : "Deep (premium)",
+            label: hasPremium ? "Deep (gpt-5.1, full thinking)" : "Deep (premium)",
             type: "checkbox",
             checked: currentThinkingMode === "deep",
             enabled: hasPremium,

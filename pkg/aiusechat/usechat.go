@@ -475,7 +475,7 @@ func RunAIChat(ctx context.Context, sseHandler *sse.SSEHandlerCh, chatOpts uctyp
 			}
 		}
 		if stopReason != nil && stopReason.Kind == uctypes.StopKindPremiumRateLimit && chatOpts.Config.APIType == APIType_OpenAI && chatOpts.Config.Model == uctypes.PremiumOpenAIModel {
-			log.Printf("Premium rate limit hit with gpt-5, switching to gpt-5-mini\n")
+			log.Printf("Premium rate limit hit with gpt-5.1, switching to gpt-5-mini\n")
 			cont = &uctypes.WaveContinueResponse{
 				MessageID:             "",
 				Model:                 uctypes.DefaultOpenAIModel,

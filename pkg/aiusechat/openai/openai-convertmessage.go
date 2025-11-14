@@ -278,7 +278,7 @@ func buildOpenAIHTTPRequest(ctx context.Context, inputs []any, chatOpts uctypes.
 		reqBody.Reasoning = &ReasoningType{
 			Effort: opts.ThinkingLevel, // low, medium, high map directly
 		}
-		if opts.Model == "gpt-5" {
+		if opts.Model == "gpt-5" || opts.Model == "gpt-5.1" {
 			reqBody.Reasoning.Summary = "auto"
 		}
 	}

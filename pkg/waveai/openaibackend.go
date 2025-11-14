@@ -34,7 +34,8 @@ func isReasoningModel(model string) bool {
 	return strings.HasPrefix(m, "o1") ||
 		strings.HasPrefix(m, "o3") ||
 		strings.HasPrefix(m, "o4") ||
-		strings.HasPrefix(m, "gpt-5")
+		strings.HasPrefix(m, "gpt-5") ||
+		strings.HasPrefix(m, "gpt-5.1")
 }
 
 func setApiType(opts *wshrpc.WaveAIOptsType, clientConfig *openaiapi.ClientConfig) error {

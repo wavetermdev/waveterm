@@ -12,7 +12,7 @@ import (
 const DefaultAIEndpoint = "https://cfapi.waveterm.dev/api/waveai"
 const DefaultAnthropicModel = "claude-sonnet-4-5"
 const DefaultOpenAIModel = "gpt-5-mini"
-const PremiumOpenAIModel = "gpt-5"
+const PremiumOpenAIModel = "gpt-5.1"
 
 type UseChatRequest struct {
 	Messages []UIMessage `json:"messages"`
@@ -234,7 +234,7 @@ func (opts AIOptsType) IsWaveProxy() bool {
 }
 
 func (opts AIOptsType) IsPremiumModel() bool {
-	return opts.Model == "gpt-5" || strings.Contains(opts.Model, "claude-sonnet")
+	return opts.Model == "gpt-5" || opts.Model == "gpt-5.1" || strings.Contains(opts.Model, "claude-sonnet")
 }
 
 type AIChat struct {
@@ -552,6 +552,7 @@ func AreModelsCompatible(apiType, model1, model2 string) bool {
 
 	if apiType == "openai" {
 		gpt5Models := map[string]bool{
+			"gpt-5.1":    true,
 			"gpt-5":      true,
 			"gpt-5-mini": true,
 			"gpt-5-nano": true,
