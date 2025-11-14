@@ -118,7 +118,13 @@ const AppsFloatingWindow = memo(
                 setLoading(true);
                 try {
                     const allApps = await RpcApi.ListAllAppsCommand(TabRpcClient);
-                    const localApps = allApps.filter((app) => !app.appid.startsWith("draft/"));
+                    const localApps = allApps
+                        .filter((app) => !app.appid.startsWith("draft/"))
+                        .sort((a, b) => {
+                            const aName = a.appid.replace(/^local\//, "");
+                            const bName = b.appid.replace(/^local\//, "");
+                            return aName.localeCompare(bName);
+                        });
                     setApps(localApps);
                 } catch (error) {
                     console.error("Failed to fetch apps:", error);
