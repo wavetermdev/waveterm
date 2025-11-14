@@ -967,8 +967,9 @@ type CommandTermGetScrollbackLinesRtnData struct {
 
 // builder
 type AppInfo struct {
-	AppId   string `json:"appid"`
-	ModTime int64  `json:"modtime"`
+	AppId    string       `json:"appid"`
+	ModTime  int64        `json:"modtime"`
+	Manifest *AppManifest `json:"manifest,omitempty"`
 }
 
 type CommandListAllAppFilesData struct {

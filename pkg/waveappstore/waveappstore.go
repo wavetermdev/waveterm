@@ -17,7 +17,6 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/waveapputil"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
-	"github.com/wavetermdev/waveterm/tsunami/engine"
 )
 
 const (
@@ -456,12 +455,12 @@ func ListAllAppFiles(appId string) (*fileutil.ReadDirResult, error) {
 	return fileutil.ReadDirRecursive(appDir, 10000)
 }
 
-func ListAllApps() ([]string, error) {
+func ListAllApps() ([]wshrpc.AppInfo, error) {
 	homeDir := wavebase.GetHomeDir()
 	waveappsDir := filepath.Join(homeDir, "waveapps")
 
 	if _, err := os.Stat(waveappsDir); os.IsNotExist(err) {
-		return []string{}, nil
+		return []wshrpc.AppInfo{}, nil
 	}
 
 	namespaces, err := os.ReadDir(waveappsDir)
@@ -469,7 +468,7 @@ func ListAllApps() ([]string, error) {
 		return nil, fmt.Errorf("failed to read waveapps directory: %w", err)
 	}
 
-	var appIds []string
+	var appInfos []wshrpc.AppInfo
 
 	for _, ns := range namespaces {
 		if !ns.IsDir() {
@@ -493,13 +492,24 @@ func ListAllApps() ([]string, error) {
 			appId := MakeAppId(namespace, appName)
 
 			if err := ValidateAppId(appId); err == nil {
-				appIds = append(appIds, appId)
+				modTime, _ := GetAppModTime(appId)
+				appInfo := wshrpc.AppInfo{
+					AppId:   appId,
+					ModTime: modTime,
+				}
+
+				if manifest, err := ReadAppManifest(appId); err == nil {
+					appInfo.Manifest = manifest
+				}
+
+				appInfos = append(appInfos, appInfo)
 			}
 		}
 	}
 
-	return appIds, nil
+	return appInfos, nil
 }
+
 func GetAppModTime(appId string) (int64, error) {
 	if err := ValidateAppId(appId); err != nil {
 		return 0, err
@@ -575,7 +585,7 @@ func ListAllEditableApps() ([]wshrpc.AppInfo, error) {
 	var appInfos []wshrpc.AppInfo
 	for appName := range allAppNames {
 		var appId string
-		var modTimeAppId string
+		var manifestAppId string
 		if localApps[appName] {
 			appId = MakeAppId(AppNSLocal, appName)
 		} else {
@@ -583,17 +593,23 @@ func ListAllEditableApps() ([]wshrpc.AppInfo, error) {
 		}
 
 		if draftApps[appName] {
-			modTimeAppId = MakeAppId(AppNSDraft, appName)
+			manifestAppId = MakeAppId(AppNSDraft, appName)
 		} else {
-			modTimeAppId = appId
+			manifestAppId = appId
 		}
 
-		modTime, _ := GetAppModTime(modTimeAppId)
+		modTime, _ := GetAppModTime(manifestAppId)
 
-		appInfos = append(appInfos, wshrpc.AppInfo{
+		appInfo := wshrpc.AppInfo{
 			AppId:   appId,
 			ModTime: modTime,
-		})
+		}
+
+		if manifest, err := ReadAppManifest(manifestAppId); err == nil {
+			appInfo.Manifest = manifest
+		}
+
+		appInfos = append(appInfos, appInfo)
 	}
 
 	return appInfos, nil
@@ -703,7 +719,7 @@ func RenameLocalApp(appName string, newAppName string) error {
 	return nil
 }
 
-func ReadAppManifest(appId string) (*engine.AppManifest, error) {
+func ReadAppManifest(appId string) (*wshrpc.AppManifest, error) {
 	if err := ValidateAppId(appId); err != nil {
 		return nil, fmt.Errorf("invalid appId: %w", err)
 	}
@@ -719,7 +735,7 @@ func ReadAppManifest(appId string) (*engine.AppManifest, error) {
 		return nil, fmt.Errorf("failed to read %s: %w", ManifestFileName, err)
 	}
 
-	var manifest engine.AppManifest
+	var manifest wshrpc.AppManifest
 	if err := json.Unmarshal(data, &manifest); err != nil {
 		return nil, fmt.Errorf("failed to parse %s: %w", ManifestFileName, err)
 	}
@@ -785,7 +801,7 @@ func WriteAppSecretBindings(appId string, bindings map[string]string) error {
 	return nil
 }
 
-func BuildAppSecretEnv(appId string, manifest *engine.AppManifest, bindings map[string]string) (map[string]string, error) {
+func BuildAppSecretEnv(appId string, manifest *wshrpc.AppManifest, bindings map[string]string) (map[string]string, error) {
 	if manifest == nil {
 		return make(map[string]string), nil
 	}
