@@ -440,6 +440,12 @@ func ListAllAppFilesCommand(w *wshutil.WshRpc, data wshrpc.CommandListAllAppFile
 	return resp, err
 }
 
+// command "listallapps", wshserver.ListAllAppsCommand
+func ListAllAppsCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) ([]wshrpc.AppInfo, error) {
+	resp, err := sendRpcRequestCallHelper[[]wshrpc.AppInfo](w, "listallapps", nil, opts)
+	return resp, err
+}
+
 // command "listalleditableapps", wshserver.ListAllEditableAppsCommand
 func ListAllEditableAppsCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) ([]wshrpc.AppInfo, error) {
 	resp, err := sendRpcRequestCallHelper[[]wshrpc.AppInfo](w, "listalleditableapps", nil, opts)

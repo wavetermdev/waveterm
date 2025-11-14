@@ -157,6 +157,7 @@ const (
 	Command_TermGetScrollbackLines = "termgetscrollbacklines"
 
 	// builder
+	Command_ListAllApps            = "listallapps"
 	Command_ListAllEditableApps    = "listalleditableapps"
 	Command_ListAllAppFiles        = "listallappfiles"
 	Command_ReadAppFile            = "readappfile"
@@ -331,6 +332,7 @@ type WshRpcInterface interface {
 	TermGetScrollbackLinesCommand(ctx context.Context, data CommandTermGetScrollbackLinesData) (*CommandTermGetScrollbackLinesRtnData, error)
 
 	// builder
+	ListAllAppsCommand(ctx context.Context) ([]AppInfo, error)
 	ListAllEditableAppsCommand(ctx context.Context) ([]AppInfo, error)
 	ListAllAppFilesCommand(ctx context.Context, data CommandListAllAppFilesData) (*CommandListAllAppFilesRtnData, error)
 	ReadAppFileCommand(ctx context.Context, data CommandReadAppFileData) (*CommandReadAppFileRtnData, error)
