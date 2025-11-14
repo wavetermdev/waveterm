@@ -16,7 +16,6 @@ import (
 // strong typing and event types can be defined elsewhere
 
 const MaxPersist = 4096
-const ReMakeArrThreshold = 10 * 1024
 
 type Client interface {
 	SendEvent(routeId string, event WaveEvent)
