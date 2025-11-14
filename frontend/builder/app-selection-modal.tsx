@@ -4,7 +4,7 @@
 import { FlexiModal } from "@/app/modals/modal";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
-import { atoms, globalStore } from "@/store/global";
+import { atoms, getApi, globalStore } from "@/store/global";
 import * as WOS from "@/store/wos";
 import { formatRelativeTime } from "@/util/util";
 import { useEffect, useState } from "react";
@@ -142,6 +142,7 @@ export function AppSelectionModal() {
         });
         globalStore.set(atoms.builderAppId, appIdToUse);
         document.title = `WaveApp Builder (${appIdToUse})`;
+        getApi().setBuilderWindowAppId(appIdToUse);
     };
 
     const handleCreateNew = async (appName: string) => {
@@ -154,6 +155,7 @@ export function AppSelectionModal() {
         });
         globalStore.set(atoms.builderAppId, draftAppId);
         document.title = `WaveApp Builder (${draftAppId})`;
+        getApi().setBuilderWindowAppId(draftAppId);
     };
 
     const isDraftApp = (appId: string) => {

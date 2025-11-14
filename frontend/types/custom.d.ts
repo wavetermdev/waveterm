@@ -127,6 +127,7 @@ declare global {
         incrementTermCommands: () => void; // increment-term-commands
         nativePaste: () => void; // native-paste
         openBuilder: (appId?: string) => void; // open-builder
+        setBuilderWindowAppId: (appId: string) => void; // set-builder-window-appid
     };
 
     type ElectronContextMenuItem = {

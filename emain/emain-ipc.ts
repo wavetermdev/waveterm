@@ -12,7 +12,7 @@ import { RpcApi } from "../frontend/app/store/wshclientapi";
 import { getWebServerEndpoint } from "../frontend/util/endpoints";
 import * as keyutil from "../frontend/util/keyutil";
 import { fireAndForget, parseDataUrl } from "../frontend/util/util";
-import { createBuilderWindow, getBuilderWindowByWebContentsId } from "./emain-builder";
+import { createBuilderWindow, getAllBuilderWindows, getBuilderWindowByWebContentsId } from "./emain-builder";
 import { callWithOriginalXdgCurrentDesktopAsync, unamePlatform } from "./emain-platform";
 import { getWaveTabViewByWebContentsId } from "./emain-tabview";
 import { handleCtrlShiftState } from "./emain-util";
@@ -25,6 +25,19 @@ const electronApp = electron.app;
 
 let webviewFocusId: number = null;
 let webviewKeys: string[] = [];
+
+export function openBuilderWindow(appId?: string) {
+    const normalizedAppId = appId || "";
+    const existingBuilderWindows = getAllBuilderWindows();
+    const existingWindow = existingBuilderWindows.find(
+        (win) => win.savedInitOpts?.appId === normalizedAppId
+    );
+    if (existingWindow) {
+        existingWindow.focus();
+        return;
+    }
+    fireAndForget(() => createBuilderWindow(normalizedAppId));
+}
 
 type UrlInSessionResult = {
     stream: Readable;
@@ -405,7 +418,18 @@ export function initIpcHandlers() {
     });
 
     electron.ipcMain.on("open-builder", (event, appId?: string) => {
-        fireAndForget(() => createBuilderWindow(appId || ""));
+        openBuilderWindow(appId);
+    });
+
+    electron.ipcMain.on("set-builder-window-appid", (event, appId: string) => {
+        const bw = getBuilderWindowByWebContentsId(event.sender.id);
+        if (bw == null) {
+            return;
+        }
+        if (bw.savedInitOpts) {
+            bw.savedInitOpts.appId = appId;
+        }
+        console.log("set-builder-window-appid", bw.builderId, appId);
     });
 
     electron.ipcMain.on("open-new-window", () => fireAndForget(createNewWaveWindow));

@@ -58,6 +58,18 @@ To define a new RPC call, add the new definition to `pkg/wshrpc/wshrpctypes.go` 
 
 For normal "server" RPCs (where a frontend client is calling the main server) you should implement the RPC call in `pkg/wshrpc/wshserver.go`.
 
+### Electron API
+
+From within the FE to get the electron API (e.g. the preload functions):
+
+```
+import { getApi } from "@/store/global";
+
+getApi().getIsDev()
+```
+
+The full API is defined in custom.d.ts as type ElectronApi.
+
 ### Code Generation
 
 - **TypeScript Types**: TypeScript types are automatically generated from Go types. After modifying Go types in `pkg/wshrpc/wshrpctypes.go`, run `task generate` to update the TypeScript type definitions in `frontend/types/gotypes.d.ts`.
