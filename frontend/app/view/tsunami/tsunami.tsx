@@ -235,12 +235,13 @@ const TsunamiView = memo((props: ViewComponentProps<TsunamiViewModel>) => {
     }, [domReady, model]);
 
     const appPath = blockData?.meta?.["tsunami:apppath"];
+    const appId = blockData?.meta?.["tsunami:appid"];
     const controller = blockData?.meta?.controller;
 
     // Check for configuration errors
     const errors = [];
-    if (!appPath) {
-        errors.push("App path must be set (tsunami:apppath)");
+    if (!appPath && !appId) {
+        errors.push("App path or app ID must be set (tsunami:apppath or tsunami:appid)");
     }
     if (controller !== "tsunami") {
         errors.push("Invalid controller (must be 'tsunami')");

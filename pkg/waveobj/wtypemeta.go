@@ -131,6 +131,7 @@ type MetaTSType struct {
 	TsunamiClear          bool              `json:"tsunami:*,omitempty"`
 	TsunamiSdkReplacePath string            `json:"tsunami:sdkreplacepath,omitempty"`
 	TsunamiAppPath        string            `json:"tsunami:apppath,omitempty"`
+	TsunamiAppId          string            `json:"tsunami:appid,omitempty"`
 	TsunamiScaffoldPath   string            `json:"tsunami:scaffoldpath,omitempty"`
 	TsunamiEnv            map[string]string `json:"tsunami:env,omitempty"`
 

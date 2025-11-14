@@ -854,6 +854,7 @@ declare global {
         "tsunami:*"?: boolean;
         "tsunami:sdkreplacepath"?: string;
         "tsunami:apppath"?: string;
+        "tsunami:appid"?: string;
         "tsunami:scaffoldpath"?: string;
         "tsunami:env"?: {[key: string]: string};
         "vdom:*"?: boolean;
