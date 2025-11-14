@@ -229,6 +229,7 @@ const Widgets = memo(() => {
         magnified: true,
     };
     const showHelp = fullConfig?.settings?.["widget:showhelp"] ?? true;
+    const featureWaveAppBuilder = fullConfig?.settings?.["feature:waveappbuilder"] ?? false;
     const widgetsMap = fullConfig?.widgets ?? {};
     const filteredWidgets = hasCustomAIPresets
         ? widgetsMap
@@ -342,9 +343,9 @@ const Widgets = memo(() => {
                             ))}
                         </div>
                         <div className="flex-grow" />
-                        {isDev() || showHelp ? (
+                        {isDev() || featureWaveAppBuilder || showHelp ? (
                             <div className="grid grid-cols-2 gap-0 w-full">
-                                {isDev() ? (
+                                {isDev() || featureWaveAppBuilder ? (
                                     <div
                                         ref={appsButtonRef}
                                         className="flex flex-col justify-center items-center w-full py-1.5 pr-0.5 text-secondary text-sm overflow-hidden rounded-sm hover:bg-hoverbg hover:text-white cursor-pointer"

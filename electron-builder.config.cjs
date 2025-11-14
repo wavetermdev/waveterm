@@ -22,14 +22,20 @@ const config = {
         {
             from: "./dist",
             to: "./dist",
-            filter: ["**/*", "!bin/*", "bin/wavesrv.${arch}*", "bin/wsh*"],
+            filter: ["**/*", "!bin/*", "bin/wavesrv.${arch}*", "bin/wsh*", "!tsunamiscaffold/**/*"],
         },
         {
             from: ".",
             to: ".",
             filter: ["package.json"],
         },
-        "!node_modules", // We don't need electron-builder to package in Node modules as Vite has already bundled any code that our program is using.
+        "!/node_modules/**", // We don't need electron-builder to package in Node modules as Vite has already bundled any code that our program is using.
+    ],
+    extraResources: [
+        {
+            from: "dist/tsunamiscaffold",
+            to: "tsunamiscaffold",
+        },
     ],
     directories: {
         output: "make",
@@ -37,7 +43,6 @@ const config = {
     asarUnpack: [
         "dist/bin/**/*", // wavesrv and wsh binaries
         "dist/schema/**/*", // schema files for Monaco editor
-        "dist/tsunamiscaffold/**/*", // tsunami scaffold files
     ],
     mac: {
         target: [
@@ -116,6 +121,7 @@ const config = {
         provider: "generic",
         url: "https://dl.waveterm.dev/releases-w2",
     },
+    blockmap: false,
     afterPack: (context) => {
         // This is a workaround to restore file permissions to the wavesrv binaries on macOS after packaging the universal binary.
         if (context.electronPlatformName === "darwin" && context.arch === Arch.universal) {

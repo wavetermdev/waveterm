@@ -110,7 +110,7 @@ function makeEditMenu(): Electron.MenuItemConstructorOptions[] {
     ];
 }
 
-function makeFileMenu(numWaveWindows: number, callbacks: AppMenuCallbacks): Electron.MenuItemConstructorOptions[] {
+function makeFileMenu(numWaveWindows: number, callbacks: AppMenuCallbacks, fullConfig: FullConfigType): Electron.MenuItemConstructorOptions[] {
     const fileMenu: Electron.MenuItemConstructorOptions[] = [
         {
             label: "New Window",
@@ -125,7 +125,8 @@ function makeFileMenu(numWaveWindows: number, callbacks: AppMenuCallbacks): Elec
             },
         },
     ];
-    if (isDev) {
+    const featureWaveAppBuilder = fullConfig?.settings?.["feature:waveappbuilder"];
+    if (isDev || featureWaveAppBuilder) {
         fileMenu.splice(1, 0, {
             label: "New WaveApp Builder Window",
             accelerator: unamePlatform === "darwin" ? "Command+Shift+B" : "Alt+Shift+B",
@@ -310,18 +311,19 @@ function makeViewMenu(
 async function makeFullAppMenu(callbacks: AppMenuCallbacks, workspaceOrBuilderId?: string): Promise<Electron.Menu> {
     const numWaveWindows = getAllWaveWindows().length;
     const webContents = workspaceOrBuilderId && getWebContentsByWorkspaceOrBuilderId(workspaceOrBuilderId);
-    const fileMenu = makeFileMenu(numWaveWindows, callbacks);
     const appMenuItems = makeAppMenuItems(webContents);
     const editMenu = makeEditMenu();
 
     const isBuilderWindowFocused = focusedBuilderWindow != null;
     let fullscreenOnLaunch = false;
+    let fullConfig: FullConfigType = null;
     try {
-        const fullConfig = await RpcApi.GetFullConfigCommand(ElectronWshClient);
+        fullConfig = await RpcApi.GetFullConfigCommand(ElectronWshClient);
         fullscreenOnLaunch = fullConfig?.settings["window:fullscreenonlaunch"];
     } catch (e) {
-        console.error("Error fetching fullscreen launch config:", e);
+        console.error("Error fetching config:", e);
     }
+    const fileMenu = makeFileMenu(numWaveWindows, callbacks, fullConfig);
     const viewMenu = makeViewMenu(webContents, callbacks, isBuilderWindowFocused, fullscreenOnLaunch);
     let workspaceMenu: Electron.MenuItemConstructorOptions[] = null;
     try {

@@ -621,6 +621,7 @@ func TsunamiBuildInternal(opts BuildOpts) (*BuildEnv, error) {
 	buildEnv.TempDir = tempDir
 
 	oc.Printf("Building tsunami app from %s", opts.AppPath)
+	oc.Printf("[debug] using scaffold path %s", opts.ScaffoldPath)
 
 	if opts.Verbose || opts.KeepTemp {
 		oc.Printf("[debug] Temp dir: %s", tempDir)

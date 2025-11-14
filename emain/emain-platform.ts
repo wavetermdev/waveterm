@@ -149,11 +149,20 @@ function getWaveDataDir(): string {
 }
 
 function getElectronAppBasePath(): string {
+    // import.meta.dirname in dev points to waveterm/dist/main
     return path.dirname(import.meta.dirname);
 }
 
 function getElectronAppUnpackedBasePath(): string {
     return getElectronAppBasePath().replace("app.asar", "app.asar.unpacked");
+}
+
+function getElectronAppResourcesPath(): string {
+    if (isDev) {
+        // import.meta.dirname in dev points to waveterm/dist/main
+        return path.dirname(import.meta.dirname);
+    }
+    return process.resourcesPath;
 }
 
 const wavesrvBinName = `wavesrv.${unameArch}`;
@@ -261,6 +270,7 @@ export {
     callWithOriginalXdgCurrentDesktop,
     callWithOriginalXdgCurrentDesktopAsync,
     getElectronAppBasePath,
+    getElectronAppResourcesPath,
     getElectronAppUnpackedBasePath,
     getWaveConfigDir,
     getWaveDataDir,

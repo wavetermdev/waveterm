@@ -186,6 +186,7 @@ func (c *TsunamiController) Start(ctx context.Context, blockMeta waveobj.MetaMap
 		err = build.TsunamiBuild(opts)
 		if err != nil {
 			log.Printf("TsunamiController build error for block %s: %v", c.blockId, err)
+			log.Printf("BuildOpts %#v\n", opts)
 			return fmt.Errorf("failed to build tsunami app: %w", err)
 		}
 	}

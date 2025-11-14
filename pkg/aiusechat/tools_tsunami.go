@@ -19,6 +19,17 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wstore"
 )
 
+func getTsunamiShortDesc(rtInfo *waveobj.ObjRTInfo) string {
+	if rtInfo == nil || rtInfo.TsunamiAppMeta == nil {
+		return ""
+	}
+	var appMeta wshrpc.AppMeta
+	if err := utilfn.ReUnmarshal(&appMeta, rtInfo.TsunamiAppMeta); err == nil && appMeta.ShortDesc != "" {
+		return appMeta.ShortDesc
+	}
+	return ""
+}
+
 func handleTsunamiBlockDesc(block *waveobj.Block) string {
 	status := blockcontroller.GetBlockControllerRuntimeStatus(block.OID)
 	if status == nil || status.ShellProcStatus != blockcontroller.Status_Running {
@@ -27,11 +38,8 @@ func handleTsunamiBlockDesc(block *waveobj.Block) string {
 
 	blockORef := waveobj.MakeORef(waveobj.OType_Block, block.OID)
 	rtInfo := wstore.GetRTInfo(blockORef)
-	if rtInfo != nil && rtInfo.TsunamiAppMeta != nil {
-		var appMeta wshrpc.AppMeta
-		if err := utilfn.ReUnmarshal(&appMeta, rtInfo.TsunamiAppMeta); err == nil && appMeta.ShortDesc != "" {
-			return fmt.Sprintf("tsunami widget - %s", appMeta.ShortDesc)
-		}
+	if shortDesc := getTsunamiShortDesc(rtInfo); shortDesc != "" {
+		return fmt.Sprintf("tsunami widget - %s", shortDesc)
 	}
 	return "tsunami widget - unknown description"
 }
@@ -116,11 +124,8 @@ func GetTsunamiGetDataToolDefinition(block *waveobj.Block, rtInfo *waveobj.ObjRT
 	toolName := fmt.Sprintf("tsunami_getdata_%s", blockIdPrefix)
 
 	desc := "tsunami widget"
-	if rtInfo != nil && rtInfo.TsunamiAppMeta != nil {
-		var appMeta wshrpc.AppMeta
-		if err := utilfn.ReUnmarshal(&appMeta, rtInfo.TsunamiAppMeta); err == nil && appMeta.ShortDesc != "" {
-			desc = appMeta.ShortDesc
-		}
+	if shortDesc := getTsunamiShortDesc(rtInfo); shortDesc != "" {
+		desc = shortDesc
 	}
 
 	return &uctypes.ToolDefinition{
@@ -144,11 +149,8 @@ func GetTsunamiGetConfigToolDefinition(block *waveobj.Block, rtInfo *waveobj.Obj
 	toolName := fmt.Sprintf("tsunami_getconfig_%s", blockIdPrefix)
 
 	desc := "tsunami widget"
-	if rtInfo != nil && rtInfo.TsunamiAppMeta != nil {
-		var appMeta wshrpc.AppMeta
-		if err := utilfn.ReUnmarshal(&appMeta, rtInfo.TsunamiAppMeta); err == nil && appMeta.ShortDesc != "" {
-			desc = appMeta.ShortDesc
-		}
+	if shortDesc := getTsunamiShortDesc(rtInfo); shortDesc != "" {
+		desc = shortDesc
 	}
 
 	return &uctypes.ToolDefinition{
@@ -185,11 +187,8 @@ func GetTsunamiSetConfigToolDefinition(block *waveobj.Block, rtInfo *waveobj.Obj
 	}
 
 	desc := "tsunami widget"
-	if rtInfo != nil && rtInfo.TsunamiAppMeta != nil {
-		var appMeta wshrpc.AppMeta
-		if err := utilfn.ReUnmarshal(&appMeta, rtInfo.TsunamiAppMeta); err == nil && appMeta.ShortDesc != "" {
-			desc = appMeta.ShortDesc
-		}
+	if shortDesc := getTsunamiShortDesc(rtInfo); shortDesc != "" {
+		desc = shortDesc
 	}
 
 	return &uctypes.ToolDefinition{
