@@ -9,8 +9,10 @@ import (
 	"github.com/wavetermdev/waveterm/tsunami/vdom"
 )
 
-const AppTitle = "CPU Usage Monitor"
-const AppShortDesc = "Real-time CPU usage monitoring and charting"
+var AppMeta = app.AppMeta{
+	Title:     "CPU Usage Monitor",
+	ShortDesc: "Real-time CPU usage monitoring and charting",
+}
 
 // Global atoms for config and data
 var (

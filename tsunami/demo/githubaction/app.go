@@ -15,8 +15,10 @@ import (
 	"github.com/wavetermdev/waveterm/tsunami/vdom"
 )
 
-const AppTitle = "GitHub Actions Monitor"
-const AppShortDesc = "Real-time GitHub Actions workflow monitoring and status tracking"
+var AppMeta = app.AppMeta{
+	Title:     "GitHub Actions Monitor",
+	ShortDesc: "Real-time GitHub Actions workflow monitoring and status tracking",
+}
 
 // Global atoms for config and data
 var (

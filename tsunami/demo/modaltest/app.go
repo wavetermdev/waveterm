@@ -5,8 +5,10 @@ import (
 	"github.com/wavetermdev/waveterm/tsunami/vdom"
 )
 
-const AppTitle = "Modal Test (Tsunami Demo)"
-const AppShortDesc = "Test alert and confirm modals in Tsunami"
+var AppMeta = app.AppMeta{
+	Title:     "Modal Test (Tsunami Demo)",
+	ShortDesc: "Test alert and confirm modals in Tsunami",
+}
 
 var App = app.DefineComponent("App", func(_ struct{}) any {
 	// State to track modal results

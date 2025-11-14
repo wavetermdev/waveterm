@@ -18,6 +18,8 @@ import (
 const TsunamiCloseOnStdinEnvVar = "TSUNAMI_CLOSEONSTDIN"
 const MaxShortDescLen = 120
 
+type AppMeta engine.AppMeta
+
 func DefineComponent[P any](name string, renderFn func(props P) any) vdom.Component[P] {
 	return engine.DefineComponentEx(engine.GetDefaultClient(), name, renderFn)
 }
@@ -144,6 +146,14 @@ func QueueRefOp(ref *vdom.VDomRef, op vdom.VDomRefOperation) {
 	}
 	client := engine.GetDefaultClient()
 	client.Root.QueueRefOp(op)
+}
+
+func SetAppMeta(meta AppMeta) {
+	if len(meta.ShortDesc) > MaxShortDescLen {
+		meta.ShortDesc = meta.ShortDesc[0:MaxShortDescLen-3] + "..."
+	}
+	client := engine.GetDefaultClient()
+	client.SetAppMeta(engine.AppMeta(meta))
 }
 
 func SetTitle(title string) {
