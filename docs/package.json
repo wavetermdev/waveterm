@@ -56,7 +56,7 @@
         "remark-preset-lint-consistent": "^6.0.1",
         "remark-preset-lint-recommended": "^7.0.1",
         "typescript": "^5.9.3",
-        "typescript-eslint": "^8.46.3"
+        "typescript-eslint": "^8.46.4"
     },
     "resolutions": {
         "path-to-regexp@npm:2.2.1": "^3",
