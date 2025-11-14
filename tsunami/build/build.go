@@ -109,6 +109,7 @@ func GetAppName(appPath string) string {
 
 type BuildEnv struct {
 	GoVersion   string
+	GoPath      string
 	TempDir     string
 	cleanupOnce *sync.Once
 }
@@ -329,11 +330,12 @@ func verifyEnvironment(verbose bool, opts BuildOpts) (*BuildEnv, error) {
 
 	return &BuildEnv{
 		GoVersion:   goVersion,
+		GoPath:      result.GoPath,
 		cleanupOnce: &sync.Once{},
 	}, nil
 }
 
-func createGoMod(tempDir, appNS, appName, goVersion string, opts BuildOpts, verbose bool) error {
+func createGoMod(tempDir, appNS, appName string, buildEnv *BuildEnv, opts BuildOpts, verbose bool) error {
 	oc := opts.OutputCapture
 	if appNS == "" {
 		appNS = "app"
@@ -372,7 +374,7 @@ func createGoMod(tempDir, appNS, appName, goVersion string, opts BuildOpts, verb
 			return fmt.Errorf("failed to add module statement: %w", err)
 		}
 
-		if err := modFile.AddGoStmt(goVersion); err != nil {
+		if err := modFile.AddGoStmt(buildEnv.GoVersion); err != nil {
 			return fmt.Errorf("failed to add go version: %w", err)
 		}
 
@@ -412,7 +414,7 @@ func createGoMod(tempDir, appNS, appName, goVersion string, opts BuildOpts, verb
 	}
 
 	// Run go mod tidy to clean up dependencies
-	tidyCmd := exec.Command("go", "mod", "tidy")
+	tidyCmd := exec.Command(buildEnv.GoPath, "mod", "tidy")
 	tidyCmd.Dir = tempDir
 
 	if verbose {
@@ -428,6 +430,7 @@ func createGoMod(tempDir, appNS, appName, goVersion string, opts BuildOpts, verb
 	}
 
 	if err := tidyCmd.Run(); err != nil {
+		oc.Flush()
 		return fmt.Errorf("go mod tidy failed (see output for errors)")
 	}
 
@@ -653,7 +656,7 @@ func TsunamiBuildInternal(opts BuildOpts) (*BuildEnv, error) {
 
 	// Create go.mod file
 	appName := GetAppName(opts.AppPath)
-	if err := createGoMod(tempDir, opts.AppNS, appName, buildEnv.GoVersion, opts, opts.Verbose); err != nil {
+	if err := createGoMod(tempDir, opts.AppNS, appName, buildEnv, opts, opts.Verbose); err != nil {
 		return buildEnv, err
 	}
 
@@ -663,7 +666,7 @@ func TsunamiBuildInternal(opts BuildOpts) (*BuildEnv, error) {
 	}
 
 	// Build the Go application
-	outputPath, err := runGoBuild(tempDir, opts)
+	outputPath, err := runGoBuild(tempDir, buildEnv, opts)
 	if err != nil {
 		return buildEnv, err
 	}
@@ -744,7 +747,7 @@ func moveFilesBack(tempDir, originalDir string, verbose bool, oc *OutputCapture)
 	return nil
 }
 
-func runGoBuild(tempDir string, opts BuildOpts) (string, error) {
+func runGoBuild(tempDir string, buildEnv *BuildEnv, opts BuildOpts) (string, error) {
 	oc := opts.OutputCapture
 	var outputPath string
 	var absOutputPath string
@@ -776,7 +779,7 @@ func runGoBuild(tempDir string, opts BuildOpts) (string, error) {
 
 	// Build command with explicit go files
 	args := append([]string{"build", "-o", outputPath}, ".")
-	buildCmd := exec.Command("go", args...)
+	buildCmd := exec.Command(buildEnv.GoPath, args...)
 	buildCmd.Dir = tempDir
 
 	if oc != nil || opts.Verbose {
