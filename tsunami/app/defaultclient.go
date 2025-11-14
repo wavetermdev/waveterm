@@ -12,11 +12,14 @@ import (
 	"os"
 
 	"github.com/wavetermdev/waveterm/tsunami/engine"
+	"github.com/wavetermdev/waveterm/tsunami/util"
 	"github.com/wavetermdev/waveterm/tsunami/vdom"
 )
 
 const TsunamiCloseOnStdinEnvVar = "TSUNAMI_CLOSEONSTDIN"
 const MaxShortDescLen = 120
+
+type AppMeta engine.AppMeta
 
 func DefineComponent[P any](name string, renderFn func(props P) any) vdom.Component[P] {
 	return engine.DefineComponentEx(engine.GetDefaultClient(), name, renderFn)
@@ -146,6 +149,12 @@ func QueueRefOp(ref *vdom.VDomRef, op vdom.VDomRefOperation) {
 	client.Root.QueueRefOp(op)
 }
 
+func SetAppMeta(meta AppMeta) {
+	meta.ShortDesc = util.TruncateString(meta.ShortDesc, MaxShortDescLen)
+	client := engine.GetDefaultClient()
+	client.SetAppMeta(engine.AppMeta(meta))
+}
+
 func SetTitle(title string) {
 	client := engine.GetDefaultClient()
 	m := client.GetAppMeta()
@@ -154,9 +163,7 @@ func SetTitle(title string) {
 }
 
 func SetShortDesc(shortDesc string) {
-	if len(shortDesc) > MaxShortDescLen {
-		shortDesc = shortDesc[0:MaxShortDescLen-3] + "..."
-	}
+	shortDesc = util.TruncateString(shortDesc, MaxShortDescLen)
 	client := engine.GetDefaultClient()
 	m := client.GetAppMeta()
 	m.ShortDesc = shortDesc

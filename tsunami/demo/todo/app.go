@@ -8,8 +8,10 @@ import (
 	"github.com/wavetermdev/waveterm/tsunami/vdom"
 )
 
-const AppTitle = "Todo App (Tsunami Demo)"
-const AppShortDesc = "Feature-rich todo list with component composition and state management"
+var AppMeta = app.AppMeta{
+	Title:     "Todo App (Tsunami Demo)",
+	ShortDesc: "Feature-rich todo list with component composition and state management",
+}
 
 // Basic domain types with json tags for props
 type Todo struct {

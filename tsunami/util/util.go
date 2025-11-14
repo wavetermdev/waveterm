@@ -283,3 +283,13 @@ func ParseJSONTag(field reflect.StructField) (JsonFieldInfo, bool) {
 		Options:   opts,
 	}, true
 }
+
+// TruncateString truncates a string to maxLen runes (not bytes).
+// If the string is longer than maxLen, it truncates to maxLen-3 and appends "...".
+func TruncateString(s string, maxLen int) string {
+	runes := []rune(s)
+	if len(runes) <= maxLen {
+		return s
+	}
+	return string(runes[0:maxLen-3]) + "..."
+}

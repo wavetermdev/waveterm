@@ -8,8 +8,10 @@ import (
 	"github.com/wavetermdev/waveterm/tsunami/vdom"
 )
 
-const AppTitle = "Pomodoro Timer (Tsunami Demo)"
-const AppShortDesc = "Productivity timer with work and break intervals"
+var AppMeta = app.AppMeta{
+	Title:     "Pomodoro Timer (Tsunami Demo)",
+	ShortDesc: "Productivity timer with work and break intervals",
+}
 
 type Mode struct {
 	Name     string `json:"name"`

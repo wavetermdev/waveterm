@@ -18,8 +18,7 @@ func main() {
 	subDistFS, _ := fs.Sub(distFS, "dist")
 	subStaticFS, _ := fs.Sub(staticFS, "static")
 	app.RegisterEmbeds(subDistFS, subStaticFS, nil)
-	app.SetTitle(AppTitle)
-	app.SetShortDesc(AppShortDesc)
+	app.SetAppMeta(AppMeta)
 	
 	if len(os.Args) == 2 && os.Args[1] == "--manifest" {
 		app.PrintAppManifest()
