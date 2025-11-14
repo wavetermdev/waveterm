@@ -15,6 +15,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/util/fileutil"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/waveappstore"
+	"github.com/wavetermdev/waveterm/pkg/waveapputil"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wps"
 	"github.com/wavetermdev/waveterm/pkg/wstore"
@@ -119,7 +120,8 @@ func GetBuilderWriteAppFileToolDefinition(appId string, builderId string) uctype
 				return nil, err
 			}
 
-			err = waveappstore.WriteAppFile(appId, BuilderAppFileName, []byte(params.Contents))
+			formattedContents := waveapputil.FormatGoCode([]byte(params.Contents))
+			err = waveappstore.WriteAppFile(appId, BuilderAppFileName, formattedContents)
 			if err != nil {
 				return nil, err
 			}
@@ -252,6 +254,9 @@ func GetBuilderEditAppFileToolDefinition(appId string, builderId string) uctypes
 			if err != nil {
 				return nil, err
 			}
+
+			// ignore format errors; gofmt can fail due to compilation errors which will be caught in the build step
+			waveappstore.FormatGoFile(appId, BuilderAppFileName)
 
 			wps.Broker.Publish(wps.WaveEvent{
 				Event:  wps.Event_WaveAppAppGoUpdated,

@@ -64,11 +64,18 @@ declare global {
 
     // wshrpc.AppManifest
     type AppManifest = {
-        apptitle: string;
-        appshortdesc: string;
+        appmeta: AppMeta;
         configschema: {[key: string]: any};
         dataschema: {[key: string]: any};
         secrets: {[key: string]: SecretMeta};
+    };
+
+    // wshrpc.AppMeta
+    type AppMeta = {
+        title: string;
+        shortdesc: string;
+        icon: string;
+        iconcolor: string;
     };
 
     // waveobj.Block
@@ -331,6 +338,16 @@ declare global {
         truncated?: boolean;
     };
 
+    // wshrpc.CommandMakeDraftFromLocalData
+    type CommandMakeDraftFromLocalData = {
+        localappid: string;
+    };
+
+    // wshrpc.CommandMakeDraftFromLocalRtnData
+    type CommandMakeDraftFromLocalRtnData = {
+        draftappid: string;
+    };
+
     // wshrpc.CommandMessageData
     type CommandMessageData = {
         oref: ORef;
@@ -501,6 +518,17 @@ declare global {
     type CommandWriteAppFileData = {
         appid: string;
         filename: string;
+        data64: string;
+    };
+
+    // wshrpc.CommandWriteAppGoFileData
+    type CommandWriteAppGoFileData = {
+        appid: string;
+        data64: string;
+    };
+
+    // wshrpc.CommandWriteAppGoFileRtnData
+    type CommandWriteAppGoFileRtnData = {
         data64: string;
     };
 
@@ -887,6 +915,8 @@ declare global {
     type ObjRTInfo = {
         "tsunami:title"?: string;
         "tsunami:shortdesc"?: string;
+        "tsunami:icon"?: string;
+        "tsunami:iconcolor"?: string;
         "tsunami:schemas"?: any;
         "shell:hascurcwd"?: boolean;
         "shell:state"?: string;

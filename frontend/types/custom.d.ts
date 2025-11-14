@@ -126,6 +126,8 @@ declare global {
         closeBuilderWindow: () => void; // close-builder-window
         incrementTermCommands: () => void; // increment-term-commands
         nativePaste: () => void; // native-paste
+        openBuilder: (appId?: string) => void; // open-builder
+        setBuilderWindowAppId: (appId: string) => void; // set-builder-window-appid
     };
 
     type ElectronContextMenuItem = {
@@ -291,6 +293,9 @@ declare global {
 
         // Icon representing the view, can be a string or an IconButton declaration.
         viewIcon?: jotai.Atom<string | IconButtonDecl>;
+
+        // Optional color for the view icon.
+        viewIconColor?: jotai.Atom<string>;
 
         // Display name for the view, used in UI headers.
         viewName?: jotai.Atom<string>;

@@ -7,12 +7,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strings"
 
 	"github.com/wavetermdev/waveterm/pkg/secretstore"
 	"github.com/wavetermdev/waveterm/pkg/util/fileutil"
+	"github.com/wavetermdev/waveterm/pkg/waveapputil"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/tsunami/engine"
@@ -400,6 +402,38 @@ func RenameAppFile(appId string, fromFileName string, toFileName string) error {
 
 	if err := os.Rename(fromPath, toPath); err != nil {
 		return fmt.Errorf("failed to rename file: %w", err)
+	}
+
+	return nil
+}
+
+func FormatGoFile(appId string, fileName string) error {
+	if err := ValidateAppId(appId); err != nil {
+		return fmt.Errorf("invalid appId: %w", err)
+	}
+
+	appDir, err := GetAppDir(appId)
+	if err != nil {
+		return err
+	}
+
+	filePath, err := validateAndResolveFilePath(appDir, fileName)
+	if err != nil {
+		return err
+	}
+
+	if filepath.Ext(filePath) != ".go" {
+		return fmt.Errorf("file is not a Go file: %s", fileName)
+	}
+
+	gofmtPath, err := waveapputil.ResolveGoFmtPath()
+	if err != nil {
+		return fmt.Errorf("failed to resolve gofmt path: %w", err)
+	}
+
+	cmd := exec.Command(gofmtPath, "-w", filePath)
+	if output, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("gofmt failed: %w\nOutput: %s", err, string(output))
 	}
 
 	return nil

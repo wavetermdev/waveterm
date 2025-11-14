@@ -161,6 +161,7 @@ const (
 	Command_ListAllAppFiles        = "listallappfiles"
 	Command_ReadAppFile            = "readappfile"
 	Command_WriteAppFile           = "writeappfile"
+	Command_WriteAppGoFile         = "writeappgofile"
 	Command_DeleteAppFile          = "deleteappfile"
 	Command_RenameAppFile          = "renameappfile"
 	Command_WriteAppSecretBindings = "writeappsecretbindings"
@@ -171,6 +172,7 @@ const (
 	Command_GetBuilderOutput       = "getbuilderoutput"
 	Command_CheckGoVersion         = "checkgoversion"
 	Command_PublishApp             = "publishapp"
+	Command_MakeDraftFromLocal     = "makedraftfromlocal"
 
 	// electron
 	Command_ElectronEncrypt = "electronencrypt"
@@ -333,6 +335,7 @@ type WshRpcInterface interface {
 	ListAllAppFilesCommand(ctx context.Context, data CommandListAllAppFilesData) (*CommandListAllAppFilesRtnData, error)
 	ReadAppFileCommand(ctx context.Context, data CommandReadAppFileData) (*CommandReadAppFileRtnData, error)
 	WriteAppFileCommand(ctx context.Context, data CommandWriteAppFileData) error
+	WriteAppGoFileCommand(ctx context.Context, data CommandWriteAppGoFileData) (*CommandWriteAppGoFileRtnData, error)
 	DeleteAppFileCommand(ctx context.Context, data CommandDeleteAppFileData) error
 	RenameAppFileCommand(ctx context.Context, data CommandRenameAppFileData) error
 	WriteAppSecretBindingsCommand(ctx context.Context, data CommandWriteAppSecretBindingsData) error
@@ -343,6 +346,7 @@ type WshRpcInterface interface {
 	GetBuilderOutputCommand(ctx context.Context, builderId string) ([]string, error)
 	CheckGoVersionCommand(ctx context.Context) (*CommandCheckGoVersionRtnData, error)
 	PublishAppCommand(ctx context.Context, data CommandPublishAppData) (*CommandPublishAppRtnData, error)
+	MakeDraftFromLocalCommand(ctx context.Context, data CommandMakeDraftFromLocalData) (*CommandMakeDraftFromLocalRtnData, error)
 
 	// proc
 	VDomRenderCommand(ctx context.Context, data vdom.VDomFrontendUpdate) chan RespOrErrorUnion[*vdom.VDomBackendUpdate]
@@ -1008,6 +1012,15 @@ type CommandWriteAppFileData struct {
 	Data64   string `json:"data64"`
 }
 
+type CommandWriteAppGoFileData struct {
+	AppId  string `json:"appid"`
+	Data64 string `json:"data64"`
+}
+
+type CommandWriteAppGoFileRtnData struct {
+	Data64 string `json:"data64"`
+}
+
 type CommandDeleteAppFileData struct {
 	AppId    string `json:"appid"`
 	FileName string `json:"filename"`
@@ -1038,14 +1051,20 @@ type RestartBuilderAndWaitResult struct {
 	BuildOutput  string `json:"buildoutput"`
 }
 
+type AppMeta struct {
+	Title     string `json:"title"`
+	ShortDesc string `json:"shortdesc"`
+	Icon      string `json:"icon"`
+	IconColor string `json:"iconcolor"`
+}
+
 type SecretMeta struct {
 	Desc     string `json:"desc"`
 	Optional bool   `json:"optional"`
 }
 
 type AppManifest struct {
-	AppTitle     string                `json:"apptitle"`
-	AppShortDesc string                `json:"appshortdesc"`
+	AppMeta      AppMeta               `json:"appmeta"`
 	ConfigSchema map[string]any        `json:"configschema"`
 	DataSchema   map[string]any        `json:"dataschema"`
 	Secrets      map[string]SecretMeta `json:"secrets"`
@@ -1075,6 +1094,14 @@ type CommandPublishAppData struct {
 
 type CommandPublishAppRtnData struct {
 	PublishedAppId string `json:"publishedappid"`
+}
+
+type CommandMakeDraftFromLocalData struct {
+	LocalAppId string `json:"localappid"`
+}
+
+type CommandMakeDraftFromLocalRtnData struct {
+	DraftAppId string `json:"draftappid"`
 }
 
 type CommandElectronEncryptData struct {

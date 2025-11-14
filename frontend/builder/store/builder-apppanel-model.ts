@@ -245,12 +245,13 @@ export class BuilderAppPanelModel {
         try {
             const content = globalStore.get(this.codeContentAtom);
             const encoded = stringToBase64(content);
-            await RpcApi.WriteAppFileCommand(TabRpcClient, {
+            const result = await RpcApi.WriteAppGoFileCommand(TabRpcClient, {
                 appid: appId,
-                filename: "app.go",
                 data64: encoded,
             });
-            globalStore.set(this.originalContentAtom, content);
+            const formattedContent = base64ToString(result.data64);
+            globalStore.set(this.codeContentAtom, formattedContent);
+            globalStore.set(this.originalContentAtom, formattedContent);
             globalStore.set(this.errorAtom, "");
             this.debouncedRestart();
         } catch (err) {

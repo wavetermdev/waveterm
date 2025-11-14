@@ -5,6 +5,7 @@ import { CodeEditor } from "@/app/view/codeeditor/codeeditor";
 import { BuilderAppPanelModel } from "@/builder/store/builder-apppanel-model";
 import { atoms } from "@/store/global";
 import * as keyutil from "@/util/keyutil";
+import { cn } from "@/util/util";
 import { useAtomValue } from "jotai";
 import { memo } from "react";
 
@@ -14,6 +15,7 @@ const BuilderCodeTab = memo(() => {
     const codeContent = useAtomValue(model.codeContentAtom);
     const isLoading = useAtomValue(model.isLoadingAtom);
     const error = useAtomValue(model.errorAtom);
+    const saveNeeded = useAtomValue(model.saveNeededAtom);
 
     const handleCodeChange = (newText: string) => {
         model.setCodeContent(newText);
@@ -26,11 +28,15 @@ const BuilderCodeTab = memo(() => {
         };
     };
 
+    const handleSave = () => {
+        if (builderAppId) {
+            model.saveAppFile(builderAppId);
+        }
+    };
+
     const handleKeyDown = keyutil.keydownWrapper((waveEvent: WaveKeyboardEvent) => {
         if (keyutil.checkKeyPressed(waveEvent, "Cmd:s")) {
-            if (builderAppId) {
-                model.saveAppFile(builderAppId);
-            }
+            handleSave();
             return true;
         }
         return false;
@@ -53,7 +59,18 @@ const BuilderCodeTab = memo(() => {
     }
 
     return (
-        <div className="w-full h-full" onKeyDown={handleKeyDown}>
+        <div className="w-full h-full relative" onKeyDown={handleKeyDown}>
+            <button
+                className={cn(
+                    "absolute top-1 right-4 z-50 px-3 py-1 text-sm font-medium rounded transition-colors shadow-lg",
+                    saveNeeded
+                        ? "bg-accent/80 text-primary hover:bg-accent cursor-pointer"
+                        : "bg-gray-600 text-gray-400 cursor-default"
+                )}
+                onClick={saveNeeded ? handleSave : undefined}
+            >
+                Save
+            </button>
             <CodeEditor
                 blockId={null}
                 text={codeContent}

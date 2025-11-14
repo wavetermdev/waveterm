@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { BlockNodeModel } from "@/app/block/blocktypes";
-import { atoms, globalStore, WOS } from "@/app/store/global";
+import { atoms, getApi, globalStore, WOS } from "@/app/store/global";
 import { waveEventSubscribe } from "@/app/store/wps";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
@@ -11,22 +11,18 @@ import * as services from "@/store/services";
 import * as jotai from "jotai";
 import { memo, useEffect } from "react";
 
-interface TsunamiAppMeta {
-    title: string;
-    shortdesc: string;
-}
-
 class TsunamiViewModel extends WebViewModel {
     shellProcFullStatus: jotai.PrimitiveAtom<BlockControllerRuntimeStatus>;
     shellProcStatusUnsubFn: () => void;
+    appMeta: jotai.PrimitiveAtom<AppMeta>;
+    appMetaUnsubFn: () => void;
     isRestarting: jotai.PrimitiveAtom<boolean>;
-    viewName: jotai.PrimitiveAtom<string>;
+    viewName: jotai.Atom<string>;
+    viewIconColor: jotai.Atom<string>;
 
     constructor(blockId: string, nodeModel: BlockNodeModel) {
         super(blockId, nodeModel);
         this.viewType = "tsunami";
-        this.viewIcon = jotai.atom("cube");
-        this.viewName = jotai.atom("Tsunami");
         this.isRestarting = jotai.atom(false);
 
         // Hide navigation bar (URL bar, back/forward/home buttons)
@@ -46,6 +42,42 @@ class TsunamiViewModel extends WebViewModel {
             handler: (event) => {
                 let bcRTS: BlockControllerRuntimeStatus = event.data;
                 this.updateShellProcStatus(bcRTS);
+            },
+        });
+
+        this.appMeta = jotai.atom(null) as jotai.PrimitiveAtom<AppMeta>;
+        this.viewIcon = jotai.atom((get) => {
+            const meta = get(this.appMeta);
+            return meta?.icon || "cube";
+        });
+        this.viewIconColor = jotai.atom((get) => {
+            const meta = get(this.appMeta);
+            return meta?.iconcolor;
+        });
+        this.viewName = jotai.atom((get) => {
+            const meta = get(this.appMeta);
+            return meta?.title || "WaveApp";
+        });
+        const initialRTInfo = RpcApi.GetRTInfoCommand(TabRpcClient, {
+            oref: WOS.makeORef("block", blockId),
+        });
+        initialRTInfo.then((rtInfo) => {
+            if (rtInfo) {
+                const meta: AppMeta = {
+                    title: rtInfo["tsunami:title"],
+                    shortdesc: rtInfo["tsunami:shortdesc"],
+                    icon: rtInfo["tsunami:icon"],
+                    iconcolor: rtInfo["tsunami:iconcolor"],
+                };
+                globalStore.set(this.appMeta, meta);
+            }
+        });
+        this.appMetaUnsubFn = waveEventSubscribe({
+            eventType: "tsunami:updatemeta",
+            scope: WOS.makeORef("block", blockId),
+            handler: (event) => {
+                const meta: AppMeta = event.data;
+                globalStore.set(this.appMeta, meta);
             },
         });
     }
@@ -126,31 +158,30 @@ class TsunamiViewModel extends WebViewModel {
         this.doControllerResync(true, "force restart");
     }
 
-    setAppMeta(meta: TsunamiAppMeta) {
-        console.log("tsunami app meta:", meta);
+    async remixInBuilder() {
+        const blockData = globalStore.get(this.blockAtom);
+        const appId = blockData?.meta?.["tsunami:appid"];
 
-        const rtInfo: ObjRTInfo = {};
-        if (meta.title) {
-            rtInfo["tsunami:title"] = meta.title;
-        }
-        if (meta.shortdesc) {
-            rtInfo["tsunami:shortdesc"] = meta.shortdesc;
+        if (!appId || !appId.startsWith("local/")) {
+            return;
         }
 
-        if (Object.keys(rtInfo).length > 0) {
-            const oref = WOS.makeORef("block", this.blockId);
-            const data: CommandSetRTInfoData = {
-                oref: oref,
-                data: rtInfo,
-            };
+        try {
+            const result = await RpcApi.MakeDraftFromLocalCommand(TabRpcClient, { localappid: appId });
+            const draftAppId = result.draftappid;
 
-            RpcApi.SetRTInfoCommand(TabRpcClient, data).catch((e) => console.log("error setting RT info", e));
+            getApi().openBuilder(draftAppId);
+        } catch (err) {
+            console.error("Failed to create draft from local app:", err);
         }
     }
 
     dispose() {
         if (this.shellProcStatusUnsubFn) {
             this.shellProcStatusUnsubFn();
+        }
+        if (this.appMetaUnsubFn) {
+            this.appMetaUnsubFn();
         }
     }
 
@@ -166,6 +197,11 @@ class TsunamiViewModel extends WebViewModel {
                 !label.includes("nav")
             );
         });
+
+        // Check if we should show the Remix option
+        const blockData = globalStore.get(this.blockAtom);
+        const appId = blockData?.meta?.["tsunami:appid"];
+        const showRemixOption = appId && appId.startsWith("local/");
 
         // Add tsunami-specific menu items at the beginning
         const tsunamiItems: ContextMenuItem[] = [
@@ -186,6 +222,18 @@ class TsunamiViewModel extends WebViewModel {
             },
         ];
 
+        if (showRemixOption) {
+            tsunamiItems.push(
+                {
+                    label: "Remix WaveApp in Builder",
+                    click: () => this.remixInBuilder(),
+                },
+                {
+                    type: "separator",
+                }
+            );
+        }
+
         return [...tsunamiItems, ...filteredItems];
     }
 }
@@ -200,39 +248,6 @@ const TsunamiView = memo((props: ViewComponentProps<TsunamiViewModel>) => {
     useEffect(() => {
         model.resyncController();
     }, [model]);
-
-    useEffect(() => {
-        if (!domReady || !model.webviewRef?.current) return;
-
-        const webviewElement = model.webviewRef.current;
-
-        const handleConsoleMessage = (e: any) => {
-            const message = e.message;
-            if (typeof message === "string" && message.startsWith("TSUNAMI_META ")) {
-                try {
-                    const jsonStr = message.substring("TSUNAMI_META ".length);
-                    const meta = JSON.parse(jsonStr);
-                    if (meta.title || meta.shortdesc) {
-                        model.setAppMeta(meta);
-
-                        if (meta.title) {
-                            const truncatedTitle =
-                                meta.title.length > 77 ? meta.title.substring(0, 77) + "..." : meta.title;
-                            globalStore.set(model.viewName, truncatedTitle);
-                        }
-                    }
-                } catch (error) {
-                    console.error("Failed to parse TSUNAMI_META message:", error);
-                }
-            }
-        };
-
-        webviewElement.addEventListener("console-message", handleConsoleMessage);
-
-        return () => {
-            webviewElement.removeEventListener("console-message", handleConsoleMessage);
-        };
-    }, [domReady, model]);
 
     const appPath = blockData?.meta?.["tsunami:apppath"];
     const appId = blockData?.meta?.["tsunami:appid"];

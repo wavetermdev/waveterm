@@ -20,6 +20,7 @@ const (
 	Event_WorkspaceUpdate     = "workspace:update"
 	Event_WaveAIRateLimit     = "waveai:ratelimit"
 	Event_WaveAppAppGoUpdated = "waveapp:appgoupdated"
+	Event_TsunamiUpdateMeta   = "tsunami:updatemeta"
 )
 
 type WaveEvent struct {

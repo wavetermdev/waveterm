@@ -21,6 +21,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/tsunamiutil"
 	"github.com/wavetermdev/waveterm/pkg/utilds"
 	"github.com/wavetermdev/waveterm/pkg/waveappstore"
+	"github.com/wavetermdev/waveterm/pkg/waveapputil"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wconfig"
@@ -28,8 +29,6 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wstore"
 	"github.com/wavetermdev/waveterm/tsunami/build"
 )
-
-const DefaultTsunamiSdkVersion = "v0.12.2"
 
 type TsunamiAppProc struct {
 	Cmd         *exec.Cmd
@@ -126,21 +125,19 @@ func (c *TsunamiController) Start(ctx context.Context, blockMeta waveobj.MetaMap
 	c.runLock.Lock()
 	defer c.runLock.Unlock()
 
+	scaffoldPath := waveapputil.GetTsunamiScaffoldPath()
 	settings := wconfig.GetWatcher().GetFullConfig().Settings
-	scaffoldPath := settings.TsunamiScaffoldPath
-	if scaffoldPath == "" {
-		scaffoldPath = filepath.Join(wavebase.GetWaveAppPath(), "tsunamiscaffold")
-	}
 	sdkReplacePath := settings.TsunamiSdkReplacePath
 	sdkVersion := settings.TsunamiSdkVersion
 	if sdkVersion == "" {
-		sdkVersion = DefaultTsunamiSdkVersion
+		sdkVersion = waveapputil.DefaultTsunamiSdkVersion
 	}
 	goPath := settings.TsunamiGoPath
 
 	appPath := blockMeta.GetString(waveobj.MetaKey_TsunamiAppPath, "")
+	appId := blockMeta.GetString(waveobj.MetaKey_TsunamiAppId, "")
+	
 	if appPath == "" {
-		appId := blockMeta.GetString(waveobj.MetaKey_TsunamiAppId, "")
 		if appId == "" {
 			return fmt.Errorf("tsunami:apppath or tsunami:appid is required")
 		}
@@ -157,6 +154,34 @@ func (c *TsunamiController) Start(ctx context.Context, blockMeta waveobj.MetaMap
 		}
 		if !filepath.IsAbs(appPath) {
 			return fmt.Errorf("tsunami:apppath must be absolute: %s", appPath)
+		}
+	}
+
+	// Read and set app metadata from manifest if appId is available
+	if appId != "" {
+		if manifest, err := waveappstore.ReadAppManifest(appId); err == nil {
+			blockRef := waveobj.MakeORef(waveobj.OType_Block, c.blockId)
+			rtInfo := make(map[string]any)
+			if manifest.AppMeta.Title != "" {
+				rtInfo["tsunami:title"] = manifest.AppMeta.Title
+			}
+			if manifest.AppMeta.ShortDesc != "" {
+				rtInfo["tsunami:shortdesc"] = manifest.AppMeta.ShortDesc
+			}
+			if manifest.AppMeta.Icon != "" {
+				rtInfo["tsunami:icon"] = manifest.AppMeta.Icon
+			}
+			if manifest.AppMeta.IconColor != "" {
+				rtInfo["tsunami:iconcolor"] = manifest.AppMeta.IconColor
+			}
+			if len(rtInfo) > 0 {
+				wstore.SetRTInfo(blockRef, rtInfo)
+				wps.Broker.Publish(wps.WaveEvent{
+					Event:  wps.Event_TsunamiUpdateMeta,
+					Scopes: []string{waveobj.MakeORef(waveobj.OType_Block, c.blockId).String()},
+					Data:   manifest.AppMeta,
+				})
+			}
 		}
 	}
 

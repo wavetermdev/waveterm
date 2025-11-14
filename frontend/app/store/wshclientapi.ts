@@ -367,6 +367,11 @@ class RpcApiType {
         return client.wshRpcCall("listalleditableapps", null, opts);
     }
 
+    // command "makedraftfromlocal" [call]
+    MakeDraftFromLocalCommand(client: WshClient, data: CommandMakeDraftFromLocalData, opts?: RpcOpts): Promise<CommandMakeDraftFromLocalRtnData> {
+        return client.wshRpcCall("makedraftfromlocal", data, opts);
+    }
+
     // command "message" [call]
     MessageCommand(client: WshClient, data: CommandMessageData, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("message", data, opts);
@@ -625,6 +630,11 @@ class RpcApiType {
     // command "writeappfile" [call]
     WriteAppFileCommand(client: WshClient, data: CommandWriteAppFileData, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("writeappfile", data, opts);
+    }
+
+    // command "writeappgofile" [call]
+    WriteAppGoFileCommand(client: WshClient, data: CommandWriteAppGoFileData, opts?: RpcOpts): Promise<CommandWriteAppGoFileRtnData> {
+        return client.wshRpcCall("writeappgofile", data, opts);
     }
 
     // command "writeappsecretbindings" [call]

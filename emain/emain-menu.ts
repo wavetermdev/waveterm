@@ -5,7 +5,8 @@ import { waveEventSubscribe } from "@/app/store/wps";
 import { RpcApi } from "@/app/store/wshclientapi";
 import * as electron from "electron";
 import { fireAndForget } from "../frontend/util/util";
-import { createBuilderWindow, focusedBuilderWindow, getBuilderWindowById } from "./emain-builder";
+import { focusedBuilderWindow, getBuilderWindowById } from "./emain-builder";
+import { openBuilderWindow } from "./emain-ipc";
 import { isDev, unamePlatform } from "./emain-platform";
 import { clearTabCache } from "./emain-tabview";
 import {
@@ -128,7 +129,7 @@ function makeFileMenu(numWaveWindows: number, callbacks: AppMenuCallbacks): Elec
         fileMenu.splice(1, 0, {
             label: "New WaveApp Builder Window",
             accelerator: unamePlatform === "darwin" ? "Command+Shift+B" : "Alt+Shift+B",
-            click: () => fireAndForget(() => createBuilderWindow("")),
+            click: () => openBuilderWindow(""),
         });
     }
     if (numWaveWindows == 0) {

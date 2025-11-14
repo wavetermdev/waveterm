@@ -46,6 +46,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/util/wavefileutil"
 	"github.com/wavetermdev/waveterm/pkg/waveai"
 	"github.com/wavetermdev/waveterm/pkg/waveappstore"
+	"github.com/wavetermdev/waveterm/pkg/waveapputil"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wcloud"
@@ -1013,6 +1014,26 @@ func (ws *WshServer) WriteAppFileCommand(ctx context.Context, data wshrpc.Comman
 	return waveappstore.WriteAppFile(data.AppId, data.FileName, contents)
 }
 
+func (ws *WshServer) WriteAppGoFileCommand(ctx context.Context, data wshrpc.CommandWriteAppGoFileData) (*wshrpc.CommandWriteAppGoFileRtnData, error) {
+	if data.AppId == "" {
+		return nil, fmt.Errorf("must provide an appId to WriteAppGoFileCommand")
+	}
+	contents, err := base64.StdEncoding.DecodeString(data.Data64)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode data64: %w", err)
+	}
+
+	formattedOutput := waveapputil.FormatGoCode(contents)
+
+	err = waveappstore.WriteAppFile(data.AppId, "app.go", formattedOutput)
+	if err != nil {
+		return nil, err
+	}
+
+	encoded := base64.StdEncoding.EncodeToString(formattedOutput)
+	return &wshrpc.CommandWriteAppGoFileRtnData{Data64: encoded}, nil
+}
+
 func (ws *WshServer) DeleteAppFileCommand(ctx context.Context, data wshrpc.CommandDeleteAppFileData) error {
 	if data.AppId == "" {
 		return fmt.Errorf("must provide an appId to DeleteAppFileCommand")
@@ -1125,6 +1146,16 @@ func (ws *WshServer) PublishAppCommand(ctx context.Context, data wshrpc.CommandP
 	}
 	return &wshrpc.CommandPublishAppRtnData{
 		PublishedAppId: publishedAppId,
+	}, nil
+}
+
+func (ws *WshServer) MakeDraftFromLocalCommand(ctx context.Context, data wshrpc.CommandMakeDraftFromLocalData) (*wshrpc.CommandMakeDraftFromLocalRtnData, error) {
+	draftAppId, err := waveappstore.MakeDraftFromLocal(data.LocalAppId)
+	if err != nil {
+		return nil, fmt.Errorf("error making draft from local: %w", err)
+	}
+	return &wshrpc.CommandMakeDraftFromLocalRtnData{
+		DraftAppId: draftAppId,
 	}, nil
 }
 

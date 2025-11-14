@@ -43,6 +43,8 @@ var defaultClient = makeClient()
 type AppMeta struct {
 	Title     string `json:"title"`
 	ShortDesc string `json:"shortdesc"`
+	Icon      string `json:"icon"`      // for waveapps, the icon to use (fontawesome names)
+	IconColor string `json:"iconcolor"` // for waveapps, the icon color to use (HTML color -- name, hex, rgb)
 }
 
 type SecretMeta struct {
@@ -51,11 +53,10 @@ type SecretMeta struct {
 }
 
 type AppManifest struct {
-	AppTitle     string                  `json:"apptitle"`
-	AppShortDesc string                  `json:"appshortdesc"`
-	ConfigSchema map[string]any          `json:"configschema"`
-	DataSchema   map[string]any          `json:"dataschema"`
-	Secrets      map[string]SecretMeta   `json:"secrets"`
+	AppMeta      AppMeta               `json:"appmeta"`
+	ConfigSchema map[string]any        `json:"configschema"`
+	DataSchema   map[string]any        `json:"dataschema"`
+	Secrets      map[string]SecretMeta `json:"secrets"`
 }
 
 type ClientImpl struct {
@@ -498,10 +499,9 @@ func (c *ClientImpl) GetAppManifest() AppManifest {
 	configSchema := GenerateConfigSchema(c.Root)
 	dataSchema := GenerateDataSchema(c.Root)
 	secrets := c.GetSecrets()
-	
+
 	return AppManifest{
-		AppTitle:     appMeta.Title,
-		AppShortDesc: appMeta.ShortDesc,
+		AppMeta:      appMeta,
 		ConfigSchema: configSchema,
 		DataSchema:   dataSchema,
 		Secrets:      secrets,

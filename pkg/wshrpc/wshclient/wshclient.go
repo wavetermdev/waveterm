@@ -446,6 +446,12 @@ func ListAllEditableAppsCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) ([]wshr
 	return resp, err
 }
 
+// command "makedraftfromlocal", wshserver.MakeDraftFromLocalCommand
+func MakeDraftFromLocalCommand(w *wshutil.WshRpc, data wshrpc.CommandMakeDraftFromLocalData, opts *wshrpc.RpcOpts) (*wshrpc.CommandMakeDraftFromLocalRtnData, error) {
+	resp, err := sendRpcRequestCallHelper[*wshrpc.CommandMakeDraftFromLocalRtnData](w, "makedraftfromlocal", data, opts)
+	return resp, err
+}
+
 // command "message", wshserver.MessageCommand
 func MessageCommand(w *wshutil.WshRpc, data wshrpc.CommandMessageData, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "message", data, opts)
@@ -747,6 +753,12 @@ func WorkspaceListCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) ([]wshrpc.Wor
 func WriteAppFileCommand(w *wshutil.WshRpc, data wshrpc.CommandWriteAppFileData, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "writeappfile", data, opts)
 	return err
+}
+
+// command "writeappgofile", wshserver.WriteAppGoFileCommand
+func WriteAppGoFileCommand(w *wshutil.WshRpc, data wshrpc.CommandWriteAppGoFileData, opts *wshrpc.RpcOpts) (*wshrpc.CommandWriteAppGoFileRtnData, error) {
+	resp, err := sendRpcRequestCallHelper[*wshrpc.CommandWriteAppGoFileRtnData](w, "writeappgofile", data, opts)
+	return resp, err
 }
 
 // command "writeappsecretbindings", wshserver.WriteAppSecretBindingsCommand
