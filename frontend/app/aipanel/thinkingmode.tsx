@@ -25,13 +25,13 @@ const ThinkingModeData: Record<ThinkingMode, ThinkingModeMetadata> = {
     balanced: {
         icon: "fa-sparkles",
         name: "Balanced",
-        desc: "Good mix of speed and accuracy\n(gpt-5 with minimal thinking)",
+        desc: "Good mix of speed and accuracy\n(gpt-5.1 with minimal thinking)",
         premium: true,
     },
     deep: {
         icon: "fa-lightbulb",
         name: "Deep",
-        desc: "Slower but most capable\n(gpt-5 with full reasoning)",
+        desc: "Slower but most capable\n(gpt-5.1 with full reasoning)",
         premium: true,
     },
 };

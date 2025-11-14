@@ -25,7 +25,7 @@ var testSchemaJSON string
 
 const (
 	DefaultAnthropicModel = "claude-sonnet-4-5"
-	DefaultOpenAIModel    = "gpt-5"
+	DefaultOpenAIModel    = "gpt-5.1"
 )
 
 // TestResponseWriter implements http.ResponseWriter and additional interfaces for testing
