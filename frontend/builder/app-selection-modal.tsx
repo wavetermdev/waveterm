@@ -120,14 +120,28 @@ export function AppSelectionModal() {
     };
 
     const handleSelectApp = async (appId: string) => {
+        let appIdToUse = appId;
+
+        // If selecting a local app, convert it to a draft first
+        if (appId.startsWith("local/")) {
+            try {
+                const result = await RpcApi.MakeDraftFromLocalCommand(TabRpcClient, { localappid: appId });
+                appIdToUse = result.draftappid;
+            } catch (err) {
+                console.error("Failed to create draft from local app:", err);
+                setError(`Failed to create draft from ${appId}: ${err.message || String(err)}`);
+                return;
+            }
+        }
+
         const builderId = globalStore.get(atoms.builderId);
         const oref = WOS.makeORef("builder", builderId);
         await RpcApi.SetRTInfoCommand(TabRpcClient, {
             oref,
-            data: { "builder:appid": appId },
+            data: { "builder:appid": appIdToUse },
         });
-        globalStore.set(atoms.builderAppId, appId);
-        document.title = `WaveApp Builder (${appId})`;
+        globalStore.set(atoms.builderAppId, appIdToUse);
+        document.title = `WaveApp Builder (${appIdToUse})`;
     };
 
     const handleCreateNew = async (appName: string) => {

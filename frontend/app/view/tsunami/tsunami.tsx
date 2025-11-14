@@ -14,14 +14,15 @@ import { memo, useEffect } from "react";
 class TsunamiViewModel extends WebViewModel {
     shellProcFullStatus: jotai.PrimitiveAtom<BlockControllerRuntimeStatus>;
     shellProcStatusUnsubFn: () => void;
+    appMeta: jotai.PrimitiveAtom<AppMeta>;
+    appMetaUnsubFn: () => void;
     isRestarting: jotai.PrimitiveAtom<boolean>;
-    viewName: jotai.PrimitiveAtom<string>;
+    viewName: jotai.Atom<string>;
 
     constructor(blockId: string, nodeModel: BlockNodeModel) {
         super(blockId, nodeModel);
         this.viewType = "tsunami";
         this.viewIcon = jotai.atom("cube");
-        this.viewName = jotai.atom("Tsunami");
         this.isRestarting = jotai.atom(false);
 
         // Hide navigation bar (URL bar, back/forward/home buttons)
@@ -41,6 +42,32 @@ class TsunamiViewModel extends WebViewModel {
             handler: (event) => {
                 let bcRTS: BlockControllerRuntimeStatus = event.data;
                 this.updateShellProcStatus(bcRTS);
+            },
+        });
+
+        this.appMeta = jotai.atom(null) as jotai.PrimitiveAtom<AppMeta>;
+        this.viewName = jotai.atom((get) => {
+            const meta = get(this.appMeta);
+            return meta?.title || "WaveApp";
+        });
+        const initialRTInfo = RpcApi.GetRTInfoCommand(TabRpcClient, {
+            oref: WOS.makeORef("block", blockId),
+        });
+        initialRTInfo.then((rtInfo) => {
+            if (rtInfo) {
+                const meta: AppMeta = {
+                    title: rtInfo["tsunami:title"],
+                    shortdesc: rtInfo["tsunami:shortdesc"],
+                };
+                globalStore.set(this.appMeta, meta);
+            }
+        });
+        this.appMetaUnsubFn = waveEventSubscribe({
+            eventType: "tsunami:updatemeta",
+            scope: WOS.makeORef("block", blockId),
+            handler: (event) => {
+                const meta: AppMeta = event.data;
+                globalStore.set(this.appMeta, meta);
             },
         });
     }
@@ -124,6 +151,9 @@ class TsunamiViewModel extends WebViewModel {
     dispose() {
         if (this.shellProcStatusUnsubFn) {
             this.shellProcStatusUnsubFn();
+        }
+        if (this.appMetaUnsubFn) {
+            this.appMetaUnsubFn();
         }
     }
 

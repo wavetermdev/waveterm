@@ -16,7 +16,7 @@ import { ErrorBoundary } from "@/element/errorboundary";
 import { atoms } from "@/store/global";
 import { cn } from "@/util/util";
 import { useAtomValue } from "jotai";
-import { memo, useCallback, useEffect, useRef } from "react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
 
 const StatusDot = memo(() => {
     const model = BuilderAppPanelModel.getInstance();
@@ -102,33 +102,71 @@ ErrorStrip.displayName = "ErrorStrip";
 
 const PublishAppModal = memo(({ appName }: { appName: string }) => {
     const builderAppId = useAtomValue(atoms.builderAppId);
+    const [state, setState] = useState<"confirm" | "success" | "error">("confirm");
+    const [errorMessage, setErrorMessage] = useState<string>("");
+    const [publishedAppId, setPublishedAppId] = useState<string>("");
 
     const handlePublish = async () => {
         if (!builderAppId) {
-            console.error("No builder app ID found");
-            modalsModel.popModal();
+            setErrorMessage("No builder app ID found");
+            setState("error");
             return;
         }
 
         try {
             const result = await RpcApi.PublishAppCommand(TabRpcClient, { appid: builderAppId });
-            console.log("App published successfully:", result.publishedappid);
-            modalsModel.popModal();
+            setPublishedAppId(result.publishedappid);
+            setState("success");
         } catch (error) {
-            console.error("Failed to publish app:", error);
+            setErrorMessage(error instanceof Error ? error.message : String(error));
+            setState("error");
         }
     };
 
-    const handleCancel = () => {
+    const handleClose = () => {
         modalsModel.popModal();
     };
+
+    if (state === "success") {
+        return (
+            <Modal className="p-4" onOk={handleClose} onClose={handleClose} okLabel="OK" cancelLabel="">
+                <div className="flex flex-col gap-4 mb-4">
+                    <h2 className="text-xl font-semibold flex items-center gap-2">
+                        <i className="fa fa-check-circle text-success" />
+                        App Published Successfully
+                    </h2>
+                    <div className="flex flex-col gap-3">
+                        <p className="text-primary">
+                            Your app has been published to <span className="font-mono">{publishedAppId}</span>
+                        </p>
+                    </div>
+                </div>
+            </Modal>
+        );
+    }
+
+    if (state === "error") {
+        return (
+            <Modal className="p-4" onOk={handleClose} onClose={handleClose} okLabel="OK" cancelLabel="">
+                <div className="flex flex-col gap-4 mb-4">
+                    <h2 className="text-xl font-semibold flex items-center gap-2">
+                        <i className="fa fa-triangle-exclamation text-error" />
+                        Publish Failed
+                    </h2>
+                    <div className="flex flex-col gap-3">
+                        <p className="text-error">{errorMessage}</p>
+                    </div>
+                </div>
+            </Modal>
+        );
+    }
 
     return (
         <Modal
             className="p-4"
             onOk={handlePublish}
-            onCancel={handleCancel}
-            onClose={handleCancel}
+            onCancel={handleClose}
+            onClose={handleClose}
             okLabel="Publish"
             cancelLabel="Cancel"
         >

@@ -32,6 +32,7 @@ const BuilderKeyHandlers = () => {
 
 function BuilderAppInner() {
     const builderAppId = useAtomValue(atoms.builderAppId);
+    const hasDraftApp = !isBlank(builderAppId) && builderAppId.startsWith("draft/");
 
     return (
         <div className="w-full h-full flex flex-col bg-main-bg text-main-text">
@@ -45,7 +46,7 @@ function BuilderAppInner() {
                 </div>
             </div>
             <DndProvider backend={HTML5Backend}>
-                {isBlank(builderAppId) ? <AppSelectionModal /> : <BuilderWorkspace />}
+                {hasDraftApp ? <BuilderWorkspace /> : <AppSelectionModal />}
             </DndProvider>
             <ModalsRenderer />
         </div>

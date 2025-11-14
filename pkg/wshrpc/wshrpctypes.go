@@ -171,6 +171,7 @@ const (
 	Command_GetBuilderOutput       = "getbuilderoutput"
 	Command_CheckGoVersion         = "checkgoversion"
 	Command_PublishApp             = "publishapp"
+	Command_MakeDraftFromLocal     = "makedraftfromlocal"
 
 	// electron
 	Command_ElectronEncrypt = "electronencrypt"
@@ -343,6 +344,7 @@ type WshRpcInterface interface {
 	GetBuilderOutputCommand(ctx context.Context, builderId string) ([]string, error)
 	CheckGoVersionCommand(ctx context.Context) (*CommandCheckGoVersionRtnData, error)
 	PublishAppCommand(ctx context.Context, data CommandPublishAppData) (*CommandPublishAppRtnData, error)
+	MakeDraftFromLocalCommand(ctx context.Context, data CommandMakeDraftFromLocalData) (*CommandMakeDraftFromLocalRtnData, error)
 
 	// proc
 	VDomRenderCommand(ctx context.Context, data vdom.VDomFrontendUpdate) chan RespOrErrorUnion[*vdom.VDomBackendUpdate]
@@ -1079,6 +1081,14 @@ type CommandPublishAppData struct {
 
 type CommandPublishAppRtnData struct {
 	PublishedAppId string `json:"publishedappid"`
+}
+
+type CommandMakeDraftFromLocalData struct {
+	LocalAppId string `json:"localappid"`
+}
+
+type CommandMakeDraftFromLocalRtnData struct {
+	DraftAppId string `json:"draftappid"`
 }
 
 type CommandElectronEncryptData struct {

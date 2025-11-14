@@ -336,6 +336,16 @@ declare global {
         truncated?: boolean;
     };
 
+    // wshrpc.CommandMakeDraftFromLocalData
+    type CommandMakeDraftFromLocalData = {
+        localappid: string;
+    };
+
+    // wshrpc.CommandMakeDraftFromLocalRtnData
+    type CommandMakeDraftFromLocalRtnData = {
+        draftappid: string;
+    };
+
     // wshrpc.CommandMessageData
     type CommandMessageData = {
         oref: ORef;

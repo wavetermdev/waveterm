@@ -1128,6 +1128,16 @@ func (ws *WshServer) PublishAppCommand(ctx context.Context, data wshrpc.CommandP
 	}, nil
 }
 
+func (ws *WshServer) MakeDraftFromLocalCommand(ctx context.Context, data wshrpc.CommandMakeDraftFromLocalData) (*wshrpc.CommandMakeDraftFromLocalRtnData, error) {
+	draftAppId, err := waveappstore.MakeDraftFromLocal(data.LocalAppId)
+	if err != nil {
+		return nil, fmt.Errorf("error making draft from local: %w", err)
+	}
+	return &wshrpc.CommandMakeDraftFromLocalRtnData{
+		DraftAppId: draftAppId,
+	}, nil
+}
+
 func (ws *WshServer) RecordTEventCommand(ctx context.Context, data telemetrydata.TEvent) error {
 	err := telemetry.RecordTEvent(ctx, &data)
 	if err != nil {

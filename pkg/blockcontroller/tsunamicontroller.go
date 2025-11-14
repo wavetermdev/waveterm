@@ -174,6 +174,11 @@ func (c *TsunamiController) Start(ctx context.Context, blockMeta waveobj.MetaMap
 			}
 			if len(rtInfo) > 0 {
 				wstore.SetRTInfo(blockRef, rtInfo)
+				wps.Broker.Publish(wps.WaveEvent{
+					Event:  wps.Event_TsunamiUpdateMeta,
+					Scopes: []string{waveobj.MakeORef(waveobj.OType_Block, c.blockId).String()},
+					Data:   manifest.AppMeta,
+				})
 			}
 		}
 	}
