@@ -12,6 +12,7 @@ import (
 	"os"
 
 	"github.com/wavetermdev/waveterm/tsunami/engine"
+	"github.com/wavetermdev/waveterm/tsunami/util"
 	"github.com/wavetermdev/waveterm/tsunami/vdom"
 )
 
@@ -149,9 +150,7 @@ func QueueRefOp(ref *vdom.VDomRef, op vdom.VDomRefOperation) {
 }
 
 func SetAppMeta(meta AppMeta) {
-	if len(meta.ShortDesc) > MaxShortDescLen {
-		meta.ShortDesc = meta.ShortDesc[0:MaxShortDescLen-3] + "..."
-	}
+	meta.ShortDesc = util.TruncateString(meta.ShortDesc, MaxShortDescLen)
 	client := engine.GetDefaultClient()
 	client.SetAppMeta(engine.AppMeta(meta))
 }
@@ -164,9 +163,7 @@ func SetTitle(title string) {
 }
 
 func SetShortDesc(shortDesc string) {
-	if len(shortDesc) > MaxShortDescLen {
-		shortDesc = shortDesc[0:MaxShortDescLen-3] + "..."
-	}
+	shortDesc = util.TruncateString(shortDesc, MaxShortDescLen)
 	client := engine.GetDefaultClient()
 	m := client.GetAppMeta()
 	m.ShortDesc = shortDesc
