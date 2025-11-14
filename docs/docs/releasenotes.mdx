@@ -6,6 +6,28 @@ sidebar_position: 200
 
 # Release Notes
 
+### v0.12.3 &mdash; Nov 14, 2025
+
+Patch release with Wave AI model upgrade, new secret management features, and improved terminal input handling.
+
+**Wave AI Updates:**
+- **GPT-5.1 Model** - Upgraded to use OpenAI's GPT-5.1 model for improved responses
+- [bugfix] Fixed path mismatch issue when restoring AI write file backups
+
+**New Features:**
+- **Secret Store** - New secret management widget for storing and managing sensitive credentials. Access secrets via CLI with `wsh secret list/get/set` commands
+
+**Terminal Improvements:**
+- **Enhanced Input Handling** - Better support for interactive CLI tools like Claude Code. Shift+Enter now inserts newlines by default for multi-line commands
+- **Image Paste Support** - Paste images directly into terminal (saved to temp files with path inserted). Works great in Claude Code!
+- **IME Fix** - Fixed duplicate text issue when switching input methods during Chinese/Japanese/Korean composition
+
+**Other Changes:**
+- Improved backend panic tracking for better debugging
+- Fixed memory leak around sysinfo events
+- WIP: New WaveApps builder framework (not yet released)
+- Package updates and dependency bumps
+
 ### v0.12.2 &mdash; Nov 4, 2025
 
 Wave v0.12.2 adds file editing ability to Wave AI. Before approving a file edit you can easily see a diff (rendered in the Monaco Editor diff viewer), and after approving an edit you can easily roll back the change using a "Revert File" button.
