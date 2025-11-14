@@ -512,8 +512,10 @@ func (bc *BuilderController) GetStatus() wshrpc.BuilderStatusData {
 		manifest, err := waveappstore.ReadAppManifest(bc.appId)
 		if err == nil && manifest != nil {
 			wshrpcManifest := &wshrpc.AppManifest{
-				AppTitle:     manifest.AppTitle,
-				AppShortDesc: manifest.AppShortDesc,
+				AppMeta: wshrpc.AppMeta{
+					Title:     manifest.AppMeta.Title,
+					ShortDesc: manifest.AppMeta.ShortDesc,
+				},
 				ConfigSchema: manifest.ConfigSchema,
 				DataSchema:   manifest.DataSchema,
 				Secrets:      make(map[string]wshrpc.SecretMeta),

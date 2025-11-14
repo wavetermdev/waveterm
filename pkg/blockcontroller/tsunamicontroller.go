@@ -139,8 +139,9 @@ func (c *TsunamiController) Start(ctx context.Context, blockMeta waveobj.MetaMap
 	goPath := settings.TsunamiGoPath
 
 	appPath := blockMeta.GetString(waveobj.MetaKey_TsunamiAppPath, "")
+	appId := blockMeta.GetString(waveobj.MetaKey_TsunamiAppId, "")
+	
 	if appPath == "" {
-		appId := blockMeta.GetString(waveobj.MetaKey_TsunamiAppId, "")
 		if appId == "" {
 			return fmt.Errorf("tsunami:apppath or tsunami:appid is required")
 		}
@@ -157,6 +158,23 @@ func (c *TsunamiController) Start(ctx context.Context, blockMeta waveobj.MetaMap
 		}
 		if !filepath.IsAbs(appPath) {
 			return fmt.Errorf("tsunami:apppath must be absolute: %s", appPath)
+		}
+	}
+
+	// Read and set app metadata from manifest if appId is available
+	if appId != "" {
+		if manifest, err := waveappstore.ReadAppManifest(appId); err == nil {
+			blockRef := waveobj.MakeORef(waveobj.OType_Block, c.blockId)
+			rtInfo := make(map[string]any)
+			if manifest.AppMeta.Title != "" {
+				rtInfo["tsunami:title"] = manifest.AppMeta.Title
+			}
+			if manifest.AppMeta.ShortDesc != "" {
+				rtInfo["tsunami:shortdesc"] = manifest.AppMeta.ShortDesc
+			}
+			if len(rtInfo) > 0 {
+				wstore.SetRTInfo(blockRef, rtInfo)
+			}
 		}
 	}
 

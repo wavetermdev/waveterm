@@ -51,8 +51,7 @@ type SecretMeta struct {
 }
 
 type AppManifest struct {
-	AppTitle     string                  `json:"apptitle"`
-	AppShortDesc string                  `json:"appshortdesc"`
+	AppMeta      AppMeta                 `json:"appmeta"`
 	ConfigSchema map[string]any          `json:"configschema"`
 	DataSchema   map[string]any          `json:"dataschema"`
 	Secrets      map[string]SecretMeta   `json:"secrets"`
@@ -500,8 +499,7 @@ func (c *ClientImpl) GetAppManifest() AppManifest {
 	secrets := c.GetSecrets()
 	
 	return AppManifest{
-		AppTitle:     appMeta.Title,
-		AppShortDesc: appMeta.ShortDesc,
+		AppMeta:      appMeta,
 		ConfigSchema: configSchema,
 		DataSchema:   dataSchema,
 		Secrets:      secrets,

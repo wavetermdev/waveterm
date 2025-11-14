@@ -64,11 +64,16 @@ declare global {
 
     // wshrpc.AppManifest
     type AppManifest = {
-        apptitle: string;
-        appshortdesc: string;
+        appmeta: AppMeta;
         configschema: {[key: string]: any};
         dataschema: {[key: string]: any};
         secrets: {[key: string]: SecretMeta};
+    };
+
+    // wshrpc.AppMeta
+    type AppMeta = {
+        title: string;
+        shortdesc: string;
     };
 
     // waveobj.Block

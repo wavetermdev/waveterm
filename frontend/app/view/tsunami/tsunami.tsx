@@ -11,11 +11,6 @@ import * as services from "@/store/services";
 import * as jotai from "jotai";
 import { memo, useEffect } from "react";
 
-interface TsunamiAppMeta {
-    title: string;
-    shortdesc: string;
-}
-
 class TsunamiViewModel extends WebViewModel {
     shellProcFullStatus: jotai.PrimitiveAtom<BlockControllerRuntimeStatus>;
     shellProcStatusUnsubFn: () => void;
@@ -126,28 +121,6 @@ class TsunamiViewModel extends WebViewModel {
         this.doControllerResync(true, "force restart");
     }
 
-    setAppMeta(meta: TsunamiAppMeta) {
-        console.log("tsunami app meta:", meta);
-
-        const rtInfo: ObjRTInfo = {};
-        if (meta.title) {
-            rtInfo["tsunami:title"] = meta.title;
-        }
-        if (meta.shortdesc) {
-            rtInfo["tsunami:shortdesc"] = meta.shortdesc;
-        }
-
-        if (Object.keys(rtInfo).length > 0) {
-            const oref = WOS.makeORef("block", this.blockId);
-            const data: CommandSetRTInfoData = {
-                oref: oref,
-                data: rtInfo,
-            };
-
-            RpcApi.SetRTInfoCommand(TabRpcClient, data).catch((e) => console.log("error setting RT info", e));
-        }
-    }
-
     dispose() {
         if (this.shellProcStatusUnsubFn) {
             this.shellProcStatusUnsubFn();
@@ -200,39 +173,6 @@ const TsunamiView = memo((props: ViewComponentProps<TsunamiViewModel>) => {
     useEffect(() => {
         model.resyncController();
     }, [model]);
-
-    useEffect(() => {
-        if (!domReady || !model.webviewRef?.current) return;
-
-        const webviewElement = model.webviewRef.current;
-
-        const handleConsoleMessage = (e: any) => {
-            const message = e.message;
-            if (typeof message === "string" && message.startsWith("TSUNAMI_META ")) {
-                try {
-                    const jsonStr = message.substring("TSUNAMI_META ".length);
-                    const meta = JSON.parse(jsonStr);
-                    if (meta.title || meta.shortdesc) {
-                        model.setAppMeta(meta);
-
-                        if (meta.title) {
-                            const truncatedTitle =
-                                meta.title.length > 77 ? meta.title.substring(0, 77) + "..." : meta.title;
-                            globalStore.set(model.viewName, truncatedTitle);
-                        }
-                    }
-                } catch (error) {
-                    console.error("Failed to parse TSUNAMI_META message:", error);
-                }
-            }
-        };
-
-        webviewElement.addEventListener("console-message", handleConsoleMessage);
-
-        return () => {
-            webviewElement.removeEventListener("console-message", handleConsoleMessage);
-        };
-    }, [domReady, model]);
 
     const appPath = blockData?.meta?.["tsunami:apppath"];
     const appId = blockData?.meta?.["tsunami:appid"];

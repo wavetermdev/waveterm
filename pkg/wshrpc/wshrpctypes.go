@@ -1038,14 +1038,18 @@ type RestartBuilderAndWaitResult struct {
 	BuildOutput  string `json:"buildoutput"`
 }
 
+type AppMeta struct {
+	Title     string `json:"title"`
+	ShortDesc string `json:"shortdesc"`
+}
+
 type SecretMeta struct {
 	Desc     string `json:"desc"`
 	Optional bool   `json:"optional"`
 }
 
 type AppManifest struct {
-	AppTitle     string                `json:"apptitle"`
-	AppShortDesc string                `json:"appshortdesc"`
+	AppMeta      AppMeta               `json:"appmeta"`
 	ConfigSchema map[string]any        `json:"configschema"`
 	DataSchema   map[string]any        `json:"dataschema"`
 	Secrets      map[string]SecretMeta `json:"secrets"`
