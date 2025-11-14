@@ -5,18 +5,15 @@ package blockcontroller
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"log"
-	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
 	"sync"
 	"syscall"
-	"time"
 
 	"github.com/wavetermdev/waveterm/pkg/tsunamiutil"
 	"github.com/wavetermdev/waveterm/pkg/utilds"
@@ -51,37 +48,31 @@ type TsunamiController struct {
 	port          int
 }
 
-
-func (c *TsunamiController) fetchAndSetSchemas(port int) {
-	url := fmt.Sprintf("http://localhost:%d/api/schemas", port)
-	client := &http.Client{
-		Timeout: 10 * time.Second,
-	}
-
-	resp, err := client.Get(url)
+func (c *TsunamiController) setManifestMetadata(appId string) {
+	manifest, err := waveappstore.ReadAppManifest(appId)
 	if err != nil {
-		log.Printf("TsunamiController: failed to fetch schemas from %s: %v", url, err)
-		return
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		log.Printf("TsunamiController: received non-200 status %d from %s", resp.StatusCode, url)
-		return
-	}
-
-	var schemas any
-	if err := json.NewDecoder(resp.Body).Decode(&schemas); err != nil {
-		log.Printf("TsunamiController: failed to decode schemas response: %v", err)
 		return
 	}
 
 	blockRef := waveobj.MakeORef(waveobj.OType_Block, c.blockId)
-	wstore.SetRTInfo(blockRef, map[string]any{
-		"tsunami:schemas": schemas,
+	rtInfo := make(map[string]any)
+	rtInfo["tsunami:appmeta"] = manifest.AppMeta
+	if manifest.ConfigSchema != nil || manifest.DataSchema != nil {
+		schemas := make(map[string]any)
+		if manifest.ConfigSchema != nil {
+			schemas["config"] = manifest.ConfigSchema
+		}
+		if manifest.DataSchema != nil {
+			schemas["data"] = manifest.DataSchema
+		}
+		rtInfo["tsunami:schemas"] = schemas
+	}
+	wstore.SetRTInfo(blockRef, rtInfo)
+	wps.Broker.Publish(wps.WaveEvent{
+		Event:  wps.Event_TsunamiUpdateMeta,
+		Scopes: []string{waveobj.MakeORef(waveobj.OType_Block, c.blockId).String()},
+		Data:   manifest.AppMeta,
 	})
-
-	log.Printf("TsunamiController: successfully fetched and cached schemas for block %s", c.blockId)
 }
 
 func (c *TsunamiController) clearSchemas() {
@@ -91,7 +82,6 @@ func (c *TsunamiController) clearSchemas() {
 	})
 	log.Printf("TsunamiController: cleared schemas for block %s", c.blockId)
 }
-
 
 func isBuildCacheUpToDate(appPath string) (bool, error) {
 	appName := build.GetAppName(appPath)
@@ -136,7 +126,7 @@ func (c *TsunamiController) Start(ctx context.Context, blockMeta waveobj.MetaMap
 
 	appPath := blockMeta.GetString(waveobj.MetaKey_TsunamiAppPath, "")
 	appId := blockMeta.GetString(waveobj.MetaKey_TsunamiAppId, "")
-	
+
 	if appPath == "" {
 		if appId == "" {
 			return fmt.Errorf("tsunami:apppath or tsunami:appid is required")
@@ -157,32 +147,8 @@ func (c *TsunamiController) Start(ctx context.Context, blockMeta waveobj.MetaMap
 		}
 	}
 
-	// Read and set app metadata from manifest if appId is available
 	if appId != "" {
-		if manifest, err := waveappstore.ReadAppManifest(appId); err == nil {
-			blockRef := waveobj.MakeORef(waveobj.OType_Block, c.blockId)
-			rtInfo := make(map[string]any)
-			if manifest.AppMeta.Title != "" {
-				rtInfo["tsunami:title"] = manifest.AppMeta.Title
-			}
-			if manifest.AppMeta.ShortDesc != "" {
-				rtInfo["tsunami:shortdesc"] = manifest.AppMeta.ShortDesc
-			}
-			if manifest.AppMeta.Icon != "" {
-				rtInfo["tsunami:icon"] = manifest.AppMeta.Icon
-			}
-			if manifest.AppMeta.IconColor != "" {
-				rtInfo["tsunami:iconcolor"] = manifest.AppMeta.IconColor
-			}
-			if len(rtInfo) > 0 {
-				wstore.SetRTInfo(blockRef, rtInfo)
-				wps.Broker.Publish(wps.WaveEvent{
-					Event:  wps.Event_TsunamiUpdateMeta,
-					Scopes: []string{waveobj.MakeORef(waveobj.OType_Block, c.blockId).String()},
-					Data:   manifest.AppMeta,
-				})
-			}
-		}
+		c.setManifestMetadata(appId)
 	}
 
 	appName := build.GetAppName(appPath)
@@ -247,11 +213,6 @@ func (c *TsunamiController) Start(ctx context.Context, blockMeta waveobj.MetaMap
 		c.port = tsunamiProc.Port
 	})
 	go c.sendStatusUpdate()
-
-	// Asynchronously fetch schemas after port is detected
-	go func() {
-		c.fetchAndSetSchemas(tsunamiProc.Port)
-	}()
 
 	// Monitor process completion
 	go func() {
