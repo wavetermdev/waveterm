@@ -520,22 +520,51 @@ tasks:
 
     tsunami:scaffold:internal:
         desc: Internal task to create scaffold directory structure
+        internal: true
+        cmds:
+            - task: tsunami:scaffold:internal:unix
+            - task: tsunami:scaffold:internal:windows
+
+    tsunami:scaffold:internal:unix:
+        desc: Internal task to create scaffold directory structure (Unix)
         dir: tsunami/frontend
         internal: true
+        platforms: [darwin, linux]
         cmds:
             - cmd: "{{.RMRF}} scaffold"
               ignore_error: true
-            - mkdir scaffold
+            - mkdir -p scaffold
             - cp ../templates/package.json.tmpl scaffold/package.json
             - cd scaffold && npm install
             - cp -r dist scaffold/
-            - mkdir scaffold/dist/tw
+            - mkdir -p scaffold/dist/tw
             - cp ../templates/app-main.go.tmpl scaffold/app-main.go
             - cp ../templates/tailwind.css scaffold/
             - cp ../templates/gitignore.tmpl scaffold/.gitignore
             - cp src/element/*.tsx scaffold/dist/tw/
             - cp ../ui/*.go scaffold/dist/tw/
             - cp ../engine/errcomponent.go scaffold/dist/tw/
+
+    tsunami:scaffold:internal:windows:
+        desc: Internal task to create scaffold directory structure (Windows)
+        dir: tsunami/frontend
+        internal: true
+        platforms: [windows]
+        shell: powershell
+        cmds:
+            - cmd: "{{.RMRF}} scaffold"
+              ignore_error: true
+            - New-Item -ItemType Directory -Force -Path scaffold
+            - Copy-Item -Path ../templates/package.json.tmpl -Destination scaffold/package.json
+            - "(Set-Location scaffold; npm install)"
+            - Copy-Item -Recurse -Force -Path dist -Destination scaffold/
+            - New-Item -ItemType Directory -Force -Path scaffold/dist/tw
+            - Copy-Item -Path ../templates/app-main.go.tmpl -Destination scaffold/app-main.go
+            - Copy-Item -Path ../templates/tailwind.css -Destination scaffold/
+            - Copy-Item -Path ../templates/gitignore.tmpl -Destination scaffold/.gitignore
+            - Copy-Item -Path 'src/element/*.tsx' -Destination scaffold/dist/tw/
+            - Copy-Item -Path '../ui/*.go' -Destination scaffold/dist/tw/
+            - Copy-Item -Path ../engine/errcomponent.go -Destination scaffold/dist/tw/
 
     tsunami:build:
         desc: Build the tsunami binary.
