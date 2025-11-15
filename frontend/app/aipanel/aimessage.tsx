@@ -223,7 +223,7 @@ export const AIMessage = memo(({ message, isStreaming }: AIMessageProps) => {
                 className={cn(
                     "px-2 rounded-lg [&>*:first-child]:!mt-0",
                     message.role === "user"
-                        ? "py-2 bg-accent-800 text-white max-w-[calc(90%-10px)]"
+                        ? "py-2 bg-accent-800 text-white max-w-[calc(100%-50px)] @w450:max-w-[calc(100%-105px)]"
                         : "min-w-[min(100%,500px)]"
                 )}
             >

@@ -20,6 +20,9 @@
         "app:showoverlayblocknums": {
           "type": "boolean"
         },
+        "feature:waveappbuilder": {
+          "type": "boolean"
+        },
         "ai:*": {
           "type": "boolean"
         },

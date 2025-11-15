@@ -22,7 +22,7 @@ const config = {
         {
             from: "./dist",
             to: "./dist",
-            filter: ["**/*", "!bin/*", "bin/wavesrv.${arch}*", "bin/wsh*"],
+            filter: ["**/*", "!bin/*", "bin/wavesrv.${arch}*", "bin/wsh*", "!tsunamiscaffold/**/*"],
         },
         {
             from: ".",
@@ -31,13 +31,18 @@ const config = {
         },
         "!node_modules", // We don't need electron-builder to package in Node modules as Vite has already bundled any code that our program is using.
     ],
+    extraResources: [
+        {
+            from: "dist/tsunamiscaffold",
+            to: "tsunamiscaffold",
+        },
+    ],
     directories: {
         output: "make",
     },
     asarUnpack: [
         "dist/bin/**/*", // wavesrv and wsh binaries
         "dist/schema/**/*", // schema files for Monaco editor
-        "dist/tsunamiscaffold/**/*", // tsunami scaffold files
     ],
     mac: {
         target: [

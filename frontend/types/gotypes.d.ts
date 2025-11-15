@@ -914,10 +914,7 @@ declare global {
 
     // waveobj.ObjRTInfo
     type ObjRTInfo = {
-        "tsunami:title"?: string;
-        "tsunami:shortdesc"?: string;
-        "tsunami:icon"?: string;
-        "tsunami:iconcolor"?: string;
+        "tsunami:appmeta"?: AppMeta;
         "tsunami:schemas"?: any;
         "shell:hascurcwd"?: boolean;
         "shell:state"?: string;
@@ -1030,6 +1027,7 @@ declare global {
         "app:dismissarchitecturewarning"?: boolean;
         "app:defaultnewblock"?: string;
         "app:showoverlayblocknums"?: boolean;
+        "feature:waveappbuilder"?: boolean;
         "ai:*"?: boolean;
         "ai:preset"?: string;
         "ai:apitype"?: string;

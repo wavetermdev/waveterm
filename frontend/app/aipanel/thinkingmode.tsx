@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { atoms } from "@/app/store/global";
+import { cn } from "@/util/util";
 import { useAtomValue } from "jotai";
 import { memo, useRef, useState } from "react";
 import { WaveAIModel } from "./waveai-model";
@@ -64,11 +65,16 @@ export const ThinkingLevelDropdown = memo(() => {
         <div className="relative" ref={dropdownRef}>
             <button
                 onClick={() => setIsOpen(!isOpen)}
-                className="flex items-center gap-1.5 px-2 py-1 text-xs text-gray-300 hover:text-white bg-gray-800/50 hover:bg-gray-700/50 rounded transition-colors cursor-pointer border border-gray-600/50"
+                className={cn(
+                    "group flex items-center gap-1.5 px-2 py-1 text-xs text-gray-300 hover:text-white rounded transition-colors cursor-pointer border border-gray-600/50",
+                    isOpen ? "bg-gray-700" : "bg-gray-800/50 hover:bg-gray-700"
+                )}
                 title={`Thinking: ${currentMetadata.name}`}
             >
                 <i className={`fa ${currentMetadata.icon} text-[10px]`}></i>
-                <span className="text-[11px]">{currentMetadata.name}</span>
+                <span className={`text-[11px] ${isOpen ? "inline" : "hidden group-hover:inline @w450:inline"}`}>
+                    {currentMetadata.name}
+                </span>
                 <i className="fa fa-chevron-down text-[8px]"></i>
             </button>
 

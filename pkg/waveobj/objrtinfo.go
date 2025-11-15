@@ -4,11 +4,8 @@
 package waveobj
 
 type ObjRTInfo struct {
-	TsunamiTitle     string `json:"tsunami:title,omitempty"`
-	TsunamiShortDesc string `json:"tsunami:shortdesc,omitempty"`
-	TsunamiIcon      string `json:"tsunami:icon,omitempty"`
-	TsunamiIconColor string `json:"tsunami:iconcolor,omitempty"`
-	TsunamiSchemas   any    `json:"tsunami:schemas,omitempty"`
+	TsunamiAppMeta any `json:"tsunami:appmeta,omitempty" tstype:"AppMeta"`
+	TsunamiSchemas any `json:"tsunami:schemas,omitempty"`
 
 	ShellHasCurCwd       bool   `json:"shell:hascurcwd,omitempty"`
 	ShellState           string `json:"shell:state,omitempty"`
