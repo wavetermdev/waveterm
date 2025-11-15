@@ -1084,17 +1084,20 @@ func copyScaffoldFS(scaffoldFS fs.FS, destDir string, verbose bool, oc *OutputCa
 		destPath := filepath.Join(destDir, "node_modules")
 
 		// Try to create symlink if we have DirFS
+		symlinked := false
 		if dirFS, ok := scaffoldFS.(DirFS); ok {
 			srcPath := dirFS.JoinOS("nm")
-			if err := os.Symlink(srcPath, destPath); err != nil {
-				return 0, fmt.Errorf("failed to create symlink for nm (node_modules): %w", err)
+			if err := os.Symlink(srcPath, destPath); err == nil {
+				if verbose {
+					oc.Printf("[debug] Symlinked nm to node_modules directory")
+				}
+				fileCount++
+				symlinked = true
 			}
-			if verbose {
-				oc.Printf("[debug] Symlinked nm to node_modules directory")
-			}
-			fileCount++
-		} else {
-			// Fallback to recursive copy
+		}
+
+		// Fallback to recursive copy if symlink failed or not attempted
+		if !symlinked {
 			dirCount, err := copyDirFromFS(scaffoldFS, "nm", destPath, false)
 			if err != nil {
 				return 0, fmt.Errorf("failed to copy nm (node_modules) directory: %w", err)
