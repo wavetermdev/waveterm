@@ -5,6 +5,7 @@ import * as electron from "electron";
 import { getWebServerEndpoint } from "../frontend/util/endpoints";
 
 export const WaveAppPathVarName = "WAVETERM_APP_PATH";
+export const WaveAppResourcesPathVarName = "WAVETERM_RESOURCES_PATH";
 export const WaveAppElectronExecPath = "WAVETERM_ELECTRONEXECPATH";
 
 export function getElectronExecPath(): string {

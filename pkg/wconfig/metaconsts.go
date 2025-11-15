@@ -12,6 +12,8 @@ const (
 	ConfigKey_AppDefaultNewBlock             = "app:defaultnewblock"
 	ConfigKey_AppShowOverlayBlockNums        = "app:showoverlayblocknums"
 
+	ConfigKey_FeatureWaveAppBuilder          = "feature:waveappbuilder"
+
 	ConfigKey_AiClear                        = "ai:*"
 	ConfigKey_AiPreset                       = "ai:preset"
 	ConfigKey_AiApiType                      = "ai:apitype"

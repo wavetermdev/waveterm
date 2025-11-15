@@ -62,14 +62,8 @@ class TsunamiViewModel extends WebViewModel {
             oref: WOS.makeORef("block", blockId),
         });
         initialRTInfo.then((rtInfo) => {
-            if (rtInfo) {
-                const meta: AppMeta = {
-                    title: rtInfo["tsunami:title"],
-                    shortdesc: rtInfo["tsunami:shortdesc"],
-                    icon: rtInfo["tsunami:icon"],
-                    iconcolor: rtInfo["tsunami:iconcolor"],
-                };
-                globalStore.set(this.appMeta, meta);
+            if (rtInfo && rtInfo["tsunami:appmeta"]) {
+                globalStore.set(this.appMeta, rtInfo["tsunami:appmeta"]);
             }
         });
         this.appMetaUnsubFn = waveEventSubscribe({

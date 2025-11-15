@@ -22,7 +22,7 @@ func GetTsunamiScaffoldPath() string {
 	settings := wconfig.GetWatcher().GetFullConfig().Settings
 	scaffoldPath := settings.TsunamiScaffoldPath
 	if scaffoldPath == "" {
-		scaffoldPath = filepath.Join(wavebase.GetWaveAppPath(), "tsunamiscaffold")
+		scaffoldPath = filepath.Join(wavebase.GetWaveAppResourcesPath(), "tsunamiscaffold")
 	}
 	return scaffoldPath
 }

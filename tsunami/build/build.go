@@ -109,6 +109,7 @@ func GetAppName(appPath string) string {
 
 type BuildEnv struct {
 	GoVersion   string
+	GoPath      string
 	TempDir     string
 	cleanupOnce *sync.Once
 }
@@ -329,11 +330,12 @@ func verifyEnvironment(verbose bool, opts BuildOpts) (*BuildEnv, error) {
 
 	return &BuildEnv{
 		GoVersion:   goVersion,
+		GoPath:      result.GoPath,
 		cleanupOnce: &sync.Once{},
 	}, nil
 }
 
-func createGoMod(tempDir, appNS, appName, goVersion string, opts BuildOpts, verbose bool) error {
+func createGoMod(tempDir, appNS, appName string, buildEnv *BuildEnv, opts BuildOpts, verbose bool) error {
 	oc := opts.OutputCapture
 	if appNS == "" {
 		appNS = "app"
@@ -372,7 +374,7 @@ func createGoMod(tempDir, appNS, appName, goVersion string, opts BuildOpts, verb
 			return fmt.Errorf("failed to add module statement: %w", err)
 		}
 
-		if err := modFile.AddGoStmt(goVersion); err != nil {
+		if err := modFile.AddGoStmt(buildEnv.GoVersion); err != nil {
 			return fmt.Errorf("failed to add go version: %w", err)
 		}
 
@@ -412,7 +414,7 @@ func createGoMod(tempDir, appNS, appName, goVersion string, opts BuildOpts, verb
 	}
 
 	// Run go mod tidy to clean up dependencies
-	tidyCmd := exec.Command("go", "mod", "tidy")
+	tidyCmd := exec.Command(buildEnv.GoPath, "mod", "tidy")
 	tidyCmd.Dir = tempDir
 
 	if verbose {
@@ -428,6 +430,7 @@ func createGoMod(tempDir, appNS, appName, goVersion string, opts BuildOpts, verb
 	}
 
 	if err := tidyCmd.Run(); err != nil {
+		oc.Flush()
 		return fmt.Errorf("go mod tidy failed (see output for errors)")
 	}
 
@@ -498,13 +501,13 @@ func verifyScaffoldFs(fsys fs.FS) error {
 		return fmt.Errorf("package.json check failed: %w", err)
 	}
 
-	// Check for node_modules directory
-	if err := isDirOrNotFoundFS(fsys, "node_modules"); err != nil {
-		return fmt.Errorf("node_modules directory check failed: %w", err)
+	// Check for nm directory
+	if err := isDirOrNotFoundFS(fsys, "nm"); err != nil {
+		return fmt.Errorf("nm (node_modules) directory check failed: %w", err)
 	}
-	info, err = fs.Stat(fsys, "node_modules")
+	info, err = fs.Stat(fsys, "nm")
 	if err != nil || !info.IsDir() {
-		return fmt.Errorf("node_modules directory must exist in scaffold")
+		return fmt.Errorf("nm (node_modules) directory must exist in scaffold")
 	}
 
 	return nil
@@ -621,6 +624,7 @@ func TsunamiBuildInternal(opts BuildOpts) (*BuildEnv, error) {
 	buildEnv.TempDir = tempDir
 
 	oc.Printf("Building tsunami app from %s", opts.AppPath)
+	oc.Printf("[debug] using scaffold path %s", opts.ScaffoldPath)
 
 	if opts.Verbose || opts.KeepTemp {
 		oc.Printf("[debug] Temp dir: %s", tempDir)
@@ -652,7 +656,7 @@ func TsunamiBuildInternal(opts BuildOpts) (*BuildEnv, error) {
 
 	// Create go.mod file
 	appName := GetAppName(opts.AppPath)
-	if err := createGoMod(tempDir, opts.AppNS, appName, buildEnv.GoVersion, opts, opts.Verbose); err != nil {
+	if err := createGoMod(tempDir, opts.AppNS, appName, buildEnv, opts, opts.Verbose); err != nil {
 		return buildEnv, err
 	}
 
@@ -662,7 +666,7 @@ func TsunamiBuildInternal(opts BuildOpts) (*BuildEnv, error) {
 	}
 
 	// Build the Go application
-	outputPath, err := runGoBuild(tempDir, opts)
+	outputPath, err := runGoBuild(tempDir, buildEnv, opts)
 	if err != nil {
 		return buildEnv, err
 	}
@@ -743,7 +747,7 @@ func moveFilesBack(tempDir, originalDir string, verbose bool, oc *OutputCapture)
 	return nil
 }
 
-func runGoBuild(tempDir string, opts BuildOpts) (string, error) {
+func runGoBuild(tempDir string, buildEnv *BuildEnv, opts BuildOpts) (string, error) {
 	oc := opts.OutputCapture
 	var outputPath string
 	var absOutputPath string
@@ -775,7 +779,7 @@ func runGoBuild(tempDir string, opts BuildOpts) (string, error) {
 
 	// Build command with explicit go files
 	args := append([]string{"build", "-o", outputPath}, ".")
-	buildCmd := exec.Command("go", args...)
+	buildCmd := exec.Command(buildEnv.GoPath, args...)
 	buildCmd.Dir = tempDir
 
 	if oc != nil || opts.Verbose {
@@ -838,7 +842,8 @@ func generateAppTailwindCss(tempDir string, verbose bool, opts BuildOpts) error 
 	oc := opts.OutputCapture
 	// tailwind.css is already in tempDir from scaffold copy
 	tailwindOutput := filepath.Join(tempDir, "static", "tw.css")
-	tailwindCmd := exec.Command(opts.getNodePath(), "node_modules/@tailwindcss/cli/dist/index.mjs",
+	tailwindCmd := exec.Command(opts.getNodePath(), "--preserve-symlinks-main", "--preserve-symlinks",
+		"node_modules/@tailwindcss/cli/dist/index.mjs",
 		"-i", "./tailwind.css",
 		"-o", tailwindOutput)
 	tailwindCmd.Dir = tempDir
@@ -1074,33 +1079,36 @@ func ParseTsunamiPort(line string) int {
 func copyScaffoldFS(scaffoldFS fs.FS, destDir string, verbose bool, oc *OutputCapture) (int, error) {
 	fileCount := 0
 
-	// Handle node_modules directory - prefer symlink if possible, otherwise copy
-	if _, err := fs.Stat(scaffoldFS, "node_modules"); err == nil {
+	// Handle nm (node_modules) directory - prefer symlink if possible, otherwise copy
+	if _, err := fs.Stat(scaffoldFS, "nm"); err == nil {
 		destPath := filepath.Join(destDir, "node_modules")
 
 		// Try to create symlink if we have DirFS
+		symlinked := false
 		if dirFS, ok := scaffoldFS.(DirFS); ok {
-			srcPath := dirFS.JoinOS("node_modules")
-			if err := os.Symlink(srcPath, destPath); err != nil {
-				return 0, fmt.Errorf("failed to create symlink for node_modules: %w", err)
+			srcPath := dirFS.JoinOS("nm")
+			if err := os.Symlink(srcPath, destPath); err == nil {
+				if verbose {
+					oc.Printf("[debug] Symlinked nm to node_modules directory")
+				}
+				fileCount++
+				symlinked = true
 			}
-			if verbose {
-				oc.Printf("[debug] Symlinked node_modules directory")
-			}
-			fileCount++
-		} else {
-			// Fallback to recursive copy
-			dirCount, err := copyDirFromFS(scaffoldFS, "node_modules", destPath, false)
+		}
+
+		// Fallback to recursive copy if symlink failed or not attempted
+		if !symlinked {
+			dirCount, err := copyDirFromFS(scaffoldFS, "nm", destPath, false)
 			if err != nil {
-				return 0, fmt.Errorf("failed to copy node_modules directory: %w", err)
+				return 0, fmt.Errorf("failed to copy nm (node_modules) directory: %w", err)
 			}
 			if verbose {
-				oc.Printf("Copied node_modules directory (%d files)", dirCount)
+				oc.Printf("Copied nm to node_modules directory (%d files)", dirCount)
 			}
 			fileCount += dirCount
 		}
 	} else if !os.IsNotExist(err) {
-		return 0, fmt.Errorf("error checking node_modules: %w", err)
+		return 0, fmt.Errorf("error checking nm (node_modules): %w", err)
 	}
 
 	// Copy package files instead of symlinking
