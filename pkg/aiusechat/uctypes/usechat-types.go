@@ -461,7 +461,7 @@ type WaveChatOpts struct {
 	TabTools       []ToolDefinition
 	TabId          string
 	AppGoFile      string
-	AppBuildStatus string
+	AppStaticFiles string
 }
 
 func (opts *WaveChatOpts) GetToolDefinition(toolName string) *ToolDefinition {
