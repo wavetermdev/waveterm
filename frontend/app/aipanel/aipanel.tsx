@@ -464,7 +464,7 @@ const AIPanelComponentInner = memo(() => {
             ref={containerRef}
             data-waveai-panel="true"
             className={cn(
-                "bg-gray-900 flex flex-col relative",
+                "@container bg-gray-900 flex flex-col relative",
                 model.inBuilder ? "mt-0 h-full" : "mt-1 h-[calc(100%-4px)]",
                 (isDragOver || isReactDndDragOver) && "bg-gray-800 border-accent",
                 isFocused ? "border-2 border-accent" : "border-2 border-transparent"
