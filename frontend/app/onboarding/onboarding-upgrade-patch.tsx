@@ -16,6 +16,7 @@ import { useEffect, useRef, useState } from "react";
 import { debounce } from "throttle-debounce";
 import { UpgradeOnboardingModal_v0_12_1_Content } from "./onboarding-upgrade-v0121";
 import { UpgradeOnboardingModal_v0_12_2_Content } from "./onboarding-upgrade-v0122";
+import { UpgradeOnboardingModal_v0_12_3_Content } from "./onboarding-upgrade-v0123";
 
 interface VersionConfig {
     version: string;
@@ -34,6 +35,12 @@ const versions: VersionConfig[] = [
         version: "v0.12.2",
         content: () => <UpgradeOnboardingModal_v0_12_2_Content />,
         prevText: "Prev (v0.12.1)",
+        nextText: "Next (v0.12.3)",
+    },
+    {
+        version: "v0.12.3",
+        content: () => <UpgradeOnboardingModal_v0_12_3_Content />,
+        prevText: "Prev (v0.12.2)",
     },
 ];
 
