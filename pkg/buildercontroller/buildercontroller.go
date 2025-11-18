@@ -301,12 +301,12 @@ func (bc *BuilderController) runBuilderApp(ctx context.Context, appId string, ap
 
 	secretBindings, err := waveappstore.ReadAppSecretBindings(appId)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read secret bindings: %w", err)
+		return nil, fmt.Errorf("failed to read secret bindings (ERR-SECRET): %w", err)
 	}
 
 	secretEnv, err := waveappstore.BuildAppSecretEnv(appId, manifest, secretBindings)
 	if err != nil {
-		return nil, fmt.Errorf("failed to build secret environment: %w", err)
+		return nil, fmt.Errorf("failed to build secret environment (ERR-SECRET): %w", err)
 	}
 
 	if builderEnv == nil {
@@ -578,7 +578,6 @@ func (bc *BuilderController) publishOutputLine(line string, reset bool) {
 		},
 	})
 }
-
 
 func exitCodeFromWaitErr(waitErr error) int {
 	if waitErr == nil {
