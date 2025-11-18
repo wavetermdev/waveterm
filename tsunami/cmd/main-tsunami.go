@@ -14,7 +14,7 @@ const (
 	EnvTsunamiScaffoldPath   = "TSUNAMI_SCAFFOLDPATH"
 	EnvTsunamiSdkReplacePath = "TSUNAMI_SDKREPLACEPATH"
 	EnvTsunamiNodePath       = "TSUNAMI_NODEPATH"
-	TsunamiSdkVersion        = "v0.12.2"
+	TsunamiSdkVersion        = "v0.12.3"
 )
 
 // these are set at build time
@@ -126,18 +126,18 @@ var packageCmd = &cobra.Command{
 		verbose, _ := cmd.Flags().GetBool("verbose")
 		output, _ := cmd.Flags().GetString("output")
 		appPath := args[0]
-		
+
 		if output == "" {
 			appName := build.GetAppName(appPath)
 			output = filepath.Join(appPath, appName+".tsapp")
 		}
-		
+
 		appFS := build.NewDirFS(appPath)
 		if err := build.MakeAppPackage(appFS, appPath, verbose, output); err != nil {
 			fmt.Printf("Error: %v\n", err)
 			os.Exit(1)
 		}
-		
+
 		if verbose {
 			fmt.Printf("Successfully created package: %s\n", output)
 		}
