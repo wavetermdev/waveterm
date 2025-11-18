@@ -214,6 +214,13 @@ const BuilderFilesTab = memo(() => {
         }
     }, [builderAppId]);
 
+    const handleRefresh = useCallback(async () => {
+        // Clear files and add delay so UX shows the refresh is happening
+        setFiles([]);
+        await new Promise((resolve) => setTimeout(resolve, 100));
+        await loadFiles();
+    }, [loadFiles]);
+
     useEffect(() => {
         loadFiles();
     }, [loadFiles]);
@@ -313,14 +320,24 @@ const BuilderFilesTab = memo(() => {
         >
             <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-semibold">Static Files</h2>
-                <button
-                    className="px-3 py-1 text-sm font-medium rounded bg-accent/80 text-primary hover:bg-accent transition-colors cursor-pointer"
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={loading}
-                >
-                    <i className="fa fa-plus mr-2" />
-                    Add File
-                </button>
+                <div className="flex gap-2">
+                    <button
+                        className="px-3 py-1 text-sm font-medium rounded bg-panel border border-border hover:bg-hover transition-colors cursor-pointer"
+                        onClick={handleRefresh}
+                        disabled={loading}
+                        title="Refresh file list"
+                    >
+                        <i className="fa fa-refresh" />
+                    </button>
+                    <button
+                        className="px-3 py-1 text-sm font-medium rounded bg-accent/80 text-primary hover:bg-accent transition-colors cursor-pointer"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={loading}
+                    >
+                        <i className="fa fa-plus mr-2" />
+                        Add File
+                    </button>
+                </div>
                 <input ref={fileInputRef} type="file" onChange={handleFileInputChange} className="hidden" />
             </div>
 
