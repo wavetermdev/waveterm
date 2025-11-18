@@ -825,8 +825,22 @@ func generateManifest(tempDir, exePath string, opts BuildOpts) error {
 		return fmt.Errorf("manifest generation failed: %w", err)
 	}
 
+	// Extract manifest between delimiters
+	manifestStr := string(manifestOutput)
+	startTag := "<AppManifest>"
+	endTag := "</AppManifest>"
+	startIdx := strings.Index(manifestStr, startTag)
+	endIdx := strings.Index(manifestStr, endTag)
+
+	if startIdx == -1 || endIdx == -1 {
+		return fmt.Errorf("manifest delimiters not found in output")
+	}
+
+	manifestJSON := manifestStr[startIdx+len(startTag) : endIdx]
+	manifestJSON = strings.TrimSpace(manifestJSON)
+
 	manifestPath := filepath.Join(tempDir, "manifest.json")
-	if err := os.WriteFile(manifestPath, manifestOutput, 0644); err != nil {
+	if err := os.WriteFile(manifestPath, []byte(manifestJSON), 0644); err != nil {
 		return fmt.Errorf("failed to write manifest.json: %w", err)
 	}
 

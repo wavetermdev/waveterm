@@ -515,5 +515,7 @@ func (c *ClientImpl) PrintAppManifest() {
 		fmt.Printf("Error marshaling manifest: %v\n", err)
 		return
 	}
+	fmt.Println("<AppManifest>")
 	fmt.Println(string(manifestJSON))
+	fmt.Println("</AppManifest>")
 }

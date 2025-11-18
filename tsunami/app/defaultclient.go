@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/wavetermdev/waveterm/tsunami/engine"
 	"github.com/wavetermdev/waveterm/tsunami/util"
@@ -21,6 +22,18 @@ const TsunamiCloseOnStdinEnvVar = "TSUNAMI_CLOSEONSTDIN"
 const MaxShortDescLen = 120
 
 type AppMeta engine.AppMeta
+
+type staticFileInfo struct {
+	fullPath string
+	info     fs.FileInfo
+}
+
+func (sfi *staticFileInfo) Name() string       { return sfi.fullPath }
+func (sfi *staticFileInfo) Size() int64        { return sfi.info.Size() }
+func (sfi *staticFileInfo) Mode() fs.FileMode  { return sfi.info.Mode() }
+func (sfi *staticFileInfo) ModTime() time.Time { return sfi.info.ModTime() }
+func (sfi *staticFileInfo) IsDir() bool        { return sfi.info.IsDir() }
+func (sfi *staticFileInfo) Sys() any           { return sfi.info.Sys() }
 
 func DefineComponent[P any](name string, renderFn func(props P) any) vdom.Component[P] {
 	return engine.DefineComponentEx(engine.GetDefaultClient(), name, renderFn)
@@ -218,4 +231,38 @@ func OpenStaticFile(path string) (fs.File, error) {
 	// Strip "static/" prefix since the FS is already sub'd to the static directory
 	relativePath := strings.TrimPrefix(path, "static/")
 	return client.StaticFS.Open(relativePath)
+}
+
+// ListStaticFiles returns FileInfo for all files in the embedded static filesystem.
+// The Name() of each FileInfo will be the full path prefixed with "static/" (e.g., "static/config.json"),
+// which can be passed directly to ReadStaticFile or OpenStaticFile.
+// Returns an empty slice if StaticFS is nil or on error.
+func ListStaticFiles() ([]fs.FileInfo, error) {
+	client := engine.GetDefaultClient()
+	if client.StaticFS == nil {
+		return nil, nil
+	}
+
+	var fileInfos []fs.FileInfo
+	err := fs.WalkDir(client.StaticFS, ".", func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if !d.IsDir() {
+			info, err := d.Info()
+			if err != nil {
+				return err
+			}
+			fullPath := "static/" + path
+			fileInfos = append(fileInfos, &staticFileInfo{
+				fullPath: fullPath,
+				info:     info,
+			})
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return fileInfos, nil
 }
