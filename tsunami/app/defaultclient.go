@@ -10,6 +10,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/wavetermdev/waveterm/tsunami/engine"
 	"github.com/wavetermdev/waveterm/tsunami/util"
@@ -185,4 +186,36 @@ func DeclareSecret(secretName string, meta *SecretMeta) string {
 func PrintAppManifest() {
 	client := engine.GetDefaultClient()
 	client.PrintAppManifest()
+}
+
+// ReadStaticFile reads a file from the embedded static filesystem.
+// The path MUST start with "static/" (e.g., "static/config.json").
+// Returns the file contents or an error if the file doesn't exist or can't be read.
+func ReadStaticFile(path string) ([]byte, error) {
+	client := engine.GetDefaultClient()
+	if client.StaticFS == nil {
+		return nil, fs.ErrNotExist
+	}
+	if !strings.HasPrefix(path, "static/") {
+		return nil, fs.ErrNotExist
+	}
+	// Strip "static/" prefix since the FS is already sub'd to the static directory
+	relativePath := strings.TrimPrefix(path, "static/")
+	return fs.ReadFile(client.StaticFS, relativePath)
+}
+
+// OpenStaticFile opens a file from the embedded static filesystem.
+// The path MUST start with "static/" (e.g., "static/config.json").
+// Returns an fs.File or an error if the file doesn't exist or can't be opened.
+func OpenStaticFile(path string) (fs.File, error) {
+	client := engine.GetDefaultClient()
+	if client.StaticFS == nil {
+		return nil, fs.ErrNotExist
+	}
+	if !strings.HasPrefix(path, "static/") {
+		return nil, fs.ErrNotExist
+	}
+	// Strip "static/" prefix since the FS is already sub'd to the static directory
+	relativePath := strings.TrimPrefix(path, "static/")
+	return client.StaticFS.Open(relativePath)
 }

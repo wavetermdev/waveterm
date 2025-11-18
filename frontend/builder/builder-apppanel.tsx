@@ -9,7 +9,7 @@ import { BuilderAppPanelModel, type TabType } from "@/builder/store/builder-appp
 import { BuilderFocusManager } from "@/builder/store/builder-focusmanager";
 import { BuilderCodeTab } from "@/builder/tabs/builder-codetab";
 import { BuilderEnvTab } from "@/builder/tabs/builder-envtab";
-import { BuilderFilesTab } from "@/builder/tabs/builder-filestab";
+import { BuilderFilesTab, DeleteFileModal, RenameFileModal } from "@/builder/tabs/builder-filestab";
 import { BuilderPreviewTab } from "@/builder/tabs/builder-previewtab";
 import { builderAppHasSelection } from "@/builder/utils/builder-focus-utils";
 import { ErrorBoundary } from "@/element/errorboundary";
@@ -291,15 +291,13 @@ const BuilderAppPanel = memo(() => {
                             isAppFocused={isAppFocused}
                             onClick={() => handleTabClick("code")}
                         />
-                        {false && (
-                            <TabButton
-                                label="Static Files"
-                                tabType="files"
-                                isActive={activeTab === "files"}
-                                isAppFocused={isAppFocused}
-                                onClick={() => handleTabClick("files")}
-                            />
-                        )}
+                        <TabButton
+                            label="Files"
+                            tabType="files"
+                            isActive={activeTab === "files"}
+                            isAppFocused={isAppFocused}
+                            onClick={() => handleTabClick("files")}
+                        />
                         <TabButton
                             label="Env"
                             tabType="env"
@@ -360,4 +358,4 @@ const BuilderAppPanel = memo(() => {
 
 BuilderAppPanel.displayName = "BuilderAppPanel";
 
-export { BuilderAppPanel, PublishAppModal };
+export { BuilderAppPanel, DeleteFileModal, PublishAppModal, RenameFileModal };
