@@ -9,7 +9,7 @@ import { BuilderAppPanelModel, type TabType } from "@/builder/store/builder-appp
 import { BuilderFocusManager } from "@/builder/store/builder-focusmanager";
 import { BuilderCodeTab } from "@/builder/tabs/builder-codetab";
 import { BuilderEnvTab } from "@/builder/tabs/builder-envtab";
-import { BuilderFilesTab, RenameFileModal } from "@/builder/tabs/builder-filestab";
+import { BuilderFilesTab, DeleteFileModal, RenameFileModal } from "@/builder/tabs/builder-filestab";
 import { BuilderPreviewTab } from "@/builder/tabs/builder-previewtab";
 import { builderAppHasSelection } from "@/builder/utils/builder-focus-utils";
 import { ErrorBoundary } from "@/element/errorboundary";
@@ -358,4 +358,4 @@ const BuilderAppPanel = memo(() => {
 
 BuilderAppPanel.displayName = "BuilderAppPanel";
 
-export { BuilderAppPanel, PublishAppModal, RenameFileModal };
+export { BuilderAppPanel, DeleteFileModal, PublishAppModal, RenameFileModal };
