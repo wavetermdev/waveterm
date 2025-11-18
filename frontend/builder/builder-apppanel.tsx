@@ -8,7 +8,7 @@ import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { BuilderAppPanelModel, type TabType } from "@/builder/store/builder-apppanel-model";
 import { BuilderFocusManager } from "@/builder/store/builder-focusmanager";
 import { BuilderCodeTab } from "@/builder/tabs/builder-codetab";
-import { BuilderEnvTab } from "@/builder/tabs/builder-envtab";
+import { BuilderEnvTab } from "@/builder/tabs/builder-secrettab";
 import { BuilderFilesTab } from "@/builder/tabs/builder-filestab";
 import { BuilderPreviewTab } from "@/builder/tabs/builder-previewtab";
 import { builderAppHasSelection } from "@/builder/utils/builder-focus-utils";
@@ -194,7 +194,6 @@ const BuilderAppPanel = memo(() => {
     const activeTab = useAtomValue(model.activeTab);
     const focusType = useAtomValue(BuilderFocusManager.getInstance().focusType);
     const isAppFocused = focusType === "app";
-    const envSaveNeeded = useAtomValue(model.envVarsDirtyAtom);
     const builderAppId = useAtomValue(atoms.builderAppId);
     const builderId = useAtomValue(atoms.builderId);
 
@@ -240,12 +239,6 @@ const BuilderAppPanel = memo(() => {
         },
         [model]
     );
-
-    const handleEnvSave = useCallback(() => {
-        if (builderId) {
-            model.saveEnvVars(builderId);
-        }
-    }, [builderId, model]);
 
     const handleRestart = useCallback(() => {
         model.restartBuilder();
@@ -301,7 +294,7 @@ const BuilderAppPanel = memo(() => {
                             />
                         )}
                         <TabButton
-                            label="Env"
+                            label="Secrets"
                             tabType="env"
                             isActive={activeTab === "env"}
                             isAppFocused={isAppFocused}
@@ -316,19 +309,6 @@ const BuilderAppPanel = memo(() => {
                             Publish App
                         </button>
                     </div>
-                    {activeTab === "env" && (
-                        <button
-                            className={cn(
-                                "mr-4 px-3 py-1 text-sm font-medium rounded transition-colors",
-                                envSaveNeeded
-                                    ? "bg-accent text-white hover:opacity-80 cursor-pointer"
-                                    : "bg-gray-600 text-gray-400 cursor-default"
-                            )}
-                            onClick={envSaveNeeded ? handleEnvSave : undefined}
-                        >
-                            Save
-                        </button>
-                    )}
                 </div>
             </div>
             <ErrorStrip />
