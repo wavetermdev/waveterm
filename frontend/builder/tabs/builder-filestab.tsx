@@ -1,6 +1,7 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { formatFileSize } from "@/app/aipanel/ai-utils";
 import { Modal } from "@/app/modals/modal";
 import { ContextMenuModel } from "@/app/store/contextmenu";
 import { modalsModel } from "@/app/store/modalmodel";
@@ -12,6 +13,7 @@ import { useAtomValue } from "jotai";
 import { memo, useCallback, useEffect, useRef, useState } from "react";
 
 const MaxFileSize = 5 * 1024 * 1024; // 5MB
+const ReadOnlyFileNames = ["static/tw.css"];
 
 type FileEntry = {
     name: string;
@@ -19,14 +21,6 @@ type FileEntry = {
     modified: string;
     isReadOnly: boolean;
 };
-
-function formatFileSize(bytes: number): string {
-    if (bytes === 0) return "0 B";
-    const k = 1024;
-    const sizes = ["B", "KB", "MB"];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return `${(bytes / Math.pow(k, i)).toFixed(1)} ${sizes[i]}`;
-}
 
 const RenameFileModal = memo(
     ({ appId, fileName, onSuccess }: { appId: string; fileName: string; onSuccess: () => void }) => {
@@ -203,7 +197,7 @@ const BuilderFilesTab = memo(() => {
                     name: entry.name,
                     size: entry.size || 0,
                     modified: entry.modified,
-                    isReadOnly: entry.name === "static/tw.css",
+                    isReadOnly: ReadOnlyFileNames.includes(entry.name),
                 }))
                 .sort((a, b) => a.name.localeCompare(b.name));
             setFiles(fileEntries);
