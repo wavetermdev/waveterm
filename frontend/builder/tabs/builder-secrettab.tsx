@@ -7,18 +7,34 @@ import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { atoms } from "@/store/global";
 import { globalStore } from "@/app/store/jotaiStore";
 import { useAtomValue } from "jotai";
-import { memo, useState } from "react";
+import { memo, useState, useEffect } from "react";
+import { Check, AlertTriangle } from "lucide-react";
+import { Tooltip } from "@/app/element/tooltip";
+import { Modal } from "@/app/modals/modal";
+import { modalsModel } from "@/app/store/modalmodel";
 
 type SecretRowProps = {
     secretName: string;
     secretMeta: SecretMeta;
     currentBinding: string;
-    onBindingChange: (secretName: string, binding: string) => void;
+    availableSecrets: string[];
+    onMapDefault: (secretName: string) => void;
+    onSetAndMapDefault: (secretName: string) => void;
 };
 
-const SecretRow = memo(({ secretName, secretMeta, currentBinding, onBindingChange }: SecretRowProps) => {
+const SecretRow = memo(({ secretName, secretMeta, currentBinding, availableSecrets, onMapDefault, onSetAndMapDefault }: SecretRowProps) => {
+    const isMapped = currentBinding.trim().length > 0;
+    const isValid = isMapped && availableSecrets.includes(currentBinding);
+    const hasMatchingSecret = availableSecrets.includes(secretName);
+
     return (
         <div className="flex items-center gap-4 py-2 border-b border-border">
+            <Tooltip content={!isMapped ? "Secret is Not Mapped" : "Secret Has a Valid Mapping"}>
+                <div className="flex items-center">
+                    {!isMapped && <AlertTriangle className="w-5 h-5 text-yellow-500" />}
+                    {isMapped && isValid && <Check className="w-5 h-5 text-green-500" />}
+                </div>
+            </Tooltip>
             <div className="flex-1 flex items-center gap-2">
                 <span className="font-medium text-primary">{secretName}</span>
                 {!secretMeta.optional && (
@@ -29,20 +45,117 @@ const SecretRow = memo(({ secretName, secretMeta, currentBinding, onBindingChang
                 )}
                 {secretMeta.desc && <span className="text-sm text-secondary">— {secretMeta.desc}</span>}
             </div>
-            <div className="flex-1">
-                <input
-                    type="text"
-                    value={currentBinding}
-                    onChange={(e) => onBindingChange(secretName, e.target.value)}
-                    placeholder="Wave secret store name"
-                    className="w-full px-3 py-2 bg-background border border-border rounded text-primary focus:outline-none focus:border-accent"
-                />
+            <div className="flex items-center gap-2">
+                {!isMapped && hasMatchingSecret && (
+                    <button
+                        onClick={() => onMapDefault(secretName)}
+                        className="px-3 py-1 text-sm font-medium rounded bg-accent/80 text-primary hover:bg-accent transition-colors cursor-pointer whitespace-nowrap"
+                    >
+                        Map Default
+                    </button>
+                )}
+                {!isMapped && !hasMatchingSecret && (
+                    <button
+                        onClick={() => onSetAndMapDefault(secretName)}
+                        className="px-3 py-1 text-sm font-medium rounded bg-accent/80 text-primary hover:bg-accent transition-colors cursor-pointer whitespace-nowrap"
+                    >
+                        Set and Map Default
+                    </button>
+                )}
             </div>
         </div>
     );
 });
 
 SecretRow.displayName = "SecretRow";
+
+type SetSecretDialogProps = {
+    secretName: string;
+    onSetAndMap: (secretName: string, secretValue: string) => Promise<void>;
+};
+
+const SetSecretDialog = memo(({ secretName, onSetAndMap }: SetSecretDialogProps) => {
+    const [secretValue, setSecretValue] = useState("");
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [error, setError] = useState("");
+
+    const handleSubmit = async () => {
+        if (!secretValue.trim()) return;
+        setIsSubmitting(true);
+        setError("");
+        try {
+            await onSetAndMap(secretName, secretValue);
+            modalsModel.popModal();
+        } catch (err) {
+            console.error("Failed to set secret:", err);
+            setError(err instanceof Error ? err.message : String(err));
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const handleClose = () => {
+        modalsModel.popModal();
+    };
+
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === "Escape") {
+                e.preventDefault();
+                handleClose();
+            }
+        };
+
+        document.addEventListener("keydown", handleKeyDown);
+        return () => document.removeEventListener("keydown", handleKeyDown);
+    }, []);
+
+    if (error) {
+        return (
+            <Modal className="p-4 min-w-[500px]" onOk={handleClose} onClose={handleClose} okLabel="OK">
+                <div className="flex flex-col gap-4 mb-4">
+                    <h2 className="text-xl font-semibold">Error Setting Secret</h2>
+                    <div className="text-sm text-error">{error}</div>
+                </div>
+            </Modal>
+        );
+    }
+
+    return (
+        <Modal
+            className="p-4 min-w-[500px]"
+            onOk={handleSubmit}
+            onCancel={handleClose}
+            onClose={handleClose}
+            okLabel="Set and Map"
+            cancelLabel="Cancel"
+            okDisabled={!secretValue.trim() || isSubmitting}
+        >
+            <div className="flex flex-col gap-4 mb-4">
+                <h2 className="text-xl font-semibold">Set and Map Secret</h2>
+                <div className="flex flex-col gap-2">
+                    <div className="text-sm font-medium mb-1">
+                        Secret Name: <span className="text-accent">{secretName}</span>
+                    </div>
+                    <textarea
+                        value={secretValue}
+                        onChange={(e) => setSecretValue(e.target.value)}
+                        placeholder="Paste secret value here..."
+                        className="w-full px-3 py-2 bg-panel border border-border rounded focus:outline-none focus:border-accent resize-none"
+                        rows={4}
+                        autoFocus
+                        disabled={isSubmitting}
+                    />
+                    <div className="text-xs text-secondary">
+                        Secrets are stored securely in Wave's secret store
+                    </div>
+                </div>
+            </div>
+        </Modal>
+    );
+});
+
+SetSecretDialog.displayName = "SetSecretDialog";
 
 const BuilderEnvTab = memo(() => {
     const model = BuilderAppPanelModel.getInstance();
@@ -52,10 +165,23 @@ const BuilderEnvTab = memo(() => {
     const [localBindings, setLocalBindings] = useState<{ [key: string]: string }>({});
     const [isDirty, setIsDirty] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
+    const [availableSecrets, setAvailableSecrets] = useState<string[]>([]);
 
     const manifest = builderStatus?.manifest;
     const secrets = manifest?.secrets || {};
     const secretBindings = builderStatus?.secretbindings || {};
+
+    useEffect(() => {
+        const fetchSecrets = async () => {
+            try {
+                const secrets = await RpcApi.GetSecretsNamesCommand(TabRpcClient);
+                setAvailableSecrets(secrets || []);
+            } catch (err) {
+                console.error("Failed to fetch secrets:", err);
+            }
+        };
+        fetchSecrets();
+    }, []);
 
     if (!localBindings || Object.keys(localBindings).length === 0) {
         if (Object.keys(secretBindings).length > 0) {
@@ -90,6 +216,22 @@ const BuilderEnvTab = memo(() => {
         } finally {
             setIsSaving(false);
         }
+    };
+
+    const handleMapDefault = (secretName: string) => {
+        setLocalBindings((prev) => ({ ...prev, [secretName]: secretName }));
+        setIsDirty(true);
+    };
+
+    const handleSetAndMapDefault = (secretName: string) => {
+        modalsModel.pushModal("SetSecretDialog", { secretName, onSetAndMap: handleSetAndMap });
+    };
+
+    const handleSetAndMap = async (secretName: string, secretValue: string) => {
+        await RpcApi.SetSecretsCommand(TabRpcClient, { [secretName]: secretValue });
+        setAvailableSecrets((prev) => [...prev, secretName]);
+        setLocalBindings((prev) => ({ ...prev, [secretName]: secretName }));
+        setIsDirty(true);
     };
 
     const allRequiredBound =
@@ -135,7 +277,9 @@ const BuilderEnvTab = memo(() => {
                                 secretName={secretName}
                                 secretMeta={secretMeta}
                                 currentBinding={localBindings[secretName] || ""}
-                                onBindingChange={handleBindingChange}
+                                availableSecrets={availableSecrets}
+                                onMapDefault={handleMapDefault}
+                                onSetAndMapDefault={handleSetAndMapDefault}
                             />
                         ))}
                     </div>
@@ -147,4 +291,4 @@ const BuilderEnvTab = memo(() => {
 
 BuilderEnvTab.displayName = "BuilderEnvTab";
 
-export { BuilderEnvTab };
+export { BuilderEnvTab, SetSecretDialog };
