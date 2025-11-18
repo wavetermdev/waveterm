@@ -8,9 +8,9 @@ import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { BuilderAppPanelModel, type TabType } from "@/builder/store/builder-apppanel-model";
 import { BuilderFocusManager } from "@/builder/store/builder-focusmanager";
 import { BuilderCodeTab } from "@/builder/tabs/builder-codetab";
-import { BuilderEnvTab } from "@/builder/tabs/builder-secrettab";
-import { BuilderFilesTab } from "@/builder/tabs/builder-filestab";
+import { BuilderFilesTab, DeleteFileModal, RenameFileModal } from "@/builder/tabs/builder-filestab";
 import { BuilderPreviewTab } from "@/builder/tabs/builder-previewtab";
+import { BuilderEnvTab } from "@/builder/tabs/builder-secrettab";
 import { builderAppHasSelection } from "@/builder/utils/builder-focus-utils";
 import { ErrorBoundary } from "@/element/errorboundary";
 import { atoms } from "@/store/global";
@@ -284,15 +284,13 @@ const BuilderAppPanel = memo(() => {
                             isAppFocused={isAppFocused}
                             onClick={() => handleTabClick("code")}
                         />
-                        {false && (
-                            <TabButton
-                                label="Static Files"
-                                tabType="files"
-                                isActive={activeTab === "files"}
-                                isAppFocused={isAppFocused}
-                                onClick={() => handleTabClick("files")}
-                            />
-                        )}
+                        <TabButton
+                            label="Files"
+                            tabType="files"
+                            isActive={activeTab === "files"}
+                            isAppFocused={isAppFocused}
+                            onClick={() => handleTabClick("files")}
+                        />
                         <TabButton
                             label="Secrets"
                             tabType="env"
@@ -340,4 +338,4 @@ const BuilderAppPanel = memo(() => {
 
 BuilderAppPanel.displayName = "BuilderAppPanel";
 
-export { BuilderAppPanel, PublishAppModal };
+export { BuilderAppPanel, DeleteFileModal, PublishAppModal, RenameFileModal };

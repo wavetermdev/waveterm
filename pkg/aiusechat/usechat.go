@@ -435,10 +435,10 @@ func RunAIChat(ctx context.Context, sseHandler *sse.SSEHandlerCh, chatOpts uctyp
 			}
 		}
 		if chatOpts.BuilderAppGenerator != nil {
-			appGoFile, appBuildStatus, appErr := chatOpts.BuilderAppGenerator()
+			appGoFile, appStaticFiles, appErr := chatOpts.BuilderAppGenerator()
 			if appErr == nil {
 				chatOpts.AppGoFile = appGoFile
-				chatOpts.AppBuildStatus = appBuildStatus
+				chatOpts.AppStaticFiles = appStaticFiles
 			}
 		}
 		stopReason, rtnMessage, err := runAIChatStep(ctx, sseHandler, chatOpts, cont)
@@ -729,13 +729,7 @@ func WaveAIPostMessageHandler(w http.ResponseWriter, r *http.Request) {
 
 	if req.BuilderAppId != "" {
 		chatOpts.BuilderAppGenerator = func() (string, string, error) {
-			fileData, err := waveappstore.ReadAppFile(req.BuilderAppId, "app.go")
-			if err != nil {
-				return "", "", err
-			}
-			appGoFile := string(fileData.Contents)
-			appBuildStatus := ""
-			return appGoFile, appBuildStatus, nil
+			return generateBuilderAppData(req.BuilderAppId)
 		}
 	}
 
@@ -869,4 +863,45 @@ func CreateWriteTextFileDiff(ctx context.Context, chatId string, toolCallId stri
 
 	modifiedContent := []byte(params.Contents)
 	return originalContent, modifiedContent, nil
+}
+
+
+type StaticFileInfo struct {
+	Name         string `json:"name"`
+	Size         int64  `json:"size"`
+	Modified     string `json:"modified"`
+	ModifiedTime string `json:"modified_time"`
+}
+
+func generateBuilderAppData(appId string) (string, string, error) {
+	appGoFile := ""
+	fileData, err := waveappstore.ReadAppFile(appId, "app.go")
+	if err == nil {
+		appGoFile = string(fileData.Contents)
+	}
+	
+	staticFilesJSON := ""
+	allFiles, err := waveappstore.ListAllAppFiles(appId)
+	if err == nil {
+		var staticFiles []StaticFileInfo
+		for _, entry := range allFiles.Entries {
+			if strings.HasPrefix(entry.Name, "static/") {
+				staticFiles = append(staticFiles, StaticFileInfo{
+					Name:         entry.Name,
+					Size:         entry.Size,
+					Modified:     entry.Modified,
+					ModifiedTime: entry.ModifiedTime,
+				})
+			}
+		}
+		
+		if len(staticFiles) > 0 {
+			staticFilesBytes, marshalErr := json.Marshal(staticFiles)
+			if marshalErr == nil {
+				staticFilesJSON = string(staticFilesBytes)
+			}
+		}
+	}
+	
+	return appGoFile, staticFilesJSON, nil
 }

@@ -70,6 +70,21 @@ func generateDeterministicSuffix(inputs ...string) string {
 	return hex.EncodeToString(hash)[:8]
 }
 
+// appendToLastUserMessage appends a text block to the last user message in the inputs slice
+func appendToLastUserMessage(inputs []any, text string) {
+	for i := len(inputs) - 1; i >= 0; i-- {
+		if msg, ok := inputs[i].(OpenAIMessage); ok && msg.Role == "user" {
+			block := OpenAIMessageContent{
+				Type: "input_text",
+				Text: text,
+			}
+			msg.Content = append(msg.Content, block)
+			inputs[i] = msg
+			break
+		}
+	}
+}
+
 // ---------- OpenAI Request Types ----------
 
 type StreamOptionsType struct {
@@ -203,38 +218,16 @@ func buildOpenAIHTTPRequest(ctx context.Context, inputs []any, chatOpts uctypes.
 		maxTokens = OpenAIDefaultMaxTokens
 	}
 
-	// Inject chatOpts.TabState as a text block at the end of the last "user" message
 	if chatOpts.TabState != "" {
-		// Find the last "user" message
-		for i := len(inputs) - 1; i >= 0; i-- {
-			if msg, ok := inputs[i].(OpenAIMessage); ok && msg.Role == "user" {
-				// Add TabState as a new text block
-				tabStateBlock := OpenAIMessageContent{
-					Type: "input_text",
-					Text: chatOpts.TabState,
-				}
-				msg.Content = append(msg.Content, tabStateBlock)
-				inputs[i] = msg
-				break
-			}
-		}
+		appendToLastUserMessage(inputs, chatOpts.TabState)
 	}
 
-	// Inject chatOpts.AppGoFile as a text block at the end of the last "user" message
+	if chatOpts.AppStaticFiles != "" {
+		appendToLastUserMessage(inputs, "<CurrentAppStaticFiles>\n"+chatOpts.AppStaticFiles+"\n</CurrentAppStaticFiles>")
+	}
+
 	if chatOpts.AppGoFile != "" {
-		// Find the last "user" message
-		for i := len(inputs) - 1; i >= 0; i-- {
-			if msg, ok := inputs[i].(OpenAIMessage); ok && msg.Role == "user" {
-				// Add AppGoFile wrapped in XML tag
-				appGoFileBlock := OpenAIMessageContent{
-					Type: "input_text",
-					Text: "<CurrentAppGoFile>\n" + chatOpts.AppGoFile + "\n</CurrentAppGoFile>",
-				}
-				msg.Content = append(msg.Content, appGoFileBlock)
-				inputs[i] = msg
-				break
-			}
-		}
+		appendToLastUserMessage(inputs, "<CurrentAppGoFile>\n"+chatOpts.AppGoFile+"\n</CurrentAppGoFile>")
 	}
 
 	// Build request body

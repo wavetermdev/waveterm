@@ -60,7 +60,7 @@
         "analyses": {
             "QF1003": false
         },
-        "directoryFilters": ["-tsunami/frontend/scaffold", "-dist"]
+        "directoryFilters": ["-tsunami/frontend/scaffold", "-dist", "-make"]
     },
     "tailwindCSS.lint.suggestCanonicalClasses": "ignore"
 }

@@ -28,6 +28,10 @@ function stringToBase64(input: string): string {
     return base64.fromByteArray(stringBytes);
 }
 
+function arrayToBase64(input: Uint8Array): string {
+    return base64.fromByteArray(input);
+}
+
 function base64ToArray(b64: string): Uint8Array<ArrayBufferLike> {
     const cleanB64 = b64.replace(/\s+/g, "");
     return base64.toByteArray(cleanB64);
@@ -476,6 +480,7 @@ function formatRelativeTime(timestamp: number): string {
 }
 
 export {
+    arrayToBase64,
     atomWithDebounce,
     atomWithThrottle,
     base64ToArray,

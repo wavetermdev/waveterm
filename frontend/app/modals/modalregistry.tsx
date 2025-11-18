@@ -4,7 +4,7 @@
 import { MessageModal } from "@/app/modals/messagemodal";
 import { NewInstallOnboardingModal } from "@/app/onboarding/onboarding";
 import { UpgradeOnboardingModal } from "@/app/onboarding/onboarding-upgrade";
-import { PublishAppModal } from "@/builder/builder-apppanel";
+import { DeleteFileModal, PublishAppModal, RenameFileModal } from "@/builder/builder-apppanel";
 import { AboutModal } from "./about";
 import { UserInputModal } from "./userinputmodal";
 
@@ -15,6 +15,8 @@ const modalRegistry: { [key: string]: React.ComponentType<any> } = {
     [AboutModal.displayName || "AboutModal"]: AboutModal,
     [MessageModal.displayName || "MessageModal"]: MessageModal,
     [PublishAppModal.displayName || "PublishAppModal"]: PublishAppModal,
+    [RenameFileModal.displayName || "RenameFileModal"]: RenameFileModal,
+    [DeleteFileModal.displayName || "DeleteFileModal"]: DeleteFileModal,
 };
 
 export const getModalComponent = (key: string): React.ComponentType<any> | undefined => {
