@@ -10,7 +10,7 @@ import { base64ToString, stringToBase64 } from "@/util/util";
 import { atom, type Atom, type PrimitiveAtom } from "jotai";
 import { debounce } from "throttle-debounce";
 
-export type TabType = "preview" | "files" | "code" | "env";
+export type TabType = "preview" | "files" | "code" | "secrets";
 
 export type EnvVar = {
     name: string;
@@ -30,6 +30,7 @@ export class BuilderAppPanelModel {
     isLoadingAtom: PrimitiveAtom<boolean> = atom<boolean>(false);
     errorAtom: PrimitiveAtom<string> = atom<string>("");
     builderStatusAtom = atom<BuilderStatusData>(null) as PrimitiveAtom<BuilderStatusData>;
+    hasSecretsAtom: PrimitiveAtom<boolean> = atom<boolean>(false);
     saveNeededAtom!: Atom<boolean>;
     focusElemRef: { current: HTMLInputElement | null } = { current: null };
     monacoEditorRef: { current: any | null } = { current: null };
@@ -85,6 +86,7 @@ export class BuilderAppPanelModel {
                 const currentStatus = globalStore.get(this.builderStatusAtom);
                 if (!currentStatus || !currentStatus.version || status.version > currentStatus.version) {
                     globalStore.set(this.builderStatusAtom, status);
+                    this.updateSecretsLatch(status);
                 }
             },
         });
@@ -92,6 +94,7 @@ export class BuilderAppPanelModel {
         try {
             const status = await RpcApi.GetBuilderStatusCommand(TabRpcClient, builderId);
             globalStore.set(this.builderStatusAtom, status);
+            this.updateSecretsLatch(status);
         } catch (err) {
             console.error("Failed to load builder status:", err);
         }
@@ -108,6 +111,14 @@ export class BuilderAppPanelModel {
                 this.loadAppFile(appId);
             },
         });
+    }
+
+    updateSecretsLatch(status: BuilderStatusData) {
+        if (!status?.manifest?.secrets) return;
+        const secrets = status.manifest.secrets;
+        if (Object.keys(secrets).length > 0) {
+            globalStore.set(this.hasSecretsAtom, true);
+        }
     }
 
     async loadEnvVars(builderId: string) {

@@ -196,6 +196,7 @@ const BuilderAppPanel = memo(() => {
     const isAppFocused = focusType === "app";
     const builderAppId = useAtomValue(atoms.builderAppId);
     const builderId = useAtomValue(atoms.builderId);
+    const hasSecrets = useAtomValue(model.hasSecretsAtom);
 
     useEffect(() => {
         model.initialize();
@@ -291,13 +292,15 @@ const BuilderAppPanel = memo(() => {
                             isAppFocused={isAppFocused}
                             onClick={() => handleTabClick("files")}
                         />
-                        <TabButton
-                            label="Secrets"
-                            tabType="env"
-                            isActive={activeTab === "env"}
-                            isAppFocused={isAppFocused}
-                            onClick={() => handleTabClick("env")}
-                        />
+                        {hasSecrets && (
+                            <TabButton
+                                label="Secrets"
+                                tabType="secrets"
+                                isActive={activeTab === "secrets"}
+                                isAppFocused={isAppFocused}
+                                onClick={() => handleTabClick("secrets")}
+                            />
+                        )}
                     </div>
                     <div className="flex items-center gap-2 mr-4">
                         <button
@@ -326,7 +329,7 @@ const BuilderAppPanel = memo(() => {
                         <BuilderFilesTab />
                     </ErrorBoundary>
                 </div>
-                <div className="w-full h-full" style={{ display: activeTab === "env" ? "block" : "none" }}>
+                <div className="w-full h-full" style={{ display: activeTab === "secrets" ? "block" : "none" }}>
                     <ErrorBoundary>
                         <BuilderEnvTab />
                     </ErrorBoundary>
