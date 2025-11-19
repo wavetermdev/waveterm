@@ -480,16 +480,14 @@ func RunAnthropicChatStep(
 			if rateLimitInfo.PReq == 0 && rateLimitInfo.Req > 0 {
 				// Premium requests exhausted, but regular requests available
 				stopReason := &uctypes.WaveStopReason{
-					Kind:          uctypes.StopKindPremiumRateLimit,
-					RateLimitInfo: rateLimitInfo,
+					Kind: uctypes.StopKindPremiumRateLimit,
 				}
 				return stopReason, nil, rateLimitInfo, nil
 			}
 			if rateLimitInfo.Req == 0 {
 				// All requests exhausted
 				stopReason := &uctypes.WaveStopReason{
-					Kind:          uctypes.StopKindRateLimit,
-					RateLimitInfo: rateLimitInfo,
+					Kind: uctypes.StopKindRateLimit,
 				}
 				return stopReason, nil, rateLimitInfo, nil
 			}
@@ -590,8 +588,6 @@ func handleAnthropicStreamingResp(
 	rtnStopReason = &uctypes.WaveStopReason{
 		Kind:      uctypes.StopKindDone,
 		RawReason: state.stopFromDelta,
-		MessageID: state.msgID,
-		Model:     state.model,
 	}
 	return rtnStopReason, state.rtnMessage
 }
@@ -849,41 +845,30 @@ func handleAnthropicEvent(
 		switch reason {
 		case "tool_use":
 			return nil, &uctypes.WaveStopReason{
-				Kind:       uctypes.StopKindToolUse,
-				RawReason:  reason,
-				MessageID:  state.msgID,
-				Model:      state.model,
-				ToolCalls:  state.toolCalls,
-				FinishStep: true,
+				Kind:      uctypes.StopKindToolUse,
+				RawReason: reason,
+				ToolCalls: state.toolCalls,
 			}
 		case "max_tokens":
 			return nil, &uctypes.WaveStopReason{
 				Kind:      uctypes.StopKindMaxTokens,
 				RawReason: reason,
-				MessageID: state.msgID,
-				Model:     state.model,
 			}
 		case "refusal":
 			return nil, &uctypes.WaveStopReason{
 				Kind:      uctypes.StopKindContent,
 				RawReason: reason,
-				MessageID: state.msgID,
-				Model:     state.model,
 			}
 		case "pause_turn":
 			return nil, &uctypes.WaveStopReason{
 				Kind:      uctypes.StopKindPauseTurn,
 				RawReason: reason,
-				MessageID: state.msgID,
-				Model:     state.model,
 			}
 		default:
 			// end_turn, stop_sequence (treat as end of this call)
 			return nil, &uctypes.WaveStopReason{
 				Kind:      uctypes.StopKindDone,
 				RawReason: reason,
-				MessageID: state.msgID,
-				Model:     state.model,
 			}
 		}
 

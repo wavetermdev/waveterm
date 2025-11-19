@@ -540,8 +540,8 @@ func ConvertToolResultsToOpenAIChatMessage(toolResults []uctypes.AIToolResult) (
 	return messages, nil
 }
 
-// ConvertToUIMessage converts an OpenAIChatMessage to a UIMessage
-func (m *OpenAIChatMessage) ConvertToUIMessage() *uctypes.UIMessage {
+// convertToUIMessage converts an OpenAIChatMessage to a UIMessage
+func (m *OpenAIChatMessage) convertToUIMessage() *uctypes.UIMessage {
 	var parts []uctypes.UIMessagePart
 	var role string
 
@@ -664,7 +664,7 @@ func ConvertAIChatToUIChat(aiChat uctypes.AIChat) (*uctypes.UIChat, error) {
 			return nil, fmt.Errorf("message %d: expected *OpenAIChatMessage, got %T", i, nativeMsg)
 		}
 
-		uiMsg := openaiMsg.ConvertToUIMessage()
+		uiMsg := openaiMsg.convertToUIMessage()
 		if uiMsg != nil {
 			uiMessages = append(uiMessages, *uiMsg)
 		}

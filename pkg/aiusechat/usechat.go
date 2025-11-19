@@ -447,30 +447,21 @@ func RunAIChat(ctx context.Context, sseHandler *sse.SSEHandlerCh, backend UseCha
 				chatstore.DefaultChatStore.PostMessage(chatOpts.ChatId, &chatOpts.Config, msg)
 			}
 		}
+		firstStep = false
 		if stopReason != nil && stopReason.Kind == uctypes.StopKindPremiumRateLimit && chatOpts.Config.APIType == APIType_OpenAI && chatOpts.Config.Model == uctypes.PremiumOpenAIModel {
 			log.Printf("Premium rate limit hit with gpt-5.1, switching to gpt-5-mini\n")
 			cont = &uctypes.WaveContinueResponse{
-				MessageID:             "",
-				Model:                 uctypes.DefaultOpenAIModel,
-				ContinueFromKind:      uctypes.StopKindPremiumRateLimit,
-				ContinueFromRawReason: stopReason.RawReason,
+				Model:            uctypes.DefaultOpenAIModel,
+				ContinueFromKind: uctypes.StopKindPremiumRateLimit,
 			}
-			firstStep = false
 			continue
 		}
 		if stopReason != nil && stopReason.Kind == uctypes.StopKindToolUse {
 			metrics.ToolUseCount += len(stopReason.ToolCalls)
 			processToolCalls(backend, stopReason, chatOpts, sseHandler, metrics)
-
-			var messageID string
-			if len(rtnMessage) > 0 && rtnMessage[0] != nil {
-				messageID = rtnMessage[0].GetMessageId()
-			}
 			cont = &uctypes.WaveContinueResponse{
-				MessageID:             messageID,
-				Model:                 chatOpts.Config.Model,
-				ContinueFromKind:      uctypes.StopKindToolUse,
-				ContinueFromRawReason: stopReason.RawReason,
+				Model:            chatOpts.Config.Model,
+				ContinueFromKind: uctypes.StopKindToolUse,
 			}
 			continue
 		}
@@ -827,7 +818,6 @@ func CreateWriteTextFileDiff(ctx context.Context, chatId string, toolCallId stri
 	return originalContent, modifiedContent, nil
 }
 
-
 type StaticFileInfo struct {
 	Name         string `json:"name"`
 	Size         int64  `json:"size"`
@@ -841,7 +831,7 @@ func generateBuilderAppData(appId string) (string, string, error) {
 	if err == nil {
 		appGoFile = string(fileData.Contents)
 	}
-	
+
 	staticFilesJSON := ""
 	allFiles, err := waveappstore.ListAllAppFiles(appId)
 	if err == nil {
@@ -856,7 +846,7 @@ func generateBuilderAppData(appId string) (string, string, error) {
 				})
 			}
 		}
-		
+
 		if len(staticFiles) > 0 {
 			staticFilesBytes, marshalErr := json.Marshal(staticFiles)
 			if marshalErr == nil {
@@ -864,6 +854,6 @@ func generateBuilderAppData(appId string) (string, string, error) {
 			}
 		}
 	}
-	
+
 	return appGoFile, staticFilesJSON, nil
 }

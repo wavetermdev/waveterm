@@ -93,7 +93,7 @@ type OpenAIMessageContent struct {
 	Name      string `json:"name,omitempty"`
 }
 
-func (c *OpenAIMessageContent) Clean() *OpenAIMessageContent {
+func (c *OpenAIMessageContent) clean() *OpenAIMessageContent {
 	if c.PreviewUrl == "" {
 		return c
 	}
@@ -102,17 +102,17 @@ func (c *OpenAIMessageContent) Clean() *OpenAIMessageContent {
 	return &rtn
 }
 
-func (m *OpenAIMessage) CleanAndCopy() *OpenAIMessage {
+func (m *OpenAIMessage) cleanAndCopy() *OpenAIMessage {
 	rtn := &OpenAIMessage{Role: m.Role}
 	rtn.Content = make([]OpenAIMessageContent, len(m.Content))
 	for idx, block := range m.Content {
-		cleaned := block.Clean()
+		cleaned := block.clean()
 		rtn.Content[idx] = *cleaned
 	}
 	return rtn
 }
 
-func (f *OpenAIFunctionCallInput) Clean() *OpenAIFunctionCallInput {
+func (f *OpenAIFunctionCallInput) clean() *OpenAIFunctionCallInput {
 	if f.ToolUseData == nil {
 		return f
 	}
@@ -481,10 +481,10 @@ func RunOpenAIChatStep(
 		// Convert to appropriate input type based on what's populated
 		if chatMsg.Message != nil {
 			// Clean message to remove preview URLs
-			cleanedMsg := chatMsg.Message.CleanAndCopy()
+			cleanedMsg := chatMsg.Message.cleanAndCopy()
 			inputs = append(inputs, *cleanedMsg)
 		} else if chatMsg.FunctionCall != nil {
-			cleanedFunctionCall := chatMsg.FunctionCall.Clean()
+			cleanedFunctionCall := chatMsg.FunctionCall.clean()
 			inputs = append(inputs, *cleanedFunctionCall)
 		} else if chatMsg.FunctionCallOutput != nil {
 			inputs = append(inputs, *chatMsg.FunctionCallOutput)
@@ -526,16 +526,14 @@ func RunOpenAIChatStep(
 			if rateLimitInfo.PReq == 0 && rateLimitInfo.Req > 0 {
 				// Premium requests exhausted, but regular requests available
 				stopReason := &uctypes.WaveStopReason{
-					Kind:          uctypes.StopKindPremiumRateLimit,
-					RateLimitInfo: rateLimitInfo,
+					Kind: uctypes.StopKindPremiumRateLimit,
 				}
 				return stopReason, nil, rateLimitInfo, nil
 			}
 			if rateLimitInfo.Req == 0 {
 				// All requests exhausted
 				stopReason := &uctypes.WaveStopReason{
-					Kind:          uctypes.StopKindRateLimit,
-					RateLimitInfo: rateLimitInfo,
+					Kind: uctypes.StopKindRateLimit,
 				}
 				return stopReason, nil, rateLimitInfo, nil
 			}
@@ -797,8 +795,6 @@ func handleOpenAIEvent(
 				Kind:      uctypes.StopKindError,
 				ErrorType: "api",
 				ErrorText: errorMsg,
-				MessageID: state.msgID,
-				Model:     state.model,
 			}, nil
 		}
 
@@ -831,8 +827,6 @@ func handleOpenAIEvent(
 				Kind:      stopKind,
 				RawReason: reason,
 				ErrorText: errorMsg,
-				MessageID: state.msgID,
-				Model:     state.model,
 			}, finalMessages
 		}
 
@@ -847,8 +841,6 @@ func handleOpenAIEvent(
 		return &uctypes.WaveStopReason{
 			Kind:      stopKind,
 			RawReason: ev.Response.Status,
-			MessageID: state.msgID,
-			Model:     state.model,
 			ToolCalls: toolCalls,
 		}, finalMessages
 
@@ -860,22 +852,8 @@ func handleOpenAIEvent(
 		}
 		if st := state.blockMap[ev.ItemId]; st != nil && st.kind == openaiBlockToolUse {
 			st.partialJSON = append(st.partialJSON, []byte(ev.Delta)...)
-
 			toolDef := state.chatOpts.GetToolDefinition(st.toolName)
-			if toolDef != nil && toolDef.ToolProgressDesc != nil {
-				parsedJSON, err := utilfn.ParsePartialJson(st.partialJSON)
-				if err == nil {
-					statusLines, err := toolDef.ToolProgressDesc(parsedJSON)
-					if err == nil {
-						progressData := &uctypes.UIMessageDataToolProgress{
-							ToolCallId:  st.toolCallID,
-							ToolName:    st.toolName,
-							StatusLines: statusLines,
-						}
-						_ = sse.AiMsgData("data-toolprogress", "progress-"+st.toolCallID, progressData)
-					}
-				}
-			}
+			sendToolProgress(st, toolDef, sse, st.partialJSON, true)
 		}
 		return nil, nil
 
@@ -888,28 +866,10 @@ func handleOpenAIEvent(
 
 		// Get the function call info from the block state
 		if st := state.blockMap[ev.ItemId]; st != nil && st.kind == openaiBlockToolUse {
-			// raw := json.RawMessage(ev.Arguments)
-			// no longer send tool inputs to fe
-			// _ = sse.AiMsgToolInputAvailable(st.toolCallID, st.toolName, raw)
-
 			toolDef := state.chatOpts.GetToolDefinition(st.toolName)
 			toolUseData := createToolUseData(st.toolCallID, st.toolName, toolDef, ev.Arguments, state.chatOpts)
 			state.toolUseData[st.toolCallID] = toolUseData
-
-			if toolDef != nil && toolDef.ToolProgressDesc != nil {
-				var parsedJSON any
-				if err := json.Unmarshal([]byte(ev.Arguments), &parsedJSON); err == nil {
-					statusLines, err := toolDef.ToolProgressDesc(parsedJSON)
-					if err == nil {
-						progressData := &uctypes.UIMessageDataToolProgress{
-							ToolCallId:  st.toolCallID,
-							ToolName:    st.toolName,
-							StatusLines: statusLines,
-						}
-						_ = sse.AiMsgData("data-toolprogress", "progress-"+st.toolCallID, progressData)
-					}
-				}
-			}
+			sendToolProgress(st, toolDef, sse, []byte(ev.Arguments), false)
 		}
 		return nil, nil
 
@@ -964,6 +924,32 @@ func handleOpenAIEvent(
 		logutil.DevPrintf("OpenAI: unknown event: %s, data: %s", eventName, data)
 		return nil, nil
 	}
+}
+
+func sendToolProgress(st *openaiBlockState, toolDef *uctypes.ToolDefinition, sse *sse.SSEHandlerCh, jsonData []byte, usePartialParse bool) {
+	if toolDef == nil || toolDef.ToolProgressDesc == nil {
+		return
+	}
+	var parsedJSON any
+	var err error
+	if usePartialParse {
+		parsedJSON, err = utilfn.ParsePartialJson(jsonData)
+	} else {
+		err = json.Unmarshal(jsonData, &parsedJSON)
+	}
+	if err != nil {
+		return
+	}
+	statusLines, err := toolDef.ToolProgressDesc(parsedJSON)
+	if err != nil {
+		return
+	}
+	progressData := &uctypes.UIMessageDataToolProgress{
+		ToolCallId:  st.toolCallID,
+		ToolName:    st.toolName,
+		StatusLines: statusLines,
+	}
+	_ = sse.AiMsgData("data-toolprogress", "progress-"+st.toolCallID, progressData)
 }
 
 func createToolUseData(toolCallID, toolName string, toolDef *uctypes.ToolDefinition, arguments string, chatOpts uctypes.WaveChatOpts) *uctypes.UIMessageDataToolUse {
