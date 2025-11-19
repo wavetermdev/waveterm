@@ -208,7 +208,8 @@ export class BuilderAppPanelModel {
     }
 
     async restartBuilder() {
-        return this.restartBuilder();
+        // the RPC call that starts the builder actually forces a restart, so this works
+        return this.startBuilder();
     }
 
     async switchBuilderApp() {

@@ -88,6 +88,12 @@ func GetOrCreateController(builderId string) *BuilderController {
 	return bc
 }
 
+func GetController(builderId string) *BuilderController {
+	mapLock.Lock()
+	defer mapLock.Unlock()
+	return controllerMap[builderId]
+}
+
 func DeleteController(builderId string) {
 	mapLock.Lock()
 	bc := controllerMap[builderId]
@@ -153,8 +159,6 @@ func (bc *BuilderController) Start(ctx context.Context, appId string, builderEnv
 	if err := bc.waitForBuildDone(ctx); err != nil {
 		return err
 	}
-	log.Printf("*** BC %s\n", appId)
-
 	bc.lock.Lock()
 	defer bc.lock.Unlock()
 

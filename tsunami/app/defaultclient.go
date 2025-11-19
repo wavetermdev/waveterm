@@ -238,11 +238,10 @@ func OpenStaticFile(path string) (fs.File, error) {
 // ListStaticFiles returns FileInfo for all files in the embedded static filesystem.
 // The Name() of each FileInfo will be the full path prefixed with "static/" (e.g., "static/config.json"),
 // which can be passed directly to ReadStaticFile or OpenStaticFile.
-// Returns an empty slice if StaticFS is nil or on error.
 func ListStaticFiles() ([]fs.FileInfo, error) {
 	client := engine.GetDefaultClient()
 	if client.StaticFS == nil {
-		return nil, nil
+		return nil, errors.New("static files not available before app initialization; use AppInit to access files during initialization")
 	}
 
 	var fileInfos []fs.FileInfo

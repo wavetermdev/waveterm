@@ -1087,7 +1087,10 @@ func (ws *WshServer) StopBuilderCommand(ctx context.Context, builderId string) e
 	if builderId == "" {
 		return fmt.Errorf("must provide a builderId to StopBuilderCommand")
 	}
-	bc := buildercontroller.GetOrCreateController(builderId)
+	bc := buildercontroller.GetController(builderId)
+	if bc == nil {
+		return nil
+	}
 	return bc.Stop()
 }
 

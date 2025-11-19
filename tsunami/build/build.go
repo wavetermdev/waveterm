@@ -17,6 +17,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -492,8 +493,8 @@ func verifyScaffoldFs(fsys fs.FS) error {
 		return fmt.Errorf("app-main.go check failed: %w", err)
 	}
 	// Check for app-init.go.tmpl file
-	if err := checkFileExistsFS(fsys, "app-main.go.tmpl"); err != nil {
-		return fmt.Errorf("app-main.go check failed: %w", err)
+	if err := checkFileExistsFS(fsys, "app-init.go.tmpl"); err != nil {
+		return fmt.Errorf("app-init.go check failed: %w", err)
 	}
 
 	// Check for tailwind.css file
@@ -1157,6 +1158,9 @@ func copyScaffoldFS(scaffoldFS fs.FS, destDir string, hasAppInit bool, verbose b
 		}
 
 		for _, match := range matches {
+			if slices.Contains(packageFiles, match) {
+				continue
+			}
 			destPath := filepath.Join(destDir, match)
 			if err := CopyFileFromFS(scaffoldFS, match, destPath); err != nil {
 				return 0, fmt.Errorf("failed to copy %s: %w", match, err)
