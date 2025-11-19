@@ -539,7 +539,7 @@ tasks:
             - mv scaffold/node_modules scaffold/nm
             - cp -r dist scaffold/
             - mkdir -p scaffold/dist/tw
-            - cp ../templates/app-main.go.tmpl scaffold/app-main.go
+            - cp ../templates/*.go.tmpl scaffold/
             - cp ../templates/tailwind.css scaffold/
             - cp ../templates/gitignore.tmpl scaffold/.gitignore
             - cp src/element/*.tsx scaffold/dist/tw/
@@ -560,7 +560,7 @@ tasks:
             - powershell Move-Item -Path scaffold/node_modules -Destination scaffold/nm
             - powershell Copy-Item -Recurse -Force -Path dist -Destination scaffold/
             - powershell New-Item -ItemType Directory -Force -Path scaffold/dist/tw
-            - powershell Copy-Item -Path ../templates/app-main.go.tmpl -Destination scaffold/app-main.go
+            - powershell Copy-Item -Path '../templates/*.go.tmpl' -Destination scaffold/
             - powershell Copy-Item -Path ../templates/tailwind.css -Destination scaffold/
             - powershell Copy-Item -Path ../templates/gitignore.tmpl -Destination scaffold/.gitignore
             - powershell Copy-Item -Path 'src/element/*.tsx' -Destination scaffold/dist/tw/

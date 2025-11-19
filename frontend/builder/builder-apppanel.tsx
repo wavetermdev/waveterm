@@ -2,15 +2,16 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { Modal } from "@/app/modals/modal";
+import { ContextMenuModel } from "@/app/store/contextmenu";
 import { modalsModel } from "@/app/store/modalmodel";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { BuilderAppPanelModel, type TabType } from "@/builder/store/builder-apppanel-model";
 import { BuilderFocusManager } from "@/builder/store/builder-focusmanager";
 import { BuilderCodeTab } from "@/builder/tabs/builder-codetab";
-import { BuilderEnvTab } from "@/builder/tabs/builder-envtab";
 import { BuilderFilesTab, DeleteFileModal, RenameFileModal } from "@/builder/tabs/builder-filestab";
 import { BuilderPreviewTab } from "@/builder/tabs/builder-previewtab";
+import { BuilderEnvTab } from "@/builder/tabs/builder-secrettab";
 import { builderAppHasSelection } from "@/builder/utils/builder-focus-utils";
 import { ErrorBoundary } from "@/element/errorboundary";
 import { atoms } from "@/store/global";
@@ -194,9 +195,9 @@ const BuilderAppPanel = memo(() => {
     const activeTab = useAtomValue(model.activeTab);
     const focusType = useAtomValue(BuilderFocusManager.getInstance().focusType);
     const isAppFocused = focusType === "app";
-    const envSaveNeeded = useAtomValue(model.envVarsDirtyAtom);
     const builderAppId = useAtomValue(atoms.builderAppId);
     const builderId = useAtomValue(atoms.builderId);
+    const hasSecrets = useAtomValue(model.hasSecretsAtom);
 
     useEffect(() => {
         model.initialize();
@@ -241,12 +242,6 @@ const BuilderAppPanel = memo(() => {
         [model]
     );
 
-    const handleEnvSave = useCallback(() => {
-        if (builderId) {
-            model.saveEnvVars(builderId);
-        }
-    }, [builderId, model]);
-
     const handleRestart = useCallback(() => {
         model.restartBuilder();
     }, [model]);
@@ -256,6 +251,30 @@ const BuilderAppPanel = memo(() => {
         const appName = builderAppId.replace("draft/", "");
         modalsModel.pushModal("PublishAppModal", { appName });
     }, [builderAppId]);
+
+    const handleSwitchAppClick = useCallback(() => {
+        model.switchBuilderApp();
+    }, [model]);
+
+    const handleKebabClick = useCallback(
+        (e: React.MouseEvent) => {
+            const menu: ContextMenuItem[] = [
+                {
+                    label: "Publish App",
+                    click: handlePublishClick,
+                },
+                {
+                    type: "separator",
+                },
+                {
+                    label: "Switch App",
+                    click: handleSwitchAppClick,
+                },
+            ];
+            ContextMenuModel.showContextMenu(menu, e);
+        },
+        [handleSwitchAppClick, handlePublishClick]
+    );
 
     return (
         <div
@@ -298,35 +317,31 @@ const BuilderAppPanel = memo(() => {
                             isAppFocused={isAppFocused}
                             onClick={() => handleTabClick("files")}
                         />
-                        <TabButton
-                            label="Env"
-                            tabType="env"
-                            isActive={activeTab === "env"}
-                            isAppFocused={isAppFocused}
-                            onClick={() => handleTabClick("env")}
-                        />
+                        {hasSecrets && (
+                            <TabButton
+                                label="Secrets"
+                                tabType="secrets"
+                                isActive={activeTab === "secrets"}
+                                isAppFocused={isAppFocused}
+                                onClick={() => handleTabClick("secrets")}
+                            />
+                        )}
                     </div>
-                    <div className="flex items-center gap-2 mr-4">
+                    <div className="flex items-center gap-2 mr-2">
                         <button
                             className="px-3 py-1 text-sm font-medium rounded bg-accent/80 text-primary hover:bg-accent transition-colors cursor-pointer"
                             onClick={handlePublishClick}
                         >
                             Publish App
                         </button>
-                    </div>
-                    {activeTab === "env" && (
                         <button
-                            className={cn(
-                                "mr-4 px-3 py-1 text-sm font-medium rounded transition-colors",
-                                envSaveNeeded
-                                    ? "bg-accent text-white hover:opacity-80 cursor-pointer"
-                                    : "bg-gray-600 text-gray-400 cursor-default"
-                            )}
-                            onClick={envSaveNeeded ? handleEnvSave : undefined}
+                            className="px-2 py-1 text-sm font-medium rounded hover:bg-secondary/10 transition-colors cursor-pointer"
+                            onClick={handleKebabClick}
+                            aria-label="More options"
                         >
-                            Save
+                            <i className="fa fa-ellipsis-vertical" />
                         </button>
-                    )}
+                    </div>
                 </div>
             </div>
             <ErrorStrip />
@@ -346,7 +361,7 @@ const BuilderAppPanel = memo(() => {
                         <BuilderFilesTab />
                     </ErrorBoundary>
                 </div>
-                <div className="w-full h-full" style={{ display: activeTab === "env" ? "block" : "none" }}>
+                <div className="w-full h-full" style={{ display: activeTab === "secrets" ? "block" : "none" }}>
                     <ErrorBoundary>
                         <BuilderEnvTab />
                     </ErrorBoundary>

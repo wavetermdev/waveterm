@@ -70,7 +70,6 @@ declare global {
         builderId: string;
         clientId: string;
         windowId: string;
-        appId: string;
     };
 
     type ElectronApi = {
@@ -128,6 +127,7 @@ declare global {
         nativePaste: () => void; // native-paste
         openBuilder: (appId?: string) => void; // open-builder
         setBuilderWindowAppId: (appId: string) => void; // set-builder-window-appid
+        doRefresh: () => void; // do-refresh
     };
 
     type ElectronContextMenuItem = {

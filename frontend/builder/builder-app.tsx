@@ -4,7 +4,7 @@
 import { AppSelectionModal } from "@/builder/app-selection-modal";
 import { BuilderWorkspace } from "@/builder/builder-workspace";
 import { ModalsRenderer } from "@/app/modals/modalsrenderer";
-import { atoms, globalStore } from "@/store/global";
+import { atoms, globalStore, isDev } from "@/store/global";
 import { appHandleKeyDown } from "@/store/keymodel";
 import * as keyutil from "@/util/keyutil";
 import { isBlank } from "@/util/util";
@@ -38,9 +38,14 @@ function BuilderAppInner() {
         <div className="w-full h-full flex flex-col bg-main-bg text-main-text">
             <BuilderKeyHandlers />
             <div
-                className="h-9 shrink-0 border-b border-b-border flex items-center justify-center"
+                className="h-9 shrink-0 border-b border-b-border flex items-center justify-center gap-2"
                 style={{ WebkitAppRegion: "drag" } as React.CSSProperties}
             >
+                {isDev() ? (
+                    <div className="text-accent text-xl" title="Running Wave Dev Build">
+                        <i className="fa fa-brands fa-dev fa-fw" />
+                    </div>
+                ) : null}
                 <div className="text-sm font-medium">
                     WaveApp Builder{!isBlank(builderAppId) && ` (${builderAppId})`}
                 </div>

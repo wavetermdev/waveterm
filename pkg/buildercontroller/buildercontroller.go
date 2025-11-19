@@ -88,6 +88,12 @@ func GetOrCreateController(builderId string) *BuilderController {
 	return bc
 }
 
+func GetController(builderId string) *BuilderController {
+	mapLock.Lock()
+	defer mapLock.Unlock()
+	return controllerMap[builderId]
+}
+
 func DeleteController(builderId string) {
 	mapLock.Lock()
 	bc := controllerMap[builderId]
@@ -153,7 +159,6 @@ func (bc *BuilderController) Start(ctx context.Context, appId string, builderEnv
 	if err := bc.waitForBuildDone(ctx); err != nil {
 		return err
 	}
-
 	bc.lock.Lock()
 	defer bc.lock.Unlock()
 
@@ -301,12 +306,12 @@ func (bc *BuilderController) runBuilderApp(ctx context.Context, appId string, ap
 
 	secretBindings, err := waveappstore.ReadAppSecretBindings(appId)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read secret bindings: %w", err)
+		return nil, fmt.Errorf("failed to read secret bindings (ERR-SECRET): %w", err)
 	}
 
 	secretEnv, err := waveappstore.BuildAppSecretEnv(appId, manifest, secretBindings)
 	if err != nil {
-		return nil, fmt.Errorf("failed to build secret environment: %w", err)
+		return nil, fmt.Errorf("failed to build secret environment (ERR-SECRET): %w", err)
 	}
 
 	if builderEnv == nil {
@@ -578,7 +583,6 @@ func (bc *BuilderController) publishOutputLine(line string, reset bool) {
 		},
 	})
 }
-
 
 func exitCodeFromWaitErr(waitErr error) int {
 	if waitErr == nil {
