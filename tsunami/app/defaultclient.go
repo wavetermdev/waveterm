@@ -5,6 +5,8 @@ package app
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
 	"io"
 	"io/fs"
 	"log"
@@ -47,11 +49,11 @@ func SetGlobalEventHandler(handler func(event vdom.VDomEvent)) {
 	engine.GetDefaultClient().SetGlobalEventHandler(handler)
 }
 
-// RegisterSetupFn registers a single setup function that is called before the app starts running.
+// RegisterAppInitFn registers a single setup function that is called before the app starts running.
 // Only one setup function is allowed, so calling this will replace any previously registered
 // setup function.
-func RegisterSetupFn(fn func()) {
-	engine.GetDefaultClient().RegisterSetupFn(fn)
+func RegisterAppInitFn(fn func() error) {
+	engine.GetDefaultClient().RegisterAppInitFn(fn)
 }
 
 // SendAsyncInitiation notifies the frontend that the backend has updated state
@@ -207,10 +209,10 @@ func PrintAppManifest() {
 func ReadStaticFile(path string) ([]byte, error) {
 	client := engine.GetDefaultClient()
 	if client.StaticFS == nil {
-		return nil, fs.ErrNotExist
+		return nil, errors.New("static files not available before app initialization; use AppInit to access files during initialization")
 	}
 	if !strings.HasPrefix(path, "static/") {
-		return nil, fs.ErrNotExist
+		return nil, fmt.Errorf("ReadStaticFile path must start with 'static/': %w", fs.ErrNotExist)
 	}
 	// Strip "static/" prefix since the FS is already sub'd to the static directory
 	relativePath := strings.TrimPrefix(path, "static/")
@@ -223,10 +225,10 @@ func ReadStaticFile(path string) ([]byte, error) {
 func OpenStaticFile(path string) (fs.File, error) {
 	client := engine.GetDefaultClient()
 	if client.StaticFS == nil {
-		return nil, fs.ErrNotExist
+		return nil, errors.New("static files not available before app initialization; use AppInit to access files during initialization")
 	}
 	if !strings.HasPrefix(path, "static/") {
-		return nil, fs.ErrNotExist
+		return nil, fmt.Errorf("OpenStaticFile path must start with 'static/': %w", fs.ErrNotExist)
 	}
 	// Strip "static/" prefix since the FS is already sub'd to the static directory
 	relativePath := strings.TrimPrefix(path, "static/")

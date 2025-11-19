@@ -73,7 +73,7 @@ type ClientImpl struct {
 	SSEChannelsLock    *sync.Mutex
 	GlobalEventHandler func(event vdom.VDomEvent)
 	UrlHandlerMux      *http.ServeMux
-	SetupFn            func()
+	AppInitFn          func() error
 	AssetsFS           fs.FS
 	StaticFS           fs.FS
 	ManifestFileBytes  []byte
@@ -180,8 +180,11 @@ func (c *ClientImpl) makeBackendOpts() *rpctypes.VDomBackendOpts {
 }
 
 func (c *ClientImpl) runMainE() error {
-	if c.SetupFn != nil {
-		c.SetupFn()
+	if c.AppInitFn != nil {
+		err := c.AppInitFn()
+		if err != nil {
+			return err
+		}
 	}
 	err := c.listenAndServe(context.Background())
 	if err != nil {
@@ -191,8 +194,8 @@ func (c *ClientImpl) runMainE() error {
 	return nil
 }
 
-func (c *ClientImpl) RegisterSetupFn(fn func()) {
-	c.SetupFn = fn
+func (c *ClientImpl) RegisterAppInitFn(fn func() error) {
+	c.AppInitFn = fn
 }
 
 func (c *ClientImpl) RunMain() {

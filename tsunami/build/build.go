@@ -1,11 +1,12 @@
+// Copyright 2025, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
 package build
 
 import (
 	"archive/zip"
 	"bufio"
 	"fmt"
-	"go/parser"
-	"go/token"
 	"io"
 	"io/fs"
 	"log"
@@ -28,6 +29,7 @@ import (
 
 const MinSupportedGoMinorVersion = 22
 const TsunamiUIImportPath = "github.com/wavetermdev/waveterm/tsunami/ui"
+const MainAppFileName = "app.go"
 
 type OutputCapture struct {
 	lock       sync.Mutex
@@ -446,9 +448,8 @@ func createGoMod(tempDir, appNS, appName string, buildEnv *BuildEnv, opts BuildO
 }
 
 func verifyAppPathFs(fsys fs.FS) error {
-	// Check for app.go file
-	if err := checkFileExistsFS(fsys, "app.go"); err != nil {
-		return fmt.Errorf("app.go check failed: %w", err)
+	if err := checkFileExistsFS(fsys, MainAppFileName); err != nil {
+		return fmt.Errorf("%s check failed: %w", MainAppFileName, err)
 	}
 
 	// Check static directory if it exists
@@ -468,10 +469,10 @@ func GetAppModTime(appPath string) (time.Time, error) {
 		return info.ModTime(), nil
 	}
 
-	appGoPath := filepath.Join(appPath, "app.go")
+	appGoPath := filepath.Join(appPath, MainAppFileName)
 	info, err := os.Stat(appGoPath)
 	if err != nil {
-		return time.Time{}, fmt.Errorf("failed to get app.go mod time: %w", err)
+		return time.Time{}, fmt.Errorf("failed to get %s mod time: %w", MainAppFileName, err)
 	}
 	return info.ModTime(), nil
 }
@@ -486,8 +487,12 @@ func verifyScaffoldFs(fsys fs.FS) error {
 		return fmt.Errorf("dist directory must exist in scaffold")
 	}
 
-	// Check for app-main.go file
-	if err := checkFileExistsFS(fsys, "app-main.go"); err != nil {
+	// Check for app-main.go.tmpl file
+	if err := checkFileExistsFS(fsys, "app-main.go.tmpl"); err != nil {
+		return fmt.Errorf("app-main.go check failed: %w", err)
+	}
+	// Check for app-init.go.tmpl file
+	if err := checkFileExistsFS(fsys, "app-main.go.tmpl"); err != nil {
 		return fmt.Errorf("app-main.go check failed: %w", err)
 	}
 
@@ -511,31 +516,6 @@ func verifyScaffoldFs(fsys fs.FS) error {
 	}
 
 	return nil
-}
-
-func buildImportsMap(dir string) (map[string]bool, error) {
-	imports := make(map[string]bool)
-
-	files, err := filepath.Glob(filepath.Join(dir, "*.go"))
-	if err != nil {
-		return nil, fmt.Errorf("failed to list go files: %w", err)
-	}
-
-	fset := token.NewFileSet()
-	for _, file := range files {
-		node, err := parser.ParseFile(fset, file, nil, parser.ImportsOnly)
-		if err != nil {
-			continue // Skip files that can't be parsed
-		}
-
-		for _, imp := range node.Imports {
-			// Remove quotes from import path
-			importPath := strings.Trim(imp.Path.Value, `"`)
-			imports[importPath] = true
-		}
-	}
-
-	return imports, nil
 }
 
 func (be *BuildEnv) cleanupTempDir(keepTemp bool, verbose bool) {
@@ -615,6 +595,11 @@ func TsunamiBuildInternal(opts BuildOpts) (*BuildEnv, error) {
 		return nil, err
 	}
 
+	appInfo, err := parseAndValidateAppFile(appFS)
+	if err != nil {
+		return nil, err
+	}
+
 	// Create temporary directory
 	tempDir, err := os.MkdirTemp("", "tsunami-build-*")
 	if err != nil {
@@ -637,7 +622,7 @@ func TsunamiBuildInternal(opts BuildOpts) (*BuildEnv, error) {
 	}
 
 	// Copy scaffold directory contents selectively
-	scaffoldCount, err := copyScaffoldFS(scaffoldFS, tempDir, opts.Verbose, oc)
+	scaffoldCount, err := copyScaffoldFS(scaffoldFS, tempDir, appInfo.HasAppInit, opts.Verbose, oc)
 	if err != nil {
 		return buildEnv, fmt.Errorf("failed to copy scaffold directory: %w", err)
 	}
@@ -645,13 +630,6 @@ func TsunamiBuildInternal(opts BuildOpts) (*BuildEnv, error) {
 	if opts.Verbose {
 		oc.Printf("[debug] Copied %d go files, %d static files, %d scaffold files (go.mod: %t, go.sum: %t)",
 			copyStats.GoFiles, copyStats.StaticFiles, scaffoldCount, copyStats.GoMod, copyStats.GoSum)
-	}
-
-	// Copy app-main.go from scaffold to main-app.go in temp dir
-	appMainSrc := filepath.Join(tempDir, "app-main.go")
-	appMainDest := filepath.Join(tempDir, "main-app.go")
-	if err := os.Rename(appMainSrc, appMainDest); err != nil {
-		return buildEnv, fmt.Errorf("failed to rename app-main.go to main-app.go: %w", err)
 	}
 
 	// Create go.mod file
@@ -1090,7 +1068,7 @@ func ParseTsunamiPort(line string) int {
 	return port
 }
 
-func copyScaffoldFS(scaffoldFS fs.FS, destDir string, verbose bool, oc *OutputCapture) (int, error) {
+func copyScaffoldFS(scaffoldFS fs.FS, destDir string, hasAppInit bool, verbose bool, oc *OutputCapture) (int, error) {
 	fileCount := 0
 
 	// Handle nm (node_modules) directory - prefer symlink if possible, otherwise copy
@@ -1153,8 +1131,24 @@ func copyScaffoldFS(scaffoldFS fs.FS, destDir string, verbose bool, oc *OutputCa
 	}
 	fileCount += dirCount
 
-	// Copy files by pattern (*.go, *.md, *.json, tailwind.css)
-	patterns := []string{"*.go", "*.md", "*.json", "tailwind.css"}
+	// Always copy app-main.go.tmpl => app-main.go
+	destPath := filepath.Join(destDir, "app-main.go")
+	if err := CopyFileFromFS(scaffoldFS, "app-main.go.tmpl", destPath); err != nil {
+		return 0, fmt.Errorf("failed to copy app-main.go.tmpl: %w", err)
+	}
+	fileCount++
+
+	// Conditionally copy app-init.go.tmpl => app-init.go
+	if hasAppInit {
+		destPath := filepath.Join(destDir, "app-init.go")
+		if err := CopyFileFromFS(scaffoldFS, "app-init.go.tmpl", destPath); err != nil {
+			return 0, fmt.Errorf("failed to copy app-init.go.tmpl: %w", err)
+		}
+		fileCount++
+	}
+
+	// Copy files by pattern (*.md, *.json, tailwind.css)
+	patterns := []string{"*.md", "*.json", "tailwind.css"}
 
 	for _, pattern := range patterns {
 		matches, err := fs.Glob(scaffoldFS, pattern)
