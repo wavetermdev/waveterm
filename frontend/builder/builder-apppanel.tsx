@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { Modal } from "@/app/modals/modal";
+import { ContextMenuModel } from "@/app/store/contextmenu";
 import { modalsModel } from "@/app/store/modalmodel";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
@@ -251,6 +252,30 @@ const BuilderAppPanel = memo(() => {
         modalsModel.pushModal("PublishAppModal", { appName });
     }, [builderAppId]);
 
+    const handleSwitchAppClick = useCallback(() => {
+        model.switchBuilderApp();
+    }, [model]);
+
+    const handleKebabClick = useCallback(
+        (e: React.MouseEvent) => {
+            const menu: ContextMenuItem[] = [
+                {
+                    label: "Publish App",
+                    click: handlePublishClick,
+                },
+                {
+                    type: "separator",
+                },
+                {
+                    label: "Switch App",
+                    click: handleSwitchAppClick,
+                },
+            ];
+            ContextMenuModel.showContextMenu(menu, e);
+        },
+        [handleSwitchAppClick, handlePublishClick]
+    );
+
     return (
         <div
             className="w-full h-full flex flex-col border-b-3 border-border shadow-[0_2px_4px_rgba(0,0,0,0.1)]"
@@ -302,12 +327,19 @@ const BuilderAppPanel = memo(() => {
                             />
                         )}
                     </div>
-                    <div className="flex items-center gap-2 mr-4">
+                    <div className="flex items-center gap-2 mr-2">
                         <button
                             className="px-3 py-1 text-sm font-medium rounded bg-accent/80 text-primary hover:bg-accent transition-colors cursor-pointer"
                             onClick={handlePublishClick}
                         >
                             Publish App
+                        </button>
+                        <button
+                            className="px-2 py-1 text-sm font-medium rounded hover:bg-secondary/10 transition-colors cursor-pointer"
+                            onClick={handleKebabClick}
+                            aria-label="More options"
+                        >
+                            <i className="fa fa-ellipsis-vertical" />
                         </button>
                     </div>
                 </div>

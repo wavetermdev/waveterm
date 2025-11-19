@@ -5,7 +5,7 @@ import { globalStore } from "@/app/store/jotaiStore";
 import { waveEventSubscribe } from "@/app/store/wps";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
-import { atoms, WOS } from "@/store/global";
+import { atoms, getApi, WOS } from "@/store/global";
 import { base64ToString, stringToBase64 } from "@/util/util";
 import { atom, type Atom, type PrimitiveAtom } from "jotai";
 import { debounce } from "throttle-debounce";
@@ -216,6 +216,24 @@ export class BuilderAppPanelModel {
         } catch (err) {
             console.error("Failed to restart builder:", err);
             globalStore.set(this.errorAtom, `Failed to restart builder: ${err.message || "Unknown error"}`);
+        }
+    }
+
+    async switchBuilderApp() {
+        const builderId = globalStore.get(atoms.builderId);
+        try {
+            await RpcApi.ControllerStopCommand(TabRpcClient, builderId);
+            await new Promise((resolve) => setTimeout(resolve, 500));
+            await RpcApi.SetRTInfoCommand(TabRpcClient, {
+                oref: WOS.makeORef("builder", builderId),
+                data: { "builder:appid": null },
+            });
+            getApi().setBuilderWindowAppId(null);
+            await new Promise((resolve) => setTimeout(resolve, 100));
+            getApi().doRefresh();
+        } catch (err) {
+            console.error("Failed to switch builder app:", err);
+            globalStore.set(this.errorAtom, `Failed to switch builder app: ${err.message || "Unknown error"}`);
         }
     }
 

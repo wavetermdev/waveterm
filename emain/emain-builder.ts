@@ -13,6 +13,7 @@ import { ElectronWshClient } from "./emain-wsh";
 
 export type BuilderWindowType = BrowserWindow & {
     builderId: string;
+    builderAppId?: string;
     savedInitOpts: BuilderInitOpts;
 };
 
@@ -38,6 +39,14 @@ export async function createBuilderWindow(appId: string): Promise<BuilderWindowT
     const clientData = await ClientService.GetClientData();
     const clientId = clientData?.oid;
     const windowId = randomUUID();
+
+    if (appId) {
+        const oref = `builder:${builderId}`;
+        await RpcApi.SetRTInfoCommand(ElectronWshClient, {
+            oref,
+            data: { "builder:appid": appId },
+        });
+    }
 
     const winBounds = calculateWindowBounds(undefined, undefined, fullConfig.settings);
 
@@ -71,11 +80,11 @@ export async function createBuilderWindow(appId: string): Promise<BuilderWindowT
         builderId,
         clientId,
         windowId,
-        appId,
     };
 
     const typedBuilderWindow = builderWindow as BuilderWindowType;
     typedBuilderWindow.builderId = builderId;
+    typedBuilderWindow.builderAppId = appId;
     typedBuilderWindow.savedInitOpts = initOpts;
 
     typedBuilderWindow.on("focus", () => {
