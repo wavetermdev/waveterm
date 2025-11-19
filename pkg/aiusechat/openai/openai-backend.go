@@ -94,11 +94,14 @@ type OpenAIMessageContent struct {
 }
 
 func (c *OpenAIMessageContent) clean() *OpenAIMessageContent {
-	if c.PreviewUrl == "" {
+	if c.PreviewUrl == "" && (c.Type != "input_image" || c.Filename == "") {
 		return c
 	}
 	rtn := *c
 	rtn.PreviewUrl = ""
+	if c.Type == "input_image" {
+		rtn.Filename = ""
+	}
 	return &rtn
 }
 

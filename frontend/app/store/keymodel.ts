@@ -236,6 +236,9 @@ function switchBlockInDirection(direction: NavigateDirection) {
         }
         if (numBlocks === 1) {
             FocusManager.getInstance().requestWaveAIFocus();
+            setTimeout(() => {
+                FocusManager.getInstance().refocusNode();
+            }, 10);
             return;
         }
     }
@@ -249,6 +252,9 @@ function switchBlockInDirection(direction: NavigateDirection) {
     const navResult = layoutModel.switchNodeFocusInDirection(direction, inWaveAI);
     if (navResult.atLeft) {
         FocusManager.getInstance().requestWaveAIFocus();
+        setTimeout(() => {
+            FocusManager.getInstance().refocusNode();
+        }, 10);
         return;
     }
     setTimeout(() => {

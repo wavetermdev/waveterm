@@ -45,6 +45,7 @@ func convertContentBlockToParts(block OpenAIMessageContent, role string) []uctyp
 			parts = append(parts, uctypes.UIMessagePart{
 				Type: "data-userfile",
 				Data: uctypes.UIMessageDataUserFile{
+					FileName:   block.Filename,
 					MimeType:   "image/*",
 					PreviewUrl: block.PreviewUrl,
 				},
@@ -317,6 +318,7 @@ func convertFileAIMessagePart(part uctypes.AIMessagePart) (*OpenAIMessageContent
 		return &OpenAIMessageContent{
 			Type:       "input_image",
 			ImageUrl:   imageUrl,
+			Filename:   part.FileName,
 			PreviewUrl: part.PreviewUrl,
 		}, nil
 
