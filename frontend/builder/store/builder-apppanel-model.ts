@@ -208,21 +208,13 @@ export class BuilderAppPanelModel {
     }
 
     async restartBuilder() {
-        const builderId = globalStore.get(atoms.builderId);
-        try {
-            await RpcApi.ControllerStopCommand(TabRpcClient, builderId);
-            await new Promise((resolve) => setTimeout(resolve, 500));
-            await this.startBuilder();
-        } catch (err) {
-            console.error("Failed to restart builder:", err);
-            globalStore.set(this.errorAtom, `Failed to restart builder: ${err.message || "Unknown error"}`);
-        }
+        return this.restartBuilder();
     }
 
     async switchBuilderApp() {
         const builderId = globalStore.get(atoms.builderId);
         try {
-            await RpcApi.ControllerStopCommand(TabRpcClient, builderId);
+            await RpcApi.StopBuilderCommand(TabRpcClient, builderId);
             await new Promise((resolve) => setTimeout(resolve, 500));
             await RpcApi.SetRTInfoCommand(TabRpcClient, {
                 oref: WOS.makeORef("builder", builderId),

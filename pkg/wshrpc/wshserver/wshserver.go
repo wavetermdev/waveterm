@@ -1083,6 +1083,14 @@ func (ws *WshServer) StartBuilderCommand(ctx context.Context, data wshrpc.Comman
 	return bc.Start(ctx, appId, rtInfo.BuilderEnv)
 }
 
+func (ws *WshServer) StopBuilderCommand(ctx context.Context, builderId string) error {
+	if builderId == "" {
+		return fmt.Errorf("must provide a builderId to StopBuilderCommand")
+	}
+	bc := buildercontroller.GetOrCreateController(builderId)
+	return bc.Stop()
+}
+
 func (ws *WshServer) RestartBuilderAndWaitCommand(ctx context.Context, data wshrpc.CommandRestartBuilderAndWaitData) (*wshrpc.RestartBuilderAndWaitResult, error) {
 	if data.BuilderId == "" {
 		return nil, fmt.Errorf("must provide a builderId to RestartBuilderAndWaitCommand")

@@ -153,6 +153,7 @@ func (bc *BuilderController) Start(ctx context.Context, appId string, builderEnv
 	if err := bc.waitForBuildDone(ctx); err != nil {
 		return err
 	}
+	log.Printf("*** BC %s\n", appId)
 
 	bc.lock.Lock()
 	defer bc.lock.Unlock()

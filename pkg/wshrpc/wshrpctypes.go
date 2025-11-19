@@ -343,6 +343,7 @@ type WshRpcInterface interface {
 	WriteAppSecretBindingsCommand(ctx context.Context, data CommandWriteAppSecretBindingsData) error
 	DeleteBuilderCommand(ctx context.Context, builderId string) error
 	StartBuilderCommand(ctx context.Context, data CommandStartBuilderData) error
+	StopBuilderCommand(ctx context.Context, builderId string) error
 	RestartBuilderAndWaitCommand(ctx context.Context, data CommandRestartBuilderAndWaitData) (*RestartBuilderAndWaitResult, error)
 	GetBuilderStatusCommand(ctx context.Context, builderId string) (*BuilderStatusData, error)
 	GetBuilderOutputCommand(ctx context.Context, builderId string) ([]string, error)
