@@ -4,10 +4,6 @@
 package aiusechat
 
 import (
-	"fmt"
-
-	"github.com/wavetermdev/waveterm/pkg/aiusechat/anthropic"
-	"github.com/wavetermdev/waveterm/pkg/aiusechat/openai"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
 )
 
@@ -75,18 +71,12 @@ func ConvertAIChatToUIChat(aiChat *uctypes.AIChat) (*uctypes.UIChat, error) {
 		return nil, nil
 	}
 
-	var uiChat *uctypes.UIChat
-	var err error
-
-	switch aiChat.APIType {
-	case "openai":
-		uiChat, err = openai.ConvertAIChatToUIChat(*aiChat)
-	case "anthropic":
-		uiChat, err = anthropic.ConvertAIChatToUIChat(*aiChat)
-	default:
-		return nil, fmt.Errorf("unsupported APIType: %s", aiChat.APIType)
+	backend, err := GetBackendByAPIType(aiChat.APIType)
+	if err != nil {
+		return nil, err
 	}
 
+	uiChat, err := backend.ConvertAIChatToUIChat(*aiChat)
 	if err != nil {
 		return nil, err
 	}

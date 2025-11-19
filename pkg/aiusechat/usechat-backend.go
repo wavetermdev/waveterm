@@ -40,9 +40,9 @@ type UseChatBackend interface {
 	ConvertAIMessageToNativeChatMessage(message uctypes.AIMessage) (uctypes.GenAIMessage, error)
 
 	// GetFunctionCallInputByToolCallId retrieves the function call input data for a specific
-	// tool call ID from the chat history. Returns the backend-specific function call structure
+	// tool call ID from the chat history. Returns the function call structure
 	// or nil if not found.
-	GetFunctionCallInputByToolCallId(aiChat uctypes.AIChat, toolCallId string) interface{}
+	GetFunctionCallInputByToolCallId(aiChat uctypes.AIChat, toolCallId string) *uctypes.AIFunctionCallInput
 
 	// ConvertAIChatToUIChat converts a stored AIChat (with native backend messages) into
 	// a UI-friendly UIChat format that can be displayed in the frontend.
@@ -102,8 +102,17 @@ func (b *openaiResponsesBackend) ConvertAIMessageToNativeChatMessage(message uct
 	return openai.ConvertAIMessageToOpenAIChatMessage(message)
 }
 
-func (b *openaiResponsesBackend) GetFunctionCallInputByToolCallId(aiChat uctypes.AIChat, toolCallId string) interface{} {
-	return openai.GetFunctionCallInputByToolCallId(aiChat, toolCallId)
+func (b *openaiResponsesBackend) GetFunctionCallInputByToolCallId(aiChat uctypes.AIChat, toolCallId string) *uctypes.AIFunctionCallInput {
+	openaiInput := openai.GetFunctionCallInputByToolCallId(aiChat, toolCallId)
+	if openaiInput == nil {
+		return nil
+	}
+	return &uctypes.AIFunctionCallInput{
+		CallId:      openaiInput.CallId,
+		Name:        openaiInput.Name,
+		Arguments:   openaiInput.Arguments,
+		ToolUseData: openaiInput.ToolUseData,
+	}
 }
 
 func (b *openaiResponsesBackend) ConvertAIChatToUIChat(aiChat uctypes.AIChat) (*uctypes.UIChat, error) {
@@ -139,7 +148,7 @@ func (b *anthropicBackend) ConvertAIMessageToNativeChatMessage(message uctypes.A
 	return anthropic.ConvertAIMessageToAnthropicChatMessage(message)
 }
 
-func (b *anthropicBackend) GetFunctionCallInputByToolCallId(aiChat uctypes.AIChat, toolCallId string) interface{} {
+func (b *anthropicBackend) GetFunctionCallInputByToolCallId(aiChat uctypes.AIChat, toolCallId string) *uctypes.AIFunctionCallInput {
 	return nil
 }
 

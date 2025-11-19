@@ -273,6 +273,13 @@ type AIMetrics struct {
 	ThinkingMode      string         `json:"thinkingmode,omitempty"`
 }
 
+type AIFunctionCallInput struct {
+	CallId      string                `json:"call_id"`
+	Name        string                `json:"name"`
+	Arguments   string                `json:"arguments"`
+	ToolUseData *UIMessageDataToolUse `json:"toolusedata,omitempty"`
+}
+
 // GenAIMessage interface for messages stored in conversations
 // All messages must have a unique identifier for idempotency checks
 type GenAIMessage interface {
