@@ -475,6 +475,14 @@ func (opts *WaveChatOpts) GetToolDefinition(toolName string) *ToolDefinition {
 	return nil
 }
 
+func (opts *WaveChatOpts) GetWaveRequestType() string {
+	if opts.BuilderId != "" {
+		return "waveapps-builder"
+	} else {
+		return "waveai"
+	}
+}
+
 type ProxyErrorResponse struct {
 	Success bool   `json:"success"`
 	Error   string `json:"error"`

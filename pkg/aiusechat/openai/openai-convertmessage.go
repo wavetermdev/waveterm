@@ -4,22 +4,18 @@
 package openai
 
 import (
-	"bytes"
 	"context"
-	"crypto/sha256"
 	"encoding/base64"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
 	"net/http"
-	"strconv"
 	"strings"
 
 	"github.com/google/uuid"
+	"github.com/wavetermdev/waveterm/pkg/aiusechat/aiutil"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
-	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 )
 
@@ -28,46 +24,46 @@ const (
 	OpenAIDefaultMaxTokens  = 4096
 )
 
-// extractXmlAttribute extracts an attribute value from an XML-like tag.
-// Expects double-quoted strings where internal quotes are encoded as &quot;.
-// Returns the unquoted value and true if found, or empty string and false if not found or invalid.
-func extractXmlAttribute(tag, attrName string) (string, bool) {
-	attrStart := strings.Index(tag, attrName+"=")
-	if attrStart == -1 {
-		return "", false
+// convertContentBlockToParts converts a single content block to UIMessageParts
+func convertContentBlockToParts(block OpenAIMessageContent, role string) []uctypes.UIMessagePart {
+	var parts []uctypes.UIMessagePart
+
+	switch block.Type {
+	case "input_text", "output_text":
+		if found, part := aiutil.ConvertDataUserFile(block.Text); found {
+			if part != nil {
+				parts = append(parts, *part)
+			}
+		} else {
+			parts = append(parts, uctypes.UIMessagePart{
+				Type: "text",
+				Text: block.Text,
+			})
+		}
+	case "input_image":
+		if role == "user" {
+			parts = append(parts, uctypes.UIMessagePart{
+				Type: "data-userfile",
+				Data: uctypes.UIMessageDataUserFile{
+					MimeType:   "image/*",
+					PreviewUrl: block.PreviewUrl,
+				},
+			})
+		}
+	case "input_file":
+		if role == "user" {
+			parts = append(parts, uctypes.UIMessagePart{
+				Type: "data-userfile",
+				Data: uctypes.UIMessageDataUserFile{
+					FileName:   block.Filename,
+					MimeType:   "application/pdf",
+					PreviewUrl: block.PreviewUrl,
+				},
+			})
+		}
 	}
 
-	pos := attrStart + len(attrName+"=")
-	start := strings.Index(tag[pos:], `"`)
-	if start == -1 {
-		return "", false
-	}
-	start += pos
-
-	end := strings.Index(tag[start+1:], `"`)
-	if end == -1 {
-		return "", false
-	}
-	end += start + 1
-
-	quotedValue := tag[start : end+1]
-	value, err := strconv.Unquote(quotedValue)
-	if err != nil {
-		return "", false
-	}
-
-	value = strings.ReplaceAll(value, "&quot;", `"`)
-	return value, true
-}
-
-// generateDeterministicSuffix creates an 8-character hash from input strings
-func generateDeterministicSuffix(inputs ...string) string {
-	hasher := sha256.New()
-	for _, input := range inputs {
-		hasher.Write([]byte(input))
-	}
-	hash := hasher.Sum(nil)
-	return hex.EncodeToString(hash)[:8]
+	return parts
 }
 
 // appendToLastUserMessage appends a text block to the last user message in the inputs slice
@@ -146,12 +142,11 @@ type OpenAIRequestTool struct {
 
 // ConvertToolDefinitionToOpenAI converts a generic ToolDefinition to OpenAI format
 func ConvertToolDefinitionToOpenAI(tool uctypes.ToolDefinition) OpenAIRequestTool {
-	cleanedTool := tool.Clean()
 	return OpenAIRequestTool{
-		Name:        cleanedTool.Name,
-		Description: cleanedTool.Description,
-		Parameters:  cleanedTool.InputSchema,
-		Strict:      cleanedTool.Strict,
+		Name:        tool.Name,
+		Description: tool.Description,
+		Parameters:  tool.InputSchema,
+		Strict:      tool.Strict,
 		Type:        "function",
 	}
 }
@@ -218,14 +213,13 @@ func buildOpenAIHTTPRequest(ctx context.Context, inputs []any, chatOpts uctypes.
 		maxTokens = OpenAIDefaultMaxTokens
 	}
 
+	// injected data
 	if chatOpts.TabState != "" {
 		appendToLastUserMessage(inputs, chatOpts.TabState)
 	}
-
 	if chatOpts.AppStaticFiles != "" {
 		appendToLastUserMessage(inputs, "<CurrentAppStaticFiles>\n"+chatOpts.AppStaticFiles+"\n</CurrentAppStaticFiles>")
 	}
-
 	if chatOpts.AppGoFile != "" {
 		appendToLastUserMessage(inputs, "<CurrentAppGoFile>\n"+chatOpts.AppGoFile+"\n</CurrentAppGoFile>")
 	}
@@ -276,29 +270,18 @@ func buildOpenAIHTTPRequest(ctx context.Context, inputs []any, chatOpts uctypes.
 		}
 	}
 
-	// Set temperature if provided
-	if opts.APIVersion != "" && opts.APIVersion != OpenAIDefaultAPIVersion {
-		// Temperature and other parameters could be set here based on config
-		// For now, using defaults
-	}
-
 	debugPrintReq(reqBody, endpoint)
 
 	// Encode request body
-	var buf bytes.Buffer
-	encoder := json.NewEncoder(&buf)
-	encoder.SetEscapeHTML(false)
-	err := encoder.Encode(reqBody)
+	buf, err := aiutil.JsonEncodeRequestBody(reqBody)
 	if err != nil {
 		return nil, err
 	}
-
 	// Create HTTP request
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, &buf)
 	if err != nil {
 		return nil, err
 	}
-
 	// Set headers
 	req.Header.Set("Content-Type", "application/json")
 	if opts.APIToken != "" {
@@ -309,11 +292,7 @@ func buildOpenAIHTTPRequest(ctx context.Context, inputs []any, chatOpts uctypes.
 		req.Header.Set("X-Wave-ClientId", chatOpts.ClientId)
 	}
 	req.Header.Set("X-Wave-APIType", "openai")
-	if chatOpts.BuilderId != "" {
-		req.Header.Set("X-Wave-RequestType", "waveapps-builder")
-	} else {
-		req.Header.Set("X-Wave-RequestType", "waveai")
-	}
+	req.Header.Set("X-Wave-RequestType", chatOpts.GetWaveRequestType())
 
 	return req, nil
 }
@@ -330,23 +309,9 @@ func convertFileAIMessagePart(part uctypes.AIMessagePart) (*OpenAIMessageContent
 	// Handle different file types
 	switch {
 	case strings.HasPrefix(part.MimeType, "image/"):
-		// Handle images
-		var imageUrl string
-
-		if part.URL != "" {
-			// Validate URL protocol - only allow data:, http:, https:
-			if !strings.HasPrefix(part.URL, "data:") &&
-				!strings.HasPrefix(part.URL, "http://") &&
-				!strings.HasPrefix(part.URL, "https://") {
-				return nil, fmt.Errorf("unsupported URL protocol in file part: %s", part.URL)
-			}
-			imageUrl = part.URL
-		} else if len(part.Data) > 0 {
-			// Convert raw data to base64 data URL
-			base64Data := base64.StdEncoding.EncodeToString(part.Data)
-			imageUrl = fmt.Sprintf("data:%s;base64,%s", part.MimeType, base64Data)
-		} else {
-			return nil, fmt.Errorf("file part missing both url and data")
+		imageUrl, err := aiutil.ExtractImageUrl(part.Data, part.URL, part.MimeType)
+		if err != nil {
+			return nil, err
 		}
 
 		return &OpenAIMessageContent{
@@ -375,35 +340,11 @@ func convertFileAIMessagePart(part uctypes.AIMessagePart) (*OpenAIMessageContent
 		}, nil
 
 	case part.MimeType == "text/plain":
-		var textContent string
-
-		if len(part.Data) > 0 {
-			textContent = string(part.Data)
-		} else if part.URL != "" {
-			if strings.HasPrefix(part.URL, "data:") {
-				_, decodedData, err := utilfn.DecodeDataURL(part.URL)
-				if err != nil {
-					return nil, fmt.Errorf("failed to decode data URL for text/plain file: %w", err)
-				}
-				textContent = string(decodedData)
-			} else {
-				return nil, fmt.Errorf("dropping text/plain file with URL (must be fetched and converted to data)")
-			}
-		} else {
-			return nil, fmt.Errorf("text/plain file part missing data")
+		textData, err := aiutil.ExtractTextData(part.Data, part.URL)
+		if err != nil {
+			return nil, err
 		}
-
-		fileName := part.FileName
-		if fileName == "" {
-			fileName = "untitled.txt"
-		}
-
-		encodedFileName := strings.ReplaceAll(fileName, `"`, "&quot;")
-		quotedFileName := strconv.Quote(encodedFileName)
-
-		deterministicSuffix := generateDeterministicSuffix(textContent, fileName)
-		formattedText := fmt.Sprintf("<AttachedTextFile_%s file_name=%s>\n%s\n</AttachedTextFile_%s>", deterministicSuffix, quotedFileName, textContent, deterministicSuffix)
-
+		formattedText := aiutil.FormatAttachedTextFile(part.FileName, textData)
 		return &OpenAIMessageContent{
 			Type: "input_text",
 			Text: formattedText,
@@ -417,16 +358,7 @@ func convertFileAIMessagePart(part uctypes.AIMessagePart) (*OpenAIMessageContent
 			return nil, fmt.Errorf("directory listing part missing data")
 		}
 
-		directoryName := part.FileName
-		if directoryName == "" {
-			directoryName = "unnamed-directory"
-		}
-
-		encodedDirName := strings.ReplaceAll(directoryName, `"`, "&quot;")
-		quotedDirName := strconv.Quote(encodedDirName)
-
-		deterministicSuffix := generateDeterministicSuffix(jsonContent, directoryName)
-		formattedText := fmt.Sprintf("<AttachedDirectoryListing_%s directory_name=%s>\n%s\n</AttachedDirectoryListing_%s>", deterministicSuffix, quotedDirName, jsonContent, deterministicSuffix)
+		formattedText := aiutil.FormatAttachedDirectoryListing(part.FileName, jsonContent)
 
 		return &OpenAIMessageContent{
 			Type: "input_text",
@@ -548,81 +480,9 @@ func (m *OpenAIChatMessage) convertToUIMessage() *uctypes.UIMessage {
 	// Handle different message types
 	if m.Message != nil {
 		role = m.Message.Role
-		// Iterate over all content blocks
 		for _, block := range m.Message.Content {
-			switch block.Type {
-			case "input_text", "output_text":
-				if strings.HasPrefix(block.Text, "<AttachedTextFile_") {
-					openTagEnd := strings.Index(block.Text, "\n")
-					if openTagEnd == -1 || block.Text[openTagEnd-1] != '>' {
-						continue
-					}
-
-					openTag := block.Text[:openTagEnd]
-					fileName, ok := extractXmlAttribute(openTag, "file_name")
-					if !ok {
-						continue
-					}
-
-					parts = append(parts, uctypes.UIMessagePart{
-						Type: "data-userfile",
-						Data: uctypes.UIMessageDataUserFile{
-							FileName: fileName,
-							MimeType: "text/plain",
-						},
-					})
-				} else if strings.HasPrefix(block.Text, "<AttachedDirectoryListing_") {
-					openTagEnd := strings.Index(block.Text, "\n")
-					if openTagEnd == -1 || block.Text[openTagEnd-1] != '>' {
-						continue
-					}
-
-					openTag := block.Text[:openTagEnd]
-					directoryName, ok := extractXmlAttribute(openTag, "directory_name")
-					if !ok {
-						continue
-					}
-
-					parts = append(parts, uctypes.UIMessagePart{
-						Type: "data-userfile",
-						Data: uctypes.UIMessageDataUserFile{
-							FileName: directoryName,
-							MimeType: "directory",
-						},
-					})
-				} else {
-					parts = append(parts, uctypes.UIMessagePart{
-						Type: "text",
-						Text: block.Text,
-					})
-				}
-			case "input_image":
-				// Convert image blocks to data-userfile UIMessagePart (only for user role)
-				if role == "user" {
-					parts = append(parts, uctypes.UIMessagePart{
-						Type: "data-userfile",
-						Data: uctypes.UIMessageDataUserFile{
-							MimeType:   "image/*",
-							PreviewUrl: block.PreviewUrl,
-						},
-					})
-				}
-			case "input_file":
-				// Convert file blocks to data-userfile UIMessagePart (only for user role)
-				if role == "user" {
-					parts = append(parts, uctypes.UIMessagePart{
-						Type: "data-userfile",
-						Data: uctypes.UIMessageDataUserFile{
-							FileName:   block.Filename,
-							MimeType:   "application/pdf",
-							PreviewUrl: block.PreviewUrl,
-						},
-					})
-				}
-			default:
-				// Skip unknown types
-				continue
-			}
+			blockParts := convertContentBlockToParts(block, role)
+			parts = append(parts, blockParts...)
 		}
 	} else if m.FunctionCall != nil {
 		// Handle function call input
@@ -638,11 +498,9 @@ func (m *OpenAIChatMessage) convertToUIMessage() *uctypes.UIMessage {
 		// FunctionCallOutput messages are not converted to UIMessage
 		return nil
 	}
-
 	if len(parts) == 0 {
 		return nil
 	}
-
 	return &uctypes.UIMessage{
 		ID:    m.MessageId,
 		Role:  role,
@@ -655,21 +513,17 @@ func ConvertAIChatToUIChat(aiChat uctypes.AIChat) (*uctypes.UIChat, error) {
 	if aiChat.APIType != "openai" {
 		return nil, fmt.Errorf("APIType must be 'openai', got '%s'", aiChat.APIType)
 	}
-
 	uiMessages := make([]uctypes.UIMessage, 0, len(aiChat.NativeMessages))
-
 	for i, nativeMsg := range aiChat.NativeMessages {
 		openaiMsg, ok := nativeMsg.(*OpenAIChatMessage)
 		if !ok {
 			return nil, fmt.Errorf("message %d: expected *OpenAIChatMessage, got %T", i, nativeMsg)
 		}
-
 		uiMsg := openaiMsg.convertToUIMessage()
 		if uiMsg != nil {
 			uiMessages = append(uiMessages, *uiMsg)
 		}
 	}
-
 	return &uctypes.UIChat{
 		ChatId:     aiChat.ChatId,
 		APIType:    aiChat.APIType,
