@@ -811,7 +811,7 @@ func generateManifest(tempDir, exePath string, opts BuildOpts) error {
 	startIdx := strings.Index(manifestStr, startTag)
 	endIdx := strings.Index(manifestStr, endTag)
 
-	if startIdx == -1 || endIdx == -1 {
+	if startIdx == -1 || endIdx == -1 || endIdx <= startIdx {
 		return fmt.Errorf("manifest delimiters not found in output")
 	}
 
