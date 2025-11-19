@@ -18,6 +18,7 @@ export const AIPanelMessages = memo(({ messages, status, onContextMenu }: AIPane
     const isPanelOpen = useAtomValue(model.getPanelVisibleAtom());
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const messagesContainerRef = useRef<HTMLDivElement>(null);
+    const prevStatusRef = useRef<string>(status);
 
     const scrollToBottom = () => {
         const container = messagesContainerRef.current;
@@ -40,6 +41,19 @@ export const AIPanelMessages = memo(({ messages, status, onContextMenu }: AIPane
             scrollToBottom();
         }
     }, [isPanelOpen]);
+
+    useEffect(() => {
+        const wasStreaming = prevStatusRef.current === "streaming";
+        const isNowNotStreaming = status !== "streaming";
+        
+        if (wasStreaming && isNowNotStreaming) {
+            requestAnimationFrame(() => {
+                scrollToBottom();
+            });
+        }
+        
+        prevStatusRef.current = status;
+    }, [status]);
 
     return (
         <div
