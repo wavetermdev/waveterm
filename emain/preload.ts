@@ -67,6 +67,7 @@ contextBridge.exposeInMainWorld("api", {
     nativePaste: () => ipcRenderer.send("native-paste"),
     openBuilder: (appId?: string) => ipcRenderer.send("open-builder", appId),
     setBuilderWindowAppId: (appId: string) => ipcRenderer.send("set-builder-window-appid", appId),
+    doRefresh: () => ipcRenderer.send("do-refresh"),
 });
 
 // Custom event for "new-window"

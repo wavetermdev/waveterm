@@ -107,7 +107,7 @@ const BuilderWorkspace = memo(() => {
                             isAppFocused ? "border-2 border-accent" : "border-2 border-transparent"
                         )}
                         style={{
-                            borderBottomRightRadius: 10,
+                            borderBottomRightRadius: 8,
                         }}
                     >
                         <PanelGroup direction="vertical" onLayout={handleVerticalLayout}>
@@ -115,7 +115,12 @@ const BuilderWorkspace = memo(() => {
                                 <BuilderAppPanel />
                             </Panel>
                             <PanelResizeHandle className="h-0.5 bg-transparent hover:bg-gray-500/20 transition-colors" />
-                            <Panel defaultSize={layout.build} minSize={20} maxSize={50}>
+                            <Panel
+                                defaultSize={layout.build}
+                                minSize={20}
+                                maxSize={50}
+                                style={{ borderBottomRightRadius: 8 }}
+                            >
                                 <BuilderBuildPanel />
                             </Panel>
                         </PanelGroup>

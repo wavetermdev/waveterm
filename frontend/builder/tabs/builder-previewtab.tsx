@@ -34,8 +34,11 @@ const ErrorStateView = memo(({ errorMsg }: { errorMsg: string }) => {
     const displayMsg = errorMsg && errorMsg.trim() ? errorMsg : "Unknown Error";
     const waveAIModel = WaveAIModel.getInstance();
     const buildPanelModel = BuilderBuildPanelModel.getInstance();
+    const appPanelModel = BuilderAppPanelModel.getInstance();
     const outputLines = useAtomValue(buildPanelModel.outputLines);
     const isStreaming = useAtomValue(waveAIModel.isAIStreaming);
+
+    const isSecretError = displayMsg.includes("ERR-SECRET");
 
     const getBuildContext = () => {
         const filteredLines = outputLines.filter((line) => !line.startsWith("[debug]"));
@@ -54,6 +57,36 @@ const ErrorStateView = memo(({ errorMsg }: { errorMsg: string }) => {
         waveAIModel.appendText("Please help me fix this build error:\n\n" + context, true);
         await waveAIModel.handleSubmit();
     };
+
+    const handleGoToSecrets = () => {
+        appPanelModel.setActiveTab("secrets");
+    };
+
+    if (isSecretError) {
+        return (
+            <div className="w-full h-full flex items-center justify-center bg-background">
+                <div className="flex flex-col items-center gap-6 max-w-2xl text-center px-8">
+                    <div className="text-6xl">🔐</div>
+                    <div className="flex flex-col gap-3">
+                        <h2 className="text-2xl font-semibold text-error">Secrets Required</h2>
+                        <p className="text-base text-secondary leading-relaxed">
+                            This app requires secrets that must be configured. Please use the Secrets tab to set and bind
+                            the required secrets for your app to run.
+                        </p>
+                        <div className="text-left bg-panel border border-error/30 rounded-lg p-4 max-h-96 overflow-auto mt-2">
+                            <pre className="text-sm text-secondary whitespace-pre-wrap font-mono">{displayMsg}</pre>
+                        </div>
+                        <button
+                            onClick={handleGoToSecrets}
+                            className="px-6 py-2 mt-2 bg-accent/80 text-primary font-semibold rounded hover:bg-accent transition-colors cursor-pointer"
+                        >
+                            Go to Secrets Tab
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="w-full h-full flex items-center justify-center bg-background">

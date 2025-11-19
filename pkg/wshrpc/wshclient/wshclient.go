@@ -658,6 +658,12 @@ func StartBuilderCommand(w *wshutil.WshRpc, data wshrpc.CommandStartBuilderData,
 	return err
 }
 
+// command "stopbuilder", wshserver.StopBuilderCommand
+func StopBuilderCommand(w *wshutil.WshRpc, data string, opts *wshrpc.RpcOpts) error {
+	_, err := sendRpcRequestCallHelper[any](w, "stopbuilder", data, opts)
+	return err
+}
+
 // command "streamcpudata", wshserver.StreamCpuDataCommand
 func StreamCpuDataCommand(w *wshutil.WshRpc, data wshrpc.CpuDataRequest, opts *wshrpc.RpcOpts) chan wshrpc.RespOrErrorUnion[wshrpc.TimeSeriesData] {
 	return sendRpcRequestResponseStreamHelper[wshrpc.TimeSeriesData](w, "streamcpudata", data, opts)

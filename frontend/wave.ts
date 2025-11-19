@@ -239,8 +239,6 @@ async function initBuilder(initOpts: BuilderInitOpts) {
         initOpts.clientId,
         "windowid",
         initOpts.windowId,
-        "appid",
-        initOpts.appId,
         "platform",
         platform
     );
@@ -259,17 +257,12 @@ async function initBuilder(initOpts: BuilderInitOpts) {
     (window as any).TabRpcClient = TabRpcClient;
     await loadConnStatus();
 
-    let appIdToUse = initOpts.appId;
+    let appIdToUse: string = null;
     try {
         const oref = WOS.makeORef("builder", initOpts.builderId);
         const rtInfo = await RpcApi.GetRTInfoCommand(TabRpcClient, { oref });
         if (rtInfo && rtInfo["builder:appid"]) {
             appIdToUse = rtInfo["builder:appid"];
-        } else if (appIdToUse) {
-            await RpcApi.SetRTInfoCommand(TabRpcClient, {
-                oref,
-                data: { "builder:appid": appIdToUse },
-            });
         }
     } catch (e) {
         console.log("Could not load saved builder appId from rtinfo:", e);

@@ -547,6 +547,11 @@ class RpcApiType {
         return client.wshRpcCall("startbuilder", data, opts);
     }
 
+    // command "stopbuilder" [call]
+    StopBuilderCommand(client: WshClient, data: string, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("stopbuilder", data, opts);
+    }
+
     // command "streamcpudata" [responsestream]
 	StreamCpuDataCommand(client: WshClient, data: CpuDataRequest, opts?: RpcOpts): AsyncGenerator<TimeSeriesData, void, boolean> {
         return client.wshRpcStream("streamcpudata", data, opts);

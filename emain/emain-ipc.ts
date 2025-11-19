@@ -30,7 +30,7 @@ export function openBuilderWindow(appId?: string) {
     const normalizedAppId = appId || "";
     const existingBuilderWindows = getAllBuilderWindows();
     const existingWindow = existingBuilderWindows.find(
-        (win) => win.savedInitOpts?.appId === normalizedAppId
+        (win) => win.builderAppId === normalizedAppId
     );
     if (existingWindow) {
         existingWindow.focus();
@@ -426,9 +426,7 @@ export function initIpcHandlers() {
         if (bw == null) {
             return;
         }
-        if (bw.savedInitOpts) {
-            bw.savedInitOpts.appId = appId;
-        }
+        bw.builderAppId = appId;
         console.log("set-builder-window-appid", bw.builderId, appId);
     });
 
@@ -452,5 +450,9 @@ export function initIpcHandlers() {
             }
         }
         bw.destroy();
+    });
+
+    electron.ipcMain.on("do-refresh", (event) => {
+        event.sender.reloadIgnoringCache();
     });
 }
