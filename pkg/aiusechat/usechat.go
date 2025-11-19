@@ -16,9 +16,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/wavetermdev/waveterm/pkg/aiusechat/anthropic"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/chatstore"
-	"github.com/wavetermdev/waveterm/pkg/aiusechat/openai"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
 	"github.com/wavetermdev/waveterm/pkg/telemetry"
 	"github.com/wavetermdev/waveterm/pkg/telemetry/telemetrydata"
@@ -203,25 +201,13 @@ func GetGlobalRateLimit() *uctypes.RateLimitInfo {
 	return globalRateLimitInfo
 }
 
-func runAIChatStep(ctx context.Context, sseHandler *sse.SSEHandlerCh, chatOpts uctypes.WaveChatOpts, cont *uctypes.WaveContinueResponse) (*uctypes.WaveStopReason, []uctypes.GenAIMessage, error) {
-	if chatOpts.Config.APIType == APIType_Anthropic {
-		stopReason, msg, rateLimitInfo, err := anthropic.RunAnthropicChatStep(ctx, sseHandler, chatOpts, cont)
-		updateRateLimit(rateLimitInfo)
-		return stopReason, []uctypes.GenAIMessage{msg}, err
+func runAIChatStep(ctx context.Context, sseHandler *sse.SSEHandlerCh, backend UseChatBackend, chatOpts uctypes.WaveChatOpts, cont *uctypes.WaveContinueResponse) (*uctypes.WaveStopReason, []uctypes.GenAIMessage, error) {
+	if chatOpts.Config.APIType == APIType_OpenAI && shouldUseChatCompletionsAPI(chatOpts.Config.Model) {
+		return nil, nil, fmt.Errorf("Chat completions API not available (must use newer OpenAI models)")
 	}
-	if chatOpts.Config.APIType == APIType_OpenAI {
-		if shouldUseChatCompletionsAPI(chatOpts.Config.Model) {
-			return nil, nil, fmt.Errorf("Chat completions API not available (must use newer OpenAI models)")
-		}
-		stopReason, msgs, rateLimitInfo, err := openai.RunOpenAIChatStep(ctx, sseHandler, chatOpts, cont)
-		updateRateLimit(rateLimitInfo)
-		var messages []uctypes.GenAIMessage
-		for _, msg := range msgs {
-			messages = append(messages, msg)
-		}
-		return stopReason, messages, err
-	}
-	return nil, nil, fmt.Errorf("Invalid APIType %q", chatOpts.Config.APIType)
+	stopReason, messages, rateLimitInfo, err := backend.RunChatStep(ctx, sseHandler, chatOpts, cont)
+	updateRateLimit(rateLimitInfo)
+	return stopReason, messages, err
 }
 
 func getUsage(msgs []uctypes.GenAIMessage) uctypes.AIUsage {
@@ -249,17 +235,13 @@ func GetChatUsage(chat *uctypes.AIChat) uctypes.AIUsage {
 	return usage
 }
 
-func updateToolUseDataInChat(chatOpts uctypes.WaveChatOpts, toolCallID string, toolUseData *uctypes.UIMessageDataToolUse) {
-	if chatOpts.Config.APIType == APIType_OpenAI {
-		if err := openai.UpdateToolUseData(chatOpts.ChatId, toolCallID, toolUseData); err != nil {
-			log.Printf("failed to update tool use data in chat: %v\n", err)
-		}
-	} else if chatOpts.Config.APIType == APIType_Anthropic {
-		log.Printf("warning: UpdateToolUseData not implemented for anthropic\n")
+func updateToolUseDataInChat(backend UseChatBackend, chatOpts uctypes.WaveChatOpts, toolCallID string, toolUseData *uctypes.UIMessageDataToolUse) {
+	if err := backend.UpdateToolUseData(chatOpts.ChatId, toolCallID, toolUseData); err != nil {
+		log.Printf("failed to update tool use data in chat: %v\n", err)
 	}
 }
 
-func processToolCallInternal(toolCall uctypes.WaveToolCall, chatOpts uctypes.WaveChatOpts, toolDef *uctypes.ToolDefinition, sseHandler *sse.SSEHandlerCh) uctypes.AIToolResult {
+func processToolCallInternal(backend UseChatBackend, toolCall uctypes.WaveToolCall, chatOpts uctypes.WaveChatOpts, toolDef *uctypes.ToolDefinition, sseHandler *sse.SSEHandlerCh) uctypes.AIToolResult {
 	if toolCall.ToolUseData == nil {
 		return uctypes.AIToolResult{
 			ToolName:  toolCall.Name,
@@ -293,7 +275,7 @@ func processToolCallInternal(toolCall uctypes.WaveToolCall, chatOpts uctypes.Wav
 		}
 		// ToolVerifyInput can modify the toolusedata.  re-send it here.
 		_ = sseHandler.AiMsgData("data-tooluse", toolCall.ID, *toolCall.ToolUseData)
-		updateToolUseDataInChat(chatOpts, toolCall.ID, toolCall.ToolUseData)
+		updateToolUseDataInChat(backend, chatOpts, toolCall.ID, toolCall.ToolUseData)
 	}
 
 	if toolCall.ToolUseData.Approval == uctypes.ApprovalNeedsApproval {
@@ -322,7 +304,7 @@ func processToolCallInternal(toolCall uctypes.WaveToolCall, chatOpts uctypes.Wav
 
 		// this still happens here because we need to update the FE to say the tool call was approved
 		_ = sseHandler.AiMsgData("data-tooluse", toolCall.ID, *toolCall.ToolUseData)
-		updateToolUseDataInChat(chatOpts, toolCall.ID, toolCall.ToolUseData)
+		updateToolUseDataInChat(backend, chatOpts, toolCall.ID, toolCall.ToolUseData)
 	}
 
 	toolCall.ToolUseData.RunTs = time.Now().UnixMilli()
@@ -338,12 +320,12 @@ func processToolCallInternal(toolCall uctypes.WaveToolCall, chatOpts uctypes.Wav
 	return result
 }
 
-func processToolCall(toolCall uctypes.WaveToolCall, chatOpts uctypes.WaveChatOpts, sseHandler *sse.SSEHandlerCh, metrics *uctypes.AIMetrics) uctypes.AIToolResult {
+func processToolCall(backend UseChatBackend, toolCall uctypes.WaveToolCall, chatOpts uctypes.WaveChatOpts, sseHandler *sse.SSEHandlerCh, metrics *uctypes.AIMetrics) uctypes.AIToolResult {
 	inputJSON, _ := json.Marshal(toolCall.Input)
 	logutil.DevPrintf("TOOLUSE name=%s id=%s input=%s approval=%q\n", toolCall.Name, toolCall.ID, utilfn.TruncateString(string(inputJSON), 40), toolCall.ToolUseData.Approval)
 
 	toolDef := chatOpts.GetToolDefinition(toolCall.Name)
-	result := processToolCallInternal(toolCall, chatOpts, toolDef, sseHandler)
+	result := processToolCallInternal(backend, toolCall, chatOpts, toolDef, sseHandler)
 
 	if result.ErrorText != "" {
 		log.Printf("  error=%s\n", result.ErrorText)
@@ -358,13 +340,13 @@ func processToolCall(toolCall uctypes.WaveToolCall, chatOpts uctypes.WaveChatOpt
 
 	if toolCall.ToolUseData != nil {
 		_ = sseHandler.AiMsgData("data-tooluse", toolCall.ID, *toolCall.ToolUseData)
-		updateToolUseDataInChat(chatOpts, toolCall.ID, toolCall.ToolUseData)
+		updateToolUseDataInChat(backend, chatOpts, toolCall.ID, toolCall.ToolUseData)
 	}
 
 	return result
 }
 
-func processToolCalls(stopReason *uctypes.WaveStopReason, chatOpts uctypes.WaveChatOpts, sseHandler *sse.SSEHandlerCh, metrics *uctypes.AIMetrics) {
+func processToolCalls(backend UseChatBackend, stopReason *uctypes.WaveStopReason, chatOpts uctypes.WaveChatOpts, sseHandler *sse.SSEHandlerCh, metrics *uctypes.AIMetrics) {
 	for _, toolCall := range stopReason.ToolCalls {
 		activeToolMap.Set(toolCall.ID, true)
 		defer activeToolMap.Delete(toolCall.ID)
@@ -375,7 +357,7 @@ func processToolCalls(stopReason *uctypes.WaveStopReason, chatOpts uctypes.WaveC
 		if toolCall.ToolUseData != nil {
 			log.Printf("AI data-tooluse %s\n", toolCall.ID)
 			_ = sseHandler.AiMsgData("data-tooluse", toolCall.ID, *toolCall.ToolUseData)
-			updateToolUseDataInChat(chatOpts, toolCall.ID, toolCall.ToolUseData)
+			updateToolUseDataInChat(backend, chatOpts, toolCall.ID, toolCall.ToolUseData)
 			if toolCall.ToolUseData.Approval == uctypes.ApprovalNeedsApproval && chatOpts.RegisterToolApproval != nil {
 				chatOpts.RegisterToolApproval(toolCall.ID)
 			}
@@ -384,30 +366,21 @@ func processToolCalls(stopReason *uctypes.WaveStopReason, chatOpts uctypes.WaveC
 
 	var toolResults []uctypes.AIToolResult
 	for _, toolCall := range stopReason.ToolCalls {
-		result := processToolCall(toolCall, chatOpts, sseHandler, metrics)
+		result := processToolCall(backend, toolCall, chatOpts, sseHandler, metrics)
 		toolResults = append(toolResults, result)
 	}
 
-	if chatOpts.Config.APIType == APIType_OpenAI {
-		toolResultMsgs, err := openai.ConvertToolResultsToOpenAIChatMessage(toolResults)
-		if err != nil {
-			log.Printf("Failed to convert tool results to OpenAI messages: %v", err)
-		} else {
-			for _, msg := range toolResultMsgs {
-				chatstore.DefaultChatStore.PostMessage(chatOpts.ChatId, &chatOpts.Config, msg)
-			}
-		}
+	toolResultMsgs, err := backend.ConvertToolResultsToNativeChatMessage(toolResults)
+	if err != nil {
+		log.Printf("Failed to convert tool results to native chat messages: %v", err)
 	} else {
-		toolResultMsg, err := anthropic.ConvertToolResultsToAnthropicChatMessage(toolResults)
-		if err != nil {
-			log.Printf("Failed to convert tool results to Anthropic message: %v", err)
-		} else {
-			chatstore.DefaultChatStore.PostMessage(chatOpts.ChatId, &chatOpts.Config, toolResultMsg)
+		for _, msg := range toolResultMsgs {
+			chatstore.DefaultChatStore.PostMessage(chatOpts.ChatId, &chatOpts.Config, msg)
 		}
 	}
 }
 
-func RunAIChat(ctx context.Context, sseHandler *sse.SSEHandlerCh, chatOpts uctypes.WaveChatOpts) (*uctypes.AIMetrics, error) {
+func RunAIChat(ctx context.Context, sseHandler *sse.SSEHandlerCh, backend UseChatBackend, chatOpts uctypes.WaveChatOpts) (*uctypes.AIMetrics, error) {
 	if !activeChats.SetUnless(chatOpts.ChatId, true) {
 		return nil, fmt.Errorf("chat %s is already running", chatOpts.ChatId)
 	}
@@ -441,7 +414,7 @@ func RunAIChat(ctx context.Context, sseHandler *sse.SSEHandlerCh, chatOpts uctyp
 				chatOpts.AppStaticFiles = appStaticFiles
 			}
 		}
-		stopReason, rtnMessage, err := runAIChatStep(ctx, sseHandler, chatOpts, cont)
+		stopReason, rtnMessage, err := runAIChatStep(ctx, sseHandler, backend, chatOpts, cont)
 		metrics.RequestCount++
 		if chatOpts.Config.IsPremiumModel() {
 			metrics.PremiumReqCount++
@@ -474,30 +447,21 @@ func RunAIChat(ctx context.Context, sseHandler *sse.SSEHandlerCh, chatOpts uctyp
 				chatstore.DefaultChatStore.PostMessage(chatOpts.ChatId, &chatOpts.Config, msg)
 			}
 		}
+		firstStep = false
 		if stopReason != nil && stopReason.Kind == uctypes.StopKindPremiumRateLimit && chatOpts.Config.APIType == APIType_OpenAI && chatOpts.Config.Model == uctypes.PremiumOpenAIModel {
 			log.Printf("Premium rate limit hit with gpt-5.1, switching to gpt-5-mini\n")
 			cont = &uctypes.WaveContinueResponse{
-				MessageID:             "",
-				Model:                 uctypes.DefaultOpenAIModel,
-				ContinueFromKind:      uctypes.StopKindPremiumRateLimit,
-				ContinueFromRawReason: stopReason.RawReason,
+				Model:            uctypes.DefaultOpenAIModel,
+				ContinueFromKind: uctypes.StopKindPremiumRateLimit,
 			}
-			firstStep = false
 			continue
 		}
 		if stopReason != nil && stopReason.Kind == uctypes.StopKindToolUse {
 			metrics.ToolUseCount += len(stopReason.ToolCalls)
-			processToolCalls(stopReason, chatOpts, sseHandler, metrics)
-
-			var messageID string
-			if len(rtnMessage) > 0 && rtnMessage[0] != nil {
-				messageID = rtnMessage[0].GetMessageId()
-			}
+			processToolCalls(backend, stopReason, chatOpts, sseHandler, metrics)
 			cont = &uctypes.WaveContinueResponse{
-				MessageID:             messageID,
-				Model:                 chatOpts.Config.Model,
-				ContinueFromKind:      uctypes.StopKindToolUse,
-				ContinueFromRawReason: stopReason.RawReason,
+				Model:            chatOpts.Config.Model,
+				ContinueFromKind: uctypes.StopKindToolUse,
 			}
 			continue
 		}
@@ -563,22 +527,14 @@ func ResolveToolCall(toolDef *uctypes.ToolDefinition, toolCall uctypes.WaveToolC
 func WaveAIPostMessageWrap(ctx context.Context, sseHandler *sse.SSEHandlerCh, message *uctypes.AIMessage, chatOpts uctypes.WaveChatOpts) error {
 	startTime := time.Now()
 
-	// Convert AIMessage to Anthropic chat message
-	var convertedMessage uctypes.GenAIMessage
-	if chatOpts.Config.APIType == APIType_Anthropic {
-		var err error
-		convertedMessage, err = anthropic.ConvertAIMessageToAnthropicChatMessage(*message)
-		if err != nil {
-			return fmt.Errorf("message conversion failed: %w", err)
-		}
-	} else if chatOpts.Config.APIType == APIType_OpenAI {
-		var err error
-		convertedMessage, err = openai.ConvertAIMessageToOpenAIChatMessage(*message)
-		if err != nil {
-			return fmt.Errorf("message conversion failed: %w", err)
-		}
-	} else {
-		return fmt.Errorf("unsupported APIType %q", chatOpts.Config.APIType)
+	// Convert AIMessage to native chat message using backend
+	backend, err := GetBackendByAPIType(chatOpts.Config.APIType)
+	if err != nil {
+		return err
+	}
+	convertedMessage, err := backend.ConvertAIMessageToNativeChatMessage(*message)
+	if err != nil {
+		return fmt.Errorf("message conversion failed: %w", err)
 	}
 
 	// Post message to chat store
@@ -586,7 +542,7 @@ func WaveAIPostMessageWrap(ctx context.Context, sseHandler *sse.SSEHandlerCh, me
 		return fmt.Errorf("failed to store message: %w", err)
 	}
 
-	metrics, err := RunAIChat(ctx, sseHandler, chatOpts)
+	metrics, err := RunAIChat(ctx, sseHandler, backend, chatOpts)
 	if metrics != nil {
 		metrics.RequestDuration = int(time.Since(startTime).Milliseconds())
 		for _, part := range message.Parts {
@@ -803,15 +759,12 @@ func CreateWriteTextFileDiff(ctx context.Context, chatId string, toolCallId stri
 		return nil, nil, fmt.Errorf("chat not found: %s", chatId)
 	}
 
-	if aiChat.APIType == APIType_Anthropic {
-		return nil, nil, fmt.Errorf("CreateWriteTextFileDiff is not implemented for Anthropic")
+	backend, err := GetBackendByAPIType(aiChat.APIType)
+	if err != nil {
+		return nil, nil, err
 	}
 
-	if aiChat.APIType != APIType_OpenAI {
-		return nil, nil, fmt.Errorf("unsupported API type: %s", aiChat.APIType)
-	}
-
-	funcCallInput := openai.GetFunctionCallInputByToolCallId(*aiChat, toolCallId)
+	funcCallInput := backend.GetFunctionCallInputByToolCallId(*aiChat, toolCallId)
 	if funcCallInput == nil {
 		return nil, nil, fmt.Errorf("tool call not found: %s", toolCallId)
 	}
@@ -865,7 +818,6 @@ func CreateWriteTextFileDiff(ctx context.Context, chatId string, toolCallId stri
 	return originalContent, modifiedContent, nil
 }
 
-
 type StaticFileInfo struct {
 	Name         string `json:"name"`
 	Size         int64  `json:"size"`
@@ -879,7 +831,7 @@ func generateBuilderAppData(appId string) (string, string, error) {
 	if err == nil {
 		appGoFile = string(fileData.Contents)
 	}
-	
+
 	staticFilesJSON := ""
 	allFiles, err := waveappstore.ListAllAppFiles(appId)
 	if err == nil {
@@ -894,7 +846,7 @@ func generateBuilderAppData(appId string) (string, string, error) {
 				})
 			}
 		}
-		
+
 		if len(staticFiles) > 0 {
 			staticFilesBytes, marshalErr := json.Marshal(staticFiles)
 			if marshalErr == nil {
@@ -902,6 +854,6 @@ func generateBuilderAppData(appId string) (string, string, error) {
 			}
 		}
 	}
-	
+
 	return appGoFile, staticFilesJSON, nil
 }

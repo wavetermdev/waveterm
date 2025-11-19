@@ -193,25 +193,15 @@ type WaveToolCall struct {
 type WaveStopReason struct {
 	Kind      StopReasonKind `json:"kind"`
 	RawReason string         `json:"raw_reason,omitempty"`
-	MessageID string         `json:"message_id,omitempty"`
-	Model     string         `json:"model,omitempty"`
-
 	ToolCalls []WaveToolCall `json:"tool_calls,omitempty"`
-
-	ErrorType string `json:"error_type,omitempty"`
-	ErrorText string `json:"error_text,omitempty"`
-
-	RateLimitInfo *RateLimitInfo `json:"ratelimitinfo,omitempty"` // set when Kind is StopKindPremiumRateLimit or StopKindRateLimit
-
-	FinishStep bool `json:"finish_step,omitempty"`
+	ErrorType string         `json:"error_type,omitempty"`
+	ErrorText string         `json:"error_text,omitempty"`
 }
 
 // Wave Specific parameter used to signal to our step function that this is a continuation step, not an initial step
 type WaveContinueResponse struct {
-	MessageID             string         `json:"message_id,omitempty"`
-	Model                 string         `json:"model,omitempty"`
-	ContinueFromKind      StopReasonKind `json:"continue_from_kind"`
-	ContinueFromRawReason string         `json:"continue_from_raw_reason,omitempty"`
+	Model            string         `json:"model,omitempty"`
+	ContinueFromKind StopReasonKind `json:"continue_from_kind"`
 }
 
 // Wave Specific AI opts for configuration
@@ -271,6 +261,13 @@ type AIMetrics struct {
 	WidgetAccess      bool           `json:"widgetaccess"`
 	ThinkingLevel     string         `json:"thinkinglevel,omitempty"`
 	ThinkingMode      string         `json:"thinkingmode,omitempty"`
+}
+
+type AIFunctionCallInput struct {
+	CallId      string                `json:"call_id"`
+	Name        string                `json:"name"`
+	Arguments   string                `json:"arguments"`
+	ToolUseData *UIMessageDataToolUse `json:"toolusedata,omitempty"`
 }
 
 // GenAIMessage interface for messages stored in conversations
@@ -476,6 +473,14 @@ func (opts *WaveChatOpts) GetToolDefinition(toolName string) *ToolDefinition {
 		}
 	}
 	return nil
+}
+
+func (opts *WaveChatOpts) GetWaveRequestType() string {
+	if opts.BuilderId != "" {
+		return "waveapps-builder"
+	} else {
+		return "waveai"
+	}
 }
 
 type ProxyErrorResponse struct {
