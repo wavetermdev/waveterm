@@ -158,6 +158,7 @@ export function CodeEditor({ blockId, text, language, fileName, readonly, onChan
         opts.stickyScroll.enabled = stickyScrollEnabled;
         opts.wordWrap = wordWrap ? "on" : "off";
         opts.fontSize = fontSize;
+        opts.copyWithSyntaxHighlighting = false;
         return opts;
     }, [minimapEnabled, stickyScrollEnabled, wordWrap, fontSize, readonly]);
 
