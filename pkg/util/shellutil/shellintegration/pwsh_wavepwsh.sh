@@ -27,17 +27,11 @@ function Global:_waveterm_si_blocked {
 function Global:_waveterm_si_osc7 {
     if (_waveterm_si_blocked) { return }
     
-    # Get hostname (allow empty for file:/// format)
-    $hostname = $env:COMPUTERNAME
-    if (-not $hostname) {
-        $hostname = $env:HOSTNAME
-    }
-    
     # Percent-encode the raw path as-is (handles UNC, drive letters, etc.)
     $encoded_pwd = [System.Uri]::EscapeDataString($PWD.Path)
     
     # OSC 7 - current directory
-    Write-Host -NoNewline "`e]7;file://$hostname/$encoded_pwd`a"
+    Write-Host -NoNewline "`e]7;file://localhost/$encoded_pwd`a"
 }
 
 function Global:_waveterm_si_prompt {
