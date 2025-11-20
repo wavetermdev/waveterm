@@ -181,20 +181,23 @@ async function initWave(initOpts: WaveInitOpts) {
     subscribeToConnEvents();
 
     // ensures client/window/workspace are loaded into the cache before rendering
-    const [client, waveWindow, initialTab] = await Promise.all([
-        WOS.loadAndPinWaveObject<Client>(WOS.makeORef("client", initOpts.clientId)),
-        WOS.loadAndPinWaveObject<WaveWindow>(WOS.makeORef("window", initOpts.windowId)),
-        WOS.loadAndPinWaveObject<Tab>(WOS.makeORef("tab", initOpts.tabId)),
-    ]);
-    const [ws, layoutState] = await Promise.all([
-        WOS.loadAndPinWaveObject<Workspace>(WOS.makeORef("workspace", waveWindow.workspaceid)),
-        WOS.reloadWaveObject<LayoutState>(WOS.makeORef("layout", initialTab.layoutstate)),
-    ]);
-    loadAllWorkspaceTabs(ws);
-    WOS.wpsSubscribeToObject(WOS.makeORef("workspace", waveWindow.workspaceid));
-
-    document.title = `Wave Terminal - ${initialTab.name}`; // TODO update with tab name change
-
+    try {
+        const [client, waveWindow, initialTab] = await Promise.all([
+            WOS.loadAndPinWaveObject<Client>(WOS.makeORef("client", initOpts.clientId)),
+            WOS.loadAndPinWaveObject<WaveWindow>(WOS.makeORef("window", initOpts.windowId)),
+            WOS.loadAndPinWaveObject<Tab>(WOS.makeORef("tab", initOpts.tabId)),
+        ]);
+        const [ws, layoutState] = await Promise.all([
+            WOS.loadAndPinWaveObject<Workspace>(WOS.makeORef("workspace", waveWindow.workspaceid)),
+            WOS.reloadWaveObject<LayoutState>(WOS.makeORef("layout", initialTab.layoutstate)),
+        ]);
+        loadAllWorkspaceTabs(ws);
+        WOS.wpsSubscribeToObject(WOS.makeORef("workspace", waveWindow.workspaceid));
+        document.title = `Wave Terminal - ${initialTab.name}`; // TODO update with tab name change
+    } catch (e) {
+        console.error("Failed initialization error", e);
+        getApi().sendLog("Error in initialization (wave.ts, loading required objects) " + e.message + "\n" + e.stack);
+    }
     registerGlobalKeys();
     registerElectronReinjectKeyHandler();
     registerControlShiftStateUpdateHandler();
