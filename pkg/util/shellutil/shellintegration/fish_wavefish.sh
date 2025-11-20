@@ -21,7 +21,7 @@ function _waveterm_si_osc7
     _waveterm_si_blocked; and return
     # Use fish-native URL encoding
     set -l encoded_pwd (string escape --style=url -- "$PWD")
-    printf '\033]7;file://%s%s\007' $hostname $encoded_pwd
+    printf '\033]7;file://localhost%s\007' $encoded_pwd
 end
 
 function _waveterm_si_prompt --on-event fish_prompt
