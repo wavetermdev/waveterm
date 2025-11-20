@@ -31,14 +31,14 @@ _waveterm_si_urlencode() {
   else
     local s="$1"
     # Escape % first
-    s=${s//%/%25}
+    s=${s//\%/%25}
     # Common reserved characters in file paths
-    s=${s// /%20}
-    s=${s//#/%23}
+    s=${s//\ /%20}
+    s=${s//\#/%23}
     s=${s//\?/%3F}
-    s=${s//&/%26}
-    s=${s//;/%3B}
-    s=${s//+/%2B}
+    s=${s//\&/%26}
+    s=${s//\;/%3B}
+    s=${s//\+/%2B}
     printf '%s' "$s"
   fi
 }
