@@ -46,7 +46,7 @@ _waveterm_si_urlencode() {
 _waveterm_si_osc7() {
   _waveterm_si_blocked && return
   local encoded_pwd=$(_waveterm_si_urlencode "$PWD")
-  printf '\033]7;file://%s%s\007' "$HOST" "$encoded_pwd"  # OSC 7 - current directory
+  printf '\033]7;file://localhost%s\007' "$encoded_pwd"  # OSC 7 - current directory
 }
 
 _waveterm_si_precmd() {
