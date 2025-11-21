@@ -31,7 +31,7 @@ jobs:
                     #   runner: "windows-11-arm64-16core"
         runs-on: ${{ matrix.runner }}
         steps:
-            - uses: actions/checkout@v5
+            - uses: actions/checkout@v6
             - name: Install Linux Build Dependencies (Linux only)
               if: matrix.platform == 'linux'
               run: |
