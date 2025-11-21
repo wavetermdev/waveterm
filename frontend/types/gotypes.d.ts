@@ -873,6 +873,7 @@ declare global {
         "term:transparency"?: number;
         "term:allowbracketedpaste"?: boolean;
         "term:shiftenternewline"?: boolean;
+        "term:macoptionismeta"?: boolean;
         "term:conndebug"?: string;
         "web:zoom"?: number;
         "web:hidenav"?: boolean;
@@ -1054,6 +1055,7 @@ declare global {
         "term:transparency"?: number;
         "term:allowbracketedpaste"?: boolean;
         "term:shiftenternewline"?: boolean;
+        "term:macoptionismeta"?: boolean;
         "editor:minimapenabled"?: boolean;
         "editor:stickyscrollenabled"?: boolean;
         "editor:wordwrap"?: boolean;

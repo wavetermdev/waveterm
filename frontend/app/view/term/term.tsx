@@ -23,11 +23,6 @@ import "./xterm.css";
 
 const dlog = debug("wave:term");
 
-type InitialLoadDataType = {
-    loaded: boolean;
-    heldData: Uint8Array[];
-};
-
 interface TerminalViewProps {
     blockId: string;
     model: TermViewModel;
@@ -251,6 +246,7 @@ const TerminalView = ({ blockId, model }: ViewComponentProps<TermViewModel>) => 
         const termThemeName = globalStore.get(model.termThemeNameAtom);
         const termTransparency = globalStore.get(model.termTransparencyAtom);
         const termBPMAtom = getOverrideConfigAtom(blockId, "term:allowbracketedpaste");
+        const termMacOptionIsMetaAtom = getOverrideConfigAtom(blockId, "term:macoptionismeta");
         const [termTheme, _] = computeTheme(fullConfig, termThemeName, termTransparency);
         let termScrollback = 2000;
         if (termSettings?.["term:scrollback"]) {
@@ -266,6 +262,7 @@ const TerminalView = ({ blockId, model }: ViewComponentProps<TermViewModel>) => 
             termScrollback = 50000;
         }
         const termAllowBPM = globalStore.get(termBPMAtom) ?? false;
+        const termMacOptionIsMeta = globalStore.get(termMacOptionIsMetaAtom) ?? false;
         const wasFocused = model.termRef.current != null && globalStore.get(model.nodeModel.isFocused);
         const termWrap = new TermWrap(
             blockId,
@@ -281,6 +278,7 @@ const TerminalView = ({ blockId, model }: ViewComponentProps<TermViewModel>) => 
                 scrollback: termScrollback,
                 allowProposedApi: true, // Required by @xterm/addon-search to enable search functionality and decorations
                 ignoreBracketedPasteMode: !termAllowBPM,
+                macOptionIsMeta: termMacOptionIsMeta,
             },
             {
                 keydownHandler: model.handleTerminalKeydown.bind(model),

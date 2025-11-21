@@ -104,6 +104,9 @@
         "term:shiftenternewline": {
           "type": "boolean"
         },
+        "term:macoptionismeta": {
+          "type": "boolean"
+        },
         "editor:minimapenabled": {
           "type": "boolean"
         },
