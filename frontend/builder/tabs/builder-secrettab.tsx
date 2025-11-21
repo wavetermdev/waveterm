@@ -159,7 +159,7 @@ const SetSecretDialog = memo(({ secretName, onSetAndMap }: SetSecretDialogProps)
 
 SetSecretDialog.displayName = "SetSecretDialog";
 
-const BuilderEnvTab = memo(() => {
+const BuilderSecretTab = memo(() => {
     const model = BuilderAppPanelModel.getInstance();
     const builderStatus = useAtomValue(model.builderStatusAtom);
     const error = useAtomValue(model.errorAtom);
@@ -181,6 +181,16 @@ const BuilderEnvTab = memo(() => {
         };
         fetchSecrets();
     }, []);
+
+    if (!builderStatus || !manifest) {
+        return (
+            <div className="w-full h-full flex items-center justify-center">
+                <div className="text-secondary text-center">
+                    App manifest not available. Secrets will be shown once the app builds successfully.
+                </div>
+            </div>
+        );
+    }
 
     const sortedSecretEntries = Object.entries(secrets).sort(([nameA, metaA], [nameB, metaB]) => {
         if (!metaA.optional && metaB.optional) return -1;
@@ -277,6 +287,6 @@ const BuilderEnvTab = memo(() => {
     );
 });
 
-BuilderEnvTab.displayName = "BuilderEnvTab";
+BuilderSecretTab.displayName = "BuilderSecretTab";
 
-export { BuilderEnvTab, SetSecretDialog };
+export { BuilderSecretTab, SetSecretDialog };

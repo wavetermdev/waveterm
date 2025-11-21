@@ -225,7 +225,7 @@ export class BuilderAppPanelModel {
     async switchBuilderApp() {
         const builderId = globalStore.get(atoms.builderId);
         try {
-            await RpcApi.StopBuilderCommand(TabRpcClient, builderId);
+            await RpcApi.DeleteBuilderCommand(TabRpcClient, builderId);
             await new Promise((resolve) => setTimeout(resolve, 500));
             await RpcApi.SetRTInfoCommand(TabRpcClient, {
                 oref: WOS.makeORef("builder", builderId),
