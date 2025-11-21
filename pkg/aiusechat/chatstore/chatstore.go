@@ -48,6 +48,24 @@ func (cs *ChatStore) Delete(chatId string) {
 	delete(cs.chats, chatId)
 }
 
+func (cs *ChatStore) CountUserMessages(chatId string) int {
+	cs.lock.Lock()
+	defer cs.lock.Unlock()
+
+	chat := cs.chats[chatId]
+	if chat == nil {
+		return 0
+	}
+
+	count := 0
+	for _, msg := range chat.NativeMessages {
+		if msg.GetRole() == "user" {
+			count++
+		}
+	}
+	return count
+}
+
 func (cs *ChatStore) PostMessage(chatId string, aiOpts *uctypes.AIOptsType, message uctypes.GenAIMessage) error {
 	cs.lock.Lock()
 	defer cs.lock.Unlock()

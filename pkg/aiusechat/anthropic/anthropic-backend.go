@@ -46,6 +46,10 @@ func (m *anthropicChatMessage) GetMessageId() string {
 	return m.MessageId
 }
 
+func (m *anthropicChatMessage) GetRole() string {
+	return m.Role
+}
+
 func (m *anthropicChatMessage) GetUsage() *uctypes.AIUsage {
 	if m.Usage == nil {
 		return nil

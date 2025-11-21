@@ -386,7 +386,10 @@ func RunAIChat(ctx context.Context, sseHandler *sse.SSEHandlerCh, backend UseCha
 	}
 	defer activeChats.Delete(chatOpts.ChatId)
 
+	stepNum := chatstore.DefaultChatStore.CountUserMessages(chatOpts.ChatId)
 	metrics := &uctypes.AIMetrics{
+		ChatId:   chatOpts.ChatId,
+		StepNum:  stepNum,
 		Usage: uctypes.AIUsage{
 			APIType: chatOpts.Config.APIType,
 			Model:   chatOpts.Config.Model,
@@ -572,6 +575,8 @@ func sendAIMetricsTelemetry(ctx context.Context, metrics *uctypes.AIMetrics) {
 	event := telemetrydata.MakeTEvent("waveai:post", telemetrydata.TEventProps{
 		WaveAIAPIType:              metrics.Usage.APIType,
 		WaveAIModel:                metrics.Usage.Model,
+		WaveAIChatId:               metrics.ChatId,
+		WaveAIStepNum:              metrics.StepNum,
 		WaveAIInputTokens:          metrics.Usage.InputTokens,
 		WaveAIOutputTokens:         metrics.Usage.OutputTokens,
 		WaveAINativeWebSearchCount: metrics.Usage.NativeWebSearchCount,

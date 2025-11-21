@@ -127,6 +127,8 @@ type TEventProps struct {
 
 	WaveAIAPIType              string         `json:"waveai:apitype,omitempty"`
 	WaveAIModel                string         `json:"waveai:model,omitempty"`
+	WaveAIChatId               string         `json:"waveai:chatid,omitempty"`
+	WaveAIStepNum              int            `json:"waveai:stepnum,omitempty"`
 	WaveAIInputTokens          int            `json:"waveai:inputtokens,omitempty"`
 	WaveAIOutputTokens         int            `json:"waveai:outputtokens,omitempty"`
 	WaveAINativeWebSearchCount int            `json:"waveai:nativewebsearchcount,omitempty"`
