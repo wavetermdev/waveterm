@@ -11,6 +11,8 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 )
 
+const DevModeCorsOrigins = "http://localhost:5173,http://localhost:5174"
+
 func GetTsunamiAppCachePath(scope string, appName string, osArch string) (string, error) {
 	cachesDir := wavebase.GetWaveCachesDir()
 	tsunamiCacheDir := filepath.Join(cachesDir, "tsunami-build-cache")

@@ -244,6 +244,8 @@ type AIUsage struct {
 }
 
 type AIMetrics struct {
+	ChatId            string         `json:"chatid"`
+	StepNum           int            `json:"stepnum"`
 	Usage             AIUsage        `json:"usage"`
 	RequestCount      int            `json:"requestcount"`
 	ToolUseCount      int            `json:"toolusecount"`
@@ -275,6 +277,7 @@ type AIFunctionCallInput struct {
 type GenAIMessage interface {
 	GetMessageId() string
 	GetUsage() *AIUsage
+	GetRole() string
 }
 
 const (

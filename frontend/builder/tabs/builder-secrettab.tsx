@@ -25,14 +25,16 @@ type SecretRowProps = {
 const SecretRow = memo(({ secretName, secretMeta, currentBinding, availableSecrets, onMapDefault, onSetAndMapDefault }: SecretRowProps) => {
     const isMapped = currentBinding.trim().length > 0;
     const isValid = isMapped && availableSecrets.includes(currentBinding);
+    const isInvalid = isMapped && !isValid;
     const hasMatchingSecret = availableSecrets.includes(secretName);
 
     return (
         <div className="flex items-center gap-4 py-2 border-b border-border">
-            <Tooltip content={!isMapped ? "Secret is Not Mapped" : "Secret Has a Valid Mapping"}>
+            <Tooltip content={!isMapped ? "Secret is Not Mapped" : isValid ? "Secret Has a Valid Mapping" : "Secret Binding is Invalid"}>
                 <div className="flex items-center">
                     {!isMapped && <AlertTriangle className="w-5 h-5 text-yellow-500" />}
-                    {isMapped && isValid && <Check className="w-5 h-5 text-green-500" />}
+                    {isInvalid && <AlertTriangle className="w-5 h-5 text-red-500" />}
+                    {isValid && <Check className="w-5 h-5 text-green-500" />}
                 </div>
             </Tooltip>
             <div className="flex-1 flex items-center gap-2">
@@ -157,14 +159,11 @@ const SetSecretDialog = memo(({ secretName, onSetAndMap }: SetSecretDialogProps)
 
 SetSecretDialog.displayName = "SetSecretDialog";
 
-const BuilderEnvTab = memo(() => {
+const BuilderSecretTab = memo(() => {
     const model = BuilderAppPanelModel.getInstance();
     const builderStatus = useAtomValue(model.builderStatusAtom);
     const error = useAtomValue(model.errorAtom);
 
-    const [localBindings, setLocalBindings] = useState<{ [key: string]: string }>({});
-    const [isDirty, setIsDirty] = useState(false);
-    const [isSaving, setIsSaving] = useState(false);
     const [availableSecrets, setAvailableSecrets] = useState<string[]>([]);
 
     const manifest = builderStatus?.manifest;
@@ -183,10 +182,14 @@ const BuilderEnvTab = memo(() => {
         fetchSecrets();
     }, []);
 
-    if (!localBindings || Object.keys(localBindings).length === 0) {
-        if (Object.keys(secretBindings).length > 0) {
-            setLocalBindings({ ...secretBindings });
-        }
+    if (!builderStatus || !manifest) {
+        return (
+            <div className="w-full h-full flex items-center justify-center">
+                <div className="text-secondary text-center">
+                    App manifest not available. Secrets will be shown once the app builds successfully.
+                </div>
+            </div>
+        );
     }
 
     const sortedSecretEntries = Object.entries(secrets).sort(([nameA, metaA], [nameB, metaB]) => {
@@ -195,32 +198,22 @@ const BuilderEnvTab = memo(() => {
         return nameA.localeCompare(nameB);
     });
 
-    const handleBindingChange = (secretName: string, binding: string) => {
-        setLocalBindings((prev) => ({ ...prev, [secretName]: binding }));
-        setIsDirty(true);
-    };
-
-    const handleSave = async () => {
-        setIsSaving(true);
+    const handleMapDefault = async (secretName: string) => {
+        const newBindings = { ...secretBindings, [secretName]: secretName };
+        
         try {
             const appId = globalStore.get(atoms.builderAppId);
             await RpcApi.WriteAppSecretBindingsCommand(TabRpcClient, {
                 appid: appId,
-                bindings: localBindings,
+                bindings: newBindings,
             });
-            setIsDirty(false);
+            model.updateSecretBindings(newBindings);
             globalStore.set(model.errorAtom, "");
+            model.restartBuilder();
         } catch (err) {
             console.error("Failed to save secret bindings:", err);
             globalStore.set(model.errorAtom, `Failed to save secret bindings: ${err.message || "Unknown error"}`);
-        } finally {
-            setIsSaving(false);
         }
-    };
-
-    const handleMapDefault = (secretName: string) => {
-        setLocalBindings((prev) => ({ ...prev, [secretName]: secretName }));
-        setIsDirty(true);
     };
 
     const handleSetAndMapDefault = (secretName: string) => {
@@ -230,30 +223,35 @@ const BuilderEnvTab = memo(() => {
     const handleSetAndMap = async (secretName: string, secretValue: string) => {
         await RpcApi.SetSecretsCommand(TabRpcClient, { [secretName]: secretValue });
         setAvailableSecrets((prev) => [...prev, secretName]);
-        setLocalBindings((prev) => ({ ...prev, [secretName]: secretName }));
-        setIsDirty(true);
+        
+        const newBindings = { ...secretBindings, [secretName]: secretName };
+        
+        try {
+            const appId = globalStore.get(atoms.builderAppId);
+            await RpcApi.WriteAppSecretBindingsCommand(TabRpcClient, {
+                appid: appId,
+                bindings: newBindings,
+            });
+            model.updateSecretBindings(newBindings);
+            globalStore.set(model.errorAtom, "");
+            model.restartBuilder();
+        } catch (err) {
+            console.error("Failed to save secret bindings:", err);
+            globalStore.set(model.errorAtom, `Failed to save secret bindings: ${err.message || "Unknown error"}`);
+        }
     };
 
     const allRequiredBound =
-        sortedSecretEntries.filter(([_, meta]) => !meta.optional).every(([name]) => localBindings[name]?.trim()) ||
+        sortedSecretEntries.filter(([_, meta]) => !meta.optional).every(([name]) => secretBindings[name]?.trim()) ||
         false;
 
     return (
         <div className="w-full h-full flex flex-col p-4">
-            <div className="flex items-center justify-between mb-2">
-                <h2 className="text-lg font-semibold">Secret Bindings</h2>
-                <button
-                    className="px-3 py-1 text-sm font-medium rounded bg-accent/80 text-primary hover:bg-accent transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                    onClick={handleSave}
-                    disabled={!isDirty || isSaving}
-                >
-                    {isSaving ? "Saving..." : "Save"}
-                </button>
-            </div>
+            <h2 className="text-lg font-semibold mb-2">Secret Bindings</h2>
 
             <div className="mb-4 p-2 bg-blue-500/10 border border-blue-500/30 rounded text-sm text-secondary">
                 Map app secrets to Wave secret store names. Required secrets must be bound before the app can run
-                successfully.
+                successfully. Changes are saved automatically.
             </div>
 
             {!allRequiredBound && (
@@ -276,7 +274,7 @@ const BuilderEnvTab = memo(() => {
                                 key={secretName}
                                 secretName={secretName}
                                 secretMeta={secretMeta}
-                                currentBinding={localBindings[secretName] || ""}
+                                currentBinding={secretBindings[secretName] || ""}
                                 availableSecrets={availableSecrets}
                                 onMapDefault={handleMapDefault}
                                 onSetAndMapDefault={handleSetAndMapDefault}
@@ -289,6 +287,6 @@ const BuilderEnvTab = memo(() => {
     );
 });
 
-BuilderEnvTab.displayName = "BuilderEnvTab";
+BuilderSecretTab.displayName = "BuilderSecretTab";
 
-export { BuilderEnvTab, SetSecretDialog };
+export { BuilderSecretTab, SetSecretDialog };

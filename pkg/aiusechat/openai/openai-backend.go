@@ -138,6 +138,13 @@ func (m *OpenAIChatMessage) GetMessageId() string {
 	return m.MessageId
 }
 
+func (m *OpenAIChatMessage) GetRole() string {
+	if m.Message != nil {
+		return m.Message.Role
+	}
+	return ""
+}
+
 func (m *OpenAIChatMessage) GetUsage() *uctypes.AIUsage {
 	if m.Usage == nil {
 		return nil

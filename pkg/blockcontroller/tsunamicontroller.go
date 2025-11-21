@@ -292,6 +292,10 @@ func runTsunamiAppBinary(ctx context.Context, appBinPath string, appPath string,
 	cmd := exec.Command(appBinPath)
 	cmd.Env = append(os.Environ(), "TSUNAMI_CLOSEONSTDIN=1")
 
+	if wavebase.IsDevMode() {
+		cmd.Env = append(cmd.Env, "TSUNAMI_CORS="+tsunamiutil.DevModeCorsOrigins)
+	}
+
 	// Add TsunamiEnv variables if configured
 	tsunamiEnv := blockMeta.GetMap(waveobj.MetaKey_TsunamiEnv)
 	for key, value := range tsunamiEnv {

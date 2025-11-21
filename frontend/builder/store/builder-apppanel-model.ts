@@ -10,7 +10,7 @@ import { base64ToString, stringToBase64 } from "@/util/util";
 import { atom, type Atom, type PrimitiveAtom } from "jotai";
 import { debounce } from "throttle-debounce";
 
-export type TabType = "preview" | "files" | "code" | "secrets";
+export type TabType = "preview" | "files" | "code" | "secrets" | "configdata";
 
 export type EnvVar = {
     name: string;
@@ -121,6 +121,16 @@ export class BuilderAppPanelModel {
         }
     }
 
+    updateSecretBindings(newBindings: { [key: string]: string }) {
+        const currentStatus = globalStore.get(this.builderStatusAtom);
+        if (currentStatus) {
+            globalStore.set(this.builderStatusAtom, {
+                ...currentStatus,
+                secretbindings: newBindings,
+            });
+        }
+    }
+
     async loadEnvVars(builderId: string) {
         try {
             const rtInfo = await RpcApi.GetRTInfoCommand(TabRpcClient, {
@@ -215,7 +225,7 @@ export class BuilderAppPanelModel {
     async switchBuilderApp() {
         const builderId = globalStore.get(atoms.builderId);
         try {
-            await RpcApi.StopBuilderCommand(TabRpcClient, builderId);
+            await RpcApi.DeleteBuilderCommand(TabRpcClient, builderId);
             await new Promise((resolve) => setTimeout(resolve, 500));
             await RpcApi.SetRTInfoCommand(TabRpcClient, {
                 oref: WOS.makeORef("builder", builderId),

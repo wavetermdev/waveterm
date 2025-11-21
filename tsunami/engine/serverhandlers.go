@@ -50,6 +50,31 @@ func setNoCacheHeaders(w http.ResponseWriter) {
 	w.Header().Set("Expires", "0")
 }
 
+func setCORSHeaders(w http.ResponseWriter, r *http.Request) bool {
+	corsOriginsStr := os.Getenv("TSUNAMI_CORS")
+	if corsOriginsStr == "" {
+		return false
+	}
+
+	origin := r.Header.Get("Origin")
+	if origin == "" {
+		return false
+	}
+
+	allowedOrigins := strings.Split(corsOriginsStr, ",")
+	for _, allowedOrigin := range allowedOrigins {
+		allowedOrigin = strings.TrimSpace(allowedOrigin)
+		if allowedOrigin == origin {
+			w.Header().Set("Access-Control-Allow-Origin", origin)
+			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+			w.Header().Set("Access-Control-Allow-Credentials", "true")
+			return true
+		}
+	}
+	return false
+}
+
 func (h *httpHandlers) registerHandlers(mux *http.ServeMux, opts handlerOpts) {
 	mux.HandleFunc("/api/render", h.handleRender)
 	mux.HandleFunc("/api/updates", h.handleSSE)
@@ -200,7 +225,13 @@ func (h *httpHandlers) handleData(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
+	setCORSHeaders(w, r)
 	setNoCacheHeaders(w)
+
+	if r.Method == http.MethodOptions {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
 
 	if r.Method != http.MethodGet {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -224,7 +255,13 @@ func (h *httpHandlers) handleConfig(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
+	setCORSHeaders(w, r)
 	setNoCacheHeaders(w)
+
+	if r.Method == http.MethodOptions {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
 
 	switch r.Method {
 	case http.MethodGet:
@@ -293,7 +330,13 @@ func (h *httpHandlers) handleSchemas(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
+	setCORSHeaders(w, r)
 	setNoCacheHeaders(w)
+
+	if r.Method == http.MethodOptions {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
 
 	if r.Method != http.MethodGet {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -506,7 +549,13 @@ func (h *httpHandlers) handleManifest(manifestFileBytes []byte) http.HandlerFunc
 			}
 		}()
 
+		setCORSHeaders(w, r)
 		setNoCacheHeaders(w)
+
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
 
 		if r.Method != http.MethodGet {
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
