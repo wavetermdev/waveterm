@@ -164,7 +164,6 @@ const BuilderEnvTab = memo(() => {
     const builderStatus = useAtomValue(model.builderStatusAtom);
     const error = useAtomValue(model.errorAtom);
 
-    const [localBindings, setLocalBindings] = useState<{ [key: string]: string }>({});
     const [availableSecrets, setAvailableSecrets] = useState<string[]>([]);
 
     const manifest = builderStatus?.manifest;
@@ -183,12 +182,6 @@ const BuilderEnvTab = memo(() => {
         fetchSecrets();
     }, []);
 
-    if (!localBindings || Object.keys(localBindings).length === 0) {
-        if (Object.keys(secretBindings).length > 0) {
-            setLocalBindings({ ...secretBindings });
-        }
-    }
-
     const sortedSecretEntries = Object.entries(secrets).sort(([nameA, metaA], [nameB, metaB]) => {
         if (!metaA.optional && metaB.optional) return -1;
         if (metaA.optional && !metaB.optional) return 1;
@@ -196,8 +189,7 @@ const BuilderEnvTab = memo(() => {
     });
 
     const handleMapDefault = async (secretName: string) => {
-        const newBindings = { ...localBindings, [secretName]: secretName };
-        setLocalBindings(newBindings);
+        const newBindings = { ...secretBindings, [secretName]: secretName };
         
         try {
             const appId = globalStore.get(atoms.builderAppId);
@@ -205,6 +197,7 @@ const BuilderEnvTab = memo(() => {
                 appid: appId,
                 bindings: newBindings,
             });
+            model.updateSecretBindings(newBindings);
             globalStore.set(model.errorAtom, "");
             model.restartBuilder();
         } catch (err) {
@@ -221,8 +214,7 @@ const BuilderEnvTab = memo(() => {
         await RpcApi.SetSecretsCommand(TabRpcClient, { [secretName]: secretValue });
         setAvailableSecrets((prev) => [...prev, secretName]);
         
-        const newBindings = { ...localBindings, [secretName]: secretName };
-        setLocalBindings(newBindings);
+        const newBindings = { ...secretBindings, [secretName]: secretName };
         
         try {
             const appId = globalStore.get(atoms.builderAppId);
@@ -230,6 +222,7 @@ const BuilderEnvTab = memo(() => {
                 appid: appId,
                 bindings: newBindings,
             });
+            model.updateSecretBindings(newBindings);
             globalStore.set(model.errorAtom, "");
             model.restartBuilder();
         } catch (err) {
@@ -239,7 +232,7 @@ const BuilderEnvTab = memo(() => {
     };
 
     const allRequiredBound =
-        sortedSecretEntries.filter(([_, meta]) => !meta.optional).every(([name]) => localBindings[name]?.trim()) ||
+        sortedSecretEntries.filter(([_, meta]) => !meta.optional).every(([name]) => secretBindings[name]?.trim()) ||
         false;
 
     return (
@@ -271,7 +264,7 @@ const BuilderEnvTab = memo(() => {
                                 key={secretName}
                                 secretName={secretName}
                                 secretMeta={secretMeta}
-                                currentBinding={localBindings[secretName] || ""}
+                                currentBinding={secretBindings[secretName] || ""}
                                 availableSecrets={availableSecrets}
                                 onMapDefault={handleMapDefault}
                                 onSetAndMapDefault={handleSetAndMapDefault}

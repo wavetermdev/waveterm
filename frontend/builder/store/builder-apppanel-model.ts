@@ -121,6 +121,16 @@ export class BuilderAppPanelModel {
         }
     }
 
+    updateSecretBindings(newBindings: { [key: string]: string }) {
+        const currentStatus = globalStore.get(this.builderStatusAtom);
+        if (currentStatus) {
+            globalStore.set(this.builderStatusAtom, {
+                ...currentStatus,
+                secretbindings: newBindings,
+            });
+        }
+    }
+
     async loadEnvVars(builderId: string) {
         try {
             const rtInfo = await RpcApi.GetRTInfoCommand(TabRpcClient, {
