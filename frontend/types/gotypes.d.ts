@@ -873,6 +873,7 @@ declare global {
         "term:transparency"?: number;
         "term:allowbracketedpaste"?: boolean;
         "term:shiftenternewline"?: boolean;
+        "term:macoptionismeta"?: boolean;
         "term:conndebug"?: string;
         "web:zoom"?: number;
         "web:hidenav"?: boolean;
@@ -1219,8 +1220,6 @@ declare global {
         "count:views"?: {[key: string]: number};
         "waveai:apitype"?: string;
         "waveai:model"?: string;
-        "waveai:chatid"?: string;
-        "waveai:stepnum"?: number;
         "waveai:inputtokens"?: number;
         "waveai:outputtokens"?: number;
         "waveai:nativewebsearchcount"?: number;
