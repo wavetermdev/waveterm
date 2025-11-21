@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
+	"github.com/wavetermdev/waveterm/pkg/tsunamiutil"
 	"github.com/wavetermdev/waveterm/pkg/utilds"
 	"github.com/wavetermdev/waveterm/pkg/waveappstore"
 	"github.com/wavetermdev/waveterm/pkg/waveapputil"
@@ -325,7 +326,7 @@ func (bc *BuilderController) runBuilderApp(ctx context.Context, appId string, ap
 	cmd.Env = append(os.Environ(), "TSUNAMI_CLOSEONSTDIN=1")
 
 	if wavebase.IsDevMode() {
-		cmd.Env = append(cmd.Env, "TSUNAMI_CORS=http://localhost:5173,http://localhost:5174")
+		cmd.Env = append(cmd.Env, "TSUNAMI_CORS="+tsunamiutil.DevModeCorsOrigins)
 	}
 
 	for key, value := range builderEnv {
