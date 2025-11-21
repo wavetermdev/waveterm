@@ -152,50 +152,7 @@ type MetaTSType struct {
 - JSON tags should exactly match the corresponding settings field
 - This enables the hierarchical config system: block metadata → connection config → global settings
 
-### Step 2: Add to JSON Schema
-
-Edit [`schema/settings.json`](schema/settings.json) and add your field to the `properties` section:
-
-```json
-{
-  "$defs": {
-    "SettingsType": {
-      "properties": {
-        // ... existing properties ...
-
-        "mynew:setting": {
-          "type": "string"
-        },
-        "mynew:boolsetting": {
-          "type": "boolean"
-        },
-        "mynew:numbersetting": {
-          "type": "number"
-        },
-        "mynew:intsetting": {
-          "type": "integer"
-        },
-        "mynew:arraysetting": {
-          "items": {
-            "type": "string"
-          },
-          "type": "array"
-        }
-      }
-    }
-  }
-}
-```
-
-**Schema Type Mapping:**
-
-- Go `string` → JSON Schema `"string"`
-- Go `bool` → JSON Schema `"boolean"`
-- Go `float64` → JSON Schema `"number"`
-- Go `int64` → JSON Schema `"integer"`
-- Go `[]string` → JSON Schema `"array"` with `"items": {"type": "string"}`
-
-### Step 3: Set Default Value (Optional)
+### Step 2: Set Default Value (Optional)
 
 If your setting should have a default value, add it to [`pkg/wconfig/defaultconfig/settings.json`](pkg/wconfig/defaultconfig/settings.json):
 
@@ -218,7 +175,7 @@ If your setting should have a default value, add it to [`pkg/wconfig/defaultconf
 - Ensure defaults make sense for the typical user experience
 - Keep defaults conservative and safe
 
-### Step 4: Update Documentation
+### Step 3: Update Documentation
 
 Add your new setting to the configuration table in [`docs/docs/config.mdx`](docs/docs/config.mdx):
 
@@ -234,28 +191,23 @@ Add your new setting to the configuration table in [`docs/docs/config.mdx`](docs
 
 Also update the default configuration example in the same file if you added defaults.
 
-### Step 5: Regenerate Schema and TypeScript Types
+### Step 4: Regenerate Schema and TypeScript Types
 
-Run the build tasks to regenerate schema and TypeScript types:
+Run the generate task to automatically regenerate the JSON schema and TypeScript types:
 
 ```bash
-task build:schema
 task generate
 ```
 
-Or run them individually:
+**What this does:**
+- Runs `task build:schema` (automatically generates JSON schema from Go structs)
+- Generates TypeScript type definitions in [`frontend/types/gotypes.d.ts`](frontend/types/gotypes.d.ts)
+- Generates RPC client APIs
+- Generates metadata constants
 
-```bash
-# Regenerate JSON schema
-task build:schema
+**Note:** The JSON schema in [`schema/settings.json`](schema/settings.json) is **automatically generated** from the Go struct definitions - you don't need to edit it manually.
 
-# Regenerate TypeScript types
-go run cmd/generatets/main-generatets.go
-```
-
-This will update the schema files and [`frontend/types/gotypes.d.ts`](frontend/types/gotypes.d.ts) with your new settings.
-
-### Step 6: Use in Frontend Code
+### Step 5: Use in Frontend Code
 
 Access your new setting in React components:
 
@@ -289,7 +241,7 @@ const appGlobalHotkey = useAtomValue(getSettingsKeyAtom("app:globalhotkey")) ?? 
 const connStatus = useAtomValue(getConnStatusAtom(connectionName));
 ```
 
-### Step 7: Use in Backend Code
+### Step 6: Use in Backend Code
 
 Access settings in Go code:
 
@@ -344,7 +296,7 @@ await RpcApi.SetMetaCommand(TabRpcClient, {
 
 ## Example: Adding a New Terminal Setting
 
-Let's walk through adding a new terminal setting `term:bellsound` with block-level override support:
+Here's a complete example adding a new terminal setting `term:bellsound` with block-level override support:
 
 ### 1. Go Struct (settingsconfig.go)
 
@@ -364,19 +316,7 @@ type MetaTSType struct {
 }
 ```
 
-### 3. JSON Schema (schema/settings.json)
-
-```json
-{
-  "properties": {
-    "term:bellsound": {
-      "type": "string"
-    }
-  }
-}
-```
-
-### 4. Default Value (defaultconfig/settings.json)
+### 3. Default Value (defaultconfig/settings.json - optional)
 
 ```json
 {
@@ -384,10 +324,16 @@ type MetaTSType struct {
 }
 ```
 
-### 5. Documentation (docs/config.mdx)
+### 4. Documentation (docs/config.mdx)
 
 ```markdown
 | term:bellsound | string | Sound to play for terminal bell ("default", "none", or custom sound file path) |
+```
+
+### 5. Regenerate Types
+
+```bash
+task generate
 ```
 
 ### 6. Frontend Usage
