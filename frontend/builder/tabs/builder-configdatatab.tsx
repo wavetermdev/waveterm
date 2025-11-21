@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { BuilderAppPanelModel } from "@/builder/store/builder-apppanel-model";
+import { CopyButton } from "@/element/copybutton";
 import { atoms } from "@/store/global";
 import { cn } from "@/util/util";
 import { useAtomValue } from "jotai";
@@ -130,6 +131,18 @@ const BuilderConfigDataTab = memo(() => {
         await fetchData();
     }, [fetchData]);
 
+    const handleCopyConfig = useCallback(() => {
+        if (state.config) {
+            navigator.clipboard.writeText(JSON.stringify(state.config, null, 2));
+        }
+    }, [state.config]);
+
+    const handleCopyData = useCallback(() => {
+        if (state.data) {
+            navigator.clipboard.writeText(JSON.stringify(state.data, null, 2));
+        }
+    }, [state.data]);
+
     useEffect(() => {
         if (isRunning) {
             fetchData();
@@ -174,23 +187,29 @@ const BuilderConfigDataTab = memo(() => {
             <div className="flex-1 overflow-auto p-4">
                 <div className="flex flex-col gap-6">
                     <div className="flex flex-col gap-2">
-                        <h4 className="text-base font-semibold text-primary flex items-center gap-2">
-                            <i className="fa fa-gear" />
-                            Config
-                        </h4>
+                        <div className="flex items-center justify-between">
+                            <h4 className="text-base font-semibold text-primary flex items-center gap-2">
+                                <i className="fa fa-gear" />
+                                Config
+                            </h4>
+                            <CopyButton title="Copy Config" onClick={handleCopyConfig} />
+                        </div>
                         <div className="bg-panel border border-border rounded-lg p-4 overflow-auto">
-                            <pre className="text-sm text-primary font-mono whitespace-pre">
+                            <pre className="text-xs text-primary font-mono whitespace-pre">
                                 {JSON.stringify(state.config, null, 2)}
                             </pre>
                         </div>
                     </div>
                     <div className="flex flex-col gap-2">
-                        <h4 className="text-base font-semibold text-primary flex items-center gap-2">
-                            <i className="fa fa-database" />
-                            Data
-                        </h4>
+                        <div className="flex items-center justify-between">
+                            <h4 className="text-base font-semibold text-primary flex items-center gap-2">
+                                <i className="fa fa-database" />
+                                Data
+                            </h4>
+                            <CopyButton title="Copy Data" onClick={handleCopyData} />
+                        </div>
                         <div className="bg-panel border border-border rounded-lg p-4 overflow-auto">
-                            <pre className="text-sm text-primary font-mono whitespace-pre">
+                            <pre className="text-xs text-primary font-mono whitespace-pre">
                                 {JSON.stringify(state.data, null, 2)}
                             </pre>
                         </div>
