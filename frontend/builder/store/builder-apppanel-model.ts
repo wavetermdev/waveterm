@@ -10,7 +10,7 @@ import { base64ToString, stringToBase64 } from "@/util/util";
 import { atom, type Atom, type PrimitiveAtom } from "jotai";
 import { debounce } from "throttle-debounce";
 
-export type TabType = "preview" | "files" | "code" | "secrets";
+export type TabType = "preview" | "files" | "code" | "secrets" | "configdata";
 
 export type EnvVar = {
     name: string;

@@ -9,6 +9,7 @@ import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { BuilderAppPanelModel, type TabType } from "@/builder/store/builder-apppanel-model";
 import { BuilderFocusManager } from "@/builder/store/builder-focusmanager";
 import { BuilderCodeTab } from "@/builder/tabs/builder-codetab";
+import { BuilderConfigDataTab } from "@/builder/tabs/builder-configdatatab";
 import { BuilderFilesTab, DeleteFileModal, RenameFileModal } from "@/builder/tabs/builder-filestab";
 import { BuilderPreviewTab } from "@/builder/tabs/builder-previewtab";
 import { BuilderEnvTab } from "@/builder/tabs/builder-secrettab";
@@ -311,6 +312,13 @@ const BuilderAppPanel = memo(() => {
                             onClick={() => handleTabClick("code")}
                         />
                         <TabButton
+                            label="Config/Data"
+                            tabType="configdata"
+                            isActive={activeTab === "configdata"}
+                            isAppFocused={isAppFocused}
+                            onClick={() => handleTabClick("configdata")}
+                        />
+                        <TabButton
                             label="Files"
                             tabType="files"
                             isActive={activeTab === "files"}
@@ -364,6 +372,11 @@ const BuilderAppPanel = memo(() => {
                 <div className="w-full h-full" style={{ display: activeTab === "secrets" ? "block" : "none" }}>
                     <ErrorBoundary>
                         <BuilderEnvTab />
+                    </ErrorBoundary>
+                </div>
+                <div className="w-full h-full" style={{ display: activeTab === "configdata" ? "block" : "none" }}>
+                    <ErrorBoundary>
+                        <BuilderConfigDataTab />
                     </ErrorBoundary>
                 </div>
             </div>
