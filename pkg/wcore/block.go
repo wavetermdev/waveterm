@@ -150,7 +150,7 @@ func createBlockObj(ctx context.Context, tabId string, blockDef *waveobj.BlockDe
 // recursive: if true, will recursively close parent tab, window, workspace, if they are empty.
 // Returns new active tab id, error.
 func DeleteBlock(ctx context.Context, blockId string, recursive bool) error {
-	block, err := wstore.DBMustGet[*waveobj.Block](ctx, blockId)
+	block, err := wstore.DBGet[*waveobj.Block](ctx, blockId)
 	if err != nil {
 		return fmt.Errorf("error getting block: %w", err)
 	}
@@ -223,11 +223,11 @@ func deleteBlockObj(ctx context.Context, blockId string) (int, error) {
 			}
 		}
 		wstore.DBDelete(tx.Context(), waveobj.OType_Block, blockId)
-		
+
 		// Clean up block runtime info
 		blockORef := waveobj.MakeORef(waveobj.OType_Block, blockId)
 		wstore.DeleteRTInfo(blockORef)
-		
+
 		return parentBlockCount, nil
 	})
 }

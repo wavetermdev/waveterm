@@ -290,13 +290,12 @@ func DeleteTab(ctx context.Context, workspaceId string, tabId string, recursive 
 
 	// close blocks (sends events + stops block controllers)
 	tab, _ := wstore.DBGet[*waveobj.Tab](ctx, tabId)
-	if tab == nil {
-		return "", fmt.Errorf("tab not found: %q", tabId)
-	}
-	for _, blockId := range tab.BlockIds {
-		err := DeleteBlock(ctx, blockId, false)
-		if err != nil {
-			return "", fmt.Errorf("error deleting block %s: %w", blockId, err)
+	if tab != nil {
+		for _, blockId := range tab.BlockIds {
+			err := DeleteBlock(ctx, blockId, false)
+			if err != nil {
+				return "", fmt.Errorf("error deleting block %s: %w", blockId, err)
+			}
 		}
 	}
 
@@ -319,7 +318,9 @@ func DeleteTab(ctx context.Context, workspaceId string, tabId string, recursive 
 
 	wstore.DBUpdate(ctx, ws)
 	wstore.DBDelete(ctx, waveobj.OType_Tab, tabId)
-	wstore.DBDelete(ctx, waveobj.OType_LayoutState, tab.LayoutState)
+	if tab != nil {
+		wstore.DBDelete(ctx, waveobj.OType_LayoutState, tab.LayoutState)
+	}
 
 	// if no tabs remaining, close window
 	if recursive && newActiveTabId == "" {
