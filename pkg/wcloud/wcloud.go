@@ -227,10 +227,6 @@ func SendAllTelemetry(clientId string) error {
 	if err != nil {
 		return err
 	}
-	err = sendTelemetry(clientId)
-	if err != nil {
-		return err
-	}
 	return nil
 }
 
