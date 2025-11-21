@@ -41,7 +41,7 @@ jobs:
         runs-on: windows-latest
         if: github.event.pull_request.draft == false
         steps:
-            - uses: actions/checkout@v5
+            - uses: actions/checkout@v6
 
             # General build dependencies
             - uses: actions/setup-go@v6
