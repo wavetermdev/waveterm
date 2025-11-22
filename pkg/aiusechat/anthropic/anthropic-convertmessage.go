@@ -72,18 +72,32 @@ func buildAnthropicHTTPRequest(ctx context.Context, msgs []anthropicInputMessage
 		}
 	}
 
-	// inject chatOpts.AppGoFile as a "text" block at the END of the LAST "user" message found (append to Content)
-	if chatOpts.AppGoFile != "" {
+	// inject chatOpts.PlatformInfo, AppStaticFiles, and AppGoFile as "text" blocks at the END of the LAST "user" message found (append to Content)
+	if chatOpts.PlatformInfo != "" || chatOpts.AppStaticFiles != "" || chatOpts.AppGoFile != "" {
 		// Find the last "user" message
 		for i := len(convertedMsgs) - 1; i >= 0; i-- {
 			if convertedMsgs[i].Role == "user" {
-				// Create a text block with the AppGoFile content wrapped in XML tag
-				appGoFileBlock := anthropicMessageContentBlock{
-					Type: "text",
-					Text: "<CurrentAppGoFile>\n" + chatOpts.AppGoFile + "\n</CurrentAppGoFile>",
+				if chatOpts.PlatformInfo != "" {
+					platformInfoBlock := anthropicMessageContentBlock{
+						Type: "text",
+						Text: "<PlatformInfo>\n" + chatOpts.PlatformInfo + "\n</PlatformInfo>",
+					}
+					convertedMsgs[i].Content = append(convertedMsgs[i].Content, platformInfoBlock)
 				}
-				// Append to the Content of this message
-				convertedMsgs[i].Content = append(convertedMsgs[i].Content, appGoFileBlock)
+				if chatOpts.AppStaticFiles != "" {
+					appStaticFilesBlock := anthropicMessageContentBlock{
+						Type: "text",
+						Text: "<CurrentAppStaticFiles>\n" + chatOpts.AppStaticFiles + "\n</CurrentAppStaticFiles>",
+					}
+					convertedMsgs[i].Content = append(convertedMsgs[i].Content, appStaticFilesBlock)
+				}
+				if chatOpts.AppGoFile != "" {
+					appGoFileBlock := anthropicMessageContentBlock{
+						Type: "text",
+						Text: "<CurrentAppGoFile>\n" + chatOpts.AppGoFile + "\n</CurrentAppGoFile>",
+					}
+					convertedMsgs[i].Content = append(convertedMsgs[i].Content, appGoFileBlock)
+				}
 				break
 			}
 		}
