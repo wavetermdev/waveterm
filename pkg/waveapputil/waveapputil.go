@@ -16,7 +16,7 @@ import (
 	"github.com/wavetermdev/waveterm/tsunami/build"
 )
 
-const DefaultTsunamiSdkVersion = "v0.12.3"
+const DefaultTsunamiSdkVersion = "v0.12.4"
 
 func GetTsunamiScaffoldPath() string {
 	settings := wconfig.GetWatcher().GetFullConfig().Settings

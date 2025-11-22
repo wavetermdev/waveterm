@@ -14,7 +14,7 @@ const (
 	EnvTsunamiScaffoldPath   = "TSUNAMI_SCAFFOLDPATH"
 	EnvTsunamiSdkReplacePath = "TSUNAMI_SDKREPLACEPATH"
 	EnvTsunamiNodePath       = "TSUNAMI_NODEPATH"
-	TsunamiSdkVersion        = "v0.12.3"
+	TsunamiSdkVersion        = "v0.12.4"
 )
 
 // these are set at build time
