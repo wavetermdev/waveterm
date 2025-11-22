@@ -69,6 +69,7 @@ const BuilderConfigDataTab = memo(() => {
     const model = BuilderAppPanelModel.getInstance();
     const builderStatus = useAtomValue(model.builderStatusAtom);
     const builderId = useAtomValue(atoms.builderId);
+    const activeTab = useAtomValue(model.activeTab);
     const [state, setState] = useState<ConfigDataState>({
         config: null,
         data: null,
@@ -144,9 +145,9 @@ const BuilderConfigDataTab = memo(() => {
     }, [state.data]);
 
     useEffect(() => {
-        if (isRunning) {
+        if (activeTab === "configdata" && isRunning) {
             fetchData();
-        } else {
+        } else if (!isRunning) {
             setState({
                 config: null,
                 data: null,
@@ -154,7 +155,7 @@ const BuilderConfigDataTab = memo(() => {
                 isLoading: false,
             });
         }
-    }, [isRunning, fetchData]);
+    }, [activeTab, isRunning, fetchData]);
 
     if (!isRunning) {
         return <NotRunningView />;

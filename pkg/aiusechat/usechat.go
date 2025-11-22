@@ -11,6 +11,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/user"
 	"strings"
 	"sync"
 	"time"
@@ -411,10 +412,11 @@ func RunAIChat(ctx context.Context, sseHandler *sse.SSEHandlerCh, backend UseCha
 			}
 		}
 		if chatOpts.BuilderAppGenerator != nil {
-			appGoFile, appStaticFiles, appErr := chatOpts.BuilderAppGenerator()
+			appGoFile, appStaticFiles, platformInfo, appErr := chatOpts.BuilderAppGenerator()
 			if appErr == nil {
 				chatOpts.AppGoFile = appGoFile
 				chatOpts.AppStaticFiles = appStaticFiles
+				chatOpts.PlatformInfo = platformInfo
 			}
 		}
 		stopReason, rtnMessage, err := runAIChatStep(ctx, sseHandler, backend, chatOpts, cont)
@@ -689,7 +691,7 @@ func WaveAIPostMessageHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if req.BuilderAppId != "" {
-		chatOpts.BuilderAppGenerator = func() (string, string, error) {
+		chatOpts.BuilderAppGenerator = func() (string, string, string, error) {
 			return generateBuilderAppData(req.BuilderAppId)
 		}
 	}
@@ -830,7 +832,7 @@ type StaticFileInfo struct {
 	ModifiedTime string `json:"modified_time"`
 }
 
-func generateBuilderAppData(appId string) (string, string, error) {
+func generateBuilderAppData(appId string) (string, string, string, error) {
 	appGoFile := ""
 	fileData, err := waveappstore.ReadAppFile(appId, "app.go")
 	if err == nil {
@@ -860,5 +862,12 @@ func generateBuilderAppData(appId string) (string, string, error) {
 		}
 	}
 
-	return appGoFile, staticFilesJSON, nil
+	platformInfo := wavebase.GetSystemSummary()
+	if currentUser, userErr := user.Current(); userErr == nil && currentUser.Username != "" {
+		platformInfo = fmt.Sprintf("Local Machine: %s, User: %s", platformInfo, currentUser.Username)
+	} else {
+		platformInfo = fmt.Sprintf("Local Machine: %s", platformInfo)
+	}
+
+	return appGoFile, staticFilesJSON, platformInfo, nil
 }

@@ -261,6 +261,19 @@ func (bc *BuilderController) buildAndRun(ctx context.Context, appId string, buil
 		return
 	}
 
+	process, err := bc.runBuilderApp(ctx, appId, cachePath, builderEnv)
+	if err != nil {
+		bc.handleBuildError(fmt.Errorf("failed to run app: %w", err), resultCh)
+		return
+	}
+
+	bc.lock.Lock()
+	bc.process = process
+	bc.setStatus_nolock(BuilderStatus_Running, process.Port, 0, "")
+	bc.lock.Unlock()
+
+	time.Sleep(1 * time.Second)
+
 	if resultCh != nil {
 		buildOutput := ""
 		if bc.outputBuffer != nil {
@@ -275,17 +288,6 @@ func (bc *BuilderController) buildAndRun(ctx context.Context, appId string, buil
 		default:
 		}
 	}
-
-	process, err := bc.runBuilderApp(ctx, appId, cachePath, builderEnv)
-	if err != nil {
-		bc.handleBuildError(fmt.Errorf("failed to run app: %w", err), resultCh)
-		return
-	}
-
-	bc.lock.Lock()
-	bc.process = process
-	bc.setStatus_nolock(BuilderStatus_Running, process.Port, 0, "")
-	bc.lock.Unlock()
 
 	go func() {
 		<-process.WaitCh

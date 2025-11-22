@@ -1220,6 +1220,8 @@ declare global {
         "count:views"?: {[key: string]: number};
         "waveai:apitype"?: string;
         "waveai:model"?: string;
+        "waveai:chatid"?: string;
+        "waveai:stepnum"?: number;
         "waveai:inputtokens"?: number;
         "waveai:outputtokens"?: number;
         "waveai:nativewebsearchcount"?: number;
