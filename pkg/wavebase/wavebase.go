@@ -344,6 +344,9 @@ var osReleaseOnce = &sync.Once{}
 var osRelease string
 
 func unameKernelRelease() string {
+	if runtime.GOOS == "windows" {
+		return "-"
+	}
 	ctx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancelFn()
 	out, err := exec.CommandContext(ctx, "uname", "-r").CombinedOutput()
