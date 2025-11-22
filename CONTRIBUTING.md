@@ -39,12 +39,6 @@ We have a set of recommended Visual Studio Code extensions to enforce our style 
 
 To build and run Wave locally, see instructions at [Building Wave Terminal](./BUILD.md).
 
-### UI Component Library
-
-We are working to document all our UI components in [Storybook](https://storybook.js.org/docs) for easy reference and testing. If you would like to help us with this, we would be very grateful!
-
-Our Storybook site is hosted [docs.waveterm.dev/storybook](https://docs.waveterm.dev/storybook).
-
 ### Create a Pull Request
 
 Guidelines:
@@ -61,8 +55,6 @@ The project is broken into four main components: frontend, emain, wavesrv, and w
 ### Frontend
 
 Our frontend can be found in the [`/frontend`](./frontend/) directory. It is written in React Typescript. The main entrypoint is [`wave.ts`](./frontend/wave.ts) and the root for the React VDOM is [`app.tsx`](./frontend/app/app.tsx). If you are using `task dev` to run your dev instance of the app, the frontend will be loaded using Vite, which allows for Hot Module Reloading. This should work for most styling and simple component changes, but anything that affects the state of the app (the Jotai or layout code, for instance) may put the frontend into a bad state. If this happens, you can force reload the frontend using `Cmd:Shift:R` or `Ctrl:Shift:R`.
-
-We also have a Storybook project configured for testing our component library. We're still working to fill out the test cases for this, but it is useful for testing components in isolation. You can run this using `task storybook`.
 
 ### emain
 

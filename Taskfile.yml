@@ -54,20 +54,6 @@ tasks:
             WCLOUD_ENDPOINT: "https://api-dev.waveterm.dev/central"
             WCLOUD_WS_ENDPOINT: "wss://wsapi-dev.waveterm.dev/"
 
-    storybook:
-        desc: Start the Storybook server.
-        cmd: npm run storybook
-        deps:
-            - npm:install
-
-    storybook:build:
-        desc: Build the Storybook static site.
-        cmd: npm run build-storybook
-        generates:
-            - storybook-static/**/*
-        deps:
-            - npm:install
-
     docs:npm:install:
         desc: Runs `npm install` in docs directory
         internal: true
@@ -93,7 +79,6 @@ tasks:
         desc: Build the full docsite.
         cmds:
             - cd docs && npm run build
-            - task: copyfiles:'storybook-static':'docs/build/storybook'
         env:
             USE_SIMPLE_CSS_MINIFIER: "true"
         sources:
@@ -101,12 +86,10 @@ tasks:
             - "docs/src/**/*"
             - "docs/docs/**/*"
             - "docs/static/**/*"
-            - storybook-static/**/*
         generates:
             - "docs/build/**/*"
         deps:
             - docs:npm:install
-            - storybook:build
 
     package:
         desc: Package the application for the current platform.

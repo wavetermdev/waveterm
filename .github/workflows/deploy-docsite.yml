@@ -1,6 +1,6 @@
-name: Docsite and Storybook CI/CD
+name: Docsite CI/CD
 
-run-name: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && 'Build and Deploy' || 'Test Build' }} Docsite and Storybook
+run-name: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && 'Build and Deploy' || 'Test Build' }} Docsite
 
 env:
     NODE_VERSION: 22
@@ -10,7 +10,7 @@ on:
         branches:
             - main
     workflow_dispatch:
-    # Also run any time a PR is opened targeting the docs or storybook resources
+    # Also run any time a PR is opened targeting the docs
     pull_request:
         branches:
             - main
@@ -21,9 +21,6 @@ on:
             - ready_for_review
         paths:
             - "docs/**"
-            - "storybook/**"
-            - "**/*.story.*"
-            - "**/*.stories.*"
             - ".github/workflows/deploy-docsite.yml"
             - "Taskfile.yml"
 

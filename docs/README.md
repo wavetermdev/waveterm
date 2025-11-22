@@ -17,11 +17,11 @@ This command starts a local development server and opens up a browser window. Mo
 ### Build
 
 ```sh
-task docsite:build:<embedded,public>
+task docsite:build:public
 ```
 
 This command generates static content into the `build` directory and can be served using any static contents hosting service.
 
 ### Deployment
 
-Deployments are handled automatically by the [Docsite and Storybook CI/CD workflow](../.github/workflows/deploy-docsite.yml)
+Deployments are handled automatically by the [Docsite CI/CD workflow](../.github/workflows/deploy-docsite.yml)
