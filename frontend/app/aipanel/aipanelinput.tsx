@@ -29,7 +29,6 @@ export const AIPanelInput = memo(({ onSubmit, status, model }: AIPanelInputProps
     const resizeTextarea = useCallback(() => {
         const textarea = textareaRef.current;
         if (!textarea) return;
-
         textarea.style.height = "auto";
         const scrollHeight = textarea.scrollHeight;
         const maxHeight = 7 * 24;
@@ -39,9 +38,7 @@ export const AIPanelInput = memo(({ onSubmit, status, model }: AIPanelInputProps
     useEffect(() => {
         const inputRefObject: React.RefObject<AIPanelInputRef> = {
             current: {
-                focus: () => {
-                    textareaRef.current?.focus();
-                },
+                focus: () => textareaRef.current?.focus(),
                 resize: resizeTextarea,
             },
         };
@@ -56,60 +53,86 @@ export const AIPanelInput = memo(({ onSubmit, status, model }: AIPanelInputProps
         }
     };
 
-    const handleFocus = useCallback(() => {
-        model.requestWaveAIFocus();
-    }, [model]);
+    const handleFocus = useCallback(() => model.requestWaveAIFocus(), [model]);
 
-    const handleBlur = useCallback((e: React.FocusEvent) => {
-        if (e.relatedTarget === null) {
-            return;
-        }
+    const handleBlur = useCallback(
+        (e: React.FocusEvent) => {
+            if (e.relatedTarget === null) return;
+            if (waveAIHasFocusWithin(e.relatedTarget)) return;
+            model.requestNodeFocus();
+        },
+        [model]
+    );
 
-        if (waveAIHasFocusWithin(e.relatedTarget)) {
-            return;
-        }
-
-        model.requestNodeFocus();
-    }, [model]);
-
+    useEffect(() => resizeTextarea(), [input, resizeTextarea]);
     useEffect(() => {
-        resizeTextarea();
-    }, [input, resizeTextarea]);
-
-    useEffect(() => {
-        if (isPanelOpen) {
-            resizeTextarea();
-        }
+        if (isPanelOpen) resizeTextarea();
     }, [isPanelOpen, resizeTextarea]);
 
-    const handleUploadClick = () => {
-        fileInputRef.current?.click();
-    };
+    const handleUploadClick = () => fileInputRef.current?.click();
 
-    const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const files = Array.from(e.target.files || []);
-        const acceptableFiles = files.filter(isAcceptableFile);
+    const processFile = useCallback(
+        async (file: File) => {
+            if (!isAcceptableFile(file)) {
+                console.warn(`Rejected unsupported file type: ${file.type}`);
+                return;
+            }
 
-        for (const file of acceptableFiles) {
             const sizeError = validateFileSize(file);
             if (sizeError) {
                 model.setError(formatFileSizeError(sizeError));
-                if (e.target) {
-                    e.target.value = "";
-                }
                 return;
             }
-            await model.addFile(file);
-        }
 
-        if (acceptableFiles.length < files.length) {
-            console.warn(`${files.length - acceptableFiles.length} files were rejected due to unsupported file types`);
-        }
+            try {
+                await model.addFile(file);
+            } catch (error: any) {
+                console.error("Failed to add file:", error);
+                model.setError(error?.message || "Failed to add file");
+            }
+        },
+        [model]
+    );
 
-        if (e.target) {
-            e.target.value = "";
-        }
-    };
+    const handleFileChange = useCallback(
+        async (e: React.ChangeEvent<HTMLInputElement>) => {
+            const files = Array.from(e.target.files || []);
+            for (const file of files) await processFile(file);
+            if (e.target) e.target.value = "";
+        },
+        [processFile]
+    );
+
+    const handlePaste = useCallback(
+        async (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+            const items = e.clipboardData?.items;
+            if (!items) return;
+
+            const imageItems = Array.from(items).filter((item) => item.type.startsWith("image/"));
+
+            if (imageItems.length > 0) {
+                e.preventDefault();
+
+                for (const item of imageItems) {
+                    const blob = item.getAsFile();
+                    if (blob) {
+                        const mimeType = blob.type;
+                        let ext = mimeType.split("/")[1] || "png";
+                        if (ext === "jpeg") ext = "jpg";
+                        const file = new File([blob], `pasted-image.${ext}`, { type: mimeType });
+
+                        try {
+                            await processFile(file);
+                        } catch (error) {
+                            console.error("Error processing pasted image:", error);
+                            model.setError(error instanceof Error ? error.message : "Failed to process image");
+                        }
+                    }
+                }
+            }
+        },
+        [processFile, model]
+    );
 
     return (
         <div className={cn("border-t", isFocused ? "border-accent/50" : "border-gray-600")}>
@@ -128,11 +151,12 @@ export const AIPanelInput = memo(({ onSubmit, status, model }: AIPanelInputProps
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
                         onKeyDown={handleKeyDown}
+                        onPaste={handlePaste}
                         onFocus={handleFocus}
                         onBlur={handleBlur}
                         placeholder={model.inBuilder ? "What would you like to build..." : "Ask Wave AI anything..."}
                         className={cn(
-                            "w-full  text-white px-2 py-2 pr-5 focus:outline-none resize-none overflow-auto",
+                            "w-full text-white px-2 py-2 pr-5 focus:outline-none resize-none overflow-auto",
                             isFocused ? "bg-accent-900/50" : "bg-gray-800"
                         )}
                         style={{ fontSize: "13px" }}
