@@ -66,7 +66,7 @@
         "electron-vite": "^4.0.1",
         "eslint": "^8.57.0",
         "eslint-config-prettier": "^10.1.8",
-        "node-abi": "^4.17.0",
+        "node-abi": "^4.24.0",
         "postcss": "^8.5.6",
         "prettier": "^3.6.2",
         "prettier-plugin-jsdoc": "^1.5.0",
