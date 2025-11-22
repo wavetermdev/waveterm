@@ -17,6 +17,7 @@ interface AIPanelInputProps {
 export interface AIPanelInputRef {
     focus: () => void;
     resize: () => void;
+    scrollToBottom: () => void;
 }
 
 export const AIPanelInput = memo(({ onSubmit, status, model }: AIPanelInputProps) => {
@@ -43,6 +44,12 @@ export const AIPanelInput = memo(({ onSubmit, status, model }: AIPanelInputProps
                     textareaRef.current?.focus();
                 },
                 resize: resizeTextarea,
+                scrollToBottom: () => {
+                    const textarea = textareaRef.current;
+                    if (textarea) {
+                        textarea.scrollTop = textarea.scrollHeight;
+                    }
+                },
             },
         };
         model.registerInputRef(inputRefObject);

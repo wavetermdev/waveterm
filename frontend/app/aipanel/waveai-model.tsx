@@ -301,7 +301,7 @@ export class WaveAIModel {
         return input != null && input.trim().length > 0;
     }
 
-    appendText(text: string, newLine?: boolean) {
+    appendText(text: string, newLine?: boolean, opts?: { scrollToBottom?: boolean }) {
         const currentInput = globalStore.get(this.inputAtom);
         let newInput = currentInput;
 
@@ -317,6 +317,10 @@ export class WaveAIModel {
 
         newInput += text;
         globalStore.set(this.inputAtom, newInput);
+
+        if (opts?.scrollToBottom && this.inputRef?.current) {
+            setTimeout(() => this.inputRef.current.scrollToBottom(), 10);
+        }
     }
 
     setModel(model: string) {
