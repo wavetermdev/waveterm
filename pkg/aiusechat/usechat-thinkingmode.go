@@ -9,21 +9,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
 )
 
-type ThinkingModeConfig struct {
-	Mode          string `json:"mode"`
-	DisplayName   string `json:"displayname"`
-	APIType       string `json:"apitype"`
-	Model         string `json:"model"`
-	ThinkingLevel string `json:"thinkinglevel"`
-	BaseURL       string `json:"baseurl,omitempty"`
-	APIVersion    string `json:"apiversion,omitempty"`
-	APIToken      string `json:"apitoken,omitempty"`
-	Premium       bool   `json:"premium"`
-	Icon          string `json:"icon"`
-	Description   string `json:"description"`
-}
-
-var thinkingModeConfigs = map[string]ThinkingModeConfig{
+var thinkingModeConfigs = map[string]uctypes.ThinkingModeConfig{
 	uctypes.ThinkingModeQuick: {
 		Mode:          uctypes.ThinkingModeQuick,
 		DisplayName:   "Quick",
@@ -56,7 +42,7 @@ var thinkingModeConfigs = map[string]ThinkingModeConfig{
 	},
 }
 
-func getThinkingModeConfig(thinkingMode string) (*ThinkingModeConfig, error) {
+func getThinkingModeConfig(thinkingMode string) (*uctypes.ThinkingModeConfig, error) {
 	config, ok := thinkingModeConfigs[thinkingMode]
 	if !ok {
 		return nil, fmt.Errorf("invalid thinking mode: %s", thinkingMode)
@@ -64,4 +50,12 @@ func getThinkingModeConfig(thinkingMode string) (*ThinkingModeConfig, error) {
 
 	configCopy := config
 	return &configCopy, nil
+}
+
+func WaveAIGetModes() ([]uctypes.ThinkingModeConfig, error) {
+	modes := make([]uctypes.ThinkingModeConfig, 0, len(thinkingModeConfigs))
+	for _, config := range thinkingModeConfigs {
+		modes = append(modes, config)
+	}
+	return modes, nil
 }

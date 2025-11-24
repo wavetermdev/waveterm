@@ -580,12 +580,10 @@ func (ws *WshServer) EventReadHistoryCommand(ctx context.Context, data wshrpc.Co
 }
 
 func (ws *WshServer) SetConfigCommand(ctx context.Context, data wshrpc.MetaSettingsType) error {
-	log.Printf("SETCONFIG: %v\n", data)
 	return wconfig.SetBaseConfigValue(data.MetaMapType)
 }
 
 func (ws *WshServer) SetConnectionsConfigCommand(ctx context.Context, data wshrpc.ConnConfigRequest) error {
-	log.Printf("SET CONNECTIONS CONFIG: %v\n", data)
 	return wconfig.SetConnectionsConfigValue(data.Host, data.MetaMapType)
 }
 
@@ -1262,6 +1260,10 @@ func (ws *WshServer) WaveAIGetToolDiffCommand(ctx context.Context, data wshrpc.C
 		OriginalContents64: base64.StdEncoding.EncodeToString(originalContent),
 		ModifiedContents64: base64.StdEncoding.EncodeToString(modifiedContent),
 	}, nil
+}
+
+func (ws *WshServer) WaveAIGetModesCommand(ctx context.Context) ([]uctypes.ThinkingModeConfig, error) {
+	return aiusechat.WaveAIGetModes()
 }
 
 var wshActivityRe = regexp.MustCompile(`^[a-z:#]+$`)

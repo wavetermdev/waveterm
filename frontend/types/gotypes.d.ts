@@ -1309,6 +1309,21 @@ declare global {
         cursor: string;
     };
 
+    // uctypes.ThinkingModeConfig
+    type ThinkingModeConfig = {
+        mode: string;
+        displayname: string;
+        apitype: string;
+        model: string;
+        thinkinglevel: string;
+        baseurl?: string;
+        apiversion?: string;
+        apitoken?: string;
+        premium: boolean;
+        icon: string;
+        description: string;
+    };
+
     // wshrpc.TimeSeriesData
     type TimeSeriesData = {
         ts: number;

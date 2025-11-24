@@ -144,6 +144,20 @@ const (
 	ApprovalAutoApproved  = "auto-approved"
 )
 
+type ThinkingModeConfig struct {
+	Mode          string `json:"mode"`
+	DisplayName   string `json:"displayname"`
+	APIType       string `json:"apitype"`
+	Model         string `json:"model"`
+	ThinkingLevel string `json:"thinkinglevel"`
+	BaseURL       string `json:"baseurl,omitempty"`
+	APIVersion    string `json:"apiversion,omitempty"`
+	APIToken      string `json:"apitoken,omitempty"`
+	Premium       bool   `json:"premium"`
+	Icon          string `json:"icon"`
+	Description   string `json:"description"`
+}
+
 // when updating this struct, also modify frontend/app/aipanel/aitypes.ts WaveUIDataTypes.tooluse
 type UIMessageDataToolUse struct {
 	ToolCallId          string `json:"toolcallid"`

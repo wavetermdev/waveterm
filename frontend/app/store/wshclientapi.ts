@@ -612,6 +612,11 @@ class RpcApiType {
         return client.wshRpcCall("waveaienabletelemetry", null, opts);
     }
 
+    // command "waveaigetmodes" [call]
+    WaveAIGetModesCommand(client: WshClient, opts?: RpcOpts): Promise<ThinkingModeConfig[]> {
+        return client.wshRpcCall("waveaigetmodes", null, opts);
+    }
+
     // command "waveaigettooldiff" [call]
     WaveAIGetToolDiffCommand(client: WshClient, data: CommandWaveAIGetToolDiffData, opts?: RpcOpts): Promise<CommandWaveAIGetToolDiffRtnData> {
         return client.wshRpcCall("waveaigettooldiff", data, opts);
