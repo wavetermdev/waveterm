@@ -80,7 +80,6 @@ Find more information in our [Contributions Guide](CONTRIBUTING.md), which inclu
 
 - [Ways to contribute](CONTRIBUTING.md#contributing-to-wave-terminal)
 - [Contribution guidelines](CONTRIBUTING.md#before-you-start)
-- [Storybook](https://docs.waveterm.dev/storybook)
 
 ## License
 
