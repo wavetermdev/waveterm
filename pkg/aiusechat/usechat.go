@@ -117,45 +117,20 @@ func getWaveAISettings(premium bool, builderMode bool, rtInfo *waveobj.ObjRTInfo
 	} else {
 		thinkingMode = uctypes.ThinkingModeQuick
 	}
-	if DefaultAPI == APIType_Anthropic {
-		thinkingLevel := uctypes.ThinkingLevelMedium
-		return &uctypes.AIOptsType{
-			APIType:       APIType_Anthropic,
-			Model:         uctypes.DefaultAnthropicModel,
-			MaxTokens:     maxTokens,
-			ThinkingLevel: thinkingLevel,
-			ThinkingMode:  thinkingMode,
-			BaseURL:       baseUrl,
-		}, nil
-	} else if DefaultAPI == APIType_OpenAI {
-		var model string
-		var thinkingLevel string
 
-		switch thinkingMode {
-		case uctypes.ThinkingModeQuick:
-			model = uctypes.DefaultOpenAIModel
-			thinkingLevel = uctypes.ThinkingLevelLow
-		case uctypes.ThinkingModeBalanced:
-			model = uctypes.PremiumOpenAIModel
-			thinkingLevel = uctypes.ThinkingLevelLow
-		case uctypes.ThinkingModeDeep:
-			model = uctypes.PremiumOpenAIModel
-			thinkingLevel = uctypes.ThinkingLevelMedium
-		default:
-			model = uctypes.PremiumOpenAIModel
-			thinkingLevel = uctypes.ThinkingLevelLow
-		}
-
-		return &uctypes.AIOptsType{
-			APIType:       APIType_OpenAI,
-			Model:         model,
-			MaxTokens:     maxTokens,
-			ThinkingLevel: thinkingLevel,
-			ThinkingMode:  thinkingMode,
-			BaseURL:       baseUrl,
-		}, nil
+	config, err := getThinkingModeConfig(thinkingMode)
+	if err != nil {
+		return nil, err
 	}
-	return nil, fmt.Errorf("invalid API type: %s", DefaultAPI)
+
+	return &uctypes.AIOptsType{
+		APIType:       config.APIType,
+		Model:         config.Model,
+		MaxTokens:     maxTokens,
+		ThinkingLevel: config.ThinkingLevel,
+		ThinkingMode:  thinkingMode,
+		BaseURL:       baseUrl,
+	}, nil
 }
 
 func shouldUseChatCompletionsAPI(model string) bool {
