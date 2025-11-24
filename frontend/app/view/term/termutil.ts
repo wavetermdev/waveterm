@@ -99,6 +99,7 @@ export async function createTempFileFromBlob(blob: Blob): Promise<string> {
 /**
  * Extracts text or image data from a clipboard item.
  * Prioritizes images over text - if an image is found, only the image is returned.
+ * For text, only text/plain is accepted (no HTML or RTF).
  *
  * @param item - Either a DataTransferItem or ClipboardItem
  * @returns Object with either text or image, or null if neither could be extracted
@@ -118,8 +119,12 @@ export async function extractClipboardData(
             }
         }
 
-        // If not an image, try text
-        if (dataTransferItem.kind === "string") {
+        // Accept text but explicitly reject HTML and RTF
+        if (
+            dataTransferItem.kind === "string" &&
+            !dataTransferItem.type?.startsWith("text/html") &&
+            !dataTransferItem.type?.startsWith("text/rtf")
+        ) {
             return new Promise((resolve) => {
                 dataTransferItem.getAsString((text) => {
                     resolve(text ? { text } : null);
@@ -140,8 +145,14 @@ export async function extractClipboardData(
         return { image: blob };
     }
 
-    // If not an image, try text
-    const textType = clipboardItem.types.find((t) => ["text/plain", "text/html", "text/rtf"].includes(t));
+    // First pass: look for text/plain or just "text"
+    let textType: string | undefined = clipboardItem.types.find((t) => t === "text/plain" || t === "text");
+    if (!textType) {
+        // Second pass: look for any text/* but reject html and rtf
+        textType = clipboardItem.types.find(
+            (t) => t.startsWith("text/") && !t.startsWith("text/html") && !t.startsWith("text/rtf")
+        );
+    }
     if (textType) {
         const blob = await clipboardItem.getType(textType);
         const text = await blob.text();
