@@ -22,6 +22,16 @@ const (
 	OpenAICompDefaultMaxTokens = 4096
 )
 
+// appendToLastUserMessage appends text to the last user message in the messages slice
+func appendToLastUserMessage(messages []CompletionsMessage, text string) {
+	for i := len(messages) - 1; i >= 0; i-- {
+		if messages[i].Role == "user" {
+			messages[i].Content += "\n\n" + text
+			break
+		}
+	}
+}
+
 // buildCompletionsHTTPRequest creates an HTTP request for the OpenAI completions API
 func buildCompletionsHTTPRequest(ctx context.Context, messages []CompletionsMessage, chatOpts uctypes.WaveChatOpts) (*http.Request, error) {
 	opts := chatOpts.Config
@@ -45,6 +55,14 @@ func buildCompletionsHTTPRequest(ctx context.Context, messages []CompletionsMess
 			Content: strings.Join(chatOpts.SystemPrompt, "\n"),
 		}
 		finalMessages = append([]CompletionsMessage{systemMessage}, messages...)
+	}
+
+	// injected data
+	if chatOpts.TabState != "" {
+		appendToLastUserMessage(finalMessages, chatOpts.TabState)
+	}
+	if chatOpts.PlatformInfo != "" {
+		appendToLastUserMessage(finalMessages, "<PlatformInfo>\n"+chatOpts.PlatformInfo+"\n</PlatformInfo>")
 	}
 
 	reqBody := &CompletionsRequest{
@@ -92,15 +110,46 @@ func buildCompletionsHTTPRequest(ctx context.Context, messages []CompletionsMess
 }
 
 // ConvertAIMessageToCompletionsMessage converts an AIMessage to CompletionsChatMessage
+// These messages are ALWAYS role "user"
 func ConvertAIMessageToCompletionsMessage(aiMsg uctypes.AIMessage) (*CompletionsChatMessage, error) {
 	if err := aiMsg.Validate(); err != nil {
 		return nil, fmt.Errorf("invalid AIMessage: %w", err)
 	}
 
 	var textBuilder strings.Builder
+	firstText := true
 	for _, part := range aiMsg.Parts {
-		if part.Type == uctypes.AIMessagePartTypeText {
-			textBuilder.WriteString(part.Text)
+		var partText string
+		
+		switch {
+		case part.Type == uctypes.AIMessagePartTypeText:
+			partText = part.Text
+			
+		case part.MimeType == "text/plain":
+			textData, err := aiutil.ExtractTextData(part.Data, part.URL)
+			if err != nil {
+				log.Printf("openaicomp: error extracting text data for %s: %v\n", part.FileName, err)
+				continue
+			}
+			partText = aiutil.FormatAttachedTextFile(part.FileName, textData)
+			
+		case part.MimeType == "directory":
+			if len(part.Data) == 0 {
+				log.Printf("openaicomp: directory listing part missing data for %s\n", part.FileName)
+				continue
+			}
+			partText = aiutil.FormatAttachedDirectoryListing(part.FileName, string(part.Data))
+			
+		default:
+			continue
+		}
+		
+		if partText != "" {
+			if !firstText {
+				textBuilder.WriteString("\n\n")
+			}
+			textBuilder.WriteString(partText)
+			firstText = false
 		}
 	}
 
