@@ -180,3 +180,12 @@ func JsonEncodeRequestBody(reqBody any) (bytes.Buffer, error) {
 	}
 	return buf, nil
 }
+
+func IsOpenAIReasoningModel(model string) bool {
+	m := strings.ToLower(model)
+	return strings.HasPrefix(m, "o1") ||
+		strings.HasPrefix(m, "o3") ||
+		strings.HasPrefix(m, "o4") ||
+		strings.HasPrefix(m, "gpt-5") ||
+		strings.HasPrefix(m, "gpt-5.1")
+}

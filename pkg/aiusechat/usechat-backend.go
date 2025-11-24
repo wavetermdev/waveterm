@@ -9,6 +9,7 @@ import (
 
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/anthropic"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/openai"
+	"github.com/wavetermdev/waveterm/pkg/aiusechat/openaicomp"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
 	"github.com/wavetermdev/waveterm/pkg/web/sse"
 )
@@ -51,6 +52,7 @@ type UseChatBackend interface {
 
 // Compile-time interface checks
 var _ UseChatBackend = (*openaiResponsesBackend)(nil)
+var _ UseChatBackend = (*openaiCompletionsBackend)(nil)
 var _ UseChatBackend = (*anthropicBackend)(nil)
 
 // GetBackendByAPIType returns the appropriate UseChatBackend implementation for the given API type
@@ -58,6 +60,8 @@ func GetBackendByAPIType(apiType string) (UseChatBackend, error) {
 	switch apiType {
 	case APIType_OpenAI:
 		return &openaiResponsesBackend{}, nil
+	case APIType_OpenAIComp:
+		return &openaiCompletionsBackend{}, nil
 	case APIType_Anthropic:
 		return &anthropicBackend{}, nil
 	default:
@@ -117,6 +121,43 @@ func (b *openaiResponsesBackend) GetFunctionCallInputByToolCallId(aiChat uctypes
 
 func (b *openaiResponsesBackend) ConvertAIChatToUIChat(aiChat uctypes.AIChat) (*uctypes.UIChat, error) {
 	return openai.ConvertAIChatToUIChat(aiChat)
+}
+
+// openaiCompletionsBackend implements UseChatBackend for OpenAI Completions API
+type openaiCompletionsBackend struct{}
+
+func (b *openaiCompletionsBackend) RunChatStep(
+	ctx context.Context,
+	sseHandler *sse.SSEHandlerCh,
+	chatOpts uctypes.WaveChatOpts,
+	cont *uctypes.WaveContinueResponse,
+) (*uctypes.WaveStopReason, []uctypes.GenAIMessage, *uctypes.RateLimitInfo, error) {
+	stopReason, msgs, rateLimitInfo, err := openaicomp.RunCompletionsChatStep(ctx, sseHandler, chatOpts, cont)
+	var genMsgs []uctypes.GenAIMessage
+	for _, msg := range msgs {
+		genMsgs = append(genMsgs, msg)
+	}
+	return stopReason, genMsgs, rateLimitInfo, err
+}
+
+func (b *openaiCompletionsBackend) UpdateToolUseData(chatId string, toolCallId string, toolUseData *uctypes.UIMessageDataToolUse) error {
+	return fmt.Errorf("tools not supported in openai-comp backend")
+}
+
+func (b *openaiCompletionsBackend) ConvertToolResultsToNativeChatMessage(toolResults []uctypes.AIToolResult) ([]uctypes.GenAIMessage, error) {
+	return nil, fmt.Errorf("tools not supported in openai-comp backend")
+}
+
+func (b *openaiCompletionsBackend) ConvertAIMessageToNativeChatMessage(message uctypes.AIMessage) (uctypes.GenAIMessage, error) {
+	return openaicomp.ConvertAIMessageToCompletionsMessage(message)
+}
+
+func (b *openaiCompletionsBackend) GetFunctionCallInputByToolCallId(aiChat uctypes.AIChat, toolCallId string) *uctypes.AIFunctionCallInput {
+	return nil
+}
+
+func (b *openaiCompletionsBackend) ConvertAIChatToUIChat(aiChat uctypes.AIChat) (*uctypes.UIChat, error) {
+	return openaicomp.ConvertAIChatToUIChat(aiChat)
 }
 
 // anthropicBackend implements UseChatBackend for Anthropic API

@@ -155,6 +155,56 @@ func testOpenAI(ctx context.Context, model, message string, tools []uctypes.Tool
 	}
 }
 
+func testOpenAIComp(ctx context.Context, model, message string, tools []uctypes.ToolDefinition) {
+	apiKey := os.Getenv("OPENAI_APIKEY")
+	if apiKey == "" {
+		fmt.Println("Error: OPENAI_APIKEY environment variable not set")
+		os.Exit(1)
+	}
+
+	opts := &uctypes.AIOptsType{
+		APIType:       aiusechat.APIType_OpenAIComp,
+		APIToken:      apiKey,
+		BaseURL:       "https://api.openai.com/v1/chat/completions",
+		Model:         model,
+		MaxTokens:     4096,
+		ThinkingLevel: uctypes.ThinkingLevelMedium,
+	}
+
+	chatID := uuid.New().String()
+
+	aiMessage := &uctypes.AIMessage{
+		MessageId: uuid.New().String(),
+		Parts: []uctypes.AIMessagePart{
+			{
+				Type: uctypes.AIMessagePartTypeText,
+				Text: message,
+			},
+		},
+	}
+
+	fmt.Printf("Testing OpenAI Completions API with WaveAIPostMessageWrap, model: %s\n", model)
+	fmt.Printf("Message: %s\n", message)
+	fmt.Printf("Chat ID: %s\n", chatID)
+	fmt.Println("---")
+
+	testWriter := &TestResponseWriter{}
+	sseHandler := sse.MakeSSEHandlerCh(testWriter, ctx)
+	defer sseHandler.Close()
+
+	chatOpts := uctypes.WaveChatOpts{
+		ChatId:       chatID,
+		ClientId:     uuid.New().String(),
+		Config:       *opts,
+		Tools:        tools,
+		SystemPrompt: []string{"You are a helpful assistant. Be concise and clear in your responses."},
+	}
+	err := aiusechat.WaveAIPostMessageWrap(ctx, sseHandler, aiMessage, chatOpts)
+	if err != nil {
+		fmt.Printf("OpenAI Completions API streaming error: %v\n", err)
+	}
+}
+
 func testAnthropic(ctx context.Context, model, message string, tools []uctypes.ToolDefinition) {
 	apiKey := os.Getenv("ANTHROPIC_APIKEY")
 	if apiKey == "" {
@@ -217,18 +267,24 @@ func testT2(ctx context.Context) {
 	testOpenAI(ctx, DefaultOpenAIModel, "what is 2+2+8, use the provider adder tool", tools)
 }
 
+func testT3(ctx context.Context) {
+	testOpenAIComp(ctx, "gpt-4o", "what is 2+2? please be brief", nil)
+}
+
 func printUsage() {
-	fmt.Println("Usage: go run main-testai.go [--anthropic] [--tools] [--model <model>] [message]")
+	fmt.Println("Usage: go run main-testai.go [--anthropic|--openaicomp] [--tools] [--model <model>] [message]")
 	fmt.Println("Examples:")
 	fmt.Println("  go run main-testai.go 'What is 2+2?'")
 	fmt.Println("  go run main-testai.go --model o4-mini 'What is 2+2?'")
 	fmt.Println("  go run main-testai.go --anthropic 'What is 2+2?'")
 	fmt.Println("  go run main-testai.go --anthropic --model claude-3-5-sonnet-20241022 'What is 2+2?'")
+	fmt.Println("  go run main-testai.go --openaicomp --model gpt-4o 'What is 2+2?'")
 	fmt.Println("  go run main-testai.go --tools 'Help me configure GitHub Actions monitoring'")
 	fmt.Println("")
 	fmt.Println("Default models:")
 	fmt.Printf("  OpenAI: %s\n", DefaultOpenAIModel)
 	fmt.Printf("  Anthropic: %s\n", DefaultAnthropicModel)
+	fmt.Printf("  OpenAI Completions: gpt-4o\n")
 	fmt.Println("")
 	fmt.Println("Environment variables:")
 	fmt.Println("  OPENAI_APIKEY (for OpenAI models)")
@@ -236,14 +292,16 @@ func printUsage() {
 }
 
 func main() {
-	var anthropic, tools, help, t1, t2 bool
+	var anthropic, openaicomp, tools, help, t1, t2, t3 bool
 	var model string
 	flag.BoolVar(&anthropic, "anthropic", false, "Use Anthropic API instead of OpenAI")
+	flag.BoolVar(&openaicomp, "openaicomp", false, "Use OpenAI Completions API")
 	flag.BoolVar(&tools, "tools", false, "Enable GitHub Actions Monitor tools for testing")
 	flag.StringVar(&model, "model", "", fmt.Sprintf("AI model to use (defaults: %s for OpenAI, %s for Anthropic)", DefaultOpenAIModel, DefaultAnthropicModel))
 	flag.BoolVar(&help, "help", false, "Show usage information")
 	flag.BoolVar(&t1, "t1", false, fmt.Sprintf("Run preset T1 test (%s with 'what is 2+2')", DefaultAnthropicModel))
 	flag.BoolVar(&t2, "t2", false, fmt.Sprintf("Run preset T2 test (%s with 'what is 2+2')", DefaultOpenAIModel))
+	flag.BoolVar(&t3, "t3", false, "Run preset T3 test (OpenAI Completions API with gpt-4o)")
 	flag.Parse()
 
 	if help {
@@ -262,11 +320,17 @@ func main() {
 		testT2(ctx)
 		return
 	}
+	if t3 {
+		testT3(ctx)
+		return
+	}
 
 	// Set default model based on API type if not provided
 	if model == "" {
 		if anthropic {
 			model = DefaultAnthropicModel
+		} else if openaicomp {
+			model = "gpt-4o"
 		} else {
 			model = DefaultOpenAIModel
 		}
@@ -285,6 +349,8 @@ func main() {
 
 	if anthropic {
 		testAnthropic(ctx, model, message, toolDefs)
+	} else if openaicomp {
+		testOpenAIComp(ctx, model, message, toolDefs)
 	} else {
 		testOpenAI(ctx, model, message, toolDefs)
 	}

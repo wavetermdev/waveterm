@@ -33,8 +33,9 @@ import (
 )
 
 const (
-	APIType_Anthropic = "anthropic"
-	APIType_OpenAI    = "openai"
+	APIType_Anthropic  = "anthropic"
+	APIType_OpenAI     = "openai"
+	APIType_OpenAIComp = "openai-comp"
 )
 
 const DefaultAPI = APIType_OpenAI
@@ -389,8 +390,8 @@ func RunAIChat(ctx context.Context, sseHandler *sse.SSEHandlerCh, backend UseCha
 
 	stepNum := chatstore.DefaultChatStore.CountUserMessages(chatOpts.ChatId)
 	metrics := &uctypes.AIMetrics{
-		ChatId:   chatOpts.ChatId,
-		StepNum:  stepNum,
+		ChatId:  chatOpts.ChatId,
+		StepNum: stepNum,
 		Usage: uctypes.AIUsage{
 			APIType: chatOpts.Config.APIType,
 			Model:   chatOpts.Config.Model,
