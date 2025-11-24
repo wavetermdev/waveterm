@@ -200,15 +200,16 @@ function findAllDataTransferItems(
  *
  * The function uses a hierarchical approach to determine what data to extract:
  *
- * Mode 1 (Files): If any file items are present, extracts only image files
+ * Mode 1 (Image Files): If any image file items are present, extracts only image files
  * - Returns array of {image: Blob} for each image/* MIME type
- * - Ignores all non-file items when files are present
+ * - Ignores all non-image items when image files are present
+ * - Non-image files (e.g., PDFs) allow fallthrough to text modes
  *
- * Mode 2 (Plain Text): If text/plain is found (and no files)
+ * Mode 2 (Plain Text): If text/plain is found (and no image files)
  * - Returns single-item array with first text/plain content as {text: string}
  * - Matches: "text", "text/plain", or types starting with "text/plain"
  *
- * Mode 3 (HTML): If text/html is found (and no files or plain text)
+ * Mode 3 (HTML): If text/html is found (and no image files or plain text)
  * - Extracts text content from first HTML item using DOM parsing
  * - Returns single-item array as {text: string}
  *
@@ -220,10 +221,9 @@ function findAllDataTransferItems(
  * @returns Array of GenClipboardItem objects, or empty array if no supported content found
  */
 export async function extractDataTransferItems(items: DataTransferItemList): Promise<GenClipboardItem[]> {
-    // Mode #1: If files are present, only extract image files
-    const hasFiles = findFirstDataTransferItem(items, "file", () => true);
-    if (hasFiles) {
-        const imageFiles = findAllDataTransferItems(items, "file", (type) => type.startsWith("image/"));
+    // Mode #1: If image files are present, only extract image files
+    const imageFiles = findAllDataTransferItems(items, "file", (type) => type.startsWith("image/"));
+    if (imageFiles.length > 0) {
         const results: GenClipboardItem[] = [];
         for (const item of imageFiles) {
             const blob = item.getAsFile();
