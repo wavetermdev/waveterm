@@ -449,7 +449,7 @@ type WaveChatOpts struct {
 	Tools                []ToolDefinition
 	SystemPrompt         []string
 	TabStateGenerator    func() (string, []ToolDefinition, string, error)
-	BuilderAppGenerator  func() (string, string, error)
+	BuilderAppGenerator  func() (string, string, string, error)
 	WidgetAccess         bool
 	RegisterToolApproval func(string)
 	AllowNativeWebSearch bool
@@ -462,6 +462,7 @@ type WaveChatOpts struct {
 	TabId          string
 	AppGoFile      string
 	AppStaticFiles string
+	PlatformInfo   string
 }
 
 func (opts *WaveChatOpts) GetToolDefinition(toolName string) *ToolDefinition {

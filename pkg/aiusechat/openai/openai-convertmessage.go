@@ -218,6 +218,9 @@ func buildOpenAIHTTPRequest(ctx context.Context, inputs []any, chatOpts uctypes.
 	if chatOpts.TabState != "" {
 		appendToLastUserMessage(inputs, chatOpts.TabState)
 	}
+	if chatOpts.PlatformInfo != "" {
+		appendToLastUserMessage(inputs, "<PlatformInfo>\n"+chatOpts.PlatformInfo+"\n</PlatformInfo>")
+	}
 	if chatOpts.AppStaticFiles != "" {
 		appendToLastUserMessage(inputs, "<CurrentAppStaticFiles>\n"+chatOpts.AppStaticFiles+"\n</CurrentAppStaticFiles>")
 	}

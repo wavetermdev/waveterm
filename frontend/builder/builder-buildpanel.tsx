@@ -82,7 +82,24 @@ const BuilderBuildPanel = memo(() => {
         BuilderAppPanelModel.getInstance().restartBuilder();
     }, []);
 
-    const filteredLines = showDebug ? outputLines : outputLines.filter((line) => !line.startsWith("[debug]") && line.trim().length > 0);
+    const handleSendToAI = useCallback(() => {
+        const currentShowDebug = globalStore.get(model.showDebug);
+        const currentOutputLines = globalStore.get(model.outputLines);
+        const filtered = currentShowDebug
+            ? currentOutputLines
+            : currentOutputLines.filter((line) => !line.startsWith("[debug]") && line.trim().length > 0);
+
+        const linesToSend = filtered.slice(-200);
+        const text = linesToSend.join("\n");
+        const aiModel = WaveAIModel.getInstance();
+        const formattedText = `from builder output:\n\`\`\`\n${text}\n\`\`\`\n`;
+        aiModel.appendText(formattedText, true, { scrollToBottom: true });
+        aiModel.focusInput();
+    }, [model]);
+
+    const filteredLines = showDebug
+        ? outputLines
+        : outputLines.filter((line) => !line.startsWith("[debug]") && line.trim().length > 0);
 
     return (
         <div className="w-full h-full flex flex-col bg-black rounded-br-2">
@@ -98,6 +115,12 @@ const BuilderBuildPanel = memo(() => {
                         />
                         Debug
                     </label>
+                    <button
+                        className="px-3 py-1 text-sm font-medium rounded transition-colors bg-accent/80 text-white hover:bg-accent cursor-pointer"
+                        onClick={handleSendToAI}
+                    >
+                        Send Output to AI
+                    </button>
                     <button
                         className="px-3 py-1 text-sm font-medium rounded transition-colors bg-accent/80 text-white hover:bg-accent cursor-pointer"
                         onClick={handleRestart}
