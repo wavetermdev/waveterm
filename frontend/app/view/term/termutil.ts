@@ -7,6 +7,8 @@ import { TabRpcClient } from "@/app/store/wshrpcutil";
 import base64 from "base64-js";
 import { colord } from "colord";
 
+export type GenClipboardItem = { text?: string; image?: Blob };
+
 function applyTransparencyToColor(hexColor: string, transparency: number): string {
     const alpha = 1 - transparency; // transparency is already 0-1
     return colord(hexColor).alpha(alpha).toHex();
@@ -97,69 +99,187 @@ export async function createTempFileFromBlob(blob: Blob): Promise<string> {
 }
 
 /**
- * Extracts text or image data from a clipboard item.
- * Prioritizes images over text - if an image is found, only the image is returned.
- * For text, only text/plain is accepted (no HTML or RTF).
+ * Extracts text or image data from a ClipboardItem using prioritized extraction modes.
  *
- * @param item - Either a DataTransferItem or ClipboardItem
- * @returns Object with either text or image, or null if neither could be extracted
+ * Mode 1 (Images): If image types are present, returns the first image
+ * Mode 2 (Plain Text): If text/plain, text/plain;*, or "text" is found
+ * Mode 3 (HTML): If text/html is found, extracts text content via DOM
+ * Mode 4 (Generic): If empty string or null type exists
+ *
+ * @param item - ClipboardItem to extract data from
+ * @returns Object with either text or image, or null if no supported content found
  */
-export async function extractClipboardData(
-    item: DataTransferItem | ClipboardItem
-): Promise<{ text?: string; image?: Blob } | null> {
-    // Check if it's a DataTransferItem (has 'kind' property)
-    if ("kind" in item) {
-        const dataTransferItem = item as DataTransferItem;
-
-        // Check for image first
-        if (dataTransferItem.type.startsWith("image/")) {
-            const blob = dataTransferItem.getAsFile();
-            if (blob) {
-                return { image: blob };
-            }
-        }
-
-        // Accept text but explicitly reject HTML and RTF
-        if (
-            dataTransferItem.kind === "string" &&
-            !dataTransferItem.type?.startsWith("text/html") &&
-            !dataTransferItem.type?.startsWith("text/rtf")
-        ) {
-            return new Promise((resolve) => {
-                dataTransferItem.getAsString((text) => {
-                    resolve(text ? { text } : null);
-                });
-            });
-        }
-
-        return null;
-    }
-
-    // It's a ClipboardItem
-    const clipboardItem = item as ClipboardItem;
-
-    // Check for image first
-    const imageTypes = clipboardItem.types.filter((type) => type.startsWith("image/"));
+export async function extractClipboardData(item: ClipboardItem): Promise<GenClipboardItem | null> {
+    // Mode #1: Check for image first
+    const imageTypes = item.types.filter((type) => type.startsWith("image/"));
     if (imageTypes.length > 0) {
-        const blob = await clipboardItem.getType(imageTypes[0]);
+        const blob = await item.getType(imageTypes[0]);
         return { image: blob };
     }
 
-    // First pass: look for text/plain or just "text"
-    let textType: string | undefined = clipboardItem.types.find((t) => t === "text/plain" || t === "text");
-    if (!textType) {
-        // Second pass: look for any text/* but reject html and rtf
-        textType = clipboardItem.types.find(
-            (t) => t.startsWith("text/") && !t.startsWith("text/html") && !t.startsWith("text/rtf")
-        );
+    // Mode #2: Try text/plain, text/plain;*, or "text"
+    const plainTextType = item.types.find((t) => t === "text" || t === "text/plain" || t.startsWith("text/plain;"));
+    if (plainTextType) {
+        const blob = await item.getType(plainTextType);
+        const text = await blob.text();
+        return text ? { text } : null;
     }
-    if (textType) {
-        const blob = await clipboardItem.getType(textType);
+
+    // Mode #3: Try text/html - extract text via DOM
+    const htmlType = item.types.find((t) => t === "text/html" || t.startsWith("text/html;"));
+    if (htmlType) {
+        const blob = await item.getType(htmlType);
+        const html = await blob.text();
+        if (!html) {
+            return null;
+        }
+        const tempDiv = document.createElement("div");
+        tempDiv.innerHTML = html;
+        const text = tempDiv.textContent || "";
+        return text ? { text } : null;
+    }
+
+    // Mode #4: Try empty string or null type
+    const genericType = item.types.find((t) => t === "");
+    if (genericType != null) {
+        const blob = await item.getType(genericType);
         const text = await blob.text();
         return text ? { text } : null;
     }
 
     return null;
+}
+
+/**
+ * Finds the first DataTransferItem matching the specified kind and type predicate.
+ *
+ * @param items - The DataTransferItemList to search
+ * @param kind - The kind to match ("file" or "string")
+ * @param typePredicate - Function that returns true if the type matches
+ * @returns The first matching DataTransferItem, or null if none found
+ */
+function findFirstDataTransferItem(
+    items: DataTransferItemList,
+    kind: string,
+    typePredicate: (type: string) => boolean
+): DataTransferItem | null {
+    for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        if (item.kind === kind && typePredicate(item.type)) {
+            return item;
+        }
+    }
+    return null;
+}
+
+/**
+ * Finds all DataTransferItems matching the specified kind and type predicate.
+ *
+ * @param items - The DataTransferItemList to search
+ * @param kind - The kind to match ("file" or "string")
+ * @param typePredicate - Function that returns true if the type matches
+ * @returns Array of matching DataTransferItems
+ */
+function findAllDataTransferItems(
+    items: DataTransferItemList,
+    kind: string,
+    typePredicate: (type: string) => boolean
+): DataTransferItem[] {
+    const results: DataTransferItem[] = [];
+    for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        if (item.kind === kind && typePredicate(item.type)) {
+            results.push(item);
+        }
+    }
+    return results;
+}
+
+/**
+ * Extracts clipboard data from a DataTransferItemList using prioritized extraction modes.
+ *
+ * The function uses a hierarchical approach to determine what data to extract:
+ *
+ * Mode 1 (Files): If any file items are present, extracts only image files
+ * - Returns array of {image: Blob} for each image/* MIME type
+ * - Ignores all non-file items when files are present
+ *
+ * Mode 2 (Plain Text): If text/plain is found (and no files)
+ * - Returns single-item array with first text/plain content as {text: string}
+ * - Matches: "text", "text/plain", or types starting with "text/plain"
+ *
+ * Mode 3 (HTML): If text/html is found (and no files or plain text)
+ * - Extracts text content from first HTML item using DOM parsing
+ * - Returns single-item array as {text: string}
+ *
+ * Mode 4 (Generic String): If string item with empty/null type exists
+ * - Returns first string item with no type identifier
+ * - Returns single-item array as {text: string}
+ *
+ * @param items - The DataTransferItemList to process
+ * @returns Array of GenClipboardItem objects, or empty array if no supported content found
+ */
+export async function extractDataTransferItems(items: DataTransferItemList): Promise<GenClipboardItem[]> {
+    // Mode #1: If files are present, only extract image files
+    const hasFiles = findFirstDataTransferItem(items, "file", () => true);
+    if (hasFiles) {
+        const imageFiles = findAllDataTransferItems(items, "file", (type) => type.startsWith("image/"));
+        const results: GenClipboardItem[] = [];
+        for (const item of imageFiles) {
+            const blob = item.getAsFile();
+            if (blob) {
+                results.push({ image: blob });
+            }
+        }
+        return results;
+    }
+
+    // Mode #2: If text/plain is present, only extract the first text/plain
+    const plainTextItem = findFirstDataTransferItem(
+        items,
+        "string",
+        (type) => type === "text" || type === "text/plain" || type.startsWith("text/plain;")
+    );
+    if (plainTextItem) {
+        return new Promise((resolve) => {
+            plainTextItem.getAsString((text) => {
+                resolve(text ? [{ text }] : []);
+            });
+        });
+    }
+
+    // Mode #3: If text/html is present, extract text from first HTML
+    const htmlItem = findFirstDataTransferItem(
+        items,
+        "string",
+        (type) => type === "text/html" || type.startsWith("text/html;")
+    );
+    if (htmlItem) {
+        return new Promise((resolve) => {
+            htmlItem.getAsString((html) => {
+                if (!html) {
+                    resolve([]);
+                    return;
+                }
+                const tempDiv = document.createElement("div");
+                tempDiv.innerHTML = html;
+                const text = tempDiv.textContent || "";
+                resolve(text ? [{ text }] : []);
+            });
+        });
+    }
+
+    // Mode #4: If there's a string item with empty/null type, extract first one
+    const genericStringItem = findFirstDataTransferItem(items, "string", (type) => type === "" || type == null);
+    if (genericStringItem) {
+        return new Promise((resolve) => {
+            genericStringItem.getAsString((text) => {
+                resolve(text ? [{ text }] : []);
+            });
+        });
+    }
+
+    return [];
 }
 
 /**
@@ -169,19 +289,13 @@ export async function extractClipboardData(
  * @param e - The ClipboardEvent (optional)
  * @returns Array of objects containing text and/or image data
  */
-export async function extractAllClipboardData(e?: ClipboardEvent): Promise<Array<{ text?: string; image?: Blob }>> {
-    const results: Array<{ text?: string; image?: Blob }> = [];
+export async function extractAllClipboardData(e?: ClipboardEvent): Promise<Array<GenClipboardItem>> {
+    const results: Array<GenClipboardItem> = [];
 
     try {
         // First try using ClipboardEvent.clipboardData.items
         if (e?.clipboardData?.items) {
-            for (let i = 0; i < e.clipboardData.items.length; i++) {
-                const data = await extractClipboardData(e.clipboardData.items[i]);
-                if (data) {
-                    results.push(data);
-                }
-            }
-            return results;
+            return await extractDataTransferItems(e.clipboardData.items);
         }
 
         // Fallback: Try Clipboard API
