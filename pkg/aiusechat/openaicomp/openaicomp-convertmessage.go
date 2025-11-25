@@ -14,6 +14,7 @@ import (
 	"strings"
 
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/aiutil"
+	"github.com/wavetermdev/waveterm/pkg/aiusechat/chatstore"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 )
@@ -291,4 +292,55 @@ func ConvertAIChatToUIChat(aiChat uctypes.AIChat) (*uctypes.UIChat, error) {
 	}
 
 	return uiChat, nil
+}
+
+// GetFunctionCallInputByToolCallId searches for a tool call by ID in the chat history
+func GetFunctionCallInputByToolCallId(aiChat uctypes.AIChat, toolCallId string) *uctypes.AIFunctionCallInput {
+	for _, genMsg := range aiChat.NativeMessages {
+		compMsg, ok := genMsg.(*CompletionsChatMessage)
+		if !ok {
+			continue
+		}
+		idx := compMsg.Message.FindToolCallIndex(toolCallId)
+		if idx == -1 {
+			continue
+		}
+		toolCall := compMsg.Message.ToolCalls[idx]
+		return &uctypes.AIFunctionCallInput{
+			CallId:      toolCall.ID,
+			Name:        toolCall.Function.Name,
+			Arguments:   toolCall.Function.Arguments,
+			ToolUseData: toolCall.ToolUseData,
+		}
+	}
+	return nil
+}
+
+// UpdateToolUseData updates the ToolUseData for a specific tool call in the chat history
+func UpdateToolUseData(chatId string, callId string, newToolUseData *uctypes.UIMessageDataToolUse) error {
+	chat := chatstore.DefaultChatStore.Get(chatId)
+	if chat == nil {
+		return fmt.Errorf("chat not found: %s", chatId)
+	}
+
+	for _, genMsg := range chat.NativeMessages {
+		compMsg, ok := genMsg.(*CompletionsChatMessage)
+		if !ok {
+			continue
+		}
+		idx := compMsg.Message.FindToolCallIndex(callId)
+		if idx == -1 {
+			continue
+		}
+		updatedMsg := compMsg.Copy()
+		updatedMsg.Message.ToolCalls[idx].ToolUseData = newToolUseData
+		aiOpts := &uctypes.AIOptsType{
+			APIType:    chat.APIType,
+			Model:      chat.Model,
+			APIVersion: chat.APIVersion,
+		}
+		return chatstore.DefaultChatStore.PostMessage(chatId, aiOpts, updatedMsg)
+	}
+
+	return fmt.Errorf("tool call with callId %s not found in chat %s", callId, chatId)
 }

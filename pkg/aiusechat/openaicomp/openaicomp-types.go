@@ -40,6 +40,15 @@ func (cm *CompletionsMessage) clean() *CompletionsMessage {
 	return &rtn
 }
 
+func (cm *CompletionsMessage) FindToolCallIndex(toolCallId string) int {
+	for i, tc := range cm.ToolCalls {
+		if tc.ID == toolCallId {
+			return i
+		}
+	}
+	return -1
+}
+
 type ToolDefinition struct {
 	Type     string          `json:"type"` // "function"
 	Function ToolFunctionDef `json:"function"`
@@ -137,4 +146,26 @@ func (m *CompletionsChatMessage) GetUsage() *uctypes.AIUsage {
 		InputTokens:  m.Usage.PromptTokens,
 		OutputTokens: m.Usage.CompletionTokens,
 	}
+}
+
+func (m *CompletionsChatMessage) Copy() *CompletionsChatMessage {
+	if m == nil {
+		return nil
+	}
+	copy := *m
+	if len(m.Message.ToolCalls) > 0 {
+		copy.Message.ToolCalls = make([]ToolCall, len(m.Message.ToolCalls))
+		for i, tc := range m.Message.ToolCalls {
+			copy.Message.ToolCalls[i] = tc
+			if tc.ToolUseData != nil {
+				toolUseDataCopy := *tc.ToolUseData
+				copy.Message.ToolCalls[i].ToolUseData = &toolUseDataCopy
+			}
+		}
+	}
+	if m.Usage != nil {
+		usageCopy := *m.Usage
+		copy.Usage = &usageCopy
+	}
+	return &copy
 }

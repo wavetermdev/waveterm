@@ -141,7 +141,7 @@ func (b *openaiCompletionsBackend) RunChatStep(
 }
 
 func (b *openaiCompletionsBackend) UpdateToolUseData(chatId string, toolCallId string, toolUseData *uctypes.UIMessageDataToolUse) error {
-	return fmt.Errorf("tools not supported in openai-comp backend")
+	return openaicomp.UpdateToolUseData(chatId, toolCallId, toolUseData)
 }
 
 func (b *openaiCompletionsBackend) ConvertToolResultsToNativeChatMessage(toolResults []uctypes.AIToolResult) ([]uctypes.GenAIMessage, error) {
@@ -153,7 +153,7 @@ func (b *openaiCompletionsBackend) ConvertAIMessageToNativeChatMessage(message u
 }
 
 func (b *openaiCompletionsBackend) GetFunctionCallInputByToolCallId(aiChat uctypes.AIChat, toolCallId string) *uctypes.AIFunctionCallInput {
-	return nil
+	return openaicomp.GetFunctionCallInputByToolCallId(aiChat, toolCallId)
 }
 
 func (b *openaiCompletionsBackend) ConvertAIChatToUIChat(aiChat uctypes.AIChat) (*uctypes.UIChat, error) {
