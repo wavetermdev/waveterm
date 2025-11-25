@@ -7,8 +7,6 @@ import { useAtomValue } from "jotai";
 import { memo, useRef, useState } from "react";
 import { WaveAIModel } from "./waveai-model";
 
-type ThinkingMode = "quick" | "balanced" | "deep";
-
 export const ThinkingLevelDropdown = memo(() => {
     const model = WaveAIModel.getInstance();
     const thinkingMode = useAtomValue(model.thinkingMode);
@@ -20,10 +18,13 @@ export const ThinkingLevelDropdown = memo(() => {
     const hasPremium = !rateLimitInfo || rateLimitInfo.unknown || rateLimitInfo.preq > 0;
     const hideQuick = model.inBuilder && hasPremium;
 
-    const configsMap = thinkingModeConfigs.reduce((acc, config) => {
-        acc[config.mode] = config;
-        return acc;
-    }, {} as Record<string, AIThinkingModeConfig>);
+    const configsMap = thinkingModeConfigs.reduce(
+        (acc, config) => {
+            acc[config.mode] = config;
+            return acc;
+        },
+        {} as Record<string, AIThinkingModeConfig>
+    );
 
     const handleSelect = (mode: string) => {
         const config = configsMap[mode];
@@ -74,7 +75,11 @@ export const ThinkingLevelDropdown = memo(() => {
                     <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
                     <div className="absolute top-full left-0 mt-1 bg-gray-800 border border-gray-600 rounded shadow-lg z-50 min-w-[280px]">
                         {thinkingModeConfigs
-                            .sort((a, b) => (a["display:order"] || 0) - (b["display:order"] || 0) || (a["display:name"] || "").localeCompare(b["display:name"] || ""))
+                            .sort(
+                                (a, b) =>
+                                    (a["display:order"] || 0) - (b["display:order"] || 0) ||
+                                    (a["display:name"] || "").localeCompare(b["display:name"] || "")
+                            )
                             .filter((config) => !(hideQuick && config.mode === "quick"))
                             .map((config, index, filteredConfigs) => {
                                 const isFirst = index === 0;
