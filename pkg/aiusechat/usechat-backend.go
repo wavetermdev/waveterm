@@ -145,7 +145,7 @@ func (b *openaiCompletionsBackend) UpdateToolUseData(chatId string, toolCallId s
 }
 
 func (b *openaiCompletionsBackend) ConvertToolResultsToNativeChatMessage(toolResults []uctypes.AIToolResult) ([]uctypes.GenAIMessage, error) {
-	return nil, fmt.Errorf("tools not supported in openai-comp backend")
+	return openaicomp.ConvertToolResultsToNativeChatMessage(toolResults)
 }
 
 func (b *openaiCompletionsBackend) ConvertAIMessageToNativeChatMessage(message uctypes.AIMessage) (uctypes.GenAIMessage, error) {

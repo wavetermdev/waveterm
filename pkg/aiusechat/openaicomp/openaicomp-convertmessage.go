@@ -197,6 +197,36 @@ func ConvertAIMessageToCompletionsMessage(aiMsg uctypes.AIMessage) (*Completions
 	}, nil
 }
 
+// ConvertToolResultsToNativeChatMessage converts tool results to OpenAI tool messages
+func ConvertToolResultsToNativeChatMessage(toolResults []uctypes.AIToolResult) ([]uctypes.GenAIMessage, error) {
+	if len(toolResults) == 0 {
+		return nil, nil
+	}
+
+	messages := make([]uctypes.GenAIMessage, 0, len(toolResults))
+	for _, toolResult := range toolResults {
+		var content string
+		if toolResult.ErrorText != "" {
+			content = fmt.Sprintf("Error: %s", toolResult.ErrorText)
+		} else {
+			content = toolResult.Text
+		}
+
+		msg := &CompletionsChatMessage{
+			MessageId: toolResult.ToolUseID,
+			Message: CompletionsMessage{
+				Role:       "tool",
+				ToolCallID: toolResult.ToolUseID,
+				Name:       toolResult.ToolName,
+				Content:    content,
+			},
+		}
+		messages = append(messages, msg)
+	}
+
+	return messages, nil
+}
+
 // ConvertAIChatToUIChat converts stored chat to UI format
 func ConvertAIChatToUIChat(aiChat uctypes.AIChat) (*uctypes.UIChat, error) {
 	uiChat := &uctypes.UIChat{

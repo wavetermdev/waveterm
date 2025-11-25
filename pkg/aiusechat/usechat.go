@@ -422,7 +422,7 @@ func RunAIChat(ctx context.Context, sseHandler *sse.SSEHandlerCh, backend UseCha
 				chatOpts.PlatformInfo = platformInfo
 			}
 		}
-		stopReason, rtnMessage, err := runAIChatStep(ctx, sseHandler, backend, chatOpts, cont)
+		stopReason, rtnMessages, err := runAIChatStep(ctx, sseHandler, backend, chatOpts, cont)
 		metrics.RequestCount++
 		if chatOpts.Config.IsPremiumModel() {
 			metrics.PremiumReqCount++
@@ -430,8 +430,8 @@ func RunAIChat(ctx context.Context, sseHandler *sse.SSEHandlerCh, backend UseCha
 		if chatOpts.Config.IsWaveProxy() {
 			metrics.ProxyReqCount++
 		}
-		if len(rtnMessage) > 0 {
-			usage := getUsage(rtnMessage)
+		if len(rtnMessages) > 0 {
+			usage := getUsage(rtnMessages)
 			log.Printf("usage: input=%d output=%d websearch=%d\n", usage.InputTokens, usage.OutputTokens, usage.NativeWebSearchCount)
 			metrics.Usage.InputTokens += usage.InputTokens
 			metrics.Usage.OutputTokens += usage.OutputTokens
@@ -450,7 +450,7 @@ func RunAIChat(ctx context.Context, sseHandler *sse.SSEHandlerCh, backend UseCha
 			_ = sseHandler.AiMsgFinish("", nil)
 			break
 		}
-		for _, msg := range rtnMessage {
+		for _, msg := range rtnMessages {
 			if msg != nil {
 				chatstore.DefaultChatStore.PostMessage(chatOpts.ChatId, &chatOpts.Config, msg)
 			}
