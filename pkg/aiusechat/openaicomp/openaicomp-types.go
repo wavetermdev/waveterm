@@ -83,7 +83,7 @@ type StreamChunk struct {
 type StreamChoice struct {
 	Index        int          `json:"index"`
 	Delta        ContentDelta `json:"delta"`
-	FinishReason *string      `json:"finish_reason"`
+	FinishReason *string      `json:"finish_reason"` // "stop", "length" | "tool_calls" | "content_filter"
 }
 
 // This is the important part:

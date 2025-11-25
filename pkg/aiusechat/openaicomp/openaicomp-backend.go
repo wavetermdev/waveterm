@@ -108,6 +108,7 @@ func processCompletionsStream(
 	textID := uuid.New().String()
 	var finishReason string
 	textStarted := false
+	var toolCallsInProgress []ToolCall
 
 	_ = sseHandler.AiMsgStart(msgID)
 	_ = sseHandler.AiMsgStartStep()
@@ -160,6 +161,31 @@ func processCompletionsStream(
 			_ = sseHandler.AiMsgTextDelta(textID, choice.Delta.Content)
 		}
 
+		if len(choice.Delta.ToolCalls) > 0 {
+			for _, tcDelta := range choice.Delta.ToolCalls {
+				idx := tcDelta.Index
+				for len(toolCallsInProgress) <= idx {
+					toolCallsInProgress = append(toolCallsInProgress, ToolCall{})
+				}
+
+				tc := &toolCallsInProgress[idx]
+				if tcDelta.ID != "" {
+					tc.ID = tcDelta.ID
+				}
+				if tcDelta.Type != "" {
+					tc.Type = tcDelta.Type
+				}
+				if tcDelta.Function != nil {
+					if tcDelta.Function.Name != "" {
+						tc.Function.Name = tcDelta.Function.Name
+					}
+					if tcDelta.Function.Arguments != "" {
+						tc.Function.Arguments += tcDelta.Function.Arguments
+					}
+				}
+			}
+		}
+
 		if choice.FinishReason != nil && *choice.FinishReason != "" {
 			finishReason = *choice.FinishReason
 		}
@@ -168,18 +194,40 @@ func processCompletionsStream(
 	stopKind := uctypes.StopKindDone
 	if finishReason == "length" {
 		stopKind = uctypes.StopKindMaxTokens
+	} else if finishReason == "tool_calls" {
+		stopKind = uctypes.StopKindToolUse
+	}
+
+	var waveToolCalls []uctypes.WaveToolCall
+	if len(toolCallsInProgress) > 0 {
+		for _, tc := range toolCallsInProgress {
+			var inputJSON any
+			if tc.Function.Arguments != "" {
+				if err := json.Unmarshal([]byte(tc.Function.Arguments), &inputJSON); err != nil {
+					log.Printf("openaicomp: failed to parse tool call arguments: %v\n", err)
+					continue
+				}
+			}
+			waveToolCalls = append(waveToolCalls, uctypes.WaveToolCall{
+				ID:    tc.ID,
+				Name:  tc.Function.Name,
+				Input: inputJSON,
+			})
+		}
 	}
 
 	stopReason := &uctypes.WaveStopReason{
 		Kind:      stopKind,
 		RawReason: finishReason,
+		ToolCalls: waveToolCalls,
 	}
 
 	assistantMsg := &CompletionsChatMessage{
 		MessageId: msgID,
 		Message: CompletionsMessage{
-			Role:    "assistant",
-			Content: textBuilder.String(),
+			Role:      "assistant",
+			Content:   textBuilder.String(),
+			ToolCalls: toolCallsInProgress,
 		},
 	}
 
