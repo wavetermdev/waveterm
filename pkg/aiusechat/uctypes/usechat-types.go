@@ -137,6 +137,12 @@ const (
 )
 
 const (
+	AICapabilityTools  = "tools"
+	AICapabilityImages = "images"
+	AICapabilityPdfs   = "pdfs"
+)
+
+const (
 	ApprovalNeedsApproval = "needs-approval"
 	ApprovalUserApproved  = "user-approved"
 	ApprovalUserDenied    = "user-denied"
@@ -145,17 +151,20 @@ const (
 )
 
 type AIThinkingModeConfig struct {
-	Mode          string `json:"mode"`
-	DisplayName   string `json:"displayname"`
-	APIType       string `json:"apitype"`
-	Model         string `json:"model"`
-	ThinkingLevel string `json:"thinkinglevel"`
-	BaseURL       string `json:"baseurl,omitempty"`
-	APIVersion    string `json:"apiversion,omitempty"`
-	APIToken      string `json:"apitoken,omitempty"`
-	Premium       bool   `json:"premium"`
-	Icon          string `json:"icon"`
-	Description   string `json:"description"`
+	Mode               string   `json:"mode"`
+	DisplayName        string   `json:"displayname"`
+	APIType            string   `json:"apitype"`
+	Model              string   `json:"model"`
+	ThinkingLevel      string   `json:"thinkinglevel"`
+	BaseURL            string   `json:"baseurl,omitempty"`
+	WaveAICloud        bool     `json:"waveaicloud,omitempty"`
+	APIVersion         string   `json:"apiversion,omitempty"`
+	APIToken           string   `json:"apitoken,omitempty"`
+	APITokenSecretName string   `json:"apitokensecretname,omitempty"`
+	Premium            bool     `json:"premium"`
+	Icon               string   `json:"icon"`
+	Description        string   `json:"description"`
+	Capabilities       []string `json:"capabilities,omitempty"`
 }
 
 // when updating this struct, also modify frontend/app/aipanel/aitypes.ts WaveUIDataTypes.tooluse

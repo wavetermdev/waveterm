@@ -19,6 +19,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/chatstore"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
+	"github.com/wavetermdev/waveterm/pkg/secretstore"
 	"github.com/wavetermdev/waveterm/pkg/telemetry"
 	"github.com/wavetermdev/waveterm/pkg/telemetry/telemetrydata"
 	"github.com/wavetermdev/waveterm/pkg/util/ds"
@@ -41,6 +42,7 @@ const (
 const DefaultAPI = APIType_OpenAI
 const DefaultMaxTokens = 4 * 1024
 const BuilderMaxTokens = 24 * 1024
+const WaveAIEndpointEnvName = "WAVETERM_WAVEAI_ENDPOINT"
 
 var (
 	globalRateLimitInfo = &uctypes.RateLimitInfo{Unknown: true}
@@ -97,10 +99,6 @@ var SystemPromptText_OpenAI = strings.Join([]string{
 }, " ")
 
 func getWaveAISettings(premium bool, builderMode bool, rtInfo *waveobj.ObjRTInfo) (*uctypes.AIOptsType, error) {
-	baseUrl := uctypes.DefaultAIEndpoint
-	if os.Getenv("WAVETERM_WAVEAI_ENDPOINT") != "" {
-		baseUrl = os.Getenv("WAVETERM_WAVEAI_ENDPOINT")
-	}
 	maxTokens := DefaultMaxTokens
 	if builderMode {
 		maxTokens = BuilderMaxTokens
@@ -123,14 +121,42 @@ func getWaveAISettings(premium bool, builderMode bool, rtInfo *waveobj.ObjRTInfo
 		return nil, err
 	}
 
-	return &uctypes.AIOptsType{
+	apiToken := config.APIToken
+	if apiToken == "" && config.APITokenSecretName != "" {
+		secret, exists, err := secretstore.GetSecret(config.APITokenSecretName)
+		if err != nil {
+			return nil, fmt.Errorf("failed to retrieve secret %s: %w", config.APITokenSecretName, err)
+		}
+		if !exists || secret == "" {
+			return nil, fmt.Errorf("secret %s not found or empty", config.APITokenSecretName)
+		}
+		apiToken = secret
+	}
+
+	var baseUrl string
+	if config.WaveAICloud {
+		baseUrl = uctypes.DefaultAIEndpoint
+		if os.Getenv(WaveAIEndpointEnvName) != "" {
+			baseUrl = os.Getenv(WaveAIEndpointEnvName)
+		}
+	} else if config.BaseURL != "" {
+		baseUrl = config.BaseURL
+	} else {
+		return nil, fmt.Errorf("no BaseURL configured for thinking mode %s", thinkingMode)
+	}
+
+	opts := &uctypes.AIOptsType{
 		APIType:       config.APIType,
 		Model:         config.Model,
 		MaxTokens:     maxTokens,
 		ThinkingLevel: config.ThinkingLevel,
 		ThinkingMode:  thinkingMode,
 		BaseURL:       baseUrl,
-	}, nil
+	}
+	if apiToken != "" {
+		opts.APIToken = apiToken
+	}
+	return opts, nil
 }
 
 func shouldUseChatCompletionsAPI(model string) bool {
