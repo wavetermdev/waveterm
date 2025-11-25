@@ -60,7 +60,7 @@ func RunCompletionsChatStep(
 		if !ok {
 			return nil, nil, nil, fmt.Errorf("expected CompletionsChatMessage, got %T", genMsg)
 		}
-		messages = append(messages, compMsg.Message)
+		messages = append(messages, *compMsg.Message.clean())
 	}
 
 	req, err := buildCompletionsHTTPRequest(ctx, messages, chatOpts)
@@ -88,7 +88,7 @@ func RunCompletionsChatStep(
 	}
 
 	// Stream processing
-	stopReason, assistantMsg, err := processCompletionsStream(ctx, resp.Body, sseHandler, chatOpts)
+	stopReason, assistantMsg, err := processCompletionsStream(ctx, resp.Body, sseHandler, chatOpts, cont)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -101,6 +101,7 @@ func processCompletionsStream(
 	body io.Reader,
 	sseHandler *sse.SSEHandlerCh,
 	chatOpts uctypes.WaveChatOpts,
+	cont *uctypes.WaveContinueResponse,
 ) (*uctypes.WaveStopReason, *CompletionsChatMessage, error) {
 	decoder := eventsource.NewDecoder(body)
 	var textBuilder strings.Builder
@@ -110,7 +111,9 @@ func processCompletionsStream(
 	textStarted := false
 	var toolCallsInProgress []ToolCall
 
-	_ = sseHandler.AiMsgStart(msgID)
+	if cont == nil {
+		_ = sseHandler.AiMsgStart(msgID)
+	}
 	_ = sseHandler.AiMsgStartStep()
 
 	for {
@@ -246,7 +249,9 @@ func processCompletionsStream(
 		_ = sseHandler.AiMsgTextEnd(textID)
 	}
 	_ = sseHandler.AiMsgFinishStep()
-	_ = sseHandler.AiMsgFinish(finishReason, nil)
+	if stopKind != uctypes.StopKindToolUse {
+		_ = sseHandler.AiMsgFinish(finishReason, nil)
+	}
 
 	return stopReason, assistantMsg, nil
 }
