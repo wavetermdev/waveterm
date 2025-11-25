@@ -139,9 +139,9 @@ const (
 )
 
 const (
-	ThinkingModeQuick    = "quick"
-	ThinkingModeBalanced = "balanced"
-	ThinkingModeDeep     = "deep"
+	ThinkingModeQuick    = "waveai@quick"
+	ThinkingModeBalanced = "waveai@balanced"
+	ThinkingModeDeep     = "waveai@deep"
 )
 
 const (

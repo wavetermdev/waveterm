@@ -36,22 +36,21 @@ export const ThinkingLevelDropdown = memo(() => {
         setIsOpen(false);
     };
 
-    let currentMode = thinkingMode || "balanced";
+    let currentMode = thinkingMode || "waveai@balanced";
     const currentConfig = configsMap[currentMode];
-    if (!currentConfig) {
-        return null;
-    }
-    if (!hasPremium && currentConfig.premium) {
-        currentMode = "quick";
-    }
-    if (hideQuick && currentMode === "quick") {
-        currentMode = "balanced";
+    if (currentConfig) {
+        if (!hasPremium && currentConfig.premium) {
+            currentMode = "waveai@quick";
+        }
+        if (hideQuick && currentMode === "waveai@quick") {
+            currentMode = "waveai@balanced";
+        }
     }
 
-    const displayConfig = configsMap[currentMode];
-    if (!displayConfig) {
-        return null;
-    }
+    const displayConfig = configsMap[currentMode] || {
+        "display:name": "? Unknown",
+        "display:icon": "question"
+    };
 
     return (
         <div className="relative" ref={dropdownRef}>
@@ -80,7 +79,7 @@ export const ThinkingLevelDropdown = memo(() => {
                                     (a["display:order"] || 0) - (b["display:order"] || 0) ||
                                     (a["display:name"] || "").localeCompare(b["display:name"] || "")
                             )
-                            .filter((config) => !(hideQuick && config.mode === "quick"))
+                            .filter((config) => !(hideQuick && config.mode === "waveai@quick"))
                             .map((config, index, filteredConfigs) => {
                                 const isFirst = index === 0;
                                 const isLast = index === filteredConfigs.length - 1;

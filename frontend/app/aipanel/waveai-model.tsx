@@ -57,7 +57,7 @@ export class WaveAIModel {
     widgetAccessAtom!: jotai.Atom<boolean>;
     droppedFiles: jotai.PrimitiveAtom<DroppedFile[]> = jotai.atom([]);
     chatId!: jotai.PrimitiveAtom<string>;
-    thinkingMode: jotai.PrimitiveAtom<string> = jotai.atom("balanced");
+    thinkingMode: jotai.PrimitiveAtom<string> = jotai.atom("waveai@balanced");
     thinkingModeConfigs: jotai.PrimitiveAtom<AIThinkingModeConfig[]> = jotai.atom([]);
     errorMessage: jotai.PrimitiveAtom<string> = jotai.atom(null) as jotai.PrimitiveAtom<string>;
     modelAtom!: jotai.Atom<string>;
@@ -360,7 +360,7 @@ export class WaveAIModel {
         }
         globalStore.set(this.chatId, chatIdValue);
 
-        const thinkingModeValue = rtInfo?.["waveai:thinkingmode"] ?? "balanced";
+        const thinkingModeValue = rtInfo?.["waveai:thinkingmode"] ?? "waveai@balanced";
         globalStore.set(this.thinkingMode, thinkingModeValue);
 
         try {

@@ -41,7 +41,7 @@ export async function handleWaveAIContextMenu(e: React.MouseEvent, showCopy: boo
 
     const rateLimitInfo = globalStore.get(atoms.waveAIRateLimitInfoAtom);
     const hasPremium = !rateLimitInfo || rateLimitInfo.unknown || rateLimitInfo.preq > 0;
-    const currentThinkingMode = rtInfo?.["waveai:thinkingmode"] ?? (hasPremium ? "balanced" : "quick");
+    const currentThinkingMode = rtInfo?.["waveai:thinkingmode"] ?? (hasPremium ? "waveai@balanced" : "waveai@quick");
     const defaultTokens = model.inBuilder ? 24576 : 4096;
     const currentMaxTokens = rtInfo?.["waveai:maxoutputtokens"] ?? defaultTokens;
 
@@ -49,37 +49,37 @@ export async function handleWaveAIContextMenu(e: React.MouseEvent, showCopy: boo
         {
             label: "Quick (gpt-5-mini)",
             type: "checkbox",
-            checked: currentThinkingMode === "quick",
+            checked: currentThinkingMode === "waveai@quick",
             click: () => {
                 RpcApi.SetRTInfoCommand(TabRpcClient, {
                     oref: model.orefContext,
-                    data: { "waveai:thinkingmode": "quick" },
+                    data: { "waveai:thinkingmode": "waveai@quick" },
                 });
             },
         },
         {
             label: hasPremium ? "Balanced (gpt-5.1, low thinking)" : "Balanced (premium)",
             type: "checkbox",
-            checked: currentThinkingMode === "balanced",
+            checked: currentThinkingMode === "waveai@balanced",
             enabled: hasPremium,
             click: () => {
                 if (!hasPremium) return;
                 RpcApi.SetRTInfoCommand(TabRpcClient, {
                     oref: model.orefContext,
-                    data: { "waveai:thinkingmode": "balanced" },
+                    data: { "waveai:thinkingmode": "waveai@balanced" },
                 });
             },
         },
         {
             label: hasPremium ? "Deep (gpt-5.1, full thinking)" : "Deep (premium)",
             type: "checkbox",
-            checked: currentThinkingMode === "deep",
+            checked: currentThinkingMode === "waveai@deep",
             enabled: hasPremium,
             click: () => {
                 if (!hasPremium) return;
                 RpcApi.SetRTInfoCommand(TabRpcClient, {
                     oref: model.orefContext,
-                    data: { "waveai:thinkingmode": "deep" },
+                    data: { "waveai:thinkingmode": "waveai@deep" },
                 });
             },
         },
