@@ -17,6 +17,8 @@ import (
 // secretNameRegex must match the validation in pkg/wconfig/secretstore.go
 var secretNameRegex = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9_]*$`)
 
+var secretUiMagnified bool
+
 var secretCmd = &cobra.Command{
 	Use:   "secret",
 	Short: "manage secrets",
@@ -64,6 +66,7 @@ var secretUiCmd = &cobra.Command{
 }
 
 func init() {
+	secretUiCmd.Flags().BoolVarP(&secretUiMagnified, "magnified", "m", false, "open secrets UI in magnified mode")
 	rootCmd.AddCommand(secretCmd)
 	secretCmd.AddCommand(secretGetCmd)
 	secretCmd.AddCommand(secretSetCmd)
@@ -179,7 +182,7 @@ func secretUiRun(cmd *cobra.Command, args []string) (rtnErr error) {
 				waveobj.MetaKey_View: "secretstore",
 			},
 		},
-		Magnified: false,
+		Magnified: secretUiMagnified,
 		Focused:   true,
 	}
 

@@ -342,19 +342,36 @@ This will connect to a WSL distribution on the local machine. It will use the de
 
 ## web
 
-You can search for a given url using:
+The `web` command opens URLs in a web block within Wave Terminal.
 
 ```sh
-wsh web open [url]
+wsh web open [url] [-m] [-r blockid]
 ```
 
-Alternatively, you can search with the configured search engine using:
+You can open a specific URL or perform a search using the configured search engine.
+
+Flags:
+
+- `-m, --magnified` - open the web block in magnified mode
+- `-r, --replace <blockid>` - replace an existing block instead of creating a new one
+
+Examples:
 
 ```sh
-wsh web open [search-query]
+# Open a URL
+wsh web open https://waveterm.dev
+
+# Search with the configured search engine
+wsh web open "wave terminal documentation"
+
+# Open in magnified mode
+wsh web open -m https://github.com
+
+# Replace an existing block
+wsh web open -r 2 https://example.com
 ```
 
-Both of these commands will open a new web block with the desired page.
+The command will open a new web block with the desired page, or replace an existing block if the `-r` flag is used. Note that `--replace` and `--magnified` cannot be used together.
 
 ---
 
@@ -981,16 +998,23 @@ wsh secret delete temp_token
 ### ui
 
 ```sh
-wsh secret ui
+wsh secret ui [-m]
 ```
 
 Open the secrets management interface in a new block. This provides a graphical interface for viewing and managing all your secrets.
 
-Example:
+Flags:
+
+- `-m, --magnified` - open the secrets UI in magnified mode
+
+Examples:
 
 ```sh
 # Open the secrets UI
 wsh secret ui
+
+# Open the secrets UI in magnified mode
+wsh secret ui -m
 ```
 
 The secrets UI provides a convenient visual way to browse, add, edit, and delete secrets without needing to use the command-line interface.
