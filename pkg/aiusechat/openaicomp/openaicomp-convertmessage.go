@@ -213,15 +213,48 @@ func ConvertAIChatToUIChat(aiChat uctypes.AIChat) (*uctypes.UIChat, error) {
 			continue
 		}
 
+		var parts []uctypes.UIMessagePart
+
+		// Add text content if present
+		if compMsg.Message.Content != "" {
+			parts = append(parts, uctypes.UIMessagePart{
+				Type: "text",
+				Text: compMsg.Message.Content,
+			})
+		}
+
+		// Add tool calls if present (assistant requesting tool use)
+		if len(compMsg.Message.ToolCalls) > 0 {
+			for _, toolCall := range compMsg.Message.ToolCalls {
+				if toolCall.Type != "function" {
+					continue
+				}
+
+				// Only add if ToolUseData is available
+				if toolCall.ToolUseData != nil {
+					parts = append(parts, uctypes.UIMessagePart{
+						Type: "data-tooluse",
+						ID:   toolCall.ID,
+						Data: *toolCall.ToolUseData,
+					})
+				}
+			}
+		}
+
+		// Tool result messages (role "tool") are not converted to UIMessage
+		if compMsg.Message.Role == "tool" && compMsg.Message.ToolCallID != "" {
+			continue
+		}
+
+		// Skip messages with no parts
+		if len(parts) == 0 {
+			continue
+		}
+
 		uiMsg := uctypes.UIMessage{
-			ID:   compMsg.MessageId,
-			Role: compMsg.Message.Role,
-			Parts: []uctypes.UIMessagePart{
-				{
-					Type: "text",
-					Text: compMsg.Message.Content,
-				},
-			},
+			ID:    compMsg.MessageId,
+			Role:  compMsg.Message.Role,
+			Parts: parts,
 		}
 
 		uiChat.Messages = append(uiChat.Messages, uiMsg)

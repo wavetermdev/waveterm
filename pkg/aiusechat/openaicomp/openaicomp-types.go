@@ -28,6 +28,18 @@ type CompletionsMessage struct {
 	Name       string     `json:"name,omitempty"`         // tool name on role:"tool"
 }
 
+func (cm *CompletionsMessage) clean() *CompletionsMessage {
+	if len(cm.ToolCalls) == 0 {
+		return cm
+	}
+	rtn := *cm
+	rtn.ToolCalls = make([]ToolCall, len(cm.ToolCalls))
+	for i, tc := range cm.ToolCalls {
+		rtn.ToolCalls[i] = *tc.clean()
+	}
+	return &rtn
+}
+
 type ToolDefinition struct {
 	Type     string          `json:"type"` // "function"
 	Function ToolFunctionDef `json:"function"`
@@ -40,9 +52,19 @@ type ToolFunctionDef struct {
 }
 
 type ToolCall struct {
-	ID       string           `json:"id"`
-	Type     string           `json:"type"` // "function"
-	Function ToolFunctionCall `json:"function"`
+	ID          string                        `json:"id"`
+	Type        string                        `json:"type"` // "function"
+	Function    ToolFunctionCall              `json:"function"`
+	ToolUseData *uctypes.UIMessageDataToolUse `json:"toolusedata,omitempty"` // Internal field (must be cleaned before sending to API)
+}
+
+func (tc *ToolCall) clean() *ToolCall {
+	if tc.ToolUseData == nil {
+		return tc
+	}
+	rtn := *tc
+	rtn.ToolUseData = nil
+	return &rtn
 }
 
 type ToolFunctionCall struct {
