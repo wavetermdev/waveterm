@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { atoms } from "@/app/store/global";
-import { cn } from "@/util/util";
+import { cn, makeIconClass } from "@/util/util";
 import { useAtomValue } from "jotai";
 import { memo, useRef, useState } from "react";
 import { WaveAIModel } from "./waveai-model";
@@ -62,7 +62,7 @@ export const ThinkingLevelDropdown = memo(() => {
                 )}
                 title={`Thinking: ${displayConfig.displayname}`}
             >
-                <i className={`fa ${displayConfig.icon} text-[10px]`}></i>
+                <i className={cn(makeIconClass(displayConfig.icon, false), "text-[10px]")}></i>
                 <span className={`text-[11px] ${isOpen ? "inline" : "hidden group-hover:inline @w450:inline"}`}>
                     {displayConfig.displayname}
                 </span>
@@ -94,7 +94,7 @@ export const ThinkingLevelDropdown = memo(() => {
                                         } transition-colors text-left`}
                                     >
                                         <div className="flex items-center gap-2 w-full">
-                                            <i className={`fa ${config.icon}`}></i>
+                                            <i className={makeIconClass(config.icon, false)}></i>
                                             <span className={`text-sm ${isSelected ? "font-bold" : ""}`}>
                                                 {config.displayname}
                                                 {isDisabled && " (premium)"}
