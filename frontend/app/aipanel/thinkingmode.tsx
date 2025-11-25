@@ -60,11 +60,11 @@ export const ThinkingLevelDropdown = memo(() => {
                     "group flex items-center gap-1.5 px-2 py-1 text-xs text-gray-300 hover:text-white rounded transition-colors cursor-pointer border border-gray-600/50",
                     isOpen ? "bg-gray-700" : "bg-gray-800/50 hover:bg-gray-700"
                 )}
-                title={`Thinking: ${displayConfig.displayname}`}
+                title={`Thinking: ${displayConfig["display:name"]}`}
             >
-                <i className={cn(makeIconClass(displayConfig.icon, false), "text-[10px]")}></i>
+                <i className={cn(makeIconClass(displayConfig["display:icon"], false), "text-[10px]")}></i>
                 <span className={`text-[11px] ${isOpen ? "inline" : "hidden group-hover:inline @w450:inline"}`}>
-                    {displayConfig.displayname}
+                    {displayConfig["display:name"]}
                 </span>
                 <i className="fa fa-chevron-down text-[8px]"></i>
             </button>
@@ -74,6 +74,7 @@ export const ThinkingLevelDropdown = memo(() => {
                     <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
                     <div className="absolute top-full left-0 mt-1 bg-gray-800 border border-gray-600 rounded shadow-lg z-50 min-w-[280px]">
                         {thinkingModeConfigs
+                            .sort((a, b) => (a["display:order"] || 0) - (b["display:order"] || 0) || (a["display:name"] || "").localeCompare(b["display:name"] || ""))
                             .filter((config) => !(hideQuick && config.mode === "quick"))
                             .map((config, index, filteredConfigs) => {
                                 const isFirst = index === 0;
@@ -94,9 +95,9 @@ export const ThinkingLevelDropdown = memo(() => {
                                         } transition-colors text-left`}
                                     >
                                         <div className="flex items-center gap-2 w-full">
-                                            <i className={makeIconClass(config.icon, false)}></i>
+                                            <i className={makeIconClass(config["display:icon"], false)}></i>
                                             <span className={`text-sm ${isSelected ? "font-bold" : ""}`}>
-                                                {config.displayname}
+                                                {config["display:name"]}
                                                 {isDisabled && " (premium)"}
                                             </span>
                                             {isSelected && <i className="fa fa-check ml-auto"></i>}

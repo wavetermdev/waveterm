@@ -152,7 +152,9 @@ const (
 
 type AIThinkingModeConfig struct {
 	Mode               string   `json:"mode"`
-	DisplayName        string   `json:"displayname"`
+	DisplayName        string   `json:"display:name"`
+	DisplayOrder       float64  `json:"display:order,omitempty"`
+	DisplayIcon        string   `json:"display:icon"`
 	APIType            string   `json:"apitype"`
 	Model              string   `json:"model"`
 	ThinkingLevel      string   `json:"thinkinglevel"`
@@ -162,7 +164,6 @@ type AIThinkingModeConfig struct {
 	APIToken           string   `json:"apitoken,omitempty"`
 	APITokenSecretName string   `json:"apitokensecretname,omitempty"`
 	Premium            bool     `json:"premium"`
-	Icon               string   `json:"icon"`
 	Description        string   `json:"description"`
 	Capabilities       []string `json:"capabilities,omitempty"`
 }

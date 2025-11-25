@@ -4,14 +4,14 @@
 import { ChatRequestOptions, FileUIPart, UIMessage, UIMessagePart } from "ai";
 
 type WaveUIDataTypes = {
-    // pkg/aiusechat/uctypes/usechat-types.go UIMessageDataUserFile
+    // pkg/aiusechat/uctypes/uctypes.go UIMessageDataUserFile
     userfile: {
         filename: string;
         size: number;
         mimetype: string;
         previewurl?: string;
     };
-    // pkg/aiusechat/uctypes/usechat-types.go UIMessageDataToolUse
+    // pkg/aiusechat/uctypes/uctypes.go UIMessageDataToolUse
     tooluse: {
         toolcallid: string;
         toolname: string;

@@ -16,16 +16,20 @@ declare global {
     // uctypes.AIThinkingModeConfig
     type AIThinkingModeConfig = {
         mode: string;
-        displayname: string;
+        "display:name": string;
+        "display:order"?: number;
+        "display:icon": string;
         apitype: string;
         model: string;
         thinkinglevel: string;
         baseurl?: string;
+        waveaicloud?: boolean;
         apiversion?: string;
         apitoken?: string;
+        apitokensecretname?: string;
         premium: boolean;
-        icon: string;
         description: string;
+        capabilities?: string[];
     };
 
     // wshrpc.ActivityDisplayType

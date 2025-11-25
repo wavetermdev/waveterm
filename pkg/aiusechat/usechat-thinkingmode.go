@@ -5,6 +5,7 @@ package aiusechat
 
 import (
 	"fmt"
+	"sort"
 
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
 )
@@ -13,36 +14,39 @@ var thinkingModeConfigs = map[string]uctypes.AIThinkingModeConfig{
 	uctypes.ThinkingModeQuick: {
 		Mode:          uctypes.ThinkingModeQuick,
 		DisplayName:   "Quick",
+		DisplayOrder:  -3,
 		APIType:       APIType_OpenAI,
 		Model:         uctypes.DefaultOpenAIModel,
 		ThinkingLevel: uctypes.ThinkingLevelLow,
 		WaveAICloud:   true,
 		Premium:       false,
-		Icon:          "bolt",
+		DisplayIcon:   "bolt",
 		Description:   "Fastest responses (gpt-5-mini)",
 		Capabilities:  []string{uctypes.AICapabilityTools, uctypes.AICapabilityImages, uctypes.AICapabilityPdfs},
 	},
 	uctypes.ThinkingModeBalanced: {
 		Mode:          uctypes.ThinkingModeBalanced,
 		DisplayName:   "Balanced",
+		DisplayOrder:  -2,
 		APIType:       APIType_OpenAI,
 		Model:         uctypes.PremiumOpenAIModel,
 		ThinkingLevel: uctypes.ThinkingLevelLow,
 		WaveAICloud:   true,
 		Premium:       true,
-		Icon:          "sparkles",
+		DisplayIcon:   "sparkles",
 		Description:   "Good mix of speed and accuracy\n(gpt-5.1 with minimal thinking)",
 		Capabilities:  []string{uctypes.AICapabilityTools, uctypes.AICapabilityImages, uctypes.AICapabilityPdfs},
 	},
 	uctypes.ThinkingModeDeep: {
 		Mode:          uctypes.ThinkingModeDeep,
 		DisplayName:   "Deep",
+		DisplayOrder:  -1,
 		APIType:       APIType_OpenAI,
 		Model:         uctypes.PremiumOpenAIModel,
 		ThinkingLevel: uctypes.ThinkingLevelMedium,
 		WaveAICloud:   true,
 		Premium:       true,
-		Icon:          "lightbulb",
+		DisplayIcon:   "lightbulb",
 		Description:   "Slower but most capable\n(gpt-5.1 with full reasoning)",
 		Capabilities:  []string{uctypes.AICapabilityTools, uctypes.AICapabilityImages, uctypes.AICapabilityPdfs},
 	},
@@ -55,7 +59,7 @@ var thinkingModeConfigs = map[string]uctypes.AIThinkingModeConfig{
 		ThinkingLevel:      uctypes.ThinkingLevelLow,
 		APITokenSecretName: "OPENROUTER_KEY",
 		Premium:            false,
-		Icon:               "bolt",
+		DisplayIcon:        "bolt",
 		Description:        "Fast and capable via OpenRouter\n(Mistral Small 3.2)",
 		Capabilities:       []string{uctypes.AICapabilityTools},
 	},
@@ -76,5 +80,8 @@ func WaveAIGetModes() ([]uctypes.AIThinkingModeConfig, error) {
 	for _, config := range thinkingModeConfigs {
 		modes = append(modes, config)
 	}
+	sort.Slice(modes, func(i, j int) bool {
+		return modes[i].DisplayOrder < modes[j].DisplayOrder
+	})
 	return modes, nil
 }
