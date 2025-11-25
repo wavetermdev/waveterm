@@ -8,65 +8,39 @@ import (
 	"sort"
 
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
+	"github.com/wavetermdev/waveterm/pkg/wconfig"
 )
 
-var thinkingModeConfigs = map[string]uctypes.AIThinkingModeConfig{
-	uctypes.ThinkingModeQuick: {
-		Mode:          uctypes.ThinkingModeQuick,
-		DisplayName:   "Quick",
-		DisplayOrder:  -3,
-		APIType:       APIType_OpenAI,
-		Model:         uctypes.DefaultOpenAIModel,
-		ThinkingLevel: uctypes.ThinkingLevelLow,
-		WaveAICloud:   true,
-		Premium:       false,
-		DisplayIcon:   "bolt",
-		Description:   "Fastest responses (gpt-5-mini)",
-		Capabilities:  []string{uctypes.AICapabilityTools, uctypes.AICapabilityImages, uctypes.AICapabilityPdfs},
-	},
-	uctypes.ThinkingModeBalanced: {
-		Mode:          uctypes.ThinkingModeBalanced,
-		DisplayName:   "Balanced",
-		DisplayOrder:  -2,
-		APIType:       APIType_OpenAI,
-		Model:         uctypes.PremiumOpenAIModel,
-		ThinkingLevel: uctypes.ThinkingLevelLow,
-		WaveAICloud:   true,
-		Premium:       true,
-		DisplayIcon:   "sparkles",
-		Description:   "Good mix of speed and accuracy\n(gpt-5.1 with minimal thinking)",
-		Capabilities:  []string{uctypes.AICapabilityTools, uctypes.AICapabilityImages, uctypes.AICapabilityPdfs},
-	},
-	uctypes.ThinkingModeDeep: {
-		Mode:          uctypes.ThinkingModeDeep,
-		DisplayName:   "Deep",
-		DisplayOrder:  -1,
-		APIType:       APIType_OpenAI,
-		Model:         uctypes.PremiumOpenAIModel,
-		ThinkingLevel: uctypes.ThinkingLevelMedium,
-		WaveAICloud:   true,
-		Premium:       true,
-		DisplayIcon:   "lightbulb",
-		Description:   "Slower but most capable\n(gpt-5.1 with full reasoning)",
-		Capabilities:  []string{uctypes.AICapabilityTools, uctypes.AICapabilityImages, uctypes.AICapabilityPdfs},
-	},
-	"openrouter:mistral": {
-		Mode:               "openrouter:mistral",
-		DisplayName:        "Mistral (OpenRouter)",
-		APIType:            APIType_OpenAIComp,
-		BaseURL:            "https://openrouter.ai/api/v1/chat/completions",
-		Model:              "mistralai/mistral-small-3.2-24b-instruct",
-		ThinkingLevel:      uctypes.ThinkingLevelLow,
-		APITokenSecretName: "OPENROUTER_KEY",
-		Premium:            false,
-		DisplayIcon:        "bolt",
-		Description:        "Fast and capable via OpenRouter\n(Mistral Small 3.2)",
-		Capabilities:       []string{uctypes.AICapabilityTools},
-	},
+func getThinkingModeConfigs() map[string]uctypes.AIThinkingModeConfig {
+	fullConfig := wconfig.GetWatcher().GetFullConfig()
+	configs := make(map[string]uctypes.AIThinkingModeConfig)
+
+	for mode, cfg := range fullConfig.WaveAIModes {
+		configs[mode] = uctypes.AIThinkingModeConfig{
+			Mode:               mode,
+			DisplayName:        cfg.DisplayName,
+			DisplayOrder:       cfg.DisplayOrder,
+			DisplayIcon:        cfg.DisplayIcon,
+			APIType:            cfg.APIType,
+			Model:              cfg.Model,
+			ThinkingLevel:      cfg.ThinkingLevel,
+			BaseURL:            cfg.BaseURL,
+			WaveAICloud:        cfg.WaveAICloud,
+			APIVersion:         cfg.APIVersion,
+			APIToken:           cfg.APIToken,
+			APITokenSecretName: cfg.APITokenSecretName,
+			Premium:            cfg.WaveAIPremium,
+			Description:        cfg.DisplayDescription,
+			Capabilities:       cfg.Capabilities,
+		}
+	}
+
+	return configs
 }
 
 func getThinkingModeConfig(thinkingMode string) (*uctypes.AIThinkingModeConfig, error) {
-	config, ok := thinkingModeConfigs[thinkingMode]
+	configs := getThinkingModeConfigs()
+	config, ok := configs[thinkingMode]
 	if !ok {
 		return nil, fmt.Errorf("invalid thinking mode: %s", thinkingMode)
 	}
@@ -76,8 +50,9 @@ func getThinkingModeConfig(thinkingMode string) (*uctypes.AIThinkingModeConfig, 
 }
 
 func WaveAIGetModes() ([]uctypes.AIThinkingModeConfig, error) {
-	modes := make([]uctypes.AIThinkingModeConfig, 0, len(thinkingModeConfigs))
-	for _, config := range thinkingModeConfigs {
+	configs := getThinkingModeConfigs()
+	modes := make([]uctypes.AIThinkingModeConfig, 0, len(configs))
+	for _, config := range configs {
 		modes = append(modes, config)
 	}
 	sort.Slice(modes, func(i, j int) bool {

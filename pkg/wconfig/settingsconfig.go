@@ -257,17 +257,37 @@ type WebBookmark struct {
 	DisplayOrder float64 `json:"display:order,omitempty"`
 }
 
-type FullConfigType struct {
-	Settings       SettingsType                   `json:"settings" merge:"meta"`
-	MimeTypes      map[string]MimeTypeConfigType  `json:"mimetypes"`
-	DefaultWidgets map[string]WidgetConfigType    `json:"defaultwidgets"`
-	Widgets        map[string]WidgetConfigType    `json:"widgets"`
-	Presets        map[string]waveobj.MetaMapType `json:"presets"`
-	TermThemes     map[string]TermThemeType       `json:"termthemes"`
-	Connections    map[string]ConnKeywords        `json:"connections"`
-	Bookmarks      map[string]WebBookmark         `json:"bookmarks"`
-	ConfigErrors   []ConfigError                  `json:"configerrors" configfile:"-"`
+type AIThinkingModeConfigType struct {
+	DisplayName        string   `json:"display:name"`
+	DisplayOrder       float64  `json:"display:order,omitempty"`
+	DisplayIcon        string   `json:"display:icon"`
+	DisplayShortDesc   string   `json:"display:shortdesc,omitempty"`
+	DisplayDescription string   `json:"display:description"`
+	APIType            string   `json:"ai:apitype"`
+	Model              string   `json:"ai:model"`
+	ThinkingLevel      string   `json:"ai:thinkinglevel"`
+	BaseURL            string   `json:"ai:baseurl,omitempty"`
+	APIVersion         string   `json:"ai:apiversion,omitempty"`
+	APIToken           string   `json:"ai:apitoken,omitempty"`
+	APITokenSecretName string   `json:"ai:apitokensecretname,omitempty"`
+	Capabilities       []string `json:"ai:capabilities,omitempty"`
+	WaveAICloud        bool     `json:"waveai:cloud,omitempty"`
+	WaveAIPremium      bool     `json:"waveai:premium"`
 }
+
+type FullConfigType struct {
+	Settings       SettingsType                        `json:"settings" merge:"meta"`
+	MimeTypes      map[string]MimeTypeConfigType       `json:"mimetypes"`
+	DefaultWidgets map[string]WidgetConfigType         `json:"defaultwidgets"`
+	Widgets        map[string]WidgetConfigType         `json:"widgets"`
+	Presets        map[string]waveobj.MetaMapType      `json:"presets"`
+	TermThemes     map[string]TermThemeType            `json:"termthemes"`
+	Connections    map[string]ConnKeywords             `json:"connections"`
+	Bookmarks      map[string]WebBookmark              `json:"bookmarks"`
+	WaveAIModes    map[string]AIThinkingModeConfigType `json:"waveai"`
+	ConfigErrors   []ConfigError                       `json:"configerrors" configfile:"-"`
+}
+
 type ConnKeywords struct {
 	ConnWshEnabled          *bool  `json:"conn:wshenabled,omitempty"`
 	ConnAskBeforeWshInstall *bool  `json:"conn:askbeforewshinstall,omitempty"`

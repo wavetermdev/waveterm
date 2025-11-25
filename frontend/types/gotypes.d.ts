@@ -32,6 +32,25 @@ declare global {
         capabilities?: string[];
     };
 
+    // wconfig.AIThinkingModeConfigType
+    type AIThinkingModeConfigType = {
+        "display:name": string;
+        "display:order"?: number;
+        "display:icon": string;
+        "display:shortdesc"?: string;
+        "display:description": string;
+        "ai:apitype": string;
+        "ai:model": string;
+        "ai:thinkinglevel": string;
+        "ai:baseurl"?: string;
+        "ai:apiversion"?: string;
+        "ai:apitoken"?: string;
+        "ai:apitokensecretname"?: string;
+        "ai:capabilities"?: string[];
+        "waveai:cloud"?: boolean;
+        "waveai:premium": boolean;
+    };
+
     // wshrpc.ActivityDisplayType
     type ActivityDisplayType = {
         width: number;
@@ -769,6 +788,7 @@ declare global {
         termthemes: {[key: string]: TermThemeType};
         connections: {[key: string]: ConnKeywords};
         bookmarks: {[key: string]: WebBookmark};
+        waveai: {[key: string]: AIThinkingModeConfigType};
         configerrors: ConfigError[];
     };
 
