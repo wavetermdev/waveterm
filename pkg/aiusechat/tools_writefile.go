@@ -184,7 +184,7 @@ func GetWriteTextFileToolDefinition() uctypes.ToolDefinition {
 			"properties": map[string]any{
 				"filename": map[string]any{
 					"type":        "string",
-					"description": "Path to the file to write. Supports '~' for the user's home directory.",
+					"description": "Absolute path to the file to write. Supports '~' for the user's home directory. Relative paths are not supported.",
 				},
 				"contents": map[string]any{
 					"type":        "string",
@@ -340,7 +340,7 @@ func GetEditTextFileToolDefinition() uctypes.ToolDefinition {
 			"properties": map[string]any{
 				"filename": map[string]any{
 					"type":        "string",
-					"description": "Path to the file to edit. Supports '~' for the user's home directory.",
+					"description": "Absolute path to the file to edit. Supports '~' for the user's home directory. Relative paths are not supported.",
 				},
 				"edits": map[string]any{
 					"type":        "array",
@@ -476,7 +476,7 @@ func GetDeleteTextFileToolDefinition() uctypes.ToolDefinition {
 			"properties": map[string]any{
 				"filename": map[string]any{
 					"type":        "string",
-					"description": "Path to the file to delete. Supports '~' for the user's home directory.",
+					"description": "Absolute path to the file to delete. Supports '~' for the user's home directory. Relative paths are not supported.",
 				},
 			},
 			"required":             []string{"filename"},

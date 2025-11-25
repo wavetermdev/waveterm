@@ -118,7 +118,7 @@ func GetReadDirToolDefinition() uctypes.ToolDefinition {
 			"properties": map[string]any{
 				"path": map[string]any{
 					"type":        "string",
-					"description": "Path to the directory to read. Supports '~' for the user's home directory.",
+					"description": "Absolute path to the directory to read. Supports '~' for the user's home directory. Relative paths are not supported.",
 				},
 				"max_entries": map[string]any{
 					"type":        "integer",
