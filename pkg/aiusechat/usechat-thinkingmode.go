@@ -9,7 +9,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
 )
 
-var thinkingModeConfigs = map[string]uctypes.ThinkingModeConfig{
+var thinkingModeConfigs = map[string]uctypes.AIThinkingModeConfig{
 	uctypes.ThinkingModeQuick: {
 		Mode:          uctypes.ThinkingModeQuick,
 		DisplayName:   "Quick",
@@ -42,7 +42,7 @@ var thinkingModeConfigs = map[string]uctypes.ThinkingModeConfig{
 	},
 }
 
-func getThinkingModeConfig(thinkingMode string) (*uctypes.ThinkingModeConfig, error) {
+func getThinkingModeConfig(thinkingMode string) (*uctypes.AIThinkingModeConfig, error) {
 	config, ok := thinkingModeConfigs[thinkingMode]
 	if !ok {
 		return nil, fmt.Errorf("invalid thinking mode: %s", thinkingMode)
@@ -52,8 +52,8 @@ func getThinkingModeConfig(thinkingMode string) (*uctypes.ThinkingModeConfig, er
 	return &configCopy, nil
 }
 
-func WaveAIGetModes() ([]uctypes.ThinkingModeConfig, error) {
-	modes := make([]uctypes.ThinkingModeConfig, 0, len(thinkingModeConfigs))
+func WaveAIGetModes() ([]uctypes.AIThinkingModeConfig, error) {
+	modes := make([]uctypes.AIThinkingModeConfig, 0, len(thinkingModeConfigs))
 	for _, config := range thinkingModeConfigs {
 		modes = append(modes, config)
 	}

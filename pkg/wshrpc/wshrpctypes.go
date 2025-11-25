@@ -321,7 +321,7 @@ type WshRpcInterface interface {
 	WaveAIToolApproveCommand(ctx context.Context, data CommandWaveAIToolApproveData) error
 	WaveAIAddContextCommand(ctx context.Context, data CommandWaveAIAddContextData) error
 	WaveAIGetToolDiffCommand(ctx context.Context, data CommandWaveAIGetToolDiffData) (*CommandWaveAIGetToolDiffRtnData, error)
-	WaveAIGetModesCommand(ctx context.Context) ([]uctypes.ThinkingModeConfig, error)
+	WaveAIGetModesCommand(ctx context.Context) ([]uctypes.AIThinkingModeConfig, error)
 
 	// screenshot
 	CaptureBlockScreenshotCommand(ctx context.Context, data CommandCaptureBlockScreenshotData) (string, error)

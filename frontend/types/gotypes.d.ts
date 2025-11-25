@@ -13,6 +13,21 @@ declare global {
         data64: string;
     };
 
+    // uctypes.AIThinkingModeConfig
+    type AIThinkingModeConfig = {
+        mode: string;
+        displayname: string;
+        apitype: string;
+        model: string;
+        thinkinglevel: string;
+        baseurl?: string;
+        apiversion?: string;
+        apitoken?: string;
+        premium: boolean;
+        icon: string;
+        description: string;
+    };
+
     // wshrpc.ActivityDisplayType
     type ActivityDisplayType = {
         width: number;
@@ -1307,21 +1322,6 @@ declare global {
         selectionBackground: string;
         background: string;
         cursor: string;
-    };
-
-    // uctypes.ThinkingModeConfig
-    type ThinkingModeConfig = {
-        mode: string;
-        displayname: string;
-        apitype: string;
-        model: string;
-        thinkinglevel: string;
-        baseurl?: string;
-        apiversion?: string;
-        apitoken?: string;
-        premium: boolean;
-        icon: string;
-        description: string;
     };
 
     // wshrpc.TimeSeriesData

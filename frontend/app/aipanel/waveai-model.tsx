@@ -58,6 +58,7 @@ export class WaveAIModel {
     droppedFiles: jotai.PrimitiveAtom<DroppedFile[]> = jotai.atom([]);
     chatId!: jotai.PrimitiveAtom<string>;
     thinkingMode: jotai.PrimitiveAtom<string> = jotai.atom("balanced");
+    thinkingModeConfigs: jotai.PrimitiveAtom<AIThinkingModeConfig[]> = jotai.atom([]);
     errorMessage: jotai.PrimitiveAtom<string> = jotai.atom(null) as jotai.PrimitiveAtom<string>;
     modelAtom!: jotai.Atom<string>;
     containerWidth: jotai.PrimitiveAtom<number> = jotai.atom(0);
@@ -445,12 +446,24 @@ export class WaveAIModel {
 
     async uiLoadInitialChat() {
         globalStore.set(this.isLoadingChatAtom, true);
+        await this.loadThinkingModeConfigs();
         const messages = await this.loadInitialChat();
         this.useChatSetMessages?.(messages);
         globalStore.set(this.isLoadingChatAtom, false);
         setTimeout(() => {
             this.scrollToBottom();
         }, 100);
+    }
+
+    async loadThinkingModeConfigs() {
+        try {
+            const configs = await RpcApi.WaveAIGetModesCommand(TabRpcClient);
+            if (configs != null && configs.length > 0) {
+                globalStore.set(this.thinkingModeConfigs, configs);
+            }
+        } catch (error) {
+            console.error("Failed to load thinking mode configs:", error);
+        }
     }
 
     async ensureRateLimitSet() {

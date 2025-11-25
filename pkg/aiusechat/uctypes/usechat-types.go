@@ -144,7 +144,7 @@ const (
 	ApprovalAutoApproved  = "auto-approved"
 )
 
-type ThinkingModeConfig struct {
+type AIThinkingModeConfig struct {
 	Mode          string `json:"mode"`
 	DisplayName   string `json:"displayname"`
 	APIType       string `json:"apitype"`

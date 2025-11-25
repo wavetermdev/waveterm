@@ -732,8 +732,8 @@ func WaveAIEnableTelemetryCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) error
 }
 
 // command "waveaigetmodes", wshserver.WaveAIGetModesCommand
-func WaveAIGetModesCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) ([]uctypes.ThinkingModeConfig, error) {
-	resp, err := sendRpcRequestCallHelper[[]uctypes.ThinkingModeConfig](w, "waveaigetmodes", nil, opts)
+func WaveAIGetModesCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) ([]uctypes.AIThinkingModeConfig, error) {
+	resp, err := sendRpcRequestCallHelper[[]uctypes.AIThinkingModeConfig](w, "waveaigetmodes", nil, opts)
 	return resp, err
 }
 

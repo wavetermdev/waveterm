@@ -1262,7 +1262,7 @@ func (ws *WshServer) WaveAIGetToolDiffCommand(ctx context.Context, data wshrpc.C
 	}, nil
 }
 
-func (ws *WshServer) WaveAIGetModesCommand(ctx context.Context) ([]uctypes.ThinkingModeConfig, error) {
+func (ws *WshServer) WaveAIGetModesCommand(ctx context.Context) ([]uctypes.AIThinkingModeConfig, error) {
 	return aiusechat.WaveAIGetModes()
 }
 
