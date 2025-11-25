@@ -38,12 +38,19 @@ const LoadingSpinner = memo(({ message }: { message: string }) => {
 });
 LoadingSpinner.displayName = "LoadingSpinner";
 
-const EmptyState = memo(() => {
+const EmptyState = memo(({ onAddSecret }: { onAddSecret: () => void }) => {
     return (
-        <div className="flex flex-col items-center justify-center gap-3 py-12">
+        <div className="flex flex-col items-center justify-center gap-4 py-12">
             <i className="fa-sharp fa-solid fa-key text-4xl text-gray-600" />
             <h3 className="text-lg font-semibold text-gray-400">No Secrets</h3>
             <p className="text-gray-500">Add a secret to get started</p>
+            <button
+                className="flex items-center gap-2 px-4 py-2 bg-accent-600 hover:bg-accent-500 rounded cursor-pointer transition-colors"
+                onClick={onAddSecret}
+            >
+                <i className="fa-sharp fa-solid fa-plus" />
+                <span className="font-medium">Add New Secret</span>
+            </button>
         </div>
     );
 });
@@ -352,7 +359,7 @@ export const SecretStoreView = memo(({ model }: { blockId: string; model: Secret
         }
 
         if (secretNames.length === 0) {
-            return <EmptyState />;
+            return <EmptyState onAddSecret={() => model.startAddingSecret()} />;
         }
 
         return (

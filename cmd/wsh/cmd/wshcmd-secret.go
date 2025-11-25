@@ -9,12 +9,15 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
 )
 
 // secretNameRegex must match the validation in pkg/wconfig/secretstore.go
 var secretNameRegex = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9_]*$`)
+
+var secretUiMagnified bool
 
 var secretCmd = &cobra.Command{
 	Use:   "secret",
@@ -54,12 +57,22 @@ var secretDeleteCmd = &cobra.Command{
 	PreRunE: preRunSetupRpcClient,
 }
 
+var secretUiCmd = &cobra.Command{
+	Use:     "ui",
+	Short:   "open secrets UI",
+	Args:    cobra.NoArgs,
+	RunE:    secretUiRun,
+	PreRunE: preRunSetupRpcClient,
+}
+
 func init() {
+	secretUiCmd.Flags().BoolVarP(&secretUiMagnified, "magnified", "m", false, "open secrets UI in magnified mode")
 	rootCmd.AddCommand(secretCmd)
 	secretCmd.AddCommand(secretGetCmd)
 	secretCmd.AddCommand(secretSetCmd)
 	secretCmd.AddCommand(secretListCmd)
 	secretCmd.AddCommand(secretDeleteCmd)
+	secretCmd.AddCommand(secretUiCmd)
 }
 
 func secretGetRun(cmd *cobra.Command, args []string) (rtnErr error) {
@@ -155,5 +168,27 @@ func secretDeleteRun(cmd *cobra.Command, args []string) (rtnErr error) {
 	}
 
 	WriteStdout("secret deleted: %s\n", name)
+	return nil
+}
+
+func secretUiRun(cmd *cobra.Command, args []string) (rtnErr error) {
+	defer func() {
+		sendActivity("secret", rtnErr == nil)
+	}()
+
+	wshCmd := &wshrpc.CommandCreateBlockData{
+		BlockDef: &waveobj.BlockDef{
+			Meta: map[string]interface{}{
+				waveobj.MetaKey_View: "secretstore",
+			},
+		},
+		Magnified: secretUiMagnified,
+		Focused:   true,
+	}
+
+	_, err := RpcClient.SendRpcRequest(wshrpc.Command_CreateBlock, wshCmd, &wshrpc.RpcOpts{Timeout: 2000})
+	if err != nil {
+		return fmt.Errorf("opening secrets UI: %w", err)
+	}
 	return nil
 }
