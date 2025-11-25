@@ -198,9 +198,16 @@ func processCompletionsStream(
 		stopKind = uctypes.StopKindToolUse
 	}
 
+	var validToolCalls []ToolCall
+	for _, tc := range toolCallsInProgress {
+		if tc.ID != "" && tc.Function.Name != "" {
+			validToolCalls = append(validToolCalls, tc)
+		}
+	}
+
 	var waveToolCalls []uctypes.WaveToolCall
-	if len(toolCallsInProgress) > 0 {
-		for _, tc := range toolCallsInProgress {
+	if len(validToolCalls) > 0 {
+		for _, tc := range validToolCalls {
 			var inputJSON any
 			if tc.Function.Arguments != "" {
 				if err := json.Unmarshal([]byte(tc.Function.Arguments), &inputJSON); err != nil {
@@ -225,10 +232,14 @@ func processCompletionsStream(
 	assistantMsg := &CompletionsChatMessage{
 		MessageId: msgID,
 		Message: CompletionsMessage{
-			Role:      "assistant",
-			Content:   textBuilder.String(),
-			ToolCalls: toolCallsInProgress,
+			Role: "assistant",
 		},
+	}
+
+	if len(validToolCalls) > 0 {
+		assistantMsg.Message.ToolCalls = validToolCalls
+	} else {
+		assistantMsg.Message.Content = textBuilder.String()
 	}
 
 	if textStarted {
