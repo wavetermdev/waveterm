@@ -6,6 +6,7 @@ package uctypes
 import (
 	"fmt"
 	"net/url"
+	"slices"
 	"strings"
 )
 
@@ -78,13 +79,14 @@ type UIMessageDataUserFile struct {
 
 // ToolDefinition represents a tool that can be used by the AI model
 type ToolDefinition struct {
-	Name             string         `json:"name"`
-	DisplayName      string         `json:"displayname,omitempty"` // internal field (cannot marshal to API, must be stripped)
-	Description      string         `json:"description"`
-	ShortDescription string         `json:"shortdescription,omitempty"` // internal field (cannot marshal to API, must be stripped)
-	ToolLogName      string         `json:"-"`                          // short name for telemetry (e.g., "term:getscrollback")
-	InputSchema      map[string]any `json:"input_schema"`
-	Strict           bool           `json:"strict,omitempty"`
+	Name                 string         `json:"name"`
+	DisplayName          string         `json:"displayname,omitempty"` // internal field (cannot marshal to API, must be stripped)
+	Description          string         `json:"description"`
+	ShortDescription     string         `json:"shortdescription,omitempty"` // internal field (cannot marshal to API, must be stripped)
+	ToolLogName          string         `json:"-"`                          // short name for telemetry (e.g., "term:getscrollback")
+	InputSchema          map[string]any `json:"input_schema"`
+	Strict               bool           `json:"strict,omitempty"`
+	RequiredCapabilities []string       `json:"requiredcapabilities,omitempty"`
 
 	ToolTextCallback func(any) (string, error)                     `json:"-"`
 	ToolAnyCallback  func(any, *UIMessageDataToolUse) (any, error) `json:"-"` // *UIMessageDataToolUse will NOT be nil
@@ -112,6 +114,18 @@ func (td *ToolDefinition) Desc() string {
 		return td.ShortDescription
 	}
 	return td.Description
+}
+
+func (td *ToolDefinition) HasRequiredCapabilities(capabilities []string) bool {
+	if td == nil || len(td.RequiredCapabilities) == 0 {
+		return true
+	}
+	for _, reqCap := range td.RequiredCapabilities {
+		if !slices.Contains(capabilities, reqCap) {
+			return false
+		}
+	}
+	return true
 }
 
 //------------------
@@ -166,6 +180,10 @@ type AIThinkingModeConfig struct {
 	Premium            bool     `json:"premium"`
 	Description        string   `json:"description"`
 	Capabilities       []string `json:"capabilities,omitempty"`
+}
+
+func (c *AIThinkingModeConfig) HasCapability(cap string) bool {
+	return slices.Contains(c.Capabilities, cap)
 }
 
 // when updating this struct, also modify frontend/app/aipanel/aitypes.ts WaveUIDataTypes.tooluse
@@ -230,17 +248,18 @@ type WaveContinueResponse struct {
 
 // Wave Specific AI opts for configuration
 type AIOptsType struct {
-	APIType       string `json:"apitype,omitempty"`
-	Model         string `json:"model"`
-	APIToken      string `json:"apitoken"`
-	OrgID         string `json:"orgid,omitempty"`
-	APIVersion    string `json:"apiversion,omitempty"`
-	BaseURL       string `json:"baseurl,omitempty"`
-	ProxyURL      string `json:"proxyurl,omitempty"`
-	MaxTokens     int    `json:"maxtokens,omitempty"`
-	TimeoutMs     int    `json:"timeoutms,omitempty"`
-	ThinkingLevel string `json:"thinkinglevel,omitempty"` // ThinkingLevelLow, ThinkingLevelMedium, or ThinkingLevelHigh
-	ThinkingMode  string `json:"thinkingmode,omitempty"`  // quick, balanced, or deep
+	APIType       string   `json:"apitype,omitempty"`
+	Model         string   `json:"model"`
+	APIToken      string   `json:"apitoken"`
+	OrgID         string   `json:"orgid,omitempty"`
+	APIVersion    string   `json:"apiversion,omitempty"`
+	BaseURL       string   `json:"baseurl,omitempty"`
+	ProxyURL      string   `json:"proxyurl,omitempty"`
+	MaxTokens     int      `json:"maxtokens,omitempty"`
+	TimeoutMs     int      `json:"timeoutms,omitempty"`
+	ThinkingLevel string   `json:"thinkinglevel,omitempty"` // ThinkingLevelLow, ThinkingLevelMedium, or ThinkingLevelHigh
+	ThinkingMode  string   `json:"thinkingmode,omitempty"`  // quick, balanced, or deep
+	Capabilities  []string `json:"capabilities,omitempty"`
 }
 
 func (opts AIOptsType) IsWaveProxy() bool {
@@ -249,6 +268,10 @@ func (opts AIOptsType) IsWaveProxy() bool {
 
 func (opts AIOptsType) IsPremiumModel() bool {
 	return opts.Model == "gpt-5" || opts.Model == "gpt-5.1" || strings.Contains(opts.Model, "claude-sonnet")
+}
+
+func (opts AIOptsType) HasCapability(cap string) bool {
+	return slices.Contains(opts.Capabilities, cap)
 }
 
 type AIChat struct {

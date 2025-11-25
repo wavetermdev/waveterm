@@ -152,6 +152,7 @@ func getWaveAISettings(premium bool, builderMode bool, rtInfo *waveobj.ObjRTInfo
 		ThinkingLevel: config.ThinkingLevel,
 		ThinkingMode:  thinkingMode,
 		BaseURL:       baseUrl,
+		Capabilities:  config.Capabilities,
 	}
 	if apiToken != "" {
 		opts.APIToken = apiToken

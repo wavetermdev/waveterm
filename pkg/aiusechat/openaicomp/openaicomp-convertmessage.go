@@ -32,6 +32,31 @@ func appendToLastUserMessage(messages []CompletionsMessage, text string) {
 	}
 }
 
+// convertToolDefinitions converts Wave ToolDefinitions to OpenAI format
+// Only includes tools whose required capabilities are met
+func convertToolDefinitions(waveTools []uctypes.ToolDefinition, capabilities []string) []ToolDefinition {
+	if len(waveTools) == 0 {
+		return nil
+	}
+
+	openaiTools := make([]ToolDefinition, 0, len(waveTools))
+	for _, waveTool := range waveTools {
+		if !waveTool.HasRequiredCapabilities(capabilities) {
+			continue
+		}
+		openaiTool := ToolDefinition{
+			Type: "function",
+			Function: ToolFunctionDef{
+				Name:        waveTool.Name,
+				Description: waveTool.Description,
+				Parameters:  waveTool.InputSchema,
+			},
+		}
+		openaiTools = append(openaiTools, openaiTool)
+	}
+	return openaiTools
+}
+
 // buildCompletionsHTTPRequest creates an HTTP request for the OpenAI completions API
 func buildCompletionsHTTPRequest(ctx context.Context, messages []CompletionsMessage, chatOpts uctypes.WaveChatOpts) (*http.Request, error) {
 	opts := chatOpts.Config
@@ -77,8 +102,18 @@ func buildCompletionsHTTPRequest(ctx context.Context, messages []CompletionsMess
 		reqBody.MaxTokens = maxTokens
 	}
 
+	// Add tool definitions if tools capability is available and tools exist
+	var allTools []uctypes.ToolDefinition
+	if opts.HasCapability(uctypes.AICapabilityTools) {
+		allTools = append(allTools, chatOpts.Tools...)
+		allTools = append(allTools, chatOpts.TabTools...)
+		if len(allTools) > 0 {
+			reqBody.Tools = convertToolDefinitions(allTools, opts.Capabilities)
+		}
+	}
+
 	if wavebase.IsDevMode() {
-		log.Printf("openaicomp: model %s, messages: %d\n", opts.Model, len(messages))
+		log.Printf("openaicomp: model %s, messages: %d, tools: %d\n", opts.Model, len(messages), len(allTools))
 	}
 
 	buf, err := json.Marshal(reqBody)
@@ -120,11 +155,11 @@ func ConvertAIMessageToCompletionsMessage(aiMsg uctypes.AIMessage) (*Completions
 	firstText := true
 	for _, part := range aiMsg.Parts {
 		var partText string
-		
+
 		switch {
 		case part.Type == uctypes.AIMessagePartTypeText:
 			partText = part.Text
-			
+
 		case part.MimeType == "text/plain":
 			textData, err := aiutil.ExtractTextData(part.Data, part.URL)
 			if err != nil {
@@ -132,18 +167,18 @@ func ConvertAIMessageToCompletionsMessage(aiMsg uctypes.AIMessage) (*Completions
 				continue
 			}
 			partText = aiutil.FormatAttachedTextFile(part.FileName, textData)
-			
+
 		case part.MimeType == "directory":
 			if len(part.Data) == 0 {
 				log.Printf("openaicomp: directory listing part missing data for %s\n", part.FileName)
 				continue
 			}
 			partText = aiutil.FormatAttachedDirectoryListing(part.FileName, string(part.Data))
-			
+
 		default:
 			continue
 		}
-		
+
 		if partText != "" {
 			if !firstText {
 				textBuilder.WriteString("\n\n")

@@ -67,6 +67,7 @@ func GetCaptureScreenshotToolDefinition(tabId string) uctypes.ToolDefinition {
 			"required":             []string{"widget_id"},
 			"additionalProperties": false,
 		},
+		RequiredCapabilities: []string{uctypes.AICapabilityImages},
 		ToolCallDesc: func(input any, output any, toolUseData *uctypes.UIMessageDataToolUse) string {
 			inputMap, ok := input.(map[string]any)
 			if !ok {
