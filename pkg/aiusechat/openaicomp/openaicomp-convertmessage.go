@@ -317,7 +317,7 @@ func GetFunctionCallInputByToolCallId(aiChat uctypes.AIChat, toolCallId string) 
 }
 
 // UpdateToolUseData updates the ToolUseData for a specific tool call in the chat history
-func UpdateToolUseData(chatId string, callId string, newToolUseData *uctypes.UIMessageDataToolUse) error {
+func UpdateToolUseData(chatId string, callId string, newToolUseData uctypes.UIMessageDataToolUse) error {
 	chat := chatstore.DefaultChatStore.Get(chatId)
 	if chat == nil {
 		return fmt.Errorf("chat not found: %s", chatId)
@@ -333,7 +333,7 @@ func UpdateToolUseData(chatId string, callId string, newToolUseData *uctypes.UIM
 			continue
 		}
 		updatedMsg := compMsg.Copy()
-		updatedMsg.Message.ToolCalls[idx].ToolUseData = newToolUseData
+		updatedMsg.Message.ToolCalls[idx].ToolUseData = &newToolUseData
 		aiOpts := &uctypes.AIOptsType{
 			APIType:    chat.APIType,
 			Model:      chat.Model,

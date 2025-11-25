@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/wavetermdev/waveterm/pkg/aiusechat/aiutil"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/chatstore"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
 	"github.com/wavetermdev/waveterm/pkg/secretstore"
@@ -239,7 +240,7 @@ func GetChatUsage(chat *uctypes.AIChat) uctypes.AIUsage {
 	return usage
 }
 
-func updateToolUseDataInChat(backend UseChatBackend, chatOpts uctypes.WaveChatOpts, toolCallID string, toolUseData *uctypes.UIMessageDataToolUse) {
+func updateToolUseDataInChat(backend UseChatBackend, chatOpts uctypes.WaveChatOpts, toolCallID string, toolUseData uctypes.UIMessageDataToolUse) {
 	if err := backend.UpdateToolUseData(chatOpts.ChatId, toolCallID, toolUseData); err != nil {
 		log.Printf("failed to update tool use data in chat: %v\n", err)
 	}
@@ -279,7 +280,7 @@ func processToolCallInternal(backend UseChatBackend, toolCall uctypes.WaveToolCa
 		}
 		// ToolVerifyInput can modify the toolusedata.  re-send it here.
 		_ = sseHandler.AiMsgData("data-tooluse", toolCall.ID, *toolCall.ToolUseData)
-		updateToolUseDataInChat(backend, chatOpts, toolCall.ID, toolCall.ToolUseData)
+		updateToolUseDataInChat(backend, chatOpts, toolCall.ID, *toolCall.ToolUseData)
 	}
 
 	if toolCall.ToolUseData.Approval == uctypes.ApprovalNeedsApproval {
@@ -308,7 +309,7 @@ func processToolCallInternal(backend UseChatBackend, toolCall uctypes.WaveToolCa
 
 		// this still happens here because we need to update the FE to say the tool call was approved
 		_ = sseHandler.AiMsgData("data-tooluse", toolCall.ID, *toolCall.ToolUseData)
-		updateToolUseDataInChat(backend, chatOpts, toolCall.ID, toolCall.ToolUseData)
+		updateToolUseDataInChat(backend, chatOpts, toolCall.ID, *toolCall.ToolUseData)
 	}
 
 	toolCall.ToolUseData.RunTs = time.Now().UnixMilli()
@@ -344,7 +345,7 @@ func processToolCall(backend UseChatBackend, toolCall uctypes.WaveToolCall, chat
 
 	if toolCall.ToolUseData != nil {
 		_ = sseHandler.AiMsgData("data-tooluse", toolCall.ID, *toolCall.ToolUseData)
-		updateToolUseDataInChat(backend, chatOpts, toolCall.ID, toolCall.ToolUseData)
+		updateToolUseDataInChat(backend, chatOpts, toolCall.ID, *toolCall.ToolUseData)
 	}
 
 	return result
@@ -356,17 +357,27 @@ func processToolCalls(backend UseChatBackend, stopReason *uctypes.WaveStopReason
 		defer activeToolMap.Delete(toolCall.ID)
 	}
 
-	// Send all data-tooluse packets at the beginning
-	for _, toolCall := range stopReason.ToolCalls {
-		if toolCall.ToolUseData != nil {
-			log.Printf("AI data-tooluse %s\n", toolCall.ID)
-			_ = sseHandler.AiMsgData("data-tooluse", toolCall.ID, *toolCall.ToolUseData)
-			updateToolUseDataInChat(backend, chatOpts, toolCall.ID, toolCall.ToolUseData)
-			if toolCall.ToolUseData.Approval == uctypes.ApprovalNeedsApproval && chatOpts.RegisterToolApproval != nil {
-				chatOpts.RegisterToolApproval(toolCall.ID)
+	// Create and send all data-tooluse packets at the beginning
+	for i := range stopReason.ToolCalls {
+		toolCall := &stopReason.ToolCalls[i]
+		// Create toolUseData from the tool call input
+		var argsJSON string
+		if toolCall.Input != nil {
+			argsBytes, err := json.Marshal(toolCall.Input)
+			if err == nil {
+				argsJSON = string(argsBytes)
 			}
 		}
+		toolUseData := aiutil.CreateToolUseData(toolCall.ID, toolCall.Name, argsJSON, chatOpts)
+		stopReason.ToolCalls[i].ToolUseData = &toolUseData
+		log.Printf("AI data-tooluse %s\n", toolCall.ID)
+		_ = sseHandler.AiMsgData("data-tooluse", toolCall.ID, toolUseData)
+		updateToolUseDataInChat(backend, chatOpts, toolCall.ID, toolUseData)
+		if toolUseData.Approval == uctypes.ApprovalNeedsApproval && chatOpts.RegisterToolApproval != nil {
+			chatOpts.RegisterToolApproval(toolCall.ID)
+		}
 	}
+	// At this point, all ToolCalls are guaranteed to have non-nil ToolUseData
 
 	var toolResults []uctypes.AIToolResult
 	for _, toolCall := range stopReason.ToolCalls {

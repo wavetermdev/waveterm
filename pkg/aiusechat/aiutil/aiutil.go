@@ -195,8 +195,8 @@ func IsOpenAIReasoningModel(model string) bool {
 }
 
 // CreateToolUseData creates a UIMessageDataToolUse from tool call information
-func CreateToolUseData(toolCallID, toolName string, arguments string, chatOpts uctypes.WaveChatOpts) *uctypes.UIMessageDataToolUse {
-	toolUseData := &uctypes.UIMessageDataToolUse{
+func CreateToolUseData(toolCallID, toolName string, arguments string, chatOpts uctypes.WaveChatOpts) uctypes.UIMessageDataToolUse {
+	toolUseData := uctypes.UIMessageDataToolUse{
 		ToolCallId: toolCallID,
 		ToolName:   toolName,
 		Status:     uctypes.ToolUseStatusPending,

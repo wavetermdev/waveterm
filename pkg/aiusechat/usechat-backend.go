@@ -29,7 +29,7 @@ type UseChatBackend interface {
 
 	// UpdateToolUseData updates the tool use data for a specific tool call in the chat.
 	// This is used to update the UI state for tool execution (approval status, results, etc.)
-	UpdateToolUseData(chatId string, toolCallId string, toolUseData *uctypes.UIMessageDataToolUse) error
+	UpdateToolUseData(chatId string, toolCallId string, toolUseData uctypes.UIMessageDataToolUse) error
 
 	// ConvertToolResultsToNativeChatMessage converts tool execution results into native chat messages
 	// that can be sent back to the AI backend. Returns a slice of messages (some backends may
@@ -86,7 +86,7 @@ func (b *openaiResponsesBackend) RunChatStep(
 	return stopReason, genMsgs, rateLimitInfo, err
 }
 
-func (b *openaiResponsesBackend) UpdateToolUseData(chatId string, toolCallId string, toolUseData *uctypes.UIMessageDataToolUse) error {
+func (b *openaiResponsesBackend) UpdateToolUseData(chatId string, toolCallId string, toolUseData uctypes.UIMessageDataToolUse) error {
 	return openai.UpdateToolUseData(chatId, toolCallId, toolUseData)
 }
 
@@ -140,7 +140,7 @@ func (b *openaiCompletionsBackend) RunChatStep(
 	return stopReason, genMsgs, rateLimitInfo, err
 }
 
-func (b *openaiCompletionsBackend) UpdateToolUseData(chatId string, toolCallId string, toolUseData *uctypes.UIMessageDataToolUse) error {
+func (b *openaiCompletionsBackend) UpdateToolUseData(chatId string, toolCallId string, toolUseData uctypes.UIMessageDataToolUse) error {
 	return openaicomp.UpdateToolUseData(chatId, toolCallId, toolUseData)
 }
 
@@ -173,7 +173,7 @@ func (b *anthropicBackend) RunChatStep(
 	return stopReason, []uctypes.GenAIMessage{msg}, rateLimitInfo, err
 }
 
-func (b *anthropicBackend) UpdateToolUseData(chatId string, toolCallId string, toolUseData *uctypes.UIMessageDataToolUse) error {
+func (b *anthropicBackend) UpdateToolUseData(chatId string, toolCallId string, toolUseData uctypes.UIMessageDataToolUse) error {
 	return fmt.Errorf("UpdateToolUseData not implemented for anthropic backend")
 }
 

@@ -246,6 +246,8 @@ const AIPanelComponentInner = memo(() => {
     model.registerUseChatData(sendMessage, setMessages, status, stop);
 
     // console.log("AICHAT messages", messages);
+    (window as any).aichatmessages = messages;
+    (window as any).aichatstatus = status;
 
     const handleKeyDown = (waveEvent: WaveKeyboardEvent): boolean => {
         if (checkKeyPressed(waveEvent, "Cmd:k")) {
