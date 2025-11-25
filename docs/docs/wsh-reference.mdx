@@ -978,6 +978,23 @@ wsh secret delete old_api_key
 wsh secret delete temp_token
 ```
 
+### ui
+
+```sh
+wsh secret ui
+```
+
+Open the secrets management interface in a new block. This provides a graphical interface for viewing and managing all your secrets.
+
+Example:
+
+```sh
+# Open the secrets UI
+wsh secret ui
+```
+
+The secrets UI provides a convenient visual way to browse, add, edit, and delete secrets without needing to use the command-line interface.
+
 :::tip
 Use secrets in your scripts to avoid hardcoding sensitive values. Secrets work across remote machines - store an API key locally with `wsh secret set`, then access it from any SSH or WSL connection with `wsh secret get`. The secret is securely retrieved from your local machine without needing to duplicate it on remote systems.
 :::
