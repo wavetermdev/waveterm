@@ -43,13 +43,13 @@ const WaveConfigView = memo(({ blockId }: { blockId: string }) => {
     const setIsSaving = useSetAtom(isSavingAtom);
     const [errorMessage, setErrorMessage] = useAtom(errorMessageAtom);
     const [validationError, setValidationError] = useAtom(validationErrorAtom);
+    const configDir = useMemo(() => getApi().getConfigDir(), []);
 
     const loadFile = useCallback(
         async (file: ConfigFile) => {
             setIsLoading(true);
             setErrorMessage(null);
             try {
-                const configDir = getApi().getConfigDir();
                 const fullPath = `${configDir}/${file.path}`;
                 const fileData = await RpcApi.FileReadCommand(TabRpcClient, {
                     info: { path: fullPath },
@@ -66,22 +66,21 @@ const WaveConfigView = memo(({ blockId }: { blockId: string }) => {
                 setIsLoading(false);
             }
         },
-        [setFileContent, setOriginalContent, setSelectedFile, setIsLoading, setErrorMessage]
+        [configDir, setFileContent, setOriginalContent, setSelectedFile, setIsLoading, setErrorMessage]
     );
 
     const saveFile = useCallback(async () => {
         if (!selectedFile) return;
-        
+
         try {
             const parsed = JSON.parse(fileContent);
             const formatted = JSON.stringify(parsed, null, 2);
-            
+
             setIsSaving(true);
             setErrorMessage(null);
             setValidationError(null);
-            
+
             try {
-                const configDir = getApi().getConfigDir();
                 const fullPath = `${configDir}/${selectedFile.path}`;
                 await RpcApi.FileWriteCommand(TabRpcClient, {
                     info: { path: fullPath },
@@ -97,7 +96,16 @@ const WaveConfigView = memo(({ blockId }: { blockId: string }) => {
         } catch (err) {
             setValidationError(`Invalid JSON: ${err.message || String(err)}`);
         }
-    }, [selectedFile, fileContent, setFileContent, setOriginalContent, setIsSaving, setErrorMessage, setValidationError]);
+    }, [
+        configDir,
+        selectedFile,
+        fileContent,
+        setFileContent,
+        setOriginalContent,
+        setIsSaving,
+        setErrorMessage,
+        setValidationError,
+    ]);
 
     useEffect(() => {
         if (configFiles.length > 0 && !selectedFile) {
@@ -202,7 +210,7 @@ const WaveConfigView = memo(({ blockId }: { blockId: string }) => {
                                 <CodeEditor
                                     blockId={blockId}
                                     text={fileContent}
-                                    fileName={selectedFile.path}
+                                    fileName={`${configDir}/${selectedFile.path}`}
                                     language={selectedFile.language}
                                     readonly={false}
                                     onChange={setFileContent}
