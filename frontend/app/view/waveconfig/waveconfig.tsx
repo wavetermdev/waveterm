@@ -2,124 +2,34 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { Tooltip } from "@/app/element/tooltip";
-import { getApi } from "@/app/store/global";
-import { RpcApi } from "@/app/store/wshclientapi";
-import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { CodeEditor } from "@/app/view/codeeditor/codeeditor";
+import type { WaveConfigViewModel } from "@/app/view/waveconfig/waveconfig-model";
 import { checkKeyPressed, keydownWrapper } from "@/util/keyutil";
-import { base64ToString, stringToBase64 } from "@/util/util";
-import { atom, PrimitiveAtom, useAtom, useAtomValue, useSetAtom } from "jotai";
-import { memo, useCallback, useEffect, useMemo } from "react";
+import { useAtom, useAtomValue } from "jotai";
+import { memo, useEffect } from "react";
 
-type ConfigFile = {
-    name: string;
-    path: string;
-    language: string;
-};
-
-const configFiles: ConfigFile[] = [
-    { name: "General", path: "settings.json", language: "json" },
-    { name: "Connections", path: "connections.json", language: "json" },
-    { name: "Widgets", path: "widgets.json", language: "json" },
-    { name: "AI Presets", path: "presets/ai.json", language: "json" },
-];
-
-const selectedFileAtom = atom<ConfigFile>(null) as PrimitiveAtom<ConfigFile>;
-const fileContentAtom = atom<string>("") as PrimitiveAtom<string>;
-const originalContentAtom = atom<string>("") as PrimitiveAtom<string>;
-const isLoadingAtom = atom<boolean>(false) as PrimitiveAtom<boolean>;
-const isSavingAtom = atom<boolean>(false) as PrimitiveAtom<boolean>;
-const errorMessageAtom = atom<string>(null) as PrimitiveAtom<string>;
-const validationErrorAtom = atom<string>(null) as PrimitiveAtom<string>;
-
-const WaveConfigView = memo(({ blockId }: { blockId: string }) => {
-    const selectedFile = useAtomValue(selectedFileAtom);
-    const setSelectedFile = useSetAtom(selectedFileAtom);
-    const [fileContent, setFileContent] = useAtom(fileContentAtom);
-    const [originalContent, setOriginalContent] = useAtom(originalContentAtom);
-    const isLoading = useAtomValue(isLoadingAtom);
-    const setIsLoading = useSetAtom(isLoadingAtom);
-    const isSaving = useAtomValue(isSavingAtom);
-    const setIsSaving = useSetAtom(isSavingAtom);
-    const [errorMessage, setErrorMessage] = useAtom(errorMessageAtom);
-    const [validationError, setValidationError] = useAtom(validationErrorAtom);
-    const configDir = useMemo(() => getApi().getConfigDir(), []);
-
-    const loadFile = useCallback(
-        async (file: ConfigFile) => {
-            setIsLoading(true);
-            setErrorMessage(null);
-            try {
-                const fullPath = `${configDir}/${file.path}`;
-                const fileData = await RpcApi.FileReadCommand(TabRpcClient, {
-                    info: { path: fullPath },
-                });
-                const content = fileData?.data64 ? base64ToString(fileData.data64) : "";
-                setFileContent(content);
-                setOriginalContent(content);
-                setSelectedFile(file);
-            } catch (err) {
-                setErrorMessage(`Failed to load ${file.name}: ${err.message || String(err)}`);
-                setFileContent("");
-                setOriginalContent("");
-            } finally {
-                setIsLoading(false);
-            }
-        },
-        [configDir, setFileContent, setOriginalContent, setSelectedFile, setIsLoading, setErrorMessage]
-    );
-
-    const saveFile = useCallback(async () => {
-        if (!selectedFile) return;
-
-        try {
-            const parsed = JSON.parse(fileContent);
-            const formatted = JSON.stringify(parsed, null, 2);
-
-            setIsSaving(true);
-            setErrorMessage(null);
-            setValidationError(null);
-
-            try {
-                const fullPath = `${configDir}/${selectedFile.path}`;
-                await RpcApi.FileWriteCommand(TabRpcClient, {
-                    info: { path: fullPath },
-                    data64: stringToBase64(formatted),
-                });
-                setFileContent(formatted);
-                setOriginalContent(formatted);
-            } catch (err) {
-                setErrorMessage(`Failed to save ${selectedFile.name}: ${err.message || String(err)}`);
-            } finally {
-                setIsSaving(false);
-            }
-        } catch (err) {
-            setValidationError(`Invalid JSON: ${err.message || String(err)}`);
-        }
-    }, [
-        configDir,
-        selectedFile,
-        fileContent,
-        setFileContent,
-        setOriginalContent,
-        setIsSaving,
-        setErrorMessage,
-        setValidationError,
-    ]);
+const WaveConfigView = memo(({ blockId, model }: ViewComponentProps<WaveConfigViewModel>) => {
+    const selectedFile = useAtomValue(model.selectedFileAtom);
+    const [fileContent, setFileContent] = useAtom(model.fileContentAtom);
+    const isLoading = useAtomValue(model.isLoadingAtom);
+    const isSaving = useAtomValue(model.isSavingAtom);
+    const errorMessage = useAtomValue(model.errorMessageAtom);
+    const validationError = useAtomValue(model.validationErrorAtom);
+    const configFiles = model.getConfigFiles();
 
     useEffect(() => {
         if (configFiles.length > 0 && !selectedFile) {
-            loadFile(configFiles[0]);
+            model.loadFile(configFiles[0]);
         }
-    }, [selectedFile, loadFile]);
+    }, [selectedFile, model]);
 
-    const hasChanges = fileContent !== originalContent;
+    const hasChanges = model.hasChanges();
 
     useEffect(() => {
         const handleKeyDown = keydownWrapper((e: WaveKeyboardEvent) => {
             if (checkKeyPressed(e, "Cmd:s")) {
                 if (hasChanges && !isSaving) {
-                    saveFile();
+                    model.saveFile();
                 }
                 return true;
             }
@@ -128,13 +38,9 @@ const WaveConfigView = memo(({ blockId }: { blockId: string }) => {
 
         window.addEventListener("keydown", handleKeyDown);
         return () => window.removeEventListener("keydown", handleKeyDown);
-    }, [hasChanges, isSaving, saveFile]);
+    }, [hasChanges, isSaving, model]);
 
-    const saveTooltip = useMemo(() => {
-        const platform = getApi().getPlatform();
-        const shortcut = platform === "darwin" ? "Cmd+S" : "Alt+S";
-        return `Save (${shortcut})`;
-    }, []);
+    const saveTooltip = `Save (${model.saveShortcut})`;
 
     return (
         <div className="flex flex-row w-full h-full">
@@ -143,7 +49,7 @@ const WaveConfigView = memo(({ blockId }: { blockId: string }) => {
                 {configFiles.map((file) => (
                     <div
                         key={file.path}
-                        onClick={() => loadFile(file)}
+                        onClick={() => model.loadFile(file)}
                         className={`px-3 py-2 rounded cursor-pointer transition-colors ${
                             selectedFile?.path === file.path ? "bg-accentbg text-primary" : "hover:bg-secondary/50"
                         }`}
@@ -166,7 +72,7 @@ const WaveConfigView = memo(({ blockId }: { blockId: string }) => {
                                 {hasChanges && <span className="text-xs text-warning">Unsaved changes</span>}
                                 <Tooltip content={saveTooltip} placement="bottom">
                                     <button
-                                        onClick={saveFile}
+                                        onClick={() => model.saveFile()}
                                         disabled={!hasChanges || isSaving}
                                         className={`px-3 py-1 rounded transition-colors text-sm ${
                                             !hasChanges || isSaving
@@ -183,7 +89,7 @@ const WaveConfigView = memo(({ blockId }: { blockId: string }) => {
                             <div className="bg-error text-primary px-4 py-2 border-b border-error flex items-center justify-between">
                                 <span>{errorMessage}</span>
                                 <button
-                                    onClick={() => setErrorMessage(null)}
+                                    onClick={() => model.clearError()}
                                     className="ml-2 hover:bg-black/20 rounded p-1 cursor-pointer transition-colors"
                                 >
                                     ✕
@@ -194,7 +100,7 @@ const WaveConfigView = memo(({ blockId }: { blockId: string }) => {
                             <div className="bg-error text-primary px-4 py-2 border-b border-error flex items-center justify-between">
                                 <span>{validationError}</span>
                                 <button
-                                    onClick={() => setValidationError(null)}
+                                    onClick={() => model.clearValidationError()}
                                     className="ml-2 hover:bg-black/20 rounded p-1 cursor-pointer transition-colors"
                                 >
                                     ✕
@@ -210,7 +116,7 @@ const WaveConfigView = memo(({ blockId }: { blockId: string }) => {
                                 <CodeEditor
                                     blockId={blockId}
                                     text={fileContent}
-                                    fileName={`${configDir}/${selectedFile.path}`}
+                                    fileName={`${model.configDir}/${selectedFile.path}`}
                                     language={selectedFile.language}
                                     readonly={false}
                                     onChange={setFileContent}

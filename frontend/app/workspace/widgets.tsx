@@ -256,6 +256,19 @@ const SettingsFloatingWindow = memo(
                 },
             },
             {
+                icon: "lock",
+                label: "Secrets",
+                onClick: () => {
+                    const blockDef: BlockDef = {
+                        meta: {
+                            view: "secretstore",
+                        },
+                    };
+                    createBlock(blockDef, false, true);
+                    onClose();
+                },
+            },
+            {
                 icon: "circle-question",
                 label: "Help",
                 onClick: () => {
