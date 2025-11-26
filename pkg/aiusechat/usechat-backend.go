@@ -8,6 +8,7 @@ import (
 	"fmt"
 
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/anthropic"
+	"github.com/wavetermdev/waveterm/pkg/aiusechat/gemini"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/openai"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/openaichat"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
@@ -54,6 +55,7 @@ type UseChatBackend interface {
 var _ UseChatBackend = (*openaiResponsesBackend)(nil)
 var _ UseChatBackend = (*openaiCompletionsBackend)(nil)
 var _ UseChatBackend = (*anthropicBackend)(nil)
+var _ UseChatBackend = (*geminiBackend)(nil)
 
 // GetBackendByAPIType returns the appropriate UseChatBackend implementation for the given API type
 func GetBackendByAPIType(apiType string) (UseChatBackend, error) {
@@ -64,6 +66,8 @@ func GetBackendByAPIType(apiType string) (UseChatBackend, error) {
 		return &openaiCompletionsBackend{}, nil
 	case uctypes.APIType_AnthropicMessages:
 		return &anthropicBackend{}, nil
+	case uctypes.APIType_GoogleGemini:
+		return &geminiBackend{}, nil
 	default:
 		return nil, fmt.Errorf("unsupported API type: %s", apiType)
 	}
@@ -195,4 +199,44 @@ func (b *anthropicBackend) GetFunctionCallInputByToolCallId(aiChat uctypes.AICha
 
 func (b *anthropicBackend) ConvertAIChatToUIChat(aiChat uctypes.AIChat) (*uctypes.UIChat, error) {
 	return anthropic.ConvertAIChatToUIChat(aiChat)
+}
+
+// geminiBackend implements UseChatBackend for Google Gemini API
+type geminiBackend struct{}
+
+func (b *geminiBackend) RunChatStep(
+	ctx context.Context,
+	sseHandler *sse.SSEHandlerCh,
+	chatOpts uctypes.WaveChatOpts,
+	cont *uctypes.WaveContinueResponse,
+) (*uctypes.WaveStopReason, []uctypes.GenAIMessage, *uctypes.RateLimitInfo, error) {
+	stopReason, msg, rateLimitInfo, err := gemini.RunGeminiChatStep(ctx, sseHandler, chatOpts, cont)
+	if msg == nil {
+		return stopReason, nil, rateLimitInfo, err
+	}
+	return stopReason, []uctypes.GenAIMessage{msg}, rateLimitInfo, err
+}
+
+func (b *geminiBackend) UpdateToolUseData(chatId string, toolCallId string, toolUseData uctypes.UIMessageDataToolUse) error {
+	return gemini.UpdateToolUseData(chatId, toolCallId, toolUseData)
+}
+
+func (b *geminiBackend) ConvertToolResultsToNativeChatMessage(toolResults []uctypes.AIToolResult) ([]uctypes.GenAIMessage, error) {
+	msg, err := gemini.ConvertToolResultsToGeminiChatMessage(toolResults)
+	if err != nil {
+		return nil, err
+	}
+	return []uctypes.GenAIMessage{msg}, nil
+}
+
+func (b *geminiBackend) ConvertAIMessageToNativeChatMessage(message uctypes.AIMessage) (uctypes.GenAIMessage, error) {
+	return gemini.ConvertAIMessageToGeminiChatMessage(message)
+}
+
+func (b *geminiBackend) GetFunctionCallInputByToolCallId(aiChat uctypes.AIChat, toolCallId string) *uctypes.AIFunctionCallInput {
+	return gemini.GetFunctionCallInputByToolCallId(aiChat, toolCallId)
+}
+
+func (b *geminiBackend) ConvertAIChatToUIChat(aiChat uctypes.AIChat) (*uctypes.UIChat, error) {
+	return gemini.ConvertAIChatToUIChat(aiChat)
 }
