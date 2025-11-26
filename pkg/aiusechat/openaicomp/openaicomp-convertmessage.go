@@ -78,7 +78,7 @@ func buildCompletionsHTTPRequest(ctx context.Context, messages []CompletionsMess
 	if len(chatOpts.SystemPrompt) > 0 {
 		systemMessage := CompletionsMessage{
 			Role:    "system",
-			Content: strings.Join(chatOpts.SystemPrompt, "\n"),
+			Content: strings.Join(chatOpts.SystemPrompt, "\n\n"),
 		}
 		finalMessages = append([]CompletionsMessage{systemMessage}, messages...)
 	}
