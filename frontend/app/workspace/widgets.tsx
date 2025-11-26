@@ -202,6 +202,102 @@ const AppsFloatingWindow = memo(
     }
 );
 
+const SettingsFloatingWindow = memo(
+    ({
+        isOpen,
+        onClose,
+        referenceElement,
+    }: {
+        isOpen: boolean;
+        onClose: () => void;
+        referenceElement: HTMLElement;
+    }) => {
+        const { refs, floatingStyles, context } = useFloating({
+            open: isOpen,
+            onOpenChange: onClose,
+            placement: "left-start",
+            middleware: [offset(-2), shift({ padding: 12 })],
+            whileElementsMounted: autoUpdate,
+            elements: {
+                reference: referenceElement,
+            },
+        });
+
+        const dismiss = useDismiss(context);
+        const { getFloatingProps } = useInteractions([dismiss]);
+
+        if (!isOpen) return null;
+
+        const menuItems = [
+            {
+                icon: "gear",
+                label: "Settings",
+                onClick: () => {
+                    const blockDef: BlockDef = {
+                        meta: {
+                            view: "waveconfig",
+                        },
+                    };
+                    createBlock(blockDef, false, true);
+                    onClose();
+                },
+            },
+            {
+                icon: "lightbulb",
+                label: "Tips",
+                onClick: () => {
+                    const blockDef: BlockDef = {
+                        meta: {
+                            view: "tips",
+                        },
+                    };
+                    createBlock(blockDef, true, true);
+                    onClose();
+                },
+            },
+            {
+                icon: "circle-question",
+                label: "Help",
+                onClick: () => {
+                    const blockDef: BlockDef = {
+                        meta: {
+                            view: "help",
+                        },
+                    };
+                    createBlock(blockDef);
+                    onClose();
+                },
+            },
+        ];
+
+        return (
+            <FloatingPortal>
+                <div
+                    ref={refs.setFloating}
+                    style={floatingStyles}
+                    {...getFloatingProps()}
+                    className="bg-modalbg border border-border rounded-lg shadow-xl p-2 z-50"
+                >
+                    {menuItems.map((item, idx) => (
+                        <div
+                            key={idx}
+                            className="flex items-center gap-3 px-3 py-2 rounded hover:bg-hoverbg cursor-pointer transition-colors text-secondary hover:text-white"
+                            onClick={item.onClick}
+                        >
+                            <div className="text-lg w-5 flex justify-center">
+                                <i className={makeIconClass(item.icon, false)}></i>
+                            </div>
+                            <div className="text-sm whitespace-nowrap">{item.label}</div>
+                        </div>
+                    ))}
+                </div>
+            </FloatingPortal>
+        );
+    }
+);
+
+SettingsFloatingWindow.displayName = "SettingsFloatingWindow";
+
 const Widgets = memo(() => {
     const fullConfig = useAtomValue(atoms.fullConfigAtom);
     const hasCustomAIPresets = useAtomValue(atoms.hasCustomAIPresetsAtom);
@@ -209,26 +305,6 @@ const Widgets = memo(() => {
     const containerRef = useRef<HTMLDivElement>(null);
     const measurementRef = useRef<HTMLDivElement>(null);
 
-    const helpWidget: WidgetConfigType = {
-        icon: "circle-question",
-        label: "help",
-        blockdef: {
-            meta: {
-                view: "help",
-            },
-        },
-    };
-    const tipsWidget: WidgetConfigType = {
-        icon: "lightbulb",
-        label: "tips",
-        blockdef: {
-            meta: {
-                view: "tips",
-            },
-        },
-        magnified: true,
-    };
-    const showHelp = fullConfig?.settings?.["widget:showhelp"] ?? true;
     const featureWaveAppBuilder = fullConfig?.settings?.["feature:waveappbuilder"] ?? false;
     const widgetsMap = fullConfig?.widgets ?? {};
     const filteredWidgets = hasCustomAIPresets
@@ -238,6 +314,8 @@ const Widgets = memo(() => {
 
     const [isAppsOpen, setIsAppsOpen] = useState(false);
     const appsButtonRef = useRef<HTMLDivElement>(null);
+    const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+    const settingsButtonRef = useRef<HTMLDivElement>(null);
 
     const checkModeNeeded = useCallback(() => {
         if (!containerRef.current || !measurementRef.current) return;
@@ -252,7 +330,7 @@ const Widgets = memo(() => {
             newMode = "compact";
 
             // Calculate total widget count for supercompact check
-            const totalWidgets = (widgets?.length || 0) + (showHelp ? 2 : 0);
+            const totalWidgets = (widgets?.length || 0) + 1;
             const minHeightPerWidget = 32;
             const requiredHeight = totalWidgets * minHeightPerWidget;
 
@@ -264,7 +342,7 @@ const Widgets = memo(() => {
         if (newMode !== mode) {
             setMode(newMode);
         }
-    }, [mode, widgets, showHelp]);
+    }, [mode, widgets]);
 
     useEffect(() => {
         const resizeObserver = new ResizeObserver(() => {
@@ -282,7 +360,7 @@ const Widgets = memo(() => {
 
     useEffect(() => {
         checkModeNeeded();
-    }, [widgets, showHelp, checkModeNeeded]);
+    }, [widgets, checkModeNeeded]);
 
     const handleWidgetsBarContextMenu = (e: React.MouseEvent) => {
         e.preventDefault();
@@ -298,31 +376,6 @@ const Widgets = memo(() => {
                         await createBlock(blockDef, false, true);
                     });
                 },
-            },
-            {
-                label: "Show Help Widgets",
-                submenu: [
-                    {
-                        label: "On",
-                        type: "checkbox",
-                        checked: showHelp,
-                        click: () => {
-                            fireAndForget(async () => {
-                                await RpcApi.SetConfigCommand(TabRpcClient, { "widget:showhelp": true });
-                            });
-                        },
-                    },
-                    {
-                        label: "Off",
-                        type: "checkbox",
-                        checked: !showHelp,
-                        click: () => {
-                            fireAndForget(async () => {
-                                await RpcApi.SetConfigCommand(TabRpcClient, { "widget:showhelp": false });
-                            });
-                        },
-                    },
-                ],
             },
         ];
         ContextMenuModel.showContextMenu(menu, e);
@@ -343,29 +396,32 @@ const Widgets = memo(() => {
                             ))}
                         </div>
                         <div className="flex-grow" />
-                        {isDev() || featureWaveAppBuilder || showHelp ? (
-                            <div className="grid grid-cols-2 gap-0 w-full">
-                                {isDev() || featureWaveAppBuilder ? (
-                                    <div
-                                        ref={appsButtonRef}
-                                        className="flex flex-col justify-center items-center w-full py-1.5 pr-0.5 text-secondary text-sm overflow-hidden rounded-sm hover:bg-hoverbg hover:text-white cursor-pointer"
-                                        onClick={() => setIsAppsOpen(!isAppsOpen)}
-                                    >
-                                        <Tooltip content="Local WaveApps" placement="left" disable={isAppsOpen}>
-                                            <div>
-                                                <i className={makeIconClass("cube", true)}></i>
-                                            </div>
-                                        </Tooltip>
+                        <div className="grid grid-cols-2 gap-0 w-full">
+                            {isDev() || featureWaveAppBuilder ? (
+                                <div
+                                    ref={appsButtonRef}
+                                    className="flex flex-col justify-center items-center w-full py-1.5 pr-0.5 text-secondary text-sm overflow-hidden rounded-sm hover:bg-hoverbg hover:text-white cursor-pointer"
+                                    onClick={() => setIsAppsOpen(!isAppsOpen)}
+                                >
+                                    <Tooltip content="Local WaveApps" placement="left" disable={isAppsOpen}>
+                                        <div>
+                                            <i className={makeIconClass("cube", true)}></i>
+                                        </div>
+                                    </Tooltip>
+                                </div>
+                            ) : null}
+                            <div
+                                ref={settingsButtonRef}
+                                className="flex flex-col justify-center items-center w-full py-1.5 pr-0.5 text-secondary text-sm overflow-hidden rounded-sm hover:bg-hoverbg hover:text-white cursor-pointer"
+                                onClick={() => setIsSettingsOpen(!isSettingsOpen)}
+                            >
+                                <Tooltip content="Settings & Help" placement="left" disable={isSettingsOpen}>
+                                    <div>
+                                        <i className={makeIconClass("gear", true)}></i>
                                     </div>
-                                ) : null}
-                                {showHelp ? (
-                                    <>
-                                        <Widget key="tips" widget={tipsWidget} mode={mode} />
-                                        <Widget key="help" widget={helpWidget} mode={mode} />
-                                    </>
-                                ) : null}
+                                </Tooltip>
                             </div>
-                        ) : null}
+                        </div>
                     </>
                 ) : (
                     <>
@@ -391,12 +447,22 @@ const Widgets = memo(() => {
                                 </Tooltip>
                             </div>
                         ) : null}
-                        {showHelp ? (
-                            <>
-                                <Widget key="tips" widget={tipsWidget} mode={mode} />
-                                <Widget key="help" widget={helpWidget} mode={mode} />
-                            </>
-                        ) : null}
+                        <div
+                            ref={settingsButtonRef}
+                            className="flex flex-col justify-center items-center w-full py-1.5 pr-0.5 text-secondary text-lg overflow-hidden rounded-sm hover:bg-hoverbg hover:text-white cursor-pointer"
+                            onClick={() => setIsSettingsOpen(!isSettingsOpen)}
+                        >
+                            <Tooltip content="Settings & Help" placement="left" disable={isSettingsOpen}>
+                                <div>
+                                    <i className={makeIconClass("gear", true)}></i>
+                                </div>
+                                {mode === "normal" && (
+                                    <div className="text-xxs mt-0.5 w-full px-0.5 text-center whitespace-nowrap overflow-hidden text-ellipsis">
+                                        settings
+                                    </div>
+                                )}
+                            </Tooltip>
+                        </div>
                     </>
                 )}
                 {isDev() ? (
@@ -415,6 +481,13 @@ const Widgets = memo(() => {
                     referenceElement={appsButtonRef.current}
                 />
             )}
+            {settingsButtonRef.current && (
+                <SettingsFloatingWindow
+                    isOpen={isSettingsOpen}
+                    onClose={() => setIsSettingsOpen(false)}
+                    referenceElement={settingsButtonRef.current}
+                />
+            )}
 
             <div
                 ref={measurementRef}
@@ -424,12 +497,12 @@ const Widgets = memo(() => {
                     <Widget key={`measurement-widget-${idx}`} widget={data} mode="normal" />
                 ))}
                 <div className="flex-grow" />
-                {showHelp ? (
-                    <>
-                        <Widget key="measurement-tips" widget={tipsWidget} mode="normal" />
-                        <Widget key="measurement-help" widget={helpWidget} mode="normal" />
-                    </>
-                ) : null}
+                <div className="flex flex-col justify-center items-center w-full py-1.5 pr-0.5 text-lg">
+                    <div>
+                        <i className={makeIconClass("gear", true)}></i>
+                    </div>
+                    <div className="text-xxs mt-0.5 w-full px-0.5 text-center">settings</div>
+                </div>
                 {isDev() ? (
                     <div className="flex flex-col justify-center items-center w-full py-1.5 pr-0.5 text-lg">
                         <div>
