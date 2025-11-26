@@ -149,7 +149,7 @@ func (m *OpenAIChatMessage) GetUsage() *uctypes.AIUsage {
 		return nil
 	}
 	return &uctypes.AIUsage{
-		APIType:              "openai",
+		APIType:              uctypes.APIType_OpenAI,
 		Model:                m.Usage.Model,
 		InputTokens:          m.Usage.InputTokens,
 		OutputTokens:         m.Usage.OutputTokens,

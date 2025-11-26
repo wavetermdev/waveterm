@@ -141,7 +141,7 @@ func (m *CompletionsChatMessage) GetUsage() *uctypes.AIUsage {
 		return nil
 	}
 	return &uctypes.AIUsage{
-		APIType:      "openai-comp",
+		APIType:      uctypes.APIType_OpenAIComp,
 		Model:        m.Usage.Model,
 		InputTokens:  m.Usage.PromptTokens,
 		OutputTokens: m.Usage.CompletionTokens,

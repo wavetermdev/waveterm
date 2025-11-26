@@ -58,11 +58,11 @@ var _ UseChatBackend = (*anthropicBackend)(nil)
 // GetBackendByAPIType returns the appropriate UseChatBackend implementation for the given API type
 func GetBackendByAPIType(apiType string) (UseChatBackend, error) {
 	switch apiType {
-	case APIType_OpenAI:
+	case uctypes.APIType_OpenAI:
 		return &openaiResponsesBackend{}, nil
-	case APIType_OpenAIComp:
+	case uctypes.APIType_OpenAIComp:
 		return &openaiCompletionsBackend{}, nil
-	case APIType_Anthropic:
+	case uctypes.APIType_Anthropic:
 		return &anthropicBackend{}, nil
 	default:
 		return nil, fmt.Errorf("unsupported API type: %s", apiType)

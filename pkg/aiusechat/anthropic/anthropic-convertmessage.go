@@ -171,7 +171,7 @@ func buildAnthropicHTTPRequest(ctx context.Context, msgs []anthropicInputMessage
 	req.Header.Set("anthropic-version", apiVersion)
 	req.Header.Set("accept", "text/event-stream")
 	req.Header.Set("X-Wave-ClientId", chatOpts.ClientId)
-	req.Header.Set("X-Wave-APIType", "anthropic")
+	req.Header.Set("X-Wave-APIType", uctypes.APIType_Anthropic)
 
 	return req, nil
 }
@@ -795,8 +795,8 @@ func ConvertToolResultsToAnthropicChatMessage(toolResults []uctypes.AIToolResult
 
 // ConvertAIChatToUIChat converts an AIChat to a UIChat for Anthropic
 func ConvertAIChatToUIChat(aiChat uctypes.AIChat) (*uctypes.UIChat, error) {
-	if aiChat.APIType != "anthropic" {
-		return nil, fmt.Errorf("APIType must be 'anthropic', got '%s'", aiChat.APIType)
+	if aiChat.APIType != uctypes.APIType_Anthropic {
+		return nil, fmt.Errorf("APIType must be '%s', got '%s'", uctypes.APIType_Anthropic, aiChat.APIType)
 	}
 
 	uiMessages := make([]uctypes.UIMessage, 0, len(aiChat.NativeMessages))

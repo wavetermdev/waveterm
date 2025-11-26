@@ -35,13 +35,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wstore"
 )
 
-const (
-	APIType_Anthropic  = "anthropic"
-	APIType_OpenAI     = "openai"
-	APIType_OpenAIComp = "openai-comp"
-)
-
-const DefaultAPI = APIType_OpenAI
+const DefaultAPI = uctypes.APIType_OpenAI
 const DefaultMaxTokens = 4 * 1024
 const BuilderMaxTokens = 24 * 1024
 const WaveAIEndpointEnvName = "WAVETERM_WAVEAI_ENDPOINT"
@@ -164,7 +158,7 @@ func GetGlobalRateLimit() *uctypes.RateLimitInfo {
 }
 
 func runAIChatStep(ctx context.Context, sseHandler *sse.SSEHandlerCh, backend UseChatBackend, chatOpts uctypes.WaveChatOpts, cont *uctypes.WaveContinueResponse) (*uctypes.WaveStopReason, []uctypes.GenAIMessage, error) {
-	if chatOpts.Config.APIType == APIType_OpenAI && shouldUseChatCompletionsAPI(chatOpts.Config.Model) {
+	if chatOpts.Config.APIType == uctypes.APIType_OpenAI && shouldUseChatCompletionsAPI(chatOpts.Config.Model) {
 		return nil, nil, fmt.Errorf("Chat completions API not available (must use newer OpenAI models)")
 	}
 	stopReason, messages, rateLimitInfo, err := backend.RunChatStep(ctx, sseHandler, chatOpts, cont)
@@ -424,7 +418,7 @@ func RunAIChat(ctx context.Context, sseHandler *sse.SSEHandlerCh, backend UseCha
 			}
 		}
 		firstStep = false
-		if stopReason != nil && stopReason.Kind == uctypes.StopKindPremiumRateLimit && chatOpts.Config.APIType == APIType_OpenAI && chatOpts.Config.Model == uctypes.PremiumOpenAIModel {
+		if stopReason != nil && stopReason.Kind == uctypes.StopKindPremiumRateLimit && chatOpts.Config.APIType == uctypes.APIType_OpenAI && chatOpts.Config.Model == uctypes.PremiumOpenAIModel {
 			log.Printf("Premium rate limit hit with gpt-5.1, switching to gpt-5-mini\n")
 			cont = &uctypes.WaveContinueResponse{
 				Model:            uctypes.DefaultOpenAIModel,

@@ -56,7 +56,7 @@ func (m *anthropicChatMessage) GetUsage() *uctypes.AIUsage {
 	}
 
 	return &uctypes.AIUsage{
-		APIType:      "anthropic",
+		APIType:      uctypes.APIType_Anthropic,
 		Model:        m.Usage.Model,
 		InputTokens:  m.Usage.InputTokens,
 		OutputTokens: m.Usage.OutputTokens,

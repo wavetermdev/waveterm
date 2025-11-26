@@ -114,7 +114,7 @@ func testOpenAI(ctx context.Context, model, message string, tools []uctypes.Tool
 	}
 
 	opts := &uctypes.AIOptsType{
-		APIType:       aiusechat.APIType_OpenAI,
+		APIType:       uctypes.APIType_OpenAI,
 		APIToken:      apiKey,
 		Model:         model,
 		MaxTokens:     4096,
@@ -164,7 +164,7 @@ func testOpenAIComp(ctx context.Context, model, message string, tools []uctypes.
 	}
 
 	opts := &uctypes.AIOptsType{
-		APIType:       aiusechat.APIType_OpenAIComp,
+		APIType:       uctypes.APIType_OpenAIComp,
 		APIToken:      apiKey,
 		BaseURL:       "https://api.openai.com/v1/chat/completions",
 		Model:         model,
@@ -214,7 +214,7 @@ func testOpenRouter(ctx context.Context, model, message string, tools []uctypes.
 	}
 
 	opts := &uctypes.AIOptsType{
-		APIType:       aiusechat.APIType_OpenAIComp,
+		APIType:       uctypes.APIType_OpenAIComp,
 		APIToken:      apiKey,
 		BaseURL:       "https://openrouter.ai/api/v1/chat/completions",
 		Model:         model,
@@ -264,7 +264,7 @@ func testAnthropic(ctx context.Context, model, message string, tools []uctypes.T
 	}
 
 	opts := &uctypes.AIOptsType{
-		APIType:       aiusechat.APIType_Anthropic,
+		APIType:       uctypes.APIType_Anthropic,
 		APIToken:      apiKey,
 		Model:         model,
 		MaxTokens:     4096,
