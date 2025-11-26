@@ -57,7 +57,8 @@ export class WaveAIModel {
     widgetAccessAtom!: jotai.Atom<boolean>;
     droppedFiles: jotai.PrimitiveAtom<DroppedFile[]> = jotai.atom([]);
     chatId!: jotai.PrimitiveAtom<string>;
-    thinkingMode: jotai.PrimitiveAtom<string> = jotai.atom("balanced");
+    currentAIMode: jotai.PrimitiveAtom<string> = jotai.atom("waveai@balanced");
+    aiModeConfigs!: jotai.Atom<Record<string, AIModeConfigType>>;
     errorMessage: jotai.PrimitiveAtom<string> = jotai.atom(null) as jotai.PrimitiveAtom<string>;
     modelAtom!: jotai.Atom<string>;
     containerWidth: jotai.PrimitiveAtom<number> = jotai.atom(0);
@@ -82,6 +83,11 @@ export class WaveAIModel {
             const modelMetaAtom = getOrefMetaKeyAtom(this.orefContext, "waveai:model");
             return get(modelMetaAtom) ?? "gpt-5.1";
         });
+        this.aiModeConfigs = jotai.atom((get) => {
+            const fullConfig = get(atoms.fullConfigAtom);
+            return fullConfig?.waveai ?? {};
+        });
+
 
         this.widgetAccessAtom = jotai.atom((get) => {
             if (this.inBuilder) {
@@ -337,11 +343,11 @@ export class WaveAIModel {
         });
     }
 
-    setThinkingMode(mode: string) {
-        globalStore.set(this.thinkingMode, mode);
+    setAIMode(mode: string) {
+        globalStore.set(this.currentAIMode, mode);
         RpcApi.SetRTInfoCommand(TabRpcClient, {
             oref: this.orefContext,
-            data: { "waveai:thinkingmode": mode },
+            data: { "waveai:mode": mode },
         });
     }
 
@@ -359,8 +365,8 @@ export class WaveAIModel {
         }
         globalStore.set(this.chatId, chatIdValue);
 
-        const thinkingModeValue = rtInfo?.["waveai:thinkingmode"] ?? "balanced";
-        globalStore.set(this.thinkingMode, thinkingModeValue);
+        const aiModeValue = rtInfo?.["waveai:mode"] ?? "waveai@balanced";
+        globalStore.set(this.currentAIMode, aiModeValue);
 
         try {
             const chatData = await RpcApi.GetWaveAIChatCommand(TabRpcClient, { chatid: chatIdValue });

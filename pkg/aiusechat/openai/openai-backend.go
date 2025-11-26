@@ -9,7 +9,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"net/url"
 	"strings"
@@ -17,11 +16,11 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/launchdarkly/eventsource"
+	"github.com/wavetermdev/waveterm/pkg/aiusechat/aiutil"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/chatstore"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
 	"github.com/wavetermdev/waveterm/pkg/util/logutil"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
-	"github.com/wavetermdev/waveterm/pkg/wcore"
 	"github.com/wavetermdev/waveterm/pkg/web/sse"
 )
 
@@ -150,7 +149,7 @@ func (m *OpenAIChatMessage) GetUsage() *uctypes.AIUsage {
 		return nil
 	}
 	return &uctypes.AIUsage{
-		APIType:              "openai",
+		APIType:              uctypes.APIType_OpenAIResponses,
 		Model:                m.Usage.Model,
 		InputTokens:          m.Usage.InputTokens,
 		OutputTokens:         m.Usage.OutputTokens,
@@ -396,8 +395,7 @@ type openaiBlockState struct {
 }
 
 type openaiStreamingState struct {
-	blockMap       map[string]*openaiBlockState             // Use item_id as key for UI streaming
-	toolUseData    map[string]*uctypes.UIMessageDataToolUse // Use toolCallId as key
+	blockMap       map[string]*openaiBlockState // Use item_id as key for UI streaming
 	msgID          string
 	model          string
 	stepStarted    bool
@@ -407,7 +405,7 @@ type openaiStreamingState struct {
 
 // ---------- Public entrypoint ----------
 
-func UpdateToolUseData(chatId string, callId string, newToolUseData *uctypes.UIMessageDataToolUse) error {
+func UpdateToolUseData(chatId string, callId string, newToolUseData uctypes.UIMessageDataToolUse) error {
 	chat := chatstore.DefaultChatStore.Get(chatId)
 	if chat == nil {
 		return fmt.Errorf("chat not found: %s", chatId)
@@ -422,7 +420,7 @@ func UpdateToolUseData(chatId string, callId string, newToolUseData *uctypes.UIM
 		if chatMsg.FunctionCall != nil && chatMsg.FunctionCall.CallId == callId {
 			updatedMsg := *chatMsg
 			updatedFunctionCall := *chatMsg.FunctionCall
-			updatedFunctionCall.ToolUseData = newToolUseData
+			updatedFunctionCall.ToolUseData = &newToolUseData
 			updatedMsg.FunctionCall = &updatedFunctionCall
 
 			aiOpts := &uctypes.AIOptsType{
@@ -592,9 +590,8 @@ func parseOpenAIHTTPError(resp *http.Response) error {
 func handleOpenAIStreamingResp(ctx context.Context, sse *sse.SSEHandlerCh, decoder *eventsource.Decoder, cont *uctypes.WaveContinueResponse, chatOpts uctypes.WaveChatOpts) (*uctypes.WaveStopReason, []*OpenAIChatMessage) {
 	// Per-response state
 	state := &openaiStreamingState{
-		blockMap:    map[string]*openaiBlockState{},
-		toolUseData: map[string]*uctypes.UIMessageDataToolUse{},
-		chatOpts:    chatOpts,
+		blockMap: map[string]*openaiBlockState{},
+		chatOpts: chatOpts,
 	}
 
 	var rtnStopReason *uctypes.WaveStopReason
@@ -862,8 +859,7 @@ func handleOpenAIEvent(
 		}
 		if st := state.blockMap[ev.ItemId]; st != nil && st.kind == openaiBlockToolUse {
 			st.partialJSON = append(st.partialJSON, []byte(ev.Delta)...)
-			toolDef := state.chatOpts.GetToolDefinition(st.toolName)
-			sendToolProgress(st, toolDef, sse, st.partialJSON, true)
+			aiutil.SendToolProgress(st.toolCallID, st.toolName, st.partialJSON, state.chatOpts, sse, true)
 		}
 		return nil, nil
 
@@ -876,10 +872,7 @@ func handleOpenAIEvent(
 
 		// Get the function call info from the block state
 		if st := state.blockMap[ev.ItemId]; st != nil && st.kind == openaiBlockToolUse {
-			toolDef := state.chatOpts.GetToolDefinition(st.toolName)
-			toolUseData := createToolUseData(st.toolCallID, st.toolName, toolDef, ev.Arguments, state.chatOpts)
-			state.toolUseData[st.toolCallID] = toolUseData
-			sendToolProgress(st, toolDef, sse, []byte(ev.Arguments), false)
+			aiutil.SendToolProgress(st.toolCallID, st.toolName, []byte(ev.Arguments), state.chatOpts, sse, false)
 		}
 		return nil, nil
 
@@ -936,76 +929,6 @@ func handleOpenAIEvent(
 	}
 }
 
-func sendToolProgress(st *openaiBlockState, toolDef *uctypes.ToolDefinition, sse *sse.SSEHandlerCh, jsonData []byte, usePartialParse bool) {
-	if toolDef == nil || toolDef.ToolProgressDesc == nil {
-		return
-	}
-	var parsedJSON any
-	var err error
-	if usePartialParse {
-		parsedJSON, err = utilfn.ParsePartialJson(jsonData)
-	} else {
-		err = json.Unmarshal(jsonData, &parsedJSON)
-	}
-	if err != nil {
-		return
-	}
-	statusLines, err := toolDef.ToolProgressDesc(parsedJSON)
-	if err != nil {
-		return
-	}
-	progressData := &uctypes.UIMessageDataToolProgress{
-		ToolCallId:  st.toolCallID,
-		ToolName:    st.toolName,
-		StatusLines: statusLines,
-	}
-	_ = sse.AiMsgData("data-toolprogress", "progress-"+st.toolCallID, progressData)
-}
-
-func createToolUseData(toolCallID, toolName string, toolDef *uctypes.ToolDefinition, arguments string, chatOpts uctypes.WaveChatOpts) *uctypes.UIMessageDataToolUse {
-	toolUseData := &uctypes.UIMessageDataToolUse{
-		ToolCallId: toolCallID,
-		ToolName:   toolName,
-		Status:     uctypes.ToolUseStatusPending,
-	}
-
-	if toolDef == nil {
-		toolUseData.Status = uctypes.ToolUseStatusError
-		toolUseData.ErrorMessage = "tool not found"
-		return toolUseData
-	}
-
-	var parsedArgs any
-	if err := json.Unmarshal([]byte(arguments), &parsedArgs); err != nil {
-		toolUseData.Status = uctypes.ToolUseStatusError
-		toolUseData.ErrorMessage = fmt.Sprintf("failed to parse tool arguments: %v", err)
-		return toolUseData
-	}
-
-	if toolDef.ToolCallDesc != nil {
-		toolUseData.ToolDesc = toolDef.ToolCallDesc(parsedArgs, nil, nil)
-	}
-
-	if toolDef.ToolApproval != nil {
-		toolUseData.Approval = toolDef.ToolApproval(parsedArgs)
-	}
-
-	if chatOpts.TabId != "" {
-		if argsMap, ok := parsedArgs.(map[string]any); ok {
-			if widgetId, ok := argsMap["widget_id"].(string); ok && widgetId != "" {
-				ctx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)
-				defer cancelFn()
-				fullBlockId, err := wcore.ResolveBlockIdFromPrefix(ctx, chatOpts.TabId, widgetId)
-				if err == nil {
-					toolUseData.BlockId = fullBlockId
-				}
-			}
-		}
-	}
-
-	return toolUseData
-}
-
 // extractMessageAndToolsFromResponse extracts the final OpenAI message and tool calls from the completed response
 func extractMessageAndToolsFromResponse(resp openaiResponse, state *openaiStreamingState) ([]*OpenAIChatMessage, []uctypes.WaveToolCall) {
 	var messageContent []OpenAIMessageContent
@@ -1040,13 +963,6 @@ func extractMessageAndToolsFromResponse(resp openaiResponse, state *openaiStream
 				}
 			}
 
-			// Attach UIToolUseData if available
-			if data, ok := state.toolUseData[outputItem.CallId]; ok {
-				toolCall.ToolUseData = data
-			} else {
-				log.Printf("AI no data-tooluse for %s (callid: %s)\n", outputItem.Id, outputItem.CallId)
-			}
-
 			toolCalls = append(toolCalls, toolCall)
 
 			// Create separate FunctionCall message
@@ -1054,18 +970,13 @@ func extractMessageAndToolsFromResponse(resp openaiResponse, state *openaiStream
 			if outputItem.Arguments != "" {
 				argsStr = outputItem.Arguments
 			}
-			var toolUseDataPtr *uctypes.UIMessageDataToolUse
-			if data, ok := state.toolUseData[outputItem.CallId]; ok {
-				toolUseDataPtr = data
-			}
 			functionCallMsg := &OpenAIChatMessage{
 				MessageId: uuid.New().String(),
 				FunctionCall: &OpenAIFunctionCallInput{
-					Type:        "function_call",
-					CallId:      outputItem.CallId,
-					Name:        outputItem.Name,
-					Arguments:   argsStr,
-					ToolUseData: toolUseDataPtr,
+					Type:      "function_call",
+					CallId:    outputItem.CallId,
+					Name:      outputItem.Name,
+					Arguments: argsStr,
 				},
 			}
 			messages = append(messages, functionCallMsg)

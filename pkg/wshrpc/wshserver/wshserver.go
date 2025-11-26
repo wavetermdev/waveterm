@@ -580,12 +580,10 @@ func (ws *WshServer) EventReadHistoryCommand(ctx context.Context, data wshrpc.Co
 }
 
 func (ws *WshServer) SetConfigCommand(ctx context.Context, data wshrpc.MetaSettingsType) error {
-	log.Printf("SETCONFIG: %v\n", data)
 	return wconfig.SetBaseConfigValue(data.MetaMapType)
 }
 
 func (ws *WshServer) SetConnectionsConfigCommand(ctx context.Context, data wshrpc.ConnConfigRequest) error {
-	log.Printf("SET CONNECTIONS CONFIG: %v\n", data)
 	return wconfig.SetConnectionsConfigValue(data.Host, data.MetaMapType)
 }
 

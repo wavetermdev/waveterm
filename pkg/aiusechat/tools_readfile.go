@@ -208,6 +208,10 @@ func verifyReadTextFileInput(input any, toolUseData *uctypes.UIMessageDataToolUs
 		return fmt.Errorf("failed to expand path: %w", err)
 	}
 
+	if !filepath.IsAbs(expandedPath) {
+		return fmt.Errorf("path must be absolute, got relative path: %s", params.Filename)
+	}
+
 	if blocked, reason := isBlockedFile(expandedPath); blocked {
 		return fmt.Errorf("access denied: potentially sensitive file: %s", reason)
 	}
@@ -235,6 +239,10 @@ func readTextFileCallback(input any, toolUseData *uctypes.UIMessageDataToolUse) 
 	expandedPath, err := wavebase.ExpandHomeDir(params.Filename)
 	if err != nil {
 		return nil, fmt.Errorf("failed to expand path: %w", err)
+	}
+
+	if !filepath.IsAbs(expandedPath) {
+		return nil, fmt.Errorf("path must be absolute, got relative path: %s", params.Filename)
 	}
 
 	if blocked, reason := isBlockedFile(expandedPath); blocked {
@@ -328,7 +336,7 @@ func GetReadTextFileToolDefinition() uctypes.ToolDefinition {
 			"properties": map[string]any{
 				"filename": map[string]any{
 					"type":        "string",
-					"description": "Path to the file to read. Supports '~' for the user's home directory.",
+					"description": "Absolute path to the file to read. Supports '~' for the user's home directory. Relative paths are not supported.",
 				},
 				"origin": map[string]any{
 					"type":        "string",

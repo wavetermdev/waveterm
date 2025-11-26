@@ -4,7 +4,7 @@
 import { useAtomValue } from "jotai";
 import { memo, useEffect, useRef } from "react";
 import { AIMessage } from "./aimessage";
-import { ThinkingLevelDropdown } from "./thinkingmode";
+import { AIModeDropdown } from "./aimode";
 import { WaveAIModel } from "./waveai-model";
 
 interface AIPanelMessagesProps {
@@ -45,13 +45,13 @@ export const AIPanelMessages = memo(({ messages, status, onContextMenu }: AIPane
     useEffect(() => {
         const wasStreaming = prevStatusRef.current === "streaming";
         const isNowNotStreaming = status !== "streaming";
-        
+
         if (wasStreaming && isNowNotStreaming) {
             requestAnimationFrame(() => {
                 scrollToBottom();
             });
         }
-        
+
         prevStatusRef.current = status;
     }, [status]);
 
@@ -62,7 +62,7 @@ export const AIPanelMessages = memo(({ messages, status, onContextMenu }: AIPane
             onContextMenu={onContextMenu}
         >
             <div className="absolute top-2 left-2 z-10">
-                <ThinkingLevelDropdown />
+                <AIModeDropdown />
             </div>
             {messages.map((message, index) => {
                 const isLastMessage = index === messages.length - 1;

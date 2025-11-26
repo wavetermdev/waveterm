@@ -5,6 +5,7 @@ package aiutil
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
@@ -12,9 +13,12 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
+	"github.com/wavetermdev/waveterm/pkg/wcore"
+	"github.com/wavetermdev/waveterm/pkg/web/sse"
 )
 
 // ExtractXmlAttribute extracts an attribute value from an XML-like tag.
@@ -179,4 +183,91 @@ func JsonEncodeRequestBody(reqBody any) (bytes.Buffer, error) {
 		return buf, err
 	}
 	return buf, nil
+}
+
+func IsOpenAIReasoningModel(model string) bool {
+	m := strings.ToLower(model)
+	return strings.HasPrefix(m, "o1") ||
+		strings.HasPrefix(m, "o3") ||
+		strings.HasPrefix(m, "o4") ||
+		strings.HasPrefix(m, "gpt-5") ||
+		strings.HasPrefix(m, "gpt-5.1")
+}
+
+// CreateToolUseData creates a UIMessageDataToolUse from tool call information
+func CreateToolUseData(toolCallID, toolName string, arguments string, chatOpts uctypes.WaveChatOpts) uctypes.UIMessageDataToolUse {
+	toolUseData := uctypes.UIMessageDataToolUse{
+		ToolCallId: toolCallID,
+		ToolName:   toolName,
+		Status:     uctypes.ToolUseStatusPending,
+	}
+
+	toolDef := chatOpts.GetToolDefinition(toolName)
+	if toolDef == nil {
+		toolUseData.Status = uctypes.ToolUseStatusError
+		toolUseData.ErrorMessage = "tool not found"
+		return toolUseData
+	}
+
+	var parsedArgs any
+	if err := json.Unmarshal([]byte(arguments), &parsedArgs); err != nil {
+		toolUseData.Status = uctypes.ToolUseStatusError
+		toolUseData.ErrorMessage = fmt.Sprintf("failed to parse tool arguments: %v", err)
+		return toolUseData
+	}
+
+	if toolDef.ToolCallDesc != nil {
+		toolUseData.ToolDesc = toolDef.ToolCallDesc(parsedArgs, nil, nil)
+	}
+
+	if toolDef.ToolApproval != nil {
+		toolUseData.Approval = toolDef.ToolApproval(parsedArgs)
+	}
+
+	if chatOpts.TabId != "" {
+		if argsMap, ok := parsedArgs.(map[string]any); ok {
+			if widgetId, ok := argsMap["widget_id"].(string); ok && widgetId != "" {
+				ctx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)
+				defer cancelFn()
+				fullBlockId, err := wcore.ResolveBlockIdFromPrefix(ctx, chatOpts.TabId, widgetId)
+				if err == nil {
+					toolUseData.BlockId = fullBlockId
+				}
+			}
+		}
+	}
+
+	return toolUseData
+}
+
+
+// SendToolProgress sends tool progress updates via SSE if the tool has a progress descriptor
+func SendToolProgress(toolCallID, toolName string, jsonData []byte, chatOpts uctypes.WaveChatOpts, sseHandler *sse.SSEHandlerCh, usePartialParse bool) {
+	toolDef := chatOpts.GetToolDefinition(toolName)
+	if toolDef == nil || toolDef.ToolProgressDesc == nil {
+		return
+	}
+	
+	var parsedJSON any
+	var err error
+	if usePartialParse {
+		parsedJSON, err = utilfn.ParsePartialJson(jsonData)
+	} else {
+		err = json.Unmarshal(jsonData, &parsedJSON)
+	}
+	if err != nil {
+		return
+	}
+	
+	statusLines, err := toolDef.ToolProgressDesc(parsedJSON)
+	if err != nil {
+		return
+	}
+	
+	progressData := &uctypes.UIMessageDataToolProgress{
+		ToolCallId:  toolCallID,
+		ToolName:    toolName,
+		StatusLines: statusLines,
+	}
+	_ = sseHandler.AiMsgData("data-toolprogress", "progress-"+toolCallID, progressData)
 }

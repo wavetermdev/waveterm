@@ -12,13 +12,16 @@ import (
 	"net/http"
 	"os"
 	"os/user"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/wavetermdev/waveterm/pkg/aiusechat/aiutil"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/chatstore"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
+	"github.com/wavetermdev/waveterm/pkg/secretstore"
 	"github.com/wavetermdev/waveterm/pkg/telemetry"
 	"github.com/wavetermdev/waveterm/pkg/telemetry/telemetrydata"
 	"github.com/wavetermdev/waveterm/pkg/util/ds"
@@ -32,14 +35,10 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wstore"
 )
 
-const (
-	APIType_Anthropic = "anthropic"
-	APIType_OpenAI    = "openai"
-)
-
-const DefaultAPI = APIType_OpenAI
+const DefaultAPI = uctypes.APIType_OpenAIResponses
 const DefaultMaxTokens = 4 * 1024
 const BuilderMaxTokens = 24 * 1024
+const WaveAIEndpointEnvName = "WAVETERM_WAVEAI_ENDPOINT"
 
 var (
 	globalRateLimitInfo = &uctypes.RateLimitInfo{Unknown: true}
@@ -49,112 +48,68 @@ var (
 	activeChats   = ds.MakeSyncMap[bool]() // key is chatid
 )
 
-var SystemPromptText = strings.Join([]string{
-	`You are Wave AI, an intelligent assistant embedded within Wave Terminal, a modern terminal application with graphical widgets.`,
-	`You appear as a pull-out panel on the left side of a tab, with the tab's widgets laid out on the right.`,
-	`Widget context is provided as informationa only.`,
-	`Do NOT assume any API access or ability to interact with the widgets except via tools provided (note that some widgets may expose NO tools, so their context is informational only).`,
-}, " ")
-
-var SystemPromptText_OpenAI = strings.Join([]string{
-	`You are Wave AI, an assistant embedded in Wave Terminal (a terminal with graphical widgets).`,
-	`You appear as a pull-out panel on the left; widgets are on the right.`,
-
-	// Capabilities & truthfulness
-	`Tools define your only capabilities. If a capability is not provided by a tool, you cannot do it.`,
-	`Context from widgets is read-only unless a tool explicitly grants interaction.`,
-	`Never fabricate data. If you lack data or access, say so and offer the next best step (e.g., suggest enabling a tool).`,
-
-	// Crisp behavior
-	`Be concise and direct. Prefer determinism over speculation. If a brief clarifying question eliminates guesswork, ask it.`,
-
-	// Attached text files
-	`User-attached text files may appear inline as <AttachedTextFile_xxxxxxxx file_name="...">\ncontent\n</AttachedTextFile_xxxxxxxx>.`,
-	`User-attached directories use the tag <AttachedDirectoryListing_xxxxxxxx directory_name="...">JSON DirInfo</AttachedDirectoryListing_xxxxxxxx>.`,
-	`If multiple attached files exist, treat each as a separate source file with its own file_name.`,
-	`When the user refers to these files, use their inline content directly; do NOT call any read_text_file or file-access tools to re-read them unless asked.`,
-
-	// Output & formatting
-	`When presenting commands or any runnable multi-line code, always use fenced Markdown code blocks.`,
-	`Use an appropriate language hint after the opening fence (e.g., "bash" for shell commands, "go" for Go, "json" for JSON).`,
-	`For shell commands, do NOT prefix lines with "$" or shell prompts. Use placeholders in ALL_CAPS (e.g., PROJECT_ID) and explain them once after the block if needed.`,
-	"Reserve inline code (single backticks) for short references like command names (`grep`, `less`), flags, env vars, file paths, or tiny snippets not meant to be executed.",
-	`You may use Markdown (lists, tables, bold/italics) to improve readability.`,
-	`Never comment on or justify your formatting choices; just follow these rules.`,
-	`When generating code or command blocks, try to keep lines under ~100 characters wide where practical (soft wrap; do not break tokens mid-word). Favor indentation and short variable names to stay compact, but correctness always takes priority.`,
-
-	// Safety & limits
-	`If a request would execute dangerous or destructive actions, warn briefly and provide a safer alternative.`,
-	`If output is very long, prefer a brief summary plus a copy-ready fenced block or offer a follow-up chunking strategy.`,
-
-	`You can write and edit local files on disk using available tools, but you cannot execute shell commands, run code in the terminal, or read/write remote files.`,
-	`If the user asks you to execute commands or run code, or deal with remote files say that these features aren't available yet AND make sure to say that they are coming soon (stay tuned for updates).`,
-	`Instead, show them exactly what command or code they could copy-paste to run manually.`,
-
-	// Final reminder
-	`You have NO API access to widgets or Wave unless provided via an explicit tool.`,
-}, " ")
-
-func getWaveAISettings(premium bool, builderMode bool, rtInfo *waveobj.ObjRTInfo) (*uctypes.AIOptsType, error) {
-	baseUrl := uctypes.DefaultAIEndpoint
-	if os.Getenv("WAVETERM_WAVEAI_ENDPOINT") != "" {
-		baseUrl = os.Getenv("WAVETERM_WAVEAI_ENDPOINT")
+func getSystemPrompt(apiType string, model string, isBuilder bool) []string {
+	if isBuilder {
+		return []string{}
 	}
+	basePrompt := SystemPromptText_OpenAI
+	modelLower := strings.ToLower(model)
+	needsStrictToolAddOn, _ := regexp.MatchString(`(?i)\b(mistral|o?llama|qwen|mixtral|yi|phi|deepseek)\b`, modelLower)
+	if needsStrictToolAddOn {
+		return []string{basePrompt, SystemPromptText_StrictToolAddOn}
+	}
+	return []string{basePrompt}
+}
+
+func getWaveAISettings(premium bool, builderMode bool, rtInfo waveobj.ObjRTInfo) (*uctypes.AIOptsType, error) {
 	maxTokens := DefaultMaxTokens
 	if builderMode {
 		maxTokens = BuilderMaxTokens
 	}
-	if rtInfo != nil && rtInfo.WaveAIMaxOutputTokens > 0 {
+	if rtInfo.WaveAIMaxOutputTokens > 0 {
 		maxTokens = rtInfo.WaveAIMaxOutputTokens
 	}
-	var thinkingMode string
-	if premium {
-		thinkingMode = uctypes.ThinkingModeBalanced
-		if rtInfo != nil && rtInfo.WaveAIThinkingMode != "" {
-			thinkingMode = rtInfo.WaveAIThinkingMode
+	aiMode, config, err := resolveAIMode(rtInfo.WaveAIMode, premium)
+	if err != nil {
+		return nil, err
+	}
+	apiToken := config.APIToken
+	if apiToken == "" && config.APITokenSecretName != "" {
+		secret, exists, err := secretstore.GetSecret(config.APITokenSecretName)
+		if err != nil {
+			return nil, fmt.Errorf("failed to retrieve secret %s: %w", config.APITokenSecretName, err)
 		}
+		if !exists || secret == "" {
+			return nil, fmt.Errorf("secret %s not found or empty", config.APITokenSecretName)
+		}
+		apiToken = secret
+	}
+
+	var baseUrl string
+	if config.WaveAICloud {
+		baseUrl = uctypes.DefaultAIEndpoint
+		if os.Getenv(WaveAIEndpointEnvName) != "" {
+			baseUrl = os.Getenv(WaveAIEndpointEnvName)
+		}
+	} else if config.BaseURL != "" {
+		baseUrl = config.BaseURL
 	} else {
-		thinkingMode = uctypes.ThinkingModeQuick
+		return nil, fmt.Errorf("no BaseURL configured for AI mode %s", aiMode)
 	}
-	if DefaultAPI == APIType_Anthropic {
-		thinkingLevel := uctypes.ThinkingLevelMedium
-		return &uctypes.AIOptsType{
-			APIType:       APIType_Anthropic,
-			Model:         uctypes.DefaultAnthropicModel,
-			MaxTokens:     maxTokens,
-			ThinkingLevel: thinkingLevel,
-			ThinkingMode:  thinkingMode,
-			BaseURL:       baseUrl,
-		}, nil
-	} else if DefaultAPI == APIType_OpenAI {
-		var model string
-		var thinkingLevel string
 
-		switch thinkingMode {
-		case uctypes.ThinkingModeQuick:
-			model = uctypes.DefaultOpenAIModel
-			thinkingLevel = uctypes.ThinkingLevelLow
-		case uctypes.ThinkingModeBalanced:
-			model = uctypes.PremiumOpenAIModel
-			thinkingLevel = uctypes.ThinkingLevelLow
-		case uctypes.ThinkingModeDeep:
-			model = uctypes.PremiumOpenAIModel
-			thinkingLevel = uctypes.ThinkingLevelMedium
-		default:
-			model = uctypes.PremiumOpenAIModel
-			thinkingLevel = uctypes.ThinkingLevelLow
-		}
-
-		return &uctypes.AIOptsType{
-			APIType:       APIType_OpenAI,
-			Model:         model,
-			MaxTokens:     maxTokens,
-			ThinkingLevel: thinkingLevel,
-			ThinkingMode:  thinkingMode,
-			BaseURL:       baseUrl,
-		}, nil
+	opts := &uctypes.AIOptsType{
+		APIType:       config.APIType,
+		Model:         config.Model,
+		MaxTokens:     maxTokens,
+		ThinkingLevel: config.ThinkingLevel,
+		AIMode:        aiMode,
+		BaseURL:       baseUrl,
+		Capabilities:  config.Capabilities,
 	}
-	return nil, fmt.Errorf("invalid API type: %s", DefaultAPI)
+	if apiToken != "" {
+		opts.APIToken = apiToken
+	}
+	return opts, nil
 }
 
 func shouldUseChatCompletionsAPI(model string) bool {
@@ -203,7 +158,7 @@ func GetGlobalRateLimit() *uctypes.RateLimitInfo {
 }
 
 func runAIChatStep(ctx context.Context, sseHandler *sse.SSEHandlerCh, backend UseChatBackend, chatOpts uctypes.WaveChatOpts, cont *uctypes.WaveContinueResponse) (*uctypes.WaveStopReason, []uctypes.GenAIMessage, error) {
-	if chatOpts.Config.APIType == APIType_OpenAI && shouldUseChatCompletionsAPI(chatOpts.Config.Model) {
+	if chatOpts.Config.APIType == uctypes.APIType_OpenAIResponses && shouldUseChatCompletionsAPI(chatOpts.Config.Model) {
 		return nil, nil, fmt.Errorf("Chat completions API not available (must use newer OpenAI models)")
 	}
 	stopReason, messages, rateLimitInfo, err := backend.RunChatStep(ctx, sseHandler, chatOpts, cont)
@@ -236,7 +191,7 @@ func GetChatUsage(chat *uctypes.AIChat) uctypes.AIUsage {
 	return usage
 }
 
-func updateToolUseDataInChat(backend UseChatBackend, chatOpts uctypes.WaveChatOpts, toolCallID string, toolUseData *uctypes.UIMessageDataToolUse) {
+func updateToolUseDataInChat(backend UseChatBackend, chatOpts uctypes.WaveChatOpts, toolCallID string, toolUseData uctypes.UIMessageDataToolUse) {
 	if err := backend.UpdateToolUseData(chatOpts.ChatId, toolCallID, toolUseData); err != nil {
 		log.Printf("failed to update tool use data in chat: %v\n", err)
 	}
@@ -276,7 +231,7 @@ func processToolCallInternal(backend UseChatBackend, toolCall uctypes.WaveToolCa
 		}
 		// ToolVerifyInput can modify the toolusedata.  re-send it here.
 		_ = sseHandler.AiMsgData("data-tooluse", toolCall.ID, *toolCall.ToolUseData)
-		updateToolUseDataInChat(backend, chatOpts, toolCall.ID, toolCall.ToolUseData)
+		updateToolUseDataInChat(backend, chatOpts, toolCall.ID, *toolCall.ToolUseData)
 	}
 
 	if toolCall.ToolUseData.Approval == uctypes.ApprovalNeedsApproval {
@@ -305,7 +260,7 @@ func processToolCallInternal(backend UseChatBackend, toolCall uctypes.WaveToolCa
 
 		// this still happens here because we need to update the FE to say the tool call was approved
 		_ = sseHandler.AiMsgData("data-tooluse", toolCall.ID, *toolCall.ToolUseData)
-		updateToolUseDataInChat(backend, chatOpts, toolCall.ID, toolCall.ToolUseData)
+		updateToolUseDataInChat(backend, chatOpts, toolCall.ID, *toolCall.ToolUseData)
 	}
 
 	toolCall.ToolUseData.RunTs = time.Now().UnixMilli()
@@ -341,7 +296,7 @@ func processToolCall(backend UseChatBackend, toolCall uctypes.WaveToolCall, chat
 
 	if toolCall.ToolUseData != nil {
 		_ = sseHandler.AiMsgData("data-tooluse", toolCall.ID, *toolCall.ToolUseData)
-		updateToolUseDataInChat(backend, chatOpts, toolCall.ID, toolCall.ToolUseData)
+		updateToolUseDataInChat(backend, chatOpts, toolCall.ID, *toolCall.ToolUseData)
 	}
 
 	return result
@@ -353,17 +308,27 @@ func processToolCalls(backend UseChatBackend, stopReason *uctypes.WaveStopReason
 		defer activeToolMap.Delete(toolCall.ID)
 	}
 
-	// Send all data-tooluse packets at the beginning
-	for _, toolCall := range stopReason.ToolCalls {
-		if toolCall.ToolUseData != nil {
-			log.Printf("AI data-tooluse %s\n", toolCall.ID)
-			_ = sseHandler.AiMsgData("data-tooluse", toolCall.ID, *toolCall.ToolUseData)
-			updateToolUseDataInChat(backend, chatOpts, toolCall.ID, toolCall.ToolUseData)
-			if toolCall.ToolUseData.Approval == uctypes.ApprovalNeedsApproval && chatOpts.RegisterToolApproval != nil {
-				chatOpts.RegisterToolApproval(toolCall.ID)
+	// Create and send all data-tooluse packets at the beginning
+	for i := range stopReason.ToolCalls {
+		toolCall := &stopReason.ToolCalls[i]
+		// Create toolUseData from the tool call input
+		var argsJSON string
+		if toolCall.Input != nil {
+			argsBytes, err := json.Marshal(toolCall.Input)
+			if err == nil {
+				argsJSON = string(argsBytes)
 			}
 		}
+		toolUseData := aiutil.CreateToolUseData(toolCall.ID, toolCall.Name, argsJSON, chatOpts)
+		stopReason.ToolCalls[i].ToolUseData = &toolUseData
+		log.Printf("AI data-tooluse %s\n", toolCall.ID)
+		_ = sseHandler.AiMsgData("data-tooluse", toolCall.ID, toolUseData)
+		updateToolUseDataInChat(backend, chatOpts, toolCall.ID, toolUseData)
+		if toolUseData.Approval == uctypes.ApprovalNeedsApproval && chatOpts.RegisterToolApproval != nil {
+			chatOpts.RegisterToolApproval(toolCall.ID)
+		}
 	}
+	// At this point, all ToolCalls are guaranteed to have non-nil ToolUseData
 
 	var toolResults []uctypes.AIToolResult
 	for _, toolCall := range stopReason.ToolCalls {
@@ -389,8 +354,8 @@ func RunAIChat(ctx context.Context, sseHandler *sse.SSEHandlerCh, backend UseCha
 
 	stepNum := chatstore.DefaultChatStore.CountUserMessages(chatOpts.ChatId)
 	metrics := &uctypes.AIMetrics{
-		ChatId:   chatOpts.ChatId,
-		StepNum:  stepNum,
+		ChatId:  chatOpts.ChatId,
+		StepNum: stepNum,
 		Usage: uctypes.AIUsage{
 			APIType: chatOpts.Config.APIType,
 			Model:   chatOpts.Config.Model,
@@ -398,7 +363,7 @@ func RunAIChat(ctx context.Context, sseHandler *sse.SSEHandlerCh, backend UseCha
 		WidgetAccess:  chatOpts.WidgetAccess,
 		ToolDetail:    make(map[string]int),
 		ThinkingLevel: chatOpts.Config.ThinkingLevel,
-		ThinkingMode:  chatOpts.Config.ThinkingMode,
+		AIMode:        chatOpts.Config.AIMode,
 	}
 	firstStep := true
 	var cont *uctypes.WaveContinueResponse
@@ -419,7 +384,7 @@ func RunAIChat(ctx context.Context, sseHandler *sse.SSEHandlerCh, backend UseCha
 				chatOpts.PlatformInfo = platformInfo
 			}
 		}
-		stopReason, rtnMessage, err := runAIChatStep(ctx, sseHandler, backend, chatOpts, cont)
+		stopReason, rtnMessages, err := runAIChatStep(ctx, sseHandler, backend, chatOpts, cont)
 		metrics.RequestCount++
 		if chatOpts.Config.IsPremiumModel() {
 			metrics.PremiumReqCount++
@@ -427,8 +392,8 @@ func RunAIChat(ctx context.Context, sseHandler *sse.SSEHandlerCh, backend UseCha
 		if chatOpts.Config.IsWaveProxy() {
 			metrics.ProxyReqCount++
 		}
-		if len(rtnMessage) > 0 {
-			usage := getUsage(rtnMessage)
+		if len(rtnMessages) > 0 {
+			usage := getUsage(rtnMessages)
 			log.Printf("usage: input=%d output=%d websearch=%d\n", usage.InputTokens, usage.OutputTokens, usage.NativeWebSearchCount)
 			metrics.Usage.InputTokens += usage.InputTokens
 			metrics.Usage.OutputTokens += usage.OutputTokens
@@ -447,14 +412,14 @@ func RunAIChat(ctx context.Context, sseHandler *sse.SSEHandlerCh, backend UseCha
 			_ = sseHandler.AiMsgFinish("", nil)
 			break
 		}
-		for _, msg := range rtnMessage {
+		for _, msg := range rtnMessages {
 			if msg != nil {
 				chatstore.DefaultChatStore.PostMessage(chatOpts.ChatId, &chatOpts.Config, msg)
 			}
 		}
 		firstStep = false
-		if stopReason != nil && stopReason.Kind == uctypes.StopKindPremiumRateLimit && chatOpts.Config.APIType == APIType_OpenAI && chatOpts.Config.Model == uctypes.PremiumOpenAIModel {
-			log.Printf("Premium rate limit hit with gpt-5.1, switching to gpt-5-mini\n")
+		if stopReason != nil && stopReason.Kind == uctypes.StopKindPremiumRateLimit && chatOpts.Config.APIType == uctypes.APIType_OpenAIResponses && chatOpts.Config.Model == uctypes.PremiumOpenAIModel {
+			log.Printf("Premium rate limit hit with %s, switching to %s\n", uctypes.PremiumOpenAIModel, uctypes.DefaultOpenAIModel)
 			cont = &uctypes.WaveContinueResponse{
 				Model:            uctypes.DefaultOpenAIModel,
 				ContinueFromKind: uctypes.StopKindPremiumRateLimit,
@@ -597,7 +562,7 @@ func sendAIMetricsTelemetry(ctx context.Context, metrics *uctypes.AIMetrics) {
 		WaveAIRequestDurMs:         metrics.RequestDuration,
 		WaveAIWidgetAccess:         metrics.WidgetAccess,
 		WaveAIThinkingLevel:        metrics.ThinkingLevel,
-		WaveAIThinkingMode:         metrics.ThinkingMode,
+		WaveAIMode:                 metrics.AIMode,
 	})
 	_ = telemetry.RecordTEvent(ctx, event)
 }
@@ -645,11 +610,14 @@ func WaveAIPostMessageHandler(w http.ResponseWriter, r *http.Request) {
 		oref := waveobj.MakeORef(waveobj.OType_Builder, req.BuilderId)
 		rtInfo = wstore.GetRTInfo(oref)
 	}
+	if rtInfo == nil {
+		rtInfo = &waveobj.ObjRTInfo{}
+	}
 
 	// Get WaveAI settings
 	premium := shouldUsePremium()
 	builderMode := req.BuilderId != ""
-	aiOpts, err := getWaveAISettings(premium, builderMode, rtInfo)
+	aiOpts, err := getWaveAISettings(premium, builderMode, *rtInfo)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("WaveAI configuration error: %v", err), http.StatusInternalServerError)
 		return
@@ -673,15 +641,7 @@ func WaveAIPostMessageHandler(w http.ResponseWriter, r *http.Request) {
 		BuilderId:            req.BuilderId,
 		BuilderAppId:         req.BuilderAppId,
 	}
-	if chatOpts.Config.APIType == APIType_OpenAI {
-		if chatOpts.BuilderId != "" {
-			chatOpts.SystemPrompt = []string{}
-		} else {
-			chatOpts.SystemPrompt = []string{SystemPromptText_OpenAI}
-		}
-	} else {
-		chatOpts.SystemPrompt = []string{SystemPromptText}
-	}
+	chatOpts.SystemPrompt = getSystemPrompt(chatOpts.Config.APIType, chatOpts.Config.Model, chatOpts.BuilderId != "")
 
 	if req.TabId != "" {
 		chatOpts.TabStateGenerator = func() (string, []uctypes.ToolDefinition, string, error) {
