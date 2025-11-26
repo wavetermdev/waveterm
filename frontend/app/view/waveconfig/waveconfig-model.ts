@@ -13,13 +13,17 @@ export type ConfigFile = {
     name: string;
     path: string;
     language: string;
+    deprecated?: boolean;
 };
 
 const configFiles: ConfigFile[] = [
     { name: "General", path: "settings.json", language: "json" },
     { name: "Connections", path: "connections.json", language: "json" },
     { name: "Widgets", path: "widgets.json", language: "json" },
-    { name: "AI Presets", path: "presets/ai.json", language: "json" },
+];
+
+const deprecatedConfigFiles: ConfigFile[] = [
+    { name: "AI Presets", path: "presets/ai.json", language: "json", deprecated: true },
 ];
 
 export class WaveConfigViewModel implements ViewModel {
@@ -52,10 +56,23 @@ export class WaveConfigViewModel implements ViewModel {
         this.isSavingAtom = atom(false);
         this.errorMessageAtom = atom(null) as PrimitiveAtom<string>;
         this.validationErrorAtom = atom(null) as PrimitiveAtom<string>;
+
+        this.initialize();
+    }
+
+    initialize() {
+        const selectedFile = globalStore.get(this.selectedFileAtom);
+        if (!selectedFile && configFiles.length > 0) {
+            this.loadFile(configFiles[0]);
+        }
     }
 
     getConfigFiles(): ConfigFile[] {
         return configFiles;
+    }
+
+    getDeprecatedConfigFiles(): ConfigFile[] {
+        return deprecatedConfigFiles;
     }
 
     hasChanges(): boolean {

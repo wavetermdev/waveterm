@@ -8,6 +8,61 @@ import { checkKeyPressed, keydownWrapper } from "@/util/keyutil";
 import { useAtom, useAtomValue } from "jotai";
 import { memo, useEffect } from "react";
 
+interface ConfigSidebarProps {
+    model: WaveConfigViewModel;
+}
+
+const ConfigSidebar = memo(({ model }: ConfigSidebarProps) => {
+    const selectedFile = useAtomValue(model.selectedFileAtom);
+    const configFiles = model.getConfigFiles();
+    const deprecatedConfigFiles = model.getDeprecatedConfigFiles();
+
+    return (
+        <div className="flex flex-col w-64 border-r border-border">
+            {configFiles.map((file) => (
+                <div
+                    key={file.path}
+                    onClick={() => model.loadFile(file)}
+                    className={`px-4 py-2 border-b border-border cursor-pointer transition-colors whitespace-nowrap overflow-hidden text-ellipsis ${
+                        selectedFile?.path === file.path ? "bg-accentbg text-primary" : "hover:bg-secondary/50"
+                    }`}
+                >
+                    {file.name}
+                </div>
+            ))}
+            {deprecatedConfigFiles.length > 0 && (
+                <>
+                    <div className="flex-1 min-h-8" />
+                    {deprecatedConfigFiles.map((file) => (
+                        <div
+                            key={file.path}
+                            onClick={() => model.loadFile(file)}
+                            className={`px-4 py-2 border-t border-border cursor-pointer transition-colors ${
+                                selectedFile?.path === file.path ? "bg-accentbg text-primary" : "hover:bg-secondary/50"
+                            }`}
+                        >
+                            <div className="flex items-center gap-2 overflow-hidden">
+                                <span className="text-secondary truncate">{file.name}</span>
+                                <span
+                                    className={`text-xs px-1.5 py-0.5 rounded shrink-0 ${
+                                        selectedFile?.path === file.path
+                                            ? "text-primary/80 bg-secondary/50"
+                                            : "text-muted-foreground/70 bg-secondary/30"
+                                    }`}
+                                >
+                                    deprecated
+                                </span>
+                            </div>
+                        </div>
+                    ))}
+                </>
+            )}
+        </div>
+    );
+});
+
+ConfigSidebar.displayName = "ConfigSidebar";
+
 const WaveConfigView = memo(({ blockId, model }: ViewComponentProps<WaveConfigViewModel>) => {
     const selectedFile = useAtomValue(model.selectedFileAtom);
     const [fileContent, setFileContent] = useAtom(model.fileContentAtom);
@@ -15,14 +70,6 @@ const WaveConfigView = memo(({ blockId, model }: ViewComponentProps<WaveConfigVi
     const isSaving = useAtomValue(model.isSavingAtom);
     const errorMessage = useAtomValue(model.errorMessageAtom);
     const validationError = useAtomValue(model.validationErrorAtom);
-    const configFiles = model.getConfigFiles();
-
-    useEffect(() => {
-        if (configFiles.length > 0 && !selectedFile) {
-            model.loadFile(configFiles[0]);
-        }
-    }, [selectedFile, model]);
-
     const hasChanges = model.hasChanges();
 
     useEffect(() => {
@@ -44,20 +91,7 @@ const WaveConfigView = memo(({ blockId, model }: ViewComponentProps<WaveConfigVi
 
     return (
         <div className="flex flex-row w-full h-full">
-            <div className="flex flex-col w-64 border-r border-border p-4 gap-1">
-                <div className="text-lg font-semibold mb-2">Config Files</div>
-                {configFiles.map((file) => (
-                    <div
-                        key={file.path}
-                        onClick={() => model.loadFile(file)}
-                        className={`px-3 py-2 rounded cursor-pointer transition-colors ${
-                            selectedFile?.path === file.path ? "bg-accentbg text-primary" : "hover:bg-secondary/50"
-                        }`}
-                    >
-                        {file.name}
-                    </div>
-                ))}
-            </div>
+            <ConfigSidebar model={model} />
             <div className="flex flex-col flex-1">
                 {selectedFile && (
                     <>
