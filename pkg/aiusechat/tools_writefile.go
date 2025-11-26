@@ -112,6 +112,10 @@ func verifyWriteTextFileInput(input any, toolUseData *uctypes.UIMessageDataToolU
 		return fmt.Errorf("failed to expand path: %w", err)
 	}
 
+	if !filepath.IsAbs(expandedPath) {
+		return fmt.Errorf("path must be absolute, got relative path: %s", params.Filename)
+	}
+
 	contentsBytes := []byte(params.Contents)
 	if utilfn.HasBinaryData(contentsBytes) {
 		return fmt.Errorf("contents appear to contain binary data")
@@ -135,6 +139,10 @@ func writeTextFileCallback(input any, toolUseData *uctypes.UIMessageDataToolUse)
 	expandedPath, err := wavebase.ExpandHomeDir(params.Filename)
 	if err != nil {
 		return nil, fmt.Errorf("failed to expand path: %w", err)
+	}
+
+	if !filepath.IsAbs(expandedPath) {
+		return nil, fmt.Errorf("path must be absolute, got relative path: %s", params.Filename)
 	}
 
 	contentsBytes := []byte(params.Contents)
@@ -247,6 +255,10 @@ func verifyEditTextFileInput(input any, toolUseData *uctypes.UIMessageDataToolUs
 		return fmt.Errorf("failed to expand path: %w", err)
 	}
 
+	if !filepath.IsAbs(expandedPath) {
+		return fmt.Errorf("path must be absolute, got relative path: %s", params.Filename)
+	}
+
 	_, err = validateTextFile(expandedPath, "edit", true)
 	if err != nil {
 		return err
@@ -267,6 +279,10 @@ func EditTextFileDryRun(input any, fileOverride string) ([]byte, []byte, error) 
 	expandedPath, err := wavebase.ExpandHomeDir(params.Filename)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to expand path: %w", err)
+	}
+
+	if !filepath.IsAbs(expandedPath) {
+		return nil, nil, fmt.Errorf("path must be absolute, got relative path: %s", params.Filename)
 	}
 
 	_, err = validateTextFile(expandedPath, "edit", true)
@@ -301,6 +317,10 @@ func editTextFileCallback(input any, toolUseData *uctypes.UIMessageDataToolUse) 
 	expandedPath, err := wavebase.ExpandHomeDir(params.Filename)
 	if err != nil {
 		return nil, fmt.Errorf("failed to expand path: %w", err)
+	}
+
+	if !filepath.IsAbs(expandedPath) {
+		return nil, fmt.Errorf("path must be absolute, got relative path: %s", params.Filename)
 	}
 
 	_, err = validateTextFile(expandedPath, "edit", true)
@@ -422,6 +442,10 @@ func verifyDeleteTextFileInput(input any, toolUseData *uctypes.UIMessageDataTool
 		return fmt.Errorf("failed to expand path: %w", err)
 	}
 
+	if !filepath.IsAbs(expandedPath) {
+		return fmt.Errorf("path must be absolute, got relative path: %s", params.Filename)
+	}
+
 	_, err = validateTextFile(expandedPath, "delete", true)
 	if err != nil {
 		return err
@@ -440,6 +464,10 @@ func deleteTextFileCallback(input any, toolUseData *uctypes.UIMessageDataToolUse
 	expandedPath, err := wavebase.ExpandHomeDir(params.Filename)
 	if err != nil {
 		return nil, fmt.Errorf("failed to expand path: %w", err)
+	}
+
+	if !filepath.IsAbs(expandedPath) {
+		return nil, fmt.Errorf("path must be absolute, got relative path: %s", params.Filename)
 	}
 
 	_, err = validateTextFile(expandedPath, "delete", true)

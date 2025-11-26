@@ -152,20 +152,20 @@ func (m *StoredChatMessage) Copy() *StoredChatMessage {
 	if m == nil {
 		return nil
 	}
-	copy := *m
+	copied := *m
 	if len(m.Message.ToolCalls) > 0 {
-		copy.Message.ToolCalls = make([]ToolCall, len(m.Message.ToolCalls))
+		copied.Message.ToolCalls = make([]ToolCall, len(m.Message.ToolCalls))
 		for i, tc := range m.Message.ToolCalls {
-			copy.Message.ToolCalls[i] = tc
+			copied.Message.ToolCalls[i] = tc
 			if tc.ToolUseData != nil {
 				toolUseDataCopy := *tc.ToolUseData
-				copy.Message.ToolCalls[i].ToolUseData = &toolUseDataCopy
+				copied.Message.ToolCalls[i].ToolUseData = &toolUseDataCopy
 			}
 		}
 	}
 	if m.Usage != nil {
 		usageCopy := *m.Usage
-		copy.Usage = &usageCopy
+		copied.Usage = &usageCopy
 	}
-	return &copy
+	return &copied
 }

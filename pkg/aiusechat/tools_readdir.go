@@ -6,6 +6,7 @@ package aiusechat
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
 	"github.com/wavetermdev/waveterm/pkg/util/fileutil"
@@ -63,6 +64,10 @@ func verifyReadDirInput(input any, toolUseData *uctypes.UIMessageDataToolUse) er
 		return fmt.Errorf("failed to expand path: %w", err)
 	}
 
+	if !filepath.IsAbs(expandedPath) {
+		return fmt.Errorf("path must be absolute, got relative path: %s", params.Path)
+	}
+
 	fileInfo, err := os.Stat(expandedPath)
 	if err != nil {
 		return fmt.Errorf("failed to stat path: %w", err)
@@ -79,6 +84,15 @@ func readDirCallback(input any, toolUseData *uctypes.UIMessageDataToolUse) (any,
 	params, err := parseReadDirInput(input)
 	if err != nil {
 		return nil, err
+	}
+
+	expandedPath, err := wavebase.ExpandHomeDir(params.Path)
+	if err != nil {
+		return nil, fmt.Errorf("failed to expand path: %w", err)
+	}
+
+	if !filepath.IsAbs(expandedPath) {
+		return nil, fmt.Errorf("path must be absolute, got relative path: %s", params.Path)
 	}
 
 	result, err := fileutil.ReadDir(params.Path, *params.MaxEntries)

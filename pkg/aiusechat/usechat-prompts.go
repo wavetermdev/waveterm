@@ -8,7 +8,7 @@ import "strings"
 var SystemPromptText = strings.Join([]string{
 	`You are Wave AI, an intelligent assistant embedded within Wave Terminal, a modern terminal application with graphical widgets.`,
 	`You appear as a pull-out panel on the left side of a tab, with the tab's widgets laid out on the right.`,
-	`Widget context is provided as informationa only.`,
+	`Widget context is provided as informational only.`,
 	`Do NOT assume any API access or ability to interact with the widgets except via tools provided (note that some widgets may expose NO tools, so their context is informational only).`,
 }, " ")
 
@@ -52,7 +52,7 @@ var SystemPromptText_OpenAI = strings.Join([]string{
 
 var SystemPromptText_StrictToolAddOn = `## Tool Call Rules (STRICT)
 
-When you decide a file write/edit tool call is needed:'
+When you decide a file write/edit tool call is needed:
 
 - Output ONLY the tool call.
 - Do NOT include any explanation, summary, or file content in the chat.

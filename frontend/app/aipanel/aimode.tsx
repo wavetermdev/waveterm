@@ -61,7 +61,7 @@ export const AIModeDropdown = memo(() => {
                     "group flex items-center gap-1.5 px-2 py-1 text-xs text-gray-300 hover:text-white rounded transition-colors cursor-pointer border border-gray-600/50",
                     isOpen ? "bg-gray-700" : "bg-gray-800/50 hover:bg-gray-700"
                 )}
-                title={`Thinking: ${displayConfig["display:name"]}`}
+                title={`AI Mode: ${displayConfig["display:name"]}`}
             >
                 <i className={cn(makeIconClass(displayConfig["display:icon"], false), "text-[10px]")}></i>
                 <span className={`text-[11px] ${isOpen ? "inline" : "hidden group-hover:inline @w450:inline"}`}>

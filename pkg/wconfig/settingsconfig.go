@@ -272,7 +272,7 @@ type AIModeConfigType struct {
 	APITokenSecretName string   `json:"ai:apitokensecretname,omitempty"`
 	Capabilities       []string `json:"ai:capabilities,omitempty"`
 	WaveAICloud        bool     `json:"waveai:cloud,omitempty"`
-	WaveAIPremium      bool     `json:"waveai:premium"`
+	WaveAIPremium      bool     `json:"waveai:premium,omitempty"`
 }
 
 type FullConfigType struct {
