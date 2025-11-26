@@ -436,14 +436,16 @@ const Widgets = memo(() => {
                                 onClick={() => setIsAppsOpen(!isAppsOpen)}
                             >
                                 <Tooltip content="Local WaveApps" placement="left" disable={isAppsOpen}>
-                                    <div>
-                                        <i className={makeIconClass("cube", true)}></i>
-                                    </div>
-                                    {mode === "normal" && (
-                                        <div className="text-xxs mt-0.5 w-full px-0.5 text-center whitespace-nowrap overflow-hidden text-ellipsis">
-                                            apps
+                                    <div className="flex flex-col items-center w-full">
+                                        <div>
+                                            <i className={makeIconClass("cube", true)}></i>
                                         </div>
-                                    )}
+                                        {mode === "normal" && (
+                                            <div className="text-xxs mt-0.5 w-full px-0.5 text-center whitespace-nowrap overflow-hidden text-ellipsis">
+                                                apps
+                                            </div>
+                                        )}
+                                    </div>
                                 </Tooltip>
                             </div>
                         ) : null}
@@ -456,11 +458,6 @@ const Widgets = memo(() => {
                                 <div>
                                     <i className={makeIconClass("gear", true)}></i>
                                 </div>
-                                {mode === "normal" && (
-                                    <div className="text-xxs mt-0.5 w-full px-0.5 text-center whitespace-nowrap overflow-hidden text-ellipsis">
-                                        settings
-                                    </div>
-                                )}
                             </Tooltip>
                         </div>
                     </>
