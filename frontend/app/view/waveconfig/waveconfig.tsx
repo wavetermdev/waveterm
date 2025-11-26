@@ -1,13 +1,15 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { Tooltip } from "@/app/element/tooltip";
 import { getApi } from "@/app/store/global";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { CodeEditor } from "@/app/view/codeeditor/codeeditor";
+import { checkKeyPressed, keydownWrapper } from "@/util/keyutil";
 import { base64ToString, stringToBase64 } from "@/util/util";
 import { atom, PrimitiveAtom, useAtom, useAtomValue, useSetAtom } from "jotai";
-import { memo, useCallback, useEffect } from "react";
+import { memo, useCallback, useEffect, useMemo } from "react";
 
 type ConfigFile = {
     name: string;
@@ -28,6 +30,7 @@ const originalContentAtom = atom<string>("") as PrimitiveAtom<string>;
 const isLoadingAtom = atom<boolean>(false) as PrimitiveAtom<boolean>;
 const isSavingAtom = atom<boolean>(false) as PrimitiveAtom<boolean>;
 const errorMessageAtom = atom<string>(null) as PrimitiveAtom<string>;
+const validationErrorAtom = atom<string>(null) as PrimitiveAtom<string>;
 
 const WaveConfigView = memo(({ blockId }: { blockId: string }) => {
     const selectedFile = useAtomValue(selectedFileAtom);
@@ -39,6 +42,7 @@ const WaveConfigView = memo(({ blockId }: { blockId: string }) => {
     const isSaving = useAtomValue(isSavingAtom);
     const setIsSaving = useSetAtom(isSavingAtom);
     const [errorMessage, setErrorMessage] = useAtom(errorMessageAtom);
+    const [validationError, setValidationError] = useAtom(validationErrorAtom);
 
     const loadFile = useCallback(
         async (file: ConfigFile) => {
@@ -67,22 +71,33 @@ const WaveConfigView = memo(({ blockId }: { blockId: string }) => {
 
     const saveFile = useCallback(async () => {
         if (!selectedFile) return;
-        setIsSaving(true);
-        setErrorMessage(null);
+        
         try {
-            const configDir = getApi().getConfigDir();
-            const fullPath = `${configDir}/${selectedFile.path}`;
-            await RpcApi.FileWriteCommand(TabRpcClient, {
-                info: { path: fullPath },
-                data64: stringToBase64(fileContent),
-            });
-            setOriginalContent(fileContent);
+            const parsed = JSON.parse(fileContent);
+            const formatted = JSON.stringify(parsed, null, 2);
+            
+            setIsSaving(true);
+            setErrorMessage(null);
+            setValidationError(null);
+            
+            try {
+                const configDir = getApi().getConfigDir();
+                const fullPath = `${configDir}/${selectedFile.path}`;
+                await RpcApi.FileWriteCommand(TabRpcClient, {
+                    info: { path: fullPath },
+                    data64: stringToBase64(formatted),
+                });
+                setFileContent(formatted);
+                setOriginalContent(formatted);
+            } catch (err) {
+                setErrorMessage(`Failed to save ${selectedFile.name}: ${err.message || String(err)}`);
+            } finally {
+                setIsSaving(false);
+            }
         } catch (err) {
-            setErrorMessage(`Failed to save ${selectedFile.name}: ${err.message || String(err)}`);
-        } finally {
-            setIsSaving(false);
+            setValidationError(`Invalid JSON: ${err.message || String(err)}`);
         }
-    }, [selectedFile, fileContent, setOriginalContent, setIsSaving, setErrorMessage]);
+    }, [selectedFile, fileContent, setFileContent, setOriginalContent, setIsSaving, setErrorMessage, setValidationError]);
 
     useEffect(() => {
         if (configFiles.length > 0 && !selectedFile) {
@@ -92,15 +107,26 @@ const WaveConfigView = memo(({ blockId }: { blockId: string }) => {
 
     const hasChanges = fileContent !== originalContent;
 
-    const prettyPrint = useCallback(() => {
-        try {
-            const parsed = JSON.parse(fileContent);
-            const formatted = JSON.stringify(parsed, null, 2);
-            setFileContent(formatted);
-        } catch {
-            // Do nothing if JSON doesn't parse
-        }
-    }, [fileContent, setFileContent]);
+    useEffect(() => {
+        const handleKeyDown = keydownWrapper((e: WaveKeyboardEvent) => {
+            if (checkKeyPressed(e, "Cmd:s")) {
+                if (hasChanges && !isSaving) {
+                    saveFile();
+                }
+                return true;
+            }
+            return false;
+        });
+
+        window.addEventListener("keydown", handleKeyDown);
+        return () => window.removeEventListener("keydown", handleKeyDown);
+    }, [hasChanges, isSaving, saveFile]);
+
+    const saveTooltip = useMemo(() => {
+        const platform = getApi().getPlatform();
+        const shortcut = platform === "darwin" ? "Cmd+S" : "Alt+S";
+        return `Save (${shortcut})`;
+    }, []);
 
     return (
         <div className="flex flex-row w-full h-full">
@@ -119,11 +145,6 @@ const WaveConfigView = memo(({ blockId }: { blockId: string }) => {
                 ))}
             </div>
             <div className="flex flex-col flex-1">
-                {errorMessage && (
-                    <div className="bg-destructive/10 text-destructive px-4 py-2 border-b border-destructive/20">
-                        {errorMessage}
-                    </div>
-                )}
                 {selectedFile && (
                     <>
                         <div className="flex flex-row items-center justify-between px-4 py-2 border-b border-border">
@@ -135,25 +156,43 @@ const WaveConfigView = memo(({ blockId }: { blockId: string }) => {
                             </div>
                             <div className="flex gap-2 items-center">
                                 {hasChanges && <span className="text-xs text-warning">Unsaved changes</span>}
-                                <button
-                                    onClick={prettyPrint}
-                                    className="px-3 py-1 rounded border border-border hover:bg-border/20 transition-colors cursor-pointer text-sm"
-                                >
-                                    Format
-                                </button>
-                                <button
-                                    onClick={saveFile}
-                                    disabled={!hasChanges || isSaving}
-                                    className={`px-3 py-1 rounded transition-colors text-sm ${
-                                        !hasChanges || isSaving
-                                            ? "border border-border text-muted-foreground opacity-50"
-                                            : "bg-accent/80 text-primary hover:bg-accent cursor-pointer"
-                                    }`}
-                                >
-                                    {isSaving ? "Saving..." : "Save"}
-                                </button>
+                                <Tooltip content={saveTooltip} placement="bottom">
+                                    <button
+                                        onClick={saveFile}
+                                        disabled={!hasChanges || isSaving}
+                                        className={`px-3 py-1 rounded transition-colors text-sm ${
+                                            !hasChanges || isSaving
+                                                ? "border border-border text-muted-foreground opacity-50"
+                                                : "bg-accent/80 text-primary hover:bg-accent cursor-pointer"
+                                        }`}
+                                    >
+                                        {isSaving ? "Saving..." : "Save"}
+                                    </button>
+                                </Tooltip>
                             </div>
                         </div>
+                        {errorMessage && (
+                            <div className="bg-error text-primary px-4 py-2 border-b border-error flex items-center justify-between">
+                                <span>{errorMessage}</span>
+                                <button
+                                    onClick={() => setErrorMessage(null)}
+                                    className="ml-2 hover:bg-black/20 rounded p-1 cursor-pointer transition-colors"
+                                >
+                                    ✕
+                                </button>
+                            </div>
+                        )}
+                        {validationError && (
+                            <div className="bg-error text-primary px-4 py-2 border-b border-error flex items-center justify-between">
+                                <span>{validationError}</span>
+                                <button
+                                    onClick={() => setValidationError(null)}
+                                    className="ml-2 hover:bg-black/20 rounded p-1 cursor-pointer transition-colors"
+                                >
+                                    ✕
+                                </button>
+                            </div>
+                        )}
                         <div className="flex-1 overflow-hidden">
                             {isLoading ? (
                                 <div className="flex items-center justify-center h-full text-muted-foreground">
