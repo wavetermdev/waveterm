@@ -1,6 +1,7 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { BlockNodeModel } from "@/app/block/blocktypes";
 import { getApi } from "@/app/store/global";
 import { globalStore } from "@/app/store/jotaiStore";
 import { RpcApi } from "@/app/store/wshclientapi";
@@ -8,6 +9,8 @@ import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { WaveConfigView } from "@/app/view/waveconfig/waveconfig";
 import { base64ToString, stringToBase64 } from "@/util/util";
 import { atom, type PrimitiveAtom } from "jotai";
+import type * as MonacoTypes from "monaco-editor/esm/vs/editor/editor.api";
+import * as React from "react";
 
 export type ConfigFile = {
     name: string;
@@ -32,6 +35,7 @@ export class WaveConfigViewModel implements ViewModel {
     viewIcon = atom("gear");
     viewName = atom("Wave Config");
     viewComponent = WaveConfigView;
+    nodeModel: BlockNodeModel;
 
     selectedFileAtom: PrimitiveAtom<ConfigFile>;
     fileContentAtom: PrimitiveAtom<string>;
@@ -42,9 +46,11 @@ export class WaveConfigViewModel implements ViewModel {
     validationErrorAtom: PrimitiveAtom<string>;
     configDir: string;
     saveShortcut: string;
+    editorRef: React.RefObject<MonacoTypes.editor.IStandaloneCodeEditor>;
 
-    constructor(blockId: string) {
+    constructor(blockId: string, nodeModel: BlockNodeModel) {
         this.blockId = blockId;
+        this.nodeModel = nodeModel;
         this.configDir = getApi().getConfigDir();
         const platform = getApi().getPlatform();
         this.saveShortcut = platform === "darwin" ? "Cmd+S" : "Alt+S";
@@ -56,6 +62,7 @@ export class WaveConfigViewModel implements ViewModel {
         this.isSavingAtom = atom(false);
         this.errorMessageAtom = atom(null) as PrimitiveAtom<string>;
         this.validationErrorAtom = atom(null) as PrimitiveAtom<string>;
+        this.editorRef = React.createRef();
 
         this.initialize();
     }
@@ -90,8 +97,12 @@ export class WaveConfigViewModel implements ViewModel {
                 info: { path: fullPath },
             });
             const content = fileData?.data64 ? base64ToString(fileData.data64) : "";
-            globalStore.set(this.fileContentAtom, content);
             globalStore.set(this.originalContentAtom, content);
+            if (content.trim() === "") {
+                globalStore.set(this.fileContentAtom, "{\n\n}");
+            } else {
+                globalStore.set(this.fileContentAtom, content);
+            }
             globalStore.set(this.selectedFileAtom, file);
         } catch (err) {
             globalStore.set(this.errorMessageAtom, `Failed to load ${file.name}: ${err.message || String(err)}`);
@@ -143,5 +154,13 @@ export class WaveConfigViewModel implements ViewModel {
 
     clearValidationError() {
         globalStore.set(this.validationErrorAtom, null);
+    }
+
+    giveFocus(): boolean {
+        if (this.editorRef?.current) {
+            this.editorRef.current.focus();
+            return true;
+        }
+        return false;
     }
 }

@@ -2,11 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { Tooltip } from "@/app/element/tooltip";
+import { globalStore } from "@/app/store/jotaiStore";
 import { CodeEditor } from "@/app/view/codeeditor/codeeditor";
 import type { WaveConfigViewModel } from "@/app/view/waveconfig/waveconfig-model";
 import { checkKeyPressed, keydownWrapper } from "@/util/keyutil";
 import { useAtom, useAtomValue } from "jotai";
-import { memo, useEffect } from "react";
+import { memo, useCallback, useEffect } from "react";
 
 interface ConfigSidebarProps {
     model: WaveConfigViewModel;
@@ -18,7 +19,7 @@ const ConfigSidebar = memo(({ model }: ConfigSidebarProps) => {
     const deprecatedConfigFiles = model.getDeprecatedConfigFiles();
 
     return (
-        <div className="flex flex-col w-64 border-r border-border">
+        <div className="flex flex-col w-48 border-r border-border">
             {configFiles.map((file) => (
                 <div
                     key={file.path}
@@ -71,6 +72,20 @@ const WaveConfigView = memo(({ blockId, model }: ViewComponentProps<WaveConfigVi
     const errorMessage = useAtomValue(model.errorMessageAtom);
     const validationError = useAtomValue(model.validationErrorAtom);
     const hasChanges = model.hasChanges();
+
+    const handleEditorMount = useCallback(
+        (editor) => {
+            model.editorRef.current = editor;
+            const isFocused = globalStore.get(model.nodeModel.isFocused);
+            if (isFocused) {
+                editor.focus();
+            }
+            return () => {
+                model.editorRef.current = null;
+            };
+        },
+        [model]
+    );
 
     useEffect(() => {
         const handleKeyDown = keydownWrapper((e: WaveKeyboardEvent) => {
@@ -154,6 +169,7 @@ const WaveConfigView = memo(({ blockId, model }: ViewComponentProps<WaveConfigVi
                                     language={selectedFile.language}
                                     readonly={false}
                                     onChange={setFileContent}
+                                    onMount={handleEditorMount}
                                 />
                             )}
                         </div>
