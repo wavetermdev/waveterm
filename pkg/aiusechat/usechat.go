@@ -75,7 +75,7 @@ func getWaveAISettings(premium bool, builderMode bool, rtInfo waveobj.ObjRTInfo)
 	if rtInfo.WaveAIMaxOutputTokens > 0 {
 		maxTokens = rtInfo.WaveAIMaxOutputTokens
 	}
-	thinkingMode, config, err := resolveThinkingMode(rtInfo.WaveAIThinkingMode, premium)
+	aiMode, config, err := resolveAIMode(rtInfo.WaveAIMode, premium)
 	if err != nil {
 		return nil, err
 	}
@@ -100,7 +100,7 @@ func getWaveAISettings(premium bool, builderMode bool, rtInfo waveobj.ObjRTInfo)
 	} else if config.BaseURL != "" {
 		baseUrl = config.BaseURL
 	} else {
-		return nil, fmt.Errorf("no BaseURL configured for thinking mode %s", thinkingMode)
+		return nil, fmt.Errorf("no BaseURL configured for AI mode %s", aiMode)
 	}
 
 	opts := &uctypes.AIOptsType{
@@ -108,7 +108,7 @@ func getWaveAISettings(premium bool, builderMode bool, rtInfo waveobj.ObjRTInfo)
 		Model:         config.Model,
 		MaxTokens:     maxTokens,
 		ThinkingLevel: config.ThinkingLevel,
-		ThinkingMode:  thinkingMode,
+		AIMode:        aiMode,
 		BaseURL:       baseUrl,
 		Capabilities:  config.Capabilities,
 	}
@@ -369,7 +369,7 @@ func RunAIChat(ctx context.Context, sseHandler *sse.SSEHandlerCh, backend UseCha
 		WidgetAccess:  chatOpts.WidgetAccess,
 		ToolDetail:    make(map[string]int),
 		ThinkingLevel: chatOpts.Config.ThinkingLevel,
-		ThinkingMode:  chatOpts.Config.ThinkingMode,
+		AIMode:        chatOpts.Config.AIMode,
 	}
 	firstStep := true
 	var cont *uctypes.WaveContinueResponse
@@ -568,7 +568,7 @@ func sendAIMetricsTelemetry(ctx context.Context, metrics *uctypes.AIMetrics) {
 		WaveAIRequestDurMs:         metrics.RequestDuration,
 		WaveAIWidgetAccess:         metrics.WidgetAccess,
 		WaveAIThinkingLevel:        metrics.ThinkingLevel,
-		WaveAIThinkingMode:         metrics.ThinkingMode,
+		WaveAIMode:                 metrics.AIMode,
 	})
 	_ = telemetry.RecordTEvent(ctx, event)
 }

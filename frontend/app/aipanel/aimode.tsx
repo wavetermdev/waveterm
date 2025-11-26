@@ -7,10 +7,10 @@ import { useAtomValue } from "jotai";
 import { memo, useRef, useState } from "react";
 import { WaveAIModel } from "./waveai-model";
 
-export const ThinkingLevelDropdown = memo(() => {
+export const AIModeDropdown = memo(() => {
     const model = WaveAIModel.getInstance();
-    const thinkingMode = useAtomValue(model.thinkingMode);
-    const thinkingModeConfigs = useAtomValue(model.thinkingModeConfigs);
+    const aiMode = useAtomValue(model.currentAIMode);
+    const aiModeConfigs = useAtomValue(model.aiModeConfigs);
     const rateLimitInfo = useAtomValue(atoms.waveAIRateLimitInfoAtom);
     const [isOpen, setIsOpen] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
@@ -18,12 +18,12 @@ export const ThinkingLevelDropdown = memo(() => {
     const hasPremium = !rateLimitInfo || rateLimitInfo.unknown || rateLimitInfo.preq > 0;
     const hideQuick = model.inBuilder && hasPremium;
 
-    const configsMap = thinkingModeConfigs.reduce(
+    const configsMap = aiModeConfigs.reduce(
         (acc, config) => {
             acc[config.mode] = config;
             return acc;
         },
-        {} as Record<string, AIThinkingModeConfig>
+        {} as Record<string, AIModeConfig>
     );
 
     const handleSelect = (mode: string) => {
@@ -32,11 +32,11 @@ export const ThinkingLevelDropdown = memo(() => {
         if (!hasPremium && config.premium) {
             return;
         }
-        model.setThinkingMode(mode);
+        model.setAIMode(mode);
         setIsOpen(false);
     };
 
-    let currentMode = thinkingMode || "waveai@balanced";
+    let currentMode = aiMode || "waveai@balanced";
     const currentConfig = configsMap[currentMode];
     if (currentConfig) {
         if (!hasPremium && currentConfig.premium) {
@@ -49,7 +49,7 @@ export const ThinkingLevelDropdown = memo(() => {
 
     const displayConfig = configsMap[currentMode] || {
         "display:name": "? Unknown",
-        "display:icon": "question"
+        "display:icon": "question",
     };
 
     return (
@@ -73,7 +73,7 @@ export const ThinkingLevelDropdown = memo(() => {
                 <>
                     <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
                     <div className="absolute top-full left-0 mt-1 bg-gray-800 border border-gray-600 rounded shadow-lg z-50 min-w-[280px]">
-                        {thinkingModeConfigs
+                        {aiModeConfigs
                             .sort(
                                 (a, b) =>
                                     (a["display:order"] || 0) - (b["display:order"] || 0) ||
@@ -119,4 +119,4 @@ export const ThinkingLevelDropdown = memo(() => {
     );
 });
 
-ThinkingLevelDropdown.displayName = "ThinkingLevelDropdown";
+AIModeDropdown.displayName = "AIModeDropdown";

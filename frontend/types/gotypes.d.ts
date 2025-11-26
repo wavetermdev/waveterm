@@ -13,8 +13,8 @@ declare global {
         data64: string;
     };
 
-    // uctypes.AIThinkingModeConfig
-    type AIThinkingModeConfig = {
+    // uctypes.AIModeConfig
+    type AIModeConfig = {
         mode: string;
         "display:name": string;
         "display:order"?: number;
@@ -32,8 +32,8 @@ declare global {
         capabilities?: string[];
     };
 
-    // wconfig.AIThinkingModeConfigType
-    type AIThinkingModeConfigType = {
+    // wconfig.AIModeConfigType
+    type AIModeConfigType = {
         "display:name": string;
         "display:order"?: number;
         "display:icon": string;
@@ -788,7 +788,7 @@ declare global {
         termthemes: {[key: string]: TermThemeType};
         connections: {[key: string]: ConnKeywords};
         bookmarks: {[key: string]: WebBookmark};
-        waveai: {[key: string]: AIThinkingModeConfigType};
+        waveai: {[key: string]: AIModeConfigType};
         configerrors: ConfigError[];
     };
 
@@ -969,7 +969,7 @@ declare global {
         "builder:appid"?: string;
         "builder:env"?: {[key: string]: string};
         "waveai:chatid"?: string;
-        "waveai:thinkingmode"?: string;
+        "waveai:mode"?: string;
         "waveai:maxoutputtokens"?: number;
     };
 
@@ -1279,7 +1279,7 @@ declare global {
         "waveai:requestdurms"?: number;
         "waveai:widgetaccess"?: boolean;
         "waveai:thinkinglevel"?: string;
-        "waveai:thinkingmode"?: string;
+        "waveai:mode"?: string;
         "waveai:feedback"?: "good" | "bad";
         "waveai:action"?: string;
         $set?: TEventUserProps;

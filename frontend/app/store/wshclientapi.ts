@@ -613,7 +613,7 @@ class RpcApiType {
     }
 
     // command "waveaigetmodes" [call]
-    WaveAIGetModesCommand(client: WshClient, opts?: RpcOpts): Promise<AIThinkingModeConfig[]> {
+    WaveAIGetModesCommand(client: WshClient, opts?: RpcOpts): Promise<AIModeConfig[]> {
         return client.wshRpcCall("waveaigetmodes", null, opts);
     }
 

@@ -257,7 +257,7 @@ type WebBookmark struct {
 	DisplayOrder float64 `json:"display:order,omitempty"`
 }
 
-type AIThinkingModeConfigType struct {
+type AIModeConfigType struct {
 	DisplayName        string   `json:"display:name"`
 	DisplayOrder       float64  `json:"display:order,omitempty"`
 	DisplayIcon        string   `json:"display:icon"`
@@ -276,16 +276,16 @@ type AIThinkingModeConfigType struct {
 }
 
 type FullConfigType struct {
-	Settings       SettingsType                        `json:"settings" merge:"meta"`
-	MimeTypes      map[string]MimeTypeConfigType       `json:"mimetypes"`
-	DefaultWidgets map[string]WidgetConfigType         `json:"defaultwidgets"`
-	Widgets        map[string]WidgetConfigType         `json:"widgets"`
-	Presets        map[string]waveobj.MetaMapType      `json:"presets"`
-	TermThemes     map[string]TermThemeType            `json:"termthemes"`
-	Connections    map[string]ConnKeywords             `json:"connections"`
-	Bookmarks      map[string]WebBookmark              `json:"bookmarks"`
-	WaveAIModes    map[string]AIThinkingModeConfigType `json:"waveai"`
-	ConfigErrors   []ConfigError                       `json:"configerrors" configfile:"-"`
+	Settings       SettingsType                   `json:"settings" merge:"meta"`
+	MimeTypes      map[string]MimeTypeConfigType  `json:"mimetypes"`
+	DefaultWidgets map[string]WidgetConfigType    `json:"defaultwidgets"`
+	Widgets        map[string]WidgetConfigType    `json:"widgets"`
+	Presets        map[string]waveobj.MetaMapType `json:"presets"`
+	TermThemes     map[string]TermThemeType       `json:"termthemes"`
+	Connections    map[string]ConnKeywords        `json:"connections"`
+	Bookmarks      map[string]WebBookmark         `json:"bookmarks"`
+	WaveAIModes    map[string]AIModeConfigType    `json:"waveai"`
+	ConfigErrors   []ConfigError                  `json:"configerrors" configfile:"-"`
 }
 
 type ConnKeywords struct {

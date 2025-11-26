@@ -139,9 +139,9 @@ const (
 )
 
 const (
-	ThinkingModeQuick    = "waveai@quick"
-	ThinkingModeBalanced = "waveai@balanced"
-	ThinkingModeDeep     = "waveai@deep"
+	AIModeQuick    = "waveai@quick"
+	AIModeBalanced = "waveai@balanced"
+	AIModeDeep     = "waveai@deep"
 )
 
 const (
@@ -164,7 +164,7 @@ const (
 	ApprovalAutoApproved  = "auto-approved"
 )
 
-type AIThinkingModeConfig struct {
+type AIModeConfig struct {
 	Mode               string   `json:"mode"`
 	DisplayName        string   `json:"display:name"`
 	DisplayOrder       float64  `json:"display:order,omitempty"`
@@ -182,7 +182,7 @@ type AIThinkingModeConfig struct {
 	Capabilities       []string `json:"capabilities,omitempty"`
 }
 
-func (c *AIThinkingModeConfig) HasCapability(cap string) bool {
+func (c *AIModeConfig) HasCapability(cap string) bool {
 	return slices.Contains(c.Capabilities, cap)
 }
 
@@ -258,7 +258,7 @@ type AIOptsType struct {
 	MaxTokens     int      `json:"maxtokens,omitempty"`
 	TimeoutMs     int      `json:"timeoutms,omitempty"`
 	ThinkingLevel string   `json:"thinkinglevel,omitempty"` // ThinkingLevelLow, ThinkingLevelMedium, or ThinkingLevelHigh
-	ThinkingMode  string   `json:"thinkingmode,omitempty"`  // quick, balanced, or deep
+	AIMode        string   `json:"aimode,omitempty"`
 	Capabilities  []string `json:"capabilities,omitempty"`
 }
 
@@ -309,7 +309,7 @@ type AIMetrics struct {
 	RequestDuration   int            `json:"requestduration"`  // ms
 	WidgetAccess      bool           `json:"widgetaccess"`
 	ThinkingLevel     string         `json:"thinkinglevel,omitempty"`
-	ThinkingMode      string         `json:"thinkingmode,omitempty"`
+	AIMode            string         `json:"aimode,omitempty"`
 }
 
 type AIFunctionCallInput struct {

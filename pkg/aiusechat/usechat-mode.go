@@ -11,12 +11,12 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wconfig"
 )
 
-func getThinkingModeConfigs() map[string]uctypes.AIThinkingModeConfig {
+func getAIModeConfigs() map[string]uctypes.AIModeConfig {
 	fullConfig := wconfig.GetWatcher().GetFullConfig()
-	configs := make(map[string]uctypes.AIThinkingModeConfig)
+	configs := make(map[string]uctypes.AIModeConfig)
 
 	for mode, cfg := range fullConfig.WaveAIModes {
-		configs[mode] = uctypes.AIThinkingModeConfig{
+		configs[mode] = uctypes.AIModeConfig{
 			Mode:               mode,
 			DisplayName:        cfg.DisplayName,
 			DisplayOrder:       cfg.DisplayOrder,
@@ -38,20 +38,20 @@ func getThinkingModeConfigs() map[string]uctypes.AIThinkingModeConfig {
 	return configs
 }
 
-func resolveThinkingMode(requestedMode string, premium bool) (string, *wconfig.AIThinkingModeConfigType, error) {
+func resolveAIMode(requestedMode string, premium bool) (string, *wconfig.AIModeConfigType, error) {
 	mode := requestedMode
 	if mode == "" {
-		mode = uctypes.ThinkingModeBalanced
+		mode = uctypes.AIModeBalanced
 	}
 
-	config, err := getThinkingModeConfig(mode)
+	config, err := getAIModeConfig(mode)
 	if err != nil {
 		return "", nil, err
 	}
 
 	if config.WaveAICloud && !premium {
-		mode = uctypes.ThinkingModeQuick
-		config, err = getThinkingModeConfig(mode)
+		mode = uctypes.AIModeQuick
+		config, err = getAIModeConfig(mode)
 		if err != nil {
 			return "", nil, err
 		}
@@ -60,19 +60,19 @@ func resolveThinkingMode(requestedMode string, premium bool) (string, *wconfig.A
 	return mode, config, nil
 }
 
-func getThinkingModeConfig(thinkingMode string) (*wconfig.AIThinkingModeConfigType, error) {
+func getAIModeConfig(aiMode string) (*wconfig.AIModeConfigType, error) {
 	fullConfig := wconfig.GetWatcher().GetFullConfig()
-	config, ok := fullConfig.WaveAIModes[thinkingMode]
+	config, ok := fullConfig.WaveAIModes[aiMode]
 	if !ok {
-		return nil, fmt.Errorf("invalid thinking mode: %s", thinkingMode)
+		return nil, fmt.Errorf("invalid AI mode: %s", aiMode)
 	}
 
 	return &config, nil
 }
 
-func WaveAIGetModes() ([]uctypes.AIThinkingModeConfig, error) {
-	configs := getThinkingModeConfigs()
-	modes := make([]uctypes.AIThinkingModeConfig, 0, len(configs))
+func WaveAIGetModes() ([]uctypes.AIModeConfig, error) {
+	configs := getAIModeConfigs()
+	modes := make([]uctypes.AIModeConfig, 0, len(configs))
 	for _, config := range configs {
 		modes = append(modes, config)
 	}

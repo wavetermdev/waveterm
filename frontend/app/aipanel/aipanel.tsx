@@ -16,12 +16,12 @@ import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { useDrop } from "react-dnd";
 import { formatFileSizeError, isAcceptableFile, validateFileSize } from "./ai-utils";
 import { AIDroppedFiles } from "./aidroppedfiles";
+import { AIModeDropdown } from "./aimode";
 import { AIPanelHeader } from "./aipanelheader";
 import { AIPanelInput } from "./aipanelinput";
 import { AIPanelMessages } from "./aipanelmessages";
 import { AIRateLimitStrip } from "./airatelimitstrip";
 import { TelemetryRequiredMessage } from "./telemetryrequired";
-import { ThinkingLevelDropdown } from "./thinkingmode";
 import { WaveAIModel } from "./waveai-model";
 
 const AIBlockMask = memo(() => {
@@ -500,7 +500,7 @@ const AIPanelComponentInner = memo(() => {
                                 onContextMenu={(e) => handleWaveAIContextMenu(e, true)}
                             >
                                 <div className="absolute top-2 left-2 z-10">
-                                    <ThinkingLevelDropdown />
+                                    <AIModeDropdown />
                                 </div>
                                 {model.inBuilder ? <AIBuilderWelcomeMessage /> : <AIWelcomeMessage />}
                             </div>

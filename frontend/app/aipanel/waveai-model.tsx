@@ -57,8 +57,8 @@ export class WaveAIModel {
     widgetAccessAtom!: jotai.Atom<boolean>;
     droppedFiles: jotai.PrimitiveAtom<DroppedFile[]> = jotai.atom([]);
     chatId!: jotai.PrimitiveAtom<string>;
-    thinkingMode: jotai.PrimitiveAtom<string> = jotai.atom("waveai@balanced");
-    thinkingModeConfigs: jotai.PrimitiveAtom<AIThinkingModeConfig[]> = jotai.atom([]);
+    currentAIMode: jotai.PrimitiveAtom<string> = jotai.atom("waveai@balanced");
+    aiModeConfigs: jotai.PrimitiveAtom<AIModeConfig[]> = jotai.atom([]);
     errorMessage: jotai.PrimitiveAtom<string> = jotai.atom(null) as jotai.PrimitiveAtom<string>;
     modelAtom!: jotai.Atom<string>;
     containerWidth: jotai.PrimitiveAtom<number> = jotai.atom(0);
@@ -338,11 +338,11 @@ export class WaveAIModel {
         });
     }
 
-    setThinkingMode(mode: string) {
-        globalStore.set(this.thinkingMode, mode);
+    setAIMode(mode: string) {
+        globalStore.set(this.currentAIMode, mode);
         RpcApi.SetRTInfoCommand(TabRpcClient, {
             oref: this.orefContext,
-            data: { "waveai:thinkingmode": mode },
+            data: { "waveai:mode": mode },
         });
     }
 
@@ -360,8 +360,8 @@ export class WaveAIModel {
         }
         globalStore.set(this.chatId, chatIdValue);
 
-        const thinkingModeValue = rtInfo?.["waveai:thinkingmode"] ?? "waveai@balanced";
-        globalStore.set(this.thinkingMode, thinkingModeValue);
+        const aiModeValue = rtInfo?.["waveai:mode"] ?? "waveai@balanced";
+        globalStore.set(this.currentAIMode, aiModeValue);
 
         try {
             const chatData = await RpcApi.GetWaveAIChatCommand(TabRpcClient, { chatid: chatIdValue });
@@ -446,7 +446,7 @@ export class WaveAIModel {
 
     async uiLoadInitialChat() {
         globalStore.set(this.isLoadingChatAtom, true);
-        await this.loadThinkingModeConfigs();
+        await this.loadAIModeConfigs();
         const messages = await this.loadInitialChat();
         this.useChatSetMessages?.(messages);
         globalStore.set(this.isLoadingChatAtom, false);
@@ -455,14 +455,14 @@ export class WaveAIModel {
         }, 100);
     }
 
-    async loadThinkingModeConfigs() {
+    async loadAIModeConfigs() {
         try {
             const configs = await RpcApi.WaveAIGetModesCommand(TabRpcClient);
             if (configs != null && configs.length > 0) {
-                globalStore.set(this.thinkingModeConfigs, configs);
+                globalStore.set(this.aiModeConfigs, configs);
             }
         } catch (error) {
-            console.error("Failed to load thinking mode configs:", error);
+            console.error("Failed to load Wave AI mode configs:", error);
         }
     }
 
