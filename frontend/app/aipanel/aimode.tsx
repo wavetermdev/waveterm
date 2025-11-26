@@ -18,18 +18,19 @@ export const AIModeDropdown = memo(() => {
     const hasPremium = !rateLimitInfo || rateLimitInfo.unknown || rateLimitInfo.preq > 0;
     const hideQuick = model.inBuilder && hasPremium;
 
-    const configsMap = aiModeConfigs.reduce(
-        (acc, config) => {
-            acc[config.mode] = config;
-            return acc;
-        },
-        {} as Record<string, AIModeConfig>
-    );
+    const sortedConfigs = Object.entries(aiModeConfigs)
+        .map(([mode, config]) => ({ mode, ...config }))
+        .sort((a, b) => {
+            const orderDiff = (a["display:order"] || 0) - (b["display:order"] || 0);
+            if (orderDiff !== 0) return orderDiff;
+            return (a["display:name"] || "").localeCompare(b["display:name"] || "");
+        })
+        .filter((config) => !(hideQuick && config.mode === "waveai@quick"));
 
     const handleSelect = (mode: string) => {
-        const config = configsMap[mode];
+        const config = aiModeConfigs[mode];
         if (!config) return;
-        if (!hasPremium && config.premium) {
+        if (!hasPremium && config["waveai:premium"]) {
             return;
         }
         model.setAIMode(mode);
@@ -37,9 +38,9 @@ export const AIModeDropdown = memo(() => {
     };
 
     let currentMode = aiMode || "waveai@balanced";
-    const currentConfig = configsMap[currentMode];
+    const currentConfig = aiModeConfigs[currentMode];
     if (currentConfig) {
-        if (!hasPremium && currentConfig.premium) {
+        if (!hasPremium && currentConfig["waveai:premium"]) {
             currentMode = "waveai@quick";
         }
         if (hideQuick && currentMode === "waveai@quick") {
@@ -47,7 +48,7 @@ export const AIModeDropdown = memo(() => {
         }
     }
 
-    const displayConfig = configsMap[currentMode] || {
+    const displayConfig = aiModeConfigs[currentMode] || {
         "display:name": "? Unknown",
         "display:icon": "question",
     };
@@ -73,17 +74,10 @@ export const AIModeDropdown = memo(() => {
                 <>
                     <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
                     <div className="absolute top-full left-0 mt-1 bg-gray-800 border border-gray-600 rounded shadow-lg z-50 min-w-[280px]">
-                        {aiModeConfigs
-                            .sort(
-                                (a, b) =>
-                                    (a["display:order"] || 0) - (b["display:order"] || 0) ||
-                                    (a["display:name"] || "").localeCompare(b["display:name"] || "")
-                            )
-                            .filter((config) => !(hideQuick && config.mode === "waveai@quick"))
-                            .map((config, index, filteredConfigs) => {
+                        {sortedConfigs.map((config, index) => {
                                 const isFirst = index === 0;
-                                const isLast = index === filteredConfigs.length - 1;
-                                const isDisabled = !hasPremium && config.premium;
+                                const isLast = index === sortedConfigs.length - 1;
+                                const isDisabled = !hasPremium && config["waveai:premium"];
                                 const isSelected = currentMode === config.mode;
                                 return (
                                     <button
@@ -107,7 +101,7 @@ export const AIModeDropdown = memo(() => {
                                             {isSelected && <i className="fa fa-check ml-auto"></i>}
                                         </div>
                                         <div className="text-xs text-muted pl-5" style={{ whiteSpace: "pre-line" }}>
-                                            {config.description}
+                                            {config["display:description"]}
                                         </div>
                                     </button>
                                 );

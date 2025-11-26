@@ -1262,10 +1262,6 @@ func (ws *WshServer) WaveAIGetToolDiffCommand(ctx context.Context, data wshrpc.C
 	}, nil
 }
 
-func (ws *WshServer) WaveAIGetModesCommand(ctx context.Context) ([]uctypes.AIModeConfig, error) {
-	return aiusechat.WaveAIGetModes()
-}
-
 var wshActivityRe = regexp.MustCompile(`^[a-z:#]+$`)
 
 func (ws *WshServer) WshActivityCommand(ctx context.Context, data map[string]int) error {

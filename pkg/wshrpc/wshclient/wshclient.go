@@ -731,12 +731,6 @@ func WaveAIEnableTelemetryCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) error
 	return err
 }
 
-// command "waveaigetmodes", wshserver.WaveAIGetModesCommand
-func WaveAIGetModesCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) ([]uctypes.AIModeConfig, error) {
-	resp, err := sendRpcRequestCallHelper[[]uctypes.AIModeConfig](w, "waveaigetmodes", nil, opts)
-	return resp, err
-}
-
 // command "waveaigettooldiff", wshserver.WaveAIGetToolDiffCommand
 func WaveAIGetToolDiffCommand(w *wshutil.WshRpc, data wshrpc.CommandWaveAIGetToolDiffData, opts *wshrpc.RpcOpts) (*wshrpc.CommandWaveAIGetToolDiffRtnData, error) {
 	resp, err := sendRpcRequestCallHelper[*wshrpc.CommandWaveAIGetToolDiffRtnData](w, "waveaigettooldiff", data, opts)

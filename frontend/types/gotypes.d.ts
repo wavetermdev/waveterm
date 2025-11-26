@@ -13,25 +13,6 @@ declare global {
         data64: string;
     };
 
-    // uctypes.AIModeConfig
-    type AIModeConfig = {
-        mode: string;
-        "display:name": string;
-        "display:order"?: number;
-        "display:icon": string;
-        apitype: string;
-        model: string;
-        thinkinglevel: string;
-        baseurl?: string;
-        waveaicloud?: boolean;
-        apiversion?: string;
-        apitoken?: string;
-        apitokensecretname?: string;
-        premium: boolean;
-        description: string;
-        capabilities?: string[];
-    };
-
     // wconfig.AIModeConfigType
     type AIModeConfigType = {
         "display:name": string;
