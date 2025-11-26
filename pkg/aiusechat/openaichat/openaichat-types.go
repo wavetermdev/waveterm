@@ -1,17 +1,17 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-package openaicomp
+package openaichat
 
 import (
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
 )
 
-// OpenAI Completions API types (simplified)
+// OpenAI Chat Completions API types (simplified)
 
-type CompletionsRequest struct {
+type ChatRequest struct {
 	Model               string               `json:"model"`
-	Messages            []CompletionsMessage `json:"messages"`
+	Messages            []ChatRequestMessage `json:"messages"`
 	Stream              bool                 `json:"stream"`
 	MaxTokens           int                  `json:"max_tokens,omitempty"`            // legacy
 	MaxCompletionTokens int                  `json:"max_completion_tokens,omitempty"` // newer
@@ -20,7 +20,7 @@ type CompletionsRequest struct {
 	ToolChoice          any                  `json:"tool_choice,omitempty"` // "auto", "none", or struct
 }
 
-type CompletionsMessage struct {
+type ChatRequestMessage struct {
 	Role       string     `json:"role"`                   // "system","user","assistant","tool"
 	Content    string     `json:"content,omitempty"`      // normal text messages
 	ToolCalls  []ToolCall `json:"tool_calls,omitempty"`   // assistant tool-call message
@@ -28,7 +28,7 @@ type CompletionsMessage struct {
 	Name       string     `json:"name,omitempty"`         // tool name on role:"tool"
 }
 
-func (cm *CompletionsMessage) clean() *CompletionsMessage {
+func (cm *ChatRequestMessage) clean() *ChatRequestMessage {
 	if len(cm.ToolCalls) == 0 {
 		return cm
 	}
@@ -40,7 +40,7 @@ func (cm *CompletionsMessage) clean() *CompletionsMessage {
 	return &rtn
 }
 
-func (cm *CompletionsMessage) FindToolCallIndex(toolCallId string) int {
+func (cm *ChatRequestMessage) FindToolCallIndex(toolCallId string) int {
 	for i, tc := range cm.ToolCalls {
 		if tc.ID == toolCallId {
 			return i
@@ -114,41 +114,41 @@ type ToolFunctionDelta struct {
 	Arguments string `json:"arguments,omitempty"` // streamed, append across chunks
 }
 
-// CompletionsChatMessage is the stored message type
-type CompletionsChatMessage struct {
+// StoredChatMessage is the stored message type
+type StoredChatMessage struct {
 	MessageId string             `json:"messageid"`
-	Message   CompletionsMessage `json:"message"`
-	Usage     *CompletionsUsage  `json:"usage,omitempty"`
+	Message   ChatRequestMessage `json:"message"`
+	Usage     *ChatUsage         `json:"usage,omitempty"`
 }
 
-type CompletionsUsage struct {
-	Model            string `json:"model,omitempty"`
-	PromptTokens     int    `json:"prompt_tokens,omitempty"`
-	CompletionTokens int    `json:"completion_tokens,omitempty"`
-	TotalTokens      int    `json:"total_tokens,omitempty"`
+type ChatUsage struct {
+	Model        string `json:"model,omitempty"`
+	InputTokens  int    `json:"prompt_tokens,omitempty"`
+	OutputTokens int    `json:"completion_tokens,omitempty"`
+	TotalTokens  int    `json:"total_tokens,omitempty"`
 }
 
-func (m *CompletionsChatMessage) GetMessageId() string {
+func (m *StoredChatMessage) GetMessageId() string {
 	return m.MessageId
 }
 
-func (m *CompletionsChatMessage) GetRole() string {
+func (m *StoredChatMessage) GetRole() string {
 	return m.Message.Role
 }
 
-func (m *CompletionsChatMessage) GetUsage() *uctypes.AIUsage {
+func (m *StoredChatMessage) GetUsage() *uctypes.AIUsage {
 	if m.Usage == nil {
 		return nil
 	}
 	return &uctypes.AIUsage{
 		APIType:      uctypes.APIType_OpenAIChat,
 		Model:        m.Usage.Model,
-		InputTokens:  m.Usage.PromptTokens,
-		OutputTokens: m.Usage.CompletionTokens,
+		InputTokens:  m.Usage.InputTokens,
+		OutputTokens: m.Usage.OutputTokens,
 	}
 }
 
-func (m *CompletionsChatMessage) Copy() *CompletionsChatMessage {
+func (m *StoredChatMessage) Copy() *StoredChatMessage {
 	if m == nil {
 		return nil
 	}

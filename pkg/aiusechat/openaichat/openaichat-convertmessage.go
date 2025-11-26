@@ -1,7 +1,7 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-package openaicomp
+package openaichat
 
 import (
 	"bytes"
@@ -20,11 +20,11 @@ import (
 )
 
 const (
-	OpenAICompDefaultMaxTokens = 4096
+	OpenAIChatDefaultMaxTokens = 4096
 )
 
 // appendToLastUserMessage appends text to the last user message in the messages slice
-func appendToLastUserMessage(messages []CompletionsMessage, text string) {
+func appendToLastUserMessage(messages []ChatRequestMessage, text string) {
 	for i := len(messages) - 1; i >= 0; i-- {
 		if messages[i].Role == "user" {
 			messages[i].Content += "\n\n" + text
@@ -58,8 +58,8 @@ func convertToolDefinitions(waveTools []uctypes.ToolDefinition, capabilities []s
 	return openaiTools
 }
 
-// buildCompletionsHTTPRequest creates an HTTP request for the OpenAI completions API
-func buildCompletionsHTTPRequest(ctx context.Context, messages []CompletionsMessage, chatOpts uctypes.WaveChatOpts) (*http.Request, error) {
+// buildChatHTTPRequest creates an HTTP request for the OpenAI chat completions API
+func buildChatHTTPRequest(ctx context.Context, messages []ChatRequestMessage, chatOpts uctypes.WaveChatOpts) (*http.Request, error) {
 	opts := chatOpts.Config
 
 	if opts.Model == "" {
@@ -71,16 +71,16 @@ func buildCompletionsHTTPRequest(ctx context.Context, messages []CompletionsMess
 
 	maxTokens := opts.MaxTokens
 	if maxTokens <= 0 {
-		maxTokens = OpenAICompDefaultMaxTokens
+		maxTokens = OpenAIChatDefaultMaxTokens
 	}
 
 	finalMessages := messages
 	if len(chatOpts.SystemPrompt) > 0 {
-		systemMessage := CompletionsMessage{
+		systemMessage := ChatRequestMessage{
 			Role:    "system",
 			Content: strings.Join(chatOpts.SystemPrompt, "\n\n"),
 		}
-		finalMessages = append([]CompletionsMessage{systemMessage}, messages...)
+		finalMessages = append([]ChatRequestMessage{systemMessage}, messages...)
 	}
 
 	// injected data
@@ -91,7 +91,7 @@ func buildCompletionsHTTPRequest(ctx context.Context, messages []CompletionsMess
 		appendToLastUserMessage(finalMessages, "<PlatformInfo>\n"+chatOpts.PlatformInfo+"\n</PlatformInfo>")
 	}
 
-	reqBody := &CompletionsRequest{
+	reqBody := &ChatRequest{
 		Model:    opts.Model,
 		Messages: finalMessages,
 		Stream:   true,
@@ -114,7 +114,7 @@ func buildCompletionsHTTPRequest(ctx context.Context, messages []CompletionsMess
 	}
 
 	if wavebase.IsDevMode() {
-		log.Printf("openaicomp: model %s, messages: %d, tools: %d\n", opts.Model, len(messages), len(allTools))
+		log.Printf("openaichat: model %s, messages: %d, tools: %d\n", opts.Model, len(messages), len(allTools))
 	}
 
 	buf, err := json.Marshal(reqBody)
@@ -145,9 +145,9 @@ func buildCompletionsHTTPRequest(ctx context.Context, messages []CompletionsMess
 	return req, nil
 }
 
-// ConvertAIMessageToCompletionsMessage converts an AIMessage to CompletionsChatMessage
+// ConvertAIMessageToStoredChatMessage converts an AIMessage to StoredChatMessage
 // These messages are ALWAYS role "user"
-func ConvertAIMessageToCompletionsMessage(aiMsg uctypes.AIMessage) (*CompletionsChatMessage, error) {
+func ConvertAIMessageToStoredChatMessage(aiMsg uctypes.AIMessage) (*StoredChatMessage, error) {
 	if err := aiMsg.Validate(); err != nil {
 		return nil, fmt.Errorf("invalid AIMessage: %w", err)
 	}
@@ -164,14 +164,14 @@ func ConvertAIMessageToCompletionsMessage(aiMsg uctypes.AIMessage) (*Completions
 		case part.MimeType == "text/plain":
 			textData, err := aiutil.ExtractTextData(part.Data, part.URL)
 			if err != nil {
-				log.Printf("openaicomp: error extracting text data for %s: %v\n", part.FileName, err)
+				log.Printf("openaichat: error extracting text data for %s: %v\n", part.FileName, err)
 				continue
 			}
 			partText = aiutil.FormatAttachedTextFile(part.FileName, textData)
 
 		case part.MimeType == "directory":
 			if len(part.Data) == 0 {
-				log.Printf("openaicomp: directory listing part missing data for %s\n", part.FileName)
+				log.Printf("openaichat: directory listing part missing data for %s\n", part.FileName)
 				continue
 			}
 			partText = aiutil.FormatAttachedDirectoryListing(part.FileName, string(part.Data))
@@ -189,9 +189,9 @@ func ConvertAIMessageToCompletionsMessage(aiMsg uctypes.AIMessage) (*Completions
 		}
 	}
 
-	return &CompletionsChatMessage{
+	return &StoredChatMessage{
 		MessageId: aiMsg.MessageId,
-		Message: CompletionsMessage{
+		Message: ChatRequestMessage{
 			Role:    "user",
 			Content: textBuilder.String(),
 		},
@@ -213,9 +213,9 @@ func ConvertToolResultsToNativeChatMessage(toolResults []uctypes.AIToolResult) (
 			content = toolResult.Text
 		}
 
-		msg := &CompletionsChatMessage{
+		msg := &StoredChatMessage{
 			MessageId: toolResult.ToolUseID,
-			Message: CompletionsMessage{
+			Message: ChatRequestMessage{
 				Role:       "tool",
 				ToolCallID: toolResult.ToolUseID,
 				Name:       toolResult.ToolName,
@@ -239,7 +239,7 @@ func ConvertAIChatToUIChat(aiChat uctypes.AIChat) (*uctypes.UIChat, error) {
 	}
 
 	for _, genMsg := range aiChat.NativeMessages {
-		compMsg, ok := genMsg.(*CompletionsChatMessage)
+		chatMsg, ok := genMsg.(*StoredChatMessage)
 		if !ok {
 			continue
 		}
@@ -247,16 +247,16 @@ func ConvertAIChatToUIChat(aiChat uctypes.AIChat) (*uctypes.UIChat, error) {
 		var parts []uctypes.UIMessagePart
 
 		// Add text content if present
-		if compMsg.Message.Content != "" {
+		if chatMsg.Message.Content != "" {
 			parts = append(parts, uctypes.UIMessagePart{
 				Type: "text",
-				Text: compMsg.Message.Content,
+				Text: chatMsg.Message.Content,
 			})
 		}
 
 		// Add tool calls if present (assistant requesting tool use)
-		if len(compMsg.Message.ToolCalls) > 0 {
-			for _, toolCall := range compMsg.Message.ToolCalls {
+		if len(chatMsg.Message.ToolCalls) > 0 {
+			for _, toolCall := range chatMsg.Message.ToolCalls {
 				if toolCall.Type != "function" {
 					continue
 				}
@@ -273,7 +273,7 @@ func ConvertAIChatToUIChat(aiChat uctypes.AIChat) (*uctypes.UIChat, error) {
 		}
 
 		// Tool result messages (role "tool") are not converted to UIMessage
-		if compMsg.Message.Role == "tool" && compMsg.Message.ToolCallID != "" {
+		if chatMsg.Message.Role == "tool" && chatMsg.Message.ToolCallID != "" {
 			continue
 		}
 
@@ -283,8 +283,8 @@ func ConvertAIChatToUIChat(aiChat uctypes.AIChat) (*uctypes.UIChat, error) {
 		}
 
 		uiMsg := uctypes.UIMessage{
-			ID:    compMsg.MessageId,
-			Role:  compMsg.Message.Role,
+			ID:    chatMsg.MessageId,
+			Role:  chatMsg.Message.Role,
 			Parts: parts,
 		}
 
@@ -297,15 +297,15 @@ func ConvertAIChatToUIChat(aiChat uctypes.AIChat) (*uctypes.UIChat, error) {
 // GetFunctionCallInputByToolCallId searches for a tool call by ID in the chat history
 func GetFunctionCallInputByToolCallId(aiChat uctypes.AIChat, toolCallId string) *uctypes.AIFunctionCallInput {
 	for _, genMsg := range aiChat.NativeMessages {
-		compMsg, ok := genMsg.(*CompletionsChatMessage)
+		chatMsg, ok := genMsg.(*StoredChatMessage)
 		if !ok {
 			continue
 		}
-		idx := compMsg.Message.FindToolCallIndex(toolCallId)
+		idx := chatMsg.Message.FindToolCallIndex(toolCallId)
 		if idx == -1 {
 			continue
 		}
-		toolCall := compMsg.Message.ToolCalls[idx]
+		toolCall := chatMsg.Message.ToolCalls[idx]
 		return &uctypes.AIFunctionCallInput{
 			CallId:      toolCall.ID,
 			Name:        toolCall.Function.Name,
@@ -324,15 +324,15 @@ func UpdateToolUseData(chatId string, callId string, newToolUseData uctypes.UIMe
 	}
 
 	for _, genMsg := range chat.NativeMessages {
-		compMsg, ok := genMsg.(*CompletionsChatMessage)
+		chatMsg, ok := genMsg.(*StoredChatMessage)
 		if !ok {
 			continue
 		}
-		idx := compMsg.Message.FindToolCallIndex(callId)
+		idx := chatMsg.Message.FindToolCallIndex(callId)
 		if idx == -1 {
 			continue
 		}
-		updatedMsg := compMsg.Copy()
+		updatedMsg := chatMsg.Copy()
 		updatedMsg.Message.ToolCalls[idx].ToolUseData = &newToolUseData
 		aiOpts := &uctypes.AIOptsType{
 			APIType:    chat.APIType,

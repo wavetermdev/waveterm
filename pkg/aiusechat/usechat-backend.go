@@ -9,7 +9,7 @@ import (
 
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/anthropic"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/openai"
-	"github.com/wavetermdev/waveterm/pkg/aiusechat/openaicomp"
+	"github.com/wavetermdev/waveterm/pkg/aiusechat/openaichat"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
 	"github.com/wavetermdev/waveterm/pkg/web/sse"
 )
@@ -132,7 +132,7 @@ func (b *openaiCompletionsBackend) RunChatStep(
 	chatOpts uctypes.WaveChatOpts,
 	cont *uctypes.WaveContinueResponse,
 ) (*uctypes.WaveStopReason, []uctypes.GenAIMessage, *uctypes.RateLimitInfo, error) {
-	stopReason, msgs, rateLimitInfo, err := openaicomp.RunCompletionsChatStep(ctx, sseHandler, chatOpts, cont)
+	stopReason, msgs, rateLimitInfo, err := openaichat.RunChatStep(ctx, sseHandler, chatOpts, cont)
 	var genMsgs []uctypes.GenAIMessage
 	for _, msg := range msgs {
 		genMsgs = append(genMsgs, msg)
@@ -141,23 +141,23 @@ func (b *openaiCompletionsBackend) RunChatStep(
 }
 
 func (b *openaiCompletionsBackend) UpdateToolUseData(chatId string, toolCallId string, toolUseData uctypes.UIMessageDataToolUse) error {
-	return openaicomp.UpdateToolUseData(chatId, toolCallId, toolUseData)
+	return openaichat.UpdateToolUseData(chatId, toolCallId, toolUseData)
 }
 
 func (b *openaiCompletionsBackend) ConvertToolResultsToNativeChatMessage(toolResults []uctypes.AIToolResult) ([]uctypes.GenAIMessage, error) {
-	return openaicomp.ConvertToolResultsToNativeChatMessage(toolResults)
+	return openaichat.ConvertToolResultsToNativeChatMessage(toolResults)
 }
 
 func (b *openaiCompletionsBackend) ConvertAIMessageToNativeChatMessage(message uctypes.AIMessage) (uctypes.GenAIMessage, error) {
-	return openaicomp.ConvertAIMessageToCompletionsMessage(message)
+	return openaichat.ConvertAIMessageToStoredChatMessage(message)
 }
 
 func (b *openaiCompletionsBackend) GetFunctionCallInputByToolCallId(aiChat uctypes.AIChat, toolCallId string) *uctypes.AIFunctionCallInput {
-	return openaicomp.GetFunctionCallInputByToolCallId(aiChat, toolCallId)
+	return openaichat.GetFunctionCallInputByToolCallId(aiChat, toolCallId)
 }
 
 func (b *openaiCompletionsBackend) ConvertAIChatToUIChat(aiChat uctypes.AIChat) (*uctypes.UIChat, error) {
-	return openaicomp.ConvertAIChatToUIChat(aiChat)
+	return openaichat.ConvertAIChatToUIChat(aiChat)
 }
 
 // anthropicBackend implements UseChatBackend for Anthropic API

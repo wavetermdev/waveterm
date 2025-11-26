@@ -1,7 +1,7 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-package openaicomp
+package openaichat
 
 import (
 	"context"
@@ -21,13 +21,13 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/web/sse"
 )
 
-// RunCompletionsChatStep executes a chat step using the completions API
-func RunCompletionsChatStep(
+// RunChatStep executes a chat step using the chat completions API
+func RunChatStep(
 	ctx context.Context,
 	sseHandler *sse.SSEHandlerCh,
 	chatOpts uctypes.WaveChatOpts,
 	cont *uctypes.WaveContinueResponse,
-) (*uctypes.WaveStopReason, []*CompletionsChatMessage, *uctypes.RateLimitInfo, error) {
+) (*uctypes.WaveStopReason, []*StoredChatMessage, *uctypes.RateLimitInfo, error) {
 	if sseHandler == nil {
 		return nil, nil, nil, errors.New("sse handler is nil")
 	}
@@ -43,12 +43,12 @@ func RunCompletionsChatStep(
 		defer cancel()
 	}
 
-	// Convert stored messages to completions format
-	var messages []CompletionsMessage
+	// Convert stored messages to chat completions format
+	var messages []ChatRequestMessage
 
 	// Add system prompt if provided
 	if len(chatOpts.SystemPrompt) > 0 {
-		messages = append(messages, CompletionsMessage{
+		messages = append(messages, ChatRequestMessage{
 			Role:    "system",
 			Content: strings.Join(chatOpts.SystemPrompt, "\n"),
 		})
@@ -56,14 +56,14 @@ func RunCompletionsChatStep(
 
 	// Convert native messages
 	for _, genMsg := range chat.NativeMessages {
-		compMsg, ok := genMsg.(*CompletionsChatMessage)
+		chatMsg, ok := genMsg.(*StoredChatMessage)
 		if !ok {
-			return nil, nil, nil, fmt.Errorf("expected CompletionsChatMessage, got %T", genMsg)
+			return nil, nil, nil, fmt.Errorf("expected StoredChatMessage, got %T", genMsg)
 		}
-		messages = append(messages, *compMsg.Message.clean())
+		messages = append(messages, *chatMsg.Message.clean())
 	}
 
-	req, err := buildCompletionsHTTPRequest(ctx, messages, chatOpts)
+	req, err := buildChatHTTPRequest(ctx, messages, chatOpts)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -88,21 +88,21 @@ func RunCompletionsChatStep(
 	}
 
 	// Stream processing
-	stopReason, assistantMsg, err := processCompletionsStream(ctx, resp.Body, sseHandler, chatOpts, cont)
+	stopReason, assistantMsg, err := processChatStream(ctx, resp.Body, sseHandler, chatOpts, cont)
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
-	return stopReason, []*CompletionsChatMessage{assistantMsg}, nil, nil
+	return stopReason, []*StoredChatMessage{assistantMsg}, nil, nil
 }
 
-func processCompletionsStream(
+func processChatStream(
 	ctx context.Context,
 	body io.Reader,
 	sseHandler *sse.SSEHandlerCh,
 	chatOpts uctypes.WaveChatOpts,
 	cont *uctypes.WaveContinueResponse,
-) (*uctypes.WaveStopReason, *CompletionsChatMessage, error) {
+) (*uctypes.WaveStopReason, *StoredChatMessage, error) {
 	decoder := eventsource.NewDecoder(body)
 	var textBuilder strings.Builder
 	msgID := uuid.New().String()
@@ -146,7 +146,7 @@ func processCompletionsStream(
 
 		var chunk StreamChunk
 		if err := json.Unmarshal([]byte(data), &chunk); err != nil {
-			log.Printf("openaicomp: failed to parse chunk: %v\n", err)
+			log.Printf("openaichat: failed to parse chunk: %v\n", err)
 			continue
 		}
 
@@ -214,7 +214,7 @@ func processCompletionsStream(
 			var inputJSON any
 			if tc.Function.Arguments != "" {
 				if err := json.Unmarshal([]byte(tc.Function.Arguments), &inputJSON); err != nil {
-					log.Printf("openaicomp: failed to parse tool call arguments: %v\n", err)
+					log.Printf("openaichat: failed to parse tool call arguments: %v\n", err)
 					continue
 				}
 			}
@@ -232,9 +232,9 @@ func processCompletionsStream(
 		ToolCalls: waveToolCalls,
 	}
 
-	assistantMsg := &CompletionsChatMessage{
+	assistantMsg := &StoredChatMessage{
 		MessageId: msgID,
-		Message: CompletionsMessage{
+		Message: ChatRequestMessage{
 			Role: "assistant",
 		},
 	}
