@@ -139,7 +139,7 @@ func buildCompletionsHTTPRequest(ctx context.Context, messages []CompletionsMess
 		req.Header.Set("X-Wave-ChatId", chatOpts.ChatId)
 	}
 	req.Header.Set("X-Wave-Version", wavebase.WaveVersion)
-	req.Header.Set("X-Wave-APIType", uctypes.APIType_OpenAIComp)
+	req.Header.Set("X-Wave-APIType", uctypes.APIType_OpenAIChat)
 	req.Header.Set("X-Wave-RequestType", chatOpts.GetWaveRequestType())
 
 	return req, nil

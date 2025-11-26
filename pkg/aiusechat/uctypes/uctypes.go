@@ -16,9 +16,9 @@ const DefaultOpenAIModel = "gpt-5-mini"
 const PremiumOpenAIModel = "gpt-5.1"
 
 const (
-	APIType_Anthropic  = "anthropic"
-	APIType_OpenAI     = "openai"
-	APIType_OpenAIComp = "openai-comp"
+	APIType_AnthropicMessages = "anthropic-messages"
+	APIType_OpenAIResponses   = "openai-responses"
+	APIType_OpenAIChat        = "openai-chat"
 )
 
 type UseChatRequest struct {
@@ -612,7 +612,7 @@ func AreModelsCompatible(apiType, model1, model2 string) bool {
 		return true
 	}
 
-	if apiType == APIType_OpenAI {
+	if apiType == APIType_OpenAIResponses {
 		gpt5Models := map[string]bool{
 			"gpt-5.1":    true,
 			"gpt-5":      true,

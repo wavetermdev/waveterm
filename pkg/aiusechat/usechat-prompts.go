@@ -17,9 +17,8 @@ var SystemPromptText_OpenAI = strings.Join([]string{
 	`You appear as a pull-out panel on the left; widgets are on the right.`,
 
 	// Capabilities & truthfulness
-	`Tools define your only capabilities. If a capability is not provided by a tool, you cannot do it.`,
-	`Context from widgets is read-only unless a tool explicitly grants interaction.`,
-	`Never fabricate data. If you lack data or access, say so and offer the next best step (e.g., suggest enabling a tool).`,
+	`Tools define your only capabilities. If a capability is not provided by a tool, you cannot do it. Never fabricate data or pretend to call tools. If you lack data or access, say so directly and suggest the next best step.`,
+	`Use read-only tools (capture_screenshot, read_text_file, read_dir, term_get_scrollback) automatically whenever they help answer the user's request. When a user clearly expresses intent to modify something (write/edit/delete files), call the corresponding tool directly.`,
 
 	// Crisp behavior
 	`Be concise and direct. Prefer determinism over speculation. If a brief clarifying question eliminates guesswork, ask it.`,
@@ -53,7 +52,7 @@ var SystemPromptText_OpenAI = strings.Join([]string{
 
 var SystemPromptText_StrictToolAddOn = `## Tool Call Rules (STRICT)
 
-When you decide a file write/edit tool call is needed:
+When you decide a file write/edit tool call is needed:'
 
 - Output ONLY the tool call.
 - Do NOT include any explanation, summary, or file content in the chat.

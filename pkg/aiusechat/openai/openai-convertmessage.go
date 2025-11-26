@@ -299,7 +299,7 @@ func buildOpenAIHTTPRequest(ctx context.Context, inputs []any, chatOpts uctypes.
 		req.Header.Set("X-Wave-ChatId", chatOpts.ChatId)
 	}
 	req.Header.Set("X-Wave-Version", wavebase.WaveVersion)
-	req.Header.Set("X-Wave-APIType", uctypes.APIType_OpenAI)
+	req.Header.Set("X-Wave-APIType", uctypes.APIType_OpenAIResponses)
 	req.Header.Set("X-Wave-RequestType", chatOpts.GetWaveRequestType())
 
 	return req, nil
@@ -519,8 +519,8 @@ func (m *OpenAIChatMessage) convertToUIMessage() *uctypes.UIMessage {
 
 // ConvertAIChatToUIChat converts an AIChat to a UIChat for OpenAI
 func ConvertAIChatToUIChat(aiChat uctypes.AIChat) (*uctypes.UIChat, error) {
-	if aiChat.APIType != uctypes.APIType_OpenAI {
-		return nil, fmt.Errorf("APIType must be '%s', got '%s'", uctypes.APIType_OpenAI, aiChat.APIType)
+	if aiChat.APIType != uctypes.APIType_OpenAIResponses {
+		return nil, fmt.Errorf("APIType must be '%s', got '%s'", uctypes.APIType_OpenAIResponses, aiChat.APIType)
 	}
 	uiMessages := make([]uctypes.UIMessage, 0, len(aiChat.NativeMessages))
 	for i, nativeMsg := range aiChat.NativeMessages {
