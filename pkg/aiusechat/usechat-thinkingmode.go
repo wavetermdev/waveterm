@@ -38,15 +38,36 @@ func getThinkingModeConfigs() map[string]uctypes.AIThinkingModeConfig {
 	return configs
 }
 
-func getThinkingModeConfig(thinkingMode string) (*uctypes.AIThinkingModeConfig, error) {
-	configs := getThinkingModeConfigs()
-	config, ok := configs[thinkingMode]
+func resolveThinkingMode(requestedMode string, premium bool) (string, *wconfig.AIThinkingModeConfigType, error) {
+	mode := requestedMode
+	if mode == "" {
+		mode = uctypes.ThinkingModeBalanced
+	}
+
+	config, err := getThinkingModeConfig(mode)
+	if err != nil {
+		return "", nil, err
+	}
+
+	if config.WaveAICloud && !premium {
+		mode = uctypes.ThinkingModeQuick
+		config, err = getThinkingModeConfig(mode)
+		if err != nil {
+			return "", nil, err
+		}
+	}
+
+	return mode, config, nil
+}
+
+func getThinkingModeConfig(thinkingMode string) (*wconfig.AIThinkingModeConfigType, error) {
+	fullConfig := wconfig.GetWatcher().GetFullConfig()
+	config, ok := fullConfig.WaveAIModes[thinkingMode]
 	if !ok {
 		return nil, fmt.Errorf("invalid thinking mode: %s", thinkingMode)
 	}
 
-	configCopy := config
-	return &configCopy, nil
+	return &config, nil
 }
 
 func WaveAIGetModes() ([]uctypes.AIThinkingModeConfig, error) {

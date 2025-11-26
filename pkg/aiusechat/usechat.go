@@ -67,29 +67,18 @@ func getSystemPrompt(apiType string, model string, isBuilder bool) []string {
 	return []string{basePrompt}
 }
 
-func getWaveAISettings(premium bool, builderMode bool, rtInfo *waveobj.ObjRTInfo) (*uctypes.AIOptsType, error) {
+func getWaveAISettings(premium bool, builderMode bool, rtInfo waveobj.ObjRTInfo) (*uctypes.AIOptsType, error) {
 	maxTokens := DefaultMaxTokens
 	if builderMode {
 		maxTokens = BuilderMaxTokens
 	}
-	if rtInfo != nil && rtInfo.WaveAIMaxOutputTokens > 0 {
+	if rtInfo.WaveAIMaxOutputTokens > 0 {
 		maxTokens = rtInfo.WaveAIMaxOutputTokens
 	}
-	var thinkingMode string
-	if premium {
-		thinkingMode = uctypes.ThinkingModeBalanced
-		if rtInfo != nil && rtInfo.WaveAIThinkingMode != "" {
-			thinkingMode = rtInfo.WaveAIThinkingMode
-		}
-	} else {
-		thinkingMode = uctypes.ThinkingModeQuick
-	}
-
-	config, err := getThinkingModeConfig(thinkingMode)
+	thinkingMode, config, err := resolveThinkingMode(rtInfo.WaveAIThinkingMode, premium)
 	if err != nil {
 		return nil, err
 	}
-
 	apiToken := config.APIToken
 	if apiToken == "" && config.APITokenSecretName != "" {
 		secret, exists, err := secretstore.GetSecret(config.APITokenSecretName)
@@ -627,11 +616,14 @@ func WaveAIPostMessageHandler(w http.ResponseWriter, r *http.Request) {
 		oref := waveobj.MakeORef(waveobj.OType_Builder, req.BuilderId)
 		rtInfo = wstore.GetRTInfo(oref)
 	}
+	if rtInfo == nil {
+		rtInfo = &waveobj.ObjRTInfo{}
+	}
 
 	// Get WaveAI settings
 	premium := shouldUsePremium()
 	builderMode := req.BuilderId != ""
-	aiOpts, err := getWaveAISettings(premium, builderMode, rtInfo)
+	aiOpts, err := getWaveAISettings(premium, builderMode, *rtInfo)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("WaveAI configuration error: %v", err), http.StatusInternalServerError)
 		return
