@@ -93,6 +93,12 @@ const configFiles: ConfigFile[] = [
 
 const deprecatedConfigFiles: ConfigFile[] = [
     {
+        name: "Presets",
+        path: "presets.json",
+        language: "json",
+        deprecated: true,
+    },
+    {
         name: "AI Presets",
         path: "presets/ai.json",
         language: "json",
@@ -120,6 +126,7 @@ export class WaveConfigViewModel implements ViewModel {
     errorMessageAtom: PrimitiveAtom<string>;
     validationErrorAtom: PrimitiveAtom<string>;
     isMenuOpenAtom: PrimitiveAtom<boolean>;
+    presetsJsonExistsAtom: PrimitiveAtom<boolean>;
     configDir: string;
     saveShortcut: string;
     editorRef: React.RefObject<MonacoTypes.editor.IStandaloneCodeEditor>;
@@ -140,9 +147,25 @@ export class WaveConfigViewModel implements ViewModel {
         this.errorMessageAtom = atom(null) as PrimitiveAtom<string>;
         this.validationErrorAtom = atom(null) as PrimitiveAtom<string>;
         this.isMenuOpenAtom = atom(false);
+        this.presetsJsonExistsAtom = atom(false);
         this.editorRef = React.createRef();
 
+        this.checkPresetsJsonExists();
         this.initialize();
+    }
+
+    async checkPresetsJsonExists() {
+        try {
+            const fullPath = `${this.configDir}/presets.json`;
+            const fileInfo = await RpcApi.FileInfoCommand(TabRpcClient, {
+                info: { path: fullPath },
+            });
+            if (!fileInfo.notfound) {
+                globalStore.set(this.presetsJsonExistsAtom, true);
+            }
+        } catch {
+            // File doesn't exist
+        }
     }
 
     initialize() {
@@ -174,7 +197,13 @@ export class WaveConfigViewModel implements ViewModel {
     }
 
     getDeprecatedConfigFiles(): ConfigFile[] {
-        return deprecatedConfigFiles;
+        const presetsJsonExists = globalStore.get(this.presetsJsonExistsAtom);
+        return deprecatedConfigFiles.filter((f) => {
+            if (f.path === "presets.json") {
+                return presetsJsonExists;
+            }
+            return true;
+        });
     }
 
     hasChanges(): boolean {
