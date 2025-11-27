@@ -12,16 +12,58 @@ import { atom, type PrimitiveAtom } from "jotai";
 import type * as MonacoTypes from "monaco-editor/esm/vs/editor/editor.api";
 import * as React from "react";
 
+type ValidationResult = { success: true } | { error: string };
+type ConfigValidator = (parsed: any) => ValidationResult;
+
 export type ConfigFile = {
     name: string;
     path: string;
     language: string;
     deprecated?: boolean;
     docsUrl?: string;
+    validator?: ConfigValidator;
 };
 
+function validateBgJson(parsed: any): ValidationResult {
+    const keys = Object.keys(parsed);
+    for (const key of keys) {
+        if (!key.startsWith("bg@")) {
+            return { error: `Invalid key "${key}": all top-level keys must start with "bg@"` };
+        }
+    }
+    return { success: true };
+}
+
+function validateAiJson(parsed: any): ValidationResult {
+    const keys = Object.keys(parsed);
+    for (const key of keys) {
+        if (!key.startsWith("ai@")) {
+            return { error: `Invalid key "${key}": all top-level keys must start with "ai@"` };
+        }
+    }
+    return { success: true };
+}
+
+function validateWaveAiJson(parsed: any): ValidationResult {
+    const keys = Object.keys(parsed);
+    const keyPattern = /^[a-zA-Z0-9_@-]+$/;
+    for (const key of keys) {
+        if (!keyPattern.test(key)) {
+            return {
+                error: `Invalid key "${key}": keys must only contain letters, numbers, underscores, @ and hyphens`,
+            };
+        }
+    }
+    return { success: true };
+}
+
 const configFiles: ConfigFile[] = [
-    { name: "General", path: "settings.json", language: "json", docsUrl: "https://docs.waveterm.dev/config" },
+    {
+        name: "General",
+        path: "settings.json",
+        language: "json",
+        docsUrl: "https://docs.waveterm.dev/config",
+    },
     {
         name: "Connections",
         path: "connections.json",
@@ -34,12 +76,18 @@ const configFiles: ConfigFile[] = [
         language: "json",
         docsUrl: "https://docs.waveterm.dev/customwidgets",
     },
-    { name: "Wave AI", path: "waveai.json", language: "json" },
+    {
+        name: "Wave AI",
+        path: "waveai.json",
+        language: "json",
+        validator: validateWaveAiJson,
+    },
     {
         name: "Backgrounds",
         path: "presets/bg.json",
         language: "json",
         docsUrl: "https://docs.waveterm.dev/presets#background-configurations",
+        validator: validateBgJson,
     },
 ];
 
@@ -50,6 +98,7 @@ const deprecatedConfigFiles: ConfigFile[] = [
         language: "json",
         deprecated: true,
         docsUrl: "https://docs.waveterm.dev/ai-presets",
+        validator: validateAiJson,
     },
 ];
 
@@ -174,6 +223,20 @@ export class WaveConfigViewModel implements ViewModel {
 
         try {
             const parsed = JSON.parse(fileContent);
+
+            if (typeof parsed !== "object" || parsed == null || Array.isArray(parsed)) {
+                globalStore.set(this.validationErrorAtom, "JSON must be an object, not an array, primitive, or null");
+                return;
+            }
+
+            if (selectedFile.validator) {
+                const validationResult = selectedFile.validator(parsed);
+                if ("error" in validationResult) {
+                    globalStore.set(this.validationErrorAtom, validationResult.error);
+                    return;
+                }
+            }
+
             const formatted = JSON.stringify(parsed, null, 2);
 
             globalStore.set(this.isSavingAtom, true);

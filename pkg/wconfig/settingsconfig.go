@@ -810,6 +810,17 @@ type WidgetConfigType struct {
 	BlockDef      waveobj.BlockDef `json:"blockdef"`
 }
 
+type BgPresetsType struct {
+	BgClear             bool    `json:"bg:*,omitempty"`
+	Bg                  string  `json:"bg,omitempty" jsonschema_description:"CSS background property value"`
+	BgOpacity           float64 `json:"bg:opacity,omitempty" jsonschema_description:"Background opacity (0.0-1.0)"`
+	BgBlendMode         string  `json:"bg:blendmode,omitempty" jsonschema_description:"CSS background-blend-mode property value"`
+	BgBorderColor       string  `json:"bg:bordercolor,omitempty" jsonschema_description:"Block frame border color"`
+	BgActiveBorderColor string  `json:"bg:activebordercolor,omitempty" jsonschema_description:"Block frame focused border color"`
+	DisplayName         string  `json:"display:name,omitempty" jsonschema_description:"The name shown in the context menu"`
+	DisplayOrder        float64 `json:"display:order,omitempty" jsonschema_description:"Determines the order of the background in the context menu"`
+}
+
 type MimeTypeConfigType struct {
 	Icon  string `json:"icon"`
 	Color string `json:"color"`
