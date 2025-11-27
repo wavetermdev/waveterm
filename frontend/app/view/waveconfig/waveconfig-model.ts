@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { BlockNodeModel } from "@/app/block/blocktypes";
-import { getApi } from "@/app/store/global";
+import { getApi, getBlockMetaKeyAtom, WOS } from "@/app/store/global";
 import { globalStore } from "@/app/store/jotaiStore";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
@@ -76,8 +76,25 @@ export class WaveConfigViewModel implements ViewModel {
 
     initialize() {
         const selectedFile = globalStore.get(this.selectedFileAtom);
-        if (!selectedFile && configFiles.length > 0) {
-            this.loadFile(configFiles[0]);
+        if (!selectedFile) {
+            const metaFileAtom = getBlockMetaKeyAtom(this.blockId, "file");
+            const savedFilePath = globalStore.get(metaFileAtom);
+
+            let fileToLoad: ConfigFile | null = null;
+            if (savedFilePath) {
+                fileToLoad =
+                    configFiles.find((f) => f.path === savedFilePath) ||
+                    deprecatedConfigFiles.find((f) => f.path === savedFilePath) ||
+                    null;
+            }
+
+            if (!fileToLoad) {
+                fileToLoad = configFiles[0];
+            }
+
+            if (fileToLoad) {
+                this.loadFile(fileToLoad);
+            }
         }
     }
 
@@ -114,6 +131,10 @@ export class WaveConfigViewModel implements ViewModel {
                 globalStore.set(this.fileContentAtom, content);
             }
             globalStore.set(this.selectedFileAtom, file);
+            RpcApi.SetMetaCommand(TabRpcClient, {
+                oref: WOS.makeORef("block", this.blockId),
+                meta: { file: file.path },
+            });
         } catch (err) {
             globalStore.set(this.errorMessageAtom, `Failed to load ${file.name}: ${err.message || String(err)}`);
             globalStore.set(this.fileContentAtom, "");
