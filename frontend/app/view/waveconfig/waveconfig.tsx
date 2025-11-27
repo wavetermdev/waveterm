@@ -49,12 +49,11 @@ const ConfigSidebar = memo(({ model }: ConfigSidebarProps) => {
             ))}
             {deprecatedConfigFiles.length > 0 && (
                 <>
-                    <div className="flex-1 min-h-8" />
                     {deprecatedConfigFiles.map((file) => (
                         <div
                             key={file.path}
                             onClick={() => handleFileSelect(file)}
-                            className={`px-4 py-2 border-t border-border cursor-pointer transition-colors ${
+                            className={`px-4 py-2 border-b border-border cursor-pointer transition-colors ${
                                 selectedFile?.path === file.path ? "bg-accentbg text-primary" : "hover:bg-secondary/50"
                             }`}
                         >
@@ -88,8 +87,16 @@ const WaveConfigView = memo(({ blockId, model }: ViewComponentProps<WaveConfigVi
     const errorMessage = useAtomValue(model.errorMessageAtom);
     const validationError = useAtomValue(model.validationErrorAtom);
     const [isMenuOpen, setIsMenuOpen] = useAtom(model.isMenuOpenAtom);
-    const hasChanges = model.hasChanges();
+    const hasChanges = useAtomValue(model.hasEditedAtom);
     const editorContainerRef = useRef<HTMLDivElement>(null);
+
+    const handleContentChange = useCallback(
+        (newContent: string) => {
+            setFileContent(newContent);
+            model.markAsEdited();
+        },
+        [setFileContent, model]
+    );
 
     const handleEditorMount = useCallback(
         (editor) => {
@@ -148,21 +155,21 @@ const WaveConfigView = memo(({ blockId, model }: ViewComponentProps<WaveConfigVi
                 {selectedFile && (
                     <>
                         <div className="flex flex-row items-center justify-between px-4 py-2 border-b border-border">
-                            <div className="flex items-baseline gap-2">
+                            <div className="flex items-baseline gap-2 min-w-0">
                                 <button
                                     onClick={() => setIsMenuOpen(true)}
-                                    className="@w600:hidden hover:bg-secondary/50 rounded p-1 cursor-pointer transition-colors mr-2"
+                                    className="@w600:hidden hover:bg-secondary/50 rounded p-1 cursor-pointer transition-colors mr-2 shrink-0"
                                 >
                                     <i className="fa fa-bars" />
                                 </button>
-                                <div className="text-lg font-semibold">{selectedFile.name}</div>
-                                <div className="text-xs text-muted-foreground font-mono pb-0.5 ml-2">
+                                <div className="text-lg font-semibold whitespace-nowrap shrink-0">{selectedFile.name}</div>
+                                <div className="text-xs text-muted-foreground font-mono pb-0.5 ml-2 truncate @max-w450:hidden">
                                     {selectedFile.path}
                                 </div>
                             </div>
-                            <div className="flex gap-2 items-center">
-                                {hasChanges && <span className="text-xs text-warning">Unsaved changes</span>}
-                                <Tooltip content={saveTooltip} placement="bottom">
+                            <div className="flex gap-2 items-baseline shrink-0">
+                                {hasChanges && <span className="text-xs text-warning pb-0.5 @max-w450:hidden">Unsaved changes</span>}
+                                <Tooltip content={saveTooltip} placement="bottom" divClassName="shrink-0">
                                     <button
                                         onClick={() => model.saveFile()}
                                         disabled={!hasChanges || isSaving}
@@ -211,7 +218,7 @@ const WaveConfigView = memo(({ blockId, model }: ViewComponentProps<WaveConfigVi
                                     fileName={`${model.configDir}/${selectedFile.path}`}
                                     language={selectedFile.language}
                                     readonly={false}
-                                    onChange={setFileContent}
+                                    onChange={handleContentChange}
                                     onMount={handleEditorMount}
                                 />
                             )}

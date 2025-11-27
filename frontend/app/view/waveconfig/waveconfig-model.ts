@@ -23,6 +23,8 @@ const configFiles: ConfigFile[] = [
     { name: "General", path: "settings.json", language: "json" },
     { name: "Connections", path: "connections.json", language: "json" },
     { name: "Widgets", path: "widgets.json", language: "json" },
+    { name: "Wave AI", path: "waveai.json", language: "json" },
+    { name: "Backgrounds", path: "presets/bg.json", language: "json" },
 ];
 
 const deprecatedConfigFiles: ConfigFile[] = [
@@ -41,6 +43,7 @@ export class WaveConfigViewModel implements ViewModel {
     selectedFileAtom: PrimitiveAtom<ConfigFile>;
     fileContentAtom: PrimitiveAtom<string>;
     originalContentAtom: PrimitiveAtom<string>;
+    hasEditedAtom: PrimitiveAtom<boolean>;
     isLoadingAtom: PrimitiveAtom<boolean>;
     isSavingAtom: PrimitiveAtom<boolean>;
     errorMessageAtom: PrimitiveAtom<string>;
@@ -60,6 +63,7 @@ export class WaveConfigViewModel implements ViewModel {
         this.selectedFileAtom = atom(null) as PrimitiveAtom<ConfigFile>;
         this.fileContentAtom = atom("");
         this.originalContentAtom = atom("");
+        this.hasEditedAtom = atom(false);
         this.isLoadingAtom = atom(false);
         this.isSavingAtom = atom(false);
         this.errorMessageAtom = atom(null) as PrimitiveAtom<string>;
@@ -86,14 +90,17 @@ export class WaveConfigViewModel implements ViewModel {
     }
 
     hasChanges(): boolean {
-        const fileContent = globalStore.get(this.fileContentAtom);
-        const originalContent = globalStore.get(this.originalContentAtom);
-        return fileContent !== originalContent;
+        return globalStore.get(this.hasEditedAtom);
+    }
+
+    markAsEdited() {
+        globalStore.set(this.hasEditedAtom, true);
     }
 
     async loadFile(file: ConfigFile) {
         globalStore.set(this.isLoadingAtom, true);
         globalStore.set(this.errorMessageAtom, null);
+        globalStore.set(this.hasEditedAtom, false);
         try {
             const fullPath = `${this.configDir}/${file.path}`;
             const fileData = await RpcApi.FileReadCommand(TabRpcClient, {
@@ -138,6 +145,7 @@ export class WaveConfigViewModel implements ViewModel {
                 });
                 globalStore.set(this.fileContentAtom, formatted);
                 globalStore.set(this.originalContentAtom, formatted);
+                globalStore.set(this.hasEditedAtom, false);
             } catch (err) {
                 globalStore.set(
                     this.errorMessageAtom,
