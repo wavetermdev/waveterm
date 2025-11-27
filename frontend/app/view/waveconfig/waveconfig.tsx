@@ -4,7 +4,7 @@
 import { Tooltip } from "@/app/element/tooltip";
 import { globalStore } from "@/app/store/jotaiStore";
 import { CodeEditor } from "@/app/view/codeeditor/codeeditor";
-import type { WaveConfigViewModel } from "@/app/view/waveconfig/waveconfig-model";
+import type { ConfigFile, WaveConfigViewModel } from "@/app/view/waveconfig/waveconfig-model";
 import { checkKeyPressed, keydownWrapper } from "@/util/keyutil";
 import { useAtom, useAtomValue } from "jotai";
 import { memo, useCallback, useEffect } from "react";
@@ -15,15 +15,30 @@ interface ConfigSidebarProps {
 
 const ConfigSidebar = memo(({ model }: ConfigSidebarProps) => {
     const selectedFile = useAtomValue(model.selectedFileAtom);
+    const [isMenuOpen, setIsMenuOpen] = useAtom(model.isMenuOpenAtom);
     const configFiles = model.getConfigFiles();
     const deprecatedConfigFiles = model.getDeprecatedConfigFiles();
 
+    const handleFileSelect = (file: ConfigFile) => {
+        model.loadFile(file);
+        setIsMenuOpen(false);
+    };
+
     return (
-        <div className="flex flex-col w-48 border-r border-border">
+        <div className="flex flex-col w-48 border-r border-border @w600:h-full @max-w600:absolute @max-w600:left-0.5 @max-w600:top-0 @max-w600:bottom-0.5 @max-w600:z-10 @max-w600:bg-background @max-w600:shadow-xl @max-w600:rounded-bl">
+            <div className="flex items-center justify-between px-4 py-2 border-b border-border @w600:hidden">
+                <span className="font-semibold">Config Files</span>
+                <button
+                    onClick={() => setIsMenuOpen(false)}
+                    className="hover:bg-secondary/50 rounded p-1 cursor-pointer transition-colors"
+                >
+                    ✕
+                </button>
+            </div>
             {configFiles.map((file) => (
                 <div
                     key={file.path}
-                    onClick={() => model.loadFile(file)}
+                    onClick={() => handleFileSelect(file)}
                     className={`px-4 py-2 border-b border-border cursor-pointer transition-colors whitespace-nowrap overflow-hidden text-ellipsis ${
                         selectedFile?.path === file.path ? "bg-accentbg text-primary" : "hover:bg-secondary/50"
                     }`}
@@ -37,7 +52,7 @@ const ConfigSidebar = memo(({ model }: ConfigSidebarProps) => {
                     {deprecatedConfigFiles.map((file) => (
                         <div
                             key={file.path}
-                            onClick={() => model.loadFile(file)}
+                            onClick={() => handleFileSelect(file)}
                             className={`px-4 py-2 border-t border-border cursor-pointer transition-colors ${
                                 selectedFile?.path === file.path ? "bg-accentbg text-primary" : "hover:bg-secondary/50"
                             }`}
@@ -71,6 +86,7 @@ const WaveConfigView = memo(({ blockId, model }: ViewComponentProps<WaveConfigVi
     const isSaving = useAtomValue(model.isSavingAtom);
     const errorMessage = useAtomValue(model.errorMessageAtom);
     const validationError = useAtomValue(model.validationErrorAtom);
+    const [isMenuOpen, setIsMenuOpen] = useAtom(model.isMenuOpenAtom);
     const hasChanges = model.hasChanges();
 
     const handleEditorMount = useCallback(
@@ -105,13 +121,24 @@ const WaveConfigView = memo(({ blockId, model }: ViewComponentProps<WaveConfigVi
     const saveTooltip = `Save (${model.saveShortcut})`;
 
     return (
-        <div className="flex flex-row w-full h-full">
-            <ConfigSidebar model={model} />
+        <div className="@container flex flex-row w-full h-full">
+            {isMenuOpen && (
+                <div className="absolute inset-0 bg-black/50 z-5 @w600:hidden" onClick={() => setIsMenuOpen(false)} />
+            )}
+            <div className={`h-full ${isMenuOpen ? "" : "@max-w600:hidden"}`}>
+                <ConfigSidebar model={model} />
+            </div>
             <div className="flex flex-col flex-1">
                 {selectedFile && (
                     <>
                         <div className="flex flex-row items-center justify-between px-4 py-2 border-b border-border">
                             <div className="flex items-baseline gap-2">
+                                <button
+                                    onClick={() => setIsMenuOpen(true)}
+                                    className="@w600:hidden hover:bg-secondary/50 rounded p-1 cursor-pointer transition-colors mr-2"
+                                >
+                                    <i className="fa fa-bars" />
+                                </button>
                                 <div className="text-lg font-semibold">{selectedFile.name}</div>
                                 <div className="text-xs text-muted-foreground font-mono pb-0.5 ml-2">
                                     {selectedFile.path}

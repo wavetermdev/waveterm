@@ -35,6 +35,7 @@ export class WaveConfigViewModel implements ViewModel {
     viewIcon = atom("gear");
     viewName = atom("Wave Config");
     viewComponent = WaveConfigView;
+    noPadding = atom(true);
     nodeModel: BlockNodeModel;
 
     selectedFileAtom: PrimitiveAtom<ConfigFile>;
@@ -44,6 +45,7 @@ export class WaveConfigViewModel implements ViewModel {
     isSavingAtom: PrimitiveAtom<boolean>;
     errorMessageAtom: PrimitiveAtom<string>;
     validationErrorAtom: PrimitiveAtom<string>;
+    isMenuOpenAtom: PrimitiveAtom<boolean>;
     configDir: string;
     saveShortcut: string;
     editorRef: React.RefObject<MonacoTypes.editor.IStandaloneCodeEditor>;
@@ -62,6 +64,7 @@ export class WaveConfigViewModel implements ViewModel {
         this.isSavingAtom = atom(false);
         this.errorMessageAtom = atom(null) as PrimitiveAtom<string>;
         this.validationErrorAtom = atom(null) as PrimitiveAtom<string>;
+        this.isMenuOpenAtom = atom(false);
         this.editorRef = React.createRef();
 
         this.initialize();
