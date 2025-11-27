@@ -6,9 +6,9 @@ import { globalStore } from "@/app/store/jotaiStore";
 import { CodeEditor } from "@/app/view/codeeditor/codeeditor";
 import type { ConfigFile, WaveConfigViewModel } from "@/app/view/waveconfig/waveconfig-model";
 import { checkKeyPressed, keydownWrapper } from "@/util/keyutil";
-import { debounce } from "throttle-debounce";
 import { useAtom, useAtomValue } from "jotai";
 import { memo, useCallback, useEffect, useRef } from "react";
+import { debounce } from "throttle-debounce";
 
 interface ConfigSidebarProps {
     model: WaveConfigViewModel;
@@ -162,13 +162,30 @@ const WaveConfigView = memo(({ blockId, model }: ViewComponentProps<WaveConfigVi
                                 >
                                     <i className="fa fa-bars" />
                                 </button>
-                                <div className="text-lg font-semibold whitespace-nowrap shrink-0">{selectedFile.name}</div>
-                                <div className="text-xs text-muted-foreground font-mono pb-0.5 ml-2 truncate @max-w450:hidden">
+                                <div className="text-lg font-semibold whitespace-nowrap shrink-0">
+                                    {selectedFile.name}
+                                </div>
+                                {selectedFile.docsUrl && (
+                                    <a
+                                        href={`${selectedFile.docsUrl}?ref=waveconfig`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="!text-muted-foreground hover:!text-primary transition-colors ml-1 shrink-0 cursor-pointer"
+                                        title="View documentation"
+                                    >
+                                        <i className="fa fa-book text-sm" />
+                                    </a>
+                                )}
+                                <div className="text-xs text-muted-foreground font-mono pb-0.5 ml-1 truncate @max-w450:hidden">
                                     {selectedFile.path}
                                 </div>
                             </div>
                             <div className="flex gap-2 items-baseline shrink-0">
-                                {hasChanges && <span className="text-xs text-warning pb-0.5 @max-w450:hidden">Unsaved changes</span>}
+                                {hasChanges && (
+                                    <span className="text-xs text-warning pb-0.5 @max-w450:hidden">
+                                        Unsaved changes
+                                    </span>
+                                )}
                                 <Tooltip content={saveTooltip} placement="bottom" divClassName="shrink-0">
                                     <button
                                         onClick={() => model.saveFile()}

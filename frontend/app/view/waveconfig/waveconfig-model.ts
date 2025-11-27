@@ -17,18 +17,40 @@ export type ConfigFile = {
     path: string;
     language: string;
     deprecated?: boolean;
+    docsUrl?: string;
 };
 
 const configFiles: ConfigFile[] = [
-    { name: "General", path: "settings.json", language: "json" },
-    { name: "Connections", path: "connections.json", language: "json" },
-    { name: "Widgets", path: "widgets.json", language: "json" },
+    { name: "General", path: "settings.json", language: "json", docsUrl: "https://docs.waveterm.dev/config" },
+    {
+        name: "Connections",
+        path: "connections.json",
+        language: "json",
+        docsUrl: "https://docs.waveterm.dev/connections",
+    },
+    {
+        name: "Widgets",
+        path: "widgets.json",
+        language: "json",
+        docsUrl: "https://docs.waveterm.dev/customwidgets",
+    },
     { name: "Wave AI", path: "waveai.json", language: "json" },
-    { name: "Backgrounds", path: "presets/bg.json", language: "json" },
+    {
+        name: "Backgrounds",
+        path: "presets/bg.json",
+        language: "json",
+        docsUrl: "https://docs.waveterm.dev/presets#background-configurations",
+    },
 ];
 
 const deprecatedConfigFiles: ConfigFile[] = [
-    { name: "AI Presets", path: "presets/ai.json", language: "json", deprecated: true },
+    {
+        name: "AI Presets",
+        path: "presets/ai.json",
+        language: "json",
+        deprecated: true,
+        docsUrl: "https://docs.waveterm.dev/ai-presets",
+    },
 ];
 
 export class WaveConfigViewModel implements ViewModel {
