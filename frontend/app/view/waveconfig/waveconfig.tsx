@@ -6,8 +6,9 @@ import { globalStore } from "@/app/store/jotaiStore";
 import { CodeEditor } from "@/app/view/codeeditor/codeeditor";
 import type { ConfigFile, WaveConfigViewModel } from "@/app/view/waveconfig/waveconfig-model";
 import { checkKeyPressed, keydownWrapper } from "@/util/keyutil";
+import { debounce } from "throttle-debounce";
 import { useAtom, useAtomValue } from "jotai";
-import { memo, useCallback, useEffect } from "react";
+import { memo, useCallback, useEffect, useRef } from "react";
 
 interface ConfigSidebarProps {
     model: WaveConfigViewModel;
@@ -88,6 +89,7 @@ const WaveConfigView = memo(({ blockId, model }: ViewComponentProps<WaveConfigVi
     const validationError = useAtomValue(model.validationErrorAtom);
     const [isMenuOpen, setIsMenuOpen] = useAtom(model.isMenuOpenAtom);
     const hasChanges = model.hasChanges();
+    const editorContainerRef = useRef<HTMLDivElement>(null);
 
     const handleEditorMount = useCallback(
         (editor) => {
@@ -118,6 +120,20 @@ const WaveConfigView = memo(({ blockId, model }: ViewComponentProps<WaveConfigVi
         return () => window.removeEventListener("keydown", handleKeyDown);
     }, [hasChanges, isSaving, model]);
 
+    useEffect(() => {
+        if (!editorContainerRef.current) {
+            return;
+        }
+        const debouncedLayout = debounce(100, () => {
+            if (model.editorRef.current) {
+                model.editorRef.current.layout();
+            }
+        });
+        const resizeObserver = new ResizeObserver(debouncedLayout);
+        resizeObserver.observe(editorContainerRef.current);
+        return () => resizeObserver.disconnect();
+    }, [model]);
+
     const saveTooltip = `Save (${model.saveShortcut})`;
 
     return (
@@ -128,7 +144,7 @@ const WaveConfigView = memo(({ blockId, model }: ViewComponentProps<WaveConfigVi
             <div className={`h-full ${isMenuOpen ? "" : "@max-w600:hidden"}`}>
                 <ConfigSidebar model={model} />
             </div>
-            <div className="flex flex-col flex-1">
+            <div ref={editorContainerRef} className="flex flex-col flex-1 min-w-0">
                 {selectedFile && (
                     <>
                         <div className="flex flex-row items-center justify-between px-4 py-2 border-b border-border">
