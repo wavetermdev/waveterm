@@ -29,7 +29,7 @@ declare global {
         "ai:apitokensecretname"?: string;
         "ai:capabilities"?: string[];
         "waveai:cloud"?: boolean;
-        "waveai:premium": boolean;
+        "waveai:premium"?: boolean;
     };
 
     // wshrpc.ActivityDisplayType
