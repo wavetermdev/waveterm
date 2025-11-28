@@ -27,6 +27,7 @@ const (
 	DefaultAnthropicModel  = "claude-sonnet-4-5"
 	DefaultOpenAIModel     = "gpt-5.1"
 	DefaultOpenRouterModel = "mistralai/mistral-small-3.2-24b-instruct"
+	DefaultGeminiModel     = "gemini-2.0-flash-exp"
 )
 
 // TestResponseWriter implements http.ResponseWriter and additional interfaces for testing
@@ -306,6 +307,57 @@ func testAnthropic(ctx context.Context, model, message string, tools []uctypes.T
 	}
 }
 
+func testGemini(ctx context.Context, model, message string, tools []uctypes.ToolDefinition) {
+	apiKey := os.Getenv("GOOGLE_APIKEY")
+	if apiKey == "" {
+		fmt.Println("Error: GOOGLE_APIKEY environment variable not set")
+		os.Exit(1)
+	}
+
+	opts := &uctypes.AIOptsType{
+		APIType:      uctypes.APIType_GoogleGemini,
+		APIToken:     apiKey,
+		Model:        model,
+		MaxTokens:    8192,
+		Capabilities: []string{uctypes.AICapabilityTools, uctypes.AICapabilityImages, uctypes.AICapabilityPdfs},
+	}
+
+	// Generate a chat ID
+	chatID := uuid.New().String()
+
+	// Convert to AIMessage format for WaveAIPostMessageWrap
+	aiMessage := &uctypes.AIMessage{
+		MessageId: uuid.New().String(),
+		Parts: []uctypes.AIMessagePart{
+			{
+				Type: uctypes.AIMessagePartTypeText,
+				Text: message,
+			},
+		},
+	}
+
+	fmt.Printf("Testing Google Gemini streaming with WaveAIPostMessageWrap, model: %s\n", model)
+	fmt.Printf("Message: %s\n", message)
+	fmt.Printf("Chat ID: %s\n", chatID)
+	fmt.Println("---")
+
+	testWriter := &TestResponseWriter{}
+	sseHandler := sse.MakeSSEHandlerCh(testWriter, ctx)
+	defer sseHandler.Close()
+
+	chatOpts := uctypes.WaveChatOpts{
+		ChatId:       chatID,
+		ClientId:     uuid.New().String(),
+		Config:       *opts,
+		Tools:        tools,
+		SystemPrompt: []string{"You are a helpful assistant. Be concise and clear in your responses."},
+	}
+	err := aiusechat.WaveAIPostMessageWrap(ctx, sseHandler, aiMessage, chatOpts)
+	if err != nil {
+		fmt.Printf("Google Gemini streaming error: %v\n", err)
+	}
+}
+
 func testT1(ctx context.Context) {
 	tool := aiusechat.GetAdderToolDefinition()
 	tools := []uctypes.ToolDefinition{tool}
@@ -323,7 +375,7 @@ func testT3(ctx context.Context) {
 }
 
 func printUsage() {
-	fmt.Println("Usage: go run main-testai.go [--anthropic|--openaicomp|--openrouter] [--tools] [--model <model>] [message]")
+	fmt.Println("Usage: go run main-testai.go [--anthropic|--openaicomp|--openrouter|--gemini] [--tools] [--model <model>] [message]")
 	fmt.Println("Examples:")
 	fmt.Println("  go run main-testai.go 'What is 2+2?'")
 	fmt.Println("  go run main-testai.go --model o4-mini 'What is 2+2?'")
@@ -332,6 +384,8 @@ func printUsage() {
 	fmt.Println("  go run main-testai.go --openaicomp --model gpt-4o 'What is 2+2?'")
 	fmt.Println("  go run main-testai.go --openrouter 'What is 2+2?'")
 	fmt.Println("  go run main-testai.go --openrouter --model anthropic/claude-3.5-sonnet 'What is 2+2?'")
+	fmt.Println("  go run main-testai.go --gemini 'What is 2+2?'")
+	fmt.Println("  go run main-testai.go --gemini --model gemini-1.5-pro 'What is 2+2?'")
 	fmt.Println("  go run main-testai.go --tools 'Help me configure GitHub Actions monitoring'")
 	fmt.Println("")
 	fmt.Println("Default models:")
@@ -339,21 +393,24 @@ func printUsage() {
 	fmt.Printf("  Anthropic: %s\n", DefaultAnthropicModel)
 	fmt.Printf("  OpenAI Completions: gpt-4o\n")
 	fmt.Printf("  OpenRouter: %s\n", DefaultOpenRouterModel)
+	fmt.Printf("  Google Gemini: %s\n", DefaultGeminiModel)
 	fmt.Println("")
 	fmt.Println("Environment variables:")
 	fmt.Println("  OPENAI_APIKEY (for OpenAI models)")
 	fmt.Println("  ANTHROPIC_APIKEY (for Anthropic models)")
 	fmt.Println("  OPENROUTER_APIKEY (for OpenRouter models)")
+	fmt.Println("  GOOGLE_APIKEY (for Google Gemini models)")
 }
 
 func main() {
-	var anthropic, openaicomp, openrouter, tools, help, t1, t2, t3 bool
+	var anthropic, openaicomp, openrouter, gemini, tools, help, t1, t2, t3 bool
 	var model string
 	flag.BoolVar(&anthropic, "anthropic", false, "Use Anthropic API instead of OpenAI")
 	flag.BoolVar(&openaicomp, "openaicomp", false, "Use OpenAI Completions API")
 	flag.BoolVar(&openrouter, "openrouter", false, "Use OpenRouter API")
+	flag.BoolVar(&gemini, "gemini", false, "Use Google Gemini API")
 	flag.BoolVar(&tools, "tools", false, "Enable GitHub Actions Monitor tools for testing")
-	flag.StringVar(&model, "model", "", fmt.Sprintf("AI model to use (defaults: %s for OpenAI, %s for Anthropic, %s for OpenRouter)", DefaultOpenAIModel, DefaultAnthropicModel, DefaultOpenRouterModel))
+	flag.StringVar(&model, "model", "", fmt.Sprintf("AI model to use (defaults: %s for OpenAI, %s for Anthropic, %s for OpenRouter, %s for Gemini)", DefaultOpenAIModel, DefaultAnthropicModel, DefaultOpenRouterModel, DefaultGeminiModel))
 	flag.BoolVar(&help, "help", false, "Show usage information")
 	flag.BoolVar(&t1, "t1", false, fmt.Sprintf("Run preset T1 test (%s with 'what is 2+2')", DefaultAnthropicModel))
 	flag.BoolVar(&t2, "t2", false, fmt.Sprintf("Run preset T2 test (%s with 'what is 2+2')", DefaultOpenAIModel))
@@ -389,6 +446,8 @@ func main() {
 			model = "gpt-4o"
 		} else if openrouter {
 			model = DefaultOpenRouterModel
+		} else if gemini {
+			model = DefaultGeminiModel
 		} else {
 			model = DefaultOpenAIModel
 		}
@@ -411,6 +470,8 @@ func main() {
 		testOpenAIComp(ctx, model, message, toolDefs)
 	} else if openrouter {
 		testOpenRouter(ctx, model, message, toolDefs)
+	} else if gemini {
+		testGemini(ctx, model, message, toolDefs)
 	} else {
 		testOpenAI(ctx, model, message, toolDefs)
 	}
