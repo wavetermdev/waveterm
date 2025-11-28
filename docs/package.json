@@ -47,8 +47,8 @@
         "eslint": "^8.57.0",
         "eslint-config-prettier": "^10.1.8",
         "eslint-plugin-mdx": "^3.6.2",
-        "prettier": "^3.6.2",
-        "prettier-plugin-jsdoc": "^1.5.0",
+        "prettier": "^3.7.1",
+        "prettier-plugin-jsdoc": "^1.7.0",
         "prettier-plugin-organize-imports": "^4.3.0",
         "remark-cli": "^12.0.1",
         "remark-frontmatter": "^5.0.0",
@@ -56,7 +56,7 @@
         "remark-preset-lint-consistent": "^6.0.1",
         "remark-preset-lint-recommended": "^7.0.1",
         "typescript": "^5.9.3",
-        "typescript-eslint": "^8.46.4"
+        "typescript-eslint": "^8.48.0"
     },
     "resolutions": {
         "path-to-regexp@npm:2.2.1": "^3",
