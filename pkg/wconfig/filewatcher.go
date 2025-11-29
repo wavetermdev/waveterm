@@ -18,11 +18,14 @@ import (
 var instance *Watcher
 var once sync.Once
 
+type ConfigUpdateHandler func(FullConfigType)
+
 type Watcher struct {
 	initialized bool
 	watcher     *fsnotify.Watcher
 	mutex       sync.Mutex
 	fullConfig  FullConfigType
+	handlers    []ConfigUpdateHandler
 }
 
 type WatcherUpdate struct {
@@ -106,11 +109,29 @@ func (w *Watcher) Close() {
 }
 
 func (w *Watcher) broadcast(message WatcherUpdate) {
-	// send to frontend
 	wps.Broker.Publish(wps.WaveEvent{
 		Event: wps.Event_Config,
 		Data:  message,
 	})
+	w.notifyHandlers(message.FullConfig)
+}
+
+func (w *Watcher) RegisterUpdateHandler(handler ConfigUpdateHandler) {
+	w.mutex.Lock()
+	defer w.mutex.Unlock()
+	w.handlers = append(w.handlers, handler)
+}
+
+func (w *Watcher) notifyHandlers(config FullConfigType) {
+	handlers := w.handlers
+	for _, handler := range handlers {
+		go func(h ConfigUpdateHandler) {
+			defer func() {
+				panichandler.PanicHandler("filewatcher:notifyHandlers", recover())
+			}()
+			h(config)
+		}(handler)
+	}
 }
 
 func (w *Watcher) GetFullConfig() FullConfigType {
