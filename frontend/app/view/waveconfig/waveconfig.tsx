@@ -5,6 +5,7 @@ import { Tooltip } from "@/app/element/tooltip";
 import { globalStore } from "@/app/store/jotaiStore";
 import { CodeEditor } from "@/app/view/codeeditor/codeeditor";
 import type { ConfigFile, WaveConfigViewModel } from "@/app/view/waveconfig/waveconfig-model";
+import { SecretsContent } from "@/app/view/waveconfig/secretscontent";
 import { checkKeyPressed, keydownWrapper } from "@/util/keyutil";
 import { useAtom, useAtomValue } from "jotai";
 import { memo, useCallback, useEffect, useRef } from "react";
@@ -152,8 +153,11 @@ const WaveConfigView = memo(({ blockId, model }: ViewComponentProps<WaveConfigVi
                 <ConfigSidebar model={model} />
             </div>
             <div ref={editorContainerRef} className="flex flex-col flex-1 min-w-0">
-                {selectedFile && (
-                    <>
+                {selectedFile && selectedFile.isSecrets ? (
+                    <SecretsContent model={model} />
+                ) : (
+                    selectedFile && (
+                        <>
                         <div className="flex flex-row items-center justify-between px-4 py-2 border-b border-border">
                             <div className="flex items-baseline gap-2 min-w-0">
                                 <button
@@ -240,7 +244,8 @@ const WaveConfigView = memo(({ blockId, model }: ViewComponentProps<WaveConfigVi
                                 />
                             )}
                         </div>
-                    </>
+                        </>
+                    )
                 )}
             </div>
         </div>
