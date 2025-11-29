@@ -75,6 +75,9 @@
           },
           "type": "array"
         },
+        "ssh:passwordsecretname": {
+          "type": "string"
+        },
         "ssh:batchmode": {
           "type": "boolean"
         },

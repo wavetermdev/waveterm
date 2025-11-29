@@ -315,6 +315,7 @@ type ConnKeywords struct {
 	SshHostName                     *string  `json:"ssh:hostname,omitempty"`
 	SshPort                         *string  `json:"ssh:port,omitempty"`
 	SshIdentityFile                 []string `json:"ssh:identityfile,omitempty"`
+	SshPasswordSecretName           *string  `json:"ssh:passwordsecretname,omitempty"`
 	SshBatchMode                    *bool    `json:"ssh:batchmode,omitempty"`
 	SshPubkeyAuthentication         *bool    `json:"ssh:pubkeyauthentication,omitempty"`
 	SshPasswordAuthentication       *bool    `json:"ssh:passwordauthentication,omitempty"`

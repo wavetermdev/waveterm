@@ -8,7 +8,6 @@ import * as keyutil from "@/util/keyutil";
 import { fireAndForget } from "@/util/util";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { UserInputService } from "../store/services";
-import "./userinputmodal.scss";
 
 const UserInputModal = (userInputRequest: UserInputRequest) => {
     const [responseText, setResponseText] = useState("");
@@ -80,9 +79,9 @@ const UserInputModal = (userInputRequest: UserInputRequest) => {
 
     const queryText = useMemo(() => {
         if (userInputRequest.markdown) {
-            return <Markdown text={userInputRequest.querytext} className="userinput-markdown" />;
+            return <Markdown text={userInputRequest.querytext} />;
         }
-        return <span className="userinput-text">{userInputRequest.querytext}</span>;
+        return <span>{userInputRequest.querytext}</span>;
     }, [userInputRequest.markdown, userInputRequest.querytext]);
 
     const inputBox = useMemo(() => {
@@ -95,7 +94,7 @@ const UserInputModal = (userInputRequest: UserInputRequest) => {
                 onChange={(e) => setResponseText(e.target.value)}
                 value={responseText}
                 maxLength={400}
-                className="userinput-inputbox"
+                className="resize-none bg-panel rounded-md border border-border py-1.5 pl-4 min-h-[30px] text-inherit cursor-text focus:outline-accent"
                 autoFocus={true}
                 onKeyDown={(e) => keyutil.keydownWrapper(handleKeyDown)(e)}
             />
@@ -107,15 +106,15 @@ const UserInputModal = (userInputRequest: UserInputRequest) => {
             return <></>;
         }
         return (
-            <div className="userinput-checkbox-container">
-                <div className="userinput-checkbox-row">
+            <div className="flex flex-col gap-1.5">
+                <div className="flex items-center gap-1.5">
                     <input
                         type="checkbox"
                         id={`uicheckbox-${userInputRequest.requestid}`}
-                        className="userinput-checkbox"
+                        className="accent-accent cursor-pointer"
                         ref={checkboxRef}
                     />
-                    <label htmlFor={`uicheckbox-${userInputRequest.requestid}`}>{userInputRequest.checkboxmsg}</label>
+                    <label htmlFor={`uicheckbox-${userInputRequest.requestid}`} className="cursor-pointer">{userInputRequest.checkboxmsg}</label>
                 </div>
             </div>
         );
@@ -148,14 +147,15 @@ const UserInputModal = (userInputRequest: UserInputRequest) => {
 
     return (
         <Modal
+            className="pt-6 pb-4 px-5"
             onOk={() => handleSubmit()}
             onCancel={() => handleNegativeResponse()}
             onClose={() => handleSendErrResponse()}
             okLabel={userInputRequest.oklabel}
             cancelLabel={userInputRequest.cancellabel}
         >
-            <div className="userinput-header">{userInputRequest.title + ` (${countdown}s)`}</div>
-            <div className="userinput-body">
+            <div className="font-bold text-primary mx-4 pb-2.5">{userInputRequest.title + ` (${countdown}s)`}</div>
+            <div className="flex flex-col justify-between gap-4 mx-4 mb-4 max-w-[500px] font-mono text-primary">
                 {queryText}
                 {inputBox}
                 {optionalCheckbox}
