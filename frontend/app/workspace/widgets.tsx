@@ -261,7 +261,8 @@ const SettingsFloatingWindow = memo(
                 onClick: () => {
                     const blockDef: BlockDef = {
                         meta: {
-                            view: "secretstore",
+                            view: "waveconfig",
+                            file: "secrets",
                         },
                     };
                     createBlock(blockDef, false, true);
