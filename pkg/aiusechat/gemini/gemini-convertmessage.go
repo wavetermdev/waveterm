@@ -53,6 +53,9 @@ func cleanSchemaForGemini(schema map[string]any) map[string]any {
 				for propName, propValue := range props {
 					if propSchema, ok := propValue.(map[string]any); ok {
 						cleanedProps[propName] = cleanSchemaForGemini(propSchema)
+					} else {
+						// Preserve non-map property values
+						cleanedProps[propName] = propValue
 					}
 				}
 				cleaned[key] = cleanedProps
