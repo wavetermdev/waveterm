@@ -166,13 +166,13 @@ jobs:
                   AWS_SECRET_ACCESS_KEY: "${{ secrets.ARTIFACTS_KEY_SECRET }}"
                   AWS_DEFAULT_REGION: us-west-2
             - name: Upload artifacts
-              uses: actions/upload-artifact@v4
+              uses: actions/upload-artifact@v5
               with:
                   name: ${{ matrix.runner }}
                   path: make
             - name: Upload Snapcraft logs on failure
               if: failure()
-              uses: actions/upload-artifact@v4
+              uses: actions/upload-artifact@v5
               with:
                   name: ${{ matrix.runner }}-log
                   path: /home/runner/.local/state/snapcraft/log

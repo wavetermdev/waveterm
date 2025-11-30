@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "AIModeConfigType": {
+      "properties": {
+        "display:name": {
+          "type": "string"
+        },
+        "display:order": {
+          "type": "number"
+        },
+        "display:icon": {
+          "type": "string"
+        },
+        "display:shortdesc": {
+          "type": "string"
+        },
+        "display:description": {
+          "type": "string"
+        },
+        "ai:apitype": {
+          "type": "string"
+        },
+        "ai:model": {
+          "type": "string"
+        },
+        "ai:thinkinglevel": {
+          "type": "string"
+        },
+        "ai:baseurl": {
+          "type": "string"
+        },
+        "ai:apiversion": {
+          "type": "string"
+        },
+        "ai:apitoken": {
+          "type": "string"
+        },
+        "ai:apitokensecretname": {
+          "type": "string"
+        },
+        "ai:capabilities": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "waveai:cloud": {
+          "type": "boolean"
+        },
+        "waveai:premium": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "display:name",
+        "display:icon",
+        "display:description",
+        "ai:apitype",
+        "ai:model",
+        "ai:thinkinglevel"
+      ]
+    }
+  },
+  "additionalProperties": {
+    "$ref": "#/$defs/AIModeConfigType"
+  },
+  "type": "object"
+}

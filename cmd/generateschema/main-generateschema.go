@@ -18,6 +18,8 @@ const WaveSchemaSettingsFileName = "schema/settings.json"
 const WaveSchemaConnectionsFileName = "schema/connections.json"
 const WaveSchemaAiPresetsFileName = "schema/aipresets.json"
 const WaveSchemaWidgetsFileName = "schema/widgets.json"
+const WaveSchemaBgPresetsFileName = "schema/bgpresets.json"
+const WaveSchemaWaveAIFileName = "schema/waveai.json"
 
 func generateSchema(template any, dir string) error {
 	settingsSchema := jsonschema.Reflect(template)
@@ -58,5 +60,17 @@ func main() {
 	err = generateSchema(&widgetsTemplate, WaveSchemaWidgetsFileName)
 	if err != nil {
 		log.Fatalf("widgets schema error: %v", err)
+	}
+
+	bgPresetsTemplate := make(map[string]wconfig.BgPresetsType)
+	err = generateSchema(&bgPresetsTemplate, WaveSchemaBgPresetsFileName)
+	if err != nil {
+		log.Fatalf("bg presets schema error: %v", err)
+	}
+
+	waveAITemplate := make(map[string]wconfig.AIModeConfigType)
+	err = generateSchema(&waveAITemplate, WaveSchemaWaveAIFileName)
+	if err != nil {
+		log.Fatalf("waveai schema error: %v", err)
 	}
 }

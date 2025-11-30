@@ -37,6 +37,8 @@ const allFilepaths: Map<string, Array<string>> = new Map();
 allFilepaths.set(`${getWebServerEndpoint()}/schema/settings.json`, makeConfigPathMatches("/settings.json"));
 allFilepaths.set(`${getWebServerEndpoint()}/schema/connections.json`, makeConfigPathMatches("/connections.json"));
 allFilepaths.set(`${getWebServerEndpoint()}/schema/aipresets.json`, makeConfigPathMatches("/presets/ai.json"));
+allFilepaths.set(`${getWebServerEndpoint()}/schema/bgpresets.json`, makeConfigPathMatches("/presets/bg.json"));
+allFilepaths.set(`${getWebServerEndpoint()}/schema/waveai.json`, makeConfigPathMatches("/waveai.json"));
 allFilepaths.set(`${getWebServerEndpoint()}/schema/widgets.json`, makeConfigPathMatches("/widgets.json"));
 
 async function getSchemaEndpointInfo(endpoint: string): Promise<EndpointInfo> {

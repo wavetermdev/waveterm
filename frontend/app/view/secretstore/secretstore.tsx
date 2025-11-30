@@ -40,7 +40,7 @@ LoadingSpinner.displayName = "LoadingSpinner";
 
 const EmptyState = memo(({ onAddSecret }: { onAddSecret: () => void }) => {
     return (
-        <div className="flex flex-col items-center justify-center gap-4 py-12">
+        <div className="flex flex-col items-center justify-center gap-4 py-12 max-w-[600px] mx-auto h-full bg-gray-800/50 rounded-lg">
             <i className="fa-sharp fa-solid fa-key text-4xl text-gray-600" />
             <h3 className="text-lg font-semibold text-gray-400">No Secrets</h3>
             <p className="text-gray-500">Add a secret to get started</p>
@@ -83,7 +83,7 @@ interface SecretListViewProps {
 
 const SecretListView = memo(({ secretNames, onSelectSecret, onAddSecret }: SecretListViewProps) => {
     return (
-        <div className="flex flex-col h-full">
+        <div className="flex flex-col h-full max-w-[600px] mx-auto w-full bg-gray-800/50 rounded-lg">
             <div className="flex items-center justify-between p-4 border-b border-gray-700">
                 <h3 className="text-lg font-semibold">Secrets</h3>
                 <span className="px-2 py-1 bg-gray-700 rounded text-sm">{secretNames.length}</span>
@@ -92,7 +92,7 @@ const SecretListView = memo(({ secretNames, onSelectSecret, onAddSecret }: Secre
                 {secretNames.map((name) => (
                     <div
                         key={name}
-                        className={cn("flex items-center gap-3 p-4 hover:bg-gray-800 cursor-pointer transition-colors")}
+                        className={cn("flex items-center gap-3 p-4 hover:bg-gray-700/50 cursor-pointer transition-colors")}
                         onClick={() => onSelectSecret(name)}
                     >
                         <i className="fa-sharp fa-solid fa-key text-accent-500" />
@@ -102,7 +102,7 @@ const SecretListView = memo(({ secretNames, onSelectSecret, onAddSecret }: Secre
                 ))}
                 <div
                     className={cn(
-                        "flex items-center justify-center gap-2 p-4 hover:bg-gray-800 cursor-pointer transition-colors border-t-2 border-gray-600"
+                        "flex items-center justify-center gap-2 p-4 hover:bg-gray-700/50 cursor-pointer transition-colors border-t-2 border-gray-600"
                     )}
                     onClick={onAddSecret}
                 >
@@ -140,7 +140,7 @@ const AddSecretForm = memo(
         const isNameInvalid = newSecretName !== "" && !secretNameRegex.test(newSecretName);
 
         return (
-            <div className="flex flex-col gap-4 max-w-2xl mx-auto p-4">
+            <div className="flex flex-col gap-4 max-w-[600px] mx-auto p-6 bg-gray-800/50 rounded-lg">
                 <h3 className="text-lg font-semibold">Add New Secret</h3>
                 <div className="flex flex-col gap-2">
                     <label className="text-sm font-medium">Secret Name</label>
@@ -217,7 +217,7 @@ const SecretDetailView = memo(({ model }: SecretDetailViewProps) => {
     }
 
     return (
-        <div className="flex flex-col gap-4 max-w-2xl mx-auto p-4">
+        <div className="flex flex-col gap-4 max-w-[600px] mx-auto p-6 bg-gray-800/50 rounded-lg">
             <div className="flex items-center gap-2">
                 <i className="fa-sharp fa-solid fa-key text-accent-500" />
                 <h3 className="text-lg font-semibold">{secretName}</h3>
@@ -326,7 +326,9 @@ export const SecretStoreView = memo(({ model }: { blockId: string; model: Secret
     if (storageBackendError) {
         return (
             <div className="secretstore-view">
-                <ErrorDisplay message={storageBackendError} variant="warning" />
+                <div className="max-w-[600px] mx-auto p-4">
+                    <ErrorDisplay message={storageBackendError} variant="warning" />
+                </div>
             </div>
         );
     }
@@ -334,7 +336,9 @@ export const SecretStoreView = memo(({ model }: { blockId: string; model: Secret
     if (isLoading && secretNames.length === 0 && !selectedSecret) {
         return (
             <div className="secretstore-view">
-                <LoadingSpinner message="Loading secrets..." />
+                <div className="max-w-[600px] mx-auto">
+                    <LoadingSpinner message="Loading secrets..." />
+                </div>
             </div>
         );
     }
@@ -374,7 +378,7 @@ export const SecretStoreView = memo(({ model }: { blockId: string; model: Secret
     return (
         <div className="secretstore-view w-full h-full">
             {errorMessage && (
-                <div className="mb-4">
+                <div className="max-w-[600px] mx-auto p-4">
                     <ErrorDisplay message={errorMessage} />
                 </div>
             )}
