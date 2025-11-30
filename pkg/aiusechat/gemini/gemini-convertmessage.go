@@ -15,12 +15,71 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
 )
 
+// cleanSchemaForGemini removes fields from JSON Schema that Gemini doesn't accept
+// Gemini uses a strict subset of JSON Schema and rejects fields like $schema, units, title, etc.
+func cleanSchemaForGemini(schema map[string]any) map[string]any {
+	if schema == nil {
+		return nil
+	}
+
+	cleaned := make(map[string]any)
+	
+	// Fields that Gemini accepts in the root schema
+	allowedRootFields := map[string]bool{
+		"type":        true,
+		"properties":  true,
+		"required":    true,
+		"description": true,
+		"items":       true,
+		"enum":        true,
+		"format":      true,
+		"minimum":     true,
+		"maximum":     true,
+		"pattern":     true,
+		"default":     true,
+	}
+
+	for key, value := range schema {
+		if !allowedRootFields[key] {
+			// Skip fields like $schema, title, units, definitions, $ref, etc.
+			continue
+		}
+
+		// Recursively clean nested schemas
+		switch key {
+		case "properties":
+			if props, ok := value.(map[string]any); ok {
+				cleanedProps := make(map[string]any)
+				for propName, propValue := range props {
+					if propSchema, ok := propValue.(map[string]any); ok {
+						cleanedProps[propName] = cleanSchemaForGemini(propSchema)
+					}
+				}
+				cleaned[key] = cleanedProps
+			}
+		case "items":
+			if items, ok := value.(map[string]any); ok {
+				cleaned[key] = cleanSchemaForGemini(items)
+			} else {
+				cleaned[key] = value
+			}
+		default:
+			cleaned[key] = value
+		}
+	}
+
+	return cleaned
+}
+
 // ConvertToolDefinitionToGemini converts a Wave ToolDefinition to Gemini format
 func ConvertToolDefinitionToGemini(tool uctypes.ToolDefinition) GeminiFunctionDeclaration {
+	// Clean the schema to remove fields that Gemini doesn't accept
+	cleanedSchema := cleanSchemaForGemini(tool.InputSchema)
+	
 	return GeminiFunctionDeclaration{
 		Name:        tool.Name,
 		Description: tool.Description,
-		Parameters:  tool.InputSchema,
+		Parameters:  cleanedSchema,
 	}
 }
 
