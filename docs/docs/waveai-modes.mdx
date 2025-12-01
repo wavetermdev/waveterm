@@ -1,0 +1,326 @@
+---
+sidebar_position: 1.6
+id: "waveai-modes"
+title: "Wave AI (Local Models)"
+---
+
+Wave AI supports custom AI modes that allow you to use local models, custom API endpoints, and alternative AI providers. This gives you complete control over which models and providers you use with Wave's AI features.
+
+## Configuration Overview
+
+AI modes are configured in `~/.config/waveterm/waveai.json`.
+
+**To edit using the UI:**
+1. Click the settings (gear) icon in the widget bar
+2. Select "Settings" from the menu
+3. Choose "Wave AI Modes" from the settings sidebar
+
+**Or edit from the command line:**
+```bash
+wsh editconfig waveai.json
+```
+
+Each mode defines a complete AI configuration including the model, API endpoint, authentication, and display properties.
+
+## Supported API Types
+
+Wave AI supports two OpenAI-compatible API types:
+
+- **`openai-chat`**: Uses the `/v1/chat/completions` endpoint (most common for local models)
+- **`openai-responses`**: Uses the `/v1/responses` endpoint (modern API for GPT-5 models)
+
+## Configuration Structure
+
+```json
+{
+  "mode-key": {
+    "display:name": "Display Name",
+    "display:order": 1,
+    "display:icon": "icon-name",
+    "display:shortdesc": "Short description",
+    "display:description": "Full description",
+    "ai:apitype": "openai-chat",
+    "ai:model": "model-name",
+    "ai:thinkinglevel": "normal",
+    "ai:baseurl": "http://localhost:11434/v1/chat/completions",
+    "ai:apitokensecretname": "PROVIDER_KEY",
+    "ai:capabilities": ["tools", "images", "pdfs"]
+  }
+}
+```
+
+### Field Reference
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `display:name` | Yes | Name shown in the AI mode selector |
+| `display:order` | No | Sort order in the selector (lower numbers first) |
+| `display:icon` | Yes | Icon identifier for the mode |
+| `display:shortdesc` | No | Brief description for tooltips |
+| `display:description` | Yes | Full description of the mode |
+| `ai:apitype` | Yes | API type: `openai-chat` or `openai-responses` |
+| `ai:model` | Yes | Model identifier |
+| `ai:thinkinglevel` | Yes | Thinking level setting |
+| `ai:baseurl` | No | Full API endpoint URL including path (e.g., `http://localhost:11434/v1/chat/completions`) |
+| `ai:apiversion` | No | API version (if required by provider) |
+| `ai:apitoken` | No | API key/token (not recommended - use secrets instead) |
+| `ai:apitokensecretname` | No | Name of secret containing API token (recommended) |
+| `ai:capabilities` | No | Array of supported capabilities: `"tools"`, `"images"`, `"pdfs"` |
+| `waveai:cloud` | No | Internal - for Wave Cloud AI configuration only |
+| `waveai:premium` | No | Internal - for Wave Cloud AI configuration only |
+
+### AI Capabilities
+
+The `ai:capabilities` field specifies what features the AI mode supports:
+
+- **`tools`** - Enables AI tool usage for file reading/writing, shell integration, and widget interaction
+- **`images`** - Allows image attachments in chat (model can view uploaded images)
+- **`pdfs`** - Allows PDF file attachments in chat (model can read PDF content)
+
+Most models support `tools` and can benefit from it. Vision-capable models should include `images`. Not all models support PDFs, so only include `pdfs` if your model can process them.
+
+## Local Model Examples
+
+### Ollama
+
+[Ollama](https://ollama.ai) provides an OpenAI-compatible API for running models locally:
+
+```json
+{
+  "ollama-llama": {
+    "display:name": "Ollama - Llama 3.3",
+    "display:order": 1,
+    "display:icon": "llama",
+    "display:description": "Local Llama 3.3 70B model via Ollama",
+    "ai:apitype": "openai-chat",
+    "ai:model": "llama3.3:70b",
+    "ai:thinkinglevel": "normal",
+    "ai:baseurl": "http://localhost:11434/v1/chat/completions",
+    "ai:apitoken": "ollama"
+  }
+}
+```
+
+:::tip
+The `ai:apitoken` field is required but Ollama ignores it - you can set it to any value like `"ollama"`.
+:::
+
+### LM Studio
+
+[LM Studio](https://lmstudio.ai) provides a local server that can run various models:
+
+```json
+{
+  "lmstudio-qwen": {
+    "display:name": "LM Studio - Qwen",
+    "display:order": 2,
+    "display:icon": "server",
+    "display:description": "Local Qwen model via LM Studio",
+    "ai:apitype": "openai-chat",
+    "ai:model": "qwen/qwen-2.5-coder-32b-instruct",
+    "ai:thinkinglevel": "normal",
+    "ai:baseurl": "http://localhost:1234/v1/chat/completions",
+    "ai:apitoken": "not-needed"
+  }
+}
+```
+
+### Jan
+
+[Jan](https://jan.ai) is another local AI runtime with OpenAI API compatibility:
+
+```json
+{
+  "jan-local": {
+    "display:name": "Jan",
+    "display:order": 3,
+    "display:icon": "server",
+    "display:description": "Local model via Jan",
+    "ai:apitype": "openai-chat",
+    "ai:model": "your-model-name",
+    "ai:thinkinglevel": "normal",
+    "ai:baseurl": "http://localhost:1337/v1/chat/completions",
+    "ai:apitoken": "not-needed"
+  }
+}
+```
+
+## Cloud Provider Examples
+
+### OpenAI
+
+```json
+{
+  "openai-gpt4": {
+    "display:name": "GPT-4 Turbo",
+    "display:order": 10,
+    "display:icon": "openai",
+    "display:description": "OpenAI GPT-4 Turbo",
+    "ai:apitype": "openai-chat",
+    "ai:model": "gpt-4-turbo-preview",
+    "ai:thinkinglevel": "normal",
+    "ai:baseurl": "https://api.openai.com/v1/chat/completions",
+    "ai:apitokensecretname": "OPENAI_KEY"
+  }
+}
+```
+
+For GPT-5.1 models, you can use the `openai-responses` API type:
+
+```json
+{
+  "openai-gpt51": {
+    "display:name": "GPT-5.1",
+    "display:order": 11,
+    "display:icon": "openai",
+    "display:description": "OpenAI GPT-5.1 (Responses API)",
+    "ai:apitype": "openai-responses",
+    "ai:model": "gpt-5.1",
+    "ai:thinkinglevel": "normal",
+    "ai:baseurl": "https://api.openai.com/v1/responses",
+    "ai:apitokensecretname": "OPENAI_KEY"
+  }
+}
+```
+
+### OpenRouter
+
+[OpenRouter](https://openrouter.ai) provides access to multiple AI models:
+
+```json
+{
+  "openrouter-qwen": {
+    "display:name": "OpenRouter - Qwen",
+    "display:order": 11,
+    "display:icon": "cube",
+    "display:description": "Qwen via OpenRouter",
+    "ai:apitype": "openai-chat",
+    "ai:model": "qwen/qwen-2.5-coder-32b-instruct",
+    "ai:thinkinglevel": "normal",
+    "ai:baseurl": "https://openrouter.ai/api/v1/chat/completions",
+    "ai:apitokensecretname": "OPENROUTER_KEY"
+  }
+}
+```
+
+### Azure OpenAI
+
+```json
+{
+  "azure-gpt4": {
+    "display:name": "Azure GPT-4",
+    "display:order": 12,
+    "display:icon": "azure",
+    "display:description": "GPT-4 via Azure OpenAI",
+    "ai:apitype": "openai-chat",
+    "ai:model": "your-deployment-name",
+    "ai:thinkinglevel": "normal",
+    "ai:baseurl": "https://your-resource.openai.azure.com/openai/deployments/your-deployment-name/chat/completions",
+    "ai:apiversion": "2024-02-15-preview",
+    "ai:apitokensecretname": "AZURE_KEY"
+  }
+}
+```
+
+## Using Secrets for API Keys
+
+Instead of storing API keys directly in the configuration, you should use Wave's secret store to keep your credentials secure. Secrets are stored encrypted using your system's native keychain.
+
+### Storing an API Key
+
+**Using the Secrets UI (recommended):**
+1. Click the settings (gear) icon in the widget bar
+2. Select "Secrets" from the menu
+3. Click "Add New Secret"
+4. Enter the secret name (e.g., `OPENAI_API_KEY`) and your API key
+5. Click "Save"
+
+**Or from the command line:**
+```bash
+wsh secret set OPENAI_KEY=sk-xxxxxxxxxxxxxxxx
+wsh secret set OPENROUTER_KEY=sk-xxxxxxxxxxxxxxxx
+```
+
+### Referencing the Secret
+
+Then reference it in your Wave AI mode configuration using `ai:apitokensecretname`:
+
+```json
+{
+  "my-openai-mode": {
+    "display:name": "OpenAI GPT-4",
+    "ai:apitype": "openai-chat",
+    "ai:model": "gpt-4-turbo-preview",
+    "ai:apitokensecretname": "OPENAI_KEY"
+  }
+}
+```
+
+See the [Secrets documentation](./secrets.mdx) for more information on managing secrets securely in Wave.
+
+## Multiple Modes Example
+
+You can define multiple AI modes and switch between them easily:
+
+```json
+{
+  "ollama-llama": {
+    "display:name": "Ollama - Llama 3.3",
+    "display:order": 1,
+    "display:icon": "llama",
+    "display:description": "Local Llama 3.3 70B",
+    "ai:apitype": "openai-chat",
+    "ai:model": "llama3.3:70b",
+    "ai:thinkinglevel": "normal",
+    "ai:baseurl": "http://localhost:11434/v1/chat/completions",
+    "ai:apitoken": "ollama"
+  },
+  "ollama-codellama": {
+    "display:name": "Ollama - CodeLlama",
+    "display:order": 2,
+    "display:icon": "code",
+    "display:description": "Local CodeLlama for coding",
+    "ai:apitype": "openai-chat",
+    "ai:model": "codellama:34b",
+    "ai:thinkinglevel": "normal",
+    "ai:baseurl": "http://localhost:11434/v1/chat/completions",
+    "ai:apitoken": "ollama"
+  },
+  "openai-gpt4": {
+    "display:name": "GPT-4 Turbo",
+    "display:order": 10,
+    "display:icon": "openai",
+    "display:description": "Cloud GPT-4 for complex tasks",
+    "ai:apitype": "openai-chat",
+    "ai:model": "gpt-4-turbo-preview",
+    "ai:thinkinglevel": "normal",
+    "ai:baseurl": "https://api.openai.com/v1/chat/completions",
+    "ai:apitokensecretname": "OPENAI_KEY"
+  }
+}
+```
+
+## Troubleshooting
+
+### Connection Issues
+
+If Wave can't connect to your local model server:
+
+1. Verify the server is running (`curl http://localhost:11434/v1/models` for Ollama)
+2. Check the `ai:baseurl` is the complete endpoint URL including the path (e.g., `/v1/chat/completions`)
+3. Make sure to use the correct API type (`openai-chat` vs `openai-responses`)
+4. Check firewall settings if using a non-localhost address
+
+### Model Not Found
+
+If you get "model not found" errors:
+
+1. Verify the model name matches exactly what your server expects
+2. For Ollama, use `ollama list` to see available models
+3. Some servers require prefixes or specific naming formats
+
+### API Type Selection
+
+- Use `openai-chat` for most providers (Ollama, LM Studio, OpenAI, OpenRouter)
+- Use `openai-responses` only if your provider specifically requires it
+- When in doubt, try `openai-chat` first

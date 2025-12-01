@@ -80,7 +80,7 @@ const configFiles: ConfigFile[] = [
         docsUrl: "https://docs.waveterm.dev/customwidgets",
     },
     {
-        name: "Wave AI",
+        name: "Wave AI Modes",
         path: "waveai.json",
         language: "json",
         validator: validateWaveAiJson,
