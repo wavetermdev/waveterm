@@ -263,13 +263,13 @@ func RunGeminiChatStep(
 
 	if resp.StatusCode != http.StatusOK {
 		bodyBytes, _ := io.ReadAll(resp.Body)
-		
+
 		// Try to parse as Gemini error
 		var geminiErr GeminiErrorResponse
 		if err := json.Unmarshal(bodyBytes, &geminiErr); err == nil && geminiErr.Error != nil {
 			return nil, nil, nil, fmt.Errorf("Gemini API error (%d): %s", geminiErr.Error.Code, geminiErr.Error.Message)
 		}
-		
+
 		return nil, nil, nil, fmt.Errorf("API returned status %d: %s", resp.StatusCode, utilfn.TruncateString(string(bodyBytes), 120))
 	}
 
@@ -365,7 +365,7 @@ func processGeminiStream(
 		}
 
 		candidate := chunk.Candidates[0]
-		
+
 		// Store finish reason
 		if candidate.FinishReason != "" {
 			finishReason = candidate.FinishReason
@@ -389,11 +389,11 @@ func processGeminiStream(
 			if part.FunctionCall != nil {
 				// Track function call for tool use
 				toolCallId := uuid.New().String()
-				
+
 				// Send tool progress using aiutil
 				argsBytes, _ := json.Marshal(part.FunctionCall.Args)
 				aiutil.SendToolProgress(toolCallId, part.FunctionCall.Name, argsBytes, chatOpts, sseHandler, false)
-				
+
 				functionCalls = append(functionCalls, GeminiMessagePart{
 					FunctionCall: part.FunctionCall,
 					ToolUseData: &uctypes.UIMessageDataToolUse{

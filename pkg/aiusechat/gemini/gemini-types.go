@@ -89,8 +89,9 @@ type GeminiFileData struct {
 
 // GeminiFunctionCall represents a function call from the model
 type GeminiFunctionCall struct {
-	Name string         `json:"name"`
-	Args map[string]any `json:"args,omitempty"`
+	Name             string         `json:"name"`
+	Args             map[string]any `json:"args,omitempty"`
+	ThoughtSignature string         `json:"thought_signature,omitempty"`
 }
 
 // GeminiFunctionResponse represents a function execution result

@@ -27,7 +27,7 @@ const (
 	DefaultAnthropicModel  = "claude-sonnet-4-5"
 	DefaultOpenAIModel     = "gpt-5.1"
 	DefaultOpenRouterModel = "mistralai/mistral-small-3.2-24b-instruct"
-	DefaultGeminiModel     = "gemini-2.0-flash-exp"
+	DefaultGeminiModel     = "gemini-3-pro-preview"
 )
 
 // TestResponseWriter implements http.ResponseWriter and additional interfaces for testing
@@ -374,6 +374,12 @@ func testT3(ctx context.Context) {
 	testOpenAIComp(ctx, "gpt-4o", "what is 2+2? please be brief", nil)
 }
 
+func testT4(ctx context.Context) {
+	tool := aiusechat.GetAdderToolDefinition()
+	tools := []uctypes.ToolDefinition{tool}
+	testGemini(ctx, DefaultGeminiModel, "what is 2+2+8, use the provider adder tool", tools)
+}
+
 func printUsage() {
 	fmt.Println("Usage: go run main-testai.go [--anthropic|--openaicomp|--openrouter|--gemini] [--tools] [--model <model>] [message]")
 	fmt.Println("Examples:")
@@ -403,7 +409,7 @@ func printUsage() {
 }
 
 func main() {
-	var anthropic, openaicomp, openrouter, gemini, tools, help, t1, t2, t3 bool
+	var anthropic, openaicomp, openrouter, gemini, tools, help, t1, t2, t3, t4 bool
 	var model string
 	flag.BoolVar(&anthropic, "anthropic", false, "Use Anthropic API instead of OpenAI")
 	flag.BoolVar(&openaicomp, "openaicomp", false, "Use OpenAI Completions API")
@@ -414,7 +420,8 @@ func main() {
 	flag.BoolVar(&help, "help", false, "Show usage information")
 	flag.BoolVar(&t1, "t1", false, fmt.Sprintf("Run preset T1 test (%s with 'what is 2+2')", DefaultAnthropicModel))
 	flag.BoolVar(&t2, "t2", false, fmt.Sprintf("Run preset T2 test (%s with 'what is 2+2')", DefaultOpenAIModel))
-	flag.BoolVar(&t3, "t3", false, "Run preset T3 test (OpenAI Completions API with gpt-4o)")
+	flag.BoolVar(&t3, "t3", false, "Run preset T3 test (OpenAI Completions API with gpt-5.1)")
+	flag.BoolVar(&t4, "t4", false, "Run preset T4 test (OpenAI Completions API with gemini-3-pro-preview)")
 	flag.Parse()
 
 	if help {
@@ -435,6 +442,10 @@ func main() {
 	}
 	if t3 {
 		testT3(ctx)
+		return
+	}
+	if t4 {
+		testT4(ctx)
 		return
 	}
 
