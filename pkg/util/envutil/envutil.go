@@ -67,3 +67,27 @@ func RmEnv(envStr string, key string) string {
 	delete(envMap, key)
 	return MapToEnv(envMap)
 }
+
+func SliceToEnv(env []string) string {
+	var sb strings.Builder
+	for _, envVar := range env {
+		if len(envVar) == 0 {
+			continue
+		}
+		sb.WriteString(envVar)
+		sb.WriteByte('\x00')
+	}
+	return sb.String()
+}
+
+func EnvToSlice(envStr string) []string {
+	envLines := strings.Split(envStr, "\x00")
+	result := make([]string, 0, len(envLines))
+	for _, line := range envLines {
+		if len(line) == 0 {
+			continue
+		}
+		result = append(result, line)
+	}
+	return result
+}

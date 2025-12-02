@@ -19,7 +19,7 @@ if [[ -n ${_comps+x} ]]; then
 fi
 
 # fix history (macos)
-if [[ "$OSTYPE" == darwin* && "$HISTFILE" == "$WAVETERM_ZDOTDIR/.zsh_history" ]]; then
+if [[ "$HISTFILE" == "$WAVETERM_ZDOTDIR/.zsh_history" ]]; then
   HISTFILE="$HOME/.zsh_history"
 fi
 

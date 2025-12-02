@@ -18,6 +18,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/wavetermdev/waveterm/pkg/util/envutil"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
@@ -512,14 +513,19 @@ func FixupWaveZshHistory() error {
 		SAVEHIST=999999
 		has_extended_history=%s
 		[[ $has_extended_history == true ]] && setopt EXTENDED_HISTORY
-		fc -R %s
+		fc -RI
+		fc -RI %s
 		fc -W
 	`, hasExtendedStr, quotedWaveHistFile)
 
 	ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancelFn()
 
-	cmd := exec.CommandContext(ctx, "zsh", "-c", script)
+	cmd := exec.CommandContext(ctx, "zsh", "-f", "-i", "-c", script)
+	cmd.Stdin = nil
+	envStr := envutil.SliceToEnv(os.Environ())
+	envStr = envutil.RmEnv(envStr, "ZDOTDIR")
+	cmd.Env = envutil.EnvToSlice(envStr)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("error executing zsh history fixup script: %w, output: %s", err, string(output))
