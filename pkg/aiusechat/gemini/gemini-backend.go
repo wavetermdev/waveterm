@@ -414,9 +414,11 @@ func processGeminiStream(
 				argsBytes, _ := json.Marshal(part.FunctionCall.Args)
 				aiutil.SendToolProgress(toolCallId, part.FunctionCall.Name, argsBytes, chatOpts, sseHandler, false)
 
+				// Preserve thought_signature exactly as received from API
+				// It can be at part level, FunctionCall level, or both
 				functionCalls = append(functionCalls, GeminiMessagePart{
 					FunctionCall:     part.FunctionCall,
-					ThoughtSignature: part.FunctionCall.ThoughtSignature,
+					ThoughtSignature: part.ThoughtSignature,
 					ToolUseData: &uctypes.UIMessageDataToolUse{
 						ToolCallId: toolCallId,
 						ToolName:   part.FunctionCall.Name,
