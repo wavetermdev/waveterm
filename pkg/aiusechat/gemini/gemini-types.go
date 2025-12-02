@@ -14,10 +14,10 @@ const (
 
 // GeminiChatMessage represents a stored chat message for Gemini backend
 type GeminiChatMessage struct {
-	MessageId string                  `json:"messageid"`
-	Role      string                  `json:"role"` // "user", "model"
-	Parts     []GeminiMessagePart     `json:"parts"`
-	Usage     *GeminiUsageMetadata    `json:"usage,omitempty"`
+	MessageId string               `json:"messageid"`
+	Role      string               `json:"role"` // "user", "model"
+	Parts     []GeminiMessagePart  `json:"parts"`
+	Usage     *GeminiUsageMetadata `json:"usage,omitempty"`
 }
 
 func (m *GeminiChatMessage) GetMessageId() string {
@@ -57,9 +57,12 @@ type GeminiMessagePart struct {
 	// Function response (result of tool execution)
 	FunctionResponse *GeminiFunctionResponse `json:"functionResponse,omitempty"`
 
+	// Thought signature (for thinking models - applies to text and function calls)
+	ThoughtSignature string `json:"thoughtSignature,omitempty"`
+
 	// Internal fields (not sent to API)
-	PreviewUrl string                        `json:"previewurl,omitempty"` // internal field
-	FileName   string                        `json:"filename,omitempty"`   // internal field
+	PreviewUrl  string                        `json:"previewurl,omitempty"`  // internal field
+	FileName    string                        `json:"filename,omitempty"`    // internal field
 	ToolUseData *uctypes.UIMessageDataToolUse `json:"toolusedata,omitempty"` // internal field
 }
 
@@ -110,21 +113,30 @@ type GeminiUsageMetadata struct {
 	TotalTokenCount         int    `json:"totalTokenCount"`
 }
 
+// GeminiThinkingConfig represents thinking configuration for Gemini 3+ models
+type GeminiThinkingConfig struct {
+	ThinkingLevel string `json:"thinkingLevel,omitempty"` // "low" or "high"
+}
+
 // GeminiGenerationConfig represents generation parameters
 type GeminiGenerationConfig struct {
-	Temperature     float32  `json:"temperature,omitempty"`
-	TopP            float32  `json:"topP,omitempty"`
-	TopK            int32    `json:"topK,omitempty"`
-	CandidateCount  int32    `json:"candidateCount,omitempty"`
-	MaxOutputTokens int32    `json:"maxOutputTokens,omitempty"`
-	StopSequences   []string `json:"stopSequences,omitempty"`
-	ThinkingLevel   string   `json:"thinkingLevel,omitempty"` // "low" or "high" for Gemini 3+ models
+	Temperature     float32               `json:"temperature,omitempty"`
+	TopP            float32               `json:"topP,omitempty"`
+	TopK            int32                 `json:"topK,omitempty"`
+	CandidateCount  int32                 `json:"candidateCount,omitempty"`
+	MaxOutputTokens int32                 `json:"maxOutputTokens,omitempty"`
+	StopSequences   []string              `json:"stopSequences,omitempty"`
+	ThinkingConfig  *GeminiThinkingConfig `json:"thinkingConfig,omitempty"` // for Gemini 3+ models
 }
 
 // GeminiTool represents a function tool definition
 type GeminiTool struct {
 	FunctionDeclarations []GeminiFunctionDeclaration `json:"functionDeclarations,omitempty"`
+	GoogleSearch         *GeminiGoogleSearch         `json:"googleSearch,omitempty"`
 }
+
+// GeminiGoogleSearch represents Google Search configuration (empty for default)
+type GeminiGoogleSearch struct{}
 
 // GeminiFunctionDeclaration represents a function schema
 type GeminiFunctionDeclaration struct {
@@ -166,26 +178,28 @@ func (c *GeminiContent) Clean() *GeminiContent {
 
 // GeminiRequest represents a request to the Gemini API
 type GeminiRequest struct {
-	Contents         []GeminiContent         `json:"contents"`
-	SystemInstruction *GeminiContent         `json:"systemInstruction,omitempty"`
-	GenerationConfig *GeminiGenerationConfig `json:"generationConfig,omitempty"`
-	Tools            []GeminiTool            `json:"tools,omitempty"`
-	ToolConfig       *GeminiToolConfig       `json:"toolConfig,omitempty"`
+	Contents          []GeminiContent         `json:"contents"`
+	SystemInstruction *GeminiContent          `json:"systemInstruction,omitempty"`
+	GenerationConfig  *GeminiGenerationConfig `json:"generationConfig,omitempty"`
+	Tools             []GeminiTool            `json:"tools,omitempty"`
+	ToolConfig        *GeminiToolConfig       `json:"toolConfig,omitempty"`
 }
 
 // GeminiStreamResponse represents a streaming response chunk
 type GeminiStreamResponse struct {
-	Candidates      []GeminiCandidate     `json:"candidates,omitempty"`
-	PromptFeedback  *GeminiPromptFeedback `json:"promptFeedback,omitempty"`
-	UsageMetadata   *GeminiUsageMetadata  `json:"usageMetadata,omitempty"`
+	Candidates        []GeminiCandidate        `json:"candidates,omitempty"`
+	PromptFeedback    *GeminiPromptFeedback    `json:"promptFeedback,omitempty"`
+	UsageMetadata     *GeminiUsageMetadata     `json:"usageMetadata,omitempty"`
+	GroundingMetadata *GeminiGroundingMetadata `json:"groundingMetadata,omitempty"`
 }
 
 // GeminiCandidate represents a candidate response
 type GeminiCandidate struct {
-	Content       *GeminiContent        `json:"content,omitempty"`
-	FinishReason  string                `json:"finishReason,omitempty"`
-	Index         int                   `json:"index,omitempty"`
-	SafetyRatings []GeminiSafetyRating  `json:"safetyRatings,omitempty"`
+	Content           *GeminiContent           `json:"content,omitempty"`
+	FinishReason      string                   `json:"finishReason,omitempty"`
+	Index             int                      `json:"index,omitempty"`
+	SafetyRatings     []GeminiSafetyRating     `json:"safetyRatings,omitempty"`
+	GroundingMetadata *GeminiGroundingMetadata `json:"groundingMetadata,omitempty"`
 }
 
 // GeminiSafetyRating represents a safety rating
@@ -210,4 +224,9 @@ type GeminiError struct {
 	Code    int    `json:"code"`
 	Message string `json:"message"`
 	Status  string `json:"status,omitempty"`
+}
+
+// GeminiGroundingMetadata represents grounding metadata with web search results
+type GeminiGroundingMetadata struct {
+	WebSearchQueries []string `json:"webSearchQueries,omitempty"`
 }

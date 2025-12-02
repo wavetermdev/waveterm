@@ -67,6 +67,18 @@ func UpdateToolUseData(chatId string, toolCallId string, toolUseData uctypes.UIM
 	return fmt.Errorf("tool call with ID %s not found in chat %s", toolCallId, chatId)
 }
 
+// appendPartToLastUserMessage appends a text part to the last user message in the contents slice
+func appendPartToLastUserMessage(contents []GeminiContent, text string) {
+	for i := len(contents) - 1; i >= 0; i-- {
+		if contents[i].Role == "user" {
+			contents[i].Parts = append(contents[i].Parts, GeminiMessagePart{
+				Text: text,
+			})
+			break
+		}
+	}
+}
+
 // buildGeminiHTTPRequest creates an HTTP request for the Gemini API
 func buildGeminiHTTPRequest(ctx context.Context, contents []GeminiContent, chatOpts uctypes.WaveChatOpts) (*http.Request, error) {
 	opts := chatOpts.Config
@@ -98,7 +110,9 @@ func buildGeminiHTTPRequest(ctx context.Context, contents []GeminiContent, chatO
 		if opts.ThinkingLevel == uctypes.ThinkingLevelLow {
 			geminiThinkingLevel = "low"
 		}
-		reqBody.GenerationConfig.ThinkingLevel = geminiThinkingLevel
+		reqBody.GenerationConfig.ThinkingConfig = &GeminiThinkingConfig{
+			ThinkingLevel: geminiThinkingLevel,
+		}
 	}
 
 	// Add system instruction if provided
@@ -137,39 +151,18 @@ func buildGeminiHTTPRequest(ctx context.Context, contents []GeminiContent, chatO
 		}
 	}
 
-	// Injected data - append to last user message
-	if chatOpts.TabState != "" || chatOpts.PlatformInfo != "" || chatOpts.AppStaticFiles != "" || chatOpts.AppGoFile != "" {
-		for i := len(reqBody.Contents) - 1; i >= 0; i-- {
-			if reqBody.Contents[i].Role == "user" {
-				var additionalText strings.Builder
-				if chatOpts.TabState != "" {
-					additionalText.WriteString("\n\n")
-					additionalText.WriteString(chatOpts.TabState)
-				}
-				if chatOpts.PlatformInfo != "" {
-					additionalText.WriteString("\n\n<PlatformInfo>\n")
-					additionalText.WriteString(chatOpts.PlatformInfo)
-					additionalText.WriteString("\n</PlatformInfo>")
-				}
-				if chatOpts.AppStaticFiles != "" {
-					additionalText.WriteString("\n\n<CurrentAppStaticFiles>\n")
-					additionalText.WriteString(chatOpts.AppStaticFiles)
-					additionalText.WriteString("\n</CurrentAppStaticFiles>")
-				}
-				if chatOpts.AppGoFile != "" {
-					additionalText.WriteString("\n\n<CurrentAppGoFile>\n")
-					additionalText.WriteString(chatOpts.AppGoFile)
-					additionalText.WriteString("\n</CurrentAppGoFile>")
-				}
-
-				if additionalText.Len() > 0 {
-					reqBody.Contents[i].Parts = append(reqBody.Contents[i].Parts, GeminiMessagePart{
-						Text: additionalText.String(),
-					})
-				}
-				break
-			}
-		}
+	// Injected data - append to last user message as separate parts
+	if chatOpts.TabState != "" {
+		appendPartToLastUserMessage(reqBody.Contents, chatOpts.TabState)
+	}
+	if chatOpts.PlatformInfo != "" {
+		appendPartToLastUserMessage(reqBody.Contents, "<PlatformInfo>\n"+chatOpts.PlatformInfo+"\n</PlatformInfo>")
+	}
+	if chatOpts.AppStaticFiles != "" {
+		appendPartToLastUserMessage(reqBody.Contents, "<CurrentAppStaticFiles>\n"+chatOpts.AppStaticFiles+"\n</CurrentAppStaticFiles>")
+	}
+	if chatOpts.AppGoFile != "" {
+		appendPartToLastUserMessage(reqBody.Contents, "<CurrentAppGoFile>\n"+chatOpts.AppGoFile+"\n</CurrentAppGoFile>")
 	}
 
 	if wavebase.IsDevMode() {
@@ -185,6 +178,7 @@ func buildGeminiHTTPRequest(ctx context.Context, contents []GeminiContent, chatO
 	if err != nil {
 		return nil, err
 	}
+	log.Printf("GEMINI REQUEST\n%s\n", buf.String())
 
 	// Build URL
 	endpoint := fmt.Sprintf(GeminiStreamingEndpointTemplate, opts.Model)
@@ -311,6 +305,7 @@ func processGeminiStream(
 	textID := uuid.New().String()
 	textStarted := false
 	var textBuilder strings.Builder
+	var textThoughtSignature string
 	var finishReason string
 	var functionCalls []GeminiMessagePart
 	var usageMetadata *GeminiUsageMetadata
@@ -369,12 +364,26 @@ func processGeminiStream(
 			usageMetadata = chunk.UsageMetadata
 		}
 
+		// Log grounding metadata (web search queries)
+		if chunk.GroundingMetadata != nil && len(chunk.GroundingMetadata.WebSearchQueries) > 0 {
+			if wavebase.IsDevMode() {
+				log.Printf("gemini: web search queries executed: %v\n", chunk.GroundingMetadata.WebSearchQueries)
+			}
+		}
+
 		// Process candidates
 		if len(chunk.Candidates) == 0 {
 			continue
 		}
 
 		candidate := chunk.Candidates[0]
+
+		// Log candidate grounding metadata if present
+		if candidate.GroundingMetadata != nil && len(candidate.GroundingMetadata.WebSearchQueries) > 0 {
+			if wavebase.IsDevMode() {
+				log.Printf("gemini: candidate web search queries: %v\n", candidate.GroundingMetadata.WebSearchQueries)
+			}
+		}
 
 		// Store finish reason
 		if candidate.FinishReason != "" {
@@ -394,18 +403,20 @@ func processGeminiStream(
 				}
 				textBuilder.WriteString(part.Text)
 				_ = sseHandler.AiMsgTextDelta(textID, part.Text)
+				if part.ThoughtSignature != "" {
+					textThoughtSignature = part.ThoughtSignature
+				}
 			}
 
 			if part.FunctionCall != nil {
-				// Track function call for tool use
 				toolCallId := uuid.New().String()
 
-				// Send tool progress using aiutil
 				argsBytes, _ := json.Marshal(part.FunctionCall.Args)
 				aiutil.SendToolProgress(toolCallId, part.FunctionCall.Name, argsBytes, chatOpts, sseHandler, false)
 
 				functionCalls = append(functionCalls, GeminiMessagePart{
-					FunctionCall: part.FunctionCall,
+					FunctionCall:     part.FunctionCall,
+					ThoughtSignature: part.FunctionCall.ThoughtSignature,
 					ToolUseData: &uctypes.UIMessageDataToolUse{
 						ToolCallId: toolCallId,
 						ToolName:   part.FunctionCall.Name,
@@ -439,7 +450,8 @@ func processGeminiStream(
 	var parts []GeminiMessagePart
 	if textBuilder.Len() > 0 {
 		parts = append(parts, GeminiMessagePart{
-			Text: textBuilder.String(),
+			Text:             textBuilder.String(),
+			ThoughtSignature: textThoughtSignature,
 		})
 	}
 	parts = append(parts, functionCalls...)
