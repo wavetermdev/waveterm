@@ -216,7 +216,9 @@ func sendTEvents(clientId string) (int, error) {
 func SendAllTelemetry(clientId string) error {
 	ctx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancelFn()
-	telemetry.CleanOldTEvents(ctx)
+	if err := telemetry.CleanOldTEvents(ctx); err != nil {
+		log.Printf("error cleaning old telemetry events: %v\n", err)
+	}
 	if !telemetry.IsTelemetryEnabled() {
 		log.Printf("telemetry disabled, not sending\n")
 		return nil
