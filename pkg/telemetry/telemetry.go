@@ -254,10 +254,13 @@ func RecordTEvent(ctx context.Context, tevent *telemetrydata.TEvent) error {
 }
 
 func CleanOldTEvents(ctx context.Context) error {
+	daysToKeep := 7
+	if !IsTelemetryEnabled() {
+		daysToKeep = 1
+	}
+	olderThan := time.Now().AddDate(0, 0, -daysToKeep).UnixMilli()
 	return wstore.WithTx(ctx, func(tx *wstore.TxWrap) error {
-		// delete events older than 28 days
 		query := `DELETE FROM db_tevent WHERE ts < ?`
-		olderThan := time.Now().AddDate(0, 0, -28).UnixMilli()
 		tx.Exec(query, olderThan)
 		return nil
 	})

@@ -465,6 +465,10 @@ func main() {
 		return
 	}
 
+	err = shellutil.FixupWaveZshHistory()
+	if err != nil {
+		log.Printf("error fixing up wave zsh history: %v\n", err)
+	}
 	createMainWshClient()
 	sigutil.InstallShutdownSignalHandlers(doShutdown)
 	sigutil.InstallSIGUSR1Handler()
