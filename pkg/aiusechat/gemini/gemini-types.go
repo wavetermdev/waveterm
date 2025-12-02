@@ -96,8 +96,9 @@ type GeminiFunctionCall struct {
 
 // GeminiFunctionResponse represents a function execution result
 type GeminiFunctionResponse struct {
-	Name     string         `json:"name"`
-	Response map[string]any `json:"response"`
+	Name             string         `json:"name"`
+	Response         map[string]any `json:"response"`
+	ThoughtSignature string         `json:"thought_signature,omitempty"`
 }
 
 // GeminiUsageMetadata represents token usage
@@ -117,6 +118,7 @@ type GeminiGenerationConfig struct {
 	CandidateCount  int32    `json:"candidateCount,omitempty"`
 	MaxOutputTokens int32    `json:"maxOutputTokens,omitempty"`
 	StopSequences   []string `json:"stopSequences,omitempty"`
+	ThinkingLevel   string   `json:"thinkingLevel,omitempty"` // "low" or "high" for Gemini 3+ models
 }
 
 // GeminiTool represents a function tool definition

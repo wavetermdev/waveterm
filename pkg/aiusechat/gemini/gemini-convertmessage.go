@@ -242,8 +242,9 @@ func ConvertToolResultsToGeminiChatMessage(toolResults []uctypes.AIToolResult) (
 
 		parts = append(parts, GeminiMessagePart{
 			FunctionResponse: &GeminiFunctionResponse{
-				Name:     result.ToolName,
-				Response: response,
+				Name:             result.ToolName,
+				Response:         response,
+				ThoughtSignature: result.GoogleThoughtSignature,
 			},
 		})
 	}

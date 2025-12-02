@@ -200,9 +200,10 @@ func updateToolUseDataInChat(backend UseChatBackend, chatOpts uctypes.WaveChatOp
 func processToolCallInternal(backend UseChatBackend, toolCall uctypes.WaveToolCall, chatOpts uctypes.WaveChatOpts, toolDef *uctypes.ToolDefinition, sseHandler *sse.SSEHandlerCh) uctypes.AIToolResult {
 	if toolCall.ToolUseData == nil {
 		return uctypes.AIToolResult{
-			ToolName:  toolCall.Name,
-			ToolUseID: toolCall.ID,
-			ErrorText: "Invalid Tool Call",
+			ToolName:               toolCall.Name,
+			ToolUseID:              toolCall.ID,
+			ErrorText:              "Invalid Tool Call",
+			GoogleThoughtSignature: toolCall.GoogleThoughtSignature,
 		}
 	}
 
@@ -212,9 +213,10 @@ func processToolCallInternal(backend UseChatBackend, toolCall uctypes.WaveToolCa
 			errorMsg = "Unspecified Tool Error"
 		}
 		return uctypes.AIToolResult{
-			ToolName:  toolCall.Name,
-			ToolUseID: toolCall.ID,
-			ErrorText: errorMsg,
+			ToolName:               toolCall.Name,
+			ToolUseID:              toolCall.ID,
+			ErrorText:              errorMsg,
+			GoogleThoughtSignature: toolCall.GoogleThoughtSignature,
 		}
 	}
 
@@ -224,9 +226,10 @@ func processToolCallInternal(backend UseChatBackend, toolCall uctypes.WaveToolCa
 			toolCall.ToolUseData.Status = uctypes.ToolUseStatusError
 			toolCall.ToolUseData.ErrorMessage = errorMsg
 			return uctypes.AIToolResult{
-				ToolName:  toolCall.Name,
-				ToolUseID: toolCall.ID,
-				ErrorText: errorMsg,
+				ToolName:               toolCall.Name,
+				ToolUseID:              toolCall.ID,
+				ErrorText:              errorMsg,
+				GoogleThoughtSignature: toolCall.GoogleThoughtSignature,
 			}
 		}
 		// ToolVerifyInput can modify the toolusedata.  re-send it here.
@@ -252,9 +255,10 @@ func processToolCallInternal(backend UseChatBackend, toolCall uctypes.WaveToolCa
 			toolCall.ToolUseData.Status = uctypes.ToolUseStatusError
 			toolCall.ToolUseData.ErrorMessage = errorMsg
 			return uctypes.AIToolResult{
-				ToolName:  toolCall.Name,
-				ToolUseID: toolCall.ID,
-				ErrorText: errorMsg,
+				ToolName:               toolCall.Name,
+				ToolUseID:              toolCall.ID,
+				ErrorText:              errorMsg,
+				GoogleThoughtSignature: toolCall.GoogleThoughtSignature,
 			}
 		}
 
@@ -442,8 +446,9 @@ func RunAIChat(ctx context.Context, sseHandler *sse.SSEHandlerCh, backend UseCha
 
 func ResolveToolCall(toolDef *uctypes.ToolDefinition, toolCall uctypes.WaveToolCall, chatOpts uctypes.WaveChatOpts) (result uctypes.AIToolResult) {
 	result = uctypes.AIToolResult{
-		ToolName:  toolCall.Name,
-		ToolUseID: toolCall.ID,
+		ToolName:               toolCall.Name,
+		ToolUseID:              toolCall.ID,
+		GoogleThoughtSignature: toolCall.GoogleThoughtSignature,
 	}
 
 	defer func() {

@@ -25,7 +25,7 @@ import (
 )
 
 const (
-	GeminiStreamingEndpointTemplate = "https://generativelanguage.googleapis.com/v1beta/models/%s:streamGenerateContent?alt=sse&key=%s"
+	GeminiStreamingEndpointTemplate = "https://generativelanguage.googleapis.com/v1beta/models/%s:streamGenerateContent?alt=sse"
 )
 
 // UpdateToolUseData updates the tool use data for a specific tool call in the chat
@@ -90,6 +90,15 @@ func buildGeminiHTTPRequest(ctx context.Context, contents []GeminiContent, chatO
 			MaxOutputTokens: int32(maxTokens),
 			Temperature:     0.7, // Default temperature
 		},
+	}
+
+	// Map thinking level for Gemini 3+ models
+	if opts.ThinkingLevel != "" && strings.Contains(opts.Model, "gemini-3") {
+		geminiThinkingLevel := "high"
+		if opts.ThinkingLevel == uctypes.ThinkingLevelLow {
+			geminiThinkingLevel = "low"
+		}
+		reqBody.GenerationConfig.ThinkingLevel = geminiThinkingLevel
 	}
 
 	// Add system instruction if provided
@@ -177,8 +186,8 @@ func buildGeminiHTTPRequest(ctx context.Context, contents []GeminiContent, chatO
 		return nil, err
 	}
 
-	// Build URL with API key
-	endpoint := fmt.Sprintf(GeminiStreamingEndpointTemplate, opts.Model, opts.APIToken)
+	// Build URL
+	endpoint := fmt.Sprintf(GeminiStreamingEndpointTemplate, opts.Model)
 	if opts.BaseURL != "" {
 		// If custom base URL is provided, use it instead
 		endpoint = opts.BaseURL
@@ -192,6 +201,7 @@ func buildGeminiHTTPRequest(ctx context.Context, contents []GeminiContent, chatO
 
 	// Set headers
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("x-goog-api-key", opts.APIToken)
 
 	return req, nil
 }
@@ -453,10 +463,11 @@ func processGeminiStream(
 		for _, fcPart := range functionCalls {
 			if fcPart.FunctionCall != nil && fcPart.ToolUseData != nil {
 				waveToolCalls = append(waveToolCalls, uctypes.WaveToolCall{
-					ID:          fcPart.ToolUseData.ToolCallId,
-					Name:        fcPart.FunctionCall.Name,
-					Input:       fcPart.FunctionCall.Args,
-					ToolUseData: fcPart.ToolUseData,
+					ID:                     fcPart.ToolUseData.ToolCallId,
+					Name:                   fcPart.FunctionCall.Name,
+					Input:                  fcPart.FunctionCall.Args,
+					ToolUseData:            fcPart.ToolUseData,
+					GoogleThoughtSignature: fcPart.FunctionCall.ThoughtSignature,
 				})
 			}
 		}
