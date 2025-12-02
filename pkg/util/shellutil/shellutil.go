@@ -74,6 +74,7 @@ const (
 	PwshIntegrationDir = "shell/pwsh"
 	FishIntegrationDir = "shell/fish"
 	WaveHomeBinDir     = "bin"
+	ZshHistoryFileName = ".zsh_history"
 )
 
 func DetectLocalShellPath() string {
@@ -206,6 +207,47 @@ func GetLocalWavePowershellEnv() string {
 
 func GetLocalZshZDotDir() string {
 	return filepath.Join(wavebase.GetWaveDataDir(), ZshIntegrationDir)
+}
+
+func HasWaveZshHistory() (bool, int64) {
+	zshDir := GetLocalZshZDotDir()
+	historyFile := filepath.Join(zshDir, ZshHistoryFileName)
+	fileInfo, err := os.Stat(historyFile)
+	if err != nil {
+		return false, 0
+	}
+	return true, fileInfo.Size()
+}
+
+func IsExtendedZshHistoryFile(fileName string) (bool, error) {
+	file, err := os.Open(fileName)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return false, nil
+		}
+		return false, err
+	}
+	defer file.Close()
+
+	buf := make([]byte, 1024)
+	n, err := file.Read(buf)
+	if err != nil {
+		return false, err
+	}
+
+	content := string(buf[:n])
+	lines := strings.Split(content, "\n")
+
+	extendedPattern := regexp.MustCompile(`^: [0-9]+:`)
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		return extendedPattern.MatchString(line), nil
+	}
+
+	return false, nil
 }
 
 func GetLocalWshBinaryPath(version string, goos string, goarch string) (string, error) {
@@ -420,6 +462,66 @@ func getShellVersion(shellPath string, shellType string) (string, error) {
 	}
 
 	return matches[1], nil
+}
+
+func FixupWaveZshHistory() error {
+	if runtime.GOOS != "darwin" {
+		return nil
+	}
+
+	hasHistory, size := HasWaveZshHistory()
+	if !hasHistory {
+		return nil
+	}
+
+	zshDir := GetLocalZshZDotDir()
+	waveHistFile := filepath.Join(zshDir, ZshHistoryFileName)
+
+	if size == 0 {
+		os.Remove(waveHistFile)
+		return nil
+	}
+
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return fmt.Errorf("error getting home directory: %w", err)
+	}
+	realHistFile := filepath.Join(homeDir, ".zsh_history")
+
+	isExtended, err := IsExtendedZshHistoryFile(realHistFile)
+	if err != nil {
+		return fmt.Errorf("error checking if history is extended: %w", err)
+	}
+
+	hasExtendedStr := "false"
+	if isExtended {
+		hasExtendedStr = "true"
+	}
+
+	quotedWaveHistFile := utilfn.ShellQuote(waveHistFile, true, -1)
+
+	script := fmt.Sprintf(`
+		HISTFILE=~/.zsh_history
+		HISTSIZE=999999
+		SAVEHIST=999999
+		has_extended_history=%s
+		[[ $has_extended_history == true ]] && setopt EXTENDED_HISTORY
+		fc -R %s
+		fc -W
+	`, hasExtendedStr, quotedWaveHistFile)
+
+	ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancelFn()
+
+	cmd := exec.CommandContext(ctx, "zsh", "-c", script)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("error executing zsh history fixup script: %w, output: %s", err, string(output))
+	}
+
+	os.Remove(waveHistFile)
+
+	return nil
 }
 
 func FormatOSC(oscNum int, parts ...string) string {
