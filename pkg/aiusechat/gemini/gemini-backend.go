@@ -178,7 +178,6 @@ func buildGeminiHTTPRequest(ctx context.Context, contents []GeminiContent, chatO
 	if err != nil {
 		return nil, err
 	}
-	log.Printf("GEMINI REQUEST\n%s\n", buf.String())
 
 	// Build URL
 	endpoint := fmt.Sprintf(GeminiStreamingEndpointTemplate, opts.Model)
