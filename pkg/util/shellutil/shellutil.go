@@ -47,6 +47,8 @@ var (
 
 	//go:embed shellintegration/pwsh_wavepwsh.sh
 	PwshStartup_wavepwsh string
+
+	ZshExtendedHistoryPattern = regexp.MustCompile(`^: [0-9]+:`)
 )
 
 const DefaultTermType = "xterm-256color"
@@ -238,13 +240,12 @@ func IsExtendedZshHistoryFile(fileName string) (bool, error) {
 	content := string(buf[:n])
 	lines := strings.Split(content, "\n")
 
-	extendedPattern := regexp.MustCompile(`^: [0-9]+:`)
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
 		if line == "" {
 			continue
 		}
-		return extendedPattern.MatchString(line), nil
+		return ZshExtendedHistoryPattern.MatchString(line), nil
 	}
 
 	return false, nil
@@ -478,7 +479,10 @@ func FixupWaveZshHistory() error {
 	waveHistFile := filepath.Join(zshDir, ZshHistoryFileName)
 
 	if size == 0 {
-		os.Remove(waveHistFile)
+		err := os.Remove(waveHistFile)
+		if err != nil {
+			log.Printf("error removing wave zsh history file %s: %v\n", waveHistFile, err)
+		}
 		return nil
 	}
 
@@ -521,7 +525,10 @@ func FixupWaveZshHistory() error {
 		return fmt.Errorf("error executing zsh history fixup script: %w, output: %s", err, string(output))
 	}
 
-	os.Remove(waveHistFile)
+	err = os.Remove(waveHistFile)
+	if err != nil {
+		log.Printf("error removing wave zsh history file %s: %v\n", waveHistFile, err)
+	}
 	log.Printf("successfully merged wave zsh history %s into ~/.zsh_history\n", waveHistFile)
 
 	return nil
