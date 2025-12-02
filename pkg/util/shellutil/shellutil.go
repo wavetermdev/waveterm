@@ -18,6 +18,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/wavetermdev/waveterm/pkg/util/envutil"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
@@ -47,6 +48,8 @@ var (
 
 	//go:embed shellintegration/pwsh_wavepwsh.sh
 	PwshStartup_wavepwsh string
+
+	ZshExtendedHistoryPattern = regexp.MustCompile(`^: [0-9]+:`)
 )
 
 const DefaultTermType = "xterm-256color"
@@ -74,6 +77,7 @@ const (
 	PwshIntegrationDir = "shell/pwsh"
 	FishIntegrationDir = "shell/fish"
 	WaveHomeBinDir     = "bin"
+	ZshHistoryFileName = ".zsh_history"
 )
 
 func DetectLocalShellPath() string {
@@ -206,6 +210,46 @@ func GetLocalWavePowershellEnv() string {
 
 func GetLocalZshZDotDir() string {
 	return filepath.Join(wavebase.GetWaveDataDir(), ZshIntegrationDir)
+}
+
+func HasWaveZshHistory() (bool, int64) {
+	zshDir := GetLocalZshZDotDir()
+	historyFile := filepath.Join(zshDir, ZshHistoryFileName)
+	fileInfo, err := os.Stat(historyFile)
+	if err != nil {
+		return false, 0
+	}
+	return true, fileInfo.Size()
+}
+
+func IsExtendedZshHistoryFile(fileName string) (bool, error) {
+	file, err := os.Open(fileName)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return false, nil
+		}
+		return false, err
+	}
+	defer file.Close()
+
+	buf := make([]byte, 1024)
+	n, err := file.Read(buf)
+	if err != nil {
+		return false, err
+	}
+
+	content := string(buf[:n])
+	lines := strings.Split(content, "\n")
+
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		return ZshExtendedHistoryPattern.MatchString(line), nil
+	}
+
+	return false, nil
 }
 
 func GetLocalWshBinaryPath(version string, goos string, goarch string) (string, error) {
@@ -420,6 +464,80 @@ func getShellVersion(shellPath string, shellType string) (string, error) {
 	}
 
 	return matches[1], nil
+}
+
+func FixupWaveZshHistory() error {
+	if runtime.GOOS != "darwin" {
+		return nil
+	}
+
+	hasHistory, size := HasWaveZshHistory()
+	if !hasHistory {
+		return nil
+	}
+
+	zshDir := GetLocalZshZDotDir()
+	waveHistFile := filepath.Join(zshDir, ZshHistoryFileName)
+
+	if size == 0 {
+		err := os.Remove(waveHistFile)
+		if err != nil {
+			log.Printf("error removing wave zsh history file %s: %v\n", waveHistFile, err)
+		}
+		return nil
+	}
+
+	log.Printf("merging wave zsh history %s into ~/.zsh_history\n", waveHistFile)
+
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return fmt.Errorf("error getting home directory: %w", err)
+	}
+	realHistFile := filepath.Join(homeDir, ".zsh_history")
+
+	isExtended, err := IsExtendedZshHistoryFile(realHistFile)
+	if err != nil {
+		return fmt.Errorf("error checking if history is extended: %w", err)
+	}
+
+	hasExtendedStr := "false"
+	if isExtended {
+		hasExtendedStr = "true"
+	}
+
+	quotedWaveHistFile := utilfn.ShellQuote(waveHistFile, true, -1)
+
+	script := fmt.Sprintf(`
+		HISTFILE=~/.zsh_history
+		HISTSIZE=999999
+		SAVEHIST=999999
+		has_extended_history=%s
+		[[ $has_extended_history == true ]] && setopt EXTENDED_HISTORY
+		fc -RI
+		fc -RI %s
+		fc -W
+	`, hasExtendedStr, quotedWaveHistFile)
+
+	ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancelFn()
+
+	cmd := exec.CommandContext(ctx, "zsh", "-f", "-i", "-c", script)
+	cmd.Stdin = nil
+	envStr := envutil.SliceToEnv(os.Environ())
+	envStr = envutil.RmEnv(envStr, "ZDOTDIR")
+	cmd.Env = envutil.EnvToSlice(envStr)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("error executing zsh history fixup script: %w, output: %s", err, string(output))
+	}
+
+	err = os.Remove(waveHistFile)
+	if err != nil {
+		log.Printf("error removing wave zsh history file %s: %v\n", waveHistFile, err)
+	}
+	log.Printf("successfully merged wave zsh history %s into ~/.zsh_history\n", waveHistFile)
+
+	return nil
 }
 
 func FormatOSC(oscNum int, parts ...string) string {
