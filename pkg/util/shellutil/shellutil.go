@@ -482,6 +482,8 @@ func FixupWaveZshHistory() error {
 		return nil
 	}
 
+	log.Printf("merging wave zsh history %s into ~/.zsh_history\n", waveHistFile)
+
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		return fmt.Errorf("error getting home directory: %w", err)
@@ -520,6 +522,7 @@ func FixupWaveZshHistory() error {
 	}
 
 	os.Remove(waveHistFile)
+	log.Printf("successfully merged wave zsh history %s into ~/.zsh_history\n", waveHistFile)
 
 	return nil
 }

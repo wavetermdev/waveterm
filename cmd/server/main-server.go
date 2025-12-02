@@ -465,6 +465,7 @@ func main() {
 		return
 	}
 
+	shellutil.FixupWaveZshHistory()
 	createMainWshClient()
 	sigutil.InstallShutdownSignalHandlers(doShutdown)
 	sigutil.InstallSIGUSR1Handler()
