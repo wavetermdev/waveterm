@@ -91,10 +91,10 @@ func getWaveAISettings(premium bool, builderMode bool, rtInfo waveobj.ObjRTInfo)
 		if os.Getenv(WaveAIEndpointEnvName) != "" {
 			baseUrl = os.Getenv(WaveAIEndpointEnvName)
 		}
-	} else if config.BaseURL != "" {
-		baseUrl = config.BaseURL
+	} else if config.Endpoint != "" {
+		baseUrl = config.Endpoint
 	} else {
-		return nil, fmt.Errorf("no BaseURL configured for AI mode %s", aiMode)
+		return nil, fmt.Errorf("no ai:endpoint configured for AI mode %s", aiMode)
 	}
 
 	opts := &uctypes.AIOptsType{

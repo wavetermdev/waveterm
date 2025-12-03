@@ -266,7 +266,7 @@ type AIModeConfigType struct {
 	APIType            string   `json:"ai:apitype"`
 	Model              string   `json:"ai:model"`
 	ThinkingLevel      string   `json:"ai:thinkinglevel"`
-	BaseURL            string   `json:"ai:baseurl,omitempty"`
+	Endpoint           string   `json:"ai:endpoint,omitempty"`
 	APIVersion         string   `json:"ai:apiversion,omitempty"`
 	APIToken           string   `json:"ai:apitoken,omitempty"`
 	APITokenSecretName string   `json:"ai:apitokensecretname,omitempty"`

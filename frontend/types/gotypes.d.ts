@@ -23,7 +23,7 @@ declare global {
         "ai:apitype": string;
         "ai:model": string;
         "ai:thinkinglevel": string;
-        "ai:baseurl"?: string;
+        "ai:endpoint"?: string;
         "ai:apiversion"?: string;
         "ai:apitoken"?: string;
         "ai:apitokensecretname"?: string;

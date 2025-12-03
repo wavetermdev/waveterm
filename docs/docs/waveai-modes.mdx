@@ -42,7 +42,7 @@ Wave AI supports two OpenAI-compatible API types:
     "ai:apitype": "openai-chat",
     "ai:model": "model-name",
     "ai:thinkinglevel": "normal",
-    "ai:baseurl": "http://localhost:11434/v1/chat/completions",
+    "ai:endpoint": "http://localhost:11434/v1/chat/completions",
     "ai:apitokensecretname": "PROVIDER_KEY",
     "ai:capabilities": ["tools", "images", "pdfs"]
   }
@@ -61,7 +61,7 @@ Wave AI supports two OpenAI-compatible API types:
 | `ai:apitype` | Yes | API type: `openai-chat` or `openai-responses` |
 | `ai:model` | Yes | Model identifier |
 | `ai:thinkinglevel` | Yes | Thinking level setting |
-| `ai:baseurl` | No | Full API endpoint URL including path (e.g., `http://localhost:11434/v1/chat/completions`) |
+| `ai:endpoint` | No | Full API endpoint URL including path (e.g., `http://localhost:11434/v1/chat/completions`) |
 | `ai:apiversion` | No | API version (if required by provider) |
 | `ai:apitoken` | No | API key/token (not recommended - use secrets instead) |
 | `ai:apitokensecretname` | No | Name of secret containing API token (recommended) |
@@ -95,7 +95,7 @@ Most models support `tools` and can benefit from it. Vision-capable models shoul
     "ai:apitype": "openai-chat",
     "ai:model": "llama3.3:70b",
     "ai:thinkinglevel": "normal",
-    "ai:baseurl": "http://localhost:11434/v1/chat/completions",
+    "ai:endpoint": "http://localhost:11434/v1/chat/completions",
     "ai:apitoken": "ollama"
   }
 }
@@ -119,7 +119,7 @@ The `ai:apitoken` field is required but Ollama ignores it - you can set it to an
     "ai:apitype": "openai-chat",
     "ai:model": "qwen/qwen-2.5-coder-32b-instruct",
     "ai:thinkinglevel": "normal",
-    "ai:baseurl": "http://localhost:1234/v1/chat/completions",
+    "ai:endpoint": "http://localhost:1234/v1/chat/completions",
     "ai:apitoken": "not-needed"
   }
 }
@@ -139,7 +139,7 @@ The `ai:apitoken` field is required but Ollama ignores it - you can set it to an
     "ai:apitype": "openai-chat",
     "ai:model": "your-model-name",
     "ai:thinkinglevel": "normal",
-    "ai:baseurl": "http://localhost:1337/v1/chat/completions",
+    "ai:endpoint": "http://localhost:1337/v1/chat/completions",
     "ai:apitoken": "not-needed"
   }
 }
@@ -159,7 +159,7 @@ The `ai:apitoken` field is required but Ollama ignores it - you can set it to an
     "ai:apitype": "openai-chat",
     "ai:model": "gpt-4-turbo-preview",
     "ai:thinkinglevel": "normal",
-    "ai:baseurl": "https://api.openai.com/v1/chat/completions",
+    "ai:endpoint": "https://api.openai.com/v1/chat/completions",
     "ai:apitokensecretname": "OPENAI_KEY"
   }
 }
@@ -177,7 +177,7 @@ For GPT-5.1 models, you can use the `openai-responses` API type:
     "ai:apitype": "openai-responses",
     "ai:model": "gpt-5.1",
     "ai:thinkinglevel": "normal",
-    "ai:baseurl": "https://api.openai.com/v1/responses",
+    "ai:endpoint": "https://api.openai.com/v1/responses",
     "ai:apitokensecretname": "OPENAI_KEY"
   }
 }
@@ -197,7 +197,7 @@ For GPT-5.1 models, you can use the `openai-responses` API type:
     "ai:apitype": "openai-chat",
     "ai:model": "qwen/qwen-2.5-coder-32b-instruct",
     "ai:thinkinglevel": "normal",
-    "ai:baseurl": "https://openrouter.ai/api/v1/chat/completions",
+    "ai:endpoint": "https://openrouter.ai/api/v1/chat/completions",
     "ai:apitokensecretname": "OPENROUTER_KEY"
   }
 }
@@ -215,7 +215,7 @@ For GPT-5.1 models, you can use the `openai-responses` API type:
     "ai:apitype": "openai-chat",
     "ai:model": "your-deployment-name",
     "ai:thinkinglevel": "normal",
-    "ai:baseurl": "https://your-resource.openai.azure.com/openai/deployments/your-deployment-name/chat/completions",
+    "ai:endpoint": "https://your-resource.openai.azure.com/openai/deployments/your-deployment-name/chat/completions",
     "ai:apiversion": "2024-02-15-preview",
     "ai:apitokensecretname": "AZURE_KEY"
   }
@@ -272,7 +272,7 @@ You can define multiple AI modes and switch between them easily:
     "ai:apitype": "openai-chat",
     "ai:model": "llama3.3:70b",
     "ai:thinkinglevel": "normal",
-    "ai:baseurl": "http://localhost:11434/v1/chat/completions",
+    "ai:endpoint": "http://localhost:11434/v1/chat/completions",
     "ai:apitoken": "ollama"
   },
   "ollama-codellama": {
@@ -283,7 +283,7 @@ You can define multiple AI modes and switch between them easily:
     "ai:apitype": "openai-chat",
     "ai:model": "codellama:34b",
     "ai:thinkinglevel": "normal",
-    "ai:baseurl": "http://localhost:11434/v1/chat/completions",
+    "ai:endpoint": "http://localhost:11434/v1/chat/completions",
     "ai:apitoken": "ollama"
   },
   "openai-gpt4": {
@@ -294,7 +294,7 @@ You can define multiple AI modes and switch between them easily:
     "ai:apitype": "openai-chat",
     "ai:model": "gpt-4-turbo-preview",
     "ai:thinkinglevel": "normal",
-    "ai:baseurl": "https://api.openai.com/v1/chat/completions",
+    "ai:endpoint": "https://api.openai.com/v1/chat/completions",
     "ai:apitokensecretname": "OPENAI_KEY"
   }
 }
@@ -307,7 +307,7 @@ You can define multiple AI modes and switch between them easily:
 If Wave can't connect to your local model server:
 
 1. Verify the server is running (`curl http://localhost:11434/v1/models` for Ollama)
-2. Check the `ai:baseurl` is the complete endpoint URL including the path (e.g., `/v1/chat/completions`)
+2. Check the `ai:endpoint` is the complete endpoint URL including the path (e.g., `/v1/chat/completions`)
 3. Make sure to use the correct API type (`openai-chat` vs `openai-responses`)
 4. Check firewall settings if using a non-localhost address
 

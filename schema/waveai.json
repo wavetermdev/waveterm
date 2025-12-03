@@ -27,7 +27,7 @@
         "ai:thinkinglevel": {
           "type": "string"
         },
-        "ai:baseurl": {
+        "ai:endpoint": {
           "type": "string"
         },
         "ai:apiversion": {
