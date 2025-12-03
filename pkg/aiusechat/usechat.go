@@ -38,7 +38,6 @@ import (
 const DefaultAPI = uctypes.APIType_OpenAIResponses
 const DefaultMaxTokens = 4 * 1024
 const BuilderMaxTokens = 24 * 1024
-const WaveAIEndpointEnvName = "WAVETERM_WAVEAI_ENDPOINT"
 
 var (
 	globalRateLimitInfo = &uctypes.RateLimitInfo{Unknown: true}
@@ -86,12 +85,7 @@ func getWaveAISettings(premium bool, builderMode bool, rtInfo waveobj.ObjRTInfo)
 	}
 
 	var baseUrl string
-	if config.WaveAICloud {
-		baseUrl = uctypes.DefaultAIEndpoint
-		if os.Getenv(WaveAIEndpointEnvName) != "" {
-			baseUrl = os.Getenv(WaveAIEndpointEnvName)
-		}
-	} else if config.Endpoint != "" {
+	if config.Endpoint != "" {
 		baseUrl = config.Endpoint
 	} else {
 		return nil, fmt.Errorf("no ai:endpoint configured for AI mode %s", aiMode)

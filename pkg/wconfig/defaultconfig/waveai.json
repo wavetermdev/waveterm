@@ -5,12 +5,11 @@
         "display:icon": "bolt",
         "display:shortdesc": "gpt-5-mini",
         "display:description": "Fastest responses (gpt-5-mini)",
+        "ai:provider": "wave",
         "ai:apitype": "openai-responses",
         "ai:model": "gpt-5-mini",
         "ai:thinkinglevel": "low",
-        "ai:capabilities": ["tools", "images", "pdfs"],
-        "waveai:cloud": true,
-        "waveai:premium": false
+        "ai:capabilities": ["tools", "images", "pdfs"]
     },
     "waveai@balanced": {
         "display:name": "Balanced",
@@ -18,11 +17,11 @@
         "display:icon": "sparkles",
         "display:shortdesc": "gpt-5.1, low thinking",
         "display:description": "Good mix of speed and accuracy\n(gpt-5.1 with minimal thinking)",
+        "ai:provider": "wave",
         "ai:apitype": "openai-responses",
         "ai:model": "gpt-5.1",
         "ai:thinkinglevel": "low",
         "ai:capabilities": ["tools", "images", "pdfs"],
-        "waveai:cloud": true,
         "waveai:premium": true
     },
     "waveai@deep": {
@@ -31,11 +30,11 @@
         "display:icon": "lightbulb",
         "display:shortdesc": "gpt-5.1, full thinking",
         "display:description": "Slower but most capable\n(gpt-5.1 with full reasoning)",
+        "ai:provider": "wave",
         "ai:apitype": "openai-responses",
         "ai:model": "gpt-5.1",
         "ai:thinkinglevel": "medium",
         "ai:capabilities": ["tools", "images", "pdfs"],
-        "waveai:cloud": true,
         "waveai:premium": true
     }
 }

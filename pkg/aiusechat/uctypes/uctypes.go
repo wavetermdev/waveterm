@@ -11,6 +11,7 @@ import (
 )
 
 const DefaultAIEndpoint = "https://cfapi.waveterm.dev/api/waveai"
+const WaveAIEndpointEnvName = "WAVETERM_WAVEAI_ENDPOINT"
 const DefaultAnthropicModel = "claude-sonnet-4-5"
 const DefaultOpenAIModel = "gpt-5-mini"
 const PremiumOpenAIModel = "gpt-5.1"
@@ -19,6 +20,14 @@ const (
 	APIType_AnthropicMessages = "anthropic-messages"
 	APIType_OpenAIResponses   = "openai-responses"
 	APIType_OpenAIChat        = "openai-chat"
+)
+
+const (
+	AIProvider_Wave       = "wave"
+	AIProvider_Google     = "google"
+	AIProvider_OpenRouter = "openrouter"
+	AIProvider_OpenAI     = "openai"
+	AIProvider_Custom     = "custom"
 )
 
 type UseChatRequest struct {

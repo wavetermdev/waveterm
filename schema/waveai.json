@@ -18,14 +18,34 @@
         "display:description": {
           "type": "string"
         },
+        "ai:provider": {
+          "type": "string",
+          "enum": [
+            "wave",
+            "google",
+            "openrouter",
+            "openai",
+            "custom"
+          ]
+        },
         "ai:apitype": {
-          "type": "string"
+          "type": "string",
+          "enum": [
+            "anthropic-messages",
+            "openai-responses",
+            "openai-chat"
+          ]
         },
         "ai:model": {
           "type": "string"
         },
         "ai:thinkinglevel": {
-          "type": "string"
+          "type": "string",
+          "enum": [
+            "low",
+            "medium",
+            "high"
+          ]
         },
         "ai:endpoint": {
           "type": "string"
@@ -41,7 +61,12 @@
         },
         "ai:capabilities": {
           "items": {
-            "type": "string"
+            "type": "string",
+            "enum": [
+              "pdfs",
+              "images",
+              "tools"
+            ]
           },
           "type": "array"
         },

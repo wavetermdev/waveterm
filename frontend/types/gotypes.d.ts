@@ -20,6 +20,7 @@ declare global {
         "display:icon"?: string;
         "display:shortdesc"?: string;
         "display:description"?: string;
+        "ai:provider"?: string;
         "ai:apitype": string;
         "ai:model": string;
         "ai:thinkinglevel"?: string;
