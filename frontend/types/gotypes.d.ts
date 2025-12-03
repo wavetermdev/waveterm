@@ -17,12 +17,12 @@ declare global {
     type AIModeConfigType = {
         "display:name": string;
         "display:order"?: number;
-        "display:icon": string;
+        "display:icon"?: string;
         "display:shortdesc"?: string;
-        "display:description": string;
+        "display:description"?: string;
         "ai:apitype": string;
         "ai:model": string;
-        "ai:thinkinglevel": string;
+        "ai:thinkinglevel"?: string;
         "ai:endpoint"?: string;
         "ai:apiversion"?: string;
         "ai:apitoken"?: string;

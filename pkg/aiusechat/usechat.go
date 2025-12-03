@@ -97,11 +97,15 @@ func getWaveAISettings(premium bool, builderMode bool, rtInfo waveobj.ObjRTInfo)
 		return nil, fmt.Errorf("no ai:endpoint configured for AI mode %s", aiMode)
 	}
 
+	thinkingLevel := config.ThinkingLevel
+	if thinkingLevel == "" {
+		thinkingLevel = uctypes.ThinkingLevelMedium
+	}
 	opts := &uctypes.AIOptsType{
 		APIType:       config.APIType,
 		Model:         config.Model,
 		MaxTokens:     maxTokens,
-		ThinkingLevel: config.ThinkingLevel,
+		ThinkingLevel: thinkingLevel,
 		AIMode:        aiMode,
 		BaseURL:       baseUrl,
 		Capabilities:  config.Capabilities,

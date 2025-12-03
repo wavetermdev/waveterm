@@ -63,7 +63,7 @@ export const AIModeDropdown = memo(() => {
                 )}
                 title={`AI Mode: ${displayConfig["display:name"]}`}
             >
-                <i className={cn(makeIconClass(displayConfig["display:icon"], false), "text-[10px]")}></i>
+                <i className={cn(makeIconClass(displayConfig["display:icon"] || "sparkles", false), "text-[10px]")}></i>
                 <span className={`text-[11px] ${isOpen ? "inline" : "hidden group-hover:inline @w450:inline"}`}>
                     {displayConfig["display:name"]}
                 </span>
@@ -93,16 +93,18 @@ export const AIModeDropdown = memo(() => {
                                     } transition-colors text-left`}
                                 >
                                     <div className="flex items-center gap-2 w-full">
-                                        <i className={makeIconClass(config["display:icon"], false)}></i>
+                                        <i className={makeIconClass(config["display:icon"] || "sparkles", false)}></i>
                                         <span className={`text-sm ${isSelected ? "font-bold" : ""}`}>
                                             {config["display:name"]}
                                             {isDisabled && " (premium)"}
                                         </span>
                                         {isSelected && <i className="fa fa-check ml-auto"></i>}
                                     </div>
-                                    <div className="text-xs text-muted pl-5" style={{ whiteSpace: "pre-line" }}>
-                                        {config["display:description"]}
-                                    </div>
+                                    {config["display:description"] && (
+                                        <div className="text-xs text-muted pl-5" style={{ whiteSpace: "pre-line" }}>
+                                            {config["display:description"]}
+                                        </div>
+                                    )}
                                 </button>
                             );
                         })}

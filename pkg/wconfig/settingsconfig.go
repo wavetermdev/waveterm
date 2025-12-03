@@ -32,6 +32,7 @@ const AnySchema = `
 }
 `
 
+// old AI Widget presets (deprecated)
 type AiSettingsType struct {
 	AiClear         bool    `json:"ai:*,omitempty"`
 	AiPreset        string  `json:"ai:preset,omitempty"`
@@ -257,15 +258,16 @@ type WebBookmark struct {
 	DisplayOrder float64 `json:"display:order,omitempty"`
 }
 
+// Wave AI panel mode configuration (NEW)
 type AIModeConfigType struct {
 	DisplayName        string   `json:"display:name"`
 	DisplayOrder       float64  `json:"display:order,omitempty"`
-	DisplayIcon        string   `json:"display:icon"`
+	DisplayIcon        string   `json:"display:icon,omitempty"`
 	DisplayShortDesc   string   `json:"display:shortdesc,omitempty"`
-	DisplayDescription string   `json:"display:description"`
+	DisplayDescription string   `json:"display:description,omitempty"`
 	APIType            string   `json:"ai:apitype"`
 	Model              string   `json:"ai:model"`
-	ThinkingLevel      string   `json:"ai:thinkinglevel"`
+	ThinkingLevel      string   `json:"ai:thinkinglevel,omitempty"`
 	Endpoint           string   `json:"ai:endpoint,omitempty"`
 	APIVersion         string   `json:"ai:apiversion,omitempty"`
 	APIToken           string   `json:"ai:apitoken,omitempty"`
