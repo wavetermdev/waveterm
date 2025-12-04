@@ -383,9 +383,11 @@ const Widgets = memo(() => {
                 label: "Edit widgets.json",
                 click: () => {
                     fireAndForget(async () => {
-                        const path = `${getApi().getConfigDir()}/widgets.json`;
                         const blockDef: BlockDef = {
-                            meta: { view: "preview", file: path },
+                            meta: {
+                                view: "waveconfig",
+                                file: "widgets.json",
+                            },
                         };
                         await createBlock(blockDef, false, true);
                     });

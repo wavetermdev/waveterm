@@ -122,6 +122,11 @@ func MakeBlockShortDesc(block *waveobj.Block) string {
 		return handleTsunamiBlockDesc(block)
 	case "aifilediff":
 		return "" // AI doesn't need to see these
+	case "waveconfig":
+		if file, hasFile := block.Meta["file"].(string); hasFile && file != "" {
+			return fmt.Sprintf("wave config editor for %q", file)
+		}
+		return "wave config editor"
 	default:
 		return fmt.Sprintf("unknown widget with type %q", viewType)
 	}
