@@ -1,8 +1,8 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { atoms } from "@/app/store/global";
-import { cn, makeIconClass } from "@/util/util";
+import { atoms, createBlock } from "@/app/store/global";
+import { cn, fireAndForget, makeIconClass } from "@/util/util";
 import { useAtomValue } from "jotai";
 import { memo, useRef, useState } from "react";
 import { WaveAIModel } from "./waveai-model";
@@ -108,6 +108,25 @@ export const AIModeDropdown = memo(() => {
                                 </button>
                             );
                         })}
+                        <div className="border-t border-gray-600 my-1" />
+                        <button
+                            onClick={() => {
+                                fireAndForget(async () => {
+                                    const blockDef: BlockDef = {
+                                        meta: {
+                                            view: "waveconfig",
+                                            file: "waveai.json",
+                                        },
+                                    };
+                                    await createBlock(blockDef, false, true);
+                                    setIsOpen(false);
+                                });
+                            }}
+                            className="w-full flex items-center gap-2 px-3 pt-1 pb-2 text-gray-300 hover:bg-gray-700 cursor-pointer transition-colors text-left"
+                        >
+                            <i className={makeIconClass("gear", false)}></i>
+                            <span className="text-sm">Configure Modes</span>
+                        </button>
                     </div>
                 </>
             )}
