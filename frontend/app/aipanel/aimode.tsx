@@ -55,7 +55,7 @@ export const AIModeDropdown = memo(() => {
         "display:icon": "question",
     };
 
-	   return (
+	return (
         <div className="relative" ref={dropdownRef}>
             <button
                 onClick={() => setIsOpen(!isOpen)}
@@ -66,7 +66,7 @@ export const AIModeDropdown = memo(() => {
                 title={`AI Mode: ${displayConfig["display:name"]}`}
             >
                 <i className={cn(makeIconClass(displayConfig["display:icon"] || "sparkles", false), "text-[10px]")}></i>
-                <span className={`text-[11px]"`}>
+                <span className={`text-[11px]`}>
                     {displayConfig["display:name"]}
                 </span>
                 <i className="fa fa-chevron-down text-[8px]"></i>

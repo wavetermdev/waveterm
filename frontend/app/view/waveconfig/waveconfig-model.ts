@@ -29,7 +29,7 @@ export type ConfigFile = {
     visualComponent?: React.ComponentType<{ model: WaveConfigViewModel }>;
 };
 
-const SECRET_NAME_REGEX = /^[A-Za-z][A-Za-z0-9_]*$/;
+export const SecretNameRegex = /^[A-Za-z][A-Za-z0-9_]*$/;
 
 function validateBgJson(parsed: any): ValidationResult {
     const keys = Object.keys(parsed);
@@ -57,7 +57,7 @@ function validateWaveAiJson(parsed: any): ValidationResult {
     for (const key of keys) {
         if (!keyPattern.test(key)) {
             return {
-                error: `Invalid key "${key}": keys must only contain letters, numbers, underscores, @ and hyphens`,
+                error: `Invalid key "${key}": keys must only contain letters, numbers, underscores, @, dots, and hyphens`,
             };
         }
     }
@@ -516,7 +516,7 @@ export class WaveConfigViewModel implements ViewModel {
             return;
         }
 
-        if (!SECRET_NAME_REGEX.test(name)) {
+        if (!SecretNameRegex.test(name)) {
             globalStore.set(
                 this.errorMessageAtom,
                 "Invalid secret name: must start with a letter and contain only letters, numbers, and underscores"

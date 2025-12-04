@@ -13,6 +13,8 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wconfig"
 )
 
+var AzureResourceNameRegex = regexp.MustCompile(`^[a-z0-9]([a-z0-9-]*[a-z0-9])?$`)
+
 func resolveAIMode(requestedMode string, premium bool) (string, *wconfig.AIModeConfigType, error) {
 	mode := requestedMode
 	if mode == "" {
@@ -135,7 +137,7 @@ func isNewOpenAIModel(model string) bool {
 	if model == "" {
 		return false
 	}
-	newPrefixes := []string{"gpt-6", "gpt-5", "gpt-4.1", "gpt-6", "o1", "o3"}
+	newPrefixes := []string{"gpt-6", "gpt-5", "gpt-4.1", "o1", "o3"}
 	for _, prefix := range newPrefixes {
 		if aiutil.CheckModelPrefix(model, prefix) {
 			return true
@@ -164,8 +166,7 @@ func isValidAzureResourceName(name string) bool {
 	if name == "" || len(name) > 63 {
 		return false
 	}
-	matched, _ := regexp.MatchString(`^[a-z0-9]([a-z0-9-]*[a-z0-9])?$`, name)
-	return matched
+	return AzureResourceNameRegex.MatchString(name)
 }
 
 func getAIModeConfig(aiMode string) (*wconfig.AIModeConfigType, error) {

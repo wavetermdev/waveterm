@@ -67,12 +67,13 @@ const UserInputModal = (userInputRequest: UserInputRequest) => {
         (waveEvent: WaveKeyboardEvent): boolean => {
             if (keyutil.checkKeyPressed(waveEvent, "Escape")) {
                 handleSendErrResponse();
-                return;
+                return true;
             }
             if (keyutil.checkKeyPressed(waveEvent, "Enter")) {
                 handleSubmit();
                 return true;
             }
+			return false;
         },
         [handleSendErrResponse, handleSubmit]
     );

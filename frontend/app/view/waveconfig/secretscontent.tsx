@@ -1,7 +1,7 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import type { WaveConfigViewModel } from "@/app/view/waveconfig/waveconfig-model";
+import { SecretNameRegex, type WaveConfigViewModel } from "@/app/view/waveconfig/waveconfig-model";
 import { cn } from "@/util/util";
 import { useAtomValue, useSetAtom } from "jotai";
 import { memo } from "react";
@@ -132,8 +132,7 @@ const AddSecretForm = memo(
         onCancel,
         onSubmit,
     }: AddSecretFormProps) => {
-        const secretNameRegex = /^[A-Za-z][A-Za-z0-9_]*$/;
-        const isNameInvalid = newSecretName !== "" && !secretNameRegex.test(newSecretName);
+        const isNameInvalid = newSecretName !== "" && !SecretNameRegex.test(newSecretName);
 
         return (
             <div className="flex flex-col gap-4 min-h-full p-6 bg-gray-800/50 rounded-lg">
@@ -179,7 +178,7 @@ const AddSecretForm = memo(
                     <button
                         className="px-4 py-2 bg-accent-600 hover:bg-accent-500 rounded cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                         onClick={onSubmit}
-                        disabled={isLoading}
+                        disabled={isLoading || isNameInvalid || newSecretName.trim() === ""}
                     >
                         {isLoading ? (
                             <>
