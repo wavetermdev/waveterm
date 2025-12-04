@@ -12,9 +12,6 @@
         "display:icon": {
           "type": "string"
         },
-        "display:shortdesc": {
-          "type": "string"
-        },
         "display:description": {
           "type": "string"
         },

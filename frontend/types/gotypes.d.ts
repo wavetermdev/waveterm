@@ -18,7 +18,6 @@ declare global {
         "display:name": string;
         "display:order"?: number;
         "display:icon"?: string;
-        "display:shortdesc"?: string;
         "display:description"?: string;
         "ai:provider"?: string;
         "ai:apitype"?: string;

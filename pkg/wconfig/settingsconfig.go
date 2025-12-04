@@ -266,7 +266,6 @@ type AIModeConfigType struct {
 	DisplayName        string   `json:"display:name"`
 	DisplayOrder       float64  `json:"display:order,omitempty"`
 	DisplayIcon        string   `json:"display:icon,omitempty"`
-	DisplayShortDesc   string   `json:"display:shortdesc,omitempty"`
 	DisplayDescription string   `json:"display:description,omitempty"`
 	Provider           string   `json:"ai:provider,omitempty" jsonschema:"enum=wave,enum=google,enum=openrouter,enum=openai,enum=azure,enum=azure-legacy,enum=custom"`
 	APIType            string   `json:"ai:apitype,omitempty" jsonschema:"enum=anthropic-messages,enum=openai-responses,enum=openai-chat"`
