@@ -76,6 +76,9 @@ type SettingsType struct {
 	AiFontSize      float64 `json:"ai:fontsize,omitempty"`
 	AiFixedFontSize float64 `json:"ai:fixedfontsize,omitempty"`
 
+	WaveAiShowCloudModes bool   `json:"waveai:showcloudmodes,omitempty"`
+	WaveAiDefaultMode    string `json:"waveai:defaultmode,omitempty"`
+
 	TermClear               bool     `json:"term:*,omitempty"`
 	TermFontSize            float64  `json:"term:fontsize,omitempty"`
 	TermFontFamily          string   `json:"term:fontfamily,omitempty"`

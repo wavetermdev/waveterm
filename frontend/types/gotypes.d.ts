@@ -1067,6 +1067,8 @@ declare global {
         "ai:proxyurl"?: string;
         "ai:fontsize"?: number;
         "ai:fixedfontsize"?: number;
+        "waveai:showcloudmodes"?: boolean;
+        "waveai:defaultmode"?: string;
         "term:*"?: boolean;
         "term:fontsize"?: number;
         "term:fontfamily"?: string;

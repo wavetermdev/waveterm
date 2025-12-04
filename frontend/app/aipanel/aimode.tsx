@@ -1,7 +1,7 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { atoms, createBlock } from "@/app/store/global";
+import { atoms, createBlock, getSettingsKeyAtom } from "@/app/store/global";
 import { cn, fireAndForget, makeIconClass } from "@/util/util";
 import { useAtomValue } from "jotai";
 import { memo, useRef, useState } from "react";
@@ -12,6 +12,8 @@ export const AIModeDropdown = memo(() => {
     const aiMode = useAtomValue(model.currentAIMode);
     const aiModeConfigs = useAtomValue(model.aiModeConfigs);
     const rateLimitInfo = useAtomValue(atoms.waveAIRateLimitInfoAtom);
+    const showCloudModes = useAtomValue(getSettingsKeyAtom("waveai:showcloudmodes"));
+    const defaultMode = useAtomValue(getSettingsKeyAtom("waveai:defaultmode")) ?? "waveai@balanced";
     const [isOpen, setIsOpen] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -22,14 +24,6 @@ export const AIModeDropdown = memo(() => {
         .map(([mode, config]) => ({ mode, ...config }))
         .filter((config) => !(hideQuick && config.mode === "waveai@quick"));
 
-    const waveProviderConfigs = allConfigs
-        .filter((config) => config["ai:provider"] === "wave")
-        .sort((a, b) => {
-            const orderDiff = (a["display:order"] || 0) - (b["display:order"] || 0);
-            if (orderDiff !== 0) return orderDiff;
-            return (a["display:name"] || "").localeCompare(b["display:name"] || "");
-        });
-
     const otherProviderConfigs = allConfigs
         .filter((config) => config["ai:provider"] !== "wave")
         .sort((a, b) => {
@@ -37,6 +31,19 @@ export const AIModeDropdown = memo(() => {
             if (orderDiff !== 0) return orderDiff;
             return (a["display:name"] || "").localeCompare(b["display:name"] || "");
         });
+
+    const hasCustomModels = otherProviderConfigs.length > 0;
+    const shouldShowCloudModes = showCloudModes || !hasCustomModels;
+
+    const waveProviderConfigs = shouldShowCloudModes
+        ? allConfigs
+              .filter((config) => config["ai:provider"] === "wave")
+              .sort((a, b) => {
+                  const orderDiff = (a["display:order"] || 0) - (b["display:order"] || 0);
+                  if (orderDiff !== 0) return orderDiff;
+                  return (a["display:name"] || "").localeCompare(b["display:name"] || "");
+              })
+        : [];
 
     const hasBothModeTypes = waveProviderConfigs.length > 0 && otherProviderConfigs.length > 0;
 
@@ -50,7 +57,7 @@ export const AIModeDropdown = memo(() => {
         setIsOpen(false);
     };
 
-    let currentMode = aiMode || "waveai@balanced";
+    let currentMode = aiMode || defaultMode;
     const currentConfig = aiModeConfigs[currentMode];
     if (currentConfig) {
         if (!hasPremium && currentConfig["waveai:premium"]) {
@@ -66,9 +73,7 @@ export const AIModeDropdown = memo(() => {
         "display:icon": "question",
     };
 
-	console.log("WAVE", waveProviderConfigs, "OTHER", otherProviderConfigs)
-
-    return (
+	   return (
         <div className="relative" ref={dropdownRef}>
             <button
                 onClick={() => setIsOpen(!isOpen)}

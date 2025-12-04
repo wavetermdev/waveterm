@@ -49,7 +49,7 @@ function validateAiJson(parsed: any): ValidationResult {
 
 function validateWaveAiJson(parsed: any): ValidationResult {
     const keys = Object.keys(parsed);
-    const keyPattern = /^[a-zA-Z0-9_@-]+$/;
+    const keyPattern = /^[a-zA-Z0-9_@.-]+$/;
     for (const key of keys) {
         if (!keyPattern.test(key)) {
             return {
