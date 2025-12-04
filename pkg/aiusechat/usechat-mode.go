@@ -106,6 +106,9 @@ func applyProviderDefaults(config *wconfig.AIModeConfigType) {
 			config.APITokenSecretName = "AZURE_OPENAI_KEY"
 		}
 	}
+	if config.APIType == "" {
+		config.APIType = uctypes.APIType_OpenAIChat
+	}
 }
 
 func isAzureAPIType(apiType string) bool {
