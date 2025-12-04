@@ -18,6 +18,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
+	"github.com/wavetermdev/waveterm/pkg/wavebase"
 )
 
 // these conversions are based off the anthropic spec
@@ -27,7 +28,7 @@ import (
 func buildAnthropicHTTPRequest(ctx context.Context, msgs []anthropicInputMessage, chatOpts uctypes.WaveChatOpts) (*http.Request, error) {
 	opts := chatOpts.Config
 	if opts.Model == "" {
-		return nil, errors.New("opts.model is required")
+		return nil, errors.New("ai:model is required")
 	}
 	if chatOpts.ClientId == "" {
 		return nil, errors.New("chatOpts.ClientId is required")
@@ -36,12 +37,7 @@ func buildAnthropicHTTPRequest(ctx context.Context, msgs []anthropicInputMessage
 	// Set defaults
 	endpoint := opts.Endpoint
 	if endpoint == "" {
-		return nil, errors.New("BaseURL is required")
-	}
-
-	apiVersion := opts.APIVersion
-	if apiVersion == "" {
-		apiVersion = AnthropicDefaultAPIVersion
+		return nil, errors.New("ai:endpoint is required")
 	}
 
 	maxTokens := opts.MaxTokens
@@ -168,10 +164,20 @@ func buildAnthropicHTTPRequest(ctx context.Context, msgs []anthropicInputMessage
 	if opts.APIToken != "" {
 		req.Header.Set("x-api-key", opts.APIToken)
 	}
-	req.Header.Set("anthropic-version", apiVersion)
+	req.Header.Set("anthropic-version", AnthropicDefaultAPIVersion)
 	req.Header.Set("accept", "text/event-stream")
-	req.Header.Set("X-Wave-ClientId", chatOpts.ClientId)
-	req.Header.Set("X-Wave-APIType", uctypes.APIType_AnthropicMessages)
+	// Only send Wave-specific headers when using Wave provider
+	if opts.Provider == uctypes.AIProvider_Wave {
+		if chatOpts.ClientId != "" {
+			req.Header.Set("X-Wave-ClientId", chatOpts.ClientId)
+		}
+		if chatOpts.ChatId != "" {
+			req.Header.Set("X-Wave-ChatId", chatOpts.ChatId)
+		}
+		req.Header.Set("X-Wave-Version", wavebase.WaveVersion)
+		req.Header.Set("X-Wave-APIType", uctypes.APIType_AnthropicMessages)
+		req.Header.Set("X-Wave-RequestType", chatOpts.GetWaveRequestType())
+	}
 
 	return req, nil
 }

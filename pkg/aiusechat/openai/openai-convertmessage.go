@@ -197,7 +197,7 @@ func buildOpenAIHTTPRequest(ctx context.Context, inputs []any, chatOpts uctypes.
 	}
 
 	if opts.Model == "" {
-		return nil, errors.New("opts.model is required")
+		return nil, errors.New("ai:model is required")
 	}
 	if chatOpts.ClientId == "" {
 		return nil, errors.New("chatOpts.ClientId is required")
@@ -206,7 +206,7 @@ func buildOpenAIHTTPRequest(ctx context.Context, inputs []any, chatOpts uctypes.
 	// Set defaults
 	endpoint := opts.Endpoint
 	if endpoint == "" {
-		return nil, errors.New("BaseURL is required")
+		return nil, errors.New("ai:endpoint is required")
 	}
 
 	maxTokens := opts.MaxTokens
@@ -288,7 +288,12 @@ func buildOpenAIHTTPRequest(ctx context.Context, inputs []any, chatOpts uctypes.
 	}
 	// Set headers
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+opts.APIToken)
+	// Azure OpenAI uses "api-key" header instead of "Authorization: Bearer"
+	if opts.Provider == uctypes.AIProvider_Azure || opts.Provider == uctypes.AIProvider_AzureLegacy {
+		req.Header.Set("api-key", opts.APIToken)
+	} else {
+		req.Header.Set("Authorization", "Bearer "+opts.APIToken)
+	}
 	req.Header.Set("Accept", "text/event-stream")
 
 	// Only send Wave-specific headers when using Wave provider
