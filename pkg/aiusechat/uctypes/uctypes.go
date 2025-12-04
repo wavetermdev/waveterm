@@ -280,14 +280,15 @@ type AIOptsType struct {
 	ThinkingLevel string   `json:"thinkinglevel,omitempty"` // ThinkingLevelLow, ThinkingLevelMedium, or ThinkingLevelHigh
 	AIMode        string   `json:"aimode,omitempty"`
 	Capabilities  []string `json:"capabilities,omitempty"`
+	WaveAIPremium bool     `json:"waveaipremium,omitempty"`
 }
 
 func (opts AIOptsType) IsWaveProxy() bool {
-	return strings.Contains(opts.Endpoint, ".waveterm.")
+	return opts.Provider == AIProvider_Wave
 }
 
 func (opts AIOptsType) IsPremiumModel() bool {
-	return opts.Model == "gpt-5" || opts.Model == "gpt-5.1" || strings.Contains(opts.Model, "claude-sonnet")
+	return opts.WaveAIPremium
 }
 
 func (opts AIOptsType) HasCapability(cap string) bool {
