@@ -290,6 +290,31 @@ export class WaveConfigViewModel implements ViewModel {
 
         const fileContent = globalStore.get(this.fileContentAtom);
 
+        if (fileContent.trim() === "") {
+            globalStore.set(this.isSavingAtom, true);
+            globalStore.set(this.errorMessageAtom, null);
+            globalStore.set(this.validationErrorAtom, null);
+
+            try {
+                const fullPath = `${this.configDir}/${selectedFile.path}`;
+                await RpcApi.FileWriteCommand(TabRpcClient, {
+                    info: { path: fullPath },
+                    data64: stringToBase64(""),
+                });
+                globalStore.set(this.fileContentAtom, "");
+                globalStore.set(this.originalContentAtom, "");
+                globalStore.set(this.hasEditedAtom, false);
+            } catch (err) {
+                globalStore.set(
+                    this.errorMessageAtom,
+                    `Failed to save ${selectedFile.name}: ${err.message || String(err)}`
+                );
+            } finally {
+                globalStore.set(this.isSavingAtom, false);
+            }
+            return;
+        }
+
         try {
             const parsed = JSON.parse(fileContent);
 
