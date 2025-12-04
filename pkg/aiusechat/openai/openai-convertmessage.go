@@ -288,9 +288,7 @@ func buildOpenAIHTTPRequest(ctx context.Context, inputs []any, chatOpts uctypes.
 	}
 	// Set headers
 	req.Header.Set("Content-Type", "application/json")
-	if opts.APIToken != "" {
-		req.Header.Set("Authorization", "Bearer "+opts.APIToken)
-	}
+	req.Header.Set("Authorization", "Bearer "+opts.APIToken)
 	req.Header.Set("Accept", "text/event-stream")
 	if chatOpts.ClientId != "" {
 		req.Header.Set("X-Wave-ClientId", chatOpts.ClientId)
