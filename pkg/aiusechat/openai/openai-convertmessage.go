@@ -204,7 +204,7 @@ func buildOpenAIHTTPRequest(ctx context.Context, inputs []any, chatOpts uctypes.
 	}
 
 	// Set defaults
-	endpoint := opts.BaseURL
+	endpoint := opts.Endpoint
 	if endpoint == "" {
 		return nil, errors.New("BaseURL is required")
 	}
@@ -290,15 +290,19 @@ func buildOpenAIHTTPRequest(ctx context.Context, inputs []any, chatOpts uctypes.
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+opts.APIToken)
 	req.Header.Set("Accept", "text/event-stream")
-	if chatOpts.ClientId != "" {
-		req.Header.Set("X-Wave-ClientId", chatOpts.ClientId)
+
+	// Only send Wave-specific headers when using Wave provider
+	if opts.Provider == uctypes.AIProvider_Wave {
+		if chatOpts.ClientId != "" {
+			req.Header.Set("X-Wave-ClientId", chatOpts.ClientId)
+		}
+		if chatOpts.ChatId != "" {
+			req.Header.Set("X-Wave-ChatId", chatOpts.ChatId)
+		}
+		req.Header.Set("X-Wave-Version", wavebase.WaveVersion)
+		req.Header.Set("X-Wave-APIType", uctypes.APIType_OpenAIResponses)
+		req.Header.Set("X-Wave-RequestType", chatOpts.GetWaveRequestType())
 	}
-	if chatOpts.ChatId != "" {
-		req.Header.Set("X-Wave-ChatId", chatOpts.ChatId)
-	}
-	req.Header.Set("X-Wave-Version", wavebase.WaveVersion)
-	req.Header.Set("X-Wave-APIType", uctypes.APIType_OpenAIResponses)
-	req.Header.Set("X-Wave-RequestType", chatOpts.GetWaveRequestType())
 
 	return req, nil
 }

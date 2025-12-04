@@ -34,7 +34,7 @@ func buildAnthropicHTTPRequest(ctx context.Context, msgs []anthropicInputMessage
 	}
 
 	// Set defaults
-	endpoint := opts.BaseURL
+	endpoint := opts.Endpoint
 	if endpoint == "" {
 		return nil, errors.New("BaseURL is required")
 	}

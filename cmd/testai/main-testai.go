@@ -166,7 +166,7 @@ func testOpenAIComp(ctx context.Context, model, message string, tools []uctypes.
 	opts := &uctypes.AIOptsType{
 		APIType:       uctypes.APIType_OpenAIChat,
 		APIToken:      apiKey,
-		BaseURL:       "https://api.openai.com/v1/chat/completions",
+		Endpoint:      "https://api.openai.com/v1/chat/completions",
 		Model:         model,
 		MaxTokens:     4096,
 		ThinkingLevel: uctypes.ThinkingLevelMedium,
@@ -216,7 +216,7 @@ func testOpenRouter(ctx context.Context, model, message string, tools []uctypes.
 	opts := &uctypes.AIOptsType{
 		APIType:       uctypes.APIType_OpenAIChat,
 		APIToken:      apiKey,
-		BaseURL:       "https://openrouter.ai/api/v1/chat/completions",
+		Endpoint:      "https://openrouter.ai/api/v1/chat/completions",
 		Model:         model,
 		MaxTokens:     4096,
 		ThinkingLevel: uctypes.ThinkingLevelMedium,

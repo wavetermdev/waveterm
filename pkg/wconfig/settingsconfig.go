@@ -272,7 +272,7 @@ type AIModeConfigType struct {
 	Model              string   `json:"ai:model,omitempty"`
 	ThinkingLevel      string   `json:"ai:thinkinglevel,omitempty" jsonschema:"enum=low,enum=medium,enum=high"`
 	Endpoint           string   `json:"ai:endpoint,omitempty"`
-	APIVersion         string   `json:"ai:apiversion,omitempty"`
+	AzureAPIVersion    string   `json:"ai:azureapiversion,omitempty"`
 	APIToken           string   `json:"ai:apitoken,omitempty"`
 	APITokenSecretName string   `json:"ai:apitokensecretname,omitempty"`
 	AzureResourceName  string   `json:"ai:azureresourcename,omitempty"`

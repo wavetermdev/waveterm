@@ -188,6 +188,7 @@ type AIModeConfig struct {
 	DisplayName        string   `json:"display:name"`
 	DisplayOrder       float64  `json:"display:order,omitempty"`
 	DisplayIcon        string   `json:"display:icon"`
+	Provider           string   `json:"provider,omitempty"`
 	APIType            string   `json:"apitype"`
 	Model              string   `json:"model"`
 	ThinkingLevel      string   `json:"thinkinglevel"`
@@ -267,12 +268,12 @@ type WaveContinueResponse struct {
 
 // Wave Specific AI opts for configuration
 type AIOptsType struct {
+	Provider      string   `json:"provider,omitempty"`
 	APIType       string   `json:"apitype,omitempty"`
 	Model         string   `json:"model"`
 	APIToken      string   `json:"apitoken"`
-	OrgID         string   `json:"orgid,omitempty"`
 	APIVersion    string   `json:"apiversion,omitempty"`
-	BaseURL       string   `json:"baseurl,omitempty"`
+	Endpoint      string   `json:"endpoint,omitempty"`
 	ProxyURL      string   `json:"proxyurl,omitempty"`
 	MaxTokens     int      `json:"maxtokens,omitempty"`
 	TimeoutMs     int      `json:"timeoutms,omitempty"`
@@ -282,7 +283,7 @@ type AIOptsType struct {
 }
 
 func (opts AIOptsType) IsWaveProxy() bool {
-	return strings.Contains(opts.BaseURL, ".waveterm.")
+	return strings.Contains(opts.Endpoint, ".waveterm.")
 }
 
 func (opts AIOptsType) IsPremiumModel() bool {

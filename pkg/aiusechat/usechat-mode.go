@@ -72,12 +72,12 @@ func applyProviderDefaults(config *wconfig.AIModeConfigType) {
 		}
 	}
 	if config.Provider == uctypes.AIProvider_AzureLegacy {
-		if config.APIVersion == "" {
-			config.APIVersion = "2025-04-01-preview"
+		if config.AzureAPIVersion == "" {
+			config.AzureAPIVersion = "2025-04-01-preview"
 		}
 		if config.Endpoint == "" && isValidAzureResourceName(config.AzureResourceName) && config.AzureDeployment != "" {
 			config.Endpoint = fmt.Sprintf("https://%s.openai.azure.com/openai/deployments/%s/chat/completions?api-version=%s",
-				config.AzureResourceName, config.AzureDeployment, config.APIVersion)
+				config.AzureResourceName, config.AzureDeployment, config.AzureAPIVersion)
 		}
 		if config.APIType == "" {
 			config.APIType = uctypes.APIType_OpenAIChat
@@ -87,8 +87,8 @@ func applyProviderDefaults(config *wconfig.AIModeConfigType) {
 		}
 	}
 	if config.Provider == uctypes.AIProvider_Azure {
-		if config.APIVersion == "" {
-			config.APIVersion = "v1" // purely informational for now
+		if config.AzureAPIVersion == "" {
+			config.AzureAPIVersion = "v1" // purely informational for now
 		}
 		if config.APIType == "" {
 			config.APIType = getAzureAPIType(config.Model)

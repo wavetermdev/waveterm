@@ -520,7 +520,7 @@ func RunOpenAIChatStep(
 
 	resp, err := httpClient.Do(req)
 	if err != nil {
-		return nil, nil, nil, sanitizeHostnameInError(err, chatOpts.Config.BaseURL)
+		return nil, nil, nil, sanitizeHostnameInError(err, chatOpts.Config.Endpoint)
 	}
 	defer resp.Body.Close()
 
