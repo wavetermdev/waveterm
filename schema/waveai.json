@@ -25,6 +25,8 @@
             "google",
             "openrouter",
             "openai",
+            "azure",
+            "azure-legacy",
             "custom"
           ]
         },
@@ -57,6 +59,12 @@
           "type": "string"
         },
         "ai:apitokensecretname": {
+          "type": "string"
+        },
+        "ai:azureresourcename": {
+          "type": "string"
+        },
+        "ai:azuredeployment": {
           "type": "string"
         },
         "ai:capabilities": {

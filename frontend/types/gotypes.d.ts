@@ -28,6 +28,8 @@ declare global {
         "ai:apiversion"?: string;
         "ai:apitoken"?: string;
         "ai:apitokensecretname"?: string;
+        "ai:azureresourcename"?: string;
+        "ai:azuredeployment"?: string;
         "ai:capabilities"?: string[];
         "waveai:cloud"?: boolean;
         "waveai:premium"?: boolean;
