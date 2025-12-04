@@ -5,7 +5,6 @@ import { Tooltip } from "@/app/element/tooltip";
 import { globalStore } from "@/app/store/jotaiStore";
 import { CodeEditor } from "@/app/view/codeeditor/codeeditor";
 import type { ConfigFile, WaveConfigViewModel } from "@/app/view/waveconfig/waveconfig-model";
-import { SecretsContent } from "@/app/view/waveconfig/secretscontent";
 import { checkKeyPressed, keydownWrapper } from "@/util/keyutil";
 import { cn } from "@/util/util";
 import { useAtom, useAtomValue } from "jotai";
