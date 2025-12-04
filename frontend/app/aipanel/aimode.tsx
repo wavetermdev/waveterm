@@ -5,6 +5,7 @@ import { atoms, createBlock, getSettingsKeyAtom } from "@/app/store/global";
 import { cn, fireAndForget, makeIconClass } from "@/util/util";
 import { useAtomValue } from "jotai";
 import { memo, useRef, useState } from "react";
+import { getFilteredAIModeConfigs } from "./ai-utils";
 import { WaveAIModel } from "./waveai-model";
 
 export const AIModeDropdown = memo(() => {
@@ -18,32 +19,13 @@ export const AIModeDropdown = memo(() => {
     const dropdownRef = useRef<HTMLDivElement>(null);
 
     const hasPremium = !rateLimitInfo || rateLimitInfo.unknown || rateLimitInfo.preq > 0;
-    const hideQuick = model.inBuilder && hasPremium;
 
-    const allConfigs = Object.entries(aiModeConfigs)
-        .map(([mode, config]) => ({ mode, ...config }))
-        .filter((config) => !(hideQuick && config.mode === "waveai@quick"));
-
-    const otherProviderConfigs = allConfigs
-        .filter((config) => config["ai:provider"] !== "wave")
-        .sort((a, b) => {
-            const orderDiff = (a["display:order"] || 0) - (b["display:order"] || 0);
-            if (orderDiff !== 0) return orderDiff;
-            return (a["display:name"] || "").localeCompare(b["display:name"] || "");
-        });
-
-    const hasCustomModels = otherProviderConfigs.length > 0;
-    const shouldShowCloudModes = showCloudModes || !hasCustomModels;
-
-    const waveProviderConfigs = shouldShowCloudModes
-        ? allConfigs
-              .filter((config) => config["ai:provider"] === "wave")
-              .sort((a, b) => {
-                  const orderDiff = (a["display:order"] || 0) - (b["display:order"] || 0);
-                  if (orderDiff !== 0) return orderDiff;
-                  return (a["display:name"] || "").localeCompare(b["display:name"] || "");
-              })
-        : [];
+    const { waveProviderConfigs, otherProviderConfigs, shouldShowCloudModes } = getFilteredAIModeConfigs(
+        aiModeConfigs,
+        showCloudModes,
+        model.inBuilder,
+        hasPremium
+    );
 
     const hasBothModeTypes = waveProviderConfigs.length > 0 && otherProviderConfigs.length > 0;
 
@@ -63,7 +45,7 @@ export const AIModeDropdown = memo(() => {
         if (!hasPremium && currentConfig["waveai:premium"]) {
             currentMode = "waveai@quick";
         }
-        if (hideQuick && currentMode === "waveai@quick") {
+        if (model.inBuilder && hasPremium && currentMode === "waveai@quick") {
             currentMode = "waveai@balanced";
         }
     }

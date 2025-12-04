@@ -88,9 +88,7 @@
       "additionalProperties": false,
       "type": "object",
       "required": [
-        "display:name",
-        "ai:apitype",
-        "ai:model"
+        "display:name"
       ]
     }
   },

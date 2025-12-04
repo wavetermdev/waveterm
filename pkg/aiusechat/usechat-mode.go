@@ -56,6 +56,9 @@ func applyProviderDefaults(config *wconfig.AIModeConfigType) {
 		if config.APIType == "" {
 			config.APIType = getOpenAIAPIType(config.Model)
 		}
+		if config.APITokenSecretName == "" {
+			config.APITokenSecretName = "OPENAI_KEY"
+		}
 	}
 	if config.Provider == uctypes.AIProvider_OpenRouter {
 		if config.Endpoint == "" {
@@ -63,6 +66,9 @@ func applyProviderDefaults(config *wconfig.AIModeConfigType) {
 		}
 		if config.APIType == "" {
 			config.APIType = uctypes.APIType_OpenAIChat
+		}
+		if config.APITokenSecretName == "" {
+			config.APITokenSecretName = "OPENROUTER_KEY"
 		}
 	}
 	if config.Provider == uctypes.AIProvider_AzureLegacy {
@@ -75,6 +81,9 @@ func applyProviderDefaults(config *wconfig.AIModeConfigType) {
 		}
 		if config.APIType == "" {
 			config.APIType = uctypes.APIType_OpenAIChat
+		}
+		if config.APITokenSecretName == "" {
+			config.APITokenSecretName = "AZURE_OPENAI_KEY"
 		}
 	}
 	if config.Provider == uctypes.AIProvider_Azure {
@@ -92,6 +101,9 @@ func applyProviderDefaults(config *wconfig.AIModeConfigType) {
 			case uctypes.APIType_OpenAIChat:
 				config.Endpoint = base + "/chat/completions"
 			}
+		}
+		if config.APITokenSecretName == "" {
+			config.APITokenSecretName = "AZURE_OPENAI_KEY"
 		}
 	}
 }

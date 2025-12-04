@@ -6,7 +6,9 @@ import { getApi, getBlockMetaKeyAtom, WOS } from "@/app/store/global";
 import { globalStore } from "@/app/store/jotaiStore";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
+import { SecretsContent } from "@/app/view/waveconfig/secretscontent";
 import { WaveConfigView } from "@/app/view/waveconfig/waveconfig";
+import { WaveAIVisualContent } from "@/app/view/waveconfig/waveaivisual";
 import { base64ToString, stringToBase64 } from "@/util/util";
 import { atom, type PrimitiveAtom } from "jotai";
 import type * as MonacoTypes from "monaco-editor/esm/vs/editor/editor.api";
@@ -23,6 +25,8 @@ export type ConfigFile = {
     docsUrl?: string;
     validator?: ConfigValidator;
     isSecrets?: boolean;
+    hasJsonView?: boolean;
+    visualComponent?: React.ComponentType<{ model: WaveConfigViewModel }>;
 };
 
 const SECRET_NAME_REGEX = /^[A-Za-z][A-Za-z0-9_]*$/;
@@ -66,24 +70,29 @@ const configFiles: ConfigFile[] = [
         path: "settings.json",
         language: "json",
         docsUrl: "https://docs.waveterm.dev/config",
+        hasJsonView: true,
     },
     {
         name: "Connections",
         path: "connections.json",
         language: "json",
         docsUrl: "https://docs.waveterm.dev/connections",
+        hasJsonView: true,
     },
     {
         name: "Widgets",
         path: "widgets.json",
         language: "json",
         docsUrl: "https://docs.waveterm.dev/customwidgets",
+        hasJsonView: true,
     },
     {
         name: "Wave AI Modes",
         path: "waveai.json",
         language: "json",
         validator: validateWaveAiJson,
+        hasJsonView: true,
+        // visualComponent: WaveAIVisualContent,
     },
     {
         name: "Backgrounds",
@@ -91,11 +100,14 @@ const configFiles: ConfigFile[] = [
         language: "json",
         docsUrl: "https://docs.waveterm.dev/presets#background-configurations",
         validator: validateBgJson,
+        hasJsonView: true,
     },
     {
         name: "Secrets",
         path: "secrets",
         isSecrets: true,
+        hasJsonView: false,
+        visualComponent: SecretsContent,
     },
 ];
 
@@ -105,6 +117,7 @@ const deprecatedConfigFiles: ConfigFile[] = [
         path: "presets.json",
         language: "json",
         deprecated: true,
+        hasJsonView: true,
     },
     {
         name: "AI Presets",
@@ -113,6 +126,7 @@ const deprecatedConfigFiles: ConfigFile[] = [
         deprecated: true,
         docsUrl: "https://docs.waveterm.dev/ai-presets",
         validator: validateAiJson,
+        hasJsonView: true,
     },
 ];
 
@@ -135,6 +149,7 @@ export class WaveConfigViewModel implements ViewModel {
     validationErrorAtom: PrimitiveAtom<string>;
     isMenuOpenAtom: PrimitiveAtom<boolean>;
     presetsJsonExistsAtom: PrimitiveAtom<boolean>;
+    activeTabAtom: PrimitiveAtom<"visual" | "json">;
     configDir: string;
     saveShortcut: string;
     editorRef: React.RefObject<MonacoTypes.editor.IStandaloneCodeEditor>;
@@ -166,6 +181,7 @@ export class WaveConfigViewModel implements ViewModel {
         this.validationErrorAtom = atom(null) as PrimitiveAtom<string>;
         this.isMenuOpenAtom = atom(false);
         this.presetsJsonExistsAtom = atom(false);
+        this.activeTabAtom = atom<"visual" | "json">("visual");
         this.editorRef = React.createRef();
 
         this.secretNamesAtom = atom<string[]>([]);

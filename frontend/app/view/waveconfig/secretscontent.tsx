@@ -84,10 +84,6 @@ interface SecretListViewProps {
 const SecretListView = memo(({ secretNames, onSelectSecret, onAddSecret }: SecretListViewProps) => {
     return (
         <div className="flex flex-col h-full w-full bg-gray-800/50 rounded-lg">
-            <div className="flex items-center justify-between p-4 border-b border-gray-700">
-                <h3 className="text-lg font-semibold">Secrets</h3>
-                <span className="px-2 py-1 bg-gray-700 rounded text-sm">{secretNames.length}</span>
-            </div>
             <div className="flex flex-col divide-y divide-gray-700">
                 {secretNames.map((name) => (
                     <div

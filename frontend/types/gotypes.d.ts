@@ -21,8 +21,8 @@ declare global {
         "display:shortdesc"?: string;
         "display:description"?: string;
         "ai:provider"?: string;
-        "ai:apitype": string;
-        "ai:model": string;
+        "ai:apitype"?: string;
+        "ai:model"?: string;
         "ai:thinkinglevel"?: string;
         "ai:endpoint"?: string;
         "ai:apiversion"?: string;

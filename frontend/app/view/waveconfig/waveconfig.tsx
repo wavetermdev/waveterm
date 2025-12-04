@@ -7,6 +7,7 @@ import { CodeEditor } from "@/app/view/codeeditor/codeeditor";
 import type { ConfigFile, WaveConfigViewModel } from "@/app/view/waveconfig/waveconfig-model";
 import { SecretsContent } from "@/app/view/waveconfig/secretscontent";
 import { checkKeyPressed, keydownWrapper } from "@/util/keyutil";
+import { cn } from "@/util/util";
 import { useAtom, useAtomValue } from "jotai";
 import { memo, useCallback, useEffect, useRef } from "react";
 import { debounce } from "throttle-debounce";
@@ -89,6 +90,7 @@ const WaveConfigView = memo(({ blockId, model }: ViewComponentProps<WaveConfigVi
     const validationError = useAtomValue(model.validationErrorAtom);
     const [isMenuOpen, setIsMenuOpen] = useAtom(model.isMenuOpenAtom);
     const hasChanges = useAtomValue(model.hasEditedAtom);
+    const [activeTab, setActiveTab] = useAtom(model.activeTabAtom);
     const editorContainerRef = useRef<HTMLDivElement>(null);
 
     const handleContentChange = useCallback(
@@ -153,11 +155,8 @@ const WaveConfigView = memo(({ blockId, model }: ViewComponentProps<WaveConfigVi
                 <ConfigSidebar model={model} />
             </div>
             <div ref={editorContainerRef} className="flex flex-col flex-1 min-w-0">
-                {selectedFile && selectedFile.isSecrets ? (
-                    <SecretsContent model={model} />
-                ) : (
-                    selectedFile && (
-                        <>
+                {selectedFile && (
+                    <>
                         <div className="flex flex-row items-center justify-between px-4 py-2 border-b border-border">
                             <div className="flex items-baseline gap-2 min-w-0">
                                 <button
@@ -185,26 +184,56 @@ const WaveConfigView = memo(({ blockId, model }: ViewComponentProps<WaveConfigVi
                                 </div>
                             </div>
                             <div className="flex gap-2 items-baseline shrink-0">
-                                {hasChanges && (
-                                    <span className="text-xs text-warning pb-0.5 @max-w450:hidden">
-                                        Unsaved changes
-                                    </span>
+                                {selectedFile.hasJsonView && (
+                                    <>
+                                        {hasChanges && (
+                                            <span className="text-xs text-warning pb-0.5 @max-w450:hidden">
+                                                Unsaved changes
+                                            </span>
+                                        )}
+                                        <Tooltip content={saveTooltip} placement="bottom" divClassName="shrink-0">
+                                            <button
+                                                onClick={() => model.saveFile()}
+                                                disabled={!hasChanges || isSaving}
+                                                className={`px-3 py-1 rounded transition-colors text-sm ${
+                                                    !hasChanges || isSaving
+                                                        ? "border border-border text-muted-foreground opacity-50"
+                                                        : "bg-accent/80 text-primary hover:bg-accent cursor-pointer"
+                                                }`}
+                                            >
+                                                {isSaving ? "Saving..." : "Save"}
+                                            </button>
+                                        </Tooltip>
+                                    </>
                                 )}
-                                <Tooltip content={saveTooltip} placement="bottom" divClassName="shrink-0">
-                                    <button
-                                        onClick={() => model.saveFile()}
-                                        disabled={!hasChanges || isSaving}
-                                        className={`px-3 py-1 rounded transition-colors text-sm ${
-                                            !hasChanges || isSaving
-                                                ? "border border-border text-muted-foreground opacity-50"
-                                                : "bg-accent/80 text-primary hover:bg-accent cursor-pointer"
-                                        }`}
-                                    >
-                                        {isSaving ? "Saving..." : "Save"}
-                                    </button>
-                                </Tooltip>
                             </div>
                         </div>
+                        {selectedFile.visualComponent && selectedFile.hasJsonView && (
+                            <div className="flex gap-0 border-b border-border">
+                                <button
+                                    onClick={() => setActiveTab("visual")}
+                                    className={cn(
+                                        "px-4 pt-1 pb-1.5 cursor-pointer transition-colors text-secondary",
+                                        activeTab === "visual"
+                                            ? "bg-highlightbg text-primary"
+                                            : "bg-transparent hover:bg-hover"
+                                    )}
+                                >
+                                    Visual
+                                </button>
+                                <button
+                                    onClick={() => setActiveTab("json")}
+                                    className={cn(
+                                        "px-4 pt-1 pb-1.5 cursor-pointer transition-colors text-secondary",
+                                        activeTab === "json"
+                                            ? "bg-highlightbg text-primary"
+                                            : "bg-transparent hover:bg-hover"
+                                    )}
+                                >
+                                    Raw JSON
+                                </button>
+                            </div>
+                        )}
                         {errorMessage && (
                             <div className="bg-error text-primary px-4 py-2 border-b border-error flex items-center justify-between">
                                 <span>{errorMessage}</span>
@@ -232,6 +261,11 @@ const WaveConfigView = memo(({ blockId, model }: ViewComponentProps<WaveConfigVi
                                 <div className="flex items-center justify-center h-full text-muted-foreground">
                                     Loading...
                                 </div>
+                            ) : selectedFile.visualComponent && (!selectedFile.hasJsonView || activeTab === "visual") ? (
+                                (() => {
+                                    const VisualComponent = selectedFile.visualComponent;
+                                    return <VisualComponent model={model} />;
+                                })()
                             ) : (
                                 <CodeEditor
                                     blockId={blockId}
@@ -244,8 +278,7 @@ const WaveConfigView = memo(({ blockId, model }: ViewComponentProps<WaveConfigVi
                                 />
                             )}
                         </div>
-                        </>
-                    )
+                    </>
                 )}
             </div>
         </div>
