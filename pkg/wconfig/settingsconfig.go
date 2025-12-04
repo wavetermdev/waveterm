@@ -265,7 +265,7 @@ type AIModeConfigType struct {
 	DisplayIcon        string   `json:"display:icon,omitempty"`
 	DisplayShortDesc   string   `json:"display:shortdesc,omitempty"`
 	DisplayDescription string   `json:"display:description,omitempty"`
-	Provider           string   `json:"ai:provider,omitempty" jsonschema:"enum=wave,enum=google,enum=openrouter,enum=openai,enum=custom"`
+	Provider           string   `json:"ai:provider,omitempty" jsonschema:"enum=wave,enum=google,enum=openrouter,enum=openai,enum=azure,enum=azure-legacy,enum=custom"`
 	APIType            string   `json:"ai:apitype" jsonschema:"enum=anthropic-messages,enum=openai-responses,enum=openai-chat"`
 	Model              string   `json:"ai:model"`
 	ThinkingLevel      string   `json:"ai:thinkinglevel,omitempty" jsonschema:"enum=low,enum=medium,enum=high"`
@@ -273,6 +273,8 @@ type AIModeConfigType struct {
 	APIVersion         string   `json:"ai:apiversion,omitempty"`
 	APIToken           string   `json:"ai:apitoken,omitempty"`
 	APITokenSecretName string   `json:"ai:apitokensecretname,omitempty"`
+	AzureResourceName  string   `json:"ai:azureresourcename,omitempty"`
+	AzureDeployment    string   `json:"ai:azuredeployment,omitempty"`
 	Capabilities       []string `json:"ai:capabilities,omitempty" jsonschema:"enum=pdfs,enum=images,enum=tools"`
 	WaveAICloud        bool     `json:"waveai:cloud,omitempty"`
 	WaveAIPremium      bool     `json:"waveai:premium,omitempty"`

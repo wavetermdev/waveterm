@@ -25,11 +25,13 @@ const (
 )
 
 const (
-	AIProvider_Wave       = "wave"
-	AIProvider_Google     = "google"
-	AIProvider_OpenRouter = "openrouter"
-	AIProvider_OpenAI     = "openai"
-	AIProvider_Custom     = "custom"
+	AIProvider_Wave        = "wave"
+	AIProvider_Google      = "google"
+	AIProvider_OpenRouter  = "openrouter"
+	AIProvider_OpenAI      = "openai"
+	AIProvider_Azure       = "azure"
+	AIProvider_AzureLegacy = "azure-legacy"
+	AIProvider_Custom      = "custom"
 )
 
 type UseChatRequest struct {
