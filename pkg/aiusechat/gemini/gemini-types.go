@@ -9,7 +9,6 @@ import (
 
 const (
 	GeminiDefaultMaxTokens = 8192
-	GeminiDefaultModel     = "gemini-2.0-flash-exp"
 )
 
 // GeminiChatMessage represents a stored chat message for Gemini backend
@@ -94,14 +93,14 @@ type GeminiFileData struct {
 type GeminiFunctionCall struct {
 	Name             string         `json:"name"`
 	Args             map[string]any `json:"args,omitempty"`
-	ThoughtSignature string         `json:"thought_signature,omitempty"`
+	ThoughtSignature string         `json:"thoughtSignature,omitempty"`
 }
 
 // GeminiFunctionResponse represents a function execution result
 type GeminiFunctionResponse struct {
 	Name             string         `json:"name"`
 	Response         map[string]any `json:"response"`
-	ThoughtSignature string         `json:"thought_signature,omitempty"`
+	ThoughtSignature string         `json:"thoughtSignature,omitempty"`
 }
 
 // GeminiUsageMetadata represents token usage

@@ -23,7 +23,7 @@ func cleanSchemaForGemini(schema map[string]any) map[string]any {
 	}
 
 	cleaned := make(map[string]any)
-	
+
 	// Fields that Gemini accepts in the root schema
 	allowedRootFields := map[string]bool{
 		"type":        true,
@@ -78,7 +78,7 @@ func cleanSchemaForGemini(schema map[string]any) map[string]any {
 func ConvertToolDefinitionToGemini(tool uctypes.ToolDefinition) GeminiFunctionDeclaration {
 	// Clean the schema to remove fields that Gemini doesn't accept
 	cleanedSchema := cleanSchemaForGemini(tool.InputSchema)
-	
+
 	return GeminiFunctionDeclaration{
 		Name:        tool.Name,
 		Description: tool.Description,
@@ -242,9 +242,8 @@ func ConvertToolResultsToGeminiChatMessage(toolResults []uctypes.AIToolResult) (
 
 		parts = append(parts, GeminiMessagePart{
 			FunctionResponse: &GeminiFunctionResponse{
-				Name:             result.ToolName,
-				Response:         response,
-				ThoughtSignature: result.GoogleThoughtSignature,
+				Name:     result.ToolName,
+				Response: response,
 			},
 		})
 	}
