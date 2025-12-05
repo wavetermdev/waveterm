@@ -8,7 +8,7 @@ import {
     WaveUIMessagePart,
 } from "@/app/aipanel/aitypes";
 import { FocusManager } from "@/app/store/focusManager";
-import { atoms, createBlock, getOrefMetaKeyAtom } from "@/app/store/global";
+import { atoms, createBlock, getOrefMetaKeyAtom, getSettingsKeyAtom } from "@/app/store/global";
 import { globalStore } from "@/app/store/jotaiStore";
 import * as WOS from "@/app/store/wos";
 import { RpcApi } from "@/app/store/wshclientapi";
@@ -77,6 +77,8 @@ export class WaveAIModel {
     private constructor(orefContext: ORef, inBuilder: boolean) {
         this.orefContext = orefContext;
         this.inBuilder = inBuilder;
+        const defaultMode = globalStore.get(getSettingsKeyAtom("waveai:defaultmode")) ?? "waveai@balanced";
+        this.currentAIMode = jotai.atom(defaultMode);
         this.chatId = jotai.atom(null) as jotai.PrimitiveAtom<string>;
 
         this.modelAtom = jotai.atom((get) => {
@@ -365,7 +367,8 @@ export class WaveAIModel {
         }
         globalStore.set(this.chatId, chatIdValue);
 
-        const aiModeValue = rtInfo?.["waveai:mode"] ?? "waveai@balanced";
+        const defaultMode = globalStore.get(getSettingsKeyAtom("waveai:defaultmode")) ?? "waveai@balanced";
+        const aiModeValue = rtInfo?.["waveai:mode"] ?? defaultMode;
         globalStore.set(this.currentAIMode, aiModeValue);
 
         try {

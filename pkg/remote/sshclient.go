@@ -25,6 +25,7 @@ import (
 	"github.com/skeema/knownhosts"
 	"github.com/wavetermdev/waveterm/pkg/blocklogger"
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
+	"github.com/wavetermdev/waveterm/pkg/secretstore"
 	"github.com/wavetermdev/waveterm/pkg/trimquotes"
 	"github.com/wavetermdev/waveterm/pkg/userinput"
 	"github.com/wavetermdev/waveterm/pkg/util/shellutil"
@@ -223,7 +224,7 @@ func createPublicKeyCallback(connCtx context.Context, sshKeywords *wconfig.ConnK
 	}
 }
 
-func createInteractivePasswordCallbackPrompt(connCtx context.Context, remoteDisplayName string, debugInfo *ConnectionDebugInfo) func() (secret string, err error) {
+func createPasswordCallbackPrompt(connCtx context.Context, remoteDisplayName string, password *string, debugInfo *ConnectionDebugInfo) func() (secret string, err error) {
 	return func() (secret string, outErr error) {
 		defer func() {
 			panicErr := panichandler.PanicHandler("sshclient:password-callback", recover())
@@ -232,6 +233,12 @@ func createInteractivePasswordCallbackPrompt(connCtx context.Context, remoteDisp
 			}
 		}()
 		blocklogger.Infof(connCtx, "[conndebug] Password Authentication requested from connection %s...\n", remoteDisplayName)
+		
+		if password != nil {
+			blocklogger.Infof(connCtx, "[conndebug] using password from secret store, sending to ssh\n")
+			return *password, nil
+		}
+		
 		ctx, cancelFn := context.WithTimeout(connCtx, 60*time.Second)
 		defer cancelFn()
 		queryText := fmt.Sprintf(
@@ -615,9 +622,23 @@ func createClientConfig(connCtx context.Context, sshKeywords *wconfig.ConnKeywor
 		}
 	}
 
+	var sshPassword *string
+	if sshKeywords.SshPasswordSecretName != nil && *sshKeywords.SshPasswordSecretName != "" {
+		secretName := *sshKeywords.SshPasswordSecretName
+		password, exists, err := secretstore.GetSecret(secretName)
+		if err != nil {
+			return nil, fmt.Errorf("error retrieving ssh:passwordsecretname %q: %w", secretName, err)
+		}
+		if !exists {
+			return nil, fmt.Errorf("ssh:passwordsecretname %q not found in secret store", secretName)
+		}
+		blocklogger.Infof(connCtx, "[conndebug] successfully retrieved ssh:passwordsecretname %q from secret store\n", secretName)
+		sshPassword = &password
+	}
+
 	publicKeyCallback := ssh.PublicKeysCallback(createPublicKeyCallback(connCtx, sshKeywords, authSockSigners, agentClient, debugInfo))
 	keyboardInteractive := ssh.KeyboardInteractive(createInteractiveKbdInteractiveChallenge(connCtx, remoteName, debugInfo))
-	passwordCallback := ssh.PasswordCallback(createInteractivePasswordCallbackPrompt(connCtx, remoteName, debugInfo))
+	passwordCallback := ssh.PasswordCallback(createPasswordCallbackPrompt(connCtx, remoteName, sshPassword, debugInfo))
 
 	// exclude gssapi-with-mic and hostbased until implemented
 	authMethodMap := map[string]ssh.AuthMethod{
@@ -1013,6 +1034,9 @@ func mergeKeywords(oldKeywords *wconfig.ConnKeywords, newKeywords *wconfig.ConnK
 	}
 	if newKeywords.SshGlobalKnownHostsFile != nil {
 		outKeywords.SshGlobalKnownHostsFile = newKeywords.SshGlobalKnownHostsFile
+	}
+	if newKeywords.SshPasswordSecretName != nil {
+		outKeywords.SshPasswordSecretName = newKeywords.SshPasswordSecretName
 	}
 
 	return &outKeywords

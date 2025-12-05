@@ -12,22 +12,41 @@
         "display:icon": {
           "type": "string"
         },
-        "display:shortdesc": {
-          "type": "string"
-        },
         "display:description": {
           "type": "string"
         },
+        "ai:provider": {
+          "type": "string",
+          "enum": [
+            "wave",
+            "google",
+            "openrouter",
+            "openai",
+            "azure",
+            "azure-legacy",
+            "custom"
+          ]
+        },
         "ai:apitype": {
-          "type": "string"
+          "type": "string",
+          "enum": [
+            "anthropic-messages",
+            "openai-responses",
+            "openai-chat"
+          ]
         },
         "ai:model": {
           "type": "string"
         },
         "ai:thinkinglevel": {
-          "type": "string"
+          "type": "string",
+          "enum": [
+            "low",
+            "medium",
+            "high"
+          ]
         },
-        "ai:baseurl": {
+        "ai:endpoint": {
           "type": "string"
         },
         "ai:apiversion": {
@@ -39,9 +58,20 @@
         "ai:apitokensecretname": {
           "type": "string"
         },
+        "ai:azureresourcename": {
+          "type": "string"
+        },
+        "ai:azuredeployment": {
+          "type": "string"
+        },
         "ai:capabilities": {
           "items": {
-            "type": "string"
+            "type": "string",
+            "enum": [
+              "pdfs",
+              "images",
+              "tools"
+            ]
           },
           "type": "array"
         },
@@ -55,12 +85,7 @@
       "additionalProperties": false,
       "type": "object",
       "required": [
-        "display:name",
-        "display:icon",
-        "display:description",
-        "ai:apitype",
-        "ai:model",
-        "ai:thinkinglevel"
+        "display:name"
       ]
     }
   },

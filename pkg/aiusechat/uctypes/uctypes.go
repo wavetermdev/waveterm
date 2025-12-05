@@ -11,6 +11,9 @@ import (
 )
 
 const DefaultAIEndpoint = "https://cfapi.waveterm.dev/api/waveai"
+const DefaultOpenAIEndpoint = "https://api.openai.com/v1"
+const DefaultOpenRouterEndpoint = "https://openrouter.ai/api/v1"
+const WaveAIEndpointEnvName = "WAVETERM_WAVEAI_ENDPOINT"
 const DefaultAnthropicModel = "claude-sonnet-4-5"
 const DefaultOpenAIModel = "gpt-5-mini"
 const PremiumOpenAIModel = "gpt-5.1"
@@ -20,6 +23,16 @@ const (
 	APIType_OpenAIResponses   = "openai-responses"
 	APIType_OpenAIChat        = "openai-chat"
 	APIType_GoogleGemini      = "google-gemini"
+)
+
+const (
+	AIProvider_Wave        = "wave"
+	AIProvider_Google      = "google"
+	AIProvider_OpenRouter  = "openrouter"
+	AIProvider_OpenAI      = "openai"
+	AIProvider_Azure       = "azure"
+	AIProvider_AzureLegacy = "azure-legacy"
+	AIProvider_Custom      = "custom"
 )
 
 type UseChatRequest struct {
@@ -176,6 +189,7 @@ type AIModeConfig struct {
 	DisplayName        string   `json:"display:name"`
 	DisplayOrder       float64  `json:"display:order,omitempty"`
 	DisplayIcon        string   `json:"display:icon"`
+	Provider           string   `json:"provider,omitempty"`
 	APIType            string   `json:"apitype"`
 	Model              string   `json:"model"`
 	ThinkingLevel      string   `json:"thinkinglevel"`
@@ -256,26 +270,27 @@ type WaveContinueResponse struct {
 
 // Wave Specific AI opts for configuration
 type AIOptsType struct {
+	Provider      string   `json:"provider,omitempty"`
 	APIType       string   `json:"apitype,omitempty"`
 	Model         string   `json:"model"`
 	APIToken      string   `json:"apitoken"`
-	OrgID         string   `json:"orgid,omitempty"`
 	APIVersion    string   `json:"apiversion,omitempty"`
-	BaseURL       string   `json:"baseurl,omitempty"`
+	Endpoint      string   `json:"endpoint,omitempty"`
 	ProxyURL      string   `json:"proxyurl,omitempty"`
 	MaxTokens     int      `json:"maxtokens,omitempty"`
 	TimeoutMs     int      `json:"timeoutms,omitempty"`
 	ThinkingLevel string   `json:"thinkinglevel,omitempty"` // ThinkingLevelLow, ThinkingLevelMedium, or ThinkingLevelHigh
 	AIMode        string   `json:"aimode,omitempty"`
 	Capabilities  []string `json:"capabilities,omitempty"`
+	WaveAIPremium bool     `json:"waveaipremium,omitempty"`
 }
 
 func (opts AIOptsType) IsWaveProxy() bool {
-	return strings.Contains(opts.BaseURL, ".waveterm.")
+	return opts.Provider == AIProvider_Wave
 }
 
 func (opts AIOptsType) IsPremiumModel() bool {
-	return opts.Model == "gpt-5" || opts.Model == "gpt-5.1" || strings.Contains(opts.Model, "claude-sonnet")
+	return opts.WaveAIPremium
 }
 
 func (opts AIOptsType) HasCapability(cap string) bool {

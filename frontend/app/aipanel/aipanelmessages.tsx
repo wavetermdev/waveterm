@@ -58,10 +58,10 @@ export const AIPanelMessages = memo(({ messages, status, onContextMenu }: AIPane
     return (
         <div
             ref={messagesContainerRef}
-            className="flex-1 overflow-y-auto p-2 space-y-4 relative"
+            className="flex-1 overflow-y-auto p-2 space-y-4"
             onContextMenu={onContextMenu}
         >
-            <div className="absolute top-2 left-2 z-10">
+            <div className="mb-2">
                 <AIModeDropdown />
             </div>
             {messages.map((message, index) => {

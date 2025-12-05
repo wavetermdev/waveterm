@@ -272,11 +272,10 @@ function getConnectionsEditItem(
         onSelect: () => {
             util.fireAndForget(async () => {
                 globalStore.set(changeConnModalAtom, false);
-                const path = `${getApi().getConfigDir()}/connections.json`;
                 const blockDef: BlockDef = {
                     meta: {
-                        view: "preview",
-                        file: path,
+                        view: "waveconfig",
+                        file: "connections.json",
                     },
                 };
                 await createBlock(blockDef, false, true);

@@ -18,6 +18,11 @@ if [[ -n ${_comps+x} ]]; then
   source <(wsh completion zsh)
 fi
 
+# fix history (macos)
+if [[ "$HISTFILE" == "$WAVETERM_ZDOTDIR/.zsh_history" ]]; then
+  HISTFILE="$HOME/.zsh_history"
+fi
+
 typeset -g _WAVETERM_SI_FIRSTPRECMD=1
 
 # shell integration

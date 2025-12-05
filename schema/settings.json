@@ -65,6 +65,12 @@
         "ai:fixedfontsize": {
           "type": "number"
         },
+        "waveai:showcloudmodes": {
+          "type": "boolean"
+        },
+        "waveai:defaultmode": {
+          "type": "string"
+        },
         "term:*": {
           "type": "boolean"
         },

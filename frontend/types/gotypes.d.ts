@@ -17,16 +17,18 @@ declare global {
     type AIModeConfigType = {
         "display:name": string;
         "display:order"?: number;
-        "display:icon": string;
-        "display:shortdesc"?: string;
-        "display:description": string;
-        "ai:apitype": string;
-        "ai:model": string;
-        "ai:thinkinglevel": string;
-        "ai:baseurl"?: string;
+        "display:icon"?: string;
+        "display:description"?: string;
+        "ai:provider"?: string;
+        "ai:apitype"?: string;
+        "ai:model"?: string;
+        "ai:thinkinglevel"?: string;
+        "ai:endpoint"?: string;
         "ai:apiversion"?: string;
         "ai:apitoken"?: string;
         "ai:apitokensecretname"?: string;
+        "ai:azureresourcename"?: string;
+        "ai:azuredeployment"?: string;
         "ai:capabilities"?: string[];
         "waveai:cloud"?: boolean;
         "waveai:premium"?: boolean;
@@ -606,6 +608,7 @@ declare global {
         "ssh:hostname"?: string;
         "ssh:port"?: string;
         "ssh:identityfile"?: string[];
+        "ssh:passwordsecretname"?: string;
         "ssh:batchmode"?: boolean;
         "ssh:pubkeyauthentication"?: boolean;
         "ssh:passwordauthentication"?: boolean;
@@ -1063,6 +1066,8 @@ declare global {
         "ai:proxyurl"?: string;
         "ai:fontsize"?: number;
         "ai:fixedfontsize"?: number;
+        "waveai:showcloudmodes"?: boolean;
+        "waveai:defaultmode"?: string;
         "term:*"?: boolean;
         "term:fontsize"?: number;
         "term:fontfamily"?: string;

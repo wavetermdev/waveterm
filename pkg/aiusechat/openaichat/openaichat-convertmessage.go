@@ -62,11 +62,12 @@ func convertToolDefinitions(waveTools []uctypes.ToolDefinition, capabilities []s
 func buildChatHTTPRequest(ctx context.Context, messages []ChatRequestMessage, chatOpts uctypes.WaveChatOpts) (*http.Request, error) {
 	opts := chatOpts.Config
 
-	if opts.Model == "" {
-		return nil, errors.New("opts.model is required")
+	// Model is required for all providers except azure-legacy (which uses deployment name in URL)
+	if opts.Model == "" && opts.Provider != uctypes.AIProvider_AzureLegacy {
+		return nil, errors.New("ai:model is required")
 	}
-	if opts.BaseURL == "" {
-		return nil, errors.New("BaseURL is required")
+	if opts.Endpoint == "" {
+		return nil, errors.New("ai:endpoint is required")
 	}
 
 	maxTokens := opts.MaxTokens
@@ -92,9 +93,13 @@ func buildChatHTTPRequest(ctx context.Context, messages []ChatRequestMessage, ch
 	}
 
 	reqBody := &ChatRequest{
-		Model:    opts.Model,
 		Messages: finalMessages,
 		Stream:   true,
+	}
+
+	// Model is only added to request for non-azure-legacy providers
+	if opts.Provider != uctypes.AIProvider_AzureLegacy {
+		reqBody.Model = opts.Model
 	}
 
 	if aiutil.IsOpenAIReasoningModel(opts.Model) {
@@ -122,25 +127,34 @@ func buildChatHTTPRequest(ctx context.Context, messages []ChatRequestMessage, ch
 		return nil, err
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, opts.BaseURL, bytes.NewReader(buf))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, opts.Endpoint, bytes.NewReader(buf))
 	if err != nil {
 		return nil, err
 	}
 
 	req.Header.Set("Content-Type", "application/json")
-	if opts.APIToken != "" {
+
+	// Azure OpenAI uses "api-key" header instead of "Authorization: Bearer"
+	if opts.Provider == uctypes.AIProvider_Azure || opts.Provider == uctypes.AIProvider_AzureLegacy {
+		req.Header.Set("api-key", opts.APIToken)
+	} else {
 		req.Header.Set("Authorization", "Bearer "+opts.APIToken)
 	}
+
 	req.Header.Set("Accept", "text/event-stream")
-	if chatOpts.ClientId != "" {
-		req.Header.Set("X-Wave-ClientId", chatOpts.ClientId)
+
+	// Only send Wave-specific headers when using Wave provider
+	if opts.Provider == uctypes.AIProvider_Wave {
+		if chatOpts.ClientId != "" {
+			req.Header.Set("X-Wave-ClientId", chatOpts.ClientId)
+		}
+		if chatOpts.ChatId != "" {
+			req.Header.Set("X-Wave-ChatId", chatOpts.ChatId)
+		}
+		req.Header.Set("X-Wave-Version", wavebase.WaveVersion)
+		req.Header.Set("X-Wave-APIType", uctypes.APIType_OpenAIChat)
+		req.Header.Set("X-Wave-RequestType", chatOpts.GetWaveRequestType())
 	}
-	if chatOpts.ChatId != "" {
-		req.Header.Set("X-Wave-ChatId", chatOpts.ChatId)
-	}
-	req.Header.Set("X-Wave-Version", wavebase.WaveVersion)
-	req.Header.Set("X-Wave-APIType", uctypes.APIType_OpenAIChat)
-	req.Header.Set("X-Wave-RequestType", chatOpts.GetWaveRequestType())
 
 	return req, nil
 }

@@ -187,11 +187,26 @@ func JsonEncodeRequestBody(reqBody any) (bytes.Buffer, error) {
 
 func IsOpenAIReasoningModel(model string) bool {
 	m := strings.ToLower(model)
-	return strings.HasPrefix(m, "o1") ||
-		strings.HasPrefix(m, "o3") ||
-		strings.HasPrefix(m, "o4") ||
-		strings.HasPrefix(m, "gpt-5") ||
-		strings.HasPrefix(m, "gpt-5.1")
+	return CheckModelPrefix(m, "o1") ||
+		CheckModelPrefix(m, "o3") ||
+		CheckModelPrefix(m, "o4") ||
+		CheckModelPrefix(m, "gpt-5") ||
+		CheckModelSubPrefix(m, "gpt-5.") ||
+		CheckModelPrefix(m, "gpt-6") ||
+		CheckModelSubPrefix(m, "gpt-6.")
+}
+
+func CheckModelPrefix(model string, prefix string) bool {
+	return model == prefix || strings.HasPrefix(model, prefix+"-")
+}
+
+func CheckModelSubPrefix(model string, prefix string) bool {
+	if strings.HasPrefix(model, prefix) && len(model) > len(prefix) {
+		if model[len(prefix)] >= '0' && model[len(prefix)] <= '9' {
+			return true
+		}
+	}
+	return false
 }
 
 // CreateToolUseData creates a UIMessageDataToolUse from tool call information
@@ -240,14 +255,13 @@ func CreateToolUseData(toolCallID, toolName string, arguments string, chatOpts u
 	return toolUseData
 }
 
-
 // SendToolProgress sends tool progress updates via SSE if the tool has a progress descriptor
 func SendToolProgress(toolCallID, toolName string, jsonData []byte, chatOpts uctypes.WaveChatOpts, sseHandler *sse.SSEHandlerCh, usePartialParse bool) {
 	toolDef := chatOpts.GetToolDefinition(toolName)
 	if toolDef == nil || toolDef.ToolProgressDesc == nil {
 		return
 	}
-	
+
 	var parsedJSON any
 	var err error
 	if usePartialParse {
@@ -258,12 +272,12 @@ func SendToolProgress(toolCallID, toolName string, jsonData []byte, chatOpts uct
 	if err != nil {
 		return
 	}
-	
+
 	statusLines, err := toolDef.ToolProgressDesc(parsedJSON)
 	if err != nil {
 		return
 	}
-	
+
 	progressData := &uctypes.UIMessageDataToolProgress{
 		ToolCallId:  toolCallID,
 		ToolName:    toolName,

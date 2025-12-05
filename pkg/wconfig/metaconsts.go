@@ -29,6 +29,9 @@ const (
 	ConfigKey_AiFontSize                     = "ai:fontsize"
 	ConfigKey_AiFixedFontSize                = "ai:fixedfontsize"
 
+	ConfigKey_WaveAiShowCloudModes           = "waveai:showcloudmodes"
+	ConfigKey_WaveAiDefaultMode              = "waveai:defaultmode"
+
 	ConfigKey_TermClear                      = "term:*"
 	ConfigKey_TermFontSize                   = "term:fontsize"
 	ConfigKey_TermFontFamily                 = "term:fontfamily"

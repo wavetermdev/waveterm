@@ -32,6 +32,7 @@ const AnySchema = `
 }
 `
 
+// old AI Widget presets (deprecated)
 type AiSettingsType struct {
 	AiClear         bool    `json:"ai:*,omitempty"`
 	AiPreset        string  `json:"ai:preset,omitempty"`
@@ -74,6 +75,9 @@ type SettingsType struct {
 	AiProxyUrl      string  `json:"ai:proxyurl,omitempty"`
 	AiFontSize      float64 `json:"ai:fontsize,omitempty"`
 	AiFixedFontSize float64 `json:"ai:fixedfontsize,omitempty"`
+
+	WaveAiShowCloudModes bool   `json:"waveai:showcloudmodes,omitempty"`
+	WaveAiDefaultMode    string `json:"waveai:defaultmode,omitempty"`
 
 	TermClear               bool     `json:"term:*,omitempty"`
 	TermFontSize            float64  `json:"term:fontsize,omitempty"`
@@ -257,20 +261,23 @@ type WebBookmark struct {
 	DisplayOrder float64 `json:"display:order,omitempty"`
 }
 
+// Wave AI panel mode configuration (NEW)
 type AIModeConfigType struct {
 	DisplayName        string   `json:"display:name"`
 	DisplayOrder       float64  `json:"display:order,omitempty"`
-	DisplayIcon        string   `json:"display:icon"`
-	DisplayShortDesc   string   `json:"display:shortdesc,omitempty"`
-	DisplayDescription string   `json:"display:description"`
-	APIType            string   `json:"ai:apitype"`
-	Model              string   `json:"ai:model"`
-	ThinkingLevel      string   `json:"ai:thinkinglevel"`
-	BaseURL            string   `json:"ai:baseurl,omitempty"`
-	APIVersion         string   `json:"ai:apiversion,omitempty"`
+	DisplayIcon        string   `json:"display:icon,omitempty"`
+	DisplayDescription string   `json:"display:description,omitempty"`
+	Provider           string   `json:"ai:provider,omitempty" jsonschema:"enum=wave,enum=google,enum=openrouter,enum=openai,enum=azure,enum=azure-legacy,enum=custom"`
+	APIType            string   `json:"ai:apitype,omitempty" jsonschema:"enum=anthropic-messages,enum=openai-responses,enum=openai-chat"`
+	Model              string   `json:"ai:model,omitempty"`
+	ThinkingLevel      string   `json:"ai:thinkinglevel,omitempty" jsonschema:"enum=low,enum=medium,enum=high"`
+	Endpoint           string   `json:"ai:endpoint,omitempty"`
+	AzureAPIVersion    string   `json:"ai:azureapiversion,omitempty"`
 	APIToken           string   `json:"ai:apitoken,omitempty"`
 	APITokenSecretName string   `json:"ai:apitokensecretname,omitempty"`
-	Capabilities       []string `json:"ai:capabilities,omitempty"`
+	AzureResourceName  string   `json:"ai:azureresourcename,omitempty"`
+	AzureDeployment    string   `json:"ai:azuredeployment,omitempty"`
+	Capabilities       []string `json:"ai:capabilities,omitempty" jsonschema:"enum=pdfs,enum=images,enum=tools"`
 	WaveAICloud        bool     `json:"waveai:cloud,omitempty"`
 	WaveAIPremium      bool     `json:"waveai:premium,omitempty"`
 }
@@ -315,6 +322,7 @@ type ConnKeywords struct {
 	SshHostName                     *string  `json:"ssh:hostname,omitempty"`
 	SshPort                         *string  `json:"ssh:port,omitempty"`
 	SshIdentityFile                 []string `json:"ssh:identityfile,omitempty"`
+	SshPasswordSecretName           *string  `json:"ssh:passwordsecretname,omitempty"`
 	SshBatchMode                    *bool    `json:"ssh:batchmode,omitempty"`
 	SshPubkeyAuthentication         *bool    `json:"ssh:pubkeyauthentication,omitempty"`
 	SshPasswordAuthentication       *bool    `json:"ssh:passwordauthentication,omitempty"`
