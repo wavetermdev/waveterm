@@ -8,6 +8,48 @@ import { memo, useRef, useState } from "react";
 import { getFilteredAIModeConfigs } from "./ai-utils";
 import { WaveAIModel } from "./waveai-model";
 
+interface AIModeMenuItemProps {
+    config: any;
+    isSelected: boolean;
+    isDisabled: boolean;
+    onClick: () => void;
+    isFirst?: boolean;
+    isLast?: boolean;
+}
+
+const AIModeMenuItem = memo(({ config, isSelected, isDisabled, onClick, isFirst, isLast }: AIModeMenuItemProps) => {
+    return (
+        <button
+            key={config.mode}
+            onClick={onClick}
+            disabled={isDisabled}
+            className={`w-full flex flex-col gap-0.5 px-3 ${
+                isFirst ? "pt-1 pb-0.5" : isLast ? "pt-0.5 pb-1" : "pt-0.5 pb-0.5"
+            } ${
+                isDisabled
+                    ? "text-gray-500 cursor-not-allowed"
+                    : "text-gray-300 hover:bg-gray-700 cursor-pointer"
+            } transition-colors text-left`}
+        >
+            <div className="flex items-center gap-2 w-full">
+                <i className={makeIconClass(config["display:icon"] || "sparkles", false)}></i>
+                <span className={`text-sm ${isSelected ? "font-bold" : ""}`}>
+                    {config["display:name"]}
+                    {isDisabled && " (premium)"}
+                </span>
+                {isSelected && <i className="fa fa-check ml-auto"></i>}
+            </div>
+            {config["display:description"] && (
+                <div className="text-xs text-muted pl-5" style={{ whiteSpace: "pre-line" }}>
+                    {config["display:description"]}
+                </div>
+            )}
+        </button>
+    );
+});
+
+AIModeMenuItem.displayName = "AIModeMenuItem";
+
 export const AIModeDropdown = memo(() => {
     const model = WaveAIModel.getInstance();
     const aiMode = useAtomValue(model.currentAIMode);
@@ -86,32 +128,14 @@ export const AIModeDropdown = memo(() => {
                             const isDisabled = !hasPremium && config["waveai:premium"];
                             const isSelected = currentMode === config.mode;
                             return (
-                                <button
+                                <AIModeMenuItem
                                     key={config.mode}
+                                    config={config}
+                                    isSelected={isSelected}
+                                    isDisabled={isDisabled}
                                     onClick={() => handleSelect(config.mode)}
-                                    disabled={isDisabled}
-                                    className={`w-full flex flex-col gap-0.5 px-3 ${
-                                        isFirst ? "pt-1 pb-0.5" : "pt-0.5 pb-0.5"
-                                    } ${
-                                        isDisabled
-                                            ? "text-gray-500 cursor-not-allowed"
-                                            : "text-gray-300 hover:bg-gray-700 cursor-pointer"
-                                    } transition-colors text-left`}
-                                >
-                                    <div className="flex items-center gap-2 w-full">
-                                        <i className={makeIconClass(config["display:icon"] || "sparkles", false)}></i>
-                                        <span className={`text-sm ${isSelected ? "font-bold" : ""}`}>
-                                            {config["display:name"]}
-                                            {isDisabled && " (premium)"}
-                                        </span>
-                                        {isSelected && <i className="fa fa-check ml-auto"></i>}
-                                    </div>
-                                    {config["display:description"] && (
-                                        <div className="text-xs text-muted pl-5" style={{ whiteSpace: "pre-line" }}>
-                                            {config["display:description"]}
-                                        </div>
-                                    )}
-                                </button>
+                                    isFirst={isFirst}
+                                />
                             );
                         })}
                         {hasBothModeTypes && (
@@ -128,32 +152,15 @@ export const AIModeDropdown = memo(() => {
                             const isDisabled = !hasPremium && config["waveai:premium"];
                             const isSelected = currentMode === config.mode;
                             return (
-                                <button
+                                <AIModeMenuItem
                                     key={config.mode}
+                                    config={config}
+                                    isSelected={isSelected}
+                                    isDisabled={isDisabled}
                                     onClick={() => handleSelect(config.mode)}
-                                    disabled={isDisabled}
-                                    className={`w-full flex flex-col gap-0.5 px-3 ${
-                                        isFirst ? "pt-1 pb-0.5" : isLast ? "pt-0.5 pb-1" : "pt-0.5 pb-0.5"
-                                    } ${
-                                        isDisabled
-                                            ? "text-gray-500 cursor-not-allowed"
-                                            : "text-gray-300 hover:bg-gray-700 cursor-pointer"
-                                    } transition-colors text-left`}
-                                >
-                                    <div className="flex items-center gap-2 w-full">
-                                        <i className={makeIconClass(config["display:icon"] || "sparkles", false)}></i>
-                                        <span className={`text-sm ${isSelected ? "font-bold" : ""}`}>
-                                            {config["display:name"]}
-                                            {isDisabled && " (premium)"}
-                                        </span>
-                                        {isSelected && <i className="fa fa-check ml-auto"></i>}
-                                    </div>
-                                    {config["display:description"] && (
-                                        <div className="text-xs text-muted pl-5" style={{ whiteSpace: "pre-line" }}>
-                                            {config["display:description"]}
-                                        </div>
-                                    )}
-                                </button>
+                                    isFirst={isFirst}
+                                    isLast={isLast}
+                                />
                             );
                         })}
                         <div className="border-t border-gray-600 my-1" />
