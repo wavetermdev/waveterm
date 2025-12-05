@@ -20,6 +20,9 @@
         "app:showoverlayblocknums": {
           "type": "boolean"
         },
+        "app:ctrlvpaste": {
+          "type": "boolean"
+        },
         "feature:waveappbuilder": {
           "type": "boolean"
         },

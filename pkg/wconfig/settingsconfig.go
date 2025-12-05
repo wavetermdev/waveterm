@@ -58,6 +58,7 @@ type SettingsType struct {
 	AppDismissArchitectureWarning bool   `json:"app:dismissarchitecturewarning,omitempty"`
 	AppDefaultNewBlock            string `json:"app:defaultnewblock,omitempty"`
 	AppShowOverlayBlockNums       *bool  `json:"app:showoverlayblocknums,omitempty"`
+	AppCtrlVPaste                 *bool  `json:"app:ctrlvpaste,omitempty"`
 
 	FeatureWaveAppBuilder bool `json:"feature:waveappbuilder,omitempty"`
 
