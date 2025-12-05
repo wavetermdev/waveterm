@@ -247,10 +247,10 @@ const (
 )
 
 type WaveToolCall struct {
-	ID                     string                `json:"id"`                    // Anthropic tool_use.id
-	Name                   string                `json:"name,omitempty"`        // tool name (if provided)
-	Input                  any                   `json:"input,omitempty"`       // accumulated input JSON
-	ToolUseData            *UIMessageDataToolUse `json:"toolusedata,omitempty"` // UI tool use data
+	ID                     string                `json:"id"`                               // Anthropic tool_use.id
+	Name                   string                `json:"name,omitempty"`                   // tool name (if provided)
+	Input                  any                   `json:"input,omitempty"`                  // accumulated input JSON
+	ToolUseData            *UIMessageDataToolUse `json:"toolusedata,omitempty"`            // UI tool use data
 	GoogleThoughtSignature string                `json:"googlethoughtsignature,omitempty"` // Gemini-specific thought signature
 }
 
