@@ -487,11 +487,10 @@ func processGeminiStream(
 		for _, fcPart := range functionCalls {
 			if fcPart.FunctionCall != nil && fcPart.ToolUseData != nil {
 				waveToolCalls = append(waveToolCalls, uctypes.WaveToolCall{
-					ID:                     fcPart.ToolUseData.ToolCallId,
-					Name:                   fcPart.FunctionCall.Name,
-					Input:                  fcPart.FunctionCall.Args,
-					ToolUseData:            fcPart.ToolUseData,
-					GoogleThoughtSignature: fcPart.FunctionCall.ThoughtSignature,
+					ID:          fcPart.ToolUseData.ToolCallId,
+					Name:        fcPart.FunctionCall.Name,
+					Input:       fcPart.FunctionCall.Args,
+					ToolUseData: fcPart.ToolUseData,
 				})
 			}
 		}

@@ -247,11 +247,10 @@ const (
 )
 
 type WaveToolCall struct {
-	ID                     string                `json:"id"`                               // Anthropic tool_use.id
-	Name                   string                `json:"name,omitempty"`                   // tool name (if provided)
-	Input                  any                   `json:"input,omitempty"`                  // accumulated input JSON
-	ToolUseData            *UIMessageDataToolUse `json:"toolusedata,omitempty"`            // UI tool use data
-	GoogleThoughtSignature string                `json:"googlethoughtsignature,omitempty"` // Gemini-specific thought signature
+	ID          string                `json:"id"`                    // Anthropic tool_use.id
+	Name        string                `json:"name,omitempty"`        // tool name (if provided)
+	Input       any                   `json:"input,omitempty"`       // accumulated input JSON
+	ToolUseData *UIMessageDataToolUse `json:"toolusedata,omitempty"` // UI tool use data
 }
 
 type WaveStopReason struct {
@@ -380,11 +379,10 @@ type AIMessagePart struct {
 }
 
 type AIToolResult struct {
-	ToolName               string `json:"toolname"`
-	ToolUseID              string `json:"tooluseid"`
-	ErrorText              string `json:"errortext,omitempty"`
-	Text                   string `json:"text,omitempty"`
-	GoogleThoughtSignature string `json:"googlethoughtsignature,omitempty"`
+	ToolName  string `json:"toolname"`
+	ToolUseID string `json:"tooluseid"`
+	ErrorText string `json:"errortext,omitempty"`
+	Text      string `json:"text,omitempty"`
 }
 
 func (m *AIMessage) GetMessageId() string {

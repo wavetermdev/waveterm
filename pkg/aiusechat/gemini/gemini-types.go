@@ -91,16 +91,14 @@ type GeminiFileData struct {
 
 // GeminiFunctionCall represents a function call from the model
 type GeminiFunctionCall struct {
-	Name             string         `json:"name"`
-	Args             map[string]any `json:"args,omitempty"`
-	ThoughtSignature string         `json:"thoughtSignature,omitempty"`
+	Name string         `json:"name"`
+	Args map[string]any `json:"args,omitempty"`
 }
 
 // GeminiFunctionResponse represents a function execution result
 type GeminiFunctionResponse struct {
-	Name             string         `json:"name"`
-	Response         map[string]any `json:"response"`
-	ThoughtSignature string         `json:"thoughtSignature,omitempty"`
+	Name     string         `json:"name"`
+	Response map[string]any `json:"response"`
 }
 
 // GeminiUsageMetadata represents token usage
