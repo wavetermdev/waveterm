@@ -4,7 +4,6 @@
 package gemini
 
 import (
-	"bufio"
 	"context"
 	"encoding/json"
 	"errors"
@@ -17,6 +16,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/launchdarkly/eventsource"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/aiutil"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/chatstore"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
@@ -25,24 +25,20 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/web/sse"
 )
 
-const (
-	GeminiStreamingEndpointTemplate = "https://generativelanguage.googleapis.com/v1beta/models/%s:streamGenerateContent?alt=sse"
-)
-
 // ensureAltSse ensures the ?alt=sse query parameter is set on the endpoint
 func ensureAltSse(endpoint string) (string, error) {
 	parsedURL, err := url.Parse(endpoint)
 	if err != nil {
 		return "", fmt.Errorf("invalid ai:endpoint URL: %w", err)
 	}
-	
+
 	query := parsedURL.Query()
 	if query.Get("alt") != "sse" {
 		query.Set("alt", "sse")
 		parsedURL.RawQuery = query.Encode()
 		return parsedURL.String(), nil
 	}
-	
+
 	return endpoint, nil
 }
 
@@ -334,8 +330,9 @@ func processGeminiStream(
 	}
 	_ = sseHandler.AiMsgStartStep()
 
-	scanner := bufio.NewScanner(body)
-	for scanner.Scan() {
+	decoder := eventsource.NewDecoder(body)
+
+	for {
 		if err := ctx.Err(); err != nil {
 			_ = sseHandler.AiMsgError("request cancelled")
 			return &uctypes.WaveStopReason{
@@ -345,24 +342,27 @@ func processGeminiStream(
 			}, nil, err
 		}
 
-		line := scanner.Text()
-		line = strings.TrimSpace(line)
+		event, err := decoder.Decode()
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				break
+			}
+			_ = sseHandler.AiMsgError(fmt.Sprintf("stream decode error: %v", err))
+			return &uctypes.WaveStopReason{
+				Kind:      uctypes.StopKindError,
+				ErrorType: "stream",
+				ErrorText: err.Error(),
+			}, nil, fmt.Errorf("stream decode error: %w", err)
+		}
 
-		// Skip empty lines and "data:" prefix
-		if line == "" {
+		data := event.Data()
+		if data == "" {
 			continue
 		}
-		if !strings.HasPrefix(line, "data:") {
-			continue
-		}
-
-		// Remove "data: " prefix
-		jsonData := strings.TrimPrefix(line, "data:")
-		jsonData = strings.TrimSpace(jsonData)
 
 		// Parse the JSON response
 		var chunk GeminiStreamResponse
-		if err := json.Unmarshal([]byte(jsonData), &chunk); err != nil {
+		if err := json.Unmarshal([]byte(data), &chunk); err != nil {
 			log.Printf("gemini: failed to parse chunk: %v\n", err)
 			continue
 		}
@@ -445,15 +445,6 @@ func processGeminiStream(
 				})
 			}
 		}
-	}
-
-	if err := scanner.Err(); err != nil {
-		_ = sseHandler.AiMsgError(fmt.Sprintf("stream read error: %v", err))
-		return &uctypes.WaveStopReason{
-			Kind:      uctypes.StopKindError,
-			ErrorType: "stream",
-			ErrorText: err.Error(),
-		}, nil, err
 	}
 
 	// Determine stop reason
