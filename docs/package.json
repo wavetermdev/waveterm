@@ -44,7 +44,7 @@
         "@types/eslint-config-prettier": "^6.11.3",
         "@types/react": "^18.3.0",
         "@types/react-dom": "^18.3.0",
-        "eslint": "^8.57.0",
+        "eslint": "^9.39.1",
         "eslint-config-prettier": "^10.1.8",
         "eslint-plugin-mdx": "^3.6.2",
         "prettier": "^3.7.4",
