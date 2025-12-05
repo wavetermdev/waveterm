@@ -8,7 +8,7 @@ import { waveEventSubscribe } from "@/app/store/wps";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import type { TermViewModel } from "@/app/view/term/term-model";
-import { atoms, getOverrideConfigAtom, getSettingsPrefixAtom, globalStore, WOS } from "@/store/global";
+import { atoms, getApi, getOverrideConfigAtom, getSettingsPrefixAtom, globalStore, WOS } from "@/store/global";
 import { fireAndForget, useAtomValueSafe } from "@/util/util";
 import { computeBgStyleFromMeta } from "@/util/waveutil";
 import { ISearchOptions } from "@xterm/addon-search";
@@ -371,16 +371,22 @@ const TerminalView = ({ blockId, model }: ViewComponentProps<TermViewModel>) => 
             return;
         }
 
+        console.log("Drop files:", files);
+
         // Get the file path(s) using the Electron API
         const paths = files.map((file: File) => {
             try {
                 // Use the exposed Electron API to get the full path
-                return getApi().getPathForFile(file);
+                const fullPath = getApi().getPathForFile(file);
+                console.log("File:", file.name, "-> Full path:", fullPath);
+                return fullPath;
             } catch (err) {
-                console.warn("Could not get path for file:", file.name, err);
+                console.error("Could not get path for file:", file.name, err);
                 return file.name;
             }
         });
+
+        console.log("Paths to insert:", paths);
 
         // Insert the path(s) into the terminal
         // If multiple files, separate with spaces and quote if necessary
@@ -391,6 +397,8 @@ const TerminalView = ({ blockId, model }: ViewComponentProps<TermViewModel>) => 
             }
             return path;
         }).join(" ");
+
+        console.log("Final path string:", pathString);
 
         // Send the path to the terminal
         if (model.termRef.current && pathString) {
