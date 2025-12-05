@@ -20,7 +20,7 @@ export const AIModeDropdown = memo(() => {
 
     const hasPremium = !rateLimitInfo || rateLimitInfo.unknown || rateLimitInfo.preq > 0;
 
-    const { waveProviderConfigs, otherProviderConfigs, shouldShowCloudModes } = getFilteredAIModeConfigs(
+    const { waveProviderConfigs, otherProviderConfigs } = getFilteredAIModeConfigs(
         aiModeConfigs,
         showCloudModes,
         model.inBuilder,
