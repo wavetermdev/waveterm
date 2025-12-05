@@ -349,8 +349,69 @@ const TerminalView = ({ blockId, model }: ViewComponentProps<TermViewModel>) => 
 
     const termBg = computeBgStyleFromMeta(blockData?.meta);
 
+    // Handle drag and drop
+    const handleDragOver = React.useCallback((e: React.DragEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        // Indicate that we can accept the drop
+        e.dataTransfer.dropEffect = "copy";
+    }, []);
+
+    const handleDrop = React.useCallback((e: React.DragEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        // Get files from the drop
+        const files = Array.from(e.dataTransfer.files);
+        if (files.length === 0) {
+            return;
+        }
+
+        // Get the file path(s) - for Electron, we can get the full path
+        const paths = files.map((file: any) => {
+            // In Electron, File objects have a 'path' property with the full path
+            if (file.path) {
+                return file.path;
+            }
+            // Fallback to just the name if path is not available
+            return file.name;
+        });
+
+        // Insert the path(s) into the terminal
+        // If multiple files, separate with spaces and quote if necessary
+        const pathString = paths.map(path => {
+            // Quote paths that contain spaces
+            if (path.includes(" ")) {
+                return `"${path}"`;
+            }
+            return path;
+        }).join(" ");
+
+        // Send the path to the terminal
+        if (model.termRef.current && pathString) {
+            model.sendDataToController(pathString);
+        }
+    }, [model]);
+
+    const handleDragEnter = React.useCallback((e: React.DragEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+    }, []);
+
+    const handleDragLeave = React.useCallback((e: React.DragEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+    }, []);
+
     return (
-        <div className={clsx("view-term", "term-mode-" + termMode)} ref={viewRef}>
+        <div
+            className={clsx("view-term", "term-mode-" + termMode)}
+            ref={viewRef}
+            onDragOver={handleDragOver}
+            onDrop={handleDrop}
+            onDragEnter={handleDragEnter}
+            onDragLeave={handleDragLeave}
+        >
             {termBg && <div className="absolute inset-0 z-0 pointer-events-none" style={termBg} />}
             <TermResyncHandler blockId={blockId} model={model} />
             <TermThemeUpdater blockId={blockId} model={model} termRef={model.termRef} />
