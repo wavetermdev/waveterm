@@ -61,6 +61,13 @@ func applyProviderDefaults(config *wconfig.AIModeConfigType) {
 		if config.APITokenSecretName == "" {
 			config.APITokenSecretName = "OPENAI_KEY"
 		}
+		if len(config.Capabilities) == 0 {
+			if isO1Model(config.Model) {
+				config.Capabilities = []string{}
+			} else {
+				config.Capabilities = []string{uctypes.AICapabilityTools, uctypes.AICapabilityImages, uctypes.AICapabilityPdfs}
+			}
+		}
 	}
 	if config.Provider == uctypes.AIProvider_OpenRouter {
 		if config.Endpoint == "" {
@@ -169,6 +176,19 @@ func isLegacyOpenAIModel(model string) bool {
 	}
 	legacyPrefixes := []string{"gpt-4o", "gpt-3.5", "gpt-oss"}
 	for _, prefix := range legacyPrefixes {
+		if aiutil.CheckModelPrefix(model, prefix) {
+			return true
+		}
+	}
+	return false
+}
+
+func isO1Model(model string) bool {
+	if model == "" {
+		return false
+	}
+	o1Prefixes := []string{"o1", "o1-mini"}
+	for _, prefix := range o1Prefixes {
 		if aiutil.CheckModelPrefix(model, prefix) {
 			return true
 		}
