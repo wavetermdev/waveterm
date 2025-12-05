@@ -30,7 +30,7 @@
         "ai:apitype": {
           "type": "string",
           "enum": [
-            "anthropic-messages",
+            "google-gemini",
             "openai-responses",
             "openai-chat"
           ]
@@ -49,7 +49,7 @@
         "ai:endpoint": {
           "type": "string"
         },
-        "ai:apiversion": {
+        "ai:azureapiversion": {
           "type": "string"
         },
         "ai:apitoken": {
@@ -72,6 +72,12 @@
               "images",
               "tools"
             ]
+          },
+          "type": "array"
+        },
+        "ai:switchcompat": {
+          "items": {
+            "type": "string"
           },
           "type": "array"
         },

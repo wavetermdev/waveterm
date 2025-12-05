@@ -24,12 +24,13 @@ declare global {
         "ai:model"?: string;
         "ai:thinkinglevel"?: string;
         "ai:endpoint"?: string;
-        "ai:apiversion"?: string;
+        "ai:azureapiversion"?: string;
         "ai:apitoken"?: string;
         "ai:apitokensecretname"?: string;
         "ai:azureresourcename"?: string;
         "ai:azuredeployment"?: string;
         "ai:capabilities"?: string[];
+        "ai:switchcompat"?: string[];
         "waveai:cloud"?: boolean;
         "waveai:premium"?: boolean;
     };
