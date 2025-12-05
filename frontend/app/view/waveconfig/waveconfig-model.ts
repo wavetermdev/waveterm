@@ -90,6 +90,7 @@ const configFiles: ConfigFile[] = [
         name: "Wave AI Modes",
         path: "waveai.json",
         language: "json",
+		docsUrl: "https://docs.waveterm.dev/waveai-modes",
         validator: validateWaveAiJson,
         hasJsonView: true,
         // visualComponent: WaveAIVisualContent,
