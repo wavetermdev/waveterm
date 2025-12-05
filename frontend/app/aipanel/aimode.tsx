@@ -23,24 +23,22 @@ const AIModeMenuItem = memo(({ config, isSelected, isDisabled, onClick, isFirst,
             key={config.mode}
             onClick={onClick}
             disabled={isDisabled}
-            className={`w-full flex flex-col gap-0.5 px-3 ${
-                isFirst ? "pt-1 pb-0.5" : isLast ? "pt-0.5 pb-1" : "pt-0.5 pb-0.5"
-            } ${
-                isDisabled
-                    ? "text-gray-500 cursor-not-allowed"
-                    : "text-gray-300 hover:bg-gray-700 cursor-pointer"
-            } transition-colors text-left`}
+            className={cn(
+                "w-full flex flex-col gap-0.5 px-3 transition-colors text-left",
+                isFirst ? "pt-1 pb-0.5" : isLast ? "pt-0.5 pb-1" : "pt-0.5 pb-0.5",
+                isDisabled ? "text-gray-500" : "text-gray-300 hover:bg-gray-700 cursor-pointer"
+            )}
         >
             <div className="flex items-center gap-2 w-full">
                 <i className={makeIconClass(config["display:icon"] || "sparkles", false)}></i>
-                <span className={`text-sm ${isSelected ? "font-bold" : ""}`}>
+                <span className={cn("text-sm", isSelected && "font-bold")}>
                     {config["display:name"]}
                     {isDisabled && " (premium)"}
                 </span>
                 {isSelected && <i className="fa fa-check ml-auto"></i>}
             </div>
             {config["display:description"] && (
-                <div className="text-xs text-muted pl-5" style={{ whiteSpace: "pre-line" }}>
+                <div className={cn("text-xs pl-5", isDisabled ? "text-gray-500" : "text-muted")} style={{ whiteSpace: "pre-line" }}>
                     {config["display:description"]}
                 </div>
             )}
@@ -50,7 +48,77 @@ const AIModeMenuItem = memo(({ config, isSelected, isDisabled, onClick, isFirst,
 
 AIModeMenuItem.displayName = "AIModeMenuItem";
 
-export const AIModeDropdown = memo(() => {
+interface ConfigSection {
+    sectionName: string;
+    configs: any[];
+    isIncompatible?: boolean;
+}
+
+function computeCompatibleSections(
+    currentMode: string,
+    aiModeConfigs: Record<string, any>,
+    waveProviderConfigs: any[],
+    otherProviderConfigs: any[]
+): ConfigSection[] {
+    const currentConfig = aiModeConfigs[currentMode];
+    const currentSwitchCompat = currentConfig?.["ai:switchcompat"] || [];
+    
+    const allConfigs = [...waveProviderConfigs, ...otherProviderConfigs];
+    const compatibleConfigs: any[] = [currentConfig];
+    const incompatibleConfigs: any[] = [];
+
+    if (currentSwitchCompat.length === 0) {
+        allConfigs.forEach((config) => {
+            if (config.mode !== currentMode) {
+                incompatibleConfigs.push(config);
+            }
+        });
+    } else {
+        allConfigs.forEach((config) => {
+            if (config.mode === currentMode) return;
+            
+            const configSwitchCompat = config["ai:switchcompat"] || [];
+            const hasMatch = currentSwitchCompat.some((currentTag: string) =>
+                configSwitchCompat.includes(currentTag)
+            );
+            
+            if (hasMatch) {
+                compatibleConfigs.push(config);
+            } else {
+                incompatibleConfigs.push(config);
+            }
+        });
+    }
+
+    const sections: ConfigSection[] = [];
+    const compatibleSectionName = compatibleConfigs.length === 1 ? "Current" : "Compatible Modes";
+    sections.push({ sectionName: compatibleSectionName, configs: compatibleConfigs });
+    
+    if (incompatibleConfigs.length > 0) {
+        sections.push({ sectionName: "Incompatible Modes", configs: incompatibleConfigs, isIncompatible: true });
+    }
+
+    return sections;
+}
+
+function computeWaveCloudSections(waveProviderConfigs: any[], otherProviderConfigs: any[]): ConfigSection[] {
+    const sections: ConfigSection[] = [];
+    
+    if (waveProviderConfigs.length > 0) {
+        sections.push({ sectionName: "Wave AI Cloud", configs: waveProviderConfigs });
+    }
+    if (otherProviderConfigs.length > 0) {
+        sections.push({ sectionName: "Custom", configs: otherProviderConfigs });
+    }
+    
+    return sections;
+}
+
+interface AIModeDropdownProps {
+    compatibilityMode?: boolean;
+}
+
+export const AIModeDropdown = memo(({ compatibilityMode = false }: AIModeDropdownProps) => {
     const model = WaveAIModel.getInstance();
     const aiMode = useAtomValue(model.currentAIMode);
     const aiModeConfigs = useAtomValue(model.aiModeConfigs);
@@ -69,31 +137,6 @@ export const AIModeDropdown = memo(() => {
         hasPremium
     );
 
-    interface ConfigSection {
-        sectionName: string;
-        configs: any[];
-    }
-
-    const sections: ConfigSection[] = [];
-    if (waveProviderConfigs.length > 0) {
-        sections.push({ sectionName: "Wave AI Cloud", configs: waveProviderConfigs });
-    }
-    if (otherProviderConfigs.length > 0) {
-        sections.push({ sectionName: "Custom", configs: otherProviderConfigs });
-    }
-
-    const showSectionHeaders = sections.length > 1;
-
-    const handleSelect = (mode: string) => {
-        const config = aiModeConfigs[mode];
-        if (!config) return;
-        if (!hasPremium && config["waveai:premium"]) {
-            return;
-        }
-        model.setAIMode(mode);
-        setIsOpen(false);
-    };
-
     let currentMode = aiMode || defaultMode;
     const currentConfig = aiModeConfigs[currentMode];
     if (currentConfig) {
@@ -104,6 +147,22 @@ export const AIModeDropdown = memo(() => {
             currentMode = "waveai@balanced";
         }
     }
+
+    const sections: ConfigSection[] = compatibilityMode
+        ? computeCompatibleSections(currentMode, aiModeConfigs, waveProviderConfigs, otherProviderConfigs)
+        : computeWaveCloudSections(waveProviderConfigs, otherProviderConfigs);
+
+    const showSectionHeaders = compatibilityMode || sections.length > 1;
+
+    const handleSelect = (mode: string) => {
+        const config = aiModeConfigs[mode];
+        if (!config) return;
+        if (!hasPremium && config["waveai:premium"]) {
+            return;
+        }
+        model.setAIMode(mode);
+        setIsOpen(false);
+    };
 
     const displayConfig = aiModeConfigs[currentMode] || {
         "display:name": "? Unknown",
@@ -146,14 +205,23 @@ export const AIModeDropdown = memo(() => {
                                 <div key={section.sectionName}>
                                     {!isFirstSection && <div className="border-t border-gray-600 my-2" />}
                                     {showSectionHeaders && (
-                                        <div className={`${isFirstSection ? "pt-2" : "pt-0"} pb-1 text-center text-[10px] text-gray-400 uppercase tracking-wide`}>
-                                            {section.sectionName}
-                                        </div>
+                                        <>
+                                            <div className={cn("pb-1 text-center text-[10px] text-gray-400 uppercase tracking-wide", isFirstSection ? "pt-2" : "pt-0")}>
+                                                {section.sectionName}
+                                            </div>
+                                            {section.isIncompatible && (
+                                                <div className="text-center text-[11px] text-red-300 pb-1">
+                                                    (Start a New Chat to Switch)
+                                                </div>
+                                            )}
+                                        </>
                                     )}
                                     {section.configs.map((config, index) => {
                                         const isFirst = index === 0 && isFirstSection && !showSectionHeaders;
                                         const isLast = index === section.configs.length - 1 && isLastSection;
-                                        const isDisabled = !hasPremium && config["waveai:premium"];
+                                        const isPremiumDisabled = !hasPremium && config["waveai:premium"];
+                                        const isIncompatibleDisabled = section.isIncompatible || false;
+                                        const isDisabled = isPremiumDisabled || isIncompatibleDisabled;
                                         const isSelected = currentMode === config.mode;
                                         return (
                                             <AIModeMenuItem
