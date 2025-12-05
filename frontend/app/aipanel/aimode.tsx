@@ -1,7 +1,7 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { atoms, createBlock, getSettingsKeyAtom } from "@/app/store/global";
+import { atoms, getSettingsKeyAtom } from "@/app/store/global";
 import { cn, fireAndForget, makeIconClass } from "@/util/util";
 import { useAtomValue } from "jotai";
 import { memo, useRef, useState } from "react";
@@ -69,7 +69,20 @@ export const AIModeDropdown = memo(() => {
         hasPremium
     );
 
-    const hasBothModeTypes = waveProviderConfigs.length > 0 && otherProviderConfigs.length > 0;
+    interface ConfigSection {
+        sectionName: string;
+        configs: any[];
+    }
+
+    const sections: ConfigSection[] = [];
+    if (waveProviderConfigs.length > 0) {
+        sections.push({ sectionName: "Wave AI Cloud", configs: waveProviderConfigs });
+    }
+    if (otherProviderConfigs.length > 0) {
+        sections.push({ sectionName: "Custom", configs: otherProviderConfigs });
+    }
+
+    const showSectionHeaders = sections.length > 1;
 
     const handleSelect = (mode: string) => {
         const config = aiModeConfigs[mode];
@@ -97,7 +110,14 @@ export const AIModeDropdown = memo(() => {
         "display:icon": "question",
     };
 
-	return (
+    const handleConfigureClick = () => {
+        fireAndForget(async () => {
+            await model.openWaveAIConfig();
+            setIsOpen(false);
+        });
+    };
+
+    return (
         <div className="relative" ref={dropdownRef}>
             <button
                 onClick={() => setIsOpen(!isOpen)}
@@ -118,65 +138,41 @@ export const AIModeDropdown = memo(() => {
                 <>
                     <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
                     <div className="absolute top-full left-0 mt-1 bg-gray-800 border border-gray-600 rounded shadow-lg z-50 min-w-[280px]">
-                        {hasBothModeTypes && (
-                            <div className="pt-2 pb-1 text-center text-[10px] text-gray-400 uppercase tracking-wide">
-                                Wave AI Cloud
-                            </div>
-                        )}
-                        {waveProviderConfigs.map((config, index) => {
-                            const isFirst = index === 0 && !hasBothModeTypes;
-                            const isDisabled = !hasPremium && config["waveai:premium"];
-                            const isSelected = currentMode === config.mode;
+                        {sections.map((section, sectionIndex) => {
+                            const isFirstSection = sectionIndex === 0;
+                            const isLastSection = sectionIndex === sections.length - 1;
+                            
                             return (
-                                <AIModeMenuItem
-                                    key={config.mode}
-                                    config={config}
-                                    isSelected={isSelected}
-                                    isDisabled={isDisabled}
-                                    onClick={() => handleSelect(config.mode)}
-                                    isFirst={isFirst}
-                                />
-                            );
-                        })}
-                        {hasBothModeTypes && (
-                            <div className="border-t border-gray-600 my-2" />
-                        )}
-                        {hasBothModeTypes && (
-                            <div className="pt-0 pb-1 text-center text-[10px] text-gray-400 uppercase tracking-wide">
-                                Custom
-                            </div>
-                        )}
-                        {otherProviderConfigs.map((config, index) => {
-                            const isFirst = index === 0 && !hasBothModeTypes;
-                            const isLast = index === otherProviderConfigs.length - 1;
-                            const isDisabled = !hasPremium && config["waveai:premium"];
-                            const isSelected = currentMode === config.mode;
-                            return (
-                                <AIModeMenuItem
-                                    key={config.mode}
-                                    config={config}
-                                    isSelected={isSelected}
-                                    isDisabled={isDisabled}
-                                    onClick={() => handleSelect(config.mode)}
-                                    isFirst={isFirst}
-                                    isLast={isLast}
-                                />
+                                <div key={section.sectionName}>
+                                    {!isFirstSection && <div className="border-t border-gray-600 my-2" />}
+                                    {showSectionHeaders && (
+                                        <div className={`${isFirstSection ? "pt-2" : "pt-0"} pb-1 text-center text-[10px] text-gray-400 uppercase tracking-wide`}>
+                                            {section.sectionName}
+                                        </div>
+                                    )}
+                                    {section.configs.map((config, index) => {
+                                        const isFirst = index === 0 && isFirstSection && !showSectionHeaders;
+                                        const isLast = index === section.configs.length - 1 && isLastSection;
+                                        const isDisabled = !hasPremium && config["waveai:premium"];
+                                        const isSelected = currentMode === config.mode;
+                                        return (
+                                            <AIModeMenuItem
+                                                key={config.mode}
+                                                config={config}
+                                                isSelected={isSelected}
+                                                isDisabled={isDisabled}
+                                                onClick={() => handleSelect(config.mode)}
+                                                isFirst={isFirst}
+                                                isLast={isLast}
+                                            />
+                                        );
+                                    })}
+                                </div>
                             );
                         })}
                         <div className="border-t border-gray-600 my-1" />
                         <button
-                            onClick={() => {
-                                fireAndForget(async () => {
-                                    const blockDef: BlockDef = {
-                                        meta: {
-                                            view: "waveconfig",
-                                            file: "waveai.json",
-                                        },
-                                    };
-                                    await createBlock(blockDef, false, true);
-                                    setIsOpen(false);
-                                });
-                            }}
+                            onClick={handleConfigureClick}
                             className="w-full flex items-center gap-2 px-3 pt-1 pb-2 text-gray-300 hover:bg-gray-700 cursor-pointer transition-colors text-left"
                         >
                             <i className={makeIconClass("gear", false)}></i>
