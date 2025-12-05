@@ -12,6 +12,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -27,6 +28,23 @@ import (
 const (
 	GeminiStreamingEndpointTemplate = "https://generativelanguage.googleapis.com/v1beta/models/%s:streamGenerateContent?alt=sse"
 )
+
+// ensureAltSse ensures the ?alt=sse query parameter is set on the endpoint
+func ensureAltSse(endpoint string) (string, error) {
+	parsedURL, err := url.Parse(endpoint)
+	if err != nil {
+		return "", fmt.Errorf("invalid ai:endpoint URL: %w", err)
+	}
+	
+	query := parsedURL.Query()
+	if query.Get("alt") != "sse" {
+		query.Set("alt", "sse")
+		parsedURL.RawQuery = query.Encode()
+		return parsedURL.String(), nil
+	}
+	
+	return endpoint, nil
+}
 
 // UpdateToolUseData updates the tool use data for a specific tool call in the chat
 func UpdateToolUseData(chatId string, toolCallId string, toolUseData uctypes.UIMessageDataToolUse) error {
@@ -84,10 +102,13 @@ func buildGeminiHTTPRequest(ctx context.Context, contents []GeminiContent, chatO
 	opts := chatOpts.Config
 
 	if opts.Model == "" {
-		return nil, errors.New("opts.model is required")
+		return nil, errors.New("ai:model is required")
 	}
 	if opts.APIToken == "" {
-		return nil, errors.New("API token is required")
+		return nil, errors.New("ai:apitoken is required")
+	}
+	if opts.Endpoint == "" {
+		return nil, errors.New("ai:endpoint is required")
 	}
 
 	maxTokens := opts.MaxTokens
@@ -180,10 +201,9 @@ func buildGeminiHTTPRequest(ctx context.Context, contents []GeminiContent, chatO
 	}
 
 	// Build URL
-	endpoint := fmt.Sprintf(GeminiStreamingEndpointTemplate, opts.Model)
-	if opts.BaseURL != "" {
-		// If custom base URL is provided, use it instead
-		endpoint = opts.BaseURL
+	endpoint, err := ensureAltSse(opts.Endpoint)
+	if err != nil {
+		return nil, err
 	}
 
 	// Create HTTP request

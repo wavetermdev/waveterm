@@ -179,7 +179,8 @@ func secretUiRun(cmd *cobra.Command, args []string) (rtnErr error) {
 	wshCmd := &wshrpc.CommandCreateBlockData{
 		BlockDef: &waveobj.BlockDef{
 			Meta: map[string]interface{}{
-				waveobj.MetaKey_View: "secretstore",
+				waveobj.MetaKey_View: "waveconfig",
+				waveobj.MetaKey_File: "secrets",
 			},
 		},
 		Magnified: secretUiMagnified,

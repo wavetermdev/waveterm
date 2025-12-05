@@ -108,6 +108,20 @@ func applyProviderDefaults(config *wconfig.AIModeConfigType) {
 			config.APITokenSecretName = "AZURE_OPENAI_KEY"
 		}
 	}
+	if config.Provider == uctypes.AIProvider_Google {
+		if config.APIType == "" {
+			config.APIType = uctypes.APIType_GoogleGemini
+		}
+		if config.Endpoint == "" && config.Model != "" {
+			config.Endpoint = fmt.Sprintf("https://generativelanguage.googleapis.com/v1beta/models/%s:streamGenerateContent", config.Model)
+		}
+		if config.APITokenSecretName == "" {
+			config.APITokenSecretName = "GOOGLE_AI_KEY"
+		}
+		if len(config.Capabilities) == 0 {
+			config.Capabilities = []string{uctypes.AICapabilityTools, uctypes.AICapabilityImages, uctypes.AICapabilityPdfs}
+		}
+	}
 	if config.APIType == "" {
 		config.APIType = uctypes.APIType_OpenAIChat
 	}
