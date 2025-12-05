@@ -204,6 +204,7 @@ func (sc *ShellController) resetTerminalState(logCtx context.Context) {
 	buf.WriteString("\x1b[?25h")                     // show cursor
 	buf.WriteString("\x1b[?1000l")                   // disable mouse tracking
 	buf.WriteString("\x1b[?1007l")                   // disable alternate scroll mode
+	buf.WriteString("\x1b[?2004l")                   // disable bracketed paste mode
 	buf.WriteString(shellutil.FormatOSC(16162, "R")) // OSC 16162 "R" - disable alternate screen mode (only if active), reset "shell integration" status.
 	buf.WriteString("\r\n\r\n")
 	err := HandleAppendBlockFile(sc.BlockId, wavebase.BlockFile_Term, buf.Bytes())
