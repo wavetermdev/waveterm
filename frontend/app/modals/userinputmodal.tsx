@@ -95,7 +95,7 @@ const UserInputModal = (userInputRequest: UserInputRequest) => {
                 onChange={(e) => setResponseText(e.target.value)}
                 value={responseText}
                 maxLength={400}
-                className="resize-none bg-panel rounded-md border border-border py-1.5 pl-4 min-h-[30px] text-inherit cursor-text focus:outline-accent"
+                className="resize-none bg-panel rounded-md border border-border py-1.5 pl-4 min-h-[30px] text-inherit cursor-text focus:ring-2 focus:ring-accent focus:outline-none"
                 autoFocus={true}
                 onKeyDown={(e) => keyutil.keydownWrapper(handleKeyDown)(e)}
             />
