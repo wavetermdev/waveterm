@@ -55,11 +55,13 @@ export class TermViewModel implements ViewModel {
     fontSizeAtom: jotai.Atom<number>;
     termThemeNameAtom: jotai.Atom<string>;
     termTransparencyAtom: jotai.Atom<number>;
+    termBPMAtom: jotai.Atom<boolean>;
     noPadding: jotai.PrimitiveAtom<boolean>;
     endIconButtons: jotai.Atom<IconButtonDecl[]>;
     shellProcFullStatus: jotai.PrimitiveAtom<BlockControllerRuntimeStatus>;
     shellProcStatus: jotai.Atom<string>;
     shellProcStatusUnsubFn: () => void;
+    termBPMUnsubFn: () => void;
     isCmdController: jotai.Atom<boolean>;
     isRestarting: jotai.PrimitiveAtom<boolean>;
     searchAtoms?: SearchAtoms;
@@ -204,6 +206,7 @@ export class TermViewModel implements ViewModel {
             return true;
         });
         this.filterOutNowsh = jotai.atom(false);
+        this.termBPMAtom = getOverrideConfigAtom(blockId, "term:allowbracketedpaste");
         this.termThemeNameAtom = useBlockAtom(blockId, "termthemeatom", () => {
             return jotai.atom<string>((get) => {
                 return get(getOverrideConfigAtom(this.blockId, "term:theme")) ?? DefaultTermTheme;
@@ -312,6 +315,12 @@ export class TermViewModel implements ViewModel {
         this.shellProcStatus = jotai.atom((get) => {
             const fullStatus = get(this.shellProcFullStatus);
             return fullStatus?.shellprocstatus ?? "init";
+        });
+        this.termBPMUnsubFn = globalStore.sub(this.termBPMAtom, () => {
+            if (this.termRef.current?.terminal) {
+                const allowBPM = globalStore.get(this.termBPMAtom) ?? true;
+                this.termRef.current.terminal.options.ignoreBracketedPasteMode = !allowBPM;
+            }
         });
     }
 
@@ -447,6 +456,9 @@ export class TermViewModel implements ViewModel {
         if (this.shellProcStatusUnsubFn) {
             this.shellProcStatusUnsubFn();
         }
+        if (this.termBPMUnsubFn) {
+            this.termBPMUnsubFn();
+        }
     }
 
     giveFocus(): boolean {
@@ -579,6 +591,7 @@ export class TermViewModel implements ViewModel {
         const termThemeKeys = Object.keys(termThemes);
         const curThemeName = globalStore.get(getBlockMetaKeyAtom(this.blockId, "term:theme"));
         const defaultFontSize = globalStore.get(getSettingsKeyAtom("term:fontsize")) ?? 12;
+        const defaultAllowBracketedPaste = globalStore.get(getSettingsKeyAtom("term:allowbracketedpaste")) ?? true;
         const transparencyMeta = globalStore.get(getBlockMetaKeyAtom(this.blockId, "term:transparency"));
         const blockData = globalStore.get(this.blockAtom);
         const overrideFontSize = blockData?.meta?.["term:fontsize"];
@@ -673,6 +686,45 @@ export class TermViewModel implements ViewModel {
         fullMenu.push({
             label: "Transparency",
             submenu: transparencySubMenu,
+        });
+        const allowBracketedPaste = blockData?.meta?.["term:allowbracketedpaste"];
+        fullMenu.push({
+            label: "Allow Bracketed Paste Mode",
+            submenu: [
+                {
+                    label: "Default (" + (defaultAllowBracketedPaste ? "On" : "Off") + ")",
+                    type: "checkbox",
+                    checked: allowBracketedPaste == null,
+                    click: () => {
+                        RpcApi.SetMetaCommand(TabRpcClient, {
+                            oref: WOS.makeORef("block", this.blockId),
+                            meta: { "term:allowbracketedpaste": null },
+                        });
+                    },
+                },
+                {
+                    label: "On",
+                    type: "checkbox",
+                    checked: allowBracketedPaste === true,
+                    click: () => {
+                        RpcApi.SetMetaCommand(TabRpcClient, {
+                            oref: WOS.makeORef("block", this.blockId),
+                            meta: { "term:allowbracketedpaste": true },
+                        });
+                    },
+                },
+                {
+                    label: "Off",
+                    type: "checkbox",
+                    checked: allowBracketedPaste === false,
+                    click: () => {
+                        RpcApi.SetMetaCommand(TabRpcClient, {
+                            oref: WOS.makeORef("block", this.blockId),
+                            meta: { "term:allowbracketedpaste": false },
+                        });
+                    },
+                },
+            ],
         });
         fullMenu.push({ type: "separator" });
         fullMenu.push({

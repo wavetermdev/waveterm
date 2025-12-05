@@ -245,7 +245,6 @@ const TerminalView = ({ blockId, model }: ViewComponentProps<TermViewModel>) => 
         const fullConfig = globalStore.get(atoms.fullConfigAtom);
         const termThemeName = globalStore.get(model.termThemeNameAtom);
         const termTransparency = globalStore.get(model.termTransparencyAtom);
-        const termBPMAtom = getOverrideConfigAtom(blockId, "term:allowbracketedpaste");
         const termMacOptionIsMetaAtom = getOverrideConfigAtom(blockId, "term:macoptionismeta");
         const [termTheme, _] = computeTheme(fullConfig, termThemeName, termTransparency);
         let termScrollback = 2000;
@@ -261,7 +260,7 @@ const TerminalView = ({ blockId, model }: ViewComponentProps<TermViewModel>) => 
         if (termScrollback > 50000) {
             termScrollback = 50000;
         }
-        const termAllowBPM = globalStore.get(termBPMAtom) ?? false;
+        const termAllowBPM = globalStore.get(model.termBPMAtom) ?? true;
         const termMacOptionIsMeta = globalStore.get(termMacOptionIsMetaAtom) ?? false;
         const wasFocused = model.termRef.current != null && globalStore.get(model.nodeModel.isFocused);
         const termWrap = new TermWrap(
