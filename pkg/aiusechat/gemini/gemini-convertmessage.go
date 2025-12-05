@@ -13,6 +13,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/aiutil"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
+	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 )
 
 // cleanSchemaForGemini removes fields from JSON Schema that Gemini doesn't accept
@@ -232,9 +233,36 @@ func ConvertToolResultsToGeminiChatMessage(toolResults []uctypes.AIToolResult) (
 		}
 
 		response := make(map[string]any)
+		var nestedParts []GeminiMessagePart
+
 		if result.ErrorText != "" {
 			response["ok"] = false
 			response["error"] = result.ErrorText
+		} else if strings.HasPrefix(result.Text, "data:") {
+			mimeType, base64Data, err := utilfn.DecodeDataURL(result.Text)
+			if err != nil {
+				log.Printf("gemini: failed to decode data URL in tool result: %v\n", err)
+				response["ok"] = false
+				response["error"] = fmt.Sprintf("failed to decode data URL: %v", err)
+			} else if strings.HasPrefix(mimeType, "image/") {
+				// For image data URLs, use multimodal function response (Gemini 3 Pro+)
+				displayName := fmt.Sprintf("result_%s.%s", result.ToolUseID[:8], strings.TrimPrefix(mimeType, "image/"))
+				response["ok"] = true
+				response["image"] = map[string]string{"$ref": displayName}
+
+				// Add the image data as a nested part
+				nestedParts = append(nestedParts, GeminiMessagePart{
+					InlineData: &GeminiInlineData{
+						MimeType:    mimeType,
+						Data:        base64.StdEncoding.EncodeToString(base64Data),
+						DisplayName: displayName,
+					},
+				})
+			} else {
+				log.Printf("gemini: unsupported data URL mimetype in tool result: %s\n", mimeType)
+				response["ok"] = false
+				response["error"] = fmt.Sprintf("unsupported data URL mimetype: %s", mimeType)
+			}
 		} else {
 			response["ok"] = true
 			response["result"] = result.Text
@@ -244,6 +272,7 @@ func ConvertToolResultsToGeminiChatMessage(toolResults []uctypes.AIToolResult) (
 			FunctionResponse: &GeminiFunctionResponse{
 				Name:     result.ToolName,
 				Response: response,
+				Parts:    nestedParts,
 			},
 		})
 	}

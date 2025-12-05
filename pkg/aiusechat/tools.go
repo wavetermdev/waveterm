@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
+	"github.com/wavetermdev/waveterm/pkg/aiusechat/aiutil"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
 	"github.com/wavetermdev/waveterm/pkg/blockcontroller"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
@@ -132,7 +133,7 @@ func MakeBlockShortDesc(block *waveobj.Block) string {
 	}
 }
 
-func GenerateTabStateAndTools(ctx context.Context, tabid string, widgetAccess bool) (string, []uctypes.ToolDefinition, error) {
+func GenerateTabStateAndTools(ctx context.Context, tabid string, widgetAccess bool, chatOpts *uctypes.WaveChatOpts) (string, []uctypes.ToolDefinition, error) {
 	if tabid == "" {
 		return "", nil, nil
 	}
@@ -160,7 +161,13 @@ func GenerateTabStateAndTools(ctx context.Context, tabid string, widgetAccess bo
 	// log.Printf("TABPROMPT %s\n", tabState)
 	var tools []uctypes.ToolDefinition
 	if widgetAccess {
-		tools = append(tools, GetCaptureScreenshotToolDefinition(tabid))
+		// Only add screenshot tool for:
+		// - openai-responses API type
+		// - google-gemini API type with Gemini 3+ models
+		if chatOpts.Config.APIType == uctypes.APIType_OpenAIResponses ||
+		   (chatOpts.Config.APIType == uctypes.APIType_GoogleGemini && aiutil.GeminiSupportsImageToolResults(chatOpts.Config.Model)) {
+			tools = append(tools, GetCaptureScreenshotToolDefinition(tabid))
+		}
 		tools = append(tools, GetReadTextFileToolDefinition())
 		tools = append(tools, GetReadDirToolDefinition())
 		tools = append(tools, GetWriteTextFileToolDefinition())
