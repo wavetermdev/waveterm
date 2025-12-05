@@ -357,7 +357,7 @@ const TerminalView = ({ blockId, model }: ViewComponentProps<TermViewModel>) => 
         e.dataTransfer.dropEffect = "copy";
     }, []);
 
-    const handleDrop = React.useCallback(async (e: React.DragEvent) => {
+    const handleDrop = React.useCallback((e: React.DragEvent) => {
         e.preventDefault();
         e.stopPropagation();
 
@@ -367,24 +367,16 @@ const TerminalView = ({ blockId, model }: ViewComponentProps<TermViewModel>) => 
             return;
         }
 
-        // Get the file path(s) - Use Electron's webUtils to get real paths
-        let paths: string[] = [];
-        try {
-            // In Electron, we need to use webUtils.getPathForFile to get the actual path
-            const { webUtils } = await import("electron");
-            paths = files.map((file: File) => {
-                try {
-                    return webUtils.getPathForFile(file);
-                } catch (err) {
-                    console.warn("Could not get path for file:", file.name, err);
-                    return file.name;
-                }
-            });
-        } catch (err) {
-            // If webUtils is not available (non-Electron environment), fallback to file.name
-            console.warn("webUtils not available, using file names only");
-            paths = files.map(f => f.name);
-        }
+        // Get the file path(s) using the Electron API
+        const paths = files.map((file: File) => {
+            try {
+                // Use the exposed Electron API to get the full path
+                return getApi().getPathForFile(file);
+            } catch (err) {
+                console.warn("Could not get path for file:", file.name, err);
+                return file.name;
+            }
+        });
 
         // Insert the path(s) into the terminal
         // If multiple files, separate with spaces and quote if necessary
