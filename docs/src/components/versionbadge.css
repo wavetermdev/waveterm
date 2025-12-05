@@ -1,0 +1,18 @@
+.version-badge {
+    display: inline-block;
+    padding: 0.125rem 0.5rem;
+    margin-left: 0.25rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    line-height: 1.5;
+    border-radius: 0.25rem;
+    background-color: var(--ifm-color-primary-lightest);
+    color: var(--ifm-background-color);
+    vertical-align: middle;
+    white-space: nowrap;
+}
+
+[data-theme="dark"] .version-badge {
+    background-color: var(--ifm-color-primary-dark);
+    color: var(--ifm-background-color);
+}

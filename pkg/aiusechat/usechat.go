@@ -38,7 +38,6 @@ import (
 const DefaultAPI = uctypes.APIType_OpenAIResponses
 const DefaultMaxTokens = 4 * 1024
 const BuilderMaxTokens = 24 * 1024
-const WaveAIEndpointEnvName = "WAVETERM_WAVEAI_ENDPOINT"
 
 var (
 	globalRateLimitInfo = &uctypes.RateLimitInfo{Unknown: true}
@@ -86,25 +85,26 @@ func getWaveAISettings(premium bool, builderMode bool, rtInfo waveobj.ObjRTInfo)
 	}
 
 	var baseUrl string
-	if config.WaveAICloud {
-		baseUrl = uctypes.DefaultAIEndpoint
-		if os.Getenv(WaveAIEndpointEnvName) != "" {
-			baseUrl = os.Getenv(WaveAIEndpointEnvName)
-		}
-	} else if config.BaseURL != "" {
-		baseUrl = config.BaseURL
+	if config.Endpoint != "" {
+		baseUrl = config.Endpoint
 	} else {
-		return nil, fmt.Errorf("no BaseURL configured for AI mode %s", aiMode)
+		return nil, fmt.Errorf("no ai:endpoint configured for AI mode %s", aiMode)
 	}
 
+	thinkingLevel := config.ThinkingLevel
+	if thinkingLevel == "" {
+		thinkingLevel = uctypes.ThinkingLevelMedium
+	}
 	opts := &uctypes.AIOptsType{
+		Provider:      config.Provider,
 		APIType:       config.APIType,
 		Model:         config.Model,
 		MaxTokens:     maxTokens,
-		ThinkingLevel: config.ThinkingLevel,
+		ThinkingLevel: thinkingLevel,
 		AIMode:        aiMode,
-		BaseURL:       baseUrl,
+		Endpoint:      baseUrl,
 		Capabilities:  config.Capabilities,
+		WaveAIPremium: config.WaveAIPremium,
 	}
 	if apiToken != "" {
 		opts.APIToken = apiToken
@@ -386,11 +386,11 @@ func RunAIChat(ctx context.Context, sseHandler *sse.SSEHandlerCh, backend UseCha
 		}
 		stopReason, rtnMessages, err := runAIChatStep(ctx, sseHandler, backend, chatOpts, cont)
 		metrics.RequestCount++
-		if chatOpts.Config.IsPremiumModel() {
-			metrics.PremiumReqCount++
-		}
 		if chatOpts.Config.IsWaveProxy() {
 			metrics.ProxyReqCount++
+			if chatOpts.Config.IsPremiumModel() {
+				metrics.PremiumReqCount++
+			}
 		}
 		if len(rtnMessages) > 0 {
 			usage := getUsage(rtnMessages)

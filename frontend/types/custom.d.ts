@@ -134,7 +134,7 @@ declare global {
         id: string; // unique id, used for communication
         label: string;
         role?: string; // electron role (optional)
-        type?: "separator" | "normal" | "submenu" | "checkbox" | "radio";
+        type?: "separator" | "normal" | "submenu" | "checkbox" | "radio" | "header";
         submenu?: ElectronContextMenuItem[];
         checked?: boolean;
         visible?: boolean;
@@ -144,7 +144,7 @@ declare global {
 
     type ContextMenuItem = {
         label?: string;
-        type?: "separator" | "normal" | "submenu" | "checkbox" | "radio";
+        type?: "separator" | "normal" | "submenu" | "checkbox" | "radio" | "header";
         role?: string; // electron role (optional)
         click?: () => void; // not required if role is set
         submenu?: ContextMenuItem[];

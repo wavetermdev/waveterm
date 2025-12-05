@@ -412,6 +412,7 @@ function convertMenuDefArrToMenu(
                 wc.send("contextmenu-click", menuDef.id);
             },
             checked: menuDef.checked,
+            enabled: menuDef.enabled,
         };
         if (menuDef.submenu != null) {
             menuItemTemplate.submenu = convertMenuDefArrToMenu(webContents, menuDef.submenu);

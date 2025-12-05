@@ -91,6 +91,9 @@ func doShutdown(reason string) {
 
 // watch stdin, kill server if stdin is closed
 func stdinReadWatch() {
+	defer func() {
+		panichandler.PanicHandler("stdinReadWatch", recover())
+	}()
 	buf := make([]byte, 1024)
 	for {
 		_, err := os.Stdin.Read(buf)
@@ -109,6 +112,9 @@ func startConfigWatcher() {
 }
 
 func telemetryLoop() {
+	defer func() {
+		panichandler.PanicHandler("telemetryLoop", recover())
+	}()
 	var nextSend int64
 	time.Sleep(InitialTelemetryWait)
 	for {
@@ -118,6 +124,42 @@ func telemetryLoop() {
 		}
 		time.Sleep(TelemetryTick)
 	}
+}
+
+func sendNoTelemetryUpdate(telemetryEnabled bool) {
+	ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancelFn()
+	clientData, err := wstore.DBGetSingleton[*waveobj.Client](ctx)
+	if err != nil {
+		log.Printf("telemetry update: error getting client data: %v\n", err)
+		return
+	}
+	if clientData == nil {
+		log.Printf("telemetry update: client data is nil\n")
+		return
+	}
+	err = wcloud.SendNoTelemetryUpdate(ctx, clientData.OID, !telemetryEnabled)
+	if err != nil {
+		log.Printf("[error] sending no-telemetry update: %v\n", err)
+		return
+	}
+}
+
+func setupTelemetryConfigHandler() {
+	watcher := wconfig.GetWatcher()
+	if watcher == nil {
+		return
+	}
+	currentConfig := watcher.GetFullConfig()
+	currentTelemetryEnabled := currentConfig.Settings.TelemetryEnabled
+
+	watcher.RegisterUpdateHandler(func(newConfig wconfig.FullConfigType) {
+		newTelemetryEnabled := newConfig.Settings.TelemetryEnabled
+		if newTelemetryEnabled != currentTelemetryEnabled {
+			currentTelemetryEnabled = newTelemetryEnabled
+			go sendNoTelemetryUpdate(newTelemetryEnabled)
+		}
+	})
 }
 
 func backupCleanupLoop() {
@@ -232,6 +274,9 @@ func beforeSendActivityUpdate(ctx context.Context) {
 }
 
 func startupActivityUpdate(firstLaunch bool) {
+	defer func() {
+		panichandler.PanicHandler("startupActivityUpdate", recover())
+	}()
 	ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancelFn()
 	activity := wshrpc.ActivityUpdate{Startup: 1}
@@ -476,11 +521,17 @@ func main() {
 	maybeStartPprofServer()
 	go stdinReadWatch()
 	go telemetryLoop()
+	setupTelemetryConfigHandler()
 	go updateTelemetryCountsLoop()
 	go backupCleanupLoop()
 	go startupActivityUpdate(firstLaunch) // must be after startConfigWatcher()
 	blocklogger.InitBlockLogger()
-	go wavebase.GetSystemSummary() // get this cached (used in AI)
+	go func() {
+		defer func() {
+			panichandler.PanicHandler("GetSystemSummary", recover())
+		}()
+		wavebase.GetSystemSummary()
+	}()
 
 	webListener, err := web.MakeTCPListener("web")
 	if err != nil {

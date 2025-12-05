@@ -23,5 +23,7 @@
     "window:confirmclose": true,
     "window:savelastwindow": true,
     "telemetry:enabled": true,
-    "term:copyonselect": true
+    "term:copyonselect": true,
+    "waveai:showcloudmodes": true,
+    "waveai:defaultmode": "waveai@balanced"
 }

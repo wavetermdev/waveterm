@@ -479,6 +479,18 @@ function formatRelativeTime(timestamp: number): string {
     }
 }
 
+/**
+ * Sort objects by display:order (ascending) and display:name (alphabetically)
+ * @param a First object to compare
+ * @param b Second object to compare
+ * @returns Comparison result for Array.sort()
+ */
+function sortByDisplayOrder<T extends { "display:order"?: number; "display:name"?: string }>(a: T, b: T): number {
+    const orderDiff = (a["display:order"] || 0) - (b["display:order"] || 0);
+    if (orderDiff !== 0) return orderDiff;
+    return (a["display:name"] || "").localeCompare(b["display:name"] || "");
+}
+
 export {
     arrayToBase64,
     atomWithDebounce,
@@ -506,6 +518,7 @@ export {
     mergeMeta,
     parseDataUrl,
     sleep,
+    sortByDisplayOrder,
     stringToBase64,
     useAtomValueSafe,
 };
