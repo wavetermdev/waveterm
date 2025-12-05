@@ -142,6 +142,8 @@ github.com/mattn/go-sqlite3 v1.14.32 h1:JD12Ag3oLy1zQA+BNn74xRgaBbdhbNIDYvQUEuuE
 github.com/mattn/go-sqlite3 v1.14.32/go.mod h1:Uh1q+B4BYcTPb+yiD3kU8Ct7aC0hY9fxUwlHK0RXw+Y=
 github.com/mitchellh/mapstructure v1.5.0 h1:jeMsZIYE/09sWLaz43PL7Gy6RuMjD2eJVyuac5Z2hdY=
 github.com/mitchellh/mapstructure v1.5.0/go.mod h1:bFUtVrKA4DC2yAKiSyO/QUcy7e+RRV2QTWOzhPopBRo=
+github.com/outrigdev/goid v0.3.0 h1:t/otQD3EXc45cLtQVPUnNgEyRaTQA4cPeu3qVcrsIws=
+github.com/outrigdev/goid v0.3.0/go.mod h1:hEH7f27ypN/GHWt/7gvkRoFYR0LZizfUBIAbak4neVE=
 github.com/photostorm/pty v1.1.19-0.20230903182454-31354506054b h1:cLGKfKb1uk0hxI0Q8L83UAJPpeJ+gSpn3cCU/tjd3eg=
 github.com/photostorm/pty v1.1.19-0.20230903182454-31354506054b/go.mod h1:KO+FcPtyLAiRC0hJwreJVvfwc7vnNz77UxBTIGHdPVk=
 github.com/planetscale/vtprotobuf v0.6.1-0.20240319094008-0393e58bdf10 h1:GFCKgmp0tecUJ0sJuv4pzYCqS9+RGSn52M3FUwPs+uo=

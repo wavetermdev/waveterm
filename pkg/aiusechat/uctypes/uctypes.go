@@ -22,6 +22,7 @@ const (
 	APIType_AnthropicMessages = "anthropic-messages"
 	APIType_OpenAIResponses   = "openai-responses"
 	APIType_OpenAIChat        = "openai-chat"
+	APIType_GoogleGemini      = "google-gemini"
 )
 
 const (

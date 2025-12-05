@@ -61,6 +61,13 @@ func applyProviderDefaults(config *wconfig.AIModeConfigType) {
 		if config.APITokenSecretName == "" {
 			config.APITokenSecretName = "OPENAI_KEY"
 		}
+		if len(config.Capabilities) == 0 {
+			if isO1Model(config.Model) {
+				config.Capabilities = []string{}
+			} else {
+				config.Capabilities = []string{uctypes.AICapabilityTools, uctypes.AICapabilityImages, uctypes.AICapabilityPdfs}
+			}
+		}
 	}
 	if config.Provider == uctypes.AIProvider_OpenRouter {
 		if config.Endpoint == "" {
@@ -106,6 +113,20 @@ func applyProviderDefaults(config *wconfig.AIModeConfigType) {
 		}
 		if config.APITokenSecretName == "" {
 			config.APITokenSecretName = "AZURE_OPENAI_KEY"
+		}
+	}
+	if config.Provider == uctypes.AIProvider_Google {
+		if config.APIType == "" {
+			config.APIType = uctypes.APIType_GoogleGemini
+		}
+		if config.Endpoint == "" && config.Model != "" {
+			config.Endpoint = fmt.Sprintf("https://generativelanguage.googleapis.com/v1beta/models/%s:streamGenerateContent", config.Model)
+		}
+		if config.APITokenSecretName == "" {
+			config.APITokenSecretName = "GOOGLE_AI_KEY"
+		}
+		if len(config.Capabilities) == 0 {
+			config.Capabilities = []string{uctypes.AICapabilityTools, uctypes.AICapabilityImages, uctypes.AICapabilityPdfs}
 		}
 	}
 	if config.APIType == "" {
@@ -155,6 +176,19 @@ func isLegacyOpenAIModel(model string) bool {
 	}
 	legacyPrefixes := []string{"gpt-4o", "gpt-3.5", "gpt-oss"}
 	for _, prefix := range legacyPrefixes {
+		if aiutil.CheckModelPrefix(model, prefix) {
+			return true
+		}
+	}
+	return false
+}
+
+func isO1Model(model string) bool {
+	if model == "" {
+		return false
+	}
+	o1Prefixes := []string{"o1", "o1-mini"}
+	for _, prefix := range o1Prefixes {
 		if aiutil.CheckModelPrefix(model, prefix) {
 			return true
 		}

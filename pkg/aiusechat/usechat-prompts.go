@@ -5,13 +5,6 @@ package aiusechat
 
 import "strings"
 
-var SystemPromptText = strings.Join([]string{
-	`You are Wave AI, an intelligent assistant embedded within Wave Terminal, a modern terminal application with graphical widgets.`,
-	`You appear as a pull-out panel on the left side of a tab, with the tab's widgets laid out on the right.`,
-	`Widget context is provided as informational only.`,
-	`Do NOT assume any API access or ability to interact with the widgets except via tools provided (note that some widgets may expose NO tools, so their context is informational only).`,
-}, " ")
-
 var SystemPromptText_OpenAI = strings.Join([]string{
 	`You are Wave AI, an assistant embedded in Wave Terminal (a terminal with graphical widgets).`,
 	`You appear as a pull-out panel on the left; widgets are on the right.`,

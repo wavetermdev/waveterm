@@ -645,7 +645,7 @@ func WaveAIPostMessageHandler(w http.ResponseWriter, r *http.Request) {
 
 	if req.TabId != "" {
 		chatOpts.TabStateGenerator = func() (string, []uctypes.ToolDefinition, string, error) {
-			tabState, tabTools, err := GenerateTabStateAndTools(r.Context(), req.TabId, req.WidgetAccess)
+			tabState, tabTools, err := GenerateTabStateAndTools(r.Context(), req.TabId, req.WidgetAccess, &chatOpts)
 			return tabState, tabTools, req.TabId, err
 		}
 	}

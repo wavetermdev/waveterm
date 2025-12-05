@@ -209,6 +209,13 @@ func CheckModelSubPrefix(model string, prefix string) bool {
 	return false
 }
 
+// GeminiSupportsImageToolResults returns true if the model supports multimodal function responses (images in tool results)
+// This is only supported by Gemini 3 Pro and later models
+func GeminiSupportsImageToolResults(model string) bool {
+	m := strings.ToLower(model)
+	return strings.Contains(m, "gemini-3") || strings.Contains(m, "gemini-4")
+}
+
 // CreateToolUseData creates a UIMessageDataToolUse from tool call information
 func CreateToolUseData(toolCallID, toolName string, arguments string, chatOpts uctypes.WaveChatOpts) uctypes.UIMessageDataToolUse {
 	toolUseData := uctypes.UIMessageDataToolUse{
