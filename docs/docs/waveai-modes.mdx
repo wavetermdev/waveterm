@@ -1,7 +1,7 @@
 ---
 sidebar_position: 1.6
 id: "waveai-modes"
-title: "Wave AI (Local Models)"
+title: "Wave AI (Local Models + BYOK)"
 ---
 
 Wave AI supports custom AI modes that allow you to use local models, custom API endpoints, and alternative AI providers. This gives you complete control over which models and providers you use with Wave's AI features.
@@ -37,10 +37,11 @@ Wave AI now supports provider-based configuration which automatically applies se
 
 ### Supported API Types
 
-Wave AI supports two OpenAI-compatible API types:
+Wave AI supports the following API types:
 
 - **`openai-chat`**: Uses the `/v1/chat/completions` endpoint (most common)
 - **`openai-responses`**: Uses the `/v1/responses` endpoint (modern API for GPT-5+ models)
+- **`google-gemini`**: Google's Gemini API format (automatically set when using `ai:provider: "google"`, not typically used directly)
 
 ## Configuration Structure
 
@@ -49,7 +50,7 @@ Wave AI supports two OpenAI-compatible API types:
 ```json
 {
   "mode-key": {
-    "display:name": "Display Name",
+    "display:name": "Qwen (OpenRouter)",
     "ai:provider": "openrouter",
     "ai:model": "qwen/qwen-2.5-coder-32b-instruct"
   }
@@ -89,10 +90,10 @@ Wave AI supports two OpenAI-compatible API types:
 | `display:icon` | No | Icon identifier for the mode |
 | `display:description` | No | Full description of the mode |
 | `ai:provider` | No | Provider preset: `openai`, `openrouter`, `google`, `azure`, `azure-legacy`, `custom` |
-| `ai:apitype` | No | API type: `openai-chat` or `openai-responses` (defaults to `openai-chat` if not specified) |
+| `ai:apitype` | No | API type: `openai-chat`, `openai-responses`, or `google-gemini` (defaults to `openai-chat` if not specified) |
 | `ai:model` | No | Model identifier (required for most providers) |
 | `ai:thinkinglevel` | No | Thinking level: `low`, `medium`, or `high` |
-| `ai:endpoint` | No | Full API endpoint URL (auto-set by provider when available) |
+| `ai:endpoint` | No | *Full* API endpoint URL (auto-set by provider when available) |
 | `ai:azureapiversion` | No | Azure API version (for `azure-legacy` provider, defaults to `2025-04-01-preview`) |
 | `ai:apitoken` | No | API key/token (not recommended - use secrets instead) |
 | `ai:apitokensecretname` | No | Name of secret containing API token (auto-set by provider) |
@@ -109,6 +110,14 @@ The `ai:capabilities` field specifies what features the AI mode supports:
 - **`tools`** - Enables AI tool usage for file reading/writing, shell integration, and widget interaction
 - **`images`** - Allows image attachments in chat (model can view uploaded images)
 - **`pdfs`** - Allows PDF file attachments in chat (model can read PDF content)
+
+**Provider-specific behavior:**
+- **OpenAI and Google providers**: Capabilities are automatically configured based on the model. You don't need to specify them.
+- **OpenRouter, Azure, Azure-Legacy, and Custom providers**: You must manually specify capabilities based on your model's features.
+
+:::warning
+If you don't include `"tools"` in the `ai:capabilities` array, the AI model will not be able to interact with your Wave terminal widgets, read/write files, or execute commands. Most AI modes should include `"tools"` for the best Wave experience.
+:::
 
 Most models support `tools` and can benefit from it. Vision-capable models should include `images`. Not all models support PDFs, so only include `pdfs` if your model can process them.
 
@@ -127,7 +136,7 @@ Most models support `tools` and can benefit from it. Vision-capable models shoul
     "display:description": "Local Llama 3.3 70B model via Ollama",
     "ai:apitype": "openai-chat",
     "ai:model": "llama3.3:70b",
-    "ai:thinkinglevel": "normal",
+    "ai:thinkinglevel": "medium",
     "ai:endpoint": "http://localhost:11434/v1/chat/completions",
     "ai:apitoken": "ollama"
   }
@@ -151,28 +160,28 @@ The `ai:apitoken` field is required but Ollama ignores it - you can set it to an
     "display:description": "Local Qwen model via LM Studio",
     "ai:apitype": "openai-chat",
     "ai:model": "qwen/qwen-2.5-coder-32b-instruct",
-    "ai:thinkinglevel": "normal",
+    "ai:thinkinglevel": "medium",
     "ai:endpoint": "http://localhost:1234/v1/chat/completions",
     "ai:apitoken": "not-needed"
   }
 }
 ```
 
-### Jan
+### vLLM
 
-[Jan](https://jan.ai) is another local AI runtime with OpenAI API compatibility:
+[vLLM](https://docs.vllm.ai) is a high-performance inference server with OpenAI API compatibility:
 
 ```json
 {
-  "jan-local": {
-    "display:name": "Jan",
+  "vllm-local": {
+    "display:name": "vLLM",
     "display:order": 3,
     "display:icon": "server",
-    "display:description": "Local model via Jan",
+    "display:description": "Local model via vLLM",
     "ai:apitype": "openai-chat",
     "ai:model": "your-model-name",
-    "ai:thinkinglevel": "normal",
-    "ai:endpoint": "http://localhost:1337/v1/chat/completions",
+    "ai:thinkinglevel": "medium",
+    "ai:endpoint": "http://localhost:8000/v1/chat/completions",
     "ai:apitoken": "not-needed"
   }
 }
@@ -198,6 +207,7 @@ The provider automatically sets:
 - `ai:endpoint` to `https://api.openai.com/v1/chat/completions`
 - `ai:apitype` to `openai-chat` (or `openai-responses` for GPT-5+ models)
 - `ai:apitokensecretname` to `OPENAI_KEY` (store your OpenAI API key with this name)
+- `ai:capabilities` to `["tools", "images", "pdfs"]` (automatically determined based on model)
 
 For newer models like GPT-4.1 or GPT-5, the API type is automatically determined:
 
@@ -230,6 +240,40 @@ The provider automatically sets:
 - `ai:apitype` to `openai-chat`
 - `ai:apitokensecretname` to `OPENROUTER_KEY` (store your OpenRouter API key with this name)
 
+:::note
+For OpenRouter, you must manually specify `ai:capabilities` based on your model's features. Example:
+```json
+{
+  "openrouter-qwen": {
+    "display:name": "OpenRouter - Qwen",
+    "ai:provider": "openrouter",
+    "ai:model": "qwen/qwen-2.5-coder-32b-instruct",
+    "ai:capabilities": ["tools"]
+  }
+}
+```
+:::
+
+### Google AI (Gemini)
+
+[Google AI](https://ai.google.dev) provides the Gemini family of models. Using the `google` provider simplifies configuration:
+
+```json
+{
+  "google-gemini": {
+    "display:name": "Gemini 3 Pro",
+    "ai:provider": "google",
+    "ai:model": "gemini-3-pro-preview"
+  }
+}
+```
+
+The provider automatically sets:
+- `ai:endpoint` to `https://generativelanguage.googleapis.com/v1beta/models/{model}:streamGenerateContent`
+- `ai:apitype` to `google-gemini`
+- `ai:apitokensecretname` to `GOOGLE_AI_KEY` (store your Google AI API key with this name)
+- `ai:capabilities` to `["tools", "images", "pdfs"]` (automatically configured)
+
 ### Azure OpenAI (Modern API)
 
 For the modern Azure OpenAI API, use the `azure` provider:
@@ -250,6 +294,21 @@ The provider automatically sets:
 - `ai:apitype` based on the model
 - `ai:apitokensecretname` to `AZURE_OPENAI_KEY` (store your Azure OpenAI key with this name)
 
+:::note
+For Azure providers, you must manually specify `ai:capabilities` based on your model's features. Example:
+```json
+{
+  "azure-gpt4": {
+    "display:name": "Azure GPT-4",
+    "ai:provider": "azure",
+    "ai:model": "gpt-4",
+    "ai:azureresourcename": "your-resource-name",
+    "ai:capabilities": ["tools", "images"]
+  }
+}
+```
+:::
+
 ### Azure OpenAI (Legacy Deployment API)
 
 For legacy Azure deployments, use the `azure-legacy` provider:
@@ -266,6 +325,10 @@ For legacy Azure deployments, use the `azure-legacy` provider:
 ```
 
 The provider automatically constructs the full endpoint URL and sets the API version (defaults to `2025-04-01-preview`). You can override the API version with `ai:azureapiversion` if needed.
+
+:::note
+For Azure Legacy provider, you must manually specify `ai:capabilities` based on your model's features.
+:::
 
 ## Using Secrets for API Keys
 
