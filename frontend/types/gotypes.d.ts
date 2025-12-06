@@ -24,7 +24,7 @@ declare global {
         "ai:model"?: string;
         "ai:thinkinglevel"?: string;
         "ai:endpoint"?: string;
-        "ai:apiversion"?: string;
+        "ai:azureapiversion"?: string;
         "ai:apitoken"?: string;
         "ai:apitokensecretname"?: string;
         "ai:azureresourcename"?: string;
@@ -1051,6 +1051,7 @@ declare global {
         "app:dismissarchitecturewarning"?: boolean;
         "app:defaultnewblock"?: string;
         "app:showoverlayblocknums"?: boolean;
+        "app:ctrlvpaste"?: boolean;
         "feature:waveappbuilder"?: boolean;
         "ai:*"?: boolean;
         "ai:preset"?: string;

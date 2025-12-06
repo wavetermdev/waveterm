@@ -73,7 +73,20 @@ async function getWorkspaceMenu(ww?: WaveBrowserWindow): Promise<Electron.MenuIt
     return workspaceMenu;
 }
 
-function makeEditMenu(): Electron.MenuItemConstructorOptions[] {
+function makeEditMenu(fullConfig?: FullConfigType): Electron.MenuItemConstructorOptions[] {
+    let pasteAccelerator: string;
+    if (unamePlatform === "darwin") {
+        pasteAccelerator = "Command+V";
+    } else {
+        const ctrlVPaste = fullConfig?.settings?.["app:ctrlvpaste"];
+        if (ctrlVPaste == null) {
+            pasteAccelerator = unamePlatform === "win32" ? "Control+V" : "";
+        } else if (ctrlVPaste) {
+            pasteAccelerator = "Control+V";
+        } else {
+            pasteAccelerator = "";
+        }
+    }
     return [
         {
             role: "undo",
@@ -94,7 +107,7 @@ function makeEditMenu(): Electron.MenuItemConstructorOptions[] {
         },
         {
             role: "paste",
-            accelerator: unamePlatform === "darwin" ? "Command+V" : "",
+            accelerator: pasteAccelerator,
         },
         {
             role: "pasteAndMatchStyle",
@@ -312,7 +325,6 @@ async function makeFullAppMenu(callbacks: AppMenuCallbacks, workspaceOrBuilderId
     const numWaveWindows = getAllWaveWindows().length;
     const webContents = workspaceOrBuilderId && getWebContentsByWorkspaceOrBuilderId(workspaceOrBuilderId);
     const appMenuItems = makeAppMenuItems(webContents);
-    const editMenu = makeEditMenu();
 
     const isBuilderWindowFocused = focusedBuilderWindow != null;
     let fullscreenOnLaunch = false;
@@ -323,6 +335,7 @@ async function makeFullAppMenu(callbacks: AppMenuCallbacks, workspaceOrBuilderId
     } catch (e) {
         console.error("Error fetching config:", e);
     }
+    const editMenu = makeEditMenu(fullConfig);
     const fileMenu = makeFileMenu(numWaveWindows, callbacks, fullConfig);
     const viewMenu = makeViewMenu(webContents, callbacks, isBuilderWindowFocused, fullscreenOnLaunch);
     let workspaceMenu: Electron.MenuItemConstructorOptions[] = null;
