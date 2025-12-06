@@ -61,9 +61,13 @@ function computeCompatibleSections(
     otherProviderConfigs: any[]
 ): ConfigSection[] {
     const currentConfig = aiModeConfigs[currentMode];
-    const currentSwitchCompat = currentConfig?.["ai:switchcompat"] || [];
-    
     const allConfigs = [...waveProviderConfigs, ...otherProviderConfigs];
+    
+    if (!currentConfig) {
+        return [{ sectionName: "Incompatible Modes", configs: allConfigs, isIncompatible: true }];
+    }
+    
+    const currentSwitchCompat = currentConfig["ai:switchcompat"] || [];
     const compatibleConfigs: any[] = [currentConfig];
     const incompatibleConfigs: any[] = [];
 

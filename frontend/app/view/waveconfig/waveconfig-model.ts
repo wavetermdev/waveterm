@@ -8,7 +8,6 @@ import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { SecretsContent } from "@/app/view/waveconfig/secretscontent";
 import { WaveConfigView } from "@/app/view/waveconfig/waveconfig";
-import { WaveAIVisualContent } from "@/app/view/waveconfig/waveaivisual";
 import { isWindows } from "@/util/platformutil";
 import { base64ToString, stringToBase64 } from "@/util/util";
 import { atom, type PrimitiveAtom } from "jotai";
@@ -79,7 +78,7 @@ const configFiles: ConfigFile[] = [
         path: "connections.json",
         language: "json",
         docsUrl: "https://docs.waveterm.dev/connections",
-  description: isWindows() ? "SSH hosts and WSL distros" : "SSH hosts",
+        description: isWindows() ? "SSH hosts and WSL distros" : "SSH hosts",
         hasJsonView: true,
     },
     {
@@ -94,7 +93,7 @@ const configFiles: ConfigFile[] = [
         path: "waveai.json",
         language: "json",
         description: "Local models and BYOK",
-  		docsUrl: "https://docs.waveterm.dev/waveai-modes",
+        docsUrl: "https://docs.waveterm.dev/waveai-modes",
         validator: validateWaveAiJson,
         hasJsonView: true,
         // visualComponent: WaveAIVisualContent,
