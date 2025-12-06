@@ -9,6 +9,7 @@ import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { SecretsContent } from "@/app/view/waveconfig/secretscontent";
 import { WaveConfigView } from "@/app/view/waveconfig/waveconfig";
 import { WaveAIVisualContent } from "@/app/view/waveconfig/waveaivisual";
+import { isWindows } from "@/util/platformutil";
 import { base64ToString, stringToBase64 } from "@/util/util";
 import { atom, type PrimitiveAtom } from "jotai";
 import type * as MonacoTypes from "monaco-editor/esm/vs/editor/editor.api";
@@ -22,6 +23,7 @@ export type ConfigFile = {
     path: string;
     language?: string;
     deprecated?: boolean;
+    description?: string;
     docsUrl?: string;
     validator?: ConfigValidator;
     isSecrets?: boolean;
@@ -77,10 +79,11 @@ const configFiles: ConfigFile[] = [
         path: "connections.json",
         language: "json",
         docsUrl: "https://docs.waveterm.dev/connections",
+  description: isWindows() ? "SSH hosts and WSL distros" : "SSH hosts",
         hasJsonView: true,
     },
     {
-        name: "Widgets",
+        name: "Sidebar Widgets",
         path: "widgets.json",
         language: "json",
         docsUrl: "https://docs.waveterm.dev/customwidgets",
@@ -90,13 +93,14 @@ const configFiles: ConfigFile[] = [
         name: "Wave AI Modes",
         path: "waveai.json",
         language: "json",
-		docsUrl: "https://docs.waveterm.dev/waveai-modes",
+        description: "Local models and BYOK",
+  		docsUrl: "https://docs.waveterm.dev/waveai-modes",
         validator: validateWaveAiJson,
         hasJsonView: true,
         // visualComponent: WaveAIVisualContent,
     },
     {
-        name: "Backgrounds",
+        name: "Tab Backgrounds",
         path: "presets/bg.json",
         language: "json",
         docsUrl: "https://docs.waveterm.dev/presets#background-configurations",
