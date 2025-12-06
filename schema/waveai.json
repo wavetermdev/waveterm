@@ -75,6 +75,12 @@
           },
           "type": "array"
         },
+        "ai:switchcompat": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
         "waveai:cloud": {
           "type": "boolean"
         },

@@ -8,7 +8,8 @@
         "ai:apitype": "openai-responses",
         "ai:model": "gpt-5-mini",
         "ai:thinkinglevel": "low",
-        "ai:capabilities": ["tools", "images", "pdfs"]
+        "ai:capabilities": ["tools", "images", "pdfs"],
+		"ai:switchcompat": ["wavecloud"]
     },
     "waveai@balanced": {
         "display:name": "Balanced",
@@ -20,7 +21,8 @@
         "ai:model": "gpt-5.1",
         "ai:thinkinglevel": "low",
         "ai:capabilities": ["tools", "images", "pdfs"],
-        "waveai:premium": true
+        "waveai:premium": true,
+		"ai:switchcompat": ["wavecloud"]
     },
     "waveai@deep": {
         "display:name": "Deep",
@@ -32,6 +34,7 @@
         "ai:model": "gpt-5.1",
         "ai:thinkinglevel": "medium",
         "ai:capabilities": ["tools", "images", "pdfs"],
-        "waveai:premium": true
+        "waveai:premium": true,
+		"ai:switchcompat": ["wavecloud"]
     }
 }

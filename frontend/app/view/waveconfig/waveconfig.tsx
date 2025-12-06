@@ -41,11 +41,16 @@ const ConfigSidebar = memo(({ model }: ConfigSidebarProps) => {
                 <div
                     key={file.path}
                     onClick={() => handleFileSelect(file)}
-                    className={`px-4 py-2 border-b border-border cursor-pointer transition-colors whitespace-nowrap overflow-hidden text-ellipsis ${
+                    className={`px-4 py-2 border-b border-border cursor-pointer transition-colors ${
                         selectedFile?.path === file.path ? "bg-accentbg text-primary" : "hover:bg-secondary/50"
                     }`}
                 >
-                    {file.name}
+                    <div className="whitespace-nowrap overflow-hidden text-ellipsis">{file.name}</div>
+                    {file.description && (
+                        <div className="text-xs text-muted mt-0.5 whitespace-nowrap overflow-hidden text-ellipsis">
+                            {file.description}
+                        </div>
+                    )}
                 </div>
             ))}
             {deprecatedConfigFiles.length > 0 && (
@@ -168,15 +173,16 @@ const WaveConfigView = memo(({ blockId, model }: ViewComponentProps<WaveConfigVi
                                     {selectedFile.name}
                                 </div>
                                 {selectedFile.docsUrl && (
-                                    <a
-                                        href={`${selectedFile.docsUrl}?ref=waveconfig`}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="!text-muted-foreground hover:!text-primary transition-colors ml-1 shrink-0 cursor-pointer"
-                                        title="View documentation"
-                                    >
-                                        <i className="fa fa-book text-sm" />
-                                    </a>
+                                    <Tooltip content="View documentation">
+                                        <a
+                                            href={`${selectedFile.docsUrl}?ref=waveconfig`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="!text-muted-foreground hover:!text-primary transition-colors ml-1 shrink-0 cursor-pointer"
+                                        >
+                                            <i className="fa fa-book text-sm" />
+                                        </a>
+                                    </Tooltip>
                                 )}
                                 <div className="text-xs text-muted-foreground font-mono pb-0.5 ml-1 truncate @max-w450:hidden">
                                     {selectedFile.path}

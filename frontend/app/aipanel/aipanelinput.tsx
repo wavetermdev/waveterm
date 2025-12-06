@@ -4,6 +4,7 @@
 import { formatFileSizeError, isAcceptableFile, validateFileSize } from "@/app/aipanel/ai-utils";
 import { waveAIHasFocusWithin } from "@/app/aipanel/waveai-focus-utils";
 import { type WaveAIModel } from "@/app/aipanel/waveai-model";
+import { Tooltip } from "@/element/tooltip";
 import { cn } from "@/util/util";
 import { useAtom, useAtomValue } from "jotai";
 import { memo, useCallback, useEffect, useRef } from "react";
@@ -145,31 +146,35 @@ export const AIPanelInput = memo(({ onSubmit, status, model }: AIPanelInputProps
                         style={{ fontSize: "13px" }}
                         rows={2}
                     />
-                    <button
-                        type="button"
-                        onClick={handleUploadClick}
-                        className={cn(
-                            "absolute bottom-6 right-1 w-3.5 h-3.5 transition-colors flex items-center justify-center text-gray-400 hover:text-accent cursor-pointer"
-                        )}
-                    >
-                        <i className="fa fa-paperclip text-xs"></i>
-                    </button>
-                    <button
-                        type="submit"
-                        disabled={status !== "ready" || !input.trim()}
-                        className={cn(
-                            "absolute bottom-2 right-1 w-3.5 h-3.5 transition-colors flex items-center justify-center",
-                            status !== "ready" || !input.trim()
-                                ? "text-gray-400"
-                                : "text-accent/80 hover:text-accent cursor-pointer"
-                        )}
-                    >
-                        {status === "streaming" ? (
-                            <i className="fa fa-spinner fa-spin text-xs"></i>
-                        ) : (
-                            <i className="fa fa-paper-plane text-xs"></i>
-                        )}
-                    </button>
+                    <Tooltip content="Attach files" placement="top" divClassName="absolute bottom-6.5 right-1">
+                        <button
+                            type="button"
+                            onClick={handleUploadClick}
+                            className={cn(
+                                "w-5 h-5 transition-colors flex items-center justify-center text-gray-400 hover:text-accent cursor-pointer"
+                            )}
+                        >
+                            <i className="fa fa-paperclip text-sm"></i>
+                        </button>
+                    </Tooltip>
+                    <Tooltip content="Send message (Enter)" placement="top" divClassName="absolute bottom-1.5 right-1">
+                        <button
+                            type="submit"
+                            disabled={status !== "ready" || !input.trim()}
+                            className={cn(
+                                "w-5 h-5 transition-colors flex items-center justify-center",
+                                status !== "ready" || !input.trim()
+                                    ? "text-gray-400"
+                                    : "text-accent/80 hover:text-accent cursor-pointer"
+                            )}
+                        >
+                            {status === "streaming" ? (
+                                <i className="fa fa-spinner fa-spin text-sm"></i>
+                            ) : (
+                                <i className="fa fa-paper-plane text-sm"></i>
+                            )}
+                        </button>
+                    </Tooltip>
                 </div>
             </form>
         </div>

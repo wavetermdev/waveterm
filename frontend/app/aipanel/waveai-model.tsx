@@ -547,6 +547,16 @@ export class WaveAIModel {
         await createBlock(blockDef, false, true);
     }
 
+    async openWaveAIConfig() {
+        const blockDef: BlockDef = {
+            meta: {
+                view: "waveconfig",
+                file: "waveai.json",
+            },
+        };
+        await createBlock(blockDef, false, true);
+    }
+
     openRestoreBackupModal(toolcallid: string) {
         globalStore.set(this.restoreBackupModalToolCallId, toolcallid);
     }

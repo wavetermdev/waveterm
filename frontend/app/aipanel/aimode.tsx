@@ -1,14 +1,128 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { atoms, createBlock, getSettingsKeyAtom } from "@/app/store/global";
+import { atoms, getSettingsKeyAtom } from "@/app/store/global";
 import { cn, fireAndForget, makeIconClass } from "@/util/util";
 import { useAtomValue } from "jotai";
 import { memo, useRef, useState } from "react";
 import { getFilteredAIModeConfigs } from "./ai-utils";
 import { WaveAIModel } from "./waveai-model";
 
-export const AIModeDropdown = memo(() => {
+interface AIModeMenuItemProps {
+    config: any;
+    isSelected: boolean;
+    isDisabled: boolean;
+    onClick: () => void;
+    isFirst?: boolean;
+    isLast?: boolean;
+}
+
+const AIModeMenuItem = memo(({ config, isSelected, isDisabled, onClick, isFirst, isLast }: AIModeMenuItemProps) => {
+    return (
+        <button
+            key={config.mode}
+            onClick={onClick}
+            disabled={isDisabled}
+            className={cn(
+                "w-full flex flex-col gap-0.5 px-3 transition-colors text-left",
+                isFirst ? "pt-1 pb-0.5" : isLast ? "pt-0.5 pb-1" : "pt-0.5 pb-0.5",
+                isDisabled ? "text-gray-500" : "text-gray-300 hover:bg-gray-700 cursor-pointer"
+            )}
+        >
+            <div className="flex items-center gap-2 w-full">
+                <i className={makeIconClass(config["display:icon"] || "sparkles", false)}></i>
+                <span className={cn("text-sm", isSelected && "font-bold")}>
+                    {config["display:name"]}
+                    {isDisabled && " (premium)"}
+                </span>
+                {isSelected && <i className="fa fa-check ml-auto"></i>}
+            </div>
+            {config["display:description"] && (
+                <div className={cn("text-xs pl-5", isDisabled ? "text-gray-500" : "text-muted")} style={{ whiteSpace: "pre-line" }}>
+                    {config["display:description"]}
+                </div>
+            )}
+        </button>
+    );
+});
+
+AIModeMenuItem.displayName = "AIModeMenuItem";
+
+interface ConfigSection {
+    sectionName: string;
+    configs: any[];
+    isIncompatible?: boolean;
+}
+
+function computeCompatibleSections(
+    currentMode: string,
+    aiModeConfigs: Record<string, any>,
+    waveProviderConfigs: any[],
+    otherProviderConfigs: any[]
+): ConfigSection[] {
+    const currentConfig = aiModeConfigs[currentMode];
+    const allConfigs = [...waveProviderConfigs, ...otherProviderConfigs];
+    
+    if (!currentConfig) {
+        return [{ sectionName: "Incompatible Modes", configs: allConfigs, isIncompatible: true }];
+    }
+    
+    const currentSwitchCompat = currentConfig["ai:switchcompat"] || [];
+    const compatibleConfigs: any[] = [currentConfig];
+    const incompatibleConfigs: any[] = [];
+
+    if (currentSwitchCompat.length === 0) {
+        allConfigs.forEach((config) => {
+            if (config.mode !== currentMode) {
+                incompatibleConfigs.push(config);
+            }
+        });
+    } else {
+        allConfigs.forEach((config) => {
+            if (config.mode === currentMode) return;
+            
+            const configSwitchCompat = config["ai:switchcompat"] || [];
+            const hasMatch = currentSwitchCompat.some((currentTag: string) =>
+                configSwitchCompat.includes(currentTag)
+            );
+            
+            if (hasMatch) {
+                compatibleConfigs.push(config);
+            } else {
+                incompatibleConfigs.push(config);
+            }
+        });
+    }
+
+    const sections: ConfigSection[] = [];
+    const compatibleSectionName = compatibleConfigs.length === 1 ? "Current" : "Compatible Modes";
+    sections.push({ sectionName: compatibleSectionName, configs: compatibleConfigs });
+    
+    if (incompatibleConfigs.length > 0) {
+        sections.push({ sectionName: "Incompatible Modes", configs: incompatibleConfigs, isIncompatible: true });
+    }
+
+    return sections;
+}
+
+function computeWaveCloudSections(waveProviderConfigs: any[], otherProviderConfigs: any[]): ConfigSection[] {
+    const sections: ConfigSection[] = [];
+    
+    if (waveProviderConfigs.length > 0) {
+        sections.push({ sectionName: "Wave AI Cloud", configs: waveProviderConfigs });
+    }
+    if (otherProviderConfigs.length > 0) {
+        sections.push({ sectionName: "Custom", configs: otherProviderConfigs });
+    }
+    
+    return sections;
+}
+
+interface AIModeDropdownProps {
+    compatibilityMode?: boolean;
+}
+
+export const AIModeDropdown = memo(({ compatibilityMode = false }: AIModeDropdownProps) => {
     const model = WaveAIModel.getInstance();
     const aiMode = useAtomValue(model.currentAIMode);
     const aiModeConfigs = useAtomValue(model.aiModeConfigs);
@@ -27,18 +141,6 @@ export const AIModeDropdown = memo(() => {
         hasPremium
     );
 
-    const hasBothModeTypes = waveProviderConfigs.length > 0 && otherProviderConfigs.length > 0;
-
-    const handleSelect = (mode: string) => {
-        const config = aiModeConfigs[mode];
-        if (!config) return;
-        if (!hasPremium && config["waveai:premium"]) {
-            return;
-        }
-        model.setAIMode(mode);
-        setIsOpen(false);
-    };
-
     let currentMode = aiMode || defaultMode;
     const currentConfig = aiModeConfigs[currentMode];
     if (currentConfig) {
@@ -50,12 +152,35 @@ export const AIModeDropdown = memo(() => {
         }
     }
 
+    const sections: ConfigSection[] = compatibilityMode
+        ? computeCompatibleSections(currentMode, aiModeConfigs, waveProviderConfigs, otherProviderConfigs)
+        : computeWaveCloudSections(waveProviderConfigs, otherProviderConfigs);
+
+    const showSectionHeaders = compatibilityMode || sections.length > 1;
+
+    const handleSelect = (mode: string) => {
+        const config = aiModeConfigs[mode];
+        if (!config) return;
+        if (!hasPremium && config["waveai:premium"]) {
+            return;
+        }
+        model.setAIMode(mode);
+        setIsOpen(false);
+    };
+
     const displayConfig = aiModeConfigs[currentMode] || {
         "display:name": "? Unknown",
         "display:icon": "question",
     };
 
-	return (
+    const handleConfigureClick = () => {
+        fireAndForget(async () => {
+            await model.openWaveAIConfig();
+            setIsOpen(false);
+        });
+    };
+
+    return (
         <div className="relative" ref={dropdownRef}>
             <button
                 onClick={() => setIsOpen(!isOpen)}
@@ -76,100 +201,50 @@ export const AIModeDropdown = memo(() => {
                 <>
                     <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
                     <div className="absolute top-full left-0 mt-1 bg-gray-800 border border-gray-600 rounded shadow-lg z-50 min-w-[280px]">
-                        {hasBothModeTypes && (
-                            <div className="pt-2 pb-1 text-center text-[10px] text-gray-400 uppercase tracking-wide">
-                                Wave AI Cloud
-                            </div>
-                        )}
-                        {waveProviderConfigs.map((config, index) => {
-                            const isFirst = index === 0 && !hasBothModeTypes;
-                            const isDisabled = !hasPremium && config["waveai:premium"];
-                            const isSelected = currentMode === config.mode;
+                        {sections.map((section, sectionIndex) => {
+                            const isFirstSection = sectionIndex === 0;
+                            const isLastSection = sectionIndex === sections.length - 1;
+                            
                             return (
-                                <button
-                                    key={config.mode}
-                                    onClick={() => handleSelect(config.mode)}
-                                    disabled={isDisabled}
-                                    className={`w-full flex flex-col gap-0.5 px-3 ${
-                                        isFirst ? "pt-1 pb-0.5" : "pt-0.5 pb-0.5"
-                                    } ${
-                                        isDisabled
-                                            ? "text-gray-500 cursor-not-allowed"
-                                            : "text-gray-300 hover:bg-gray-700 cursor-pointer"
-                                    } transition-colors text-left`}
-                                >
-                                    <div className="flex items-center gap-2 w-full">
-                                        <i className={makeIconClass(config["display:icon"] || "sparkles", false)}></i>
-                                        <span className={`text-sm ${isSelected ? "font-bold" : ""}`}>
-                                            {config["display:name"]}
-                                            {isDisabled && " (premium)"}
-                                        </span>
-                                        {isSelected && <i className="fa fa-check ml-auto"></i>}
-                                    </div>
-                                    {config["display:description"] && (
-                                        <div className="text-xs text-muted pl-5" style={{ whiteSpace: "pre-line" }}>
-                                            {config["display:description"]}
-                                        </div>
+                                <div key={section.sectionName}>
+                                    {!isFirstSection && <div className="border-t border-gray-600 my-2" />}
+                                    {showSectionHeaders && (
+                                        <>
+                                            <div className={cn("pb-1 text-center text-[10px] text-gray-400 uppercase tracking-wide", isFirstSection ? "pt-2" : "pt-0")}>
+                                                {section.sectionName}
+                                            </div>
+                                            {section.isIncompatible && (
+                                                <div className="text-center text-[11px] text-red-300 pb-1">
+                                                    (Start a New Chat to Switch)
+                                                </div>
+                                            )}
+                                        </>
                                     )}
-                                </button>
-                            );
-                        })}
-                        {hasBothModeTypes && (
-                            <div className="border-t border-gray-600 my-2" />
-                        )}
-                        {hasBothModeTypes && (
-                            <div className="pt-0 pb-1 text-center text-[10px] text-gray-400 uppercase tracking-wide">
-                                Custom
-                            </div>
-                        )}
-                        {otherProviderConfigs.map((config, index) => {
-                            const isFirst = index === 0 && !hasBothModeTypes;
-                            const isLast = index === otherProviderConfigs.length - 1;
-                            const isDisabled = !hasPremium && config["waveai:premium"];
-                            const isSelected = currentMode === config.mode;
-                            return (
-                                <button
-                                    key={config.mode}
-                                    onClick={() => handleSelect(config.mode)}
-                                    disabled={isDisabled}
-                                    className={`w-full flex flex-col gap-0.5 px-3 ${
-                                        isFirst ? "pt-1 pb-0.5" : isLast ? "pt-0.5 pb-1" : "pt-0.5 pb-0.5"
-                                    } ${
-                                        isDisabled
-                                            ? "text-gray-500 cursor-not-allowed"
-                                            : "text-gray-300 hover:bg-gray-700 cursor-pointer"
-                                    } transition-colors text-left`}
-                                >
-                                    <div className="flex items-center gap-2 w-full">
-                                        <i className={makeIconClass(config["display:icon"] || "sparkles", false)}></i>
-                                        <span className={`text-sm ${isSelected ? "font-bold" : ""}`}>
-                                            {config["display:name"]}
-                                            {isDisabled && " (premium)"}
-                                        </span>
-                                        {isSelected && <i className="fa fa-check ml-auto"></i>}
-                                    </div>
-                                    {config["display:description"] && (
-                                        <div className="text-xs text-muted pl-5" style={{ whiteSpace: "pre-line" }}>
-                                            {config["display:description"]}
-                                        </div>
-                                    )}
-                                </button>
+                                    {section.configs.map((config, index) => {
+                                        const isFirst = index === 0 && isFirstSection && !showSectionHeaders;
+                                        const isLast = index === section.configs.length - 1 && isLastSection;
+                                        const isPremiumDisabled = !hasPremium && config["waveai:premium"];
+                                        const isIncompatibleDisabled = section.isIncompatible || false;
+                                        const isDisabled = isPremiumDisabled || isIncompatibleDisabled;
+                                        const isSelected = currentMode === config.mode;
+                                        return (
+                                            <AIModeMenuItem
+                                                key={config.mode}
+                                                config={config}
+                                                isSelected={isSelected}
+                                                isDisabled={isDisabled}
+                                                onClick={() => handleSelect(config.mode)}
+                                                isFirst={isFirst}
+                                                isLast={isLast}
+                                            />
+                                        );
+                                    })}
+                                </div>
                             );
                         })}
                         <div className="border-t border-gray-600 my-1" />
                         <button
-                            onClick={() => {
-                                fireAndForget(async () => {
-                                    const blockDef: BlockDef = {
-                                        meta: {
-                                            view: "waveconfig",
-                                            file: "waveai.json",
-                                        },
-                                    };
-                                    await createBlock(blockDef, false, true);
-                                    setIsOpen(false);
-                                });
-                            }}
+                            onClick={handleConfigureClick}
                             className="w-full flex items-center gap-2 px-3 pt-1 pb-2 text-gray-300 hover:bg-gray-700 cursor-pointer transition-colors text-left"
                         >
                             <i className={makeIconClass("gear", false)}></i>
