@@ -332,6 +332,8 @@ type AIMetrics struct {
 	WidgetAccess      bool           `json:"widgetaccess"`
 	ThinkingLevel     string         `json:"thinkinglevel,omitempty"`
 	AIMode            string         `json:"aimode,omitempty"`
+	AIProvider        string         `json:"aiprovider,omitempty"`
+	IsLocal           bool           `json:"islocal,omitempty"`
 }
 
 type AIFunctionCallInput struct {
