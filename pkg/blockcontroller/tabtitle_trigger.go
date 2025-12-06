@@ -16,15 +16,15 @@ import (
 )
 
 const (
-	LinesThresholdForTitle = 10   // Generate title after N lines of output
-	TitleCooldownSeconds   = 300  // Don't regenerate title more often than every 5 minutes
+	LinesThresholdForTitle = 1  // Generate title after N lines of output
+	TitleCooldownSeconds   = 10 // Don't regenerate title more often than every 10 seconds
 )
 
 // tabTitleTracker tracks line counts per tab for auto-generating titles
 type tabTitleTracker struct {
-	mu                sync.Mutex
-	tabLineCounts     map[string]int       // tabId -> line count
-	lastTitleGenTime  map[string]time.Time // tabId -> last time title was generated
+	mu               sync.Mutex
+	tabLineCounts    map[string]int       // tabId -> line count
+	lastTitleGenTime map[string]time.Time // tabId -> last time title was generated
 }
 
 var titleTracker = &tabTitleTracker{
@@ -76,17 +76,6 @@ func CheckAndGenerateTitle(blockId string, data []byte) {
 		return
 	}
 
-	// Check if tab already has a custom name (don't override user-set names)
-	tab, err := wstore.DBGet[*waveobj.Tab](ctx, tabId)
-	if err != nil || tab == nil {
-		return
-	}
-
-	// Only auto-generate for default names like "T1", "T2", etc.
-	if !isDefaultTabName(tab.Name) {
-		return
-	}
-
 	// Reset counter and update last gen time before generating (to prevent duplicates)
 	titleTracker.mu.Lock()
 	titleTracker.tabLineCounts[tabId] = 0
@@ -113,18 +102,4 @@ func CheckAndGenerateTitle(blockId string, data []byte) {
 
 		log.Printf("Auto-generated tab title for tab %s: %q", tabId, title)
 	}()
-}
-
-// isDefaultTabName checks if a tab name is the default pattern (T1, T2, etc.)
-func isDefaultTabName(name string) bool {
-	if len(name) < 2 || name[0] != 'T' {
-		return false
-	}
-	// Check if the rest is a number
-	for i := 1; i < len(name); i++ {
-		if name[i] < '0' || name[i] > '9' {
-			return false
-		}
-	}
-	return true
 }
