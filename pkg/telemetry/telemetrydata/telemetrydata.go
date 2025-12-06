@@ -148,6 +148,8 @@ type TEventProps struct {
 	WaveAIWidgetAccess         bool           `json:"waveai:widgetaccess,omitempty"`
 	WaveAIThinkingLevel        string         `json:"waveai:thinkinglevel,omitempty"`
 	WaveAIMode                 string         `json:"waveai:mode,omitempty"`
+	WaveAIProvider             string         `json:"waveai:provider,omitempty"`
+	WaveAIIsLocal              bool           `json:"waveai:islocal,omitempty"`
 	WaveAIFeedback             string         `json:"waveai:feedback,omitempty" tstype:"\"good\" | \"bad\""`
 	WaveAIAction               string         `json:"waveai:action,omitempty"`
 

@@ -60,6 +60,14 @@ func getSystemPrompt(apiType string, model string, isBuilder bool) []string {
 	return []string{basePrompt}
 }
 
+func isLocalEndpoint(endpoint string) bool {
+	if endpoint == "" {
+		return false
+	}
+	endpointLower := strings.ToLower(endpoint)
+	return strings.Contains(endpointLower, "localhost") || strings.Contains(endpointLower, "127.0.0.1")
+}
+
 func getWaveAISettings(premium bool, builderMode bool, rtInfo waveobj.ObjRTInfo) (*uctypes.AIOptsType, error) {
 	maxTokens := DefaultMaxTokens
 	if builderMode {
@@ -353,6 +361,11 @@ func RunAIChat(ctx context.Context, sseHandler *sse.SSEHandlerCh, backend UseCha
 	defer activeChats.Delete(chatOpts.ChatId)
 
 	stepNum := chatstore.DefaultChatStore.CountUserMessages(chatOpts.ChatId)
+	aiProvider := chatOpts.Config.Provider
+	if aiProvider == "" {
+		aiProvider = uctypes.AIProvider_Custom
+	}
+	isLocal := isLocalEndpoint(chatOpts.Config.Endpoint)
 	metrics := &uctypes.AIMetrics{
 		ChatId:  chatOpts.ChatId,
 		StepNum: stepNum,
@@ -364,6 +377,8 @@ func RunAIChat(ctx context.Context, sseHandler *sse.SSEHandlerCh, backend UseCha
 		ToolDetail:    make(map[string]int),
 		ThinkingLevel: chatOpts.Config.ThinkingLevel,
 		AIMode:        chatOpts.Config.AIMode,
+		AIProvider:    aiProvider,
+		IsLocal:       isLocal,
 	}
 	firstStep := true
 	var cont *uctypes.WaveContinueResponse
@@ -563,6 +578,8 @@ func sendAIMetricsTelemetry(ctx context.Context, metrics *uctypes.AIMetrics) {
 		WaveAIWidgetAccess:         metrics.WidgetAccess,
 		WaveAIThinkingLevel:        metrics.ThinkingLevel,
 		WaveAIMode:                 metrics.AIMode,
+		WaveAIProvider:             metrics.AIProvider,
+		WaveAIIsLocal:              metrics.IsLocal,
 	})
 	_ = telemetry.RecordTEvent(ctx, event)
 }

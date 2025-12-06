@@ -6,6 +6,33 @@ sidebar_position: 200
 
 # Release Notes
 
+### v0.13.0 &mdash; Dec 8, 2025
+
+**Wave v0.13 Brings Local AI Support, BYOK, and Unified Configuration**
+
+Wave v0.13 is a major release that opens up Wave AI to local models, third-party providers, and bring-your-own-key (BYOK) configurations. This release also includes a completely redesigned configuration system and several terminal improvements.
+
+**Local AI & BYOK Support:**
+- **OpenAI-Compatible API** - Wave now supports any provider or local server using the `/v1/chat/completions` endpoint, enabling use of Ollama, LM Studio, vLLM, OpenRouter, and countless other local and hosted models
+- **Google Gemini Integration** - Native support for Google's Gemini models with a dedicated API adapter
+- **Provider Presets** - Simplified configuration with built-in presets for OpenAI, OpenRouter, Google, Azure, and custom endpoints
+- **Multiple AI Modes** - Easily switch between different models and providers with a unified interface
+- See the new [Wave AI Modes documentation](https://docs.waveterm.dev/waveai-modes) for configuration examples and setup guides
+
+**Unified Configuration Widget:**
+- **New Config Interface** - Replaced the basic JSON editor with a dedicated configuration widget accessible from the sidebar
+- **Better Organization** - Browse and edit different configuration types (general settings, AI modes, secrets) with improved validation and error handling
+- **Integrated Secrets Management** - Access Wave's secret store directly from the config widget for secure credential management
+
+**Terminal Improvements:**
+- **Bracketed Paste Mode** - Now enabled by default to improve multi-line paste behavior and compatibility with tools like Claude Code
+- **Windows Paste Fix** - Ctrl+V now works as a standard paste accelerator on Windows
+- **SSH Password Management** - Store SSH connection passwords in Wave's secret store to avoid re-typing credentials
+
+**Other Changes:**
+- Package updates and dependency upgrades
+- Various bug fixes and stability improvements
+
 ### v0.12.5 &mdash; Nov 24, 2025
 
 Quick patch release to fix paste behavior on Linux (prevent raw HTML from getting pasted to the terminal).
