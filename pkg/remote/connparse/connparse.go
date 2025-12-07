@@ -25,6 +25,22 @@ const (
 var windowsDriveRegex = regexp.MustCompile(`^[a-zA-Z]:`)
 var wslConnRegex = regexp.MustCompile(`^wsl://[^/]+`)
 
+func needsPrecedingSlash(path string) bool {
+	if len(path) <= 1 {
+		return false
+	}
+	if windowsDriveRegex.MatchString(path) {
+		return false
+	}
+	disallowedPrefixes := []string{"/", "~", "./", "../", ".\\", "..\\"}
+	for _, prefix := range disallowedPrefixes {
+		if strings.HasPrefix(path, prefix) {
+			return false
+		}
+	}
+	return path != ".."
+}
+
 type Connection struct {
 	Scheme string
 	Host   string
@@ -139,7 +155,6 @@ func ParseURI(uri string) (*Connection, error) {
 		scheme = ConnectionTypeWsh
 		addPrecedingSlash = false
 		if strings.HasPrefix(uri, "//") {
-			rest = strings.TrimPrefix(uri, "//")
 			// Handles remote shorthand like //host/path and WSL URIs //wsl://distro/path
 			parseWshPath()
 		} else if strings.HasPrefix(rest, "/~") {
@@ -161,7 +176,7 @@ func ParseURI(uri string) (*Connection, error) {
 		}
 		if strings.HasPrefix(remotePath, "/~") {
 			remotePath = strings.TrimPrefix(remotePath, "/")
-		} else if addPrecedingSlash && (len(remotePath) > 1 && !windowsDriveRegex.MatchString(remotePath) && !strings.HasPrefix(remotePath, "/") && !strings.HasPrefix(remotePath, "~") && !strings.HasPrefix(remotePath, "./") && !strings.HasPrefix(remotePath, "../") && !strings.HasPrefix(remotePath, ".\\") && !strings.HasPrefix(remotePath, "..\\") && remotePath != "..") {
+		} else if addPrecedingSlash && needsPrecedingSlash(remotePath) {
 			remotePath = "/" + remotePath
 		}
 	}
