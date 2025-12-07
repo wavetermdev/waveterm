@@ -915,11 +915,16 @@ func findSshConfigKeywords(hostPattern string) (connKeywords *wconfig.ConnKeywor
 			authSockCommand := exec.Command(shellPath, "-c", "echo ${SSH_AUTH_SOCK}")
 			sshAuthSock, err := authSockCommand.Output()
 			if err == nil {
-				agentPath, err := wavebase.ExpandHomeDir(trimquotes.TryTrimQuotes(strings.TrimSpace(string(sshAuthSock))))
-				if err != nil {
-					return nil, err
+				trimmedSock := strings.TrimSpace(string(sshAuthSock))
+				if trimmedSock == "" {
+					log.Printf("SSH_AUTH_SOCK is empty in shell environment")
+				} else {
+					agentPath, err := wavebase.ExpandHomeDir(trimquotes.TryTrimQuotes(trimmedSock))
+					if err != nil {
+						return nil, err
+					}
+					sshKeywords.SshIdentityAgent = utilfn.Ptr(agentPath)
 				}
-				sshKeywords.SshIdentityAgent = utilfn.Ptr(agentPath)
 			} else {
 				log.Printf("unable to find SSH_AUTH_SOCK: %v\n", err)
 			}
