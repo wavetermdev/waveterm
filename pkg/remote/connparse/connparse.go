@@ -92,26 +92,31 @@ func GetConnNameFromContext(ctx context.Context) (string, error) {
 	return handler.GetRpcContext().Conn, nil
 }
 
-// ParseURI parses a connection URI and returns the connection type, host/path, and parameters.
+// It recognizes explicit schemes (scheme://...), shorthand forms starting with "//host/path" and WSL-style URIs (wsl://distro/path). When no scheme is provided the scheme defaults to "wsh" and the host may be set to the current connection marker or to the local connection name for local shorthand. For the "wsh" scheme: missing host defaults to the local connection name; paths beginning with "/~" are normalized by removing the leading slash; other paths may receive a prepended "/" except when they look like Windows drive paths, start with ".", "~", or already start with a slash. Trailing slashes in the original URI are preserved in the parsed Path.
 func ParseURI(uri string) (*Connection, error) {
-	split := strings.SplitN(uri, "://", 2)
 	var scheme string
 	var rest string
-	if len(split) > 1 {
-		scheme = split[0]
-		rest = strings.TrimPrefix(split[1], "//")
+
+	if strings.HasPrefix(uri, "//") {
+		rest = strings.TrimPrefix(uri, "//")
 	} else {
-		rest = split[0]
+		split := strings.SplitN(uri, "://", 2)
+		if len(split) > 1 {
+			scheme = split[0]
+			rest = strings.TrimPrefix(split[1], "//")
+		} else {
+			rest = split[0]
+		}
 	}
 
 	var host string
 	var remotePath string
 
 	parseGenericPath := func() {
-		split = strings.SplitN(rest, "/", 2)
-		host = split[0]
-		if len(split) > 1 && split[1] != "" {
-			remotePath = split[1]
+		parts := strings.SplitN(rest, "/", 2)
+		host = parts[0]
+		if len(parts) > 1 && parts[1] != "" {
+			remotePath = parts[1]
 		} else if strings.HasSuffix(rest, "/") {
 			// preserve trailing slash
 			remotePath = "/"
@@ -133,8 +138,9 @@ func ParseURI(uri string) (*Connection, error) {
 	if scheme == "" {
 		scheme = ConnectionTypeWsh
 		addPrecedingSlash = false
-		if len(rest) != len(uri) {
-			// This accounts for when the uri starts with "//", which would get trimmed in the first split.
+		if strings.HasPrefix(uri, "//") {
+			rest = strings.TrimPrefix(uri, "//")
+			// Handles remote shorthand like //host/path and WSL URIs //wsl://distro/path
 			parseWshPath()
 		} else if strings.HasPrefix(rest, "/~") {
 			host = wshrpc.LocalConnName
