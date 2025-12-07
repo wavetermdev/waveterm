@@ -17,6 +17,7 @@ import (
 	"os/exec"
 	"os/user"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -233,12 +234,12 @@ func createPasswordCallbackPrompt(connCtx context.Context, remoteDisplayName str
 			}
 		}()
 		blocklogger.Infof(connCtx, "[conndebug] Password Authentication requested from connection %s...\n", remoteDisplayName)
-		
+
 		if password != nil {
 			blocklogger.Infof(connCtx, "[conndebug] using password from secret store, sending to ssh\n")
 			return *password, nil
 		}
-		
+
 		ctx, cancelFn := context.WithTimeout(connCtx, 60*time.Second)
 		defer cancelFn()
 		queryText := fmt.Sprintf(
@@ -612,10 +613,11 @@ func createClientConfig(connCtx context.Context, sshKeywords *wconfig.ConnKeywor
 
 	// IdentitiesOnly indicates that only the keys listed in the identity and certificate files or passed as arguments should be used, even if there are matches in the SSH Agent, PKCS11Provider, or SecurityKeyProvider. See https://man.openbsd.org/ssh_config#IdentitiesOnly
 	// TODO: Update if we decide to support PKCS11Provider and SecurityKeyProvider
-	if !utilfn.SafeDeref(sshKeywords.SshIdentitiesOnly) {
-		conn, err := net.Dial("unix", utilfn.SafeDeref(sshKeywords.SshIdentityAgent))
+	agentPath := strings.TrimSpace(utilfn.SafeDeref(sshKeywords.SshIdentityAgent))
+	if !utilfn.SafeDeref(sshKeywords.SshIdentitiesOnly) && agentPath != "" {
+		conn, err := dialIdentityAgent(agentPath)
 		if err != nil {
-			log.Printf("Failed to open Identity Agent Socket: %v", err)
+			log.Printf("Failed to open Identity Agent Socket %q: %v", agentPath, err)
 		} else {
 			agentClient = agent.NewClient(conn)
 			authSockSigners, _ = agentClient.Signers()
@@ -900,17 +902,27 @@ func findSshConfigKeywords(hostPattern string) (connKeywords *wconfig.ConnKeywor
 		return nil, err
 	}
 	if identityAgentRaw == "" {
-		shellPath := shellutil.DetectLocalShellPath()
-		authSockCommand := exec.Command(shellPath, "-c", "echo ${SSH_AUTH_SOCK}")
-		sshAuthSock, err := authSockCommand.Output()
-		if err == nil {
-			agentPath, err := wavebase.ExpandHomeDir(trimquotes.TryTrimQuotes(strings.TrimSpace(string(sshAuthSock))))
+		if envSock := os.Getenv("SSH_AUTH_SOCK"); envSock != "" {
+			agentPath, err := wavebase.ExpandHomeDir(trimquotes.TryTrimQuotes(envSock))
 			if err != nil {
 				return nil, err
 			}
 			sshKeywords.SshIdentityAgent = utilfn.Ptr(agentPath)
+		} else if runtime.GOOS == "windows" {
+			sshKeywords.SshIdentityAgent = utilfn.Ptr(`\\.\\pipe\\openssh-ssh-agent`)
 		} else {
-			log.Printf("unable to find SSH_AUTH_SOCK: %v\n", err)
+			shellPath := shellutil.DetectLocalShellPath()
+			authSockCommand := exec.Command(shellPath, "-c", "echo ${SSH_AUTH_SOCK}")
+			sshAuthSock, err := authSockCommand.Output()
+			if err == nil {
+				agentPath, err := wavebase.ExpandHomeDir(trimquotes.TryTrimQuotes(strings.TrimSpace(string(sshAuthSock))))
+				if err != nil {
+					return nil, err
+				}
+				sshKeywords.SshIdentityAgent = utilfn.Ptr(agentPath)
+			} else {
+				log.Printf("unable to find SSH_AUTH_SOCK: %v\n", err)
+			}
 		}
 	} else {
 		agentPath, err := wavebase.ExpandHomeDir(trimquotes.TryTrimQuotes(identityAgentRaw))
