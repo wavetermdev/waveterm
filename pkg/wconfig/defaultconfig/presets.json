@@ -2,9 +2,7 @@
     "bg@default": {
         "display:name": "Default",
         "display:order": -1,
-        "bg:*": true,
-        "bg": "white",
-        "bg:opacity": 1.0
+        "bg:*": true
     },
     "bg@white": {
         "display:name": "White",
