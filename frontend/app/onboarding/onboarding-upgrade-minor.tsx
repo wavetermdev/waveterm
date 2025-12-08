@@ -16,7 +16,7 @@ import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
 import { useEffect, useRef, useState } from "react";
 import { debounce } from "throttle-debounce";
 
-const UpgradeOnboardingModal_v0_12_0 = () => {
+const UpgradeOnboardingMinor = () => {
     const modalRef = useRef<HTMLDivElement | null>(null);
     const [pageName, setPageName] = useState<"welcome" | "features">("welcome");
     const [isCompact, setIsCompact] = useState<boolean>(window.innerHeight < 800);
@@ -196,6 +196,6 @@ const UpgradeOnboardingModal_v0_12_0 = () => {
     );
 };
 
-UpgradeOnboardingModal_v0_12_0.displayName = "UpgradeOnboardingModal_v0_12_0";
+UpgradeOnboardingMinor.displayName = "UpgradeOnboardingMinor";
 
-export { UpgradeOnboardingModal_v0_12_0 };
+export { UpgradeOnboardingMinor };
