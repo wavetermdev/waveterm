@@ -34,8 +34,7 @@ export function computeTheme(
         }
     }
     let bgcolor = themeCopy.background;
-    // Don't make background transparent - use the theme's background color
-    // themeCopy.background = "#00000000";
+    themeCopy.background = "#00000000";
     return [themeCopy, bgcolor];
 }
 
