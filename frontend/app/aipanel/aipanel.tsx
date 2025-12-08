@@ -21,6 +21,7 @@ import { AIPanelHeader } from "./aipanelheader";
 import { AIPanelInput } from "./aipanelinput";
 import { AIPanelMessages } from "./aipanelmessages";
 import { AIRateLimitStrip } from "./airatelimitstrip";
+import { BYOKAnnouncement } from "./byokannouncement";
 import { TelemetryRequiredMessage } from "./telemetryrequired";
 import { WaveAIModel } from "./waveai-model";
 
@@ -85,7 +86,7 @@ const AIWelcomeMessage = memo(() => {
     return (
         <div className="text-secondary py-8">
             <div className="text-center">
-                <i className="fa fa-sparkles text-4xl text-accent mb-4 block"></i>
+                <i className="fa fa-sparkles text-4xl text-accent mb-2 block"></i>
                 <p className="text-lg font-bold text-primary">Welcome to Wave AI</p>
             </div>
             <div className="mt-4 text-left max-w-md mx-auto">
@@ -154,6 +155,7 @@ const AIWelcomeMessage = memo(() => {
                         </div>
                     </div>
                 </div>
+                <BYOKAnnouncement />
                 <div className="mt-4 text-center text-[12px] text-muted">
                     BETA: Free to use. Daily limits keep our costs in check.
                 </div>
