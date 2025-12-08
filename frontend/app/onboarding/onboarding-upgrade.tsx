@@ -30,11 +30,11 @@ const UpgradeOnboardingModal = () => {
         return null;
     }
 
-    if (semver.gte(lastVersion, "v0.13.0")) {
+    if (semver.gte(lastVersion, "v0.12.0")) {
         return <UpgradeOnboardingPatch />;
     }
 
-    return <UpgradeOnboardingMinor />;	
+    return <UpgradeOnboardingMinor />;
 };
 
 UpgradeOnboardingModal.displayName = "UpgradeOnboardingModal";
