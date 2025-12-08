@@ -271,14 +271,13 @@ const TerminalView = ({ blockId, model }: ViewComponentProps<TermViewModel>) => 
                 fontSize: termFontSize,
                 fontFamily: termSettings?.["term:fontfamily"] ?? connFontFamily ?? "SF Mono, Menlo, Monaco, Courier New, monospace",
                 drawBoldTextInBrightColors: false,
-                fontWeight: "400",
-                fontWeightBold: "600",
+                fontWeight: "normal",
+                fontWeightBold: "bold",
                 allowTransparency: true,
                 scrollback: termScrollback,
                 allowProposedApi: true, // Required by @xterm/addon-search to enable search functionality and decorations
                 ignoreBracketedPasteMode: !termAllowBPM,
                 macOptionIsMeta: termMacOptionIsMeta,
-                lineHeight: 1.2,
             },
             {
                 keydownHandler: model.handleTerminalKeydown.bind(model),
