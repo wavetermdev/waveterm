@@ -4,13 +4,6 @@
         "display:order": -1,
         "bg:*": true
     },
-    "bg@white": {
-        "display:name": "White",
-        "display:order": 1.0,
-        "bg:*": true,
-        "bg": "white",
-        "bg:opacity": 1.0
-    },
     "bg@rainbow": {
         "display:name": "Rainbow",
         "display:order": 2.1,
