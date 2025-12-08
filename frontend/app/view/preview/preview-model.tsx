@@ -371,8 +371,14 @@ export class PreviewModel implements ViewModel {
             return null;
         });
         this.metaFilePath = atom<string>((get) => {
-            const file = get(this.blockAtom)?.meta?.file;
+            const blockData = get(this.blockAtom);
+            const file = blockData?.meta?.file;
             if (isBlank(file)) {
+                // If no file is set, default to the terminal's current working directory
+                const cwd = blockData?.meta?.[waveobj.MetaKey_CmdCwd];
+                if (!isBlank(cwd)) {
+                    return cwd;
+                }
                 return "~";
             }
             return file;
