@@ -243,9 +243,9 @@ export class TermViewModel implements ViewModel {
                 const connName = blockData?.meta?.connection;
                 const fullConfig = get(atoms.fullConfigAtom);
                 const connFontSize = fullConfig?.connections?.[connName]?.["term:fontsize"];
-                const rtnFontSize = blockData?.meta?.["term:fontsize"] ?? connFontSize ?? settingsFontSize ?? 12;
+                const rtnFontSize = blockData?.meta?.["term:fontsize"] ?? connFontSize ?? settingsFontSize ?? 11;
                 if (typeof rtnFontSize != "number" || isNaN(rtnFontSize) || rtnFontSize < 4 || rtnFontSize > 64) {
-                    return 12;
+                    return 11;
                 }
                 return rtnFontSize;
             });
