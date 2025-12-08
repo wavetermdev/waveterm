@@ -20,25 +20,59 @@ export const AIPanelMessages = memo(({ messages, status, onContextMenu }: AIPane
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const messagesContainerRef = useRef<HTMLDivElement>(null);
     const prevStatusRef = useRef<string>(status);
+    const userHasScrolledUp = useRef<boolean>(false);
+    const isAutoScrolling = useRef<boolean>(false);
 
     const scrollToBottom = () => {
         const container = messagesContainerRef.current;
         if (container) {
+            isAutoScrolling.current = true;
             container.scrollTop = container.scrollHeight;
             container.scrollLeft = 0;
+            userHasScrolledUp.current = false;
+            setTimeout(() => {
+                isAutoScrolling.current = false;
+            }, 100);
         }
     };
+
+    // Detect if user has manually scrolled up
+    useEffect(() => {
+        const container = messagesContainerRef.current;
+        if (!container) return;
+
+        const handleScroll = () => {
+            // Ignore scroll events triggered by our auto-scroll
+            if (isAutoScrolling.current) return;
+
+            const { scrollTop, scrollHeight, clientHeight } = container;
+            const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
+
+            // If user is more than 50px from the bottom, they've scrolled up
+            if (distanceFromBottom > 50) {
+                userHasScrolledUp.current = true;
+            } else {
+                userHasScrolledUp.current = false;
+            }
+        };
+
+        container.addEventListener("scroll", handleScroll);
+        return () => container.removeEventListener("scroll", handleScroll);
+    }, []);
 
     useEffect(() => {
         model.registerScrollToBottom(scrollToBottom);
     }, [model]);
 
     useEffect(() => {
-        scrollToBottom();
+        // Only auto-scroll if user hasn't manually scrolled up
+        if (!userHasScrolledUp.current) {
+            scrollToBottom();
+        }
     }, [messages]);
 
     useEffect(() => {
-        if (isPanelOpen) {
+        if (isPanelOpen && !userHasScrolledUp.current) {
             scrollToBottom();
         }
     }, [isPanelOpen]);
@@ -47,7 +81,7 @@ export const AIPanelMessages = memo(({ messages, status, onContextMenu }: AIPane
         const wasStreaming = prevStatusRef.current === "streaming";
         const isNowNotStreaming = status !== "streaming";
 
-        if (wasStreaming && isNowNotStreaming) {
+        if (wasStreaming && isNowNotStreaming && !userHasScrolledUp.current) {
             requestAnimationFrame(() => {
                 scrollToBottom();
             });
