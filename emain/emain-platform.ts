@@ -10,12 +10,6 @@ import path from "path";
 import { WaveDevVarName, WaveDevViteVarName } from "../frontend/util/isdev";
 import * as keyutil from "../frontend/util/keyutil";
 
-// This is a little trick to ensure that Electron puts all its runtime data into a subdirectory to avoid conflicts with our own data.
-// On macOS, it will store to ~/Library/Application \Support/waveterm/electron
-// On Linux, it will store to ~/.config/waveterm/electron
-// On Windows, it will store to %LOCALAPPDATA%/waveterm/electron
-app.setName("waveterm/electron");
-
 const isDev = !app.isPackaged;
 const isDevVite = isDev && process.env.ELECTRON_RENDERER_URL;
 console.log(`Running in ${isDev ? "development" : "production"} mode`);
@@ -32,7 +26,12 @@ const waveDirName = `${waveDirNamePrefix}${waveDirNameSuffix ? `-${waveDirNameSu
 
 const paths = envPaths("waveterm", { suffix: waveDirNameSuffix });
 
+// Set the proper display name first
 app.setName(isDev ? "Wave (Dev)" : "Wave");
+
+// Note: We previously used app.setName("waveterm/electron") here to organize Electron's runtime data,
+// but this caused "Electron" to appear in the macOS menu bar. The envPaths configuration above
+// already handles the data directory organization, so the setName trick is not needed.
 const unamePlatform = process.platform;
 const unameArch: string = process.arch;
 keyutil.setKeyUtilPlatform(unamePlatform);
