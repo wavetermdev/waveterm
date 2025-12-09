@@ -36,7 +36,7 @@ const BYOKAnnouncement = () => {
     };
 
     return (
-        <div className="bg-blue-900/20 border border-blue-500 rounded-lg p-4 mt-4">
+        <div className="bg-blue-900/20 border border-blue-800 rounded-lg p-4 mt-4">
             <div className="flex items-start gap-3">
                 <i className="fa fa-key text-blue-400 text-lg mt-0.5"></i>
                 <div className="text-left flex-1">
@@ -48,7 +48,7 @@ const BYOKAnnouncement = () => {
                     <div className="flex items-center gap-3">
                         <button
                             onClick={handleOpenConfig}
-                            className="bg-blue-500/80 hover:bg-blue-500 text-secondary hover:text-primary px-3 py-1.5 rounded-md text-sm font-medium cursor-pointer transition-colors"
+                            className="border border-blue-400 text-blue-400 hover:bg-blue-500/10 hover:text-blue-300 px-3 py-1.5 rounded-md text-sm font-medium cursor-pointer transition-colors"
                         >
                             Configure AI Modes
                         </button>
