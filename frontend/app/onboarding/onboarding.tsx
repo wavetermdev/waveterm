@@ -3,7 +3,6 @@
 
 import Logo from "@/app/asset/logo.svg";
 import { Button } from "@/app/element/button";
-import { Toggle } from "@/app/element/toggle";
 import { FlexiModal } from "@/app/modals/modal";
 import { disableGlobalKeybindings, enableGlobalKeybindings, globalRefocus } from "@/app/store/keymodel";
 import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
@@ -53,7 +52,7 @@ const InitPage = ({ isCompact }: { isCompact: boolean }) => {
         );
     };
 
-    const label = telemetryEnabled ? "Telemetry Enabled" : "Telemetry Disabled";
+    const label = telemetryEnabled ? "Enabled" : "Disabled";
 
     return (
         <div className="flex flex-col h-full">
@@ -118,13 +117,9 @@ const InitPage = ({ isCompact }: { isCompact: boolean }) => {
                             <i className="text-[32px] text-white/50 fa-solid fa-chart-line"></i>
                         </div>
                         <div className="flex flex-col items-start gap-1 flex-1">
-                            <div className="text-foreground text-base leading-[18px]">Telemetry</div>
                             <div className="text-secondary leading-5">
-                                We collect minimal anonymous{" "}
-                                <a target="_blank" href="https://docs.waveterm.dev/telemetry" rel={"noopener"}>
-                                    telemetry data
-                                </a>{" "}
-                                to help us understand how people are using Wave (
+                                Anonymous usage data helps us improve features you use.
+                                <br />
                                 <a
                                     className="plain-link"
                                     target="_blank"
@@ -133,9 +128,16 @@ const InitPage = ({ isCompact }: { isCompact: boolean }) => {
                                 >
                                     Privacy Policy
                                 </a>
-                                ).
                             </div>
-                            <Toggle checked={telemetryEnabled} onChange={setTelemetry} label={label} />
+                            <label className="flex items-center gap-2 cursor-pointer text-secondary">
+                                <input
+                                    type="checkbox"
+                                    checked={telemetryEnabled}
+                                    onChange={(e) => setTelemetry(e.target.checked)}
+                                    className="cursor-pointer accent-gray-500"
+                                />
+                                <span>{label}</span>
+                            </label>
                         </div>
                     </div>
                 </div>

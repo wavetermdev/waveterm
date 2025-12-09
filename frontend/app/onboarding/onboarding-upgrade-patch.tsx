@@ -17,6 +17,7 @@ import { debounce } from "throttle-debounce";
 import { UpgradeOnboardingModal_v0_12_1_Content } from "./onboarding-upgrade-v0121";
 import { UpgradeOnboardingModal_v0_12_2_Content } from "./onboarding-upgrade-v0122";
 import { UpgradeOnboardingModal_v0_12_3_Content } from "./onboarding-upgrade-v0123";
+import { UpgradeOnboardingModal_v0_13_0_Content } from "./onboarding-upgrade-v0130";
 
 interface VersionConfig {
     version: string;
@@ -41,6 +42,12 @@ const versions: VersionConfig[] = [
         version: "v0.12.5",
         content: () => <UpgradeOnboardingModal_v0_12_3_Content />,
         prevText: "Prev (v0.12.2)",
+        nextText: "Next (v0.13.0)",
+    },
+    {
+        version: "v0.13.0",
+        content: () => <UpgradeOnboardingModal_v0_13_0_Content />,
+        prevText: "Prev (v0.12.5)",
     },
 ];
 

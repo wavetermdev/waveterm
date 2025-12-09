@@ -279,6 +279,24 @@ func GetSecretNames() ([]string, error) {
 	return names, nil
 }
 
+func CountSecrets() (int, error) {
+	lock.Lock()
+	defer lock.Unlock()
+	
+	if !initialized {
+		return 0, fmt.Errorf("secret store not initialized")
+	}
+
+	count := 0
+	for name := range secrets {
+		if name == WriteTsKey {
+			continue
+		}
+		count++
+	}
+	return count, nil
+}
+
 func GetLinuxStorageBackend() (string, error) {
 	if runtime.GOOS != "linux" {
 		return "", nil

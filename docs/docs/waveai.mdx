@@ -74,15 +74,32 @@ Supports text files, images, PDFs, and directories. Use `-n` for new chat, `-s` 
 File system operations require explicit approval. You control all file access.
 :::
 
+## Local Models & BYOK
+
+Wave AI supports using your own AI models and API keys:
+
+- **Local Models**: Run AI models locally with [Ollama](https://ollama.ai), [LM Studio](https://lmstudio.ai), [vLLM](https://docs.vllm.ai), and other OpenAI-compatible servers
+- **BYOK (Bring Your Own Key)**: Use your own API keys with OpenAI, OpenRouter, Google AI (Gemini), Azure OpenAI, and other cloud providers
+- **Multiple Modes**: Configure and switch between multiple AI providers and models
+- **Privacy**: Keep your data local or use your preferred cloud provider
+
+See the [**Local Models & BYOK guide**](./waveai-modes.mdx) for complete configuration instructions, examples, and troubleshooting.
+
 ## Privacy
 
+**Default Wave AI Service:**
 - Messages are proxied through the Wave Cloud AI service (powered by OpenAI's APIs). Please refer to OpenAI's privacy policy for details on how they handle your data.
 - Wave does not store your chats, attachments, or use them for training
 - Usage counters included in anonymous telemetry
 - File access requires explicit approval
 
+**Local Models & BYOK:**
+- When using local models, your chat data never leaves your machine
+- When using BYOK with cloud providers, requests are sent directly to your chosen provider
+- Refer to your provider's privacy policy for details on how they handle your data
+
 :::info Under Active Development
-Wave AI is in active beta with included AI credits while we refine the experience. BYOK will be available once we've stabilized core features and gathered feedback on what works best. Share feedback in our [Discord](https://discord.gg/XfvZ334gwU).
+Wave AI is in active beta with included AI credits while we refine the experience. Share feedback in our [Discord](https://discord.gg/XfvZ334gwU).
 
 **Coming Soon:**
 - **Remote File Access**: Read files on SSH-connected systems

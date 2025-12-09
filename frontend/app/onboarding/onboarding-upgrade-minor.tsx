@@ -16,7 +16,7 @@ import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
 import { useEffect, useRef, useState } from "react";
 import { debounce } from "throttle-debounce";
 
-const UpgradeOnboardingModal_v0_12_0 = () => {
+const UpgradeOnboardingMinor = () => {
     const modalRef = useRef<HTMLDivElement | null>(null);
     const [pageName, setPageName] = useState<"welcome" | "features">("welcome");
     const [isCompact, setIsCompact] = useState<boolean>(window.innerHeight < 800);
@@ -119,30 +119,36 @@ const UpgradeOnboardingModal_v0_12_0 = () => {
     if (pageName === "welcome") {
         pageComp = (
             <div className="flex flex-col h-full">
-                <header className="flex flex-col gap-2 border-b-0 p-0 mt-1 mb-6 w-full unselectable flex-shrink-0">
+                <header className="flex flex-col gap-2 border-b-0 p-0 mt-1 mb-4 w-full unselectable flex-shrink-0">
                     <div className="flex justify-center">
                         <Logo />
                     </div>
-                    <div className="text-center text-[25px] font-normal text-foreground">Welcome to Wave v0.12!</div>
+                    <div className="text-center text-[25px] font-normal text-foreground">Welcome to Wave v0.13!</div>
                 </header>
                 <OverlayScrollbarsComponent
                     className="flex-1 overflow-y-auto min-h-0"
                     options={{ scrollbars: { autoHide: "never" } }}
                 >
                     <div className="flex flex-col items-center gap-3 w-full mb-2 unselectable">
-                        <div className="flex flex-col items-center gap-4 max-w-md text-center">
+                        <div className="flex flex-col items-center gap-4 text-center">
                             <div className="flex h-[52px] px-3 items-center rounded-lg bg-hover text-accent text-[24px]">
                                 <i className="fa fa-sparkles" />
                                 <span className="font-bold ml-2 font-mono">Wave AI</span>
                             </div>
-                            <div className="text-secondary leading-relaxed max-w-[420px]">
+                            <div className="text-secondary leading-relaxed max-w-[600px]">
                                 <p className="mb-4">
-                                    Wave AI is your new terminal assistant with full context. It can read your terminal
-                                    output, analyze widgets, access files, and help you solve problems&nbsp;faster.
+                                    Wave AI is your terminal assistant with full context. It can read your terminal
+                                    output, analyze widgets, read and write files, and help you solve
+                                    problems&nbsp;faster.
                                 </p>
-                                <p className="p-3 border border-border rounded-md bg-hover/30">
-                                    Wave AI is in active beta with included AI credits while we refine the experience.
-                                    We're actively improving it and would love your feedback in{" "}
+                                <p className="mb-4">
+                                    <span className="font-semibold text-foreground">New in v0.13:</span> Wave AI now
+                                    supports local models and bring-your-own-key! Use Ollama, LM Studio, vLLM,
+                                    OpenRouter, or any OpenAI-compatible provider.
+                                </p>
+                                <p className="py-3 px-2 border border-border rounded-md bg-hover/30">
+                                    Wave AI is in beta with included AI credits while we refine the experience. We're
+                                    actively improving it and would love your feedback in{" "}
                                     <a target="_blank" href="https://discord.gg/XfvZ334gwU" className="hover:underline">
                                         Discord
                                     </a>
@@ -151,9 +157,9 @@ const UpgradeOnboardingModal_v0_12_0 = () => {
                             </div>
                         </div>
 
-                        <div className="w-full max-w-md border-t border-border my-2"></div>
+                        <div className="w-full max-w-[550px] border-t border-border my-2"></div>
 
-                        <div className="flex flex-col items-center gap-3 text-center max-w-[440px]">
+                        <div className="flex flex-col items-center gap-3 text-center max-w-[550px]">
                             <div className="text-foreground text-base">Thanks for being an early Wave adopter! ⭐</div>
                             <div className="text-secondary text-sm">
                                 A GitHub star shows your support for Wave (and open-source) and helps us reach more
@@ -186,7 +192,7 @@ const UpgradeOnboardingModal_v0_12_0 = () => {
     }
 
     const paddingClass = isCompact ? "!py-3 !px-[30px]" : "!p-[30px]";
-    const widthClass = pageName === "features" ? "w-[800px]" : "w-[560px]";
+    const widthClass = pageName === "features" ? "w-[800px]" : "w-[600px]";
 
     return (
         <FlexiModal className={`${widthClass} rounded-[10px] ${paddingClass} relative overflow-hidden`} ref={modalRef}>
@@ -196,6 +202,6 @@ const UpgradeOnboardingModal_v0_12_0 = () => {
     );
 };
 
-UpgradeOnboardingModal_v0_12_0.displayName = "UpgradeOnboardingModal_v0_12_0";
+UpgradeOnboardingMinor.displayName = "UpgradeOnboardingMinor";
 
-export { UpgradeOnboardingModal_v0_12_0 };
+export { UpgradeOnboardingMinor };

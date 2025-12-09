@@ -1223,6 +1223,7 @@ declare global {
         "app:firstday"?: boolean;
         "app:firstlaunch"?: boolean;
         "action:initiator"?: "keyboard" | "mouse";
+        "action:type"?: string;
         "debug:panictype"?: string;
         "block:view"?: string;
         "ai:backendtype"?: string;
@@ -1268,6 +1269,8 @@ declare global {
         "waveai:widgetaccess"?: boolean;
         "waveai:thinkinglevel"?: string;
         "waveai:mode"?: string;
+        "waveai:provider"?: string;
+        "waveai:islocal"?: boolean;
         "waveai:feedback"?: "good" | "bad";
         "waveai:action"?: string;
         $set?: TEventUserProps;

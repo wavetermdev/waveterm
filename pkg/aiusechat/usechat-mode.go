@@ -15,6 +15,23 @@ import (
 
 var AzureResourceNameRegex = regexp.MustCompile(`^[a-z0-9]([a-z0-9-]*[a-z0-9])?$`)
 
+const (
+	OpenAIResponsesEndpoint        = "https://api.openai.com/v1/responses"
+	OpenAIChatEndpoint             = "https://api.openai.com/v1/chat/completions"
+	OpenRouterChatEndpoint         = "https://openrouter.ai/api/v1/chat/completions"
+	AzureLegacyEndpointTemplate    = "https://%s.openai.azure.com/openai/deployments/%s/chat/completions?api-version=%s"
+	AzureResponsesEndpointTemplate = "https://%s.openai.azure.com/openai/v1/responses"
+	AzureChatEndpointTemplate      = "https://%s.openai.azure.com/openai/v1/chat/completions"
+	GoogleGeminiEndpointTemplate   = "https://generativelanguage.googleapis.com/v1beta/models/%s:streamGenerateContent"
+
+	AzureLegacyDefaultAPIVersion = "2025-04-01-preview"
+
+	OpenAIAPITokenSecretName      = "OPENAI_KEY"
+	OpenRouterAPITokenSecretName  = "OPENROUTER_KEY"
+	AzureOpenAIAPITokenSecretName = "AZURE_OPENAI_KEY"
+	GoogleAIAPITokenSecretName    = "GOOGLE_AI_KEY"
+)
+
 func resolveAIMode(requestedMode string, premium bool) (string, *wconfig.AIModeConfigType, error) {
 	mode := requestedMode
 	if mode == "" {
@@ -52,14 +69,21 @@ func applyProviderDefaults(config *wconfig.AIModeConfigType) {
 		}
 	}
 	if config.Provider == uctypes.AIProvider_OpenAI {
-		if config.Endpoint == "" {
-			config.Endpoint = uctypes.DefaultOpenAIEndpoint
-		}
 		if config.APIType == "" {
 			config.APIType = getOpenAIAPIType(config.Model)
 		}
+		if config.Endpoint == "" {
+			switch config.APIType {
+			case uctypes.APIType_OpenAIResponses:
+				config.Endpoint = OpenAIResponsesEndpoint
+			case uctypes.APIType_OpenAIChat:
+				config.Endpoint = OpenAIChatEndpoint
+			default:
+				config.Endpoint = OpenAIChatEndpoint
+			}
+		}
 		if config.APITokenSecretName == "" {
-			config.APITokenSecretName = "OPENAI_KEY"
+			config.APITokenSecretName = OpenAIAPITokenSecretName
 		}
 		if len(config.Capabilities) == 0 {
 			if isO1Model(config.Model) {
@@ -70,29 +94,29 @@ func applyProviderDefaults(config *wconfig.AIModeConfigType) {
 		}
 	}
 	if config.Provider == uctypes.AIProvider_OpenRouter {
-		if config.Endpoint == "" {
-			config.Endpoint = uctypes.DefaultOpenRouterEndpoint
-		}
 		if config.APIType == "" {
 			config.APIType = uctypes.APIType_OpenAIChat
 		}
+		if config.Endpoint == "" {
+			config.Endpoint = OpenRouterChatEndpoint
+		}
 		if config.APITokenSecretName == "" {
-			config.APITokenSecretName = "OPENROUTER_KEY"
+			config.APITokenSecretName = OpenRouterAPITokenSecretName
 		}
 	}
 	if config.Provider == uctypes.AIProvider_AzureLegacy {
 		if config.AzureAPIVersion == "" {
-			config.AzureAPIVersion = "2025-04-01-preview"
+			config.AzureAPIVersion = AzureLegacyDefaultAPIVersion
 		}
 		if config.Endpoint == "" && isValidAzureResourceName(config.AzureResourceName) && config.AzureDeployment != "" {
-			config.Endpoint = fmt.Sprintf("https://%s.openai.azure.com/openai/deployments/%s/chat/completions?api-version=%s",
+			config.Endpoint = fmt.Sprintf(AzureLegacyEndpointTemplate,
 				config.AzureResourceName, config.AzureDeployment, config.AzureAPIVersion)
 		}
 		if config.APIType == "" {
 			config.APIType = uctypes.APIType_OpenAIChat
 		}
 		if config.APITokenSecretName == "" {
-			config.APITokenSecretName = "AZURE_OPENAI_KEY"
+			config.APITokenSecretName = AzureOpenAIAPITokenSecretName
 		}
 	}
 	if config.Provider == uctypes.AIProvider_Azure {
@@ -103,16 +127,15 @@ func applyProviderDefaults(config *wconfig.AIModeConfigType) {
 			config.APIType = getAzureAPIType(config.Model)
 		}
 		if config.Endpoint == "" && isValidAzureResourceName(config.AzureResourceName) && isAzureAPIType(config.APIType) {
-			base := fmt.Sprintf("https://%s.openai.azure.com/openai/v1", config.AzureResourceName)
 			switch config.APIType {
 			case uctypes.APIType_OpenAIResponses:
-				config.Endpoint = base + "/responses"
+				config.Endpoint = fmt.Sprintf(AzureResponsesEndpointTemplate, config.AzureResourceName)
 			case uctypes.APIType_OpenAIChat:
-				config.Endpoint = base + "/chat/completions"
+				config.Endpoint = fmt.Sprintf(AzureChatEndpointTemplate, config.AzureResourceName)
 			}
 		}
 		if config.APITokenSecretName == "" {
-			config.APITokenSecretName = "AZURE_OPENAI_KEY"
+			config.APITokenSecretName = AzureOpenAIAPITokenSecretName
 		}
 	}
 	if config.Provider == uctypes.AIProvider_Google {
@@ -120,10 +143,10 @@ func applyProviderDefaults(config *wconfig.AIModeConfigType) {
 			config.APIType = uctypes.APIType_GoogleGemini
 		}
 		if config.Endpoint == "" && config.Model != "" {
-			config.Endpoint = fmt.Sprintf("https://generativelanguage.googleapis.com/v1beta/models/%s:streamGenerateContent", config.Model)
+			config.Endpoint = fmt.Sprintf(GoogleGeminiEndpointTemplate, config.Model)
 		}
 		if config.APITokenSecretName == "" {
-			config.APITokenSecretName = "GOOGLE_AI_KEY"
+			config.APITokenSecretName = GoogleAIAPITokenSecretName
 		}
 		if len(config.Capabilities) == 0 {
 			config.Capabilities = []string{uctypes.AICapabilityTools, uctypes.AICapabilityImages, uctypes.AICapabilityPdfs}
