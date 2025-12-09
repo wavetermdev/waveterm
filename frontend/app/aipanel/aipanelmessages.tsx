@@ -5,10 +5,11 @@ import { useAtomValue } from "jotai";
 import { memo, useEffect, useRef } from "react";
 import { AIMessage } from "./aimessage";
 import { AIModeDropdown } from "./aimode";
+import { type WaveUIMessage } from "./aitypes";
 import { WaveAIModel } from "./waveai-model";
 
 interface AIPanelMessagesProps {
-    messages: any[];
+    messages: WaveUIMessage[];
     status: string;
     onContextMenu?: (e: React.MouseEvent) => void;
 }

@@ -497,6 +497,8 @@ declare global {
               size?: number;
               previewurl?: string;
           };
+
+    type AIModeConfigWithMode = { mode: string } & AIModeConfigType;
 }
 
 export {};

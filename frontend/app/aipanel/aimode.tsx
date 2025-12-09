@@ -12,7 +12,7 @@ import { getFilteredAIModeConfigs, getModeDisplayName } from "./ai-utils";
 import { WaveAIModel } from "./waveai-model";
 
 interface AIModeMenuItemProps {
-    config: any;
+    config: AIModeConfigWithMode;
     isSelected: boolean;
     isDisabled: boolean;
     onClick: () => void;
@@ -56,15 +56,15 @@ AIModeMenuItem.displayName = "AIModeMenuItem";
 
 interface ConfigSection {
     sectionName: string;
-    configs: any[];
+    configs: AIModeConfigWithMode[];
     isIncompatible?: boolean;
 }
 
 function computeCompatibleSections(
     currentMode: string,
-    aiModeConfigs: Record<string, any>,
-    waveProviderConfigs: any[],
-    otherProviderConfigs: any[]
+    aiModeConfigs: Record<string, AIModeConfigType>,
+    waveProviderConfigs: AIModeConfigWithMode[],
+    otherProviderConfigs: AIModeConfigWithMode[]
 ): ConfigSection[] {
     const currentConfig = aiModeConfigs[currentMode];
     const allConfigs = [...waveProviderConfigs, ...otherProviderConfigs];
@@ -74,8 +74,8 @@ function computeCompatibleSections(
     }
 
     const currentSwitchCompat = currentConfig["ai:switchcompat"] || [];
-    const compatibleConfigs: any[] = [currentConfig];
-    const incompatibleConfigs: any[] = [];
+    const compatibleConfigs: AIModeConfigWithMode[] = [{ ...currentConfig, mode: currentMode }];
+    const incompatibleConfigs: AIModeConfigWithMode[] = [];
 
     if (currentSwitchCompat.length === 0) {
         allConfigs.forEach((config) => {
@@ -109,7 +109,7 @@ function computeCompatibleSections(
     return sections;
 }
 
-function computeWaveCloudSections(waveProviderConfigs: any[], otherProviderConfigs: any[]): ConfigSection[] {
+function computeWaveCloudSections(waveProviderConfigs: AIModeConfigWithMode[], otherProviderConfigs: AIModeConfigWithMode[]): ConfigSection[] {
     const sections: ConfigSection[] = [];
 
     if (waveProviderConfigs.length > 0) {
