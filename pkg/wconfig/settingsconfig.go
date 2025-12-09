@@ -284,6 +284,10 @@ type AIModeConfigType struct {
 	WaveAIPremium      bool     `json:"waveai:premium,omitempty"`
 }
 
+type AIModeConfigUpdate struct {
+	Configs map[string]AIModeConfigType `json:"configs"`
+}
+
 type FullConfigType struct {
 	Settings       SettingsType                   `json:"settings" merge:"meta"`
 	MimeTypes      map[string]MimeTypeConfigType  `json:"mimetypes"`

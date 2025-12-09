@@ -99,6 +99,7 @@ const (
 	Command_SetConfig            = "setconfig"
 	Command_SetConnectionsConfig = "connectionsconfig"
 	Command_GetFullConfig        = "getfullconfig"
+	Command_GetWaveAIModeConfig  = "getwaveaimodeconfig"
 	Command_RemoteStreamFile     = "remotestreamfile"
 	Command_RemoteTarStream      = "remotetarstream"
 	Command_RemoteFileInfo       = "remotefileinfo"
@@ -245,6 +246,7 @@ type WshRpcInterface interface {
 	SetConfigCommand(ctx context.Context, data MetaSettingsType) error
 	SetConnectionsConfigCommand(ctx context.Context, data ConnConfigRequest) error
 	GetFullConfigCommand(ctx context.Context) (wconfig.FullConfigType, error)
+	GetWaveAIModeConfigCommand(ctx context.Context) (wconfig.AIModeConfigUpdate, error)
 	BlockInfoCommand(ctx context.Context, blockId string) (*BlockInfoData, error)
 	BlocksListCommand(ctx context.Context, data BlocksListRequest) ([]BlocksListEntry, error)
 	WaveInfoCommand(ctx context.Context) (*WaveInfoData, error)

@@ -1,6 +1,7 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { Tooltip } from "@/app/element/tooltip";
 import { atoms, getSettingsKeyAtom } from "@/app/store/global";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
@@ -129,6 +130,8 @@ export const AIModeDropdown = memo(({ compatibilityMode = false }: AIModeDropdow
     const model = WaveAIModel.getInstance();
     const aiMode = useAtomValue(model.currentAIMode);
     const aiModeConfigs = useAtomValue(model.aiModeConfigs);
+    const waveaiModeConfigs = useAtomValue(atoms.waveaiModeConfigAtom);
+    const widgetContextEnabled = useAtomValue(model.widgetAccessAtom);
     const rateLimitInfo = useAtomValue(atoms.waveAIRateLimitInfoAtom);
     const showCloudModes = useAtomValue(getSettingsKeyAtom("waveai:showcloudmodes"));
     const defaultMode = useAtomValue(getSettingsKeyAtom("waveai:defaultmode")) ?? "waveai@balanced";
@@ -174,6 +177,9 @@ export const AIModeDropdown = memo(({ compatibilityMode = false }: AIModeDropdow
     const displayConfig = aiModeConfigs[currentMode];
     const displayName = displayConfig ? getModeDisplayName(displayConfig) : "Unknown";
     const displayIcon = displayConfig?.["display:icon"] || "sparkles";
+    const resolvedConfig = waveaiModeConfigs[currentMode];
+    const hasToolsSupport = resolvedConfig && resolvedConfig["ai:capabilities"]?.includes("tools");
+    const showNoToolsWarning = widgetContextEnabled && resolvedConfig && !hasToolsSupport;
 
     const handleConfigureClick = () => {
         fireAndForget(async () => {
@@ -206,6 +212,24 @@ export const AIModeDropdown = memo(({ compatibilityMode = false }: AIModeDropdow
                 <span className={`text-[11px]`}>{displayName}</span>
                 <i className="fa fa-chevron-down text-[8px]"></i>
             </button>
+
+            {showNoToolsWarning && (
+                <Tooltip
+                    content={
+                        <div className="max-w-xs">
+                            Warning: This custom mode was configured without the "tools" capability in the
+                            "ai:capabilities" array. Without tool support, Wave AI will not be able to interact with
+                            widgets or files.
+                        </div>
+                    }
+                    placement="bottom"
+                >
+                    <div className="flex items-center gap-1 text-[10px] text-yellow-600 mt-1 ml-1 cursor-default">
+                        <i className="fa fa-triangle-exclamation"></i>
+                        <span>No Tools Support</span>
+                    </div>
+                </Tooltip>
+            )}
 
             {isOpen && (
                 <>

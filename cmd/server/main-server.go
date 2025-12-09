@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/joho/godotenv"
+	"github.com/wavetermdev/waveterm/pkg/aiusechat"
 	"github.com/wavetermdev/waveterm/pkg/authkey"
 	"github.com/wavetermdev/waveterm/pkg/blockcontroller"
 	"github.com/wavetermdev/waveterm/pkg/blocklogger"
@@ -526,6 +527,7 @@ func main() {
 	sigutil.InstallShutdownSignalHandlers(doShutdown)
 	sigutil.InstallSIGUSR1Handler()
 	startConfigWatcher()
+	aiusechat.InitAIModeConfigWatcher()
 	maybeStartPprofServer()
 	go stdinReadWatch()
 	go telemetryLoop()
