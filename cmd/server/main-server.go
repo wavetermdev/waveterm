@@ -22,6 +22,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/remote/conncontroller"
 	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/wshfs"
+	"github.com/wavetermdev/waveterm/pkg/secretstore"
 	"github.com/wavetermdev/waveterm/pkg/service"
 	"github.com/wavetermdev/waveterm/pkg/telemetry"
 	"github.com/wavetermdev/waveterm/pkg/telemetry/telemetrydata"
@@ -224,18 +225,25 @@ func updateTelemetryCounts(lastCounts telemetrydata.TEventProps) telemetrydata.T
 	customWidgets := fullConfig.CountCustomWidgets()
 	customAIPresets := fullConfig.CountCustomAIPresets()
 	customSettings := wconfig.CountCustomSettings()
+	customAIModes := fullConfig.CountCustomAIModes()
 
 	props.UserSet = &telemetrydata.TEventUserProps{
 		SettingsCustomWidgets:   customWidgets,
 		SettingsCustomAIPresets: customAIPresets,
 		SettingsCustomSettings:  customSettings,
+		SettingsCustomAIModes:   customAIModes,
+	}
+	
+	secretsCount, err := secretstore.CountSecrets()
+	if err == nil {
+		props.UserSet.SettingsSecretsCount = secretsCount
 	}
 
 	if utilfn.CompareAsMarshaledJson(props, lastCounts) {
 		return lastCounts
 	}
 	tevent := telemetrydata.MakeTEvent("app:counts", props)
-	err := telemetry.RecordTEvent(ctx, tevent)
+	err = telemetry.RecordTEvent(ctx, tevent)
 	if err != nil {
 		log.Printf("error recording counts tevent: %v\n", err)
 	}

@@ -887,6 +887,18 @@ func (fc *FullConfigType) CountCustomAIPresets() int {
 	return count
 }
 
+// CountCustomAIModes returns the number of custom AI modes the user has defined.
+// Custom AI modes are identified as modes that don't start with "waveai@".
+func (fc *FullConfigType) CountCustomAIModes() int {
+	count := 0
+	for modeID := range fc.WaveAIModes {
+		if !strings.HasPrefix(modeID, "waveai@") {
+			count++
+		}
+	}
+	return count
+}
+
 // CountCustomSettings returns the number of settings in the user's settings file.
 // This excludes telemetry:enabled and autoupdate:channel which don't count as customizations.
 func CountCustomSettings() int {
