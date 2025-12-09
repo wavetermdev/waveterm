@@ -86,10 +86,11 @@ func getWaveAISettings(premium bool, builderMode bool, rtInfo waveobj.ObjRTInfo)
 		if err != nil {
 			return nil, fmt.Errorf("failed to retrieve secret %s: %w", config.APITokenSecretName, err)
 		}
+		secret = strings.TrimSpace(secret)
 		if !exists || secret == "" {
 			return nil, fmt.Errorf("secret %s not found or empty", config.APITokenSecretName)
 		}
-		apiToken = strings.TrimSpace(secret)
+		apiToken = secret
 	}
 
 	var baseUrl string
