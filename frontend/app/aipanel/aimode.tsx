@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { atoms, getSettingsKeyAtom } from "@/app/store/global";
+import { RpcApi } from "@/app/store/wshclientapi";
+import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { cn, fireAndForget, makeIconClass } from "@/util/util";
 import { useAtomValue } from "jotai";
 import { memo, useRef, useState } from "react";
@@ -175,6 +177,16 @@ export const AIModeDropdown = memo(({ compatibilityMode = false }: AIModeDropdow
 
     const handleConfigureClick = () => {
         fireAndForget(async () => {
+            RpcApi.RecordTEventCommand(
+                TabRpcClient,
+                {
+                    event: "action:other",
+                    props: {
+                        "action:type": "waveai:configuremodes:contextmenu",
+                    },
+                },
+                { noresponse: true }
+            );
             await model.openWaveAIConfig();
             setIsOpen(false);
         });

@@ -26,6 +26,7 @@ var ValidEventNames = map[string]bool{
 	"action:createtab":   true,
 	"action:createblock": true,
 	"action:openwaveai":  true,
+	"action:other":       true,
 
 	"wsh:run": true,
 
@@ -99,6 +100,7 @@ type TEventProps struct {
 	AppFirstLaunch bool `json:"app:firstlaunch,omitempty"`
 
 	ActionInitiator string `json:"action:initiator,omitempty" tstype:"\"keyboard\" | \"mouse\""`
+	ActionType      string `json:"action:type,omitempty"`
 	PanicType       string `json:"debug:panictype,omitempty"`
 	BlockView       string `json:"block:view,omitempty"`
 	AiBackendType   string `json:"ai:backendtype,omitempty"`
