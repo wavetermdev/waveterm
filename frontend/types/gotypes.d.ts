@@ -35,6 +35,11 @@ declare global {
         "waveai:premium"?: boolean;
     };
 
+    // wconfig.AIModeConfigUpdate
+    type AIModeConfigUpdate = {
+        configs: {[key: string]: AIModeConfigType};
+    };
+
     // wshrpc.ActivityDisplayType
     type ActivityDisplayType = {
         width: number;
@@ -1214,6 +1219,8 @@ declare global {
         "settings:customwidgets"?: number;
         "settings:customaipresets"?: number;
         "settings:customsettings"?: number;
+        "settings:customaimodes"?: number;
+        "settings:secretscount"?: number;
         "activity:activeminutes"?: number;
         "activity:fgminutes"?: number;
         "activity:openminutes"?: number;
@@ -1296,6 +1303,8 @@ declare global {
         "settings:customwidgets"?: number;
         "settings:customaipresets"?: number;
         "settings:customsettings"?: number;
+        "settings:customaimodes"?: number;
+        "settings:secretscount"?: number;
     };
 
     // waveobj.Tab

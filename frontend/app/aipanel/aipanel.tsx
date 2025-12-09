@@ -21,6 +21,7 @@ import { AIPanelHeader } from "./aipanelheader";
 import { AIPanelInput } from "./aipanelinput";
 import { AIPanelMessages } from "./aipanelmessages";
 import { AIRateLimitStrip } from "./airatelimitstrip";
+import { WaveUIMessage } from "./aitypes";
 import { BYOKAnnouncement } from "./byokannouncement";
 import { TelemetryRequiredMessage } from "./telemetryrequired";
 import { WaveAIModel } from "./waveai-model";
@@ -83,6 +84,10 @@ KeyCap.displayName = "KeyCap";
 
 const AIWelcomeMessage = memo(() => {
     const modKey = isMacOS() ? "⌘" : "Alt";
+    const fullConfig = jotai.useAtomValue(atoms.fullConfigAtom);
+    const hasCustomModes = fullConfig?.waveai
+        ? Object.keys(fullConfig.waveai).some((key) => !key.startsWith("waveai@"))
+        : false;
     return (
         <div className="text-secondary py-8">
             <div className="text-center">
@@ -155,7 +160,7 @@ const AIWelcomeMessage = memo(() => {
                         </div>
                     </div>
                 </div>
-                <BYOKAnnouncement />
+                {!hasCustomModes && <BYOKAnnouncement />}
                 <div className="mt-4 text-center text-[12px] text-muted">
                     BETA: Free to use. Daily limits keep our costs in check.
                 </div>
@@ -219,7 +224,7 @@ const AIPanelComponentInner = memo(() => {
     const telemetryEnabled = jotai.useAtomValue(getSettingsKeyAtom("telemetry:enabled")) ?? false;
     const isPanelVisible = jotai.useAtomValue(model.getPanelVisibleAtom());
 
-    const { messages, sendMessage, status, setMessages, error, stop } = useChat({
+    const { messages, sendMessage, status, setMessages, error, stop } = useChat<WaveUIMessage>({
         transport: new DefaultChatTransport({
             api: model.getUseChatEndpointUrl(),
             prepareSendMessagesRequest: (opts) => {

@@ -107,6 +107,7 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
         return WOS.getObjectValue(WOS.makeORef("workspace", windowData.workspaceid), get);
     });
     const fullConfigAtom = atom(null) as PrimitiveAtom<FullConfigType>;
+    const waveaiModeConfigAtom = atom(null) as PrimitiveAtom<Record<string, AIModeConfigType>>;
     const settingsAtom = atom((get) => {
         return get(fullConfigAtom)?.settings ?? {};
     }) as Atom<SettingsType>;
@@ -180,6 +181,7 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
         waveWindow: windowDataAtom,
         workspace: workspaceAtom,
         fullConfigAtom,
+        waveaiModeConfigAtom,
         settingsAtom,
         hasCustomAIPresetsAtom,
         tabAtom,
@@ -216,6 +218,13 @@ function initGlobalWaveEventSubs(initOpts: WaveInitOpts) {
                 // console.log("config wave event handler", event);
                 const fullConfig = (event.data as WatcherUpdate).fullconfig;
                 globalStore.set(atoms.fullConfigAtom, fullConfig);
+            },
+        },
+        {
+            eventType: "waveai:modeconfig",
+            handler: (event) => {
+                const modeConfigs = (event.data as AIModeConfigUpdate).configs;
+                globalStore.set(atoms.waveaiModeConfigAtom, modeConfigs);
             },
         },
         {

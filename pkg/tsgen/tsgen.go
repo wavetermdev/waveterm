@@ -53,6 +53,7 @@ var ExtraTypes = []any{
 	waveobj.MetaTSType{},
 	waveobj.ObjRTInfo{},
 	uctypes.RateLimitInfo{},
+	wconfig.AIModeConfigUpdate{},
 }
 
 // add extra type unions to generate here

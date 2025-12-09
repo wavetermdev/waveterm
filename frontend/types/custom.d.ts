@@ -16,6 +16,7 @@ declare global {
         waveWindow: jotai.Atom<WaveWindow>; // driven from WOS
         workspace: jotai.Atom<Workspace>; // driven from WOS
         fullConfigAtom: jotai.PrimitiveAtom<FullConfigType>; // driven from WOS, settings -- updated via WebSocket
+        waveaiModeConfigAtom: jotai.PrimitiveAtom<Record<string, AIModeConfigType>>; // resolved AI mode configs -- updated via WebSocket
         settingsAtom: jotai.Atom<SettingsType>; // derrived from fullConfig
         hasCustomAIPresetsAtom: jotai.Atom<boolean>; // derived from fullConfig
         tabAtom: jotai.Atom<Tab>; // driven from WOS
@@ -496,6 +497,8 @@ declare global {
               size?: number;
               previewurl?: string;
           };
+
+    type AIModeConfigWithMode = { mode: string } & AIModeConfigType;
 }
 
 export {};

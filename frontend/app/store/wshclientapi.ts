@@ -352,6 +352,11 @@ class RpcApiType {
         return client.wshRpcCall("getwaveaichat", data, opts);
     }
 
+    // command "getwaveaimodeconfig" [call]
+    GetWaveAIModeConfigCommand(client: WshClient, opts?: RpcOpts): Promise<AIModeConfigUpdate> {
+        return client.wshRpcCall("getwaveaimodeconfig", null, opts);
+    }
+
     // command "getwaveairatelimit" [call]
     GetWaveAIRateLimitCommand(client: WshClient, opts?: RpcOpts): Promise<RateLimitInfo> {
         return client.wshRpcCall("getwaveairatelimit", null, opts);

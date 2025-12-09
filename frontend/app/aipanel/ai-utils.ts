@@ -572,3 +572,25 @@ export const getFilteredAIModeConfigs = (
         shouldShowCloudModes,
     };
 };
+
+/**
+ * Get the display name for an AI mode configuration.
+ * If display:name is set, use that. Otherwise, construct from model/provider.
+ * For azure-legacy, show "azureresourcename (azure)".
+ * For other providers, show "model (provider)".
+ */
+export function getModeDisplayName(config: AIModeConfigType): string {
+    if (config["display:name"]) {
+        return config["display:name"];
+    }
+
+    const provider = config["ai:provider"];
+    const model = config["ai:model"];
+    const azureResourceName = config["ai:azureresourcename"];
+
+    if (provider === "azure-legacy") {
+        return `${azureResourceName || "unknown"} (azure)`;
+    }
+
+    return `${model || "unknown"} (${provider || "custom"})`;
+}
