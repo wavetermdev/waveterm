@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
+	"strings"
 	"sync"
 	"time"
 
@@ -228,7 +229,7 @@ func SetSecret(name string, value string) error {
 	lock.Lock()
 	defer lock.Unlock()
 
-	secrets[name] = value
+	secrets[name] = strings.TrimRight(value, "\r\n")
 	requestWrite()
 	return nil
 }
