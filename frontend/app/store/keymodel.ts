@@ -23,6 +23,7 @@ import { TabBarModel } from "@/app/tab/tabbar-model";
 import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
 import { deleteLayoutModelForTab, getLayoutModelForStaticTab, NavigateDirection } from "@/layout/index";
 import * as keyutil from "@/util/keyutil";
+import { isWindows } from "@/util/platformutil";
 import { CHORD_TIMEOUT } from "@/util/sharedconst";
 import { fireAndForget } from "@/util/util";
 import * as jotai from "jotai";
@@ -606,14 +607,25 @@ function registerGlobalKeys() {
             return true;
         });
     }
-    globalKeyMap.set("Ctrl:Shift:c{Digit0}", () => {
-        WaveAIModel.getInstance().focusInput();
-        return true;
-    });
-    globalKeyMap.set("Ctrl:Shift:c{Numpad0}", () => {
-        WaveAIModel.getInstance().focusInput();
-        return true;
-    });
+    if (isWindows()) {
+        globalKeyMap.set("Alt:c{Digit0}", () => {
+            WaveAIModel.getInstance().focusInput();
+            return true;
+        });
+        globalKeyMap.set("Alt:c{Numpad0}", () => {
+            WaveAIModel.getInstance().focusInput();
+            return true;
+        });
+    } else {
+        globalKeyMap.set("Ctrl:Shift:c{Digit0}", () => {
+            WaveAIModel.getInstance().focusInput();
+            return true;
+        });
+        globalKeyMap.set("Ctrl:Shift:c{Numpad0}", () => {
+            WaveAIModel.getInstance().focusInput();
+            return true;
+        });
+    }
     function activateSearch(event: WaveKeyboardEvent): boolean {
         const bcm = getBlockComponentModel(getFocusedBlockInStaticTab());
         // Ctrl+f is reserved in most shells
