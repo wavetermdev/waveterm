@@ -57,7 +57,7 @@ const BYOKAnnouncement = () => {
                             target="_blank"
                             rel="noopener noreferrer"
                             onClick={handleViewDocs}
-                            className="text-secondary hover:text-primary text-sm cursor-pointer transition-colors flex items-center gap-1"
+                            className="!text-blue-400 hover:!text-blue-300 hover:underline text-sm cursor-pointer transition-colors flex items-center gap-1"
                         >
                             View Docs <i className="fa fa-external-link text-xs"></i>
                         </a>
