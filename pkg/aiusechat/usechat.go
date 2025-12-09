@@ -47,14 +47,18 @@ var (
 	activeChats   = ds.MakeSyncMap[bool]() // key is chatid
 )
 
-func getSystemPrompt(apiType string, model string, isBuilder bool) []string {
+func getSystemPrompt(apiType string, model string, isBuilder bool, hasToolsCapability bool, widgetAccess bool) []string {
 	if isBuilder {
 		return []string{}
 	}
+	useNoToolsPrompt := !hasToolsCapability || !widgetAccess
 	basePrompt := SystemPromptText_OpenAI
+	if useNoToolsPrompt {
+		basePrompt = SystemPromptText_NoTools
+	}
 	modelLower := strings.ToLower(model)
 	needsStrictToolAddOn, _ := regexp.MatchString(`(?i)\b(mistral|o?llama|qwen|mixtral|yi|phi|deepseek)\b`, modelLower)
-	if needsStrictToolAddOn {
+	if needsStrictToolAddOn && !useNoToolsPrompt {
 		return []string{basePrompt, SystemPromptText_StrictToolAddOn}
 	}
 	return []string{basePrompt}
@@ -659,7 +663,7 @@ func WaveAIPostMessageHandler(w http.ResponseWriter, r *http.Request) {
 		BuilderId:            req.BuilderId,
 		BuilderAppId:         req.BuilderAppId,
 	}
-	chatOpts.SystemPrompt = getSystemPrompt(chatOpts.Config.APIType, chatOpts.Config.Model, chatOpts.BuilderId != "")
+	chatOpts.SystemPrompt = getSystemPrompt(chatOpts.Config.APIType, chatOpts.Config.Model, chatOpts.BuilderId != "", chatOpts.Config.HasCapability(uctypes.AICapabilityTools), chatOpts.WidgetAccess)
 
 	if req.TabId != "" {
 		chatOpts.TabStateGenerator = func() (string, []uctypes.ToolDefinition, string, error) {
