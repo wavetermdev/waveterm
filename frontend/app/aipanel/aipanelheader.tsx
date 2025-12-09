@@ -15,8 +15,15 @@ export const AIPanelHeader = memo(() => {
         handleWaveAIContextMenu(e, false);
     };
 
+    const handleContextMenu = (e: React.MouseEvent) => {
+        handleWaveAIContextMenu(e, false);
+    };
+
     return (
-        <div className="py-2 pl-3 pr-1 @xs:p-2 @xs:pl-4 border-b border-gray-600 flex items-center justify-between min-w-0">
+        <div
+            className="py-2 pl-3 pr-1 @xs:p-2 @xs:pl-4 border-b border-gray-600 flex items-center justify-between min-w-0"
+            onContextMenu={handleContextMenu}
+        >
             <h2 className="text-white text-sm @xs:text-lg font-semibold flex items-center gap-2 flex-shrink-0 whitespace-nowrap">
                 <i className="fa fa-sparkles text-accent"></i>
                 Wave AI
