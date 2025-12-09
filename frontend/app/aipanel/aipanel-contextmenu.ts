@@ -1,7 +1,7 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { getFilteredAIModeConfigs } from "@/app/aipanel/ai-utils";
+import { getFilteredAIModeConfigs, getModeDisplayName } from "@/app/aipanel/ai-utils";
 import { waveAIHasSelection } from "@/app/aipanel/waveai-focus-utils";
 import { ContextMenuModel } from "@/app/store/contextmenu";
 import { atoms, getSettingsKeyAtom, isDev } from "@/app/store/global";
@@ -68,7 +68,7 @@ export async function handleWaveAIContextMenu(e: React.MouseEvent, showCopy: boo
             const isPremium = config["waveai:premium"] === true;
             const isEnabled = !isPremium || hasPremium;
             aiModeSubmenu.push({
-                label: config["display:name"] || mode,
+                label: getModeDisplayName(config),
                 type: "checkbox",
                 checked: currentAIMode === mode,
                 enabled: isEnabled,
@@ -98,7 +98,7 @@ export async function handleWaveAIContextMenu(e: React.MouseEvent, showCopy: boo
             const isPremium = config["waveai:premium"] === true;
             const isEnabled = !isPremium || hasPremium;
             aiModeSubmenu.push({
-                label: config["display:name"] || mode,
+                label: getModeDisplayName(config),
                 type: "checkbox",
                 checked: currentAIMode === mode,
                 enabled: isEnabled,
