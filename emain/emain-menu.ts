@@ -249,7 +249,7 @@ function makeViewMenu(
                 if (wc == null) {
                     return;
                 }
-                const newZoom = Math.min(5, wc.getZoomFactor() + 0.2);
+                const newZoom = Math.min(2.6, wc.getZoomFactor() + 0.2);
                 wc.setZoomFactor(newZoom);
                 wc.send("zoom-factor-change", newZoom);
             },
@@ -262,7 +262,7 @@ function makeViewMenu(
                 if (wc == null) {
                     return;
                 }
-                const newZoom = Math.min(5, wc.getZoomFactor() + 0.2);
+                const newZoom = Math.min(2.6, wc.getZoomFactor() + 0.2);
                 wc.setZoomFactor(newZoom);
                 wc.send("zoom-factor-change", newZoom);
             },
@@ -277,7 +277,7 @@ function makeViewMenu(
                 if (wc == null) {
                     return;
                 }
-                const newZoom = Math.max(0.2, wc.getZoomFactor() - 0.2);
+                const newZoom = Math.max(0.4, wc.getZoomFactor() - 0.2);
                 wc.setZoomFactor(newZoom);
                 wc.send("zoom-factor-change", newZoom);
             },
@@ -290,7 +290,7 @@ function makeViewMenu(
                 if (wc == null) {
                     return;
                 }
-                const newZoom = Math.max(0.2, wc.getZoomFactor() - 0.2);
+                const newZoom = Math.max(0.4, wc.getZoomFactor() - 0.2);
                 wc.setZoomFactor(newZoom);
                 wc.send("zoom-factor-change", newZoom);
             },

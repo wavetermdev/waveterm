@@ -13,49 +13,46 @@ import { getElectronAppBasePath, isDevVite, unamePlatform } from "./emain-platfo
 import { handleCtrlShiftFocus, handleCtrlShiftState, shFrameNavHandler, shNavHandler } from "./emain-util";
 import { ElectronWshClient } from "./emain-wsh";
 
-function handleWindowsMenuAccelerators(
-    waveEvent: WaveKeyboardEvent,
-    tabView: WaveTabView
-): boolean {
+function handleWindowsMenuAccelerators(waveEvent: WaveKeyboardEvent, tabView: WaveTabView): boolean {
     const waveWindow = getWaveWindowById(tabView.waveWindowId);
-    
+
     if (checkKeyPressed(waveEvent, "Ctrl:Shift:n")) {
         createNewWaveWindow();
         return true;
     }
-    
+
     if (checkKeyPressed(waveEvent, "Ctrl:v")) {
         tabView.webContents.paste();
         return true;
     }
-    
+
     if (checkKeyPressed(waveEvent, "Ctrl:0")) {
         tabView.webContents.setZoomFactor(1);
         tabView.webContents.send("zoom-factor-change", 1);
         return true;
     }
-    
+
     if (checkKeyPressed(waveEvent, "Ctrl:=") || checkKeyPressed(waveEvent, "Ctrl:Shift:=")) {
-        const newZoom = Math.min(5, tabView.webContents.getZoomFactor() + 0.2);
+        const newZoom = Math.min(2.6, tabView.webContents.getZoomFactor() + 0.2);
         tabView.webContents.setZoomFactor(newZoom);
         tabView.webContents.send("zoom-factor-change", newZoom);
         return true;
     }
-    
+
     if (checkKeyPressed(waveEvent, "Ctrl:-") || checkKeyPressed(waveEvent, "Ctrl:Shift:-")) {
-        const newZoom = Math.max(0.2, tabView.webContents.getZoomFactor() - 0.2);
+        const newZoom = Math.max(0.4, tabView.webContents.getZoomFactor() - 0.2);
         tabView.webContents.setZoomFactor(newZoom);
         tabView.webContents.send("zoom-factor-change", newZoom);
         return true;
     }
-    
+
     if (checkKeyPressed(waveEvent, "F11")) {
         if (waveWindow) {
             waveWindow.setFullScreen(!waveWindow.isFullScreen());
         }
         return true;
     }
-    
+
     for (let i = 1; i <= 9; i++) {
         if (checkKeyPressed(waveEvent, `Alt:Ctrl:${i}`)) {
             const workspaceNum = i - 1;
@@ -70,12 +67,12 @@ function handleWindowsMenuAccelerators(
             return true;
         }
     }
-    
+
     if (checkKeyPressed(waveEvent, "Alt:Shift:i")) {
         tabView.webContents.toggleDevTools();
         return true;
     }
-    
+
     return false;
 }
 
@@ -317,7 +314,7 @@ export async function getOrCreateWebViewForTab(waveWindowId: string, tabId: stri
             tabView.webContents.send("reinject-key", waveEvent);
             return;
         }
-        
+
         if (unamePlatform === "win32" && input.type == "keyDown") {
             if (handleWindowsMenuAccelerators(waveEvent, tabView)) {
                 e.preventDefault();
