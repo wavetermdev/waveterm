@@ -4,14 +4,14 @@
 import { Button } from "@/app/element/button";
 import { modalsModel } from "@/app/store/modalmodel";
 import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
-import { WindowDrag } from "@/element/windowdrag";
 import { deleteLayoutModelForTab } from "@/layout/index";
 import { atoms, createTab, getApi, globalStore, setActiveTab } from "@/store/global";
 import { isMacOS, isWindows } from "@/util/platformutil";
 import { fireAndForget } from "@/util/util";
+import clsx from "clsx";
 import { useAtomValue } from "jotai";
 import { OverlayScrollbars } from "overlayscrollbars";
-import { createRef, memo, useCallback, useEffect, useRef, useState } from "react";
+import { createRef, forwardRef, memo, useCallback, useEffect, useRef, useState } from "react";
 import { debounce } from "throttle-debounce";
 import { IconButton } from "../element/iconbutton";
 import { WorkspaceService } from "../store/services";
@@ -38,6 +38,21 @@ const OS_OPTIONS = {
         pointers: ["mouse", "touch", "pen"],
     },
 };
+
+interface WindowDragProps {
+    className?: string;
+    style?: React.CSSProperties;
+    children?: React.ReactNode;
+}
+
+const WindowDrag = forwardRef<HTMLDivElement, WindowDragProps>(({ children, className, style }, ref) => {
+    return (
+        <div ref={ref} className={clsx(`window-drag`, className)} style={style}>
+            {children}
+        </div>
+    );
+});
+WindowDrag.displayName = "WindowDrag";
 
 interface TabBarProps {
     workspace: Workspace;
