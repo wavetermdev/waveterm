@@ -68,8 +68,8 @@ const ConfigErrorMessage = () => {
 
     if (fullConfig?.configerrors == null || fullConfig?.configerrors.length == 0) {
         return (
-            <div className="config-error-message">
-                <h3>Configuration Clean</h3>
+            <div className="max-w-[500px] p-5">
+                <h3 className="font-bold text-base mb-2.5">Configuration Clean</h3>
                 <p>There are no longer any errors detected in your config.</p>
             </div>
         );
@@ -77,8 +77,8 @@ const ConfigErrorMessage = () => {
     if (fullConfig?.configerrors.length == 1) {
         const singleError = fullConfig.configerrors[0];
         return (
-            <div className="config-error-message">
-                <h3>Configuration Error</h3>
+            <div className="max-w-[500px] p-5">
+                <h3 className="font-bold text-base mb-2.5">Configuration Error</h3>
                 <div>
                     {singleError.file}: {singleError.err}
                 </div>
@@ -86,8 +86,8 @@ const ConfigErrorMessage = () => {
         );
     }
     return (
-        <div className="config-error-message">
-            <h3>Configuration Error</h3>
+        <div className="max-w-[500px] p-5">
+            <h3 className="font-bold text-base mb-2.5">Configuration Error</h3>
             <ul>
                 {fullConfig.configerrors.map((error, index) => (
                     <li key={index}>
@@ -112,7 +112,7 @@ const ConfigErrorIcon = ({ buttonRef }: { buttonRef: React.RefObject<HTMLElement
     return (
         <Button
             ref={buttonRef as React.RefObject<HTMLButtonElement>}
-            className="config-error-button red"
+            className="text-black flex-[0_0_fit-content] !h-full !px-3 red"
             onClick={handleClick}
         >
             <i className="fa fa-solid fa-exclamation-triangle" />

@@ -2,17 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 
-.config-error-message {
-    max-width: 500px;
-    margin-bottom: 20px;
-
-    h3 {
-        font-weight: bold;
-        font-size: 16px;
-        margin-bottom: 10px;
-    }
-}
-
 .tab-bar-wrapper {
     padding-top: 6px;
     position: relative;
@@ -58,12 +47,6 @@
             margin-left: auto;
             margin-right: 6px;
         }
-    }
-
-    .config-error-button {
-        color: black;
-        padding: 0 6px;
-        flex: 0 0 fit-content;
     }
 
     .add-tab {
