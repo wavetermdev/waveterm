@@ -193,6 +193,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
     const prevAllLoadedRef = useRef<boolean>(false);
     const activeTabId = useAtomValue(atoms.staticTabId);
     const isFullScreen = useAtomValue(atoms.isFullScreen);
+    const zoomFactor = useAtomValue(atoms.zoomFactorAtom);
     const settings = useAtomValue(atoms.settingsAtom);
 
     let prevDelta: number;
@@ -655,6 +656,16 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
     const tabsWrapperWidth = tabIds.length * tabWidthRef.current;
     const showAppMenuButton = isWindows() || (!isMacOS() && !settings["window:showmenubar"]);
 
+    // Calculate window drag left width based on platform and state
+    let windowDragLeftWidth = 10;
+    if (isMacOS() && !isFullScreen) {
+        if (zoomFactor > 0) {
+            windowDragLeftWidth = 74 / zoomFactor;
+        } else {
+            windowDragLeftWidth = 74;
+        }
+    }
+
     const addtabButtonDecl: IconButtonDecl = {
         elemtype: "iconbutton",
         icon: "plus",
@@ -663,7 +674,11 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
     };
     return (
         <div ref={tabbarWrapperRef} className="tab-bar-wrapper">
-            <div ref={draggerLeftRef} className="window-drag left" />
+            <div
+                ref={draggerLeftRef}
+                className="h-full shrink-0 z-window-drag"
+                style={{ width: windowDragLeftWidth, WebkitAppRegion: "drag" } as any}
+            />
             {showAppMenuButton && (
                 <div
                     ref={appMenuButtonRef}

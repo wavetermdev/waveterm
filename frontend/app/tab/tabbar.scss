@@ -1,16 +1,6 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-.tab-bar-wrapper {
-    --default-indent: 10px;
-    --darwin-not-fullscreen-indent: calc(74px * var(--zoomfactor-inv));
-}
-
-.darwin:not(.fullscreen) .tab-bar-wrapper {
-    .window-drag.left {
-        width: var(--darwin-not-fullscreen-indent);
-    }
-}
 
 .config-error-message {
     max-width: 500px;
@@ -79,18 +69,6 @@
     .add-tab {
         padding: 0 10px;
         height: 27px;
-    }
-
-    .window-drag {
-        height: 100%;
-        width: var(--default-indent);
-        flex-shrink: 0;
-        z-index: var(--zindex-window-drag);
-        -webkit-app-region: drag !important;
-
-        &.right {
-            flex-grow: 1;
-        }
     }
 
     // Customize scrollbar styles
