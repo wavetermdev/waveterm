@@ -123,7 +123,11 @@ function makeEditMenu(fullConfig?: FullConfigType): Electron.MenuItemConstructor
     ];
 }
 
-function makeFileMenu(numWaveWindows: number, callbacks: AppMenuCallbacks, fullConfig: FullConfigType): Electron.MenuItemConstructorOptions[] {
+function makeFileMenu(
+    numWaveWindows: number,
+    callbacks: AppMenuCallbacks,
+    fullConfig: FullConfigType
+): Electron.MenuItemConstructorOptions[] {
     const fileMenu: Electron.MenuItemConstructorOptions[] = [
         {
             label: "New Window",
@@ -380,7 +384,11 @@ export function instantiateAppMenu(workspaceOrBuilderId?: string): Promise<elect
     );
 }
 
-export function makeAppMenu() {
+// does not a set a menu on windows
+export function makeAndSetAppMenu() {
+    if (unamePlatform === "win32") {
+        return;
+    }
     fireAndForget(async () => {
         const menu = await instantiateAppMenu();
         electron.Menu.setApplicationMenu(menu);
@@ -389,7 +397,7 @@ export function makeAppMenu() {
 
 waveEventSubscribe({
     eventType: "workspace:update",
-    handler: makeAppMenu,
+    handler: makeAndSetAppMenu,
 });
 
 function getWebContentsByWorkspaceOrBuilderId(workspaceOrBuilderId: string): electron.WebContents {

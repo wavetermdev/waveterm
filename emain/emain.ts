@@ -23,7 +23,7 @@ import {
 } from "./emain-activity";
 import { initIpcHandlers } from "./emain-ipc";
 import { log } from "./emain-log";
-import { makeAppMenu, makeDockTaskbar } from "./emain-menu";
+import { makeAndSetAppMenu, makeDockTaskbar } from "./emain-menu";
 import {
     checkIfRunningUnderARM64Translation,
     getElectronAppBasePath,
@@ -318,7 +318,7 @@ globalEvents.on("windows-updated", () => {
     lastWaveWindowCount = wwCount;
     lastIsBuilderWindowActive = isBuilderActive;
     console.log("windows-updated", wwCount, "builder-active:", isBuilderActive);
-    makeAppMenu();
+    makeAndSetAppMenu();
 });
 
 async function appMain() {
@@ -360,7 +360,7 @@ async function appMain() {
     setTimeout(runActiveTimer, 5000); // start active timer, wait 5s just to be safe
     setTimeout(sendDisplaysTDataEvent, 5000);
 
-    makeAppMenu();
+    makeAndSetAppMenu();
     makeDockTaskbar();
     await configureAutoUpdater();
     setGlobalIsStarting(false);

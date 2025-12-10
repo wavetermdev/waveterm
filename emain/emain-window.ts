@@ -23,7 +23,7 @@ import { ElectronWshClient } from "./emain-wsh";
 import { updater } from "./updater";
 
 export type WindowOpts = {
-    unamePlatform: string;
+    unamePlatform: NodeJS.Platform;
     isPrimaryStartupWindow?: boolean;
     foregroundWindow?: boolean;
 };
@@ -41,7 +41,10 @@ export function calculateWindowBounds(
     let winPosX = pos?.x ?? 100;
     let winPosY = pos?.y ?? 100;
 
-    if ((winWidth == null || winWidth === 0 || winHeight == null || winHeight === 0) && settings?.["window:dimensions"]) {
+    if (
+        (winWidth == null || winWidth === 0 || winHeight == null || winHeight === 0) &&
+        settings?.["window:dimensions"]
+    ) {
         const dimensions = settings["window:dimensions"];
         const match = dimensions.match(/^(\d+)[xX](\d+)$/);
 
@@ -171,7 +174,7 @@ export class WaveBrowserWindow extends BaseWindow {
                     ? path.join(getElectronAppBasePath(), "public/logos/wave-logo-dark.png")
                     : undefined,
             show: false,
-            autoHideMenuBar: !settings?.["window:showmenubar"],
+            autoHideMenuBar: opts.unamePlatform === "win32" ? undefined : !settings?.["window:showmenubar"],
         };
         const isTransparent = settings?.["window:transparent"] ?? false;
         const isBlur = !isTransparent && (settings?.["window:blur"] ?? false);
@@ -193,6 +196,11 @@ export class WaveBrowserWindow extends BaseWindow {
         }
 
         super(winOpts);
+
+        if (opts.unamePlatform === "win32") {
+            this.setMenu(null);
+        }
+
         const fullscreenOnLaunch = fullConfig?.settings["window:fullscreenonlaunch"];
         if (fullscreenOnLaunch && opts.foregroundWindow) {
             this.once("show", () => {

@@ -2,16 +2,82 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { RpcApi } from "@/app/store/wshclientapi";
-import { adaptFromElectronKeyEvent } from "@/util/keyutil";
+import { adaptFromElectronKeyEvent, checkKeyPressed } from "@/util/keyutil";
 import { CHORD_TIMEOUT } from "@/util/sharedconst";
 import { Rectangle, shell, WebContentsView } from "electron";
-import { getWaveWindowById } from "emain/emain-window";
+import { createNewWaveWindow, getWaveWindowById } from "emain/emain-window";
 import path from "path";
 import { configureAuthKeyRequestInjection } from "./authkey";
 import { setWasActive } from "./emain-activity";
-import { getElectronAppBasePath, isDevVite } from "./emain-platform";
+import { getElectronAppBasePath, isDevVite, unamePlatform } from "./emain-platform";
 import { handleCtrlShiftFocus, handleCtrlShiftState, shFrameNavHandler, shNavHandler } from "./emain-util";
 import { ElectronWshClient } from "./emain-wsh";
+
+function handleWindowsMenuAccelerators(
+    waveEvent: WaveKeyboardEvent,
+    tabView: WaveTabView
+): boolean {
+    const waveWindow = getWaveWindowById(tabView.waveWindowId);
+    
+    if (checkKeyPressed(waveEvent, "Ctrl:Shift:n")) {
+        createNewWaveWindow();
+        return true;
+    }
+    
+    if (checkKeyPressed(waveEvent, "Ctrl:v")) {
+        tabView.webContents.paste();
+        return true;
+    }
+    
+    if (checkKeyPressed(waveEvent, "Ctrl:0")) {
+        tabView.webContents.setZoomFactor(1);
+        tabView.webContents.send("zoom-factor-change", 1);
+        return true;
+    }
+    
+    if (checkKeyPressed(waveEvent, "Ctrl:=") || checkKeyPressed(waveEvent, "Ctrl:Shift:=")) {
+        const newZoom = Math.min(5, tabView.webContents.getZoomFactor() + 0.2);
+        tabView.webContents.setZoomFactor(newZoom);
+        tabView.webContents.send("zoom-factor-change", newZoom);
+        return true;
+    }
+    
+    if (checkKeyPressed(waveEvent, "Ctrl:-") || checkKeyPressed(waveEvent, "Ctrl:Shift:-")) {
+        const newZoom = Math.max(0.2, tabView.webContents.getZoomFactor() - 0.2);
+        tabView.webContents.setZoomFactor(newZoom);
+        tabView.webContents.send("zoom-factor-change", newZoom);
+        return true;
+    }
+    
+    if (checkKeyPressed(waveEvent, "F11")) {
+        if (waveWindow) {
+            waveWindow.setFullScreen(!waveWindow.isFullScreen());
+        }
+        return true;
+    }
+    
+    for (let i = 1; i <= 9; i++) {
+        if (checkKeyPressed(waveEvent, `Alt:Ctrl:${i}`)) {
+            const workspaceNum = i - 1;
+            RpcApi.WorkspaceListCommand(ElectronWshClient).then((workspaceList) => {
+                if (workspaceList && workspaceNum < workspaceList.length) {
+                    const workspace = workspaceList[workspaceNum];
+                    if (waveWindow) {
+                        waveWindow.switchWorkspace(workspace.workspacedata.oid);
+                    }
+                }
+            });
+            return true;
+        }
+    }
+    
+    if (checkKeyPressed(waveEvent, "Alt:Shift:i")) {
+        tabView.webContents.toggleDevTools();
+        return true;
+    }
+    
+    return false;
+}
 
 function computeBgColor(fullConfig: FullConfigType): string {
     const settings = fullConfig?.settings;
@@ -249,6 +315,14 @@ export async function getOrCreateWebViewForTab(waveWindowId: string, tabId: stri
             e.preventDefault();
             tabView.setKeyboardChordMode(false);
             tabView.webContents.send("reinject-key", waveEvent);
+            return;
+        }
+        
+        if (unamePlatform === "win32" && input.type == "keyDown") {
+            if (handleWindowsMenuAccelerators(waveEvent, tabView)) {
+                e.preventDefault();
+                return;
+            }
         }
     });
     tabView.webContents.on("zoom-changed", (e) => {
