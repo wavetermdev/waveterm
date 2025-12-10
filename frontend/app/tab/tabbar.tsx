@@ -7,7 +7,7 @@ import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
 import { WindowDrag } from "@/element/windowdrag";
 import { deleteLayoutModelForTab } from "@/layout/index";
 import { atoms, createTab, getApi, globalStore, setActiveTab } from "@/store/global";
-import { PLATFORM, PlatformMacOS } from "@/util/platformutil";
+import { isMacOS, isWindows } from "@/util/platformutil";
 import { fireAndForget } from "@/util/util";
 import { useAtomValue } from "jotai";
 import { OverlayScrollbars } from "overlayscrollbars";
@@ -42,6 +42,27 @@ const OS_OPTIONS = {
 interface TabBarProps {
     workspace: Workspace;
 }
+
+const WaveAIButton = memo(() => {
+    const aiPanelOpen = useAtomValue(WorkspaceLayoutModel.getInstance().panelVisibleAtom);
+
+    const onClick = () => {
+        const currentVisible = WorkspaceLayoutModel.getInstance().getAIPanelVisible();
+        WorkspaceLayoutModel.getInstance().setAIPanelVisible(!currentVisible);
+    };
+
+    return (
+        <div
+            className={`flex h-[26px] px-1.5 justify-end items-center rounded-md mr-1 box-border cursor-pointer bg-hover hover:bg-hoverbg transition-colors text-[12px] ${aiPanelOpen ? "text-accent" : "text-secondary"}`}
+            style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
+            onClick={onClick}
+        >
+            <i className="fa fa-sparkles" />
+            <span className="font-bold ml-1 -top-px font-mono">AI</span>
+        </div>
+    );
+});
+WaveAIButton.displayName = "WaveAIButton";
 
 const ConfigErrorMessage = () => {
     const fullConfig = useAtomValue(atoms.fullConfigAtom);
@@ -173,8 +194,6 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
     const prevAllLoadedRef = useRef<boolean>(false);
     const activeTabId = useAtomValue(atoms.staticTabId);
     const isFullScreen = useAtomValue(atoms.isFullScreen);
-    const aiPanelOpen = useAtomValue(WorkspaceLayoutModel.getInstance().panelVisibleAtom);
-
     const settings = useAtomValue(atoms.settingsAtom);
 
     let prevDelta: number;
@@ -634,28 +653,8 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
         getApi().showWorkspaceAppMenu(workspace.oid);
     }
 
-    function onWaveAIClick() {
-        const currentVisible = WorkspaceLayoutModel.getInstance().getAIPanelVisible();
-        WorkspaceLayoutModel.getInstance().setAIPanelVisible(!currentVisible);
-    }
-
     const tabsWrapperWidth = tabIds.length * tabWidthRef.current;
-    const waveaiButton = (
-        <div
-            className={`flex h-[26px] px-1.5 justify-end items-center rounded-md mr-1 box-border cursor-pointer bg-hover hover:bg-hoverbg transition-colors text-[12px] ${aiPanelOpen ? "text-accent" : "text-secondary"}`}
-            style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
-            onClick={onWaveAIClick}
-        >
-            <i className="fa fa-sparkles" />
-            <span className="font-bold ml-1 -top-px font-mono">AI</span>
-        </div>
-    );
-    const appMenuButton =
-        PLATFORM !== PlatformMacOS && !settings["window:showmenubar"] ? (
-            <div ref={appMenuButtonRef} className="app-menu-button" onClick={onEllipsisClick}>
-                <i className="fa fa-ellipsis" />
-            </div>
-        ) : undefined;
+    const showAppMenuButton = isWindows() || (!isMacOS() && !settings["window:showmenubar"]);
 
     const addtabButtonDecl: IconButtonDecl = {
         elemtype: "iconbutton",
@@ -666,8 +665,16 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
     return (
         <div ref={tabbarWrapperRef} className="tab-bar-wrapper">
             <WindowDrag ref={draggerLeftRef} className="left" />
-            {appMenuButton}
-            {waveaiButton}
+            {showAppMenuButton && (
+                <div
+                    ref={appMenuButtonRef}
+                    className="flex items-center justify-center pr-1.5 text-[26px] select-none cursor-pointer text-secondary hover:text-primary"
+                    onClick={onEllipsisClick}
+                >
+                    <i className="fa fa-ellipsis" />
+                </div>
+            )}
+            <WaveAIButton />
             <WorkspaceSwitcher ref={workspaceSwitcherRef} />
             <div className="tab-bar" ref={tabBarRef} data-overlayscrollbars-initialize>
                 <div className="tabs-wrapper" ref={tabsWrapperRef} style={{ width: `${tabsWrapperWidth}px` }}>
