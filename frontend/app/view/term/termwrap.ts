@@ -708,6 +708,11 @@ export class TermWrap {
         let prtn = new Promise<void>((presolve, _) => {
             resolve = presolve;
         });
+
+        // Preserve scroll position if user has scrolled up
+        const wasAtBottom = this.terminal.buffer.active.baseY + this.terminal.rows >= this.terminal.buffer.active.length;
+        const scrollY = this.terminal.buffer.active.viewportY;
+
         this.terminal.write(data, () => {
             if (setPtyOffset != null) {
                 this.ptyOffset = setPtyOffset;
@@ -716,6 +721,12 @@ export class TermWrap {
                 this.dataBytesProcessed += data.length;
             }
             this.lastUpdated = Date.now();
+
+            // Restore scroll if user wasn't at bottom
+            if (!wasAtBottom && scrollY > 0) {
+                this.terminal.scrollToLine(scrollY);
+            }
+
             resolve();
         });
         return prtn;
