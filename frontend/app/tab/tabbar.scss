@@ -1,7 +1,6 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-
 .tab-bar-wrapper {
     padding-top: 6px;
     position: relative;
@@ -43,10 +42,7 @@
         gap: 6px;
         height: 100%;
         align-items: center;
-        &:not(:empty) {
-            margin-left: auto;
-            margin-right: 6px;
-        }
+        margin-left: auto;
     }
 
     .add-tab {

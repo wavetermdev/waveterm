@@ -184,6 +184,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
     });
     const osInstanceRef = useRef<OverlayScrollbars>(null);
     const draggerLeftRef = useRef<HTMLDivElement>(null);
+    const draggerRightRef = useRef<HTMLDivElement>(null);
     const workspaceSwitcherRef = useRef<HTMLDivElement>(null);
     const appMenuButtonRef = useRef<HTMLDivElement>(null);
     const tabWidthRef = useRef<number>(TabDefaultWidth);
@@ -247,6 +248,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
 
         const tabbarWrapperWidth = tabbarWrapperRef.current.getBoundingClientRect().width;
         const windowDragLeftWidth = draggerLeftRef.current.getBoundingClientRect().width;
+        const windowDragRightWidth = draggerRightRef.current?.getBoundingClientRect().width ?? 0;
         const addBtnWidth = addBtnRef.current.getBoundingClientRect().width;
         const updateStatusLabelWidth = updateStatusBannerRef.current?.getBoundingClientRect().width ?? 0;
         const configErrorWidth = configErrorButtonRef.current?.getBoundingClientRect().width ?? 0;
@@ -255,6 +257,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
 
         const nonTabElementsWidth =
             windowDragLeftWidth +
+            windowDragRightWidth +
             addBtnWidth +
             updateStatusLabelWidth +
             configErrorWidth +
@@ -666,6 +669,17 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
         }
     }
 
+    // Calculate window drag right width
+    let windowDragRightWidth = 6;
+    if (isWindows()) {
+        if (zoomFactor > 0) {
+            windowDragRightWidth = 142 / zoomFactor;
+        } else {
+            windowDragRightWidth = 142;
+        }
+    }
+    console.log("zoomfactor", zoomFactor);
+
     const addtabButtonDecl: IconButtonDecl = {
         elemtype: "iconbutton",
         icon: "plus",
@@ -720,6 +734,11 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
             <div className="tab-bar-right">
                 <UpdateStatusBanner ref={updateStatusBannerRef} />
                 <ConfigErrorIcon buttonRef={configErrorButtonRef} />
+                <div
+                    ref={draggerRightRef}
+                    className="h-full shrink-0 z-window-drag"
+                    style={{ width: windowDragRightWidth, background: "blue", WebkitAppRegion: "drag" } as any}
+                />
             </div>
         </div>
     );
