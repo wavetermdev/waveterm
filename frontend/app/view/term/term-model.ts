@@ -26,6 +26,7 @@ import {
 } from "@/store/global";
 import * as services from "@/store/services";
 import * as keyutil from "@/util/keyutil";
+import { isMacOS, isWindows } from "@/util/platformutil";
 import { boundNumber, stringToBase64 } from "@/util/util";
 import * as jotai from "jotai";
 import * as React from "react";
@@ -496,6 +497,25 @@ export class TermViewModel implements ViewModel {
         return false;
     }
 
+    shouldHandleCtrlVPaste(): boolean {
+        // macOS never uses Ctrl-V for paste (uses Cmd-V)
+        if (isMacOS()) {
+            return false;
+        }
+        
+        // Get the app:ctrlvpaste setting
+        const ctrlVPasteAtom = getSettingsKeyAtom("app:ctrlvpaste");
+        const ctrlVPasteSetting = globalStore.get(ctrlVPasteAtom);
+        
+        // If setting is explicitly set, use it
+        if (ctrlVPasteSetting != null) {
+            return ctrlVPasteSetting;
+        }
+        
+        // Default behavior: Windows=true, Linux/other=false
+        return isWindows();
+    }
+
     handleTerminalKeydown(event: KeyboardEvent): boolean {
         const waveEvent = keyutil.adaptFromReactOrNativeKeyEvent(event);
         if (waveEvent.type != "keydown") {
@@ -525,6 +545,15 @@ export class TermViewModel implements ViewModel {
                 return false;
             }
         }
+        
+        // Check for Ctrl-V paste (platform-dependent)
+        if (this.shouldHandleCtrlVPaste() && keyutil.checkKeyPressed(waveEvent, "Ctrl:v")) {
+            event.preventDefault();
+            event.stopPropagation();
+            getApi().nativePaste();
+            return false;
+        }
+        
         if (keyutil.checkKeyPressed(waveEvent, "Ctrl:Shift:v")) {
             event.preventDefault();
             event.stopPropagation();
