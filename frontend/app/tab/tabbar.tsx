@@ -8,10 +8,9 @@ import { deleteLayoutModelForTab } from "@/layout/index";
 import { atoms, createTab, getApi, globalStore, setActiveTab } from "@/store/global";
 import { isMacOS, isWindows } from "@/util/platformutil";
 import { fireAndForget } from "@/util/util";
-import clsx from "clsx";
 import { useAtomValue } from "jotai";
 import { OverlayScrollbars } from "overlayscrollbars";
-import { createRef, forwardRef, memo, useCallback, useEffect, useRef, useState } from "react";
+import { createRef, memo, useCallback, useEffect, useRef, useState } from "react";
 import { debounce } from "throttle-debounce";
 import { IconButton } from "../element/iconbutton";
 import { WorkspaceService } from "../store/services";
@@ -20,9 +19,9 @@ import "./tabbar.scss";
 import { UpdateStatusBanner } from "./updatebanner";
 import { WorkspaceSwitcher } from "./workspaceswitcher";
 
-const TAB_DEFAULT_WIDTH = 130;
-const TAB_MIN_WIDTH = 100;
-const OS_OPTIONS = {
+const TabDefaultWidth = 130;
+const TabMinWidth = 100;
+const OSOptions = {
     overflow: {
         x: "scroll",
         y: "hidden",
@@ -38,21 +37,6 @@ const OS_OPTIONS = {
         pointers: ["mouse", "touch", "pen"],
     },
 };
-
-interface WindowDragProps {
-    className?: string;
-    style?: React.CSSProperties;
-    children?: React.ReactNode;
-}
-
-const WindowDrag = forwardRef<HTMLDivElement, WindowDragProps>(({ children, className, style }, ref) => {
-    return (
-        <div ref={ref} className={clsx(`window-drag`, className)} style={style}>
-            {children}
-        </div>
-    );
-});
-WindowDrag.displayName = "WindowDrag";
 
 interface TabBarProps {
     workspace: Workspace;
@@ -202,7 +186,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
     const draggerLeftRef = useRef<HTMLDivElement>(null);
     const workspaceSwitcherRef = useRef<HTMLDivElement>(null);
     const appMenuButtonRef = useRef<HTMLDivElement>(null);
-    const tabWidthRef = useRef<number>(TAB_DEFAULT_WIDTH);
+    const tabWidthRef = useRef<number>(TabDefaultWidth);
     const scrollableRef = useRef<boolean>(false);
     const updateStatusBannerRef = useRef<HTMLButtonElement>(null);
     const configErrorButtonRef = useRef<HTMLElement>(null);
@@ -283,7 +267,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
         let idealTabWidth = spaceForTabs / numberOfTabs;
 
         // Apply min/max constraints
-        idealTabWidth = Math.max(TAB_MIN_WIDTH, Math.min(idealTabWidth, TAB_DEFAULT_WIDTH));
+        idealTabWidth = Math.max(TabMinWidth, Math.min(idealTabWidth, TabDefaultWidth));
 
         // Determine if the tab bar needs to be scrollable
         const newScrollable = idealTabWidth * numberOfTabs > spaceForTabs;
@@ -314,7 +298,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
 
         // Initialize/destroy overlay scrollbars
         if (newScrollable) {
-            osInstanceRef.current = OverlayScrollbars(tabBarRef.current, { ...(OS_OPTIONS as any) });
+            osInstanceRef.current = OverlayScrollbars(tabBarRef.current, { ...(OSOptions as any) });
         } else {
             if (osInstanceRef.current) {
                 osInstanceRef.current.destroy();
@@ -448,7 +432,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
         // Constrain movement within the container bounds
         if (tabBarRef.current) {
             const numberOfTabs = tabIds.length;
-            const totalDefaultTabWidth = numberOfTabs * TAB_DEFAULT_WIDTH;
+            const totalDefaultTabWidth = numberOfTabs * TabDefaultWidth;
             if (totalDefaultTabWidth < tabBarRectWidth) {
                 // Set to the total default tab width if there's vacant space
                 tabBarRectWidth = totalDefaultTabWidth;
@@ -679,7 +663,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
     };
     return (
         <div ref={tabbarWrapperRef} className="tab-bar-wrapper">
-            <WindowDrag ref={draggerLeftRef} className="left" />
+            <div ref={draggerLeftRef} className="window-drag left" />
             {showAppMenuButton && (
                 <div
                     ref={appMenuButtonRef}
