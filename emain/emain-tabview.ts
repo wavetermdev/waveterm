@@ -10,7 +10,14 @@ import path from "path";
 import { configureAuthKeyRequestInjection } from "./authkey";
 import { setWasActive } from "./emain-activity";
 import { getElectronAppBasePath, isDevVite, unamePlatform } from "./emain-platform";
-import { handleCtrlShiftFocus, handleCtrlShiftState, shFrameNavHandler, shNavHandler } from "./emain-util";
+import {
+    decreaseZoomLevel,
+    handleCtrlShiftFocus,
+    handleCtrlShiftState,
+    increaseZoomLevel,
+    shFrameNavHandler,
+    shNavHandler,
+} from "./emain-util";
 import { ElectronWshClient } from "./emain-wsh";
 
 function handleWindowsMenuAccelerators(waveEvent: WaveKeyboardEvent, tabView: WaveTabView): boolean {
@@ -38,16 +45,12 @@ function handleWindowsMenuAccelerators(waveEvent: WaveKeyboardEvent, tabView: Wa
     }
 
     if (checkKeyPressed(waveEvent, "Ctrl:=") || checkKeyPressed(waveEvent, "Ctrl:Shift:=")) {
-        const newZoom = Math.min(2.6, tabView.webContents.getZoomFactor() + 0.2);
-        tabView.webContents.setZoomFactor(newZoom);
-        tabView.webContents.send("zoom-factor-change", newZoom);
+        increaseZoomLevel(tabView.webContents);
         return true;
     }
 
     if (checkKeyPressed(waveEvent, "Ctrl:-") || checkKeyPressed(waveEvent, "Ctrl:Shift:-")) {
-        const newZoom = Math.max(0.4, tabView.webContents.getZoomFactor() - 0.2);
-        tabView.webContents.setZoomFactor(newZoom);
-        tabView.webContents.send("zoom-factor-change", newZoom);
+        decreaseZoomLevel(tabView.webContents);
         return true;
     }
 

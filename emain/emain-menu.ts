@@ -9,6 +9,7 @@ import { focusedBuilderWindow, getBuilderWindowById } from "./emain-builder";
 import { openBuilderWindow } from "./emain-ipc";
 import { isDev, unamePlatform } from "./emain-platform";
 import { clearTabCache } from "./emain-tabview";
+import { decreaseZoomLevel, increaseZoomLevel } from "./emain-util";
 import {
     createNewWaveWindow,
     createWorkspace,
@@ -246,12 +247,9 @@ function makeViewMenu(
             accelerator: "CommandOrControl+=",
             click: (_, window) => {
                 const wc = getWindowWebContents(window) ?? webContents;
-                if (wc == null) {
-                    return;
+                if (wc) {
+                    increaseZoomLevel(wc);
                 }
-                const newZoom = Math.min(2.6, wc.getZoomFactor() + 0.2);
-                wc.setZoomFactor(newZoom);
-                wc.send("zoom-factor-change", newZoom);
             },
         },
         {
@@ -259,12 +257,9 @@ function makeViewMenu(
             accelerator: "CommandOrControl+Shift+=",
             click: (_, window) => {
                 const wc = getWindowWebContents(window) ?? webContents;
-                if (wc == null) {
-                    return;
+                if (wc) {
+                    increaseZoomLevel(wc);
                 }
-                const newZoom = Math.min(2.6, wc.getZoomFactor() + 0.2);
-                wc.setZoomFactor(newZoom);
-                wc.send("zoom-factor-change", newZoom);
             },
             visible: false,
             acceleratorWorksWhenHidden: true,
@@ -274,12 +269,9 @@ function makeViewMenu(
             accelerator: "CommandOrControl+-",
             click: (_, window) => {
                 const wc = getWindowWebContents(window) ?? webContents;
-                if (wc == null) {
-                    return;
+                if (wc) {
+                    decreaseZoomLevel(wc);
                 }
-                const newZoom = Math.max(0.4, wc.getZoomFactor() - 0.2);
-                wc.setZoomFactor(newZoom);
-                wc.send("zoom-factor-change", newZoom);
             },
         },
         {
@@ -287,12 +279,9 @@ function makeViewMenu(
             accelerator: "CommandOrControl+Shift+-",
             click: (_, window) => {
                 const wc = getWindowWebContents(window) ?? webContents;
-                if (wc == null) {
-                    return;
+                if (wc) {
+                    decreaseZoomLevel(wc);
                 }
-                const newZoom = Math.max(0.4, wc.getZoomFactor() - 0.2);
-                wc.setZoomFactor(newZoom);
-                wc.send("zoom-factor-change", newZoom);
             },
             visible: false,
             acceleratorWorksWhenHidden: true,
