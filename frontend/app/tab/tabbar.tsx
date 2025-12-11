@@ -210,16 +210,12 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
             return;
         }
         // Compare current tabIds with new workspace.tabids
-        console.log("tabbar workspace", workspace);
-
         const newTabIdsArr = [...(workspace.pinnedtabids ?? []), ...(workspace.tabids ?? [])];
         const newPinnedTabSet = new Set(workspace.pinnedtabids ?? []);
 
         const areEqual = strArrayIsEqual(tabIds, newTabIdsArr) && setIsEqual(pinnedTabIds, newPinnedTabSet);
 
         if (!areEqual) {
-            console.log("newPinnedTabIds", newPinnedTabSet);
-            console.log("newTabIdList", newTabIdsArr);
             setTabIds(newTabIdsArr);
             setPinnedTabIds(newPinnedTabSet);
         }
@@ -678,7 +674,6 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
             windowDragRightWidth = 139;
         }
     }
-    console.log("zoomfactor", zoomFactor);
 
     const addtabButtonDecl: IconButtonDecl = {
         elemtype: "iconbutton",
