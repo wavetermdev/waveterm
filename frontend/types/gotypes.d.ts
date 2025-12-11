@@ -1082,6 +1082,7 @@ declare global {
         "term:disablewebgl"?: boolean;
         "term:localshellpath"?: string;
         "term:localshellopts"?: string[];
+        "term:gitbashpath"?: string;
         "term:scrollback"?: number;
         "term:copyonselect"?: boolean;
         "term:transparency"?: number;

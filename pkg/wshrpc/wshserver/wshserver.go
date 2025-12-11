@@ -826,6 +826,11 @@ func (ws *WshServer) DismissWshFailCommand(ctx context.Context, connName string)
 	return nil
 }
 
+func (ws *WshServer) FindGitBashCommand(ctx context.Context, rescan bool) (string, error) {
+	fullConfig := wconfig.GetWatcher().GetFullConfig()
+	return shellutil.FindGitBash(&fullConfig, rescan), nil
+}
+
 func (ws *WshServer) BlockInfoCommand(ctx context.Context, blockId string) (*wshrpc.BlockInfoData, error) {
 	blockData, err := wstore.DBMustGet[*waveobj.Block](ctx, blockId)
 	if err != nil {
