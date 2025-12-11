@@ -33,7 +33,7 @@ function TooltipInner({
     divClassName,
     divStyle,
     divOnClick,
-}: Omit<TooltipProps, 'disable'>) {
+}: Omit<TooltipProps, "disable">) {
     const [isOpen, setIsOpen] = useState(forceOpen);
     const [isVisible, setIsVisible] = useState(false);
     const timeoutRef = useRef<number | null>(null);
@@ -129,7 +129,7 @@ function TooltipInner({
                         }}
                         {...getFloatingProps()}
                         className={cn(
-                            "bg-gray-800 border border-border rounded-md px-2 py-1 text-xs text-foreground shadow-xl z-50"
+                            "bg-zinc-800 border border-border rounded-md px-2 py-1 text-xs text-foreground shadow-xl z-50"
                         )}
                     >
                         {content}
@@ -152,11 +152,7 @@ export function Tooltip({
 }: TooltipProps) {
     if (disable) {
         return (
-            <div
-                className={divClassName}
-                style={divStyle}
-                onClick={divOnClick}
-            >
+            <div className={divClassName} style={divStyle} onClick={divOnClick}>
                 {children}
             </div>
         );
