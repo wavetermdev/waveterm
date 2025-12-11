@@ -4,7 +4,7 @@
 import { SecretNameRegex, type WaveConfigViewModel } from "@/app/view/waveconfig/waveconfig-model";
 import { cn } from "@/util/util";
 import { useAtomValue, useSetAtom } from "jotai";
-import { memo } from "react";
+import { memo, useMemo } from "react";
 
 interface ErrorDisplayProps {
     message: string;
@@ -322,6 +322,10 @@ export const SecretsContent = memo(({ model }: SecretsContentProps) => {
     const setNewSecretName = useSetAtom(model.newSecretNameAtom);
     const setNewSecretValue = useSetAtom(model.newSecretValueAtom);
 
+    const sortedSecretNames = useMemo(() => {
+        return [...secretNames].sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
+    }, [secretNames]);
+
     if (storageBackendError) {
         return (
             <div className="w-full h-full">
@@ -367,7 +371,7 @@ export const SecretsContent = memo(({ model }: SecretsContentProps) => {
 
         return (
             <SecretListView
-                secretNames={secretNames}
+                secretNames={sortedSecretNames}
                 onSelectSecret={(name) => model.viewSecret(name)}
                 onAddSecret={() => model.startAddingSecret()}
             />
