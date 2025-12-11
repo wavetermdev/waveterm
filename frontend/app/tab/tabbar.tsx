@@ -673,9 +673,9 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
     let windowDragRightWidth = 6;
     if (isWindows()) {
         if (zoomFactor > 0) {
-            windowDragRightWidth = 142 / zoomFactor;
+            windowDragRightWidth = 139 / zoomFactor;
         } else {
-            windowDragRightWidth = 142;
+            windowDragRightWidth = 139;
         }
     }
     console.log("zoomfactor", zoomFactor);
@@ -697,6 +697,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
                 <div
                     ref={appMenuButtonRef}
                     className="flex items-center justify-center pr-1.5 text-[26px] select-none cursor-pointer text-secondary hover:text-primary"
+                    style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
                     onClick={onEllipsisClick}
                 >
                     <i className="fa fa-ellipsis" />
@@ -737,7 +738,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
                 <div
                     ref={draggerRightRef}
                     className="h-full shrink-0 z-window-drag"
-                    style={{ width: windowDragRightWidth, background: "blue", WebkitAppRegion: "drag" } as any}
+                    style={{ width: windowDragRightWidth, WebkitAppRegion: "drag" } as any}
                 />
             </div>
         </div>
