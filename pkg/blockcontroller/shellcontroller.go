@@ -665,7 +665,7 @@ func getLocalShellPath(blockMeta waveobj.MetaMapType) (string, error) {
 				return "", fmt.Errorf("connection \"local:gitbash\" is only supported on Windows")
 			}
 			fullConfig := wconfig.GetWatcher().GetFullConfig()
-			gitBashPath := shellutil.FindGitBash(&fullConfig)
+			gitBashPath := shellutil.FindGitBash(&fullConfig, false)
 			if gitBashPath == "" {
 				return "", fmt.Errorf("connection \"local:gitbash\": git bash not found on this system, please install Git for Windows or set term:localshellpath to specify the git bash location")
 			}

@@ -20,6 +20,7 @@ import (
 
 	"github.com/wavetermdev/waveterm/pkg/util/envutil"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
+	"github.com/wavetermdev/waveterm/pkg/utilds"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wconfig"
@@ -60,6 +61,8 @@ const DefaultTermCols = 80
 var cachedMacUserShell string
 var macUserShellOnce = &sync.Once{}
 var userShellRegexp = regexp.MustCompile(`^UserShell: (.*)$`)
+
+var gitBashCache = utilds.MakeSyncCache(findInstalledGitBash)
 
 const DefaultShellPath = "/bin/bash"
 
@@ -150,7 +153,7 @@ func hasDirPart(dir string, part string) bool {
 	return false
 }
 
-func FindGitBash(config *wconfig.FullConfigType) string {
+func FindGitBash(config *wconfig.FullConfigType, rescan bool) string {
 	if runtime.GOOS != "windows" {
 		return ""
 	}
@@ -159,6 +162,11 @@ func FindGitBash(config *wconfig.FullConfigType) string {
 		return config.Settings.TermGitBashPath
 	}
 
+	path, _ := gitBashCache.Get(rescan)
+	return path
+}
+
+func findInstalledGitBash() (string, error) {
 	// Try PATH first (skip system32, and only accept if in a Git directory)
 	pathEnv := os.Getenv("PATH")
 	pathDirs := filepath.SplitList(pathEnv)
@@ -171,7 +179,7 @@ func FindGitBash(config *wconfig.FullConfigType) string {
 		}
 		bashPath := filepath.Join(dir, "bash.exe")
 		if _, err := os.Stat(bashPath); err == nil {
-			return bashPath
+			return bashPath, nil
 		}
 	}
 
@@ -180,7 +188,7 @@ func FindGitBash(config *wconfig.FullConfigType) string {
 	if userProfile != "" {
 		scoopPath := filepath.Join(userProfile, "scoop", "apps", "git", "current", "bin", "bash.exe")
 		if _, err := os.Stat(scoopPath); err == nil {
-			return scoopPath
+			return scoopPath, nil
 		}
 	}
 
@@ -189,17 +197,17 @@ func FindGitBash(config *wconfig.FullConfigType) string {
 	if localAppData != "" {
 		localPath := filepath.Join(localAppData, "programs", "git", "bin", "bash.exe")
 		if _, err := os.Stat(localPath); err == nil {
-			return localPath
+			return localPath, nil
 		}
 	}
 
 	// Try C:\Program Files\Git\bin
 	programFilesPath := filepath.Join("C:\\", "Program Files", "Git", "bin", "bash.exe")
 	if _, err := os.Stat(programFilesPath); err == nil {
-		return programFilesPath
+		return programFilesPath, nil
 	}
 
-	return ""
+	return "", nil
 }
 
 func DefaultTermSize() waveobj.TermSize {
