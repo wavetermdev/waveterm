@@ -22,6 +22,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
+	"github.com/wavetermdev/waveterm/pkg/wconfig"
 )
 
 var (
@@ -130,6 +131,75 @@ func internalMacUserShell() string {
 		return DefaultShellPath
 	}
 	return m[1]
+}
+
+func hasDirPart(dir string, part string) bool {
+	dir = filepath.Clean(dir)
+	part = strings.ToLower(part)
+	for {
+		base := strings.ToLower(filepath.Base(dir))
+		if base == part {
+			return true
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			break
+		}
+		dir = parent
+	}
+	return false
+}
+
+func FindGitBash(config *wconfig.FullConfigType) string {
+	if runtime.GOOS != "windows" {
+		return ""
+	}
+
+	if config != nil && config.Settings.TermGitBashPath != "" {
+		return config.Settings.TermGitBashPath
+	}
+
+	// Try PATH first (skip system32, and only accept if in a Git directory)
+	pathEnv := os.Getenv("PATH")
+	pathDirs := filepath.SplitList(pathEnv)
+	for _, dir := range pathDirs {
+		if hasDirPart(dir, "system32") {
+			continue
+		}
+		if !hasDirPart(dir, "git") {
+			continue
+		}
+		bashPath := filepath.Join(dir, "bash.exe")
+		if _, err := os.Stat(bashPath); err == nil {
+			return bashPath
+		}
+	}
+
+	// Try scoop location
+	userProfile := os.Getenv("USERPROFILE")
+	if userProfile != "" {
+		scoopPath := filepath.Join(userProfile, "scoop", "apps", "git", "current", "bin", "bash.exe")
+		if _, err := os.Stat(scoopPath); err == nil {
+			return scoopPath
+		}
+	}
+
+	// Try LocalAppData\programs\git\bin
+	localAppData := os.Getenv("LOCALAPPDATA")
+	if localAppData != "" {
+		localPath := filepath.Join(localAppData, "programs", "git", "bin", "bash.exe")
+		if _, err := os.Stat(localPath); err == nil {
+			return localPath
+		}
+	}
+
+	// Try C:\Program Files\Git\bin
+	programFilesPath := filepath.Join("C:\\", "Program Files", "Git", "bin", "bash.exe")
+	if _, err := os.Stat(programFilesPath); err == nil {
+		return programFilesPath
+	}
+
+	return ""
 }
 
 func DefaultTermSize() waveobj.TermSize {
