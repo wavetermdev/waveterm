@@ -187,7 +187,6 @@ export class WaveBrowserWindow extends BaseWindow {
                 winOpts.backgroundColor = "#222222";
             }
         } else if (opts.unamePlatform === "win32") {
-            winOpts.frame = true;
             winOpts.titleBarStyle = "hidden";
             winOpts.titleBarOverlay = {
                 color: "#222222",
