@@ -526,7 +526,7 @@ const Widgets = memo(() => {
                 ) : null}
                 {isDev() ? (
                     <div
-                        className="dev-label flex justify-center items-center w-full py-1 text-accent text-[30px]"
+                        className="flex justify-center items-center w-full py-1 text-accent text-[30px]"
                         title="Running Wave Dev Build"
                     >
                         <i className="fa fa-brands fa-dev fa-fw" />
