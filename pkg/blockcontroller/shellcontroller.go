@@ -11,6 +11,7 @@ import (
 	"io/fs"
 	"log"
 	"os"
+	"runtime"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -42,6 +43,10 @@ const (
 	ConnType_Local = "local"
 	ConnType_Wsl   = "wsl"
 	ConnType_Ssh   = "ssh"
+)
+
+const (
+	LocalConnVariant_GitBash = "gitbash"
 )
 
 type ShellController struct {
@@ -329,7 +334,10 @@ func (bc *ShellController) getConnUnion(logCtx context.Context, remoteName strin
 		rtn.ConnType = ConnType_Wsl
 		rtn.WslConn = wslConn
 		rtn.WshEnabled = wshEnabled && wslConn.WshEnabled.Load()
-	} else if remoteName != "" {
+	} else if strings.HasPrefix(remoteName, "local:") || remoteName == "local" || remoteName == "" {
+		rtn.ConnType = ConnType_Local
+		rtn.WshEnabled = wshEnabled
+	} else {
 		opts, err := remote.ParseOpts(remoteName)
 		if err != nil {
 			return ConnUnion{}, fmt.Errorf("invalid ssh remote name (%s): %w", remoteName, err)
@@ -345,9 +353,6 @@ func (bc *ShellController) getConnUnion(logCtx context.Context, remoteName strin
 		rtn.ConnType = ConnType_Ssh
 		rtn.SshConn = conn
 		rtn.WshEnabled = wshEnabled && conn.WshEnabled.Load()
-	} else {
-		rtn.ConnType = ConnType_Local
-		rtn.WshEnabled = wshEnabled
 	}
 	err := rtn.getRemoteInfoAndShellType(blockMeta)
 	if err != nil {
@@ -611,7 +616,11 @@ func (union *ConnUnion) getRemoteInfoAndShellType(blockMeta waveobj.MetaMapType)
 		// TODO allow overriding remote shell path
 		union.ShellPath = remoteInfo.Shell
 	} else {
-		union.ShellPath = getLocalShellPath(blockMeta)
+		shellPath, err := getLocalShellPath(blockMeta)
+		if err != nil {
+			return err
+		}
+		union.ShellPath = shellPath
 	}
 	union.ShellType = shellutil.GetShellTypeFromShellPath(union.ShellPath)
 	return nil
@@ -642,16 +651,34 @@ func checkCloseOnExit(blockId string, exitCode int) {
 	}
 }
 
-func getLocalShellPath(blockMeta waveobj.MetaMapType) string {
+func getLocalShellPath(blockMeta waveobj.MetaMapType) (string, error) {
 	shellPath := blockMeta.GetString(waveobj.MetaKey_TermLocalShellPath, "")
 	if shellPath != "" {
-		return shellPath
+		return shellPath, nil
 	}
+	
+	connName := blockMeta.GetString(waveobj.MetaKey_Connection, "")
+	if strings.HasPrefix(connName, "local:") {
+		variant := strings.TrimPrefix(connName, "local:")
+		if variant == LocalConnVariant_GitBash {
+			if runtime.GOOS != "windows" {
+				return "", fmt.Errorf("connection \"local:gitbash\" is only supported on Windows")
+			}
+			fullConfig := wconfig.GetWatcher().GetFullConfig()
+			gitBashPath := shellutil.FindGitBash(&fullConfig)
+			if gitBashPath == "" {
+				return "", fmt.Errorf("connection \"local:gitbash\": git bash not found on this system, please install Git for Windows or set term:localshellpath to specify the git bash location")
+			}
+			return gitBashPath, nil
+		}
+		return "", fmt.Errorf("unsupported local connection type: %q", connName)
+	}
+	
 	settings := wconfig.GetWatcher().GetFullConfig().Settings
 	if settings.TermLocalShellPath != "" {
-		return settings.TermLocalShellPath
+		return settings.TermLocalShellPath, nil
 	}
-	return shellutil.DetectLocalShellPath()
+	return shellutil.DetectLocalShellPath(), nil
 }
 
 func getLocalShellOpts(blockMeta waveobj.MetaMapType) []string {
