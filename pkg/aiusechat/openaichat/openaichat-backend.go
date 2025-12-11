@@ -168,7 +168,7 @@ func processChatStream(
 			for _, tcDelta := range choice.Delta.ToolCalls {
 				idx := tcDelta.Index
 				for len(toolCallsInProgress) <= idx {
-					toolCallsInProgress = append(toolCallsInProgress, ToolCall{})
+					toolCallsInProgress = append(toolCallsInProgress, ToolCall{Type: "function"})
 				}
 
 				tc := &toolCallsInProgress[idx]
