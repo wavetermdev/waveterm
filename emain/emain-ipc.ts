@@ -312,12 +312,12 @@ export function initIpcHandlers() {
         tabView?.setKeyboardChordMode(true);
     });
 
-    if (unamePlatform !== "darwin") {
-        const fac = new FastAverageColor();
-
-        electron.ipcMain.on("update-window-controls-overlay", async (event, rect: Dimensions) => {
+    const fac = new FastAverageColor();
+    electron.ipcMain.on("update-window-controls-overlay", async (event, rect: Dimensions) => {
+        if (unamePlatform === "darwin") return;
+        try {
             const fullConfig = await RpcApi.GetFullConfigCommand(ElectronWshClient);
-            if (fullConfig.settings["window:nativetitlebar"] && unamePlatform !== "win32") return;
+            if (fullConfig?.settings?.["window:nativetitlebar"] && unamePlatform !== "win32") return;
 
             const zoomFactor = event.sender.getZoomFactor();
             const electronRect: Electron.Rectangle = {
@@ -335,18 +335,18 @@ export function initIpcHandlers() {
                 color: unamePlatform === "linux" ? color.rgba : "#00000000",
                 symbolColor: color.isDark ? "white" : "black",
             });
-        });
-    }
+        } catch (e) {
+            console.error("Error updating window controls overlay:", e);
+        }
+    });
 
     electron.ipcMain.on("quicklook", (event, filePath: string) => {
-        if (unamePlatform == "darwin") {
-            child_process.execFile("/usr/bin/qlmanage", ["-p", filePath], (error, stdout, stderr) => {
-                if (error) {
-                    console.error(`Error opening Quick Look: ${error}`);
-                    return;
-                }
-            });
-        }
+        if (unamePlatform !== "darwin") return;
+        child_process.execFile("/usr/bin/qlmanage", ["-p", filePath], (error, stdout, stderr) => {
+            if (error) {
+                console.error(`Error opening Quick Look: ${error}`);
+            }
+        });
     });
 
     electron.ipcMain.handle("clear-webview-storage", async (event, webContentsId: number) => {
