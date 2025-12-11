@@ -29,7 +29,7 @@ const AIModeMenuItem = memo(({ config, isSelected, isDisabled, onClick, isFirst,
             className={cn(
                 "w-full flex flex-col gap-0.5 px-3 transition-colors text-left",
                 isFirst ? "pt-1 pb-0.5" : isLast ? "pt-0.5 pb-1" : "pt-0.5 pb-0.5",
-                isDisabled ? "text-gray-500" : "text-gray-300 hover:bg-gray-700 cursor-pointer"
+                isDisabled ? "text-zinc-500" : "text-zinc-300 hover:bg-zinc-700 cursor-pointer"
             )}
         >
             <div className="flex items-center gap-2 w-full">
@@ -109,7 +109,10 @@ function computeCompatibleSections(
     return sections;
 }
 
-function computeWaveCloudSections(waveProviderConfigs: AIModeConfigWithMode[], otherProviderConfigs: AIModeConfigWithMode[]): ConfigSection[] {
+function computeWaveCloudSections(
+    waveProviderConfigs: AIModeConfigWithMode[],
+    otherProviderConfigs: AIModeConfigWithMode[]
+): ConfigSection[] {
     const sections: ConfigSection[] = [];
 
     if (waveProviderConfigs.length > 0) {
@@ -204,7 +207,7 @@ export const AIModeDropdown = memo(({ compatibilityMode = false }: AIModeDropdow
                 onClick={() => setIsOpen(!isOpen)}
                 className={cn(
                     "group flex items-center gap-1.5 px-2 py-1 text-xs text-gray-300 hover:text-white rounded transition-colors cursor-pointer border border-gray-600/50",
-                    isOpen ? "bg-gray-700" : "bg-gray-800/50 hover:bg-gray-700"
+                    isOpen ? "bg-zinc-700" : "bg-zinc-800/50 hover:bg-zinc-700"
                 )}
                 title={`AI Mode: ${displayName}`}
             >
@@ -234,7 +237,7 @@ export const AIModeDropdown = memo(({ compatibilityMode = false }: AIModeDropdow
             {isOpen && (
                 <>
                     <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
-                    <div className="absolute top-full left-0 mt-1 bg-gray-800 border border-gray-600 rounded shadow-lg z-50 min-w-[280px]">
+                    <div className="absolute top-full left-0 mt-1 bg-zinc-800 border border-zinc-600 rounded shadow-lg z-50 min-w-[280px]">
                         {sections.map((section, sectionIndex) => {
                             const isFirstSection = sectionIndex === 0;
                             const isLastSection = sectionIndex === sections.length - 1;
@@ -284,7 +287,7 @@ export const AIModeDropdown = memo(({ compatibilityMode = false }: AIModeDropdow
                         <div className="border-t border-gray-600 my-1" />
                         <button
                             onClick={handleConfigureClick}
-                            className="w-full flex items-center gap-2 px-3 pt-1 pb-2 text-gray-300 hover:bg-gray-700 cursor-pointer transition-colors text-left"
+                            className="w-full flex items-center gap-2 px-3 pt-1 pb-2 text-gray-300 hover:bg-zinc-700 cursor-pointer transition-colors text-left"
                         >
                             <i className={makeIconClass("gear", false)}></i>
                             <span className="text-sm">Configure Modes</span>

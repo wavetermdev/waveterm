@@ -27,7 +27,7 @@ function CodePlain({ className = "", isCodeBlock, text }: { className?: string; 
     }
 
     return (
-        <code className={cn("text-secondary font-mono text-[12px] rounded-sm bg-gray-800 px-1.5 py-0.5", className)}>
+        <code className={cn("text-secondary font-mono text-[12px] rounded-sm bg-zinc-800 px-1.5 py-0.5", className)}>
             {text}
         </code>
     );

@@ -42,7 +42,7 @@ export const AIPanelHeader = memo(() => {
                                 }, 0);
                             }}
                             className={`relative inline-flex h-6 w-14 items-center rounded-full transition-colors cursor-pointer ${
-                                widgetAccess ? "bg-accent-500" : "bg-gray-600"
+                                widgetAccess ? "bg-accent-600" : "bg-zinc-600"
                             }`}
                             title={`Widget Access ${widgetAccess ? "ON" : "OFF"}`}
                         >
@@ -53,7 +53,7 @@ export const AIPanelHeader = memo(() => {
                             />
                             <span
                                 className={`relative z-10 text-xs text-white transition-all ${
-                                    widgetAccess ? "ml-2.5 mr-6 text-left font-bold" : "ml-6 mr-1 text-right"
+                                    widgetAccess ? "ml-2.5 mr-6 text-left" : "ml-6 mr-1 text-right"
                                 }`}
                             >
                                 {widgetAccess ? "ON" : "OFF"}
