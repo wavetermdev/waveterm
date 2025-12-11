@@ -12,13 +12,13 @@ import { RpcApi } from "../frontend/app/store/wshclientapi";
 import { getWebServerEndpoint } from "../frontend/util/endpoints";
 import * as keyutil from "../frontend/util/keyutil";
 import { fireAndForget, parseDataUrl } from "../frontend/util/util";
+import { incrementTermCommandsRun } from "./emain-activity";
 import { createBuilderWindow, getAllBuilderWindows, getBuilderWindowByWebContentsId } from "./emain-builder";
 import { callWithOriginalXdgCurrentDesktopAsync, unamePlatform } from "./emain-platform";
 import { getWaveTabViewByWebContentsId } from "./emain-tabview";
 import { handleCtrlShiftState } from "./emain-util";
 import { getWaveVersion } from "./emain-wavesrv";
 import { createNewWaveWindow, focusedWaveWindow, getWaveWindowByWebContentsId } from "./emain-window";
-import { incrementTermCommandsRun } from "./emain-activity";
 import { ElectronWshClient } from "./emain-wsh";
 
 const electronApp = electron.app;
@@ -29,9 +29,7 @@ let webviewKeys: string[] = [];
 export function openBuilderWindow(appId?: string) {
     const normalizedAppId = appId || "";
     const existingBuilderWindows = getAllBuilderWindows();
-    const existingWindow = existingBuilderWindows.find(
-        (win) => win.builderAppId === normalizedAppId
-    );
+    const existingWindow = existingBuilderWindows.find((win) => win.builderAppId === normalizedAppId);
     if (existingWindow) {
         existingWindow.focus();
         return;
@@ -319,7 +317,7 @@ export function initIpcHandlers() {
 
         electron.ipcMain.on("update-window-controls-overlay", async (event, rect: Dimensions) => {
             const fullConfig = await RpcApi.GetFullConfigCommand(ElectronWshClient);
-            if (fullConfig.settings["window:nativetitlebar"]) return;
+            if (fullConfig.settings["window:nativetitlebar"] && unamePlatform !== "win32") return;
 
             const zoomFactor = event.sender.getZoomFactor();
             const electronRect: Electron.Rectangle = {

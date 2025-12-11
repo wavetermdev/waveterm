@@ -21,6 +21,11 @@ function handleWindowsMenuAccelerators(waveEvent: WaveKeyboardEvent, tabView: Wa
         return true;
     }
 
+    if (checkKeyPressed(waveEvent, "Ctrl:Shift:r")) {
+        tabView.webContents.reloadIgnoringCache();
+        return true;
+    }
+
     if (checkKeyPressed(waveEvent, "Ctrl:v")) {
         tabView.webContents.paste();
         return true;
