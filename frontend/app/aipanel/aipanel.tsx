@@ -7,7 +7,7 @@ import { ErrorBoundary } from "@/app/element/errorboundary";
 import { atoms, getSettingsKeyAtom } from "@/app/store/global";
 import { globalStore } from "@/app/store/jotaiStore";
 import { checkKeyPressed, keydownWrapper } from "@/util/keyutil";
-import { isMacOS } from "@/util/platformutil";
+import { isMacOS, isWindows } from "@/util/platformutil";
 import { cn } from "@/util/util";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
@@ -135,10 +135,20 @@ const AIWelcomeMessage = memo(() => {
                                     <span className="ml-1.5">to toggle panel</span>
                                 </div>
                                 <div>
-                                    <KeyCap>Ctrl</KeyCap>
-                                    <KeyCap className="ml-1">Shift</KeyCap>
-                                    <KeyCap className="ml-1">0</KeyCap>
-                                    <span className="ml-1.5">to focus</span>
+                                    {isWindows() ? (
+                                        <>
+                                            <KeyCap>Alt</KeyCap>
+                                            <KeyCap className="ml-1">0</KeyCap>
+                                            <span className="ml-1.5">to focus</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <KeyCap>Ctrl</KeyCap>
+                                            <KeyCap className="ml-1">Shift</KeyCap>
+                                            <KeyCap className="ml-1">0</KeyCap>
+                                            <span className="ml-1.5">to focus</span>
+                                        </>
+                                    )}
                                 </div>
                             </div>
                         </div>
