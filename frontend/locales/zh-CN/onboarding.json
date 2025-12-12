@@ -4,18 +4,21 @@
         "supportGithub": "在GitHub上支持我们",
         "supportGithubDesc": "我们是开源项目,致力于为个人用户提供免费的终端。请在Github (wavetermdev/waveterm)上给我们一个星标以示支持",
         "joinCommunity": "加入我们的社区",
-        "joinCommunityDesc": "获取帮助、提交功能请求、报告错误,或与终端爱好者们聊天。加入Wave Discord频道",
+        "joinCommunityDesc": "获取帮助、提交功能请求、报告错误,或与终端爱好者们聊天。",
+        "joinDiscord": "加入 Wave Discord 频道",
         "telemetryTitle": "遥测数据",
+        "telemetryDesc": "匿名使用数据帮助我们改进您使用的功能。",
         "telemetryEnabled": "已启用",
         "telemetryDisabled": "已禁用",
+        "telemetryPrivacy": "隐私政策",
         "continue": "继续"
     },
     "notelemetrystar": {
-        "thankYou": "感谢您试用 Wave 终端!",
-        "weValue": "我们重视您的隐私",
-        "noTelemetryDesc": "您已选择禁用遥测数据。虽然我们尊重您的选择,但遥测数据可以帮助我们为所有人改进Wave终端。",
-        "considerEnabling": "如果您愿意帮助我们改进Wave,请考虑在将来启用遥测功能。",
-        "continue": "继续"
+        "title": "遥测已禁用 ✓",
+        "noProblem": "没问题,我们尊重您的隐私。",
+        "needSupport": "但是,如果没有使用数据,我们将无法了解Wave是否有用以及是否值得维护。给我们一个GitHub星标可以帮助我们了解这一点。",
+        "starOnGithub": "⭐ 在GitHub上加星",
+        "maybeLater": "稍后再说"
     },
     "features": {
         "title": "核心功能",

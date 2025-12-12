@@ -11,6 +11,7 @@ import { fireAndForget } from "@/util/util";
 import { useAtomValue } from "jotai";
 import { OverlayScrollbars } from "overlayscrollbars";
 import { createRef, memo, useCallback, useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { debounce } from "throttle-debounce";
 import { IconButton } from "../element/iconbutton";
 import { WorkspaceService } from "../store/services";
@@ -64,13 +65,14 @@ const WaveAIButton = memo(() => {
 WaveAIButton.displayName = "WaveAIButton";
 
 const ConfigErrorMessage = () => {
+    const { t } = useTranslation("modals");
     const fullConfig = useAtomValue(atoms.fullConfigAtom);
 
     if (fullConfig?.configerrors == null || fullConfig?.configerrors.length == 0) {
         return (
             <div className="max-w-[500px] p-5">
-                <h3 className="font-bold text-base mb-2.5">Configuration Clean</h3>
-                <p>There are no longer any errors detected in your config.</p>
+                <h3 className="font-bold text-base mb-2.5">{t("modals.titleClean")}</h3>
+                <p>{t("modals.noErrors")}</p>
             </div>
         );
     }
@@ -78,16 +80,16 @@ const ConfigErrorMessage = () => {
         const singleError = fullConfig.configerrors[0];
         return (
             <div className="max-w-[500px] p-5">
-                <h3 className="font-bold text-base mb-2.5">Configuration Error</h3>
+                <h3 className="font-bold text-base mb-2.5">{t("modals.title")}</h3>
                 <div>
-                    {singleError.file}: {singleError.err}
+                    {t("modals.singleError", { file: singleError.file, error: singleError.err })}
                 </div>
             </div>
         );
     }
     return (
         <div className="max-w-[500px] p-5">
-            <h3 className="font-bold text-base mb-2.5">Configuration Error</h3>
+            <h3 className="font-bold text-base mb-2.5">{t("modals.configErrors")}</h3>
             <ul>
                 {fullConfig.configerrors.map((error, index) => (
                     <li key={index}>
