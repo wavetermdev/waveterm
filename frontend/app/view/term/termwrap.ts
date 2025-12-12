@@ -526,14 +526,14 @@ export class TermWrap {
                 oref: WOS.makeORef("block", this.blockId),
             });
 
-            if (rtInfo["shell:integration"]) {
+            if (rtInfo && rtInfo["shell:integration"]) {
                 const shellState = rtInfo["shell:state"] as ShellIntegrationStatus;
                 globalStore.set(this.shellIntegrationStatusAtom, shellState || null);
             } else {
                 globalStore.set(this.shellIntegrationStatusAtom, null);
             }
 
-            const lastCmd = rtInfo["shell:lastcmd"];
+            const lastCmd = rtInfo ? rtInfo["shell:lastcmd"] : null;
             globalStore.set(this.lastCommandAtom, lastCmd || null);
         } catch (e) {
             console.log("Error loading runtime info:", e);

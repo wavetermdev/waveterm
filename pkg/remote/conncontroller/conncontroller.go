@@ -77,6 +77,10 @@ var ConnServerCmdTemplate = strings.TrimSpace(
 		"exec %s connserver",
 	}, "\n"))
 
+func IsLocalConnName(connName string) bool {
+	return strings.HasPrefix(connName, "local:") || connName == "local" || connName == ""
+}
+
 func GetAllConnStatus() []wshrpc.ConnStatus {
 	globalLock.Lock()
 	defer globalLock.Unlock()
@@ -833,7 +837,7 @@ func GetConn(opts *remote.SSHOpts) *SSHConn {
 
 // Convenience function for ensuring a connection is established
 func EnsureConnection(ctx context.Context, connName string) error {
-	if connName == "" {
+	if IsLocalConnName(connName) {
 		return nil
 	}
 	connOpts, err := remote.ParseOpts(connName)

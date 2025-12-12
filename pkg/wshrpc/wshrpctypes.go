@@ -129,6 +129,7 @@ const (
 	Command_WslDefaultDistro = "wsldefaultdistro"
 	Command_DismissWshFail   = "dismisswshfail"
 	Command_ConnUpdateWsh    = "updatewsh"
+	Command_FindGitBash      = "findgitbash"
 
 	Command_WorkspaceList = "workspacelist"
 
@@ -274,6 +275,7 @@ type WshRpcInterface interface {
 	WslDefaultDistroCommand(ctx context.Context) (string, error)
 	DismissWshFailCommand(ctx context.Context, connName string) error
 	ConnUpdateWshCommand(ctx context.Context, remoteInfo RemoteInfo) (bool, error)
+	FindGitBashCommand(ctx context.Context, rescan bool) (string, error)
 
 	// eventrecv is special, it's handled internally by WshRpc with EventListener
 	EventRecvCommand(ctx context.Context, data wps.WaveEvent) error

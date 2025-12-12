@@ -344,6 +344,12 @@ func FileWriteCommand(w *wshutil.WshRpc, data wshrpc.FileData, opts *wshrpc.RpcO
 	return err
 }
 
+// command "findgitbash", wshserver.FindGitBashCommand
+func FindGitBashCommand(w *wshutil.WshRpc, data bool, opts *wshrpc.RpcOpts) (string, error) {
+	resp, err := sendRpcRequestCallHelper[string](w, "findgitbash", data, opts)
+	return resp, err
+}
+
 // command "focuswindow", wshserver.FocusWindowCommand
 func FocusWindowCommand(w *wshutil.WshRpc, data string, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "focuswindow", data, opts)

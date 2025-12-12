@@ -98,6 +98,9 @@
           },
           "type": "array"
         },
+        "term:gitbashpath": {
+          "type": "string"
+        },
         "term:scrollback": {
           "type": "integer"
         },

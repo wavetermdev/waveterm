@@ -20,8 +20,10 @@ import (
 
 	"github.com/wavetermdev/waveterm/pkg/util/envutil"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
+	"github.com/wavetermdev/waveterm/pkg/utilds"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
+	"github.com/wavetermdev/waveterm/pkg/wconfig"
 )
 
 var (
@@ -59,6 +61,8 @@ const DefaultTermCols = 80
 var cachedMacUserShell string
 var macUserShellOnce = &sync.Once{}
 var userShellRegexp = regexp.MustCompile(`^UserShell: (.*)$`)
+
+var gitBashCache = utilds.MakeSyncCache(findInstalledGitBash)
 
 const DefaultShellPath = "/bin/bash"
 
@@ -130,6 +134,81 @@ func internalMacUserShell() string {
 		return DefaultShellPath
 	}
 	return m[1]
+}
+
+func hasDirPart(dir string, part string) bool {
+	dir = filepath.Clean(dir)
+	part = strings.ToLower(part)
+	for {
+		base := strings.ToLower(filepath.Base(dir))
+		if base == part {
+			return true
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			break
+		}
+		dir = parent
+	}
+	return false
+}
+
+func FindGitBash(config *wconfig.FullConfigType, rescan bool) string {
+	if runtime.GOOS != "windows" {
+		return ""
+	}
+
+	if config != nil && config.Settings.TermGitBashPath != "" {
+		return config.Settings.TermGitBashPath
+	}
+
+	path, _ := gitBashCache.Get(rescan)
+	return path
+}
+
+func findInstalledGitBash() (string, error) {
+	// Try PATH first (skip system32, and only accept if in a Git directory)
+	pathEnv := os.Getenv("PATH")
+	pathDirs := filepath.SplitList(pathEnv)
+	for _, dir := range pathDirs {
+		dir = strings.Trim(dir, `"`)
+		if hasDirPart(dir, "system32") {
+			continue
+		}
+		if !hasDirPart(dir, "git") {
+			continue
+		}
+		bashPath := filepath.Join(dir, "bash.exe")
+		if _, err := os.Stat(bashPath); err == nil {
+			return bashPath, nil
+		}
+	}
+
+	// Try scoop location
+	userProfile := os.Getenv("USERPROFILE")
+	if userProfile != "" {
+		scoopPath := filepath.Join(userProfile, "scoop", "apps", "git", "current", "bin", "bash.exe")
+		if _, err := os.Stat(scoopPath); err == nil {
+			return scoopPath, nil
+		}
+	}
+
+	// Try LocalAppData\programs\git\bin
+	localAppData := os.Getenv("LOCALAPPDATA")
+	if localAppData != "" {
+		localPath := filepath.Join(localAppData, "programs", "git", "bin", "bash.exe")
+		if _, err := os.Stat(localPath); err == nil {
+			return localPath, nil
+		}
+	}
+
+	// Try C:\Program Files\Git\bin
+	programFilesPath := filepath.Join("C:\\", "Program Files", "Git", "bin", "bash.exe")
+	if _, err := os.Stat(programFilesPath); err == nil {
+		return programFilesPath, nil
+	}
+
+	return "", nil
 }
 
 func DefaultTermSize() waveobj.TermSize {

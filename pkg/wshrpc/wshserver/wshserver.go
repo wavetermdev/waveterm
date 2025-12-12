@@ -647,6 +647,9 @@ func (ws *WshServer) ConnDisconnectCommand(ctx context.Context, connName string)
 	if strings.HasPrefix(connName, "aws:") {
 		return nil
 	}
+	if conncontroller.IsLocalConnName(connName) {
+		return nil
+	}
 	if strings.HasPrefix(connName, "wsl://") {
 		distroName := strings.TrimPrefix(connName, "wsl://")
 		conn := wslconn.GetWslConn(distroName)
@@ -669,6 +672,9 @@ func (ws *WshServer) ConnDisconnectCommand(ctx context.Context, connName string)
 func (ws *WshServer) ConnConnectCommand(ctx context.Context, connRequest wshrpc.ConnRequest) error {
 	// TODO: if we add proper wsh connections via aws, we'll need to handle that here
 	if strings.HasPrefix(connRequest.Host, "aws:") {
+		return nil
+	}
+	if conncontroller.IsLocalConnName(connRequest.Host) {
 		return nil
 	}
 	ctx = genconn.ContextWithConnData(ctx, connRequest.LogBlockId)
@@ -696,6 +702,9 @@ func (ws *WshServer) ConnConnectCommand(ctx context.Context, connRequest wshrpc.
 func (ws *WshServer) ConnReinstallWshCommand(ctx context.Context, data wshrpc.ConnExtData) error {
 	// TODO: if we add proper wsh connections via aws, we'll need to handle that here
 	if strings.HasPrefix(data.ConnName, "aws:") {
+		return nil
+	}
+	if conncontroller.IsLocalConnName(data.ConnName) {
 		return nil
 	}
 	ctx = genconn.ContextWithConnData(ctx, data.LogBlockId)
@@ -824,6 +833,11 @@ func (ws *WshServer) DismissWshFailCommand(ctx context.Context, connName string)
 	conn.ClearWshError()
 	conn.FireConnChangeEvent()
 	return nil
+}
+
+func (ws *WshServer) FindGitBashCommand(ctx context.Context, rescan bool) (string, error) {
+	fullConfig := wconfig.GetWatcher().GetFullConfig()
+	return shellutil.FindGitBash(&fullConfig, rescan), nil
 }
 
 func (ws *WshServer) BlockInfoCommand(ctx context.Context, blockId string) (*wshrpc.BlockInfoData, error) {
