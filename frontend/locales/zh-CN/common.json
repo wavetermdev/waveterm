@@ -51,5 +51,25 @@
         "warning": "警告",
         "info": "信息",
         "success": "成功"
+    },
+    "workspace": {
+        "switchWorkspace": "切换工作区",
+        "openWorkspace": "打开工作区",
+        "createNew": "创建新工作区",
+        "save": "保存工作区",
+        "edit": "编辑工作区",
+        "delete": "删除工作区",
+        "unnamed": "未命名工作区",
+        "currentWorkspace": "这是您当前的工作区",
+        "openInWindow": "此工作区已打开"
+    },
+    "tab": {
+        "loading": "标签页加载中",
+        "notFound": "标签页未找到",
+        "newTab": "新建标签页"
+    },
+    "configFiles": {
+        "title": "配置文件",
+        "deprecated": "已弃用"
     }
 }

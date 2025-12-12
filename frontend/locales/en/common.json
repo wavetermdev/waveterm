@@ -51,5 +51,25 @@
         "warning": "Warning",
         "info": "Information",
         "success": "Success"
+    },
+    "workspace": {
+        "switchWorkspace": "Switch workspace",
+        "openWorkspace": "Open workspace",
+        "createNew": "Create new workspace",
+        "save": "Save workspace",
+        "edit": "Edit workspace",
+        "delete": "Delete workspace",
+        "unnamed": "Unnamed Workspace",
+        "currentWorkspace": "This is your current workspace",
+        "openInWindow": "This workspace is open"
+    },
+    "tab": {
+        "loading": "Tab Loading",
+        "notFound": "Tab Not Found",
+        "newTab": "New Tab"
+    },
+    "configFiles": {
+        "title": "Config Files",
+        "deprecated": "deprecated"
     }
 }

@@ -9,6 +9,7 @@ import { checkKeyPressed, keydownWrapper } from "@/util/keyutil";
 import { cn } from "@/util/util";
 import { useAtom, useAtomValue } from "jotai";
 import { memo, useCallback, useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { debounce } from "throttle-debounce";
 
 interface ConfigSidebarProps {
@@ -16,6 +17,7 @@ interface ConfigSidebarProps {
 }
 
 const ConfigSidebar = memo(({ model }: ConfigSidebarProps) => {
+    const { t } = useTranslation("common");
     const selectedFile = useAtomValue(model.selectedFileAtom);
     const [isMenuOpen, setIsMenuOpen] = useAtom(model.isMenuOpenAtom);
     const configFiles = model.getConfigFiles();
@@ -29,7 +31,7 @@ const ConfigSidebar = memo(({ model }: ConfigSidebarProps) => {
     return (
         <div className="flex flex-col w-48 border-r border-border @w600:h-full @max-w600:absolute @max-w600:left-0.5 @max-w600:top-0 @max-w600:bottom-0.5 @max-w600:z-10 @max-w600:bg-background @max-w600:shadow-xl @max-w600:rounded-bl">
             <div className="flex items-center justify-between px-4 py-2 border-b border-border @w600:hidden">
-                <span className="font-semibold">Config Files</span>
+                <span className="font-semibold">{t("configFiles.title")}</span>
                 <button
                     onClick={() => setIsMenuOpen(false)}
                     className="hover:bg-secondary/50 rounded p-1 cursor-pointer transition-colors"
@@ -72,7 +74,7 @@ const ConfigSidebar = memo(({ model }: ConfigSidebarProps) => {
                                             : "text-muted-foreground/70 bg-secondary/30"
                                     }`}
                                 >
-                                    deprecated
+                                    {t("configFiles.deprecated")}
                                 </span>
                             </div>
                         </div>
