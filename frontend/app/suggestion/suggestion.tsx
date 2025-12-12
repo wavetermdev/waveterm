@@ -310,7 +310,7 @@ const SuggestionControlInner: React.FC<SuggestionControlInnerProps> = ({
                         setSelectedIndex(0);
                     }}
                     onKeyDown={handleKeyDown}
-                    className="w-full bg-gray-900 text-gray-100 px-4 py-2 rounded-md border border-gray-700 focus:outline-none focus:border-accent placeholder-secondary"
+                    className="w-full bg-zinc-900 text-gray-100 px-4 py-2 rounded-md border border-gray-700 focus:outline-none focus:border-accent placeholder-secondary"
                     placeholder={placeholderText}
                 />
             </div>

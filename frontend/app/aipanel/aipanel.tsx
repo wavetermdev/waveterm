@@ -71,7 +71,7 @@ const KeyCap = memo(({ children, className }: { children: React.ReactNode; class
     return (
         <kbd
             className={cn(
-                "px-1.5 py-0.5 text-xs bg-gray-700 border border-gray-600 rounded-sm shadow-sm font-mono",
+                "px-1.5 py-0.5 text-xs bg-zinc-700 border border-zinc-600 rounded-sm shadow-sm font-mono",
                 className
             )}
         >
@@ -483,9 +483,9 @@ const AIPanelComponentInner = memo(() => {
             ref={containerRef}
             data-waveai-panel="true"
             className={cn(
-                "@container bg-gray-900 flex flex-col relative",
+                "@container bg-zinc-900/70 flex flex-col relative",
                 model.inBuilder ? "mt-0 h-full" : "mt-1 h-[calc(100%-4px)]",
-                (isDragOver || isReactDndDragOver) && "bg-gray-800 border-accent",
+                (isDragOver || isReactDndDragOver) && "bg-zinc-800 border-accent",
                 isFocused ? "border-2 border-accent" : "border-2 border-transparent"
             )}
             style={{
