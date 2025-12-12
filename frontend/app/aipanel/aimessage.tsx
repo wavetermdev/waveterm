@@ -181,7 +181,7 @@ const getThinkingMessage = (
     parts: WaveUIMessagePart[],
     isStreaming: boolean,
     role: string
-): { message: string; reasoningText?: string; isWaitingApproval?: boolean } | null => {
+): { messageKey: string; reasoningText?: string; isWaitingApproval?: boolean } | null => {
     if (!isStreaming || role !== "assistant") {
         return null;
     }
@@ -191,21 +191,21 @@ const getThinkingMessage = (
     );
 
     if (hasPendingApprovals) {
-        return { message: "Waiting for Tool Approvals...", isWaitingApproval: true };
+        return { messageKey: "message.waitingApproval", isWaitingApproval: true };
     }
 
     const lastPart = parts[parts.length - 1];
 
     if (lastPart?.type === "reasoning") {
         const reasoningContent = lastPart.text || "";
-        return { message: "AI is thinking...", reasoningText: reasoningContent };
+        return { messageKey: "message.thinking", reasoningText: reasoningContent };
     }
 
     if (lastPart?.type === "text" && lastPart.text) {
         return null;
     }
 
-    return { message: "" };
+    return { messageKey: "" };
 };
 
 export const AIMessage = memo(({ message, isStreaming }: AIMessageProps) => {
@@ -245,7 +245,7 @@ export const AIMessage = memo(({ message, isStreaming }: AIMessageProps) => {
                         {thinkingData != null && (
                             <div className="mt-2">
                                 <AIThinking
-                                    message={t(thinkingData.message)}
+                                    message={thinkingData.messageKey ? t(thinkingData.messageKey) : ""}
                                     reasoningText={thinkingData.reasoningText}
                                     isWaitingApproval={thinkingData.isWaitingApproval}
                                 />

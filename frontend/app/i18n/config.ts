@@ -3,7 +3,6 @@
 
 import { getApi } from "@/store/global";
 import i18n from "i18next";
-import LanguageDetector from "i18next-browser-languagedetector";
 import { initReactI18next } from "react-i18next";
 import { resources } from "./resources";
 
@@ -50,6 +49,7 @@ i18n.use({
     .init({
         resources,
         fallbackLng: "en",
+        supportedLngs: ["en", "zh-CN"],
         defaultNS: "common",
         ns: [
             "common",

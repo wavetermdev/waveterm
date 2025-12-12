@@ -13,11 +13,21 @@ import { useTranslation } from "react-i18next";
 export function useLanguageSync() {
     const { i18n } = useTranslation();
     const settings = useAtomValue(atoms.settingsAtom);
+    const settingsLang = settings?.["app:language"];
 
     useEffect(() => {
-        const settingsLang = settings?.["app:language"];
-        if (settingsLang && settingsLang !== i18n.language) {
-            i18n.changeLanguage(settingsLang);
+        if (!settingsLang) {
+            return;
         }
-    }, [settings, i18n]);
+
+        // Validate against supported languages
+        const supportedLangs = i18n.options?.supportedLngs || ["en", "zh-CN"];
+        const isSupported = supportedLangs.includes(settingsLang);
+
+        if (isSupported && settingsLang !== i18n.language) {
+            i18n.changeLanguage(settingsLang).catch((error) => {
+                console.error("Failed to change language:", error);
+            });
+        }
+    }, [settingsLang, i18n]);
 }
