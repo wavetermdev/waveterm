@@ -3,17 +3,8 @@
 
 import { computeConnColorNum } from "@/app/block/blockutil";
 import { TypeAheadModal } from "@/app/modals/typeaheadmodal";
-import {
-    atoms,
-    createBlock,
-    getApi,
-    getConnStatusAtom,
-    getHostName,
-    getUserName,
-    globalStore,
-    WOS,
-} from "@/app/store/global";
 import { ConnectionsModel } from "@/app/store/connections-model";
+import { atoms, createBlock, getConnStatusAtom, getHostName, getUserName, globalStore, WOS } from "@/app/store/global";
 import { globalRefocusWithTimeout } from "@/app/store/keymodel";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
@@ -108,7 +99,7 @@ function createFilteredLocalSuggestionItem(
             iconColor: "var(--grey-text-color)",
             value: "",
             label: localName,
-            current: connection == null,
+            current: util.isBlank(connection),
         };
         return [localSuggestion];
     }
@@ -179,7 +170,7 @@ function getLocalSuggestions(
     const wslFiltered = filterConnections(connList, connSelected, fullConfig, filterOutNowsh);
     const wslSuggestionItems = createWslSuggestionItems(wslFiltered, connection, connStatusMap);
     const localSuggestionItem = createFilteredLocalSuggestionItem(localName, connection, connSelected);
-    
+
     const gitBashItems: Array<SuggestionConnectionItem> = [];
     if (hasGitBash && "Git Bash".toLowerCase().includes(connSelected.toLowerCase())) {
         gitBashItems.push({
@@ -191,7 +182,7 @@ function getLocalSuggestions(
             current: connection === "local:gitbash",
         });
     }
-    
+
     const combinedSuggestionItems = [...localSuggestionItem, ...gitBashItems, ...wslSuggestionItems];
     const sortedSuggestionItems = sortConnSuggestionItems(combinedSuggestionItems, fullConfig);
     if (sortedSuggestionItems.length == 0) {
@@ -250,7 +241,7 @@ function getDisconnectItem(
     connection: string,
     connStatusMap: Map<string, ConnStatus>
 ): SuggestionConnectionItem | null {
-    if (!connection) {
+    if (util.isLocalConnName(connection)) {
         return null;
     }
     const connStatus = connStatusMap.get(connection);
@@ -418,7 +409,7 @@ const ChangeConnectionBlockModal = React.memo(
                     oref: WOS.makeORef("block", blockId),
                     meta: { connection: connName, file: newFile, "cmd:cwd": null },
                 });
-                
+
                 try {
                     await RpcApi.ConnEnsureCommand(
                         TabRpcClient,

@@ -483,7 +483,7 @@ func (bc *ShellController) setupAndStartShellProcess(logCtx context.Context, rc 
 		}
 		cmdOpts.ShellPath = connUnion.ShellPath
 		cmdOpts.ShellOpts = getLocalShellOpts(blockMeta)
-		shellProc, err = shellexec.StartLocalShellProc(logCtx, rc.TermSize, cmdStr, cmdOpts)
+		shellProc, err = shellexec.StartLocalShellProc(logCtx, rc.TermSize, cmdStr, cmdOpts, remoteName)
 		if err != nil {
 			return nil, err
 		}
@@ -656,7 +656,7 @@ func getLocalShellPath(blockMeta waveobj.MetaMapType) (string, error) {
 	if shellPath != "" {
 		return shellPath, nil
 	}
-	
+
 	connName := blockMeta.GetString(waveobj.MetaKey_Connection, "")
 	if strings.HasPrefix(connName, "local:") {
 		variant := strings.TrimPrefix(connName, "local:")
@@ -673,7 +673,7 @@ func getLocalShellPath(blockMeta waveobj.MetaMapType) (string, error) {
 		}
 		return "", fmt.Errorf("unsupported local connection type: %q", connName)
 	}
-	
+
 	settings := wconfig.GetWatcher().GetFullConfig().Settings
 	if settings.TermLocalShellPath != "" {
 		return settings.TermLocalShellPath, nil

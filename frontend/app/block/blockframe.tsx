@@ -254,7 +254,8 @@ const BlockFrame_Header = ({
         icon: "link-slash",
         title: "wsh is not installed for this connection",
     };
-    const showNoWshButton = manageConnection && wshProblem && !util.isBlank(connName) && !connName.startsWith("aws:");
+    const showNoWshButton =
+        manageConnection && wshProblem && !util.isLocalConnName(connName) && !connName.startsWith("aws:");
 
     return (
         <div
@@ -600,7 +601,7 @@ const BlockFrame_Default_Component = (props: BlockFrameProps) => {
             return;
         }
         const connName = blockData?.meta?.connection;
-        if (!util.isBlank(connName)) {
+        if (!util.isLocalConnName(connName)) {
             console.log("ensure conn", nodeModel.blockId, connName);
             RpcApi.ConnEnsureCommand(
                 TabRpcClient,
