@@ -1,7 +1,7 @@
 {
     "app": {
         "name": "Wave 终端",
-        "tagline": "开源AI原生终端",
+        "tagline": "开源 AI 原生终端",
         "description": "专为无缝工作流而构建"
     },
     "actions": {
@@ -30,7 +30,7 @@
         "reload": "重新加载",
         "rename": "重命名",
         "duplicate": "复制",
-        "openClipboardUrl": "打开剪贴板链接 ({{hostname}})"
+        "openClipboardUrl": "打开剪贴板链接（{{hostname}}）"
     },
     "menu": {
         "file": "文件",
@@ -39,13 +39,13 @@
         "help": "帮助"
     },
     "common": {
-        "github": "Github",
+        "github": "GitHub",
         "website": "官网",
         "acknowledgements": "致谢",
         "copyright": "© {{year}} Command Line Inc.",
-        "clientVersion": "客户端版本 {{version}} ({{buildTime}})",
-        "updateChannel": "更新通道: {{channel}}",
-        "closeEsc": "关闭 (ESC)",
+        "clientVersion": "客户端版本 {{version}}（{{buildTime}}）",
+        "updateChannel": "更新通道：{{channel}}",
+        "closeEsc": "关闭（ESC）",
         "loading": "加载中...",
         "error": "错误",
         "warning": "警告",
@@ -70,7 +70,7 @@
         "pinTab": "固定标签页",
         "unpinTab": "取消固定",
         "renameTab": "重命名标签页",
-        "copyTabId": "复制标签ID",
+        "copyTabId": "复制标签页 ID",
         "closeTab": "关闭标签页",
         "backgrounds": "背景",
         "appMenu": "应用菜单"

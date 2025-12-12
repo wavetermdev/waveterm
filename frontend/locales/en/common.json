@@ -39,7 +39,7 @@
         "help": "Help"
     },
     "common": {
-        "github": "Github",
+        "github": "GitHub",
         "website": "Website",
         "acknowledgements": "Acknowledgements",
         "copyright": "© {{year}} Command Line Inc.",
@@ -70,13 +70,13 @@
         "pinTab": "Pin Tab",
         "unpinTab": "Unpin Tab",
         "renameTab": "Rename Tab",
-        "copyTabId": "Copy TabId",
+        "copyTabId": "Copy Tab ID",
         "closeTab": "Close Tab",
         "backgrounds": "Backgrounds",
         "appMenu": "Application Menu"
     },
     "configFiles": {
         "title": "Config Files",
-        "deprecated": "deprecated"
+        "deprecated": "Deprecated"
     }
 }
