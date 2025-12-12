@@ -1,6 +1,7 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { useLanguageSync } from "@/app/i18n/hooks";
 import { Workspace } from "@/app/workspace/workspace";
 import { ContextMenuModel } from "@/store/contextmenu";
 import { atoms, createBlock, getSettingsPrefixAtom, globalStore, isDev, removeFlashError } from "@/store/global";
@@ -276,6 +277,9 @@ const AppInner = () => {
     const client = useAtomValue(atoms.client);
     const windowData = useAtomValue(atoms.waveWindow);
     const isFullScreen = useAtomValue(atoms.isFullScreen);
+
+    // 同步语言设置
+    useLanguageSync();
 
     if (client == null || windowData == null) {
         return (
