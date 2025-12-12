@@ -171,6 +171,7 @@ func findInstalledGitBash() (string, error) {
 	pathEnv := os.Getenv("PATH")
 	pathDirs := filepath.SplitList(pathEnv)
 	for _, dir := range pathDirs {
+		dir = strings.Trim(dir, `"`)
 		if hasDirPart(dir, "system32") {
 			continue
 		}
