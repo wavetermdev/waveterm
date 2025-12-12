@@ -1,0 +1,82 @@
+{
+    "app": {
+        "name": "Wave Terminal",
+        "tagline": "Open-Source AI-Native Terminal",
+        "description": "Built for Seamless Workflows"
+    },
+    "actions": {
+        "copy": "Copy",
+        "paste": "Paste",
+        "cut": "Cut",
+        "save": "Save",
+        "cancel": "Cancel",
+        "ok": "OK",
+        "close": "Close",
+        "delete": "Delete",
+        "edit": "Edit",
+        "open": "Open",
+        "create": "Create",
+        "search": "Search",
+        "back": "Back",
+        "forward": "Forward",
+        "refresh": "Refresh",
+        "settings": "Settings",
+        "home": "Home",
+        "reset": "Reset",
+        "new": "New",
+        "add": "Add",
+        "remove": "Remove",
+        "update": "Update",
+        "reload": "Reload",
+        "rename": "Rename",
+        "duplicate": "Duplicate",
+        "openClipboardUrl": "Open Clipboard URL ({{hostname}})"
+    },
+    "menu": {
+        "file": "File",
+        "edit": "Edit",
+        "view": "View",
+        "help": "Help"
+    },
+    "common": {
+        "github": "GitHub",
+        "website": "Website",
+        "acknowledgements": "Acknowledgements",
+        "copyright": "© {{year}} Command Line Inc.",
+        "clientVersion": "Client Version {{version}} ({{buildTime}})",
+        "updateChannel": "Update Channel: {{channel}}",
+        "closeEsc": "Close (ESC)",
+        "loading": "Loading...",
+        "error": "Error",
+        "warning": "Warning",
+        "info": "Information",
+        "success": "Success"
+    },
+    "workspace": {
+        "switchWorkspace": "Switch workspace",
+        "openWorkspace": "Open workspace",
+        "createNew": "Create new workspace",
+        "save": "Save workspace",
+        "edit": "Edit workspace",
+        "delete": "Delete workspace",
+        "unnamed": "Unnamed Workspace",
+        "currentWorkspace": "This is your current workspace",
+        "openInWindow": "This workspace is open"
+    },
+    "tab": {
+        "loading": "Tab Loading",
+        "notFound": "Tab Not Found",
+        "newTab": "New Tab",
+        "pinTab": "Pin Tab",
+        "unpinTab": "Unpin Tab",
+        "renameTab": "Rename Tab",
+        "copyTabId": "Copy Tab ID",
+        "closeTab": "Close Tab",
+        "backgrounds": "Backgrounds",
+        "appMenu": "Application Menu"
+    },
+    "configFiles": {
+        "title": "Config Files",
+        "deprecated": "Deprecated"
+    }
+}

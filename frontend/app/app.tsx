@@ -1,6 +1,7 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { useLanguageSync } from "@/app/i18n/hooks";
 import { Workspace } from "@/app/workspace/workspace";
 import { ContextMenuModel } from "@/store/contextmenu";
 import { atoms, createBlock, getSettingsPrefixAtom, globalStore, isDev, removeFlashError } from "@/store/global";
@@ -16,6 +17,7 @@ import "overlayscrollbars/overlayscrollbars.css";
 import { Fragment, useEffect, useState } from "react";
 import { DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
+import { useTranslation } from "react-i18next";
 import { AppBackground } from "./app-bg";
 import { CenteredDiv } from "./element/quickelems";
 import { NotificationBubbles } from "./notification/notificationbubbles";
@@ -91,20 +93,25 @@ async function handleContextMenu(e: React.MouseEvent<HTMLDivElement>) {
     if (!canPaste && !canCopy && !canCut && !clipboardURL) {
         return;
     }
+
+    // 使用i18n翻译 - 从i18n实例获取
+    const i18n = await import("@/app/i18n/config");
+    const t = i18n.default.t.bind(i18n.default);
+
     let menu: ContextMenuItem[] = [];
     if (canCut) {
-        menu.push({ label: "Cut", role: "cut" });
+        menu.push({ label: t("actions.cut"), role: "cut" });
     }
     if (canCopy) {
-        menu.push({ label: "Copy", role: "copy" });
+        menu.push({ label: t("actions.copy"), role: "copy" });
     }
     if (canPaste) {
-        menu.push({ label: "Paste", role: "paste" });
+        menu.push({ label: t("actions.paste"), role: "paste" });
     }
     if (clipboardURL) {
         menu.push({ type: "separator" });
         menu.push({
-            label: "Open Clipboard URL (" + clipboardURL.hostname + ")",
+            label: t("actions.openClipboardUrl", { hostname: clipboardURL.hostname }),
             click: () => {
                 createBlock({
                     meta: {
@@ -276,6 +283,9 @@ const AppInner = () => {
     const client = useAtomValue(atoms.client);
     const windowData = useAtomValue(atoms.waveWindow);
     const isFullScreen = useAtomValue(atoms.isFullScreen);
+
+    // 同步语言设置
+    useLanguageSync();
 
     if (client == null || windowData == null) {
         return (

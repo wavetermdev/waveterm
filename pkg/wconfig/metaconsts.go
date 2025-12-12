@@ -12,6 +12,7 @@ const (
 	ConfigKey_AppDefaultNewBlock             = "app:defaultnewblock"
 	ConfigKey_AppShowOverlayBlockNums        = "app:showoverlayblocknums"
 	ConfigKey_AppCtrlVPaste                  = "app:ctrlvpaste"
+	ConfigKey_AppLanguage                    = "app:language"
 
 	ConfigKey_FeatureWaveAppBuilder          = "feature:waveappbuilder"
 

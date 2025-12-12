@@ -1,6 +1,7 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import "@/app/i18n/config";
 import { App } from "@/app/app";
 import {
     globalRefocus,

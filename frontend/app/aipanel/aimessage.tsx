@@ -4,6 +4,7 @@
 import { WaveStreamdown } from "@/app/element/streamdown";
 import { cn } from "@/util/util";
 import { memo, useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { getFileIcon } from "./ai-utils";
 import { AIFeedbackButtons } from "./aifeedbackbuttons";
 import { AIToolUseGroup } from "./aitooluse";
@@ -180,7 +181,7 @@ const getThinkingMessage = (
     parts: WaveUIMessagePart[],
     isStreaming: boolean,
     role: string
-): { message: string; reasoningText?: string; isWaitingApproval?: boolean } | null => {
+): { messageKey: string; reasoningText?: string; isWaitingApproval?: boolean } | null => {
     if (!isStreaming || role !== "assistant") {
         return null;
     }
@@ -190,24 +191,25 @@ const getThinkingMessage = (
     );
 
     if (hasPendingApprovals) {
-        return { message: "Waiting for Tool Approvals...", isWaitingApproval: true };
+        return { messageKey: "message.waitingApproval", isWaitingApproval: true };
     }
 
     const lastPart = parts[parts.length - 1];
 
     if (lastPart?.type === "reasoning") {
         const reasoningContent = lastPart.text || "";
-        return { message: "AI is thinking...", reasoningText: reasoningContent };
+        return { messageKey: "message.thinking", reasoningText: reasoningContent };
     }
 
     if (lastPart?.type === "text" && lastPart.text) {
         return null;
     }
 
-    return { message: "" };
+    return { messageKey: "" };
 };
 
 export const AIMessage = memo(({ message, isStreaming }: AIMessageProps) => {
+    const { t } = useTranslation("ai");
     const parts = message.parts || [];
     const displayParts = parts.filter(isDisplayPart);
     const fileParts = parts.filter(
@@ -228,7 +230,7 @@ export const AIMessage = memo(({ message, isStreaming }: AIMessageProps) => {
                 )}
             >
                 {displayParts.length === 0 && !isStreaming && !thinkingData ? (
-                    <div className="whitespace-pre-wrap break-words">(no text content)</div>
+                    <div className="whitespace-pre-wrap break-words">{t("message.noContent")}</div>
                 ) : (
                     <>
                         {groupedParts.map((group, index: number) =>
@@ -243,7 +245,7 @@ export const AIMessage = memo(({ message, isStreaming }: AIMessageProps) => {
                         {thinkingData != null && (
                             <div className="mt-2">
                                 <AIThinking
-                                    message={thinkingData.message}
+                                    message={thinkingData.messageKey ? t(thinkingData.messageKey) : ""}
                                     reasoningText={thinkingData.reasoningText}
                                     isWaitingApproval={thinkingData.isWaitingApproval}
                                 />

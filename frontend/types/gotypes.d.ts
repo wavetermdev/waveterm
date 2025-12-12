@@ -1058,6 +1058,7 @@ declare global {
         "app:defaultnewblock"?: string;
         "app:showoverlayblocknums"?: boolean;
         "app:ctrlvpaste"?: boolean;
+        "app:language"?: string;
         "feature:waveappbuilder"?: boolean;
         "ai:*"?: boolean;
         "ai:preset"?: string;
@@ -1221,6 +1222,7 @@ declare global {
         "settings:customsettings"?: number;
         "settings:customaimodes"?: number;
         "settings:secretscount"?: number;
+        "settings:transparent"?: boolean;
         "activity:activeminutes"?: number;
         "activity:fgminutes"?: number;
         "activity:openminutes"?: number;
@@ -1305,6 +1307,7 @@ declare global {
         "settings:customsettings"?: number;
         "settings:customaimodes"?: number;
         "settings:secretscount"?: number;
+        "settings:transparent"?: boolean;
     };
 
     // waveobj.Tab

@@ -1,6 +1,7 @@
 import { fireAndForget, makeIconClass } from "@/util/util";
 import clsx from "clsx";
 import { memo, useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Button } from "../element/button";
 import { Input } from "../element/input";
 import { WorkspaceService } from "../store/services";
@@ -80,6 +81,7 @@ const WorkspaceEditorComponent = ({
     onIconChange,
     onDeleteWorkspace,
 }: WorkspaceEditorProps) => {
+    const { t } = useTranslation("common");
     const inputRef = useRef<HTMLInputElement>(null);
 
     const [colors, setColors] = useState<string[]>([]);
@@ -115,7 +117,7 @@ const WorkspaceEditorComponent = ({
             <IconSelector selectedIcon={icon} icons={icons} onSelect={onIconChange} />
             <div className="delete-ws-btn-wrapper">
                 <Button className="ghost red text-[12px] bold" onClick={onDeleteWorkspace}>
-                    Delete workspace
+                    {t("workspace.delete")}
                 </Button>
             </div>
         </div>

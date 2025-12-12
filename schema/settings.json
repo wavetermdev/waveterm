@@ -23,6 +23,9 @@
         "app:ctrlvpaste": {
           "type": "boolean"
         },
+        "app:language": {
+          "type": "string"
+        },
         "feature:waveappbuilder": {
           "type": "boolean"
         },

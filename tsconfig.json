@@ -22,7 +22,8 @@
             "@/store/*": ["frontend/app/store/*"],
             "@/view/*": ["frontend/app/view/*"],
             "@/element/*": ["frontend/app/element/*"],
-            "@/shadcn/*": ["frontend/app/shadcn/*"]
+            "@/shadcn/*": ["frontend/app/shadcn/*"],
+            "@/locales/*": ["frontend/locales/*"]
         },
         "lib": ["dom", "dom.iterable", "es6"],
         "allowJs": true,

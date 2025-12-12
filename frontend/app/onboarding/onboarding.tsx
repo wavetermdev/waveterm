@@ -9,6 +9,7 @@ import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
 import * as services from "@/store/services";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { debounce } from "throttle-debounce";
 
 import { OnboardingFeatures } from "@/app/onboarding/onboarding-features";
@@ -29,6 +30,7 @@ type PageName = "init" | "notelemetrystar" | "features";
 const pageNameAtom: PrimitiveAtom<PageName> = atom<PageName>("init");
 
 const InitPage = ({ isCompact }: { isCompact: boolean }) => {
+    const { t } = useTranslation("onboarding");
     const settings = useAtomValue(atoms.settingsAtom);
     const clientData = useAtomValue(atoms.client);
     const [telemetryEnabled, setTelemetryEnabled] = useState<boolean>(!!settings["telemetry:enabled"]);
@@ -52,7 +54,7 @@ const InitPage = ({ isCompact }: { isCompact: boolean }) => {
         );
     };
 
-    const label = telemetryEnabled ? "Enabled" : "Disabled";
+    const label = telemetryEnabled ? t("welcome.telemetryEnabled") : t("welcome.telemetryDisabled");
 
     return (
         <div className="flex flex-col h-full">
@@ -62,7 +64,7 @@ const InitPage = ({ isCompact }: { isCompact: boolean }) => {
                 <div className={`${isCompact ? "" : "mb-2.5"} flex justify-center`}>
                     <Logo />
                 </div>
-                <div className="text-center text-[25px] font-normal text-foreground">Welcome to Wave Terminal</div>
+                <div className="text-center text-[25px] font-normal text-foreground">{t("welcome.title")}</div>
             </header>
             <OverlayScrollbarsComponent
                 className="flex-1 overflow-y-auto min-h-0"
@@ -80,17 +82,9 @@ const InitPage = ({ isCompact }: { isCompact: boolean }) => {
                             </a>
                         </div>
                         <div className="flex flex-col items-start gap-1 flex-1">
-                            <div className="text-foreground text-base leading-[18px]">Support us on GitHub</div>
+                            <div className="text-foreground text-base leading-[18px]">{t("welcome.supportGithub")}</div>
                             <div className="text-secondary leading-5">
-                                We're <i>open source</i> and committed to providing a free terminal for individual
-                                users. Please show your support by giving us a star on{" "}
-                                <a
-                                    target="_blank"
-                                    href="https://github.com/wavetermdev/waveterm?ref=install"
-                                    rel={"noopener"}
-                                >
-                                    Github&nbsp;(wavetermdev/waveterm)
-                                </a>
+                                {t("welcome.supportGithubDesc")}
                             </div>
                         </div>
                     </div>
@@ -101,13 +95,12 @@ const InitPage = ({ isCompact }: { isCompact: boolean }) => {
                             </a>
                         </div>
                         <div className="flex flex-col items-start gap-1 flex-1">
-                            <div className="text-foreground text-base leading-[18px]">Join our Community</div>
+                            <div className="text-foreground text-base leading-[18px]">{t("welcome.joinCommunity")}</div>
                             <div className="text-secondary leading-5">
-                                Get help, submit feature requests, report bugs, or just chat with fellow terminal
-                                enthusiasts.
+                                {t("welcome.joinCommunityDesc")}
                                 <br />
                                 <a target="_blank" href="https://discord.gg/XfvZ334gwU" rel={"noopener"}>
-                                    Join the Wave&nbsp;Discord&nbsp;Channel
+                                    {t("welcome.joinDiscord")}
                                 </a>
                             </div>
                         </div>
@@ -118,7 +111,7 @@ const InitPage = ({ isCompact }: { isCompact: boolean }) => {
                         </div>
                         <div className="flex flex-col items-start gap-1 flex-1">
                             <div className="text-secondary leading-5">
-                                Anonymous usage data helps us improve features you use.
+                                {t("welcome.telemetryDesc")}
                                 <br />
                                 <a
                                     className="plain-link"
@@ -126,7 +119,7 @@ const InitPage = ({ isCompact }: { isCompact: boolean }) => {
                                     href="https://waveterm.dev/privacy"
                                     rel="noopener"
                                 >
-                                    Privacy Policy
+                                    {t("welcome.telemetryPrivacy")}
                                 </a>
                             </div>
                             <label className="flex items-center gap-2 cursor-pointer text-secondary">
@@ -145,7 +138,7 @@ const InitPage = ({ isCompact }: { isCompact: boolean }) => {
             <footer className={`unselectable flex-shrink-0 ${isCompact ? "mt-2" : "mt-5"}`}>
                 <div className="flex flex-row items-center justify-center [&>button]:!px-5 [&>button]:!py-2 [&>button]:text-sm [&>button:not(:first-child)]:ml-2.5">
                     <Button className="font-[600]" onClick={acceptTos}>
-                        Continue
+                        {t("welcome.continue")}
                     </Button>
                 </div>
             </footer>
@@ -154,6 +147,7 @@ const InitPage = ({ isCompact }: { isCompact: boolean }) => {
 };
 
 const NoTelemetryStarPage = ({ isCompact }: { isCompact: boolean }) => {
+    const { t } = useTranslation("onboarding");
     const setPageName = useSetAtom(pageNameAtom);
 
     const handleStarClick = async () => {
@@ -181,7 +175,7 @@ const NoTelemetryStarPage = ({ isCompact }: { isCompact: boolean }) => {
                 <div className={`flex justify-center`}>
                     <Logo />
                 </div>
-                <div className="text-center text-[25px] font-normal text-foreground">Telemetry Disabled ✓</div>
+                <div className="text-center text-[25px] font-normal text-foreground">{t("notelemetrystar.title")}</div>
             </header>
             <OverlayScrollbarsComponent
                 className="flex-1 overflow-y-auto min-h-0"
@@ -189,21 +183,18 @@ const NoTelemetryStarPage = ({ isCompact }: { isCompact: boolean }) => {
             >
                 <div className="flex flex-col items-center gap-6 w-full mb-2 unselectable">
                     <div className="text-center text-secondary leading-relaxed max-w-md">
-                        <p className="mb-4">No problem, we respect your privacy.</p>
-                        <p className="mb-4">
-                            But, without usage data, we're flying blind. A GitHub star helps us know Wave is useful and
-                            worth maintaining.
-                        </p>
+                        <p className="mb-4">{t("notelemetrystar.noProblem")}</p>
+                        <p className="mb-4">{t("notelemetrystar.needSupport")}</p>
                     </div>
                 </div>
             </OverlayScrollbarsComponent>
             <footer className={`unselectable flex-shrink-0 mt-2`}>
                 <div className="flex flex-row items-center justify-center gap-2.5 [&>button]:!px-5 [&>button]:!py-2 [&>button]:text-sm [&>button]:!h-[37px]">
                     <Button className="outlined green font-[600]" onClick={handleStarClick}>
-                        ⭐ Star on GitHub
+                        {t("notelemetrystar.starOnGithub")}
                     </Button>
                     <Button className="outlined grey font-[600]" onClick={handleMaybeLater}>
-                        Maybe Later
+                        {t("notelemetrystar.maybeLater")}
                     </Button>
                 </div>
             </footer>
