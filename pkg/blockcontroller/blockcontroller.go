@@ -212,7 +212,7 @@ func ResyncController(ctx context.Context, tabId string, blockId string, rtOpts 
 		// For shell/cmd, check connection status first
 		if controllerName == BlockController_Shell || controllerName == BlockController_Cmd {
 			connName := blockData.Meta.GetString(waveobj.MetaKey_Connection, "")
-			if connName != "" {
+			if !conncontroller.IsLocalConnName(connName) {
 				err = CheckConnStatus(blockId)
 				if err != nil {
 					return fmt.Errorf("cannot start shellproc: %w", err)
@@ -362,7 +362,7 @@ func CheckConnStatus(blockId string) error {
 		return fmt.Errorf("error getting block: %w", err)
 	}
 	connName := bdata.Meta.GetString(waveobj.MetaKey_Connection, "")
-	if connName == "" {
+	if conncontroller.IsLocalConnName(connName) {
 		return nil
 	}
 	if strings.HasPrefix(connName, "wsl://") {

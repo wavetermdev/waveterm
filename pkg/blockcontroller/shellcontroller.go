@@ -334,7 +334,7 @@ func (bc *ShellController) getConnUnion(logCtx context.Context, remoteName strin
 		rtn.ConnType = ConnType_Wsl
 		rtn.WslConn = wslConn
 		rtn.WshEnabled = wshEnabled && wslConn.WshEnabled.Load()
-	} else if strings.HasPrefix(remoteName, "local:") || remoteName == "local" || remoteName == "" {
+	} else if conncontroller.IsLocalConnName(remoteName) {
 		rtn.ConnType = ConnType_Local
 		rtn.WshEnabled = wshEnabled
 	} else {
