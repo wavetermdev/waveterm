@@ -4,6 +4,7 @@
 import { WaveStreamdown } from "@/app/element/streamdown";
 import { cn } from "@/util/util";
 import { memo, useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { getFileIcon } from "./ai-utils";
 import { AIFeedbackButtons } from "./aifeedbackbuttons";
 import { AIToolUseGroup } from "./aitooluse";
@@ -208,6 +209,7 @@ const getThinkingMessage = (
 };
 
 export const AIMessage = memo(({ message, isStreaming }: AIMessageProps) => {
+    const { t } = useTranslation("ai");
     const parts = message.parts || [];
     const displayParts = parts.filter(isDisplayPart);
     const fileParts = parts.filter(
@@ -228,7 +230,7 @@ export const AIMessage = memo(({ message, isStreaming }: AIMessageProps) => {
                 )}
             >
                 {displayParts.length === 0 && !isStreaming && !thinkingData ? (
-                    <div className="whitespace-pre-wrap break-words">(no text content)</div>
+                    <div className="whitespace-pre-wrap break-words">{t("message.noContent")}</div>
                 ) : (
                     <>
                         {groupedParts.map((group, index: number) =>
@@ -243,7 +245,7 @@ export const AIMessage = memo(({ message, isStreaming }: AIMessageProps) => {
                         {thinkingData != null && (
                             <div className="mt-2">
                                 <AIThinking
-                                    message={thinkingData.message}
+                                    message={t(thinkingData.message)}
                                     reasoningText={thinkingData.reasoningText}
                                     isWaitingApproval={thinkingData.isWaitingApproval}
                                 />

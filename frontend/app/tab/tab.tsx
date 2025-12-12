@@ -10,6 +10,7 @@ import { fireAndForget } from "@/util/util";
 import clsx from "clsx";
 import { useAtomValue } from "jotai";
 import { forwardRef, memo, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { ObjectService } from "../store/services";
 import { makeORef, useWaveObjectValue } from "../store/wos";
 import { TabBarModel } from "./tabbar-model";
@@ -54,6 +55,7 @@ const Tab = memo(
             const [originalName, setOriginalName] = useState("");
             const [isEditable, setIsEditable] = useState(false);
             const [isJiggling, setIsJiggling] = useState(false);
+            const { t } = useTranslation("common");
 
             const jiggleTrigger = useAtomValue(TabBarModel.getInstance().jigglePinAtom);
 
@@ -165,10 +167,10 @@ const Tab = memo(
                 (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
                     e.preventDefault();
                     let menu: ContextMenuItem[] = [
-                        { label: isPinned ? "Unpin Tab" : "Pin Tab", click: () => onPinChange() },
-                        { label: "Rename Tab", click: () => handleRenameTab(null) },
+                        { label: isPinned ? t("tab.unpinTab") : t("tab.pinTab"), click: () => onPinChange() },
+                        { label: t("tab.renameTab"), click: () => handleRenameTab(null) },
                         {
-                            label: "Copy TabId",
+                            label: t("tab.copyTabId"),
                             click: () => fireAndForget(() => navigator.clipboard.writeText(id)),
                         },
                         { type: "separator" },
@@ -203,12 +205,12 @@ const Tab = memo(
                                     }),
                             });
                         }
-                        menu.push({ label: "Backgrounds", type: "submenu", submenu }, { type: "separator" });
+                        menu.push({ label: t("tab.backgrounds"), type: "submenu", submenu }, { type: "separator" });
                     }
-                    menu.push({ label: "Close Tab", click: () => onClose(null) });
+                    menu.push({ label: t("tab.closeTab"), click: () => onClose(null) });
                     ContextMenuModel.showContextMenu(menu, e);
                 },
-                [onPinChange, handleRenameTab, id, onClose, isPinned]
+                [onPinChange, handleRenameTab, id, onClose, isPinned, t]
             );
 
             return (
@@ -244,7 +246,7 @@ const Tab = memo(
                                     e.stopPropagation();
                                     onPinChange();
                                 }}
-                                title="Unpin Tab"
+                                title={t("tab.unpinTab")}
                             >
                                 <i className="fa fa-solid fa-thumbtack" />
                             </Button>
@@ -253,7 +255,7 @@ const Tab = memo(
                                 className="ghost grey close"
                                 onClick={onClose}
                                 onMouseDown={handleMouseDownOnClose}
-                                title="Close Tab"
+                                title={t("tab.closeTab")}
                             >
                                 <i className="fa fa-solid fa-xmark" />
                             </Button>

@@ -198,6 +198,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
     const isFullScreen = useAtomValue(atoms.isFullScreen);
     const zoomFactor = useAtomValue(atoms.zoomFactorAtom);
     const settings = useAtomValue(atoms.settingsAtom);
+    const { t } = useTranslation("common");
 
     let prevDelta: number;
     let prevDragDirection: string;
@@ -681,7 +682,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
         elemtype: "iconbutton",
         icon: "plus",
         click: handleAddTab,
-        title: "Add Tab",
+        title: t("tab.newTab"),
     };
     return (
         <div ref={tabbarWrapperRef} className="tab-bar-wrapper">
@@ -695,6 +696,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
                     ref={appMenuButtonRef}
                     className="flex items-center justify-center pr-1.5 text-[26px] select-none cursor-pointer text-secondary hover:text-primary"
                     style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
+                    title={t("tab.appMenu")}
                     onClick={onEllipsisClick}
                 >
                     <i className="fa fa-ellipsis" />

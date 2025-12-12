@@ -8,6 +8,7 @@ import { Tooltip } from "@/element/tooltip";
 import { cn } from "@/util/util";
 import { useAtom, useAtomValue } from "jotai";
 import { memo, useCallback, useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 
 interface AIPanelInputProps {
     onSubmit: (e: React.FormEvent) => void;
@@ -22,6 +23,7 @@ export interface AIPanelInputRef {
 }
 
 export const AIPanelInput = memo(({ onSubmit, status, model }: AIPanelInputProps) => {
+    const { t } = useTranslation("ai");
     const [input, setInput] = useAtom(model.inputAtom);
     const isFocused = useAtomValue(model.isWaveAIFocusedAtom);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -138,7 +140,9 @@ export const AIPanelInput = memo(({ onSubmit, status, model }: AIPanelInputProps
                         onKeyDown={handleKeyDown}
                         onFocus={handleFocus}
                         onBlur={handleBlur}
-                        placeholder={model.inBuilder ? "What would you like to build..." : "Ask Wave AI anything..."}
+                        placeholder={
+                            model.inBuilder ? t("input.placeholderBuilder") : t("input.placeholderDefault")
+                        }
                         className={cn(
                             "w-full  text-white px-2 py-2 pr-5 focus:outline-none resize-none overflow-auto",
                             isFocused ? "bg-accent-900/50" : "bg-gray-800"
@@ -146,7 +150,7 @@ export const AIPanelInput = memo(({ onSubmit, status, model }: AIPanelInputProps
                         style={{ fontSize: "13px" }}
                         rows={2}
                     />
-                    <Tooltip content="Attach files" placement="top" divClassName="absolute bottom-6.5 right-1">
+                    <Tooltip content={t("input.attachFiles")} placement="top" divClassName="absolute bottom-6.5 right-1">
                         <button
                             type="button"
                             onClick={handleUploadClick}
@@ -157,7 +161,7 @@ export const AIPanelInput = memo(({ onSubmit, status, model }: AIPanelInputProps
                             <i className="fa fa-paperclip text-sm"></i>
                         </button>
                     </Tooltip>
-                    <Tooltip content="Send message (Enter)" placement="top" divClassName="absolute bottom-1.5 right-1">
+                    <Tooltip content={t("input.sendMessage")} placement="top" divClassName="absolute bottom-1.5 right-1">
                         <button
                             type="submit"
                             disabled={status !== "ready" || !input.trim()}

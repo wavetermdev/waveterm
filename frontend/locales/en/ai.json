@@ -1,4 +1,59 @@
 {
-    "waveai": "AI",
-    "placeholder": "AI panel translations"
+    "panel": {
+        "title": "Wave AI",
+        "welcome": "Welcome to Wave AI",
+        "welcomeDesc": "Wave AI is your terminal assistant with context. I can read your terminal output, analyze widgets, access files, and help you solve problems faster."
+    },
+    "input": {
+        "placeholderDefault": "Ask Wave AI anything...",
+        "placeholderBuilder": "What would you like to build...",
+        "attachFiles": "Attach files",
+        "sendMessage": "Send message (Enter)"
+    },
+    "message": {
+        "waitingApproval": "Waiting for Tool Approvals...",
+        "thinking": "AI is thinking...",
+        "noContent": "(no text content)",
+        "file": "File",
+        "goodResponse": "Good Response",
+        "badResponse": "Bad Response",
+        "copyMessage": "Copy Message"
+    },
+    "dragDrop": {
+        "title": "Drop files here",
+        "supported": "Images, PDFs, and text/code files supported"
+    },
+    "header": {
+        "context": "Context",
+        "widgetContext": "Widget Context",
+        "widgetAccessOn": "Widget Access ON",
+        "widgetAccessOff": "Widget Access OFF",
+        "moreOptions": "More options"
+    },
+    "gettingStarted": {
+        "title": "Getting Started:",
+        "widgetContext": "Widget Context",
+        "widgetContextOn": "When ON, I can read your terminal and analyze widgets.",
+        "widgetContextOff": "When OFF, I'm sandboxed with no system access.",
+        "dragDrop": "Drag & drop files or images for analysis",
+        "newChat": "to start a new chat",
+        "focusPanel": "to focus Wave AI"
+    },
+    "telemetryRequired": {
+        "title": "Wave AI",
+        "description": "Wave AI is free to use and provides integrated AI chat that can interact with your widgets, help you with code, analyze files, and assist with your terminal workflows.",
+        "telemetryTitle": "Telemetry keeps Wave AI free",
+        "telemetryDesc1": "To keep Wave AI free for everyone, we require a small amount of anonymous usage data (app version, feature usage, system info).",
+        "telemetryDesc2": "This helps us block abuse by automated systems and ensure it's used by real people like you.",
+        "telemetryDesc3": "We never collect your files, prompts, keystrokes, hostnames, or personally identifying information. Wave AI is powered by OpenAI's APIs, please refer to OpenAI's privacy policy for details on how they handle your data.",
+        "enableButton": "Enable Telemetry and Continue",
+        "enabling": "Enabling...",
+        "privacyPolicy": "Privacy Policy"
+    },
+    "byok": {
+        "title": "New: BYOK & Local AI Support",
+        "description": "Wave AI now supports bring-your-own-key (BYOK) with OpenAI, Google Gemini, Azure, and OpenRouter, plus local models via Ollama, LM Studio, and other OpenAI-compatible providers.",
+        "configure": "Configure AI Modes",
+        "viewDocs": "View Docs"
+    }
 }

@@ -1,4 +1,59 @@
 {
-    "waveai": "AI",
-    "placeholder": "AI面板翻译"
+    "panel": {
+        "title": "Wave AI",
+        "welcome": "欢迎使用 Wave AI",
+        "welcomeDesc": "Wave AI 是您的终端助手,具有上下文感知能力。我可以读取您的终端输出、分析小部件、访问文件,并帮助您更快地解决问题。"
+    },
+    "input": {
+        "placeholderDefault": "询问 Wave AI 任何问题...",
+        "placeholderBuilder": "您想构建什么...",
+        "attachFiles": "附加文件",
+        "sendMessage": "发送消息 (Enter)"
+    },
+    "message": {
+        "waitingApproval": "等待工具批准...",
+        "thinking": "AI 思考中...",
+        "noContent": "(无文本内容)",
+        "file": "文件",
+        "goodResponse": "好评",
+        "badResponse": "差评",
+        "copyMessage": "复制消息"
+    },
+    "dragDrop": {
+        "title": "拖放文件到此处",
+        "supported": "支持图片、PDF和文本/代码文件"
+    },
+    "header": {
+        "context": "上下文",
+        "widgetContext": "小部件上下文",
+        "widgetAccessOn": "小部件访问 已开启",
+        "widgetAccessOff": "小部件访问 已关闭",
+        "moreOptions": "更多选项"
+    },
+    "gettingStarted": {
+        "title": "快速入门:",
+        "widgetContext": "小部件上下文",
+        "widgetContextOn": "开启时,我可以读取您的终端并分析小部件。",
+        "widgetContextOff": "关闭时,我处于沙盒模式,无法访问系统。",
+        "dragDrop": "拖放文件或图片进行分析",
+        "newChat": "开始新对话",
+        "focusPanel": "聚焦 Wave AI"
+    },
+    "telemetryRequired": {
+        "title": "Wave AI",
+        "description": "Wave AI 免费使用,提供集成的 AI 聊天功能,可以与您的小部件交互、帮助您编写代码、分析文件,并协助您的终端工作流程。",
+        "telemetryTitle": "遥测数据使 Wave AI 保持免费",
+        "telemetryDesc1": "为了让所有人都能免费使用 Wave AI,我们需要收集少量匿名使用数据(应用版本、功能使用情况、系统信息)。",
+        "telemetryDesc2": "这有助于我们阻止自动化系统的滥用,并确保它被像您这样的真实用户使用。",
+        "telemetryDesc3": "我们绝不会收集您的文件、提示、按键、主机名或个人身份信息。Wave AI 由 OpenAI 的 API 提供支持,有关他们如何处理您的数据的详细信息,请参阅 OpenAI 的隐私政策。",
+        "enableButton": "启用遥测并继续",
+        "enabling": "启用中...",
+        "privacyPolicy": "隐私政策"
+    },
+    "byok": {
+        "title": "新功能: BYOK 和本地 AI 支持",
+        "description": "Wave AI 现在支持自带密钥 (BYOK),兼容 OpenAI、Google Gemini、Azure 和 OpenRouter,还支持通过 Ollama、LM Studio 和其他兼容 OpenAI 的提供商使用本地模型。",
+        "configure": "配置 AI 模式",
+        "viewDocs": "查看文档"
+    }
 }

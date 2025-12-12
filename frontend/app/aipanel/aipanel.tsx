@@ -14,6 +14,7 @@ import { DefaultChatTransport } from "ai";
 import * as jotai from "jotai";
 import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { useDrop } from "react-dnd";
+import { useTranslation } from "react-i18next";
 import { formatFileSizeError, isAcceptableFile, validateFileSize } from "./ai-utils";
 import { AIDroppedFiles } from "./aidroppedfiles";
 import { AIModeDropdown } from "./aimode";
@@ -51,6 +52,7 @@ const AIBlockMask = memo(() => {
 AIBlockMask.displayName = "AIBlockMask";
 
 const AIDragOverlay = memo(() => {
+    const { t } = useTranslation("ai");
     return (
         <div
             key="drag-overlay"
@@ -58,8 +60,8 @@ const AIDragOverlay = memo(() => {
         >
             <div className="text-accent text-center">
                 <i className="fa fa-upload text-3xl mb-2"></i>
-                <div className="text-lg font-semibold">Drop files here</div>
-                <div className="text-sm">Images, PDFs, and text/code files supported</div>
+                <div className="text-lg font-semibold">{t("dragDrop.title")}</div>
+                <div className="text-sm">{t("dragDrop.supported")}</div>
             </div>
         </div>
     );

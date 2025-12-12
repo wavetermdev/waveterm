@@ -66,7 +66,14 @@
     "tab": {
         "loading": "标签页加载中",
         "notFound": "标签页未找到",
-        "newTab": "新建标签页"
+        "newTab": "新建标签页",
+        "pinTab": "固定标签页",
+        "unpinTab": "取消固定",
+        "renameTab": "重命名标签页",
+        "copyTabId": "复制标签ID",
+        "closeTab": "关闭标签页",
+        "backgrounds": "背景",
+        "appMenu": "应用菜单"
     },
     "configFiles": {
         "title": "配置文件",
