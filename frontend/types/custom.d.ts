@@ -22,6 +22,7 @@ declare global {
         tabAtom: jotai.Atom<Tab>; // driven from WOS
         staticTabId: jotai.Atom<string>;
         isFullScreen: jotai.PrimitiveAtom<boolean>;
+        zoomFactorAtom: jotai.PrimitiveAtom<number>;
         controlShiftDelayAtom: jotai.PrimitiveAtom<boolean>;
         prefersReducedMotionAtom: jotai.Atom<boolean>;
         updaterStatusAtom: jotai.PrimitiveAtom<UpdaterStatus>;

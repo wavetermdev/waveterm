@@ -12,13 +12,13 @@ import { RpcApi } from "../frontend/app/store/wshclientapi";
 import { getWebServerEndpoint } from "../frontend/util/endpoints";
 import * as keyutil from "../frontend/util/keyutil";
 import { fireAndForget, parseDataUrl } from "../frontend/util/util";
+import { incrementTermCommandsRun } from "./emain-activity";
 import { createBuilderWindow, getAllBuilderWindows, getBuilderWindowByWebContentsId } from "./emain-builder";
 import { callWithOriginalXdgCurrentDesktopAsync, unamePlatform } from "./emain-platform";
 import { getWaveTabViewByWebContentsId } from "./emain-tabview";
 import { handleCtrlShiftState } from "./emain-util";
 import { getWaveVersion } from "./emain-wavesrv";
 import { createNewWaveWindow, focusedWaveWindow, getWaveWindowByWebContentsId } from "./emain-window";
-import { incrementTermCommandsRun } from "./emain-activity";
 import { ElectronWshClient } from "./emain-wsh";
 
 const electronApp = electron.app;
@@ -29,9 +29,7 @@ let webviewKeys: string[] = [];
 export function openBuilderWindow(appId?: string) {
     const normalizedAppId = appId || "";
     const existingBuilderWindows = getAllBuilderWindows();
-    const existingWindow = existingBuilderWindows.find(
-        (win) => win.builderAppId === normalizedAppId
-    );
+    const existingWindow = existingBuilderWindows.find((win) => win.builderAppId === normalizedAppId);
     if (existingWindow) {
         existingWindow.focus();
         return;
@@ -314,12 +312,12 @@ export function initIpcHandlers() {
         tabView?.setKeyboardChordMode(true);
     });
 
-    if (unamePlatform !== "darwin") {
-        const fac = new FastAverageColor();
-
-        electron.ipcMain.on("update-window-controls-overlay", async (event, rect: Dimensions) => {
+    const fac = new FastAverageColor();
+    electron.ipcMain.on("update-window-controls-overlay", async (event, rect: Dimensions) => {
+        if (unamePlatform === "darwin") return;
+        try {
             const fullConfig = await RpcApi.GetFullConfigCommand(ElectronWshClient);
-            if (fullConfig.settings["window:nativetitlebar"]) return;
+            if (fullConfig?.settings?.["window:nativetitlebar"] && unamePlatform !== "win32") return;
 
             const zoomFactor = event.sender.getZoomFactor();
             const electronRect: Electron.Rectangle = {
@@ -337,18 +335,18 @@ export function initIpcHandlers() {
                 color: unamePlatform === "linux" ? color.rgba : "#00000000",
                 symbolColor: color.isDark ? "white" : "black",
             });
-        });
-    }
+        } catch (e) {
+            console.error("Error updating window controls overlay:", e);
+        }
+    });
 
     electron.ipcMain.on("quicklook", (event, filePath: string) => {
-        if (unamePlatform == "darwin") {
-            child_process.execFile("/usr/bin/qlmanage", ["-p", filePath], (error, stdout, stderr) => {
-                if (error) {
-                    console.error(`Error opening Quick Look: ${error}`);
-                    return;
-                }
-            });
-        }
+        if (unamePlatform !== "darwin") return;
+        child_process.execFile("/usr/bin/qlmanage", ["-p", filePath], (error, stdout, stderr) => {
+            if (error) {
+                console.error(`Error opening Quick Look: ${error}`);
+            }
+        });
     });
 
     electron.ipcMain.handle("clear-webview-storage", async (event, webContentsId: number) => {

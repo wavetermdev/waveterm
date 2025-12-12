@@ -275,7 +275,7 @@ const WaveConfigView = memo(({ blockId, model }: ViewComponentProps<WaveConfigVi
                                 <CodeEditor
                                     blockId={blockId}
                                     text={fileContent}
-                                    fileName={`${model.configDir}/${selectedFile.path}`}
+                                    fileName={`WAVECONFIGPATH/${selectedFile.path}`}
                                     language={selectedFile.language}
                                     readonly={false}
                                     onChange={handleContentChange}
