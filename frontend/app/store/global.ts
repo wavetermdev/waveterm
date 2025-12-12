@@ -17,7 +17,14 @@ import {
 import { getWebServerEndpoint } from "@/util/endpoints";
 import { fetch } from "@/util/fetchutil";
 import { setPlatform } from "@/util/platformutil";
-import { base64ToString, deepCompareReturnPrev, fireAndForget, getPrefixedSettings, isBlank } from "@/util/util";
+import {
+    base64ToString,
+    deepCompareReturnPrev,
+    fireAndForget,
+    getPrefixedSettings,
+    isBlank,
+    isLocalConnName,
+} from "@/util/util";
 import { atom, Atom, PrimitiveAtom, useAtomValue } from "jotai";
 import { globalStore } from "./jotaiStore";
 import { modalsModel } from "./modalmodel";
@@ -730,8 +737,7 @@ function getConnStatusAtom(conn: string): PrimitiveAtom<ConnStatus> {
     const connStatusMap = globalStore.get(ConnStatusMapAtom);
     let rtn = connStatusMap.get(conn);
     if (rtn == null) {
-        if (isBlank(conn)) {
-            // create a fake "local" status atom that's always connected
+        if (isLocalConnName(conn)) {
             const connStatus: ConnStatus = {
                 connection: conn,
                 connected: true,
