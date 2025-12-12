@@ -59,6 +59,9 @@ const TelemetryInitialCountsWait = 5 * time.Second
 const TelemetryCountsInterval = 1 * time.Hour
 const BackupCleanupTick = 2 * time.Minute
 const BackupCleanupInterval = 4 * time.Hour
+const InitialDiagnosticWait = 5 * time.Minute
+const DiagnosticTick = 10 * time.Minute
+const DiagnosticInterval = 24 * time.Hour
 
 var shutdownOnce sync.Once
 
@@ -126,6 +129,40 @@ func telemetryLoop() {
 		}
 		time.Sleep(TelemetryTick)
 	}
+}
+
+func diagnosticLoop() {
+	defer func() {
+		panichandler.PanicHandler("diagnosticLoop", recover())
+	}()
+	if os.Getenv("WAVETERM_NOPING") != "" {
+		log.Printf("WAVETERM_NOPING set, disabling diagnostic ping\n")
+		return
+	}
+	var nextSend int64
+	time.Sleep(InitialDiagnosticWait)
+	for {
+		if time.Now().Unix() > nextSend {
+			nextSend = time.Now().Add(DiagnosticInterval).Unix()
+			sendDiagnosticPing()
+		}
+		time.Sleep(DiagnosticTick)
+	}
+}
+
+func sendDiagnosticPing() {
+	ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancelFn()
+	clientData, err := wstore.DBGetSingleton[*waveobj.Client](ctx)
+	if err != nil {
+		return
+	}
+	if clientData == nil {
+		return
+	}
+	arch := runtime.GOARCH
+	usageTelemetry := telemetry.IsTelemetryEnabled()
+	wcloud.SendDiagnosticPing(ctx, clientData.OID, arch, WaveVersion, usageTelemetry)
 }
 
 func sendNoTelemetryUpdate(telemetryEnabled bool) {
@@ -533,6 +570,7 @@ func main() {
 	maybeStartPprofServer()
 	go stdinReadWatch()
 	go telemetryLoop()
+	go diagnosticLoop()
 	setupTelemetryConfigHandler()
 	go updateTelemetryCountsLoop()
 	go backupCleanupLoop()
