@@ -9,6 +9,7 @@ import { focusedBuilderWindow, getBuilderWindowById } from "./emain-builder";
 import { openBuilderWindow } from "./emain-ipc";
 import { isDev, unamePlatform } from "./emain-platform";
 import { clearTabCache } from "./emain-tabview";
+import { decreaseZoomLevel, increaseZoomLevel } from "./emain-util";
 import {
     createNewWaveWindow,
     createWorkspace,
@@ -123,7 +124,11 @@ function makeEditMenu(fullConfig?: FullConfigType): Electron.MenuItemConstructor
     ];
 }
 
-function makeFileMenu(numWaveWindows: number, callbacks: AppMenuCallbacks, fullConfig: FullConfigType): Electron.MenuItemConstructorOptions[] {
+function makeFileMenu(
+    numWaveWindows: number,
+    callbacks: AppMenuCallbacks,
+    fullConfig: FullConfigType
+): Electron.MenuItemConstructorOptions[] {
     const fileMenu: Electron.MenuItemConstructorOptions[] = [
         {
             label: "New Window",
@@ -242,12 +247,9 @@ function makeViewMenu(
             accelerator: "CommandOrControl+=",
             click: (_, window) => {
                 const wc = getWindowWebContents(window) ?? webContents;
-                if (wc == null) {
-                    return;
+                if (wc) {
+                    increaseZoomLevel(wc);
                 }
-                const newZoom = Math.min(5, wc.getZoomFactor() + 0.2);
-                wc.setZoomFactor(newZoom);
-                wc.send("zoom-factor-change", newZoom);
             },
         },
         {
@@ -255,12 +257,9 @@ function makeViewMenu(
             accelerator: "CommandOrControl+Shift+=",
             click: (_, window) => {
                 const wc = getWindowWebContents(window) ?? webContents;
-                if (wc == null) {
-                    return;
+                if (wc) {
+                    increaseZoomLevel(wc);
                 }
-                const newZoom = Math.min(5, wc.getZoomFactor() + 0.2);
-                wc.setZoomFactor(newZoom);
-                wc.send("zoom-factor-change", newZoom);
             },
             visible: false,
             acceleratorWorksWhenHidden: true,
@@ -270,12 +269,9 @@ function makeViewMenu(
             accelerator: "CommandOrControl+-",
             click: (_, window) => {
                 const wc = getWindowWebContents(window) ?? webContents;
-                if (wc == null) {
-                    return;
+                if (wc) {
+                    decreaseZoomLevel(wc);
                 }
-                const newZoom = Math.max(0.2, wc.getZoomFactor() - 0.2);
-                wc.setZoomFactor(newZoom);
-                wc.send("zoom-factor-change", newZoom);
             },
         },
         {
@@ -283,12 +279,9 @@ function makeViewMenu(
             accelerator: "CommandOrControl+Shift+-",
             click: (_, window) => {
                 const wc = getWindowWebContents(window) ?? webContents;
-                if (wc == null) {
-                    return;
+                if (wc) {
+                    decreaseZoomLevel(wc);
                 }
-                const newZoom = Math.max(0.2, wc.getZoomFactor() - 0.2);
-                wc.setZoomFactor(newZoom);
-                wc.send("zoom-factor-change", newZoom);
             },
             visible: false,
             acceleratorWorksWhenHidden: true,
@@ -380,7 +373,11 @@ export function instantiateAppMenu(workspaceOrBuilderId?: string): Promise<elect
     );
 }
 
-export function makeAppMenu() {
+// does not a set a menu on windows
+export function makeAndSetAppMenu() {
+    if (unamePlatform === "win32") {
+        return;
+    }
     fireAndForget(async () => {
         const menu = await instantiateAppMenu();
         electron.Menu.setApplicationMenu(menu);
@@ -389,7 +386,7 @@ export function makeAppMenu() {
 
 waveEventSubscribe({
     eventType: "workspace:update",
-    handler: makeAppMenu,
+    handler: makeAndSetAppMenu,
 });
 
 function getWebContentsByWorkspaceOrBuilderId(workspaceOrBuilderId: string): electron.WebContents {

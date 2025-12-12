@@ -234,7 +234,7 @@ func updateTelemetryCounts(lastCounts telemetrydata.TEventProps) telemetrydata.T
 		SettingsCustomSettings:  customSettings,
 		SettingsCustomAIModes:   customAIModes,
 	}
-	
+
 	secretsCount, err := secretstore.CountSecrets()
 	if err == nil {
 		props.UserSet.SettingsSecretsCount = secretsCount
@@ -315,17 +315,19 @@ func startupActivityUpdate(firstLaunch bool) {
 	cohortISOWeek := fmt.Sprintf("%04d-W%02d", year, week)
 	userSetOnce.CohortMonth = cohortMonth
 	userSetOnce.CohortISOWeek = cohortISOWeek
+	fullConfig := wconfig.GetWatcher().GetFullConfig()
 	props := telemetrydata.TEventProps{
 		UserSet: &telemetrydata.TEventUserProps{
-			ClientVersion:     "v" + WaveVersion,
-			ClientBuildTime:   BuildTime,
-			ClientArch:        wavebase.ClientArch(),
-			ClientOSRelease:   wavebase.UnameKernelRelease(),
-			ClientIsDev:       wavebase.IsDevMode(),
-			AutoUpdateChannel: autoUpdateChannel,
-			AutoUpdateEnabled: autoUpdateEnabled,
-			LocalShellType:    shellType,
-			LocalShellVersion: shellVersion,
+			ClientVersion:       "v" + WaveVersion,
+			ClientBuildTime:     BuildTime,
+			ClientArch:          wavebase.ClientArch(),
+			ClientOSRelease:     wavebase.UnameKernelRelease(),
+			ClientIsDev:         wavebase.IsDevMode(),
+			AutoUpdateChannel:   autoUpdateChannel,
+			AutoUpdateEnabled:   autoUpdateEnabled,
+			LocalShellType:      shellType,
+			LocalShellVersion:   shellVersion,
+			SettingsTransparent: fullConfig.Settings.WindowTransparent,
 		},
 		UserSetOnce: userSetOnce,
 	}

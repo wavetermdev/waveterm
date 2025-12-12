@@ -72,16 +72,26 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
         getApi().onFullScreenChange((isFullScreen) => {
             globalStore.set(isFullScreenAtom, isFullScreen);
         });
-    } catch (_) {
-        // do nothing
+    } catch (e) {
+        console.log("failed to initialize isFullScreenAtom", e);
+    }
+
+    const zoomFactorAtom = atom(1.0) as PrimitiveAtom<number>;
+    try {
+        globalStore.set(zoomFactorAtom, getApi().getZoomFactor());
+        getApi().onZoomFactorChange((zoomFactor) => {
+            globalStore.set(zoomFactorAtom, zoomFactor);
+        });
+    } catch (e) {
+        console.log("failed to initialize zoomFactorAtom", e);
     }
 
     try {
         getApi().onMenuItemAbout(() => {
             modalsModel.pushModal("AboutModal");
         });
-    } catch (_) {
-        // do nothing
+    } catch (e) {
+        console.log("failed to initialize onMenuItemAbout handler", e);
     }
 
     const clientAtom: Atom<Client> = atom((get) => {
@@ -135,8 +145,8 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
         getApi().onUpdaterStatusChange((status) => {
             globalStore.set(updaterStatusAtom, status);
         });
-    } catch (_) {
-        // do nothing
+    } catch (e) {
+        console.log("failed to initialize updaterStatusAtom", e);
     }
 
     const reducedMotionSettingAtom = atom((get) => get(settingsAtom)?.["window:reducedmotion"]);
@@ -187,6 +197,7 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
         tabAtom,
         staticTabId: staticTabIdAtom,
         isFullScreen: isFullScreenAtom,
+        zoomFactorAtom,
         controlShiftDelayAtom,
         updaterStatusAtom,
         prefersReducedMotionAtom,

@@ -5,7 +5,7 @@ import { Tooltip } from "@/app/element/tooltip";
 import { ContextMenuModel } from "@/app/store/contextmenu";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
-import { atoms, createBlock, getApi, isDev } from "@/store/global";
+import { atoms, createBlock, isDev } from "@/store/global";
 import { fireAndForget, isBlank, makeIconClass } from "@/util/util";
 import {
     FloatingPortal,
@@ -480,7 +480,7 @@ const Widgets = memo(() => {
                 )}
                 {isDev() ? (
                     <div
-                        className="dev-label flex justify-center items-center w-full py-1 text-accent text-[30px]"
+                        className="flex justify-center items-center w-full py-1 text-accent text-[30px]"
                         title="Running Wave Dev Build"
                     >
                         <i className="fa fa-brands fa-dev fa-fw" />
@@ -526,7 +526,7 @@ const Widgets = memo(() => {
                 ) : null}
                 {isDev() ? (
                     <div
-                        className="dev-label flex justify-center items-center w-full py-1 text-accent text-[30px]"
+                        className="flex justify-center items-center w-full py-1 text-accent text-[30px]"
                         title="Running Wave Dev Build"
                     >
                         <i className="fa fa-brands fa-dev fa-fw" />
