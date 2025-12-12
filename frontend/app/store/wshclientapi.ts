@@ -292,6 +292,11 @@ class RpcApiType {
         return client.wshRpcCall("focuswindow", data, opts);
     }
 
+    // command "generatetabtitle" [call]
+    GenerateTabTitleCommand(client: WshClient, data: string, opts?: RpcOpts): Promise<string> {
+        return client.wshRpcCall("generatetabtitle", data, opts);
+    }
+
     // command "getbuilderoutput" [call]
     GetBuilderOutputCommand(client: WshClient, data: string, opts?: RpcOpts): Promise<string[]> {
         return client.wshRpcCall("getbuilderoutput", data, opts);
