@@ -204,6 +204,7 @@ tasks:
             - task: build:server:internal
               vars:
                   ARCHS: amd64
+                  GO_ENV_VARS: CC="zig cc -target x86_64-windows-gnu"
         deps:
             - go:mod:tidy
         sources:
