@@ -1,6 +1,24 @@
 {
     "welcome": {
-        "title": "Welcome to Wave Terminal"
+        "title": "Welcome to Wave Terminal",
+        "supportGithub": "Support us on GitHub",
+        "supportGithubDesc": "We're open source and committed to providing a free terminal for individual users. Please show your support by giving us a star on Github (wavetermdev/waveterm)",
+        "joinCommunity": "Join our Community",
+        "joinCommunityDesc": "Get help, submit feature requests, report bugs, or just chat with fellow terminal enthusiasts. Join the Wave Discord Channel",
+        "telemetryTitle": "Telemetry",
+        "telemetryEnabled": "Enabled",
+        "telemetryDisabled": "Disabled",
+        "continue": "Continue"
     },
-    "placeholder": "Onboarding translations"
+    "notelemetrystar": {
+        "thankYou": "Thank you for trying Wave Terminal!",
+        "weValue": "We value your privacy",
+        "noTelemetryDesc": "You've chosen to disable telemetry. While we respect your choice, telemetry data helps us improve Wave Terminal for everyone.",
+        "considerEnabling": "Please consider enabling telemetry in the future if you'd like to help us make Wave better.",
+        "continue": "Continue"
+    },
+    "features": {
+        "title": "Key Features",
+        "getStarted": "Get Started"
+    }
 }

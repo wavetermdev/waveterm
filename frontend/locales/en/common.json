@@ -22,7 +22,15 @@
         "refresh": "Refresh",
         "settings": "Settings",
         "home": "Home",
-        "reset": "Reset"
+        "reset": "Reset",
+        "new": "New",
+        "add": "Add",
+        "remove": "Remove",
+        "update": "Update",
+        "reload": "Reload",
+        "rename": "Rename",
+        "duplicate": "Duplicate",
+        "openClipboardUrl": "Open Clipboard URL ({{hostname}})"
     },
     "menu": {
         "file": "File",
@@ -37,6 +45,11 @@
         "copyright": "© {{year}} Command Line Inc.",
         "clientVersion": "Client Version {{version}} ({{buildTime}})",
         "updateChannel": "Update Channel: {{channel}}",
-        "closeEsc": "Close (ESC)"
+        "closeEsc": "Close (ESC)",
+        "loading": "Loading...",
+        "error": "Error",
+        "warning": "Warning",
+        "info": "Information",
+        "success": "Success"
     }
 }
