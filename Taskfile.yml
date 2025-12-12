@@ -54,6 +54,17 @@ tasks:
             WCLOUD_ENDPOINT: "https://api-dev.waveterm.dev/central"
             WCLOUD_WS_ENDPOINT: "wss://wsapi-dev.waveterm.dev/"
 
+    electron:winquickdev:
+        desc: Run the Electron application via the Vite dev server (quick dev - Windows amd64 only, no generate, no wsh).
+        cmd: npm run dev
+        deps:
+            - npm:install
+            - build:backend:quickdev:windows
+        env:
+            WAVETERM_ENVFILE: "{{.ROOT_DIR}}/.env"
+            WCLOUD_ENDPOINT: "https://api-dev.waveterm.dev/central"
+            WCLOUD_WS_ENDPOINT: "wss://wsapi-dev.waveterm.dev/"
+
     docs:npm:install:
         desc: Runs `npm install` in docs directory
         internal: true
@@ -185,6 +196,24 @@ tasks:
             - "tsunami/**/*.go"
         generates:
             - dist/bin/wavesrv.*
+
+    build:backend:quickdev:windows:
+        desc: Build only the wavesrv component for quickdev (Windows amd64 only, no generate, no wsh).
+        platforms: [windows]
+        cmds:
+            - task: build:server:internal
+              vars:
+                  ARCHS: amd64
+        deps:
+            - go:mod:tidy
+        sources:
+            - "cmd/server/*.go"
+            - "pkg/**/*.go"
+            - "pkg/**/*.json"
+            - "pkg/**/*.sh"
+            - "tsunami/**/*.go"
+        generates:
+            - dist/bin/wavesrv.x64.exe
 
     build:server:windows:
         desc: Build the wavesrv component for Windows platforms (only generates artifacts for the current architecture).
