@@ -7,11 +7,13 @@ import { Modal } from "./modal";
 
 import { isDev } from "@/util/isdev";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { getApi } from "../store/global";
 
 interface AboutModalProps {}
 
 const AboutModal = ({}: AboutModalProps) => {
+    const { t } = useTranslation("common");
     const currentDate = new Date();
     const [details] = useState(() => getApi().getAboutModalDetails());
     const [updaterChannel] = useState(() => getApi().getUpdaterChannel());
@@ -21,18 +23,20 @@ const AboutModal = ({}: AboutModalProps) => {
             <div className="flex flex-col gap-[26px] w-full">
                 <div className="flex flex-col items-center justify-center gap-4 self-stretch w-full text-center">
                     <Logo />
-                    <div className="text-[25px]">Wave Terminal</div>
+                    <div className="text-[25px]">{t("app.name")}</div>
                     <div className="leading-5">
-                        Open-Source AI-Native Terminal
+                        {t("app.tagline")}
                         <br />
-                        Built for Seamless Workflows
+                        {t("app.description")}
                     </div>
                 </div>
                 <div className="items-center gap-4 self-stretch w-full text-center">
-                    Client Version {details.version} ({isDev() ? "dev-" : ""}
-                    {details.buildTime})
+                    {t("common.clientVersion", {
+                        version: details.version,
+                        buildTime: `${isDev() ? "dev-" : ""}${details.buildTime}`,
+                    })}
                     <br />
-                    Update Channel: {updaterChannel}
+                    {t("common.updateChannel", { channel: updaterChannel })}
                 </div>
                 <div className="flex items-start gap-[10px] self-stretch w-full text-center">
                     <a
@@ -41,7 +45,8 @@ const AboutModal = ({}: AboutModalProps) => {
                         rel="noopener"
                         className="inline-flex items-center px-4 py-2 rounded border border-border hover:bg-hoverbg transition-colors duration-200"
                     >
-                        <i className="fa-brands fa-github mr-2"></i>Github
+                        <i className="fa-brands fa-github mr-2"></i>
+                        {t("common.github")}
                     </a>
                     <a
                         href="https://www.waveterm.dev/?ref=about"
@@ -49,7 +54,8 @@ const AboutModal = ({}: AboutModalProps) => {
                         rel="noopener"
                         className="inline-flex items-center px-4 py-2 rounded border border-border hover:bg-hoverbg transition-colors duration-200"
                     >
-                        <i className="fa-sharp fa-light fa-globe mr-2"></i>Website
+                        <i className="fa-sharp fa-light fa-globe mr-2"></i>
+                        {t("common.website")}
                     </a>
                     <a
                         href="https://github.com/wavetermdev/waveterm/blob/main/ACKNOWLEDGEMENTS.md"
@@ -57,11 +63,12 @@ const AboutModal = ({}: AboutModalProps) => {
                         rel="noopener"
                         className="inline-flex items-center px-4 py-2 rounded border border-border hover:bg-hoverbg transition-colors duration-200"
                     >
-                        <i className="fa-sharp fa-light fa-heart mr-2"></i>Acknowledgements
+                        <i className="fa-sharp fa-light fa-heart mr-2"></i>
+                        {t("common.acknowledgements")}
                     </a>
                 </div>
                 <div className="items-center gap-4 self-stretch w-full text-center">
-                    &copy; {currentDate.getFullYear()} Command Line Inc.
+                    {t("common.copyright", { year: currentDate.getFullYear() })}
                 </div>
             </div>
         </Modal>

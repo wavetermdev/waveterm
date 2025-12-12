@@ -1,0 +1,42 @@
+{
+    "app": {
+        "name": "Wave Terminal",
+        "tagline": "Open-Source AI-Native Terminal",
+        "description": "Built for Seamless Workflows"
+    },
+    "actions": {
+        "copy": "Copy",
+        "paste": "Paste",
+        "cut": "Cut",
+        "save": "Save",
+        "cancel": "Cancel",
+        "ok": "OK",
+        "close": "Close",
+        "delete": "Delete",
+        "edit": "Edit",
+        "open": "Open",
+        "create": "Create",
+        "search": "Search",
+        "back": "Back",
+        "forward": "Forward",
+        "refresh": "Refresh",
+        "settings": "Settings",
+        "home": "Home",
+        "reset": "Reset"
+    },
+    "menu": {
+        "file": "File",
+        "edit": "Edit",
+        "view": "View",
+        "help": "Help"
+    },
+    "common": {
+        "github": "Github",
+        "website": "Website",
+        "acknowledgements": "Acknowledgements",
+        "copyright": "© {{year}} Command Line Inc.",
+        "clientVersion": "Client Version {{version}} ({{buildTime}})",
+        "updateChannel": "Update Channel: {{channel}}",
+        "closeEsc": "Close (ESC)"
+    }
+}

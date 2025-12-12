@@ -1,0 +1,13 @@
+{
+    "modals": {
+        "title": "Configuration Error",
+        "titleClean": "Configuration Clean",
+        "noErrors": "There are no longer any errors detected in your config.",
+        "singleError": "{{file}}: {{error}}",
+        "configErrors": "Configuration Errors"
+    },
+    "footer": {
+        "cancel": "Cancel",
+        "ok": "Ok"
+    }
+}

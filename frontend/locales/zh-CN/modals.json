@@ -1,0 +1,13 @@
+{
+    "modals": {
+        "title": "配置错误",
+        "titleClean": "配置正常",
+        "noErrors": "您的配置中没有检测到错误。",
+        "singleError": "{{file}}: {{error}}",
+        "configErrors": "配置错误"
+    },
+    "footer": {
+        "cancel": "取消",
+        "ok": "确定"
+    }
+}

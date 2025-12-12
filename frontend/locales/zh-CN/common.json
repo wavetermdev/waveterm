@@ -1,0 +1,42 @@
+{
+    "app": {
+        "name": "Wave 终端",
+        "tagline": "开源AI原生终端",
+        "description": "专为无缝工作流而构建"
+    },
+    "actions": {
+        "copy": "复制",
+        "paste": "粘贴",
+        "cut": "剪切",
+        "save": "保存",
+        "cancel": "取消",
+        "ok": "确定",
+        "close": "关闭",
+        "delete": "删除",
+        "edit": "编辑",
+        "open": "打开",
+        "create": "创建",
+        "search": "搜索",
+        "back": "返回",
+        "forward": "前进",
+        "refresh": "刷新",
+        "settings": "设置",
+        "home": "主页",
+        "reset": "重置"
+    },
+    "menu": {
+        "file": "文件",
+        "edit": "编辑",
+        "view": "视图",
+        "help": "帮助"
+    },
+    "common": {
+        "github": "Github",
+        "website": "官网",
+        "acknowledgements": "致谢",
+        "copyright": "© {{year}} Command Line Inc.",
+        "clientVersion": "客户端版本 {{version}} ({{buildTime}})",
+        "updateChannel": "更新通道: {{channel}}",
+        "closeEsc": "关闭 (ESC)"
+    }
+}
