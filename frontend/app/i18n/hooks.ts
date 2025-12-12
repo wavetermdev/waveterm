@@ -20,8 +20,13 @@ export function useLanguageSync() {
             return;
         }
 
-        // Validate against supported languages
-        const supportedLangs = i18n.options?.supportedLngs || ["en", "zh-CN"];
+        // Filter out i18next special/debug codes (cimode, dev, etc.)
+        const specialCodes = ["cimode", "dev"];
+        const rawSupportedLangs = i18n.options?.supportedLngs || ["en", "zh-CN"];
+        const supportedLangs = Array.isArray(rawSupportedLangs)
+            ? rawSupportedLangs.filter((lang) => !specialCodes.includes(lang))
+            : ["en", "zh-CN"];
+
         const isSupported = supportedLangs.includes(settingsLang);
 
         if (isSupported && settingsLang !== i18n.language) {
