@@ -810,9 +810,9 @@ func (*ServerImpl) RemoteWriteFileCommand(ctx context.Context, data wshrpc.FileD
 	}
 	defer utilfn.GracefulClose(file, "RemoteWriteFileCommand", path)
 	if atOffset > 0 && !append {
-		n, err = file.WriteAt(dataBytes[:n], atOffset)
+		_, err = file.WriteAt(dataBytes[:n], atOffset)
 	} else {
-		n, err = file.Write(dataBytes[:n])
+		_, err = file.Write(dataBytes[:n])
 	}
 	if err != nil {
 		return fmt.Errorf("cannot write to file %q: %w", path, err)
