@@ -830,9 +830,6 @@ export class TermWrap {
         e?.preventDefault();
         e?.stopPropagation();
 
-        // Preserve scroll position before paste
-        const scrollY = this.terminal.buffer.active.viewportY;
-
         try {
             const clipboardData = await extractAllClipboardData(e);
             let firstImage = true;
@@ -849,15 +846,6 @@ export class TermWrap {
                     this.terminal.paste(data.text);
                 }
             }
-
-            // Restore scroll position after paste if it changed unexpectedly
-            setTimeout(() => {
-                const currentScrollY = this.terminal.buffer.active.viewportY;
-                // Only restore if we've scrolled significantly (not just normal paste scroll)
-                if (currentScrollY < scrollY - 10) {
-                    this.terminal.scrollToLine(scrollY);
-                }
-            }, 50);
         } catch (err) {
             console.error("Paste error:", err);
         } finally {

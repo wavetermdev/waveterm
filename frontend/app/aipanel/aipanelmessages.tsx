@@ -8,6 +8,9 @@ import { AIModeDropdown } from "./aimode";
 import { type WaveUIMessage } from "./aitypes";
 import { WaveAIModel } from "./waveai-model";
 
+const AUTO_SCROLL_DEBOUNCE_MS = 100;
+const SCROLL_BOTTOM_THRESHOLD_PX = 50;
+
 interface AIPanelMessagesProps {
     messages: WaveUIMessage[];
     status: string;
@@ -32,7 +35,7 @@ export const AIPanelMessages = memo(({ messages, status, onContextMenu }: AIPane
             userHasScrolledUp.current = false;
             setTimeout(() => {
                 isAutoScrolling.current = false;
-            }, 100);
+            }, AUTO_SCROLL_DEBOUNCE_MS);
         }
     };
 
@@ -48,15 +51,15 @@ export const AIPanelMessages = memo(({ messages, status, onContextMenu }: AIPane
             const { scrollTop, scrollHeight, clientHeight } = container;
             const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
 
-            // If user is more than 50px from the bottom, they've scrolled up
-            if (distanceFromBottom > 50) {
+            // If user is more than threshold from the bottom, they've scrolled up
+            if (distanceFromBottom > SCROLL_BOTTOM_THRESHOLD_PX) {
                 userHasScrolledUp.current = true;
             } else {
                 userHasScrolledUp.current = false;
             }
         };
 
-        container.addEventListener("scroll", handleScroll);
+        container.addEventListener("scroll", handleScroll, { passive: true });
         return () => container.removeEventListener("scroll", handleScroll);
     }, []);
 
