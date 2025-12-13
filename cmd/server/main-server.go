@@ -38,6 +38,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/web"
 	"github.com/wavetermdev/waveterm/pkg/wps"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
+	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshremote"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshserver"
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
@@ -139,30 +140,38 @@ func diagnosticLoop() {
 		log.Printf("WAVETERM_NOPING set, disabling diagnostic ping\n")
 		return
 	}
-	var nextSend int64
+	var lastSentDate string
 	time.Sleep(InitialDiagnosticWait)
 	for {
-		if time.Now().Unix() > nextSend {
-			nextSend = time.Now().Add(DiagnosticInterval).Unix()
-			sendDiagnosticPing()
+		currentDate := time.Now().Format("2006-01-02")
+		if lastSentDate == "" || lastSentDate != currentDate {
+			if sendDiagnosticPing() {
+				lastSentDate = currentDate
+			}
 		}
 		time.Sleep(DiagnosticTick)
 	}
 }
 
-func sendDiagnosticPing() {
+func sendDiagnosticPing() bool {
 	ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancelFn()
+
+	rpcClient := wshclient.GetBareRpcClient()
+	isOnline, err := wshclient.NetworkOnlineCommand(rpcClient, &wshrpc.RpcOpts{Route: "electron", Timeout: 2000})
+	if err != nil || !isOnline {
+		return false
+	}
 	clientData, err := wstore.DBGetSingleton[*waveobj.Client](ctx)
 	if err != nil {
-		return
+		return false
 	}
 	if clientData == nil {
-		return
+		return false
 	}
-	arch := runtime.GOARCH
 	usageTelemetry := telemetry.IsTelemetryEnabled()
-	wcloud.SendDiagnosticPing(ctx, clientData.OID, arch, WaveVersion, usageTelemetry)
+	wcloud.SendDiagnosticPing(ctx, clientData.OID, usageTelemetry)
+	return true
 }
 
 func sendNoTelemetryUpdate(telemetryEnabled bool) {
@@ -355,8 +364,8 @@ func startupActivityUpdate(firstLaunch bool) {
 	fullConfig := wconfig.GetWatcher().GetFullConfig()
 	props := telemetrydata.TEventProps{
 		UserSet: &telemetrydata.TEventUserProps{
-			ClientVersion:       "v" + WaveVersion,
-			ClientBuildTime:     BuildTime,
+			ClientVersion:       "v" + wavebase.WaveVersion,
+			ClientBuildTime:     wavebase.BuildTime,
 			ClientArch:          wavebase.ClientArch(),
 			ClientOSRelease:     wavebase.UnameKernelRelease(),
 			ClientIsDev:         wavebase.IsDevMode(),

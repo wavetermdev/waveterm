@@ -323,7 +323,7 @@ type PingInputType struct {
 	UsageTelemetry bool   `json:"usagetelemetry"`
 }
 
-func SendDiagnosticPing(ctx context.Context, clientId string, arch string, version string, usageTelemetry bool) error {
+func SendDiagnosticPing(ctx context.Context, clientId string, usageTelemetry bool) error {
 	endpoint := GetPingEndpoint()
 	if endpoint == "" {
 		return nil
@@ -331,8 +331,8 @@ func SendDiagnosticPing(ctx context.Context, clientId string, arch string, versi
 	localDate := time.Now().Format("2006-01-02")
 	input := PingInputType{
 		ClientId:       clientId,
-		Arch:           arch,
-		Version:        version,
+		Arch:           wavebase.ClientArch(),
+		Version:        "v" + wavebase.WaveVersion,
 		LocalDate:      localDate,
 		UsageTelemetry: usageTelemetry,
 	}
