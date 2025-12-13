@@ -167,6 +167,14 @@ In addition to the regular ssh config file, wave also has its own config file to
 | ssh:userknownhostsfile | A list containing the paths of any user host key database files used to keep track of authorized connections. Can be used to overwrite the value in `~/.ssh/config` or to set it if the ssh config is being ignored.|
 | ssh:globalknownhostsfile | A list containing the paths of any global host key database files used to keep track of authorized connections. Can be used to overwrite the value in `~/.ssh/config` or to set it if the ssh config is being ignored.|
 
+### SSH Agent Detection
+
+Wave resolves the identity agent path in this order:
+
+- If `SSH_AUTH_SOCK` is set, that socket or pipe is used.
+- If `SSH_AUTH_SOCK` is empty on Windows, Wave falls back to the built-in OpenSSH agent pipe `\\.\\pipe\\openssh-ssh-agent`. Ensure the **OpenSSH Authentication Agent** service is running, or set `SSH_AUTH_SOCK` to a custom pipe if you use another agent.
+- If `SSH_AUTH_SOCK` is empty on macOS/Linux, Wave attempts to detect the agent path from the shell; you can override by setting `SSH_AUTH_SOCK` or `ssh:identityagent` explicitly.
+
 ### Example Internal Configurations
 
 Here are a couple examples of things you can do using the internal configuration file `connections.json`:
