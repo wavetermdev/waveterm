@@ -17,6 +17,7 @@ import (
 	"os/exec"
 	"os/user"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -224,6 +225,14 @@ func createPublicKeyCallback(connCtx context.Context, sshKeywords *wconfig.ConnK
 	}
 }
 
+// createPasswordCallbackPrompt returns a function that obtains a password for SSH authentication.
+// 
+// The returned callback returns a password string or an error when password acquisition fails.
+// If the optional `password` pointer is non-nil, its value is returned directly without prompting.
+// Otherwise the callback prompts the user (with a 60 second timeout) for a password using the
+// provided connection context and includes `remoteDisplayName` in the prompt. On prompt or input
+// errors the callback returns a ConnectionError that wraps the underlying error and includes
+// `debugInfo` for diagnostics. The callback also converts panics into errors.
 func createPasswordCallbackPrompt(connCtx context.Context, remoteDisplayName string, password *string, debugInfo *ConnectionDebugInfo) func() (secret string, err error) {
 	return func() (secret string, outErr error) {
 		defer func() {
@@ -233,12 +242,12 @@ func createPasswordCallbackPrompt(connCtx context.Context, remoteDisplayName str
 			}
 		}()
 		blocklogger.Infof(connCtx, "[conndebug] Password Authentication requested from connection %s...\n", remoteDisplayName)
-		
+
 		if password != nil {
 			blocklogger.Infof(connCtx, "[conndebug] using password from secret store, sending to ssh\n")
 			return *password, nil
 		}
-		
+
 		ctx, cancelFn := context.WithTimeout(connCtx, 60*time.Second)
 		defer cancelFn()
 		queryText := fmt.Sprintf(
@@ -598,6 +607,22 @@ func createHostKeyCallback(ctx context.Context, sshKeywords *wconfig.ConnKeyword
 	return waveHostKeyCallback, hostKeyAlgorithms, nil
 }
 
+// createClientConfig builds an ssh.ClientConfig configured for the target described
+// by sshKeywords and using connCtx for context-aware operations.
+//
+// The returned ClientConfig is populated with the selected user, authentication
+// methods (publickey, keyboard-interactive, password) ordered by the host's
+// PreferredAuthentications, a host key verification callback, and the host key
+// algorithms appropriate for the destination. Batch mode, IdentitiesOnly, and
+// preferred-authentication flags from sshKeywords are honored.
+//
+// This function may:
+// - open and query an SSH identity agent socket if configured and allowed;
+// - retrieve a password from the configured secret store when SshPasswordSecretName
+//   is set.
+//
+// It returns a non-nil error when required setup steps fail (for example, secret
+// retrieval or host key callback construction).
 func createClientConfig(connCtx context.Context, sshKeywords *wconfig.ConnKeywords, debugInfo *ConnectionDebugInfo) (*ssh.ClientConfig, error) {
 	chosenUser := utilfn.SafeDeref(sshKeywords.SshUser)
 	chosenHostName := utilfn.SafeDeref(sshKeywords.SshHostName)
@@ -612,10 +637,11 @@ func createClientConfig(connCtx context.Context, sshKeywords *wconfig.ConnKeywor
 
 	// IdentitiesOnly indicates that only the keys listed in the identity and certificate files or passed as arguments should be used, even if there are matches in the SSH Agent, PKCS11Provider, or SecurityKeyProvider. See https://man.openbsd.org/ssh_config#IdentitiesOnly
 	// TODO: Update if we decide to support PKCS11Provider and SecurityKeyProvider
-	if !utilfn.SafeDeref(sshKeywords.SshIdentitiesOnly) {
-		conn, err := net.Dial("unix", utilfn.SafeDeref(sshKeywords.SshIdentityAgent))
+	agentPath := strings.TrimSpace(utilfn.SafeDeref(sshKeywords.SshIdentityAgent))
+	if !utilfn.SafeDeref(sshKeywords.SshIdentitiesOnly) && agentPath != "" {
+		conn, err := dialIdentityAgent(agentPath)
 		if err != nil {
-			log.Printf("Failed to open Identity Agent Socket: %v", err)
+			log.Printf("Failed to open Identity Agent Socket %q: %v", agentPath, err)
 		} else {
 			agentClient = agent.NewClient(conn)
 			authSockSigners, _ = agentClient.Signers()
@@ -801,7 +827,19 @@ func ConnectToClient(connCtx context.Context, opts *SSHOpts, currentClient *ssh.
 
 // note that a `var == "yes"` will default to false
 // but `var != "no"` will default to true
-// when given unexpected strings
+// findSshConfigKeywords reads SSH configuration for the provided hostPattern and returns a populated
+// wconfig.ConnKeywords describing the resolved connection parameters.
+//
+// The returned ConnKeywords includes resolved values for user, hostname, port, identity files,
+// batch mode, publickey/password/keyboard-interactive authentication flags, preferred
+// authentications, AddKeysToAgent, IdentitiesOnly, IdentityAgent (with home‑dir expansion and
+// platform-aware fallbacks), ProxyJump entries, and user/global known_hosts files. Identity file
+// paths are trimmed of surrounding quotes; boolean-style options are normalized from common SSH
+// values (e.g., "yes"/"no"). ProxyJump entries are split on commas and empty/"none" values are
+// ignored. Known-hosts file fields are split on whitespace.
+//
+// An error is returned if reading or expanding SSH configuration values fails. Panics are
+// converted into errors and returned.
 func findSshConfigKeywords(hostPattern string) (connKeywords *wconfig.ConnKeywords, outErr error) {
 	defer func() {
 		panicErr := panichandler.PanicHandler("sshclient:find-ssh-config-keywords", recover())
@@ -900,17 +938,27 @@ func findSshConfigKeywords(hostPattern string) (connKeywords *wconfig.ConnKeywor
 		return nil, err
 	}
 	if identityAgentRaw == "" {
-		shellPath := shellutil.DetectLocalShellPath()
-		authSockCommand := exec.Command(shellPath, "-c", "echo ${SSH_AUTH_SOCK}")
-		sshAuthSock, err := authSockCommand.Output()
-		if err == nil {
-			agentPath, err := wavebase.ExpandHomeDir(trimquotes.TryTrimQuotes(strings.TrimSpace(string(sshAuthSock))))
+		if envSock := os.Getenv("SSH_AUTH_SOCK"); envSock != "" {
+			agentPath, err := wavebase.ExpandHomeDir(trimquotes.TryTrimQuotes(envSock))
 			if err != nil {
 				return nil, err
 			}
 			sshKeywords.SshIdentityAgent = utilfn.Ptr(agentPath)
+		} else if runtime.GOOS == "windows" {
+			sshKeywords.SshIdentityAgent = utilfn.Ptr(`\\.\\pipe\\openssh-ssh-agent`)
 		} else {
-			log.Printf("unable to find SSH_AUTH_SOCK: %v\n", err)
+			shellPath := shellutil.DetectLocalShellPath()
+			authSockCommand := exec.Command(shellPath, "-c", "echo ${SSH_AUTH_SOCK}")
+			sshAuthSock, err := authSockCommand.Output()
+			if err == nil {
+				agentPath, err := wavebase.ExpandHomeDir(trimquotes.TryTrimQuotes(strings.TrimSpace(string(sshAuthSock))))
+				if err != nil {
+					return nil, err
+				}
+				sshKeywords.SshIdentityAgent = utilfn.Ptr(agentPath)
+			} else {
+				log.Printf("unable to find SSH_AUTH_SOCK: %v\n", err)
+			}
 		}
 	} else {
 		agentPath, err := wavebase.ExpandHomeDir(trimquotes.TryTrimQuotes(identityAgentRaw))
