@@ -697,6 +697,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
                     <i className="fa fa-ellipsis" />
                 </div>
             )}
+            <WaveAIButton />
             <WorkspaceSwitcher ref={workspaceSwitcherRef} />
             <div className="tab-bar" ref={tabBarRef} data-overlayscrollbars-initialize>
                 <div className="tabs-wrapper" ref={tabsWrapperRef} style={{ width: `${tabsWrapperWidth}px` }}>
