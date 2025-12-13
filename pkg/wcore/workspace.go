@@ -228,7 +228,7 @@ func CreateTab(ctx context.Context, workspaceId string, tabName string, activate
 	}
 
 	// The initial tab for the initial launch should be pinned
-	tab, err := createTabObj(ctx, workspaceId, tabName, pinned || isInitialLaunch, inheritedMeta)
+	tab, err := createTabObjWithWorkspace(ctx, ws, tabName, pinned || isInitialLaunch, inheritedMeta)
 	if err != nil {
 		return "", fmt.Errorf("error creating tab: %w", err)
 	}
@@ -270,11 +270,8 @@ func CreateTab(ctx context.Context, workspaceId string, tabName string, activate
 	return tab.OID, nil
 }
 
-func createTabObj(ctx context.Context, workspaceId string, name string, pinned bool, meta waveobj.MetaMapType) (*waveobj.Tab, error) {
-	ws, err := GetWorkspace(ctx, workspaceId)
-	if err != nil {
-		return nil, fmt.Errorf("workspace %s not found: %w", workspaceId, err)
-	}
+// createTabObjWithWorkspace creates a tab object with an already-fetched workspace
+func createTabObjWithWorkspace(ctx context.Context, ws *waveobj.Workspace, name string, pinned bool, meta waveobj.MetaMapType) (*waveobj.Tab, error) {
 	layoutStateId := uuid.NewString()
 	tab := &waveobj.Tab{
 		OID:         uuid.NewString(),
@@ -295,6 +292,15 @@ func createTabObj(ctx context.Context, workspaceId string, name string, pinned b
 	wstore.DBInsert(ctx, layoutState)
 	wstore.DBUpdate(ctx, ws)
 	return tab, nil
+}
+
+// createTabObj is a wrapper that fetches the workspace and calls createTabObjWithWorkspace
+func createTabObj(ctx context.Context, workspaceId string, name string, pinned bool, meta waveobj.MetaMapType) (*waveobj.Tab, error) {
+	ws, err := GetWorkspace(ctx, workspaceId)
+	if err != nil {
+		return nil, fmt.Errorf("workspace %s not found: %w", workspaceId, err)
+	}
+	return createTabObjWithWorkspace(ctx, ws, name, pinned, meta)
 }
 
 // Must delete all blocks individually first.
