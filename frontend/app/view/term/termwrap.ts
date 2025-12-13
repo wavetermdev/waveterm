@@ -28,6 +28,61 @@ const TermCacheFileName = "cache:term:full";
 const MinDataProcessedForCache = 100 * 1024;
 export const SupportsImageInput = true;
 
+// Convert terminal selection to markdown preserving formatting
+function convertSelectionToMarkdown(terminal: Terminal): string {
+    const selection = terminal.getSelectionPosition();
+    if (!selection) {
+        return terminal.getSelection();
+    }
+
+    let markdown = "";
+    const buffer = terminal.buffer.active;
+
+    for (let y = selection.start.y; y <= selection.end.y; y++) {
+        const line = buffer.getLine(y);
+        if (!line) continue;
+
+        const startCol = y === selection.start.y ? selection.start.x : 0;
+        const endCol = y === selection.end.y ? selection.end.x : line.length;
+
+        let lineText = "";
+        let isBold = false;
+        let currentSegment = "";
+
+        for (let x = startCol; x < endCol; x++) {
+            const cell = line.getCell(x);
+            if (!cell) continue;
+
+            const char = cell.getChars();
+            // Check if cell has bold attribute (bit 0 of fg color flags)
+            const cellBold = (cell.getBgColorMode() & 0x01) !== 0 || (cell.getFgColorMode() & 0x01) !== 0;
+
+            // Handle bold transitions
+            if (cellBold !== isBold) {
+                if (currentSegment) {
+                    lineText += isBold ? `**${currentSegment}**` : currentSegment;
+                    currentSegment = "";
+                }
+                isBold = cellBold;
+            }
+
+            currentSegment += char || " ";
+        }
+
+        // Flush remaining segment
+        if (currentSegment) {
+            lineText += isBold ? `**${currentSegment}**` : currentSegment;
+        }
+
+        markdown += lineText.trimEnd();
+        if (y < selection.end.y) {
+            markdown += "\n";
+        }
+    }
+
+    return markdown;
+}
+
 // detect webgl support
 function detectWebGLSupport(): boolean {
     try {
@@ -481,13 +536,29 @@ export class TermWrap {
                     if (!globalStore.get(copyOnSelectAtom)) {
                         return;
                     }
-                    const selectedText = this.terminal.getSelection();
-                    if (selectedText.length > 0) {
-                        navigator.clipboard.writeText(selectedText);
+                    const markdownText = convertSelectionToMarkdown(this.terminal);
+                    if (markdownText.length > 0) {
+                        navigator.clipboard.writeText(markdownText);
                     }
                 })
             )
         );
+
+        // Intercept copy events to provide markdown formatting
+        const copyHandler = (e: ClipboardEvent) => {
+            const selection = this.terminal.getSelection();
+            if (selection.length > 0) {
+                e.preventDefault();
+                const markdownText = convertSelectionToMarkdown(this.terminal);
+                e.clipboardData?.setData("text/plain", markdownText);
+            }
+        };
+        this.connectElem.addEventListener("copy", copyHandler);
+        this.toDispose.push({
+            dispose: () => {
+                this.connectElem.removeEventListener("copy", copyHandler);
+            },
+        });
         if (this.onSearchResultsDidChange != null) {
             this.toDispose.push(this.searchAddon.onDidChangeResults(this.onSearchResultsDidChange.bind(this)));
         }
@@ -701,7 +772,21 @@ export class TermWrap {
     handleResize() {
         const oldRows = this.terminal.rows;
         const oldCols = this.terminal.cols;
+
+        // Preserve scroll position before resize
+        const wasAtBottom = this.terminal.buffer.active.baseY + this.terminal.rows >= this.terminal.buffer.active.length;
+        const scrollY = this.terminal.buffer.active.viewportY;
+
         this.fitAddon.fit();
+
+        // Restore scroll position after resize
+        if (!wasAtBottom && scrollY > 0) {
+            // If user wasn't at bottom, try to keep them at the same content
+            setTimeout(() => {
+                this.terminal.scrollToLine(scrollY);
+            }, 0);
+        }
+
         if (oldRows !== this.terminal.rows || oldCols !== this.terminal.cols) {
             const termSize: TermSize = { rows: this.terminal.rows, cols: this.terminal.cols };
             const wsCommand: SetBlockTermSizeWSCommand = {

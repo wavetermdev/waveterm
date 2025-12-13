@@ -489,6 +489,20 @@ export class TermViewModel implements ViewModel {
             this.setTermMode(newTermMode);
             return true;
         }
+        if (keyutil.checkKeyPressed(waveEvent, "Cmd:ArrowDown")) {
+            // Scroll to bottom
+            if (this.termRef?.current?.terminal) {
+                this.termRef.current.terminal.scrollToBottom();
+            }
+            return true;
+        }
+        if (keyutil.checkKeyPressed(waveEvent, "Cmd:ArrowUp")) {
+            // Scroll to top
+            if (this.termRef?.current?.terminal) {
+                this.termRef.current.terminal.scrollToLine(0);
+            }
+            return true;
+        }
         const blockData = globalStore.get(this.blockAtom);
         if (blockData.meta?.["term:mode"] == "vdom") {
             const vdomModel = this.getVDomModel();

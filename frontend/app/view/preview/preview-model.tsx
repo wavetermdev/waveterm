@@ -350,13 +350,35 @@ export class PreviewModel implements ViewModel {
                         title: "Table of Contents",
                         click: () => this.markdownShowTocToggle(),
                     },
+                    {
+                        elemtype: "iconbutton",
+                        icon: "arrows-rotate",
+                        title: "Refresh",
+                        click: () => this.refreshCallback?.(),
+                    },
+                ] as IconButtonDecl[];
+            } else if (!isCeView && mimeType) {
+                // For all other file types (text, code, etc.), add refresh button
+                return [
+                    {
+                        elemtype: "iconbutton",
+                        icon: "arrows-rotate",
+                        title: "Refresh",
+                        click: () => this.refreshCallback?.(),
+                    },
                 ] as IconButtonDecl[];
             }
             return null;
         });
         this.metaFilePath = atom<string>((get) => {
-            const file = get(this.blockAtom)?.meta?.file;
+            const blockData = get(this.blockAtom);
+            const file = blockData?.meta?.file;
             if (isBlank(file)) {
+                // If no file is set, default to the terminal's current working directory
+                const cwd = blockData?.meta?.[waveobj.MetaKey_CmdCwd];
+                if (!isBlank(cwd)) {
+                    return cwd;
+                }
                 return "~";
             }
             return file;
@@ -408,6 +430,7 @@ export class PreviewModel implements ViewModel {
         this.goParentDirectory = this.goParentDirectory.bind(this);
 
         const fullFileAtom = atom<Promise<FileData>>(async (get) => {
+            get(this.refreshVersion); // Subscribe to refreshVersion to trigger re-fetch
             const fileName = get(this.metaFilePath);
             const path = await this.formatRemoteUri(fileName, get);
             if (fileName == null) {

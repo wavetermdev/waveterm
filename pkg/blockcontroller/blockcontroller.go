@@ -319,6 +319,12 @@ func HandleAppendBlockFile(blockId string, blockFile string, data []byte) error 
 			Data64:   base64.StdEncoding.EncodeToString(data),
 		},
 	})
+
+	// Check if we should auto-generate a tab title
+	if blockFile == wavebase.BlockFile_Term {
+		CheckAndGenerateTitle(blockId, data)
+	}
+
 	return nil
 }
 

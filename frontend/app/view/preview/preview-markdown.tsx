@@ -2,12 +2,20 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { Markdown } from "@/element/markdown";
-import { getOverrideConfigAtom } from "@/store/global";
+import { getOverrideConfigAtom, globalStore } from "@/store/global";
 import { useAtomValue } from "jotai";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import type { SpecializedViewProps } from "./preview";
 
 function MarkdownPreview({ model }: SpecializedViewProps) {
+    useEffect(() => {
+        model.refreshCallback = () => {
+            globalStore.set(model.refreshVersion, (v) => v + 1);
+        };
+        return () => {
+            model.refreshCallback = null;
+        };
+    }, []);
     const connName = useAtomValue(model.connection);
     const fileInfo = useAtomValue(model.statFile);
     const fontSizeOverride = useAtomValue(getOverrideConfigAtom(model.blockId, "markdown:fontsize"));

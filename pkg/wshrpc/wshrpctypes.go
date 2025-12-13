@@ -186,6 +186,9 @@ const (
 	Command_GetSecretsNames               = "getsecretsnames"
 	Command_SetSecrets                    = "setsecrets"
 	Command_GetSecretsLinuxStorageBackend = "getsecretslinuxstoragebackend"
+
+	// tab
+	Command_GenerateTabTitle = "generatetabtitle"
 )
 
 type RespOrErrorUnion[T any] struct {
@@ -261,6 +264,7 @@ type WshRpcInterface interface {
 	FetchSuggestionsCommand(ctx context.Context, data FetchSuggestionsData) (*FetchSuggestionsResponse, error)
 	DisposeSuggestionsCommand(ctx context.Context, widgetId string) error
 	GetTabCommand(ctx context.Context, tabId string) (*waveobj.Tab, error)
+	GenerateTabTitleCommand(ctx context.Context, tabId string) (string, error)
 
 	// connection functions
 	ConnStatusCommand(ctx context.Context) ([]ConnStatus, error)

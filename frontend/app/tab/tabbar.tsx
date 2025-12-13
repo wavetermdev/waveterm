@@ -620,10 +620,9 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
 
     const handleCloseTab = (event: React.MouseEvent<HTMLButtonElement, MouseEvent> | null, tabId: string) => {
         event?.stopPropagation();
-        const ws = globalStore.get(atoms.workspace);
-        getApi().closeTab(ws.oid, tabId);
-        tabsWrapperRef.current.style.setProperty("--tabs-wrapper-transition", "width 0.3s ease");
-        deleteLayoutModelForTab(tabId);
+
+        // Show confirmation modal before closing
+        modalsModel.pushModal("ConfirmCloseTabModal", { tabId });
     };
 
     const handlePinChange = useCallback(
@@ -698,7 +697,6 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
                     <i className="fa fa-ellipsis" />
                 </div>
             )}
-            <WaveAIButton />
             <WorkspaceSwitcher ref={workspaceSwitcherRef} />
             <div className="tab-bar" ref={tabBarRef} data-overlayscrollbars-initialize>
                 <div className="tabs-wrapper" ref={tabsWrapperRef} style={{ width: `${tabsWrapperWidth}px` }}>

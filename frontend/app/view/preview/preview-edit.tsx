@@ -63,9 +63,13 @@ function CodeEditPreview({ model }: SpecializedViewProps) {
 
     useEffect(() => {
         model.codeEditKeyDownHandler = codeEditKeyDownHandler;
+        model.refreshCallback = () => {
+            globalStore.set(model.refreshVersion, (v) => v + 1);
+        };
         return () => {
             model.codeEditKeyDownHandler = null;
             model.monacoRef.current = null;
+            model.refreshCallback = null;
         };
     }, []);
 

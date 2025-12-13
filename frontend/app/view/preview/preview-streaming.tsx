@@ -3,9 +3,11 @@
 
 import { Button } from "@/app/element/button";
 import { CenteredDiv } from "@/app/element/quickelems";
+import { globalStore } from "@/store/global";
 import { getWebServerEndpoint } from "@/util/endpoints";
 import { formatRemoteUri } from "@/util/waveutil";
 import { useAtomValue } from "jotai";
+import { useEffect } from "react";
 import { TransformComponent, TransformWrapper, useControls } from "react-zoom-pan-pinch";
 import type { SpecializedViewProps } from "./preview";
 
@@ -45,6 +47,14 @@ function StreamingImagePreview({ url }: { url: string }) {
 }
 
 function StreamingPreview({ model }: SpecializedViewProps) {
+    useEffect(() => {
+        model.refreshCallback = () => {
+            globalStore.set(model.refreshVersion, (v) => v + 1);
+        };
+        return () => {
+            model.refreshCallback = null;
+        };
+    }, []);
     const conn = useAtomValue(model.connection);
     const fileInfo = useAtomValue(model.statFile);
     const filePath = fileInfo.path;
