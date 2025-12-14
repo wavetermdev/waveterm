@@ -32,7 +32,6 @@ declare global {
         notifications: jotai.PrimitiveAtom<NotificationType[]>;
         notificationPopoverMode: jotai.Atom<boolean>;
         reinitVersion: jotai.PrimitiveAtom<number>;
-        isTermMultiInput: jotai.PrimitiveAtom<boolean>;
         waveAIRateLimitInfoAtom: jotai.PrimitiveAtom<RateLimitInfo>;
     };
 
@@ -286,7 +285,7 @@ declare global {
 
     declare type ViewComponent = React.FC<ViewComponentProps>;
 
-    type ViewModelClass = new (blockId: string, nodeModel: BlockNodeModel) => ViewModel;
+    type ViewModelClass = new (blockId: string, nodeModel: BlockNodeModel, tabModel: TabModel) => ViewModel;
 
     interface ViewModel {
         // The type of view, used for identifying and rendering the appropriate component.

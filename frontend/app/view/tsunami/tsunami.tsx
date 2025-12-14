@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { BlockNodeModel } from "@/app/block/blocktypes";
+import type { TabModel } from "@/app/store/tab-model";
 import { atoms, getApi, globalStore, WOS } from "@/app/store/global";
 import { waveEventSubscribe } from "@/app/store/wps";
 import { RpcApi } from "@/app/store/wshclientapi";
@@ -20,8 +21,8 @@ class TsunamiViewModel extends WebViewModel {
     viewName: jotai.Atom<string>;
     viewIconColor: jotai.Atom<string>;
 
-    constructor(blockId: string, nodeModel: BlockNodeModel) {
-        super(blockId, nodeModel);
+    constructor(blockId: string, nodeModel: BlockNodeModel, tabModel: TabModel) {
+        super(blockId, nodeModel, tabModel);
         this.viewType = "tsunami";
         this.isRestarting = jotai.atom(false);
 

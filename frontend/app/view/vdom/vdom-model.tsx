@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { BlockNodeModel } from "@/app/block/blocktypes";
+import type { TabModel } from "@/app/store/tab-model";
 import { getBlockMetaKeyAtom, globalStore, WOS } from "@/app/store/global";
 import { makeORef } from "@/app/store/wos";
 import { waveEventSubscribe } from "@/app/store/wps";
@@ -105,6 +106,7 @@ class VDomWshClient extends WshClient {
 export class VDomModel {
     blockId: string;
     nodeModel: BlockNodeModel;
+    tabModel: TabModel;
     viewType: string;
     viewIcon: jotai.Atom<string>;
     viewName: jotai.Atom<string>;
@@ -138,10 +140,11 @@ export class VDomModel {
     hasBackendWork: boolean = false;
     noPadding: jotai.PrimitiveAtom<boolean>;
 
-    constructor(blockId: string, nodeModel: BlockNodeModel) {
+    constructor(blockId: string, nodeModel: BlockNodeModel, tabModel: TabModel) {
         this.viewType = "vdom";
         this.blockId = blockId;
         this.nodeModel = nodeModel;
+        this.tabModel = tabModel;
         this.contextActive = jotai.atom(false);
         this.reset();
         this.viewIcon = jotai.atom("bolt");

@@ -211,7 +211,6 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
         notifications: notificationsAtom,
         notificationPopoverMode: notificationPopoverModeAtom,
         reinitVersion,
-        isTermMultiInput: atom(false),
         waveAIRateLimitInfoAtom: rateLimitInfoAtom,
     };
 }

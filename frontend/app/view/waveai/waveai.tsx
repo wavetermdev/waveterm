@@ -1,6 +1,8 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { BlockNodeModel } from "@/app/block/blocktypes";
+import type { TabModel } from "@/app/store/tab-model";
 import { Button } from "@/app/element/button";
 import { Markdown } from "@/app/element/markdown";
 import { TypingIndicator } from "@/app/element/typingindicator";
@@ -64,6 +66,8 @@ class AiWshClient extends WshClient {
 export class WaveAiModel implements ViewModel {
     viewType: string;
     blockId: string;
+    nodeModel: BlockNodeModel;
+    tabModel: TabModel;
     blockAtom: Atom<Block>;
     presetKey: Atom<string>;
     presetMap: Atom<{ [k: string]: MetaType }>;
@@ -86,13 +90,15 @@ export class WaveAiModel implements ViewModel {
     cancel: boolean;
     aiWshClient: AiWshClient;
 
-    constructor(blockId: string) {
+    constructor(blockId: string, nodeModel: BlockNodeModel, tabModel: TabModel) {
+        this.blockId = blockId;
+        this.nodeModel = nodeModel;
+        this.tabModel = tabModel;
         this.aiWshClient = new AiWshClient(blockId, this);
         DefaultRouter.registerRoute(makeFeBlockRouteId(blockId), this.aiWshClient);
         this.locked = atom(false);
         this.cancel = false;
         this.viewType = "waveai";
-        this.blockId = blockId;
         this.blockAtom = WOS.getWaveObjectAtom<Block>(`block:${blockId}`);
         this.viewIcon = atom("sparkles");
         this.viewName = atom("Wave AI");

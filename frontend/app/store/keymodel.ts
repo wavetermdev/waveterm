@@ -19,6 +19,7 @@ import {
     replaceBlock,
     WOS,
 } from "@/app/store/global";
+import { getActiveTabModel } from "@/app/store/tab-model";
 import { TabBarModel } from "@/app/tab/tabbar-model";
 import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
 import { deleteLayoutModelForTab, getLayoutModelForStaticTab, NavigateDirection } from "@/layout/index";
@@ -585,12 +586,16 @@ function registerGlobalKeys() {
         }
     });
     globalKeyMap.set("Ctrl:Shift:i", () => {
-        const curMI = globalStore.get(atoms.isTermMultiInput);
+        const tabModel = getActiveTabModel();
+        if (tabModel == null) {
+            return true;
+        }
+        const curMI = globalStore.get(tabModel.isTermMultiInput);
         if (!curMI && countTermBlocks() <= 1) {
             // don't turn on multi-input unless there are 2 or more basic term blocks
             return true;
         }
-        globalStore.set(atoms.isTermMultiInput, !curMI);
+        globalStore.set(tabModel.isTermMultiInput, !curMI);
         return true;
     });
     for (let idx = 1; idx <= 9; idx++) {

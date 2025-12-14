@@ -1,14 +1,16 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { atom, Atom } from "jotai";
+import { atom, Atom, PrimitiveAtom } from "jotai";
 import { createContext, useContext } from "react";
+import { globalStore } from "./jotaiStore";
 import * as WOS from "./wos";
 
 class TabModel {
     tabId: string;
     tabAtom: Atom<Tab>;
     tabNumBlocksAtom: Atom<number>;
+    isTermMultiInput = atom(false) as PrimitiveAtom<boolean>;
     metaCache: Map<string, Atom<any>> = new Map();
 
     constructor(tabId: string) {
@@ -37,6 +39,8 @@ class TabModel {
 
 const tabModelCache = new Map<string, TabModel>();
 
+const activeTabIdAtom = atom<string>(null) as PrimitiveAtom<string>;
+
 function getTabModelByTabId(tabId: string): TabModel {
     let model = tabModelCache.get(tabId);
     if (model == null) {
@@ -44,6 +48,14 @@ function getTabModelByTabId(tabId: string): TabModel {
         tabModelCache.set(tabId, model);
     }
     return model;
+}
+
+function getActiveTabModel(): TabModel | null {
+    const activeTabId = globalStore.get(activeTabIdAtom);
+    if (activeTabId == null) {
+        return null;
+    }
+    return getTabModelByTabId(activeTabId);
 }
 
 const TabModelContext = createContext<TabModel | undefined>(undefined);
@@ -56,4 +68,4 @@ function useTabModel(): TabModel {
     return model;
 }
 
-export { getTabModelByTabId, TabModel, TabModelContext, useTabModel };
+export { activeTabIdAtom, getActiveTabModel, getTabModelByTabId, TabModel, TabModelContext, useTabModel };

@@ -30,6 +30,7 @@ import {
     removeNotificationById,
     subscribeToConnEvents,
 } from "@/store/global";
+import { activeTabIdAtom } from "@/store/tab-model";
 import * as WOS from "@/store/wos";
 import { loadFonts } from "@/util/fontutil";
 import { setKeyUtilPlatform } from "@/util/keyutil";
@@ -162,6 +163,7 @@ async function initWave(initOpts: WaveInitOpts) {
         "platform",
         platform
     );
+    globalStore.set(activeTabIdAtom, initOpts.tabId);
     initGlobal({
         tabId: initOpts.tabId,
         clientId: initOpts.clientId,
