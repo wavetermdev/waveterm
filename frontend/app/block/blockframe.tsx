@@ -17,6 +17,7 @@ import {
     useBlockAtom,
     WOS,
 } from "@/app/store/global";
+import { useTabModel } from "@/app/store/tab-model";
 import { uxCloseBlock } from "@/app/store/keymodel";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
@@ -492,6 +493,7 @@ const ConnStatusOverlay = React.memo(
 );
 
 const BlockMask = React.memo(({ nodeModel }: { nodeModel: NodeModel }) => {
+    const tabModel = useTabModel();
     const isFocused = jotai.useAtomValue(nodeModel.isFocused);
     const isEphemeral = jotai.useAtomValue(nodeModel.isEphemeral);
     const blockNum = jotai.useAtomValue(nodeModel.blockNum);
@@ -499,12 +501,12 @@ const BlockMask = React.memo(({ nodeModel }: { nodeModel: NodeModel }) => {
     const showOverlayBlockNums = jotai.useAtomValue(getSettingsKeyAtom("app:showoverlayblocknums")) ?? true;
     const blockHighlight = jotai.useAtomValue(BlockModel.getInstance().getBlockHighlightAtom(nodeModel.blockId));
     const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", nodeModel.blockId));
+    const tabActiveBorderColor = jotai.useAtomValue(tabModel.getTabMetaAtom("bg:activebordercolor"));
+    const tabBorderColor = jotai.useAtomValue(tabModel.getTabMetaAtom("bg:bordercolor"));
     const style: React.CSSProperties = {};
     let showBlockMask = false;
 
     if (isFocused) {
-        const tabData = jotai.useAtomValue(atoms.tabAtom);
-        const tabActiveBorderColor = tabData?.meta?.["bg:activebordercolor"];
         if (tabActiveBorderColor) {
             style.borderColor = tabActiveBorderColor;
         }
@@ -512,8 +514,6 @@ const BlockMask = React.memo(({ nodeModel }: { nodeModel: NodeModel }) => {
             style.borderColor = blockData.meta["frame:activebordercolor"];
         }
     } else {
-        const tabData = jotai.useAtomValue(atoms.tabAtom);
-        const tabBorderColor = tabData?.meta?.["bg:bordercolor"];
         if (tabBorderColor) {
             style.borderColor = tabBorderColor;
         }
@@ -674,13 +674,13 @@ const BlockFrame_Default_Component = (props: BlockFrameProps) => {
 const BlockFrame_Default = React.memo(BlockFrame_Default_Component) as typeof BlockFrame_Default_Component;
 
 const BlockFrame = React.memo((props: BlockFrameProps) => {
+    const tabModel = useTabModel();
     const blockId = props.nodeModel.blockId;
     const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", blockId));
-    const tabData = jotai.useAtomValue(atoms.tabAtom);
+    const numBlocks = jotai.useAtomValue(tabModel.tabNumBlocksAtom);
     if (!blockId || !blockData) {
         return null;
     }
-    const numBlocks = tabData?.blockids?.length ?? 0;
     return <BlockFrame_Default {...props} numBlocksInTab={numBlocks} />;
 });
 

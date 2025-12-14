@@ -19,7 +19,6 @@ declare global {
         waveaiModeConfigAtom: jotai.PrimitiveAtom<Record<string, AIModeConfigType>>; // resolved AI mode configs -- updated via WebSocket
         settingsAtom: jotai.Atom<SettingsType>; // derrived from fullConfig
         hasCustomAIPresetsAtom: jotai.Atom<boolean>; // derived from fullConfig
-        tabAtom: jotai.Atom<Tab>; // driven from WOS
         staticTabId: jotai.Atom<string>;
         isFullScreen: jotai.PrimitiveAtom<boolean>;
         zoomFactorAtom: jotai.PrimitiveAtom<number>;

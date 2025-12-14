@@ -140,9 +140,6 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
         }
         return false;
     }) as Atom<boolean>;
-    const tabAtom: Atom<Tab> = atom((get) => {
-        return WOS.getObjectValue(WOS.makeORef("tab", initOpts.tabId), get);
-    });
     // this is *the* tab that this tabview represents.  it should never change.
     const staticTabIdAtom: Atom<string> = atom(initOpts.tabId);
     const controlShiftDelayAtom = atom(false);
@@ -201,7 +198,6 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
         waveaiModeConfigAtom,
         settingsAtom,
         hasCustomAIPresetsAtom,
-        tabAtom,
         staticTabId: staticTabIdAtom,
         isFullScreen: isFullScreenAtom,
         zoomFactorAtom,
