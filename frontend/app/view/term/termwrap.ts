@@ -330,6 +330,7 @@ function handleOsc16162Command(data: string, blockId: string, loaded: boolean, t
 }
 
 export class TermWrap {
+    tabId: string;
     blockId: string;
     ptyOffset: number;
     dataBytesProcessed: number;
@@ -368,12 +369,14 @@ export class TermWrap {
     lastPasteTime: number = 0;
 
     constructor(
+        tabId: string,
         blockId: string,
         connectElem: HTMLDivElement,
         options: TermTypes.ITerminalOptions & TermTypes.ITerminalInitOnlyOptions,
         waveOptions: TermWrapOptions
     ) {
         this.loaded = false;
+        this.tabId = tabId;
         this.blockId = blockId;
         this.sendDataHandler = waveOptions.sendDataHandler;
         this.ptyOffset = 0;
@@ -685,11 +688,10 @@ export class TermWrap {
 
     async resyncController(reason: string) {
         dlog("resync controller", this.blockId, reason);
-        const tabId = globalStore.get(atoms.staticTabId);
         const rtOpts: RuntimeOpts = { termsize: { rows: this.terminal.rows, cols: this.terminal.cols } };
         try {
             await RpcApi.ControllerResyncCommand(TabRpcClient, {
-                tabid: tabId,
+                tabid: this.tabId,
                 blockid: this.blockId,
                 rtopts: rtOpts,
             });

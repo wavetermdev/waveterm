@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { BlockNodeModel } from "@/app/block/blocktypes";
+import { getApi, globalStore, WOS } from "@/app/store/global";
 import type { TabModel } from "@/app/store/tab-model";
-import { atoms, getApi, globalStore, WOS } from "@/app/store/global";
 import { waveEventSubscribe } from "@/app/store/wps";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
@@ -107,7 +107,7 @@ class TsunamiViewModel extends WebViewModel {
             this.triggerRestartAtom();
         }
         const prtn = RpcApi.ControllerResyncCommand(TabRpcClient, {
-            tabid: globalStore.get(atoms.staticTabId),
+            tabid: this.tabModel.tabId,
             blockid: this.blockId,
             forcerestart: forceRestart,
         });
@@ -135,7 +135,7 @@ class TsunamiViewModel extends WebViewModel {
             await new Promise((resolve) => setTimeout(resolve, 300));
             // Then resync to restart it
             await RpcApi.ControllerResyncCommand(TabRpcClient, {
-                tabid: globalStore.get(atoms.staticTabId),
+                tabid: this.tabModel.tabId,
                 blockid: this.blockId,
                 forcerestart: false,
             });
