@@ -6,6 +6,7 @@ import { waveAIHasSelection } from "@/app/aipanel/waveai-focus-utils";
 import { ErrorBoundary } from "@/app/element/errorboundary";
 import { atoms, getSettingsKeyAtom } from "@/app/store/global";
 import { globalStore } from "@/app/store/jotaiStore";
+import { useTabModel } from "@/app/store/tab-model";
 import { checkKeyPressed, keydownWrapper } from "@/util/keyutil";
 import { isMacOS, isWindows } from "@/util/platformutil";
 import { cn } from "@/util/util";
@@ -233,6 +234,7 @@ const AIPanelComponentInner = memo(() => {
     const isFocused = jotai.useAtomValue(model.isWaveAIFocusedAtom);
     const telemetryEnabled = jotai.useAtomValue(getSettingsKeyAtom("telemetry:enabled")) ?? false;
     const isPanelVisible = jotai.useAtomValue(model.getPanelVisibleAtom());
+    const tabModel = useTabModel();
 
     const { messages, sendMessage, status, setMessages, error, stop } = useChat<WaveUIMessage>({
         transport: new DefaultChatTransport({
@@ -249,7 +251,7 @@ const AIPanelComponentInner = memo(() => {
                     body.builderid = globalStore.get(atoms.builderId);
                     body.builderappid = globalStore.get(atoms.builderAppId);
                 } else {
-                    body.tabid = globalStore.get(atoms.staticTabId);
+                    body.tabid = tabModel.tabId;
                 }
                 return { body };
             },

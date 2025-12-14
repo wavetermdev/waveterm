@@ -210,7 +210,7 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
         notificationPopoverMode: notificationPopoverModeAtom,
         reinitVersion,
         waveAIRateLimitInfoAtom: rateLimitInfoAtom,
-    };
+    } as GlobalAtomsType;
 }
 
 function initGlobalWaveEventSubs(initOpts: WaveInitOpts) {
