@@ -25,7 +25,6 @@ declare global {
         controlShiftDelayAtom: jotai.PrimitiveAtom<boolean>;
         prefersReducedMotionAtom: jotai.Atom<boolean>;
         updaterStatusAtom: jotai.PrimitiveAtom<UpdaterStatus>;
-        typeAheadModalAtom: jotai.PrimitiveAtom<TypeAheadModalType>;
         modalOpen: jotai.PrimitiveAtom<boolean>;
         allConnStatus: jotai.Atom<ConnStatus[]>;
         flashErrors: jotai.PrimitiveAtom<FlashErrorType[]>;

@@ -172,7 +172,6 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
         });
     }
 
-    const typeAheadModalAtom = atom({});
     const modalOpen = atom(false);
     const allConnStatusAtom = atom<ConnStatus[]>((get) => {
         const connStatusMap = get(ConnStatusMapAtom);
@@ -204,7 +203,6 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
         controlShiftDelayAtom,
         updaterStatusAtom,
         prefersReducedMotionAtom,
-        typeAheadModalAtom,
         modalOpen,
         allConnStatus: allConnStatusAtom,
         flashErrors: flashErrorsAtom,
