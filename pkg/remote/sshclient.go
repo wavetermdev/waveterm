@@ -909,7 +909,7 @@ func findSshConfigKeywords(hostPattern string) (connKeywords *wconfig.ConnKeywor
 			}
 			sshKeywords.SshIdentityAgent = utilfn.Ptr(agentPath)
 		} else if runtime.GOOS == "windows" {
-			sshKeywords.SshIdentityAgent = utilfn.Ptr(`\\.\\pipe\\openssh-ssh-agent`)
+			sshKeywords.SshIdentityAgent = utilfn.Ptr(`\\.\pipe\openssh-ssh-agent`)
 		} else {
 			shellPath := shellutil.DetectLocalShellPath()
 			authSockCommand := exec.Command(shellPath, "-c", "echo ${SSH_AUTH_SOCK}")
