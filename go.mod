@@ -3,6 +3,7 @@ module github.com/wavetermdev/waveterm
 go 1.24.6
 
 require (
+	github.com/Microsoft/go-winio v0.6.2
 	github.com/alexflint/go-filemutex v1.3.0
 	github.com/aws/aws-sdk-go-v2 v1.41.0
 	github.com/aws/aws-sdk-go-v2/config v1.32.0

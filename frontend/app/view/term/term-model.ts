@@ -489,6 +489,42 @@ export class TermViewModel implements ViewModel {
             this.setTermMode(newTermMode);
             return true;
         }
+        if (keyutil.checkKeyPressed(waveEvent, "Shift:End")) {
+            if (this.termRef?.current?.terminal) {
+                this.termRef.current.terminal.scrollToBottom();
+            }
+            return true;
+        }
+        if (keyutil.checkKeyPressed(waveEvent, "Shift:Home")) {
+            if (this.termRef?.current?.terminal) {
+                this.termRef.current.terminal.scrollToLine(0);
+            }
+            return true;
+        }
+        if (isMacOS() && keyutil.checkKeyPressed(waveEvent, "Cmd:End")) {
+            if (this.termRef?.current?.terminal) {
+                this.termRef.current.terminal.scrollToBottom();
+            }
+            return true;
+        }
+        if (isMacOS() && keyutil.checkKeyPressed(waveEvent, "Cmd:Home")) {
+            if (this.termRef?.current?.terminal) {
+                this.termRef.current.terminal.scrollToLine(0);
+            }
+            return true;
+        }
+        if (keyutil.checkKeyPressed(waveEvent, "Shift:PageDown")) {
+            if (this.termRef?.current?.terminal) {
+                this.termRef.current.terminal.scrollPages(1);
+            }
+            return true;
+        }
+        if (keyutil.checkKeyPressed(waveEvent, "Shift:PageUp")) {
+            if (this.termRef?.current?.terminal) {
+                this.termRef.current.terminal.scrollPages(-1);
+            }
+            return true;
+        }
         const blockData = globalStore.get(this.blockAtom);
         if (blockData.meta?.["term:mode"] == "vdom") {
             const vdomModel = this.getVDomModel();
@@ -502,16 +538,16 @@ export class TermViewModel implements ViewModel {
         if (isMacOS()) {
             return false;
         }
-        
+
         // Get the app:ctrlvpaste setting
         const ctrlVPasteAtom = getSettingsKeyAtom("app:ctrlvpaste");
         const ctrlVPasteSetting = globalStore.get(ctrlVPasteAtom);
-        
+
         // If setting is explicitly set, use it
         if (ctrlVPasteSetting != null) {
             return ctrlVPasteSetting;
         }
-        
+
         // Default behavior: Windows=true, Linux/other=false
         return isWindows();
     }
@@ -545,7 +581,7 @@ export class TermViewModel implements ViewModel {
                 return false;
             }
         }
-        
+
         // Check for Ctrl-V paste (platform-dependent)
         if (this.shouldHandleCtrlVPaste() && keyutil.checkKeyPressed(waveEvent, "Ctrl:v")) {
             event.preventDefault();
@@ -553,7 +589,7 @@ export class TermViewModel implements ViewModel {
             getApi().nativePaste();
             return false;
         }
-        
+
         if (keyutil.checkKeyPressed(waveEvent, "Ctrl:Shift:v")) {
             event.preventDefault();
             event.stopPropagation();
