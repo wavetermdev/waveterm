@@ -2,17 +2,16 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as WOS from "@/app/store/wos";
+import { ClientModel } from "@/app/store/client-model";
 import { atom, Atom } from "jotai";
 
 class GlobalModel {
     private static instance: GlobalModel;
 
-    clientId: string;
     windowId: string;
     builderId: string;
     platform: NodeJS.Platform;
 
-    clientAtom!: Atom<Client>;
     windowDataAtom!: Atom<WaveWindow>;
     workspaceAtom!: Atom<Workspace>;
 
@@ -28,17 +27,10 @@ class GlobalModel {
     }
 
     async initialize(initOpts: GlobalInitOptions): Promise<void> {
-        this.clientId = initOpts.clientId;
+        ClientModel.getInstance().initialize(initOpts.clientId);
         this.windowId = initOpts.windowId;
         this.builderId = initOpts.builderId;
         this.platform = initOpts.platform;
-
-        this.clientAtom = atom((get) => {
-            if (this.clientId == null) {
-                return null;
-            }
-            return WOS.getObjectValue(WOS.makeORef("client", this.clientId), get);
-        });
 
         this.windowDataAtom = atom((get) => {
             if (this.windowId == null) {

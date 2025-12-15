@@ -6,8 +6,8 @@ import { Button } from "@/app/element/button";
 import { FlexiModal } from "@/app/modals/modal";
 import { CurrentOnboardingVersion } from "@/app/onboarding/onboarding-common";
 import { OnboardingFeatures } from "@/app/onboarding/onboarding-features";
-import { GlobalModel } from "@/app/store/global-model";
-import { atoms, globalStore } from "@/app/store/global";
+import { ClientModel } from "@/app/store/client-model";
+import { globalStore } from "@/app/store/global";
 import { disableGlobalKeybindings, enableGlobalKeybindings, globalRefocus } from "@/app/store/keymodel";
 import { modalsModel } from "@/app/store/modalmodel";
 import * as WOS from "@/app/store/wos";
@@ -61,7 +61,7 @@ const UpgradeOnboardingMinor = () => {
             },
             { noresponse: true }
         );
-        const clientId = GlobalModel.getInstance().clientId;
+        const clientId = ClientModel.getInstance().clientId;
         await RpcApi.SetMetaCommand(TabRpcClient, {
             oref: WOS.makeORef("client", clientId),
             meta: { "onboarding:githubstar": true },
@@ -79,7 +79,7 @@ const UpgradeOnboardingMinor = () => {
             },
             { noresponse: true }
         );
-        const clientId = GlobalModel.getInstance().clientId;
+        const clientId = ClientModel.getInstance().clientId;
         await RpcApi.SetMetaCommand(TabRpcClient, {
             oref: WOS.makeORef("client", clientId),
             meta: { "onboarding:githubstar": true },
@@ -96,7 +96,7 @@ const UpgradeOnboardingMinor = () => {
             },
             { noresponse: true }
         );
-        const clientId = GlobalModel.getInstance().clientId;
+        const clientId = ClientModel.getInstance().clientId;
         await RpcApi.SetMetaCommand(TabRpcClient, {
             oref: WOS.makeORef("client", clientId),
             meta: { "onboarding:githubstar": false },
@@ -105,7 +105,7 @@ const UpgradeOnboardingMinor = () => {
     };
 
     const handleFeaturesComplete = () => {
-        const clientId = GlobalModel.getInstance().clientId;
+        const clientId = ClientModel.getInstance().clientId;
         RpcApi.SetMetaCommand(TabRpcClient, {
             oref: WOS.makeORef("client", clientId),
             meta: { "onboarding:lastversion": CurrentOnboardingVersion },

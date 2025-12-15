@@ -2,15 +2,15 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { BlockNodeModel } from "@/app/block/blocktypes";
-import type { TabModel } from "@/app/store/tab-model";
 import { Button } from "@/app/element/button";
 import { Markdown } from "@/app/element/markdown";
 import { TypingIndicator } from "@/app/element/typingindicator";
+import { ClientModel } from "@/app/store/client-model";
+import type { TabModel } from "@/app/store/tab-model";
 import { RpcResponseHelper, WshClient } from "@/app/store/wshclient";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { makeFeBlockRouteId } from "@/app/store/wshrouter";
 import { DefaultRouter, TabRpcClient } from "@/app/store/wshrpcutil";
-import { GlobalModel } from "@/app/store/global-model";
 import { atoms, createBlock, fetchWaveFile, getApi, globalStore, WOS } from "@/store/global";
 import { BlockService, ObjectService } from "@/store/services";
 import { adaptFromReactOrNativeKeyEvent, checkKeyPressed } from "@/util/keyutil";
@@ -344,7 +344,7 @@ export class WaveAiModel implements ViewModel {
     }
 
     sendMessage(text: string, user: string = "user") {
-        const clientId = GlobalModel.getInstance().clientId;
+        const clientId = ClientModel.getInstance().clientId;
         this.setLocked(true);
 
         const newMessage: ChatMessageType = {

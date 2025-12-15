@@ -5,8 +5,7 @@ import Logo from "@/app/asset/logo.svg";
 import { Button } from "@/app/element/button";
 import { EmojiButton } from "@/app/element/emojibutton";
 import { MagnifyIcon } from "@/app/element/magnify";
-import { GlobalModel } from "@/app/store/global-model";
-import { atoms, globalStore } from "@/app/store/global";
+import { ClientModel } from "@/app/store/client-model";
 import * as WOS from "@/app/store/wos";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
@@ -315,7 +314,7 @@ export const OnboardingFeatures = ({ onComplete }: { onComplete: () => void }) =
     const [currentPage, setCurrentPage] = useState<FeaturePageName>("waveai");
 
     useEffect(() => {
-        const clientId = GlobalModel.getInstance().clientId;
+        const clientId = ClientModel.getInstance().clientId;
         RpcApi.SetMetaCommand(TabRpcClient, {
             oref: WOS.makeORef("client", clientId),
             meta: { "onboarding:lastversion": CurrentOnboardingVersion },
