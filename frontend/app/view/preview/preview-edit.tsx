@@ -66,10 +66,13 @@ function CodeEditPreview({ model }: SpecializedViewProps) {
         model.refreshCallback = () => {
             globalStore.set(model.refreshVersion, (v) => v + 1);
         };
+        // Start file watcher for auto-refresh
+        model.startFileWatcher();
         return () => {
             model.codeEditKeyDownHandler = null;
             model.monacoRef.current = null;
             model.refreshCallback = null;
+            model.stopFileWatcher();
         };
     }, []);
 

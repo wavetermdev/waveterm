@@ -164,6 +164,8 @@ export class PreviewModel implements ViewModel {
     refreshCallback: () => void;
     directoryKeyDownHandler: (waveEvent: WaveKeyboardEvent) => boolean;
     codeEditKeyDownHandler: (waveEvent: WaveKeyboardEvent) => boolean;
+    fileWatcherInterval: number | null;
+    lastModTime: number | null;
 
     showS3 = atom(true);
 
@@ -187,6 +189,8 @@ export class PreviewModel implements ViewModel {
         this.monacoRef = createRef();
         this.connectionError = atom("");
         this.errorMsgAtom = atom(null) as PrimitiveAtom<ErrorMsg | null>;
+        this.fileWatcherInterval = null;
+        this.lastModTime = null;
         this.viewIcon = atom((get) => {
             const blockData = get(this.blockAtom);
             if (blockData?.meta?.icon) {
@@ -804,6 +808,44 @@ export class PreviewModel implements ViewModel {
             }
         }
         return menuItems;
+    }
+
+    // Start watching file for changes
+    startFileWatcher() {
+        if (this.fileWatcherInterval) return; // Already watching
+
+        this.fileWatcherInterval = window.setInterval(async () => {
+            try {
+                const fileInfo = await globalStore.get(this.statFile);
+                if (!fileInfo || fileInfo.mimetype === "directory") {
+                    return; // Don't watch directories
+                }
+
+                const currentModTime = fileInfo.mtime;
+                if (this.lastModTime === null) {
+                    this.lastModTime = currentModTime;
+                    return;
+                }
+
+                // Check if file was modified
+                if (currentModTime !== this.lastModTime) {
+                    console.log("File changed detected, auto-refreshing...");
+                    this.lastModTime = currentModTime;
+                    globalStore.set(this.refreshVersion, (v) => v + 1);
+                }
+            } catch (err) {
+                console.error("File watcher error:", err);
+            }
+        }, 2000); // Check every 2 seconds
+    }
+
+    // Stop watching file for changes
+    stopFileWatcher() {
+        if (this.fileWatcherInterval) {
+            window.clearInterval(this.fileWatcherInterval);
+            this.fileWatcherInterval = null;
+            this.lastModTime = null;
+        }
     }
 
     giveFocus(): boolean {

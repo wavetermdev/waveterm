@@ -12,8 +12,10 @@ function MarkdownPreview({ model }: SpecializedViewProps) {
         model.refreshCallback = () => {
             globalStore.set(model.refreshVersion, (v) => v + 1);
         };
+        model.startFileWatcher();
         return () => {
             model.refreshCallback = null;
+            model.stopFileWatcher();
         };
     }, []);
     const connName = useAtomValue(model.connection);

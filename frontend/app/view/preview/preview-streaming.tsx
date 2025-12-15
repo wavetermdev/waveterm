@@ -51,8 +51,10 @@ function StreamingPreview({ model }: SpecializedViewProps) {
         model.refreshCallback = () => {
             globalStore.set(model.refreshVersion, (v) => v + 1);
         };
+        model.startFileWatcher();
         return () => {
             model.refreshCallback = null;
+            model.stopFileWatcher();
         };
     }, []);
     const conn = useAtomValue(model.connection);
