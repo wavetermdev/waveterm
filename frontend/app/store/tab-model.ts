@@ -6,6 +6,9 @@ import { createContext, useContext } from "react";
 import { globalStore } from "./jotaiStore";
 import * as WOS from "./wos";
 
+const tabModelCache = new Map<string, TabModel>();
+const activeTabIdAtom = atom<string>(null) as PrimitiveAtom<string>;
+
 class TabModel {
     tabId: string;
     tabAtom: Atom<Tab>;
@@ -36,10 +39,6 @@ class TabModel {
         return metaAtom;
     }
 }
-
-const tabModelCache = new Map<string, TabModel>();
-
-const activeTabIdAtom = atom<string>(null) as PrimitiveAtom<string>;
 
 function getTabModelByTabId(tabId: string): TabModel {
     let model = tabModelCache.get(tabId);

@@ -40,16 +40,6 @@ const Counters = new Map<string, number>();
 const ConnStatusMapAtom = atom(new Map<string, PrimitiveAtom<ConnStatus>>());
 const orefAtomCache = new Map<string, Map<string, Atom<any>>>();
 
-type GlobalInitOptions = {
-    tabId?: string;
-    platform: NodeJS.Platform;
-    windowId: string;
-    clientId: string;
-    environment: "electron" | "renderer";
-    primaryTabStartup?: boolean;
-    builderId?: string;
-};
-
 function initGlobal(initOpts: GlobalInitOptions) {
     globalEnvironment = initOpts.environment;
     globalPrimaryTabStartup = initOpts.primaryTabStartup ?? false;

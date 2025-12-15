@@ -57,6 +57,16 @@ declare global {
         blockId: string;
     };
 
+    type GlobalInitOptions = {
+        tabId?: string;
+        platform: NodeJS.Platform;
+        windowId: string;
+        clientId: string;
+        environment: "electron" | "renderer";
+        primaryTabStartup?: boolean;
+        builderId?: string;
+    };
+
     type WaveInitOpts = {
         tabId: string;
         clientId: string;
