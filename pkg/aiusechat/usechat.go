@@ -84,6 +84,9 @@ func getWaveAISettings(premium bool, builderMode bool, rtInfo waveobj.ObjRTInfo)
 	if err != nil {
 		return nil, err
 	}
+	if config.WaveAICloud && !telemetry.IsTelemetryEnabled() {
+		return nil, fmt.Errorf("Wave AI cloud modes require telemetry to be enabled")
+	}
 	apiToken := config.APIToken
 	if apiToken == "" && config.APITokenSecretName != "" {
 		secret, exists, err := secretstore.GetSecret(config.APITokenSecretName)
