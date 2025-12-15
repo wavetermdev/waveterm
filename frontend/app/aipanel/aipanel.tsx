@@ -219,6 +219,20 @@ const AIErrorMessage = memo(({ errorMessage, onClear }: AIErrorMessageProps) => 
 
 AIErrorMessage.displayName = "AIErrorMessage";
 
+const RTInfoModeFixer = memo(() => {
+    const model = WaveAIModel.getInstance();
+    const telemetryEnabled = jotai.useAtomValue(getSettingsKeyAtom("telemetry:enabled")) ?? false;
+    const aiModeConfigs = jotai.useAtomValue(model.aiModeConfigs);
+
+    useEffect(() => {
+        model.fixRTInfoMode();
+    }, [telemetryEnabled, aiModeConfigs, model]);
+
+    return null;
+});
+
+RTInfoModeFixer.displayName = "RTInfoModeFixer";
+
 const AIPanelComponentInner = memo(() => {
     const [isDragOver, setIsDragOver] = useState(false);
     const [isReactDndDragOver, setIsReactDndDragOver] = useState(false);
@@ -248,6 +262,7 @@ const AIPanelComponentInner = memo(() => {
                     msg,
                     chatid: globalStore.get(model.chatId),
                     widgetaccess: globalStore.get(model.widgetAccessAtom),
+                    aimode: globalStore.get(model.currentAIMode),
                 };
                 if (windowType === "builder") {
                     body.builderid = globalStore.get(atoms.builderId);
@@ -529,6 +544,7 @@ const AIPanelComponentInner = memo(() => {
             onClick={handleClick}
             inert={!isPanelVisible ? true : undefined}
         >
+            <RTInfoModeFixer />
             {(isDragOver || isReactDndDragOver) && allowAccess && <AIDragOverlay />}
             {showBlockMask && <AIBlockMask />}
             <AIPanelHeader />

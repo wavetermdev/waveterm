@@ -57,10 +57,11 @@ export class WaveAIModel {
     widgetAccessAtom!: jotai.Atom<boolean>;
     droppedFiles: jotai.PrimitiveAtom<DroppedFile[]> = jotai.atom([]);
     chatId!: jotai.PrimitiveAtom<string>;
-    currentAIMode: jotai.PrimitiveAtom<string> = jotai.atom("waveai@balanced");
+    currentAIMode!: jotai.PrimitiveAtom<string>;
     aiModeConfigs!: jotai.Atom<Record<string, AIModeConfigType>>;
+    hasPremiumAtom!: jotai.Atom<boolean>;
+    defaultModeAtom!: jotai.Atom<string>;
     errorMessage: jotai.PrimitiveAtom<string> = jotai.atom(null) as jotai.PrimitiveAtom<string>;
-    modelAtom!: jotai.Atom<string>;
     containerWidth: jotai.PrimitiveAtom<number> = jotai.atom(0);
     codeBlockMaxWidth!: jotai.Atom<number>;
     inputAtom: jotai.PrimitiveAtom<string> = jotai.atom("");
@@ -77,16 +78,13 @@ export class WaveAIModel {
     private constructor(orefContext: ORef, inBuilder: boolean) {
         this.orefContext = orefContext;
         this.inBuilder = inBuilder;
-        const defaultMode = globalStore.get(getSettingsKeyAtom("waveai:defaultmode")) ?? "waveai@balanced";
-        this.currentAIMode = jotai.atom(defaultMode);
         this.chatId = jotai.atom(null) as jotai.PrimitiveAtom<string>;
-
-        this.modelAtom = jotai.atom((get) => {
-            const modelMetaAtom = getOrefMetaKeyAtom(this.orefContext, "waveai:model");
-            return get(modelMetaAtom) ?? "gpt-5.1";
-        });
         this.aiModeConfigs = atoms.waveaiModeConfigAtom;
 
+        this.hasPremiumAtom = jotai.atom((get) => {
+            const rateLimitInfo = get(atoms.waveAIRateLimitInfoAtom);
+            return !rateLimitInfo || rateLimitInfo.unknown || rateLimitInfo.preq > 0;
+        });
 
         this.widgetAccessAtom = jotai.atom((get) => {
             if (this.inBuilder) {
@@ -115,6 +113,39 @@ export class WaveAIModel {
             }
             return get(WorkspaceLayoutModel.getInstance().panelVisibleAtom);
         });
+
+        this.defaultModeAtom = jotai.atom((get) => {
+            const telemetryEnabled = get(getSettingsKeyAtom("telemetry:enabled")) ?? false;
+
+            if (this.inBuilder) {
+                return telemetryEnabled ? "waveai@balanced" : "unknown";
+            }
+
+            const aiModeConfigs = get(this.aiModeConfigs);
+            const hasPremium = get(this.hasPremiumAtom);
+
+            const waveFallback = hasPremium ? "waveai@balanced" : "waveai@quick";
+            let mode = get(getSettingsKeyAtom("waveai:defaultmode")) ?? waveFallback;
+
+            const modeExists = aiModeConfigs != null && mode in aiModeConfigs;
+
+            if (!modeExists) {
+                if (telemetryEnabled) {
+                    mode = waveFallback;
+                } else {
+                    return "unknown";
+                }
+            }
+
+            if (mode.startsWith("waveai@") && !telemetryEnabled) {
+                return "unknown";
+            }
+
+            return mode;
+        });
+
+        const defaultMode = globalStore.get(this.defaultModeAtom);
+        this.currentAIMode = jotai.atom(defaultMode);
     }
 
     getPanelVisibleAtom(): jotai.Atom<boolean> {
@@ -348,6 +379,42 @@ export class WaveAIModel {
             oref: this.orefContext,
             data: { "waveai:mode": mode },
         });
+    }
+
+    async fixRTInfoMode(): Promise<void> {
+        const rtInfo = await RpcApi.GetRTInfoCommand(TabRpcClient, {
+            oref: this.orefContext,
+        });
+        const mode = rtInfo?.["waveai:mode"];
+
+        if (mode == null) {
+            return;
+        }
+
+        let shouldClear = false;
+
+        if (mode.startsWith("waveai@")) {
+            const telemetryEnabled = globalStore.get(getSettingsKeyAtom("telemetry:enabled")) ?? false;
+            if (!telemetryEnabled) {
+                shouldClear = true;
+            }
+        }
+
+        if (!shouldClear) {
+            const aiModeConfigs = globalStore.get(this.aiModeConfigs);
+            if (aiModeConfigs == null || !(mode in aiModeConfigs)) {
+                shouldClear = true;
+            }
+        }
+
+        if (shouldClear) {
+            const defaultMode = globalStore.get(this.defaultModeAtom);
+            globalStore.set(this.currentAIMode, defaultMode);
+            RpcApi.SetRTInfoCommand(TabRpcClient, {
+                oref: this.orefContext,
+                data: { "waveai:mode": null },
+            });
+        }
     }
 
     async loadInitialChat(): Promise<WaveUIMessage[]> {

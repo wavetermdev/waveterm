@@ -72,7 +72,7 @@ func isLocalEndpoint(endpoint string) bool {
 	return strings.Contains(endpointLower, "localhost") || strings.Contains(endpointLower, "127.0.0.1")
 }
 
-func getWaveAISettings(premium bool, builderMode bool, rtInfo waveobj.ObjRTInfo) (*uctypes.AIOptsType, error) {
+func getWaveAISettings(premium bool, builderMode bool, rtInfo waveobj.ObjRTInfo, aiModeName string) (*uctypes.AIOptsType, error) {
 	maxTokens := DefaultMaxTokens
 	if builderMode {
 		maxTokens = BuilderMaxTokens
@@ -80,7 +80,7 @@ func getWaveAISettings(premium bool, builderMode bool, rtInfo waveobj.ObjRTInfo)
 	if rtInfo.WaveAIMaxOutputTokens > 0 {
 		maxTokens = rtInfo.WaveAIMaxOutputTokens
 	}
-	aiMode, config, err := resolveAIMode(rtInfo.WaveAIMode, premium)
+	aiMode, config, err := resolveAIMode(aiModeName, premium)
 	if err != nil {
 		return nil, err
 	}
@@ -600,6 +600,7 @@ type PostMessageRequest struct {
 	ChatID       string            `json:"chatid"`
 	Msg          uctypes.AIMessage `json:"msg"`
 	WidgetAccess bool              `json:"widgetaccess,omitempty"`
+	AIMode       string            `json:"aimode,omitempty"`
 }
 
 func WaveAIPostMessageHandler(w http.ResponseWriter, r *http.Request) {
@@ -642,7 +643,11 @@ func WaveAIPostMessageHandler(w http.ResponseWriter, r *http.Request) {
 	// Get WaveAI settings
 	premium := shouldUsePremium()
 	builderMode := req.BuilderId != ""
-	aiOpts, err := getWaveAISettings(premium, builderMode, *rtInfo)
+	if req.AIMode == "" {
+		http.Error(w, "aimode is required in request body", http.StatusBadRequest)
+		return
+	}
+	aiOpts, err := getWaveAISettings(premium, builderMode, *rtInfo, req.AIMode)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("WaveAI configuration error: %v", err), http.StatusInternalServerError)
 		return
