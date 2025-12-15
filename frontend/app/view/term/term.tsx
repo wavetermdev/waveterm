@@ -350,31 +350,34 @@ const TerminalView = ({ blockId, model }: ViewComponentProps<TermViewModel>) => 
     const termBg = computeBgStyleFromMeta(blockData?.meta);
 
     // Handle drag and drop
+    // Helper to check if drag event contains files
+    const isFileDrop = (e: React.DragEvent): boolean => {
+        return e.dataTransfer?.types?.includes("Files") ?? false;
+    };
+
     const handleDragOver = React.useCallback((e: React.DragEvent) => {
+        if (!isFileDrop(e)) return;
         e.preventDefault();
         e.stopPropagation();
-        // Indicate that we can accept the drop
         e.dataTransfer.dropEffect = "copy";
     }, []);
 
     const handleDrop = React.useCallback((e: React.DragEvent) => {
+        if (!isFileDrop(e)) return;
         e.preventDefault();
         e.stopPropagation();
 
-        // Get files from the drop
         const files = Array.from(e.dataTransfer.files);
-        if (files.length === 0) {
-            return;
-        }
+        if (files.length === 0) return;
 
-        console.log("Drop files:", files);
-
-        // Get the file path(s) using the Electron API
+        // Get file paths using Electron API
         const paths = files.map((file: File) => {
             try {
-                // Use the exposed Electron API to get the full path
                 const fullPath = getApi().getPathForFile(file);
-                console.log("File:", file.name, "-> Full path:", fullPath);
+                // Quote paths with spaces or special shell characters
+                if (/[\s'"]/.test(fullPath)) {
+                    return `"${fullPath}"`;
+                }
                 return fullPath;
             } catch (err) {
                 console.error("Could not get path for file:", file.name, err);
@@ -382,32 +385,21 @@ const TerminalView = ({ blockId, model }: ViewComponentProps<TermViewModel>) => 
             }
         });
 
-        console.log("Paths to insert:", paths);
-
-        // Insert the path(s) into the terminal
-        // If multiple files, separate with spaces and quote if necessary
-        const pathString = paths.map(path => {
-            // Quote paths that contain spaces
-            if (path.includes(" ")) {
-                return `"${path}"`;
-            }
-            return path;
-        }).join(" ");
-
-        console.log("Final path string:", pathString);
-
-        // Send the path to the terminal
+        // Send space-separated paths to terminal
+        const pathString = paths.join(" ");
         if (model.termRef.current && pathString) {
             model.sendDataToController(pathString);
         }
     }, [model]);
 
     const handleDragEnter = React.useCallback((e: React.DragEvent) => {
+        if (!isFileDrop(e)) return;
         e.preventDefault();
         e.stopPropagation();
     }, []);
 
     const handleDragLeave = React.useCallback((e: React.DragEvent) => {
+        if (!isFileDrop(e)) return;
         e.preventDefault();
         e.stopPropagation();
     }, []);
