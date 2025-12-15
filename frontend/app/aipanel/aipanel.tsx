@@ -84,10 +84,8 @@ KeyCap.displayName = "KeyCap";
 
 const AIWelcomeMessage = memo(() => {
     const modKey = isMacOS() ? "⌘" : "Alt";
-    const fullConfig = jotai.useAtomValue(atoms.fullConfigAtom);
-    const hasCustomModes = fullConfig?.waveai
-        ? Object.keys(fullConfig.waveai).some((key) => !key.startsWith("waveai@"))
-        : false;
+    const aiModeConfigs = jotai.useAtomValue(atoms.waveaiModeConfigAtom);
+    const hasCustomModes = Object.keys(aiModeConfigs).some((key) => !key.startsWith("waveai@"));
     return (
         <div className="text-secondary py-8">
             <div className="text-center">

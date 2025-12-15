@@ -85,10 +85,7 @@ export class WaveAIModel {
             const modelMetaAtom = getOrefMetaKeyAtom(this.orefContext, "waveai:model");
             return get(modelMetaAtom) ?? "gpt-5.1";
         });
-        this.aiModeConfigs = jotai.atom((get) => {
-            const fullConfig = get(atoms.fullConfigAtom);
-            return fullConfig?.waveai ?? {};
-        });
+        this.aiModeConfigs = atoms.waveaiModeConfigAtom;
 
 
         this.widgetAccessAtom = jotai.atom((get) => {
