@@ -906,11 +906,23 @@ export class TermWrap {
                 if (marker) {
                     const decoration = this.terminal.registerDecoration({
                         marker: marker,
-                        width: this.terminal.cols,
-                        backgroundColor: "rgba(255, 235, 59, 0.25)", // Yellow highlight
+                        layer: "top",
                     });
 
                     if (decoration) {
+                        decoration.onRender((el) => {
+                            if (!el.classList.contains("question-highlight")) {
+                                el.classList.add("question-highlight");
+                                el.style.cssText = `
+                                    position: absolute;
+                                    width: 100%;
+                                    height: 100%;
+                                    background-color: rgba(255, 235, 59, 0.25);
+                                    pointer-events: none;
+                                `;
+                            }
+                        });
+
                         this.questionLineDecorations.push(decoration);
                         decoration.onDispose(() => {
                             const idx = this.questionLineDecorations.indexOf(decoration);
