@@ -58,6 +58,7 @@ interface ConfigSection {
     sectionName: string;
     configs: AIModeConfigWithMode[];
     isIncompatible?: boolean;
+    noTelemetry?: boolean;
 }
 
 function computeCompatibleSections(
@@ -111,12 +112,17 @@ function computeCompatibleSections(
 
 function computeWaveCloudSections(
     waveProviderConfigs: AIModeConfigWithMode[],
-    otherProviderConfigs: AIModeConfigWithMode[]
+    otherProviderConfigs: AIModeConfigWithMode[],
+    telemetryEnabled: boolean
 ): ConfigSection[] {
     const sections: ConfigSection[] = [];
 
     if (waveProviderConfigs.length > 0) {
-        sections.push({ sectionName: "Wave AI Cloud", configs: waveProviderConfigs });
+        sections.push({
+            sectionName: "Wave AI Cloud",
+            configs: waveProviderConfigs,
+            noTelemetry: !telemetryEnabled
+        });
     }
     if (otherProviderConfigs.length > 0) {
         sections.push({ sectionName: "Custom", configs: otherProviderConfigs });
@@ -138,6 +144,7 @@ export const AIModeDropdown = memo(({ compatibilityMode = false }: AIModeDropdow
     const rateLimitInfo = useAtomValue(atoms.waveAIRateLimitInfoAtom);
     const showCloudModes = useAtomValue(getSettingsKeyAtom("waveai:showcloudmodes"));
     const defaultMode = useAtomValue(getSettingsKeyAtom("waveai:defaultmode")) ?? "waveai@balanced";
+    const telemetryEnabled = useAtomValue(getSettingsKeyAtom("telemetry:enabled")) ?? false;
     const [isOpen, setIsOpen] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -163,7 +170,7 @@ export const AIModeDropdown = memo(({ compatibilityMode = false }: AIModeDropdow
 
     const sections: ConfigSection[] = compatibilityMode
         ? computeCompatibleSections(currentMode, aiModeConfigs, waveProviderConfigs, otherProviderConfigs)
-        : computeWaveCloudSections(waveProviderConfigs, otherProviderConfigs);
+        : computeWaveCloudSections(waveProviderConfigs, otherProviderConfigs, telemetryEnabled);
 
     const showSectionHeaders = compatibilityMode || sections.length > 1;
 
@@ -260,6 +267,11 @@ export const AIModeDropdown = memo(({ compatibilityMode = false }: AIModeDropdow
                                                     (Start a New Chat to Switch)
                                                 </div>
                                             )}
+                                            {section.noTelemetry && (
+                                                <div className="text-center text-[11px] text-red-400 pb-1">
+                                                    (not available when telemetry is disabled)
+                                                </div>
+                                            )}
                                         </>
                                     )}
                                     {section.configs.map((config, index) => {
@@ -267,7 +279,8 @@ export const AIModeDropdown = memo(({ compatibilityMode = false }: AIModeDropdow
                                         const isLast = index === section.configs.length - 1 && isLastSection;
                                         const isPremiumDisabled = !hasPremium && config["waveai:premium"];
                                         const isIncompatibleDisabled = section.isIncompatible || false;
-                                        const isDisabled = isPremiumDisabled || isIncompatibleDisabled;
+                                        const isTelemetryDisabled = section.noTelemetry || false;
+                                        const isDisabled = isPremiumDisabled || isIncompatibleDisabled || isTelemetryDisabled;
                                         const isSelected = currentMode === config.mode;
                                         return (
                                             <AIModeMenuItem
