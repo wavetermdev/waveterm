@@ -30,7 +30,7 @@ const pageNameAtom: PrimitiveAtom<PageName> = atom<PageName>("init");
 
 const InitPage = ({ isCompact }: { isCompact: boolean }) => {
     const settings = useAtomValue(atoms.settingsAtom);
-    const clientData = useAtomValue(atoms.client);
+    const clientData = useAtomValue(ClientModel.getInstance().clientAtom);
     const [telemetryEnabled, setTelemetryEnabled] = useState<boolean>(!!settings["telemetry:enabled"]);
     const setPageName = useSetAtom(pageNameAtom);
 
@@ -227,7 +227,7 @@ const FeaturesPage = () => {
 const NewInstallOnboardingModal = () => {
     const modalRef = useRef<HTMLDivElement | null>(null);
     const [pageName, setPageName] = useAtom(pageNameAtom);
-    const clientData = useAtomValue(atoms.client);
+    const clientData = useAtomValue(ClientModel.getInstance().clientAtom);
     const [isCompact, setIsCompact] = useState<boolean>(window.innerHeight < 800);
 
     const updateModalHeight = () => {

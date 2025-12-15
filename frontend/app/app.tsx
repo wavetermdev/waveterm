@@ -1,6 +1,7 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { ClientModel } from "@/app/store/client-model";
 import { Workspace } from "@/app/workspace/workspace";
 import { ContextMenuModel } from "@/store/contextmenu";
 import { atoms, createBlock, getSettingsPrefixAtom, globalStore, isDev, removeFlashError } from "@/store/global";
@@ -273,7 +274,7 @@ const FlashError = () => {
 
 const AppInner = () => {
     const prefersReducedMotion = useAtomValue(atoms.prefersReducedMotionAtom);
-    const client = useAtomValue(atoms.client);
+    const client = useAtomValue(ClientModel.getInstance().clientAtom);
     const windowData = useAtomValue(atoms.waveWindow);
     const isFullScreen = useAtomValue(atoms.isFullScreen);
 

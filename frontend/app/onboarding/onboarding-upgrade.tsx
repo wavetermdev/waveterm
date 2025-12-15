@@ -1,6 +1,7 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { ClientModel } from "@/app/store/client-model";
 import { atoms, globalStore } from "@/app/store/global";
 import { modalsModel } from "@/app/store/modalmodel";
 import { useAtomValue } from "jotai";
@@ -11,7 +12,7 @@ import { UpgradeOnboardingMinor } from "./onboarding-upgrade-minor";
 import { UpgradeOnboardingPatch } from "./onboarding-upgrade-patch";
 
 const UpgradeOnboardingModal = () => {
-    const clientData = useAtomValue(atoms.client);
+    const clientData = useAtomValue(ClientModel.getInstance().clientAtom);
     const initialVersionRef = useRef<string | null>(null);
 
     if (initialVersionRef.current == null) {

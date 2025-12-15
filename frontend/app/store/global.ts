@@ -90,12 +90,6 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
         console.log("failed to initialize onMenuItemAbout handler", e);
     }
 
-    const clientAtom: Atom<Client> = atom((get) => {
-        if (initOpts.clientId == null) {
-            return null;
-        }
-        return WOS.getObjectValue(WOS.makeORef("client", initOpts.clientId), get);
-    });
     const windowDataAtom: Atom<WaveWindow> = atom((get) => {
         const windowId = get(windowIdAtom);
         if (windowId == null) {
@@ -177,7 +171,6 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
         builderAppId: builderAppIdAtom,
         waveWindowType: waveWindowTypeAtom,
         uiContext: uiContextAtom,
-        client: clientAtom,
         waveWindow: windowDataAtom,
         workspace: workspaceAtom,
         fullConfigAtom,
