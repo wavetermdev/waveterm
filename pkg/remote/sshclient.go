@@ -902,13 +902,7 @@ func findSshConfigKeywords(hostPattern string) (connKeywords *wconfig.ConnKeywor
 		return nil, err
 	}
 	if identityAgentRaw == "" {
-		if envSock := os.Getenv("SSH_AUTH_SOCK"); envSock != "" {
-			agentPath, err := wavebase.ExpandHomeDir(trimquotes.TryTrimQuotes(envSock))
-			if err != nil {
-				return nil, err
-			}
-			sshKeywords.SshIdentityAgent = utilfn.Ptr(agentPath)
-		} else if runtime.GOOS == "windows" {
+		if runtime.GOOS == "windows" {
 			sshKeywords.SshIdentityAgent = utilfn.Ptr(`\\.\pipe\openssh-ssh-agent`)
 		} else {
 			shellPath := shellutil.DetectLocalShellPath()

@@ -11,6 +11,6 @@ import (
 
 // dialIdentityAgent connects to the Windows OpenSSH agent named pipe.
 func dialIdentityAgent(agentPath string) (net.Conn, error) {
-	timeout := 2 * time.Second
+	timeout := 500 * time.Millisecond
 	return winio.DialPipe(agentPath, &timeout)
 }
