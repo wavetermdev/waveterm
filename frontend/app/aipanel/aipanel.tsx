@@ -233,6 +233,12 @@ const AIPanelComponentInner = memo(() => {
     const isFocused = jotai.useAtomValue(model.isWaveAIFocusedAtom);
     const telemetryEnabled = jotai.useAtomValue(getSettingsKeyAtom("telemetry:enabled")) ?? false;
     const isPanelVisible = jotai.useAtomValue(model.getPanelVisibleAtom());
+    const defaultMode = jotai.useAtomValue(getSettingsKeyAtom("waveai:defaultmode")) ?? "waveai@balanced";
+    const aiModeConfigs = jotai.useAtomValue(model.aiModeConfigs);
+
+    const hasCustomModes = Object.keys(aiModeConfigs).some((key) => !key.startsWith("waveai@"));
+    const isUsingCustomMode = !defaultMode.startsWith("waveai@");
+    const allowAccess = telemetryEnabled || (hasCustomModes && isUsingCustomMode);
 
     const { messages, sendMessage, status, setMessages, error, stop } = useChat<WaveUIMessage>({
         transport: new DefaultChatTransport({
@@ -331,6 +337,10 @@ const AIPanelComponentInner = memo(() => {
     };
 
     const handleDragOver = (e: React.DragEvent) => {
+        if (!allowAccess) {
+            return;
+        }
+
         const hasFiles = hasFilesDragged(e.dataTransfer);
 
         // Only handle native file drags here, let react-dnd handle FILE_ITEM drags
@@ -347,6 +357,10 @@ const AIPanelComponentInner = memo(() => {
     };
 
     const handleDragEnter = (e: React.DragEvent) => {
+        if (!allowAccess) {
+            return;
+        }
+
         const hasFiles = hasFilesDragged(e.dataTransfer);
 
         // Only handle native file drags here, let react-dnd handle FILE_ITEM drags
@@ -361,6 +375,10 @@ const AIPanelComponentInner = memo(() => {
     };
 
     const handleDragLeave = (e: React.DragEvent) => {
+        if (!allowAccess) {
+            return;
+        }
+
         const hasFiles = hasFilesDragged(e.dataTransfer);
 
         // Only handle native file drags here, let react-dnd handle FILE_ITEM drags
@@ -382,6 +400,13 @@ const AIPanelComponentInner = memo(() => {
     };
 
     const handleDrop = async (e: React.DragEvent) => {
+        if (!allowAccess) {
+            e.preventDefault();
+            e.stopPropagation();
+            setIsDragOver(false);
+            return;
+        }
+
         // Check if this is a FILE_ITEM drag from react-dnd
         // If so, let react-dnd handle it instead
         if (!e.dataTransfer.files.length) {
@@ -415,8 +440,13 @@ const AIPanelComponentInner = memo(() => {
     };
 
     const handleFileItemDrop = useCallback(
-        (draggedFile: DraggedFile) => model.addFileFromRemoteUri(draggedFile),
-        [model]
+        (draggedFile: DraggedFile) => {
+            if (!allowAccess) {
+                return;
+            }
+            model.addFileFromRemoteUri(draggedFile);
+        },
+        [model, allowAccess]
     );
 
     const [{ isOver, canDrop }, drop] = useDrop(
@@ -501,13 +531,13 @@ const AIPanelComponentInner = memo(() => {
             onClick={handleClick}
             inert={!isPanelVisible ? true : undefined}
         >
-            {(isDragOver || isReactDndDragOver) && <AIDragOverlay />}
+            {(isDragOver || isReactDndDragOver) && allowAccess && <AIDragOverlay />}
             {showBlockMask && <AIBlockMask />}
             <AIPanelHeader />
             <AIRateLimitStrip />
 
             <div key="main-content" className="flex-1 flex flex-col min-h-0">
-                {!telemetryEnabled ? (
+                {!allowAccess ? (
                     <TelemetryRequiredMessage />
                 ) : (
                     <>
