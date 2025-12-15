@@ -408,6 +408,12 @@ export class TermWrap {
     shellIntegrationStatusAtom: jotai.PrimitiveAtom<"ready" | "running-command" | null>;
     lastCommandAtom: jotai.PrimitiveAtom<string | null>;
 
+    // Question line tracking for navigation
+    questionLineDecorations: TermTypes.IDecoration[] = [];
+    questionLineNumbers: number[] = [];
+    scanForQuestions_debounced: () => void;
+    scrollbarMarkerContainer: HTMLDivElement;
+
     // IME composition state tracking
     // Prevents duplicate input when switching input methods during composition (e.g., using Capslock)
     // xterm.js sends data during compositionupdate AND after compositionend, causing duplicates
@@ -491,8 +497,23 @@ export class TermWrap {
         this.mainFileSubject = null;
         this.heldData = [];
         this.handleResize_debounced = debounce(50, this.handleResize.bind(this));
+        this.scanForQuestions_debounced = debounce(500, this.scanForQuestionLines.bind(this));
         this.terminal.open(this.connectElem);
         this.handleResize();
+
+        // Create scrollbar marker container
+        this.scrollbarMarkerContainer = document.createElement("div");
+        this.scrollbarMarkerContainer.className = "terminal-scrollbar-markers";
+        this.scrollbarMarkerContainer.style.cssText = `
+            position: absolute;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            width: 14px;
+            pointer-events: none;
+            z-index: 1000;
+        `;
+        this.connectElem.appendChild(this.scrollbarMarkerContainer);
         const pasteHandler = this.pasteHandler.bind(this);
         this.connectElem.addEventListener("paste", pasteHandler, true);
         this.toDispose.push({
@@ -716,6 +737,10 @@ export class TermWrap {
                 this.dataBytesProcessed += data.length;
             }
             this.lastUpdated = Date.now();
+
+            // Trigger question line scan after output stops (debounced)
+            this.scanForQuestions_debounced();
+
             resolve();
         });
         return prtn;
@@ -853,5 +878,132 @@ export class TermWrap {
                 this.pasteActive = false;
             }, 30);
         }
+    }
+
+    // Scan terminal buffer for lines starting with '>' (Claude Code questions)
+    scanForQuestionLines() {
+        // Clear old decorations
+        this.questionLineDecorations.forEach((decoration) => decoration.dispose());
+        this.questionLineDecorations = [];
+        this.questionLineNumbers = [];
+
+        const buffer = this.terminal.buffer.active;
+        const totalLines = buffer.length;
+
+        // Scan all lines in the buffer
+        for (let lineNum = 0; lineNum < totalLines; lineNum++) {
+            const line = buffer.getLine(lineNum);
+            if (!line) continue;
+
+            // Check if line starts with '>'
+            const cell = line.getCell(0);
+            if (cell && cell.getChars() === ">") {
+                this.questionLineNumbers.push(lineNum);
+
+                // Create marker and decoration for this line
+                const marker = this.terminal.registerMarker(lineNum - buffer.baseY);
+                if (marker) {
+                    const decoration = this.terminal.registerDecoration({
+                        marker: marker,
+                        width: this.terminal.cols,
+                        backgroundColor: "rgba(255, 235, 59, 0.25)", // Yellow highlight
+                    });
+
+                    if (decoration) {
+                        this.questionLineDecorations.push(decoration);
+                        decoration.onDispose(() => {
+                            const idx = this.questionLineDecorations.indexOf(decoration);
+                            if (idx >= 0) {
+                                this.questionLineDecorations.splice(idx, 1);
+                            }
+                        });
+                    }
+                }
+            }
+        }
+
+        // Update scrollbar markers
+        this.updateScrollbarMarkers();
+
+        dlog("Found", this.questionLineNumbers.length, "question lines");
+    }
+
+    // Update scrollbar markers to show question positions
+    updateScrollbarMarkers() {
+        // Clear existing markers
+        this.scrollbarMarkerContainer.innerHTML = "";
+
+        const buffer = this.terminal.buffer.active;
+        const totalLines = buffer.length;
+        if (totalLines === 0) return;
+
+        // Get scrollbar container height
+        const containerHeight = this.scrollbarMarkerContainer.clientHeight;
+        if (containerHeight === 0) return;
+
+        // Create marker for each question line
+        this.questionLineNumbers.forEach((lineNum) => {
+            // Calculate position as percentage of total buffer
+            const position = (lineNum / totalLines) * containerHeight;
+
+            // Create marker element
+            const marker = document.createElement("div");
+            marker.className = "scrollbar-question-marker";
+            marker.style.cssText = `
+                position: absolute;
+                right: 2px;
+                top: ${position}px;
+                width: 10px;
+                height: 3px;
+                background-color: #FBC02D;
+                border-radius: 2px;
+                pointer-events: auto;
+                cursor: pointer;
+                box-shadow: 0 0 2px rgba(0,0,0,0.3);
+            `;
+
+            // Make it clickable - jump to that question
+            marker.addEventListener("click", () => {
+                this.terminal.scrollToLine(lineNum);
+            });
+
+            this.scrollbarMarkerContainer.appendChild(marker);
+        });
+    }
+
+    // Jump to previous question line
+    jumpToPreviousQuestion() {
+        const currentY = this.terminal.buffer.active.viewportY;
+        // Find the last question before current position
+        for (let i = this.questionLineNumbers.length - 1; i >= 0; i--) {
+            if (this.questionLineNumbers[i] < currentY) {
+                this.terminal.scrollToLine(this.questionLineNumbers[i]);
+                return true;
+            }
+        }
+        // Wrap to last question if at top
+        if (this.questionLineNumbers.length > 0) {
+            this.terminal.scrollToLine(this.questionLineNumbers[this.questionLineNumbers.length - 1]);
+            return true;
+        }
+        return false;
+    }
+
+    // Jump to next question line
+    jumpToNextQuestion() {
+        const currentY = this.terminal.buffer.active.viewportY;
+        // Find the first question after current position
+        for (let i = 0; i < this.questionLineNumbers.length; i++) {
+            if (this.questionLineNumbers[i] > currentY + 5) {
+                this.terminal.scrollToLine(this.questionLineNumbers[i]);
+                return true;
+            }
+        }
+        // Wrap to first question if at bottom
+        if (this.questionLineNumbers.length > 0) {
+            this.terminal.scrollToLine(this.questionLineNumbers[0]);
+            return true;
+        }
+        return false;
     }
 }

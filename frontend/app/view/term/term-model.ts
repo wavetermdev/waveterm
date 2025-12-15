@@ -489,6 +489,20 @@ export class TermViewModel implements ViewModel {
             this.setTermMode(newTermMode);
             return true;
         }
+        if (keyutil.checkKeyPressed(waveEvent, "Cmd:Shift:ArrowDown")) {
+            // Jump to next question (line starting with >>)
+            if (this.termRef?.current) {
+                this.termRef.current.jumpToNextQuestion();
+            }
+            return true;
+        }
+        if (keyutil.checkKeyPressed(waveEvent, "Cmd:Shift:ArrowUp")) {
+            // Jump to previous question (line starting with >>)
+            if (this.termRef?.current) {
+                this.termRef.current.jumpToPreviousQuestion();
+            }
+            return true;
+        }
         if (keyutil.checkKeyPressed(waveEvent, "Shift:End")) {
             if (this.termRef?.current?.terminal) {
                 this.termRef.current.terminal.scrollToBottom();
