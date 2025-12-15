@@ -5,6 +5,7 @@ import Logo from "@/app/asset/logo.svg";
 import { Button } from "@/app/element/button";
 import { FlexiModal } from "@/app/modals/modal";
 import { CurrentOnboardingVersion } from "@/app/onboarding/onboarding-common";
+import { GlobalModel } from "@/app/store/global-model";
 import { atoms, globalStore } from "@/app/store/global";
 import { disableGlobalKeybindings, enableGlobalKeybindings, globalRefocus } from "@/app/store/keymodel";
 import { modalsModel } from "@/app/store/modalmodel";
@@ -91,7 +92,7 @@ const UpgradeOnboardingPatch = () => {
     }, []);
 
     const handleClose = () => {
-        const clientId = globalStore.get(atoms.clientId);
+        const clientId = GlobalModel.getInstance().clientId;
         RpcApi.SetMetaCommand(TabRpcClient, {
             oref: WOS.makeORef("client", clientId),
             meta: { "onboarding:lastversion": CurrentOnboardingVersion },

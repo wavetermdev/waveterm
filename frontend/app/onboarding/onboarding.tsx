@@ -12,6 +12,7 @@ import { useEffect, useRef, useState } from "react";
 import { debounce } from "throttle-debounce";
 
 import { OnboardingFeatures } from "@/app/onboarding/onboarding-features";
+import { GlobalModel } from "@/app/store/global-model";
 import { atoms, globalStore } from "@/app/store/global";
 import { modalsModel } from "@/app/store/modalmodel";
 import * as WOS from "@/app/store/wos";
@@ -157,7 +158,7 @@ const NoTelemetryStarPage = ({ isCompact }: { isCompact: boolean }) => {
     const setPageName = useSetAtom(pageNameAtom);
 
     const handleStarClick = async () => {
-        const clientId = globalStore.get(atoms.clientId);
+        const clientId = GlobalModel.getInstance().clientId;
         await RpcApi.SetMetaCommand(TabRpcClient, {
             oref: WOS.makeORef("client", clientId),
             meta: { "onboarding:githubstar": true },
@@ -167,7 +168,7 @@ const NoTelemetryStarPage = ({ isCompact }: { isCompact: boolean }) => {
     };
 
     const handleMaybeLater = async () => {
-        const clientId = globalStore.get(atoms.clientId);
+        const clientId = GlobalModel.getInstance().clientId;
         await RpcApi.SetMetaCommand(TabRpcClient, {
             oref: WOS.makeORef("client", clientId),
             meta: { "onboarding:githubstar": false },

@@ -49,7 +49,6 @@ function initGlobal(initOpts: GlobalInitOptions) {
 
 function initGlobalAtoms(initOpts: GlobalInitOptions) {
     const windowIdAtom = atom(initOpts.windowId) as PrimitiveAtom<string>;
-    const clientIdAtom = atom(initOpts.clientId) as PrimitiveAtom<string>;
     const builderIdAtom = atom(initOpts.builderId) as PrimitiveAtom<string>;
     const builderAppIdAtom = atom<string>(null) as PrimitiveAtom<string>;
     const waveWindowTypeAtom = atom((get) => {
@@ -92,11 +91,10 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
     }
 
     const clientAtom: Atom<Client> = atom((get) => {
-        const clientId = get(clientIdAtom);
-        if (clientId == null) {
+        if (initOpts.clientId == null) {
             return null;
         }
-        return WOS.getObjectValue(WOS.makeORef("client", clientId), get);
+        return WOS.getObjectValue(WOS.makeORef("client", initOpts.clientId), get);
     });
     const windowDataAtom: Atom<WaveWindow> = atom((get) => {
         const windowId = get(windowIdAtom);
@@ -175,7 +173,6 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
     const rateLimitInfoAtom = atom(null) as PrimitiveAtom<RateLimitInfo>;
     atoms = {
         // initialized in wave.ts (will not be null inside of application)
-        clientId: clientIdAtom,
         builderId: builderIdAtom,
         builderAppId: builderAppIdAtom,
         waveWindowType: waveWindowTypeAtom,
