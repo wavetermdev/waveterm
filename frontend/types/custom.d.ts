@@ -11,7 +11,6 @@ declare global {
         builderAppId: jotai.PrimitiveAtom<string>; // app being edited in builder mode
         waveWindowType: jotai.Atom<"tab" | "builder">; // derived from builderId
         uiContext: jotai.Atom<UIContext>; // driven from windowId, tabId
-        waveWindow: jotai.Atom<WaveWindow>; // driven from WOS
         workspace: jotai.Atom<Workspace>; // driven from WOS
         fullConfigAtom: jotai.PrimitiveAtom<FullConfigType>; // driven from WOS, settings -- updated via WebSocket
         waveaiModeConfigAtom: jotai.PrimitiveAtom<Record<string, AIModeConfigType>>; // resolved AI mode configs -- updated via WebSocket

@@ -90,16 +90,8 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
         console.log("failed to initialize onMenuItemAbout handler", e);
     }
 
-    const windowDataAtom: Atom<WaveWindow> = atom((get) => {
-        const windowId = get(windowIdAtom);
-        if (windowId == null) {
-            return null;
-        }
-        const rtn = WOS.getObjectValue<WaveWindow>(WOS.makeORef("window", windowId), get);
-        return rtn;
-    });
     const workspaceAtom: Atom<Workspace> = atom((get) => {
-        const windowData = get(windowDataAtom);
+        const windowData = WOS.getObjectValue<WaveWindow>(WOS.makeORef("window", get(windowIdAtom)), get);
         if (windowData == null) {
             return null;
         }
@@ -171,7 +163,6 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
         builderAppId: builderAppIdAtom,
         waveWindowType: waveWindowTypeAtom,
         uiContext: uiContextAtom,
-        waveWindow: windowDataAtom,
         workspace: workspaceAtom,
         fullConfigAtom,
         waveaiModeConfigAtom,
