@@ -5,7 +5,8 @@ import { Tooltip } from "@/app/element/tooltip";
 import { ContextMenuModel } from "@/app/store/contextmenu";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
-import { atoms, createBlock, isDev } from "@/store/global";
+import { atoms, createBlock, globalStore, isDev, WOS } from "@/store/global";
+import { ObjectService } from "@/store/services";
 import { fireAndForget, isBlank, makeIconClass } from "@/util/util";
 import {
     FloatingPortal,
@@ -32,7 +33,31 @@ function sortByDisplayOrder(wmap: { [key: string]: WidgetConfigType }): WidgetCo
 }
 
 async function handleWidgetSelect(widget: WidgetConfigType) {
-    const blockDef = widget.blockdef;
+    const blockDef = { ...widget.blockdef };
+
+    // If opening a preview (files), inherit cwd from active terminal
+    if (blockDef.meta?.view === "preview") {
+        const activeTabId = globalStore.get(atoms.staticTabId);
+        if (activeTabId) {
+            const tab = await ObjectService.GetObject(WOS.makeORef("tab", activeTabId));
+            if (tab && tab.blockids && tab.blockids.length > 0) {
+                // Get the first block (usually terminal)
+                const firstBlockId = tab.blockids[0];
+                const firstBlock = await ObjectService.GetObject(WOS.makeORef("block", firstBlockId));
+                if (firstBlock && firstBlock.meta) {
+                    const cwd = firstBlock.meta["cmd:cwd"];
+                    if (cwd && typeof cwd === "string") {
+                        // Inherit the cwd for the new preview block
+                        if (!blockDef.meta) {
+                            blockDef.meta = {};
+                        }
+                        blockDef.meta["cmd:cwd"] = cwd;
+                    }
+                }
+            }
+        }
+    }
+
     createBlock(blockDef, widget.magnified);
 }
 

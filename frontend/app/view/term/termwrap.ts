@@ -882,6 +882,8 @@ export class TermWrap {
 
     // Scan terminal buffer for lines starting with '>' (Claude Code questions)
     scanForQuestionLines() {
+        console.log("Scanning for question lines...");
+
         // Clear old decorations
         this.questionLineDecorations.forEach((decoration) => decoration.dispose());
         this.questionLineDecorations = [];
@@ -889,6 +891,8 @@ export class TermWrap {
 
         const buffer = this.terminal.buffer.active;
         const totalLines = buffer.length;
+
+        console.log("Total lines in buffer:", totalLines);
 
         // Scan all lines in the buffer
         for (let lineNum = 0; lineNum < totalLines; lineNum++) {
@@ -898,7 +902,15 @@ export class TermWrap {
             // Check if line starts with '>>' (Claude Code question marker)
             const cell0 = line.getCell(0);
             const cell1 = line.getCell(1);
+
+            // Debug: log first few characters
+            if (lineNum < 10 || (cell0 && cell0.getChars() === ">")) {
+                const firstChars = Array.from({ length: Math.min(10, line.length) }, (_, i) => line.getCell(i)?.getChars() || "").join("");
+                console.log(`Line ${lineNum}: "${firstChars}"`);
+            }
+
             if (cell0 && cell1 && cell0.getChars() === ">" && cell1.getChars() === ">") {
+                console.log("Found question at line", lineNum);
                 this.questionLineNumbers.push(lineNum);
 
                 // Create marker and decoration for this line
@@ -917,8 +929,9 @@ export class TermWrap {
                                     position: absolute;
                                     width: 100%;
                                     height: 100%;
-                                    background-color: rgba(255, 235, 59, 0.25);
+                                    background-color: rgba(255, 235, 59, 0.5);
                                     pointer-events: none;
+                                    z-index: -1;
                                 `;
                             }
                         });
@@ -943,21 +956,42 @@ export class TermWrap {
 
     // Update scrollbar markers to show question positions
     updateScrollbarMarkers() {
+        console.log("Updating scrollbar markers...");
+
+        if (!this.scrollbarMarkerContainer) {
+            console.log("No scrollbar marker container!");
+            return;
+        }
+
         // Clear existing markers
         this.scrollbarMarkerContainer.innerHTML = "";
 
         const buffer = this.terminal.buffer.active;
         const totalLines = buffer.length;
+        console.log("Total lines:", totalLines, "Questions found:", this.questionLineNumbers.length);
         if (totalLines === 0) return;
 
         // Get scrollbar container height
         const containerHeight = this.scrollbarMarkerContainer.clientHeight;
-        if (containerHeight === 0) return;
+        console.log("Scrollbar container height:", containerHeight);
+        if (containerHeight === 0) {
+            // Try again after a delay to let layout settle
+            setTimeout(() => {
+                const retryHeight = this.scrollbarMarkerContainer.clientHeight;
+                console.log("Retry scrollbar height:", retryHeight);
+                if (retryHeight > 0) {
+                    this.updateScrollbarMarkers();
+                }
+            }, 100);
+            return;
+        }
 
         // Create marker for each question line
         this.questionLineNumbers.forEach((lineNum) => {
             // Calculate position as percentage of total buffer
             const position = (lineNum / totalLines) * containerHeight;
+
+            console.log(`Creating marker at line ${lineNum}, position ${position}px`);
 
             // Create marker element
             const marker = document.createElement("div");
@@ -977,11 +1011,14 @@ export class TermWrap {
 
             // Make it clickable - jump to that question
             marker.addEventListener("click", () => {
+                console.log("Marker clicked! Jumping to line", lineNum);
                 this.terminal.scrollToLine(lineNum);
             });
 
             this.scrollbarMarkerContainer.appendChild(marker);
         });
+
+        console.log("Added", this.scrollbarMarkerContainer.children.length, "markers to scrollbar");
     }
 
     // Jump to previous question line
