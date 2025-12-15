@@ -895,9 +895,10 @@ export class TermWrap {
             const line = buffer.getLine(lineNum);
             if (!line) continue;
 
-            // Check if line starts with '>'
-            const cell = line.getCell(0);
-            if (cell && cell.getChars() === ">") {
+            // Check if line starts with '>>' (Claude Code question marker)
+            const cell0 = line.getCell(0);
+            const cell1 = line.getCell(1);
+            if (cell0 && cell1 && cell0.getChars() === ">" && cell1.getChars() === ">") {
                 this.questionLineNumbers.push(lineNum);
 
                 // Create marker and decoration for this line
