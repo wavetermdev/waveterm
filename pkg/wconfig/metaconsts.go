@@ -40,6 +40,7 @@ const (
 	ConfigKey_TermDisableWebGl               = "term:disablewebgl"
 	ConfigKey_TermLocalShellPath             = "term:localshellpath"
 	ConfigKey_TermLocalShellOpts             = "term:localshellopts"
+	ConfigKey_TermGitBashPath                = "term:gitbashpath"
 	ConfigKey_TermScrollback                 = "term:scrollback"
 	ConfigKey_TermCopyOnSelect               = "term:copyonselect"
 	ConfigKey_TermTransparency               = "term:transparency"

@@ -70,9 +70,9 @@ const UserMessageFiles = memo(({ fileParts }: UserMessageFilesProps) => {
         <div className="mt-2 pt-2 border-t border-gray-600">
             <div className="flex gap-2 overflow-x-auto pb-1">
                 {fileParts.map((file, index) => (
-                    <div key={index} className="relative bg-gray-700 rounded-lg p-2 min-w-20 flex-shrink-0">
+                    <div key={index} className="relative bg-zinc-700 rounded-lg p-2 min-w-20 flex-shrink-0">
                         <div className="flex flex-col items-center text-center">
-                            <div className="w-12 h-12 mb-1 flex items-center justify-center bg-gray-600 rounded overflow-hidden">
+                            <div className="w-12 h-12 mb-1 flex items-center justify-center bg-zinc-600 rounded overflow-hidden">
                                 {file.data?.previewurl ? (
                                     <img
                                         src={file.data.previewurl}
@@ -223,7 +223,7 @@ export const AIMessage = memo(({ message, isStreaming }: AIMessageProps) => {
                 className={cn(
                     "px-2 rounded-lg [&>*:first-child]:!mt-0",
                     message.role === "user"
-                        ? "py-2 bg-accent-800 text-white max-w-[calc(100%-50px)]"
+                        ? "py-2 bg-zinc-700/60 text-white max-w-[calc(100%-50px)]"
                         : "min-w-[min(100%,500px)]"
                 )}
             >

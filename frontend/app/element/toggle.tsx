@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { useRef } from "react";
+import { cn } from "@/util/util";
 import "./toggle.scss";
 
 interface ToggleProps {
@@ -9,9 +10,10 @@ interface ToggleProps {
     onChange: (value: boolean) => void;
     label?: string;
     id?: string;
+    className?: string;
 }
 
-const Toggle = ({ checked, onChange, label, id }: ToggleProps) => {
+const Toggle = ({ checked, onChange, label, id, className }: ToggleProps) => {
     const inputRef = useRef<HTMLInputElement>(null);
 
     const handleChange = (e: any) => {
@@ -29,7 +31,7 @@ const Toggle = ({ checked, onChange, label, id }: ToggleProps) => {
     const inputId = id || `toggle-${Math.random().toString(36).substr(2, 9)}`;
 
     return (
-        <div className="check-toggle-wrapper">
+        <div className={cn("check-toggle-wrapper", className)}>
             <label htmlFor={inputId} className="checkbox-toggle">
                 <input id={inputId} type="checkbox" checked={checked} onChange={handleChange} ref={inputRef} />
                 <span className="slider" />

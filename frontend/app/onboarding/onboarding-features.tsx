@@ -126,6 +126,14 @@ const WaveAIPage = ({ onNext, onSkip }: { onNext: () => void; onSkip: () => void
                                 </p>
                             </div>
 
+                            <div className="flex items-start gap-3 w-full">
+                                <i className="fa fa-key text-accent text-lg mt-1 flex-shrink-0" />
+                                <p>
+                                    Bring your own API keys or run local models with Ollama, LM Studio, and other
+                                    OpenAI-compatible providers
+                                </p>
+                            </div>
+
                             <EmojiButton emoji="🔥" isClicked={fireClicked} onClick={handleFireClick} />
                         </div>
                     </div>

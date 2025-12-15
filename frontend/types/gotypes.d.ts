@@ -35,6 +35,11 @@ declare global {
         "waveai:premium"?: boolean;
     };
 
+    // wconfig.AIModeConfigUpdate
+    type AIModeConfigUpdate = {
+        configs: {[key: string]: AIModeConfigType};
+    };
+
     // wshrpc.ActivityDisplayType
     type ActivityDisplayType = {
         width: number;
@@ -1077,6 +1082,7 @@ declare global {
         "term:disablewebgl"?: boolean;
         "term:localshellpath"?: string;
         "term:localshellopts"?: string[];
+        "term:gitbashpath"?: string;
         "term:scrollback"?: number;
         "term:copyonselect"?: boolean;
         "term:transparency"?: number;
@@ -1214,6 +1220,8 @@ declare global {
         "settings:customwidgets"?: number;
         "settings:customaipresets"?: number;
         "settings:customsettings"?: number;
+        "settings:customaimodes"?: number;
+        "settings:secretscount"?: number;
         "activity:activeminutes"?: number;
         "activity:fgminutes"?: number;
         "activity:openminutes"?: number;
@@ -1223,6 +1231,7 @@ declare global {
         "app:firstday"?: boolean;
         "app:firstlaunch"?: boolean;
         "action:initiator"?: "keyboard" | "mouse";
+        "action:type"?: string;
         "debug:panictype"?: string;
         "block:view"?: string;
         "ai:backendtype"?: string;
@@ -1268,6 +1277,8 @@ declare global {
         "waveai:widgetaccess"?: boolean;
         "waveai:thinkinglevel"?: string;
         "waveai:mode"?: string;
+        "waveai:provider"?: string;
+        "waveai:islocal"?: boolean;
         "waveai:feedback"?: "good" | "bad";
         "waveai:action"?: string;
         $set?: TEventUserProps;
@@ -1293,6 +1304,8 @@ declare global {
         "settings:customwidgets"?: number;
         "settings:customaipresets"?: number;
         "settings:customsettings"?: number;
+        "settings:customaimodes"?: number;
+        "settings:secretscount"?: number;
     };
 
     // waveobj.Tab

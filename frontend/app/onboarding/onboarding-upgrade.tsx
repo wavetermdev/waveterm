@@ -7,7 +7,7 @@ import { useAtomValue } from "jotai";
 import { useEffect, useRef } from "react";
 import * as semver from "semver";
 import { CurrentOnboardingVersion } from "./onboarding-common";
-import { UpgradeOnboardingModal_v0_12_0 } from "./onboarding-upgrade-v0120";
+import { UpgradeOnboardingMinor } from "./onboarding-upgrade-minor";
 import { UpgradeOnboardingPatch } from "./onboarding-upgrade-patch";
 
 const UpgradeOnboardingModal = () => {
@@ -34,7 +34,7 @@ const UpgradeOnboardingModal = () => {
         return <UpgradeOnboardingPatch />;
     }
 
-    return <UpgradeOnboardingModal_v0_12_0 />;
+    return <UpgradeOnboardingMinor />;
 };
 
 UpgradeOnboardingModal.displayName = "UpgradeOnboardingModal";

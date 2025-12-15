@@ -7,7 +7,7 @@ import { ErrorBoundary } from "@/app/element/errorboundary";
 import { atoms, getSettingsKeyAtom } from "@/app/store/global";
 import { globalStore } from "@/app/store/jotaiStore";
 import { checkKeyPressed, keydownWrapper } from "@/util/keyutil";
-import { isMacOS } from "@/util/platformutil";
+import { isMacOS, isWindows } from "@/util/platformutil";
 import { cn } from "@/util/util";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
@@ -21,6 +21,8 @@ import { AIPanelHeader } from "./aipanelheader";
 import { AIPanelInput } from "./aipanelinput";
 import { AIPanelMessages } from "./aipanelmessages";
 import { AIRateLimitStrip } from "./airatelimitstrip";
+import { WaveUIMessage } from "./aitypes";
+import { BYOKAnnouncement } from "./byokannouncement";
 import { TelemetryRequiredMessage } from "./telemetryrequired";
 import { WaveAIModel } from "./waveai-model";
 
@@ -69,7 +71,7 @@ const KeyCap = memo(({ children, className }: { children: React.ReactNode; class
     return (
         <kbd
             className={cn(
-                "px-1.5 py-0.5 text-xs bg-gray-700 border border-gray-600 rounded-sm shadow-sm font-mono",
+                "px-1.5 py-0.5 text-xs bg-zinc-700 border border-zinc-600 rounded-sm shadow-sm font-mono",
                 className
             )}
         >
@@ -82,10 +84,14 @@ KeyCap.displayName = "KeyCap";
 
 const AIWelcomeMessage = memo(() => {
     const modKey = isMacOS() ? "⌘" : "Alt";
+    const fullConfig = jotai.useAtomValue(atoms.fullConfigAtom);
+    const hasCustomModes = fullConfig?.waveai
+        ? Object.keys(fullConfig.waveai).some((key) => !key.startsWith("waveai@"))
+        : false;
     return (
         <div className="text-secondary py-8">
             <div className="text-center">
-                <i className="fa fa-sparkles text-4xl text-accent mb-4 block"></i>
+                <i className="fa fa-sparkles text-4xl text-accent mb-2 block"></i>
                 <p className="text-lg font-bold text-primary">Welcome to Wave AI</p>
             </div>
             <div className="mt-4 text-left max-w-md mx-auto">
@@ -129,10 +135,20 @@ const AIWelcomeMessage = memo(() => {
                                     <span className="ml-1.5">to toggle panel</span>
                                 </div>
                                 <div>
-                                    <KeyCap>Ctrl</KeyCap>
-                                    <KeyCap className="ml-1">Shift</KeyCap>
-                                    <KeyCap className="ml-1">0</KeyCap>
-                                    <span className="ml-1.5">to focus</span>
+                                    {isWindows() ? (
+                                        <>
+                                            <KeyCap>Alt</KeyCap>
+                                            <KeyCap className="ml-1">0</KeyCap>
+                                            <span className="ml-1.5">to focus</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <KeyCap>Ctrl</KeyCap>
+                                            <KeyCap className="ml-1">Shift</KeyCap>
+                                            <KeyCap className="ml-1">0</KeyCap>
+                                            <span className="ml-1.5">to focus</span>
+                                        </>
+                                    )}
                                 </div>
                             </div>
                         </div>
@@ -154,6 +170,7 @@ const AIWelcomeMessage = memo(() => {
                         </div>
                     </div>
                 </div>
+                {!hasCustomModes && <BYOKAnnouncement />}
                 <div className="mt-4 text-center text-[12px] text-muted">
                     BETA: Free to use. Daily limits keep our costs in check.
                 </div>
@@ -217,7 +234,7 @@ const AIPanelComponentInner = memo(() => {
     const telemetryEnabled = jotai.useAtomValue(getSettingsKeyAtom("telemetry:enabled")) ?? false;
     const isPanelVisible = jotai.useAtomValue(model.getPanelVisibleAtom());
 
-    const { messages, sendMessage, status, setMessages, error, stop } = useChat({
+    const { messages, sendMessage, status, setMessages, error, stop } = useChat<WaveUIMessage>({
         transport: new DefaultChatTransport({
             api: model.getUseChatEndpointUrl(),
             prepareSendMessagesRequest: (opts) => {
@@ -466,9 +483,9 @@ const AIPanelComponentInner = memo(() => {
             ref={containerRef}
             data-waveai-panel="true"
             className={cn(
-                "@container bg-gray-900 flex flex-col relative",
+                "@container bg-zinc-900/70 flex flex-col relative",
                 model.inBuilder ? "mt-0 h-full" : "mt-1 h-[calc(100%-4px)]",
-                (isDragOver || isReactDndDragOver) && "bg-gray-800 border-accent",
+                (isDragOver || isReactDndDragOver) && "bg-zinc-800 border-accent",
                 isFocused ? "border-2 border-accent" : "border-2 border-transparent"
             )}
             style={{

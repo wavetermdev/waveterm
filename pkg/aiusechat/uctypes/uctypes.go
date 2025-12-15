@@ -11,8 +11,6 @@ import (
 )
 
 const DefaultAIEndpoint = "https://cfapi.waveterm.dev/api/waveai"
-const DefaultOpenAIEndpoint = "https://api.openai.com/v1"
-const DefaultOpenRouterEndpoint = "https://openrouter.ai/api/v1"
 const WaveAIEndpointEnvName = "WAVETERM_WAVEAI_ENDPOINT"
 const DefaultAnthropicModel = "claude-sonnet-4-5"
 const DefaultOpenAIModel = "gpt-5-mini"
@@ -332,6 +330,8 @@ type AIMetrics struct {
 	WidgetAccess      bool           `json:"widgetaccess"`
 	ThinkingLevel     string         `json:"thinkinglevel,omitempty"`
 	AIMode            string         `json:"aimode,omitempty"`
+	AIProvider        string         `json:"aiprovider,omitempty"`
+	IsLocal           bool           `json:"islocal,omitempty"`
 }
 
 type AIFunctionCallInput struct {

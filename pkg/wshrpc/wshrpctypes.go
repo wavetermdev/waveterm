@@ -99,6 +99,7 @@ const (
 	Command_SetConfig            = "setconfig"
 	Command_SetConnectionsConfig = "connectionsconfig"
 	Command_GetFullConfig        = "getfullconfig"
+	Command_GetWaveAIModeConfig  = "getwaveaimodeconfig"
 	Command_RemoteStreamFile     = "remotestreamfile"
 	Command_RemoteTarStream      = "remotetarstream"
 	Command_RemoteFileInfo       = "remotefileinfo"
@@ -128,6 +129,7 @@ const (
 	Command_WslDefaultDistro = "wsldefaultdistro"
 	Command_DismissWshFail   = "dismisswshfail"
 	Command_ConnUpdateWsh    = "updatewsh"
+	Command_FindGitBash      = "findgitbash"
 
 	Command_WorkspaceList = "workspacelist"
 
@@ -245,6 +247,7 @@ type WshRpcInterface interface {
 	SetConfigCommand(ctx context.Context, data MetaSettingsType) error
 	SetConnectionsConfigCommand(ctx context.Context, data ConnConfigRequest) error
 	GetFullConfigCommand(ctx context.Context) (wconfig.FullConfigType, error)
+	GetWaveAIModeConfigCommand(ctx context.Context) (wconfig.AIModeConfigUpdate, error)
 	BlockInfoCommand(ctx context.Context, blockId string) (*BlockInfoData, error)
 	BlocksListCommand(ctx context.Context, data BlocksListRequest) ([]BlocksListEntry, error)
 	WaveInfoCommand(ctx context.Context) (*WaveInfoData, error)
@@ -272,6 +275,7 @@ type WshRpcInterface interface {
 	WslDefaultDistroCommand(ctx context.Context) (string, error)
 	DismissWshFailCommand(ctx context.Context, connName string) error
 	ConnUpdateWshCommand(ctx context.Context, remoteInfo RemoteInfo) (bool, error)
+	FindGitBashCommand(ctx context.Context, rescan bool) (string, error)
 
 	// eventrecv is special, it's handled internally by WshRpc with EventListener
 	EventRecvCommand(ctx context.Context, data wps.WaveEvent) error

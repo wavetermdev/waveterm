@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/joho/godotenv"
+	"github.com/wavetermdev/waveterm/pkg/aiusechat"
 	"github.com/wavetermdev/waveterm/pkg/authkey"
 	"github.com/wavetermdev/waveterm/pkg/blockcontroller"
 	"github.com/wavetermdev/waveterm/pkg/blocklogger"
@@ -22,6 +23,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/remote/conncontroller"
 	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/wshfs"
+	"github.com/wavetermdev/waveterm/pkg/secretstore"
 	"github.com/wavetermdev/waveterm/pkg/service"
 	"github.com/wavetermdev/waveterm/pkg/telemetry"
 	"github.com/wavetermdev/waveterm/pkg/telemetry/telemetrydata"
@@ -224,18 +226,25 @@ func updateTelemetryCounts(lastCounts telemetrydata.TEventProps) telemetrydata.T
 	customWidgets := fullConfig.CountCustomWidgets()
 	customAIPresets := fullConfig.CountCustomAIPresets()
 	customSettings := wconfig.CountCustomSettings()
+	customAIModes := fullConfig.CountCustomAIModes()
 
 	props.UserSet = &telemetrydata.TEventUserProps{
 		SettingsCustomWidgets:   customWidgets,
 		SettingsCustomAIPresets: customAIPresets,
 		SettingsCustomSettings:  customSettings,
+		SettingsCustomAIModes:   customAIModes,
+	}
+
+	secretsCount, err := secretstore.CountSecrets()
+	if err == nil {
+		props.UserSet.SettingsSecretsCount = secretsCount
 	}
 
 	if utilfn.CompareAsMarshaledJson(props, lastCounts) {
 		return lastCounts
 	}
 	tevent := telemetrydata.MakeTEvent("app:counts", props)
-	err := telemetry.RecordTEvent(ctx, tevent)
+	err = telemetry.RecordTEvent(ctx, tevent)
 	if err != nil {
 		log.Printf("error recording counts tevent: %v\n", err)
 	}
@@ -306,17 +315,19 @@ func startupActivityUpdate(firstLaunch bool) {
 	cohortISOWeek := fmt.Sprintf("%04d-W%02d", year, week)
 	userSetOnce.CohortMonth = cohortMonth
 	userSetOnce.CohortISOWeek = cohortISOWeek
+	fullConfig := wconfig.GetWatcher().GetFullConfig()
 	props := telemetrydata.TEventProps{
 		UserSet: &telemetrydata.TEventUserProps{
-			ClientVersion:     "v" + WaveVersion,
-			ClientBuildTime:   BuildTime,
-			ClientArch:        wavebase.ClientArch(),
-			ClientOSRelease:   wavebase.UnameKernelRelease(),
-			ClientIsDev:       wavebase.IsDevMode(),
-			AutoUpdateChannel: autoUpdateChannel,
-			AutoUpdateEnabled: autoUpdateEnabled,
-			LocalShellType:    shellType,
-			LocalShellVersion: shellVersion,
+			ClientVersion:       "v" + WaveVersion,
+			ClientBuildTime:     BuildTime,
+			ClientArch:          wavebase.ClientArch(),
+			ClientOSRelease:     wavebase.UnameKernelRelease(),
+			ClientIsDev:         wavebase.IsDevMode(),
+			AutoUpdateChannel:   autoUpdateChannel,
+			AutoUpdateEnabled:   autoUpdateEnabled,
+			LocalShellType:      shellType,
+			LocalShellVersion:   shellVersion,
+			SettingsTransparent: fullConfig.Settings.WindowTransparent,
 		},
 		UserSetOnce: userSetOnce,
 	}
@@ -518,6 +529,7 @@ func main() {
 	sigutil.InstallShutdownSignalHandlers(doShutdown)
 	sigutil.InstallSIGUSR1Handler()
 	startConfigWatcher()
+	aiusechat.InitAIModeConfigWatcher()
 	maybeStartPprofServer()
 	go stdinReadWatch()
 	go telemetryLoop()

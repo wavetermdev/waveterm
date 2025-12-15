@@ -8,6 +8,22 @@ export const WaveAppPathVarName = "WAVETERM_APP_PATH";
 export const WaveAppResourcesPathVarName = "WAVETERM_RESOURCES_PATH";
 export const WaveAppElectronExecPath = "WAVETERM_ELECTRONEXECPATH";
 
+const MinZoomLevel = 0.4;
+const MaxZoomLevel = 2.6;
+const ZoomDelta = 0.2;
+
+export function increaseZoomLevel(webContents: electron.WebContents): void {
+    const newZoom = Math.min(MaxZoomLevel, webContents.getZoomFactor() + ZoomDelta);
+    webContents.setZoomFactor(newZoom);
+    webContents.send("zoom-factor-change", newZoom);
+}
+
+export function decreaseZoomLevel(webContents: electron.WebContents): void {
+    const newZoom = Math.max(MinZoomLevel, webContents.getZoomFactor() - ZoomDelta);
+    webContents.setZoomFactor(newZoom);
+    webContents.send("zoom-factor-change", newZoom);
+}
+
 export function getElectronExecPath(): string {
     return process.execPath;
 }

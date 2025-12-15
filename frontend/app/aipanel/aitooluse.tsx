@@ -8,6 +8,7 @@ import { cn, fireAndForget } from "@/util/util";
 import { useAtomValue } from "jotai";
 import { memo, useEffect, useRef, useState } from "react";
 import { WaveUIMessagePart } from "./aitypes";
+import { RestoreBackupModal } from "./restorebackupmodal";
 import { WaveAIModel } from "./waveai-model";
 
 // matches pkg/filebackup/filebackup.go
@@ -180,7 +181,7 @@ const AIToolUseBatch = memo(({ parts, isStreaming }: AIToolUseBatchProps) => {
     };
 
     return (
-        <div className="flex items-start gap-2 p-2 rounded bg-gray-800 border border-gray-700">
+        <div className="flex items-start gap-2 p-2 rounded bg-zinc-800/60 border border-zinc-700">
             <div className="flex-1">
                 <div className="font-semibold">Reading Files</div>
                 <div className="mt-1 space-y-0.5">
@@ -197,94 +198,6 @@ const AIToolUseBatch = memo(({ parts, isStreaming }: AIToolUseBatchProps) => {
 });
 
 AIToolUseBatch.displayName = "AIToolUseBatch";
-
-interface RestoreBackupModalProps {
-    part: WaveUIMessagePart & { type: "data-tooluse" };
-}
-
-const RestoreBackupModal = memo(({ part }: RestoreBackupModalProps) => {
-    const model = WaveAIModel.getInstance();
-    const toolData = part.data;
-    const status = useAtomValue(model.restoreBackupStatus);
-    const error = useAtomValue(model.restoreBackupError);
-
-    const formatTimestamp = (ts: number) => {
-        if (!ts) return "";
-        const date = new Date(ts);
-        return date.toLocaleString();
-    };
-
-    const handleConfirm = () => {
-        recordTEvent("waveai:revertfile", { "waveai:action": "revertfile:confirm" });
-        model.restoreBackup(toolData.toolcallid, toolData.writebackupfilename, toolData.inputfilename);
-    };
-
-    const handleCancel = () => {
-        recordTEvent("waveai:revertfile", { "waveai:action": "revertfile:cancel" });
-        model.closeRestoreBackupModal();
-    };
-
-    const handleClose = () => {
-        model.closeRestoreBackupModal();
-    };
-
-    if (status === "success") {
-        return (
-            <Modal className="restore-backup-modal pb-5 pr-5" onClose={handleClose} onOk={handleClose} okLabel="Close">
-                <div className="flex flex-col gap-4 pt-4 pb-4 max-w-xl">
-                    <div className="font-semibold text-lg text-green-500">Backup Successfully Restored</div>
-                    <div className="text-sm text-gray-300 leading-relaxed">
-                        The file <span className="font-mono text-white break-all">{toolData.inputfilename}</span> has
-                        been restored to its previous state.
-                    </div>
-                </div>
-            </Modal>
-        );
-    }
-
-    if (status === "error") {
-        return (
-            <Modal className="restore-backup-modal pb-5 pr-5" onClose={handleClose} onOk={handleClose} okLabel="Close">
-                <div className="flex flex-col gap-4 pt-4 pb-4 max-w-xl">
-                    <div className="font-semibold text-lg text-red-500">Failed to Restore Backup</div>
-                    <div className="text-sm text-gray-300 leading-relaxed">
-                        An error occurred while restoring the backup:
-                    </div>
-                    <div className="text-sm text-red-400 font-mono bg-gray-800 p-3 rounded break-all">{error}</div>
-                </div>
-            </Modal>
-        );
-    }
-
-    const isProcessing = status === "processing";
-
-    return (
-        <Modal
-            className="restore-backup-modal pb-5 pr-5"
-            onClose={handleCancel}
-            onCancel={handleCancel}
-            onOk={handleConfirm}
-            okLabel={isProcessing ? "Restoring..." : "Confirm Restore"}
-            cancelLabel="Cancel"
-            okDisabled={isProcessing}
-            cancelDisabled={isProcessing}
-        >
-            <div className="flex flex-col gap-4 pt-4 pb-4 max-w-xl">
-                <div className="font-semibold text-lg">Restore File Backup</div>
-                <div className="text-sm text-gray-300 leading-relaxed">
-                    This will restore <span className="font-mono text-white break-all">{toolData.inputfilename}</span>{" "}
-                    to its state before this edit was made
-                    {toolData.runts && <span> ({formatTimestamp(toolData.runts)})</span>}.
-                </div>
-                <div className="text-sm text-gray-300 leading-relaxed">
-                    Any changes made by this edit and subsequent edits will be lost.
-                </div>
-            </div>
-        </Modal>
-    );
-});
-
-RestoreBackupModal.displayName = "RestoreBackupModal";
 
 interface AIToolUseProps {
     part: WaveUIMessagePart & { type: "data-tooluse" };
@@ -381,7 +294,7 @@ const AIToolUse = memo(({ part, isStreaming }: AIToolUseProps) => {
 
     return (
         <div
-            className={cn("flex flex-col gap-1 p-2 rounded bg-gray-800 border border-gray-700", statusColor)}
+            className={cn("flex flex-col gap-1 p-2 rounded bg-zinc-800/60 border border-zinc-700", statusColor)}
             onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}
         >
@@ -399,7 +312,7 @@ const AIToolUse = memo(({ part, isStreaming }: AIToolUseProps) => {
                                 recordTEvent("waveai:revertfile", { "waveai:action": "revertfile:open" });
                                 model.openRestoreBackupModal(toolData.toolcallid);
                             }}
-                            className="flex-shrink-0 px-1.5 py-0.5 border border-gray-600 hover:border-gray-500 hover:bg-gray-700 rounded cursor-pointer transition-colors flex items-center gap-1 text-gray-400"
+                            className="flex-shrink-0 px-1.5 py-0.5 border border-zinc-600 hover:border-zinc-500 hover:bg-zinc-700 rounded cursor-pointer transition-colors flex items-center gap-1 text-zinc-400"
                             title="Restore backup file"
                         >
                             <span className="text-xs">Revert File</span>
@@ -409,7 +322,7 @@ const AIToolUse = memo(({ part, isStreaming }: AIToolUseProps) => {
                 {isFileWriteTool && toolData.inputfilename && (
                     <button
                         onClick={handleOpenDiff}
-                        className="flex-shrink-0 px-1.5 py-0.5 border border-gray-600 hover:border-gray-500 hover:bg-gray-700 rounded cursor-pointer transition-colors flex items-center gap-1 text-gray-400"
+                        className="flex-shrink-0 px-1.5 py-0.5 border border-zinc-600 hover:border-zinc-500 hover:bg-zinc-700 rounded cursor-pointer transition-colors flex items-center gap-1 text-zinc-400"
                         title="Open in diff viewer"
                     >
                         <span className="text-xs">Show Diff</span>
@@ -441,7 +354,7 @@ const AIToolProgress = memo(({ part }: AIToolProgressProps) => {
     const progressData = part.data;
 
     return (
-        <div className="flex flex-col gap-1 p-2 rounded bg-gray-800 border border-gray-700">
+        <div className="flex flex-col gap-1 p-2 rounded bg-zinc-800/60 border border-zinc-700">
             <div className="flex items-center gap-2">
                 <i className="fa fa-spinner fa-spin text-gray-400"></i>
                 <div className="font-semibold">{progressData.toolname}</div>

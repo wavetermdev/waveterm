@@ -32,7 +32,12 @@ const WorkspaceElem = memo(() => {
 
     useEffect(() => {
         if (aiPanelRef.current && panelGroupRef.current && panelContainerRef.current && aiPanelWrapperRef.current) {
-            workspaceLayoutModel.registerRefs(aiPanelRef.current, panelGroupRef.current, panelContainerRef.current, aiPanelWrapperRef.current);
+            workspaceLayoutModel.registerRefs(
+                aiPanelRef.current,
+                panelGroupRef.current,
+                panelContainerRef.current,
+                aiPanelWrapperRef.current
+            );
         }
     }, []);
 
@@ -56,12 +61,18 @@ const WorkspaceElem = memo(() => {
                         onLayout={workspaceLayoutModel.handlePanelLayout}
                         ref={panelGroupRef}
                     >
-                        <Panel ref={aiPanelRef} collapsible defaultSize={initialAiPanelPercentage} order={1} className="overflow-hidden">
+                        <Panel
+                            ref={aiPanelRef}
+                            collapsible
+                            defaultSize={initialAiPanelPercentage}
+                            order={1}
+                            className="overflow-hidden"
+                        >
                             <div ref={aiPanelWrapperRef} className="w-full h-full">
                                 <AIPanel />
                             </div>
                         </Panel>
-                        <PanelResizeHandle className="w-0.5 bg-transparent hover:bg-gray-500/20 transition-colors" />
+                        <PanelResizeHandle className="w-0.5 bg-transparent hover:bg-zinc-500/20 transition-colors" />
                         <Panel order={2} defaultSize={100 - initialAiPanelPercentage}>
                             {tabId === "" ? (
                                 <CenteredDiv>No Active Tab</CenteredDiv>

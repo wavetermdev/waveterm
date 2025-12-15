@@ -282,6 +282,11 @@ class RpcApiType {
         return client.wshRpcCall("filewrite", data, opts);
     }
 
+    // command "findgitbash" [call]
+    FindGitBashCommand(client: WshClient, data: boolean, opts?: RpcOpts): Promise<string> {
+        return client.wshRpcCall("findgitbash", data, opts);
+    }
+
     // command "focuswindow" [call]
     FocusWindowCommand(client: WshClient, data: string, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("focuswindow", data, opts);
@@ -350,6 +355,11 @@ class RpcApiType {
     // command "getwaveaichat" [call]
     GetWaveAIChatCommand(client: WshClient, data: CommandGetWaveAIChatData, opts?: RpcOpts): Promise<UIChat> {
         return client.wshRpcCall("getwaveaichat", data, opts);
+    }
+
+    // command "getwaveaimodeconfig" [call]
+    GetWaveAIModeConfigCommand(client: WshClient, opts?: RpcOpts): Promise<AIModeConfigUpdate> {
+        return client.wshRpcCall("getwaveaimodeconfig", null, opts);
     }
 
     // command "getwaveairatelimit" [call]

@@ -1,15 +1,18 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { Tooltip } from "@/app/element/tooltip";
 import { atoms, getSettingsKeyAtom } from "@/app/store/global";
+import { RpcApi } from "@/app/store/wshclientapi";
+import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { cn, fireAndForget, makeIconClass } from "@/util/util";
 import { useAtomValue } from "jotai";
 import { memo, useRef, useState } from "react";
-import { getFilteredAIModeConfigs } from "./ai-utils";
+import { getFilteredAIModeConfigs, getModeDisplayName } from "./ai-utils";
 import { WaveAIModel } from "./waveai-model";
 
 interface AIModeMenuItemProps {
-    config: any;
+    config: AIModeConfigWithMode;
     isSelected: boolean;
     isDisabled: boolean;
     onClick: () => void;
@@ -26,19 +29,22 @@ const AIModeMenuItem = memo(({ config, isSelected, isDisabled, onClick, isFirst,
             className={cn(
                 "w-full flex flex-col gap-0.5 px-3 transition-colors text-left",
                 isFirst ? "pt-1 pb-0.5" : isLast ? "pt-0.5 pb-1" : "pt-0.5 pb-0.5",
-                isDisabled ? "text-gray-500" : "text-gray-300 hover:bg-gray-700 cursor-pointer"
+                isDisabled ? "text-zinc-500" : "text-zinc-300 hover:bg-zinc-700 cursor-pointer"
             )}
         >
             <div className="flex items-center gap-2 w-full">
                 <i className={makeIconClass(config["display:icon"] || "sparkles", false)}></i>
                 <span className={cn("text-sm", isSelected && "font-bold")}>
-                    {config["display:name"]}
+                    {getModeDisplayName(config)}
                     {isDisabled && " (premium)"}
                 </span>
                 {isSelected && <i className="fa fa-check ml-auto"></i>}
             </div>
             {config["display:description"] && (
-                <div className={cn("text-xs pl-5", isDisabled ? "text-gray-500" : "text-muted")} style={{ whiteSpace: "pre-line" }}>
+                <div
+                    className={cn("text-xs pl-5", isDisabled ? "text-gray-500" : "text-muted")}
+                    style={{ whiteSpace: "pre-line" }}
+                >
                     {config["display:description"]}
                 </div>
             )}
@@ -50,26 +56,26 @@ AIModeMenuItem.displayName = "AIModeMenuItem";
 
 interface ConfigSection {
     sectionName: string;
-    configs: any[];
+    configs: AIModeConfigWithMode[];
     isIncompatible?: boolean;
 }
 
 function computeCompatibleSections(
     currentMode: string,
-    aiModeConfigs: Record<string, any>,
-    waveProviderConfigs: any[],
-    otherProviderConfigs: any[]
+    aiModeConfigs: Record<string, AIModeConfigType>,
+    waveProviderConfigs: AIModeConfigWithMode[],
+    otherProviderConfigs: AIModeConfigWithMode[]
 ): ConfigSection[] {
     const currentConfig = aiModeConfigs[currentMode];
     const allConfigs = [...waveProviderConfigs, ...otherProviderConfigs];
-    
+
     if (!currentConfig) {
         return [{ sectionName: "Incompatible Modes", configs: allConfigs, isIncompatible: true }];
     }
-    
+
     const currentSwitchCompat = currentConfig["ai:switchcompat"] || [];
-    const compatibleConfigs: any[] = [currentConfig];
-    const incompatibleConfigs: any[] = [];
+    const compatibleConfigs: AIModeConfigWithMode[] = [{ ...currentConfig, mode: currentMode }];
+    const incompatibleConfigs: AIModeConfigWithMode[] = [];
 
     if (currentSwitchCompat.length === 0) {
         allConfigs.forEach((config) => {
@@ -80,12 +86,10 @@ function computeCompatibleSections(
     } else {
         allConfigs.forEach((config) => {
             if (config.mode === currentMode) return;
-            
+
             const configSwitchCompat = config["ai:switchcompat"] || [];
-            const hasMatch = currentSwitchCompat.some((currentTag: string) =>
-                configSwitchCompat.includes(currentTag)
-            );
-            
+            const hasMatch = currentSwitchCompat.some((currentTag: string) => configSwitchCompat.includes(currentTag));
+
             if (hasMatch) {
                 compatibleConfigs.push(config);
             } else {
@@ -97,7 +101,7 @@ function computeCompatibleSections(
     const sections: ConfigSection[] = [];
     const compatibleSectionName = compatibleConfigs.length === 1 ? "Current" : "Compatible Modes";
     sections.push({ sectionName: compatibleSectionName, configs: compatibleConfigs });
-    
+
     if (incompatibleConfigs.length > 0) {
         sections.push({ sectionName: "Incompatible Modes", configs: incompatibleConfigs, isIncompatible: true });
     }
@@ -105,16 +109,19 @@ function computeCompatibleSections(
     return sections;
 }
 
-function computeWaveCloudSections(waveProviderConfigs: any[], otherProviderConfigs: any[]): ConfigSection[] {
+function computeWaveCloudSections(
+    waveProviderConfigs: AIModeConfigWithMode[],
+    otherProviderConfigs: AIModeConfigWithMode[]
+): ConfigSection[] {
     const sections: ConfigSection[] = [];
-    
+
     if (waveProviderConfigs.length > 0) {
         sections.push({ sectionName: "Wave AI Cloud", configs: waveProviderConfigs });
     }
     if (otherProviderConfigs.length > 0) {
         sections.push({ sectionName: "Custom", configs: otherProviderConfigs });
     }
-    
+
     return sections;
 }
 
@@ -126,6 +133,8 @@ export const AIModeDropdown = memo(({ compatibilityMode = false }: AIModeDropdow
     const model = WaveAIModel.getInstance();
     const aiMode = useAtomValue(model.currentAIMode);
     const aiModeConfigs = useAtomValue(model.aiModeConfigs);
+    const waveaiModeConfigs = useAtomValue(atoms.waveaiModeConfigAtom);
+    const widgetContextEnabled = useAtomValue(model.widgetAccessAtom);
     const rateLimitInfo = useAtomValue(atoms.waveAIRateLimitInfoAtom);
     const showCloudModes = useAtomValue(getSettingsKeyAtom("waveai:showcloudmodes"));
     const defaultMode = useAtomValue(getSettingsKeyAtom("waveai:defaultmode")) ?? "waveai@balanced";
@@ -168,13 +177,25 @@ export const AIModeDropdown = memo(({ compatibilityMode = false }: AIModeDropdow
         setIsOpen(false);
     };
 
-    const displayConfig = aiModeConfigs[currentMode] || {
-        "display:name": "? Unknown",
-        "display:icon": "question",
-    };
+    const displayConfig = aiModeConfigs[currentMode];
+    const displayName = displayConfig ? getModeDisplayName(displayConfig) : "Unknown";
+    const displayIcon = displayConfig?.["display:icon"] || "sparkles";
+    const resolvedConfig = waveaiModeConfigs[currentMode];
+    const hasToolsSupport = resolvedConfig && resolvedConfig["ai:capabilities"]?.includes("tools");
+    const showNoToolsWarning = widgetContextEnabled && resolvedConfig && !hasToolsSupport;
 
     const handleConfigureClick = () => {
         fireAndForget(async () => {
+            RpcApi.RecordTEventCommand(
+                TabRpcClient,
+                {
+                    event: "action:other",
+                    props: {
+                        "action:type": "waveai:configuremodes:contextmenu",
+                    },
+                },
+                { noresponse: true }
+            );
             await model.openWaveAIConfig();
             setIsOpen(false);
         });
@@ -186,31 +207,52 @@ export const AIModeDropdown = memo(({ compatibilityMode = false }: AIModeDropdow
                 onClick={() => setIsOpen(!isOpen)}
                 className={cn(
                     "group flex items-center gap-1.5 px-2 py-1 text-xs text-gray-300 hover:text-white rounded transition-colors cursor-pointer border border-gray-600/50",
-                    isOpen ? "bg-gray-700" : "bg-gray-800/50 hover:bg-gray-700"
+                    isOpen ? "bg-zinc-700" : "bg-zinc-800/50 hover:bg-zinc-700"
                 )}
-                title={`AI Mode: ${displayConfig["display:name"]}`}
+                title={`AI Mode: ${displayName}`}
             >
-                <i className={cn(makeIconClass(displayConfig["display:icon"] || "sparkles", false), "text-[10px]")}></i>
-                <span className={`text-[11px]`}>
-                    {displayConfig["display:name"]}
-                </span>
+                <i className={cn(makeIconClass(displayIcon, false), "text-[10px]")}></i>
+                <span className={`text-[11px]`}>{displayName}</span>
                 <i className="fa fa-chevron-down text-[8px]"></i>
             </button>
+
+            {showNoToolsWarning && (
+                <Tooltip
+                    content={
+                        <div className="max-w-xs">
+                            Warning: This custom mode was configured without the "tools" capability in the
+                            "ai:capabilities" array. Without tool support, Wave AI will not be able to interact with
+                            widgets or files.
+                        </div>
+                    }
+                    placement="bottom"
+                >
+                    <div className="flex items-center gap-1 text-[10px] text-yellow-600 mt-1 ml-1 cursor-default">
+                        <i className="fa fa-triangle-exclamation"></i>
+                        <span>No Tools Support</span>
+                    </div>
+                </Tooltip>
+            )}
 
             {isOpen && (
                 <>
                     <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
-                    <div className="absolute top-full left-0 mt-1 bg-gray-800 border border-gray-600 rounded shadow-lg z-50 min-w-[280px]">
+                    <div className="absolute top-full left-0 mt-1 bg-zinc-800 border border-zinc-600 rounded shadow-lg z-50 min-w-[280px]">
                         {sections.map((section, sectionIndex) => {
                             const isFirstSection = sectionIndex === 0;
                             const isLastSection = sectionIndex === sections.length - 1;
-                            
+
                             return (
                                 <div key={section.sectionName}>
                                     {!isFirstSection && <div className="border-t border-gray-600 my-2" />}
                                     {showSectionHeaders && (
                                         <>
-                                            <div className={cn("pb-1 text-center text-[10px] text-gray-400 uppercase tracking-wide", isFirstSection ? "pt-2" : "pt-0")}>
+                                            <div
+                                                className={cn(
+                                                    "pb-1 text-center text-[10px] text-gray-400 uppercase tracking-wide",
+                                                    isFirstSection ? "pt-2" : "pt-0"
+                                                )}
+                                            >
                                                 {section.sectionName}
                                             </div>
                                             {section.isIncompatible && (
@@ -245,7 +287,7 @@ export const AIModeDropdown = memo(({ compatibilityMode = false }: AIModeDropdow
                         <div className="border-t border-gray-600 my-1" />
                         <button
                             onClick={handleConfigureClick}
-                            className="w-full flex items-center gap-2 px-3 pt-1 pb-2 text-gray-300 hover:bg-gray-700 cursor-pointer transition-colors text-left"
+                            className="w-full flex items-center gap-2 px-3 pt-1 pb-2 text-gray-300 hover:bg-zinc-700 cursor-pointer transition-colors text-left"
                         >
                             <i className={makeIconClass("gear", false)}></i>
                             <span className="text-sm">Configure Modes</span>

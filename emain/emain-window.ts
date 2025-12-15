@@ -23,7 +23,7 @@ import { ElectronWshClient } from "./emain-wsh";
 import { updater } from "./updater";
 
 export type WindowOpts = {
-    unamePlatform: string;
+    unamePlatform: NodeJS.Platform;
     isPrimaryStartupWindow?: boolean;
     foregroundWindow?: boolean;
 };
@@ -41,7 +41,10 @@ export function calculateWindowBounds(
     let winPosX = pos?.x ?? 100;
     let winPosY = pos?.y ?? 100;
 
-    if ((winWidth == null || winWidth === 0 || winHeight == null || winHeight === 0) && settings?.["window:dimensions"]) {
+    if (
+        (winWidth == null || winWidth === 0 || winHeight == null || winHeight === 0) &&
+        settings?.["window:dimensions"]
+    ) {
         const dimensions = settings["window:dimensions"];
         const match = dimensions.match(/^(\d+)[xX](\d+)$/);
 
@@ -147,52 +150,64 @@ export class WaveBrowserWindow extends BaseWindow {
         console.log("create win", waveWindow.oid);
         const winBounds = calculateWindowBounds(waveWindow.winsize, waveWindow.pos, settings);
         const winOpts: BaseWindowConstructorOptions = {
-            titleBarStyle:
-                opts.unamePlatform === "darwin"
-                    ? "hiddenInset"
-                    : settings["window:nativetitlebar"]
-                      ? "default"
-                      : "hidden",
-            titleBarOverlay:
-                opts.unamePlatform !== "darwin"
-                    ? {
-                          symbolColor: "white",
-                          color: "#00000000",
-                      }
-                    : false,
             x: winBounds.x,
             y: winBounds.y,
             width: winBounds.width,
             height: winBounds.height,
             minWidth: MinWindowWidth,
             minHeight: MinWindowHeight,
-            icon:
-                opts.unamePlatform == "linux"
-                    ? path.join(getElectronAppBasePath(), "public/logos/wave-logo-dark.png")
-                    : undefined,
             show: false,
-            autoHideMenuBar: !settings?.["window:showmenubar"],
         };
+
         const isTransparent = settings?.["window:transparent"] ?? false;
         const isBlur = !isTransparent && (settings?.["window:blur"] ?? false);
-        if (isTransparent) {
-            winOpts.transparent = true;
-        } else if (isBlur) {
-            switch (opts.unamePlatform) {
-                case "win32": {
-                    winOpts.backgroundMaterial = "acrylic";
-                    break;
-                }
-                case "darwin": {
-                    winOpts.vibrancy = "fullscreen-ui";
-                    break;
-                }
+
+        if (opts.unamePlatform === "darwin") {
+            winOpts.titleBarStyle = "hiddenInset";
+            winOpts.titleBarOverlay = false;
+            winOpts.autoHideMenuBar = !settings?.["window:showmenubar"];
+            if (isTransparent) {
+                winOpts.transparent = true;
+            } else if (isBlur) {
+                winOpts.vibrancy = "fullscreen-ui";
+            } else {
+                winOpts.backgroundColor = "#222222";
             }
-        } else {
-            winOpts.backgroundColor = "#222222";
+        } else if (opts.unamePlatform === "linux") {
+            winOpts.titleBarStyle = settings["window:nativetitlebar"] ? "default" : "hidden";
+            winOpts.titleBarOverlay = {
+                symbolColor: "white",
+                color: "#00000000",
+            };
+            winOpts.icon = path.join(getElectronAppBasePath(), "public/logos/wave-logo-dark.png");
+            winOpts.autoHideMenuBar = !settings?.["window:showmenubar"];
+            if (isTransparent) {
+                winOpts.transparent = true;
+            } else {
+                winOpts.backgroundColor = "#222222";
+            }
+        } else if (opts.unamePlatform === "win32") {
+            winOpts.titleBarStyle = "hidden";
+            winOpts.titleBarOverlay = {
+                color: "#222222",
+                symbolColor: "#c3c8c2",
+                height: 32,
+            };
+            if (isTransparent) {
+                winOpts.transparent = true;
+            } else if (isBlur) {
+                winOpts.backgroundMaterial = "acrylic";
+            } else {
+                winOpts.backgroundColor = "#222222";
+            }
         }
 
         super(winOpts);
+
+        if (opts.unamePlatform === "win32") {
+            this.setMenu(null);
+        }
+
         const fullscreenOnLaunch = fullConfig?.settings["window:fullscreenonlaunch"];
         if (fullscreenOnLaunch && opts.foregroundWindow) {
             this.once("show", () => {

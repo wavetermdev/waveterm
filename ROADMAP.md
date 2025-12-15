@@ -13,6 +13,10 @@ Wave Terminal's AI assistant is already powerful and continues to evolve. Here's
 ### AI Provider Support
 
 - ✅ OpenAI (including gpt-5 and gpt-5-mini models)
+- ✅ Google Gemini (v0.13)
+- ✅ OpenRouter and custom OpenAI-compatible endpoints (v0.13)
+- ✅ Azure OpenAI (modern and legacy APIs) (v0.13)
+- ✅ Local AI models via Ollama, LM Studio, vLLM, and other OpenAI-compatible servers (v0.13)
 
 ### Context & Input
 
@@ -32,33 +36,28 @@ Wave Terminal's AI assistant is already powerful and continues to evolve. Here's
 
 ### AI Configuration & Flexibility
 
-- 🔷 BYOK (Bring Your Own Key) - Use your own API keys for any supported provider
+- ✅ BYOK (Bring Your Own Key) - Use your own API keys for any supported provider (v0.13)
+- ✅ Local AI agents - Run AI models locally on your machine (v0.13)
 - 🔧 Enhanced provider configuration options
 - 🔷 Context (add markdown files to give persistent system context)
 
 ### Expanded Provider Support
 
-Top priorities are Claude (for better coding support), and the OpenAI Completions API which will allow us to interface with
-many more local/open models.
-
 - 🔷 Anthropic Claude - Full integration with extended thinking and tool use
-- 🔷 OpenAI Completions API - Support for older model formats
-- 🤞 Google Gemini - Complete integration
-- 🤞 Local AI agents - Run AI models locally on your machine
 
 ### Advanced AI Tools
 
 #### File Operations
 
-- 🔧 AI file writing with intelligent diff previews
-- 🔧 Rollback support for AI-made changes
+- ✅ AI file writing with intelligent diff previews
+- ✅ Rollback support for AI-made changes
 - 🔷 Multi-file editing workflows
 - 🔷 Safe file modification patterns
 
 #### Terminal Command Execution
 
 - 🔧 Execute commands directly from AI
-- 🔧 Intelligent terminal state detection
+- ✅ Intelligent terminal state detection
 - 🔧 Command result capture and parsing
 
 ### Remote & Advanced Capabilities

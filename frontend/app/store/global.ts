@@ -17,7 +17,14 @@ import {
 import { getWebServerEndpoint } from "@/util/endpoints";
 import { fetch } from "@/util/fetchutil";
 import { setPlatform } from "@/util/platformutil";
-import { base64ToString, deepCompareReturnPrev, fireAndForget, getPrefixedSettings, isBlank } from "@/util/util";
+import {
+    base64ToString,
+    deepCompareReturnPrev,
+    fireAndForget,
+    getPrefixedSettings,
+    isBlank,
+    isLocalConnName,
+} from "@/util/util";
 import { atom, Atom, PrimitiveAtom, useAtomValue } from "jotai";
 import { globalStore } from "./jotaiStore";
 import { modalsModel } from "./modalmodel";
@@ -72,16 +79,26 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
         getApi().onFullScreenChange((isFullScreen) => {
             globalStore.set(isFullScreenAtom, isFullScreen);
         });
-    } catch (_) {
-        // do nothing
+    } catch (e) {
+        console.log("failed to initialize isFullScreenAtom", e);
+    }
+
+    const zoomFactorAtom = atom(1.0) as PrimitiveAtom<number>;
+    try {
+        globalStore.set(zoomFactorAtom, getApi().getZoomFactor());
+        getApi().onZoomFactorChange((zoomFactor) => {
+            globalStore.set(zoomFactorAtom, zoomFactor);
+        });
+    } catch (e) {
+        console.log("failed to initialize zoomFactorAtom", e);
     }
 
     try {
         getApi().onMenuItemAbout(() => {
             modalsModel.pushModal("AboutModal");
         });
-    } catch (_) {
-        // do nothing
+    } catch (e) {
+        console.log("failed to initialize onMenuItemAbout handler", e);
     }
 
     const clientAtom: Atom<Client> = atom((get) => {
@@ -107,6 +124,7 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
         return WOS.getObjectValue(WOS.makeORef("workspace", windowData.workspaceid), get);
     });
     const fullConfigAtom = atom(null) as PrimitiveAtom<FullConfigType>;
+    const waveaiModeConfigAtom = atom(null) as PrimitiveAtom<Record<string, AIModeConfigType>>;
     const settingsAtom = atom((get) => {
         return get(fullConfigAtom)?.settings ?? {};
     }) as Atom<SettingsType>;
@@ -134,8 +152,8 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
         getApi().onUpdaterStatusChange((status) => {
             globalStore.set(updaterStatusAtom, status);
         });
-    } catch (_) {
-        // do nothing
+    } catch (e) {
+        console.log("failed to initialize updaterStatusAtom", e);
     }
 
     const reducedMotionSettingAtom = atom((get) => get(settingsAtom)?.["window:reducedmotion"]);
@@ -180,11 +198,13 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
         waveWindow: windowDataAtom,
         workspace: workspaceAtom,
         fullConfigAtom,
+        waveaiModeConfigAtom,
         settingsAtom,
         hasCustomAIPresetsAtom,
         tabAtom,
         staticTabId: staticTabIdAtom,
         isFullScreen: isFullScreenAtom,
+        zoomFactorAtom,
         controlShiftDelayAtom,
         updaterStatusAtom,
         prefersReducedMotionAtom,
@@ -216,6 +236,13 @@ function initGlobalWaveEventSubs(initOpts: WaveInitOpts) {
                 // console.log("config wave event handler", event);
                 const fullConfig = (event.data as WatcherUpdate).fullconfig;
                 globalStore.set(atoms.fullConfigAtom, fullConfig);
+            },
+        },
+        {
+            eventType: "waveai:modeconfig",
+            handler: (event) => {
+                const modeConfigs = (event.data as AIModeConfigUpdate).configs;
+                globalStore.set(atoms.waveaiModeConfigAtom, modeConfigs);
             },
         },
         {
@@ -710,8 +737,7 @@ function getConnStatusAtom(conn: string): PrimitiveAtom<ConnStatus> {
     const connStatusMap = globalStore.get(ConnStatusMapAtom);
     let rtn = connStatusMap.get(conn);
     if (rtn == null) {
-        if (isBlank(conn)) {
-            // create a fake "local" status atom that's always connected
+        if (isLocalConnName(conn)) {
             const connStatus: ConnStatus = {
                 connection: conn,
                 connected: true,

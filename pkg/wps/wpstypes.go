@@ -21,6 +21,7 @@ const (
 	Event_WaveAIRateLimit     = "waveai:ratelimit"
 	Event_WaveAppAppGoUpdated = "waveapp:appgoupdated"
 	Event_TsunamiUpdateMeta   = "tsunami:updatemeta"
+	Event_AIModeConfig        = "waveai:modeconfig"
 )
 
 type WaveEvent struct {

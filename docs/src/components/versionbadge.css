@@ -12,6 +12,10 @@
     white-space: nowrap;
 }
 
+.version-badge.no-left-margin {
+    margin-left: 0;
+}
+
 [data-theme="dark"] .version-badge {
     background-color: var(--ifm-color-primary-dark);
     color: var(--ifm-background-color);

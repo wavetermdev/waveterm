@@ -87,6 +87,7 @@ type SettingsType struct {
 	TermDisableWebGl        bool     `json:"term:disablewebgl,omitempty"`
 	TermLocalShellPath      string   `json:"term:localshellpath,omitempty"`
 	TermLocalShellOpts      []string `json:"term:localshellopts,omitempty"`
+	TermGitBashPath         string   `json:"term:gitbashpath,omitempty"`
 	TermScrollback          *int64   `json:"term:scrollback,omitempty"`
 	TermCopyOnSelect        *bool    `json:"term:copyonselect,omitempty"`
 	TermTransparency        *float64 `json:"term:transparency,omitempty"`
@@ -282,6 +283,10 @@ type AIModeConfigType struct {
 	SwitchCompat       []string `json:"ai:switchcompat,omitempty"`
 	WaveAICloud        bool     `json:"waveai:cloud,omitempty"`
 	WaveAIPremium      bool     `json:"waveai:premium,omitempty"`
+}
+
+type AIModeConfigUpdate struct {
+	Configs map[string]AIModeConfigType `json:"configs"`
 }
 
 type FullConfigType struct {
@@ -881,6 +886,18 @@ func (fc *FullConfigType) CountCustomAIPresets() int {
 	count := 0
 	for presetID := range fc.Presets {
 		if strings.HasPrefix(presetID, "ai@") && presetID != "ai@global" && presetID != "ai@wave" {
+			count++
+		}
+	}
+	return count
+}
+
+// CountCustomAIModes returns the number of custom AI modes the user has defined.
+// Custom AI modes are identified as modes that don't start with "waveai@".
+func (fc *FullConfigType) CountCustomAIModes() int {
+	count := 0
+	for modeID := range fc.WaveAIModes {
+		if !strings.HasPrefix(modeID, "waveai@") {
 			count++
 		}
 	}

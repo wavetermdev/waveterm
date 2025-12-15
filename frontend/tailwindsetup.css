@@ -70,6 +70,8 @@
     --container-xs: 300px;
     --container-xxs: 200px;
     --container-tiny: 120px;
+
+    --z-window-drag: 100;
 }
 
 :root {

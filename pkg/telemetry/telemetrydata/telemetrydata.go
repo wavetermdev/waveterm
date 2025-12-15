@@ -26,6 +26,7 @@ var ValidEventNames = map[string]bool{
 	"action:createtab":   true,
 	"action:createblock": true,
 	"action:openwaveai":  true,
+	"action:other":       true,
 
 	"wsh:run": true,
 
@@ -80,9 +81,12 @@ type TEventUserProps struct {
 	LocCountryCode string `json:"loc:countrycode,omitempty"`
 	LocRegionCode  string `json:"loc:regioncode,omitempty"`
 
-	SettingsCustomWidgets   int `json:"settings:customwidgets,omitempty"`
-	SettingsCustomAIPresets int `json:"settings:customaipresets,omitempty"`
-	SettingsCustomSettings  int `json:"settings:customsettings,omitempty"`
+	SettingsCustomWidgets   int  `json:"settings:customwidgets,omitempty"`
+	SettingsCustomAIPresets int  `json:"settings:customaipresets,omitempty"`
+	SettingsCustomSettings  int  `json:"settings:customsettings,omitempty"`
+	SettingsCustomAIModes   int  `json:"settings:customaimodes,omitempty"`
+	SettingsSecretsCount    int  `json:"settings:secretscount,omitempty"`
+	SettingsTransparent     bool `json:"settings:transparent,omitempty"`
 }
 
 type TEventProps struct {
@@ -99,6 +103,7 @@ type TEventProps struct {
 	AppFirstLaunch bool `json:"app:firstlaunch,omitempty"`
 
 	ActionInitiator string `json:"action:initiator,omitempty" tstype:"\"keyboard\" | \"mouse\""`
+	ActionType      string `json:"action:type,omitempty"`
 	PanicType       string `json:"debug:panictype,omitempty"`
 	BlockView       string `json:"block:view,omitempty"`
 	AiBackendType   string `json:"ai:backendtype,omitempty"`
@@ -148,6 +153,8 @@ type TEventProps struct {
 	WaveAIWidgetAccess         bool           `json:"waveai:widgetaccess,omitempty"`
 	WaveAIThinkingLevel        string         `json:"waveai:thinkinglevel,omitempty"`
 	WaveAIMode                 string         `json:"waveai:mode,omitempty"`
+	WaveAIProvider             string         `json:"waveai:provider,omitempty"`
+	WaveAIIsLocal              bool           `json:"waveai:islocal,omitempty"`
 	WaveAIFeedback             string         `json:"waveai:feedback,omitempty" tstype:"\"good\" | \"bad\""`
 	WaveAIAction               string         `json:"waveai:action,omitempty"`
 

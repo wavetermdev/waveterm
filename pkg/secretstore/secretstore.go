@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
+	"strings"
 	"sync"
 	"time"
 
@@ -228,7 +229,7 @@ func SetSecret(name string, value string) error {
 	lock.Lock()
 	defer lock.Unlock()
 
-	secrets[name] = value
+	secrets[name] = strings.TrimRight(value, "\r\n")
 	requestWrite()
 	return nil
 }
@@ -277,6 +278,24 @@ func GetSecretNames() ([]string, error) {
 		names = append(names, name)
 	}
 	return names, nil
+}
+
+func CountSecrets() (int, error) {
+	lock.Lock()
+	defer lock.Unlock()
+	
+	if !initialized {
+		return 0, fmt.Errorf("secret store not initialized")
+	}
+
+	count := 0
+	for name := range secrets {
+		if name == WriteTsKey {
+			continue
+		}
+		count++
+	}
+	return count, nil
 }
 
 func GetLinuxStorageBackend() (string, error) {

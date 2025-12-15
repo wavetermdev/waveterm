@@ -47,17 +47,29 @@ var (
 	activeChats   = ds.MakeSyncMap[bool]() // key is chatid
 )
 
-func getSystemPrompt(apiType string, model string, isBuilder bool) []string {
+func getSystemPrompt(apiType string, model string, isBuilder bool, hasToolsCapability bool, widgetAccess bool) []string {
 	if isBuilder {
 		return []string{}
 	}
+	useNoToolsPrompt := !hasToolsCapability || !widgetAccess
 	basePrompt := SystemPromptText_OpenAI
+	if useNoToolsPrompt {
+		basePrompt = SystemPromptText_NoTools
+	}
 	modelLower := strings.ToLower(model)
 	needsStrictToolAddOn, _ := regexp.MatchString(`(?i)\b(mistral|o?llama|qwen|mixtral|yi|phi|deepseek)\b`, modelLower)
-	if needsStrictToolAddOn {
+	if needsStrictToolAddOn && !useNoToolsPrompt {
 		return []string{basePrompt, SystemPromptText_StrictToolAddOn}
 	}
 	return []string{basePrompt}
+}
+
+func isLocalEndpoint(endpoint string) bool {
+	if endpoint == "" {
+		return false
+	}
+	endpointLower := strings.ToLower(endpoint)
+	return strings.Contains(endpointLower, "localhost") || strings.Contains(endpointLower, "127.0.0.1")
 }
 
 func getWaveAISettings(premium bool, builderMode bool, rtInfo waveobj.ObjRTInfo) (*uctypes.AIOptsType, error) {
@@ -78,6 +90,7 @@ func getWaveAISettings(premium bool, builderMode bool, rtInfo waveobj.ObjRTInfo)
 		if err != nil {
 			return nil, fmt.Errorf("failed to retrieve secret %s: %w", config.APITokenSecretName, err)
 		}
+		secret = strings.TrimSpace(secret)
 		if !exists || secret == "" {
 			return nil, fmt.Errorf("secret %s not found or empty", config.APITokenSecretName)
 		}
@@ -353,6 +366,11 @@ func RunAIChat(ctx context.Context, sseHandler *sse.SSEHandlerCh, backend UseCha
 	defer activeChats.Delete(chatOpts.ChatId)
 
 	stepNum := chatstore.DefaultChatStore.CountUserMessages(chatOpts.ChatId)
+	aiProvider := chatOpts.Config.Provider
+	if aiProvider == "" {
+		aiProvider = uctypes.AIProvider_Custom
+	}
+	isLocal := isLocalEndpoint(chatOpts.Config.Endpoint)
 	metrics := &uctypes.AIMetrics{
 		ChatId:  chatOpts.ChatId,
 		StepNum: stepNum,
@@ -364,6 +382,8 @@ func RunAIChat(ctx context.Context, sseHandler *sse.SSEHandlerCh, backend UseCha
 		ToolDetail:    make(map[string]int),
 		ThinkingLevel: chatOpts.Config.ThinkingLevel,
 		AIMode:        chatOpts.Config.AIMode,
+		AIProvider:    aiProvider,
+		IsLocal:       isLocal,
 	}
 	firstStep := true
 	var cont *uctypes.WaveContinueResponse
@@ -563,6 +583,8 @@ func sendAIMetricsTelemetry(ctx context.Context, metrics *uctypes.AIMetrics) {
 		WaveAIWidgetAccess:         metrics.WidgetAccess,
 		WaveAIThinkingLevel:        metrics.ThinkingLevel,
 		WaveAIMode:                 metrics.AIMode,
+		WaveAIProvider:             metrics.AIProvider,
+		WaveAIIsLocal:              metrics.IsLocal,
 	})
 	_ = telemetry.RecordTEvent(ctx, event)
 }
@@ -641,7 +663,7 @@ func WaveAIPostMessageHandler(w http.ResponseWriter, r *http.Request) {
 		BuilderId:            req.BuilderId,
 		BuilderAppId:         req.BuilderAppId,
 	}
-	chatOpts.SystemPrompt = getSystemPrompt(chatOpts.Config.APIType, chatOpts.Config.Model, chatOpts.BuilderId != "")
+	chatOpts.SystemPrompt = getSystemPrompt(chatOpts.Config.APIType, chatOpts.Config.Model, chatOpts.BuilderId != "", chatOpts.Config.HasCapability(uctypes.AICapabilityTools), chatOpts.WidgetAccess)
 
 	if req.TabId != "" {
 		chatOpts.TabStateGenerator = func() (string, []uctypes.ToolDefinition, string, error) {
