@@ -40,8 +40,7 @@ export async function handleWaveAIContextMenu(e: React.MouseEvent, showCopy: boo
         oref: model.orefContext,
     });
 
-    const rateLimitInfo = globalStore.get(atoms.waveAIRateLimitInfoAtom);
-    const hasPremium = !rateLimitInfo || rateLimitInfo.unknown || rateLimitInfo.preq > 0;
+    const hasPremium = globalStore.get(model.hasPremiumAtom);
     const aiModeConfigs = globalStore.get(model.aiModeConfigs);
     const showCloudModes = globalStore.get(getSettingsKeyAtom("waveai:showcloudmodes"));
     const currentAIMode = rtInfo?.["waveai:mode"] ?? (hasPremium ? "waveai@balanced" : "waveai@quick");

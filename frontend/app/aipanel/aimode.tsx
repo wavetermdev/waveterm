@@ -141,14 +141,12 @@ export const AIModeDropdown = memo(({ compatibilityMode = false }: AIModeDropdow
     const aiModeConfigs = useAtomValue(model.aiModeConfigs);
     const waveaiModeConfigs = useAtomValue(atoms.waveaiModeConfigAtom);
     const widgetContextEnabled = useAtomValue(model.widgetAccessAtom);
-    const rateLimitInfo = useAtomValue(atoms.waveAIRateLimitInfoAtom);
+    const hasPremium = useAtomValue(model.hasPremiumAtom);
     const showCloudModes = useAtomValue(getSettingsKeyAtom("waveai:showcloudmodes"));
     const defaultMode = useAtomValue(getSettingsKeyAtom("waveai:defaultmode")) ?? "waveai@balanced";
     const telemetryEnabled = useAtomValue(getSettingsKeyAtom("telemetry:enabled")) ?? false;
     const [isOpen, setIsOpen] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
-
-    const hasPremium = !rateLimitInfo || rateLimitInfo.unknown || rateLimitInfo.preq > 0;
 
     const { waveProviderConfigs, otherProviderConfigs } = getFilteredAIModeConfigs(
         aiModeConfigs,

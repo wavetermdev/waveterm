@@ -373,11 +373,38 @@ export class WaveAIModel {
         });
     }
 
+    isValidMode(mode: string): boolean {
+        const telemetryEnabled = globalStore.get(getSettingsKeyAtom("telemetry:enabled")) ?? false;
+        if (mode.startsWith("waveai@") && !telemetryEnabled) {
+            return false;
+        }
+
+        const aiModeConfigs = globalStore.get(this.aiModeConfigs);
+        if (aiModeConfigs == null || !(mode in aiModeConfigs)) {
+            return false;
+        }
+
+        return true;
+    }
+
     setAIMode(mode: string) {
-        globalStore.set(this.currentAIMode, mode);
+        if (!this.isValidMode(mode)) {
+            this.setAIModeToDefault();
+        } else {
+            globalStore.set(this.currentAIMode, mode);
+            RpcApi.SetRTInfoCommand(TabRpcClient, {
+                oref: this.orefContext,
+                data: { "waveai:mode": mode },
+            });
+        }
+    }
+
+    setAIModeToDefault() {
+        const defaultMode = globalStore.get(this.defaultModeAtom);
+        globalStore.set(this.currentAIMode, defaultMode);
         RpcApi.SetRTInfoCommand(TabRpcClient, {
             oref: this.orefContext,
-            data: { "waveai:mode": mode },
+            data: { "waveai:mode": null },
         });
     }
 
@@ -386,34 +413,11 @@ export class WaveAIModel {
             oref: this.orefContext,
         });
         const mode = rtInfo?.["waveai:mode"];
-
         if (mode == null) {
             return;
         }
-
-        let shouldClear = false;
-
-        if (mode.startsWith("waveai@")) {
-            const telemetryEnabled = globalStore.get(getSettingsKeyAtom("telemetry:enabled")) ?? false;
-            if (!telemetryEnabled) {
-                shouldClear = true;
-            }
-        }
-
-        if (!shouldClear) {
-            const aiModeConfigs = globalStore.get(this.aiModeConfigs);
-            if (aiModeConfigs == null || !(mode in aiModeConfigs)) {
-                shouldClear = true;
-            }
-        }
-
-        if (shouldClear) {
-            const defaultMode = globalStore.get(this.defaultModeAtom);
-            globalStore.set(this.currentAIMode, defaultMode);
-            RpcApi.SetRTInfoCommand(TabRpcClient, {
-                oref: this.orefContext,
-                data: { "waveai:mode": null },
-            });
+        if (!this.isValidMode(mode)) {
+            this.setAIModeToDefault();
         }
     }
 
@@ -431,9 +435,15 @@ export class WaveAIModel {
         }
         globalStore.set(this.chatId, chatIdValue);
 
-        const defaultMode = globalStore.get(getSettingsKeyAtom("waveai:defaultmode")) ?? "waveai@balanced";
-        const aiModeValue = rtInfo?.["waveai:mode"] ?? defaultMode;
-        globalStore.set(this.currentAIMode, aiModeValue);
+        const aiModeValue = rtInfo?.["waveai:mode"];
+        if (aiModeValue == null) {
+            const defaultMode = globalStore.get(this.defaultModeAtom);
+            globalStore.set(this.currentAIMode, defaultMode);
+        } else if (this.isValidMode(aiModeValue)) {
+            globalStore.set(this.currentAIMode, aiModeValue);
+        } else {
+            this.setAIModeToDefault();
+        }
 
         try {
             const chatData = await RpcApi.GetWaveAIChatCommand(TabRpcClient, { chatid: chatIdValue });
