@@ -600,7 +600,7 @@ type PostMessageRequest struct {
 	ChatID       string            `json:"chatid"`
 	Msg          uctypes.AIMessage `json:"msg"`
 	WidgetAccess bool              `json:"widgetaccess,omitempty"`
-	AIMode       string            `json:"aimode,omitempty"`
+	AIMode       string            `json:"aimode"`
 }
 
 func WaveAIPostMessageHandler(w http.ResponseWriter, r *http.Request) {
