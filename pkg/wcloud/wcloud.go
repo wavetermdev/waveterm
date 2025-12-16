@@ -311,6 +311,7 @@ func makePingPostReq(ctx context.Context, apiUrl string, data interface{}) (*htt
 		return nil, fmt.Errorf("error creating %s request: %v", apiUrl, err)
 	}
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-PromptAPIVersion", strconv.Itoa(APIVersion))
 	req.Close = true
 	return req, nil
 }
