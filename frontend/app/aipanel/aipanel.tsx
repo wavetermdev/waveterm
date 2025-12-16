@@ -197,41 +197,51 @@ const AIBuilderWelcomeMessage = memo(() => {
 
 AIBuilderWelcomeMessage.displayName = "AIBuilderWelcomeMessage";
 
-interface AIErrorMessageProps {
-    errorMessage: string;
-    onClear: () => void;
-}
+const AIErrorMessage = memo(() => {
+    const model = WaveAIModel.getInstance();
+    const errorMessage = jotai.useAtomValue(model.errorMessage);
 
-const AIErrorMessage = memo(({ errorMessage, onClear }: AIErrorMessageProps) => {
+    if (!errorMessage) {
+        return null;
+    }
+
     return (
         <div className="px-4 py-2 text-red-400 bg-red-900/20 border-l-4 border-red-500 mx-2 mb-2 relative">
             <button
-                onClick={onClear}
+                onClick={() => model.clearError()}
                 className="absolute top-2 right-2 text-red-400 hover:text-red-300 cursor-pointer z-10"
                 aria-label="Close error"
             >
                 <i className="fa fa-times text-sm"></i>
             </button>
-            <div className="text-sm pr-6 max-h-[100px] overflow-y-auto">{errorMessage}</div>
+            <div className="text-sm pr-6 max-h-[100px] overflow-y-auto">
+                {errorMessage}
+                <button
+                    onClick={() => model.clearChat()}
+                    className="ml-2 text-xs text-red-300 hover:text-red-200 cursor-pointer underline"
+                >
+                    New Chat
+                </button>
+            </div>
         </div>
     );
 });
 
 AIErrorMessage.displayName = "AIErrorMessage";
 
-const RTInfoModeFixer = memo(() => {
+const ConfigChangeModeFixer = memo(() => {
     const model = WaveAIModel.getInstance();
     const telemetryEnabled = jotai.useAtomValue(getSettingsKeyAtom("telemetry:enabled")) ?? false;
     const aiModeConfigs = jotai.useAtomValue(model.aiModeConfigs);
 
     useEffect(() => {
-        model.fixRTInfoMode();
+        model.fixModeAfterConfigChange();
     }, [telemetryEnabled, aiModeConfigs, model]);
 
     return null;
 });
 
-RTInfoModeFixer.displayName = "RTInfoModeFixer";
+ConfigChangeModeFixer.displayName = "ConfigChangeModeFixer";
 
 const AIPanelComponentInner = memo(() => {
     const [isDragOver, setIsDragOver] = useState(false);
@@ -239,7 +249,6 @@ const AIPanelComponentInner = memo(() => {
     const [initialLoadDone, setInitialLoadDone] = useState(false);
     const model = WaveAIModel.getInstance();
     const containerRef = useRef<HTMLDivElement>(null);
-    const errorMessage = jotai.useAtomValue(model.errorMessage);
     const isLayoutMode = jotai.useAtomValue(atoms.controlShiftDelayAtom);
     const showOverlayBlockNums = jotai.useAtomValue(getSettingsKeyAtom("app:showoverlayblocknums")) ?? true;
     const isFocused = jotai.useAtomValue(model.isWaveAIFocusedAtom);
@@ -544,7 +553,7 @@ const AIPanelComponentInner = memo(() => {
             onClick={handleClick}
             inert={!isPanelVisible ? true : undefined}
         >
-            <RTInfoModeFixer />
+            <ConfigChangeModeFixer />
             {(isDragOver || isReactDndDragOver) && allowAccess && <AIDragOverlay />}
             {showBlockMask && <AIBlockMask />}
             <AIPanelHeader />
@@ -572,9 +581,7 @@ const AIPanelComponentInner = memo(() => {
                                 onContextMenu={(e) => handleWaveAIContextMenu(e, true)}
                             />
                         )}
-                        {errorMessage && (
-                            <AIErrorMessage errorMessage={errorMessage} onClear={() => model.clearError()} />
-                        )}
+                        <AIErrorMessage />
                         <AIDroppedFiles model={model} />
                         <AIPanelInput onSubmit={handleSubmit} status={status} model={model} />
                     </>
