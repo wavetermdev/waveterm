@@ -1,10 +1,9 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { getFilteredAIModeConfigs, getModeDisplayName } from "@/app/aipanel/ai-utils";
 import { waveAIHasSelection } from "@/app/aipanel/waveai-focus-utils";
 import { ContextMenuModel } from "@/app/store/contextmenu";
-import { atoms, getSettingsKeyAtom, isDev } from "@/app/store/global";
+import { isDev } from "@/app/store/global";
 import { globalStore } from "@/app/store/jotaiStore";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
@@ -40,78 +39,8 @@ export async function handleWaveAIContextMenu(e: React.MouseEvent, showCopy: boo
         oref: model.orefContext,
     });
 
-    const rateLimitInfo = globalStore.get(atoms.waveAIRateLimitInfoAtom);
-    const hasPremium = !rateLimitInfo || rateLimitInfo.unknown || rateLimitInfo.preq > 0;
-    const aiModeConfigs = globalStore.get(model.aiModeConfigs);
-    const showCloudModes = globalStore.get(getSettingsKeyAtom("waveai:showcloudmodes"));
-    const currentAIMode = rtInfo?.["waveai:mode"] ?? (hasPremium ? "waveai@balanced" : "waveai@quick");
     const defaultTokens = model.inBuilder ? 24576 : 4096;
     const currentMaxTokens = rtInfo?.["waveai:maxoutputtokens"] ?? defaultTokens;
-
-    const { waveProviderConfigs, otherProviderConfigs } = getFilteredAIModeConfigs(
-        aiModeConfigs,
-        showCloudModes,
-        model.inBuilder,
-        hasPremium
-    );
-
-    const aiModeSubmenu: ContextMenuItem[] = [];
-
-    if (waveProviderConfigs.length > 0) {
-        aiModeSubmenu.push({
-            label: "Wave AI Modes",
-            type: "header",
-            enabled: false,
-        });
-
-        waveProviderConfigs.forEach(({ mode, ...config }) => {
-            const isPremium = config["waveai:premium"] === true;
-            const isEnabled = !isPremium || hasPremium;
-            aiModeSubmenu.push({
-                label: getModeDisplayName(config),
-                type: "checkbox",
-                checked: currentAIMode === mode,
-                enabled: isEnabled,
-                click: () => {
-                    if (!isEnabled) return;
-                    RpcApi.SetRTInfoCommand(TabRpcClient, {
-                        oref: model.orefContext,
-                        data: { "waveai:mode": mode },
-                    });
-                },
-            });
-        });
-    }
-
-    if (otherProviderConfigs.length > 0) {
-        if (waveProviderConfigs.length > 0) {
-            aiModeSubmenu.push({ type: "separator" });
-        }
-
-        aiModeSubmenu.push({
-            label: "Custom Modes",
-            type: "header",
-            enabled: false,
-        });
-
-        otherProviderConfigs.forEach(({ mode, ...config }) => {
-            const isPremium = config["waveai:premium"] === true;
-            const isEnabled = !isPremium || hasPremium;
-            aiModeSubmenu.push({
-                label: getModeDisplayName(config),
-                type: "checkbox",
-                checked: currentAIMode === mode,
-                enabled: isEnabled,
-                click: () => {
-                    if (!isEnabled) return;
-                    RpcApi.SetRTInfoCommand(TabRpcClient, {
-                        oref: model.orefContext,
-                        data: { "waveai:mode": mode },
-                    });
-                },
-            });
-        });
-    }
 
     const maxTokensSubmenu: ContextMenuItem[] = [];
 
@@ -190,11 +119,6 @@ export async function handleWaveAIContextMenu(e: React.MouseEvent, showCopy: boo
             }
         );
     }
-
-    menu.push({
-        label: "AI Mode",
-        submenu: aiModeSubmenu,
-    });
 
     menu.push({
         label: "Max Output Tokens",

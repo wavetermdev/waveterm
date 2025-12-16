@@ -24,17 +24,19 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/web/sse"
 )
 
-// sanitizeHostnameInError removes the specific hostname from error messages
-func sanitizeHostnameInError(err error, baseURL string) error {
+// sanitizeHostnameInError removes the Wave cloud hostname from error messages
+func sanitizeHostnameInError(err error) error {
 	if err == nil {
 		return nil
 	}
 
 	errStr := err.Error()
-	parsedURL, parseErr := url.Parse(baseURL)
+	parsedURL, parseErr := url.Parse(uctypes.DefaultAIEndpoint)
 	if parseErr == nil && parsedURL.Host != "" {
-		errStr = strings.ReplaceAll(errStr, baseURL, "AI service")
-		errStr = strings.ReplaceAll(errStr, parsedURL.Host, "host")
+		if strings.Contains(errStr, parsedURL.Host) {
+			errStr = strings.ReplaceAll(errStr, uctypes.DefaultAIEndpoint, "AI service")
+			errStr = strings.ReplaceAll(errStr, parsedURL.Host, "host")
+		}
 	}
 
 	return fmt.Errorf("%s", errStr)
@@ -520,7 +522,7 @@ func RunOpenAIChatStep(
 
 	resp, err := httpClient.Do(req)
 	if err != nil {
-		return nil, nil, nil, sanitizeHostnameInError(err, chatOpts.Config.Endpoint)
+		return nil, nil, nil, sanitizeHostnameInError(err)
 	}
 	defer resp.Body.Close()
 

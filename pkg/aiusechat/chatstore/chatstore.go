@@ -84,13 +84,13 @@ func (cs *ChatStore) PostMessage(chatId string, aiOpts *uctypes.AIOptsType, mess
 	} else {
 		// Verify that the AI options match
 		if chat.APIType != aiOpts.APIType {
-			return fmt.Errorf("API type mismatch: expected %s, got %s", chat.APIType, aiOpts.APIType)
+			return fmt.Errorf("API type mismatch: expected %s, got %s (must start a new chat)", chat.APIType, aiOpts.APIType)
 		}
 		if !uctypes.AreModelsCompatible(chat.APIType, chat.Model, aiOpts.Model) {
-			return fmt.Errorf("model mismatch: expected %s, got %s", chat.Model, aiOpts.Model)
+			return fmt.Errorf("model mismatch: expected %s, got %s (must start a new chat)", chat.Model, aiOpts.Model)
 		}
 		if chat.APIVersion != aiOpts.APIVersion {
-			return fmt.Errorf("API version mismatch: expected %s, got %s", chat.APIVersion, aiOpts.APIVersion)
+			return fmt.Errorf("API version mismatch: expected %s, got %s (must start a new chat)", chat.APIVersion, aiOpts.APIVersion)
 		}
 	}
 

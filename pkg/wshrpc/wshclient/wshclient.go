@@ -476,6 +476,12 @@ func MessageCommand(w *wshutil.WshRpc, data wshrpc.CommandMessageData, opts *wsh
 	return err
 }
 
+// command "networkonline", wshserver.NetworkOnlineCommand
+func NetworkOnlineCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) (bool, error) {
+	resp, err := sendRpcRequestCallHelper[bool](w, "networkonline", nil, opts)
+	return resp, err
+}
+
 // command "notify", wshserver.NotifyCommand
 func NotifyCommand(w *wshutil.WshRpc, data wshrpc.WaveNotificationOptions, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "notify", data, opts)

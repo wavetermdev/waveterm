@@ -547,7 +547,8 @@ export const getFilteredAIModeConfigs = (
     aiModeConfigs: Record<string, AIModeConfigType>,
     showCloudModes: boolean,
     inBuilder: boolean,
-    hasPremium: boolean
+    hasPremium: boolean,
+    currentMode?: string
 ): FilteredAIModeConfigs => {
     const hideQuick = inBuilder && hasPremium;
 
@@ -560,7 +561,8 @@ export const getFilteredAIModeConfigs = (
         .sort(sortByDisplayOrder);
 
     const hasCustomModels = otherProviderConfigs.length > 0;
-    const shouldShowCloudModes = showCloudModes || !hasCustomModels;
+    const isCurrentModeCloud = currentMode?.startsWith("waveai@") ?? false;
+    const shouldShowCloudModes = showCloudModes || !hasCustomModels || isCurrentModeCloud;
 
     const waveProviderConfigs = shouldShowCloudModes
         ? allConfigs.filter((config) => config["ai:provider"] === "wave").sort(sortByDisplayOrder)

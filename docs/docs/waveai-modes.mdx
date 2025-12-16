@@ -74,6 +74,10 @@ wsh setconfig waveai:defaultmode="ollama-llama"
 
 This will make the specified mode the default selection when opening Wave AI features.
 
+:::note
+Wave AI normally requires telemetry to be enabled. However, if you configure your own custom model (local or BYOK) and set `waveai:defaultmode` to that custom mode's key, you will not receive telemetry requirement messages. This allows you to use Wave AI features completely privately with your own models. <VersionBadge version="v0.13.1"/>
+:::
+
 ### Hiding Wave Cloud Modes
 
 If you prefer to use only your local or custom models and want to hide Wave's cloud AI modes from the mode dropdown, set `waveai:showcloudmodes` to `false`:

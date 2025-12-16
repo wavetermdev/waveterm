@@ -38,6 +38,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/web"
 	"github.com/wavetermdev/waveterm/pkg/wps"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
+	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshremote"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshserver"
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
@@ -59,6 +60,8 @@ const TelemetryInitialCountsWait = 5 * time.Second
 const TelemetryCountsInterval = 1 * time.Hour
 const BackupCleanupTick = 2 * time.Minute
 const BackupCleanupInterval = 4 * time.Hour
+const InitialDiagnosticWait = 5 * time.Minute
+const DiagnosticTick = 10 * time.Minute
 
 var shutdownOnce sync.Once
 
@@ -128,23 +131,46 @@ func telemetryLoop() {
 	}
 }
 
-func sendNoTelemetryUpdate(telemetryEnabled bool) {
+func diagnosticLoop() {
+	defer func() {
+		panichandler.PanicHandler("diagnosticLoop", recover())
+	}()
+	if os.Getenv("WAVETERM_NOPING") != "" {
+		log.Printf("WAVETERM_NOPING set, disabling diagnostic ping\n")
+		return
+	}
+	var lastSentDate string
+	time.Sleep(InitialDiagnosticWait)
+	for {
+		currentDate := time.Now().Format("2006-01-02")
+		if lastSentDate == "" || lastSentDate != currentDate {
+			if sendDiagnosticPing() {
+				lastSentDate = currentDate
+			}
+		}
+		time.Sleep(DiagnosticTick)
+	}
+}
+
+func sendDiagnosticPing() bool {
 	ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancelFn()
+
+	rpcClient := wshclient.GetBareRpcClient()
+	isOnline, err := wshclient.NetworkOnlineCommand(rpcClient, &wshrpc.RpcOpts{Route: "electron", Timeout: 2000})
+	if err != nil || !isOnline {
+		return false
+	}
 	clientData, err := wstore.DBGetSingleton[*waveobj.Client](ctx)
 	if err != nil {
-		log.Printf("telemetry update: error getting client data: %v\n", err)
-		return
+		return false
 	}
 	if clientData == nil {
-		log.Printf("telemetry update: client data is nil\n")
-		return
+		return false
 	}
-	err = wcloud.SendNoTelemetryUpdate(ctx, clientData.OID, !telemetryEnabled)
-	if err != nil {
-		log.Printf("[error] sending no-telemetry update: %v\n", err)
-		return
-	}
+	usageTelemetry := telemetry.IsTelemetryEnabled()
+	wcloud.SendDiagnosticPing(ctx, clientData.OID, usageTelemetry)
+	return true
 }
 
 func setupTelemetryConfigHandler() {
@@ -159,7 +185,7 @@ func setupTelemetryConfigHandler() {
 		newTelemetryEnabled := newConfig.Settings.TelemetryEnabled
 		if newTelemetryEnabled != currentTelemetryEnabled {
 			currentTelemetryEnabled = newTelemetryEnabled
-			go sendNoTelemetryUpdate(newTelemetryEnabled)
+			wcore.GoSendNoTelemetryUpdate(newTelemetryEnabled)
 		}
 	})
 }
@@ -318,8 +344,8 @@ func startupActivityUpdate(firstLaunch bool) {
 	fullConfig := wconfig.GetWatcher().GetFullConfig()
 	props := telemetrydata.TEventProps{
 		UserSet: &telemetrydata.TEventUserProps{
-			ClientVersion:       "v" + WaveVersion,
-			ClientBuildTime:     BuildTime,
+			ClientVersion:       "v" + wavebase.WaveVersion,
+			ClientBuildTime:     wavebase.BuildTime,
 			ClientArch:          wavebase.ClientArch(),
 			ClientOSRelease:     wavebase.UnameKernelRelease(),
 			ClientIsDev:         wavebase.IsDevMode(),
@@ -533,6 +559,7 @@ func main() {
 	maybeStartPprofServer()
 	go stdinReadWatch()
 	go telemetryLoop()
+	go diagnosticLoop()
 	setupTelemetryConfigHandler()
 	go updateTelemetryCountsLoop()
 	go backupCleanupLoop()

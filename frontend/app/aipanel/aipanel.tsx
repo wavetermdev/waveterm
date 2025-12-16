@@ -84,10 +84,8 @@ KeyCap.displayName = "KeyCap";
 
 const AIWelcomeMessage = memo(() => {
     const modKey = isMacOS() ? "⌘" : "Alt";
-    const fullConfig = jotai.useAtomValue(atoms.fullConfigAtom);
-    const hasCustomModes = fullConfig?.waveai
-        ? Object.keys(fullConfig.waveai).some((key) => !key.startsWith("waveai@"))
-        : false;
+    const aiModeConfigs = jotai.useAtomValue(atoms.waveaiModeConfigAtom);
+    const hasCustomModes = Object.keys(aiModeConfigs).some((key) => !key.startsWith("waveai@"));
     return (
         <div className="text-secondary py-8">
             <div className="text-center">
@@ -199,27 +197,51 @@ const AIBuilderWelcomeMessage = memo(() => {
 
 AIBuilderWelcomeMessage.displayName = "AIBuilderWelcomeMessage";
 
-interface AIErrorMessageProps {
-    errorMessage: string;
-    onClear: () => void;
-}
+const AIErrorMessage = memo(() => {
+    const model = WaveAIModel.getInstance();
+    const errorMessage = jotai.useAtomValue(model.errorMessage);
 
-const AIErrorMessage = memo(({ errorMessage, onClear }: AIErrorMessageProps) => {
+    if (!errorMessage) {
+        return null;
+    }
+
     return (
         <div className="px-4 py-2 text-red-400 bg-red-900/20 border-l-4 border-red-500 mx-2 mb-2 relative">
             <button
-                onClick={onClear}
+                onClick={() => model.clearError()}
                 className="absolute top-2 right-2 text-red-400 hover:text-red-300 cursor-pointer z-10"
                 aria-label="Close error"
             >
                 <i className="fa fa-times text-sm"></i>
             </button>
-            <div className="text-sm pr-6 max-h-[100px] overflow-y-auto">{errorMessage}</div>
+            <div className="text-sm pr-6 max-h-[100px] overflow-y-auto">
+                {errorMessage}
+                <button
+                    onClick={() => model.clearChat()}
+                    className="ml-2 text-xs text-red-300 hover:text-red-200 cursor-pointer underline"
+                >
+                    New Chat
+                </button>
+            </div>
         </div>
     );
 });
 
 AIErrorMessage.displayName = "AIErrorMessage";
+
+const ConfigChangeModeFixer = memo(() => {
+    const model = WaveAIModel.getInstance();
+    const telemetryEnabled = jotai.useAtomValue(getSettingsKeyAtom("telemetry:enabled")) ?? false;
+    const aiModeConfigs = jotai.useAtomValue(model.aiModeConfigs);
+
+    useEffect(() => {
+        model.fixModeAfterConfigChange();
+    }, [telemetryEnabled, aiModeConfigs, model]);
+
+    return null;
+});
+
+ConfigChangeModeFixer.displayName = "ConfigChangeModeFixer";
 
 const AIPanelComponentInner = memo(() => {
     const [isDragOver, setIsDragOver] = useState(false);
@@ -227,12 +249,17 @@ const AIPanelComponentInner = memo(() => {
     const [initialLoadDone, setInitialLoadDone] = useState(false);
     const model = WaveAIModel.getInstance();
     const containerRef = useRef<HTMLDivElement>(null);
-    const errorMessage = jotai.useAtomValue(model.errorMessage);
     const isLayoutMode = jotai.useAtomValue(atoms.controlShiftDelayAtom);
     const showOverlayBlockNums = jotai.useAtomValue(getSettingsKeyAtom("app:showoverlayblocknums")) ?? true;
     const isFocused = jotai.useAtomValue(model.isWaveAIFocusedAtom);
     const telemetryEnabled = jotai.useAtomValue(getSettingsKeyAtom("telemetry:enabled")) ?? false;
     const isPanelVisible = jotai.useAtomValue(model.getPanelVisibleAtom());
+    const defaultMode = jotai.useAtomValue(getSettingsKeyAtom("waveai:defaultmode")) ?? "waveai@balanced";
+    const aiModeConfigs = jotai.useAtomValue(model.aiModeConfigs);
+
+    const hasCustomModes = Object.keys(aiModeConfigs).some((key) => !key.startsWith("waveai@"));
+    const isUsingCustomMode = !defaultMode.startsWith("waveai@");
+    const allowAccess = telemetryEnabled || (hasCustomModes && isUsingCustomMode);
 
     const { messages, sendMessage, status, setMessages, error, stop } = useChat<WaveUIMessage>({
         transport: new DefaultChatTransport({
@@ -244,6 +271,7 @@ const AIPanelComponentInner = memo(() => {
                     msg,
                     chatid: globalStore.get(model.chatId),
                     widgetaccess: globalStore.get(model.widgetAccessAtom),
+                    aimode: globalStore.get(model.currentAIMode),
                 };
                 if (windowType === "builder") {
                     body.builderid = globalStore.get(atoms.builderId);
@@ -331,6 +359,10 @@ const AIPanelComponentInner = memo(() => {
     };
 
     const handleDragOver = (e: React.DragEvent) => {
+        if (!allowAccess) {
+            return;
+        }
+
         const hasFiles = hasFilesDragged(e.dataTransfer);
 
         // Only handle native file drags here, let react-dnd handle FILE_ITEM drags
@@ -347,6 +379,10 @@ const AIPanelComponentInner = memo(() => {
     };
 
     const handleDragEnter = (e: React.DragEvent) => {
+        if (!allowAccess) {
+            return;
+        }
+
         const hasFiles = hasFilesDragged(e.dataTransfer);
 
         // Only handle native file drags here, let react-dnd handle FILE_ITEM drags
@@ -361,6 +397,10 @@ const AIPanelComponentInner = memo(() => {
     };
 
     const handleDragLeave = (e: React.DragEvent) => {
+        if (!allowAccess) {
+            return;
+        }
+
         const hasFiles = hasFilesDragged(e.dataTransfer);
 
         // Only handle native file drags here, let react-dnd handle FILE_ITEM drags
@@ -382,6 +422,13 @@ const AIPanelComponentInner = memo(() => {
     };
 
     const handleDrop = async (e: React.DragEvent) => {
+        if (!allowAccess) {
+            e.preventDefault();
+            e.stopPropagation();
+            setIsDragOver(false);
+            return;
+        }
+
         // Check if this is a FILE_ITEM drag from react-dnd
         // If so, let react-dnd handle it instead
         if (!e.dataTransfer.files.length) {
@@ -415,8 +462,13 @@ const AIPanelComponentInner = memo(() => {
     };
 
     const handleFileItemDrop = useCallback(
-        (draggedFile: DraggedFile) => model.addFileFromRemoteUri(draggedFile),
-        [model]
+        (draggedFile: DraggedFile) => {
+            if (!allowAccess) {
+                return;
+            }
+            model.addFileFromRemoteUri(draggedFile);
+        },
+        [model, allowAccess]
     );
 
     const [{ isOver, canDrop }, drop] = useDrop(
@@ -501,13 +553,14 @@ const AIPanelComponentInner = memo(() => {
             onClick={handleClick}
             inert={!isPanelVisible ? true : undefined}
         >
-            {(isDragOver || isReactDndDragOver) && <AIDragOverlay />}
+            <ConfigChangeModeFixer />
+            {(isDragOver || isReactDndDragOver) && allowAccess && <AIDragOverlay />}
             {showBlockMask && <AIBlockMask />}
             <AIPanelHeader />
             <AIRateLimitStrip />
 
             <div key="main-content" className="flex-1 flex flex-col min-h-0">
-                {!telemetryEnabled ? (
+                {!allowAccess ? (
                     <TelemetryRequiredMessage />
                 ) : (
                     <>
@@ -528,9 +581,7 @@ const AIPanelComponentInner = memo(() => {
                                 onContextMenu={(e) => handleWaveAIContextMenu(e, true)}
                             />
                         )}
-                        {errorMessage && (
-                            <AIErrorMessage errorMessage={errorMessage} onClear={() => model.clearError()} />
-                        )}
+                        <AIErrorMessage />
                         <AIDroppedFiles model={model} />
                         <AIPanelInput onSubmit={handleSubmit} status={status} model={model} />
                     </>

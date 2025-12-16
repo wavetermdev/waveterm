@@ -36,13 +36,6 @@ const (
 
 func resolveAIMode(requestedMode string, premium bool) (string, *wconfig.AIModeConfigType, error) {
 	mode := requestedMode
-	if mode == "" {
-		fullConfig := wconfig.GetWatcher().GetFullConfig()
-		mode = fullConfig.Settings.WaveAiDefaultMode
-		if mode == "" {
-			mode = uctypes.AIModeBalanced
-		}
-	}
 
 	config, err := getAIModeConfig(mode)
 	if err != nil {

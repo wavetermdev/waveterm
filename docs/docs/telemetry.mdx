@@ -8,152 +8,63 @@ id: "telemetry"
 
 Wave Terminal collects telemetry data to help us track feature use, direct future product efforts, and generate aggregate metrics on Wave's popularity and usage. We do NOT collect personal information (PII), keystrokes, file contents, AI prompts, IP addresses, hostnames, or commands. We attach all information to an anonymous, randomly generated _ClientId_ (UUID). You may opt out of collection at any time.
 
-Here’s a quick summary of what is collected:
+Here's a quick summary of what is collected:
 
-- Basic App/System Info – OS, architecture, app version, update settings
-- Usage Metrics – App start/shutdown, active minutes, foreground time, tab/block counts/usage
-- Feature Interactions – When you create tabs, run commands, change settings, etc.
-- Display Info – Monitor resolution, number of displays
-- Connection Events – SSH/WSL connection attempts (but NOT hostnames/IPs)
-- AI Commands – Only which AI backend is used (e.g., OpenAI, Claude) – no text or prompts sent
-- Error Reports – Crash/panic events with minimal debugging info, but no stack traces or detailed errors
+- Basic App/System Info - OS, architecture, app version, update settings
+- Usage Metrics - App start/shutdown, active minutes, foreground time, tab/block counts/usage
+- Feature Interactions - When you create tabs, run commands, change settings, etc.
+- Display Info - Monitor resolution, number of displays
+- Connection Events - SSH/WSL connection attempts (but NOT hostnames/IPs)
+- Wave AI Usage - Model/provider selection, token counts, request metrics, latency (but NOT prompts or responses)
+- Error Reports - Crash/panic events with minimal debugging info, but no stack traces or detailed errors
 
 Telemetry can be disabled at any time in settings. If not disabled it is sent on startup, on shutdown, and every 4-hours.
 
 ## How to Disable Telemetry
 
-If you would like to turn telemetry on or off, the first opportunity is a button on the initial welcome page. After this, it can be turned off by adding `"telemetry:enabled": false` to the `config/settings.json` file. It can alternatively be turned on by adding `"telemetry:enabled": true` to the `config/settings.json` file.
-
-:::tip
-
-You can also change your telemetry setting (true/false) by running the wsh command:
-
-```
-wsh setconfig telemetry:enabled=true
-```
-
-:::
+Telemetry can be enabled or disabled on the initial welcome screen when Wave first starts. After setup, telemetry can be disabled by setting the `telemetry:enabled` key to `false` in Wave’s general configuration file.  It can also be disabled using the CLI command `wsh setconfig telemetry:enabled=false`.
 
 :::info
 
-This document outlines the new telemetry system as of v0.11.1. The previous telemetry documentation is still relevant and can be found in our [Legacy Telemetry Documentation](./telemetry-old.mdx), but in general, the new telemetry is a superset of the old.
+This document outlines the current telemetry system as of v0.11.1. As of v0.12.5, Wave Terminal no longer sends legacy telemetry. The previous telemetry documentation can be found in our [Legacy Telemetry Documentation](./telemetry-old.mdx) for historical reference.
 
 :::
 
+## Diagnostics Ping
+
+Wave sends a small, anonymous diagnostics ping after the app has been running for a short time and at most once per day thereafter. This is used to estimate active installs and understand which versions are still in use, so we can make informed decisions about ongoing support and deprecations.
+
+The ping includes only: your Wave version, OS/CPU arch, local date (yyyy-mm-dd, no timezone or clock time), your randomly generated anonymous client ID, and whether usage telemetry is enabled or disabled.
+
+It does not include usage data, commands, files, or any telemetry events.
+
+This ping is intentionally separate from telemetry so Wave can count active installs. If you'd like to disable it, set the WAVETERM_NOPING environment variable.
+
 ## Sending Telemetry
 
-Provided that telemetry is enabled, it is sent 10 seconds after Waveterm is first booted and then again every 4 hours thereafter. It can also be sent in response to a few special cases listed below. When telemetry is sent, it is grouped into individual days as determined by your time zone. Any data from a previous day is marked as `Uploaded` so it will not need to be sent again.
+Provided that telemetry is enabled, it is sent shortly after Wave is first launched and then again every 4 hours thereafter. It can also be sent in response to a few special cases listed below. When telemetry is sent, events are marked as sent to prevent duplicate transmissions.
 
 ### Sending Once Telemetry is Enabled
 
 As soon as telemetry is enabled, a telemetry update is sent regardless of how long it has been since the last send. This does not reset the usual timer for telemetry sends.
 
-### Notifying that Telemetry is Disabled
-
-As soon as telemetry is disabled, Waveterm sends a special update that notifies us of this change. See [When Telemetry is Turned Off](#when-telemetry-is-turned-off) for more info. The timer still runs in the background but no data is sent.
-
-### When Waveterm is Closed
+### When Wave is Closed
 
 Provided that telemetry is enabled, it will be sent when Waveterm is closed.
 
-## Event Types
+## Event Types and Properties
 
-Below is a list of the event types collected in the new telemetry system. More events are likely to be added in the future.
+Wave collects the event types and properties described in the summary above. As we add features, new events and properties may be added to track their usage.
 
-| Event Name           | Description                                                                                                                                                                              |
-| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `app:startup`        | Logged every time you start the app. Contains basic app information like architecture, version, buildtime, etc.                                                                          |
-| `app:shutdown`       | Logged on every shutdown                                                                                                                                                                 |
-| `app:activity`       | Logged once per hour of app activity                                                                                                                                                     |
-| `app:display`        | Logged on startup and contains information about size of displays                                                                                                                        |
-| `app:counts`         | Logged once per hour when app is active, contains basic counts like number of windows, tabs, workspaces, blocks, number of settings customizations, etc.                                                                    |
-| `action:magnify`     | Logged each time a block is magnified                                                                                                                                                    |
-| `action:settabtheme` | Logged each time a tab theme is changed                                                                                                                                                  |
-| `action:runaicmd`    | Logged each time an AI request is made (no prompt information or text is sent), only sends "ai:backendtype" to know what type of AI backend is being used (OpenAI, Claude, Gemini, etc.) |
-| `action:createtab`   | Logged when a new tab is created                                                                                                                                                         |
-| `action:createblock` | Logged when a new block is created (contains the block view type)                                                                                                                        |
-| `wsh:run`            | Logged when a wsh command is executed (contains the command type)                                                                                                                        |
-| `debug:panic`        | Logged when a backend (Go) panic happens. Contains a debugging string that can be used to find which panic was hit in our source code. No data is sent                                   |
-| `conn:connect`       | Logged each time a backend ssh/wsl connection connects (logs the conneciton type, no hostname or IP is sent)                                                                             |
-| `conn:connecterror`  | Logged when you try to connect but it fails (logs the connection type, no hostname or IP is set, and no detailed error information is sent)                                              |
-| `waveai:post`        | Logged after AI request completion with usage metrics (tokens, request counts, latency, etc. - no prompts or responses)                                                                  |
+For the complete, current list of all telemetry events and properties, see the source code: [telemetrydata.go](https://github.com/wavetermdev/waveterm/blob/main/pkg/telemetry/telemetrydata/telemetrydata.go)
 
-## Event Properties
+## GDPR Opt-Out Compliance
 
-Each event may contain the following properties that are relevant to the particular events.
+When telemetry is disabled, Wave sends a single minimal opt-out record associated with the anonymous client ID, recording that telemetry was turned off and when it occurred. This record is retained for compliance purposes. After that, no telemetry or usage data is sent.
 
-| Property                 | Description                                                                                            |
-| ------------------------ | ------------------------------------------------------------------------------------------------------ |
-| `client:arch`            | Wave architecture (darwin, windows, linux) and x64 vs arm64                                            |
-| `client:version`         | The Wave version (e.g. v0.11.1)                                                                        |
-| `client:initial_version` | Initial installed wave version                                                                         |
-| `client:buildtime`       | The buildtime (more exact wave version)                                                                |
-| `client:osrelease`       | A string representing the version of the OS you're running -- different for darwin, windows, and linux |
-| `client:isdev`           | True/False if using the dev build                                                                      |
-| `autoupdate:channel`     | What auto-update channel you're on (latest vs beta)                                                    |
-| `autoupdate:enabled`     | True/False if auto-updated is enabled                                                                  |
-| `loc:countrycode`        | Two character country code (e.g. US, CN, FR, JP)                                                       |
-| `loc:regioncode`         | Two character region code (usually the State or Province within a country)                             |
-| `activity:activeminutes` | For app:activity, a number between 0-60 of how many minutes were active within the hour                |
-| `activity:fgminutes`     | For app:activity, a number between 0-60 of how many minutes Wave was the foreground application        |
-| `activity:openminutes`   | For app:activity, a number between 0-60 of how many minutes Wave was open                              |
-| `action:initiator`       | For certain actions logs if the action was initiated by the UI or the backend                          |
-| `debug:panictype`        | The string that identifies the panic location within our Go code                                       |
-| `block:view`             | Type of block, e.g. "preview", "waveai", "term", "sysinfo", etc.                                       |
-| `ai:backendtype`         | AI backend type (e.g. OpenAI, Gemini, Anthropic, etc.)                                                 |
-| `wsh:cmd`                | The wsh command that was run, e.g. "view", "edit", "run", "editconfig" etc.                            |
-| `wsh:haderror`           | True/False whether the wsh command returned an error                                                   |
-| `conn:conntype`          | Type of connnection (ssh / wsl)                                                                        |
-| `display:height`         | Height of the main display in px                                                                       |
-| `display:width`          | Width of the main display in px                                                                        |
-| `display:dpr`            | DPR of the main display                                                                                |
-| `display:count`          | How many total displays                                                                                |
-| `display:all`            | JSON for all the displays attached (same attributes as above)                                          |
-| `count:blocks`           | Total number of blocks                                                                                 |
-| `count:tabs`             | Total number of tabs                                                                                   |
-| `count:windows`          | Total number of windows                                                                                |
-| `count:workspaces`       | Total number of workspaces                                                                             |
-| `count:sshconn`          | Total number of SSH connections                                                                        |
-| `count:wslconn`          | Total number of WSL connections                                                                        |
-| `count:views`            | Counts of the types of blocks (views)                                                                  |
-| `waveai:apitype`         | AI API provider (OpenAI, Anthropic, etc.)                                                              |
-| `waveai:model`           | AI model name                                                                                          |
-| `waveai:inputtokens`     | Number of input tokens used                                                                            |
-| `waveai:outputtokens`    | Number of output tokens generated                                                                      |
-| `waveai:requestcount`    | Number of requests in conversation                                                                     |
-| `waveai:toolusecount`    | Number of tool uses                                                                                    |
-| `waveai:tooluseerrorcount` | Number of tool use errors                                                                            |
-| `waveai:tooldetail`      | Map of tool names to usage counts                                                                      |
-| `waveai:premiumreq`      | Number of premium API requests                                                                         |
-| `waveai:proxyreq`        | Number of proxy requests                                                                               |
-| `waveai:haderror`        | True/False if request had errors                                                                       |
-| `waveai:imagecount`      | Number of images in context                                                                            |
-| `waveai:pdfcount`        | Number of PDFs in context                                                                              |
-| `waveai:textdoccount`    | Number of text documents in context                                                                    |
-| `waveai:textlen`         | Total text length in context                                                                           |
-| `waveai:firstbytems`     | Latency to first byte in milliseconds                                                                  |
-| `waveai:requestdurms`    | Total request duration in milliseconds                                                                 |
-| `waveai:widgetaccess`    | True/False if accessed via widget                                                                      |
+## Deleting Your Data
 
----
-
-## When Telemetry is Turned Off
-
-When a user disables telemetry, Waveterm sends a notification that their anonymous _ClientId_ has had its telemetry disabled. This is done with the `wcloud.NoTelemetryInputType` type in the source code. Beyond that, no further information is sent unless telemetry is turned on again. If it is turned on again, the previous 30 days of telemetry will be sent.
-
----
-
-## A Note on IP Addresses
-
-Telemetry is uploaded via https, which means your IP address is known to the telemetry server. We **do not** store your IP address in our telemetry table and **do not** associate it with your _ClientId_.
-
----
-
-## Previously Collected Telemetry Data
-
-While we believe the data we collect with telemetry is fairly minimal, we cannot make that decision for every user. If you ever change your mind about what has been collected previously, you may request that your data be deleted by emailing us at [support@waveterm.dev](mailto:support@waveterm.dev). If you do, we will need your _ClientId_ to remove it.
-
----
+If you want your previously collected telemetry data deleted, email us at support (at) waveterm.dev with your _ClientId_ and we'll remove it.
 
 ## Privacy Policy
 
