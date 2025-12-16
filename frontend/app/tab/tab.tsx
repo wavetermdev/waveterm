@@ -12,8 +12,8 @@ import { useAtomValue } from "jotai";
 import { forwardRef, memo, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { ObjectService } from "../store/services";
 import { makeORef, useWaveObjectValue } from "../store/wos";
-import { TabBarModel } from "./tabbar-model";
 import "./tab.scss";
+import { TabBarModel } from "./tabbar-model";
 
 interface TabProps {
     id: string;
@@ -79,13 +79,15 @@ const Tab = memo(
             }, []);
 
             const selectEditableText = useCallback(() => {
-                if (editableRef.current) {
-                    const range = document.createRange();
-                    const selection = window.getSelection();
-                    range.selectNodeContents(editableRef.current);
-                    selection.removeAllRanges();
-                    selection.addRange(range);
+                if (!editableRef.current) {
+                    return;
                 }
+                editableRef.current.focus();
+                const range = document.createRange();
+                const selection = window.getSelection();
+                range.selectNodeContents(editableRef.current);
+                selection.removeAllRanges();
+                selection.addRange(range);
             }, []);
 
             const handleRenameTab: React.MouseEventHandler<HTMLDivElement> = (event) => {
@@ -93,7 +95,7 @@ const Tab = memo(
                 setIsEditable(true);
                 editableTimeoutRef.current = setTimeout(() => {
                     selectEditableText();
-                }, 0);
+                }, 50);
             };
 
             const handleBlur = () => {
