@@ -66,7 +66,7 @@ export class WaveAIModel {
     codeBlockMaxWidth!: jotai.Atom<number>;
     inputAtom: jotai.PrimitiveAtom<string> = jotai.atom("");
     isLoadingChatAtom: jotai.PrimitiveAtom<boolean> = jotai.atom(false);
-    isChatEmpty: boolean = true;
+    isChatEmptyAtom: jotai.PrimitiveAtom<boolean> = jotai.atom(true);
     isWaveAIFocusedAtom!: jotai.Atom<boolean>;
     panelVisibleAtom!: jotai.Atom<boolean>;
     restoreBackupModalToolCallId: jotai.PrimitiveAtom<string | null> = jotai.atom(null) as jotai.PrimitiveAtom<
@@ -271,7 +271,7 @@ export class WaveAIModel {
         this.useChatStop?.();
         this.clearFiles();
         this.clearError();
-        this.isChatEmpty = true;
+        globalStore.set(this.isChatEmptyAtom, true);
         const newChatId = crypto.randomUUID();
         globalStore.set(this.chatId, newChatId);
 
@@ -450,7 +450,7 @@ export class WaveAIModel {
         try {
             const chatData = await RpcApi.GetWaveAIChatCommand(TabRpcClient, { chatid: chatIdValue });
             const messages: UIMessage[] = chatData?.messages ?? [];
-            this.isChatEmpty = messages.length === 0;
+            globalStore.set(this.isChatEmptyAtom, messages.length === 0);
             return messages as WaveUIMessage[]; // this is safe just different RPC type vs the FE type, but they are compatible
         } catch (error) {
             console.error("Failed to load chat:", error);
@@ -523,7 +523,7 @@ export class WaveAIModel {
 
         this.useChatSendMessage?.({ parts: uiMessageParts });
 
-        this.isChatEmpty = false;
+        globalStore.set(this.isChatEmptyAtom, false);
         globalStore.set(this.inputAtom, "");
         this.clearFiles();
     }

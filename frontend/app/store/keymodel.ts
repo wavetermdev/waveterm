@@ -146,7 +146,7 @@ function uxCloseBlock(blockId: string) {
     const isAIPanelOpen = workspaceLayoutModel.getAIPanelVisible();
     if (isAIPanelOpen && getStaticTabBlockCount() === 1) {
         const aiModel = WaveAIModel.getInstance();
-        const shouldSwitchToAI = !aiModel.isChatEmpty || aiModel.hasNonEmptyInput();
+        const shouldSwitchToAI = !globalStore.get(aiModel.isChatEmptyAtom) || aiModel.hasNonEmptyInput();
         if (shouldSwitchToAI) {
             replaceBlock(blockId, { meta: { view: "launcher" } }, false);
             setTimeout(() => WaveAIModel.getInstance().focusInput(), 50);
@@ -184,7 +184,7 @@ function genericClose() {
     const isAIPanelOpen = workspaceLayoutModel.getAIPanelVisible();
     if (isAIPanelOpen && getStaticTabBlockCount() === 1) {
         const aiModel = WaveAIModel.getInstance();
-        const shouldSwitchToAI = !aiModel.isChatEmpty || aiModel.hasNonEmptyInput();
+        const shouldSwitchToAI = !globalStore.get(aiModel.isChatEmptyAtom) || aiModel.hasNonEmptyInput();
         if (shouldSwitchToAI) {
             const layoutModel = getLayoutModelForStaticTab();
             const focusedNode = globalStore.get(layoutModel.focusedNode);
