@@ -55,10 +55,22 @@ const TelemetryRequiredMessage = ({ className }: TelemetryRequiredMessageProps) 
                                         This helps us block abuse by automated systems and ensure it's used by real
                                         people like you.
                                     </p>
-                                    <p>
+                                    <p className="mb-2">
                                         We never collect your files, prompts, keystrokes, hostnames, or personally
                                         identifying information. Wave AI is powered by OpenAI's APIs, please refer to
                                         OpenAI's privacy policy for details on how they handle your data.
+                                    </p>
+                                    <p>
+                                        For information about BYOK and local model support, see{" "}
+                                        <a
+                                            href="https://docs.waveterm.dev/waveai-modes"
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="!text-secondary hover:!text-accent/80 cursor-pointer"
+                                        >
+                                            https://docs.waveterm.dev/waveai-modes
+                                        </a>
+                                        .
                                     </p>
                                 </div>
                                 <button

@@ -173,7 +173,7 @@ export const AIModeDropdown = memo(({ compatibilityMode = false }: AIModeDropdow
 
     const displayConfig = aiModeConfigs[currentMode];
     const displayName = displayConfig ? getModeDisplayName(displayConfig) : `Invalid (${currentMode})`;
-    const displayIcon = displayConfig ? (displayConfig["display:icon"] || "sparkles") : "question";
+    const displayIcon = displayConfig ? displayConfig["display:icon"] || "sparkles" : "question";
     const resolvedConfig = waveaiModeConfigs[currentMode];
     const hasToolsSupport = resolvedConfig && resolvedConfig["ai:capabilities"]?.includes("tools");
     const showNoToolsWarning = widgetContextEnabled && resolvedConfig && !hasToolsSupport;
@@ -197,6 +197,15 @@ export const AIModeDropdown = memo(({ compatibilityMode = false }: AIModeDropdow
             );
             await model.openWaveAIConfig();
             setIsOpen(false);
+        });
+    };
+
+    const handleEnableTelemetry = () => {
+        fireAndForget(async () => {
+            await RpcApi.WaveAIEnableTelemetryCommand(TabRpcClient);
+            setTimeout(() => {
+                model.focusInput();
+            }, 100);
         });
     };
 
@@ -260,9 +269,12 @@ export const AIModeDropdown = memo(({ compatibilityMode = false }: AIModeDropdow
                                                 </div>
                                             )}
                                             {section.noTelemetry && (
-                                                <div className="text-center text-[11px] text-red-400 pb-1">
-                                                    (not available when telemetry is disabled)
-                                                </div>
+                                                <button
+                                                    onClick={handleEnableTelemetry}
+                                                    className="text-center text-[11px] text-green-300 hover:text-green-200 pb-1 cursor-pointer transition-colors w-full"
+                                                >
+                                                    (enable telemetry to unlock Wave AI Cloud)
+                                                </button>
                                             )}
                                         </>
                                     )}
