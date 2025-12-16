@@ -32,7 +32,7 @@ This document outlines the current telemetry system as of v0.11.1. As of v0.12.5
 
 ## Diagnostics Ping
 
-Wave sends a small, anonymous diagnostics ping after the app has been running for a short time and at most once per day thereafter. This is used to estimate active installs and understand which versions are still in use, so we know what to support and when it's safe to remove old code paths.
+Wave sends a small, anonymous diagnostics ping after the app has been running for a short time and at most once per day thereafter. This is used to estimate active installs and understand which versions are still in use, so we can make informed decisions about ongoing support and deprecations.
 
 The ping includes only: your Wave version, OS/CPU arch, local date (yyyy-mm-dd, no timezone or clock time), your randomly generated anonymous client ID, and whether usage telemetry is enabled or disabled.
 

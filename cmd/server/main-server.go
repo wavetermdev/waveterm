@@ -62,7 +62,6 @@ const BackupCleanupTick = 2 * time.Minute
 const BackupCleanupInterval = 4 * time.Hour
 const InitialDiagnosticWait = 5 * time.Minute
 const DiagnosticTick = 10 * time.Minute
-const DiagnosticInterval = 24 * time.Hour
 
 var shutdownOnce sync.Once
 
