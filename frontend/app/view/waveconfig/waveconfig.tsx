@@ -108,10 +108,10 @@ const WaveConfigView = memo(({ blockId, model }: ViewComponentProps<WaveConfigVi
     );
 
     const handleEditorMount = useCallback(
-        (editor) => {
+        (editor: MonacoTypes.editor.IStandaloneCodeEditor) => {
             model.editorRef.current = editor;
 
-            editor.onKeyDown((e: MonacoTypes.IKeyboardEvent) => {
+            const keyDownDisposer = editor.onKeyDown((e: MonacoTypes.IKeyboardEvent) => {
                 const waveEvent = adaptFromReactOrNativeKeyEvent(e.browserEvent);
                 const handled = tryReinjectKey(waveEvent);
                 if (handled) {
@@ -125,6 +125,7 @@ const WaveConfigView = memo(({ blockId, model }: ViewComponentProps<WaveConfigVi
                 editor.focus();
             }
             return () => {
+                keyDownDisposer.dispose();
                 model.editorRef.current = null;
             };
         },
