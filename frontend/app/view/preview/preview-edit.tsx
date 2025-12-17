@@ -76,7 +76,7 @@ function CodeEditPreview({ model }: SpecializedViewProps) {
     function onMount(editor: MonacoTypes.editor.IStandaloneCodeEditor, monaco: Monaco): () => void {
         model.monacoRef.current = editor;
 
-        editor.onKeyDown((e: MonacoTypes.IKeyboardEvent) => {
+        const keyDownDisposer = editor.onKeyDown((e: MonacoTypes.IKeyboardEvent) => {
             const waveEvent = adaptFromReactOrNativeKeyEvent(e.browserEvent);
             const handled = tryReinjectKey(waveEvent);
             if (handled) {
@@ -90,7 +90,9 @@ function CodeEditPreview({ model }: SpecializedViewProps) {
             editor.focus();
         }
 
-        return null;
+        return () => {
+            keyDownDisposer.dispose();
+        };
     }
 
     return (

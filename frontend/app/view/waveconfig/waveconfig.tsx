@@ -3,11 +3,13 @@
 
 import { Tooltip } from "@/app/element/tooltip";
 import { globalStore } from "@/app/store/jotaiStore";
+import { tryReinjectKey } from "@/app/store/keymodel";
 import { CodeEditor } from "@/app/view/codeeditor/codeeditor";
 import type { ConfigFile, WaveConfigViewModel } from "@/app/view/waveconfig/waveconfig-model";
-import { checkKeyPressed, keydownWrapper } from "@/util/keyutil";
+import { adaptFromReactOrNativeKeyEvent, checkKeyPressed, keydownWrapper } from "@/util/keyutil";
 import { cn } from "@/util/util";
 import { useAtom, useAtomValue } from "jotai";
+import type * as MonacoTypes from "monaco-editor/esm/vs/editor/editor.api";
 import { memo, useCallback, useEffect, useRef } from "react";
 import { debounce } from "throttle-debounce";
 
@@ -106,13 +108,24 @@ const WaveConfigView = memo(({ blockId, model }: ViewComponentProps<WaveConfigVi
     );
 
     const handleEditorMount = useCallback(
-        (editor) => {
+        (editor: MonacoTypes.editor.IStandaloneCodeEditor) => {
             model.editorRef.current = editor;
+
+            const keyDownDisposer = editor.onKeyDown((e: MonacoTypes.IKeyboardEvent) => {
+                const waveEvent = adaptFromReactOrNativeKeyEvent(e.browserEvent);
+                const handled = tryReinjectKey(waveEvent);
+                if (handled) {
+                    e.stopPropagation();
+                    e.preventDefault();
+                }
+            });
+
             const isFocused = globalStore.get(model.nodeModel.isFocused);
             if (isFocused) {
                 editor.focus();
             }
             return () => {
+                keyDownDisposer.dispose();
                 model.editorRef.current = null;
             };
         },
