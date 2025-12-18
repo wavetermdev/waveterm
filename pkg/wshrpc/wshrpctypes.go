@@ -817,7 +817,6 @@ type CommandGetWaveAIChatData struct {
 
 type CommandWaveAIToolApproveData struct {
 	ToolCallId string `json:"toolcallid"`
-	KeepAlive  bool   `json:"keepalive,omitempty"`
 	Approval   string `json:"approval,omitempty"`
 }
 
