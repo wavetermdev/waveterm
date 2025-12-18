@@ -191,13 +191,9 @@ func serverRunRouter(jwtToken string) error {
 
 func checkForUpdate() error {
 	remoteInfo := wshutil.GetInfo()
-	needsRestartRaw, err := RpcClient.SendRpcRequest(wshrpc.Command_ConnUpdateWsh, remoteInfo, &wshrpc.RpcOpts{Timeout: 60000})
+	needsRestart, err := wshclient.ConnUpdateWshCommand(RpcClient, remoteInfo, &wshrpc.RpcOpts{Timeout: 60000})
 	if err != nil {
 		return fmt.Errorf("could not update: %w", err)
-	}
-	needsRestart, ok := needsRestartRaw.(bool)
-	if !ok {
-		return fmt.Errorf("wrong return type from update")
 	}
 	if needsRestart {
 		// run the restart command here

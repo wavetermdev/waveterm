@@ -58,6 +58,7 @@ const (
 	Command_RouteAnnounce     = "routeannounce"     // special (for routing)
 	Command_RouteUnannounce   = "routeunannounce"   // special (for routing)
 	Command_Message           = "message"
+
 	Command_GetMeta           = "getmeta"
 	Command_SetMeta           = "setmeta"
 	Command_SetView           = "setview"
