@@ -21,6 +21,8 @@ import {
     getOverrideConfigAtom,
     getSettingsKeyAtom,
     globalStore,
+    readAtom,
+    recordTEvent,
     useBlockAtom,
     WOS,
 } from "@/store/global";
@@ -478,6 +480,14 @@ export class TermViewModel implements ViewModel {
     }
 
     keyDownHandler(waveEvent: WaveKeyboardEvent): boolean {
+        if (keyutil.checkKeyPressed(waveEvent, "Ctrl:r")) {
+            const shellIntegrationStatus = readAtom(this.termRef?.current?.shellIntegrationStatusAtom);
+            if (shellIntegrationStatus === "ready") {
+                recordTEvent("action:term", { "action:type": "term:ctrlr" });
+            }
+            // just for telemetry, we allow this keybinding through, back to the terminal
+            return false;
+        }
         if (keyutil.checkKeyPressed(waveEvent, "Cmd:Escape")) {
             const blockAtom = WOS.getWaveObjectAtom<Block>(`block:${this.blockId}`);
             const blockData = globalStore.get(blockAtom);
