@@ -32,29 +32,6 @@ import { createTempFileFromBlob, extractAllClipboardData } from "./termutil";
 
 const dlog = debug("wave:termwrap");
 
-function checkCommandForTelemetry(decodedCmd: string) {
-    if (!decodedCmd) {
-        return;
-    }
-
-    if (decodedCmd.startsWith("ssh ")) {
-        recordTEvent("conn:connect", { "conn:conntype": "ssh-manual" });
-        return;
-    }
-
-    const editorsRegex = /^(vim|vi|nano|nvim)\b/;
-    if (editorsRegex.test(decodedCmd)) {
-        recordTEvent("action:term", { "action:type": "cli-edit" });
-        return;
-    }
-
-    const tailFollowRegex = /(^|\|\s*)tail\s+-[fF]\b/;
-    if (tailFollowRegex.test(decodedCmd)) {
-        recordTEvent("action:term", { "action:type": "cli-tailf" });
-        return;
-    }
-}
-
 const TermFileName = "term";
 const TermCacheFileName = "cache:term:full";
 const MinDataProcessedForCache = 100 * 1024;
@@ -232,6 +209,29 @@ function addTestMarkerDecoration(terminal: Terminal, marker: TermTypes.IMarker, 
     });
 }
 
+function checkCommandForTelemetry(decodedCmd: string) {
+    if (!decodedCmd) {
+        return;
+    }
+
+    if (decodedCmd.startsWith("ssh ")) {
+        recordTEvent("conn:connect", { "conn:conntype": "ssh-manual" });
+        return;
+    }
+
+    const editorsRegex = /^(vim|vi|nano|nvim)\b/;
+    if (editorsRegex.test(decodedCmd)) {
+        recordTEvent("action:term", { "action:type": "cli-edit" });
+        return;
+    }
+
+    const tailFollowRegex = /(^|\|\s*)tail\s+-[fF]\b/;
+    if (tailFollowRegex.test(decodedCmd)) {
+        recordTEvent("action:term", { "action:type": "cli-tailf" });
+        return;
+    }
+}
+
 // OSC 16162 - Shell Integration Commands
 // See aiprompts/wave-osc-16162.md for full documentation
 type ShellIntegrationStatus = "ready" | "running-command";
@@ -297,9 +297,7 @@ function handleOsc16162Command(data: string, blockId: string, loaded: boolean, t
                         const decodedCmd = base64ToString(cmd.data.cmd64);
                         rtInfo["shell:lastcmd"] = decodedCmd;
                         globalStore.set(termWrap.lastCommandAtom, decodedCmd);
-                        if (decodedCmd?.startsWith("ssh ")) {
-                            recordTEvent("conn:connect", { "conn:conntype": "ssh-manual" });
-                        }
+                        checkCommandForTelemetry(decodedCmd);
                     } catch (e) {
                         console.error("Error decoding cmd64:", e);
                         rtInfo["shell:lastcmd"] = null;

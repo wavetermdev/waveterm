@@ -36,7 +36,11 @@ func registerToolApprovalRequest(toolCallId string, req *ApprovalRequest) {
 func UnregisterToolApproval(toolCallId string) {
 	globalApprovalRegistry.mu.Lock()
 	defer globalApprovalRegistry.mu.Unlock()
+	req := globalApprovalRegistry.requests[toolCallId]
 	delete(globalApprovalRegistry.requests, toolCallId)
+	if req != nil && req.onCloseUnregFn != nil {
+		req.onCloseUnregFn()
+	}
 }
 
 func getToolApprovalRequest(toolCallId string) (*ApprovalRequest, bool) {
