@@ -340,8 +340,8 @@ func processToolCalls(backend UseChatBackend, stopReason *uctypes.WaveStopReason
 		log.Printf("AI data-tooluse %s\n", toolCall.ID)
 		_ = sseHandler.AiMsgData("data-tooluse", toolCall.ID, toolUseData)
 		updateToolUseDataInChat(backend, chatOpts, toolCall.ID, toolUseData)
-		if toolUseData.Approval == uctypes.ApprovalNeedsApproval && chatOpts.RegisterToolApproval != nil {
-			chatOpts.RegisterToolApproval(toolCall.ID)
+		if toolUseData.Approval == uctypes.ApprovalNeedsApproval {
+			RegisterToolApproval(toolCall.ID, sseHandler)
 		}
 	}
 	// At this point, all ToolCalls are guaranteed to have non-nil ToolUseData
@@ -350,6 +350,7 @@ func processToolCalls(backend UseChatBackend, stopReason *uctypes.WaveStopReason
 	for _, toolCall := range stopReason.ToolCalls {
 		result := processToolCall(backend, toolCall, chatOpts, sseHandler, metrics)
 		toolResults = append(toolResults, result)
+		UnregisterToolApproval(toolCall.ID)
 	}
 
 	toolResultMsgs, err := backend.ConvertToolResultsToNativeChatMessage(toolResults)
@@ -666,7 +667,6 @@ func WaveAIPostMessageHandler(w http.ResponseWriter, r *http.Request) {
 		ClientId:             client.OID,
 		Config:               *aiOpts,
 		WidgetAccess:         req.WidgetAccess,
-		RegisterToolApproval: RegisterToolApproval,
 		AllowNativeWebSearch: true,
 		BuilderId:            req.BuilderId,
 		BuilderAppId:         req.BuilderAppId,

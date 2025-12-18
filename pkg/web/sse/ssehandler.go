@@ -11,6 +11,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/wavetermdev/waveterm/pkg/utilds"
 )
 
 // see /aiprompts/usechat-streamingproto.md for protocol
@@ -72,7 +74,9 @@ type SSEHandlerCh struct {
 	initialized bool
 	err         error
 
-	wg sync.WaitGroup
+	wg              sync.WaitGroup
+	onCloseHandlers utilds.IdList[func()]
+	handlersRun     bool
 }
 
 // MakeSSEHandlerCh creates a new channel-based SSE handler
@@ -125,6 +129,7 @@ func (h *SSEHandlerCh) SetupSSE() error {
 // writerLoop handles all writes and keepalives in a single goroutine
 func (h *SSEHandlerCh) writerLoop() {
 	defer h.wg.Done()
+	defer h.runOnCloseHandlers()
 
 	keepaliveTicker := time.NewTicker(SSEKeepaliveInterval)
 	defer keepaliveTicker.Stop()
@@ -304,6 +309,37 @@ func (h *SSEHandlerCh) Err() error {
 		h.err = h.ctx.Err()
 	}
 	return h.err
+}
+
+// RegisterOnClose registers a handler function to be called when the connection closes
+// Returns an ID that can be used to unregister the handler
+func (h *SSEHandlerCh) RegisterOnClose(fn func()) string {
+	h.lock.Lock()
+	defer h.lock.Unlock()
+	return h.onCloseHandlers.Register(fn)
+}
+
+// UnregisterOnClose removes a previously registered onClose handler by ID
+func (h *SSEHandlerCh) UnregisterOnClose(id string) {
+	h.lock.Lock()
+	defer h.lock.Unlock()
+	h.onCloseHandlers.Unregister(id)
+}
+
+// runOnCloseHandlers runs all registered onClose handlers exactly once
+func (h *SSEHandlerCh) runOnCloseHandlers() {
+	h.lock.Lock()
+	if h.handlersRun {
+		h.lock.Unlock()
+		return
+	}
+	h.handlersRun = true
+	h.lock.Unlock()
+
+	handlers := h.onCloseHandlers.GetList()
+	for _, fn := range handlers {
+		fn()
+	}
 }
 
 // Close closes the write channel, sends [DONE], and cleans up resources

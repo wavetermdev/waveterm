@@ -5,22 +5,17 @@ package aiusechat
 
 import (
 	"sync"
-	"time"
 
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
-)
-
-const (
-	InitialApprovalTimeout = 10 * time.Second
-	KeepAliveExtension     = 10 * time.Second
+	"github.com/wavetermdev/waveterm/pkg/web/sse"
 )
 
 type ApprovalRequest struct {
-	approval string
-	done     bool
-	doneChan chan struct{}
-	timer    *time.Timer
-	mu       sync.Mutex
+	approval       string
+	done           bool
+	doneChan       chan struct{}
+	mu             sync.Mutex
+	onCloseUnregFn func()
 }
 
 type ApprovalRegistry struct {
@@ -38,6 +33,12 @@ func registerToolApprovalRequest(toolCallId string, req *ApprovalRequest) {
 	globalApprovalRegistry.requests[toolCallId] = req
 }
 
+func UnregisterToolApproval(toolCallId string) {
+	globalApprovalRegistry.mu.Lock()
+	defer globalApprovalRegistry.mu.Unlock()
+	delete(globalApprovalRegistry.requests, toolCallId)
+}
+
 func getToolApprovalRequest(toolCallId string) (*ApprovalRequest, bool) {
 	globalApprovalRegistry.mu.Lock()
 	defer globalApprovalRegistry.mu.Unlock()
@@ -45,19 +46,23 @@ func getToolApprovalRequest(toolCallId string) (*ApprovalRequest, bool) {
 	return req, exists
 }
 
-func RegisterToolApproval(toolCallId string) {
+func RegisterToolApproval(toolCallId string, sseHandler *sse.SSEHandlerCh) {
 	req := &ApprovalRequest{
 		doneChan: make(chan struct{}),
 	}
 
-	req.timer = time.AfterFunc(InitialApprovalTimeout, func() {
-		UpdateToolApproval(toolCallId, uctypes.ApprovalTimeout, false)
+	onCloseId := sseHandler.RegisterOnClose(func() {
+		UpdateToolApproval(toolCallId, uctypes.ApprovalTimeout)
 	})
+
+	req.onCloseUnregFn = func() {
+		sseHandler.UnregisterOnClose(onCloseId)
+	}
 
 	registerToolApprovalRequest(toolCallId, req)
 }
 
-func UpdateToolApproval(toolCallId string, approval string, keepAlive bool) error {
+func UpdateToolApproval(toolCallId string, approval string) error {
 	req, exists := getToolApprovalRequest(toolCallId)
 	if !exists {
 		return nil
@@ -70,30 +75,15 @@ func UpdateToolApproval(toolCallId string, approval string, keepAlive bool) erro
 		return nil
 	}
 
-	if keepAlive && approval == "" {
-		req.timer.Reset(KeepAliveExtension)
-		return nil
-	}
-
 	req.approval = approval
 	req.done = true
 
-	if req.timer != nil {
-		req.timer.Stop()
+	if req.onCloseUnregFn != nil {
+		req.onCloseUnregFn()
 	}
 
 	close(req.doneChan)
 	return nil
-}
-func CurrentToolApprovalStatus(toolCallId string) string {
-	req, exists := getToolApprovalRequest(toolCallId)
-	if !exists {
-		return ""
-	}
-
-	req.mu.Lock()
-	defer req.mu.Unlock()
-	return req.approval
 }
 
 func WaitForToolApproval(toolCallId string) string {

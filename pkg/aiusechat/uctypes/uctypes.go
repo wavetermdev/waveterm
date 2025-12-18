@@ -520,7 +520,6 @@ type WaveChatOpts struct {
 	TabStateGenerator    func() (string, []ToolDefinition, string, error)
 	BuilderAppGenerator  func() (string, string, string, error)
 	WidgetAccess         bool
-	RegisterToolApproval func(string)
 	AllowNativeWebSearch bool
 	BuilderId            string
 	BuilderAppId         string
