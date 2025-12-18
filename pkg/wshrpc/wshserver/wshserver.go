@@ -1224,16 +1224,6 @@ func (ws *WshServer) WaveAIEnableTelemetryCommand(ctx context.Context) error {
 		return fmt.Errorf("getting client data for telemetry: %v", err)
 	}
 
-	// Send no-telemetry update to cloud (async)
-	go func() {
-		ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancelFn()
-		err := wcloud.SendNoTelemetryUpdate(ctx, client.OID, false) // false means telemetry is enabled
-		if err != nil {
-			log.Printf("error sending no-telemetry update: %v", err)
-		}
-	}()
-
 	// Record the telemetry event
 	event := telemetrydata.MakeTEvent("waveai:enabletelemetry", telemetrydata.TEventProps{})
 	err = telemetry.RecordTEvent(ctx, event)

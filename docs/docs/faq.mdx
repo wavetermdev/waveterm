@@ -4,6 +4,8 @@ id: "faq"
 title: "FAQ"
 ---
 
+import { VersionBadge } from "@site/src/components/versionbadge";
+
 # FAQ
 
 ### How can I see the block numbers?
@@ -52,3 +54,15 @@ If you've installed via Snap, you can use the following command:
 ```sh
 sudo snap install waveterm --classic --beta
 ```
+
+## Can I use Wave AI without enabling telemetry?
+
+<VersionBadge version="v0.13.1" noLeftMargin={true}/>
+
+Yes! Wave AI is normally disabled when telemetry is not enabled. However, you can enable Wave AI features without telemetry by configuring your own custom AI model (either a local model or using your own API key).
+
+To enable Wave AI without telemetry:
+1. Configure a custom AI mode (see [Wave AI documentation](./waveai-modes))
+2. Set `waveai:defaultmode` to your custom mode's key in your Wave settings
+
+Once you've completed both steps, Wave AI will be enabled and you can use it completely privately without telemetry. This allows you to use local models like Ollama or your own API keys with providers like OpenAI, OpenRouter, or others.

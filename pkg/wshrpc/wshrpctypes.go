@@ -180,6 +180,7 @@ const (
 	// electron
 	Command_ElectronEncrypt = "electronencrypt"
 	Command_ElectronDecrypt = "electrondecrypt"
+	Command_NetworkOnline   = "networkonline"
 
 	// secrets
 	Command_GetSecrets                    = "getsecrets"
@@ -302,6 +303,7 @@ type WshRpcInterface interface {
 	FocusWindowCommand(ctx context.Context, windowId string) error
 	ElectronEncryptCommand(ctx context.Context, data CommandElectronEncryptData) (*CommandElectronEncryptRtnData, error)
 	ElectronDecryptCommand(ctx context.Context, data CommandElectronDecryptData) (*CommandElectronDecryptRtnData, error)
+	NetworkOnlineCommand(ctx context.Context) (bool, error)
 
 	// secrets
 	GetSecretsCommand(ctx context.Context, names []string) (map[string]string, error)

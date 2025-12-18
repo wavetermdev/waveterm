@@ -13,9 +13,11 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
-	"github.com/wavetermdev/waveterm/pkg/wstore"
+	"github.com/wavetermdev/waveterm/pkg/wcloud"
 	"github.com/wavetermdev/waveterm/pkg/wps"
+	"github.com/wavetermdev/waveterm/pkg/wstore"
 )
 
 // the wcore package coordinates actions across the storage layer
@@ -110,7 +112,6 @@ func SendWaveObjUpdate(oref waveobj.ORef) {
 	})
 }
 
-
 func ResolveBlockIdFromPrefix(ctx context.Context, tabId string, blockIdPrefix string) (string, error) {
 	if len(blockIdPrefix) != 8 {
 		return "", fmt.Errorf("widget_id must be 8 characters")
@@ -128,4 +129,28 @@ func ResolveBlockIdFromPrefix(ctx context.Context, tabId string, blockIdPrefix s
 	}
 
 	return "", fmt.Errorf("widget_id not found: %q", blockIdPrefix)
+}
+
+func GoSendNoTelemetryUpdate(telemetryEnabled bool) {
+	go func() {
+		defer func() {
+			panichandler.PanicHandler("GoSendNoTelemetryUpdate", recover())
+		}()
+		ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancelFn()
+		clientData, err := wstore.DBGetSingleton[*waveobj.Client](ctx)
+		if err != nil {
+			log.Printf("telemetry update: error getting client data: %v\n", err)
+			return
+		}
+		if clientData == nil {
+			log.Printf("telemetry update: client data is nil\n")
+			return
+		}
+		err = wcloud.SendNoTelemetryUpdate(ctx, clientData.OID, !telemetryEnabled)
+		if err != nil {
+			log.Printf("[error] sending no-telemetry update: %v\n", err)
+			return
+		}
+	}()
 }

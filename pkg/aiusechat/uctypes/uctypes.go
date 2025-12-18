@@ -630,6 +630,7 @@ func AreModelsCompatible(apiType, model1, model2 string) bool {
 
 	if apiType == APIType_OpenAIResponses {
 		gpt5Models := map[string]bool{
+			"gpt-5.2":    true,
 			"gpt-5.1":    true,
 			"gpt-5":      true,
 			"gpt-5-mini": true,

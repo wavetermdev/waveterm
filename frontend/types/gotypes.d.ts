@@ -1222,6 +1222,7 @@ declare global {
         "settings:customsettings"?: number;
         "settings:customaimodes"?: number;
         "settings:secretscount"?: number;
+        "settings:transparent"?: boolean;
         "activity:activeminutes"?: number;
         "activity:fgminutes"?: number;
         "activity:openminutes"?: number;
@@ -1306,6 +1307,7 @@ declare global {
         "settings:customsettings"?: number;
         "settings:customaimodes"?: number;
         "settings:secretscount"?: number;
+        "settings:transparent"?: boolean;
     };
 
     // waveobj.Tab

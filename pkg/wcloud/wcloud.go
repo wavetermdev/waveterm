@@ -27,9 +27,12 @@ const WCloudEndpoint = "https://api.waveterm.dev/central"
 const WCloudEndpointVarName = "WCLOUD_ENDPOINT"
 const WCloudWSEndpoint = "wss://wsapi.waveterm.dev/"
 const WCloudWSEndpointVarName = "WCLOUD_WS_ENDPOINT"
+const WCloudPingEndpoint = "https://ping.waveterm.dev/central"
+const WCloudPingEndpointVarName = "WCLOUD_PING_ENDPOINT"
 
 var WCloudWSEndpoint_VarCache string
 var WCloudEndpoint_VarCache string
+var WCloudPingEndpoint_VarCache string
 
 const APIVersion = 1
 const MaxPtyUpdateSize = (128 * 1024)
@@ -47,6 +50,7 @@ const TelemetryUrl = "/telemetry"
 const TEventsUrl = "/tevents"
 const NoTelemetryUrl = "/no-telemetry"
 const WebShareUpdateUrl = "/auth/web-share-update"
+const PingUrl = "/ping"
 
 func CacheAndRemoveEnvVars() error {
 	WCloudEndpoint_VarCache = os.Getenv(WCloudEndpointVarName)
@@ -61,6 +65,8 @@ func CacheAndRemoveEnvVars() error {
 		return err
 	}
 	os.Unsetenv(WCloudWSEndpointVarName)
+	WCloudPingEndpoint_VarCache = os.Getenv(WCloudPingEndpointVarName)
+	os.Unsetenv(WCloudPingEndpointVarName)
 	return nil
 }
 
@@ -98,6 +104,14 @@ func GetWSEndpoint() string {
 		return WCloudWSEndpoint
 	}
 	endpoint := WCloudWSEndpoint_VarCache
+	return endpoint
+}
+
+func GetPingEndpoint() string {
+	if !wavebase.IsDevMode() {
+		return WCloudPingEndpoint
+	}
+	endpoint := WCloudPingEndpoint_VarCache
 	return endpoint
 }
 
@@ -268,6 +282,62 @@ func sendTelemetry(clientId string) error {
 
 func SendNoTelemetryUpdate(ctx context.Context, clientId string, noTelemetryVal bool) error {
 	req, err := makeAnonPostReq(ctx, NoTelemetryUrl, NoTelemetryInputType{ClientId: clientId, Value: noTelemetryVal})
+	if err != nil {
+		return err
+	}
+	_, err = doRequest(req, nil)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func makePingPostReq(ctx context.Context, apiUrl string, data interface{}) (*http.Request, error) {
+	endpoint := GetPingEndpoint()
+	if endpoint == "" {
+		return nil, errors.New("wcloud ping endpoint not set")
+	}
+	var dataReader io.Reader
+	if data != nil {
+		byteArr, err := json.Marshal(data)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling json for %s request: %v", apiUrl, err)
+		}
+		dataReader = bytes.NewReader(byteArr)
+	}
+	fullUrl := endpoint + apiUrl
+	req, err := http.NewRequestWithContext(ctx, "POST", fullUrl, dataReader)
+	if err != nil {
+		return nil, fmt.Errorf("error creating %s request: %v", apiUrl, err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-PromptAPIVersion", strconv.Itoa(APIVersion))
+	req.Close = true
+	return req, nil
+}
+
+type PingInputType struct {
+	ClientId       string `json:"clientid"`
+	Arch           string `json:"arch"`
+	Version        string `json:"version"`
+	LocalDate      string `json:"localdate"`
+	UsageTelemetry bool   `json:"usagetelemetry"`
+}
+
+func SendDiagnosticPing(ctx context.Context, clientId string, usageTelemetry bool) error {
+	endpoint := GetPingEndpoint()
+	if endpoint == "" {
+		return nil
+	}
+	localDate := time.Now().Format("2006-01-02")
+	input := PingInputType{
+		ClientId:       clientId,
+		Arch:           wavebase.ClientArch(),
+		Version:        "v" + wavebase.WaveVersion,
+		LocalDate:      localDate,
+		UsageTelemetry: usageTelemetry,
+	}
+	req, err := makePingPostReq(ctx, PingUrl, input)
 	if err != nil {
 		return err
 	}

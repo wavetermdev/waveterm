@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { NumActiveConnColors } from "@/app/block/blockframe";
-import { getConnStatusAtom } from "@/app/store/global";
+import { getConnStatusAtom, recordTEvent } from "@/app/store/global";
 import * as util from "@/util/util";
 import clsx from "clsx";
 import * as jotai from "jotai";
@@ -168,6 +168,7 @@ export const ConnectionButton = React.memo(
             const connColorNum = computeConnColorNum(connStatus);
             let color = `var(--conn-icon-color-${connColorNum})`;
             const clickHandler = function () {
+                recordTEvent("action:other", { "action:type": "conndropdown", "action:initiator": "mouse" });
                 setConnModalOpen(true);
             };
             let titleText = null;

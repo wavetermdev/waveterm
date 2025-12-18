@@ -392,6 +392,11 @@ class RpcApiType {
         return client.wshRpcCall("message", data, opts);
     }
 
+    // command "networkonline" [call]
+    NetworkOnlineCommand(client: WshClient, opts?: RpcOpts): Promise<boolean> {
+        return client.wshRpcCall("networkonline", null, opts);
+    }
+
     // command "notify" [call]
     NotifyCommand(client: WshClient, data: WaveNotificationOptions, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("notify", data, opts);

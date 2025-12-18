@@ -63,16 +63,20 @@ function CodeEditPreview({ model }: SpecializedViewProps) {
 
     useEffect(() => {
         model.codeEditKeyDownHandler = codeEditKeyDownHandler;
+        model.refreshCallback = () => {
+            globalStore.set(model.refreshVersion, (v) => v + 1);
+        };
         return () => {
             model.codeEditKeyDownHandler = null;
             model.monacoRef.current = null;
+            model.refreshCallback = null;
         };
     }, []);
 
     function onMount(editor: MonacoTypes.editor.IStandaloneCodeEditor, monaco: Monaco): () => void {
         model.monacoRef.current = editor;
 
-        editor.onKeyDown((e: MonacoTypes.IKeyboardEvent) => {
+        const keyDownDisposer = editor.onKeyDown((e: MonacoTypes.IKeyboardEvent) => {
             const waveEvent = adaptFromReactOrNativeKeyEvent(e.browserEvent);
             const handled = tryReinjectKey(waveEvent);
             if (handled) {
@@ -86,7 +90,9 @@ function CodeEditPreview({ model }: SpecializedViewProps) {
             editor.focus();
         }
 
-        return null;
+        return () => {
+            keyDownDisposer.dispose();
+        };
     }
 
     return (
