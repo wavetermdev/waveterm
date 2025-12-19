@@ -8,10 +8,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"slices"
 	"strings"
 
 	"github.com/google/uuid"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/aiutil"
+	"github.com/wavetermdev/waveterm/pkg/aiusechat/chatstore"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 )
@@ -414,5 +416,91 @@ func GetFunctionCallInputByToolCallId(aiChat uctypes.AIChat, toolCallId string) 
 			}
 		}
 	}
+	return nil
+}
+
+// UpdateToolUseData updates the tool use data for a specific tool call in the chat
+func UpdateToolUseData(chatId string, toolCallId string, toolUseData uctypes.UIMessageDataToolUse) error {
+	chat := chatstore.DefaultChatStore.Get(chatId)
+	if chat == nil {
+		return fmt.Errorf("chat not found: %s", chatId)
+	}
+
+	for _, genMsg := range chat.NativeMessages {
+		chatMsg, ok := genMsg.(*GeminiChatMessage)
+		if !ok {
+			continue
+		}
+
+		for i, part := range chatMsg.Parts {
+			if part.FunctionCall != nil && part.ToolUseData != nil && part.ToolUseData.ToolCallId == toolCallId {
+				// Update the message with new tool use data
+				updatedMsg := &GeminiChatMessage{
+					MessageId: chatMsg.MessageId,
+					Role:      chatMsg.Role,
+					Parts:     make([]GeminiMessagePart, len(chatMsg.Parts)),
+					Usage:     chatMsg.Usage,
+				}
+				copy(updatedMsg.Parts, chatMsg.Parts)
+				updatedMsg.Parts[i].ToolUseData = &toolUseData
+
+				aiOpts := &uctypes.AIOptsType{
+					APIType:    chat.APIType,
+					Model:      chat.Model,
+					APIVersion: chat.APIVersion,
+				}
+
+				return chatstore.DefaultChatStore.PostMessage(chatId, aiOpts, updatedMsg)
+			}
+		}
+	}
+
+	return fmt.Errorf("tool call with ID %s not found in chat %s", toolCallId, chatId)
+}
+
+func RemoveToolUseCall(chatId string, toolCallId string) error {
+	chat := chatstore.DefaultChatStore.Get(chatId)
+	if chat == nil {
+		return fmt.Errorf("chat not found: %s", chatId)
+	}
+
+	for _, genMsg := range chat.NativeMessages {
+		chatMsg, ok := genMsg.(*GeminiChatMessage)
+		if !ok {
+			continue
+		}
+
+		partIndex := -1
+		for i, part := range chatMsg.Parts {
+			if part.FunctionCall != nil && part.ToolUseData != nil && part.ToolUseData.ToolCallId == toolCallId {
+				partIndex = i
+				break
+			}
+		}
+
+		if partIndex == -1 {
+			continue
+		}
+
+		updatedMsg := &GeminiChatMessage{
+			MessageId: chatMsg.MessageId,
+			Role:      chatMsg.Role,
+			Parts:     slices.Delete(slices.Clone(chatMsg.Parts), partIndex, partIndex+1),
+			Usage:     chatMsg.Usage,
+		}
+
+		if len(updatedMsg.Parts) == 0 {
+			chatstore.DefaultChatStore.RemoveMessage(chatId, chatMsg.MessageId)
+		} else {
+			aiOpts := &uctypes.AIOptsType{
+				APIType:    chat.APIType,
+				Model:      chat.Model,
+				APIVersion: chat.APIVersion,
+			}
+			chatstore.DefaultChatStore.PostMessage(chatId, aiOpts, updatedMsg)
+		}
+		return nil
+	}
+
 	return nil
 }

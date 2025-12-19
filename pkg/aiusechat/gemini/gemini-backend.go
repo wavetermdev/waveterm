@@ -42,45 +42,6 @@ func ensureAltSse(endpoint string) (string, error) {
 	return endpoint, nil
 }
 
-// UpdateToolUseData updates the tool use data for a specific tool call in the chat
-func UpdateToolUseData(chatId string, toolCallId string, toolUseData uctypes.UIMessageDataToolUse) error {
-	chat := chatstore.DefaultChatStore.Get(chatId)
-	if chat == nil {
-		return fmt.Errorf("chat not found: %s", chatId)
-	}
-
-	for _, genMsg := range chat.NativeMessages {
-		chatMsg, ok := genMsg.(*GeminiChatMessage)
-		if !ok {
-			continue
-		}
-
-		for i, part := range chatMsg.Parts {
-			if part.FunctionCall != nil && part.ToolUseData != nil && part.ToolUseData.ToolCallId == toolCallId {
-				// Update the message with new tool use data
-				updatedMsg := &GeminiChatMessage{
-					MessageId: chatMsg.MessageId,
-					Role:      chatMsg.Role,
-					Parts:     make([]GeminiMessagePart, len(chatMsg.Parts)),
-					Usage:     chatMsg.Usage,
-				}
-				copy(updatedMsg.Parts, chatMsg.Parts)
-				updatedMsg.Parts[i].ToolUseData = &toolUseData
-
-				aiOpts := &uctypes.AIOptsType{
-					APIType:    chat.APIType,
-					Model:      chat.Model,
-					APIVersion: chat.APIVersion,
-				}
-
-				return chatstore.DefaultChatStore.PostMessage(chatId, aiOpts, updatedMsg)
-			}
-		}
-	}
-
-	return fmt.Errorf("tool call with ID %s not found in chat %s", toolCallId, chatId)
-}
-
 // appendPartToLastUserMessage appends a text part to the last user message in the contents slice
 func appendPartToLastUserMessage(contents []GeminiContent, text string) {
 	for i := len(contents) - 1; i >= 0; i-- {

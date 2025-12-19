@@ -438,6 +438,27 @@ func UpdateToolUseData(chatId string, callId string, newToolUseData uctypes.UIMe
 	return fmt.Errorf("function call with callId %s not found in chat %s", callId, chatId)
 }
 
+func RemoveToolUseCall(chatId string, callId string) error {
+	chat := chatstore.DefaultChatStore.Get(chatId)
+	if chat == nil {
+		return fmt.Errorf("chat not found: %s", chatId)
+	}
+
+	for _, genMsg := range chat.NativeMessages {
+		chatMsg, ok := genMsg.(*OpenAIChatMessage)
+		if !ok {
+			continue
+		}
+
+		if chatMsg.FunctionCall != nil && chatMsg.FunctionCall.CallId == callId {
+			chatstore.DefaultChatStore.RemoveMessage(chatId, chatMsg.MessageId)
+			return nil
+		}
+	}
+
+	return nil
+}
+
 func RunOpenAIChatStep(
 	ctx context.Context,
 	sse *sse.SSEHandlerCh,
