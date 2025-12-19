@@ -120,33 +120,6 @@ func (svc *WorkspaceService) ListWorkspaces() (waveobj.WorkspaceList, error) {
 	return wcore.ListWorkspaces(ctx)
 }
 
-func (svc *WorkspaceService) UpdateWorkspaceMeta_Meta() tsgenmeta.MethodMeta {
-	return tsgenmeta.MethodMeta{
-		ArgNames: []string{"workspaceId", "meta"},
-	}
-}
-
-func (svc *WorkspaceService) UpdateWorkspaceMeta(workspaceId string, meta waveobj.MetaMapType) (waveobj.UpdatesRtnType, error) {
-	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
-	defer cancelFn()
-	ctx = waveobj.ContextWithUpdates(ctx)
-
-	oref := waveobj.MakeORef(waveobj.OType_Workspace, workspaceId)
-	err := wstore.UpdateObjectMeta(ctx, oref, meta, false)
-	if err != nil {
-		return nil, fmt.Errorf("error updating workspace meta: %w", err)
-	}
-
-	updates := waveobj.ContextGetUpdatesRtn(ctx)
-	go func() {
-		defer func() {
-			panichandler.PanicHandler("WorkspaceService:UpdateWorkspaceMeta:SendUpdateEvents", recover())
-		}()
-		wps.Broker.SendUpdateEvents(updates)
-	}()
-	return updates, nil
-}
-
 func (svc *WorkspaceService) CreateTab_Meta() tsgenmeta.MethodMeta {
 	return tsgenmeta.MethodMeta{
 		ArgNames:   []string{"workspaceId", "tabName", "activateTab", "pinned"},

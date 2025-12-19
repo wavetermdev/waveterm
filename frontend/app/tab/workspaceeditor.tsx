@@ -69,10 +69,6 @@ interface WorkspaceEditorProps {
     onColorChange: (newColor: string) => void;
     onIconChange: (newIcon: string) => void;
     onDeleteWorkspace: () => void;
-    onMoveUp?: () => void;
-    onMoveDown?: () => void;
-    isFirst?: boolean;
-    isLast?: boolean;
 }
 const WorkspaceEditorComponent = ({
     title,
@@ -83,10 +79,6 @@ const WorkspaceEditorComponent = ({
     onColorChange,
     onIconChange,
     onDeleteWorkspace,
-    onMoveUp,
-    onMoveDown,
-    isFirst,
-    isLast,
 }: WorkspaceEditorProps) => {
     const inputRef = useRef<HTMLInputElement>(null);
 
@@ -121,28 +113,6 @@ const WorkspaceEditorComponent = ({
             />
             <ColorSelector selectedColor={color} colors={colors} onSelect={onColorChange} />
             <IconSelector selectedIcon={icon} icons={icons} onSelect={onIconChange} />
-            {(onMoveUp || onMoveDown) && (
-                <div className="flex gap-2 mt-2">
-                    <Button
-                        className="ghost text-[12px]"
-                        onClick={onMoveUp}
-                        disabled={isFirst}
-                        title="Move workspace up in list"
-                    >
-                        <i className="fa fa-arrow-up mr-1" />
-                        Move Up
-                    </Button>
-                    <Button
-                        className="ghost text-[12px]"
-                        onClick={onMoveDown}
-                        disabled={isLast}
-                        title="Move workspace down in list"
-                    >
-                        <i className="fa fa-arrow-down mr-1" />
-                        Move Down
-                    </Button>
-                </div>
-            )}
             <div className="delete-ws-btn-wrapper">
                 <Button className="ghost red text-[12px] bold" onClick={onDeleteWorkspace}>
                     Delete workspace

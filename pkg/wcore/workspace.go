@@ -7,7 +7,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"sort"
 	"time"
 
 	"github.com/google/uuid"
@@ -460,29 +459,6 @@ func ListWorkspaces(ctx context.Context) (waveobj.WorkspaceList, error) {
 			WindowId:    windowId,
 		})
 	}
-
-	// Sort workspaces by display:order metadata
-	sort.Slice(wl, func(i, j int) bool {
-		wsI, _ := wstore.DBGet[*waveobj.Workspace](ctx, wl[i].WorkspaceId)
-		wsJ, _ := wstore.DBGet[*waveobj.Workspace](ctx, wl[j].WorkspaceId)
-
-		orderI := 0
-		orderJ := 0
-
-		if wsI != nil && wsI.Meta != nil {
-			if order, ok := wsI.Meta["display:order"].(float64); ok {
-				orderI = int(order)
-			}
-		}
-		if wsJ != nil && wsJ.Meta != nil {
-			if order, ok := wsJ.Meta["display:order"].(float64); ok {
-				orderJ = int(order)
-			}
-		}
-
-		return orderI < orderJ
-	})
-
 	return wl, nil
 }
 

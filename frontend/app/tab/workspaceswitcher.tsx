@@ -111,13 +111,7 @@ const WorkspaceSwitcher = forwardRef<HTMLDivElement>((_, ref) => {
                 <OverlayScrollbarsComponent className={"scrollable"} options={{ scrollbars: { autoHide: "leave" } }}>
                     <ExpandableMenu noIndent singleOpen>
                         {workspaceList.map((entry, i) => (
-                            <WorkspaceSwitcherItem
-                                key={i}
-                                entryAtom={entry}
-                                onDeleteWorkspace={onDeleteWorkspace}
-                                workspaceIndex={i}
-                                totalWorkspaces={workspaceList.length}
-                            />
+                            <WorkspaceSwitcherItem key={i} entryAtom={entry} onDeleteWorkspace={onDeleteWorkspace} />
                         ))}
                     </ExpandableMenu>
                 </OverlayScrollbarsComponent>
@@ -147,13 +141,9 @@ const WorkspaceSwitcher = forwardRef<HTMLDivElement>((_, ref) => {
 const WorkspaceSwitcherItem = ({
     entryAtom,
     onDeleteWorkspace,
-    workspaceIndex,
-    totalWorkspaces,
 }: {
     entryAtom: PrimitiveAtom<WorkspaceListEntry>;
     onDeleteWorkspace: (workspaceId: string) => void;
-    workspaceIndex: number;
-    totalWorkspaces: number;
 }) => {
     const activeWorkspace = useAtomValueSafe(atoms.workspace);
     const [workspaceEntry, setWorkspaceEntry] = useAtom(entryAtom);
@@ -176,29 +166,6 @@ const WorkspaceSwitcherItem = ({
             );
         }
     }, []);
-
-    const handleMoveUp = useCallback(() => {
-        const currentOrder = (workspace.meta?.["display:order"] as number) || workspaceIndex;
-        const newOrder = currentOrder - 1.5; // Place between previous items
-        fireAndForget(async () => {
-            await WorkspaceService.UpdateWorkspaceMeta(workspace.oid, { "display:order": newOrder });
-            // Refresh workspace list
-            const workspaceList = await WorkspaceService.ListWorkspaces();
-            // Trigger re-render by updating atoms
-            globalStore.set(atoms.workspaceList, workspaceList);
-        });
-    }, [workspace, workspaceIndex]);
-
-    const handleMoveDown = useCallback(() => {
-        const currentOrder = (workspace.meta?.["display:order"] as number) || workspaceIndex;
-        const newOrder = currentOrder + 1.5; // Place between next items
-        fireAndForget(async () => {
-            await WorkspaceService.UpdateWorkspaceMeta(workspace.oid, { "display:order": newOrder });
-            // Refresh workspace list
-            const workspaceList = await WorkspaceService.ListWorkspaces();
-            globalStore.set(atoms.workspaceList, workspaceList);
-        });
-    }, [workspace, workspaceIndex]);
 
     const isActive = !!workspaceEntry.windowId;
     const editIconDecl: IconButtonDecl = {
@@ -271,10 +238,6 @@ const WorkspaceSwitcherItem = ({
                     onColorChange={(color) => setWorkspace({ ...workspace, color })}
                     onIconChange={(icon) => setWorkspace({ ...workspace, icon })}
                     onDeleteWorkspace={() => onDeleteWorkspace(workspace.oid)}
-                    onMoveUp={handleMoveUp}
-                    onMoveDown={handleMoveDown}
-                    isFirst={workspaceIndex === 0}
-                    isLast={workspaceIndex === totalWorkspaces - 1}
                 />
             </ExpandableMenuItem>
         </ExpandableMenuItemGroup>
