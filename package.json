@@ -30,7 +30,7 @@
     "devDependencies": {
         "@eslint/js": "^8.57.0",
         "@rollup/plugin-node-resolve": "^16.0.3",
-        "@tailwindcss/vite": "^4.1.17",
+        "@tailwindcss/vite": "^4.1.18",
         "@types/color": "^4.2.0",
         "@types/css-tree": "^2",
         "@types/debug": "^4",
@@ -60,7 +60,7 @@
         "prettier-plugin-jsdoc": "^1.8.0",
         "prettier-plugin-organize-imports": "^4.3.0",
         "sass": "1.91.0",
-        "tailwindcss": "^4.1.17",
+        "tailwindcss": "^4.1.18",
         "tailwindcss-animate": "^1.0.7",
         "ts-node": "^10.9.2",
         "tslib": "^2.8.1",
