@@ -14,7 +14,7 @@
         "typecheck": "tsc"
     },
     "dependencies": {
-        "@docusaurus/core": "^3.7.0",
+        "@docusaurus/core": "^3.9.2",
         "@docusaurus/plugin-content-docs": "^3.7.0",
         "@docusaurus/plugin-debug": "^3.7.0",
         "@docusaurus/plugin-ideal-image": "^3.7.0",
