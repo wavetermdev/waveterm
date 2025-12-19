@@ -180,6 +180,7 @@ const (
 	ApprovalUserDenied    = "user-denied"
 	ApprovalTimeout       = "timeout"
 	ApprovalAutoApproved  = "auto-approved"
+	ApprovalCanceled      = "canceled"
 )
 
 type AIModeConfig struct {

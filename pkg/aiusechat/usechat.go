@@ -252,11 +252,12 @@ func processToolCallInternal(backend UseChatBackend, toolCall uctypes.WaveToolCa
 
 	if toolCall.ToolUseData.Approval == uctypes.ApprovalNeedsApproval {
 		log.Printf("  waiting for approval...\n")
-		approval := WaitForToolApproval(toolCall.ID)
-		log.Printf("  approval result: %q\n", approval)
-		if approval != "" {
-			toolCall.ToolUseData.Approval = approval
+		approval, err := WaitForToolApproval(context.Background(), toolCall.ID)
+		if err != nil || approval == "" {
+			approval = uctypes.ApprovalCanceled
 		}
+		log.Printf("  approval result: %q\n", approval)
+		toolCall.ToolUseData.Approval = approval
 
 		if !toolCall.ToolUseData.IsApproved() {
 			errorMsg := "Tool use denied or timed out"
@@ -264,6 +265,8 @@ func processToolCallInternal(backend UseChatBackend, toolCall uctypes.WaveToolCa
 				errorMsg = "Tool use denied by user"
 			} else if approval == uctypes.ApprovalTimeout {
 				errorMsg = "Tool approval timed out"
+			} else if approval == uctypes.ApprovalCanceled {
+				errorMsg = "Tool approval canceled"
 			}
 			toolCall.ToolUseData.Status = uctypes.ToolUseStatusError
 			toolCall.ToolUseData.ErrorMessage = errorMsg

@@ -4,6 +4,7 @@
 package aiusechat
 
 import (
+	"context"
 	"sync"
 
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
@@ -16,6 +17,24 @@ type ApprovalRequest struct {
 	doneChan       chan struct{}
 	mu             sync.Mutex
 	onCloseUnregFn func()
+}
+
+func (req *ApprovalRequest) updateApproval(approval string) {
+	req.mu.Lock()
+	defer req.mu.Unlock()
+
+	if req.done {
+		return
+	}
+
+	req.approval = approval
+	req.done = true
+
+	if req.onCloseUnregFn != nil {
+		req.onCloseUnregFn()
+	}
+
+	close(req.doneChan)
 }
 
 type ApprovalRegistry struct {
@@ -38,8 +57,8 @@ func UnregisterToolApproval(toolCallId string) {
 	defer globalApprovalRegistry.mu.Unlock()
 	req := globalApprovalRegistry.requests[toolCallId]
 	delete(globalApprovalRegistry.requests, toolCallId)
-	if req != nil && req.onCloseUnregFn != nil {
-		req.onCloseUnregFn()
+	if req != nil {
+		req.updateApproval("")
 	}
 }
 
@@ -72,31 +91,21 @@ func UpdateToolApproval(toolCallId string, approval string) error {
 		return nil
 	}
 
-	req.mu.Lock()
-	defer req.mu.Unlock()
-
-	if req.done {
-		return nil
-	}
-
-	req.approval = approval
-	req.done = true
-
-	if req.onCloseUnregFn != nil {
-		req.onCloseUnregFn()
-	}
-
-	close(req.doneChan)
+	req.updateApproval(approval)
 	return nil
 }
 
-func WaitForToolApproval(toolCallId string) string {
+func WaitForToolApproval(ctx context.Context, toolCallId string) (string, error) {
 	req, exists := getToolApprovalRequest(toolCallId)
 	if !exists {
-		return ""
+		return "", nil
 	}
 
-	<-req.doneChan
+	select {
+	case <-ctx.Done():
+		return "", ctx.Err()
+	case <-req.doneChan:
+	}
 
 	req.mu.Lock()
 	approval := req.approval
@@ -106,5 +115,5 @@ func WaitForToolApproval(toolCallId string) string {
 	delete(globalApprovalRegistry.requests, toolCallId)
 	globalApprovalRegistry.mu.Unlock()
 
-	return approval
+	return approval, nil
 }
