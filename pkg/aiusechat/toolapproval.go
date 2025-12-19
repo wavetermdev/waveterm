@@ -75,7 +75,7 @@ func RegisterToolApproval(toolCallId string, sseHandler *sse.SSEHandlerCh) {
 	}
 
 	onCloseId := sseHandler.RegisterOnClose(func() {
-		UpdateToolApproval(toolCallId, uctypes.ApprovalTimeout)
+		UpdateToolApproval(toolCallId, uctypes.ApprovalCanceled)
 	})
 
 	req.onCloseUnregFn = func() {
