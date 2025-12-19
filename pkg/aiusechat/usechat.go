@@ -378,7 +378,9 @@ func processAllToolCalls(backend UseChatBackend, stopReason *uctypes.WaveStopRea
 			log.Printf("Failed to convert tool results to native chat messages: %v", err)
 		} else {
 			for _, msg := range toolResultMsgs {
-				chatstore.DefaultChatStore.PostMessage(chatOpts.ChatId, &chatOpts.Config, msg)
+				if err := chatstore.DefaultChatStore.PostMessage(chatOpts.ChatId, &chatOpts.Config, msg); err != nil {
+					log.Printf("Failed to post tool result message: %v", err)
+				}
 			}
 		}
 	}
@@ -462,7 +464,9 @@ func RunAIChat(ctx context.Context, sseHandler *sse.SSEHandlerCh, backend UseCha
 		}
 		for _, msg := range rtnMessages {
 			if msg != nil {
-				chatstore.DefaultChatStore.PostMessage(chatOpts.ChatId, &chatOpts.Config, msg)
+				if err := chatstore.DefaultChatStore.PostMessage(chatOpts.ChatId, &chatOpts.Config, msg); err != nil {
+					log.Printf("Failed to post message: %v", err)
+				}
 			}
 		}
 		firstStep = false

@@ -385,7 +385,9 @@ func RemoveToolUseCall(chatId string, callId string) error {
 				Model:      chat.Model,
 				APIVersion: chat.APIVersion,
 			}
-			chatstore.DefaultChatStore.PostMessage(chatId, aiOpts, updatedMsg)
+			if err := chatstore.DefaultChatStore.PostMessage(chatId, aiOpts, updatedMsg); err != nil {
+				return err
+			}
 		}
 		return nil
 	}
