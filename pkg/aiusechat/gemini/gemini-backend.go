@@ -308,6 +308,14 @@ func processGeminiStream(
 			if errors.Is(err, io.EOF) {
 				break
 			}
+			if sseHandler.Err() != nil {
+				partialMsg := extractPartialGeminiMessage(msgID, textBuilder.String())
+				return &uctypes.WaveStopReason{
+					Kind:      uctypes.StopKindCanceled,
+					ErrorType: "client_disconnect",
+					ErrorText: "client disconnected",
+				}, partialMsg, nil
+			}
 			_ = sseHandler.AiMsgError(fmt.Sprintf("stream decode error: %v", err))
 			return &uctypes.WaveStopReason{
 				Kind:      uctypes.StopKindError,
@@ -472,4 +480,20 @@ func processGeminiStream(
 	}
 
 	return stopReason, assistantMsg, nil
+}
+
+func extractPartialGeminiMessage(msgID string, text string) *GeminiChatMessage {
+	if text == "" {
+		return nil
+	}
+
+	return &GeminiChatMessage{
+		MessageId: msgID,
+		Role:      "model",
+		Parts: []GeminiMessagePart{
+			{
+				Text: text,
+			},
+		},
+	}
 }
