@@ -27,6 +27,7 @@ var ValidEventNames = map[string]bool{
 	"action:createblock": true,
 	"action:openwaveai":  true,
 	"action:other":       true,
+	"action:term":        true,
 
 	"wsh:run": true,
 

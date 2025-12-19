@@ -180,6 +180,7 @@ const (
 	ApprovalUserDenied    = "user-denied"
 	ApprovalTimeout       = "timeout"
 	ApprovalAutoApproved  = "auto-approved"
+	ApprovalCanceled      = "canceled"
 )
 
 type AIModeConfig struct {
@@ -520,7 +521,6 @@ type WaveChatOpts struct {
 	TabStateGenerator    func() (string, []ToolDefinition, string, error)
 	BuilderAppGenerator  func() (string, string, string, error)
 	WidgetAccess         bool
-	RegisterToolApproval func(string)
 	AllowNativeWebSearch bool
 	BuilderId            string
 	BuilderAppId         string

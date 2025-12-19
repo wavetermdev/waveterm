@@ -459,6 +459,16 @@ function useBlockDataLoaded(blockId: string): boolean {
 }
 
 /**
+ * Safely read an atom value, returning null if the atom is null.
+ */
+function readAtom<T>(atom: Atom<T>): T {
+    if (atom == null) {
+        return null;
+    }
+    return globalStore.get(atom);
+}
+
+/**
  * Get the preload api.
  */
 function getApi(): ElectronApi {
@@ -863,6 +873,7 @@ export {
     getUserName,
     globalPrimaryTabStartup,
     globalStore,
+    readAtom,
     initGlobal,
     initGlobalWaveEventSubs,
     isDev,

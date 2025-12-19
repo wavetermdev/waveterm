@@ -58,6 +58,7 @@ const (
 	Command_RouteAnnounce     = "routeannounce"     // special (for routing)
 	Command_RouteUnannounce   = "routeunannounce"   // special (for routing)
 	Command_Message           = "message"
+
 	Command_GetMeta           = "getmeta"
 	Command_SetMeta           = "setmeta"
 	Command_SetView           = "setview"
@@ -817,7 +818,6 @@ type CommandGetWaveAIChatData struct {
 
 type CommandWaveAIToolApproveData struct {
 	ToolCallId string `json:"toolcallid"`
-	KeepAlive  bool   `json:"keepalive,omitempty"`
 	Approval   string `json:"approval,omitempty"`
 }
 

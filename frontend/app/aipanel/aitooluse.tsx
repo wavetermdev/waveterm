@@ -146,25 +146,10 @@ interface AIToolUseBatchProps {
 
 const AIToolUseBatch = memo(({ parts, isStreaming }: AIToolUseBatchProps) => {
     const [userApprovalOverride, setUserApprovalOverride] = useState<string | null>(null);
-    const partsRef = useRef(parts);
-    partsRef.current = parts;
 
-    // All parts in a batch have the same approval status (enforced by grouping logic in AIToolUseGroup)
     const firstTool = parts[0].data;
     const baseApproval = userApprovalOverride || firstTool.approval;
     const effectiveApproval = getEffectiveApprovalStatus(baseApproval, isStreaming);
-
-    useEffect(() => {
-        if (!isStreaming || effectiveApproval !== "needs-approval") return;
-
-        const interval = setInterval(() => {
-            partsRef.current.forEach((part) => {
-                WaveAIModel.getInstance().toolUseKeepalive(part.data.toolcallid);
-            });
-        }, 4000);
-
-        return () => clearInterval(interval);
-    }, [isStreaming, effectiveApproval]);
 
     const handleApprove = () => {
         setUserApprovalOverride("user-approved");
@@ -212,8 +197,6 @@ const AIToolUse = memo(({ part, isStreaming }: AIToolUseProps) => {
     const showRestoreModal = restoreModalToolCallId === toolData.toolcallid;
     const highlightTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const highlightedBlockIdRef = useRef<string | null>(null);
-    const toolCallIdRef = useRef(toolData.toolcallid);
-    toolCallIdRef.current = toolData.toolcallid;
 
     const statusIcon = toolData.status === "completed" ? "✓" : toolData.status === "error" ? "✗" : "•";
     const statusColor =
@@ -223,16 +206,6 @@ const AIToolUse = memo(({ part, isStreaming }: AIToolUseProps) => {
     const effectiveApproval = getEffectiveApprovalStatus(baseApproval, isStreaming);
 
     const isFileWriteTool = toolData.toolname === "write_text_file" || toolData.toolname === "edit_text_file";
-
-    useEffect(() => {
-        if (!isStreaming || effectiveApproval !== "needs-approval") return;
-
-        const interval = setInterval(() => {
-            WaveAIModel.getInstance().toolUseKeepalive(toolCallIdRef.current);
-        }, 4000);
-
-        return () => clearInterval(interval);
-    }, [isStreaming, effectiveApproval]);
 
     useEffect(() => {
         return () => {

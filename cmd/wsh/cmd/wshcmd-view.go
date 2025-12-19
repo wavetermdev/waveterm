@@ -13,6 +13,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
+	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
 )
 
 var viewMagnified bool
@@ -99,7 +100,7 @@ func viewRun(cmd *cobra.Command, args []string) (rtnErr error) {
 			wshCmd.BlockDef.Meta[waveobj.MetaKey_Connection] = conn
 		}
 	}
-	_, err := RpcClient.SendRpcRequest(wshrpc.Command_CreateBlock, wshCmd, &wshrpc.RpcOpts{Timeout: 2000})
+	_, err := wshclient.CreateBlockCommand(RpcClient, *wshCmd, &wshrpc.RpcOpts{Timeout: 2000})
 	if err != nil {
 		return fmt.Errorf("running view command: %w", err)
 	}

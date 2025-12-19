@@ -4,23 +4,37 @@
 package aiusechat
 
 import (
+	"context"
 	"sync"
-	"time"
 
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
-)
-
-const (
-	InitialApprovalTimeout = 10 * time.Second
-	KeepAliveExtension     = 10 * time.Second
+	"github.com/wavetermdev/waveterm/pkg/web/sse"
 )
 
 type ApprovalRequest struct {
-	approval string
-	done     bool
-	doneChan chan struct{}
-	timer    *time.Timer
-	mu       sync.Mutex
+	approval       string
+	done           bool
+	doneChan       chan struct{}
+	mu             sync.Mutex
+	onCloseUnregFn func()
+}
+
+func (req *ApprovalRequest) updateApproval(approval string) {
+	req.mu.Lock()
+	defer req.mu.Unlock()
+
+	if req.done {
+		return
+	}
+
+	req.approval = approval
+	req.done = true
+
+	if req.onCloseUnregFn != nil {
+		req.onCloseUnregFn()
+	}
+
+	close(req.doneChan)
 }
 
 type ApprovalRegistry struct {
@@ -38,6 +52,16 @@ func registerToolApprovalRequest(toolCallId string, req *ApprovalRequest) {
 	globalApprovalRegistry.requests[toolCallId] = req
 }
 
+func UnregisterToolApproval(toolCallId string) {
+	globalApprovalRegistry.mu.Lock()
+	defer globalApprovalRegistry.mu.Unlock()
+	req := globalApprovalRegistry.requests[toolCallId]
+	delete(globalApprovalRegistry.requests, toolCallId)
+	if req != nil {
+		req.updateApproval("")
+	}
+}
+
 func getToolApprovalRequest(toolCallId string) (*ApprovalRequest, bool) {
 	globalApprovalRegistry.mu.Lock()
 	defer globalApprovalRegistry.mu.Unlock()
@@ -45,64 +69,43 @@ func getToolApprovalRequest(toolCallId string) (*ApprovalRequest, bool) {
 	return req, exists
 }
 
-func RegisterToolApproval(toolCallId string) {
+func RegisterToolApproval(toolCallId string, sseHandler *sse.SSEHandlerCh) {
 	req := &ApprovalRequest{
 		doneChan: make(chan struct{}),
 	}
 
-	req.timer = time.AfterFunc(InitialApprovalTimeout, func() {
-		UpdateToolApproval(toolCallId, uctypes.ApprovalTimeout, false)
+	onCloseId := sseHandler.RegisterOnClose(func() {
+		UpdateToolApproval(toolCallId, uctypes.ApprovalCanceled)
 	})
+
+	req.onCloseUnregFn = func() {
+		sseHandler.UnregisterOnClose(onCloseId)
+	}
 
 	registerToolApprovalRequest(toolCallId, req)
 }
 
-func UpdateToolApproval(toolCallId string, approval string, keepAlive bool) error {
+func UpdateToolApproval(toolCallId string, approval string) error {
 	req, exists := getToolApprovalRequest(toolCallId)
 	if !exists {
 		return nil
 	}
 
-	req.mu.Lock()
-	defer req.mu.Unlock()
-
-	if req.done {
-		return nil
-	}
-
-	if keepAlive && approval == "" {
-		req.timer.Reset(KeepAliveExtension)
-		return nil
-	}
-
-	req.approval = approval
-	req.done = true
-
-	if req.timer != nil {
-		req.timer.Stop()
-	}
-
-	close(req.doneChan)
+	req.updateApproval(approval)
 	return nil
 }
-func CurrentToolApprovalStatus(toolCallId string) string {
+
+func WaitForToolApproval(ctx context.Context, toolCallId string) (string, error) {
 	req, exists := getToolApprovalRequest(toolCallId)
 	if !exists {
-		return ""
+		return "", nil
 	}
 
-	req.mu.Lock()
-	defer req.mu.Unlock()
-	return req.approval
-}
-
-func WaitForToolApproval(toolCallId string) string {
-	req, exists := getToolApprovalRequest(toolCallId)
-	if !exists {
-		return ""
+	select {
+	case <-ctx.Done():
+		return "", ctx.Err()
+	case <-req.doneChan:
 	}
-
-	<-req.doneChan
 
 	req.mu.Lock()
 	approval := req.approval
@@ -112,5 +115,5 @@ func WaitForToolApproval(toolCallId string) string {
 	delete(globalApprovalRegistry.requests, toolCallId)
 	globalApprovalRegistry.mu.Unlock()
 
-	return approval
+	return approval, nil
 }

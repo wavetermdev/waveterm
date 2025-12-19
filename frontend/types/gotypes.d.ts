@@ -529,7 +529,6 @@ declare global {
     // wshrpc.CommandWaveAIToolApproveData
     type CommandWaveAIToolApproveData = {
         toolcallid: string;
-        keepalive?: boolean;
         approval?: string;
     };
 
@@ -1235,6 +1234,7 @@ declare global {
         "action:type"?: string;
         "debug:panictype"?: string;
         "block:view"?: string;
+        "block:controller"?: string;
         "ai:backendtype"?: string;
         "ai:local"?: boolean;
         "wsh:cmd"?: string;
