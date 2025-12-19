@@ -437,6 +437,9 @@ func RunAIChat(ctx context.Context, sseHandler *sse.SSEHandlerCh, backend UseCha
 				metrics.PremiumReqCount++
 			}
 		}
+		if stopReason != nil {
+			logutil.DevPrintf("stopreason: %s (%s) (%s) (%s)\n", stopReason.Kind, stopReason.ErrorText, stopReason.ErrorType, stopReason.RawReason)
+		}
 		if len(rtnMessages) > 0 {
 			usage := getUsage(rtnMessages)
 			log.Printf("usage: input=%d output=%d websearch=%d\n", usage.InputTokens, usage.OutputTokens, usage.NativeWebSearchCount)
