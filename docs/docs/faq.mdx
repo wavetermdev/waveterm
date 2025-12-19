@@ -19,7 +19,9 @@ and type the `[user]@[host]` that you wish to connect to.
 
 ### On Windows, how can I use Git Bash as my default shell?
 
-In order to make Git Bash your default shell you'll need to set the configuration variable `term:localshellpath` to
+Wave automatically detects Git Bash installations and adds them to the connection dropdown. Simply click the <i className="fa-sharp fa-laptop"/> or <i className="fa-sharp fa-arrow-right-arrow-left"/> button in the block header and select "Git Bash" from the list.
+
+Alternatively, you can manually set Git Bash as your default shell by setting the configuration variable `term:localshellpath` to
 the location of the Git Bash "bash.exe" binary. By default it is located at "C:\Program Files\Git\bin\bash.exe".
 Just remember in JSON, backslashes need to be escaped. So add this to your [settings.json](./config) file:
 
