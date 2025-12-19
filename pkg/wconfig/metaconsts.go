@@ -95,6 +95,7 @@ const (
 	ConfigKey_WindowMagnifiedBlockBlurPrimaryPx = "window:magnifiedblockblurprimarypx"
 	ConfigKey_WindowMagnifiedBlockBlurSecondaryPx = "window:magnifiedblockblursecondarypx"
 	ConfigKey_WindowConfirmClose             = "window:confirmclose"
+	ConfigKey_WindowAlwaysConfirmClose       = "window:alwaysconfirmclose"
 	ConfigKey_WindowSaveLastWindow           = "window:savelastwindow"
 	ConfigKey_WindowDimensions               = "window:dimensions"
 	ConfigKey_WindowZoom                     = "window:zoom"

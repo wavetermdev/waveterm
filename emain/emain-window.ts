@@ -298,7 +298,17 @@ export class WaveBrowserWindow extends BaseWindow {
                 const numWindows = waveWindowMap.size;
                 const fullConfig = await RpcApi.GetFullConfigCommand(ElectronWshClient);
                 if (numWindows > 1 || !fullConfig.settings["window:savelastwindow"]) {
-                    if (fullConfig.settings["window:confirmclose"]) {
+                    if (fullConfig.settings["window:alwaysconfirmclose"]) {
+                        const choice = dialog.showMessageBoxSync(this, {
+                            type: "question",
+                            buttons: ["Cancel", "Close Window"],
+                            title: "Confirm",
+                            message: "Are you sure you want to close this window?",
+                        });
+                        if (choice === 0) {
+                            return;
+                        }
+                    } else if (fullConfig.settings["window:confirmclose"]) {
                         const workspace = await WorkspaceService.GetWorkspace(this.workspaceId);
                         if (isNonEmptyUnsavedWorkspace(workspace)) {
                             const choice = dialog.showMessageBoxSync(this, {

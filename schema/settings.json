@@ -236,6 +236,9 @@
         "window:confirmclose": {
           "type": "boolean"
         },
+        "window:alwaysconfirmclose": {
+          "type": "boolean"
+        },
         "window:savelastwindow": {
           "type": "boolean"
         },

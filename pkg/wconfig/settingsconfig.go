@@ -142,6 +142,7 @@ type SettingsType struct {
 	WindowMagnifiedBlockBlurPrimaryPx   *int64   `json:"window:magnifiedblockblurprimarypx,omitempty"`
 	WindowMagnifiedBlockBlurSecondaryPx *int64   `json:"window:magnifiedblockblursecondarypx,omitempty"`
 	WindowConfirmClose                  bool     `json:"window:confirmclose,omitempty"`
+	WindowAlwaysConfirmClose            bool     `json:"window:alwaysconfirmclose,omitempty"`
 	WindowSaveLastWindow                bool     `json:"window:savelastwindow,omitempty"`
 	WindowDimensions                    string   `json:"window:dimensions,omitempty"`
 	WindowZoom                          *float64 `json:"window:zoom,omitempty"`
