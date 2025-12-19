@@ -252,7 +252,7 @@ func processToolCallInternal(backend UseChatBackend, toolCall uctypes.WaveToolCa
 
 	if toolCall.ToolUseData.Approval == uctypes.ApprovalNeedsApproval {
 		log.Printf("  waiting for approval...\n")
-		approval, err := WaitForToolApproval(context.Background(), toolCall.ID)
+		approval, err := WaitForToolApproval(sseHandler.Context(), toolCall.ID)
 		if err != nil || approval == "" {
 			approval = uctypes.ApprovalCanceled
 		}
@@ -321,7 +321,7 @@ func processToolCall(backend UseChatBackend, toolCall uctypes.WaveToolCall, chat
 	return result
 }
 
-func processToolCalls(backend UseChatBackend, stopReason *uctypes.WaveStopReason, chatOpts uctypes.WaveChatOpts, sseHandler *sse.SSEHandlerCh, metrics *uctypes.AIMetrics) {
+func processAllToolCalls(backend UseChatBackend, stopReason *uctypes.WaveStopReason, chatOpts uctypes.WaveChatOpts, sseHandler *sse.SSEHandlerCh, metrics *uctypes.AIMetrics) {
 	for _, toolCall := range stopReason.ToolCalls {
 		activeToolMap.Set(toolCall.ID, true)
 		defer activeToolMap.Delete(toolCall.ID)
@@ -351,17 +351,35 @@ func processToolCalls(backend UseChatBackend, stopReason *uctypes.WaveStopReason
 
 	var toolResults []uctypes.AIToolResult
 	for _, toolCall := range stopReason.ToolCalls {
+		if sseHandler.Err() != nil {
+			log.Printf("AI tool processing stopped: %v\n", sseHandler.Err())
+			break
+		}
 		result := processToolCall(backend, toolCall, chatOpts, sseHandler, metrics)
 		toolResults = append(toolResults, result)
-		UnregisterToolApproval(toolCall.ID)
 	}
 
-	toolResultMsgs, err := backend.ConvertToolResultsToNativeChatMessage(toolResults)
-	if err != nil {
-		log.Printf("Failed to convert tool results to native chat messages: %v", err)
-	} else {
-		for _, msg := range toolResultMsgs {
-			chatstore.DefaultChatStore.PostMessage(chatOpts.ChatId, &chatOpts.Config, msg)
+	// Cleanup: unregister approvals, remove incomplete/canceled tool calls, and filter results
+	var filteredResults []uctypes.AIToolResult
+	for i, toolCall := range stopReason.ToolCalls {
+		UnregisterToolApproval(toolCall.ID)
+		hasResult := i < len(toolResults)
+		shouldRemove := !hasResult || (toolCall.ToolUseData != nil && toolCall.ToolUseData.Approval == uctypes.ApprovalCanceled)
+		if shouldRemove {
+			backend.RemoveToolUseCall(chatOpts.ChatId, toolCall.ID)
+		} else if hasResult {
+			filteredResults = append(filteredResults, toolResults[i])
+		}
+	}
+
+	if len(filteredResults) > 0 {
+		toolResultMsgs, err := backend.ConvertToolResultsToNativeChatMessage(filteredResults)
+		if err != nil {
+			log.Printf("Failed to convert tool results to native chat messages: %v", err)
+		} else {
+			for _, msg := range toolResultMsgs {
+				chatstore.DefaultChatStore.PostMessage(chatOpts.ChatId, &chatOpts.Config, msg)
+			}
 		}
 	}
 }
@@ -455,7 +473,7 @@ func RunAIChat(ctx context.Context, sseHandler *sse.SSEHandlerCh, backend UseCha
 		}
 		if stopReason != nil && stopReason.Kind == uctypes.StopKindToolUse {
 			metrics.ToolUseCount += len(stopReason.ToolCalls)
-			processToolCalls(backend, stopReason, chatOpts, sseHandler, metrics)
+			processAllToolCalls(backend, stopReason, chatOpts, sseHandler, metrics)
 			cont = &uctypes.WaveContinueResponse{
 				Model:            chatOpts.Config.Model,
 				ContinueFromKind: uctypes.StopKindToolUse,
