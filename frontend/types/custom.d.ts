@@ -7,33 +7,27 @@ import type * as rxjs from "rxjs";
 
 declare global {
     type GlobalAtomsType = {
-        clientId: jotai.Atom<string>; // readonly
         builderId: jotai.PrimitiveAtom<string>; // readonly (for builder mode)
         builderAppId: jotai.PrimitiveAtom<string>; // app being edited in builder mode
         waveWindowType: jotai.Atom<"tab" | "builder">; // derived from builderId
-        client: jotai.Atom<Client>; // driven from WOS
         uiContext: jotai.Atom<UIContext>; // driven from windowId, tabId
-        waveWindow: jotai.Atom<WaveWindow>; // driven from WOS
         workspace: jotai.Atom<Workspace>; // driven from WOS
         fullConfigAtom: jotai.PrimitiveAtom<FullConfigType>; // driven from WOS, settings -- updated via WebSocket
         waveaiModeConfigAtom: jotai.PrimitiveAtom<Record<string, AIModeConfigType>>; // resolved AI mode configs -- updated via WebSocket
         settingsAtom: jotai.Atom<SettingsType>; // derrived from fullConfig
         hasCustomAIPresetsAtom: jotai.Atom<boolean>; // derived from fullConfig
-        tabAtom: jotai.Atom<Tab>; // driven from WOS
         staticTabId: jotai.Atom<string>;
         isFullScreen: jotai.PrimitiveAtom<boolean>;
         zoomFactorAtom: jotai.PrimitiveAtom<number>;
         controlShiftDelayAtom: jotai.PrimitiveAtom<boolean>;
         prefersReducedMotionAtom: jotai.Atom<boolean>;
         updaterStatusAtom: jotai.PrimitiveAtom<UpdaterStatus>;
-        typeAheadModalAtom: jotai.PrimitiveAtom<TypeAheadModalType>;
         modalOpen: jotai.PrimitiveAtom<boolean>;
         allConnStatus: jotai.Atom<ConnStatus[]>;
         flashErrors: jotai.PrimitiveAtom<FlashErrorType[]>;
         notifications: jotai.PrimitiveAtom<NotificationType[]>;
         notificationPopoverMode: jotai.Atom<boolean>;
         reinitVersion: jotai.PrimitiveAtom<number>;
-        isTermMultiInput: jotai.PrimitiveAtom<boolean>;
         waveAIRateLimitInfoAtom: jotai.PrimitiveAtom<RateLimitInfo>;
     };
 
@@ -58,6 +52,16 @@ declare global {
 
     type TabLayoutData = {
         blockId: string;
+    };
+
+    type GlobalInitOptions = {
+        tabId?: string;
+        platform: NodeJS.Platform;
+        windowId: string;
+        clientId: string;
+        environment: "electron" | "renderer";
+        primaryTabStartup?: boolean;
+        builderId?: string;
     };
 
     type WaveInitOpts = {
@@ -287,7 +291,7 @@ declare global {
 
     declare type ViewComponent = React.FC<ViewComponentProps>;
 
-    type ViewModelClass = new (blockId: string, nodeModel: BlockNodeModel) => ViewModel;
+    type ViewModelClass = new (blockId: string, nodeModel: BlockNodeModel, tabModel: TabModel) => ViewModel;
 
     interface ViewModel {
         // The type of view, used for identifying and rendering the appropriate component.

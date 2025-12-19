@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { BlockNodeModel } from "@/app/block/blocktypes";
+import type { TabModel } from "@/app/store/tab-model";
 import { getApi, getBlockMetaKeyAtom, WOS } from "@/app/store/global";
 import { globalStore } from "@/app/store/jotaiStore";
 import { RpcApi } from "@/app/store/wshclientapi";
@@ -142,6 +143,7 @@ export class WaveConfigViewModel implements ViewModel {
     viewComponent = WaveConfigView;
     noPadding = atom(true);
     nodeModel: BlockNodeModel;
+    tabModel: TabModel;
 
     selectedFileAtom: PrimitiveAtom<ConfigFile>;
     fileContentAtom: PrimitiveAtom<string>;
@@ -168,9 +170,10 @@ export class WaveConfigViewModel implements ViewModel {
     storageBackendErrorAtom: PrimitiveAtom<string | null>;
     secretValueRef: HTMLTextAreaElement | null = null;
 
-    constructor(blockId: string, nodeModel: BlockNodeModel) {
+    constructor(blockId: string, nodeModel: BlockNodeModel, tabModel: TabModel) {
         this.blockId = blockId;
         this.nodeModel = nodeModel;
+        this.tabModel = tabModel;
         this.configDir = getApi().getConfigDir();
         const platform = getApi().getPlatform();
         this.saveShortcut = platform === "darwin" ? "Cmd+S" : "Alt+S";

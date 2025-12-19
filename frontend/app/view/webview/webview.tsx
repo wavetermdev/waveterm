@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { BlockNodeModel } from "@/app/block/blocktypes";
+import type { TabModel } from "@/app/store/tab-model";
 import { Search, useSearch } from "@/app/element/search";
 import { createBlock, getApi, getBlockMetaKeyAtom, getSettingsKeyAtom, openLink } from "@/app/store/global";
 import { getSimpleControlShiftAtom } from "@/app/store/keymodel";
@@ -44,6 +45,7 @@ function getWebviewPreloadUrl() {
 export class WebViewModel implements ViewModel {
     viewType: string;
     blockId: string;
+    tabModel: TabModel;
     noPadding?: Atom<boolean>;
     blockAtom: Atom<Block>;
     viewIcon: Atom<string | IconButtonDecl>;
@@ -69,8 +71,9 @@ export class WebViewModel implements ViewModel {
     partitionOverride: PrimitiveAtom<string> | null;
     userAgentType: Atom<string>;
 
-    constructor(blockId: string, nodeModel: BlockNodeModel) {
+    constructor(blockId: string, nodeModel: BlockNodeModel, tabModel: TabModel) {
         this.nodeModel = nodeModel;
+        this.tabModel = tabModel;
         this.viewType = "web";
         this.blockId = blockId;
         this.noPadding = atom(true);

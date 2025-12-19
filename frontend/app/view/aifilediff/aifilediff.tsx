@@ -1,6 +1,8 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import type { BlockNodeModel } from "@/app/block/blocktypes";
+import type { TabModel } from "@/app/store/tab-model";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { base64ToString } from "@/util/util";
@@ -17,6 +19,8 @@ type DiffData = {
 
 export class AiFileDiffViewModel implements ViewModel {
     blockId: string;
+    nodeModel: BlockNodeModel;
+    tabModel: TabModel;
     viewType = "aifilediff";
     blockAtom: jotai.Atom<Block>;
     diffDataAtom: jotai.PrimitiveAtom<DiffData | null>;
@@ -26,8 +30,10 @@ export class AiFileDiffViewModel implements ViewModel {
     viewName: jotai.Atom<string>;
     viewText: jotai.Atom<string>;
 
-    constructor(blockId: string) {
+    constructor(blockId: string, nodeModel: BlockNodeModel, tabModel: TabModel) {
         this.blockId = blockId;
+        this.nodeModel = nodeModel;
+        this.tabModel = tabModel;
         this.blockAtom = WOS.getWaveObjectAtom<Block>(`block:${blockId}`);
         this.diffDataAtom = jotai.atom(null) as jotai.PrimitiveAtom<DiffData | null>;
         this.errorAtom = jotai.atom(null) as jotai.PrimitiveAtom<string | null>;

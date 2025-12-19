@@ -4,21 +4,21 @@
 import Logo from "@/app/asset/logo.svg";
 import { Button } from "@/app/element/button";
 import { FlexiModal } from "@/app/modals/modal";
-import { disableGlobalKeybindings, enableGlobalKeybindings, globalRefocus } from "@/app/store/keymodel";
-import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
-import * as services from "@/store/services";
-import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
-import { useEffect, useRef, useState } from "react";
-import { debounce } from "throttle-debounce";
-
 import { OnboardingFeatures } from "@/app/onboarding/onboarding-features";
-import { atoms, globalStore } from "@/app/store/global";
+import { ClientModel } from "@/app/store/client-model";
+import { atoms } from "@/app/store/global";
+import { disableGlobalKeybindings, enableGlobalKeybindings, globalRefocus } from "@/app/store/keymodel";
 import { modalsModel } from "@/app/store/modalmodel";
 import * as WOS from "@/app/store/wos";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
+import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
+import * as services from "@/store/services";
 import { fireAndForget } from "@/util/util";
 import { atom, PrimitiveAtom, useAtom, useAtomValue, useSetAtom } from "jotai";
+import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
+import { useEffect, useRef, useState } from "react";
+import { debounce } from "throttle-debounce";
 
 // Page flow:
 //   init -> (telemetry enabled) -> features
@@ -30,7 +30,7 @@ const pageNameAtom: PrimitiveAtom<PageName> = atom<PageName>("init");
 
 const InitPage = ({ isCompact }: { isCompact: boolean }) => {
     const settings = useAtomValue(atoms.settingsAtom);
-    const clientData = useAtomValue(atoms.client);
+    const clientData = useAtomValue(ClientModel.getInstance().clientAtom);
     const [telemetryEnabled, setTelemetryEnabled] = useState<boolean>(!!settings["telemetry:enabled"]);
     const setPageName = useSetAtom(pageNameAtom);
 
@@ -157,7 +157,7 @@ const NoTelemetryStarPage = ({ isCompact }: { isCompact: boolean }) => {
     const setPageName = useSetAtom(pageNameAtom);
 
     const handleStarClick = async () => {
-        const clientId = globalStore.get(atoms.clientId);
+        const clientId = ClientModel.getInstance().clientId;
         await RpcApi.SetMetaCommand(TabRpcClient, {
             oref: WOS.makeORef("client", clientId),
             meta: { "onboarding:githubstar": true },
@@ -167,7 +167,7 @@ const NoTelemetryStarPage = ({ isCompact }: { isCompact: boolean }) => {
     };
 
     const handleMaybeLater = async () => {
-        const clientId = globalStore.get(atoms.clientId);
+        const clientId = ClientModel.getInstance().clientId;
         await RpcApi.SetMetaCommand(TabRpcClient, {
             oref: WOS.makeORef("client", clientId),
             meta: { "onboarding:githubstar": false },
@@ -227,7 +227,7 @@ const FeaturesPage = () => {
 const NewInstallOnboardingModal = () => {
     const modalRef = useRef<HTMLDivElement | null>(null);
     const [pageName, setPageName] = useAtom(pageNameAtom);
-    const clientData = useAtomValue(atoms.client);
+    const clientData = useAtomValue(ClientModel.getInstance().clientAtom);
     const [isCompact, setIsCompact] = useState<boolean>(window.innerHeight < 800);
 
     const updateModalHeight = () => {

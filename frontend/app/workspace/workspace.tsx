@@ -7,6 +7,7 @@ import { CenteredDiv } from "@/app/element/quickelems";
 import { ModalsRenderer } from "@/app/modals/modalsrenderer";
 import { TabBar } from "@/app/tab/tabbar";
 import { TabContent } from "@/app/tab/tabcontent";
+import { getTabModelByTabId, TabModelContext } from "@/app/store/tab-model";
 import { Widgets } from "@/app/workspace/widgets";
 import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
 import { atoms, getApi } from "@/store/global";
@@ -78,7 +79,9 @@ const WorkspaceElem = memo(() => {
                                 <CenteredDiv>No Active Tab</CenteredDiv>
                             ) : (
                                 <div className="flex flex-row h-full">
-                                    <TabContent key={tabId} tabId={tabId} />
+                                    <TabModelContext.Provider value={getTabModelByTabId(tabId)}>
+                                        <TabContent key={tabId} tabId={tabId} />
+                                    </TabModelContext.Provider>
                                     <Widgets />
                                 </div>
                             )}

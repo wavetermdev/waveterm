@@ -3,6 +3,7 @@
 
 import { Block, SubBlock } from "@/app/block/block";
 import { Search, useSearch } from "@/app/element/search";
+import { useTabModel } from "@/app/store/tab-model";
 import { waveEventSubscribe } from "@/app/store/wps";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
@@ -164,11 +165,12 @@ const TerminalView = ({ blockId, model }: ViewComponentProps<TermViewModel>) => 
     }
     const termModeRef = React.useRef(termMode);
 
+    const tabModel = useTabModel();
     const termFontSize = jotai.useAtomValue(model.fontSizeAtom);
     const fullConfig = globalStore.get(atoms.fullConfigAtom);
     const connFontFamily = fullConfig.connections?.[blockData?.meta?.connection]?.["term:fontfamily"];
     const isFocused = jotai.useAtomValue(model.nodeModel.isFocused);
-    const isMI = jotai.useAtomValue(atoms.isTermMultiInput);
+    const isMI = jotai.useAtomValue(tabModel.isTermMultiInput);
     const isBasicTerm = termMode != "vdom" && blockData?.meta?.controller != "cmd"; // needs to match isBasicTerm
 
     // search
@@ -264,6 +266,7 @@ const TerminalView = ({ blockId, model }: ViewComponentProps<TermViewModel>) => 
         const termMacOptionIsMeta = globalStore.get(termMacOptionIsMetaAtom) ?? false;
         const wasFocused = model.termRef.current != null && globalStore.get(model.nodeModel.isFocused);
         const termWrap = new TermWrap(
+            tabModel.tabId,
             blockId,
             connectElemRef.current,
             {

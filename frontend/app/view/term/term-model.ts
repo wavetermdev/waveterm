@@ -3,6 +3,7 @@
 
 import { BlockNodeModel } from "@/app/block/blocktypes";
 import { appHandleKeyDown } from "@/app/store/keymodel";
+import type { TabModel } from "@/app/store/tab-model";
 import { waveEventSubscribe } from "@/app/store/wps";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { makeFeBlockRouteId } from "@/app/store/wshrouter";
@@ -39,6 +40,7 @@ import { TermWrap } from "./termwrap";
 export class TermViewModel implements ViewModel {
     viewType: string;
     nodeModel: BlockNodeModel;
+    tabModel: TabModel;
     connected: boolean;
     termRef: React.RefObject<TermWrap> = { current: null };
     blockAtom: jotai.Atom<Block>;
@@ -69,9 +71,10 @@ export class TermViewModel implements ViewModel {
     isRestarting: jotai.PrimitiveAtom<boolean>;
     searchAtoms?: SearchAtoms;
 
-    constructor(blockId: string, nodeModel: BlockNodeModel) {
+    constructor(blockId: string, nodeModel: BlockNodeModel, tabModel: TabModel) {
         this.viewType = "term";
         this.blockId = blockId;
+        this.tabModel = tabModel;
         this.termWshClient = new TermWshClient(blockId, this);
         DefaultRouter.registerRoute(makeFeBlockRouteId(blockId), this.termWshClient);
         this.nodeModel = nodeModel;
@@ -183,7 +186,7 @@ export class TermViewModel implements ViewModel {
                     }
                 }
             }
-            const isMI = get(atoms.isTermMultiInput);
+            const isMI = get(this.tabModel.isTermMultiInput);
             if (isMI && this.isBasicTerm(get)) {
                 rtn.push({
                     elemtype: "textbutton",
@@ -191,7 +194,7 @@ export class TermViewModel implements ViewModel {
                     className: "yellow !py-[2px] !px-[10px] text-[11px] font-[500]",
                     title: "Input will be sent to all connected terminals (click to disable)",
                     onClick: () => {
-                        globalStore.set(atoms.isTermMultiInput, false);
+                        globalStore.set(this.tabModel.isTermMultiInput, false);
                     },
                 });
             }
@@ -926,8 +929,4 @@ export function getAllBasicTermModels(): TermViewModel[] {
         }
     }
     return termModels;
-}
-
-export function makeTerminalModel(blockId: string, nodeModel: BlockNodeModel): TermViewModel {
-    return new TermViewModel(blockId, nodeModel);
 }

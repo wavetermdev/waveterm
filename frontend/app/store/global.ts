@@ -40,16 +40,6 @@ const Counters = new Map<string, number>();
 const ConnStatusMapAtom = atom(new Map<string, PrimitiveAtom<ConnStatus>>());
 const orefAtomCache = new Map<string, Map<string, Atom<any>>>();
 
-type GlobalInitOptions = {
-    tabId?: string;
-    platform: NodeJS.Platform;
-    windowId: string;
-    clientId: string;
-    environment: "electron" | "renderer";
-    primaryTabStartup?: boolean;
-    builderId?: string;
-};
-
 function initGlobal(initOpts: GlobalInitOptions) {
     globalEnvironment = initOpts.environment;
     globalPrimaryTabStartup = initOpts.primaryTabStartup ?? false;
@@ -59,7 +49,6 @@ function initGlobal(initOpts: GlobalInitOptions) {
 
 function initGlobalAtoms(initOpts: GlobalInitOptions) {
     const windowIdAtom = atom(initOpts.windowId) as PrimitiveAtom<string>;
-    const clientIdAtom = atom(initOpts.clientId) as PrimitiveAtom<string>;
     const builderIdAtom = atom(initOpts.builderId) as PrimitiveAtom<string>;
     const builderAppIdAtom = atom<string>(null) as PrimitiveAtom<string>;
     const waveWindowTypeAtom = atom((get) => {
@@ -101,23 +90,8 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
         console.log("failed to initialize onMenuItemAbout handler", e);
     }
 
-    const clientAtom: Atom<Client> = atom((get) => {
-        const clientId = get(clientIdAtom);
-        if (clientId == null) {
-            return null;
-        }
-        return WOS.getObjectValue(WOS.makeORef("client", clientId), get);
-    });
-    const windowDataAtom: Atom<WaveWindow> = atom((get) => {
-        const windowId = get(windowIdAtom);
-        if (windowId == null) {
-            return null;
-        }
-        const rtn = WOS.getObjectValue<WaveWindow>(WOS.makeORef("window", windowId), get);
-        return rtn;
-    });
     const workspaceAtom: Atom<Workspace> = atom((get) => {
-        const windowData = get(windowDataAtom);
+        const windowData = WOS.getObjectValue<WaveWindow>(WOS.makeORef("window", get(windowIdAtom)), get);
         if (windowData == null) {
             return null;
         }
@@ -140,9 +114,6 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
         }
         return false;
     }) as Atom<boolean>;
-    const tabAtom: Atom<Tab> = atom((get) => {
-        return WOS.getObjectValue(WOS.makeORef("tab", initOpts.tabId), get);
-    });
     // this is *the* tab that this tabview represents.  it should never change.
     const staticTabIdAtom: Atom<string> = atom(initOpts.tabId);
     const controlShiftDelayAtom = atom(false);
@@ -175,7 +146,6 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
         });
     }
 
-    const typeAheadModalAtom = atom({});
     const modalOpen = atom(false);
     const allConnStatusAtom = atom<ConnStatus[]>((get) => {
         const connStatusMap = get(ConnStatusMapAtom);
@@ -189,35 +159,29 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
     const rateLimitInfoAtom = atom(null) as PrimitiveAtom<RateLimitInfo>;
     atoms = {
         // initialized in wave.ts (will not be null inside of application)
-        clientId: clientIdAtom,
         builderId: builderIdAtom,
         builderAppId: builderAppIdAtom,
         waveWindowType: waveWindowTypeAtom,
         uiContext: uiContextAtom,
-        client: clientAtom,
-        waveWindow: windowDataAtom,
         workspace: workspaceAtom,
         fullConfigAtom,
         waveaiModeConfigAtom,
         settingsAtom,
         hasCustomAIPresetsAtom,
-        tabAtom,
         staticTabId: staticTabIdAtom,
         isFullScreen: isFullScreenAtom,
         zoomFactorAtom,
         controlShiftDelayAtom,
         updaterStatusAtom,
         prefersReducedMotionAtom,
-        typeAheadModalAtom,
         modalOpen,
         allConnStatus: allConnStatusAtom,
         flashErrors: flashErrorsAtom,
         notifications: notificationsAtom,
         notificationPopoverMode: notificationPopoverModeAtom,
         reinitVersion,
-        isTermMultiInput: atom(false),
         waveAIRateLimitInfoAtom: rateLimitInfoAtom,
-    };
+    } as GlobalAtomsType;
 }
 
 function initGlobalWaveEventSubs(initOpts: WaveInitOpts) {
