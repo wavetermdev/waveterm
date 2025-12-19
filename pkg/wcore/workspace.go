@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"sort"
 	"time"
 
 	"github.com/google/uuid"
@@ -440,9 +441,9 @@ func ListWorkspaces(ctx context.Context) (waveobj.WorkspaceList, error) {
 	if err != nil {
 		return nil, err
 	}
-	workspaceToWindow := make(map[string]string)
+	workspaceToWindow := make(map[string]*waveobj.Window)
 	for _, window := range windows {
-		workspaceToWindow[window.WorkspaceId] = window.OID
+		workspaceToWindow[window.WorkspaceId] = window
 	}
 
 	var wl waveobj.WorkspaceList
@@ -450,15 +451,37 @@ func ListWorkspaces(ctx context.Context) (waveobj.WorkspaceList, error) {
 		if workspace.Name == "" || workspace.Icon == "" || workspace.Color == "" {
 			continue
 		}
-		windowId, ok := workspaceToWindow[workspace.OID]
-		if !ok {
-			windowId = ""
+		window, ok := workspaceToWindow[workspace.OID]
+		windowId := ""
+		if ok {
+			windowId = window.OID
 		}
 		wl = append(wl, &waveobj.WorkspaceListEntry{
 			WorkspaceId: workspace.OID,
 			WindowId:    windowId,
 		})
 	}
+
+	// Sort by most recently used (LastFocusTs descending)
+	sort.Slice(wl, func(i, j int) bool {
+		winI, _ := workspaceToWindow[wl[i].WorkspaceId]
+		winJ, _ := workspaceToWindow[wl[j].WorkspaceId]
+
+		// Workspaces without windows go to the end
+		if winI == nil && winJ == nil {
+			return false
+		}
+		if winI == nil {
+			return false
+		}
+		if winJ == nil {
+			return true
+		}
+
+		// Sort by LastFocusTs descending (most recent first)
+		return winI.LastFocusTs > winJ.LastFocusTs
+	})
+
 	return wl, nil
 }
 
