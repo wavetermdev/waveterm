@@ -43,8 +43,7 @@ var (
 	globalRateLimitInfo = &uctypes.RateLimitInfo{Unknown: true}
 	rateLimitLock       sync.Mutex
 
-	activeToolMap = ds.MakeSyncMap[bool]() // key is toolcallid
-	activeChats   = ds.MakeSyncMap[bool]() // key is chatid
+	activeChats = ds.MakeSyncMap[bool]() // key is chatid
 )
 
 func getSystemPrompt(apiType string, model string, isBuilder bool, hasToolsCapability bool, widgetAccess bool) []string {
@@ -322,11 +321,6 @@ func processToolCall(backend UseChatBackend, toolCall uctypes.WaveToolCall, chat
 }
 
 func processAllToolCalls(backend UseChatBackend, stopReason *uctypes.WaveStopReason, chatOpts uctypes.WaveChatOpts, sseHandler *sse.SSEHandlerCh, metrics *uctypes.AIMetrics) {
-	for _, toolCall := range stopReason.ToolCalls {
-		activeToolMap.Set(toolCall.ID, true)
-		defer activeToolMap.Delete(toolCall.ID)
-	}
-
 	// Create and send all data-tooluse packets at the beginning
 	for i := range stopReason.ToolCalls {
 		toolCall := &stopReason.ToolCalls[i]
