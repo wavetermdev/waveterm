@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"slices"
 	"strings"
 
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/aiutil"
@@ -357,4 +358,39 @@ func UpdateToolUseData(chatId string, callId string, newToolUseData uctypes.UIMe
 	}
 
 	return fmt.Errorf("tool call with callId %s not found in chat %s", callId, chatId)
+}
+
+func RemoveToolUseCall(chatId string, callId string) error {
+	chat := chatstore.DefaultChatStore.Get(chatId)
+	if chat == nil {
+		return fmt.Errorf("chat not found: %s", chatId)
+	}
+
+	for _, genMsg := range chat.NativeMessages {
+		chatMsg, ok := genMsg.(*StoredChatMessage)
+		if !ok {
+			continue
+		}
+		idx := chatMsg.Message.FindToolCallIndex(callId)
+		if idx == -1 {
+			continue
+		}
+		updatedMsg := chatMsg.Copy()
+		updatedMsg.Message.ToolCalls = slices.Delete(updatedMsg.Message.ToolCalls, idx, idx+1)
+		if len(updatedMsg.Message.ToolCalls) == 0 {
+			chatstore.DefaultChatStore.RemoveMessage(chatId, chatMsg.MessageId)
+		} else {
+			aiOpts := &uctypes.AIOptsType{
+				APIType:    chat.APIType,
+				Model:      chat.Model,
+				APIVersion: chat.APIVersion,
+			}
+			if err := chatstore.DefaultChatStore.PostMessage(chatId, aiOpts, updatedMsg); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+
+	return nil
 }

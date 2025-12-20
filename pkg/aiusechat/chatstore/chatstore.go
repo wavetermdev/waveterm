@@ -5,6 +5,7 @@ package chatstore
 
 import (
 	"fmt"
+	"slices"
 	"sync"
 
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
@@ -108,4 +109,21 @@ func (cs *ChatStore) PostMessage(chatId string, aiOpts *uctypes.AIOptsType, mess
 	chat.NativeMessages = append(chat.NativeMessages, message)
 
 	return nil
+}
+
+func (cs *ChatStore) RemoveMessage(chatId string, messageId string) bool {
+	cs.lock.Lock()
+	defer cs.lock.Unlock()
+
+	chat := cs.chats[chatId]
+	if chat == nil {
+		return false
+	}
+
+	initialLen := len(chat.NativeMessages)
+	chat.NativeMessages = slices.DeleteFunc(chat.NativeMessages, func(msg uctypes.GenAIMessage) bool {
+		return msg.GetMessageId() == messageId
+	})
+
+	return len(chat.NativeMessages) < initialLen
 }

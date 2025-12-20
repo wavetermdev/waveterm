@@ -6,7 +6,7 @@ import { waveAIHasSelection } from "@/app/aipanel/waveai-focus-utils";
 import { ErrorBoundary } from "@/app/element/errorboundary";
 import { atoms, getSettingsKeyAtom } from "@/app/store/global";
 import { globalStore } from "@/app/store/jotaiStore";
-import { useTabModel } from "@/app/store/tab-model";
+import { maybeUseTabModel } from "@/app/store/tab-model";
 import { checkKeyPressed, keydownWrapper } from "@/util/keyutil";
 import { isMacOS, isWindows } from "@/util/platformutil";
 import { cn } from "@/util/util";
@@ -255,7 +255,7 @@ const AIPanelComponentInner = memo(() => {
     const isFocused = jotai.useAtomValue(model.isWaveAIFocusedAtom);
     const telemetryEnabled = jotai.useAtomValue(getSettingsKeyAtom("telemetry:enabled")) ?? false;
     const isPanelVisible = jotai.useAtomValue(model.getPanelVisibleAtom());
-    const tabModel = useTabModel();
+    const tabModel = maybeUseTabModel();
     const defaultMode = jotai.useAtomValue(getSettingsKeyAtom("waveai:defaultmode")) ?? "waveai@balanced";
     const aiModeConfigs = jotai.useAtomValue(model.aiModeConfigs);
 

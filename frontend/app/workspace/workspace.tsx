@@ -7,7 +7,6 @@ import { CenteredDiv } from "@/app/element/quickelems";
 import { ModalsRenderer } from "@/app/modals/modalsrenderer";
 import { TabBar } from "@/app/tab/tabbar";
 import { TabContent } from "@/app/tab/tabcontent";
-import { getTabModelByTabId, TabModelContext } from "@/app/store/tab-model";
 import { Widgets } from "@/app/workspace/widgets";
 import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
 import { atoms, getApi } from "@/store/global";
@@ -70,7 +69,7 @@ const WorkspaceElem = memo(() => {
                             className="overflow-hidden"
                         >
                             <div ref={aiPanelWrapperRef} className="w-full h-full">
-                                <AIPanel />
+                                {tabId !== "" && <AIPanel />}
                             </div>
                         </Panel>
                         <PanelResizeHandle className="w-0.5 bg-transparent hover:bg-zinc-500/20 transition-colors" />
@@ -79,9 +78,7 @@ const WorkspaceElem = memo(() => {
                                 <CenteredDiv>No Active Tab</CenteredDiv>
                             ) : (
                                 <div className="flex flex-row h-full">
-                                    <TabModelContext.Provider value={getTabModelByTabId(tabId)}>
-                                        <TabContent key={tabId} tabId={tabId} />
-                                    </TabModelContext.Provider>
+                                    <TabContent key={tabId} tabId={tabId} />
                                     <Widgets />
                                 </div>
                             )}

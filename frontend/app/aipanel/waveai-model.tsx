@@ -42,12 +42,12 @@ export interface DroppedFile {
 
 export class WaveAIModel {
     private static instance: WaveAIModel | null = null;
-    private inputRef: React.RefObject<AIPanelInputRef> | null = null;
-    private scrollToBottomCallback: (() => void) | null = null;
-    private useChatSendMessage: UseChatSendMessageType | null = null;
-    private useChatSetMessages: UseChatSetMessagesType | null = null;
-    private useChatStatus: ChatStatus = "ready";
-    private useChatStop: (() => void) | null = null;
+    inputRef: React.RefObject<AIPanelInputRef> | null = null;
+    scrollToBottomCallback: (() => void) | null = null;
+    useChatSendMessage: UseChatSendMessageType | null = null;
+    useChatSetMessages: UseChatSetMessagesType | null = null;
+    useChatStatus: ChatStatus = "ready";
+    useChatStop: (() => void) | null = null;
     // Used for injecting Wave-specific message data into DefaultChatTransport's prepareSendMessagesRequest
     realMessage: AIMessage | null = null;
     orefContext: ORef;
@@ -324,6 +324,29 @@ export class WaveAIModel {
         }
     }
 
+    async reloadChatFromBackend(chatIdValue: string): Promise<WaveUIMessage[]> {
+        const chatData = await RpcApi.GetWaveAIChatCommand(TabRpcClient, { chatid: chatIdValue });
+        const messages: UIMessage[] = chatData?.messages ?? [];
+        globalStore.set(this.isChatEmptyAtom, messages.length === 0);
+        return messages as WaveUIMessage[];
+    }
+
+    async stopResponse() {
+        this.useChatStop?.();
+        await new Promise((resolve) => setTimeout(resolve, 500));
+
+        const chatIdValue = globalStore.get(this.chatId);
+        if (!chatIdValue) {
+            return;
+        }
+        try {
+            const messages = await this.reloadChatFromBackend(chatIdValue);
+            this.useChatSetMessages?.(messages);
+        } catch (error) {
+            console.error("Failed to reload chat after stop:", error);
+        }
+    }
+
     getAndClearMessage(): AIMessage | null {
         const msg = this.realMessage;
         this.realMessage = null;
@@ -448,10 +471,7 @@ export class WaveAIModel {
         }
 
         try {
-            const chatData = await RpcApi.GetWaveAIChatCommand(TabRpcClient, { chatid: chatIdValue });
-            const messages: UIMessage[] = chatData?.messages ?? [];
-            globalStore.set(this.isChatEmptyAtom, messages.length === 0);
-            return messages as WaveUIMessage[]; // this is safe just different RPC type vs the FE type, but they are compatible
+            return await this.reloadChatFromBackend(chatIdValue);
         } catch (error) {
             console.error("Failed to load chat:", error);
             this.setError("Failed to load chat. Starting new chat...");

@@ -7,9 +7,9 @@ import { globalStore } from "./jotaiStore";
 import * as WOS from "./wos";
 
 const tabModelCache = new Map<string, TabModel>();
-const activeTabIdAtom = atom<string>(null) as PrimitiveAtom<string>;
+export const activeTabIdAtom = atom<string>(null) as PrimitiveAtom<string>;
 
-class TabModel {
+export class TabModel {
     tabId: string;
     tabAtom: Atom<Tab>;
     tabNumBlocksAtom: Atom<number>;
@@ -40,7 +40,7 @@ class TabModel {
     }
 }
 
-function getTabModelByTabId(tabId: string): TabModel {
+export function getTabModelByTabId(tabId: string): TabModel {
     let model = tabModelCache.get(tabId);
     if (model == null) {
         model = new TabModel(tabId);
@@ -49,7 +49,7 @@ function getTabModelByTabId(tabId: string): TabModel {
     return model;
 }
 
-function getActiveTabModel(): TabModel | null {
+export function getActiveTabModel(): TabModel | null {
     const activeTabId = globalStore.get(activeTabIdAtom);
     if (activeTabId == null) {
         return null;
@@ -57,9 +57,9 @@ function getActiveTabModel(): TabModel | null {
     return getTabModelByTabId(activeTabId);
 }
 
-const TabModelContext = createContext<TabModel | undefined>(undefined);
+export const TabModelContext = createContext<TabModel | undefined>(undefined);
 
-function useTabModel(): TabModel {
+export function useTabModel(): TabModel {
     const model = useContext(TabModelContext);
     if (model == null) {
         throw new Error("useTabModel must be used within a TabModelProvider");
@@ -67,4 +67,6 @@ function useTabModel(): TabModel {
     return model;
 }
 
-export { activeTabIdAtom, getActiveTabModel, getTabModelByTabId, TabModel, TabModelContext, useTabModel };
+export function maybeUseTabModel(): TabModel {
+    return useContext(TabModelContext);
+}
