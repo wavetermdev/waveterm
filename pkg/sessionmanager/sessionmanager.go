@@ -9,12 +9,49 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"strings"
+	"sync"
 	"sync/atomic"
 
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
 )
+
+type SessionManager struct {
+	clientId  string
+	sessionId string
+	lock      sync.Mutex
+	routes    map[string]bool
+}
+
+var globalSessionManager atomic.Pointer[SessionManager]
+
+func GetSessionManager() *SessionManager {
+	return globalSessionManager.Load()
+}
+
+func initSessionManager(clientId, sessionId string) *SessionManager {
+	sm := &SessionManager{
+		clientId:  clientId,
+		sessionId: sessionId,
+		routes:    make(map[string]bool),
+	}
+	globalSessionManager.Store(sm)
+	return sm
+}
+
+func (sm *SessionManager) RegisterRoute(routeId string) {
+	sm.lock.Lock()
+	defer sm.lock.Unlock()
+	sm.routes[routeId] = true
+}
+
+func (sm *SessionManager) UnregisterRoute(routeId string) {
+	sm.lock.Lock()
+	defer sm.lock.Unlock()
+	delete(sm.routes, routeId)
+}
 
 func GetSessionSocketPath(clientId string, sessionId string) (string, error) {
 	homeDir := wavebase.GetHomeDir()
@@ -62,6 +99,7 @@ func handleSessionConnection(conn net.Conn, clientId string, sessionId string, a
 			routeIdPtr := routeIdContainer.Load()
 			if routeIdPtr != nil && *routeIdPtr != "" {
 				wshutil.DefaultRouter.UnregisterRoute(*routeIdPtr)
+				GetSessionManager().UnregisterRoute(*routeIdPtr)
 			}
 		}()
 		wshutil.AdaptStreamToMsgCh(conn, proxy.FromRemoteCh)
@@ -83,6 +121,7 @@ func handleSessionConnection(conn net.Conn, clientId string, sessionId string, a
 	}
 	routeIdContainer.Store(&routeId)
 	wshutil.DefaultRouter.RegisterRoute(routeId, proxy, true)
+	GetSessionManager().RegisterRoute(routeId)
 }
 
 func runSessionListener(listener net.Listener, clientId string, sessionId string, authToken string) {
@@ -102,10 +141,20 @@ func runSessionListener(listener net.Listener, clientId string, sessionId string
 }
 
 func RunSessionManager(clientId string, sessionId string, authToken string) error {
+	initSessionManager(clientId, sessionId)
+	registerSessionManagerRoute()
+
 	socketPath, err := GetSessionSocketPath(clientId, sessionId)
 	if err != nil {
 		return err
 	}
+
+	logPath := strings.TrimSuffix(socketPath, ".sock") + ".log"
+	logFile, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0600)
+	if err != nil {
+		return fmt.Errorf("error creating log file: %v", err)
+	}
+	log.SetOutput(logFile)
 
 	listener, err := MakeSessionUnixListener(socketPath)
 	if err != nil {
