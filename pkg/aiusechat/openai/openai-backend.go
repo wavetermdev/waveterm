@@ -388,12 +388,13 @@ const (
 )
 
 type openaiBlockState struct {
-	kind         openaiBlockKind
-	localID      string // For SSE streaming to UI
-	toolCallID   string // For function calls
-	toolName     string // For function calls
-	summaryCount int    // For reasoning: number of summary parts seen
-	partialJSON  []byte // For function calls: accumulated JSON arguments
+	kind            openaiBlockKind
+	localID         string // For SSE streaming to UI
+	toolCallID      string // For function calls
+	toolName        string // For function calls
+	summaryCount    int    // For reasoning: number of summary parts seen
+	partialJSON     []byte // For function calls: accumulated JSON arguments
+	accumulatedText string // For text blocks: accumulated text content
 }
 
 type openaiStreamingState struct {
@@ -436,6 +437,27 @@ func UpdateToolUseData(chatId string, callId string, newToolUseData uctypes.UIMe
 	}
 
 	return fmt.Errorf("function call with callId %s not found in chat %s", callId, chatId)
+}
+
+func RemoveToolUseCall(chatId string, callId string) error {
+	chat := chatstore.DefaultChatStore.Get(chatId)
+	if chat == nil {
+		return fmt.Errorf("chat not found: %s", chatId)
+	}
+
+	for _, genMsg := range chat.NativeMessages {
+		chatMsg, ok := genMsg.(*OpenAIChatMessage)
+		if !ok {
+			continue
+		}
+
+		if chatMsg.FunctionCall != nil && chatMsg.FunctionCall.CallId == callId {
+			chatstore.DefaultChatStore.RemoveMessage(chatId, chatMsg.MessageId)
+			return nil
+		}
+	}
+
+	return nil
 }
 
 func RunOpenAIChatStep(
@@ -612,16 +634,6 @@ func handleOpenAIStreamingResp(ctx context.Context, sse *sse.SSEHandlerCh, decod
 
 	// SSE event processing loop
 	for {
-		// Check for context cancellation
-		if err := ctx.Err(); err != nil {
-			_ = sse.AiMsgError("request cancelled")
-			return &uctypes.WaveStopReason{
-				Kind:      uctypes.StopKindCanceled,
-				ErrorType: "cancelled",
-				ErrorText: "request cancelled",
-			}, rtnMessages
-		}
-
 		event, err := decoder.Decode()
 		if err != nil {
 			if errors.Is(err, io.EOF) {
@@ -631,6 +643,19 @@ func handleOpenAIStreamingResp(ctx context.Context, sse *sse.SSEHandlerCh, decod
 					Kind:      uctypes.StopKindError,
 					ErrorType: "protocol",
 					ErrorText: "stream ended unexpectedly without completion",
+				}, rtnMessages
+			}
+			// Check if client disconnected
+			if sse.Err() != nil {
+				// SSE connection broken (client stopped/disconnected)
+				partialMessages := extractPartialTextFromState(state)
+				if partialMessages != nil {
+					rtnMessages = append(rtnMessages, partialMessages...)
+				}
+				return &uctypes.WaveStopReason{
+					Kind:      uctypes.StopKindCanceled,
+					ErrorType: "client_disconnect",
+					ErrorText: "client disconnected",
 				}, rtnMessages
 			}
 			// transport error mid-stream
@@ -643,16 +668,48 @@ func handleOpenAIStreamingResp(ctx context.Context, sse *sse.SSEHandlerCh, decod
 		}
 
 		if finalStopReason, finalMessages := handleOpenAIEvent(event, sse, state, cont); finalStopReason != nil {
-			// Either error or response.completed triggered return
 			rtnStopReason = finalStopReason
 			if finalMessages != nil {
 				rtnMessages = finalMessages
+			} else if finalStopReason.Kind == uctypes.StopKindCanceled {
+				partialMessages := extractPartialTextFromState(state)
+				if partialMessages != nil {
+					rtnMessages = append(rtnMessages, partialMessages...)
+				}
 			}
 			return finalStopReason, rtnMessages
 		}
 	}
 
 	// unreachable
+}
+
+// extractPartialTextFromState extracts accumulated text from streaming state when client disconnects
+func extractPartialTextFromState(state *openaiStreamingState) []*OpenAIChatMessage {
+	var textContent []OpenAIMessageContent
+
+	for _, blockState := range state.blockMap {
+		if blockState.kind == openaiBlockText && blockState.accumulatedText != "" {
+			textContent = append(textContent, OpenAIMessageContent{
+				Type: "output_text",
+				Text: blockState.accumulatedText,
+			})
+		}
+	}
+
+	if len(textContent) == 0 {
+		return nil
+	}
+
+	assistantMessage := &OpenAIChatMessage{
+		MessageId: uuid.New().String(),
+		Message: &OpenAIMessage{
+			Role:    "assistant",
+			Content: textContent,
+		},
+	}
+
+	return []*OpenAIChatMessage{assistantMessage}
 }
 
 // handleOpenAIEvent processes one SSE event block. It may emit SSE parts
@@ -667,6 +724,14 @@ func handleOpenAIEvent(
 	state *openaiStreamingState,
 	cont *uctypes.WaveContinueResponse,
 ) (final *uctypes.WaveStopReason, messages []*OpenAIChatMessage) {
+	if err := sse.Err(); err != nil {
+		return &uctypes.WaveStopReason{
+			Kind:      uctypes.StopKindCanceled,
+			ErrorType: "client_disconnect",
+			ErrorText: "client disconnected",
+		}, nil
+	}
+
 	eventName := event.Event()
 	data := event.Data()
 
@@ -770,6 +835,7 @@ func handleOpenAIEvent(
 		}
 
 		if st := state.blockMap[ev.ItemId]; st != nil && st.kind == openaiBlockText {
+			st.accumulatedText += ev.Delta
 			_ = sse.AiMsgTextDelta(st.localID, ev.Delta)
 		}
 		return nil, nil

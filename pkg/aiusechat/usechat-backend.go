@@ -32,6 +32,10 @@ type UseChatBackend interface {
 	// This is used to update the UI state for tool execution (approval status, results, etc.)
 	UpdateToolUseData(chatId string, toolCallId string, toolUseData uctypes.UIMessageDataToolUse) error
 
+	// RemoveToolUseCall removes a tool use call from the chat's native messages.
+	// This is used to clean up incomplete or canceled tool calls when stopping execution.
+	RemoveToolUseCall(chatId string, toolCallId string) error
+
 	// ConvertToolResultsToNativeChatMessage converts tool execution results into native chat messages
 	// that can be sent back to the AI backend. Returns a slice of messages (some backends may
 	// require multiple messages per tool result).
@@ -94,6 +98,10 @@ func (b *openaiResponsesBackend) UpdateToolUseData(chatId string, toolCallId str
 	return openai.UpdateToolUseData(chatId, toolCallId, toolUseData)
 }
 
+func (b *openaiResponsesBackend) RemoveToolUseCall(chatId string, toolCallId string) error {
+	return openai.RemoveToolUseCall(chatId, toolCallId)
+}
+
 func (b *openaiResponsesBackend) ConvertToolResultsToNativeChatMessage(toolResults []uctypes.AIToolResult) ([]uctypes.GenAIMessage, error) {
 	msgs, err := openai.ConvertToolResultsToOpenAIChatMessage(toolResults)
 	if err != nil {
@@ -148,6 +156,10 @@ func (b *openaiCompletionsBackend) UpdateToolUseData(chatId string, toolCallId s
 	return openaichat.UpdateToolUseData(chatId, toolCallId, toolUseData)
 }
 
+func (b *openaiCompletionsBackend) RemoveToolUseCall(chatId string, toolCallId string) error {
+	return openaichat.RemoveToolUseCall(chatId, toolCallId)
+}
+
 func (b *openaiCompletionsBackend) ConvertToolResultsToNativeChatMessage(toolResults []uctypes.AIToolResult) ([]uctypes.GenAIMessage, error) {
 	return openaichat.ConvertToolResultsToNativeChatMessage(toolResults)
 }
@@ -179,6 +191,10 @@ func (b *anthropicBackend) RunChatStep(
 
 func (b *anthropicBackend) UpdateToolUseData(chatId string, toolCallId string, toolUseData uctypes.UIMessageDataToolUse) error {
 	return fmt.Errorf("UpdateToolUseData not implemented for anthropic backend")
+}
+
+func (b *anthropicBackend) RemoveToolUseCall(chatId string, toolCallId string) error {
+	return fmt.Errorf("RemoveToolUseCall not implemented for anthropic backend")
 }
 
 func (b *anthropicBackend) ConvertToolResultsToNativeChatMessage(toolResults []uctypes.AIToolResult) ([]uctypes.GenAIMessage, error) {
@@ -219,6 +235,10 @@ func (b *geminiBackend) RunChatStep(
 
 func (b *geminiBackend) UpdateToolUseData(chatId string, toolCallId string, toolUseData uctypes.UIMessageDataToolUse) error {
 	return gemini.UpdateToolUseData(chatId, toolCallId, toolUseData)
+}
+
+func (b *geminiBackend) RemoveToolUseCall(chatId string, toolCallId string) error {
+	return gemini.RemoveToolUseCall(chatId, toolCallId)
 }
 
 func (b *geminiBackend) ConvertToolResultsToNativeChatMessage(toolResults []uctypes.AIToolResult) ([]uctypes.GenAIMessage, error) {

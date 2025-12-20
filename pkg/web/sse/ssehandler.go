@@ -89,6 +89,10 @@ func MakeSSEHandlerCh(w http.ResponseWriter, ctx context.Context) *SSEHandlerCh 
 	}
 }
 
+func (h *SSEHandlerCh) Context() context.Context {
+	return h.ctx
+}
+
 // SetupSSE configures the response headers and starts the writer goroutine
 func (h *SSEHandlerCh) SetupSSE() error {
 	h.lock.Lock()
