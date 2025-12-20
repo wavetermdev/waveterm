@@ -4,6 +4,7 @@
 package sessionmanager
 
 import (
+	"encoding/base64"
 	"fmt"
 	"log"
 	"net"
@@ -21,6 +22,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
+	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
 )
 
@@ -105,6 +107,77 @@ func (sm *SessionManager) StartProc(cmd string, args []string, env map[string]st
 	}
 	sm.SetCmd(ecmd, cmdPty)
 	return ecmd.Process.Pid, nil
+}
+
+func (sm *SessionManager) HandleInput(data wshrpc.CommandBlockInputData) error {
+	sm.lock.Lock()
+	defer sm.lock.Unlock()
+	
+	if sm.cmd == nil || sm.cmdPty == nil {
+		return fmt.Errorf("no active process")
+	}
+	
+	if len(data.InputData64) > 0 {
+		inputBuf := make([]byte, base64.StdEncoding.DecodedLen(len(data.InputData64)))
+		nw, err := base64.StdEncoding.Decode(inputBuf, []byte(data.InputData64))
+		if err != nil {
+			return fmt.Errorf("error decoding input data: %w", err)
+		}
+		_, err = sm.cmdPty.Write(inputBuf[:nw])
+		if err != nil {
+			return fmt.Errorf("error writing to pty: %w", err)
+		}
+	}
+	
+	if data.SigName != "" {
+		sig := normalizeSignal(data.SigName)
+		if sig != nil && sm.cmd.Process != nil {
+			err := sm.cmd.Process.Signal(sig)
+			if err != nil {
+				return fmt.Errorf("error sending signal: %w", err)
+			}
+		}
+	}
+	
+	if data.TermSize != nil {
+		err := pty.Setsize(sm.cmdPty, &pty.Winsize{
+			Rows: uint16(data.TermSize.Rows),
+			Cols: uint16(data.TermSize.Cols),
+		})
+		if err != nil {
+			return fmt.Errorf("error setting terminal size: %w", err)
+		}
+	}
+	
+	return nil
+}
+
+func normalizeSignal(sigName string) os.Signal {
+	sigName = strings.ToUpper(sigName)
+	sigName = strings.TrimPrefix(sigName, "SIG")
+	
+	switch sigName {
+	case "HUP":
+		return syscall.SIGHUP
+	case "INT":
+		return syscall.SIGINT
+	case "QUIT":
+		return syscall.SIGQUIT
+	case "KILL":
+		return syscall.SIGKILL
+	case "TERM":
+		return syscall.SIGTERM
+	case "USR1":
+		return syscall.SIGUSR1
+	case "USR2":
+		return syscall.SIGUSR2
+	case "STOP":
+		return syscall.SIGSTOP
+	case "CONT":
+		return syscall.SIGCONT
+	default:
+		return nil
+	}
 }
 
 func (sm *SessionManager) setupSignalHandlers() {

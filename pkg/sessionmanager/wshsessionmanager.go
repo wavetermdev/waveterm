@@ -101,6 +101,14 @@ func (impl *ServerImpl) SessionManagerStopProcCommand(ctx context.Context) error
 	return nil
 }
 
+func (impl *ServerImpl) SessionManagerInputCommand(ctx context.Context, data wshrpc.CommandBlockInputData) error {
+	sm := GetSessionManager()
+	if sm == nil {
+		return fmt.Errorf("session manager not initialized")
+	}
+	return sm.HandleInput(data)
+}
+
 func GetSessionManagerRpcClient() *wshutil.WshRpc {
 	sessionManagerClient_Once.Do(func() {
 		inputCh := make(chan []byte, DefaultInputChSize)

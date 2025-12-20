@@ -368,6 +368,7 @@ type WshRpcInterface interface {
 	// session manager
 	SessionManagerStartProcCommand(ctx context.Context, data CommandSessionManagerStartProcData) (*CommandSessionManagerStartProcRtnData, error)
 	SessionManagerStopProcCommand(ctx context.Context) error
+	SessionManagerInputCommand(ctx context.Context, data CommandBlockInputData) error
 }
 
 // for frontend
