@@ -634,6 +634,12 @@ func SessionManagerStartProcCommand(w *wshutil.WshRpc, data wshrpc.CommandSessio
 	return resp, err
 }
 
+// command "sessionmanagerstopproc", wshserver.SessionManagerStopProcCommand
+func SessionManagerStopProcCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) error {
+	_, err := sendRpcRequestCallHelper[any](w, "sessionmanagerstopproc", nil, opts)
+	return err
+}
+
 // command "setconfig", wshserver.SetConfigCommand
 func SetConfigCommand(w *wshutil.WshRpc, data wshrpc.MetaSettingsType, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "setconfig", data, opts)

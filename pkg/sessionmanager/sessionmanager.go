@@ -22,6 +22,8 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
 )
 
+const ShutdownDelayTime = 5 * time.Second
+
 type SessionManager struct {
 	clientId  string
 	sessionId string
@@ -29,6 +31,7 @@ type SessionManager struct {
 	routes    map[string]bool
 	listener  net.Listener
 	cmd       *exec.Cmd
+	cleanedUp bool
 }
 
 var globalSessionManager atomic.Pointer[SessionManager]
@@ -89,7 +92,7 @@ func (sm *SessionManager) setupSignalHandlers() {
 		if cmd != nil && cmd.Process != nil {
 			log.Printf("forwarding signal %v to child process\n", sig)
 			cmd.Process.Signal(sig)
-			time.Sleep(5 * time.Second)
+			time.Sleep(ShutdownDelayTime)
 		}
 
 		sm.Cleanup()
@@ -100,6 +103,11 @@ func (sm *SessionManager) setupSignalHandlers() {
 func (sm *SessionManager) Cleanup() {
 	sm.lock.Lock()
 	defer sm.lock.Unlock()
+
+	if sm.cleanedUp {
+		return
+	}
+	sm.cleanedUp = true
 
 	if sm.listener != nil {
 		if err := sm.listener.Close(); err != nil {

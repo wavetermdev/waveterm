@@ -527,6 +527,11 @@ class RpcApiType {
         return client.wshRpcCall("sessionmanagerstartproc", data, opts);
     }
 
+    // command "sessionmanagerstopproc" [call]
+    SessionManagerStopProcCommand(client: WshClient, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("sessionmanagerstopproc", null, opts);
+    }
+
     // command "setconfig" [call]
     SetConfigCommand(client: WshClient, data: SettingsType, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("setconfig", data, opts);
