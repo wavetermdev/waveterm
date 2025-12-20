@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/wavetermdev/waveterm/pkg/eventbus"
@@ -50,6 +51,15 @@ func SwitchWorkspace(ctx context.Context, windowId string, workspaceId string) (
 	err = wstore.DBUpdate(ctx, window)
 	if err != nil {
 		return nil, fmt.Errorf("error updating window: %w", err)
+	}
+
+	// Update lastused timestamp in workspace metadata for MRU sorting
+	wsORef := waveobj.MakeORef(waveobj.OType_Workspace, workspaceId)
+	currentTime := float64(time.Now().UnixMilli())
+	err = wstore.UpdateObjectMeta(ctx, wsORef, map[string]interface{}{"lastused": currentTime}, false)
+	if err != nil {
+		log.Printf("error updating workspace lastused timestamp: %v\n", err)
+		// Non-fatal, continue
 	}
 
 	deleted, _, err := DeleteWorkspace(ctx, curWsId, false)

@@ -462,24 +462,39 @@ func ListWorkspaces(ctx context.Context) (waveobj.WorkspaceList, error) {
 		})
 	}
 
-	// Sort by most recently used (LastFocusTs descending)
+	// Sort by most recently used (using workspace metadata for persistence)
 	sort.Slice(wl, func(i, j int) bool {
-		winI, _ := workspaceToWindow[wl[i].WorkspaceId]
-		winJ, _ := workspaceToWindow[wl[j].WorkspaceId]
+		wsI, _ := wstore.DBGet[*waveobj.Workspace](ctx, wl[i].WorkspaceId)
+		wsJ, _ := wstore.DBGet[*waveobj.Workspace](ctx, wl[j].WorkspaceId)
 
-		// Workspaces without windows go to the end
-		if winI == nil && winJ == nil {
-			return false
+		// Get last used timestamp from metadata (persistent) or window focus (active)
+		var tsI, tsJ int64
+
+		if wsI != nil {
+			if lastUsed, ok := wsI.Meta["lastused"].(float64); ok {
+				tsI = int64(lastUsed)
+			}
 		}
-		if winI == nil {
-			return false
-		}
-		if winJ == nil {
-			return true
+		// If workspace has open window, use the more recent of the two
+		if winI, ok := workspaceToWindow[wl[i].WorkspaceId]; ok && winI != nil {
+			if winI.LastFocusTs > tsI {
+				tsI = winI.LastFocusTs
+			}
 		}
 
-		// Sort by LastFocusTs descending (most recent first)
-		return winI.LastFocusTs > winJ.LastFocusTs
+		if wsJ != nil {
+			if lastUsed, ok := wsJ.Meta["lastused"].(float64); ok {
+				tsJ = int64(lastUsed)
+			}
+		}
+		if winJ, ok := workspaceToWindow[wl[j].WorkspaceId]; ok && winJ != nil {
+			if winJ.LastFocusTs > tsJ {
+				tsJ = winJ.LastFocusTs
+			}
+		}
+
+		// Sort by timestamp descending (most recent first)
+		return tsI > tsJ
 	})
 
 	return wl, nil
