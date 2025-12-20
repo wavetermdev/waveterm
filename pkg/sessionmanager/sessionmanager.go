@@ -8,10 +8,14 @@ import (
 	"log"
 	"net"
 	"os"
+	"os/exec"
+	"os/signal"
 	"path/filepath"
 	"strings"
 	"sync"
 	"sync/atomic"
+	"syscall"
+	"time"
 
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
@@ -23,6 +27,8 @@ type SessionManager struct {
 	sessionId string
 	lock      sync.Mutex
 	routes    map[string]bool
+	listener  net.Listener
+	cmd       *exec.Cmd
 }
 
 var globalSessionManager atomic.Pointer[SessionManager]
@@ -51,6 +57,72 @@ func (sm *SessionManager) UnregisterRoute(routeId string) {
 	sm.lock.Lock()
 	defer sm.lock.Unlock()
 	delete(sm.routes, routeId)
+}
+
+func (sm *SessionManager) SetListener(listener net.Listener) {
+	sm.lock.Lock()
+	defer sm.lock.Unlock()
+	sm.listener = listener
+}
+
+func (sm *SessionManager) SetCmd(cmd *exec.Cmd) {
+	sm.lock.Lock()
+	defer sm.lock.Unlock()
+	sm.cmd = cmd
+}
+
+func (sm *SessionManager) GetCmd() *exec.Cmd {
+	sm.lock.Lock()
+	defer sm.lock.Unlock()
+	return sm.cmd
+}
+
+func (sm *SessionManager) setupSignalHandlers() {
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM)
+
+	go func() {
+		sig := <-sigChan
+		log.Printf("received signal: %v\n", sig)
+
+		cmd := sm.GetCmd()
+		if cmd != nil && cmd.Process != nil {
+			log.Printf("forwarding signal %v to child process\n", sig)
+			cmd.Process.Signal(sig)
+			time.Sleep(5 * time.Second)
+		}
+
+		sm.Cleanup()
+		os.Exit(0)
+	}()
+}
+
+func (sm *SessionManager) Cleanup() {
+	sm.lock.Lock()
+	defer sm.lock.Unlock()
+
+	if sm.listener != nil {
+		if err := sm.listener.Close(); err != nil {
+			log.Printf("error closing listener: %v\n", err)
+		}
+	}
+
+	socketPath, err := GetSessionSocketPath(sm.clientId, sm.sessionId)
+	if err != nil {
+		log.Printf("error getting socket path for cleanup: %v\n", err)
+		return
+	}
+
+	if err := os.Remove(socketPath); err != nil && !os.IsNotExist(err) {
+		log.Printf("error removing socket file: %v\n", err)
+	}
+
+	pidPath := strings.TrimSuffix(socketPath, ".sock") + ".pid"
+	if err := os.Remove(pidPath); err != nil && !os.IsNotExist(err) {
+		log.Printf("error removing pid file: %v\n", err)
+	}
+
+	log.Printf("SessionManager cleanup complete for session %s (client %s)\n", sm.sessionId, sm.clientId)
 }
 
 func GetSessionSocketPath(clientId string, sessionId string) (string, error) {
@@ -155,15 +227,29 @@ func RunSessionManager(clientId string, sessionId string, authToken string) erro
 		return fmt.Errorf("error creating log file: %v", err)
 	}
 	log.SetOutput(logFile)
+	log.SetFlags(log.LstdFlags | log.Ldate | log.Ltime)
+	log.SetPrefix(fmt.Sprintf("[%s] ", sessionId))
+
+	pidPath := strings.TrimSuffix(socketPath, ".sock") + ".pid"
+	err = os.WriteFile(pidPath, []byte(fmt.Sprintf("%d\n", os.Getpid())), 0600)
+	if err != nil {
+		return fmt.Errorf("error writing pid file: %v", err)
+	}
 
 	listener, err := MakeSessionUnixListener(socketPath)
 	if err != nil {
 		return err
 	}
+	sm := GetSessionManager()
+	sm.SetListener(listener)
 
+	// No return after this point. We are now a daemon, managed by the pid/signals/rpc
 	log.Printf("SessionManager started for session %s (client %s)\n", sessionId, clientId)
+
+	sm.setupSignalHandlers()
 
 	runSessionListener(listener, clientId, sessionId, authToken)
 
-	return nil
+	os.Exit(0)
+	return nil // unreachable
 }

@@ -188,6 +188,9 @@ const (
 	Command_GetSecretsNames               = "getsecretsnames"
 	Command_SetSecrets                    = "setsecrets"
 	Command_GetSecretsLinuxStorageBackend = "getsecretslinuxstoragebackend"
+
+	// session manager
+	Command_SessionManagerStartProc = "sessionmanagerstartproc"
 )
 
 type RespOrErrorUnion[T any] struct {
@@ -361,6 +364,9 @@ type WshRpcInterface interface {
 	// proc
 	VDomRenderCommand(ctx context.Context, data vdom.VDomFrontendUpdate) chan RespOrErrorUnion[*vdom.VDomBackendUpdate]
 	VDomUrlRequestCommand(ctx context.Context, data VDomUrlRequestData) chan RespOrErrorUnion[VDomUrlRequestResponse]
+
+	// session manager
+	SessionManagerStartProcCommand(ctx context.Context, data CommandSessionManagerStartProcData) (*CommandSessionManagerStartProcRtnData, error)
 }
 
 // for frontend
@@ -1132,4 +1138,15 @@ type CommandElectronDecryptData struct {
 type CommandElectronDecryptRtnData struct {
 	PlainText      string `json:"plaintext"`
 	StorageBackend string `json:"storagebackend"` // only returned for linux
+}
+
+type CommandSessionManagerStartProcData struct {
+	Cmd  string            `json:"cmd"`
+	Args []string          `json:"args,omitempty"`
+	Env  map[string]string `json:"env,omitempty"`
+}
+
+type CommandSessionManagerStartProcRtnData struct {
+	Success bool   `json:"success"`
+	Message string `json:"message,omitempty"`
 }

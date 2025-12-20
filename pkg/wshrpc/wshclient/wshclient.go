@@ -628,6 +628,12 @@ func SendTelemetryCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) error {
 	return err
 }
 
+// command "sessionmanagerstartproc", wshserver.SessionManagerStartProcCommand
+func SessionManagerStartProcCommand(w *wshutil.WshRpc, data wshrpc.CommandSessionManagerStartProcData, opts *wshrpc.RpcOpts) (*wshrpc.CommandSessionManagerStartProcRtnData, error) {
+	resp, err := sendRpcRequestCallHelper[*wshrpc.CommandSessionManagerStartProcRtnData](w, "sessionmanagerstartproc", data, opts)
+	return resp, err
+}
+
 // command "setconfig", wshserver.SetConfigCommand
 func SetConfigCommand(w *wshutil.WshRpc, data wshrpc.MetaSettingsType, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "setconfig", data, opts)

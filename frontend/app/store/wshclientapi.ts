@@ -522,6 +522,11 @@ class RpcApiType {
         return client.wshRpcCall("sendtelemetry", null, opts);
     }
 
+    // command "sessionmanagerstartproc" [call]
+    SessionManagerStartProcCommand(client: WshClient, data: CommandSessionManagerStartProcData, opts?: RpcOpts): Promise<CommandSessionManagerStartProcRtnData> {
+        return client.wshRpcCall("sessionmanagerstartproc", data, opts);
+    }
+
     // command "setconfig" [call]
     SetConfigCommand(client: WshClient, data: SettingsType, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("setconfig", data, opts);

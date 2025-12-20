@@ -451,6 +451,19 @@ declare global {
         builderid: string;
     };
 
+    // wshrpc.CommandSessionManagerStartProcData
+    type CommandSessionManagerStartProcData = {
+        cmd: string;
+        args?: string[];
+        env?: {[key: string]: string};
+    };
+
+    // wshrpc.CommandSessionManagerStartProcRtnData
+    type CommandSessionManagerStartProcRtnData = {
+        success: boolean;
+        message?: string;
+    };
+
     // wshrpc.CommandSetMetaData
     type CommandSetMetaData = {
         oref: ORef;

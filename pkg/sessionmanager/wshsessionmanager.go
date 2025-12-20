@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"os"
+	"os/exec"
 	"sync"
 
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
@@ -39,8 +41,44 @@ func (impl *ServerImpl) Log(format string, args ...interface{}) {
 }
 
 func (impl *ServerImpl) MessageCommand(ctx context.Context, data wshrpc.CommandMessageData) error {
-	impl.Log("[sessionmanager][message] %q\n", data.Message)
+	impl.Log("[message] %q\n", data.Message)
 	return nil
+}
+
+func (impl *ServerImpl) SessionManagerStartProcCommand(ctx context.Context, data wshrpc.CommandSessionManagerStartProcData) (*wshrpc.CommandSessionManagerStartProcRtnData, error) {
+	impl.Log("[startproc] cmd=%q args=%v\n", data.Cmd, data.Args)
+	
+	sm := GetSessionManager()
+	if sm == nil {
+		return &wshrpc.CommandSessionManagerStartProcRtnData{
+			Success: false,
+			Message: "session manager not initialized",
+		}, nil
+	}
+	
+	cmd := exec.Command(data.Cmd, data.Args...)
+	if len(data.Env) > 0 {
+		cmd.Env = os.Environ()
+		for key, val := range data.Env {
+			cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", key, val))
+		}
+	}
+	
+	err := cmd.Start()
+	if err != nil {
+		return &wshrpc.CommandSessionManagerStartProcRtnData{
+			Success: false,
+			Message: fmt.Sprintf("failed to start command: %v", err),
+		}, nil
+	}
+	
+	sm.SetCmd(cmd)
+	impl.Log("[startproc] started process pid=%d\n", cmd.Process.Pid)
+	
+	return &wshrpc.CommandSessionManagerStartProcRtnData{
+		Success: true,
+		Message: fmt.Sprintf("process started with pid %d", cmd.Process.Pid),
+	}, nil
 }
 
 func GetSessionManagerRpcClient() *wshutil.WshRpc {
