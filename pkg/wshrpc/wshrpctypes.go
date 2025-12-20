@@ -379,6 +379,7 @@ type RpcOpts struct {
 const (
 	ClientType_ConnServer      = "connserver"
 	ClientType_BlockController = "blockcontroller"
+	ClientType_Route           = "route"
 )
 
 type RpcContext struct {
@@ -386,6 +387,7 @@ type RpcContext struct {
 	BlockId    string `json:"blockid,omitempty"`
 	TabId      string `json:"tabid,omitempty"`
 	Conn       string `json:"conn,omitempty"`
+	RouteId    string `json:"routeid,omitempty"`
 }
 
 func HackRpcContextIntoData(dataPtr any, rpcContext RpcContext) {

@@ -121,7 +121,7 @@ func validateRpcContextFromAuth(newCtx *wshrpc.RpcContext) (string, error) {
 	return routeId, nil
 }
 
-func handleAuthenticationCommand(msg RpcMessage) (*wshrpc.RpcContext, string, error) {
+func handleAuthenticationCommand(msg RpcMessage, jwtSecret string) (*wshrpc.RpcContext, string, error) {
 	if msg.Data == nil {
 		return nil, "", fmt.Errorf("no data in authenticate message")
 	}
@@ -129,7 +129,7 @@ func handleAuthenticationCommand(msg RpcMessage) (*wshrpc.RpcContext, string, er
 	if !ok {
 		return nil, "", fmt.Errorf("data in authenticate message not a string")
 	}
-	newCtx, err := ValidateAndExtractRpcContextFromToken(strData)
+	newCtx, err := ValidateAndExtractRpcContextFromToken(strData, jwtSecret)
 	if err != nil {
 		return nil, "", fmt.Errorf("error validating token: %w", err)
 	}
@@ -208,7 +208,7 @@ func (p *WshRpcProxy) HandleClientProxyAuth(router *WshRouter) (string, error) {
 }
 
 // runs on the server
-func (p *WshRpcProxy) HandleAuthentication() (*wshrpc.RpcContext, error) {
+func (p *WshRpcProxy) HandleAuthentication(jwtSecret string) (*wshrpc.RpcContext, error) {
 	for {
 		msgBytes, ok := <-p.FromRemoteCh
 		if !ok {
@@ -225,7 +225,7 @@ func (p *WshRpcProxy) HandleAuthentication() (*wshrpc.RpcContext, error) {
 			continue
 		}
 		if msg.Command == wshrpc.Command_Authenticate {
-			newCtx, routeId, err := handleAuthenticationCommand(msg)
+			newCtx, routeId, err := handleAuthenticationCommand(msg, jwtSecret)
 			if err != nil {
 				p.sendResponseError(msg, err)
 				continue

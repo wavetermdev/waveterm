@@ -10,6 +10,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
+	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 )
 
@@ -98,7 +99,7 @@ func (p *WshRpcMultiProxy) handleUnauthMessage(msgBytes []byte) {
 		return
 	}
 	if msg.Command == wshrpc.Command_Authenticate {
-		rpcContext, routeId, err := handleAuthenticationCommand(msg)
+		rpcContext, routeId, err := handleAuthenticationCommand(msg, wavebase.JwtSecret)
 		if err != nil {
 			p.sendResponseError(msg, err)
 			return

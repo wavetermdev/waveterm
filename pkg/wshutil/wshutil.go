@@ -315,6 +315,9 @@ func MakeClientJWTToken(rpcCtx wshrpc.RpcContext, sockName string) (string, erro
 	if rpcCtx.ClientType != "" {
 		claims["ctype"] = rpcCtx.ClientType
 	}
+	if rpcCtx.RouteId != "" {
+		claims["route"] = rpcCtx.RouteId
+	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	tokenStr, err := token.SignedString([]byte(wavebase.JwtSecret))
 	if err != nil {
@@ -323,10 +326,10 @@ func MakeClientJWTToken(rpcCtx wshrpc.RpcContext, sockName string) (string, erro
 	return tokenStr, nil
 }
 
-func ValidateAndExtractRpcContextFromToken(tokenStr string) (*wshrpc.RpcContext, error) {
+func ValidateAndExtractRpcContextFromToken(tokenStr string, jwtSecret string) (*wshrpc.RpcContext, error) {
 	parser := jwt.NewParser(jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Name}))
 	token, err := parser.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
-		return []byte(wavebase.JwtSecret), nil
+		return []byte(jwtSecret), nil
 	})
 	if err != nil {
 		return nil, fmt.Errorf("error parsing token: %w", err)
@@ -376,6 +379,11 @@ func mapClaimsToRpcContext(claims jwt.MapClaims) *wshrpc.RpcContext {
 			rpcCtx.ClientType = ctype
 		}
 	}
+	if claims["route"] != nil {
+		if route, ok := claims["route"].(string); ok {
+			rpcCtx.RouteId = route
+		}
+	}
 	return rpcCtx
 }
 
@@ -408,6 +416,12 @@ func MakeRouteIdFromCtx(rpcCtx *wshrpc.RpcContext) (string, error) {
 				return MakeControllerRouteId(rpcCtx.BlockId), nil
 			}
 			return "", fmt.Errorf("invalid block controller connection, no block id")
+		}
+		if rpcCtx.ClientType == wshrpc.ClientType_Route {
+			if rpcCtx.RouteId != "" {
+				return rpcCtx.RouteId, nil
+			}
+			return "", fmt.Errorf("invalid route connection, no route specified")
 		}
 		return "", fmt.Errorf("invalid client type: %q", rpcCtx.ClientType)
 	}
@@ -495,7 +509,7 @@ func handleDomainSocketClient(conn net.Conn) {
 		}()
 		AdaptStreamToMsgCh(conn, proxy.FromRemoteCh)
 	}()
-	rpcCtx, err := proxy.HandleAuthentication()
+	rpcCtx, err := proxy.HandleAuthentication(wavebase.JwtSecret)
 	if err != nil {
 		conn.Close()
 		log.Printf("error handling authentication: %v\n", err)

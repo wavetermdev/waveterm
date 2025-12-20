@@ -4,17 +4,15 @@
 package cmd
 
 import (
+	"bufio"
 	"fmt"
-	"log"
-	"net"
 	"os"
-	"path/filepath"
+	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/spf13/cobra"
-	"github.com/wavetermdev/waveterm/pkg/panichandler"
-	"github.com/wavetermdev/waveterm/pkg/wavebase"
-	"github.com/wavetermdev/waveterm/pkg/wshutil"
+	"github.com/wavetermdev/waveterm/pkg/sessionmanager"
 )
 
 var sessionManagerCmd = &cobra.Command{
@@ -33,109 +31,61 @@ func init() {
 	rootCmd.AddCommand(sessionManagerCmd)
 }
 
-func getSessionSocketPath(clientId string, sessionId string) (string, error) {
-	homeDir := wavebase.GetHomeDir()
-	sessionsDir := filepath.Join(homeDir, ".waveterm", "sessions", clientId)
-	err := os.MkdirAll(sessionsDir, 0700)
-	if err != nil {
-		return "", fmt.Errorf("error creating sessions directory: %v", err)
-	}
-	return filepath.Join(sessionsDir, sessionId+".sock"), nil
-}
-
-func makeSessionUnixListener(socketPath string) (net.Listener, error) {
-	os.Remove(socketPath) // ignore error
-	listener, err := net.Listen("unix", socketPath)
-	if err != nil {
-		return nil, fmt.Errorf("error creating listener at %v: %v", socketPath, err)
-	}
-	os.Chmod(socketPath, 0700)
-	log.Printf("SessionManager [unix-domain] listening on %s\n", socketPath)
-	return listener, nil
-}
-
-func handleSessionConnection(conn net.Conn) {
-	defer func() {
-		panichandler.PanicHandler("handleSessionConnection", recover())
-		conn.Close()
-	}()
-
-	proxy := wshutil.MakeRpcProxy()
-	
-	go func() {
-		defer func() {
-			panichandler.PanicHandler("handleSessionConnection:AdaptOutputChToStream", recover())
-		}()
-		writeErr := wshutil.AdaptOutputChToStream(proxy.ToRemoteCh, conn)
-		if writeErr != nil {
-			log.Printf("error writing to session socket: %v\n", writeErr)
-		}
-	}()
-	
-	go func() {
-		defer func() {
-			panichandler.PanicHandler("handleSessionConnection:AdaptStreamToMsgCh", recover())
-		}()
-		defer conn.Close()
-		wshutil.AdaptStreamToMsgCh(conn, proxy.FromRemoteCh)
-	}()
-
-	// TODO: Implement actual wshrpc server handling
-	// For now, just keep the connection open
-	select {}
-}
-
-func runSessionListener(listener net.Listener) {
-	defer func() {
-		log.Printf("session listener closed, exiting\n")
-		wshutil.DoShutdown("", 0, true)
-	}()
-	
-	for {
-		conn, err := listener.Accept()
-		if err != nil {
-			log.Printf("error accepting connection: %v\n", err)
-			continue
-		}
-		go handleSessionConnection(conn)
-	}
-}
-
 func sessionManagerRun(cmd *cobra.Command, args []string) error {
-	// Validate session ID is a valid UUID
 	_, err := uuid.Parse(sessionId)
 	if err != nil {
 		return fmt.Errorf("invalid session id (must be uuid): %v", err)
 	}
 
-	// Get client ID from environment
 	clientId := os.Getenv("WAVETERM_CLIENTID")
 	if clientId == "" {
 		return fmt.Errorf("WAVETERM_CLIENTID environment variable not set")
 	}
 
-	// Validate client ID is a valid UUID
 	_, err = uuid.Parse(clientId)
 	if err != nil {
 		return fmt.Errorf("invalid WAVETERM_CLIENTID (must be uuid): %v", err)
 	}
 
-	// Create socket path
-	socketPath, err := getSessionSocketPath(clientId, sessionId)
+	authToken, err := readAuthToken(2 * time.Second)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to read auth token: %v", err)
 	}
 
-	// Create unix domain socket listener
-	listener, err := makeSessionUnixListener(socketPath)
-	if err != nil {
-		return err
+	return sessionmanager.RunSessionManager(clientId, sessionId, authToken)
+}
+
+func readAuthToken(timeout time.Duration) (string, error) {
+	type result struct {
+		token string
+		err   error
 	}
 
-	log.Printf("SessionManager started for session %s (client %s)\n", sessionId, clientId)
+	resultChan := make(chan result, 1)
 
-	// Run the listener
-	runSessionListener(listener)
+	go func() {
+		scanner := bufio.NewScanner(os.Stdin)
+		if scanner.Scan() {
+			line := scanner.Text()
+			if strings.HasPrefix(line, "AUTHKEY: ") {
+				token := strings.TrimPrefix(line, "AUTHKEY: ")
+				resultChan <- result{token: token, err: nil}
+				return
+			}
+			resultChan <- result{err: fmt.Errorf("invalid authkey format, expected 'AUTHKEY: <token>'")}
+			return
+		}
+		if err := scanner.Err(); err != nil {
+			resultChan <- result{err: fmt.Errorf("error reading from stdin: %v", err)}
+			return
+		}
+		resultChan <- result{err: fmt.Errorf("no input received from stdin")}
+	}()
 
-	return nil
+	select {
+	case res := <-resultChan:
+		return res.token, res.err
+	case <-time.After(timeout):
+		return "", fmt.Errorf("timeout reading authkey from stdin after %v", timeout)
+	}
 }
