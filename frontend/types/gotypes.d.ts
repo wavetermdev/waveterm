@@ -456,6 +456,7 @@ declare global {
         cmd: string;
         args?: string[];
         env?: {[key: string]: string};
+        termsize?: TermSize;
     };
 
     // wshrpc.CommandSessionManagerStartProcRtnData

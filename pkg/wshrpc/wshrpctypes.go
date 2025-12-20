@@ -1142,9 +1142,10 @@ type CommandElectronDecryptRtnData struct {
 }
 
 type CommandSessionManagerStartProcData struct {
-	Cmd  string            `json:"cmd"`
-	Args []string          `json:"args,omitempty"`
-	Env  map[string]string `json:"env,omitempty"`
+	Cmd      string            `json:"cmd"`
+	Args     []string          `json:"args,omitempty"`
+	Env      map[string]string `json:"env,omitempty"`
+	TermSize *waveobj.TermSize `json:"termsize,omitempty"`
 }
 
 type CommandSessionManagerStartProcRtnData struct {

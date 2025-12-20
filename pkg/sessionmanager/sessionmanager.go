@@ -17,8 +17,10 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/creack/pty"
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
+	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
 )
 
@@ -31,6 +33,7 @@ type SessionManager struct {
 	routes    map[string]bool
 	listener  net.Listener
 	cmd       *exec.Cmd
+	cmdPty    pty.Pty
 	cleanedUp bool
 }
 
@@ -68,16 +71,40 @@ func (sm *SessionManager) SetListener(listener net.Listener) {
 	sm.listener = listener
 }
 
-func (sm *SessionManager) SetCmd(cmd *exec.Cmd) {
+func (sm *SessionManager) SetCmd(cmd *exec.Cmd, cmdPty pty.Pty) {
 	sm.lock.Lock()
 	defer sm.lock.Unlock()
 	sm.cmd = cmd
+	sm.cmdPty = cmdPty
 }
 
-func (sm *SessionManager) GetCmd() *exec.Cmd {
+func (sm *SessionManager) GetCmd() (*exec.Cmd, pty.Pty) {
 	sm.lock.Lock()
 	defer sm.lock.Unlock()
-	return sm.cmd
+	return sm.cmd, sm.cmdPty
+}
+
+func (sm *SessionManager) StartProc(cmd string, args []string, env map[string]string, termSize waveobj.TermSize) (int, error) {
+	ecmd := exec.Command(cmd, args...)
+	if len(env) > 0 {
+		ecmd.Env = os.Environ()
+		for key, val := range env {
+			ecmd.Env = append(ecmd.Env, fmt.Sprintf("%s=%s", key, val))
+		}
+	}
+	if termSize.Rows == 0 || termSize.Cols == 0 {
+		termSize.Rows = 25
+		termSize.Cols = 80
+	}
+	if termSize.Rows <= 0 || termSize.Cols <= 0 {
+		return 0, fmt.Errorf("invalid term size: %v", termSize)
+	}
+	cmdPty, err := pty.StartWithSize(ecmd, &pty.Winsize{Rows: uint16(termSize.Rows), Cols: uint16(termSize.Cols)})
+	if err != nil {
+		return 0, fmt.Errorf("failed to start command: %w", err)
+	}
+	sm.SetCmd(ecmd, cmdPty)
+	return ecmd.Process.Pid, nil
 }
 
 func (sm *SessionManager) setupSignalHandlers() {
@@ -88,7 +115,7 @@ func (sm *SessionManager) setupSignalHandlers() {
 		sig := <-sigChan
 		log.Printf("received signal: %v\n", sig)
 
-		cmd := sm.GetCmd()
+		cmd, _ := sm.GetCmd()
 		if cmd != nil && cmd.Process != nil {
 			log.Printf("forwarding signal %v to child process\n", sig)
 			cmd.Process.Signal(sig)

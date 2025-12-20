@@ -9,10 +9,10 @@ import (
 	"io"
 	"log"
 	"os"
-	"os/exec"
 	"sync"
 	"time"
 
+	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
 )
@@ -54,25 +54,21 @@ func (impl *ServerImpl) SessionManagerStartProcCommand(ctx context.Context, data
 		return nil, fmt.Errorf("session manager not initialized")
 	}
 	
-	cmd := exec.Command(data.Cmd, data.Args...)
-	if len(data.Env) > 0 {
-		cmd.Env = os.Environ()
-		for key, val := range data.Env {
-			cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", key, val))
-		}
+	termSize := waveobj.TermSize{Rows: 25, Cols: 80}
+	if data.TermSize != nil {
+		termSize = *data.TermSize
 	}
 	
-	err := cmd.Start()
+	pid, err := sm.StartProc(data.Cmd, data.Args, data.Env, termSize)
 	if err != nil {
-		return nil, fmt.Errorf("failed to start command: %w", err)
+		return nil, err
 	}
 	
-	sm.SetCmd(cmd)
-	impl.Log("[startproc] started process pid=%d\n", cmd.Process.Pid)
+	impl.Log("[startproc] started process pid=%d\n", pid)
 	
 	return &wshrpc.CommandSessionManagerStartProcRtnData{
 		Success: true,
-		Message: fmt.Sprintf("process started with pid %d", cmd.Process.Pid),
+		Message: fmt.Sprintf("process started with pid %d", pid),
 	}, nil
 }
 
@@ -80,7 +76,7 @@ func (impl *ServerImpl) SessionManagerStopProcCommand(ctx context.Context) error
 	impl.Log("[stopproc] stopping process\n")
 	
 	sm := GetSessionManager()
-	cmd := sm.GetCmd()
+	cmd, cmdPty := sm.GetCmd()
 	if cmd != nil && cmd.Process != nil {
 		err := cmd.Process.Kill()
 		if err != nil {
@@ -89,7 +85,10 @@ func (impl *ServerImpl) SessionManagerStopProcCommand(ctx context.Context) error
 			impl.Log("[stopproc] process killed\n")
 		}
 	}
-	sm.SetCmd(nil)
+	if cmdPty != nil {
+		cmdPty.Close()
+	}
+	sm.SetCmd(nil, nil)
 	
 	impl.Log("[stopproc] shutting down in %v\n", ShutdownDelayTime)
 	
