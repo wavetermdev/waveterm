@@ -169,20 +169,15 @@ func (router *WshRouter) getRouteInfo(rpcId string) *routeInfo {
 }
 
 func (router *WshRouter) handleAnnounceMessage(msg RpcMessage, input msgAndRoute) {
-	// if we have an upstream, send it there
-	// if we don't (we are the terminal router), then add it to our announced route map
+	if msg.Source != input.fromRouteId {
+		router.Lock.Lock()
+		router.AnnouncedRoutes[msg.Source] = input.fromRouteId
+		router.Lock.Unlock()
+	}
 	upstream := router.GetUpstreamClient()
 	if upstream != nil {
 		upstream.SendRpcMessage(input.msgBytes, "announce-upstream")
-		return
 	}
-	if msg.Source == input.fromRouteId {
-		// not necessary to save the id mapping
-		return
-	}
-	router.Lock.Lock()
-	defer router.Lock.Unlock()
-	router.AnnouncedRoutes[msg.Source] = input.fromRouteId
 }
 
 func (router *WshRouter) handleUnannounceMessage(msg RpcMessage) {
@@ -204,21 +199,21 @@ func (router *WshRouter) sendRoutedMessage(msgBytes []byte, routeId string) bool
 		rpc.SendRpcMessage(msgBytes, "route")
 		return true
 	}
+	localRouteId := router.getAnnouncedRoute(routeId)
+	if localRouteId != "" {
+		rpc := router.GetRpc(localRouteId)
+		if rpc != nil {
+			rpc.SendRpcMessage(msgBytes, "route-local")
+			return true
+		}
+	}
 	upstream := router.GetUpstreamClient()
 	if upstream != nil {
 		upstream.SendRpcMessage(msgBytes, "route-upstream")
 		return true
-	} else {
-		// we are the upstream, so consult our announced routes map
-		localRouteId := router.getAnnouncedRoute(routeId)
-		rpc := router.GetRpc(localRouteId)
-		if rpc == nil {
-			log.Printf("[router] no rpc for route id %q\n", routeId)
-			return false
-		}
-		rpc.SendRpcMessage(msgBytes, "route-local")
-		return true
 	}
+	log.Printf("[router] no rpc for route id %q\n", routeId)
+	return false
 }
 
 func (router *WshRouter) runServer() {
