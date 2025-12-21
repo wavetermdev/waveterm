@@ -527,6 +527,11 @@ class RpcApiType {
         return client.wshRpcCall("sessionmanagerinput", data, opts);
     }
 
+    // command "sessionmanageroutput" [call]
+    SessionManagerOutputCommand(client: WshClient, data: CommandSessionManagerOutputData, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("sessionmanageroutput", data, opts);
+    }
+
     // command "sessionmanagerstartproc" [call]
     SessionManagerStartProcCommand(client: WshClient, data: CommandSessionManagerStartProcData, opts?: RpcOpts): Promise<CommandSessionManagerStartProcRtnData> {
         return client.wshRpcCall("sessionmanagerstartproc", data, opts);

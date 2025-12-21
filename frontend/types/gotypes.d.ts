@@ -451,6 +451,11 @@ declare global {
         builderid: string;
     };
 
+    // wshrpc.CommandSessionManagerOutputData
+    type CommandSessionManagerOutputData = {
+        data64: string;
+    };
+
     // wshrpc.CommandSessionManagerStartProcData
     type CommandSessionManagerStartProcData = {
         cmd: string;

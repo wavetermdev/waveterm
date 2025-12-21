@@ -191,6 +191,7 @@ const (
 
 	// session manager
 	Command_SessionManagerStartProc = "sessionmanagerstartproc"
+	Command_SessionManagerOutput    = "sessionmanageroutput"
 )
 
 type RespOrErrorUnion[T any] struct {
@@ -369,6 +370,7 @@ type WshRpcInterface interface {
 	SessionManagerStartProcCommand(ctx context.Context, data CommandSessionManagerStartProcData) (*CommandSessionManagerStartProcRtnData, error)
 	SessionManagerStopProcCommand(ctx context.Context) error
 	SessionManagerInputCommand(ctx context.Context, data CommandBlockInputData) error
+	SessionManagerOutputCommand(ctx context.Context, data CommandSessionManagerOutputData) error
 }
 
 // for frontend
@@ -1152,4 +1154,8 @@ type CommandSessionManagerStartProcData struct {
 type CommandSessionManagerStartProcRtnData struct {
 	Success bool   `json:"success"`
 	Message string `json:"message,omitempty"`
+}
+
+type CommandSessionManagerOutputData struct {
+	Data64 string `json:"data64"`
 }

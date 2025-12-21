@@ -23,6 +23,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
+	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
 )
 
@@ -106,7 +107,51 @@ func (sm *SessionManager) StartProc(cmd string, args []string, env map[string]st
 		return 0, fmt.Errorf("failed to start command: %w", err)
 	}
 	sm.SetCmd(ecmd, cmdPty)
+	go sm.readPtyOutput(cmdPty)
 	return ecmd.Process.Pid, nil
+}
+
+func (sm *SessionManager) readPtyOutput(cmdPty pty.Pty) {
+	defer func() {
+		panichandler.PanicHandler("readPtyOutput", recover())
+	}()
+	buf := make([]byte, 4096)
+	for {
+		n, err := cmdPty.Read(buf)
+		if err != nil {
+			return
+		}
+		if n > 0 {
+			sm.sendOutputToRoutes(buf[:n])
+		}
+	}
+}
+
+func (sm *SessionManager) sendOutputToRoutes(data []byte) {
+	sm.lock.Lock()
+	routes := make([]string, 0, len(sm.routes))
+	for route := range sm.routes {
+		routes = append(routes, route)
+	}
+	sm.lock.Unlock()
+
+	data64 := base64.StdEncoding.EncodeToString(data)
+	outputData := wshrpc.CommandSessionManagerOutputData{
+		Data64: data64,
+	}
+
+	for _, route := range routes {
+		go func(r string) {
+			defer func() {
+				panichandler.PanicHandler("sendOutputToRoutes", recover())
+			}()
+			client := GetSessionManagerRpcClient()
+			wshclient.SessionManagerOutputCommand(client, outputData, &wshrpc.RpcOpts{
+				Route:      r,
+				NoResponse: true,
+			})
+		}(route)
+	}
 }
 
 func (sm *SessionManager) HandleInput(data wshrpc.CommandBlockInputData) error {

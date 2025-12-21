@@ -634,6 +634,12 @@ func SessionManagerInputCommand(w *wshutil.WshRpc, data wshrpc.CommandBlockInput
 	return err
 }
 
+// command "sessionmanageroutput", wshserver.SessionManagerOutputCommand
+func SessionManagerOutputCommand(w *wshutil.WshRpc, data wshrpc.CommandSessionManagerOutputData, opts *wshrpc.RpcOpts) error {
+	_, err := sendRpcRequestCallHelper[any](w, "sessionmanageroutput", data, opts)
+	return err
+}
+
 // command "sessionmanagerstartproc", wshserver.SessionManagerStartProcCommand
 func SessionManagerStartProcCommand(w *wshutil.WshRpc, data wshrpc.CommandSessionManagerStartProcData, opts *wshrpc.RpcOpts) (*wshrpc.CommandSessionManagerStartProcRtnData, error) {
 	resp, err := sendRpcRequestCallHelper[*wshrpc.CommandSessionManagerStartProcRtnData](w, "sessionmanagerstartproc", data, opts)
