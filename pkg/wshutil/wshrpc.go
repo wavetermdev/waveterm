@@ -502,7 +502,7 @@ func (handler *RpcRequestHandler) Context() context.Context {
 	return handler.ctx
 }
 
-func (handler *RpcRequestHandler) SendCancel() {
+func (handler *RpcRequestHandler) SendCancel(ctx context.Context) error {
 	defer func() {
 		panichandler.PanicHandler("SendCancel", recover())
 	}()
@@ -512,8 +512,14 @@ func (handler *RpcRequestHandler) SendCancel() {
 		AuthToken: handler.w.GetAuthToken(),
 	}
 	barr, _ := json.Marshal(msg) // will never fail
-	handler.w.OutputCh <- barr
-	handler.finalize()
+	select {
+	case handler.w.OutputCh <- barr:
+		handler.finalize()
+		return nil
+	case <-ctx.Done():
+		handler.finalize()
+		return fmt.Errorf("timeout sending cancel")
+	}
 }
 
 func (handler *RpcRequestHandler) ResponseDone() bool {
@@ -609,7 +615,10 @@ func (handler *RpcResponseHandler) SendMessage(msg string) {
 		AuthToken: handler.w.GetAuthToken(),
 	}
 	msgBytes, _ := json.Marshal(rpcMsg) // will never fail
-	handler.w.OutputCh <- msgBytes
+	select {
+	case handler.w.OutputCh <- msgBytes:
+	case <-handler.ctx.Done():
+	}
 }
 
 func (handler *RpcResponseHandler) SendResponse(data any, done bool) error {
@@ -635,8 +644,12 @@ func (handler *RpcResponseHandler) SendResponse(data any, done bool) error {
 	if err != nil {
 		return err
 	}
-	handler.w.OutputCh <- barr
-	return nil
+	select {
+	case handler.w.OutputCh <- barr:
+		return nil
+	case <-handler.ctx.Done():
+		return fmt.Errorf("timeout sending response")
+	}
 }
 
 func (handler *RpcResponseHandler) SendResponseError(err error) {
@@ -653,7 +666,10 @@ func (handler *RpcResponseHandler) SendResponseError(err error) {
 		AuthToken: handler.w.GetAuthToken(),
 	}
 	barr, _ := json.Marshal(msg) // will never fail
-	handler.w.OutputCh <- barr
+	select {
+	case handler.w.OutputCh <- barr:
+	case <-handler.ctx.Done():
+	}
 }
 
 func (handler *RpcResponseHandler) IsCanceled() bool {

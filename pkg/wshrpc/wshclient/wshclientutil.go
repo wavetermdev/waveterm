@@ -4,6 +4,7 @@
 package wshclient
 
 import (
+	"context"
 	"errors"
 
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
@@ -62,9 +63,8 @@ func sendRpcRequestResponseStreamHelper[T any](w *wshutil.WshRpc, command string
 		rtnErr(respChan, err)
 		return respChan
 	}
-	opts.StreamCancelFn = func() {
-		// TODO coordinate the cancel with the for loop below
-		reqHandler.SendCancel()
+	opts.StreamCancelFn = func(ctx context.Context) error {
+		return reqHandler.SendCancel(ctx)
 	}
 	go func() {
 		defer func() {
