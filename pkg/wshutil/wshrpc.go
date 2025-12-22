@@ -313,7 +313,9 @@ func (w *WshRpc) handleRequestInternal(req *RpcMessage, pprofCtx context.Context
 	}
 	respHandler.contextCancelFn.Store(&cancelFn)
 	respHandler.ctx = withRespHandler(ctx, respHandler)
-	w.registerResponseHandler(req.ReqId, respHandler)
+	if req.ReqId != "" {
+		w.registerResponseHandler(req.ReqId, respHandler)
+	}
 	isAsync := false
 	defer func() {
 		panicErr := panichandler.PanicHandler("handleRequest", recover())
@@ -502,7 +504,7 @@ func (handler *RpcRequestHandler) Context() context.Context {
 	return handler.ctx
 }
 
-func (handler *RpcRequestHandler) SendCancel() {
+func (handler *RpcRequestHandler) SendCancel(ctx context.Context) error {
 	defer func() {
 		panichandler.PanicHandler("SendCancel", recover())
 	}()
@@ -512,8 +514,14 @@ func (handler *RpcRequestHandler) SendCancel() {
 		AuthToken: handler.w.GetAuthToken(),
 	}
 	barr, _ := json.Marshal(msg) // will never fail
-	handler.w.OutputCh <- barr
-	handler.finalize()
+	select {
+	case handler.w.OutputCh <- barr:
+		handler.finalize()
+		return nil
+	case <-ctx.Done():
+		handler.finalize()
+		return fmt.Errorf("timeout sending cancel")
+	}
 }
 
 func (handler *RpcRequestHandler) ResponseDone() bool {
@@ -607,23 +615,27 @@ func (handler *RpcResponseHandler) SendMessage(msg string) {
 			Message: msg,
 		},
 		AuthToken: handler.w.GetAuthToken(),
+		Route:     handler.source, // send back to source
 	}
 	msgBytes, _ := json.Marshal(rpcMsg) // will never fail
-	handler.w.OutputCh <- msgBytes
+	select {
+	case handler.w.OutputCh <- msgBytes:
+	case <-handler.ctx.Done():
+	}
 }
 
 func (handler *RpcResponseHandler) SendResponse(data any, done bool) error {
 	defer func() {
 		panichandler.PanicHandler("SendResponse", recover())
 	}()
-	if handler.reqId == "" {
-		return nil // no response expected
-	}
 	if handler.done.Load() {
 		return fmt.Errorf("request already done, cannot send additional response")
 	}
 	if done {
 		defer handler.close()
+	}
+	if handler.reqId == "" {
+		return nil
 	}
 	msg := &RpcMessage{
 		ResId:     handler.reqId,
@@ -635,25 +647,35 @@ func (handler *RpcResponseHandler) SendResponse(data any, done bool) error {
 	if err != nil {
 		return err
 	}
-	handler.w.OutputCh <- barr
-	return nil
+	select {
+	case handler.w.OutputCh <- barr:
+		return nil
+	case <-handler.ctx.Done():
+		return fmt.Errorf("timeout sending response")
+	}
 }
 
 func (handler *RpcResponseHandler) SendResponseError(err error) {
 	defer func() {
 		panichandler.PanicHandler("SendResponseError", recover())
 	}()
-	if handler.reqId == "" || handler.done.Load() {
+	if handler.done.Load() {
 		return
 	}
 	defer handler.close()
+	if handler.reqId == "" {
+		return
+	}
 	msg := &RpcMessage{
 		ResId:     handler.reqId,
 		Error:     err.Error(),
 		AuthToken: handler.w.GetAuthToken(),
 	}
 	barr, _ := json.Marshal(msg) // will never fail
-	handler.w.OutputCh <- barr
+	select {
+	case handler.w.OutputCh <- barr:
+	case <-handler.ctx.Done():
+	}
 }
 
 func (handler *RpcResponseHandler) IsCanceled() bool {
@@ -675,11 +697,11 @@ func (handler *RpcResponseHandler) Finalize() {
 	if handler.reqId != "" {
 		handler.w.unregisterResponseHandler(handler.reqId)
 	}
-	if handler.reqId == "" || handler.done.Load() {
+	if handler.done.Load() {
 		return
 	}
+	// SendResponse with done=true will call close() via defer, even when reqId is empty
 	handler.SendResponse(nil, true)
-	handler.close()
 }
 
 func (handler *RpcResponseHandler) IsDone() bool {
@@ -726,8 +748,13 @@ func (w *WshRpc) SendComplexRequest(command string, data any, opts *wshrpc.RpcOp
 		return nil, err
 	}
 	handler.respCh = w.registerRpc(handler, command, opts.Route, handler.reqId)
-	w.OutputCh <- barr
-	return handler, nil
+	select {
+	case w.OutputCh <- barr:
+		return handler, nil
+	case <-handler.ctx.Done():
+		handler.finalize()
+		return nil, fmt.Errorf("timeout sending request")
+	}
 }
 
 func (w *WshRpc) IsServerDone() bool {

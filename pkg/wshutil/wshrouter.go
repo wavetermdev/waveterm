@@ -169,26 +169,26 @@ func (router *WshRouter) getRouteInfo(rpcId string) *routeInfo {
 }
 
 func (router *WshRouter) handleAnnounceMessage(msg RpcMessage, input msgAndRoute) {
-	// if we have an upstream, send it there
-	// if we don't (we are the terminal router), then add it to our announced route map
+	if msg.Source != input.fromRouteId {
+		router.Lock.Lock()
+		router.AnnouncedRoutes[msg.Source] = input.fromRouteId
+		router.Lock.Unlock()
+	}
 	upstream := router.GetUpstreamClient()
 	if upstream != nil {
 		upstream.SendRpcMessage(input.msgBytes, "announce-upstream")
-		return
 	}
-	if msg.Source == input.fromRouteId {
-		// not necessary to save the id mapping
-		return
-	}
-	router.Lock.Lock()
-	defer router.Lock.Unlock()
-	router.AnnouncedRoutes[msg.Source] = input.fromRouteId
 }
 
-func (router *WshRouter) handleUnannounceMessage(msg RpcMessage) {
+func (router *WshRouter) handleUnannounceMessage(msg RpcMessage, input msgAndRoute) {
 	router.Lock.Lock()
-	defer router.Lock.Unlock()
 	delete(router.AnnouncedRoutes, msg.Source)
+	router.Lock.Unlock()
+
+	upstream := router.GetUpstreamClient()
+	if upstream != nil {
+		upstream.SendRpcMessage(input.msgBytes, "unannounce-upstream")
+	}
 }
 
 func (router *WshRouter) getAnnouncedRoute(routeId string) string {
@@ -204,21 +204,21 @@ func (router *WshRouter) sendRoutedMessage(msgBytes []byte, routeId string) bool
 		rpc.SendRpcMessage(msgBytes, "route")
 		return true
 	}
+	localRouteId := router.getAnnouncedRoute(routeId)
+	if localRouteId != "" {
+		rpc := router.GetRpc(localRouteId)
+		if rpc != nil {
+			rpc.SendRpcMessage(msgBytes, "route-local")
+			return true
+		}
+	}
 	upstream := router.GetUpstreamClient()
 	if upstream != nil {
 		upstream.SendRpcMessage(msgBytes, "route-upstream")
 		return true
-	} else {
-		// we are the upstream, so consult our announced routes map
-		localRouteId := router.getAnnouncedRoute(routeId)
-		rpc := router.GetRpc(localRouteId)
-		if rpc == nil {
-			log.Printf("[router] no rpc for route id %q\n", routeId)
-			return false
-		}
-		rpc.SendRpcMessage(msgBytes, "route-local")
-		return true
 	}
+	log.Printf("[router] no rpc for route id %q\n", routeId)
+	return false
 }
 
 func (router *WshRouter) runServer() {
@@ -236,7 +236,7 @@ func (router *WshRouter) runServer() {
 			continue
 		}
 		if msg.Command == wshrpc.Command_RouteUnannounce {
-			router.handleUnannounceMessage(msg)
+			router.handleUnannounceMessage(msg, input)
 			continue
 		}
 		if msg.Command != "" {
@@ -353,14 +353,22 @@ func (router *WshRouter) RegisterRoute(routeId string, rpc AbstractRpcClient, sh
 func (router *WshRouter) UnregisterRoute(routeId string) {
 	log.Printf("[router] unregistering wsh route %q\n", routeId)
 	router.Lock.Lock()
-	defer router.Lock.Unlock()
 	delete(router.RouteMap, routeId)
 	// clear out announced routes
-	for routeId, localRouteId := range router.AnnouncedRoutes {
+	for announcedRouteId, localRouteId := range router.AnnouncedRoutes {
 		if localRouteId == routeId {
-			delete(router.AnnouncedRoutes, routeId)
+			delete(router.AnnouncedRoutes, announcedRouteId)
 		}
 	}
+	upstream := router.UpstreamClient
+	router.Lock.Unlock()
+	
+	if upstream != nil {
+		unannounceMsg := RpcMessage{Command: wshrpc.Command_RouteUnannounce, Source: routeId}
+		unannounceBytes, _ := json.Marshal(unannounceMsg)
+		upstream.SendRpcMessage(unannounceBytes, "route-unannounce")
+	}
+	
 	go func() {
 		defer func() {
 			panichandler.PanicHandler("WshRouter:unregisterRoute:routegone", recover())
