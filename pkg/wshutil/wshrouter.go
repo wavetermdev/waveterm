@@ -355,9 +355,9 @@ func (router *WshRouter) UnregisterRoute(routeId string) {
 	router.Lock.Lock()
 	delete(router.RouteMap, routeId)
 	// clear out announced routes
-	for routeId, localRouteId := range router.AnnouncedRoutes {
+	for announcedRouteId, localRouteId := range router.AnnouncedRoutes {
 		if localRouteId == routeId {
-			delete(router.AnnouncedRoutes, routeId)
+			delete(router.AnnouncedRoutes, announcedRouteId)
 		}
 	}
 	upstream := router.UpstreamClient
