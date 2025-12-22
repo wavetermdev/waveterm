@@ -726,8 +726,13 @@ func (w *WshRpc) SendComplexRequest(command string, data any, opts *wshrpc.RpcOp
 		return nil, err
 	}
 	handler.respCh = w.registerRpc(handler, command, opts.Route, handler.reqId)
-	w.OutputCh <- barr
-	return handler, nil
+	select {
+	case w.OutputCh <- barr:
+		return handler, nil
+	case <-handler.ctx.Done():
+		handler.finalize()
+		return nil, fmt.Errorf("timeout sending request")
+	}
 }
 
 func (w *WshRpc) IsServerDone() bool {
