@@ -180,10 +180,15 @@ func (router *WshRouter) handleAnnounceMessage(msg RpcMessage, input msgAndRoute
 	}
 }
 
-func (router *WshRouter) handleUnannounceMessage(msg RpcMessage) {
+func (router *WshRouter) handleUnannounceMessage(msg RpcMessage, input msgAndRoute) {
 	router.Lock.Lock()
-	defer router.Lock.Unlock()
 	delete(router.AnnouncedRoutes, msg.Source)
+	router.Lock.Unlock()
+
+	upstream := router.GetUpstreamClient()
+	if upstream != nil {
+		upstream.SendRpcMessage(input.msgBytes, "unannounce-upstream")
+	}
 }
 
 func (router *WshRouter) getAnnouncedRoute(routeId string) string {
@@ -231,7 +236,7 @@ func (router *WshRouter) runServer() {
 			continue
 		}
 		if msg.Command == wshrpc.Command_RouteUnannounce {
-			router.handleUnannounceMessage(msg)
+			router.handleUnannounceMessage(msg, input)
 			continue
 		}
 		if msg.Command != "" {
@@ -348,7 +353,6 @@ func (router *WshRouter) RegisterRoute(routeId string, rpc AbstractRpcClient, sh
 func (router *WshRouter) UnregisterRoute(routeId string) {
 	log.Printf("[router] unregistering wsh route %q\n", routeId)
 	router.Lock.Lock()
-	defer router.Lock.Unlock()
 	delete(router.RouteMap, routeId)
 	// clear out announced routes
 	for routeId, localRouteId := range router.AnnouncedRoutes {
@@ -356,6 +360,15 @@ func (router *WshRouter) UnregisterRoute(routeId string) {
 			delete(router.AnnouncedRoutes, routeId)
 		}
 	}
+	upstream := router.UpstreamClient
+	router.Lock.Unlock()
+	
+	if upstream != nil {
+		unannounceMsg := RpcMessage{Command: wshrpc.Command_RouteUnannounce, Source: routeId}
+		unannounceBytes, _ := json.Marshal(unannounceMsg)
+		upstream.SendRpcMessage(unannounceBytes, "route-unannounce")
+	}
+	
 	go func() {
 		defer func() {
 			panichandler.PanicHandler("WshRouter:unregisterRoute:routegone", recover())
