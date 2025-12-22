@@ -313,7 +313,9 @@ func (w *WshRpc) handleRequestInternal(req *RpcMessage, pprofCtx context.Context
 	}
 	respHandler.contextCancelFn.Store(&cancelFn)
 	respHandler.ctx = withRespHandler(ctx, respHandler)
-	w.registerResponseHandler(req.ReqId, respHandler)
+	if req.ReqId != "" {
+		w.registerResponseHandler(req.ReqId, respHandler)
+	}
 	isAsync := false
 	defer func() {
 		panicErr := panichandler.PanicHandler("handleRequest", recover())
@@ -613,6 +615,7 @@ func (handler *RpcResponseHandler) SendMessage(msg string) {
 			Message: msg,
 		},
 		AuthToken: handler.w.GetAuthToken(),
+		Route:     handler.source, // send back to source
 	}
 	msgBytes, _ := json.Marshal(rpcMsg) // will never fail
 	select {
@@ -625,14 +628,14 @@ func (handler *RpcResponseHandler) SendResponse(data any, done bool) error {
 	defer func() {
 		panichandler.PanicHandler("SendResponse", recover())
 	}()
-	if handler.reqId == "" {
-		return nil // no response expected
-	}
 	if handler.done.Load() {
 		return fmt.Errorf("request already done, cannot send additional response")
 	}
 	if done {
 		defer handler.close()
+	}
+	if handler.reqId == "" {
+		return nil
 	}
 	msg := &RpcMessage{
 		ResId:     handler.reqId,
@@ -656,10 +659,13 @@ func (handler *RpcResponseHandler) SendResponseError(err error) {
 	defer func() {
 		panichandler.PanicHandler("SendResponseError", recover())
 	}()
-	if handler.reqId == "" || handler.done.Load() {
+	if handler.done.Load() {
 		return
 	}
 	defer handler.close()
+	if handler.reqId == "" {
+		return
+	}
 	msg := &RpcMessage{
 		ResId:     handler.reqId,
 		Error:     err.Error(),
@@ -691,11 +697,11 @@ func (handler *RpcResponseHandler) Finalize() {
 	if handler.reqId != "" {
 		handler.w.unregisterResponseHandler(handler.reqId)
 	}
-	if handler.reqId == "" || handler.done.Load() {
+	if handler.done.Load() {
 		return
 	}
+	// SendResponse with done=true will call close() via defer, even when reqId is empty
 	handler.SendResponse(nil, true)
-	handler.close()
 }
 
 func (handler *RpcResponseHandler) IsDone() bool {
