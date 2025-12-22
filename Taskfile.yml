@@ -324,6 +324,7 @@ tasks:
             - cmd: "{{.RMRF}} dist/tsunamiscaffold"
               ignore_error: true
             - task: copyfiles:'tsunami/frontend/scaffold':'dist/tsunamiscaffold'
+            - cmd: '{{if eq OS "windows"}}powershell Copy-Item -Path tsunami/templates/empty-gomod.tmpl -Destination dist/tsunamiscaffold/go.mod{{else}}cp tsunami/templates/empty-gomod.tmpl dist/tsunamiscaffold/go.mod{{end}}'
         deps:
             - tsunami:scaffold
         sources:
