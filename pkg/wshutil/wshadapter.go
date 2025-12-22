@@ -96,7 +96,7 @@ func serverImplAdapter(impl any) func(*RpcResponseHandler) bool {
 		}
 		rmethod := findCmdMethod(impl, cmd)
 		if rmethod == nil {
-			if !handler.NeedsResponse() {
+			if !handler.NeedsResponse() && cmd != wshrpc.Command_Message {
 				// we also send an out of band message here since this is likely unexpected and will require debugging
 				handler.SendMessage(fmt.Sprintf("command %q method %q not found", handler.GetCommand(), methodDecl.MethodName))
 			}
