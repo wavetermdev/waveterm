@@ -10,6 +10,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
+	"github.com/wavetermdev/waveterm/pkg/wavejwt"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 )
 
@@ -84,7 +85,11 @@ func (p *WshRpcMultiProxy) sendAuthResponse(msg RpcMessage, routeId string, auth
 	}
 	resp := RpcMessage{
 		ResId: msg.ReqId,
-		Data:  wshrpc.CommandAuthenticateRtnData{RouteId: routeId, AuthToken: authToken},
+		Data: wshrpc.CommandAuthenticateRtnData{
+			RouteId:   routeId,
+			AuthToken: authToken,
+			PublicKey: wavejwt.GetPublicKeyBase64(),
+		},
 	}
 	respBytes, _ := json.Marshal(resp)
 	p.ToRemoteCh <- respBytes

@@ -12,6 +12,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/util/shellutil"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
+	"github.com/wavetermdev/waveterm/pkg/wavejwt"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 )
 
@@ -77,7 +78,10 @@ func (p *WshRpcProxy) sendAuthenticateResponse(msg RpcMessage, routeId string) {
 	resp := RpcMessage{
 		ResId: msg.ReqId,
 		Route: msg.Source,
-		Data:  wshrpc.CommandAuthenticateRtnData{RouteId: routeId},
+		Data: wshrpc.CommandAuthenticateRtnData{
+			RouteId:   routeId,
+			PublicKey: wavejwt.GetPublicKeyBase64(),
+		},
 	}
 	respBytes, _ := json.Marshal(resp)
 	p.SendRpcMessage(respBytes, "auth-resp")
@@ -94,6 +98,7 @@ func (p *WshRpcProxy) sendAuthenticateTokenResponse(msg RpcMessage, entry *shell
 		Route: msg.Source,
 		Data: wshrpc.CommandAuthenticateRtnData{
 			RouteId:        routeId,
+			PublicKey:      wavejwt.GetPublicKeyBase64(),
 			Env:            entry.Env,
 			InitScriptText: entry.ScriptText,
 		},
@@ -164,6 +169,7 @@ func handleAuthenticateTokenCommand(msg RpcMessage) (*shellutil.TokenSwapEntry, 
 }
 
 // runs on the client (stdio client)
+// called from connserver (also terminates in the wshmultiproxy)
 func (p *WshRpcProxy) HandleClientProxyAuth(router *WshRouter) (string, error) {
 	for {
 		msgBytes, ok := <-p.FromRemoteCh

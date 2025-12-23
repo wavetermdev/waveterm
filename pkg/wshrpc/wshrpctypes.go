@@ -52,13 +52,15 @@ const (
 
 // TODO generate these constants from the interface
 const (
-	Command_Authenticate      = "authenticate"      // special
-	Command_AuthenticateToken = "authenticatetoken" // special
-	Command_Dispose           = "dispose"           // special (disposes of the route, for multiproxy only)
-	Command_RouteAnnounce     = "routeannounce"     // special (for routing)
-	Command_RouteUnannounce   = "routeunannounce"   // special (for routing)
-	Command_Message           = "message"
+	Command_Authenticate      = "authenticate"      // $control
+	Command_AuthenticateToken = "authenticatetoken" // $control
+	Command_Dispose           = "dispose"           // $control (disposes of the route, for multiproxy only)
+	Command_RouteAnnounce     = "routeannounce"     // $control (for routing)
+	Command_RouteUnannounce   = "routeunannounce"   // $control (for routing)
+	Command_ControlMessage    = "controlmessage"    // $control
+	Command_Ping              = "ping"              // $control
 
+	Command_Message           = "message"
 	Command_GetMeta           = "getmeta"
 	Command_SetMeta           = "setmeta"
 	Command_SetView           = "setview"
@@ -418,6 +420,7 @@ func HackRpcContextIntoData(dataPtr any, rpcContext RpcContext) {
 type CommandAuthenticateRtnData struct {
 	RouteId   string `json:"routeid"`
 	AuthToken string `json:"authtoken,omitempty"`
+	PublicKey string `json:"publickey,omitempty"` // base64
 
 	// these fields are only set when doing a token swap
 	Env            map[string]string `json:"env,omitempty"`
