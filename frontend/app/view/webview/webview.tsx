@@ -821,7 +821,7 @@ const WebView = memo(({ model, onFailLoad, blockRef, initialSrc }: WebViewProps)
     }
 
     // Search
-    const searchProps = useSearch({ anchorRef: model.webviewRef, viewModel: model });
+    const searchProps = useSearch({ anchorRef: model.webviewRef, viewModel: model, blockId: model.blockId });
     const searchVal = useAtomValue<string>(searchProps.searchValue);
     const setSearchIndex = useSetAtom(searchProps.resultsIndex);
     const setNumSearchResults = useSetAtom(searchProps.resultsCount);

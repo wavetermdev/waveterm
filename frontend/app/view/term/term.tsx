@@ -178,6 +178,7 @@ const TerminalView = ({ blockId, model }: ViewComponentProps<TermViewModel>) => 
         caseSensitive: false,
         wholeWord: false,
         regex: false,
+        blockId: blockId,
     });
     const searchIsOpen = jotai.useAtomValue<boolean>(searchProps.isOpen);
     const caseSensitive = useAtomValueSafe<boolean>(searchProps.caseSensitive);
