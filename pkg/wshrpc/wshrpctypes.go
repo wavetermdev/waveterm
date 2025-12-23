@@ -373,7 +373,7 @@ type RpcOpts struct {
 	NoResponse bool   `json:"noresponse,omitempty"`
 	Route      string `json:"route,omitempty"`
 
-	StreamCancelFn func() `json:"-"` // this is an *output* parameter, set by the handler
+	StreamCancelFn func(context.Context) error `json:"-"` // this is an *output* parameter, set by the handler
 }
 
 const (
@@ -409,10 +409,6 @@ func HackRpcContextIntoData(dataPtr any, rpcContext RpcContext) {
 			field.SetString(rpcContext.BlockId)
 		case "TabId":
 			field.SetString(rpcContext.TabId)
-		case "BlockORef":
-			if rpcContext.BlockId != "" {
-				field.Set(reflect.ValueOf(waveobj.MakeORef(waveobj.OType_Block, rpcContext.BlockId)))
-			}
 		default:
 			log.Printf("invalid wshcontext tag: %q in type(%T)", tag, dataPtr)
 		}
@@ -438,16 +434,15 @@ type CommandDisposeData struct {
 }
 
 type CommandMessageData struct {
-	ORef    waveobj.ORef `json:"oref" wshcontext:"BlockORef"`
-	Message string       `json:"message"`
+	Message string `json:"message"`
 }
 
 type CommandGetMetaData struct {
-	ORef waveobj.ORef `json:"oref" wshcontext:"BlockORef"`
+	ORef waveobj.ORef `json:"oref"`
 }
 
 type CommandSetMetaData struct {
-	ORef waveobj.ORef        `json:"oref" wshcontext:"BlockORef"`
+	ORef waveobj.ORef        `json:"oref"`
 	Meta waveobj.MetaMapType `json:"meta"`
 }
 

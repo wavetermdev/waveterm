@@ -546,6 +546,11 @@ func main() {
 		log.Printf("error clearing temp files: %v\n", err)
 		return
 	}
+	err = wcore.InitMainServer()
+	if err != nil {
+		log.Printf("error initializing mainserver: %v\n", err)
+		return
+	}
 
 	err = shellutil.FixupWaveZshHistory()
 	if err != nil {

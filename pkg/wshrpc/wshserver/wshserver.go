@@ -93,7 +93,7 @@ func (ws *WshServer) TestCommand(ctx context.Context, data string) error {
 
 // for testing
 func (ws *WshServer) MessageCommand(ctx context.Context, data wshrpc.CommandMessageData) error {
-	log.Printf("MESSAGE: %s | %q\n", data.ORef, data.Message)
+	log.Printf("MESSAGE: %s\n", data.Message)
 	return nil
 }
 
