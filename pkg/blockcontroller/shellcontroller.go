@@ -504,7 +504,7 @@ func (bc *ShellController) manageRunningShellProcess(shellProc *shellexec.ShellP
 
 	// make esc sequence wshclient wshProxy
 	// we don't need to authenticate this wshProxy since it is coming direct
-	wshProxy := wshutil.MakeRpcProxy()
+	wshProxy := wshutil.MakeRpcProxy(fmt.Sprintf("controller:%s", bc.BlockId))
 	wshProxy.SetRpcContext(&wshrpc.RpcContext{TabId: bc.TabId, BlockId: bc.BlockId})
 	controllerLinkId, err := wshutil.DefaultRouter.RegisterTrustedLeaf(wshProxy, wshutil.MakeControllerRouteId(bc.BlockId))
 	if err != nil {

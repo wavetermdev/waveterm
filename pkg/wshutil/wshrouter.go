@@ -71,6 +71,10 @@ type linkMeta struct {
 	client        AbstractRpcClient
 }
 
+func (lm *linkMeta) Name() string {
+	return fmt.Sprintf("%d#[%s]", lm.linkId, lm.client.GetPeerInfo())
+}
+
 type rpcRoutingInfo struct {
 	rpcId        string
 	sourceLinkId LinkId
@@ -83,11 +87,7 @@ type messageWrap struct {
 }
 
 type WshRouter struct {
-	Lock *sync.Mutex
-	// RouteMap        map[string]AbstractRpcClient // routeid => client
-	// AnnouncedRoutes map[string]string     // routeid => local routeid
-	// RpcMap map[string]*routeInfo // rpcid => routeinfo
-
+	lock           *sync.Mutex
 	isRootRouter   bool
 	nextLinkId     LinkId
 	upstreamLinkId LinkId
@@ -130,11 +130,7 @@ var DefaultRouter = NewWshRouter()
 
 func NewWshRouter() *WshRouter {
 	rtn := &WshRouter{
-		Lock: &sync.Mutex{},
-		// RouteMap:        make(map[string]AbstractRpcClient),
-		// AnnouncedRoutes: make(map[string]string),
-		// RpcMap:          make(map[string]*routeInfo),
-
+		lock:           &sync.Mutex{},
 		nextLinkId:     0,
 		upstreamLinkId: NoLinkId,
 		inputCh:        make(chan routerMsg),
@@ -148,14 +144,14 @@ func NewWshRouter() *WshRouter {
 }
 
 func (router *WshRouter) IsRootRouter() bool {
-	router.Lock.Lock()
-	defer router.Lock.Unlock()
+	router.lock.Lock()
+	defer router.lock.Unlock()
 	return router.isRootRouter
 }
 
 func (router *WshRouter) SetAsRootRouter() {
-	router.Lock.Lock()
-	defer router.Lock.Unlock()
+	router.lock.Lock()
+	defer router.lock.Unlock()
 	router.isRootRouter = true
 }
 
@@ -215,15 +211,15 @@ func (router *WshRouter) handleNoRoute(msg RpcMessage, ingressLinkId LinkId) {
 		Error: nrErr.Error(),
 	}
 	respBytes, _ := json.Marshal(response)
-	router.sendRoutedMessage(respBytes, msg.Source)
+	router.sendRoutedMessage(respBytes, msg.Source, msg.Command)
 }
 
 func (router *WshRouter) registerRouteInfo(rpcId string, sourceLinkId LinkId, destRouteId string) {
 	if rpcId == "" {
 		return
 	}
-	router.Lock.Lock()
-	defer router.Lock.Unlock()
+	router.lock.Lock()
+	defer router.lock.Unlock()
 	router.rpcMap[rpcId] = rpcRoutingInfo{
 		rpcId:        rpcId,
 		sourceLinkId: sourceLinkId,
@@ -232,14 +228,14 @@ func (router *WshRouter) registerRouteInfo(rpcId string, sourceLinkId LinkId, de
 }
 
 func (router *WshRouter) unregisterRouteInfo(rpcId string) {
-	router.Lock.Lock()
-	defer router.Lock.Unlock()
+	router.lock.Lock()
+	defer router.lock.Unlock()
 	delete(router.rpcMap, rpcId)
 }
 
 func (router *WshRouter) getRouteInfo(rpcId string) *rpcRoutingInfo {
-	router.Lock.Lock()
-	defer router.Lock.Unlock()
+	router.lock.Lock()
+	defer router.lock.Unlock()
 	rtn, ok := router.rpcMap[rpcId]
 	if !ok {
 		return nil
@@ -248,7 +244,7 @@ func (router *WshRouter) getRouteInfo(rpcId string) *rpcRoutingInfo {
 }
 
 // returns true if message was sent, false if failed
-func (router *WshRouter) sendRoutedMessage(msgBytes []byte, routeId string) bool {
+func (router *WshRouter) sendRoutedMessage(msgBytes []byte, routeId string, commandName string) bool {
 	lm := router.getLinkForRoute(routeId)
 	if lm != nil {
 		lm.client.SendRpcMessage(msgBytes, "route")
@@ -259,7 +255,11 @@ func (router *WshRouter) sendRoutedMessage(msgBytes []byte, routeId string) bool
 		upstream.SendRpcMessage(msgBytes, "route-upstream")
 		return true
 	}
-	log.Printf("[router] no rpc for route id %q\n", routeId)
+	if commandName != "" {
+		log.Printf("[router] no rpc for route id %q command:%s\n", routeId, commandName)
+	} else {
+		log.Printf("[router] no rpc for route id %q\n", routeId)
+	}
 	return false
 }
 
@@ -284,7 +284,7 @@ func (router *WshRouter) runServer() {
 		routeId := msg.Route
 		if msg.Command != "" {
 			// new comand, setup new rpc
-			ok := router.sendRoutedMessage(msgBytes, routeId)
+			ok := router.sendRoutedMessage(msgBytes, routeId, msg.Command)
 			if !ok {
 				router.handleNoRoute(msg, input.ingressLink)
 				continue
@@ -300,7 +300,7 @@ func (router *WshRouter) runServer() {
 				continue
 			}
 			// no need to check the return value here (noop if failed)
-			router.sendRoutedMessage(msgBytes, routeInfo.destRouteId)
+			router.sendRoutedMessage(msgBytes, routeInfo.destRouteId, "")
 			continue
 		} else if msg.ResId != "" {
 			routeInfo := router.getRouteInfo(msg.ResId)
@@ -370,26 +370,29 @@ func (router *WshRouter) runUpstreamBufferLoop() {
 }
 
 func (router *WshRouter) RegisterUntrustedLink(client AbstractRpcClient) LinkId {
-	router.Lock.Lock()
-	defer router.Lock.Unlock()
+	router.lock.Lock()
+	defer router.lock.Unlock()
 	router.nextLinkId++
 	linkId := router.nextLinkId
-	router.linkMap[linkId] = &linkMeta{
+	lm := &linkMeta{
 		linkId:  linkId,
 		trusted: false,
 		client:  client,
 	}
+	log.Printf("wshrouter register link %s", lm.Name())
+	router.linkMap[linkId] = lm
 	go router.runLinkClientRecvLoop(linkId, client)
 	return linkId
 }
 
 func (router *WshRouter) trustLink(linkId LinkId, linkKind string) {
-	router.Lock.Lock()
-	defer router.Lock.Unlock()
+	router.lock.Lock()
+	defer router.lock.Unlock()
 	lm := router.linkMap[linkId]
 	if lm == nil {
 		return
 	}
+	log.Printf("wshrouter trust link %s kind=%s", lm.Name(), linkKind)
 	lm.trusted = true
 	lm.linkKind = linkKind
 }
@@ -399,8 +402,13 @@ func (router *WshRouter) runLinkClientRecvLoop(linkId LinkId, client AbstractRpc
 		panichandler.PanicHandler("WshRouter:runLinkClientRecvLoop", recover())
 	}()
 	exitReason := "unknown"
-	log.Printf("link recvloop start for linkid %d", linkId)
-	defer log.Printf("link recvloop done for linkid %d (%s)", linkId, exitReason)
+	lmForLog := router.getLinkMeta(linkId)
+	linkName := fmt.Sprintf("%d", linkId)
+	if lmForLog != nil {
+		linkName = lmForLog.Name()
+	}
+	log.Printf("link recvloop start for %s", linkName)
+	defer log.Printf("link recvloop done for %s (%s)", linkName, exitReason)
 	for {
 		msgBytes, ok := client.RecvRpcMessage()
 		if !ok {
@@ -492,8 +500,8 @@ func (router *WshRouter) getLinkMeta(linkId LinkId) *linkMeta {
 	if linkId == NoLinkId {
 		return nil
 	}
-	router.Lock.Lock()
-	defer router.Lock.Unlock()
+	router.lock.Lock()
+	defer router.lock.Unlock()
 	lm := router.linkMap[linkId]
 	if lm == nil {
 		return nil
@@ -507,8 +515,8 @@ func (router *WshRouter) getLinkForRoute(routeId string) *linkMeta {
 	if routeId == "" {
 		return nil
 	}
-	router.Lock.Lock()
-	defer router.Lock.Unlock()
+	router.lock.Lock()
+	defer router.lock.Unlock()
 	linkId := router.routeMap[routeId]
 	if linkId == NoLinkId {
 		return nil
@@ -540,14 +548,21 @@ func (router *WshRouter) RegisterTrustedLeaf(rpc AbstractRpcClient, routeId stri
 	return linkId, nil
 }
 
+// only for routers
+func (router *WshRouter) RegisterTrustedRouter(rpc AbstractRpcClient) LinkId {
+	linkId := router.RegisterUntrustedLink(rpc)
+	router.trustLink(linkId, LinkKind_Router)
+	return linkId
+}
+
 func (router *WshRouter) RegisterUpstream(rpc AbstractRpcClient) LinkId {
 	if router.IsRootRouter() {
 		panic("cannot register upstream for root router")
 	}
 	linkId := router.RegisterUntrustedLink(rpc)
 	router.trustLink(linkId, LinkKind_Router)
-	router.Lock.Lock()
-	defer router.Lock.Unlock()
+	router.lock.Lock()
+	defer router.lock.Unlock()
 	router.upstreamLinkId = linkId
 	return linkId
 }
@@ -573,8 +588,8 @@ func (router *WshRouter) unannounceUpstream(routeId string) {
 }
 
 func (router *WshRouter) getRoutesForLink(linkId LinkId) []string {
-	router.Lock.Lock()
-	defer router.Lock.Unlock()
+	router.lock.Lock()
+	defer router.lock.Unlock()
 	var routes []string
 	for routeId, mappedLinkId := range router.routeMap {
 		if mappedLinkId == linkId {
@@ -589,8 +604,12 @@ func (router *WshRouter) UnregisterLink(linkId LinkId) {
 	for _, routeId := range routes {
 		router.unbindRoute(linkId, routeId)
 	}
-	router.Lock.Lock()
-	defer router.Lock.Unlock()
+	router.lock.Lock()
+	defer router.lock.Unlock()
+	lm := router.linkMap[linkId]
+	if lm != nil {
+		log.Printf("wshrouter unregister link %s", lm.Name())
+	}
 	delete(router.linkMap, linkId)
 	if router.upstreamLinkId == linkId {
 		router.upstreamLinkId = NoLinkId
@@ -608,8 +627,8 @@ func (router *WshRouter) unbindRouteLocally(linkId LinkId, routeId string) error
 	if linkId == NoLinkId {
 		return fmt.Errorf("cannot unbind %q to NoLinkId", routeId)
 	}
-	router.Lock.Lock()
-	defer router.Lock.Unlock()
+	router.lock.Lock()
+	defer router.lock.Unlock()
 	if router.routeMap[routeId] == linkId {
 		delete(router.routeMap, routeId)
 	}
@@ -620,6 +639,10 @@ func (router *WshRouter) unbindRoute(linkId LinkId, routeId string) error {
 	err := router.unbindRouteLocally(linkId, routeId)
 	if err != nil {
 		return err
+	}
+	lm := router.getLinkMeta(linkId)
+	if lm != nil {
+		log.Printf("wshrouter unbind route %q from %s", routeId, lm.Name())
 	}
 	router.unannounceUpstream(routeId)
 	if router.IsRootRouter() {
@@ -633,11 +656,10 @@ func (router *WshRouter) bindRouteLocally(linkId LinkId, routeId string, isSourc
 		return fmt.Errorf("cannot bindroute %q to NoLinkId", routeId)
 	}
 	if !isBindableRouteId(routeId) {
-		// cannot register sys route
 		return fmt.Errorf("router cannot register %q route (invalid routeid)", routeId)
 	}
-	router.Lock.Lock()
-	defer router.Lock.Unlock()
+	router.lock.Lock()
+	defer router.lock.Unlock()
 	lm := router.linkMap[linkId]
 	if lm == nil {
 		return fmt.Errorf("cannot bind route %q, no link with id %d found", routeId, linkId)
@@ -649,7 +671,7 @@ func (router *WshRouter) bindRouteLocally(linkId LinkId, routeId string, isSourc
 		if lm.linkKind != LinkKind_Leaf {
 			return fmt.Errorf("cannot bind source route %q to link %d (link is not a leaf)", routeId, linkId)
 		}
-		if lm.sourceRouteId != "" {
+		if lm.sourceRouteId != "" && lm.sourceRouteId != routeId {
 			return fmt.Errorf("cannot bind source route %q to link %d (link already has source route %q)", routeId, linkId, lm.sourceRouteId)
 		}
 		lm.sourceRouteId = routeId
@@ -667,13 +689,17 @@ func (router *WshRouter) bindRoute(linkId LinkId, routeId string, isSourceRoute 
 	if err != nil {
 		return err
 	}
+	lm := router.getLinkMeta(linkId)
+	if lm != nil {
+		log.Printf("wshrouter bind route %q to %s", routeId, lm.Name())
+	}
 	router.announceUpstream(routeId)
 	return nil
 }
 
 func (router *WshRouter) getUpstreamClient() AbstractRpcClient {
-	router.Lock.Lock()
-	defer router.Lock.Unlock()
+	router.lock.Lock()
+	defer router.lock.Unlock()
 	if router.upstreamLinkId == NoLinkId {
 		return nil
 	}
@@ -720,6 +746,7 @@ func (router *WshRouter) handleControlMessage(m RpcMessage, linkMeta linkMeta) {
 func (router *WshRouter) handleControlAuthenticateToken(m RpcMessage, linkMeta linkMeta) {
 	entry, err := handleAuthenticateTokenCommand(m)
 	if err != nil {
+		log.Printf("wshrouter authenticate-token error %s: %v", linkMeta.Name(), err)
 		sendControlErrorResponse(m, linkMeta, err.Error(), "auth-error")
 		return
 	}
@@ -731,6 +758,7 @@ func (router *WshRouter) handleControlAuthenticateToken(m RpcMessage, linkMeta l
 		InitScriptText: entry.ScriptText,
 	}
 	sendControlDataResponse(m, linkMeta, rtnData, "auth-rtn")
+	log.Printf("wshrouter authenticate-token success %s routeid=%q", linkMeta.Name(), routeId)
 	router.trustLink(linkMeta.linkId, LinkKind_Leaf)
 	router.bindRoute(linkMeta.linkId, routeId, true)
 }
@@ -738,6 +766,7 @@ func (router *WshRouter) handleControlAuthenticateToken(m RpcMessage, linkMeta l
 func (router *WshRouter) handleControlAuthenticate(m RpcMessage, linkMeta linkMeta) {
 	_, routeId, err := handleAuthenticationCommand(m)
 	if err != nil {
+		log.Printf("wshrouter authenticate error %s: %v", linkMeta.Name(), err)
 		sendControlErrorResponse(m, linkMeta, err.Error(), "auth-error")
 		return
 	}
@@ -746,6 +775,7 @@ func (router *WshRouter) handleControlAuthenticate(m RpcMessage, linkMeta linkMe
 		PublicKey: wavejwt.GetPublicKeyBase64(),
 	}
 	sendControlDataResponse(m, linkMeta, rtnData, "auth-rtn")
+	log.Printf("wshrouter authenticate success %s routeid=%q", linkMeta.Name(), routeId)
 	router.trustLink(linkMeta.linkId, LinkKind_Leaf)
 	router.bindRoute(linkMeta.linkId, routeId, true)
 }

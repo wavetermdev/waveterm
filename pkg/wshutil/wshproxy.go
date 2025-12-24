@@ -22,14 +22,20 @@ type WshRpcProxy struct {
 	ToRemoteCh   chan []byte
 	FromRemoteCh chan []byte
 	AuthToken    string
+	PeerInfo     string
 }
 
-func MakeRpcProxy() *WshRpcProxy {
+func MakeRpcProxy(peerInfo string) *WshRpcProxy {
 	return &WshRpcProxy{
 		Lock:         &sync.Mutex{},
 		ToRemoteCh:   make(chan []byte, DefaultInputChSize),
 		FromRemoteCh: make(chan []byte, DefaultOutputChSize),
+		PeerInfo:     peerInfo,
 	}
+}
+
+func (p *WshRpcProxy) GetPeerInfo() string {
+	return p.PeerInfo
 }
 
 func (p *WshRpcProxy) SetRpcContext(rpcCtx *wshrpc.RpcContext) {

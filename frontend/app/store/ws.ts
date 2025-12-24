@@ -19,7 +19,7 @@ function addWSReconnectHandler(handler: () => void) {
 }
 
 function removeWSReconnectHandler(handler: () => void) {
-    const index = this.reconnectHandlers.indexOf(handler);
+    const index = reconnectHandlers.indexOf(handler);
     if (index > -1) {
         reconnectHandlers.splice(index, 1);
     }
@@ -37,7 +37,7 @@ class WSControl {
     opening: boolean = false;
     reconnectTimes: number = 0;
     msgQueue: any[] = [];
-    routeId: string;
+    stableId: string;
     messageCallback: WSEventCallback;
     watchSessionId: string = null;
     watchScreenId: string = null;
@@ -50,13 +50,13 @@ class WSControl {
 
     constructor(
         baseHostPort: string,
-        routeId: string,
+        stableId: string,
         messageCallback: WSEventCallback,
         electronOverrideOpts?: ElectronOverrideOpts
     ) {
         this.baseHostPort = baseHostPort;
         this.messageCallback = messageCallback;
-        this.routeId = routeId;
+        this.stableId = stableId;
         this.open = false;
         this.eoOpts = electronOverrideOpts;
         setInterval(this.sendPing.bind(this), 5000);
@@ -75,7 +75,7 @@ class WSControl {
         dlog("try reconnect:", desc);
         this.opening = true;
         this.wsConn = newWebSocket(
-            this.baseHostPort + "/ws?routeid=" + this.routeId,
+            this.baseHostPort + "/ws?stableid=" + encodeURIComponent(this.stableId),
             this.eoOpts
                 ? {
                       [AuthKeyHeader]: this.eoOpts.authKey,
@@ -221,6 +221,12 @@ class WSControl {
 
     pushMessage(data: WSCommandType) {
         if (!this.open) {
+            if (data.wscommand === "rpc" && data.message) {
+                const cmd = data.message.command;
+                if (cmd === "routeannounce" || cmd === "routeunannounce") {
+                    return;
+                }
+            }
             this.msgQueue.push(data);
             return;
         }
@@ -231,11 +237,11 @@ class WSControl {
 let globalWS: WSControl;
 function initGlobalWS(
     baseHostPort: string,
-    routeId: string,
+    stableId: string,
     messageCallback: WSEventCallback,
     electronOverrideOpts?: ElectronOverrideOpts
 ) {
-    globalWS = new WSControl(baseHostPort, routeId, messageCallback, electronOverrideOpts);
+    globalWS = new WSControl(baseHostPort, stableId, messageCallback, electronOverrideOpts);
 }
 
 function sendRawRpcMessage(msg: RpcMessage) {

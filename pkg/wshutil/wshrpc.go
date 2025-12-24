@@ -40,6 +40,7 @@ type ServerImpl interface {
 }
 
 type AbstractRpcClient interface {
+	GetPeerInfo() string
 	SendRpcMessage(msg []byte, debugStr string)
 	RecvRpcMessage() ([]byte, bool) // blocking
 }
@@ -101,6 +102,10 @@ func GetRpcResponseHandlerFromContext(ctx context.Context) *RpcResponseHandler {
 		return nil
 	}
 	return rtn.(*RpcResponseHandler)
+}
+
+func (w *WshRpc) GetPeerInfo() string {
+	return w.DebugName
 }
 
 func (w *WshRpc) SendRpcMessage(msg []byte, debugStr string) {

@@ -468,7 +468,7 @@ func HandleStdIOClient(logName string, input chan utilfn.LineOutput, output io.W
 
 func handleDomainSocketClient(conn net.Conn) {
 	var linkIdContainer atomic.Int32
-	proxy := MakeRpcProxy()
+	proxy := MakeRpcProxy(fmt.Sprintf("domain:%s", conn.RemoteAddr().String()))
 	go func() {
 		defer func() {
 			panichandler.PanicHandler("handleDomainSocketClient:AdaptOutputChToStream", recover())

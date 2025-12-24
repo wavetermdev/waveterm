@@ -1,9 +1,10 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { RpcApi } from "@/app/store/wshclientapi";
+import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { isBlank } from "@/util/util";
 import { Subject } from "rxjs";
-import { sendRawRpcMessage } from "./ws";
 
 type WaveEventSubject = {
     handler: (event: WaveEvent) => void;
@@ -33,12 +34,13 @@ function wpsReconnectHandler() {
     }
 }
 
-function makeWaveReSubCommand(eventType: string): RpcMessage {
-    let subjects = waveEventSubjects.get(eventType);
+function updateWaveEventSub(eventType: string) {
+    const subjects = waveEventSubjects.get(eventType);
     if (subjects == null) {
-        return { command: "eventunsub", data: eventType };
+        RpcApi.EventUnsubCommand(TabRpcClient, eventType, { noresponse: true });
+        return;
     }
-    let subreq: SubscriptionRequest = { event: eventType, scopes: [], allscopes: false };
+    const subreq: SubscriptionRequest = { event: eventType, scopes: [], allscopes: false };
     for (const scont of subjects) {
         if (isBlank(scont.scope)) {
             subreq.allscopes = true;
@@ -47,13 +49,7 @@ function makeWaveReSubCommand(eventType: string): RpcMessage {
         }
         subreq.scopes.push(scont.scope);
     }
-    return { command: "eventsub", data: subreq };
-}
-
-function updateWaveEventSub(eventType: string) {
-    const command = makeWaveReSubCommand(eventType);
-    // console.log("updateWaveEventSub", eventType, command);
-    sendRawRpcMessage(command);
+    RpcApi.EventSubCommand(TabRpcClient, subreq, { noresponse: true });
 }
 
 function waveEventSubscribe(...subscriptions: WaveEventSubscription[]): () => void {

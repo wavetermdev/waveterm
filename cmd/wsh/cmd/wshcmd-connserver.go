@@ -63,7 +63,7 @@ func MakeRemoteUnixListener() (net.Listener, error) {
 
 func handleNewListenerConn(conn net.Conn, router *wshutil.WshRouter) {
 	var linkIdContainer atomic.Int32
-	proxy := wshutil.MakeRpcProxy()
+	proxy := wshutil.MakeRpcProxy(fmt.Sprintf("connserver:%s", conn.RemoteAddr().String()))
 	go func() {
 		defer func() {
 			panichandler.PanicHandler("handleNewListenerConn:AdaptOutputChToStream", recover())
@@ -130,7 +130,7 @@ func setupConnServerRpcClientWithRouter(router *wshutil.WshRouter, jwtToken stri
 
 func serverRunRouter(jwtToken string) error {
 	router := wshutil.NewWshRouter()
-	termProxy := wshutil.MakeRpcProxy()
+	termProxy := wshutil.MakeRpcProxy("connserver-term")
 	rawCh := make(chan []byte, wshutil.DefaultOutputChSize)
 	go packetparser.Parse(os.Stdin, termProxy.FromRemoteCh, rawCh)
 	go func() {

@@ -114,7 +114,7 @@ func (p *WshRpcMultiProxy) handleUnauthMessage(msgBytes []byte) {
 			AuthToken:  uuid.New().String(),
 			RpcContext: rpcContext,
 		}
-		routeInfo.Proxy = MakeRpcProxy()
+		routeInfo.Proxy = MakeRpcProxy(fmt.Sprintf("multiproxy:%s", routeId))
 		routeInfo.Proxy.SetRpcContext(rpcContext)
 		p.setRouteInfo(routeInfo.AuthToken, routeInfo)
 		p.sendAuthResponse(msg, routeId, routeInfo.AuthToken)

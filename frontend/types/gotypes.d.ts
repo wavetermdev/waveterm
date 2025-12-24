@@ -198,6 +198,7 @@ declare global {
     type CommandAuthenticateRtnData = {
         routeid: string;
         authtoken?: string;
+        publickey?: string;
         env?: {[key: string]: string};
         initscripttext?: string;
     };
@@ -378,7 +379,6 @@ declare global {
 
     // wshrpc.CommandMessageData
     type CommandMessageData = {
-        oref: ORef;
         message: string;
     };
 
