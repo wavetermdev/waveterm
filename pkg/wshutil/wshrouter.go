@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
+	"github.com/wavetermdev/waveterm/pkg/wavejwt"
 	"github.com/wavetermdev/waveterm/pkg/wps"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 )
@@ -696,8 +697,7 @@ func (router *WshRouter) handleControlMessage(m RpcMessage, linkMeta linkMeta) {
 		router.bindRoute(linkMeta.linkId, m.Source, false)
 		sendControlDataResponse(m, linkMeta, nil, "control-response")
 		return
-	}
-	if m.Command == wshrpc.Command_RouteUnannounce {
+	} else if m.Command == wshrpc.Command_RouteUnannounce {
 		if !linkMeta.trusted {
 			sendControlUnauthenticatedErrorResponse(m, linkMeta)
 			return
@@ -709,7 +709,45 @@ func (router *WshRouter) handleControlMessage(m RpcMessage, linkMeta linkMeta) {
 		router.unbindRoute(linkMeta.linkId, m.Source)
 		sendControlDataResponse(m, linkMeta, nil, "control-response")
 		return
+	} else if m.Command == wshrpc.Command_Authenticate {
+		router.handleControlAuthenticate(m, linkMeta)
+	} else if m.Command == wshrpc.Command_AuthenticateToken {
+		router.handleControlAuthenticateToken(m, linkMeta)
+		return
 	}
+}
+
+func (router *WshRouter) handleControlAuthenticateToken(m RpcMessage, linkMeta linkMeta) {
+	entry, err := handleAuthenticateTokenCommand(m)
+	if err != nil {
+		sendControlErrorResponse(m, linkMeta, err.Error(), "auth-error")
+		return
+	}
+	routeId, _ := MakeRouteIdFromCtx(entry.RpcContext)
+	rtnData := wshrpc.CommandAuthenticateRtnData{
+		RouteId:        routeId,
+		PublicKey:      wavejwt.GetPublicKeyBase64(),
+		Env:            entry.Env,
+		InitScriptText: entry.ScriptText,
+	}
+	sendControlDataResponse(m, linkMeta, rtnData, "auth-rtn")
+	router.trustLink(linkMeta.linkId, LinkKind_Leaf)
+	router.bindRoute(linkMeta.linkId, routeId, true)
+}
+
+func (router *WshRouter) handleControlAuthenticate(m RpcMessage, linkMeta linkMeta) {
+	_, routeId, err := handleAuthenticationCommand(m)
+	if err != nil {
+		sendControlErrorResponse(m, linkMeta, err.Error(), "auth-error")
+		return
+	}
+	rtnData := wshrpc.CommandAuthenticateRtnData{
+		RouteId:   routeId,
+		PublicKey: wavejwt.GetPublicKeyBase64(),
+	}
+	sendControlDataResponse(m, linkMeta, rtnData, "auth-rtn")
+	router.trustLink(linkMeta.linkId, LinkKind_Leaf)
+	router.bindRoute(linkMeta.linkId, routeId, true)
 }
 
 func (router *WshRouter) unsubscribeFromBroker(routeId string) {

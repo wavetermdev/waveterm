@@ -152,7 +152,7 @@ func setupRpcClientWithToken(swapTokenStr string) (wshrpc.CommandAuthenticateRtn
 	if err != nil {
 		return rtn, fmt.Errorf("error setting up domain socket rpc client: %w", err)
 	}
-	return wshclient.AuthenticateTokenCommand(RpcClient, wshrpc.CommandAuthenticateTokenData{Token: token.Token}, nil)
+	return wshclient.AuthenticateTokenCommand(RpcClient, wshrpc.CommandAuthenticateTokenData{Token: token.Token}, &wshrpc.RpcOpts{Route: wshutil.ControlRoute})
 }
 
 // returns the wrapped stdin and a new rpc client (that wraps the stdin input and stdout output)
@@ -170,7 +170,7 @@ func setupRpcClient(serverImpl wshutil.ServerImpl, jwtToken string) error {
 	if err != nil {
 		return fmt.Errorf("error setting up domain socket rpc client: %v", err)
 	}
-	wshclient.AuthenticateCommand(RpcClient, jwtToken, &wshrpc.RpcOpts{NoResponse: true})
+	wshclient.AuthenticateCommand(RpcClient, jwtToken, &wshrpc.RpcOpts{NoResponse: true, Route: wshutil.ControlRoute})
 	// note we don't modify WrappedStdin here (just use os.Stdin)
 	return nil
 }
@@ -188,7 +188,14 @@ func resolveSimpleId(id string) (*waveobj.ORef, error) {
 		}
 		return &orefObj, nil
 	}
-	rtnData, err := wshclient.ResolveIdsCommand(RpcClient, wshrpc.CommandResolveIdsData{Ids: []string{id}}, &wshrpc.RpcOpts{Timeout: 2000})
+	blockId := os.Getenv("WAVETERM_BLOCKID")
+	if blockId == "" {
+		return nil, fmt.Errorf("no WAVETERM_BLOCKID env var set")
+	}
+	rtnData, err := wshclient.ResolveIdsCommand(RpcClient, wshrpc.CommandResolveIdsData{
+		BlockId: blockId,
+		Ids:     []string{id},
+	}, &wshrpc.RpcOpts{Timeout: 2000})
 	if err != nil {
 		return nil, fmt.Errorf("error resolving ids: %v", err)
 	}
