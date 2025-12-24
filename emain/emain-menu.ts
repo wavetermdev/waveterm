@@ -384,10 +384,12 @@ export function makeAndSetAppMenu() {
     });
 }
 
-waveEventSubscribe({
-    eventType: "workspace:update",
-    handler: makeAndSetAppMenu,
-});
+function initMenuEventSubscriptions() {
+    waveEventSubscribe({
+        eventType: "workspace:update",
+        handler: makeAndSetAppMenu,
+    });
+}
 
 function getWebContentsByWorkspaceOrBuilderId(workspaceOrBuilderId: string): electron.WebContents {
     const ww = getWaveWindowByWorkspaceId(workspaceOrBuilderId);
@@ -495,4 +497,4 @@ function makeDockTaskbar() {
     }
 }
 
-export { makeDockTaskbar };
+export { initMenuEventSubscriptions, makeDockTaskbar };

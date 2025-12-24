@@ -23,7 +23,7 @@ import {
 } from "./emain-activity";
 import { initIpcHandlers } from "./emain-ipc";
 import { log } from "./emain-log";
-import { makeAndSetAppMenu, makeDockTaskbar } from "./emain-menu";
+import { initMenuEventSubscriptions, makeAndSetAppMenu, makeDockTaskbar } from "./emain-menu";
 import {
     checkIfRunningUnderARM64Translation,
     getElectronAppBasePath,
@@ -350,6 +350,7 @@ async function appMain() {
     try {
         initElectronWshClient();
         initElectronWshrpc(ElectronWshClient, { authKey: AuthKey });
+        initMenuEventSubscriptions();
     } catch (e) {
         console.log("error initializing wshrpc", e);
     }

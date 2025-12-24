@@ -171,6 +171,11 @@ func setupRpcClient(serverImpl wshutil.ServerImpl, jwtToken string) error {
 		return fmt.Errorf("error setting up domain socket rpc client: %v", err)
 	}
 	wshclient.AuthenticateCommand(RpcClient, jwtToken, &wshrpc.RpcOpts{NoResponse: true, Route: wshutil.ControlRoute})
+	blockId := os.Getenv("WAVETERM_BLOCKID")
+	if blockId != "" {
+		peerInfo := fmt.Sprintf("domain:block:%s", blockId)
+		wshclient.SetPeerInfoCommand(RpcClient, peerInfo, &wshrpc.RpcOpts{NoResponse: true, Route: wshutil.ControlRoute})
+	}
 	// note we don't modify WrappedStdin here (just use os.Stdin)
 	return nil
 }

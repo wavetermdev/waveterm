@@ -181,7 +181,7 @@ func (client *Client) Connect() error {
 		return fmt.Errorf("error setting up domain socket rpc client: %v", err)
 	}
 	client.RpcClient = rpcClient
-	authRtn, err := wshclient.AuthenticateCommand(client.RpcClient, jwtToken, nil)
+	authRtn, err := wshclient.AuthenticateCommand(client.RpcClient, jwtToken, &wshrpc.RpcOpts{Route: wshutil.ControlRoute})
 	if err != nil {
 		return fmt.Errorf("error authenticating rpc connection: %v", err)
 	}

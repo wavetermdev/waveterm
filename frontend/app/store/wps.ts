@@ -1,10 +1,16 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import type { WshClient } from "@/app/store/wshclient";
 import { RpcApi } from "@/app/store/wshclientapi";
-import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { isBlank } from "@/util/util";
 import { Subject } from "rxjs";
+
+let WpsRpcClient: WshClient;
+
+function setWpsRpcClient(client: WshClient) {
+    WpsRpcClient = client;
+}
 
 type WaveEventSubject = {
     handler: (event: WaveEvent) => void;
@@ -37,7 +43,7 @@ function wpsReconnectHandler() {
 function updateWaveEventSub(eventType: string) {
     const subjects = waveEventSubjects.get(eventType);
     if (subjects == null) {
-        RpcApi.EventUnsubCommand(TabRpcClient, eventType, { noresponse: true });
+        RpcApi.EventUnsubCommand(WpsRpcClient, eventType, { noresponse: true });
         return;
     }
     const subreq: SubscriptionRequest = { event: eventType, scopes: [], allscopes: false };
@@ -49,7 +55,7 @@ function updateWaveEventSub(eventType: string) {
         }
         subreq.scopes.push(scont.scope);
     }
-    RpcApi.EventSubCommand(TabRpcClient, subreq, { noresponse: true });
+    RpcApi.EventSubCommand(WpsRpcClient, subreq, { noresponse: true });
 }
 
 function waveEventSubscribe(...subscriptions: WaveEventSubscription[]): () => void {
@@ -139,4 +145,11 @@ function handleWaveEvent(event: WaveEvent) {
     }
 }
 
-export { getFileSubject, handleWaveEvent, waveEventSubscribe, waveEventUnsubscribe, wpsReconnectHandler };
+export {
+    getFileSubject,
+    handleWaveEvent,
+    setWpsRpcClient,
+    waveEventSubscribe,
+    waveEventUnsubscribe,
+    wpsReconnectHandler,
+};
