@@ -537,6 +537,11 @@ class RpcApiType {
         return client.wshRpcCall("setmeta", data, opts);
     }
 
+    // command "setpeerinfo" [call]
+    SetPeerInfoCommand(client: WshClient, data: string, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("setpeerinfo", data, opts);
+    }
+
     // command "setrtinfo" [call]
     SetRTInfoCommand(client: WshClient, data: CommandSetRTInfoData, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("setrtinfo", data, opts);

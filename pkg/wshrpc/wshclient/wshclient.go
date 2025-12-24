@@ -646,6 +646,12 @@ func SetMetaCommand(w *wshutil.WshRpc, data wshrpc.CommandSetMetaData, opts *wsh
 	return err
 }
 
+// command "setpeerinfo", wshserver.SetPeerInfoCommand
+func SetPeerInfoCommand(w *wshutil.WshRpc, data string, opts *wshrpc.RpcOpts) error {
+	_, err := sendRpcRequestCallHelper[any](w, "setpeerinfo", data, opts)
+	return err
+}
+
 // command "setrtinfo", wshserver.SetRTInfoCommand
 func SetRTInfoCommand(w *wshutil.WshRpc, data wshrpc.CommandSetRTInfoData, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "setrtinfo", data, opts)

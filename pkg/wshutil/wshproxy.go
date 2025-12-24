@@ -38,6 +38,12 @@ func (p *WshRpcProxy) GetPeerInfo() string {
 	return p.PeerInfo
 }
 
+func (p *WshRpcProxy) SetPeerInfo(peerInfo string) {
+	p.Lock.Lock()
+	defer p.Lock.Unlock()
+	p.PeerInfo = peerInfo
+}
+
 func (p *WshRpcProxy) SetRpcContext(rpcCtx *wshrpc.RpcContext) {
 	p.Lock.Lock()
 	defer p.Lock.Unlock()

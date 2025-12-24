@@ -57,6 +57,7 @@ const (
 	Command_Dispose           = "dispose"           // $control (disposes of the route, for multiproxy only)
 	Command_RouteAnnounce     = "routeannounce"     // $control (for routing)
 	Command_RouteUnannounce   = "routeunannounce"   // $control (for routing)
+	Command_SetPeerInfo       = "setpeerinfo"       // $control (sets peer info on proxy)
 	Command_ControlMessage    = "controlmessage"    // $control
 	Command_Ping              = "ping"              // $control
 
@@ -203,6 +204,7 @@ type WshRpcInterface interface {
 	DisposeCommand(ctx context.Context, data CommandDisposeData) error
 	RouteAnnounceCommand(ctx context.Context) error   // (special) announces a new route to the main router
 	RouteUnannounceCommand(ctx context.Context) error // (special) unannounces a route to the main router
+	SetPeerInfoCommand(ctx context.Context, peerInfo string) error
 
 	MessageCommand(ctx context.Context, data CommandMessageData) error
 	GetMetaCommand(ctx context.Context, data CommandGetMetaData) (waveobj.MetaMapType, error)

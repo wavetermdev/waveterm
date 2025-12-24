@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
+	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/wavejwt"
 	"github.com/wavetermdev/waveterm/pkg/wps"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
@@ -711,6 +712,9 @@ func (router *WshRouter) getUpstreamClient() AbstractRpcClient {
 }
 
 func (router *WshRouter) handleControlMessage(m RpcMessage, linkMeta linkMeta) {
+	defer func() {
+		panichandler.PanicHandler("WshRouter:handleControlMessage", recover())
+	}()
 	if m.Command == wshrpc.Command_RouteAnnounce {
 		if !linkMeta.trusted {
 			sendControlUnauthenticatedErrorResponse(m, linkMeta)
@@ -734,6 +738,23 @@ func (router *WshRouter) handleControlMessage(m RpcMessage, linkMeta linkMeta) {
 		}
 		router.unbindRoute(linkMeta.linkId, m.Source)
 		sendControlDataResponse(m, linkMeta, nil, "control-response")
+		return
+	} else if m.Command == wshrpc.Command_SetPeerInfo {
+		if !linkMeta.trusted {
+			sendControlUnauthenticatedErrorResponse(m, linkMeta)
+			return
+		}
+		if proxy, ok := linkMeta.client.(*WshRpcProxy); ok {
+			var peerInfo string
+			if err := utilfn.ReUnmarshal(&peerInfo, m.Data); err != nil {
+				sendControlErrorResponse(m, linkMeta, fmt.Sprintf("error unmarshaling setpeerinfo data: %v", err), "control-error")
+				return
+			}
+			proxy.SetPeerInfo(peerInfo)
+			sendControlDataResponse(m, linkMeta, nil, "control-response")
+		} else {
+			sendControlErrorResponse(m, linkMeta, "setpeerinfo only valid for proxy connections", "control-error")
+		}
 		return
 	} else if m.Command == wshrpc.Command_Authenticate {
 		router.handleControlAuthenticate(m, linkMeta)
