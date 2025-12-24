@@ -389,11 +389,11 @@ func shutdownActivityUpdate() {
 func createMainWshClient() {
 	rpc := wshserver.GetMainRpcClient()
 	wshfs.RpcClient = rpc
-	wshutil.DefaultRouter.RegisterRoute(wshutil.DefaultRoute, rpc, true)
+	wshutil.DefaultRouter.RegisterTrustedLeaf(rpc, wshutil.DefaultRoute)
 	wps.Broker.SetClient(wshutil.DefaultRouter)
 	localConnWsh := wshutil.MakeWshRpc(nil, nil, wshrpc.RpcContext{Conn: wshrpc.LocalConnName}, &wshremote.ServerImpl{}, "conn:local")
 	go wshremote.RunSysInfoLoop(localConnWsh, wshrpc.LocalConnName)
-	wshutil.DefaultRouter.RegisterRoute(wshutil.MakeConnectionRouteId(wshrpc.LocalConnName), localConnWsh, true)
+	wshutil.DefaultRouter.RegisterTrustedLeaf(localConnWsh, wshutil.MakeConnectionRouteId(wshrpc.LocalConnName))
 }
 
 func grabAndRemoveEnvVars() error {
@@ -461,6 +461,7 @@ func main() {
 	log.SetPrefix("[wavesrv] ")
 	wavebase.WaveVersion = WaveVersion
 	wavebase.BuildTime = BuildTime
+	wshutil.DefaultRouter.SetAsRootRouter()
 
 	err := grabAndRemoveEnvVars()
 	if err != nil {

@@ -9,12 +9,11 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"strings"
 	"sync"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
-	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/wps"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 )
@@ -24,6 +23,9 @@ const (
 	UpstreamRoute = "upstream"
 	SysRoute      = "sys" // this route doesn't exist, just a placeholder for system messages
 	ElectronRoute = "electron"
+	ControlRoute  = "$control" // control plane route
+
+	ControlPrefix = "$"
 
 	RoutePrefix_Conn       = "conn:"
 	RoutePrefix_Controller = "controller:"
@@ -43,19 +45,60 @@ type routeInfo struct {
 	DestRouteId   string
 }
 
+type LinkId int32
+
+const NoLinkId = 0
+
+const LinkKind_Leaf = "leaf"
+const LinkKind_Router = "router"
+
 type msgAndRoute struct {
 	msgBytes    []byte
 	fromRouteId string
 }
 
+type routerMsg struct {
+	msgBytes    []byte
+	ingressLink LinkId
+}
+
+type linkMeta struct {
+	linkId        LinkId
+	trusted       bool
+	linkKind      string
+	sourceRouteId string
+	client        AbstractRpcClient
+}
+
+type rpcRoutingInfo struct {
+	rpcId        string
+	sourceLinkId LinkId
+	destRouteId  string
+}
+
+type messageWrap struct {
+	msgBytes []byte
+	debugStr string
+}
+
 type WshRouter struct {
-	Lock             *sync.Mutex
-	RouteMap         map[string]AbstractRpcClient // routeid => client
-	UpstreamClient   AbstractRpcClient            // upstream client (if we are not the terminal router)
-	AnnouncedRoutes  map[string]string            // routeid => local routeid
-	RpcMap           map[string]*routeInfo        // rpcid => routeinfo
-	SimpleRequestMap map[string]chan *RpcMessage  // simple reqid => response channel
-	InputCh          chan msgAndRoute
+	Lock *sync.Mutex
+	// RouteMap        map[string]AbstractRpcClient // routeid => client
+	// AnnouncedRoutes map[string]string     // routeid => local routeid
+	// RpcMap map[string]*routeInfo // rpcid => routeinfo
+
+	isRootRouter   bool
+	nextLinkId     LinkId
+	upstreamLinkId LinkId
+	inputCh        chan routerMsg
+	rpcMap         map[string]rpcRoutingInfo // rpcid => routeinfo
+	routeMap       map[string]LinkId         // routeid => linkid
+	linkMap        map[LinkId]*linkMeta
+
+	upstreamBufLock     sync.Mutex
+	upstreamBufCond     *sync.Cond
+	upstreamBuf         []messageWrap
+	upstreamLoopStarted bool
 }
 
 func MakeConnectionRouteId(connId string) string {
@@ -86,15 +129,33 @@ var DefaultRouter = NewWshRouter()
 
 func NewWshRouter() *WshRouter {
 	rtn := &WshRouter{
-		Lock:             &sync.Mutex{},
-		RouteMap:         make(map[string]AbstractRpcClient),
-		AnnouncedRoutes:  make(map[string]string),
-		RpcMap:           make(map[string]*routeInfo),
-		SimpleRequestMap: make(map[string]chan *RpcMessage),
-		InputCh:          make(chan msgAndRoute, DefaultInputChSize),
+		Lock: &sync.Mutex{},
+		// RouteMap:        make(map[string]AbstractRpcClient),
+		// AnnouncedRoutes: make(map[string]string),
+		// RpcMap:          make(map[string]*routeInfo),
+
+		nextLinkId:     0,
+		upstreamLinkId: NoLinkId,
+		inputCh:        make(chan routerMsg),
+		rpcMap:         make(map[string]rpcRoutingInfo),
+		linkMap:        make(map[LinkId]*linkMeta),
+		routeMap:       make(map[string]LinkId),
 	}
+	rtn.upstreamBufCond = sync.NewCond(&rtn.upstreamBufLock)
 	go rtn.runServer()
 	return rtn
+}
+
+func (router *WshRouter) IsRootRouter() bool {
+	router.Lock.Lock()
+	defer router.Lock.Unlock()
+	return router.isRootRouter
+}
+
+func (router *WshRouter) SetAsRootRouter() {
+	router.Lock.Lock()
+	defer router.Lock.Unlock()
+	router.isRootRouter = true
 }
 
 func noRouteErr(routeId string) error {
@@ -108,8 +169,8 @@ func (router *WshRouter) SendEvent(routeId string, event wps.WaveEvent) {
 	defer func() {
 		panichandler.PanicHandler("WshRouter.SendEvent", recover())
 	}()
-	rpc := router.GetRpc(routeId)
-	if rpc == nil {
+	lm := router.getLinkForRoute(routeId)
+	if lm == nil {
 		return
 	}
 	msg := RpcMessage{
@@ -122,10 +183,14 @@ func (router *WshRouter) SendEvent(routeId string, event wps.WaveEvent) {
 		// nothing to do
 		return
 	}
-	rpc.SendRpcMessage(msgBytes, "eventrecv")
+	lm.client.SendRpcMessage(msgBytes, "eventrecv")
 }
 
-func (router *WshRouter) handleNoRoute(msg RpcMessage) {
+func (router *WshRouter) handleNoRoute(msg RpcMessage, ingressLinkId LinkId) {
+	lm := router.getLinkMeta(ingressLinkId)
+	if lm == nil {
+		return
+	}
 	nrErr := noRouteErr(msg.Route)
 	if msg.ReqId == "" {
 		if msg.Command == wshrpc.Command_Message {
@@ -133,9 +198,14 @@ func (router *WshRouter) handleNoRoute(msg RpcMessage) {
 			return
 		}
 		// no response needed, but send message back to source
-		respMsg := RpcMessage{Command: wshrpc.Command_Message, Route: msg.Source, Data: wshrpc.CommandMessageData{Message: nrErr.Error()}}
+		respMsg := RpcMessage{
+			Command: wshrpc.Command_Message,
+			Route:   msg.Source,
+			Source:  ControlRoute,
+			Data:    wshrpc.CommandMessageData{Message: nrErr.Error()},
+		}
 		respBytes, _ := json.Marshal(respMsg)
-		router.InputCh <- msgAndRoute{msgBytes: respBytes, fromRouteId: SysRoute}
+		lm.client.SendRpcMessage(respBytes, "no-route-err")
 		return
 	}
 	// send error response
@@ -147,72 +217,43 @@ func (router *WshRouter) handleNoRoute(msg RpcMessage) {
 	router.sendRoutedMessage(respBytes, msg.Source)
 }
 
-func (router *WshRouter) registerRouteInfo(rpcId string, sourceRouteId string, destRouteId string) {
+func (router *WshRouter) registerRouteInfo(rpcId string, sourceLinkId LinkId, destRouteId string) {
 	if rpcId == "" {
 		return
 	}
 	router.Lock.Lock()
 	defer router.Lock.Unlock()
-	router.RpcMap[rpcId] = &routeInfo{RpcId: rpcId, SourceRouteId: sourceRouteId, DestRouteId: destRouteId}
+	router.rpcMap[rpcId] = rpcRoutingInfo{
+		rpcId:        rpcId,
+		sourceLinkId: sourceLinkId,
+		destRouteId:  destRouteId,
+	}
 }
 
 func (router *WshRouter) unregisterRouteInfo(rpcId string) {
 	router.Lock.Lock()
 	defer router.Lock.Unlock()
-	delete(router.RpcMap, rpcId)
+	delete(router.rpcMap, rpcId)
 }
 
-func (router *WshRouter) getRouteInfo(rpcId string) *routeInfo {
+func (router *WshRouter) getRouteInfo(rpcId string) *rpcRoutingInfo {
 	router.Lock.Lock()
 	defer router.Lock.Unlock()
-	return router.RpcMap[rpcId]
-}
-
-func (router *WshRouter) handleAnnounceMessage(msg RpcMessage, input msgAndRoute) {
-	if msg.Source != input.fromRouteId {
-		router.Lock.Lock()
-		router.AnnouncedRoutes[msg.Source] = input.fromRouteId
-		router.Lock.Unlock()
+	rtn, ok := router.rpcMap[rpcId]
+	if !ok {
+		return nil
 	}
-	upstream := router.GetUpstreamClient()
-	if upstream != nil {
-		upstream.SendRpcMessage(input.msgBytes, "announce-upstream")
-	}
-}
-
-func (router *WshRouter) handleUnannounceMessage(msg RpcMessage, input msgAndRoute) {
-	router.Lock.Lock()
-	delete(router.AnnouncedRoutes, msg.Source)
-	router.Lock.Unlock()
-
-	upstream := router.GetUpstreamClient()
-	if upstream != nil {
-		upstream.SendRpcMessage(input.msgBytes, "unannounce-upstream")
-	}
-}
-
-func (router *WshRouter) getAnnouncedRoute(routeId string) string {
-	router.Lock.Lock()
-	defer router.Lock.Unlock()
-	return router.AnnouncedRoutes[routeId]
+	return &rtn
 }
 
 // returns true if message was sent, false if failed
 func (router *WshRouter) sendRoutedMessage(msgBytes []byte, routeId string) bool {
-	rpc := router.GetRpc(routeId)
-	if rpc != nil {
-		rpc.SendRpcMessage(msgBytes, "route")
+	lm := router.getLinkForRoute(routeId)
+	if lm != nil {
+		lm.client.SendRpcMessage(msgBytes, "route")
 		return true
 	}
-	localRouteId := router.getAnnouncedRoute(routeId)
-	if localRouteId != "" {
-		rpc := router.GetRpc(localRouteId)
-		if rpc != nil {
-			rpc.SendRpcMessage(msgBytes, "route-local")
-			return true
-		}
-	}
-	upstream := router.GetUpstreamClient()
+	upstream := router.getUpstreamClient()
 	if upstream != nil {
 		upstream.SendRpcMessage(msgBytes, "route-upstream")
 		return true
@@ -221,8 +262,17 @@ func (router *WshRouter) sendRoutedMessage(msgBytes []byte, routeId string) bool
 	return false
 }
 
+func (router *WshRouter) sendMessageToLink(msgBytes []byte, linkId LinkId) bool {
+	lm := router.getLinkMeta(linkId)
+	if lm == nil {
+		return false
+	}
+	lm.client.SendRpcMessage(msgBytes, "link")
+	return true
+}
+
 func (router *WshRouter) runServer() {
-	for input := range router.InputCh {
+	for input := range router.inputCh {
 		msgBytes := input.msgBytes
 		var msg RpcMessage
 		err := json.Unmarshal(msgBytes, &msg)
@@ -231,22 +281,14 @@ func (router *WshRouter) runServer() {
 			continue
 		}
 		routeId := msg.Route
-		if msg.Command == wshrpc.Command_RouteAnnounce {
-			router.handleAnnounceMessage(msg, input)
-			continue
-		}
-		if msg.Command == wshrpc.Command_RouteUnannounce {
-			router.handleUnannounceMessage(msg, input)
-			continue
-		}
 		if msg.Command != "" {
 			// new comand, setup new rpc
 			ok := router.sendRoutedMessage(msgBytes, routeId)
 			if !ok {
-				router.handleNoRoute(msg)
+				router.handleNoRoute(msg, input.ingressLink)
 				continue
 			}
-			router.registerRouteInfo(msg.ReqId, msg.Source, routeId)
+			router.registerRouteInfo(msg.ReqId, input.ingressLink, routeId)
 			continue
 		}
 		// look at reqid or resid to route correctly
@@ -257,19 +299,15 @@ func (router *WshRouter) runServer() {
 				continue
 			}
 			// no need to check the return value here (noop if failed)
-			router.sendRoutedMessage(msgBytes, routeInfo.DestRouteId)
+			router.sendRoutedMessage(msgBytes, routeInfo.destRouteId)
 			continue
 		} else if msg.ResId != "" {
-			ok := router.trySimpleResponse(&msg)
-			if ok {
-				continue
-			}
 			routeInfo := router.getRouteInfo(msg.ResId)
 			if routeInfo == nil {
 				// no route info, nothing to do
 				continue
 			}
-			router.sendRoutedMessage(msgBytes, routeInfo.SourceRouteId)
+			router.sendMessageToLink(msgBytes, routeInfo.sourceLinkId)
 			if !msg.Cont {
 				router.unregisterRouteInfo(msg.ResId)
 			}
@@ -283,10 +321,7 @@ func (router *WshRouter) runServer() {
 
 func (router *WshRouter) WaitForRegister(ctx context.Context, routeId string) error {
 	for {
-		if router.GetRpc(routeId) != nil {
-			return nil
-		}
-		if router.getAnnouncedRoute(routeId) != "" {
+		if router.getLinkForRoute(routeId) != nil {
 			return nil
 		}
 		select {
@@ -298,195 +333,399 @@ func (router *WshRouter) WaitForRegister(ctx context.Context, routeId string) er
 	}
 }
 
-// this will also consume the output channel of the abstract client
-func (router *WshRouter) RegisterRoute(routeId string, rpc AbstractRpcClient, shouldAnnounce bool) {
-	if routeId == SysRoute || routeId == UpstreamRoute {
-		// cannot register sys route
-		log.Printf("error: WshRouter cannot register %s route\n", routeId)
+// this will never block, can be called while holding router.Lock
+func (router *WshRouter) queueUpstreamMessage(msgBytes []byte, debugStr string) {
+	if router.getUpstreamClient() == nil {
 		return
 	}
-	log.Printf("[router] registering wsh route %q\n", routeId)
+	router.upstreamBufLock.Lock()
+	defer router.upstreamBufLock.Unlock()
+	router.upstreamBuf = append(router.upstreamBuf, messageWrap{msgBytes: msgBytes, debugStr: debugStr})
+	if !router.upstreamLoopStarted {
+		router.upstreamLoopStarted = true
+		go router.runUpstreamBufferLoop()
+	}
+	router.upstreamBufCond.Signal()
+}
+
+func (router *WshRouter) runUpstreamBufferLoop() {
+	defer func() {
+		panichandler.PanicHandler("WshRouter:runUpstreamBufferLoop", recover())
+	}()
+	for {
+		router.upstreamBufLock.Lock()
+		for len(router.upstreamBuf) == 0 {
+			router.upstreamBufCond.Wait()
+		}
+		msg := router.upstreamBuf[0]
+		router.upstreamBuf = router.upstreamBuf[1:]
+		router.upstreamBufLock.Unlock()
+
+		upstream := router.getUpstreamClient()
+		if upstream != nil {
+			upstream.SendRpcMessage(msg.msgBytes, msg.debugStr)
+		}
+	}
+}
+
+func (router *WshRouter) RegisterUntrustedLink(client AbstractRpcClient) LinkId {
 	router.Lock.Lock()
 	defer router.Lock.Unlock()
-	alreadyExists := router.RouteMap[routeId] != nil
-	if alreadyExists {
-		log.Printf("[router] warning: route %q already exists (replacing)\n", routeId)
+	router.nextLinkId++
+	linkId := router.nextLinkId
+	router.linkMap[linkId] = &linkMeta{
+		linkId:  linkId,
+		trusted: false,
+		client:  client,
 	}
-	router.RouteMap[routeId] = rpc
-	go func() {
-		defer func() {
-			panichandler.PanicHandler("WshRouter:registerRoute:recvloop", recover())
-		}()
-		// announce
-		if shouldAnnounce && !alreadyExists && router.GetUpstreamClient() != nil {
-			announceMsg := RpcMessage{Command: wshrpc.Command_RouteAnnounce, Source: routeId}
-			announceBytes, _ := json.Marshal(announceMsg)
-			router.GetUpstreamClient().SendRpcMessage(announceBytes, "route-announce")
+	go router.runLinkClientRecvLoop(linkId, client)
+	return linkId
+}
+
+func (router *WshRouter) trustLink(linkId LinkId, linkKind string) {
+	router.Lock.Lock()
+	defer router.Lock.Unlock()
+	lm := router.linkMap[linkId]
+	if lm == nil {
+		return
+	}
+	lm.trusted = true
+	lm.linkKind = linkKind
+}
+
+func (router *WshRouter) runLinkClientRecvLoop(linkId LinkId, client AbstractRpcClient) {
+	defer func() {
+		panichandler.PanicHandler("WshRouter:runLinkClientRecvLoop", recover())
+	}()
+	exitReason := "unknown"
+	log.Printf("link recvloop start for linkid %d", linkId)
+	defer log.Printf("link recvloop done for linkid %d (%s)", linkId, exitReason)
+	for {
+		msgBytes, ok := client.RecvRpcMessage()
+		if !ok {
+			exitReason = "recv-eof"
+			break
 		}
-		for {
-			msgBytes, ok := rpc.RecvRpcMessage()
-			if !ok {
-				break
+		var rpcMsg RpcMessage
+		err := json.Unmarshal(msgBytes, &rpcMsg)
+		if err != nil {
+			continue
+		}
+		lm := router.getLinkMeta(linkId)
+		if lm == nil {
+			exitReason = "link-gone"
+			break
+		}
+		if rpcMsg.IsRpcRequest() {
+			if lm.sourceRouteId != "" {
+				rpcMsg.Source = lm.sourceRouteId
 			}
-			var rpcMsg RpcMessage
-			err := json.Unmarshal(msgBytes, &rpcMsg)
+			if rpcMsg.Route == "" {
+				rpcMsg.Route = DefaultRoute
+			}
+			if rpcMsg.Route == ControlRoute {
+				router.handleControlMessage(rpcMsg, *lm)
+				continue
+			}
+			msgBytes, err = json.Marshal(rpcMsg)
 			if err != nil {
 				continue
 			}
-			if rpcMsg.Command != "" {
-				if rpcMsg.Source == "" {
-					rpcMsg.Source = routeId
-				}
-				if rpcMsg.Route == "" {
-					rpcMsg.Route = DefaultRoute
-				}
-				msgBytes, err = json.Marshal(rpcMsg)
-				if err != nil {
-					continue
-				}
+			if !lm.trusted {
+				sendControlUnauthenticatedErrorResponse(rpcMsg, *lm)
+				continue
 			}
-			router.InputCh <- msgAndRoute{msgBytes: msgBytes, fromRouteId: routeId}
 		}
-	}()
+		if !lm.trusted {
+			continue
+		}
+		router.inputCh <- routerMsg{msgBytes: msgBytes, ingressLink: linkId}
+	}
 }
 
-func (router *WshRouter) UnregisterRoute(routeId string) {
-	log.Printf("[router] unregistering wsh route %q\n", routeId)
+func sendControlUnauthenticatedErrorResponse(cmdMsg RpcMessage, linkMeta linkMeta) {
+	if cmdMsg.ReqId == "" {
+		return
+	}
+	rtnMsg := RpcMessage{
+		Source: ControlRoute,
+		ResId:  cmdMsg.ReqId,
+		Error:  fmt.Sprintf("link is unauthenticated, cannot call %q", cmdMsg.Command),
+	}
+	rtnBytes, _ := json.Marshal(rtnMsg)
+	linkMeta.client.SendRpcMessage(rtnBytes, "unauthenticated")
+}
+
+func sendControlErrorResponse(cmdMsg RpcMessage, linkMeta linkMeta, errorMsg string, debugStr string) {
+	if cmdMsg.ReqId == "" {
+		return
+	}
+	rtnMsg := RpcMessage{
+		Source: ControlRoute,
+		ResId:  cmdMsg.ReqId,
+		Error:  errorMsg,
+	}
+	rtnBytes, _ := json.Marshal(rtnMsg)
+	linkMeta.client.SendRpcMessage(rtnBytes, debugStr)
+}
+
+func sendControlDataResponse(cmdMsg RpcMessage, linkMeta linkMeta, data any, debugStr string) error {
+	if cmdMsg.ReqId == "" {
+		return nil
+	}
+	rtnMsg := RpcMessage{
+		Source: ControlRoute,
+		ResId:  cmdMsg.ReqId,
+		Data:   data,
+	}
+	rtnBytes, err := json.Marshal(rtnMsg)
+	if err != nil {
+		return err
+	}
+	linkMeta.client.SendRpcMessage(rtnBytes, debugStr)
+	return nil
+}
+
+// synchronized, returns a copy
+func (router *WshRouter) getLinkMeta(linkId LinkId) *linkMeta {
+	if linkId == NoLinkId {
+		return nil
+	}
 	router.Lock.Lock()
-	delete(router.RouteMap, routeId)
-	// clear out announced routes
-	for announcedRouteId, localRouteId := range router.AnnouncedRoutes {
-		if localRouteId == routeId {
-			delete(router.AnnouncedRoutes, announcedRouteId)
+	defer router.Lock.Unlock()
+	lm := router.linkMap[linkId]
+	if lm == nil {
+		return nil
+	}
+	lmCopy := *lm
+	return &lmCopy
+}
+
+// synchronized, returns a copy
+func (router *WshRouter) getLinkForRoute(routeId string) *linkMeta {
+	if routeId == "" {
+		return nil
+	}
+	router.Lock.Lock()
+	defer router.Lock.Unlock()
+	linkId := router.routeMap[routeId]
+	if linkId == NoLinkId {
+		return nil
+	}
+	lm := router.linkMap[linkId]
+	if lm == nil {
+		return nil
+	}
+	lmCopy := *lm
+	return &lmCopy
+}
+
+func (router *WshRouter) GetLinkIdForRoute(routeId string) LinkId {
+	lm := router.getLinkForRoute(routeId)
+	if lm == nil {
+		return NoLinkId
+	}
+	return lm.linkId
+}
+
+// only for leaves
+func (router *WshRouter) RegisterTrustedLeaf(rpc AbstractRpcClient, routeId string) (LinkId, error) {
+	if !isBindableRouteId(routeId) {
+		return 0, fmt.Errorf("invalid routeid %q", routeId)
+	}
+	linkId := router.RegisterUntrustedLink(rpc)
+	router.trustLink(linkId, LinkKind_Leaf)
+	router.bindRoute(linkId, routeId, true)
+	return linkId, nil
+}
+
+func (router *WshRouter) RegisterUpstream(rpc AbstractRpcClient) LinkId {
+	if router.IsRootRouter() {
+		panic("cannot register upstream for root router")
+	}
+	linkId := router.RegisterUntrustedLink(rpc)
+	router.trustLink(linkId, LinkKind_Router)
+	router.Lock.Lock()
+	defer router.Lock.Unlock()
+	router.upstreamLinkId = linkId
+	return linkId
+}
+
+func (router *WshRouter) announceUpstream(routeId string) {
+	msg := RpcMessage{
+		Command: wshrpc.Command_RouteAnnounce,
+		Route:   ControlRoute,
+		Source:  routeId,
+	}
+	msgBytes, _ := json.Marshal(msg)
+	router.queueUpstreamMessage(msgBytes, "upstream-announce")
+}
+
+func (router *WshRouter) unannounceUpstream(routeId string) {
+	msg := RpcMessage{
+		Command: wshrpc.Command_RouteUnannounce,
+		Route:   ControlRoute,
+		Source:  routeId,
+	}
+	msgBytes, _ := json.Marshal(msg)
+	router.queueUpstreamMessage(msgBytes, "upstream-unannounce")
+}
+
+func (router *WshRouter) getRoutesForLink(linkId LinkId) []string {
+	router.Lock.Lock()
+	defer router.Lock.Unlock()
+	var routes []string
+	for routeId, mappedLinkId := range router.routeMap {
+		if mappedLinkId == linkId {
+			routes = append(routes, routeId)
 		}
 	}
-	upstream := router.UpstreamClient
-	router.Lock.Unlock()
-	
-	if upstream != nil {
-		unannounceMsg := RpcMessage{Command: wshrpc.Command_RouteUnannounce, Source: routeId}
-		unannounceBytes, _ := json.Marshal(unannounceMsg)
-		upstream.SendRpcMessage(unannounceBytes, "route-unannounce")
+	return routes
+}
+
+func (router *WshRouter) UnregisterLink(linkId LinkId) {
+	routes := router.getRoutesForLink(linkId)
+	for _, routeId := range routes {
+		router.unbindRoute(linkId, routeId)
 	}
-	
-	go func() {
-		defer func() {
-			panichandler.PanicHandler("WshRouter:unregisterRoute:routegone", recover())
-		}()
-		wps.Broker.UnsubscribeAll(routeId)
-		wps.Broker.Publish(wps.WaveEvent{Event: wps.Event_RouteGone, Scopes: []string{routeId}})
-	}()
-}
-
-// this may return nil (returns default only for empty routeId)
-func (router *WshRouter) GetRpc(routeId string) AbstractRpcClient {
 	router.Lock.Lock()
 	defer router.Lock.Unlock()
-	return router.RouteMap[routeId]
+	delete(router.linkMap, linkId)
+	if router.upstreamLinkId == linkId {
+		router.upstreamLinkId = NoLinkId
+	}
 }
 
-func (router *WshRouter) SetUpstreamClient(rpc AbstractRpcClient) {
-	router.Lock.Lock()
-	defer router.Lock.Unlock()
-	router.UpstreamClient = rpc
-}
-
-func (router *WshRouter) GetUpstreamClient() AbstractRpcClient {
-	router.Lock.Lock()
-	defer router.Lock.Unlock()
-	return router.UpstreamClient
-}
-
-func (router *WshRouter) InjectMessage(msgBytes []byte, fromRouteId string) {
-	router.InputCh <- msgAndRoute{msgBytes: msgBytes, fromRouteId: fromRouteId}
-}
-
-func (router *WshRouter) registerSimpleRequest(reqId string) chan *RpcMessage {
-	router.Lock.Lock()
-	defer router.Lock.Unlock()
-	rtn := make(chan *RpcMessage, 1)
-	router.SimpleRequestMap[reqId] = rtn
-	return rtn
-}
-
-func (router *WshRouter) trySimpleResponse(msg *RpcMessage) bool {
-	router.Lock.Lock()
-	defer router.Lock.Unlock()
-	respCh := router.SimpleRequestMap[msg.ResId]
-	if respCh == nil {
+func isBindableRouteId(routeId string) bool {
+	if routeId == "" || strings.HasPrefix(routeId, ControlPrefix) {
 		return false
 	}
-	respCh <- msg
-	delete(router.SimpleRequestMap, msg.ResId)
 	return true
 }
 
-func (router *WshRouter) clearSimpleRequest(reqId string) {
+func (router *WshRouter) unbindRouteLocally(linkId LinkId, routeId string) error {
+	if linkId == NoLinkId {
+		return fmt.Errorf("cannot unbind %q to NoLinkId", routeId)
+	}
 	router.Lock.Lock()
 	defer router.Lock.Unlock()
-	delete(router.SimpleRequestMap, reqId)
+	if router.routeMap[routeId] == linkId {
+		delete(router.routeMap, routeId)
+	}
+	return nil
 }
 
-func (router *WshRouter) RunSimpleRawCommand(ctx context.Context, msg RpcMessage, fromRouteId string) (*RpcMessage, error) {
-	if msg.Command == "" {
-		return nil, errors.New("no command")
-	}
-	msgBytes, err := json.Marshal(msg)
+func (router *WshRouter) unbindRoute(linkId LinkId, routeId string) error {
+	err := router.unbindRouteLocally(linkId, routeId)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	var respCh chan *RpcMessage
-	if msg.ReqId != "" {
-		respCh = router.registerSimpleRequest(msg.ReqId)
+	router.unannounceUpstream(routeId)
+	if router.IsRootRouter() {
+		router.unsubscribeFromBroker(routeId)
 	}
-	router.InjectMessage(msgBytes, fromRouteId)
-	if respCh == nil {
-		return nil, nil
+	return nil
+}
+
+func (router *WshRouter) bindRouteLocally(linkId LinkId, routeId string, isSourceRoute bool) error {
+	if linkId == NoLinkId {
+		return fmt.Errorf("cannot bindroute %q to NoLinkId", routeId)
 	}
-	select {
-	case <-ctx.Done():
-		router.clearSimpleRequest(msg.ReqId)
-		return nil, ctx.Err()
-	case resp := <-respCh:
-		if resp.Error != "" {
-			return nil, errors.New(resp.Error)
+	if !isBindableRouteId(routeId) {
+		// cannot register sys route
+		return fmt.Errorf("router cannot register %q route (invalid routeid)", routeId)
+	}
+	router.Lock.Lock()
+	defer router.Lock.Unlock()
+	lm := router.linkMap[linkId]
+	if lm == nil {
+		return fmt.Errorf("cannot bind route %q, no link with id %d found", routeId, linkId)
+	}
+	if !lm.trusted {
+		return fmt.Errorf("cannot bind route %q, link %d is not trusted", routeId, linkId)
+	}
+	if isSourceRoute {
+		if lm.linkKind != LinkKind_Leaf {
+			return fmt.Errorf("cannot bind source route %q to link %d (link is not a leaf)", routeId, linkId)
 		}
-		return resp, nil
+		if lm.sourceRouteId != "" {
+			return fmt.Errorf("cannot bind source route %q to link %d (link already has source route %q)", routeId, linkId, lm.sourceRouteId)
+		}
+		lm.sourceRouteId = routeId
+	} else {
+		if lm.linkKind != LinkKind_Router {
+			return fmt.Errorf("cannot bind route %q to link %d (link is not a router)", routeId, linkId)
+		}
+	}
+	router.routeMap[routeId] = linkId
+	return nil
+}
+
+func (router *WshRouter) bindRoute(linkId LinkId, routeId string, isSourceRoute bool) error {
+	err := router.bindRouteLocally(linkId, routeId, isSourceRoute)
+	if err != nil {
+		return err
+	}
+	router.announceUpstream(routeId)
+	return nil
+}
+
+func (router *WshRouter) getUpstreamClient() AbstractRpcClient {
+	router.Lock.Lock()
+	defer router.Lock.Unlock()
+	if router.upstreamLinkId == NoLinkId {
+		return nil
+	}
+	lm := router.linkMap[router.upstreamLinkId]
+	if lm == nil {
+		return nil
+	}
+	return lm.client
+}
+
+func (router *WshRouter) handleControlMessage(m RpcMessage, linkMeta linkMeta) {
+	if m.Command == wshrpc.Command_RouteAnnounce {
+		if !linkMeta.trusted {
+			sendControlUnauthenticatedErrorResponse(m, linkMeta)
+			return
+		}
+		if m.Source == "" {
+			sendControlErrorResponse(m, linkMeta, "no source in routeannounce", "control-error")
+			return
+		}
+		router.bindRoute(linkMeta.linkId, m.Source, false)
+		sendControlDataResponse(m, linkMeta, nil, "control-response")
+		return
+	}
+	if m.Command == wshrpc.Command_RouteUnannounce {
+		if !linkMeta.trusted {
+			sendControlUnauthenticatedErrorResponse(m, linkMeta)
+			return
+		}
+		if m.Source == "" {
+			sendControlErrorResponse(m, linkMeta, "no source in routeunannounce", "control-error")
+			return
+		}
+		router.unbindRoute(linkMeta.linkId, m.Source)
+		sendControlDataResponse(m, linkMeta, nil, "control-response")
+		return
 	}
 }
 
-func (router *WshRouter) HandleProxyAuth(jwtTokenAny any) (*wshrpc.CommandAuthenticateRtnData, error) {
-	if jwtTokenAny == nil {
-		return nil, errors.New("no jwt token")
-	}
-	jwtToken, ok := jwtTokenAny.(string)
-	if !ok {
-		return nil, errors.New("jwt token not a string")
-	}
-	if jwtToken == "" {
-		return nil, errors.New("empty jwt token")
-	}
-	msg := RpcMessage{
-		Command: wshrpc.Command_Authenticate,
-		ReqId:   uuid.New().String(),
-		Data:    jwtToken,
-	}
-	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeoutMs*time.Millisecond)
-	defer cancelFn()
-	resp, err := router.RunSimpleRawCommand(ctx, msg, "")
-	if err != nil {
-		return nil, err
-	}
-	if resp == nil || resp.Data == nil {
-		return nil, errors.New("no data in authenticate response")
-	}
-	var respData wshrpc.CommandAuthenticateRtnData
-	err = utilfn.ReUnmarshal(&respData, resp.Data)
-	if err != nil {
-		return nil, fmt.Errorf("error unmarshalling authenticate response: %v", err)
-	}
-	if respData.AuthToken == "" {
-		return nil, errors.New("no auth token in authenticate response")
-	}
-	return &respData, nil
+func (router *WshRouter) unsubscribeFromBroker(routeId string) {
+	defer func() {
+		panichandler.PanicHandler("WshRouter:unregisterRoute:routegone", recover())
+	}()
+	wps.Broker.UnsubscribeAll(routeId)
+	wps.Broker.Publish(wps.WaveEvent{Event: wps.Event_RouteGone, Scopes: []string{routeId}})
+}
+
+// TODO remove
+func (router *WshRouter) HandleProxyAuth(authData any) (wshrpc.CommandAuthenticateRtnData, error) {
+	return wshrpc.CommandAuthenticateRtnData{}, nil
+}
+
+// TODO remove
+func (router *WshRouter) InjectMessage(msgBytes []byte, routeId string) {
+	// nothing
 }

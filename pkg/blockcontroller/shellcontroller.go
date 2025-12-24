@@ -506,7 +506,10 @@ func (bc *ShellController) manageRunningShellProcess(shellProc *shellexec.ShellP
 	// we don't need to authenticate this wshProxy since it is coming direct
 	wshProxy := wshutil.MakeRpcProxy()
 	wshProxy.SetRpcContext(&wshrpc.RpcContext{TabId: bc.TabId, BlockId: bc.BlockId})
-	wshutil.DefaultRouter.RegisterRoute(wshutil.MakeControllerRouteId(bc.BlockId), wshProxy, true)
+	controllerLinkId, err := wshutil.DefaultRouter.RegisterTrustedLeaf(wshProxy, wshutil.MakeControllerRouteId(bc.BlockId))
+	if err != nil {
+		return fmt.Errorf("cannot register controller route: %w", err)
+	}
 	ptyBuffer := wshutil.MakePtyBuffer(wshutil.WaveOSCPrefix, shellProc.Cmd, wshProxy.FromRemoteCh)
 	go func() {
 		// handles regular output from the pty (goes to the blockfile and xterm)
@@ -584,7 +587,7 @@ func (bc *ShellController) manageRunningShellProcess(shellProc *shellexec.ShellP
 		// wait for the shell to finish
 		var exitCode int
 		defer func() {
-			wshutil.DefaultRouter.UnregisterRoute(wshutil.MakeControllerRouteId(bc.BlockId))
+			wshutil.DefaultRouter.UnregisterLink(controllerLinkId)
 			bc.UpdateControllerAndSendUpdate(func() bool {
 				if bc.ProcStatus == Status_Running {
 					bc.ProcStatus = Status_Done

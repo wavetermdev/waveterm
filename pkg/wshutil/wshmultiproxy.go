@@ -16,6 +16,7 @@ import (
 
 type multiProxyRouteInfo struct {
 	RouteId    string
+	LinkId     LinkId
 	AuthToken  string
 	Proxy      *WshRpcProxy
 	RpcContext *wshrpc.RpcContext
@@ -42,7 +43,7 @@ func (p *WshRpcMultiProxy) DisposeRoutes() {
 	p.Lock.Lock()
 	defer p.Lock.Unlock()
 	for authToken, routeInfo := range p.RouteInfo {
-		DefaultRouter.UnregisterRoute(routeInfo.RouteId)
+		DefaultRouter.UnregisterLink(routeInfo.LinkId)
 		delete(p.RouteInfo, authToken)
 	}
 }
@@ -125,7 +126,11 @@ func (p *WshRpcMultiProxy) handleUnauthMessage(msgBytes []byte) {
 				p.ToRemoteCh <- msgBytes
 			}
 		}()
-		DefaultRouter.RegisterRoute(routeId, routeInfo.Proxy, true)
+		routeInfo.LinkId, err = DefaultRouter.RegisterTrustedLeaf(routeInfo.Proxy, routeId)
+		if err != nil {
+			p.sendResponseError(msg, err)
+			return
+		}
 		return
 	}
 	// TODO implement authenticatetoken for multiproxy unauth message
@@ -143,7 +148,7 @@ func (p *WshRpcMultiProxy) handleUnauthMessage(msgBytes []byte) {
 		return
 	}
 	if msg.Command == wshrpc.Command_Dispose {
-		DefaultRouter.UnregisterRoute(routeInfo.RouteId)
+		DefaultRouter.UnregisterLink(routeInfo.LinkId)
 		p.removeRouteInfo(msg.AuthToken)
 		close(routeInfo.Proxy.ToRemoteCh)
 		close(routeInfo.Proxy.FromRemoteCh)

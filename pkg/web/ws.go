@@ -257,10 +257,13 @@ func registerConn(wsConnId string, routeId string, wproxy *wshutil.WshRpcProxy) 
 	curConnId := RouteToConnMap[routeId]
 	if curConnId != "" {
 		log.Printf("[websocket] warning: replacing existing connection for route %q\n", routeId)
-		wshutil.DefaultRouter.UnregisterRoute(routeId)
+		linkId := wshutil.DefaultRouter.GetLinkIdForRoute(routeId)
+		if linkId != wshutil.NoLinkId {
+			wshutil.DefaultRouter.UnregisterLink(linkId)
+		}
 	}
 	RouteToConnMap[routeId] = wsConnId
-	wshutil.DefaultRouter.RegisterRoute(routeId, wproxy, true)
+	wshutil.DefaultRouter.RegisterTrustedLeaf(wproxy, routeId)
 }
 
 func unregisterConn(wsConnId string, routeId string) {
@@ -273,7 +276,8 @@ func unregisterConn(wsConnId string, routeId string) {
 		return
 	}
 	delete(RouteToConnMap, routeId)
-	wshutil.DefaultRouter.UnregisterRoute(routeId)
+	linkId := wshutil.DefaultRouter.GetLinkIdForRoute(routeId)
+	wshutil.DefaultRouter.UnregisterLink(linkId)
 }
 
 func HandleWsInternal(w http.ResponseWriter, r *http.Request) error {

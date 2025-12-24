@@ -4,7 +4,6 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -63,7 +62,7 @@ func MakeRemoteUnixListener() (net.Listener, error) {
 }
 
 func handleNewListenerConn(conn net.Conn, router *wshutil.WshRouter) {
-	var routeIdContainer atomic.Pointer[string]
+	var linkIdContainer atomic.Int32
 	proxy := wshutil.MakeRpcProxy()
 	go func() {
 		defer func() {
@@ -81,31 +80,15 @@ func handleNewListenerConn(conn net.Conn, router *wshutil.WshRouter) {
 		}()
 		defer func() {
 			conn.Close()
-			routeIdPtr := routeIdContainer.Load()
-			if routeIdPtr != nil && *routeIdPtr != "" {
-				router.UnregisterRoute(*routeIdPtr)
-				disposeMsg := &wshutil.RpcMessage{
-					Command: wshrpc.Command_Dispose,
-					Data: wshrpc.CommandDisposeData{
-						RouteId: *routeIdPtr,
-					},
-					Source:    *routeIdPtr,
-					AuthToken: proxy.GetAuthToken(),
-				}
-				disposeBytes, _ := json.Marshal(disposeMsg)
-				router.InjectMessage(disposeBytes, *routeIdPtr)
+			linkId := linkIdContainer.Load()
+			if linkId != wshutil.NoLinkId {
+				router.UnregisterLink(wshutil.LinkId(linkId))
 			}
 		}()
 		wshutil.AdaptStreamToMsgCh(conn, proxy.FromRemoteCh)
 	}()
-	routeId, err := proxy.HandleClientProxyAuth(router)
-	if err != nil {
-		log.Printf("error handling client proxy auth: %v\n", err)
-		conn.Close()
-		return
-	}
-	router.RegisterRoute(routeId, proxy, false)
-	routeIdContainer.Store(&routeId)
+	linkId := router.RegisterUntrustedLink(proxy)
+	linkIdContainer.Store(int32(linkId))
 }
 
 func runListener(listener net.Listener, router *wshutil.WshRouter) {
@@ -140,8 +123,8 @@ func setupConnServerRpcClientWithRouter(router *wshutil.WshRouter, jwtToken stri
 	outputCh := make(chan []byte, wshutil.DefaultOutputChSize)
 	connServerClient := wshutil.MakeWshRpc(inputCh, outputCh, *rpcCtx, &wshremote.ServerImpl{LogWriter: os.Stdout}, authRtn.RouteId)
 	connServerClient.SetAuthToken(authRtn.AuthToken)
-	router.RegisterRoute(authRtn.RouteId, connServerClient, false)
-	wshclient.RouteAnnounceCommand(connServerClient, nil)
+	router.RegisterUntrustedLink(connServerClient)
+	// wshclient.RouteAnnounceCommand(connServerClient, nil)
 	return connServerClient, nil
 }
 
@@ -172,7 +155,7 @@ func serverRunRouter(jwtToken string) error {
 			router.InjectMessage(msg, wshutil.UpstreamRoute)
 		}
 	}()
-	router.SetUpstreamClient(termProxy)
+	router.RegisterUpstream(termProxy)
 	// now set up the domain socket
 	unixListener, err := MakeRemoteUnixListener()
 	if err != nil {

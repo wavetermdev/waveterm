@@ -468,7 +468,7 @@ func HandleStdIOClient(logName string, input chan utilfn.LineOutput, output io.W
 }
 
 func handleDomainSocketClient(conn net.Conn) {
-	var routeIdContainer atomic.Pointer[string]
+	var linkIdContainer atomic.Int32
 	proxy := MakeRpcProxy()
 	go func() {
 		defer func() {
@@ -488,30 +488,15 @@ func handleDomainSocketClient(conn net.Conn) {
 			conn.Close()
 			close(proxy.FromRemoteCh)
 			close(proxy.ToRemoteCh)
-			routeIdPtr := routeIdContainer.Load()
-			if routeIdPtr != nil && *routeIdPtr != "" {
-				DefaultRouter.UnregisterRoute(*routeIdPtr)
+			linkId := linkIdContainer.Load()
+			if linkId != NoLinkId {
+				DefaultRouter.UnregisterLink(LinkId(linkId))
 			}
 		}()
 		AdaptStreamToMsgCh(conn, proxy.FromRemoteCh)
 	}()
-	rpcCtx, err := proxy.HandleAuthentication()
-	if err != nil {
-		conn.Close()
-		log.Printf("error handling authentication: %v\n", err)
-		return
-	}
-	// now that we're authenticated, set the ctx and attach to the router
-	log.Printf("domain socket connection authenticated: %#v\n", rpcCtx)
-	proxy.SetRpcContext(rpcCtx)
-	routeId, err := MakeRouteIdFromCtx(rpcCtx)
-	if err != nil {
-		conn.Close()
-		log.Printf("error making route id: %v\n", err)
-		return
-	}
-	routeIdContainer.Store(&routeId)
-	DefaultRouter.RegisterRoute(routeId, proxy, true)
+	linkId := DefaultRouter.RegisterUntrustedLink(proxy)
+	linkIdContainer.Store(int32(linkId))
 }
 
 // only for use on client
