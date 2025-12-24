@@ -217,7 +217,6 @@ func SetupTerminalRpcClient(serverImpl ServerImpl, debugStr string) (*WshRpc, io
 				continue
 			}
 			os.Stdout.Write(barr)
-			os.Stdout.Write([]byte{'\n'})
 		}
 	}()
 	return rpcClient, ptyBuf
