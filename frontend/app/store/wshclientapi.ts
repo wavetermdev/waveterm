@@ -557,11 +557,6 @@ class RpcApiType {
         return client.wshRpcCall("setvar", data, opts);
     }
 
-    // command "setview" [call]
-    SetViewCommand(client: WshClient, data: CommandBlockSetViewData, opts?: RpcOpts): Promise<void> {
-        return client.wshRpcCall("setview", data, opts);
-    }
-
     // command "startbuilder" [call]
     StartBuilderCommand(client: WshClient, data: CommandStartBuilderData, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("startbuilder", data, opts);

@@ -216,12 +216,6 @@ declare global {
         termsize?: TermSize;
     };
 
-    // wshrpc.CommandBlockSetViewData
-    type CommandBlockSetViewData = {
-        blockid: string;
-        view: string;
-    };
-
     // wshrpc.CommandCaptureBlockScreenshotData
     type CommandCaptureBlockScreenshotData = {
         blockid: string;

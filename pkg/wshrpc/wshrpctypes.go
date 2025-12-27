@@ -64,7 +64,6 @@ const (
 	Command_Message           = "message"
 	Command_GetMeta           = "getmeta"
 	Command_SetMeta           = "setmeta"
-	Command_SetView           = "setview"
 	Command_ControllerInput   = "controllerinput"
 	Command_ControllerRestart = "controllerrestart"
 	Command_ControllerStop    = "controllerstop"
@@ -209,7 +208,6 @@ type WshRpcInterface interface {
 	MessageCommand(ctx context.Context, data CommandMessageData) error
 	GetMetaCommand(ctx context.Context, data CommandGetMetaData) (waveobj.MetaMapType, error)
 	SetMetaCommand(ctx context.Context, data CommandSetMetaData) error
-	SetViewCommand(ctx context.Context, data CommandBlockSetViewData) error
 	ControllerInputCommand(ctx context.Context, data CommandBlockInputData) error
 	ControllerStopCommand(ctx context.Context, blockId string) error
 	ControllerResyncCommand(ctx context.Context, data CommandControllerResyncData) error
@@ -474,11 +472,6 @@ type CommandCreateBlockData struct {
 type CommandCreateSubBlockData struct {
 	ParentBlockId string            `json:"parentblockid"`
 	BlockDef      *waveobj.BlockDef `json:"blockdef"`
-}
-
-type CommandBlockSetViewData struct {
-	BlockId string `json:"blockid" wshcontext:"BlockId"`
-	View    string `json:"view"`
 }
 
 type CommandControllerResyncData struct {

@@ -670,12 +670,6 @@ func SetVarCommand(w *wshutil.WshRpc, data wshrpc.CommandVarData, opts *wshrpc.R
 	return err
 }
 
-// command "setview", wshserver.SetViewCommand
-func SetViewCommand(w *wshutil.WshRpc, data wshrpc.CommandBlockSetViewData, opts *wshrpc.RpcOpts) error {
-	_, err := sendRpcRequestCallHelper[any](w, "setview", data, opts)
-	return err
-}
-
 // command "startbuilder", wshserver.StartBuilderCommand
 func StartBuilderCommand(w *wshutil.WshRpc, data wshrpc.CommandStartBuilderData, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "startbuilder", data, opts)

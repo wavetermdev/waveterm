@@ -290,23 +290,6 @@ func (ws *WshServer) CreateSubBlockCommand(ctx context.Context, data wshrpc.Comm
 	return blockRef, nil
 }
 
-func (ws *WshServer) SetViewCommand(ctx context.Context, data wshrpc.CommandBlockSetViewData) error {
-	log.Printf("SETVIEW: %s | %q\n", data.BlockId, data.View)
-	ctx = waveobj.ContextWithUpdates(ctx)
-	block, err := wstore.DBGet[*waveobj.Block](ctx, data.BlockId)
-	if err != nil {
-		return fmt.Errorf("error getting block: %w", err)
-	}
-	block.Meta[waveobj.MetaKey_View] = data.View
-	err = wstore.DBUpdate(ctx, block)
-	if err != nil {
-		return fmt.Errorf("error updating block: %w", err)
-	}
-	updates := waveobj.ContextGetUpdatesRtn(ctx)
-	wps.Broker.SendUpdateEvents(updates)
-	return nil
-}
-
 func (ws *WshServer) ControllerStopCommand(ctx context.Context, blockId string) error {
 	blockcontroller.StopBlockController(blockId)
 	return nil
