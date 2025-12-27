@@ -71,9 +71,6 @@ func recodeCommandData(command string, data any, rpcCtx *wshrpc.RpcContext) (any
 		if err != nil {
 			return data, fmt.Errorf("error re-marshalling command data: %w", err)
 		}
-		if rpcCtx != nil {
-			wshrpc.HackRpcContextIntoData(commandDataPtr, *rpcCtx)
-		}
 	}
 	return reflect.ValueOf(commandDataPtr).Elem().Interface(), nil
 }

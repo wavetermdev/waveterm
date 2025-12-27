@@ -281,7 +281,7 @@ func (p *WshRpcProxy) SendRpcMessage(msg []byte, debugStr string) {
 func (p *WshRpcProxy) RecvRpcMessage() ([]byte, bool) {
 	msgBytes, more := <-p.FromRemoteCh
 	authToken := p.GetAuthToken()
-	if !more || (p.RpcContext == nil && authToken == "") {
+	if !more || authToken == "" {
 		return msgBytes, more
 	}
 	var msg RpcMessage
@@ -289,13 +289,6 @@ func (p *WshRpcProxy) RecvRpcMessage() ([]byte, bool) {
 	if err != nil {
 		// nothing to do here -- will error out at another level
 		return msgBytes, true
-	}
-	if p.RpcContext != nil {
-		msg.Data, err = recodeCommandData(msg.Command, msg.Data, p.RpcContext)
-		if err != nil {
-			// nothing to do here -- will error out at another level
-			return msgBytes, true
-		}
 	}
 	if msg.AuthToken == "" {
 		msg.AuthToken = authToken

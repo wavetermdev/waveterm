@@ -8,9 +8,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"log"
 	"os"
-	"reflect"
 
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
 	"github.com/wavetermdev/waveterm/pkg/ijson"
@@ -390,33 +388,6 @@ type RpcContext struct {
 	Conn       string `json:"conn,omitempty"`
 }
 
-func HackRpcContextIntoData(dataPtr any, rpcContext RpcContext) {
-	dataVal := reflect.ValueOf(dataPtr).Elem()
-	if dataVal.Kind() != reflect.Struct {
-		return
-	}
-	dataType := dataVal.Type()
-	for i := 0; i < dataVal.NumField(); i++ {
-		field := dataVal.Field(i)
-		if !field.IsZero() {
-			continue
-		}
-		fieldType := dataType.Field(i)
-		tag := fieldType.Tag.Get("wshcontext")
-		if tag == "" {
-			continue
-		}
-		switch tag {
-		case "BlockId":
-			field.SetString(rpcContext.BlockId)
-		case "TabId":
-			field.SetString(rpcContext.TabId)
-		default:
-			log.Printf("invalid wshcontext tag: %q in type(%T)", tag, dataPtr)
-		}
-	}
-}
-
 type CommandAuthenticateRtnData struct {
 	RouteId   string `json:"routeid"`
 	AuthToken string `json:"authtoken,omitempty"`
@@ -476,8 +447,8 @@ type CommandCreateSubBlockData struct {
 
 type CommandControllerResyncData struct {
 	ForceRestart bool                 `json:"forcerestart,omitempty"`
-	TabId        string               `json:"tabid" wshcontext:"TabId"`
-	BlockId      string               `json:"blockid" wshcontext:"BlockId"`
+	TabId        string               `json:"tabid"`
+	BlockId      string               `json:"blockid"`
 	RtOpts       *waveobj.RuntimeOpts `json:"rtopts,omitempty"`
 }
 
@@ -742,8 +713,8 @@ type WebSelectorOpts struct {
 
 type CommandWebSelectorData struct {
 	WorkspaceId string           `json:"workspaceid"`
-	BlockId     string           `json:"blockid" wshcontext:"BlockId"`
-	TabId       string           `json:"tabid" wshcontext:"TabId"`
+	BlockId     string           `json:"blockid"`
+	TabId       string           `json:"tabid"`
 	Selector    string           `json:"selector"`
 	Opts        *WebSelectorOpts `json:"opts,omitempty"`
 }
@@ -839,7 +810,7 @@ type CommandWaveAIGetToolDiffRtnData struct {
 }
 
 type CommandCaptureBlockScreenshotData struct {
-	BlockId string `json:"blockid" wshcontext:"BlockId"`
+	BlockId string `json:"blockid"`
 }
 
 type CommandVarData struct {
@@ -860,7 +831,7 @@ type PathCommandData struct {
 	PathType     string `json:"pathtype"`
 	Open         bool   `json:"open"`
 	OpenExternal bool   `json:"openexternal"`
-	TabId        string `json:"tabid" wshcontext:"TabId"`
+	TabId        string `json:"tabid"`
 }
 
 type ActivityDisplayType struct {

@@ -56,10 +56,16 @@ func wavepathRun(cmd *cobra.Command, args []string) (rtnErr error) {
 	open, _ := cmd.Flags().GetBool("open")
 	openExternal, _ := cmd.Flags().GetBool("open-external")
 
+	tabId := getTabIdFromEnv()
+	if tabId == "" {
+		return fmt.Errorf("no WAVETERM_TABID env var set")
+	}
+
 	path, err := wshclient.PathCommand(RpcClient, wshrpc.PathCommandData{
 		PathType:     pathType,
 		Open:         open,
 		OpenExternal: openExternal,
+		TabId:        tabId,
 	}, nil)
 	if err != nil {
 		return fmt.Errorf("getting path: %w", err)
