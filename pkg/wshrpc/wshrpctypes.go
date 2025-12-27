@@ -384,7 +384,6 @@ const (
 type RpcContext struct {
 	ClientType string `json:"ctype,omitempty"`
 	BlockId    string `json:"blockid,omitempty"`
-	TabId      string `json:"tabid,omitempty"`
 	Conn       string `json:"conn,omitempty"`
 }
 

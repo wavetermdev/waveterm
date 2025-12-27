@@ -305,9 +305,6 @@ func MakeClientJWTToken(rpcCtx wshrpc.RpcContext, sockName string) (string, erro
 	if rpcCtx.BlockId != "" {
 		claims["blockid"] = rpcCtx.BlockId
 	}
-	if rpcCtx.TabId != "" {
-		claims["tabid"] = rpcCtx.TabId
-	}
 	if rpcCtx.Conn != "" {
 		claims["conn"] = rpcCtx.Conn
 	}
@@ -358,11 +355,6 @@ func mapClaimsToRpcContext(claims jwt.MapClaims) *wshrpc.RpcContext {
 	if claims["blockid"] != nil {
 		if blockId, ok := claims["blockid"].(string); ok {
 			rpcCtx.BlockId = blockId
-		}
-	}
-	if claims["tabid"] != nil {
-		if tabId, ok := claims["tabid"].(string); ok {
-			rpcCtx.TabId = tabId
 		}
 	}
 	if claims["conn"] != nil {

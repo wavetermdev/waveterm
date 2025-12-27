@@ -103,15 +103,6 @@ func getIsTty() bool {
 	return false
 }
 
-func getThisBlockMeta() (waveobj.MetaMapType, error) {
-	blockORef := waveobj.ORef{OType: waveobj.OType_Block, OID: RpcContext.BlockId}
-	resp, err := wshclient.GetMetaCommand(RpcClient, wshrpc.CommandGetMetaData{ORef: blockORef}, &wshrpc.RpcOpts{Timeout: 2000})
-	if err != nil {
-		return nil, fmt.Errorf("getting metadata: %w", err)
-	}
-	return resp, nil
-}
-
 type RunEFnType = func(*cobra.Command, []string) error
 
 func activityWrap(activityStr string, origRunE RunEFnType) RunEFnType {

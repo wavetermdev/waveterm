@@ -420,7 +420,7 @@ func (bc *ShellController) setupAndStartShellProcess(logCtx context.Context, rc 
 			}
 		} else {
 			sockName := wslConn.GetDomainSocketName()
-			rpcContext := wshrpc.RpcContext{TabId: bc.TabId, BlockId: bc.BlockId, Conn: wslConn.GetName()}
+			rpcContext := wshrpc.RpcContext{BlockId: bc.BlockId, Conn: wslConn.GetName()}
 			jwtStr, err := wshutil.MakeClientJWTToken(rpcContext, sockName)
 			if err != nil {
 				return nil, fmt.Errorf("error making jwt token: %w", err)
@@ -449,7 +449,7 @@ func (bc *ShellController) setupAndStartShellProcess(logCtx context.Context, rc 
 			}
 		} else {
 			sockName := conn.GetDomainSocketName()
-			rpcContext := wshrpc.RpcContext{TabId: bc.TabId, BlockId: bc.BlockId, Conn: conn.Opts.String()}
+			rpcContext := wshrpc.RpcContext{BlockId: bc.BlockId, Conn: conn.Opts.String()}
 			jwtStr, err := wshutil.MakeClientJWTToken(rpcContext, sockName)
 			if err != nil {
 				return nil, fmt.Errorf("error making jwt token: %w", err)
@@ -472,7 +472,7 @@ func (bc *ShellController) setupAndStartShellProcess(logCtx context.Context, rc 
 	} else if connUnion.ConnType == ConnType_Local {
 		if connUnion.WshEnabled {
 			sockName := wavebase.GetDomainSocketName()
-			rpcContext := wshrpc.RpcContext{TabId: bc.TabId, BlockId: bc.BlockId}
+			rpcContext := wshrpc.RpcContext{BlockId: bc.BlockId}
 			jwtStr, err := wshutil.MakeClientJWTToken(rpcContext, sockName)
 			if err != nil {
 				return nil, fmt.Errorf("error making jwt token: %w", err)
@@ -505,7 +505,7 @@ func (bc *ShellController) manageRunningShellProcess(shellProc *shellexec.ShellP
 	// make esc sequence wshclient wshProxy
 	// we don't need to authenticate this wshProxy since it is coming direct
 	wshProxy := wshutil.MakeRpcProxy(fmt.Sprintf("controller:%s", bc.BlockId))
-	wshProxy.SetRpcContext(&wshrpc.RpcContext{TabId: bc.TabId, BlockId: bc.BlockId})
+	wshProxy.SetRpcContext(&wshrpc.RpcContext{BlockId: bc.BlockId})
 	controllerLinkId, err := wshutil.DefaultRouter.RegisterTrustedLeaf(wshProxy, wshutil.MakeControllerRouteId(bc.BlockId))
 	if err != nil {
 		return fmt.Errorf("cannot register controller route: %w", err)

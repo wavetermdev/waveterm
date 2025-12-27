@@ -29,7 +29,6 @@ type WaveJwtClaims struct {
 	RouteId string `json:"routeid,omitempty"`
 	Sock    string `json:"sock,omitempty"`
 	BlockId string `json:"blockid,omitempty"`
-	TabId   string `json:"tabid,omitempty"`
 	Conn    string `json:"conn,omitempty"`
 	CType   string `json:"ctype,omitempty"`
 }
