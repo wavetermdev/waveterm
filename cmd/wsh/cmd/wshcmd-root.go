@@ -211,6 +211,10 @@ func resolveSimpleId(id string) (*waveobj.ORef, error) {
 	return &oref, nil
 }
 
+func getTabIdFromEnv() string {
+	return os.Getenv("WAVETERM_TABID")
+}
+
 // this will send wsh activity to the client running on *your* local machine (it does not contact any wave cloud infrastructure)
 // if you've turned off telemetry in your local client, this data never gets sent to us
 // no parameters or timestamps are sent, as you can see below, it just sends the name of the command (and if there was an error)

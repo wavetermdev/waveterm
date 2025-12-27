@@ -452,7 +452,7 @@ type CommandSetMetaData struct {
 }
 
 type CommandResolveIdsData struct {
-	BlockId string   `json:"blockid" wshcontext:"BlockId"`
+	BlockId string   `json:"blockid"`
 	Ids     []string `json:"ids"`
 }
 
@@ -461,7 +461,7 @@ type CommandResolveIdsRtnData struct {
 }
 
 type CommandCreateBlockData struct {
-	TabId         string               `json:"tabid" wshcontext:"TabId"`
+	TabId         string               `json:"tabid"`
 	BlockDef      *waveobj.BlockDef    `json:"blockdef"`
 	RtOpts        *waveobj.RuntimeOpts `json:"rtopts,omitempty"`
 	Magnified     bool                 `json:"magnified,omitempty"`

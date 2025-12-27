@@ -1364,10 +1364,15 @@ func (ws *WshServer) PathCommand(ctx context.Context, data wshrpc.PathCommandDat
 	}
 
 	if openInternal {
-		_, err := ws.CreateBlockCommand(ctx, wshrpc.CommandCreateBlockData{BlockDef: &waveobj.BlockDef{Meta: map[string]any{
-			waveobj.MetaKey_View: "preview",
-			waveobj.MetaKey_File: path,
-		}}, Ephemeral: true, Focused: true, TabId: data.TabId})
+		_, err := ws.CreateBlockCommand(ctx, wshrpc.CommandCreateBlockData{
+			TabId: data.TabId,
+			BlockDef: &waveobj.BlockDef{Meta: map[string]any{
+				waveobj.MetaKey_View: "preview",
+				waveobj.MetaKey_File: path,
+			}},
+			Ephemeral: true,
+			Focused:   true,
+		})
 
 		if err != nil {
 			return path, fmt.Errorf("error opening path: %w", err)

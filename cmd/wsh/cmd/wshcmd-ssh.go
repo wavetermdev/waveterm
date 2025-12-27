@@ -54,6 +54,11 @@ func sshRun(cmd *cobra.Command, args []string) (rtnErr error) {
 	wshclient.ConnConnectCommand(RpcClient, connOpts, &wshrpc.RpcOpts{Timeout: 60000})
 
 	if newBlock {
+		tabId := getTabIdFromEnv()
+		if tabId == "" {
+			return fmt.Errorf("no WAVETERM_TABID env var set")
+		}
+
 		// Create a new block with the SSH connection
 		createMeta := map[string]any{
 			waveobj.MetaKey_View:       "term",
@@ -64,6 +69,7 @@ func sshRun(cmd *cobra.Command, args []string) (rtnErr error) {
 			createMeta[waveobj.MetaKey_Connection] = RpcContext.Conn
 		}
 		createBlockData := wshrpc.CommandCreateBlockData{
+			TabId: tabId,
 			BlockDef: &waveobj.BlockDef{
 				Meta: createMeta,
 			},
