@@ -478,6 +478,9 @@ func (ws *WshServer) WriteTempFileCommand(ctx context.Context, data wshrpc.Comma
 }
 
 func (ws *WshServer) DeleteSubBlockCommand(ctx context.Context, data wshrpc.CommandDeleteBlockData) error {
+	if data.BlockId == "" {
+		return fmt.Errorf("blockid is required")
+	}
 	err := wcore.DeleteBlock(ctx, data.BlockId, false)
 	if err != nil {
 		return fmt.Errorf("error deleting block: %w", err)
@@ -486,6 +489,9 @@ func (ws *WshServer) DeleteSubBlockCommand(ctx context.Context, data wshrpc.Comm
 }
 
 func (ws *WshServer) DeleteBlockCommand(ctx context.Context, data wshrpc.CommandDeleteBlockData) error {
+	if data.BlockId == "" {
+		return fmt.Errorf("blockid is required")
+	}
 	ctx = waveobj.ContextWithUpdates(ctx)
 	tabId, err := wstore.DBFindTabForBlockId(ctx, data.BlockId)
 	if err != nil {

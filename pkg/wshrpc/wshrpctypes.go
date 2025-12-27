@@ -487,7 +487,7 @@ type CommandControllerAppendOutputData struct {
 }
 
 type CommandBlockInputData struct {
-	BlockId     string            `json:"blockid" wshcontext:"BlockId"`
+	BlockId     string            `json:"blockid"`
 	InputData64 string            `json:"inputdata64,omitempty"`
 	SigName     string            `json:"signame,omitempty"`
 	TermSize    *waveobj.TermSize `json:"termsize,omitempty"`
@@ -553,7 +553,7 @@ type FileCreateData struct {
 }
 
 type CommandAppendIJsonData struct {
-	ZoneId   string        `json:"zoneid" wshcontext:"BlockId"`
+	ZoneId   string        `json:"zoneid"`
 	FileName string        `json:"filename"`
 	Data     ijson.Command `json:"data"`
 }
@@ -564,7 +564,7 @@ type CommandWaitForRouteData struct {
 }
 
 type CommandDeleteBlockData struct {
-	BlockId string `json:"blockid" wshcontext:"BlockId"`
+	BlockId string `json:"blockid"`
 }
 
 type CommandEventReadHistoryData struct {
