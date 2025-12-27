@@ -18,7 +18,6 @@ import (
 	"sync"
 	"sync/atomic"
 	"syscall"
-	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
@@ -27,6 +26,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/util/shellutil"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
+	"github.com/wavetermdev/waveterm/pkg/wavejwt"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"golang.org/x/term"
 )
@@ -297,77 +297,26 @@ func SetupDomainSocketRpcClient(sockName string, serverImpl ServerImpl, debugNam
 }
 
 func MakeClientJWTToken(rpcCtx wshrpc.RpcContext, sockName string) (string, error) {
-	claims := jwt.MapClaims{}
-	claims["iat"] = time.Now().Unix()
-	claims["iss"] = "waveterm"
-	claims["sock"] = sockName
-	claims["exp"] = time.Now().Add(time.Hour * 24 * 365).Unix()
-	if rpcCtx.BlockId != "" {
-		claims["blockid"] = rpcCtx.BlockId
+	claims := &wavejwt.WaveJwtClaims{
+		Sock:    sockName,
+		BlockId: rpcCtx.BlockId,
+		Conn:    rpcCtx.Conn,
+		CType:   rpcCtx.ClientType,
 	}
-	if rpcCtx.Conn != "" {
-		claims["conn"] = rpcCtx.Conn
-	}
-	if rpcCtx.ClientType != "" {
-		claims["ctype"] = rpcCtx.ClientType
-	}
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	tokenStr, err := token.SignedString([]byte(wavebase.JwtSecret))
-	if err != nil {
-		return "", fmt.Errorf("error signing token: %w", err)
-	}
-	return tokenStr, nil
+	return wavejwt.Sign(claims)
 }
 
 func ValidateAndExtractRpcContextFromToken(tokenStr string) (*wshrpc.RpcContext, error) {
-	parser := jwt.NewParser(jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Name}))
-	token, err := parser.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
-		return []byte(wavebase.JwtSecret), nil
-	})
+	claims, err := wavejwt.ValidateAndExtract(tokenStr)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing token: %w", err)
+		return nil, err
 	}
-	claims, ok := token.Claims.(jwt.MapClaims)
-	if !ok {
-		return nil, fmt.Errorf("error getting claims from token")
+	rpcCtx := &wshrpc.RpcContext{
+		BlockId:    claims.BlockId,
+		Conn:       claims.Conn,
+		ClientType: claims.CType,
 	}
-	// validate "exp" claim
-	if exp, ok := claims["exp"].(float64); ok {
-		if int64(exp) < time.Now().Unix() {
-			return nil, fmt.Errorf("token has expired")
-		}
-	} else {
-		return nil, fmt.Errorf("exp claim is missing or invalid")
-	}
-	// validate "iss" claim
-	if iss, ok := claims["iss"].(string); ok {
-		if iss != "waveterm" {
-			return nil, fmt.Errorf("unexpected issuer: %s", iss)
-		}
-	} else {
-		return nil, fmt.Errorf("iss claim is missing or invalid")
-	}
-	return mapClaimsToRpcContext(claims), nil
-}
-
-func mapClaimsToRpcContext(claims jwt.MapClaims) *wshrpc.RpcContext {
-	rpcCtx := &wshrpc.RpcContext{}
-	if claims["blockid"] != nil {
-		if blockId, ok := claims["blockid"].(string); ok {
-			rpcCtx.BlockId = blockId
-		}
-	}
-	if claims["conn"] != nil {
-		if conn, ok := claims["conn"].(string); ok {
-			rpcCtx.Conn = conn
-		}
-	}
-	if claims["ctype"] != nil {
-		if ctype, ok := claims["ctype"].(string); ok {
-			rpcCtx.ClientType = ctype
-		}
-	}
-	return rpcCtx
+	return rpcCtx, nil
 }
 
 func RunWshRpcOverListener(listener net.Listener) {
@@ -492,33 +441,34 @@ func handleDomainSocketClient(conn net.Conn) {
 
 // only for use on client
 func ExtractUnverifiedRpcContext(tokenStr string) (*wshrpc.RpcContext, error) {
-	// this happens on the client who does not have access to the secret key
-	// we want to read the claims without validating the signature
-	token, _, err := new(jwt.Parser).ParseUnverified(tokenStr, jwt.MapClaims{})
+	token, _, err := new(jwt.Parser).ParseUnverified(tokenStr, &wavejwt.WaveJwtClaims{})
 	if err != nil {
 		return nil, fmt.Errorf("error parsing token: %w", err)
 	}
-	claims, ok := token.Claims.(jwt.MapClaims)
+	claims, ok := token.Claims.(*wavejwt.WaveJwtClaims)
 	if !ok {
 		return nil, fmt.Errorf("error getting claims from token")
 	}
-	return mapClaimsToRpcContext(claims), nil
+	rpcCtx := &wshrpc.RpcContext{
+		BlockId:    claims.BlockId,
+		Conn:       claims.Conn,
+		ClientType: claims.CType,
+	}
+	return rpcCtx, nil
 }
 
 // only for use on client
 func ExtractUnverifiedSocketName(tokenStr string) (string, error) {
-	// this happens on the client who does not have access to the secret key
-	// we want to read the claims without validating the signature
-	token, _, err := new(jwt.Parser).ParseUnverified(tokenStr, jwt.MapClaims{})
+	token, _, err := new(jwt.Parser).ParseUnverified(tokenStr, &wavejwt.WaveJwtClaims{})
 	if err != nil {
 		return "", fmt.Errorf("error parsing token: %w", err)
 	}
-	claims, ok := token.Claims.(jwt.MapClaims)
+	claims, ok := token.Claims.(*wavejwt.WaveJwtClaims)
 	if !ok {
 		return "", fmt.Errorf("error getting claims from token")
 	}
-	sockName, ok := claims["sock"].(string)
-	if !ok {
+	sockName := claims.Sock
+	if sockName == "" {
 		return "", fmt.Errorf("sock claim is missing or invalid")
 	}
 	sockName = wavebase.ExpandHomeDirSafe(sockName)

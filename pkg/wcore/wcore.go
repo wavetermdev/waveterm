@@ -6,7 +6,10 @@ package wcore
 
 import (
 	"context"
+	"crypto/ed25519"
+	"crypto/x509"
 	"encoding/base64"
+	"encoding/pem"
 	"fmt"
 	"log"
 	"strings"
@@ -208,6 +211,17 @@ func InitMainServer() error {
 	err = wavejwt.SetPublicKey(publicKeyBytes)
 	if err != nil {
 		return fmt.Errorf("error setting jwt public key: %w", err)
+	}
+
+	pubKeyDer, err := x509.MarshalPKIXPublicKey(ed25519.PublicKey(publicKeyBytes))
+	if err != nil {
+		log.Printf("warning: could not marshal public key for logging: %v", err)
+	} else {
+		pubKeyPem := pem.EncodeToMemory(&pem.Block{
+			Type:  "PUBLIC KEY",
+			Bytes: pubKeyDer,
+		})
+		log.Printf("JWT Public Key:\n%s", string(pubKeyPem))
 	}
 
 	return nil
