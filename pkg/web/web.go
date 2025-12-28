@@ -5,7 +5,6 @@ package web
 
 import (
 	"bytes"
-	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -255,7 +254,7 @@ func handleRemoteStreamFile(w http.ResponseWriter, req *http.Request, conn strin
 	return handleRemoteStreamFileFromCh(w, req, path, rtnCh, rpcOpts.StreamCancelFn, no404)
 }
 
-func handleRemoteStreamFileFromCh(w http.ResponseWriter, req *http.Request, path string, rtnCh <-chan wshrpc.RespOrErrorUnion[wshrpc.FileData], streamCancelFn func(context.Context) error, no404 bool) error {
+func handleRemoteStreamFileFromCh(w http.ResponseWriter, req *http.Request, path string, rtnCh <-chan wshrpc.RespOrErrorUnion[wshrpc.FileData], streamCancelFn func(), no404 bool) error {
 	firstPk := true
 	var fileInfo *wshrpc.FileInfo
 	loopDone := false
@@ -271,9 +270,7 @@ func handleRemoteStreamFileFromCh(w http.ResponseWriter, req *http.Request, path
 		select {
 		case <-ctx.Done():
 			if streamCancelFn != nil {
-				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-				defer cancel()
-				streamCancelFn(ctx)
+				streamCancelFn()
 			}
 			return ctx.Err()
 		case respUnion, ok := <-rtnCh:
