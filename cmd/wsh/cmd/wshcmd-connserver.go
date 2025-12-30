@@ -4,6 +4,7 @@
 package cmd
 
 import (
+	"encoding/base64"
 	"fmt"
 	"io"
 	"log"
@@ -21,6 +22,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/util/packetparser"
 	"github.com/wavetermdev/waveterm/pkg/util/sigutil"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
+	"github.com/wavetermdev/waveterm/pkg/wavejwt"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshremote"
@@ -118,6 +120,16 @@ func setupConnServerRpcClientWithRouter(router *wshutil.WshRouter, jwtToken stri
 	authRtn, err := router.HandleProxyAuth(jwtToken)
 	if err != nil {
 		return nil, fmt.Errorf("error handling proxy auth: %v", err)
+	}
+	if authRtn.PublicKey != "" {
+		pubKeyBytes, err := base64.StdEncoding.DecodeString(authRtn.PublicKey)
+		if err != nil {
+			return nil, fmt.Errorf("error decoding public key: %v", err)
+		}
+		if err := wavejwt.SetPublicKey(pubKeyBytes); err != nil {
+			return nil, fmt.Errorf("error setting public key: %v", err)
+		}
+		log.Printf("connserver: set public key from auth response\n")
 	}
 	inputCh := make(chan []byte, wshutil.DefaultInputChSize)
 	outputCh := make(chan []byte, wshutil.DefaultOutputChSize)
