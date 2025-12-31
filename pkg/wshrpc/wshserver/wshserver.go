@@ -70,19 +70,6 @@ func (*WshServer) WshServerImpl() {}
 
 var WshServerImpl = WshServer{}
 
-// TODO remove this after implementing in multiproxy, just for wsl
-func (ws *WshServer) AuthenticateTokenCommand(ctx context.Context, data wshrpc.CommandAuthenticateTokenData) (wshrpc.CommandAuthenticateRtnData, error) {
-	entry := shellutil.GetAndRemoveTokenSwapEntry(data.Token)
-	if entry == nil {
-		return wshrpc.CommandAuthenticateRtnData{}, fmt.Errorf("invalid token")
-	}
-	rtn := wshrpc.CommandAuthenticateRtnData{
-		Env:            entry.Env,
-		InitScriptText: entry.ScriptText,
-	}
-	return rtn, nil
-}
-
 func (ws *WshServer) GetJwtPublicKeyCommand(ctx context.Context) (string, error) {
 	return wavejwt.GetPublicKeyBase64(), nil
 }

@@ -20,11 +20,12 @@ import (
 )
 
 const (
-	DefaultRoute  = "wavesrv"
-	UpstreamRoute = "upstream"
-	SysRoute      = "sys" // this route doesn't exist, just a placeholder for system messages
-	ElectronRoute = "electron"
-	ControlRoute  = "$control" // control plane route
+	DefaultRoute     = "wavesrv"
+	UpstreamRoute    = "upstream"
+	SysRoute         = "sys" // this route doesn't exist, just a placeholder for system messages
+	ElectronRoute    = "electron"
+	ControlRoute     = "$control"      // control plane route
+	ControlRootRoute = "$control:root" // control plane route to root router
 
 	ControlPrefix = "$"
 
@@ -437,6 +438,10 @@ func (router *WshRouter) runLinkClientRecvLoop(linkId LinkId, client AbstractRpc
 				rpcMsg.Route = DefaultRoute
 			}
 			if rpcMsg.Route == ControlRoute {
+				router.handleControlMessage(rpcMsg, *lm)
+				continue
+			}
+			if rpcMsg.Route == ControlRootRoute && router.IsRootRouter() {
 				router.handleControlMessage(rpcMsg, *lm)
 				continue
 			}

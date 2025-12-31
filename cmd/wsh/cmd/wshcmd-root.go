@@ -143,7 +143,7 @@ func setupRpcClientWithToken(swapTokenStr string) (wshrpc.CommandAuthenticateRtn
 	if err != nil {
 		return rtn, fmt.Errorf("error setting up domain socket rpc client: %w", err)
 	}
-	return wshclient.AuthenticateTokenCommand(RpcClient, wshrpc.CommandAuthenticateTokenData{Token: token.Token}, &wshrpc.RpcOpts{Route: wshutil.ControlRoute})
+	return wshclient.AuthenticateTokenCommand(RpcClient, wshrpc.CommandAuthenticateTokenData{Token: token.Token}, &wshrpc.RpcOpts{Route: wshutil.ControlRootRoute})
 }
 
 // returns the wrapped stdin and a new rpc client (that wraps the stdin input and stdout output)
