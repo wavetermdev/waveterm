@@ -63,7 +63,7 @@ func (c *WslCmd) SetStdout(stdout io.Writer) {
 }
 
 func (c *WslCmd) SetStderr(stderr io.Writer) {
-	c.Stdout = stderr
+	c.Stderr = stderr
 }
 
 func GetDistroCmd(ctx context.Context, wslDistroName string, cmd string) (*WslCmd, error) {
