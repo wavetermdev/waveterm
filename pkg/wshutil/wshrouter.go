@@ -438,10 +438,12 @@ func (router *WshRouter) runLinkClientRecvLoop(linkId LinkId, client AbstractRpc
 				rpcMsg.Route = DefaultRoute
 			}
 			if rpcMsg.Route == ControlRoute {
+				log.Printf("wshrouter control-msg link=%s route=%s command=%s source=%s", lm.Name(), rpcMsg.Route, rpcMsg.Command, rpcMsg.Source)
 				router.handleControlMessage(rpcMsg, *lm)
 				continue
 			}
 			if rpcMsg.Route == ControlRootRoute && router.IsRootRouter() {
+				log.Printf("wshrouter control-msg link=%s route=%s command=%s source=%s", lm.Name(), rpcMsg.Route, rpcMsg.Command, rpcMsg.Source)
 				router.handleControlMessage(rpcMsg, *lm)
 				continue
 			}
