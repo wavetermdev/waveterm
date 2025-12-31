@@ -74,7 +74,7 @@ type SSHConn struct {
 var ConnServerCmdTemplate = strings.TrimSpace(
 	strings.Join([]string{
 		"%s version 2> /dev/null || (echo -n \"not-installed \"; uname -sm; exit 0);",
-		"exec %s connserver",
+		"exec %s connserver --conn %s",
 	}, "\n"))
 
 func IsLocalConnName(connName string) bool {
@@ -284,12 +284,13 @@ func (conn *SSHConn) StartConnServer(ctx context.Context, afterUpdate bool) (boo
 	}
 	client := conn.GetClient()
 	wshPath := conn.getWshPath()
-	rpcCtx := wshrpc.RpcContext{
-		ClientType: wshrpc.ClientType_ConnServer,
-		Conn:       conn.GetName(),
-	}
 	sockName := conn.GetDomainSocketName()
-	jwtToken, err := wshutil.MakeClientJWTToken(rpcCtx, sockName)
+	rpcCtx := wshrpc.RpcContext{
+		RouteId:  wshutil.MakeConnectionRouteId(conn.GetName()),
+		SockName: sockName,
+		Conn:     conn.GetName(),
+	}
+	jwtToken, err := wshutil.MakeClientJWTToken(rpcCtx)
 	if err != nil {
 		return false, "", "", fmt.Errorf("unable to create jwt token for conn controller: %w", err)
 	}
@@ -305,7 +306,7 @@ func (conn *SSHConn) StartConnServer(ctx context.Context, afterUpdate bool) (boo
 	if err != nil {
 		return false, "", "", fmt.Errorf("unable to get stdin pipe: %w", err)
 	}
-	cmdStr := fmt.Sprintf(ConnServerCmdTemplate, wshPath, wshPath)
+	cmdStr := fmt.Sprintf(ConnServerCmdTemplate, wshPath, wshPath, shellutil.HardQuote(conn.GetName()))
 	log.Printf("starting conn controller: %q\n", cmdStr)
 	shWrappedCmdStr := fmt.Sprintf("sh -c %s", shellutil.HardQuote(cmdStr))
 	blocklogger.Debugf(ctx, "[conndebug] wrapped command:\n%s\n", shWrappedCmdStr)

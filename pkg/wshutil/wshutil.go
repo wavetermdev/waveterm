@@ -20,7 +20,6 @@ import (
 	"syscall"
 
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/google/uuid"
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/util/packetparser"
 	"github.com/wavetermdev/waveterm/pkg/util/shellutil"
@@ -296,14 +295,33 @@ func SetupDomainSocketRpcClient(sockName string, serverImpl ServerImpl, debugNam
 	return rtn, err
 }
 
-func MakeClientJWTToken(rpcCtx wshrpc.RpcContext, sockName string) (string, error) {
+func MakeClientJWTToken(rpcCtx wshrpc.RpcContext) (string, error) {
+	if wavebase.IsDevMode() {
+		if rpcCtx.IsRouter && rpcCtx.RouteId != "" {
+			panic("Invalid RpcCtx, router w/ routeid")
+		}
+		if !rpcCtx.IsRouter && rpcCtx.RouteId == "" {
+			panic("Invalid RpcCtx, no routeid")
+		}
+	}
 	claims := &wavejwt.WaveJwtClaims{
-		Sock:    sockName,
+		Sock:    rpcCtx.SockName,
+		RouteId: rpcCtx.RouteId,
 		BlockId: rpcCtx.BlockId,
 		Conn:    rpcCtx.Conn,
-		CType:   rpcCtx.ClientType,
+		Router:  rpcCtx.IsRouter,
 	}
 	return wavejwt.Sign(claims)
+}
+
+func claimsToRpcCtx(claims *wavejwt.WaveJwtClaims) *wshrpc.RpcContext {
+	return &wshrpc.RpcContext{
+		SockName: claims.Sock,
+		RouteId:  claims.RouteId,
+		BlockId:  claims.BlockId,
+		Conn:     claims.Conn,
+		IsRouter: claims.Router,
+	}
 }
 
 func ValidateAndExtractRpcContextFromToken(tokenStr string) (*wshrpc.RpcContext, error) {
@@ -311,12 +329,7 @@ func ValidateAndExtractRpcContextFromToken(tokenStr string) (*wshrpc.RpcContext,
 	if err != nil {
 		return nil, err
 	}
-	rpcCtx := &wshrpc.RpcContext{
-		BlockId:    claims.BlockId,
-		Conn:       claims.Conn,
-		ClientType: claims.CType,
-	}
-	return rpcCtx, nil
+	return claimsToRpcCtx(claims), nil
 }
 
 func RunWshRpcOverListener(listener net.Listener) {
@@ -335,26 +348,6 @@ func RunWshRpcOverListener(listener net.Listener) {
 	}
 }
 
-func MakeRouteIdFromCtx(rpcCtx *wshrpc.RpcContext) (string, error) {
-	if rpcCtx.ClientType != "" {
-		if rpcCtx.ClientType == wshrpc.ClientType_ConnServer {
-			if rpcCtx.Conn != "" {
-				return MakeConnectionRouteId(rpcCtx.Conn), nil
-			}
-			return "", fmt.Errorf("invalid connserver connection, no conn id")
-		}
-		if rpcCtx.ClientType == wshrpc.ClientType_BlockController {
-			if rpcCtx.BlockId != "" {
-				return MakeControllerRouteId(rpcCtx.BlockId), nil
-			}
-			return "", fmt.Errorf("invalid block controller connection, no block id")
-		}
-		return "", fmt.Errorf("invalid client type: %q", rpcCtx.ClientType)
-	}
-	procId := uuid.New().String()
-	return MakeProcRouteId(procId), nil
-}
-
 type WriteFlusher interface {
 	Write([]byte) (int, error)
 	Flush() error
@@ -362,23 +355,24 @@ type WriteFlusher interface {
 
 // blocking, returns if there is an error, or on EOF of input
 func HandleStdIOClient(logName string, input chan utilfn.LineOutput, output io.Writer) {
-	proxy := MakeRpcMultiProxy()
+	proxy := MakeRpcProxy(logName)
+	linkId := DefaultRouter.RegisterTrustedRouter(proxy)
 	rawCh := make(chan []byte, DefaultInputChSize)
-	go packetparser.ParseWithLinesChan(input, proxy.FromRemoteRawCh, rawCh)
+	go func() {
+		defer func() {
+			panichandler.PanicHandler("HandleStdIOClient:ParseWithLinesChan", recover())
+		}()
+		packetparser.ParseWithLinesChan(input, proxy.FromRemoteCh, rawCh)
+	}()
 	doneCh := make(chan struct{})
 	var doneOnce sync.Once
 	closeDoneCh := func() {
 		doneOnce.Do(func() {
 			close(doneCh)
+			DefaultRouter.UnregisterLink(linkId)
+			close(proxy.FromRemoteCh)
 		})
-		proxy.DisposeRoutes()
 	}
-	go func() {
-		defer func() {
-			panichandler.PanicHandler("HandleStdIOClient:RunUnauthLoop", recover())
-		}()
-		proxy.RunUnauthLoop()
-	}()
 	go func() {
 		defer func() {
 			panichandler.PanicHandler("HandleStdIOClient:ToRemoteChLoop", recover())
@@ -449,12 +443,7 @@ func ExtractUnverifiedRpcContext(tokenStr string) (*wshrpc.RpcContext, error) {
 	if !ok {
 		return nil, fmt.Errorf("error getting claims from token")
 	}
-	rpcCtx := &wshrpc.RpcContext{
-		BlockId:    claims.BlockId,
-		Conn:       claims.Conn,
-		ClientType: claims.CType,
-	}
-	return rpcCtx, nil
+	return claimsToRpcCtx(claims), nil
 }
 
 // only for use on client

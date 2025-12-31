@@ -58,6 +58,7 @@ const (
 	Command_SetPeerInfo       = "setpeerinfo"       // $control (sets peer info on proxy)
 	Command_ControlMessage    = "controlmessage"    // $control
 	Command_Ping              = "ping"              // $control
+	Command_GetJwtPublicKey   = "getjwtpublickey"   // $control
 
 	Command_Message           = "message"
 	Command_GetMeta           = "getmeta"
@@ -202,6 +203,7 @@ type WshRpcInterface interface {
 	RouteAnnounceCommand(ctx context.Context) error   // (special) announces a new route to the main router
 	RouteUnannounceCommand(ctx context.Context) error // (special) unannounces a route to the main router
 	SetPeerInfoCommand(ctx context.Context, peerInfo string) error
+	GetJwtPublicKeyCommand(ctx context.Context) (string, error) // (special) gets the public JWT signing key
 
 	MessageCommand(ctx context.Context, data CommandMessageData) error
 	GetMetaCommand(ctx context.Context, data CommandGetMetaData) (waveobj.MetaMapType, error)
@@ -376,20 +378,15 @@ type RpcOpts struct {
 	StreamCancelFn func(context.Context) error `json:"-"` // this is an *output* parameter, set by the handler
 }
 
-const (
-	ClientType_ConnServer      = "connserver"
-	ClientType_BlockController = "blockcontroller"
-)
-
 type RpcContext struct {
-	ClientType string `json:"ctype,omitempty"`
-	BlockId    string `json:"blockid,omitempty"`
-	Conn       string `json:"conn,omitempty"`
+	SockName string `json:"sockname,omitempty"` // the domain socket name
+	RouteId  string `json:"routeid"`            // the routeid from the jwt
+	BlockId  string `json:"blockid,omitempty"`  // blockid for this rpc
+	Conn     string `json:"conn,omitempty"`     // the conn name
+	IsRouter bool   `json:"isrouter,omitempty"` // if this is for a sub-router
 }
 
 type CommandAuthenticateRtnData struct {
-	RouteId   string `json:"routeid"`
-	AuthToken string `json:"authtoken,omitempty"`
 	PublicKey string `json:"publickey,omitempty"` // base64
 
 	// these fields are only set when doing a token swap

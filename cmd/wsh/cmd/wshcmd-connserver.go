@@ -13,7 +13,6 @@ import (
 	"path/filepath"
 	"strings"
 	"sync/atomic"
-	"syscall"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -38,11 +37,11 @@ var serverCmd = &cobra.Command{
 }
 
 var connServerRouter bool
-var singleServerRouter bool
+var connServerConnName string
 
 func init() {
 	serverCmd.Flags().BoolVar(&connServerRouter, "router", false, "run in local router mode")
-	serverCmd.Flags().BoolVar(&singleServerRouter, "single", false, "run in local single mode")
+	serverCmd.Flags().StringVar(&connServerConnName, "conn", "", "connection name")
 	rootCmd.AddCommand(serverCmd)
 }
 
@@ -64,6 +63,9 @@ func MakeRemoteUnixListener() (net.Listener, error) {
 }
 
 func handleNewListenerConn(conn net.Conn, router *wshutil.WshRouter) {
+	defer func() {
+		panichandler.PanicHandler("handleNewListenerConn", recover())
+	}()
 	var linkIdContainer atomic.Int32
 	proxy := wshutil.MakeRpcProxy(fmt.Sprintf("connserver:%s", conn.RemoteAddr().String()))
 	go func() {
@@ -112,39 +114,29 @@ func runListener(listener net.Listener, router *wshutil.WshRouter) {
 	}
 }
 
-func setupConnServerRpcClientWithRouter(router *wshutil.WshRouter, jwtToken string) (*wshutil.WshRpc, error) {
-	rpcCtx, err := wshutil.ExtractUnverifiedRpcContext(jwtToken)
-	if err != nil {
-		return nil, fmt.Errorf("error extracting rpc context from JWT token: %v", err)
-	}
-	authRtn, err := router.HandleProxyAuth(jwtToken)
-	if err != nil {
-		return nil, fmt.Errorf("error handling proxy auth: %v", err)
-	}
-	if authRtn.PublicKey != "" {
-		pubKeyBytes, err := base64.StdEncoding.DecodeString(authRtn.PublicKey)
-		if err != nil {
-			return nil, fmt.Errorf("error decoding public key: %v", err)
-		}
-		if err := wavejwt.SetPublicKey(pubKeyBytes); err != nil {
-			return nil, fmt.Errorf("error setting public key: %v", err)
-		}
-		log.Printf("connserver: set public key from auth response\n")
-	}
+func setupConnServerRpcClientWithRouter(router *wshutil.WshRouter) (*wshutil.WshRpc, error) {
 	inputCh := make(chan []byte, wshutil.DefaultInputChSize)
 	outputCh := make(chan []byte, wshutil.DefaultOutputChSize)
-	connServerClient := wshutil.MakeWshRpc(inputCh, outputCh, *rpcCtx, &wshremote.ServerImpl{LogWriter: os.Stdout}, authRtn.RouteId)
-	connServerClient.SetAuthToken(authRtn.AuthToken)
-	router.RegisterUntrustedLink(connServerClient)
-	// wshclient.RouteAnnounceCommand(connServerClient, nil)
+	routeId := wshutil.MakeConnectionRouteId(connServerConnName)
+	rpcCtx := wshrpc.RpcContext{
+		RouteId: routeId,
+		Conn:    connServerConnName,
+	}
+	connServerClient := wshutil.MakeWshRpc(inputCh, outputCh, rpcCtx, &wshremote.ServerImpl{LogWriter: os.Stdout}, routeId)
+	router.RegisterTrustedLeaf(connServerClient, routeId)
 	return connServerClient, nil
 }
 
-func serverRunRouter(jwtToken string) error {
+func serverRunRouter() error {
 	router := wshutil.NewWshRouter()
 	termProxy := wshutil.MakeRpcProxy("connserver-term")
 	rawCh := make(chan []byte, wshutil.DefaultOutputChSize)
-	go packetparser.Parse(os.Stdin, termProxy.FromRemoteCh, rawCh)
+	go func() {
+		defer func() {
+			panichandler.PanicHandler("serverRunRouter:Parse", recover())
+		}()
+		packetparser.Parse(os.Stdin, termProxy.FromRemoteCh, rawCh)
+	}()
 	go func() {
 		defer func() {
 			panichandler.PanicHandler("serverRunRouter:WritePackets", recover())
@@ -154,6 +146,9 @@ func serverRunRouter(jwtToken string) error {
 		}
 	}()
 	go func() {
+		defer func() {
+			panichandler.PanicHandler("serverRunRouter:drainRawCh", recover())
+		}()
 		// just ignore and drain the rawCh (stdin)
 		// when stdin is closed, shutdown
 		defer wshutil.DoShutdown("", 0, true)
@@ -161,56 +156,48 @@ func serverRunRouter(jwtToken string) error {
 			// ignore
 		}
 	}()
-	go func() {
-		for msg := range termProxy.FromRemoteCh {
-			// send this to the router
-			router.InjectMessage(msg, wshutil.UpstreamRoute)
-		}
-	}()
 	router.RegisterUpstream(termProxy)
+	
+	// setup the connserver rpc client first
+	client, err := setupConnServerRpcClientWithRouter(router)
+	if err != nil {
+		return fmt.Errorf("error setting up connserver rpc client: %v", err)
+	}
+	wshfs.RpcClient = client
+	
+	// fetch and set JWT public key
+	jwtPublicKeyB64, err := wshclient.GetJwtPublicKeyCommand(client, nil)
+	if err != nil {
+		return fmt.Errorf("error getting jwt public key: %v", err)
+	}
+	jwtPublicKeyBytes, err := base64.StdEncoding.DecodeString(jwtPublicKeyB64)
+	if err != nil {
+		return fmt.Errorf("error decoding jwt public key: %v", err)
+	}
+	err = wavejwt.SetPublicKey(jwtPublicKeyBytes)
+	if err != nil {
+		return fmt.Errorf("error setting jwt public key: %v", err)
+	}
+	
 	// now set up the domain socket
 	unixListener, err := MakeRemoteUnixListener()
 	if err != nil {
 		return fmt.Errorf("cannot create unix listener: %v", err)
 	}
-	client, err := setupConnServerRpcClientWithRouter(router, jwtToken)
-	if err != nil {
-		return fmt.Errorf("error setting up connserver rpc client: %v", err)
-	}
-	wshfs.RpcClient = client
-	go runListener(unixListener, router)
+	go func() {
+		defer func() {
+			panichandler.PanicHandler("serverRunRouter:runListener", recover())
+		}()
+		runListener(unixListener, router)
+	}()
 	// run the sysinfo loop
-	wshremote.RunSysInfoLoop(client, client.GetRpcContext().Conn)
+	go func() {
+		defer func() {
+			panichandler.PanicHandler("serverRunRouter:RunSysInfoLoop", recover())
+		}()
+		wshremote.RunSysInfoLoop(client, connServerConnName)
+	}()
 	select {}
-}
-
-func checkForUpdate() error {
-	remoteInfo := wshutil.GetInfo()
-	needsRestart, err := wshclient.ConnUpdateWshCommand(RpcClient, remoteInfo, &wshrpc.RpcOpts{Timeout: 60000})
-	if err != nil {
-		return fmt.Errorf("could not update: %w", err)
-	}
-	if needsRestart {
-		// run the restart command here
-		// how to get the correct path?
-		return syscall.Exec("~/.waveterm/bin/wsh", []string{"wsh", "connserver", "--single"}, []string{})
-	}
-	return nil
-}
-
-func serverRunSingle(jwtToken string) error {
-	err := setupRpcClient(&wshremote.ServerImpl{LogWriter: os.Stdout}, jwtToken)
-	if err != nil {
-		return err
-	}
-	WriteStdout("running wsh connserver (%s)\n", RpcContext.Conn)
-	err = checkForUpdate()
-	if err != nil {
-		return err
-	}
-
-	go wshremote.RunSysInfoLoop(RpcClient, RpcContext.Conn)
-	select {} // run forever
 }
 
 func serverRunNormal(jwtToken string) error {
@@ -220,7 +207,12 @@ func serverRunNormal(jwtToken string) error {
 	}
 	wshfs.RpcClient = RpcClient
 	WriteStdout("running wsh connserver (%s)\n", RpcContext.Conn)
-	go wshremote.RunSysInfoLoop(RpcClient, RpcContext.Conn)
+	go func() {
+		defer func() {
+			panichandler.PanicHandler("serverRunNormal:RunSysInfoLoop", recover())
+		}()
+		wshremote.RunSysInfoLoop(RpcClient, RpcContext.Conn)
+	}()
 	select {} // run forever
 }
 
@@ -245,22 +237,20 @@ func askForJwtToken() (string, error) {
 }
 
 func serverRun(cmd *cobra.Command, args []string) error {
+	if connServerConnName == "" {
+		return fmt.Errorf("--conn parameter is required")
+	}
 	installErr := wshutil.InstallRcFiles()
 	if installErr != nil {
 		log.Printf("error installing rc files: %v", installErr)
+	}
+	sigutil.InstallSIGUSR1Handler()
+	if connServerRouter {
+		return serverRunRouter()
 	}
 	jwtToken, err := askForJwtToken()
 	if err != nil {
 		return err
 	}
-
-	sigutil.InstallSIGUSR1Handler()
-
-	if singleServerRouter {
-		return serverRunSingle(jwtToken)
-	} else if connServerRouter {
-		return serverRunRouter(jwtToken)
-	} else {
-		return serverRunNormal(jwtToken)
-	}
+	return serverRunNormal(jwtToken)
 }

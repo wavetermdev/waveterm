@@ -307,6 +307,11 @@ class RpcApiType {
         return client.wshRpcCall("getfullconfig", null, opts);
     }
 
+    // command "getjwtpublickey" [call]
+    GetJwtPublicKeyCommand(client: WshClient, opts?: RpcOpts): Promise<string> {
+        return client.wshRpcCall("getjwtpublickey", null, opts);
+    }
+
     // command "getmeta" [call]
     GetMetaCommand(client: WshClient, data: CommandGetMetaData, opts?: RpcOpts): Promise<MetaType> {
         return client.wshRpcCall("getmeta", data, opts);

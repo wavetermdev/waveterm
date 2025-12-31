@@ -51,7 +51,6 @@ type WshRpc struct {
 	OutputCh           chan []byte
 	CtxDoneCh          chan string // for context cancellation, value is ResId
 	RpcContext         *atomic.Pointer[wshrpc.RpcContext]
-	AuthToken          string
 	RpcMap             map[string]*rpcData
 	ServerImpl         ServerImpl
 	EventListener      *EventListener
@@ -118,18 +117,17 @@ func (w *WshRpc) RecvRpcMessage() ([]byte, bool) {
 }
 
 type RpcMessage struct {
-	Command   string `json:"command,omitempty"`
-	ReqId     string `json:"reqid,omitempty"`
-	ResId     string `json:"resid,omitempty"`
-	Timeout   int64  `json:"timeout,omitempty"`
-	Route     string `json:"route,omitempty"`     // to route/forward requests to alternate servers
-	AuthToken string `json:"authtoken,omitempty"` // needed for routing unauthenticated requests (WshRpcMultiProxy)
-	Source    string `json:"source,omitempty"`    // source route id
-	Cont      bool   `json:"cont,omitempty"`      // flag if additional requests/responses are forthcoming
-	Cancel    bool   `json:"cancel,omitempty"`    // used to cancel a streaming request or response (sent from the side that is not streaming)
-	Error     string `json:"error,omitempty"`
-	DataType  string `json:"datatype,omitempty"`
-	Data      any    `json:"data,omitempty"`
+	Command  string `json:"command,omitempty"`
+	ReqId    string `json:"reqid,omitempty"`
+	ResId    string `json:"resid,omitempty"`
+	Timeout  int64  `json:"timeout,omitempty"`
+	Route    string `json:"route,omitempty"`  // to route/forward requests to alternate servers
+	Source   string `json:"source,omitempty"` // source route id
+	Cont     bool   `json:"cont,omitempty"`   // flag if additional requests/responses are forthcoming
+	Cancel   bool   `json:"cancel,omitempty"` // used to cancel a streaming request or response (sent from the side that is not streaming)
+	Error    string `json:"error,omitempty"`
+	DataType string `json:"datatype,omitempty"`
+	Data     any    `json:"data,omitempty"`
 }
 
 func (r *RpcMessage) IsRpcRequest() bool {
@@ -238,14 +236,6 @@ func (w *WshRpc) GetRpcContext() wshrpc.RpcContext {
 
 func (w *WshRpc) SetRpcContext(ctx wshrpc.RpcContext) {
 	w.RpcContext.Store(&ctx)
-}
-
-func (w *WshRpc) SetAuthToken(token string) {
-	w.AuthToken = token
-}
-
-func (w *WshRpc) GetAuthToken() string {
-	return w.AuthToken
 }
 
 func (w *WshRpc) registerResponseHandler(reqId string, handler *RpcResponseHandler) {
@@ -514,9 +504,8 @@ func (handler *RpcRequestHandler) SendCancel(ctx context.Context) error {
 		panichandler.PanicHandler("SendCancel", recover())
 	}()
 	msg := &RpcMessage{
-		Cancel:    true,
-		ReqId:     handler.reqId,
-		AuthToken: handler.w.GetAuthToken(),
+		Cancel: true,
+		ReqId:  handler.reqId,
 	}
 	barr, _ := json.Marshal(msg) // will never fail
 	select {
@@ -619,8 +608,7 @@ func (handler *RpcResponseHandler) SendMessage(msg string) {
 		Data: wshrpc.CommandMessageData{
 			Message: msg,
 		},
-		AuthToken: handler.w.GetAuthToken(),
-		Route:     handler.source, // send back to source
+		Route: handler.source, // send back to source
 	}
 	msgBytes, _ := json.Marshal(rpcMsg) // will never fail
 	select {
@@ -643,10 +631,9 @@ func (handler *RpcResponseHandler) SendResponse(data any, done bool) error {
 		return nil
 	}
 	msg := &RpcMessage{
-		ResId:     handler.reqId,
-		Data:      data,
-		Cont:      !done,
-		AuthToken: handler.w.GetAuthToken(),
+		ResId: handler.reqId,
+		Data:  data,
+		Cont:  !done,
 	}
 	barr, err := json.Marshal(msg)
 	if err != nil {
@@ -672,9 +659,8 @@ func (handler *RpcResponseHandler) SendResponseError(err error) {
 		return
 	}
 	msg := &RpcMessage{
-		ResId:     handler.reqId,
-		Error:     err.Error(),
-		AuthToken: handler.w.GetAuthToken(),
+		ResId: handler.reqId,
+		Error: err.Error(),
 	}
 	barr, _ := json.Marshal(msg) // will never fail
 	select {
@@ -741,12 +727,11 @@ func (w *WshRpc) SendComplexRequest(command string, data any, opts *wshrpc.RpcOp
 		handler.reqId = uuid.New().String()
 	}
 	req := &RpcMessage{
-		Command:   command,
-		ReqId:     handler.reqId,
-		Data:      data,
-		Timeout:   timeoutMs,
-		Route:     opts.Route,
-		AuthToken: w.GetAuthToken(),
+		Command: command,
+		ReqId:   handler.reqId,
+		Data:    data,
+		Timeout: timeoutMs,
+		Route:   opts.Route,
 	}
 	barr, err := json.Marshal(req)
 	if err != nil {

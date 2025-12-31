@@ -13,9 +13,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
-	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
-	"github.com/wavetermdev/waveterm/pkg/wavejwt"
 	"github.com/wavetermdev/waveterm/pkg/wps"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 )
@@ -113,6 +112,10 @@ func MakeControllerRouteId(blockId string) string {
 
 func MakeProcRouteId(procId string) string {
 	return "proc:" + procId
+}
+
+func MakeRandomProcRouteId() string {
+	return MakeProcRouteId(uuid.New().String())
 }
 
 func MakeTabRouteId(tabId string) string {
@@ -453,49 +456,6 @@ func (router *WshRouter) runLinkClientRecvLoop(linkId LinkId, client AbstractRpc
 	}
 }
 
-func sendControlUnauthenticatedErrorResponse(cmdMsg RpcMessage, linkMeta linkMeta) {
-	if cmdMsg.ReqId == "" {
-		return
-	}
-	rtnMsg := RpcMessage{
-		Source: ControlRoute,
-		ResId:  cmdMsg.ReqId,
-		Error:  fmt.Sprintf("link is unauthenticated, cannot call %q", cmdMsg.Command),
-	}
-	rtnBytes, _ := json.Marshal(rtnMsg)
-	linkMeta.client.SendRpcMessage(rtnBytes, "unauthenticated")
-}
-
-func sendControlErrorResponse(cmdMsg RpcMessage, linkMeta linkMeta, errorMsg string, debugStr string) {
-	if cmdMsg.ReqId == "" {
-		return
-	}
-	rtnMsg := RpcMessage{
-		Source: ControlRoute,
-		ResId:  cmdMsg.ReqId,
-		Error:  errorMsg,
-	}
-	rtnBytes, _ := json.Marshal(rtnMsg)
-	linkMeta.client.SendRpcMessage(rtnBytes, debugStr)
-}
-
-func sendControlDataResponse(cmdMsg RpcMessage, linkMeta linkMeta, data any, debugStr string) error {
-	if cmdMsg.ReqId == "" {
-		return nil
-	}
-	rtnMsg := RpcMessage{
-		Source: ControlRoute,
-		ResId:  cmdMsg.ReqId,
-		Data:   data,
-	}
-	rtnBytes, err := json.Marshal(rtnMsg)
-	if err != nil {
-		return err
-	}
-	linkMeta.client.SendRpcMessage(rtnBytes, debugStr)
-	return nil
-}
-
 // synchronized, returns a copy
 func (router *WshRouter) getLinkMeta(linkId LinkId) *linkMeta {
 	if linkId == NoLinkId {
@@ -711,110 +671,10 @@ func (router *WshRouter) getUpstreamClient() AbstractRpcClient {
 	return lm.client
 }
 
-func (router *WshRouter) handleControlMessage(m RpcMessage, linkMeta linkMeta) {
-	defer func() {
-		panichandler.PanicHandler("WshRouter:handleControlMessage", recover())
-	}()
-	if m.Command == wshrpc.Command_RouteAnnounce {
-		if !linkMeta.trusted {
-			sendControlUnauthenticatedErrorResponse(m, linkMeta)
-			return
-		}
-		if m.Source == "" {
-			sendControlErrorResponse(m, linkMeta, "no source in routeannounce", "control-error")
-			return
-		}
-		router.bindRoute(linkMeta.linkId, m.Source, false)
-		sendControlDataResponse(m, linkMeta, nil, "control-response")
-		return
-	} else if m.Command == wshrpc.Command_RouteUnannounce {
-		if !linkMeta.trusted {
-			sendControlUnauthenticatedErrorResponse(m, linkMeta)
-			return
-		}
-		if m.Source == "" {
-			sendControlErrorResponse(m, linkMeta, "no source in routeunannounce", "control-error")
-			return
-		}
-		router.unbindRoute(linkMeta.linkId, m.Source)
-		sendControlDataResponse(m, linkMeta, nil, "control-response")
-		return
-	} else if m.Command == wshrpc.Command_SetPeerInfo {
-		if !linkMeta.trusted {
-			sendControlUnauthenticatedErrorResponse(m, linkMeta)
-			return
-		}
-		if proxy, ok := linkMeta.client.(*WshRpcProxy); ok {
-			var peerInfo string
-			if err := utilfn.ReUnmarshal(&peerInfo, m.Data); err != nil {
-				sendControlErrorResponse(m, linkMeta, fmt.Sprintf("error unmarshaling setpeerinfo data: %v", err), "control-error")
-				return
-			}
-			proxy.SetPeerInfo(peerInfo)
-			sendControlDataResponse(m, linkMeta, nil, "control-response")
-		} else {
-			sendControlErrorResponse(m, linkMeta, "setpeerinfo only valid for proxy connections", "control-error")
-		}
-		return
-	} else if m.Command == wshrpc.Command_Authenticate {
-		router.handleControlAuthenticate(m, linkMeta)
-	} else if m.Command == wshrpc.Command_AuthenticateToken {
-		router.handleControlAuthenticateToken(m, linkMeta)
-		return
-	}
-}
-
-func (router *WshRouter) handleControlAuthenticateToken(m RpcMessage, linkMeta linkMeta) {
-	entry, err := handleAuthenticateTokenCommand(m)
-	if err != nil {
-		log.Printf("wshrouter authenticate-token error %s: %v", linkMeta.Name(), err)
-		sendControlErrorResponse(m, linkMeta, err.Error(), "auth-error")
-		return
-	}
-	routeId, _ := MakeRouteIdFromCtx(entry.RpcContext)
-	rtnData := wshrpc.CommandAuthenticateRtnData{
-		RouteId:        routeId,
-		PublicKey:      wavejwt.GetPublicKeyBase64(),
-		Env:            entry.Env,
-		InitScriptText: entry.ScriptText,
-	}
-	sendControlDataResponse(m, linkMeta, rtnData, "auth-rtn")
-	log.Printf("wshrouter authenticate-token success %s routeid=%q", linkMeta.Name(), routeId)
-	router.trustLink(linkMeta.linkId, LinkKind_Leaf)
-	router.bindRoute(linkMeta.linkId, routeId, true)
-}
-
-func (router *WshRouter) handleControlAuthenticate(m RpcMessage, linkMeta linkMeta) {
-	_, routeId, err := handleAuthenticationCommand(m)
-	if err != nil {
-		log.Printf("wshrouter authenticate error %s: %v", linkMeta.Name(), err)
-		sendControlErrorResponse(m, linkMeta, err.Error(), "auth-error")
-		return
-	}
-	rtnData := wshrpc.CommandAuthenticateRtnData{
-		RouteId:   routeId,
-		PublicKey: wavejwt.GetPublicKeyBase64(),
-	}
-	sendControlDataResponse(m, linkMeta, rtnData, "auth-rtn")
-	log.Printf("wshrouter authenticate success %s routeid=%q", linkMeta.Name(), routeId)
-	router.trustLink(linkMeta.linkId, LinkKind_Leaf)
-	router.bindRoute(linkMeta.linkId, routeId, true)
-}
-
 func (router *WshRouter) unsubscribeFromBroker(routeId string) {
 	defer func() {
 		panichandler.PanicHandler("WshRouter:unregisterRoute:routegone", recover())
 	}()
 	wps.Broker.UnsubscribeAll(routeId)
 	wps.Broker.Publish(wps.WaveEvent{Event: wps.Event_RouteGone, Scopes: []string{routeId}})
-}
-
-// TODO remove
-func (router *WshRouter) HandleProxyAuth(authData any) (wshrpc.CommandAuthenticateRtnData, error) {
-	return wshrpc.CommandAuthenticateRtnData{}, nil
-}
-
-// TODO remove
-func (router *WshRouter) InjectMessage(msgBytes []byte, routeId string) {
-	// nothing
 }
