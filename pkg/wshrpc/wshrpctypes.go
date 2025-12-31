@@ -58,8 +58,8 @@ const (
 	Command_SetPeerInfo       = "setpeerinfo"       // $control (sets peer info on proxy)
 	Command_ControlMessage    = "controlmessage"    // $control
 	Command_Ping              = "ping"              // $control
-	Command_GetJwtPublicKey   = "getjwtpublickey"   // $control
 
+	Command_GetJwtPublicKey   = "getjwtpublickey"
 	Command_Message           = "message"
 	Command_GetMeta           = "getmeta"
 	Command_SetMeta           = "setmeta"

@@ -48,6 +48,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/waveappstore"
 	"github.com/wavetermdev/waveterm/pkg/waveapputil"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
+	"github.com/wavetermdev/waveterm/pkg/wavejwt"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wcloud"
 	"github.com/wavetermdev/waveterm/pkg/wconfig"
@@ -80,6 +81,10 @@ func (ws *WshServer) AuthenticateTokenCommand(ctx context.Context, data wshrpc.C
 		InitScriptText: entry.ScriptText,
 	}
 	return rtn, nil
+}
+
+func (ws *WshServer) GetJwtPublicKeyCommand(ctx context.Context) (string, error) {
+	return wavejwt.GetPublicKeyBase64(), nil
 }
 
 func (ws *WshServer) TestCommand(ctx context.Context, data string) error {

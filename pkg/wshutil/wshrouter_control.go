@@ -108,10 +108,6 @@ func (router *WshRouter) handleControlMessage(m RpcMessage, linkMeta linkMeta) {
 	} else if m.Command == wshrpc.Command_AuthenticateToken {
 		router.handleControlAuthenticateToken(m, linkMeta)
 		return
-	} else if m.Command == wshrpc.Command_GetJwtPublicKey {
-		publicKey := wavejwt.GetPublicKeyBase64()
-		sendControlDataResponse(m, linkMeta, publicKey, "getjwtpublickey-response")
-		return
 	}
 }
 
