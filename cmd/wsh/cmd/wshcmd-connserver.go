@@ -128,6 +128,7 @@ func setupConnServerRpcClientWithRouter(router *wshutil.WshRouter) (*wshutil.Wsh
 }
 
 func serverRunRouter() error {
+	log.Printf("starting connserver router")
 	router := wshutil.NewWshRouter()
 	termProxy := wshutil.MakeRpcProxy("connserver-term")
 	rawCh := make(chan []byte, wshutil.DefaultOutputChSize)
@@ -157,14 +158,16 @@ func serverRunRouter() error {
 		}
 	}()
 	router.RegisterUpstream(termProxy)
-	
+
 	// setup the connserver rpc client first
 	client, err := setupConnServerRpcClientWithRouter(router)
 	if err != nil {
 		return fmt.Errorf("error setting up connserver rpc client: %v", err)
 	}
 	wshfs.RpcClient = client
-	
+
+	log.Printf("trying to get JWT public key")
+
 	// fetch and set JWT public key
 	jwtPublicKeyB64, err := wshclient.GetJwtPublicKeyCommand(client, nil)
 	if err != nil {
@@ -178,12 +181,15 @@ func serverRunRouter() error {
 	if err != nil {
 		return fmt.Errorf("error setting jwt public key: %v", err)
 	}
-	
+
+	log.Printf("got JWT public key")
+
 	// now set up the domain socket
 	unixListener, err := MakeRemoteUnixListener()
 	if err != nil {
 		return fmt.Errorf("cannot create unix listener: %v", err)
 	}
+	log.Printf("unix listener started")
 	go func() {
 		defer func() {
 			panichandler.PanicHandler("serverRunRouter:runListener", recover())
@@ -197,6 +203,7 @@ func serverRunRouter() error {
 		}()
 		wshremote.RunSysInfoLoop(client, connServerConnName)
 	}()
+	log.Printf("running server, successfully started")
 	select {}
 }
 
