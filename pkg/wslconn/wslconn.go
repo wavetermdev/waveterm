@@ -69,7 +69,7 @@ type WslConn struct {
 var ConnServerCmdTemplate = strings.TrimSpace(
 	strings.Join([]string{
 		"%s version 2> /dev/null || (echo -n \"not-installed \"; uname -sm);",
-		"exec %s connserver --router --conn %s",
+		"exec %s connserver --router --conn %s %s",
 	}, "\n"))
 
 func GetAllConnStatus() []wshrpc.ConnStatus {
@@ -267,7 +267,11 @@ func (conn *WslConn) StartConnServer(ctx context.Context, afterUpdate bool) (boo
 		}
 		conn.cancelFn = cancelFn
 	})
-	cmdStr := fmt.Sprintf(ConnServerCmdTemplate, wshPath, wshPath, shellutil.HardQuote(conn.GetName()))
+	devFlag := ""
+	if wavebase.IsDevMode() {
+		devFlag = "--dev"
+	}
+	cmdStr := fmt.Sprintf(ConnServerCmdTemplate, wshPath, wshPath, shellutil.HardQuote(conn.GetName()), devFlag)
 	shWrappedCmdStr := fmt.Sprintf("sh -c %s", shellutil.HardQuote(cmdStr))
 	cmd := client.WslCommand(connServerCtx, shWrappedCmdStr)
 	pipeRead, pipeWrite := io.Pipe()

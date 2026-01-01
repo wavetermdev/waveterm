@@ -39,10 +39,12 @@ var serverCmd = &cobra.Command{
 
 var connServerRouter bool
 var connServerConnName string
+var connServerDev bool
 
 func init() {
 	serverCmd.Flags().BoolVar(&connServerRouter, "router", false, "run in local router mode")
 	serverCmd.Flags().StringVar(&connServerConnName, "conn", "", "connection name")
+	serverCmd.Flags().BoolVar(&connServerDev, "dev", false, "enable dev mode with file logging and PID in logs")
 	rootCmd.AddCommand(serverCmd)
 }
 
@@ -149,9 +151,10 @@ func serverRunRouter() error {
 		defer func() {
 			panichandler.PanicHandler("serverRunRouter:drainRawCh", recover())
 		}()
-		// just ignore and drain the rawCh (stdin)
-		// when stdin is closed, shutdown
-		defer wshutil.DoShutdown("", 0, true)
+		defer func() {
+			log.Printf("stdin closed, shutting down")
+			wshutil.DoShutdown("", 0, true)
+		}()
 		for range rawCh {
 			// ignore
 		}
@@ -243,20 +246,53 @@ func askForJwtToken() (string, error) {
 }
 
 func serverRun(cmd *cobra.Command, args []string) error {
+	var logFile *os.File
+	if connServerDev {
+		var err error
+		logFile, err = os.OpenFile("/tmp/connserver.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "failed to open log file: %v\n", err)
+			log.SetFlags(log.LstdFlags | log.Lmicroseconds)
+			log.SetPrefix(fmt.Sprintf("[PID:%d] ", os.Getpid()))
+		} else {
+			defer logFile.Close()
+			multiWriter := io.MultiWriter(os.Stderr, logFile)
+			log.SetOutput(multiWriter)
+			log.SetFlags(log.LstdFlags | log.Lmicroseconds)
+			log.SetPrefix(fmt.Sprintf("[PID:%d] ", os.Getpid()))
+		}
+	}
 	if connServerConnName == "" {
+		if logFile != nil {
+			fmt.Fprintf(logFile, "--conn parameter is required\n")
+		}
 		return fmt.Errorf("--conn parameter is required")
 	}
 	installErr := wshutil.InstallRcFiles()
 	if installErr != nil {
+		if logFile != nil {
+			fmt.Fprintf(logFile, "error installing rc files: %v\n", installErr)
+		}
 		log.Printf("error installing rc files: %v", installErr)
 	}
 	sigutil.InstallSIGUSR1Handler()
 	if connServerRouter {
-		return serverRunRouter()
+		err := serverRunRouter()
+		if err != nil && logFile != nil {
+			fmt.Fprintf(logFile, "serverRunRouter error: %v\n", err)
+		}
+		return err
 	}
 	jwtToken, err := askForJwtToken()
 	if err != nil {
+		if logFile != nil {
+			fmt.Fprintf(logFile, "askForJwtToken error: %v\n", err)
+		}
 		return err
 	}
-	return serverRunNormal(jwtToken)
+	err = serverRunNormal(jwtToken)
+	if err != nil && logFile != nil {
+		fmt.Fprintf(logFile, "serverRunNormal error: %v\n", err)
+	}
+	return err
 }
