@@ -274,6 +274,7 @@ func tryTcpSocket(sockName string) (net.Conn, error) {
 }
 
 func SetupDomainSocketRpcClient(sockName string, serverImpl ServerImpl, debugName string) (*WshRpc, error) {
+	sockName = wavebase.ExpandHomeDirSafe(sockName)
 	conn, tcpErr := tryTcpSocket(sockName)
 	var unixErr error
 	if tcpErr != nil {
