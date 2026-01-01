@@ -22,8 +22,6 @@ import (
 
 const (
 	DefaultRoute     = "wavesrv"
-	UpstreamRoute    = "upstream"
-	SysRoute         = "sys" // this route doesn't exist, just a placeholder for system messages
 	ElectronRoute    = "electron"
 	ControlRoute     = "$control"      // control plane route
 	ControlRootRoute = "$control:root" // control plane route to root router

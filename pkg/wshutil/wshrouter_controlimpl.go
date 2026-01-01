@@ -10,7 +10,7 @@ import (
 
 	"github.com/wavetermdev/waveterm/pkg/baseds"
 	"github.com/wavetermdev/waveterm/pkg/util/shellutil"
-	"github.com/wavetermdev/waveterm/pkg/wavejwt"
+	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 )
 
@@ -89,10 +89,7 @@ func (impl *WshRouterControlImpl) AuthenticateCommand(ctx context.Context, data 
 		return wshrpc.CommandAuthenticateRtnData{}, err
 	}
 
-	rtnData := wshrpc.CommandAuthenticateRtnData{
-		PublicKey: wavejwt.GetPublicKeyBase64(),
-	}
-
+	rtnData := wshrpc.CommandAuthenticateRtnData{}
 	if newCtx.IsRouter {
 		log.Printf("wshrouter authenticate success linkid=%d (router)", linkId)
 		impl.Router.trustLink(linkId, LinkKind_Router)
@@ -118,31 +115,53 @@ func (impl *WshRouterControlImpl) AuthenticateTokenCommand(ctx context.Context, 
 	if data.Token == "" {
 		return wshrpc.CommandAuthenticateRtnData{}, fmt.Errorf("no token in authenticatetoken message")
 	}
-	entry := shellutil.GetAndRemoveTokenSwapEntry(data.Token)
-	if entry == nil {
-		log.Printf("wshrouter authenticate-token error linkid=%d: no token entry found", linkId)
-		return wshrpc.CommandAuthenticateRtnData{}, fmt.Errorf("no token entry found")
+
+	unpacked, err := shellutil.UnpackSwapToken(data.Token)
+	if err != nil {
+		log.Printf("wshrouter authenticate-token error linkid=%d: failed to unpack token: %v", linkId, err)
+		return wshrpc.CommandAuthenticateRtnData{}, fmt.Errorf("failed to unpack token: %w", err)
 	}
-	_, err := validateRpcContextFromAuth(entry.RpcContext)
+	_, err = validateRpcContextFromAuth(unpacked.RpcContext)
 	if err != nil {
 		return wshrpc.CommandAuthenticateRtnData{}, err
 	}
-	if entry.RpcContext.IsRouter {
+	if unpacked.RpcContext.IsRouter {
 		return wshrpc.CommandAuthenticateRtnData{}, fmt.Errorf("cannot auth router via token")
 	}
-	if entry.RpcContext.RouteId == "" {
+	if unpacked.RpcContext.RouteId == "" {
 		return wshrpc.CommandAuthenticateRtnData{}, fmt.Errorf("no routeid")
 	}
 
-	rtnData := wshrpc.CommandAuthenticateRtnData{
-		PublicKey:      wavejwt.GetPublicKeyBase64(),
-		Env:            entry.Env,
-		InitScriptText: entry.ScriptText,
+	var rtnData wshrpc.CommandAuthenticateRtnData
+	if impl.Router.IsRootRouter() {
+		entry := shellutil.GetAndRemoveTokenSwapEntry(data.Token)
+		if entry == nil {
+			log.Printf("wshrouter authenticate-token error linkid=%d: no token entry found", linkId)
+			return wshrpc.CommandAuthenticateRtnData{}, fmt.Errorf("no token entry found")
+		}
+		rtnData = wshrpc.CommandAuthenticateRtnData{
+			Env:            entry.Env,
+			InitScriptText: entry.ScriptText,
+		}
+	} else {
+		wshRpc := GetWshRpcFromContext(ctx)
+		if wshRpc == nil {
+			return wshrpc.CommandAuthenticateRtnData{}, fmt.Errorf("no wshrpc in context")
+		}
+		respData, err := wshRpc.SendRpcRequest(wshrpc.Command_AuthenticateTokenVerify, data, &wshrpc.RpcOpts{Route: ControlRootRoute})
+		if err != nil {
+			log.Printf("wshrouter authenticate-token error linkid=%d: failed to verify token: %v", linkId, err)
+			return wshrpc.CommandAuthenticateRtnData{}, fmt.Errorf("failed to verify token: %w", err)
+		}
+		err = utilfn.ReUnmarshal(&rtnData, respData)
+		if err != nil {
+			return wshrpc.CommandAuthenticateRtnData{}, fmt.Errorf("failed to unmarshal response: %w", err)
+		}
 	}
 
-	log.Printf("wshrouter authenticate-token success linkid=%d routeid=%q", linkId, entry.RpcContext.RouteId)
+	log.Printf("wshrouter authenticate-token success linkid=%d routeid=%q", linkId, unpacked.RpcContext.RouteId)
 	impl.Router.trustLink(linkId, LinkKind_Leaf)
-	impl.Router.bindRoute(linkId, entry.RpcContext.RouteId, true)
+	impl.Router.bindRoute(linkId, unpacked.RpcContext.RouteId, true)
 
 	return rtnData, nil
 }
@@ -172,7 +191,6 @@ func (impl *WshRouterControlImpl) AuthenticateTokenVerifyCommand(ctx context.Con
 	}
 
 	rtnData := wshrpc.CommandAuthenticateRtnData{
-		PublicKey:      wavejwt.GetPublicKeyBase64(),
 		Env:            entry.Env,
 		InitScriptText: entry.ScriptText,
 	}

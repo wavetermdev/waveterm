@@ -389,8 +389,6 @@ type RpcContext struct {
 }
 
 type CommandAuthenticateRtnData struct {
-	PublicKey string `json:"publickey,omitempty"` // base64
-
 	// these fields are only set when doing a token swap
 	Env            map[string]string `json:"env,omitempty"`
 	InitScriptText string            `json:"initscripttext,omitempty"`
