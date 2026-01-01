@@ -8,7 +8,7 @@ vars:
     BIN_DIR: "bin"
     VERSION:
         sh: node version.cjs
-    RM: '{{if eq OS "windows"}}powershell Remove-Item -Force -ErrorAction SilentlyContinue{{else}}rm -f{{end}}'
+    RM: '{{if eq OS "windows"}}powershell Remove-Item -Force -ErrorAction SilentlyContinue -Path{{else}}rm -f{{end}}'
     RMRF: '{{if eq OS "windows"}}powershell Remove-Item -Force -Recurse -ErrorAction SilentlyContinue{{else}}rm -rf{{end}}'
     DATE: '{{if eq OS "windows"}}powershell Get-Date -UFormat{{else}}date{{end}}'
     ARTIFACTS_BUCKET: waveterm-github-artifacts/staging-w2
@@ -177,7 +177,7 @@ tasks:
         desc: Build the wavesrv component for macOS (Darwin) platforms (generates artifacts for both arm64 and amd64).
         platforms: [darwin]
         cmds:
-            - cmd: "{{.RM}} dist/bin/wavesrv*"
+            - cmd: '{{.RM}} "dist/bin/wavesrv*"'
               ignore_error: true
             - task: build:server:internal
               vars:
@@ -224,7 +224,7 @@ tasks:
         desc: Build the wavesrv component for Windows platforms (only generates artifacts for the current architecture).
         platforms: [windows]
         cmds:
-            - cmd: "{{.RM}} dist/bin/wavesrv*"
+            - cmd: '{{.RM}} "dist/bin/wavesrv*"'
               ignore_error: true
             - task: build:server:internal
               vars:
@@ -237,7 +237,7 @@ tasks:
         desc: Build the wavesrv component for Linux platforms (only generates artifacts for the current architecture).
         platforms: [linux]
         cmds:
-            - cmd: "{{.RM}} dist/bin/wavesrv*"
+            - cmd: '{{.RM}} "dist/bin/wavesrv*"'
               ignore_error: true
             - task: build:server:internal
               vars:
@@ -261,7 +261,7 @@ tasks:
     build:wsh:
         desc: Build the wsh component for all possible targets.
         cmds:
-            - cmd: "{{.RM}} dist/bin/wsh*"
+            - cmd: '{{.RM}} "dist/bin/wsh*"'
               ignore_error: true
             - task: build:wsh:internal
               vars:
@@ -588,7 +588,7 @@ tasks:
     tsunami:build:
         desc: Build the tsunami binary.
         cmds:
-            - cmd: "{{.RM}} bin/tsunami*"
+            - cmd: '{{.RM}} "bin/tsunami*"'
               ignore_error: true
             - mkdir -p bin
             - cd tsunami && go build -ldflags "-X main.BuildTime=$({{.DATE}} +'%Y%m%d%H%M') -X main.TsunamiVersion={{.VERSION}}" -o ../bin/tsunami{{exeExt}} cmd/main-tsunami.go
