@@ -6,7 +6,6 @@
 package sigutil
 
 import (
-	"io"
 	"os"
 	"os/signal"
 	"syscall"
@@ -15,7 +14,9 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 )
 
-func InstallSIGUSR1Handler(w io.Writer) {
+const DumpFilePath = "/tmp/waveterm-usr1-dump.log"
+
+func InstallSIGUSR1Handler() {
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGUSR1)
 	go func() {
@@ -23,7 +24,12 @@ func InstallSIGUSR1Handler(w io.Writer) {
 			panichandler.PanicHandler("InstallSIGUSR1Handler", recover())
 		}()
 		for range sigCh {
-			utilfn.DumpGoRoutineStacks(w)
+			file, err := os.Create(DumpFilePath)
+			if err != nil {
+				continue
+			}
+			utilfn.DumpGoRoutineStacks(file)
+			file.Close()
 		}
 	}()
 }

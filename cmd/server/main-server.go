@@ -560,7 +560,7 @@ func main() {
 	}
 	createMainWshClient()
 	sigutil.InstallShutdownSignalHandlers(doShutdown)
-	sigutil.InstallSIGUSR1Handler(os.Stderr)
+	sigutil.InstallSIGUSR1Handler()
 	startConfigWatcher()
 	aiusechat.InitAIModeConfigWatcher()
 	maybeStartPprofServer()

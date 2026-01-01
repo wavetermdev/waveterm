@@ -276,7 +276,7 @@ func serverRun(cmd *cobra.Command, args []string) error {
 		}
 		log.Printf("error installing rc files: %v", installErr)
 	}
-	sigutil.InstallSIGUSR1Handler(logWriter)
+	sigutil.InstallSIGUSR1Handler()
 	if connServerRouter {
 		err := serverRunRouter()
 		if err != nil && logFile != nil {
