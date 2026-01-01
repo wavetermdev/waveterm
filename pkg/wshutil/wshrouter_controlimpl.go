@@ -116,32 +116,29 @@ func (impl *WshRouterControlImpl) AuthenticateTokenCommand(ctx context.Context, 
 		return wshrpc.CommandAuthenticateRtnData{}, fmt.Errorf("no token in authenticatetoken message")
 	}
 
-	unpacked, err := shellutil.UnpackSwapToken(data.Token)
-	if err != nil {
-		log.Printf("wshrouter authenticate-token error linkid=%d: failed to unpack token: %v", linkId, err)
-		return wshrpc.CommandAuthenticateRtnData{}, fmt.Errorf("failed to unpack token: %w", err)
-	}
-	_, err = validateRpcContextFromAuth(unpacked.RpcContext)
-	if err != nil {
-		return wshrpc.CommandAuthenticateRtnData{}, err
-	}
-	if unpacked.RpcContext.IsRouter {
-		return wshrpc.CommandAuthenticateRtnData{}, fmt.Errorf("cannot auth router via token")
-	}
-	if unpacked.RpcContext.RouteId == "" {
-		return wshrpc.CommandAuthenticateRtnData{}, fmt.Errorf("no routeid")
-	}
-
 	var rtnData wshrpc.CommandAuthenticateRtnData
+	var rpcContext *wshrpc.RpcContext
 	if impl.Router.IsRootRouter() {
 		entry := shellutil.GetAndRemoveTokenSwapEntry(data.Token)
 		if entry == nil {
 			log.Printf("wshrouter authenticate-token error linkid=%d: no token entry found", linkId)
 			return wshrpc.CommandAuthenticateRtnData{}, fmt.Errorf("no token entry found")
 		}
+		_, err := validateRpcContextFromAuth(entry.RpcContext)
+		if err != nil {
+			return wshrpc.CommandAuthenticateRtnData{}, err
+		}
+		if entry.RpcContext.IsRouter {
+			return wshrpc.CommandAuthenticateRtnData{}, fmt.Errorf("cannot auth router via token")
+		}
+		if entry.RpcContext.RouteId == "" {
+			return wshrpc.CommandAuthenticateRtnData{}, fmt.Errorf("no routeid")
+		}
+		rpcContext = entry.RpcContext
 		rtnData = wshrpc.CommandAuthenticateRtnData{
 			Env:            entry.Env,
 			InitScriptText: entry.ScriptText,
+			RpcContext:     rpcContext,
 		}
 	} else {
 		wshRpc := GetWshRpcFromContext(ctx)
@@ -157,11 +154,15 @@ func (impl *WshRouterControlImpl) AuthenticateTokenCommand(ctx context.Context, 
 		if err != nil {
 			return wshrpc.CommandAuthenticateRtnData{}, fmt.Errorf("failed to unmarshal response: %w", err)
 		}
+		rpcContext = rtnData.RpcContext
 	}
 
-	log.Printf("wshrouter authenticate-token success linkid=%d routeid=%q", linkId, unpacked.RpcContext.RouteId)
+	if rpcContext == nil {
+		return wshrpc.CommandAuthenticateRtnData{}, fmt.Errorf("no rpccontext in token response")
+	}
+	log.Printf("wshrouter authenticate-token success linkid=%d routeid=%q", linkId, rpcContext.RouteId)
 	impl.Router.trustLink(linkId, LinkKind_Leaf)
-	impl.Router.bindRoute(linkId, unpacked.RpcContext.RouteId, true)
+	impl.Router.bindRoute(linkId, rpcContext.RouteId, true)
 
 	return rtnData, nil
 }
@@ -193,6 +194,7 @@ func (impl *WshRouterControlImpl) AuthenticateTokenVerifyCommand(ctx context.Con
 	rtnData := wshrpc.CommandAuthenticateRtnData{
 		Env:            entry.Env,
 		InitScriptText: entry.ScriptText,
+		RpcContext:     entry.RpcContext,
 	}
 
 	log.Printf("wshrouter authenticate-token-verify success routeid=%q", entry.RpcContext.RouteId)

@@ -196,9 +196,9 @@ declare global {
 
     // wshrpc.CommandAuthenticateRtnData
     type CommandAuthenticateRtnData = {
-        publickey?: string;
         env?: {[key: string]: string};
         initscripttext?: string;
+        rpccontext?: RpcContext;
     };
 
     // wshrpc.CommandAuthenticateTokenData
@@ -997,6 +997,15 @@ declare global {
         success: boolean;
         errormessage?: string;
         buildoutput: string;
+    };
+
+    // wshrpc.RpcContext
+    type RpcContext = {
+        sockname?: string;
+        routeid: string;
+        blockid?: string;
+        conn?: string;
+        isrouter?: boolean;
     };
 
     // wshutil.RpcMessage

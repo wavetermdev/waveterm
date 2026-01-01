@@ -392,6 +392,7 @@ type CommandAuthenticateRtnData struct {
 	// these fields are only set when doing a token swap
 	Env            map[string]string `json:"env,omitempty"`
 	InitScriptText string            `json:"initscripttext,omitempty"`
+	RpcContext     *RpcContext       `json:"rpccontext,omitempty"`
 }
 
 type CommandAuthenticateTokenData struct {
