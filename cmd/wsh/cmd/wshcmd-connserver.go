@@ -247,7 +247,6 @@ func askForJwtToken() (string, error) {
 
 func serverRun(cmd *cobra.Command, args []string) error {
 	var logFile *os.File
-	logWriter := io.Writer(os.Stderr)
 	if connServerDev {
 		var err error
 		logFile, err = os.OpenFile("/tmp/connserver.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
@@ -257,7 +256,7 @@ func serverRun(cmd *cobra.Command, args []string) error {
 			log.SetPrefix(fmt.Sprintf("[PID:%d] ", os.Getpid()))
 		} else {
 			defer logFile.Close()
-			logWriter = io.MultiWriter(os.Stderr, logFile)
+			logWriter := io.MultiWriter(os.Stderr, logFile)
 			log.SetOutput(logWriter)
 			log.SetFlags(log.LstdFlags | log.Lmicroseconds)
 			log.SetPrefix(fmt.Sprintf("[PID:%d] ", os.Getpid()))

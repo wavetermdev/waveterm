@@ -6,6 +6,7 @@
 package sigutil
 
 import (
+	"log"
 	"os"
 	"os/signal"
 	"syscall"
@@ -26,6 +27,7 @@ func InstallSIGUSR1Handler() {
 		for range sigCh {
 			file, err := os.Create(DumpFilePath)
 			if err != nil {
+				log.Printf("error creating dump file %q: %v", DumpFilePath, err)
 				continue
 			}
 			utilfn.DumpGoRoutineStacks(file)
