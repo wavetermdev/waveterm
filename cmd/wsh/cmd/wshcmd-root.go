@@ -132,18 +132,18 @@ func setupRpcClientWithToken(swapTokenStr string) (wshrpc.CommandAuthenticateRtn
 	if err != nil {
 		return rtn, fmt.Errorf("error unpacking token: %w", err)
 	}
-	if token.SockName == "" {
-		return rtn, fmt.Errorf("no sockname in token")
-	}
 	if token.RpcContext == nil {
 		return rtn, fmt.Errorf("no rpccontext in token")
 	}
+	if token.RpcContext.SockName == "" {
+		return rtn, fmt.Errorf("no sockname in token")
+	}
 	RpcContext = *token.RpcContext
-	RpcClient, err = wshutil.SetupDomainSocketRpcClient(token.SockName, nil, "wshcmd")
+	RpcClient, err = wshutil.SetupDomainSocketRpcClient(token.RpcContext.SockName, nil, "wshcmd")
 	if err != nil {
 		return rtn, fmt.Errorf("error setting up domain socket rpc client: %w", err)
 	}
-	return wshclient.AuthenticateTokenCommand(RpcClient, wshrpc.CommandAuthenticateTokenData{Token: token.Token}, &wshrpc.RpcOpts{Route: wshutil.ControlRootRoute})
+	return wshclient.AuthenticateTokenCommand(RpcClient, wshrpc.CommandAuthenticateTokenData{Token: token.Token}, &wshrpc.RpcOpts{Route: wshutil.ControlRoute})
 }
 
 // returns the wrapped stdin and a new rpc client (that wraps the stdin input and stdout output)
@@ -161,11 +161,11 @@ func setupRpcClient(serverImpl wshutil.ServerImpl, jwtToken string) error {
 	if err != nil {
 		return fmt.Errorf("error setting up domain socket rpc client: %v", err)
 	}
-	wshclient.AuthenticateCommand(RpcClient, jwtToken, &wshrpc.RpcOpts{NoResponse: true, Route: wshutil.ControlRoute})
+	wshclient.AuthenticateCommand(RpcClient, jwtToken, &wshrpc.RpcOpts{Route: wshutil.ControlRoute})
 	blockId := os.Getenv("WAVETERM_BLOCKID")
 	if blockId != "" {
 		peerInfo := fmt.Sprintf("domain:block:%s", blockId)
-		wshclient.SetPeerInfoCommand(RpcClient, peerInfo, &wshrpc.RpcOpts{NoResponse: true, Route: wshutil.ControlRoute})
+		wshclient.SetPeerInfoCommand(RpcClient, peerInfo, &wshrpc.RpcOpts{Route: wshutil.ControlRoute})
 	}
 	// note we don't modify WrappedStdin here (just use os.Stdin)
 	return nil

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/wavetermdev/waveterm/pkg/baseds"
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 )
@@ -15,7 +16,7 @@ type WshRpcProxy struct {
 	Lock         *sync.Mutex
 	RpcContext   *wshrpc.RpcContext
 	ToRemoteCh   chan []byte
-	FromRemoteCh chan []byte
+	FromRemoteCh chan baseds.RpcInputChType
 	PeerInfo     string
 }
 
@@ -23,7 +24,7 @@ func MakeRpcProxy(peerInfo string) *WshRpcProxy {
 	return &WshRpcProxy{
 		Lock:         &sync.Mutex{},
 		ToRemoteCh:   make(chan []byte, DefaultInputChSize),
-		FromRemoteCh: make(chan []byte, DefaultOutputChSize),
+		FromRemoteCh: make(chan baseds.RpcInputChType, DefaultOutputChSize),
 		PeerInfo:     peerInfo,
 	}
 }
@@ -39,7 +40,7 @@ func (p *WshRpcProxy) SetPeerInfo(peerInfo string) {
 }
 
 // TODO: Figure out who is sending to closed routes and why we're not catching it
-func (p *WshRpcProxy) SendRpcMessage(msg []byte, debugStr string) {
+func (p *WshRpcProxy) SendRpcMessage(msg []byte, ingressLinkId baseds.LinkId, debugStr string) {
 	defer func() {
 		panicCtx := "WshRpcProxy.SendRpcMessage"
 		if debugStr != "" {
@@ -51,6 +52,6 @@ func (p *WshRpcProxy) SendRpcMessage(msg []byte, debugStr string) {
 }
 
 func (p *WshRpcProxy) RecvRpcMessage() ([]byte, bool) {
-	msgBytes, more := <-p.FromRemoteCh
-	return msgBytes, more
+	inputVal, more := <-p.FromRemoteCh
+	return inputVal.MsgBytes, more
 }

@@ -41,6 +41,12 @@ func AuthenticateTokenCommand(w *wshutil.WshRpc, data wshrpc.CommandAuthenticate
 	return resp, err
 }
 
+// command "authenticatetokenverify", wshserver.AuthenticateTokenVerifyCommand
+func AuthenticateTokenVerifyCommand(w *wshutil.WshRpc, data wshrpc.CommandAuthenticateTokenData, opts *wshrpc.RpcOpts) (wshrpc.CommandAuthenticateRtnData, error) {
+	resp, err := sendRpcRequestCallHelper[wshrpc.CommandAuthenticateRtnData](w, "authenticatetokenverify", data, opts)
+	return resp, err
+}
+
 // command "blockinfo", wshserver.BlockInfoCommand
 func BlockInfoCommand(w *wshutil.WshRpc, data string, opts *wshrpc.RpcOpts) (*wshrpc.BlockInfoData, error) {
 	resp, err := sendRpcRequestCallHelper[*wshrpc.BlockInfoData](w, "blockinfo", data, opts)

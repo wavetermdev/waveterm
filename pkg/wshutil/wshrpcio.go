@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/wavetermdev/waveterm/pkg/baseds"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 )
 
@@ -15,9 +16,9 @@ import (
 // * stream (json lines)
 // * websocket (json packets)
 
-func AdaptStreamToMsgCh(input io.Reader, output chan []byte) error {
+func AdaptStreamToMsgCh(input io.Reader, output chan baseds.RpcInputChType) error {
 	return utilfn.StreamToLines(input, func(line []byte) {
-		output <- line
+		output <- baseds.RpcInputChType{MsgBytes: line}
 	})
 }
 

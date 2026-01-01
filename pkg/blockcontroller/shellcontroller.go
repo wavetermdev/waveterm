@@ -430,7 +430,6 @@ func (bc *ShellController) setupAndStartShellProcess(logCtx context.Context, rc 
 			if err != nil {
 				return nil, fmt.Errorf("error making jwt token: %w", err)
 			}
-			swapToken.SockName = sockName
 			swapToken.RpcContext = &rpcContext
 			swapToken.Env[wshutil.WaveJwtTokenVarName] = jwtStr
 			shellProc, err = shellexec.StartWslShellProc(ctx, rc.TermSize, cmdStr, cmdOpts, wslConn)
@@ -464,7 +463,6 @@ func (bc *ShellController) setupAndStartShellProcess(logCtx context.Context, rc 
 			if err != nil {
 				return nil, fmt.Errorf("error making jwt token: %w", err)
 			}
-			swapToken.SockName = sockName
 			swapToken.RpcContext = &rpcContext
 			swapToken.Env[wshutil.WaveJwtTokenVarName] = jwtStr
 			shellProc, err = shellexec.StartRemoteShellProc(ctx, logCtx, rc.TermSize, cmdStr, cmdOpts, conn)
@@ -491,7 +489,6 @@ func (bc *ShellController) setupAndStartShellProcess(logCtx context.Context, rc 
 			if err != nil {
 				return nil, fmt.Errorf("error making jwt token: %w", err)
 			}
-			swapToken.SockName = sockName
 			swapToken.RpcContext = &rpcContext
 			swapToken.Env[wshutil.WaveJwtTokenVarName] = jwtStr
 		}

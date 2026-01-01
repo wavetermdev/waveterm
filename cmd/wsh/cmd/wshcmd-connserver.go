@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"github.com/wavetermdev/waveterm/pkg/baseds"
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/wshfs"
 	"github.com/wavetermdev/waveterm/pkg/util/packetparser"
@@ -85,8 +86,8 @@ func handleNewListenerConn(conn net.Conn, router *wshutil.WshRouter) {
 		defer func() {
 			conn.Close()
 			linkId := linkIdContainer.Load()
-			if linkId != wshutil.NoLinkId {
-				router.UnregisterLink(wshutil.LinkId(linkId))
+			if linkId != baseds.NoLinkId {
+				router.UnregisterLink(baseds.LinkId(linkId))
 			}
 		}()
 		wshutil.AdaptStreamToMsgCh(conn, proxy.FromRemoteCh)
@@ -115,14 +116,12 @@ func runListener(listener net.Listener, router *wshutil.WshRouter) {
 }
 
 func setupConnServerRpcClientWithRouter(router *wshutil.WshRouter) (*wshutil.WshRpc, error) {
-	inputCh := make(chan []byte, wshutil.DefaultInputChSize)
-	outputCh := make(chan []byte, wshutil.DefaultOutputChSize)
 	routeId := wshutil.MakeConnectionRouteId(connServerConnName)
 	rpcCtx := wshrpc.RpcContext{
 		RouteId: routeId,
 		Conn:    connServerConnName,
 	}
-	connServerClient := wshutil.MakeWshRpc(inputCh, outputCh, rpcCtx, &wshremote.ServerImpl{LogWriter: os.Stdout}, routeId)
+	connServerClient := wshutil.MakeWshRpc(rpcCtx, &wshremote.ServerImpl{LogWriter: os.Stdout}, routeId)
 	router.RegisterTrustedLeaf(connServerClient, routeId)
 	return connServerClient, nil
 }

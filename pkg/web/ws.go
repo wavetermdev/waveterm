@@ -16,6 +16,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
 	"github.com/wavetermdev/waveterm/pkg/authkey"
+	"github.com/wavetermdev/waveterm/pkg/baseds"
 	"github.com/wavetermdev/waveterm/pkg/eventbus"
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/web/webcmd"
@@ -33,7 +34,7 @@ const DefaultCommandTimeout = 2 * time.Second
 
 type StableConnInfo struct {
 	ConnId string
-	LinkId wshutil.LinkId
+	LinkId baseds.LinkId
 }
 
 var GlobalLock = &sync.Mutex{}
@@ -84,7 +85,7 @@ func getStringFromMap(jmsg map[string]any, key string) string {
 	return ""
 }
 
-func processWSCommand(jmsg map[string]any, outputCh chan any, rpcInputCh chan []byte) {
+func processWSCommand(jmsg map[string]any, outputCh chan any, rpcInputCh chan baseds.RpcInputChType) {
 	var rtnErr error
 	var cmdType string
 	defer func() {
@@ -124,7 +125,7 @@ func processWSCommand(jmsg map[string]any, outputCh chan any, rpcInputCh chan []
 			log.Printf("[websocket] error marshalling rpc message: %v\n", err)
 			return
 		}
-		rpcInputCh <- msgBytes
+		rpcInputCh <- baseds.RpcInputChType{MsgBytes: msgBytes}
 
 	case *webcmd.BlockInputWSCommand:
 		data := wshrpc.CommandBlockInputData{
@@ -141,7 +142,7 @@ func processWSCommand(jmsg map[string]any, outputCh chan any, rpcInputCh chan []
 			log.Printf("[websocket] error marshalling rpc message: %v\n", err)
 			return
 		}
-		rpcInputCh <- msgBytes
+		rpcInputCh <- baseds.RpcInputChType{MsgBytes: msgBytes}
 
 	case *webcmd.WSRpcCommand:
 		rpcMsg := cmd.Message
@@ -156,11 +157,11 @@ func processWSCommand(jmsg map[string]any, outputCh chan any, rpcInputCh chan []
 			// this really should never fail since we just unmarshalled this value
 			return
 		}
-		rpcInputCh <- msgBytes
+		rpcInputCh <- baseds.RpcInputChType{MsgBytes: msgBytes}
 	}
 }
 
-func processMessage(jmsg map[string]any, outputCh chan any, rpcInputCh chan []byte) {
+func processMessage(jmsg map[string]any, outputCh chan any, rpcInputCh chan baseds.RpcInputChType) {
 	wsCommand := getStringFromMap(jmsg, "wscommand")
 	if wsCommand == "" {
 		return
@@ -168,7 +169,7 @@ func processMessage(jmsg map[string]any, outputCh chan any, rpcInputCh chan []by
 	processWSCommand(jmsg, outputCh, rpcInputCh)
 }
 
-func ReadLoop(conn *websocket.Conn, outputCh chan any, closeCh chan any, rpcInputCh chan []byte, routeId string) {
+func ReadLoop(conn *websocket.Conn, outputCh chan any, closeCh chan any, rpcInputCh chan baseds.RpcInputChType, routeId string) {
 	readWait := wsReadWaitTimeout
 	conn.SetReadLimit(wsMaxMessageSize)
 	conn.SetReadDeadline(time.Now().Add(readWait))
@@ -262,7 +263,7 @@ func registerConn(wsConnId string, stableId string, wproxy *wshutil.WshRpcProxy)
 	curConnInfo := RouteToConnMap[stableId]
 	if curConnInfo != nil {
 		log.Printf("[websocket] warning: replacing existing connection for stableid %q\n", stableId)
-		if curConnInfo.LinkId != wshutil.NoLinkId {
+		if curConnInfo.LinkId != baseds.NoLinkId {
 			wshutil.DefaultRouter.UnregisterLink(curConnInfo.LinkId)
 		}
 	}
@@ -282,7 +283,7 @@ func unregisterConn(wsConnId string, stableId string) {
 		return
 	}
 	delete(RouteToConnMap, stableId)
-	if curConnInfo.LinkId != wshutil.NoLinkId {
+	if curConnInfo.LinkId != baseds.NoLinkId {
 		wshutil.DefaultRouter.UnregisterLink(curConnInfo.LinkId)
 	}
 }

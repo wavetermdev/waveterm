@@ -20,6 +20,7 @@ import (
 	"syscall"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/wavetermdev/waveterm/pkg/baseds"
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/util/packetparser"
 	"github.com/wavetermdev/waveterm/pkg/util/shellutil"
@@ -201,10 +202,10 @@ func RestoreTermState() {
 
 // returns (wshRpc, wrappedStdin)
 func SetupTerminalRpcClient(serverImpl ServerImpl, debugStr string) (*WshRpc, io.Reader) {
-	messageCh := make(chan []byte, DefaultInputChSize)
+	messageCh := make(chan baseds.RpcInputChType, DefaultInputChSize)
 	outputCh := make(chan []byte, DefaultOutputChSize)
 	ptyBuf := MakePtyBuffer(WaveServerOSCPrefix, os.Stdin, messageCh)
-	rpcClient := MakeWshRpc(messageCh, outputCh, wshrpc.RpcContext{}, serverImpl, debugStr)
+	rpcClient := MakeWshRpcWithChannels(messageCh, outputCh, wshrpc.RpcContext{}, serverImpl, debugStr)
 	go func() {
 		defer func() {
 			panichandler.PanicHandler("SetupTerminalRpcClient", recover())
@@ -222,10 +223,10 @@ func SetupTerminalRpcClient(serverImpl ServerImpl, debugStr string) (*WshRpc, io
 }
 
 func SetupPacketRpcClient(input io.Reader, output io.Writer, serverImpl ServerImpl, debugStr string) (*WshRpc, chan []byte) {
-	messageCh := make(chan []byte, DefaultInputChSize)
+	messageCh := make(chan baseds.RpcInputChType, DefaultInputChSize)
 	outputCh := make(chan []byte, DefaultOutputChSize)
 	rawCh := make(chan []byte, DefaultOutputChSize)
-	rpcClient := MakeWshRpc(messageCh, outputCh, wshrpc.RpcContext{}, serverImpl, debugStr)
+	rpcClient := MakeWshRpcWithChannels(messageCh, outputCh, wshrpc.RpcContext{}, serverImpl, debugStr)
 	go packetparser.Parse(input, messageCh, rawCh)
 	go func() {
 		defer func() {
@@ -239,7 +240,7 @@ func SetupPacketRpcClient(input io.Reader, output io.Writer, serverImpl ServerIm
 }
 
 func SetupConnRpcClient(conn net.Conn, serverImpl ServerImpl, debugStr string) (*WshRpc, chan error, error) {
-	inputCh := make(chan []byte, DefaultInputChSize)
+	inputCh := make(chan baseds.RpcInputChType, DefaultInputChSize)
 	outputCh := make(chan []byte, DefaultOutputChSize)
 	writeErrCh := make(chan error, 1)
 	go func() {
@@ -260,7 +261,7 @@ func SetupConnRpcClient(conn net.Conn, serverImpl ServerImpl, debugStr string) (
 		defer conn.Close()
 		AdaptStreamToMsgCh(conn, inputCh)
 	}()
-	rtn := MakeWshRpc(inputCh, outputCh, wshrpc.RpcContext{}, serverImpl, debugStr)
+	rtn := MakeWshRpcWithChannels(inputCh, outputCh, wshrpc.RpcContext{}, serverImpl, debugStr)
 	return rtn, writeErrCh, nil
 }
 
@@ -423,8 +424,8 @@ func handleDomainSocketClient(conn net.Conn) {
 			close(proxy.FromRemoteCh)
 			close(proxy.ToRemoteCh)
 			linkId := linkIdContainer.Load()
-			if linkId != NoLinkId {
-				DefaultRouter.UnregisterLink(LinkId(linkId))
+			if linkId != baseds.NoLinkId {
+				DefaultRouter.UnregisterLink(baseds.LinkId(linkId))
 			}
 		}()
 		AdaptStreamToMsgCh(conn, proxy.FromRemoteCh)

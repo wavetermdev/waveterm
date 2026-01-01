@@ -27,6 +27,11 @@ class RpcApiType {
         return client.wshRpcCall("authenticatetoken", data, opts);
     }
 
+    // command "authenticatetokenverify" [call]
+    AuthenticateTokenVerifyCommand(client: WshClient, data: CommandAuthenticateTokenData, opts?: RpcOpts): Promise<CommandAuthenticateRtnData> {
+        return client.wshRpcCall("authenticatetokenverify", data, opts);
+    }
+
     // command "blockinfo" [call]
     BlockInfoCommand(client: WshClient, data: string, opts?: RpcOpts): Promise<BlockInfoData> {
         return client.wshRpcCall("blockinfo", data, opts);

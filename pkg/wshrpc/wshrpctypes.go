@@ -50,14 +50,15 @@ const (
 
 // TODO generate these constants from the interface
 const (
-	Command_Authenticate      = "authenticate"      // $control
-	Command_AuthenticateToken = "authenticatetoken" // $control
-	Command_Dispose           = "dispose"           // $control (disposes of the route, for multiproxy only)
-	Command_RouteAnnounce     = "routeannounce"     // $control (for routing)
-	Command_RouteUnannounce   = "routeunannounce"   // $control (for routing)
-	Command_SetPeerInfo       = "setpeerinfo"       // $control (sets peer info on proxy)
-	Command_ControlMessage    = "controlmessage"    // $control
-	Command_Ping              = "ping"              // $control
+	Command_Authenticate            = "authenticate"            // $control
+	Command_AuthenticateToken       = "authenticatetoken"       // $control
+	Command_AuthenticateTokenVerify = "authenticatetokenverify" // $control:root (internal, for token validation only)
+	Command_Dispose                 = "dispose"                 // $control (disposes of the route, for multiproxy only)
+	Command_RouteAnnounce           = "routeannounce"           // $control (for routing)
+	Command_RouteUnannounce         = "routeunannounce"         // $control (for routing)
+	Command_SetPeerInfo             = "setpeerinfo"             // $control (sets peer info on proxy)
+	Command_ControlMessage          = "controlmessage"          // $control
+	Command_Ping                    = "ping"                    // $control
 
 	Command_GetJwtPublicKey   = "getjwtpublickey"
 	Command_Message           = "message"
@@ -199,6 +200,7 @@ type RespOrErrorUnion[T any] struct {
 type WshRpcInterface interface {
 	AuthenticateCommand(ctx context.Context, data string) (CommandAuthenticateRtnData, error)
 	AuthenticateTokenCommand(ctx context.Context, data CommandAuthenticateTokenData) (CommandAuthenticateRtnData, error)
+	AuthenticateTokenVerifyCommand(ctx context.Context, data CommandAuthenticateTokenData) (CommandAuthenticateRtnData, error) // (special) validates token without binding, root router only
 	DisposeCommand(ctx context.Context, data CommandDisposeData) error
 	RouteAnnounceCommand(ctx context.Context) error   // (special) announces a new route to the main router
 	RouteUnannounceCommand(ctx context.Context) error // (special) unannounces a route to the main router
