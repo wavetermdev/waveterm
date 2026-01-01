@@ -5,6 +5,8 @@
 
 package sigutil
 
-func InstallSIGUSR1Handler() {
+import "io"
+
+func InstallSIGUSR1Handler(w io.Writer) {
 	// do nothing
 }
