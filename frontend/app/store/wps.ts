@@ -1,9 +1,16 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import type { WshClient } from "@/app/store/wshclient";
+import { RpcApi } from "@/app/store/wshclientapi";
 import { isBlank } from "@/util/util";
 import { Subject } from "rxjs";
-import { sendRawRpcMessage } from "./ws";
+
+let WpsRpcClient: WshClient;
+
+function setWpsRpcClient(client: WshClient) {
+    WpsRpcClient = client;
+}
 
 type WaveEventSubject = {
     handler: (event: WaveEvent) => void;
@@ -33,12 +40,13 @@ function wpsReconnectHandler() {
     }
 }
 
-function makeWaveReSubCommand(eventType: string): RpcMessage {
-    let subjects = waveEventSubjects.get(eventType);
+function updateWaveEventSub(eventType: string) {
+    const subjects = waveEventSubjects.get(eventType);
     if (subjects == null) {
-        return { command: "eventunsub", data: eventType };
+        RpcApi.EventUnsubCommand(WpsRpcClient, eventType, { noresponse: true });
+        return;
     }
-    let subreq: SubscriptionRequest = { event: eventType, scopes: [], allscopes: false };
+    const subreq: SubscriptionRequest = { event: eventType, scopes: [], allscopes: false };
     for (const scont of subjects) {
         if (isBlank(scont.scope)) {
             subreq.allscopes = true;
@@ -47,13 +55,7 @@ function makeWaveReSubCommand(eventType: string): RpcMessage {
         }
         subreq.scopes.push(scont.scope);
     }
-    return { command: "eventsub", data: subreq };
-}
-
-function updateWaveEventSub(eventType: string) {
-    const command = makeWaveReSubCommand(eventType);
-    // console.log("updateWaveEventSub", eventType, command);
-    sendRawRpcMessage(command);
+    RpcApi.EventSubCommand(WpsRpcClient, subreq, { noresponse: true });
 }
 
 function waveEventSubscribe(...subscriptions: WaveEventSubscription[]): () => void {
@@ -143,4 +145,11 @@ function handleWaveEvent(event: WaveEvent) {
     }
 }
 
-export { getFileSubject, handleWaveEvent, waveEventSubscribe, waveEventUnsubscribe, wpsReconnectHandler };
+export {
+    getFileSubject,
+    handleWaveEvent,
+    setWpsRpcClient,
+    waveEventSubscribe,
+    waveEventUnsubscribe,
+    wpsReconnectHandler,
+};

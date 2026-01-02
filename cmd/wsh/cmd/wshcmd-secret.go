@@ -176,7 +176,13 @@ func secretUiRun(cmd *cobra.Command, args []string) (rtnErr error) {
 		sendActivity("secret", rtnErr == nil)
 	}()
 
+	tabId := getTabIdFromEnv()
+	if tabId == "" {
+		return fmt.Errorf("no WAVETERM_TABID env var set")
+	}
+
 	wshCmd := &wshrpc.CommandCreateBlockData{
+		TabId: tabId,
 		BlockDef: &waveobj.BlockDef{
 			Meta: map[string]interface{}{
 				waveobj.MetaKey_View: "waveconfig",

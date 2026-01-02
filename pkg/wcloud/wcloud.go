@@ -140,9 +140,11 @@ func makeAnonPostReq(ctx context.Context, apiUrl string, data interface{}) (*htt
 	return req, nil
 }
 
-func doRequest(req *http.Request, outputObj interface{}) (*http.Response, error) {
+func doRequest(req *http.Request, outputObj interface{}, verbose bool) (*http.Response, error) {
 	apiUrl := req.Header.Get("X-PromptAPIUrl")
-	log.Printf("[wcloud] sending request %s %v\n", req.Method, req.URL)
+	if verbose {
+		log.Printf("[wcloud] sending request %s %v\n", req.Method, req.URL)
+	}
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("error contacting wcloud %q service: %v", apiUrl, err)
@@ -192,7 +194,7 @@ func sendTEventsBatch(clientId string) (bool, int, error) {
 		return true, 0, err
 	}
 	startTime := time.Now()
-	_, err = doRequest(req, nil)
+	_, err = doRequest(req, nil, true)
 	latency := time.Since(startTime)
 	log.Printf("[wcloud] sent %d tevents (latency: %v)\n", len(events), latency)
 	if err != nil {
@@ -269,7 +271,7 @@ func sendTelemetry(clientId string) error {
 	if err != nil {
 		return err
 	}
-	_, err = doRequest(req, nil)
+	_, err = doRequest(req, nil, true)
 	if err != nil {
 		return err
 	}
@@ -285,7 +287,7 @@ func SendNoTelemetryUpdate(ctx context.Context, clientId string, noTelemetryVal 
 	if err != nil {
 		return err
 	}
-	_, err = doRequest(req, nil)
+	_, err = doRequest(req, nil, true)
 	if err != nil {
 		return err
 	}
@@ -341,7 +343,7 @@ func SendDiagnosticPing(ctx context.Context, clientId string, usageTelemetry boo
 	if err != nil {
 		return err
 	}
-	_, err = doRequest(req, nil)
+	_, err = doRequest(req, nil, false)
 	if err != nil {
 		return err
 	}

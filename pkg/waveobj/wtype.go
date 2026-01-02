@@ -28,6 +28,7 @@ const (
 	OType_Tab         = "tab"
 	OType_LayoutState = "layout"
 	OType_Block       = "block"
+	OType_MainServer  = "mainserver"
 	OType_Temp        = "temp"
 	OType_Builder     = "builder" // not persisted to DB
 )
@@ -39,6 +40,7 @@ var ValidOTypes = map[string]bool{
 	OType_Tab:         true,
 	OType_LayoutState: true,
 	OType_Block:       true,
+	OType_MainServer:  true,
 	OType_Temp:        true,
 	OType_Builder:     true,
 }
@@ -293,6 +295,18 @@ func (*Block) GetOType() string {
 	return OType_Block
 }
 
+type MainServer struct {
+	OID           string      `json:"oid"`
+	Version       int         `json:"version"`
+	Meta          MetaMapType `json:"meta"`
+	JwtPrivateKey string      `json:"jwtprivatekey"` // base64
+	JwtPublicKey  string      `json:"jwtpublickey"`  // base64
+}
+
+func (*MainServer) GetOType() string {
+	return OType_MainServer
+}
+
 func AllWaveObjTypes() []reflect.Type {
 	return []reflect.Type{
 		reflect.TypeOf(&Client{}),
@@ -301,6 +315,7 @@ func AllWaveObjTypes() []reflect.Type {
 		reflect.TypeOf(&Tab{}),
 		reflect.TypeOf(&Block{}),
 		reflect.TypeOf(&LayoutState{}),
+		reflect.TypeOf(&MainServer{}),
 	}
 }
 

@@ -420,12 +420,16 @@ func (bc *ShellController) setupAndStartShellProcess(logCtx context.Context, rc 
 			}
 		} else {
 			sockName := wslConn.GetDomainSocketName()
-			rpcContext := wshrpc.RpcContext{TabId: bc.TabId, BlockId: bc.BlockId, Conn: wslConn.GetName()}
-			jwtStr, err := wshutil.MakeClientJWTToken(rpcContext, sockName)
+			rpcContext := wshrpc.RpcContext{
+				RouteId:  wshutil.MakeRandomProcRouteId(),
+				SockName: sockName,
+				BlockId:  bc.BlockId,
+				Conn:     wslConn.GetName(),
+			}
+			jwtStr, err := wshutil.MakeClientJWTToken(rpcContext)
 			if err != nil {
 				return nil, fmt.Errorf("error making jwt token: %w", err)
 			}
-			swapToken.SockName = sockName
 			swapToken.RpcContext = &rpcContext
 			swapToken.Env[wshutil.WaveJwtTokenVarName] = jwtStr
 			shellProc, err = shellexec.StartWslShellProc(ctx, rc.TermSize, cmdStr, cmdOpts, wslConn)
@@ -449,12 +453,16 @@ func (bc *ShellController) setupAndStartShellProcess(logCtx context.Context, rc 
 			}
 		} else {
 			sockName := conn.GetDomainSocketName()
-			rpcContext := wshrpc.RpcContext{TabId: bc.TabId, BlockId: bc.BlockId, Conn: conn.Opts.String()}
-			jwtStr, err := wshutil.MakeClientJWTToken(rpcContext, sockName)
+			rpcContext := wshrpc.RpcContext{
+				RouteId:  wshutil.MakeRandomProcRouteId(),
+				SockName: sockName,
+				BlockId:  bc.BlockId,
+				Conn:     conn.Opts.String(),
+			}
+			jwtStr, err := wshutil.MakeClientJWTToken(rpcContext)
 			if err != nil {
 				return nil, fmt.Errorf("error making jwt token: %w", err)
 			}
-			swapToken.SockName = sockName
 			swapToken.RpcContext = &rpcContext
 			swapToken.Env[wshutil.WaveJwtTokenVarName] = jwtStr
 			shellProc, err = shellexec.StartRemoteShellProc(ctx, logCtx, rc.TermSize, cmdStr, cmdOpts, conn)
@@ -472,12 +480,15 @@ func (bc *ShellController) setupAndStartShellProcess(logCtx context.Context, rc 
 	} else if connUnion.ConnType == ConnType_Local {
 		if connUnion.WshEnabled {
 			sockName := wavebase.GetDomainSocketName()
-			rpcContext := wshrpc.RpcContext{TabId: bc.TabId, BlockId: bc.BlockId}
-			jwtStr, err := wshutil.MakeClientJWTToken(rpcContext, sockName)
+			rpcContext := wshrpc.RpcContext{
+				RouteId:  wshutil.MakeRandomProcRouteId(),
+				SockName: sockName,
+				BlockId:  bc.BlockId,
+			}
+			jwtStr, err := wshutil.MakeClientJWTToken(rpcContext)
 			if err != nil {
 				return nil, fmt.Errorf("error making jwt token: %w", err)
 			}
-			swapToken.SockName = sockName
 			swapToken.RpcContext = &rpcContext
 			swapToken.Env[wshutil.WaveJwtTokenVarName] = jwtStr
 		}
@@ -504,9 +515,11 @@ func (bc *ShellController) manageRunningShellProcess(shellProc *shellexec.ShellP
 
 	// make esc sequence wshclient wshProxy
 	// we don't need to authenticate this wshProxy since it is coming direct
-	wshProxy := wshutil.MakeRpcProxy()
-	wshProxy.SetRpcContext(&wshrpc.RpcContext{TabId: bc.TabId, BlockId: bc.BlockId})
-	wshutil.DefaultRouter.RegisterRoute(wshutil.MakeControllerRouteId(bc.BlockId), wshProxy, true)
+	wshProxy := wshutil.MakeRpcProxy(fmt.Sprintf("controller:%s", bc.BlockId))
+	controllerLinkId, err := wshutil.DefaultRouter.RegisterTrustedLeaf(wshProxy, wshutil.MakeControllerRouteId(bc.BlockId))
+	if err != nil {
+		return fmt.Errorf("cannot register controller route: %w", err)
+	}
 	ptyBuffer := wshutil.MakePtyBuffer(wshutil.WaveOSCPrefix, shellProc.Cmd, wshProxy.FromRemoteCh)
 	go func() {
 		// handles regular output from the pty (goes to the blockfile and xterm)
@@ -584,7 +597,7 @@ func (bc *ShellController) manageRunningShellProcess(shellProc *shellexec.ShellP
 		// wait for the shell to finish
 		var exitCode int
 		defer func() {
-			wshutil.DefaultRouter.UnregisterRoute(wshutil.MakeControllerRouteId(bc.BlockId))
+			wshutil.DefaultRouter.UnregisterLink(controllerLinkId)
 			bc.UpdateControllerAndSendUpdate(func() bool {
 				if bc.ProcStatus == Status_Running {
 					bc.ProcStatus = Status_Done

@@ -6,6 +6,10 @@ package wcore
 
 import (
 	"context"
+	"crypto/ed25519"
+	"crypto/x509"
+	"encoding/base64"
+	"encoding/pem"
 	"fmt"
 	"log"
 	"strings"
@@ -14,6 +18,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
+	"github.com/wavetermdev/waveterm/pkg/wavejwt"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wcloud"
 	"github.com/wavetermdev/waveterm/pkg/wps"
@@ -153,4 +158,71 @@ func GoSendNoTelemetryUpdate(telemetryEnabled bool) {
 			return
 		}
 	}()
+}
+
+func InitMainServer() error {
+	ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancelFn()
+
+	mainServer, err := wstore.DBGetSingleton[*waveobj.MainServer](ctx)
+	if err == wstore.ErrNotFound {
+		mainServer = &waveobj.MainServer{
+			OID: uuid.NewString(),
+		}
+		err = wstore.DBInsert(ctx, mainServer)
+		if err != nil {
+			return fmt.Errorf("error inserting mainserver: %w", err)
+		}
+	} else if err != nil {
+		return fmt.Errorf("error getting mainserver: %w", err)
+	}
+
+	needsUpdate := false
+	if mainServer.JwtPrivateKey == "" || mainServer.JwtPublicKey == "" {
+		keyPair, err := wavejwt.GenerateKeyPair()
+		if err != nil {
+			return fmt.Errorf("error generating jwt keypair: %w", err)
+		}
+		mainServer.JwtPrivateKey = base64.StdEncoding.EncodeToString(keyPair.PrivateKey)
+		mainServer.JwtPublicKey = base64.StdEncoding.EncodeToString(keyPair.PublicKey)
+		needsUpdate = true
+	}
+
+	if needsUpdate {
+		err = wstore.DBUpdate(ctx, mainServer)
+		if err != nil {
+			return fmt.Errorf("error updating mainserver: %w", err)
+		}
+	}
+
+	privateKeyBytes, err := base64.StdEncoding.DecodeString(mainServer.JwtPrivateKey)
+	if err != nil {
+		return fmt.Errorf("error decoding jwt private key: %w", err)
+	}
+	publicKeyBytes, err := base64.StdEncoding.DecodeString(mainServer.JwtPublicKey)
+	if err != nil {
+		return fmt.Errorf("error decoding jwt public key: %w", err)
+	}
+
+	err = wavejwt.SetPrivateKey(privateKeyBytes)
+	if err != nil {
+		return fmt.Errorf("error setting jwt private key: %w", err)
+	}
+	err = wavejwt.SetPublicKey(publicKeyBytes)
+	if err != nil {
+		return fmt.Errorf("error setting jwt public key: %w", err)
+	}
+
+	pubKeyDer, err := x509.MarshalPKIXPublicKey(ed25519.PublicKey(publicKeyBytes))
+	if err != nil {
+		log.Printf("warning: could not marshal public key for logging: %v", err)
+	} else {
+		pubKeyPem := pem.EncodeToMemory(&pem.Block{
+			Type:  "PUBLIC KEY",
+			Bytes: pubKeyDer,
+		})
+		log.Printf("JWT Public Key:\n%s", string(pubKeyPem))
+	}
+
+	return nil
 }
