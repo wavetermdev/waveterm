@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/wavetermdev/waveterm/pkg/baseds"
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/util/ds"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
@@ -40,17 +41,17 @@ type ServerImpl interface {
 }
 
 type AbstractRpcClient interface {
-	SendRpcMessage(msg []byte, debugStr string)
+	GetPeerInfo() string
+	SendRpcMessage(msg []byte, ingressLinkId baseds.LinkId, debugStr string)
 	RecvRpcMessage() ([]byte, bool) // blocking
 }
 
 type WshRpc struct {
 	Lock               *sync.Mutex
-	InputCh            chan []byte
+	InputCh            chan baseds.RpcInputChType
 	OutputCh           chan []byte
 	CtxDoneCh          chan string // for context cancellation, value is ResId
 	RpcContext         *atomic.Pointer[wshrpc.RpcContext]
-	AuthToken          string
 	RpcMap             map[string]*rpcData
 	ServerImpl         ServerImpl
 	EventListener      *EventListener
@@ -103,8 +104,12 @@ func GetRpcResponseHandlerFromContext(ctx context.Context) *RpcResponseHandler {
 	return rtn.(*RpcResponseHandler)
 }
 
-func (w *WshRpc) SendRpcMessage(msg []byte, debugStr string) {
-	w.InputCh <- msg
+func (w *WshRpc) GetPeerInfo() string {
+	return w.DebugName
+}
+
+func (w *WshRpc) SendRpcMessage(msg []byte, ingressLinkId baseds.LinkId, debugStr string) {
+	w.InputCh <- baseds.RpcInputChType{MsgBytes: msg, IngressLinkId: ingressLinkId}
 }
 
 func (w *WshRpc) RecvRpcMessage() ([]byte, bool) {
@@ -113,18 +118,17 @@ func (w *WshRpc) RecvRpcMessage() ([]byte, bool) {
 }
 
 type RpcMessage struct {
-	Command   string `json:"command,omitempty"`
-	ReqId     string `json:"reqid,omitempty"`
-	ResId     string `json:"resid,omitempty"`
-	Timeout   int64  `json:"timeout,omitempty"`
-	Route     string `json:"route,omitempty"`     // to route/forward requests to alternate servers
-	AuthToken string `json:"authtoken,omitempty"` // needed for routing unauthenticated requests (WshRpcMultiProxy)
-	Source    string `json:"source,omitempty"`    // source route id
-	Cont      bool   `json:"cont,omitempty"`      // flag if additional requests/responses are forthcoming
-	Cancel    bool   `json:"cancel,omitempty"`    // used to cancel a streaming request or response (sent from the side that is not streaming)
-	Error     string `json:"error,omitempty"`
-	DataType  string `json:"datatype,omitempty"`
-	Data      any    `json:"data,omitempty"`
+	Command  string `json:"command,omitempty"`
+	ReqId    string `json:"reqid,omitempty"`
+	ResId    string `json:"resid,omitempty"`
+	Timeout  int64  `json:"timeout,omitempty"`
+	Route    string `json:"route,omitempty"`  // to route/forward requests to alternate servers
+	Source   string `json:"source,omitempty"` // source route id
+	Cont     bool   `json:"cont,omitempty"`   // flag if additional requests/responses are forthcoming
+	Cancel   bool   `json:"cancel,omitempty"` // used to cancel a streaming request or response (sent from the side that is not streaming)
+	Error    string `json:"error,omitempty"`
+	DataType string `json:"datatype,omitempty"`
+	Data     any    `json:"data,omitempty"`
 }
 
 func (r *RpcMessage) IsRpcRequest() bool {
@@ -201,9 +205,9 @@ func validateServerImpl(serverImpl ServerImpl) {
 }
 
 // closes outputCh when inputCh is closed/done
-func MakeWshRpc(inputCh chan []byte, outputCh chan []byte, rpcCtx wshrpc.RpcContext, serverImpl ServerImpl, debugName string) *WshRpc {
+func MakeWshRpcWithChannels(inputCh chan baseds.RpcInputChType, outputCh chan []byte, rpcCtx wshrpc.RpcContext, serverImpl ServerImpl, debugName string) *WshRpc {
 	if inputCh == nil {
-		inputCh = make(chan []byte, DefaultInputChSize)
+		inputCh = make(chan baseds.RpcInputChType, DefaultInputChSize)
 	}
 	if outputCh == nil {
 		outputCh = make(chan []byte, DefaultOutputChSize)
@@ -226,6 +230,10 @@ func MakeWshRpc(inputCh chan []byte, outputCh chan []byte, rpcCtx wshrpc.RpcCont
 	return rtn
 }
 
+func MakeWshRpc(rpcCtx wshrpc.RpcContext, serverImpl ServerImpl, debugName string) *WshRpc {
+	return MakeWshRpcWithChannels(nil, nil, rpcCtx, serverImpl, debugName)
+}
+
 func (w *WshRpc) GetRpcContext() wshrpc.RpcContext {
 	rtnPtr := w.RpcContext.Load()
 	return *rtnPtr
@@ -233,14 +241,6 @@ func (w *WshRpc) GetRpcContext() wshrpc.RpcContext {
 
 func (w *WshRpc) SetRpcContext(ctx wshrpc.RpcContext) {
 	w.RpcContext.Store(&ctx)
-}
-
-func (w *WshRpc) SetAuthToken(token string) {
-	w.AuthToken = token
-}
-
-func (w *WshRpc) GetAuthToken() string {
-	return w.AuthToken
 }
 
 func (w *WshRpc) registerResponseHandler(reqId string, handler *RpcResponseHandler) {
@@ -268,9 +268,9 @@ func (w *WshRpc) cancelRequest(reqId string) {
 
 }
 
-func (w *WshRpc) handleRequest(req *RpcMessage) {
+func (w *WshRpc) handleRequest(req *RpcMessage, ingressLinkId baseds.LinkId) {
 	pprof.Do(context.Background(), pprof.Labels("rpc", req.Command), func(pprofCtx context.Context) {
-		w.handleRequestInternal(req, pprofCtx)
+		w.handleRequestInternal(req, ingressLinkId, pprofCtx)
 	})
 }
 
@@ -286,7 +286,7 @@ func (w *WshRpc) handleEventRecv(req *RpcMessage) {
 	w.EventListener.RecvEvent(&waveEvent)
 }
 
-func (w *WshRpc) handleRequestInternal(req *RpcMessage, pprofCtx context.Context) {
+func (w *WshRpc) handleRequestInternal(req *RpcMessage, ingressLinkId baseds.LinkId, pprofCtx context.Context) {
 	if req.Command == wshrpc.Command_EventRecv {
 		w.handleEventRecv(req)
 		return
@@ -306,6 +306,7 @@ func (w *WshRpc) handleRequestInternal(req *RpcMessage, pprofCtx context.Context
 		command:         req.Command,
 		commandData:     req.Data,
 		source:          req.Source,
+		ingressLinkId:   ingressLinkId,
 		done:            &atomic.Bool{},
 		canceled:        &atomic.Bool{},
 		contextCancelFn: &atomic.Pointer[context.CancelFunc]{},
@@ -347,17 +348,17 @@ func (w *WshRpc) runServer() {
 	}()
 outer:
 	for {
-		var msgBytes []byte
+		var inputVal baseds.RpcInputChType
 		var inputChMore bool
 		var resIdTimeout string
 
 		select {
-		case msgBytes, inputChMore = <-w.InputCh:
+		case inputVal, inputChMore = <-w.InputCh:
 			if !inputChMore {
 				break outer
 			}
 			if w.Debug {
-				log.Printf("[%s] received message: %s\n", w.DebugName, string(msgBytes))
+				log.Printf("[%s] received message: %s\n", w.DebugName, string(inputVal.MsgBytes))
 			}
 		case resIdTimeout = <-w.CtxDoneCh:
 			if w.Debug {
@@ -368,7 +369,7 @@ outer:
 		}
 
 		var msg RpcMessage
-		err := json.Unmarshal(msgBytes, &msg)
+		err := json.Unmarshal(inputVal.MsgBytes, &msg)
 		if err != nil {
 			log.Printf("wshrpc received bad message: %v\n", err)
 			continue
@@ -380,11 +381,12 @@ outer:
 			continue
 		}
 		if msg.IsRpcRequest() {
+			ingressLinkId := inputVal.IngressLinkId
 			go func() {
 				defer func() {
 					panichandler.PanicHandler("handleRequest:goroutine", recover())
 				}()
-				w.handleRequest(&msg)
+				w.handleRequest(&msg, ingressLinkId)
 			}()
 		} else {
 			w.sendRespWithBlockMessage(msg)
@@ -509,9 +511,8 @@ func (handler *RpcRequestHandler) SendCancel(ctx context.Context) error {
 		panichandler.PanicHandler("SendCancel", recover())
 	}()
 	msg := &RpcMessage{
-		Cancel:    true,
-		ReqId:     handler.reqId,
-		AuthToken: handler.w.GetAuthToken(),
+		Cancel: true,
+		ReqId:  handler.reqId,
 	}
 	barr, _ := json.Marshal(msg) // will never fail
 	select {
@@ -580,6 +581,7 @@ type RpcResponseHandler struct {
 	command         string
 	commandData     any
 	rpcCtx          wshrpc.RpcContext
+	ingressLinkId   baseds.LinkId
 	canceled        *atomic.Bool // canceled by requestor
 	done            *atomic.Bool
 }
@@ -604,6 +606,10 @@ func (handler *RpcResponseHandler) GetSource() string {
 	return handler.source
 }
 
+func (handler *RpcResponseHandler) GetIngressLinkId() baseds.LinkId {
+	return handler.ingressLinkId
+}
+
 func (handler *RpcResponseHandler) NeedsResponse() bool {
 	return handler.reqId != ""
 }
@@ -614,8 +620,7 @@ func (handler *RpcResponseHandler) SendMessage(msg string) {
 		Data: wshrpc.CommandMessageData{
 			Message: msg,
 		},
-		AuthToken: handler.w.GetAuthToken(),
-		Route:     handler.source, // send back to source
+		Route: handler.source, // send back to source
 	}
 	msgBytes, _ := json.Marshal(rpcMsg) // will never fail
 	select {
@@ -638,10 +643,9 @@ func (handler *RpcResponseHandler) SendResponse(data any, done bool) error {
 		return nil
 	}
 	msg := &RpcMessage{
-		ResId:     handler.reqId,
-		Data:      data,
-		Cont:      !done,
-		AuthToken: handler.w.GetAuthToken(),
+		ResId: handler.reqId,
+		Data:  data,
+		Cont:  !done,
 	}
 	barr, err := json.Marshal(msg)
 	if err != nil {
@@ -667,9 +671,8 @@ func (handler *RpcResponseHandler) SendResponseError(err error) {
 		return
 	}
 	msg := &RpcMessage{
-		ResId:     handler.reqId,
-		Error:     err.Error(),
-		AuthToken: handler.w.GetAuthToken(),
+		ResId: handler.reqId,
+		Error: err.Error(),
 	}
 	barr, _ := json.Marshal(msg) // will never fail
 	select {
@@ -736,12 +739,11 @@ func (w *WshRpc) SendComplexRequest(command string, data any, opts *wshrpc.RpcOp
 		handler.reqId = uuid.New().String()
 	}
 	req := &RpcMessage{
-		Command:   command,
-		ReqId:     handler.reqId,
-		Data:      data,
-		Timeout:   timeoutMs,
-		Route:     opts.Route,
-		AuthToken: w.GetAuthToken(),
+		Command: command,
+		ReqId:   handler.reqId,
+		Data:    data,
+		Timeout: timeoutMs,
+		Route:   opts.Route,
 	}
 	barr, err := json.Marshal(req)
 	if err != nil {

@@ -55,6 +55,12 @@ func termRun(cmd *cobra.Command, args []string) (rtnErr error) {
 	if err != nil {
 		return fmt.Errorf("getting absolute path: %w", err)
 	}
+
+	tabId := getTabIdFromEnv()
+	if tabId == "" {
+		return fmt.Errorf("no WAVETERM_TABID env var set")
+	}
+
 	createMeta := map[string]any{
 		waveobj.MetaKey_View:       "term",
 		waveobj.MetaKey_CmdCwd:     cwd,
@@ -64,6 +70,7 @@ func termRun(cmd *cobra.Command, args []string) (rtnErr error) {
 		createMeta[waveobj.MetaKey_Connection] = RpcContext.Conn
 	}
 	createBlockData := wshrpc.CommandCreateBlockData{
+		TabId: tabId,
 		BlockDef: &waveobj.BlockDef{
 			Meta: createMeta,
 		},

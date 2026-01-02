@@ -1016,10 +1016,10 @@ func HasBinaryData(data []byte) bool {
 	return false
 }
 
-func DumpGoRoutineStacks() {
+func DumpGoRoutineStacks(w io.Writer) {
 	buf := make([]byte, 1<<20)
 	n := runtime.Stack(buf, true)
-	os.Stdout.Write(buf[:n])
+	w.Write(buf[:n])
 }
 
 func ConvertToWallClockPT(t time.Time) time.Time {

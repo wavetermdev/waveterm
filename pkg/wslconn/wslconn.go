@@ -69,7 +69,7 @@ type WslConn struct {
 var ConnServerCmdTemplate = strings.TrimSpace(
 	strings.Join([]string{
 		"%s version 2> /dev/null || (echo -n \"not-installed \"; uname -sm);",
-		"exec %s connserver --router",
+		"exec %s connserver --router --conn %s %s",
 	}, "\n"))
 
 func GetAllConnStatus() []wshrpc.ConnStatus {
@@ -259,15 +259,6 @@ func (conn *WslConn) StartConnServer(ctx context.Context, afterUpdate bool) (boo
 	}
 	client := conn.GetClient()
 	wshPath := conn.getWshPath()
-	rpcCtx := wshrpc.RpcContext{
-		ClientType: wshrpc.ClientType_ConnServer,
-		Conn:       conn.GetName(),
-	}
-	sockName := conn.GetDomainSocketName()
-	jwtToken, err := wshutil.MakeClientJWTToken(rpcCtx, sockName)
-	if err != nil {
-		return false, "", "", fmt.Errorf("unable to create jwt token for conn controller: %w", err)
-	}
 	conn.Infof(ctx, "WSL-NEWSESSION (StartConnServer)\n")
 	connServerCtx, cancelFn := context.WithCancel(context.Background())
 	conn.WithLock(func() {
@@ -276,7 +267,11 @@ func (conn *WslConn) StartConnServer(ctx context.Context, afterUpdate bool) (boo
 		}
 		conn.cancelFn = cancelFn
 	})
-	cmdStr := fmt.Sprintf(ConnServerCmdTemplate, wshPath, wshPath)
+	devFlag := ""
+	if wavebase.IsDevMode() {
+		devFlag = "--dev"
+	}
+	cmdStr := fmt.Sprintf(ConnServerCmdTemplate, wshPath, wshPath, shellutil.HardQuote(conn.GetName()), devFlag)
 	shWrappedCmdStr := fmt.Sprintf("sh -c %s", shellutil.HardQuote(cmdStr))
 	cmd := client.WslCommand(connServerCtx, shWrappedCmdStr)
 	pipeRead, pipeWrite := io.Pipe()
@@ -286,7 +281,7 @@ func (conn *WslConn) StartConnServer(ctx context.Context, afterUpdate bool) (boo
 	cmd.SetStdin(inputPipeRead)
 	log.Printf("starting conn controller: %q\n", cmdStr)
 	blocklogger.Debugf(ctx, "[conndebug] wrapped command:\n%s\n", shWrappedCmdStr)
-	err = cmd.Start()
+	err := cmd.Start()
 	if err != nil {
 		return false, "", "", fmt.Errorf("unable to start conn controller cmd: %w", err)
 	}
@@ -310,21 +305,6 @@ func (conn *WslConn) StartConnServer(ctx context.Context, afterUpdate bool) (boo
 	if !isUpToDate {
 		cancelFn()
 		return true, clientVersion, osArchStr, nil
-	}
-	jwtLine, err := utilfn.ReadLineWithTimeout(linesChan, 3*time.Second)
-	if err != nil {
-		cancelFn()
-		return false, clientVersion, "", fmt.Errorf("error reading jwt status line: %w", err)
-	}
-	conn.Infof(ctx, "got jwt status line: %s\n", jwtLine)
-	if strings.TrimSpace(jwtLine) == wavebase.NeedJwtConst {
-		// write the jwt
-		conn.Infof(ctx, "writing jwt token to connserver\n")
-		_, err = fmt.Fprintf(inputPipeWrite, "%s\n", jwtToken)
-		if err != nil {
-			cancelFn()
-			return false, clientVersion, "", fmt.Errorf("failed to write JWT token: %w", err)
-		}
 	}
 	conn.WithLock(func() {
 		conn.ConnController = cmd
@@ -359,7 +339,7 @@ func (conn *WslConn) StartConnServer(ctx context.Context, afterUpdate bool) (boo
 	conn.Infof(ctx, "connserver started, waiting for route to be registered\n")
 	regCtx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancelFn()
-	err = wshutil.DefaultRouter.WaitForRegister(regCtx, wshutil.MakeConnectionRouteId(rpcCtx.Conn))
+	err = wshutil.DefaultRouter.WaitForRegister(regCtx, wshutil.MakeConnectionRouteId(conn.GetName()))
 	if err != nil {
 		return false, clientVersion, "", fmt.Errorf("timeout waiting for connserver to register")
 	}

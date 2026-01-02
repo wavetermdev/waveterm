@@ -366,7 +366,6 @@ func DBFindTabForBlockId(ctx context.Context, blockId string) (string, error) {
 }
 
 func DBFindWorkspaceForTabId(ctx context.Context, tabId string) (string, error) {
-	log.Printf("DBFindWorkspaceForTabId tabId: %s\n", tabId)
 	return WithTxRtn(ctx, func(tx *TxWrap) (string, error) {
 		query := `
 			WITH variable(value) AS (
@@ -386,7 +385,6 @@ func DBFindWorkspaceForTabId(ctx context.Context, tabId string) (string, error) 
 			);
 			`
 		wsId := tx.GetString(query, tabId)
-		log.Printf("DBFindWorkspaceForTabId wsId: %s\n", wsId)
 		return wsId, nil
 	})
 }

@@ -53,7 +53,7 @@ func noImplHandler(handler *RpcResponseHandler) bool {
 	return true
 }
 
-func recodeCommandData(command string, data any, rpcCtx *wshrpc.RpcContext) (any, error) {
+func recodeCommandData(command string, data any) (any, error) {
 	// only applies to initial command packet
 	if command == "" {
 		return data, nil
@@ -70,9 +70,6 @@ func recodeCommandData(command string, data any, rpcCtx *wshrpc.RpcContext) (any
 		err := utilfn.ReUnmarshal(commandDataPtr, data)
 		if err != nil {
 			return data, fmt.Errorf("error re-marshalling command data: %w", err)
-		}
-		if rpcCtx != nil {
-			wshrpc.HackRpcContextIntoData(commandDataPtr, *rpcCtx)
 		}
 	}
 	return reflect.ValueOf(commandDataPtr).Elem().Interface(), nil
@@ -107,8 +104,7 @@ func serverImplAdapter(impl any) func(*RpcResponseHandler) bool {
 		var callParams []reflect.Value
 		callParams = append(callParams, reflect.ValueOf(handler.Context()))
 		if methodDecl.CommandDataType != nil {
-			rpcCtx := handler.GetRpcContext()
-			cmdData, err := recodeCommandData(cmd, handler.GetCommandRawData(), &rpcCtx)
+			cmdData, err := recodeCommandData(cmd, handler.GetCommandRawData())
 			if err != nil {
 				handler.SendResponseError(err)
 				return true

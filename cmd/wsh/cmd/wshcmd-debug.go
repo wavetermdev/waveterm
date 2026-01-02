@@ -31,31 +31,10 @@ var debugSendTelemetryCmd = &cobra.Command{
 	Hidden: true,
 }
 
-var debugGetTabCmd = &cobra.Command{
-	Use:    "gettab",
-	Short:  "get tab",
-	RunE:   debugGetTabRun,
-	Hidden: true,
-}
-
 func init() {
 	debugCmd.AddCommand(debugBlockIdsCmd)
 	debugCmd.AddCommand(debugSendTelemetryCmd)
-	debugCmd.AddCommand(debugGetTabCmd)
 	rootCmd.AddCommand(debugCmd)
-}
-
-func debugGetTabRun(cmd *cobra.Command, args []string) error {
-	tab, err := wshclient.GetTabCommand(RpcClient, RpcContext.TabId, nil)
-	if err != nil {
-		return err
-	}
-	barr, err := json.MarshalIndent(tab, "", "  ")
-	if err != nil {
-		return err
-	}
-	WriteStdout("%s\n", string(barr))
-	return nil
 }
 
 func debugSendTelemetryRun(cmd *cobra.Command, args []string) error {

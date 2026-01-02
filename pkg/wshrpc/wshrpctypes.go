@@ -8,9 +8,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"log"
 	"os"
-	"reflect"
 
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
 	"github.com/wavetermdev/waveterm/pkg/ijson"
@@ -52,16 +50,20 @@ const (
 
 // TODO generate these constants from the interface
 const (
-	Command_Authenticate      = "authenticate"      // special
-	Command_AuthenticateToken = "authenticatetoken" // special
-	Command_Dispose           = "dispose"           // special (disposes of the route, for multiproxy only)
-	Command_RouteAnnounce     = "routeannounce"     // special (for routing)
-	Command_RouteUnannounce   = "routeunannounce"   // special (for routing)
-	Command_Message           = "message"
+	Command_Authenticate            = "authenticate"            // $control
+	Command_AuthenticateToken       = "authenticatetoken"       // $control
+	Command_AuthenticateTokenVerify = "authenticatetokenverify" // $control:root (internal, for token validation only)
+	Command_Dispose                 = "dispose"                 // $control (disposes of the route, for multiproxy only)
+	Command_RouteAnnounce           = "routeannounce"           // $control (for routing)
+	Command_RouteUnannounce         = "routeunannounce"         // $control (for routing)
+	Command_SetPeerInfo             = "setpeerinfo"             // $control (sets peer info on proxy)
+	Command_ControlMessage          = "controlmessage"          // $control
+	Command_Ping                    = "ping"                    // $control
 
+	Command_GetJwtPublicKey   = "getjwtpublickey"
+	Command_Message           = "message"
 	Command_GetMeta           = "getmeta"
 	Command_SetMeta           = "setmeta"
-	Command_SetView           = "setview"
 	Command_ControllerInput   = "controllerinput"
 	Command_ControllerRestart = "controllerrestart"
 	Command_ControllerStop    = "controllerstop"
@@ -198,14 +200,16 @@ type RespOrErrorUnion[T any] struct {
 type WshRpcInterface interface {
 	AuthenticateCommand(ctx context.Context, data string) (CommandAuthenticateRtnData, error)
 	AuthenticateTokenCommand(ctx context.Context, data CommandAuthenticateTokenData) (CommandAuthenticateRtnData, error)
+	AuthenticateTokenVerifyCommand(ctx context.Context, data CommandAuthenticateTokenData) (CommandAuthenticateRtnData, error) // (special) validates token without binding, root router only
 	DisposeCommand(ctx context.Context, data CommandDisposeData) error
 	RouteAnnounceCommand(ctx context.Context) error   // (special) announces a new route to the main router
 	RouteUnannounceCommand(ctx context.Context) error // (special) unannounces a route to the main router
+	SetPeerInfoCommand(ctx context.Context, peerInfo string) error
+	GetJwtPublicKeyCommand(ctx context.Context) (string, error) // (special) gets the public JWT signing key
 
 	MessageCommand(ctx context.Context, data CommandMessageData) error
 	GetMetaCommand(ctx context.Context, data CommandGetMetaData) (waveobj.MetaMapType, error)
 	SetMetaCommand(ctx context.Context, data CommandSetMetaData) error
-	SetViewCommand(ctx context.Context, data CommandBlockSetViewData) error
 	ControllerInputCommand(ctx context.Context, data CommandBlockInputData) error
 	ControllerStopCommand(ctx context.Context, blockId string) error
 	ControllerResyncCommand(ctx context.Context, data CommandControllerResyncData) error
@@ -373,59 +377,22 @@ type RpcOpts struct {
 	NoResponse bool   `json:"noresponse,omitempty"`
 	Route      string `json:"route,omitempty"`
 
-	StreamCancelFn func() `json:"-"` // this is an *output* parameter, set by the handler
+	StreamCancelFn func(context.Context) error `json:"-"` // this is an *output* parameter, set by the handler
 }
-
-const (
-	ClientType_ConnServer      = "connserver"
-	ClientType_BlockController = "blockcontroller"
-)
 
 type RpcContext struct {
-	ClientType string `json:"ctype,omitempty"`
-	BlockId    string `json:"blockid,omitempty"`
-	TabId      string `json:"tabid,omitempty"`
-	Conn       string `json:"conn,omitempty"`
-}
-
-func HackRpcContextIntoData(dataPtr any, rpcContext RpcContext) {
-	dataVal := reflect.ValueOf(dataPtr).Elem()
-	if dataVal.Kind() != reflect.Struct {
-		return
-	}
-	dataType := dataVal.Type()
-	for i := 0; i < dataVal.NumField(); i++ {
-		field := dataVal.Field(i)
-		if !field.IsZero() {
-			continue
-		}
-		fieldType := dataType.Field(i)
-		tag := fieldType.Tag.Get("wshcontext")
-		if tag == "" {
-			continue
-		}
-		switch tag {
-		case "BlockId":
-			field.SetString(rpcContext.BlockId)
-		case "TabId":
-			field.SetString(rpcContext.TabId)
-		case "BlockORef":
-			if rpcContext.BlockId != "" {
-				field.Set(reflect.ValueOf(waveobj.MakeORef(waveobj.OType_Block, rpcContext.BlockId)))
-			}
-		default:
-			log.Printf("invalid wshcontext tag: %q in type(%T)", tag, dataPtr)
-		}
-	}
+	SockName string `json:"sockname,omitempty"` // the domain socket name
+	RouteId  string `json:"routeid"`            // the routeid from the jwt
+	BlockId  string `json:"blockid,omitempty"`  // blockid for this rpc
+	Conn     string `json:"conn,omitempty"`     // the conn name
+	IsRouter bool   `json:"isrouter,omitempty"` // if this is for a sub-router
 }
 
 type CommandAuthenticateRtnData struct {
-	RouteId   string `json:"routeid"`
-	AuthToken string `json:"authtoken,omitempty"`
-
 	// these fields are only set when doing a token swap
 	Env            map[string]string `json:"env,omitempty"`
 	InitScriptText string            `json:"initscripttext,omitempty"`
+	RpcContext     *RpcContext       `json:"rpccontext,omitempty"`
 }
 
 type CommandAuthenticateTokenData struct {
@@ -438,21 +405,20 @@ type CommandDisposeData struct {
 }
 
 type CommandMessageData struct {
-	ORef    waveobj.ORef `json:"oref" wshcontext:"BlockORef"`
-	Message string       `json:"message"`
+	Message string `json:"message"`
 }
 
 type CommandGetMetaData struct {
-	ORef waveobj.ORef `json:"oref" wshcontext:"BlockORef"`
+	ORef waveobj.ORef `json:"oref"`
 }
 
 type CommandSetMetaData struct {
-	ORef waveobj.ORef        `json:"oref" wshcontext:"BlockORef"`
+	ORef waveobj.ORef        `json:"oref"`
 	Meta waveobj.MetaMapType `json:"meta"`
 }
 
 type CommandResolveIdsData struct {
-	BlockId string   `json:"blockid" wshcontext:"BlockId"`
+	BlockId string   `json:"blockid"`
 	Ids     []string `json:"ids"`
 }
 
@@ -461,7 +427,7 @@ type CommandResolveIdsRtnData struct {
 }
 
 type CommandCreateBlockData struct {
-	TabId         string               `json:"tabid" wshcontext:"TabId"`
+	TabId         string               `json:"tabid"`
 	BlockDef      *waveobj.BlockDef    `json:"blockdef"`
 	RtOpts        *waveobj.RuntimeOpts `json:"rtopts,omitempty"`
 	Magnified     bool                 `json:"magnified,omitempty"`
@@ -476,15 +442,10 @@ type CommandCreateSubBlockData struct {
 	BlockDef      *waveobj.BlockDef `json:"blockdef"`
 }
 
-type CommandBlockSetViewData struct {
-	BlockId string `json:"blockid" wshcontext:"BlockId"`
-	View    string `json:"view"`
-}
-
 type CommandControllerResyncData struct {
 	ForceRestart bool                 `json:"forcerestart,omitempty"`
-	TabId        string               `json:"tabid" wshcontext:"TabId"`
-	BlockId      string               `json:"blockid" wshcontext:"BlockId"`
+	TabId        string               `json:"tabid"`
+	BlockId      string               `json:"blockid"`
 	RtOpts       *waveobj.RuntimeOpts `json:"rtopts,omitempty"`
 }
 
@@ -494,7 +455,7 @@ type CommandControllerAppendOutputData struct {
 }
 
 type CommandBlockInputData struct {
-	BlockId     string            `json:"blockid" wshcontext:"BlockId"`
+	BlockId     string            `json:"blockid"`
 	InputData64 string            `json:"inputdata64,omitempty"`
 	SigName     string            `json:"signame,omitempty"`
 	TermSize    *waveobj.TermSize `json:"termsize,omitempty"`
@@ -560,7 +521,7 @@ type FileCreateData struct {
 }
 
 type CommandAppendIJsonData struct {
-	ZoneId   string        `json:"zoneid" wshcontext:"BlockId"`
+	ZoneId   string        `json:"zoneid"`
 	FileName string        `json:"filename"`
 	Data     ijson.Command `json:"data"`
 }
@@ -571,7 +532,7 @@ type CommandWaitForRouteData struct {
 }
 
 type CommandDeleteBlockData struct {
-	BlockId string `json:"blockid" wshcontext:"BlockId"`
+	BlockId string `json:"blockid"`
 }
 
 type CommandEventReadHistoryData struct {
@@ -749,8 +710,8 @@ type WebSelectorOpts struct {
 
 type CommandWebSelectorData struct {
 	WorkspaceId string           `json:"workspaceid"`
-	BlockId     string           `json:"blockid" wshcontext:"BlockId"`
-	TabId       string           `json:"tabid" wshcontext:"TabId"`
+	BlockId     string           `json:"blockid"`
+	TabId       string           `json:"tabid"`
 	Selector    string           `json:"selector"`
 	Opts        *WebSelectorOpts `json:"opts,omitempty"`
 }
@@ -846,7 +807,7 @@ type CommandWaveAIGetToolDiffRtnData struct {
 }
 
 type CommandCaptureBlockScreenshotData struct {
-	BlockId string `json:"blockid" wshcontext:"BlockId"`
+	BlockId string `json:"blockid"`
 }
 
 type CommandVarData struct {
@@ -867,7 +828,7 @@ type PathCommandData struct {
 	PathType     string `json:"pathtype"`
 	Open         bool   `json:"open"`
 	OpenExternal bool   `json:"openexternal"`
-	TabId        string `json:"tabid" wshcontext:"TabId"`
+	TabId        string `json:"tabid"`
 }
 
 type ActivityDisplayType struct {
