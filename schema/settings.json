@@ -83,6 +83,9 @@
         "term:fontfamily": {
           "type": "string"
         },
+        "term:fontligatures": {
+          "type": "boolean"
+        },
         "term:theme": {
           "type": "string"
         },

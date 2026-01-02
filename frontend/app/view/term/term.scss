@@ -19,6 +19,16 @@
     overflow: hidden;
     position: relative;
 
+    &.term-ligatures {
+        .xterm {
+            font-variant-ligatures: common-ligatures discretionary-ligatures contextual;
+            font-feature-settings:
+                "liga" 1,
+                "calt" 1;
+            text-rendering: optimizeLegibility;
+        }
+    }
+
     .term-header {
         display: flex;
         flex-direction: row;
