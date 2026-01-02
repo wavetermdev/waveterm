@@ -1,20 +1,12 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import type { BlockNodeModel } from "@/app/block/blocktypes";
 import { getFileSubject } from "@/app/store/wps";
 import { sendWSCommand } from "@/app/store/ws";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
-import {
-    WOS,
-    atoms,
-    fetchWaveFile,
-    getApi,
-    getSettingsKeyAtom,
-    globalStore,
-    openLink,
-    recordTEvent,
-} from "@/store/global";
+import { WOS, fetchWaveFile, getApi, getSettingsKeyAtom, globalStore, openLink, recordTEvent } from "@/store/global";
 import * as services from "@/store/services";
 import { PLATFORM, PlatformMacOS } from "@/util/platformutil";
 import { base64ToArray, base64ToString, fireAndForget } from "@/util/util";
@@ -36,6 +28,7 @@ const TermFileName = "term";
 const TermCacheFileName = "cache:term:full";
 const MinDataProcessedForCache = 100 * 1024;
 const Osc52MaxDecodedSize = 75 * 1024; // max clipboard size for OSC 52 (matches common terminal implementations)
+const Osc52MaxRawLength = 128 * 1024; // includes selector + base64 + whitespace (rough check)
 export const SupportsImageInput = true;
 
 // detect webgl support
@@ -56,6 +49,7 @@ type TermWrapOptions = {
     keydownHandler?: (e: KeyboardEvent) => boolean;
     useWebGl?: boolean;
     sendDataHandler?: (data: string) => void;
+    nodeModel?: BlockNodeModel;
 };
 
 function handleOscWaveCommand(data: string, blockId: string, loaded: boolean): boolean {
@@ -122,12 +116,21 @@ function handleOscWaveCommand(data: string, blockId: string, loaded: boolean): b
 
 // for xterm OSC handlers, we return true always because we "own" the OSC number.
 // even if data is invalid we don't want to propagate to other handlers.
-function handleOsc52Command(data: string, blockId: string, loaded: boolean): boolean {
+function handleOsc52Command(data: string, blockId: string, loaded: boolean, termWrap: TermWrap): boolean {
     if (!loaded) {
+        return true;
+    }
+    const isBlockFocused = termWrap.nodeModel ? globalStore.get(termWrap.nodeModel.isFocused) : false;
+    if (!document.hasFocus() || !isBlockFocused) {
+        console.log("OSC 52: rejected, window or block not focused");
         return true;
     }
     if (!data || data.length === 0) {
         console.log("OSC 52: empty data received");
+        return true;
+    }
+    if (data.length > Osc52MaxRawLength) {
+        console.log("OSC 52: raw data too large", data.length);
         return true;
     }
 
@@ -455,6 +458,7 @@ export class TermWrap {
     promptMarkers: TermTypes.IMarker[] = [];
     shellIntegrationStatusAtom: jotai.PrimitiveAtom<"ready" | "running-command" | null>;
     lastCommandAtom: jotai.PrimitiveAtom<string | null>;
+    nodeModel: BlockNodeModel; // this can be null
 
     // IME composition state tracking
     // Prevents duplicate input when switching input methods during composition (e.g., using Capslock)
@@ -481,6 +485,7 @@ export class TermWrap {
         this.tabId = tabId;
         this.blockId = blockId;
         this.sendDataHandler = waveOptions.sendDataHandler;
+        this.nodeModel = waveOptions.nodeModel;
         this.ptyOffset = 0;
         this.dataBytesProcessed = 0;
         this.hasResized = false;
@@ -531,7 +536,7 @@ export class TermWrap {
             return handleOsc7Command(data, this.blockId, this.loaded);
         });
         this.terminal.parser.registerOscHandler(52, (data: string) => {
-            return handleOsc52Command(data, this.blockId, this.loaded);
+            return handleOsc52Command(data, this.blockId, this.loaded, this);
         });
         this.terminal.parser.registerOscHandler(9283, (data: string) => {
             return handleOscWaveCommand(data, this.blockId, this.loaded);
