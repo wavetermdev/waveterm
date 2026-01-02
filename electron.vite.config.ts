@@ -5,7 +5,6 @@ import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react-swc";
 import { defineConfig } from "electron-vite";
 import { ViteImageOptimizer } from "vite-plugin-image-optimizer";
-import { viteStaticCopy } from "vite-plugin-static-copy";
 import svgr from "vite-plugin-svgr";
 import tsconfigPaths from "vite-tsconfig-paths";
 
@@ -134,8 +133,7 @@ export default defineConfig({
                     manualChunks(id) {
                         const p = id.replace(/\\/g, "/");
                         if (p.includes("node_modules/monaco") || p.includes("node_modules/@monaco")) return "monaco";
-                        if (p.includes("node_modules/mermaid") || p.includes("node_modules/@mermaid"))
-                            return "mermaid";
+                        if (p.includes("node_modules/mermaid") || p.includes("node_modules/@mermaid")) return "mermaid";
                         if (p.includes("node_modules/katex") || p.includes("node_modules/@katex")) return "katex";
                         if (p.includes("node_modules/shiki") || p.includes("node_modules/@shiki")) {
                             return "shiki";
@@ -172,9 +170,6 @@ export default defineConfig({
             }),
             react({}),
             tailwindcss(),
-            viteStaticCopy({
-                targets: [{ src: "node_modules/monaco-editor/min/vs/*", dest: "monaco" }],
-            }),
         ],
     },
 });
