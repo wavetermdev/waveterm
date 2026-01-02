@@ -63,8 +63,8 @@ func sendRpcRequestResponseStreamHelper[T any](w *wshutil.WshRpc, command string
 		rtnErr(respChan, err)
 		return respChan
 	}
-	opts.StreamCancelFn = func() {
-		reqHandler.SendCancel(context.Background())
+	opts.StreamCancelFn = func(ctx context.Context) error {
+		return reqHandler.SendCancel(ctx)
 	}
 	go func() {
 		defer func() {
