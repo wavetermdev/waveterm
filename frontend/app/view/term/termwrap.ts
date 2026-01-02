@@ -521,6 +521,20 @@ export class TermWrap {
                 this.connectElem.removeEventListener("paste", pasteHandler, true);
             },
         });
+
+        const terminalElement = this.terminal.element;
+        if (terminalElement) {
+            const dragOverHandler = this.handleDragOver.bind(this);
+            const dropHandler = this.handleDrop.bind(this);
+            terminalElement.addEventListener("dragover", dragOverHandler);
+            terminalElement.addEventListener("drop", dropHandler);
+            this.toDispose.push({
+                dispose: () => {
+                    terminalElement.removeEventListener("dragover", dragOverHandler);
+                    terminalElement.removeEventListener("drop", dropHandler);
+                },
+            });
+        }
     }
 
     resetCompositionState() {
@@ -1055,5 +1069,42 @@ export class TermWrap {
             return true;
         }
         return false;
+    }
+
+    private handleDragOver(e: DragEvent): void {
+        if (e.dataTransfer?.types.includes("Files")) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+    }
+
+    private handleDrop(e: DragEvent): void {
+        if (!e.dataTransfer?.files.length) {
+            return;
+        }
+
+        e.preventDefault();
+        e.stopPropagation();
+
+        const files = Array.from(e.dataTransfer.files);
+        for (const file of files) {
+            try {
+                const filePath = getApi().getPathForFile(file);
+                if (filePath) {
+                    this.injectFilePath(filePath);
+                }
+            } catch (err) {
+                console.error("Error getting file path:", err);
+            }
+        }
+    }
+
+    private injectFilePath(filePath: string): void {
+        let path = filePath;
+        if (path.includes(" ")) {
+            path = `"${path}"`;
+        }
+        path = path.replace(/\\/g, "\\\\");
+        this.terminal.paste(path + " ");
     }
 }

@@ -80,6 +80,7 @@ declare global {
         getCursorPoint: () => Electron.Point; // get-cursor-point
         getPlatform: () => NodeJS.Platform; // get-platform
         getEnv: (varName: string) => string; // get-env
+        getPathForFile: (file: File) => string; // get file path from File object
         getUserName: () => string; // get-user-name
         getHostName: () => string; // get-host-name
         getDataDir: () => string; // get-data-dir

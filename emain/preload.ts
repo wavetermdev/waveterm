@@ -1,11 +1,12 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { contextBridge, ipcRenderer, Rectangle, webUtils, WebviewTag } from "electron";
+import { contextBridge, ipcRenderer, Rectangle, WebviewTag, webUtils } from "electron";
 
 // update type in custom.d.ts (ElectronApi type)
 contextBridge.exposeInMainWorld("api", {
     getAuthKey: () => ipcRenderer.sendSync("get-auth-key"),
+    getPathForFile: (file: File) => webUtils.getPathForFile(file),
     getIsDev: () => ipcRenderer.sendSync("get-is-dev"),
     getPlatform: () => ipcRenderer.sendSync("get-platform"),
     getCursorPoint: () => ipcRenderer.sendSync("get-cursor-point"),
@@ -68,7 +69,6 @@ contextBridge.exposeInMainWorld("api", {
     openBuilder: (appId?: string) => ipcRenderer.send("open-builder", appId),
     setBuilderWindowAppId: (appId: string) => ipcRenderer.send("set-builder-window-appid", appId),
     doRefresh: () => ipcRenderer.send("do-refresh"),
-    getPathForFile: (file: File) => webUtils.getPathForFile(file),
 });
 
 // Custom event for "new-window"
