@@ -52,68 +52,6 @@ type TermWrapOptions = {
     nodeModel?: BlockNodeModel;
 };
 
-function handleOscWaveCommand(data: string, blockId: string, loaded: boolean): boolean {
-    if (!loaded) {
-        return true;
-    }
-    if (!data || data.length === 0) {
-        console.log("Invalid Wave OSC command received (empty)");
-        return true;
-    }
-
-    // Expected formats:
-    // "setmeta;{JSONDATA}"
-    // "setmeta;[wave-id];{JSONDATA}"
-    const parts = data.split(";");
-    if (parts[0] !== "setmeta") {
-        console.log("Invalid Wave OSC command received (bad command)", data);
-        return true;
-    }
-    let jsonPayload: string;
-    let waveId: string | undefined;
-    if (parts.length === 2) {
-        jsonPayload = parts[1];
-    } else if (parts.length >= 3) {
-        waveId = parts[1];
-        jsonPayload = parts.slice(2).join(";");
-    } else {
-        console.log("Invalid Wave OSC command received (1 part)", data);
-        return true;
-    }
-
-    let meta: any;
-    try {
-        meta = JSON.parse(jsonPayload);
-    } catch (e) {
-        console.error("Invalid JSON in Wave OSC command:", e);
-        return true;
-    }
-
-    if (waveId) {
-        // Resolve the wave id to an ORef using our ResolveIdsCommand.
-        fireAndForget(() => {
-            return RpcApi.ResolveIdsCommand(TabRpcClient, { blockid: blockId, ids: [waveId] })
-                .then((response: { resolvedids: { [key: string]: any } }) => {
-                    const oref = response.resolvedids[waveId];
-                    if (!oref) {
-                        console.error("Failed to resolve wave id:", waveId);
-                        return;
-                    }
-                    services.ObjectService.UpdateObjectMeta(oref, meta);
-                })
-                .catch((err: any) => {
-                    console.error("Error resolving wave id", waveId, err);
-                });
-        });
-    } else {
-        // No wave id provided; update using the current block id.
-        fireAndForget(() => {
-            return services.ObjectService.UpdateObjectMeta(WOS.makeORef("block", blockId), meta);
-        });
-    }
-    return true;
-}
-
 // for xterm OSC handlers, we return true always because we "own" the OSC number.
 // even if data is invalid we don't want to propagate to other handlers.
 function handleOsc52Command(data: string, blockId: string, loaded: boolean, termWrap: TermWrap): boolean {
@@ -537,9 +475,6 @@ export class TermWrap {
         });
         this.terminal.parser.registerOscHandler(52, (data: string) => {
             return handleOsc52Command(data, this.blockId, this.loaded, this);
-        });
-        this.terminal.parser.registerOscHandler(9283, (data: string) => {
-            return handleOscWaveCommand(data, this.blockId, this.loaded);
         });
         this.terminal.parser.registerOscHandler(16162, (data: string) => {
             return handleOsc16162Command(data, this.blockId, this.loaded, this);

@@ -84,10 +84,7 @@ func OutputHelpMessage(cmd *cobra.Command) {
 func preRunSetupRpcClient(cmd *cobra.Command, args []string) error {
 	jwtToken := os.Getenv(wshutil.WaveJwtTokenVarName)
 	if jwtToken == "" {
-		wshutil.SetTermRawModeAndInstallShutdownHandlers(true)
-		UsingTermWshMode = true
-		RpcClient, WrappedStdin = wshutil.SetupTerminalRpcClient(nil, "wshcmd-termclient")
-		return nil
+		return fmt.Errorf("wsh must be run inside a Wave-managed SSH session (WAVETERM_JWT not found)")
 	}
 	err := setupRpcClient(nil, jwtToken)
 	if err != nil {
