@@ -5,16 +5,7 @@ import { getFileSubject } from "@/app/store/wps";
 import { sendWSCommand } from "@/app/store/ws";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
-import {
-    WOS,
-    atoms,
-    fetchWaveFile,
-    getApi,
-    getSettingsKeyAtom,
-    globalStore,
-    openLink,
-    recordTEvent,
-} from "@/store/global";
+import { WOS, fetchWaveFile, getApi, getSettingsKeyAtom, globalStore, openLink, recordTEvent } from "@/store/global";
 import * as services from "@/store/services";
 import { PLATFORM, PlatformMacOS } from "@/util/platformutil";
 import { base64ToArray, base64ToString, fireAndForget } from "@/util/util";
@@ -56,68 +47,6 @@ type TermWrapOptions = {
     useWebGl?: boolean;
     sendDataHandler?: (data: string) => void;
 };
-
-function handleOscWaveCommand(data: string, blockId: string, loaded: boolean): boolean {
-    if (!loaded) {
-        return true;
-    }
-    if (!data || data.length === 0) {
-        console.log("Invalid Wave OSC command received (empty)");
-        return true;
-    }
-
-    // Expected formats:
-    // "setmeta;{JSONDATA}"
-    // "setmeta;[wave-id];{JSONDATA}"
-    const parts = data.split(";");
-    if (parts[0] !== "setmeta") {
-        console.log("Invalid Wave OSC command received (bad command)", data);
-        return true;
-    }
-    let jsonPayload: string;
-    let waveId: string | undefined;
-    if (parts.length === 2) {
-        jsonPayload = parts[1];
-    } else if (parts.length >= 3) {
-        waveId = parts[1];
-        jsonPayload = parts.slice(2).join(";");
-    } else {
-        console.log("Invalid Wave OSC command received (1 part)", data);
-        return true;
-    }
-
-    let meta: any;
-    try {
-        meta = JSON.parse(jsonPayload);
-    } catch (e) {
-        console.error("Invalid JSON in Wave OSC command:", e);
-        return true;
-    }
-
-    if (waveId) {
-        // Resolve the wave id to an ORef using our ResolveIdsCommand.
-        fireAndForget(() => {
-            return RpcApi.ResolveIdsCommand(TabRpcClient, { blockid: blockId, ids: [waveId] })
-                .then((response: { resolvedids: { [key: string]: any } }) => {
-                    const oref = response.resolvedids[waveId];
-                    if (!oref) {
-                        console.error("Failed to resolve wave id:", waveId);
-                        return;
-                    }
-                    services.ObjectService.UpdateObjectMeta(oref, meta);
-                })
-                .catch((err: any) => {
-                    console.error("Error resolving wave id", waveId, err);
-                });
-        });
-    } else {
-        // No wave id provided; update using the current block id.
-        fireAndForget(() => {
-            return services.ObjectService.UpdateObjectMeta(WOS.makeORef("block", blockId), meta);
-        });
-    }
-    return true;
-}
 
 // for xterm handlers, we return true always because we "own" OSC 7.
 // even if it is invalid we dont want to propagate to other handlers
@@ -457,10 +386,6 @@ export class TermWrap {
                 loggedWebGL = true;
             }
         }
-        // Register OSC 9283 handler
-        this.terminal.parser.registerOscHandler(9283, (data: string) => {
-            return handleOscWaveCommand(data, this.blockId, this.loaded);
-        });
         this.terminal.parser.registerOscHandler(7, (data: string) => {
             return handleOsc7Command(data, this.blockId, this.loaded);
         });
