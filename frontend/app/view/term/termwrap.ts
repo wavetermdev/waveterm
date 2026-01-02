@@ -5,19 +5,11 @@ import { getFileSubject } from "@/app/store/wps";
 import { sendWSCommand } from "@/app/store/ws";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
-import {
-    WOS,
-    atoms,
-    fetchWaveFile,
-    getApi,
-    getSettingsKeyAtom,
-    globalStore,
-    openLink,
-    recordTEvent,
-} from "@/store/global";
+import { WOS, fetchWaveFile, getApi, getSettingsKeyAtom, globalStore, openLink, recordTEvent } from "@/store/global";
 import * as services from "@/store/services";
 import { PLATFORM, PlatformMacOS } from "@/util/platformutil";
 import { base64ToArray, base64ToString, fireAndForget } from "@/util/util";
+import { LigaturesAddon } from "@xterm/addon-ligatures";
 import { SearchAddon } from "@xterm/addon-search";
 import { SerializeAddon } from "@xterm/addon-serialize";
 import { WebLinksAddon } from "@xterm/addon-web-links";
@@ -54,6 +46,7 @@ let loggedWebGL = false;
 type TermWrapOptions = {
     keydownHandler?: (e: KeyboardEvent) => boolean;
     useWebGl?: boolean;
+    useLigatures?: boolean;
     sendDataHandler?: (data: string) => void;
 };
 
@@ -456,6 +449,10 @@ export class TermWrap {
                 console.log("loaded webgl!");
                 loggedWebGL = true;
             }
+        }
+        if (waveOptions.useLigatures) {
+            const ligaturesAddon = new LigaturesAddon();
+            this.terminal.loadAddon(ligaturesAddon);
         }
         // Register OSC 9283 handler
         this.terminal.parser.registerOscHandler(9283, (data: string) => {

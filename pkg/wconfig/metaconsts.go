@@ -36,6 +36,7 @@ const (
 	ConfigKey_TermClear                      = "term:*"
 	ConfigKey_TermFontSize                   = "term:fontsize"
 	ConfigKey_TermFontFamily                 = "term:fontfamily"
+	ConfigKey_TermFontLigatures              = "term:fontligatures"
 	ConfigKey_TermTheme                      = "term:theme"
 	ConfigKey_TermDisableWebGl               = "term:disablewebgl"
 	ConfigKey_TermLocalShellPath             = "term:localshellpath"

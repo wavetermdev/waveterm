@@ -104,6 +104,7 @@ const (
 	MetaKey_TermClear                        = "term:*"
 	MetaKey_TermFontSize                     = "term:fontsize"
 	MetaKey_TermFontFamily                   = "term:fontfamily"
+	MetaKey_TermFontLigatures                = "term:fontligatures"
 	MetaKey_TermMode                         = "term:mode"
 	MetaKey_TermTheme                        = "term:theme"
 	MetaKey_TermLocalShellPath               = "term:localshellpath"

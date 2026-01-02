@@ -169,6 +169,7 @@ const TerminalView = ({ blockId, model }: ViewComponentProps<TermViewModel>) => 
     const termFontSize = jotai.useAtomValue(model.fontSizeAtom);
     const fullConfig = globalStore.get(atoms.fullConfigAtom);
     const connFontFamily = fullConfig.connections?.[blockData?.meta?.connection]?.["term:fontfamily"];
+    const termFontLigatures = termSettings?.["term:fontligatures"] ?? false;
     const isFocused = jotai.useAtomValue(model.nodeModel.isFocused);
     const isMI = jotai.useAtomValue(tabModel.isTermMultiInput);
     const isBasicTerm = termMode != "vdom" && blockData?.meta?.controller != "cmd"; // needs to match isBasicTerm
@@ -285,6 +286,7 @@ const TerminalView = ({ blockId, model }: ViewComponentProps<TermViewModel>) => 
             {
                 keydownHandler: model.handleTerminalKeydown.bind(model),
                 useWebGl: !termSettings?.["term:disablewebgl"],
+                useLigatures: termFontLigatures,
                 sendDataHandler: model.sendDataToController.bind(model),
             }
         );
@@ -353,7 +355,10 @@ const TerminalView = ({ blockId, model }: ViewComponentProps<TermViewModel>) => 
     const termBg = computeBgStyleFromMeta(blockData?.meta);
 
     return (
-        <div className={clsx("view-term", "term-mode-" + termMode)} ref={viewRef}>
+        <div
+            className={clsx("view-term", "term-mode-" + termMode, termFontLigatures && "term-ligatures")}
+            ref={viewRef}
+        >
             {termBg && <div className="absolute inset-0 z-0 pointer-events-none" style={termBg} />}
             <TermResyncHandler blockId={blockId} model={model} />
             <TermThemeUpdater blockId={blockId} model={model} termRef={model.termRef} />
