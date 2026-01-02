@@ -50,18 +50,17 @@ var WorkspaceIcons = [...]string{
 
 func CreateWorkspace(ctx context.Context, name string, icon string, color string, applyDefaults bool, isInitialLaunch bool) (*waveobj.Workspace, error) {
 	ws := &waveobj.Workspace{
-		OID:          uuid.NewString(),
-		TabIds:       []string{},
-		PinnedTabIds: []string{},
-		Name:         "",
-		Icon:         "",
-		Color:        "",
+		OID:    uuid.NewString(),
+		TabIds: []string{},
+		Name:   "",
+		Icon:   "",
+		Color:  "",
 	}
 	err := wstore.DBInsert(ctx, ws)
 	if err != nil {
 		return nil, fmt.Errorf("error inserting workspace: %w", err)
 	}
-	_, err = CreateTab(ctx, ws.OID, "", true, false, isInitialLaunch)
+	_, err = CreateTab(ctx, ws.OID, "", true, isInitialLaunch)
 	if err != nil {
 		return nil, fmt.Errorf("error creating tab: %w", err)
 	}
@@ -128,13 +127,12 @@ func DeleteWorkspace(ctx context.Context, workspaceId string, force bool) (bool,
 		return false, "", fmt.Errorf("error retrieving workspaceList: %w", err)
 	}
 
-	if workspace.Name != "" && workspace.Icon != "" && !force && (len(workspace.TabIds) > 0 || len(workspace.PinnedTabIds) > 0) {
+	if workspace.Name != "" && workspace.Icon != "" && !force && len(workspace.TabIds) > 0 {
 		log.Printf("Ignoring DeleteWorkspace for workspace %s as it is named\n", workspaceId)
 		return false, "", nil
 	}
 
-	// delete all pinned and unpinned tabs
-	for _, tabId := range append(workspace.TabIds, workspace.PinnedTabIds...) {
+	for _, tabId := range workspace.TabIds {
 		log.Printf("deleting tab %s\n", tabId)
 		_, err := DeleteTab(ctx, workspaceId, tabId, false)
 		if err != nil {
@@ -198,17 +196,16 @@ func getTabPresetMeta() (waveobj.MetaMapType, error) {
 }
 
 // returns tabid
-func CreateTab(ctx context.Context, workspaceId string, tabName string, activateTab bool, pinned bool, isInitialLaunch bool) (string, error) {
+func CreateTab(ctx context.Context, workspaceId string, tabName string, activateTab bool, isInitialLaunch bool) (string, error) {
 	if tabName == "" {
 		ws, err := GetWorkspace(ctx, workspaceId)
 		if err != nil {
 			return "", fmt.Errorf("workspace %s not found: %w", workspaceId, err)
 		}
-		tabName = "T" + fmt.Sprint(len(ws.TabIds)+len(ws.PinnedTabIds)+1)
+		tabName = "T" + fmt.Sprint(len(ws.TabIds)+1)
 	}
 
-	// The initial tab for the initial launch should be pinned
-	tab, err := createTabObj(ctx, workspaceId, tabName, pinned || isInitialLaunch, nil)
+	tab, err := createTabObj(ctx, workspaceId, tabName, nil)
 	if err != nil {
 		return "", fmt.Errorf("error creating tab: %w", err)
 	}
@@ -240,7 +237,7 @@ func CreateTab(ctx context.Context, workspaceId string, tabName string, activate
 	return tab.OID, nil
 }
 
-func createTabObj(ctx context.Context, workspaceId string, name string, pinned bool, meta waveobj.MetaMapType) (*waveobj.Tab, error) {
+func createTabObj(ctx context.Context, workspaceId string, name string, meta waveobj.MetaMapType) (*waveobj.Tab, error) {
 	ws, err := GetWorkspace(ctx, workspaceId)
 	if err != nil {
 		return nil, fmt.Errorf("workspace %s not found: %w", workspaceId, err)
@@ -256,11 +253,7 @@ func createTabObj(ctx context.Context, workspaceId string, name string, pinned b
 	layoutState := &waveobj.LayoutState{
 		OID: layoutStateId,
 	}
-	if pinned {
-		ws.PinnedTabIds = append(ws.PinnedTabIds, tab.OID)
-	} else {
-		ws.TabIds = append(ws.TabIds, tab.OID)
-	}
+	ws.TabIds = append(ws.TabIds, tab.OID)
 	wstore.DBInsert(ctx, tab)
 	wstore.DBInsert(ctx, layoutState)
 	wstore.DBUpdate(ctx, ws)
@@ -279,14 +272,10 @@ func DeleteTab(ctx context.Context, workspaceId string, tabId string, recursive 
 
 	// ensure tab is in workspace
 	tabIdx := utilfn.FindStringInSlice(ws.TabIds, tabId)
-	tabIdxPinned := utilfn.FindStringInSlice(ws.PinnedTabIds, tabId)
-	if tabIdx != -1 {
-		ws.TabIds = append(ws.TabIds[:tabIdx], ws.TabIds[tabIdx+1:]...)
-	} else if tabIdxPinned != -1 {
-		ws.PinnedTabIds = append(ws.PinnedTabIds[:tabIdxPinned], ws.PinnedTabIds[tabIdxPinned+1:]...)
-	} else {
+	if tabIdx == -1 {
 		return "", fmt.Errorf("tab %s not found in workspace %s", tabId, workspaceId)
 	}
+	ws.TabIds = append(ws.TabIds[:tabIdx], ws.TabIds[tabIdx+1:]...)
 
 	// close blocks (sends events + stops block controllers)
 	tab, _ := wstore.DBGet[*waveobj.Tab](ctx, tabId)
@@ -303,13 +292,7 @@ func DeleteTab(ctx context.Context, workspaceId string, tabId string, recursive 
 	newActiveTabId := ws.ActiveTabId
 	if ws.ActiveTabId == tabId {
 		if len(ws.TabIds) > 0 {
-			if tabIdx != -1 {
-				newActiveTabId = ws.TabIds[max(0, min(tabIdx-1, len(ws.TabIds)-1))]
-			} else {
-				newActiveTabId = ws.TabIds[0]
-			}
-		} else if len(ws.PinnedTabIds) > 0 {
-			newActiveTabId = ws.PinnedTabIds[0]
+			newActiveTabId = ws.TabIds[max(0, min(tabIdx-1, len(ws.TabIds)-1))]
 		} else {
 			newActiveTabId = ""
 		}
@@ -353,30 +336,6 @@ func SetActiveTab(ctx context.Context, workspaceId string, tabId string) error {
 	return nil
 }
 
-func ChangeTabPinning(ctx context.Context, workspaceId string, tabId string, pinned bool) error {
-	if tabId != "" && workspaceId != "" {
-		workspace, err := GetWorkspace(ctx, workspaceId)
-		if err != nil {
-			return fmt.Errorf("workspace %s not found: %w", workspaceId, err)
-		}
-		if pinned && utilfn.FindStringInSlice(workspace.PinnedTabIds, tabId) == -1 {
-			if utilfn.FindStringInSlice(workspace.TabIds, tabId) == -1 {
-				return fmt.Errorf("tab %s not found in workspace %s", tabId, workspaceId)
-			}
-			workspace.TabIds = utilfn.RemoveElemFromSlice(workspace.TabIds, tabId)
-			workspace.PinnedTabIds = append(workspace.PinnedTabIds, tabId)
-		} else if !pinned && utilfn.FindStringInSlice(workspace.PinnedTabIds, tabId) != -1 {
-			if utilfn.FindStringInSlice(workspace.PinnedTabIds, tabId) == -1 {
-				return fmt.Errorf("tab %s not found in workspace %s", tabId, workspaceId)
-			}
-			workspace.PinnedTabIds = utilfn.RemoveElemFromSlice(workspace.PinnedTabIds, tabId)
-			workspace.TabIds = append([]string{tabId}, workspace.TabIds...)
-		}
-		wstore.DBUpdate(ctx, workspace)
-	}
-	return nil
-}
-
 func SendActiveTabUpdate(ctx context.Context, workspaceId string, newActiveTabId string) {
 	eventbus.SendEventToElectron(eventbus.WSEventType{
 		EventType: eventbus.WSEvent_ElectronUpdateActiveTab,
@@ -384,13 +343,12 @@ func SendActiveTabUpdate(ctx context.Context, workspaceId string, newActiveTabId
 	})
 }
 
-func UpdateWorkspaceTabIds(ctx context.Context, workspaceId string, tabIds []string, pinnedTabIds []string) error {
+func UpdateWorkspaceTabIds(ctx context.Context, workspaceId string, tabIds []string) error {
 	ws, _ := wstore.DBGet[*waveobj.Workspace](ctx, workspaceId)
 	if ws == nil {
 		return fmt.Errorf("workspace not found: %q", workspaceId)
 	}
 	ws.TabIds = tabIds
-	ws.PinnedTabIds = pinnedTabIds
 	wstore.DBUpdate(ctx, ws)
 	return nil
 }
