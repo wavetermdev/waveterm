@@ -72,18 +72,21 @@ const TermVDomToolbarNode = ({ vdomBlockId, blockId, model }: TerminalViewProps 
             unsub();
         };
     }, []);
-    let vdomNodeModel: BlockNodeModel = {
-        blockId: vdomBlockId,
-        isFocused: jotai.atom(false),
-        isMagnified: jotai.atom(false),
-        focusNode: () => {},
-        toggleMagnify: () => {},
-        onClose: () => {
-            if (vdomBlockId != null) {
-                RpcApi.DeleteSubBlockCommand(TabRpcClient, { blockid: vdomBlockId });
-            }
-        },
-    };
+    const vdomNodeModel: BlockNodeModel = React.useMemo(
+        () => ({
+            blockId: vdomBlockId,
+            isFocused: jotai.atom(false),
+            isMagnified: jotai.atom(false),
+            focusNode: () => {},
+            toggleMagnify: () => {},
+            onClose: () => {
+                if (vdomBlockId != null) {
+                    RpcApi.DeleteSubBlockCommand(TabRpcClient, { blockid: vdomBlockId });
+                }
+            },
+        }),
+        [vdomBlockId]
+    );
     const toolbarTarget = jotai.useAtomValue(model.vdomToolbarTarget);
     const heightStr = toolbarTarget?.height ?? "1.5em";
     return (
@@ -112,23 +115,25 @@ const TermVDomNodeSingleId = ({ vdomBlockId, blockId, model }: TerminalViewProps
             unsub();
         };
     }, []);
-    const isFocusedAtom = jotai.atom((get) => {
-        return get(model.nodeModel.isFocused) && get(model.termMode) == "vdom";
-    });
-    let vdomNodeModel: BlockNodeModel = {
-        blockId: vdomBlockId,
-        isFocused: isFocusedAtom,
-        isMagnified: jotai.atom(false),
-        focusNode: () => {
-            model.nodeModel.focusNode();
-        },
-        toggleMagnify: () => {},
-        onClose: () => {
-            if (vdomBlockId != null) {
-                RpcApi.DeleteSubBlockCommand(TabRpcClient, { blockid: vdomBlockId });
-            }
-        },
-    };
+    const vdomNodeModel: BlockNodeModel = React.useMemo(() => {
+        const isFocusedAtom = jotai.atom((get) => {
+            return get(model.nodeModel.isFocused) && get(model.termMode) == "vdom";
+        });
+        return {
+            blockId: vdomBlockId,
+            isFocused: isFocusedAtom,
+            isMagnified: jotai.atom(false),
+            focusNode: () => {
+                model.nodeModel.focusNode();
+            },
+            toggleMagnify: () => {},
+            onClose: () => {
+                if (vdomBlockId != null) {
+                    RpcApi.DeleteSubBlockCommand(TabRpcClient, { blockid: vdomBlockId });
+                }
+            },
+        };
+    }, [vdomBlockId, model]);
     return (
         <div key="htmlElem" className="term-htmlelem">
             <SubBlock key="vdom" nodeModel={vdomNodeModel} />

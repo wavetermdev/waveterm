@@ -804,8 +804,7 @@ export class TermViewModel implements ViewModel {
 
         const shellIntegrationStatus = globalStore.get(this.termRef?.current?.shellIntegrationStatusAtom);
         const cwd = blockData?.meta?.["cmd:cwd"];
-        const shellIntegration = shellIntegrationStatus != null;
-        const canShowFileBrowser = shellIntegrationStatus === "ready" && shellIntegration && cwd != null;
+        const canShowFileBrowser = shellIntegrationStatus === "ready" && cwd != null;
 
         if (canShowFileBrowser) {
             fullMenu.push({
