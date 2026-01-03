@@ -730,9 +730,9 @@ export class TermViewModel implements ViewModel {
                     },
                 });
             }
+            menu.push({ type: "separator" });
         }
 
-        menu.push({ type: "separator" });
         menu.push({
             label: "Paste",
             click: () => {
