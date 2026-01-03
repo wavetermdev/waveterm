@@ -684,7 +684,7 @@ export class WaveBrowserWindow extends BaseWindow {
 
 export function getWaveWindowByTabId(tabId: string): WaveBrowserWindow {
     for (const ww of waveWindowMap.values()) {
-        if (ww.allLoadedTabViews.has(tabId)) {
+        if (ww.allLoadedTabViews.has(tabId) || ww.allTabViewsCache.has(tabId)) {
             return ww;
         }
     }
