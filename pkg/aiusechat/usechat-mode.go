@@ -21,6 +21,7 @@ const (
 	OpenAIResponsesEndpoint        = "https://api.openai.com/v1/responses"
 	OpenAIChatEndpoint             = "https://api.openai.com/v1/chat/completions"
 	OpenRouterChatEndpoint         = "https://openrouter.ai/api/v1/chat/completions"
+	NanoGPTChatEndpoint            = "https://nano-gpt.com/api/v1/chat/completions"
 	AzureLegacyEndpointTemplate    = "https://%s.openai.azure.com/openai/deployments/%s/chat/completions?api-version=%s"
 	AzureResponsesEndpointTemplate = "https://%s.openai.azure.com/openai/v1/responses"
 	AzureChatEndpointTemplate      = "https://%s.openai.azure.com/openai/v1/chat/completions"
@@ -30,6 +31,7 @@ const (
 
 	OpenAIAPITokenSecretName      = "OPENAI_KEY"
 	OpenRouterAPITokenSecretName  = "OPENROUTER_KEY"
+	NanoGPTAPITokenSecretName     = "NANOGPT_KEY"
 	AzureOpenAIAPITokenSecretName = "AZURE_OPENAI_KEY"
 	GoogleAIAPITokenSecretName    = "GOOGLE_AI_KEY"
 )
@@ -53,6 +55,10 @@ func resolveAIMode(requestedMode string, premium bool) (string, *wconfig.AIModeC
 	return mode, config, nil
 }
 
+// applyProviderDefaults fills missing fields in an AIModeConfigType with sensible provider-specific defaults.
+// It mutates the provided config in-place.
+// Defaults set include APIType, Endpoint, APITokenSecretName, Capabilities, Azure API version and endpoints,
+// Wave cloud enablement, and provider-specific endpoint templates where applicable.
 func applyProviderDefaults(config *wconfig.AIModeConfigType) {
 	if config.Provider == uctypes.AIProvider_Wave {
 		config.WaveAICloud = true
@@ -97,6 +103,17 @@ func applyProviderDefaults(config *wconfig.AIModeConfigType) {
 		}
 		if config.APITokenSecretName == "" {
 			config.APITokenSecretName = OpenRouterAPITokenSecretName
+		}
+	}
+	if config.Provider == uctypes.AIProvider_NanoGPT {
+		if config.APIType == "" {
+			config.APIType = uctypes.APIType_OpenAIChat
+		}
+		if config.Endpoint == "" {
+			config.Endpoint = NanoGPTChatEndpoint
+		}
+		if config.APITokenSecretName == "" {
+			config.APITokenSecretName = NanoGPTAPITokenSecretName
 		}
 	}
 	if config.Provider == uctypes.AIProvider_AzureLegacy {
