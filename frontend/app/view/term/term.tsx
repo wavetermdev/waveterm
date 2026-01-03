@@ -8,7 +8,7 @@ import { waveEventSubscribe } from "@/app/store/wps";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import type { TermViewModel } from "@/app/view/term/term-model";
-import { atoms, getOverrideConfigAtom, getSettingsPrefixAtom, globalStore, WOS } from "@/store/global";
+import { atoms, getApi, getOverrideConfigAtom, getSettingsPrefixAtom, globalStore, WOS } from "@/store/global";
 import { fireAndForget, useAtomValueSafe } from "@/util/util";
 import { computeBgStyleFromMeta } from "@/util/waveutil";
 import { ISearchOptions } from "@xterm/addon-search";
@@ -353,8 +353,74 @@ const TerminalView = ({ blockId, model }: ViewComponentProps<TermViewModel>) => 
 
     const termBg = computeBgStyleFromMeta(blockData?.meta);
 
+    // Handle drag and drop
+    // Helper to check if drag event contains files
+    const isFileDrop = (e: React.DragEvent): boolean => {
+        return e.dataTransfer?.types?.includes("Files") ?? false;
+    };
+
+    const handleDragOver = React.useCallback((e: React.DragEvent) => {
+        if (!isFileDrop(e)) return;
+        e.preventDefault();
+        e.stopPropagation();
+        e.dataTransfer.dropEffect = "copy";
+    }, []);
+
+    const handleDrop = React.useCallback(
+        (e: React.DragEvent) => {
+            if (!isFileDrop(e)) return;
+            e.preventDefault();
+            e.stopPropagation();
+
+            const files = Array.from(e.dataTransfer.files);
+            if (files.length === 0) return;
+
+            const paths = files
+                .map((file: File) => {
+                    try {
+                        const fullPath = getApi().getPathForFile(file);
+                        if (/[\s'"]/.test(fullPath)) {
+                            return `"${fullPath}"`;
+                        }
+                        return fullPath;
+                    } catch (err) {
+                        console.error("Could not get path for file:", file.name, err);
+                        return null;
+                    }
+                })
+                .filter((path): path is string => path !== null);
+
+            if (paths.length === 0) return;
+
+            const pathString = paths.join(" ");
+            if (model.termRef.current && pathString) {
+                model.sendDataToController(pathString);
+            }
+        },
+        [model]
+    );
+
+    const handleDragEnter = React.useCallback((e: React.DragEvent) => {
+        if (!isFileDrop(e)) return;
+        e.preventDefault();
+        e.stopPropagation();
+    }, []);
+
+    const handleDragLeave = React.useCallback((e: React.DragEvent) => {
+        if (!isFileDrop(e)) return;
+        e.preventDefault();
+        e.stopPropagation();
+    }, []);
+
     return (
-        <div className={clsx("view-term", "term-mode-" + termMode)} ref={viewRef}>
+        <div
+            className={clsx("view-term", "term-mode-" + termMode)}
+            ref={viewRef}
+            onDragOver={handleDragOver}
+            onDrop={handleDrop}
+            onDragEnter={handleDragEnter}
+            onDragLeave={handleDragLeave}
+        >
             {termBg && <div className="absolute inset-0 z-0 pointer-events-none" style={termBg} />}
             <TermResyncHandler blockId={blockId} model={model} />
             <TermThemeUpdater blockId={blockId} model={model} termRef={model.termRef} />
