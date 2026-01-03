@@ -59,7 +59,7 @@ export function addOpenMenuItems(menu: ContextMenuItem[], conn: string, finfo: F
     // TODO: improve behavior as we add more connection types
     if (!conn?.startsWith("aws:")) {
         menu.push({
-            label: "Open Terminal in New Block",
+            label: "Open Terminal Here",
             click: () => {
                 const termBlockDef: BlockDef = {
                     meta: {
