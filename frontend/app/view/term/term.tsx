@@ -2,7 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { Block, SubBlock } from "@/app/block/block";
+import type { BlockNodeModel } from "@/app/block/blocktypes";
 import { Search, useSearch } from "@/app/element/search";
+import { ContextMenuModel } from "@/app/store/contextmenu";
 import { useTabModel } from "@/app/store/tab-model";
 import { waveEventSubscribe } from "@/app/store/wps";
 import { RpcApi } from "@/app/store/wshclientapi";
@@ -70,10 +72,12 @@ const TermVDomToolbarNode = ({ vdomBlockId, blockId, model }: TerminalViewProps 
             unsub();
         };
     }, []);
-    let vdomNodeModel = {
+    let vdomNodeModel: BlockNodeModel = {
         blockId: vdomBlockId,
         isFocused: jotai.atom(false),
+        isMagnified: jotai.atom(false),
         focusNode: () => {},
+        toggleMagnify: () => {},
         onClose: () => {
             if (vdomBlockId != null) {
                 RpcApi.DeleteSubBlockCommand(TabRpcClient, { blockid: vdomBlockId });
@@ -111,12 +115,14 @@ const TermVDomNodeSingleId = ({ vdomBlockId, blockId, model }: TerminalViewProps
     const isFocusedAtom = jotai.atom((get) => {
         return get(model.nodeModel.isFocused) && get(model.termMode) == "vdom";
     });
-    let vdomNodeModel = {
+    let vdomNodeModel: BlockNodeModel = {
         blockId: vdomBlockId,
         isFocused: isFocusedAtom,
+        isMagnified: jotai.atom(false),
         focusNode: () => {
             model.nodeModel.focusNode();
         },
+        toggleMagnify: () => {},
         onClose: () => {
             if (vdomBlockId != null) {
                 RpcApi.DeleteSubBlockCommand(TabRpcClient, { blockid: vdomBlockId });
@@ -353,8 +359,18 @@ const TerminalView = ({ blockId, model }: ViewComponentProps<TermViewModel>) => 
 
     const termBg = computeBgStyleFromMeta(blockData?.meta);
 
+    const handleContextMenu = React.useCallback(
+        (e: React.MouseEvent<HTMLDivElement>) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const menuItems = model.getContextMenuItems();
+            ContextMenuModel.showContextMenu(menuItems, e);
+        },
+        [model]
+    );
+
     return (
-        <div className={clsx("view-term", "term-mode-" + termMode)} ref={viewRef}>
+        <div className={clsx("view-term", "term-mode-" + termMode)} ref={viewRef} onContextMenu={handleContextMenu}>
             {termBg && <div className="absolute inset-0 z-0 pointer-events-none" style={termBg} />}
             <TermResyncHandler blockId={blockId} model={model} />
             <TermThemeUpdater blockId={blockId} model={model} termRef={model.termRef} />
