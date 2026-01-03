@@ -9,7 +9,7 @@ import type { ConfigFile, WaveConfigViewModel } from "@/app/view/waveconfig/wave
 import { adaptFromReactOrNativeKeyEvent, checkKeyPressed, keydownWrapper } from "@/util/keyutil";
 import { cn } from "@/util/util";
 import { useAtom, useAtomValue } from "jotai";
-import type * as MonacoTypes from "monaco-editor/esm/vs/editor/editor.api";
+import type * as MonacoTypes from "monaco-editor";
 import { memo, useCallback, useEffect, useRef } from "react";
 import { debounce } from "throttle-debounce";
 

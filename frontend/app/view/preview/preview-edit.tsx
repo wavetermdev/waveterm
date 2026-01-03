@@ -6,9 +6,9 @@ import { CodeEditor } from "@/app/view/codeeditor/codeeditor";
 import { globalStore } from "@/store/global";
 import { adaptFromReactOrNativeKeyEvent, checkKeyPressed } from "@/util/keyutil";
 import { fireAndForget } from "@/util/util";
-import { Monaco } from "@monaco-editor/react";
 import { useAtomValue, useSetAtom } from "jotai";
-import type * as MonacoTypes from "monaco-editor/esm/vs/editor/editor.api";
+import * as monaco from "monaco-editor";
+import type * as MonacoTypes from "monaco-editor";
 import { useEffect } from "react";
 import type { SpecializedViewProps } from "./preview";
 
@@ -73,7 +73,7 @@ function CodeEditPreview({ model }: SpecializedViewProps) {
         };
     }, []);
 
-    function onMount(editor: MonacoTypes.editor.IStandaloneCodeEditor, monaco: Monaco): () => void {
+    function onMount(editor: MonacoTypes.editor.IStandaloneCodeEditor, monacoApi: typeof monaco): () => void {
         model.monacoRef.current = editor;
 
         const keyDownDisposer = editor.onKeyDown((e: MonacoTypes.IKeyboardEvent) => {
