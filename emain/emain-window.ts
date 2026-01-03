@@ -585,10 +585,8 @@ export class WaveBrowserWindow extends BaseWindow {
                         // Move current tab views to cache instead of destroying them
                         // This preserves terminal state (including alternate screen mode) across workspace switches
                         for (const [tabId, tabView] of this.allLoadedTabViews.entries()) {
-                            // Position off-screen but don't destroy
                             if (!this.isDestroyed()) {
-                                const bounds = this.getContentBounds();
-                                tabView.positionTabOffScreen(bounds);
+                                this.contentView.removeChildView(tabView);
                             }
                             // If tabId already in cache (edge case with rapid workspace switching), destroy the old cached view first
                             const existingCachedView = this.allTabViewsCache.get(tabId);
@@ -597,7 +595,13 @@ export class WaveBrowserWindow extends BaseWindow {
                             }
                             this.allTabViewsCache.set(tabId, tabView);
                         }
-                        console.log("cached", this.allLoadedTabViews.size, "tabs for workspace", this.workspaceId, this.waveWindowId);
+                        console.log(
+                            "cached",
+                            this.allLoadedTabViews.size,
+                            "tabs for workspace",
+                            this.workspaceId,
+                            this.waveWindowId
+                        );
                         // Note: Cached views are kept alive indefinitely and only destroyed when:
                         // 1. The tab is explicitly closed by the user
                         // 2. The window is closed (via removeAllChildViews)
@@ -617,14 +621,8 @@ export class WaveBrowserWindow extends BaseWindow {
                 if (tabView) {
                     console.log("reusing cached tab view", tabId, this.waveWindowId);
                     this.allTabViewsCache.delete(tabId);
-                    // Ensure cached view is in contentView (it should be, but add defensively)
                     if (!this.isDestroyed()) {
-                        // Check if already a child before adding
-                        const isChild = this.contentView.children.includes(tabView);
-                        if (!isChild) {
-                            console.log("cached tab was not a child, re-adding", tabId);
-                            this.contentView.addChildView(tabView);
-                        }
+                        this.contentView.addChildView(tabView);
                     }
                 } else {
                     [tabView, tabInitialized] = await getOrCreateWebViewForTab(this.waveWindowId, tabId);
@@ -671,11 +669,8 @@ export class WaveBrowserWindow extends BaseWindow {
             console.log("removeTabView -- removing from cache", tabId, this.waveWindowId);
             this.allTabViewsCache.delete(tabId);
         } else {
-            this.allLoadedTabViews.delete(tabId);
-        }
-        // Remove from contentView (cached views are still children, just positioned off-screen)
-        if (!this.isDestroyed()) {
             this.contentView.removeChildView(tabView);
+            this.allLoadedTabViews.delete(tabId);
         }
         tabView.destroy();
     }
