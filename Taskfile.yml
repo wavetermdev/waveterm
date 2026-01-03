@@ -435,6 +435,12 @@ tasks:
             - task: dev:cleardata:linux
             - task: dev:cleardata:macos
 
+    check:ts:
+        desc: Typecheck TypeScript code (frontend and electron).
+        cmd: npx tsc --noEmit
+        deps:
+            - npm:install
+
     init:
         desc: Initialize the project for development.
         cmds:

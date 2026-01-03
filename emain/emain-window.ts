@@ -120,7 +120,6 @@ type WindowActionQueueEntry =
       }
     | {
           op: "createtab";
-          pinned: boolean;
       }
     | {
           op: "closetab";
@@ -132,7 +131,7 @@ type WindowActionQueueEntry =
       };
 
 function isNonEmptyUnsavedWorkspace(workspace: Workspace): boolean {
-    return !workspace.name && !workspace.icon && (workspace.tabids?.length > 1 || workspace.pinnedtabids?.length > 1);
+    return !workspace.name && !workspace.icon && workspace.tabids?.length > 1;
 }
 
 export class WaveBrowserWindow extends BaseWindow {
@@ -496,8 +495,8 @@ export class WaveBrowserWindow extends BaseWindow {
         }
     }
 
-    async queueCreateTab(pinned = false) {
-        await this._queueActionInternal({ op: "createtab", pinned });
+    async queueCreateTab() {
+        await this._queueActionInternal({ op: "createtab" });
     }
 
     async queueCloseTab(tabId: string) {
@@ -537,7 +536,7 @@ export class WaveBrowserWindow extends BaseWindow {
                 // have to use "===" here to get the typechecker to work :/
                 switch (entry.op) {
                     case "createtab":
-                        tabId = await WorkspaceService.CreateTab(this.workspaceId, null, true, entry.pinned);
+                        tabId = await WorkspaceService.CreateTab(this.workspaceId, null, true);
                         break;
                     case "switchtab":
                         tabId = entry.tabId;

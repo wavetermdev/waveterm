@@ -9,7 +9,6 @@ import debug from "debug";
 import * as jotai from "jotai";
 import * as React from "react";
 
-import { BlockNodeModel } from "@/app/block/blocktypes";
 import {
     convertVDomId,
     getTextChildren,
@@ -475,10 +474,6 @@ function VDomRoot({ model }: { model: VDomModel }) {
     return <div className="vdom">{rtn}</div>;
 }
 
-function makeVDomModel(blockId: string, nodeModel: BlockNodeModel): VDomModel {
-    return new VDomModel(blockId, nodeModel);
-}
-
 type VDomViewProps = {
     model: VDomModel;
     blockId: string;
@@ -511,4 +506,4 @@ function VDomView({ blockId, model }: VDomViewProps) {
     );
 }
 
-export { makeVDomModel, VDomView };
+export { VDomView };

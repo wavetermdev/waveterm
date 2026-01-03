@@ -377,11 +377,6 @@ func DBFindWorkspaceForTabId(ctx context.Context, tabId string) (string, error) 
 				SELECT 1
 				FROM json_each(w.data, '$.tabids') AS je
 				WHERE je.value = variable.value
-			)
-			OR EXISTS (
-				SELECT 1
-				FROM json_each(w.data, '$.pinnedtabids') AS je
-				WHERE je.value = variable.value
 			);
 			`
 		wsId := tx.GetString(query, tabId)
