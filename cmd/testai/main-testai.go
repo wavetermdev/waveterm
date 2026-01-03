@@ -259,19 +259,18 @@ func testOpenRouter(ctx context.Context, model, message string, tools []uctypes.
 }
 
 func testNanoGPT(ctx context.Context, model, message string, tools []uctypes.ToolDefinition) {
-	apiKey := os.Getenv("NANOGPT_APIKEY")
+	apiKey := os.Getenv("NANOGPT_KEY")
 	if apiKey == "" {
-		fmt.Println("Error: NANOGPT_APIKEY environment variable not set")
+		fmt.Println("Error: NANOGPT_KEY environment variable not set")
 		os.Exit(1)
 	}
 
 	opts := &uctypes.AIOptsType{
-		APIType:       uctypes.APIType_OpenAIChat,
-		APIToken:      apiKey,
-		Endpoint:      "https://nano-gpt.com/api/v1/chat/completions",
-		Model:         model,
-		MaxTokens:     4096,
-		ThinkingLevel: uctypes.ThinkingLevelMedium,
+		APIType:   uctypes.APIType_OpenAIChat,
+		APIToken:  apiKey,
+		Endpoint:  "https://nano-gpt.com/api/v1/chat/completions",
+		Model:     model,
+		MaxTokens: 4096,
 	}
 
 	chatID := uuid.New().String()
@@ -459,7 +458,7 @@ func printUsage() {
 	fmt.Println("  OPENAI_APIKEY (for OpenAI models)")
 	fmt.Println("  ANTHROPIC_APIKEY (for Anthropic models)")
 	fmt.Println("  OPENROUTER_APIKEY (for OpenRouter models)")
-	fmt.Println("  NANOGPT_APIKEY (for NanoGPT models)")
+	fmt.Println("  NANOGPT_KEY (for NanoGPT models)")
 	fmt.Println("  GOOGLE_APIKEY (for Google Gemini models)")
 }
 
