@@ -22,6 +22,7 @@ import {
 } from "@/app/store/global";
 import { getActiveTabModel } from "@/app/store/tab-model";
 import { TabBarModel } from "@/app/tab/tabbar-model";
+import type { TermViewModel } from "@/app/view/term/term-model";
 import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
 import { deleteLayoutModelForTab, getLayoutModelForStaticTab, NavigateDirection } from "@/layout/index";
 import * as keyutil from "@/util/keyutil";
@@ -633,14 +634,72 @@ function registerGlobalKeys() {
             return true;
         });
     }
+    function getSelectedText(): string {
+        // Check for terminal selection first
+        const bcm = getBlockComponentModel(getFocusedBlockInStaticTab());
+        if (bcm?.viewModel?.viewType === "term") {
+            const termViewModel = bcm.viewModel as TermViewModel;
+            if (termViewModel.termRef?.current?.terminal) {
+                const terminalSelection = termViewModel.termRef.current.terminal.getSelection();
+                if (terminalSelection && terminalSelection.length > 0) {
+                    return terminalSelection.trim();
+                }
+            }
+        }
+
+        // Check for regular text selection
+        const selection = window.getSelection();
+        if (selection && selection.rangeCount > 0 && !selection.isCollapsed) {
+            const selectedText = selection.toString().trim();
+            if (selectedText.length > 0) {
+                return selectedText;
+            }
+        }
+        return "";
+    }
+
+    function focusSearchInput() {
+        setTimeout(() => {
+            const blockId = getFocusedBlockInStaticTab();
+            if (!blockId) {
+                return;
+            }
+
+            // Directly find the search container by data-blockid attribute
+            const searchContainer = document.querySelector(
+                `.search-container[data-blockid="${blockId}"]`
+            ) as HTMLElement;
+            if (searchContainer) {
+                const searchInput = searchContainer.querySelector("input") as HTMLInputElement;
+                if (searchInput) {
+                    searchInput.focus();
+                    searchInput.select();
+                }
+            }
+        }, 0);
+    }
+
     function activateSearch(event: WaveKeyboardEvent): boolean {
         const bcm = getBlockComponentModel(getFocusedBlockInStaticTab());
-        // Ctrl+f is reserved in most shells
+        // Ctrl+f is reserved in most shells.
         if (event.control && bcm.viewModel.viewType == "term") {
             return false;
         }
         if (bcm.viewModel.searchAtoms) {
-            globalStore.set(bcm.viewModel.searchAtoms.isOpen, true);
+            const searchAtoms = bcm.viewModel.searchAtoms;
+            const isOpen = globalStore.get(searchAtoms.isOpen);
+            const selectedText = getSelectedText();
+
+            // Open search dialog if not already open
+            if (!isOpen) {
+                globalStore.set(searchAtoms.isOpen, true);
+            }
+            // Set search value (use selected text if available, otherwise empty string)
+            globalStore.set(searchAtoms.searchValue, selectedText || "");
+            // Reset search results
+            globalStore.set(searchAtoms.resultsIndex, 0);
+            globalStore.set(searchAtoms.resultsCount, 0);
+            focusSearchInput();
             return true;
         }
         return false;

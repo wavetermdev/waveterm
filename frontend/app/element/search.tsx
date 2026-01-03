@@ -16,6 +16,7 @@ type SearchProps = SearchAtoms & {
     onSearch?: (search: string) => void;
     onNext?: () => void;
     onPrev?: () => void;
+    blockId?: string;
 };
 
 const SearchComponent = ({
@@ -32,6 +33,7 @@ const SearchComponent = ({
     onSearch,
     onNext,
     onPrev,
+    blockId,
 }: SearchProps) => {
     const [isOpen, setIsOpen] = useAtom<boolean>(isOpenAtom);
     const [search, setSearch] = useAtom<string>(searchAtom);
@@ -144,7 +146,7 @@ const SearchComponent = ({
         <>
             {isOpen && (
                 <FloatingPortal>
-                    <div className="search-container" style={{ ...floatingStyles }} ref={refs.setFloating}>
+                    <div className="search-container" style={{ ...floatingStyles }} ref={refs.setFloating} data-blockid={blockId}>
                         <Input
                             placeholder="Search"
                             value={search}
@@ -188,6 +190,7 @@ type SearchOptions = {
     regex?: boolean;
     caseSensitive?: boolean;
     wholeWord?: boolean;
+    blockId?: string;
 };
 
 export function useSearch(options?: SearchOptions): SearchProps {
@@ -212,7 +215,7 @@ export function useSearch(options?: SearchOptions): SearchProps {
             };
         }
     }, [options?.viewModel]);
-    return { ...searchAtoms, anchorRef };
+    return { ...searchAtoms, anchorRef, blockId: options?.blockId };
 }
 
 const createToggleButtonDecl = (
