@@ -151,7 +151,17 @@ export default defineConfig({
         server: {
             open: false,
             watch: {
-                ignored: ["dist/**", "**/*.go", "**/go.mod", "**/go.sum", "**/*.md", "**/*.json", "emain/**"],
+                ignored: [
+                    "dist/**",
+                    "**/*.go",
+                    "**/go.mod",
+                    "**/go.sum",
+                    "**/*.md",
+                    "**/*.json",
+                    "emain/**",
+                    "**/*.txt",
+                    "**/*.log",
+                ],
             },
         },
         css: {

@@ -1,12 +1,11 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { MonacoDiffViewer } from "@/app/monaco/monaco-react";
 import { useOverrideConfigAtom } from "@/app/store/global";
-import { DiffEditor } from "@monaco-editor/react";
-import type * as MonacoTypes from "monaco-editor/esm/vs/editor/editor.api";
-import { useMemo } from "react";
-
 import { boundNumber } from "@/util/util";
+import type * as MonacoTypes from "monaco-editor";
+import { useMemo, useRef } from "react";
 
 interface DiffViewerProps {
     blockId: string;
@@ -42,6 +41,14 @@ export function DiffViewer({ blockId, original, modified, language, fileName }: 
     const fontSize = boundNumber(useOverrideConfigAtom(blockId, "editor:fontsize"), 6, 64);
     const inlineDiff = useOverrideConfigAtom(blockId, "editor:inlinediff");
     const theme = "wave-theme-dark";
+    const uuidRef = useRef(crypto.randomUUID()).current;
+    let editorPath: string;
+    if (fileName) {
+        const separator = fileName.startsWith("/") ? "" : "/";
+        editorPath = blockId + separator + fileName;
+    } else {
+        editorPath = uuidRef;
+    }
 
     const editorOpts = useMemo(() => {
         const opts = defaultDiffEditorOptions();
@@ -56,8 +63,9 @@ export function DiffViewer({ blockId, original, modified, language, fileName }: 
     return (
         <div className="flex flex-col w-full h-full overflow-hidden items-center justify-center">
             <div className="flex flex-col h-full w-full">
-                <DiffEditor
+                <MonacoDiffViewer
                     theme={theme}
+                    path={editorPath}
                     original={original}
                     modified={modified}
                     options={editorOpts}

@@ -1,7 +1,7 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import type * as MonacoTypes from "monaco-editor";
+import * as monaco from "monaco-editor";
 import "monaco-editor/esm/vs/language/css/monaco.contribution";
 import "monaco-editor/esm/vs/language/html/monaco.contribution";
 import "monaco-editor/esm/vs/language/json/monaco.contribution";
@@ -39,7 +39,7 @@ window.MonacoEnvironment = {
     },
 };
 
-export function loadMonaco(monaco: typeof MonacoTypes) {
+export function loadMonaco() {
     if (monacoConfigured) {
         return;
     }

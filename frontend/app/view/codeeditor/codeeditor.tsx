@@ -1,11 +1,11 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { loadMonaco } from "@/app/monaco/monaco-env";
+import { MonacoCodeEditor } from "@/app/monaco/monaco-react";
 import { useOverrideConfigAtom } from "@/app/store/global";
 import { boundNumber } from "@/util/util";
-import { Editor, Monaco } from "@monaco-editor/react";
 import type * as MonacoTypes from "monaco-editor";
+import * as MonacoModule from "monaco-editor";
 import React, { useMemo, useRef } from "react";
 
 function defaultEditorOptions(): MonacoTypes.editor.IEditorOptions {
@@ -36,7 +36,7 @@ interface CodeEditorProps {
     language?: string;
     fileName?: string;
     onChange?: (text: string) => void;
-    onMount?: (monacoPtr: MonacoTypes.editor.IStandaloneCodeEditor, monaco: Monaco) => () => void;
+    onMount?: (monacoPtr: MonacoTypes.editor.IStandaloneCodeEditor, monaco: typeof MonacoModule) => () => void;
 }
 
 export function CodeEditor({ blockId, text, language, fileName, readonly, onChange, onMount }: CodeEditorProps) {
@@ -65,21 +65,24 @@ export function CodeEditor({ blockId, text, language, fileName, readonly, onChan
         };
     }, []);
 
-    function handleEditorChange(text: string, ev: MonacoTypes.editor.IModelContentChangedEvent) {
+    function handleEditorChange(text: string) {
         if (onChange) {
             onChange(text);
         }
     }
 
-    function handleEditorOnMount(editor: MonacoTypes.editor.IStandaloneCodeEditor, monaco: Monaco) {
+    function handleEditorOnMount(
+        editor: MonacoTypes.editor.IStandaloneCodeEditor,
+        monaco: typeof MonacoModule
+    ): () => void {
         if (onMount) {
             unmountRef.current = onMount(editor, monaco);
         }
+        return null;
     }
 
     const editorOpts = useMemo(() => {
         const opts = defaultEditorOptions();
-        opts.readOnly = readonly;
         opts.minimap.enabled = minimapEnabled;
         opts.stickyScroll.enabled = stickyScrollEnabled;
         opts.wordWrap = wordWrap ? "on" : "off";
@@ -91,10 +94,10 @@ export function CodeEditor({ blockId, text, language, fileName, readonly, onChan
     return (
         <div className="flex flex-col w-full h-full overflow-hidden items-center justify-center">
             <div className="flex flex-col h-full w-full" ref={divRef}>
-                <Editor
-                    beforeMount={loadMonaco}
+                <MonacoCodeEditor
                     theme={theme}
-                    value={text}
+                    readonly={readonly}
+                    text={text}
                     options={editorOpts}
                     onChange={handleEditorChange}
                     onMount={handleEditorOnMount}
