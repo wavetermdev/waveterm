@@ -13,6 +13,10 @@ interface ConfirmCloseTabModalProps {
 const ConfirmCloseTabModal = ({ tabId }: ConfirmCloseTabModalProps) => {
     const handleConfirmClose = () => {
         const ws = globalStore.get(atoms.workspace);
+        if (!ws) {
+            modalsModel.popModal();
+            return;
+        }
         getApi().closeTab(ws.oid, tabId);
         deleteLayoutModelForTab(tabId);
         modalsModel.popModal();
