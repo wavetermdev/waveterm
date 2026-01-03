@@ -15,13 +15,10 @@ type CodeEditorProps = {
     text: string;
     readonly: boolean;
     language?: string;
-    fileName?: string;
     onChange?: (text: string) => void;
     onMount?: (editor: MonacoTypes.editor.IStandaloneCodeEditor, monacoApi: typeof monaco) => () => void;
-    // keep your computed path behavior outside if you want; or compute inside like today
     path: string;
     options: MonacoTypes.editor.IEditorOptions;
-    theme: string;
 };
 
 export function MonacoCodeEditor({
@@ -32,7 +29,6 @@ export function MonacoCodeEditor({
     onMount,
     path,
     options,
-    theme,
 }: CodeEditorProps) {
     const divRef = useRef<HTMLDivElement>(null);
     const editorRef = useRef<MonacoTypes.editor.IStandaloneCodeEditor | null>(null);
@@ -51,13 +47,9 @@ export function MonacoCodeEditor({
         const editor = monaco.editor.create(el, {
             ...options,
             readOnly: readonly,
-            theme, // note: editor.create uses global theme via setTheme, but keeping your mental model
             model,
         });
         editorRef.current = editor;
-
-        // Monaco theme is global; set it here
-        monaco.editor.setTheme(theme);
 
         const sub = model.onDidChangeContent(() => {
             if (applyingFromProps.current) return;
@@ -95,13 +87,12 @@ export function MonacoCodeEditor({
         applyingFromProps.current = false;
     }, [text]);
 
-    // Keep options + theme in sync
+    // Keep options in sync
     useEffect(() => {
         const editor = editorRef.current;
         if (!editor) return;
         editor.updateOptions({ ...options, readOnly: readonly });
-        monaco.editor.setTheme(theme);
-    }, [options, readonly, theme]);
+    }, [options, readonly]);
 
     // Keep language in sync
     useEffect(() => {
@@ -121,10 +112,9 @@ type DiffViewerProps = {
     language?: string;
     path: string;
     options: MonacoTypes.editor.IDiffEditorOptions;
-    theme: string;
 };
 
-export function MonacoDiffViewer({ original, modified, language, path, options, theme }: DiffViewerProps) {
+export function MonacoDiffViewer({ original, modified, language, path, options }: DiffViewerProps) {
     const divRef = useRef<HTMLDivElement>(null);
     const diffRef = useRef<MonacoTypes.editor.IStandaloneDiffEditor | null>(null);
 
@@ -143,7 +133,6 @@ export function MonacoDiffViewer({ original, modified, language, path, options, 
 
         const diff = monaco.editor.createDiffEditor(el, options);
         diffRef.current = diff;
-        monaco.editor.setTheme(theme);
 
         diff.setModel({ original: originalModel, modified: modifiedModel });
 
@@ -176,8 +165,7 @@ export function MonacoDiffViewer({ original, modified, language, path, options, 
         const diff = diffRef.current;
         if (!diff) return;
         diff.updateOptions(options);
-        monaco.editor.setTheme(theme);
-    }, [options, theme]);
+    }, [options]);
 
     return <div className="flex flex-col h-full w-full" ref={divRef} />;
 }

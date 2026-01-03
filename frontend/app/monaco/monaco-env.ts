@@ -68,6 +68,7 @@ export function loadMonaco() {
         validate: true,
         schemas: [],
     });
+    monaco.editor.setTheme("wave-theme-dark");
     // Disable default validation errors for typescript and javascript
     monaco.typescript.typescriptDefaults.setDiagnosticsOptions({
         noSemanticValidation: true,

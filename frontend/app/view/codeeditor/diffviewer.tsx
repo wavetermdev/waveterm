@@ -40,7 +40,6 @@ export function DiffViewer({ blockId, original, modified, language, fileName }: 
     const minimapEnabled = useOverrideConfigAtom(blockId, "editor:minimapenabled") ?? false;
     const fontSize = boundNumber(useOverrideConfigAtom(blockId, "editor:fontsize"), 6, 64);
     const inlineDiff = useOverrideConfigAtom(blockId, "editor:inlinediff");
-    const theme = "wave-theme-dark";
     const uuidRef = useRef(crypto.randomUUID()).current;
     let editorPath: string;
     if (fileName) {
@@ -64,7 +63,6 @@ export function DiffViewer({ blockId, original, modified, language, fileName }: 
         <div className="flex flex-col w-full h-full overflow-hidden items-center justify-center">
             <div className="flex flex-col h-full w-full">
                 <MonacoDiffViewer
-                    theme={theme}
                     path={editorPath}
                     original={original}
                     modified={modified}

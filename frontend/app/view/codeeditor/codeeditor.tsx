@@ -46,7 +46,6 @@ export function CodeEditor({ blockId, text, language, fileName, readonly, onChan
     const stickyScrollEnabled = useOverrideConfigAtom(blockId, "editor:stickyscrollenabled") ?? false;
     const wordWrap = useOverrideConfigAtom(blockId, "editor:wordwrap") ?? false;
     const fontSize = boundNumber(useOverrideConfigAtom(blockId, "editor:fontsize"), 6, 64);
-    const theme = "wave-theme-dark";
     const uuidRef = useRef(crypto.randomUUID()).current;
     let editorPath: string;
     if (fileName) {
@@ -95,7 +94,6 @@ export function CodeEditor({ blockId, text, language, fileName, readonly, onChan
         <div className="flex flex-col w-full h-full overflow-hidden items-center justify-center">
             <div className="flex flex-col h-full w-full" ref={divRef}>
                 <MonacoCodeEditor
-                    theme={theme}
                     readonly={readonly}
                     text={text}
                     options={editorOpts}
