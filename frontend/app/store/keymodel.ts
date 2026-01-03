@@ -516,7 +516,8 @@ function registerGlobalKeys() {
         return true;
     });
     globalKeyMap.set("Cmd:Shift:w", () => {
-        simpleCloseStaticTab();
+        const tabId = globalStore.get(atoms.staticTabId);
+        modalsModel.pushModal("ConfirmCloseTabModal", { tabId });
         return true;
     });
     globalKeyMap.set("Cmd:m", () => {
