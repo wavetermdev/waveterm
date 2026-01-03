@@ -906,7 +906,7 @@ func (ws *WshServer) BlocksListCommand(
 			log.Printf("error finding window for workspace %s: %v", wsID, err)
 		}
 
-		for _, tabID := range append(wsData.PinnedTabIds, wsData.TabIds...) {
+		for _, tabID := range wsData.TabIds {
 			tab, err := wstore.DBMustGet[*waveobj.Tab](ctx, tabID)
 			if err != nil {
 				return nil, err

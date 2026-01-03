@@ -128,25 +128,19 @@ async function reinitWave() {
 }
 
 function reloadAllWorkspaceTabs(ws: Workspace) {
-    if (ws == null || (!ws.tabids?.length && !ws.pinnedtabids?.length)) {
+    if (ws == null || !ws.tabids?.length) {
         return;
     }
     ws.tabids?.forEach((tabid) => {
-        WOS.reloadWaveObject<Tab>(WOS.makeORef("tab", tabid));
-    });
-    ws.pinnedtabids?.forEach((tabid) => {
         WOS.reloadWaveObject<Tab>(WOS.makeORef("tab", tabid));
     });
 }
 
 function loadAllWorkspaceTabs(ws: Workspace) {
-    if (ws == null || (!ws.tabids?.length && !ws.pinnedtabids?.length)) {
+    if (ws == null || !ws.tabids?.length) {
         return;
     }
     ws.tabids?.forEach((tabid) => {
-        WOS.getObjectValue<Tab>(WOS.makeORef("tab", tabid));
-    });
-    ws.pinnedtabids?.forEach((tabid) => {
         WOS.getObjectValue<Tab>(WOS.makeORef("tab", tabid));
     });
 }
