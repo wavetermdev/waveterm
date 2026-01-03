@@ -134,7 +134,7 @@ declare global {
         openBuilder: (appId?: string) => void; // open-builder
         setBuilderWindowAppId: (appId: string) => void; // set-builder-window-appid
         doRefresh: () => void; // do-refresh
-        getPathForFile: (file: File) => string; // get-path-for-file
+        getPathForFile: (file: File) => string; // webUtils.getPathForFile
     };
 
     type ElectronContextMenuItem = {

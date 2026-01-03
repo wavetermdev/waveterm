@@ -1,0 +1,15 @@
+{
+    "keep": {
+        "days": true,
+        "amount": 14
+    },
+    "auditLog": "/Users/steven/dev/waveterm/logs/.e0987c2f02cc1cb106cf88cd0bfd7b7d8ea27fc9-audit.json",
+    "files": [
+        {
+            "date": 1767427944265,
+            "name": "/Users/steven/dev/waveterm/logs/error-2026-01-03.log",
+            "hash": "b8f49551269d85055d4b9d19fae3079c8c61830d7ae035302ba43c8dc38a96b1"
+        }
+    ],
+    "hashType": "sha256"
+}

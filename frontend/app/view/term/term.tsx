@@ -361,50 +361,54 @@ const TerminalView = ({ blockId, model }: ViewComponentProps<TermViewModel>) => 
         e.dataTransfer.dropEffect = "copy";
     }, []);
 
-    const handleDrop = React.useCallback((e: React.DragEvent) => {
-        e.preventDefault();
-        e.stopPropagation();
+    const handleDrop = React.useCallback(
+        (e: React.DragEvent) => {
+            e.preventDefault();
+            e.stopPropagation();
 
-        // Get files from the drop
-        const files = Array.from(e.dataTransfer.files);
-        if (files.length === 0) {
-            return;
-        }
-
-        console.log("Drop files:", files);
-
-        // Get the file path(s) using the Electron API
-        const paths = files.map((file: File) => {
-            try {
-                // Use the exposed Electron API to get the full path
-                const fullPath = getApi().getPathForFile(file);
-                console.log("File:", file.name, "-> Full path:", fullPath);
-                return fullPath;
-            } catch (err) {
-                console.error("Could not get path for file:", file.name, err);
-                return file.name;
+            // Get files from the drop
+            const files = Array.from(e.dataTransfer.files);
+            if (files.length === 0) {
+                return;
             }
-        });
 
-        console.log("Paths to insert:", paths);
+            // Get the file path(s) using the Electron API
+            const paths = files
+                .map((file: File) => {
+                    try {
+                        // Use the exposed Electron API to get the full path
+                        const fullPath = getApi().getPathForFile(file);
+                        return fullPath;
+                    } catch (err) {
+                        console.error("Could not get path for file:", file.name, err);
+                        return null;
+                    }
+                })
+                .filter((path): path is string => path !== null);
 
-        // Insert the path(s) into the terminal
-        // If multiple files, separate with spaces and quote if necessary
-        const pathString = paths.map(path => {
-            // Quote paths that contain spaces
-            if (path.includes(" ")) {
-                return `"${path}"`;
+            if (paths.length === 0) {
+                return;
             }
-            return path;
-        }).join(" ");
 
-        console.log("Final path string:", pathString);
+            // Insert the path(s) into the terminal
+            // If multiple files, separate with spaces and quote if necessary
+            const pathString = paths
+                .map((path) => {
+                    // Quote paths that contain spaces
+                    if (path.includes(" ")) {
+                        return `"${path}"`;
+                    }
+                    return path;
+                })
+                .join(" ");
 
-        // Send the path to the terminal
-        if (model.termRef.current && pathString) {
-            model.sendDataToController(pathString);
-        }
-    }, [model]);
+            // Send the path to the terminal
+            if (model.termRef.current && pathString) {
+                model.sendDataToController(pathString);
+            }
+        },
+        [model]
+    );
 
     const handleDragEnter = React.useCallback((e: React.DragEvent) => {
         e.preventDefault();
