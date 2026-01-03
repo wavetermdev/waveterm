@@ -617,6 +617,15 @@ export class WaveBrowserWindow extends BaseWindow {
                 if (tabView) {
                     console.log("reusing cached tab view", tabId, this.waveWindowId);
                     this.allTabViewsCache.delete(tabId);
+                    // Ensure cached view is in contentView (it should be, but add defensively)
+                    if (!this.isDestroyed()) {
+                        // Check if already a child before adding
+                        const isChild = this.contentView.children.includes(tabView);
+                        if (!isChild) {
+                            console.log("cached tab was not a child, re-adding", tabId);
+                            this.contentView.addChildView(tabView);
+                        }
+                    }
                 } else {
                     [tabView, tabInitialized] = await getOrCreateWebViewForTab(this.waveWindowId, tabId);
                 }
