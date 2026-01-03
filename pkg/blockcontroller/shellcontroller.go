@@ -513,14 +513,6 @@ func (bc *ShellController) manageRunningShellProcess(shellProc *shellexec.ShellP
 	shellInputCh := make(chan *BlockInputUnion, 32)
 	bc.ShellInputCh = shellInputCh
 
-	// make esc sequence wshclient wshProxy
-	// we don't need to authenticate this wshProxy since it is coming direct
-	wshProxy := wshutil.MakeRpcProxy(fmt.Sprintf("controller:%s", bc.BlockId))
-	controllerLinkId, err := wshutil.DefaultRouter.RegisterTrustedLeaf(wshProxy, wshutil.MakeControllerRouteId(bc.BlockId))
-	if err != nil {
-		return fmt.Errorf("cannot register controller route: %w", err)
-	}
-	ptyBuffer := wshutil.MakePtyBuffer(wshutil.WaveOSCPrefix, shellProc.Cmd, wshProxy.FromRemoteCh)
 	go func() {
 		// handles regular output from the pty (goes to the blockfile and xterm)
 		defer func() {
@@ -546,7 +538,7 @@ func (bc *ShellController) manageRunningShellProcess(shellProc *shellexec.ShellP
 		}()
 		buf := make([]byte, 4096)
 		for {
-			nr, err := ptyBuffer.Read(buf)
+			nr, err := shellProc.Cmd.Read(buf)
 			if nr > 0 {
 				err := HandleAppendBlockFile(bc.BlockId, wavebase.BlockFile_Term, buf[:nr])
 				if err != nil {
@@ -579,25 +571,11 @@ func (bc *ShellController) manageRunningShellProcess(shellProc *shellexec.ShellP
 	}()
 	go func() {
 		defer func() {
-			panichandler.PanicHandler("blockcontroller:shellproc-output-loop", recover())
-		}()
-		// handles outputCh -> shellInputCh
-		for msg := range wshProxy.ToRemoteCh {
-			encodedMsg, err := wshutil.EncodeWaveOSCBytes(wshutil.WaveServerOSC, msg)
-			if err != nil {
-				log.Printf("error encoding OSC message: %v\n", err)
-			}
-			shellInputCh <- &BlockInputUnion{InputData: encodedMsg}
-		}
-	}()
-	go func() {
-		defer func() {
 			panichandler.PanicHandler("blockcontroller:shellproc-wait-loop", recover())
 		}()
 		// wait for the shell to finish
 		var exitCode int
 		defer func() {
-			wshutil.DefaultRouter.UnregisterLink(controllerLinkId)
 			bc.UpdateControllerAndSendUpdate(func() bool {
 				if bc.ProcStatus == Status_Running {
 					bc.ProcStatus = Status_Done

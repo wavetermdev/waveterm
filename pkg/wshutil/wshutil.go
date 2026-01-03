@@ -11,13 +11,11 @@ import (
 	"log"
 	"net"
 	"os"
-	"os/signal"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"sync"
 	"sync/atomic"
-	"syscall"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/wavetermdev/waveterm/pkg/baseds"
@@ -28,7 +26,6 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/wavejwt"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
-	"golang.org/x/term"
 )
 
 // these should both be 5 characters
@@ -126,100 +123,15 @@ func EncodeWaveOSCMessageEx(oscNum string, msg *RpcMessage) ([]byte, error) {
 	return EncodeWaveOSCBytes(oscNum, barr)
 }
 
-var termModeLock = sync.Mutex{}
-var termIsRaw bool
-var origTermState *term.State
-var shutdownSignalHandlersInstalled bool
 var shutdownOnce sync.Once
-var extraShutdownFunc atomic.Pointer[func()]
 
 func DoShutdown(reason string, exitCode int, quiet bool) {
 	shutdownOnce.Do(func() {
 		defer os.Exit(exitCode)
-		RestoreTermState()
-		extraFn := extraShutdownFunc.Load()
-		if extraFn != nil {
-			(*extraFn)()
-		}
 		if !quiet && reason != "" {
-			log.Printf("shutting down: %s\r\n", reason)
+			log.Printf("shutting down: %s\n", reason)
 		}
 	})
-}
-
-func installShutdownSignalHandlers(quiet bool) {
-	termModeLock.Lock()
-	defer termModeLock.Unlock()
-	if shutdownSignalHandlersInstalled {
-		return
-	}
-	sigCh := make(chan os.Signal, 1)
-	signal.Notify(sigCh, syscall.SIGHUP, syscall.SIGTERM, syscall.SIGINT)
-	go func() {
-		defer func() {
-			panichandler.PanicHandlerNoTelemetry("installShutdownSignalHandlers", recover())
-		}()
-		for sig := range sigCh {
-			DoShutdown(fmt.Sprintf("got signal %v", sig), 1, quiet)
-			break
-		}
-	}()
-}
-
-func SetTermRawModeAndInstallShutdownHandlers(quietShutdown bool) {
-	SetTermRawMode()
-	installShutdownSignalHandlers(quietShutdown)
-}
-
-func SetExtraShutdownFunc(fn func()) {
-	extraShutdownFunc.Store(&fn)
-}
-
-func SetTermRawMode() {
-	termModeLock.Lock()
-	defer termModeLock.Unlock()
-	if termIsRaw {
-		return
-	}
-	origState, err := term.MakeRaw(int(os.Stdin.Fd()))
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error setting raw mode: %v\n", err)
-		return
-	}
-	origTermState = origState
-	termIsRaw = true
-}
-
-func RestoreTermState() {
-	termModeLock.Lock()
-	defer termModeLock.Unlock()
-	if !termIsRaw || origTermState == nil {
-		return
-	}
-	term.Restore(int(os.Stdin.Fd()), origTermState)
-	termIsRaw = false
-}
-
-// returns (wshRpc, wrappedStdin)
-func SetupTerminalRpcClient(serverImpl ServerImpl, debugStr string) (*WshRpc, io.Reader) {
-	messageCh := make(chan baseds.RpcInputChType, DefaultInputChSize)
-	outputCh := make(chan []byte, DefaultOutputChSize)
-	ptyBuf := MakePtyBuffer(WaveServerOSCPrefix, os.Stdin, messageCh)
-	rpcClient := MakeWshRpcWithChannels(messageCh, outputCh, wshrpc.RpcContext{}, serverImpl, debugStr)
-	go func() {
-		defer func() {
-			panichandler.PanicHandler("SetupTerminalRpcClient", recover())
-		}()
-		for msg := range outputCh {
-			barr, err := EncodeWaveOSCBytes(WaveOSC, msg)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "Error encoding OSC message: %v\n", err)
-				continue
-			}
-			os.Stdout.Write(barr)
-		}
-	}()
-	return rpcClient, ptyBuf
 }
 
 func SetupPacketRpcClient(input io.Reader, output io.Writer, serverImpl ServerImpl, debugStr string) (*WshRpc, chan []byte) {
