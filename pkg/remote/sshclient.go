@@ -162,7 +162,12 @@ func maskIdentityFile(path string) string {
 		if len(parts) >= 3 {
 			maskedUsername := MaskString(parts[2])
 			if len(parts) >= 4 {
-				maskedDir = "/home/" + maskedUsername + "/" + filepath.Dir(parts[3])
+				subDir := filepath.Dir(parts[3])
+				if subDir == "." {
+					maskedDir = "/home/" + maskedUsername
+				} else {
+					maskedDir = "/home/" + maskedUsername + "/" + subDir
+				}
 			} else {
 				maskedDir = "/home/" + maskedUsername
 			}
@@ -176,7 +181,12 @@ func maskIdentityFile(path string) string {
 		if len(parts) >= 1 {
 			maskedUsername := MaskString(parts[0])
 			if len(parts) >= 2 {
-				maskedDir = prefix + "/Users/" + maskedUsername + "/" + filepath.Dir(parts[1])
+				subDir := filepath.Dir(parts[1])
+				if subDir == "." {
+					maskedDir = prefix + "/Users/" + maskedUsername
+				} else {
+					maskedDir = prefix + "/Users/" + maskedUsername + "/" + subDir
+				}
 			} else {
 				maskedDir = prefix + "/Users/" + maskedUsername
 			}
