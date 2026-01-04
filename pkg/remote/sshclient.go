@@ -238,6 +238,78 @@ func createPublicKeyCallback(connCtx context.Context, sshKeywords *wconfig.ConnK
 	// require pointer to modify list in closure
 	identityFilesPtr := &identityFiles
 
+	// If IdentitiesOnly is set, filter agent signers to only include those that match an IdentityFile
+	// This matches OpenSSH behavior where the agent can still be used, but only for keys explicitly listed
+	if utilfn.SafeDeref(sshKeywords.SshIdentitiesOnly) && len(authSockSignersExt) > 0 {
+		var identityPubKeys []ssh.PublicKey
+		for _, identityFile := range identityFiles {
+			pubKeyData := existingKeys[identityFile]
+
+			// 1. Try reading as OpenSSH authorized_key format (e.g., "ssh-rsa AAAA... comment")
+			// This is the most common format for .pub files including 1Password
+			pubKey, _, _, _, err := ssh.ParseAuthorizedKey(pubKeyData)
+			if err == nil {
+				identityPubKeys = append(identityPubKeys, pubKey)
+				blocklogger.Debugf(connCtx, "[ssh-agent] loaded public key from %s (authorized_key format)\n", maskIdentityFile(identityFile))
+				continue
+			}
+
+			// 2. Try reading as raw public key (binary format)
+			pubKey, err = ssh.ParsePublicKey(pubKeyData)
+			if err == nil {
+				identityPubKeys = append(identityPubKeys, pubKey)
+				blocklogger.Debugf(connCtx, "[ssh-agent] loaded public key from %s (raw format)\n", maskIdentityFile(identityFile))
+				continue
+			}
+
+			// 3. Try reading as unencrypted private key (to get public key)
+			privKey, err := ssh.ParseRawPrivateKey(pubKeyData)
+			if err == nil {
+				signer, err := ssh.NewSignerFromKey(privKey)
+				if err == nil {
+					identityPubKeys = append(identityPubKeys, signer.PublicKey())
+					blocklogger.Debugf(connCtx, "[ssh-agent] loaded public key from %s (private key)\n", maskIdentityFile(identityFile))
+					continue
+				}
+			}
+
+			// 4. Handle encrypted private keys by looking for a corresponding .pub file
+			pubKeyPath, _ := wavebase.ExpandHomeDir(identityFile + ".pub")
+			if pubKeyPath != "" {
+				pubKeyData, err = os.ReadFile(pubKeyPath)
+				if err == nil {
+					pubKey, _, _, _, err = ssh.ParseAuthorizedKey(pubKeyData)
+					if err == nil {
+						identityPubKeys = append(identityPubKeys, pubKey)
+						blocklogger.Debugf(connCtx, "[ssh-agent] loaded public key from %s.pub\n", maskIdentityFile(identityFile))
+						continue
+					}
+				}
+			}
+
+			blocklogger.Debugf(connCtx, "[ssh-agent] WARNING: could not load public key from %s\n", maskIdentityFile(identityFile))
+		}
+
+		var filtered []ssh.Signer
+		for _, signer := range authSockSignersExt {
+			matched := false
+			for _, pubKey := range identityPubKeys {
+				if bytes.Equal(signer.PublicKey().Marshal(), pubKey.Marshal()) {
+					matched = true
+					break
+				}
+			}
+			if matched {
+				filtered = append(filtered, signer)
+				blocklogger.Debugf(connCtx, "[ssh-agent] keeping agent key %s (matches IdentityFile)\n", MaskString(ssh.FingerprintSHA256(signer.PublicKey())))
+			} else {
+				blocklogger.Debugf(connCtx, "[ssh-agent] skipping agent key %s (IdentitiesOnly=true, no matching IdentityFile)\n", MaskString(ssh.FingerprintSHA256(signer.PublicKey())))
+			}
+		}
+		authSockSignersExt = filtered
+		blocklogger.Infof(connCtx, "[ssh-agent] after IdentitiesOnly filtering: %d signers remaining\n", len(authSockSignersExt))
+	}
+
 	var authSockSigners []ssh.Signer
 	authSockSigners = append(authSockSigners, authSockSignersExt...)
 	authSockSignersPtr := &authSockSigners
@@ -715,9 +787,10 @@ func createClientConfig(connCtx context.Context, sshKeywords *wconfig.ConnKeywor
 	var agentClient agent.ExtendedAgent
 
 	// IdentitiesOnly indicates that only the keys listed in the identity and certificate files or passed as arguments should be used, even if there are matches in the SSH Agent, PKCS11Provider, or SecurityKeyProvider. See https://man.openbsd.org/ssh_config#IdentitiesOnly
+	// When IdentitiesOnly is true, we still connect to the agent but filter signers in createPublicKeyCallback
 	// TODO: Update if we decide to support PKCS11Provider and SecurityKeyProvider
 	agentPath := strings.TrimSpace(utilfn.SafeDeref(sshKeywords.SshIdentityAgent))
-	if !utilfn.SafeDeref(sshKeywords.SshIdentitiesOnly) && agentPath != "" {
+	if agentPath != "" {
 		blocklogger.Debugf(connCtx, "[ssh-agent] attempting to connect to agent at %q\n", filepath.Base(agentPath))
 		conn, err := dialIdentityAgent(agentPath)
 		if err != nil {
@@ -744,11 +817,7 @@ func createClientConfig(connCtx context.Context, sshKeywords *wconfig.ConnKeywor
 			}
 		}
 	} else {
-		if agentPath == "" {
-			blocklogger.Debugf(connCtx, "[ssh-agent] no agent path configured\n")
-		} else {
-			blocklogger.Debugf(connCtx, "[ssh-agent] agent skipped (IdentitiesOnly=%v)\n", utilfn.SafeDeref(sshKeywords.SshIdentitiesOnly))
-		}
+		blocklogger.Debugf(connCtx, "[ssh-agent] no agent path configured\n")
 	}
 
 	var sshPassword *string
@@ -1098,7 +1167,12 @@ func findSshDefaults(hostPattern string) (connKeywords *wconfig.ConnKeywords, ou
 	sshKeywords.SshPreferredAuthentications = strings.Split(ssh_config.Default("PreferredAuthentications"), ",")
 	sshKeywords.SshAddKeysToAgent = utilfn.Ptr(false)
 	sshKeywords.SshIdentitiesOnly = utilfn.Ptr(false)
-	sshKeywords.SshIdentityAgent = utilfn.Ptr(ssh_config.Default("IdentityAgent"))
+	// On Windows, use the default OpenSSH named pipe; on Unix, use the SSH_AUTH_SOCK default
+	if runtime.GOOS == "windows" {
+		sshKeywords.SshIdentityAgent = utilfn.Ptr(`\\.\pipe\openssh-ssh-agent`)
+	} else {
+		sshKeywords.SshIdentityAgent = utilfn.Ptr(ssh_config.Default("IdentityAgent"))
+	}
 	sshKeywords.SshProxyJump = []string{}
 	sshKeywords.SshUserKnownHostsFile = strings.Fields(ssh_config.Default("UserKnownHostsFile"))
 	sshKeywords.SshGlobalKnownHostsFile = strings.Fields(ssh_config.Default("GlobalKnownHostsFile"))
