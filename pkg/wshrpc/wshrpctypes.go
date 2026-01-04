@@ -373,7 +373,7 @@ type RpcOpts struct {
 	NoResponse bool   `json:"noresponse,omitempty"`
 	Route      string `json:"route,omitempty"`
 
-	StreamCancelFn func(ctx context.Context) error `json:"-"` // this is an *output* parameter, set by the handler
+	StreamCancelFn func() `json:"-"` // this is an *output* parameter, set by the handler
 }
 
 const (
