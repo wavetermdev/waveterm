@@ -22,11 +22,6 @@ var (
 	sessionManagerClient_Singleton *wshutil.WshRpc
 )
 
-const (
-	DefaultInputChSize  = 32
-	DefaultOutputChSize = 32
-)
-
 type ServerImpl struct {
 	LogWriter io.Writer
 }
@@ -48,24 +43,24 @@ func (impl *ServerImpl) MessageCommand(ctx context.Context, data wshrpc.CommandM
 
 func (impl *ServerImpl) SessionManagerStartProcCommand(ctx context.Context, data wshrpc.CommandSessionManagerStartProcData) (*wshrpc.CommandSessionManagerStartProcRtnData, error) {
 	impl.Log("[startproc] cmd=%q args=%v\n", data.Cmd, data.Args)
-	
+
 	sm := GetSessionManager()
 	if sm == nil {
 		return nil, fmt.Errorf("session manager not initialized")
 	}
-	
+
 	termSize := waveobj.TermSize{Rows: 25, Cols: 80}
 	if data.TermSize != nil {
 		termSize = *data.TermSize
 	}
-	
+
 	pid, err := sm.StartProc(data.Cmd, data.Args, data.Env, termSize)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	impl.Log("[startproc] started process pid=%d\n", pid)
-	
+
 	return &wshrpc.CommandSessionManagerStartProcRtnData{
 		Success: true,
 		Message: fmt.Sprintf("process started with pid %d", pid),
@@ -74,7 +69,7 @@ func (impl *ServerImpl) SessionManagerStartProcCommand(ctx context.Context, data
 
 func (impl *ServerImpl) SessionManagerStopProcCommand(ctx context.Context) error {
 	impl.Log("[stopproc] stopping process\n")
-	
+
 	sm := GetSessionManager()
 	cmd, cmdPty := sm.GetCmd()
 	if cmd != nil && cmd.Process != nil {
@@ -89,15 +84,15 @@ func (impl *ServerImpl) SessionManagerStopProcCommand(ctx context.Context) error
 		cmdPty.Close()
 	}
 	sm.SetCmd(nil, nil)
-	
+
 	impl.Log("[stopproc] shutting down in %v\n", ShutdownDelayTime)
-	
+
 	go func() {
 		time.Sleep(ShutdownDelayTime)
 		sm.Cleanup()
 		os.Exit(0)
 	}()
-	
+
 	return nil
 }
 
