@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/creack/pty"
+	"github.com/wavetermdev/waveterm/pkg/baseds"
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
@@ -300,8 +301,8 @@ func MakeSessionUnixListener(socketPath string) (net.Listener, error) {
 }
 
 func handleSessionConnection(conn net.Conn, clientId string, sessionId string, authToken string) {
-	var routeIdContainer atomic.Pointer[string]
-	proxy := wshutil.MakeRpcProxy()
+	var linkIdContainer atomic.Int32
+	proxy := wshutil.MakeRpcProxy(fmt.Sprintf("session-%s", sessionId))
 
 	go func() {
 		defer func() {
@@ -321,32 +322,16 @@ func handleSessionConnection(conn net.Conn, clientId string, sessionId string, a
 			conn.Close()
 			close(proxy.FromRemoteCh)
 			close(proxy.ToRemoteCh)
-			routeIdPtr := routeIdContainer.Load()
-			if routeIdPtr != nil && *routeIdPtr != "" {
-				wshutil.DefaultRouter.UnregisterRoute(*routeIdPtr)
-				GetSessionManager().UnregisterRoute(*routeIdPtr)
+			linkId := linkIdContainer.Load()
+			if linkId != 0 {
+				wshutil.DefaultRouter.UnregisterLink(baseds.LinkId(linkId))
 			}
 		}()
 		wshutil.AdaptStreamToMsgCh(conn, proxy.FromRemoteCh)
 	}()
 
-	rpcCtx, err := proxy.HandleAuthentication(authToken)
-	if err != nil {
-		conn.Close()
-		log.Printf("error handling authentication: %v\n", err)
-		return
-	}
-	log.Printf("session connection authenticated: %#v\n", rpcCtx)
-	proxy.SetRpcContext(rpcCtx)
-	routeId, err := wshutil.MakeRouteIdFromCtx(rpcCtx)
-	if err != nil {
-		conn.Close()
-		log.Printf("error making route id: %v\n", err)
-		return
-	}
-	routeIdContainer.Store(&routeId)
-	wshutil.DefaultRouter.RegisterRoute(routeId, proxy, true)
-	GetSessionManager().RegisterRoute(routeId)
+	linkId := wshutil.DefaultRouter.RegisterUntrustedLink(proxy)
+	linkIdContainer.Store(int32(linkId))
 }
 
 func runSessionListener(listener net.Listener, clientId string, sessionId string, authToken string) {

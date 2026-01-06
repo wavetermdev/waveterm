@@ -111,11 +111,7 @@ func (impl *ServerImpl) SessionManagerInputCommand(ctx context.Context, data wsh
 
 func GetSessionManagerRpcClient() *wshutil.WshRpc {
 	sessionManagerClient_Once.Do(func() {
-		inputCh := make(chan []byte, DefaultInputChSize)
-		outputCh := make(chan []byte, DefaultOutputChSize)
 		sessionManagerClient_Singleton = wshutil.MakeWshRpc(
-			inputCh,
-			outputCh,
 			wshrpc.RpcContext{},
 			&ServerImpl{},
 			"sessionmanager-client",
@@ -126,5 +122,8 @@ func GetSessionManagerRpcClient() *wshutil.WshRpc {
 
 func registerSessionManagerRoute() {
 	rpc := GetSessionManagerRpcClient()
-	wshutil.DefaultRouter.RegisterRoute(wshutil.DefaultRoute, rpc, true)
+	_, err := wshutil.DefaultRouter.RegisterTrustedLeaf(rpc, wshutil.DefaultRoute)
+	if err != nil {
+		log.Printf("error registering session manager route: %v\n", err)
+	}
 }
