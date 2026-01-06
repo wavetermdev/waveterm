@@ -53,11 +53,16 @@ func viewRun(cmd *cobra.Command, args []string) (rtnErr error) {
 		OutputHelpMessage(cmd)
 		return fmt.Errorf("too many arguments.  wsh %s requires exactly one argument", cmdName)
 	}
+	tabId := getTabIdFromEnv()
+	if tabId == "" {
+		return fmt.Errorf("no WAVETERM_TABID env var set")
+	}
 	fileArg := args[0]
 	conn := RpcContext.Conn
 	var wshCmd *wshrpc.CommandCreateBlockData
 	if strings.HasPrefix(fileArg, "http://") || strings.HasPrefix(fileArg, "https://") {
 		wshCmd = &wshrpc.CommandCreateBlockData{
+			TabId: tabId,
 			BlockDef: &waveobj.BlockDef{
 				Meta: map[string]any{
 					waveobj.MetaKey_View: "web",
@@ -84,6 +89,7 @@ func viewRun(cmd *cobra.Command, args []string) (rtnErr error) {
 			return fmt.Errorf("getting file info: %w", err)
 		}
 		wshCmd = &wshrpc.CommandCreateBlockData{
+			TabId: tabId,
 			BlockDef: &waveobj.BlockDef{
 				Meta: map[string]interface{}{
 					waveobj.MetaKey_View: "preview",

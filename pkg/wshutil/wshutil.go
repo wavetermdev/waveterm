@@ -11,24 +11,21 @@ import (
 	"log"
 	"net"
 	"os"
-	"os/signal"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"sync"
 	"sync/atomic"
-	"syscall"
-	"time"
 
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/google/uuid"
+	"github.com/wavetermdev/waveterm/pkg/baseds"
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/util/packetparser"
 	"github.com/wavetermdev/waveterm/pkg/util/shellutil"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
+	"github.com/wavetermdev/waveterm/pkg/wavejwt"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
-	"golang.org/x/term"
 )
 
 // these should both be 5 characters
@@ -126,108 +123,22 @@ func EncodeWaveOSCMessageEx(oscNum string, msg *RpcMessage) ([]byte, error) {
 	return EncodeWaveOSCBytes(oscNum, barr)
 }
 
-var termModeLock = sync.Mutex{}
-var termIsRaw bool
-var origTermState *term.State
-var shutdownSignalHandlersInstalled bool
 var shutdownOnce sync.Once
-var extraShutdownFunc atomic.Pointer[func()]
 
 func DoShutdown(reason string, exitCode int, quiet bool) {
 	shutdownOnce.Do(func() {
 		defer os.Exit(exitCode)
-		RestoreTermState()
-		extraFn := extraShutdownFunc.Load()
-		if extraFn != nil {
-			(*extraFn)()
-		}
 		if !quiet && reason != "" {
-			log.Printf("shutting down: %s\r\n", reason)
+			log.Printf("shutting down: %s\n", reason)
 		}
 	})
 }
 
-func installShutdownSignalHandlers(quiet bool) {
-	termModeLock.Lock()
-	defer termModeLock.Unlock()
-	if shutdownSignalHandlersInstalled {
-		return
-	}
-	sigCh := make(chan os.Signal, 1)
-	signal.Notify(sigCh, syscall.SIGHUP, syscall.SIGTERM, syscall.SIGINT)
-	go func() {
-		defer func() {
-			panichandler.PanicHandlerNoTelemetry("installShutdownSignalHandlers", recover())
-		}()
-		for sig := range sigCh {
-			DoShutdown(fmt.Sprintf("got signal %v", sig), 1, quiet)
-			break
-		}
-	}()
-}
-
-func SetTermRawModeAndInstallShutdownHandlers(quietShutdown bool) {
-	SetTermRawMode()
-	installShutdownSignalHandlers(quietShutdown)
-}
-
-func SetExtraShutdownFunc(fn func()) {
-	extraShutdownFunc.Store(&fn)
-}
-
-func SetTermRawMode() {
-	termModeLock.Lock()
-	defer termModeLock.Unlock()
-	if termIsRaw {
-		return
-	}
-	origState, err := term.MakeRaw(int(os.Stdin.Fd()))
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error setting raw mode: %v\n", err)
-		return
-	}
-	origTermState = origState
-	termIsRaw = true
-}
-
-func RestoreTermState() {
-	termModeLock.Lock()
-	defer termModeLock.Unlock()
-	if !termIsRaw || origTermState == nil {
-		return
-	}
-	term.Restore(int(os.Stdin.Fd()), origTermState)
-	termIsRaw = false
-}
-
-// returns (wshRpc, wrappedStdin)
-func SetupTerminalRpcClient(serverImpl ServerImpl, debugStr string) (*WshRpc, io.Reader) {
-	messageCh := make(chan []byte, DefaultInputChSize)
-	outputCh := make(chan []byte, DefaultOutputChSize)
-	ptyBuf := MakePtyBuffer(WaveServerOSCPrefix, os.Stdin, messageCh)
-	rpcClient := MakeWshRpc(messageCh, outputCh, wshrpc.RpcContext{}, serverImpl, debugStr)
-	go func() {
-		defer func() {
-			panichandler.PanicHandler("SetupTerminalRpcClient", recover())
-		}()
-		for msg := range outputCh {
-			barr, err := EncodeWaveOSCBytes(WaveOSC, msg)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "Error encoding OSC message: %v\n", err)
-				continue
-			}
-			os.Stdout.Write(barr)
-			os.Stdout.Write([]byte{'\n'})
-		}
-	}()
-	return rpcClient, ptyBuf
-}
-
 func SetupPacketRpcClient(input io.Reader, output io.Writer, serverImpl ServerImpl, debugStr string) (*WshRpc, chan []byte) {
-	messageCh := make(chan []byte, DefaultInputChSize)
+	messageCh := make(chan baseds.RpcInputChType, DefaultInputChSize)
 	outputCh := make(chan []byte, DefaultOutputChSize)
 	rawCh := make(chan []byte, DefaultOutputChSize)
-	rpcClient := MakeWshRpc(messageCh, outputCh, wshrpc.RpcContext{}, serverImpl, debugStr)
+	rpcClient := MakeWshRpcWithChannels(messageCh, outputCh, wshrpc.RpcContext{}, serverImpl, debugStr)
 	go packetparser.Parse(input, messageCh, rawCh)
 	go func() {
 		defer func() {
@@ -241,7 +152,7 @@ func SetupPacketRpcClient(input io.Reader, output io.Writer, serverImpl ServerIm
 }
 
 func SetupConnRpcClient(conn net.Conn, serverImpl ServerImpl, debugStr string) (*WshRpc, chan error, error) {
-	inputCh := make(chan []byte, DefaultInputChSize)
+	inputCh := make(chan baseds.RpcInputChType, DefaultInputChSize)
 	outputCh := make(chan []byte, DefaultOutputChSize)
 	writeErrCh := make(chan error, 1)
 	go func() {
@@ -262,7 +173,7 @@ func SetupConnRpcClient(conn net.Conn, serverImpl ServerImpl, debugStr string) (
 		defer conn.Close()
 		AdaptStreamToMsgCh(conn, inputCh)
 	}()
-	rtn := MakeWshRpc(inputCh, outputCh, wshrpc.RpcContext{}, serverImpl, debugStr)
+	rtn := MakeWshRpcWithChannels(inputCh, outputCh, wshrpc.RpcContext{}, serverImpl, debugStr)
 	return rtn, writeErrCh, nil
 }
 
@@ -275,6 +186,7 @@ func tryTcpSocket(sockName string) (net.Conn, error) {
 }
 
 func SetupDomainSocketRpcClient(sockName string, serverImpl ServerImpl, debugName string) (*WshRpc, error) {
+	sockName = wavebase.ExpandHomeDirSafe(sockName)
 	conn, tcpErr := tryTcpSocket(sockName)
 	var unixErr error
 	if tcpErr != nil {
@@ -297,94 +209,41 @@ func SetupDomainSocketRpcClient(sockName string, serverImpl ServerImpl, debugNam
 	return rtn, err
 }
 
-func MakeClientJWTToken(rpcCtx wshrpc.RpcContext, sockName string) (string, error) {
-	claims := jwt.MapClaims{}
-	claims["iat"] = time.Now().Unix()
-	claims["iss"] = "waveterm"
-	claims["sock"] = sockName
-	claims["exp"] = time.Now().Add(time.Hour * 24 * 365).Unix()
-	if rpcCtx.BlockId != "" {
-		claims["blockid"] = rpcCtx.BlockId
+func MakeClientJWTToken(rpcCtx wshrpc.RpcContext) (string, error) {
+	if wavebase.IsDevMode() {
+		if rpcCtx.IsRouter && rpcCtx.RouteId != "" {
+			panic("Invalid RpcCtx, router w/ routeid")
+		}
+		if !rpcCtx.IsRouter && rpcCtx.RouteId == "" {
+			panic("Invalid RpcCtx, no routeid")
+		}
 	}
-	if rpcCtx.TabId != "" {
-		claims["tabid"] = rpcCtx.TabId
+	claims := &wavejwt.WaveJwtClaims{
+		Sock:    rpcCtx.SockName,
+		RouteId: rpcCtx.RouteId,
+		BlockId: rpcCtx.BlockId,
+		Conn:    rpcCtx.Conn,
+		Router:  rpcCtx.IsRouter,
 	}
-	if rpcCtx.Conn != "" {
-		claims["conn"] = rpcCtx.Conn
-	}
-	if rpcCtx.ClientType != "" {
-		claims["ctype"] = rpcCtx.ClientType
-	}
-	if rpcCtx.RouteId != "" {
-		claims["route"] = rpcCtx.RouteId
-	}
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	tokenStr, err := token.SignedString([]byte(wavebase.JwtSecret))
-	if err != nil {
-		return "", fmt.Errorf("error signing token: %w", err)
-	}
-	return tokenStr, nil
+	return wavejwt.Sign(claims)
 }
 
-func ValidateAndExtractRpcContextFromToken(tokenStr string, jwtSecret string) (*wshrpc.RpcContext, error) {
-	parser := jwt.NewParser(jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Name}))
-	token, err := parser.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
-		return []byte(jwtSecret), nil
-	})
-	if err != nil {
-		return nil, fmt.Errorf("error parsing token: %w", err)
+func claimsToRpcCtx(claims *wavejwt.WaveJwtClaims) *wshrpc.RpcContext {
+	return &wshrpc.RpcContext{
+		SockName: claims.Sock,
+		RouteId:  claims.RouteId,
+		BlockId:  claims.BlockId,
+		Conn:     claims.Conn,
+		IsRouter: claims.Router,
 	}
-	claims, ok := token.Claims.(jwt.MapClaims)
-	if !ok {
-		return nil, fmt.Errorf("error getting claims from token")
-	}
-	// validate "exp" claim
-	if exp, ok := claims["exp"].(float64); ok {
-		if int64(exp) < time.Now().Unix() {
-			return nil, fmt.Errorf("token has expired")
-		}
-	} else {
-		return nil, fmt.Errorf("exp claim is missing or invalid")
-	}
-	// validate "iss" claim
-	if iss, ok := claims["iss"].(string); ok {
-		if iss != "waveterm" {
-			return nil, fmt.Errorf("unexpected issuer: %s", iss)
-		}
-	} else {
-		return nil, fmt.Errorf("iss claim is missing or invalid")
-	}
-	return mapClaimsToRpcContext(claims), nil
 }
 
-func mapClaimsToRpcContext(claims jwt.MapClaims) *wshrpc.RpcContext {
-	rpcCtx := &wshrpc.RpcContext{}
-	if claims["blockid"] != nil {
-		if blockId, ok := claims["blockid"].(string); ok {
-			rpcCtx.BlockId = blockId
-		}
+func ValidateAndExtractRpcContextFromToken(tokenStr string) (*wshrpc.RpcContext, error) {
+	claims, err := wavejwt.ValidateAndExtract(tokenStr)
+	if err != nil {
+		return nil, err
 	}
-	if claims["tabid"] != nil {
-		if tabId, ok := claims["tabid"].(string); ok {
-			rpcCtx.TabId = tabId
-		}
-	}
-	if claims["conn"] != nil {
-		if conn, ok := claims["conn"].(string); ok {
-			rpcCtx.Conn = conn
-		}
-	}
-	if claims["ctype"] != nil {
-		if ctype, ok := claims["ctype"].(string); ok {
-			rpcCtx.ClientType = ctype
-		}
-	}
-	if claims["route"] != nil {
-		if route, ok := claims["route"].(string); ok {
-			rpcCtx.RouteId = route
-		}
-	}
-	return rpcCtx
+	return claimsToRpcCtx(claims), nil
 }
 
 func RunWshRpcOverListener(listener net.Listener) {
@@ -403,32 +262,6 @@ func RunWshRpcOverListener(listener net.Listener) {
 	}
 }
 
-func MakeRouteIdFromCtx(rpcCtx *wshrpc.RpcContext) (string, error) {
-	if rpcCtx.ClientType != "" {
-		if rpcCtx.ClientType == wshrpc.ClientType_ConnServer {
-			if rpcCtx.Conn != "" {
-				return MakeConnectionRouteId(rpcCtx.Conn), nil
-			}
-			return "", fmt.Errorf("invalid connserver connection, no conn id")
-		}
-		if rpcCtx.ClientType == wshrpc.ClientType_BlockController {
-			if rpcCtx.BlockId != "" {
-				return MakeControllerRouteId(rpcCtx.BlockId), nil
-			}
-			return "", fmt.Errorf("invalid block controller connection, no block id")
-		}
-		if rpcCtx.ClientType == wshrpc.ClientType_Route {
-			if rpcCtx.RouteId != "" {
-				return rpcCtx.RouteId, nil
-			}
-			return "", fmt.Errorf("invalid route connection, no route specified")
-		}
-		return "", fmt.Errorf("invalid client type: %q", rpcCtx.ClientType)
-	}
-	procId := uuid.New().String()
-	return MakeProcRouteId(procId), nil
-}
-
 type WriteFlusher interface {
 	Write([]byte) (int, error)
 	Flush() error
@@ -436,23 +269,24 @@ type WriteFlusher interface {
 
 // blocking, returns if there is an error, or on EOF of input
 func HandleStdIOClient(logName string, input chan utilfn.LineOutput, output io.Writer) {
-	proxy := MakeRpcMultiProxy()
+	proxy := MakeRpcProxy(logName)
+	linkId := DefaultRouter.RegisterTrustedRouter(proxy)
 	rawCh := make(chan []byte, DefaultInputChSize)
-	go packetparser.ParseWithLinesChan(input, proxy.FromRemoteRawCh, rawCh)
+	go func() {
+		defer func() {
+			panichandler.PanicHandler("HandleStdIOClient:ParseWithLinesChan", recover())
+		}()
+		packetparser.ParseWithLinesChan(input, proxy.FromRemoteCh, rawCh)
+	}()
 	doneCh := make(chan struct{})
 	var doneOnce sync.Once
 	closeDoneCh := func() {
 		doneOnce.Do(func() {
 			close(doneCh)
+			DefaultRouter.UnregisterLink(linkId)
+			close(proxy.FromRemoteCh)
 		})
-		proxy.DisposeRoutes()
 	}
-	go func() {
-		defer func() {
-			panichandler.PanicHandler("HandleStdIOClient:RunUnauthLoop", recover())
-		}()
-		proxy.RunUnauthLoop()
-	}()
 	go func() {
 		defer func() {
 			panichandler.PanicHandler("HandleStdIOClient:ToRemoteChLoop", recover())
@@ -482,8 +316,8 @@ func HandleStdIOClient(logName string, input chan utilfn.LineOutput, output io.W
 }
 
 func handleDomainSocketClient(conn net.Conn) {
-	var routeIdContainer atomic.Pointer[string]
-	proxy := MakeRpcProxy()
+	var linkIdContainer atomic.Int32
+	proxy := MakeRpcProxy("domain")
 	go func() {
 		defer func() {
 			panichandler.PanicHandler("handleDomainSocketClient:AdaptOutputChToStream", recover())
@@ -502,61 +336,42 @@ func handleDomainSocketClient(conn net.Conn) {
 			conn.Close()
 			close(proxy.FromRemoteCh)
 			close(proxy.ToRemoteCh)
-			routeIdPtr := routeIdContainer.Load()
-			if routeIdPtr != nil && *routeIdPtr != "" {
-				DefaultRouter.UnregisterRoute(*routeIdPtr)
+			linkId := linkIdContainer.Load()
+			if linkId != baseds.NoLinkId {
+				DefaultRouter.UnregisterLink(baseds.LinkId(linkId))
 			}
 		}()
 		AdaptStreamToMsgCh(conn, proxy.FromRemoteCh)
 	}()
-	rpcCtx, err := proxy.HandleAuthentication(wavebase.JwtSecret)
-	if err != nil {
-		conn.Close()
-		log.Printf("error handling authentication: %v\n", err)
-		return
-	}
-	// now that we're authenticated, set the ctx and attach to the router
-	log.Printf("domain socket connection authenticated: %#v\n", rpcCtx)
-	proxy.SetRpcContext(rpcCtx)
-	routeId, err := MakeRouteIdFromCtx(rpcCtx)
-	if err != nil {
-		conn.Close()
-		log.Printf("error making route id: %v\n", err)
-		return
-	}
-	routeIdContainer.Store(&routeId)
-	DefaultRouter.RegisterRoute(routeId, proxy, true)
+	linkId := DefaultRouter.RegisterUntrustedLink(proxy)
+	linkIdContainer.Store(int32(linkId))
 }
 
 // only for use on client
 func ExtractUnverifiedRpcContext(tokenStr string) (*wshrpc.RpcContext, error) {
-	// this happens on the client who does not have access to the secret key
-	// we want to read the claims without validating the signature
-	token, _, err := new(jwt.Parser).ParseUnverified(tokenStr, jwt.MapClaims{})
+	token, _, err := new(jwt.Parser).ParseUnverified(tokenStr, &wavejwt.WaveJwtClaims{})
 	if err != nil {
 		return nil, fmt.Errorf("error parsing token: %w", err)
 	}
-	claims, ok := token.Claims.(jwt.MapClaims)
+	claims, ok := token.Claims.(*wavejwt.WaveJwtClaims)
 	if !ok {
 		return nil, fmt.Errorf("error getting claims from token")
 	}
-	return mapClaimsToRpcContext(claims), nil
+	return claimsToRpcCtx(claims), nil
 }
 
 // only for use on client
 func ExtractUnverifiedSocketName(tokenStr string) (string, error) {
-	// this happens on the client who does not have access to the secret key
-	// we want to read the claims without validating the signature
-	token, _, err := new(jwt.Parser).ParseUnverified(tokenStr, jwt.MapClaims{})
+	token, _, err := new(jwt.Parser).ParseUnverified(tokenStr, &wavejwt.WaveJwtClaims{})
 	if err != nil {
 		return "", fmt.Errorf("error parsing token: %w", err)
 	}
-	claims, ok := token.Claims.(jwt.MapClaims)
+	claims, ok := token.Claims.(*wavejwt.WaveJwtClaims)
 	if !ok {
 		return "", fmt.Errorf("error getting claims from token")
 	}
-	sockName, ok := claims["sock"].(string)
-	if !ok {
+	sockName := claims.Sock
+	if sockName == "" {
 		return "", fmt.Errorf("sock claim is missing or invalid")
 	}
 	sockName = wavebase.ExpandHomeDirSafe(sockName)

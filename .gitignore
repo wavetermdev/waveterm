@@ -16,6 +16,7 @@ out/
 make/
 artifacts/
 mikework/
+manifests/
 .env
 out
 

@@ -8,7 +8,6 @@ vars:
     BIN_DIR: "bin"
     VERSION:
         sh: node version.cjs
-    RM: '{{if eq OS "windows"}}powershell Remove-Item -Force -ErrorAction SilentlyContinue{{else}}rm -f{{end}}'
     RMRF: '{{if eq OS "windows"}}powershell Remove-Item -Force -Recurse -ErrorAction SilentlyContinue{{else}}rm -rf{{end}}'
     DATE: '{{if eq OS "windows"}}powershell Get-Date -UFormat{{else}}date{{end}}'
     ARTIFACTS_BUCKET: waveterm-github-artifacts/staging-w2
@@ -177,7 +176,7 @@ tasks:
         desc: Build the wavesrv component for macOS (Darwin) platforms (generates artifacts for both arm64 and amd64).
         platforms: [darwin]
         cmds:
-            - cmd: "{{.RM}} dist/bin/wavesrv*"
+            - cmd: rm -f dist/bin/wavesrv*
               ignore_error: true
             - task: build:server:internal
               vars:
@@ -224,7 +223,7 @@ tasks:
         desc: Build the wavesrv component for Windows platforms (only generates artifacts for the current architecture).
         platforms: [windows]
         cmds:
-            - cmd: "{{.RM}} dist/bin/wavesrv*"
+            - cmd: powershell -Command "Remove-Item -Force -ErrorAction SilentlyContinue -Path dist/bin/wavesrv*"
               ignore_error: true
             - task: build:server:internal
               vars:
@@ -237,7 +236,7 @@ tasks:
         desc: Build the wavesrv component for Linux platforms (only generates artifacts for the current architecture).
         platforms: [linux]
         cmds:
-            - cmd: "{{.RM}} dist/bin/wavesrv*"
+            - cmd: rm -f dist/bin/wavesrv*
               ignore_error: true
             - task: build:server:internal
               vars:
@@ -261,7 +260,11 @@ tasks:
     build:wsh:
         desc: Build the wsh component for all possible targets.
         cmds:
-            - cmd: "{{.RM}} dist/bin/wsh*"
+            - cmd: rm -f dist/bin/wsh*
+              platforms: [darwin, linux]
+              ignore_error: true
+            - cmd: powershell -Command "Remove-Item -Force -ErrorAction SilentlyContinue -Path dist/bin/wsh*"
+              platforms: [windows]
               ignore_error: true
             - task: build:wsh:internal
               vars:
@@ -324,6 +327,7 @@ tasks:
             - cmd: "{{.RMRF}} dist/tsunamiscaffold"
               ignore_error: true
             - task: copyfiles:'tsunami/frontend/scaffold':'dist/tsunamiscaffold'
+            - cmd: '{{if eq OS "windows"}}powershell Copy-Item -Path tsunami/templates/empty-gomod.tmpl -Destination dist/tsunamiscaffold/go.mod{{else}}cp tsunami/templates/empty-gomod.tmpl dist/tsunamiscaffold/go.mod{{end}}'
         deps:
             - tsunami:scaffold
         sources:
@@ -431,6 +435,12 @@ tasks:
             - task: dev:cleardata:linux
             - task: dev:cleardata:macos
 
+    check:ts:
+        desc: Typecheck TypeScript code (frontend and electron).
+        cmd: npx tsc --noEmit
+        deps:
+            - npm:install
+
     init:
         desc: Initialize the project for development.
         cmds:
@@ -526,7 +536,11 @@ tasks:
         desc: Create package.json for tsunami scaffold using npm commands
         dir: tsunami/frontend/scaffold
         cmds:
-            - cmd: "{{.RM}} package.json"
+            - cmd: rm -f package.json
+              platforms: [darwin, linux]
+              ignore_error: true
+            - cmd: powershell -Command "Remove-Item -Force -ErrorAction SilentlyContinue -Path package.json"
+              platforms: [windows]
               ignore_error: true
             - npm --no-workspaces init -y --init-license Apache-2.0
             - npm pkg set name=tsunami-scaffold
@@ -587,7 +601,11 @@ tasks:
     tsunami:build:
         desc: Build the tsunami binary.
         cmds:
-            - cmd: "{{.RM}} bin/tsunami*"
+            - cmd: rm -f bin/tsunami*
+              platforms: [darwin, linux]
+              ignore_error: true
+            - cmd: powershell -Command "Remove-Item -Force -ErrorAction SilentlyContinue -Path bin/tsunami*"
+              platforms: [windows]
               ignore_error: true
             - mkdir -p bin
             - cd tsunami && go build -ldflags "-X main.BuildTime=$({{.DATE}} +'%Y%m%d%H%M') -X main.TsunamiVersion={{.VERSION}}" -o ../bin/tsunami{{exeExt}} cmd/main-tsunami.go

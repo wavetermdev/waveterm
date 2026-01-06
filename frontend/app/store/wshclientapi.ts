@@ -27,6 +27,11 @@ class RpcApiType {
         return client.wshRpcCall("authenticatetoken", data, opts);
     }
 
+    // command "authenticatetokenverify" [call]
+    AuthenticateTokenVerifyCommand(client: WshClient, data: CommandAuthenticateTokenData, opts?: RpcOpts): Promise<CommandAuthenticateRtnData> {
+        return client.wshRpcCall("authenticatetokenverify", data, opts);
+    }
+
     // command "blockinfo" [call]
     BlockInfoCommand(client: WshClient, data: string, opts?: RpcOpts): Promise<BlockInfoData> {
         return client.wshRpcCall("blockinfo", data, opts);
@@ -307,6 +312,11 @@ class RpcApiType {
         return client.wshRpcCall("getfullconfig", null, opts);
     }
 
+    // command "getjwtpublickey" [call]
+    GetJwtPublicKeyCommand(client: WshClient, opts?: RpcOpts): Promise<string> {
+        return client.wshRpcCall("getjwtpublickey", null, opts);
+    }
+
     // command "getmeta" [call]
     GetMetaCommand(client: WshClient, data: CommandGetMetaData, opts?: RpcOpts): Promise<MetaType> {
         return client.wshRpcCall("getmeta", data, opts);
@@ -557,6 +567,11 @@ class RpcApiType {
         return client.wshRpcCall("setmeta", data, opts);
     }
 
+    // command "setpeerinfo" [call]
+    SetPeerInfoCommand(client: WshClient, data: string, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("setpeerinfo", data, opts);
+    }
+
     // command "setrtinfo" [call]
     SetRTInfoCommand(client: WshClient, data: CommandSetRTInfoData, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("setrtinfo", data, opts);
@@ -570,11 +585,6 @@ class RpcApiType {
     // command "setvar" [call]
     SetVarCommand(client: WshClient, data: CommandVarData, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("setvar", data, opts);
-    }
-
-    // command "setview" [call]
-    SetViewCommand(client: WshClient, data: CommandBlockSetViewData, opts?: RpcOpts): Promise<void> {
-        return client.wshRpcCall("setview", data, opts);
     }
 
     // command "startbuilder" [call]

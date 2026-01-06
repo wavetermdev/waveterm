@@ -1,7 +1,7 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { wpsReconnectHandler } from "@/app/store/wps";
+import { setWpsRpcClient, wpsReconnectHandler } from "@/app/store/wps";
 import { WshClient } from "@/app/store/wshclient";
 import { WshRouter } from "@/app/store/wshrouter";
 import { getWSServerEndpoint } from "@/util/endpoints";
@@ -118,6 +118,7 @@ function initElectronWshrpc(electronClient: WshClient, eoOpts: ElectronOverrideO
     };
     initGlobalWS(getWSServerEndpoint(), "electron", handleFn, eoOpts);
     globalWS.connectNow("connectWshrpc");
+    setWpsRpcClient(electronClient);
     DefaultRouter.registerRoute(electronClient.routeId, electronClient);
     addWSReconnectHandler(() => {
         DefaultRouter.reannounceRoutes();

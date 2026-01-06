@@ -389,11 +389,11 @@ func shutdownActivityUpdate() {
 func createMainWshClient() {
 	rpc := wshserver.GetMainRpcClient()
 	wshfs.RpcClient = rpc
-	wshutil.DefaultRouter.RegisterRoute(wshutil.DefaultRoute, rpc, true)
+	wshutil.DefaultRouter.RegisterTrustedLeaf(rpc, wshutil.DefaultRoute)
 	wps.Broker.SetClient(wshutil.DefaultRouter)
-	localConnWsh := wshutil.MakeWshRpc(nil, nil, wshrpc.RpcContext{Conn: wshrpc.LocalConnName}, &wshremote.ServerImpl{}, "conn:local")
+	localConnWsh := wshutil.MakeWshRpc(wshrpc.RpcContext{Conn: wshrpc.LocalConnName}, &wshremote.ServerImpl{}, "conn:local")
 	go wshremote.RunSysInfoLoop(localConnWsh, wshrpc.LocalConnName)
-	wshutil.DefaultRouter.RegisterRoute(wshutil.MakeConnectionRouteId(wshrpc.LocalConnName), localConnWsh, true)
+	wshutil.DefaultRouter.RegisterTrustedLeaf(localConnWsh, wshutil.MakeConnectionRouteId(wshrpc.LocalConnName))
 }
 
 func grabAndRemoveEnvVars() error {
@@ -457,10 +457,12 @@ func maybeStartPprofServer() {
 }
 
 func main() {
-	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
+	log.SetFlags(0) // disable timestamp since electron's winston logger already wraps with timestamp
 	log.SetPrefix("[wavesrv] ")
 	wavebase.WaveVersion = WaveVersion
 	wavebase.BuildTime = BuildTime
+	wshutil.DefaultRouter = wshutil.NewWshRouter()
+	wshutil.DefaultRouter.SetAsRootRouter()
 
 	err := grabAndRemoveEnvVars()
 	if err != nil {
@@ -544,6 +546,11 @@ func main() {
 	err = clearTempFiles()
 	if err != nil {
 		log.Printf("error clearing temp files: %v\n", err)
+		return
+	}
+	err = wcore.InitMainServer()
+	if err != nil {
+		log.Printf("error initializing mainserver: %v\n", err)
 		return
 	}
 

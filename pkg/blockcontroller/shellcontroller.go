@@ -420,12 +420,16 @@ func (bc *ShellController) setupAndStartShellProcess(logCtx context.Context, rc 
 			}
 		} else {
 			sockName := wslConn.GetDomainSocketName()
-			rpcContext := wshrpc.RpcContext{TabId: bc.TabId, BlockId: bc.BlockId, Conn: wslConn.GetName()}
-			jwtStr, err := wshutil.MakeClientJWTToken(rpcContext, sockName)
+			rpcContext := wshrpc.RpcContext{
+				RouteId:  wshutil.MakeRandomProcRouteId(),
+				SockName: sockName,
+				BlockId:  bc.BlockId,
+				Conn:     wslConn.GetName(),
+			}
+			jwtStr, err := wshutil.MakeClientJWTToken(rpcContext)
 			if err != nil {
 				return nil, fmt.Errorf("error making jwt token: %w", err)
 			}
-			swapToken.SockName = sockName
 			swapToken.RpcContext = &rpcContext
 			swapToken.Env[wshutil.WaveJwtTokenVarName] = jwtStr
 			shellProc, err = shellexec.StartWslShellProc(ctx, rc.TermSize, cmdStr, cmdOpts, wslConn)
@@ -449,12 +453,16 @@ func (bc *ShellController) setupAndStartShellProcess(logCtx context.Context, rc 
 			}
 		} else {
 			sockName := conn.GetDomainSocketName()
-			rpcContext := wshrpc.RpcContext{TabId: bc.TabId, BlockId: bc.BlockId, Conn: conn.Opts.String()}
-			jwtStr, err := wshutil.MakeClientJWTToken(rpcContext, sockName)
+			rpcContext := wshrpc.RpcContext{
+				RouteId:  wshutil.MakeRandomProcRouteId(),
+				SockName: sockName,
+				BlockId:  bc.BlockId,
+				Conn:     conn.Opts.String(),
+			}
+			jwtStr, err := wshutil.MakeClientJWTToken(rpcContext)
 			if err != nil {
 				return nil, fmt.Errorf("error making jwt token: %w", err)
 			}
-			swapToken.SockName = sockName
 			swapToken.RpcContext = &rpcContext
 			swapToken.Env[wshutil.WaveJwtTokenVarName] = jwtStr
 			shellProc, err = shellexec.StartRemoteShellProc(ctx, logCtx, rc.TermSize, cmdStr, cmdOpts, conn)
@@ -472,12 +480,15 @@ func (bc *ShellController) setupAndStartShellProcess(logCtx context.Context, rc 
 	} else if connUnion.ConnType == ConnType_Local {
 		if connUnion.WshEnabled {
 			sockName := wavebase.GetDomainSocketName()
-			rpcContext := wshrpc.RpcContext{TabId: bc.TabId, BlockId: bc.BlockId}
-			jwtStr, err := wshutil.MakeClientJWTToken(rpcContext, sockName)
+			rpcContext := wshrpc.RpcContext{
+				RouteId:  wshutil.MakeRandomProcRouteId(),
+				SockName: sockName,
+				BlockId:  bc.BlockId,
+			}
+			jwtStr, err := wshutil.MakeClientJWTToken(rpcContext)
 			if err != nil {
 				return nil, fmt.Errorf("error making jwt token: %w", err)
 			}
-			swapToken.SockName = sockName
 			swapToken.RpcContext = &rpcContext
 			swapToken.Env[wshutil.WaveJwtTokenVarName] = jwtStr
 		}
@@ -502,12 +513,6 @@ func (bc *ShellController) manageRunningShellProcess(shellProc *shellexec.ShellP
 	shellInputCh := make(chan *BlockInputUnion, 32)
 	bc.ShellInputCh = shellInputCh
 
-	// make esc sequence wshclient wshProxy
-	// we don't need to authenticate this wshProxy since it is coming direct
-	wshProxy := wshutil.MakeRpcProxy()
-	wshProxy.SetRpcContext(&wshrpc.RpcContext{TabId: bc.TabId, BlockId: bc.BlockId})
-	wshutil.DefaultRouter.RegisterRoute(wshutil.MakeControllerRouteId(bc.BlockId), wshProxy, true)
-	ptyBuffer := wshutil.MakePtyBuffer(wshutil.WaveOSCPrefix, shellProc.Cmd, wshProxy.FromRemoteCh)
 	go func() {
 		// handles regular output from the pty (goes to the blockfile and xterm)
 		defer func() {
@@ -533,7 +538,7 @@ func (bc *ShellController) manageRunningShellProcess(shellProc *shellexec.ShellP
 		}()
 		buf := make([]byte, 4096)
 		for {
-			nr, err := ptyBuffer.Read(buf)
+			nr, err := shellProc.Cmd.Read(buf)
 			if nr > 0 {
 				err := HandleAppendBlockFile(bc.BlockId, wavebase.BlockFile_Term, buf[:nr])
 				if err != nil {
@@ -566,25 +571,11 @@ func (bc *ShellController) manageRunningShellProcess(shellProc *shellexec.ShellP
 	}()
 	go func() {
 		defer func() {
-			panichandler.PanicHandler("blockcontroller:shellproc-output-loop", recover())
-		}()
-		// handles outputCh -> shellInputCh
-		for msg := range wshProxy.ToRemoteCh {
-			encodedMsg, err := wshutil.EncodeWaveOSCBytes(wshutil.WaveServerOSC, msg)
-			if err != nil {
-				log.Printf("error encoding OSC message: %v\n", err)
-			}
-			shellInputCh <- &BlockInputUnion{InputData: encodedMsg}
-		}
-	}()
-	go func() {
-		defer func() {
 			panichandler.PanicHandler("blockcontroller:shellproc-wait-loop", recover())
 		}()
 		// wait for the shell to finish
 		var exitCode int
 		defer func() {
-			wshutil.DefaultRouter.UnregisterRoute(wshutil.MakeControllerRouteId(bc.BlockId))
 			bc.UpdateControllerAndSendUpdate(func() bool {
 				if bc.ProcStatus == Status_Running {
 					bc.ProcStatus = Status_Done

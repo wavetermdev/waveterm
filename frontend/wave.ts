@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { App } from "@/app/app";
+import { loadMonaco } from "@/app/monaco/monaco-env";
 import { GlobalModel } from "@/app/store/global-model";
 import {
     globalRefocus,
@@ -14,7 +15,6 @@ import { modalsModel } from "@/app/store/modalmodel";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { makeBuilderRouteId, makeTabRouteId } from "@/app/store/wshrouter";
 import { initWshrpc, TabRpcClient } from "@/app/store/wshrpcutil";
-import { loadMonaco } from "@/app/view/codeeditor/codeeditor";
 import { BuilderApp } from "@/builder/builder-app";
 import { getLayoutModelForStaticTab } from "@/layout/index";
 import {
@@ -128,25 +128,19 @@ async function reinitWave() {
 }
 
 function reloadAllWorkspaceTabs(ws: Workspace) {
-    if (ws == null || (!ws.tabids?.length && !ws.pinnedtabids?.length)) {
+    if (ws == null || !ws.tabids?.length) {
         return;
     }
     ws.tabids?.forEach((tabid) => {
-        WOS.reloadWaveObject<Tab>(WOS.makeORef("tab", tabid));
-    });
-    ws.pinnedtabids?.forEach((tabid) => {
         WOS.reloadWaveObject<Tab>(WOS.makeORef("tab", tabid));
     });
 }
 
 function loadAllWorkspaceTabs(ws: Workspace) {
-    if (ws == null || (!ws.tabids?.length && !ws.pinnedtabids?.length)) {
+    if (ws == null || !ws.tabids?.length) {
         return;
     }
     ws.tabids?.forEach((tabid) => {
-        WOS.getObjectValue<Tab>(WOS.makeORef("tab", tabid));
-    });
-    ws.pinnedtabids?.forEach((tabid) => {
         WOS.getObjectValue<Tab>(WOS.makeORef("tab", tabid));
     });
 }

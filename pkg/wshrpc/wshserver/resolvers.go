@@ -156,19 +156,13 @@ func resolveTabNum(ctx context.Context, data wshrpc.CommandResolveIdsData, value
 		return nil, fmt.Errorf("error getting workspace: %v", err)
 	}
 
-	numPinnedTabs := len(ws.PinnedTabIds)
-	numTabs := len(ws.TabIds) + numPinnedTabs
+	numTabs := len(ws.TabIds)
 	if tabNum < 1 || tabNum > numTabs {
 		return nil, fmt.Errorf("tab num out of range, workspace has %d tabs", numTabs)
 	}
 
 	tabIdx := tabNum - 1
-	var resolvedTabId string
-	if tabIdx < numPinnedTabs {
-		resolvedTabId = ws.PinnedTabIds[tabIdx]
-	} else {
-		resolvedTabId = ws.TabIds[tabIdx-numPinnedTabs]
-	}
+	resolvedTabId := ws.TabIds[tabIdx]
 	return &waveobj.ORef{OType: waveobj.OType_Tab, OID: resolvedTabId}, nil
 }
 

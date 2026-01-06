@@ -133,7 +133,13 @@ func runRun(cmd *cobra.Command, args []string) (rtnErr error) {
 		createMeta[waveobj.MetaKey_Connection] = RpcContext.Conn
 	}
 
+	tabId := getTabIdFromEnv()
+	if tabId == "" {
+		return fmt.Errorf("no WAVETERM_TABID env var set")
+	}
+
 	createBlockData := wshrpc.CommandCreateBlockData{
+		TabId: tabId,
 		BlockDef: &waveobj.BlockDef{
 			Meta: createMeta,
 			Files: map[string]*waveobj.FileDef{

@@ -196,10 +196,9 @@ declare global {
 
     // wshrpc.CommandAuthenticateRtnData
     type CommandAuthenticateRtnData = {
-        routeid: string;
-        authtoken?: string;
         env?: {[key: string]: string};
         initscripttext?: string;
+        rpccontext?: RpcContext;
     };
 
     // wshrpc.CommandAuthenticateTokenData
@@ -213,12 +212,6 @@ declare global {
         inputdata64?: string;
         signame?: string;
         termsize?: TermSize;
-    };
-
-    // wshrpc.CommandBlockSetViewData
-    type CommandBlockSetViewData = {
-        blockid: string;
-        view: string;
     };
 
     // wshrpc.CommandCaptureBlockScreenshotData
@@ -378,7 +371,6 @@ declare global {
 
     // wshrpc.CommandMessageData
     type CommandMessageData = {
-        oref: ORef;
         message: string;
     };
 
@@ -1026,6 +1018,15 @@ declare global {
         buildoutput: string;
     };
 
+    // wshrpc.RpcContext
+    type RpcContext = {
+        sockname?: string;
+        routeid: string;
+        blockid?: string;
+        conn?: string;
+        isrouter?: boolean;
+    };
+
     // wshutil.RpcMessage
     type RpcMessage = {
         command?: string;
@@ -1033,7 +1034,6 @@ declare global {
         resid?: string;
         timeout?: number;
         route?: string;
-        authtoken?: string;
         source?: string;
         cont?: boolean;
         cancel?: boolean;
@@ -1259,6 +1259,7 @@ declare global {
         "wsh:cmd"?: string;
         "wsh:haderror"?: boolean;
         "conn:conntype"?: string;
+        "conn:wsherrorcode"?: string;
         "onboarding:feature"?: "waveai" | "magnify" | "wsh";
         "onboarding:version"?: string;
         "onboarding:githubstar"?: "already" | "star" | "later";
@@ -1865,7 +1866,6 @@ declare global {
         icon?: string;
         color?: string;
         tabids: string[];
-        pinnedtabids: string[];
         activetabid: string;
     };
 

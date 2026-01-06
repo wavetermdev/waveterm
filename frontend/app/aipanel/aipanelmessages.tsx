@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { useAtomValue } from "jotai";
-import { memo, useEffect, useRef } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import { AIMessage } from "./aimessage";
 import { AIModeDropdown } from "./aimode";
 import { type WaveUIMessage } from "./aitypes";
@@ -20,22 +20,48 @@ export const AIPanelMessages = memo(({ messages, status, onContextMenu }: AIPane
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const messagesContainerRef = useRef<HTMLDivElement>(null);
     const prevStatusRef = useRef<string>(status);
+    const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
+
+    const checkIfAtBottom = () => {
+        const container = messagesContainerRef.current;
+        if (!container) return true;
+
+        const threshold = 50;
+        const scrollBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
+        return scrollBottom <= threshold;
+    };
+
+    const handleScroll = () => {
+        const atBottom = checkIfAtBottom();
+        setShouldAutoScroll(atBottom);
+    };
 
     const scrollToBottom = () => {
         const container = messagesContainerRef.current;
         if (container) {
             container.scrollTop = container.scrollHeight;
             container.scrollLeft = 0;
+            setShouldAutoScroll(true);
         }
     };
+
+    useEffect(() => {
+        const container = messagesContainerRef.current;
+        if (!container) return;
+
+        container.addEventListener("scroll", handleScroll);
+        return () => container.removeEventListener("scroll", handleScroll);
+    }, []);
 
     useEffect(() => {
         model.registerScrollToBottom(scrollToBottom);
     }, [model]);
 
     useEffect(() => {
-        scrollToBottom();
-    }, [messages]);
+        if (shouldAutoScroll) {
+            scrollToBottom();
+        }
+    }, [messages, shouldAutoScroll]);
 
     useEffect(() => {
         if (isPanelOpen) {
@@ -57,11 +83,7 @@ export const AIPanelMessages = memo(({ messages, status, onContextMenu }: AIPane
     }, [status]);
 
     return (
-        <div
-            ref={messagesContainerRef}
-            className="flex-1 overflow-y-auto p-2 space-y-4"
-            onContextMenu={onContextMenu}
-        >
+        <div ref={messagesContainerRef} className="flex-1 overflow-y-auto p-2 space-y-4" onContextMenu={onContextMenu}>
             <div className="mb-2">
                 <AIModeDropdown compatibilityMode={true} />
             </div>

@@ -48,6 +48,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/waveappstore"
 	"github.com/wavetermdev/waveterm/pkg/waveapputil"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
+	"github.com/wavetermdev/waveterm/pkg/wavejwt"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wcloud"
 	"github.com/wavetermdev/waveterm/pkg/wconfig"
@@ -69,17 +70,8 @@ func (*WshServer) WshServerImpl() {}
 
 var WshServerImpl = WshServer{}
 
-// TODO remove this after implementing in multiproxy, just for wsl
-func (ws *WshServer) AuthenticateTokenCommand(ctx context.Context, data wshrpc.CommandAuthenticateTokenData) (wshrpc.CommandAuthenticateRtnData, error) {
-	entry := shellutil.GetAndRemoveTokenSwapEntry(data.Token)
-	if entry == nil {
-		return wshrpc.CommandAuthenticateRtnData{}, fmt.Errorf("invalid token")
-	}
-	rtn := wshrpc.CommandAuthenticateRtnData{
-		Env:            entry.Env,
-		InitScriptText: entry.ScriptText,
-	}
-	return rtn, nil
+func (ws *WshServer) GetJwtPublicKeyCommand(ctx context.Context) (string, error) {
+	return wavejwt.GetPublicKeyBase64(), nil
 }
 
 func (ws *WshServer) TestCommand(ctx context.Context, data string) error {
@@ -93,7 +85,7 @@ func (ws *WshServer) TestCommand(ctx context.Context, data string) error {
 
 // for testing
 func (ws *WshServer) MessageCommand(ctx context.Context, data wshrpc.CommandMessageData) error {
-	log.Printf("MESSAGE: %s | %q\n", data.ORef, data.Message)
+	log.Printf("MESSAGE: %s\n", data.Message)
 	return nil
 }
 
@@ -290,23 +282,6 @@ func (ws *WshServer) CreateSubBlockCommand(ctx context.Context, data wshrpc.Comm
 	return blockRef, nil
 }
 
-func (ws *WshServer) SetViewCommand(ctx context.Context, data wshrpc.CommandBlockSetViewData) error {
-	log.Printf("SETVIEW: %s | %q\n", data.BlockId, data.View)
-	ctx = waveobj.ContextWithUpdates(ctx)
-	block, err := wstore.DBGet[*waveobj.Block](ctx, data.BlockId)
-	if err != nil {
-		return fmt.Errorf("error getting block: %w", err)
-	}
-	block.Meta[waveobj.MetaKey_View] = data.View
-	err = wstore.DBUpdate(ctx, block)
-	if err != nil {
-		return fmt.Errorf("error updating block: %w", err)
-	}
-	updates := waveobj.ContextGetUpdatesRtn(ctx)
-	wps.Broker.SendUpdateEvents(updates)
-	return nil
-}
-
 func (ws *WshServer) ControllerStopCommand(ctx context.Context, blockId string) error {
 	blockcontroller.StopBlockController(blockId)
 	return nil
@@ -495,6 +470,9 @@ func (ws *WshServer) WriteTempFileCommand(ctx context.Context, data wshrpc.Comma
 }
 
 func (ws *WshServer) DeleteSubBlockCommand(ctx context.Context, data wshrpc.CommandDeleteBlockData) error {
+	if data.BlockId == "" {
+		return fmt.Errorf("blockid is required")
+	}
 	err := wcore.DeleteBlock(ctx, data.BlockId, false)
 	if err != nil {
 		return fmt.Errorf("error deleting block: %w", err)
@@ -503,6 +481,9 @@ func (ws *WshServer) DeleteSubBlockCommand(ctx context.Context, data wshrpc.Comm
 }
 
 func (ws *WshServer) DeleteBlockCommand(ctx context.Context, data wshrpc.CommandDeleteBlockData) error {
+	if data.BlockId == "" {
+		return fmt.Errorf("blockid is required")
+	}
 	ctx = waveobj.ContextWithUpdates(ctx)
 	tabId, err := wstore.DBFindTabForBlockId(ctx, data.BlockId)
 	if err != nil {
@@ -925,7 +906,7 @@ func (ws *WshServer) BlocksListCommand(
 			log.Printf("error finding window for workspace %s: %v", wsID, err)
 		}
 
-		for _, tabID := range append(wsData.PinnedTabIds, wsData.TabIds...) {
+		for _, tabID := range wsData.TabIds {
 			tab, err := wstore.DBMustGet[*waveobj.Tab](ctx, tabID)
 			if err != nil {
 				return nil, err
@@ -1364,10 +1345,15 @@ func (ws *WshServer) PathCommand(ctx context.Context, data wshrpc.PathCommandDat
 	}
 
 	if openInternal {
-		_, err := ws.CreateBlockCommand(ctx, wshrpc.CommandCreateBlockData{BlockDef: &waveobj.BlockDef{Meta: map[string]any{
-			waveobj.MetaKey_View: "preview",
-			waveobj.MetaKey_File: path,
-		}}, Ephemeral: true, Focused: true, TabId: data.TabId})
+		_, err := ws.CreateBlockCommand(ctx, wshrpc.CommandCreateBlockData{
+			TabId: data.TabId,
+			BlockDef: &waveobj.BlockDef{Meta: map[string]any{
+				waveobj.MetaKey_View: "preview",
+				waveobj.MetaKey_File: path,
+			}},
+			Ephemeral: true,
+			Focused:   true,
+		})
 
 		if err != nil {
 			return path, fmt.Errorf("error opening path: %w", err)

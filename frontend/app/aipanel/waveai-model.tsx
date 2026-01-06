@@ -606,17 +606,6 @@ export class WaveAIModel {
         return globalStore.get(this.chatId);
     }
 
-    toolUseKeepalive(toolcallid: string) {
-        RpcApi.WaveAIToolApproveCommand(
-            TabRpcClient,
-            {
-                toolcallid: toolcallid,
-                keepalive: true,
-            },
-            { noresponse: true }
-        );
-    }
-
     toolUseSendApproval(toolcallid: string, approval: string) {
         RpcApi.WaveAIToolApproveCommand(TabRpcClient, {
             toolcallid: toolcallid,
