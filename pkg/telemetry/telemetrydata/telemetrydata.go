@@ -35,6 +35,7 @@ var ValidEventNames = map[string]bool{
 
 	"conn:connect":      true,
 	"conn:connecterror": true,
+	"conn:nowsh":        true,
 
 	"waveai:enabletelemetry": true,
 	"waveai:post":            true,
@@ -105,14 +106,20 @@ type TEventProps struct {
 
 	ActionInitiator string `json:"action:initiator,omitempty" tstype:"\"keyboard\" | \"mouse\""`
 	ActionType      string `json:"action:type,omitempty"`
-	PanicType       string `json:"debug:panictype,omitempty"`
+
+	PanicType string `json:"debug:panictype,omitempty"`
+
 	BlockView       string `json:"block:view,omitempty"`
 	BlockController string `json:"block:controller,omitempty"`
-	AiBackendType   string `json:"ai:backendtype,omitempty"`
-	AiLocal         bool   `json:"ai:local,omitempty"`
-	WshCmd          string `json:"wsh:cmd,omitempty"`
-	WshHadError     bool   `json:"wsh:haderror,omitempty"`
-	ConnType        string `json:"conn:conntype,omitempty"`
+
+	AiBackendType string `json:"ai:backendtype,omitempty"`
+	AiLocal       bool   `json:"ai:local,omitempty"`
+
+	WshCmd      string `json:"wsh:cmd,omitempty"`
+	WshHadError bool   `json:"wsh:haderror,omitempty"`
+
+	ConnType         string `json:"conn:conntype,omitempty"`
+	ConnWshErrorCode string `json:"conn:wsherrorcode,omitempty"`
 
 	OnboardingFeature    string `json:"onboarding:feature,omitempty" tstype:"\"waveai\" | \"magnify\" | \"wsh\""`
 	OnboardingVersion    string `json:"onboarding:version,omitempty"`
