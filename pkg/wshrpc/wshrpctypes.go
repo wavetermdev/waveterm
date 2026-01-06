@@ -48,148 +48,18 @@ const (
 	CreateBlockAction_SplitRight = "splitright"
 )
 
-// TODO generate these constants from the interface
+// we only need consts for special commands handled in the router or
+// in the RPC code / WPS code directly.  other commands go through the clients
 const (
 	Command_Authenticate            = "authenticate"            // $control
 	Command_AuthenticateToken       = "authenticatetoken"       // $control
 	Command_AuthenticateTokenVerify = "authenticatetokenverify" // $control:root (internal, for token validation only)
-	Command_Dispose                 = "dispose"                 // $control (disposes of the route, for multiproxy only)
 	Command_RouteAnnounce           = "routeannounce"           // $control (for routing)
 	Command_RouteUnannounce         = "routeunannounce"         // $control (for routing)
-	Command_SetPeerInfo             = "setpeerinfo"             // $control (sets peer info on proxy)
-	Command_ControlMessage          = "controlmessage"          // $control
 	Command_Ping                    = "ping"                    // $control
-
-	Command_GetJwtPublicKey   = "getjwtpublickey"
-	Command_Message           = "message"
-	Command_GetMeta           = "getmeta"
-	Command_SetMeta           = "setmeta"
-	Command_ControllerInput   = "controllerinput"
-	Command_ControllerRestart = "controllerrestart"
-	Command_ControllerStop    = "controllerstop"
-	Command_ControllerResync  = "controllerresync"
-	Command_Mkdir             = "mkdir"
-	Command_ResolveIds        = "resolveids"
-	Command_BlockInfo         = "blockinfo"
-	Command_BlocksList        = "blockslist"
-	Command_CreateBlock       = "createblock"
-	Command_DeleteBlock       = "deleteblock"
-
-	Command_FileWrite           = "filewrite"
-	Command_FileRead            = "fileread"
-	Command_FileReadStream      = "filereadstream"
-	Command_FileMove            = "filemove"
-	Command_FileCopy            = "filecopy"
-	Command_FileStreamTar       = "filestreamtar"
-	Command_FileAppend          = "fileappend"
-	Command_FileAppendIJson     = "fileappendijson"
-	Command_FileJoin            = "filejoin"
-	Command_FileShareCapability = "filesharecapability"
-	Command_FileRestoreBackup   = "filerestorebackup"
-	Command_GetTempDir          = "gettempdir"
-	Command_WriteTempFile       = "writetempfile"
-
-	Command_EventPublish         = "eventpublish"
-	Command_EventRecv            = "eventrecv"
-	Command_EventSub             = "eventsub"
-	Command_EventUnsub           = "eventunsub"
-	Command_EventUnsubAll        = "eventunsuball"
-	Command_EventReadHistory     = "eventreadhistory"
-	Command_StreamTest           = "streamtest"
-	Command_StreamWaveAi         = "streamwaveai"
-	Command_StreamCpuData        = "streamcpudata"
-	Command_Test                 = "test"
-	Command_SetConfig            = "setconfig"
-	Command_SetConnectionsConfig = "connectionsconfig"
-	Command_GetFullConfig        = "getfullconfig"
-	Command_GetWaveAIModeConfig  = "getwaveaimodeconfig"
-	Command_RemoteStreamFile     = "remotestreamfile"
-	Command_RemoteTarStream      = "remotetarstream"
-	Command_RemoteFileInfo       = "remotefileinfo"
-	Command_RemoteFileTouch      = "remotefiletouch"
-	Command_RemoteWriteFile      = "remotewritefile"
-
-	Command_RemoteFileDelete     = "remotefiledelete"
-	Command_RemoteFileJoin       = "remotefilejoin"
-	Command_WaveInfo             = "waveinfo"
-	Command_WshActivity          = "wshactivity"
-	Command_Activity             = "activity"
-	Command_GetVar               = "getvar"
-	Command_SetVar               = "setvar"
-	Command_RemoteMkdir          = "remotemkdir"
-	Command_RemoteGetInfo        = "remotegetinfo"
-	Command_RemoteInstallRcfiles = "remoteinstallrcfiles"
-
-	Command_ConnStatus       = "connstatus"
-	Command_WslStatus        = "wslstatus"
-	Command_ConnEnsure       = "connensure"
-	Command_ConnReinstallWsh = "connreinstallwsh"
-	Command_ConnConnect      = "connconnect"
-	Command_ConnDisconnect   = "conndisconnect"
-	Command_ConnList         = "connlist"
-	Command_ConnListAWS      = "connlistaws"
-	Command_WslList          = "wsllist"
-	Command_WslDefaultDistro = "wsldefaultdistro"
-	Command_DismissWshFail   = "dismisswshfail"
-	Command_ConnUpdateWsh    = "updatewsh"
-	Command_FindGitBash      = "findgitbash"
-
-	Command_WorkspaceList = "workspacelist"
-
-	Command_WebSelector      = "webselector"
-	Command_Notify           = "notify"
-	Command_FocusWindow      = "focuswindow"
-	Command_GetUpdateChannel = "getupdatechannel"
-
-	Command_VDomCreateContext   = "vdomcreatecontext"
-	Command_VDomAsyncInitiation = "vdomasyncinitiation"
-	Command_VDomRender          = "vdomrender"
-	Command_VDomUrlRequest      = "vdomurlrequest"
-
-	Command_AiSendMessage         = "aisendmessage"
-	Command_WaveAIEnableTelemetry = "waveaienabletelemetry"
-	Command_GetWaveAIChat         = "getwaveaichat"
-	Command_GetWaveAIRateLimit    = "getwaveairatelimit"
-	Command_WaveAIToolApprove     = "waveaitoolapprove"
-	Command_WaveAIAddContext      = "waveaiaddcontext"
-	Command_WaveAIGetToolDiff     = "waveaigettooldiff"
-
-	Command_CaptureBlockScreenshot = "captureblockscreenshot"
-
-	Command_GetRTInfo = "getrtinfo"
-	Command_SetRTInfo = "setrtinfo"
-
-	Command_TermGetScrollbackLines = "termgetscrollbacklines"
-
-	// builder
-	Command_ListAllApps            = "listallapps"
-	Command_ListAllEditableApps    = "listalleditableapps"
-	Command_ListAllAppFiles        = "listallappfiles"
-	Command_ReadAppFile            = "readappfile"
-	Command_WriteAppFile           = "writeappfile"
-	Command_WriteAppGoFile         = "writeappgofile"
-	Command_DeleteAppFile          = "deleteappfile"
-	Command_RenameAppFile          = "renameappfile"
-	Command_WriteAppSecretBindings = "writeappsecretbindings"
-	Command_DeleteBuilder          = "deletebuilder"
-	Command_StartBuilder           = "startbuilder"
-	Command_RestartBuilderAndWait  = "restartbuilderandwait"
-	Command_GetBuilderStatus       = "getbuilderstatus"
-	Command_GetBuilderOutput       = "getbuilderoutput"
-	Command_CheckGoVersion         = "checkgoversion"
-	Command_PublishApp             = "publishapp"
-	Command_MakeDraftFromLocal     = "makedraftfromlocal"
-
-	// electron
-	Command_ElectronEncrypt = "electronencrypt"
-	Command_ElectronDecrypt = "electrondecrypt"
-	Command_NetworkOnline   = "networkonline"
-
-	// secrets
-	Command_GetSecrets                    = "getsecrets"
-	Command_GetSecretsNames               = "getsecretsnames"
-	Command_SetSecrets                    = "setsecrets"
-	Command_GetSecretsLinuxStorageBackend = "getsecretslinuxstoragebackend"
+	Command_ControllerInput         = "controllerinput"
+	Command_EventRecv               = "eventrecv"
+	Command_Message                 = "message"
 )
 
 type RespOrErrorUnion[T any] struct {
