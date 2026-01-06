@@ -11,6 +11,7 @@ import { RpcResponseHelper, WshClient } from "@/app/store/wshclient";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { makeFeBlockRouteId } from "@/app/store/wshrouter";
 import { DefaultRouter, TabRpcClient } from "@/app/store/wshrpcutil";
+import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
 import { atoms, createBlock, fetchWaveFile, getApi, globalStore, WOS } from "@/store/global";
 import { BlockService, ObjectService } from "@/store/services";
 import { adaptFromReactOrNativeKeyEvent, checkKeyPressed } from "@/util/keyutil";
@@ -705,6 +706,8 @@ const WaveAi = ({ model }: { model: WaveAiModel; blockId: string }) => {
     const baseFontSize: number = 14;
     const msgWidths = {};
     const locked = useAtomValue(model.locked);
+    const aiOpts = useAtomValue(model.aiOpts);
+    const isUsingProxy = isBlank(aiOpts.apitoken) && isBlank(aiOpts.baseurl);
 
     // a weird workaround to initialize ansynchronously
     useEffect(() => {
@@ -861,8 +864,27 @@ const WaveAi = ({ model }: { model: WaveAiModel; blockId: string }) => {
         }
     }, [locked, handleEnterKeyPressed]);
 
+    const handleOpenAIPanel = useCallback(() => {
+        WorkspaceLayoutModel.getInstance().setAIPanelVisible(true);
+    }, []);
+
     return (
         <div ref={waveaiRef} className="waveai">
+            {isUsingProxy && (
+                <div className="flex items-start gap-3 px-4 py-2 bg-orange-500/25 border-b border-orange-500/50 text-sm">
+                    <i className="fa-sharp fa-solid fa-triangle-exclamation text-orange-300 mt-0.5"></i>
+                    <span className="text-primary/90">
+                        Wave AI Proxy is deprecated and will be removed. Please use the new{" "}
+                        <button
+                            onClick={handleOpenAIPanel}
+                            className="text-accent hover:text-accent/80 underline cursor-pointer"
+                        >
+                            Wave AI panel
+                        </button>{" "}
+                        instead (better model, terminal integration, tool support, image uploads).
+                    </span>
+                </div>
+            )}
             <div className="waveai-chat">
                 <ChatWindow ref={osRef} chatWindowRef={chatWindowRef} msgWidths={msgWidths} model={model} />
             </div>
