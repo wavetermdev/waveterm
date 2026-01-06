@@ -12,7 +12,7 @@ import { WaveConfigView } from "@/app/view/waveconfig/waveconfig";
 import { isWindows } from "@/util/platformutil";
 import { base64ToString, stringToBase64 } from "@/util/util";
 import { atom, type PrimitiveAtom } from "jotai";
-import type * as MonacoTypes from "monaco-editor/esm/vs/editor/editor.api";
+import type * as MonacoTypes from "monaco-editor";
 import * as React from "react";
 
 type ValidationResult = { success: true } | { error: string };
