@@ -8,58 +8,13 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"os"
 
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
-	"github.com/wavetermdev/waveterm/pkg/ijson"
 	"github.com/wavetermdev/waveterm/pkg/telemetry/telemetrydata"
-	"github.com/wavetermdev/waveterm/pkg/util/iochan/iochantypes"
 	"github.com/wavetermdev/waveterm/pkg/vdom"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wconfig"
 	"github.com/wavetermdev/waveterm/pkg/wps"
-)
-
-const (
-	// MaxFileSize is the maximum file size that can be read
-	MaxFileSize = 50 * 1024 * 1024 // 50M
-	// MaxDirSize is the maximum number of entries that can be read in a directory
-	MaxDirSize = 1024
-	// FileChunkSize is the size of the file chunk to read
-	FileChunkSize = 64 * 1024
-	// DirChunkSize is the size of the directory chunk to read
-	DirChunkSize = 128
-)
-
-const LocalConnName = "local"
-
-const (
-	RpcType_Call             = "call"             // single response (regular rpc)
-	RpcType_ResponseStream   = "responsestream"   // stream of responses (streaming rpc)
-	RpcType_StreamingRequest = "streamingrequest" // streaming request
-	RpcType_Complex          = "complex"          // streaming request/response
-)
-
-const (
-	CreateBlockAction_Replace    = "replace"
-	CreateBlockAction_SplitUp    = "splitup"
-	CreateBlockAction_SplitDown  = "splitdown"
-	CreateBlockAction_SplitLeft  = "splitleft"
-	CreateBlockAction_SplitRight = "splitright"
-)
-
-// we only need consts for special commands handled in the router or
-// in the RPC code / WPS code directly.  other commands go through the clients
-const (
-	Command_Authenticate            = "authenticate"            // $control
-	Command_AuthenticateToken       = "authenticatetoken"       // $control
-	Command_AuthenticateTokenVerify = "authenticatetokenverify" // $control:root (internal, for token validation only)
-	Command_RouteAnnounce           = "routeannounce"           // $control (for routing)
-	Command_RouteUnannounce         = "routeunannounce"         // $control (for routing)
-	Command_Ping                    = "ping"                    // $control
-	Command_ControllerInput         = "controllerinput"
-	Command_EventRecv               = "eventrecv"
-	Command_Message                 = "message"
 )
 
 type RespOrErrorUnion[T any] struct {
@@ -91,31 +46,15 @@ type WshRpcInterface interface {
 	DeleteSubBlockCommand(ctx context.Context, data CommandDeleteBlockData) error
 	WaitForRouteCommand(ctx context.Context, data CommandWaitForRouteData) (bool, error)
 
-	FileMkdirCommand(ctx context.Context, data FileData) error
-	FileCreateCommand(ctx context.Context, data FileData) error
-	FileDeleteCommand(ctx context.Context, data CommandDeleteFileData) error
-	FileAppendCommand(ctx context.Context, data FileData) error
-	FileAppendIJsonCommand(ctx context.Context, data CommandAppendIJsonData) error
-	FileWriteCommand(ctx context.Context, data FileData) error
-	FileReadCommand(ctx context.Context, data FileData) (*FileData, error)
-	FileReadStreamCommand(ctx context.Context, data FileData) <-chan RespOrErrorUnion[FileData]
-	FileStreamTarCommand(ctx context.Context, data CommandRemoteStreamTarData) <-chan RespOrErrorUnion[iochantypes.Packet]
-	FileMoveCommand(ctx context.Context, data CommandFileCopyData) error
-	FileCopyCommand(ctx context.Context, data CommandFileCopyData) error
-	FileInfoCommand(ctx context.Context, data FileData) (*FileInfo, error)
-	FileListCommand(ctx context.Context, data FileListData) ([]*FileInfo, error)
-	FileJoinCommand(ctx context.Context, paths []string) (*FileInfo, error)
-	FileListStreamCommand(ctx context.Context, data FileListData) <-chan RespOrErrorUnion[CommandRemoteListEntriesRtnData]
-
-	FileShareCapabilityCommand(ctx context.Context, path string) (FileShareCapability, error)
-	FileRestoreBackupCommand(ctx context.Context, data CommandFileRestoreBackupData) error
-	GetTempDirCommand(ctx context.Context, data CommandGetTempDirData) (string, error)
-	WriteTempFileCommand(ctx context.Context, data CommandWriteTempFileData) (string, error)
 	EventPublishCommand(ctx context.Context, data wps.WaveEvent) error
 	EventSubCommand(ctx context.Context, data wps.SubscriptionRequest) error
 	EventUnsubCommand(ctx context.Context, data string) error
 	EventUnsubAllCommand(ctx context.Context) error
 	EventReadHistoryCommand(ctx context.Context, data CommandEventReadHistoryData) ([]*wps.WaveEvent, error)
+
+	FileRestoreBackupCommand(ctx context.Context, data CommandFileRestoreBackupData) error
+	GetTempDirCommand(ctx context.Context, data CommandGetTempDirData) (string, error)
+	WriteTempFileCommand(ctx context.Context, data CommandWriteTempFileData) (string, error)
 	StreamTestCommand(ctx context.Context) chan RespOrErrorUnion[int]
 	StreamWaveAiCommand(ctx context.Context, request WaveAIStreamRequest) chan RespOrErrorUnion[WaveAIPacketType]
 	StreamCpuDataCommand(ctx context.Context, request CpuDataRequest) chan RespOrErrorUnion[TimeSeriesData]
@@ -157,17 +96,7 @@ type WshRpcInterface interface {
 	EventRecvCommand(ctx context.Context, data wps.WaveEvent) error
 
 	// remotes
-	RemoteStreamFileCommand(ctx context.Context, data CommandRemoteStreamFileData) chan RespOrErrorUnion[FileData]
-	RemoteTarStreamCommand(ctx context.Context, data CommandRemoteStreamTarData) <-chan RespOrErrorUnion[iochantypes.Packet]
-	RemoteFileCopyCommand(ctx context.Context, data CommandFileCopyData) (bool, error)
-	RemoteListEntriesCommand(ctx context.Context, data CommandRemoteListEntriesData) chan RespOrErrorUnion[CommandRemoteListEntriesRtnData]
-	RemoteFileInfoCommand(ctx context.Context, path string) (*FileInfo, error)
-	RemoteFileTouchCommand(ctx context.Context, path string) error
-	RemoteFileMoveCommand(ctx context.Context, data CommandFileCopyData) error
-	RemoteFileDeleteCommand(ctx context.Context, data CommandDeleteFileData) error
-	RemoteWriteFileCommand(ctx context.Context, data FileData) error
-	RemoteFileJoinCommand(ctx context.Context, paths []string) (*FileInfo, error)
-	RemoteMkdirCommand(ctx context.Context, path string) error
+	WshRpcRemoteFileInterface
 	RemoteStreamCpuDataCommand(ctx context.Context) chan RespOrErrorUnion[TimeSeriesData]
 	RemoteGetInfoCommand(ctx context.Context) (RemoteInfo, error)
 	RemoteInstallRcFilesCommand(ctx context.Context) error
@@ -212,25 +141,11 @@ type WshRpcInterface interface {
 	// terminal
 	TermGetScrollbackLinesCommand(ctx context.Context, data CommandTermGetScrollbackLinesData) (*CommandTermGetScrollbackLinesRtnData, error)
 
+	// file
+	WshRpcFileInterface
+
 	// builder
-	ListAllAppsCommand(ctx context.Context) ([]AppInfo, error)
-	ListAllEditableAppsCommand(ctx context.Context) ([]AppInfo, error)
-	ListAllAppFilesCommand(ctx context.Context, data CommandListAllAppFilesData) (*CommandListAllAppFilesRtnData, error)
-	ReadAppFileCommand(ctx context.Context, data CommandReadAppFileData) (*CommandReadAppFileRtnData, error)
-	WriteAppFileCommand(ctx context.Context, data CommandWriteAppFileData) error
-	WriteAppGoFileCommand(ctx context.Context, data CommandWriteAppGoFileData) (*CommandWriteAppGoFileRtnData, error)
-	DeleteAppFileCommand(ctx context.Context, data CommandDeleteAppFileData) error
-	RenameAppFileCommand(ctx context.Context, data CommandRenameAppFileData) error
-	WriteAppSecretBindingsCommand(ctx context.Context, data CommandWriteAppSecretBindingsData) error
-	DeleteBuilderCommand(ctx context.Context, builderId string) error
-	StartBuilderCommand(ctx context.Context, data CommandStartBuilderData) error
-	StopBuilderCommand(ctx context.Context, builderId string) error
-	RestartBuilderAndWaitCommand(ctx context.Context, data CommandRestartBuilderAndWaitData) (*RestartBuilderAndWaitResult, error)
-	GetBuilderStatusCommand(ctx context.Context, builderId string) (*BuilderStatusData, error)
-	GetBuilderOutputCommand(ctx context.Context, builderId string) ([]string, error)
-	CheckGoVersionCommand(ctx context.Context) (*CommandCheckGoVersionRtnData, error)
-	PublishAppCommand(ctx context.Context, data CommandPublishAppData) (*CommandPublishAppRtnData, error)
-	MakeDraftFromLocalCommand(ctx context.Context, data CommandMakeDraftFromLocalData) (*CommandMakeDraftFromLocalRtnData, error)
+	WshRpcBuilderInterface
 
 	// proc
 	VDomRenderCommand(ctx context.Context, data vdom.VDomFrontendUpdate) chan RespOrErrorUnion[*vdom.VDomBackendUpdate]
@@ -331,71 +246,6 @@ type CommandBlockInputData struct {
 	TermSize    *waveobj.TermSize `json:"termsize,omitempty"`
 }
 
-type FileDataAt struct {
-	Offset int64 `json:"offset"`
-	Size   int   `json:"size,omitempty"`
-}
-
-type FileData struct {
-	Info    *FileInfo   `json:"info,omitempty"`
-	Data64  string      `json:"data64,omitempty"`
-	Entries []*FileInfo `json:"entries,omitempty"`
-	At      *FileDataAt `json:"at,omitempty"` // if set, this turns read/write ops to ReadAt/WriteAt ops (len is only used for ReadAt)
-}
-
-type FileInfo struct {
-	Path          string      `json:"path"`          // cleaned path (may have "~")
-	Dir           string      `json:"dir,omitempty"` // returns the directory part of the path (if this is a a directory, it will be equal to Path).  "~" will be expanded, and separators will be normalized to "/"
-	Name          string      `json:"name,omitempty"`
-	NotFound      bool        `json:"notfound,omitempty"`
-	Opts          *FileOpts   `json:"opts,omitempty"`
-	Size          int64       `json:"size,omitempty"`
-	Meta          *FileMeta   `json:"meta,omitempty"`
-	Mode          os.FileMode `json:"mode,omitempty"`
-	ModeStr       string      `json:"modestr,omitempty"`
-	ModTime       int64       `json:"modtime,omitempty"`
-	IsDir         bool        `json:"isdir,omitempty"`
-	SupportsMkdir bool        `json:"supportsmkdir,omitempty"`
-	MimeType      string      `json:"mimetype,omitempty"`
-	ReadOnly      bool        `json:"readonly,omitempty"` // this is not set for fileinfo's returned from directory listings
-}
-
-type FileOpts struct {
-	MaxSize     int64 `json:"maxsize,omitempty"`
-	Circular    bool  `json:"circular,omitempty"`
-	IJson       bool  `json:"ijson,omitempty"`
-	IJsonBudget int   `json:"ijsonbudget,omitempty"`
-	Truncate    bool  `json:"truncate,omitempty"`
-	Append      bool  `json:"append,omitempty"`
-}
-
-type FileMeta = map[string]any
-
-type FileListStreamResponse <-chan RespOrErrorUnion[CommandRemoteListEntriesRtnData]
-
-type FileListData struct {
-	Path string        `json:"path"`
-	Opts *FileListOpts `json:"opts,omitempty"`
-}
-
-type FileListOpts struct {
-	All    bool `json:"all,omitempty"`
-	Offset int  `json:"offset,omitempty"`
-	Limit  int  `json:"limit,omitempty"`
-}
-
-type FileCreateData struct {
-	Path string         `json:"path"`
-	Meta map[string]any `json:"meta,omitempty"`
-	Opts *FileOpts      `json:"opts,omitempty"`
-}
-
-type CommandAppendIJsonData struct {
-	ZoneId   string        `json:"zoneid"`
-	FileName string        `json:"filename"`
-	Data     ijson.Command `json:"data"`
-}
-
 type CommandWaitForRouteData struct {
 	RouteId string `json:"routeid"`
 	WaitMs  int    `json:"waitms"`
@@ -463,17 +313,6 @@ type CpuDataType struct {
 	Value float64 `json:"value"`
 }
 
-type CommandDeleteFileData struct {
-	Path      string `json:"path"`
-	Recursive bool   `json:"recursive"`
-}
-
-type CommandFileCopyData struct {
-	SrcUri  string        `json:"srcuri"`
-	DestUri string        `json:"desturi"`
-	Opts    *FileCopyOpts `json:"opts,omitempty"`
-}
-
 type CommandFileRestoreBackupData struct {
 	BackupFilePath    string `json:"backupfilepath"`
 	RestoreToFileName string `json:"restoretofilename"`
@@ -486,32 +325,6 @@ type CommandGetTempDirData struct {
 type CommandWriteTempFileData struct {
 	FileName string `json:"filename"`
 	Data64   string `json:"data64"`
-}
-
-type CommandRemoteStreamTarData struct {
-	Path string        `json:"path"`
-	Opts *FileCopyOpts `json:"opts,omitempty"`
-}
-
-type FileCopyOpts struct {
-	Overwrite bool  `json:"overwrite,omitempty"`
-	Recursive bool  `json:"recursive,omitempty"` // only used for move, always true for copy
-	Merge     bool  `json:"merge,omitempty"`
-	Timeout   int64 `json:"timeout,omitempty"`
-}
-
-type CommandRemoteStreamFileData struct {
-	Path      string `json:"path"`
-	ByteRange string `json:"byterange,omitempty"`
-}
-
-type CommandRemoteListEntriesData struct {
-	Path string        `json:"path"`
-	Opts *FileListOpts `json:"opts,omitempty"`
-}
-
-type CommandRemoteListEntriesRtnData struct {
-	FileInfo []*FileInfo `json:"fileinfo,omitempty"`
 }
 
 type ConnRequest struct {
@@ -774,14 +587,6 @@ type SuggestionType struct {
 	UrlUrl       string `json:"url:url,omitempty"`
 }
 
-// FileShareCapability represents the capabilities of a file share
-type FileShareCapability struct {
-	// CanAppend indicates whether the file share supports appending to files
-	CanAppend bool `json:"canappend"`
-	// CanMkdir indicates whether the file share supports creating directories
-	CanMkdir bool `json:"canmkdir"`
-}
-
 type CommandGetRTInfoData struct {
 	ORef waveobj.ORef `json:"oref"`
 }
@@ -803,146 +608,6 @@ type CommandTermGetScrollbackLinesRtnData struct {
 	LineStart   int      `json:"linestart"`
 	Lines       []string `json:"lines"`
 	LastUpdated int64    `json:"lastupdated"`
-}
-
-// builder
-type AppInfo struct {
-	AppId    string       `json:"appid"`
-	ModTime  int64        `json:"modtime"`
-	Manifest *AppManifest `json:"manifest,omitempty"`
-}
-
-type CommandListAllAppFilesData struct {
-	AppId string `json:"appid"`
-}
-
-type CommandListAllAppFilesRtnData struct {
-	Path         string        `json:"path"`
-	AbsolutePath string        `json:"absolutepath"`
-	ParentDir    string        `json:"parentdir,omitempty"`
-	Entries      []DirEntryOut `json:"entries"`
-	EntryCount   int           `json:"entrycount"`
-	TotalEntries int           `json:"totalentries"`
-	Truncated    bool          `json:"truncated,omitempty"`
-}
-
-type DirEntryOut struct {
-	Name         string `json:"name"`
-	Dir          bool   `json:"dir,omitempty"`
-	Symlink      bool   `json:"symlink,omitempty"`
-	Size         int64  `json:"size,omitempty"`
-	Mode         string `json:"mode"`
-	Modified     string `json:"modified"`
-	ModifiedTime string `json:"modifiedtime"`
-}
-
-type CommandReadAppFileData struct {
-	AppId    string `json:"appid"`
-	FileName string `json:"filename"`
-}
-
-type CommandReadAppFileRtnData struct {
-	Data64   string `json:"data64"`
-	NotFound bool   `json:"notfound,omitempty"`
-	ModTs    int64  `json:"modts,omitempty"`
-}
-
-type CommandWriteAppFileData struct {
-	AppId    string `json:"appid"`
-	FileName string `json:"filename"`
-	Data64   string `json:"data64"`
-}
-
-type CommandWriteAppGoFileData struct {
-	AppId  string `json:"appid"`
-	Data64 string `json:"data64"`
-}
-
-type CommandWriteAppGoFileRtnData struct {
-	Data64 string `json:"data64"`
-}
-
-type CommandDeleteAppFileData struct {
-	AppId    string `json:"appid"`
-	FileName string `json:"filename"`
-}
-
-type CommandRenameAppFileData struct {
-	AppId        string `json:"appid"`
-	FromFileName string `json:"fromfilename"`
-	ToFileName   string `json:"tofilename"`
-}
-
-type CommandWriteAppSecretBindingsData struct {
-	AppId    string            `json:"appid"`
-	Bindings map[string]string `json:"bindings"`
-}
-
-type CommandStartBuilderData struct {
-	BuilderId string `json:"builderid"`
-}
-
-type CommandRestartBuilderAndWaitData struct {
-	BuilderId string `json:"builderid"`
-}
-
-type RestartBuilderAndWaitResult struct {
-	Success      bool   `json:"success"`
-	ErrorMessage string `json:"errormessage,omitempty"`
-	BuildOutput  string `json:"buildoutput"`
-}
-
-type AppMeta struct {
-	Title     string `json:"title"`
-	ShortDesc string `json:"shortdesc"`
-	Icon      string `json:"icon"`
-	IconColor string `json:"iconcolor"`
-}
-
-type SecretMeta struct {
-	Desc     string `json:"desc"`
-	Optional bool   `json:"optional"`
-}
-
-type AppManifest struct {
-	AppMeta      AppMeta               `json:"appmeta"`
-	ConfigSchema map[string]any        `json:"configschema"`
-	DataSchema   map[string]any        `json:"dataschema"`
-	Secrets      map[string]SecretMeta `json:"secrets"`
-}
-
-type BuilderStatusData struct {
-	Status                 string            `json:"status"`
-	Port                   int               `json:"port,omitempty"`
-	ExitCode               int               `json:"exitcode,omitempty"`
-	ErrorMsg               string            `json:"errormsg,omitempty"`
-	Version                int               `json:"version"`
-	Manifest               *AppManifest      `json:"manifest,omitempty"`
-	SecretBindings         map[string]string `json:"secretbindings,omitempty"`
-	SecretBindingsComplete bool              `json:"secretbindingscomplete"`
-}
-
-type CommandCheckGoVersionRtnData struct {
-	GoStatus    string `json:"gostatus"`
-	GoPath      string `json:"gopath"`
-	GoVersion   string `json:"goversion"`
-	ErrorString string `json:"errorstring,omitempty"`
-}
-
-type CommandPublishAppData struct {
-	AppId string `json:"appid"`
-}
-
-type CommandPublishAppRtnData struct {
-	PublishedAppId string `json:"publishedappid"`
-}
-
-type CommandMakeDraftFromLocalData struct {
-	LocalAppId string `json:"localappid"`
-}
-
-type CommandMakeDraftFromLocalRtnData struct {
-	DraftAppId string `json:"draftappid"`
 }
 
 type CommandElectronEncryptData struct {

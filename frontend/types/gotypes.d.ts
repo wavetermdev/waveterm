@@ -1240,6 +1240,7 @@ declare global {
         "wsh:cmd"?: string;
         "wsh:haderror"?: boolean;
         "conn:conntype"?: string;
+        "conn:wsherrorcode"?: string;
         "onboarding:feature"?: "waveai" | "magnify" | "wsh";
         "onboarding:version"?: string;
         "onboarding:githubstar"?: "already" | "star" | "later";
