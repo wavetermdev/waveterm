@@ -47,6 +47,17 @@ const (
 	Status_Error        = "error"
 )
 
+const (
+	NoWshCode_Disabled              = "disabled"
+	NoWshCode_PermissionError       = "permission-error"
+	NoWshCode_UserDeclined          = "user-declined"
+	NoWshCode_DomainSocketError     = "domainsocket-error"
+	NoWshCode_ConnServerStartError  = "connserver-start-error"
+	NoWshCode_InstallError          = "install-error"
+	NoWshCode_PostInstallStartError = "postinstall-start-error"
+	NoWshCode_InstallVerifyError    = "install-verify-error"
+)
+
 const DefaultConnectionTimeout = 60 * time.Second
 
 var globalLock = &sync.Mutex{}
@@ -663,6 +674,7 @@ type WshCheckResult struct {
 	WshEnabled    bool
 	ClientVersion string
 	NoWshReason   string
+	NoWshCode     string
 	WshError      error
 }
 
@@ -672,29 +684,29 @@ func (conn *SSHConn) tryEnableWsh(ctx context.Context, clientDisplayName string)
 	enableWsh, askBeforeInstall := conn.getConnWshSettings()
 	conn.Infof(ctx, "wsh settings enable:%v ask:%v\n", enableWsh, askBeforeInstall)
 	if !enableWsh {
-		return WshCheckResult{NoWshReason: "conn:wshenabled set to false"}
+		return WshCheckResult{NoWshReason: "conn:wshenabled set to false", NoWshCode: NoWshCode_Disabled}
 	}
 	if askBeforeInstall {
 		allowInstall, err := conn.getPermissionToInstallWsh(ctx, clientDisplayName)
 		if err != nil {
 			log.Printf("error getting permission to install wsh: %v\n", err)
-			return WshCheckResult{NoWshReason: "error getting user permission to install", WshError: err}
+			return WshCheckResult{NoWshReason: "error getting user permission to install", NoWshCode: NoWshCode_PermissionError, WshError: err}
 		}
 		if !allowInstall {
-			return WshCheckResult{NoWshReason: "user selected not to install wsh extensions"}
+			return WshCheckResult{NoWshReason: "user selected not to install wsh extensions", NoWshCode: NoWshCode_UserDeclined}
 		}
 	}
 	err := conn.OpenDomainSocketListener(ctx)
 	if err != nil {
 		conn.Infof(ctx, "ERROR opening domain socket listener: %v\n", err)
 		err = fmt.Errorf("error opening domain socket listener: %w", err)
-		return WshCheckResult{NoWshReason: "error opening domain socket", WshError: err}
+		return WshCheckResult{NoWshReason: "error opening domain socket", NoWshCode: NoWshCode_DomainSocketError, WshError: err}
 	}
 	needsInstall, clientVersion, osArchStr, err := conn.StartConnServer(ctx, false)
 	if err != nil {
 		conn.Infof(ctx, "ERROR starting conn server: %v\n", err)
 		err = fmt.Errorf("error starting conn server: %w", err)
-		return WshCheckResult{NoWshReason: "error starting connserver", WshError: err}
+		return WshCheckResult{NoWshReason: "error starting connserver", NoWshCode: NoWshCode_ConnServerStartError, WshError: err}
 	}
 	if needsInstall {
 		conn.Infof(ctx, "connserver needs to be (re)installed\n")
@@ -702,18 +714,18 @@ func (conn *SSHConn) tryEnableWsh(ctx context.Context, clientDisplayName string)
 		if err != nil {
 			conn.Infof(ctx, "ERROR installing wsh: %v\n", err)
 			err = fmt.Errorf("error installing wsh: %w", err)
-			return WshCheckResult{NoWshReason: "error installing wsh/connserver", WshError: err}
+			return WshCheckResult{NoWshReason: "error installing wsh/connserver", NoWshCode: NoWshCode_InstallError, WshError: err}
 		}
 		needsInstall, clientVersion, _, err = conn.StartConnServer(ctx, true)
 		if err != nil {
 			conn.Infof(ctx, "ERROR starting conn server (after install): %v\n", err)
 			err = fmt.Errorf("error starting conn server (after install): %w", err)
-			return WshCheckResult{NoWshReason: "error starting connserver", WshError: err}
+			return WshCheckResult{NoWshReason: "error starting connserver", NoWshCode: NoWshCode_PostInstallStartError, WshError: err}
 		}
 		if needsInstall {
 			conn.Infof(ctx, "conn server not installed correctly (after install)\n")
 			err = fmt.Errorf("conn server not installed correctly (after install)")
-			return WshCheckResult{NoWshReason: "connserver not installed properly", WshError: err}
+			return WshCheckResult{NoWshReason: "connserver not installed properly", NoWshCode: NoWshCode_InstallVerifyError, WshError: err}
 		}
 		return WshCheckResult{WshEnabled: true, ClientVersion: clientVersion}
 	} else {
@@ -780,6 +792,13 @@ func (conn *SSHConn) connectInternal(ctx context.Context, connFlags *wconfig.Con
 		} else {
 			conn.Infof(ctx, "wsh not enabled: %s\n", wshResult.NoWshReason)
 		}
+		telemetry.GoRecordTEventWrap(&telemetrydata.TEvent{
+			Event: "conn:nowsh",
+			Props: telemetrydata.TEventProps{
+				ConnType:         "ssh",
+				ConnWshErrorCode: wshResult.NoWshCode,
+			},
+		})
 	}
 	conn.persistWshInstalled(ctx, wshResult)
 	return nil
