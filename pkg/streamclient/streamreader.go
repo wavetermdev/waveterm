@@ -60,7 +60,7 @@ func (r *Reader) RecvData(dataPk wshrpc.CommandStreamData) {
 		if err != nil {
 			r.err = err
 			r.cond.Broadcast()
-			r.sendAckLocked(false, false)
+			r.sendAckLocked(false, true, "base64 decode error")
 			return
 		}
 		r.buffer = append(r.buffer, data...)
@@ -70,22 +70,22 @@ func (r *Reader) RecvData(dataPk wshrpc.CommandStreamData) {
 	if dataPk.Eof {
 		r.eof = true
 		r.cond.Broadcast()
-		r.sendAckLocked(true, false)
+		r.sendAckLocked(true, false, "")
 		return
 	}
 
 	if dataPk.Error != "" {
 		r.err = fmt.Errorf("stream error: %s", dataPk.Error)
 		r.cond.Broadcast()
-		r.sendAckLocked(false, false)
+		r.sendAckLocked(true, false, "")
 		return
 	}
 
 	r.cond.Broadcast()
-	r.sendAckLocked(false, false)
+	r.sendAckLocked(false, false, "")
 }
 
-func (r *Reader) sendAckLocked(fin bool, cancel bool) {
+func (r *Reader) sendAckLocked(fin bool, cancel bool, errStr string) {
 	rwnd := r.readWindow - int64(len(r.buffer))
 	if rwnd < 0 {
 		rwnd = 0
@@ -96,6 +96,7 @@ func (r *Reader) sendAckLocked(fin bool, cancel bool) {
 		Fin:    fin,
 		Cancel: cancel,
 		RWnd:   rwnd,
+		Error:  errStr,
 	}
 	r.ackSender.SendAck(ack)
 	r.lastRwndSent = rwnd
@@ -134,7 +135,7 @@ func (r *Reader) Read(p []byte) (int, error) {
 		rwndDiff := currentRwnd - r.lastRwndSent
 
 		if len(r.buffer) == 0 || rwndDiff >= threshold {
-			r.sendAckLocked(false, false)
+			r.sendAckLocked(false, false, "")
 		}
 	}
 
@@ -157,7 +158,7 @@ func (r *Reader) Close() error {
 		r.err = io.ErrClosedPipe
 	}
 	r.cond.Broadcast()
-	r.sendAckLocked(false, true)
+	r.sendAckLocked(false, true, "")
 
 	return r.err
 }
