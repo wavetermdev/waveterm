@@ -1,6 +1,7 @@
 package streamclient
 
 import (
+	"fmt"
 	"sync"
 	"time"
 
@@ -87,16 +88,20 @@ func (b *Broker) CreateStreamReader(readerRoute string, writerRoute string, rwnd
 	return reader, meta
 }
 
-func (b *Broker) AttachStreamWriter(meta *wshrpc.StreamMeta) *Writer {
+func (b *Broker) AttachStreamWriter(meta *wshrpc.StreamMeta) (*Writer, error) {
 	b.lock.Lock()
 	defer b.lock.Unlock()
+
+	if _, exists := b.writers[meta.Id]; exists {
+		return nil, fmt.Errorf("writer already registered for stream id %d", meta.Id)
+	}
 
 	writer := NewWriter(meta.Id, meta.RWnd, b)
 	b.writers[meta.Id] = writer
 	b.readerRoutes[meta.Id] = meta.ReaderRouteId
 	b.writerRoutes[meta.Id] = meta.WriterRouteId
 
-	return writer
+	return writer, nil
 }
 
 func (b *Broker) SendAck(ackPk wshrpc.CommandStreamAckData) {
@@ -135,8 +140,11 @@ func (b *Broker) processRecvWork(item workItem) {
 
 func (b *Broker) processSendAck(ackPk wshrpc.CommandStreamAckData) {
 	b.lock.Lock()
-	route := b.writerRoutes[ackPk.Id]
+	route, ok := b.writerRoutes[ackPk.Id]
 	b.lock.Unlock()
+	if !ok {
+		return
+	}
 
 	opts := &wshrpc.RpcOpts{
 		Route:      route,

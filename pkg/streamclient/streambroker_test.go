@@ -68,7 +68,10 @@ func TestBrokerBasicReadWrite(t *testing.T) {
 	broker1, broker2 := setupBrokerPair()
 
 	reader, meta := broker1.CreateStreamReader("reader1", "writer1", 1024)
-	writer := broker2.AttachStreamWriter(meta)
+	writer, err := broker2.AttachStreamWriter(meta)
+	if err != nil {
+		t.Fatalf("AttachStreamWriter failed: %v", err)
+	}
 
 	testData := []byte("Hello, World!")
 	n, err := writer.Write(testData)
@@ -102,7 +105,10 @@ func TestBrokerEOF(t *testing.T) {
 	broker1, broker2 := setupBrokerPair()
 
 	reader, meta := broker1.CreateStreamReader("reader1", "writer1", 1024)
-	writer := broker2.AttachStreamWriter(meta)
+	writer, err := broker2.AttachStreamWriter(meta)
+	if err != nil {
+		t.Fatalf("AttachStreamWriter failed: %v", err)
+	}
 
 	testData := []byte("Test data")
 	writer.Write(testData)
@@ -128,7 +134,10 @@ func TestBrokerFlowControl(t *testing.T) {
 
 	smallWindow := int64(10)
 	reader, meta := broker1.CreateStreamReader("reader1", "writer1", smallWindow)
-	writer := broker2.AttachStreamWriter(meta)
+	writer, err := broker2.AttachStreamWriter(meta)
+	if err != nil {
+		t.Fatalf("AttachStreamWriter failed: %v", err)
+	}
 
 	largeData := make([]byte, 100)
 	for i := range largeData {
@@ -171,13 +180,16 @@ func TestBrokerError(t *testing.T) {
 	broker1, broker2 := setupBrokerPair()
 
 	reader, meta := broker1.CreateStreamReader("reader1", "writer1", 1024)
-	writer := broker2.AttachStreamWriter(meta)
+	writer, err := broker2.AttachStreamWriter(meta)
+	if err != nil {
+		t.Fatalf("AttachStreamWriter failed: %v", err)
+	}
 
 	testErr := io.ErrUnexpectedEOF
 	writer.CloseWithError(testErr)
 
 	buf := make([]byte, 1024)
-	_, err := reader.Read(buf)
+	_, err = reader.Read(buf)
 	if err == nil {
 		t.Fatal("Expected error from read")
 	}
@@ -190,7 +202,10 @@ func TestBrokerCancel(t *testing.T) {
 	broker1, broker2 := setupBrokerPair()
 
 	reader, meta := broker1.CreateStreamReader("reader1", "writer1", 1024)
-	writer := broker2.AttachStreamWriter(meta)
+	writer, err := broker2.AttachStreamWriter(meta)
+	if err != nil {
+		t.Fatalf("AttachStreamWriter failed: %v", err)
+	}
 
 	reader.Close()
 
@@ -211,7 +226,10 @@ func TestBrokerMultipleWrites(t *testing.T) {
 	broker1, broker2 := setupBrokerPair()
 
 	reader, meta := broker1.CreateStreamReader("reader1", "writer1", 1024)
-	writer := broker2.AttachStreamWriter(meta)
+	writer, err := broker2.AttachStreamWriter(meta)
+	if err != nil {
+		t.Fatalf("AttachStreamWriter failed: %v", err)
+	}
 
 	messages := []string{"First", "Second", "Third"}
 	for _, msg := range messages {
@@ -243,7 +261,10 @@ func TestBrokerCleanup(t *testing.T) {
 	broker1, broker2 := setupBrokerPair()
 
 	reader, meta := broker1.CreateStreamReader("reader1", "writer1", 1024)
-	writer := broker2.AttachStreamWriter(meta)
+	writer, err := broker2.AttachStreamWriter(meta)
+	if err != nil {
+		t.Fatalf("AttachStreamWriter failed: %v", err)
+	}
 
 	testData := []byte("cleanup test")
 	writer.Write(testData)
