@@ -4,10 +4,17 @@ import (
 	"sync"
 	"time"
 
+	"github.com/wavetermdev/waveterm/pkg/utilds"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
 )
+
+type workItem struct {
+	workType string
+	ackPk    wshrpc.CommandStreamAckData
+	dataPk   wshrpc.CommandStreamData
+}
 
 type StreamRpcInterface interface {
 	StreamDataAckCommand(data wshrpc.CommandStreamAckData, opts *wshrpc.RpcOpts) error
@@ -40,10 +47,12 @@ type Broker struct {
 	writerRoutes        map[int64]string
 	readerErrorSentTime map[int64]time.Time
 	writerErrorSentTime map[int64]time.Time
+	sendQueue           *utilds.WorkQueue[workItem]
+	recvQueue           *utilds.WorkQueue[workItem]
 }
 
 func NewBroker(rpcClient StreamRpcInterface) *Broker {
-	return &Broker{
+	b := &Broker{
 		rpcClient:           rpcClient,
 		streamIdCounter:     0,
 		readers:             make(map[int64]*Reader),
@@ -53,6 +62,9 @@ func NewBroker(rpcClient StreamRpcInterface) *Broker {
 		readerErrorSentTime: make(map[int64]time.Time),
 		writerErrorSentTime: make(map[int64]time.Time),
 	}
+	b.sendQueue = utilds.NewWorkQueue(b.processSendWork)
+	b.recvQueue = utilds.NewWorkQueue(b.processRecvWork)
+	return b
 }
 
 func (b *Broker) CreateStreamReader(readerRoute string, writerRoute string, rwnd int64) (*Reader, *wshrpc.StreamMeta) {
@@ -89,8 +101,41 @@ func (b *Broker) AttachStreamWriter(meta *wshrpc.StreamMeta) *Writer {
 	return writer
 }
 
-// cannot block
 func (b *Broker) SendAck(ackPk wshrpc.CommandStreamAckData) {
+	b.sendQueue.Enqueue(workItem{workType: "sendack", ackPk: ackPk})
+}
+
+func (b *Broker) SendData(dataPk wshrpc.CommandStreamData) {
+	b.sendQueue.Enqueue(workItem{workType: "senddata", dataPk: dataPk})
+}
+
+func (b *Broker) RecvData(dataPk wshrpc.CommandStreamData) {
+	b.recvQueue.Enqueue(workItem{workType: "recvdata", dataPk: dataPk})
+}
+
+func (b *Broker) RecvAck(ackPk wshrpc.CommandStreamAckData) {
+	b.recvQueue.Enqueue(workItem{workType: "recvack", ackPk: ackPk})
+}
+
+func (b *Broker) processSendWork(item workItem) {
+	switch item.workType {
+	case "sendack":
+		b.processSendAck(item.ackPk)
+	case "senddata":
+		b.processSendData(item.dataPk)
+	}
+}
+
+func (b *Broker) processRecvWork(item workItem) {
+	switch item.workType {
+	case "recvdata":
+		b.processRecvData(item.dataPk)
+	case "recvack":
+		b.processRecvAck(item.ackPk)
+	}
+}
+
+func (b *Broker) processSendAck(ackPk wshrpc.CommandStreamAckData) {
 	b.lock.Lock()
 	route := b.writerRoutes[ackPk.Id]
 	b.lock.Unlock()
@@ -106,8 +151,7 @@ func (b *Broker) SendAck(ackPk wshrpc.CommandStreamAckData) {
 	}
 }
 
-// cannot block
-func (b *Broker) SendData(dataPk wshrpc.CommandStreamData) {
+func (b *Broker) processSendData(dataPk wshrpc.CommandStreamData) {
 	b.lock.Lock()
 	route := b.readerRoutes[dataPk.Id]
 	b.lock.Unlock()
@@ -119,8 +163,7 @@ func (b *Broker) SendData(dataPk wshrpc.CommandStreamData) {
 	b.rpcClient.StreamDataCommand(dataPk, opts)
 }
 
-// cannot block
-func (b *Broker) RecvData(dataPk wshrpc.CommandStreamData) {
+func (b *Broker) processRecvData(dataPk wshrpc.CommandStreamData) {
 	b.lock.Lock()
 	reader, ok := b.readers[dataPk.Id]
 	if !ok {
@@ -148,8 +191,7 @@ func (b *Broker) RecvData(dataPk wshrpc.CommandStreamData) {
 	reader.RecvData(dataPk)
 }
 
-// cannot block
-func (b *Broker) RecvAck(ackPk wshrpc.CommandStreamAckData) {
+func (b *Broker) processRecvAck(ackPk wshrpc.CommandStreamAckData) {
 	b.lock.Lock()
 	writer, ok := b.writers[ackPk.Id]
 	if !ok {
@@ -178,6 +220,13 @@ func (b *Broker) RecvAck(ackPk wshrpc.CommandStreamAckData) {
 	if ackPk.Fin || ackPk.Cancel {
 		b.cleanupWriter(ackPk.Id)
 	}
+}
+
+func (b *Broker) Close() {
+	b.sendQueue.Close(false)
+	b.recvQueue.Close(false)
+	b.sendQueue.Wait()
+	b.recvQueue.Wait()
 }
 
 func (b *Broker) cleanupReader(streamId int64) {
