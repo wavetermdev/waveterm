@@ -46,7 +46,6 @@ type Broker struct {
 	readerRoutes        map[int64]string
 	writerRoutes        map[int64]string
 	readerErrorSentTime map[int64]time.Time
-	writerErrorSentTime map[int64]time.Time
 	sendQueue           *utilds.WorkQueue[workItem]
 	recvQueue           *utilds.WorkQueue[workItem]
 }
@@ -60,7 +59,6 @@ func NewBroker(rpcClient StreamRpcInterface) *Broker {
 		readerRoutes:        make(map[int64]string),
 		writerRoutes:        make(map[int64]string),
 		readerErrorSentTime: make(map[int64]time.Time),
-		writerErrorSentTime: make(map[int64]time.Time),
 	}
 	b.sendQueue = utilds.NewWorkQueue(b.processSendWork)
 	b.recvQueue = utilds.NewWorkQueue(b.processRecvWork)
@@ -194,24 +192,9 @@ func (b *Broker) processRecvData(dataPk wshrpc.CommandStreamData) {
 func (b *Broker) processRecvAck(ackPk wshrpc.CommandStreamAckData) {
 	b.lock.Lock()
 	writer, ok := b.writers[ackPk.Id]
-	if !ok {
-		lastSent := b.writerErrorSentTime[ackPk.Id]
-		now := time.Now()
-		if now.Sub(lastSent) < time.Second {
-			b.lock.Unlock()
-			return
-		}
-		b.writerErrorSentTime[ackPk.Id] = now
-	}
 	b.lock.Unlock()
 
 	if !ok {
-		dataPk := wshrpc.CommandStreamData{
-			Id:    ackPk.Id,
-			Seq:   ackPk.Id,
-			Error: "stream writer not found",
-		}
-		b.SendData(dataPk)
 		return
 	}
 
@@ -244,5 +227,4 @@ func (b *Broker) cleanupWriter(streamId int64) {
 
 	delete(b.writers, streamId)
 	delete(b.writerRoutes, streamId)
-	delete(b.writerErrorSentTime, streamId)
 }

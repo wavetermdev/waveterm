@@ -51,7 +51,18 @@ func (r *Reader) RecvData(dataPk wshrpc.CommandStreamData) {
 		return
 	}
 
+	// error packets can be sent without a valid Seq, so check for errors before validating sequence
+	if dataPk.Error != "" {
+		r.err = fmt.Errorf("stream error: %s", dataPk.Error)
+		r.cond.Broadcast()
+		r.sendAckLocked(true, false, "")
+		return
+	}
+
 	if dataPk.Seq != r.nextSeq {
+		r.err = fmt.Errorf("stream sequence mismatch: expected %d, got %d", r.nextSeq, dataPk.Seq)
+		r.cond.Broadcast()
+		r.sendAckLocked(false, true, "sequence mismatch error")
 		return
 	}
 
@@ -69,13 +80,6 @@ func (r *Reader) RecvData(dataPk wshrpc.CommandStreamData) {
 
 	if dataPk.Eof {
 		r.eof = true
-		r.cond.Broadcast()
-		r.sendAckLocked(true, false, "")
-		return
-	}
-
-	if dataPk.Error != "" {
-		r.err = fmt.Errorf("stream error: %s", dataPk.Error)
 		r.cond.Broadcast()
 		r.sendAckLocked(true, false, "")
 		return
