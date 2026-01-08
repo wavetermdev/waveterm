@@ -582,6 +582,16 @@ class RpcApiType {
         return client.wshRpcStream("streamcpudata", data, opts);
     }
 
+    // command "streamdata" [call]
+    StreamDataCommand(client: WshClient, data: CommandStreamData, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("streamdata", data, opts);
+    }
+
+    // command "streamdataack" [call]
+    StreamDataAckCommand(client: WshClient, data: CommandStreamAckData, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("streamdataack", data, opts);
+    }
+
     // command "streamtest" [responsestream]
 	StreamTestCommand(client: WshClient, opts?: RpcOpts): AsyncGenerator<number, void, boolean> {
         return client.wshRpcStream("streamtest", null, opts);

@@ -649,3 +649,10 @@ type CommandStreamAckData struct {
 	Cancel bool   `json:"cancel,omitempty"` // used to cancel the stream
 	Error  string `json:"error,omitempty"`  // reason for cancel (may only be set if cancel is true)
 }
+
+type StreamMeta struct {
+	Id            int64  `json:"id"`   // streamid
+	RWnd          int64  `json:"rwnd"` // initial receive window size
+	ReaderRouteId string `json:"readerrouteid"`
+	WriterRouteId string `json:"writerrouteid"`
+}
