@@ -653,27 +653,6 @@ function registerGlobalKeys() {
         return "";
     }
 
-    function focusSearchInput() {
-        setTimeout(() => {
-            const blockId = getFocusedBlockInStaticTab();
-            if (!blockId) {
-                return;
-            }
-
-            // Directly find the search container by data-blockid attribute
-            const searchContainer = document.querySelector(
-                `.search-container[data-blockid="${blockId}"]`
-            ) as HTMLElement;
-            if (searchContainer) {
-                const searchInput = searchContainer.querySelector("input") as HTMLInputElement;
-                if (searchInput) {
-                    searchInput.focus();
-                    searchInput.select();
-                }
-            }
-        }, 0);
-    }
-
     function activateSearch(event: WaveKeyboardEvent): boolean {
         const bcm = getBlockComponentModel(getFocusedBlockInStaticTab());
         // Ctrl+f is reserved in most shells.
@@ -681,20 +660,17 @@ function registerGlobalKeys() {
             return false;
         }
         if (bcm.viewModel.searchAtoms) {
-            const searchAtoms = bcm.viewModel.searchAtoms;
-            const isOpen = globalStore.get(searchAtoms.isOpen);
-            const selectedText = getSelectedText();
+			let selectedText = getSelectedText();
+			globalStore.set(bcm.viewModel.searchAtoms.isOpen, true);
+			globalStore.set(bcm.viewModel.searchAtoms.searchValue, selectedText);
 
-            // Open search dialog if not already open
-            if (!isOpen) {
-                globalStore.set(searchAtoms.isOpen, true);
+            // Focus the search input using the exposed searchInputRef
+            const searchInputRef = bcm.viewModel.searchInputRef;
+            if (searchInputRef?.current) {
+                setTimeout(() => {
+                    searchInputRef.current?.focus();
+                }, 10);
             }
-            // Set search value (use selected text if available, otherwise empty string)
-            globalStore.set(searchAtoms.searchValue, selectedText || "");
-            // Reset search results
-            globalStore.set(searchAtoms.resultsIndex, 0);
-            globalStore.set(searchAtoms.resultsCount, 0);
-            focusSearchInput();
             return true;
         }
         return false;

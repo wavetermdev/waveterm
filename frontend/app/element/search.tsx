@@ -11,12 +11,12 @@ import "./search.scss";
 
 type SearchProps = SearchAtoms & {
     anchorRef?: React.RefObject<HTMLElement>;
+	searchInputRef?: React.RefObject<HTMLInputElement>;
     offsetX?: number;
     offsetY?: number;
     onSearch?: (search: string) => void;
     onNext?: () => void;
     onPrev?: () => void;
-    blockId?: string;
 };
 
 const SearchComponent = ({
@@ -28,13 +28,15 @@ const SearchComponent = ({
     wholeWord: wholeWordAtom,
     isOpen: isOpenAtom,
     anchorRef,
+	searchInputRef: providedInputRef,
     offsetX = 10,
     offsetY = 10,
     onSearch,
     onNext,
     onPrev,
-    blockId,
 }: SearchProps) => {
+	const localInputRef = useRef<HTMLInputElement>(null);
+    const inputRef = providedInputRef || localInputRef;
     const [isOpen, setIsOpen] = useAtom<boolean>(isOpenAtom);
     const [search, setSearch] = useAtom<string>(searchAtom);
     const [index, setIndex] = useAtom<number>(indexAtom);
@@ -146,8 +148,9 @@ const SearchComponent = ({
         <>
             {isOpen && (
                 <FloatingPortal>
-                    <div className="search-container" style={{ ...floatingStyles }} ref={refs.setFloating} data-blockid={blockId}>
+                    <div className="search-container" style={{ ...floatingStyles }} ref={refs.setFloating}>
                         <Input
+							ref={inputRef}
                             placeholder="Search"
                             value={search}
                             onChange={setSearch}
@@ -190,7 +193,6 @@ type SearchOptions = {
     regex?: boolean;
     caseSensitive?: boolean;
     wholeWord?: boolean;
-    blockId?: string;
 };
 
 export function useSearch(options?: SearchOptions): SearchProps {
@@ -207,15 +209,19 @@ export function useSearch(options?: SearchOptions): SearchProps {
         []
     );
     const anchorRef = options?.anchorRef ?? useRef(null);
+	const searchInputRef = useRef<HTMLInputElement>(null);
     useEffect(() => {
         if (options?.viewModel) {
             options.viewModel.searchAtoms = searchAtoms;
+			// Store inputRef on viewModel for external access (e.g., keymodel.ts)
+            (options.viewModel as any).searchInputRef = searchInputRef;
             return () => {
                 options.viewModel.searchAtoms = undefined;
+				(options.viewModel as any).searchInputRef = undefined;
             };
         }
-    }, [options?.viewModel]);
-    return { ...searchAtoms, anchorRef, blockId: options?.blockId };
+    }, [options?.viewModel, searchAtoms]);
+    return { ...searchAtoms, anchorRef, searchInputRef };
 }
 
 const createToggleButtonDecl = (
