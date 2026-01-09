@@ -18,6 +18,7 @@ type CirBuf struct {
 	count      int
 	totalSize  int64
 	syncMode   bool
+	windowSize int
 }
 
 func MakeCirBuf(maxSize int, initSyncMode bool) *CirBuf {
@@ -25,10 +26,36 @@ func MakeCirBuf(maxSize int, initSyncMode bool) *CirBuf {
 		buf:        make([]byte, maxSize),
 		syncMode:   initSyncMode,
 		waiterChan: make(chan chan struct{}, 1),
+		windowSize: maxSize,
 	}
 	return cb
 }
 
+// SetEffectiveWindow changes the sync mode and effective window size for flow control.
+// The windowSize is capped at the buffer size.
+// When window shrinks: data is preserved, sync mode blocks writes, async mode maintains data size.
+// When window increases: blocked writers are woken up if space becomes available.
+func (cb *CirBuf) SetEffectiveWindow(syncMode bool, windowSize int) {
+	cb.lock.Lock()
+	defer cb.lock.Unlock()
+
+	maxSize := len(cb.buf)
+	if windowSize > maxSize {
+		windowSize = maxSize
+	}
+
+	oldWindowSize := cb.windowSize
+	cb.windowSize = windowSize
+	cb.syncMode = syncMode
+
+	if windowSize > oldWindowSize {
+		cb.tryWakeWriter()
+	}
+}
+
+// Write will never block if syncMode is false
+// If syncMode is true, write will block until enough data is consumed to allow the write to finish
+// to cancel a write in progress use WriteCtx
 func (cb *CirBuf) Write(data []byte) (int, error) {
 	return cb.WriteCtx(context.Background(), data)
 }
@@ -73,7 +100,7 @@ func (cb *CirBuf) writeAvailable(data []byte) (int, chan struct{}) {
 	written := 0
 
 	for i := 0; i < len(data); i++ {
-		if cb.syncMode && cb.count >= size {
+		if cb.syncMode && cb.count >= cb.windowSize {
 			spaceAvailable := make(chan struct{})
 			if !tryWriteCh(cb.waiterChan, spaceAvailable) {
 				panic("CirBuf: multiple concurrent blocked writes not allowed")
@@ -83,7 +110,7 @@ func (cb *CirBuf) writeAvailable(data []byte) (int, chan struct{}) {
 
 		cb.buf[cb.writePos] = data[i]
 		cb.writePos = (cb.writePos + 1) % size
-		if cb.count < size {
+		if cb.count < cb.windowSize {
 			cb.count++
 		} else {
 			cb.readPos = (cb.readPos + 1) % size
@@ -128,9 +155,7 @@ func (cb *CirBuf) Consume(numBytes int) error {
 	cb.readPos = (cb.readPos + numBytes) % size
 	cb.count -= numBytes
 
-	if waiterCh, ok := tryReadCh(cb.waiterChan); ok {
-		close(*waiterCh)
-	}
+	cb.tryWakeWriter()
 
 	return nil
 }
@@ -162,5 +187,11 @@ func tryReadCh[T any](ch <-chan T) (*T, bool) {
 		return &rtn, true
 	default:
 		return nil, false
+	}
+}
+
+func (cb *CirBuf) tryWakeWriter() {
+	if waiterCh, ok := tryReadCh(cb.waiterChan); ok {
+		close(*waiterCh)
 	}
 }
