@@ -197,15 +197,35 @@ func getTabPresetMeta() (waveobj.MetaMapType, error) {
 
 // returns tabid
 func CreateTab(ctx context.Context, workspaceId string, tabName string, activateTab bool, isInitialLaunch bool) (string, error) {
+	ws, err := GetWorkspace(ctx, workspaceId)
+	if err != nil {
+		return "", fmt.Errorf("workspace %s not found: %w", workspaceId, err)
+	}
+
 	if tabName == "" {
-		ws, err := GetWorkspace(ctx, workspaceId)
-		if err != nil {
-			return "", fmt.Errorf("workspace %s not found: %w", workspaceId, err)
-		}
 		tabName = "T" + fmt.Sprint(len(ws.TabIds)+1)
 	}
 
-	tab, err := createTabObj(ctx, workspaceId, tabName, nil)
+	// Try to inherit cwd from the active tab
+	var inheritedMeta waveobj.MetaMapType
+	if ws.ActiveTabId != "" && !isInitialLaunch {
+		activeTab, _ := wstore.DBGet[*waveobj.Tab](ctx, ws.ActiveTabId)
+		if activeTab != nil && len(activeTab.BlockIds) > 0 {
+			// Get the first block from the active tab
+			firstBlock, _ := wstore.DBGet[*waveobj.Block](ctx, activeTab.BlockIds[0])
+			if firstBlock != nil {
+				meta := waveobj.GetMeta(firstBlock)
+				if cwd, ok := meta[waveobj.MetaKey_CmdCwd].(string); ok && cwd != "" {
+					// Inherit the cwd for the new tab
+					inheritedMeta = waveobj.MetaMapType{
+						waveobj.MetaKey_CmdCwd: cwd,
+					}
+				}
+			}
+		}
+	}
+
+	tab, err := createTabObj(ctx, workspaceId, tabName, inheritedMeta)
 	if err != nil {
 		return "", fmt.Errorf("error creating tab: %w", err)
 	}
@@ -218,7 +238,17 @@ func CreateTab(ctx context.Context, workspaceId string, tabName string, activate
 
 	// No need to apply an initial layout for the initial launch, since the starter layout will get applied after onboarding modal dismissal
 	if !isInitialLaunch {
-		err = ApplyPortableLayout(ctx, tab.OID, GetNewTabLayout(), true)
+		newTabLayout := GetNewTabLayout()
+		// Merge inherited cwd into the terminal block's meta
+		if len(inheritedMeta) > 0 && len(newTabLayout) > 0 {
+			if newTabLayout[0].BlockDef.Meta == nil {
+				newTabLayout[0].BlockDef.Meta = make(waveobj.MetaMapType)
+			}
+			for k, v := range inheritedMeta {
+				newTabLayout[0].BlockDef.Meta[k] = v
+			}
+		}
+		err = ApplyPortableLayout(ctx, tab.OID, newTabLayout, true)
 		if err != nil {
 			return tab.OID, fmt.Errorf("error applying new tab layout: %w", err)
 		}
