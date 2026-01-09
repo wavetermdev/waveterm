@@ -461,6 +461,26 @@ declare global {
         builderid: string;
     };
 
+    // wshrpc.CommandStreamAckData
+    type CommandStreamAckData = {
+        id: number;
+        seq: number;
+        rwnd: number;
+        fin?: boolean;
+        delay?: number;
+        cancel?: boolean;
+        error?: string;
+    };
+
+    // wshrpc.CommandStreamData
+    type CommandStreamData = {
+        id: number;
+        seq: number;
+        data64?: string;
+        eof?: boolean;
+        error?: string;
+    };
+
     // wshrpc.CommandTermGetScrollbackLinesData
     type CommandTermGetScrollbackLinesData = {
         linestart: number;
@@ -1240,6 +1260,7 @@ declare global {
         "wsh:cmd"?: string;
         "wsh:haderror"?: boolean;
         "conn:conntype"?: string;
+        "conn:wsherrorcode"?: string;
         "onboarding:feature"?: "waveai" | "magnify" | "wsh";
         "onboarding:version"?: string;
         "onboarding:githubstar"?: "already" | "star" | "later";
