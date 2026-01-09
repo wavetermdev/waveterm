@@ -5,6 +5,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/wavetermdev/waveterm/pkg/utilds"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
@@ -41,12 +42,11 @@ func AdaptWshRpc(rpc *wshutil.WshRpc) StreamRpcInterface {
 type Broker struct {
 	lock                sync.Mutex
 	rpcClient           StreamRpcInterface
-	streamIdCounter     int64
-	readers             map[int64]*Reader
-	writers             map[int64]*Writer
-	readerRoutes        map[int64]string
-	writerRoutes        map[int64]string
-	readerErrorSentTime map[int64]time.Time
+	readers             map[string]*Reader
+	writers             map[string]*Writer
+	readerRoutes        map[string]string
+	writerRoutes        map[string]string
+	readerErrorSentTime map[string]time.Time
 	sendQueue           *utilds.WorkQueue[workItem]
 	recvQueue           *utilds.WorkQueue[workItem]
 }
@@ -54,12 +54,11 @@ type Broker struct {
 func NewBroker(rpcClient StreamRpcInterface) *Broker {
 	b := &Broker{
 		rpcClient:           rpcClient,
-		streamIdCounter:     0,
-		readers:             make(map[int64]*Reader),
-		writers:             make(map[int64]*Writer),
-		readerRoutes:        make(map[int64]string),
-		writerRoutes:        make(map[int64]string),
-		readerErrorSentTime: make(map[int64]time.Time),
+		readers:             make(map[string]*Reader),
+		writers:             make(map[string]*Writer),
+		readerRoutes:        make(map[string]string),
+		writerRoutes:        make(map[string]string),
+		readerErrorSentTime: make(map[string]time.Time),
 	}
 	b.sendQueue = utilds.NewWorkQueue(b.processSendWork)
 	b.recvQueue = utilds.NewWorkQueue(b.processRecvWork)
@@ -70,8 +69,7 @@ func (b *Broker) CreateStreamReader(readerRoute string, writerRoute string, rwnd
 	b.lock.Lock()
 	defer b.lock.Unlock()
 
-	b.streamIdCounter++
-	streamId := b.streamIdCounter
+	streamId := uuid.New().String()
 
 	reader := NewReader(streamId, rwnd, b)
 	b.readers[streamId] = reader
@@ -93,7 +91,7 @@ func (b *Broker) AttachStreamWriter(meta *wshrpc.StreamMeta) (*Writer, error) {
 	defer b.lock.Unlock()
 
 	if _, exists := b.writers[meta.Id]; exists {
-		return nil, fmt.Errorf("writer already registered for stream id %d", meta.Id)
+		return nil, fmt.Errorf("writer already registered for stream id %s", meta.Id)
 	}
 
 	writer := NewWriter(meta.Id, meta.RWnd, b)
@@ -220,7 +218,7 @@ func (b *Broker) Close() {
 	b.recvQueue.Wait()
 }
 
-func (b *Broker) cleanupReader(streamId int64) {
+func (b *Broker) cleanupReader(streamId string) {
 	b.lock.Lock()
 	defer b.lock.Unlock()
 
@@ -229,7 +227,7 @@ func (b *Broker) cleanupReader(streamId int64) {
 	delete(b.readerErrorSentTime, streamId)
 }
 
-func (b *Broker) cleanupWriter(streamId int64) {
+func (b *Broker) cleanupWriter(streamId string) {
 	b.lock.Lock()
 	defer b.lock.Unlock()
 

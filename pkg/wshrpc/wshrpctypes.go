@@ -633,7 +633,7 @@ type CommandElectronDecryptRtnData struct {
 }
 
 type CommandStreamData struct {
-	Id     int64  `json:"id"`  // streamid
+	Id     string `json:"id"`  // streamid
 	Seq    int64  `json:"seq"` // start offset (bytes)
 	Data64 string `json:"data64,omitempty"`
 	Eof    bool   `json:"eof,omitempty"`   // can be set with data or without
@@ -641,7 +641,7 @@ type CommandStreamData struct {
 }
 
 type CommandStreamAckData struct {
-	Id     int64  `json:"id"`               // streamid
+	Id     string `json:"id"`               // streamid
 	Seq    int64  `json:"seq"`              // next expected byte
 	RWnd   int64  `json:"rwnd"`             // receive window size
 	Fin    bool   `json:"fin,omitempty"`    // observed end-of-stream (eof or error)
@@ -651,7 +651,7 @@ type CommandStreamAckData struct {
 }
 
 type StreamMeta struct {
-	Id            int64  `json:"id"`   // streamid
+	Id            string `json:"id"`   // streamid
 	RWnd          int64  `json:"rwnd"` // initial receive window size
 	ReaderRouteId string `json:"readerrouteid"`
 	WriterRouteId string `json:"writerrouteid"`

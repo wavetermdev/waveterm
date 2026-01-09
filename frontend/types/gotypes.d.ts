@@ -463,7 +463,7 @@ declare global {
 
     // wshrpc.CommandStreamAckData
     type CommandStreamAckData = {
-        id: number;
+        id: string;
         seq: number;
         rwnd: number;
         fin?: boolean;
@@ -474,7 +474,7 @@ declare global {
 
     // wshrpc.CommandStreamData
     type CommandStreamData = {
-        id: number;
+        id: string;
         seq: number;
         data64?: string;
         eof?: boolean;

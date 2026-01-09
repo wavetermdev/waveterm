@@ -126,18 +126,23 @@ func (cb *CirBuf) writeAvailable(data []byte) (int, chan struct{}) {
 }
 
 func (cb *CirBuf) PeekData(data []byte) int {
+	return cb.PeekDataAt(0, data)
+}
+
+func (cb *CirBuf) PeekDataAt(offset int, data []byte) int {
 	cb.lock.Lock()
 	defer cb.lock.Unlock()
 
-	if cb.count == 0 {
+	if cb.count == 0 || offset >= cb.count {
 		return 0
 	}
 
 	size := len(cb.buf)
+	pos := (cb.readPos + offset) % size
+	maxRead := cb.count - offset
 	read := 0
-	pos := cb.readPos
 
-	for i := 0; i < len(data) && i < cb.count; i++ {
+	for i := 0; i < len(data) && i < maxRead; i++ {
 		data[i] = cb.buf[pos]
 		pos = (pos + 1) % size
 		read++

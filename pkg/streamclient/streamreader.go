@@ -16,7 +16,7 @@ type AckSender interface {
 type Reader struct {
 	lock         sync.Mutex
 	cond         *sync.Cond
-	id           int64
+	id           string
 	ackSender    AckSender
 	readWindow   int64
 	nextSeq      int64
@@ -27,7 +27,7 @@ type Reader struct {
 	lastRwndSent int64
 }
 
-func NewReader(id int64, readWindow int64, ackSender AckSender) *Reader {
+func NewReader(id string, readWindow int64, ackSender AckSender) *Reader {
 	r := &Reader{
 		id:           id,
 		readWindow:   readWindow,
