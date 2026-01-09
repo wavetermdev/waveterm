@@ -34,6 +34,7 @@ Wave AI now supports provider-based configuration which automatically applies se
 
 - **`openai`** - OpenAI API (automatically configures endpoint and secret name) [[see example](#openai)]
 - **`openrouter`** - OpenRouter API (automatically configures endpoint and secret name) [[see example](#openrouter)]
+- **`nanogpt`** - NanoGPT API (automatically configures endpoint and secret name) [[see example](#nanogpt)]
 - **`google`** - Google AI (Gemini) [[see example](#google-ai-gemini)]
 - **`azure`** - Azure OpenAI Service (modern API) [[see example](#azure-openai-modern-api)]
 - **`azure-legacy`** - Azure OpenAI Service (legacy deployment API) [[see example](#azure-openai-legacy-deployment-api)]
@@ -228,6 +229,40 @@ For OpenRouter, you must manually specify `ai:capabilities` based on your model'
   }
 }
 ```
+:::
+
+### NanoGPT
+
+[NanoGPT](https://nano-gpt.com) provides access to multiple AI models at competitive prices. Using the `nanogpt` provider simplifies configuration:
+
+```json
+{
+  "nanogpt-glm47": {
+    "display:name": "NanoGPT - GLM 4.7",
+    "ai:provider": "nanogpt",
+    "ai:model": "zai-org/glm-4.7"
+  }
+}
+```
+
+The provider automatically sets:
+- `ai:endpoint` to `https://nano-gpt.com/api/v1/chat/completions`
+- `ai:apitype` to `openai-chat`
+- `ai:apitokensecretname` to `NANOGPT_KEY` (store your NanoGPT API key with this name)
+
+:::note
+NanoGPT is a proxy service that provides access to multiple AI models. You must manually specify `ai:capabilities` based on the model's features. NanoGPT supports OpenAI-compatible tool calling for models that have that capability. Check the model's `capabilities.vision` field from the [NanoGPT models API](https://nano-gpt.com/api/v1/models?detailed=true) to determine image support. Example for a text-only model with tool support:
+```json
+{
+  "nanogpt-glm47": {
+    "display:name": "NanoGPT - GLM 4.7",
+    "ai:provider": "nanogpt",
+    "ai:model": "zai-org/glm-4.7",
+    "ai:capabilities": ["tools"]
+  }
+}
+```
+For vision-capable models like `openai/gpt-5`, add `"images"` to capabilities.
 :::
 
 ### Google AI (Gemini)
