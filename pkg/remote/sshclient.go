@@ -74,9 +74,9 @@ type ConnectionError struct {
 
 func (ce ConnectionError) Error() string {
 	if ce.CurrentClient == nil {
-		return fmt.Sprintf("Connecting to %s, Error: %v", ce.NextOpts, ce.Err)
+		return fmt.Sprintf("Connecting to %s, Error: %v", MaskString(ce.NextOpts.String()), ce.Err)
 	}
-	return fmt.Sprintf("Connecting from %v to %s (jump number %d), Error: %v", ce.CurrentClient, ce.NextOpts, ce.JumpNum, ce.Err)
+	return fmt.Sprintf("Connecting from client to %s (jump number %d), Error: %v", MaskString(ce.NextOpts.String()), ce.JumpNum, ce.Err)
 }
 
 func SimpleMessageFromPossibleConnectionError(err error) string {
@@ -87,6 +87,116 @@ func SimpleMessageFromPossibleConnectionError(err error) string {
 		return ce.Err.Error()
 	}
 	return err.Error()
+}
+
+// logSSHKeywords logs SSH configuration in a sanitized way (DEBUG level)
+func logSSHKeywords(ctx context.Context, sshKeywords *wconfig.ConnKeywords) {
+	blocklogger.Debugf(ctx, "[ssh-config] User: %s\n", MaskString(utilfn.SafeDeref(sshKeywords.SshUser)))
+	blocklogger.Debugf(ctx, "[ssh-config] HostName: %s\n", MaskString(utilfn.SafeDeref(sshKeywords.SshHostName)))
+	blocklogger.Debugf(ctx, "[ssh-config] Port: %s\n", utilfn.SafeDeref(sshKeywords.SshPort))
+	blocklogger.Debugf(ctx, "[ssh-config] IdentityAgent: %s\n", filepath.Base(utilfn.SafeDeref(sshKeywords.SshIdentityAgent)))
+	blocklogger.Debugf(ctx, "[ssh-config] IdentitiesOnly: %v\n", utilfn.SafeDeref(sshKeywords.SshIdentitiesOnly))
+	blocklogger.Debugf(ctx, "[ssh-config] IdentityFile count: %d\n", len(sshKeywords.SshIdentityFile))
+	// Log masked identity file paths for privacy
+	for i, f := range sshKeywords.SshIdentityFile {
+		blocklogger.Debugf(ctx, "[ssh-config]   IdentityFile[%d]: %s\n", i, maskIdentityFile(f))
+	}
+	blocklogger.Debugf(ctx, "[ssh-config] PubkeyAuthentication: %v\n", utilfn.SafeDeref(sshKeywords.SshPubkeyAuthentication))
+	blocklogger.Debugf(ctx, "[ssh-config] PasswordAuthentication: %v\n", utilfn.SafeDeref(sshKeywords.SshPasswordAuthentication))
+	blocklogger.Debugf(ctx, "[ssh-config] KbdInteractiveAuthentication: %v\n", utilfn.SafeDeref(sshKeywords.SshKbdInteractiveAuthentication))
+	blocklogger.Debugf(ctx, "[ssh-config] PreferredAuthentications: %v\n", sshKeywords.SshPreferredAuthentications)
+	blocklogger.Debugf(ctx, "[ssh-config] AddKeysToAgent: %v\n", utilfn.SafeDeref(sshKeywords.SshAddKeysToAgent))
+	blocklogger.Debugf(ctx, "[ssh-config] ProxyJump count: %d\n", len(sshKeywords.SshProxyJump))
+	// Note: do not log PasswordSecretName value, only indicate if configured
+	if sshKeywords.SshPasswordSecretName != nil && *sshKeywords.SshPasswordSecretName != "" {
+		blocklogger.Debugf(ctx, "[ssh-config] PasswordSecretName: <configured>\n")
+	}
+}
+
+// MaskString masks a string for privacy, showing only first 3 and last 3 characters.
+// Uses rune-based slicing to properly handle multi-byte UTF-8 characters.
+func MaskString(s string) string {
+	if s == "" {
+		return "<empty>"
+	}
+	runes := []rune(s)
+	if len(runes) <= 6 {
+		return "***"
+	}
+	return string(runes[:3]) + "***" + string(runes[len(runes)-3:])
+}
+
+// maskIdentityFile masks an identity file path for privacy.
+// It masks the username in home directory paths (/home/user/ or C:\Users\user\)
+// and masks the filename while preserving .pub suffix if present.
+func maskIdentityFile(path string) string {
+	if path == "" {
+		return "<empty>"
+	}
+
+	// Normalize path separators for consistent handling
+	normalizedPath := filepath.ToSlash(path)
+
+	// Extract directory and filename
+	dir := filepath.Dir(path)
+	filename := filepath.Base(path)
+
+	// Check for .pub suffix
+	hasPubSuffix := strings.HasSuffix(filename, ".pub")
+	if hasPubSuffix {
+		filename = strings.TrimSuffix(filename, ".pub")
+	}
+
+	// Mask the filename
+	maskedFilename := MaskString(filename)
+	if hasPubSuffix {
+		maskedFilename += ".pub"
+	}
+
+	// Mask username in home directory paths
+	// Unix: /home/username/... or /Users/username/...
+	// Windows: C:\Users\username\... (normalized to C:/Users/username/...)
+	maskedDir := dir
+	if strings.HasPrefix(normalizedPath, "/home/") {
+		parts := strings.SplitN(normalizedPath, "/", 4) // ["", "home", "username", "rest..."]
+		if len(parts) >= 3 {
+			maskedUsername := MaskString(parts[2])
+			if len(parts) >= 4 {
+				subDir := filepath.Dir(parts[3])
+				if subDir == "." {
+					maskedDir = "/home/" + maskedUsername
+				} else {
+					maskedDir = "/home/" + maskedUsername + "/" + subDir
+				}
+			} else {
+				maskedDir = "/home/" + maskedUsername
+			}
+		}
+	} else if strings.Contains(normalizedPath, "/Users/") {
+		// Handle both Unix /Users/ and Windows C:/Users/
+		idx := strings.Index(normalizedPath, "/Users/")
+		prefix := normalizedPath[:idx]
+		rest := normalizedPath[idx+7:] // Skip "/Users/"
+		parts := strings.SplitN(rest, "/", 2)
+		if len(parts) >= 1 {
+			maskedUsername := MaskString(parts[0])
+			if len(parts) >= 2 {
+				subDir := filepath.Dir(parts[1])
+				if subDir == "." {
+					maskedDir = prefix + "/Users/" + maskedUsername
+				} else {
+					maskedDir = prefix + "/Users/" + maskedUsername + "/" + subDir
+				}
+			} else {
+				maskedDir = prefix + "/Users/" + maskedUsername
+			}
+		}
+	}
+
+	// Convert back to native path separators
+	maskedDir = filepath.FromSlash(maskedDir)
+
+	return filepath.Join(maskedDir, maskedFilename)
 }
 
 // This exists to trick the ssh library into continuing to try
@@ -137,6 +247,78 @@ func createPublicKeyCallback(connCtx context.Context, sshKeywords *wconfig.ConnK
 	}
 	// require pointer to modify list in closure
 	identityFilesPtr := &identityFiles
+
+	// If IdentitiesOnly is set, filter agent signers to only include those that match an IdentityFile
+	// This matches OpenSSH behavior where the agent can still be used, but only for keys explicitly listed
+	if utilfn.SafeDeref(sshKeywords.SshIdentitiesOnly) && len(authSockSignersExt) > 0 {
+		var identityPubKeys []ssh.PublicKey
+		for _, identityFile := range identityFiles {
+			pubKeyData := existingKeys[identityFile]
+
+			// 1. Try reading as OpenSSH authorized_key format (e.g., "ssh-rsa AAAA... comment")
+			// This is the most common format for .pub files including 1Password
+			pubKey, _, _, _, err := ssh.ParseAuthorizedKey(pubKeyData)
+			if err == nil {
+				identityPubKeys = append(identityPubKeys, pubKey)
+				blocklogger.Debugf(connCtx, "[ssh-agent] loaded public key from %s (authorized_key format)\n", maskIdentityFile(identityFile))
+				continue
+			}
+
+			// 2. Try reading as raw public key (binary format)
+			pubKey, err = ssh.ParsePublicKey(pubKeyData)
+			if err == nil {
+				identityPubKeys = append(identityPubKeys, pubKey)
+				blocklogger.Debugf(connCtx, "[ssh-agent] loaded public key from %s (raw format)\n", maskIdentityFile(identityFile))
+				continue
+			}
+
+			// 3. Try reading as unencrypted private key (to get public key)
+			privKey, err := ssh.ParseRawPrivateKey(pubKeyData)
+			if err == nil {
+				signer, err := ssh.NewSignerFromKey(privKey)
+				if err == nil {
+					identityPubKeys = append(identityPubKeys, signer.PublicKey())
+					blocklogger.Debugf(connCtx, "[ssh-agent] loaded public key from %s (private key)\n", maskIdentityFile(identityFile))
+					continue
+				}
+			}
+
+			// 4. Handle encrypted private keys by looking for a corresponding .pub file
+			pubKeyPath, _ := wavebase.ExpandHomeDir(identityFile + ".pub")
+			if pubKeyPath != "" {
+				pubKeyData, err = os.ReadFile(pubKeyPath)
+				if err == nil {
+					pubKey, _, _, _, err = ssh.ParseAuthorizedKey(pubKeyData)
+					if err == nil {
+						identityPubKeys = append(identityPubKeys, pubKey)
+						blocklogger.Debugf(connCtx, "[ssh-agent] loaded public key from %s.pub\n", maskIdentityFile(identityFile))
+						continue
+					}
+				}
+			}
+
+			blocklogger.Debugf(connCtx, "[ssh-agent] WARNING: could not load public key from %s\n", maskIdentityFile(identityFile))
+		}
+
+		var filtered []ssh.Signer
+		for _, signer := range authSockSignersExt {
+			matched := false
+			for _, pubKey := range identityPubKeys {
+				if bytes.Equal(signer.PublicKey().Marshal(), pubKey.Marshal()) {
+					matched = true
+					break
+				}
+			}
+			if matched {
+				filtered = append(filtered, signer)
+				blocklogger.Debugf(connCtx, "[ssh-agent] keeping agent key %s (matches IdentityFile)\n", MaskString(ssh.FingerprintSHA256(signer.PublicKey())))
+			} else {
+				blocklogger.Debugf(connCtx, "[ssh-agent] skipping agent key %s (IdentitiesOnly=true, no matching IdentityFile)\n", MaskString(ssh.FingerprintSHA256(signer.PublicKey())))
+			}
+		}
+		authSockSignersExt = filtered
+		blocklogger.Infof(connCtx, "[ssh-agent] after IdentitiesOnly filtering: %d signers remaining\n", len(authSockSignersExt))
+	}
 
 	var authSockSigners []ssh.Signer
 	authSockSigners = append(authSockSigners, authSockSignersExt...)
@@ -608,20 +790,44 @@ func createClientConfig(connCtx context.Context, sshKeywords *wconfig.ConnKeywor
 		remoteName = chosenUser + "@" + remoteName
 	}
 
+	// Log SSH configuration (DEBUG level)
+	logSSHKeywords(connCtx, sshKeywords)
+
 	var authSockSigners []ssh.Signer
 	var agentClient agent.ExtendedAgent
 
 	// IdentitiesOnly indicates that only the keys listed in the identity and certificate files or passed as arguments should be used, even if there are matches in the SSH Agent, PKCS11Provider, or SecurityKeyProvider. See https://man.openbsd.org/ssh_config#IdentitiesOnly
+	// When IdentitiesOnly is true, we still connect to the agent but filter signers in createPublicKeyCallback
 	// TODO: Update if we decide to support PKCS11Provider and SecurityKeyProvider
 	agentPath := strings.TrimSpace(utilfn.SafeDeref(sshKeywords.SshIdentityAgent))
-	if !utilfn.SafeDeref(sshKeywords.SshIdentitiesOnly) && agentPath != "" {
+	if agentPath != "" {
+		blocklogger.Debugf(connCtx, "[ssh-agent] attempting to connect to agent at %q\n", filepath.Base(agentPath))
 		conn, err := dialIdentityAgent(agentPath)
 		if err != nil {
-			log.Printf("Failed to open Identity Agent Socket %q: %v", agentPath, err)
+			blocklogger.Infof(connCtx, "[ssh-agent] ERROR failed to connect to agent at %q: %v\n", filepath.Base(agentPath), err)
+			if runtime.GOOS == "windows" {
+				blocklogger.Infof(connCtx, "[ssh-agent] hint: ensure OpenSSH Authentication Agent service is running (Get-Service ssh-agent)\n")
+			}
 		} else {
+			blocklogger.Infof(connCtx, "[ssh-agent] successfully connected to agent at %q\n", filepath.Base(agentPath))
 			agentClient = agent.NewClient(conn)
-			authSockSigners, _ = agentClient.Signers()
+			blocklogger.Debugf(connCtx, "[ssh-agent] requesting key list from agent...\n")
+			var signerErr error
+			authSockSigners, signerErr = agentClient.Signers()
+			if signerErr != nil {
+				blocklogger.Infof(connCtx, "[ssh-agent] WARNING failed to get signers from agent: %v\n", signerErr)
+			} else {
+				blocklogger.Infof(connCtx, "[ssh-agent] retrieved %d signers from agent\n", len(authSockSigners))
+				// Log public key fingerprints (DEBUG level, for troubleshooting)
+				for i, signer := range authSockSigners {
+					pubKey := signer.PublicKey()
+					fingerprint := ssh.FingerprintSHA256(pubKey)
+					blocklogger.Debugf(connCtx, "[ssh-agent]   key[%d]: type=%s fingerprint=%s\n", i, pubKey.Type(), MaskString(fingerprint))
+				}
+			}
 		}
+	} else {
+		blocklogger.Debugf(connCtx, "[ssh-agent] no agent path configured\n")
 	}
 
 	var sshPassword *string
@@ -688,14 +894,14 @@ func connectInternal(ctx context.Context, networkAddr string, clientConfig *ssh.
 	var err error
 	if currentClient == nil {
 		d := net.Dialer{Timeout: clientConfig.Timeout}
-		blocklogger.Infof(ctx, "[conndebug] ssh dial %s\n", networkAddr)
+		blocklogger.Infof(ctx, "[conndebug] ssh dial %s\n", MaskString(networkAddr))
 		clientConn, err = d.DialContext(ctx, "tcp", networkAddr)
 		if err != nil {
 			blocklogger.Infof(ctx, "[conndebug] ERROR dial error: %v\n", err)
 			return nil, err
 		}
 	} else {
-		blocklogger.Infof(ctx, "[conndebug] ssh dial (from client) %s\n", networkAddr)
+		blocklogger.Infof(ctx, "[conndebug] ssh dial (from client) %s\n", MaskString(networkAddr))
 		clientConn, err = currentClient.DialContext(ctx, "tcp", networkAddr)
 		if err != nil {
 			blocklogger.Infof(ctx, "[conndebug] ERROR dial error: %v\n", err)
@@ -707,12 +913,12 @@ func connectInternal(ctx context.Context, networkAddr string, clientConfig *ssh.
 		blocklogger.Infof(ctx, "[conndebug] ERROR ssh auth/negotiation: %s\n", SimpleMessageFromPossibleConnectionError(err))
 		return nil, err
 	}
-	blocklogger.Infof(ctx, "[conndebug] successful ssh connection to %s\n", networkAddr)
+	blocklogger.Infof(ctx, "[conndebug] successful ssh connection to %s\n", MaskString(networkAddr))
 	return ssh.NewClient(c, chans, reqs), nil
 }
 
 func ConnectToClient(connCtx context.Context, opts *SSHOpts, currentClient *ssh.Client, jumpNum int32, connFlags *wconfig.ConnKeywords) (*ssh.Client, int32, error) {
-	blocklogger.Infof(connCtx, "[conndebug] ConnectToClient %s (jump:%d)...\n", opts.String(), jumpNum)
+	blocklogger.Infof(connCtx, "[conndebug] ConnectToClient %s (jump:%d)...\n", MaskString(opts.String()), jumpNum)
 	debugInfo := &ConnectionDebugInfo{
 		CurrentClient: currentClient,
 		NextOpts:      opts,
@@ -731,6 +937,7 @@ func ConnectToClient(connCtx context.Context, opts *SSHOpts, currentClient *ssh.
 
 	var sshConfigKeywords *wconfig.ConnKeywords
 	if utilfn.SafeDeref(internalSshConfigKeywords.ConnIgnoreSshConfig) {
+		blocklogger.Debugf(connCtx, "[ssh-config] loading config for host %q (ignoresshconfig=true, using defaults only)\n", MaskString(opts.SSHHost))
 		var err error
 		sshConfigKeywords, err = findSshDefaults(opts.SSHHost)
 		if err != nil {
@@ -738,6 +945,7 @@ func ConnectToClient(connCtx context.Context, opts *SSHOpts, currentClient *ssh.
 			return nil, debugInfo.JumpNum, ConnectionError{ConnectionDebugInfo: debugInfo, Err: err}
 		}
 	} else {
+		blocklogger.Debugf(connCtx, "[ssh-config] loading config for host %q (using ssh_config + internal)\n", MaskString(opts.SSHHost))
 		var err error
 		sshConfigKeywords, err = findSshConfigKeywords(opts.SSHHost)
 		if err != nil {
@@ -969,7 +1177,12 @@ func findSshDefaults(hostPattern string) (connKeywords *wconfig.ConnKeywords, ou
 	sshKeywords.SshPreferredAuthentications = strings.Split(ssh_config.Default("PreferredAuthentications"), ",")
 	sshKeywords.SshAddKeysToAgent = utilfn.Ptr(false)
 	sshKeywords.SshIdentitiesOnly = utilfn.Ptr(false)
-	sshKeywords.SshIdentityAgent = utilfn.Ptr(ssh_config.Default("IdentityAgent"))
+	// On Windows, use the default OpenSSH named pipe; on Unix, use the SSH_AUTH_SOCK default
+	if runtime.GOOS == "windows" {
+		sshKeywords.SshIdentityAgent = utilfn.Ptr(`\\.\pipe\openssh-ssh-agent`)
+	} else {
+		sshKeywords.SshIdentityAgent = utilfn.Ptr(ssh_config.Default("IdentityAgent"))
+	}
 	sshKeywords.SshProxyJump = []string{}
 	sshKeywords.SshUserKnownHostsFile = strings.Fields(ssh_config.Default("UserKnownHostsFile"))
 	sshKeywords.SshGlobalKnownHostsFile = strings.Fields(ssh_config.Default("GlobalKnownHostsFile"))
