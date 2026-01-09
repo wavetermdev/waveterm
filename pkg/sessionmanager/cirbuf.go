@@ -1,0 +1,166 @@
+// Copyright 2025, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
+package sessionmanager
+
+import (
+	"context"
+	"fmt"
+	"sync"
+)
+
+type CirBuf struct {
+	lock       sync.Mutex
+	waiterChan chan chan struct{}
+	buf        []byte
+	readPos    int
+	writePos   int
+	count      int
+	totalSize  int64
+	syncMode   bool
+}
+
+func MakeCirBuf(maxSize int, initSyncMode bool) *CirBuf {
+	cb := &CirBuf{
+		buf:        make([]byte, maxSize),
+		syncMode:   initSyncMode,
+		waiterChan: make(chan chan struct{}, 1),
+	}
+	return cb
+}
+
+func (cb *CirBuf) Write(data []byte) (int, error) {
+	return cb.WriteCtx(context.Background(), data)
+}
+
+// WriteCtx writes data to the circular buffer with context support for cancellation.
+// In sync mode, blocks when buffer is full until space is available or context is cancelled.
+// Returns partial byte count and context error if cancelled mid-write.
+// NOTE: Only one concurrent blocked write is allowed. Multiple blocked writes will panic.
+func (cb *CirBuf) WriteCtx(ctx context.Context, data []byte) (int, error) {
+	if len(data) == 0 {
+		return 0, nil
+	}
+
+	bytesWritten := 0
+	for bytesWritten < len(data) {
+		if err := ctx.Err(); err != nil {
+			return bytesWritten, err
+		}
+
+		n, spaceAvailable := cb.writeAvailable(data[bytesWritten:])
+		bytesWritten += n
+
+		if spaceAvailable != nil {
+			select {
+			case <-spaceAvailable:
+				continue
+			case <-ctx.Done():
+				tryReadCh(cb.waiterChan)
+				return bytesWritten, ctx.Err()
+			}
+		}
+	}
+
+	return bytesWritten, nil
+}
+
+func (cb *CirBuf) writeAvailable(data []byte) (int, chan struct{}) {
+	cb.lock.Lock()
+	defer cb.lock.Unlock()
+
+	size := len(cb.buf)
+	written := 0
+
+	for i := 0; i < len(data); i++ {
+		if cb.syncMode && cb.count >= size {
+			spaceAvailable := make(chan struct{})
+			if !tryWriteCh(cb.waiterChan, spaceAvailable) {
+				panic("CirBuf: multiple concurrent blocked writes not allowed")
+			}
+			return written, spaceAvailable
+		}
+
+		cb.buf[cb.writePos] = data[i]
+		cb.writePos = (cb.writePos + 1) % size
+		if cb.count < size {
+			cb.count++
+		} else {
+			cb.readPos = (cb.readPos + 1) % size
+		}
+		cb.totalSize++
+		written++
+	}
+
+	return written, nil
+}
+
+func (cb *CirBuf) PeekData(data []byte) int {
+	cb.lock.Lock()
+	defer cb.lock.Unlock()
+
+	if cb.count == 0 {
+		return 0
+	}
+
+	size := len(cb.buf)
+	read := 0
+	pos := cb.readPos
+
+	for i := 0; i < len(data) && i < cb.count; i++ {
+		data[i] = cb.buf[pos]
+		pos = (pos + 1) % size
+		read++
+	}
+
+	return read
+}
+
+func (cb *CirBuf) Consume(numBytes int) error {
+	cb.lock.Lock()
+	defer cb.lock.Unlock()
+
+	if numBytes > cb.count {
+		return fmt.Errorf("cannot consume %d bytes, only %d available", numBytes, cb.count)
+	}
+
+	size := len(cb.buf)
+	cb.readPos = (cb.readPos + numBytes) % size
+	cb.count -= numBytes
+
+	if waiterCh, ok := tryReadCh(cb.waiterChan); ok {
+		close(*waiterCh)
+	}
+
+	return nil
+}
+
+func (cb *CirBuf) HeadPos() int64 {
+	cb.lock.Lock()
+	defer cb.lock.Unlock()
+	return cb.totalSize - int64(cb.count)
+}
+
+func (cb *CirBuf) TotalSize() int64 {
+	cb.lock.Lock()
+	defer cb.lock.Unlock()
+	return cb.totalSize
+}
+
+func tryWriteCh[T any](ch chan<- T, val T) bool {
+	select {
+	case ch <- val:
+		return true
+	default:
+		return false
+	}
+}
+
+func tryReadCh[T any](ch <-chan T) (*T, bool) {
+	select {
+	case rtn := <-ch:
+		return &rtn, true
+	default:
+		return nil, false
+	}
+}
