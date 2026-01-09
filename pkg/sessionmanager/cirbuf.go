@@ -44,11 +44,14 @@ func (cb *CirBuf) SetEffectiveWindow(syncMode bool, windowSize int) {
 		windowSize = maxSize
 	}
 
+	oldSyncMode := cb.syncMode
 	oldWindowSize := cb.windowSize
 	cb.windowSize = windowSize
 	cb.syncMode = syncMode
 
-	if windowSize > oldWindowSize {
+	// Only sync mode blocks writers, so only wake if we were in sync mode.
+	// Wake when window grows (more space available) or switching to async (no longer blocking).
+	if oldSyncMode && (windowSize > oldWindowSize || !syncMode) {
 		cb.tryWakeWriter()
 	}
 }
@@ -164,6 +167,12 @@ func (cb *CirBuf) HeadPos() int64 {
 	cb.lock.Lock()
 	defer cb.lock.Unlock()
 	return cb.totalSize - int64(cb.count)
+}
+
+func (cb *CirBuf) Size() int {
+	cb.lock.Lock()
+	defer cb.lock.Unlock()
+	return cb.count
 }
 
 func (cb *CirBuf) TotalSize() int64 {
