@@ -1866,6 +1866,7 @@ declare global {
         name?: string;
         icon?: string;
         color?: string;
+        directory?: string;
         tabids: string[];
         activetabid: string;
     };

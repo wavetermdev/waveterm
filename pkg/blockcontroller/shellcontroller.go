@@ -386,10 +386,16 @@ func (bc *ShellController) setupAndStartShellProcess(logCtx context.Context, rc 
 	blocklogger.Infof(logCtx, "[conndebug] remoteName: %q, connType: %s, wshEnabled: %v, shell: %q, shellType: %s\n", remoteName, connUnion.ConnType, connUnion.WshEnabled, connUnion.ShellPath, connUnion.ShellType)
 	var cmdStr string
 	var cmdOpts shellexec.CommandOptsType
+	wsCtx, wsCancel := context.WithTimeout(context.Background(), 2*time.Second)
+	wsId, wsDir := getWorkspaceInfo(wsCtx, bc.TabId)
+	wsCancel()
 	if bc.ControllerType == BlockController_Shell {
 		cmdOpts.Interactive = true
 		cmdOpts.Login = true
 		cmdOpts.Cwd = blockMeta.GetString(waveobj.MetaKey_CmdCwd, "")
+		if cmdOpts.Cwd == "" && connUnion.ConnType == ConnType_Local {
+			cmdOpts.Cwd = wsDir
+		}
 		if cmdOpts.Cwd != "" {
 			cwdPath, err := wavebase.ExpandHomeDir(cmdOpts.Cwd)
 			if err != nil {
@@ -408,7 +414,12 @@ func (bc *ShellController) setupAndStartShellProcess(logCtx context.Context, rc 
 		return nil, fmt.Errorf("unknown controller type %q", bc.ControllerType)
 	}
 	var shellProc *shellexec.ShellProc
-	swapToken := bc.makeSwapToken(ctx, logCtx, blockMeta, remoteName, connUnion.ShellType)
+	// Only pass wsDir for local connections to avoid leaking local paths to remote shells
+	wsDirForToken := ""
+	if connUnion.ConnType == ConnType_Local {
+		wsDirForToken = wsDir
+	}
+	swapToken := bc.makeSwapToken(ctx, logCtx, blockMeta, remoteName, connUnion.ShellType, wsId, wsDirForToken)
 	cmdOpts.SwapToken = swapToken
 	blocklogger.Debugf(logCtx, "[conndebug] created swaptoken: %s\n", swapToken.Token)
 	if connUnion.ConnType == ConnType_Wsl {
@@ -715,7 +726,31 @@ func createCmdStrAndOpts(blockId string, blockMeta waveobj.MetaMapType, connName
 	return cmdStr, &cmdOpts, nil
 }
 
-func (bc *ShellController) makeSwapToken(ctx context.Context, logCtx context.Context, blockMeta waveobj.MetaMapType, remoteName string, shellType string) *shellutil.TokenSwapEntry {
+// getWorkspaceInfo retrieves the workspace ID and directory for a given tab.
+// Returns empty strings if the tab ID is empty or if the workspace cannot be found.
+func getWorkspaceInfo(ctx context.Context, tabId string) (wsId string, wsDir string) {
+	if tabId == "" {
+		return "", ""
+	}
+	wsId, err := wstore.DBFindWorkspaceForTabId(ctx, tabId)
+	if err != nil {
+		log.Printf("error finding workspace for tab %s: %v\n", tabId, err)
+		return "", ""
+	}
+	ws, err := wstore.DBGet[*waveobj.Workspace](ctx, wsId)
+	if err != nil {
+		log.Printf("error getting workspace %s: %v\n", wsId, err)
+		return wsId, ""
+	}
+	if ws == nil {
+		return wsId, ""
+	}
+	return wsId, ws.Directory
+}
+
+// makeSwapToken creates a token swap entry with environment variables for shell initialization.
+// The token is used to securely pass environment configuration to new shell processes.
+func (bc *ShellController) makeSwapToken(ctx context.Context, logCtx context.Context, blockMeta waveobj.MetaMapType, remoteName string, shellType string, wsId string, wsDir string) *shellutil.TokenSwapEntry {
 	token := &shellutil.TokenSwapEntry{
 		Token: uuid.New().String(),
 		Env:   make(map[string]string),
@@ -731,13 +766,11 @@ func (bc *ShellController) makeSwapToken(ctx context.Context, logCtx context.Con
 	} else {
 		token.Env["WAVETERM_TABID"] = tabId
 	}
-	if tabId != "" {
-		wsId, err := wstore.DBFindWorkspaceForTabId(ctx, tabId)
-		if err != nil {
-			log.Printf("error finding workspace for tab: %v\n", err)
-		} else {
-			token.Env["WAVETERM_WORKSPACEID"] = wsId
-		}
+	if wsId != "" {
+		token.Env["WAVETERM_WORKSPACEID"] = wsId
+	}
+	if wsDir != "" {
+		token.Env["WAVETERM_WORKSPACE_DIR"] = wsDir
 	}
 	clientData, err := wstore.DBGetSingleton[*waveobj.Client](ctx)
 	if err != nil {

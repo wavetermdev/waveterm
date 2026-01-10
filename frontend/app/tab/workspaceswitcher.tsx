@@ -10,15 +10,18 @@ import {
     ExpandableMenuItemRightElement,
 } from "@/element/expandablemenu";
 import { Popover, PopoverButton, PopoverContent } from "@/element/popover";
-import { fireAndForget, makeIconClass, useAtomValueSafe } from "@/util/util";
+import { RpcApi } from "@/app/store/wshclientapi";
+import { TabRpcClient } from "@/app/store/wshrpcutil";
+import { fireAndForget, isLocalConnName, makeIconClass, shellQuoteForShellType, stringToBase64, useAtomValueSafe } from "@/util/util";
 import clsx from "clsx";
-import { atom, PrimitiveAtom, useAtom, useAtomValue, useSetAtom } from "jotai";
+import { Atom, atom, PrimitiveAtom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { splitAtom } from "jotai/utils";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
-import { CSSProperties, forwardRef, useCallback, useEffect } from "react";
+import { CSSProperties, forwardRef, useCallback, useEffect, useMemo, useRef } from "react";
+import { debounce } from "throttle-debounce";
 import WorkspaceSVG from "../asset/workspace.svg";
 import { IconButton } from "../element/iconbutton";
-import { atoms, getApi } from "../store/global";
+import { atoms, getAllBlockComponentModels, getApi, globalStore, pushFlashError } from "../store/global";
 import { WorkspaceService } from "../store/services";
 import { getObjectValue, makeORef } from "../store/wos";
 import { waveEventSubscribe } from "../store/wps";
@@ -84,7 +87,7 @@ const WorkspaceSwitcher = forwardRef<HTMLDivElement>((_, ref) => {
 
     const saveWorkspace = () => {
         fireAndForget(async () => {
-            await WorkspaceService.UpdateWorkspace(activeWorkspace.oid, "", "", "", true);
+            await WorkspaceService.UpdateWorkspace(activeWorkspace.oid, "", "", "", "", true);
             await updateWorkspaceList();
             setEditingWorkspace(activeWorkspace.oid);
         });
@@ -138,6 +141,112 @@ const WorkspaceSwitcher = forwardRef<HTMLDivElement>((_, ref) => {
     );
 });
 
+/**
+ * A ViewModel that has access to its block's ID and atom.
+ */
+interface BlockAwareViewModel extends ViewModel {
+    blockId: string;
+    blockAtom: Atom<Block>;
+}
+
+/**
+ * A preview ViewModel with directory navigation capabilities.
+ */
+interface PreviewViewModel extends BlockAwareViewModel {
+    goHistory: (path: string) => Promise<void>;
+}
+
+/**
+ * Type guard that checks if a ViewModel has block awareness (blockId and blockAtom properties).
+ */
+function isBlockAwareViewModel(viewModel: ViewModel): viewModel is BlockAwareViewModel {
+    return "blockId" in viewModel && "blockAtom" in viewModel;
+}
+
+/**
+ * Type guard that checks if a ViewModel is a preview view with navigation capabilities.
+ */
+function isPreviewViewModel(viewModel: ViewModel): viewModel is PreviewViewModel {
+    return viewModel.viewType === "preview" && isBlockAwareViewModel(viewModel) && "goHistory" in viewModel;
+}
+
+/**
+ * Updates all local blocks to use a new workspace directory.
+ * For preview blocks, navigates to the new directory.
+ * For terminal blocks, sends a cd command to change to the new directory.
+ * Skips blocks that have a remote connection.
+ */
+async function updateBlocksWithNewDirectory(newDirectory: string): Promise<void> {
+    const allModels = getAllBlockComponentModels();
+    for (const model of allModels) {
+        if (model?.viewModel == null) {
+            continue;
+        }
+        const viewModel = model.viewModel;
+        if (!isBlockAwareViewModel(viewModel)) {
+            continue;
+        }
+        const blockData = globalStore.get(viewModel.blockAtom);
+        const connection = blockData?.meta?.connection;
+        if (connection && !isLocalConnName(connection)) {
+            continue;
+        }
+        if (isPreviewViewModel(viewModel)) {
+            try {
+                await viewModel.goHistory(newDirectory);
+            } catch (e) {
+                console.error("Failed to navigate preview block to new directory:", e);
+                pushFlashError({
+                    id: null,
+                    icon: "triangle-exclamation",
+                    title: "Directory Change Failed",
+                    message: `Could not navigate preview to ${newDirectory}`,
+                    expiration: null,
+                });
+            }
+        } else if (viewModel.viewType === "term") {
+            try {
+                const rtInfo = await RpcApi.GetRTInfoCommand(TabRpcClient, {
+                    oref: makeORef("block", viewModel.blockId),
+                });
+                const shellType = rtInfo?.["shell:type"];
+                const quotedDir = shellQuoteForShellType(newDirectory, shellType);
+                const cdPrefix =
+                    shellType === "bash" || shellType === "zsh" || shellType === "sh" || shellType === "fish"
+                        ? "cd -- "
+                        : "cd ";
+                fireAndForget(async () => {
+                    try {
+                        await RpcApi.ControllerInputCommand(TabRpcClient, {
+                            blockid: viewModel.blockId,
+                            inputdata64: stringToBase64(`${cdPrefix}${quotedDir}\n`),
+                        });
+                    } catch (e) {
+                        console.error("Failed to send cd command to terminal:", e);
+                        // Optional: align UX with preview block failures
+                        pushFlashError({
+                            id: null,
+                            icon: "triangle-exclamation",
+                            title: "Directory Change Failed",
+                            message: `Could not change terminal directory to ${newDirectory}`,
+                            expiration: null,
+                        });
+                    }
+                });
+            } catch (e) {
+                console.error("Failed to get shell type for terminal block:", e);
+                pushFlashError({
+                    id: null,
+                    icon: "triangle-exclamation",
+                    title: "Directory Change Failed",
+                    message: `Could not change terminal directory to ${newDirectory}`,
+                    expiration: null,
+                });
+            }
+        }
+    }
+}
+
 const WorkspaceSwitcherItem = ({
     entryAtom,
     onDeleteWorkspace,
@@ -152,20 +261,62 @@ const WorkspaceSwitcherItem = ({
     const workspace = workspaceEntry.workspace;
     const isCurrentWorkspace = activeWorkspace.oid === workspace.oid;
 
-    const setWorkspace = useCallback((newWorkspace: Workspace) => {
-        setWorkspaceEntry({ ...workspaceEntry, workspace: newWorkspace });
-        if (newWorkspace.name != "") {
-            fireAndForget(() =>
-                WorkspaceService.UpdateWorkspace(
-                    workspace.oid,
-                    newWorkspace.name,
-                    newWorkspace.icon,
-                    newWorkspace.color,
-                    false
-                )
-            );
-        }
-    }, []);
+    const pendingDirectoryRef = useRef<string | null>(null);
+
+    const debouncedBlockUpdate = useMemo(
+        () =>
+            debounce(300, (newDirectory: string) => {
+                pendingDirectoryRef.current = null;
+                fireAndForget(async () => {
+                    await updateBlocksWithNewDirectory(newDirectory);
+                });
+            }),
+        []
+    );
+
+    const debouncedWorkspaceUpdate = useMemo(
+        () =>
+            debounce(300, (oid: string, name: string, icon: string, color: string, directory: string) => {
+                fireAndForget(async () => {
+                    await WorkspaceService.UpdateWorkspace(oid, name, icon, color, directory, false);
+                });
+            }),
+        []
+    );
+
+    useEffect(() => {
+        return () => {
+            debouncedBlockUpdate.cancel();
+            debouncedWorkspaceUpdate.cancel();
+            pendingDirectoryRef.current = null;
+        };
+    }, [debouncedBlockUpdate, debouncedWorkspaceUpdate]);
+
+    const setWorkspace = useCallback(
+        (newWorkspace: Workspace) => {
+            setWorkspaceEntry((prev) => {
+                const oldDirectory = prev.workspace.directory;
+                const newDirectory = newWorkspace.directory;
+                const directoryChanged = newDirectory !== oldDirectory;
+
+                if (newWorkspace.name !== "") {
+                    debouncedWorkspaceUpdate(
+                        prev.workspace.oid,
+                        newWorkspace.name,
+                        newWorkspace.icon,
+                        newWorkspace.color,
+                        newWorkspace.directory ?? ""
+                    );
+                    if (directoryChanged && isCurrentWorkspace && newDirectory) {
+                        pendingDirectoryRef.current = newDirectory;
+                        debouncedBlockUpdate(newDirectory);
+                    }
+                }
+                return { ...prev, workspace: newWorkspace };
+            });
+        },
+        [debouncedBlockUpdate, debouncedWorkspaceUpdate, isCurrentWorkspace, setWorkspaceEntry]
+    );
 
     const isActive = !!workspaceEntry.windowId;
     const editIconDecl: IconButtonDecl = {
@@ -233,10 +384,12 @@ const WorkspaceSwitcherItem = ({
                     title={workspace.name}
                     icon={workspace.icon}
                     color={workspace.color}
+                    directory={workspace.directory ?? ""}
                     focusInput={isEditing}
                     onTitleChange={(title) => setWorkspace({ ...workspace, name: title })}
                     onColorChange={(color) => setWorkspace({ ...workspace, color })}
                     onIconChange={(icon) => setWorkspace({ ...workspace, icon })}
+                    onDirectoryChange={(directory) => setWorkspace({ ...workspace, directory })}
                     onDeleteWorkspace={() => onDeleteWorkspace(workspace.oid)}
                 />
             </ExpandableMenuItem>

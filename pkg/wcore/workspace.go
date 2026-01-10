@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -20,6 +21,18 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wstore"
 )
+
+// ValidateWorkspaceDirectory validates a workspace directory path.
+// Returns an error if the directory path is invalid.
+func ValidateWorkspaceDirectory(directory string) error {
+	if directory == "" {
+		return nil
+	}
+	if strings.ContainsRune(directory, 0) {
+		return fmt.Errorf("invalid directory path: contains null byte")
+	}
+	return nil
+}
 
 var WorkspaceColors = [...]string{
 	"#58C142", // Green (accent)
@@ -48,6 +61,8 @@ var WorkspaceIcons = [...]string{
 	"mug-hot",
 }
 
+// CreateWorkspace creates a new workspace with the specified name, icon, and color.
+// If applyDefaults is true, default values will be applied for empty fields.
 func CreateWorkspace(ctx context.Context, name string, icon string, color string, applyDefaults bool, isInitialLaunch bool) (*waveobj.Workspace, error) {
 	ws := &waveobj.Workspace{
 		OID:    uuid.NewString(),
@@ -69,12 +84,13 @@ func CreateWorkspace(ctx context.Context, name string, icon string, color string
 		Event: wps.Event_WorkspaceUpdate,
 	})
 
-	ws, _, err = UpdateWorkspace(ctx, ws.OID, name, icon, color, applyDefaults)
+	ws, _, err = UpdateWorkspace(ctx, ws.OID, name, icon, color, "", applyDefaults)
 	return ws, err
 }
 
-// Returns updated workspace, whether it was updated, error.
-func UpdateWorkspace(ctx context.Context, workspaceId string, name string, icon string, color string, applyDefaults bool) (*waveobj.Workspace, bool, error) {
+// UpdateWorkspace updates workspace properties such as name, icon, color, and directory.
+// Returns the updated workspace, a boolean indicating if changes were made, and any error.
+func UpdateWorkspace(ctx context.Context, workspaceId string, name string, icon string, color string, directory string, applyDefaults bool) (*waveobj.Workspace, bool, error) {
 	ws, err := GetWorkspace(ctx, workspaceId)
 	updated := false
 	if err != nil {
@@ -104,6 +120,13 @@ func UpdateWorkspace(ctx context.Context, workspaceId string, name string, icon 
 			wsList = waveobj.WorkspaceList{}
 		}
 		ws.Color = WorkspaceColors[len(wsList)%len(WorkspaceColors)]
+		updated = true
+	}
+	if directory != ws.Directory {
+		if err := ValidateWorkspaceDirectory(directory); err != nil {
+			return nil, false, err
+		}
+		ws.Directory = directory
 		updated = true
 	}
 	if updated {
@@ -181,6 +204,7 @@ func DeleteWorkspace(ctx context.Context, workspaceId string, force bool) (bool,
 	return true, "", nil
 }
 
+// GetWorkspace retrieves a workspace by its ID from the database.
 func GetWorkspace(ctx context.Context, wsID string) (*waveobj.Workspace, error) {
 	return wstore.DBMustGet[*waveobj.Workspace](ctx, wsID)
 }
@@ -320,6 +344,7 @@ func DeleteTab(ctx context.Context, workspaceId string, tabId string, recursive 
 	return newActiveTabId, nil
 }
 
+// SetActiveTab sets the active tab for a workspace.
 func SetActiveTab(ctx context.Context, workspaceId string, tabId string) error {
 	if tabId != "" && workspaceId != "" {
 		workspace, err := GetWorkspace(ctx, workspaceId)
@@ -336,6 +361,7 @@ func SetActiveTab(ctx context.Context, workspaceId string, tabId string) error {
 	return nil
 }
 
+// SendActiveTabUpdate sends an event to Electron to update the active tab.
 func SendActiveTabUpdate(ctx context.Context, workspaceId string, newActiveTabId string) {
 	eventbus.SendEventToElectron(eventbus.WSEventType{
 		EventType: eventbus.WSEvent_ElectronUpdateActiveTab,
@@ -343,6 +369,7 @@ func SendActiveTabUpdate(ctx context.Context, workspaceId string, newActiveTabId
 	})
 }
 
+// UpdateWorkspaceTabIds updates the list of tab IDs for a workspace.
 func UpdateWorkspaceTabIds(ctx context.Context, workspaceId string, tabIds []string) error {
 	ws, _ := wstore.DBGet[*waveobj.Workspace](ctx, workspaceId)
 	if ws == nil {
@@ -353,6 +380,7 @@ func UpdateWorkspaceTabIds(ctx context.Context, workspaceId string, tabIds []str
 	return nil
 }
 
+// ListWorkspaces returns a list of all workspaces with their associated window IDs.
 func ListWorkspaces(ctx context.Context) (waveobj.WorkspaceList, error) {
 	workspaces, err := wstore.DBGetAllObjsByType[*waveobj.Workspace](ctx, waveobj.OType_Workspace)
 	if err != nil {
@@ -384,6 +412,7 @@ func ListWorkspaces(ctx context.Context) (waveobj.WorkspaceList, error) {
 	return wl, nil
 }
 
+// SetIcon sets the icon for a workspace.
 func SetIcon(workspaceId string, icon string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
@@ -399,6 +428,7 @@ func SetIcon(workspaceId string, icon string) error {
 	return nil
 }
 
+// SetColor sets the color for a workspace.
 func SetColor(workspaceId string, color string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
@@ -414,6 +444,7 @@ func SetColor(workspaceId string, color string) error {
 	return nil
 }
 
+// SetName sets the name for a workspace.
 func SetName(workspaceId string, name string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()

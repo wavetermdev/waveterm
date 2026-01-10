@@ -6,7 +6,7 @@ import type { TabModel } from "@/app/store/tab-model";
 import { ContextMenuModel } from "@/app/store/contextmenu";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
-import { getConnStatusAtom, getOverrideConfigAtom, getSettingsKeyAtom, globalStore, refocusNode } from "@/store/global";
+import { atoms, getConnStatusAtom, getOverrideConfigAtom, getSettingsKeyAtom, globalStore, refocusNode } from "@/store/global";
 import * as services from "@/store/services";
 import * as WOS from "@/store/wos";
 import { goHistory, goHistoryBack, goHistoryForward } from "@/util/historyutil";
@@ -375,10 +375,17 @@ export class PreviewModel implements ViewModel {
         });
         this.metaFilePath = atom<string>((get) => {
             const file = get(this.blockAtom)?.meta?.file;
-            if (isBlank(file)) {
-                return "~";
+            if (!isBlank(file)) {
+                return file;
             }
-            return file;
+            const connName = get(this.blockAtom)?.meta?.connection;
+            if (!connName) {
+                const workspace = get(atoms.workspace);
+                if (workspace?.directory) {
+                    return workspace.directory;
+                }
+            }
+            return "~";
         });
         this.statFilePath = atom<Promise<string>>(async (get) => {
             const fileInfo = await get(this.statFile);
