@@ -174,6 +174,7 @@ type Workspace struct {
 	Name        string      `json:"name,omitempty"`
 	Icon        string      `json:"icon,omitempty"`
 	Color       string      `json:"color,omitempty"`
+	Directory   string      `json:"directory,omitempty"`
 	TabIds      []string    `json:"tabids"`
 	ActiveTabId string      `json:"activetabid"`
 	Meta        MetaMapType `json:"meta"`

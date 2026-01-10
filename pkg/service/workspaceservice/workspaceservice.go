@@ -29,6 +29,7 @@ func (svc *WorkspaceService) CreateWorkspace_Meta() tsgenmeta.MethodMeta {
 	}
 }
 
+// CreateWorkspace creates a new workspace and returns its ID.
 func (svc *WorkspaceService) CreateWorkspace(ctx context.Context, name string, icon string, color string, applyDefaults bool) (string, error) {
 	newWS, err := wcore.CreateWorkspace(ctx, name, icon, color, applyDefaults, false)
 	if err != nil {
@@ -39,13 +40,15 @@ func (svc *WorkspaceService) CreateWorkspace(ctx context.Context, name string, i
 
 func (svc *WorkspaceService) UpdateWorkspace_Meta() tsgenmeta.MethodMeta {
 	return tsgenmeta.MethodMeta{
-		ArgNames: []string{"ctx", "workspaceId", "name", "icon", "color", "applyDefaults"},
+		ArgNames: []string{"ctx", "workspaceId", "name", "icon", "color", "directory", "applyDefaults"},
 	}
 }
 
-func (svc *WorkspaceService) UpdateWorkspace(ctx context.Context, workspaceId string, name string, icon string, color string, applyDefaults bool) (waveobj.UpdatesRtnType, error) {
+// UpdateWorkspace updates a workspace's properties and publishes a workspace update event.
+// Returns the updates or an error if the workspace could not be updated.
+func (svc *WorkspaceService) UpdateWorkspace(ctx context.Context, workspaceId string, name string, icon string, color string, directory string, applyDefaults bool) (waveobj.UpdatesRtnType, error) {
 	ctx = waveobj.ContextWithUpdates(ctx)
-	_, updated, err := wcore.UpdateWorkspace(ctx, workspaceId, name, icon, color, applyDefaults)
+	_, updated, err := wcore.UpdateWorkspace(ctx, workspaceId, name, icon, color, directory, applyDefaults)
 	if err != nil {
 		return nil, fmt.Errorf("error updating workspace: %w", err)
 	}
@@ -74,6 +77,7 @@ func (svc *WorkspaceService) GetWorkspace_Meta() tsgenmeta.MethodMeta {
 	}
 }
 
+// GetWorkspace retrieves a workspace by its ID.
 func (svc *WorkspaceService) GetWorkspace(workspaceId string) (*waveobj.Workspace, error) {
 	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
 	defer cancelFn()
@@ -90,6 +94,7 @@ func (svc *WorkspaceService) DeleteWorkspace_Meta() tsgenmeta.MethodMeta {
 	}
 }
 
+// DeleteWorkspace deletes a workspace and returns any claimable workspace ID.
 func (svc *WorkspaceService) DeleteWorkspace(workspaceId string) (waveobj.UpdatesRtnType, string, error) {
 	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
 	defer cancelFn()
@@ -114,6 +119,7 @@ func (svc *WorkspaceService) DeleteWorkspace(workspaceId string) (waveobj.Update
 	return updates, claimableWorkspace, nil
 }
 
+// ListWorkspaces returns a list of all workspaces.
 func (svc *WorkspaceService) ListWorkspaces() (waveobj.WorkspaceList, error) {
 	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
 	defer cancelFn()
@@ -133,6 +139,7 @@ func (svc *WorkspaceService) GetColors_Meta() tsgenmeta.MethodMeta {
 	}
 }
 
+// GetColors returns the available workspace colors.
 func (svc *WorkspaceService) GetColors() []string {
 	return wcore.WorkspaceColors[:]
 }
@@ -143,10 +150,12 @@ func (svc *WorkspaceService) GetIcons_Meta() tsgenmeta.MethodMeta {
 	}
 }
 
+// GetIcons returns the available workspace icons.
 func (svc *WorkspaceService) GetIcons() []string {
 	return wcore.WorkspaceIcons[:]
 }
 
+// CreateTab creates a new tab in the specified workspace.
 func (svc *WorkspaceService) CreateTab(workspaceId string, tabName string, activateTab bool) (string, waveobj.UpdatesRtnType, error) {
 	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
 	defer cancelFn()

@@ -16,8 +16,7 @@
         "label": "files",
         "blockdef": {
             "meta": {
-                "view": "preview",
-                "file": "~"
+                "view": "preview"
             }
         }
     },

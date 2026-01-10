@@ -258,6 +258,21 @@ export function initIpcHandlers() {
         event.returnValue = getWaveVersion() as AboutModalDetails;
     });
 
+    electron.ipcMain.handle("show-open-folder-dialog", async () => {
+        const ww = focusedWaveWindow;
+        if (ww == null) {
+            return null;
+        }
+        const result = await electron.dialog.showOpenDialog(ww, {
+            title: "Select Workspace Directory",
+            properties: ["openDirectory", "createDirectory"],
+        });
+        if (result.canceled || result.filePaths.length === 0) {
+            return null;
+        }
+        return result.filePaths[0];
+    });
+
     electron.ipcMain.on("get-zoom-factor", (event) => {
         event.returnValue = event.sender.getZoomFactor();
     });
