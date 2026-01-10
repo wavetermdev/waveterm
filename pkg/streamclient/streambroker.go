@@ -18,6 +18,10 @@ type workItem struct {
 	dataPk   wshrpc.CommandStreamData
 }
 
+type StreamWriter interface {
+	RecvAck(ackPk wshrpc.CommandStreamAckData)
+}
+
 type StreamRpcInterface interface {
 	StreamDataAckCommand(data wshrpc.CommandStreamAckData, opts *wshrpc.RpcOpts) error
 	StreamDataCommand(data wshrpc.CommandStreamData, opts *wshrpc.RpcOpts) error
@@ -43,7 +47,7 @@ type Broker struct {
 	lock                sync.Mutex
 	rpcClient           StreamRpcInterface
 	readers             map[string]*Reader
-	writers             map[string]*Writer
+	writers             map[string]StreamWriter
 	readerRoutes        map[string]string
 	writerRoutes        map[string]string
 	readerErrorSentTime map[string]time.Time
@@ -55,7 +59,7 @@ func NewBroker(rpcClient StreamRpcInterface) *Broker {
 	b := &Broker{
 		rpcClient:           rpcClient,
 		readers:             make(map[string]*Reader),
-		writers:             make(map[string]*Writer),
+		writers:             make(map[string]StreamWriter),
 		readerRoutes:        make(map[string]string),
 		writerRoutes:        make(map[string]string),
 		readerErrorSentTime: make(map[string]time.Time),
@@ -86,19 +90,27 @@ func (b *Broker) CreateStreamReader(readerRoute string, writerRoute string, rwnd
 	return reader, meta
 }
 
-func (b *Broker) AttachStreamWriter(meta *wshrpc.StreamMeta) (*Writer, error) {
+func (b *Broker) AttachStreamWriter(meta *wshrpc.StreamMeta, writer StreamWriter) error {
 	b.lock.Lock()
 	defer b.lock.Unlock()
 
 	if _, exists := b.writers[meta.Id]; exists {
-		return nil, fmt.Errorf("writer already registered for stream id %s", meta.Id)
+		return fmt.Errorf("writer already registered for stream id %s", meta.Id)
 	}
 
-	writer := NewWriter(meta.Id, meta.RWnd, b)
 	b.writers[meta.Id] = writer
 	b.readerRoutes[meta.Id] = meta.ReaderRouteId
 	b.writerRoutes[meta.Id] = meta.WriterRouteId
 
+	return nil
+}
+
+func (b *Broker) CreateStreamWriter(meta *wshrpc.StreamMeta) (*Writer, error) {
+	writer := NewWriter(meta.Id, meta.RWnd, b)
+	err := b.AttachStreamWriter(meta, writer)
+	if err != nil {
+		return nil, err
+	}
 	return writer, nil
 }
 

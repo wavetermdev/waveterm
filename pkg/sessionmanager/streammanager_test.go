@@ -99,10 +99,7 @@ func TestConnectedModeBasicFlow(t *testing.T) {
 	}
 
 	// Send ACK
-	err = sm.RecvAck(wshrpc.CommandStreamAckData{Id: "1", Seq: 5, RWnd: CwndSize})
-	if err != nil {
-		t.Errorf("RecvAck failed: %v", err)
-	}
+	sm.RecvAck(wshrpc.CommandStreamAckData{Id: "1", Seq: 5, RWnd: CwndSize})
 
 	time.Sleep(50 * time.Millisecond)
 
@@ -217,10 +214,7 @@ func TestFlowControl(t *testing.T) {
 		t.Errorf("Sent %d bytes without ACK, exceeds cwnd size %d", totalData, cwndSize)
 	}
 
-	err = sm.RecvAck(wshrpc.CommandStreamAckData{Id: "1", Seq: int64(totalData), RWnd: int64(cwndSize)})
-	if err != nil {
-		t.Errorf("RecvAck failed: %v", err)
-	}
+	sm.RecvAck(wshrpc.CommandStreamAckData{Id: "1", Seq: int64(totalData), RWnd: int64(cwndSize)})
 
 	time.Sleep(100 * time.Millisecond)
 
@@ -310,10 +304,7 @@ func TestTerminalEventOrdering(t *testing.T) {
 		t.Error("Should not have EOF before ACK")
 	}
 
-	err = sm.RecvAck(wshrpc.CommandStreamAckData{Id: "1", Seq: 4, RWnd: CwndSize})
-	if err != nil {
-		t.Errorf("RecvAck failed: %v", err)
-	}
+	sm.RecvAck(wshrpc.CommandStreamAckData{Id: "1", Seq: 4, RWnd: CwndSize})
 
 	time.Sleep(50 * time.Millisecond)
 

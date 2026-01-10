@@ -129,18 +129,18 @@ func (sm *StreamManager) ClientDisconnected() {
 }
 
 // RecvAck processes an ACK from the client
-func (sm *StreamManager) RecvAck(ackPk wshrpc.CommandStreamAckData) error {
+func (sm *StreamManager) RecvAck(ackPk wshrpc.CommandStreamAckData) {
 	sm.lock.Lock()
 	defer sm.lock.Unlock()
 
 	if !sm.connected {
-		return nil
+		return
 	}
 
 	seq := ackPk.Seq
 	headPos := sm.buf.HeadPos()
 	if seq < headPos {
-		return fmt.Errorf("ACK seq %d is before buffer start %d", seq, headPos)
+		return
 	}
 
 	ackedBytes := seq - headPos
@@ -148,8 +148,7 @@ func (sm *StreamManager) RecvAck(ackPk wshrpc.CommandStreamAckData) error {
 
 	maxAckable := int64(available) + sm.sentNotAcked
 	if ackedBytes > maxAckable {
-		return fmt.Errorf("ACK seq %d exceeds total sent (headPos=%d, available=%d, sentNotAcked=%d)",
-			seq, headPos, available, sm.sentNotAcked)
+		return
 	}
 
 	if ackedBytes > 0 {
@@ -158,7 +157,7 @@ func (sm *StreamManager) RecvAck(ackPk wshrpc.CommandStreamAckData) error {
 			consumeFromBuf = available
 		}
 		if err := sm.buf.Consume(consumeFromBuf); err != nil {
-			return err
+			return
 		}
 		sm.sentNotAcked -= ackedBytes
 		if sm.sentNotAcked < 0 {
@@ -181,8 +180,6 @@ func (sm *StreamManager) RecvAck(ackPk wshrpc.CommandStreamAckData) error {
 	if sm.terminalEvent != nil && !sm.terminalEventSent && sm.buf.Size() == 0 && sm.sentNotAcked == 0 {
 		sm.sendTerminalEvent()
 	}
-
-	return nil
 }
 
 // Close shuts down the sender loop and waits for the reader to finish
