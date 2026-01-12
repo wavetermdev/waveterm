@@ -201,6 +201,11 @@ declare global {
         rpccontext?: RpcContext;
     };
 
+    // wshrpc.CommandAuthenticateToJobData
+    type CommandAuthenticateToJobData = {
+        jobaccesstoken: string;
+    };
+
     // wshrpc.CommandAuthenticateTokenData
     type CommandAuthenticateTokenData = {
         token: string;
@@ -791,6 +796,27 @@ declare global {
         bookmarks: {[key: string]: WebBookmark};
         waveai: {[key: string]: AIModeConfigType};
         configerrors: ConfigError[];
+    };
+
+    // waveobj.Job
+    type Job = WaveObj & {
+        connection: string;
+        jobkind: string;
+        pgid: number;
+        ownerblockid: string;
+        huponconnect: boolean;
+        jobaccesstoken: string;
+        jobauthtoken: string;
+        cmd: string;
+        cmdargs?: string[];
+        cmdenv?: {[key: string]: string};
+        termsize?: TermSize;
+        startts?: number;
+        status: string;
+        exitts?: number;
+        exitcode?: number;
+        exitsignal?: string;
+        error?: string;
     };
 
     // waveobj.LayoutActionData

@@ -22,6 +22,11 @@ class RpcApiType {
         return client.wshRpcCall("authenticate", data, opts);
     }
 
+    // command "authenticatetojobmanager" [call]
+    AuthenticateToJobManagerCommand(client: WshClient, data: CommandAuthenticateToJobData, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("authenticatetojobmanager", data, opts);
+    }
+
     // command "authenticatetoken" [call]
     AuthenticateTokenCommand(client: WshClient, data: CommandAuthenticateTokenData, opts?: RpcOpts): Promise<CommandAuthenticateRtnData> {
         return client.wshRpcCall("authenticatetoken", data, opts);

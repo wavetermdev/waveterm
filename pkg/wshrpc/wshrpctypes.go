@@ -154,6 +154,9 @@ type WshRpcInterface interface {
 	// streams
 	StreamDataCommand(ctx context.Context, data CommandStreamData) error
 	StreamDataAckCommand(ctx context.Context, data CommandStreamAckData) error
+
+	// jobs
+	AuthenticateToJobManagerCommand(ctx context.Context, data CommandAuthenticateToJobData)
 }
 
 // for frontend
@@ -655,4 +658,8 @@ type StreamMeta struct {
 	RWnd          int64  `json:"rwnd"` // initial receive window size
 	ReaderRouteId string `json:"readerrouteid"`
 	WriterRouteId string `json:"writerrouteid"`
+}
+
+type CommandAuthenticateToJobData struct {
+	JobAccessToken string `json:"jobaccesstoken"`
 }

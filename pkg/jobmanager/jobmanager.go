@@ -1,202 +1,136 @@
-// Copyright 2025, Command Line Inc.
+// Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 package jobmanager
 
 import (
-	"encoding/base64"
+	"context"
 	"fmt"
 	"log"
+	"net"
 	"os"
-	"os/exec"
-	"os/signal"
-	"strings"
-	"sync"
-	"syscall"
-	"time"
+	"path/filepath"
 
-	"github.com/creack/pty"
-	"github.com/wavetermdev/waveterm/pkg/waveobj"
+	"github.com/wavetermdev/waveterm/pkg/baseds"
+	"github.com/wavetermdev/waveterm/pkg/panichandler"
+	"github.com/wavetermdev/waveterm/pkg/wavebase"
+	"github.com/wavetermdev/waveterm/pkg/wavejwt"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
+	"github.com/wavetermdev/waveterm/pkg/wshutil"
 )
 
-const ShutdownDelayTime = 100 * time.Millisecond
-
-type CmdDef struct {
-	Cmd      string
-	Args     []string
-	Env      map[string]string
-	TermSize waveobj.TermSize
-}
+var WshCmdJobManager JobManager
 
 type JobManager struct {
-	jobId      string
-	lock       sync.Mutex
-	cmd        *exec.Cmd
-	cmdPty     pty.Pty
-	cleanedUp  bool
-	exitCode   int
-	exitSignal string
-	exitErr    error
+	ClientId     string
+	JobId        string
+	Cmd          *JobCmd
+	JwtPublicKey []byte
 }
 
-func MakeJobManager(jobId string, cmdDef CmdDef) (*JobManager, error) {
-	jm := &JobManager{
-		jobId: jobId,
-	}
-	if cmdDef.TermSize.Rows == 0 || cmdDef.TermSize.Cols == 0 {
-		cmdDef.TermSize.Rows = 25
-		cmdDef.TermSize.Cols = 80
-	}
-	if cmdDef.TermSize.Rows <= 0 || cmdDef.TermSize.Cols <= 0 {
-		return nil, fmt.Errorf("invalid term size: %v", cmdDef.TermSize)
-	}
-	ecmd := exec.Command(cmdDef.Cmd, cmdDef.Args...)
-	if len(cmdDef.Env) > 0 {
-		ecmd.Env = os.Environ()
-		for key, val := range cmdDef.Env {
-			ecmd.Env = append(ecmd.Env, fmt.Sprintf("%s=%s", key, val))
-		}
-	}
-	cmdPty, err := pty.StartWithSize(ecmd, &pty.Winsize{Rows: uint16(cmdDef.TermSize.Rows), Cols: uint16(cmdDef.TermSize.Cols)})
+type JobServerImpl struct {
+	Authenticated bool
+}
+
+func (JobServerImpl) WshServerImpl() {}
+
+func (impl *JobServerImpl) AuthenticateToJobManagerCommand(ctx context.Context, data wshrpc.CommandAuthenticateToJobData) {
+	claims, err := wavejwt.ValidateAndExtract(data.JobAccessToken)
 	if err != nil {
-		return nil, fmt.Errorf("failed to start command: %w", err)
-	}
-	jm.cmd = ecmd
-	jm.cmdPty = cmdPty
-	go jm.readPtyOutput(cmdPty)
-	go jm.waitForProcess()
-	jm.setupSignalHandlers()
-	return jm, nil
-}
-
-func (jm *JobManager) waitForProcess() {
-	if jm.cmd == nil || jm.cmd.Process == nil {
+		log.Printf("AuthenticateToJobManager: failed to validate token: %v\n", err)
 		return
 	}
-	err := jm.cmd.Wait()
-	jm.lock.Lock()
-	defer jm.lock.Unlock()
+	if !claims.MainServer {
+		log.Printf("AuthenticateToJobManager: MainServer claim not set\n")
+		return
+	}
+	if claims.JobId != WshCmdJobManager.JobId {
+		log.Printf("AuthenticateToJobManager: JobId mismatch: expected %s, got %s\n", WshCmdJobManager.JobId, claims.JobId)
+		return
+	}
+	impl.Authenticated = true
+	log.Printf("AuthenticateToJobManager: authentication successful for JobId=%s\n", claims.JobId)
+}
 
-	jm.exitErr = err
+func SetupJobManager(clientId string, jobId string, publicKeyBytes []byte) error {
+	WshCmdJobManager.ClientId = clientId
+	WshCmdJobManager.JobId = jobId
+	WshCmdJobManager.JwtPublicKey = publicKeyBytes
+	err := wavejwt.SetPublicKey(publicKeyBytes)
 	if err != nil {
-		if exitErr, ok := err.(*exec.ExitError); ok {
-			if status, ok := exitErr.Sys().(syscall.WaitStatus); ok {
-				if status.Signaled() {
-					jm.exitSignal = status.Signal().String()
-					jm.exitCode = -1
-				} else {
-					jm.exitCode = status.ExitStatus()
-				}
-			}
-		}
-	} else {
-		jm.exitCode = 0
+		return fmt.Errorf("failed to set public key: %w", err)
 	}
-	log.Printf("process exited: exitcode=%d, signal=%s, err=%v\n", jm.exitCode, jm.exitSignal, jm.exitErr)
+	err = MakeJobDomainSocket(clientId, jobId)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
-func (jm *JobManager) GetCmd() (*exec.Cmd, pty.Pty) {
-	jm.lock.Lock()
-	defer jm.lock.Unlock()
-	return jm.cmd, jm.cmdPty
-}
-
-func (jm *JobManager) HandleInput(data wshrpc.CommandBlockInputData) error {
-	jm.lock.Lock()
-	defer jm.lock.Unlock()
-
-	if jm.cmd == nil || jm.cmdPty == nil {
-		return fmt.Errorf("no active process")
+func MakeJobDomainSocket(clientId string, jobId string) error {
+	homeDir := wavebase.GetHomeDir()
+	socketDir := filepath.Join(homeDir, ".waveterm", "jobs", clientId)
+	err := os.MkdirAll(socketDir, 0700)
+	if err != nil {
+		return fmt.Errorf("failed to create socket directory: %w", err)
 	}
 
-	if len(data.InputData64) > 0 {
-		inputBuf := make([]byte, base64.StdEncoding.DecodedLen(len(data.InputData64)))
-		nw, err := base64.StdEncoding.Decode(inputBuf, []byte(data.InputData64))
-		if err != nil {
-			return fmt.Errorf("error decoding input data: %w", err)
-		}
-		_, err = jm.cmdPty.Write(inputBuf[:nw])
-		if err != nil {
-			return fmt.Errorf("error writing to pty: %w", err)
-		}
+	socketPath := filepath.Join(socketDir, fmt.Sprintf("%s.sock", jobId))
+
+	os.Remove(socketPath)
+
+	listener, err := net.Listen("unix", socketPath)
+	if err != nil {
+		return fmt.Errorf("failed to listen on domain socket: %w", err)
 	}
 
-	if data.SigName != "" {
-		sig := normalizeSignal(data.SigName)
-		if sig != nil && jm.cmd.Process != nil {
-			err := jm.cmd.Process.Signal(sig)
+	go func() {
+		defer func() {
+			panichandler.PanicHandler("MakeJobDomainSocket:accept", recover())
+			listener.Close()
+			os.Remove(socketPath)
+		}()
+		for {
+			conn, err := listener.Accept()
 			if err != nil {
-				return fmt.Errorf("error sending signal: %w", err)
+				log.Printf("error accepting connection: %v\n", err)
+				return
 			}
+			go handleJobDomainSocketClient(conn)
 		}
-	}
-
-	if data.TermSize != nil {
-		err := pty.Setsize(jm.cmdPty, &pty.Winsize{
-			Rows: uint16(data.TermSize.Rows),
-			Cols: uint16(data.TermSize.Cols),
-		})
-		if err != nil {
-			return fmt.Errorf("error setting terminal size: %w", err)
-		}
-	}
+	}()
 
 	return nil
 }
 
-func normalizeSignal(sigName string) os.Signal {
-	sigName = strings.ToUpper(sigName)
-	sigName = strings.TrimPrefix(sigName, "SIG")
+func handleJobDomainSocketClient(conn net.Conn) {
+	inputCh := make(chan baseds.RpcInputChType, wshutil.DefaultInputChSize)
+	outputCh := make(chan []byte, wshutil.DefaultOutputChSize)
 
-	switch sigName {
-	case "HUP":
-		return syscall.SIGHUP
-	case "INT":
-		return syscall.SIGINT
-	case "QUIT":
-		return syscall.SIGQUIT
-	case "KILL":
-		return syscall.SIGKILL
-	case "TERM":
-		return syscall.SIGTERM
-	case "USR1":
-		return syscall.SIGUSR1
-	case "USR2":
-		return syscall.SIGUSR2
-	case "STOP":
-		return syscall.SIGSTOP
-	case "CONT":
-		return syscall.SIGCONT
-	default:
-		return nil
-	}
-}
-
-func (jm *JobManager) setupSignalHandlers() {
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM)
+	serverImpl := &JobServerImpl{}
+	rpcCtx := wshrpc.RpcContext{}
+	wshRpc := wshutil.MakeWshRpcWithChannels(inputCh, outputCh, rpcCtx, serverImpl, "job-domain")
 
 	go func() {
-		sig := <-sigChan
-		log.Printf("received signal: %v\n", sig)
-
-		cmd, _ := jm.GetCmd()
-		if cmd != nil && cmd.Process != nil {
-			log.Printf("forwarding signal %v to child process\n", sig)
-			cmd.Process.Signal(sig)
-			time.Sleep(ShutdownDelayTime)
+		defer func() {
+			panichandler.PanicHandler("handleJobDomainSocketClient:AdaptOutputChToStream", recover())
+		}()
+		writeErr := wshutil.AdaptOutputChToStream(outputCh, conn)
+		if writeErr != nil {
+			log.Printf("error writing to domain socket: %v\n", writeErr)
 		}
-
-		jm.Cleanup()
-		os.Exit(0)
 	}()
-}
 
-func (jm *JobManager) readPtyOutput(cmdPty pty.Pty) {
-	// TODO: implement readPtyOutput
-}
+	go func() {
+		defer func() {
+			panichandler.PanicHandler("handleJobDomainSocketClient:AdaptStreamToMsgCh", recover())
+		}()
+		defer func() {
+			conn.Close()
+			close(inputCh)
+		}()
+		wshutil.AdaptStreamToMsgCh(conn, inputCh)
+	}()
 
-func (jm *JobManager) Cleanup() {
-	// TODO: implement Cleanup
+	_ = wshRpc
 }
