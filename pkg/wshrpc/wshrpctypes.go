@@ -26,6 +26,8 @@ type WshRpcInterface interface {
 	AuthenticateCommand(ctx context.Context, data string) (CommandAuthenticateRtnData, error)
 	AuthenticateTokenCommand(ctx context.Context, data CommandAuthenticateTokenData) (CommandAuthenticateRtnData, error)
 	AuthenticateTokenVerifyCommand(ctx context.Context, data CommandAuthenticateTokenData) (CommandAuthenticateRtnData, error) // (special) validates token without binding, root router only
+	AuthenticateJobManagerCommand(ctx context.Context, data CommandAuthenticateJobManagerData) error
+	AuthenticateJobManagerVerifyCommand(ctx context.Context, data CommandAuthenticateJobManagerData) error // (special) validates job auth token without binding, root router only
 	DisposeCommand(ctx context.Context, data CommandDisposeData) error
 	RouteAnnounceCommand(ctx context.Context) error   // (special) announces a new route to the main router
 	RouteUnannounceCommand(ctx context.Context) error // (special) unannounces a route to the main router
@@ -157,6 +159,9 @@ type WshRpcInterface interface {
 
 	// jobs
 	AuthenticateToJobManagerCommand(ctx context.Context, data CommandAuthenticateToJobData)
+	StartJobCommand(ctx context.Context, data CommandStartJobData) (*CommandStartJobRtnData, error)
+	JobConnectCommand(ctx context.Context, data CommandJobConnectData) error
+	JobTerminateCommand(ctx context.Context, data CommandJobTerminateData) error
 }
 
 // for frontend
@@ -662,4 +667,29 @@ type StreamMeta struct {
 
 type CommandAuthenticateToJobData struct {
 	JobAccessToken string `json:"jobaccesstoken"`
+}
+
+type CommandAuthenticateJobManagerData struct {
+	JobId        string `json:"jobid"`
+	JobAuthToken string `json:"jobauthtoken"`
+}
+
+type CommandStartJobData struct {
+	Cmd          string            `json:"cmd"`
+	Args         []string          `json:"args"`
+	Env          map[string]string `json:"env"`
+	TermSize     waveobj.TermSize  `json:"termsize"`
+	JobAuthToken string            `json:"jobauthtoken"`
+}
+
+type CommandStartJobRtnData struct {
+	Pgid int `json:"pgid"`
+}
+
+type CommandJobConnectData struct {
+	StreamId string `json:"streamid"`
+	Seq      int64  `json:"seq"`
+}
+
+type CommandJobTerminateData struct {
 }

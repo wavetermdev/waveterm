@@ -22,6 +22,16 @@ class RpcApiType {
         return client.wshRpcCall("authenticate", data, opts);
     }
 
+    // command "authenticatejobmanager" [call]
+    AuthenticateJobManagerCommand(client: WshClient, data: CommandAuthenticateJobManagerData, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("authenticatejobmanager", data, opts);
+    }
+
+    // command "authenticatejobmanagerverify" [call]
+    AuthenticateJobManagerVerifyCommand(client: WshClient, data: CommandAuthenticateJobManagerData, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("authenticatejobmanagerverify", data, opts);
+    }
+
     // command "authenticatetojobmanager" [call]
     AuthenticateToJobManagerCommand(client: WshClient, data: CommandAuthenticateToJobData, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("authenticatetojobmanager", data, opts);
@@ -382,6 +392,16 @@ class RpcApiType {
         return client.wshRpcCall("getwaveairatelimit", null, opts);
     }
 
+    // command "jobconnect" [call]
+    JobConnectCommand(client: WshClient, data: CommandJobConnectData, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("jobconnect", data, opts);
+    }
+
+    // command "jobterminate" [call]
+    JobTerminateCommand(client: WshClient, data: CommandJobTerminateData, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("jobterminate", data, opts);
+    }
+
     // command "listallappfiles" [call]
     ListAllAppFilesCommand(client: WshClient, data: CommandListAllAppFilesData, opts?: RpcOpts): Promise<CommandListAllAppFilesRtnData> {
         return client.wshRpcCall("listallappfiles", data, opts);
@@ -575,6 +595,11 @@ class RpcApiType {
     // command "startbuilder" [call]
     StartBuilderCommand(client: WshClient, data: CommandStartBuilderData, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("startbuilder", data, opts);
+    }
+
+    // command "startjob" [call]
+    StartJobCommand(client: WshClient, data: CommandStartJobData, opts?: RpcOpts): Promise<CommandStartJobRtnData> {
+        return client.wshRpcCall("startjob", data, opts);
     }
 
     // command "stopbuilder" [call]

@@ -35,13 +35,14 @@ const (
 // we only need consts for special commands handled in the router or
 // in the RPC code / WPS code directly.  other commands go through the clients
 const (
-	Command_Authenticate            = "authenticate"            // $control
-	Command_AuthenticateToken       = "authenticatetoken"       // $control
-	Command_AuthenticateTokenVerify = "authenticatetokenverify" // $control:root (internal, for token validation only)
-	Command_RouteAnnounce           = "routeannounce"           // $control (for routing)
-	Command_RouteUnannounce         = "routeunannounce"         // $control (for routing)
-	Command_Ping                    = "ping"                    // $control
-	Command_ControllerInput         = "controllerinput"
-	Command_EventRecv               = "eventrecv"
-	Command_Message                 = "message"
+	Command_Authenticate                 = "authenticate"                 // $control
+	Command_AuthenticateToken            = "authenticatetoken"            // $control
+	Command_AuthenticateTokenVerify      = "authenticatetokenverify"      // $control:root (internal, for token validation only)
+	Command_AuthenticateJobManagerVerify = "authenticatejobmanagerverify" // $control:root (internal, for job auth token validation only)
+	Command_RouteAnnounce                = "routeannounce"                // $control (for routing)
+	Command_RouteUnannounce              = "routeunannounce"              // $control (for routing)
+	Command_Ping                         = "ping"                         // $control
+	Command_ControllerInput              = "controllerinput"
+	Command_EventRecv                    = "eventrecv"
+	Command_Message                      = "message"
 )

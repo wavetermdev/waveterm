@@ -26,6 +26,7 @@ type JobManager struct {
 	JobId        string
 	Cmd          *JobCmd
 	JwtPublicKey []byte
+	JobAuthToken string
 }
 
 type JobServerImpl struct {
@@ -50,6 +51,58 @@ func (impl *JobServerImpl) AuthenticateToJobManagerCommand(ctx context.Context, 
 	}
 	impl.Authenticated = true
 	log.Printf("AuthenticateToJobManager: authentication successful for JobId=%s\n", claims.JobId)
+}
+
+func (impl *JobServerImpl) StartJobCommand(ctx context.Context, data wshrpc.CommandStartJobData) (*wshrpc.CommandStartJobRtnData, error) {
+	if !impl.Authenticated {
+		return nil, fmt.Errorf("not authenticated")
+	}
+	if WshCmdJobManager.Cmd != nil {
+		return nil, fmt.Errorf("job already started")
+	}
+	WshCmdJobManager.JobAuthToken = data.JobAuthToken
+	cmdDef := CmdDef{
+		Cmd:      data.Cmd,
+		Args:     data.Args,
+		Env:      data.Env,
+		TermSize: data.TermSize,
+	}
+	jobCmd, err := MakeJobCmd(WshCmdJobManager.JobId, cmdDef)
+	if err != nil {
+		return nil, fmt.Errorf("failed to start job: %w", err)
+	}
+	WshCmdJobManager.Cmd = jobCmd
+	cmd, _ := jobCmd.GetCmd()
+	if cmd == nil || cmd.Process == nil {
+		return nil, fmt.Errorf("cmd or process is nil")
+	}
+	pgid, err := getProcessGroupId(cmd.Process.Pid)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get process group id: %w", err)
+	}
+	return &wshrpc.CommandStartJobRtnData{Pgid: pgid}, nil
+}
+
+func (impl *JobServerImpl) JobConnectCommand(ctx context.Context, data wshrpc.CommandJobConnectData) error {
+	if !impl.Authenticated {
+		return fmt.Errorf("not authenticated")
+	}
+	if WshCmdJobManager.Cmd == nil {
+		return fmt.Errorf("job not started")
+	}
+	log.Printf("JobConnect: streamid=%s seq=%d\n", data.StreamId, data.Seq)
+	return nil
+}
+
+func (impl *JobServerImpl) JobTerminateCommand(ctx context.Context, data wshrpc.CommandJobTerminateData) error {
+	if !impl.Authenticated {
+		return fmt.Errorf("not authenticated")
+	}
+	if WshCmdJobManager.Cmd == nil {
+		return fmt.Errorf("job not started")
+	}
+	log.Printf("JobTerminate called\n")
+	return nil
 }
 
 func SetupJobManager(clientId string, jobId string, publicKeyBytes []byte) error {

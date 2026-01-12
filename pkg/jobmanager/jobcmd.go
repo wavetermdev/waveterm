@@ -10,7 +10,6 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
-	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -143,34 +142,6 @@ func (jm *JobCmd) HandleInput(data wshrpc.CommandBlockInputData) error {
 	}
 
 	return nil
-}
-
-func normalizeSignal(sigName string) os.Signal {
-	sigName = strings.ToUpper(sigName)
-	sigName = strings.TrimPrefix(sigName, "SIG")
-
-	switch sigName {
-	case "HUP":
-		return syscall.SIGHUP
-	case "INT":
-		return syscall.SIGINT
-	case "QUIT":
-		return syscall.SIGQUIT
-	case "KILL":
-		return syscall.SIGKILL
-	case "TERM":
-		return syscall.SIGTERM
-	case "USR1":
-		return syscall.SIGUSR1
-	case "USR2":
-		return syscall.SIGUSR2
-	case "STOP":
-		return syscall.SIGSTOP
-	case "CONT":
-		return syscall.SIGCONT
-	default:
-		return nil
-	}
 }
 
 func (jm *JobCmd) setupSignalHandlers() {

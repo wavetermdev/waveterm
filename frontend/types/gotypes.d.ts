@@ -194,6 +194,12 @@ declare global {
         data: {[key: string]: any};
     };
 
+    // wshrpc.CommandAuthenticateJobManagerData
+    type CommandAuthenticateJobManagerData = {
+        jobid: string;
+        jobauthtoken: string;
+    };
+
     // wshrpc.CommandAuthenticateRtnData
     type CommandAuthenticateRtnData = {
         env?: {[key: string]: string};
@@ -348,6 +354,16 @@ declare global {
         chatid: string;
     };
 
+    // wshrpc.CommandJobConnectData
+    type CommandJobConnectData = {
+        streamid: string;
+        seq: number;
+    };
+
+    // wshrpc.CommandJobTerminateData
+    type CommandJobTerminateData = {
+    };
+
     // wshrpc.CommandListAllAppFilesData
     type CommandListAllAppFilesData = {
         appid: string;
@@ -464,6 +480,20 @@ declare global {
     // wshrpc.CommandStartBuilderData
     type CommandStartBuilderData = {
         builderid: string;
+    };
+
+    // wshrpc.CommandStartJobData
+    type CommandStartJobData = {
+        cmd: string;
+        args: string[];
+        env: {[key: string]: string};
+        termsize: TermSize;
+        jobauthtoken: string;
+    };
+
+    // wshrpc.CommandStartJobRtnData
+    type CommandStartJobRtnData = {
+        pgid: number;
     };
 
     // wshrpc.CommandStreamAckData
