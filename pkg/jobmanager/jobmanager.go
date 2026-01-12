@@ -16,6 +16,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/wavejwt"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
+	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
 )
 
@@ -31,26 +32,42 @@ type JobManager struct {
 
 type JobServerImpl struct {
 	Authenticated bool
+	WshRpc        *wshutil.WshRpc
 }
 
 func (JobServerImpl) WshServerImpl() {}
 
-func (impl *JobServerImpl) AuthenticateToJobManagerCommand(ctx context.Context, data wshrpc.CommandAuthenticateToJobData) {
+func (impl *JobServerImpl) AuthenticateToJobManagerCommand(ctx context.Context, data wshrpc.CommandAuthenticateToJobData) error {
 	claims, err := wavejwt.ValidateAndExtract(data.JobAccessToken)
 	if err != nil {
 		log.Printf("AuthenticateToJobManager: failed to validate token: %v\n", err)
-		return
+		return fmt.Errorf("failed to validate token: %w", err)
 	}
 	if !claims.MainServer {
 		log.Printf("AuthenticateToJobManager: MainServer claim not set\n")
-		return
+		return fmt.Errorf("MainServer claim not set")
 	}
 	if claims.JobId != WshCmdJobManager.JobId {
 		log.Printf("AuthenticateToJobManager: JobId mismatch: expected %s, got %s\n", WshCmdJobManager.JobId, claims.JobId)
-		return
+		return fmt.Errorf("JobId mismatch")
 	}
 	impl.Authenticated = true
 	log.Printf("AuthenticateToJobManager: authentication successful for JobId=%s\n", claims.JobId)
+
+	if WshCmdJobManager.JobAuthToken != "" {
+		authData := wshrpc.CommandAuthenticateJobManagerData{
+			JobId:        WshCmdJobManager.JobId,
+			JobAuthToken: WshCmdJobManager.JobAuthToken,
+		}
+		err = wshclient.AuthenticateJobManagerCommand(impl.WshRpc, authData, &wshrpc.RpcOpts{Route: wshutil.ControlRoute})
+		if err != nil {
+			log.Printf("AuthenticateToJobManager: failed to authenticate back to server: %v\n", err)
+			impl.Authenticated = false
+			return fmt.Errorf("failed to authenticate back to server: %w", err)
+		}
+		log.Printf("AuthenticateToJobManager: successfully authenticated back to server\n")
+	}
+	return nil
 }
 
 func (impl *JobServerImpl) StartJobCommand(ctx context.Context, data wshrpc.CommandStartJobData) (*wshrpc.CommandStartJobRtnData, error) {
@@ -61,6 +78,19 @@ func (impl *JobServerImpl) StartJobCommand(ctx context.Context, data wshrpc.Comm
 		return nil, fmt.Errorf("job already started")
 	}
 	WshCmdJobManager.JobAuthToken = data.JobAuthToken
+
+	authData := wshrpc.CommandAuthenticateJobManagerData{
+		JobId:        WshCmdJobManager.JobId,
+		JobAuthToken: WshCmdJobManager.JobAuthToken,
+	}
+	err := wshclient.AuthenticateJobManagerCommand(impl.WshRpc, authData, &wshrpc.RpcOpts{Route: wshutil.ControlRoute})
+	if err != nil {
+		log.Printf("StartJob: failed to authenticate to server: %v\n", err)
+		WshCmdJobManager.JobAuthToken = ""
+		return nil, fmt.Errorf("failed to authenticate to server: %w", err)
+	}
+	log.Printf("StartJob: successfully authenticated to server\n")
+
 	cmdDef := CmdDef{
 		Cmd:      data.Cmd,
 		Args:     data.Args,
@@ -163,6 +193,7 @@ func handleJobDomainSocketClient(conn net.Conn) {
 	serverImpl := &JobServerImpl{}
 	rpcCtx := wshrpc.RpcContext{}
 	wshRpc := wshutil.MakeWshRpcWithChannels(inputCh, outputCh, rpcCtx, serverImpl, "job-domain")
+	serverImpl.WshRpc = wshRpc
 
 	go func() {
 		defer func() {

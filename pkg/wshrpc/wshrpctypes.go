@@ -158,7 +158,7 @@ type WshRpcInterface interface {
 	StreamDataAckCommand(ctx context.Context, data CommandStreamAckData) error
 
 	// jobs
-	AuthenticateToJobManagerCommand(ctx context.Context, data CommandAuthenticateToJobData)
+	AuthenticateToJobManagerCommand(ctx context.Context, data CommandAuthenticateToJobData) error
 	StartJobCommand(ctx context.Context, data CommandStartJobData) (*CommandStartJobRtnData, error)
 	JobConnectCommand(ctx context.Context, data CommandJobConnectData) error
 	JobTerminateCommand(ctx context.Context, data CommandJobTerminateData) error

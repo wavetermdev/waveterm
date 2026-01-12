@@ -323,7 +323,7 @@ type Job struct {
 	CmdEnv          map[string]string `json:"cmdenv,omitempty"`
 	TermSize        TermSize          `json:"termsize,omitempty"`
 	StartTs         int64             `json:"startts,omitempty"` // timestamp (milliseconds)
-	Status          string            `json:"status"`            // running, done
+	Status          string            `json:"status"`            // init, running, done
 	ExitTs          int64             `json:"exitts,omitempty"`  // timestamp (milliseconds)
 	ExitCode        int               `json:"exitcode,omitempty"`
 	ExitSignal      string            `json:"exitsignal,omitempty"`
