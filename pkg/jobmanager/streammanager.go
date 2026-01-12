@@ -35,8 +35,9 @@ type StreamManager struct {
 	streamId string
 	buf      *CirBuf
 
-	terminalEvent     *streamTerminalEvent
-	terminalEventSent bool
+	terminalEvent      *streamTerminalEvent
+	terminalEventSent  bool
+	terminalEventAcked bool
 
 	reader   io.Reader
 	readerWg sync.WaitGroup
@@ -53,18 +54,13 @@ type StreamManager struct {
 	closed       bool
 }
 
-func MakeStreamManager(streamId string, dataSender DataSender) *StreamManager {
-	return MakeStreamManagerWithSizes(streamId, dataSender, CwndSize, CirBufSize)
+func MakeStreamManager() *StreamManager {
+	return MakeStreamManagerWithSizes(CwndSize, CirBufSize)
 }
 
-func MakeStreamManagerWithSizes(streamId string, dataSender DataSender, cwndSize, cirbufSize int) *StreamManager {
-	if dataSender == nil {
-		panic("dataSender cannot be nil")
-	}
+func MakeStreamManagerWithSizes(cwndSize, cirbufSize int) *StreamManager {
 	sm := &StreamManager{
-		streamId:     streamId,
 		buf:          MakeCirBuf(cirbufSize, true),
-		dataSender:   dataSender,
 		cwndSize:     cwndSize,
 		rwndSize:     cwndSize,
 		sentNotAcked: 0,
@@ -92,17 +88,42 @@ func (sm *StreamManager) AttachReader(r io.Reader) error {
 }
 
 // ClientConnected transitions to CONNECTED mode
-func (sm *StreamManager) ClientConnected(rwndSize int) error {
+func (sm *StreamManager) ClientConnected(streamId string, dataSender DataSender, rwndSize int, clientSeq int64) (int64, error) {
 	sm.lock.Lock()
 	defer sm.lock.Unlock()
 
 	if sm.connected {
-		return nil
+		return 0, fmt.Errorf("client already connected")
 	}
 
+	if dataSender == nil {
+		return 0, fmt.Errorf("dataSender cannot be nil")
+	}
+
+	headPos := sm.buf.HeadPos()
+	if clientSeq > headPos {
+		bytesToConsume := int(clientSeq - headPos)
+		available := sm.buf.Size()
+		if bytesToConsume > available {
+			return 0, fmt.Errorf("client seq %d is beyond our stream end (head=%d, size=%d)", clientSeq, headPos, available)
+		}
+		if bytesToConsume > 0 {
+			if err := sm.buf.Consume(bytesToConsume); err != nil {
+				return 0, fmt.Errorf("failed to consume buffer: %w", err)
+			}
+			headPos = sm.buf.HeadPos()
+		}
+	}
+
+	sm.streamId = streamId
+	sm.dataSender = dataSender
 	sm.connected = true
 	sm.drained = false
 	sm.rwndSize = rwndSize
+	sm.sentNotAcked = 0
+	if !sm.terminalEventAcked {
+		sm.terminalEventSent = false
+	}
 	effectiveWindow := sm.cwndSize
 	if sm.rwndSize < effectiveWindow {
 		effectiveWindow = sm.rwndSize
@@ -110,7 +131,12 @@ func (sm *StreamManager) ClientConnected(rwndSize int) error {
 	sm.buf.SetEffectiveWindow(true, effectiveWindow)
 	sm.drainCond.Signal()
 
-	return nil
+	startSeq := headPos
+	if clientSeq > startSeq {
+		startSeq = clientSeq
+	}
+
+	return startSeq, nil
 }
 
 // ClientDisconnected transitions to DISCONNECTED mode
@@ -123,6 +149,7 @@ func (sm *StreamManager) ClientDisconnected() {
 	}
 
 	sm.connected = false
+	sm.dataSender = nil
 	sm.drainCond.Signal()
 	sm.sentNotAcked = 0
 	sm.buf.SetEffectiveWindow(false, CirBufSize)
@@ -135,6 +162,10 @@ func (sm *StreamManager) RecvAck(ackPk wshrpc.CommandStreamAckData) {
 
 	if !sm.connected {
 		return
+	}
+
+	if ackPk.Fin {
+		sm.terminalEventAcked = true
 	}
 
 	seq := ackPk.Seq
@@ -178,7 +209,7 @@ func (sm *StreamManager) RecvAck(ackPk wshrpc.CommandStreamAckData) {
 	}
 
 	if sm.terminalEvent != nil && !sm.terminalEventSent && sm.buf.Size() == 0 && sm.sentNotAcked == 0 {
-		sm.sendTerminalEvent()
+		sm.sendTerminalEvent_withlock()
 	}
 }
 
@@ -244,7 +275,7 @@ func (sm *StreamManager) handleEOF() {
 	sm.terminalEvent = &streamTerminalEvent{isEof: true}
 
 	if sm.buf.Size() == 0 && sm.sentNotAcked == 0 && sm.connected && sm.drained {
-		sm.sendTerminalEvent()
+		sm.sendTerminalEvent_withlock()
 	}
 }
 
@@ -255,7 +286,7 @@ func (sm *StreamManager) handleError(err error) {
 	sm.terminalEvent = &streamTerminalEvent{err: err.Error()}
 
 	if sm.buf.Size() == 0 && sm.sentNotAcked == 0 && sm.connected && sm.drained {
-		sm.sendTerminalEvent()
+		sm.sendTerminalEvent_withlock()
 	}
 }
 
@@ -278,7 +309,7 @@ func (sm *StreamManager) senderLoop() {
 		if available == 0 {
 			sm.drained = true
 			if sm.terminalEvent != nil && !sm.terminalEventSent && sm.sentNotAcked == 0 {
-				sm.sendTerminalEvent()
+				sm.sendTerminalEvent_withlock()
 			}
 			sm.drainCond.Wait()
 			sm.lock.Unlock()
@@ -315,25 +346,34 @@ func (sm *StreamManager) senderLoop() {
 
 		seq := sm.buf.HeadPos() + sm.sentNotAcked
 		sm.sentNotAcked += int64(n)
+		dataSender := sm.dataSender
 		sm.lock.Unlock()
+
+		if dataSender == nil {
+			continue
+		}
 
 		pkt := wshrpc.CommandStreamData{
 			Id:     sm.streamId,
 			Seq:    seq,
 			Data64: base64.StdEncoding.EncodeToString(data),
 		}
-		sm.dataSender.SendData(pkt)
+		dataSender.SendData(pkt)
 	}
 }
 
 func (sm *StreamManager) sendBufferData() {
 	sm.lock.Lock()
+	defer sm.lock.Unlock()
 	sm.drainCond.Signal()
-	sm.lock.Unlock()
 }
 
-func (sm *StreamManager) sendTerminalEvent() {
+func (sm *StreamManager) sendTerminalEvent_withlock() {
 	if sm.terminalEventSent {
+		return
+	}
+
+	if sm.dataSender == nil {
 		return
 	}
 

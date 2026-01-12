@@ -34,6 +34,7 @@ type JobCmd struct {
 	cmd        *exec.Cmd
 	cmdPty     pty.Pty
 	cleanedUp  bool
+	ptyClosed  bool
 	exitCode   int
 	exitSignal string
 	exitErr    error
@@ -166,6 +167,19 @@ func (jm *JobCmd) setupSignalHandlers() {
 
 func (jm *JobCmd) readPtyOutput(cmdPty pty.Pty) {
 	// TODO: implement readPtyOutput
+}
+
+func (jm *JobCmd) Terminate() {
+	jm.lock.Lock()
+	defer jm.lock.Unlock()
+	if jm.ptyClosed {
+		return
+	}
+	if jm.cmdPty != nil {
+		jm.cmdPty.Close()
+		jm.ptyClosed = true
+		log.Printf("pty closed for job %s\n", jm.jobId)
+	}
 }
 
 func (jm *JobCmd) Cleanup() {

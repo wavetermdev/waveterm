@@ -10,6 +10,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"sync"
 
 	"github.com/wavetermdev/waveterm/pkg/baseds"
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
@@ -23,16 +24,19 @@ import (
 var WshCmdJobManager JobManager
 
 type JobManager struct {
-	ClientId     string
-	JobId        string
-	Cmd          *JobCmd
-	JwtPublicKey []byte
-	JobAuthToken string
+	ClientId       string
+	JobId          string
+	Cmd            *JobCmd
+	JwtPublicKey   []byte
+	JobAuthToken   string
+	lock           sync.Mutex
+	attachedClient *JobServerImpl
 }
 
 type JobServerImpl struct {
 	Authenticated bool
 	WshRpc        *wshutil.WshRpc
+	Conn          net.Conn
 }
 
 func (JobServerImpl) WshServerImpl() {}
@@ -67,6 +71,14 @@ func (impl *JobServerImpl) AuthenticateToJobManagerCommand(ctx context.Context, 
 		}
 		log.Printf("AuthenticateToJobManager: successfully authenticated back to server\n")
 	}
+
+	WshCmdJobManager.lock.Lock()
+	defer WshCmdJobManager.lock.Unlock()
+	if WshCmdJobManager.attachedClient != nil {
+		log.Printf("AuthenticateToJobManager: kicking out existing client\n")
+		WshCmdJobManager.attachedClient.Conn.Close()
+	}
+	WshCmdJobManager.attachedClient = impl
 	return nil
 }
 
@@ -132,6 +144,7 @@ func (impl *JobServerImpl) JobTerminateCommand(ctx context.Context, data wshrpc.
 		return fmt.Errorf("job not started")
 	}
 	log.Printf("JobTerminate called\n")
+	WshCmdJobManager.Cmd.Terminate()
 	return nil
 }
 
@@ -190,7 +203,7 @@ func handleJobDomainSocketClient(conn net.Conn) {
 	inputCh := make(chan baseds.RpcInputChType, wshutil.DefaultInputChSize)
 	outputCh := make(chan []byte, wshutil.DefaultOutputChSize)
 
-	serverImpl := &JobServerImpl{}
+	serverImpl := &JobServerImpl{Conn: conn}
 	rpcCtx := wshrpc.RpcContext{}
 	wshRpc := wshutil.MakeWshRpcWithChannels(inputCh, outputCh, rpcCtx, serverImpl, "job-domain")
 	serverImpl.WshRpc = wshRpc

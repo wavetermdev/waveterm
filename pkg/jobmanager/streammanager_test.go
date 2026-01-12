@@ -46,7 +46,7 @@ func decodeData(data64 string) string {
 
 func TestBasicDisconnectedMode(t *testing.T) {
 	tw := &testWriter{}
-	sm := MakeStreamManager("1", tw)
+	sm := MakeStreamManager()
 
 	reader := strings.NewReader("hello world")
 	err := sm.AttachReader(reader)
@@ -66,7 +66,7 @@ func TestBasicDisconnectedMode(t *testing.T) {
 
 func TestConnectedModeBasicFlow(t *testing.T) {
 	tw := &testWriter{}
-	sm := MakeStreamManager("1", tw)
+	sm := MakeStreamManager()
 
 	reader := strings.NewReader("hello")
 	err := sm.AttachReader(reader)
@@ -74,7 +74,7 @@ func TestConnectedModeBasicFlow(t *testing.T) {
 		t.Fatalf("AttachReader failed: %v", err)
 	}
 
-	err = sm.ClientConnected(CwndSize)
+	_, err = sm.ClientConnected("1", tw, CwndSize, 0)
 	if err != nil {
 		t.Fatalf("ClientConnected failed: %v", err)
 	}
@@ -121,7 +121,7 @@ func TestConnectedModeBasicFlow(t *testing.T) {
 
 func TestDisconnectedToConnectedTransition(t *testing.T) {
 	tw := &testWriter{}
-	sm := MakeStreamManager("1", tw)
+	sm := MakeStreamManager()
 
 	reader := strings.NewReader("test data")
 	err := sm.AttachReader(reader)
@@ -131,7 +131,7 @@ func TestDisconnectedToConnectedTransition(t *testing.T) {
 
 	time.Sleep(100 * time.Millisecond)
 
-	err = sm.ClientConnected(CwndSize)
+	_, err = sm.ClientConnected("1", tw, CwndSize, 0)
 	if err != nil {
 		t.Fatalf("ClientConnected failed: %v", err)
 	}
@@ -159,7 +159,7 @@ func TestDisconnectedToConnectedTransition(t *testing.T) {
 
 func TestConnectedToDisconnectedTransition(t *testing.T) {
 	tw := &testWriter{}
-	sm := MakeStreamManager("1", tw)
+	sm := MakeStreamManager()
 
 	reader := &slowReader{data: []byte("slow data"), delay: 50 * time.Millisecond}
 	err := sm.AttachReader(reader)
@@ -167,7 +167,7 @@ func TestConnectedToDisconnectedTransition(t *testing.T) {
 		t.Fatalf("AttachReader failed: %v", err)
 	}
 
-	err = sm.ClientConnected(CwndSize)
+	_, err = sm.ClientConnected("1", tw, CwndSize, 0)
 	if err != nil {
 		t.Fatalf("ClientConnected failed: %v", err)
 	}
@@ -184,7 +184,7 @@ func TestConnectedToDisconnectedTransition(t *testing.T) {
 func TestFlowControl(t *testing.T) {
 	cwndSize := 1024
 	tw := &testWriter{}
-	sm := MakeStreamManagerWithSizes("1", tw, cwndSize, 8*1024)
+	sm := MakeStreamManagerWithSizes(cwndSize, 8*1024)
 
 	largeData := strings.Repeat("x", cwndSize+500)
 	reader := strings.NewReader(largeData)
@@ -194,7 +194,7 @@ func TestFlowControl(t *testing.T) {
 		t.Fatalf("AttachReader failed: %v", err)
 	}
 
-	err = sm.ClientConnected(cwndSize)
+	_, err = sm.ClientConnected("1", tw, cwndSize, 0)
 	if err != nil {
 		t.Fatalf("ClientConnected failed: %v", err)
 	}
@@ -223,7 +223,7 @@ func TestFlowControl(t *testing.T) {
 
 func TestSequenceNumbering(t *testing.T) {
 	tw := &testWriter{}
-	sm := MakeStreamManager("1", tw)
+	sm := MakeStreamManager()
 
 	reader := strings.NewReader("abcdefghij")
 	err := sm.AttachReader(reader)
@@ -231,7 +231,7 @@ func TestSequenceNumbering(t *testing.T) {
 		t.Fatalf("AttachReader failed: %v", err)
 	}
 
-	err = sm.ClientConnected(CwndSize)
+	_, err = sm.ClientConnected("1", tw, CwndSize, 0)
 	if err != nil {
 		t.Fatalf("ClientConnected failed: %v", err)
 	}
@@ -262,7 +262,7 @@ func TestSequenceNumbering(t *testing.T) {
 
 func TestTerminalEventOrdering(t *testing.T) {
 	tw := &testWriter{}
-	sm := MakeStreamManager("1", tw)
+	sm := MakeStreamManager()
 
 	reader := strings.NewReader("data")
 	err := sm.AttachReader(reader)
@@ -270,7 +270,7 @@ func TestTerminalEventOrdering(t *testing.T) {
 		t.Fatalf("AttachReader failed: %v", err)
 	}
 
-	err = sm.ClientConnected(CwndSize)
+	_, err = sm.ClientConnected("1", tw, CwndSize, 0)
 	if err != nil {
 		t.Fatalf("ClientConnected failed: %v", err)
 	}
