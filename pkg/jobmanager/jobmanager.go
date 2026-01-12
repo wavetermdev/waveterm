@@ -1,7 +1,7 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-package sessionmanager
+package jobmanager
 
 import (
 	"encoding/base64"
@@ -29,8 +29,8 @@ type CmdDef struct {
 	TermSize waveobj.TermSize
 }
 
-type SessionManager struct {
-	sessionId  string
+type JobManager struct {
+	jobId      string
 	lock       sync.Mutex
 	cmd        *exec.Cmd
 	cmdPty     pty.Pty
@@ -40,9 +40,9 @@ type SessionManager struct {
 	exitErr    error
 }
 
-func MakeSessionManager(sessionId string, cmdDef CmdDef) (*SessionManager, error) {
-	sm := &SessionManager{
-		sessionId: sessionId,
+func MakeJobManager(jobId string, cmdDef CmdDef) (*JobManager, error) {
+	jm := &JobManager{
+		jobId: jobId,
 	}
 	if cmdDef.TermSize.Rows == 0 || cmdDef.TermSize.Cols == 0 {
 		cmdDef.TermSize.Rows = 25
@@ -62,51 +62,51 @@ func MakeSessionManager(sessionId string, cmdDef CmdDef) (*SessionManager, error
 	if err != nil {
 		return nil, fmt.Errorf("failed to start command: %w", err)
 	}
-	sm.cmd = ecmd
-	sm.cmdPty = cmdPty
-	go sm.readPtyOutput(cmdPty)
-	go sm.waitForProcess()
-	sm.setupSignalHandlers()
-	return sm, nil
+	jm.cmd = ecmd
+	jm.cmdPty = cmdPty
+	go jm.readPtyOutput(cmdPty)
+	go jm.waitForProcess()
+	jm.setupSignalHandlers()
+	return jm, nil
 }
 
-func (sm *SessionManager) waitForProcess() {
-	if sm.cmd == nil || sm.cmd.Process == nil {
+func (jm *JobManager) waitForProcess() {
+	if jm.cmd == nil || jm.cmd.Process == nil {
 		return
 	}
-	err := sm.cmd.Wait()
-	sm.lock.Lock()
-	defer sm.lock.Unlock()
-	
-	sm.exitErr = err
+	err := jm.cmd.Wait()
+	jm.lock.Lock()
+	defer jm.lock.Unlock()
+
+	jm.exitErr = err
 	if err != nil {
 		if exitErr, ok := err.(*exec.ExitError); ok {
 			if status, ok := exitErr.Sys().(syscall.WaitStatus); ok {
 				if status.Signaled() {
-					sm.exitSignal = status.Signal().String()
-					sm.exitCode = -1
+					jm.exitSignal = status.Signal().String()
+					jm.exitCode = -1
 				} else {
-					sm.exitCode = status.ExitStatus()
+					jm.exitCode = status.ExitStatus()
 				}
 			}
 		}
 	} else {
-		sm.exitCode = 0
+		jm.exitCode = 0
 	}
-	log.Printf("process exited: exitcode=%d, signal=%s, err=%v\n", sm.exitCode, sm.exitSignal, sm.exitErr)
+	log.Printf("process exited: exitcode=%d, signal=%s, err=%v\n", jm.exitCode, jm.exitSignal, jm.exitErr)
 }
 
-func (sm *SessionManager) GetCmd() (*exec.Cmd, pty.Pty) {
-	sm.lock.Lock()
-	defer sm.lock.Unlock()
-	return sm.cmd, sm.cmdPty
+func (jm *JobManager) GetCmd() (*exec.Cmd, pty.Pty) {
+	jm.lock.Lock()
+	defer jm.lock.Unlock()
+	return jm.cmd, jm.cmdPty
 }
 
-func (sm *SessionManager) HandleInput(data wshrpc.CommandBlockInputData) error {
-	sm.lock.Lock()
-	defer sm.lock.Unlock()
+func (jm *JobManager) HandleInput(data wshrpc.CommandBlockInputData) error {
+	jm.lock.Lock()
+	defer jm.lock.Unlock()
 
-	if sm.cmd == nil || sm.cmdPty == nil {
+	if jm.cmd == nil || jm.cmdPty == nil {
 		return fmt.Errorf("no active process")
 	}
 
@@ -116,7 +116,7 @@ func (sm *SessionManager) HandleInput(data wshrpc.CommandBlockInputData) error {
 		if err != nil {
 			return fmt.Errorf("error decoding input data: %w", err)
 		}
-		_, err = sm.cmdPty.Write(inputBuf[:nw])
+		_, err = jm.cmdPty.Write(inputBuf[:nw])
 		if err != nil {
 			return fmt.Errorf("error writing to pty: %w", err)
 		}
@@ -124,8 +124,8 @@ func (sm *SessionManager) HandleInput(data wshrpc.CommandBlockInputData) error {
 
 	if data.SigName != "" {
 		sig := normalizeSignal(data.SigName)
-		if sig != nil && sm.cmd.Process != nil {
-			err := sm.cmd.Process.Signal(sig)
+		if sig != nil && jm.cmd.Process != nil {
+			err := jm.cmd.Process.Signal(sig)
 			if err != nil {
 				return fmt.Errorf("error sending signal: %w", err)
 			}
@@ -133,7 +133,7 @@ func (sm *SessionManager) HandleInput(data wshrpc.CommandBlockInputData) error {
 	}
 
 	if data.TermSize != nil {
-		err := pty.Setsize(sm.cmdPty, &pty.Winsize{
+		err := pty.Setsize(jm.cmdPty, &pty.Winsize{
 			Rows: uint16(data.TermSize.Rows),
 			Cols: uint16(data.TermSize.Cols),
 		})
@@ -155,7 +155,7 @@ func normalizeSignal(sigName string) os.Signal {
 	case "INT":
 		return syscall.SIGINT
 	case "QUIT":
-	return syscall.SIGQUIT
+		return syscall.SIGQUIT
 	case "KILL":
 		return syscall.SIGKILL
 	case "TERM":
@@ -173,7 +173,7 @@ func normalizeSignal(sigName string) os.Signal {
 	}
 }
 
-func (sm *SessionManager) setupSignalHandlers() {
+func (jm *JobManager) setupSignalHandlers() {
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM)
 
@@ -181,22 +181,22 @@ func (sm *SessionManager) setupSignalHandlers() {
 		sig := <-sigChan
 		log.Printf("received signal: %v\n", sig)
 
-		cmd, _ := sm.GetCmd()
+		cmd, _ := jm.GetCmd()
 		if cmd != nil && cmd.Process != nil {
 			log.Printf("forwarding signal %v to child process\n", sig)
 			cmd.Process.Signal(sig)
 			time.Sleep(ShutdownDelayTime)
 		}
 
-		sm.Cleanup()
+		jm.Cleanup()
 		os.Exit(0)
 	}()
 }
 
-func (sm *SessionManager) readPtyOutput(cmdPty pty.Pty) {
+func (jm *JobManager) readPtyOutput(cmdPty pty.Pty) {
 	// TODO: implement readPtyOutput
 }
 
-func (sm *SessionManager) Cleanup() {
+func (jm *JobManager) Cleanup() {
 	// TODO: implement Cleanup
 }

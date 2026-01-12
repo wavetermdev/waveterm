@@ -118,6 +118,10 @@ func MakeBuilderRouteId(builderId string) string {
 	return "builder:" + builderId
 }
 
+func MakeJobRouteId(jobId string) string {
+	return "job:" + jobId
+}
+
 var DefaultRouter *WshRouter
 
 func NewWshRouter() *WshRouter {

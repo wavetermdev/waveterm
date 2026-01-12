@@ -29,6 +29,7 @@ const (
 	OType_LayoutState = "layout"
 	OType_Block       = "block"
 	OType_MainServer  = "mainserver"
+	OType_Job         = "job"
 	OType_Temp        = "temp"
 	OType_Builder     = "builder" // not persisted to DB
 )
@@ -41,6 +42,7 @@ var ValidOTypes = map[string]bool{
 	OType_LayoutState: true,
 	OType_Block:       true,
 	OType_MainServer:  true,
+	OType_Job:         true,
 	OType_Temp:        true,
 	OType_Builder:     true,
 }
@@ -306,6 +308,33 @@ func (*MainServer) GetOType() string {
 	return OType_MainServer
 }
 
+type Job struct {
+	OID             string            `json:"oid"`
+	Version         int               `json:"version"`
+	Connection      string            `json:"connection"`
+	JobKind         string            `json:"jobkind"` // shell, task
+	Pgid            int               `json:"pgid"`    // process group id
+	AttachedBlockId string            `json:"ownerblockid"`
+	HupOnConnect    bool              `json:"huponconnect"`
+	JobAccessToken  string            `json:"jobaccesstoken"` // wave -> job manager
+	JobAuthToken    string            `json:"jobauthtoken"`   // job manger -> wave
+	Cmd             string            `json:"cmd"`
+	CmdArgs         []string          `json:"cmdargs,omitempty"`
+	CmdEnv          map[string]string `json:"cmdenv,omitempty"`
+	TermSize        TermSize          `json:"termsize,omitempty"`
+	StartTs         int64             `json:"startts,omitempty"` // timestamp (milliseconds)
+	Status          string            `json:"status"`            // running, done
+	ExitTs          int64             `json:"exitts,omitempty"`  // timestamp (milliseconds)
+	ExitCode        int               `json:"exitcode,omitempty"`
+	ExitSignal      string            `json:"exitsignal,omitempty"`
+	Error           string            `json:"error,omitempty"`
+	Meta            MetaMapType       `json:"meta"`
+}
+
+func (*Job) GetOType() string {
+	return OType_Job
+}
+
 func AllWaveObjTypes() []reflect.Type {
 	return []reflect.Type{
 		reflect.TypeOf(&Client{}),
@@ -315,6 +344,7 @@ func AllWaveObjTypes() []reflect.Type {
 		reflect.TypeOf(&Block{}),
 		reflect.TypeOf(&LayoutState{}),
 		reflect.TypeOf(&MainServer{}),
+		reflect.TypeOf(&Job{}),
 	}
 }
 
