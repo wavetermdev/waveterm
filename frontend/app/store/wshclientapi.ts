@@ -393,7 +393,7 @@ class RpcApiType {
     }
 
     // command "jobconnect" [call]
-    JobConnectCommand(client: WshClient, data: CommandJobConnectData, opts?: RpcOpts): Promise<void> {
+    JobConnectCommand(client: WshClient, data: CommandJobConnectData, opts?: RpcOpts): Promise<CommandJobConnectRtnData> {
         return client.wshRpcCall("jobconnect", data, opts);
     }
 

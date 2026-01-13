@@ -477,9 +477,9 @@ func GetWaveAIRateLimitCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) (*uctype
 }
 
 // command "jobconnect", wshserver.JobConnectCommand
-func JobConnectCommand(w *wshutil.WshRpc, data wshrpc.CommandJobConnectData, opts *wshrpc.RpcOpts) error {
-	_, err := sendRpcRequestCallHelper[any](w, "jobconnect", data, opts)
-	return err
+func JobConnectCommand(w *wshutil.WshRpc, data wshrpc.CommandJobConnectData, opts *wshrpc.RpcOpts) (*wshrpc.CommandJobConnectRtnData, error) {
+	resp, err := sendRpcRequestCallHelper[*wshrpc.CommandJobConnectRtnData](w, "jobconnect", data, opts)
+	return resp, err
 }
 
 // command "jobterminate", wshserver.JobTerminateCommand

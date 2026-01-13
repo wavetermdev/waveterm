@@ -156,11 +156,12 @@ func (sm *StreamManager) ClientDisconnected() {
 }
 
 // RecvAck processes an ACK from the client
+// must be connected, and streamid must match
 func (sm *StreamManager) RecvAck(ackPk wshrpc.CommandStreamAckData) {
 	sm.lock.Lock()
 	defer sm.lock.Unlock()
 
-	if !sm.connected {
+	if !sm.connected || ackPk.Id != sm.streamId {
 		return
 	}
 

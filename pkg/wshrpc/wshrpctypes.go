@@ -160,7 +160,7 @@ type WshRpcInterface interface {
 	// jobs
 	AuthenticateToJobManagerCommand(ctx context.Context, data CommandAuthenticateToJobData) error
 	StartJobCommand(ctx context.Context, data CommandStartJobData) (*CommandStartJobRtnData, error)
-	JobConnectCommand(ctx context.Context, data CommandJobConnectData) error
+	JobConnectCommand(ctx context.Context, data CommandJobConnectData) (*CommandJobConnectRtnData, error)
 	JobTerminateCommand(ctx context.Context, data CommandJobTerminateData) error
 }
 
@@ -680,6 +680,7 @@ type CommandStartJobData struct {
 	Env          map[string]string `json:"env"`
 	TermSize     waveobj.TermSize  `json:"termsize"`
 	JobAuthToken string            `json:"jobauthtoken"`
+	StreamMeta   *StreamMeta       `json:"streammeta,omitempty"`
 }
 
 type CommandStartJobRtnData struct {
@@ -687,8 +688,12 @@ type CommandStartJobRtnData struct {
 }
 
 type CommandJobConnectData struct {
-	StreamId string `json:"streamid"`
-	Seq      int64  `json:"seq"`
+	StreamMeta StreamMeta `json:"streammeta"`
+	Seq        int64      `json:"seq"`
+}
+
+type CommandJobConnectRtnData struct {
+	Seq int64 `json:"seq"`
 }
 
 type CommandJobTerminateData struct {

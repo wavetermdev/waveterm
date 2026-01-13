@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"sync/atomic"
 
 	"github.com/wavetermdev/waveterm/pkg/baseds"
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
@@ -24,24 +25,78 @@ import (
 var WshCmdJobManager JobManager
 
 type JobManager struct {
-	ClientId       string
-	JobId          string
-	Cmd            *JobCmd
-	JwtPublicKey   []byte
-	JobAuthToken   string
-	lock           sync.Mutex
-	attachedClient *JobServerImpl
+	ClientId              string
+	JobId                 string
+	Cmd                   *JobCmd
+	JwtPublicKey          []byte
+	JobAuthToken          string
+	StreamManager         *StreamManager
+	lock                  sync.Mutex
+	attachedClient        *JobServerImpl
+	connectedStreamClient *JobServerImpl
 }
 
 type JobServerImpl struct {
-	Authenticated bool
-	WshRpc        *wshutil.WshRpc
-	Conn          net.Conn
+	PeerAuthenticated atomic.Bool
+	SelfAuthenticated atomic.Bool
+	WshRpc            *wshutil.WshRpc
+	Conn              net.Conn
+	inputCh           chan baseds.RpcInputChType
+	closeOnce         sync.Once
 }
 
-func (JobServerImpl) WshServerImpl() {}
+func (*JobServerImpl) WshServerImpl() {}
+
+func (impl *JobServerImpl) Close() {
+	impl.closeOnce.Do(func() {
+		impl.Conn.Close()
+		close(impl.inputCh)
+	})
+}
+
+type routedDataSender struct {
+	wshRpc *wshutil.WshRpc
+	route  string
+}
+
+func (rds *routedDataSender) SendData(dataPk wshrpc.CommandStreamData) {
+	err := wshclient.StreamDataCommand(rds.wshRpc, dataPk, &wshrpc.RpcOpts{NoResponse: true, Route: rds.route})
+	if err != nil {
+		log.Printf("SendData: error sending stream data: %v\n", err)
+	}
+}
+
+func (jm *JobManager) GetJobAuthInfo() (string, string) {
+	jm.lock.Lock()
+	defer jm.lock.Unlock()
+	return jm.JobId, jm.JobAuthToken
+}
+
+func (jm *JobManager) IsJobStarted() bool {
+	jm.lock.Lock()
+	defer jm.lock.Unlock()
+	return jm.Cmd != nil
+}
+
+func (impl *JobServerImpl) authenticateSelfToServer(jobAuthToken string) error {
+	jobId, _ := WshCmdJobManager.GetJobAuthInfo()
+	authData := wshrpc.CommandAuthenticateJobManagerData{
+		JobId:        jobId,
+		JobAuthToken: jobAuthToken,
+	}
+	err := wshclient.AuthenticateJobManagerCommand(impl.WshRpc, authData, &wshrpc.RpcOpts{Route: wshutil.ControlRoute})
+	if err != nil {
+		log.Printf("authenticateSelfToServer: failed to authenticate to server: %v\n", err)
+		return fmt.Errorf("failed to authenticate to server: %w", err)
+	}
+	impl.SelfAuthenticated.Store(true)
+	log.Printf("authenticateSelfToServer: successfully authenticated to server\n")
+	return nil
+}
 
 func (impl *JobServerImpl) AuthenticateToJobManagerCommand(ctx context.Context, data wshrpc.CommandAuthenticateToJobData) error {
+	jobId, jobAuthToken := WshCmdJobManager.GetJobAuthInfo()
+
 	claims, err := wavejwt.ValidateAndExtract(data.JobAccessToken)
 	if err != nil {
 		log.Printf("AuthenticateToJobManager: failed to validate token: %v\n", err)
@@ -51,57 +106,92 @@ func (impl *JobServerImpl) AuthenticateToJobManagerCommand(ctx context.Context, 
 		log.Printf("AuthenticateToJobManager: MainServer claim not set\n")
 		return fmt.Errorf("MainServer claim not set")
 	}
-	if claims.JobId != WshCmdJobManager.JobId {
-		log.Printf("AuthenticateToJobManager: JobId mismatch: expected %s, got %s\n", WshCmdJobManager.JobId, claims.JobId)
+	if claims.JobId != jobId {
+		log.Printf("AuthenticateToJobManager: JobId mismatch: expected %s, got %s\n", jobId, claims.JobId)
 		return fmt.Errorf("JobId mismatch")
 	}
-	impl.Authenticated = true
+	impl.PeerAuthenticated.Store(true)
 	log.Printf("AuthenticateToJobManager: authentication successful for JobId=%s\n", claims.JobId)
 
-	if WshCmdJobManager.JobAuthToken != "" {
-		authData := wshrpc.CommandAuthenticateJobManagerData{
-			JobId:        WshCmdJobManager.JobId,
-			JobAuthToken: WshCmdJobManager.JobAuthToken,
-		}
-		err = wshclient.AuthenticateJobManagerCommand(impl.WshRpc, authData, &wshrpc.RpcOpts{Route: wshutil.ControlRoute})
+	if jobAuthToken != "" {
+		err = impl.authenticateSelfToServer(jobAuthToken)
 		if err != nil {
-			log.Printf("AuthenticateToJobManager: failed to authenticate back to server: %v\n", err)
-			impl.Authenticated = false
-			return fmt.Errorf("failed to authenticate back to server: %w", err)
+			impl.PeerAuthenticated.Store(false)
+			return err
 		}
-		log.Printf("AuthenticateToJobManager: successfully authenticated back to server\n")
 	}
 
 	WshCmdJobManager.lock.Lock()
 	defer WshCmdJobManager.lock.Unlock()
+
 	if WshCmdJobManager.attachedClient != nil {
 		log.Printf("AuthenticateToJobManager: kicking out existing client\n")
-		WshCmdJobManager.attachedClient.Conn.Close()
+		WshCmdJobManager.attachedClient.Close()
 	}
 	WshCmdJobManager.attachedClient = impl
 	return nil
 }
 
+func (jm *JobManager) connectToStreamHelper_withlock(jobServerImpl *JobServerImpl, streamMeta wshrpc.StreamMeta, seq int64) (int64, error) {
+	rwndSize := int(streamMeta.RWnd)
+	if rwndSize < 0 {
+		return 0, fmt.Errorf("invalid rwnd size: %d", rwndSize)
+	}
+
+	if jm.connectedStreamClient != nil {
+		log.Printf("connectToStreamHelper: disconnecting existing client\n")
+		jm.StreamManager.ClientDisconnected()
+		jm.connectedStreamClient = nil
+	}
+	dataSender := &routedDataSender{
+		wshRpc: jobServerImpl.WshRpc,
+		route:  streamMeta.ReaderRouteId,
+	}
+	serverSeq, err := jm.StreamManager.ClientConnected(
+		streamMeta.Id,
+		dataSender,
+		rwndSize,
+		seq,
+	)
+	if err != nil {
+		return 0, fmt.Errorf("failed to connect client: %w", err)
+	}
+	jm.connectedStreamClient = jobServerImpl
+	return serverSeq, nil
+}
+
+func (jm *JobManager) disconnectFromStreamHelper(jobServerImpl *JobServerImpl) {
+	jm.lock.Lock()
+	defer jm.lock.Unlock()
+	if jm.connectedStreamClient == nil || jm.connectedStreamClient != jobServerImpl {
+		return
+	}
+	jm.StreamManager.ClientDisconnected()
+	jm.connectedStreamClient = nil
+}
+
 func (impl *JobServerImpl) StartJobCommand(ctx context.Context, data wshrpc.CommandStartJobData) (*wshrpc.CommandStartJobRtnData, error) {
-	if !impl.Authenticated {
+	if !impl.PeerAuthenticated.Load() {
 		return nil, fmt.Errorf("not authenticated")
 	}
-	if WshCmdJobManager.Cmd != nil {
+	if WshCmdJobManager.IsJobStarted() {
 		return nil, fmt.Errorf("job already started")
 	}
-	WshCmdJobManager.JobAuthToken = data.JobAuthToken
 
-	authData := wshrpc.CommandAuthenticateJobManagerData{
-		JobId:        WshCmdJobManager.JobId,
-		JobAuthToken: WshCmdJobManager.JobAuthToken,
-	}
-	err := wshclient.AuthenticateJobManagerCommand(impl.WshRpc, authData, &wshrpc.RpcOpts{Route: wshutil.ControlRoute})
+	err := impl.authenticateSelfToServer(data.JobAuthToken)
 	if err != nil {
-		log.Printf("StartJob: failed to authenticate to server: %v\n", err)
-		WshCmdJobManager.JobAuthToken = ""
-		return nil, fmt.Errorf("failed to authenticate to server: %w", err)
+		return nil, err
 	}
-	log.Printf("StartJob: successfully authenticated to server\n")
+
+	WshCmdJobManager.lock.Lock()
+	defer WshCmdJobManager.lock.Unlock()
+
+	if WshCmdJobManager.Cmd != nil {
+		// we must re-check this with the lock for proper sync
+		return nil, fmt.Errorf("job already started")
+	}
+
+	WshCmdJobManager.JobAuthToken = data.JobAuthToken
 
 	cmdDef := CmdDef{
 		Cmd:      data.Cmd,
@@ -114,6 +204,23 @@ func (impl *JobServerImpl) StartJobCommand(ctx context.Context, data wshrpc.Comm
 		return nil, fmt.Errorf("failed to start job: %w", err)
 	}
 	WshCmdJobManager.Cmd = jobCmd
+
+	if data.StreamMeta != nil {
+		serverSeq, err := WshCmdJobManager.connectToStreamHelper_withlock(impl, *data.StreamMeta, 0)
+		if err != nil {
+			return nil, fmt.Errorf("failed to connect stream: %w", err)
+		}
+		log.Printf("StartJob: connected stream streamid=%s serverSeq=%d\n", data.StreamMeta.Id, serverSeq)
+	}
+
+	_, cmdPty := jobCmd.GetCmd()
+	if cmdPty != nil {
+		err = WshCmdJobManager.StreamManager.AttachReader(cmdPty)
+		if err != nil {
+			return nil, fmt.Errorf("failed to attach reader to stream manager: %w", err)
+		}
+	}
+
 	cmd, _ := jobCmd.GetCmd()
 	if cmd == nil || cmd.Process == nil {
 		return nil, fmt.Errorf("cmd or process is nil")
@@ -125,19 +232,49 @@ func (impl *JobServerImpl) StartJobCommand(ctx context.Context, data wshrpc.Comm
 	return &wshrpc.CommandStartJobRtnData{Pgid: pgid}, nil
 }
 
-func (impl *JobServerImpl) JobConnectCommand(ctx context.Context, data wshrpc.CommandJobConnectData) error {
-	if !impl.Authenticated {
-		return fmt.Errorf("not authenticated")
+func (impl *JobServerImpl) JobConnectCommand(ctx context.Context, data wshrpc.CommandJobConnectData) (*wshrpc.CommandJobConnectRtnData, error) {
+	WshCmdJobManager.lock.Lock()
+	defer WshCmdJobManager.lock.Unlock()
+
+	if !impl.PeerAuthenticated.Load() {
+		return nil, fmt.Errorf("peer not authenticated")
+	}
+	if !impl.SelfAuthenticated.Load() {
+		return nil, fmt.Errorf("not authenticated to server")
 	}
 	if WshCmdJobManager.Cmd == nil {
-		return fmt.Errorf("job not started")
+		return nil, fmt.Errorf("job not started")
 	}
-	log.Printf("JobConnect: streamid=%s seq=%d\n", data.StreamId, data.Seq)
+
+	serverSeq, err := WshCmdJobManager.connectToStreamHelper_withlock(impl, data.StreamMeta, data.Seq)
+	if err != nil {
+		return nil, err
+	}
+
+	log.Printf("JobConnect: streamid=%s clientSeq=%d serverSeq=%d\n", data.StreamMeta.Id, data.Seq, serverSeq)
+	return &wshrpc.CommandJobConnectRtnData{Seq: serverSeq}, nil
+}
+
+func (impl *JobServerImpl) StreamDataAckCommand(ctx context.Context, data wshrpc.CommandStreamAckData) error {
+	// bad acks do NOT get error packets created (to avoid infinite loops).
+	// they should be silently ignored
+	if !impl.PeerAuthenticated.Load() {
+		return nil
+	}
+	if !impl.SelfAuthenticated.Load() {
+		return nil
+	}
+	// this is safe without locking because streamids are unique, and StreamManager will ignore an ack
+	// when not connected or when the streamid does not match
+	WshCmdJobManager.StreamManager.RecvAck(data)
 	return nil
 }
 
 func (impl *JobServerImpl) JobTerminateCommand(ctx context.Context, data wshrpc.CommandJobTerminateData) error {
-	if !impl.Authenticated {
+	WshCmdJobManager.lock.Lock()
+	defer WshCmdJobManager.lock.Unlock()
+
+	if !impl.PeerAuthenticated.Load() {
 		return fmt.Errorf("not authenticated")
 	}
 	if WshCmdJobManager.Cmd == nil {
@@ -152,6 +289,7 @@ func SetupJobManager(clientId string, jobId string, publicKeyBytes []byte) error
 	WshCmdJobManager.ClientId = clientId
 	WshCmdJobManager.JobId = jobId
 	WshCmdJobManager.JwtPublicKey = publicKeyBytes
+	WshCmdJobManager.StreamManager = MakeStreamManager()
 	err := wavejwt.SetPublicKey(publicKeyBytes)
 	if err != nil {
 		return fmt.Errorf("failed to set public key: %w", err)
@@ -203,15 +341,20 @@ func handleJobDomainSocketClient(conn net.Conn) {
 	inputCh := make(chan baseds.RpcInputChType, wshutil.DefaultInputChSize)
 	outputCh := make(chan []byte, wshutil.DefaultOutputChSize)
 
-	serverImpl := &JobServerImpl{Conn: conn}
+	serverImpl := &JobServerImpl{
+		Conn:    conn,
+		inputCh: inputCh,
+	}
 	rpcCtx := wshrpc.RpcContext{}
 	wshRpc := wshutil.MakeWshRpcWithChannels(inputCh, outputCh, rpcCtx, serverImpl, "job-domain")
 	serverImpl.WshRpc = wshRpc
+	defer WshCmdJobManager.disconnectFromStreamHelper(serverImpl)
 
 	go func() {
 		defer func() {
 			panichandler.PanicHandler("handleJobDomainSocketClient:AdaptOutputChToStream", recover())
 		}()
+		defer serverImpl.Close()
 		writeErr := wshutil.AdaptOutputChToStream(outputCh, conn)
 		if writeErr != nil {
 			log.Printf("error writing to domain socket: %v\n", writeErr)
@@ -222,10 +365,7 @@ func handleJobDomainSocketClient(conn net.Conn) {
 		defer func() {
 			panichandler.PanicHandler("handleJobDomainSocketClient:AdaptStreamToMsgCh", recover())
 		}()
-		defer func() {
-			conn.Close()
-			close(inputCh)
-		}()
+		defer serverImpl.Close()
 		wshutil.AdaptStreamToMsgCh(conn, inputCh)
 	}()
 

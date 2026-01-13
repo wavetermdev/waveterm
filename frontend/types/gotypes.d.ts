@@ -356,7 +356,12 @@ declare global {
 
     // wshrpc.CommandJobConnectData
     type CommandJobConnectData = {
-        streamid: string;
+        streammeta: StreamMeta;
+        seq: number;
+    };
+
+    // wshrpc.CommandJobConnectRtnData
+    type CommandJobConnectRtnData = {
         seq: number;
     };
 
@@ -489,6 +494,7 @@ declare global {
         env: {[key: string]: string};
         termsize: TermSize;
         jobauthtoken: string;
+        streammeta?: StreamMeta;
     };
 
     // wshrpc.CommandStartJobRtnData
@@ -1240,6 +1246,14 @@ declare global {
         style: {[key: string]: any};
         clickopts?: StickerClickOptsType;
         display: StickerDisplayOptsType;
+    };
+
+    // wshrpc.StreamMeta
+    type StreamMeta = {
+        id: string;
+        rwnd: number;
+        readerrouteid: string;
+        writerrouteid: string;
     };
 
     // wps.SubscriptionRequest
