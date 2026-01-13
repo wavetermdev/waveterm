@@ -316,8 +316,7 @@ type Job struct {
 	Pgid            int               `json:"pgid"`    // process group id
 	AttachedBlockId string            `json:"ownerblockid"`
 	HupOnConnect    bool              `json:"huponconnect"`
-	JobAccessToken  string            `json:"jobaccesstoken"` // wave -> job manager
-	JobAuthToken    string            `json:"jobauthtoken"`   // job manger -> wave
+	JobAuthToken    string            `json:"jobauthtoken"` // job manger -> wave
 	Cmd             string            `json:"cmd"`
 	CmdArgs         []string          `json:"cmdargs,omitempty"`
 	CmdEnv          map[string]string `json:"cmdenv,omitempty"`
