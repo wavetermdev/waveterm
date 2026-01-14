@@ -391,7 +391,7 @@ func createMainWshClient() {
 	wshfs.RpcClient = rpc
 	wshutil.DefaultRouter.RegisterTrustedLeaf(rpc, wshutil.DefaultRoute)
 	wps.Broker.SetClient(wshutil.DefaultRouter)
-	localConnWsh := wshutil.MakeWshRpc(wshrpc.RpcContext{Conn: wshrpc.LocalConnName}, &wshremote.ServerImpl{}, "conn:local")
+	localConnWsh := wshutil.MakeWshRpc(wshrpc.RpcContext{Conn: wshrpc.LocalConnName}, &wshremote.ServerImpl{Router: wshutil.DefaultRouter, RpcClient: wshclient.GetBareRpcClient()}, "conn:local")
 	go wshremote.RunSysInfoLoop(localConnWsh, wshrpc.LocalConnName)
 	wshutil.DefaultRouter.RegisterTrustedLeaf(localConnWsh, wshutil.MakeConnectionRouteId(wshrpc.LocalConnName))
 }

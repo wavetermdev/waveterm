@@ -41,6 +41,7 @@ var connServerRouter bool
 var connServerRouterDomainSocket bool
 var connServerConnName string
 var connServerDev bool
+var ConnServerWshRouter *wshutil.WshRouter
 
 func init() {
 	serverCmd.Flags().BoolVar(&connServerRouter, "router", false, "run in local router mode (stdio upstream)")
@@ -125,7 +126,12 @@ func setupConnServerRpcClientWithRouter(router *wshutil.WshRouter) (*wshutil.Wsh
 		RouteId: routeId,
 		Conn:    connServerConnName,
 	}
-	connServerClient := wshutil.MakeWshRpc(rpcCtx, &wshremote.ServerImpl{LogWriter: os.Stdout}, routeId)
+	
+	bareRouteId := wshutil.MakeRandomProcRouteId()
+	bareClient := wshutil.MakeWshRpc(wshrpc.RpcContext{}, &wshclient.WshServer{}, bareRouteId)
+	router.RegisterTrustedLeaf(bareClient, bareRouteId)
+	
+	connServerClient := wshutil.MakeWshRpc(rpcCtx, &wshremote.ServerImpl{LogWriter: os.Stdout, Router: router, RpcClient: bareClient}, routeId)
 	router.RegisterTrustedLeaf(connServerClient, routeId)
 	return connServerClient, nil
 }
@@ -133,6 +139,7 @@ func setupConnServerRpcClientWithRouter(router *wshutil.WshRouter) (*wshutil.Wsh
 func serverRunRouter() error {
 	log.Printf("starting connserver router")
 	router := wshutil.NewWshRouter()
+	ConnServerWshRouter = router
 	termProxy := wshutil.MakeRpcProxy("connserver-term")
 	rawCh := make(chan []byte, wshutil.DefaultOutputChSize)
 	go func() {
@@ -229,6 +236,7 @@ func serverRunRouterDomainSocket(jwtToken string) error {
 
 	// create router
 	router := wshutil.NewWshRouter()
+	ConnServerWshRouter = router
 
 	// create proxy for the domain socket connection
 	upstreamProxy := wshutil.MakeRpcProxy("connserver-upstream")

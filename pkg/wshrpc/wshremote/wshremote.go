@@ -36,6 +36,8 @@ import (
 
 type ServerImpl struct {
 	LogWriter io.Writer
+	Router    *wshutil.WshRouter
+	RpcClient *wshutil.WshRpc
 }
 
 func (*ServerImpl) WshServerImpl() {}
@@ -865,7 +867,10 @@ func (*ServerImpl) DisposeSuggestionsCommand(ctx context.Context, widgetId strin
 	return nil
 }
 
-func (*ServerImpl) RemoteStartJobCommand(ctx context.Context, data wshrpc.CommandRemoteStartJobData) (*wshrpc.CommandStartJobRtnData, error) {
+func (impl *ServerImpl) RemoteStartJobCommand(ctx context.Context, data wshrpc.CommandRemoteStartJobData) (*wshrpc.CommandStartJobRtnData, error) {
+	if impl.Router == nil {
+		return nil, fmt.Errorf("cannot start remote job: no router available")
+	}
 	wshPath, err := wavebase.ExpandHomeDir("~/.waveterm/bin/wsh")
 	if err != nil {
 		return nil, fmt.Errorf("cannot expand wsh path: %w", err)
@@ -933,8 +938,57 @@ func (*ServerImpl) RemoteStartJobCommand(ctx context.Context, data wshrpc.Comman
 		return nil, fmt.Errorf("cannot connect to job manager socket: %w", err)
 	}
 
-	log.Printf("RemoteStartJobCommand: connected to job manager socket, need to implement auth\n")
-	conn.Close()
+	proxy := wshutil.MakeRpcProxy("jobmanager")
+	go func() {
+		writeErr := wshutil.AdaptOutputChToStream(proxy.ToRemoteCh, conn)
+		if writeErr != nil {
+			log.Printf("RemoteStartJobCommand: error writing to job manager socket: %v\n", writeErr)
+		}
+	}()
+	go func() {
+		defer func() {
+			conn.Close()
+			close(proxy.FromRemoteCh)
+		}()
+		wshutil.AdaptStreamToMsgCh(conn, proxy.FromRemoteCh)
+	}()
 
-	return nil, fmt.Errorf("not implemented")
+	linkId := impl.Router.RegisterUntrustedLink(proxy)
+
+	routeId := wshutil.MakeLinkRouteId(linkId)
+	authData := wshrpc.CommandAuthenticateToJobData{
+		JobAccessToken: data.JobAuthToken,
+	}
+	err = wshclient.AuthenticateToJobManagerCommand(impl.RpcClient, authData, &wshrpc.RpcOpts{Route: routeId})
+	if err != nil {
+		conn.Close()
+		impl.Router.UnregisterLink(linkId)
+		return nil, fmt.Errorf("authentication to job manager failed: %w", err)
+	}
+
+	jobRouteId := wshutil.MakeJobRouteId(data.JobId)
+	waitCtx, cancel := context.WithTimeout(ctx, 500*time.Millisecond)
+	defer cancel()
+	err = impl.Router.WaitForRegister(waitCtx, jobRouteId)
+	if err != nil {
+		conn.Close()
+		impl.Router.UnregisterLink(linkId)
+		return nil, fmt.Errorf("timeout waiting for job route to register: %w", err)
+	}
+
+	startJobData := wshrpc.CommandStartJobData{
+		Cmd:        data.Cmd,
+		Args:       data.Args,
+		Env:        data.Env,
+		TermSize:   data.TermSize,
+		StreamMeta: data.StreamMeta,
+	}
+	rtnData, err := wshclient.StartJobCommand(impl.RpcClient, startJobData, &wshrpc.RpcOpts{Route: jobRouteId})
+	if err != nil {
+		conn.Close()
+		impl.Router.UnregisterLink(linkId)
+		return nil, fmt.Errorf("failed to start job: %w", err)
+	}
+
+	return rtnData, nil
 }
