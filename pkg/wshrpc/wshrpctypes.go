@@ -102,6 +102,7 @@ type WshRpcInterface interface {
 	RemoteStreamCpuDataCommand(ctx context.Context) chan RespOrErrorUnion[TimeSeriesData]
 	RemoteGetInfoCommand(ctx context.Context) (RemoteInfo, error)
 	RemoteInstallRcFilesCommand(ctx context.Context) error
+	RemoteStartJobCommand(ctx context.Context, data CommandRemoteStartJobData) (*CommandStartJobRtnData, error)
 
 	// emain
 	WebSelectorCommand(ctx context.Context, data CommandWebSelectorData) ([]string, error)
@@ -680,6 +681,18 @@ type CommandStartJobData struct {
 	Env        map[string]string `json:"env"`
 	TermSize   waveobj.TermSize  `json:"termsize"`
 	StreamMeta *StreamMeta       `json:"streammeta,omitempty"`
+}
+
+type CommandRemoteStartJobData struct {
+	Cmd                string            `json:"cmd"`
+	Args               []string          `json:"args"`
+	Env                map[string]string `json:"env"`
+	TermSize           waveobj.TermSize  `json:"termsize"`
+	StreamMeta         *StreamMeta       `json:"streammeta,omitempty"`
+	JobAuthToken       string            `json:"jobauthtoken"`
+	JobId              string            `json:"jobid"`
+	MainServerJwtToken string            `json:"mainserverjwttoken"`
+	ClientId           string            `json:"clientid"`
 }
 
 type CommandStartJobRtnData struct {

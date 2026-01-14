@@ -84,7 +84,7 @@ func daemonize(clientId string, jobId string) error {
 	}
 	devNull.Close() // dupped so we can close this one
 
-	logPath := getJobFilePath(clientId, jobId, "log")
+	logPath := GetJobFilePath(clientId, jobId, "log")
 	logFile, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0600)
 	if err != nil {
 		return fmt.Errorf("failed to open log file: %w", err)
@@ -191,7 +191,7 @@ func (jm *JobManager) disconnectFromStreamHelper(mainServerConn *MainServerConn)
 	jm.connectedStreamClient = nil
 }
 
-func getJobFilePath(clientId string, jobId string, extension string) string {
+func GetJobFilePath(clientId string, jobId string, extension string) string {
 	homeDir := wavebase.GetHomeDir()
 	socketDir := filepath.Join(homeDir, ".waveterm", "jobs", clientId)
 	return filepath.Join(socketDir, fmt.Sprintf("%s.%s", jobId, extension))
@@ -205,7 +205,7 @@ func MakeJobDomainSocket(clientId string, jobId string) error {
 		return fmt.Errorf("failed to create socket directory: %w", err)
 	}
 
-	socketPath := getJobFilePath(clientId, jobId, "sock")
+	socketPath := GetJobFilePath(clientId, jobId, "sock")
 
 	os.Remove(socketPath)
 

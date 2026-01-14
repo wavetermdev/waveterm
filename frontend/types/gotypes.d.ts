@@ -434,6 +434,19 @@ declare global {
         fileinfo?: FileInfo[];
     };
 
+    // wshrpc.CommandRemoteStartJobData
+    type CommandRemoteStartJobData = {
+        cmd: string;
+        args: string[];
+        env: {[key: string]: string};
+        termsize: TermSize;
+        streammeta?: StreamMeta;
+        jobauthtoken: string;
+        jobid: string;
+        mainserverjwttoken: string;
+        clientid: string;
+    };
+
     // wshrpc.CommandRemoteStreamFileData
     type CommandRemoteStreamFileData = {
         path: string;

@@ -5,6 +5,7 @@ package wshremote
 
 import (
 	"archive/tar"
+	"bufio"
 	"context"
 	"encoding/base64"
 	"errors"
@@ -12,7 +13,9 @@ import (
 	"io"
 	"io/fs"
 	"log"
+	"net"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -860,4 +863,78 @@ func (*ServerImpl) FetchSuggestionsCommand(ctx context.Context, data wshrpc.Fetc
 func (*ServerImpl) DisposeSuggestionsCommand(ctx context.Context, widgetId string) error {
 	suggestion.DisposeSuggestions(ctx, widgetId)
 	return nil
+}
+
+func (*ServerImpl) RemoteStartJobCommand(ctx context.Context, data wshrpc.CommandRemoteStartJobData) (*wshrpc.CommandStartJobRtnData, error) {
+	wshPath, err := wavebase.ExpandHomeDir("~/.waveterm/bin/wsh")
+	if err != nil {
+		return nil, fmt.Errorf("cannot expand wsh path: %w", err)
+	}
+
+	cmd := exec.Command(wshPath, "jobmanager", "--jobid", data.JobId, "--clientid", data.ClientId)
+	stdin, err := cmd.StdinPipe()
+	if err != nil {
+		return nil, fmt.Errorf("cannot create stdin pipe: %w", err)
+	}
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return nil, fmt.Errorf("cannot create stdout pipe: %w", err)
+	}
+
+	if err := cmd.Start(); err != nil {
+		return nil, fmt.Errorf("cannot start job manager: %w", err)
+	}
+
+	jobAuthTokenLine := fmt.Sprintf("Wave-JobAccessToken:%s\n", data.JobAuthToken)
+	if _, err := stdin.Write([]byte(jobAuthTokenLine)); err != nil {
+		cmd.Process.Kill()
+		return nil, fmt.Errorf("cannot write job auth token: %w", err)
+	}
+	stdin.Close()
+
+	startCh := make(chan error, 1)
+	go func() {
+		scanner := bufio.NewScanner(stdout)
+		for scanner.Scan() {
+			line := scanner.Text()
+			if strings.Contains(line, "Wave-JobManagerStart") {
+				startCh <- nil
+				return
+			}
+		}
+		if err := scanner.Err(); err != nil {
+			startCh <- fmt.Errorf("error reading stdout: %w", err)
+		} else {
+			startCh <- fmt.Errorf("job manager exited without start signal")
+		}
+	}()
+
+	timeoutCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	select {
+	case err := <-startCh:
+		if err != nil {
+			cmd.Process.Kill()
+			return nil, err
+		}
+	case <-timeoutCtx.Done():
+		cmd.Process.Kill()
+		return nil, fmt.Errorf("timeout waiting for job manager to start")
+	}
+
+	go func() {
+		cmd.Wait()
+	}()
+
+	socketPath := filepath.Join(wavebase.GetHomeDir(), ".waveterm", "jobs", data.ClientId, fmt.Sprintf("%s.sock", data.JobId))
+	conn, err := net.Dial("unix", socketPath)
+	if err != nil {
+		return nil, fmt.Errorf("cannot connect to job manager socket: %w", err)
+	}
+
+	log.Printf("RemoteStartJobCommand: connected to job manager socket, need to implement auth\n")
+	conn.Close()
+
+	return nil, fmt.Errorf("not implemented")
 }
