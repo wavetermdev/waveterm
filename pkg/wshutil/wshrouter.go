@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -34,6 +35,7 @@ const (
 	RoutePrefix_Tab        = "tab:"
 	RoutePrefix_FeBlock    = "feblock:"
 	RoutePrefix_Builder    = "builder:"
+	RoutePrefix_Link       = "link:"
 )
 
 // this works like a network switch
@@ -120,6 +122,10 @@ func MakeBuilderRouteId(builderId string) string {
 
 func MakeJobRouteId(jobId string) string {
 	return "job:" + jobId
+}
+
+func MakeLinkRouteId(linkId baseds.LinkId) string {
+	return fmt.Sprintf("%s%d", RoutePrefix_Link, linkId)
 }
 
 var DefaultRouter *WshRouter
@@ -249,6 +255,13 @@ func (router *WshRouter) getRouteInfo(rpcId string) *rpcRoutingInfo {
 
 // returns true if message was sent, false if failed
 func (router *WshRouter) sendRoutedMessage(msgBytes []byte, routeId string, commandName string, ingressLinkId baseds.LinkId) bool {
+	if strings.HasPrefix(routeId, RoutePrefix_Link) {
+		linkIdStr := strings.TrimPrefix(routeId, RoutePrefix_Link)
+		linkIdInt, err := strconv.ParseInt(linkIdStr, 10, 32)
+		if err == nil {
+			return router.sendMessageToLink(msgBytes, baseds.LinkId(linkIdInt), ingressLinkId)
+		}
+	}
 	lm := router.getLinkForRoute(routeId)
 	if lm != nil {
 		lm.client.SendRpcMessage(msgBytes, ingressLinkId, "route")
@@ -452,8 +465,10 @@ func (router *WshRouter) runLinkClientRecvLoop(linkId baseds.LinkId, client Abst
 		} else {
 			// non-request messages (responses)
 			if !lm.trusted {
-				// drop responses from untrusted links
-				continue
+				// allow responses to RPCs we initiated
+				if rpcMsg.ResId == "" || router.getRouteInfo(rpcMsg.ResId) == nil {
+					continue
+				}
 			}
 		}
 		router.inputCh <- baseds.RpcInputChType{MsgBytes: msgBytes, IngressLinkId: linkId}
