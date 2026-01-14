@@ -85,7 +85,7 @@ type SSHConn struct {
 var ConnServerCmdTemplate = strings.TrimSpace(
 	strings.Join([]string{
 		"%s version 2> /dev/null || (echo -n \"not-installed \"; uname -sm; exit 0);",
-		"exec %s connserver --conn %s %s",
+		"exec %s connserver --conn %s %s %s",
 	}, "\n"))
 
 func IsLocalConnName(connName string) bool {
@@ -285,8 +285,9 @@ func (conn *SSHConn) GetConfigShellPath() string {
 // returns (needsInstall, clientVersion, osArchStr, error)
 // if wsh is not installed, the clientVersion will be "not-installed", and it will also return an osArchStr
 // if clientVersion is set, then no osArchStr will be returned
-func (conn *SSHConn) StartConnServer(ctx context.Context, afterUpdate bool) (bool, string, string, error) {
-	conn.Infof(ctx, "running StartConnServer...\n")
+// if useRouterMode is true, will start connserver with --router-domainsocket flag
+func (conn *SSHConn) StartConnServer(ctx context.Context, afterUpdate bool, useRouterMode bool) (bool, string, string, error) {
+	conn.Infof(ctx, "running StartConnServer (routerMode=%v)...\n", useRouterMode)
 	allowed := WithLockRtn(conn, func() bool {
 		return conn.Status == Status_Connecting
 	})
@@ -296,10 +297,19 @@ func (conn *SSHConn) StartConnServer(ctx context.Context, afterUpdate bool) (boo
 	client := conn.GetClient()
 	wshPath := conn.getWshPath()
 	sockName := conn.GetDomainSocketName()
-	rpcCtx := wshrpc.RpcContext{
-		RouteId:  wshutil.MakeConnectionRouteId(conn.GetName()),
-		SockName: sockName,
-		Conn:     conn.GetName(),
+	var rpcCtx wshrpc.RpcContext
+	if useRouterMode {
+		rpcCtx = wshrpc.RpcContext{
+			IsRouter: true,
+			SockName: sockName,
+			Conn:     conn.GetName(),
+		}
+	} else {
+		rpcCtx = wshrpc.RpcContext{
+			RouteId:  wshutil.MakeConnectionRouteId(conn.GetName()),
+			SockName: sockName,
+			Conn:     conn.GetName(),
+		}
 	}
 	jwtToken, err := wshutil.MakeClientJWTToken(rpcCtx)
 	if err != nil {
@@ -321,7 +331,11 @@ func (conn *SSHConn) StartConnServer(ctx context.Context, afterUpdate bool) (boo
 	if wavebase.IsDevMode() {
 		devFlag = "--dev"
 	}
-	cmdStr := fmt.Sprintf(ConnServerCmdTemplate, wshPath, wshPath, shellutil.HardQuote(conn.GetName()), devFlag)
+	routerFlag := ""
+	if useRouterMode {
+		routerFlag = "--router-domainsocket"
+	}
+	cmdStr := fmt.Sprintf(ConnServerCmdTemplate, wshPath, wshPath, shellutil.HardQuote(conn.GetName()), devFlag, routerFlag)
 	log.Printf("starting conn controller: %q\n", cmdStr)
 	shWrappedCmdStr := fmt.Sprintf("sh -c %s", shellutil.HardQuote(cmdStr))
 	blocklogger.Debugf(ctx, "[conndebug] wrapped command:\n%s\n", shWrappedCmdStr)
@@ -702,7 +716,7 @@ func (conn *SSHConn) tryEnableWsh(ctx context.Context, clientDisplayName string)
 		err = fmt.Errorf("error opening domain socket listener: %w", err)
 		return WshCheckResult{NoWshReason: "error opening domain socket", NoWshCode: NoWshCode_DomainSocketError, WshError: err}
 	}
-	needsInstall, clientVersion, osArchStr, err := conn.StartConnServer(ctx, false)
+	needsInstall, clientVersion, osArchStr, err := conn.StartConnServer(ctx, false, false)
 	if err != nil {
 		conn.Infof(ctx, "ERROR starting conn server: %v\n", err)
 		err = fmt.Errorf("error starting conn server: %w", err)
@@ -716,7 +730,7 @@ func (conn *SSHConn) tryEnableWsh(ctx context.Context, clientDisplayName string)
 			err = fmt.Errorf("error installing wsh: %w", err)
 			return WshCheckResult{NoWshReason: "error installing wsh/connserver", NoWshCode: NoWshCode_InstallError, WshError: err}
 		}
-		needsInstall, clientVersion, _, err = conn.StartConnServer(ctx, true)
+		needsInstall, clientVersion, _, err = conn.StartConnServer(ctx, true, false)
 		if err != nil {
 			conn.Infof(ctx, "ERROR starting conn server (after install): %v\n", err)
 			err = fmt.Errorf("error starting conn server (after install): %w", err)
