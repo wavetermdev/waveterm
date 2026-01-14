@@ -19,6 +19,8 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
 )
 
+const JobAccessTokenLabel = "Wave-JobAccessToken"
+
 var WshCmdJobManager JobManager
 
 type JobManager struct {
@@ -33,10 +35,11 @@ type JobManager struct {
 	connectedStreamClient *MainServerConn
 }
 
-func SetupJobManager(clientId string, jobId string, publicKeyBytes []byte) error {
+func SetupJobManager(clientId string, jobId string, publicKeyBytes []byte, jobAuthToken string) error {
 	WshCmdJobManager.ClientId = clientId
 	WshCmdJobManager.JobId = jobId
 	WshCmdJobManager.JwtPublicKey = publicKeyBytes
+	WshCmdJobManager.JobAuthToken = jobAuthToken
 	WshCmdJobManager.StreamManager = MakeStreamManager()
 	err := wavejwt.SetPublicKey(publicKeyBytes)
 	if err != nil {

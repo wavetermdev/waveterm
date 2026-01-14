@@ -83,12 +83,10 @@ func (msc *MainServerConn) AuthenticateToJobManagerCommand(ctx context.Context, 
 	msc.PeerAuthenticated.Store(true)
 	log.Printf("AuthenticateToJobManager: authentication successful for JobId=%s\n", claims.JobId)
 
-	if jobAuthToken != "" {
-		err = msc.authenticateSelfToServer(jobAuthToken)
-		if err != nil {
-			msc.PeerAuthenticated.Store(false)
-			return err
-		}
+	err = msc.authenticateSelfToServer(jobAuthToken)
+	if err != nil {
+		msc.PeerAuthenticated.Store(false)
+		return err
 	}
 
 	WshCmdJobManager.lock.Lock()
@@ -110,19 +108,12 @@ func (msc *MainServerConn) StartJobCommand(ctx context.Context, data wshrpc.Comm
 		return nil, fmt.Errorf("job already started")
 	}
 
-	err := msc.authenticateSelfToServer(data.JobAuthToken)
-	if err != nil {
-		return nil, err
-	}
-
 	WshCmdJobManager.lock.Lock()
 	defer WshCmdJobManager.lock.Unlock()
 
 	if WshCmdJobManager.Cmd != nil {
 		return nil, fmt.Errorf("job already started")
 	}
-
-	WshCmdJobManager.JobAuthToken = data.JobAuthToken
 
 	cmdDef := CmdDef{
 		Cmd:      data.Cmd,

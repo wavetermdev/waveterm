@@ -4,9 +4,13 @@
 package cmd
 
 import (
+	"bufio"
+	"context"
 	"encoding/base64"
 	"fmt"
 	"os"
+	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/spf13/cobra"
@@ -53,10 +57,57 @@ func jobManagerRun(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to decode WAVETERM_PUBLICKEY: %v", err)
 	}
 
-	err = jobmanager.SetupJobManager(jobManagerClientId, jobManagerJobId, publicKeyBytes)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	jobAuthToken, err := readJobAuthToken(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to read job auth token: %v", err)
+	}
+
+	err = jobmanager.SetupJobManager(jobManagerClientId, jobManagerJobId, publicKeyBytes, jobAuthToken)
 	if err != nil {
 		return fmt.Errorf("error setting up job manager: %v", err)
 	}
 
 	select {}
+}
+
+func readJobAuthToken(ctx context.Context) (string, error) {
+	resultCh := make(chan string, 1)
+	errorCh := make(chan error, 1)
+
+	go func() {
+		reader := bufio.NewReader(os.Stdin)
+		line, err := reader.ReadString('\n')
+		if err != nil {
+			errorCh <- fmt.Errorf("error reading from stdin: %v", err)
+			return
+		}
+
+		line = strings.TrimSpace(line)
+		prefix := jobmanager.JobAccessTokenLabel + ":"
+		if !strings.HasPrefix(line, prefix) {
+			errorCh <- fmt.Errorf("invalid token format: expected '%s'", prefix)
+			return
+		}
+
+		token := strings.TrimPrefix(line, prefix)
+		token = strings.TrimSpace(token)
+		if token == "" {
+			errorCh <- fmt.Errorf("empty job auth token")
+			return
+		}
+
+		resultCh <- token
+	}()
+
+	select {
+	case token := <-resultCh:
+		return token, nil
+	case err := <-errorCh:
+		return "", err
+	case <-ctx.Done():
+		return "", ctx.Err()
+	}
 }

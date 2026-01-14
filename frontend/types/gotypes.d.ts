@@ -493,7 +493,6 @@ declare global {
         args: string[];
         env: {[key: string]: string};
         termsize: TermSize;
-        jobauthtoken: string;
         streammeta?: StreamMeta;
     };
 
@@ -841,7 +840,6 @@ declare global {
         pgid: number;
         ownerblockid: string;
         huponconnect: boolean;
-        jobaccesstoken: string;
         jobauthtoken: string;
         cmd: string;
         cmdargs?: string[];

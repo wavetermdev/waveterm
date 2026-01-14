@@ -675,12 +675,11 @@ type CommandAuthenticateJobManagerData struct {
 }
 
 type CommandStartJobData struct {
-	Cmd          string            `json:"cmd"`
-	Args         []string          `json:"args"`
-	Env          map[string]string `json:"env"`
-	TermSize     waveobj.TermSize  `json:"termsize"`
-	JobAuthToken string            `json:"jobauthtoken"`
-	StreamMeta   *StreamMeta       `json:"streammeta,omitempty"`
+	Cmd        string            `json:"cmd"`
+	Args       []string          `json:"args"`
+	Env        map[string]string `json:"env"`
+	TermSize   waveobj.TermSize  `json:"termsize"`
+	StreamMeta *StreamMeta       `json:"streammeta,omitempty"`
 }
 
 type CommandStartJobRtnData struct {
