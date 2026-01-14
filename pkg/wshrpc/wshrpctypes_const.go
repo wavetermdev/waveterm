@@ -45,4 +45,6 @@ const (
 	Command_ControllerInput              = "controllerinput"
 	Command_EventRecv                    = "eventrecv"
 	Command_Message                      = "message"
+	Command_StreamData                   = "streamdata"
+	Command_StreamDataAck                = "streamdataack"
 )

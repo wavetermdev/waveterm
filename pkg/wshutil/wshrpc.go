@@ -18,6 +18,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/wavetermdev/waveterm/pkg/baseds"
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
+	"github.com/wavetermdev/waveterm/pkg/streamclient"
 	"github.com/wavetermdev/waveterm/pkg/util/ds"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/wps"
@@ -56,6 +57,7 @@ type WshRpc struct {
 	ServerImpl         ServerImpl
 	EventListener      *EventListener
 	ResponseHandlerMap map[string]*RpcResponseHandler // reqId => handler
+	StreamBroker       *streamclient.Broker
 	Debug              bool
 	DebugName          string
 	ServerDone         bool
@@ -226,6 +228,7 @@ func MakeWshRpcWithChannels(inputCh chan baseds.RpcInputChType, outputCh chan []
 		ResponseHandlerMap: make(map[string]*RpcResponseHandler),
 	}
 	rtn.RpcContext.Store(&rpcCtx)
+	rtn.StreamBroker = streamclient.NewBroker(AdaptWshRpc(rtn))
 	go rtn.runServer()
 	return rtn
 }
@@ -286,9 +289,47 @@ func (w *WshRpc) handleEventRecv(req *RpcMessage) {
 	w.EventListener.RecvEvent(&waveEvent)
 }
 
+func (w *WshRpc) handleStreamData(req *RpcMessage) {
+	if w.StreamBroker == nil {
+		return
+	}
+	if req.Data == nil {
+		return
+	}
+	var dataPk wshrpc.CommandStreamData
+	err := utilfn.ReUnmarshal(&dataPk, req.Data)
+	if err != nil {
+		return
+	}
+	w.StreamBroker.RecvData(dataPk)
+}
+
+func (w *WshRpc) handleStreamAck(req *RpcMessage) {
+	if w.StreamBroker == nil {
+		return
+	}
+	if req.Data == nil {
+		return
+	}
+	var ackPk wshrpc.CommandStreamAckData
+	err := utilfn.ReUnmarshal(&ackPk, req.Data)
+	if err != nil {
+		return
+	}
+	w.StreamBroker.RecvAck(ackPk)
+}
+
 func (w *WshRpc) handleRequestInternal(req *RpcMessage, ingressLinkId baseds.LinkId, pprofCtx context.Context) {
 	if req.Command == wshrpc.Command_EventRecv {
 		w.handleEventRecv(req)
+		return
+	}
+	if req.Command == wshrpc.Command_StreamData {
+		w.handleStreamData(req)
+		return
+	}
+	if req.Command == wshrpc.Command_StreamDataAck {
+		w.handleStreamAck(req)
 		return
 	}
 

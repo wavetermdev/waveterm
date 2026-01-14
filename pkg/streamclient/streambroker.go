@@ -8,8 +8,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/wavetermdev/waveterm/pkg/utilds"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
-	"github.com/wavetermdev/waveterm/pkg/wshutil"
 )
 
 type workItem struct {
@@ -25,22 +23,6 @@ type StreamWriter interface {
 type StreamRpcInterface interface {
 	StreamDataAckCommand(data wshrpc.CommandStreamAckData, opts *wshrpc.RpcOpts) error
 	StreamDataCommand(data wshrpc.CommandStreamData, opts *wshrpc.RpcOpts) error
-}
-
-type wshRpcAdapter struct {
-	rpc *wshutil.WshRpc
-}
-
-func (a *wshRpcAdapter) StreamDataAckCommand(data wshrpc.CommandStreamAckData, opts *wshrpc.RpcOpts) error {
-	return wshclient.StreamDataAckCommand(a.rpc, data, opts)
-}
-
-func (a *wshRpcAdapter) StreamDataCommand(data wshrpc.CommandStreamData, opts *wshrpc.RpcOpts) error {
-	return wshclient.StreamDataCommand(a.rpc, data, opts)
-}
-
-func AdaptWshRpc(rpc *wshutil.WshRpc) StreamRpcInterface {
-	return &wshRpcAdapter{rpc: rpc}
 }
 
 type Broker struct {
