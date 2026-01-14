@@ -8,8 +8,10 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"os"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/wavetermdev/waveterm/pkg/baseds"
 	"github.com/wavetermdev/waveterm/pkg/wavejwt"
@@ -173,8 +175,17 @@ func (msc *MainServerConn) JobConnectCommand(ctx context.Context, data wshrpc.Co
 		return nil, err
 	}
 
-	log.Printf("JobConnect: streamid=%s clientSeq=%d serverSeq=%d\n", data.StreamMeta.Id, data.Seq, serverSeq)
-	return &wshrpc.CommandJobConnectRtnData{Seq: serverSeq}, nil
+	rtnData := &wshrpc.CommandJobConnectRtnData{Seq: serverSeq}
+	hasExited, exitData := WshCmdJobManager.Cmd.GetExitInfo()
+	if hasExited && exitData != nil {
+		rtnData.HasExited = true
+		rtnData.ExitCode = exitData.ExitCode
+		rtnData.ExitSignal = exitData.ExitSignal
+		rtnData.ExitErr = exitData.ExitErr
+	}
+
+	log.Printf("JobConnect: streamid=%s clientSeq=%d serverSeq=%d hasExited=%v\n", data.StreamMeta.Id, data.Seq, serverSeq, hasExited)
+	return rtnData, nil
 }
 
 func (msc *MainServerConn) StreamDataAckCommand(ctx context.Context, data wshrpc.CommandStreamAckData) error {
@@ -200,5 +211,17 @@ func (msc *MainServerConn) JobTerminateCommand(ctx context.Context, data wshrpc.
 	}
 	log.Printf("JobTerminate called\n")
 	WshCmdJobManager.Cmd.Terminate()
+	return nil
+}
+
+func (msc *MainServerConn) JobManagerExitCommand(ctx context.Context) error {
+	if !msc.PeerAuthenticated.Load() {
+		return fmt.Errorf("not authenticated")
+	}
+	log.Printf("JobManagerExit called, terminating job manager\n")
+	go func() {
+		time.Sleep(500 * time.Millisecond)
+		os.Exit(0)
+	}()
 	return nil
 }

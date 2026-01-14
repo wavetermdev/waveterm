@@ -20,6 +20,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/wavejwt"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
+	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
 )
 
@@ -71,6 +72,27 @@ func (jm *JobManager) GetCmd() *JobCmd {
 	jm.lock.Lock()
 	defer jm.lock.Unlock()
 	return jm.Cmd
+}
+
+func (jm *JobManager) sendJobExited(exitData *wshrpc.CommandJobExitedData) {
+	jm.lock.Lock()
+	attachedClient := jm.attachedClient
+	jm.lock.Unlock()
+
+	if attachedClient == nil {
+		log.Printf("sendJobExited: no attached client, exit notification not sent\n")
+		return
+	}
+	if attachedClient.WshRpc == nil {
+		log.Printf("sendJobExited: no wsh rpc connection, exit notification not sent\n")
+		return
+	}
+
+	log.Printf("sendJobExited: sending exit notification to main server exitcode=%d signal=%s\n", exitData.ExitCode, exitData.ExitSignal)
+	err := wshclient.JobExitedCommand(attachedClient.WshRpc, *exitData, nil)
+	if err != nil {
+		log.Printf("sendJobExited: error sending exit notification: %v\n", err)
+	}
 }
 
 func daemonize(clientId string, jobId string) error {

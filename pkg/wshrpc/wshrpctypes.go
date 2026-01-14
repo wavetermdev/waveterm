@@ -163,6 +163,8 @@ type WshRpcInterface interface {
 	StartJobCommand(ctx context.Context, data CommandStartJobData) (*CommandStartJobRtnData, error)
 	JobConnectCommand(ctx context.Context, data CommandJobConnectData) (*CommandJobConnectRtnData, error)
 	JobTerminateCommand(ctx context.Context, data CommandJobTerminateData) error
+	JobExitedCommand(ctx context.Context, data CommandJobExitedData) error // this is sent FROM the job manager => main server
+	JobManagerExitCommand(ctx context.Context) error
 }
 
 // for frontend
@@ -705,8 +707,18 @@ type CommandJobConnectData struct {
 }
 
 type CommandJobConnectRtnData struct {
-	Seq int64 `json:"seq"`
+	Seq        int64  `json:"seq"`
+	HasExited  bool   `json:"hasexited,omitempty"`
+	ExitCode   int    `json:"exitcode,omitempty"`
+	ExitSignal string `json:"exitsignal,omitempty"`
+	ExitErr    string `json:"exiterr,omitempty"`
 }
 
 type CommandJobTerminateData struct {
+}
+
+type CommandJobExitedData struct {
+	ExitCode   int    `json:"exitcode"`
+	ExitSignal string `json:"exitsignal,omitempty"`
+	ExitErr    string `json:"exiterr,omitempty"`
 }

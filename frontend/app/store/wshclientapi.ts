@@ -397,6 +397,16 @@ class RpcApiType {
         return client.wshRpcCall("jobconnect", data, opts);
     }
 
+    // command "jobexited" [call]
+    JobExitedCommand(client: WshClient, data: CommandJobExitedData, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("jobexited", data, opts);
+    }
+
+    // command "jobmanagerexit" [call]
+    JobManagerExitCommand(client: WshClient, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("jobmanagerexit", null, opts);
+    }
+
     // command "jobterminate" [call]
     JobTerminateCommand(client: WshClient, data: CommandJobTerminateData, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("jobterminate", data, opts);

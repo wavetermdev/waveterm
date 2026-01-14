@@ -482,6 +482,18 @@ func JobConnectCommand(w *wshutil.WshRpc, data wshrpc.CommandJobConnectData, opt
 	return resp, err
 }
 
+// command "jobexited", wshserver.JobExitedCommand
+func JobExitedCommand(w *wshutil.WshRpc, data wshrpc.CommandJobExitedData, opts *wshrpc.RpcOpts) error {
+	_, err := sendRpcRequestCallHelper[any](w, "jobexited", data, opts)
+	return err
+}
+
+// command "jobmanagerexit", wshserver.JobManagerExitCommand
+func JobManagerExitCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) error {
+	_, err := sendRpcRequestCallHelper[any](w, "jobmanagerexit", nil, opts)
+	return err
+}
+
 // command "jobterminate", wshserver.JobTerminateCommand
 func JobTerminateCommand(w *wshutil.WshRpc, data wshrpc.CommandJobTerminateData, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "jobterminate", data, opts)

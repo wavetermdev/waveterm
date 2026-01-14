@@ -90,6 +90,16 @@ func (jm *JobCmd) waitForProcess() {
 		jm.exitCode = 0
 	}
 	log.Printf("process exited: exitcode=%d, signal=%s, err=%v\n", jm.exitCode, jm.exitSignal, jm.exitErr)
+
+	exitData := &wshrpc.CommandJobExitedData{
+		ExitCode:   jm.exitCode,
+		ExitSignal: jm.exitSignal,
+	}
+	if jm.exitErr != nil {
+		exitData.ExitErr = jm.exitErr.Error()
+	}
+
+	go WshCmdJobManager.sendJobExited(exitData)
 }
 
 func (jm *JobCmd) GetCmd() (*exec.Cmd, pty.Pty) {
@@ -115,6 +125,22 @@ func (jm *JobCmd) GetPGID() (int, error) {
 		return 0, fmt.Errorf("invalid pgid returned: %d", pgid)
 	}
 	return pgid, nil
+}
+
+func (jm *JobCmd) GetExitInfo() (bool, *wshrpc.CommandJobExitedData) {
+	jm.lock.Lock()
+	defer jm.lock.Unlock()
+	if !jm.processExited {
+		return false, nil
+	}
+	exitData := &wshrpc.CommandJobExitedData{
+		ExitCode:   jm.exitCode,
+		ExitSignal: jm.exitSignal,
+	}
+	if jm.exitErr != nil {
+		exitData.ExitErr = jm.exitErr.Error()
+	}
+	return true, exitData
 }
 
 func (jm *JobCmd) HandleInput(data wshrpc.CommandBlockInputData) error {

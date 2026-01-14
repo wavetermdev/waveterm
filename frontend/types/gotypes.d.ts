@@ -363,6 +363,17 @@ declare global {
     // wshrpc.CommandJobConnectRtnData
     type CommandJobConnectRtnData = {
         seq: number;
+        hasexited?: boolean;
+        exitcode?: number;
+        exitsignal?: string;
+        exiterr?: string;
+    };
+
+    // wshrpc.CommandJobExitedData
+    type CommandJobExitedData = {
+        exitcode: number;
+        exitsignal?: string;
+        exiterr?: string;
     };
 
     // wshrpc.CommandJobTerminateData
