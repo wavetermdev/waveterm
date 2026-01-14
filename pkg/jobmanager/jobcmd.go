@@ -9,17 +9,13 @@ import (
 	"log"
 	"os"
 	"os/exec"
-	"os/signal"
 	"sync"
 	"syscall"
-	"time"
 
 	"github.com/creack/pty"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 )
-
-const ShutdownDelayTime = 100 * time.Millisecond
 
 type CmdDef struct {
 	Cmd      string
@@ -29,15 +25,16 @@ type CmdDef struct {
 }
 
 type JobCmd struct {
-	jobId      string
-	lock       sync.Mutex
-	cmd        *exec.Cmd
-	cmdPty     pty.Pty
-	cleanedUp  bool
-	ptyClosed  bool
-	exitCode   int
-	exitSignal string
-	exitErr    error
+	jobId         string
+	lock          sync.Mutex
+	cmd           *exec.Cmd
+	cmdPty        pty.Pty
+	cleanedUp     bool
+	ptyClosed     bool
+	processExited bool
+	exitCode      int
+	exitSignal    string
+	exitErr       error
 }
 
 func MakeJobCmd(jobId string, cmdDef CmdDef) (*JobCmd, error) {
@@ -64,9 +61,7 @@ func MakeJobCmd(jobId string, cmdDef CmdDef) (*JobCmd, error) {
 	}
 	jm.cmd = ecmd
 	jm.cmdPty = cmdPty
-	go jm.readPtyOutput(cmdPty)
 	go jm.waitForProcess()
-	jm.setupSignalHandlers()
 	return jm, nil
 }
 
@@ -78,6 +73,7 @@ func (jm *JobCmd) waitForProcess() {
 	jm.lock.Lock()
 	defer jm.lock.Unlock()
 
+	jm.processExited = true
 	jm.exitErr = err
 	if err != nil {
 		if exitErr, ok := err.(*exec.ExitError); ok {
@@ -100,6 +96,25 @@ func (jm *JobCmd) GetCmd() (*exec.Cmd, pty.Pty) {
 	jm.lock.Lock()
 	defer jm.lock.Unlock()
 	return jm.cmd, jm.cmdPty
+}
+
+func (jm *JobCmd) GetPGID() (int, error) {
+	jm.lock.Lock()
+	defer jm.lock.Unlock()
+	if jm.cmd == nil || jm.cmd.Process == nil {
+		return 0, fmt.Errorf("no active process")
+	}
+	if jm.processExited {
+		return 0, fmt.Errorf("process already exited")
+	}
+	pgid, err := syscall.Getpgid(jm.cmd.Process.Pid)
+	if err != nil {
+		return 0, fmt.Errorf("failed to get pgid: %w", err)
+	}
+	if pgid <= 0 {
+		return 0, fmt.Errorf("invalid pgid returned: %d", pgid)
+	}
+	return pgid, nil
 }
 
 func (jm *JobCmd) HandleInput(data wshrpc.CommandBlockInputData) error {
@@ -145,30 +160,6 @@ func (jm *JobCmd) HandleInput(data wshrpc.CommandBlockInputData) error {
 	return nil
 }
 
-func (jm *JobCmd) setupSignalHandlers() {
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM)
-
-	go func() {
-		sig := <-sigChan
-		log.Printf("received signal: %v\n", sig)
-
-		cmd, _ := jm.GetCmd()
-		if cmd != nil && cmd.Process != nil {
-			log.Printf("forwarding signal %v to child process\n", sig)
-			cmd.Process.Signal(sig)
-			time.Sleep(ShutdownDelayTime)
-		}
-
-		jm.Cleanup()
-		os.Exit(0)
-	}()
-}
-
-func (jm *JobCmd) readPtyOutput(cmdPty pty.Pty) {
-	// TODO: implement readPtyOutput
-}
-
 func (jm *JobCmd) Terminate() {
 	jm.lock.Lock()
 	defer jm.lock.Unlock()
@@ -180,8 +171,4 @@ func (jm *JobCmd) Terminate() {
 		jm.ptyClosed = true
 		log.Printf("pty closed for job %s\n", jm.jobId)
 	}
-}
-
-func (jm *JobCmd) Cleanup() {
-	// TODO: implement Cleanup
 }
