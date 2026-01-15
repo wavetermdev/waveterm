@@ -165,6 +165,9 @@ type WshRpcInterface interface {
 	JobTerminateCommand(ctx context.Context, data CommandJobTerminateData) error
 	JobExitedCommand(ctx context.Context, data CommandJobExitedData) error // this is sent FROM the job manager => main server
 	JobManagerExitCommand(ctx context.Context) error
+	JobDebugListCommand(ctx context.Context) ([]*waveobj.Job, error)
+	JobDebugDeleteCommand(ctx context.Context, jobId string) error
+	JobControllerStartJobCommand(ctx context.Context, data CommandJobControllerStartJobData) (string, error)
 }
 
 // for frontend
@@ -695,6 +698,7 @@ type CommandRemoteStartJobData struct {
 	JobId              string            `json:"jobid"`
 	MainServerJwtToken string            `json:"mainserverjwttoken"`
 	ClientId           string            `json:"clientid"`
+	PublicKeyBase64    string            `json:"publickeybase64"`
 }
 
 type CommandStartJobRtnData struct {
@@ -723,4 +727,12 @@ type CommandJobExitedData struct {
 	ExitSignal string `json:"exitsignal,omitempty"`
 	ExitErr    string `json:"exiterr,omitempty"`
 	ExitTs     int64  `json:"exitts,omitempty"`
+}
+
+type CommandJobControllerStartJobData struct {
+	ConnName string            `json:"connname"`
+	Cmd      string            `json:"cmd"`
+	Args     []string          `json:"args"`
+	Env      map[string]string `json:"env"`
+	TermSize *waveobj.TermSize `json:"termsize,omitempty"`
 }

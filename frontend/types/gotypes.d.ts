@@ -179,6 +179,7 @@ declare global {
         tosagreed?: number;
         hasoldhistory?: boolean;
         tempoid?: string;
+        installid?: string;
     };
 
     // workspaceservice.CloseTabRtnType
@@ -369,11 +370,22 @@ declare global {
         exiterr?: string;
     };
 
+    // wshrpc.CommandJobControllerStartJobData
+    type CommandJobControllerStartJobData = {
+        connname: string;
+        cmd: string;
+        args: string[];
+        env: {[key: string]: string};
+        termsize?: TermSize;
+    };
+
     // wshrpc.CommandJobExitedData
     type CommandJobExitedData = {
+        jobid: string;
         exitcode: number;
         exitsignal?: string;
         exiterr?: string;
+        exitts?: number;
     };
 
     // wshrpc.CommandJobTerminateData
@@ -456,6 +468,7 @@ declare global {
         jobid: string;
         mainserverjwttoken: string;
         clientid: string;
+        publickeybase64: string;
     };
 
     // wshrpc.CommandRemoteStreamFileData
@@ -875,6 +888,8 @@ declare global {
         exitcode?: number;
         exitsignal?: string;
         error?: string;
+        streamdone?: boolean;
+        streamerror?: string;
     };
 
     // waveobj.LayoutActionData

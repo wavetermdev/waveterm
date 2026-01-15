@@ -397,6 +397,21 @@ class RpcApiType {
         return client.wshRpcCall("jobconnect", data, opts);
     }
 
+    // command "jobcontrollerstartjob" [call]
+    JobControllerStartJobCommand(client: WshClient, data: CommandJobControllerStartJobData, opts?: RpcOpts): Promise<string> {
+        return client.wshRpcCall("jobcontrollerstartjob", data, opts);
+    }
+
+    // command "jobdebugdelete" [call]
+    JobDebugDeleteCommand(client: WshClient, data: string, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("jobdebugdelete", data, opts);
+    }
+
+    // command "jobdebuglist" [call]
+    JobDebugListCommand(client: WshClient, opts?: RpcOpts): Promise<Job[]> {
+        return client.wshRpcCall("jobdebuglist", null, opts);
+    }
+
     // command "jobexited" [call]
     JobExitedCommand(client: WshClient, data: CommandJobExitedData, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("jobexited", data, opts);

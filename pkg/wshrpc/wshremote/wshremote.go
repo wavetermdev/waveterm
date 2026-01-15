@@ -38,6 +38,7 @@ type ServerImpl struct {
 	LogWriter io.Writer
 	Router    *wshutil.WshRouter
 	RpcClient *wshutil.WshRpc
+	IsLocal   bool
 }
 
 func (*ServerImpl) WshServerImpl() {}
@@ -867,16 +868,33 @@ func (*ServerImpl) DisposeSuggestionsCommand(ctx context.Context, widgetId strin
 	return nil
 }
 
-func (impl *ServerImpl) RemoteStartJobCommand(ctx context.Context, data wshrpc.CommandRemoteStartJobData) (*wshrpc.CommandStartJobRtnData, error) {
-	if impl.Router == nil {
-		return nil, fmt.Errorf("cannot start remote job: no router available")
+func (impl *ServerImpl) getWshPath() (string, error) {
+	if impl.IsLocal {
+		return filepath.Join(wavebase.GetWaveDataDir(), "bin", "wsh"), nil
 	}
 	wshPath, err := wavebase.ExpandHomeDir("~/.waveterm/bin/wsh")
 	if err != nil {
-		return nil, fmt.Errorf("cannot expand wsh path: %w", err)
+		return "", fmt.Errorf("cannot expand wsh path: %w", err)
 	}
+	return wshPath, nil
+}
+
+func (impl *ServerImpl) RemoteStartJobCommand(ctx context.Context, data wshrpc.CommandRemoteStartJobData) (*wshrpc.CommandStartJobRtnData, error) {
+	log.Printf("RemoteStartJobCommand: starting, jobid=%s, clientid=%s\n", data.JobId, data.ClientId)
+	if impl.Router == nil {
+		return nil, fmt.Errorf("cannot start remote job: no router available")
+	}
+	
+	wshPath, err := impl.getWshPath()
+	if err != nil {
+		return nil, err
+	}
+	log.Printf("RemoteStartJobCommand: wshPath=%s\n", wshPath)
 
 	cmd := exec.Command(wshPath, "jobmanager", "--jobid", data.JobId, "--clientid", data.ClientId)
+	if data.PublicKeyBase64 != "" {
+		cmd.Env = append(os.Environ(), "WAVETERM_PUBLICKEY="+data.PublicKeyBase64)
+	}
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		return nil, fmt.Errorf("cannot create stdin pipe: %w", err)
@@ -885,10 +903,16 @@ func (impl *ServerImpl) RemoteStartJobCommand(ctx context.Context, data wshrpc.C
 	if err != nil {
 		return nil, fmt.Errorf("cannot create stdout pipe: %w", err)
 	}
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		return nil, fmt.Errorf("cannot create stderr pipe: %w", err)
+	}
+	log.Printf("RemoteStartJobCommand: created pipes\n")
 
 	if err := cmd.Start(); err != nil {
 		return nil, fmt.Errorf("cannot start job manager: %w", err)
 	}
+	log.Printf("RemoteStartJobCommand: job manager process started\n")
 
 	jobAuthTokenLine := fmt.Sprintf("Wave-JobAccessToken:%s\n", data.JobAuthToken)
 	if _, err := stdin.Write([]byte(jobAuthTokenLine)); err != nil {
@@ -896,12 +920,27 @@ func (impl *ServerImpl) RemoteStartJobCommand(ctx context.Context, data wshrpc.C
 		return nil, fmt.Errorf("cannot write job auth token: %w", err)
 	}
 	stdin.Close()
+	log.Printf("RemoteStartJobCommand: wrote auth token to stdin\n")
+
+	go func() {
+		scanner := bufio.NewScanner(stderr)
+		for scanner.Scan() {
+			line := scanner.Text()
+			log.Printf("RemoteStartJobCommand: stderr: %s\n", line)
+		}
+		if err := scanner.Err(); err != nil {
+			log.Printf("RemoteStartJobCommand: error reading stderr: %v\n", err)
+		} else {
+			log.Printf("RemoteStartJobCommand: stderr EOF\n")
+		}
+	}()
 
 	startCh := make(chan error, 1)
 	go func() {
 		scanner := bufio.NewScanner(stdout)
 		for scanner.Scan() {
 			line := scanner.Text()
+			log.Printf("RemoteStartJobCommand: stdout line: %s\n", line)
 			if strings.Contains(line, "Wave-JobManagerStart") {
 				startCh <- nil
 				return
@@ -910,6 +949,7 @@ func (impl *ServerImpl) RemoteStartJobCommand(ctx context.Context, data wshrpc.C
 		if err := scanner.Err(); err != nil {
 			startCh <- fmt.Errorf("error reading stdout: %w", err)
 		} else {
+			log.Printf("RemoteStartJobCommand: stdout EOF\n")
 			startCh <- fmt.Errorf("job manager exited without start signal")
 		}
 	}()
@@ -917,14 +957,18 @@ func (impl *ServerImpl) RemoteStartJobCommand(ctx context.Context, data wshrpc.C
 	timeoutCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
+	log.Printf("RemoteStartJobCommand: waiting for start signal\n")
 	select {
 	case err := <-startCh:
 		if err != nil {
 			cmd.Process.Kill()
+			log.Printf("RemoteStartJobCommand: error from start signal: %v\n", err)
 			return nil, err
 		}
+		log.Printf("RemoteStartJobCommand: received start signal\n")
 	case <-timeoutCtx.Done():
 		cmd.Process.Kill()
+		log.Printf("RemoteStartJobCommand: timeout waiting for start signal\n")
 		return nil, fmt.Errorf("timeout waiting for job manager to start")
 	}
 
@@ -933,10 +977,13 @@ func (impl *ServerImpl) RemoteStartJobCommand(ctx context.Context, data wshrpc.C
 	}()
 
 	socketPath := filepath.Join(wavebase.GetHomeDir(), ".waveterm", "jobs", data.ClientId, fmt.Sprintf("%s.sock", data.JobId))
+	log.Printf("RemoteStartJobCommand: connecting to socket: %s\n", socketPath)
 	conn, err := net.Dial("unix", socketPath)
 	if err != nil {
+		log.Printf("RemoteStartJobCommand: error connecting to socket: %v\n", err)
 		return nil, fmt.Errorf("cannot connect to job manager socket: %w", err)
 	}
+	log.Printf("RemoteStartJobCommand: connected to socket\n")
 
 	proxy := wshutil.MakeRpcProxy("jobmanager")
 	go func() {

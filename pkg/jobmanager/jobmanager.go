@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"sync"
+	"time"
 
 	"github.com/wavetermdev/waveterm/pkg/baseds"
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
@@ -56,8 +57,10 @@ func SetupJobManager(clientId string, jobId string, publicKeyBytes []byte, jobAu
 		return err
 	}
 	fmt.Fprintf(os.Stdout, JobManagerStartLabel+"\n")
+	os.Stdout.Sync()
+	time.Sleep(200 * time.Millisecond)
 
-	err = daemonize(clientId, jobId)
+	// err = daemonize(clientId, jobId)
 	if err != nil {
 		return fmt.Errorf("failed to daemonize: %w", err)
 	}

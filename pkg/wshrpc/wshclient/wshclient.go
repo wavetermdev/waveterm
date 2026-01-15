@@ -482,6 +482,24 @@ func JobConnectCommand(w *wshutil.WshRpc, data wshrpc.CommandJobConnectData, opt
 	return resp, err
 }
 
+// command "jobcontrollerstartjob", wshserver.JobControllerStartJobCommand
+func JobControllerStartJobCommand(w *wshutil.WshRpc, data wshrpc.CommandJobControllerStartJobData, opts *wshrpc.RpcOpts) (string, error) {
+	resp, err := sendRpcRequestCallHelper[string](w, "jobcontrollerstartjob", data, opts)
+	return resp, err
+}
+
+// command "jobdebugdelete", wshserver.JobDebugDeleteCommand
+func JobDebugDeleteCommand(w *wshutil.WshRpc, data string, opts *wshrpc.RpcOpts) error {
+	_, err := sendRpcRequestCallHelper[any](w, "jobdebugdelete", data, opts)
+	return err
+}
+
+// command "jobdebuglist", wshserver.JobDebugListCommand
+func JobDebugListCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) ([]*waveobj.Job, error) {
+	resp, err := sendRpcRequestCallHelper[[]*waveobj.Job](w, "jobdebuglist", nil, opts)
+	return resp, err
+}
+
 // command "jobexited", wshserver.JobExitedCommand
 func JobExitedCommand(w *wshutil.WshRpc, data wshrpc.CommandJobExitedData, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "jobexited", data, opts)

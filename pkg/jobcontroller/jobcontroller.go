@@ -5,6 +5,7 @@ package jobcontroller
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"io"
 	"log"
@@ -16,6 +17,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/remote/conncontroller"
 	"github.com/wavetermdev/waveterm/pkg/streamclient"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
+	"github.com/wavetermdev/waveterm/pkg/wavejwt"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
@@ -116,6 +118,9 @@ func StartJob(ctx context.Context, params StartJobParams) (string, error) {
 		return "", fmt.Errorf("failed to get client: %w", err)
 	}
 
+	publicKey := wavejwt.GetPublicKey()
+	publicKeyBase64 := base64.StdEncoding.EncodeToString(publicKey)
+
 	startJobData := wshrpc.CommandRemoteStartJobData{
 		Cmd:                params.Cmd,
 		Args:               params.Args,
@@ -126,6 +131,7 @@ func StartJob(ctx context.Context, params StartJobParams) (string, error) {
 		JobId:              jobId,
 		MainServerJwtToken: jobAccessToken,
 		ClientId:           clientId.OID,
+		PublicKeyBase64:    publicKeyBase64,
 	}
 
 	rpcOpts := &wshrpc.RpcOpts{
