@@ -74,9 +74,10 @@ func (jm *JobManager) GetCmd() *JobCmd {
 	return jm.Cmd
 }
 
-func (jm *JobManager) sendJobExited(exitData *wshrpc.CommandJobExitedData) {
+func (jm *JobManager) sendJobExited() {
 	jm.lock.Lock()
 	attachedClient := jm.attachedClient
+	cmd := jm.Cmd
 	jm.lock.Unlock()
 
 	if attachedClient == nil {
@@ -85,6 +86,16 @@ func (jm *JobManager) sendJobExited(exitData *wshrpc.CommandJobExitedData) {
 	}
 	if attachedClient.WshRpc == nil {
 		log.Printf("sendJobExited: no wsh rpc connection, exit notification not sent\n")
+		return
+	}
+	if cmd == nil {
+		log.Printf("sendJobExited: no cmd, exit notification not sent\n")
+		return
+	}
+
+	exited, exitData := cmd.GetExitInfo()
+	if !exited || exitData == nil {
+		log.Printf("sendJobExited: process not exited yet\n")
 		return
 	}
 

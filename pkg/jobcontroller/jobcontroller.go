@@ -178,12 +178,11 @@ func runOutputLoop(ctx context.Context, jobId string, reader *streamclient.Reade
 		if err == io.EOF {
 			log.Printf("[job:%s] stream ended (EOF)", jobId)
 			updateErr := wstore.DBUpdate(ctx, &waveobj.Job{
-				OID:    jobId,
-				Status: JobStatus_Done,
-				ExitTs: time.Now().UnixMilli(),
+				OID:        jobId,
+				StreamDone: true,
 			})
 			if updateErr != nil {
-				log.Printf("[job:%s] error updating job status to done: %v", jobId, updateErr)
+				log.Printf("[job:%s] error updating job stream status: %v", jobId, updateErr)
 			}
 			break
 		}
@@ -191,15 +190,42 @@ func runOutputLoop(ctx context.Context, jobId string, reader *streamclient.Reade
 		if err != nil {
 			log.Printf("[job:%s] stream error: %v", jobId, err)
 			updateErr := wstore.DBUpdate(ctx, &waveobj.Job{
-				OID:    jobId,
-				Status: JobStatus_Error,
-				Error:  fmt.Sprintf("stream error: %v", err),
-				ExitTs: time.Now().UnixMilli(),
+				OID:         jobId,
+				StreamError: err.Error(),
 			})
 			if updateErr != nil {
-				log.Printf("[job:%s] error updating job status to error: %v", jobId, updateErr)
+				log.Printf("[job:%s] error updating job stream error: %v", jobId, updateErr)
 			}
 			break
 		}
 	}
+}
+
+func HandleJobExited(ctx context.Context, jobId string, data wshrpc.CommandJobExitedData) error {
+	var status string
+	if data.ExitErr != "" {
+		status = JobStatus_Error
+	} else {
+		status = JobStatus_Done
+	}
+
+	updateData := &waveobj.Job{
+		OID:        jobId,
+		Status:     status,
+		ExitCode:   data.ExitCode,
+		ExitSignal: data.ExitSignal,
+		ExitTs:     data.ExitTs,
+	}
+
+	if data.ExitErr != "" {
+		updateData.Error = data.ExitErr
+	}
+
+	err := wstore.DBUpdate(ctx, updateData)
+	if err != nil {
+		return fmt.Errorf("failed to update job exit status: %w", err)
+	}
+
+	log.Printf("[job:%s] exited with code:%d signal:%q status:%s", jobId, data.ExitCode, data.ExitSignal, status)
+	return nil
 }

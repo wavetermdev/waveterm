@@ -327,6 +327,8 @@ type Job struct {
 	ExitCode        int               `json:"exitcode,omitempty"`
 	ExitSignal      string            `json:"exitsignal,omitempty"`
 	Error           string            `json:"error,omitempty"`
+	StreamDone      bool              `json:"streamdone,omitempty"`
+	StreamError     string            `json:"streamerror,omitempty"`
 	Meta            MetaMapType       `json:"meta"`
 }
 

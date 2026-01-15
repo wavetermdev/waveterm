@@ -29,6 +29,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/filebackup"
 	"github.com/wavetermdev/waveterm/pkg/filestore"
 	"github.com/wavetermdev/waveterm/pkg/genconn"
+	"github.com/wavetermdev/waveterm/pkg/jobcontroller"
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/remote"
 	"github.com/wavetermdev/waveterm/pkg/remote/awsconn"
@@ -1429,4 +1430,8 @@ func (ws *WshServer) GetSecretsLinuxStorageBackendCommand(ctx context.Context) (
 		return "", fmt.Errorf("error getting linux storage backend: %w", err)
 	}
 	return backend, nil
+}
+
+func (ws *WshServer) JobExitedCommand(ctx context.Context, data wshrpc.CommandJobExitedData) error {
+	return jobcontroller.HandleJobExited(ctx, data.JobId, data)
 }

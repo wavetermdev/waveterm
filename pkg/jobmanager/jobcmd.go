@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"sync"
 	"syscall"
+	"time"
 
 	"github.com/creack/pty"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
@@ -35,6 +36,7 @@ type JobCmd struct {
 	exitCode      int
 	exitSignal    string
 	exitErr       error
+	exitTs        int64
 }
 
 func MakeJobCmd(jobId string, cmdDef CmdDef) (*JobCmd, error) {
@@ -74,6 +76,7 @@ func (jm *JobCmd) waitForProcess() {
 	defer jm.lock.Unlock()
 
 	jm.processExited = true
+	jm.exitTs = time.Now().UnixMilli()
 	jm.exitErr = err
 	if err != nil {
 		if exitErr, ok := err.(*exec.ExitError); ok {
@@ -91,15 +94,7 @@ func (jm *JobCmd) waitForProcess() {
 	}
 	log.Printf("process exited: exitcode=%d, signal=%s, err=%v\n", jm.exitCode, jm.exitSignal, jm.exitErr)
 
-	exitData := &wshrpc.CommandJobExitedData{
-		ExitCode:   jm.exitCode,
-		ExitSignal: jm.exitSignal,
-	}
-	if jm.exitErr != nil {
-		exitData.ExitErr = jm.exitErr.Error()
-	}
-
-	go WshCmdJobManager.sendJobExited(exitData)
+	go WshCmdJobManager.sendJobExited()
 }
 
 func (jm *JobCmd) GetCmd() (*exec.Cmd, pty.Pty) {
@@ -134,8 +129,10 @@ func (jm *JobCmd) GetExitInfo() (bool, *wshrpc.CommandJobExitedData) {
 		return false, nil
 	}
 	exitData := &wshrpc.CommandJobExitedData{
+		JobId:      WshCmdJobManager.JobId,
 		ExitCode:   jm.exitCode,
 		ExitSignal: jm.exitSignal,
+		ExitTs:     jm.exitTs,
 	}
 	if jm.exitErr != nil {
 		exitData.ExitErr = jm.exitErr.Error()

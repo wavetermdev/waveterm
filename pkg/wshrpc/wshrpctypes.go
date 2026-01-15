@@ -718,7 +718,9 @@ type CommandJobTerminateData struct {
 }
 
 type CommandJobExitedData struct {
+	JobId      string `json:"jobid"`
 	ExitCode   int    `json:"exitcode"`
 	ExitSignal string `json:"exitsignal,omitempty"`
 	ExitErr    string `json:"exiterr,omitempty"`
+	ExitTs     int64  `json:"exitts,omitempty"`
 }
