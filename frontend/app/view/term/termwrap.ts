@@ -6,7 +6,7 @@ import { getFileSubject } from "@/app/store/wps";
 import { sendWSCommand } from "@/app/store/ws";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
-import { WOS, fetchWaveFile, getApi, getSettingsKeyAtom, globalStore, openLink, recordTEvent } from "@/store/global";
+import { atoms, WOS, fetchWaveFile, getApi, getSettingsKeyAtom, globalStore, openLink, recordTEvent } from "@/store/global";
 import * as services from "@/store/services";
 import { PLATFORM, PlatformMacOS } from "@/util/platformutil";
 import { base64ToArray, base64ToString, fireAndForget } from "@/util/util";
@@ -188,6 +188,18 @@ function handleOsc7Command(data: string, blockId: string, loaded: boolean): bool
             await RpcApi.SetRTInfoCommand(TabRpcClient, rtInfoData).catch((e) =>
                 console.log("error setting RT info", e)
             );
+
+            // Smart auto-detection: Update tab basedir if not locked
+            const tabAtom = globalStore.get(atoms.activeTabAtom);
+            const currentBasedir = tabAtom?.meta?.["tab:basedir"];
+            const basedirLocked = tabAtom?.meta?.["tab:basedirlock"];
+
+            // Set tab basedir if not set yet, or if not locked and this is the first meaningful directory
+            if (!basedirLocked && (!currentBasedir || currentBasedir === "~")) {
+                await services.ObjectService.UpdateObjectMeta(WOS.makeORef("tab", tabAtom.oid), {
+                    "tab:basedir": pathPart,
+                });
+            }
         });
     }, 0);
     return true;

@@ -1,0 +1,10 @@
+{
+    "tabvar@waveterm-dev": {
+        "tab:basedir": "~/Code/waveterm",
+        "tab:basedirlock": false
+    },
+    "tabvar@example-project": {
+        "tab:basedir": "~/Projects/myapp",
+        "tab:basedirlock": true
+    }
+}

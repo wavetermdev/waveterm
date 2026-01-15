@@ -33,6 +33,23 @@ function sortByDisplayOrder(wmap: { [key: string]: WidgetConfigType }): WidgetCo
 
 async function handleWidgetSelect(widget: WidgetConfigType) {
     const blockDef = widget.blockdef;
+
+    // Inherit tab base directory if not specified
+    const tabAtom = atoms.activeTabAtom;
+    const tabData = globalStore.get(tabAtom);
+    const tabBaseDir = tabData?.meta?.["tab:basedir"];
+
+    if (tabBaseDir) {
+        // For terminal blocks, set cmd:cwd
+        if (blockDef?.meta?.view === "term" && !blockDef.meta["cmd:cwd"]) {
+            blockDef.meta["cmd:cwd"] = tabBaseDir;
+        }
+        // For file preview blocks, set file path
+        if (blockDef?.meta?.view === "preview" && blockDef.meta.file === "~") {
+            blockDef.meta.file = tabBaseDir;
+        }
+    }
+
     createBlock(blockDef, widget.magnified);
 }
 

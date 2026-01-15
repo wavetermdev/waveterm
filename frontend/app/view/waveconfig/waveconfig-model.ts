@@ -43,6 +43,23 @@ function validateBgJson(parsed: any): ValidationResult {
     return { success: true };
 }
 
+function validateTabVarsJson(parsed: any): ValidationResult {
+    const keys = Object.keys(parsed);
+    for (const key of keys) {
+        if (!key.startsWith("tabvar@")) {
+            return { error: `Invalid key "${key}": all top-level keys must start with "tabvar@"` };
+        }
+        const preset = parsed[key];
+        if (preset["tab:basedir"] !== undefined && typeof preset["tab:basedir"] !== "string") {
+            return { error: `Invalid value for "tab:basedir" in "${key}": must be a string` };
+        }
+        if (preset["tab:basedirlock"] !== undefined && typeof preset["tab:basedirlock"] !== "boolean") {
+            return { error: `Invalid value for "tab:basedirlock" in "${key}": must be a boolean` };
+        }
+    }
+    return { success: true };
+}
+
 function validateAiJson(parsed: any): ValidationResult {
     const keys = Object.keys(parsed);
     for (const key of keys) {
@@ -105,6 +122,14 @@ const configFiles: ConfigFile[] = [
         language: "json",
         docsUrl: "https://docs.waveterm.dev/presets#background-configurations",
         validator: validateBgJson,
+        hasJsonView: true,
+    },
+    {
+        name: "Tab Variables",
+        path: "presets/tabvars.json",
+        language: "json",
+        docsUrl: "https://docs.waveterm.dev/customization#tab-variables",
+        validator: validateTabVarsJson,
         hasJsonView: true,
     },
     {

@@ -8,7 +8,7 @@ import { Button } from "@/element/button";
 import { ContextMenuModel } from "@/store/contextmenu";
 import { fireAndForget } from "@/util/util";
 import clsx from "clsx";
-import { forwardRef, memo, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
+import React, { forwardRef, memo, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { ObjectService } from "../store/services";
 import { makeORef, useWaveObjectValue } from "../store/wos";
 import "./tab.scss";
@@ -133,9 +133,45 @@ const Tab = memo(
                 event.stopPropagation();
             };
 
+            const handleSetBaseDir = useCallback(() => {
+                const currentDir = tabData?.meta?.["tab:basedir"] || "";
+                fireAndForget(async () => {
+                    const newDir = await getApi().showOpenDialog({
+                        title: "Set Tab Base Directory",
+                        defaultPath: currentDir || "~",
+                        properties: ["openDirectory"],
+                    });
+                    if (newDir && newDir.length > 0) {
+                        await ObjectService.UpdateObjectMeta(makeORef("tab", id), {
+                            "tab:basedir": newDir[0],
+                        });
+                    }
+                });
+            }, [id, tabData]);
+
+            const handleClearBaseDir = useCallback(() => {
+                fireAndForget(async () => {
+                    await ObjectService.UpdateObjectMeta(makeORef("tab", id), {
+                        "tab:basedir": null,
+                    });
+                });
+            }, [id]);
+
+            const handleToggleLock = useCallback(() => {
+                const currentLock = tabData?.meta?.["tab:basedirlock"] || false;
+                fireAndForget(async () => {
+                    await ObjectService.UpdateObjectMeta(makeORef("tab", id), {
+                        "tab:basedirlock": !currentLock,
+                    });
+                });
+            }, [id, tabData]);
+
             const handleContextMenu = useCallback(
                 (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
                     e.preventDefault();
+                    const currentBaseDir = tabData?.meta?.["tab:basedir"];
+                    const isLocked = tabData?.meta?.["tab:basedirlock"] || false;
+
                     let menu: ContextMenuItem[] = [
                         { label: "Rename Tab", click: () => handleRenameTab(null) },
                         {
@@ -144,7 +180,59 @@ const Tab = memo(
                         },
                         { type: "separator" },
                     ];
+
+                    // Base Directory submenu
+                    const baseDirSubmenu: ContextMenuItem[] = [
+                        {
+                            label: "Set Base Directory...",
+                            click: handleSetBaseDir,
+                        },
+                    ];
+
+                    if (currentBaseDir) {
+                        baseDirSubmenu.push({
+                            label: "Clear Base Directory",
+                            click: handleClearBaseDir,
+                        });
+                        baseDirSubmenu.push({ type: "separator" });
+                        baseDirSubmenu.push({
+                            label: isLocked ? "Unlock (Enable Smart Detection)" : "Lock (Disable Smart Detection)",
+                            click: handleToggleLock,
+                        });
+                    }
+
+                    menu.push({ label: "Base Directory", type: "submenu", submenu: baseDirSubmenu }, { type: "separator" });
+
                     const fullConfig = globalStore.get(atoms.fullConfigAtom);
+
+                    // Tab Variables presets
+                    const tabVarPresets: string[] = [];
+                    for (const key in fullConfig?.presets ?? {}) {
+                        if (key.startsWith("tabvar@")) {
+                            tabVarPresets.push(key);
+                        }
+                    }
+                    if (tabVarPresets.length > 0) {
+                        const tabVarSubmenu: ContextMenuItem[] = [];
+                        const oref = makeORef("tab", id);
+                        for (const presetName of tabVarPresets) {
+                            const preset = fullConfig.presets[presetName];
+                            if (preset == null) {
+                                continue;
+                            }
+                            const displayName = preset["display:name"] ?? presetName.replace("tabvar@", "");
+                            tabVarSubmenu.push({
+                                label: displayName,
+                                click: () =>
+                                    fireAndForget(async () => {
+                                        await ObjectService.UpdateObjectMeta(oref, preset);
+                                    }),
+                            });
+                        }
+                        menu.push({ label: "Tab Variables", type: "submenu", submenu: tabVarSubmenu }, { type: "separator" });
+                    }
+
+                    // Background presets
                     const bgPresets: string[] = [];
                     for (const key in fullConfig?.presets ?? {}) {
                         if (key.startsWith("bg@")) {
@@ -179,8 +267,20 @@ const Tab = memo(
                     menu.push({ label: "Close Tab", click: () => onClose(null) });
                     ContextMenuModel.showContextMenu(menu, e);
                 },
-                [handleRenameTab, id, onClose]
+                [handleRenameTab, id, onClose, tabData, handleSetBaseDir, handleClearBaseDir, handleToggleLock]
             );
+
+            const baseDir = tabData?.meta?.["tab:basedir"];
+            const isBaseDirLocked = tabData?.meta?.["tab:basedirlock"] || false;
+
+            // Shorten base directory path for display
+            const getShortPath = (path: string) => {
+                if (!path) return "";
+                if (path.startsWith("~")) return path;
+                const parts = path.split(/[\/\\]/);
+                if (parts.length <= 2) return path;
+                return ".../" + parts.slice(-2).join("/");
+            };
 
             return (
                 <div
@@ -197,16 +297,44 @@ const Tab = memo(
                     data-tab-id={id}
                 >
                     <div className="tab-inner">
-                        <div
-                            ref={editableRef}
-                            className={clsx("name", { focused: isEditable })}
-                            contentEditable={isEditable}
-                            onDoubleClick={handleRenameTab}
-                            onBlur={handleBlur}
-                            onKeyDown={handleKeyDown}
-                            suppressContentEditableWarning={true}
-                        >
-                            {tabData?.name}
+                        <div className="tab-name-wrapper">
+                            <div
+                                ref={editableRef}
+                                className={clsx("name", { focused: isEditable })}
+                                contentEditable={isEditable}
+                                onDoubleClick={handleRenameTab}
+                                onBlur={handleBlur}
+                                onKeyDown={handleKeyDown}
+                                suppressContentEditableWarning={true}
+                            >
+                                {tabData?.name}
+                            </div>
+                            {baseDir && (
+                                <div className="tab-basedir" title={baseDir}>
+                                    <i className="fa fa-folder" />
+                                    <span className="tab-basedir-path">{getShortPath(baseDir)}</span>
+                                    {isBaseDirLocked && (
+                                        <i
+                                            className="fa fa-lock tab-basedir-lock"
+                                            title="Base directory locked (smart detection disabled)"
+                                            onClick={(e: React.MouseEvent) => {
+                                                e.stopPropagation();
+                                                handleToggleLock();
+                                            }}
+                                        />
+                                    )}
+                                    {!isBaseDirLocked && (
+                                        <i
+                                            className="fa fa-unlock tab-basedir-lock unlocked"
+                                            title="Base directory unlocked (smart detection enabled)"
+                                            onClick={(e: React.MouseEvent) => {
+                                                e.stopPropagation();
+                                                handleToggleLock();
+                                            }}
+                                        />
+                                    )}
+                                </div>
+                            )}
                         </div>
                         <Button
                             className="ghost grey close"
