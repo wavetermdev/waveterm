@@ -4,8 +4,10 @@
 package wshclient
 
 import (
+	"fmt"
 	"sync"
 
+	"github.com/google/uuid"
 	"github.com/wavetermdev/waveterm/pkg/wps"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
@@ -17,20 +19,14 @@ func (*WshServer) WshServerImpl() {}
 
 var WshServerImpl = WshServer{}
 
-const (
-	DefaultOutputChSize = 32
-	DefaultInputChSize  = 32
-)
-
 var waveSrvClient_Singleton *wshutil.WshRpc
 var waveSrvClient_Once = &sync.Once{}
-
-const BareClientRoute = "bare"
 
 func GetBareRpcClient() *wshutil.WshRpc {
 	waveSrvClient_Once.Do(func() {
 		waveSrvClient_Singleton = wshutil.MakeWshRpc(wshrpc.RpcContext{}, &WshServerImpl, "bare-client")
-		wshutil.DefaultRouter.RegisterTrustedLeaf(waveSrvClient_Singleton, BareClientRoute)
+		bareClientRoute := fmt.Sprintf("bare:%s", uuid.New().String())
+		wshutil.DefaultRouter.RegisterTrustedLeaf(waveSrvClient_Singleton, bareClientRoute)
 		wps.Broker.SetClient(wshutil.DefaultRouter)
 	})
 	return waveSrvClient_Singleton
