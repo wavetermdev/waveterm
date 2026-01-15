@@ -184,6 +184,7 @@ func runOutputLoop(ctx context.Context, jobId string, reader *streamclient.Reade
 			if updateErr != nil {
 				log.Printf("[job:%s] error updating job stream status: %v", jobId, updateErr)
 			}
+			tryTerminateJobManager(ctx, jobId)
 			break
 		}
 
@@ -191,11 +192,13 @@ func runOutputLoop(ctx context.Context, jobId string, reader *streamclient.Reade
 			log.Printf("[job:%s] stream error: %v", jobId, err)
 			updateErr := wstore.DBUpdate(ctx, &waveobj.Job{
 				OID:         jobId,
+				StreamDone:  true,
 				StreamError: err.Error(),
 			})
 			if updateErr != nil {
 				log.Printf("[job:%s] error updating job stream error: %v", jobId, updateErr)
 			}
+			tryTerminateJobManager(ctx, jobId)
 			break
 		}
 	}
@@ -227,5 +230,43 @@ func HandleJobExited(ctx context.Context, jobId string, data wshrpc.CommandJobEx
 	}
 
 	log.Printf("[job:%s] exited with code:%d signal:%q status:%s", jobId, data.ExitCode, data.ExitSignal, status)
+	tryTerminateJobManager(ctx, jobId)
 	return nil
+}
+
+func tryTerminateJobManager(ctx context.Context, jobId string) {
+	job, err := wstore.DBMustGet[*waveobj.Job](ctx, jobId)
+	if err != nil {
+		log.Printf("[job:%s] error getting job for termination check: %v", jobId, err)
+		return
+	}
+
+	jobExited := job.Status == JobStatus_Done || job.Status == JobStatus_Error
+
+	if !jobExited || !job.StreamDone {
+		log.Printf("[job:%s] not ready for termination: exited=%v streamDone=%v", jobId, jobExited, job.StreamDone)
+		return
+	}
+
+	log.Printf("[job:%s] both job exited and stream finished, terminating job manager", jobId)
+
+	connRpc := wshclient.GetBareRpcClient()
+	if connRpc == nil {
+		log.Printf("[job:%s] error terminating job manager: rpc client not available", jobId)
+		return
+	}
+
+	rpcOpts := &wshrpc.RpcOpts{
+		Route:      wshutil.MakeJobRouteId(jobId),
+		Timeout:    5000,
+		NoResponse: true,
+	}
+
+	err = wshclient.JobManagerExitCommand(connRpc, rpcOpts)
+	if err != nil {
+		log.Printf("[job:%s] error sending job manager exit command: %v", jobId, err)
+		return
+	}
+
+	log.Printf("[job:%s] job manager exit command sent successfully", jobId)
 }
