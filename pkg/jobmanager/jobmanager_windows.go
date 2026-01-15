@@ -17,3 +17,10 @@ func getProcessGroupId(pid int) (int, error) {
 func normalizeSignal(sigName string) os.Signal {
 	return nil
 }
+
+func daemonize(clientId string, jobId string) error {
+	return fmt.Errorf("daemonize not supported on windows")
+}
+
+func setupJobManagerSignalHandlers() {
+}

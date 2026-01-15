@@ -112,7 +112,7 @@ func (jm *JobCmd) GetPGID() (int, error) {
 	if jm.processExited {
 		return 0, fmt.Errorf("process already exited")
 	}
-	pgid, err := syscall.Getpgid(jm.cmd.Process.Pid)
+	pgid, err := getProcessGroupId(jm.cmd.Process.Pid)
 	if err != nil {
 		return 0, fmt.Errorf("failed to get pgid: %w", err)
 	}
