@@ -695,6 +695,9 @@ func (router *WshRouter) bindRoute(linkId baseds.LinkId, routeId string, isSourc
 	if !strings.HasPrefix(routeId, ControlPrefix) {
 		router.announceUpstream(routeId)
 	}
+	if router.IsRootRouter() {
+		router.publishRouteToBroker(routeId)
+	}
 	return nil
 }
 
@@ -711,12 +714,19 @@ func (router *WshRouter) getUpstreamClient() AbstractRpcClient {
 	return lm.client
 }
 
+func (router *WshRouter) publishRouteToBroker(routeId string) {
+	defer func() {
+		panichandler.PanicHandler("WshRouter:publishRouteToBroker", recover())
+	}()
+	wps.Broker.Publish(wps.WaveEvent{Event: wps.Event_RouteUp, Scopes: []string{routeId}})
+}
+
 func (router *WshRouter) unsubscribeFromBroker(routeId string) {
 	defer func() {
-		panichandler.PanicHandler("WshRouter:unregisterRoute:routegone", recover())
+		panichandler.PanicHandler("WshRouter:unregisterRoute:routedown", recover())
 	}()
 	wps.Broker.UnsubscribeAll(routeId)
-	wps.Broker.Publish(wps.WaveEvent{Event: wps.Event_RouteGone, Scopes: []string{routeId}})
+	wps.Broker.Publish(wps.WaveEvent{Event: wps.Event_RouteDown, Scopes: []string{routeId}})
 }
 
 func sendControlUnauthenticatedErrorResponse(cmdMsg RpcMessage, linkMeta linkMeta) {
