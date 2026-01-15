@@ -64,10 +64,11 @@ func StartJob(ctx context.Context, params StartJobParams) (string, error) {
 		return "", fmt.Errorf("failed to generate job auth token: %w", err)
 	}
 
-	rpcCtx := wshrpc.RpcContext{
-		RouteId: wshutil.MakeJobRouteId(jobId),
+	jobAccessClaims := &wavejwt.WaveJwtClaims{
+		MainServer: true,
+		JobId:      jobId,
 	}
-	jobAccessToken, err := wshutil.MakeClientJWTToken(rpcCtx)
+	jobAccessToken, err := wavejwt.Sign(jobAccessClaims)
 	if err != nil {
 		return "", fmt.Errorf("failed to generate job access token: %w", err)
 	}
@@ -275,4 +276,55 @@ func tryTerminateJobManager(ctx context.Context, jobId string) {
 	}
 
 	log.Printf("[job:%s] job manager exit command sent successfully", jobId)
+}
+
+func TerminateJob(ctx context.Context, jobId string) error {
+	_, err := wstore.DBMustGet[*waveobj.Job](ctx, jobId)
+	if err != nil {
+		return fmt.Errorf("failed to get job: %w", err)
+	}
+
+	connRpc := wshclient.GetBareRpcClient()
+	if connRpc == nil {
+		return fmt.Errorf("main rpc client not available")
+	}
+
+	rpcOpts := &wshrpc.RpcOpts{
+		Route:   wshutil.MakeJobRouteId(jobId),
+		Timeout: 5000,
+	}
+
+	err = wshclient.JobTerminateCommand(connRpc, wshrpc.CommandJobTerminateData{}, rpcOpts)
+	if err != nil {
+		return fmt.Errorf("failed to send terminate command: %w", err)
+	}
+
+	log.Printf("[job:%s] job terminate command sent successfully", jobId)
+	return nil
+}
+
+func ExitJobManager(ctx context.Context, jobId string) error {
+	_, err := wstore.DBMustGet[*waveobj.Job](ctx, jobId)
+	if err != nil {
+		return fmt.Errorf("failed to get job: %w", err)
+	}
+
+	connRpc := wshclient.GetBareRpcClient()
+	if connRpc == nil {
+		return fmt.Errorf("main rpc client not available")
+	}
+
+	rpcOpts := &wshrpc.RpcOpts{
+		Route:      wshutil.MakeJobRouteId(jobId),
+		Timeout:    5000,
+		NoResponse: true,
+	}
+
+	err = wshclient.JobManagerExitCommand(connRpc, rpcOpts)
+	if err != nil {
+		return fmt.Errorf("failed to send exit command: %w", err)
+	}
+
+	log.Printf("[job:%s] job manager exit command sent successfully", jobId)
+	return nil
 }

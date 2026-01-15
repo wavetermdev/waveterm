@@ -20,6 +20,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/wavetermdev/waveterm/pkg/jobmanager"
 	"github.com/wavetermdev/waveterm/pkg/remote/connparse"
 	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/fstype"
 	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/wshfs"
@@ -976,7 +977,7 @@ func (impl *ServerImpl) RemoteStartJobCommand(ctx context.Context, data wshrpc.C
 		cmd.Wait()
 	}()
 
-	socketPath := filepath.Join(wavebase.GetHomeDir(), ".waveterm", "jobs", data.ClientId, fmt.Sprintf("%s.sock", data.JobId))
+	socketPath := jobmanager.GetJobSocketPath(data.JobId)
 	log.Printf("RemoteStartJobCommand: connecting to socket: %s\n", socketPath)
 	conn, err := net.Dial("unix", socketPath)
 	if err != nil {
@@ -1004,7 +1005,7 @@ func (impl *ServerImpl) RemoteStartJobCommand(ctx context.Context, data wshrpc.C
 
 	routeId := wshutil.MakeLinkRouteId(linkId)
 	authData := wshrpc.CommandAuthenticateToJobData{
-		JobAccessToken: data.JobAuthToken,
+		JobAccessToken: data.MainServerJwtToken,
 	}
 	err = wshclient.AuthenticateToJobManagerCommand(impl.RpcClient, authData, &wshrpc.RpcOpts{Route: routeId})
 	if err != nil {

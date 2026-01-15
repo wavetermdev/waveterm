@@ -11,7 +11,6 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
-	"github.com/wavetermdev/waveterm/pkg/wshutil"
 )
 
 var jobDebugCmd = &cobra.Command{
@@ -33,10 +32,16 @@ var jobDebugDeleteCmd = &cobra.Command{
 	RunE:  jobDebugDeleteRun,
 }
 
-var jobDebugTerminateCmd = &cobra.Command{
-	Use:   "terminate",
-	Short: "terminate a job manager process",
-	RunE:  jobDebugTerminateRun,
+var jobDebugTerminateCmdCmd = &cobra.Command{
+	Use:   "terminate-cmd",
+	Short: "terminate a command process",
+	RunE:  jobDebugTerminateCmdRun,
+}
+
+var jobDebugExitCmd = &cobra.Command{
+	Use:   "exit",
+	Short: "exit a job manager",
+	RunE:  jobDebugExitRun,
 }
 
 var jobDebugGetOutputCmd = &cobra.Command{
@@ -54,12 +59,14 @@ var jobDebugStartCmd = &cobra.Command{
 var jobIdFlag string
 var jobDebugJsonFlag bool
 var jobConnFlag string
+var exitJobIdFlag string
 
 func init() {
 	rootCmd.AddCommand(jobDebugCmd)
 	jobDebugCmd.AddCommand(jobDebugListCmd)
 	jobDebugCmd.AddCommand(jobDebugDeleteCmd)
-	jobDebugCmd.AddCommand(jobDebugTerminateCmd)
+	jobDebugCmd.AddCommand(jobDebugTerminateCmdCmd)
+	jobDebugCmd.AddCommand(jobDebugExitCmd)
 	jobDebugCmd.AddCommand(jobDebugGetOutputCmd)
 	jobDebugCmd.AddCommand(jobDebugStartCmd)
 
@@ -68,8 +75,11 @@ func init() {
 	jobDebugDeleteCmd.Flags().StringVar(&jobIdFlag, "jobid", "", "job id to delete (required)")
 	jobDebugDeleteCmd.MarkFlagRequired("jobid")
 
-	jobDebugTerminateCmd.Flags().StringVar(&jobIdFlag, "jobid", "", "job id to terminate (required)")
-	jobDebugTerminateCmd.MarkFlagRequired("jobid")
+	jobDebugTerminateCmdCmd.Flags().StringVar(&jobIdFlag, "jobid", "", "job id to terminate (required)")
+	jobDebugTerminateCmdCmd.MarkFlagRequired("jobid")
+
+	jobDebugExitCmd.Flags().StringVar(&exitJobIdFlag, "jobid", "", "job id to exit (required)")
+	jobDebugExitCmd.MarkFlagRequired("jobid")
 
 	jobDebugGetOutputCmd.Flags().StringVar(&jobIdFlag, "jobid", "", "job id to get output for (required)")
 	jobDebugGetOutputCmd.MarkFlagRequired("jobid")
@@ -130,17 +140,23 @@ func jobDebugDeleteRun(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func jobDebugTerminateRun(cmd *cobra.Command, args []string) error {
-	err := wshclient.JobManagerExitCommand(RpcClient, &wshrpc.RpcOpts{
-		Route:      wshutil.MakeJobRouteId(jobIdFlag),
-		Timeout:    5000,
-		NoResponse: true,
-	})
+func jobDebugTerminateCmdRun(cmd *cobra.Command, args []string) error {
+	err := wshclient.JobControllerTerminateJobCommand(RpcClient, jobIdFlag, nil)
 	if err != nil {
-		return fmt.Errorf("terminating job manager: %w", err)
+		return fmt.Errorf("terminating command: %w", err)
 	}
 
-	fmt.Printf("Job manager for %s terminated successfully\n", jobIdFlag)
+	fmt.Printf("Command for %s terminated successfully\n", jobIdFlag)
+	return nil
+}
+
+func jobDebugExitRun(cmd *cobra.Command, args []string) error {
+	err := wshclient.JobControllerExitJobCommand(RpcClient, exitJobIdFlag, nil)
+	if err != nil {
+		return fmt.Errorf("exiting job manager: %w", err)
+	}
+
+	fmt.Printf("Job manager for %s exited successfully\n", exitJobIdFlag)
 	return nil
 }
 

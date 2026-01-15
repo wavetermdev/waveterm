@@ -168,6 +168,8 @@ type WshRpcInterface interface {
 	JobDebugListCommand(ctx context.Context) ([]*waveobj.Job, error)
 	JobDebugDeleteCommand(ctx context.Context, jobId string) error
 	JobControllerStartJobCommand(ctx context.Context, data CommandJobControllerStartJobData) (string, error)
+	JobControllerTerminateJobCommand(ctx context.Context, jobId string) error
+	JobControllerExitJobCommand(ctx context.Context, jobId string) error
 }
 
 // for frontend
