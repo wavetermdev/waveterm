@@ -50,6 +50,14 @@ func EnsureInitialData() (bool, error) {
 			return firstLaunch, fmt.Errorf("error updating client: %w", err)
 		}
 	}
+	if client.InstallId == "" {
+		log.Println("client.InstallId is empty")
+		client.InstallId = uuid.NewString()
+		err = wstore.DBUpdate(ctx, client)
+		if err != nil {
+			return firstLaunch, fmt.Errorf("error updating client: %w", err)
+		}
+	}
 	log.Printf("clientid: %s\n", client.OID)
 	if len(client.WindowIds) == 1 {
 		log.Println("client has one window")

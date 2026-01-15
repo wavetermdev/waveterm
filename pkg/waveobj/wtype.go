@@ -136,6 +136,7 @@ type Client struct {
 	TosAgreed     int64       `json:"tosagreed,omitempty"` // unix milli
 	HasOldHistory bool        `json:"hasoldhistory,omitempty"`
 	TempOID       string      `json:"tempoid,omitempty"`
+	InstallId     string      `json:"installid,omitempty"`
 }
 
 func (*Client) GetOType() string {
