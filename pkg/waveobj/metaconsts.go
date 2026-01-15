@@ -95,6 +95,9 @@ const (
 	MetaKey_BgBorderColor                    = "bg:bordercolor"
 	MetaKey_BgActiveBorderColor              = "bg:activebordercolor"
 
+	MetaKey_TabBaseDir                       = "tab:basedir"
+	MetaKey_TabBaseDirLock                   = "tab:basedirlock"
+
 	MetaKey_WaveAiPanelOpen                  = "waveai:panelopen"
 	MetaKey_WaveAiPanelWidth                 = "waveai:panelwidth"
 	MetaKey_WaveAiModel                      = "waveai:model"

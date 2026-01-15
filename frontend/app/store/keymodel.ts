@@ -331,6 +331,12 @@ function getDefaultNewBlockDef(): BlockDef {
             controller: "shell",
         },
     };
+
+    // Try to get tab base directory
+    const tabAtom = atoms.activeTabAtom;
+    const tabData = globalStore.get(tabAtom);
+    const tabBaseDir = tabData?.meta?.["tab:basedir"];
+
     const layoutModel = getLayoutModelForStaticTab();
     const focusedNode = globalStore.get(layoutModel.focusedNode);
     if (focusedNode != null) {
@@ -345,6 +351,12 @@ function getDefaultNewBlockDef(): BlockDef {
             termBlockDef.meta.connection = blockData.meta.connection;
         }
     }
+
+    // If no cwd from focused block, use tab base directory
+    if (termBlockDef.meta["cmd:cwd"] == null && tabBaseDir != null) {
+        termBlockDef.meta["cmd:cwd"] = tabBaseDir;
+    }
+
     return termBlockDef;
 }
 

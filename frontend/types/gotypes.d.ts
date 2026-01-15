@@ -895,6 +895,8 @@ declare global {
         "bg:blendmode"?: string;
         "bg:bordercolor"?: string;
         "bg:activebordercolor"?: string;
+        "tab:basedir"?: string;
+        "tab:basedirlock"?: boolean;
         "waveai:panelopen"?: boolean;
         "waveai:panelwidth"?: number;
         "waveai:model"?: string;
