@@ -22,6 +22,8 @@ import (
 const (
 	OpenAIDefaultAPIVersion = "2024-12-31"
 	OpenAIDefaultMaxTokens  = 4096
+	// "medium" verbosity is more widely supported across models than "low"
+	OpenAIDefaultVerbosity = "medium"
 )
 
 // convertContentBlockToParts converts a single content block to UIMessageParts
@@ -190,10 +192,11 @@ func debugPrintReq(req *OpenAIRequest, endpoint string) {
 func buildOpenAIHTTPRequest(ctx context.Context, inputs []any, chatOpts uctypes.WaveChatOpts, cont *uctypes.WaveContinueResponse) (*http.Request, error) {
 	opts := chatOpts.Config
 
-	// If continuing from premium rate limit, downgrade to default model and low thinking
+	// If continuing from premium rate limit, downgrade to default model and medium thinking
+	// (medium is more widely supported than low across different models)
 	if cont != nil && cont.ContinueFromKind == uctypes.StopKindPremiumRateLimit {
 		opts.Model = uctypes.DefaultOpenAIModel
-		opts.ThinkingLevel = uctypes.ThinkingLevelLow
+		opts.ThinkingLevel = uctypes.ThinkingLevelMedium
 	}
 
 	if opts.Model == "" {
@@ -229,13 +232,18 @@ func buildOpenAIHTTPRequest(ctx context.Context, inputs []any, chatOpts uctypes.
 	}
 
 	// Build request body
+	// Use configured verbosity, or fall back to default constant
+	verbosity := opts.Verbosity
+	if verbosity == "" {
+		verbosity = OpenAIDefaultVerbosity
+	}
 	reqBody := &OpenAIRequest{
 		Model:           opts.Model,
 		Input:           inputs,
 		Stream:          true,
 		StreamOptions:   &StreamOptionsType{IncludeObfuscation: false},
 		MaxOutputTokens: maxTokens,
-		Text:            &TextType{Verbosity: "low"},
+		Text:            &TextType{Verbosity: verbosity},
 	}
 
 	// Add system prompt as instructions if provided
@@ -264,10 +272,10 @@ func buildOpenAIHTTPRequest(ctx context.Context, inputs []any, chatOpts uctypes.
 		reqBody.Tools = append(reqBody.Tools, webSearchTool)
 	}
 
-	// Set reasoning based on thinking level
+	// Set reasoning based on thinking level from config
 	if opts.ThinkingLevel != "" {
 		reqBody.Reasoning = &ReasoningType{
-			Effort: opts.ThinkingLevel, // low, medium, high map directly
+			Effort: opts.ThinkingLevel,
 		}
 		if opts.Model == "gpt-5" || opts.Model == "gpt-5.1" {
 			reqBody.Reasoning.Summary = "auto"
