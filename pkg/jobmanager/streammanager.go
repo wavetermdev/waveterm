@@ -141,6 +141,13 @@ func (sm *StreamManager) ClientConnected(streamId string, dataSender DataSender,
 	return startSeq, nil
 }
 
+// GetStreamId returns the current stream ID (safe to call with lock held by caller)
+func (sm *StreamManager) GetStreamId() string {
+	sm.lock.Lock()
+	defer sm.lock.Unlock()
+	return sm.streamId
+}
+
 // ClientDisconnected transitions to DISCONNECTED mode
 func (sm *StreamManager) ClientDisconnected() {
 	sm.lock.Lock()

@@ -38,6 +38,12 @@ var jobDebugTerminateCmdCmd = &cobra.Command{
 	RunE:  jobDebugTerminateCmdRun,
 }
 
+var jobDebugDeleteAllCmd = &cobra.Command{
+	Use:   "deleteall",
+	Short: "delete all jobs",
+	RunE:  jobDebugDeleteAllRun,
+}
+
 var jobDebugExitCmd = &cobra.Command{
 	Use:   "exit",
 	Short: "exit a job manager",
@@ -65,6 +71,7 @@ func init() {
 	rootCmd.AddCommand(jobDebugCmd)
 	jobDebugCmd.AddCommand(jobDebugListCmd)
 	jobDebugCmd.AddCommand(jobDebugDeleteCmd)
+	jobDebugCmd.AddCommand(jobDebugDeleteAllCmd)
 	jobDebugCmd.AddCommand(jobDebugTerminateCmdCmd)
 	jobDebugCmd.AddCommand(jobDebugExitCmd)
 	jobDebugCmd.AddCommand(jobDebugGetOutputCmd)
@@ -137,6 +144,31 @@ func jobDebugDeleteRun(cmd *cobra.Command, args []string) error {
 	}
 
 	fmt.Printf("Job %s deleted successfully\n", jobIdFlag)
+	return nil
+}
+
+func jobDebugDeleteAllRun(cmd *cobra.Command, args []string) error {
+	rtnData, err := wshclient.JobDebugListCommand(RpcClient, &wshrpc.RpcOpts{Timeout: 5000})
+	if err != nil {
+		return fmt.Errorf("getting job debug list: %w", err)
+	}
+
+	if len(rtnData) == 0 {
+		fmt.Printf("No jobs to delete\n")
+		return nil
+	}
+
+	deletedCount := 0
+	for _, job := range rtnData {
+		err := wshclient.JobDebugDeleteCommand(RpcClient, job.OID, &wshrpc.RpcOpts{Timeout: 5000})
+		if err != nil {
+			fmt.Printf("Error deleting job %s: %v\n", job.OID, err)
+		} else {
+			deletedCount++
+		}
+	}
+
+	fmt.Printf("Deleted %d of %d job(s)\n", deletedCount, len(rtnData))
 	return nil
 }
 

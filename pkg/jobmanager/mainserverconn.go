@@ -143,6 +143,10 @@ func (msc *MainServerConn) StartJobCommand(ctx context.Context, data wshrpc.Comm
 		if err != nil {
 			return nil, fmt.Errorf("failed to connect stream: %w", err)
 		}
+		err = msc.WshRpc.StreamBroker.AttachStreamWriter(data.StreamMeta, WshCmdJobManager.StreamManager)
+		if err != nil {
+			return nil, fmt.Errorf("failed to attach stream writer: %w", err)
+		}
 		log.Printf("StartJob: connected stream streamid=%s serverSeq=%d\n", data.StreamMeta.Id, serverSeq)
 	}
 
@@ -192,6 +196,11 @@ func (msc *MainServerConn) JobConnectCommand(ctx context.Context, data wshrpc.Co
 		return nil, err
 	}
 
+	err = msc.WshRpc.StreamBroker.AttachStreamWriter(&data.StreamMeta, WshCmdJobManager.StreamManager)
+	if err != nil {
+		return nil, fmt.Errorf("failed to attach stream writer: %w", err)
+	}
+
 	rtnData := &wshrpc.CommandJobConnectRtnData{Seq: serverSeq}
 	hasExited, exitData := WshCmdJobManager.Cmd.GetExitInfo()
 	if hasExited && exitData != nil {
@@ -203,17 +212,6 @@ func (msc *MainServerConn) JobConnectCommand(ctx context.Context, data wshrpc.Co
 
 	log.Printf("JobConnect: streamid=%s clientSeq=%d serverSeq=%d hasExited=%v\n", data.StreamMeta.Id, data.Seq, serverSeq, hasExited)
 	return rtnData, nil
-}
-
-func (msc *MainServerConn) StreamDataAckCommand(ctx context.Context, data wshrpc.CommandStreamAckData) error {
-	if !msc.PeerAuthenticated.Load() {
-		return nil
-	}
-	if !msc.SelfAuthenticated.Load() {
-		return nil
-	}
-	WshCmdJobManager.StreamManager.RecvAck(data)
-	return nil
 }
 
 func (msc *MainServerConn) JobTerminateCommand(ctx context.Context, data wshrpc.CommandJobTerminateData) error {

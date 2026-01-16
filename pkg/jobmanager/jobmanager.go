@@ -124,7 +124,12 @@ func (jm *JobManager) connectToStreamHelper_withlock(mainServerConn *MainServerC
 
 	if jm.connectedStreamClient != nil {
 		log.Printf("connectToStreamHelper: disconnecting existing client\n")
+		oldStreamId := jm.StreamManager.GetStreamId()
 		jm.StreamManager.ClientDisconnected()
+		if oldStreamId != "" {
+			mainServerConn.WshRpc.StreamBroker.DetachStreamWriter(oldStreamId)
+			log.Printf("connectToStreamHelper: detached old stream id=%s\n", oldStreamId)
+		}
 		jm.connectedStreamClient = nil
 	}
 	dataSender := &routedDataSender{

@@ -197,18 +197,19 @@ func StartJob(ctx context.Context, params StartJobParams) (string, error) {
 	rtnData, err := wshclient.RemoteStartJobCommand(bareRpc, startJobData, rpcOpts)
 	if err != nil {
 		log.Printf("[job:%s] RemoteStartJobCommand failed: %v", jobId, err)
-		wstore.DBUpdate(ctx, &waveobj.Job{
-			OID:    jobId,
-			Status: JobStatus_Error,
-			Error:  fmt.Sprintf("failed to start job: %v", err),
+		errMsg := fmt.Sprintf("failed to start job: %v", err)
+		wstore.DBUpdateFn(ctx, jobId, func(job *waveobj.Job) {
+			job.Status = JobStatus_Error
+			job.Error = errMsg
 		})
 		return "", fmt.Errorf("failed to start remote job: %w", err)
 	}
 
 	log.Printf("[job:%s] RemoteStartJobCommand succeeded, pgid=%d", jobId, rtnData.Pgid)
-	job.Pgid = rtnData.Pgid
-	job.Status = JobStatus_Running
-	err = wstore.DBUpdate(ctx, job)
+	err = wstore.DBUpdateFn(ctx, jobId, func(job *waveobj.Job) {
+		job.Pgid = rtnData.Pgid
+		job.Status = JobStatus_Running
+	})
 	if err != nil {
 		log.Printf("[job:%s] warning: failed to update job status to running: %v", jobId, err)
 	} else {
@@ -246,9 +247,8 @@ func runOutputLoop(ctx context.Context, jobId string, reader *streamclient.Reade
 
 		if err == io.EOF {
 			log.Printf("[job:%s] stream ended (EOF)", jobId)
-			updateErr := wstore.DBUpdate(ctx, &waveobj.Job{
-				OID:        jobId,
-				StreamDone: true,
+			updateErr := wstore.DBUpdateFn(ctx, jobId, func(job *waveobj.Job) {
+				job.StreamDone = true
 			})
 			if updateErr != nil {
 				log.Printf("[job:%s] error updating job stream status: %v", jobId, updateErr)
@@ -259,10 +259,10 @@ func runOutputLoop(ctx context.Context, jobId string, reader *streamclient.Reade
 
 		if err != nil {
 			log.Printf("[job:%s] stream error: %v", jobId, err)
-			updateErr := wstore.DBUpdate(ctx, &waveobj.Job{
-				OID:         jobId,
-				StreamDone:  true,
-				StreamError: err.Error(),
+			streamErr := err.Error()
+			updateErr := wstore.DBUpdateFn(ctx, jobId, func(job *waveobj.Job) {
+				job.StreamDone = true
+				job.StreamError = streamErr
 			})
 			if updateErr != nil {
 				log.Printf("[job:%s] error updating job stream error: %v", jobId, updateErr)
@@ -274,31 +274,24 @@ func runOutputLoop(ctx context.Context, jobId string, reader *streamclient.Reade
 }
 
 func HandleJobExited(ctx context.Context, jobId string, data wshrpc.CommandJobExitedData) error {
-	var status string
-	if data.ExitErr != "" {
-		status = JobStatus_Error
-	} else {
-		status = JobStatus_Done
-	}
-
-	updateData := &waveobj.Job{
-		OID:        jobId,
-		Status:     status,
-		ExitCode:   data.ExitCode,
-		ExitSignal: data.ExitSignal,
-		ExitTs:     data.ExitTs,
-	}
-
-	if data.ExitErr != "" {
-		updateData.Error = data.ExitErr
-	}
-
-	err := wstore.DBUpdate(ctx, updateData)
+	var finalStatus string
+	err := wstore.DBUpdateFn(ctx, jobId, func(job *waveobj.Job) {
+		if data.ExitErr != "" {
+			job.Status = JobStatus_Error
+			job.Error = data.ExitErr
+		} else {
+			job.Status = JobStatus_Done
+		}
+		job.ExitCode = data.ExitCode
+		job.ExitSignal = data.ExitSignal
+		job.ExitTs = data.ExitTs
+		finalStatus = job.Status
+	})
 	if err != nil {
 		return fmt.Errorf("failed to update job exit status: %w", err)
 	}
 
-	log.Printf("[job:%s] exited with code:%d signal:%q status:%s", jobId, data.ExitCode, data.ExitSignal, status)
+	log.Printf("[job:%s] exited with code:%d signal:%q status:%s", jobId, data.ExitCode, data.ExitSignal, finalStatus)
 	tryTerminateJobManager(ctx, jobId)
 	return nil
 }
