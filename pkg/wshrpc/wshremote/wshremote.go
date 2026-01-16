@@ -892,10 +892,18 @@ func (impl *ServerImpl) RemoteStartJobCommand(ctx context.Context, data wshrpc.C
 	}
 	log.Printf("RemoteStartJobCommand: wshPath=%s\n", wshPath)
 
+	readyPipeRead, readyPipeWrite, err := os.Pipe()
+	if err != nil {
+		return nil, fmt.Errorf("cannot create ready pipe: %w", err)
+	}
+	defer readyPipeRead.Close()
+	defer readyPipeWrite.Close()
+
 	cmd := exec.Command(wshPath, "jobmanager", "--jobid", data.JobId, "--clientid", data.ClientId)
 	if data.PublicKeyBase64 != "" {
 		cmd.Env = append(os.Environ(), "WAVETERM_PUBLICKEY="+data.PublicKeyBase64)
 	}
+	cmd.ExtraFiles = []*os.File{readyPipeWrite}
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		return nil, fmt.Errorf("cannot create stdin pipe: %w", err)
@@ -936,21 +944,34 @@ func (impl *ServerImpl) RemoteStartJobCommand(ctx context.Context, data wshrpc.C
 		}
 	}()
 
-	startCh := make(chan error, 1)
 	go func() {
 		scanner := bufio.NewScanner(stdout)
 		for scanner.Scan() {
 			line := scanner.Text()
-			log.Printf("RemoteStartJobCommand: stdout line: %s\n", line)
+			log.Printf("RemoteStartJobCommand: stdout: %s\n", line)
+		}
+		if err := scanner.Err(); err != nil {
+			log.Printf("RemoteStartJobCommand: error reading stdout: %v\n", err)
+		} else {
+			log.Printf("RemoteStartJobCommand: stdout EOF\n")
+		}
+	}()
+
+	startCh := make(chan error, 1)
+	go func() {
+		scanner := bufio.NewScanner(readyPipeRead)
+		for scanner.Scan() {
+			line := scanner.Text()
+			log.Printf("RemoteStartJobCommand: ready pipe line: %s\n", line)
 			if strings.Contains(line, "Wave-JobManagerStart") {
 				startCh <- nil
 				return
 			}
 		}
 		if err := scanner.Err(); err != nil {
-			startCh <- fmt.Errorf("error reading stdout: %w", err)
+			startCh <- fmt.Errorf("error reading ready pipe: %w", err)
 		} else {
-			log.Printf("RemoteStartJobCommand: stdout EOF\n")
+			log.Printf("RemoteStartJobCommand: ready pipe EOF\n")
 			startCh <- fmt.Errorf("job manager exited without start signal")
 		}
 	}()

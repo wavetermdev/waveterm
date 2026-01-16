@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
+	"log"
 	"sync"
 
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
@@ -30,28 +31,31 @@ type streamTerminalEvent struct {
 
 // StreamManager handles PTY output buffering with ACK-based flow control
 type StreamManager struct {
-	lock sync.Mutex
+	lock      sync.Mutex
+	drainCond *sync.Cond
 
 	streamId string
-	buf      *CirBuf
 
-	terminalEvent      *streamTerminalEvent
-	terminalEventSent  bool
-	terminalEventAcked bool
+	// this is the data read from the attached reader
+	buf           *CirBuf
+	terminalEvent *streamTerminalEvent
+	eofPos        int64 // fixed position when EOF/error occurs (-1 if not yet)
 
-	reader   io.Reader
-	readerWg sync.WaitGroup
+	reader io.Reader
 
+	cwndSize int
+	rwndSize int
+	// invariant: if connected is true, dataSender is non-nil
+	connected  bool
 	dataSender DataSender
 
-	cwndSize  int
-	rwndSize  int
-	connected bool
-	drained   bool
+	// unacked state (reset on disconnect)
+	sentNotAcked      int64
+	terminalEventSent bool
 
-	sentNotAcked int64
-	drainCond    *sync.Cond
-	closed       bool
+	// terminal state - once true, stream is complete
+	terminalEventAcked bool
+	closed             bool
 }
 
 func MakeStreamManager() *StreamManager {
@@ -60,10 +64,10 @@ func MakeStreamManager() *StreamManager {
 
 func MakeStreamManagerWithSizes(cwndSize, cirbufSize int) *StreamManager {
 	sm := &StreamManager{
-		buf:          MakeCirBuf(cirbufSize, true),
-		cwndSize:     cwndSize,
-		rwndSize:     cwndSize,
-		sentNotAcked: 0,
+		buf:      MakeCirBuf(cirbufSize, true),
+		eofPos:   -1,
+		cwndSize: cwndSize,
+		rwndSize: cwndSize,
 	}
 	sm.drainCond = sync.NewCond(&sm.lock)
 	go sm.senderLoop()
@@ -80,8 +84,6 @@ func (sm *StreamManager) AttachReader(r io.Reader) error {
 	}
 
 	sm.reader = r
-
-	sm.readerWg.Add(1)
 	go sm.readLoop()
 
 	return nil
@@ -91,6 +93,10 @@ func (sm *StreamManager) AttachReader(r io.Reader) error {
 func (sm *StreamManager) ClientConnected(streamId string, dataSender DataSender, rwndSize int, clientSeq int64) (int64, error) {
 	sm.lock.Lock()
 	defer sm.lock.Unlock()
+
+	if sm.closed || sm.terminalEventAcked {
+		return 0, fmt.Errorf("stream is closed")
+	}
 
 	if sm.connected {
 		return 0, fmt.Errorf("client already connected")
@@ -118,12 +124,8 @@ func (sm *StreamManager) ClientConnected(streamId string, dataSender DataSender,
 	sm.streamId = streamId
 	sm.dataSender = dataSender
 	sm.connected = true
-	sm.drained = false
 	sm.rwndSize = rwndSize
 	sm.sentNotAcked = 0
-	if !sm.terminalEventAcked {
-		sm.terminalEventSent = false
-	}
 	effectiveWindow := sm.cwndSize
 	if sm.rwndSize < effectiveWindow {
 		effectiveWindow = sm.rwndSize
@@ -150,9 +152,12 @@ func (sm *StreamManager) ClientDisconnected() {
 
 	sm.connected = false
 	sm.dataSender = nil
-	sm.drainCond.Signal()
 	sm.sentNotAcked = 0
+	if !sm.terminalEventAcked {
+		sm.terminalEventSent = false
+	}
 	sm.buf.SetEffectiveWindow(false, CirBufSize)
+	sm.drainCond.Signal()
 }
 
 // RecvAck processes an ACK from the client
@@ -167,6 +172,8 @@ func (sm *StreamManager) RecvAck(ackPk wshrpc.CommandStreamAckData) {
 
 	if ackPk.Fin {
 		sm.terminalEventAcked = true
+		sm.drainCond.Signal()
+		return
 	}
 
 	seq := ackPk.Seq
@@ -176,25 +183,15 @@ func (sm *StreamManager) RecvAck(ackPk wshrpc.CommandStreamAckData) {
 	}
 
 	ackedBytes := seq - headPos
-	available := sm.buf.Size()
-
-	maxAckable := int64(available) + sm.sentNotAcked
-	if ackedBytes > maxAckable {
+	if ackedBytes > sm.sentNotAcked {
 		return
 	}
 
 	if ackedBytes > 0 {
-		consumeFromBuf := int(ackedBytes)
-		if consumeFromBuf > available {
-			consumeFromBuf = available
-		}
-		if err := sm.buf.Consume(consumeFromBuf); err != nil {
+		if err := sm.buf.Consume(int(ackedBytes)); err != nil {
 			return
 		}
 		sm.sentNotAcked -= ackedBytes
-		if sm.sentNotAcked < 0 {
-			sm.sentNotAcked = 0
-		}
 	}
 
 	prevRwnd := sm.rwndSize
@@ -208,47 +205,34 @@ func (sm *StreamManager) RecvAck(ackPk wshrpc.CommandStreamAckData) {
 	if sm.rwndSize > prevRwnd || ackedBytes > 0 {
 		sm.drainCond.Signal()
 	}
-
-	if sm.terminalEvent != nil && !sm.terminalEventSent && sm.buf.Size() == 0 && sm.sentNotAcked == 0 {
-		sm.sendTerminalEvent_withlock()
-	}
 }
 
-// Close shuts down the sender loop and waits for the reader to finish
+// Close shuts down the sender loop. The reader loop will exit on its next iteration
+// or when the underlying reader is closed.
 func (sm *StreamManager) Close() {
 	sm.lock.Lock()
+	defer sm.lock.Unlock()
 	sm.closed = true
 	sm.drainCond.Signal()
-	sm.lock.Unlock()
-
-	sm.readerWg.Wait()
 }
 
 // readLoop is the main read goroutine
 func (sm *StreamManager) readLoop() {
-	defer sm.readerWg.Done()
-
+	readBuf := make([]byte, MaxPacketSize)
 	for {
 		sm.lock.Lock()
-		if sm.terminalEvent != nil {
-			sm.lock.Unlock()
+		closed := sm.closed
+		sm.lock.Unlock()
+
+		if closed {
 			return
 		}
 
-		isConnected := sm.connected && sm.drained
-		sm.lock.Unlock()
-
-		var readBuf []byte
-		if isConnected {
-			readBuf = make([]byte, 32*1024)
-		} else {
-			readBuf = make([]byte, DisconnReadSz)
-		}
-
 		n, err := sm.reader.Read(readBuf)
+		log.Printf("readLoop: read %d bytes from PTY, err=%v", n, err)
 
 		if n > 0 {
-			sm.handleReadData(readBuf[:n], isConnected)
+			sm.handleReadData(readBuf[:n])
 		}
 
 		if err != nil {
@@ -262,10 +246,14 @@ func (sm *StreamManager) readLoop() {
 	}
 }
 
-func (sm *StreamManager) handleReadData(data []byte, isConnected bool) {
+func (sm *StreamManager) handleReadData(data []byte) {
+	log.Printf("handleReadData: writing %d bytes to buffer", len(data))
 	sm.buf.Write(data)
-	if isConnected {
-		sm.sendBufferData()
+	sm.lock.Lock()
+	defer sm.lock.Unlock()
+	log.Printf("handleReadData: buffer size=%d, connected=%t, signaling=%t", sm.buf.Size(), sm.connected, sm.connected)
+	if sm.connected {
+		sm.drainCond.Signal()
 	}
 }
 
@@ -273,115 +261,110 @@ func (sm *StreamManager) handleEOF() {
 	sm.lock.Lock()
 	defer sm.lock.Unlock()
 
+	log.Printf("handleEOF: PTY reached EOF, totalSize=%d", sm.buf.TotalSize())
+	sm.eofPos = sm.buf.TotalSize()
 	sm.terminalEvent = &streamTerminalEvent{isEof: true}
-
-	if sm.buf.Size() == 0 && sm.sentNotAcked == 0 && sm.connected && sm.drained {
-		sm.sendTerminalEvent_withlock()
-	}
+	sm.drainCond.Signal()
 }
 
 func (sm *StreamManager) handleError(err error) {
 	sm.lock.Lock()
 	defer sm.lock.Unlock()
 
+	log.Printf("handleError: PTY error=%v, totalSize=%d", err, sm.buf.TotalSize())
+	sm.eofPos = sm.buf.TotalSize()
 	sm.terminalEvent = &streamTerminalEvent{err: err.Error()}
-
-	if sm.buf.Size() == 0 && sm.sentNotAcked == 0 && sm.connected && sm.drained {
-		sm.sendTerminalEvent_withlock()
-	}
+	sm.drainCond.Signal()
 }
 
 func (sm *StreamManager) senderLoop() {
 	for {
-		sm.lock.Lock()
-
-		if sm.closed {
-			sm.lock.Unlock()
+		done, pkt, sender := sm.prepareNextPacket()
+		if done {
 			return
 		}
-
-		if !sm.connected {
-			sm.drainCond.Wait()
-			sm.lock.Unlock()
+		if pkt == nil {
 			continue
 		}
-
-		available := sm.buf.Size()
-		if available == 0 {
-			sm.drained = true
-			if sm.terminalEvent != nil && !sm.terminalEventSent && sm.sentNotAcked == 0 {
-				sm.sendTerminalEvent_withlock()
-			}
-			sm.drainCond.Wait()
-			sm.lock.Unlock()
-			continue
-		}
-
-		effectiveRwnd := sm.rwndSize
-		if sm.cwndSize < effectiveRwnd {
-			effectiveRwnd = sm.cwndSize
-		}
-		availableToSend := int64(effectiveRwnd) - sm.sentNotAcked
-
-		if availableToSend <= 0 {
-			sm.drainCond.Wait()
-			sm.lock.Unlock()
-			continue
-		}
-
-		peekSize := int(availableToSend)
-		if peekSize > MaxPacketSize {
-			peekSize = MaxPacketSize
-		}
-		if peekSize > available {
-			peekSize = available
-		}
-
-		data := make([]byte, peekSize)
-		n := sm.buf.PeekDataAt(int(sm.sentNotAcked), data)
-		if n == 0 {
-			sm.lock.Unlock()
-			continue
-		}
-		data = data[:n]
-
-		seq := sm.buf.HeadPos() + sm.sentNotAcked
-		sm.sentNotAcked += int64(n)
-		dataSender := sm.dataSender
-		sm.lock.Unlock()
-
-		if dataSender == nil {
-			continue
-		}
-
-		pkt := wshrpc.CommandStreamData{
-			Id:     sm.streamId,
-			Seq:    seq,
-			Data64: base64.StdEncoding.EncodeToString(data),
-		}
-		dataSender.SendData(pkt)
+		sender.SendData(*pkt)
 	}
 }
 
-func (sm *StreamManager) sendBufferData() {
+func (sm *StreamManager) prepareNextPacket() (done bool, pkt *wshrpc.CommandStreamData, sender DataSender) {
 	sm.lock.Lock()
 	defer sm.lock.Unlock()
-	sm.drainCond.Signal()
+
+	available := sm.buf.Size()
+	log.Printf("prepareNextPacket: connected=%t, available=%d, closed=%t, terminalEventAcked=%t, terminalEvent=%v",
+		sm.connected, available, sm.closed, sm.terminalEventAcked, sm.terminalEvent != nil)
+
+	if sm.closed || sm.terminalEventAcked {
+		return true, nil, nil
+	}
+
+	if !sm.connected {
+		log.Printf("prepareNextPacket: waiting for connection")
+		sm.drainCond.Wait()
+		return false, nil, nil
+	}
+
+	if available == 0 {
+		if sm.terminalEvent != nil && !sm.terminalEventSent {
+			log.Printf("prepareNextPacket: preparing terminal packet")
+			return false, sm.prepareTerminalPacket(), sm.dataSender
+		}
+		log.Printf("prepareNextPacket: no data available, waiting")
+		sm.drainCond.Wait()
+		return false, nil, nil
+	}
+
+	effectiveRwnd := sm.rwndSize
+	if sm.cwndSize < effectiveRwnd {
+		effectiveRwnd = sm.cwndSize
+	}
+	availableToSend := int64(effectiveRwnd) - sm.sentNotAcked
+
+	if availableToSend <= 0 {
+		sm.drainCond.Wait()
+		return false, nil, nil
+	}
+
+	peekSize := int(availableToSend)
+	if peekSize > MaxPacketSize {
+		peekSize = MaxPacketSize
+	}
+	if peekSize > available {
+		peekSize = available
+	}
+
+	data := make([]byte, peekSize)
+	n := sm.buf.PeekDataAt(int(sm.sentNotAcked), data)
+	if n == 0 {
+		log.Printf("prepareNextPacket: PeekDataAt returned 0 bytes, waiting for ACK")
+		sm.drainCond.Wait()
+		return false, nil, nil
+	}
+	data = data[:n]
+
+	seq := sm.buf.HeadPos() + sm.sentNotAcked
+	sm.sentNotAcked += int64(n)
+
+	log.Printf("prepareNextPacket: sending packet seq=%d, len=%d bytes", seq, n)
+	return false, &wshrpc.CommandStreamData{
+		Id:     sm.streamId,
+		Seq:    seq,
+		Data64: base64.StdEncoding.EncodeToString(data),
+	}, sm.dataSender
 }
 
-func (sm *StreamManager) sendTerminalEvent_withlock() {
-	if sm.terminalEventSent {
-		return
+func (sm *StreamManager) prepareTerminalPacket() *wshrpc.CommandStreamData {
+	if sm.terminalEventSent || sm.terminalEvent == nil {
+		return nil
 	}
 
-	if sm.dataSender == nil {
-		return
-	}
-
-	seq := sm.buf.HeadPos()
-	pkt := wshrpc.CommandStreamData{
+	pkt := &wshrpc.CommandStreamData{
 		Id:  sm.streamId,
-		Seq: seq,
+		Seq: sm.eofPos,
 	}
 
 	if sm.terminalEvent.isEof {
@@ -391,5 +374,5 @@ func (sm *StreamManager) sendTerminalEvent_withlock() {
 	}
 
 	sm.terminalEventSent = true
-	sm.dataSender.SendData(pkt)
+	return pkt
 }

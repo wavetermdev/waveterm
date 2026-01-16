@@ -873,6 +873,21 @@ func GetConn(opts *remote.SSHOpts) *SSHConn {
 	return conn
 }
 
+func IsConnected(connName string) (bool, error) {
+	if IsLocalConnName(connName) {
+		return true, nil
+	}
+	connOpts, err := remote.ParseOpts(connName)
+	if err != nil {
+		return false, fmt.Errorf("error parsing connection name: %w", err)
+	}
+	conn := GetConn(connOpts)
+	if conn == nil {
+		return false, nil
+	}
+	return conn.GetStatus() == Status_Connected, nil
+}
+
 // Convenience function for ensuring a connection is established
 func EnsureConnection(ctx context.Context, connName string) error {
 	if IsLocalConnName(connName) {

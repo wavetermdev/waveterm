@@ -11,7 +11,6 @@ import (
 	"path/filepath"
 	"runtime"
 	"sync"
-	"time"
 
 	"github.com/wavetermdev/waveterm/pkg/baseds"
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
@@ -39,7 +38,7 @@ type JobManager struct {
 	connectedStreamClient *MainServerConn
 }
 
-func SetupJobManager(clientId string, jobId string, publicKeyBytes []byte, jobAuthToken string) error {
+func SetupJobManager(clientId string, jobId string, publicKeyBytes []byte, jobAuthToken string, readyFile *os.File) error {
 	if runtime.GOOS != "linux" && runtime.GOOS != "darwin" {
 		return fmt.Errorf("job manager only supported on unix systems, not %s", runtime.GOOS)
 	}
@@ -56,9 +55,8 @@ func SetupJobManager(clientId string, jobId string, publicKeyBytes []byte, jobAu
 	if err != nil {
 		return err
 	}
-	fmt.Fprintf(os.Stdout, JobManagerStartLabel+"\n")
-	os.Stdout.Sync()
-	time.Sleep(200 * time.Millisecond)
+	fmt.Fprintf(readyFile, JobManagerStartLabel+"\n")
+	readyFile.Close()
 
 	err = daemonize(clientId, jobId)
 	if err != nil {

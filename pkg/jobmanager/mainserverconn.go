@@ -44,6 +44,8 @@ type routedDataSender struct {
 }
 
 func (rds *routedDataSender) SendData(dataPk wshrpc.CommandStreamData) {
+	log.Printf("SendData: sending seq=%d, len=%d, eof=%t, error=%s, route=%s",
+		dataPk.Seq, len(dataPk.Data64), dataPk.Eof, dataPk.Error, rds.route)
 	err := wshclient.StreamDataCommand(rds.wshRpc, dataPk, &wshrpc.RpcOpts{NoResponse: true, Route: rds.route})
 	if err != nil {
 		log.Printf("SendData: error sending stream data: %v\n", err)
@@ -103,10 +105,13 @@ func (msc *MainServerConn) AuthenticateToJobManagerCommand(ctx context.Context, 
 }
 
 func (msc *MainServerConn) StartJobCommand(ctx context.Context, data wshrpc.CommandStartJobData) (*wshrpc.CommandStartJobRtnData, error) {
+	log.Printf("StartJobCommand: received command=%s args=%v", data.Cmd, data.Args)
 	if !msc.PeerAuthenticated.Load() {
+		log.Printf("StartJobCommand: not authenticated")
 		return nil, fmt.Errorf("not authenticated")
 	}
 	if WshCmdJobManager.IsJobStarted() {
+		log.Printf("StartJobCommand: job already started")
 		return nil, fmt.Errorf("job already started")
 	}
 
@@ -114,6 +119,7 @@ func (msc *MainServerConn) StartJobCommand(ctx context.Context, data wshrpc.Comm
 	defer WshCmdJobManager.lock.Unlock()
 
 	if WshCmdJobManager.Cmd != nil {
+		log.Printf("StartJobCommand: job already started (double check)")
 		return nil, fmt.Errorf("job already started")
 	}
 
@@ -123,11 +129,14 @@ func (msc *MainServerConn) StartJobCommand(ctx context.Context, data wshrpc.Comm
 		Env:      data.Env,
 		TermSize: data.TermSize,
 	}
+	log.Printf("StartJobCommand: creating job cmd for jobid=%s", WshCmdJobManager.JobId)
 	jobCmd, err := MakeJobCmd(WshCmdJobManager.JobId, cmdDef)
 	if err != nil {
+		log.Printf("StartJobCommand: failed to make job cmd: %v", err)
 		return nil, fmt.Errorf("failed to start job: %w", err)
 	}
 	WshCmdJobManager.Cmd = jobCmd
+	log.Printf("StartJobCommand: job cmd created successfully")
 
 	if data.StreamMeta != nil {
 		serverSeq, err := WshCmdJobManager.connectToStreamHelper_withlock(msc, *data.StreamMeta, 0)
@@ -139,20 +148,28 @@ func (msc *MainServerConn) StartJobCommand(ctx context.Context, data wshrpc.Comm
 
 	_, cmdPty := jobCmd.GetCmd()
 	if cmdPty != nil {
+		log.Printf("StartJobCommand: attaching pty reader to stream manager")
 		err = WshCmdJobManager.StreamManager.AttachReader(cmdPty)
 		if err != nil {
+			log.Printf("StartJobCommand: failed to attach reader: %v", err)
 			return nil, fmt.Errorf("failed to attach reader to stream manager: %w", err)
 		}
+		log.Printf("StartJobCommand: pty reader attached successfully")
+	} else {
+		log.Printf("StartJobCommand: no pty to attach")
 	}
 
 	cmd, _ := jobCmd.GetCmd()
 	if cmd == nil || cmd.Process == nil {
+		log.Printf("StartJobCommand: cmd or process is nil")
 		return nil, fmt.Errorf("cmd or process is nil")
 	}
 	pgid, err := getProcessGroupId(cmd.Process.Pid)
 	if err != nil {
+		log.Printf("StartJobCommand: failed to get pgid: %v", err)
 		return nil, fmt.Errorf("failed to get process group id: %w", err)
 	}
+	log.Printf("StartJobCommand: job started successfully pid=%d pgid=%d", cmd.Process.Pid, pgid)
 	return &wshrpc.CommandStartJobRtnData{Pgid: pgid}, nil
 }
 

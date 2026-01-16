@@ -21,13 +21,19 @@ var WshServerImpl = WshServer{}
 
 var waveSrvClient_Singleton *wshutil.WshRpc
 var waveSrvClient_Once = &sync.Once{}
+var waveSrvClient_RouteId string
 
 func GetBareRpcClient() *wshutil.WshRpc {
 	waveSrvClient_Once.Do(func() {
 		waveSrvClient_Singleton = wshutil.MakeWshRpc(wshrpc.RpcContext{}, &WshServerImpl, "bare-client")
-		bareClientRoute := fmt.Sprintf("bare:%s", uuid.New().String())
-		wshutil.DefaultRouter.RegisterTrustedLeaf(waveSrvClient_Singleton, bareClientRoute)
+		waveSrvClient_RouteId = fmt.Sprintf("bare:%s", uuid.New().String())
+		wshutil.DefaultRouter.RegisterTrustedLeaf(waveSrvClient_Singleton, waveSrvClient_RouteId)
 		wps.Broker.SetClient(wshutil.DefaultRouter)
 	})
 	return waveSrvClient_Singleton
+}
+
+func GetBareRpcClientRouteId() string {
+	GetBareRpcClient()
+	return waveSrvClient_RouteId
 }

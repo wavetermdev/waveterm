@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"strings"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -19,6 +21,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/wavejwt"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
+	"github.com/wavetermdev/waveterm/pkg/wps"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
@@ -32,7 +35,58 @@ const (
 	JobStatus_Error   = "error"
 )
 
+const (
+	JobConnStatus_Disconnected = "disconnected"
+	JobConnStatus_Connecting   = "connecting"
+	JobConnStatus_Connected    = "connected"
+)
+
 const DefaultStreamRwnd = 64 * 1024
+
+var (
+	jobConnStates     = make(map[string]string)
+	jobConnStatesLock sync.Mutex
+)
+
+func InitJobController() {
+	rpcClient := wshclient.GetBareRpcClient()
+	rpcClient.EventListener.On(wps.Event_RouteUp, handleRouteUpEvent)
+	rpcClient.EventListener.On(wps.Event_RouteDown, handleRouteDownEvent)
+}
+
+func handleRouteUpEvent(event *wps.WaveEvent) {
+	handleRouteEvent(event, JobConnStatus_Connected)
+}
+
+func handleRouteDownEvent(event *wps.WaveEvent) {
+	handleRouteEvent(event, JobConnStatus_Disconnected)
+}
+
+func handleRouteEvent(event *wps.WaveEvent, newStatus string) {
+	for _, scope := range event.Scopes {
+		if strings.HasPrefix(scope, "job:") {
+			jobId := strings.TrimPrefix(scope, "job:")
+			SetJobConnStatus(jobId, newStatus)
+			log.Printf("[job:%s] connection status changed to %s", jobId, newStatus)
+		}
+	}
+}
+
+func GetJobConnStatus(jobId string) string {
+	jobConnStatesLock.Lock()
+	defer jobConnStatesLock.Unlock()
+	status, exists := jobConnStates[jobId]
+	if !exists {
+		return JobConnStatus_Disconnected
+	}
+	return status
+}
+
+func SetJobConnStatus(jobId string, status string) {
+	jobConnStatesLock.Lock()
+	defer jobConnStatesLock.Unlock()
+	jobConnStates[jobId] = status
+}
 
 type StartJobParams struct {
 	ConnName string
@@ -53,9 +107,12 @@ func StartJob(ctx context.Context, params StartJobParams) (string, error) {
 		params.TermSize = &waveobj.TermSize{Rows: 24, Cols: 80}
 	}
 
-	err := conncontroller.EnsureConnection(ctx, params.ConnName)
+	isConnected, err := conncontroller.IsConnected(params.ConnName)
 	if err != nil {
-		return "", fmt.Errorf("failed to ensure connection: %w", err)
+		return "", fmt.Errorf("error checking connection status: %w", err)
+	}
+	if !isConnected {
+		return "", fmt.Errorf("connection %q is not connected", params.ConnName)
 	}
 
 	jobId := uuid.New().String()
@@ -91,18 +148,14 @@ func StartJob(ctx context.Context, params StartJobParams) (string, error) {
 		return "", fmt.Errorf("failed to create job in database: %w", err)
 	}
 
-	connRpc := wshclient.GetBareRpcClient()
-	if connRpc == nil {
+	bareRpc := wshclient.GetBareRpcClient()
+	if bareRpc == nil {
 		return "", fmt.Errorf("main rpc client not available")
 	}
 
-	broker := connRpc.StreamBroker
-	if broker == nil {
-		return "", fmt.Errorf("stream broker not available")
-	}
-
-	readerRouteId := wshutil.MakeJobRouteId(jobId)
-	writerRouteId := wshutil.MakeConnectionRouteId(params.ConnName)
+	broker := bareRpc.StreamBroker
+	readerRouteId := wshclient.GetBareRpcClientRouteId()
+	writerRouteId := wshutil.MakeJobRouteId(jobId)
 	reader, streamMeta := broker.CreateStreamReader(readerRouteId, writerRouteId, DefaultStreamRwnd)
 
 	fileOpts := wshrpc.FileOpts{
@@ -140,8 +193,10 @@ func StartJob(ctx context.Context, params StartJobParams) (string, error) {
 		Timeout: 30000,
 	}
 
-	rtnData, err := wshclient.RemoteStartJobCommand(connRpc, startJobData, rpcOpts)
+	log.Printf("[job:%s] sending RemoteStartJobCommand to connection %s", jobId, params.ConnName)
+	rtnData, err := wshclient.RemoteStartJobCommand(bareRpc, startJobData, rpcOpts)
 	if err != nil {
+		log.Printf("[job:%s] RemoteStartJobCommand failed: %v", jobId, err)
 		wstore.DBUpdate(ctx, &waveobj.Job{
 			OID:    jobId,
 			Status: JobStatus_Error,
@@ -150,11 +205,14 @@ func StartJob(ctx context.Context, params StartJobParams) (string, error) {
 		return "", fmt.Errorf("failed to start remote job: %w", err)
 	}
 
+	log.Printf("[job:%s] RemoteStartJobCommand succeeded, pgid=%d", jobId, rtnData.Pgid)
 	job.Pgid = rtnData.Pgid
 	job.Status = JobStatus_Running
 	err = wstore.DBUpdate(ctx, job)
 	if err != nil {
-		log.Printf("warning: failed to update job status to running: %v", err)
+		log.Printf("[job:%s] warning: failed to update job status to running: %v", jobId, err)
+	} else {
+		log.Printf("[job:%s] job status updated to running", jobId)
 	}
 
 	go func() {
@@ -172,13 +230,17 @@ func runOutputLoop(ctx context.Context, jobId string, reader *streamclient.Reade
 		log.Printf("[job:%s] output loop finished", jobId)
 	}()
 
+	log.Printf("[job:%s] output loop started", jobId)
 	buf := make([]byte, 4096)
 	for {
 		n, err := reader.Read(buf)
 		if n > 0 {
+			log.Printf("[job:%s] received %d bytes of data", jobId, n)
 			appendErr := filestore.WFS.AppendData(ctx, jobId, "term", buf[:n])
 			if appendErr != nil {
 				log.Printf("[job:%s] error appending data to WaveFS: %v", jobId, appendErr)
+			} else {
+				log.Printf("[job:%s] successfully appended %d bytes to WaveFS", jobId, n)
 			}
 		}
 
@@ -257,19 +319,18 @@ func tryTerminateJobManager(ctx context.Context, jobId string) {
 
 	log.Printf("[job:%s] both job exited and stream finished, terminating job manager", jobId)
 
-	connRpc := wshclient.GetBareRpcClient()
-	if connRpc == nil {
+	bareRpc := wshclient.GetBareRpcClient()
+	if bareRpc == nil {
 		log.Printf("[job:%s] error terminating job manager: rpc client not available", jobId)
 		return
 	}
 
 	rpcOpts := &wshrpc.RpcOpts{
-		Route:      wshutil.MakeJobRouteId(jobId),
-		Timeout:    5000,
-		NoResponse: true,
+		Route:   wshutil.MakeJobRouteId(jobId),
+		Timeout: 5000,
 	}
 
-	err = wshclient.JobManagerExitCommand(connRpc, rpcOpts)
+	err = wshclient.JobManagerExitCommand(bareRpc, rpcOpts)
 	if err != nil {
 		log.Printf("[job:%s] error sending job manager exit command: %v", jobId, err)
 		return
@@ -284,8 +345,13 @@ func TerminateJob(ctx context.Context, jobId string) error {
 		return fmt.Errorf("failed to get job: %w", err)
 	}
 
-	connRpc := wshclient.GetBareRpcClient()
-	if connRpc == nil {
+	jobConnStatus := GetJobConnStatus(jobId)
+	if jobConnStatus != JobConnStatus_Connected {
+		return fmt.Errorf("job connection is not connected (status: %s)", jobConnStatus)
+	}
+
+	bareRpc := wshclient.GetBareRpcClient()
+	if bareRpc == nil {
 		return fmt.Errorf("main rpc client not available")
 	}
 
@@ -294,7 +360,7 @@ func TerminateJob(ctx context.Context, jobId string) error {
 		Timeout: 5000,
 	}
 
-	err = wshclient.JobTerminateCommand(connRpc, wshrpc.CommandJobTerminateData{}, rpcOpts)
+	err = wshclient.JobTerminateCommand(bareRpc, wshrpc.CommandJobTerminateData{}, rpcOpts)
 	if err != nil {
 		return fmt.Errorf("failed to send terminate command: %w", err)
 	}
@@ -309,18 +375,22 @@ func ExitJobManager(ctx context.Context, jobId string) error {
 		return fmt.Errorf("failed to get job: %w", err)
 	}
 
-	connRpc := wshclient.GetBareRpcClient()
-	if connRpc == nil {
+	jobConnStatus := GetJobConnStatus(jobId)
+	if jobConnStatus != JobConnStatus_Connected {
+		return fmt.Errorf("job connection is not connected (status: %s)", jobConnStatus)
+	}
+
+	bareRpc := wshclient.GetBareRpcClient()
+	if bareRpc == nil {
 		return fmt.Errorf("main rpc client not available")
 	}
 
 	rpcOpts := &wshrpc.RpcOpts{
-		Route:      wshutil.MakeJobRouteId(jobId),
-		Timeout:    5000,
-		NoResponse: true,
+		Route:   wshutil.MakeJobRouteId(jobId),
+		Timeout: 5000,
 	}
 
-	err = wshclient.JobManagerExitCommand(connRpc, rpcOpts)
+	err = wshclient.JobManagerExitCommand(bareRpc, rpcOpts)
 	if err != nil {
 		return fmt.Errorf("failed to send exit command: %w", err)
 	}

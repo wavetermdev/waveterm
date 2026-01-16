@@ -65,7 +65,12 @@ func jobManagerRun(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to read job auth token: %v", err)
 	}
 
-	err = jobmanager.SetupJobManager(jobManagerClientId, jobManagerJobId, publicKeyBytes, jobAuthToken)
+	readyFile := os.NewFile(3, "ready-pipe")
+	if readyFile == nil {
+		return fmt.Errorf("ready pipe (fd 3) not available")
+	}
+
+	err = jobmanager.SetupJobManager(jobManagerClientId, jobManagerJobId, publicKeyBytes, jobAuthToken, readyFile)
 	if err != nil {
 		return fmt.Errorf("error setting up job manager: %v", err)
 	}

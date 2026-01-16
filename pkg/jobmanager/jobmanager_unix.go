@@ -77,9 +77,8 @@ func daemonize(clientId string, jobId string) error {
 	if err != nil {
 		return fmt.Errorf("failed to dup2 stderr: %w", err)
 	}
-	logFile.Close()
 
-	log.SetOutput(os.Stdout)
+	log.SetOutput(logFile)
 	log.Printf("job manager daemonized, logging to %s\n", logPath)
 
 	setupJobManagerSignalHandlers()
