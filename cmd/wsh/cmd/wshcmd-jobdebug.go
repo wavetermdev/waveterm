@@ -44,6 +44,12 @@ var jobDebugDeleteAllCmd = &cobra.Command{
 	RunE:  jobDebugDeleteAllRun,
 }
 
+var jobDebugPruneCmd = &cobra.Command{
+	Use:   "prune",
+	Short: "remove jobs where the job manager is no longer running",
+	RunE:  jobDebugPruneRun,
+}
+
 var jobDebugExitCmd = &cobra.Command{
 	Use:   "exit",
 	Short: "exit a job manager",
@@ -72,6 +78,7 @@ func init() {
 	jobDebugCmd.AddCommand(jobDebugListCmd)
 	jobDebugCmd.AddCommand(jobDebugDeleteCmd)
 	jobDebugCmd.AddCommand(jobDebugDeleteAllCmd)
+	jobDebugCmd.AddCommand(jobDebugPruneCmd)
 	jobDebugCmd.AddCommand(jobDebugTerminateCmdCmd)
 	jobDebugCmd.AddCommand(jobDebugExitCmd)
 	jobDebugCmd.AddCommand(jobDebugGetOutputCmd)
@@ -101,6 +108,16 @@ func jobDebugListRun(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("getting job debug list: %w", err)
 	}
 
+	connectedJobIds, err := wshclient.JobControllerConnectedJobsCommand(RpcClient, &wshrpc.RpcOpts{Timeout: 5000})
+	if err != nil {
+		return fmt.Errorf("getting connected job ids: %w", err)
+	}
+
+	connectedMap := make(map[string]bool)
+	for _, jobId := range connectedJobIds {
+		connectedMap[jobId] = true
+	}
+
 	if jobDebugJsonFlag {
 		jsonData, err := json.MarshalIndent(rtnData, "", "  ")
 		if err != nil {
@@ -110,8 +127,18 @@ func jobDebugListRun(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	fmt.Printf("%-36s %-20s %-30s %-10s %-10s %-8s %s\n", "OID", "Connection", "Cmd", "Status", "Stream", "ExitCode", "Error")
+	fmt.Printf("%-36s %-20s %-9s %-7s %-30s %-10s %-10s %-8s %s\n", "OID", "Connection", "Connected", "Manager", "Cmd", "Status", "Stream", "ExitCode", "Error")
 	for _, job := range rtnData {
+		connectedStatus := "no"
+		if connectedMap[job.OID] {
+			connectedStatus = "yes"
+		}
+
+		managerStatus := "no"
+		if job.JobManagerRunning {
+			managerStatus = "yes"
+		}
+
 		streamStatus := "-"
 		if job.StreamDone {
 			if job.StreamError == "" {
@@ -127,12 +154,14 @@ func jobDebugListRun(cmd *cobra.Command, args []string) error {
 		}
 
 		errorStr := ""
-		if job.Error != "" {
-			errorStr = fmt.Sprintf("%q", job.Error)
+		if job.StartupError != "" {
+			errorStr = fmt.Sprintf("%q", job.StartupError)
+		} else if job.ExitError != "" {
+			errorStr = fmt.Sprintf("%q", job.ExitError)
 		}
 
-		fmt.Printf("%-36s %-20s %-30s %-10s %-10s %-8s %s\n",
-			job.OID, job.Connection, job.Cmd, job.Status, streamStatus, exitCode, errorStr)
+		fmt.Printf("%-36s %-20s %-9s %-7s %-30s %-10s %-10s %-8s %s\n",
+			job.OID, job.Connection, connectedStatus, managerStatus, job.Cmd, job.Status, streamStatus, exitCode, errorStr)
 	}
 	return nil
 }
@@ -169,6 +198,37 @@ func jobDebugDeleteAllRun(cmd *cobra.Command, args []string) error {
 	}
 
 	fmt.Printf("Deleted %d of %d job(s)\n", deletedCount, len(rtnData))
+	return nil
+}
+
+func jobDebugPruneRun(cmd *cobra.Command, args []string) error {
+	rtnData, err := wshclient.JobDebugListCommand(RpcClient, &wshrpc.RpcOpts{Timeout: 5000})
+	if err != nil {
+		return fmt.Errorf("getting job debug list: %w", err)
+	}
+
+	if len(rtnData) == 0 {
+		fmt.Printf("No jobs to prune\n")
+		return nil
+	}
+
+	deletedCount := 0
+	for _, job := range rtnData {
+		if !job.JobManagerRunning {
+			err := wshclient.JobDebugDeleteCommand(RpcClient, job.OID, &wshrpc.RpcOpts{Timeout: 5000})
+			if err != nil {
+				fmt.Printf("Error deleting job %s: %v\n", job.OID, err)
+			} else {
+				deletedCount++
+			}
+		}
+	}
+
+	if deletedCount == 0 {
+		fmt.Printf("No jobs with stopped job managers to prune\n")
+	} else {
+		fmt.Printf("Pruned %d job(s) with stopped job managers\n", deletedCount)
+	}
 	return nil
 }
 

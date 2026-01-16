@@ -482,6 +482,12 @@ func JobConnectCommand(w *wshutil.WshRpc, data wshrpc.CommandJobConnectData, opt
 	return resp, err
 }
 
+// command "jobcontrollerconnectedjobs", wshserver.JobControllerConnectedJobsCommand
+func JobControllerConnectedJobsCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) ([]string, error) {
+	resp, err := sendRpcRequestCallHelper[[]string](w, "jobcontrollerconnectedjobs", nil, opts)
+	return resp, err
+}
+
 // command "jobcontrollerexitjob", wshserver.JobControllerExitJobCommand
 func JobControllerExitJobCommand(w *wshutil.WshRpc, data string, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "jobcontrollerexitjob", data, opts)

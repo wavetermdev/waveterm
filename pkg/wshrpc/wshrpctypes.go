@@ -22,6 +22,12 @@ type RespOrErrorUnion[T any] struct {
 	Error    error
 }
 
+// Instructions for adding a new RPC call
+// * methods must end with Command
+// * methods must take context as their first parameter
+// * methods may take up to one parameter, and may return either just an error, or one return value plus an error
+// * after modifying WshRpcInterface, run `task generate` to regnerate bindings
+
 type WshRpcInterface interface {
 	AuthenticateCommand(ctx context.Context, data string) (CommandAuthenticateRtnData, error)
 	AuthenticateTokenCommand(ctx context.Context, data CommandAuthenticateTokenData) (CommandAuthenticateRtnData, error)
@@ -170,6 +176,7 @@ type WshRpcInterface interface {
 	JobControllerStartJobCommand(ctx context.Context, data CommandJobControllerStartJobData) (string, error)
 	JobControllerTerminateJobCommand(ctx context.Context, jobId string) error
 	JobControllerExitJobCommand(ctx context.Context, jobId string) error
+	JobControllerConnectedJobsCommand(ctx context.Context) ([]string, error)
 }
 
 // for frontend

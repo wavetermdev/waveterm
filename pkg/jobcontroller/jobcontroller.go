@@ -85,7 +85,23 @@ func GetJobConnStatus(jobId string) string {
 func SetJobConnStatus(jobId string, status string) {
 	jobConnStatesLock.Lock()
 	defer jobConnStatesLock.Unlock()
-	jobConnStates[jobId] = status
+	if status == JobConnStatus_Disconnected {
+		delete(jobConnStates, jobId)
+	} else {
+		jobConnStates[jobId] = status
+	}
+}
+
+func GetConnectedJobIds() []string {
+	jobConnStatesLock.Lock()
+	defer jobConnStatesLock.Unlock()
+	var connectedJobIds []string
+	for jobId, status := range jobConnStates {
+		if status == JobConnStatus_Connected {
+			connectedJobIds = append(connectedJobIds, jobId)
+		}
+	}
+	return connectedJobIds
 }
 
 type StartJobParams struct {
@@ -200,7 +216,7 @@ func StartJob(ctx context.Context, params StartJobParams) (string, error) {
 		errMsg := fmt.Sprintf("failed to start job: %v", err)
 		wstore.DBUpdateFn(ctx, jobId, func(job *waveobj.Job) {
 			job.Status = JobStatus_Error
-			job.Error = errMsg
+			job.StartupError = errMsg
 		})
 		return "", fmt.Errorf("failed to start remote job: %w", err)
 	}
@@ -209,6 +225,7 @@ func StartJob(ctx context.Context, params StartJobParams) (string, error) {
 	err = wstore.DBUpdateFn(ctx, jobId, func(job *waveobj.Job) {
 		job.Pgid = rtnData.Pgid
 		job.Status = JobStatus_Running
+		job.JobManagerRunning = true
 	})
 	if err != nil {
 		log.Printf("[job:%s] warning: failed to update job status to running: %v", jobId, err)
@@ -253,7 +270,7 @@ func runOutputLoop(ctx context.Context, jobId string, reader *streamclient.Reade
 			if updateErr != nil {
 				log.Printf("[job:%s] error updating job stream status: %v", jobId, updateErr)
 			}
-			tryTerminateJobManager(ctx, jobId)
+			tryExitJobManager(ctx, jobId)
 			break
 		}
 
@@ -267,7 +284,7 @@ func runOutputLoop(ctx context.Context, jobId string, reader *streamclient.Reade
 			if updateErr != nil {
 				log.Printf("[job:%s] error updating job stream error: %v", jobId, updateErr)
 			}
-			tryTerminateJobManager(ctx, jobId)
+			tryExitJobManager(ctx, jobId)
 			break
 		}
 	}
@@ -278,7 +295,7 @@ func HandleJobExited(ctx context.Context, jobId string, data wshrpc.CommandJobEx
 	err := wstore.DBUpdateFn(ctx, jobId, func(job *waveobj.Job) {
 		if data.ExitErr != "" {
 			job.Status = JobStatus_Error
-			job.Error = data.ExitErr
+			job.ExitError = data.ExitErr
 		} else {
 			job.Status = JobStatus_Done
 		}
@@ -292,11 +309,11 @@ func HandleJobExited(ctx context.Context, jobId string, data wshrpc.CommandJobEx
 	}
 
 	log.Printf("[job:%s] exited with code:%d signal:%q status:%s", jobId, data.ExitCode, data.ExitSignal, finalStatus)
-	tryTerminateJobManager(ctx, jobId)
+	tryExitJobManager(ctx, jobId)
 	return nil
 }
 
-func tryTerminateJobManager(ctx context.Context, jobId string) {
+func tryExitJobManager(ctx context.Context, jobId string) {
 	job, err := wstore.DBMustGet[*waveobj.Job](ctx, jobId)
 	if err != nil {
 		log.Printf("[job:%s] error getting job for termination check: %v", jobId, err)
@@ -310,26 +327,12 @@ func tryTerminateJobManager(ctx context.Context, jobId string) {
 		return
 	}
 
-	log.Printf("[job:%s] both job exited and stream finished, terminating job manager", jobId)
+	log.Printf("[job:%s] both job exited and stream finished, exiting job manager", jobId)
 
-	bareRpc := wshclient.GetBareRpcClient()
-	if bareRpc == nil {
-		log.Printf("[job:%s] error terminating job manager: rpc client not available", jobId)
-		return
-	}
-
-	rpcOpts := &wshrpc.RpcOpts{
-		Route:   wshutil.MakeJobRouteId(jobId),
-		Timeout: 5000,
-	}
-
-	err = wshclient.JobManagerExitCommand(bareRpc, rpcOpts)
+	err = ExitJobManager(ctx, jobId)
 	if err != nil {
-		log.Printf("[job:%s] error sending job manager exit command: %v", jobId, err)
-		return
+		log.Printf("[job:%s] error exiting job manager: %v", jobId, err)
 	}
-
-	log.Printf("[job:%s] job manager exit command sent successfully", jobId)
 }
 
 func TerminateJob(ctx context.Context, jobId string) error {
@@ -388,6 +391,22 @@ func ExitJobManager(ctx context.Context, jobId string) error {
 		return fmt.Errorf("failed to send exit command: %w", err)
 	}
 
+	updateErr := wstore.DBUpdateFn(ctx, jobId, func(job *waveobj.Job) {
+		job.JobManagerRunning = false
+	})
+	if updateErr != nil {
+		log.Printf("[job:%s] error updating job manager running status: %v", jobId, updateErr)
+	}
+
 	log.Printf("[job:%s] job manager exit command sent successfully", jobId)
 	return nil
+}
+
+func DeleteJob(ctx context.Context, jobId string) error {
+	SetJobConnStatus(jobId, JobConnStatus_Disconnected)
+	err := filestore.WFS.DeleteZone(ctx, jobId)
+	if err != nil {
+		log.Printf("[job:%s] warning: error deleting WaveFS zone: %v", jobId, err)
+	}
+	return wstore.DBDelete(ctx, waveobj.OType_Job, jobId)
 }

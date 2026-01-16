@@ -310,27 +310,40 @@ func (*MainServer) GetOType() string {
 }
 
 type Job struct {
-	OID             string            `json:"oid"`
-	Version         int               `json:"version"`
+	OID     string `json:"oid"`
+	Version int    `json:"version"`
+
+	// job metadata
 	Connection      string            `json:"connection"`
 	JobKind         string            `json:"jobkind"` // shell, task
-	Pgid            int               `json:"pgid"`    // process group id
-	AttachedBlockId string            `json:"ownerblockid"`
-	HupOnConnect    bool              `json:"huponconnect"`
-	JobAuthToken    string            `json:"jobauthtoken"` // job manger -> wave
 	Cmd             string            `json:"cmd"`
 	CmdArgs         []string          `json:"cmdargs,omitempty"`
 	CmdEnv          map[string]string `json:"cmdenv,omitempty"`
-	TermSize        TermSize          `json:"termsize,omitempty"`
-	StartTs         int64             `json:"startts,omitempty"` // timestamp (milliseconds)
-	Status          string            `json:"status"`            // init, running, done
-	ExitTs          int64             `json:"exitts,omitempty"`  // timestamp (milliseconds)
-	ExitCode        int               `json:"exitcode,omitempty"`
-	ExitSignal      string            `json:"exitsignal,omitempty"`
-	Error           string            `json:"error,omitempty"`
-	StreamDone      bool              `json:"streamdone,omitempty"`
-	StreamError     string            `json:"streamerror,omitempty"`
-	Meta            MetaMapType       `json:"meta"`
+	JobAuthToken    string            `json:"jobauthtoken"` // job manger -> wave
+	AttachedBlockId string            `json:"ownerblockid"`
+
+	// cmd/process runtime info
+	Pgid         int      `json:"pgid"` // process group id
+	TermSize     TermSize `json:"termsize,omitempty"`
+	StartTs      int64    `json:"startts,omitempty"` // timestamp (milliseconds)
+	Status       string   `json:"status"`            // init, running, done
+	StartupError string   `json:"startuperror,omitempty"`
+	ExitTs       int64    `json:"exitts,omitempty"` // timestamp (milliseconds)
+	ExitCode     int      `json:"exitcode,omitempty"`
+	ExitSignal   string   `json:"exitsignal,omitempty"`
+	ExitError    string   `json:"exiterror,omitempty"`
+
+	// reconnect option (e.g. orphaned, so we need to kill on connect)
+	HupOnConnect bool `json:"huponconnect"`
+
+	// job manager state
+	JobManagerRunning bool `json:"jobmanagerrunning,omitempty"`
+
+	// output info
+	StreamDone  bool   `json:"streamdone,omitempty"`
+	StreamError string `json:"streamerror,omitempty"`
+
+	Meta MetaMapType `json:"meta"`
 }
 
 func (*Job) GetOType() string {

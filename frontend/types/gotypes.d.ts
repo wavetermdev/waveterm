@@ -874,20 +874,22 @@ declare global {
     type Job = WaveObj & {
         connection: string;
         jobkind: string;
-        pgid: number;
-        ownerblockid: string;
-        huponconnect: boolean;
-        jobauthtoken: string;
         cmd: string;
         cmdargs?: string[];
         cmdenv?: {[key: string]: string};
+        jobauthtoken: string;
+        ownerblockid: string;
+        pgid: number;
         termsize?: TermSize;
         startts?: number;
         status: string;
+        startuperror?: string;
         exitts?: number;
         exitcode?: number;
         exitsignal?: string;
-        error?: string;
+        exiterror?: string;
+        huponconnect: boolean;
+        jobmanagerrunning?: boolean;
         streamdone?: boolean;
         streamerror?: string;
     };

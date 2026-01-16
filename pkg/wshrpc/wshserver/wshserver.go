@@ -1441,7 +1441,7 @@ func (ws *WshServer) JobDebugListCommand(ctx context.Context) ([]*waveobj.Job, e
 }
 
 func (ws *WshServer) JobDebugDeleteCommand(ctx context.Context, jobId string) error {
-	return wstore.DBDelete(ctx, waveobj.OType_Job, jobId)
+	return jobcontroller.DeleteJob(ctx, jobId)
 }
 
 func (ws *WshServer) JobControllerStartJobCommand(ctx context.Context, data wshrpc.CommandJobControllerStartJobData) (string, error) {
@@ -1461,4 +1461,8 @@ func (ws *WshServer) JobControllerTerminateJobCommand(ctx context.Context, jobId
 
 func (ws *WshServer) JobControllerExitJobCommand(ctx context.Context, jobId string) error {
 	return jobcontroller.ExitJobManager(ctx, jobId)
+}
+
+func (ws *WshServer) JobControllerConnectedJobsCommand(ctx context.Context) ([]string, error) {
+	return jobcontroller.GetConnectedJobIds(), nil
 }
