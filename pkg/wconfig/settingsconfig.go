@@ -273,6 +273,7 @@ type AIModeConfigType struct {
 	APIType            string   `json:"ai:apitype,omitempty" jsonschema:"enum=google-gemini,enum=openai-responses,enum=openai-chat"`
 	Model              string   `json:"ai:model,omitempty"`
 	ThinkingLevel      string   `json:"ai:thinkinglevel,omitempty" jsonschema:"enum=low,enum=medium,enum=high"`
+	Verbosity          string   `json:"ai:verbosity,omitempty" jsonschema:"enum=low,enum=medium,enum=high,description=Text verbosity level (OpenAI Responses API only)"`
 	Endpoint           string   `json:"ai:endpoint,omitempty"`
 	AzureAPIVersion    string   `json:"ai:azureapiversion,omitempty"`
 	APIToken           string   `json:"ai:apitoken,omitempty"`
