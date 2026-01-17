@@ -36,6 +36,7 @@ type JobManager struct {
 	lock                  sync.Mutex
 	attachedClient        *MainServerConn
 	connectedStreamClient *MainServerConn
+	pendingStreamMeta     *wshrpc.StreamMeta
 }
 
 func SetupJobManager(clientId string, jobId string, publicKeyBytes []byte, jobAuthToken string, readyFile *os.File) error {

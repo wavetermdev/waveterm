@@ -109,6 +109,7 @@ type WshRpcInterface interface {
 	RemoteGetInfoCommand(ctx context.Context) (RemoteInfo, error)
 	RemoteInstallRcFilesCommand(ctx context.Context) error
 	RemoteStartJobCommand(ctx context.Context, data CommandRemoteStartJobData) (*CommandStartJobRtnData, error)
+	RemoteReconnectToJobManagerCommand(ctx context.Context, data CommandRemoteReconnectToJobManagerData) error
 
 	// emain
 	WebSelectorCommand(ctx context.Context, data CommandWebSelectorData) ([]string, error)
@@ -167,7 +168,8 @@ type WshRpcInterface interface {
 	// jobs
 	AuthenticateToJobManagerCommand(ctx context.Context, data CommandAuthenticateToJobData) error
 	StartJobCommand(ctx context.Context, data CommandStartJobData) (*CommandStartJobRtnData, error)
-	JobConnectCommand(ctx context.Context, data CommandJobConnectData) (*CommandJobConnectRtnData, error)
+	JobPrepareConnectCommand(ctx context.Context, data CommandJobPrepareConnectData) (*CommandJobConnectRtnData, error)
+	JobStartStreamCommand(ctx context.Context, data CommandJobStartStreamData) error
 	JobTerminateCommand(ctx context.Context, data CommandJobTerminateData) error
 	JobExitedCommand(ctx context.Context, data CommandJobExitedData) error // this is sent FROM the job manager => main server
 	JobManagerExitCommand(ctx context.Context) error
@@ -710,13 +712,22 @@ type CommandRemoteStartJobData struct {
 	PublicKeyBase64    string            `json:"publickeybase64"`
 }
 
+type CommandRemoteReconnectToJobManagerData struct {
+	JobId              string `json:"jobid"`
+	JobAuthToken       string `json:"jobauthtoken"`
+	MainServerJwtToken string `json:"mainserverjwttoken"`
+}
+
 type CommandStartJobRtnData struct {
 	Pgid int `json:"pgid"`
 }
 
-type CommandJobConnectData struct {
+type CommandJobPrepareConnectData struct {
 	StreamMeta StreamMeta `json:"streammeta"`
 	Seq        int64      `json:"seq"`
+}
+
+type CommandJobStartStreamData struct {
 }
 
 type CommandJobConnectRtnData struct {

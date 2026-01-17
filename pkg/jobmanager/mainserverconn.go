@@ -177,7 +177,7 @@ func (msc *MainServerConn) StartJobCommand(ctx context.Context, data wshrpc.Comm
 	return &wshrpc.CommandStartJobRtnData{Pgid: pgid}, nil
 }
 
-func (msc *MainServerConn) JobConnectCommand(ctx context.Context, data wshrpc.CommandJobConnectData) (*wshrpc.CommandJobConnectRtnData, error) {
+func (msc *MainServerConn) JobPrepareConnectCommand(ctx context.Context, data wshrpc.CommandJobPrepareConnectData) (*wshrpc.CommandJobConnectRtnData, error) {
 	WshCmdJobManager.lock.Lock()
 	defer WshCmdJobManager.lock.Unlock()
 
@@ -191,15 +191,14 @@ func (msc *MainServerConn) JobConnectCommand(ctx context.Context, data wshrpc.Co
 		return nil, fmt.Errorf("job not started")
 	}
 
-	serverSeq, err := WshCmdJobManager.connectToStreamHelper_withlock(msc, data.StreamMeta, data.Seq)
+	corkedStreamMeta := data.StreamMeta
+	corkedStreamMeta.RWnd = 0
+	serverSeq, err := WshCmdJobManager.connectToStreamHelper_withlock(msc, corkedStreamMeta, data.Seq)
 	if err != nil {
 		return nil, err
 	}
 
-	err = msc.WshRpc.StreamBroker.AttachStreamWriter(&data.StreamMeta, WshCmdJobManager.StreamManager)
-	if err != nil {
-		return nil, fmt.Errorf("failed to attach stream writer: %w", err)
-	}
+	WshCmdJobManager.pendingStreamMeta = &data.StreamMeta
 
 	rtnData := &wshrpc.CommandJobConnectRtnData{Seq: serverSeq}
 	hasExited, exitData := WshCmdJobManager.Cmd.GetExitInfo()
@@ -210,8 +209,37 @@ func (msc *MainServerConn) JobConnectCommand(ctx context.Context, data wshrpc.Co
 		rtnData.ExitErr = exitData.ExitErr
 	}
 
-	log.Printf("JobConnect: streamid=%s clientSeq=%d serverSeq=%d hasExited=%v\n", data.StreamMeta.Id, data.Seq, serverSeq, hasExited)
+	log.Printf("JobPrepareConnect: streamid=%s clientSeq=%d serverSeq=%d hasExited=%v (rwnd=0 cork mode)\n", data.StreamMeta.Id, data.Seq, serverSeq, hasExited)
 	return rtnData, nil
+}
+
+func (msc *MainServerConn) JobStartStreamCommand(ctx context.Context, data wshrpc.CommandJobStartStreamData) error {
+	WshCmdJobManager.lock.Lock()
+	defer WshCmdJobManager.lock.Unlock()
+
+	if !msc.PeerAuthenticated.Load() {
+		return fmt.Errorf("not authenticated")
+	}
+	if WshCmdJobManager.Cmd == nil {
+		return fmt.Errorf("job not started")
+	}
+	if WshCmdJobManager.pendingStreamMeta == nil {
+		return fmt.Errorf("no pending stream (call JobPrepareConnect first)")
+	}
+
+	err := msc.WshRpc.StreamBroker.AttachStreamWriter(WshCmdJobManager.pendingStreamMeta, WshCmdJobManager.StreamManager)
+	if err != nil {
+		return fmt.Errorf("failed to attach stream writer: %w", err)
+	}
+
+	err = WshCmdJobManager.StreamManager.SetRwndSize(int(WshCmdJobManager.pendingStreamMeta.RWnd))
+	if err != nil {
+		return fmt.Errorf("failed to set rwnd size: %w", err)
+	}
+
+	log.Printf("JobStartStream: streamid=%s rwnd=%d streaming started\n", WshCmdJobManager.pendingStreamMeta.Id, WshCmdJobManager.pendingStreamMeta.RWnd)
+	WshCmdJobManager.pendingStreamMeta = nil
+	return nil
 }
 
 func (msc *MainServerConn) JobTerminateCommand(ctx context.Context, data wshrpc.CommandJobTerminateData) error {

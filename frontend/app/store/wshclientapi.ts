@@ -392,11 +392,6 @@ class RpcApiType {
         return client.wshRpcCall("getwaveairatelimit", null, opts);
     }
 
-    // command "jobconnect" [call]
-    JobConnectCommand(client: WshClient, data: CommandJobConnectData, opts?: RpcOpts): Promise<CommandJobConnectRtnData> {
-        return client.wshRpcCall("jobconnect", data, opts);
-    }
-
     // command "jobcontrollerconnectedjobs" [call]
     JobControllerConnectedJobsCommand(client: WshClient, opts?: RpcOpts): Promise<string[]> {
         return client.wshRpcCall("jobcontrollerconnectedjobs", null, opts);
@@ -435,6 +430,16 @@ class RpcApiType {
     // command "jobmanagerexit" [call]
     JobManagerExitCommand(client: WshClient, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("jobmanagerexit", null, opts);
+    }
+
+    // command "jobprepareconnect" [call]
+    JobPrepareConnectCommand(client: WshClient, data: CommandJobPrepareConnectData, opts?: RpcOpts): Promise<CommandJobConnectRtnData> {
+        return client.wshRpcCall("jobprepareconnect", data, opts);
+    }
+
+    // command "jobstartstream" [call]
+    JobStartStreamCommand(client: WshClient, data: CommandJobStartStreamData, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("jobstartstream", data, opts);
     }
 
     // command "jobterminate" [call]

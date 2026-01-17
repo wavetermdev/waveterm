@@ -214,6 +214,26 @@ func (sm *StreamManager) RecvAck(ackPk wshrpc.CommandStreamAckData) {
 	}
 }
 
+// SetRwndSize dynamically updates the receive window size
+func (sm *StreamManager) SetRwndSize(rwndSize int) error {
+	sm.lock.Lock()
+	defer sm.lock.Unlock()
+	if rwndSize < 0 {
+		return fmt.Errorf("rwndSize cannot be negative")
+	}
+	if !sm.connected {
+		return fmt.Errorf("not connected")
+	}
+	sm.rwndSize = rwndSize
+	effectiveWindow := sm.cwndSize
+	if sm.rwndSize < effectiveWindow {
+		effectiveWindow = sm.rwndSize
+	}
+	sm.buf.SetEffectiveWindow(true, effectiveWindow)
+	sm.drainCond.Signal()
+	return nil
+}
+
 // Close shuts down the sender loop. The reader loop will exit on its next iteration
 // or when the underlying reader is closed.
 func (sm *StreamManager) Close() {

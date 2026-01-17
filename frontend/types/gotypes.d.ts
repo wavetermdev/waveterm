@@ -355,12 +355,6 @@ declare global {
         chatid: string;
     };
 
-    // wshrpc.CommandJobConnectData
-    type CommandJobConnectData = {
-        streammeta: StreamMeta;
-        seq: number;
-    };
-
     // wshrpc.CommandJobConnectRtnData
     type CommandJobConnectRtnData = {
         seq: number;
@@ -386,6 +380,16 @@ declare global {
         exitsignal?: string;
         exiterr?: string;
         exitts?: number;
+    };
+
+    // wshrpc.CommandJobPrepareConnectData
+    type CommandJobPrepareConnectData = {
+        streammeta: StreamMeta;
+        seq: number;
+    };
+
+    // wshrpc.CommandJobStartStreamData
+    type CommandJobStartStreamData = {
     };
 
     // wshrpc.CommandJobTerminateData

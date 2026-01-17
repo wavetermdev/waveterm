@@ -476,12 +476,6 @@ func GetWaveAIRateLimitCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) (*uctype
 	return resp, err
 }
 
-// command "jobconnect", wshserver.JobConnectCommand
-func JobConnectCommand(w *wshutil.WshRpc, data wshrpc.CommandJobConnectData, opts *wshrpc.RpcOpts) (*wshrpc.CommandJobConnectRtnData, error) {
-	resp, err := sendRpcRequestCallHelper[*wshrpc.CommandJobConnectRtnData](w, "jobconnect", data, opts)
-	return resp, err
-}
-
 // command "jobcontrollerconnectedjobs", wshserver.JobControllerConnectedJobsCommand
 func JobControllerConnectedJobsCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) ([]string, error) {
 	resp, err := sendRpcRequestCallHelper[[]string](w, "jobcontrollerconnectedjobs", nil, opts)
@@ -527,6 +521,18 @@ func JobExitedCommand(w *wshutil.WshRpc, data wshrpc.CommandJobExitedData, opts 
 // command "jobmanagerexit", wshserver.JobManagerExitCommand
 func JobManagerExitCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "jobmanagerexit", nil, opts)
+	return err
+}
+
+// command "jobprepareconnect", wshserver.JobPrepareConnectCommand
+func JobPrepareConnectCommand(w *wshutil.WshRpc, data wshrpc.CommandJobPrepareConnectData, opts *wshrpc.RpcOpts) (*wshrpc.CommandJobConnectRtnData, error) {
+	resp, err := sendRpcRequestCallHelper[*wshrpc.CommandJobConnectRtnData](w, "jobprepareconnect", data, opts)
+	return resp, err
+}
+
+// command "jobstartstream", wshserver.JobStartStreamCommand
+func JobStartStreamCommand(w *wshutil.WshRpc, data wshrpc.CommandJobStartStreamData, opts *wshrpc.RpcOpts) error {
+	_, err := sendRpcRequestCallHelper[any](w, "jobstartstream", data, opts)
 	return err
 }
 
