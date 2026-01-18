@@ -197,6 +197,33 @@ For newer models like GPT-4.1 or GPT-5, the API type is automatically determined
 }
 ```
 
+### OpenAI Compatible
+
+To use an OpenAPI compatible API provider, you need to provide the ai:endpoint, ai:apitoken, ai:model parameters,
+and use "openai-chat"  as the ai:mode.
+
+:::note
+The ai:endpoint is *NOT* a baseurl. The endpoint should contain the full endpoint, not just the baseurl.
+For example: https://api.x.ai/v1/chat/completions 
+
+If you provide only the baseurl, you are likely to get a 404 message.
+:::
+
+```json
+{
+  "xai-grokfast": {
+    "display:name": "xAI Grok Fast",
+    "display:order": 2,
+    "display:icon": "server",
+    "ai:apitype": "openai-chat",
+    "ai:model": "x-ai/grok-4-fast",
+    "ai:endpoint": "https://api.x.ai/v1/chat/completions",
+    "ai:apitoken": "<your-api-key>"
+  }
+}
+```
+
+
 ### OpenRouter
 
 [OpenRouter](https://openrouter.ai) provides access to multiple AI models. Using the `openrouter` provider simplifies configuration:
