@@ -334,29 +334,20 @@ func tryExitJobManager(ctx context.Context, jobId string) {
 }
 
 func TerminateJob(ctx context.Context, jobId string) error {
-	_, err := wstore.DBMustGet[*waveobj.Job](ctx, jobId)
+	job, err := wstore.DBMustGet[*waveobj.Job](ctx, jobId)
 	if err != nil {
 		return fmt.Errorf("failed to get job: %w", err)
 	}
 
-	jobConnStatus := GetJobConnStatus(jobId)
-	if jobConnStatus != JobConnStatus_Connected {
-		return fmt.Errorf("job connection is not connected (status: %s)", jobConnStatus)
-	}
-
-	bareRpc := wshclient.GetBareRpcClient()
-	rpcOpts := &wshrpc.RpcOpts{
-		Route:   wshutil.MakeJobRouteId(jobId),
-		Timeout: 5000,
-	}
-
-	err = wshclient.JobTerminateCommand(bareRpc, wshrpc.CommandJobTerminateData{}, rpcOpts)
+	isConnected, err := conncontroller.IsConnected(job.Connection)
 	if err != nil {
-		return fmt.Errorf("failed to send terminate command: %w", err)
+		return fmt.Errorf("error checking connection status: %w", err)
+	}
+	if !isConnected {
+		return fmt.Errorf("connection %q is not connected", job.Connection)
 	}
 
-	log.Printf("[job:%s] job terminate command sent successfully", jobId)
-	return nil
+	return remoteTerminateJobManager(ctx, job)
 }
 
 func ExitJobManager(ctx context.Context, jobId string) error {
@@ -417,6 +408,39 @@ func DisconnectJob(ctx context.Context, jobId string) error {
 	return nil
 }
 
+func remoteTerminateJobManager(ctx context.Context, job *waveobj.Job) error {
+	log.Printf("[job:%s] terminating job manager", job.OID)
+
+	bareRpc := wshclient.GetBareRpcClient()
+	terminateData := wshrpc.CommandRemoteTerminateJobManagerData{
+		JobId:             job.OID,
+		JobManagerPid:     job.JobManagerPid,
+		JobManagerStartTs: job.JobManagerStartTs,
+	}
+
+	rpcOpts := &wshrpc.RpcOpts{
+		Route:   wshutil.MakeConnectionRouteId(job.Connection),
+		Timeout: 5000,
+	}
+
+	err := wshclient.RemoteTerminateJobManagerCommand(bareRpc, terminateData, rpcOpts)
+	if err != nil {
+		log.Printf("[job:%s] error terminating job manager: %v", job.OID, err)
+		return fmt.Errorf("failed to terminate job manager: %w", err)
+	}
+
+	updateErr := wstore.DBUpdateFn(ctx, job.OID, func(job *waveobj.Job) {
+		job.JobManagerRunning = false
+		job.TerminateOnReconnect = false
+	})
+	if updateErr != nil {
+		log.Printf("[job:%s] error updating job manager running status: %v", job.OID, updateErr)
+	}
+
+	log.Printf("[job:%s] job manager terminated successfully", job.OID)
+	return nil
+}
+
 func ReconnectJob(ctx context.Context, jobId string) error {
 	job, err := wstore.DBMustGet[*waveobj.Job](ctx, jobId)
 	if err != nil {
@@ -435,6 +459,12 @@ func ReconnectJob(ctx context.Context, jobId string) error {
 		return fmt.Errorf("connection %q is not connected", job.Connection)
 	}
 
+	if job.TerminateOnReconnect {
+		return remoteTerminateJobManager(ctx, job)
+	}
+
+	bareRpc := wshclient.GetBareRpcClient()
+
 	jobAccessClaims := &wavejwt.WaveJwtClaims{
 		MainServer: true,
 		JobId:      jobId,
@@ -444,7 +474,6 @@ func ReconnectJob(ctx context.Context, jobId string) error {
 		return fmt.Errorf("failed to generate job access token: %w", err)
 	}
 
-	bareRpc := wshclient.GetBareRpcClient()
 	reconnectData := wshrpc.CommandRemoteReconnectToJobManagerData{
 		JobId:              jobId,
 		JobAuthToken:       job.JobAuthToken,
@@ -455,7 +484,7 @@ func ReconnectJob(ctx context.Context, jobId string) error {
 
 	rpcOpts := &wshrpc.RpcOpts{
 		Route:   wshutil.MakeConnectionRouteId(job.Connection),
-		Timeout: 30000,
+		Timeout: 5000,
 	}
 
 	log.Printf("[job:%s] sending RemoteReconnectToJobManagerCommand to connection %s", jobId, job.Connection)
@@ -507,35 +536,9 @@ func ReconnectJobsForConn(ctx context.Context, connName string) error {
 	log.Printf("[conn:%s] found %d jobs to reconnect", connName, len(jobsToReconnect))
 
 	for _, job := range jobsToReconnect {
-		if job.TerminateOnReconnect {
-			log.Printf("[job:%s] terminating job manager on reconnect", job.OID)
-
-			bareRpc := wshclient.GetBareRpcClient()
-			terminateData := wshrpc.CommandRemoteTerminateJobManagerData{
-				JobId:             job.OID,
-				JobManagerPid:     job.JobManagerPid,
-				JobManagerStartTs: job.JobManagerStartTs,
-			}
-
-			rpcOpts := &wshrpc.RpcOpts{
-				Route:   wshutil.MakeConnectionRouteId(connName),
-				Timeout: 5000,
-			}
-
-			err = wshclient.RemoteTerminateJobManagerCommand(bareRpc, terminateData, rpcOpts)
-			if err != nil {
-				log.Printf("[job:%s] error terminating job manager: %v", job.OID, err)
-			} else {
-				log.Printf("[job:%s] job manager terminate command sent successfully", job.OID)
-			}
-		} else {
-			log.Printf("[job:%s] reconnecting to job manager", job.OID)
-			err = ReconnectJob(ctx, job.OID)
-			if err != nil {
-				log.Printf("[job:%s] error reconnecting: %v", job.OID, err)
-			} else {
-				log.Printf("[job:%s] reconnected successfully", job.OID)
-			}
+		err = ReconnectJob(ctx, job.OID)
+		if err != nil {
+			log.Printf("[job:%s] error reconnecting: %v", job.OID, err)
 		}
 	}
 
