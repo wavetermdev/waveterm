@@ -165,10 +165,6 @@ func StartJob(ctx context.Context, params StartJobParams) (string, error) {
 	}
 
 	bareRpc := wshclient.GetBareRpcClient()
-	if bareRpc == nil {
-		return "", fmt.Errorf("main rpc client not available")
-	}
-
 	broker := bareRpc.StreamBroker
 	readerRouteId := wshclient.GetBareRpcClientRouteId()
 	writerRouteId := wshutil.MakeJobRouteId(jobId)
@@ -349,10 +345,6 @@ func TerminateJob(ctx context.Context, jobId string) error {
 	}
 
 	bareRpc := wshclient.GetBareRpcClient()
-	if bareRpc == nil {
-		return fmt.Errorf("main rpc client not available")
-	}
-
 	rpcOpts := &wshrpc.RpcOpts{
 		Route:   wshutil.MakeJobRouteId(jobId),
 		Timeout: 5000,
@@ -379,10 +371,6 @@ func ExitJobManager(ctx context.Context, jobId string) error {
 	}
 
 	bareRpc := wshclient.GetBareRpcClient()
-	if bareRpc == nil {
-		return fmt.Errorf("main rpc client not available")
-	}
-
 	rpcOpts := &wshrpc.RpcOpts{
 		Route:   wshutil.MakeJobRouteId(jobId),
 		Timeout: 5000,
@@ -411,10 +399,6 @@ func DisconnectJob(ctx context.Context, jobId string) error {
 	}
 
 	bareRpc := wshclient.GetBareRpcClient()
-	if bareRpc == nil {
-		return fmt.Errorf("main rpc client not available")
-	}
-
 	rpcOpts := &wshrpc.RpcOpts{
 		Route:   wshutil.MakeConnectionRouteId(job.Connection),
 		Timeout: 5000,
@@ -461,10 +445,6 @@ func ReconnectJob(ctx context.Context, jobId string) error {
 	}
 
 	bareRpc := wshclient.GetBareRpcClient()
-	if bareRpc == nil {
-		return fmt.Errorf("main rpc client not available")
-	}
-
 	reconnectData := wshrpc.CommandRemoteReconnectToJobManagerData{
 		JobId:              jobId,
 		JobAuthToken:       job.JobAuthToken,
@@ -531,11 +511,6 @@ func ReconnectJobsForConn(ctx context.Context, connName string) error {
 			log.Printf("[job:%s] terminating job manager on reconnect", job.OID)
 
 			bareRpc := wshclient.GetBareRpcClient()
-			if bareRpc == nil {
-				log.Printf("[job:%s] warning: main rpc client not available for termination", job.OID)
-				continue
-			}
-
 			terminateData := wshrpc.CommandRemoteTerminateJobManagerData{
 				JobId:             job.OID,
 				JobManagerPid:     job.JobManagerPid,
