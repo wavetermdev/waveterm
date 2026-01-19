@@ -56,6 +56,18 @@ var jobDebugExitCmd = &cobra.Command{
 	RunE:  jobDebugExitRun,
 }
 
+var jobDebugDisconnectCmd = &cobra.Command{
+	Use:   "disconnect",
+	Short: "disconnect from a job manager",
+	RunE:  jobDebugDisconnectRun,
+}
+
+var jobDebugReconnectCmd = &cobra.Command{
+	Use:   "reconnect",
+	Short: "reconnect to a job manager",
+	RunE:  jobDebugReconnectRun,
+}
+
 var jobDebugGetOutputCmd = &cobra.Command{
 	Use:   "getoutput",
 	Short: "get the terminal output for a job",
@@ -72,6 +84,8 @@ var jobIdFlag string
 var jobDebugJsonFlag bool
 var jobConnFlag string
 var exitJobIdFlag string
+var disconnectJobIdFlag string
+var reconnectJobIdFlag string
 
 func init() {
 	rootCmd.AddCommand(jobDebugCmd)
@@ -81,6 +95,8 @@ func init() {
 	jobDebugCmd.AddCommand(jobDebugPruneCmd)
 	jobDebugCmd.AddCommand(jobDebugTerminateCmdCmd)
 	jobDebugCmd.AddCommand(jobDebugExitCmd)
+	jobDebugCmd.AddCommand(jobDebugDisconnectCmd)
+	jobDebugCmd.AddCommand(jobDebugReconnectCmd)
 	jobDebugCmd.AddCommand(jobDebugGetOutputCmd)
 	jobDebugCmd.AddCommand(jobDebugStartCmd)
 
@@ -94,6 +110,12 @@ func init() {
 
 	jobDebugExitCmd.Flags().StringVar(&exitJobIdFlag, "jobid", "", "job id to exit (required)")
 	jobDebugExitCmd.MarkFlagRequired("jobid")
+
+	jobDebugDisconnectCmd.Flags().StringVar(&disconnectJobIdFlag, "jobid", "", "job id to disconnect (required)")
+	jobDebugDisconnectCmd.MarkFlagRequired("jobid")
+
+	jobDebugReconnectCmd.Flags().StringVar(&reconnectJobIdFlag, "jobid", "", "job id to reconnect (required)")
+	jobDebugReconnectCmd.MarkFlagRequired("jobid")
 
 	jobDebugGetOutputCmd.Flags().StringVar(&jobIdFlag, "jobid", "", "job id to get output for (required)")
 	jobDebugGetOutputCmd.MarkFlagRequired("jobid")
@@ -249,6 +271,26 @@ func jobDebugExitRun(cmd *cobra.Command, args []string) error {
 	}
 
 	fmt.Printf("Job manager for %s exited successfully\n", exitJobIdFlag)
+	return nil
+}
+
+func jobDebugDisconnectRun(cmd *cobra.Command, args []string) error {
+	err := wshclient.JobControllerDisconnectJobCommand(RpcClient, disconnectJobIdFlag, nil)
+	if err != nil {
+		return fmt.Errorf("disconnecting from job manager: %w", err)
+	}
+
+	fmt.Printf("Disconnected from job manager for %s successfully\n", disconnectJobIdFlag)
+	return nil
+}
+
+func jobDebugReconnectRun(cmd *cobra.Command, args []string) error {
+	err := wshclient.JobControllerReconnectJobCommand(RpcClient, reconnectJobIdFlag, nil)
+	if err != nil {
+		return fmt.Errorf("reconnecting to job manager: %w", err)
+	}
+
+	fmt.Printf("Reconnected to job manager for %s successfully\n", reconnectJobIdFlag)
 	return nil
 }
 

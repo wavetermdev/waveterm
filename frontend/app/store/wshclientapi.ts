@@ -397,9 +397,19 @@ class RpcApiType {
         return client.wshRpcCall("jobcontrollerconnectedjobs", null, opts);
     }
 
+    // command "jobcontrollerdisconnectjob" [call]
+    JobControllerDisconnectJobCommand(client: WshClient, data: string, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("jobcontrollerdisconnectjob", data, opts);
+    }
+
     // command "jobcontrollerexitjob" [call]
     JobControllerExitJobCommand(client: WshClient, data: string, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("jobcontrollerexitjob", data, opts);
+    }
+
+    // command "jobcontrollerreconnectjob" [call]
+    JobControllerReconnectJobCommand(client: WshClient, data: string, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("jobcontrollerreconnectjob", data, opts);
     }
 
     // command "jobcontrollerstartjob" [call]
@@ -500,6 +510,11 @@ class RpcApiType {
     // command "recordtevent" [call]
     RecordTEventCommand(client: WshClient, data: TEvent, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("recordtevent", data, opts);
+    }
+
+    // command "remotedisconnectfromjobmanager" [call]
+    RemoteDisconnectFromJobManagerCommand(client: WshClient, data: CommandRemoteDisconnectFromJobManagerData, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("remotedisconnectfromjobmanager", data, opts);
     }
 
     // command "remotefilecopy" [call]

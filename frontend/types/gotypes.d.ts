@@ -450,6 +450,11 @@ declare global {
         modts?: number;
     };
 
+    // wshrpc.CommandRemoteDisconnectFromJobManagerData
+    type CommandRemoteDisconnectFromJobManagerData = {
+        jobid: string;
+    };
+
     // wshrpc.CommandRemoteListEntriesData
     type CommandRemoteListEntriesData = {
         path: string;
@@ -466,6 +471,8 @@ declare global {
         jobid: string;
         jobauthtoken: string;
         mainserverjwttoken: string;
+        jobmanagerpid: number;
+        jobmanagerstartts: number;
     };
 
     // wshrpc.CommandRemoteStartJobData

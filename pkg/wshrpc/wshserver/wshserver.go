@@ -1463,6 +1463,14 @@ func (ws *WshServer) JobControllerExitJobCommand(ctx context.Context, jobId stri
 	return jobcontroller.ExitJobManager(ctx, jobId)
 }
 
+func (ws *WshServer) JobControllerDisconnectJobCommand(ctx context.Context, jobId string) error {
+	return jobcontroller.DisconnectJob(ctx, jobId)
+}
+
+func (ws *WshServer) JobControllerReconnectJobCommand(ctx context.Context, jobId string) error {
+	return jobcontroller.ReconnectJob(ctx, jobId)
+}
+
 func (ws *WshServer) JobControllerConnectedJobsCommand(ctx context.Context) ([]string, error) {
 	return jobcontroller.GetConnectedJobIds(), nil
 }

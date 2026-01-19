@@ -110,6 +110,7 @@ type WshRpcInterface interface {
 	RemoteInstallRcFilesCommand(ctx context.Context) error
 	RemoteStartJobCommand(ctx context.Context, data CommandRemoteStartJobData) (*CommandStartJobRtnData, error)
 	RemoteReconnectToJobManagerCommand(ctx context.Context, data CommandRemoteReconnectToJobManagerData) error
+	RemoteDisconnectFromJobManagerCommand(ctx context.Context, data CommandRemoteDisconnectFromJobManagerData) error
 
 	// emain
 	WebSelectorCommand(ctx context.Context, data CommandWebSelectorData) ([]string, error)
@@ -178,6 +179,8 @@ type WshRpcInterface interface {
 	JobControllerStartJobCommand(ctx context.Context, data CommandJobControllerStartJobData) (string, error)
 	JobControllerTerminateJobCommand(ctx context.Context, jobId string) error
 	JobControllerExitJobCommand(ctx context.Context, jobId string) error
+	JobControllerDisconnectJobCommand(ctx context.Context, jobId string) error
+	JobControllerReconnectJobCommand(ctx context.Context, jobId string) error
 	JobControllerConnectedJobsCommand(ctx context.Context) ([]string, error)
 }
 
@@ -716,6 +719,12 @@ type CommandRemoteReconnectToJobManagerData struct {
 	JobId              string `json:"jobid"`
 	JobAuthToken       string `json:"jobauthtoken"`
 	MainServerJwtToken string `json:"mainserverjwttoken"`
+	JobManagerPid      int    `json:"jobmanagerpid"`
+	JobManagerStartTs  int64  `json:"jobmanagerstartts"`
+}
+
+type CommandRemoteDisconnectFromJobManagerData struct {
+	JobId string `json:"jobid"`
 }
 
 type CommandStartJobRtnData struct {

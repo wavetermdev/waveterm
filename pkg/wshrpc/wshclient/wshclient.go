@@ -482,9 +482,21 @@ func JobControllerConnectedJobsCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) 
 	return resp, err
 }
 
+// command "jobcontrollerdisconnectjob", wshserver.JobControllerDisconnectJobCommand
+func JobControllerDisconnectJobCommand(w *wshutil.WshRpc, data string, opts *wshrpc.RpcOpts) error {
+	_, err := sendRpcRequestCallHelper[any](w, "jobcontrollerdisconnectjob", data, opts)
+	return err
+}
+
 // command "jobcontrollerexitjob", wshserver.JobControllerExitJobCommand
 func JobControllerExitJobCommand(w *wshutil.WshRpc, data string, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "jobcontrollerexitjob", data, opts)
+	return err
+}
+
+// command "jobcontrollerreconnectjob", wshserver.JobControllerReconnectJobCommand
+func JobControllerReconnectJobCommand(w *wshutil.WshRpc, data string, opts *wshrpc.RpcOpts) error {
+	_, err := sendRpcRequestCallHelper[any](w, "jobcontrollerreconnectjob", data, opts)
 	return err
 }
 
@@ -605,6 +617,12 @@ func ReadAppFileCommand(w *wshutil.WshRpc, data wshrpc.CommandReadAppFileData, o
 // command "recordtevent", wshserver.RecordTEventCommand
 func RecordTEventCommand(w *wshutil.WshRpc, data telemetrydata.TEvent, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "recordtevent", data, opts)
+	return err
+}
+
+// command "remotedisconnectfromjobmanager", wshserver.RemoteDisconnectFromJobManagerCommand
+func RemoteDisconnectFromJobManagerCommand(w *wshutil.WshRpc, data wshrpc.CommandRemoteDisconnectFromJobManagerData, opts *wshrpc.RpcOpts) error {
+	_, err := sendRpcRequestCallHelper[any](w, "remotedisconnectfromjobmanager", data, opts)
 	return err
 }
 
