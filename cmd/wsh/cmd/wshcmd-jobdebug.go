@@ -68,6 +68,12 @@ var jobDebugReconnectCmd = &cobra.Command{
 	RunE:  jobDebugReconnectRun,
 }
 
+var jobDebugReconnectConnCmd = &cobra.Command{
+	Use:   "reconnectconn",
+	Short: "reconnect all jobs for a connection",
+	RunE:  jobDebugReconnectConnRun,
+}
+
 var jobDebugGetOutputCmd = &cobra.Command{
 	Use:   "getoutput",
 	Short: "get the terminal output for a job",
@@ -86,6 +92,7 @@ var jobConnFlag string
 var exitJobIdFlag string
 var disconnectJobIdFlag string
 var reconnectJobIdFlag string
+var reconnectConnNameFlag string
 
 func init() {
 	rootCmd.AddCommand(jobDebugCmd)
@@ -97,6 +104,7 @@ func init() {
 	jobDebugCmd.AddCommand(jobDebugExitCmd)
 	jobDebugCmd.AddCommand(jobDebugDisconnectCmd)
 	jobDebugCmd.AddCommand(jobDebugReconnectCmd)
+	jobDebugCmd.AddCommand(jobDebugReconnectConnCmd)
 	jobDebugCmd.AddCommand(jobDebugGetOutputCmd)
 	jobDebugCmd.AddCommand(jobDebugStartCmd)
 
@@ -116,6 +124,9 @@ func init() {
 
 	jobDebugReconnectCmd.Flags().StringVar(&reconnectJobIdFlag, "jobid", "", "job id to reconnect (required)")
 	jobDebugReconnectCmd.MarkFlagRequired("jobid")
+
+	jobDebugReconnectConnCmd.Flags().StringVar(&reconnectConnNameFlag, "conn", "", "connection name (required)")
+	jobDebugReconnectConnCmd.MarkFlagRequired("conn")
 
 	jobDebugGetOutputCmd.Flags().StringVar(&jobIdFlag, "jobid", "", "job id to get output for (required)")
 	jobDebugGetOutputCmd.MarkFlagRequired("jobid")
@@ -291,6 +302,16 @@ func jobDebugReconnectRun(cmd *cobra.Command, args []string) error {
 	}
 
 	fmt.Printf("Reconnected to job manager for %s successfully\n", reconnectJobIdFlag)
+	return nil
+}
+
+func jobDebugReconnectConnRun(cmd *cobra.Command, args []string) error {
+	err := wshclient.JobControllerReconnectJobsForConnCommand(RpcClient, reconnectConnNameFlag, nil)
+	if err != nil {
+		return fmt.Errorf("reconnecting jobs for connection: %w", err)
+	}
+
+	fmt.Printf("Reconnected all jobs for connection %s successfully\n", reconnectConnNameFlag)
 	return nil
 }
 

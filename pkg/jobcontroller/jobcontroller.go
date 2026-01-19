@@ -503,6 +503,70 @@ func ReconnectJob(ctx context.Context, jobId string) error {
 	return nil
 }
 
+func ReconnectJobsForConn(ctx context.Context, connName string) error {
+	isConnected, err := conncontroller.IsConnected(connName)
+	if err != nil {
+		return fmt.Errorf("error checking connection status: %w", err)
+	}
+	if !isConnected {
+		return fmt.Errorf("connection %q is not connected", connName)
+	}
+
+	allJobs, err := wstore.DBGetAllObjsByType[*waveobj.Job](ctx, waveobj.OType_Job)
+	if err != nil {
+		return fmt.Errorf("failed to get jobs: %w", err)
+	}
+
+	var jobsToReconnect []*waveobj.Job
+	for _, job := range allJobs {
+		if job.Connection == connName && job.JobManagerRunning {
+			jobsToReconnect = append(jobsToReconnect, job)
+		}
+	}
+
+	log.Printf("[conn:%s] found %d jobs to reconnect", connName, len(jobsToReconnect))
+
+	for _, job := range jobsToReconnect {
+		if job.TerminateOnReconnect {
+			log.Printf("[job:%s] terminating job manager on reconnect", job.OID)
+
+			bareRpc := wshclient.GetBareRpcClient()
+			if bareRpc == nil {
+				log.Printf("[job:%s] warning: main rpc client not available for termination", job.OID)
+				continue
+			}
+
+			terminateData := wshrpc.CommandRemoteTerminateJobManagerData{
+				JobId:             job.OID,
+				JobManagerPid:     job.JobManagerPid,
+				JobManagerStartTs: job.JobManagerStartTs,
+			}
+
+			rpcOpts := &wshrpc.RpcOpts{
+				Route:   wshutil.MakeConnectionRouteId(connName),
+				Timeout: 5000,
+			}
+
+			err = wshclient.RemoteTerminateJobManagerCommand(bareRpc, terminateData, rpcOpts)
+			if err != nil {
+				log.Printf("[job:%s] error terminating job manager: %v", job.OID, err)
+			} else {
+				log.Printf("[job:%s] job manager terminate command sent successfully", job.OID)
+			}
+		} else {
+			log.Printf("[job:%s] reconnecting to job manager", job.OID)
+			err = ReconnectJob(ctx, job.OID)
+			if err != nil {
+				log.Printf("[job:%s] error reconnecting: %v", job.OID, err)
+			} else {
+				log.Printf("[job:%s] reconnected successfully", job.OID)
+			}
+		}
+	}
+
+	return nil
+}
+
 func DeleteJob(ctx context.Context, jobId string) error {
 	SetJobConnStatus(jobId, JobConnStatus_Disconnected)
 	err := filestore.WFS.DeleteZone(ctx, jobId)

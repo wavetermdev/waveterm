@@ -1471,6 +1471,10 @@ func (ws *WshServer) JobControllerReconnectJobCommand(ctx context.Context, jobId
 	return jobcontroller.ReconnectJob(ctx, jobId)
 }
 
+func (ws *WshServer) JobControllerReconnectJobsForConnCommand(ctx context.Context, connName string) error {
+	return jobcontroller.ReconnectJobsForConn(ctx, connName)
+}
+
 func (ws *WshServer) JobControllerConnectedJobsCommand(ctx context.Context) ([]string, error) {
 	return jobcontroller.GetConnectedJobIds(), nil
 }

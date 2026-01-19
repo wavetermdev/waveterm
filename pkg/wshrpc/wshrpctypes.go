@@ -182,6 +182,7 @@ type WshRpcInterface interface {
 	JobControllerExitJobCommand(ctx context.Context, jobId string) error
 	JobControllerDisconnectJobCommand(ctx context.Context, jobId string) error
 	JobControllerReconnectJobCommand(ctx context.Context, jobId string) error
+	JobControllerReconnectJobsForConnCommand(ctx context.Context, connName string) error
 	JobControllerConnectedJobsCommand(ctx context.Context) ([]string, error)
 }
 

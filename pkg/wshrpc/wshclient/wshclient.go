@@ -500,6 +500,12 @@ func JobControllerReconnectJobCommand(w *wshutil.WshRpc, data string, opts *wshr
 	return err
 }
 
+// command "jobcontrollerreconnectjobsforconn", wshserver.JobControllerReconnectJobsForConnCommand
+func JobControllerReconnectJobsForConnCommand(w *wshutil.WshRpc, data string, opts *wshrpc.RpcOpts) error {
+	_, err := sendRpcRequestCallHelper[any](w, "jobcontrollerreconnectjobsforconn", data, opts)
+	return err
+}
+
 // command "jobcontrollerstartjob", wshserver.JobControllerStartJobCommand
 func JobControllerStartJobCommand(w *wshutil.WshRpc, data wshrpc.CommandJobControllerStartJobData, opts *wshrpc.RpcOpts) (string, error) {
 	resp, err := sendRpcRequestCallHelper[string](w, "jobcontrollerstartjob", data, opts)
