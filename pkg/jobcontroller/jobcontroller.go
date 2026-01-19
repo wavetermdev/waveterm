@@ -639,8 +639,7 @@ func RestartStreaming(ctx context.Context, jobId string) error {
 			log.Printf("[job:%s] error updating totalgap metadata: %v", jobId, metaErr)
 		}
 
-		reader.Close()
-		reader, streamMeta = broker.CreateStreamReaderWithSeq(readerRouteId, writerRouteId, DefaultStreamRwnd, rtnData.Seq)
+		reader.UpdateNextSeq(rtnData.Seq)
 	}
 
 	log.Printf("[job:%s] sending JobStartStreamCommand", jobId)

@@ -150,6 +150,12 @@ func (r *Reader) Read(p []byte) (int, error) {
 	return n, nil
 }
 
+func (r *Reader) UpdateNextSeq(newSeq int64) {
+	r.lock.Lock()
+	defer r.lock.Unlock()
+	r.nextSeq = newSeq
+}
+
 func (r *Reader) Close() error {
 	r.lock.Lock()
 	defer r.lock.Unlock()
