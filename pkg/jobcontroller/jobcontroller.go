@@ -221,9 +221,11 @@ func StartJob(ctx context.Context, params StartJobParams) (string, error) {
 		return "", fmt.Errorf("failed to start remote job: %w", err)
 	}
 
-	log.Printf("[job:%s] RemoteStartJobCommand succeeded, pgid=%d", jobId, rtnData.Pgid)
+	log.Printf("[job:%s] RemoteStartJobCommand succeeded, cmdpgid=%d jobmanagerpid=%d jobmanagerstartts=%d", jobId, rtnData.CmdPgid, rtnData.JobManagerPid, rtnData.JobManagerStartTs)
 	err = wstore.DBUpdateFn(ctx, jobId, func(job *waveobj.Job) {
-		job.Pgid = rtnData.Pgid
+		job.CmdPgid = rtnData.CmdPgid
+		job.JobManagerPid = rtnData.JobManagerPid
+		job.JobManagerStartTs = rtnData.JobManagerStartTs
 		job.Status = JobStatus_Running
 		job.JobManagerRunning = true
 	})

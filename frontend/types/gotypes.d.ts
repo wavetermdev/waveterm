@@ -461,6 +461,13 @@ declare global {
         fileinfo?: FileInfo[];
     };
 
+    // wshrpc.CommandRemoteReconnectToJobManagerData
+    type CommandRemoteReconnectToJobManagerData = {
+        jobid: string;
+        jobauthtoken: string;
+        mainserverjwttoken: string;
+    };
+
     // wshrpc.CommandRemoteStartJobData
     type CommandRemoteStartJobData = {
         cmd: string;
@@ -539,7 +546,9 @@ declare global {
 
     // wshrpc.CommandStartJobRtnData
     type CommandStartJobRtnData = {
-        pgid: number;
+        cmdpgid: number;
+        jobmanagerpid: number;
+        jobmanagerstartts: number;
     };
 
     // wshrpc.CommandStreamAckData
@@ -883,7 +892,7 @@ declare global {
         cmdenv?: {[key: string]: string};
         jobauthtoken: string;
         ownerblockid: string;
-        pgid: number;
+        cmdpgid: number;
         termsize?: TermSize;
         startts?: number;
         status: string;
@@ -894,6 +903,8 @@ declare global {
         exiterror?: string;
         huponconnect: boolean;
         jobmanagerrunning?: boolean;
+        jobmanagerpid?: number;
+        jobmanagerstartts?: number;
         streamdone?: boolean;
         streamerror?: string;
     };

@@ -13,6 +13,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/shirou/gopsutil/v4/process"
 	"github.com/wavetermdev/waveterm/pkg/baseds"
 	"github.com/wavetermdev/waveterm/pkg/wavejwt"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
@@ -168,13 +169,30 @@ func (msc *MainServerConn) StartJobCommand(ctx context.Context, data wshrpc.Comm
 		log.Printf("StartJobCommand: cmd or process is nil")
 		return nil, fmt.Errorf("cmd or process is nil")
 	}
-	pgid, err := getProcessGroupId(cmd.Process.Pid)
+	cmdPgid, err := getProcessGroupId(cmd.Process.Pid)
 	if err != nil {
 		log.Printf("StartJobCommand: failed to get pgid: %v", err)
 		return nil, fmt.Errorf("failed to get process group id: %w", err)
 	}
-	log.Printf("StartJobCommand: job started successfully pid=%d pgid=%d", cmd.Process.Pid, pgid)
-	return &wshrpc.CommandStartJobRtnData{Pgid: pgid}, nil
+
+	jobManagerPid := os.Getpid()
+	proc, err := process.NewProcess(int32(jobManagerPid))
+	if err != nil {
+		log.Printf("StartJobCommand: failed to get job manager process: %v", err)
+		return nil, fmt.Errorf("failed to get job manager process: %w", err)
+	}
+	jobManagerStartTs, err := proc.CreateTime()
+	if err != nil {
+		log.Printf("StartJobCommand: failed to get job manager start time: %v", err)
+		return nil, fmt.Errorf("failed to get job manager start time: %w", err)
+	}
+
+	log.Printf("StartJobCommand: job started successfully cmdPid=%d cmdPgid=%d jobManagerPid=%d jobManagerStartTs=%d", cmd.Process.Pid, cmdPgid, jobManagerPid, jobManagerStartTs)
+	return &wshrpc.CommandStartJobRtnData{
+		CmdPgid:           cmdPgid,
+		JobManagerPid:     jobManagerPid,
+		JobManagerStartTs: jobManagerStartTs,
+	}, nil
 }
 
 func (msc *MainServerConn) JobPrepareConnectCommand(ctx context.Context, data wshrpc.CommandJobPrepareConnectData) (*wshrpc.CommandJobConnectRtnData, error) {

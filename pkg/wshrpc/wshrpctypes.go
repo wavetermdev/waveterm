@@ -719,7 +719,9 @@ type CommandRemoteReconnectToJobManagerData struct {
 }
 
 type CommandStartJobRtnData struct {
-	Pgid int `json:"pgid"`
+	CmdPgid           int   `json:"cmdpgid"`
+	JobManagerPid     int   `json:"jobmanagerpid"`
+	JobManagerStartTs int64 `json:"jobmanagerstartts"`
 }
 
 type CommandJobPrepareConnectData struct {

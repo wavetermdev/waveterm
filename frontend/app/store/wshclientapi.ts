@@ -552,6 +552,11 @@ class RpcApiType {
         return client.wshRpcCall("remotemkdir", data, opts);
     }
 
+    // command "remotereconnecttojobmanager" [call]
+    RemoteReconnectToJobManagerCommand(client: WshClient, data: CommandRemoteReconnectToJobManagerData, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("remotereconnecttojobmanager", data, opts);
+    }
+
     // command "remotestartjob" [call]
     RemoteStartJobCommand(client: WshClient, data: CommandRemoteStartJobData, opts?: RpcOpts): Promise<CommandStartJobRtnData> {
         return client.wshRpcCall("remotestartjob", data, opts);

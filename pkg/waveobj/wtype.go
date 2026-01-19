@@ -323,7 +323,7 @@ type Job struct {
 	AttachedBlockId string            `json:"ownerblockid"`
 
 	// cmd/process runtime info
-	Pgid         int      `json:"pgid"` // process group id
+	CmdPgid      int      `json:"cmdpgid"` // command process group id
 	TermSize     TermSize `json:"termsize,omitempty"`
 	StartTs      int64    `json:"startts,omitempty"` // timestamp (milliseconds)
 	Status       string   `json:"status"`            // init, running, done
@@ -337,7 +337,9 @@ type Job struct {
 	HupOnConnect bool `json:"huponconnect"`
 
 	// job manager state
-	JobManagerRunning bool `json:"jobmanagerrunning,omitempty"`
+	JobManagerRunning bool  `json:"jobmanagerrunning,omitempty"`
+	JobManagerPid     int   `json:"jobmanagerpid,omitempty"`
+	JobManagerStartTs int64 `json:"jobmanagerstartts,omitempty"`
 
 	// output info
 	StreamDone  bool   `json:"streamdone,omitempty"`
