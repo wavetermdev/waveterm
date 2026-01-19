@@ -29,10 +29,11 @@ import (
 )
 
 const (
-	JobStatus_Init    = "init"
-	JobStatus_Running = "running"
-	JobStatus_Done    = "done"
-	JobStatus_Error   = "error"
+	JobStatus_Init       = "init"
+	JobStatus_Running    = "running"
+	JobStatus_Done       = "done"       // natural exit (managed by job manager, command completed)
+	JobStatus_Error      = "error"      // failed to start or unmanaged failure
+	JobStatus_Terminated = "terminated" // explicitly killed via terminate command
 )
 
 const (
@@ -42,11 +43,27 @@ const (
 )
 
 const DefaultStreamRwnd = 64 * 1024
+const MetaKey_TotalGap = "totalgap"
+const JobOutputFileName = "term"
 
 var (
 	jobConnStates     = make(map[string]string)
 	jobConnStatesLock sync.Mutex
 )
+
+func getMetaInt64(meta wshrpc.FileMeta, key string) int64 {
+	val, ok := meta[key]
+	if !ok {
+		return 0
+	}
+	if intVal, ok := val.(int64); ok {
+		return intVal
+	}
+	if floatVal, ok := val.(float64); ok {
+		return int64(floatVal)
+	}
+	return 0
+}
 
 func InitJobController() {
 	rpcClient := wshclient.GetBareRpcClient()
@@ -174,7 +191,7 @@ func StartJob(ctx context.Context, params StartJobParams) (string, error) {
 		MaxSize:  10 * 1024 * 1024,
 		Circular: true,
 	}
-	err = filestore.WFS.MakeFile(ctx, jobId, "term", wshrpc.FileMeta{}, fileOpts)
+	err = filestore.WFS.MakeFile(ctx, jobId, JobOutputFileName, wshrpc.FileMeta{}, fileOpts)
 	if err != nil {
 		return "", fmt.Errorf("failed to create WaveFS file: %w", err)
 	}
@@ -252,7 +269,7 @@ func runOutputLoop(ctx context.Context, jobId string, reader *streamclient.Reade
 		n, err := reader.Read(buf)
 		if n > 0 {
 			log.Printf("[job:%s] received %d bytes of data", jobId, n)
-			appendErr := filestore.WFS.AppendData(ctx, jobId, "term", buf[:n])
+			appendErr := filestore.WFS.AppendData(ctx, jobId, JobOutputFileName, buf[:n])
 			if appendErr != nil {
 				log.Printf("[job:%s] error appending data to WaveFS: %v", jobId, appendErr)
 			} else {
@@ -291,12 +308,8 @@ func runOutputLoop(ctx context.Context, jobId string, reader *streamclient.Reade
 func HandleJobExited(ctx context.Context, jobId string, data wshrpc.CommandJobExitedData) error {
 	var finalStatus string
 	err := wstore.DBUpdateFn(ctx, jobId, func(job *waveobj.Job) {
-		if data.ExitErr != "" {
-			job.Status = JobStatus_Error
-			job.ExitError = data.ExitErr
-		} else {
-			job.Status = JobStatus_Done
-		}
+		job.Status = JobStatus_Done
+		job.ExitError = data.ExitErr
 		job.ExitCode = data.ExitCode
 		job.ExitSignal = data.ExitSignal
 		job.ExitTs = data.ExitTs
@@ -318,7 +331,7 @@ func tryExitJobManager(ctx context.Context, jobId string) {
 		return
 	}
 
-	jobExited := job.Status == JobStatus_Done || job.Status == JobStatus_Error
+	jobExited := job.Status == JobStatus_Done || job.Status == JobStatus_Error || job.Status == JobStatus_Terminated
 
 	if !jobExited || !job.StreamDone {
 		log.Printf("[job:%s] not ready for termination: exited=%v streamDone=%v", jobId, jobExited, job.StreamDone)
@@ -430,11 +443,12 @@ func remoteTerminateJobManager(ctx context.Context, job *waveobj.Job) error {
 	}
 
 	updateErr := wstore.DBUpdateFn(ctx, job.OID, func(job *waveobj.Job) {
+		job.Status = JobStatus_Terminated
 		job.JobManagerRunning = false
 		job.TerminateOnReconnect = false
 	})
 	if updateErr != nil {
-		log.Printf("[job:%s] error updating job manager running status: %v", job.OID, updateErr)
+		log.Printf("[job:%s] error updating job status after termination: %v", job.OID, updateErr)
 	}
 
 	log.Printf("[job:%s] job manager terminated successfully", job.OID)
@@ -542,6 +556,109 @@ func ReconnectJobsForConn(ctx context.Context, connName string) error {
 		}
 	}
 
+	return nil
+}
+
+func RestartStreaming(ctx context.Context, jobId string) error {
+	job, err := wstore.DBMustGet[*waveobj.Job](ctx, jobId)
+	if err != nil {
+		return fmt.Errorf("failed to get job: %w", err)
+	}
+
+	isConnected, err := conncontroller.IsConnected(job.Connection)
+	if err != nil {
+		return fmt.Errorf("error checking connection status: %w", err)
+	}
+	if !isConnected {
+		return fmt.Errorf("connection %q is not connected", job.Connection)
+	}
+
+	jobConnStatus := GetJobConnStatus(jobId)
+	if jobConnStatus != JobConnStatus_Connected {
+		return fmt.Errorf("job manager is not connected (status: %s)", jobConnStatus)
+	}
+
+	var currentSeq int64 = 0
+	var totalGap int64 = 0
+	waveFile, err := filestore.WFS.Stat(ctx, jobId, JobOutputFileName)
+	if err == nil {
+		currentSeq = waveFile.Size
+		totalGap = getMetaInt64(waveFile.Meta, MetaKey_TotalGap)
+		currentSeq += totalGap
+	}
+
+	bareRpc := wshclient.GetBareRpcClient()
+	broker := bareRpc.StreamBroker
+	readerRouteId := wshclient.GetBareRpcClientRouteId()
+	writerRouteId := wshutil.MakeJobRouteId(jobId)
+
+	reader, streamMeta := broker.CreateStreamReaderWithSeq(readerRouteId, writerRouteId, DefaultStreamRwnd, currentSeq)
+
+	prepareData := wshrpc.CommandJobPrepareConnectData{
+		StreamMeta: *streamMeta,
+		Seq:        currentSeq,
+	}
+
+	rpcOpts := &wshrpc.RpcOpts{
+		Route:   wshutil.MakeJobRouteId(jobId),
+		Timeout: 5000,
+	}
+
+	log.Printf("[job:%s] sending JobPrepareConnectCommand with seq=%d (fileSize=%d, totalGap=%d)", jobId, currentSeq, waveFile.Size, totalGap)
+	rtnData, err := wshclient.JobPrepareConnectCommand(bareRpc, prepareData, rpcOpts)
+	if err != nil {
+		reader.Close()
+		return fmt.Errorf("failed to prepare connect: %w", err)
+	}
+
+	if rtnData.HasExited {
+		reader.Close()
+		log.Printf("[job:%s] job has already exited: code=%d signal=%q err=%q", jobId, rtnData.ExitCode, rtnData.ExitSignal, rtnData.ExitErr)
+
+		updateErr := wstore.DBUpdateFn(ctx, jobId, func(job *waveobj.Job) {
+			job.Status = JobStatus_Done
+			job.ExitCode = rtnData.ExitCode
+			job.ExitSignal = rtnData.ExitSignal
+			job.ExitError = rtnData.ExitErr
+		})
+		if updateErr != nil {
+			log.Printf("[job:%s] error updating job exit status: %v", jobId, updateErr)
+		}
+		return nil
+	}
+
+	if rtnData.Seq > currentSeq {
+		gap := rtnData.Seq - currentSeq
+		totalGap += gap
+		log.Printf("[job:%s] detected gap: our seq=%d, server seq=%d, gap=%d, new totalGap=%d", jobId, currentSeq, rtnData.Seq, gap, totalGap)
+
+		metaErr := filestore.WFS.WriteMeta(ctx, jobId, JobOutputFileName, wshrpc.FileMeta{
+			MetaKey_TotalGap: totalGap,
+		}, true)
+		if metaErr != nil {
+			log.Printf("[job:%s] error updating totalgap metadata: %v", jobId, metaErr)
+		}
+
+		reader.Close()
+		reader, streamMeta = broker.CreateStreamReaderWithSeq(readerRouteId, writerRouteId, DefaultStreamRwnd, rtnData.Seq)
+	}
+
+	log.Printf("[job:%s] sending JobStartStreamCommand", jobId)
+	startStreamData := wshrpc.CommandJobStartStreamData{}
+	err = wshclient.JobStartStreamCommand(bareRpc, startStreamData, rpcOpts)
+	if err != nil {
+		reader.Close()
+		return fmt.Errorf("failed to start stream: %w", err)
+	}
+
+	go func() {
+		defer func() {
+			panichandler.PanicHandler("jobcontroller:RestartStreaming:runOutputLoop", recover())
+		}()
+		runOutputLoop(context.Background(), jobId, reader)
+	}()
+
+	log.Printf("[job:%s] streaming restarted successfully", jobId)
 	return nil
 }
 

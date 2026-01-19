@@ -52,12 +52,16 @@ func NewBroker(rpcClient StreamRpcInterface) *Broker {
 }
 
 func (b *Broker) CreateStreamReader(readerRoute string, writerRoute string, rwnd int64) (*Reader, *wshrpc.StreamMeta) {
+	return b.CreateStreamReaderWithSeq(readerRoute, writerRoute, rwnd, 0)
+}
+
+func (b *Broker) CreateStreamReaderWithSeq(readerRoute string, writerRoute string, rwnd int64, startSeq int64) (*Reader, *wshrpc.StreamMeta) {
 	b.lock.Lock()
 	defer b.lock.Unlock()
 
 	streamId := uuid.New().String()
 
-	reader := NewReader(streamId, rwnd, b)
+	reader := NewReaderWithSeq(streamId, rwnd, startSeq, b)
 	b.readers[streamId] = reader
 	b.readerRoutes[streamId] = readerRoute
 	b.writerRoutes[streamId] = writerRoute

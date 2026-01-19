@@ -28,11 +28,15 @@ type Reader struct {
 }
 
 func NewReader(id string, readWindow int64, ackSender AckSender) *Reader {
+	return NewReaderWithSeq(id, readWindow, 0, ackSender)
+}
+
+func NewReaderWithSeq(id string, readWindow int64, startSeq int64, ackSender AckSender) *Reader {
 	r := &Reader{
 		id:           id,
 		readWindow:   readWindow,
 		ackSender:    ackSender,
-		nextSeq:      0,
+		nextSeq:      startSeq,
 		lastRwndSent: readWindow,
 	}
 	r.cond = sync.NewCond(&r.lock)
