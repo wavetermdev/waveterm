@@ -479,10 +479,24 @@ func ReconnectJob(ctx context.Context, jobId string) error {
 	}
 
 	log.Printf("[job:%s] sending RemoteReconnectToJobManagerCommand to connection %s", jobId, job.Connection)
-	err = wshclient.RemoteReconnectToJobManagerCommand(bareRpc, reconnectData, rpcOpts)
+	rtnData, err := wshclient.RemoteReconnectToJobManagerCommand(bareRpc, reconnectData, rpcOpts)
 	if err != nil {
 		log.Printf("[job:%s] RemoteReconnectToJobManagerCommand failed: %v", jobId, err)
 		return fmt.Errorf("failed to reconnect to job manager: %w", err)
+	}
+
+	if !rtnData.Success {
+		log.Printf("[job:%s] RemoteReconnectToJobManagerCommand returned error: %s", jobId, rtnData.Error)
+		if rtnData.JobManagerExited {
+			updateErr := wstore.DBUpdateFn(ctx, jobId, func(job *waveobj.Job) {
+				job.JobManagerRunning = false
+			})
+			if updateErr != nil {
+				log.Printf("[job:%s] error updating job manager running status: %v", jobId, updateErr)
+			}
+			return fmt.Errorf("job manager has exited: %s", rtnData.Error)
+		}
+		return fmt.Errorf("failed to reconnect to job manager: %s", rtnData.Error)
 	}
 
 	log.Printf("[job:%s] RemoteReconnectToJobManagerCommand succeeded", jobId)

@@ -568,7 +568,7 @@ class RpcApiType {
     }
 
     // command "remotereconnecttojobmanager" [call]
-    RemoteReconnectToJobManagerCommand(client: WshClient, data: CommandRemoteReconnectToJobManagerData, opts?: RpcOpts): Promise<void> {
+    RemoteReconnectToJobManagerCommand(client: WshClient, data: CommandRemoteReconnectToJobManagerData, opts?: RpcOpts): Promise<CommandRemoteReconnectToJobManagerRtnData> {
         return client.wshRpcCall("remotereconnecttojobmanager", data, opts);
     }
 

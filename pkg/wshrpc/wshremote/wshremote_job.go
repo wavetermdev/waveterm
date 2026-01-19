@@ -261,14 +261,21 @@ func (impl *ServerImpl) RemoteStartJobCommand(ctx context.Context, data wshrpc.C
 	return rtnData, nil
 }
 
-func (impl *ServerImpl) RemoteReconnectToJobManagerCommand(ctx context.Context, data wshrpc.CommandRemoteReconnectToJobManagerData) error {
+func (impl *ServerImpl) RemoteReconnectToJobManagerCommand(ctx context.Context, data wshrpc.CommandRemoteReconnectToJobManagerData) (*wshrpc.CommandRemoteReconnectToJobManagerRtnData, error) {
 	log.Printf("RemoteReconnectToJobManagerCommand: reconnecting, jobid=%s\n", data.JobId)
 	if impl.Router == nil {
-		return fmt.Errorf("cannot reconnect to job manager: no router available")
+		return &wshrpc.CommandRemoteReconnectToJobManagerRtnData{
+			Success: false,
+			Error:   "cannot reconnect to job manager: no router available",
+		}, nil
 	}
 
 	if !isProcessRunning(data.JobManagerPid, data.JobManagerStartTs) {
-		return fmt.Errorf("job manager process (pid=%d) is not running", data.JobManagerPid)
+		return &wshrpc.CommandRemoteReconnectToJobManagerRtnData{
+			Success:          false,
+			JobManagerExited: true,
+			Error:            fmt.Sprintf("job manager process (pid=%d) is not running", data.JobManagerPid),
+		}, nil
 	}
 
 	existingConn := impl.getJobManagerConnection(data.JobId)
@@ -281,11 +288,16 @@ func (impl *ServerImpl) RemoteReconnectToJobManagerCommand(ctx context.Context, 
 
 	_, _, err := impl.connectToJobManager(ctx, data.JobId, data.MainServerJwtToken)
 	if err != nil {
-		return err
+		return &wshrpc.CommandRemoteReconnectToJobManagerRtnData{
+			Success: false,
+			Error:   err.Error(),
+		}, nil
 	}
 
 	log.Printf("RemoteReconnectToJobManagerCommand: successfully reconnected to job manager\n")
-	return nil
+	return &wshrpc.CommandRemoteReconnectToJobManagerRtnData{
+		Success: true,
+	}, nil
 }
 
 func (impl *ServerImpl) RemoteDisconnectFromJobManagerCommand(ctx context.Context, data wshrpc.CommandRemoteDisconnectFromJobManagerData) error {

@@ -109,7 +109,7 @@ type WshRpcInterface interface {
 	RemoteGetInfoCommand(ctx context.Context) (RemoteInfo, error)
 	RemoteInstallRcFilesCommand(ctx context.Context) error
 	RemoteStartJobCommand(ctx context.Context, data CommandRemoteStartJobData) (*CommandStartJobRtnData, error)
-	RemoteReconnectToJobManagerCommand(ctx context.Context, data CommandRemoteReconnectToJobManagerData) error
+	RemoteReconnectToJobManagerCommand(ctx context.Context, data CommandRemoteReconnectToJobManagerData) (*CommandRemoteReconnectToJobManagerRtnData, error)
 	RemoteDisconnectFromJobManagerCommand(ctx context.Context, data CommandRemoteDisconnectFromJobManagerData) error
 
 	// emain
@@ -721,6 +721,12 @@ type CommandRemoteReconnectToJobManagerData struct {
 	MainServerJwtToken string `json:"mainserverjwttoken"`
 	JobManagerPid      int    `json:"jobmanagerpid"`
 	JobManagerStartTs  int64  `json:"jobmanagerstartts"`
+}
+
+type CommandRemoteReconnectToJobManagerRtnData struct {
+	Success          bool   `json:"success"`
+	JobManagerExited bool   `json:"jobmanagerexited"`
+	Error            string `json:"error,omitempty"`
 }
 
 type CommandRemoteDisconnectFromJobManagerData struct {

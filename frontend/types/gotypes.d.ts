@@ -475,6 +475,13 @@ declare global {
         jobmanagerstartts: number;
     };
 
+    // wshrpc.CommandRemoteReconnectToJobManagerRtnData
+    type CommandRemoteReconnectToJobManagerRtnData = {
+        success: boolean;
+        jobmanagerexited: boolean;
+        error?: string;
+    };
+
     // wshrpc.CommandRemoteStartJobData
     type CommandRemoteStartJobData = {
         cmd: string;
