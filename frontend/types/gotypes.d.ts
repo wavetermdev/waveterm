@@ -358,6 +358,8 @@ declare global {
     // wshrpc.CommandJobConnectRtnData
     type CommandJobConnectRtnData = {
         seq: number;
+        streamdone?: boolean;
+        streamerror?: string;
         hasexited?: boolean;
         exitcode?: number;
         exitsignal?: string;

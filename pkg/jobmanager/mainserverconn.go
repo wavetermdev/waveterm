@@ -219,6 +219,7 @@ func (msc *MainServerConn) JobPrepareConnectCommand(ctx context.Context, data ws
 	WshCmdJobManager.pendingStreamMeta = &data.StreamMeta
 
 	rtnData := &wshrpc.CommandJobConnectRtnData{Seq: serverSeq}
+	rtnData.StreamDone, rtnData.StreamError = WshCmdJobManager.StreamManager.GetStreamDoneInfo()
 	hasExited, exitData := WshCmdJobManager.Cmd.GetExitInfo()
 	if hasExited && exitData != nil {
 		rtnData.HasExited = true
@@ -227,7 +228,7 @@ func (msc *MainServerConn) JobPrepareConnectCommand(ctx context.Context, data ws
 		rtnData.ExitErr = exitData.ExitErr
 	}
 
-	log.Printf("JobPrepareConnect: streamid=%s clientSeq=%d serverSeq=%d hasExited=%v (rwnd=0 cork mode)\n", data.StreamMeta.Id, data.Seq, serverSeq, hasExited)
+	log.Printf("JobPrepareConnect: streamid=%s clientSeq=%d serverSeq=%d streamDone=%v streamError=%q hasExited=%v (rwnd=0 cork mode)\n", data.StreamMeta.Id, data.Seq, serverSeq, rtnData.StreamDone, rtnData.StreamError, hasExited)
 	return rtnData, nil
 }
 

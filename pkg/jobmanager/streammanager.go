@@ -148,6 +148,20 @@ func (sm *StreamManager) GetStreamId() string {
 	return sm.streamId
 }
 
+// GetStreamDoneInfo returns whether the stream is done and the error if there was one.
+// The error is only meaningful if done=true, as the error is delivered as part of the stream otherwise.
+func (sm *StreamManager) GetStreamDoneInfo() (done bool, streamError string) {
+	sm.lock.Lock()
+	defer sm.lock.Unlock()
+	if !sm.terminalEventAcked {
+		return false, ""
+	}
+	if sm.terminalEvent != nil && !sm.terminalEvent.isEof {
+		return true, sm.terminalEvent.err
+	}
+	return true, ""
+}
+
 // ClientDisconnected transitions to DISCONNECTED mode
 func (sm *StreamManager) ClientDisconnected() {
 	sm.lock.Lock()

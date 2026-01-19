@@ -756,11 +756,13 @@ type CommandJobStartStreamData struct {
 }
 
 type CommandJobConnectRtnData struct {
-	Seq        int64  `json:"seq"`
-	HasExited  bool   `json:"hasexited,omitempty"`
-	ExitCode   int    `json:"exitcode,omitempty"`
-	ExitSignal string `json:"exitsignal,omitempty"`
-	ExitErr    string `json:"exiterr,omitempty"`
+	Seq         int64  `json:"seq"`
+	StreamDone  bool   `json:"streamdone,omitempty"`
+	StreamError string `json:"streamerror,omitempty"`
+	HasExited   bool   `json:"hasexited,omitempty"`
+	ExitCode    int    `json:"exitcode,omitempty"`
+	ExitSignal  string `json:"exitsignal,omitempty"`
+	ExitErr     string `json:"exiterr,omitempty"`
 }
 
 type CommandJobTerminateData struct {

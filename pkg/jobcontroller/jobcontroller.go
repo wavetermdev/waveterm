@@ -522,8 +522,18 @@ func ReconnectJob(ctx context.Context, jobId string) error {
 		return fmt.Errorf("failed to reconnect to job manager: %s", rtnData.Error)
 	}
 
-	log.Printf("[job:%s] RemoteReconnectToJobManagerCommand succeeded", jobId)
-	return nil
+	log.Printf("[job:%s] RemoteReconnectToJobManagerCommand succeeded, waiting for route", jobId)
+
+	routeId := wshutil.MakeJobRouteId(jobId)
+	waitCtx, cancelFn := context.WithTimeout(ctx, 2*time.Second)
+	defer cancelFn()
+	err = wshutil.DefaultRouter.WaitForRegister(waitCtx, routeId)
+	if err != nil {
+		return fmt.Errorf("route did not establish after successful reconnection: %w", err)
+	}
+
+	log.Printf("[job:%s] route established, restarting streaming", jobId)
+	return RestartStreaming(ctx, jobId)
 }
 
 func ReconnectJobsForConn(ctx context.Context, connName string) error {
@@ -612,9 +622,7 @@ func RestartStreaming(ctx context.Context, jobId string) error {
 	}
 
 	if rtnData.HasExited {
-		reader.Close()
 		log.Printf("[job:%s] job has already exited: code=%d signal=%q err=%q", jobId, rtnData.ExitCode, rtnData.ExitSignal, rtnData.ExitErr)
-
 		updateErr := wstore.DBUpdateFn(ctx, jobId, func(job *waveobj.Job) {
 			job.Status = JobStatus_Done
 			job.ExitCode = rtnData.ExitCode
@@ -624,6 +632,33 @@ func RestartStreaming(ctx context.Context, jobId string) error {
 		if updateErr != nil {
 			log.Printf("[job:%s] error updating job exit status: %v", jobId, updateErr)
 		}
+	}
+
+	if rtnData.StreamDone {
+		log.Printf("[job:%s] stream is already done: error=%q", jobId, rtnData.StreamError)
+		updateErr := wstore.DBUpdateFn(ctx, jobId, func(job *waveobj.Job) {
+			if !job.StreamDone {
+				job.StreamDone = true
+				if rtnData.StreamError != "" {
+					job.StreamError = rtnData.StreamError
+				}
+			}
+		})
+		if updateErr != nil {
+			log.Printf("[job:%s] error updating job stream status: %v", jobId, updateErr)
+		}
+	}
+
+	if rtnData.StreamDone && rtnData.HasExited {
+		reader.Close()
+		log.Printf("[job:%s] both stream done and job exited, calling tryExitJobManager", jobId)
+		tryExitJobManager(ctx, jobId)
+		return nil
+	}
+
+	if rtnData.StreamDone {
+		reader.Close()
+		log.Printf("[job:%s] stream already done, no need to restart streaming", jobId)
 		return nil
 	}
 
