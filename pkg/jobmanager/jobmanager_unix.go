@@ -85,6 +85,14 @@ func daemonize(clientId string, jobId string) error {
 	return nil
 }
 
+func handleSIGHUP() {
+	cmd := WshCmdJobManager.GetCmd()
+	if cmd != nil {
+		log.Printf("handling SIGHUP, closing pty master\n")
+		cmd.TerminateByClosingPtyMaster()
+	}
+}
+
 func setupJobManagerSignalHandlers() {
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM)
@@ -92,6 +100,11 @@ func setupJobManagerSignalHandlers() {
 	go func() {
 		for sig := range sigChan {
 			log.Printf("job manager received signal: %v\n", sig)
+
+			if sig == syscall.SIGHUP {
+				handleSIGHUP()
+				continue
+			}
 
 			cmd := WshCmdJobManager.GetCmd()
 			if cmd != nil {

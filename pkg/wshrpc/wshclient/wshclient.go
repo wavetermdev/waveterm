@@ -712,6 +712,12 @@ func RemoteTarStreamCommand(w *wshutil.WshRpc, data wshrpc.CommandRemoteStreamTa
 	return sendRpcRequestResponseStreamHelper[iochantypes.Packet](w, "remotetarstream", data, opts)
 }
 
+// command "remoteterminatejobmanager", wshserver.RemoteTerminateJobManagerCommand
+func RemoteTerminateJobManagerCommand(w *wshutil.WshRpc, data wshrpc.CommandRemoteTerminateJobManagerData, opts *wshrpc.RpcOpts) error {
+	_, err := sendRpcRequestCallHelper[any](w, "remoteterminatejobmanager", data, opts)
+	return err
+}
+
 // command "remotewritefile", wshserver.RemoteWriteFileCommand
 func RemoteWriteFileCommand(w *wshutil.WshRpc, data wshrpc.FileData, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "remotewritefile", data, opts)

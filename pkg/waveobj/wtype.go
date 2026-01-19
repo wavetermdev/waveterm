@@ -334,7 +334,7 @@ type Job struct {
 	ExitError    string   `json:"exiterror,omitempty"`
 
 	// reconnect option (e.g. orphaned, so we need to kill on connect)
-	HupOnConnect bool `json:"huponconnect"`
+	TerminateOnReconnect bool `json:"terminateonreconnect,omitempty"`
 
 	// job manager state
 	JobManagerRunning bool  `json:"jobmanagerrunning,omitempty"`

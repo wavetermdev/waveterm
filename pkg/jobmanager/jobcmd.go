@@ -183,7 +183,7 @@ func (jm *JobCmd) HandleInput(data wshrpc.CommandBlockInputData) error {
 	return nil
 }
 
-func (jm *JobCmd) Terminate() {
+func (jm *JobCmd) TerminateByClosingPtyMaster() {
 	jm.lock.Lock()
 	defer jm.lock.Unlock()
 	if jm.ptyClosed {

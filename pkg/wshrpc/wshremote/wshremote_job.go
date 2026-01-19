@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/shirou/gopsutil/v4/process"
@@ -21,19 +22,22 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
 )
 
-func isProcessRunning(pid int, pidStartTs int64) bool {
+func isProcessRunning(pid int, pidStartTs int64) (*process.Process, error) {
 	if pid <= 0 {
-		return false
+		return nil, nil
 	}
 	proc, err := process.NewProcess(int32(pid))
 	if err != nil {
-		return false
+		return nil, nil
 	}
 	createTime, err := proc.CreateTime()
 	if err != nil {
-		return false
+		return nil, err
 	}
-	return createTime == pidStartTs
+	if createTime != pidStartTs {
+		return nil, nil
+	}
+	return proc, nil
 }
 
 // returns jobRouteId, cleanupFunc, error
@@ -270,7 +274,14 @@ func (impl *ServerImpl) RemoteReconnectToJobManagerCommand(ctx context.Context, 
 		}, nil
 	}
 
-	if !isProcessRunning(data.JobManagerPid, data.JobManagerStartTs) {
+	proc, err := isProcessRunning(data.JobManagerPid, data.JobManagerStartTs)
+	if err != nil {
+		return &wshrpc.CommandRemoteReconnectToJobManagerRtnData{
+			Success: false,
+			Error:   fmt.Sprintf("error checking job manager process: %v", err),
+		}, nil
+	}
+	if proc == nil {
 		return &wshrpc.CommandRemoteReconnectToJobManagerRtnData{
 			Success:          false,
 			JobManagerExited: true,
@@ -286,7 +297,7 @@ func (impl *ServerImpl) RemoteReconnectToJobManagerCommand(ctx context.Context, 
 		}
 	}
 
-	_, _, err := impl.connectToJobManager(ctx, data.JobId, data.MainServerJwtToken)
+	_, _, err = impl.connectToJobManager(ctx, data.JobId, data.MainServerJwtToken)
 	if err != nil {
 		return &wshrpc.CommandRemoteReconnectToJobManagerRtnData{
 			Success: false,
@@ -313,5 +324,26 @@ func (impl *ServerImpl) RemoteDisconnectFromJobManagerCommand(ctx context.Contex
 		log.Printf("RemoteDisconnectFromJobManagerCommand: cleanup completed for jobid=%s\n", data.JobId)
 	}
 
+	return nil
+}
+
+func (impl *ServerImpl) RemoteTerminateJobManagerCommand(ctx context.Context, data wshrpc.CommandRemoteTerminateJobManagerData) error {
+	log.Printf("RemoteTerminateJobManagerCommand: terminating job manager, jobid=%s, pid=%d\n", data.JobId, data.JobManagerPid)
+
+	proc, err := isProcessRunning(data.JobManagerPid, data.JobManagerStartTs)
+	if err != nil {
+		return fmt.Errorf("error checking job manager process: %w", err)
+	}
+	if proc == nil {
+		log.Printf("RemoteTerminateJobManagerCommand: job manager process not running, jobid=%s\n", data.JobId)
+		return nil
+	}
+
+	err = proc.SendSignal(syscall.SIGHUP)
+	if err != nil {
+		return fmt.Errorf("failed to send SIGHUP to job manager: %w", err)
+	}
+
+	log.Printf("RemoteTerminateJobManagerCommand: sent SIGHUP to job manager process, jobid=%s, pid=%d\n", data.JobId, data.JobManagerPid)
 	return nil
 }

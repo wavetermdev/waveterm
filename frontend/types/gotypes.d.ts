@@ -508,6 +508,13 @@ declare global {
         opts?: FileCopyOpts;
     };
 
+    // wshrpc.CommandRemoteTerminateJobManagerData
+    type CommandRemoteTerminateJobManagerData = {
+        jobid: string;
+        jobmanagerpid: number;
+        jobmanagerstartts: number;
+    };
+
     // wshrpc.CommandRenameAppFileData
     type CommandRenameAppFileData = {
         appid: string;
@@ -915,7 +922,7 @@ declare global {
         exitcode?: number;
         exitsignal?: string;
         exiterror?: string;
-        huponconnect: boolean;
+        terminateonreconnect?: boolean;
         jobmanagerrunning?: boolean;
         jobmanagerpid?: number;
         jobmanagerstartts?: number;

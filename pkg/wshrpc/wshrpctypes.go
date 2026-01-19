@@ -111,6 +111,7 @@ type WshRpcInterface interface {
 	RemoteStartJobCommand(ctx context.Context, data CommandRemoteStartJobData) (*CommandStartJobRtnData, error)
 	RemoteReconnectToJobManagerCommand(ctx context.Context, data CommandRemoteReconnectToJobManagerData) (*CommandRemoteReconnectToJobManagerRtnData, error)
 	RemoteDisconnectFromJobManagerCommand(ctx context.Context, data CommandRemoteDisconnectFromJobManagerData) error
+	RemoteTerminateJobManagerCommand(ctx context.Context, data CommandRemoteTerminateJobManagerData) error
 
 	// emain
 	WebSelectorCommand(ctx context.Context, data CommandWebSelectorData) ([]string, error)
@@ -731,6 +732,12 @@ type CommandRemoteReconnectToJobManagerRtnData struct {
 
 type CommandRemoteDisconnectFromJobManagerData struct {
 	JobId string `json:"jobid"`
+}
+
+type CommandRemoteTerminateJobManagerData struct {
+	JobId              string `json:"jobid"`
+	JobManagerPid      int    `json:"jobmanagerpid"`
+	JobManagerStartTs  int64  `json:"jobmanagerstartts"`
 }
 
 type CommandStartJobRtnData struct {

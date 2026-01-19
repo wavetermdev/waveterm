@@ -592,6 +592,11 @@ class RpcApiType {
         return client.wshRpcStream("remotetarstream", data, opts);
     }
 
+    // command "remoteterminatejobmanager" [call]
+    RemoteTerminateJobManagerCommand(client: WshClient, data: CommandRemoteTerminateJobManagerData, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("remoteterminatejobmanager", data, opts);
+    }
+
     // command "remotewritefile" [call]
     RemoteWriteFileCommand(client: WshClient, data: FileData, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("remotewritefile", data, opts);

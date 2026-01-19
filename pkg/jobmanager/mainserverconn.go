@@ -271,7 +271,7 @@ func (msc *MainServerConn) JobTerminateCommand(ctx context.Context, data wshrpc.
 		return fmt.Errorf("job not started")
 	}
 	log.Printf("JobTerminate called\n")
-	WshCmdJobManager.Cmd.Terminate()
+	WshCmdJobManager.Cmd.TerminateByClosingPtyMaster()
 	return nil
 }
 
