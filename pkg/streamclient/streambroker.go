@@ -116,6 +116,9 @@ func (b *Broker) SendData(dataPk wshrpc.CommandStreamData) {
 	b.sendQueue.Enqueue(workItem{workType: "senddata", dataPk: dataPk})
 }
 
+// RecvData and RecvAck are designed to be non-blocking and must remain so to prevent deadlock.
+// They only enqueue work items to be processed asynchronously by the work queue's goroutine.
+// These methods are called from the main RPC runServer loop, so blocking here would stall all RPC processing.
 func (b *Broker) RecvData(dataPk wshrpc.CommandStreamData) {
 	b.recvQueue.Enqueue(workItem{workType: "recvdata", dataPk: dataPk})
 }

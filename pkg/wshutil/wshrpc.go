@@ -324,14 +324,6 @@ func (w *WshRpc) handleRequestInternal(req *RpcMessage, ingressLinkId baseds.Lin
 		w.handleEventRecv(req)
 		return
 	}
-	if req.Command == wshrpc.Command_StreamData {
-		w.handleStreamData(req)
-		return
-	}
-	if req.Command == wshrpc.Command_StreamDataAck {
-		w.handleStreamAck(req)
-		return
-	}
 
 	var respHandler *RpcResponseHandler
 	timeoutMs := req.Timeout
@@ -422,6 +414,17 @@ outer:
 			continue
 		}
 		if msg.IsRpcRequest() {
+			// Handle stream commands synchronously since the broker is designed to be non-blocking.
+			// RecvData/RecvAck just enqueue to work queues, so there's no risk of blocking the main loop.
+			if msg.Command == wshrpc.Command_StreamData {
+				w.handleStreamData(&msg)
+				continue
+			}
+			if msg.Command == wshrpc.Command_StreamDataAck {
+				w.handleStreamAck(&msg)
+				continue
+			}
+
 			ingressLinkId := inputVal.IngressLinkId
 			go func() {
 				defer func() {
