@@ -69,6 +69,14 @@ func InitJobController() {
 	rpcClient := wshclient.GetBareRpcClient()
 	rpcClient.EventListener.On(wps.Event_RouteUp, handleRouteUpEvent)
 	rpcClient.EventListener.On(wps.Event_RouteDown, handleRouteDownEvent)
+	wshclient.EventSubCommand(rpcClient, wps.SubscriptionRequest{
+		Event:     wps.Event_RouteUp,
+		AllScopes: true,
+	}, nil)
+	wshclient.EventSubCommand(rpcClient, wps.SubscriptionRequest{
+		Event:     wps.Event_RouteDown,
+		AllScopes: true,
+	}, nil)
 }
 
 func handleRouteUpEvent(event *wps.WaveEvent) {
@@ -533,7 +541,7 @@ func ReconnectJob(ctx context.Context, jobId string) error {
 	}
 
 	log.Printf("[job:%s] route established, restarting streaming", jobId)
-	return RestartStreaming(ctx, jobId)
+	return RestartStreaming(ctx, jobId, true)
 }
 
 func ReconnectJobsForConn(ctx context.Context, connName string) error {
@@ -569,23 +577,25 @@ func ReconnectJobsForConn(ctx context.Context, connName string) error {
 	return nil
 }
 
-func RestartStreaming(ctx context.Context, jobId string) error {
+func RestartStreaming(ctx context.Context, jobId string, knownConnected bool) error {
 	job, err := wstore.DBMustGet[*waveobj.Job](ctx, jobId)
 	if err != nil {
 		return fmt.Errorf("failed to get job: %w", err)
 	}
 
-	isConnected, err := conncontroller.IsConnected(job.Connection)
-	if err != nil {
-		return fmt.Errorf("error checking connection status: %w", err)
-	}
-	if !isConnected {
-		return fmt.Errorf("connection %q is not connected", job.Connection)
-	}
+	if !knownConnected {
+		isConnected, err := conncontroller.IsConnected(job.Connection)
+		if err != nil {
+			return fmt.Errorf("error checking connection status: %w", err)
+		}
+		if !isConnected {
+			return fmt.Errorf("connection %q is not connected", job.Connection)
+		}
 
-	jobConnStatus := GetJobConnStatus(jobId)
-	if jobConnStatus != JobConnStatus_Connected {
-		return fmt.Errorf("job manager is not connected (status: %s)", jobConnStatus)
+		jobConnStatus := GetJobConnStatus(jobId)
+		if jobConnStatus != JobConnStatus_Connected {
+			return fmt.Errorf("job manager is not connected (status: %s)", jobConnStatus)
+		}
 	}
 
 	var currentSeq int64 = 0

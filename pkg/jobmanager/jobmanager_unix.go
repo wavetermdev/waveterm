@@ -54,6 +54,11 @@ func normalizeSignal(sigName string) os.Signal {
 }
 
 func daemonize(clientId string, jobId string) error {
+	_, err := unix.Setsid()
+	if err != nil {
+		return fmt.Errorf("failed to setsid: %w", err)
+	}
+
 	devNull, err := os.OpenFile("/dev/null", os.O_RDONLY, 0)
 	if err != nil {
 		return fmt.Errorf("failed to open /dev/null: %w", err)
@@ -91,6 +96,12 @@ func handleSIGHUP() {
 		log.Printf("handling SIGHUP, closing pty master\n")
 		cmd.TerminateByClosingPtyMaster()
 	}
+	go func() {
+		log.Printf("received SIGHUP, will exit")
+		time.Sleep(500 * time.Millisecond)
+		log.Printf("terminating job manager\n")
+		os.Exit(0)
+	}()
 }
 
 func setupJobManagerSignalHandlers() {

@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"log"
 
 	"github.com/spf13/cobra"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
@@ -145,6 +146,8 @@ func jobDebugListRun(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("getting connected job ids: %w", err)
 	}
+
+	log.Printf("connnected jobids: %v\n", connectedJobIds)
 
 	connectedMap := make(map[string]bool)
 	for _, jobId := range connectedJobIds {

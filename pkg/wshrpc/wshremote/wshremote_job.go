@@ -52,6 +52,8 @@ func (impl *ServerImpl) connectToJobManager(ctx context.Context, jobId string, m
 	log.Printf("connectToJobManager: connected to socket\n")
 
 	proxy := wshutil.MakeRpcProxy("jobmanager")
+	linkId := impl.Router.RegisterUntrustedLink(proxy)
+
 	go func() {
 		writeErr := wshutil.AdaptOutputChToStream(proxy.ToRemoteCh, conn)
 		if writeErr != nil {
@@ -61,13 +63,13 @@ func (impl *ServerImpl) connectToJobManager(ctx context.Context, jobId string, m
 	go func() {
 		defer func() {
 			conn.Close()
+			impl.Router.UnregisterLink(linkId)
 			close(proxy.FromRemoteCh)
 			impl.removeJobManagerConnection(jobId)
 		}()
 		wshutil.AdaptStreamToMsgCh(conn, proxy.FromRemoteCh)
 	}()
 
-	linkId := impl.Router.RegisterUntrustedLink(proxy)
 	cleanup := func() {
 		conn.Close()
 		impl.Router.UnregisterLink(linkId)
