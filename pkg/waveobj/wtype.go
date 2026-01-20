@@ -291,6 +291,7 @@ type Block struct {
 	Stickers    []*StickerType `json:"stickers,omitempty"`
 	Meta        MetaMapType    `json:"meta"`
 	SubBlockIds []string       `json:"subblockids,omitempty"`
+	JobId       string         `json:"jobid,omitempty"` // if set, the block will render this jobid's pty output
 }
 
 func (*Block) GetOType() string {

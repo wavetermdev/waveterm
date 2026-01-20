@@ -3,7 +3,6 @@
 
 import type { BlockNodeModel } from "@/app/block/blocktypes";
 import { getFileSubject } from "@/app/store/wps";
-import { sendWSCommand } from "@/app/store/ws";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { WOS, fetchWaveFile, getApi, getSettingsKeyAtom, globalStore, openLink, recordTEvent } from "@/store/global";
@@ -50,6 +49,7 @@ type TermWrapOptions = {
     useWebGl?: boolean;
     sendDataHandler?: (data: string) => void;
     nodeModel?: BlockNodeModel;
+    jobId?: string;
 };
 
 // for xterm OSC handlers, we return true always because we "own" the OSC number.
@@ -375,6 +375,7 @@ function handleOsc16162Command(data: string, blockId: string, loaded: boolean, t
 export class TermWrap {
     tabId: string;
     blockId: string;
+    jobId: string;
     ptyOffset: number;
     dataBytesProcessed: number;
     terminal: Terminal;
@@ -422,6 +423,7 @@ export class TermWrap {
         this.loaded = false;
         this.tabId = tabId;
         this.blockId = blockId;
+        this.jobId = waveOptions.jobId;
         this.sendDataHandler = waveOptions.sendDataHandler;
         this.nodeModel = waveOptions.nodeModel;
         this.ptyOffset = 0;
@@ -495,6 +497,10 @@ export class TermWrap {
         });
     }
 
+    getZoneId(): string {
+        return this.jobId ?? this.blockId;
+    }
+
     resetCompositionState() {
         this.isComposing = false;
         this.composingData = "";
@@ -566,7 +572,7 @@ export class TermWrap {
             });
         }
 
-        this.mainFileSubject = getFileSubject(this.blockId, TermFileName);
+        this.mainFileSubject = getFileSubject(this.getZoneId(), TermFileName);
         this.mainFileSubject.subscribe(this.handleNewFileSubjectData.bind(this));
 
         try {
@@ -699,8 +705,9 @@ export class TermWrap {
     }
 
     async loadInitialTerminalData(): Promise<void> {
-        let startTs = Date.now();
-        const { data: cacheData, fileInfo: cacheFile } = await fetchWaveFile(this.blockId, TermCacheFileName);
+        const startTs = Date.now();
+        const zoneId = this.getZoneId();
+        const { data: cacheData, fileInfo: cacheFile } = await fetchWaveFile(zoneId, TermCacheFileName);
         let ptyOffset = 0;
         if (cacheFile != null) {
             ptyOffset = cacheFile.meta["ptyoffset"] ?? 0;
@@ -722,7 +729,7 @@ export class TermWrap {
                 }
             }
         }
-        const { data: mainData, fileInfo: mainFile } = await fetchWaveFile(this.blockId, TermFileName, ptyOffset);
+        const { data: mainData, fileInfo: mainFile } = await fetchWaveFile(zoneId, TermFileName, ptyOffset);
         console.log(
             `terminal loaded cachefile:${cacheData?.byteLength ?? 0} main:${mainData?.byteLength ?? 0} bytes, ${Date.now() - startTs}ms`
         );
@@ -751,12 +758,7 @@ export class TermWrap {
         this.fitAddon.fit();
         if (oldRows !== this.terminal.rows || oldCols !== this.terminal.cols) {
             const termSize: TermSize = { rows: this.terminal.rows, cols: this.terminal.cols };
-            const wsCommand: SetBlockTermSizeWSCommand = {
-                wscommand: "setblocktermsize",
-                blockid: this.blockId,
-                termsize: termSize,
-            };
-            sendWSCommand(wsCommand);
+            RpcApi.ControllerInputCommand(TabRpcClient, { blockid: this.blockId, termsize: termSize });
         }
         dlog("resize", `${this.terminal.rows}x${this.terminal.cols}`, `${oldRows}x${oldCols}`, this.hasResized);
         if (!this.hasResized) {

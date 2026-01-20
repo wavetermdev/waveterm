@@ -112,6 +112,7 @@ declare global {
         runtimeopts?: RuntimeOpts;
         stickers?: StickerType[];
         subblockids?: string[];
+        jobid?: string;
     };
 
     // blockcontroller.BlockControllerRuntimeStatus
@@ -137,13 +138,6 @@ declare global {
         workspaceid: string;
         block: Block;
         files: FileInfo[];
-    };
-
-    // webcmd.BlockInputWSCommand
-    type BlockInputWSCommand = {
-        wscommand: "blockinput";
-        blockid: string;
-        inputdata64: string;
     };
 
     // wshrpc.BlocksListEntry
@@ -366,6 +360,12 @@ declare global {
         exiterr?: string;
     };
 
+    // wshrpc.CommandJobControllerAttachJobData
+    type CommandJobControllerAttachJobData = {
+        jobid: string;
+        blockid: string;
+    };
+
     // wshrpc.CommandJobControllerStartJobData
     type CommandJobControllerStartJobData = {
         connname: string;
@@ -382,6 +382,14 @@ declare global {
         exitsignal?: string;
         exiterr?: string;
         exitts?: number;
+    };
+
+    // wshrpc.CommandJobInputData
+    type CommandJobInputData = {
+        jobid: string;
+        inputdata64?: string;
+        signame?: string;
+        termsize?: TermSize;
     };
 
     // wshrpc.CommandJobPrepareConnectData
@@ -1201,13 +1209,6 @@ declare global {
         optional: boolean;
     };
 
-    // webcmd.SetBlockTermSizeWSCommand
-    type SetBlockTermSizeWSCommand = {
-        wscommand: "setblocktermsize";
-        blockid: string;
-        termsize: TermSize;
-    };
-
     // wconfig.SettingsType
     type SettingsType = {
         "app:*"?: boolean;
@@ -1787,7 +1788,7 @@ declare global {
 
     type WSCommandType = {
         wscommand: string;
-    } & ( SetBlockTermSizeWSCommand | BlockInputWSCommand | WSRpcCommand );
+    } & ( WSRpcCommand );
 
     // eventbus.WSEventType
     type WSEventType = {

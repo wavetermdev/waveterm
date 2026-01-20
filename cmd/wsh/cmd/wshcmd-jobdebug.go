@@ -87,6 +87,18 @@ var jobDebugStartCmd = &cobra.Command{
 	RunE:  jobDebugStartRun,
 }
 
+var jobDebugAttachJobCmd = &cobra.Command{
+	Use:   "attachjob",
+	Short: "attach a job to a block",
+	RunE:  jobDebugAttachJobRun,
+}
+
+var jobDebugDetachJobCmd = &cobra.Command{
+	Use:   "detachjob",
+	Short: "detach a job from its block",
+	RunE:  jobDebugDetachJobRun,
+}
+
 var jobIdFlag string
 var jobDebugJsonFlag bool
 var jobConnFlag string
@@ -94,6 +106,9 @@ var exitJobIdFlag string
 var disconnectJobIdFlag string
 var reconnectJobIdFlag string
 var reconnectConnNameFlag string
+var attachJobIdFlag string
+var attachBlockIdFlag string
+var detachJobIdFlag string
 
 func init() {
 	rootCmd.AddCommand(jobDebugCmd)
@@ -108,6 +123,8 @@ func init() {
 	jobDebugCmd.AddCommand(jobDebugReconnectConnCmd)
 	jobDebugCmd.AddCommand(jobDebugGetOutputCmd)
 	jobDebugCmd.AddCommand(jobDebugStartCmd)
+	jobDebugCmd.AddCommand(jobDebugAttachJobCmd)
+	jobDebugCmd.AddCommand(jobDebugDetachJobCmd)
 
 	jobDebugListCmd.Flags().BoolVar(&jobDebugJsonFlag, "json", false, "output as JSON")
 
@@ -134,6 +151,14 @@ func init() {
 
 	jobDebugStartCmd.Flags().StringVar(&jobConnFlag, "conn", "", "connection name (required)")
 	jobDebugStartCmd.MarkFlagRequired("conn")
+
+	jobDebugAttachJobCmd.Flags().StringVar(&attachJobIdFlag, "jobid", "", "job id to attach (required)")
+	jobDebugAttachJobCmd.MarkFlagRequired("jobid")
+	jobDebugAttachJobCmd.Flags().StringVar(&attachBlockIdFlag, "blockid", "", "block id to attach to (required)")
+	jobDebugAttachJobCmd.MarkFlagRequired("blockid")
+
+	jobDebugDetachJobCmd.Flags().StringVar(&detachJobIdFlag, "jobid", "", "job id to detach (required)")
+	jobDebugDetachJobCmd.MarkFlagRequired("jobid")
 }
 
 func jobDebugListRun(cmd *cobra.Command, args []string) error {
@@ -360,5 +385,30 @@ func jobDebugStartRun(cmd *cobra.Command, args []string) error {
 	}
 
 	fmt.Printf("Job started successfully with ID: %s\n", jobId)
+	return nil
+}
+
+func jobDebugAttachJobRun(cmd *cobra.Command, args []string) error {
+	data := wshrpc.CommandJobControllerAttachJobData{
+		JobId:   attachJobIdFlag,
+		BlockId: attachBlockIdFlag,
+	}
+
+	err := wshclient.JobControllerAttachJobCommand(RpcClient, data, &wshrpc.RpcOpts{Timeout: 5000})
+	if err != nil {
+		return fmt.Errorf("attaching job: %w", err)
+	}
+
+	fmt.Printf("Job %s attached to block %s successfully\n", attachJobIdFlag, attachBlockIdFlag)
+	return nil
+}
+
+func jobDebugDetachJobRun(cmd *cobra.Command, args []string) error {
+	err := wshclient.JobControllerDetachJobCommand(RpcClient, detachJobIdFlag, &wshrpc.RpcOpts{Timeout: 5000})
+	if err != nil {
+		return fmt.Errorf("detaching job: %w", err)
+	}
+
+	fmt.Printf("Job %s detached successfully\n", detachJobIdFlag)
 	return nil
 }

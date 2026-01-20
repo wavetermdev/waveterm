@@ -476,10 +476,22 @@ func GetWaveAIRateLimitCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) (*uctype
 	return resp, err
 }
 
+// command "jobcontrollerattachjob", wshserver.JobControllerAttachJobCommand
+func JobControllerAttachJobCommand(w *wshutil.WshRpc, data wshrpc.CommandJobControllerAttachJobData, opts *wshrpc.RpcOpts) error {
+	_, err := sendRpcRequestCallHelper[any](w, "jobcontrollerattachjob", data, opts)
+	return err
+}
+
 // command "jobcontrollerconnectedjobs", wshserver.JobControllerConnectedJobsCommand
 func JobControllerConnectedJobsCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) ([]string, error) {
 	resp, err := sendRpcRequestCallHelper[[]string](w, "jobcontrollerconnectedjobs", nil, opts)
 	return resp, err
+}
+
+// command "jobcontrollerdetachjob", wshserver.JobControllerDetachJobCommand
+func JobControllerDetachJobCommand(w *wshutil.WshRpc, data string, opts *wshrpc.RpcOpts) error {
+	_, err := sendRpcRequestCallHelper[any](w, "jobcontrollerdetachjob", data, opts)
+	return err
 }
 
 // command "jobcontrollerdisconnectjob", wshserver.JobControllerDisconnectJobCommand
@@ -533,6 +545,12 @@ func JobDebugListCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) ([]*waveobj.Jo
 // command "jobexited", wshserver.JobExitedCommand
 func JobExitedCommand(w *wshutil.WshRpc, data wshrpc.CommandJobExitedData, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "jobexited", data, opts)
+	return err
+}
+
+// command "jobinput", wshserver.JobInputCommand
+func JobInputCommand(w *wshutil.WshRpc, data wshrpc.CommandJobInputData, opts *wshrpc.RpcOpts) error {
+	_, err := sendRpcRequestCallHelper[any](w, "jobinput", data, opts)
 	return err
 }
 

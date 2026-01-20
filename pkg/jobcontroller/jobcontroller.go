@@ -266,6 +266,26 @@ func StartJob(ctx context.Context, params StartJobParams) (string, error) {
 	return jobId, nil
 }
 
+func handleAppendJobFile(ctx context.Context, jobId string, fileName string, data []byte) error {
+	err := filestore.WFS.AppendData(ctx, jobId, fileName, data)
+	if err != nil {
+		return fmt.Errorf("error appending to job file: %w", err)
+	}
+	wps.Broker.Publish(wps.WaveEvent{
+		Event: wps.Event_BlockFile,
+		Scopes: []string{
+			waveobj.MakeORef(waveobj.OType_Job, jobId).String(),
+		},
+		Data: &wps.WSFileEventData{
+			ZoneId:   jobId,
+			FileName: fileName,
+			FileOp:   wps.FileOp_Append,
+			Data64:   base64.StdEncoding.EncodeToString(data),
+		},
+	})
+	return nil
+}
+
 func runOutputLoop(ctx context.Context, jobId string, reader *streamclient.Reader) {
 	defer func() {
 		log.Printf("[job:%s] output loop finished", jobId)
@@ -277,7 +297,7 @@ func runOutputLoop(ctx context.Context, jobId string, reader *streamclient.Reade
 		n, err := reader.Read(buf)
 		if n > 0 {
 			log.Printf("[job:%s] received %d bytes of data", jobId, n)
-			appendErr := filestore.WFS.AppendData(ctx, jobId, JobOutputFileName, buf[:n])
+			appendErr := handleAppendJobFile(ctx, jobId, JobOutputFileName, buf[:n])
 			if appendErr != nil {
 				log.Printf("[job:%s] error appending data to WaveFS: %v", jobId, appendErr)
 			} else {
@@ -713,4 +733,83 @@ func DeleteJob(ctx context.Context, jobId string) error {
 		log.Printf("[job:%s] warning: error deleting WaveFS zone: %v", jobId, err)
 	}
 	return wstore.DBDelete(ctx, waveobj.OType_Job, jobId)
+}
+
+func AttachJobToBlock(ctx context.Context, jobId string, blockId string) error {
+	return wstore.WithTx(ctx, func(tx *wstore.TxWrap) error {
+		err := wstore.DBUpdateFn(tx.Context(), blockId, func(block *waveobj.Block) {
+			block.JobId = jobId
+		})
+		if err != nil {
+			return fmt.Errorf("failed to update block: %w", err)
+		}
+
+		err = wstore.DBUpdateFn(tx.Context(), jobId, func(job *waveobj.Job) {
+			job.AttachedBlockId = blockId
+		})
+		if err != nil {
+			return fmt.Errorf("failed to update job: %w", err)
+		}
+
+		log.Printf("[job:%s] attached to block:%s", jobId, blockId)
+		return nil
+	})
+}
+
+func DetachJobFromBlock(ctx context.Context, jobId string, updateBlock bool) error {
+	return wstore.WithTx(ctx, func(tx *wstore.TxWrap) error {
+		job, err := wstore.DBMustGet[*waveobj.Job](tx.Context(), jobId)
+		if err != nil {
+			return fmt.Errorf("failed to get job: %w", err)
+		}
+
+		blockId := job.AttachedBlockId
+		if blockId == "" {
+			return nil
+		}
+
+		if updateBlock {
+			block, err := wstore.DBGet[*waveobj.Block](tx.Context(), blockId)
+			if err == nil && block != nil {
+				err = wstore.DBUpdateFn(tx.Context(), blockId, func(block *waveobj.Block) {
+					block.JobId = ""
+				})
+				if err != nil {
+					log.Printf("[job:%s] warning: failed to clear JobId from block:%s: %v", jobId, blockId, err)
+				}
+			}
+		}
+
+		err = wstore.DBUpdateFn(tx.Context(), jobId, func(job *waveobj.Job) {
+			job.AttachedBlockId = ""
+		})
+		if err != nil {
+			return fmt.Errorf("failed to update job: %w", err)
+		}
+
+		log.Printf("[job:%s] detached from block:%s", jobId, blockId)
+		return nil
+	})
+}
+
+func SendInput(ctx context.Context, data wshrpc.CommandJobInputData) error {
+	jobId := data.JobId
+	_, err := wstore.DBMustGet[*waveobj.Job](ctx, jobId)
+	if err != nil {
+		return fmt.Errorf("failed to get job: %w", err)
+	}
+
+	rpcOpts := &wshrpc.RpcOpts{
+		Route:      wshutil.MakeJobRouteId(jobId),
+		Timeout:    5000,
+		NoResponse: true,
+	}
+
+	bareRpc := wshclient.GetBareRpcClient()
+	err = wshclient.JobInputCommand(bareRpc, data, rpcOpts)
+	if err != nil {
+		return fmt.Errorf("failed to send input to job: %w", err)
+	}
+
+	return nil
 }

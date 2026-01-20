@@ -285,6 +285,20 @@ func (msc *MainServerConn) JobTerminateCommand(ctx context.Context, data wshrpc.
 	return nil
 }
 
+func (msc *MainServerConn) JobInputCommand(ctx context.Context, data wshrpc.CommandJobInputData) error {
+	WshCmdJobManager.lock.Lock()
+	defer WshCmdJobManager.lock.Unlock()
+
+	if !msc.PeerAuthenticated.Load() {
+		return fmt.Errorf("not authenticated")
+	}
+	if WshCmdJobManager.Cmd == nil {
+		return fmt.Errorf("job not started")
+	}
+
+	return WshCmdJobManager.Cmd.HandleInput(data)
+}
+
 func (msc *MainServerConn) JobManagerExitCommand(ctx context.Context) error {
 	if !msc.PeerAuthenticated.Load() {
 		return fmt.Errorf("not authenticated")

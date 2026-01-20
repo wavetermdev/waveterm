@@ -140,7 +140,7 @@ func (jm *JobCmd) GetExitInfo() (bool, *wshrpc.CommandJobExitedData) {
 	return true, exitData
 }
 
-func (jm *JobCmd) HandleInput(data wshrpc.CommandBlockInputData) error {
+func (jm *JobCmd) HandleInput(data wshrpc.CommandJobInputData) error {
 	jm.lock.Lock()
 	defer jm.lock.Unlock()
 

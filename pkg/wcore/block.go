@@ -12,6 +12,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/wavetermdev/waveterm/pkg/blockcontroller"
 	"github.com/wavetermdev/waveterm/pkg/filestore"
+	"github.com/wavetermdev/waveterm/pkg/jobcontroller"
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/telemetry"
 	"github.com/wavetermdev/waveterm/pkg/telemetry/telemetrydata"
@@ -166,6 +167,17 @@ func DeleteBlock(ctx context.Context, blockId string, recursive bool) error {
 				return fmt.Errorf("error deleting subblock %s: %w", subBlockId, err)
 			}
 		}
+	}
+	if block.JobId != "" {
+		go func() {
+			defer func() {
+				panichandler.PanicHandler("DetachJobFromBlock", recover())
+			}()
+			err := jobcontroller.DetachJobFromBlock(ctx, block.JobId, false)
+			if err != nil {
+				log.Printf("error detaching job from block %s: %v", blockId, err)
+			}
+		}()
 	}
 	parentBlockCount, err := deleteBlockObj(ctx, blockId)
 	if err != nil {
