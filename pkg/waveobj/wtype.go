@@ -323,16 +323,19 @@ type Job struct {
 	JobAuthToken    string            `json:"jobauthtoken"` // job manger -> wave
 	AttachedBlockId string            `json:"ownerblockid"`
 
+	JobManagerStatus string `json:"status"` // init, running, done, error, terminated
+
 	// cmd/process runtime info
-	CmdPgid      int      `json:"cmdpgid"` // command process group id
-	TermSize     TermSize `json:"termsize,omitempty"`
-	StartTs      int64    `json:"startts,omitempty"` // timestamp (milliseconds)
-	Status       string   `json:"status"`            // init, running, done
-	StartupError string   `json:"startuperror,omitempty"`
-	ExitTs       int64    `json:"exitts,omitempty"` // timestamp (milliseconds)
-	ExitCode     int      `json:"exitcode,omitempty"`
-	ExitSignal   string   `json:"exitsignal,omitempty"`
-	ExitError    string   `json:"exiterror,omitempty"`
+	CmdPid     int   `json:"cmdpid,omitempty"`     // command process id
+	CmdStartTs int64 `json:"cmdstartts,omitempty"` // command process start time (milliseconds from epoch)
+
+	TermSize TermSize `json:"termsize,omitempty"`
+
+	StartupError string `json:"startuperror,omitempty"`
+	ExitTs       int64  `json:"exitts,omitempty"` // timestamp (milliseconds)
+	ExitCode     int    `json:"exitcode,omitempty"`
+	ExitSignal   string `json:"exitsignal,omitempty"`
+	ExitError    string `json:"exiterror,omitempty"`
 
 	// reconnect option (e.g. orphaned, so we need to kill on connect)
 	TerminateOnReconnect bool `json:"terminateonreconnect,omitempty"`

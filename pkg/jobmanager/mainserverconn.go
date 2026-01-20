@@ -11,7 +11,6 @@ import (
 	"os"
 	"sync"
 	"sync/atomic"
-	"time"
 
 	"github.com/shirou/gopsutil/v4/process"
 	"github.com/wavetermdev/waveterm/pkg/baseds"
@@ -169,27 +168,34 @@ func (msc *MainServerConn) StartJobCommand(ctx context.Context, data wshrpc.Comm
 		log.Printf("StartJobCommand: cmd or process is nil")
 		return nil, fmt.Errorf("cmd or process is nil")
 	}
-	cmdPgid, err := getProcessGroupId(cmd.Process.Pid)
+	cmdPid := cmd.Process.Pid
+	cmdProc, err := process.NewProcess(int32(cmdPid))
 	if err != nil {
-		log.Printf("StartJobCommand: failed to get pgid: %v", err)
-		return nil, fmt.Errorf("failed to get process group id: %w", err)
+		log.Printf("StartJobCommand: failed to get cmd process: %v", err)
+		return nil, fmt.Errorf("failed to get cmd process: %w", err)
+	}
+	cmdStartTs, err := cmdProc.CreateTime()
+	if err != nil {
+		log.Printf("StartJobCommand: failed to get cmd start time: %v", err)
+		return nil, fmt.Errorf("failed to get cmd start time: %w", err)
 	}
 
 	jobManagerPid := os.Getpid()
-	proc, err := process.NewProcess(int32(jobManagerPid))
+	jobManagerProc, err := process.NewProcess(int32(jobManagerPid))
 	if err != nil {
 		log.Printf("StartJobCommand: failed to get job manager process: %v", err)
 		return nil, fmt.Errorf("failed to get job manager process: %w", err)
 	}
-	jobManagerStartTs, err := proc.CreateTime()
+	jobManagerStartTs, err := jobManagerProc.CreateTime()
 	if err != nil {
 		log.Printf("StartJobCommand: failed to get job manager start time: %v", err)
 		return nil, fmt.Errorf("failed to get job manager start time: %w", err)
 	}
 
-	log.Printf("StartJobCommand: job started successfully cmdPid=%d cmdPgid=%d jobManagerPid=%d jobManagerStartTs=%d", cmd.Process.Pid, cmdPgid, jobManagerPid, jobManagerStartTs)
+	log.Printf("StartJobCommand: job started successfully cmdPid=%d cmdStartTs=%d jobManagerPid=%d jobManagerStartTs=%d", cmdPid, cmdStartTs, jobManagerPid, jobManagerStartTs)
 	return &wshrpc.CommandStartJobRtnData{
-		CmdPgid:           cmdPgid,
+		CmdPid:            cmdPid,
+		CmdStartTs:        cmdStartTs,
 		JobManagerPid:     jobManagerPid,
 		JobManagerStartTs: jobManagerStartTs,
 	}, nil
@@ -270,21 +276,6 @@ func (msc *MainServerConn) JobStartStreamCommand(ctx context.Context, data wshrp
 	return nil
 }
 
-func (msc *MainServerConn) JobTerminateCommand(ctx context.Context, data wshrpc.CommandJobTerminateData) error {
-	WshCmdJobManager.lock.Lock()
-	defer WshCmdJobManager.lock.Unlock()
-
-	if !msc.PeerAuthenticated.Load() {
-		return fmt.Errorf("not authenticated")
-	}
-	if WshCmdJobManager.Cmd == nil {
-		return fmt.Errorf("job not started")
-	}
-	log.Printf("JobTerminate called\n")
-	WshCmdJobManager.Cmd.TerminateByClosingPtyMaster()
-	return nil
-}
-
 func (msc *MainServerConn) JobInputCommand(ctx context.Context, data wshrpc.CommandJobInputData) error {
 	WshCmdJobManager.lock.Lock()
 	defer WshCmdJobManager.lock.Unlock()
@@ -299,14 +290,3 @@ func (msc *MainServerConn) JobInputCommand(ctx context.Context, data wshrpc.Comm
 	return WshCmdJobManager.Cmd.HandleInput(data)
 }
 
-func (msc *MainServerConn) JobManagerExitCommand(ctx context.Context) error {
-	if !msc.PeerAuthenticated.Load() {
-		return fmt.Errorf("not authenticated")
-	}
-	log.Printf("JobManagerExit called, terminating job manager\n")
-	go func() {
-		time.Sleep(500 * time.Millisecond)
-		os.Exit(0)
-	}()
-	return nil
-}

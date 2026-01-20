@@ -402,10 +402,6 @@ declare global {
     type CommandJobStartStreamData = {
     };
 
-    // wshrpc.CommandJobTerminateData
-    type CommandJobTerminateData = {
-    };
-
     // wshrpc.CommandListAllAppFilesData
     type CommandListAllAppFilesData = {
         appid: string;
@@ -577,7 +573,8 @@ declare global {
 
     // wshrpc.CommandStartJobRtnData
     type CommandStartJobRtnData = {
-        cmdpgid: number;
+        cmdpid: number;
+        cmdstartts: number;
         jobmanagerpid: number;
         jobmanagerstartts: number;
     };
@@ -923,10 +920,10 @@ declare global {
         cmdenv?: {[key: string]: string};
         jobauthtoken: string;
         ownerblockid: string;
-        cmdpgid: number;
-        termsize?: TermSize;
-        startts?: number;
         status: string;
+        cmdpid?: number;
+        cmdstartts?: number;
+        termsize?: TermSize;
         startuperror?: string;
         exitts?: number;
         exitcode?: number;

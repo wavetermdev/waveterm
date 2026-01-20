@@ -33,12 +33,6 @@ var jobDebugDeleteCmd = &cobra.Command{
 	RunE:  jobDebugDeleteRun,
 }
 
-var jobDebugTerminateCmdCmd = &cobra.Command{
-	Use:   "terminate-cmd",
-	Short: "terminate a command process",
-	RunE:  jobDebugTerminateCmdRun,
-}
-
 var jobDebugDeleteAllCmd = &cobra.Command{
 	Use:   "deleteall",
 	Short: "delete all jobs",
@@ -116,7 +110,6 @@ func init() {
 	jobDebugCmd.AddCommand(jobDebugDeleteCmd)
 	jobDebugCmd.AddCommand(jobDebugDeleteAllCmd)
 	jobDebugCmd.AddCommand(jobDebugPruneCmd)
-	jobDebugCmd.AddCommand(jobDebugTerminateCmdCmd)
 	jobDebugCmd.AddCommand(jobDebugExitCmd)
 	jobDebugCmd.AddCommand(jobDebugDisconnectCmd)
 	jobDebugCmd.AddCommand(jobDebugReconnectCmd)
@@ -130,9 +123,6 @@ func init() {
 
 	jobDebugDeleteCmd.Flags().StringVar(&jobIdFlag, "jobid", "", "job id to delete (required)")
 	jobDebugDeleteCmd.MarkFlagRequired("jobid")
-
-	jobDebugTerminateCmdCmd.Flags().StringVar(&jobIdFlag, "jobid", "", "job id to terminate (required)")
-	jobDebugTerminateCmdCmd.MarkFlagRequired("jobid")
 
 	jobDebugExitCmd.Flags().StringVar(&exitJobIdFlag, "jobid", "", "job id to exit (required)")
 	jobDebugExitCmd.MarkFlagRequired("jobid")
@@ -210,7 +200,7 @@ func jobDebugListRun(cmd *cobra.Command, args []string) error {
 		}
 
 		exitCode := "-"
-		if job.Status != "running" && job.Status != "init" {
+		if job.JobManagerStatus != "running" && job.JobManagerStatus != "init" {
 			exitCode = fmt.Sprintf("%d", job.ExitCode)
 		}
 
@@ -222,7 +212,7 @@ func jobDebugListRun(cmd *cobra.Command, args []string) error {
 		}
 
 		fmt.Printf("%-36s %-20s %-9s %-7s %-30s %-10s %-10s %-8s %s\n",
-			job.OID, job.Connection, connectedStatus, managerStatus, job.Cmd, job.Status, streamStatus, exitCode, errorStr)
+			job.OID, job.Connection, connectedStatus, managerStatus, job.Cmd, job.JobManagerStatus, streamStatus, exitCode, errorStr)
 	}
 	return nil
 }
@@ -290,16 +280,6 @@ func jobDebugPruneRun(cmd *cobra.Command, args []string) error {
 	} else {
 		fmt.Printf("Pruned %d job(s) with stopped job managers\n", deletedCount)
 	}
-	return nil
-}
-
-func jobDebugTerminateCmdRun(cmd *cobra.Command, args []string) error {
-	err := wshclient.JobControllerTerminateJobCommand(RpcClient, jobIdFlag, nil)
-	if err != nil {
-		return fmt.Errorf("terminating command: %w", err)
-	}
-
-	fmt.Printf("Command for %s terminated successfully\n", jobIdFlag)
 	return nil
 }
 

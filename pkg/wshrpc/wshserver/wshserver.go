@@ -1470,10 +1470,6 @@ func (ws *WshServer) JobControllerStartJobCommand(ctx context.Context, data wshr
 	return jobcontroller.StartJob(ctx, params)
 }
 
-func (ws *WshServer) JobControllerTerminateJobCommand(ctx context.Context, jobId string) error {
-	return jobcontroller.TerminateJob(ctx, jobId)
-}
-
 func (ws *WshServer) JobControllerExitJobCommand(ctx context.Context, jobId string) error {
 	return jobcontroller.ExitJobManager(ctx, jobId)
 }

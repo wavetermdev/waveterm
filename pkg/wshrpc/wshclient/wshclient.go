@@ -524,12 +524,6 @@ func JobControllerStartJobCommand(w *wshutil.WshRpc, data wshrpc.CommandJobContr
 	return resp, err
 }
 
-// command "jobcontrollerterminatejob", wshserver.JobControllerTerminateJobCommand
-func JobControllerTerminateJobCommand(w *wshutil.WshRpc, data string, opts *wshrpc.RpcOpts) error {
-	_, err := sendRpcRequestCallHelper[any](w, "jobcontrollerterminatejob", data, opts)
-	return err
-}
-
 // command "jobdebugdelete", wshserver.JobDebugDeleteCommand
 func JobDebugDeleteCommand(w *wshutil.WshRpc, data string, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "jobdebugdelete", data, opts)
@@ -554,12 +548,6 @@ func JobInputCommand(w *wshutil.WshRpc, data wshrpc.CommandJobInputData, opts *w
 	return err
 }
 
-// command "jobmanagerexit", wshserver.JobManagerExitCommand
-func JobManagerExitCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) error {
-	_, err := sendRpcRequestCallHelper[any](w, "jobmanagerexit", nil, opts)
-	return err
-}
-
 // command "jobprepareconnect", wshserver.JobPrepareConnectCommand
 func JobPrepareConnectCommand(w *wshutil.WshRpc, data wshrpc.CommandJobPrepareConnectData, opts *wshrpc.RpcOpts) (*wshrpc.CommandJobConnectRtnData, error) {
 	resp, err := sendRpcRequestCallHelper[*wshrpc.CommandJobConnectRtnData](w, "jobprepareconnect", data, opts)
@@ -569,12 +557,6 @@ func JobPrepareConnectCommand(w *wshutil.WshRpc, data wshrpc.CommandJobPrepareCo
 // command "jobstartstream", wshserver.JobStartStreamCommand
 func JobStartStreamCommand(w *wshutil.WshRpc, data wshrpc.CommandJobStartStreamData, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "jobstartstream", data, opts)
-	return err
-}
-
-// command "jobterminate", wshserver.JobTerminateCommand
-func JobTerminateCommand(w *wshutil.WshRpc, data wshrpc.CommandJobTerminateData, opts *wshrpc.RpcOpts) error {
-	_, err := sendRpcRequestCallHelper[any](w, "jobterminate", data, opts)
 	return err
 }
 

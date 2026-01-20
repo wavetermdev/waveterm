@@ -172,14 +172,11 @@ type WshRpcInterface interface {
 	StartJobCommand(ctx context.Context, data CommandStartJobData) (*CommandStartJobRtnData, error)
 	JobPrepareConnectCommand(ctx context.Context, data CommandJobPrepareConnectData) (*CommandJobConnectRtnData, error)
 	JobStartStreamCommand(ctx context.Context, data CommandJobStartStreamData) error
-	JobTerminateCommand(ctx context.Context, data CommandJobTerminateData) error
 	JobInputCommand(ctx context.Context, data CommandJobInputData) error
 	JobExitedCommand(ctx context.Context, data CommandJobExitedData) error // this is sent FROM the job manager => main server
-	JobManagerExitCommand(ctx context.Context) error
 	JobDebugListCommand(ctx context.Context) ([]*waveobj.Job, error)
 	JobDebugDeleteCommand(ctx context.Context, jobId string) error
 	JobControllerStartJobCommand(ctx context.Context, data CommandJobControllerStartJobData) (string, error)
-	JobControllerTerminateJobCommand(ctx context.Context, jobId string) error
 	JobControllerExitJobCommand(ctx context.Context, jobId string) error
 	JobControllerDisconnectJobCommand(ctx context.Context, jobId string) error
 	JobControllerReconnectJobCommand(ctx context.Context, jobId string) error
@@ -752,7 +749,8 @@ type CommandRemoteTerminateJobManagerData struct {
 }
 
 type CommandStartJobRtnData struct {
-	CmdPgid           int   `json:"cmdpgid"`
+	CmdPid            int   `json:"cmdpid"`
+	CmdStartTs        int64 `json:"cmdstartts"`
 	JobManagerPid     int   `json:"jobmanagerpid"`
 	JobManagerStartTs int64 `json:"jobmanagerstartts"`
 }
@@ -773,9 +771,6 @@ type CommandJobConnectRtnData struct {
 	ExitCode    int    `json:"exitcode,omitempty"`
 	ExitSignal  string `json:"exitsignal,omitempty"`
 	ExitErr     string `json:"exiterr,omitempty"`
-}
-
-type CommandJobTerminateData struct {
 }
 
 type CommandJobExitedData struct {

@@ -129,6 +129,28 @@ func GetConnectedJobIds() []string {
 	return connectedJobIds
 }
 
+func ensureJobConnected(ctx context.Context, jobId string) (*waveobj.Job, error) {
+	job, err := wstore.DBMustGet[*waveobj.Job](ctx, jobId)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get job: %w", err)
+	}
+
+	isConnected, err := conncontroller.IsConnected(job.Connection)
+	if err != nil {
+		return nil, fmt.Errorf("error checking connection status: %w", err)
+	}
+	if !isConnected {
+		return nil, fmt.Errorf("connection %q is not connected", job.Connection)
+	}
+
+	jobConnStatus := GetJobConnStatus(jobId)
+	if jobConnStatus != JobConnStatus_Connected {
+		return nil, fmt.Errorf("job is not connected (status: %s)", jobConnStatus)
+	}
+
+	return job, nil
+}
+
 type StartJobParams struct {
 	ConnName string
 	Cmd      string
@@ -172,16 +194,15 @@ func StartJob(ctx context.Context, params StartJobParams) (string, error) {
 	}
 
 	job := &waveobj.Job{
-		OID:          jobId,
-		Connection:   params.ConnName,
-		Cmd:          params.Cmd,
-		CmdArgs:      params.Args,
-		CmdEnv:       params.Env,
-		TermSize:     *params.TermSize,
-		JobAuthToken: jobAuthToken,
-		Status:       JobStatus_Init,
-		StartTs:      time.Now().UnixMilli(),
-		Meta:         make(waveobj.MetaMapType),
+		OID:              jobId,
+		Connection:       params.ConnName,
+		Cmd:              params.Cmd,
+		CmdArgs:          params.Args,
+		CmdEnv:           params.Env,
+		TermSize:         *params.TermSize,
+		JobAuthToken:     jobAuthToken,
+		JobManagerStatus: JobStatus_Init,
+		Meta:             make(waveobj.MetaMapType),
 	}
 
 	err = wstore.DBInsert(ctx, job)
@@ -236,18 +257,19 @@ func StartJob(ctx context.Context, params StartJobParams) (string, error) {
 		log.Printf("[job:%s] RemoteStartJobCommand failed: %v", jobId, err)
 		errMsg := fmt.Sprintf("failed to start job: %v", err)
 		wstore.DBUpdateFn(ctx, jobId, func(job *waveobj.Job) {
-			job.Status = JobStatus_Error
+			job.JobManagerStatus = JobStatus_Error
 			job.StartupError = errMsg
 		})
 		return "", fmt.Errorf("failed to start remote job: %w", err)
 	}
 
-	log.Printf("[job:%s] RemoteStartJobCommand succeeded, cmdpgid=%d jobmanagerpid=%d jobmanagerstartts=%d", jobId, rtnData.CmdPgid, rtnData.JobManagerPid, rtnData.JobManagerStartTs)
+	log.Printf("[job:%s] RemoteStartJobCommand succeeded, cmdpid=%d cmdstartts=%d jobmanagerpid=%d jobmanagerstartts=%d", jobId, rtnData.CmdPid, rtnData.CmdStartTs, rtnData.JobManagerPid, rtnData.JobManagerStartTs)
 	err = wstore.DBUpdateFn(ctx, jobId, func(job *waveobj.Job) {
-		job.CmdPgid = rtnData.CmdPgid
+		job.CmdPid = rtnData.CmdPid
+		job.CmdStartTs = rtnData.CmdStartTs
 		job.JobManagerPid = rtnData.JobManagerPid
 		job.JobManagerStartTs = rtnData.JobManagerStartTs
-		job.Status = JobStatus_Running
+		job.JobManagerStatus = JobStatus_Running
 		job.JobManagerRunning = true
 	})
 	if err != nil {
@@ -336,12 +358,12 @@ func runOutputLoop(ctx context.Context, jobId string, reader *streamclient.Reade
 func HandleJobExited(ctx context.Context, jobId string, data wshrpc.CommandJobExitedData) error {
 	var finalStatus string
 	err := wstore.DBUpdateFn(ctx, jobId, func(job *waveobj.Job) {
-		job.Status = JobStatus_Done
+		job.JobManagerStatus = JobStatus_Done
 		job.ExitError = data.ExitErr
 		job.ExitCode = data.ExitCode
 		job.ExitSignal = data.ExitSignal
 		job.ExitTs = data.ExitTs
-		finalStatus = job.Status
+		finalStatus = job.JobManagerStatus
 	})
 	if err != nil {
 		return fmt.Errorf("failed to update job exit status: %w", err)
@@ -359,7 +381,7 @@ func tryExitJobManager(ctx context.Context, jobId string) {
 		return
 	}
 
-	jobExited := job.Status == JobStatus_Done || job.Status == JobStatus_Error || job.Status == JobStatus_Terminated
+	jobExited := job.JobManagerStatus == JobStatus_Done || job.JobManagerStatus == JobStatus_Error || job.JobManagerStatus == JobStatus_Terminated
 
 	if !jobExited || !job.StreamDone {
 		log.Printf("[job:%s] not ready for termination: exited=%v streamDone=%v", jobId, jobExited, job.StreamDone)
@@ -374,54 +396,13 @@ func tryExitJobManager(ctx context.Context, jobId string) {
 	}
 }
 
-func TerminateJob(ctx context.Context, jobId string) error {
+func ExitJobManager(ctx context.Context, jobId string) error {
 	job, err := wstore.DBMustGet[*waveobj.Job](ctx, jobId)
 	if err != nil {
 		return fmt.Errorf("failed to get job: %w", err)
 	}
 
-	isConnected, err := conncontroller.IsConnected(job.Connection)
-	if err != nil {
-		return fmt.Errorf("error checking connection status: %w", err)
-	}
-	if !isConnected {
-		return fmt.Errorf("connection %q is not connected", job.Connection)
-	}
-
 	return remoteTerminateJobManager(ctx, job)
-}
-
-func ExitJobManager(ctx context.Context, jobId string) error {
-	_, err := wstore.DBMustGet[*waveobj.Job](ctx, jobId)
-	if err != nil {
-		return fmt.Errorf("failed to get job: %w", err)
-	}
-
-	jobConnStatus := GetJobConnStatus(jobId)
-	if jobConnStatus != JobConnStatus_Connected {
-		return fmt.Errorf("job connection is not connected (status: %s)", jobConnStatus)
-	}
-
-	bareRpc := wshclient.GetBareRpcClient()
-	rpcOpts := &wshrpc.RpcOpts{
-		Route:   wshutil.MakeJobRouteId(jobId),
-		Timeout: 5000,
-	}
-
-	err = wshclient.JobManagerExitCommand(bareRpc, rpcOpts)
-	if err != nil {
-		return fmt.Errorf("failed to send exit command: %w", err)
-	}
-
-	updateErr := wstore.DBUpdateFn(ctx, jobId, func(job *waveobj.Job) {
-		job.JobManagerRunning = false
-	})
-	if updateErr != nil {
-		log.Printf("[job:%s] error updating job manager running status: %v", jobId, updateErr)
-	}
-
-	log.Printf("[job:%s] job manager exit command sent successfully", jobId)
-	return nil
 }
 
 func DisconnectJob(ctx context.Context, jobId string) error {
@@ -471,9 +452,13 @@ func remoteTerminateJobManager(ctx context.Context, job *waveobj.Job) error {
 	}
 
 	updateErr := wstore.DBUpdateFn(ctx, job.OID, func(job *waveobj.Job) {
-		job.Status = JobStatus_Terminated
+		job.JobManagerStatus = JobStatus_Terminated
 		job.JobManagerRunning = false
 		job.TerminateOnReconnect = false
+		if !job.StreamDone {
+			job.StreamDone = true
+			job.StreamError = "job manager terminated"
+		}
 	})
 	if updateErr != nil {
 		log.Printf("[job:%s] error updating job status after termination: %v", job.OID, updateErr)
@@ -488,11 +473,6 @@ func ReconnectJob(ctx context.Context, jobId string) error {
 	if err != nil {
 		return fmt.Errorf("failed to get job: %w", err)
 	}
-
-	if job.Connection == "" {
-		return fmt.Errorf("job has no connection")
-	}
-
 	isConnected, err := conncontroller.IsConnected(job.Connection)
 	if err != nil {
 		return fmt.Errorf("error checking connection status: %w", err)
@@ -654,7 +634,7 @@ func RestartStreaming(ctx context.Context, jobId string, knownConnected bool) er
 	if rtnData.HasExited {
 		log.Printf("[job:%s] job has already exited: code=%d signal=%q err=%q", jobId, rtnData.ExitCode, rtnData.ExitSignal, rtnData.ExitErr)
 		updateErr := wstore.DBUpdateFn(ctx, jobId, func(job *waveobj.Job) {
-			job.Status = JobStatus_Done
+			job.JobManagerStatus = JobStatus_Done
 			job.ExitCode = rtnData.ExitCode
 			job.ExitSignal = rtnData.ExitSignal
 			job.ExitError = rtnData.ExitErr
@@ -794,21 +774,30 @@ func DetachJobFromBlock(ctx context.Context, jobId string, updateBlock bool) err
 
 func SendInput(ctx context.Context, data wshrpc.CommandJobInputData) error {
 	jobId := data.JobId
-	_, err := wstore.DBMustGet[*waveobj.Job](ctx, jobId)
+	_, err := ensureJobConnected(ctx, jobId)
 	if err != nil {
-		return fmt.Errorf("failed to get job: %w", err)
+		return err
 	}
 
 	rpcOpts := &wshrpc.RpcOpts{
 		Route:      wshutil.MakeJobRouteId(jobId),
 		Timeout:    5000,
-		NoResponse: true,
+		NoResponse: false,
 	}
 
 	bareRpc := wshclient.GetBareRpcClient()
 	err = wshclient.JobInputCommand(bareRpc, data, rpcOpts)
 	if err != nil {
 		return fmt.Errorf("failed to send input to job: %w", err)
+	}
+
+	if data.TermSize != nil {
+		err = wstore.DBUpdateFn(ctx, jobId, func(job *waveobj.Job) {
+			job.TermSize = *data.TermSize
+		})
+		if err != nil {
+			log.Printf("[job:%s] warning: failed to update termsize in DB: %v", jobId, err)
+		}
 	}
 
 	return nil

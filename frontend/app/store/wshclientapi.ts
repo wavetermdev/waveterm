@@ -432,11 +432,6 @@ class RpcApiType {
         return client.wshRpcCall("jobcontrollerstartjob", data, opts);
     }
 
-    // command "jobcontrollerterminatejob" [call]
-    JobControllerTerminateJobCommand(client: WshClient, data: string, opts?: RpcOpts): Promise<void> {
-        return client.wshRpcCall("jobcontrollerterminatejob", data, opts);
-    }
-
     // command "jobdebugdelete" [call]
     JobDebugDeleteCommand(client: WshClient, data: string, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("jobdebugdelete", data, opts);
@@ -457,11 +452,6 @@ class RpcApiType {
         return client.wshRpcCall("jobinput", data, opts);
     }
 
-    // command "jobmanagerexit" [call]
-    JobManagerExitCommand(client: WshClient, opts?: RpcOpts): Promise<void> {
-        return client.wshRpcCall("jobmanagerexit", null, opts);
-    }
-
     // command "jobprepareconnect" [call]
     JobPrepareConnectCommand(client: WshClient, data: CommandJobPrepareConnectData, opts?: RpcOpts): Promise<CommandJobConnectRtnData> {
         return client.wshRpcCall("jobprepareconnect", data, opts);
@@ -470,11 +460,6 @@ class RpcApiType {
     // command "jobstartstream" [call]
     JobStartStreamCommand(client: WshClient, data: CommandJobStartStreamData, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("jobstartstream", data, opts);
-    }
-
-    // command "jobterminate" [call]
-    JobTerminateCommand(client: WshClient, data: CommandJobTerminateData, opts?: RpcOpts): Promise<void> {
-        return client.wshRpcCall("jobterminate", data, opts);
     }
 
     // command "listallappfiles" [call]
