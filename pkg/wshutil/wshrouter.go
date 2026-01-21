@@ -615,7 +615,7 @@ func (router *WshRouter) UnregisterLink(linkId baseds.LinkId) {
 }
 
 func isBindableRouteId(routeId string) bool {
-	if routeId == "" || strings.HasPrefix(routeId, ControlPrefix) {
+	if routeId == "" || strings.HasPrefix(routeId, ControlPrefix) || strings.HasPrefix(routeId, RoutePrefix_Link) {
 		return false
 	}
 	return true
