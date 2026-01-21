@@ -173,7 +173,9 @@ func DeleteBlock(ctx context.Context, blockId string, recursive bool) error {
 			defer func() {
 				panichandler.PanicHandler("DetachJobFromBlock", recover())
 			}()
-			err := jobcontroller.DetachJobFromBlock(ctx, block.JobId, false)
+			detachCtx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)
+			defer cancelFn()
+			err := jobcontroller.DetachJobFromBlock(detachCtx, block.JobId, false)
 			if err != nil {
 				log.Printf("error detaching job from block %s: %v", blockId, err)
 			}
