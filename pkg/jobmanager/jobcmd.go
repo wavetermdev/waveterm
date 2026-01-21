@@ -30,6 +30,7 @@ type JobCmd struct {
 	lock          sync.Mutex
 	cmd           *exec.Cmd
 	cmdPty        pty.Pty
+	ptsName       string
 	cleanedUp     bool
 	ptyClosed     bool
 	processExited bool
@@ -61,8 +62,10 @@ func MakeJobCmd(jobId string, cmdDef CmdDef) (*JobCmd, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to start command: %w", err)
 	}
+	setCloseOnExec(int(cmdPty.Fd()))
 	jm.cmd = ecmd
 	jm.cmdPty = cmdPty
+	jm.ptsName = jm.cmdPty.Name()
 	go jm.waitForProcess()
 	return jm, nil
 }

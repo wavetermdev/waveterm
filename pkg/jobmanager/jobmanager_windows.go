@@ -24,3 +24,6 @@ func daemonize(clientId string, jobId string) error {
 
 func setupJobManagerSignalHandlers() {
 }
+
+func setCloseOnExec(fd int) {
+}

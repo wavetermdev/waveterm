@@ -12,7 +12,6 @@ import (
 	"os/signal"
 	"strings"
 	"syscall"
-	"time"
 
 	"golang.org/x/sys/unix"
 )
@@ -59,7 +58,7 @@ func daemonize(clientId string, jobId string) error {
 		return fmt.Errorf("failed to setsid: %w", err)
 	}
 
-	devNull, err := os.OpenFile("/dev/null", os.O_RDONLY, 0)
+	devNull, err := os.OpenFile("/dev/null", os.O_RDWR, 0)
 	if err != nil {
 		return fmt.Errorf("failed to open /dev/null: %w", err)
 	}
@@ -86,60 +85,11 @@ func daemonize(clientId string, jobId string) error {
 	log.SetOutput(logFile)
 	log.Printf("job manager daemonized, logging to %s\n", logPath)
 
-	setupJobManagerSignalHandlers()
+	signal.Ignore(syscall.SIGHUP)
+
 	return nil
 }
 
-func handleSIGHUP() {
-	cmd := WshCmdJobManager.GetCmd()
-	if cmd != nil {
-		log.Printf("handling SIGHUP, closing pty master\n")
-		cmd.TerminateByClosingPtyMaster()
-	}
-	go func() {
-		log.Printf("received SIGHUP, will exit")
-		time.Sleep(500 * time.Millisecond)
-		log.Printf("terminating job manager\n")
-		os.Exit(0)
-	}()
-}
-
-func setupJobManagerSignalHandlers() {
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM)
-
-	go func() {
-		for sig := range sigChan {
-			log.Printf("job manager received signal: %v\n", sig)
-
-			if sig == syscall.SIGHUP {
-				handleSIGHUP()
-				continue
-			}
-
-			cmd := WshCmdJobManager.GetCmd()
-			if cmd != nil {
-				pgid, err := cmd.GetPGID()
-				if err == nil {
-					if s, ok := sig.(syscall.Signal); ok {
-						log.Printf("forwarding signal %v to process group %d\n", sig, pgid)
-						_ = syscall.Kill(-pgid, s)
-					} else {
-						log.Printf("signal is not a syscall.Signal: %T\n", sig)
-					}
-				} else {
-					log.Printf("failed to get pgid: %v\n", err)
-				}
-			}
-
-			if sig == syscall.SIGTERM {
-				if cmd != nil {
-					log.Printf("received SIGTERM, will exit\n")
-					time.Sleep(500 * time.Millisecond)
-				}
-				log.Printf("terminating job manager\n")
-				os.Exit(0)
-			}
-		}
-	}()
+func setCloseOnExec(fd int) {
+	unix.CloseOnExec(fd)
 }

@@ -323,27 +323,24 @@ type Job struct {
 	JobAuthToken    string            `json:"jobauthtoken"` // job manger -> wave
 	AttachedBlockId string            `json:"ownerblockid"`
 
-	JobManagerStatus string `json:"status"` // init, running, done, error, terminated
-
-	// cmd/process runtime info
-	CmdPid     int   `json:"cmdpid,omitempty"`     // command process id
-	CmdStartTs int64 `json:"cmdstartts,omitempty"` // command process start time (milliseconds from epoch)
-
-	TermSize TermSize `json:"termsize,omitempty"`
-
-	StartupError string `json:"startuperror,omitempty"`
-	ExitTs       int64  `json:"exitts,omitempty"` // timestamp (milliseconds)
-	ExitCode     int    `json:"exitcode,omitempty"`
-	ExitSignal   string `json:"exitsignal,omitempty"`
-	ExitError    string `json:"exiterror,omitempty"`
-
 	// reconnect option (e.g. orphaned, so we need to kill on connect)
 	TerminateOnReconnect bool `json:"terminateonreconnect,omitempty"`
 
 	// job manager state
-	JobManagerRunning bool  `json:"jobmanagerrunning,omitempty"`
-	JobManagerPid     int   `json:"jobmanagerpid,omitempty"`
-	JobManagerStartTs int64 `json:"jobmanagerstartts,omitempty"`
+	JobManagerStatus       string `json:"jobmanagerstatus"` // init, running, done, error, terminated
+	JobManagerStartupError string `json:"jobmanagerstartuperror,omitempty"`
+	JobManagerRunning      bool   `json:"jobmanagerrunning,omitempty"`
+	JobManagerPid          int    `json:"jobmanagerpid,omitempty"`
+	JobManagerStartTs      int64  `json:"jobmanagerstartts,omitempty"` // exact process start time (milliseconds)
+
+	// cmd/process runtime info
+	CmdPid        int      `json:"cmdpid,omitempty"`     // command process id
+	CmdStartTs    int64    `json:"cmdstartts,omitempty"` // exact command process start time (milliseconds from epoch)
+	CmdTermSize   TermSize `json:"cmdtermsize"`
+	CmdExitTs     int64    `json:"cmdexitts,omitempty"` // timestamp (milliseconds)
+	CmdExitCode   int      `json:"cmdexitcode,omitempty"`
+	CmdExitSignal string   `json:"cmdexitsignal,omitempty"`
+	CmdExitError  string   `json:"cmdexiterror,omitempty"`
 
 	// output info
 	StreamDone  bool   `json:"streamdone,omitempty"`

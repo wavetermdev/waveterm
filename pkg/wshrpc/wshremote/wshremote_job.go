@@ -331,7 +331,6 @@ func (impl *ServerImpl) RemoteDisconnectFromJobManagerCommand(ctx context.Contex
 
 func (impl *ServerImpl) RemoteTerminateJobManagerCommand(ctx context.Context, data wshrpc.CommandRemoteTerminateJobManagerData) error {
 	log.Printf("RemoteTerminateJobManagerCommand: terminating job manager, jobid=%s, pid=%d\n", data.JobId, data.JobManagerPid)
-
 	proc, err := isProcessRunning(data.JobManagerPid, data.JobManagerStartTs)
 	if err != nil {
 		return fmt.Errorf("error checking job manager process: %w", err)
@@ -340,12 +339,11 @@ func (impl *ServerImpl) RemoteTerminateJobManagerCommand(ctx context.Context, da
 		log.Printf("RemoteTerminateJobManagerCommand: job manager process not running, jobid=%s\n", data.JobId)
 		return nil
 	}
-
-	err = proc.SendSignal(syscall.SIGHUP)
+	err = proc.SendSignal(syscall.SIGTERM)
 	if err != nil {
-		return fmt.Errorf("failed to send SIGHUP to job manager: %w", err)
+		log.Printf("failed to send SIGTERM to job manager: %v", err)
+	} else {
+		log.Printf("RemoteTerminateJobManagerCommand: sent SIGTERM to job manager process, jobid=%s, pid=%d\n", data.JobId, data.JobManagerPid)
 	}
-
-	log.Printf("RemoteTerminateJobManagerCommand: sent SIGHUP to job manager process, jobid=%s, pid=%d\n", data.JobId, data.JobManagerPid)
 	return nil
 }

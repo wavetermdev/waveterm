@@ -201,14 +201,14 @@ func jobDebugListRun(cmd *cobra.Command, args []string) error {
 
 		exitCode := "-"
 		if job.JobManagerStatus != "running" && job.JobManagerStatus != "init" {
-			exitCode = fmt.Sprintf("%d", job.ExitCode)
+			exitCode = fmt.Sprintf("%d", job.CmdExitCode)
 		}
 
 		errorStr := ""
-		if job.StartupError != "" {
-			errorStr = fmt.Sprintf("%q", job.StartupError)
-		} else if job.ExitError != "" {
-			errorStr = fmt.Sprintf("%q", job.ExitError)
+		if job.JobManagerStartupError != "" {
+			errorStr = fmt.Sprintf("%q", job.JobManagerStartupError)
+		} else if job.CmdExitError != "" {
+			errorStr = fmt.Sprintf("%q", job.CmdExitError)
 		}
 
 		fmt.Printf("%-36s %-20s %-9s %-7s %-30s %-10s %-10s %-8s %s\n",

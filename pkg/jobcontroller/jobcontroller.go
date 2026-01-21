@@ -199,7 +199,7 @@ func StartJob(ctx context.Context, params StartJobParams) (string, error) {
 		Cmd:              params.Cmd,
 		CmdArgs:          params.Args,
 		CmdEnv:           params.Env,
-		TermSize:         *params.TermSize,
+		CmdTermSize:      *params.TermSize,
 		JobAuthToken:     jobAuthToken,
 		JobManagerStatus: JobStatus_Init,
 		Meta:             make(waveobj.MetaMapType),
@@ -258,7 +258,7 @@ func StartJob(ctx context.Context, params StartJobParams) (string, error) {
 		errMsg := fmt.Sprintf("failed to start job: %v", err)
 		wstore.DBUpdateFn(ctx, jobId, func(job *waveobj.Job) {
 			job.JobManagerStatus = JobStatus_Error
-			job.StartupError = errMsg
+			job.JobManagerStartupError = errMsg
 		})
 		return "", fmt.Errorf("failed to start remote job: %w", err)
 	}
@@ -359,10 +359,10 @@ func HandleJobExited(ctx context.Context, jobId string, data wshrpc.CommandJobEx
 	var finalStatus string
 	err := wstore.DBUpdateFn(ctx, jobId, func(job *waveobj.Job) {
 		job.JobManagerStatus = JobStatus_Done
-		job.ExitError = data.ExitErr
-		job.ExitCode = data.ExitCode
-		job.ExitSignal = data.ExitSignal
-		job.ExitTs = data.ExitTs
+		job.CmdExitError = data.ExitErr
+		job.CmdExitCode = data.ExitCode
+		job.CmdExitSignal = data.ExitSignal
+		job.CmdExitTs = data.ExitTs
 		finalStatus = job.JobManagerStatus
 	})
 	if err != nil {
@@ -635,9 +635,9 @@ func RestartStreaming(ctx context.Context, jobId string, knownConnected bool) er
 		log.Printf("[job:%s] job has already exited: code=%d signal=%q err=%q", jobId, rtnData.ExitCode, rtnData.ExitSignal, rtnData.ExitErr)
 		updateErr := wstore.DBUpdateFn(ctx, jobId, func(job *waveobj.Job) {
 			job.JobManagerStatus = JobStatus_Done
-			job.ExitCode = rtnData.ExitCode
-			job.ExitSignal = rtnData.ExitSignal
-			job.ExitError = rtnData.ExitErr
+			job.CmdExitCode = rtnData.ExitCode
+			job.CmdExitSignal = rtnData.ExitSignal
+			job.CmdExitError = rtnData.ExitErr
 		})
 		if updateErr != nil {
 			log.Printf("[job:%s] error updating job exit status: %v", jobId, updateErr)
@@ -793,7 +793,7 @@ func SendInput(ctx context.Context, data wshrpc.CommandJobInputData) error {
 
 	if data.TermSize != nil {
 		err = wstore.DBUpdateFn(ctx, jobId, func(job *waveobj.Job) {
-			job.TermSize = *data.TermSize
+			job.CmdTermSize = *data.TermSize
 		})
 		if err != nil {
 			log.Printf("[job:%s] warning: failed to update termsize in DB: %v", jobId, err)
