@@ -66,8 +66,9 @@ func jobManagerRun(cmd *cobra.Command, args []string) error {
 	}
 
 	readyFile := os.NewFile(3, "ready-pipe")
-	if readyFile == nil {
-		return fmt.Errorf("ready pipe (fd 3) not available")
+	_, err = readyFile.Stat()
+	if err != nil {
+		return fmt.Errorf("ready pipe (fd 3) not available: %v", err)
 	}
 
 	err = jobmanager.SetupJobManager(jobManagerClientId, jobManagerJobId, publicKeyBytes, jobAuthToken, readyFile)
