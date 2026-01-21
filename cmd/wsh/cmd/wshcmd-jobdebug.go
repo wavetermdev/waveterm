@@ -152,7 +152,7 @@ func init() {
 }
 
 func jobDebugListRun(cmd *cobra.Command, args []string) error {
-	rtnData, err := wshclient.JobDebugListCommand(RpcClient, &wshrpc.RpcOpts{Timeout: 5000})
+	rtnData, err := wshclient.JobControllerListCommand(RpcClient, &wshrpc.RpcOpts{Timeout: 5000})
 	if err != nil {
 		return fmt.Errorf("getting job debug list: %w", err)
 	}
@@ -178,16 +178,11 @@ func jobDebugListRun(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	fmt.Printf("%-36s %-20s %-9s %-7s %-30s %-10s %-10s %-8s %s\n", "OID", "Connection", "Connected", "Manager", "Cmd", "Status", "Stream", "ExitCode", "Error")
+	fmt.Printf("%-36s %-20s %-9s %-10s %-30s %-8s %-10s\n", "OID", "Connection", "Connected", "Manager", "Cmd", "ExitCode", "Stream")
 	for _, job := range rtnData {
 		connectedStatus := "no"
 		if connectedMap[job.OID] {
 			connectedStatus = "yes"
-		}
-
-		managerStatus := "no"
-		if job.JobManagerRunning {
-			managerStatus = "yes"
 		}
 
 		streamStatus := "-"
@@ -200,25 +195,24 @@ func jobDebugListRun(cmd *cobra.Command, args []string) error {
 		}
 
 		exitCode := "-"
-		if job.JobManagerStatus != "running" && job.JobManagerStatus != "init" {
-			exitCode = fmt.Sprintf("%d", job.CmdExitCode)
+		if job.CmdExitTs > 0 {
+			if job.CmdExitCode != nil {
+				exitCode = fmt.Sprintf("%d", *job.CmdExitCode)
+			} else if job.CmdExitSignal != "" {
+				exitCode = job.CmdExitSignal
+			} else {
+				exitCode = "?"
+			}
 		}
 
-		errorStr := ""
-		if job.JobManagerStartupError != "" {
-			errorStr = fmt.Sprintf("%q", job.JobManagerStartupError)
-		} else if job.CmdExitError != "" {
-			errorStr = fmt.Sprintf("%q", job.CmdExitError)
-		}
-
-		fmt.Printf("%-36s %-20s %-9s %-7s %-30s %-10s %-10s %-8s %s\n",
-			job.OID, job.Connection, connectedStatus, managerStatus, job.Cmd, job.JobManagerStatus, streamStatus, exitCode, errorStr)
+		fmt.Printf("%-36s %-20s %-9s %-10s %-30s %-8s %-10s\n",
+			job.OID, job.Connection, connectedStatus, job.JobManagerStatus, job.Cmd, exitCode, streamStatus)
 	}
 	return nil
 }
 
 func jobDebugDeleteRun(cmd *cobra.Command, args []string) error {
-	err := wshclient.JobDebugDeleteCommand(RpcClient, jobIdFlag, &wshrpc.RpcOpts{Timeout: 5000})
+	err := wshclient.JobControllerDeleteJobCommand(RpcClient, jobIdFlag, &wshrpc.RpcOpts{Timeout: 5000})
 	if err != nil {
 		return fmt.Errorf("deleting job: %w", err)
 	}
@@ -228,7 +222,7 @@ func jobDebugDeleteRun(cmd *cobra.Command, args []string) error {
 }
 
 func jobDebugDeleteAllRun(cmd *cobra.Command, args []string) error {
-	rtnData, err := wshclient.JobDebugListCommand(RpcClient, &wshrpc.RpcOpts{Timeout: 5000})
+	rtnData, err := wshclient.JobControllerListCommand(RpcClient, &wshrpc.RpcOpts{Timeout: 5000})
 	if err != nil {
 		return fmt.Errorf("getting job debug list: %w", err)
 	}
@@ -240,7 +234,7 @@ func jobDebugDeleteAllRun(cmd *cobra.Command, args []string) error {
 
 	deletedCount := 0
 	for _, job := range rtnData {
-		err := wshclient.JobDebugDeleteCommand(RpcClient, job.OID, &wshrpc.RpcOpts{Timeout: 5000})
+		err := wshclient.JobControllerDeleteJobCommand(RpcClient, job.OID, &wshrpc.RpcOpts{Timeout: 5000})
 		if err != nil {
 			fmt.Printf("Error deleting job %s: %v\n", job.OID, err)
 		} else {
@@ -253,7 +247,7 @@ func jobDebugDeleteAllRun(cmd *cobra.Command, args []string) error {
 }
 
 func jobDebugPruneRun(cmd *cobra.Command, args []string) error {
-	rtnData, err := wshclient.JobDebugListCommand(RpcClient, &wshrpc.RpcOpts{Timeout: 5000})
+	rtnData, err := wshclient.JobControllerListCommand(RpcClient, &wshrpc.RpcOpts{Timeout: 5000})
 	if err != nil {
 		return fmt.Errorf("getting job debug list: %w", err)
 	}
@@ -265,8 +259,8 @@ func jobDebugPruneRun(cmd *cobra.Command, args []string) error {
 
 	deletedCount := 0
 	for _, job := range rtnData {
-		if !job.JobManagerRunning {
-			err := wshclient.JobDebugDeleteCommand(RpcClient, job.OID, &wshrpc.RpcOpts{Timeout: 5000})
+		if job.JobManagerStatus != "running" {
+			err := wshclient.JobControllerDeleteJobCommand(RpcClient, job.OID, &wshrpc.RpcOpts{Timeout: 5000})
 			if err != nil {
 				fmt.Printf("Error deleting job %s: %v\n", job.OID, err)
 			} else {

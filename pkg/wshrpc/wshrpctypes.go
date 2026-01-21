@@ -173,9 +173,11 @@ type WshRpcInterface interface {
 	JobPrepareConnectCommand(ctx context.Context, data CommandJobPrepareConnectData) (*CommandJobConnectRtnData, error)
 	JobStartStreamCommand(ctx context.Context, data CommandJobStartStreamData) error
 	JobInputCommand(ctx context.Context, data CommandJobInputData) error
-	JobExitedCommand(ctx context.Context, data CommandJobExitedData) error // this is sent FROM the job manager => main server
-	JobDebugListCommand(ctx context.Context) ([]*waveobj.Job, error)
-	JobDebugDeleteCommand(ctx context.Context, jobId string) error
+	JobCmdExitedCommand(ctx context.Context, data CommandJobCmdExitedData) error // this is sent FROM the job manager => main server
+
+	// job controller
+	JobControllerDeleteJobCommand(ctx context.Context, jobId string) error
+	JobControllerListCommand(ctx context.Context) ([]*waveobj.Job, error)
 	JobControllerStartJobCommand(ctx context.Context, data CommandJobControllerStartJobData) (string, error)
 	JobControllerExitJobCommand(ctx context.Context, jobId string) error
 	JobControllerDisconnectJobCommand(ctx context.Context, jobId string) error
@@ -733,9 +735,9 @@ type CommandRemoteReconnectToJobManagerData struct {
 }
 
 type CommandRemoteReconnectToJobManagerRtnData struct {
-	Success          bool   `json:"success"`
-	JobManagerExited bool   `json:"jobmanagerexited"`
-	Error            string `json:"error,omitempty"`
+	Success        bool   `json:"success"`
+	JobManagerGone bool   `json:"jobmanagergone"`
+	Error          string `json:"error,omitempty"`
 }
 
 type CommandRemoteDisconnectFromJobManagerData struct {
@@ -768,14 +770,14 @@ type CommandJobConnectRtnData struct {
 	StreamDone  bool   `json:"streamdone,omitempty"`
 	StreamError string `json:"streamerror,omitempty"`
 	HasExited   bool   `json:"hasexited,omitempty"`
-	ExitCode    int    `json:"exitcode,omitempty"`
+	ExitCode    *int   `json:"exitcode,omitempty"`
 	ExitSignal  string `json:"exitsignal,omitempty"`
 	ExitErr     string `json:"exiterr,omitempty"`
 }
 
-type CommandJobExitedData struct {
+type CommandJobCmdExitedData struct {
 	JobId      string `json:"jobid"`
-	ExitCode   int    `json:"exitcode"`
+	ExitCode   *int   `json:"exitcode"`
 	ExitSignal string `json:"exitsignal,omitempty"`
 	ExitErr    string `json:"exiterr,omitempty"`
 	ExitTs     int64  `json:"exitts,omitempty"`

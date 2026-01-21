@@ -349,6 +349,15 @@ declare global {
         chatid: string;
     };
 
+    // wshrpc.CommandJobCmdExitedData
+    type CommandJobCmdExitedData = {
+        jobid: string;
+        exitcode: number;
+        exitsignal?: string;
+        exiterr?: string;
+        exitts?: number;
+    };
+
     // wshrpc.CommandJobConnectRtnData
     type CommandJobConnectRtnData = {
         seq: number;
@@ -373,15 +382,6 @@ declare global {
         args: string[];
         env: {[key: string]: string};
         termsize?: TermSize;
-    };
-
-    // wshrpc.CommandJobExitedData
-    type CommandJobExitedData = {
-        jobid: string;
-        exitcode: number;
-        exitsignal?: string;
-        exiterr?: string;
-        exitts?: number;
     };
 
     // wshrpc.CommandJobInputData
@@ -484,7 +484,7 @@ declare global {
     // wshrpc.CommandRemoteReconnectToJobManagerRtnData
     type CommandRemoteReconnectToJobManagerRtnData = {
         success: boolean;
-        jobmanagerexited: boolean;
+        jobmanagergone: boolean;
         error?: string;
     };
 
@@ -922,8 +922,8 @@ declare global {
         ownerblockid: string;
         terminateonreconnect?: boolean;
         jobmanagerstatus: string;
+        jobmanagerdonereason?: string;
         jobmanagerstartuperror?: string;
-        jobmanagerrunning?: boolean;
         jobmanagerpid?: number;
         jobmanagerstartts?: number;
         cmdpid?: number;

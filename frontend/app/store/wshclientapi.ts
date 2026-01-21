@@ -392,6 +392,11 @@ class RpcApiType {
         return client.wshRpcCall("getwaveairatelimit", null, opts);
     }
 
+    // command "jobcmdexited" [call]
+    JobCmdExitedCommand(client: WshClient, data: CommandJobCmdExitedData, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("jobcmdexited", data, opts);
+    }
+
     // command "jobcontrollerattachjob" [call]
     JobControllerAttachJobCommand(client: WshClient, data: CommandJobControllerAttachJobData, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("jobcontrollerattachjob", data, opts);
@@ -400,6 +405,11 @@ class RpcApiType {
     // command "jobcontrollerconnectedjobs" [call]
     JobControllerConnectedJobsCommand(client: WshClient, opts?: RpcOpts): Promise<string[]> {
         return client.wshRpcCall("jobcontrollerconnectedjobs", null, opts);
+    }
+
+    // command "jobcontrollerdeletejob" [call]
+    JobControllerDeleteJobCommand(client: WshClient, data: string, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("jobcontrollerdeletejob", data, opts);
     }
 
     // command "jobcontrollerdetachjob" [call]
@@ -417,6 +427,11 @@ class RpcApiType {
         return client.wshRpcCall("jobcontrollerexitjob", data, opts);
     }
 
+    // command "jobcontrollerlist" [call]
+    JobControllerListCommand(client: WshClient, opts?: RpcOpts): Promise<Job[]> {
+        return client.wshRpcCall("jobcontrollerlist", null, opts);
+    }
+
     // command "jobcontrollerreconnectjob" [call]
     JobControllerReconnectJobCommand(client: WshClient, data: string, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("jobcontrollerreconnectjob", data, opts);
@@ -430,21 +445,6 @@ class RpcApiType {
     // command "jobcontrollerstartjob" [call]
     JobControllerStartJobCommand(client: WshClient, data: CommandJobControllerStartJobData, opts?: RpcOpts): Promise<string> {
         return client.wshRpcCall("jobcontrollerstartjob", data, opts);
-    }
-
-    // command "jobdebugdelete" [call]
-    JobDebugDeleteCommand(client: WshClient, data: string, opts?: RpcOpts): Promise<void> {
-        return client.wshRpcCall("jobdebugdelete", data, opts);
-    }
-
-    // command "jobdebuglist" [call]
-    JobDebugListCommand(client: WshClient, opts?: RpcOpts): Promise<Job[]> {
-        return client.wshRpcCall("jobdebuglist", null, opts);
-    }
-
-    // command "jobexited" [call]
-    JobExitedCommand(client: WshClient, data: CommandJobExitedData, opts?: RpcOpts): Promise<void> {
-        return client.wshRpcCall("jobexited", data, opts);
     }
 
     // command "jobinput" [call]

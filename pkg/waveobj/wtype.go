@@ -327,9 +327,9 @@ type Job struct {
 	TerminateOnReconnect bool `json:"terminateonreconnect,omitempty"`
 
 	// job manager state
-	JobManagerStatus       string `json:"jobmanagerstatus"` // init, running, done, error, terminated
+	JobManagerStatus       string `json:"jobmanagerstatus"`               // init, running, done
+	JobManagerDoneReason   string `json:"jobmanagerdonereason,omitempty"` // startuperror, gone, terminated
 	JobManagerStartupError string `json:"jobmanagerstartuperror,omitempty"`
-	JobManagerRunning      bool   `json:"jobmanagerrunning,omitempty"`
 	JobManagerPid          int    `json:"jobmanagerpid,omitempty"`
 	JobManagerStartTs      int64  `json:"jobmanagerstartts,omitempty"` // exact process start time (milliseconds)
 
@@ -337,9 +337,9 @@ type Job struct {
 	CmdPid        int      `json:"cmdpid,omitempty"`     // command process id
 	CmdStartTs    int64    `json:"cmdstartts,omitempty"` // exact command process start time (milliseconds from epoch)
 	CmdTermSize   TermSize `json:"cmdtermsize"`
-	CmdExitTs     int64    `json:"cmdexitts,omitempty"` // timestamp (milliseconds)
-	CmdExitCode   int      `json:"cmdexitcode,omitempty"`
-	CmdExitSignal string   `json:"cmdexitsignal,omitempty"`
+	CmdExitTs     int64    `json:"cmdexitts,omitempty"`     // timestamp (milliseconds) -- use CmdExitTs > 0 to check if command has exited
+	CmdExitCode   *int     `json:"cmdexitcode,omitempty"`   // nil when CmdExitSignal is set.  success exit is when CmdExitCode is 0
+	CmdExitSignal string   `json:"cmdexitsignal,omitempty"` // empty string if CmdExitCode is set
 	CmdExitError  string   `json:"cmdexiterror,omitempty"`
 
 	// output info

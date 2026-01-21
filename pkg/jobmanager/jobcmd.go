@@ -34,7 +34,7 @@ type JobCmd struct {
 	cleanedUp     bool
 	ptyClosed     bool
 	processExited bool
-	exitCode      int
+	exitCode      *int
 	exitSignal    string
 	exitErr       error
 	exitTs        int64
@@ -86,16 +86,23 @@ func (jm *JobCmd) waitForProcess() {
 			if status, ok := exitErr.Sys().(syscall.WaitStatus); ok {
 				if status.Signaled() {
 					jm.exitSignal = status.Signal().String()
-					jm.exitCode = -1
+				} else if status.Exited() {
+					code := status.ExitStatus()
+					jm.exitCode = &code
 				} else {
-					jm.exitCode = status.ExitStatus()
+					log.Printf("Invalid WaitStatus, not exited or signaled: %v", status)
 				}
 			}
 		}
 	} else {
-		jm.exitCode = 0
+		code := 0
+		jm.exitCode = &code
 	}
-	log.Printf("process exited: exitcode=%d, signal=%s, err=%v\n", jm.exitCode, jm.exitSignal, jm.exitErr)
+	exitCodeStr := "nil"
+	if jm.exitCode != nil {
+		exitCodeStr = fmt.Sprintf("%d", *jm.exitCode)
+	}
+	log.Printf("process exited: exitcode=%s, signal=%s, err=%v\n", exitCodeStr, jm.exitSignal, jm.exitErr)
 
 	go WshCmdJobManager.sendJobExited()
 }
@@ -125,13 +132,13 @@ func (jm *JobCmd) GetPGID() (int, error) {
 	return pgid, nil
 }
 
-func (jm *JobCmd) GetExitInfo() (bool, *wshrpc.CommandJobExitedData) {
+func (jm *JobCmd) GetExitInfo() (bool, *wshrpc.CommandJobCmdExitedData) {
 	jm.lock.Lock()
 	defer jm.lock.Unlock()
 	if !jm.processExited {
 		return false, nil
 	}
-	exitData := &wshrpc.CommandJobExitedData{
+	exitData := &wshrpc.CommandJobCmdExitedData{
 		JobId:      WshCmdJobManager.JobId,
 		ExitCode:   jm.exitCode,
 		ExitSignal: jm.exitSignal,

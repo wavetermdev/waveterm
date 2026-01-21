@@ -1447,15 +1447,15 @@ func (ws *WshServer) GetSecretsLinuxStorageBackendCommand(ctx context.Context) (
 	return backend, nil
 }
 
-func (ws *WshServer) JobExitedCommand(ctx context.Context, data wshrpc.CommandJobExitedData) error {
-	return jobcontroller.HandleJobExited(ctx, data.JobId, data)
+func (ws *WshServer) JobCmdExitedCommand(ctx context.Context, data wshrpc.CommandJobCmdExitedData) error {
+	return jobcontroller.HandleCmdJobExited(ctx, data.JobId, data)
 }
 
-func (ws *WshServer) JobDebugListCommand(ctx context.Context) ([]*waveobj.Job, error) {
+func (ws *WshServer) JobControllerListCommand(ctx context.Context) ([]*waveobj.Job, error) {
 	return wstore.DBGetAllObjsByType[*waveobj.Job](ctx, waveobj.OType_Job)
 }
 
-func (ws *WshServer) JobDebugDeleteCommand(ctx context.Context, jobId string) error {
+func (ws *WshServer) JobControllerDeleteJobCommand(ctx context.Context, jobId string) error {
 	return jobcontroller.DeleteJob(ctx, jobId)
 }
 
@@ -1471,7 +1471,7 @@ func (ws *WshServer) JobControllerStartJobCommand(ctx context.Context, data wshr
 }
 
 func (ws *WshServer) JobControllerExitJobCommand(ctx context.Context, jobId string) error {
-	return jobcontroller.ExitJobManager(ctx, jobId)
+	return jobcontroller.TerminateJobManager(ctx, jobId)
 }
 
 func (ws *WshServer) JobControllerDisconnectJobCommand(ctx context.Context, jobId string) error {

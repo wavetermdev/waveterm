@@ -285,9 +285,9 @@ func (impl *ServerImpl) RemoteReconnectToJobManagerCommand(ctx context.Context, 
 	}
 	if proc == nil {
 		return &wshrpc.CommandRemoteReconnectToJobManagerRtnData{
-			Success:          false,
-			JobManagerExited: true,
-			Error:            fmt.Sprintf("job manager process (pid=%d) is not running", data.JobManagerPid),
+			Success:        false,
+			JobManagerGone: true,
+			Error:          fmt.Sprintf("job manager process (pid=%d) is not running", data.JobManagerPid),
 		}, nil
 	}
 

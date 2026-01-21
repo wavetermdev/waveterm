@@ -98,8 +98,12 @@ func (jm *JobManager) sendJobExited() {
 		return
 	}
 
-	log.Printf("sendJobExited: sending exit notification to main server exitcode=%d signal=%s\n", exitData.ExitCode, exitData.ExitSignal)
-	err := wshclient.JobExitedCommand(attachedClient.WshRpc, *exitData, nil)
+	exitCodeStr := "nil"
+	if exitData.ExitCode != nil {
+		exitCodeStr = fmt.Sprintf("%d", *exitData.ExitCode)
+	}
+	log.Printf("sendJobExited: sending exit notification to main server exitcode=%s signal=%s\n", exitCodeStr, exitData.ExitSignal)
+	err := wshclient.JobCmdExitedCommand(attachedClient.WshRpc, *exitData, nil)
 	if err != nil {
 		log.Printf("sendJobExited: error sending exit notification: %v\n", err)
 	}
