@@ -33,7 +33,7 @@ func MakeCirBuf(maxSize int, initSyncMode bool) *CirBuf {
 
 // SetEffectiveWindow changes the sync mode and effective window size for flow control.
 // The windowSize is capped at the buffer size.
-// When window shrinks: data is preserved, sync mode blocks writes, async mode maintains data size.
+// When window shrinks: sync mode blocks new writes, async mode truncates old data to enforce limit.
 // When window increases: blocked writers are woken up if space becomes available.
 func (cb *CirBuf) SetEffectiveWindow(syncMode bool, windowSize int) {
 	cb.lock.Lock()
@@ -48,6 +48,13 @@ func (cb *CirBuf) SetEffectiveWindow(syncMode bool, windowSize int) {
 	oldWindowSize := cb.windowSize
 	cb.windowSize = windowSize
 	cb.syncMode = syncMode
+
+	// In async mode, enforce window size by truncating buffer if needed
+	if !syncMode && cb.count > windowSize {
+		excess := cb.count - windowSize
+		cb.readPos = (cb.readPos + excess) % maxSize
+		cb.count = windowSize
+	}
 
 	// Only sync mode blocks writers, so only wake if we were in sync mode.
 	// Wake when window grows (more space available) or switching to async (no longer blocking).
