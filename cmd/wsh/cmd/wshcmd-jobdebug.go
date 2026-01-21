@@ -78,6 +78,7 @@ var jobDebugGetOutputCmd = &cobra.Command{
 var jobDebugStartCmd = &cobra.Command{
 	Use:   "start",
 	Short: "start a new job",
+	Args:  cobra.MinimumNArgs(1),
 	RunE:  jobDebugStartRun,
 }
 
@@ -162,7 +163,7 @@ func jobDebugListRun(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("getting connected job ids: %w", err)
 	}
 
-	log.Printf("connnected jobids: %v\n", connectedJobIds)
+	log.Printf("connected jobids: %v\n", connectedJobIds)
 
 	connectedMap := make(map[string]bool)
 	for _, jobId := range connectedJobIds {

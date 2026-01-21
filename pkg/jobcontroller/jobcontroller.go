@@ -728,7 +728,7 @@ func DeleteJob(ctx context.Context, jobId string) error {
 }
 
 func AttachJobToBlock(ctx context.Context, jobId string, blockId string) error {
-	return wstore.WithTx(ctx, func(tx *wstore.TxWrap) error {
+	err := wstore.WithTx(ctx, func(tx *wstore.TxWrap) error {
 		err := wstore.DBUpdateFn(tx.Context(), blockId, func(block *waveobj.Block) {
 			block.JobId = jobId
 		})
@@ -736,8 +736,12 @@ func AttachJobToBlock(ctx context.Context, jobId string, blockId string) error {
 			return fmt.Errorf("failed to update block: %w", err)
 		}
 
-		err = wstore.DBUpdateFn(tx.Context(), jobId, func(job *waveobj.Job) {
+		err = wstore.DBUpdateFnErr(tx.Context(), jobId, func(job *waveobj.Job) error {
+			if job.AttachedBlockId != "" {
+				return fmt.Errorf("job %s already attached to block %s", jobId, job.AttachedBlockId)
+			}
 			job.AttachedBlockId = blockId
+			return nil
 		})
 		if err != nil {
 			return fmt.Errorf("failed to update job: %w", err)
@@ -746,16 +750,32 @@ func AttachJobToBlock(ctx context.Context, jobId string, blockId string) error {
 		log.Printf("[job:%s] attached to block:%s", jobId, blockId)
 		return nil
 	})
+	if err != nil {
+		return err
+	}
+
+	rpcOpts := &wshrpc.RpcOpts{
+		Route:      wshutil.MakeFeBlockRouteId(blockId),
+		NoResponse: true,
+	}
+	bareRpc := wshclient.GetBareRpcClient()
+	wshclient.TermUpdateAttachedJobCommand(bareRpc, wshrpc.CommandTermUpdateAttachedJobData{
+		BlockId: blockId,
+		JobId:   jobId,
+	}, rpcOpts)
+
+	return nil
 }
 
 func DetachJobFromBlock(ctx context.Context, jobId string, updateBlock bool) error {
-	return wstore.WithTx(ctx, func(tx *wstore.TxWrap) error {
+	var blockId string
+	err := wstore.WithTx(ctx, func(tx *wstore.TxWrap) error {
 		job, err := wstore.DBMustGet[*waveobj.Job](tx.Context(), jobId)
 		if err != nil {
 			return fmt.Errorf("failed to get job: %w", err)
 		}
 
-		blockId := job.AttachedBlockId
+		blockId = job.AttachedBlockId
 		if blockId == "" {
 			return nil
 		}
@@ -782,6 +802,23 @@ func DetachJobFromBlock(ctx context.Context, jobId string, updateBlock bool) err
 		log.Printf("[job:%s] detached from block:%s", jobId, blockId)
 		return nil
 	})
+	if err != nil {
+		return err
+	}
+
+	if blockId != "" {
+		rpcOpts := &wshrpc.RpcOpts{
+			Route:      wshutil.MakeFeBlockRouteId(blockId),
+			NoResponse: true,
+		}
+		bareRpc := wshclient.GetBareRpcClient()
+		wshclient.TermUpdateAttachedJobCommand(bareRpc, wshrpc.CommandTermUpdateAttachedJobData{
+			BlockId: blockId,
+			JobId:   "",
+		}, rpcOpts)
+	}
+
+	return nil
 }
 
 func SendInput(ctx context.Context, data wshrpc.CommandJobInputData) error {

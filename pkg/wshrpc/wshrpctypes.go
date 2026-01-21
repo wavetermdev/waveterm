@@ -152,6 +152,7 @@ type WshRpcInterface interface {
 
 	// terminal
 	TermGetScrollbackLinesCommand(ctx context.Context, data CommandTermGetScrollbackLinesData) (*CommandTermGetScrollbackLinesRtnData, error)
+	TermUpdateAttachedJobCommand(ctx context.Context, data CommandTermUpdateAttachedJobData) error
 
 	// file
 	WshRpcFileInterface
@@ -651,6 +652,11 @@ type CommandTermGetScrollbackLinesRtnData struct {
 	LineStart   int      `json:"linestart"`
 	Lines       []string `json:"lines"`
 	LastUpdated int64    `json:"lastupdated"`
+}
+
+type CommandTermUpdateAttachedJobData struct {
+	BlockId string `json:"blockid"`
+	JobId   string `json:"jobid,omitempty"`
 }
 
 type CommandElectronEncryptData struct {

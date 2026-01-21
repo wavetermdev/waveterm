@@ -614,6 +614,12 @@ declare global {
         lastupdated: number;
     };
 
+    // wshrpc.CommandTermUpdateAttachedJobData
+    type CommandTermUpdateAttachedJobData = {
+        blockid: string;
+        jobid?: string;
+    };
+
     // wshrpc.CommandVarData
     type CommandVarData = {
         key: string;

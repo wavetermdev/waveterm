@@ -717,6 +717,11 @@ class RpcApiType {
         return client.wshRpcCall("termgetscrollbacklines", data, opts);
     }
 
+    // command "termupdateattachedjob" [call]
+    TermUpdateAttachedJobCommand(client: WshClient, data: CommandTermUpdateAttachedJobData, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("termupdateattachedjob", data, opts);
+    }
+
     // command "test" [call]
     TestCommand(client: WshClient, data: string, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("test", data, opts);
