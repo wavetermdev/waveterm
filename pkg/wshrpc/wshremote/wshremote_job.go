@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -54,6 +55,15 @@ func (impl *ServerImpl) connectToJobManager(ctx context.Context, jobId string, m
 	proxy := wshutil.MakeRpcProxy("jobmanager")
 	linkId := impl.Router.RegisterUntrustedLink(proxy)
 
+	var cleanupOnce sync.Once
+	cleanup := func() {
+		cleanupOnce.Do(func() {
+			conn.Close()
+			impl.Router.UnregisterLink(linkId)
+			impl.removeJobManagerConnection(jobId)
+		})
+	}
+
 	go func() {
 		writeErr := wshutil.AdaptOutputChToStream(proxy.ToRemoteCh, conn)
 		if writeErr != nil {
@@ -62,19 +72,11 @@ func (impl *ServerImpl) connectToJobManager(ctx context.Context, jobId string, m
 	}()
 	go func() {
 		defer func() {
-			conn.Close()
-			impl.Router.UnregisterLink(linkId)
 			close(proxy.FromRemoteCh)
-			impl.removeJobManagerConnection(jobId)
+			cleanup()
 		}()
 		wshutil.AdaptStreamToMsgCh(conn, proxy.FromRemoteCh)
 	}()
-
-	cleanup := func() {
-		conn.Close()
-		impl.Router.UnregisterLink(linkId)
-		impl.removeJobManagerConnection(jobId)
-	}
 
 	routeId := wshutil.MakeLinkRouteId(linkId)
 	authData := wshrpc.CommandAuthenticateToJobData{
