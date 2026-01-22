@@ -6,7 +6,7 @@ import { getFileSubject } from "@/app/store/wps";
 import { sendWSCommand } from "@/app/store/ws";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
-import { atoms, WOS, fetchWaveFile, getApi, getSettingsKeyAtom, globalStore, openLink, recordTEvent } from "@/store/global";
+import { WOS, fetchWaveFile, getApi, getSettingsKeyAtom, globalStore, openLink, recordTEvent } from "@/store/global";
 import * as services from "@/store/services";
 import { sanitizeOsc7Path } from "@/util/pathutil";
 import { PLATFORM, PlatformMacOS } from "@/util/platformutil";
@@ -184,7 +184,7 @@ function handleOsc52Command(data: string, blockId: string, loaded: boolean, term
  *
  * @see https://invisible-island.net/xterm/ctlseqs/ctlseqs.html#h3-Operating-System-Commands
  */
-function handleOsc7Command(data: string, blockId: string, loaded: boolean): boolean {
+function handleOsc7Command(data: string, blockId: string, tabId: string, loaded: boolean): boolean {
     console.log("OSC 7 received:", { data, blockId, loaded });
     if (!loaded) {
         console.log("OSC 7 ignored - terminal not loaded");
@@ -266,14 +266,13 @@ function handleOsc7Command(data: string, blockId: string, loaded: boolean): bool
             //
             // Design: Uses debouncing (300ms) + atomic lock check to prevent race conditions
             // when multiple terminals send OSC 7 updates simultaneously.
-            const tabData = globalStore.get(atoms.activeTab);
-
-            // CRITICAL: Null safety check for tabData
-            if (!tabData?.oid) {
-                return; // Early return if no tab or no oid
+            //
+            // IMPORTANT: We use the tabId passed from TermWrap (the tab that owns this terminal),
+            // NOT atoms.activeTab, to ensure background terminals update the correct tab.
+            if (!tabId) {
+                return; // Early return if no tabId
             }
 
-            const tabId = tabData.oid;
             const tabORef = WOS.makeORef("tab", tabId);
 
             // Clear existing debounce timer for this tab
@@ -621,7 +620,7 @@ export class TermWrap {
         }
         // Register OSC handlers
         this.terminal.parser.registerOscHandler(7, (data: string) => {
-            return handleOsc7Command(data, this.blockId, this.loaded);
+            return handleOsc7Command(data, this.blockId, this.tabId, this.loaded);
         });
         this.terminal.parser.registerOscHandler(52, (data: string) => {
             return handleOsc52Command(data, this.blockId, this.loaded, this);

@@ -97,9 +97,11 @@ type MetaTSType struct {
 	BgBlendMode         string  `json:"bg:blendmode,omitempty"`
 	BgBorderColor       string  `json:"bg:bordercolor,omitempty"`       // frame:bordercolor
 	BgActiveBorderColor string  `json:"bg:activebordercolor,omitempty"` // frame:activebordercolor
+	BgText              string  `json:"bg:text,omitempty"`              // text color for background presets
 	TabBaseDir          string  `json:"tab:basedir,omitempty"`          // base directory for tab context
 	TabBaseDirLock      bool    `json:"tab:basedirlock,omitempty"`      // lock basedir to prevent smart auto-detection
 	TabColor            string  `json:"tab:color,omitempty"`            // custom color for tab (hex value)
+	TabTermStatus       string  `json:"tab:termstatus,omitempty"`       // terminal status: running, stopped, finished
 
 	// for tabs+waveai
 	WaveAiPanelOpen     bool   `json:"waveai:panelopen,omitempty"`

@@ -197,7 +197,6 @@ function initGlobalWaveEventSubs(initOpts: WaveInitOpts) {
         {
             eventType: "waveobj:update",
             handler: (event) => {
-                // console.log("waveobj:update wave event handler", event);
                 const update: WaveObjUpdate = event.data;
                 WOS.updateWaveObject(update);
             },

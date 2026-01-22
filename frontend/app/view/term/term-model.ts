@@ -456,20 +456,66 @@ export class TermViewModel implements ViewModel {
     /**
      * Updates the tab's terminal status tracking with current proc and shell integration status.
      * This enables reactive status icons on tabs.
+     *
+     * For active tabs (where termRef is available), we use the local atom value directly
+     * for immediate updates. This is important because the onShellIntegrationStatusChange
+     * callback fires BEFORE SetRTInfoCommand completes, so RTInfo would return stale data.
+     *
+     * For background tabs or when termRef isn't available, we query RTInfo which has the
+     * last written shell state.
      */
     updateTabTerminalStatus() {
         if (!this.tabModel) return;
 
         const procStatus = globalStore.get(this.shellProcFullStatus);
-        const shellIntegrationStatus = this.termRef?.current
+
+        // First, try to get shell integration status from local atom (for active tabs)
+        // This is the most up-to-date value since it's set synchronously on OSC 16162
+        const localShellIntegrationStatus = this.termRef?.current
             ? globalStore.get(this.termRef.current.shellIntegrationStatusAtom)
             : null;
 
-        this.tabModel.updateBlockTerminalStatus(this.blockId, {
-            shellProcStatus: procStatus?.shellprocstatus ?? null,
-            shellProcExitCode: procStatus?.shellprocexitcode ?? null,
-            shellIntegrationStatus: shellIntegrationStatus,
-        });
+        // If we have a local value, use it immediately (active tab case)
+        if (localShellIntegrationStatus != null) {
+            this.tabModel.updateBlockTerminalStatus(this.blockId, {
+                shellProcStatus: procStatus?.shellprocstatus ?? null,
+                shellProcExitCode: procStatus?.shellprocexitcode ?? null,
+                shellIntegrationStatus: localShellIntegrationStatus,
+            });
+            return;
+        }
+
+        // For background tabs or when termRef isn't ready, query RTInfo
+        // RTInfo stores the shell state written by the tab that processes OSC 16162
+        RpcApi.GetRTInfoCommand(TabRpcClient, {
+            oref: WOS.makeORef("block", this.blockId),
+        })
+            .then((rtInfo) => {
+                const shellIntegrationStatus = rtInfo?.["shell:state"] as string | null;
+
+                this.tabModel.updateBlockTerminalStatus(this.blockId, {
+                    shellProcStatus: procStatus?.shellprocstatus ?? null,
+                    shellProcExitCode: procStatus?.shellprocexitcode ?? null,
+                    shellIntegrationStatus: shellIntegrationStatus ?? null,
+                });
+            })
+            .catch((err) => {
+                // If RTInfo query fails, update with null shell integration status
+                this.tabModel.updateBlockTerminalStatus(this.blockId, {
+                    shellProcStatus: procStatus?.shellprocstatus ?? null,
+                    shellProcExitCode: procStatus?.shellprocexitcode ?? null,
+                    shellIntegrationStatus: null,
+                });
+            });
+    }
+
+    /**
+     * Clears any stale terminal status from previous sessions.
+     * Called when terminal initializes to ensure we don't show outdated status icons.
+     */
+    clearTabTerminalStatus() {
+        if (!this.tabModel) return;
+        this.tabModel.clearTerminalStatus();
     }
 
     getVDomModel(): VDomModel {

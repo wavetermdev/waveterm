@@ -622,6 +622,9 @@ var tabValidators = map[string]ValidationFunc{
 		return ValidatePath(k, v, true) // must be directory
 	},
 	MetaKey_TabBaseDirLock: ValidateBool,
+	MetaKey_TabTermStatus: func(k string, v interface{}) error {
+		return ValidateString(k, v, 32) // running, stopped, finished
+	},
 	MetaKey_Bg: func(k string, v interface{}) error {
 		return ValidateString(k, v, MaxURLLength)
 	},

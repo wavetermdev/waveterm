@@ -76,7 +76,9 @@ func UpdateObjectMetaWithVersion(ctx context.Context, oref waveobj.ORef, meta wa
 		}
 		newMeta := waveobj.MergeMeta(objMeta, meta, mergeSpecial)
 		waveobj.SetMeta(obj, newMeta)
-		DBUpdate(tx.Context(), obj)
+		if err := DBUpdate(tx.Context(), obj); err != nil {
+			return fmt.Errorf("failed to update object: %w", err)
+		}
 		return nil
 	})
 }
@@ -112,7 +114,9 @@ func UpdateObjectMetaIfNotLocked(ctx context.Context, oref waveobj.ORef, meta wa
 		}
 		newMeta := waveobj.MergeMeta(objMeta, meta, false)
 		waveobj.SetMeta(obj, newMeta)
-		DBUpdate(tx.Context(), obj)
+		if err := DBUpdate(tx.Context(), obj); err != nil {
+			return fmt.Errorf("failed to update object: %w", err)
+		}
 		return nil
 	})
 }
