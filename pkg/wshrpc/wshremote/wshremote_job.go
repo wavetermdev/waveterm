@@ -171,6 +171,7 @@ func (impl *ServerImpl) RemoteStartJobCommand(ctx context.Context, data wshrpc.C
 	if err := cmd.Start(); err != nil {
 		return nil, fmt.Errorf("cannot start job manager: %w", err)
 	}
+	readyPipeWrite.Close()
 	log.Printf("RemoteStartJobCommand: job manager process started\n")
 
 	jobAuthTokenLine := fmt.Sprintf("Wave-JobAccessToken:%s\n", data.JobAuthToken)
