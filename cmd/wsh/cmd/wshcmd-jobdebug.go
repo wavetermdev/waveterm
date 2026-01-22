@@ -7,7 +7,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"log"
 
 	"github.com/spf13/cobra"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
@@ -162,8 +161,6 @@ func jobDebugListRun(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("getting connected job ids: %w", err)
 	}
-
-	log.Printf("connected jobids: %v\n", connectedJobIds)
 
 	connectedMap := make(map[string]bool)
 	for _, jobId := range connectedJobIds {
@@ -339,10 +336,6 @@ func jobDebugGetOutputRun(cmd *cobra.Command, args []string) error {
 }
 
 func jobDebugStartRun(cmd *cobra.Command, args []string) error {
-	if len(args) == 0 {
-		return fmt.Errorf("no command specified after --")
-	}
-
 	cmdToRun := args[0]
 	cmdArgs := args[1:]
 
