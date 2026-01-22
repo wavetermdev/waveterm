@@ -3,9 +3,10 @@
  * @license MIT
  */
 
-// This file is a copy of the original xterm.js file, with the following changes:
+// This file is a custom FitAddon based on xterm.js official addon, with changes:
 // - Added noScrollbar flag to support macOS scrollbar behavior
-// - Updated for xterm.js 6.1.0 public API
+// - Updated for xterm.js 6.1.0 public API (terminal.dimensions)
+// - Replaced DOM-based scrollbar width measurement with config-based approach
 
 import type { FitAddon as IFitApi } from "@xterm/addon-fit";
 import type { ITerminalAddon, Terminal, IRenderDimensions } from "@xterm/xterm";
@@ -57,6 +58,7 @@ export class FitAddon implements ITerminalAddon, IFitApi {
         }
 
         // Use public API from xterm.js 6.1.0 (PR #5551)
+        // terminal.dimensions may be undefined during initialization or before first render
         const dims: IRenderDimensions | undefined = this._terminal.dimensions;
         if (!dims) {
             return undefined;
@@ -68,7 +70,11 @@ export class FitAddon implements ITerminalAddon, IFitApi {
 
         let scrollbarWidth = 0;
         if (!this.noScrollbar && this._terminal.options.scrollback !== 0) {
-            scrollbarWidth = this._terminal.options.overviewRuler?.width ?? DEFAULT_SCROLLBAR_WIDTH;
+            const configWidth = this._terminal.options.overviewRuler?.width ?? DEFAULT_SCROLLBAR_WIDTH;
+            // Validate scrollbar width to prevent invalid dimension calculations
+            scrollbarWidth = isNaN(configWidth) || configWidth < 0 || configWidth > 100
+                ? DEFAULT_SCROLLBAR_WIDTH
+                : configWidth;
         }
 
         const parentElementStyle = window.getComputedStyle(this._terminal.element.parentElement);

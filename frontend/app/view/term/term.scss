@@ -147,7 +147,10 @@
     }
 
     .terminal {
-        // Legacy webkit scrollbar styles (for .xterm-viewport native scrollbar)
+        // Legacy webkit scrollbar styles for .xterm-viewport native scrollbar.
+        // NOTE: In xterm.js 6.x, the scrollbar is rendered by DomScrollableElement,
+        // so these styles may only apply during fallback scenarios or if xterm.js
+        // still uses native scrollbar in some cases. Keep for backward compatibility.
         .xterm-viewport {
             &::-webkit-scrollbar {
                 width: 6px;
