@@ -5,6 +5,7 @@ import { Button } from "@/app/element/button";
 import { modalsModel } from "@/app/store/modalmodel";
 import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
 import { deleteLayoutModelForTab } from "@/layout/index";
+import { cleanupOsc7DebounceForTab } from "@/app/view/term/termwrap";
 import { atoms, createTab, getApi, globalStore, setActiveTab } from "@/store/global";
 import { isMacOS, isWindows } from "@/util/platformutil";
 import { fireAndForget } from "@/util/util";
@@ -583,6 +584,8 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
     const handleCloseTab = (event: React.MouseEvent<HTMLButtonElement, MouseEvent> | null, tabId: string) => {
         event?.stopPropagation();
         const ws = globalStore.get(atoms.workspace);
+        // Clean up OSC 7 debounce timers for this tab to prevent memory leaks
+        cleanupOsc7DebounceForTab(tabId);
         getApi().closeTab(ws.oid, tabId);
         tabsWrapperRef.current.style.setProperty("--tabs-wrapper-transition", "width 0.3s ease");
         deleteLayoutModelForTab(tabId);
