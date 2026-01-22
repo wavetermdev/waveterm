@@ -856,20 +856,20 @@ func (conn *SSHConn) ClearWshError() {
 	})
 }
 
-func getConnInternal(opts *remote.SSHOpts) *SSHConn {
+func getConnInternal(opts *remote.SSHOpts, createIfNotExists bool) *SSHConn {
 	globalLock.Lock()
 	defer globalLock.Unlock()
 	rtn := clientControllerMap[*opts]
-	if rtn == nil {
+	if rtn == nil && createIfNotExists {
 		rtn = &SSHConn{Lock: &sync.Mutex{}, Status: Status_Init, WshEnabled: &atomic.Bool{}, Opts: opts, HasWaiter: &atomic.Bool{}}
 		clientControllerMap[*opts] = rtn
 	}
 	return rtn
 }
 
-// does NOT connect, can return nil if connection does not exist
+// does NOT connect, does not return nil
 func GetConn(opts *remote.SSHOpts) *SSHConn {
-	conn := getConnInternal(opts)
+	conn := getConnInternal(opts, true)
 	return conn
 }
 
@@ -881,7 +881,7 @@ func IsConnected(connName string) (bool, error) {
 	if err != nil {
 		return false, fmt.Errorf("error parsing connection name: %w", err)
 	}
-	conn := GetConn(connOpts)
+	conn := getConnInternal(connOpts, false)
 	if conn == nil {
 		return false, nil
 	}
@@ -917,7 +917,7 @@ func EnsureConnection(ctx context.Context, connName string) error {
 }
 
 func DisconnectClient(opts *remote.SSHOpts) error {
-	conn := getConnInternal(opts)
+	conn := getConnInternal(opts, false)
 	if conn == nil {
 		return fmt.Errorf("client %q not found", opts.String())
 	}
