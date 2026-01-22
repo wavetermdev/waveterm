@@ -147,6 +147,7 @@
     }
 
     .terminal {
+        // Legacy webkit scrollbar styles (for .xterm-viewport native scrollbar)
         .xterm-viewport {
             &::-webkit-scrollbar {
                 width: 6px;
@@ -176,6 +177,20 @@
         &:hover {
             .xterm-viewport::-webkit-scrollbar-thumb {
                 display: block;
+            }
+        }
+
+        // xterm.js 6.1.0+ DomScrollableElement scrollbar styles
+        .xterm-scrollable-element > .scrollbar > .slider {
+            background-color: var(--scrollbar-thumb-color);
+            border-radius: 4px;
+
+            &:hover {
+                background-color: var(--scrollbar-thumb-hover-color);
+            }
+
+            &.active {
+                background-color: var(--scrollbar-thumb-active-color);
             }
         }
     }
