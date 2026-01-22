@@ -8,8 +8,8 @@ vars:
     BIN_DIR: "bin"
     VERSION:
         sh: node version.cjs
-    RMRF: '{{if eq OS "windows"}}powershell Remove-Item -Force -Recurse -ErrorAction SilentlyContinue{{else}}rm -rf{{end}}'
-    DATE: '{{if eq OS "windows"}}powershell Get-Date -UFormat{{else}}date{{end}}'
+    RMRF: '{{if eq OS "windows"}}pwsh -NoProfile -Command Remove-Item -Force -Recurse -ErrorAction SilentlyContinue{{else}}rm -rf{{end}}'
+    DATE: '{{if eq OS "windows"}}pwsh -NoProfile -Command Get-Date -UFormat{{else}}date{{end}}'
     ARTIFACTS_BUCKET: waveterm-github-artifacts/staging-w2
     RELEASES_BUCKET: dl.waveterm.dev/releases-w2
     WINGET_PACKAGE: CommandLine.Wave
@@ -223,7 +223,7 @@ tasks:
         desc: Build the wavesrv component for Windows platforms (only generates artifacts for the current architecture).
         platforms: [windows]
         cmds:
-            - cmd: powershell -Command "Remove-Item -Force -ErrorAction SilentlyContinue -Path dist/bin/wavesrv*"
+            - cmd: pwsh -NoProfile -Command "Remove-Item -Force -ErrorAction SilentlyContinue -Path dist/bin/wavesrv*"
               ignore_error: true
             - task: build:server:internal
               vars:
@@ -263,7 +263,7 @@ tasks:
             - cmd: rm -f dist/bin/wsh*
               platforms: [darwin, linux]
               ignore_error: true
-            - cmd: powershell -Command "Remove-Item -Force -ErrorAction SilentlyContinue -Path dist/bin/wsh*"
+            - cmd: pwsh -NoProfile -Command "Remove-Item -Force -ErrorAction SilentlyContinue -Path dist/bin/wsh*"
               platforms: [windows]
               ignore_error: true
             - task: build:wsh:internal
@@ -327,7 +327,7 @@ tasks:
             - cmd: "{{.RMRF}} dist/tsunamiscaffold"
               ignore_error: true
             - task: copyfiles:'tsunami/frontend/scaffold':'dist/tsunamiscaffold'
-            - cmd: '{{if eq OS "windows"}}powershell Copy-Item -Path tsunami/templates/empty-gomod.tmpl -Destination dist/tsunamiscaffold/go.mod{{else}}cp tsunami/templates/empty-gomod.tmpl dist/tsunamiscaffold/go.mod{{end}}'
+            - cmd: '{{if eq OS "windows"}}pwsh -NoProfile -Command Copy-Item -Path tsunami/templates/empty-gomod.tmpl -Destination dist/tsunamiscaffold/go.mod{{else}}cp tsunami/templates/empty-gomod.tmpl dist/tsunamiscaffold/go.mod{{end}}'
         deps:
             - tsunami:scaffold
         sources:
@@ -486,7 +486,7 @@ tasks:
     copyfiles:*:*:
         desc: Recursively copy directory and its contents.
         internal: true
-        cmd: '{{if eq OS "windows"}}powershell Copy-Item -Recurse -Force -Path {{index .MATCH 0}} -Destination {{index .MATCH 1}}{{else}}mkdir -p "$(dirname {{index .MATCH 1}})" && cp -r {{index .MATCH 0}} {{index .MATCH 1}}{{end}}'
+        cmd: '{{if eq OS "windows"}}pwsh -NoProfile -Command Copy-Item -Recurse -Force -Path {{index .MATCH 0}} -Destination {{index .MATCH 1}}{{else}}mkdir -p "$(dirname {{index .MATCH 1}})" && cp -r {{index .MATCH 0}} {{index .MATCH 1}}{{end}}'
 
     clean:
         desc: clean make/dist directories
@@ -539,7 +539,7 @@ tasks:
             - cmd: rm -f package.json
               platforms: [darwin, linux]
               ignore_error: true
-            - cmd: powershell -Command "Remove-Item -Force -ErrorAction SilentlyContinue -Path package.json"
+            - cmd: pwsh -NoProfile -Command "Remove-Item -Force -ErrorAction SilentlyContinue -Path package.json"
               platforms: [windows]
               ignore_error: true
             - npm --no-workspaces init -y --init-license Apache-2.0
@@ -585,18 +585,18 @@ tasks:
         cmds:
             - cmd: "{{.RMRF}} scaffold"
               ignore_error: true
-            - powershell New-Item -ItemType Directory -Force -Path scaffold
-            - powershell Copy-Item -Path ../templates/package.json.tmpl -Destination scaffold/package.json
-            - powershell -Command "Set-Location scaffold; npm install"
-            - powershell Move-Item -Path scaffold/node_modules -Destination scaffold/nm
-            - powershell Copy-Item -Recurse -Force -Path dist -Destination scaffold/
-            - powershell New-Item -ItemType Directory -Force -Path scaffold/dist/tw
-            - powershell Copy-Item -Path '../templates/*.go.tmpl' -Destination scaffold/
-            - powershell Copy-Item -Path ../templates/tailwind.css -Destination scaffold/
-            - powershell Copy-Item -Path ../templates/gitignore.tmpl -Destination scaffold/.gitignore
-            - powershell Copy-Item -Path 'src/element/*.tsx' -Destination scaffold/dist/tw/
-            - powershell Copy-Item -Path '../ui/*.go' -Destination scaffold/dist/tw/
-            - powershell Copy-Item -Path ../engine/errcomponent.go -Destination scaffold/dist/tw/
+            - pwsh -NoProfile -Command New-Item -ItemType Directory -Force -Path scaffold
+            - pwsh -NoProfile -Command Copy-Item -Path ../templates/package.json.tmpl -Destination scaffold/package.json
+            - pwsh -NoProfile -Command "Set-Location scaffold; npm install"
+            - pwsh -NoProfile -Command Move-Item -Path scaffold/node_modules -Destination scaffold/nm
+            - pwsh -NoProfile -Command Copy-Item -Recurse -Force -Path dist -Destination scaffold/
+            - pwsh -NoProfile -Command New-Item -ItemType Directory -Force -Path scaffold/dist/tw
+            - pwsh -NoProfile -Command Copy-Item -Path '../templates/*.go.tmpl' -Destination scaffold/
+            - pwsh -NoProfile -Command Copy-Item -Path ../templates/tailwind.css -Destination scaffold/
+            - pwsh -NoProfile -Command Copy-Item -Path ../templates/gitignore.tmpl -Destination scaffold/.gitignore
+            - pwsh -NoProfile -Command Copy-Item -Path 'src/element/*.tsx' -Destination scaffold/dist/tw/
+            - pwsh -NoProfile -Command Copy-Item -Path '../ui/*.go' -Destination scaffold/dist/tw/
+            - pwsh -NoProfile -Command Copy-Item -Path ../engine/errcomponent.go -Destination scaffold/dist/tw/
 
     tsunami:build:
         desc: Build the tsunami binary.
@@ -604,7 +604,7 @@ tasks:
             - cmd: rm -f bin/tsunami*
               platforms: [darwin, linux]
               ignore_error: true
-            - cmd: powershell -Command "Remove-Item -Force -ErrorAction SilentlyContinue -Path bin/tsunami*"
+            - cmd: pwsh -NoProfile -Command "Remove-Item -Force -ErrorAction SilentlyContinue -Path bin/tsunami*"
               platforms: [windows]
               ignore_error: true
             - mkdir -p bin
