@@ -91,3 +91,30 @@ func EnvToSlice(envStr string) []string {
 	}
 	return result
 }
+
+func SliceToMap(env []string) map[string]string {
+	envMap := make(map[string]string)
+	for _, envVar := range env {
+		parts := strings.SplitN(envVar, "=", 2)
+		if len(parts) == 2 {
+			envMap[parts[0]] = parts[1]
+		}
+	}
+	return envMap
+}
+
+func PruneInitialEnv(envMap map[string]string) map[string]string {
+	pruned := make(map[string]string)
+	for key, value := range envMap {
+		if strings.HasPrefix(key, "WAVETERM_") || strings.HasPrefix(key, "BASH_FUNC_") {
+			continue
+		}
+		if key == "XDG_SESSION_ID" || key == "SHLVL" || key == "S_COLORS" ||
+			key == "SSH_CONNECTION" || key == "SSH_CLIENT" || key == "LESSOPEN" ||
+			key == "which_declare" {
+			continue
+		}
+		pruned[key] = value
+	}
+	return pruned
+}

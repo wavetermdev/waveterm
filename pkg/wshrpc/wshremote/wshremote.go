@@ -30,16 +30,18 @@ type ServerImpl struct {
 	Router        *wshutil.WshRouter
 	RpcClient     *wshutil.WshRpc
 	IsLocal       bool
+	InitialEnv    map[string]string
 	JobManagerMap map[string]*JobManagerConnection
 	Lock          sync.Mutex
 }
 
-func MakeRemoteRpcServerImpl(logWriter io.Writer, router *wshutil.WshRouter, rpcClient *wshutil.WshRpc, isLocal bool) *ServerImpl {
+func MakeRemoteRpcServerImpl(logWriter io.Writer, router *wshutil.WshRouter, rpcClient *wshutil.WshRpc, isLocal bool, initialEnv map[string]string) *ServerImpl {
 	return &ServerImpl{
 		LogWriter:     logWriter,
 		Router:        router,
 		RpcClient:     rpcClient,
 		IsLocal:       isLocal,
+		InitialEnv:    initialEnv,
 		JobManagerMap: make(map[string]*JobManagerConnection),
 	}
 }

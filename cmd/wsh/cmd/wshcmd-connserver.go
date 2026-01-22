@@ -19,6 +19,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/baseds"
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/wshfs"
+	"github.com/wavetermdev/waveterm/pkg/util/envutil"
 	"github.com/wavetermdev/waveterm/pkg/util/packetparser"
 	"github.com/wavetermdev/waveterm/pkg/util/sigutil"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
@@ -42,6 +43,7 @@ var connServerRouterDomainSocket bool
 var connServerConnName string
 var connServerDev bool
 var ConnServerWshRouter *wshutil.WshRouter
+var connServerInitialEnv map[string]string
 
 func init() {
 	serverCmd.Flags().BoolVar(&connServerRouter, "router", false, "run in local router mode (stdio upstream)")
@@ -126,12 +128,12 @@ func setupConnServerRpcClientWithRouter(router *wshutil.WshRouter) (*wshutil.Wsh
 		RouteId: routeId,
 		Conn:    connServerConnName,
 	}
-	
+
 	bareRouteId := wshutil.MakeRandomProcRouteId()
 	bareClient := wshutil.MakeWshRpc(wshrpc.RpcContext{}, &wshclient.WshServer{}, bareRouteId)
 	router.RegisterTrustedLeaf(bareClient, bareRouteId)
-	
-	connServerClient := wshutil.MakeWshRpc(rpcCtx, wshremote.MakeRemoteRpcServerImpl(os.Stdout, router, bareClient, false), routeId)
+
+	connServerClient := wshutil.MakeWshRpc(rpcCtx, wshremote.MakeRemoteRpcServerImpl(os.Stdout, router, bareClient, false, connServerInitialEnv), routeId)
 	router.RegisterTrustedLeaf(connServerClient, routeId)
 	return connServerClient, nil
 }
@@ -323,7 +325,7 @@ func serverRunRouterDomainSocket(jwtToken string) error {
 }
 
 func serverRunNormal(jwtToken string) error {
-	err := setupRpcClient(wshremote.MakeRemoteRpcServerImpl(os.Stdout, nil, nil, false), jwtToken)
+	err := setupRpcClient(wshremote.MakeRemoteRpcServerImpl(os.Stdout, nil, nil, false, connServerInitialEnv), jwtToken)
 	if err != nil {
 		return err
 	}
@@ -359,6 +361,8 @@ func askForJwtToken() (string, error) {
 }
 
 func serverRun(cmd *cobra.Command, args []string) error {
+	connServerInitialEnv = envutil.PruneInitialEnv(envutil.SliceToMap(os.Environ()))
+
 	var logFile *os.File
 	if connServerDev {
 		var err error

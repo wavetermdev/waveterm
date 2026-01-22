@@ -27,6 +27,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/telemetry"
 	"github.com/wavetermdev/waveterm/pkg/telemetry/telemetrydata"
 	"github.com/wavetermdev/waveterm/pkg/userinput"
+	"github.com/wavetermdev/waveterm/pkg/util/envutil"
 	"github.com/wavetermdev/waveterm/pkg/util/shellutil"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
@@ -264,6 +265,70 @@ func IsWshVersionUpToDate(logCtx context.Context, wshVersionLine string) (bool, 
 		return false, clientVersion, "", nil
 	}
 	return true, clientVersion, "", nil
+}
+
+// for testing only -- trying to determine the env difference when attaching or not attaching a pty to an ssh session
+func (conn *SSHConn) GetEnvironmentMaps(ctx context.Context) (map[string]string, map[string]string, error) {
+	client := conn.GetClient()
+	if client == nil {
+		return nil, nil, fmt.Errorf("ssh client is not connected")
+	}
+
+	noPtyEnv, err := conn.getEnvironmentNoPty(ctx, client)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error getting environment without PTY: %w", err)
+	}
+
+	ptyEnv, err := conn.getEnvironmentWithPty(ctx, client)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error getting environment with PTY: %w", err)
+	}
+
+	return noPtyEnv, ptyEnv, nil
+}
+
+func (conn *SSHConn) getEnvironmentNoPty(ctx context.Context, client *ssh.Client) (map[string]string, error) {
+	session, err := client.NewSession()
+	if err != nil {
+		return nil, fmt.Errorf("unable to create ssh session: %w", err)
+	}
+	defer session.Close()
+
+	outputBuf := &strings.Builder{}
+	session.Stdout = outputBuf
+	session.Stderr = outputBuf
+
+	err = session.Run("env -0")
+	if err != nil {
+		return nil, fmt.Errorf("error running env command: %w", err)
+	}
+
+	return envutil.EnvToMap(outputBuf.String()), nil
+}
+
+func (conn *SSHConn) getEnvironmentWithPty(ctx context.Context, client *ssh.Client) (map[string]string, error) {
+	session, err := client.NewSession()
+	if err != nil {
+		return nil, fmt.Errorf("unable to create ssh session: %w", err)
+	}
+	defer session.Close()
+
+	termSize := waveobj.TermSize{Rows: 24, Cols: 80}
+	err = session.RequestPty("xterm-256color", termSize.Rows, termSize.Cols, nil)
+	if err != nil {
+		return nil, fmt.Errorf("unable to request PTY: %w", err)
+	}
+
+	outputBuf := &strings.Builder{}
+	session.Stdout = outputBuf
+	session.Stderr = outputBuf
+
+	err = session.Run("env -0")
+	if err != nil {
+		return nil, fmt.Errorf("error running env command: %w", err)
+	}
+
+	return envutil.EnvToMap(outputBuf.String()), nil
 }
 
 func (conn *SSHConn) getWshPath() string {
