@@ -254,10 +254,17 @@ func (impl *ServerImpl) RemoteStartJobCommand(ctx context.Context, data wshrpc.C
 		return nil, err
 	}
 
+	combinedEnv := make(map[string]string)
+	for k, v := range impl.InitialEnv {
+		combinedEnv[k] = v
+	}
+	for k, v := range data.Env {
+		combinedEnv[k] = v
+	}
 	startJobData := wshrpc.CommandStartJobData{
 		Cmd:        data.Cmd,
 		Args:       data.Args,
-		Env:        data.Env,
+		Env:        combinedEnv,
 		TermSize:   data.TermSize,
 		StreamMeta: data.StreamMeta,
 	}
