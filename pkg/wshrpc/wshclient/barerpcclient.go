@@ -27,6 +27,7 @@ func GetBareRpcClient() *wshutil.WshRpc {
 	waveSrvClient_Once.Do(func() {
 		waveSrvClient_Singleton = wshutil.MakeWshRpc(wshrpc.RpcContext{}, &WshServerImpl, "bare-client")
 		waveSrvClient_RouteId = fmt.Sprintf("bare:%s", uuid.New().String())
+		// we can safely ignore the error from RegisterTrustedLeaf since the route is valid
 		wshutil.DefaultRouter.RegisterTrustedLeaf(waveSrvClient_Singleton, waveSrvClient_RouteId)
 		wps.Broker.SetClient(wshutil.DefaultRouter)
 	})
