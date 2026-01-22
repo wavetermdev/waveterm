@@ -51,9 +51,16 @@ For packaging, the following additional packages are required:
 
 #### Windows
 
-You will need the [Zig](https://ziglang.org/) compiler for statically linking CGO.
+You will need the following:
 
-You can find installation instructions for Zig on Windows [here](https://ziglang.org/learn/getting-started/#managers).
+- **[Zig](https://ziglang.org/)** &mdash; Required for statically linking CGO. See [installation instructions](https://ziglang.org/learn/getting-started/#managers).
+- **[PowerShell 7+](https://learn.microsoft.com/en-us/powershell/scripting/install/installing-powershell-on-windows)** &mdash; Required for build scripts. Windows ships with PowerShell 5.1, but the build system requires PowerShell 7 (pwsh). Install via winget:
+
+```powershell
+winget install Microsoft.PowerShell
+```
+
+Or download from the [PowerShell releases page](https://github.com/PowerShell/PowerShell/releases).
 
 ### Task
 
