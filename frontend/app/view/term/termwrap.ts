@@ -188,6 +188,21 @@ function handleOsc7Command(data: string, blockId: string, loaded: boolean): bool
             await RpcApi.SetRTInfoCommand(TabRpcClient, rtInfoData).catch((e) =>
                 console.log("error setting RT info", e)
             );
+
+            // Smart auto-detection: Update tab basedir if not locked
+            const tabAtom = globalStore.get(atoms.activeTabAtom);
+            const currentBasedir = tabAtom?.meta?.["tab:basedir"];
+            const basedirLocked = tabAtom?.meta?.["tab:basedirlock"];
+
+            // Set tab basedir if not set yet, or if not locked and this is the first meaningful directory
+            if (!basedirLocked && (!currentBasedir || currentBasedir === "~")) {
+                await services.ObjectService.UpdateObjectMeta(
+                    WOS.makeORef("tab", tabAtom.oid),
+                    {
+                        "tab:basedir": pathPart,
+                    }
+                );
+            }
         });
     }, 0);
     return true;
@@ -702,6 +717,7 @@ export class TermWrap {
         let startTs = Date.now();
         const { data: cacheData, fileInfo: cacheFile } = await fetchWaveFile(this.blockId, TermCacheFileName);
         let ptyOffset = 0;
+        let loadedFromCache = false;
         if (cacheFile != null) {
             ptyOffset = cacheFile.meta["ptyoffset"] ?? 0;
             if (cacheData.byteLength > 0) {
@@ -720,13 +736,22 @@ export class TermWrap {
                 if (didResize) {
                     this.terminal.resize(curTermSize.cols, curTermSize.rows);
                 }
+                loadedFromCache = true;
             }
         }
-        const { data: mainData, fileInfo: mainFile } = await fetchWaveFile(this.blockId, TermFileName, ptyOffset);
-        console.log(
-            `terminal loaded cachefile:${cacheData?.byteLength ?? 0} main:${mainData?.byteLength ?? 0} bytes, ${Date.now() - startTs}ms`
+        // Only load main file data if we didn't load from cache, or load only NEW data after cache
+        // The cache contains the fully rendered terminal state, so loading from ptyOffset would duplicate data
+        const { data: mainData, fileInfo: mainFile } = await fetchWaveFile(
+            this.blockId,
+            TermFileName,
+            loadedFromCache ? ptyOffset : 0
         );
-        if (mainFile != null) {
+        console.log(
+            `terminal loaded cachefile:${cacheData?.byteLength ?? 0} main:${mainData?.byteLength ?? 0} bytes (cached=${loadedFromCache}, offset=${ptyOffset}), ${Date.now() - startTs}ms`
+        );
+        // If we loaded from cache, only append new data that arrived after the cache was saved
+        // If no cache, load all data from the beginning
+        if (mainFile != null && mainData != null && mainData.byteLength > 0) {
             await this.doTerminalWrite(mainData, null);
         }
     }
