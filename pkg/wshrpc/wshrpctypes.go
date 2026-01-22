@@ -783,7 +783,7 @@ type CommandJobConnectRtnData struct {
 
 type CommandJobCmdExitedData struct {
 	JobId      string `json:"jobid"`
-	ExitCode   *int   `json:"exitcode"`
+	ExitCode   *int   `json:"exitcode,omitempty"`
 	ExitSignal string `json:"exitsignal,omitempty"`
 	ExitErr    string `json:"exiterr,omitempty"`
 	ExitTs     int64  `json:"exitts,omitempty"`

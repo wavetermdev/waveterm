@@ -352,7 +352,7 @@ declare global {
     // wshrpc.CommandJobCmdExitedData
     type CommandJobCmdExitedData = {
         jobid: string;
-        exitcode: number;
+        exitcode?: number;
         exitsignal?: string;
         exiterr?: string;
         exitts?: number;
@@ -925,7 +925,7 @@ declare global {
         cmdargs?: string[];
         cmdenv?: {[key: string]: string};
         jobauthtoken: string;
-        ownerblockid: string;
+        attachedblockid?: string;
         terminateonreconnect?: boolean;
         jobmanagerstatus: string;
         jobmanagerdonereason?: string;
