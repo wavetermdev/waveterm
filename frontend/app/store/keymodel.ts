@@ -21,6 +21,7 @@ import {
     WOS,
 } from "@/app/store/global";
 import { getActiveTabModel } from "@/app/store/tab-model";
+import { cleanupOsc7DebounceForTab } from "@/app/view/term/termwrap";
 import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
 import { deleteLayoutModelForTab, getLayoutModelForStaticTab, NavigateDirection } from "@/layout/index";
 import * as keyutil from "@/util/keyutil";
@@ -127,6 +128,8 @@ function getStaticTabBlockCount(): number {
 function simpleCloseStaticTab() {
     const ws = globalStore.get(atoms.workspace);
     const tabId = globalStore.get(atoms.staticTabId);
+    // Clean up OSC 7 debounce timers for this tab to prevent memory leaks
+    cleanupOsc7DebounceForTab(tabId);
     getApi().closeTab(ws.oid, tabId);
     deleteLayoutModelForTab(tabId);
 }

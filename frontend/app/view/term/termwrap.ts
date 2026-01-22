@@ -295,10 +295,18 @@ function handleOsc7Command(data: string, blockId: string, loaded: boolean): bool
 
                         const currentVersion = currentTab.version ?? 0;
                         const isLocked = currentTab.meta?.["tab:basedirlock"];
+                        const currentBasedir = currentTab.meta?.["tab:basedir"];
 
                         // Only skip if explicitly locked
                         if (isLocked) {
                             console.log("OSC 7: Skipping update - tab basedir is locked");
+                            return;
+                        }
+
+                        // Only update basedir if it's empty or equals "~" (smart auto-detection)
+                        // This respects user-set directories while allowing first terminal to "teach" the tab
+                        if (currentBasedir && currentBasedir !== "~") {
+                            console.log("OSC 7: Skipping update - tab basedir already explicitly set:", currentBasedir);
                             return;
                         }
 
