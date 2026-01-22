@@ -11,6 +11,8 @@
     width: 100vw;
     -webkit-app-region: drag;
     height: max(33px, calc(33px * var(--zoomfactor-inv)));
+    // Darker background for tab bar area (VS Code style)
+    background: color-mix(in srgb, var(--main-bg-color) 70%, black);
 
     button {
         -webkit-app-region: no-drag;

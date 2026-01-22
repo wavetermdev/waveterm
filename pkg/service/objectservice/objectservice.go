@@ -143,7 +143,53 @@ func (svc *ObjectService) UpdateObjectMeta(uiContext waveobj.UIContext, orefStr 
 	if err != nil {
 		return nil, fmt.Errorf("error parsing object reference: %w", err)
 	}
+	// Validate metadata before persistence
+	if err := waveobj.ValidateMetadata(*oref, meta); err != nil {
+		return nil, fmt.Errorf("metadata validation failed: %w", err)
+	}
 	err = wstore.UpdateObjectMeta(ctx, *oref, meta, false)
+	if err != nil {
+		return nil, fmt.Errorf("error updating %q meta: %w", orefStr, err)
+	}
+	return waveobj.ContextGetUpdatesRtn(ctx), nil
+}
+
+func (svc *ObjectService) UpdateObjectMetaWithVersion_Meta() tsgenmeta.MethodMeta {
+	return tsgenmeta.MethodMeta{
+		ArgNames: []string{"uiContext", "oref", "meta", "expectedVersion"},
+	}
+}
+
+func (svc *ObjectService) UpdateObjectMetaWithVersion(uiContext waveobj.UIContext, orefStr string, meta waveobj.MetaMapType, expectedVersion int) (waveobj.UpdatesRtnType, error) {
+	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
+	defer cancelFn()
+	ctx = waveobj.ContextWithUpdates(ctx)
+	oref, err := parseORef(orefStr)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing object reference: %w", err)
+	}
+	err = wstore.UpdateObjectMetaWithVersion(ctx, *oref, meta, expectedVersion, false)
+	if err != nil {
+		return nil, fmt.Errorf("error updating %q meta: %w", orefStr, err)
+	}
+	return waveobj.ContextGetUpdatesRtn(ctx), nil
+}
+
+func (svc *ObjectService) UpdateObjectMetaIfNotLocked_Meta() tsgenmeta.MethodMeta {
+	return tsgenmeta.MethodMeta{
+		ArgNames: []string{"uiContext", "oref", "meta", "lockKey", "expectedVersion"},
+	}
+}
+
+func (svc *ObjectService) UpdateObjectMetaIfNotLocked(uiContext waveobj.UIContext, orefStr string, meta waveobj.MetaMapType, lockKey string, expectedVersion int) (waveobj.UpdatesRtnType, error) {
+	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
+	defer cancelFn()
+	ctx = waveobj.ContextWithUpdates(ctx)
+	oref, err := parseORef(orefStr)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing object reference: %w", err)
+	}
+	err = wstore.UpdateObjectMetaIfNotLocked(ctx, *oref, meta, lockKey, expectedVersion)
 	if err != nil {
 		return nil, fmt.Errorf("error updating %q meta: %w", orefStr, err)
 	}
@@ -164,6 +210,13 @@ func (svc *ObjectService) UpdateObject(uiContext waveobj.UIContext, waveObj wave
 		return nil, fmt.Errorf("update wavobj is nil")
 	}
 	oref := waveobj.ORefFromWaveObj(waveObj)
+	// Validate metadata if present
+	meta := waveobj.GetMeta(waveObj)
+	if meta != nil && len(meta) > 0 {
+		if err := waveobj.ValidateMetadata(*oref, meta); err != nil {
+			return nil, fmt.Errorf("metadata validation failed: %w", err)
+		}
+	}
 	found, err := wstore.DBExistsORef(ctx, *oref)
 	if err != nil {
 		return nil, fmt.Errorf("error getting object: %w", err)

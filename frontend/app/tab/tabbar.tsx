@@ -52,7 +52,7 @@ const WaveAIButton = memo(() => {
 
     return (
         <div
-            className={`flex h-[26px] px-1.5 justify-end items-center rounded-md mr-1 box-border cursor-pointer bg-hover hover:bg-hoverbg transition-colors text-[12px] ${aiPanelOpen ? "text-accent" : "text-secondary"}`}
+            className={`flex h-[24px] px-1.5 justify-end items-center rounded-md mr-1 mb-0.5 box-border cursor-pointer hover:bg-white/5 transition-colors text-[12px] ${aiPanelOpen ? "text-accent" : "text-secondary"}`}
             style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
             onClick={onClick}
         >
@@ -185,7 +185,6 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
     const draggerLeftRef = useRef<HTMLDivElement>(null);
     const draggerRightRef = useRef<HTMLDivElement>(null);
     const workspaceSwitcherRef = useRef<HTMLDivElement>(null);
-    const appMenuButtonRef = useRef<HTMLDivElement>(null);
     const tabWidthRef = useRef<number>(TabDefaultWidth);
     const scrollableRef = useRef<boolean>(false);
     const updateStatusBannerRef = useRef<HTMLButtonElement>(null);
@@ -194,7 +193,6 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
     const activeTabId = useAtomValue(atoms.staticTabId);
     const isFullScreen = useAtomValue(atoms.isFullScreen);
     const zoomFactor = useAtomValue(atoms.zoomFactorAtom);
-    const settings = useAtomValue(atoms.settingsAtom);
 
     let prevDelta: number;
     let prevDragDirection: string;
@@ -244,7 +242,6 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
         const addBtnWidth = addBtnRef.current.getBoundingClientRect().width;
         const updateStatusLabelWidth = updateStatusBannerRef.current?.getBoundingClientRect().width ?? 0;
         const configErrorWidth = configErrorButtonRef.current?.getBoundingClientRect().width ?? 0;
-        const appMenuButtonWidth = appMenuButtonRef.current?.getBoundingClientRect().width ?? 0;
         const workspaceSwitcherWidth = workspaceSwitcherRef.current?.getBoundingClientRect().width ?? 0;
 
         const nonTabElementsWidth =
@@ -253,7 +250,6 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
             addBtnWidth +
             updateStatusLabelWidth +
             configErrorWidth +
-            appMenuButtonWidth +
             workspaceSwitcherWidth;
         const spaceForTabs = tabbarWrapperWidth - nonTabElementsWidth;
 
@@ -606,12 +602,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
         return tabIds.indexOf(tabId) === tabIds.indexOf(activeTabId) - 1;
     };
 
-    function onEllipsisClick() {
-        getApi().showWorkspaceAppMenu(workspace.oid);
-    }
-
     const tabsWrapperWidth = tabIds.length * tabWidthRef.current;
-    const showAppMenuButton = isWindows() || (!isMacOS() && !settings["window:showmenubar"]);
 
     // Calculate window drag left width based on platform and state
     let windowDragLeftWidth = 10;
@@ -646,16 +637,6 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
                 className="h-full shrink-0 z-window-drag"
                 style={{ width: windowDragLeftWidth, WebkitAppRegion: "drag" } as any}
             />
-            {showAppMenuButton && (
-                <div
-                    ref={appMenuButtonRef}
-                    className="flex items-center justify-center pr-1.5 text-[26px] select-none cursor-pointer text-secondary hover:text-primary"
-                    style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
-                    onClick={onEllipsisClick}
-                >
-                    <i className="fa fa-ellipsis" />
-                </div>
-            )}
             <WaveAIButton />
             <WorkspaceSwitcher ref={workspaceSwitcherRef} />
             <div className="tab-bar" ref={tabBarRef} data-overlayscrollbars-initialize>

@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "wave://schema/tabvarspresets.json",
+  "title": "Tab Variables Presets",
+  "description": "Schema for tab:basedir and related tab variable presets",
+  "type": "object",
+  "additionalProperties": false,
+  "patternProperties": {
+    "^tabvar@[a-zA-Z0-9_-]+$": {
+      "$ref": "#/$defs/TabVarPreset"
+    }
+  },
+  "$defs": {
+    "TabVarPreset": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "tab:basedir": {
+          "type": "string",
+          "maxLength": 4096,
+          "pattern": "^[^\\x00]+$",
+          "description": "Base directory for the tab context"
+        },
+        "tab:basedirlock": {
+          "type": "boolean",
+          "description": "Lock basedir to prevent smart auto-detection"
+        },
+        "display:name": {
+          "type": "string",
+          "maxLength": 256,
+          "description": "Display name shown in context menu"
+        },
+        "display:order": {
+          "type": "number",
+          "description": "Order in context menu (lower = higher)"
+        }
+      }
+    }
+  }
+}

@@ -302,6 +302,12 @@ const TerminalView = ({ blockId, model }: ViewComponentProps<TermViewModel>) => 
         );
         (window as any).term = termWrap;
         model.termRef.current = termWrap;
+
+        // Set up callback to update tab terminal status when shell integration status changes
+        termWrap.onShellIntegrationStatusChange = () => {
+            model.updateTabTerminalStatus();
+        };
+
         const rszObs = new ResizeObserver(() => {
             termWrap.handleResize_debounced();
         });

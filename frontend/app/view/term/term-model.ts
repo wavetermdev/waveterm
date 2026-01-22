@@ -4,7 +4,7 @@
 import { WaveAIModel } from "@/app/aipanel/waveai-model";
 import { BlockNodeModel } from "@/app/block/blocktypes";
 import { appHandleKeyDown } from "@/app/store/keymodel";
-import type { TabModel } from "@/app/store/tab-model";
+import { activeTabIdAtom, type TabModel } from "@/app/store/tab-model";
 import { waveEventSubscribe } from "@/app/store/wps";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { makeFeBlockRouteId } from "@/app/store/wshrouter";
@@ -433,8 +433,43 @@ export class TermViewModel implements ViewModel {
         }
         const curStatus = globalStore.get(this.shellProcFullStatus);
         if (curStatus == null || curStatus.version < fullStatus.version) {
+            // Check if process just completed (running -> done) while tab is in background
+            const wasRunning = curStatus?.shellprocstatus === "running";
+            const isNowDone = fullStatus.shellprocstatus === "done";
+            if (wasRunning && isNowDone) {
+                // Check if this tab is currently active
+                const activeTabId = globalStore.get(activeTabIdAtom);
+                const isTabActive = activeTabId === this.tabModel?.tabId;
+                if (!isTabActive && this.tabModel) {
+                    // Mark tab as having unread completions
+                    this.tabModel.setFinishedUnread();
+                }
+            }
+
             globalStore.set(this.shellProcFullStatus, fullStatus);
+
+            // Update tab's terminal status tracking for reactive status icons
+            this.updateTabTerminalStatus();
         }
+    }
+
+    /**
+     * Updates the tab's terminal status tracking with current proc and shell integration status.
+     * This enables reactive status icons on tabs.
+     */
+    updateTabTerminalStatus() {
+        if (!this.tabModel) return;
+
+        const procStatus = globalStore.get(this.shellProcFullStatus);
+        const shellIntegrationStatus = this.termRef?.current
+            ? globalStore.get(this.termRef.current.shellIntegrationStatusAtom)
+            : null;
+
+        this.tabModel.updateBlockTerminalStatus(this.blockId, {
+            shellProcStatus: procStatus?.shellprocstatus ?? null,
+            shellProcExitCode: procStatus?.shellprocexitcode ?? null,
+            shellIntegrationStatus: shellIntegrationStatus,
+        });
     }
 
     getVDomModel(): VDomModel {

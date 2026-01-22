@@ -51,6 +51,72 @@ func UpdateObjectMeta(ctx context.Context, oref waveobj.ORef, meta waveobj.MetaM
 	})
 }
 
+// UpdateObjectMetaWithVersion performs an optimistic locking update.
+// If expectedVersion > 0 and doesn't match current version, returns ErrVersionMismatch.
+// If expectedVersion == 0, behaves like UpdateObjectMeta (no version check).
+func UpdateObjectMetaWithVersion(ctx context.Context, oref waveobj.ORef, meta waveobj.MetaMapType, expectedVersion int, mergeSpecial bool) error {
+	return WithTx(ctx, func(tx *TxWrap) error {
+		if oref.IsEmpty() {
+			return fmt.Errorf("empty object reference")
+		}
+		obj, _ := DBGetORef(tx.Context(), oref)
+		if obj == nil {
+			return ErrNotFound
+		}
+
+		// Optimistic locking check
+		currentVersion := waveobj.GetVersion(obj)
+		if expectedVersion > 0 && currentVersion != expectedVersion {
+			return fmt.Errorf("%w: expected %d, got %d", ErrVersionMismatch, expectedVersion, currentVersion)
+		}
+
+		objMeta := waveobj.GetMeta(obj)
+		if objMeta == nil {
+			objMeta = make(map[string]any)
+		}
+		newMeta := waveobj.MergeMeta(objMeta, meta, mergeSpecial)
+		waveobj.SetMeta(obj, newMeta)
+		DBUpdate(tx.Context(), obj)
+		return nil
+	})
+}
+
+// UpdateObjectMetaIfNotLocked atomically checks lock and updates.
+// Returns ErrObjectLocked if locked, or ErrVersionMismatch if version doesn't match.
+// This eliminates the TOCTOU vulnerability in lock checking.
+func UpdateObjectMetaIfNotLocked(ctx context.Context, oref waveobj.ORef, meta waveobj.MetaMapType, lockKey string, expectedVersion int) error {
+	return WithTx(ctx, func(tx *TxWrap) error {
+		if oref.IsEmpty() {
+			return fmt.Errorf("empty object reference")
+		}
+		obj, _ := DBGetORef(tx.Context(), oref)
+		if obj == nil {
+			return ErrNotFound
+		}
+
+		currentVersion := waveobj.GetVersion(obj)
+		if expectedVersion > 0 && currentVersion != expectedVersion {
+			return fmt.Errorf("%w: expected %d, got %d", ErrVersionMismatch, expectedVersion, currentVersion)
+		}
+
+		// Atomic lock check INSIDE transaction
+		objMeta := waveobj.GetMeta(obj)
+		if objMeta != nil {
+			if locked, ok := objMeta[lockKey].(bool); ok && locked {
+				return fmt.Errorf("%w: %w", ErrVersionMismatch, ErrObjectLocked)
+			}
+		}
+
+		if objMeta == nil {
+			objMeta = make(map[string]any)
+		}
+		newMeta := waveobj.MergeMeta(objMeta, meta, false)
+		waveobj.SetMeta(obj, newMeta)
+		DBUpdate(tx.Context(), obj)
+		return nil
+	})
+}
+
 func MoveBlockToTab(ctx context.Context, currentTabId string, newTabId string, blockId string) error {
 	return WithTx(ctx, func(tx *TxWrap) error {
 		block, _ := DBGet[*waveobj.Block](tx.Context(), blockId)

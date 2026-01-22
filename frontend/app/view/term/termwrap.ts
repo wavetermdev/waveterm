@@ -6,8 +6,9 @@ import { getFileSubject } from "@/app/store/wps";
 import { sendWSCommand } from "@/app/store/ws";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
-import { WOS, fetchWaveFile, getApi, getSettingsKeyAtom, globalStore, openLink, recordTEvent } from "@/store/global";
+import { atoms, WOS, fetchWaveFile, getApi, getSettingsKeyAtom, globalStore, openLink, recordTEvent } from "@/store/global";
 import * as services from "@/store/services";
+import { sanitizeOsc7Path } from "@/util/pathutil";
 import { PLATFORM, PlatformMacOS } from "@/util/platformutil";
 import { base64ToArray, base64ToString, fireAndForget } from "@/util/util";
 import { SearchAddon } from "@xterm/addon-search";
@@ -23,6 +24,26 @@ import { FitAddon } from "./fitaddon";
 import { createTempFileFromBlob, extractAllClipboardData } from "./termutil";
 
 const dlog = debug("wave:termwrap");
+
+// Debounce map for OSC 7 updates per tab
+const osc7DebounceMap = new Map<string, NodeJS.Timeout>();
+const OSC7_DEBOUNCE_MS = 300;
+
+function clearOsc7Debounce(tabId: string) {
+    const existing = osc7DebounceMap.get(tabId);
+    if (existing) {
+        clearTimeout(existing);
+        osc7DebounceMap.delete(tabId);
+    }
+}
+
+// Cleanup function to prevent memory leaks
+function cleanupOsc7DebounceForTab(tabId: string) {
+    clearOsc7Debounce(tabId);
+}
+
+// Export cleanup function for use in tab close handlers
+export { cleanupOsc7DebounceForTab };
 
 const TermFileName = "term";
 const TermCacheFileName = "cache:term:full";
@@ -129,10 +150,44 @@ function handleOsc52Command(data: string, blockId: string, loaded: boolean, term
     return true;
 }
 
-// for xterm handlers, we return true always because we "own" OSC 7.
-// even if it is invalid we dont want to propagate to other handlers
+/**
+ * Handles OSC 7 terminal escape sequences for directory change notifications.
+ *
+ * OSC 7 is a standard terminal escape sequence that shells use to report
+ * the current working directory. Format: `\033]7;file://hostname/path\007`
+ *
+ * This handler performs two operations:
+ * 1. Updates the block's `cmd:cwd` metadata with the current directory
+ * 2. Optionally updates the tab's `tab:basedir` via smart auto-detection
+ *
+ * ## Smart Auto-Detection
+ *
+ * The tab's base directory is updated ONLY when ALL conditions are met:
+ * - `tab:basedirlock` is false (not locked by user)
+ * - `tab:basedir` is either:
+ *   - Not set (null/undefined) - First directory wins
+ *   - Set to home directory ("~") - Replace default with actual path
+ *
+ * This design allows the first terminal to "teach" the tab its working
+ * directory, while respecting explicit user choices.
+ *
+ * @param data - OSC 7 command data in URL format (file://hostname/path)
+ * @param blockId - Block ID of the terminal emitting the command
+ * @param loaded - Whether terminal has completed initialization
+ * @returns true (always claims ownership of OSC 7)
+ *
+ * @example
+ * // Shell sends: printf '\033]7;file://localhost/home/user/project\007'
+ * // Handler extracts: /home/user/project
+ * // Updates: block.meta["cmd:cwd"] = "/home/user/project"
+ * // If unlocked and basedir empty: tab.meta["tab:basedir"] = "/home/user/project"
+ *
+ * @see https://invisible-island.net/xterm/ctlseqs/ctlseqs.html#h3-Operating-System-Commands
+ */
 function handleOsc7Command(data: string, blockId: string, loaded: boolean): boolean {
+    console.log("OSC 7 received:", { data, blockId, loaded });
     if (!loaded) {
+        console.log("OSC 7 ignored - terminal not loaded");
         return true;
     }
     if (data == null || data.length == 0) {
@@ -151,6 +206,9 @@ function handleOsc7Command(data: string, blockId: string, loaded: boolean): bool
             console.log("Invalid OSC 7 command received (non-file protocol)", data);
             return true;
         }
+
+        // SECURITY: Only decode once to prevent double-encoding bypass attacks
+        // e.g., %252e%252e -> %2e%2e -> .. (if decoded twice)
         pathPart = decodeURIComponent(url.pathname);
 
         // Normalize double slashes at the beginning to single slash
@@ -162,22 +220,35 @@ function handleOsc7Command(data: string, blockId: string, loaded: boolean): bool
         if (/^\/[a-zA-Z]:[\\/]/.test(pathPart)) {
             // Strip leading slash and normalize to forward slashes
             pathPart = pathPart.substring(1).replace(/\\/g, "/");
+            console.log("OSC 7 Windows path normalized:", pathPart);
         }
 
-        // Handle UNC paths (e.g., /\\server\share)
-        if (pathPart.startsWith("/\\\\")) {
-            // Strip leading slash but keep backslashes for UNC
-            pathPart = pathPart.substring(1);
+        // SECURITY: Block UNC paths entirely - they are a security risk
+        // (can be used for data exfiltration via network shares)
+        if (pathPart.startsWith("/\\\\") || pathPart.startsWith("\\\\")) {
+            console.warn("[Security] UNC path blocked in OSC 7:", pathPart);
+            return true;
         }
     } catch (e) {
         console.log("Invalid OSC 7 command received (parse error)", data, e);
         return true;
     }
 
+    // ========== SECURITY VALIDATION ==========
+    // Validate and sanitize the path before storing to metadata
+    const validatedPath = sanitizeOsc7Path(pathPart);
+    if (validatedPath == null) {
+        // Path was rejected by security validation
+        // Warning already logged by sanitizeOsc7Path
+        return true;
+    }
+    // ==========================================
+
     setTimeout(() => {
         fireAndForget(async () => {
+            // Use validated path for all operations
             await services.ObjectService.UpdateObjectMeta(WOS.makeORef("block", blockId), {
-                "cmd:cwd": pathPart,
+                "cmd:cwd": validatedPath,
             });
 
             const rtInfo = { "shell:hascurcwd": true };
@@ -187,6 +258,76 @@ function handleOsc7Command(data: string, blockId: string, loaded: boolean): bool
             };
             await RpcApi.SetRTInfoCommand(TabRpcClient, rtInfoData).catch((e) =>
                 console.log("error setting RT info", e)
+            );
+
+            // ===== Smart Auto-Detection =====
+            // Automatically update tab basedir from terminal's working directory.
+            // This allows the first terminal in a tab to "teach" the tab its project context.
+            //
+            // Design: Uses debouncing (300ms) + atomic lock check to prevent race conditions
+            // when multiple terminals send OSC 7 updates simultaneously.
+            const tabData = globalStore.get(atoms.activeTab);
+
+            // CRITICAL: Null safety check for tabData
+            if (!tabData?.oid) {
+                return; // Early return if no tab or no oid
+            }
+
+            const tabId = tabData.oid;
+            const tabORef = WOS.makeORef("tab", tabId);
+
+            // Clear existing debounce timer for this tab
+            clearOsc7Debounce(tabId);
+
+            // Debounce OSC 7 updates to reduce race condition window (300ms)
+            // This consolidates rapid cd commands into a single update
+            osc7DebounceMap.set(
+                tabId,
+                setTimeout(() => {
+                    osc7DebounceMap.delete(tabId);
+
+                    fireAndForget(async () => {
+                        // Get fresh tab data with current version for atomic update
+                        const currentTab = WOS.getObjectValue<Tab>(tabORef);
+                        if (!currentTab) {
+                            return;
+                        }
+
+                        const currentVersion = currentTab.version ?? 0;
+                        const isLocked = currentTab.meta?.["tab:basedirlock"];
+
+                        // Only skip if explicitly locked
+                        if (isLocked) {
+                            console.log("OSC 7: Skipping update - tab basedir is locked");
+                            return;
+                        }
+
+                        try {
+                            // Use atomic lock-aware update to prevent TOCTOU (Time-Of-Check-Time-Of-Use)
+                            // This ensures the lock state and version haven't changed since we checked
+                            await services.ObjectService.UpdateObjectMetaIfNotLocked(
+                                tabORef,
+                                { "tab:basedir": validatedPath },
+                                "tab:basedirlock",
+                                currentVersion
+                            );
+
+                            // Update validation state to "valid" after successful OSC 7 update
+                            const { getTabModelByTabId } = await import("@/store/tab-model");
+                            const tabModel = getTabModelByTabId(tabId);
+                            globalStore.set(tabModel.basedirValidationAtom, "valid");
+                            globalStore.set(tabModel.lastValidationTimeAtom, Date.now());
+                        } catch (err: any) {
+                            // Version mismatch or locked - silently ignore
+                            // This is expected during concurrent updates or when user locks the directory
+                            if (err.message?.includes("version mismatch") || err.message?.includes("locked")) {
+                                dlog("OSC 7: Skipped update (concurrent modification or locked)");
+                                return;
+                            }
+                            console.log("OSC 7: Error updating tab basedir:", err);
+                        }
+                    });
+                }, OSC7_DEBOUNCE_MS)
             );
         });
     }, 0);
@@ -280,7 +421,7 @@ function handleOsc16162Command(data: string, blockId: string, loaded: boolean, t
     switch (cmd.command) {
         case "A":
             rtInfo["shell:state"] = "ready";
-            globalStore.set(termWrap.shellIntegrationStatusAtom, "ready");
+            termWrap.setShellIntegrationStatus("ready");
             const marker = terminal.registerMarker(0);
             if (marker) {
                 termWrap.promptMarkers.push(marker);
@@ -295,7 +436,7 @@ function handleOsc16162Command(data: string, blockId: string, loaded: boolean, t
             break;
         case "C":
             rtInfo["shell:state"] = "running-command";
-            globalStore.set(termWrap.shellIntegrationStatusAtom, "running-command");
+            termWrap.setShellIntegrationStatus("running-command");
             getApi().incrementTermCommands();
             if (cmd.data.cmd64) {
                 const decodedLen = Math.ceil(cmd.data.cmd64.length * 0.75);
@@ -348,7 +489,7 @@ function handleOsc16162Command(data: string, blockId: string, loaded: boolean, t
             }
             break;
         case "R":
-            globalStore.set(termWrap.shellIntegrationStatusAtom, null);
+            termWrap.setShellIntegrationStatus(null);
             if (terminal.buffer.active.type === "alternate") {
                 terminal.write("\x1b[?1049l");
             }
@@ -397,6 +538,7 @@ export class TermWrap {
     shellIntegrationStatusAtom: jotai.PrimitiveAtom<"ready" | "running-command" | null>;
     lastCommandAtom: jotai.PrimitiveAtom<string | null>;
     nodeModel: BlockNodeModel; // this can be null
+    onShellIntegrationStatusChange?: () => void; // callback for tab status updates
 
     // IME composition state tracking
     // Prevents duplicate input when switching input methods during composition (e.g., using Capslock)
@@ -576,9 +718,9 @@ export class TermWrap {
 
             if (rtInfo && rtInfo["shell:integration"]) {
                 const shellState = rtInfo["shell:state"] as ShellIntegrationStatus;
-                globalStore.set(this.shellIntegrationStatusAtom, shellState || null);
+                this.setShellIntegrationStatus(shellState || null);
             } else {
-                globalStore.set(this.shellIntegrationStatusAtom, null);
+                this.setShellIntegrationStatus(null);
             }
 
             const lastCmd = rtInfo ? rtInfo["shell:lastcmd"] : null;
@@ -609,6 +751,14 @@ export class TermWrap {
             } catch (_) {}
         });
         this.mainFileSubject.release();
+    }
+
+    /**
+     * Sets the shell integration status and notifies listeners for tab status updates.
+     */
+    setShellIntegrationStatus(status: "ready" | "running-command" | null) {
+        globalStore.set(this.shellIntegrationStatusAtom, status);
+        this.onShellIntegrationStatusChange?.();
     }
 
     handleTermData(data: string) {

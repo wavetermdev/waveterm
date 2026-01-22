@@ -18,6 +18,8 @@ import (
 )
 
 var ErrNotFound = fmt.Errorf("not found")
+var ErrVersionMismatch = fmt.Errorf("version mismatch: concurrent modification detected")
+var ErrObjectLocked = fmt.Errorf("object is locked")
 
 func waveObjTableName(w waveobj.WaveObj) string {
 	return "db_" + w.GetOType()

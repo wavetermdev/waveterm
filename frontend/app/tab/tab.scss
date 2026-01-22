@@ -4,7 +4,7 @@
 .tab {
     position: absolute;
     width: 130px;
-    height: calc(100% - 1px);
+    height: 100%;
     padding: 0 0 0 0;
     box-sizing: border-box;
     font-weight: bold;
@@ -13,6 +13,39 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    // Inactive tab: 25% white overlay on tab bar background
+    background: rgb(255 255 255 / 0.04);
+
+    // Tab color stripe - shows manual color ONLY (VS Code style top stripe)
+    .tab-color-stripe {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 2px;
+        border-radius: 0;
+        z-index: var(--zindex-tab-name);
+    }
+
+    // Status text colors (VS Code style)
+    &.status-running .name {
+        color: #3b82f6 !important;
+        animation: text-pulse 1.5s ease-in-out infinite;
+    }
+
+    &.status-finished .name {
+        color: #22c55e !important;
+    }
+
+    &.status-stopped .name {
+        color: #ef4444 !important;
+    }
+
+    &.status-attention .name {
+        color: #eab308 !important;
+        animation: text-pulse 1.5s ease-in-out infinite;
+    }
+
 
     &::after {
         content: "";
@@ -28,7 +61,7 @@
         width: calc(100% - 6px);
         height: 100%;
         white-space: nowrap;
-        border-radius: 6px;
+        border-radius: 0;
     }
 
     &.animate {
@@ -38,14 +71,22 @@
     }
 
     &.active {
+        // Active tab: 75% white overlay on tab bar background (brightest)
+        background: rgb(255 255 255 / 0.12);
+
         .tab-inner {
             border-color: transparent;
-            border-radius: 6px;
-            background: rgb(from var(--main-text-color) r g b / 0.1);
+            border-radius: 0;
         }
 
         .name {
             color: var(--main-text-color);
+            opacity: 1;
+        }
+
+        // Always show close button on active tab
+        .close {
+            visibility: visible;
         }
 
         & + .tab::after,
@@ -58,20 +99,29 @@
         content: none;
     }
 
-    .name {
+    .tab-name-wrapper {
         position: absolute;
         top: 50%;
         left: 50%;
         transform: translate3d(-50%, -50%, 0);
-        user-select: none;
+        width: calc(100% - 10px);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 2px;
         z-index: var(--zindex-tab-name);
+    }
+
+    .name {
+        user-select: none;
         font-size: 11px;
         font-weight: 500;
         text-shadow: 0px 0px 4px rgb(from var(--main-bg-color) r g b / 0.25);
         overflow: hidden;
-        width: calc(100% - 10px);
         text-overflow: ellipsis;
         text-align: center;
+        // Inactive tabs have more muted text
+        opacity: 0.7;
 
         &.focused {
             outline: none;
@@ -110,9 +160,11 @@ body:not(.nohover) .tab.dragging {
         content: none;
     }
 
+    // Hover tab: 50% white overlay on tab bar background (middle brightness)
+    background: rgb(255 255 255 / 0.08);
+
     .tab-inner {
         border-color: transparent;
-        background: rgb(from var(--main-text-color) r g b / 0.1);
     }
     .close {
         visibility: visible;
@@ -120,6 +172,11 @@ body:not(.nohover) .tab.dragging {
             color: var(--main-text-color);
         }
     }
+}
+
+// Active tab hover shouldn't change the background
+body:not(.nohover) .tab.active:hover {
+    background: rgb(255 255 255 / 0.12);
 }
 
 // When in nohover mode, always show the close button on the active tab. This prevents the close button of the active tab from flickering when nohover is toggled.
@@ -191,4 +248,22 @@ body.nohover .tab.active .close {
 
 .pin.jiggling i {
     animation: jigglePinIcon 0.5s ease-in-out;
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@keyframes text-pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
 }

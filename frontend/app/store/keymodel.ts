@@ -314,7 +314,7 @@ function globalRefocus() {
     refocusNode(blockId);
 }
 
-function getDefaultNewBlockDef(): BlockDef {
+async function getDefaultNewBlockDef(): Promise<BlockDef> {
     const adnbAtom = getSettingsKeyAtom("app:defaultnewblock");
     const adnb = globalStore.get(adnbAtom) ?? "term";
     if (adnb == "launcher") {
@@ -331,6 +331,36 @@ function getDefaultNewBlockDef(): BlockDef {
             controller: "shell",
         },
     };
+
+    // ===== Tab Base Directory Inheritance =====
+    // When creating new terminals via keyboard shortcuts (e.g., Cmd+N, Cmd+D),
+    // inherit the tab's base directory as the terminal's initial working directory.
+    // This ensures new terminals in the same tab start in the same project context.
+    //
+    // Inheritance priority:
+    // 1. Focused block's cmd:cwd (copy directory from existing terminal)
+    // 2. Tab's tab:basedir (use tab-level project directory)
+    // 3. Default (typically home directory ~)
+    const tabData = globalStore.get(atoms.activeTab);
+    let tabBaseDir = tabData?.meta?.["tab:basedir"];
+
+    // Pre-use validation: quickly validate tab basedir before using it
+    if (tabBaseDir && tabBaseDir.trim() !== "") {
+        try {
+            const { validateTabBasedir } = await import("@/store/tab-basedir-validator");
+            const validationResult = await validateTabBasedir(tabData.oid, tabBaseDir);
+            if (!validationResult.valid) {
+                console.warn(
+                    `[keymodel] Tab basedir validation failed at use-time: ${tabBaseDir} (${validationResult.reason}). Falling back to home directory.`
+                );
+                tabBaseDir = null; // Fall back to home directory
+            }
+        } catch (error) {
+            console.error("[keymodel] Failed to validate tab basedir:", error);
+            tabBaseDir = null; // Fall back to home directory on error
+        }
+    }
+
     const layoutModel = getLayoutModelForStaticTab();
     const focusedNode = globalStore.get(layoutModel.focusedNode);
     if (focusedNode != null) {
@@ -345,11 +375,17 @@ function getDefaultNewBlockDef(): BlockDef {
             termBlockDef.meta.connection = blockData.meta.connection;
         }
     }
+
+    // If no cwd from focused block, use tab base directory (if valid)
+    if (termBlockDef.meta["cmd:cwd"] == null && tabBaseDir != null) {
+        termBlockDef.meta["cmd:cwd"] = tabBaseDir;
+    }
+
     return termBlockDef;
 }
 
 async function handleCmdN() {
-    const blockDef = getDefaultNewBlockDef();
+    const blockDef = await getDefaultNewBlockDef();
     await createBlock(blockDef);
 }
 
@@ -359,7 +395,7 @@ async function handleSplitHorizontal(position: "before" | "after") {
     if (focusedNode == null) {
         return;
     }
-    const blockDef = getDefaultNewBlockDef();
+    const blockDef = await getDefaultNewBlockDef();
     await createBlockSplitHorizontally(blockDef, focusedNode.data.blockId, position);
 }
 
@@ -369,7 +405,7 @@ async function handleSplitVertical(position: "before" | "after") {
     if (focusedNode == null) {
         return;
     }
-    const blockDef = getDefaultNewBlockDef();
+    const blockDef = await getDefaultNewBlockDef();
     await createBlockSplitVertically(blockDef, focusedNode.data.blockId, position);
 }
 

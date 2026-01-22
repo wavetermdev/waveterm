@@ -17,6 +17,7 @@ declare global {
         settingsAtom: jotai.Atom<SettingsType>; // derrived from fullConfig
         hasCustomAIPresetsAtom: jotai.Atom<boolean>; // derived from fullConfig
         staticTabId: jotai.Atom<string>;
+        activeTab: jotai.Atom<Tab>;
         isFullScreen: jotai.PrimitiveAtom<boolean>;
         zoomFactorAtom: jotai.PrimitiveAtom<number>;
         controlShiftDelayAtom: jotai.PrimitiveAtom<boolean>;
@@ -134,6 +135,7 @@ declare global {
         openBuilder: (appId?: string) => void; // open-builder
         setBuilderWindowAppId: (appId: string) => void; // set-builder-window-appid
         doRefresh: () => void; // do-refresh
+        showOpenDialog: (options: OpenDialogOptions) => Promise<string[]>; // show-open-dialog
     };
 
     type ElectronContextMenuItem = {
@@ -504,6 +506,15 @@ declare global {
           };
 
     type AIModeConfigWithMode = { mode: string } & AIModeConfigType;
+
+    type OpenDialogOptions = {
+        title?: string;
+        defaultPath?: string;
+        properties?: Array<"openFile" | "openDirectory" | "multiSelections" | "showHiddenFiles">;
+        filters?: Array<{ name: string; extensions: string[] }>;
+        message?: string;
+        buttonLabel?: string;
+    };
 }
 
 export {};

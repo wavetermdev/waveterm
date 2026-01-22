@@ -116,6 +116,13 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
     }) as Atom<boolean>;
     // this is *the* tab that this tabview represents.  it should never change.
     const staticTabIdAtom: Atom<string> = atom(initOpts.tabId);
+    const activeTabAtom: Atom<Tab> = atom((get) => {
+        const staticTabId = get(staticTabIdAtom);
+        if (staticTabId == null) {
+            return null;
+        }
+        return WOS.getObjectValue<Tab>(WOS.makeORef("tab", staticTabId), get);
+    });
     const controlShiftDelayAtom = atom(false);
     const updaterStatusAtom = atom<UpdaterStatus>("up-to-date") as PrimitiveAtom<UpdaterStatus>;
     try {
@@ -169,6 +176,7 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
         settingsAtom,
         hasCustomAIPresetsAtom,
         staticTabId: staticTabIdAtom,
+        activeTab: activeTabAtom,
         isFullScreen: isFullScreenAtom,
         zoomFactorAtom,
         controlShiftDelayAtom,

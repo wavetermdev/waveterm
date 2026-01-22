@@ -3,18 +3,21 @@
 
 .workspace-switcher-button {
     display: flex;
-    height: 26px;
+    height: 24px;
     padding: 0px 12px;
     justify-content: flex-end;
     align-items: center;
     gap: 12px;
     border-radius: 6px;
     margin-right: 6px;
+    margin-bottom: 2px;
     box-sizing: border-box;
-    background-color: rgb(from var(--main-text-color) r g b / 0.1) !important;
+    // No background - icon only with tab bar background showing through
+    background-color: transparent !important;
 
     &:hover {
-        background-color: rgb(from var(--main-text-color) r g b / 0.14) !important;
+        // Subtle hover effect
+        background-color: rgb(255 255 255 / 0.05) !important;
     }
 
     .workspace-icon {

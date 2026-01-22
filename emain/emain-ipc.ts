@@ -453,4 +453,90 @@ export function initIpcHandlers() {
     electron.ipcMain.on("do-refresh", (event) => {
         event.sender.reloadIgnoringCache();
     });
+
+    electron.ipcMain.handle(
+        "show-open-dialog",
+        async (
+            event: electron.IpcMainInvokeEvent,
+            options: {
+                title?: string;
+                defaultPath?: string;
+                properties?: Array<"openFile" | "openDirectory" | "multiSelections" | "showHiddenFiles">;
+                filters?: Array<{ name: string; extensions: string[] }>;
+            }
+        ): Promise<string[]> => {
+            // SECURITY: Restrict to directory selection only for this feature
+            const allowedProperties =
+                options.properties?.filter((p) => ["openDirectory", "showHiddenFiles"].includes(p)) ||
+                ["openDirectory"];
+
+            // SECURITY: Sanitize defaultPath
+            let sanitizedDefaultPath = options.defaultPath;
+            if (sanitizedDefaultPath) {
+                // CRITICAL SECURITY: Block UNC paths on Windows to prevent network attacks
+                // UNC paths like \\attacker.com\share can leak credentials or data
+                if (process.platform === "win32" && /^[\\/]{2}[^\\/]/.test(sanitizedDefaultPath)) {
+                    console.warn("show-open-dialog: blocked UNC path in defaultPath:", sanitizedDefaultPath);
+                    sanitizedDefaultPath = electronApp.getPath("home");
+                } else {
+                    // Expand home directory shorthand
+                    if (sanitizedDefaultPath.startsWith("~")) {
+                        sanitizedDefaultPath = sanitizedDefaultPath.replace(/^~/, electronApp.getPath("home"));
+                    }
+                    // Normalize path to resolve any .. components
+                    sanitizedDefaultPath = path.normalize(sanitizedDefaultPath);
+
+                    // Validate the path exists and is accessible
+                    try {
+                        await fs.promises.access(sanitizedDefaultPath, fs.constants.R_OK);
+                    } catch {
+                        // Fall back to home directory if path doesn't exist or isn't readable
+                        sanitizedDefaultPath = electronApp.getPath("home");
+                    }
+                }
+            }
+
+            // Get the appropriate parent window
+            const ww = getWaveWindowByWebContentsId(event.sender.id);
+            const parentWindow = ww ?? electron.BrowserWindow.getFocusedWindow();
+
+            const result = await electron.dialog.showOpenDialog(parentWindow, {
+                title: options.title ?? "Select Directory",
+                defaultPath: sanitizedDefaultPath,
+                properties: allowedProperties as electron.OpenDialogOptions["properties"],
+                filters: options.filters,
+            });
+
+            // Return empty array if canceled
+            if (result.canceled || !result.filePaths) {
+                return [];
+            }
+
+            // SECURITY: Validate returned paths
+            const validPaths: string[] = [];
+            for (const filePath of result.filePaths) {
+                // CRITICAL SECURITY: Block UNC paths in returned values on Windows
+                if (process.platform === "win32" && /^[\\/]{2}[^\\/]/.test(filePath)) {
+                    console.warn("show-open-dialog: blocked UNC path in result:", filePath);
+                    continue;
+                }
+
+                try {
+                    const stats = await fs.promises.stat(filePath);
+                    if (allowedProperties.includes("openDirectory")) {
+                        if (stats.isDirectory()) {
+                            validPaths.push(filePath);
+                        }
+                    } else {
+                        validPaths.push(filePath);
+                    }
+                } catch {
+                    // Skip paths that can't be accessed
+                    console.warn("show-open-dialog: skipping inaccessible path:", filePath);
+                }
+            }
+
+            return validPaths;
+        }
+    );
 }

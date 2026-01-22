@@ -616,6 +616,19 @@ func ReadFullConfig() FullConfigType {
 			utilfn.ReUnmarshal(fieldPtr, configPart)
 		}
 	}
+
+	// Validate preset scopes
+	if fullConfig.Presets != nil {
+		for presetName, presetMeta := range fullConfig.Presets {
+			if err := waveobj.ValidatePresetScope(presetName, presetMeta); err != nil {
+				fullConfig.ConfigErrors = append(fullConfig.ConfigErrors, ConfigError{
+					File: "presets/*.json",
+					Err:  fmt.Sprintf("preset %s: %v", presetName, err),
+				})
+			}
+		}
+	}
+
 	return fullConfig
 }
 

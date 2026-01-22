@@ -43,6 +43,93 @@ function validateBgJson(parsed: any): ValidationResult {
     return { success: true };
 }
 
+// Key allowlist for tabvar@ presets
+const TABVAR_ALLOWED_KEYS = new Set([
+    "tab:basedir",
+    "tab:basedirlock",
+    "display:name",
+    "display:order"
+]);
+
+function validateTabVarsJson(parsed: any): ValidationResult {
+    const keys = Object.keys(parsed);
+
+    for (const key of keys) {
+        // Check preset name format
+        if (!key.startsWith("tabvar@")) {
+            return { error: `Invalid key "${key}": all top-level keys must start with "tabvar@"` };
+        }
+
+        // Validate key name format
+        if (!/^tabvar@[a-zA-Z0-9_-]+$/.test(key)) {
+            return {
+                error: `Invalid preset name "${key}": must contain only letters, numbers, underscores, and hyphens`
+            };
+        }
+
+        const preset = parsed[key];
+        if (typeof preset !== "object" || preset === null || Array.isArray(preset)) {
+            return { error: `Invalid value for "${key}": must be an object` };
+        }
+
+        // Validate each key in the preset
+        for (const presetKey of Object.keys(preset)) {
+            // Check if key is in allowlist
+            if (!TABVAR_ALLOWED_KEYS.has(presetKey)) {
+                return {
+                    error: `Invalid key "${presetKey}" in preset "${key}": not allowed in tab variable presets. ` +
+                           `Allowed keys: ${Array.from(TABVAR_ALLOWED_KEYS).join(", ")}`
+                };
+            }
+
+            const value = preset[presetKey];
+
+            // Type validation
+            if (presetKey === "tab:basedir") {
+                if (value !== null && typeof value !== "string") {
+                    return { error: `Invalid value for "tab:basedir" in "${key}": must be a string or null` };
+                }
+                if (typeof value === "string") {
+                    // Length check
+                    if (value.length > 4096) {
+                        return { error: `Path in "tab:basedir" too long in "${key}": max 4096 characters` };
+                    }
+                    // Null byte check
+                    if (value.includes("\x00")) {
+                        return { error: `Invalid characters in "tab:basedir" in "${key}"` };
+                    }
+                    // Path traversal check (basic)
+                    if (value.includes("..")) {
+                        return { error: `Path traversal not allowed in "tab:basedir" in "${key}"` };
+                    }
+                }
+            }
+
+            if (presetKey === "tab:basedirlock") {
+                if (typeof value !== "boolean") {
+                    return { error: `Invalid value for "tab:basedirlock" in "${key}": must be a boolean` };
+                }
+            }
+
+            if (presetKey === "display:name") {
+                if (typeof value !== "string") {
+                    return { error: `Invalid value for "display:name" in "${key}": must be a string` };
+                }
+                if (value.length > 256) {
+                    return { error: `Display name too long in "${key}": max 256 characters` };
+                }
+            }
+
+            if (presetKey === "display:order") {
+                if (typeof value !== "number") {
+                    return { error: `Invalid value for "display:order" in "${key}": must be a number` };
+                }
+            }
+        }
+    }
+    return { success: true };
+}
+
 function validateAiJson(parsed: any): ValidationResult {
     const keys = Object.keys(parsed);
     for (const key of keys) {
@@ -105,6 +192,14 @@ const configFiles: ConfigFile[] = [
         language: "json",
         docsUrl: "https://docs.waveterm.dev/presets#background-configurations",
         validator: validateBgJson,
+        hasJsonView: true,
+    },
+    {
+        name: "Tab Variables",
+        path: "presets/tabvars.json",
+        language: "json",
+        docsUrl: "https://docs.waveterm.dev/customization#tab-variables",
+        validator: validateTabVarsJson,
         hasJsonView: true,
     },
     {

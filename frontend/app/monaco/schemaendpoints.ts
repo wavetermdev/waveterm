@@ -5,6 +5,7 @@ import settingsSchema from "../../../schema/settings.json";
 import connectionsSchema from "../../../schema/connections.json";
 import aipresetsSchema from "../../../schema/aipresets.json";
 import bgpresetsSchema from "../../../schema/bgpresets.json";
+import tabvarspresetsSchema from "../../../schema/tabvarspresets.json";
 import waveaiSchema from "../../../schema/waveai.json";
 import widgetsSchema from "../../../schema/widgets.json";
 
@@ -34,6 +35,11 @@ const MonacoSchemas: SchemaInfo[] = [
         uri: "wave://schema/bgpresets.json",
         fileMatch: ["*/WAVECONFIGPATH/presets/bg.json"],
         schema: bgpresetsSchema,
+    },
+    {
+        uri: "wave://schema/tabvarspresets.json",
+        fileMatch: ["*/WAVECONFIGPATH/presets/tabvars.json", "*/WAVECONFIGPATH/presets/tabvars/*.json"],
+        schema: tabvarspresetsSchema,
     },
     {
         uri: "wave://schema/waveai.json",
