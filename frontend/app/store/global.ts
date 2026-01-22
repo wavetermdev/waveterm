@@ -118,7 +118,8 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
     const staticTabIdAtom: Atom<string> = atom(initOpts.tabId);
     const activeTabAtom: Atom<Tab> = atom((get) => {
         const staticTabId = get(staticTabIdAtom);
-        if (staticTabId == null) {
+        // Guard against both null/undefined AND empty string
+        if (staticTabId == null || staticTabId === "") {
             return null;
         }
         return WOS.getObjectValue<Tab>(WOS.makeORef("tab", staticTabId), get);

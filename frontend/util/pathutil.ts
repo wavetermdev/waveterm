@@ -178,16 +178,18 @@ function isWindowsDeviceName(path: string): boolean {
 export function isBlockedPath(normalizedPath: string): boolean {
     const blockedPaths = PLATFORM === PlatformWindows ? BLOCKED_PATHS_WINDOWS : BLOCKED_PATHS_UNIX;
 
-    const lowerPath = normalizedPath.toLowerCase();
+    // Normalize separators to forward slashes for consistent comparison on Windows
+    // This ensures C:/Windows matches against C:\Windows in the blocked list
+    const normalizedForComparison =
+        PLATFORM === PlatformWindows ? normalizedPath.replace(/\\/g, "/") : normalizedPath;
+    const lowerPath = normalizedForComparison.toLowerCase();
 
     for (const blocked of blockedPaths) {
-        const lowerBlocked = blocked.toLowerCase();
+        // Also normalize blocked paths to forward slashes on Windows
+        const normalizedBlocked = PLATFORM === PlatformWindows ? blocked.replace(/\\/g, "/") : blocked;
+        const lowerBlocked = normalizedBlocked.toLowerCase();
         // Check exact match or path starts with blocked + separator
-        if (
-            lowerPath === lowerBlocked ||
-            lowerPath.startsWith(lowerBlocked + "/") ||
-            lowerPath.startsWith(lowerBlocked + "\\")
-        ) {
+        if (lowerPath === lowerBlocked || lowerPath.startsWith(lowerBlocked + "/")) {
             return true;
         }
     }
@@ -208,9 +210,11 @@ export type PathValidationResult = {
  * @returns Validation result with valid flag and optional reason for rejection
  */
 export function quickValidatePath(rawPath: string): PathValidationResult {
-    // Check for empty/whitespace
+    // Allow empty/whitespace paths - they represent "no path" or "clear"
+    // This enables OSC 7 to clear tab:basedir by sending an empty path
+    // The caller can decide how to handle empty paths
     if (!rawPath || rawPath.trim() === "") {
-        return { valid: false, reason: "empty path" };
+        return { valid: true };
     }
 
     // Check length limit

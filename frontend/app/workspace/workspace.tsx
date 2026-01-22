@@ -72,9 +72,15 @@ const TabBreadcrumb = memo(() => {
                 ))}
             </div>
             <div className="breadcrumb-actions">
-                <div className="menu-button" onClick={handleMenuClick} title="Menu">
+                <button
+                    type="button"
+                    className="menu-button"
+                    onClick={handleMenuClick}
+                    title="Menu"
+                    aria-label="Open workspace menu"
+                >
                     <i className="fa fa-ellipsis" />
-                </div>
+                </button>
             </div>
         </div>
     );

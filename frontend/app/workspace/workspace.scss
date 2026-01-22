@@ -59,6 +59,11 @@
         color: var(--secondary-text-color);
         border-radius: 3px;
         transition: background-color 0.15s ease;
+        // Button reset styles for accessibility
+        background: transparent;
+        border: none;
+        padding: 0;
+        font: inherit;
 
         &:hover {
             color: var(--main-text-color);

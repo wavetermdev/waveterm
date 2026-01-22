@@ -37,6 +37,29 @@ export const PRESET_KEY_ALLOWLISTS: Record<string, Set<string>> = {
 };
 
 /**
+ * Checks if a key is allowed by the allowlist, supporting wildcard prefixes.
+ * Wildcards are entries ending with "*" (e.g., "bg:*" matches "bg:color", "bg:opacity", etc.)
+ */
+function isKeyAllowed(key: string, allowedKeys: Set<string>): boolean {
+    // Check exact match first
+    if (allowedKeys.has(key)) {
+        return true;
+    }
+
+    // Check wildcard prefixes (entries ending with "*")
+    for (const allowed of allowedKeys) {
+        if (allowed.endsWith("*")) {
+            const prefix = allowed.slice(0, -1); // Remove the "*"
+            if (key.startsWith(prefix)) {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
+/**
  * Validates a preset before application.
  * Returns validation result with error details if invalid.
  */
@@ -71,7 +94,7 @@ export function validatePresetBeforeApply(
             continue;
         }
 
-        if (!allowedKeys.has(key)) {
+        if (!isKeyAllowed(key, allowedKeys)) {
             disallowedKeys.push(key);
         }
     }
@@ -118,7 +141,7 @@ export function sanitizePreset(
             continue;
         }
 
-        if (allowedKeys.has(key)) {
+        if (isKeyAllowed(key, allowedKeys)) {
             sanitized[key] = value;
         }
     }

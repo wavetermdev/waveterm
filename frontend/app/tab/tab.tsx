@@ -81,9 +81,12 @@ const Tab = memo(
                 if (active && isDocVisible && (tabStatus === "finished" || tabStatus === "stopped")) {
                     const delay = tabStatus === "stopped" ? 3000 : 2000;
                     const timer = setTimeout(() => {
-                        ObjectService.UpdateObjectMeta(makeORef("tab", id), {
-                            "tab:termstatus": null,
-                        });
+                        // Use fireAndForget to avoid unhandled promise rejection
+                        fireAndForget(() =>
+                            ObjectService.UpdateObjectMeta(makeORef("tab", id), {
+                                "tab:termstatus": null,
+                            })
+                        );
                     }, delay);
                     return () => clearTimeout(timer);
                 }

@@ -205,10 +205,21 @@ func checkPathTraversal(path string) error {
 	// For Windows UNC paths (\\server\share\path)
 	if runtime.GOOS == "windows" && strings.HasPrefix(path, "\\\\") {
 		// UNC paths should not traverse above the share
+		// When splitting \\server\share\path by \, we get ["", "", "server", "share", "path"]
+		// The first two elements are empty due to the leading \\
 		parts := strings.Split(filepath.Clean(path), string(filepath.Separator))
-		if len(parts) >= 4 { // \\server\share\...
-			sharePath := filepath.Join(parts[0], parts[1], parts[2], parts[3])
-			if !strings.HasPrefix(filepath.Clean(path), sharePath) {
+		// Need at least 4 parts: ["", "", "server", "share"] for a valid UNC share
+		if len(parts) >= 4 {
+			// parts[2] is server, parts[3] is share
+			server := parts[2]
+			share := parts[3]
+			if server == "" || share == "" {
+				return fmt.Errorf("invalid UNC path format")
+			}
+			// Build the share root path: \\server\share
+			sharePath := "\\\\" + server + string(filepath.Separator) + share
+			cleanedPath := filepath.Clean(path)
+			if !strings.HasPrefix(cleanedPath, sharePath) {
 				return fmt.Errorf("path traversal detected in UNC path")
 			}
 		}

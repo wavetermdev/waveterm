@@ -471,9 +471,7 @@ export class TermViewModel implements ViewModel {
 
         // First, try to get shell integration status from local atom (for active tabs)
         // This is the most up-to-date value since it's set synchronously on OSC 16162
-        const localShellIntegrationStatus = this.termRef?.current
-            ? globalStore.get(this.termRef.current.shellIntegrationStatusAtom)
-            : null;
+        const localShellIntegrationStatus = readAtom(this.termRef?.current?.shellIntegrationStatusAtom);
 
         // If we have a local value, use it immediately (active tab case)
         if (localShellIntegrationStatus != null) {
@@ -883,7 +881,7 @@ export class TermViewModel implements ViewModel {
         });
         fullMenu.push({ type: "separator" });
 
-        const shellIntegrationStatus = globalStore.get(this.termRef?.current?.shellIntegrationStatusAtom);
+        const shellIntegrationStatus = readAtom(this.termRef?.current?.shellIntegrationStatusAtom);
         const cwd = blockData?.meta?.["cmd:cwd"];
         const canShowFileBrowser = shellIntegrationStatus === "ready" && cwd != null;
 

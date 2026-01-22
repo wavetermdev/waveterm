@@ -32,7 +32,11 @@ function sortByDisplayOrder(wmap: { [key: string]: WidgetConfigType }): WidgetCo
 }
 
 async function handleWidgetSelect(widget: WidgetConfigType) {
-    const blockDef = widget.blockdef;
+    // Clone blockdef to avoid mutating the cached widget configuration
+    const blockDef: BlockDef = {
+        ...widget.blockdef,
+        meta: { ...widget.blockdef?.meta },
+    };
 
     // ===== Tab Base Directory Inheritance for Widgets =====
     // When launching widgets from the sidebar, inherit the tab's base directory.
