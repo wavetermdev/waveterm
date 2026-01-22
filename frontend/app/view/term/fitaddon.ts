@@ -4,11 +4,11 @@
  */
 
 // This file is a copy of the original xterm.js file, with the following changes:
-// - removed the allowance for the scrollbar
+// - Added noScrollbar flag to support macOS scrollbar behavior
+// - Updated for xterm.js 6.1.0 public API
 
 import type { FitAddon as IFitApi } from "@xterm/addon-fit";
-import type { ITerminalAddon, Terminal } from "@xterm/xterm";
-import { IRenderDimensions } from "@xterm/xterm/src/browser/renderer/shared/Types";
+import type { ITerminalAddon, Terminal, IRenderDimensions } from "@xterm/xterm";
 
 interface ITerminalDimensions {
     /**
@@ -24,6 +24,7 @@ interface ITerminalDimensions {
 
 const MINIMUM_COLS = 2;
 const MINIMUM_ROWS = 1;
+const DEFAULT_SCROLLBAR_WIDTH = 15; // Match xterm.js DEFAULT_SCROLL_BAR_WIDTH
 
 export class FitAddon implements ITerminalAddon, IFitApi {
     private _terminal: Terminal | undefined;
@@ -41,12 +42,7 @@ export class FitAddon implements ITerminalAddon, IFitApi {
             return;
         }
 
-        // TODO: Remove reliance on private API
-        const core = (this._terminal as any)._core;
-
-        // Force a full render
         if (this._terminal.rows !== dims.rows || this._terminal.cols !== dims.cols) {
-            core._renderService.clear();
             this._terminal.resize(dims.cols, dims.rows);
         }
     }
@@ -60,22 +56,20 @@ export class FitAddon implements ITerminalAddon, IFitApi {
             return undefined;
         }
 
-        // TODO: Remove reliance on private API
-        const core = (this._terminal as any)._core;
-        const dims: IRenderDimensions = core._renderService.dimensions;
+        // Use public API from xterm.js 6.1.0 (PR #5551)
+        const dims: IRenderDimensions | undefined = this._terminal.dimensions;
+        if (!dims) {
+            return undefined;
+        }
 
         if (dims.css.cell.width === 0 || dims.css.cell.height === 0) {
             return undefined;
         }
 
-        // UPDATED CODE (removed reliance on FALLBACK_SCROLL_BAR_WIDTH in viewport)
-        const measuredScrollBarWidth =
-            core.viewport._viewportElement.offsetWidth - core.viewport._scrollArea.offsetWidth;
-        let scrollbarWidth = this._terminal.options.scrollback === 0 ? 0 : measuredScrollBarWidth;
-        if (this.noScrollbar) {
-            scrollbarWidth = 0;
+        let scrollbarWidth = 0;
+        if (!this.noScrollbar && this._terminal.options.scrollback !== 0) {
+            scrollbarWidth = this._terminal.options.overviewRuler?.width ?? DEFAULT_SCROLLBAR_WIDTH;
         }
-        // END UPDATED CODE
 
         const parentElementStyle = window.getComputedStyle(this._terminal.element.parentElement);
         const parentElementHeight = parseInt(parentElementStyle.getPropertyValue("height"));
