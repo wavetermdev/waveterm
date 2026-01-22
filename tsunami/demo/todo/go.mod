@@ -1,6 +1,6 @@
 module tsunami/app/todo
 
-go 1.24.6
+go 1.25.6
 
 require github.com/wavetermdev/waveterm/tsunami v0.0.0
 
