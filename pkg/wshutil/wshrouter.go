@@ -36,6 +36,8 @@ const (
 	RoutePrefix_FeBlock    = "feblock:"
 	RoutePrefix_Builder    = "builder:"
 	RoutePrefix_Link       = "link:"
+	RoutePrefix_Job        = "job:"
+	RoutePrefix_Bare       = "bare:"
 )
 
 // this works like a network switch

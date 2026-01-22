@@ -150,6 +150,7 @@ func (jm *JobCmd) GetExitInfo() (bool, *wshrpc.CommandJobCmdExitedData) {
 	return true, exitData
 }
 
+// TODO set up a single input handler loop + queue so we dont need to hold the lock but still get synchronized in-order execution
 func (jm *JobCmd) HandleInput(data wshrpc.CommandJobInputData) error {
 	jm.lock.Lock()
 	defer jm.lock.Unlock()
