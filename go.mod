@@ -1,6 +1,6 @@
 module github.com/wavetermdev/waveterm
 
-go 1.24.6
+go 1.25.6
 
 require (
 	github.com/Microsoft/go-winio v0.6.2

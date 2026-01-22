@@ -34,7 +34,7 @@ on:
 
 env:
     NODE_VERSION: 22
-    GO_VERSION: "1.24"
+    GO_VERSION: "1.25.6"
 
 jobs:
     analyze:
