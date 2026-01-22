@@ -163,7 +163,7 @@ func ReadLoop(conn *websocket.Conn, outputCh chan any, closeCh chan any, rpcInpu
 			outputCh <- pongMessage
 			continue
 		}
-		go processMessage(jmsg, outputCh, rpcInputCh)
+		processMessage(jmsg, outputCh, rpcInputCh)
 	}
 }
 
