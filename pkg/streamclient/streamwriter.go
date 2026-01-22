@@ -16,7 +16,7 @@ type DataSender interface {
 type Writer struct {
 	lock         sync.Mutex
 	cond         *sync.Cond
-	id           int64
+	id           string
 	dataSender   DataSender
 	readWindow   int64
 	nextSeq      int64
@@ -31,7 +31,7 @@ type Writer struct {
 	closed       bool
 }
 
-func NewWriter(id int64, readWindow int64, dataSender DataSender) *Writer {
+func NewWriter(id string, readWindow int64, dataSender DataSender) *Writer {
 	w := &Writer{
 		id:           id,
 		readWindow:   readWindow,

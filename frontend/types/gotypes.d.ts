@@ -112,6 +112,7 @@ declare global {
         runtimeopts?: RuntimeOpts;
         stickers?: StickerType[];
         subblockids?: string[];
+        jobid?: string;
     };
 
     // blockcontroller.BlockControllerRuntimeStatus
@@ -137,13 +138,6 @@ declare global {
         workspaceid: string;
         block: Block;
         files: FileInfo[];
-    };
-
-    // webcmd.BlockInputWSCommand
-    type BlockInputWSCommand = {
-        wscommand: "blockinput";
-        blockid: string;
-        inputdata64: string;
     };
 
     // wshrpc.BlocksListEntry
@@ -179,6 +173,7 @@ declare global {
         tosagreed?: number;
         hasoldhistory?: boolean;
         tempoid?: string;
+        installid?: string;
     };
 
     // workspaceservice.CloseTabRtnType
@@ -194,11 +189,22 @@ declare global {
         data: {[key: string]: any};
     };
 
+    // wshrpc.CommandAuthenticateJobManagerData
+    type CommandAuthenticateJobManagerData = {
+        jobid: string;
+        jobauthtoken: string;
+    };
+
     // wshrpc.CommandAuthenticateRtnData
     type CommandAuthenticateRtnData = {
         env?: {[key: string]: string};
         initscripttext?: string;
         rpccontext?: RpcContext;
+    };
+
+    // wshrpc.CommandAuthenticateToJobData
+    type CommandAuthenticateToJobData = {
+        jobaccesstoken: string;
     };
 
     // wshrpc.CommandAuthenticateTokenData
@@ -343,6 +349,59 @@ declare global {
         chatid: string;
     };
 
+    // wshrpc.CommandJobCmdExitedData
+    type CommandJobCmdExitedData = {
+        jobid: string;
+        exitcode?: number;
+        exitsignal?: string;
+        exiterr?: string;
+        exitts?: number;
+    };
+
+    // wshrpc.CommandJobConnectRtnData
+    type CommandJobConnectRtnData = {
+        seq: number;
+        streamdone?: boolean;
+        streamerror?: string;
+        hasexited?: boolean;
+        exitcode?: number;
+        exitsignal?: string;
+        exiterr?: string;
+    };
+
+    // wshrpc.CommandJobControllerAttachJobData
+    type CommandJobControllerAttachJobData = {
+        jobid: string;
+        blockid: string;
+    };
+
+    // wshrpc.CommandJobControllerStartJobData
+    type CommandJobControllerStartJobData = {
+        connname: string;
+        cmd: string;
+        args: string[];
+        env: {[key: string]: string};
+        termsize?: TermSize;
+    };
+
+    // wshrpc.CommandJobInputData
+    type CommandJobInputData = {
+        jobid: string;
+        inputdata64?: string;
+        signame?: string;
+        termsize?: TermSize;
+    };
+
+    // wshrpc.CommandJobPrepareConnectData
+    type CommandJobPrepareConnectData = {
+        streammeta: StreamMeta;
+        seq: number;
+    };
+
+    // wshrpc.CommandJobStartStreamData
+    type CommandJobStartStreamData = {
+    };
+
     // wshrpc.CommandListAllAppFilesData
     type CommandListAllAppFilesData = {
         appid: string;
@@ -397,6 +456,11 @@ declare global {
         modts?: number;
     };
 
+    // wshrpc.CommandRemoteDisconnectFromJobManagerData
+    type CommandRemoteDisconnectFromJobManagerData = {
+        jobid: string;
+    };
+
     // wshrpc.CommandRemoteListEntriesData
     type CommandRemoteListEntriesData = {
         path: string;
@@ -406,6 +470,36 @@ declare global {
     // wshrpc.CommandRemoteListEntriesRtnData
     type CommandRemoteListEntriesRtnData = {
         fileinfo?: FileInfo[];
+    };
+
+    // wshrpc.CommandRemoteReconnectToJobManagerData
+    type CommandRemoteReconnectToJobManagerData = {
+        jobid: string;
+        jobauthtoken: string;
+        mainserverjwttoken: string;
+        jobmanagerpid: number;
+        jobmanagerstartts: number;
+    };
+
+    // wshrpc.CommandRemoteReconnectToJobManagerRtnData
+    type CommandRemoteReconnectToJobManagerRtnData = {
+        success: boolean;
+        jobmanagergone: boolean;
+        error?: string;
+    };
+
+    // wshrpc.CommandRemoteStartJobData
+    type CommandRemoteStartJobData = {
+        cmd: string;
+        args: string[];
+        env: {[key: string]: string};
+        termsize: TermSize;
+        streammeta?: StreamMeta;
+        jobauthtoken: string;
+        jobid: string;
+        mainserverjwttoken: string;
+        clientid: string;
+        publickeybase64: string;
     };
 
     // wshrpc.CommandRemoteStreamFileData
@@ -418,6 +512,13 @@ declare global {
     type CommandRemoteStreamTarData = {
         path: string;
         opts?: FileCopyOpts;
+    };
+
+    // wshrpc.CommandRemoteTerminateJobManagerData
+    type CommandRemoteTerminateJobManagerData = {
+        jobid: string;
+        jobmanagerpid: number;
+        jobmanagerstartts: number;
     };
 
     // wshrpc.CommandRenameAppFileData
@@ -461,9 +562,26 @@ declare global {
         builderid: string;
     };
 
+    // wshrpc.CommandStartJobData
+    type CommandStartJobData = {
+        cmd: string;
+        args: string[];
+        env: {[key: string]: string};
+        termsize: TermSize;
+        streammeta?: StreamMeta;
+    };
+
+    // wshrpc.CommandStartJobRtnData
+    type CommandStartJobRtnData = {
+        cmdpid: number;
+        cmdstartts: number;
+        jobmanagerpid: number;
+        jobmanagerstartts: number;
+    };
+
     // wshrpc.CommandStreamAckData
     type CommandStreamAckData = {
-        id: number;
+        id: string;
         seq: number;
         rwnd: number;
         fin?: boolean;
@@ -474,7 +592,7 @@ declare global {
 
     // wshrpc.CommandStreamData
     type CommandStreamData = {
-        id: number;
+        id: string;
         seq: number;
         data64?: string;
         eof?: boolean;
@@ -494,6 +612,12 @@ declare global {
         linestart: number;
         lines: string[];
         lastupdated: number;
+    };
+
+    // wshrpc.CommandTermUpdateAttachedJobData
+    type CommandTermUpdateAttachedJobData = {
+        blockid: string;
+        jobid?: string;
     };
 
     // wshrpc.CommandVarData
@@ -793,6 +917,32 @@ declare global {
         configerrors: ConfigError[];
     };
 
+    // waveobj.Job
+    type Job = WaveObj & {
+        connection: string;
+        jobkind: string;
+        cmd: string;
+        cmdargs?: string[];
+        cmdenv?: {[key: string]: string};
+        jobauthtoken: string;
+        attachedblockid?: string;
+        terminateonreconnect?: boolean;
+        jobmanagerstatus: string;
+        jobmanagerdonereason?: string;
+        jobmanagerstartuperror?: string;
+        jobmanagerpid?: number;
+        jobmanagerstartts?: number;
+        cmdpid?: number;
+        cmdstartts?: number;
+        cmdtermsize: TermSize;
+        cmdexitts?: number;
+        cmdexitcode?: number;
+        cmdexitsignal?: string;
+        cmdexiterror?: string;
+        streamdone?: boolean;
+        streamerror?: string;
+    };
+
     // waveobj.LayoutActionData
     type LayoutActionData = {
         actiontype: string;
@@ -1062,13 +1212,6 @@ declare global {
         optional: boolean;
     };
 
-    // webcmd.SetBlockTermSizeWSCommand
-    type SetBlockTermSizeWSCommand = {
-        wscommand: "setblocktermsize";
-        blockid: string;
-        termsize: TermSize;
-    };
-
     // wconfig.SettingsType
     type SettingsType = {
         "app:*"?: boolean;
@@ -1184,6 +1327,14 @@ declare global {
         style: {[key: string]: any};
         clickopts?: StickerClickOptsType;
         display: StickerDisplayOptsType;
+    };
+
+    // wshrpc.StreamMeta
+    type StreamMeta = {
+        id: string;
+        rwnd: number;
+        readerrouteid: string;
+        writerrouteid: string;
     };
 
     // wps.SubscriptionRequest
@@ -1640,7 +1791,7 @@ declare global {
 
     type WSCommandType = {
         wscommand: string;
-    } & ( SetBlockTermSizeWSCommand | BlockInputWSCommand | WSRpcCommand );
+    } & ( WSRpcCommand );
 
     // eventbus.WSEventType
     type WSEventType = {

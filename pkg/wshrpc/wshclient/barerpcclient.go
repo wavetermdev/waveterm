@@ -4,8 +4,10 @@
 package wshclient
 
 import (
+	"fmt"
 	"sync"
 
+	"github.com/google/uuid"
 	"github.com/wavetermdev/waveterm/pkg/wps"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
@@ -17,21 +19,22 @@ func (*WshServer) WshServerImpl() {}
 
 var WshServerImpl = WshServer{}
 
-const (
-	DefaultOutputChSize = 32
-	DefaultInputChSize  = 32
-)
-
 var waveSrvClient_Singleton *wshutil.WshRpc
 var waveSrvClient_Once = &sync.Once{}
-
-const BareClientRoute = "bare"
+var waveSrvClient_RouteId string
 
 func GetBareRpcClient() *wshutil.WshRpc {
 	waveSrvClient_Once.Do(func() {
 		waveSrvClient_Singleton = wshutil.MakeWshRpc(wshrpc.RpcContext{}, &WshServerImpl, "bare-client")
-		wshutil.DefaultRouter.RegisterTrustedLeaf(waveSrvClient_Singleton, BareClientRoute)
+		waveSrvClient_RouteId = fmt.Sprintf("bare:%s", uuid.New().String())
+		// we can safely ignore the error from RegisterTrustedLeaf since the route is valid
+		wshutil.DefaultRouter.RegisterTrustedLeaf(waveSrvClient_Singleton, waveSrvClient_RouteId)
 		wps.Broker.SetClient(wshutil.DefaultRouter)
 	})
 	return waveSrvClient_Singleton
+}
+
+func GetBareRpcClientRouteId() string {
+	GetBareRpcClient()
+	return waveSrvClient_RouteId
 }

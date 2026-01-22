@@ -162,7 +162,7 @@ export class VDomModel {
             this.queueUpdate(true);
         }
         this.routeGoneUnsub = waveEventSubscribe({
-            eventType: "route:gone",
+            eventType: "route:down",
             scope: curBackendRoute,
             handler: (event: WaveEvent) => {
                 this.disposed = true;

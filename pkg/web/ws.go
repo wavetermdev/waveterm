@@ -20,7 +20,6 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/eventbus"
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/web/webcmd"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
 )
 
@@ -110,40 +109,6 @@ func processWSCommand(jmsg map[string]any, outputCh chan any, rpcInputCh chan ba
 	}
 	cmdType = wsCommand.GetWSCommand()
 	switch cmd := wsCommand.(type) {
-	case *webcmd.SetBlockTermSizeWSCommand:
-		data := wshrpc.CommandBlockInputData{
-			BlockId:  cmd.BlockId,
-			TermSize: &cmd.TermSize,
-		}
-		rpcMsg := wshutil.RpcMessage{
-			Command: wshrpc.Command_ControllerInput,
-			Data:    data,
-		}
-		msgBytes, err := json.Marshal(rpcMsg)
-		if err != nil {
-			// this really should never fail since we just unmarshalled this value
-			log.Printf("[websocket] error marshalling rpc message: %v\n", err)
-			return
-		}
-		rpcInputCh <- baseds.RpcInputChType{MsgBytes: msgBytes}
-
-	case *webcmd.BlockInputWSCommand:
-		data := wshrpc.CommandBlockInputData{
-			BlockId:     cmd.BlockId,
-			InputData64: cmd.InputData64,
-		}
-		rpcMsg := wshutil.RpcMessage{
-			Command: wshrpc.Command_ControllerInput,
-			Data:    data,
-		}
-		msgBytes, err := json.Marshal(rpcMsg)
-		if err != nil {
-			// this really should never fail since we just unmarshalled this value
-			log.Printf("[websocket] error marshalling rpc message: %v\n", err)
-			return
-		}
-		rpcInputCh <- baseds.RpcInputChType{MsgBytes: msgBytes}
-
 	case *webcmd.WSRpcCommand:
 		rpcMsg := cmd.Message
 		if rpcMsg == nil {

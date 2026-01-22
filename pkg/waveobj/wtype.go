@@ -29,6 +29,7 @@ const (
 	OType_LayoutState = "layout"
 	OType_Block       = "block"
 	OType_MainServer  = "mainserver"
+	OType_Job         = "job"
 	OType_Temp        = "temp"
 	OType_Builder     = "builder" // not persisted to DB
 )
@@ -41,6 +42,7 @@ var ValidOTypes = map[string]bool{
 	OType_LayoutState: true,
 	OType_Block:       true,
 	OType_MainServer:  true,
+	OType_Job:         true,
 	OType_Temp:        true,
 	OType_Builder:     true,
 }
@@ -134,6 +136,7 @@ type Client struct {
 	TosAgreed     int64       `json:"tosagreed,omitempty"` // unix milli
 	HasOldHistory bool        `json:"hasoldhistory,omitempty"`
 	TempOID       string      `json:"tempoid,omitempty"`
+	InstallId     string      `json:"installid,omitempty"`
 }
 
 func (*Client) GetOType() string {
@@ -288,6 +291,7 @@ type Block struct {
 	Stickers    []*StickerType `json:"stickers,omitempty"`
 	Meta        MetaMapType    `json:"meta"`
 	SubBlockIds []string       `json:"subblockids,omitempty"`
+	JobId       string         `json:"jobid,omitempty"` // if set, the block will render this jobid's pty output
 }
 
 func (*Block) GetOType() string {
@@ -306,6 +310,49 @@ func (*MainServer) GetOType() string {
 	return OType_MainServer
 }
 
+type Job struct {
+	OID     string `json:"oid"`
+	Version int    `json:"version"`
+
+	// job metadata
+	Connection      string            `json:"connection"`
+	JobKind         string            `json:"jobkind"` // shell, task
+	Cmd             string            `json:"cmd"`
+	CmdArgs         []string          `json:"cmdargs,omitempty"`
+	CmdEnv          map[string]string `json:"cmdenv,omitempty"`
+	JobAuthToken    string            `json:"jobauthtoken"` // job manger -> wave
+	AttachedBlockId string            `json:"attachedblockid,omitempty"`
+
+	// reconnect option (e.g. orphaned, so we need to kill on connect)
+	TerminateOnReconnect bool `json:"terminateonreconnect,omitempty"`
+
+	// job manager state
+	JobManagerStatus       string `json:"jobmanagerstatus"`               // init, running, done
+	JobManagerDoneReason   string `json:"jobmanagerdonereason,omitempty"` // startuperror, gone, terminated
+	JobManagerStartupError string `json:"jobmanagerstartuperror,omitempty"`
+	JobManagerPid          int    `json:"jobmanagerpid,omitempty"`
+	JobManagerStartTs      int64  `json:"jobmanagerstartts,omitempty"` // exact process start time (milliseconds)
+
+	// cmd/process runtime info
+	CmdPid        int      `json:"cmdpid,omitempty"`     // command process id
+	CmdStartTs    int64    `json:"cmdstartts,omitempty"` // exact command process start time (milliseconds from epoch)
+	CmdTermSize   TermSize `json:"cmdtermsize"`
+	CmdExitTs     int64    `json:"cmdexitts,omitempty"`     // timestamp (milliseconds) -- use CmdExitTs > 0 to check if command has exited
+	CmdExitCode   *int     `json:"cmdexitcode,omitempty"`   // nil when CmdExitSignal is set.  success exit is when CmdExitCode is 0
+	CmdExitSignal string   `json:"cmdexitsignal,omitempty"` // empty string if CmdExitCode is set
+	CmdExitError  string   `json:"cmdexiterror,omitempty"`
+
+	// output info
+	StreamDone  bool   `json:"streamdone,omitempty"`
+	StreamError string `json:"streamerror,omitempty"`
+
+	Meta MetaMapType `json:"meta"`
+}
+
+func (*Job) GetOType() string {
+	return OType_Job
+}
+
 func AllWaveObjTypes() []reflect.Type {
 	return []reflect.Type{
 		reflect.TypeOf(&Client{}),
@@ -315,6 +362,7 @@ func AllWaveObjTypes() []reflect.Type {
 		reflect.TypeOf(&Block{}),
 		reflect.TypeOf(&LayoutState{}),
 		reflect.TypeOf(&MainServer{}),
+		reflect.TypeOf(&Job{}),
 	}
 }
 

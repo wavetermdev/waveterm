@@ -22,6 +22,21 @@ class RpcApiType {
         return client.wshRpcCall("authenticate", data, opts);
     }
 
+    // command "authenticatejobmanager" [call]
+    AuthenticateJobManagerCommand(client: WshClient, data: CommandAuthenticateJobManagerData, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("authenticatejobmanager", data, opts);
+    }
+
+    // command "authenticatejobmanagerverify" [call]
+    AuthenticateJobManagerVerifyCommand(client: WshClient, data: CommandAuthenticateJobManagerData, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("authenticatejobmanagerverify", data, opts);
+    }
+
+    // command "authenticatetojobmanager" [call]
+    AuthenticateToJobManagerCommand(client: WshClient, data: CommandAuthenticateToJobData, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("authenticatetojobmanager", data, opts);
+    }
+
     // command "authenticatetoken" [call]
     AuthenticateTokenCommand(client: WshClient, data: CommandAuthenticateTokenData, opts?: RpcOpts): Promise<CommandAuthenticateRtnData> {
         return client.wshRpcCall("authenticatetoken", data, opts);
@@ -377,6 +392,76 @@ class RpcApiType {
         return client.wshRpcCall("getwaveairatelimit", null, opts);
     }
 
+    // command "jobcmdexited" [call]
+    JobCmdExitedCommand(client: WshClient, data: CommandJobCmdExitedData, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("jobcmdexited", data, opts);
+    }
+
+    // command "jobcontrollerattachjob" [call]
+    JobControllerAttachJobCommand(client: WshClient, data: CommandJobControllerAttachJobData, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("jobcontrollerattachjob", data, opts);
+    }
+
+    // command "jobcontrollerconnectedjobs" [call]
+    JobControllerConnectedJobsCommand(client: WshClient, opts?: RpcOpts): Promise<string[]> {
+        return client.wshRpcCall("jobcontrollerconnectedjobs", null, opts);
+    }
+
+    // command "jobcontrollerdeletejob" [call]
+    JobControllerDeleteJobCommand(client: WshClient, data: string, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("jobcontrollerdeletejob", data, opts);
+    }
+
+    // command "jobcontrollerdetachjob" [call]
+    JobControllerDetachJobCommand(client: WshClient, data: string, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("jobcontrollerdetachjob", data, opts);
+    }
+
+    // command "jobcontrollerdisconnectjob" [call]
+    JobControllerDisconnectJobCommand(client: WshClient, data: string, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("jobcontrollerdisconnectjob", data, opts);
+    }
+
+    // command "jobcontrollerexitjob" [call]
+    JobControllerExitJobCommand(client: WshClient, data: string, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("jobcontrollerexitjob", data, opts);
+    }
+
+    // command "jobcontrollerlist" [call]
+    JobControllerListCommand(client: WshClient, opts?: RpcOpts): Promise<Job[]> {
+        return client.wshRpcCall("jobcontrollerlist", null, opts);
+    }
+
+    // command "jobcontrollerreconnectjob" [call]
+    JobControllerReconnectJobCommand(client: WshClient, data: string, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("jobcontrollerreconnectjob", data, opts);
+    }
+
+    // command "jobcontrollerreconnectjobsforconn" [call]
+    JobControllerReconnectJobsForConnCommand(client: WshClient, data: string, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("jobcontrollerreconnectjobsforconn", data, opts);
+    }
+
+    // command "jobcontrollerstartjob" [call]
+    JobControllerStartJobCommand(client: WshClient, data: CommandJobControllerStartJobData, opts?: RpcOpts): Promise<string> {
+        return client.wshRpcCall("jobcontrollerstartjob", data, opts);
+    }
+
+    // command "jobinput" [call]
+    JobInputCommand(client: WshClient, data: CommandJobInputData, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("jobinput", data, opts);
+    }
+
+    // command "jobprepareconnect" [call]
+    JobPrepareConnectCommand(client: WshClient, data: CommandJobPrepareConnectData, opts?: RpcOpts): Promise<CommandJobConnectRtnData> {
+        return client.wshRpcCall("jobprepareconnect", data, opts);
+    }
+
+    // command "jobstartstream" [call]
+    JobStartStreamCommand(client: WshClient, data: CommandJobStartStreamData, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("jobstartstream", data, opts);
+    }
+
     // command "listallappfiles" [call]
     ListAllAppFilesCommand(client: WshClient, data: CommandListAllAppFilesData, opts?: RpcOpts): Promise<CommandListAllAppFilesRtnData> {
         return client.wshRpcCall("listallappfiles", data, opts);
@@ -432,6 +517,11 @@ class RpcApiType {
         return client.wshRpcCall("recordtevent", data, opts);
     }
 
+    // command "remotedisconnectfromjobmanager" [call]
+    RemoteDisconnectFromJobManagerCommand(client: WshClient, data: CommandRemoteDisconnectFromJobManagerData, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("remotedisconnectfromjobmanager", data, opts);
+    }
+
     // command "remotefilecopy" [call]
     RemoteFileCopyCommand(client: WshClient, data: CommandFileCopyData, opts?: RpcOpts): Promise<boolean> {
         return client.wshRpcCall("remotefilecopy", data, opts);
@@ -482,6 +572,16 @@ class RpcApiType {
         return client.wshRpcCall("remotemkdir", data, opts);
     }
 
+    // command "remotereconnecttojobmanager" [call]
+    RemoteReconnectToJobManagerCommand(client: WshClient, data: CommandRemoteReconnectToJobManagerData, opts?: RpcOpts): Promise<CommandRemoteReconnectToJobManagerRtnData> {
+        return client.wshRpcCall("remotereconnecttojobmanager", data, opts);
+    }
+
+    // command "remotestartjob" [call]
+    RemoteStartJobCommand(client: WshClient, data: CommandRemoteStartJobData, opts?: RpcOpts): Promise<CommandStartJobRtnData> {
+        return client.wshRpcCall("remotestartjob", data, opts);
+    }
+
     // command "remotestreamcpudata" [responsestream]
 	RemoteStreamCpuDataCommand(client: WshClient, opts?: RpcOpts): AsyncGenerator<TimeSeriesData, void, boolean> {
         return client.wshRpcStream("remotestreamcpudata", null, opts);
@@ -495,6 +595,11 @@ class RpcApiType {
     // command "remotetarstream" [responsestream]
 	RemoteTarStreamCommand(client: WshClient, data: CommandRemoteStreamTarData, opts?: RpcOpts): AsyncGenerator<Packet, void, boolean> {
         return client.wshRpcStream("remotetarstream", data, opts);
+    }
+
+    // command "remoteterminatejobmanager" [call]
+    RemoteTerminateJobManagerCommand(client: WshClient, data: CommandRemoteTerminateJobManagerData, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("remoteterminatejobmanager", data, opts);
     }
 
     // command "remotewritefile" [call]
@@ -572,6 +677,11 @@ class RpcApiType {
         return client.wshRpcCall("startbuilder", data, opts);
     }
 
+    // command "startjob" [call]
+    StartJobCommand(client: WshClient, data: CommandStartJobData, opts?: RpcOpts): Promise<CommandStartJobRtnData> {
+        return client.wshRpcCall("startjob", data, opts);
+    }
+
     // command "stopbuilder" [call]
     StopBuilderCommand(client: WshClient, data: string, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("stopbuilder", data, opts);
@@ -605,6 +715,11 @@ class RpcApiType {
     // command "termgetscrollbacklines" [call]
     TermGetScrollbackLinesCommand(client: WshClient, data: CommandTermGetScrollbackLinesData, opts?: RpcOpts): Promise<CommandTermGetScrollbackLinesRtnData> {
         return client.wshRpcCall("termgetscrollbacklines", data, opts);
+    }
+
+    // command "termupdateattachedjob" [call]
+    TermUpdateAttachedJobCommand(client: WshClient, data: CommandTermUpdateAttachedJobData, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("termupdateattachedjob", data, opts);
     }
 
     // command "test" [call]

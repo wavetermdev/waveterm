@@ -20,6 +20,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/blocklogger"
 	"github.com/wavetermdev/waveterm/pkg/filebackup"
 	"github.com/wavetermdev/waveterm/pkg/filestore"
+	"github.com/wavetermdev/waveterm/pkg/jobcontroller"
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/remote/conncontroller"
 	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/wshfs"
@@ -391,7 +392,7 @@ func createMainWshClient() {
 	wshfs.RpcClient = rpc
 	wshutil.DefaultRouter.RegisterTrustedLeaf(rpc, wshutil.DefaultRoute)
 	wps.Broker.SetClient(wshutil.DefaultRouter)
-	localConnWsh := wshutil.MakeWshRpc(wshrpc.RpcContext{Conn: wshrpc.LocalConnName}, &wshremote.ServerImpl{}, "conn:local")
+	localConnWsh := wshutil.MakeWshRpc(wshrpc.RpcContext{Conn: wshrpc.LocalConnName}, wshremote.MakeRemoteRpcServerImpl(nil, wshutil.DefaultRouter, wshclient.GetBareRpcClient(), true), "conn:local")
 	go wshremote.RunSysInfoLoop(localConnWsh, wshrpc.LocalConnName)
 	wshutil.DefaultRouter.RegisterTrustedLeaf(localConnWsh, wshutil.MakeConnectionRouteId(wshrpc.LocalConnName))
 }
@@ -572,6 +573,7 @@ func main() {
 	go backupCleanupLoop()
 	go startupActivityUpdate(firstLaunch) // must be after startConfigWatcher()
 	blocklogger.InitBlockLogger()
+	jobcontroller.InitJobController()
 	go func() {
 		defer func() {
 			panichandler.PanicHandler("GetSystemSummary", recover())

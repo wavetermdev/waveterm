@@ -61,5 +61,8 @@
         },
         "directoryFilters": ["-tsunami/frontend/scaffold", "-dist", "-make"]
     },
-    "tailwindCSS.lint.suggestCanonicalClasses": "ignore"
+    "tailwindCSS.lint.suggestCanonicalClasses": "ignore",
+    "go.coverageDecorator": {
+        "type": "gutter"
+    }
 }

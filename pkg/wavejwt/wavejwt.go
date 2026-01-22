@@ -26,11 +26,13 @@ var (
 
 type WaveJwtClaims struct {
 	jwt.RegisteredClaims
-	Sock    string `json:"sock,omitempty"`
-	RouteId string `json:"routeid,omitempty"`
-	BlockId string `json:"blockid,omitempty"`
-	Conn    string `json:"conn,omitempty"`
-	Router  bool   `json:"router,omitempty"`
+	MainServer bool   `json:"mainserver,omitempty"`
+	Sock       string `json:"sock,omitempty"`
+	RouteId    string `json:"routeid,omitempty"`
+	BlockId    string `json:"blockid,omitempty"`
+	JobId      string `json:"jobid,omitempty"`
+	Conn       string `json:"conn,omitempty"`
+	Router     bool   `json:"router,omitempty"`
 }
 
 type KeyPair struct {
