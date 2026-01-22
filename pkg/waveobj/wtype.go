@@ -321,7 +321,7 @@ type Job struct {
 	CmdArgs         []string          `json:"cmdargs,omitempty"`
 	CmdEnv          map[string]string `json:"cmdenv,omitempty"`
 	JobAuthToken    string            `json:"jobauthtoken"` // job manger -> wave
-	AttachedBlockId string            `json:"ownerblockid"`
+	AttachedBlockId string            `json:"attachedblockid,omitempty"`
 
 	// reconnect option (e.g. orphaned, so we need to kill on connect)
 	TerminateOnReconnect bool `json:"terminateonreconnect,omitempty"`
