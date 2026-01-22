@@ -4,11 +4,11 @@
 import { WindowService } from "@/app/store/services";
 import { RpcResponseHelper, WshClient } from "@/app/store/wshclient";
 import { RpcApi } from "@/app/store/wshclientapi";
-import { Notification } from "electron";
+import { Notification, net, safeStorage } from "electron";
 import { getResolvedUpdateChannel } from "emain/updater";
+import { unamePlatform } from "./emain-platform";
 import { getWebContentsByBlockId, webGetSelector } from "./emain-web";
 import { createBrowserWindow, getWaveWindowById, getWaveWindowByWorkspaceId } from "./emain-window";
-import { unamePlatform } from "./platform";
 
 export class ElectronWshClientType extends WshClient {
     constructor() {
@@ -52,9 +52,58 @@ export class ElectronWshClientType extends WshClient {
             if (window == null) {
                 throw new Error(`window ${windowId} not found`);
             }
-            ww = await createBrowserWindow(window, fullConfig, { unamePlatform });
+            ww = await createBrowserWindow(window, fullConfig, {
+                unamePlatform,
+                isPrimaryStartupWindow: false,
+            });
         }
         ww.focus();
+    }
+
+    async handle_electronencrypt(
+        rh: RpcResponseHelper,
+        data: CommandElectronEncryptData
+    ): Promise<CommandElectronEncryptRtnData> {
+        if (!safeStorage.isEncryptionAvailable()) {
+            throw new Error("encryption is not available");
+        }
+        const encrypted = safeStorage.encryptString(data.plaintext);
+        const ciphertext = encrypted.toString("base64");
+
+        let storagebackend = "";
+        if (process.platform === "linux") {
+            storagebackend = safeStorage.getSelectedStorageBackend();
+        }
+
+        return {
+            ciphertext,
+            storagebackend,
+        };
+    }
+
+    async handle_electrondecrypt(
+        rh: RpcResponseHelper,
+        data: CommandElectronDecryptData
+    ): Promise<CommandElectronDecryptRtnData> {
+        if (!safeStorage.isEncryptionAvailable()) {
+            throw new Error("encryption is not available");
+        }
+        const encrypted = Buffer.from(data.ciphertext, "base64");
+        const plaintext = safeStorage.decryptString(encrypted);
+
+        let storagebackend = "";
+        if (process.platform === "linux") {
+            storagebackend = safeStorage.getSelectedStorageBackend();
+        }
+
+        return {
+            plaintext,
+            storagebackend,
+        };
+    }
+
+    async handle_networkonline(rh: RpcResponseHelper): Promise<boolean> {
+        return net.isOnline();
     }
 
     // async handle_workspaceupdate(rh: RpcResponseHelper) {

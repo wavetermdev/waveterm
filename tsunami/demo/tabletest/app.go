@@ -8,8 +8,10 @@ import (
 	"github.com/wavetermdev/waveterm/tsunami/vdom"
 )
 
-const AppTitle = "Table Test Demo"
-const AppShortDesc = "Testing table component with sortable columns and pagination"
+var AppMeta = app.AppMeta{
+	Title:     "Table Test Demo",
+	ShortDesc: "Testing table component with sortable columns and pagination",
+}
 
 // Sample data structure for the table
 type Person struct {

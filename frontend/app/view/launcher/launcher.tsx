@@ -1,6 +1,8 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import type { BlockNodeModel } from "@/app/block/blocktypes";
+import type { TabModel } from "@/app/store/tab-model";
 import logoUrl from "@/app/asset/logo.svg?url";
 import { atoms, globalStore, replaceBlock } from "@/app/store/global";
 import { checkKeyPressed, keydownWrapper } from "@/util/keyutil";
@@ -20,6 +22,8 @@ type GridLayoutType = { columns: number; tileWidth: number; tileHeight: number; 
 
 export class LauncherViewModel implements ViewModel {
     blockId: string;
+    nodeModel: BlockNodeModel;
+    tabModel: TabModel;
     viewType = "launcher";
     viewIcon = atom("shapes");
     viewName = atom("Widget Launcher");
@@ -31,8 +35,10 @@ export class LauncherViewModel implements ViewModel {
     containerSize = atom({ width: 0, height: 0 });
     gridLayout: GridLayoutType = null;
 
-    constructor(blockId: string) {
+    constructor(blockId: string, nodeModel: BlockNodeModel, tabModel: TabModel) {
         this.blockId = blockId;
+        this.nodeModel = nodeModel;
+        this.tabModel = tabModel;
     }
 
     filteredWidgetsAtom = atom((get) => {
@@ -124,7 +130,7 @@ export class LauncherViewModel implements ViewModel {
 
     async handleWidgetSelect(widget: WidgetConfigType) {
         try {
-            await replaceBlock(this.blockId, widget.blockdef);
+            await replaceBlock(this.blockId, widget.blockdef, true);
         } catch (error) {
             console.error("Error replacing block:", error);
         }

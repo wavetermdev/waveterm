@@ -11,6 +11,7 @@ import (
 	"io/fs"
 	"log"
 	"os"
+	"runtime"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -42,6 +43,10 @@ const (
 	ConnType_Local = "local"
 	ConnType_Wsl   = "wsl"
 	ConnType_Ssh   = "ssh"
+)
+
+const (
+	LocalConnVariant_GitBash = "gitbash"
 )
 
 type ShellController struct {
@@ -200,10 +205,12 @@ func (sc *ShellController) resetTerminalState(logCtx context.Context) {
 	blocklogger.Debugf(logCtx, "[conndebug] resetTerminalState: resetting terminal state\n")
 	// controller type = "shell"
 	var buf bytes.Buffer
-	// buf.WriteString("\x1b[?1049l") // disable alternative buffer
-	buf.WriteString("\x1b[0m")     // reset attributes
-	buf.WriteString("\x1b[?25h")   // show cursor
-	buf.WriteString("\x1b[?1000l") // disable mouse tracking
+	buf.WriteString("\x1b[0m")                       // reset attributes
+	buf.WriteString("\x1b[?25h")                     // show cursor
+	buf.WriteString("\x1b[?1000l")                   // disable mouse tracking
+	buf.WriteString("\x1b[?1007l")                   // disable alternate scroll mode
+	buf.WriteString("\x1b[?2004l")                   // disable bracketed paste mode
+	buf.WriteString(shellutil.FormatOSC(16162, "R")) // OSC 16162 "R" - disable alternate screen mode (only if active), reset "shell integration" status.
 	buf.WriteString("\r\n\r\n")
 	err := HandleAppendBlockFile(sc.BlockId, wavebase.BlockFile_Term, buf.Bytes())
 	if err != nil {
@@ -327,7 +334,10 @@ func (bc *ShellController) getConnUnion(logCtx context.Context, remoteName strin
 		rtn.ConnType = ConnType_Wsl
 		rtn.WslConn = wslConn
 		rtn.WshEnabled = wshEnabled && wslConn.WshEnabled.Load()
-	} else if remoteName != "" {
+	} else if conncontroller.IsLocalConnName(remoteName) {
+		rtn.ConnType = ConnType_Local
+		rtn.WshEnabled = wshEnabled
+	} else {
 		opts, err := remote.ParseOpts(remoteName)
 		if err != nil {
 			return ConnUnion{}, fmt.Errorf("invalid ssh remote name (%s): %w", remoteName, err)
@@ -343,9 +353,6 @@ func (bc *ShellController) getConnUnion(logCtx context.Context, remoteName strin
 		rtn.ConnType = ConnType_Ssh
 		rtn.SshConn = conn
 		rtn.WshEnabled = wshEnabled && conn.WshEnabled.Load()
-	} else {
-		rtn.ConnType = ConnType_Local
-		rtn.WshEnabled = wshEnabled
 	}
 	err := rtn.getRemoteInfoAndShellType(blockMeta)
 	if err != nil {
@@ -413,12 +420,16 @@ func (bc *ShellController) setupAndStartShellProcess(logCtx context.Context, rc 
 			}
 		} else {
 			sockName := wslConn.GetDomainSocketName()
-			rpcContext := wshrpc.RpcContext{TabId: bc.TabId, BlockId: bc.BlockId, Conn: wslConn.GetName()}
-			jwtStr, err := wshutil.MakeClientJWTToken(rpcContext, sockName)
+			rpcContext := wshrpc.RpcContext{
+				RouteId:  wshutil.MakeRandomProcRouteId(),
+				SockName: sockName,
+				BlockId:  bc.BlockId,
+				Conn:     wslConn.GetName(),
+			}
+			jwtStr, err := wshutil.MakeClientJWTToken(rpcContext)
 			if err != nil {
 				return nil, fmt.Errorf("error making jwt token: %w", err)
 			}
-			swapToken.SockName = sockName
 			swapToken.RpcContext = &rpcContext
 			swapToken.Env[wshutil.WaveJwtTokenVarName] = jwtStr
 			shellProc, err = shellexec.StartWslShellProc(ctx, rc.TermSize, cmdStr, cmdOpts, wslConn)
@@ -442,12 +453,16 @@ func (bc *ShellController) setupAndStartShellProcess(logCtx context.Context, rc 
 			}
 		} else {
 			sockName := conn.GetDomainSocketName()
-			rpcContext := wshrpc.RpcContext{TabId: bc.TabId, BlockId: bc.BlockId, Conn: conn.Opts.String()}
-			jwtStr, err := wshutil.MakeClientJWTToken(rpcContext, sockName)
+			rpcContext := wshrpc.RpcContext{
+				RouteId:  wshutil.MakeRandomProcRouteId(),
+				SockName: sockName,
+				BlockId:  bc.BlockId,
+				Conn:     conn.Opts.String(),
+			}
+			jwtStr, err := wshutil.MakeClientJWTToken(rpcContext)
 			if err != nil {
 				return nil, fmt.Errorf("error making jwt token: %w", err)
 			}
-			swapToken.SockName = sockName
 			swapToken.RpcContext = &rpcContext
 			swapToken.Env[wshutil.WaveJwtTokenVarName] = jwtStr
 			shellProc, err = shellexec.StartRemoteShellProc(ctx, logCtx, rc.TermSize, cmdStr, cmdOpts, conn)
@@ -465,18 +480,21 @@ func (bc *ShellController) setupAndStartShellProcess(logCtx context.Context, rc 
 	} else if connUnion.ConnType == ConnType_Local {
 		if connUnion.WshEnabled {
 			sockName := wavebase.GetDomainSocketName()
-			rpcContext := wshrpc.RpcContext{TabId: bc.TabId, BlockId: bc.BlockId}
-			jwtStr, err := wshutil.MakeClientJWTToken(rpcContext, sockName)
+			rpcContext := wshrpc.RpcContext{
+				RouteId:  wshutil.MakeRandomProcRouteId(),
+				SockName: sockName,
+				BlockId:  bc.BlockId,
+			}
+			jwtStr, err := wshutil.MakeClientJWTToken(rpcContext)
 			if err != nil {
 				return nil, fmt.Errorf("error making jwt token: %w", err)
 			}
-			swapToken.SockName = sockName
 			swapToken.RpcContext = &rpcContext
 			swapToken.Env[wshutil.WaveJwtTokenVarName] = jwtStr
 		}
 		cmdOpts.ShellPath = connUnion.ShellPath
 		cmdOpts.ShellOpts = getLocalShellOpts(blockMeta)
-		shellProc, err = shellexec.StartLocalShellProc(logCtx, rc.TermSize, cmdStr, cmdOpts)
+		shellProc, err = shellexec.StartLocalShellProc(logCtx, rc.TermSize, cmdStr, cmdOpts, remoteName)
 		if err != nil {
 			return nil, err
 		}
@@ -495,12 +513,6 @@ func (bc *ShellController) manageRunningShellProcess(shellProc *shellexec.ShellP
 	shellInputCh := make(chan *BlockInputUnion, 32)
 	bc.ShellInputCh = shellInputCh
 
-	// make esc sequence wshclient wshProxy
-	// we don't need to authenticate this wshProxy since it is coming direct
-	wshProxy := wshutil.MakeRpcProxy()
-	wshProxy.SetRpcContext(&wshrpc.RpcContext{TabId: bc.TabId, BlockId: bc.BlockId})
-	wshutil.DefaultRouter.RegisterRoute(wshutil.MakeControllerRouteId(bc.BlockId), wshProxy, true)
-	ptyBuffer := wshutil.MakePtyBuffer(wshutil.WaveOSCPrefix, shellProc.Cmd, wshProxy.FromRemoteCh)
 	go func() {
 		// handles regular output from the pty (goes to the blockfile and xterm)
 		defer func() {
@@ -526,7 +538,7 @@ func (bc *ShellController) manageRunningShellProcess(shellProc *shellexec.ShellP
 		}()
 		buf := make([]byte, 4096)
 		for {
-			nr, err := ptyBuffer.Read(buf)
+			nr, err := shellProc.Cmd.Read(buf)
 			if nr > 0 {
 				err := HandleAppendBlockFile(bc.BlockId, wavebase.BlockFile_Term, buf[:nr])
 				if err != nil {
@@ -559,25 +571,11 @@ func (bc *ShellController) manageRunningShellProcess(shellProc *shellexec.ShellP
 	}()
 	go func() {
 		defer func() {
-			panichandler.PanicHandler("blockcontroller:shellproc-output-loop", recover())
-		}()
-		// handles outputCh -> shellInputCh
-		for msg := range wshProxy.ToRemoteCh {
-			encodedMsg, err := wshutil.EncodeWaveOSCBytes(wshutil.WaveServerOSC, msg)
-			if err != nil {
-				log.Printf("error encoding OSC message: %v\n", err)
-			}
-			shellInputCh <- &BlockInputUnion{InputData: encodedMsg}
-		}
-	}()
-	go func() {
-		defer func() {
 			panichandler.PanicHandler("blockcontroller:shellproc-wait-loop", recover())
 		}()
 		// wait for the shell to finish
 		var exitCode int
 		defer func() {
-			wshutil.DefaultRouter.UnregisterRoute(wshutil.MakeControllerRouteId(bc.BlockId))
 			bc.UpdateControllerAndSendUpdate(func() bool {
 				if bc.ProcStatus == Status_Running {
 					bc.ProcStatus = Status_Done
@@ -609,7 +607,11 @@ func (union *ConnUnion) getRemoteInfoAndShellType(blockMeta waveobj.MetaMapType)
 		// TODO allow overriding remote shell path
 		union.ShellPath = remoteInfo.Shell
 	} else {
-		union.ShellPath = getLocalShellPath(blockMeta)
+		shellPath, err := getLocalShellPath(blockMeta)
+		if err != nil {
+			return err
+		}
+		union.ShellPath = shellPath
 	}
 	union.ShellType = shellutil.GetShellTypeFromShellPath(union.ShellPath)
 	return nil
@@ -640,16 +642,34 @@ func checkCloseOnExit(blockId string, exitCode int) {
 	}
 }
 
-func getLocalShellPath(blockMeta waveobj.MetaMapType) string {
+func getLocalShellPath(blockMeta waveobj.MetaMapType) (string, error) {
 	shellPath := blockMeta.GetString(waveobj.MetaKey_TermLocalShellPath, "")
 	if shellPath != "" {
-		return shellPath
+		return shellPath, nil
 	}
+
+	connName := blockMeta.GetString(waveobj.MetaKey_Connection, "")
+	if strings.HasPrefix(connName, "local:") {
+		variant := strings.TrimPrefix(connName, "local:")
+		if variant == LocalConnVariant_GitBash {
+			if runtime.GOOS != "windows" {
+				return "", fmt.Errorf("connection \"local:gitbash\" is only supported on Windows")
+			}
+			fullConfig := wconfig.GetWatcher().GetFullConfig()
+			gitBashPath := shellutil.FindGitBash(&fullConfig, false)
+			if gitBashPath == "" {
+				return "", fmt.Errorf("connection \"local:gitbash\": git bash not found on this system, please install Git for Windows or set term:localshellpath to specify the git bash location")
+			}
+			return gitBashPath, nil
+		}
+		return "", fmt.Errorf("unsupported local connection type: %q", connName)
+	}
+
 	settings := wconfig.GetWatcher().GetFullConfig().Settings
 	if settings.TermLocalShellPath != "" {
-		return settings.TermLocalShellPath
+		return settings.TermLocalShellPath, nil
 	}
-	return shellutil.DetectLocalShellPath()
+	return shellutil.DetectLocalShellPath(), nil
 }
 
 func getLocalShellOpts(blockMeta waveobj.MetaMapType) []string {

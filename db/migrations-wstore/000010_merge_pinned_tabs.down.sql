@@ -1,0 +1,2 @@
+-- This migration cannot be reversed as pinned tab state is lost
+-- during the merge operation

@@ -70,7 +70,7 @@ interface InputProps {
     autoSelect?: boolean;
     disabled?: boolean;
     isNumber?: boolean;
-    inputRef?: React.MutableRefObject<any>;
+    inputRef?: React.RefObject<any>;
     manageFocus?: (isFocused: boolean) => void;
 }
 

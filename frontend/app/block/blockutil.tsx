@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { NumActiveConnColors } from "@/app/block/blockframe";
-import { getConnStatusAtom } from "@/app/store/global";
+import { getConnStatusAtom, recordTEvent } from "@/app/store/global";
 import * as util from "@/util/util";
 import clsx from "clsx";
 import * as jotai from "jotai";
@@ -160,7 +160,7 @@ export const ConnectionButton = React.memo(
     React.forwardRef<HTMLDivElement, ConnectionButtonProps>(
         ({ connection, changeConnModalAtom }: ConnectionButtonProps, ref) => {
             const [connModalOpen, setConnModalOpen] = jotai.useAtom(changeConnModalAtom);
-            const isLocal = util.isBlank(connection);
+            const isLocal = util.isLocalConnName(connection);
             const connStatusAtom = getConnStatusAtom(connection);
             const connStatus = jotai.useAtomValue(connStatusAtom);
             let showDisconnectedSlash = false;
@@ -168,13 +168,20 @@ export const ConnectionButton = React.memo(
             const connColorNum = computeConnColorNum(connStatus);
             let color = `var(--conn-icon-color-${connColorNum})`;
             const clickHandler = function () {
+                recordTEvent("action:other", { "action:type": "conndropdown", "action:initiator": "mouse" });
                 setConnModalOpen(true);
             };
             let titleText = null;
             let shouldSpin = false;
+            let connDisplayName: string = null;
             if (isLocal) {
                 color = "var(--grey-text-color)";
-                titleText = "Connected to Local Machine";
+                if (connection === "local:gitbash") {
+                    titleText = "Connected to Git Bash";
+                    connDisplayName = "Git Bash";
+                } else {
+                    titleText = "Connected to Local Machine";
+                }
                 connIconElem = (
                     <i
                         className={clsx(util.makeIconClass("laptop", false), "fa-stack-1x")}
@@ -232,7 +239,11 @@ export const ConnectionButton = React.memo(
                             }}
                         />
                     </span>
-                    {isLocal ? null : <div className="connection-name ellipsis">{connection}</div>}
+                    {connDisplayName ? (
+                        <div className="connection-name ellipsis">{connDisplayName}</div>
+                    ) : isLocal ? null : (
+                        <div className="connection-name ellipsis">{connection}</div>
+                    )}
                 </div>
             );
         }

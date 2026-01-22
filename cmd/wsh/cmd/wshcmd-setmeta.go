@@ -13,6 +13,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
+	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
 )
 
 var setMetaCmd = &cobra.Command{
@@ -192,7 +193,7 @@ func setMetaRun(cmd *cobra.Command, args []string) (rtnErr error) {
 		ORef: *fullORef,
 		Meta: fullMeta,
 	}
-	_, err = RpcClient.SendRpcRequest(wshrpc.Command_SetMeta, setMetaWshCmd, &wshrpc.RpcOpts{Timeout: 2000})
+	err = wshclient.SetMetaCommand(RpcClient, *setMetaWshCmd, &wshrpc.RpcOpts{Timeout: 2000})
 	if err != nil {
 		return fmt.Errorf("setting metadata: %v", err)
 	}

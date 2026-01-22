@@ -5,6 +5,7 @@ package chatstore
 
 import (
 	"fmt"
+	"slices"
 	"sync"
 
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
@@ -48,6 +49,24 @@ func (cs *ChatStore) Delete(chatId string) {
 	delete(cs.chats, chatId)
 }
 
+func (cs *ChatStore) CountUserMessages(chatId string) int {
+	cs.lock.Lock()
+	defer cs.lock.Unlock()
+
+	chat := cs.chats[chatId]
+	if chat == nil {
+		return 0
+	}
+
+	count := 0
+	for _, msg := range chat.NativeMessages {
+		if msg.GetRole() == "user" {
+			count++
+		}
+	}
+	return count
+}
+
 func (cs *ChatStore) PostMessage(chatId string, aiOpts *uctypes.AIOptsType, message uctypes.GenAIMessage) error {
 	cs.lock.Lock()
 	defer cs.lock.Unlock()
@@ -66,13 +85,13 @@ func (cs *ChatStore) PostMessage(chatId string, aiOpts *uctypes.AIOptsType, mess
 	} else {
 		// Verify that the AI options match
 		if chat.APIType != aiOpts.APIType {
-			return fmt.Errorf("API type mismatch: expected %s, got %s", chat.APIType, aiOpts.APIType)
+			return fmt.Errorf("API type mismatch: expected %s, got %s (must start a new chat)", chat.APIType, aiOpts.APIType)
 		}
 		if !uctypes.AreModelsCompatible(chat.APIType, chat.Model, aiOpts.Model) {
-			return fmt.Errorf("model mismatch: expected %s, got %s", chat.Model, aiOpts.Model)
+			return fmt.Errorf("model mismatch: expected %s, got %s (must start a new chat)", chat.Model, aiOpts.Model)
 		}
 		if chat.APIVersion != aiOpts.APIVersion {
-			return fmt.Errorf("API version mismatch: expected %s, got %s", chat.APIVersion, aiOpts.APIVersion)
+			return fmt.Errorf("API version mismatch: expected %s, got %s (must start a new chat)", chat.APIVersion, aiOpts.APIVersion)
 		}
 	}
 
@@ -90,4 +109,21 @@ func (cs *ChatStore) PostMessage(chatId string, aiOpts *uctypes.AIOptsType, mess
 	chat.NativeMessages = append(chat.NativeMessages, message)
 
 	return nil
+}
+
+func (cs *ChatStore) RemoveMessage(chatId string, messageId string) bool {
+	cs.lock.Lock()
+	defer cs.lock.Unlock()
+
+	chat := cs.chats[chatId]
+	if chat == nil {
+		return false
+	}
+
+	initialLen := len(chat.NativeMessages)
+	chat.NativeMessages = slices.DeleteFunc(chat.NativeMessages, func(msg uctypes.GenAIMessage) bool {
+		return msg.GetMessageId() == messageId
+	})
+
+	return len(chat.NativeMessages) < initialLen
 }

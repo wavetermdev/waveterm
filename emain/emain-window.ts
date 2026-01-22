@@ -15,19 +15,83 @@ import {
     setWasActive,
     setWasInFg,
 } from "./emain-activity";
+import { log } from "./emain-log";
+import { getElectronAppBasePath, unamePlatform } from "./emain-platform";
 import { getOrCreateWebViewForTab, getWaveTabViewByWebContentsId, WaveTabView } from "./emain-tabview";
 import { delay, ensureBoundsAreVisible, waveKeyToElectronKey } from "./emain-util";
 import { ElectronWshClient } from "./emain-wsh";
-import { log } from "./log";
-import { getElectronAppBasePath, unamePlatform } from "./platform";
 import { updater } from "./updater";
 
 export type WindowOpts = {
-    unamePlatform: string;
+    unamePlatform: NodeJS.Platform;
+    isPrimaryStartupWindow?: boolean;
+    foregroundWindow?: boolean;
 };
 
-const MIN_WINDOW_WIDTH = 600;
-const MIN_WINDOW_HEIGHT = 350;
+export const MinWindowWidth = 800;
+export const MinWindowHeight = 500;
+
+export function calculateWindowBounds(
+    winSize?: { width?: number; height?: number },
+    pos?: { x?: number; y?: number },
+    settings?: any
+): { x: number; y: number; width: number; height: number } {
+    let winWidth = winSize?.width;
+    let winHeight = winSize?.height;
+    let winPosX = pos?.x ?? 100;
+    let winPosY = pos?.y ?? 100;
+
+    if (
+        (winWidth == null || winWidth === 0 || winHeight == null || winHeight === 0) &&
+        settings?.["window:dimensions"]
+    ) {
+        const dimensions = settings["window:dimensions"];
+        const match = dimensions.match(/^(\d+)[xX](\d+)$/);
+
+        if (match) {
+            const [, dimensionWidth, dimensionHeight] = match;
+            const parsedWidth = parseInt(dimensionWidth, 10);
+            const parsedHeight = parseInt(dimensionHeight, 10);
+
+            if ((!winWidth || winWidth === 0) && Number.isFinite(parsedWidth) && parsedWidth > 0) {
+                winWidth = parsedWidth;
+            }
+            if ((!winHeight || winHeight === 0) && Number.isFinite(parsedHeight) && parsedHeight > 0) {
+                winHeight = parsedHeight;
+            }
+        } else {
+            console.warn('Invalid window:dimensions format. Expected "widthxheight".');
+        }
+    }
+
+    if (winWidth == null || winWidth == 0) {
+        const primaryDisplay = screen.getPrimaryDisplay();
+        const { width } = primaryDisplay.workAreaSize;
+        winWidth = width - winPosX - 100;
+        if (winWidth > 2000) {
+            winWidth = 2000;
+        }
+    }
+    if (winHeight == null || winHeight == 0) {
+        const primaryDisplay = screen.getPrimaryDisplay();
+        const { height } = primaryDisplay.workAreaSize;
+        winHeight = height - winPosY - 100;
+        if (winHeight > 1200) {
+            winHeight = 1200;
+        }
+    }
+
+    winWidth = Math.max(winWidth, MinWindowWidth);
+    winHeight = Math.max(winHeight, MinWindowHeight);
+
+    let winBounds = {
+        x: winPosX,
+        y: winPosY,
+        width: winWidth,
+        height: winHeight,
+    };
+    return ensureBoundsAreVisible(winBounds);
+}
 
 export const waveWindowMap = new Map<string, WaveBrowserWindow>(); // waveWindowId -> WaveBrowserWindow
 
@@ -36,6 +100,7 @@ export const waveWindowMap = new Map<string, WaveBrowserWindow>(); // waveWindow
 export let focusedWaveWindow: WaveBrowserWindow = null;
 
 let cachedClientId: string = null;
+let hasCompletedFirstRelaunch = false;
 
 async function getClientId() {
     if (cachedClientId != null) {
@@ -51,10 +116,10 @@ type WindowActionQueueEntry =
           op: "switchtab";
           tabId: string;
           setInBackend: boolean;
+          primaryStartupTab?: boolean;
       }
     | {
           op: "createtab";
-          pinned: boolean;
       }
     | {
           op: "closetab";
@@ -66,7 +131,7 @@ type WindowActionQueueEntry =
       };
 
 function isNonEmptyUnsavedWorkspace(workspace: Workspace): boolean {
-    return !workspace.name && !workspace.icon && (workspace.tabids?.length > 1 || workspace.pinnedtabids?.length > 1);
+    return !workspace.name && !workspace.icon && workspace.tabids?.length > 1;
 }
 
 export class WaveBrowserWindow extends BaseWindow {
@@ -82,108 +147,72 @@ export class WaveBrowserWindow extends BaseWindow {
         const settings = fullConfig?.settings;
 
         console.log("create win", waveWindow.oid);
-        let winWidth = waveWindow?.winsize?.width;
-        let winHeight = waveWindow?.winsize?.height;
-        let winPosX = waveWindow.pos.x;
-        let winPosY = waveWindow.pos.y;
-
-        if (
-            (winWidth == null || winWidth === 0 || winHeight == null || winHeight === 0) &&
-            settings?.["window:dimensions"]
-        ) {
-            const dimensions = settings["window:dimensions"];
-            const match = dimensions.match(/^(\d+)[xX](\d+)$/);
-
-            if (match) {
-                const [, dimensionWidth, dimensionHeight] = match;
-                const parsedWidth = parseInt(dimensionWidth, 10);
-                const parsedHeight = parseInt(dimensionHeight, 10);
-
-                if ((!winWidth || winWidth === 0) && Number.isFinite(parsedWidth) && parsedWidth > 0) {
-                    winWidth = parsedWidth;
-                }
-                if ((!winHeight || winHeight === 0) && Number.isFinite(parsedHeight) && parsedHeight > 0) {
-                    winHeight = parsedHeight;
-                }
-            } else {
-                console.warn('Invalid window:dimensions format. Expected "widthxheight".');
-            }
-        }
-
-        if (winWidth == null || winWidth == 0) {
-            const primaryDisplay = screen.getPrimaryDisplay();
-            const { width } = primaryDisplay.workAreaSize;
-            winWidth = width - winPosX - 100;
-            if (winWidth > 2000) {
-                winWidth = 2000;
-            }
-        }
-        if (winHeight == null || winHeight == 0) {
-            const primaryDisplay = screen.getPrimaryDisplay();
-            const { height } = primaryDisplay.workAreaSize;
-            winHeight = height - winPosY - 100;
-            if (winHeight > 1200) {
-                winHeight = 1200;
-            }
-        }
-        // Ensure dimensions meet minimum requirements
-        winWidth = Math.max(winWidth, MIN_WINDOW_WIDTH);
-        winHeight = Math.max(winHeight, MIN_WINDOW_HEIGHT);
-
-        let winBounds = {
-            x: winPosX,
-            y: winPosY,
-            width: winWidth,
-            height: winHeight,
-        };
-        winBounds = ensureBoundsAreVisible(winBounds);
+        const winBounds = calculateWindowBounds(waveWindow.winsize, waveWindow.pos, settings);
         const winOpts: BaseWindowConstructorOptions = {
-            titleBarStyle:
-                opts.unamePlatform === "darwin"
-                    ? "hiddenInset"
-                    : settings["window:nativetitlebar"]
-                      ? "default"
-                      : "hidden",
-            titleBarOverlay:
-                opts.unamePlatform !== "darwin"
-                    ? {
-                          symbolColor: "white",
-                          color: "#00000000",
-                      }
-                    : false,
             x: winBounds.x,
             y: winBounds.y,
             width: winBounds.width,
             height: winBounds.height,
-            minWidth: MIN_WINDOW_WIDTH,
-            minHeight: MIN_WINDOW_HEIGHT,
-            icon:
-                opts.unamePlatform == "linux"
-                    ? path.join(getElectronAppBasePath(), "public/logos/wave-logo-dark.png")
-                    : undefined,
+            minWidth: MinWindowWidth,
+            minHeight: MinWindowHeight,
             show: false,
-            autoHideMenuBar: !settings?.["window:showmenubar"],
         };
+
         const isTransparent = settings?.["window:transparent"] ?? false;
         const isBlur = !isTransparent && (settings?.["window:blur"] ?? false);
-        if (isTransparent) {
-            winOpts.transparent = true;
-        } else if (isBlur) {
-            switch (opts.unamePlatform) {
-                case "win32": {
-                    winOpts.backgroundMaterial = "acrylic";
-                    break;
-                }
-                case "darwin": {
-                    winOpts.vibrancy = "fullscreen-ui";
-                    break;
-                }
+
+        if (opts.unamePlatform === "darwin") {
+            winOpts.titleBarStyle = "hiddenInset";
+            winOpts.titleBarOverlay = false;
+            winOpts.autoHideMenuBar = !settings?.["window:showmenubar"];
+            if (isTransparent) {
+                winOpts.transparent = true;
+            } else if (isBlur) {
+                winOpts.vibrancy = "fullscreen-ui";
+            } else {
+                winOpts.backgroundColor = "#222222";
             }
-        } else {
-            winOpts.backgroundColor = "#222222";
+        } else if (opts.unamePlatform === "linux") {
+            winOpts.titleBarStyle = settings["window:nativetitlebar"] ? "default" : "hidden";
+            winOpts.titleBarOverlay = {
+                symbolColor: "white",
+                color: "#00000000",
+            };
+            winOpts.icon = path.join(getElectronAppBasePath(), "public/logos/wave-logo-dark.png");
+            winOpts.autoHideMenuBar = !settings?.["window:showmenubar"];
+            if (isTransparent) {
+                winOpts.transparent = true;
+            } else {
+                winOpts.backgroundColor = "#222222";
+            }
+        } else if (opts.unamePlatform === "win32") {
+            winOpts.titleBarStyle = "hidden";
+            winOpts.titleBarOverlay = {
+                color: "#222222",
+                symbolColor: "#c3c8c2",
+                height: 32,
+            };
+            if (isTransparent) {
+                winOpts.transparent = true;
+            } else if (isBlur) {
+                winOpts.backgroundMaterial = "acrylic";
+            } else {
+                winOpts.backgroundColor = "#222222";
+            }
         }
 
         super(winOpts);
+
+        if (opts.unamePlatform === "win32") {
+            this.setMenu(null);
+        }
+
+        const fullscreenOnLaunch = fullConfig?.settings["window:fullscreenonlaunch"];
+        if (fullscreenOnLaunch && opts.foregroundWindow) {
+            this.once("show", () => {
+                this.setFullScreen(true);
+            });
+        }
         this.actionQueue = [];
         this.waveWindowId = waveWindow.oid;
         this.workspaceId = waveWindow.workspaceid;
@@ -247,9 +276,10 @@ export class WaveBrowserWindow extends BaseWindow {
             fireAndForget(() => ClientService.FocusWindow(this.waveWindowId));
             setWasInFg(true);
             setWasActive(true);
+            setTimeout(() => globalEvents.emit("windows-updated"), 50);
         });
         this.on("blur", () => {
-            // nothing for now
+            setTimeout(() => globalEvents.emit("windows-updated"), 50);
         });
         this.on("close", (e) => {
             if (this.canClose) {
@@ -346,31 +376,46 @@ export class WaveBrowserWindow extends BaseWindow {
         await this._queueActionInternal({ op: "switchworkspace", workspaceId });
     }
 
-    async setActiveTab(tabId: string, setInBackend: boolean) {
-        console.log("setActiveTab", tabId, this.waveWindowId, this.workspaceId, setInBackend);
-        await this._queueActionInternal({ op: "switchtab", tabId, setInBackend });
+    async setActiveTab(tabId: string, setInBackend: boolean, primaryStartupTab = false) {
+        console.log(
+            "setActiveTab",
+            tabId,
+            this.waveWindowId,
+            this.workspaceId,
+            setInBackend,
+            primaryStartupTab ? "(primary startup)" : ""
+        );
+        await this._queueActionInternal({ op: "switchtab", tabId, setInBackend, primaryStartupTab });
     }
 
-    private async initializeTab(tabView: WaveTabView) {
+    private async initializeTab(tabView: WaveTabView, primaryStartupTab: boolean) {
         const clientId = await getClientId();
         await tabView.initPromise;
         this.contentView.addChildView(tabView);
-        const initOpts = {
+        const initOpts: WaveInitOpts = {
             tabId: tabView.waveTabId,
             clientId: clientId,
             windowId: this.waveWindowId,
             activate: true,
         };
+        if (primaryStartupTab) {
+            initOpts.primaryTabStartup = true;
+        }
         tabView.savedInitOpts = { ...initOpts };
         tabView.savedInitOpts.activate = false;
+        delete tabView.savedInitOpts.primaryTabStartup;
         let startTime = Date.now();
-        console.log("before wave ready, init tab, sending wave-init", tabView.waveTabId);
+        console.log(
+            "before wave ready, init tab, sending wave-init",
+            tabView.waveTabId,
+            primaryStartupTab ? "(primary startup)" : ""
+        );
         tabView.webContents.send("wave-init", initOpts);
         await tabView.waveReadyPromise;
         console.log("wave-ready init time", Date.now() - startTime + "ms");
     }
 
-    private async setTabViewIntoWindow(tabView: WaveTabView, tabInitialized: boolean) {
+    private async setTabViewIntoWindow(tabView: WaveTabView, tabInitialized: boolean, primaryStartupTab = false) {
         if (this.activeTabView == tabView) {
             return;
         }
@@ -382,8 +427,8 @@ export class WaveBrowserWindow extends BaseWindow {
         this.activeTabView = tabView;
         this.allLoadedTabViews.set(tabView.waveTabId, tabView);
         if (!tabInitialized) {
-            console.log("initializing a new tab");
-            const p1 = this.initializeTab(tabView);
+            console.log("initializing a new tab", primaryStartupTab ? "(primary startup)" : "");
+            const p1 = this.initializeTab(tabView, primaryStartupTab);
             const p2 = this.repositionTabsSlowly(100);
             await Promise.all([p1, p2]);
         } else {
@@ -450,8 +495,8 @@ export class WaveBrowserWindow extends BaseWindow {
         }
     }
 
-    async queueCreateTab(pinned = false) {
-        await this._queueActionInternal({ op: "createtab", pinned });
+    async queueCreateTab() {
+        await this._queueActionInternal({ op: "createtab" });
     }
 
     async queueCloseTab(tabId: string) {
@@ -491,7 +536,7 @@ export class WaveBrowserWindow extends BaseWindow {
                 // have to use "===" here to get the typechecker to work :/
                 switch (entry.op) {
                     case "createtab":
-                        tabId = await WorkspaceService.CreateTab(this.workspaceId, null, true, entry.pinned);
+                        tabId = await WorkspaceService.CreateTab(this.workspaceId, null, true);
                         break;
                     case "switchtab":
                         tabId = entry.tabId;
@@ -541,7 +586,8 @@ export class WaveBrowserWindow extends BaseWindow {
                     return;
                 }
                 const [tabView, tabInitialized] = await getOrCreateWebViewForTab(this.waveWindowId, tabId);
-                await this.setTabViewIntoWindow(tabView, tabInitialized);
+                const primaryStartupTabFlag = entry.op === "switchtab" ? (entry.primaryStartupTab ?? false) : false;
+                await this.setTabViewIntoWindow(tabView, tabInitialized, primaryStartupTabFlag);
             } catch (e) {
                 console.log("error caught in processActionQueue", e);
             } finally {
@@ -628,6 +674,7 @@ export async function createWindowForWorkspace(workspaceId: string) {
     }
     const newBwin = await createBrowserWindow(newWin, await RpcApi.GetFullConfigCommand(ElectronWshClient), {
         unamePlatform,
+        isPrimaryStartupWindow: false,
     });
     newBwin.show();
 }
@@ -653,7 +700,7 @@ export async function createBrowserWindow(
     console.log("createBrowserWindow", waveWindow.oid, workspace.oid, workspace);
     const bwin = new WaveBrowserWindow(waveWindow, fullConfig, opts);
     if (workspace.activetabid) {
-        await bwin.setActiveTab(workspace.activetabid, false);
+        await bwin.setActiveTab(workspace.activetabid, false, opts.isPrimaryStartupWindow ?? false);
     }
     return bwin;
 }
@@ -764,7 +811,10 @@ export async function createNewWaveWindow() {
         const existingWindowId = clientData.windowids[0];
         const existingWindowData = (await ObjectService.GetObject("window:" + existingWindowId)) as WaveWindow;
         if (existingWindowData != null) {
-            const win = await createBrowserWindow(existingWindowData, fullConfig, { unamePlatform });
+            const win = await createBrowserWindow(existingWindowData, fullConfig, {
+                unamePlatform,
+                isPrimaryStartupWindow: false,
+            });
             win.show();
             recreatedWindow = true;
         }
@@ -774,7 +824,10 @@ export async function createNewWaveWindow() {
         return;
     }
     console.log("creating new window");
-    const newBrowserWindow = await createBrowserWindow(null, fullConfig, { unamePlatform });
+    const newBrowserWindow = await createBrowserWindow(null, fullConfig, {
+        unamePlatform,
+        isPrimaryStartupWindow: false,
+    });
     newBrowserWindow.show();
 }
 
@@ -793,18 +846,32 @@ export async function relaunchBrowserWindows() {
 
     const clientData = await ClientService.GetClientData();
     const fullConfig = await RpcApi.GetFullConfigCommand(ElectronWshClient);
+    const windowIds = clientData.windowids ?? [];
     const wins: WaveBrowserWindow[] = [];
-    for (const windowId of clientData.windowids.slice().reverse()) {
+    const isFirstRelaunch = !hasCompletedFirstRelaunch;
+    const primaryWindowId = windowIds.length > 0 ? windowIds[0] : null;
+    for (const windowId of windowIds.slice().reverse()) {
         const windowData: WaveWindow = await WindowService.GetWindow(windowId);
         if (windowData == null) {
             console.log("relaunch -- window data not found, closing window", windowId);
             await WindowService.CloseWindow(windowId, true);
             continue;
         }
-        console.log("relaunch -- creating window", windowId, windowData);
-        const win = await createBrowserWindow(windowData, fullConfig, { unamePlatform });
+        const isPrimaryStartupWindow = isFirstRelaunch && windowId === primaryWindowId;
+        console.log(
+            "relaunch -- creating window",
+            windowId,
+            windowData,
+            isPrimaryStartupWindow ? "(primary startup)" : ""
+        );
+        const win = await createBrowserWindow(windowData, fullConfig, {
+            unamePlatform,
+            isPrimaryStartupWindow,
+            foregroundWindow: windowId === primaryWindowId,
+        });
         wins.push(win);
     }
+    hasCompletedFirstRelaunch = true;
     for (const win of wins) {
         console.log("show window", win.waveWindowId);
         win.show();

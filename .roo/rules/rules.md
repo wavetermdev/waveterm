@@ -34,11 +34,15 @@ It has a TypeScript/React frontend and a Go backend. They talk together over `ws
     - Use all lowercase filenames (except where case is actually important like Taskfile.yml)
     - Import the "cn" function from "@/util/util" to do classname / clsx class merge (it uses twMerge underneath)
     - For element variants use class-variance-authority
+    - Do NOT create private fields in classes (they are impossible to inspect)
+    - Use PascalCase for global consts at the top of files
   - **Component Practices**:
     - Make sure to add cursor-pointer to buttons/links and clickable items
     - NEVER use cursor-help (it looks terrible)
     - useAtom() and useAtomValue() are react HOOKS, so they must be called at the component level not inline in JSX
     - If you use React.memo(), make sure to add a displayName for the component
+  - Other
+    - never use atob() or btoa() (not UTF-8 safe). use functions in frontend/util/util.ts for base64 decoding and encoding
 - In general, when writing functions, we prefer _early returns_ rather than putting the majority of a function inside of an if block.
 
 ### Styling
@@ -46,6 +50,25 @@ It has a TypeScript/React frontend and a Go backend. They talk together over `ws
 - We use **Tailwind v4** to style. Custom stuff is defined in frontend/tailwindsetup.css
 - _never_ use cursor-help, or cursor-not-allowed (it looks terrible)
 - We have custom CSS setup as well, so it is a hybrid system. For new code we prefer tailwind, and are working to migrate code to all use tailwind.
+- For accent buttons, use "bg-accent/80 text-primary rounded hover:bg-accent transition-colors cursor-pointer" (if you do "bg-accent hover:bg-accent/80" it looks weird as on hover the button gets darker instead of lighter)
+
+### RPC System
+
+To define a new RPC call, add the new definition to `pkg/wshrpc/wshrpctypes.go` including any input/output data that is required. After modifying wshrpctypes.go run `task generate` to generate the client APIs.
+
+For normal "server" RPCs (where a frontend client is calling the main server) you should implement the RPC call in `pkg/wshrpc/wshserver.go`.
+
+### Electron API
+
+From within the FE to get the electron API (e.g. the preload functions):
+
+```
+import { getApi } from "@/store/global";
+
+getApi().getIsDev()
+```
+
+The full API is defined in custom.d.ts as type ElectronApi.
 
 ### Code Generation
 
@@ -177,3 +200,8 @@ Also when adding content to the end of files prefer to use the new append_file t
 - **ALWAYS verify the current working directory before executing commands**
 - Either run "pwd" first to verify the directory, or do a "cd" to the correct absolute directory before running commands
 - When running tests, do not "cd" to the pkg directory and then run the test. This screws up the cwd and you never recover. run the test from the project root instead.
+
+### Testing / Compiling Go Code
+
+No need to run a `go build` or a `go run` to just check if the Go code compiles. VSCode's errors/problems cover this well.
+If there are no Go errors in VSCode you can assume the code compiles fine.

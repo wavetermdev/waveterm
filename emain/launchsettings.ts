@@ -3,7 +3,7 @@
 
 import fs from "fs";
 import path from "path";
-import { getWaveConfigDir } from "./platform";
+import { getWaveConfigDir } from "./emain-platform";
 
 /**
  * Get settings directly from the Wave Home directory on launch.

@@ -31,6 +31,7 @@
     --color-modalbg: #232323;
     --color-accentbg: rgba(88, 193, 66, 0.5);
     --color-hoverbg: rgba(255, 255, 255, 0.2);
+    --color-highlightbg: rgba(255, 255, 255, 0.2);
     --color-accent: rgb(88, 193, 66);
     --color-accenthover: rgb(118, 223, 96);
 
@@ -64,9 +65,13 @@
     --ansi-brightcyan: #b7b8cb;
     --ansi-brightwhite: #f0f0f0;
 
+    --container-w600: 600px;
+    --container-w450: 450px;
     --container-xs: 300px;
     --container-xxs: 200px;
     --container-tiny: 120px;
+
+    --z-window-drag: 100;
 }
 
 :root {
@@ -95,4 +100,15 @@ svg [aria-label="tip"] g path {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+}
+
+@keyframes float-up {
+    0% {
+        transform: translate(-50%, 0);
+        opacity: 1;
+    }
+    100% {
+        transform: translate(-50%, -40px);
+        opacity: 0;
+    }
 }

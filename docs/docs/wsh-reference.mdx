@@ -4,8 +4,8 @@ id: "wsh-reference"
 title: "wsh reference"
 ---
 
-import { Kbd } from "@site/src/components/kbd.tsx";
-import { PlatformProvider, PlatformSelectorButton } from "@site/src/components/platformcontext.tsx";
+import { Kbd } from "@site/src/components/kbd";
+import { PlatformProvider, PlatformSelectorButton } from "@site/src/components/platformcontext";
 
 <PlatformProvider>
 
@@ -110,24 +110,44 @@ wsh getmeta -b [other-tab-id] "bg:*" --clear-prefix | wsh setmeta -b tab --json 
 
 ## ai
 
-Send messages to new or existing AI blocks directly from the CLI. `-f` passes a file. note that there is a maximum size of 10k for messages and files, so use a tail/grep to cut down file sizes before passing. The `-f` option works great for small files though like shell scripts or `.zshrc` etc. You can use "-" to read input from stdin.
+Append content to the Wave AI sidebar. Files are attached as proper file attachments (supporting images, PDFs, and text), not encoded as text. By default, content is added to the sidebar without auto-submitting, allowing you to review and add more context before sending to the AI.
 
-By default the messages get sent to the first AI block (by blocknum). If no AI block exists, then a new one will be created. Use `-n` to force creation of a new AI block. Use `-b` to target a specific AI block.
+You can attach multiple files at once (up to 15 files). Use `-m` to add a message along with files, `-s` to auto-submit immediately, and `-n` to start a new chat conversation. Use "-" to read from stdin.
 
 ```sh
-wsh ai "how do i write an ls command that sorts files in reverse size order"
-wsh ai -f <(tail -n 20 "my.log") -- "any idea what these error messages mean"
-wsh ai -f README.md "help me update this readme file"
+# Pipe command output to AI (ask question in UI)
+git diff | wsh ai -
+docker logs mycontainer | wsh ai -
 
-# creates a new AI block
-wsh ai -n "tell me a story"
+# Attach files without auto-submit (review in UI first)
+wsh ai main.go utils.go
+wsh ai screenshot.png logs.txt
 
-# targets block number 5
-wsh ai -b 5 "tell me more"
+# Attach files with message
+wsh ai app.py -m "find potential bugs"
+wsh ai *.log -m "analyze these error logs"
 
-# read from stdin and also supply a message
-tail -n 50 mylog.log | wsh ai - "can you tell me what this error means?"
+# Auto-submit immediately
+wsh ai config.json -s -m "explain this configuration"
+tail -n 50 app.log | wsh ai -s - -m "what's causing these errors?"
+
+# Start new chat and attach files
+wsh ai -n report.pdf data.csv -m "summarize these reports"
+
+# Attach different file types (images, PDFs, code)
+wsh ai architecture.png api-spec.pdf server.go -m "review the system design"
 ```
+
+**File Size Limits:**
+- Text files: 200KB maximum
+- PDF files: 5MB maximum
+- Image files: 7MB maximum (accounts for base64 encoding overhead)
+- Maximum 15 files per command
+
+**Flags:**
+- `-m, --message <text>` - Add message text along with files
+- `-s, --submit` - Auto-submit immediately (default waits for user)
+- `-n, --new` - Clear current chat and start fresh conversation
 
 ---
 
@@ -322,19 +342,36 @@ This will connect to a WSL distribution on the local machine. It will use the de
 
 ## web
 
-You can search for a given url using:
+The `web` command opens URLs in a web block within Wave Terminal.
 
 ```sh
-wsh web open [url]
+wsh web open [url] [-m] [-r blockid]
 ```
 
-Alternatively, you can search with the configured search engine using:
+You can open a specific URL or perform a search using the configured search engine.
+
+Flags:
+
+- `-m, --magnified` - open the web block in magnified mode
+- `-r, --replace <blockid>` - replace an existing block instead of creating a new one
+
+Examples:
 
 ```sh
-wsh web open [search-query]
+# Open a URL
+wsh web open https://waveterm.dev
+
+# Search with the configured search engine
+wsh web open "wave terminal documentation"
+
+# Open in magnified mode
+wsh web open -m https://github.com
+
+# Replace an existing block
+wsh web open -r 2 https://example.com
 ```
 
-Both of these commands will open a new web block with the desired page.
+The command will open a new web block with the desired page, or replace an existing block if the `-r` flag is used. Note that `--replace` and `--magnified` cannot be used together.
 
 ---
 
@@ -837,4 +874,152 @@ The command will show you the full path to:
 Use the `-t` flag with the log path to quickly view recent log entries without having to open the full file. This is particularly useful for troubleshooting.
 :::
 
+---
+
+## blocks
+
+The `blocks` command provides operations for listing and querying blocks across workspaces, windows, and tabs. Primarily useful for debugging and scripting.
+
+### list
+
+```sh
+wsh blocks list [flags]
+```
+
+List all blocks with optional filtering by workspace, window, tab, or view type. Output can be formatted as a table (default) or JSON for scripting.
+
+Flags:
+- `--workspace <id>` - restrict to specific workspace id
+- `--window <id>` - restrict to specific window id
+- `--tab <id>` - restrict to specific tab id
+- `--view <type>` - filter by view type (term, web, preview, edit, sysinfo, waveai)
+- `--json` - output results as JSON
+- `--timeout <ms>` - RPC timeout in milliseconds (default: 5000)
+
+Examples:
+
+```sh
+# List all blocks
+wsh blocks list
+
+# List only terminal blocks
+wsh blocks list --view=term
+
+# Filter by workspace
+wsh blocks list --workspace=12d0c067-378e-454c-872e-77a314248114
+
+# Output as JSON for scripting
+wsh blocks list --json
+```
+
+
+---
+
+## secret
+
+The `secret` command provides secure storage and management of sensitive information like API keys, passwords, and tokens. Secrets are stored using your system's native secure storage backend (Keychain on macOS, Secret Service on Linux, Credential Manager on Windows).
+
+Secret names must start with a letter and contain only letters, numbers, and underscores.
+
+### get
+
+```sh
+wsh secret get [name]
+```
+
+Retrieve and display the value of a stored secret.
+
+Examples:
+
+```sh
+# Get an API key
+wsh secret get github_token
+
+# Use in scripts
+export API_KEY=$(wsh secret get my_api_key)
+```
+
+### set
+
+```sh
+wsh secret set [name]=[value]
+```
+
+Store a secret value securely. This command requires an appropriate system secret manager to be available and will fail if only basic text storage is available.
+
+Examples:
+
+```sh
+# Set an API token
+wsh secret set github_token=ghp_abc123xyz
+
+# Set a database password
+wsh secret set db_password=mySecurePassword123
+```
+
+:::warning
+The `set` command requires a proper system secret manager (Keychain, Secret Service, or Credential Manager). It will not work with basic text storage for security reasons.
+:::
+
+### list
+
+```sh
+wsh secret list
+```
+
+Display all stored secret names (values are not shown).
+
+Example:
+
+```sh
+# List all secrets
+wsh secret list
+```
+
+### delete
+
+```sh
+wsh secret delete [name]
+```
+
+Remove a secret from secure storage.
+
+Examples:
+
+```sh
+# Delete an API key
+wsh secret delete github_token
+
+# Delete multiple secrets
+wsh secret delete old_api_key
+wsh secret delete temp_token
+```
+
+### ui
+
+```sh
+wsh secret ui [-m]
+```
+
+Open the secrets management interface in a new block. This provides a graphical interface for viewing and managing all your secrets.
+
+Flags:
+
+- `-m, --magnified` - open the secrets UI in magnified mode
+
+Examples:
+
+```sh
+# Open the secrets UI
+wsh secret ui
+
+# Open the secrets UI in magnified mode
+wsh secret ui -m
+```
+
+The secrets UI provides a convenient visual way to browse, add, edit, and delete secrets without needing to use the command-line interface.
+
+:::tip
+Use secrets in your scripts to avoid hardcoding sensitive values. Secrets work across remote machines - store an API key locally with `wsh secret set`, then access it from any SSH or WSL connection with `wsh secret get`. The secret is securely retrieved from your local machine without needing to duplicate it on remote systems.
+:::
 </PlatformProvider>

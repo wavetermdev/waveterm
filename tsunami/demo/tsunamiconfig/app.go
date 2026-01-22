@@ -14,8 +14,10 @@ import (
 	"github.com/wavetermdev/waveterm/tsunami/vdom"
 )
 
-const AppTitle = "Tsunami Config Manager"
-const AppShortDesc = "Configuration editor for remote servers with JSON validation"
+var AppMeta = app.AppMeta{
+	Title:     "Tsunami Config Manager",
+	ShortDesc: "Configuration editor for remote servers with JSON validation",
+}
 
 // Global atoms for config
 var (

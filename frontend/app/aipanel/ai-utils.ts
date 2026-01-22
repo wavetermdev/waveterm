@@ -1,29 +1,38 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { sortByDisplayOrder } from "@/util/util";
+
+const TextFileLimit = 200 * 1024; // 200KB
+const PdfLimit = 5 * 1024 * 1024; // 5MB
+const ImageLimit = 10 * 1024 * 1024; // 10MB
+const ImagePreviewSize = 128;
+const ImagePreviewWebPQuality = 0.8;
+const ImageMaxEdge = 4096;
+
 export const isAcceptableFile = (file: File): boolean => {
     const acceptableTypes = [
         // Images
-        'image/jpeg',
-        'image/jpg', 
-        'image/png',
-        'image/gif',
-        'image/webp',
-        'image/svg+xml',
+        "image/jpeg",
+        "image/jpg",
+        "image/png",
+        "image/gif",
+        "image/webp",
+        "image/svg+xml",
         // PDFs
-        'application/pdf',
+        "application/pdf",
         // Text files
-        'text/plain',
-        'text/markdown',
-        'text/html',
-        'text/css',
-        'text/javascript',
-        'text/typescript',
+        "text/plain",
+        "text/markdown",
+        "text/html",
+        "text/css",
+        "text/javascript",
+        "text/typescript",
         // Application types for code files
-        'application/javascript',
-        'application/typescript',
-        'application/json',
-        'application/xml',
+        "application/javascript",
+        "application/typescript",
+        "application/json",
+        "application/xml",
     ];
 
     if (acceptableTypes.includes(file.type)) {
@@ -31,85 +40,239 @@ export const isAcceptableFile = (file: File): boolean => {
     }
 
     // Check file extensions for files without proper MIME types
-    const extension = file.name.split('.').pop()?.toLowerCase();
+    const extension = file.name.split(".").pop()?.toLowerCase();
     const acceptableExtensions = [
-        'txt', 'md', 'js', 'jsx', 'ts', 'tsx', 'go', 'py', 'java', 'c', 'cpp', 'h', 'hpp',
-        'html', 'css', 'scss', 'sass', 'json', 'xml', 'yaml', 'yml', 'sh', 'bat', 'sql',
-        'php', 'rb', 'rs', 'swift', 'kt', 'cs', 'vb', 'r', 'scala', 'clj', 'ex', 'exs'
+        "txt",
+        "log",
+        "md",
+        "js",
+        "mjs",
+        "cjs",
+        "jsx",
+        "ts",
+        "mts",
+        "cts",
+        "tsx",
+        "go",
+        "py",
+        "java",
+        "c",
+        "cpp",
+        "h",
+        "hpp",
+        "html",
+        "htm",
+        "css",
+        "scss",
+        "sass",
+        "json",
+        "jsonc",
+        "json5",
+        "jsonl",
+        "ndjson",
+        "xml",
+        "yaml",
+        "yml",
+        "sh",
+        "bat",
+        "sql",
+        "php",
+        "rb",
+        "rs",
+        "swift",
+        "kt",
+        "cs",
+        "vb",
+        "r",
+        "scala",
+        "clj",
+        "ex",
+        "exs",
+        "ini",
+        "toml",
+        "conf",
+        "cfg",
+        "env",
+        "zsh",
+        "fish",
+        "ps1",
+        "psm1",
+        "bazel",
+        "bzl",
+        "csv",
+        "tsv",
+        "properties",
+        "ipynb",
+        "rmd",
+        "gradle",
+        "groovy",
+        "cmake",
     ];
 
-    return extension ? acceptableExtensions.includes(extension) : false;
+    if (extension && acceptableExtensions.includes(extension)) {
+        return true;
+    }
+
+    // Check for specific filenames (case-insensitive)
+    const fileName = file.name.toLowerCase();
+    const acceptableFilenames = [
+        "makefile",
+        "dockerfile",
+        "containerfile",
+        "go.mod",
+        "go.sum",
+        "go.work",
+        "go.work.sum",
+        "package.json",
+        "package-lock.json",
+        "yarn.lock",
+        "pnpm-lock.yaml",
+        "composer.json",
+        "composer.lock",
+        "gemfile",
+        "gemfile.lock",
+        "podfile",
+        "podfile.lock",
+        "cargo.toml",
+        "cargo.lock",
+        "pipfile",
+        "pipfile.lock",
+        "requirements.txt",
+        "setup.py",
+        "pyproject.toml",
+        "poetry.lock",
+        "build.gradle",
+        "settings.gradle",
+        "pom.xml",
+        "build.xml",
+        "readme",
+        "readme.md",
+        "license",
+        "license.md",
+        "changelog",
+        "changelog.md",
+        "contributing",
+        "contributing.md",
+        "authors",
+        "codeowners",
+        "procfile",
+        "jenkinsfile",
+        "vagrantfile",
+        "rakefile",
+        "gruntfile.js",
+        "gulpfile.js",
+        "webpack.config.js",
+        "rollup.config.js",
+        "vite.config.js",
+        "jest.config.js",
+        "vitest.config.js",
+        ".dockerignore",
+        ".gitignore",
+        ".gitattributes",
+        ".gitmodules",
+        ".editorconfig",
+        ".eslintrc",
+        ".prettierrc",
+        ".pylintrc",
+        ".bashrc",
+        ".bash_profile",
+        ".bash_login",
+        ".bash_logout",
+        ".profile",
+        ".zshrc",
+        ".zprofile",
+        ".zshenv",
+        ".zlogin",
+        ".zlogout",
+        ".kshrc",
+        ".cshrc",
+        ".tcshrc",
+        ".xonshrc",
+        ".shrc",
+        ".aliases",
+        ".functions",
+        ".exports",
+        ".direnvrc",
+        ".vimrc",
+        ".gvimrc",
+    ];
+
+    return acceptableFilenames.includes(fileName);
 };
 
 export const getFileIcon = (fileName: string, fileType: string): string => {
-    if (fileType.startsWith('image/')) {
-        return 'fa-image';
+    if (fileType === "directory") {
+        return "fa-folder";
     }
-    
-    if (fileType === 'application/pdf') {
-        return 'fa-file-pdf';
+
+    if (fileType.startsWith("image/")) {
+        return "fa-image";
     }
-    
+
+    if (fileType === "application/pdf") {
+        return "fa-file-pdf";
+    }
+
     // Check file extensions for code files
-    const ext = fileName.split('.').pop()?.toLowerCase();
+    const ext = fileName.split(".").pop()?.toLowerCase();
     switch (ext) {
-        case 'js':
-        case 'jsx':
-        case 'ts':
-        case 'tsx':
-            return 'fa-file-code';
-        case 'go':
-            return 'fa-file-code';
-        case 'py':
-            return 'fa-file-code';
-        case 'java':
-        case 'c':
-        case 'cpp':
-        case 'h':
-        case 'hpp':
-            return 'fa-file-code';
-        case 'html':
-        case 'css':
-        case 'scss':
-        case 'sass':
-            return 'fa-file-code';
-        case 'json':
-        case 'xml':
-        case 'yaml':
-        case 'yml':
-            return 'fa-file-code';
-        case 'md':
-        case 'txt':
-            return 'fa-file-text';
+        case "js":
+        case "jsx":
+        case "ts":
+        case "tsx":
+            return "fa-file-code";
+        case "go":
+            return "fa-file-code";
+        case "py":
+            return "fa-file-code";
+        case "java":
+        case "c":
+        case "cpp":
+        case "h":
+        case "hpp":
+            return "fa-file-code";
+        case "html":
+        case "css":
+        case "scss":
+        case "sass":
+            return "fa-file-code";
+        case "json":
+        case "xml":
+        case "yaml":
+        case "yml":
+            return "fa-file-code";
+        case "md":
+        case "txt":
+            return "fa-file-text";
         default:
-            return 'fa-file';
+            return "fa-file";
     }
 };
 
 export const formatFileSize = (bytes: number): string => {
-    if (bytes === 0) return '0 B';
+    if (bytes === 0) return "0 B";
     const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const sizes = ["B", "KB", "MB", "GB"];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
 };
 
 // Normalize MIME type for AI processing
 export const normalizeMimeType = (file: File): string => {
     const fileType = file.type;
-    
+
     // Images keep their real mimetype
-    if (fileType.startsWith('image/')) {
+    if (fileType.startsWith("image/")) {
         return fileType;
     }
-    
+
     // PDFs keep their mimetype
-    if (fileType === 'application/pdf') {
+    if (fileType === "application/pdf") {
         return fileType;
     }
-    
+
     // Everything else (code files, markdown, text, etc.) becomes text/plain
-    return 'text/plain';
+    return "text/plain";
 };
 
 // Helper function to read file as base64 for AIMessage
@@ -119,7 +282,7 @@ export const readFileAsBase64 = (file: File): Promise<string> => {
         reader.onload = () => {
             const result = reader.result as string;
             // Remove data URL prefix to get just base64
-            const base64 = result.split(',')[1];
+            const base64 = result.split(",")[1];
             resolve(base64);
         };
         reader.onerror = reject;
@@ -141,39 +304,35 @@ export interface FileSizeError {
     fileName: string;
     fileSize: number;
     maxSize: number;
-    fileType: 'text' | 'pdf' | 'image';
+    fileType: "text" | "pdf" | "image";
 }
 
 export const validateFileSize = (file: File): FileSizeError | null => {
-    const TEXT_FILE_LIMIT = 200 * 1024; // 200KB
-    const PDF_LIMIT = 5 * 1024 * 1024; // 5MB
-    const IMAGE_LIMIT = 10 * 1024 * 1024; // 10MB
-
-    if (file.type.startsWith('image/')) {
-        if (file.size > IMAGE_LIMIT) {
+    if (file.type.startsWith("image/")) {
+        if (file.size > ImageLimit) {
             return {
                 fileName: file.name,
                 fileSize: file.size,
-                maxSize: IMAGE_LIMIT,
-                fileType: 'image'
+                maxSize: ImageLimit,
+                fileType: "image",
             };
         }
-    } else if (file.type === 'application/pdf') {
-        if (file.size > PDF_LIMIT) {
+    } else if (file.type === "application/pdf") {
+        if (file.size > PdfLimit) {
             return {
                 fileName: file.name,
                 fileSize: file.size,
-                maxSize: PDF_LIMIT,
-                fileType: 'pdf'
+                maxSize: PdfLimit,
+                fileType: "pdf",
             };
         }
     } else {
-        if (file.size > TEXT_FILE_LIMIT) {
+        if (file.size > TextFileLimit) {
             return {
                 fileName: file.name,
                 fileSize: file.size,
-                maxSize: TEXT_FILE_LIMIT,
-                fileType: 'text'
+                maxSize: TextFileLimit,
+                fileType: "text",
             };
         }
     }
@@ -181,8 +340,39 @@ export const validateFileSize = (file: File): FileSizeError | null => {
     return null;
 };
 
+export const validateFileSizeFromInfo = (
+    fileName: string,
+    fileSize: number,
+    mimeType: string
+): FileSizeError | null => {
+    let maxSize: number;
+    let fileType: "text" | "pdf" | "image";
+
+    if (mimeType.startsWith("image/")) {
+        maxSize = ImageLimit;
+        fileType = "image";
+    } else if (mimeType === "application/pdf") {
+        maxSize = PdfLimit;
+        fileType = "pdf";
+    } else {
+        maxSize = TextFileLimit;
+        fileType = "text";
+    }
+
+    if (fileSize > maxSize) {
+        return {
+            fileName,
+            fileSize,
+            maxSize,
+            fileType,
+        };
+    }
+
+    return null;
+};
+
 export const formatFileSizeError = (error: FileSizeError): string => {
-    const typeLabel = error.fileType === 'image' ? 'Image' : error.fileType === 'pdf' ? 'PDF' : 'Text file';
+    const typeLabel = error.fileType === "image" ? "Image" : error.fileType === "pdf" ? "PDF" : "Text file";
     return `${typeLabel} "${error.fileName}" is too large (${formatFileSize(error.fileSize)}). Maximum size is ${formatFileSize(error.maxSize)}.`;
 };
 
@@ -192,12 +382,9 @@ export const formatFileSizeError = (error: FileSizeError): string => {
  */
 export const resizeImage = async (file: File): Promise<File> => {
     // Only process actual image files (not SVG)
-    if (!file.type.startsWith('image/') || file.type === 'image/svg+xml') {
+    if (!file.type.startsWith("image/") || file.type === "image/svg+xml") {
         return file;
     }
-
-    const MAX_EDGE = 4096;
-    const WEBP_QUALITY = 0.8;
 
     return new Promise((resolve) => {
         const img = new Image();
@@ -207,67 +394,75 @@ export const resizeImage = async (file: File): Promise<File> => {
             URL.revokeObjectURL(url);
 
             let { width, height } = img;
-            
+
             // Check if resizing is needed
-            if (width <= MAX_EDGE && height <= MAX_EDGE) {
+            if (width <= ImageMaxEdge && height <= ImageMaxEdge) {
                 // Image is already small enough, just try WebP conversion
-                const canvas = document.createElement('canvas');
+                const canvas = document.createElement("canvas");
                 canvas.width = width;
                 canvas.height = height;
-                const ctx = canvas.getContext('2d');
+                const ctx = canvas.getContext("2d");
                 ctx?.drawImage(img, 0, 0);
 
                 canvas.toBlob(
                     (blob) => {
                         if (blob && blob.size < file.size) {
-                            const webpFile = new File([blob], file.name.replace(/\.[^.]+$/, '.webp'), {
-                                type: 'image/webp',
+                            const webpFile = new File([blob], file.name.replace(/\.[^.]+$/, ".webp"), {
+                                type: "image/webp",
                             });
-                            console.log(`Image resized (no dimension change): ${file.name} - Original: ${formatFileSize(file.size)}, WebP: ${formatFileSize(blob.size)}`);
+                            console.log(
+                                `Image resized (no dimension change): ${file.name} - Original: ${formatFileSize(file.size)}, WebP: ${formatFileSize(blob.size)}`
+                            );
                             resolve(webpFile);
                         } else {
-                            console.log(`Image kept original (WebP not smaller): ${file.name} - ${formatFileSize(file.size)}`);
+                            console.log(
+                                `Image kept original (WebP not smaller): ${file.name} - ${formatFileSize(file.size)}`
+                            );
                             resolve(file);
                         }
                     },
-                    'image/webp',
-                    WEBP_QUALITY
+                    "image/webp",
+                    ImagePreviewWebPQuality
                 );
                 return;
             }
 
             // Calculate new dimensions while maintaining aspect ratio
             if (width > height) {
-                height = Math.round((height * MAX_EDGE) / width);
-                width = MAX_EDGE;
+                height = Math.round((height * ImageMaxEdge) / width);
+                width = ImageMaxEdge;
             } else {
-                width = Math.round((width * MAX_EDGE) / height);
-                height = MAX_EDGE;
+                width = Math.round((width * ImageMaxEdge) / height);
+                height = ImageMaxEdge;
             }
 
             // Create canvas and resize
-            const canvas = document.createElement('canvas');
+            const canvas = document.createElement("canvas");
             canvas.width = width;
             canvas.height = height;
-            const ctx = canvas.getContext('2d');
+            const ctx = canvas.getContext("2d");
             ctx?.drawImage(img, 0, 0, width, height);
 
             // Convert to WebP
             canvas.toBlob(
                 (blob) => {
                     if (blob && blob.size < file.size) {
-                        const webpFile = new File([blob], file.name.replace(/\.[^.]+$/, '.webp'), {
-                            type: 'image/webp',
+                        const webpFile = new File([blob], file.name.replace(/\.[^.]+$/, ".webp"), {
+                            type: "image/webp",
                         });
-                        console.log(`Image resized: ${file.name} (${img.width}x${img.height} → ${width}x${height}) - Original: ${formatFileSize(file.size)}, WebP: ${formatFileSize(blob.size)}`);
+                        console.log(
+                            `Image resized: ${file.name} (${img.width}x${img.height} → ${width}x${height}) - Original: ${formatFileSize(file.size)}, WebP: ${formatFileSize(blob.size)}`
+                        );
                         resolve(webpFile);
                     } else {
-                        console.log(`Image kept original (WebP not smaller): ${file.name} (${img.width}x${img.height} → ${width}x${height}) - ${formatFileSize(file.size)}`);
+                        console.log(
+                            `Image kept original (WebP not smaller): ${file.name} (${img.width}x${img.height} → ${width}x${height}) - ${formatFileSize(file.size)}`
+                        );
                         resolve(file);
                     }
                 },
-                'image/webp',
-                WEBP_QUALITY
+                "image/webp",
+                ImagePreviewWebPQuality
             );
         };
 
@@ -284,12 +479,9 @@ export const resizeImage = async (file: File): Promise<File> => {
  * Create a 128x128 preview data URL for an image file
  */
 export const createImagePreview = async (file: File): Promise<string | null> => {
-    if (!file.type.startsWith('image/') || file.type === 'image/svg+xml') {
+    if (!file.type.startsWith("image/") || file.type === "image/svg+xml") {
         return null;
     }
-
-    const PREVIEW_SIZE = 128;
-    const WEBP_QUALITY = 0.8;
 
     return new Promise((resolve) => {
         const img = new Image();
@@ -301,17 +493,17 @@ export const createImagePreview = async (file: File): Promise<string | null> => 
             let { width, height } = img;
 
             if (width > height) {
-                height = Math.round((height * PREVIEW_SIZE) / width);
-                width = PREVIEW_SIZE;
+                height = Math.round((height * ImagePreviewSize) / width);
+                width = ImagePreviewSize;
             } else {
-                width = Math.round((width * PREVIEW_SIZE) / height);
-                height = PREVIEW_SIZE;
+                width = Math.round((width * ImagePreviewSize) / height);
+                height = ImagePreviewSize;
             }
 
-            const canvas = document.createElement('canvas');
+            const canvas = document.createElement("canvas");
             canvas.width = width;
             canvas.height = height;
-            const ctx = canvas.getContext('2d');
+            const ctx = canvas.getContext("2d");
             ctx?.drawImage(img, 0, 0, width, height);
 
             canvas.toBlob(
@@ -326,8 +518,8 @@ export const createImagePreview = async (file: File): Promise<string | null> => 
                         resolve(null);
                     }
                 },
-                'image/webp',
-                WEBP_QUALITY
+                "image/webp",
+                ImagePreviewWebPQuality
             );
         };
 
@@ -339,3 +531,68 @@ export const createImagePreview = async (file: File): Promise<string | null> => 
         img.src = url;
     });
 };
+
+
+/**
+ * Filter and organize AI mode configs into Wave and custom provider groups
+ * Returns organized configs that should be displayed based on settings and premium status
+ */
+export interface FilteredAIModeConfigs {
+    waveProviderConfigs: Array<{ mode: string } & AIModeConfigType>;
+    otherProviderConfigs: Array<{ mode: string } & AIModeConfigType>;
+    shouldShowCloudModes: boolean;
+}
+
+export const getFilteredAIModeConfigs = (
+    aiModeConfigs: Record<string, AIModeConfigType>,
+    showCloudModes: boolean,
+    inBuilder: boolean,
+    hasPremium: boolean,
+    currentMode?: string
+): FilteredAIModeConfigs => {
+    const hideQuick = inBuilder && hasPremium;
+
+    const allConfigs = Object.entries(aiModeConfigs)
+        .map(([mode, config]) => ({ mode, ...config }))
+        .filter((config) => !(hideQuick && config.mode === "waveai@quick"));
+
+    const otherProviderConfigs = allConfigs
+        .filter((config) => config["ai:provider"] !== "wave")
+        .sort(sortByDisplayOrder);
+
+    const hasCustomModels = otherProviderConfigs.length > 0;
+    const isCurrentModeCloud = currentMode?.startsWith("waveai@") ?? false;
+    const shouldShowCloudModes = showCloudModes || !hasCustomModels || isCurrentModeCloud;
+
+    const waveProviderConfigs = shouldShowCloudModes
+        ? allConfigs.filter((config) => config["ai:provider"] === "wave").sort(sortByDisplayOrder)
+        : [];
+
+    return {
+        waveProviderConfigs,
+        otherProviderConfigs,
+        shouldShowCloudModes,
+    };
+};
+
+/**
+ * Get the display name for an AI mode configuration.
+ * If display:name is set, use that. Otherwise, construct from model/provider.
+ * For azure-legacy, show "azureresourcename (azure)".
+ * For other providers, show "model (provider)".
+ */
+export function getModeDisplayName(config: AIModeConfigType): string {
+    if (config["display:name"]) {
+        return config["display:name"];
+    }
+
+    const provider = config["ai:provider"];
+    const model = config["ai:model"];
+    const azureResourceName = config["ai:azureresourcename"];
+
+    if (provider === "azure-legacy") {
+        return `${azureResourceName || "unknown"} (azure)`;
+    }
+
+    return `${model || "unknown"} (${provider || "custom"})`;
+}

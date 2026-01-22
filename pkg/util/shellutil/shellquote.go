@@ -13,7 +13,7 @@ const (
 )
 
 var (
-	safePattern       = regexp.MustCompile(`^[a-zA-Z0-9_/.-]+$`)
+	safePattern       = regexp.MustCompile(`^[a-zA-Z0-9_@:,+=/.-]+$`)
 	envVarNamePattern = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
 )
 
@@ -41,8 +41,6 @@ func HardQuote(s string) string {
 		switch s[i] {
 		case '"', '\\', '$', '`':
 			buf = append(buf, '\\', s[i])
-		case '\n':
-			buf = append(buf, '\\', '\n')
 		default:
 			buf = append(buf, s[i])
 		}

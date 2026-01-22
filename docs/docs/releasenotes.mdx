@@ -6,6 +6,166 @@ sidebar_position: 200
 
 # Release Notes
 
+### v0.13.1 &mdash; Dec 16, 2025
+
+**Windows Improvements and Wave AI Enhancements**
+
+This release focuses on significant Windows platform improvements, Wave AI visual updates, and better flexibility for local AI usage.
+
+**Windows Platform Enhancements:**
+- **Integrated Window Layout** - Removed separate title bar and menu bar on Windows, integrating controls directly into the tab-bar header for a cleaner, more unified interface
+- **Git Bash Auto-Detection** - Wave now automatically detects Git Bash installations and adds them to the connection dropdown for easy access
+- **SSH Agent Fallback** - Improved SSH agent support with automatic fallback to `\\.\pipe\openssh-ssh-agent` on Windows
+- **Updated Focus Keybinding** - Wave AI focus key changed to Alt:0 on Windows for better consistency
+- **Config Schemas** - Improved configuration validation and schema support
+- Ctrl-V now works as standard paste in terminal on Windows
+
+**Wave AI Updates:**
+- **Refreshed Visual Design** - Complete UI refresh removing blue accents and adding transparency support for better integration with custom backgrounds
+- **BYOK Without Telemetry** - Wave AI now works with bring-your-own-key and local models without requiring telemetry to be enabled
+- [bugfix] Fixed tool type "function" compatibility with providers like Mistral
+
+**Terminal Improvements:**
+- **New Scrolling Keybindings** - Added Shift+Home, Shift+End, Shift+PageUp, and Shift+PageDown for better terminal navigation
+
+**Other Changes:**
+- Package updates and dependency upgrades
+
+### v0.13.0 &mdash; Dec 8, 2025
+
+**Wave v0.13 Brings Local AI Support, BYOK, and Unified Configuration**
+
+Wave v0.13 is a major release that opens up Wave AI to local models, third-party providers, and bring-your-own-key (BYOK) configurations. This release also includes a completely redesigned configuration system and several terminal improvements.
+
+**Local AI & BYOK Support:**
+- **OpenAI-Compatible API** - Wave now supports any provider or local server using the `/v1/chat/completions` endpoint, enabling use of Ollama, LM Studio, vLLM, OpenRouter, and countless other local and hosted models
+- **Google Gemini Integration** - Native support for Google's Gemini models with a dedicated API adapter
+- **Provider Presets** - Simplified configuration with built-in presets for OpenAI, OpenRouter, Google, Azure, and custom endpoints
+- **Multiple AI Modes** - Easily switch between different models and providers with a unified interface
+- See the new [Wave AI Modes documentation](https://docs.waveterm.dev/waveai-modes) for configuration examples and setup guides
+
+**Unified Configuration Widget:**
+- **New Config Interface** - Replaced the basic JSON editor with a dedicated configuration widget accessible from the sidebar
+- **Better Organization** - Browse and edit different configuration types (general settings, AI modes, secrets) with improved validation and error handling
+- **Integrated Secrets Management** - Access Wave's secret store directly from the config widget for secure credential management
+
+**Terminal Improvements:**
+- **Bracketed Paste Mode** - Now enabled by default to improve multi-line paste behavior and compatibility with tools like Claude Code
+- **Windows Paste Fix** - Ctrl+V now works as a standard paste accelerator on Windows
+- **SSH Password Management** - Store SSH connection passwords in Wave's secret store to avoid re-typing credentials
+
+**Other Changes:**
+- Package updates and dependency upgrades
+- Various bug fixes and stability improvements
+
+### v0.12.5 &mdash; Nov 24, 2025
+
+Quick patch release to fix paste behavior on Linux (prevent raw HTML from getting pasted to the terminal).
+
+### v0.12.4 &mdash; Nov 21, 2025
+
+Quick patch release with bug fixes and minor improvements.
+
+- New `term:macoptionismeta` setting for macOS to treat Option key as Meta key in terminal
+- Fixed directory tracking for zsh shells
+- Fixed editor copy operations
+- Minor Wave AI improvements (image handling, scrolling, focus)
+- Package updates and dependency upgrades
+- WIP: WaveApps builder framework (not yet released)
+
+### v0.12.3 &mdash; Nov 17, 2025
+
+Patch release with Wave AI model upgrade, new secret management features, and improved terminal input handling.
+
+**Wave AI Updates:**
+- **GPT-5.1 Model** - Upgraded to use OpenAI's GPT-5.1 model for improved responses
+- **Thinking Mode Toggle** - New dropdown to select between Quick, Balanced, and Deep thinking modes for optimal response quality vs speed
+- [bugfix] Fixed path mismatch issue when restoring AI write file backups
+
+**New Features:**
+- **Secret Store** - New secret management widget for storing and managing sensitive credentials. Access secrets via CLI with `wsh secret list/get/set` commands
+
+**Terminal Improvements:**
+- **Enhanced Input Handling** - Better support for interactive CLI tools like Claude Code. Shift+Enter now inserts newlines by default for multi-line commands
+- **Image Paste Support** - Paste images directly into terminal (saved to temp files with path inserted). Works great in Claude Code!
+- **IME Fix** - Fixed duplicate text issue when switching input methods during Chinese/Japanese/Korean composition
+
+**Other Changes:**
+- Improved backend panic tracking for better debugging
+- Fixed memory leak around sysinfo events
+- WIP: New WaveApps builder framework (not yet released)
+- Package updates and dependency bumps
+
+### v0.12.2 &mdash; Nov 4, 2025
+
+Wave v0.12.2 adds file editing ability to Wave AI. Before approving a file edit you can easily see a diff (rendered in the Monaco Editor diff viewer), and after approving an edit you can easily roll back the change using a "Revert File" button.
+
+**Wave AI Updates:**
+- **File Write Tool** - Wave AI can now create and modify files with your approval
+- **Visual Diff Preview** - See exactly what will change before approving edits, rendered in Monaco Editor
+- **Easy Rollback** - Revert file changes with a simple "Revert File" button
+- **Drag & Drop Files** - Drag files from the preview viewer directly to Wave AI
+- **Directory Listings** - `wsh ai` can now attach directory listings to chats
+- **Adjustable Settings** - Control thinking level and max output tokens per chat
+
+**Bug Fixes & Improvements:**
+- Fixed a significant memory leak in the RPC system
+- Schema validation working again for config files
+- Improved tool descriptions and input validations (run before tool approvals)
+- Fixed issue with premature tool timeouts
+- Fixed regression with PowerShell 5.x
+- Fixed prompt caching issue when attaching files
+
+### v0.12.1 &mdash; Oct 20, 2025
+
+Patch release focused on shell integration improvements and Wave AI enhancements. This release fixes syntax highlighting in the code editor and adds significant shell context tracking capabilities.
+
+**Shell Integration & Context:**
+- **OSC 7 Support** - Added OSC 7 (current working directory) support across bash, zsh, fish, and pwsh shells. Wave now automatically tracks and restores your current directory across restarts for both local and remote terminals.
+- **Shell Context Tracking** - Implemented shell integration for bash, zsh, and fish shells. Wave now tracks when your shell is ready to receive commands, the last command executed, and exit codes. This enhanced context enables better terminal management and lays the groundwork for Wave AI to write and execute commands intelligently.
+
+**Wave AI Improvements:**
+- Display reasoning summaries in the UI while waiting for AI responses
+- Added enhanced terminal context - Wave AI now has access to shell state including current directory, command history, and exit codes
+- Added feedback buttons (thumbs up/down) for AI responses to help improve the experience
+- Added copy button to easily copy AI responses to clipboard
+
+**Other Changes:**
+- Mobile user agent emulation support for web widgets [#2442](https://github.com/wavetermdev/waveterm/issues/2442)
+- [bugfix] Fixed padding for header buttons in code editor (Tailwind regression)
+- [bugfix] Restored syntax highlighting in code editor preview blocks [#2427](https://github.com/wavetermdev/waveterm/issues/2427)
+- Package updates and dependency bumps
+
+### v0.12.0 &mdash; Oct 16, 2025
+
+**Wave v0.12 Has Arrived with Wave AI (beta)!**
+
+Wave Terminal v0.12.0 introduces a completely redesigned AI experience powered by OpenAI GPT-5. This represents a major upgrade and modernization over Wave's previous AI integration, bringing multi-modal support, advanced tool integration, and an intuitive new interface. The main AI PR alone included 128 commits and added 13,000+ lines of code.
+
+**Wave AI Features:**
+- **New Slide-Out Chat Panel** - Access Wave AI via hotkeys (Cmd-Shift-A or Ctrl-Shift-0) from the left side of your screen
+- **Multi-Modal Input** - Support for images, PDFs, and text file attachments
+- **Drag & Drop Files** - Simply drag files into the chat to attach them
+- **Command-Line Integration** - Send files and command output directly to Wave AI using `wsh ai`
+- **Smart Context Switching** - Enable Wave AI to see into your widgets and file system
+- **Built-in Tools:**
+  - Web search capabilities
+  - Local file and directory operations
+  - Widget screenshots
+  - Terminal scrollback access
+  - Web navigation
+
+Wave AI is in active beta with included AI credits while we refine the experience. BYOK (Bring Your Own Key) will be available once we've stabilized core features and gathered feedback on what works best. Share your feedback in our [Discord](https://discord.gg/XfvZ334gwU).
+
+For more information and upcoming features, visit our [Wave AI documentation](https://docs.waveterm.dev/waveai).
+
+**Other Improvements:**
+- New onboarding flow showcasing block magnification, Wave AI, and wsh view/edit capabilities
+- New `wsh blocks list` command for listing and filtering blocks by workspace, tab, or view type
+- Continued migration from SCSS to Tailwind v4
+- Package upgrades and dependency updates
+- Internal code cleanup and refactoring
+
 ### v0.11.6 &mdash; Sep 22, 2025
 
 Patch release to address an editor bug when you open two files in separate edit widgets. Also adds Mermaid support to markdown blocks.

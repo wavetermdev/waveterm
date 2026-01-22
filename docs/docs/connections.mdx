@@ -4,6 +4,8 @@ id: "connections"
 title: "Connections"
 ---
 
+import { VersionBadge } from "@site/src/components/versionbadge";
+
 # Connections
 
 Wave allows users to connect to various machines and unify them together in a way that preserves the unique behavior of each. At the moment, this extends to SSH remote connections, local WSL connections, and AWS S3 buckets.
@@ -156,6 +158,7 @@ In addition to the regular ssh config file, wave also has its own config file to
 | ssh:batchmode | A boolean indicating if password and passphrase prompts should be skipped. Can be used to override the value in `~/.ssh/config` or to set it if the ssh config is being ignored.|
 | ssh:pubkeyauthentication | A boolean indicating if public key authentication is enabled. Can be used to override the value in `~/.ssh/config` or to set it if the ssh config is being ignored.|
 | ssh:passwordauthentication | A boolean indicating if password authentication is enabled. Can be used to override the value in `~/.ssh/config` or to set it if the ssh config is being ignored. |
+| ssh:passwordsecretname | A string specifying the name of a secret stored in the [secret store](/secrets) to use as the SSH password. When set, this password will be automatically used for password authentication instead of prompting the user. <VersionBadge version="v0.13" /> |
 | ssh:kbdinteractiveauthentication | A boolean indicating if keyboard interactive authentication is enabled. Can be used to override the value in `~/.ssh/config` or to set it if the ssh config is being ignored. |
 | ssh:preferredauthentications | A list of strings indicating an ordering of different types of authentications. Each authentication type will be tried in order. This supports `"publickey"`, `"keyboard-interactive"`, and `"password"` as valid types. Other types of authentication are not handled and will be skipped. Can be used to override the value in `~/.ssh/config` or to set it if the ssh config is being ignored.|
 | ssh:addkeystoagent | A boolean indicating if the keys used for a connection should be added to the ssh agent. Can be used to override the value in `~/.ssh/config` or to set it if the ssh config is being ignored.|
@@ -163,6 +166,14 @@ In addition to the regular ssh config file, wave also has its own config file to
 | ssh:proxyjump | A list of strings specifying the names of hosts that must be successively visited with tcp forwarding to establish a connection. Can be used to overwrite the value in `~/.ssh/config` or to set it if the ssh config is being ignored.|
 | ssh:userknownhostsfile | A list containing the paths of any user host key database files used to keep track of authorized connections. Can be used to overwrite the value in `~/.ssh/config` or to set it if the ssh config is being ignored.|
 | ssh:globalknownhostsfile | A list containing the paths of any global host key database files used to keep track of authorized connections. Can be used to overwrite the value in `~/.ssh/config` or to set it if the ssh config is being ignored.|
+
+### SSH Agent Detection
+
+Wave resolves the identity agent path in this order:
+
+- If `ssh:identityagent` (or `IdentityAgent` in SSH config) is set for the connection, that socket or pipe is used.
+- If not set on Windows, Wave falls back to the built-in OpenSSH agent pipe `\\.\pipe\openssh-ssh-agent`. Ensure the **OpenSSH Authentication Agent** service is running.
+- If not set on macOS/Linux, Wave queries your shell environment for `SSH_AUTH_SOCK` to detect the agent path automatically.
 
 ### Example Internal Configurations
 

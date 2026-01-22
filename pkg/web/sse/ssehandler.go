@@ -8,8 +8,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
+
+	"github.com/wavetermdev/waveterm/pkg/utilds"
 )
 
 // see /aiprompts/usechat-streamingproto.md for protocol
@@ -63,16 +66,17 @@ type SSEMessage struct {
 type SSEHandlerCh struct {
 	w       http.ResponseWriter
 	rc      *http.ResponseController
-	ctx     context.Context
+	ctx     context.Context // the r.Context()
 	writeCh chan SSEMessage
-	errCh   chan error
 
-	mu          sync.RWMutex
+	lock        sync.Mutex
 	closed      bool
 	initialized bool
 	err         error
 
-	wg sync.WaitGroup
+	wg              sync.WaitGroup
+	onCloseHandlers utilds.IdList[func()]
+	handlersRun     bool
 }
 
 // MakeSSEHandlerCh creates a new channel-based SSE handler
@@ -82,14 +86,17 @@ func MakeSSEHandlerCh(w http.ResponseWriter, ctx context.Context) *SSEHandlerCh 
 		rc:      http.NewResponseController(w),
 		ctx:     ctx,
 		writeCh: make(chan SSEMessage, 10), // Buffered to prevent blocking
-		errCh:   make(chan error, 1),       // Buffered for single error
 	}
+}
+
+func (h *SSEHandlerCh) Context() context.Context {
+	return h.ctx
 }
 
 // SetupSSE configures the response headers and starts the writer goroutine
 func (h *SSEHandlerCh) SetupSSE() error {
-	h.mu.Lock()
-	defer h.mu.Unlock()
+	h.lock.Lock()
+	defer h.lock.Unlock()
 
 	if h.closed {
 		return fmt.Errorf("SSE handler is closed")
@@ -126,6 +133,7 @@ func (h *SSEHandlerCh) SetupSSE() error {
 // writerLoop handles all writes and keepalives in a single goroutine
 func (h *SSEHandlerCh) writerLoop() {
 	defer h.wg.Done()
+	defer h.runOnCloseHandlers()
 
 	keepaliveTicker := time.NewTicker(SSEKeepaliveInterval)
 	defer keepaliveTicker.Stop()
@@ -151,6 +159,7 @@ func (h *SSEHandlerCh) writerLoop() {
 			}
 
 		case <-h.ctx.Done():
+			h.setError(h.ctx.Err())
 			return
 		}
 	}
@@ -158,6 +167,9 @@ func (h *SSEHandlerCh) writerLoop() {
 
 // writeMessage writes a message to the SSE stream
 func (h *SSEHandlerCh) writeMessage(msg SSEMessage) error {
+	if h.ctx.Err() != nil {
+		return h.ctx.Err()
+	}
 	switch msg.Type {
 	case SSEMsgData:
 		return h.writeDirectly(msg.Data, SSEMsgData)
@@ -174,8 +186,8 @@ func (h *SSEHandlerCh) writeMessage(msg SSEMessage) error {
 
 // isInitialized returns whether SetupSSE has been called
 func (h *SSEHandlerCh) isInitialized() bool {
-	h.mu.RLock()
-	defer h.mu.RUnlock()
+	h.lock.Lock()
+	defer h.lock.Unlock()
 	return h.initialized
 }
 
@@ -224,37 +236,41 @@ func (h *SSEHandlerCh) flush() error {
 
 // setError sets the error state thread-safely
 func (h *SSEHandlerCh) setError(err error) {
-	h.mu.Lock()
-	defer h.mu.Unlock()
+	h.lock.Lock()
+	defer h.lock.Unlock()
 
 	if h.err == nil {
 		h.err = err
-		// Send error to error channel if there's space
-		select {
-		case h.errCh <- err:
-		default:
-		}
 	}
 }
 
-// WriteData queues data to be written in SSE format
-func (h *SSEHandlerCh) WriteData(data string) error {
-	h.mu.RLock()
+// queueMessage queues an SSEMessage to be written
+func (h *SSEHandlerCh) queueMessage(msg SSEMessage) error {
+	h.lock.Lock()
 	closed := h.closed
-	h.mu.RUnlock()
+	h.lock.Unlock()
 
 	if closed {
 		return fmt.Errorf("SSE handler is closed")
 	}
 
+	if err := h.Err(); err != nil {
+		return err
+	}
+
 	select {
-	case h.writeCh <- SSEMessage{Type: SSEMsgData, Data: data}:
+	case h.writeCh <- msg:
 		return nil
 	case <-h.ctx.Done():
 		return h.ctx.Err()
 	default:
 		return fmt.Errorf("write channel is full")
 	}
+}
+
+// WriteData queues data to be written in SSE format
+func (h *SSEHandlerCh) WriteData(data string) error {
+	return h.queueMessage(SSEMessage{Type: SSEMsgData, Data: data})
 }
 
 // WriteJsonData marshals data to JSON and queues it for writing
@@ -281,63 +297,67 @@ func (h *SSEHandlerCh) WriteError(errorMsg string) error {
 
 // WriteEvent queues an SSE event with optional event type
 func (h *SSEHandlerCh) WriteEvent(eventType, data string) error {
-	h.mu.RLock()
-	closed := h.closed
-	h.mu.RUnlock()
-
-	if closed {
-		return fmt.Errorf("SSE handler is closed")
-	}
-
-	select {
-	case h.writeCh <- SSEMessage{Type: SSEMsgEvent, Data: data, EventType: eventType}:
-		return nil
-	case <-h.ctx.Done():
-		return h.ctx.Err()
-	default:
-		return fmt.Errorf("write channel is full")
-	}
+	return h.queueMessage(SSEMessage{Type: SSEMsgEvent, Data: data, EventType: eventType})
 }
 
 // WriteComment queues an SSE comment
 func (h *SSEHandlerCh) WriteComment(comment string) error {
-	h.mu.RLock()
-	closed := h.closed
-	h.mu.RUnlock()
-
-	if closed {
-		return fmt.Errorf("SSE handler is closed")
-	}
-
-	select {
-	case h.writeCh <- SSEMessage{Type: SSEMsgComment, Data: comment}:
-		return nil
-	case <-h.ctx.Done():
-		return h.ctx.Err()
-	default:
-		return fmt.Errorf("write channel is full")
-	}
+	return h.queueMessage(SSEMessage{Type: SSEMsgComment, Data: comment})
 }
 
 // Err returns any error that occurred during writing
 func (h *SSEHandlerCh) Err() error {
-	h.mu.RLock()
-	defer h.mu.RUnlock()
+	h.lock.Lock()
+	defer h.lock.Unlock()
+	if h.err == nil && h.ctx.Err() != nil {
+		h.err = h.ctx.Err()
+	}
 	return h.err
+}
+
+// RegisterOnClose registers a handler function to be called when the connection closes
+// Returns an ID that can be used to unregister the handler
+func (h *SSEHandlerCh) RegisterOnClose(fn func()) string {
+	h.lock.Lock()
+	defer h.lock.Unlock()
+	return h.onCloseHandlers.Register(fn)
+}
+
+// UnregisterOnClose removes a previously registered onClose handler by ID
+func (h *SSEHandlerCh) UnregisterOnClose(id string) {
+	h.lock.Lock()
+	defer h.lock.Unlock()
+	h.onCloseHandlers.Unregister(id)
+}
+
+// runOnCloseHandlers runs all registered onClose handlers exactly once
+func (h *SSEHandlerCh) runOnCloseHandlers() {
+	h.lock.Lock()
+	if h.handlersRun {
+		h.lock.Unlock()
+		return
+	}
+	h.handlersRun = true
+	h.lock.Unlock()
+
+	handlers := h.onCloseHandlers.GetList()
+	for _, fn := range handlers {
+		fn()
+	}
 }
 
 // Close closes the write channel, sends [DONE], and cleans up resources
 func (h *SSEHandlerCh) Close() {
-	h.mu.Lock()
+	h.lock.Lock()
 	if h.closed || !h.initialized {
-		h.mu.Unlock()
+		h.lock.Unlock()
 		return
 	}
 	h.closed = true
 
 	// Close the write channel, which will trigger [DONE] in writerLoop
 	close(h.writeCh)
-	h.mu.Unlock()
+	h.lock.Unlock()
 
 	// Wait for writer goroutine to finish (without holding the lock)
 	h.wg.Wait()
@@ -456,6 +476,18 @@ func (h *SSEHandlerCh) AiMsgError(errText string) error {
 	resp := map[string]interface{}{
 		"type":      AiMsgError,
 		"errorText": errText,
+	}
+	return h.WriteJsonData(resp)
+}
+
+func (h *SSEHandlerCh) AiMsgData(dataType string, id string, data interface{}) error {
+	if !strings.HasPrefix(dataType, "data-") {
+		panic(fmt.Sprintf("AiMsgData type must start with 'data-', got: %s", dataType))
+	}
+	resp := map[string]interface{}{
+		"type": dataType,
+		"id":   id,
+		"data": data,
 	}
 	return h.WriteJsonData(resp)
 }

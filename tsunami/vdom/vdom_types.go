@@ -66,12 +66,14 @@ type VDomEvent struct {
 	WaveId          string             `json:"waveid"`
 	EventType       string             `json:"eventtype"` // usually the prop name (e.g. onClick, onKeyDown)
 	GlobalEventType string             `json:"globaleventtype,omitempty"`
-	TargetValue     string             `json:"targetvalue,omitempty"`
-	TargetChecked   bool               `json:"targetchecked,omitempty"`
-	TargetName      string             `json:"targetname,omitempty"`
-	TargetId        string             `json:"targetid,omitempty"`
-	KeyData         *VDomKeyboardEvent `json:"keydata,omitempty"`
-	MouseData       *VDomPointerData   `json:"mousedata,omitempty"`
+	TargetValue     string             `json:"targetvalue,omitempty"` // set for onChange events on input/textarea/select
+	TargetChecked   bool               `json:"targetchecked,omitempty"` // set for onChange events on checkbox/radio inputs
+	TargetName      string             `json:"targetname,omitempty"` // target element's name attribute
+	TargetId        string             `json:"targetid,omitempty"` // target element's id attribute
+	TargetFiles     []VDomFileData     `json:"targetfiles,omitempty"` // set for onChange events on file inputs
+	KeyData         *VDomKeyboardEvent `json:"keydata,omitempty"` // set for onKeyDown events
+	MouseData       *VDomPointerData   `json:"mousedata,omitempty"` // set for onClick, onMouseDown, onMouseUp, onDoubleClick events
+	FormData        *VDomFormData      `json:"formdata,omitempty"` // set for onSubmit events on forms
 }
 
 type VDomKeyboardEvent struct {
@@ -110,6 +112,36 @@ type VDomPointerData struct {
 	Meta    bool `json:"meta,omitempty"`
 	Cmd     bool `json:"cmd,omitempty"`    // special (on mac it is meta, on windows/linux it is alt)
 	Option  bool `json:"option,omitempty"` // special (on mac it is alt, on windows/linux it is meta)
+}
+
+type VDomFormData struct {
+	Action   string                     `json:"action,omitempty"`
+	Method   string                     `json:"method"`
+	Enctype  string                     `json:"enctype"`
+	FormId   string                     `json:"formid,omitempty"`
+	FormName string                     `json:"formname,omitempty"`
+	Fields   map[string][]string        `json:"fields"`
+	Files    map[string][]VDomFileData  `json:"files"`
+}
+
+func (f *VDomFormData) GetField(fieldName string) string {
+	if f.Fields == nil {
+		return ""
+	}
+	values := f.Fields[fieldName]
+	if len(values) == 0 {
+		return ""
+	}
+	return values[0]
+}
+
+type VDomFileData struct {
+	FieldName string `json:"fieldname"`
+	Name      string `json:"name"`
+	Size      int64  `json:"size"`
+	Type      string `json:"type"`
+	Data64    []byte `json:"data64,omitempty"`
+	Error     string `json:"error,omitempty"`
 }
 
 type VDomRefOperation struct {

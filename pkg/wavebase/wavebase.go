@@ -29,6 +29,7 @@ const (
 	WaveConfigHomeEnvVar           = "WAVETERM_CONFIG_HOME"
 	WaveDataHomeEnvVar             = "WAVETERM_DATA_HOME"
 	WaveAppPathVarName             = "WAVETERM_APP_PATH"
+	WaveAppResourcesPathVarName    = "WAVETERM_RESOURCES_PATH"
 	WaveAppElectronExecPathVarName = "WAVETERM_ELECTRONEXECPATH"
 	WaveDevVarName                 = "WAVETERM_DEV"
 	WaveDevViteVarName             = "WAVETERM_DEV_VITE"
@@ -50,6 +51,7 @@ const NeedJwtConst = "NEED-JWT"
 var ConfigHome_VarCache string          // caches WAVETERM_CONFIG_HOME
 var DataHome_VarCache string            // caches WAVETERM_DATA_HOME
 var AppPath_VarCache string             // caches WAVETERM_APP_PATH
+var AppResourcesPath_VarCache string    // caches WAVETERM_RESOURCES_PATH
 var AppElectronExecPath_VarCache string // caches WAVETERM_ELECTRONEXECPATH
 var Dev_VarCache string                 // caches WAVETERM_DEV
 
@@ -57,7 +59,6 @@ const WaveLockFile = "wave.lock"
 const DomainSocketBaseName = "wave.sock"
 const RemoteDomainSocketBaseName = "wave-remote.sock"
 const WaveDBDir = "db"
-const JwtSecret = "waveterm" // TODO generate and store this
 const ConfigDir = "config"
 const RemoteWaveHomeDirName = ".waveterm"
 const RemoteWshBinDirName = "bin"
@@ -69,6 +70,9 @@ const AppPathBinDir = "bin"
 
 var baseLock = &sync.Mutex{}
 var ensureDirCache = map[string]bool{}
+
+var waveCachesDirOnce = &sync.Once{}
+var waveCachesDir string
 
 var SupportedWshBinaries = map[string]bool{
 	"darwin-x64":    true,
@@ -96,6 +100,8 @@ func CacheAndRemoveEnvVars() error {
 	os.Unsetenv(WaveDataHomeEnvVar)
 	AppPath_VarCache = os.Getenv(WaveAppPathVarName)
 	os.Unsetenv(WaveAppPathVarName)
+	AppResourcesPath_VarCache = os.Getenv(WaveAppResourcesPathVarName)
+	os.Unsetenv(WaveAppResourcesPathVarName)
 	AppElectronExecPath_VarCache = os.Getenv(WaveAppElectronExecPathVarName)
 	os.Unsetenv(WaveAppElectronExecPathVarName)
 	Dev_VarCache = os.Getenv(WaveDevVarName)
@@ -110,6 +116,10 @@ func IsDevMode() bool {
 
 func GetWaveAppPath() string {
 	return AppPath_VarCache
+}
+
+func GetWaveAppResourcesPath() string {
+	return AppResourcesPath_VarCache
 }
 
 func GetWaveDataDir() string {
@@ -186,6 +196,51 @@ func EnsureWaveConfigDir() error {
 
 func EnsureWavePresetsDir() error {
 	return CacheEnsureDir(filepath.Join(GetWaveConfigDir(), "presets"), "wavepresets", 0700, "wave presets directory")
+}
+
+func resolveWaveCachesDir() string {
+	var cacheDir string
+	appBundle := "waveterm"
+	if IsDevMode() {
+		appBundle = "waveterm-dev"
+	}
+
+	switch runtime.GOOS {
+	case "darwin":
+		homeDir := GetHomeDir()
+		cacheDir = filepath.Join(homeDir, "Library", "Caches", appBundle)
+	case "linux":
+		xdgCache := os.Getenv("XDG_CACHE_HOME")
+		if xdgCache != "" {
+			cacheDir = filepath.Join(xdgCache, appBundle)
+		} else {
+			homeDir := GetHomeDir()
+			cacheDir = filepath.Join(homeDir, ".cache", appBundle)
+		}
+	case "windows":
+		localAppData := os.Getenv("LOCALAPPDATA")
+		if localAppData != "" {
+			cacheDir = filepath.Join(localAppData, appBundle, "Cache")
+		}
+	}
+
+	if cacheDir == "" {
+		tmpDir := os.TempDir()
+		cacheDir = filepath.Join(tmpDir, appBundle)
+	}
+
+	return cacheDir
+}
+
+func GetWaveCachesDir() string {
+	waveCachesDirOnce.Do(func() {
+		waveCachesDir = resolveWaveCachesDir()
+	})
+	return waveCachesDir
+}
+
+func EnsureWaveCachesDir() error {
+	return CacheEnsureDir(GetWaveCachesDir(), "wavecaches", 0700, "wave caches directory")
 }
 
 func CacheEnsureDir(dirName string, cacheKey string, perm os.FileMode, dirDesc string) error {
@@ -289,6 +344,9 @@ var osReleaseOnce = &sync.Once{}
 var osRelease string
 
 func unameKernelRelease() string {
+	if runtime.GOOS == "windows" {
+		return "-"
+	}
 	ctx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancelFn()
 	out, err := exec.CommandContext(ctx, "uname", "-r").CombinedOutput()
@@ -312,9 +370,61 @@ func UnameKernelRelease() string {
 	return osRelease
 }
 
+var systemSummaryOnce = &sync.Once{}
+var systemSummary string
+
+func GetSystemSummary() string {
+	systemSummaryOnce.Do(func() {
+		ctx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)
+		defer cancelFn()
+		systemSummary = getSystemSummary(ctx)
+	})
+	return systemSummary
+}
+
 func ValidateWshSupportedArch(os string, arch string) error {
 	if SupportedWshBinaries[fmt.Sprintf("%s-%s", os, arch)] {
 		return nil
 	}
 	return fmt.Errorf("unsupported wsh platform: %s-%s", os, arch)
+}
+
+func getSystemSummary(ctx context.Context) string {
+	osName := runtime.GOOS
+
+	switch osName {
+	case "darwin":
+		out, _ := exec.CommandContext(ctx, "sw_vers", "-productVersion").Output()
+		return fmt.Sprintf("macOS %s (%s)", strings.TrimSpace(string(out)), runtime.GOARCH)
+	case "linux":
+		// Read /etc/os-release directly (standard location since 2012)
+		data, err := os.ReadFile("/etc/os-release")
+		var prettyName string
+		if err == nil {
+			for _, line := range strings.Split(string(data), "\n") {
+				line = strings.TrimSpace(line)
+				if strings.HasPrefix(line, "PRETTY_NAME=") {
+					prettyName = strings.Trim(strings.TrimPrefix(line, "PRETTY_NAME="), "\"")
+					break
+				}
+			}
+		}
+		if prettyName == "" {
+			prettyName = "Linux"
+		} else if !strings.Contains(strings.ToLower(prettyName), "linux") {
+			prettyName = "Linux " + prettyName
+		}
+		return fmt.Sprintf("%s (%s)", prettyName, runtime.GOARCH)
+	case "windows":
+		var details string
+		out, err := exec.CommandContext(ctx, "powershell", "-NoProfile", "-NonInteractive", "-Command", "(Get-CimInstance Win32_OperatingSystem).Caption").Output()
+		if err == nil && len(out) > 0 {
+			details = strings.TrimSpace(string(out))
+		} else {
+			details = "Windows"
+		}
+		return fmt.Sprintf("%s (%s)", details, runtime.GOARCH)
+	default:
+		return fmt.Sprintf("%s (%s)", runtime.GOOS, runtime.GOARCH)
+	}
 }

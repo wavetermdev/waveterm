@@ -1,6 +1,9 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { ClientModel } from "@/app/store/client-model";
+import { GlobalModel } from "@/app/store/global-model";
+import { getTabModelByTabId, TabModelContext } from "@/app/store/tab-model";
 import { Workspace } from "@/app/workspace/workspace";
 import { ContextMenuModel } from "@/store/contextmenu";
 import { atoms, createBlock, getSettingsPrefixAtom, globalStore, isDev, removeFlashError } from "@/store/global";
@@ -29,12 +32,15 @@ const dlog = debug("wave:app");
 const focusLog = debug("wave:focus");
 
 const App = ({ onFirstRender }: { onFirstRender: () => void }) => {
+    const tabId = useAtomValue(atoms.staticTabId);
     useEffect(() => {
         onFirstRender();
     }, []);
     return (
         <Provider store={globalStore}>
-            <AppInner />
+            <TabModelContext.Provider value={getTabModelByTabId(tabId)}>
+                <AppInner />
+            </TabModelContext.Provider>
         </Provider>
     );
 };
@@ -273,8 +279,8 @@ const FlashError = () => {
 
 const AppInner = () => {
     const prefersReducedMotion = useAtomValue(atoms.prefersReducedMotionAtom);
-    const client = useAtomValue(atoms.client);
-    const windowData = useAtomValue(atoms.waveWindow);
+    const client = useAtomValue(ClientModel.getInstance().clientAtom);
+    const windowData = useAtomValue(GlobalModel.getInstance().windowDataAtom);
     const isFullScreen = useAtomValue(atoms.isFullScreen);
 
     if (client == null || windowData == null) {

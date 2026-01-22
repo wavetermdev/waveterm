@@ -18,6 +18,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
+	"github.com/wavetermdev/waveterm/pkg/wavebase"
 )
 
 // these conversions are based off the anthropic spec
@@ -27,21 +28,16 @@ import (
 func buildAnthropicHTTPRequest(ctx context.Context, msgs []anthropicInputMessage, chatOpts uctypes.WaveChatOpts) (*http.Request, error) {
 	opts := chatOpts.Config
 	if opts.Model == "" {
-		return nil, errors.New("opts.model is required")
+		return nil, errors.New("ai:model is required")
 	}
 	if chatOpts.ClientId == "" {
 		return nil, errors.New("chatOpts.ClientId is required")
 	}
 
 	// Set defaults
-	endpoint := opts.BaseURL
+	endpoint := opts.Endpoint
 	if endpoint == "" {
-		return nil, errors.New("BaseURL is required")
-	}
-
-	apiVersion := opts.APIVersion
-	if apiVersion == "" {
-		apiVersion = AnthropicDefaultAPIVersion
+		return nil, errors.New("ai:endpoint is required")
 	}
 
 	maxTokens := opts.MaxTokens
@@ -67,6 +63,37 @@ func buildAnthropicHTTPRequest(ctx context.Context, msgs []anthropicInputMessage
 				}
 				// Append to the Content of this message
 				convertedMsgs[i].Content = append(convertedMsgs[i].Content, tabStateBlock)
+				break
+			}
+		}
+	}
+
+	// inject chatOpts.PlatformInfo, AppStaticFiles, and AppGoFile as "text" blocks at the END of the LAST "user" message found (append to Content)
+	if chatOpts.PlatformInfo != "" || chatOpts.AppStaticFiles != "" || chatOpts.AppGoFile != "" {
+		// Find the last "user" message
+		for i := len(convertedMsgs) - 1; i >= 0; i-- {
+			if convertedMsgs[i].Role == "user" {
+				if chatOpts.PlatformInfo != "" {
+					platformInfoBlock := anthropicMessageContentBlock{
+						Type: "text",
+						Text: "<PlatformInfo>\n" + chatOpts.PlatformInfo + "\n</PlatformInfo>",
+					}
+					convertedMsgs[i].Content = append(convertedMsgs[i].Content, platformInfoBlock)
+				}
+				if chatOpts.AppStaticFiles != "" {
+					appStaticFilesBlock := anthropicMessageContentBlock{
+						Type: "text",
+						Text: "<CurrentAppStaticFiles>\n" + chatOpts.AppStaticFiles + "\n</CurrentAppStaticFiles>",
+					}
+					convertedMsgs[i].Content = append(convertedMsgs[i].Content, appStaticFilesBlock)
+				}
+				if chatOpts.AppGoFile != "" {
+					appGoFileBlock := anthropicMessageContentBlock{
+						Type: "text",
+						Text: "<CurrentAppGoFile>\n" + chatOpts.AppGoFile + "\n</CurrentAppGoFile>",
+					}
+					convertedMsgs[i].Content = append(convertedMsgs[i].Content, appGoFileBlock)
+				}
 				break
 			}
 		}
@@ -137,10 +164,20 @@ func buildAnthropicHTTPRequest(ctx context.Context, msgs []anthropicInputMessage
 	if opts.APIToken != "" {
 		req.Header.Set("x-api-key", opts.APIToken)
 	}
-	req.Header.Set("anthropic-version", apiVersion)
+	req.Header.Set("anthropic-version", AnthropicDefaultAPIVersion)
 	req.Header.Set("accept", "text/event-stream")
-	req.Header.Set("X-Wave-ClientId", chatOpts.ClientId)
-	req.Header.Set("X-Wave-APIType", "anthropic")
+	// Only send Wave-specific headers when using Wave provider
+	if opts.Provider == uctypes.AIProvider_Wave {
+		if chatOpts.ClientId != "" {
+			req.Header.Set("X-Wave-ClientId", chatOpts.ClientId)
+		}
+		if chatOpts.ChatId != "" {
+			req.Header.Set("X-Wave-ChatId", chatOpts.ChatId)
+		}
+		req.Header.Set("X-Wave-Version", wavebase.WaveVersion)
+		req.Header.Set("X-Wave-APIType", uctypes.APIType_AnthropicMessages)
+		req.Header.Set("X-Wave-RequestType", chatOpts.GetWaveRequestType())
+	}
 
 	return req, nil
 }
@@ -764,8 +801,8 @@ func ConvertToolResultsToAnthropicChatMessage(toolResults []uctypes.AIToolResult
 
 // ConvertAIChatToUIChat converts an AIChat to a UIChat for Anthropic
 func ConvertAIChatToUIChat(aiChat uctypes.AIChat) (*uctypes.UIChat, error) {
-	if aiChat.APIType != "anthropic" {
-		return nil, fmt.Errorf("APIType must be 'anthropic', got '%s'", aiChat.APIType)
+	if aiChat.APIType != uctypes.APIType_AnthropicMessages {
+		return nil, fmt.Errorf("APIType must be '%s', got '%s'", uctypes.APIType_AnthropicMessages, aiChat.APIType)
 	}
 
 	uiMessages := make([]uctypes.UIMessage, 0, len(aiChat.NativeMessages))

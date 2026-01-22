@@ -83,3 +83,32 @@ func StreamToLinesChan(input io.Reader) chan LineOutput {
 	}()
 	return ch
 }
+
+// LineWriter is an io.Writer that processes data line-by-line via a callback.
+// Lines do not include the trailing newline. Lines longer than maxLineLength are dropped.
+type LineWriter struct {
+	lineBuf lineBuf
+	lineFn  func([]byte)
+}
+
+// NewLineWriter creates a new LineWriter with the given callback function.
+func NewLineWriter(lineFn func([]byte)) *LineWriter {
+	return &LineWriter{
+		lineFn: lineFn,
+	}
+}
+
+// Write implements io.Writer, processing the data and calling the callback for each complete line.
+func (lw *LineWriter) Write(p []byte) (n int, err error) {
+	streamToLines_processBuf(&lw.lineBuf, p, lw.lineFn)
+	return len(p), nil
+}
+
+// Flush outputs any remaining buffered data as a final line.
+// Should be called when the input stream is complete (e.g., at EOF).
+func (lw *LineWriter) Flush() {
+	if len(lw.lineBuf.buf) > 0 && !lw.lineBuf.inLongLine {
+		lw.lineFn(lw.lineBuf.buf)
+		lw.lineBuf.buf = nil
+	}
+}

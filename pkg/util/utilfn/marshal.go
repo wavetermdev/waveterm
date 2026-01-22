@@ -5,8 +5,10 @@ package utilfn
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"reflect"
 	"strings"
 
@@ -161,4 +163,64 @@ func setValue(field reflect.Value, value any) error {
 	}
 
 	return fmt.Errorf("cannot set value of type %v to field of type %v", valueRef.Type(), field.Type())
+}
+
+// DecodeDataURL decodes a data URL and returns the mimetype and raw data bytes
+func DecodeDataURL(dataURL string) (mimeType string, data []byte, err error) {
+	if !strings.HasPrefix(dataURL, "data:") {
+		return "", nil, fmt.Errorf("invalid data URL: must start with 'data:'")
+	}
+
+	parts := strings.SplitN(dataURL, ",", 2)
+	if len(parts) != 2 {
+		return "", nil, fmt.Errorf("invalid data URL format: missing comma separator")
+	}
+
+	header := parts[0]
+	dataStr := parts[1]
+
+	// Parse mimetype from header: "data:text/plain;base64" -> "text/plain"
+	headerWithoutPrefix := strings.TrimPrefix(header, "data:")
+	mimeType = strings.Split(headerWithoutPrefix, ";")[0]
+	if mimeType == "" {
+		mimeType = "text/plain" // default mimetype
+	}
+
+	if strings.Contains(header, ";base64") {
+		decoded, decodeErr := base64.StdEncoding.DecodeString(dataStr)
+		if decodeErr != nil {
+			return "", nil, fmt.Errorf("failed to decode base64 data: %w", decodeErr)
+		}
+		return mimeType, decoded, nil
+	}
+
+	// Non-base64 data URLs are percent-encoded
+	decoded, decodeErr := url.QueryUnescape(dataStr)
+	if decodeErr != nil {
+		return "", nil, fmt.Errorf("failed to decode percent-encoded data: %w", decodeErr)
+	}
+	return mimeType, []byte(decoded), nil
+}
+
+// MarshalJSONString marshals a string to JSON format, returning the properly escaped JSON string.
+// Returns empty string if there's an error (rare).
+func MarshalJSONString(s string) string {
+	jsonBytes, err := json.Marshal(s)
+	if err != nil {
+		return ""
+	}
+	return string(jsonBytes)
+}
+
+// ContainsBinaryData checks if the provided data contains binary (non-text) content
+func ContainsBinaryData(data []byte) bool {
+	for _, b := range data {
+		if b == 0 {
+			return true
+		}
+		if b < 32 && b != 9 && b != 10 && b != 13 {
+			return true
+		}
+	}
+	return false
 }

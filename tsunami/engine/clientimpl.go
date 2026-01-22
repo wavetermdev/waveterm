@@ -5,6 +5,7 @@ package engine
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io/fs"
 	"log"
@@ -27,6 +28,11 @@ const TsunamiListenAddrEnvVar = "TSUNAMI_LISTENADDR"
 const DefaultListenAddr = "localhost:0"
 const DefaultComponentName = "App"
 
+type ModalState struct {
+	Config     rpctypes.ModalConfig
+	ResultChan chan bool // Channel to receive the result (true = confirmed/ok, false = cancelled)
+}
+
 type ssEvent struct {
 	Event string
 	Data  []byte
@@ -37,6 +43,20 @@ var defaultClient = makeClient()
 type AppMeta struct {
 	Title     string `json:"title"`
 	ShortDesc string `json:"shortdesc"`
+	Icon      string `json:"icon"`      // for waveapps, the icon to use (fontawesome names)
+	IconColor string `json:"iconcolor"` // for waveapps, the icon color to use (HTML color -- name, hex, rgb)
+}
+
+type SecretMeta struct {
+	Desc     string `json:"desc"`
+	Optional bool   `json:"optional"`
+}
+
+type AppManifest struct {
+	AppMeta      AppMeta               `json:"appmeta"`
+	ConfigSchema map[string]any        `json:"configschema"`
+	DataSchema   map[string]any        `json:"dataschema"`
+	Secrets      map[string]SecretMeta `json:"secrets"`
 }
 
 type ClientImpl struct {
@@ -53,10 +73,18 @@ type ClientImpl struct {
 	SSEChannelsLock    *sync.Mutex
 	GlobalEventHandler func(event vdom.VDomEvent)
 	UrlHandlerMux      *http.ServeMux
-	SetupFn            func()
+	AppInitFn          func() error
 	AssetsFS           fs.FS
 	StaticFS           fs.FS
 	ManifestFileBytes  []byte
+
+	// for modals
+	OpenModals     map[string]*ModalState // map of modalId to modal state
+	OpenModalsLock *sync.Mutex
+
+	// for secrets
+	Secrets     map[string]SecretMeta // map of secret name to metadata
+	SecretsLock *sync.Mutex
 
 	// for notification
 	// Atomics so we never drop "last event" timing info even if wakeCh is full.
@@ -73,6 +101,10 @@ func makeClient() *ClientImpl {
 		DoneCh:          make(chan struct{}),
 		SSEChannels:     make(map[string]chan ssEvent),
 		SSEChannelsLock: &sync.Mutex{},
+		OpenModals:      make(map[string]*ModalState),
+		OpenModalsLock:  &sync.Mutex{},
+		Secrets:         make(map[string]SecretMeta),
+		SecretsLock:     &sync.Mutex{},
 		UrlHandlerMux:   http.NewServeMux(),
 		ServerId:        uuid.New().String(),
 		RootElem:        vdom.H(DefaultComponentName, nil),
@@ -148,8 +180,11 @@ func (c *ClientImpl) makeBackendOpts() *rpctypes.VDomBackendOpts {
 }
 
 func (c *ClientImpl) runMainE() error {
-	if c.SetupFn != nil {
-		c.SetupFn()
+	if c.AppInitFn != nil {
+		err := c.AppInitFn()
+		if err != nil {
+			return err
+		}
 	}
 	err := c.listenAndServe(context.Background())
 	if err != nil {
@@ -159,8 +194,8 @@ func (c *ClientImpl) runMainE() error {
 	return nil
 }
 
-func (c *ClientImpl) RegisterSetupFn(fn func()) {
-	c.SetupFn = fn
+func (c *ClientImpl) RegisterAppInitFn(fn func() error) {
+	c.AppInitFn = fn
 }
 
 func (c *ClientImpl) RunMain() {
@@ -368,4 +403,122 @@ func (c *ClientImpl) SetAppMeta(m AppMeta) {
 	c.Lock.Lock()
 	defer c.Lock.Unlock()
 	c.Meta = m
+}
+
+// addModalToMap adds a modal to the map and returns the result channel
+func (c *ClientImpl) addModalToMap(config rpctypes.ModalConfig) chan bool {
+	c.OpenModalsLock.Lock()
+	defer c.OpenModalsLock.Unlock()
+
+	resultChan := make(chan bool, 1)
+	c.OpenModals[config.ModalId] = &ModalState{
+		Config:     config,
+		ResultChan: resultChan,
+	}
+	return resultChan
+}
+
+// ShowModal displays a modal and returns a channel that will receive the result
+func (c *ClientImpl) ShowModal(config rpctypes.ModalConfig) chan bool {
+	resultChan := c.addModalToMap(config)
+
+	data, err := json.Marshal(config)
+	if err != nil {
+		log.Printf("failed to marshal modal config: %v", err)
+		c.CloseModal(config.ModalId, false)
+		return resultChan
+	}
+
+	err = c.SendSSEvent(ssEvent{Event: "showmodal", Data: data})
+	if err != nil {
+		log.Printf("failed to send modal SSE event: %v", err)
+		c.CloseModal(config.ModalId, false)
+		return resultChan
+	}
+
+	return resultChan
+}
+
+// removeModalFromMap removes a modal from the map and returns its state
+func (c *ClientImpl) removeModalFromMap(modalId string) *ModalState {
+	c.OpenModalsLock.Lock()
+	defer c.OpenModalsLock.Unlock()
+
+	modalState, exists := c.OpenModals[modalId]
+	if exists {
+		delete(c.OpenModals, modalId)
+	}
+	return modalState
+}
+
+// CloseModal closes a modal with the given result
+func (c *ClientImpl) CloseModal(modalId string, result bool) {
+	modalState := c.removeModalFromMap(modalId)
+	if modalState != nil {
+		modalState.ResultChan <- result
+		close(modalState.ResultChan)
+	}
+}
+
+// CloseAllModals closes all open modals with cancelled result
+// This is called when the FE requests a resync (page refresh or new client)
+func (c *ClientImpl) CloseAllModals() {
+	c.OpenModalsLock.Lock()
+	modalIds := make([]string, 0, len(c.OpenModals))
+	for modalId := range c.OpenModals {
+		modalIds = append(modalIds, modalId)
+	}
+	c.OpenModalsLock.Unlock()
+
+	for _, modalId := range modalIds {
+		c.CloseModal(modalId, false)
+	}
+}
+
+func (c *ClientImpl) DeclareSecret(name string, desc string, optional bool) {
+	c.SecretsLock.Lock()
+	defer c.SecretsLock.Unlock()
+	if _, exists := c.Secrets[name]; exists {
+		panic(fmt.Sprintf("secret '%s' already declared", name))
+	}
+	c.Secrets[name] = SecretMeta{
+		Desc:     desc,
+		Optional: optional,
+	}
+}
+
+func (c *ClientImpl) GetSecrets() map[string]SecretMeta {
+	c.SecretsLock.Lock()
+	defer c.SecretsLock.Unlock()
+	secretsCopy := make(map[string]SecretMeta, len(c.Secrets))
+	for k, v := range c.Secrets {
+		secretsCopy[k] = v
+	}
+	return secretsCopy
+}
+
+func (c *ClientImpl) GetAppManifest() AppManifest {
+	appMeta := c.GetAppMeta()
+	configSchema := GenerateConfigSchema(c.Root)
+	dataSchema := GenerateDataSchema(c.Root)
+	secrets := c.GetSecrets()
+
+	return AppManifest{
+		AppMeta:      appMeta,
+		ConfigSchema: configSchema,
+		DataSchema:   dataSchema,
+		Secrets:      secrets,
+	}
+}
+
+func (c *ClientImpl) PrintAppManifest() {
+	manifest := c.GetAppManifest()
+	manifestJSON, err := json.MarshalIndent(manifest, "", "  ")
+	if err != nil {
+		fmt.Printf("Error marshaling manifest: %v\n", err)
+		return
+	}
+	fmt.Println("<AppManifest>")
+	fmt.Println(string(manifestJSON))
+	fmt.Println("</AppManifest>")
 }

@@ -4,7 +4,6 @@
 package openai
 
 import (
-	"bytes"
 	"context"
 	"encoding/base64"
 	"encoding/json"
@@ -15,13 +14,73 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
+	"github.com/wavetermdev/waveterm/pkg/aiusechat/aiutil"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
+	"github.com/wavetermdev/waveterm/pkg/wavebase"
 )
 
 const (
 	OpenAIDefaultAPIVersion = "2024-12-31"
 	OpenAIDefaultMaxTokens  = 4096
 )
+
+// convertContentBlockToParts converts a single content block to UIMessageParts
+func convertContentBlockToParts(block OpenAIMessageContent, role string) []uctypes.UIMessagePart {
+	var parts []uctypes.UIMessagePart
+
+	switch block.Type {
+	case "input_text", "output_text":
+		if found, part := aiutil.ConvertDataUserFile(block.Text); found {
+			if part != nil {
+				parts = append(parts, *part)
+			}
+		} else {
+			parts = append(parts, uctypes.UIMessagePart{
+				Type: "text",
+				Text: block.Text,
+			})
+		}
+	case "input_image":
+		if role == "user" {
+			parts = append(parts, uctypes.UIMessagePart{
+				Type: "data-userfile",
+				Data: uctypes.UIMessageDataUserFile{
+					FileName:   block.Filename,
+					MimeType:   "image/*",
+					PreviewUrl: block.PreviewUrl,
+				},
+			})
+		}
+	case "input_file":
+		if role == "user" {
+			parts = append(parts, uctypes.UIMessagePart{
+				Type: "data-userfile",
+				Data: uctypes.UIMessageDataUserFile{
+					FileName:   block.Filename,
+					MimeType:   "application/pdf",
+					PreviewUrl: block.PreviewUrl,
+				},
+			})
+		}
+	}
+
+	return parts
+}
+
+// appendToLastUserMessage appends a text block to the last user message in the inputs slice
+func appendToLastUserMessage(inputs []any, text string) {
+	for i := len(inputs) - 1; i >= 0; i-- {
+		if msg, ok := inputs[i].(OpenAIMessage); ok && msg.Role == "user" {
+			block := OpenAIMessageContent{
+				Type: "input_text",
+				Text: text,
+			}
+			msg.Content = append(msg.Content, block)
+			inputs[i] = msg
+			break
+		}
+	}
+}
 
 // ---------- OpenAI Request Types ----------
 
@@ -75,31 +134,48 @@ type OpenAIRequest struct {
 }
 
 type OpenAIRequestTool struct {
-	Name        string `json:"name"`
-	Description string `json:"description,omitempty"`
-	Parameters  any    `json:"parameters"`
-	Strict      bool   `json:"strict"`
 	Type        string `json:"type"`
+	Name        string `json:"name,omitempty"`
+	Description string `json:"description,omitempty"`
+	Parameters  any    `json:"parameters,omitempty"`
+	Strict      bool   `json:"strict,omitempty"`
 }
 
 // ConvertToolDefinitionToOpenAI converts a generic ToolDefinition to OpenAI format
 func ConvertToolDefinitionToOpenAI(tool uctypes.ToolDefinition) OpenAIRequestTool {
-	cleanedTool := tool.Clean()
 	return OpenAIRequestTool{
-		Name:        cleanedTool.Name,
-		Description: cleanedTool.Description,
-		Parameters:  cleanedTool.InputSchema,
-		Strict:      cleanedTool.Strict,
+		Name:        tool.Name,
+		Description: tool.Description,
+		Parameters:  tool.InputSchema,
+		Strict:      tool.Strict,
 		Type:        "function",
 	}
 }
 
 func debugPrintReq(req *OpenAIRequest, endpoint string) {
+	if !wavebase.IsDevMode() {
+		return
+	}
+	if endpoint != uctypes.DefaultAIEndpoint {
+		log.Printf("endpoint: %s\n", endpoint)
+	}
 	var toolNames []string
 	for _, tool := range req.Tools {
 		toolNames = append(toolNames, tool.Name)
 	}
-	log.Printf("model %s\n", req.Model)
+	modelInfo := req.Model
+	var details []string
+	if req.Reasoning != nil && req.Reasoning.Effort != "" {
+		details = append(details, fmt.Sprintf("reasoning: %s", req.Reasoning.Effort))
+	}
+	if req.MaxOutputTokens > 0 {
+		details = append(details, fmt.Sprintf("max_tokens: %d", req.MaxOutputTokens))
+	}
+	if len(details) > 0 {
+		log.Printf("model %s (%s)\n", modelInfo, strings.Join(details, ", "))
+	} else {
+		log.Printf("model %s\n", modelInfo)
+	}
 	if len(toolNames) > 0 {
 		log.Printf("tools: %s\n", strings.Join(toolNames, ","))
 	}
@@ -113,24 +189,24 @@ func debugPrintReq(req *OpenAIRequest, endpoint string) {
 // buildOpenAIHTTPRequest creates a complete HTTP request for the OpenAI API
 func buildOpenAIHTTPRequest(ctx context.Context, inputs []any, chatOpts uctypes.WaveChatOpts, cont *uctypes.WaveContinueResponse) (*http.Request, error) {
 	opts := chatOpts.Config
-	
+
 	// If continuing from premium rate limit, downgrade to default model and low thinking
 	if cont != nil && cont.ContinueFromKind == uctypes.StopKindPremiumRateLimit {
 		opts.Model = uctypes.DefaultOpenAIModel
 		opts.ThinkingLevel = uctypes.ThinkingLevelLow
 	}
-	
+
 	if opts.Model == "" {
-		return nil, errors.New("opts.model is required")
+		return nil, errors.New("ai:model is required")
 	}
 	if chatOpts.ClientId == "" {
 		return nil, errors.New("chatOpts.ClientId is required")
 	}
 
 	// Set defaults
-	endpoint := opts.BaseURL
+	endpoint := opts.Endpoint
 	if endpoint == "" {
-		return nil, errors.New("BaseURL is required")
+		return nil, errors.New("ai:endpoint is required")
 	}
 
 	maxTokens := opts.MaxTokens
@@ -138,21 +214,18 @@ func buildOpenAIHTTPRequest(ctx context.Context, inputs []any, chatOpts uctypes.
 		maxTokens = OpenAIDefaultMaxTokens
 	}
 
-	// Inject chatOpts.TabState as a text block at the end of the last "user" message
+	// injected data
 	if chatOpts.TabState != "" {
-		// Find the last "user" message
-		for i := len(inputs) - 1; i >= 0; i-- {
-			if msg, ok := inputs[i].(OpenAIMessage); ok && msg.Role == "user" {
-				// Add TabState as a new text block
-				tabStateBlock := OpenAIMessageContent{
-					Type: "input_text",
-					Text: chatOpts.TabState,
-				}
-				msg.Content = append(msg.Content, tabStateBlock)
-				inputs[i] = msg
-				break
-			}
-		}
+		appendToLastUserMessage(inputs, chatOpts.TabState)
+	}
+	if chatOpts.PlatformInfo != "" {
+		appendToLastUserMessage(inputs, "<PlatformInfo>\n"+chatOpts.PlatformInfo+"\n</PlatformInfo>")
+	}
+	if chatOpts.AppStaticFiles != "" {
+		appendToLastUserMessage(inputs, "<CurrentAppStaticFiles>\n"+chatOpts.AppStaticFiles+"\n</CurrentAppStaticFiles>")
+	}
+	if chatOpts.AppGoFile != "" {
+		appendToLastUserMessage(inputs, "<CurrentAppGoFile>\n"+chatOpts.AppGoFile+"\n</CurrentAppGoFile>")
 	}
 
 	// Build request body
@@ -183,46 +256,58 @@ func buildOpenAIHTTPRequest(ctx context.Context, inputs []any, chatOpts uctypes.
 		reqBody.Tools = append(reqBody.Tools, convertedTool)
 	}
 
+	// Add native web search tool if enabled
+	if chatOpts.AllowNativeWebSearch {
+		webSearchTool := OpenAIRequestTool{
+			Type: "web_search",
+		}
+		reqBody.Tools = append(reqBody.Tools, webSearchTool)
+	}
+
 	// Set reasoning based on thinking level
 	if opts.ThinkingLevel != "" {
 		reqBody.Reasoning = &ReasoningType{
 			Effort: opts.ThinkingLevel, // low, medium, high map directly
 		}
-	}
-
-	// Set temperature if provided
-	if opts.APIVersion != "" && opts.APIVersion != OpenAIDefaultAPIVersion {
-		// Temperature and other parameters could be set here based on config
-		// For now, using defaults
+		if opts.Model == "gpt-5" || opts.Model == "gpt-5.1" {
+			reqBody.Reasoning.Summary = "auto"
+		}
 	}
 
 	debugPrintReq(reqBody, endpoint)
 
 	// Encode request body
-	var buf bytes.Buffer
-	encoder := json.NewEncoder(&buf)
-	encoder.SetEscapeHTML(false)
-	err := encoder.Encode(reqBody)
+	buf, err := aiutil.JsonEncodeRequestBody(reqBody)
 	if err != nil {
 		return nil, err
 	}
-
 	// Create HTTP request
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, &buf)
 	if err != nil {
 		return nil, err
 	}
-
 	// Set headers
 	req.Header.Set("Content-Type", "application/json")
-	if opts.APIToken != "" {
+	// Azure OpenAI uses "api-key" header instead of "Authorization: Bearer"
+	if opts.Provider == uctypes.AIProvider_Azure || opts.Provider == uctypes.AIProvider_AzureLegacy {
+		req.Header.Set("api-key", opts.APIToken)
+	} else {
 		req.Header.Set("Authorization", "Bearer "+opts.APIToken)
 	}
 	req.Header.Set("Accept", "text/event-stream")
-	if chatOpts.ClientId != "" {
-		req.Header.Set("X-Wave-ClientId", chatOpts.ClientId)
+
+	// Only send Wave-specific headers when using Wave provider
+	if opts.Provider == uctypes.AIProvider_Wave {
+		if chatOpts.ClientId != "" {
+			req.Header.Set("X-Wave-ClientId", chatOpts.ClientId)
+		}
+		if chatOpts.ChatId != "" {
+			req.Header.Set("X-Wave-ChatId", chatOpts.ChatId)
+		}
+		req.Header.Set("X-Wave-Version", wavebase.WaveVersion)
+		req.Header.Set("X-Wave-APIType", uctypes.APIType_OpenAIResponses)
+		req.Header.Set("X-Wave-RequestType", chatOpts.GetWaveRequestType())
 	}
-	req.Header.Set("X-Wave-APIType", "openai")
 
 	return req, nil
 }
@@ -239,28 +324,15 @@ func convertFileAIMessagePart(part uctypes.AIMessagePart) (*OpenAIMessageContent
 	// Handle different file types
 	switch {
 	case strings.HasPrefix(part.MimeType, "image/"):
-		// Handle images
-		var imageUrl string
-
-		if part.URL != "" {
-			// Validate URL protocol - only allow data:, http:, https:
-			if !strings.HasPrefix(part.URL, "data:") &&
-				!strings.HasPrefix(part.URL, "http://") &&
-				!strings.HasPrefix(part.URL, "https://") {
-				return nil, fmt.Errorf("unsupported URL protocol in file part: %s", part.URL)
-			}
-			imageUrl = part.URL
-		} else if len(part.Data) > 0 {
-			// Convert raw data to base64 data URL
-			base64Data := base64.StdEncoding.EncodeToString(part.Data)
-			imageUrl = fmt.Sprintf("data:%s;base64,%s", part.MimeType, base64Data)
-		} else {
-			return nil, fmt.Errorf("file part missing both url and data")
+		imageUrl, err := aiutil.ExtractImageUrl(part.Data, part.URL, part.MimeType)
+		if err != nil {
+			return nil, err
 		}
 
 		return &OpenAIMessageContent{
 			Type:       "input_image",
 			ImageUrl:   imageUrl,
+			Filename:   part.FileName,
 			PreviewUrl: part.PreviewUrl,
 		}, nil
 
@@ -284,24 +356,25 @@ func convertFileAIMessagePart(part uctypes.AIMessagePart) (*OpenAIMessageContent
 		}, nil
 
 	case part.MimeType == "text/plain":
-		// Handle text/plain files as input_text with special formatting
-		var textContent string
+		textData, err := aiutil.ExtractTextData(part.Data, part.URL)
+		if err != nil {
+			return nil, err
+		}
+		formattedText := aiutil.FormatAttachedTextFile(part.FileName, textData)
+		return &OpenAIMessageContent{
+			Type: "input_text",
+			Text: formattedText,
+		}, nil
+	case part.MimeType == "directory":
+		var jsonContent string
 
 		if len(part.Data) > 0 {
-			textContent = string(part.Data)
-		} else if part.URL != "" {
-			return nil, fmt.Errorf("dropping text/plain file with URL (must be fetched and converted to data)")
+			jsonContent = string(part.Data)
 		} else {
-			return nil, fmt.Errorf("text/plain file part missing data")
+			return nil, fmt.Errorf("directory listing part missing data")
 		}
 
-		// Format as: file "filename" (mimetype)\n\nfile-content
-		fileName := part.FileName
-		if fileName == "" {
-			fileName = "untitled.txt"
-		}
-
-		formattedText := fmt.Sprintf("file %q (%s)\n\n%s", fileName, part.MimeType, textContent)
+		formattedText := aiutil.FormatAttachedDirectoryListing(part.FileName, jsonContent)
 
 		return &OpenAIMessageContent{
 			Type: "input_text",
@@ -309,7 +382,7 @@ func convertFileAIMessagePart(part uctypes.AIMessagePart) (*OpenAIMessageContent
 		}, nil
 
 	default:
-		return nil, fmt.Errorf("dropping file with unsupported mimetype '%s' (OpenAI supports images, PDFs, and text/plain)", part.MimeType)
+		return nil, fmt.Errorf("dropping file with unsupported mimetype '%s' (OpenAI supports images, PDFs, text/plain, and directories)", part.MimeType)
 	}
 }
 
@@ -415,82 +488,35 @@ func ConvertToolResultsToOpenAIChatMessage(toolResults []uctypes.AIToolResult) (
 	return messages, nil
 }
 
-// ConvertToUIMessage converts an OpenAIChatMessage to a UIMessage
-func (m *OpenAIChatMessage) ConvertToUIMessage() *uctypes.UIMessage {
+// convertToUIMessage converts an OpenAIChatMessage to a UIMessage
+func (m *OpenAIChatMessage) convertToUIMessage() *uctypes.UIMessage {
 	var parts []uctypes.UIMessagePart
 	var role string
 
 	// Handle different message types
 	if m.Message != nil {
 		role = m.Message.Role
-		// Iterate over all content blocks
 		for _, block := range m.Message.Content {
-			switch block.Type {
-			case "input_text", "output_text":
-				// Convert text blocks to UIMessagePart
-				parts = append(parts, uctypes.UIMessagePart{
-					Type: "text",
-					Text: block.Text,
-				})
-			case "input_image":
-				// Convert image blocks to data-userfile UIMessagePart (only for user role)
-				if role == "user" {
-					parts = append(parts, uctypes.UIMessagePart{
-						Type: "data-userfile",
-						Data: uctypes.UIMessageDataUserFile{
-							MimeType:   "image/*",
-							PreviewUrl: block.PreviewUrl,
-						},
-					})
-				}
-			case "input_file":
-				// Convert file blocks to data-userfile UIMessagePart (only for user role)
-				if role == "user" {
-					parts = append(parts, uctypes.UIMessagePart{
-						Type: "data-userfile",
-						Data: uctypes.UIMessageDataUserFile{
-							FileName:   block.Filename,
-							MimeType:   "application/pdf",
-							PreviewUrl: block.PreviewUrl,
-						},
-					})
-				}
-			default:
-				// Skip unknown types
-				continue
-			}
+			blockParts := convertContentBlockToParts(block, role)
+			parts = append(parts, blockParts...)
 		}
 	} else if m.FunctionCall != nil {
 		// Handle function call input
 		role = "assistant"
-		if m.FunctionCall.Name != "" && m.FunctionCall.CallId != "" {
-			// Parse arguments JSON string to interface{}
-			var args interface{}
-			if m.FunctionCall.Arguments != "" {
-				if err := json.Unmarshal([]byte(m.FunctionCall.Arguments), &args); err != nil {
-					log.Printf("openai: failed to parse function call arguments: %v", err)
-					args = map[string]interface{}{}
-				}
-			} else {
-				args = map[string]interface{}{}
-			}
-
+		if m.FunctionCall.ToolUseData != nil {
 			parts = append(parts, uctypes.UIMessagePart{
-				Type:       "tool-" + m.FunctionCall.Name,
-				State:      "input-available",
-				ToolCallID: m.FunctionCall.CallId,
-				Input:      args,
+				Type: "data-tooluse",
+				ID:   m.FunctionCall.CallId,
+				Data: *m.FunctionCall.ToolUseData,
 			})
 		}
 	} else if m.FunctionCallOutput != nil {
 		// FunctionCallOutput messages are not converted to UIMessage
 		return nil
 	}
-
 	if len(parts) == 0 {
 		return nil
 	}
-
 	return &uctypes.UIMessage{
 		ID:    m.MessageId,
 		Role:  role,
@@ -500,24 +526,20 @@ func (m *OpenAIChatMessage) ConvertToUIMessage() *uctypes.UIMessage {
 
 // ConvertAIChatToUIChat converts an AIChat to a UIChat for OpenAI
 func ConvertAIChatToUIChat(aiChat uctypes.AIChat) (*uctypes.UIChat, error) {
-	if aiChat.APIType != "openai" {
-		return nil, fmt.Errorf("APIType must be 'openai', got '%s'", aiChat.APIType)
+	if aiChat.APIType != uctypes.APIType_OpenAIResponses {
+		return nil, fmt.Errorf("APIType must be '%s', got '%s'", uctypes.APIType_OpenAIResponses, aiChat.APIType)
 	}
-
 	uiMessages := make([]uctypes.UIMessage, 0, len(aiChat.NativeMessages))
-
 	for i, nativeMsg := range aiChat.NativeMessages {
 		openaiMsg, ok := nativeMsg.(*OpenAIChatMessage)
 		if !ok {
 			return nil, fmt.Errorf("message %d: expected *OpenAIChatMessage, got %T", i, nativeMsg)
 		}
-
-		uiMsg := openaiMsg.ConvertToUIMessage()
+		uiMsg := openaiMsg.convertToUIMessage()
 		if uiMsg != nil {
 			uiMessages = append(uiMessages, *uiMsg)
 		}
 	}
-
 	return &uctypes.UIChat{
 		ChatId:     aiChat.ChatId,
 		APIType:    aiChat.APIType,
@@ -525,4 +547,19 @@ func ConvertAIChatToUIChat(aiChat uctypes.AIChat) (*uctypes.UIChat, error) {
 		APIVersion: aiChat.APIVersion,
 		Messages:   uiMessages,
 	}, nil
+}
+
+// GetFunctionCallInputByToolCallId returns the OpenAIFunctionCallInput associated with the given ToolCallId,
+// or nil if not found in the AIChat
+func GetFunctionCallInputByToolCallId(aiChat uctypes.AIChat, toolCallId string) *OpenAIFunctionCallInput {
+	for _, nativeMsg := range aiChat.NativeMessages {
+		openaiMsg, ok := nativeMsg.(*OpenAIChatMessage)
+		if !ok {
+			continue
+		}
+		if openaiMsg.FunctionCall != nil && openaiMsg.FunctionCall.CallId == toolCallId {
+			return openaiMsg.FunctionCall
+		}
+	}
+	return nil
 }

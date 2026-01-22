@@ -6,7 +6,7 @@ import { makeORef, splitORef } from "@/app/store/wos";
 import { RpcResponseHelper, WshClient } from "@/app/store/wshclient";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { makeFeBlockRouteId } from "@/app/store/wshrouter";
-import { TermViewModel } from "@/app/view/term/term";
+import { TermViewModel } from "@/app/view/term/term-model";
 import { isBlank } from "@/util/util";
 import debug from "debug";
 
@@ -104,6 +104,11 @@ export class TermWshClient extends WshClient {
         }
     }
 
+    async handle_termupdateattachedjob(rh: RpcResponseHelper, data: CommandTermUpdateAttachedJobData): Promise<void> {
+        console.log("term-update-attached-job", this.blockId, data);
+        // TODO: implement frontend logic to handle job attachment updates
+    }
+
     async handle_termgetscrollbacklines(
         rh: RpcResponseHelper,
         data: CommandTermGetScrollbackLinesData
@@ -121,6 +126,44 @@ export class TermWshClient extends WshClient {
         const buffer = termWrap.terminal.buffer.active;
         const totalLines = buffer.length;
         const lines: string[] = [];
+
+        if (data.lastcommand) {
+            if (globalStore.get(termWrap.shellIntegrationStatusAtom) == null) {
+                throw new Error("Cannot get last command data without shell integration");
+            }
+
+            let startLine = 0;
+            if (termWrap.promptMarkers.length > 0) {
+                const lastMarker = termWrap.promptMarkers[termWrap.promptMarkers.length - 1];
+                const markerLine = lastMarker.line;
+                startLine = totalLines - markerLine;
+            }
+
+            const endLine = totalLines;
+            for (let i = startLine; i < endLine; i++) {
+                const bufferIndex = totalLines - 1 - i;
+                const line = buffer.getLine(bufferIndex);
+                if (line) {
+                    lines.push(line.translateToString(true));
+                }
+            }
+
+            lines.reverse();
+
+            let returnLines = lines;
+            let returnStartLine = startLine;
+            if (lines.length > 1000) {
+                returnLines = lines.slice(lines.length - 1000);
+                returnStartLine = startLine + (lines.length - 1000);
+            }
+
+            return {
+                totallines: totalLines,
+                linestart: returnStartLine,
+                lines: returnLines,
+                lastupdated: termWrap.lastUpdated,
+            };
+        }
 
         const startLine = Math.max(0, data.linestart);
         const endLine = Math.min(totalLines, data.lineend);

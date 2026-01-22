@@ -4,6 +4,7 @@
 import debug from "debug";
 import * as jotai from "jotai";
 
+import { arrayBufferToBase64 } from "@/util/base64";
 import { getOrCreateClientId } from "@/util/clientid";
 import { adaptFromReactOrNativeKeyEvent } from "@/util/keyutil";
 import { PLATFORM, PlatformMacOS } from "@/util/platformutil";
@@ -38,6 +39,28 @@ function isBlank(v: string): boolean {
     return v == null || v === "";
 }
 
+async function fileToVDomFileData(file: File, fieldname: string): Promise<VDomFileData> {
+    const maxSize = 5 * 1024 * 1024;
+    if (file.size > maxSize) {
+        return {
+            fieldname: fieldname,
+            name: file.name,
+            size: file.size,
+            type: file.type,
+            error: "File size exceeds 5MB limit",
+        };
+    }
+    const buffer = await file.arrayBuffer();
+    const data64 = arrayBufferToBase64(buffer);
+    return {
+        fieldname: fieldname,
+        name: file.name,
+        size: file.size,
+        type: file.type,
+        data64: data64,
+    };
+}
+
 function annotateEvent(event: VDomEvent, propName: string, reactEvent: React.SyntheticEvent) {
     if (reactEvent == null) {
         return;
@@ -47,7 +70,7 @@ function annotateEvent(event: VDomEvent, propName: string, reactEvent: React.Syn
         event.targetvalue = changeEvent.target?.value;
         event.targetchecked = changeEvent.target?.checked;
     }
-    if (propName == "onClick" || propName == "onMouseDown") {
+    if (propName == "onClick" || propName == "onMouseDown" || propName == "onMouseUp" || propName == "onDoubleClick") {
         const mouseEvent = reactEvent as React.MouseEvent<any>;
         event.mousedata = {
             button: mouseEvent.button,
@@ -76,6 +99,69 @@ function annotateEvent(event: VDomEvent, propName: string, reactEvent: React.Syn
     if (propName == "onKeyDown") {
         const waveKeyEvent = adaptFromReactOrNativeKeyEvent(reactEvent as React.KeyboardEvent);
         event.keydata = waveKeyEvent;
+    }
+}
+
+async function asyncAnnotateEvent(event: VDomEvent, propName: string, reactEvent: React.SyntheticEvent) {
+    if (propName == "onSubmit") {
+        const formEvent = reactEvent as React.FormEvent<HTMLFormElement>;
+        const form = formEvent.currentTarget;
+
+        event.targetname = form.name;
+        event.targetid = form.id;
+
+        const formData: VDomFormData = {
+            method: (form.method || "get").toUpperCase(),
+            enctype: form.enctype || "application/x-www-form-urlencoded",
+            fields: {},
+            files: {},
+        };
+
+        if (form.action) {
+            formData.action = form.action;
+        }
+        if (form.id) {
+            formData.formid = form.id;
+        }
+        if (form.name) {
+            formData.formname = form.name;
+        }
+
+        const formDataObj = new FormData(form);
+
+        for (const [key, value] of formDataObj.entries()) {
+            if (value instanceof File) {
+                if (!value.name && value.size === 0) {
+                    continue;
+                }
+                if (!formData.files[key]) {
+                    formData.files[key] = [];
+                }
+                formData.files[key].push(await fileToVDomFileData(value, key));
+            } else {
+                if (!formData.fields[key]) {
+                    formData.fields[key] = [];
+                }
+                formData.fields[key].push(value.toString());
+            }
+        }
+
+        event.formdata = formData;
+    }
+    if (propName == "onChange") {
+        const changeEvent = reactEvent as React.ChangeEvent<HTMLInputElement>;
+        if (changeEvent.target?.type === "file" && changeEvent.target.files) {
+            event.targetname = changeEvent.target.name;
+            event.targetid = changeEvent.target.id;
+
+            const files: VDomFileData[] = [];
+            const fieldname = changeEvent.target.name || changeEvent.target.id || "file";
+            for (let i = 0; i < changeEvent.target.files.length; i++) {
+                const file = changeEvent.target.files[i];
+                files.push(await fileToVDomFileData(file, fieldname));
+            }
+            event.targetfiles = files;
+        }
     }
 }
 
@@ -109,6 +195,7 @@ export class TsunamiModel {
     cachedTitle: string | null = null;
     cachedShortDesc: string | null = null;
     reason: string | null = null;
+    currentModal: jotai.PrimitiveAtom<ModalConfig | null> = jotai.atom(null) as jotai.PrimitiveAtom<ModalConfig | null>;
 
     constructor() {
         this.clientId = getOrCreateClientId();
@@ -137,6 +224,16 @@ export class TsunamiModel {
         this.serverEventSource.addEventListener("asyncinitiation", (event) => {
             dlog("async-initiation SSE event received", event);
             this.queueUpdate(true, "asyncinitiation");
+        });
+
+        this.serverEventSource.addEventListener("showmodal", (event: MessageEvent) => {
+            dlog("showmodal SSE event received", event);
+            try {
+                const config: ModalConfig = JSON.parse(event.data);
+                getDefaultStore().set(this.currentModal, config);
+            } catch (e) {
+                console.error("Failed to parse modal config:", e);
+            }
         });
 
         this.serverEventSource.addEventListener("error", (event) => {
@@ -620,9 +717,23 @@ export class TsunamiModel {
         if (fnDecl.globalevent) {
             vdomEvent.globaleventtype = fnDecl.globalevent;
         }
-        annotateEvent(vdomEvent, propName, e);
-        this.batchedEvents.push(vdomEvent);
-        this.queueUpdate(true, "event");
+        const needsAsync =
+            propName == "onSubmit" ||
+            (propName == "onChange" && (e.target as HTMLInputElement)?.type === "file");
+        if (needsAsync) {
+            asyncAnnotateEvent(vdomEvent, propName, e)
+                .then(() => {
+                    this.batchedEvents.push(vdomEvent);
+                    this.queueUpdate(true, "event");
+                })
+                .catch((err) => {
+                    console.error("Error processing event:", err);
+                });
+        } else {
+            annotateEvent(vdomEvent, propName, e);
+            this.batchedEvents.push(vdomEvent);
+            this.queueUpdate(true, "event");
+        }
     }
 
     createFeUpdate(): VDomFrontendUpdate {
@@ -652,5 +763,31 @@ export class TsunamiModel {
             this.disposed = true;
         }
         return feUpdate;
+    }
+
+    async sendModalResult(modalId: string, confirm: boolean) {
+        const result: ModalResult = {
+            modalid: modalId,
+            confirm: confirm,
+        };
+
+        try {
+            const response = await fetch("/api/modalresult", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(result),
+            });
+
+            if (!response.ok) {
+                console.error("Failed to send modal result:", response.statusText);
+            }
+        } catch (error) {
+            console.error("Error sending modal result:", error);
+        }
+
+        // Clear the current modal
+        getDefaultStore().set(this.currentModal, null);
     }
 }

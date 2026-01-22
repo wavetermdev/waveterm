@@ -1,13 +1,17 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { BlockNodeModel } from "@/app/block/blocktypes";
 import { Button } from "@/app/element/button";
 import { Markdown } from "@/app/element/markdown";
 import { TypingIndicator } from "@/app/element/typingindicator";
+import { ClientModel } from "@/app/store/client-model";
+import type { TabModel } from "@/app/store/tab-model";
 import { RpcResponseHelper, WshClient } from "@/app/store/wshclient";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { makeFeBlockRouteId } from "@/app/store/wshrouter";
 import { DefaultRouter, TabRpcClient } from "@/app/store/wshrpcutil";
+import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
 import { atoms, createBlock, fetchWaveFile, getApi, globalStore, WOS } from "@/store/global";
 import { BlockService, ObjectService } from "@/store/services";
 import { adaptFromReactOrNativeKeyEvent, checkKeyPressed } from "@/util/keyutil";
@@ -64,6 +68,8 @@ class AiWshClient extends WshClient {
 export class WaveAiModel implements ViewModel {
     viewType: string;
     blockId: string;
+    nodeModel: BlockNodeModel;
+    tabModel: TabModel;
     blockAtom: Atom<Block>;
     presetKey: Atom<string>;
     presetMap: Atom<{ [k: string]: MetaType }>;
@@ -86,13 +92,15 @@ export class WaveAiModel implements ViewModel {
     cancel: boolean;
     aiWshClient: AiWshClient;
 
-    constructor(blockId: string) {
+    constructor(blockId: string, nodeModel: BlockNodeModel, tabModel: TabModel) {
+        this.blockId = blockId;
+        this.nodeModel = nodeModel;
+        this.tabModel = tabModel;
         this.aiWshClient = new AiWshClient(blockId, this);
         DefaultRouter.registerRoute(makeFeBlockRouteId(blockId), this.aiWshClient);
         this.locked = atom(false);
         this.cancel = false;
         this.viewType = "waveai";
-        this.blockId = blockId;
         this.blockAtom = WOS.getWaveObjectAtom<Block>(`block:${blockId}`);
         this.viewIcon = atom("sparkles");
         this.viewName = atom("Wave AI");
@@ -337,7 +345,7 @@ export class WaveAiModel implements ViewModel {
     }
 
     sendMessage(text: string, user: string = "user") {
-        const clientId = globalStore.get(atoms.clientId);
+        const clientId = ClientModel.getInstance().clientId;
         this.setLocked(true);
 
         const newMessage: ChatMessageType = {
@@ -698,6 +706,8 @@ const WaveAi = ({ model }: { model: WaveAiModel; blockId: string }) => {
     const baseFontSize: number = 14;
     const msgWidths = {};
     const locked = useAtomValue(model.locked);
+    const aiOpts = useAtomValue(model.aiOpts);
+    const isUsingProxy = isBlank(aiOpts.apitoken) && isBlank(aiOpts.baseurl);
 
     // a weird workaround to initialize ansynchronously
     useEffect(() => {
@@ -854,8 +864,27 @@ const WaveAi = ({ model }: { model: WaveAiModel; blockId: string }) => {
         }
     }, [locked, handleEnterKeyPressed]);
 
+    const handleOpenAIPanel = useCallback(() => {
+        WorkspaceLayoutModel.getInstance().setAIPanelVisible(true);
+    }, []);
+
     return (
         <div ref={waveaiRef} className="waveai">
+            {isUsingProxy && (
+                <div className="flex items-start gap-3 px-4 py-2 bg-orange-500/25 border-b border-orange-500/50 text-sm">
+                    <i className="fa-sharp fa-solid fa-triangle-exclamation text-orange-300 mt-0.5"></i>
+                    <span className="text-primary/90">
+                        Wave AI Proxy is deprecated and will be removed. Please use the new{" "}
+                        <button
+                            onClick={handleOpenAIPanel}
+                            className="text-accent hover:text-accent/80 underline cursor-pointer"
+                        >
+                            Wave AI panel
+                        </button>{" "}
+                        instead (better model, terminal integration, tool support, image uploads).
+                    </span>
+                </div>
+            )}
             <div className="waveai-chat">
                 <ChatWindow ref={osRef} chatWindowRef={chatWindowRef} msgWidths={msgWidths} model={model} />
             </div>

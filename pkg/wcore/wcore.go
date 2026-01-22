@@ -6,15 +6,23 @@ package wcore
 
 import (
 	"context"
+	"crypto/ed25519"
+	"crypto/x509"
+	"encoding/base64"
+	"encoding/pem"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
 
+	"github.com/wavetermdev/waveterm/pkg/panichandler"
+	"github.com/wavetermdev/waveterm/pkg/wavejwt"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
-	"github.com/wavetermdev/waveterm/pkg/wstore"
+	"github.com/wavetermdev/waveterm/pkg/wcloud"
 	"github.com/wavetermdev/waveterm/pkg/wps"
+	"github.com/wavetermdev/waveterm/pkg/wstore"
 )
 
 // the wcore package coordinates actions across the storage layer
@@ -37,6 +45,14 @@ func EnsureInitialData() (bool, error) {
 	if client.TempOID == "" {
 		log.Println("client.TempOID is empty")
 		client.TempOID = uuid.NewString()
+		err = wstore.DBUpdate(ctx, client)
+		if err != nil {
+			return firstLaunch, fmt.Errorf("error updating client: %w", err)
+		}
+	}
+	if client.InstallId == "" {
+		log.Println("client.InstallId is empty")
+		client.InstallId = uuid.NewString()
 		err = wstore.DBUpdate(ctx, client)
 		if err != nil {
 			return firstLaunch, fmt.Errorf("error updating client: %w", err)
@@ -107,4 +123,114 @@ func SendWaveObjUpdate(oref waveobj.ORef) {
 			Obj:        waveObj,
 		},
 	})
+}
+
+func ResolveBlockIdFromPrefix(ctx context.Context, tabId string, blockIdPrefix string) (string, error) {
+	if len(blockIdPrefix) != 8 {
+		return "", fmt.Errorf("widget_id must be 8 characters")
+	}
+
+	tab, err := wstore.DBMustGet[*waveobj.Tab](ctx, tabId)
+	if err != nil {
+		return "", fmt.Errorf("error getting tab: %w", err)
+	}
+
+	for _, blockId := range tab.BlockIds {
+		if strings.HasPrefix(blockId, blockIdPrefix) {
+			return blockId, nil
+		}
+	}
+
+	return "", fmt.Errorf("widget_id not found: %q", blockIdPrefix)
+}
+
+func GoSendNoTelemetryUpdate(telemetryEnabled bool) {
+	go func() {
+		defer func() {
+			panichandler.PanicHandler("GoSendNoTelemetryUpdate", recover())
+		}()
+		ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancelFn()
+		clientData, err := wstore.DBGetSingleton[*waveobj.Client](ctx)
+		if err != nil {
+			log.Printf("telemetry update: error getting client data: %v\n", err)
+			return
+		}
+		if clientData == nil {
+			log.Printf("telemetry update: client data is nil\n")
+			return
+		}
+		err = wcloud.SendNoTelemetryUpdate(ctx, clientData.OID, !telemetryEnabled)
+		if err != nil {
+			log.Printf("[error] sending no-telemetry update: %v\n", err)
+			return
+		}
+	}()
+}
+
+func InitMainServer() error {
+	ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancelFn()
+
+	mainServer, err := wstore.DBGetSingleton[*waveobj.MainServer](ctx)
+	if err == wstore.ErrNotFound {
+		mainServer = &waveobj.MainServer{
+			OID: uuid.NewString(),
+		}
+		err = wstore.DBInsert(ctx, mainServer)
+		if err != nil {
+			return fmt.Errorf("error inserting mainserver: %w", err)
+		}
+	} else if err != nil {
+		return fmt.Errorf("error getting mainserver: %w", err)
+	}
+
+	needsUpdate := false
+	if mainServer.JwtPrivateKey == "" || mainServer.JwtPublicKey == "" {
+		keyPair, err := wavejwt.GenerateKeyPair()
+		if err != nil {
+			return fmt.Errorf("error generating jwt keypair: %w", err)
+		}
+		mainServer.JwtPrivateKey = base64.StdEncoding.EncodeToString(keyPair.PrivateKey)
+		mainServer.JwtPublicKey = base64.StdEncoding.EncodeToString(keyPair.PublicKey)
+		needsUpdate = true
+	}
+
+	if needsUpdate {
+		err = wstore.DBUpdate(ctx, mainServer)
+		if err != nil {
+			return fmt.Errorf("error updating mainserver: %w", err)
+		}
+	}
+
+	privateKeyBytes, err := base64.StdEncoding.DecodeString(mainServer.JwtPrivateKey)
+	if err != nil {
+		return fmt.Errorf("error decoding jwt private key: %w", err)
+	}
+	publicKeyBytes, err := base64.StdEncoding.DecodeString(mainServer.JwtPublicKey)
+	if err != nil {
+		return fmt.Errorf("error decoding jwt public key: %w", err)
+	}
+
+	err = wavejwt.SetPrivateKey(privateKeyBytes)
+	if err != nil {
+		return fmt.Errorf("error setting jwt private key: %w", err)
+	}
+	err = wavejwt.SetPublicKey(publicKeyBytes)
+	if err != nil {
+		return fmt.Errorf("error setting jwt public key: %w", err)
+	}
+
+	pubKeyDer, err := x509.MarshalPKIXPublicKey(ed25519.PublicKey(publicKeyBytes))
+	if err != nil {
+		log.Printf("warning: could not marshal public key for logging: %v", err)
+	} else {
+		pubKeyPem := pem.EncodeToMemory(&pem.Block{
+			Type:  "PUBLIC KEY",
+			Bytes: pubKeyDer,
+		})
+		log.Printf("JWT Public Key:\n%s", string(pubKeyPem))
+	}
+
+	return nil
 }

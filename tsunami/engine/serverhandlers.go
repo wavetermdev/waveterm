@@ -50,6 +50,31 @@ func setNoCacheHeaders(w http.ResponseWriter) {
 	w.Header().Set("Expires", "0")
 }
 
+func setCORSHeaders(w http.ResponseWriter, r *http.Request) bool {
+	corsOriginsStr := os.Getenv("TSUNAMI_CORS")
+	if corsOriginsStr == "" {
+		return false
+	}
+
+	origin := r.Header.Get("Origin")
+	if origin == "" {
+		return false
+	}
+
+	allowedOrigins := strings.Split(corsOriginsStr, ",")
+	for _, allowedOrigin := range allowedOrigins {
+		allowedOrigin = strings.TrimSpace(allowedOrigin)
+		if allowedOrigin == origin {
+			w.Header().Set("Access-Control-Allow-Origin", origin)
+			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+			w.Header().Set("Access-Control-Allow-Credentials", "true")
+			return true
+		}
+	}
+	return false
+}
+
 func (h *httpHandlers) registerHandlers(mux *http.ServeMux, opts handlerOpts) {
 	mux.HandleFunc("/api/render", h.handleRender)
 	mux.HandleFunc("/api/updates", h.handleSSE)
@@ -57,6 +82,7 @@ func (h *httpHandlers) registerHandlers(mux *http.ServeMux, opts handlerOpts) {
 	mux.HandleFunc("/api/config", h.handleConfig)
 	mux.HandleFunc("/api/schemas", h.handleSchemas)
 	mux.HandleFunc("/api/manifest", h.handleManifest(opts.ManifestFile))
+	mux.HandleFunc("/api/modalresult", h.handleModalResult)
 	mux.HandleFunc("/dyn/", h.handleDynContent)
 
 	// Add handler for static files at /static/ path
@@ -162,6 +188,11 @@ func (h *httpHandlers) processFrontendUpdate(feUpdate *rpctypes.VDomFrontendUpda
 
 	h.Client.Root.RenderTs = feUpdate.Ts
 
+	// Close all open modals on resync (e.g., page refresh)
+	if feUpdate.Resync {
+		h.Client.CloseAllModals()
+	}
+
 	// run events
 	h.Client.RunEvents(feUpdate.Events)
 	// update refs
@@ -194,7 +225,13 @@ func (h *httpHandlers) handleData(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
+	setCORSHeaders(w, r)
 	setNoCacheHeaders(w)
+
+	if r.Method == http.MethodOptions {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
 
 	if r.Method != http.MethodGet {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -218,7 +255,13 @@ func (h *httpHandlers) handleConfig(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
+	setCORSHeaders(w, r)
 	setNoCacheHeaders(w)
+
+	if r.Method == http.MethodOptions {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
 
 	switch r.Method {
 	case http.MethodGet:
@@ -287,7 +330,13 @@ func (h *httpHandlers) handleSchemas(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
+	setCORSHeaders(w, r)
 	setNoCacheHeaders(w)
+
+	if r.Method == http.MethodOptions {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
 
 	if r.Method != http.MethodGet {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -307,6 +356,40 @@ func (h *httpHandlers) handleSchemas(w http.ResponseWriter, r *http.Request) {
 		log.Printf("failed to encode schemas response: %v", err)
 		http.Error(w, "failed to encode response", http.StatusInternalServerError)
 	}
+}
+
+func (h *httpHandlers) handleModalResult(w http.ResponseWriter, r *http.Request) {
+	defer func() {
+		panicErr := util.PanicHandler("handleModalResult", recover())
+		if panicErr != nil {
+			http.Error(w, fmt.Sprintf("internal server error: %v", panicErr), http.StatusInternalServerError)
+		}
+	}()
+
+	setNoCacheHeaders(w)
+
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("failed to read request body: %v", err), http.StatusBadRequest)
+		return
+	}
+
+	var result rpctypes.ModalResult
+	if err := json.Unmarshal(body, &result); err != nil {
+		http.Error(w, fmt.Sprintf("failed to parse JSON: %v", err), http.StatusBadRequest)
+		return
+	}
+
+	h.Client.CloseModal(result.ModalId, result.Confirm)
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]any{"success": true})
 }
 
 func (h *httpHandlers) handleDynContent(w http.ResponseWriter, r *http.Request) {
@@ -466,7 +549,13 @@ func (h *httpHandlers) handleManifest(manifestFileBytes []byte) http.HandlerFunc
 			}
 		}()
 
+		setCORSHeaders(w, r)
 		setNoCacheHeaders(w)
+
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
 
 		if r.Method != http.MethodGet {
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)

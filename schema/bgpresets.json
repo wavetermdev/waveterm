@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "BgPresetsType": {
+      "properties": {
+        "bg:*": {
+          "type": "boolean"
+        },
+        "bg": {
+          "type": "string",
+          "description": "CSS background property value"
+        },
+        "bg:opacity": {
+          "type": "number",
+          "description": "Background opacity (0.0-1.0)"
+        },
+        "bg:blendmode": {
+          "type": "string",
+          "description": "CSS background-blend-mode property value"
+        },
+        "bg:bordercolor": {
+          "type": "string",
+          "description": "Block frame border color"
+        },
+        "bg:activebordercolor": {
+          "type": "string",
+          "description": "Block frame focused border color"
+        },
+        "display:name": {
+          "type": "string",
+          "description": "The name shown in the context menu"
+        },
+        "display:order": {
+          "type": "number",
+          "description": "Determines the order of the background in the context menu"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    }
+  },
+  "additionalProperties": {
+    "$ref": "#/$defs/BgPresetsType"
+  },
+  "type": "object"
+}

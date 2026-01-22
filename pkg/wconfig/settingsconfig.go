@@ -32,6 +32,7 @@ const AnySchema = `
 }
 `
 
+// old AI Widget presets (deprecated)
 type AiSettingsType struct {
 	AiClear         bool    `json:"ai:*,omitempty"`
 	AiPreset        string  `json:"ai:preset,omitempty"`
@@ -57,6 +58,9 @@ type SettingsType struct {
 	AppDismissArchitectureWarning bool   `json:"app:dismissarchitecturewarning,omitempty"`
 	AppDefaultNewBlock            string `json:"app:defaultnewblock,omitempty"`
 	AppShowOverlayBlockNums       *bool  `json:"app:showoverlayblocknums,omitempty"`
+	AppCtrlVPaste                 *bool  `json:"app:ctrlvpaste,omitempty"`
+
+	FeatureWaveAppBuilder bool `json:"feature:waveappbuilder,omitempty"`
 
 	AiClear         bool    `json:"ai:*,omitempty"`
 	AiPreset        string  `json:"ai:preset,omitempty"`
@@ -73,6 +77,9 @@ type SettingsType struct {
 	AiFontSize      float64 `json:"ai:fontsize,omitempty"`
 	AiFixedFontSize float64 `json:"ai:fixedfontsize,omitempty"`
 
+	WaveAiShowCloudModes bool   `json:"waveai:showcloudmodes,omitempty"`
+	WaveAiDefaultMode    string `json:"waveai:defaultmode,omitempty"`
+
 	TermClear               bool     `json:"term:*,omitempty"`
 	TermFontSize            float64  `json:"term:fontsize,omitempty"`
 	TermFontFamily          string   `json:"term:fontfamily,omitempty"`
@@ -80,16 +87,19 @@ type SettingsType struct {
 	TermDisableWebGl        bool     `json:"term:disablewebgl,omitempty"`
 	TermLocalShellPath      string   `json:"term:localshellpath,omitempty"`
 	TermLocalShellOpts      []string `json:"term:localshellopts,omitempty"`
+	TermGitBashPath         string   `json:"term:gitbashpath,omitempty"`
 	TermScrollback          *int64   `json:"term:scrollback,omitempty"`
 	TermCopyOnSelect        *bool    `json:"term:copyonselect,omitempty"`
 	TermTransparency        *float64 `json:"term:transparency,omitempty"`
 	TermAllowBracketedPaste *bool    `json:"term:allowbracketedpaste,omitempty"`
 	TermShiftEnterNewline   *bool    `json:"term:shiftenternewline,omitempty"`
+	TermMacOptionIsMeta     *bool    `json:"term:macoptionismeta,omitempty"`
 
 	EditorMinimapEnabled      bool    `json:"editor:minimapenabled,omitempty"`
 	EditorStickyScrollEnabled bool    `json:"editor:stickyscrollenabled,omitempty"`
 	EditorWordWrap            bool    `json:"editor:wordwrap,omitempty"`
 	EditorFontSize            float64 `json:"editor:fontsize,omitempty"`
+	EditorInlineDiff          bool    `json:"editor:inlinediff,omitempty"`
 
 	WebClear               bool   `json:"web:*,omitempty"`
 	WebOpenLinksInternally bool   `json:"web:openlinksinternally,omitempty"`
@@ -116,6 +126,7 @@ type SettingsType struct {
 	WidgetShowHelp *bool `json:"widget:showhelp,omitempty"`
 
 	WindowClear                         bool     `json:"window:*,omitempty"`
+	WindowFullscreenOnLaunch            bool     `json:"window:fullscreenonlaunch,omitempty"`
 	WindowTransparent                   bool     `json:"window:transparent,omitempty"`
 	WindowBlur                          bool     `json:"window:blur,omitempty"`
 	WindowOpacity                       *float64 `json:"window:opacity,omitempty"`
@@ -141,6 +152,16 @@ type SettingsType struct {
 	ConnClear               bool  `json:"conn:*,omitempty"`
 	ConnAskBeforeWshInstall *bool `json:"conn:askbeforewshinstall,omitempty"`
 	ConnWshEnabled          bool  `json:"conn:wshenabled,omitempty"`
+
+	DebugClear               bool `json:"debug:*,omitempty"`
+	DebugPprofPort           *int `json:"debug:pprofport,omitempty"`
+	DebugPprofMemProfileRate *int `json:"debug:pprofmemprofilerate,omitempty"`
+
+	TsunamiClear          bool   `json:"tsunami:*,omitempty"`
+	TsunamiScaffoldPath   string `json:"tsunami:scaffoldpath,omitempty"`
+	TsunamiSdkReplacePath string `json:"tsunami:sdkreplacepath,omitempty"`
+	TsunamiSdkVersion     string `json:"tsunami:sdkversion,omitempty"`
+	TsunamiGoPath         string `json:"tsunami:gopath,omitempty"`
 }
 
 func (s *SettingsType) GetAiSettings() *AiSettingsType {
@@ -242,6 +263,32 @@ type WebBookmark struct {
 	DisplayOrder float64 `json:"display:order,omitempty"`
 }
 
+// Wave AI panel mode configuration (NEW)
+type AIModeConfigType struct {
+	DisplayName        string   `json:"display:name"`
+	DisplayOrder       float64  `json:"display:order,omitempty"`
+	DisplayIcon        string   `json:"display:icon,omitempty"`
+	DisplayDescription string   `json:"display:description,omitempty"`
+	Provider           string   `json:"ai:provider,omitempty" jsonschema:"enum=wave,enum=google,enum=openrouter,enum=openai,enum=azure,enum=azure-legacy,enum=custom"`
+	APIType            string   `json:"ai:apitype,omitempty" jsonschema:"enum=google-gemini,enum=openai-responses,enum=openai-chat"`
+	Model              string   `json:"ai:model,omitempty"`
+	ThinkingLevel      string   `json:"ai:thinkinglevel,omitempty" jsonschema:"enum=low,enum=medium,enum=high"`
+	Endpoint           string   `json:"ai:endpoint,omitempty"`
+	AzureAPIVersion    string   `json:"ai:azureapiversion,omitempty"`
+	APIToken           string   `json:"ai:apitoken,omitempty"`
+	APITokenSecretName string   `json:"ai:apitokensecretname,omitempty"`
+	AzureResourceName  string   `json:"ai:azureresourcename,omitempty"`
+	AzureDeployment    string   `json:"ai:azuredeployment,omitempty"`
+	Capabilities       []string `json:"ai:capabilities,omitempty" jsonschema:"enum=pdfs,enum=images,enum=tools"`
+	SwitchCompat       []string `json:"ai:switchcompat,omitempty"`
+	WaveAICloud        bool     `json:"waveai:cloud,omitempty"`
+	WaveAIPremium      bool     `json:"waveai:premium,omitempty"`
+}
+
+type AIModeConfigUpdate struct {
+	Configs map[string]AIModeConfigType `json:"configs"`
+}
+
 type FullConfigType struct {
 	Settings       SettingsType                   `json:"settings" merge:"meta"`
 	MimeTypes      map[string]MimeTypeConfigType  `json:"mimetypes"`
@@ -251,8 +298,10 @@ type FullConfigType struct {
 	TermThemes     map[string]TermThemeType       `json:"termthemes"`
 	Connections    map[string]ConnKeywords        `json:"connections"`
 	Bookmarks      map[string]WebBookmark         `json:"bookmarks"`
+	WaveAIModes    map[string]AIModeConfigType    `json:"waveai"`
 	ConfigErrors   []ConfigError                  `json:"configerrors" configfile:"-"`
 }
+
 type ConnKeywords struct {
 	ConnWshEnabled          *bool  `json:"conn:wshenabled,omitempty"`
 	ConnAskBeforeWshInstall *bool  `json:"conn:askbeforewshinstall,omitempty"`
@@ -280,6 +329,7 @@ type ConnKeywords struct {
 	SshHostName                     *string  `json:"ssh:hostname,omitempty"`
 	SshPort                         *string  `json:"ssh:port,omitempty"`
 	SshIdentityFile                 []string `json:"ssh:identityfile,omitempty"`
+	SshPasswordSecretName           *string  `json:"ssh:passwordsecretname,omitempty"`
 	SshBatchMode                    *bool    `json:"ssh:batchmode,omitempty"`
 	SshPubkeyAuthentication         *bool    `json:"ssh:pubkeyauthentication,omitempty"`
 	SshPasswordAuthentication       *bool    `json:"ssh:passwordauthentication,omitempty"`
@@ -331,7 +381,7 @@ func resolveEnvReplacements(m waveobj.MetaMapType) {
 	if m == nil {
 		return
 	}
-	
+
 	for key, value := range m {
 		switch v := value.(type) {
 		case string:
@@ -365,7 +415,7 @@ func resolveEnvValue(value string) (string, bool) {
 	if !strings.HasPrefix(value, "$ENV:") {
 		return "", false
 	}
-	
+
 	envSpec := value[5:] // Remove "$ENV:" prefix
 	parts := strings.SplitN(envSpec, ":", 2)
 	envVar := parts[0]
@@ -373,12 +423,12 @@ func resolveEnvValue(value string) (string, bool) {
 	if len(parts) > 1 {
 		fallback = parts[1]
 	}
-	
+
 	// Get the environment variable value
 	if envValue, exists := os.LookupEnv(envVar); exists {
 		return envValue, true
 	}
-	
+
 	// Return fallback if provided, otherwise return empty string
 	if fallback != "" {
 		return fallback, true
@@ -412,12 +462,12 @@ func readConfigHelper(fileName string, barr []byte, readErr error) (waveobj.Meta
 		}
 		cerrs = append(cerrs, ConfigError{File: fileName, Err: err.Error()})
 	}
-	
+
 	// Resolve environment variable replacements
 	if rtn != nil {
 		resolveEnvReplacements(rtn)
 	}
-	
+
 	return rtn, cerrs
 }
 
@@ -775,6 +825,17 @@ type WidgetConfigType struct {
 	BlockDef      waveobj.BlockDef `json:"blockdef"`
 }
 
+type BgPresetsType struct {
+	BgClear             bool    `json:"bg:*,omitempty"`
+	Bg                  string  `json:"bg,omitempty" jsonschema_description:"CSS background property value"`
+	BgOpacity           float64 `json:"bg:opacity,omitempty" jsonschema_description:"Background opacity (0.0-1.0)"`
+	BgBlendMode         string  `json:"bg:blendmode,omitempty" jsonschema_description:"CSS background-blend-mode property value"`
+	BgBorderColor       string  `json:"bg:bordercolor,omitempty" jsonschema_description:"Block frame border color"`
+	BgActiveBorderColor string  `json:"bg:activebordercolor,omitempty" jsonschema_description:"Block frame focused border color"`
+	DisplayName         string  `json:"display:name,omitempty" jsonschema_description:"The name shown in the context menu"`
+	DisplayOrder        float64 `json:"display:order,omitempty" jsonschema_description:"Determines the order of the background in the context menu"`
+}
+
 type MimeTypeConfigType struct {
 	Icon  string `json:"icon"`
 	Color string `json:"color"`
@@ -831,8 +892,20 @@ func (fc *FullConfigType) CountCustomAIPresets() int {
 	return count
 }
 
+// CountCustomAIModes returns the number of custom AI modes the user has defined.
+// Custom AI modes are identified as modes that don't start with "waveai@".
+func (fc *FullConfigType) CountCustomAIModes() int {
+	count := 0
+	for modeID := range fc.WaveAIModes {
+		if !strings.HasPrefix(modeID, "waveai@") {
+			count++
+		}
+	}
+	return count
+}
+
 // CountCustomSettings returns the number of settings in the user's settings file.
-// This excludes telemetry:enabled which doesn't count as a customization.
+// This excludes telemetry:enabled and autoupdate:channel which don't count as customizations.
 func CountCustomSettings() int {
 	// Load user settings
 	userSettings, _ := ReadWaveHomeConfigFile("settings.json")
@@ -840,10 +913,10 @@ func CountCustomSettings() int {
 		return 0
 	}
 
-	// Count all keys except telemetry:enabled
+	// Count all keys except telemetry:enabled and autoupdate:channel
 	count := 0
 	for key := range userSettings {
-		if key == "telemetry:enabled" {
+		if key == "telemetry:enabled" || key == "autoupdate:channel" {
 			continue
 		}
 		count++

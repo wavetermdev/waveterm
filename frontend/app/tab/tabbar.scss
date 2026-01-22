@@ -2,28 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 .tab-bar-wrapper {
-    --default-indent: 10px;
-    --darwin-not-fullscreen-indent: calc(74px * var(--zoomfactor-inv));
-}
-
-.darwin:not(.fullscreen) .tab-bar-wrapper {
-    .window-drag.left {
-        width: var(--darwin-not-fullscreen-indent);
-    }
-}
-
-.config-error-message {
-    max-width: 500px;
-    margin-bottom: 20px;
-
-    h3 {
-        font-weight: bold;
-        font-size: 16px;
-        margin-bottom: 10px;
-    }
-}
-
-.tab-bar-wrapper {
     padding-top: 6px;
     position: relative;
     user-select: none;
@@ -58,58 +36,18 @@
         border: 1px solid var(--border-color);
     }
 
-    .dev-label,
-    .app-menu-button {
-        font-size: 26px;
-        user-select: none;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 0 6px 0 0;
-    }
-
-    .app-menu-button {
-        cursor: pointer;
-        color: var(--secondary-text-color);
-
-        &:hover {
-            color: var(--main-text-color);
-        }
-    }
-
-    .dev-label {
-        color: var(--accent-color);
-    }
-
     .tab-bar-right {
         display: flex;
         flex-direction: row;
         gap: 6px;
-        &:not(:empty) {
-            margin-left: auto;
-            margin-right: 6px;
-        }
-    }
-
-    .config-error-button {
-        color: black;
-        padding: 0 6px;
-        flex: 0 0 fit-content;
+        height: 100%;
+        align-items: center;
+        margin-left: auto;
     }
 
     .add-tab {
         padding: 0 10px;
         height: 27px;
-    }
-
-    .window-drag {
-        height: 100%;
-        width: var(--default-indent);
-        flex-shrink: 0;
-
-        &.right {
-            flex-grow: 1;
-        }
     }
 
     // Customize scrollbar styles

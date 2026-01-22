@@ -17,6 +17,7 @@ import (
 	"os/exec"
 	"os/user"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -25,6 +26,7 @@ import (
 	"github.com/skeema/knownhosts"
 	"github.com/wavetermdev/waveterm/pkg/blocklogger"
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
+	"github.com/wavetermdev/waveterm/pkg/secretstore"
 	"github.com/wavetermdev/waveterm/pkg/trimquotes"
 	"github.com/wavetermdev/waveterm/pkg/userinput"
 	"github.com/wavetermdev/waveterm/pkg/util/shellutil"
@@ -223,7 +225,7 @@ func createPublicKeyCallback(connCtx context.Context, sshKeywords *wconfig.ConnK
 	}
 }
 
-func createInteractivePasswordCallbackPrompt(connCtx context.Context, remoteDisplayName string, debugInfo *ConnectionDebugInfo) func() (secret string, err error) {
+func createPasswordCallbackPrompt(connCtx context.Context, remoteDisplayName string, password *string, debugInfo *ConnectionDebugInfo) func() (secret string, err error) {
 	return func() (secret string, outErr error) {
 		defer func() {
 			panicErr := panichandler.PanicHandler("sshclient:password-callback", recover())
@@ -232,6 +234,12 @@ func createInteractivePasswordCallbackPrompt(connCtx context.Context, remoteDisp
 			}
 		}()
 		blocklogger.Infof(connCtx, "[conndebug] Password Authentication requested from connection %s...\n", remoteDisplayName)
+
+		if password != nil {
+			blocklogger.Infof(connCtx, "[conndebug] using password from secret store, sending to ssh\n")
+			return *password, nil
+		}
+
 		ctx, cancelFn := context.WithTimeout(connCtx, 60*time.Second)
 		defer cancelFn()
 		queryText := fmt.Sprintf(
@@ -605,19 +613,34 @@ func createClientConfig(connCtx context.Context, sshKeywords *wconfig.ConnKeywor
 
 	// IdentitiesOnly indicates that only the keys listed in the identity and certificate files or passed as arguments should be used, even if there are matches in the SSH Agent, PKCS11Provider, or SecurityKeyProvider. See https://man.openbsd.org/ssh_config#IdentitiesOnly
 	// TODO: Update if we decide to support PKCS11Provider and SecurityKeyProvider
-	if !utilfn.SafeDeref(sshKeywords.SshIdentitiesOnly) {
-		conn, err := net.Dial("unix", utilfn.SafeDeref(sshKeywords.SshIdentityAgent))
+	agentPath := strings.TrimSpace(utilfn.SafeDeref(sshKeywords.SshIdentityAgent))
+	if !utilfn.SafeDeref(sshKeywords.SshIdentitiesOnly) && agentPath != "" {
+		conn, err := dialIdentityAgent(agentPath)
 		if err != nil {
-			log.Printf("Failed to open Identity Agent Socket: %v", err)
+			log.Printf("Failed to open Identity Agent Socket %q: %v", agentPath, err)
 		} else {
 			agentClient = agent.NewClient(conn)
 			authSockSigners, _ = agentClient.Signers()
 		}
 	}
 
+	var sshPassword *string
+	if sshKeywords.SshPasswordSecretName != nil && *sshKeywords.SshPasswordSecretName != "" {
+		secretName := *sshKeywords.SshPasswordSecretName
+		password, exists, err := secretstore.GetSecret(secretName)
+		if err != nil {
+			return nil, fmt.Errorf("error retrieving ssh:passwordsecretname %q: %w", secretName, err)
+		}
+		if !exists {
+			return nil, fmt.Errorf("ssh:passwordsecretname %q not found in secret store", secretName)
+		}
+		blocklogger.Infof(connCtx, "[conndebug] successfully retrieved ssh:passwordsecretname %q from secret store\n", secretName)
+		sshPassword = &password
+	}
+
 	publicKeyCallback := ssh.PublicKeysCallback(createPublicKeyCallback(connCtx, sshKeywords, authSockSigners, agentClient, debugInfo))
 	keyboardInteractive := ssh.KeyboardInteractive(createInteractiveKbdInteractiveChallenge(connCtx, remoteName, debugInfo))
-	passwordCallback := ssh.PasswordCallback(createInteractivePasswordCallbackPrompt(connCtx, remoteName, debugInfo))
+	passwordCallback := ssh.PasswordCallback(createPasswordCallbackPrompt(connCtx, remoteName, sshPassword, debugInfo))
 
 	// exclude gssapi-with-mic and hostbased until implemented
 	authMethodMap := map[string]ssh.AuthMethod{
@@ -879,17 +902,26 @@ func findSshConfigKeywords(hostPattern string) (connKeywords *wconfig.ConnKeywor
 		return nil, err
 	}
 	if identityAgentRaw == "" {
-		shellPath := shellutil.DetectLocalShellPath()
-		authSockCommand := exec.Command(shellPath, "-c", "echo ${SSH_AUTH_SOCK}")
-		sshAuthSock, err := authSockCommand.Output()
-		if err == nil {
-			agentPath, err := wavebase.ExpandHomeDir(trimquotes.TryTrimQuotes(strings.TrimSpace(string(sshAuthSock))))
-			if err != nil {
-				return nil, err
-			}
-			sshKeywords.SshIdentityAgent = utilfn.Ptr(agentPath)
+		if runtime.GOOS == "windows" {
+			sshKeywords.SshIdentityAgent = utilfn.Ptr(`\\.\pipe\openssh-ssh-agent`)
 		} else {
-			log.Printf("unable to find SSH_AUTH_SOCK: %v\n", err)
+			shellPath := shellutil.DetectLocalShellPath()
+			authSockCommand := exec.Command(shellPath, "-c", "echo ${SSH_AUTH_SOCK}")
+			sshAuthSock, err := authSockCommand.Output()
+			if err == nil {
+				trimmedSock := strings.TrimSpace(string(sshAuthSock))
+				if trimmedSock == "" {
+					log.Printf("SSH_AUTH_SOCK is empty in shell environment")
+				} else {
+					agentPath, err := wavebase.ExpandHomeDir(trimquotes.TryTrimQuotes(trimmedSock))
+					if err != nil {
+						return nil, err
+					}
+					sshKeywords.SshIdentityAgent = utilfn.Ptr(agentPath)
+				}
+			} else {
+				log.Printf("unable to find SSH_AUTH_SOCK: %v\n", err)
+			}
 		}
 	} else {
 		agentPath, err := wavebase.ExpandHomeDir(trimquotes.TryTrimQuotes(identityAgentRaw))
@@ -1013,6 +1045,9 @@ func mergeKeywords(oldKeywords *wconfig.ConnKeywords, newKeywords *wconfig.ConnK
 	}
 	if newKeywords.SshGlobalKnownHostsFile != nil {
 		outKeywords.SshGlobalKnownHostsFile = newKeywords.SshGlobalKnownHostsFile
+	}
+	if newKeywords.SshPasswordSecretName != nil {
+		outKeywords.SshPasswordSecretName = newKeywords.SshPasswordSecretName
 	}
 
 	return &outKeywords

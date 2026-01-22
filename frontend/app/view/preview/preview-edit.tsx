@@ -6,16 +6,44 @@ import { CodeEditor } from "@/app/view/codeeditor/codeeditor";
 import { globalStore } from "@/store/global";
 import { adaptFromReactOrNativeKeyEvent, checkKeyPressed } from "@/util/keyutil";
 import { fireAndForget } from "@/util/util";
-import { Monaco } from "@monaco-editor/react";
 import { useAtomValue, useSetAtom } from "jotai";
-import type * as MonacoTypes from "monaco-editor/esm/vs/editor/editor.api";
+import * as monaco from "monaco-editor";
+import type * as MonacoTypes from "monaco-editor";
 import { useEffect } from "react";
 import type { SpecializedViewProps } from "./preview";
+
+export const shellFileMap: Record<string, string> = {
+    ".bashrc": "shell",
+    ".bash_profile": "shell",
+    ".bash_login": "shell",
+    ".bash_logout": "shell",
+    ".profile": "shell",
+    ".zshrc": "shell",
+    ".zprofile": "shell",
+    ".zshenv": "shell",
+    ".zlogin": "shell",
+    ".zlogout": "shell",
+    ".kshrc": "shell",
+    ".cshrc": "shell",
+    ".tcshrc": "shell",
+    ".xonshrc": "python",
+    ".shrc": "shell",
+    ".aliases": "shell",
+    ".functions": "shell",
+    ".exports": "shell",
+    ".direnvrc": "shell",
+    ".vimrc": "shell",
+    ".gvimrc": "shell",
+};
 
 function CodeEditPreview({ model }: SpecializedViewProps) {
     const fileContent = useAtomValue(model.fileContent);
     const setNewFileContent = useSetAtom(model.newFileContent);
     const fileInfo = useAtomValue(model.statFile);
+    const fileName = fileInfo?.path || fileInfo?.name;
+
+    const baseName = fileName ? fileName.split("/").pop() : null;
+    const language = baseName && shellFileMap[baseName] ? shellFileMap[baseName] : undefined;
 
     function codeEditKeyDownHandler(e: WaveKeyboardEvent): boolean {
         if (checkKeyPressed(e, "Cmd:e")) {
@@ -35,16 +63,20 @@ function CodeEditPreview({ model }: SpecializedViewProps) {
 
     useEffect(() => {
         model.codeEditKeyDownHandler = codeEditKeyDownHandler;
+        model.refreshCallback = () => {
+            globalStore.set(model.refreshVersion, (v) => v + 1);
+        };
         return () => {
             model.codeEditKeyDownHandler = null;
             model.monacoRef.current = null;
+            model.refreshCallback = null;
         };
     }, []);
 
-    function onMount(editor: MonacoTypes.editor.IStandaloneCodeEditor, monaco: Monaco): () => void {
+    function onMount(editor: MonacoTypes.editor.IStandaloneCodeEditor, monacoApi: typeof monaco): () => void {
         model.monacoRef.current = editor;
 
-        editor.onKeyDown((e: MonacoTypes.IKeyboardEvent) => {
+        const keyDownDisposer = editor.onKeyDown((e: MonacoTypes.IKeyboardEvent) => {
             const waveEvent = adaptFromReactOrNativeKeyEvent(e.browserEvent);
             const handled = tryReinjectKey(waveEvent);
             if (handled) {
@@ -58,13 +90,17 @@ function CodeEditPreview({ model }: SpecializedViewProps) {
             editor.focus();
         }
 
-        return null;
+        return () => {
+            keyDownDisposer.dispose();
+        };
     }
 
     return (
         <CodeEditor
             blockId={model.blockId}
             text={fileContent}
+            fileName={fileName}
+            language={language}
             readonly={fileInfo.readonly}
             onChange={(text) => setNewFileContent(text)}
             onMount={onMount}

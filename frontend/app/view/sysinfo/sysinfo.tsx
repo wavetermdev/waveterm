@@ -1,6 +1,8 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import type { BlockNodeModel } from "@/app/block/blocktypes";
+import type { TabModel } from "@/app/store/tab-model";
 import { getConnStatusAtom, globalStore, WOS } from "@/store/global";
 import * as util from "@/util/util";
 import * as Plot from "@observablehq/plot";
@@ -92,6 +94,8 @@ function convertWaveEventToDataItem(event: WaveEvent): DataItem {
 
 class SysinfoViewModel implements ViewModel {
     viewType: string;
+    nodeModel: BlockNodeModel;
+    tabModel: TabModel;
     blockAtom: jotai.Atom<Block>;
     termMode: jotai.Atom<string>;
     htmlElemFocusRef: React.RefObject<HTMLInputElement>;
@@ -114,8 +118,10 @@ class SysinfoViewModel implements ViewModel {
     endIconButtons: jotai.Atom<IconButtonDecl[]>;
     plotTypeSelectedAtom: jotai.Atom<string>;
 
-    constructor(blockId: string, viewType: string) {
-        this.viewType = viewType;
+    constructor(blockId: string, nodeModel: BlockNodeModel, tabModel: TabModel) {
+        this.nodeModel = nodeModel;
+        this.tabModel = tabModel;
+        this.viewType = "sysinfo";
         this.blockId = blockId;
         this.blockAtom = WOS.getWaveObjectAtom<Block>(`block:${blockId}`);
         this.addInitialDataAtom = jotai.atom(null, (get, set, points) => {
@@ -536,7 +542,11 @@ const SysinfoViewInner = React.memo(({ model }: SysinfoViewProps) => {
             className="flex flex-col flex-grow mb-0 overflow-y-auto"
             options={{ scrollbars: { autoHide: "leave" } }}
         >
-            <div className={clsx("w-full h-full grid grid-rows-[repeat(auto-fit,minmax(100px,1fr))] gap-[10px]", { "grid-cols-2": cols2 })}>
+            <div
+                className={clsx("w-full h-full grid grid-rows-[repeat(auto-fit,minmax(100px,1fr))] gap-[10px]", {
+                    "grid-cols-2": cols2,
+                })}
+            >
                 {yvals.map((yval, idx) => {
                     return (
                         <SingleLinePlot

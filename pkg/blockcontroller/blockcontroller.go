@@ -83,7 +83,7 @@ func getController(blockId string) Controller {
 
 func registerController(blockId string, controller Controller) {
 	var existingController Controller
-	
+
 	registryLock.Lock()
 	existing, exists := controllerRegistry[blockId]
 	if exists {
@@ -91,9 +91,10 @@ func registerController(blockId string, controller Controller) {
 	}
 	controllerRegistry[blockId] = controller
 	registryLock.Unlock()
-	
+
 	if existingController != nil {
 		existingController.Stop(false, Status_Done)
+		wstore.DeleteRTInfo(waveobj.MakeORef(waveobj.OType_Block, blockId))
 	}
 }
 
@@ -168,8 +169,9 @@ func ResyncController(ctx context.Context, tabId string, blockId string, rtOpts 
 		// For shell/cmd, check if connection changed
 		if !needsReplace && (controllerName == BlockController_Shell || controllerName == BlockController_Cmd) {
 			connName := blockData.Meta.GetString(waveobj.MetaKey_Connection, "")
+			// Check if connection changed, including between different local connections
 			if existingStatus.ShellProcStatus == Status_Running && existingStatus.ShellProcConnName != connName {
-				log.Printf("stopping blockcontroller %s due to conn change\n", blockId)
+				log.Printf("stopping blockcontroller %s due to conn change (from %q to %q)\n", blockId, existingStatus.ShellProcConnName, connName)
 				StopBlockControllerAndSetStatus(blockId, Status_Init)
 				time.Sleep(100 * time.Millisecond)
 				// Don't delete, will reuse same controller type
@@ -208,10 +210,10 @@ func ResyncController(ctx context.Context, tabId string, blockId string, rtOpts 
 	// Check if we need to start/restart
 	status := controller.GetRuntimeStatus()
 	if status.ShellProcStatus == Status_Init || status.ShellProcStatus == Status_Done {
-		// For shell/cmd, check connection status first
+		// For shell/cmd, check connection status first (for non-local connections)
 		if controllerName == BlockController_Shell || controllerName == BlockController_Cmd {
 			connName := blockData.Meta.GetString(waveobj.MetaKey_Connection, "")
-			if connName != "" {
+			if !conncontroller.IsLocalConnName(connName) {
 				err = CheckConnStatus(blockId)
 				if err != nil {
 					return fmt.Errorf("cannot start shellproc: %w", err)
@@ -243,6 +245,7 @@ func StopBlockController(blockId string) {
 		return
 	}
 	controller.Stop(true, Status_Done)
+	wstore.DeleteRTInfo(waveobj.MakeORef(waveobj.OType_Block, blockId))
 }
 
 func StopBlockControllerAndSetStatus(blockId string, newStatus string) {
@@ -251,6 +254,7 @@ func StopBlockControllerAndSetStatus(blockId string, newStatus string) {
 		return
 	}
 	controller.Stop(true, newStatus)
+	wstore.DeleteRTInfo(waveobj.MakeORef(waveobj.OType_Block, blockId))
 }
 
 func SendInput(blockId string, inputUnion *BlockInputUnion) error {
@@ -268,6 +272,7 @@ func StopAllBlockControllers() {
 		if status != nil && status.ShellProcStatus == Status_Running {
 			go func(id string, c Controller) {
 				c.Stop(true, Status_Done)
+				wstore.DeleteRTInfo(waveobj.MakeORef(waveobj.OType_Block, id))
 			}(blockId, controller)
 		}
 	}
@@ -358,7 +363,7 @@ func CheckConnStatus(blockId string) error {
 		return fmt.Errorf("error getting block: %w", err)
 	}
 	connName := bdata.Meta.GetString(waveobj.MetaKey_Connection, "")
-	if connName == "" {
+	if conncontroller.IsLocalConnName(connName) {
 		return nil
 	}
 	if strings.HasPrefix(connName, "wsl://") {

@@ -2,8 +2,6 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 
 @import "tailwindcss";
-@source inline("bg-background text-primary"); /* index.html */
-@source inline("p-4 border border-red-500 bg-red-100 text-red-800 rounded font-mono font-bold mb-2"); /* error component */
 
 @theme {
     --color-background: rgb(34, 34, 34); /* default background color */
@@ -33,8 +31,9 @@
 
     --font-sans: "Inter", sans-serif; /* regular text font */
     --font-mono: "Hack", monospace; /* monospace, code, terminal, command font */
-    --font-markdown: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif,
-        "Apple Color Emoji", "Segoe UI Emoji";
+    --font-markdown:
+        -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif, "Apple Color Emoji",
+        "Segoe UI Emoji";
 
     --text-xxs: 10px; /* small, very fine text */
     --text-title: 18px; /* font size for titles */

@@ -11,7 +11,7 @@ jobs:
         if: ${{ startsWith(github.ref, 'refs/tags/') }}
         runs-on: ubuntu-latest
         steps:
-            - uses: actions/checkout@v5
+            - uses: actions/checkout@v6
             - name: Install Task
               uses: arduino/setup-task@v2
               with:
@@ -30,7 +30,7 @@ jobs:
         needs: [publish-s3]
         runs-on: ubuntu-latest
         steps:
-            - uses: actions/checkout@v5
+            - uses: actions/checkout@v6
             - name: Install Task
               uses: arduino/setup-task@v2
               with:
@@ -55,7 +55,7 @@ jobs:
         needs: [publish-s3]
         runs-on: ubuntu-latest
         steps:
-            - uses: actions/checkout@v5
+            - uses: actions/checkout@v6
             - name: Install Task
               uses: arduino/setup-task@v2
               with:
@@ -80,16 +80,12 @@ jobs:
         needs: [publish-s3]
         runs-on: windows-latest
         steps:
-            - uses: actions/checkout@v5
+            - uses: actions/checkout@v6
             - name: Install Task
               uses: arduino/setup-task@v2
               with:
                   version: 3.x
                   repo-token: ${{ secrets.GITHUB_TOKEN }}
-            - name: Install winget
-              uses: Cyberboss/install-winget@v1
-              with:
-                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
             - name: Install wingetcreate
               run: winget install -e --silent --accept-package-agreements --accept-source-agreements wingetcreate
               shell: pwsh

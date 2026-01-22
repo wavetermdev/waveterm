@@ -12,6 +12,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/wavetermdev/waveterm/pkg/blockcontroller"
 	"github.com/wavetermdev/waveterm/pkg/filestore"
+	"github.com/wavetermdev/waveterm/pkg/jobcontroller"
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/telemetry"
 	"github.com/wavetermdev/waveterm/pkg/telemetry/telemetrydata"
@@ -100,12 +101,13 @@ func CreateBlockWithTelemetry(ctx context.Context, tabId string, blockDef *waveo
 	}
 	if recordTelemetry {
 		blockView := blockDef.Meta.GetString(waveobj.MetaKey_View, "")
-		go recordBlockCreationTelemetry(blockView)
+		blockController := blockDef.Meta.GetString(waveobj.MetaKey_Controller, "")
+		go recordBlockCreationTelemetry(blockView, blockController)
 	}
 	return blockData, nil
 }
 
-func recordBlockCreationTelemetry(blockView string) {
+func recordBlockCreationTelemetry(blockView string, blockController string) {
 	defer func() {
 		panichandler.PanicHandler("CreateBlock:telemetry", recover())
 	}()
@@ -120,7 +122,8 @@ func recordBlockCreationTelemetry(blockView string) {
 	telemetry.RecordTEvent(tctx, &telemetrydata.TEvent{
 		Event: "action:createblock",
 		Props: telemetrydata.TEventProps{
-			BlockView: blockView,
+			BlockView:       blockView,
+			BlockController: blockController,
 		},
 	})
 }
@@ -150,7 +153,7 @@ func createBlockObj(ctx context.Context, tabId string, blockDef *waveobj.BlockDe
 // recursive: if true, will recursively close parent tab, window, workspace, if they are empty.
 // Returns new active tab id, error.
 func DeleteBlock(ctx context.Context, blockId string, recursive bool) error {
-	block, err := wstore.DBMustGet[*waveobj.Block](ctx, blockId)
+	block, err := wstore.DBGet[*waveobj.Block](ctx, blockId)
 	if err != nil {
 		return fmt.Errorf("error getting block: %w", err)
 	}
@@ -164,6 +167,19 @@ func DeleteBlock(ctx context.Context, blockId string, recursive bool) error {
 				return fmt.Errorf("error deleting subblock %s: %w", subBlockId, err)
 			}
 		}
+	}
+	if block.JobId != "" {
+		go func() {
+			defer func() {
+				panichandler.PanicHandler("DetachJobFromBlock", recover())
+			}()
+			detachCtx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)
+			defer cancelFn()
+			err := jobcontroller.DetachJobFromBlock(detachCtx, block.JobId, false)
+			if err != nil {
+				log.Printf("error detaching job from block %s: %v", blockId, err)
+			}
+		}()
 	}
 	parentBlockCount, err := deleteBlockObj(ctx, blockId)
 	if err != nil {
@@ -223,11 +239,11 @@ func deleteBlockObj(ctx context.Context, blockId string) (int, error) {
 			}
 		}
 		wstore.DBDelete(tx.Context(), waveobj.OType_Block, blockId)
-		
+
 		// Clean up block runtime info
 		blockORef := waveobj.MakeORef(waveobj.OType_Block, blockId)
 		wstore.DeleteRTInfo(blockORef)
-		
+
 		return parentBlockCount, nil
 	})
 }

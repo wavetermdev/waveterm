@@ -9,9 +9,11 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/fs"
 	"log"
+	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -23,13 +25,17 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
 	"github.com/wavetermdev/waveterm/pkg/blockcontroller"
 	"github.com/wavetermdev/waveterm/pkg/blocklogger"
+	"github.com/wavetermdev/waveterm/pkg/buildercontroller"
+	"github.com/wavetermdev/waveterm/pkg/filebackup"
 	"github.com/wavetermdev/waveterm/pkg/filestore"
 	"github.com/wavetermdev/waveterm/pkg/genconn"
+	"github.com/wavetermdev/waveterm/pkg/jobcontroller"
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/remote"
 	"github.com/wavetermdev/waveterm/pkg/remote/awsconn"
 	"github.com/wavetermdev/waveterm/pkg/remote/conncontroller"
 	"github.com/wavetermdev/waveterm/pkg/remote/fileshare"
+	"github.com/wavetermdev/waveterm/pkg/secretstore"
 	"github.com/wavetermdev/waveterm/pkg/suggestion"
 	"github.com/wavetermdev/waveterm/pkg/telemetry"
 	"github.com/wavetermdev/waveterm/pkg/telemetry/telemetrydata"
@@ -40,7 +46,10 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/util/wavefileutil"
 	"github.com/wavetermdev/waveterm/pkg/waveai"
+	"github.com/wavetermdev/waveterm/pkg/waveappstore"
+	"github.com/wavetermdev/waveterm/pkg/waveapputil"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
+	"github.com/wavetermdev/waveterm/pkg/wavejwt"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wcloud"
 	"github.com/wavetermdev/waveterm/pkg/wconfig"
@@ -51,6 +60,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wsl"
 	"github.com/wavetermdev/waveterm/pkg/wslconn"
 	"github.com/wavetermdev/waveterm/pkg/wstore"
+	"github.com/wavetermdev/waveterm/tsunami/build"
 )
 
 var InvalidWslDistroNames = []string{"docker-desktop", "docker-desktop-data"}
@@ -61,17 +71,8 @@ func (*WshServer) WshServerImpl() {}
 
 var WshServerImpl = WshServer{}
 
-// TODO remove this after implementing in multiproxy, just for wsl
-func (ws *WshServer) AuthenticateTokenCommand(ctx context.Context, data wshrpc.CommandAuthenticateTokenData) (wshrpc.CommandAuthenticateRtnData, error) {
-	entry := shellutil.GetAndRemoveTokenSwapEntry(data.Token)
-	if entry == nil {
-		return wshrpc.CommandAuthenticateRtnData{}, fmt.Errorf("invalid token")
-	}
-	rtn := wshrpc.CommandAuthenticateRtnData{
-		Env:            entry.Env,
-		InitScriptText: entry.ScriptText,
-	}
-	return rtn, nil
+func (ws *WshServer) GetJwtPublicKeyCommand(ctx context.Context) (string, error) {
+	return wavejwt.GetPublicKeyBase64(), nil
 }
 
 func (ws *WshServer) TestCommand(ctx context.Context, data string) error {
@@ -85,7 +86,7 @@ func (ws *WshServer) TestCommand(ctx context.Context, data string) error {
 
 // for testing
 func (ws *WshServer) MessageCommand(ctx context.Context, data wshrpc.CommandMessageData) error {
-	log.Printf("MESSAGE: %s | %q\n", data.ORef, data.Message)
+	log.Printf("MESSAGE: %s\n", data.Message)
 	return nil
 }
 
@@ -167,6 +168,10 @@ func (ws *WshServer) GetRTInfoCommand(ctx context.Context, data wshrpc.CommandGe
 }
 
 func (ws *WshServer) SetRTInfoCommand(ctx context.Context, data wshrpc.CommandSetRTInfoData) error {
+	if data.Delete {
+		wstore.DeleteRTInfo(data.ORef)
+		return nil
+	}
 	wstore.SetRTInfo(data.ORef, data.Data)
 	return nil
 }
@@ -278,23 +283,6 @@ func (ws *WshServer) CreateSubBlockCommand(ctx context.Context, data wshrpc.Comm
 	return blockRef, nil
 }
 
-func (ws *WshServer) SetViewCommand(ctx context.Context, data wshrpc.CommandBlockSetViewData) error {
-	log.Printf("SETVIEW: %s | %q\n", data.BlockId, data.View)
-	ctx = waveobj.ContextWithUpdates(ctx)
-	block, err := wstore.DBGet[*waveobj.Block](ctx, data.BlockId)
-	if err != nil {
-		return fmt.Errorf("error getting block: %w", err)
-	}
-	block.Meta[waveobj.MetaKey_View] = data.View
-	err = wstore.DBUpdate(ctx, block)
-	if err != nil {
-		return fmt.Errorf("error updating block: %w", err)
-	}
-	updates := waveobj.ContextGetUpdatesRtn(ctx)
-	wps.Broker.SendUpdateEvents(updates)
-	return nil
-}
-
 func (ws *WshServer) ControllerStopCommand(ctx context.Context, blockId string) error {
 	blockcontroller.StopBlockController(blockId)
 	return nil
@@ -307,6 +295,21 @@ func (ws *WshServer) ControllerResyncCommand(ctx context.Context, data wshrpc.Co
 }
 
 func (ws *WshServer) ControllerInputCommand(ctx context.Context, data wshrpc.CommandBlockInputData) error {
+	block, err := wstore.DBMustGet[*waveobj.Block](ctx, data.BlockId)
+	if err != nil {
+		return fmt.Errorf("error getting block: %w", err)
+	}
+
+	if block.JobId != "" {
+		jobInputData := wshrpc.CommandJobInputData{
+			JobId:       block.JobId,
+			InputData64: data.InputData64,
+			SigName:     data.SigName,
+			TermSize:    data.TermSize,
+		}
+		return jobcontroller.SendInput(ctx, jobInputData)
+	}
+
 	inputUnion := &blockcontroller.BlockInputUnion{
 		SigName:  data.SigName,
 		TermSize: data.TermSize,
@@ -431,7 +434,61 @@ func (ws *WshServer) FileShareCapabilityCommand(ctx context.Context, path string
 	return fileshare.GetCapability(ctx, path)
 }
 
+func (ws *WshServer) FileRestoreBackupCommand(ctx context.Context, data wshrpc.CommandFileRestoreBackupData) error {
+	expandedBackupPath, err := wavebase.ExpandHomeDir(data.BackupFilePath)
+	if err != nil {
+		return fmt.Errorf("failed to expand backup file path: %w", err)
+	}
+	expandedRestorePath, err := wavebase.ExpandHomeDir(data.RestoreToFileName)
+	if err != nil {
+		return fmt.Errorf("failed to expand restore file path: %w", err)
+	}
+	return filebackup.RestoreBackup(expandedBackupPath, expandedRestorePath)
+}
+
+func (ws *WshServer) GetTempDirCommand(ctx context.Context, data wshrpc.CommandGetTempDirData) (string, error) {
+	tempDir := os.TempDir()
+	if data.FileName != "" {
+		// Reduce to a simple file name to avoid absolute paths or traversal
+		name := filepath.Base(data.FileName)
+		// Normalize/trim any stray separators and whitespace
+		name = strings.Trim(name, `/\`+" ")
+		if name == "" || name == "." {
+			return tempDir, nil
+		}
+		return filepath.Join(tempDir, name), nil
+	}
+	return tempDir, nil
+}
+
+func (ws *WshServer) WriteTempFileCommand(ctx context.Context, data wshrpc.CommandWriteTempFileData) (string, error) {
+	if data.FileName == "" {
+		return "", fmt.Errorf("filename is required")
+	}
+	name := filepath.Base(data.FileName)
+	if name == "" || name == "." || name == ".." {
+		return "", fmt.Errorf("invalid filename")
+	}
+	tempDir, err := os.MkdirTemp("", "waveterm-")
+	if err != nil {
+		return "", fmt.Errorf("error creating temp directory: %w", err)
+	}
+	decoded, err := base64.StdEncoding.DecodeString(data.Data64)
+	if err != nil {
+		return "", fmt.Errorf("error decoding base64 data: %w", err)
+	}
+	tempPath := filepath.Join(tempDir, name)
+	err = os.WriteFile(tempPath, decoded, 0600)
+	if err != nil {
+		return "", fmt.Errorf("error writing temp file: %w", err)
+	}
+	return tempPath, nil
+}
+
 func (ws *WshServer) DeleteSubBlockCommand(ctx context.Context, data wshrpc.CommandDeleteBlockData) error {
+	if data.BlockId == "" {
+		return fmt.Errorf("blockid is required")
+	}
 	err := wcore.DeleteBlock(ctx, data.BlockId, false)
 	if err != nil {
 		return fmt.Errorf("error deleting block: %w", err)
@@ -440,6 +497,9 @@ func (ws *WshServer) DeleteSubBlockCommand(ctx context.Context, data wshrpc.Comm
 }
 
 func (ws *WshServer) DeleteBlockCommand(ctx context.Context, data wshrpc.CommandDeleteBlockData) error {
+	if data.BlockId == "" {
+		return fmt.Errorf("blockid is required")
+	}
 	ctx = waveobj.ContextWithUpdates(ctx)
 	tabId, err := wstore.DBFindTabForBlockId(ctx, data.BlockId)
 	if err != nil {
@@ -517,18 +577,22 @@ func (ws *WshServer) EventReadHistoryCommand(ctx context.Context, data wshrpc.Co
 }
 
 func (ws *WshServer) SetConfigCommand(ctx context.Context, data wshrpc.MetaSettingsType) error {
-	log.Printf("SETCONFIG: %v\n", data)
 	return wconfig.SetBaseConfigValue(data.MetaMapType)
 }
 
 func (ws *WshServer) SetConnectionsConfigCommand(ctx context.Context, data wshrpc.ConnConfigRequest) error {
-	log.Printf("SET CONNECTIONS CONFIG: %v\n", data)
 	return wconfig.SetConnectionsConfigValue(data.Host, data.MetaMapType)
 }
 
 func (ws *WshServer) GetFullConfigCommand(ctx context.Context) (wconfig.FullConfigType, error) {
 	watcher := wconfig.GetWatcher()
 	return watcher.GetFullConfig(), nil
+}
+
+func (ws *WshServer) GetWaveAIModeConfigCommand(ctx context.Context) (wconfig.AIModeConfigUpdate, error) {
+	fullConfig := wconfig.GetWatcher().GetFullConfig()
+	resolvedConfigs := aiusechat.ComputeResolvedAIModeConfigs(fullConfig)
+	return wconfig.AIModeConfigUpdate{Configs: resolvedConfigs}, nil
 }
 
 func (ws *WshServer) ConnStatusCommand(ctx context.Context) ([]wshrpc.ConnStatus, error) {
@@ -580,6 +644,9 @@ func (ws *WshServer) ConnDisconnectCommand(ctx context.Context, connName string)
 	if strings.HasPrefix(connName, "aws:") {
 		return nil
 	}
+	if conncontroller.IsLocalConnName(connName) {
+		return nil
+	}
 	if strings.HasPrefix(connName, "wsl://") {
 		distroName := strings.TrimPrefix(connName, "wsl://")
 		conn := wslconn.GetWslConn(distroName)
@@ -602,6 +669,9 @@ func (ws *WshServer) ConnDisconnectCommand(ctx context.Context, connName string)
 func (ws *WshServer) ConnConnectCommand(ctx context.Context, connRequest wshrpc.ConnRequest) error {
 	// TODO: if we add proper wsh connections via aws, we'll need to handle that here
 	if strings.HasPrefix(connRequest.Host, "aws:") {
+		return nil
+	}
+	if conncontroller.IsLocalConnName(connRequest.Host) {
 		return nil
 	}
 	ctx = genconn.ContextWithConnData(ctx, connRequest.LogBlockId)
@@ -629,6 +699,9 @@ func (ws *WshServer) ConnConnectCommand(ctx context.Context, connRequest wshrpc.
 func (ws *WshServer) ConnReinstallWshCommand(ctx context.Context, data wshrpc.ConnExtData) error {
 	// TODO: if we add proper wsh connections via aws, we'll need to handle that here
 	if strings.HasPrefix(data.ConnName, "aws:") {
+		return nil
+	}
+	if conncontroller.IsLocalConnName(data.ConnName) {
 		return nil
 	}
 	ctx = genconn.ContextWithConnData(ctx, data.LogBlockId)
@@ -759,6 +832,11 @@ func (ws *WshServer) DismissWshFailCommand(ctx context.Context, connName string)
 	return nil
 }
 
+func (ws *WshServer) FindGitBashCommand(ctx context.Context, rescan bool) (string, error) {
+	fullConfig := wconfig.GetWatcher().GetFullConfig()
+	return shellutil.FindGitBash(&fullConfig, rescan), nil
+}
+
 func (ws *WshServer) BlockInfoCommand(ctx context.Context, blockId string) (*wshrpc.BlockInfoData, error) {
 	blockData, err := wstore.DBMustGet[*waveobj.Block](ctx, blockId)
 	if err != nil {
@@ -844,7 +922,7 @@ func (ws *WshServer) BlocksListCommand(
 			log.Printf("error finding window for workspace %s: %v", wsID, err)
 		}
 
-		for _, tabID := range append(wsData.PinnedTabIds, wsData.TabIds...) {
+		for _, tabID := range wsData.TabIds {
 			tab, err := wstore.DBMustGet[*waveobj.Tab](ctx, tabID)
 			if err != nil {
 				return nil, err
@@ -886,6 +964,231 @@ func (ws *WshServer) WorkspaceListCommand(ctx context.Context) ([]wshrpc.Workspa
 	return rtn, nil
 }
 
+func (ws *WshServer) ListAllAppsCommand(ctx context.Context) ([]wshrpc.AppInfo, error) {
+	return waveappstore.ListAllApps()
+}
+
+func (ws *WshServer) ListAllEditableAppsCommand(ctx context.Context) ([]wshrpc.AppInfo, error) {
+	return waveappstore.ListAllEditableApps()
+}
+
+func (ws *WshServer) ListAllAppFilesCommand(ctx context.Context, data wshrpc.CommandListAllAppFilesData) (*wshrpc.CommandListAllAppFilesRtnData, error) {
+	if data.AppId == "" {
+		return nil, fmt.Errorf("must provide an appId to ListAllAppFilesCommand")
+	}
+	result, err := waveappstore.ListAllAppFiles(data.AppId)
+	if err != nil {
+		return nil, err
+	}
+	entries := make([]wshrpc.DirEntryOut, len(result.Entries))
+	for i, entry := range result.Entries {
+		entries[i] = wshrpc.DirEntryOut{
+			Name:         entry.Name,
+			Dir:          entry.Dir,
+			Symlink:      entry.Symlink,
+			Size:         entry.Size,
+			Mode:         entry.Mode,
+			Modified:     entry.Modified,
+			ModifiedTime: entry.ModifiedTime,
+		}
+	}
+	return &wshrpc.CommandListAllAppFilesRtnData{
+		Path:         result.Path,
+		AbsolutePath: result.AbsolutePath,
+		ParentDir:    result.ParentDir,
+		Entries:      entries,
+		EntryCount:   result.EntryCount,
+		TotalEntries: result.TotalEntries,
+		Truncated:    result.Truncated,
+	}, nil
+}
+
+func (ws *WshServer) ReadAppFileCommand(ctx context.Context, data wshrpc.CommandReadAppFileData) (*wshrpc.CommandReadAppFileRtnData, error) {
+	if data.AppId == "" {
+		return nil, fmt.Errorf("must provide an appId to ReadAppFileCommand")
+	}
+	fileData, err := waveappstore.ReadAppFile(data.AppId, data.FileName)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return &wshrpc.CommandReadAppFileRtnData{
+				NotFound: true,
+			}, nil
+		}
+		return nil, fmt.Errorf("failed to read app file: %w", err)
+	}
+	return &wshrpc.CommandReadAppFileRtnData{
+		Data64: base64.StdEncoding.EncodeToString(fileData.Contents),
+		ModTs:  fileData.ModTs,
+	}, nil
+}
+
+func (ws *WshServer) WriteAppFileCommand(ctx context.Context, data wshrpc.CommandWriteAppFileData) error {
+	if data.AppId == "" {
+		return fmt.Errorf("must provide an appId to WriteAppFileCommand")
+	}
+	contents, err := base64.StdEncoding.DecodeString(data.Data64)
+	if err != nil {
+		return fmt.Errorf("failed to decode data64: %w", err)
+	}
+	return waveappstore.WriteAppFile(data.AppId, data.FileName, contents)
+}
+
+func (ws *WshServer) WriteAppGoFileCommand(ctx context.Context, data wshrpc.CommandWriteAppGoFileData) (*wshrpc.CommandWriteAppGoFileRtnData, error) {
+	if data.AppId == "" {
+		return nil, fmt.Errorf("must provide an appId to WriteAppGoFileCommand")
+	}
+	contents, err := base64.StdEncoding.DecodeString(data.Data64)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode data64: %w", err)
+	}
+
+	formattedOutput := waveapputil.FormatGoCode(contents)
+
+	err = waveappstore.WriteAppFile(data.AppId, "app.go", formattedOutput)
+	if err != nil {
+		return nil, err
+	}
+
+	encoded := base64.StdEncoding.EncodeToString(formattedOutput)
+	return &wshrpc.CommandWriteAppGoFileRtnData{Data64: encoded}, nil
+}
+
+func (ws *WshServer) DeleteAppFileCommand(ctx context.Context, data wshrpc.CommandDeleteAppFileData) error {
+	if data.AppId == "" {
+		return fmt.Errorf("must provide an appId to DeleteAppFileCommand")
+	}
+	return waveappstore.DeleteAppFile(data.AppId, data.FileName)
+}
+
+func (ws *WshServer) RenameAppFileCommand(ctx context.Context, data wshrpc.CommandRenameAppFileData) error {
+	if data.AppId == "" {
+		return fmt.Errorf("must provide an appId to RenameAppFileCommand")
+	}
+	return waveappstore.RenameAppFile(data.AppId, data.FromFileName, data.ToFileName)
+}
+
+func (ws *WshServer) WriteAppSecretBindingsCommand(ctx context.Context, data wshrpc.CommandWriteAppSecretBindingsData) error {
+	if data.AppId == "" {
+		return fmt.Errorf("must provide an appId to WriteAppSecretBindingsCommand")
+	}
+	return waveappstore.WriteAppSecretBindings(data.AppId, data.Bindings)
+}
+
+func (ws *WshServer) DeleteBuilderCommand(ctx context.Context, builderId string) error {
+	if builderId == "" {
+		return fmt.Errorf("must provide a builderId to DeleteBuilderCommand")
+	}
+	buildercontroller.DeleteController(builderId)
+	return nil
+}
+
+func (ws *WshServer) StartBuilderCommand(ctx context.Context, data wshrpc.CommandStartBuilderData) error {
+	if data.BuilderId == "" {
+		return fmt.Errorf("must provide a builderId to StartBuilderCommand")
+	}
+	bc := buildercontroller.GetOrCreateController(data.BuilderId)
+	rtInfo := wstore.GetRTInfo(waveobj.MakeORef("builder", data.BuilderId))
+	if rtInfo == nil {
+		return fmt.Errorf("builder rtinfo not found for builderid: %s", data.BuilderId)
+	}
+	appId := rtInfo.BuilderAppId
+	if appId == "" {
+		return fmt.Errorf("builder appid not set for builderid: %s", data.BuilderId)
+	}
+	return bc.Start(ctx, appId, rtInfo.BuilderEnv)
+}
+
+func (ws *WshServer) StopBuilderCommand(ctx context.Context, builderId string) error {
+	if builderId == "" {
+		return fmt.Errorf("must provide a builderId to StopBuilderCommand")
+	}
+	bc := buildercontroller.GetController(builderId)
+	if bc == nil {
+		return nil
+	}
+	return bc.Stop()
+}
+
+func (ws *WshServer) RestartBuilderAndWaitCommand(ctx context.Context, data wshrpc.CommandRestartBuilderAndWaitData) (*wshrpc.RestartBuilderAndWaitResult, error) {
+	if data.BuilderId == "" {
+		return nil, fmt.Errorf("must provide a builderId to RestartBuilderAndWaitCommand")
+	}
+
+	bc := buildercontroller.GetOrCreateController(data.BuilderId)
+	rtInfo := wstore.GetRTInfo(waveobj.MakeORef("builder", data.BuilderId))
+	if rtInfo == nil {
+		return nil, fmt.Errorf("builder rtinfo not found for builderid: %s", data.BuilderId)
+	}
+
+	appId := rtInfo.BuilderAppId
+	if appId == "" {
+		return nil, fmt.Errorf("builder appid not set for builderid: %s", data.BuilderId)
+	}
+
+	result, err := bc.RestartAndWaitForBuild(ctx, appId, rtInfo.BuilderEnv)
+	if err != nil {
+		return nil, err
+	}
+
+	return &wshrpc.RestartBuilderAndWaitResult{
+		Success:      result.Success,
+		ErrorMessage: result.ErrorMessage,
+		BuildOutput:  result.BuildOutput,
+	}, nil
+}
+
+func (ws *WshServer) GetBuilderStatusCommand(ctx context.Context, builderId string) (*wshrpc.BuilderStatusData, error) {
+	if builderId == "" {
+		return nil, fmt.Errorf("must provide a builderId to GetBuilderStatusCommand")
+	}
+	bc := buildercontroller.GetOrCreateController(builderId)
+	status := bc.GetStatus()
+	return &status, nil
+}
+
+func (ws *WshServer) GetBuilderOutputCommand(ctx context.Context, builderId string) ([]string, error) {
+	if builderId == "" {
+		return nil, fmt.Errorf("must provide a builderId to GetBuilderOutputCommand")
+	}
+	bc := buildercontroller.GetOrCreateController(builderId)
+	return bc.GetOutput(), nil
+}
+
+func (ws *WshServer) CheckGoVersionCommand(ctx context.Context) (*wshrpc.CommandCheckGoVersionRtnData, error) {
+	watcher := wconfig.GetWatcher()
+	fullConfig := watcher.GetFullConfig()
+	goPath := fullConfig.Settings.TsunamiGoPath
+
+	result := build.CheckGoVersion(goPath)
+
+	return &wshrpc.CommandCheckGoVersionRtnData{
+		GoStatus:    result.GoStatus,
+		GoPath:      result.GoPath,
+		GoVersion:   result.GoVersion,
+		ErrorString: result.ErrorString,
+	}, nil
+}
+
+func (ws *WshServer) PublishAppCommand(ctx context.Context, data wshrpc.CommandPublishAppData) (*wshrpc.CommandPublishAppRtnData, error) {
+	publishedAppId, err := waveappstore.PublishDraft(data.AppId)
+	if err != nil {
+		return nil, fmt.Errorf("error publishing app: %w", err)
+	}
+	return &wshrpc.CommandPublishAppRtnData{
+		PublishedAppId: publishedAppId,
+	}, nil
+}
+
+func (ws *WshServer) MakeDraftFromLocalCommand(ctx context.Context, data wshrpc.CommandMakeDraftFromLocalData) (*wshrpc.CommandMakeDraftFromLocalRtnData, error) {
+	draftAppId, err := waveappstore.MakeDraftFromLocal(data.LocalAppId)
+	if err != nil {
+		return nil, fmt.Errorf("error making draft from local: %w", err)
+	}
+	return &wshrpc.CommandMakeDraftFromLocalRtnData{
+		DraftAppId: draftAppId,
+	}, nil
+}
+
 func (ws *WshServer) RecordTEventCommand(ctx context.Context, data telemetrydata.TEvent) error {
 	err := telemetry.RecordTEvent(ctx, &data)
 	if err != nil {
@@ -899,7 +1202,7 @@ func (ws WshServer) SendTelemetryCommand(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("getting client data for telemetry: %v", err)
 	}
-	return wcloud.SendAllTelemetry(ctx, client.OID)
+	return wcloud.SendAllTelemetry(client.OID)
 }
 
 func (ws *WshServer) WaveAIEnableTelemetryCommand(ctx context.Context) error {
@@ -918,16 +1221,6 @@ func (ws *WshServer) WaveAIEnableTelemetryCommand(ctx context.Context) error {
 		return fmt.Errorf("getting client data for telemetry: %v", err)
 	}
 
-	// Send no-telemetry update to cloud (async)
-	go func() {
-		ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancelFn()
-		err := wcloud.SendNoTelemetryUpdate(ctx, client.OID, false) // false means telemetry is enabled
-		if err != nil {
-			log.Printf("error sending no-telemetry update: %v", err)
-		}
-	}()
-
 	// Record the telemetry event
 	event := telemetrydata.MakeTEvent("waveai:enabletelemetry", telemetrydata.TEventProps{})
 	err = telemetry.RecordTEvent(ctx, event)
@@ -936,7 +1229,7 @@ func (ws *WshServer) WaveAIEnableTelemetryCommand(ctx context.Context) error {
 	}
 
 	// Immediately send telemetry to cloud
-	err = wcloud.SendAllTelemetry(ctx, client.OID)
+	err = wcloud.SendAllTelemetry(client.OID)
 	if err != nil {
 		log.Printf("error sending telemetry after enabling: %v", err)
 	}
@@ -958,6 +1251,22 @@ func (ws *WshServer) GetWaveAIChatCommand(ctx context.Context, data wshrpc.Comma
 
 func (ws *WshServer) GetWaveAIRateLimitCommand(ctx context.Context) (*uctypes.RateLimitInfo, error) {
 	return aiusechat.GetGlobalRateLimit(), nil
+}
+
+func (ws *WshServer) WaveAIToolApproveCommand(ctx context.Context, data wshrpc.CommandWaveAIToolApproveData) error {
+	return aiusechat.UpdateToolApproval(data.ToolCallId, data.Approval)
+}
+
+func (ws *WshServer) WaveAIGetToolDiffCommand(ctx context.Context, data wshrpc.CommandWaveAIGetToolDiffData) (*wshrpc.CommandWaveAIGetToolDiffRtnData, error) {
+	originalContent, modifiedContent, err := aiusechat.CreateWriteTextFileDiff(ctx, data.ChatId, data.ToolCallId)
+	if err != nil {
+		return nil, err
+	}
+
+	return &wshrpc.CommandWaveAIGetToolDiffRtnData{
+		OriginalContents64: base64.StdEncoding.EncodeToString(originalContent),
+		ModifiedContents64: base64.StdEncoding.EncodeToString(modifiedContent),
+	}, nil
 }
 
 var wshActivityRe = regexp.MustCompile(`^[a-z:#]+$`)
@@ -1052,10 +1361,15 @@ func (ws *WshServer) PathCommand(ctx context.Context, data wshrpc.PathCommandDat
 	}
 
 	if openInternal {
-		_, err := ws.CreateBlockCommand(ctx, wshrpc.CommandCreateBlockData{BlockDef: &waveobj.BlockDef{Meta: map[string]any{
-			waveobj.MetaKey_View: "preview",
-			waveobj.MetaKey_File: path,
-		}}, Ephemeral: true, Focused: true, TabId: data.TabId})
+		_, err := ws.CreateBlockCommand(ctx, wshrpc.CommandCreateBlockData{
+			TabId: data.TabId,
+			BlockDef: &waveobj.BlockDef{Meta: map[string]any{
+				waveobj.MetaKey_View: "preview",
+				waveobj.MetaKey_File: path,
+			}},
+			Ephemeral: true,
+			Focused:   true,
+		})
 
 		if err != nil {
 			return path, fmt.Errorf("error opening path: %w", err)
@@ -1084,4 +1398,102 @@ func (ws *WshServer) GetTabCommand(ctx context.Context, tabId string) (*waveobj.
 		return nil, fmt.Errorf("error getting tab: %w", err)
 	}
 	return tab, nil
+}
+
+func (ws *WshServer) GetSecretsCommand(ctx context.Context, names []string) (map[string]string, error) {
+	result := make(map[string]string)
+	for _, name := range names {
+		value, exists, err := secretstore.GetSecret(name)
+		if err != nil {
+			return nil, fmt.Errorf("error getting secret %q: %w", name, err)
+		}
+		if exists {
+			result[name] = value
+		}
+	}
+	return result, nil
+}
+
+func (ws *WshServer) GetSecretsNamesCommand(ctx context.Context) ([]string, error) {
+	names, err := secretstore.GetSecretNames()
+	if err != nil {
+		return nil, fmt.Errorf("error getting secret names: %w", err)
+	}
+	return names, nil
+}
+
+func (ws *WshServer) SetSecretsCommand(ctx context.Context, secrets map[string]*string) error {
+	for name, value := range secrets {
+		if value == nil {
+			err := secretstore.DeleteSecret(name)
+			if err != nil {
+				return fmt.Errorf("error deleting secret %q: %w", name, err)
+			}
+		} else {
+			err := secretstore.SetSecret(name, *value)
+			if err != nil {
+				return fmt.Errorf("error setting secret %q: %w", name, err)
+			}
+		}
+	}
+	return nil
+}
+
+func (ws *WshServer) GetSecretsLinuxStorageBackendCommand(ctx context.Context) (string, error) {
+	backend, err := secretstore.GetLinuxStorageBackend()
+	if err != nil {
+		return "", fmt.Errorf("error getting linux storage backend: %w", err)
+	}
+	return backend, nil
+}
+
+func (ws *WshServer) JobCmdExitedCommand(ctx context.Context, data wshrpc.CommandJobCmdExitedData) error {
+	return jobcontroller.HandleCmdJobExited(ctx, data.JobId, data)
+}
+
+func (ws *WshServer) JobControllerListCommand(ctx context.Context) ([]*waveobj.Job, error) {
+	return wstore.DBGetAllObjsByType[*waveobj.Job](ctx, waveobj.OType_Job)
+}
+
+func (ws *WshServer) JobControllerDeleteJobCommand(ctx context.Context, jobId string) error {
+	return jobcontroller.DeleteJob(ctx, jobId)
+}
+
+func (ws *WshServer) JobControllerStartJobCommand(ctx context.Context, data wshrpc.CommandJobControllerStartJobData) (string, error) {
+	params := jobcontroller.StartJobParams{
+		ConnName: data.ConnName,
+		Cmd:      data.Cmd,
+		Args:     data.Args,
+		Env:      data.Env,
+		TermSize: data.TermSize,
+	}
+	return jobcontroller.StartJob(ctx, params)
+}
+
+func (ws *WshServer) JobControllerExitJobCommand(ctx context.Context, jobId string) error {
+	return jobcontroller.TerminateJobManager(ctx, jobId)
+}
+
+func (ws *WshServer) JobControllerDisconnectJobCommand(ctx context.Context, jobId string) error {
+	return jobcontroller.DisconnectJob(ctx, jobId)
+}
+
+func (ws *WshServer) JobControllerReconnectJobCommand(ctx context.Context, jobId string) error {
+	return jobcontroller.ReconnectJob(ctx, jobId)
+}
+
+func (ws *WshServer) JobControllerReconnectJobsForConnCommand(ctx context.Context, connName string) error {
+	return jobcontroller.ReconnectJobsForConn(ctx, connName)
+}
+
+func (ws *WshServer) JobControllerConnectedJobsCommand(ctx context.Context) ([]string, error) {
+	return jobcontroller.GetConnectedJobIds(), nil
+}
+
+func (ws *WshServer) JobControllerAttachJobCommand(ctx context.Context, data wshrpc.CommandJobControllerAttachJobData) error {
+	return jobcontroller.AttachJobToBlock(ctx, data.JobId, data.BlockId)
+}
+
+func (ws *WshServer) JobControllerDetachJobCommand(ctx context.Context, jobId string) error {
+	return jobcontroller.DetachJobFromBlock(ctx, jobId, true)
 }

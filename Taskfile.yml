@@ -8,7 +8,6 @@ vars:
     BIN_DIR: "bin"
     VERSION:
         sh: node version.cjs
-    RM: '{{if eq OS "windows"}}powershell Remove-Item -Force -ErrorAction SilentlyContinue{{else}}rm -f{{end}}'
     RMRF: '{{if eq OS "windows"}}powershell Remove-Item -Force -Recurse -ErrorAction SilentlyContinue{{else}}rm -rf{{end}}'
     DATE: '{{if eq OS "windows"}}powershell Get-Date -UFormat{{else}}date{{end}}'
     ARTIFACTS_BUCKET: waveterm-github-artifacts/staging-w2
@@ -23,11 +22,12 @@ tasks:
             - dev
         deps:
             - npm:install
-            - docsite:build:embedded
             - build:backend
+            - build:tsunamiscaffold
         env:
             WAVETERM_ENVFILE: "{{.ROOT_DIR}}/.env"
-            WCLOUD_ENDPOINT: "https://api-dev.waveterm.dev"
+            WCLOUD_PING_ENDPOINT: "https://ping-dev.waveterm.dev/central"
+            WCLOUD_ENDPOINT: "https://api-dev.waveterm.dev/central"
             WCLOUD_WS_ENDPOINT: "wss://wsapi-dev.waveterm.dev"
 
     electron:start:
@@ -37,11 +37,11 @@ tasks:
             - start
         deps:
             - npm:install
-            - docsite:build:embedded
             - build:backend
         env:
             WAVETERM_ENVFILE: "{{.ROOT_DIR}}/.env"
-            WCLOUD_ENDPOINT: "https://api-dev.waveterm.dev"
+            WCLOUD_PING_ENDPOINT: "https://ping-dev.waveterm.dev/central"
+            WCLOUD_ENDPOINT: "https://api-dev.waveterm.dev/central"
             WCLOUD_WS_ENDPOINT: "wss://wsapi-dev.waveterm.dev"
 
     electron:quickdev:
@@ -52,22 +52,21 @@ tasks:
             - build:backend:quickdev
         env:
             WAVETERM_ENVFILE: "{{.ROOT_DIR}}/.env"
+            WCLOUD_PING_ENDPOINT: "https://ping-dev.waveterm.dev/central"
             WCLOUD_ENDPOINT: "https://api-dev.waveterm.dev/central"
             WCLOUD_WS_ENDPOINT: "wss://wsapi-dev.waveterm.dev/"
 
-    storybook:
-        desc: Start the Storybook server.
-        cmd: npm run storybook
+    electron:winquickdev:
+        desc: Run the Electron application via the Vite dev server (quick dev - Windows amd64 only, no generate, no wsh).
+        cmd: npm run dev
         deps:
             - npm:install
-
-    storybook:build:
-        desc: Build the Storybook static site.
-        cmd: npm run build-storybook
-        generates:
-            - storybook-static/**/*
-        deps:
-            - npm:install
+            - build:backend:quickdev:windows
+        env:
+            WAVETERM_ENVFILE: "{{.ROOT_DIR}}/.env"
+            WCLOUD_PING_ENDPOINT: "https://ping-dev.waveterm.dev/central"
+            WCLOUD_ENDPOINT: "https://api-dev.waveterm.dev/central"
+            WCLOUD_WS_ENDPOINT: "wss://wsapi-dev.waveterm.dev/"
 
     docs:npm:install:
         desc: Runs `npm install` in docs directory
@@ -94,36 +93,15 @@ tasks:
         desc: Build the full docsite.
         cmds:
             - cd docs && npm run build
-            - task: copyfiles:'storybook-static':'docs/build/storybook'
         env:
             USE_SIMPLE_CSS_MINIFIER: "true"
-        sources:
-            - "docs/*"
-            - "docs/src/**/*"
-            - "docs/docs/**/*"
-            - "docs/static/**/*"
-            - storybook-static/**/*
-        generates:
-            - "docs/build/**/*"
-        deps:
-            - docs:npm:install
-            - storybook:build
-
-    docsite:build:embedded:
-        desc: Build the embedded docsite and copy it to dist/docsite
         sources:
             - "docs/*"
             - "docs/src/**/*"
             - "docs/docs/**/*"
             - "docs/static/**/*"
         generates:
-            - "dist/docsite/**/*"
-        cmds:
-            - cd docs && npm run build-embedded
-            - task: copyfiles:'docs/build/':'dist/docsite'
-        env:
-            EMBEDDED: "true"
-            USE_SIMPLE_CSS_MINIFIER: "true"
+            - "docs/build/**/*"
         deps:
             - docs:npm:install
 
@@ -134,8 +112,8 @@ tasks:
         deps:
             - clean
             - npm:install
-            - docsite:build:embedded
             - build:backend
+            - build:tsunamiscaffold
 
     build:frontend:dev:
         desc: Build the frontend in development mode.
@@ -157,6 +135,7 @@ tasks:
             - go.mod
             - go.sum
             - pkg/**/*.go
+            - pkg/**/*.sh
             - cmd/**/*.go
             - tsunami/go.mod
             - tsunami/go.sum
@@ -188,6 +167,7 @@ tasks:
             - "cmd/server/*.go"
             - "pkg/**/*.go"
             - "pkg/**/*.json"
+            - "pkg/**/*.sh"
             - tsunami/**/*.go
         generates:
             - dist/bin/wavesrv.*
@@ -196,7 +176,7 @@ tasks:
         desc: Build the wavesrv component for macOS (Darwin) platforms (generates artifacts for both arm64 and amd64).
         platforms: [darwin]
         cmds:
-            - cmd: "{{.RM}} dist/bin/wavesrv*"
+            - cmd: rm -f dist/bin/wavesrv*
               ignore_error: true
             - task: build:server:internal
               vars:
@@ -215,15 +195,35 @@ tasks:
             - "cmd/server/*.go"
             - "pkg/**/*.go"
             - "pkg/**/*.json"
+            - "pkg/**/*.sh"
             - "tsunami/**/*.go"
         generates:
             - dist/bin/wavesrv.*
+
+    build:backend:quickdev:windows:
+        desc: Build only the wavesrv component for quickdev (Windows amd64 only, no generate, no wsh).
+        platforms: [windows]
+        cmds:
+            - task: build:server:internal
+              vars:
+                  ARCHS: amd64
+                  GO_ENV_VARS: CC="zig cc -target x86_64-windows-gnu"
+        deps:
+            - go:mod:tidy
+        sources:
+            - "cmd/server/*.go"
+            - "pkg/**/*.go"
+            - "pkg/**/*.json"
+            - "pkg/**/*.sh"
+            - "tsunami/**/*.go"
+        generates:
+            - dist/bin/wavesrv.x64.exe
 
     build:server:windows:
         desc: Build the wavesrv component for Windows platforms (only generates artifacts for the current architecture).
         platforms: [windows]
         cmds:
-            - cmd: "{{.RM}} dist/bin/wavesrv*"
+            - cmd: powershell -Command "Remove-Item -Force -ErrorAction SilentlyContinue -Path dist/bin/wavesrv*"
               ignore_error: true
             - task: build:server:internal
               vars:
@@ -236,7 +236,7 @@ tasks:
         desc: Build the wavesrv component for Linux platforms (only generates artifacts for the current architecture).
         platforms: [linux]
         cmds:
-            - cmd: "{{.RM}} dist/bin/wavesrv*"
+            - cmd: rm -f dist/bin/wavesrv*
               ignore_error: true
             - task: build:server:internal
               vars:
@@ -260,7 +260,11 @@ tasks:
     build:wsh:
         desc: Build the wsh component for all possible targets.
         cmds:
-            - cmd: "{{.RM}} dist/bin/wsh*"
+            - cmd: rm -f dist/bin/wsh*
+              platforms: [darwin, linux]
+              ignore_error: true
+            - cmd: powershell -Command "Remove-Item -Force -ErrorAction SilentlyContinue -Path dist/bin/wsh*"
+              platforms: [windows]
               ignore_error: true
             - task: build:wsh:internal
               vars:
@@ -316,6 +320,21 @@ tasks:
                 - VERSION
         cmd: (CGO_ENABLED=0 GOOS={{.GOOS}} GOARCH={{.GOARCH}} go build -ldflags="-s -w -X main.BuildTime=$({{.DATE}} +'%Y%m%d%H%M') -X main.WaveVersion={{.VERSION}}" -o dist/bin/wsh-{{.VERSION}}-{{.GOOS}}.{{.NORMALIZEDARCH}}{{.EXT}} cmd/wsh/main-wsh.go)
         internal: true
+
+    build:tsunamiscaffold:
+        desc: Build and copy tsunami scaffold to dist directory.
+        cmds:
+            - cmd: "{{.RMRF}} dist/tsunamiscaffold"
+              ignore_error: true
+            - task: copyfiles:'tsunami/frontend/scaffold':'dist/tsunamiscaffold'
+            - cmd: '{{if eq OS "windows"}}powershell Copy-Item -Path tsunami/templates/empty-gomod.tmpl -Destination dist/tsunamiscaffold/go.mod{{else}}cp tsunami/templates/empty-gomod.tmpl dist/tsunamiscaffold/go.mod{{end}}'
+        deps:
+            - tsunami:scaffold
+        sources:
+            - "tsunami/frontend/dist/**/*"
+            - "tsunami/templates/**/*"
+        generates:
+            - "dist/tsunamiscaffold/**/*"
 
     generate:
         desc: Generate Typescript bindings for the Go backend.
@@ -416,6 +435,12 @@ tasks:
             - task: dev:cleardata:linux
             - task: dev:cleardata:macos
 
+    check:ts:
+        desc: Typecheck TypeScript code (frontend and electron).
+        cmd: npx tsc --noEmit
+        deps:
+            - npm:install
+
     init:
         desc: Initialize the project for development.
         cmds:
@@ -511,7 +536,11 @@ tasks:
         desc: Create package.json for tsunami scaffold using npm commands
         dir: tsunami/frontend/scaffold
         cmds:
-            - cmd: "{{.RM}} package.json"
+            - cmd: rm -f package.json
+              platforms: [darwin, linux]
+              ignore_error: true
+            - cmd: powershell -Command "Remove-Item -Force -ErrorAction SilentlyContinue -Path package.json"
+              platforms: [windows]
               ignore_error: true
             - npm --no-workspaces init -y --init-license Apache-2.0
             - npm pkg set name=tsunami-scaffold
@@ -522,23 +551,61 @@ tasks:
 
     tsunami:scaffold:internal:
         desc: Internal task to create scaffold directory structure
+        internal: true
+        cmds:
+            - task: tsunami:scaffold:internal:unix
+            - task: tsunami:scaffold:internal:windows
+
+    tsunami:scaffold:internal:unix:
+        desc: Internal task to create scaffold directory structure (Unix)
         dir: tsunami/frontend
         internal: true
+        platforms: [darwin, linux]
         cmds:
             - cmd: "{{.RMRF}} scaffold"
               ignore_error: true
-            - mkdir scaffold
+            - mkdir -p scaffold
             - cp ../templates/package.json.tmpl scaffold/package.json
             - cd scaffold && npm install
+            - mv scaffold/node_modules scaffold/nm
             - cp -r dist scaffold/
-            - cp ../templates/app-main.go.tmpl scaffold/app-main.go
+            - mkdir -p scaffold/dist/tw
+            - cp ../templates/*.go.tmpl scaffold/
             - cp ../templates/tailwind.css scaffold/
             - cp ../templates/gitignore.tmpl scaffold/.gitignore
+            - cp src/element/*.tsx scaffold/dist/tw/
+            - cp ../ui/*.go scaffold/dist/tw/
+            - cp ../engine/errcomponent.go scaffold/dist/tw/
+
+    tsunami:scaffold:internal:windows:
+        desc: Internal task to create scaffold directory structure (Windows)
+        dir: tsunami/frontend
+        internal: true
+        platforms: [windows]
+        cmds:
+            - cmd: "{{.RMRF}} scaffold"
+              ignore_error: true
+            - powershell New-Item -ItemType Directory -Force -Path scaffold
+            - powershell Copy-Item -Path ../templates/package.json.tmpl -Destination scaffold/package.json
+            - powershell -Command "Set-Location scaffold; npm install"
+            - powershell Move-Item -Path scaffold/node_modules -Destination scaffold/nm
+            - powershell Copy-Item -Recurse -Force -Path dist -Destination scaffold/
+            - powershell New-Item -ItemType Directory -Force -Path scaffold/dist/tw
+            - powershell Copy-Item -Path '../templates/*.go.tmpl' -Destination scaffold/
+            - powershell Copy-Item -Path ../templates/tailwind.css -Destination scaffold/
+            - powershell Copy-Item -Path ../templates/gitignore.tmpl -Destination scaffold/.gitignore
+            - powershell Copy-Item -Path 'src/element/*.tsx' -Destination scaffold/dist/tw/
+            - powershell Copy-Item -Path '../ui/*.go' -Destination scaffold/dist/tw/
+            - powershell Copy-Item -Path ../engine/errcomponent.go -Destination scaffold/dist/tw/
 
     tsunami:build:
         desc: Build the tsunami binary.
         cmds:
-            - cmd: "{{.RM}} bin/tsunami*"
+            - cmd: rm -f bin/tsunami*
+              platforms: [darwin, linux]
+              ignore_error: true
+            - cmd: powershell -Command "Remove-Item -Force -ErrorAction SilentlyContinue -Path bin/tsunami*"
+              platforms: [windows]
               ignore_error: true
             - mkdir -p bin
             - cd tsunami && go build -ldflags "-X main.BuildTime=$({{.DATE}} +'%Y%m%d%H%M') -X main.TsunamiVersion={{.VERSION}}" -o ../bin/tsunami{{exeExt}} cmd/main-tsunami.go

@@ -1,6 +1,7 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { BlockModel } from "@/app/block/block-model";
 import { blockViewToIcon, blockViewToName, ConnectionButton, getBlockHeaderIcon, Input } from "@/app/block/blockutil";
 import { Button } from "@/app/element/button";
 import { useDimensionsWithCallbackRef } from "@/app/hook/useDimensions";
@@ -16,15 +17,18 @@ import {
     useBlockAtom,
     WOS,
 } from "@/app/store/global";
-import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
+import { useTabModel } from "@/app/store/tab-model";
+import { uxCloseBlock } from "@/app/store/keymodel";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
+import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
 import { ErrorBoundary } from "@/element/errorboundary";
 import { IconButton, ToggleIconButton } from "@/element/iconbutton";
 import { MagnifyIcon } from "@/element/magnify";
 import { MenuButton } from "@/element/menubutton";
 import { NodeModel } from "@/layout/index";
 import * as util from "@/util/util";
+import { makeIconClass } from "@/util/util";
 import { computeBgStyleFromMeta } from "@/util/waveutil";
 import clsx from "clsx";
 import * as jotai from "jotai";
@@ -40,8 +44,7 @@ function handleHeaderContextMenu(
     blockData: Block,
     viewModel: ViewModel,
     magnified: boolean,
-    onMagnifyToggle: () => void,
-    onClose: () => void
+    onMagnifyToggle: () => void
 ) {
     e.preventDefault();
     e.stopPropagation();
@@ -77,16 +80,25 @@ function handleHeaderContextMenu(
         { type: "separator" },
         {
             label: "Close Block",
-            click: onClose,
+            click: () => uxCloseBlock(blockData.oid),
         }
     );
     ContextMenuModel.showContextMenu(menu, e);
 }
 
-function getViewIconElem(viewIconUnion: string | IconButtonDecl, blockData: Block): React.ReactElement {
+function getViewIconElem(
+    viewIconUnion: string | IconButtonDecl,
+    blockData: Block,
+    iconColor?: string
+): React.ReactElement {
     if (viewIconUnion == null || typeof viewIconUnion === "string") {
         const viewIcon = viewIconUnion as string;
-        return <div className="block-frame-view-icon">{getBlockHeaderIcon(viewIcon, blockData)}</div>;
+        const style: React.CSSProperties = iconColor ? { color: iconColor, opacity: 1.0 } : {};
+        return (
+            <div className="block-frame-view-icon" style={style}>
+                {getBlockHeaderIcon(viewIcon, blockData)}
+            </div>
+        );
     } else {
         return <IconButton decl={viewIconUnion} className="block-frame-view-icon" />;
     }
@@ -152,7 +164,7 @@ function computeEndIcons(
         elemtype: "iconbutton",
         icon: "xmark-large",
         title: "Close",
-        click: nodeModel.onClose,
+        click: () => uxCloseBlock(nodeModel.blockId),
     };
     endIconsElem.push(<IconButton key="close" decl={closeDecl} className="block-frame-default-close" />);
     return endIconsElem;
@@ -170,6 +182,7 @@ const BlockFrame_Header = ({
     let viewName = util.useAtomValueSafe(viewModel?.viewName) ?? blockViewToName(blockData?.meta?.view);
     const showBlockIds = jotai.useAtomValue(getSettingsKeyAtom("blockheader:showblockids"));
     let viewIconUnion = util.useAtomValueSafe(viewModel?.viewIcon) ?? blockViewToIcon(blockData?.meta?.view);
+    const viewIconColor = util.useAtomValueSafe(viewModel?.viewIconColor);
     const preIconButton = util.useAtomValueSafe(viewModel?.preIconButton);
     let headerTextUnion = util.useAtomValueSafe(viewModel?.viewText);
     const magnified = jotai.useAtomValue(nodeModel.isMagnified);
@@ -200,13 +213,13 @@ const BlockFrame_Header = ({
 
     const onContextMenu = React.useCallback(
         (e: React.MouseEvent<HTMLDivElement>) => {
-            handleHeaderContextMenu(e, blockData, viewModel, magnified, nodeModel.toggleMagnify, nodeModel.onClose);
+            handleHeaderContextMenu(e, blockData, viewModel, magnified, nodeModel.toggleMagnify);
         },
         [magnified]
     );
 
     const endIconsElem = computeEndIcons(viewModel, nodeModel, onContextMenu);
-    const viewIconElem = getViewIconElem(viewIconUnion, blockData);
+    const viewIconElem = getViewIconElem(viewIconUnion, blockData, viewIconColor);
     let preIconButtonElem: React.ReactElement = null;
     if (preIconButton) {
         preIconButtonElem = <IconButton decl={preIconButton} className="block-frame-preicon-button" />;
@@ -242,7 +255,8 @@ const BlockFrame_Header = ({
         icon: "link-slash",
         title: "wsh is not installed for this connection",
     };
-    const showNoWshButton = manageConnection && wshProblem && !util.isBlank(connName) && !connName.startsWith("aws:");
+    const showNoWshButton =
+        manageConnection && wshProblem && !util.isLocalConnName(connName) && !connName.startsWith("aws:");
 
     return (
         <div
@@ -479,16 +493,20 @@ const ConnStatusOverlay = React.memo(
 );
 
 const BlockMask = React.memo(({ nodeModel }: { nodeModel: NodeModel }) => {
+    const tabModel = useTabModel();
     const isFocused = jotai.useAtomValue(nodeModel.isFocused);
+    const isEphemeral = jotai.useAtomValue(nodeModel.isEphemeral);
     const blockNum = jotai.useAtomValue(nodeModel.blockNum);
     const isLayoutMode = jotai.useAtomValue(atoms.controlShiftDelayAtom);
     const showOverlayBlockNums = jotai.useAtomValue(getSettingsKeyAtom("app:showoverlayblocknums")) ?? true;
+    const blockHighlight = jotai.useAtomValue(BlockModel.getInstance().getBlockHighlightAtom(nodeModel.blockId));
     const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", nodeModel.blockId));
+    const tabActiveBorderColor = jotai.useAtomValue(tabModel.getTabMetaAtom("bg:activebordercolor"));
+    const tabBorderColor = jotai.useAtomValue(tabModel.getTabMetaAtom("bg:bordercolor"));
     const style: React.CSSProperties = {};
     let showBlockMask = false;
+
     if (isFocused) {
-        const tabData = jotai.useAtomValue(atoms.tabAtom);
-        const tabActiveBorderColor = tabData?.meta?.["bg:activebordercolor"];
         if (tabActiveBorderColor) {
             style.borderColor = tabActiveBorderColor;
         }
@@ -496,15 +514,21 @@ const BlockMask = React.memo(({ nodeModel }: { nodeModel: NodeModel }) => {
             style.borderColor = blockData.meta["frame:activebordercolor"];
         }
     } else {
-        const tabData = jotai.useAtomValue(atoms.tabAtom);
-        const tabBorderColor = tabData?.meta?.["bg:bordercolor"];
         if (tabBorderColor) {
             style.borderColor = tabBorderColor;
         }
         if (blockData?.meta?.["frame:bordercolor"]) {
             style.borderColor = blockData.meta["frame:bordercolor"];
         }
+        if (isEphemeral && !style.borderColor) {
+            style.borderColor = "rgba(255, 255, 255, 0.7)";
+        }
     }
+
+    if (blockHighlight && !style.borderColor) {
+        style.borderColor = "rgb(59, 130, 246)";
+    }
+
     let innerElem = null;
     if (isLayoutMode && showOverlayBlockNums) {
         showBlockMask = true;
@@ -513,9 +537,21 @@ const BlockMask = React.memo(({ nodeModel }: { nodeModel: NodeModel }) => {
                 <div className="bignum">{blockNum}</div>
             </div>
         );
+    } else if (blockHighlight) {
+        showBlockMask = true;
+        const iconClass = makeIconClass(blockHighlight.icon, false);
+        innerElem = (
+            <div className="block-mask-inner">
+                <i className={iconClass} style={{ fontSize: "48px", opacity: 0.5 }} />
+            </div>
+        );
     }
+
     return (
-        <div className={clsx("block-mask", { "show-block-mask": showBlockMask })} style={style}>
+        <div
+            className={clsx("block-mask", { "show-block-mask": showBlockMask, "bg-blue-500/10": blockHighlight })}
+            style={style}
+        >
             {innerElem}
         </div>
     );
@@ -565,7 +601,7 @@ const BlockFrame_Default_Component = (props: BlockFrameProps) => {
             return;
         }
         const connName = blockData?.meta?.connection;
-        if (!util.isBlank(connName)) {
+        if (!util.isLocalConnName(connName)) {
             console.log("ensure conn", nodeModel.blockId, connName);
             RpcApi.ConnEnsureCommand(
                 TabRpcClient,
@@ -638,13 +674,13 @@ const BlockFrame_Default_Component = (props: BlockFrameProps) => {
 const BlockFrame_Default = React.memo(BlockFrame_Default_Component) as typeof BlockFrame_Default_Component;
 
 const BlockFrame = React.memo((props: BlockFrameProps) => {
+    const tabModel = useTabModel();
     const blockId = props.nodeModel.blockId;
     const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", blockId));
-    const tabData = jotai.useAtomValue(atoms.tabAtom);
+    const numBlocks = jotai.useAtomValue(tabModel.tabNumBlocksAtom);
     if (!blockId || !blockData) {
         return null;
     }
-    const numBlocks = tabData?.blockids?.length ?? 0;
     return <BlockFrame_Default {...props} numBlocksInTab={numBlocks} />;
 });
 

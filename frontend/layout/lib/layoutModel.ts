@@ -1,8 +1,9 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { atoms, getSettingsKeyAtom } from "@/app/store/global";
-import { focusManager } from "@/app/store/focusManager";
+import { FocusManager } from "@/app/store/focusManager";
+import { getSettingsKeyAtom } from "@/app/store/global";
+import { BlockService } from "@/app/store/services";
 import { atomWithThrottle, boundNumber, fireAndForget } from "@/util/util";
 import { Atom, atom, Getter, PrimitiveAtom, Setter } from "jotai";
 import { splitAtom } from "jotai/utils";
@@ -406,6 +407,30 @@ export class LayoutModel {
         this.persistToBackend();
     }
 
+    private async cleanupOrphanedBlocks() {
+        const tab = this.getter(this.tabAtom);
+        const layoutBlockIds = new Set<string>();
+
+        if (this.treeState.rootNode == null) {
+            return;
+        }
+
+        walkNodes(this.treeState.rootNode, (node) => {
+            if (node.data?.blockId) {
+                layoutBlockIds.add(node.data.blockId);
+            }
+        });
+
+        for (const blockId of tab.blockids || []) {
+            if (!layoutBlockIds.has(blockId)) {
+                console.log("Cleaning up orphaned block:", blockId);
+                if (this.onNodeDelete) {
+                    await this.onNodeDelete({ blockId });
+                }
+            }
+        }
+    }
+
     private async handleBackendAction(action: LayoutActionData) {
         switch (action.actiontype) {
             case LayoutTreeActionType.InsertNode: {
@@ -537,6 +562,10 @@ export class LayoutModel {
                 this.treeReducer(splitAction, false);
                 break;
             }
+            case "cleanuporphaned": {
+                await this.cleanupOrphanedBlocks();
+                break;
+            }
             default:
                 console.warn("unsupported layout action", action);
                 break;
@@ -574,6 +603,8 @@ export class LayoutModel {
         if (contents.gapSizePx !== undefined) {
             this.setter(this.gapSizePx, contents.gapSizePx);
         }
+        const tab = this.getter(this.tabAtom);
+        fireAndForget(() => BlockService.CleanupOrphanedBlocks(tab.oid));
     }
 
     /**
@@ -594,13 +625,13 @@ export class LayoutModel {
             case LayoutTreeActionType.InsertNode:
                 insertNode(this.treeState, action as LayoutTreeInsertNodeAction);
                 if ((action as LayoutTreeInsertNodeAction).focused) {
-                    focusManager.requestNodeFocus();
+                    FocusManager.getInstance().requestNodeFocus();
                 }
                 break;
             case LayoutTreeActionType.InsertNodeAtIndex:
                 insertNodeAtIndex(this.treeState, action as LayoutTreeInsertNodeAtIndexAction);
                 if ((action as LayoutTreeInsertNodeAtIndexAction).focused) {
-                    focusManager.requestNodeFocus();
+                    FocusManager.getInstance().requestNodeFocus();
                 }
                 break;
             case LayoutTreeActionType.DeleteNode:
@@ -636,11 +667,11 @@ export class LayoutModel {
             }
             case LayoutTreeActionType.FocusNode:
                 focusNode(this.treeState, action as LayoutTreeFocusNodeAction);
-                focusManager.requestNodeFocus();
+                FocusManager.getInstance().requestNodeFocus();
                 break;
             case LayoutTreeActionType.MagnifyNodeToggle:
                 magnifyNodeToggle(this.treeState, action as LayoutTreeMagnifyNodeToggleAction);
-                focusManager.requestNodeFocus();
+                FocusManager.getInstance().requestNodeFocus();
                 break;
             case LayoutTreeActionType.ClearTree:
                 clearTree(this.treeState);
@@ -721,7 +752,6 @@ export class LayoutModel {
             // Process ephemeral node, if present.
             const ephemeralNode = this.getter(this.ephemeralNode);
             if (ephemeralNode) {
-                console.log("updateTree ephemeralNode", ephemeralNode);
                 this.updateEphemeralNodeProps(
                     ephemeralNode,
                     newAdditionalProps,
@@ -1034,7 +1064,7 @@ export class LayoutModel {
                 isFocused: atom((get) => {
                     const treeState = get(this.localTreeStateAtom);
                     const isFocused = treeState.focusedNodeId === nodeid;
-                    const focusType = get(focusManager.focusType);
+                    const focusType = get(FocusManager.getInstance().focusType);
                     return isFocused && focusType === "node";
                 }),
                 numLeafs: this.numLeafs,
@@ -1051,7 +1081,7 @@ export class LayoutModel {
                 animationTimeS: this.animationTimeS,
                 ready: this.ready,
                 disablePointerEvents: this.activeDrag,
-                onClose: () => fireAndForget(() => this.closeNode(nodeid)),
+                onClose: () => fireAndForget(() => this.closeNode(nodeid)), // no longer used (instead we use keymodel uxCloseBlock)
                 toggleMagnify: () => this.magnifyNodeToggle(nodeid),
                 focusNode: () => this.focusNode(nodeid),
                 dragHandleRef: createRef(),

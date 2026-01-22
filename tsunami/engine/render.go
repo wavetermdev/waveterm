@@ -102,10 +102,10 @@ func (r *RootElem) renderComponent(cfunc any, elem *vdom.VDomElem, comp **Compon
 		renderedElem := callCFuncWithErrorGuard(cfunc, props, elem.Tag)
 		return vdom.ToElems(renderedElem)
 	})
-	
+
 	// Process atom usage after render
 	r.updateComponentAtomUsage(*comp, vc.UsedAtoms)
-	
+
 	var rtnElem *vdom.VDomElem
 	if len(rtnElemArr) == 0 {
 		rtnElem = nil
@@ -178,18 +178,6 @@ func (r *RootElem) renderChildren(elems []vdom.VDomElem, curChildren []*Componen
 	return newChildren
 }
 
-// creates an error component for display when a component panics
-func renderErrorComponent(componentName string, errorMsg string) any {
-	return vdom.H("div", map[string]any{
-		"className": "p-4 border border-red-500 bg-red-100 text-red-800 rounded font-mono",
-	},
-		vdom.H("div", map[string]any{
-			"className": "font-bold mb-2",
-		}, fmt.Sprintf("Component Error: %s", componentName)),
-		vdom.H("div", nil, errorMsg),
-	)
-}
-
 // safely calls the component function with panic recovery
 func callCFuncWithErrorGuard(cfunc any, props map[string]any, componentName string) (result any) {
 	defer func() {
@@ -250,10 +238,28 @@ func convertPropsToVDom(props map[string]any) map[string]any {
 			vdomProps[k] = vdomFunc
 			continue
 		}
+		if vdomFuncPtr, ok := v.(*vdom.VDomFunc); ok {
+			if vdomFuncPtr == nil {
+				continue // handled typed-nil
+			}
+			// ensure Type is set on all VDomFuncs (pointer)
+			vdomFuncPtr.Type = vdom.ObjectType_Func
+			vdomProps[k] = vdomFuncPtr
+			continue
+		}
 		if vdomRef, ok := v.(vdom.VDomRef); ok {
 			// ensure Type is set on all VDomRefs
 			vdomRef.Type = vdom.ObjectType_Ref
 			vdomProps[k] = vdomRef
+			continue
+		}
+		if vdomRefPtr, ok := v.(*vdom.VDomRef); ok {
+			if vdomRefPtr == nil {
+				continue // handle typed-nil
+			}
+			// ensure Type is set on all VDomRefs (pointer)
+			vdomRefPtr.Type = vdom.ObjectType_Ref
+			vdomProps[k] = vdomRefPtr
 			continue
 		}
 		val := reflect.ValueOf(v)

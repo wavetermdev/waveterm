@@ -7,6 +7,11 @@ import * as WOS from "./wos";
 
 // blockservice.BlockService (block)
 class BlockServiceType {
+    // queue a layout action to cleanup orphaned blocks in the tab
+    // @returns object updates
+    CleanupOrphanedBlocks(tabId: string): Promise<void> {
+        return WOS.callBackendService("block", "CleanupOrphanedBlocks", Array.from(arguments))
+    }
     GetControllerStatus(arg2: string): Promise<BlockControllerRuntimeStatus> {
         return WOS.callBackendService("block", "GetControllerStatus", Array.from(arguments))
     }
@@ -128,18 +133,13 @@ export const WindowService = new WindowServiceType();
 
 // workspaceservice.WorkspaceService (workspace)
 class WorkspaceServiceType {
-    // @returns object updates
-    ChangeTabPinning(workspaceId: string, tabId: string, pinned: boolean): Promise<void> {
-        return WOS.callBackendService("workspace", "ChangeTabPinning", Array.from(arguments))
-    }
-
     // @returns CloseTabRtn (and object updates)
     CloseTab(workspaceId: string, tabId: string, fromElectron: boolean): Promise<CloseTabRtnType> {
         return WOS.callBackendService("workspace", "CloseTab", Array.from(arguments))
     }
 
     // @returns tabId (and object updates)
-    CreateTab(workspaceId: string, tabName: string, activateTab: boolean, pinned: boolean): Promise<string> {
+    CreateTab(workspaceId: string, tabName: string, activateTab: boolean): Promise<string> {
         return WOS.callBackendService("workspace", "CreateTab", Array.from(arguments))
     }
 
@@ -177,7 +177,7 @@ class WorkspaceServiceType {
     }
 
     // @returns object updates
-    UpdateTabIds(workspaceId: string, tabIds: string[], pinnedTabIds: string[]): Promise<void> {
+    UpdateTabIds(workspaceId: string, tabIds: string[]): Promise<void> {
         return WOS.callBackendService("workspace", "UpdateTabIds", Array.from(arguments))
     }
 

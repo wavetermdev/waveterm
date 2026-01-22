@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { BlockNodeModel } from "@/app/block/blocktypes";
+import type { TabModel } from "@/app/store/tab-model";
 import { ContextMenuModel } from "@/app/store/contextmenu";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
@@ -16,7 +17,7 @@ import { formatRemoteUri } from "@/util/waveutil";
 import clsx from "clsx";
 import { Atom, atom, Getter, PrimitiveAtom, WritableAtom } from "jotai";
 import { loadable } from "jotai/utils";
-import type * as MonacoTypes from "monaco-editor/esm/vs/editor/editor.api";
+import type * as MonacoTypes from "monaco-editor";
 import { createRef } from "react";
 import { PreviewView } from "./preview";
 
@@ -79,6 +80,13 @@ function isStreamingType(mimeType: string): boolean {
     );
 }
 
+function isMarkdownLike(mimeType: string): boolean {
+    if (mimeType == null) {
+        return false;
+    }
+    return mimeType.startsWith("text/markdown") || mimeType.startsWith("text/mdx");
+}
+
 function iconForFile(mimeType: string): string {
     if (mimeType == null) {
         mimeType = "unknown";
@@ -91,7 +99,7 @@ function iconForFile(mimeType: string): string {
         return "film";
     } else if (mimeType.startsWith("audio/")) {
         return "headphones";
-    } else if (mimeType.startsWith("text/markdown")) {
+    } else if (isMarkdownLike(mimeType)) {
         return "file-lines";
     } else if (mimeType == "text/csv") {
         return "file-csv";
@@ -111,6 +119,7 @@ export class PreviewModel implements ViewModel {
     viewType: string;
     blockId: string;
     nodeModel: BlockNodeModel;
+    tabModel: TabModel;
     noPadding?: Atom<boolean>;
     blockAtom: Atom<Block>;
     viewIcon: Atom<string | IconButtonDecl>;
@@ -145,27 +154,30 @@ export class PreviewModel implements ViewModel {
     openFileModal: PrimitiveAtom<boolean>;
     openFileModalDelay: PrimitiveAtom<boolean>;
     openFileError: PrimitiveAtom<string>;
-    openFileModalGiveFocusRef: React.MutableRefObject<() => boolean>;
+    openFileModalGiveFocusRef: React.RefObject<() => boolean>;
 
     markdownShowToc: PrimitiveAtom<boolean>;
 
-    monacoRef: React.MutableRefObject<MonacoTypes.editor.IStandaloneCodeEditor>;
+    monacoRef: React.RefObject<MonacoTypes.editor.IStandaloneCodeEditor>;
 
     showHiddenFiles: PrimitiveAtom<boolean>;
     refreshVersion: PrimitiveAtom<number>;
+    directorySearchActive: PrimitiveAtom<boolean>;
     refreshCallback: () => void;
     directoryKeyDownHandler: (waveEvent: WaveKeyboardEvent) => boolean;
     codeEditKeyDownHandler: (waveEvent: WaveKeyboardEvent) => boolean;
 
     showS3 = atom(true);
 
-    constructor(blockId: string, nodeModel: BlockNodeModel) {
+    constructor(blockId: string, nodeModel: BlockNodeModel, tabModel: TabModel) {
         this.viewType = "preview";
         this.blockId = blockId;
         this.nodeModel = nodeModel;
+        this.tabModel = tabModel;
         let showHiddenFiles = globalStore.get(getSettingsKeyAtom("preview:showhiddenfiles")) ?? true;
         this.showHiddenFiles = atom<boolean>(showHiddenFiles);
         this.refreshVersion = atom(0);
+        this.directorySearchActive = atom(false);
         this.previewTextRef = createRef();
         this.openFileModal = atom(false);
         this.openFileModalDelay = atom(false);
@@ -252,27 +264,21 @@ export class PreviewModel implements ViewModel {
                     viewTextChildren.push({
                         elemtype: "textbutton",
                         text: "Loading ...",
-                        className: clsx(
-                            `grey warning rounded-[4px] py-[2px] px-[10px] text-[11px] font-[500]`
-                        ),
+                        className: clsx(`grey rounded-[4px] !py-[2px] !px-[10px] text-[11px] font-[500]`),
                         onClick: () => {},
                     });
                 } else if (fileInfo.data.readonly) {
                     viewTextChildren.push({
                         elemtype: "textbutton",
                         text: "Read Only",
-                        className: clsx(
-                            `yellow warning rounded-[4px] py-[2px] px-[10px] text-[11px] font-[500]`
-                        ),
+                        className: clsx(`yellow rounded-[4px] !py-[2px] !px-[10px] text-[11px] font-[500]`),
                         onClick: () => {},
                     });
                 } else {
                     viewTextChildren.push({
                         elemtype: "textbutton",
                         text: "Save",
-                        className: clsx(
-                            `${saveClassName} warning rounded-[4px] py-[2px] px-[10px] text-[11px] font-[500]`
-                        ),
+                        className: clsx(`${saveClassName} rounded-[4px] !py-[2px] !px-[10px] text-[11px] font-[500]`),
                         onClick: () => fireAndForget(this.handleFileSave.bind(this)),
                     });
                 }
@@ -280,8 +286,7 @@ export class PreviewModel implements ViewModel {
                     viewTextChildren.push({
                         elemtype: "textbutton",
                         text: "Preview",
-                        className:
-                            "grey rounded-[4px] py-[2px] px-[10px] text-[11px] font-[500]",
+                        className: "grey rounded-[4px] !py-[2px] !px-[10px] text-[11px] font-[500]",
                         onClick: () => fireAndForget(() => this.setEditMode(false)),
                     });
                 }
@@ -289,8 +294,7 @@ export class PreviewModel implements ViewModel {
                 viewTextChildren.push({
                     elemtype: "textbutton",
                     text: "Edit",
-                    className:
-                        "grey rounded-[4px] py-[2px] px-[10px] text-[11px] font-[500]",
+                    className: "grey rounded-[4px] !py-[2px] !px-[10px] text-[11px] font-[500]",
                     onClick: () => fireAndForget(() => this.setEditMode(true)),
                 });
             }
@@ -341,13 +345,29 @@ export class PreviewModel implements ViewModel {
                         click: () => this.refreshCallback?.(),
                     },
                 ] as IconButtonDecl[];
-            } else if (!isCeView && mimeType?.startsWith("text/markdown")) {
+            } else if (!isCeView && isMarkdownLike(mimeType)) {
                 return [
                     {
                         elemtype: "iconbutton",
                         icon: "book",
                         title: "Table of Contents",
                         click: () => this.markdownShowTocToggle(),
+                    },
+                    {
+                        elemtype: "iconbutton",
+                        icon: "arrows-rotate",
+                        title: "Refresh",
+                        click: () => this.refreshCallback?.(),
+                    },
+                ] as IconButtonDecl[];
+            } else if (!isCeView && mimeType) {
+                // For all other file types (text, code, etc.), add refresh button
+                return [
+                    {
+                        elemtype: "iconbutton",
+                        icon: "arrows-rotate",
+                        title: "Refresh",
+                        click: () => this.refreshCallback?.(),
                     },
                 ] as IconButtonDecl[];
             }
@@ -407,6 +427,7 @@ export class PreviewModel implements ViewModel {
         this.goParentDirectory = this.goParentDirectory.bind(this);
 
         const fullFileAtom = atom<Promise<FileData>>(async (get) => {
+            get(this.refreshVersion); // Subscribe to refreshVersion to trigger re-fetch
             const fileName = get(this.metaFilePath);
             const path = await this.formatRemoteUri(fileName, get);
             if (fileName == null) {
@@ -516,7 +537,7 @@ export class PreviewModel implements ViewModel {
             }
             return { specializedView: "csv" };
         }
-        if (mimeType.startsWith("text/markdown")) {
+        if (isMarkdownLike(mimeType)) {
             if (editMode) {
                 return { specializedView: "codeedit" };
             }

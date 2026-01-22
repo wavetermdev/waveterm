@@ -3,16 +3,8 @@
 
 import { computeConnColorNum } from "@/app/block/blockutil";
 import { TypeAheadModal } from "@/app/modals/typeaheadmodal";
-import {
-    atoms,
-    createBlock,
-    getApi,
-    getConnStatusAtom,
-    getHostName,
-    getUserName,
-    globalStore,
-    WOS,
-} from "@/app/store/global";
+import { ConnectionsModel } from "@/app/store/connections-model";
+import { atoms, createBlock, getConnStatusAtom, getHostName, getUserName, globalStore, WOS } from "@/app/store/global";
 import { globalRefocusWithTimeout } from "@/app/store/keymodel";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
@@ -107,7 +99,7 @@ function createFilteredLocalSuggestionItem(
             iconColor: "var(--grey-text-color)",
             value: "",
             label: localName,
-            current: connection == null,
+            current: util.isBlank(connection),
         };
         return [localSuggestion];
     }
@@ -172,12 +164,26 @@ function getLocalSuggestions(
     connSelected: string,
     connStatusMap: Map<string, ConnStatus>,
     fullConfig: FullConfigType,
-    filterOutNowsh: boolean
+    filterOutNowsh: boolean,
+    hasGitBash: boolean
 ): SuggestionConnectionScope | null {
     const wslFiltered = filterConnections(connList, connSelected, fullConfig, filterOutNowsh);
     const wslSuggestionItems = createWslSuggestionItems(wslFiltered, connection, connStatusMap);
     const localSuggestionItem = createFilteredLocalSuggestionItem(localName, connection, connSelected);
-    const combinedSuggestionItems = [...localSuggestionItem, ...wslSuggestionItems];
+
+    const gitBashItems: Array<SuggestionConnectionItem> = [];
+    if (hasGitBash && "Git Bash".toLowerCase().includes(connSelected.toLowerCase())) {
+        gitBashItems.push({
+            status: "connected",
+            icon: "laptop",
+            iconColor: "var(--grey-text-color)",
+            value: "local:gitbash",
+            label: "Git Bash",
+            current: connection === "local:gitbash",
+        });
+    }
+
+    const combinedSuggestionItems = [...localSuggestionItem, ...gitBashItems, ...wslSuggestionItems];
     const sortedSuggestionItems = sortConnSuggestionItems(combinedSuggestionItems, fullConfig);
     if (sortedSuggestionItems.length == 0) {
         return null;
@@ -235,7 +241,7 @@ function getDisconnectItem(
     connection: string,
     connStatusMap: Map<string, ConnStatus>
 ): SuggestionConnectionItem | null {
-    if (!connection) {
+    if (util.isLocalConnName(connection)) {
         return null;
     }
     const connStatus = connStatusMap.get(connection);
@@ -272,11 +278,10 @@ function getConnectionsEditItem(
         onSelect: () => {
             util.fireAndForget(async () => {
                 globalStore.set(changeConnModalAtom, false);
-                const path = `${getApi().getConfigDir()}/connections.json`;
                 const blockDef: BlockDef = {
                     meta: {
-                        view: "preview",
-                        file: path,
+                        view: "waveconfig",
+                        file: "connections.json",
                     },
                 };
                 await createBlock(blockDef, false, true);
@@ -347,6 +352,7 @@ const ChangeConnectionBlockModal = React.memo(
         const fullConfig = jotai.useAtomValue(atoms.fullConfigAtom);
         let filterOutNowsh = util.useAtomValueSafe(viewModel.filterOutNowsh) ?? true;
         const showS3 = util.useAtomValueSafe(viewModel.showS3) ?? false;
+        const hasGitBash = jotai.useAtomValue(ConnectionsModel.getInstance().hasGitBashAtom);
 
         let maxActiveConnNum = 1;
         for (const conn of allConnStatus) {
@@ -403,15 +409,7 @@ const ChangeConnectionBlockModal = React.memo(
                     oref: WOS.makeORef("block", blockId),
                     meta: { connection: connName, file: newFile, "cmd:cwd": null },
                 });
-                
-                const rtInfo = { "cmd:hascurcwd": null };
-                const rtInfoData: CommandSetRTInfoData = {
-                    oref: WOS.makeORef("block", blockId),
-                    data: rtInfo
-                };
-                RpcApi.SetRTInfoCommand(TabRpcClient, rtInfoData).catch((e) =>
-                    console.log("error setting RT info", e)
-                );
+
                 try {
                     await RpcApi.ConnEnsureCommand(
                         TabRpcClient,
@@ -434,7 +432,8 @@ const ChangeConnectionBlockModal = React.memo(
             connSelected,
             connStatusMap,
             fullConfig,
-            filterOutNowsh
+            filterOutNowsh,
+            hasGitBash
         );
         const remoteSuggestions = getRemoteSuggestions(
             connList,

@@ -189,3 +189,20 @@ type VDomMessage struct {
 	StackTrace  string `json:"stacktrace,omitempty"`
 	Params      []any  `json:"params,omitempty"`
 }
+
+// ModalConfig contains all configuration options for modals
+type ModalConfig struct {
+	ModalId    string `json:"modalid"`              // Unique identifier for the modal
+	ModalType  string `json:"modaltype"`            // "alert" or "confirm"
+	Icon       string `json:"icon,omitempty"`       // Optional icon to display (emoji or icon name)
+	Title      string `json:"title"`                // Modal title
+	Text       string `json:"text,omitempty"`       // Optional body text
+	OkText     string `json:"oktext,omitempty"`     // Optional OK button text (defaults to "OK")
+	CancelText string `json:"canceltext,omitempty"` // Optional Cancel button text for confirm modals (defaults to "Cancel")
+}
+
+// ModalResult contains the result of a modal interaction
+type ModalResult struct {
+	ModalId string `json:"modalid"` // ID of the modal
+	Confirm bool   `json:"confirm"` // true = confirmed/ok, false = cancelled
+}

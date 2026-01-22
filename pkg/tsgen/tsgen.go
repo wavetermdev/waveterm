@@ -53,6 +53,7 @@ var ExtraTypes = []any{
 	waveobj.MetaTSType{},
 	waveobj.ObjRTInfo{},
 	uctypes.RateLimitInfo{},
+	wconfig.AIModeConfigUpdate{},
 }
 
 // add extra type unions to generate here
@@ -498,6 +499,9 @@ func GenerateWaveObjTypes(tsTypesMap map[reflect.Type]string) {
 		GenerateTSType(reflect.TypeOf(extraType), tsTypesMap)
 	}
 	for _, rtype := range waveobj.AllWaveObjTypes() {
+		if rtype.String() == "*waveobj.MainServer" {
+			continue
+		}
 		GenerateTSType(rtype, tsTypesMap)
 	}
 }

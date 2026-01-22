@@ -2,7 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { BlockNodeModel } from "@/app/block/blocktypes";
-import { atoms, globalStore, WOS } from "@/app/store/global";
+import { getApi, globalStore, WOS } from "@/app/store/global";
+import type { TabModel } from "@/app/store/tab-model";
 import { waveEventSubscribe } from "@/app/store/wps";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
@@ -11,22 +12,18 @@ import * as services from "@/store/services";
 import * as jotai from "jotai";
 import { memo, useEffect } from "react";
 
-interface TsunamiAppMeta {
-    title: string;
-    shortdesc: string;
-}
-
 class TsunamiViewModel extends WebViewModel {
     shellProcFullStatus: jotai.PrimitiveAtom<BlockControllerRuntimeStatus>;
     shellProcStatusUnsubFn: () => void;
+    appMeta: jotai.PrimitiveAtom<AppMeta>;
+    appMetaUnsubFn: () => void;
     isRestarting: jotai.PrimitiveAtom<boolean>;
-    viewName: jotai.PrimitiveAtom<string>;
+    viewName: jotai.Atom<string>;
+    viewIconColor: jotai.Atom<string>;
 
-    constructor(blockId: string, nodeModel: BlockNodeModel) {
-        super(blockId, nodeModel);
+    constructor(blockId: string, nodeModel: BlockNodeModel, tabModel: TabModel) {
+        super(blockId, nodeModel, tabModel);
         this.viewType = "tsunami";
-        this.viewIcon = jotai.atom("cube");
-        this.viewName = jotai.atom("Tsunami");
         this.isRestarting = jotai.atom(false);
 
         // Hide navigation bar (URL bar, back/forward/home buttons)
@@ -46,6 +43,36 @@ class TsunamiViewModel extends WebViewModel {
             handler: (event) => {
                 let bcRTS: BlockControllerRuntimeStatus = event.data;
                 this.updateShellProcStatus(bcRTS);
+            },
+        });
+
+        this.appMeta = jotai.atom(null) as jotai.PrimitiveAtom<AppMeta>;
+        this.viewIcon = jotai.atom((get) => {
+            const meta = get(this.appMeta);
+            return meta?.icon || "cube";
+        });
+        this.viewIconColor = jotai.atom((get) => {
+            const meta = get(this.appMeta);
+            return meta?.iconcolor;
+        });
+        this.viewName = jotai.atom((get) => {
+            const meta = get(this.appMeta);
+            return meta?.title || "WaveApp";
+        });
+        const initialRTInfo = RpcApi.GetRTInfoCommand(TabRpcClient, {
+            oref: WOS.makeORef("block", blockId),
+        });
+        initialRTInfo.then((rtInfo) => {
+            if (rtInfo && rtInfo["tsunami:appmeta"]) {
+                globalStore.set(this.appMeta, rtInfo["tsunami:appmeta"]);
+            }
+        });
+        this.appMetaUnsubFn = waveEventSubscribe({
+            eventType: "tsunami:updatemeta",
+            scope: WOS.makeORef("block", blockId),
+            handler: (event) => {
+                const meta: AppMeta = event.data;
+                globalStore.set(this.appMeta, meta);
             },
         });
     }
@@ -72,47 +99,75 @@ class TsunamiViewModel extends WebViewModel {
         }, 300);
     }
 
-    resyncController() {
+    private doControllerResync(forceRestart: boolean, logContext: string, triggerRestart: boolean = true) {
+        if (triggerRestart) {
+            if (globalStore.get(this.isRestarting)) {
+                return;
+            }
+            this.triggerRestartAtom();
+        }
         const prtn = RpcApi.ControllerResyncCommand(TabRpcClient, {
-            tabid: globalStore.get(atoms.staticTabId),
+            tabid: this.tabModel.tabId,
             blockid: this.blockId,
-            forcerestart: false,
+            forcerestart: forceRestart,
         });
-        prtn.catch((e) => console.log("error controller resync", e));
+        prtn.catch((e) => console.log(`error controller resync (${logContext})`, e));
     }
 
-    forceRestartController() {
+    resyncController() {
+        this.doControllerResync(false, "resync", false);
+    }
+
+    stopController() {
+        const prtn = RpcApi.ControllerStopCommand(TabRpcClient, this.blockId);
+        prtn.catch((e) => console.log("error stopping controller", e));
+    }
+
+    async restartController() {
         if (globalStore.get(this.isRestarting)) {
             return;
         }
         this.triggerRestartAtom();
-        const prtn = RpcApi.ControllerResyncCommand(TabRpcClient, {
-            tabid: globalStore.get(atoms.staticTabId),
-            blockid: this.blockId,
-            forcerestart: true,
-        });
-        prtn.catch((e) => console.log("error controller resync (force restart)", e));
+        try {
+            // Stop the controller first
+            await RpcApi.ControllerStopCommand(TabRpcClient, this.blockId);
+            // Wait a bit for the controller to fully stop
+            await new Promise((resolve) => setTimeout(resolve, 300));
+            // Then resync to restart it
+            await RpcApi.ControllerResyncCommand(TabRpcClient, {
+                tabid: this.tabModel.tabId,
+                blockid: this.blockId,
+                forcerestart: false,
+            });
+        } catch (e) {
+            console.log("error restarting controller", e);
+        }
     }
 
-    setAppMeta(meta: TsunamiAppMeta) {
-        console.log("tsunami app meta:", meta);
+    restartAndForceRebuild() {
+        this.doControllerResync(true, "force rebuild");
+    }
 
-        const rtInfo: ObjRTInfo = {};
-        if (meta.title) {
-            rtInfo["tsunami:title"] = meta.title;
+    forceRestartController() {
+        // Keep this for backward compatibility with the Start button
+        this.doControllerResync(true, "force restart");
+    }
+
+    async remixInBuilder() {
+        const blockData = globalStore.get(this.blockAtom);
+        const appId = blockData?.meta?.["tsunami:appid"];
+
+        if (!appId || !appId.startsWith("local/")) {
+            return;
         }
-        if (meta.shortdesc) {
-            rtInfo["tsunami:shortdesc"] = meta.shortdesc;
-        }
 
-        if (Object.keys(rtInfo).length > 0) {
-            const oref = WOS.makeORef("block", this.blockId);
-            const data: CommandSetRTInfoData = {
-                oref: oref,
-                data: rtInfo,
-            };
+        try {
+            const result = await RpcApi.MakeDraftFromLocalCommand(TabRpcClient, { localappid: appId });
+            const draftAppId = result.draftappid;
 
-            RpcApi.SetRTInfoCommand(TabRpcClient, data).catch((e) => console.log("error setting RT info", e));
+            getApi().openBuilder(draftAppId);
+        } catch (err) {
+            console.error("Failed to create draft from local app:", err);
         }
     }
 
@@ -120,12 +175,15 @@ class TsunamiViewModel extends WebViewModel {
         if (this.shellProcStatusUnsubFn) {
             this.shellProcStatusUnsubFn();
         }
+        if (this.appMetaUnsubFn) {
+            this.appMetaUnsubFn();
+        }
     }
 
     getSettingsMenuItems(): ContextMenuItem[] {
         const items = super.getSettingsMenuItems();
         // Filter out homepage and navigation-related menu items for tsunami view
-        return items.filter((item) => {
+        const filteredItems = items.filter((item) => {
             const label = item.label?.toLowerCase() || "";
             return (
                 !label.includes("homepage") &&
@@ -134,6 +192,44 @@ class TsunamiViewModel extends WebViewModel {
                 !label.includes("nav")
             );
         });
+
+        // Check if we should show the Remix option
+        const blockData = globalStore.get(this.blockAtom);
+        const appId = blockData?.meta?.["tsunami:appid"];
+        const showRemixOption = appId && appId.startsWith("local/");
+
+        // Add tsunami-specific menu items at the beginning
+        const tsunamiItems: ContextMenuItem[] = [
+            {
+                label: "Stop WaveApp",
+                click: () => this.stopController(),
+            },
+            {
+                label: "Restart WaveApp",
+                click: () => this.restartController(),
+            },
+            {
+                label: "Restart WaveApp and Force Rebuild",
+                click: () => this.restartAndForceRebuild(),
+            },
+            {
+                type: "separator",
+            },
+        ];
+
+        if (showRemixOption) {
+            tsunamiItems.push(
+                {
+                    label: "Remix WaveApp in Builder",
+                    click: () => this.remixInBuilder(),
+                },
+                {
+                    type: "separator",
+                }
+            );
+        }
+
+        return [...tsunamiItems, ...filteredItems];
     }
 }
 
@@ -148,46 +244,14 @@ const TsunamiView = memo((props: ViewComponentProps<TsunamiViewModel>) => {
         model.resyncController();
     }, [model]);
 
-    useEffect(() => {
-        if (!domReady || !model.webviewRef?.current) return;
-
-        const webviewElement = model.webviewRef.current;
-
-        const handleConsoleMessage = (e: any) => {
-            const message = e.message;
-            if (typeof message === "string" && message.startsWith("TSUNAMI_META ")) {
-                try {
-                    const jsonStr = message.substring("TSUNAMI_META ".length);
-                    const meta = JSON.parse(jsonStr);
-                    if (meta.title || meta.shortdesc) {
-                        model.setAppMeta(meta);
-
-                        if (meta.title) {
-                            const truncatedTitle =
-                                meta.title.length > 77 ? meta.title.substring(0, 77) + "..." : meta.title;
-                            globalStore.set(model.viewName, truncatedTitle);
-                        }
-                    }
-                } catch (error) {
-                    console.error("Failed to parse TSUNAMI_META message:", error);
-                }
-            }
-        };
-
-        webviewElement.addEventListener("console-message", handleConsoleMessage);
-
-        return () => {
-            webviewElement.removeEventListener("console-message", handleConsoleMessage);
-        };
-    }, [domReady, model]);
-
     const appPath = blockData?.meta?.["tsunami:apppath"];
+    const appId = blockData?.meta?.["tsunami:appid"];
     const controller = blockData?.meta?.controller;
 
     // Check for configuration errors
     const errors = [];
-    if (!appPath) {
-        errors.push("App path must be set (tsunami:apppath)");
+    if (!appPath && !appId) {
+        errors.push("App path or app ID must be set (tsunami:apppath or tsunami:appid)");
     }
     if (controller !== "tsunami") {
         errors.push("Invalid controller (must be 'tsunami')");
@@ -230,7 +294,7 @@ const TsunamiView = memo((props: ViewComponentProps<TsunamiViewModel>) => {
     return (
         <div className="w-full h-full flex flex-col items-center justify-center gap-4">
             <h1 className="text-4xl font-bold text-main-text-color">Tsunami</h1>
-            {appPath && <div className="text-sm text-main-text-color opacity-70">{appPath}</div>}
+            {(appPath || appId) && <div className="text-sm text-main-text-color opacity-70">{appPath || appId}</div>}
             {isNotRunning && !isRestarting && (
                 <button
                     onClick={() => model.forceRestartController()}

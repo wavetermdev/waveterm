@@ -27,9 +27,12 @@ const WCloudEndpoint = "https://api.waveterm.dev/central"
 const WCloudEndpointVarName = "WCLOUD_ENDPOINT"
 const WCloudWSEndpoint = "wss://wsapi.waveterm.dev/"
 const WCloudWSEndpointVarName = "WCLOUD_WS_ENDPOINT"
+const WCloudPingEndpoint = "https://ping.waveterm.dev/central"
+const WCloudPingEndpointVarName = "WCLOUD_PING_ENDPOINT"
 
 var WCloudWSEndpoint_VarCache string
 var WCloudEndpoint_VarCache string
+var WCloudPingEndpoint_VarCache string
 
 const APIVersion = 1
 const MaxPtyUpdateSize = (128 * 1024)
@@ -47,6 +50,7 @@ const TelemetryUrl = "/telemetry"
 const TEventsUrl = "/tevents"
 const NoTelemetryUrl = "/no-telemetry"
 const WebShareUpdateUrl = "/auth/web-share-update"
+const PingUrl = "/ping"
 
 func CacheAndRemoveEnvVars() error {
 	WCloudEndpoint_VarCache = os.Getenv(WCloudEndpointVarName)
@@ -61,6 +65,8 @@ func CacheAndRemoveEnvVars() error {
 		return err
 	}
 	os.Unsetenv(WCloudWSEndpointVarName)
+	WCloudPingEndpoint_VarCache = os.Getenv(WCloudPingEndpointVarName)
+	os.Unsetenv(WCloudPingEndpointVarName)
 	return nil
 }
 
@@ -101,6 +107,14 @@ func GetWSEndpoint() string {
 	return endpoint
 }
 
+func GetPingEndpoint() string {
+	if !wavebase.IsDevMode() {
+		return WCloudPingEndpoint
+	}
+	endpoint := WCloudPingEndpoint_VarCache
+	return endpoint
+}
+
 func makeAnonPostReq(ctx context.Context, apiUrl string, data interface{}) (*http.Request, error) {
 	endpoint := GetEndpoint()
 	if endpoint == "" {
@@ -126,9 +140,11 @@ func makeAnonPostReq(ctx context.Context, apiUrl string, data interface{}) (*htt
 	return req, nil
 }
 
-func doRequest(req *http.Request, outputObj interface{}) (*http.Response, error) {
+func doRequest(req *http.Request, outputObj interface{}, verbose bool) (*http.Response, error) {
 	apiUrl := req.Header.Get("X-PromptAPIUrl")
-	log.Printf("[wcloud] sending request %s %v\n", req.Method, req.URL)
+	if verbose {
+		log.Printf("[wcloud] sending request %s %v\n", req.Method, req.URL)
+	}
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("error contacting wcloud %q service: %v", apiUrl, err)
@@ -169,7 +185,6 @@ func sendTEventsBatch(clientId string) (bool, int, error) {
 	if len(events) == 0 {
 		return true, 0, nil
 	}
-	log.Printf("[wcloud] sending %d tevents\n", len(events))
 	input := TEventsInputType{
 		ClientId: clientId,
 		Events:   events,
@@ -178,7 +193,10 @@ func sendTEventsBatch(clientId string) (bool, int, error) {
 	if err != nil {
 		return true, 0, err
 	}
-	_, err = doRequest(req, nil)
+	startTime := time.Now()
+	_, err = doRequest(req, nil, true)
+	latency := time.Since(startTime)
+	log.Printf("[wcloud] sent %d tevents (latency: %v)\n", len(events), latency)
 	if err != nil {
 		return true, 0, err
 	}
@@ -211,12 +229,12 @@ func sendTEvents(clientId string) (int, error) {
 	return totalEvents, nil
 }
 
-func SendAllTelemetry(ctx context.Context, clientId string) error {
-	defer func() {
-		ctx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)
-		defer cancelFn()
-		telemetry.CleanOldTEvents(ctx)
-	}()
+func SendAllTelemetry(clientId string) error {
+	ctx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancelFn()
+	if err := telemetry.CleanOldTEvents(ctx); err != nil {
+		log.Printf("error cleaning old telemetry events: %v\n", err)
+	}
 	if !telemetry.IsTelemetryEnabled() {
 		log.Printf("telemetry disabled, not sending\n")
 		return nil
@@ -225,14 +243,12 @@ func SendAllTelemetry(ctx context.Context, clientId string) error {
 	if err != nil {
 		return err
 	}
-	err = sendTelemetry(ctx, clientId)
-	if err != nil {
-		return err
-	}
 	return nil
 }
 
-func sendTelemetry(ctx context.Context, clientId string) error {
+func sendTelemetry(clientId string) error {
+	ctx, cancelFn := context.WithTimeout(context.Background(), WCloudDefaultTimeout)
+	defer cancelFn()
 	activity, err := telemetry.GetNonUploadedActivity(ctx)
 	if err != nil {
 		return fmt.Errorf("cannot get activity: %v", err)
@@ -255,7 +271,7 @@ func sendTelemetry(ctx context.Context, clientId string) error {
 	if err != nil {
 		return err
 	}
-	_, err = doRequest(req, nil)
+	_, err = doRequest(req, nil, true)
 	if err != nil {
 		return err
 	}
@@ -271,7 +287,63 @@ func SendNoTelemetryUpdate(ctx context.Context, clientId string, noTelemetryVal 
 	if err != nil {
 		return err
 	}
-	_, err = doRequest(req, nil)
+	_, err = doRequest(req, nil, true)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func makePingPostReq(ctx context.Context, apiUrl string, data interface{}) (*http.Request, error) {
+	endpoint := GetPingEndpoint()
+	if endpoint == "" {
+		return nil, errors.New("wcloud ping endpoint not set")
+	}
+	var dataReader io.Reader
+	if data != nil {
+		byteArr, err := json.Marshal(data)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling json for %s request: %v", apiUrl, err)
+		}
+		dataReader = bytes.NewReader(byteArr)
+	}
+	fullUrl := endpoint + apiUrl
+	req, err := http.NewRequestWithContext(ctx, "POST", fullUrl, dataReader)
+	if err != nil {
+		return nil, fmt.Errorf("error creating %s request: %v", apiUrl, err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-PromptAPIVersion", strconv.Itoa(APIVersion))
+	req.Close = true
+	return req, nil
+}
+
+type PingInputType struct {
+	ClientId       string `json:"clientid"`
+	Arch           string `json:"arch"`
+	Version        string `json:"version"`
+	LocalDate      string `json:"localdate"`
+	UsageTelemetry bool   `json:"usagetelemetry"`
+}
+
+func SendDiagnosticPing(ctx context.Context, clientId string, usageTelemetry bool) error {
+	endpoint := GetPingEndpoint()
+	if endpoint == "" {
+		return nil
+	}
+	localDate := time.Now().Format("2006-01-02")
+	input := PingInputType{
+		ClientId:       clientId,
+		Arch:           wavebase.ClientArch(),
+		Version:        "v" + wavebase.WaveVersion,
+		LocalDate:      localDate,
+		UsageTelemetry: usageTelemetry,
+	}
+	req, err := makePingPostReq(ctx, PingUrl, input)
+	if err != nil {
+		return err
+	}
+	_, err = doRequest(req, nil, false)
 	if err != nil {
 		return err
 	}

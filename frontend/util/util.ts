@@ -4,12 +4,19 @@
 import base64 from "base64-js";
 import clsx, { type ClassValue } from "clsx";
 import { Atom, atom, Getter, SetStateAction, Setter, useAtomValue } from "jotai";
-import { debounce, throttle } from "throttle-debounce";
 import { twMerge } from "tailwind-merge";
+import { debounce, throttle } from "throttle-debounce";
 const prevValueCache = new WeakMap<any, any>(); // stores a previous value for a deep equal comparison (used with the deepCompareReturnPrev function)
 
 function isBlank(str: string): boolean {
     return str == null || str == "";
+}
+
+function isLocalConnName(connName: string): boolean {
+    if (isBlank(connName)) {
+        return true;
+    }
+    return connName === "local" || connName.startsWith("local:");
 }
 
 function base64ToString(b64: string): string {
@@ -28,13 +35,20 @@ function stringToBase64(input: string): string {
     return base64.fromByteArray(stringBytes);
 }
 
-function base64ToArray(b64: string): Uint8Array {
-    const rawStr = atob(b64);
-    const rtnArr = new Uint8Array(new ArrayBuffer(rawStr.length));
-    for (let i = 0; i < rawStr.length; i++) {
-        rtnArr[i] = rawStr.charCodeAt(i);
-    }
-    return rtnArr;
+function arrayToBase64(input: Uint8Array): string {
+    return base64.fromByteArray(input);
+}
+
+function base64ToArray(b64: string): Uint8Array<ArrayBufferLike> {
+    const cleanB64 = b64.replace(/\s+/g, "");
+    return base64.toByteArray(cleanB64);
+}
+
+function base64ToArrayBuffer(b64: string): ArrayBuffer {
+    const cleanB64 = b64.replace(/\s+/g, "");
+    const u8 = base64.toByteArray(cleanB64); // Uint8Array<ArrayBufferLike>
+    // Force a plain ArrayBuffer slice (no SharedArrayBuffer, no offset issues)
+    return u8.buffer.slice(u8.byteOffset, u8.byteOffset + u8.byteLength) as ArrayBuffer;
 }
 
 function boundNumber(num: number, min: number, max: number): number {
@@ -104,30 +118,48 @@ function makeIconClass(icon: string, fw: boolean, opts?: { spin?: boolean; defau
         }
         return null;
     }
+
+    let animation: string | null = null;
+    let hasFwModifier = false;
+
+    while (icon.match(/\+(spin|beat|fade|fw)$/)) {
+        const modifierMatch = icon.match(/\+(spin|beat|fade|fw)$/);
+        if (modifierMatch) {
+            const modifier = modifierMatch[1];
+            if (modifier === "fw") {
+                hasFwModifier = true;
+            } else {
+                animation = modifier;
+            }
+            icon = icon.replace(/\+(spin|beat|fade|fw)$/, "");
+        }
+    }
+
+    let baseClass: string;
     if (icon.match(/^(solid@)?[a-z0-9-]+$/)) {
-        // strip off "solid@" prefix if it exists
         icon = icon.replace(/^solid@/, "");
-        return clsx(`fa fa-solid fa-${icon}`, fw ? "fa-fw" : null, opts?.spin ? "fa-spin" : null);
-    }
-    if (icon.match(/^regular@[a-z0-9-]+$/)) {
-        // strip off the "regular@" prefix if it exists
+        baseClass = `fa fa-solid fa-${icon}`;
+    } else if (icon.match(/^regular@[a-z0-9-]+$/)) {
         icon = icon.replace(/^regular@/, "");
-        return clsx(`fa fa-sharp fa-regular fa-${icon}`, fw ? "fa-fw" : null, opts?.spin ? "fa-spin" : null);
-    }
-    if (icon.match(/^brands@[a-z0-9-]+$/)) {
-        // strip off the "brands@" prefix if it exists
+        baseClass = `fa fa-sharp fa-regular fa-${icon}`;
+    } else if (icon.match(/^brands@[a-z0-9-]+$/)) {
         icon = icon.replace(/^brands@/, "");
-        return clsx(`fa fa-brands fa-${icon}`, fw ? "fa-fw" : null, opts?.spin ? "fa-spin" : null);
-    }
-    if (icon.match(/^custom@[a-z0-9-]+$/)) {
-        // strip off the "custom@" prefix if it exists
+        baseClass = `fa fa-brands fa-${icon}`;
+    } else if (icon.match(/^custom@[a-z0-9-]+$/)) {
         icon = icon.replace(/^custom@/, "");
-        return clsx(`fa fa-kit fa-${icon}`, fw ? "fa-fw" : null, opts?.spin ? "fa-spin" : null);
+        baseClass = `fa fa-kit fa-${icon}`;
+    } else {
+        if (opts?.defaultIcon != null) {
+            return makeIconClass(opts.defaultIcon, fw, { spin: opts?.spin });
+        }
+        return null;
     }
-    if (opts?.defaultIcon != null) {
-        return makeIconClass(opts.defaultIcon, fw, { spin: opts?.spin });
-    }
-    return null;
+
+    const shouldAddFw = fw || hasFwModifier;
+    const hasSpin = animation === "spin" || opts?.spin;
+    const animationClass = animation && animation !== "spin" ? `fa-${animation}` : null;
+
+    return clsx(baseClass, shouldAddFw ? "fa-fw" : null, hasSpin ? "fa-spin" : null, animationClass);
 }
 
 /**
@@ -379,17 +411,22 @@ function mergeMeta(meta: MetaType, metaUpdate: MetaType, prefix?: string): MetaT
 }
 
 function escapeBytes(str: string): string {
-    return str.replace(/[\s\S]/g, ch => {
+    return str.replace(/[\s\S]/g, (ch) => {
         const code = ch.charCodeAt(0);
         switch (ch) {
-            case "\n": return "\\n";
-            case "\r": return "\\r";
-            case "\t": return "\\t";
-            case "\b": return "\\b";
-            case "\f": return "\\f";
+            case "\n":
+                return "\\n";
+            case "\r":
+                return "\\r";
+            case "\t":
+                return "\\t";
+            case "\b":
+                return "\\b";
+            case "\f":
+                return "\\f";
         }
         if (code === 0x1b) return "\\x1b"; // escape
-        if (code < 0x20 || code === 0x7f) return `\\x${code.toString(16).padStart(2,"0")}`;
+        if (code < 0x20 || code === 0x7f) return `\\x${code.toString(16).padStart(2, "0")}`;
         return ch;
     });
 }
@@ -398,10 +435,75 @@ function cn(...inputs: ClassValue[]) {
     return twMerge(clsx(inputs));
 }
 
+type ParsedDataUrl = {
+    mimeType: string;
+    buffer: Uint8Array;
+};
+
+function parseDataUrl(dataUrl: string): ParsedDataUrl {
+    if (!dataUrl.startsWith("data:")) throw new Error("Invalid data URL");
+    const [header, data] = dataUrl.split(",", 2);
+    if (data === undefined) throw new Error("Invalid data URL: missing data");
+
+    const meta = header.slice(5);
+    let mimeType = "text/plain;charset=US-ASCII";
+    const parts = meta.split(";");
+    if (parts[0]) mimeType = parts[0];
+    const isBase64 = parts.some((p) => p.toLowerCase() === "base64");
+
+    let buffer: Uint8Array;
+    if (isBase64) {
+        buffer = base64ToArray(data);
+    } else {
+        // assume text
+        const decoded = decodeURIComponent(data);
+        buffer = new TextEncoder().encode(decoded);
+    }
+
+    return { mimeType, buffer };
+}
+
+function formatRelativeTime(timestamp: number): string {
+    if (!timestamp) {
+        return "never";
+    }
+    const now = Date.now();
+    const diffInSeconds = Math.floor((now - timestamp) / 1000);
+    const diffInMinutes = Math.floor(diffInSeconds / 60);
+    const diffInHours = Math.floor(diffInMinutes / 60);
+    const diffInDays = Math.floor(diffInHours / 24);
+
+    if (diffInMinutes <= 0) {
+        return "Just now";
+    } else if (diffInMinutes < 60) {
+        return `${diffInMinutes} min${diffInMinutes !== 1 ? "s" : ""} ago`;
+    } else if (diffInHours < 24) {
+        return `${diffInHours} hr${diffInHours !== 1 ? "s" : ""} ago`;
+    } else if (diffInDays < 7) {
+        return `${diffInDays} day${diffInDays !== 1 ? "s" : ""} ago`;
+    } else {
+        return new Date(timestamp).toLocaleDateString();
+    }
+}
+
+/**
+ * Sort objects by display:order (ascending) and display:name (alphabetically)
+ * @param a First object to compare
+ * @param b Second object to compare
+ * @returns Comparison result for Array.sort()
+ */
+function sortByDisplayOrder<T extends { "display:order"?: number; "display:name"?: string }>(a: T, b: T): number {
+    const orderDiff = (a["display:order"] || 0) - (b["display:order"] || 0);
+    if (orderDiff !== 0) return orderDiff;
+    return (a["display:name"] || "").localeCompare(b["display:name"] || "");
+}
+
 export {
+    arrayToBase64,
     atomWithDebounce,
     atomWithThrottle,
     base64ToArray,
+    base64ToArrayBuffer,
     base64ToString,
     boundNumber,
     cn,
@@ -409,10 +511,12 @@ export {
     deepCompareReturnPrev,
     escapeBytes,
     fireAndForget,
+    formatRelativeTime,
     getPrefixedSettings,
     getPromiseState,
     getPromiseValue,
     isBlank,
+    isLocalConnName,
     jotaiLoadableValue,
     jsonDeepEqual,
     lazy,
@@ -420,7 +524,9 @@ export {
     makeExternLink,
     makeIconClass,
     mergeMeta,
+    parseDataUrl,
     sleep,
+    sortByDisplayOrder,
     stringToBase64,
     useAtomValueSafe,
 };

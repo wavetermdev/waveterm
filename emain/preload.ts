@@ -3,6 +3,7 @@
 
 import { contextBridge, ipcRenderer, Rectangle, WebviewTag } from "electron";
 
+// update type in custom.d.ts (ElectronApi type)
 contextBridge.exposeInMainWorld("api", {
     getAuthKey: () => ipcRenderer.sendSync("get-auth-key"),
     getIsDev: () => ipcRenderer.sendSync("get-is-dev"),
@@ -12,11 +13,13 @@ contextBridge.exposeInMainWorld("api", {
     getHostName: () => ipcRenderer.sendSync("get-host-name"),
     getDataDir: () => ipcRenderer.sendSync("get-data-dir"),
     getConfigDir: () => ipcRenderer.sendSync("get-config-dir"),
+    getHomeDir: () => ipcRenderer.sendSync("get-home-dir"),
     getAboutModalDetails: () => ipcRenderer.sendSync("get-about-modal-details"),
-    getDocsiteUrl: () => ipcRenderer.sendSync("get-docsite-url"),
     getWebviewPreload: () => ipcRenderer.sendSync("get-webview-preload"),
     getZoomFactor: () => ipcRenderer.sendSync("get-zoom-factor"),
     openNewWindow: () => ipcRenderer.send("open-new-window"),
+    showWorkspaceAppMenu: (workspaceId) => ipcRenderer.send("workspace-appmenu-show", workspaceId),
+    showBuilderAppMenu: (builderId) => ipcRenderer.send("builder-appmenu-show", builderId),
     showContextMenu: (workspaceId, menu) => ipcRenderer.send("contextmenu-show", workspaceId, menu),
     onContextMenuClick: (callback) => ipcRenderer.on("contextmenu-click", (_event, id) => callback(id)),
     downloadFile: (filePath) => ipcRenderer.send("download", { filePath }),
@@ -51,6 +54,7 @@ contextBridge.exposeInMainWorld("api", {
     closeTab: (workspaceId, tabId) => ipcRenderer.send("close-tab", workspaceId, tabId),
     setWindowInitStatus: (status) => ipcRenderer.send("set-window-init-status", status),
     onWaveInit: (callback) => ipcRenderer.on("wave-init", (_event, initOpts) => callback(initOpts)),
+    onBuilderInit: (callback) => ipcRenderer.on("builder-init", (_event, initOpts) => callback(initOpts)),
     sendLog: (log) => ipcRenderer.send("fe-log", log),
     onQuicklook: (filePath: string) => ipcRenderer.send("quicklook", filePath),
     openNativePath: (filePath: string) => ipcRenderer.send("open-native-path", filePath),
@@ -58,6 +62,12 @@ contextBridge.exposeInMainWorld("api", {
     setKeyboardChordMode: () => ipcRenderer.send("set-keyboard-chord-mode"),
     clearWebviewStorage: (webContentsId: number) => ipcRenderer.invoke("clear-webview-storage", webContentsId),
     setWaveAIOpen: (isOpen: boolean) => ipcRenderer.send("set-waveai-open", isOpen),
+    closeBuilderWindow: () => ipcRenderer.send("close-builder-window"),
+    incrementTermCommands: () => ipcRenderer.send("increment-term-commands"),
+    nativePaste: () => ipcRenderer.send("native-paste"),
+    openBuilder: (appId?: string) => ipcRenderer.send("open-builder", appId),
+    setBuilderWindowAppId: (appId: string) => ipcRenderer.send("set-builder-window-appid", appId),
+    doRefresh: () => ipcRenderer.send("do-refresh"),
 });
 
 // Custom event for "new-window"

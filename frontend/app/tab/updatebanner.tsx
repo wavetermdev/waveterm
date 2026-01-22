@@ -2,10 +2,9 @@ import { Button } from "@/element/button";
 import { atoms, getApi } from "@/store/global";
 import { useAtomValue } from "jotai";
 import { forwardRef, memo, useEffect, useState } from "react";
-import "./updatebanner.scss";
 
 const UpdateStatusBannerComponent = forwardRef<HTMLButtonElement>((_, ref) => {
-    const appUpdateStatus = useAtomValue(atoms.updaterStatusAtom);
+    let appUpdateStatus = useAtomValue(atoms.updaterStatusAtom);
     let [updateStatusMessage, setUpdateStatusMessage] = useState<string>();
     const [dismissBannerTimeout, setDismissBannerTimeout] = useState<NodeJS.Timeout>();
 
@@ -55,7 +54,7 @@ const UpdateStatusBannerComponent = forwardRef<HTMLButtonElement>((_, ref) => {
     if (updateStatusMessage) {
         return (
             <Button
-                className="update-available-banner"
+                className="text-black bg-[var(--accent-color)] flex-[0_0_fit-content] !h-full !px-3 disabled:!opacity-[unset]"
                 title={appUpdateStatus === "ready" ? "Click to Install Update" : updateStatusMessage}
                 onClick={onClick}
                 disabled={appUpdateStatus !== "ready"}

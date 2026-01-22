@@ -18,7 +18,6 @@ var tokenMapLock = &sync.Mutex{}
 
 type TokenSwapEntry struct {
 	Token      string             `json:"token"`
-	SockName   string             `json:"sockname,omitempty"`
 	RpcContext *wshrpc.RpcContext `json:"rpccontext,omitempty"`
 	Env        map[string]string  `json:"env,omitempty"`
 	ScriptText string             `json:"scripttext,omitempty"`
@@ -27,7 +26,6 @@ type TokenSwapEntry struct {
 
 type UnpackedTokenType struct {
 	Token      string             `json:"token"` // uuid
-	SockName   string             `json:"sockname,omitempty"`
 	RpcContext *wshrpc.RpcContext `json:"rpccontext,omitempty"`
 }
 
@@ -57,7 +55,6 @@ func UnpackSwapToken(token string) (*UnpackedTokenType, error) {
 func (t *TokenSwapEntry) PackForClient() (string, error) {
 	unpackedToken := &UnpackedTokenType{
 		Token:      t.Token,
-		SockName:   t.SockName,
 		RpcContext: t.RpcContext,
 	}
 	return unpackedToken.Pack()

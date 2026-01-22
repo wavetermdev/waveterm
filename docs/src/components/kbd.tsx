@@ -44,9 +44,24 @@ function convertKey(platform: Platform, key: string): [any, string, boolean] {
 }
 
 // Custom KBD component
-const KbdInternal = ({ k }: { k: string }) => {
+const KbdInternal = ({ k, windows, mac, linux }: { k: string; windows?: string; mac?: string; linux?: string }) => {
     const { platform } = useContext(PlatformContext);
-    const keys = k.split(":");
+
+    // Determine which key binding to use based on platform overrides
+    let keyBinding = k;
+    if (platform === "windows" && windows) {
+        keyBinding = windows;
+    } else if (platform === "mac" && mac) {
+        keyBinding = mac;
+    } else if (platform === "linux" && linux) {
+        keyBinding = linux;
+    }
+
+    if (keyBinding == "N/A") {
+        return "N/A";
+    }
+
+    const keys = keyBinding.split(":");
     const keyElems = keys.map((key, i) => {
         const [displayKey, title, symbol] = convertKey(platform, key);
         return (
@@ -58,8 +73,12 @@ const KbdInternal = ({ k }: { k: string }) => {
     return <div className="kbd-group">{keyElems}</div>;
 };
 
-export const Kbd = ({ k }: { k: string }) => {
-    return <BrowserOnly fallback={<kbd>{k}</kbd>}>{() => <KbdInternal k={k} />}</BrowserOnly>;
+export const Kbd = ({ k, windows, mac, linux }: { k: string; windows?: string; mac?: string; linux?: string }) => {
+    return (
+        <BrowserOnly fallback={<kbd>{k}</kbd>}>
+            {() => <KbdInternal k={k} windows={windows} mac={mac} linux={linux} />}
+        </BrowserOnly>
+    );
 };
 
 export const KbdChord = ({ karr }: { karr: string[] }) => {

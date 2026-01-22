@@ -17,7 +17,14 @@ import {
 import { getWebServerEndpoint } from "@/util/endpoints";
 import { fetch } from "@/util/fetchutil";
 import { setPlatform } from "@/util/platformutil";
-import { deepCompareReturnPrev, getPrefixedSettings, isBlank } from "@/util/util";
+import {
+    base64ToString,
+    deepCompareReturnPrev,
+    fireAndForget,
+    getPrefixedSettings,
+    isBlank,
+    isLocalConnName,
+} from "@/util/util";
 import { atom, Atom, PrimitiveAtom, useAtomValue } from "jotai";
 import { globalStore } from "./jotaiStore";
 import { modalsModel } from "./modalmodel";
@@ -27,29 +34,27 @@ import { getFileSubject, waveEventSubscribe } from "./wps";
 
 let atoms: GlobalAtomsType;
 let globalEnvironment: "electron" | "renderer";
+let globalPrimaryTabStartup: boolean = false;
 const blockComponentModelMap = new Map<string, BlockComponentModel>();
 const Counters = new Map<string, number>();
 const ConnStatusMapAtom = atom(new Map<string, PrimitiveAtom<ConnStatus>>());
-const blockAtomCache = new Map<string, Map<string, Atom<any>>>();
-const tabAtomCache = new Map<string, Map<string, Atom<any>>>();
-
-type GlobalInitOptions = {
-    tabId: string;
-    platform: NodeJS.Platform;
-    windowId: string;
-    clientId: string;
-    environment: "electron" | "renderer";
-};
+const orefAtomCache = new Map<string, Map<string, Atom<any>>>();
 
 function initGlobal(initOpts: GlobalInitOptions) {
     globalEnvironment = initOpts.environment;
+    globalPrimaryTabStartup = initOpts.primaryTabStartup ?? false;
     setPlatform(initOpts.platform);
     initGlobalAtoms(initOpts);
 }
 
 function initGlobalAtoms(initOpts: GlobalInitOptions) {
     const windowIdAtom = atom(initOpts.windowId) as PrimitiveAtom<string>;
-    const clientIdAtom = atom(initOpts.clientId) as PrimitiveAtom<string>;
+    const builderIdAtom = atom(initOpts.builderId) as PrimitiveAtom<string>;
+    const builderAppIdAtom = atom<string>(null) as PrimitiveAtom<string>;
+    const waveWindowTypeAtom = atom((get) => {
+        const builderId = get(builderIdAtom);
+        return builderId != null ? "builder" : "tab";
+    }) as Atom<"tab" | "builder">;
     const uiContextAtom = atom((get) => {
         const uiContext: UIContext = {
             windowid: initOpts.windowId,
@@ -63,47 +68,52 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
         getApi().onFullScreenChange((isFullScreen) => {
             globalStore.set(isFullScreenAtom, isFullScreen);
         });
-    } catch (_) {
-        // do nothing
+    } catch (e) {
+        console.log("failed to initialize isFullScreenAtom", e);
+    }
+
+    const zoomFactorAtom = atom(1.0) as PrimitiveAtom<number>;
+    try {
+        globalStore.set(zoomFactorAtom, getApi().getZoomFactor());
+        getApi().onZoomFactorChange((zoomFactor) => {
+            globalStore.set(zoomFactorAtom, zoomFactor);
+        });
+    } catch (e) {
+        console.log("failed to initialize zoomFactorAtom", e);
     }
 
     try {
         getApi().onMenuItemAbout(() => {
             modalsModel.pushModal("AboutModal");
         });
-    } catch (_) {
-        // do nothing
+    } catch (e) {
+        console.log("failed to initialize onMenuItemAbout handler", e);
     }
 
-    const clientAtom: Atom<Client> = atom((get) => {
-        const clientId = get(clientIdAtom);
-        if (clientId == null) {
-            return null;
-        }
-        return WOS.getObjectValue(WOS.makeORef("client", clientId), get);
-    });
-    const windowDataAtom: Atom<WaveWindow> = atom((get) => {
-        const windowId = get(windowIdAtom);
-        if (windowId == null) {
-            return null;
-        }
-        const rtn = WOS.getObjectValue<WaveWindow>(WOS.makeORef("window", windowId), get);
-        return rtn;
-    });
     const workspaceAtom: Atom<Workspace> = atom((get) => {
-        const windowData = get(windowDataAtom);
+        const windowData = WOS.getObjectValue<WaveWindow>(WOS.makeORef("window", get(windowIdAtom)), get);
         if (windowData == null) {
             return null;
         }
         return WOS.getObjectValue(WOS.makeORef("workspace", windowData.workspaceid), get);
     });
     const fullConfigAtom = atom(null) as PrimitiveAtom<FullConfigType>;
+    const waveaiModeConfigAtom = atom(null) as PrimitiveAtom<Record<string, AIModeConfigType>>;
     const settingsAtom = atom((get) => {
         return get(fullConfigAtom)?.settings ?? {};
     }) as Atom<SettingsType>;
-    const tabAtom: Atom<Tab> = atom((get) => {
-        return WOS.getObjectValue(WOS.makeORef("tab", initOpts.tabId), get);
-    });
+    const hasCustomAIPresetsAtom = atom((get) => {
+        const fullConfig = get(fullConfigAtom);
+        if (!fullConfig?.presets) {
+            return false;
+        }
+        for (const presetId in fullConfig.presets) {
+            if (presetId.startsWith("ai@") && presetId !== "ai@global" && presetId !== "ai@wave") {
+                return true;
+            }
+        }
+        return false;
+    }) as Atom<boolean>;
     // this is *the* tab that this tabview represents.  it should never change.
     const staticTabIdAtom: Atom<string> = atom(initOpts.tabId);
     const controlShiftDelayAtom = atom(false);
@@ -113,8 +123,8 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
         getApi().onUpdaterStatusChange((status) => {
             globalStore.set(updaterStatusAtom, status);
         });
-    } catch (_) {
-        // do nothing
+    } catch (e) {
+        console.log("failed to initialize updaterStatusAtom", e);
     }
 
     const reducedMotionSettingAtom = atom((get) => get(settingsAtom)?.["window:reducedmotion"]);
@@ -136,7 +146,6 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
         });
     }
 
-    const typeAheadModalAtom = atom({});
     const modalOpen = atom(false);
     const allConnStatusAtom = atom<ConnStatus[]>((get) => {
         const connStatusMap = get(ConnStatusMapAtom);
@@ -150,29 +159,29 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
     const rateLimitInfoAtom = atom(null) as PrimitiveAtom<RateLimitInfo>;
     atoms = {
         // initialized in wave.ts (will not be null inside of application)
-        clientId: clientIdAtom,
+        builderId: builderIdAtom,
+        builderAppId: builderAppIdAtom,
+        waveWindowType: waveWindowTypeAtom,
         uiContext: uiContextAtom,
-        client: clientAtom,
-        waveWindow: windowDataAtom,
         workspace: workspaceAtom,
         fullConfigAtom,
+        waveaiModeConfigAtom,
         settingsAtom,
-        tabAtom,
+        hasCustomAIPresetsAtom,
         staticTabId: staticTabIdAtom,
         isFullScreen: isFullScreenAtom,
+        zoomFactorAtom,
         controlShiftDelayAtom,
         updaterStatusAtom,
         prefersReducedMotionAtom,
-        typeAheadModalAtom,
         modalOpen,
         allConnStatus: allConnStatusAtom,
         flashErrors: flashErrorsAtom,
         notifications: notificationsAtom,
         notificationPopoverMode: notificationPopoverModeAtom,
         reinitVersion,
-        isTermMultiInput: atom(false),
         waveAIRateLimitInfoAtom: rateLimitInfoAtom,
-    };
+    } as GlobalAtomsType;
 }
 
 function initGlobalWaveEventSubs(initOpts: WaveInitOpts) {
@@ -191,6 +200,13 @@ function initGlobalWaveEventSubs(initOpts: WaveInitOpts) {
                 // console.log("config wave event handler", event);
                 const fullConfig = (event.data as WatcherUpdate).fullconfig;
                 globalStore.set(atoms.fullConfigAtom, fullConfig);
+            },
+        },
+        {
+            eventType: "waveai:modeconfig",
+            handler: (event) => {
+                const modeConfigs = (event.data as AIModeConfigUpdate).configs;
+                globalStore.set(atoms.waveaiModeConfigAtom, modeConfigs);
             },
         },
         {
@@ -259,24 +275,24 @@ function useBlockMetaKeyAtom<T extends keyof MetaType>(blockId: string, key: T):
     return useAtomValue(getBlockMetaKeyAtom(blockId, key));
 }
 
-function getTabMetaKeyAtom<T extends keyof MetaType>(tabId: string, key: T): Atom<MetaType[T]> {
-    const tabCache = getSingleTabAtomCache(tabId);
+function getOrefMetaKeyAtom<T extends keyof MetaType>(oref: string, key: T): Atom<MetaType[T]> {
+    const orefCache = getSingleOrefAtomCache(oref);
     const metaAtomName = "#meta-" + key;
-    let metaAtom = tabCache.get(metaAtomName);
+    let metaAtom = orefCache.get(metaAtomName);
     if (metaAtom != null) {
         return metaAtom;
     }
     metaAtom = atom((get) => {
-        let tabAtom = WOS.getWaveObjectAtom(WOS.makeORef("tab", tabId));
-        let tabData = get(tabAtom);
-        return tabData?.meta?.[key];
+        let objAtom = WOS.getWaveObjectAtom(oref);
+        let objData = get(objAtom);
+        return objData?.meta?.[key];
     });
-    tabCache.set(metaAtomName, metaAtom);
+    orefCache.set(metaAtomName, metaAtom);
     return metaAtom;
 }
 
-function useTabMetaKeyAtom<T extends keyof MetaType>(tabId: string, key: T): MetaType[T] {
-    return useAtomValue(getTabMetaKeyAtom(tabId, key));
+function useOrefMetaKeyAtom<T extends keyof MetaType>(oref: string, key: T): MetaType[T] {
+    return useAtomValue(getOrefMetaKeyAtom(oref, key));
 }
 
 function getConnConfigKeyAtom<T extends keyof ConnKeywords>(connName: string, key: T): Atom<ConnKeywords[T]> {
@@ -327,7 +343,10 @@ function getOverrideConfigAtom<T extends keyof SettingsType>(blockId: string, ke
     return overrideAtom;
 }
 
-function useOverrideConfigAtom<T extends keyof SettingsType>(blockId: string, key: T): SettingsType[T] {
+function useOverrideConfigAtom<T extends keyof SettingsType>(blockId: string | null, key: T): SettingsType[T] {
+    if (blockId == null) {
+        return useAtomValue(getSettingsKeyAtom(key));
+    }
     return useAtomValue(getOverrideConfigAtom(blockId, key));
 }
 
@@ -366,30 +385,23 @@ function getSettingsPrefixAtom(prefix: string): Atom<SettingsType> {
 }
 
 function getSingleBlockAtomCache(blockId: string): Map<string, Atom<any>> {
-    let blockCache = blockAtomCache.get(blockId);
-    if (blockCache == null) {
-        blockCache = new Map<string, Atom<any>>();
-        blockAtomCache.set(blockId, blockCache);
-    }
-    return blockCache;
+    const blockORef = WOS.makeORef("block", blockId);
+    return getSingleOrefAtomCache(blockORef);
 }
 
 function getSingleConnAtomCache(connName: string): Map<string, Atom<any>> {
-    let blockCache = blockAtomCache.get(connName);
-    if (blockCache == null) {
-        blockCache = new Map<string, Atom<any>>();
-        blockAtomCache.set(connName, blockCache);
-    }
-    return blockCache;
+    // this is not a real "oref", but it will work for the cache.
+    const connORef = WOS.makeORef("conn", connName);
+    return getSingleOrefAtomCache(connORef);
 }
 
-function getSingleTabAtomCache(tabId: string): Map<string, Atom<any>> {
-    let tabCache = tabAtomCache.get(tabId);
-    if (tabCache == null) {
-        tabCache = new Map<string, Atom<any>>();
-        tabAtomCache.set(tabId, tabCache);
+function getSingleOrefAtomCache(oref: string): Map<string, Atom<any>> {
+    let orefCache = orefAtomCache.get(oref);
+    if (orefCache == null) {
+        orefCache = new Map<string, Atom<any>>();
+        orefAtomCache.set(oref, orefCache);
     }
-    return tabCache;
+    return orefCache;
 }
 
 function useBlockAtom<T>(blockId: string, name: string, makeFn: () => Atom<T>): Atom<T> {
@@ -408,6 +420,16 @@ function useBlockDataLoaded(blockId: string): boolean {
         return WOS.getWaveObjectLoadingAtom(WOS.makeORef("block", blockId));
     });
     return useAtomValue(loadedAtom);
+}
+
+/**
+ * Safely read an atom value, returning null if the atom is null.
+ */
+function readAtom<T>(atom: Atom<T>): T {
+    if (atom == null) {
+        return null;
+    }
+    return globalStore.get(atom);
 }
 
 /**
@@ -481,12 +503,12 @@ async function createBlock(blockDef: BlockDef, magnified = false, ephemeral = fa
     return blockId;
 }
 
-async function replaceBlock(blockId: string, blockDef: BlockDef): Promise<string> {
+async function replaceBlock(blockId: string, blockDef: BlockDef, focus: boolean): Promise<string> {
     const layoutModel = getLayoutModelForStaticTab();
     const rtOpts: RuntimeOpts = { termsize: { rows: 25, cols: 80 } };
     const newBlockId = await ObjectService.CreateBlock(blockDef, rtOpts);
-    setTimeout(async () => {
-        await ObjectService.DeleteBlock(blockId);
+    setTimeout(() => {
+        fireAndForget(() => ObjectService.DeleteBlock(blockId));
     }, 300);
     const targetNodeId = layoutModel.getNodeByBlockId(blockId)?.id;
     if (targetNodeId == null) {
@@ -496,7 +518,7 @@ async function replaceBlock(blockId: string, blockDef: BlockDef): Promise<string
         type: LayoutTreeActionType.ReplaceNode,
         targetNodeId: targetNodeId,
         newNode: newLayoutNode(undefined, undefined, undefined, { blockId: newBlockId }),
-        focused: true,
+        focused: focus,
     };
     layoutModel.treeReducer(replaceNodeAction);
     return newBlockId;
@@ -528,7 +550,7 @@ async function fetchWaveFile(
     if (fileInfo64 == null) {
         throw new Error(`missing zone file info for ${zoneId}:${fileName}`);
     }
-    const fileInfo = JSON.parse(atob(fileInfo64));
+    const fileInfo = JSON.parse(base64ToString(fileInfo64));
     const data = await resp.arrayBuffer();
     return { data: new Uint8Array(data), fileInfo };
 }
@@ -689,8 +711,7 @@ function getConnStatusAtom(conn: string): PrimitiveAtom<ConnStatus> {
     const connStatusMap = globalStore.get(ConnStatusMapAtom);
     let rtn = connStatusMap.get(conn);
     if (rtn == null) {
-        if (isBlank(conn)) {
-            // create a fake "local" status atom that's always connected
+        if (isLocalConnName(conn)) {
             const connStatus: ConnStatus = {
                 connection: conn,
                 connected: true,
@@ -809,12 +830,14 @@ export {
     getFocusedBlockId,
     getHostName,
     getObjectId,
+    getOrefMetaKeyAtom,
     getOverrideConfigAtom,
     getSettingsKeyAtom,
     getSettingsPrefixAtom,
-    getTabMetaKeyAtom,
     getUserName,
+    globalPrimaryTabStartup,
     globalStore,
+    readAtom,
     initGlobal,
     initGlobalWaveEventSubs,
     isDev,
@@ -838,8 +861,8 @@ export {
     useBlockCache,
     useBlockDataLoaded,
     useBlockMetaKeyAtom,
+    useOrefMetaKeyAtom,
     useOverrideConfigAtom,
     useSettingsKeyAtom,
-    useTabMetaKeyAtom,
     WOS,
 };

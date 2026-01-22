@@ -5,6 +5,7 @@ package web
 
 import (
 	"bytes"
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -22,7 +23,6 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat"
 	"github.com/wavetermdev/waveterm/pkg/authkey"
-	"github.com/wavetermdev/waveterm/pkg/docsite"
 	"github.com/wavetermdev/waveterm/pkg/filestore"
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/remote/fileshare"
@@ -255,7 +255,7 @@ func handleRemoteStreamFile(w http.ResponseWriter, req *http.Request, conn strin
 	return handleRemoteStreamFileFromCh(w, req, path, rtnCh, rpcOpts.StreamCancelFn, no404)
 }
 
-func handleRemoteStreamFileFromCh(w http.ResponseWriter, req *http.Request, path string, rtnCh <-chan wshrpc.RespOrErrorUnion[wshrpc.FileData], streamCancelFn func(), no404 bool) error {
+func handleRemoteStreamFileFromCh(w http.ResponseWriter, req *http.Request, path string, rtnCh <-chan wshrpc.RespOrErrorUnion[wshrpc.FileData], streamCancelFn func(context.Context) error, no404 bool) error {
 	firstPk := true
 	var fileInfo *wshrpc.FileInfo
 	loopDone := false
@@ -271,7 +271,9 @@ func handleRemoteStreamFileFromCh(w http.ResponseWriter, req *http.Request, path
 		select {
 		case <-ctx.Done():
 			if streamCancelFn != nil {
-				streamCancelFn()
+				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+				defer cancel()
+				streamCancelFn(ctx)
 			}
 			return ctx.Err()
 		case respUnion, ok := <-rtnCh:
@@ -443,7 +445,6 @@ func MakeUnixListener() (net.Listener, error) {
 	return rtn, nil
 }
 
-const docsitePrefix = "/docsite/"
 const schemaPrefix = "/schema/"
 
 // blocking
@@ -470,7 +471,6 @@ func RunWebServer(listener net.Listener) {
 	gr.HandleFunc("/api/post-chat-message", WebFnWrap(WebFnOpts{AllowCaching: false}, aiusechat.WaveAIPostMessageHandler))
 
 	// Other routes without timeout
-	gr.PathPrefix(docsitePrefix).Handler(http.StripPrefix(docsitePrefix, docsite.GetDocsiteHandler()))
 	gr.PathPrefix(schemaPrefix).Handler(http.StripPrefix(schemaPrefix, schema.GetSchemaHandler()))
 
 	handler := http.Handler(gr)

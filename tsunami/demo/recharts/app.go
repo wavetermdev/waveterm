@@ -8,8 +8,10 @@ import (
 	"github.com/wavetermdev/waveterm/tsunami/vdom"
 )
 
-const AppTitle = "Recharts Demo"
-const AppShortDesc = "Interactive charts and data visualization using Recharts"
+var AppMeta = app.AppMeta{
+	Title:     "Recharts Demo",
+	ShortDesc: "Interactive charts and data visualization using Recharts",
+}
 
 // Global atoms for config and data
 var (

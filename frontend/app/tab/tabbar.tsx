@@ -4,10 +4,9 @@
 import { Button } from "@/app/element/button";
 import { modalsModel } from "@/app/store/modalmodel";
 import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
-import { WindowDrag } from "@/element/windowdrag";
 import { deleteLayoutModelForTab } from "@/layout/index";
-import { atoms, createTab, getApi, globalStore, isDev, setActiveTab } from "@/store/global";
-import { PLATFORM, PlatformMacOS } from "@/util/platformutil";
+import { atoms, createTab, getApi, globalStore, setActiveTab } from "@/store/global";
+import { isMacOS, isWindows } from "@/util/platformutil";
 import { fireAndForget } from "@/util/util";
 import { useAtomValue } from "jotai";
 import { OverlayScrollbars } from "overlayscrollbars";
@@ -20,9 +19,9 @@ import "./tabbar.scss";
 import { UpdateStatusBanner } from "./updatebanner";
 import { WorkspaceSwitcher } from "./workspaceswitcher";
 
-const TAB_DEFAULT_WIDTH = 130;
-const TAB_MIN_WIDTH = 100;
-const OS_OPTIONS = {
+const TabDefaultWidth = 130;
+const TabMinWidth = 100;
+const OSOptions = {
     overflow: {
         x: "scroll",
         y: "hidden",
@@ -43,13 +42,34 @@ interface TabBarProps {
     workspace: Workspace;
 }
 
+const WaveAIButton = memo(() => {
+    const aiPanelOpen = useAtomValue(WorkspaceLayoutModel.getInstance().panelVisibleAtom);
+
+    const onClick = () => {
+        const currentVisible = WorkspaceLayoutModel.getInstance().getAIPanelVisible();
+        WorkspaceLayoutModel.getInstance().setAIPanelVisible(!currentVisible);
+    };
+
+    return (
+        <div
+            className={`flex h-[26px] px-1.5 justify-end items-center rounded-md mr-1 box-border cursor-pointer bg-hover hover:bg-hoverbg transition-colors text-[12px] ${aiPanelOpen ? "text-accent" : "text-secondary"}`}
+            style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
+            onClick={onClick}
+        >
+            <i className="fa fa-sparkles" />
+            <span className="font-bold ml-1 -top-px font-mono">AI</span>
+        </div>
+    );
+});
+WaveAIButton.displayName = "WaveAIButton";
+
 const ConfigErrorMessage = () => {
     const fullConfig = useAtomValue(atoms.fullConfigAtom);
 
     if (fullConfig?.configerrors == null || fullConfig?.configerrors.length == 0) {
         return (
-            <div className="config-error-message">
-                <h3>Configuration Clean</h3>
+            <div className="max-w-[500px] p-5">
+                <h3 className="font-bold text-base mb-2.5">Configuration Clean</h3>
                 <p>There are no longer any errors detected in your config.</p>
             </div>
         );
@@ -57,8 +77,8 @@ const ConfigErrorMessage = () => {
     if (fullConfig?.configerrors.length == 1) {
         const singleError = fullConfig.configerrors[0];
         return (
-            <div className="config-error-message">
-                <h3>Configuration Error</h3>
+            <div className="max-w-[500px] p-5">
+                <h3 className="font-bold text-base mb-2.5">Configuration Error</h3>
                 <div>
                     {singleError.file}: {singleError.err}
                 </div>
@@ -66,8 +86,8 @@ const ConfigErrorMessage = () => {
         );
     }
     return (
-        <div className="config-error-message">
-            <h3>Configuration Error</h3>
+        <div className="max-w-[500px] p-5">
+            <h3 className="font-bold text-base mb-2.5">Configuration Error</h3>
             <ul>
                 {fullConfig.configerrors.map((error, index) => (
                     <li key={index}>
@@ -92,7 +112,7 @@ const ConfigErrorIcon = ({ buttonRef }: { buttonRef: React.RefObject<HTMLElement
     return (
         <Button
             ref={buttonRef as React.RefObject<HTMLButtonElement>}
-            className="config-error-button red"
+            className="text-black flex-[0_0_fit-content] !h-full !px-3 red"
             onClick={handleClick}
         >
             <i className="fa fa-solid fa-exclamation-triangle" />
@@ -140,7 +160,6 @@ function setIsEqual(a: Set<string> | null, b: Set<string> | null): boolean {
 
 const TabBar = memo(({ workspace }: TabBarProps) => {
     const [tabIds, setTabIds] = useState<string[]>([]);
-    const [pinnedTabIds, setPinnedTabIds] = useState<Set<string>>(new Set());
     const [dragStartPositions, setDragStartPositions] = useState<number[]>([]);
     const [draggingTab, setDraggingTab] = useState<string>();
     const [tabsLoaded, setTabsLoaded] = useState({});
@@ -164,17 +183,17 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
     });
     const osInstanceRef = useRef<OverlayScrollbars>(null);
     const draggerLeftRef = useRef<HTMLDivElement>(null);
+    const draggerRightRef = useRef<HTMLDivElement>(null);
     const workspaceSwitcherRef = useRef<HTMLDivElement>(null);
     const appMenuButtonRef = useRef<HTMLDivElement>(null);
-    const tabWidthRef = useRef<number>(TAB_DEFAULT_WIDTH);
+    const tabWidthRef = useRef<number>(TabDefaultWidth);
     const scrollableRef = useRef<boolean>(false);
     const updateStatusBannerRef = useRef<HTMLButtonElement>(null);
     const configErrorButtonRef = useRef<HTMLElement>(null);
     const prevAllLoadedRef = useRef<boolean>(false);
     const activeTabId = useAtomValue(atoms.staticTabId);
     const isFullScreen = useAtomValue(atoms.isFullScreen);
-    const aiPanelOpen = useAtomValue(WorkspaceLayoutModel.getInstance().panelVisibleAtom);
-
+    const zoomFactor = useAtomValue(atoms.zoomFactorAtom);
     const settings = useAtomValue(atoms.settingsAtom);
 
     let prevDelta: number;
@@ -189,21 +208,14 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
         if (!workspace) {
             return;
         }
-        // Compare current tabIds with new workspace.tabids
-        console.log("tabbar workspace", workspace);
+        const newTabIdsArr = workspace.tabids ?? [];
 
-        const newTabIdsArr = [...(workspace.pinnedtabids ?? []), ...(workspace.tabids ?? [])];
-        const newPinnedTabSet = new Set(workspace.pinnedtabids ?? []);
-
-        const areEqual = strArrayIsEqual(tabIds, newTabIdsArr) && setIsEqual(pinnedTabIds, newPinnedTabSet);
+        const areEqual = strArrayIsEqual(tabIds, newTabIdsArr);
 
         if (!areEqual) {
-            console.log("newPinnedTabIds", newPinnedTabSet);
-            console.log("newTabIdList", newTabIdsArr);
             setTabIds(newTabIdsArr);
-            setPinnedTabIds(newPinnedTabSet);
         }
-    }, [workspace, tabIds, pinnedTabIds]);
+    }, [workspace, tabIds]);
 
     const saveTabsPosition = useCallback(() => {
         const tabs = tabRefs.current;
@@ -228,6 +240,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
 
         const tabbarWrapperWidth = tabbarWrapperRef.current.getBoundingClientRect().width;
         const windowDragLeftWidth = draggerLeftRef.current.getBoundingClientRect().width;
+        const windowDragRightWidth = draggerRightRef.current?.getBoundingClientRect().width ?? 0;
         const addBtnWidth = addBtnRef.current.getBoundingClientRect().width;
         const updateStatusLabelWidth = updateStatusBannerRef.current?.getBoundingClientRect().width ?? 0;
         const configErrorWidth = configErrorButtonRef.current?.getBoundingClientRect().width ?? 0;
@@ -236,6 +249,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
 
         const nonTabElementsWidth =
             windowDragLeftWidth +
+            windowDragRightWidth +
             addBtnWidth +
             updateStatusLabelWidth +
             configErrorWidth +
@@ -249,7 +263,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
         let idealTabWidth = spaceForTabs / numberOfTabs;
 
         // Apply min/max constraints
-        idealTabWidth = Math.max(TAB_MIN_WIDTH, Math.min(idealTabWidth, TAB_DEFAULT_WIDTH));
+        idealTabWidth = Math.max(TabMinWidth, Math.min(idealTabWidth, TabDefaultWidth));
 
         // Determine if the tab bar needs to be scrollable
         const newScrollable = idealTabWidth * numberOfTabs > spaceForTabs;
@@ -280,7 +294,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
 
         // Initialize/destroy overlay scrollbars
         if (newScrollable) {
-            osInstanceRef.current = OverlayScrollbars(tabBarRef.current, { ...(OS_OPTIONS as any) });
+            osInstanceRef.current = OverlayScrollbars(tabBarRef.current, { ...(OSOptions as any) });
         } else {
             if (osInstanceRef.current) {
                 osInstanceRef.current.destroy();
@@ -414,7 +428,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
         // Constrain movement within the container bounds
         if (tabBarRef.current) {
             const numberOfTabs = tabIds.length;
-            const totalDefaultTabWidth = numberOfTabs * TAB_DEFAULT_WIDTH;
+            const totalDefaultTabWidth = numberOfTabs * TabDefaultWidth;
             if (totalDefaultTabWidth < tabBarRectWidth) {
                 // Set to the total default tab width if there's vacant space
                 tabBarRectWidth = totalDefaultTabWidth;
@@ -465,47 +479,17 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
         }
     };
 
-    //            } else if ((tabIndex > pinnedTabCount || (tabIndex === 1 && pinnedTabCount === 1)) && isPinned) {
-
     const setUpdatedTabsDebounced = useCallback(
-        debounce(300, (tabIndex: number, tabIds: string[], pinnedTabIds: Set<string>) => {
-            console.log(
-                "setting updated tabs",
-                tabIds,
-                pinnedTabIds,
-                tabIndex,
-                draggingTabDataRef.current.tabStartIndex
-            );
+        debounce(300, (tabIds: string[]) => {
             // Reset styles
             tabRefs.current.forEach((ref) => {
                 ref.current.style.zIndex = "0";
                 ref.current.classList.remove("animate");
             });
-            let pinnedTabCount = pinnedTabIds.size;
-            const draggedTabId = draggingTabDataRef.current.tabId;
-            const isPinned = pinnedTabIds.has(draggedTabId);
-            const nextTabId = tabIds[tabIndex + 1];
-            const prevTabId = tabIds[tabIndex - 1];
-            if (!isPinned && nextTabId && pinnedTabIds.has(nextTabId)) {
-                pinnedTabIds.add(draggedTabId);
-            } else if (isPinned && prevTabId && !pinnedTabIds.has(prevTabId)) {
-                pinnedTabIds.delete(draggedTabId);
-            }
-            if (pinnedTabCount != pinnedTabIds.size) {
-                console.log("updated pinnedTabIds", pinnedTabIds, tabIds);
-                setPinnedTabIds(pinnedTabIds);
-                pinnedTabCount = pinnedTabIds.size;
-            }
             // Reset dragging state
             setDraggingTab(null);
             // Update workspace tab ids
-            fireAndForget(() =>
-                WorkspaceService.UpdateTabIds(
-                    workspace.oid,
-                    tabIds.slice(pinnedTabCount),
-                    tabIds.slice(0, pinnedTabCount)
-                )
-            );
+            fireAndForget(() => WorkspaceService.UpdateTabIds(workspace.oid, tabIds));
         }),
         []
     );
@@ -524,7 +508,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
         }
 
         if (dragged) {
-            setUpdatedTabsDebounced(tabIndex, tabIds, pinnedTabIds);
+            setUpdatedTabsDebounced(tabIds);
         } else {
             // Reset styles
             tabRefs.current.forEach((ref) => {
@@ -608,14 +592,6 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
         deleteLayoutModelForTab(tabId);
     };
 
-    const handlePinChange = useCallback(
-        (tabId: string, pinned: boolean) => {
-            console.log("handlePinChange", tabId, pinned);
-            fireAndForget(() => WorkspaceService.ChangeTabPinning(workspace.oid, tabId, pinned));
-        },
-        [workspace]
-    );
-
     const handleTabLoaded = useCallback((tabId: string) => {
         setTabsLoaded((prev) => {
             if (!prev[tabId]) {
@@ -631,31 +607,31 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
     };
 
     function onEllipsisClick() {
-        getApi().showContextMenu(workspace.oid);
-    }
-
-    function onWaveAIClick() {
-        const currentVisible = WorkspaceLayoutModel.getInstance().getAIPanelVisible();
-        WorkspaceLayoutModel.getInstance().setAIPanelVisible(!currentVisible);
+        getApi().showWorkspaceAppMenu(workspace.oid);
     }
 
     const tabsWrapperWidth = tabIds.length * tabWidthRef.current;
-    const waveaiButton = isDev() ? (
-        <div
-            className={`flex h-[26px] px-1.5 justify-end items-center rounded-md mr-1 box-border cursor-pointer bg-hover hover:bg-hoverbg transition-colors text-[12px] ${aiPanelOpen ? "text-accent" : "text-secondary"}`}
-            style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
-            onClick={onWaveAIClick}
-        >
-            <i className="fa fa-sparkles" />
-            <span className="font-bold ml-1 -top-px font-mono">AI</span>
-        </div>
-    ) : undefined;
-    const appMenuButton =
-        PLATFORM !== PlatformMacOS && !settings["window:showmenubar"] ? (
-            <div ref={appMenuButtonRef} className="app-menu-button" onClick={onEllipsisClick}>
-                <i className="fa fa-ellipsis" />
-            </div>
-        ) : undefined;
+    const showAppMenuButton = isWindows() || (!isMacOS() && !settings["window:showmenubar"]);
+
+    // Calculate window drag left width based on platform and state
+    let windowDragLeftWidth = 10;
+    if (isMacOS() && !isFullScreen) {
+        if (zoomFactor > 0) {
+            windowDragLeftWidth = 74 / zoomFactor;
+        } else {
+            windowDragLeftWidth = 74;
+        }
+    }
+
+    // Calculate window drag right width
+    let windowDragRightWidth = 6;
+    if (isWindows()) {
+        if (zoomFactor > 0) {
+            windowDragRightWidth = 139 / zoomFactor;
+        } else {
+            windowDragRightWidth = 139;
+        }
+    }
 
     const addtabButtonDecl: IconButtonDecl = {
         elemtype: "iconbutton",
@@ -665,27 +641,37 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
     };
     return (
         <div ref={tabbarWrapperRef} className="tab-bar-wrapper">
-            <WindowDrag ref={draggerLeftRef} className="left" />
-            {appMenuButton}
-            {waveaiButton}
+            <div
+                ref={draggerLeftRef}
+                className="h-full shrink-0 z-window-drag"
+                style={{ width: windowDragLeftWidth, WebkitAppRegion: "drag" } as any}
+            />
+            {showAppMenuButton && (
+                <div
+                    ref={appMenuButtonRef}
+                    className="flex items-center justify-center pr-1.5 text-[26px] select-none cursor-pointer text-secondary hover:text-primary"
+                    style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
+                    onClick={onEllipsisClick}
+                >
+                    <i className="fa fa-ellipsis" />
+                </div>
+            )}
+            <WaveAIButton />
             <WorkspaceSwitcher ref={workspaceSwitcherRef} />
             <div className="tab-bar" ref={tabBarRef} data-overlayscrollbars-initialize>
                 <div className="tabs-wrapper" ref={tabsWrapperRef} style={{ width: `${tabsWrapperWidth}px` }}>
                     {tabIds.map((tabId, index) => {
-                        const isPinned = pinnedTabIds.has(tabId);
                         return (
                             <Tab
                                 key={tabId}
                                 ref={tabRefs.current[index]}
                                 id={tabId}
                                 isFirst={index === 0}
-                                isPinned={isPinned}
                                 onSelect={() => handleSelectTab(tabId)}
                                 active={activeTabId === tabId}
                                 onDragStart={(event) => handleDragStart(event, tabId, tabRefs.current[index])}
                                 onClose={(event) => handleCloseTab(event, tabId)}
                                 onLoaded={() => handleTabLoaded(tabId)}
-                                onPinChange={() => handlePinChange(tabId, !isPinned)}
                                 isBeforeActive={isBeforeActive(tabId)}
                                 isDragging={draggingTab === tabId}
                                 tabWidth={tabWidthRef.current}
@@ -699,6 +685,11 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
             <div className="tab-bar-right">
                 <UpdateStatusBanner ref={updateStatusBannerRef} />
                 <ConfigErrorIcon buttonRef={configErrorButtonRef} />
+                <div
+                    ref={draggerRightRef}
+                    className="h-full shrink-0 z-window-drag"
+                    style={{ width: windowDragRightWidth, WebkitAppRegion: "drag" } as any}
+                />
             </div>
         </div>
     );

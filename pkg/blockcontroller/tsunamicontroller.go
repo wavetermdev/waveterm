@@ -5,36 +5,35 @@ package blockcontroller
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"log"
-	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
-	"strings"
 	"sync"
 	"syscall"
-	"time"
 
+	"github.com/wavetermdev/waveterm/pkg/tsunamiutil"
 	"github.com/wavetermdev/waveterm/pkg/utilds"
+	"github.com/wavetermdev/waveterm/pkg/waveappstore"
+	"github.com/wavetermdev/waveterm/pkg/waveapputil"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
+	"github.com/wavetermdev/waveterm/pkg/wconfig"
 	"github.com/wavetermdev/waveterm/pkg/wps"
 	"github.com/wavetermdev/waveterm/pkg/wstore"
 	"github.com/wavetermdev/waveterm/tsunami/build"
 )
 
 type TsunamiAppProc struct {
-	Cmd          *exec.Cmd
-	StdoutBuffer *utilds.ReaderLineBuffer
-	StderrBuffer *utilds.ReaderLineBuffer // May be nil if stderr was consumed for port detection
-	StdinWriter  io.WriteCloser
-	Port         int           // Port the tsunami app is listening on
-	WaitCh       chan struct{} // Channel that gets closed when cmd.Wait() returns
-	WaitRtn      error         // Error returned by cmd.Wait()
+	Cmd         *exec.Cmd
+	LineBuffer  *utilds.MultiReaderLineBuffer
+	StdinWriter io.WriteCloser
+	Port        int           // Port the tsunami app is listening on
+	WaitCh      chan struct{} // Channel that gets closed when cmd.Wait() returns
+	WaitRtn     error         // Error returned by cmd.Wait()
 }
 
 type TsunamiController struct {
@@ -49,72 +48,31 @@ type TsunamiController struct {
 	port          int
 }
 
-func getCachesDir() string {
-	var cacheDir string
-	appBundle := "waveterm"
-	if wavebase.IsDevMode() {
-		appBundle = "waveterm-dev"
-	}
-
-	switch runtime.GOOS {
-	case "darwin":
-		// macOS: ~/Library/Caches/<appbundle>
-		homeDir := wavebase.GetHomeDir()
-		cacheDir = filepath.Join(homeDir, "Library", "Caches", appBundle)
-	case "linux":
-		// Linux: XDG_CACHE_HOME or ~/.cache/<appbundle>
-		xdgCache := os.Getenv("XDG_CACHE_HOME")
-		if xdgCache != "" {
-			cacheDir = filepath.Join(xdgCache, appBundle)
-		} else {
-			homeDir := wavebase.GetHomeDir()
-			cacheDir = filepath.Join(homeDir, ".cache", appBundle)
-		}
-	case "windows":
-		localAppData := os.Getenv("LOCALAPPDATA")
-		if localAppData != "" {
-			cacheDir = filepath.Join(localAppData, appBundle, "Cache")
-		}
-	}
-
-	if cacheDir == "" {
-		tmpDir := os.TempDir()
-		cacheDir = filepath.Join(tmpDir, appBundle)
-	}
-
-	return cacheDir
-}
-
-func (c *TsunamiController) fetchAndSetSchemas(port int) {
-	url := fmt.Sprintf("http://localhost:%d/api/schemas", port)
-	client := &http.Client{
-		Timeout: 10 * time.Second,
-	}
-	
-	resp, err := client.Get(url)
+func (c *TsunamiController) setManifestMetadata(appId string) {
+	manifest, err := waveappstore.ReadAppManifest(appId)
 	if err != nil {
-		log.Printf("TsunamiController: failed to fetch schemas from %s: %v", url, err)
 		return
 	}
-	defer resp.Body.Close()
-	
-	if resp.StatusCode != http.StatusOK {
-		log.Printf("TsunamiController: received non-200 status %d from %s", resp.StatusCode, url)
-		return
-	}
-	
-	var schemas any
-	if err := json.NewDecoder(resp.Body).Decode(&schemas); err != nil {
-		log.Printf("TsunamiController: failed to decode schemas response: %v", err)
-		return
-	}
-	
+
 	blockRef := waveobj.MakeORef(waveobj.OType_Block, c.blockId)
-	wstore.SetRTInfo(blockRef, map[string]any{
-		"tsunami:schemas": schemas,
+	rtInfo := make(map[string]any)
+	rtInfo["tsunami:appmeta"] = manifest.AppMeta
+	if manifest.ConfigSchema != nil || manifest.DataSchema != nil {
+		schemas := make(map[string]any)
+		if manifest.ConfigSchema != nil {
+			schemas["config"] = manifest.ConfigSchema
+		}
+		if manifest.DataSchema != nil {
+			schemas["data"] = manifest.DataSchema
+		}
+		rtInfo["tsunami:schemas"] = schemas
+	}
+	wstore.SetRTInfo(blockRef, rtInfo)
+	wps.Broker.Publish(wps.WaveEvent{
+		Event:  wps.Event_TsunamiUpdateMeta,
+		Scopes: []string{waveobj.MakeORef(waveobj.OType_Block, c.blockId).String()},
+		Data:   manifest.AppMeta,
 	})
-	
-	log.Printf("TsunamiController: successfully fetched and cached schemas for block %s", c.blockId)
 }
 
 func (c *TsunamiController) clearSchemas() {
@@ -125,31 +83,12 @@ func (c *TsunamiController) clearSchemas() {
 	log.Printf("TsunamiController: cleared schemas for block %s", c.blockId)
 }
 
-func getTsunamiAppCachePath(scope string, appName string, osArch string) (string, error) {
-	cachesDir := getCachesDir()
-	tsunamiCacheDir := filepath.Join(cachesDir, "tsunami-build-cache")
-	fullAppName := appName + "." + osArch
-	if strings.HasPrefix(osArch, "windows") {
-		fullAppName = fullAppName + ".exe"
-	}
-	fullPath := filepath.Join(tsunamiCacheDir, scope, fullAppName)
-
-	// Create the directory if it doesn't exist
-	dirPath := filepath.Dir(fullPath)
-	err := wavebase.TryMkdirs(dirPath, 0755, "tsunami cache directory")
-	if err != nil {
-		return "", fmt.Errorf("failed to create tsunami cache directory: %w", err)
-	}
-
-	return fullPath, nil
-}
-
 func isBuildCacheUpToDate(appPath string) (bool, error) {
 	appName := build.GetAppName(appPath)
 
 	osArch := runtime.GOOS + "-" + runtime.GOARCH
 
-	cachePath, err := getTsunamiAppCachePath("local", appName, osArch)
+	cachePath, err := tsunamiutil.GetTsunamiAppCachePath("local", appName, osArch)
 	if err != nil {
 		return false, err
 	}
@@ -176,46 +115,46 @@ func (c *TsunamiController) Start(ctx context.Context, blockMeta waveobj.MetaMap
 	c.runLock.Lock()
 	defer c.runLock.Unlock()
 
-	scaffoldPath := blockMeta.GetString(waveobj.MetaKey_TsunamiScaffoldPath, "")
-	if scaffoldPath == "" {
-		return fmt.Errorf("tsunami:scaffoldpath is required")
+	scaffoldPath := waveapputil.GetTsunamiScaffoldPath()
+	settings := wconfig.GetWatcher().GetFullConfig().Settings
+	sdkReplacePath := settings.TsunamiSdkReplacePath
+	sdkVersion := settings.TsunamiSdkVersion
+	if sdkVersion == "" {
+		sdkVersion = waveapputil.DefaultTsunamiSdkVersion
 	}
-	scaffoldPath, err := wavebase.ExpandHomeDir(scaffoldPath)
-	if err != nil {
-		return fmt.Errorf("tsunami:scaffoldpath invalid: %w", err)
-	}
-	if !filepath.IsAbs(scaffoldPath) {
-		return fmt.Errorf("tsunami:scaffoldpath must be absolute: %s", scaffoldPath)
-	}
-
-	sdkReplacePath := blockMeta.GetString(waveobj.MetaKey_TsunamiSdkReplacePath, "")
-	if sdkReplacePath == "" {
-		return fmt.Errorf("tsunami:sdkreplacepath is required")
-	}
-	sdkReplacePath, err = wavebase.ExpandHomeDir(sdkReplacePath)
-	if err != nil {
-		return fmt.Errorf("tsunami:sdkreplacepath invalid: %w", err)
-	}
-	if !filepath.IsAbs(sdkReplacePath) {
-		return fmt.Errorf("tsunami:sdkreplacepath must be absolute: %s", sdkReplacePath)
-	}
+	goPath := settings.TsunamiGoPath
 
 	appPath := blockMeta.GetString(waveobj.MetaKey_TsunamiAppPath, "")
+	appId := blockMeta.GetString(waveobj.MetaKey_TsunamiAppId, "")
+
 	if appPath == "" {
-		return fmt.Errorf("tsunami:apppath is required")
+		if appId == "" {
+			return fmt.Errorf("tsunami:apppath or tsunami:appid is required")
+		}
+		var err error
+		appPath, err = waveappstore.GetAppDir(appId)
+		if err != nil {
+			return fmt.Errorf("failed to get app directory from tsunami:appid: %w", err)
+		}
+	} else {
+		var err error
+		appPath, err = wavebase.ExpandHomeDir(appPath)
+		if err != nil {
+			return fmt.Errorf("tsunami:apppath invalid: %w", err)
+		}
+		if !filepath.IsAbs(appPath) {
+			return fmt.Errorf("tsunami:apppath must be absolute: %s", appPath)
+		}
 	}
-	appPath, err = wavebase.ExpandHomeDir(appPath)
-	if err != nil {
-		return fmt.Errorf("tsunami:apppath invalid: %w", err)
-	}
-	if !filepath.IsAbs(appPath) {
-		return fmt.Errorf("tsunami:apppath must be absolute: %s", appPath)
+
+	if appId != "" {
+		c.setManifestMetadata(appId)
 	}
 
 	appName := build.GetAppName(appPath)
 	osArch := runtime.GOOS + "-" + runtime.GOARCH
 
-	cachePath, err := getTsunamiAppCachePath("local", appName, osArch)
+	cachePath, err := tsunamiutil.GetTsunamiAppCachePath("local", appName, osArch)
 	if err != nil {
 		return fmt.Errorf("failed to get cache path: %w", err)
 	}
@@ -239,12 +178,15 @@ func (c *TsunamiController) Start(ctx context.Context, blockMeta waveobj.MetaMap
 			OutputFile:     cachePath,
 			ScaffoldPath:   scaffoldPath,
 			SdkReplacePath: sdkReplacePath,
+			SdkVersion:     sdkVersion,
 			NodePath:       nodePath,
+			GoPath:         goPath,
 		}
 
 		err = build.TsunamiBuild(opts)
 		if err != nil {
 			log.Printf("TsunamiController build error for block %s: %v", c.blockId, err)
+			log.Printf("BuildOpts %#v\n", opts)
 			return fmt.Errorf("failed to build tsunami app: %w", err)
 		}
 	}
@@ -272,11 +214,6 @@ func (c *TsunamiController) Start(ctx context.Context, blockMeta waveobj.MetaMap
 		c.port = tsunamiProc.Port
 	})
 	go c.sendStatusUpdate()
-
-	// Asynchronously fetch schemas after port is detected
-	go func() {
-		c.fetchAndSetSchemas(tsunamiProc.Port)
-	}()
 
 	// Monitor process completion
 	go func() {
@@ -355,6 +292,10 @@ func runTsunamiAppBinary(ctx context.Context, appBinPath string, appPath string,
 	cmd := exec.Command(appBinPath)
 	cmd.Env = append(os.Environ(), "TSUNAMI_CLOSEONSTDIN=1")
 
+	if wavebase.IsDevMode() {
+		cmd.Env = append(cmd.Env, "TSUNAMI_CORS="+tsunamiutil.DevModeCorsOrigins)
+	}
+
 	// Add TsunamiEnv variables if configured
 	tsunamiEnv := blockMeta.GetMap(waveobj.MetaKey_TsunamiEnv)
 	for key, value := range tsunamiEnv {
@@ -380,14 +321,19 @@ func runTsunamiAppBinary(ctx context.Context, appBinPath string, appPath string,
 
 	appName := build.GetAppName(appPath)
 
-	stdoutBuffer := utilds.MakeReaderLineBuffer(stdoutPipe, 1000)
-	stdoutBuffer.SetLineCallback(func(line string) {
-		log.Printf("[tsunami:%s] %s\n", appName, line)
-	})
+	lineBuffer := utilds.MakeMultiReaderLineBuffer(1000)
+	portChan := make(chan int, 1)
+	portFound := false
 
-	stderrBuffer := utilds.MakeReaderLineBuffer(stderrPipe, 1000)
-	stderrBuffer.SetLineCallback(func(line string) {
+	lineBuffer.SetLineCallback(func(line string) {
 		log.Printf("[tsunami:%s] %s\n", appName, line)
+
+		if !portFound {
+			if port := build.ParseTsunamiPort(line); port > 0 {
+				portFound = true
+				portChan <- port
+			}
+		}
 	})
 
 	err = cmd.Start()
@@ -398,11 +344,10 @@ func runTsunamiAppBinary(ctx context.Context, appBinPath string, appPath string,
 	// Create wait channel and tsunami proc first
 	waitCh := make(chan struct{})
 	tsunamiProc := &TsunamiAppProc{
-		Cmd:          cmd,
-		StdoutBuffer: stdoutBuffer,
-		StderrBuffer: stderrBuffer,
-		StdinWriter:  stdinPipe,
-		WaitCh:       waitCh,
+		Cmd:         cmd,
+		LineBuffer:  lineBuffer,
+		StdinWriter: stdinPipe,
+		WaitCh:      waitCh,
 	}
 
 	// Start goroutine to handle cmd.Wait()
@@ -427,29 +372,12 @@ func runTsunamiAppBinary(ctx context.Context, appBinPath string, appPath string,
 		close(waitCh)
 	}()
 
-	go stdoutBuffer.ReadAll()
-
-	// Monitor stderr for port information
-	portChan := make(chan int, 1)
-	errChan := make(chan error, 1)
-
-	go func() {
-		for {
-			line, err := stderrBuffer.ReadLine()
-			if err != nil {
-				errChan <- fmt.Errorf("stderr buffer error: %w", err)
-				return
-			}
-
-			port := build.ParseTsunamiPort(line)
-			if port > 0 {
-				portChan <- port
-				return
-			}
-		}
-	}()
+	// Start reading both stdout and stderr
+	go lineBuffer.ReadAll(stdoutPipe)
+	go lineBuffer.ReadAll(stderrPipe)
 
 	// Wait for either port detection, process death, or context timeout
+	errChan := make(chan error, 1)
 	go func() {
 		<-tsunamiProc.WaitCh
 		select {
@@ -462,9 +390,6 @@ func runTsunamiAppBinary(ctx context.Context, appBinPath string, appPath string,
 
 	select {
 	case port := <-portChan:
-		// Start the stderr ReadAll goroutine now that we have the port
-		go stderrBuffer.ReadAll()
-
 		tsunamiProc.Port = port
 		return tsunamiProc, nil
 	case err := <-errChan:

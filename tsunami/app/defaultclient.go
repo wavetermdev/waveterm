@@ -5,18 +5,37 @@ package app
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
 	"io"
 	"io/fs"
 	"log"
 	"net/http"
 	"os"
+	"strings"
+	"time"
 
 	"github.com/wavetermdev/waveterm/tsunami/engine"
+	"github.com/wavetermdev/waveterm/tsunami/util"
 	"github.com/wavetermdev/waveterm/tsunami/vdom"
 )
 
 const TsunamiCloseOnStdinEnvVar = "TSUNAMI_CLOSEONSTDIN"
 const MaxShortDescLen = 120
+
+type AppMeta engine.AppMeta
+
+type staticFileInfo struct {
+	fullPath string
+	info     fs.FileInfo
+}
+
+func (sfi *staticFileInfo) Name() string       { return sfi.fullPath }
+func (sfi *staticFileInfo) Size() int64        { return sfi.info.Size() }
+func (sfi *staticFileInfo) Mode() fs.FileMode  { return sfi.info.Mode() }
+func (sfi *staticFileInfo) ModTime() time.Time { return sfi.info.ModTime() }
+func (sfi *staticFileInfo) IsDir() bool        { return sfi.info.IsDir() }
+func (sfi *staticFileInfo) Sys() any           { return sfi.info.Sys() }
 
 func DefineComponent[P any](name string, renderFn func(props P) any) vdom.Component[P] {
 	return engine.DefineComponentEx(engine.GetDefaultClient(), name, renderFn)
@@ -30,11 +49,11 @@ func SetGlobalEventHandler(handler func(event vdom.VDomEvent)) {
 	engine.GetDefaultClient().SetGlobalEventHandler(handler)
 }
 
-// RegisterSetupFn registers a single setup function that is called before the app starts running.
+// RegisterAppInitFn registers a single setup function that is called before the app starts running.
 // Only one setup function is allowed, so calling this will replace any previously registered
 // setup function.
-func RegisterSetupFn(fn func()) {
-	engine.GetDefaultClient().RegisterSetupFn(fn)
+func RegisterAppInitFn(fn func() error) {
+	engine.GetDefaultClient().RegisterAppInitFn(fn)
 }
 
 // SendAsyncInitiation notifies the frontend that the backend has updated state
@@ -146,6 +165,12 @@ func QueueRefOp(ref *vdom.VDomRef, op vdom.VDomRefOperation) {
 	client.Root.QueueRefOp(op)
 }
 
+func SetAppMeta(meta AppMeta) {
+	meta.ShortDesc = util.TruncateString(meta.ShortDesc, MaxShortDescLen)
+	client := engine.GetDefaultClient()
+	client.SetAppMeta(engine.AppMeta(meta))
+}
+
 func SetTitle(title string) {
 	client := engine.GetDefaultClient()
 	m := client.GetAppMeta()
@@ -154,11 +179,91 @@ func SetTitle(title string) {
 }
 
 func SetShortDesc(shortDesc string) {
-	if len(shortDesc) > MaxShortDescLen {
-		shortDesc = shortDesc[0:MaxShortDescLen-3] + "..."
-	}
+	shortDesc = util.TruncateString(shortDesc, MaxShortDescLen)
 	client := engine.GetDefaultClient()
 	m := client.GetAppMeta()
 	m.ShortDesc = shortDesc
 	client.SetAppMeta(m)
+}
+
+func DeclareSecret(secretName string, meta *SecretMeta) string {
+	client := engine.GetDefaultClient()
+	var secretDesc string
+	var secretOptional bool
+	if meta != nil {
+		secretDesc = meta.Desc
+		secretOptional = meta.Optional
+	}
+	client.DeclareSecret(secretName, secretDesc, secretOptional)
+	return os.Getenv(secretName)
+}
+
+func PrintAppManifest() {
+	client := engine.GetDefaultClient()
+	client.PrintAppManifest()
+}
+
+// ReadStaticFile reads a file from the embedded static filesystem.
+// The path MUST start with "static/" (e.g., "static/config.json").
+// Returns the file contents or an error if the file doesn't exist or can't be read.
+func ReadStaticFile(path string) ([]byte, error) {
+	client := engine.GetDefaultClient()
+	if client.StaticFS == nil {
+		return nil, errors.New("static files not available before app initialization; use AppInit to access files during initialization")
+	}
+	if !strings.HasPrefix(path, "static/") {
+		return nil, fmt.Errorf("ReadStaticFile path must start with 'static/': %w", fs.ErrNotExist)
+	}
+	// Strip "static/" prefix since the FS is already sub'd to the static directory
+	relativePath := strings.TrimPrefix(path, "static/")
+	return fs.ReadFile(client.StaticFS, relativePath)
+}
+
+// OpenStaticFile opens a file from the embedded static filesystem.
+// The path MUST start with "static/" (e.g., "static/config.json").
+// Returns an fs.File or an error if the file doesn't exist or can't be opened.
+func OpenStaticFile(path string) (fs.File, error) {
+	client := engine.GetDefaultClient()
+	if client.StaticFS == nil {
+		return nil, errors.New("static files not available before app initialization; use AppInit to access files during initialization")
+	}
+	if !strings.HasPrefix(path, "static/") {
+		return nil, fmt.Errorf("OpenStaticFile path must start with 'static/': %w", fs.ErrNotExist)
+	}
+	// Strip "static/" prefix since the FS is already sub'd to the static directory
+	relativePath := strings.TrimPrefix(path, "static/")
+	return client.StaticFS.Open(relativePath)
+}
+
+// ListStaticFiles returns FileInfo for all files in the embedded static filesystem.
+// The Name() of each FileInfo will be the full path prefixed with "static/" (e.g., "static/config.json"),
+// which can be passed directly to ReadStaticFile or OpenStaticFile.
+func ListStaticFiles() ([]fs.FileInfo, error) {
+	client := engine.GetDefaultClient()
+	if client.StaticFS == nil {
+		return nil, errors.New("static files not available before app initialization; use AppInit to access files during initialization")
+	}
+
+	var fileInfos []fs.FileInfo
+	err := fs.WalkDir(client.StaticFS, ".", func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if !d.IsDir() {
+			info, err := d.Info()
+			if err != nil {
+				return err
+			}
+			fullPath := "static/" + path
+			fileInfos = append(fileInfos, &staticFileInfo{
+				fullPath: fullPath,
+				info:     info,
+			})
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return fileInfos, nil
 }

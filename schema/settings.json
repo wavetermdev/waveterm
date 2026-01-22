@@ -20,6 +20,12 @@
         "app:showoverlayblocknums": {
           "type": "boolean"
         },
+        "app:ctrlvpaste": {
+          "type": "boolean"
+        },
+        "feature:waveappbuilder": {
+          "type": "boolean"
+        },
         "ai:*": {
           "type": "boolean"
         },
@@ -62,6 +68,12 @@
         "ai:fixedfontsize": {
           "type": "number"
         },
+        "waveai:showcloudmodes": {
+          "type": "boolean"
+        },
+        "waveai:defaultmode": {
+          "type": "string"
+        },
         "term:*": {
           "type": "boolean"
         },
@@ -86,6 +98,9 @@
           },
           "type": "array"
         },
+        "term:gitbashpath": {
+          "type": "string"
+        },
         "term:scrollback": {
           "type": "integer"
         },
@@ -101,6 +116,9 @@
         "term:shiftenternewline": {
           "type": "boolean"
         },
+        "term:macoptionismeta": {
+          "type": "boolean"
+        },
         "editor:minimapenabled": {
           "type": "boolean"
         },
@@ -112,6 +130,9 @@
         },
         "editor:fontsize": {
           "type": "number"
+        },
+        "editor:inlinediff": {
+          "type": "boolean"
         },
         "web:*": {
           "type": "boolean"
@@ -165,6 +186,9 @@
           "type": "boolean"
         },
         "window:*": {
+          "type": "boolean"
+        },
+        "window:fullscreenonlaunch": {
           "type": "boolean"
         },
         "window:transparent": {
@@ -235,6 +259,30 @@
         },
         "conn:wshenabled": {
           "type": "boolean"
+        },
+        "debug:*": {
+          "type": "boolean"
+        },
+        "debug:pprofport": {
+          "type": "integer"
+        },
+        "debug:pprofmemprofilerate": {
+          "type": "integer"
+        },
+        "tsunami:*": {
+          "type": "boolean"
+        },
+        "tsunami:scaffoldpath": {
+          "type": "string"
+        },
+        "tsunami:sdkreplacepath": {
+          "type": "string"
+        },
+        "tsunami:sdkversion": {
+          "type": "string"
+        },
+        "tsunami:gopath": {
+          "type": "string"
         }
       },
       "additionalProperties": false,

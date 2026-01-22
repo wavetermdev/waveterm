@@ -55,11 +55,14 @@
     "files.associations": {
         "*.css": "tailwindcss"
     },
-    "go.lintTool": "staticcheck",
     "gopls": {
         "analyses": {
             "QF1003": false
         },
-        "directoryFilters": ["-tsunami/frontend/scaffold"]
+        "directoryFilters": ["-tsunami/frontend/scaffold", "-dist", "-make"]
+    },
+    "tailwindCSS.lint.suggestCanonicalClasses": "ignore",
+    "go.coverageDecorator": {
+        "type": "gutter"
     }
 }

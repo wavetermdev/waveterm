@@ -21,31 +21,16 @@ interface TabProps {
     isDragging: boolean;
     tabWidth: number;
     isNew: boolean;
-    isPinned: boolean;
     onSelect: () => void;
     onClose: (event: React.MouseEvent<HTMLButtonElement, MouseEvent> | null) => void;
     onDragStart: (event: React.MouseEvent<HTMLDivElement, MouseEvent>) => void;
     onLoaded: () => void;
-    onPinChange: () => void;
 }
 
 const Tab = memo(
     forwardRef<HTMLDivElement, TabProps>(
         (
-            {
-                id,
-                active,
-                isPinned,
-                isBeforeActive,
-                isDragging,
-                tabWidth,
-                isNew,
-                onLoaded,
-                onSelect,
-                onClose,
-                onDragStart,
-                onPinChange,
-            },
+            { id, active, isBeforeActive, isDragging, tabWidth, isNew, onLoaded, onSelect, onClose, onDragStart },
             ref
         ) => {
             const [tabData, _] = useWaveObjectValue<Tab>(makeORef("tab", id));
@@ -74,13 +59,15 @@ const Tab = memo(
             }, []);
 
             const selectEditableText = useCallback(() => {
-                if (editableRef.current) {
-                    const range = document.createRange();
-                    const selection = window.getSelection();
-                    range.selectNodeContents(editableRef.current);
-                    selection.removeAllRanges();
-                    selection.addRange(range);
+                if (!editableRef.current) {
+                    return;
                 }
+                editableRef.current.focus();
+                const range = document.createRange();
+                const selection = window.getSelection();
+                range.selectNodeContents(editableRef.current);
+                selection.removeAllRanges();
+                selection.addRange(range);
             }, []);
 
             const handleRenameTab: React.MouseEventHandler<HTMLDivElement> = (event) => {
@@ -88,7 +75,7 @@ const Tab = memo(
                 setIsEditable(true);
                 editableTimeoutRef.current = setTimeout(() => {
                     selectEditableText();
-                }, 0);
+                }, 50);
             };
 
             const handleBlur = () => {
@@ -150,7 +137,6 @@ const Tab = memo(
                 (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
                     e.preventDefault();
                     let menu: ContextMenuItem[] = [
-                        { label: isPinned ? "Unpin Tab" : "Pin Tab", click: () => onPinChange() },
                         { label: "Rename Tab", click: () => handleRenameTab(null) },
                         {
                             label: "Copy TabId",
@@ -193,7 +179,7 @@ const Tab = memo(
                     menu.push({ label: "Close Tab", click: () => onClose(null) });
                     ContextMenuModel.showContextMenu(menu, e);
                 },
-                [onPinChange, handleRenameTab, id, onClose, isPinned]
+                [handleRenameTab, id, onClose]
             );
 
             return (
@@ -222,27 +208,14 @@ const Tab = memo(
                         >
                             {tabData?.name}
                         </div>
-                        {isPinned ? (
-                            <Button
-                                className="ghost grey pin"
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    onPinChange();
-                                }}
-                                title="Unpin Tab"
-                            >
-                                <i className="fa fa-solid fa-thumbtack" />
-                            </Button>
-                        ) : (
-                            <Button
-                                className="ghost grey close"
-                                onClick={onClose}
-                                onMouseDown={handleMouseDownOnClose}
-                                title="Close Tab"
-                            >
-                                <i className="fa fa-solid fa-xmark" />
-                            </Button>
-                        )}
+                        <Button
+                            className="ghost grey close"
+                            onClick={onClose}
+                            onMouseDown={handleMouseDownOnClose}
+                            title="Close Tab"
+                        >
+                            <i className="fa fa-solid fa-xmark" />
+                        </Button>
                     </div>
                 </div>
             );
