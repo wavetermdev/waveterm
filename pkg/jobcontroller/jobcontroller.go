@@ -54,6 +54,17 @@ func isJobManagerRunning(job *waveobj.Job) bool {
 	return job.JobManagerStatus == JobStatus_Running
 }
 
+func GetJobManagerStatus(ctx context.Context, jobId string) (string, error) {
+	job, err := wstore.DBGet[*waveobj.Job](ctx, jobId)
+	if err != nil {
+		return "", fmt.Errorf("failed to get job: %w", err)
+	}
+	if job == nil {
+		return JobStatus_Done, nil
+	}
+	return job.JobManagerStatus, nil
+}
+
 var (
 	jobConnStates     = make(map[string]string)
 	jobConnStatesLock sync.Mutex
@@ -137,7 +148,7 @@ func GetConnectedJobIds() []string {
 	return connectedJobIds
 }
 
-func ensureJobConnected(ctx context.Context, jobId string) (*waveobj.Job, error) {
+func CheckJobConnected(ctx context.Context, jobId string) (*waveobj.Job, error) {
 	job, err := wstore.DBMustGet[*waveobj.Job](ctx, jobId)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get job: %w", err)
@@ -823,7 +834,7 @@ func DetachJobFromBlock(ctx context.Context, jobId string, updateBlock bool) err
 
 func SendInput(ctx context.Context, data wshrpc.CommandJobInputData) error {
 	jobId := data.JobId
-	_, err := ensureJobConnected(ctx, jobId)
+	_, err := CheckJobConnected(ctx, jobId)
 	if err != nil {
 		return err
 	}
