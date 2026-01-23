@@ -9,7 +9,44 @@
   <br/>
 </p>
 
-# Wave Terminal
+# Wave Terminal (Sawka Fork)
+
+> **This is a personal fork of [Wave Terminal](https://github.com/wavetermdev/waveterm)** with experimental features and customizations. For the official version, visit the [upstream repository](https://github.com/wavetermdev/waveterm).
+
+---
+
+## Fork Changes
+
+This fork includes the following modifications from upstream:
+
+### UI/UX Enhancements
+- **Tab Base Directory Redesign** - VS Code-style tab bar with colored backgrounds based on directory
+- **Breadcrumb Navigation** - Directory breadcrumbs in tab bar for quick navigation
+- **OSC 7 Integration** - Terminal working directory synced to tab display with debouncing
+
+### Terminal Improvements
+- **xterm.js 6.1.0 Upgrade** - Updated from 5.5.0 to 6.1.0-beta.106
+  - Enables DEC mode 2026 (Synchronized Output) for proper TUI animations
+  - Fixes npm progress bars, htop, and spinner animations scrolling issues
+  - Uses public `terminal.dimensions` API (no more private API hacks)
+  - New DomScrollableElement scrollbar with custom styling
+
+### Windows Build Fixes
+- **PowerShell 7 Support** - All build commands use `pwsh -NoProfile` instead of legacy `powershell`
+- **Shell Launch Fix** - Runtime shells use `-NoProfile` flag to prevent profile loading delays
+
+### Syncing with Upstream
+
+This fork is periodically rebased on upstream main:
+
+```bash
+git fetch upstream
+git checkout sawka-main
+git rebase upstream/main
+git push origin sawka-main --force-with-lease
+```
+
+---
 
 [![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fwavetermdev%2Fwaveterm.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2Fwavetermdev%2Fwaveterm?ref=badge_shield)
 
