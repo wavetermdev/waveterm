@@ -64,7 +64,7 @@ type BlockControllerRuntimeStatus struct {
 type Controller interface {
 	Start(ctx context.Context, blockMeta waveobj.MetaMapType, rtOpts *waveobj.RuntimeOpts, force bool) error
 	Stop(graceful bool, newStatus string) error
-	GetRuntimeStatus() *BlockControllerRuntimeStatus
+	GetRuntimeStatus() *BlockControllerRuntimeStatus // does not return nil
 	SendInput(input *BlockInputUnion) error
 }
 
@@ -196,6 +196,17 @@ func ResyncController(ctx context.Context, tabId string, blockId string, rtOpts 
 		existing = nil
 	}
 
+	// Destroy done controllers before restarting
+	if existing != nil {
+		status := existing.GetRuntimeStatus()
+		if status.ShellProcStatus == Status_Done {
+			log.Printf("destroying blockcontroller %s with done status before restart\n", blockId)
+			DestroyBlockController(blockId)
+			time.Sleep(100 * time.Millisecond)
+			existing = nil
+		}
+	}
+
 	// Create or restart controller
 	var controller Controller
 	if existing != nil {
@@ -222,7 +233,7 @@ func ResyncController(ctx context.Context, tabId string, blockId string, rtOpts 
 
 	// Check if we need to start/restart
 	status := controller.GetRuntimeStatus()
-	if status.ShellProcStatus == Status_Init || status.ShellProcStatus == Status_Done {
+	if status.ShellProcStatus == Status_Init {
 		// For shell/cmd, check connection status first (for non-local connections)
 		if controllerName == BlockController_Shell || controllerName == BlockController_Cmd {
 			connName := blockData.Meta.GetString(waveobj.MetaKey_Connection, "")
@@ -250,15 +261,6 @@ func GetBlockControllerRuntimeStatus(blockId string) *BlockControllerRuntimeStat
 		return nil
 	}
 	return controller.GetRuntimeStatus()
-}
-
-func StopBlockController(blockId string) {
-	controller := getController(blockId)
-	if controller == nil {
-		return
-	}
-	controller.Stop(true, Status_Done)
-	wstore.DeleteRTInfo(waveobj.MakeORef(waveobj.OType_Block, blockId))
 }
 
 func DestroyBlockController(blockId string) {

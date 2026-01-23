@@ -112,6 +112,11 @@ class RpcApiType {
         return client.wshRpcCall("controllerappendoutput", data, opts);
     }
 
+    // command "controllerdestroy" [call]
+    ControllerDestroyCommand(client: WshClient, data: string, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("controllerdestroy", data, opts);
+    }
+
     // command "controllerinput" [call]
     ControllerInputCommand(client: WshClient, data: CommandBlockInputData, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("controllerinput", data, opts);
@@ -120,11 +125,6 @@ class RpcApiType {
     // command "controllerresync" [call]
     ControllerResyncCommand(client: WshClient, data: CommandControllerResyncData, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("controllerresync", data, opts);
-    }
-
-    // command "controllerstop" [call]
-    ControllerStopCommand(client: WshClient, data: string, opts?: RpcOpts): Promise<void> {
-        return client.wshRpcCall("controllerstop", data, opts);
     }
 
     // command "createblock" [call]

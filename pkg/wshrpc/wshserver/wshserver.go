@@ -283,8 +283,8 @@ func (ws *WshServer) CreateSubBlockCommand(ctx context.Context, data wshrpc.Comm
 	return blockRef, nil
 }
 
-func (ws *WshServer) ControllerStopCommand(ctx context.Context, blockId string) error {
-	blockcontroller.StopBlockController(blockId)
+func (ws *WshServer) ControllerDestroyCommand(ctx context.Context, blockId string) error {
+	blockcontroller.DestroyBlockController(blockId)
 	return nil
 }
 
