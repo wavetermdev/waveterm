@@ -16,7 +16,6 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/blocklogger"
 	"github.com/wavetermdev/waveterm/pkg/filestore"
 	"github.com/wavetermdev/waveterm/pkg/jobcontroller"
-	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/remote"
 	"github.com/wavetermdev/waveterm/pkg/remote/conncontroller"
 	"github.com/wavetermdev/waveterm/pkg/shellexec"
@@ -37,7 +36,6 @@ type ShellJobController struct {
 	StatusVersion  int
 
 	JobId           string
-	ShellInputCh    chan *BlockInputUnion
 	LastKnownStatus string
 }
 
@@ -47,7 +45,6 @@ func MakeShellJobController(tabId string, blockId string, controllerType string)
 		ControllerType:  controllerType,
 		TabId:           tabId,
 		BlockId:         blockId,
-		ShellInputCh:    make(chan *BlockInputUnion, 32),
 		LastKnownStatus: Status_Init,
 	}
 }
@@ -56,6 +53,12 @@ func (sjc *ShellJobController) WithLock(f func()) {
 	sjc.Lock.Lock()
 	defer sjc.Lock.Unlock()
 	f()
+}
+
+func (sjc *ShellJobController) getJobId() string {
+	sjc.Lock.Lock()
+	defer sjc.Lock.Unlock()
+	return sjc.JobId
 }
 
 func (sjc *ShellJobController) getJobStatus_withlock() string {
@@ -155,8 +158,6 @@ func (sjc *ShellJobController) Start(ctx context.Context, blockMeta waveobj.Meta
 		}
 	}
 
-	go sjc.runJobInputLoop(ctx, jobId)
-
 	return nil
 }
 
@@ -166,8 +167,22 @@ func (sjc *ShellJobController) Stop(graceful bool, newStatus string) error {
 }
 
 func (sjc *ShellJobController) SendInput(inputUnion *BlockInputUnion) error {
-	sjc.ShellInputCh <- inputUnion
-	return nil
+	if inputUnion == nil {
+		return nil
+	}
+	jobId := sjc.getJobId()
+	if jobId == "" {
+		return fmt.Errorf("no job attached to controller")
+	}
+	data := wshrpc.CommandJobInputData{
+		JobId:    jobId,
+		TermSize: inputUnion.TermSize,
+		SigName:  inputUnion.SigName,
+	}
+	if len(inputUnion.InputData) > 0 {
+		data.InputData64 = base64.StdEncoding.EncodeToString(inputUnion.InputData)
+	}
+	return jobcontroller.SendInput(context.Background(), data)
 }
 
 func (sjc *ShellJobController) startNewJob(ctx context.Context, blockMeta waveobj.MetaMapType, connName string) (string, error) {
@@ -213,47 +228,6 @@ func (sjc *ShellJobController) startNewJob(ctx context.Context, blockMeta waveob
 	}
 
 	return jobId, nil
-}
-
-func (sjc *ShellJobController) runJobInputLoop(ctx context.Context, jobId string) {
-	log.Printf("starting job input loop for job %s\n", jobId)
-
-	go func() {
-		defer func() {
-			panichandler.PanicHandler("ShellJobController:runJobInputLoop", recover())
-		}()
-		for inputUnion := range sjc.ShellInputCh {
-			if inputUnion == nil {
-				continue
-			}
-
-			if len(inputUnion.InputData) > 0 {
-				data := wshrpc.CommandJobInputData{
-					JobId:       jobId,
-					InputData64: base64.StdEncoding.EncodeToString(inputUnion.InputData),
-				}
-				err := jobcontroller.SendInput(context.Background(), data)
-				if err != nil {
-					log.Printf("error sending input to job: %v\n", err)
-				}
-			}
-
-			if inputUnion.TermSize != nil {
-				data := wshrpc.CommandJobInputData{
-					JobId:    jobId,
-					TermSize: inputUnion.TermSize,
-				}
-				err := jobcontroller.SendInput(context.Background(), data)
-				if err != nil {
-					log.Printf("error sending termsize to job: %v\n", err)
-				}
-			}
-
-			if inputUnion.SigName != "" {
-				log.Printf("signal %q not implemented for job-based shells\n", inputUnion.SigName)
-			}
-		}
-	}()
 }
 
 func (sjc *ShellJobController) resetTerminalState(logCtx context.Context) {
