@@ -40,6 +40,7 @@ type MetaTSType struct {
 	Cmd                 string   `json:"cmd,omitempty"`
 	CmdInteractive      bool     `json:"cmd:interactive,omitempty"`
 	CmdLogin            bool     `json:"cmd:login,omitempty"`
+	CmdPersistent       bool     `json:"cmd:persistent,omitempty"`
 	CmdRunOnStart       bool     `json:"cmd:runonstart,omitempty"`
 	CmdClearOnStart     bool     `json:"cmd:clearonstart,omitempty"`
 	CmdRunOnce          bool     `json:"cmd:runonce,omitempty"`

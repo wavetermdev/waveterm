@@ -998,6 +998,7 @@ declare global {
         cmd?: string;
         "cmd:interactive"?: boolean;
         "cmd:login"?: boolean;
+        "cmd:persistent"?: boolean;
         "cmd:runonstart"?: boolean;
         "cmd:clearonstart"?: boolean;
         "cmd:runonce"?: boolean;

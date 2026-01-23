@@ -80,7 +80,7 @@ func doShutdown(reason string) {
 		log.Printf("shutting down: %s\n", reason)
 		ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancelFn()
-		go blockcontroller.StopAllBlockControllers()
+		go blockcontroller.StopAllBlockControllersForShutdown()
 		shutdownActivityUpdate()
 		sendTelemetryWrapper()
 		// TODO deal with flush in progress

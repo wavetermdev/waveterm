@@ -37,15 +37,15 @@ type TsunamiAppProc struct {
 }
 
 type TsunamiController struct {
-	blockId       string
-	tabId         string
-	runLock       sync.Mutex
-	tsunamiProc   *TsunamiAppProc
-	statusLock    sync.Mutex
-	status        string
-	statusVersion int
-	exitCode      int
-	port          int
+	blockId     string
+	tabId       string
+	runLock     sync.Mutex
+	tsunamiProc *TsunamiAppProc
+	statusLock  sync.Mutex
+	status      string
+	versionTs   utilds.VersionTs
+	exitCode    int
+	port        int
 }
 
 func (c *TsunamiController) setManifestMetadata(appId string) {
@@ -268,10 +268,9 @@ func (c *TsunamiController) Stop(graceful bool, newStatus string) error {
 func (c *TsunamiController) GetRuntimeStatus() *BlockControllerRuntimeStatus {
 	var rtn *BlockControllerRuntimeStatus
 	c.WithStatusLock(func() {
-		c.statusVersion++
 		rtn = &BlockControllerRuntimeStatus{
 			BlockId:           c.blockId,
-			Version:           c.statusVersion,
+			Version:           c.versionTs.GetVersionTs(),
 			ShellProcStatus:   c.status,
 			ShellProcExitCode: c.exitCode,
 		}

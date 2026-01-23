@@ -53,7 +53,7 @@ type BlockInputUnion struct {
 
 type BlockControllerRuntimeStatus struct {
 	BlockId           string `json:"blockid"`
-	Version           int    `json:"version"`
+	Version           int64  `json:"version"`
 	ShellProcStatus   string `json:"shellprocstatus,omitempty"`
 	ShellProcConnName string `json:"shellprocconnname,omitempty"`
 	ShellProcExitCode int    `json:"shellprocexitcode"`
@@ -135,21 +135,31 @@ func ResyncController(ctx context.Context, tabId string, blockId string, rtOpts 
 	// If no controller needed, stop existing if present
 	if controllerName == "" {
 		if existing != nil {
-			StopBlockController(blockId)
-			deleteController(blockId)
+			DestroyBlockController(blockId)
 		}
 		return nil
 	}
+
+	// Determine if we should use ShellJobController vs ShellController
+	isPersistent := blockData.Meta.GetBool(waveobj.MetaKey_CmdPersistent, false)
+	connName := blockData.Meta.GetString(waveobj.MetaKey_Connection, "")
+	isRemote := !conncontroller.IsLocalConnName(connName)
+	shouldUseShellJobController := isPersistent && isRemote && (controllerName == BlockController_Shell || controllerName == BlockController_Cmd)
 
 	// Check if we need to morph controller type
 	if existing != nil {
 		existingStatus := existing.GetRuntimeStatus()
 		needsReplace := false
 
-		// Determine if existing controller type matches what we need
 		switch existing.(type) {
 		case *ShellController:
 			if controllerName != BlockController_Shell && controllerName != BlockController_Cmd {
+				needsReplace = true
+			} else if shouldUseShellJobController {
+				needsReplace = true
+			}
+		case *ShellJobController:
+			if !shouldUseShellJobController {
 				needsReplace = true
 			}
 		case *TsunamiController:
@@ -160,31 +170,30 @@ func ResyncController(ctx context.Context, tabId string, blockId string, rtOpts 
 
 		if needsReplace {
 			log.Printf("stopping blockcontroller %s due to controller type change\n", blockId)
-			StopBlockController(blockId)
+			DestroyBlockController(blockId)
 			time.Sleep(100 * time.Millisecond)
-			deleteController(blockId)
 			existing = nil
 		}
 
-		// For shell/cmd, check if connection changed
+		// For shell/cmd, check if connection changed (but not for job controller)
 		if !needsReplace && (controllerName == BlockController_Shell || controllerName == BlockController_Cmd) {
-			connName := blockData.Meta.GetString(waveobj.MetaKey_Connection, "")
-			// Check if connection changed, including between different local connections
-			if existingStatus.ShellProcStatus == Status_Running && existingStatus.ShellProcConnName != connName {
-				log.Printf("stopping blockcontroller %s due to conn change (from %q to %q)\n", blockId, existingStatus.ShellProcConnName, connName)
-				StopBlockControllerAndSetStatus(blockId, Status_Init)
-				time.Sleep(100 * time.Millisecond)
-				// Don't delete, will reuse same controller type
-				existing = getController(blockId)
+			if _, isShellController := existing.(*ShellController); isShellController {
+				// Check if connection changed, including between different local connections
+				if existingStatus.ShellProcStatus == Status_Running && existingStatus.ShellProcConnName != connName {
+					log.Printf("stopping blockcontroller %s due to conn change (from %q to %q)\n", blockId, existingStatus.ShellProcConnName, connName)
+					DestroyBlockController(blockId)
+					time.Sleep(100 * time.Millisecond)
+					existing = nil
+				}
 			}
 		}
 	}
 
 	// Force restart if requested
 	if force && existing != nil {
-		StopBlockController(blockId)
+		DestroyBlockController(blockId)
 		time.Sleep(100 * time.Millisecond)
-		existing = getController(blockId)
+		existing = nil
 	}
 
 	// Create or restart controller
@@ -195,7 +204,11 @@ func ResyncController(ctx context.Context, tabId string, blockId string, rtOpts 
 		// Create new controller based on type
 		switch controllerName {
 		case BlockController_Shell, BlockController_Cmd:
-			controller = MakeShellController(tabId, blockId, controllerName)
+			if shouldUseShellJobController {
+				controller = MakeShellJobController(tabId, blockId, controllerName)
+			} else {
+				controller = MakeShellController(tabId, blockId, controllerName)
+			}
 			registerController(blockId, controller)
 
 		case BlockController_Tsunami:
@@ -248,13 +261,14 @@ func StopBlockController(blockId string) {
 	wstore.DeleteRTInfo(waveobj.MakeORef(waveobj.OType_Block, blockId))
 }
 
-func StopBlockControllerAndSetStatus(blockId string, newStatus string) {
+func DestroyBlockController(blockId string) {
 	controller := getController(blockId)
 	if controller == nil {
 		return
 	}
-	controller.Stop(true, newStatus)
+	controller.Stop(true, Status_Done)
 	wstore.DeleteRTInfo(waveobj.MakeORef(waveobj.OType_Block, blockId))
+	deleteController(blockId)
 }
 
 func SendInput(blockId string, inputUnion *BlockInputUnion) error {
@@ -265,7 +279,8 @@ func SendInput(blockId string, inputUnion *BlockInputUnion) error {
 	return controller.SendInput(inputUnion)
 }
 
-func StopAllBlockControllers() {
+// only call this on shutdown
+func StopAllBlockControllersForShutdown() {
 	controllers := getAllControllers()
 	for blockId, controller := range controllers {
 		status := controller.GetRuntimeStatus()

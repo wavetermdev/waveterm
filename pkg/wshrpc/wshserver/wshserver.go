@@ -295,21 +295,6 @@ func (ws *WshServer) ControllerResyncCommand(ctx context.Context, data wshrpc.Co
 }
 
 func (ws *WshServer) ControllerInputCommand(ctx context.Context, data wshrpc.CommandBlockInputData) error {
-	block, err := wstore.DBMustGet[*waveobj.Block](ctx, data.BlockId)
-	if err != nil {
-		return fmt.Errorf("error getting block: %w", err)
-	}
-
-	if block.JobId != "" {
-		jobInputData := wshrpc.CommandJobInputData{
-			JobId:       block.JobId,
-			InputData64: data.InputData64,
-			SigName:     data.SigName,
-			TermSize:    data.TermSize,
-		}
-		return jobcontroller.SendInput(ctx, jobInputData)
-	}
-
 	inputUnion := &blockcontroller.BlockInputUnion{
 		SigName:  data.SigName,
 		TermSize: data.TermSize,

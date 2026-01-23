@@ -28,6 +28,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/util/fileutil"
 	"github.com/wavetermdev/waveterm/pkg/util/shellutil"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
+	"github.com/wavetermdev/waveterm/pkg/utilds"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wconfig"
@@ -60,7 +61,7 @@ type ShellController struct {
 	RunLock        *atomic.Bool
 	ProcStatus     string
 	ProcExitCode   int
-	StatusVersion  int
+	VersionTs      utilds.VersionTs
 
 	// for shell/cmd
 	ShellProc    *shellexec.ShellProc
@@ -121,8 +122,7 @@ func (sc *ShellController) Stop(graceful bool, newStatus string) error {
 
 func (sc *ShellController) getRuntimeStatus_nolock() BlockControllerRuntimeStatus {
 	var rtn BlockControllerRuntimeStatus
-	sc.StatusVersion++
-	rtn.Version = sc.StatusVersion
+	rtn.Version = sc.VersionTs.GetVersionTs()
 	rtn.BlockId = sc.BlockId
 	rtn.ShellProcStatus = sc.ProcStatus
 	if sc.ShellProc != nil {

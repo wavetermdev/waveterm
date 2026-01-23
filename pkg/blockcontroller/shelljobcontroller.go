@@ -20,6 +20,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/remote/conncontroller"
 	"github.com/wavetermdev/waveterm/pkg/shellexec"
 	"github.com/wavetermdev/waveterm/pkg/util/shellutil"
+	"github.com/wavetermdev/waveterm/pkg/utilds"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wps"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
@@ -33,7 +34,7 @@ type ShellJobController struct {
 	TabId          string
 	BlockId        string
 	BlockDef       *waveobj.BlockDef
-	StatusVersion  int
+	VersionTs      utilds.VersionTs
 
 	JobId           string
 	LastKnownStatus string
@@ -77,8 +78,7 @@ func (sjc *ShellJobController) getJobStatus_withlock() string {
 
 func (sjc *ShellJobController) getRuntimeStatus_withlock() BlockControllerRuntimeStatus {
 	var rtn BlockControllerRuntimeStatus
-	sjc.StatusVersion++
-	rtn.Version = sjc.StatusVersion
+	rtn.Version = sjc.VersionTs.GetVersionTs()
 	rtn.BlockId = sjc.BlockId
 	rtn.ShellProcStatus = sjc.getJobStatus_withlock()
 	return rtn
@@ -112,8 +112,8 @@ func (sjc *ShellJobController) Start(ctx context.Context, blockMeta waveobj.Meta
 	}
 
 	connName := blockMeta.GetString(waveobj.MetaKey_Connection, "")
-	if connName == "" {
-		return fmt.Errorf("no connection specified for shell job")
+	if conncontroller.IsLocalConnName(connName) {
+		return fmt.Errorf("shell job controller requires a remote connection")
 	}
 
 	var jobId string
