@@ -17,23 +17,64 @@
 
 ## Fork Changes
 
-This fork includes the following modifications from upstream:
+This fork includes the following modifications from upstream (~50 files changed, ~8000 lines added):
 
-### UI/UX Enhancements
-- **Tab Base Directory Redesign** - VS Code-style tab bar with colored backgrounds based on directory
-- **Breadcrumb Navigation** - Directory breadcrumbs in tab bar for quick navigation
-- **OSC 7 Integration** - Terminal working directory synced to tab display with debouncing
+### Tab Base Directory System (Major Feature)
+
+A complete project-centric workflow system for tabs:
+
+- **VS Code-Style Tab Bar** - Colored tab backgrounds based on directory context
+- **Breadcrumb Navigation** - Full path breadcrumbs below tab bar for quick navigation
+- **Smart Auto-Detection** - OSC 7 integration automatically detects working directory from terminal
+- **Directory Locking** - Lock base directory to prevent auto-detection changes
+- **Tab Presets** - Save and apply tab configurations via presets (`tabvar@project-name`)
+- **Tab Color Picker** - 8-color palette for manual tab coloring via context menu
+- **Terminal Status Indicators** - Visual status for running/finished/stopped commands
+
+**New Files:**
+- `frontend/app/store/tab-model.ts` - Tab state management
+- `frontend/app/store/tab-basedir-validator.ts` - Path validation
+- `frontend/app/store/tab-basedir-validation-hook.ts` - React hook for validation
+- `frontend/app/tab/tab-menu.ts` - Reusable preset menu builder
+- `frontend/util/pathutil.ts` - Cross-platform path utilities
+- `frontend/util/presetutil.ts` - Preset validation and sanitization
+- `docs/docs/tabs.mdx` - Full documentation
+
+### Backend Security & Validation
+
+Comprehensive metadata validation to prevent injection attacks:
+
+- **Path Validation** - Validates all path fields (traversal attacks, length limits)
+- **URL Validation** - Validates URL fields with scheme restrictions
+- **String Sanitization** - Length limits and content validation
+- **Optimistic Locking** - Version-based concurrency control for metadata updates
+- **Race Condition Fixes** - TOCTOU vulnerability prevention in OSC 7 updates
+
+**New Files:**
+- `pkg/waveobj/validators.go` - 935-line validation framework
+- `pkg/wconfig/defaultconfig/presets/tabvars.json` - Default tab presets
+- `schema/tabvarspresets.json` - JSON schema for presets
 
 ### Terminal Improvements
+
 - **xterm.js 6.1.0 Upgrade** - Updated from 5.5.0 to 6.1.0-beta.106
   - Enables DEC mode 2026 (Synchronized Output) for proper TUI animations
   - Fixes npm progress bars, htop, and spinner animations scrolling issues
   - Uses public `terminal.dimensions` API (no more private API hacks)
   - New DomScrollableElement scrollbar with custom styling
+- **OSC 7 Debouncing** - 300ms debounce for rapid directory changes
+- **Memory Leak Prevention** - Cleanup handlers for tab close events
 
-### Windows Build Fixes
-- **PowerShell 7 Support** - All build commands use `pwsh -NoProfile` instead of legacy `powershell`
-- **Shell Launch Fix** - Runtime shells use `-NoProfile` flag to prevent profile loading delays
+### Electron IPC Additions
+
+- `showOpenDialog` - Native directory picker for setting tab base directory
+- `showWorkspaceAppMenu` - Workspace menu from breadcrumb bar
+
+### Windows Build & Runtime Fixes
+
+- **PowerShell 7 Requirement** - All build commands use `pwsh -NoProfile`
+- **Shell Launch Fix** - Runtime shells use `-NoProfile` flag
+- **Build Prerequisites** - Updated BUILD.md with PowerShell 7 requirement
 
 ### Syncing with Upstream
 
