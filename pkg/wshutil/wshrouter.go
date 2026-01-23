@@ -154,6 +154,10 @@ func (router *WshRouter) IsRootRouter() bool {
 	return router.isRootRouter
 }
 
+func (router *WshRouter) GetControlRpc() *WshRpc {
+	return router.controlRpc
+}
+
 func (router *WshRouter) SetAsRootRouter() {
 	router.lock.Lock()
 	defer router.lock.Unlock()
