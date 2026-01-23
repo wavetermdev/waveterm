@@ -134,6 +134,7 @@ declare global {
         openBuilder: (appId?: string) => void; // open-builder
         setBuilderWindowAppId: (appId: string) => void; // set-builder-window-appid
         doRefresh: () => void; // do-refresh
+        showOpenFolderDialog: () => Promise<string | null>; // show-open-folder-dialog
     };
 
     type ElectronContextMenuItem = {

@@ -463,6 +463,83 @@ function parseDataUrl(dataUrl: string): ParsedDataUrl {
     return { mimeType, buffer };
 }
 
+/**
+ * Quotes a string for safe use in POSIX shell commands.
+ * Uses single quotes and escapes embedded single quotes.
+ * @param s The string to quote
+ * @returns A shell-safe quoted string
+ */
+function shellQuote(s: string): string {
+    if (s === "") {
+        return "''";
+    }
+    // If the string contains only safe characters, return as-is
+    if (/^[a-zA-Z0-9._\-/~]+$/.test(s)) {
+        return s;
+    }
+    // Single-quote the string and escape any embedded single quotes
+    // 'foo'bar' becomes 'foo'\''bar'
+    return "'" + s.replace(/'/g, "'\\''") + "'";
+}
+
+/**
+ * Quotes a string for safe use in PowerShell commands.
+ * Uses single quotes and escapes embedded single quotes by doubling them.
+ * @param s The string to quote
+ * @returns A PowerShell-safe quoted string
+ */
+function powershellQuote(s: string): string {
+    if (s === "") {
+        return "''";
+    }
+    // If the string contains only safe characters, return as-is
+    if (/^[a-zA-Z0-9._\-/\\:~]+$/.test(s)) {
+        return s;
+    }
+    // Single-quote the string and escape embedded single quotes by doubling them
+    return "'" + s.replace(/'/g, "''") + "'";
+}
+
+/**
+ * Quotes a string for safe use in Windows cmd.exe commands.
+ * Uses double quotes and escapes special characters.
+ * @param s The string to quote
+ * @returns A cmd.exe-safe quoted string
+ */
+function cmdQuote(s: string): string {
+    if (s === "") {
+        return '""';
+    }
+    // If the string contains only safe characters, return as-is
+    if (/^[a-zA-Z0-9._\-/\\:~]+$/.test(s)) {
+        return s;
+    }
+    // Double-quote the string and escape embedded double quotes and special chars
+    // In cmd, ^ is the escape character for special chars inside quotes
+    // Double quotes inside are escaped as ""
+    return '"' + s.replace(/"/g, '""') + '"';
+}
+
+const POWERSHELL_SHELLS = new Set(["pwsh", "powershell"]);
+const CMD_SHELLS = new Set(["cmd"]);
+
+/**
+ * Quotes a string for safe use in shell commands based on the shell type.
+ * @param s The string to quote
+ * @param shellType The shell type (e.g., "bash", "zsh", "pwsh", "cmd")
+ * @returns A properly quoted string for the target shell
+ */
+function shellQuoteForShellType(s: string, shellType: string | null | undefined): string {
+    const normalizedShell = shellType?.toLowerCase() ?? "";
+    if (POWERSHELL_SHELLS.has(normalizedShell)) {
+        return powershellQuote(s);
+    }
+    if (CMD_SHELLS.has(normalizedShell)) {
+        return cmdQuote(s);
+    }
+    return shellQuote(s);
+}
+
 function formatRelativeTime(timestamp: number): string {
     if (!timestamp) {
         return "never";
@@ -525,6 +602,10 @@ export {
     makeIconClass,
     mergeMeta,
     parseDataUrl,
+    powershellQuote,
+    cmdQuote,
+    shellQuote,
+    shellQuoteForShellType,
     sleep,
     sortByDisplayOrder,
     stringToBase64,

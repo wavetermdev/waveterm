@@ -68,6 +68,7 @@ contextBridge.exposeInMainWorld("api", {
     openBuilder: (appId?: string) => ipcRenderer.send("open-builder", appId),
     setBuilderWindowAppId: (appId: string) => ipcRenderer.send("set-builder-window-appid", appId),
     doRefresh: () => ipcRenderer.send("do-refresh"),
+    showOpenFolderDialog: () => ipcRenderer.invoke("show-open-folder-dialog"),
 });
 
 // Custom event for "new-window"

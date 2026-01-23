@@ -61,6 +61,33 @@
         }
     }
 
+    .directory-selector {
+        margin-top: 15px;
+        padding-top: 15px;
+        border-top: 1px solid var(--modal-border-color);
+
+        .directory-label {
+            display: block;
+            font-size: 12px;
+            color: var(--secondary-text-color);
+            margin-bottom: 5px;
+        }
+
+        .directory-input-row {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+
+            .directory-input {
+                flex: 1;
+            }
+
+            .browse-btn {
+                flex-shrink: 0;
+            }
+        }
+    }
+
     .delete-ws-btn-wrapper {
         display: flex;
         align-items: center;

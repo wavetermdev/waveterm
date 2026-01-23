@@ -1,3 +1,4 @@
+import { getApi } from "@/app/store/global";
 import { fireAndForget, makeIconClass } from "@/util/util";
 import clsx from "clsx";
 import { memo, useEffect, useRef, useState } from "react";
@@ -13,11 +14,12 @@ interface ColorSelectorProps {
     className?: string;
 }
 
-const ColorSelector = memo(({ colors, selectedColor, onSelect, className }: ColorSelectorProps) => {
-    const handleColorClick = (color: string) => {
-        onSelect(color);
-    };
-
+const ColorSelector = memo(function ColorSelector({
+    colors,
+    selectedColor,
+    onSelect,
+    className,
+}: ColorSelectorProps) {
     return (
         <div className={clsx("color-selector", className)}>
             {colors.map((color) => (
@@ -25,7 +27,7 @@ const ColorSelector = memo(({ colors, selectedColor, onSelect, className }: Colo
                     key={color}
                     className={clsx("color-circle", { selected: selectedColor === color })}
                     style={{ backgroundColor: color }}
-                    onClick={() => handleColorClick(color)}
+                    onClick={() => onSelect(color)}
                 />
             ))}
         </div>
@@ -39,11 +41,12 @@ interface IconSelectorProps {
     className?: string;
 }
 
-const IconSelector = memo(({ icons, selectedIcon, onSelect, className }: IconSelectorProps) => {
-    const handleIconClick = (icon: string) => {
-        onSelect(icon);
-    };
-
+const IconSelector = memo(function IconSelector({
+    icons,
+    selectedIcon,
+    onSelect,
+    className,
+}: IconSelectorProps) {
     return (
         <div className={clsx("icon-selector", className)}>
             {icons.map((icon) => {
@@ -52,7 +55,7 @@ const IconSelector = memo(({ icons, selectedIcon, onSelect, className }: IconSel
                     <i
                         key={icon}
                         className={clsx(iconClass, "icon-item", { selected: selectedIcon === icon })}
-                        onClick={() => handleIconClick(icon)}
+                        onClick={() => onSelect(icon)}
                     />
                 );
             })}
@@ -64,22 +67,26 @@ interface WorkspaceEditorProps {
     title: string;
     icon: string;
     color: string;
+    directory: string;
     focusInput: boolean;
     onTitleChange: (newTitle: string) => void;
     onColorChange: (newColor: string) => void;
     onIconChange: (newIcon: string) => void;
+    onDirectoryChange: (newDirectory: string) => void;
     onDeleteWorkspace: () => void;
 }
-const WorkspaceEditorComponent = ({
+export const WorkspaceEditor = memo(function WorkspaceEditor({
     title,
     icon,
     color,
+    directory,
     focusInput,
     onTitleChange,
     onColorChange,
     onIconChange,
+    onDirectoryChange,
     onDeleteWorkspace,
-}: WorkspaceEditorProps) => {
+}: WorkspaceEditorProps) {
     const inputRef = useRef<HTMLInputElement>(null);
 
     const [colors, setColors] = useState<string[]>([]);
@@ -87,10 +94,10 @@ const WorkspaceEditorComponent = ({
 
     useEffect(() => {
         fireAndForget(async () => {
-            const colors = await WorkspaceService.GetColors();
-            const icons = await WorkspaceService.GetIcons();
-            setColors(colors);
-            setIcons(icons);
+            const fetchedColors = await WorkspaceService.GetColors();
+            const fetchedIcons = await WorkspaceService.GetIcons();
+            setColors(fetchedColors);
+            setIcons(fetchedIcons);
         });
     }, []);
 
@@ -113,6 +120,32 @@ const WorkspaceEditorComponent = ({
             />
             <ColorSelector selectedColor={color} colors={colors} onSelect={onColorChange} />
             <IconSelector selectedIcon={icon} icons={icons} onSelect={onIconChange} />
+            <div className="directory-selector">
+                <label className="directory-label">Directory</label>
+                <div className="directory-input-row">
+                    <Input
+                        value={directory}
+                        onChange={onDirectoryChange}
+                        placeholder="~/projects/myworkspace"
+                        className="directory-input"
+                    />
+                    <Button
+                        className="ghost browse-btn"
+                        onClick={async () => {
+                            try {
+                                const path = await getApi().showOpenFolderDialog();
+                                if (path) {
+                                    onDirectoryChange(path);
+                                }
+                            } catch (e) {
+                                console.error("error opening folder dialog:", e);
+                            }
+                        }}
+                    >
+                        Browse
+                    </Button>
+                </div>
+            </div>
             <div className="delete-ws-btn-wrapper">
                 <Button className="ghost red text-[12px] bold" onClick={onDeleteWorkspace}>
                     Delete workspace
@@ -120,6 +153,4 @@ const WorkspaceEditorComponent = ({
             </div>
         </div>
     );
-};
-
-export const WorkspaceEditor = memo(WorkspaceEditorComponent) as typeof WorkspaceEditorComponent;
+});
