@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
+	"sort"
 	"sync"
 
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
@@ -16,7 +17,7 @@ type AckSender interface {
 type Reader struct {
 	lock         sync.Mutex
 	cond         *sync.Cond
-	id           int64
+	id           string
 	ackSender    AckSender
 	readWindow   int64
 	nextSeq      int64
@@ -25,14 +26,19 @@ type Reader struct {
 	err          error
 	closed       bool
 	lastRwndSent int64
+	oooPackets   []wshrpc.CommandStreamData // out-of-order packets awaiting delivery
 }
 
-func NewReader(id int64, readWindow int64, ackSender AckSender) *Reader {
+func NewReader(id string, readWindow int64, ackSender AckSender) *Reader {
+	return NewReaderWithSeq(id, readWindow, 0, ackSender)
+}
+
+func NewReaderWithSeq(id string, readWindow int64, startSeq int64, ackSender AckSender) *Reader {
 	r := &Reader{
 		id:           id,
 		readWindow:   readWindow,
 		ackSender:    ackSender,
-		nextSeq:      0,
+		nextSeq:      startSeq,
 		lastRwndSent: readWindow,
 	}
 	r.cond = sync.NewCond(&r.lock)
@@ -43,7 +49,7 @@ func (r *Reader) RecvData(dataPk wshrpc.CommandStreamData) {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 
-	if r.closed {
+	if r.closed || r.eof || r.err != nil {
 		return
 	}
 
@@ -59,18 +65,25 @@ func (r *Reader) RecvData(dataPk wshrpc.CommandStreamData) {
 		return
 	}
 
-	if dataPk.Seq != r.nextSeq {
-		r.err = fmt.Errorf("stream sequence mismatch: expected %d, got %d", r.nextSeq, dataPk.Seq)
-		r.cond.Broadcast()
-		r.sendAckLocked(false, true, "sequence mismatch error")
+	if dataPk.Seq < r.nextSeq {
+		return
+	}
+	if dataPk.Seq > r.nextSeq {
+		r.addOOOPacketLocked(dataPk)
 		return
 	}
 
+	r.recvDataOrderedLocked(dataPk)
+	r.processOOOPacketsLocked()
+	r.cond.Broadcast()
+	r.sendAckLocked(r.eof, false, "")
+}
+
+func (r *Reader) recvDataOrderedLocked(dataPk wshrpc.CommandStreamData) {
 	if dataPk.Data64 != "" {
 		data, err := base64.StdEncoding.DecodeString(dataPk.Data64)
 		if err != nil {
 			r.err = err
-			r.cond.Broadcast()
 			r.sendAckLocked(false, true, "base64 decode error")
 			return
 		}
@@ -80,13 +93,40 @@ func (r *Reader) RecvData(dataPk wshrpc.CommandStreamData) {
 
 	if dataPk.Eof {
 		r.eof = true
-		r.cond.Broadcast()
-		r.sendAckLocked(true, false, "")
+	}
+}
+
+func (r *Reader) addOOOPacketLocked(dataPk wshrpc.CommandStreamData) {
+	for _, pkt := range r.oooPackets {
+		if pkt.Seq == dataPk.Seq {
+			// this handles duplicates
+			return
+		}
+	}
+	r.oooPackets = append(r.oooPackets, dataPk)
+}
+
+func (r *Reader) processOOOPacketsLocked() {
+	if len(r.oooPackets) == 0 {
 		return
 	}
-
-	r.cond.Broadcast()
-	r.sendAckLocked(false, false, "")
+	sort.Slice(r.oooPackets, func(i, j int) bool {
+		return r.oooPackets[i].Seq < r.oooPackets[j].Seq
+	})
+	consumed := 0
+	for _, pkt := range r.oooPackets {
+		if r.eof || r.err != nil {
+			// we're done, so we can clear any pending ooo packets
+			r.oooPackets = nil
+			return
+		}
+		if pkt.Seq != r.nextSeq {
+			break
+		}
+		r.recvDataOrderedLocked(pkt)
+		consumed++
+	}
+	r.oooPackets = r.oooPackets[consumed:]
 }
 
 func (r *Reader) sendAckLocked(fin bool, cancel bool, errStr string) {
@@ -144,6 +184,12 @@ func (r *Reader) Read(p []byte) (int, error) {
 	}
 
 	return n, nil
+}
+
+func (r *Reader) UpdateNextSeq(newSeq int64) {
+	r.lock.Lock()
+	defer r.lock.Unlock()
+	r.nextSeq = newSeq
 }
 
 func (r *Reader) Close() error {

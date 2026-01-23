@@ -29,6 +29,7 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/filebackup"
 	"github.com/wavetermdev/waveterm/pkg/filestore"
 	"github.com/wavetermdev/waveterm/pkg/genconn"
+	"github.com/wavetermdev/waveterm/pkg/jobcontroller"
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/remote"
 	"github.com/wavetermdev/waveterm/pkg/remote/awsconn"
@@ -298,6 +299,21 @@ func (ws *WshServer) ControllerResyncCommand(ctx context.Context, data wshrpc.Co
 }
 
 func (ws *WshServer) ControllerInputCommand(ctx context.Context, data wshrpc.CommandBlockInputData) error {
+	block, err := wstore.DBMustGet[*waveobj.Block](ctx, data.BlockId)
+	if err != nil {
+		return fmt.Errorf("error getting block: %w", err)
+	}
+
+	if block.JobId != "" {
+		jobInputData := wshrpc.CommandJobInputData{
+			JobId:       block.JobId,
+			InputData64: data.InputData64,
+			SigName:     data.SigName,
+			TermSize:    data.TermSize,
+		}
+		return jobcontroller.SendInput(ctx, jobInputData)
+	}
+
 	inputUnion := &blockcontroller.BlockInputUnion{
 		SigName:  data.SigName,
 		TermSize: data.TermSize,
@@ -1433,4 +1449,55 @@ func (ws *WshServer) GetSecretsLinuxStorageBackendCommand(ctx context.Context) (
 		return "", fmt.Errorf("error getting linux storage backend: %w", err)
 	}
 	return backend, nil
+}
+
+func (ws *WshServer) JobCmdExitedCommand(ctx context.Context, data wshrpc.CommandJobCmdExitedData) error {
+	return jobcontroller.HandleCmdJobExited(ctx, data.JobId, data)
+}
+
+func (ws *WshServer) JobControllerListCommand(ctx context.Context) ([]*waveobj.Job, error) {
+	return wstore.DBGetAllObjsByType[*waveobj.Job](ctx, waveobj.OType_Job)
+}
+
+func (ws *WshServer) JobControllerDeleteJobCommand(ctx context.Context, jobId string) error {
+	return jobcontroller.DeleteJob(ctx, jobId)
+}
+
+func (ws *WshServer) JobControllerStartJobCommand(ctx context.Context, data wshrpc.CommandJobControllerStartJobData) (string, error) {
+	params := jobcontroller.StartJobParams{
+		ConnName: data.ConnName,
+		Cmd:      data.Cmd,
+		Args:     data.Args,
+		Env:      data.Env,
+		TermSize: data.TermSize,
+	}
+	return jobcontroller.StartJob(ctx, params)
+}
+
+func (ws *WshServer) JobControllerExitJobCommand(ctx context.Context, jobId string) error {
+	return jobcontroller.TerminateJobManager(ctx, jobId)
+}
+
+func (ws *WshServer) JobControllerDisconnectJobCommand(ctx context.Context, jobId string) error {
+	return jobcontroller.DisconnectJob(ctx, jobId)
+}
+
+func (ws *WshServer) JobControllerReconnectJobCommand(ctx context.Context, jobId string) error {
+	return jobcontroller.ReconnectJob(ctx, jobId)
+}
+
+func (ws *WshServer) JobControllerReconnectJobsForConnCommand(ctx context.Context, connName string) error {
+	return jobcontroller.ReconnectJobsForConn(ctx, connName)
+}
+
+func (ws *WshServer) JobControllerConnectedJobsCommand(ctx context.Context) ([]string, error) {
+	return jobcontroller.GetConnectedJobIds(), nil
+}
+
+func (ws *WshServer) JobControllerAttachJobCommand(ctx context.Context, data wshrpc.CommandJobControllerAttachJobData) error {
+	return jobcontroller.AttachJobToBlock(ctx, data.JobId, data.BlockId)
+}
+
+func (ws *WshServer) JobControllerDetachJobCommand(ctx context.Context, jobId string) error {
+	return jobcontroller.DetachJobFromBlock(ctx, jobId, true)
 }

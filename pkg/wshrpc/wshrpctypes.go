@@ -22,10 +22,18 @@ type RespOrErrorUnion[T any] struct {
 	Error    error
 }
 
+// Instructions for adding a new RPC call
+// * methods must end with Command
+// * methods must take context as their first parameter
+// * methods may take up to one parameter, and may return either just an error, or one return value plus an error
+// * after modifying WshRpcInterface, run `task generate` to regnerate bindings
+
 type WshRpcInterface interface {
 	AuthenticateCommand(ctx context.Context, data string) (CommandAuthenticateRtnData, error)
 	AuthenticateTokenCommand(ctx context.Context, data CommandAuthenticateTokenData) (CommandAuthenticateRtnData, error)
 	AuthenticateTokenVerifyCommand(ctx context.Context, data CommandAuthenticateTokenData) (CommandAuthenticateRtnData, error) // (special) validates token without binding, root router only
+	AuthenticateJobManagerCommand(ctx context.Context, data CommandAuthenticateJobManagerData) error
+	AuthenticateJobManagerVerifyCommand(ctx context.Context, data CommandAuthenticateJobManagerData) error // (special) validates job auth token without binding, root router only
 	DisposeCommand(ctx context.Context, data CommandDisposeData) error
 	RouteAnnounceCommand(ctx context.Context) error   // (special) announces a new route to the main router
 	RouteUnannounceCommand(ctx context.Context) error // (special) unannounces a route to the main router
@@ -100,6 +108,10 @@ type WshRpcInterface interface {
 	RemoteStreamCpuDataCommand(ctx context.Context) chan RespOrErrorUnion[TimeSeriesData]
 	RemoteGetInfoCommand(ctx context.Context) (RemoteInfo, error)
 	RemoteInstallRcFilesCommand(ctx context.Context) error
+	RemoteStartJobCommand(ctx context.Context, data CommandRemoteStartJobData) (*CommandStartJobRtnData, error)
+	RemoteReconnectToJobManagerCommand(ctx context.Context, data CommandRemoteReconnectToJobManagerData) (*CommandRemoteReconnectToJobManagerRtnData, error)
+	RemoteDisconnectFromJobManagerCommand(ctx context.Context, data CommandRemoteDisconnectFromJobManagerData) error
+	RemoteTerminateJobManagerCommand(ctx context.Context, data CommandRemoteTerminateJobManagerData) error
 
 	// emain
 	WebSelectorCommand(ctx context.Context, data CommandWebSelectorData) ([]string, error)
@@ -140,6 +152,7 @@ type WshRpcInterface interface {
 
 	// terminal
 	TermGetScrollbackLinesCommand(ctx context.Context, data CommandTermGetScrollbackLinesData) (*CommandTermGetScrollbackLinesRtnData, error)
+	TermUpdateAttachedJobCommand(ctx context.Context, data CommandTermUpdateAttachedJobData) error
 
 	// file
 	WshRpcFileInterface
@@ -154,6 +167,26 @@ type WshRpcInterface interface {
 	// streams
 	StreamDataCommand(ctx context.Context, data CommandStreamData) error
 	StreamDataAckCommand(ctx context.Context, data CommandStreamAckData) error
+
+	// jobs
+	AuthenticateToJobManagerCommand(ctx context.Context, data CommandAuthenticateToJobData) error
+	StartJobCommand(ctx context.Context, data CommandStartJobData) (*CommandStartJobRtnData, error)
+	JobPrepareConnectCommand(ctx context.Context, data CommandJobPrepareConnectData) (*CommandJobConnectRtnData, error)
+	JobStartStreamCommand(ctx context.Context, data CommandJobStartStreamData) error
+	JobInputCommand(ctx context.Context, data CommandJobInputData) error
+	JobCmdExitedCommand(ctx context.Context, data CommandJobCmdExitedData) error // this is sent FROM the job manager => main server
+
+	// job controller
+	JobControllerDeleteJobCommand(ctx context.Context, jobId string) error
+	JobControllerListCommand(ctx context.Context) ([]*waveobj.Job, error)
+	JobControllerStartJobCommand(ctx context.Context, data CommandJobControllerStartJobData) (string, error)
+	JobControllerExitJobCommand(ctx context.Context, jobId string) error
+	JobControllerDisconnectJobCommand(ctx context.Context, jobId string) error
+	JobControllerReconnectJobCommand(ctx context.Context, jobId string) error
+	JobControllerReconnectJobsForConnCommand(ctx context.Context, connName string) error
+	JobControllerConnectedJobsCommand(ctx context.Context) ([]string, error)
+	JobControllerAttachJobCommand(ctx context.Context, data CommandJobControllerAttachJobData) error
+	JobControllerDetachJobCommand(ctx context.Context, jobId string) error
 }
 
 // for frontend
@@ -245,6 +278,13 @@ type CommandControllerAppendOutputData struct {
 
 type CommandBlockInputData struct {
 	BlockId     string            `json:"blockid"`
+	InputData64 string            `json:"inputdata64,omitempty"`
+	SigName     string            `json:"signame,omitempty"`
+	TermSize    *waveobj.TermSize `json:"termsize,omitempty"`
+}
+
+type CommandJobInputData struct {
+	JobId       string            `json:"jobid"`
 	InputData64 string            `json:"inputdata64,omitempty"`
 	SigName     string            `json:"signame,omitempty"`
 	TermSize    *waveobj.TermSize `json:"termsize,omitempty"`
@@ -614,6 +654,11 @@ type CommandTermGetScrollbackLinesRtnData struct {
 	LastUpdated int64    `json:"lastupdated"`
 }
 
+type CommandTermUpdateAttachedJobData struct {
+	BlockId string `json:"blockid"`
+	JobId   string `json:"jobid,omitempty"`
+}
+
 type CommandElectronEncryptData struct {
 	PlainText string `json:"plaintext"`
 }
@@ -633,7 +678,7 @@ type CommandElectronDecryptRtnData struct {
 }
 
 type CommandStreamData struct {
-	Id     int64  `json:"id"`  // streamid
+	Id     string `json:"id"`  // streamid
 	Seq    int64  `json:"seq"` // start offset (bytes)
 	Data64 string `json:"data64,omitempty"`
 	Eof    bool   `json:"eof,omitempty"`   // can be set with data or without
@@ -641,7 +686,7 @@ type CommandStreamData struct {
 }
 
 type CommandStreamAckData struct {
-	Id     int64  `json:"id"`               // streamid
+	Id     string `json:"id"`               // streamid
 	Seq    int64  `json:"seq"`              // next expected byte
 	RWnd   int64  `json:"rwnd"`             // receive window size
 	Fin    bool   `json:"fin,omitempty"`    // observed end-of-stream (eof or error)
@@ -651,8 +696,108 @@ type CommandStreamAckData struct {
 }
 
 type StreamMeta struct {
-	Id            int64  `json:"id"`   // streamid
+	Id            string `json:"id"`   // streamid
 	RWnd          int64  `json:"rwnd"` // initial receive window size
 	ReaderRouteId string `json:"readerrouteid"`
 	WriterRouteId string `json:"writerrouteid"`
+}
+
+type CommandAuthenticateToJobData struct {
+	JobAccessToken string `json:"jobaccesstoken"`
+}
+
+type CommandAuthenticateJobManagerData struct {
+	JobId        string `json:"jobid"`
+	JobAuthToken string `json:"jobauthtoken"`
+}
+
+type CommandStartJobData struct {
+	Cmd        string            `json:"cmd"`
+	Args       []string          `json:"args"`
+	Env        map[string]string `json:"env"`
+	TermSize   waveobj.TermSize  `json:"termsize"`
+	StreamMeta *StreamMeta       `json:"streammeta,omitempty"`
+}
+
+type CommandRemoteStartJobData struct {
+	Cmd                string            `json:"cmd"`
+	Args               []string          `json:"args"`
+	Env                map[string]string `json:"env"`
+	TermSize           waveobj.TermSize  `json:"termsize"`
+	StreamMeta         *StreamMeta       `json:"streammeta,omitempty"`
+	JobAuthToken       string            `json:"jobauthtoken"`
+	JobId              string            `json:"jobid"`
+	MainServerJwtToken string            `json:"mainserverjwttoken"`
+	ClientId           string            `json:"clientid"`
+	PublicKeyBase64    string            `json:"publickeybase64"`
+}
+
+type CommandRemoteReconnectToJobManagerData struct {
+	JobId              string `json:"jobid"`
+	JobAuthToken       string `json:"jobauthtoken"`
+	MainServerJwtToken string `json:"mainserverjwttoken"`
+	JobManagerPid      int    `json:"jobmanagerpid"`
+	JobManagerStartTs  int64  `json:"jobmanagerstartts"`
+}
+
+type CommandRemoteReconnectToJobManagerRtnData struct {
+	Success        bool   `json:"success"`
+	JobManagerGone bool   `json:"jobmanagergone"`
+	Error          string `json:"error,omitempty"`
+}
+
+type CommandRemoteDisconnectFromJobManagerData struct {
+	JobId string `json:"jobid"`
+}
+
+type CommandRemoteTerminateJobManagerData struct {
+	JobId             string `json:"jobid"`
+	JobManagerPid     int    `json:"jobmanagerpid"`
+	JobManagerStartTs int64  `json:"jobmanagerstartts"`
+}
+
+type CommandStartJobRtnData struct {
+	CmdPid            int   `json:"cmdpid"`
+	CmdStartTs        int64 `json:"cmdstartts"`
+	JobManagerPid     int   `json:"jobmanagerpid"`
+	JobManagerStartTs int64 `json:"jobmanagerstartts"`
+}
+
+type CommandJobPrepareConnectData struct {
+	StreamMeta StreamMeta `json:"streammeta"`
+	Seq        int64      `json:"seq"`
+}
+
+type CommandJobStartStreamData struct {
+}
+
+type CommandJobConnectRtnData struct {
+	Seq         int64  `json:"seq"`
+	StreamDone  bool   `json:"streamdone,omitempty"`
+	StreamError string `json:"streamerror,omitempty"`
+	HasExited   bool   `json:"hasexited,omitempty"`
+	ExitCode    *int   `json:"exitcode,omitempty"`
+	ExitSignal  string `json:"exitsignal,omitempty"`
+	ExitErr     string `json:"exiterr,omitempty"`
+}
+
+type CommandJobCmdExitedData struct {
+	JobId      string `json:"jobid"`
+	ExitCode   *int   `json:"exitcode,omitempty"`
+	ExitSignal string `json:"exitsignal,omitempty"`
+	ExitErr    string `json:"exiterr,omitempty"`
+	ExitTs     int64  `json:"exitts,omitempty"`
+}
+
+type CommandJobControllerStartJobData struct {
+	ConnName string            `json:"connname"`
+	Cmd      string            `json:"cmd"`
+	Args     []string          `json:"args"`
+	Env      map[string]string `json:"env"`
+	TermSize *waveobj.TermSize `json:"termsize,omitempty"`
+}
+
+type CommandJobControllerAttachJobData struct {
+	JobId   string `json:"jobid"`
+	BlockId string `json:"blockid"`
 }

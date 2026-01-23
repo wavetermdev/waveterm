@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -34,6 +35,9 @@ const (
 	RoutePrefix_Tab        = "tab:"
 	RoutePrefix_FeBlock    = "feblock:"
 	RoutePrefix_Builder    = "builder:"
+	RoutePrefix_Link       = "link:"
+	RoutePrefix_Job        = "job:"
+	RoutePrefix_Bare       = "bare:"
 )
 
 // this works like a network switch
@@ -116,6 +120,14 @@ func MakeFeBlockRouteId(blockId string) string {
 
 func MakeBuilderRouteId(builderId string) string {
 	return "builder:" + builderId
+}
+
+func MakeJobRouteId(jobId string) string {
+	return "job:" + jobId
+}
+
+func MakeLinkRouteId(linkId baseds.LinkId) string {
+	return fmt.Sprintf("%s%d", RoutePrefix_Link, linkId)
 }
 
 var DefaultRouter *WshRouter
@@ -245,6 +257,13 @@ func (router *WshRouter) getRouteInfo(rpcId string) *rpcRoutingInfo {
 
 // returns true if message was sent, false if failed
 func (router *WshRouter) sendRoutedMessage(msgBytes []byte, routeId string, commandName string, ingressLinkId baseds.LinkId) bool {
+	if strings.HasPrefix(routeId, RoutePrefix_Link) {
+		linkIdStr := strings.TrimPrefix(routeId, RoutePrefix_Link)
+		linkIdInt, err := strconv.ParseInt(linkIdStr, 10, 32)
+		if err == nil {
+			return router.sendMessageToLink(msgBytes, baseds.LinkId(linkIdInt), ingressLinkId)
+		}
+	}
 	lm := router.getLinkForRoute(routeId)
 	if lm != nil {
 		lm.client.SendRpcMessage(msgBytes, ingressLinkId, "route")
@@ -448,8 +467,10 @@ func (router *WshRouter) runLinkClientRecvLoop(linkId baseds.LinkId, client Abst
 		} else {
 			// non-request messages (responses)
 			if !lm.trusted {
-				// drop responses from untrusted links
-				continue
+				// allow responses to RPCs we initiated
+				if rpcMsg.ResId == "" || router.getRouteInfo(rpcMsg.ResId) == nil {
+					continue
+				}
 			}
 		}
 		router.inputCh <- baseds.RpcInputChType{MsgBytes: msgBytes, IngressLinkId: linkId}
@@ -596,7 +617,7 @@ func (router *WshRouter) UnregisterLink(linkId baseds.LinkId) {
 }
 
 func isBindableRouteId(routeId string) bool {
-	if routeId == "" || strings.HasPrefix(routeId, ControlPrefix) {
+	if routeId == "" || strings.HasPrefix(routeId, ControlPrefix) || strings.HasPrefix(routeId, RoutePrefix_Link) {
 		return false
 	}
 	return true
@@ -676,6 +697,9 @@ func (router *WshRouter) bindRoute(linkId baseds.LinkId, routeId string, isSourc
 	if !strings.HasPrefix(routeId, ControlPrefix) {
 		router.announceUpstream(routeId)
 	}
+	if router.IsRootRouter() {
+		router.publishRouteToBroker(routeId)
+	}
 	return nil
 }
 
@@ -692,12 +716,19 @@ func (router *WshRouter) getUpstreamClient() AbstractRpcClient {
 	return lm.client
 }
 
+func (router *WshRouter) publishRouteToBroker(routeId string) {
+	defer func() {
+		panichandler.PanicHandler("WshRouter:publishRouteToBroker", recover())
+	}()
+	wps.Broker.Publish(wps.WaveEvent{Event: wps.Event_RouteUp, Scopes: []string{routeId}})
+}
+
 func (router *WshRouter) unsubscribeFromBroker(routeId string) {
 	defer func() {
-		panichandler.PanicHandler("WshRouter:unregisterRoute:routegone", recover())
+		panichandler.PanicHandler("WshRouter:unregisterRoute:routedown", recover())
 	}()
 	wps.Broker.UnsubscribeAll(routeId)
-	wps.Broker.Publish(wps.WaveEvent{Event: wps.Event_RouteGone, Scopes: []string{routeId}})
+	wps.Broker.Publish(wps.WaveEvent{Event: wps.Event_RouteDown, Scopes: []string{routeId}})
 }
 
 func sendControlUnauthenticatedErrorResponse(cmdMsg RpcMessage, linkMeta linkMeta) {
