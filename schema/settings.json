@@ -119,6 +119,9 @@
         "term:macoptionismeta": {
           "type": "boolean"
         },
+        "term:ligatures": {
+          "type": "boolean"
+        },
         "editor:minimapenabled": {
           "type": "boolean"
         },

@@ -10,6 +10,7 @@ import * as services from "@/store/services";
 import { sanitizeOsc7Path } from "@/util/pathutil";
 import { PLATFORM, PlatformMacOS } from "@/util/platformutil";
 import { base64ToArray, base64ToString, fireAndForget } from "@/util/util";
+import { LigaturesAddon } from "@xterm/addon-ligatures";
 import { SearchAddon } from "@xterm/addon-search";
 import { SerializeAddon } from "@xterm/addon-serialize";
 import { WebLinksAddon } from "@xterm/addon-web-links";
@@ -68,6 +69,7 @@ let loggedWebGL = false;
 type TermWrapOptions = {
     keydownHandler?: (e: KeyboardEvent) => boolean;
     useWebGl?: boolean;
+    useLigatures?: boolean;
     sendDataHandler?: (data: string) => void;
     nodeModel?: BlockNodeModel;
     jobId?: string;
@@ -636,6 +638,10 @@ export class TermWrap {
         this.heldData = [];
         this.handleResize_debounced = debounce(50, this.handleResize.bind(this));
         this.terminal.open(this.connectElem);
+        if (waveOptions.useLigatures) {
+            const ligaturesAddon = new LigaturesAddon();
+            this.terminal.loadAddon(ligaturesAddon);
+        }
         this.handleResize();
         const pasteHandler = this.pasteHandler.bind(this);
         this.connectElem.addEventListener("paste", pasteHandler, true);

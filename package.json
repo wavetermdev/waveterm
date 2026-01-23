@@ -82,6 +82,7 @@
         "@table-nav/react": "^0.0.7",
         "@tanstack/react-table": "^8.21.3",
         "@xterm/addon-fit": "^0.12.0-beta.106",
+        "@xterm/addon-ligatures": "^0.11.0-beta.106",
         "@xterm/addon-search": "^0.17.0-beta.106",
         "@xterm/addon-serialize": "^0.15.0-beta.106",
         "@xterm/addon-web-links": "^0.13.0-beta.106",

@@ -62,8 +62,18 @@ Comprehensive metadata validation to prevent injection attacks:
   - Fixes npm progress bars, htop, and spinner animations scrolling issues
   - Uses public `terminal.dimensions` API (no more private API hacks)
   - New DomScrollableElement scrollbar with custom styling
+- **Font Ligatures Support** - Enable programming ligatures with `"term:ligatures": true`
+  - Works with ligature fonts like Fira Code, JetBrains Mono, Cascadia Code
+  - Uses `@xterm/addon-ligatures` for native font discovery in Electron
+  - See screenshot: `assets/ligatures-demo.png`
 - **OSC 7 Debouncing** - 300ms debounce for rapid directory changes
 - **Memory Leak Prevention** - Cleanup handlers for tab close events
+
+### PowerShell Improvements
+
+- **Profile Loading** - User's PowerShell profile (`$PROFILE`) is now sourced automatically
+  - Wave launches with `-NoProfile` for clean environment, then sources your profile
+  - Custom aliases, functions, and prompt customizations now work
 
 ### Electron IPC Additions
 
