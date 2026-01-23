@@ -1,6 +1,12 @@
 # We source this file with -NoExit -File
 $env:PATH = {{.WSHBINDIR_PWSH}} + "{{.PATHSEP}}" + $env:PATH
 
+# Source user's PowerShell profile if it exists
+# Wave uses -NoProfile for clean startup, so we load the profile here
+if (Test-Path $PROFILE) {
+    . $PROFILE
+}
+
 # Source dynamic script from wsh token
 $waveterm_swaptoken_output = wsh token $env:WAVETERM_SWAPTOKEN pwsh 2>$null | Out-String
 if ($waveterm_swaptoken_output -and $waveterm_swaptoken_output -ne "") {

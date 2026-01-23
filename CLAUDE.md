@@ -11,6 +11,17 @@ Wave Terminal is an open-source, AI-native terminal built with Electron. It comb
 3. **wavesrv** (Go Backend) - Core business logic, database, remote connections
 4. **wsh** (Go CLI/Server) - Command-line tool and remote multiplexing server
 
+## Fork-Specific Notes
+
+This is a personal fork with experimental features. Key differences from upstream:
+
+- **xterm.js 6.1.0** - Upgraded from 5.5.0 to 6.1.0-beta.106, enabling DEC mode 2026 (Synchronized Output) for proper TUI animations. Uses `DomScrollableElement` scrollbar.
+- **Font Ligatures** - Enable with `"term:ligatures": true` in settings. Works with ligature fonts (Fira Code, JetBrains Mono, etc.).
+- **Tab Base Directory System** - Project-centric workflow with colored tabs, breadcrumb navigation, and smart OSC 7 auto-detection. See `docs/docs/tabs.mdx` for full documentation.
+- **Backend Validation** - Comprehensive metadata validation in `pkg/waveobj/validators.go` (path traversal prevention, URL validation, optimistic locking).
+- **PowerShell Profile Loading** - User's `$PROFILE` is now sourced automatically after Wave's shell integration.
+- **Windows PowerShell 7** - Build scripts require `pwsh` (PowerShell 7+), not Windows PowerShell 5.1.
+
 ## Build System
 
 The project uses **Task** (modern Make alternative) for build orchestration. See `Taskfile.yml` for all available tasks.
@@ -41,6 +52,15 @@ npm run coverage
 
 # Clean build artifacts
 task clean
+
+# Run a single Go test
+go test -run TestName ./pkg/packagename/
+
+# Clear dev data (useful when debugging)
+task dev:cleardata
+
+# Clear dev config
+task dev:clearconfig
 ```
 
 ### Quick Development Shortcuts
@@ -51,6 +71,9 @@ task electron:quickdev
 
 # Fast development mode (Windows x64 only, no docsite, no wsh)
 task electron:winquickdev
+
+# Rebuild and install wsh locally (macOS ARM64 only)
+task dev:installwsh
 ```
 
 ### Code Generation
@@ -305,6 +328,8 @@ go test ./pkg/...
 - **Generated types:** `frontend/types/gotypes.d.ts`
 - **RPC API:** `frontend/app/store/wshclientapi.ts`
 - **Dev logs:** `~/.waveterm-dev/waveapp.log`
+- **Metadata validators:** `pkg/waveobj/validators.go`
+- **Tab docs:** `docs/docs/tabs.mdx`
 
 ## Common Gotchas
 
@@ -313,6 +338,7 @@ go test ./pkg/...
 3. **Jotai atom changes may break HMR** - Use hard reload (`Cmd+Shift+R`)
 4. **Database schema changes require migrations** - Never modify schema directly
 5. **Wave objects must be registered** - Add to `init()` in `pkg/waveobj/waveobj.go`
+6. **Windows requires PowerShell 7** - Build scripts use `pwsh -NoProfile`, not Windows PowerShell 5.1
 
 ## Tab Base Directory Feature
 
