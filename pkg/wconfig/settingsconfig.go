@@ -59,6 +59,7 @@ type SettingsType struct {
 	AppDefaultNewBlock            string `json:"app:defaultnewblock,omitempty"`
 	AppShowOverlayBlockNums       *bool  `json:"app:showoverlayblocknums,omitempty"`
 	AppCtrlVPaste                 *bool  `json:"app:ctrlvpaste,omitempty"`
+	AppConfirmQuit                bool   `json:"app:confirmquit,omitempty"`
 
 	FeatureWaveAppBuilder bool `json:"feature:waveappbuilder,omitempty"`
 
@@ -120,7 +121,8 @@ type SettingsType struct {
 
 	PreviewShowHiddenFiles *bool `json:"preview:showhiddenfiles,omitempty"`
 
-	TabPreset string `json:"tab:preset,omitempty"`
+	TabPreset        string `json:"tab:preset,omitempty"`
+	TabConfirmClose  bool   `json:"tab:confirmclose,omitempty"`
 
 	WidgetClear    bool  `json:"widget:*,omitempty"`
 	WidgetShowHelp *bool `json:"widget:showhelp,omitempty"`

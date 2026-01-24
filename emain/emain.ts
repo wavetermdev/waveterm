@@ -14,6 +14,7 @@ import {
     getActivityState,
     getAndClearTermCommandsRun,
     getForceQuit,
+    getGlobalIsQuitting,
     getGlobalIsRelaunching,
     setForceQuit,
     setGlobalIsQuitting,
@@ -242,38 +243,67 @@ electronApp.on("window-all-closed", () => {
     }
 });
 electronApp.on("before-quit", (e) => {
-    setGlobalIsQuitting(true);
-    updater?.stop();
-    if (unamePlatform == "win32") {
-        // win32 doesn't have a SIGINT, so we just let electron die, which
-        // ends up killing wavesrv via closing it's stdin.
+    // If already confirmed and in quit process, run shutdown logic
+    if (getGlobalIsQuitting()) {
+        updater?.stop();
+        if (unamePlatform == "win32") {
+            // win32 doesn't have a SIGINT, so we just let electron die, which
+            // ends up killing wavesrv via closing it's stdin.
+            return;
+        }
+        getWaveSrvProc()?.kill("SIGINT");
+        shutdownWshrpc();
+        if (getForceQuit()) {
+            return;
+        }
+        e.preventDefault();
+        const allWindows = getAllWaveWindows();
+        for (const window of allWindows) {
+            hideWindowWithCatch(window);
+        }
+        const allBuilders = getAllBuilderWindows();
+        for (const builder of allBuilders) {
+            builder.hide();
+        }
+        if (getIsWaveSrvDead()) {
+            console.log("wavesrv is dead, quitting immediately");
+            setForceQuit(true);
+            electronApp.quit();
+            return;
+        }
+        setTimeout(() => {
+            console.log("waiting for wavesrv to exit...");
+            setForceQuit(true);
+            electronApp.quit();
+        }, 3000);
         return;
     }
-    getWaveSrvProc()?.kill("SIGINT");
-    shutdownWshrpc();
-    if (getForceQuit()) {
-        return;
-    }
+
+    // First time through - check if confirmation needed
     e.preventDefault();
-    const allWindows = getAllWaveWindows();
-    for (const window of allWindows) {
-        hideWindowWithCatch(window);
-    }
-    const allBuilders = getAllBuilderWindows();
-    for (const builder of allBuilders) {
-        builder.hide();
-    }
-    if (getIsWaveSrvDead()) {
-        console.log("wavesrv is dead, quitting immediately");
-        setForceQuit(true);
+    fireAndForget(async () => {
+        // Skip confirmation if RPC client not ready (early quit before app fully started)
+        if (ElectronWshClient == null) {
+            setGlobalIsQuitting(true);
+            electronApp.quit();
+            return;
+        }
+        const fullConfig = await RpcApi.GetFullConfigCommand(ElectronWshClient);
+        if (fullConfig.settings["app:confirmquit"]) {
+            const choice = electron.dialog.showMessageBoxSync({
+                type: "question",
+                buttons: ["Cancel", "Quit"],
+                title: "Confirm",
+                message: "Quit Wave Terminal?",
+            });
+            if (choice === 0) {
+                return; // User cancelled
+            }
+        }
+        // User confirmed or setting disabled - proceed with quit
+        setGlobalIsQuitting(true);
         electronApp.quit();
-        return;
-    }
-    setTimeout(() => {
-        console.log("waiting for wavesrv to exit...");
-        setForceQuit(true);
-        electronApp.quit();
-    }, 3000);
+    });
 });
 process.on("SIGINT", () => {
     console.log("Caught SIGINT, shutting down");

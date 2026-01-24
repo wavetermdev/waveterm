@@ -299,18 +299,14 @@ export class WaveBrowserWindow extends BaseWindow {
                 const fullConfig = await RpcApi.GetFullConfigCommand(ElectronWshClient);
                 if (numWindows > 1 || !fullConfig.settings["window:savelastwindow"]) {
                     if (fullConfig.settings["window:confirmclose"]) {
-                        const workspace = await WorkspaceService.GetWorkspace(this.workspaceId);
-                        if (isNonEmptyUnsavedWorkspace(workspace)) {
-                            const choice = dialog.showMessageBoxSync(this, {
-                                type: "question",
-                                buttons: ["Cancel", "Close Window"],
-                                title: "Confirm",
-                                message:
-                                    "Window has unsaved tabs, closing window will delete existing tabs.\n\nContinue?",
-                            });
-                            if (choice === 0) {
-                                return;
-                            }
+                        const choice = dialog.showMessageBoxSync(this, {
+                            type: "question",
+                            buttons: ["Cancel", "Close Window"],
+                            title: "Confirm",
+                            message: "Close this window?",
+                        });
+                        if (choice === 0) {
+                            return;
                         }
                     }
                     this.deleteAllowed = true;
@@ -550,6 +546,18 @@ export class WaveBrowserWindow extends BaseWindow {
                         break;
                     case "closetab":
                         tabId = entry.tabId;
+                        const closeTabConfig = await RpcApi.GetFullConfigCommand(ElectronWshClient);
+                        if (closeTabConfig.settings["tab:confirmclose"]) {
+                            const choice = dialog.showMessageBoxSync(this, {
+                                type: "question",
+                                buttons: ["Cancel", "Close Tab"],
+                                title: "Confirm",
+                                message: "Close this tab?",
+                            });
+                            if (choice === 0) {
+                                return;
+                            }
+                        }
                         const rtn = await WorkspaceService.CloseTab(this.workspaceId, tabId, true);
                         if (rtn == null) {
                             console.log(

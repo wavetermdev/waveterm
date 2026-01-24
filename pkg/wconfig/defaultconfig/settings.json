@@ -20,6 +20,8 @@
     "window:magnifiedblockblurprimarypx": 10,
     "window:fullscreenonlaunch": false,
     "window:magnifiedblockblursecondarypx": 2,
+    "app:confirmquit": false,
+    "tab:confirmclose": false,
     "window:confirmclose": true,
     "window:savelastwindow": true,
     "telemetry:enabled": true,

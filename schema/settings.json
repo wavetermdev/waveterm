@@ -23,6 +23,9 @@
         "app:ctrlvpaste": {
           "type": "boolean"
         },
+        "app:confirmquit": {
+          "type": "boolean"
+        },
         "feature:waveappbuilder": {
           "type": "boolean"
         },
@@ -178,6 +181,9 @@
         },
         "tab:preset": {
           "type": "string"
+        },
+        "tab:confirmclose": {
+          "type": "boolean"
         },
         "widget:*": {
           "type": "boolean"
