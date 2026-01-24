@@ -94,7 +94,7 @@ func (sc *ShellController) Start(ctx context.Context, blockMeta waveobj.MetaMapT
 	return nil
 }
 
-func (sc *ShellController) Stop(graceful bool, newStatus string) error {
+func (sc *ShellController) Stop(graceful bool, newStatus string, destroy bool) error {
 	sc.Lock.Lock()
 	defer sc.Lock.Unlock()
 

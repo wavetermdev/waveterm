@@ -235,7 +235,7 @@ func (c *TsunamiController) Start(ctx context.Context, blockMeta waveobj.MetaMap
 	return nil
 }
 
-func (c *TsunamiController) Stop(graceful bool, newStatus string) error {
+func (c *TsunamiController) Stop(graceful bool, newStatus string, destroy bool) error {
 	log.Printf("TsunamiController.Stop called for block %s (graceful: %t, newStatus: %s)", c.blockId, graceful, newStatus)
 	c.runLock.Lock()
 	defer c.runLock.Unlock()

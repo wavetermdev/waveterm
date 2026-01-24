@@ -174,9 +174,17 @@ func (sjc *ShellJobController) Start(ctx context.Context, blockMeta waveobj.Meta
 	return nil
 }
 
-func (sjc *ShellJobController) Stop(graceful bool, newStatus string) error {
-	// job controller -- nothing to stop, the job persists
-	return nil
+func (sjc *ShellJobController) Stop(graceful bool, newStatus string, destroy bool) error {
+	if !destroy {
+		return nil
+	}
+	jobId := sjc.getJobId()
+	if jobId == "" {
+		return nil
+	}
+	ctx := context.Background()
+	jobcontroller.DetachJobFromBlock(ctx, jobId, false)
+	return jobcontroller.TerminateJobManager(ctx, jobId)
 }
 
 func (sjc *ShellJobController) SendInput(inputUnion *BlockInputUnion) error {

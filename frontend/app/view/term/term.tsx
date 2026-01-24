@@ -298,7 +298,6 @@ const TerminalView = ({ blockId, model }: ViewComponentProps<TermViewModel>) => 
                 useWebGl: !termSettings?.["term:disablewebgl"],
                 sendDataHandler: model.sendDataToController.bind(model),
                 nodeModel: model.nodeModel,
-                jobId: blockData?.jobid,
             }
         );
         (window as any).term = termWrap;

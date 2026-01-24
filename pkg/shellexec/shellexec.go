@@ -487,7 +487,6 @@ func StartRemoteShellJob(ctx context.Context, logCtx context.Context, termSize w
 		shellPath = "/bin/bash"
 	}
 	var shellOpts []string
-	var cmdCombined string
 	log.Printf("detected shell %q for conn %q\n", shellPath, conn.GetName())
 	shellOpts = append(shellOpts, cmdOpts.ShellOpts...)
 	shellType := shellutil.GetShellTypeFromShellPath(shellPath)
@@ -517,12 +516,10 @@ func StartRemoteShellJob(ctx context.Context, logCtx context.Context, termSize w
 				shellOpts = append(shellOpts, "-i")
 			}
 		}
-		cmdCombined = fmt.Sprintf("%s %s", shellPath, strings.Join(shellOpts, " "))
 	} else {
 		shellOpts = append(shellOpts, "-c", cmdStr)
-		cmdCombined = fmt.Sprintf("%s %s", shellPath, strings.Join(shellOpts, " "))
 	}
-	conn.Infof(logCtx, "starting shell job, using command: %s\n", cmdCombined)
+	conn.Infof(logCtx, "starting shell job, using command: %s %s\n", shellPath, strings.Join(shellOpts, " "))
 
 	if termSize.Rows == 0 || termSize.Cols == 0 {
 		termSize.Rows = shellutil.DefaultTermRows
@@ -556,7 +553,8 @@ func StartRemoteShellJob(ctx context.Context, logCtx context.Context, termSize w
 
 	jobParams := jobcontroller.StartJobParams{
 		ConnName: conn.GetName(),
-		Cmd:      cmdCombined,
+		Cmd:      shellPath,
+		Args:     shellOpts,
 		Env:      env,
 		TermSize: &termSize,
 	}

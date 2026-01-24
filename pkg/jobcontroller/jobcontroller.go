@@ -307,23 +307,43 @@ func StartJob(ctx context.Context, params StartJobParams) (string, error) {
 	return jobId, nil
 }
 
-func handleAppendJobFile(ctx context.Context, jobId string, fileName string, data []byte) error {
-	err := filestore.WFS.AppendData(ctx, jobId, fileName, data)
+func doWFSAppend(ctx context.Context, oref waveobj.ORef, fileName string, data []byte) error {
+	err := filestore.WFS.AppendData(ctx, oref.OID, fileName, data)
 	if err != nil {
-		return fmt.Errorf("error appending to job file: %w", err)
+		return err
 	}
 	wps.Broker.Publish(wps.WaveEvent{
 		Event: wps.Event_BlockFile,
 		Scopes: []string{
-			waveobj.MakeORef(waveobj.OType_Job, jobId).String(),
+			oref.String(),
 		},
 		Data: &wps.WSFileEventData{
-			ZoneId:   jobId,
+			ZoneId:   oref.OID,
 			FileName: fileName,
 			FileOp:   wps.FileOp_Append,
 			Data64:   base64.StdEncoding.EncodeToString(data),
 		},
 	})
+	return nil
+}
+
+func handleAppendJobFile(ctx context.Context, jobId string, fileName string, data []byte) error {
+	err := doWFSAppend(ctx, waveobj.MakeORef(waveobj.OType_Job, jobId), fileName, data)
+	if err != nil {
+		return fmt.Errorf("error appending to job file: %w", err)
+	}
+
+	job, err := wstore.DBGet[*waveobj.Job](ctx, jobId)
+	if err != nil {
+		return fmt.Errorf("error getting job: %w", err)
+	}
+	if job != nil && job.AttachedBlockId != "" {
+		err = doWFSAppend(ctx, waveobj.MakeORef(waveobj.OType_Block, job.AttachedBlockId), fileName, data)
+		if err != nil {
+			return fmt.Errorf("error appending to block file: %w", err)
+		}
+	}
+
 	return nil
 }
 

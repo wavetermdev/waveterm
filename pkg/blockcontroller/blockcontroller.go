@@ -63,7 +63,7 @@ type BlockControllerRuntimeStatus struct {
 // Controller interface that all block controllers must implement
 type Controller interface {
 	Start(ctx context.Context, blockMeta waveobj.MetaMapType, rtOpts *waveobj.RuntimeOpts, force bool) error
-	Stop(graceful bool, newStatus string) error
+	Stop(graceful bool, newStatus string, destroy bool) error
 	GetRuntimeStatus() *BlockControllerRuntimeStatus // does not return nil
 	SendInput(input *BlockInputUnion) error
 }
@@ -93,7 +93,7 @@ func registerController(blockId string, controller Controller) {
 	registryLock.Unlock()
 
 	if existingController != nil {
-		existingController.Stop(false, Status_Done)
+		existingController.Stop(false, Status_Done, true)
 		wstore.DeleteRTInfo(waveobj.MakeORef(waveobj.OType_Block, blockId))
 	}
 }
@@ -268,7 +268,7 @@ func DestroyBlockController(blockId string) {
 	if controller == nil {
 		return
 	}
-	controller.Stop(true, Status_Done)
+	controller.Stop(true, Status_Done, true)
 	wstore.DeleteRTInfo(waveobj.MakeORef(waveobj.OType_Block, blockId))
 	deleteController(blockId)
 }
@@ -288,7 +288,7 @@ func StopAllBlockControllersForShutdown() {
 		status := controller.GetRuntimeStatus()
 		if status != nil && status.ShellProcStatus == Status_Running {
 			go func(id string, c Controller) {
-				c.Stop(true, Status_Done)
+				c.Stop(true, Status_Done, false)
 				wstore.DeleteRTInfo(waveobj.MakeORef(waveobj.OType_Block, id))
 			}(blockId, controller)
 		}
