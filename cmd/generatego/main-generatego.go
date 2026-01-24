@@ -30,7 +30,6 @@ func GenerateWshClient() error {
 		"github.com/wavetermdev/waveterm/pkg/wconfig",
 		"github.com/wavetermdev/waveterm/pkg/waveobj",
 		"github.com/wavetermdev/waveterm/pkg/wps",
-		"github.com/wavetermdev/waveterm/pkg/vdom",
 		"github.com/wavetermdev/waveterm/pkg/util/iochan/iochantypes",
 		"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes",
 	})

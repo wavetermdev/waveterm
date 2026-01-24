@@ -25,7 +25,6 @@ tasks:
         deps:
             - npm:install
             - build:backend
-            - build:tsunamiscaffold
         env:
             WAVETERM_ENVFILE: "{{.ROOT_DIR}}/.env"
             WCLOUD_PING_ENDPOINT: "https://ping-dev.waveterm.dev/central"
@@ -115,7 +114,6 @@ tasks:
             - clean
             - npm:install
             - build:backend
-            - build:tsunamiscaffold
 
     build:frontend:dev:
         desc: Build the frontend in development mode.
@@ -139,9 +137,6 @@ tasks:
             - pkg/**/*.go
             - pkg/**/*.sh
             - cmd/**/*.go
-            - tsunami/go.mod
-            - tsunami/go.sum
-            - tsunami/**/*.go
 
     build:schema:
         desc: Build the schema for configuration.
@@ -170,7 +165,6 @@ tasks:
             - "pkg/**/*.go"
             - "pkg/**/*.json"
             - "pkg/**/*.sh"
-            - tsunami/**/*.go
         generates:
             - dist/bin/wavesrv.*
 
@@ -198,7 +192,6 @@ tasks:
             - "pkg/**/*.go"
             - "pkg/**/*.json"
             - "pkg/**/*.sh"
-            - "tsunami/**/*.go"
         generates:
             - dist/bin/wavesrv.*
 
@@ -217,7 +210,6 @@ tasks:
             - "pkg/**/*.go"
             - "pkg/**/*.json"
             - "pkg/**/*.sh"
-            - "tsunami/**/*.go"
         generates:
             - dist/bin/wavesrv.x64.exe
 
@@ -322,21 +314,6 @@ tasks:
                 - VERSION
         cmd: (CGO_ENABLED=0 GOOS={{.GOOS}} GOARCH={{.GOARCH}} go build -ldflags="-s -w -X main.BuildTime={{.BUILD_TIME}} -X main.WaveVersion={{.VERSION}}" -o dist/bin/wsh-{{.VERSION}}-{{.GOOS}}.{{.NORMALIZEDARCH}}{{.EXT}} cmd/wsh/main-wsh.go)
         internal: true
-
-    build:tsunamiscaffold:
-        desc: Build and copy tsunami scaffold to dist directory.
-        cmds:
-            - cmd: "{{.RMRF}} dist/tsunamiscaffold"
-              ignore_error: true
-            - task: copyfiles:'tsunami/frontend/scaffold':'dist/tsunamiscaffold'
-            - cmd: '{{if eq OS "windows"}}pwsh -NoProfile -Command Copy-Item -Path tsunami/templates/empty-gomod.tmpl -Destination dist/tsunamiscaffold/go.mod{{else}}cp tsunami/templates/empty-gomod.tmpl dist/tsunamiscaffold/go.mod{{end}}'
-        deps:
-            - tsunami:scaffold
-        sources:
-            - "tsunami/frontend/dist/**/*"
-            - "tsunami/templates/**/*"
-        generates:
-            - "dist/tsunamiscaffold/**/*"
 
     generate:
         desc: Generate Typescript bindings for the Go backend.
@@ -498,140 +475,6 @@ tasks:
             - cmd: '{{.RMRF}} "dist"'
               ignore_error: true
 
-    tsunami:demo:todo:
-        desc: Run the tsunami todo demo application
-        cmd: go run demo/todo/*.go
-        dir: tsunami
-        env:
-            TSUNAMI_LISTENADDR: "localhost:12026"
-
-    tsunami:frontend:dev:
-        desc: Run the tsunami frontend vite dev server
-        cmd: npm run dev
-        dir: tsunami/frontend
-
-    tsunami:frontend:build:
-        desc: Build the tsunami frontend
-        cmd: npm run build
-        dir: tsunami/frontend
-
-    tsunami:frontend:devbuild:
-        desc: Build the tsunami frontend in development mode (with source maps and symbols)
-        cmd: npm run build:dev
-        dir: tsunami/frontend
-
-    tsunami:scaffold:
-        desc: Build scaffold for tsunami frontend development
-        deps:
-            - tsunami:frontend:build
-        cmds:
-            - task: tsunami:scaffold:internal
-
-    tsunami:devscaffold:
-        desc: Build scaffold for tsunami frontend development (with source maps and symbols)
-        deps:
-            - tsunami:frontend:devbuild
-        cmds:
-            - task: tsunami:scaffold:internal
-
-    tsunami:scaffold:packagejson:
-        desc: Create package.json for tsunami scaffold using npm commands
-        dir: tsunami/frontend/scaffold
-        cmds:
-            - cmd: rm -f package.json
-              platforms: [darwin, linux]
-              ignore_error: true
-            - cmd: pwsh -NoProfile -Command "Remove-Item -Force -ErrorAction SilentlyContinue -Path package.json"
-              platforms: [windows]
-              ignore_error: true
-            - npm --no-workspaces init -y --init-license Apache-2.0
-            - npm pkg set name=tsunami-scaffold
-            - npm pkg delete author
-            - npm pkg set author.name="Command Line Inc"
-            - npm pkg set author.email="info@commandline.dev"
-            - npm --no-workspaces install tailwindcss@4.1.13 @tailwindcss/cli@4.1.13
-
-    tsunami:scaffold:internal:
-        desc: Internal task to create scaffold directory structure
-        internal: true
-        cmds:
-            - task: tsunami:scaffold:internal:unix
-            - task: tsunami:scaffold:internal:windows
-
-    tsunami:scaffold:internal:unix:
-        desc: Internal task to create scaffold directory structure (Unix)
-        dir: tsunami/frontend
-        internal: true
-        platforms: [darwin, linux]
-        cmds:
-            - cmd: "{{.RMRF}} scaffold"
-              ignore_error: true
-            - mkdir -p scaffold
-            - cp ../templates/package.json.tmpl scaffold/package.json
-            - cd scaffold && npm install
-            - mv scaffold/node_modules scaffold/nm
-            - cp -r dist scaffold/
-            - mkdir -p scaffold/dist/tw
-            - cp ../templates/*.go.tmpl scaffold/
-            - cp ../templates/tailwind.css scaffold/
-            - cp ../templates/gitignore.tmpl scaffold/.gitignore
-            - cp src/element/*.tsx scaffold/dist/tw/
-            - cp ../ui/*.go scaffold/dist/tw/
-            - cp ../engine/errcomponent.go scaffold/dist/tw/
-
-    tsunami:scaffold:internal:windows:
-        desc: Internal task to create scaffold directory structure (Windows)
-        dir: tsunami/frontend
-        internal: true
-        platforms: [windows]
-        cmds:
-            - cmd: "{{.RMRF}} scaffold"
-              ignore_error: true
-            - pwsh -NoProfile -Command New-Item -ItemType Directory -Force -Path scaffold
-            - pwsh -NoProfile -Command Copy-Item -Path ../templates/package.json.tmpl -Destination scaffold/package.json
-            - pwsh -NoProfile -Command "Set-Location scaffold; npm install"
-            - pwsh -NoProfile -Command Move-Item -Path scaffold/node_modules -Destination scaffold/nm
-            - pwsh -NoProfile -Command Copy-Item -Recurse -Force -Path dist -Destination scaffold/
-            - pwsh -NoProfile -Command New-Item -ItemType Directory -Force -Path scaffold/dist/tw
-            - pwsh -NoProfile -Command Copy-Item -Path '../templates/*.go.tmpl' -Destination scaffold/
-            - pwsh -NoProfile -Command Copy-Item -Path ../templates/tailwind.css -Destination scaffold/
-            - pwsh -NoProfile -Command Copy-Item -Path ../templates/gitignore.tmpl -Destination scaffold/.gitignore
-            - pwsh -NoProfile -Command Copy-Item -Path 'src/element/*.tsx' -Destination scaffold/dist/tw/
-            - pwsh -NoProfile -Command Copy-Item -Path '../ui/*.go' -Destination scaffold/dist/tw/
-            - pwsh -NoProfile -Command Copy-Item -Path ../engine/errcomponent.go -Destination scaffold/dist/tw/
-
-    tsunami:build:
-        desc: Build the tsunami binary.
-        cmds:
-            - cmd: rm -f bin/tsunami*
-              platforms: [darwin, linux]
-              ignore_error: true
-            - cmd: pwsh -NoProfile -Command "Remove-Item -Force -ErrorAction SilentlyContinue -Path bin/tsunami*"
-              platforms: [windows]
-              ignore_error: true
-            - mkdir -p bin
-            - cd tsunami && go build -ldflags "-X main.BuildTime={{.BUILD_TIME}} -X main.TsunamiVersion={{.VERSION}}" -o ../bin/tsunami{{exeExt}} cmd/main-tsunami.go
-        sources:
-            - "tsunami/**/*.go"
-            - "tsunami/go.mod"
-            - "tsunami/go.sum"
-        generates:
-            - "bin/tsunami{{exeExt}}"
-
-    tsunami:clean:
-        desc: Clean tsunami frontend build artifacts
-        dir: tsunami/frontend
-        cmds:
-            - cmd: "{{.RMRF}} dist"
-              ignore_error: true
-            - cmd: "{{.RMRF}} scaffold"
-              ignore_error: true
-
     godoc:
         desc: Start the Go documentation server for the root module
         cmd: $(go env GOPATH)/bin/pkgsite -http=:6060
-
-    tsunami:godoc:
-        desc: Start the Go documentation server for the tsunami module
-        cmd: $(go env GOPATH)/bin/pkgsite -http=:6060
-        dir: tsunami

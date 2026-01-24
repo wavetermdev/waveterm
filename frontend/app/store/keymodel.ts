@@ -299,10 +299,6 @@ function globalRefocusWithTimeout(timeoutVal: number) {
 }
 
 function globalRefocus() {
-    if (globalStore.get(atoms.waveWindowType) == "builder") {
-        return;
-    }
-
     const layoutModel = getLayoutModelForStaticTab();
     const focusedNode = globalStore.get(layoutModel.focusedNode);
     if (focusedNode == null) {
@@ -713,15 +709,6 @@ function registerGlobalKeys() {
     globalChordMap.set("Ctrl:Shift:s", splitBlockKeys);
 }
 
-function registerBuilderGlobalKeys() {
-    globalKeyMap.set("Cmd:w", () => {
-        getApi().closeBuilderWindow();
-        return true;
-    });
-    const allKeys = Array.from(globalKeyMap.keys());
-    getApi().registerGlobalWebviewKeys(allKeys);
-}
-
 function getAllGlobalKeyBindings(): string[] {
     const allKeys = Array.from(globalKeyMap.keys());
     return allKeys;
@@ -734,7 +721,6 @@ export {
     getSimpleControlShiftAtom,
     globalRefocus,
     globalRefocusWithTimeout,
-    registerBuilderGlobalKeys,
     registerControlShiftStateUpdateHandler,
     registerElectronReinjectKeyHandler,
     registerGlobalKeys,

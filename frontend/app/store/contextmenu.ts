@@ -49,16 +49,10 @@ class ContextMenuModelType {
         ev.stopPropagation();
         this.handlers.clear();
         const electronMenuItems = this._convertAndRegisterMenu(menu);
-        
+
         const workspace = globalStore.get(atoms.workspace);
-        let oid: string;
-        
-        if (workspace != null) {
-            oid = workspace.oid;
-        } else {
-            oid = globalStore.get(atoms.builderId);
-        }
-        
+        const oid = workspace?.oid ?? "";
+
         getApi().showContextMenu(oid, electronMenuItems);
     }
 }

@@ -23,9 +23,6 @@
         "app:ctrlvpaste": {
           "type": "boolean"
         },
-        "feature:waveappbuilder": {
-          "type": "boolean"
-        },
         "ai:*": {
           "type": "boolean"
         },
@@ -271,21 +268,6 @@
         },
         "debug:pprofmemprofilerate": {
           "type": "integer"
-        },
-        "tsunami:*": {
-          "type": "boolean"
-        },
-        "tsunami:scaffoldpath": {
-          "type": "string"
-        },
-        "tsunami:sdkreplacepath": {
-          "type": "string"
-        },
-        "tsunami:sdkversion": {
-          "type": "string"
-        },
-        "tsunami:gopath": {
-          "type": "string"
         }
       },
       "additionalProperties": false,

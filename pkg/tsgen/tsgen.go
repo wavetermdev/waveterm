@@ -17,7 +17,6 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/tsgen/tsgenmeta"
 	"github.com/wavetermdev/waveterm/pkg/userinput"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
-	"github.com/wavetermdev/waveterm/pkg/vdom"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wconfig"
 	"github.com/wavetermdev/waveterm/pkg/web/webcmd"
@@ -43,13 +42,6 @@ var ExtraTypes = []any{
 	wshutil.RpcMessage{},
 	wshrpc.WshServerCommandMeta{},
 	userinput.UserInputRequest{},
-	vdom.VDomCreateContext{},
-	vdom.VDomElem{},
-	vdom.VDomFunc{},
-	vdom.VDomRef{},
-	vdom.VDomBinding{},
-	vdom.VDomFrontendUpdate{},
-	vdom.VDomBackendUpdate{},
 	waveobj.MetaTSType{},
 	waveobj.ObjRTInfo{},
 	uctypes.RateLimitInfo{},
@@ -175,7 +167,6 @@ func TypeToTSType(t reflect.Type, tsTypesMap map[reflect.Type]string) (string, [
 
 var tsRenameMap = map[string]string{
 	"Window":           "WaveWindow",
-	"Elem":             "VDomElem",
 	"MetaTSType":       "MetaType",
 	"MetaSettingsType": "SettingsType",
 }

@@ -13,8 +13,6 @@ const (
 	ConfigKey_AppShowOverlayBlockNums        = "app:showoverlayblocknums"
 	ConfigKey_AppCtrlVPaste                  = "app:ctrlvpaste"
 
-	ConfigKey_FeatureWaveAppBuilder          = "feature:waveappbuilder"
-
 	ConfigKey_AiClear                        = "ai:*"
 	ConfigKey_AiPreset                       = "ai:preset"
 	ConfigKey_AiApiType                      = "ai:apitype"
@@ -110,11 +108,5 @@ const (
 	ConfigKey_DebugClear                     = "debug:*"
 	ConfigKey_DebugPprofPort                 = "debug:pprofport"
 	ConfigKey_DebugPprofMemProfileRate       = "debug:pprofmemprofilerate"
-
-	ConfigKey_TsunamiClear                   = "tsunami:*"
-	ConfigKey_TsunamiScaffoldPath            = "tsunami:scaffoldpath"
-	ConfigKey_TsunamiSdkReplacePath          = "tsunami:sdkreplacepath"
-	ConfigKey_TsunamiSdkVersion              = "tsunami:sdkversion"
-	ConfigKey_TsunamiGoPath                  = "tsunami:gopath"
 )
 

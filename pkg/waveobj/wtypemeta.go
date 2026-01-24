@@ -117,10 +117,8 @@ type MetaTSType struct {
 	TermTheme               string   `json:"term:theme,omitempty"`
 	TermLocalShellPath      string   `json:"term:localshellpath,omitempty"` // matches settings
 	TermLocalShellOpts      []string `json:"term:localshellopts,omitempty"` // matches settings
-	TermScrollback          *int     `json:"term:scrollback,omitempty"`
-	TermVDomSubBlockId      string   `json:"term:vdomblockid,omitempty"`
-	TermVDomToolbarBlockId  string   `json:"term:vdomtoolbarblockid,omitempty"`
-	TermTransparency        *float64 `json:"term:transparency,omitempty"` // default 0.5
+	TermScrollback   *int     `json:"term:scrollback,omitempty"`
+	TermTransparency *float64 `json:"term:transparency,omitempty"` // default 0.5
 	TermAllowBracketedPaste *bool    `json:"term:allowbracketedpaste,omitempty"`
 	TermShiftEnterNewline   *bool    `json:"term:shiftenternewline,omitempty"`
 	TermMacOptionIsMeta     *bool    `json:"term:macoptionismeta,omitempty"`
@@ -133,19 +131,6 @@ type MetaTSType struct {
 
 	MarkdownFontSize      float64 `json:"markdown:fontsize,omitempty"`
 	MarkdownFixedFontSize float64 `json:"markdown:fixedfontsize,omitempty"`
-
-	TsunamiClear          bool              `json:"tsunami:*,omitempty"`
-	TsunamiSdkReplacePath string            `json:"tsunami:sdkreplacepath,omitempty"`
-	TsunamiAppPath        string            `json:"tsunami:apppath,omitempty"`
-	TsunamiAppId          string            `json:"tsunami:appid,omitempty"`
-	TsunamiScaffoldPath   string            `json:"tsunami:scaffoldpath,omitempty"`
-	TsunamiEnv            map[string]string `json:"tsunami:env,omitempty"`
-
-	VDomClear         bool   `json:"vdom:*,omitempty"`
-	VDomInitialized   bool   `json:"vdom:initialized,omitempty"`
-	VDomCorrelationId string `json:"vdom:correlationid,omitempty"`
-	VDomRoute         string `json:"vdom:route,omitempty"`
-	VDomPersist       bool   `json:"vdom:persist,omitempty"`
 
 	OnboardingGithubStar  bool   `json:"onboarding:githubstar,omitempty"`  // for client
 	OnboardingLastVersion string `json:"onboarding:lastversion,omitempty"` // for client (tracks semver of last 'onboarding' shown)

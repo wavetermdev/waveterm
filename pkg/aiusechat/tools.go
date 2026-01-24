@@ -12,7 +12,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/aiutil"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
-	"github.com/wavetermdev/waveterm/pkg/blockcontroller"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
@@ -119,8 +118,6 @@ func MakeBlockShortDesc(block *waveobj.Block) string {
 		return "Wave documentation widget"
 	case "launcher":
 		return "placeholder widget used to launch other widgets"
-	case "tsunami":
-		return handleTsunamiBlockDesc(block)
 	case "aifilediff":
 		return "" // AI doesn't need to see these
 	case "waveconfig":
@@ -183,10 +180,6 @@ func GenerateTabStateAndTools(ctx context.Context, tabid string, widgetAccess bo
 				continue
 			}
 			viewTypes[viewType] = true
-			if viewType == "tsunami" {
-				blockTools := generateToolsForTsunamiBlock(block)
-				tools = append(tools, blockTools...)
-			}
 		}
 		if viewTypes["term"] {
 			tools = append(tools, GetTermGetScrollbackToolDefinition(tabid))
@@ -235,30 +228,6 @@ func GenerateCurrentTabStatePrompt(blocks []*waveobj.Block, widgetAccess bool) s
 	prompt.WriteString("</current_tab_state>")
 	rtn := prompt.String()
 	return rtn
-}
-
-func generateToolsForTsunamiBlock(block *waveobj.Block) []uctypes.ToolDefinition {
-	var tools []uctypes.ToolDefinition
-
-	status := blockcontroller.GetBlockControllerRuntimeStatus(block.OID)
-	if status == nil || status.ShellProcStatus != blockcontroller.Status_Running || status.TsunamiPort <= 0 {
-		return nil
-	}
-
-	blockORef := waveobj.MakeORef(waveobj.OType_Block, block.OID)
-	rtInfo := wstore.GetRTInfo(blockORef)
-
-	if tool := GetTsunamiGetDataToolDefinition(block, rtInfo, status); tool != nil {
-		tools = append(tools, *tool)
-	}
-	if tool := GetTsunamiGetConfigToolDefinition(block, rtInfo, status); tool != nil {
-		tools = append(tools, *tool)
-	}
-	if tool := GetTsunamiSetConfigToolDefinition(block, rtInfo, status); tool != nil {
-		tools = append(tools, *tool)
-	}
-
-	return tools
 }
 
 // Used for internal testing of tool loops

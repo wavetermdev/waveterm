@@ -3,7 +3,6 @@
 
 import { RpcApi } from "@/app/store/wshclientapi";
 import * as electron from "electron";
-import { focusedBuilderWindow, getAllBuilderWindows } from "emain/emain-builder";
 import { globalEvents } from "emain/emain-events";
 import { sprintf } from "sprintf-js";
 import * as services from "../frontend/app/store/services";
@@ -259,10 +258,6 @@ electronApp.on("before-quit", (e) => {
     for (const window of allWindows) {
         hideWindowWithCatch(window);
     }
-    const allBuilders = getAllBuilderWindows();
-    for (const builder of allBuilders) {
-        builder.hide();
-    }
     if (getIsWaveSrvDead()) {
         console.log("wavesrv is dead, quitting immediately");
         setForceQuit(true);
@@ -308,16 +303,13 @@ process.on("uncaughtException", (error) => {
 });
 
 let lastWaveWindowCount = 0;
-let lastIsBuilderWindowActive = false;
 globalEvents.on("windows-updated", () => {
     const wwCount = getAllWaveWindows().length;
-    const isBuilderActive = focusedBuilderWindow != null;
-    if (wwCount == lastWaveWindowCount && isBuilderActive == lastIsBuilderWindowActive) {
+    if (wwCount == lastWaveWindowCount) {
         return;
     }
     lastWaveWindowCount = wwCount;
-    lastIsBuilderWindowActive = isBuilderActive;
-    console.log("windows-updated", wwCount, "builder-active:", isBuilderActive);
+    console.log("windows-updated", wwCount);
     makeAndSetAppMenu();
 });
 

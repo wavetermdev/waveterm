@@ -1,0 +1,23 @@
+{
+  "lastUpdated": "2026-01-23T12:18:55.2633571-03:00",
+  "sessions": [
+    {
+      "sessionId": "aa5892ec-e359-44df-874e-b2d74860fcb7",
+      "ended": "2026-01-23T12:18:55.2697385-03:00"
+    },
+    {
+      "sessionId": "1421db85-83a1-4848-8c73-2677e47c920b",
+      "ended": "2026-01-23T00:59:12.2164267-03:00"
+    }
+  ],
+  "created": "2026-01-23T00:59:12.2084213-03:00",
+  "path": "G:\\Code\\waveterm-experimental",
+  "branch": "feat/experimental-upstream-fixes",
+  "name": "waveterm-experimental",
+  "parentRepo": "G:\\Code\\waveterm",
+  "context": {
+    "purpose": "",
+    "notes": [],
+    "relatedIssues": []
+  }
+}

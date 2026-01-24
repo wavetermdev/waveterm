@@ -95,8 +95,8 @@ func (tdata *TelemetryData) Scan(val interface{}) error {
 }
 
 func IsTelemetryEnabled() bool {
-	settings := wconfig.GetWatcher().GetFullConfig()
-	return settings.Settings.TelemetryEnabled
+	// Telemetry has been removed
+	return false
 }
 
 func IsAutoUpdateEnabled() bool {
