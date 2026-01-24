@@ -382,6 +382,7 @@ type RemoteInfo struct {
 	ClientOs      string `json:"clientos"`
 	ClientVersion string `json:"clientversion"`
 	Shell         string `json:"shell"`
+	HomeDir       string `json:"homedir"`
 }
 
 const (

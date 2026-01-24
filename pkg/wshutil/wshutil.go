@@ -395,8 +395,8 @@ func GetInfo() wshrpc.RemoteInfo {
 		ClientOs:      runtime.GOOS,
 		ClientVersion: wavebase.WaveVersion,
 		Shell:         getShell(),
+		HomeDir:       wavebase.GetHomeDir(),
 	}
-
 }
 
 func InstallRcFiles() error {

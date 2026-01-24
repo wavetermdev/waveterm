@@ -316,6 +316,7 @@ type ConnUnion struct {
 	ShellPath  string
 	ShellOpts  []string
 	ShellType  string
+	HomeDir    string
 }
 
 func (bc *ShellController) getConnUnion(logCtx context.Context, remoteName string, blockMeta waveobj.MetaMapType) (ConnUnion, error) {
@@ -606,12 +607,14 @@ func (union *ConnUnion) getRemoteInfoAndShellType(blockMeta waveobj.MetaMapType)
 		}
 		// TODO allow overriding remote shell path
 		union.ShellPath = remoteInfo.Shell
+		union.HomeDir = remoteInfo.HomeDir
 	} else {
 		shellPath, err := getLocalShellPath(blockMeta)
 		if err != nil {
 			return err
 		}
 		union.ShellPath = shellPath
+		union.HomeDir = wavebase.GetHomeDir()
 	}
 	union.ShellType = shellutil.GetShellTypeFromShellPath(union.ShellPath)
 	return nil

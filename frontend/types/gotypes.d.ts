@@ -1161,6 +1161,7 @@ declare global {
         clientos: string;
         clientversion: string;
         shell: string;
+        homedir: string;
     };
 
     // wshrpc.RestartBuilderAndWaitResult
