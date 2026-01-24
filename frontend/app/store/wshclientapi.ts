@@ -62,11 +62,6 @@ class RpcApiType {
         return client.wshRpcCall("captureblockscreenshot", data, opts);
     }
 
-    // command "checkgoversion" [call]
-    CheckGoVersionCommand(client: WshClient, opts?: RpcOpts): Promise<CommandCheckGoVersionRtnData> {
-        return client.wshRpcCall("checkgoversion", null, opts);
-    }
-
     // command "connconnect" [call]
     ConnConnectCommand(client: WshClient, data: ConnRequest, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("connconnect", data, opts);
@@ -137,19 +132,9 @@ class RpcApiType {
         return client.wshRpcCall("createsubblock", data, opts);
     }
 
-    // command "deleteappfile" [call]
-    DeleteAppFileCommand(client: WshClient, data: CommandDeleteAppFileData, opts?: RpcOpts): Promise<void> {
-        return client.wshRpcCall("deleteappfile", data, opts);
-    }
-
     // command "deleteblock" [call]
     DeleteBlockCommand(client: WshClient, data: CommandDeleteBlockData, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("deleteblock", data, opts);
-    }
-
-    // command "deletebuilder" [call]
-    DeleteBuilderCommand(client: WshClient, data: string, opts?: RpcOpts): Promise<void> {
-        return client.wshRpcCall("deletebuilder", data, opts);
     }
 
     // command "deletesubblock" [call]
@@ -312,16 +297,6 @@ class RpcApiType {
         return client.wshRpcCall("focuswindow", data, opts);
     }
 
-    // command "getbuilderoutput" [call]
-    GetBuilderOutputCommand(client: WshClient, data: string, opts?: RpcOpts): Promise<string[]> {
-        return client.wshRpcCall("getbuilderoutput", data, opts);
-    }
-
-    // command "getbuilderstatus" [call]
-    GetBuilderStatusCommand(client: WshClient, data: string, opts?: RpcOpts): Promise<BuilderStatusData> {
-        return client.wshRpcCall("getbuilderstatus", data, opts);
-    }
-
     // command "getfullconfig" [call]
     GetFullConfigCommand(client: WshClient, opts?: RpcOpts): Promise<FullConfigType> {
         return client.wshRpcCall("getfullconfig", null, opts);
@@ -462,26 +437,6 @@ class RpcApiType {
         return client.wshRpcCall("jobstartstream", data, opts);
     }
 
-    // command "listallappfiles" [call]
-    ListAllAppFilesCommand(client: WshClient, data: CommandListAllAppFilesData, opts?: RpcOpts): Promise<CommandListAllAppFilesRtnData> {
-        return client.wshRpcCall("listallappfiles", data, opts);
-    }
-
-    // command "listallapps" [call]
-    ListAllAppsCommand(client: WshClient, opts?: RpcOpts): Promise<AppInfo[]> {
-        return client.wshRpcCall("listallapps", null, opts);
-    }
-
-    // command "listalleditableapps" [call]
-    ListAllEditableAppsCommand(client: WshClient, opts?: RpcOpts): Promise<AppInfo[]> {
-        return client.wshRpcCall("listalleditableapps", null, opts);
-    }
-
-    // command "makedraftfromlocal" [call]
-    MakeDraftFromLocalCommand(client: WshClient, data: CommandMakeDraftFromLocalData, opts?: RpcOpts): Promise<CommandMakeDraftFromLocalRtnData> {
-        return client.wshRpcCall("makedraftfromlocal", data, opts);
-    }
-
     // command "message" [call]
     MessageCommand(client: WshClient, data: CommandMessageData, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("message", data, opts);
@@ -500,16 +455,6 @@ class RpcApiType {
     // command "path" [call]
     PathCommand(client: WshClient, data: PathCommandData, opts?: RpcOpts): Promise<string> {
         return client.wshRpcCall("path", data, opts);
-    }
-
-    // command "publishapp" [call]
-    PublishAppCommand(client: WshClient, data: CommandPublishAppData, opts?: RpcOpts): Promise<CommandPublishAppRtnData> {
-        return client.wshRpcCall("publishapp", data, opts);
-    }
-
-    // command "readappfile" [call]
-    ReadAppFileCommand(client: WshClient, data: CommandReadAppFileData, opts?: RpcOpts): Promise<CommandReadAppFileRtnData> {
-        return client.wshRpcCall("readappfile", data, opts);
     }
 
     // command "recordtevent" [call]
@@ -607,19 +552,9 @@ class RpcApiType {
         return client.wshRpcCall("remotewritefile", data, opts);
     }
 
-    // command "renameappfile" [call]
-    RenameAppFileCommand(client: WshClient, data: CommandRenameAppFileData, opts?: RpcOpts): Promise<void> {
-        return client.wshRpcCall("renameappfile", data, opts);
-    }
-
     // command "resolveids" [call]
     ResolveIdsCommand(client: WshClient, data: CommandResolveIdsData, opts?: RpcOpts): Promise<CommandResolveIdsRtnData> {
         return client.wshRpcCall("resolveids", data, opts);
-    }
-
-    // command "restartbuilderandwait" [call]
-    RestartBuilderAndWaitCommand(client: WshClient, data: CommandRestartBuilderAndWaitData, opts?: RpcOpts): Promise<RestartBuilderAndWaitResult> {
-        return client.wshRpcCall("restartbuilderandwait", data, opts);
     }
 
     // command "routeannounce" [call]
@@ -672,19 +607,9 @@ class RpcApiType {
         return client.wshRpcCall("setvar", data, opts);
     }
 
-    // command "startbuilder" [call]
-    StartBuilderCommand(client: WshClient, data: CommandStartBuilderData, opts?: RpcOpts): Promise<void> {
-        return client.wshRpcCall("startbuilder", data, opts);
-    }
-
     // command "startjob" [call]
     StartJobCommand(client: WshClient, data: CommandStartJobData, opts?: RpcOpts): Promise<CommandStartJobRtnData> {
         return client.wshRpcCall("startjob", data, opts);
-    }
-
-    // command "stopbuilder" [call]
-    StopBuilderCommand(client: WshClient, data: string, opts?: RpcOpts): Promise<void> {
-        return client.wshRpcCall("stopbuilder", data, opts);
     }
 
     // command "streamcpudata" [responsestream]
@@ -727,26 +652,6 @@ class RpcApiType {
         return client.wshRpcCall("test", data, opts);
     }
 
-    // command "vdomasyncinitiation" [call]
-    VDomAsyncInitiationCommand(client: WshClient, data: VDomAsyncInitiationRequest, opts?: RpcOpts): Promise<void> {
-        return client.wshRpcCall("vdomasyncinitiation", data, opts);
-    }
-
-    // command "vdomcreatecontext" [call]
-    VDomCreateContextCommand(client: WshClient, data: VDomCreateContext, opts?: RpcOpts): Promise<ORef> {
-        return client.wshRpcCall("vdomcreatecontext", data, opts);
-    }
-
-    // command "vdomrender" [responsestream]
-	VDomRenderCommand(client: WshClient, data: VDomFrontendUpdate, opts?: RpcOpts): AsyncGenerator<VDomBackendUpdate, void, boolean> {
-        return client.wshRpcStream("vdomrender", data, opts);
-    }
-
-    // command "vdomurlrequest" [responsestream]
-	VDomUrlRequestCommand(client: WshClient, data: VDomUrlRequestData, opts?: RpcOpts): AsyncGenerator<VDomUrlRequestResponse, void, boolean> {
-        return client.wshRpcStream("vdomurlrequest", data, opts);
-    }
-
     // command "waitforroute" [call]
     WaitForRouteCommand(client: WshClient, data: CommandWaitForRouteData, opts?: RpcOpts): Promise<boolean> {
         return client.wshRpcCall("waitforroute", data, opts);
@@ -785,21 +690,6 @@ class RpcApiType {
     // command "workspacelist" [call]
     WorkspaceListCommand(client: WshClient, opts?: RpcOpts): Promise<WorkspaceInfoData[]> {
         return client.wshRpcCall("workspacelist", null, opts);
-    }
-
-    // command "writeappfile" [call]
-    WriteAppFileCommand(client: WshClient, data: CommandWriteAppFileData, opts?: RpcOpts): Promise<void> {
-        return client.wshRpcCall("writeappfile", data, opts);
-    }
-
-    // command "writeappgofile" [call]
-    WriteAppGoFileCommand(client: WshClient, data: CommandWriteAppGoFileData, opts?: RpcOpts): Promise<CommandWriteAppGoFileRtnData> {
-        return client.wshRpcCall("writeappgofile", data, opts);
-    }
-
-    // command "writeappsecretbindings" [call]
-    WriteAppSecretBindingsCommand(client: WshClient, data: CommandWriteAppSecretBindingsData, opts?: RpcOpts): Promise<void> {
-        return client.wshRpcCall("writeappsecretbindings", data, opts);
     }
 
     // command "writetempfile" [call]

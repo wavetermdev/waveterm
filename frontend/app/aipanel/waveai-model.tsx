@@ -14,7 +14,6 @@ import * as WOS from "@/app/store/wos";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
-import { BuilderFocusManager } from "@/builder/store/builder-focusmanager";
 import { getWebServerEndpoint } from "@/util/endpoints";
 import { base64ToArrayBuffer } from "@/util/util";
 import { ChatStatus } from "ai";
@@ -51,7 +50,6 @@ export class WaveAIModel {
     // Used for injecting Wave-specific message data into DefaultChatTransport's prepareSendMessagesRequest
     realMessage: AIMessage | null = null;
     orefContext: ORef;
-    inBuilder: boolean = false;
     isAIStreaming = jotai.atom(false);
 
     widgetAccessAtom!: jotai.Atom<boolean>;
@@ -75,9 +73,8 @@ export class WaveAIModel {
     restoreBackupStatus: jotai.PrimitiveAtom<"idle" | "processing" | "success" | "error"> = jotai.atom("idle");
     restoreBackupError: jotai.PrimitiveAtom<string> = jotai.atom(null) as jotai.PrimitiveAtom<string>;
 
-    private constructor(orefContext: ORef, inBuilder: boolean) {
+    private constructor(orefContext: ORef) {
         this.orefContext = orefContext;
-        this.inBuilder = inBuilder;
         this.chatId = jotai.atom(null) as jotai.PrimitiveAtom<string>;
         this.aiModeConfigs = atoms.waveaiModeConfigAtom;
 
@@ -87,9 +84,6 @@ export class WaveAIModel {
         });
 
         this.widgetAccessAtom = jotai.atom((get) => {
-            if (this.inBuilder) {
-                return true;
-            }
             const widgetAccessMetaAtom = getOrefMetaKeyAtom(this.orefContext, "waveai:widgetcontext");
             const value = get(widgetAccessMetaAtom);
             return value ?? true;
@@ -101,32 +95,15 @@ export class WaveAIModel {
         });
 
         this.isWaveAIFocusedAtom = jotai.atom((get) => {
-            if (this.inBuilder) {
-                return get(BuilderFocusManager.getInstance().focusType) === "waveai";
-            }
             return get(FocusManager.getInstance().focusType) === "waveai";
         });
 
         this.panelVisibleAtom = jotai.atom((get) => {
-            if (this.inBuilder) {
-                return true;
-            }
             return get(WorkspaceLayoutModel.getInstance().panelVisibleAtom);
         });
 
         this.defaultModeAtom = jotai.atom((get) => {
-            const telemetryEnabled = get(getSettingsKeyAtom("telemetry:enabled")) ?? false;
-            if (this.inBuilder) {
-                return telemetryEnabled ? "waveai@balanced" : "invalid";
-            }
             const aiModeConfigs = get(this.aiModeConfigs);
-            if (!telemetryEnabled) {
-                let mode = get(getSettingsKeyAtom("waveai:defaultmode"));
-                if (mode == null || mode.startsWith("waveai@")) {
-                    return "unknown";
-                }
-                return mode;
-            }
             const hasPremium = get(this.hasPremiumAtom);
             const waveFallback = hasPremium ? "waveai@balanced" : "waveai@quick";
             let mode = get(getSettingsKeyAtom("waveai:defaultmode")) ?? waveFallback;
@@ -150,17 +127,9 @@ export class WaveAIModel {
 
     static getInstance(): WaveAIModel {
         if (!WaveAIModel.instance) {
-            const windowType = globalStore.get(atoms.waveWindowType);
-            let orefContext: ORef;
-            const inBuilder = windowType === "builder";
-            if (inBuilder) {
-                const builderId = globalStore.get(atoms.builderId);
-                orefContext = WOS.makeORef("builder", builderId);
-            } else {
-                const tabId = globalStore.get(atoms.staticTabId);
-                orefContext = WOS.makeORef("tab", tabId);
-            }
-            WaveAIModel.instance = new WaveAIModel(orefContext, inBuilder);
+            const tabId = globalStore.get(atoms.staticTabId);
+            const orefContext = WOS.makeORef("tab", tabId);
+            WaveAIModel.instance = new WaveAIModel(orefContext);
             (window as any).WaveAIModel = WaveAIModel.instance;
         }
         return WaveAIModel.instance;
@@ -316,7 +285,7 @@ export class WaveAIModel {
     }
 
     focusInput() {
-        if (!this.inBuilder && !WorkspaceLayoutModel.getInstance().getAIPanelVisible()) {
+        if (!WorkspaceLayoutModel.getInstance().getAIPanelVisible()) {
             WorkspaceLayoutModel.getInstance().setAIPanelVisible(true);
         }
         if (this.inputRef?.current) {
@@ -395,11 +364,6 @@ export class WaveAIModel {
     }
 
     isValidMode(mode: string): boolean {
-        const telemetryEnabled = globalStore.get(getSettingsKeyAtom("telemetry:enabled")) ?? false;
-        if (mode.startsWith("waveai@") && !telemetryEnabled) {
-            return false;
-        }
-
         const aiModeConfigs = globalStore.get(this.aiModeConfigs);
         if (aiModeConfigs == null || !(mode in aiModeConfigs)) {
             return false;
@@ -587,19 +551,11 @@ export class WaveAIModel {
     }
 
     requestWaveAIFocus() {
-        if (this.inBuilder) {
-            BuilderFocusManager.getInstance().setWaveAIFocused();
-        } else {
-            FocusManager.getInstance().requestWaveAIFocus();
-        }
+        FocusManager.getInstance().requestWaveAIFocus();
     }
 
     requestNodeFocus() {
-        if (this.inBuilder) {
-            BuilderFocusManager.getInstance().setAppFocused();
-        } else {
-            FocusManager.getInstance().requestNodeFocus();
-        }
+        FocusManager.getInstance().requestNodeFocus();
     }
 
     getChatId(): string {
@@ -671,16 +627,10 @@ export class WaveAIModel {
     }
 
     canCloseWaveAIPanel(): boolean {
-        if (this.inBuilder) {
-            return false;
-        }
         return true;
     }
 
     closeWaveAIPanel() {
-        if (this.inBuilder) {
-            return;
-        }
         WorkspaceLayoutModel.getInstance().setAIPanelVisible(false);
     }
 }

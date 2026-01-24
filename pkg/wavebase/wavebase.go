@@ -42,7 +42,6 @@ const (
 const (
 	BlockFile_Term  = "term"            // used for main pty output
 	BlockFile_Cache = "cache:term:full" // for cached block
-	BlockFile_VDom  = "vdom"            // used for alt html layout
 	BlockFile_Env   = "env"
 )
 

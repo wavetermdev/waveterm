@@ -11,7 +11,6 @@ import (
 
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
 	"github.com/wavetermdev/waveterm/pkg/telemetry/telemetrydata"
-	"github.com/wavetermdev/waveterm/pkg/vdom"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/wconfig"
 	"github.com/wavetermdev/waveterm/pkg/wps"
@@ -130,10 +129,6 @@ type WshRpcInterface interface {
 	WorkspaceListCommand(ctx context.Context) ([]WorkspaceInfoData, error)
 	GetUpdateChannelCommand(ctx context.Context) (string, error)
 
-	// terminal
-	VDomCreateContextCommand(ctx context.Context, data vdom.VDomCreateContext) (*waveobj.ORef, error)
-	VDomAsyncInitiationCommand(ctx context.Context, data vdom.VDomAsyncInitiationRequest) error
-
 	// ai
 	AiSendMessageCommand(ctx context.Context, data AiMessageData) error
 	WaveAIEnableTelemetryCommand(ctx context.Context) error
@@ -156,13 +151,6 @@ type WshRpcInterface interface {
 
 	// file
 	WshRpcFileInterface
-
-	// builder
-	WshRpcBuilderInterface
-
-	// proc
-	VDomRenderCommand(ctx context.Context, data vdom.VDomFrontendUpdate) chan RespOrErrorUnion[*vdom.VDomBackendUpdate]
-	VDomUrlRequestCommand(ctx context.Context, data VDomUrlRequestData) chan RespOrErrorUnion[VDomUrlRequestResponse]
 
 	// streams
 	StreamDataCommand(ctx context.Context, data CommandStreamData) error
@@ -455,19 +443,6 @@ type WaveNotificationOptions struct {
 	Title  string `json:"title,omitempty"`
 	Body   string `json:"body,omitempty"`
 	Silent bool   `json:"silent,omitempty"`
-}
-
-type VDomUrlRequestData struct {
-	Method  string            `json:"method"`
-	URL     string            `json:"url"`
-	Headers map[string]string `json:"headers"`
-	Body    []byte            `json:"body,omitempty"`
-}
-
-type VDomUrlRequestResponse struct {
-	StatusCode int               `json:"statuscode,omitempty"`
-	Headers    map[string]string `json:"headers,omitempty"`
-	Body       []byte            `json:"body,omitempty"`
 }
 
 type WaveInfoData struct {

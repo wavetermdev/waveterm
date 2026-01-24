@@ -83,29 +83,6 @@ declare global {
         message?: string;
     };
 
-    // wshrpc.AppInfo
-    type AppInfo = {
-        appid: string;
-        modtime: number;
-        manifest?: AppManifest;
-    };
-
-    // wshrpc.AppManifest
-    type AppManifest = {
-        appmeta: AppMeta;
-        configschema: {[key: string]: any};
-        dataschema: {[key: string]: any};
-        secrets: {[key: string]: SecretMeta};
-    };
-
-    // wshrpc.AppMeta
-    type AppMeta = {
-        title: string;
-        shortdesc: string;
-        icon: string;
-        iconcolor: string;
-    };
-
     // waveobj.Block
     type Block = WaveObj & {
         parentoref?: string;
@@ -122,7 +99,6 @@ declare global {
         shellprocstatus?: string;
         shellprocconnname?: string;
         shellprocexitcode: number;
-        tsunamiport?: number;
     };
 
     // waveobj.BlockDef
@@ -153,18 +129,6 @@ declare global {
     type BlocksListRequest = {
         windowid?: string;
         workspaceid?: string;
-    };
-
-    // wshrpc.BuilderStatusData
-    type BuilderStatusData = {
-        status: string;
-        port?: number;
-        exitcode?: number;
-        errormsg?: string;
-        version: number;
-        manifest?: AppManifest;
-        secretbindings?: {[key: string]: string};
-        secretbindingscomplete: boolean;
     };
 
     // waveobj.Client
@@ -225,14 +189,6 @@ declare global {
         blockid: string;
     };
 
-    // wshrpc.CommandCheckGoVersionRtnData
-    type CommandCheckGoVersionRtnData = {
-        gostatus: string;
-        gopath: string;
-        goversion: string;
-        errorstring?: string;
-    };
-
     // wshrpc.CommandControllerAppendOutputData
     type CommandControllerAppendOutputData = {
         blockid: string;
@@ -263,12 +219,6 @@ declare global {
     type CommandCreateSubBlockData = {
         parentblockid: string;
         blockdef: BlockDef;
-    };
-
-    // wshrpc.CommandDeleteAppFileData
-    type CommandDeleteAppFileData = {
-        appid: string;
-        filename: string;
     };
 
     // wshrpc.CommandDeleteBlockData
@@ -402,58 +352,9 @@ declare global {
     type CommandJobStartStreamData = {
     };
 
-    // wshrpc.CommandListAllAppFilesData
-    type CommandListAllAppFilesData = {
-        appid: string;
-    };
-
-    // wshrpc.CommandListAllAppFilesRtnData
-    type CommandListAllAppFilesRtnData = {
-        path: string;
-        absolutepath: string;
-        parentdir?: string;
-        entries: DirEntryOut[];
-        entrycount: number;
-        totalentries: number;
-        truncated?: boolean;
-    };
-
-    // wshrpc.CommandMakeDraftFromLocalData
-    type CommandMakeDraftFromLocalData = {
-        localappid: string;
-    };
-
-    // wshrpc.CommandMakeDraftFromLocalRtnData
-    type CommandMakeDraftFromLocalRtnData = {
-        draftappid: string;
-    };
-
     // wshrpc.CommandMessageData
     type CommandMessageData = {
         message: string;
-    };
-
-    // wshrpc.CommandPublishAppData
-    type CommandPublishAppData = {
-        appid: string;
-    };
-
-    // wshrpc.CommandPublishAppRtnData
-    type CommandPublishAppRtnData = {
-        publishedappid: string;
-    };
-
-    // wshrpc.CommandReadAppFileData
-    type CommandReadAppFileData = {
-        appid: string;
-        filename: string;
-    };
-
-    // wshrpc.CommandReadAppFileRtnData
-    type CommandReadAppFileRtnData = {
-        data64: string;
-        notfound?: boolean;
-        modts?: number;
     };
 
     // wshrpc.CommandRemoteDisconnectFromJobManagerData
@@ -521,13 +422,6 @@ declare global {
         jobmanagerstartts: number;
     };
 
-    // wshrpc.CommandRenameAppFileData
-    type CommandRenameAppFileData = {
-        appid: string;
-        fromfilename: string;
-        tofilename: string;
-    };
-
     // wshrpc.CommandResolveIdsData
     type CommandResolveIdsData = {
         blockid: string;
@@ -537,11 +431,6 @@ declare global {
     // wshrpc.CommandResolveIdsRtnData
     type CommandResolveIdsRtnData = {
         resolvedids: {[key: string]: ORef};
-    };
-
-    // wshrpc.CommandRestartBuilderAndWaitData
-    type CommandRestartBuilderAndWaitData = {
-        builderid: string;
     };
 
     // wshrpc.CommandSetMetaData
@@ -555,11 +444,6 @@ declare global {
         oref: ORef;
         data: ObjRTInfo;
         delete?: boolean;
-    };
-
-    // wshrpc.CommandStartBuilderData
-    type CommandStartBuilderData = {
-        builderid: string;
     };
 
     // wshrpc.CommandStartJobData
@@ -677,30 +561,6 @@ declare global {
         opts?: WebSelectorOpts;
     };
 
-    // wshrpc.CommandWriteAppFileData
-    type CommandWriteAppFileData = {
-        appid: string;
-        filename: string;
-        data64: string;
-    };
-
-    // wshrpc.CommandWriteAppGoFileData
-    type CommandWriteAppGoFileData = {
-        appid: string;
-        data64: string;
-    };
-
-    // wshrpc.CommandWriteAppGoFileRtnData
-    type CommandWriteAppGoFileRtnData = {
-        data64: string;
-    };
-
-    // wshrpc.CommandWriteAppSecretBindingsData
-    type CommandWriteAppSecretBindingsData = {
-        appid: string;
-        bindings: {[key: string]: string};
-    };
-
     // wshrpc.CommandWriteTempFileData
     type CommandWriteTempFileData = {
         filename: string;
@@ -788,27 +648,6 @@ declare global {
     type CpuDataRequest = {
         id: string;
         count: number;
-    };
-
-    // wshrpc.DirEntryOut
-    type DirEntryOut = {
-        name: string;
-        dir?: boolean;
-        symlink?: boolean;
-        size?: number;
-        mode: string;
-        modified: string;
-        modifiedtime: string;
-    };
-
-    // vdom.DomRect
-    type DomRect = {
-        top: number;
-        left: number;
-        right: number;
-        bottom: number;
-        width: number;
-        height: number;
     };
 
     // wshrpc.FetchSuggestionsData
@@ -1063,8 +902,6 @@ declare global {
         "term:localshellpath"?: string;
         "term:localshellopts"?: string[];
         "term:scrollback"?: number;
-        "term:vdomblockid"?: string;
-        "term:vdomtoolbarblockid"?: string;
         "term:transparency"?: number;
         "term:allowbracketedpaste"?: boolean;
         "term:shiftenternewline"?: boolean;
@@ -1076,17 +913,6 @@ declare global {
         "web:useragenttype"?: string;
         "markdown:fontsize"?: number;
         "markdown:fixedfontsize"?: number;
-        "tsunami:*"?: boolean;
-        "tsunami:sdkreplacepath"?: string;
-        "tsunami:apppath"?: string;
-        "tsunami:appid"?: string;
-        "tsunami:scaffoldpath"?: string;
-        "tsunami:env"?: {[key: string]: string};
-        "vdom:*"?: boolean;
-        "vdom:initialized"?: boolean;
-        "vdom:correlationid"?: string;
-        "vdom:route"?: string;
-        "vdom:persist"?: boolean;
         "onboarding:githubstar"?: boolean;
         "onboarding:lastversion"?: string;
         count?: number;
@@ -1167,13 +993,6 @@ declare global {
         shell: string;
     };
 
-    // wshrpc.RestartBuilderAndWaitResult
-    type RestartBuilderAndWaitResult = {
-        success: boolean;
-        errormessage?: string;
-        buildoutput: string;
-    };
-
     // wshrpc.RpcContext
     type RpcContext = {
         sockname?: string;
@@ -1211,12 +1030,6 @@ declare global {
         winsize?: WinSize;
     };
 
-    // wshrpc.SecretMeta
-    type SecretMeta = {
-        desc: string;
-        optional: boolean;
-    };
-
     // wconfig.SettingsType
     type SettingsType = {
         "app:*"?: boolean;
@@ -1225,7 +1038,6 @@ declare global {
         "app:defaultnewblock"?: string;
         "app:showoverlayblocknums"?: boolean;
         "app:ctrlvpaste"?: boolean;
-        "feature:waveappbuilder"?: boolean;
         "ai:*"?: boolean;
         "ai:preset"?: string;
         "ai:apitype"?: string;
@@ -1306,11 +1118,6 @@ declare global {
         "debug:*"?: boolean;
         "debug:pprofport"?: number;
         "debug:pprofmemprofilerate"?: number;
-        "tsunami:*"?: boolean;
-        "tsunami:scaffoldpath"?: string;
-        "tsunami:sdkreplacepath"?: string;
-        "tsunami:sdkversion"?: string;
-        "tsunami:gopath"?: string;
     };
 
     // waveobj.StickerClickOptsType
@@ -1601,199 +1408,6 @@ declare global {
         checkboxstat?: boolean;
     };
 
-    // vdom.VDomAsyncInitiationRequest
-    type VDomAsyncInitiationRequest = {
-        type: "asyncinitiationrequest";
-        ts: number;
-        blockid?: string;
-    };
-
-    // vdom.VDomBackendOpts
-    type VDomBackendOpts = {
-        closeonctrlc?: boolean;
-        globalkeyboardevents?: boolean;
-        globalstyles?: boolean;
-    };
-
-    // vdom.VDomBackendUpdate
-    type VDomBackendUpdate = {
-        type: "backendupdate";
-        ts: number;
-        blockid: string;
-        opts?: VDomBackendOpts;
-        haswork?: boolean;
-        renderupdates?: VDomRenderUpdate[];
-        transferelems?: VDomTransferElem[];
-        statesync?: VDomStateSync[];
-        refoperations?: VDomRefOperation[];
-        messages?: VDomMessage[];
-    };
-
-    // vdom.VDomBinding
-    type VDomBinding = {
-        type: "binding";
-        bind: string;
-    };
-
-    // vdom.VDomCreateContext
-    type VDomCreateContext = {
-        type: "createcontext";
-        ts: number;
-        meta?: MetaType;
-        target?: VDomTarget;
-        persist?: boolean;
-    };
-
-    // vdom.VDomElem
-    type VDomElem = {
-        waveid?: string;
-        tag: string;
-        props?: {[key: string]: any};
-        children?: VDomElem[];
-        text?: string;
-    };
-
-    // vdom.VDomEvent
-    type VDomEvent = {
-        waveid: string;
-        eventtype: string;
-        globaleventtype?: string;
-        targetvalue?: string;
-        targetchecked?: boolean;
-        targetname?: string;
-        targetid?: string;
-        keydata?: WaveKeyboardEvent;
-        mousedata?: WavePointerData;
-    };
-
-    // vdom.VDomFrontendUpdate
-    type VDomFrontendUpdate = {
-        type: "frontendupdate";
-        ts: number;
-        blockid: string;
-        correlationid?: string;
-        dispose?: boolean;
-        resync?: boolean;
-        rendercontext?: VDomRenderContext;
-        events?: VDomEvent[];
-        statesync?: VDomStateSync[];
-        refupdates?: VDomRefUpdate[];
-        messages?: VDomMessage[];
-    };
-
-    // vdom.VDomFunc
-    type VDomFunc = {
-        type: "func";
-        stoppropagation?: boolean;
-        preventdefault?: boolean;
-        globalevent?: string;
-        #keys?: string[];
-    };
-
-    // vdom.VDomMessage
-    type VDomMessage = {
-        messagetype: string;
-        message: string;
-        stacktrace?: string;
-        params?: any[];
-    };
-
-    // vdom.VDomRef
-    type VDomRef = {
-        type: "ref";
-        refid: string;
-        trackposition?: boolean;
-        position?: VDomRefPosition;
-        hascurrent?: boolean;
-    };
-
-    // vdom.VDomRefOperation
-    type VDomRefOperation = {
-        refid: string;
-        op: string;
-        params?: any[];
-        outputref?: string;
-    };
-
-    // vdom.VDomRefPosition
-    type VDomRefPosition = {
-        offsetheight: number;
-        offsetwidth: number;
-        scrollheight: number;
-        scrollwidth: number;
-        scrolltop: number;
-        boundingclientrect: DomRect;
-    };
-
-    // vdom.VDomRefUpdate
-    type VDomRefUpdate = {
-        refid: string;
-        hascurrent: boolean;
-        position?: VDomRefPosition;
-    };
-
-    // vdom.VDomRenderContext
-    type VDomRenderContext = {
-        blockid: string;
-        focused: boolean;
-        width: number;
-        height: number;
-        rootrefid: string;
-        background?: boolean;
-    };
-
-    // vdom.VDomRenderUpdate
-    type VDomRenderUpdate = {
-        updatetype: "root"|"append"|"replace"|"remove"|"insert";
-        waveid?: string;
-        vdomwaveid?: string;
-        vdom?: VDomElem;
-        index?: number;
-    };
-
-    // vdom.VDomStateSync
-    type VDomStateSync = {
-        atom: string;
-        value: any;
-    };
-
-    // vdom.VDomTarget
-    type VDomTarget = {
-        newblock?: boolean;
-        magnified?: boolean;
-        toolbar?: VDomTargetToolbar;
-    };
-
-    // vdom.VDomTargetToolbar
-    type VDomTargetToolbar = {
-        toolbar: boolean;
-        height?: string;
-    };
-
-    // vdom.VDomTransferElem
-    type VDomTransferElem = {
-        waveid?: string;
-        tag: string;
-        props?: {[key: string]: any};
-        children?: string[];
-        text?: string;
-    };
-
-    // wshrpc.VDomUrlRequestData
-    type VDomUrlRequestData = {
-        method: string;
-        url: string;
-        headers: {[key: string]: string};
-        body?: string;
-    };
-
-    // wshrpc.VDomUrlRequestResponse
-    type VDomUrlRequestResponse = {
-        statuscode?: number;
-        headers?: {[key: string]: string};
-        body?: string;
-    };
-
     type WSCommandType = {
         wscommand: string;
     } & ( WSRpcCommand );
@@ -1900,21 +1514,6 @@ declare global {
         datadir: string;
     };
 
-    // vdom.WaveKeyboardEvent
-    type WaveKeyboardEvent = {
-        type: "keydown"|"keyup"|"keypress"|"unknown";
-        key: string;
-        code: string;
-        repeat?: boolean;
-        location?: number;
-        shift?: boolean;
-        control?: boolean;
-        alt?: boolean;
-        meta?: boolean;
-        cmd?: boolean;
-        option?: boolean;
-    };
-
     // wshrpc.WaveNotificationOptions
     type WaveNotificationOptions = {
         title?: string;
@@ -1936,26 +1535,6 @@ declare global {
         otype: string;
         oid: string;
         obj?: WaveObj;
-    };
-
-    // vdom.WavePointerData
-    type WavePointerData = {
-        button: number;
-        buttons: number;
-        clientx?: number;
-        clienty?: number;
-        pagex?: number;
-        pagey?: number;
-        screenx?: number;
-        screeny?: number;
-        movementx?: number;
-        movementy?: number;
-        shift?: boolean;
-        control?: boolean;
-        alt?: boolean;
-        meta?: boolean;
-        cmd?: boolean;
-        option?: boolean;
     };
 
     // waveobj.Window

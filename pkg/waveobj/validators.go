@@ -688,15 +688,6 @@ var blockValidators = map[string]ValidationFunc{
 	MetaKey_File: func(k string, v interface{}) error {
 		return ValidatePath(k, v, false) // can be file or directory
 	},
-	MetaKey_TsunamiAppPath: func(k string, v interface{}) error {
-		return ValidatePath(k, v, true)
-	},
-	MetaKey_TsunamiScaffoldPath: func(k string, v interface{}) error {
-		return ValidatePath(k, v, true)
-	},
-	MetaKey_TsunamiSdkReplacePath: func(k string, v interface{}) error {
-		return ValidatePath(k, v, true)
-	},
 	MetaKey_TermLocalShellPath: func(k string, v interface{}) error {
 		return ValidatePath(k, v, false) // executable file
 	},
@@ -785,12 +776,6 @@ var blockValidators = map[string]ValidationFunc{
 	MetaKey_WebUserAgentType: func(k string, v interface{}) error {
 		return ValidateString(k, v, 64)
 	},
-	MetaKey_VDomCorrelationId: func(k string, v interface{}) error {
-		return ValidateString(k, v, MaxStringLength)
-	},
-	MetaKey_VDomRoute: func(k string, v interface{}) error {
-		return ValidateString(k, v, MaxURLLength)
-	},
 
 	// Numeric fields
 	MetaKey_TermFontSize: func(k string, v interface{}) error {
@@ -855,8 +840,6 @@ var blockValidators = map[string]ValidationFunc{
 	MetaKey_EditorStickyScrollEnabled: ValidateBool,
 	MetaKey_EditorWordWrap:          ValidateBool,
 	MetaKey_WebHideNav:              ValidateBool,
-	MetaKey_VDomInitialized:         ValidateBool,
-	MetaKey_VDomPersist:             ValidateBool,
 	MetaKey_TermAllowBracketedPaste: ValidateBool,
 	MetaKey_TermShiftEnterNewline:   ValidateBool,
 	MetaKey_TermMacOptionIsMeta:     ValidateBool,

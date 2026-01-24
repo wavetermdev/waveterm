@@ -9,7 +9,6 @@ class GlobalModel {
     private static instance: GlobalModel;
 
     windowId: string;
-    builderId: string;
     platform: NodeJS.Platform;
 
     windowDataAtom!: Atom<WaveWindow>;
@@ -29,7 +28,6 @@ class GlobalModel {
     async initialize(initOpts: GlobalInitOptions): Promise<void> {
         ClientModel.getInstance().initialize(initOpts.clientId);
         this.windowId = initOpts.windowId;
-        this.builderId = initOpts.builderId;
         this.platform = initOpts.platform;
 
         this.windowDataAtom = atom((get) => {

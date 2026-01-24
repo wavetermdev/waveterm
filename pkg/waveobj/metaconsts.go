@@ -115,8 +115,6 @@ const (
 	MetaKey_TermLocalShellPath               = "term:localshellpath"
 	MetaKey_TermLocalShellOpts               = "term:localshellopts"
 	MetaKey_TermScrollback                   = "term:scrollback"
-	MetaKey_TermVDomSubBlockId               = "term:vdomblockid"
-	MetaKey_TermVDomToolbarBlockId           = "term:vdomtoolbarblockid"
 	MetaKey_TermTransparency                 = "term:transparency"
 	MetaKey_TermAllowBracketedPaste          = "term:allowbracketedpaste"
 	MetaKey_TermShiftEnterNewline            = "term:shiftenternewline"
@@ -130,19 +128,6 @@ const (
 
 	MetaKey_MarkdownFontSize                 = "markdown:fontsize"
 	MetaKey_MarkdownFixedFontSize            = "markdown:fixedfontsize"
-
-	MetaKey_TsunamiClear                     = "tsunami:*"
-	MetaKey_TsunamiSdkReplacePath            = "tsunami:sdkreplacepath"
-	MetaKey_TsunamiAppPath                   = "tsunami:apppath"
-	MetaKey_TsunamiAppId                     = "tsunami:appid"
-	MetaKey_TsunamiScaffoldPath              = "tsunami:scaffoldpath"
-	MetaKey_TsunamiEnv                       = "tsunami:env"
-
-	MetaKey_VDomClear                        = "vdom:*"
-	MetaKey_VDomInitialized                  = "vdom:initialized"
-	MetaKey_VDomCorrelationId                = "vdom:correlationid"
-	MetaKey_VDomRoute                        = "vdom:route"
-	MetaKey_VDomPersist                      = "vdom:persist"
 
 	MetaKey_OnboardingGithubStar             = "onboarding:githubstar"
 	MetaKey_OnboardingLastVersion            = "onboarding:lastversion"

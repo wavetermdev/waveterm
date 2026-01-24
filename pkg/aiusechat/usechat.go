@@ -11,7 +11,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"os/user"
 	"regexp"
 	"strings"
 	"sync"
@@ -27,7 +26,6 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/util/ds"
 	"github.com/wavetermdev/waveterm/pkg/util/logutil"
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
-	"github.com/wavetermdev/waveterm/pkg/waveappstore"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/web/sse"
@@ -82,9 +80,6 @@ func getWaveAISettings(premium bool, builderMode bool, rtInfo waveobj.ObjRTInfo,
 	aiMode, config, err := resolveAIMode(aiModeName, premium)
 	if err != nil {
 		return nil, err
-	}
-	if config.WaveAICloud && !telemetry.IsTelemetryEnabled() {
-		return nil, fmt.Errorf("Wave AI cloud modes require telemetry to be enabled")
 	}
 	apiToken := config.APIToken
 	if apiToken == "" && config.APITokenSecretName != "" {
@@ -702,20 +697,6 @@ func WaveAIPostMessageHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if req.BuilderAppId != "" {
-		chatOpts.BuilderAppGenerator = func() (string, string, string, error) {
-			return generateBuilderAppData(req.BuilderAppId)
-		}
-	}
-
-	if req.BuilderAppId != "" {
-		chatOpts.Tools = append(chatOpts.Tools,
-			GetBuilderWriteAppFileToolDefinition(req.BuilderAppId, req.BuilderId),
-			GetBuilderEditAppFileToolDefinition(req.BuilderAppId, req.BuilderId),
-			GetBuilderListFilesToolDefinition(req.BuilderAppId),
-		)
-	}
-
 	// Validate the message
 	if err := req.Msg.Validate(); err != nil {
 		http.Error(w, fmt.Sprintf("Message validation failed: %v", err), http.StatusInternalServerError)
@@ -835,51 +816,4 @@ func CreateWriteTextFileDiff(ctx context.Context, chatId string, toolCallId stri
 
 	modifiedContent := []byte(params.Contents)
 	return originalContent, modifiedContent, nil
-}
-
-type StaticFileInfo struct {
-	Name         string `json:"name"`
-	Size         int64  `json:"size"`
-	Modified     string `json:"modified"`
-	ModifiedTime string `json:"modified_time"`
-}
-
-func generateBuilderAppData(appId string) (string, string, string, error) {
-	appGoFile := ""
-	fileData, err := waveappstore.ReadAppFile(appId, "app.go")
-	if err == nil {
-		appGoFile = string(fileData.Contents)
-	}
-
-	staticFilesJSON := ""
-	allFiles, err := waveappstore.ListAllAppFiles(appId)
-	if err == nil {
-		var staticFiles []StaticFileInfo
-		for _, entry := range allFiles.Entries {
-			if strings.HasPrefix(entry.Name, "static/") {
-				staticFiles = append(staticFiles, StaticFileInfo{
-					Name:         entry.Name,
-					Size:         entry.Size,
-					Modified:     entry.Modified,
-					ModifiedTime: entry.ModifiedTime,
-				})
-			}
-		}
-
-		if len(staticFiles) > 0 {
-			staticFilesBytes, marshalErr := json.Marshal(staticFiles)
-			if marshalErr == nil {
-				staticFilesJSON = string(staticFilesBytes)
-			}
-		}
-	}
-
-	platformInfo := wavebase.GetSystemSummary()
-	if currentUser, userErr := user.Current(); userErr == nil && currentUser.Username != "" {
-		platformInfo = fmt.Sprintf("Local Machine: %s, User: %s", platformInfo, currentUser.Username)
-	} else {
-		platformInfo = fmt.Sprintf("Local Machine: %s", platformInfo)
-	}
-
-	return appGoFile, staticFilesJSON, platformInfo, nil
 }

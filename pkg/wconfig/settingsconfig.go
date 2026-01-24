@@ -60,8 +60,6 @@ type SettingsType struct {
 	AppShowOverlayBlockNums       *bool  `json:"app:showoverlayblocknums,omitempty"`
 	AppCtrlVPaste                 *bool  `json:"app:ctrlvpaste,omitempty"`
 
-	FeatureWaveAppBuilder bool `json:"feature:waveappbuilder,omitempty"`
-
 	AiClear         bool    `json:"ai:*,omitempty"`
 	AiPreset        string  `json:"ai:preset,omitempty"`
 	AiApiType       string  `json:"ai:apitype,omitempty"`
@@ -156,12 +154,6 @@ type SettingsType struct {
 	DebugClear               bool `json:"debug:*,omitempty"`
 	DebugPprofPort           *int `json:"debug:pprofport,omitempty"`
 	DebugPprofMemProfileRate *int `json:"debug:pprofmemprofilerate,omitempty"`
-
-	TsunamiClear          bool   `json:"tsunami:*,omitempty"`
-	TsunamiScaffoldPath   string `json:"tsunami:scaffoldpath,omitempty"`
-	TsunamiSdkReplacePath string `json:"tsunami:sdkreplacepath,omitempty"`
-	TsunamiSdkVersion     string `json:"tsunami:sdkversion,omitempty"`
-	TsunamiGoPath         string `json:"tsunami:gopath,omitempty"`
 }
 
 func (s *SettingsType) GetAiSettings() *AiSettingsType {
