@@ -1,0 +1,682 @@
+// Copyright 2025, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
+// ============================================
+// Settings Control Components - SCSS
+// ============================================
+
+// Common variables for settings controls
+$setting-modified-color: #e2c08d; // VS Code modified indicator color
+$setting-control-height: 28px;
+$setting-border-radius: 4px;
+$setting-input-padding: 6px 10px;
+$setting-gap: 8px;
+
+// ============================================
+// Setting Row (Wrapper Component)
+// ============================================
+
+.setting-row {
+    display: flex;
+    flex-direction: column;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border-color);
+    border-left: 3px solid transparent;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+
+    &:hover {
+        background: var(--hover-bg-color);
+    }
+
+    &.modified {
+        border-left-color: $setting-modified-color;
+    }
+
+    &.disabled {
+        opacity: 0.5;
+        pointer-events: none;
+    }
+}
+
+.setting-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+}
+
+.setting-label-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.setting-label {
+    font-weight: 500;
+    font-size: 13px;
+    color: var(--main-text-color);
+}
+
+.setting-restart-badge {
+    font-size: 10px;
+    padding: 2px 6px;
+    background: var(--warning-color);
+    color: #000;
+    border-radius: 3px;
+    font-weight: 500;
+}
+
+.setting-reset-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: var(--secondary-text-color);
+    cursor: pointer;
+    border-radius: $setting-border-radius;
+    opacity: 0.7;
+    transition: opacity 0.15s ease, background-color 0.15s ease;
+
+    &:hover {
+        opacity: 1;
+        background: var(--hover-bg-color);
+    }
+
+    i {
+        font-size: 11px;
+    }
+}
+
+.setting-control-container {
+    flex-shrink: 0;
+}
+
+.setting-description {
+    color: var(--secondary-text-color);
+    font-size: 12px;
+    margin-top: 6px;
+    line-height: 1.4;
+}
+
+// ============================================
+// Toggle Control
+// ============================================
+
+.setting-toggle {
+    position: relative;
+    display: inline-block;
+    width: 36px;
+    height: 20px;
+    cursor: pointer;
+
+    &.disabled {
+        cursor: not-allowed;
+        opacity: 0.5;
+    }
+
+    input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+        position: absolute;
+    }
+
+    .setting-toggle-slider {
+        position: absolute;
+        content: "";
+        top: 0;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background-color: var(--toggle-bg-color);
+        transition: background-color 0.2s ease;
+        border-radius: 10px;
+
+        &::before {
+            position: absolute;
+            content: "";
+            height: 16px;
+            width: 16px;
+            left: 2px;
+            bottom: 2px;
+            background-color: var(--toggle-thumb-color);
+            transition: transform 0.2s ease;
+            border-radius: 50%;
+        }
+    }
+
+    input:checked + .setting-toggle-slider {
+        background-color: var(--toggle-checked-bg-color);
+    }
+
+    input:checked + .setting-toggle-slider::before {
+        transform: translateX(16px);
+    }
+
+    &:focus-visible {
+        outline: 2px solid var(--accent-color);
+        outline-offset: 2px;
+        border-radius: 10px;
+    }
+}
+
+// ============================================
+// Number Control
+// ============================================
+
+.setting-number {
+    display: flex;
+    align-items: center;
+    background: var(--form-element-bg-color);
+    border: 1px solid var(--form-element-border-color);
+    border-radius: $setting-border-radius;
+    overflow: hidden;
+
+    &.disabled {
+        opacity: 0.5;
+        pointer-events: none;
+    }
+}
+
+.setting-number-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: $setting-control-height;
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: var(--secondary-text-color);
+    cursor: pointer;
+    transition: background-color 0.15s ease, color 0.15s ease;
+
+    &:hover:not(:disabled) {
+        background: var(--hover-bg-color);
+        color: var(--main-text-color);
+    }
+
+    &:disabled {
+        opacity: 0.3;
+        cursor: not-allowed;
+    }
+
+    i {
+        font-size: 10px;
+    }
+}
+
+.setting-number-input {
+    width: 60px;
+    height: $setting-control-height;
+    padding: 0 4px;
+    border: none;
+    background: transparent;
+    color: var(--form-element-text-color);
+    text-align: center;
+    font-size: 12px;
+    outline: none;
+
+    &:focus {
+        background: var(--hover-bg-color);
+    }
+}
+
+// ============================================
+// Slider Control
+// ============================================
+
+.setting-slider {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 200px;
+
+    &.disabled {
+        opacity: 0.5;
+        pointer-events: none;
+    }
+}
+
+.setting-slider-input {
+    flex: 1;
+    height: 4px;
+    -webkit-appearance: none;
+    appearance: none;
+    background: var(--form-element-border-color);
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+
+    // Track gradient to show fill
+    background: linear-gradient(
+        to right,
+        var(--accent-color) 0%,
+        var(--accent-color) var(--slider-fill, 0%),
+        var(--form-element-border-color) var(--slider-fill, 0%),
+        var(--form-element-border-color) 100%
+    );
+
+    &::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        background: var(--main-text-color);
+        cursor: pointer;
+        border: none;
+        transition: transform 0.15s ease;
+
+        &:hover {
+            transform: scale(1.15);
+        }
+    }
+
+    &::-moz-range-thumb {
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        background: var(--main-text-color);
+        cursor: pointer;
+        border: none;
+        transition: transform 0.15s ease;
+
+        &:hover {
+            transform: scale(1.15);
+        }
+    }
+
+    &:focus-visible {
+        outline: 2px solid var(--accent-color);
+        outline-offset: 2px;
+    }
+}
+
+.setting-slider-value {
+    min-width: 50px;
+    font-size: 12px;
+    color: var(--secondary-text-color);
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+// ============================================
+// Text Control
+// ============================================
+
+.setting-text {
+    &.disabled {
+        opacity: 0.5;
+        pointer-events: none;
+    }
+}
+
+.setting-text-input {
+    width: 200px;
+    height: $setting-control-height;
+    padding: $setting-input-padding;
+    border: 1px solid var(--form-element-border-color);
+    border-radius: $setting-border-radius;
+    background: var(--form-element-bg-color);
+    color: var(--form-element-text-color);
+    font-size: 12px;
+    outline: none;
+    transition: border-color 0.15s ease;
+
+    &:focus {
+        border-color: var(--form-element-primary-color);
+    }
+
+    &.invalid {
+        border-color: var(--form-element-error-color);
+    }
+
+    // Textarea variant
+    textarea& {
+        height: auto;
+        resize: vertical;
+        min-height: 60px;
+    }
+}
+
+// ============================================
+// Select Control
+// ============================================
+
+.setting-select {
+    position: relative;
+    display: inline-flex;
+
+    &.disabled {
+        opacity: 0.5;
+        pointer-events: none;
+    }
+}
+
+.setting-select-input {
+    width: 180px;
+    height: $setting-control-height;
+    padding: 0 28px 0 10px;
+    border: 1px solid var(--form-element-border-color);
+    border-radius: $setting-border-radius;
+    background: var(--form-element-bg-color);
+    color: var(--form-element-text-color);
+    font-size: 12px;
+    outline: none;
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+    transition: border-color 0.15s ease;
+
+    &:focus {
+        border-color: var(--form-element-primary-color);
+    }
+
+    option {
+        background: var(--form-element-bg-color);
+        color: var(--form-element-text-color);
+    }
+}
+
+.setting-select-icon {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 10px;
+    color: var(--secondary-text-color);
+    pointer-events: none;
+}
+
+// ============================================
+// Color Control
+// ============================================
+
+.setting-color {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    &.disabled {
+        opacity: 0.5;
+        pointer-events: none;
+    }
+}
+
+.setting-color-swatch {
+    width: 28px;
+    height: 28px;
+    border: 2px solid var(--form-element-border-color);
+    border-radius: $setting-border-radius;
+    cursor: pointer;
+    padding: 0;
+    transition: border-color 0.15s ease;
+
+    &:hover {
+        border-color: var(--form-element-primary-color);
+    }
+
+    &:focus-visible {
+        outline: 2px solid var(--accent-color);
+        outline-offset: 2px;
+    }
+}
+
+.setting-color-picker {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+    pointer-events: none;
+}
+
+.setting-color-input {
+    width: 80px;
+    height: $setting-control-height;
+    padding: $setting-input-padding;
+    border: 1px solid var(--form-element-border-color);
+    border-radius: $setting-border-radius;
+    background: var(--form-element-bg-color);
+    color: var(--form-element-text-color);
+    font-size: 12px;
+    font-family: monospace;
+    outline: none;
+    transition: border-color 0.15s ease;
+
+    &:focus {
+        border-color: var(--form-element-primary-color);
+    }
+}
+
+// ============================================
+// Font Control
+// ============================================
+
+.setting-font {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+
+    &.disabled {
+        opacity: 0.5;
+        pointer-events: none;
+    }
+}
+
+.setting-font-input-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.setting-font-input {
+    width: 200px;
+    height: $setting-control-height;
+    padding: $setting-input-padding;
+    border: 1px solid var(--form-element-border-color);
+    border-radius: $setting-border-radius;
+    background: var(--form-element-bg-color);
+    color: var(--form-element-text-color);
+    font-size: 12px;
+    outline: none;
+    transition: border-color 0.15s ease;
+
+    &:focus {
+        border-color: var(--form-element-primary-color);
+    }
+}
+
+.setting-font-preview {
+    padding: 8px 12px;
+    background: var(--block-bg-color);
+    border-radius: $setting-border-radius;
+    font-size: 14px;
+    color: var(--secondary-text-color);
+    max-width: 400px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+// ============================================
+// Path Control
+// ============================================
+
+.setting-path {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+
+    &.disabled {
+        opacity: 0.5;
+        pointer-events: none;
+    }
+}
+
+.setting-path-input {
+    flex: 1;
+    min-width: 200px;
+    max-width: 300px;
+    height: $setting-control-height;
+    padding: $setting-input-padding;
+    border: 1px solid var(--form-element-border-color);
+    border-radius: $setting-border-radius;
+    background: var(--form-element-bg-color);
+    color: var(--form-element-text-color);
+    font-size: 12px;
+    font-family: monospace;
+    outline: none;
+    transition: border-color 0.15s ease;
+
+    &:focus {
+        border-color: var(--form-element-primary-color);
+    }
+}
+
+.setting-path-browse {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: $setting-control-height;
+    height: $setting-control-height;
+    padding: 0;
+    border: 1px solid var(--form-element-border-color);
+    border-radius: $setting-border-radius;
+    background: var(--form-element-bg-color);
+    color: var(--secondary-text-color);
+    cursor: pointer;
+    transition: background-color 0.15s ease, color 0.15s ease;
+
+    &:hover:not(:disabled) {
+        background: var(--hover-bg-color);
+        color: var(--main-text-color);
+    }
+
+    &:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    i {
+        font-size: 12px;
+    }
+}
+
+// ============================================
+// String List Control
+// ============================================
+
+.setting-stringlist {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 300px;
+
+    &.disabled {
+        opacity: 0.5;
+        pointer-events: none;
+    }
+}
+
+.setting-stringlist-items {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.setting-stringlist-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.setting-stringlist-input {
+    flex: 1;
+    height: $setting-control-height;
+    padding: $setting-input-padding;
+    border: 1px solid var(--form-element-border-color);
+    border-radius: $setting-border-radius;
+    background: var(--form-element-bg-color);
+    color: var(--form-element-text-color);
+    font-size: 12px;
+    outline: none;
+    transition: border-color 0.15s ease;
+
+    &:focus {
+        border-color: var(--form-element-primary-color);
+    }
+}
+
+.setting-stringlist-actions {
+    display: flex;
+    gap: 2px;
+}
+
+.setting-stringlist-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: var(--secondary-text-color);
+    cursor: pointer;
+    border-radius: $setting-border-radius;
+    transition: background-color 0.15s ease, color 0.15s ease;
+
+    &:hover:not(:disabled) {
+        background: var(--hover-bg-color);
+        color: var(--main-text-color);
+    }
+
+    &:disabled {
+        opacity: 0.3;
+        cursor: not-allowed;
+    }
+
+    &.setting-stringlist-remove:hover:not(:disabled) {
+        color: var(--error-color);
+    }
+
+    i {
+        font-size: 10px;
+    }
+}
+
+.setting-stringlist-add {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    height: $setting-control-height;
+    padding: 0 12px;
+    border: 1px dashed var(--form-element-border-color);
+    border-radius: $setting-border-radius;
+    background: transparent;
+    color: var(--secondary-text-color);
+    font-size: 12px;
+    cursor: pointer;
+    transition: border-color 0.15s ease, color 0.15s ease;
+
+    &:hover:not(:disabled) {
+        border-color: var(--form-element-primary-color);
+        color: var(--main-text-color);
+    }
+
+    &:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    i {
+        font-size: 10px;
+    }
+}
