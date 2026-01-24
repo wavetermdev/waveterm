@@ -1,0 +1,653 @@
+// Copyright 2025, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
+// ============================================
+// Settings Visual Component Styles
+// VS Code-like settings panel experience
+// ============================================
+
+// Modified indicator color (matches VS Code)
+$setting-modified-color: #e2c08d;
+
+// Sidebar width
+$sidebar-width: 200px;
+
+// ============================================
+// Main Layout Container
+// ============================================
+
+.settings-visual {
+    display: flex;
+    height: 100%;
+    width: 100%;
+    background: var(--main-bg-color);
+    overflow: hidden;
+
+    // ========================================
+    // Category Sidebar
+    // ========================================
+
+    .settings-sidebar {
+        width: $sidebar-width;
+        min-width: $sidebar-width;
+        border-right: 1px solid var(--border-color);
+        overflow-y: auto;
+        background: var(--main-bg-color);
+        flex-shrink: 0;
+
+        .category-list {
+            padding: 8px 0;
+        }
+
+        .category-item {
+            display: flex;
+            align-items: center;
+            padding: 8px 16px;
+            cursor: pointer;
+            gap: 10px;
+            color: var(--secondary-text-color);
+            transition: background-color 0.15s ease, color 0.15s ease;
+            user-select: none;
+
+            &:hover {
+                background: var(--hover-bg-color);
+                color: var(--main-text-color);
+            }
+
+            &.active {
+                background: var(--highlight-bg-color);
+                color: var(--main-text-color);
+                border-left: 3px solid var(--accent-color);
+                padding-left: 13px;
+            }
+
+            .category-icon {
+                width: 18px;
+                text-align: center;
+                font-size: 14px;
+                opacity: 0.8;
+                flex-shrink: 0;
+
+                i {
+                    width: 18px;
+                }
+            }
+
+            .category-name {
+                flex: 1;
+                font-size: 13px;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+
+            .category-count {
+                font-size: 11px;
+                color: var(--grey-text-color);
+                background: var(--panel-bg-color);
+                padding: 2px 6px;
+                border-radius: 10px;
+                flex-shrink: 0;
+            }
+
+            .modified-badge {
+                width: 8px;
+                height: 8px;
+                border-radius: 50%;
+                background: $setting-modified-color;
+                flex-shrink: 0;
+            }
+        }
+    }
+
+    // ========================================
+    // Main Content Area
+    // ========================================
+
+    .settings-main {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+        overflow: hidden;
+    }
+
+    // ========================================
+    // Search Bar
+    // ========================================
+
+    .search-bar {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        padding: 12px 16px;
+        background: var(--main-bg-color);
+        border-bottom: 1px solid var(--border-color);
+        flex-shrink: 0;
+    }
+
+    .settings-search-input {
+        display: flex;
+        align-items: center;
+        background: var(--form-element-bg-color);
+        border: 1px solid var(--form-element-border-color);
+        border-radius: 6px;
+        padding: 0 12px;
+        transition: border-color 0.15s ease, box-shadow 0.15s ease;
+
+        &:focus-within {
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 2px rgb(from var(--accent-color) r g b / 0.2);
+        }
+
+        .search-icon {
+            color: var(--grey-text-color);
+            margin-right: 8px;
+            font-size: 13px;
+        }
+
+        .search-input {
+            flex: 1;
+            padding: 8px 0;
+            background: transparent;
+            border: none;
+            color: var(--main-text-color);
+            font-size: 14px;
+            outline: none;
+
+            &::placeholder {
+                color: var(--grey-text-color);
+            }
+        }
+
+        .result-count {
+            font-size: 12px;
+            color: var(--grey-text-color);
+            margin-right: 8px;
+            white-space: nowrap;
+        }
+
+        .clear-btn {
+            padding: 4px 6px;
+            background: transparent;
+            border: none;
+            color: var(--grey-text-color);
+            cursor: pointer;
+            border-radius: 4px;
+            transition: background-color 0.15s ease, color 0.15s ease;
+
+            &:hover {
+                background: var(--hover-bg-color);
+                color: var(--main-text-color);
+            }
+        }
+    }
+
+    // ========================================
+    // Settings List
+    // ========================================
+
+    .settings-list {
+        flex: 1;
+        overflow-y: auto;
+
+        .category-section {
+            .category-header {
+                position: sticky;
+                top: 0;
+                z-index: 5;
+                padding: 10px 16px;
+                background: var(--highlight-bg-color);
+                font-weight: 600;
+                font-size: 14px;
+                color: var(--main-text-color);
+                border-bottom: 1px solid var(--border-color);
+                display: flex;
+                align-items: center;
+                gap: 8px;
+
+                i {
+                    font-size: 14px;
+                    width: 18px;
+                    text-align: center;
+                    color: var(--secondary-text-color);
+                }
+            }
+
+            .subcategory-header {
+                padding: 8px 16px 4px;
+                font-weight: 500;
+                font-size: 12px;
+                color: var(--secondary-text-color);
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                background: var(--main-bg-color);
+            }
+        }
+
+        // Empty state
+        .settings-empty {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 48px 24px;
+            color: var(--grey-text-color);
+            text-align: center;
+
+            i {
+                font-size: 48px;
+                margin-bottom: 16px;
+                opacity: 0.5;
+            }
+
+            .empty-title {
+                font-size: 16px;
+                font-weight: 500;
+                color: var(--secondary-text-color);
+                margin-bottom: 8px;
+            }
+
+            .empty-description {
+                font-size: 13px;
+            }
+        }
+    }
+
+    // ========================================
+    // Loading State
+    // ========================================
+
+    .settings-loading {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        color: var(--secondary-text-color);
+
+        .loading-spinner {
+            margin-right: 8px;
+            animation: spin 1s linear infinite;
+        }
+    }
+
+    @keyframes spin {
+        from {
+            transform: rotate(0deg);
+        }
+        to {
+            transform: rotate(360deg);
+        }
+    }
+
+    // ========================================
+    // Error State
+    // ========================================
+
+    .settings-error {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+        background: rgb(from var(--error-color) r g b / 0.1);
+        border: 1px solid var(--error-color);
+        border-radius: 8px;
+        margin: 16px;
+        color: var(--error-color);
+
+        i {
+            font-size: 24px;
+            margin-bottom: 12px;
+        }
+
+        .error-message {
+            text-align: center;
+        }
+
+        .error-retry {
+            margin-top: 16px;
+            padding: 8px 16px;
+            background: var(--error-color);
+            color: var(--main-text-color);
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: opacity 0.15s ease;
+
+            &:hover {
+                opacity: 0.9;
+            }
+        }
+    }
+}
+
+// ============================================
+// Setting Row Overrides for Visual Panel
+// (Extends base .setting-row from settings-controls.scss)
+// ============================================
+
+.settings-visual .setting-row {
+    .setting-key {
+        font-size: 11px;
+        font-family: var(--fixed-font);
+        color: var(--grey-text-color);
+        opacity: 0;
+        transition: opacity 0.15s ease;
+        margin-left: 8px;
+    }
+
+    &:hover .setting-key {
+        opacity: 1;
+    }
+
+    .setting-header {
+        flex-wrap: wrap;
+    }
+
+    .setting-control-container {
+        margin-left: auto;
+    }
+}
+
+// ============================================
+// Filter Toolbar (Modified Only, etc.)
+// ============================================
+
+.settings-filter-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background: var(--main-bg-color);
+    border-bottom: 1px solid var(--border-color);
+
+    .filter-chip {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        padding: 4px 10px;
+        background: var(--panel-bg-color);
+        border: 1px solid var(--border-color);
+        border-radius: 16px;
+        font-size: 12px;
+        color: var(--secondary-text-color);
+        cursor: pointer;
+        transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+        user-select: none;
+
+        &:hover {
+            background: var(--hover-bg-color);
+            color: var(--main-text-color);
+        }
+
+        &.active {
+            background: rgb(from var(--accent-color) r g b / 0.15);
+            border-color: var(--accent-color);
+            color: var(--accent-color);
+        }
+
+        i {
+            font-size: 10px;
+        }
+    }
+
+    .filter-separator {
+        width: 1px;
+        height: 20px;
+        background: var(--border-color);
+    }
+
+    .filter-count {
+        font-size: 12px;
+        color: var(--grey-text-color);
+        margin-left: auto;
+    }
+}
+
+// ============================================
+// Actions Bar (Save, Reset All)
+// ============================================
+
+.settings-actions-bar {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 12px;
+    padding: 12px 16px;
+    background: var(--main-bg-color);
+    border-top: 1px solid var(--border-color);
+    flex-shrink: 0;
+
+    .unsaved-indicator {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 13px;
+        color: $setting-modified-color;
+        margin-right: auto;
+
+        .unsaved-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: $setting-modified-color;
+        }
+    }
+
+    .action-btn {
+        padding: 8px 16px;
+        border-radius: 4px;
+        font-size: 13px;
+        cursor: pointer;
+        transition: background-color 0.15s ease, opacity 0.15s ease;
+
+        &.primary {
+            background: var(--accent-color);
+            color: var(--button-text-color);
+            border: 1px solid var(--accent-color);
+
+            &:hover:not(:disabled) {
+                opacity: 0.9;
+            }
+        }
+
+        &.secondary {
+            background: transparent;
+            color: var(--secondary-text-color);
+            border: 1px solid var(--border-color);
+
+            &:hover:not(:disabled) {
+                background: var(--hover-bg-color);
+                color: var(--main-text-color);
+            }
+        }
+
+        &:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+    }
+}
+
+// ============================================
+// Tooltip Styles for Settings
+// ============================================
+
+.settings-tooltip {
+    position: absolute;
+    z-index: 100;
+    padding: 8px 12px;
+    background: var(--modal-bg-color);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgb(0 0 0 / 0.3);
+    font-size: 12px;
+    color: var(--secondary-text-color);
+    max-width: 300px;
+    pointer-events: none;
+
+    .tooltip-key {
+        font-family: var(--fixed-font);
+        color: var(--grey-text-color);
+        margin-bottom: 4px;
+    }
+
+    .tooltip-default {
+        margin-top: 4px;
+        padding-top: 4px;
+        border-top: 1px solid var(--border-color);
+
+        span {
+            font-family: var(--fixed-font);
+            color: var(--accent-color);
+        }
+    }
+}
+
+// ============================================
+// Responsive Styles
+// ============================================
+
+@media (max-width: 768px) {
+    .settings-visual {
+        .settings-sidebar {
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            z-index: 20;
+            transform: translateX(-100%);
+            transition: transform 0.2s ease;
+            box-shadow: none;
+
+            &.open {
+                transform: translateX(0);
+                box-shadow: 2px 0 8px rgb(0 0 0 / 0.3);
+            }
+        }
+
+        .settings-main {
+            width: 100%;
+        }
+
+        // Mobile menu toggle
+        .mobile-menu-toggle {
+            display: flex;
+        }
+    }
+}
+
+@media (min-width: 769px) {
+    .settings-visual {
+        .mobile-menu-toggle {
+            display: none;
+        }
+    }
+}
+
+// ============================================
+// Animations
+// ============================================
+
+// Fade in for settings appearing after search
+.setting-row {
+    animation: fadeIn 0.15s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-4px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+// Highlight animation when jumping to a setting
+.setting-row.highlight {
+    animation: highlight 1.5s ease;
+}
+
+@keyframes highlight {
+    0% {
+        background: rgb(from var(--accent-color) r g b / 0.3);
+    }
+    100% {
+        background: transparent;
+    }
+}
+
+// Modified indicator pulse
+.setting-row.modified .setting-label-container::after {
+    content: "";
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: $setting-modified-color;
+    margin-left: 8px;
+    vertical-align: middle;
+}
+
+// ============================================
+// Dark/Light Mode Adjustments
+// (using css variables, adapts automatically)
+// ============================================
+
+// Ensure proper contrast in scrollbar
+.settings-visual {
+    .settings-list,
+    .settings-sidebar {
+        &::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        &::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        &::-webkit-scrollbar-thumb {
+            background: var(--scrollbar-thumb-color);
+            border-radius: 3px;
+
+            &:hover {
+                background: var(--scrollbar-thumb-hover-color);
+            }
+        }
+    }
+}
+
+// ============================================
+// Focus Styles for Accessibility
+// ============================================
+
+.settings-visual {
+    .category-item:focus-visible,
+    .filter-chip:focus-visible,
+    .action-btn:focus-visible {
+        outline: 2px solid var(--accent-color);
+        outline-offset: 2px;
+    }
+
+    .setting-row:focus-within {
+        background: var(--hover-bg-color);
+    }
+}
+
+// ============================================
+// Keyboard Navigation Indicator
+// ============================================
+
+.settings-visual.keyboard-nav {
+    .category-item:focus {
+        background: var(--highlight-bg-color);
+        color: var(--main-text-color);
+    }
+
+    .setting-row:focus-within {
+        border-left-color: var(--accent-color);
+    }
+}
