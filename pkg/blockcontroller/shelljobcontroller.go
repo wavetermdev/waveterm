@@ -105,6 +105,14 @@ func (sjc *ShellJobController) sendUpdate_withlock() {
 	})
 }
 
+// Start initializes or reconnects to a shell job for the block.
+// Logic:
+// - If block has no existing jobId: starts a new job and attaches it
+// - If block has existing jobId with running job manager: reconnects to existing job
+// - If block has existing jobId with non-running job manager:
+//   - force=true: detaches old job and starts new one
+//   - force=false: returns without starting (leaves block unstarted)
+// After establishing jobId, ensures job connection is active (reconnects if needed)
 func (sjc *ShellJobController) Start(ctx context.Context, blockMeta waveobj.MetaMapType, rtOpts *waveobj.RuntimeOpts, force bool) error {
 	blockData, err := wstore.DBMustGet[*waveobj.Block](ctx, sjc.BlockId)
 	if err != nil {
@@ -123,8 +131,13 @@ func (sjc *ShellJobController) Start(ctx context.Context, blockMeta waveobj.Meta
 			return fmt.Errorf("error getting job manager status: %w", err)
 		}
 		if status != jobcontroller.JobStatus_Running {
-			log.Printf("block %q has jobId %s but manager is not running (status: %s), detaching\n", sjc.BlockId, blockData.JobId, status)
-			jobcontroller.DetachJobFromBlock(ctx, blockData.JobId, false)
+			if force {
+				log.Printf("block %q has jobId %s but manager is not running (status: %s), detaching (force=true)\n", sjc.BlockId, blockData.JobId, status)
+				jobcontroller.DetachJobFromBlock(ctx, blockData.JobId, false)
+			} else {
+				log.Printf("block %q has jobId %s but manager is not running (status: %s), not starting (force=false)\n", sjc.BlockId, blockData.JobId, status)
+				return nil
+			}
 		} else {
 			jobId = blockData.JobId
 		}

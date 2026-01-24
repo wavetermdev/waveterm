@@ -44,10 +44,10 @@ var jobDebugPruneCmd = &cobra.Command{
 	RunE:  jobDebugPruneRun,
 }
 
-var jobDebugExitCmd = &cobra.Command{
-	Use:   "exit",
-	Short: "exit a job manager",
-	RunE:  jobDebugExitRun,
+var jobDebugTerminateCmd = &cobra.Command{
+	Use:   "terminate",
+	Short: "terminate a job manager",
+	RunE:  jobDebugTerminateRun,
 }
 
 var jobDebugDisconnectCmd = &cobra.Command{
@@ -96,7 +96,7 @@ var jobDebugDetachJobCmd = &cobra.Command{
 var jobIdFlag string
 var jobDebugJsonFlag bool
 var jobConnFlag string
-var exitJobIdFlag string
+var terminateJobIdFlag string
 var disconnectJobIdFlag string
 var reconnectJobIdFlag string
 var reconnectConnNameFlag string
@@ -110,7 +110,7 @@ func init() {
 	jobDebugCmd.AddCommand(jobDebugDeleteCmd)
 	jobDebugCmd.AddCommand(jobDebugDeleteAllCmd)
 	jobDebugCmd.AddCommand(jobDebugPruneCmd)
-	jobDebugCmd.AddCommand(jobDebugExitCmd)
+	jobDebugCmd.AddCommand(jobDebugTerminateCmd)
 	jobDebugCmd.AddCommand(jobDebugDisconnectCmd)
 	jobDebugCmd.AddCommand(jobDebugReconnectCmd)
 	jobDebugCmd.AddCommand(jobDebugReconnectConnCmd)
@@ -124,8 +124,8 @@ func init() {
 	jobDebugDeleteCmd.Flags().StringVar(&jobIdFlag, "jobid", "", "job id to delete (required)")
 	jobDebugDeleteCmd.MarkFlagRequired("jobid")
 
-	jobDebugExitCmd.Flags().StringVar(&exitJobIdFlag, "jobid", "", "job id to exit (required)")
-	jobDebugExitCmd.MarkFlagRequired("jobid")
+	jobDebugTerminateCmd.Flags().StringVar(&terminateJobIdFlag, "jobid", "", "job id to terminate (required)")
+	jobDebugTerminateCmd.MarkFlagRequired("jobid")
 
 	jobDebugDisconnectCmd.Flags().StringVar(&disconnectJobIdFlag, "jobid", "", "job id to disconnect (required)")
 	jobDebugDisconnectCmd.MarkFlagRequired("jobid")
@@ -284,13 +284,13 @@ func jobDebugPruneRun(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func jobDebugExitRun(cmd *cobra.Command, args []string) error {
-	err := wshclient.JobControllerExitJobCommand(RpcClient, exitJobIdFlag, nil)
+func jobDebugTerminateRun(cmd *cobra.Command, args []string) error {
+	err := wshclient.JobControllerExitJobCommand(RpcClient, terminateJobIdFlag, nil)
 	if err != nil {
-		return fmt.Errorf("exiting job manager: %w", err)
+		return fmt.Errorf("terminating job manager: %w", err)
 	}
 
-	fmt.Printf("Job manager for %s exited successfully\n", exitJobIdFlag)
+	fmt.Printf("Job manager for %s terminated successfully\n", terminateJobIdFlag)
 	return nil
 }
 
