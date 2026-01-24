@@ -8,6 +8,7 @@ import { globalStore } from "@/app/store/jotaiStore";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { SecretsContent } from "@/app/view/waveconfig/secretscontent";
+import { SettingsVisualContent } from "@/app/view/waveconfig/settings-visual-content";
 import { WaveConfigView } from "@/app/view/waveconfig/waveconfig";
 import { isWindows } from "@/util/platformutil";
 import { base64ToString, stringToBase64 } from "@/util/util";
@@ -160,6 +161,7 @@ const configFiles: ConfigFile[] = [
         language: "json",
         docsUrl: "https://docs.waveterm.dev/config",
         hasJsonView: true,
+        visualComponent: SettingsVisualContent,
     },
     {
         name: "Connections",
