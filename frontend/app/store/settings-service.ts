@@ -35,13 +35,21 @@ class SettingsService {
     }
 
     /**
-     * Initialize the settings service by loading current settings.
+     * Initialize the settings service by loading current settings
+     * and subscribing to fullConfigAtom changes for external sync.
      */
     async initialize(): Promise<void> {
         if (this.initialized) return;
 
         try {
             await this.loadSettings();
+
+            // Subscribe to fullConfigAtom changes to sync when backend updates config
+            // This handles cases where settings.json is edited externally or by another window
+            globalStore.sub(atoms.fullConfigAtom, () => {
+                this.syncFromFullConfig();
+            });
+
             this.initialized = true;
         } catch (error) {
             console.error("Failed to initialize settings service:", error);
@@ -226,8 +234,12 @@ class SettingsService {
         try {
             await this.saveToFile(newSettings);
 
-            // Clear pending and update saved
-            // Note: savedSettingsAtom will be updated via WPS event when fullConfigAtom changes
+            // Update savedSettingsAtom immediately to prevent race conditions.
+            // This ensures any new changes in the debounce window use the correct base state.
+            // The WPS event will sync it again (idempotent), but this prevents data loss.
+            globalStore.set(savedSettingsAtom, newSettings);
+
+            // Clear pending changes
             this.pendingChanges = {};
             globalStore.set(pendingSettingsAtom, {});
             globalStore.set(saveErrorAtom, null);

@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { cn } from "@/util/util";
-import { memo, useCallback, useState } from "react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
 
 interface NumberControlProps {
     value: number;
@@ -18,6 +18,7 @@ interface NumberControlProps {
 const NumberControl = memo(
     ({ value, onChange, min, max, step = 1, disabled, className, placeholder }: NumberControlProps) => {
         const [inputValue, setInputValue] = useState<string>(value?.toString() ?? "");
+        const inputRef = useRef<HTMLInputElement>(null);
 
         const clampValue = useCallback(
             (val: number): number => {
@@ -86,10 +87,12 @@ const NumberControl = memo(
         );
 
         // Sync internal state when external value changes
-        const displayValue = inputValue;
-        if (value?.toString() !== inputValue && document.activeElement !== document.querySelector("input:focus")) {
-            // Only sync if not focused
-        }
+        useEffect(() => {
+            // Only sync if this input is not currently focused
+            if (inputRef.current && document.activeElement !== inputRef.current) {
+                setInputValue(value?.toString() ?? "");
+            }
+        }, [value]);
 
         return (
             <div className={cn("setting-number", className, { disabled })}>
@@ -104,9 +107,10 @@ const NumberControl = memo(
                     <i className="fa fa-solid fa-minus" />
                 </button>
                 <input
+                    ref={inputRef}
                     type="text"
                     inputMode="numeric"
-                    value={displayValue}
+                    value={inputValue}
                     onChange={handleInputChange}
                     onBlur={handleBlur}
                     onKeyDown={handleKeyDown}

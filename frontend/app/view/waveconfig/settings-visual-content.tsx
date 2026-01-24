@@ -20,17 +20,28 @@ interface SettingsVisualContentProps {
 export const SettingsVisualContent = memo(({ model }: SettingsVisualContentProps) => {
     // Initialize settings service when component mounts
     useEffect(() => {
-        settingsService.initialize().catch(console.error);
+        let unsubscribe: (() => void) | null = null;
+        let mounted = true;
 
-        // Subscribe to settings changes to sync with model
-        const unsubscribe = settingsService.subscribe(() => {
-            // When settings change, mark the model as edited if there are pending changes
-            if (settingsService.hasUnsavedChanges()) {
-                model.markAsEdited();
-            }
-        });
+        settingsService
+            .initialize()
+            .then(() => {
+                // Only subscribe if component is still mounted
+                if (mounted) {
+                    unsubscribe = settingsService.subscribe(() => {
+                        // When settings change, mark the model as edited if there are pending changes
+                        if (settingsService.hasUnsavedChanges()) {
+                            model.markAsEdited();
+                        }
+                    });
+                }
+            })
+            .catch(console.error);
 
-        return unsubscribe;
+        return () => {
+            mounted = false;
+            unsubscribe?.();
+        };
     }, [model]);
 
     return <SettingsVisual />;
