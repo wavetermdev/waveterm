@@ -17,7 +17,7 @@
 
 ## Fork Changes
 
-This fork includes the following modifications from upstream (~50 files changed, ~8000 lines added):
+This fork includes the following modifications from upstream:
 
 ### Tab Base Directory System (Major Feature)
 
@@ -68,6 +68,13 @@ Comprehensive metadata validation to prevent injection attacks:
   - See screenshot: `assets/ligatures-demo.png`
 - **OSC 7 Debouncing** - 300ms debounce for rapid directory changes
 - **Memory Leak Prevention** - Cleanup handlers for tab close events
+
+### Telemetry Removal
+
+- **No Telemetry Required** - Wave AI works without enabling telemetry
+- **Telemetry Disabled by Default** - All telemetry collection is disabled
+- **No Cloud Mode Restrictions** - Wave AI cloud modes accessible without telemetry opt-in
+- **Simplified Onboarding** - Removed telemetry toggle from initial setup
 
 ### PowerShell Improvements
 

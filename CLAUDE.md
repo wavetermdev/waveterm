@@ -15,6 +15,8 @@ Wave Terminal is an open-source, AI-native terminal built with Electron. It comb
 
 This is a personal fork with experimental features. Key differences from upstream:
 
+- **Telemetry Removed** - All telemetry collection is disabled. Wave AI works without requiring telemetry to be enabled.
+- **WaveApp/Tsunami Removed** - The experimental WaveApp Builder and Tsunami framework have been removed.
 - **xterm.js 6.1.0** - Upgraded from 5.5.0 to 6.1.0-beta.106, enabling DEC mode 2026 (Synchronized Output) for proper TUI animations. Uses `DomScrollableElement` scrollbar.
 - **Font Ligatures** - Enable with `"term:ligatures": true` in settings. Works with ligature fonts (Fira Code, JetBrains Mono, etc.).
 - **Tab Base Directory System** - Project-centric workflow with colored tabs, breadcrumb navigation, and smart OSC 7 auto-detection. See `docs/docs/tabs.mdx` for full documentation.
@@ -101,7 +103,7 @@ task generate
 ### Frontend Architecture
 
 **Entry Point:** `frontend/wave.ts`
-- Initializes the application with either Wave Terminal mode or Tsunami Builder mode
+- Initializes the Wave Terminal application
 - Sets up Jotai store, WPS (WebSocket Pub/Sub), and Monaco editor
 - Root React component: `frontend/app/app.tsx`
 
@@ -241,25 +243,6 @@ task generate
 - **TypeScript:** Prettier + ESLint (configured in `eslint.config.js`, `prettier.config.cjs`)
 - **Go:** Standard `go fmt` + `staticcheck` (see `staticcheck.conf`)
 - **Text files:** Must end with a newline (`.editorconfig`)
-
-## Tsunami Framework
-
-Tsunami is Wave's internal UI framework for building reactive Go-based UIs that render in the terminal.
-
-**Location:** `tsunami/` directory
-- `tsunami/engine/` - Core rendering engine
-- `tsunami/frontend/` - React components for Tsunami UIs
-- `tsunami/vdom/` - Virtual DOM implementation
-
-**Usage:**
-- Powers the WaveApp Builder (`/builder/`)
-- Scaffold for new Tsunami apps in `dist/tsunamiscaffold/`
-
-**Build Tsunami:**
-```bash
-task tsunami:frontend:build
-task build:tsunamiscaffold
-```
 
 ## Testing & Debugging
 
