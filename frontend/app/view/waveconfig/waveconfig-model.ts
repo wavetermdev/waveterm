@@ -219,6 +219,7 @@ const configFiles: ConfigFile[] = [
         path: "secrets",
         isSecrets: true,
         hasJsonView: false,
+        docsUrl: "https://docs.waveterm.dev/secrets",
         visualComponent: SecretsContent,
     },
 ];
