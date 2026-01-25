@@ -102,3 +102,87 @@ To test the implementation:
 
 - The spec mentions retry logic for manual updates (handleSetBaseDir, handleToggleLock) - this was NOT implemented as the spec noted it as optional for Phase 4 and the core race condition fixes are functional without it
 - Pre-existing TypeScript errors in unrelated files (streamdown.tsx, notificationpopover.tsx) remain unfixed as they are not related to this implementation
+
+---
+
+# Phase 3: Live OMP Theme Reload
+
+## Summary
+
+Implemented live Oh-My-Posh (OMP) theme reloading per spec `.claude/specs/spec-011-live-omp-reload.md`. When users change their OMP theme in the Appearance panel, the OMP prompt is automatically reinitialized in all active terminals without requiring restart.
+
+## Changes Made
+
+### Backend (Go)
+
+#### `pkg/wshrpc/wshrpctypes.go`
+- Added `CommandOmpReinitData` struct with `BlockId` field
+- Added `OmpReinitCommand` method to `WshRpcInterface`
+
+#### `pkg/wshrpc/wshserver/wshserver.go`
+- Implemented `OmpReinitCommand` handler that:
+  - Validates block exists and is a terminal (view=term)
+  - Detects shell type from:
+    1. Block metadata (`term:localshellpath`)
+    2. Global settings (`TermLocalShellPath`)
+    3. System default (via `shellutil.DetectLocalShellPath()`)
+  - Generates appropriate reinit command based on shell type:
+    - **PowerShell**: `oh-my-posh init pwsh --config $env:POSH_THEME | Invoke-Expression`
+    - **Bash**: `eval "$(oh-my-posh init bash --config $POSH_THEME)"`
+    - **Zsh**: `eval "$(oh-my-posh init zsh --config $POSH_THEME)"`
+  - Sends command to terminal via `blockcontroller.SendInput()`
+  - Returns error for unsupported shell types (fish, cmd, unknown)
+
+### Generated Files
+
+#### `frontend/types/gotypes.d.ts`
+- Added `CommandOmpReinitData` TypeScript type
+
+#### `frontend/app/store/wshclientapi.ts`
+- Added `OmpReinitCommand` RPC method binding
+
+#### `pkg/wshrpc/wshclient/wshclient.go`
+- Added `OmpReinitCommand` client binding
+
+### Frontend (TypeScript/React)
+
+#### `frontend/app/view/waveconfig/appearance-content.tsx`
+- Added `reinitOmpInAllTerminals()` utility function that:
+  - Fetches all blocks in current workspace via `BlocksListCommand`
+  - Filters for terminal blocks (`meta.view === "term"`)
+  - Sends `OmpReinitCommand` to each terminal
+  - Handles errors gracefully (logs warnings but doesn't fail)
+- Updated `handleOmpThemeChange` callback to:
+  - Save the setting via `settingsService.setSetting()`
+  - Trigger OMP reinit in all terminals
+
+## Acceptance Criteria Status
+
+- [x] OmpReinitCommand handler exists and works for PowerShell, Bash, Zsh
+- [x] Handler validates block exists and is a terminal before sending command
+- [x] Frontend can trigger reinit after theme changes
+- [x] Errors handled gracefully (OMP not installed, invalid config - command just runs in shell)
+- [x] Shell type detection works correctly (cascades from block -> settings -> system)
+
+## Security Considerations Addressed
+
+- Only executes the specific reinit command, not arbitrary input
+- Validates block exists and is a terminal type before sending
+- Shell type detection is done entirely on backend (frontend just passes block ID)
+
+## Commits
+
+1. `d135958d` - feat(omp): add OmpReinitCommand for live theme reload
+2. `967f8cb6` - chore: regenerate TypeScript bindings for OmpReinitCommand
+3. `e1925bd7` - feat(omp): trigger OMP reinit on theme change in UI
+
+## Testing Notes
+
+To test this feature:
+1. Open Wave Terminal with OMP installed and configured
+2. Open a terminal with a supported shell (pwsh, bash, or zsh)
+3. Go to Settings > Appearance > Oh-My-Posh Integration
+4. Select a different OMP theme
+5. Observe the terminal receiving the reinit command and updating the prompt
+
+If OMP is not installed or POSH_THEME is not set, the reinit command will still be sent but will fail gracefully in the shell (showing a "command not found" error or similar).
