@@ -18,6 +18,7 @@ import { ActionButtons } from "./action-buttons";
 import { AdvancedSection } from "./advanced-section";
 import { OmpBlockEditor } from "./omp-block-editor";
 import { OmpConfigPreview } from "./omp-config-preview";
+import { reinitOmpInAllTerminals } from "./omp-utils";
 
 import "./omp-configurator.scss";
 
@@ -46,26 +47,6 @@ interface OmpConfiguratorState {
     // UI state
     selectedBlockIndex: number;
     selectedSegmentIndex: number;
-}
-
-/**
- * Reinitialize OMP in all active terminal blocks
- */
-async function reinitOmpInAllTerminals(): Promise<void> {
-    try {
-        const blocks = await RpcApi.BlocksListCommand(TabRpcClient, {});
-        for (const block of blocks) {
-            if (block.meta?.view === "term") {
-                try {
-                    await RpcApi.OmpReinitCommand(TabRpcClient, { blockid: block.blockid });
-                } catch (err) {
-                    console.warn(`Failed to reinit OMP for block ${block.blockid}:`, err);
-                }
-            }
-        }
-    } catch (err) {
-        console.error("Failed to get blocks for OMP reinit:", err);
-    }
 }
 
 /**

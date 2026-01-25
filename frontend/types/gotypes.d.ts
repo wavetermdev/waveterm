@@ -426,6 +426,11 @@ declare global {
         error?: string;
     };
 
+    // wshrpc.CommandOmpReinitData
+    type CommandOmpReinitData = {
+        blockid: string;
+    };
+
     // wshrpc.CommandOmpWritePaletteData
     type CommandOmpWritePaletteData = {
         palette: {[key: string]: string};

@@ -10,6 +10,7 @@
 
 import { CollapsibleSection } from "@/app/element/collapsible-section";
 import { OmpConfigurator } from "@/app/element/settings/omp-configurator";
+import { reinitOmpInAllTerminals } from "@/app/element/settings/omp-configurator/omp-utils";
 import { OmpHighContrast } from "@/app/element/settings/omp-high-contrast";
 import { OmpPaletteExport } from "@/app/element/settings/omp-palette-export";
 import { OmpThemeControl } from "@/app/element/settings/omptheme-control";
@@ -17,8 +18,6 @@ import { PreviewBackgroundToggle, type PreviewBackground } from "@/app/element/s
 import { TermThemeControl } from "@/app/element/settings/termtheme-control";
 import { getSettingsKeyAtom } from "@/app/store/global";
 import { settingsService } from "@/app/store/settings-service";
-import { RpcApi } from "@/app/store/wshclientapi";
-import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { BgPresetsContent } from "@/app/view/waveconfig/bgpresets-content";
 import type { WaveConfigViewModel } from "@/app/view/waveconfig/waveconfig-model";
 import { useAtomValue } from "jotai";
@@ -69,31 +68,6 @@ const UIThemeSelector = memo(({ value, onChange }: { value: string; onChange: (v
 UIThemeSelector.displayName = "UIThemeSelector";
 
 /**
- * Reinitialize OMP in all active terminal blocks
- * This sends the appropriate reinit command to each terminal
- */
-async function reinitOmpInAllTerminals(): Promise<void> {
-    try {
-        // Get all blocks in the current workspace
-        const blocks = await RpcApi.BlocksListCommand(TabRpcClient, {});
-
-        // Filter for terminal blocks and send reinit command to each
-        for (const block of blocks) {
-            if (block.meta?.view === "term") {
-                try {
-                    await RpcApi.OmpReinitCommand(TabRpcClient, { blockid: block.blockid });
-                } catch (err) {
-                    // Log but don't fail - individual terminals may not support OMP
-                    console.warn(`Failed to reinit OMP for block ${block.blockid}:`, err);
-                }
-            }
-        }
-    } catch (err) {
-        console.error("Failed to get blocks for OMP reinit:", err);
-    }
-}
-
-/**
  * Main Appearance Content component
  */
 export const AppearanceContent = memo(({ model }: AppearanceContentProps) => {
@@ -129,6 +103,11 @@ export const AppearanceContent = memo(({ model }: AppearanceContentProps) => {
     const handleOmpThemeChange = useCallback(async (value: string) => {
         settingsService.setSetting("term:omptheme", value);
         // Trigger OMP reinit in all active terminals after theme change
+        await reinitOmpInAllTerminals();
+    }, []);
+
+    const handleOmpConfigChange = useCallback(async () => {
+        // Reinit terminals when config changes (called without parameters)
         await reinitOmpInAllTerminals();
     }, []);
 
@@ -182,7 +161,7 @@ export const AppearanceContent = memo(({ model }: AppearanceContentProps) => {
                     <div className="section-divider" />
                     <OmpConfigurator
                         previewBackground={ompPreviewBg}
-                        onConfigChange={handleOmpThemeChange}
+                        onConfigChange={handleOmpConfigChange}
                     />
                 </div>
             </CollapsibleSection>

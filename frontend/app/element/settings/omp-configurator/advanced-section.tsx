@@ -11,6 +11,7 @@ import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { cn } from "@/util/util";
 import { memo, useCallback, useRef, useState } from "react";
+import { reinitOmpInAllTerminals } from "./omp-utils";
 
 interface AdvancedSectionProps {
     config: OmpConfigData | null;
@@ -21,23 +22,14 @@ interface AdvancedSectionProps {
 }
 
 /**
- * Reinitialize OMP in all active terminal blocks
+ * Validate imported OMP config structure
  */
-async function reinitOmpInAllTerminals(): Promise<void> {
-    try {
-        const blocks = await RpcApi.BlocksListCommand(TabRpcClient, {});
-        for (const block of blocks) {
-            if (block.meta?.view === "term") {
-                try {
-                    await RpcApi.OmpReinitCommand(TabRpcClient, { blockid: block.blockid });
-                } catch (err) {
-                    console.warn(`Failed to reinit OMP for block ${block.blockid}:`, err);
-                }
-            }
-        }
-    } catch (err) {
-        console.error("Failed to get blocks for OMP reinit:", err);
-    }
+function validateOmpConfig(config: unknown): config is OmpConfigData {
+    if (!config || typeof config !== "object") return false;
+    const c = config as Record<string, unknown>;
+    // Basic validation: must have blocks array
+    if (!Array.isArray(c.blocks)) return false;
+    return true;
 }
 
 /**
@@ -55,8 +47,11 @@ const ImportAction = memo(({ onImport }: { onImport: (config: OmpConfigData) => 
             setImporting(true);
             try {
                 const content = await file.text();
-                const config = JSON.parse(content) as OmpConfigData;
-                onImport(config);
+                const parsed = JSON.parse(content);
+                if (!validateOmpConfig(parsed)) {
+                    throw new Error("Invalid OMP config: missing required 'blocks' array");
+                }
+                onImport(parsed);
             } catch (err) {
                 console.error("Failed to import config:", err);
                 alert(`Import failed: ${err}`);

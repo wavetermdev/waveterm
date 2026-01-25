@@ -183,6 +183,9 @@ type WshRpcInterface interface {
 	// OMP Configurator - Full config read/write
 	OmpReadConfigCommand(ctx context.Context) (CommandOmpReadConfigRtnData, error)
 	OmpWriteConfigCommand(ctx context.Context, data CommandOmpWriteConfigData) (CommandOmpWriteConfigRtnData, error)
+
+	// OMP reinit command for live reload
+	OmpReinitCommand(ctx context.Context, data CommandOmpReinitData) error
 }
 
 // for frontend
@@ -995,4 +998,9 @@ type CommandOmpWriteConfigRtnData struct {
 	Success    bool   `json:"success"`
 	BackupPath string `json:"backuppath,omitempty"`
 	Error      string `json:"error,omitempty"`
+}
+
+// CommandOmpReinitData contains OMP reinit request
+type CommandOmpReinitData struct {
+	BlockId string `json:"blockid"`
 }

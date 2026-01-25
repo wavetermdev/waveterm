@@ -23,21 +23,16 @@ interface CancelConfirmDialogProps {
 }
 
 const CancelConfirmDialog = memo(({ isOpen, onConfirm, onCancel }: CancelConfirmDialogProps) => {
-    if (!isOpen) return null;
-
-    const handleKeyDown = useCallback(
-        (e: KeyboardEvent) => {
-            if (e.key === "Escape") {
-                onCancel();
-            }
-        },
-        [onCancel]
-    );
-
     useEffect(() => {
+        if (!isOpen) return;
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === "Escape") onCancel();
+        };
         window.addEventListener("keydown", handleKeyDown);
         return () => window.removeEventListener("keydown", handleKeyDown);
-    }, [handleKeyDown]);
+    }, [isOpen, onCancel]);
+
+    if (!isOpen) return null;
 
     return (
         <div className="confirm-dialog-overlay" onClick={onCancel}>

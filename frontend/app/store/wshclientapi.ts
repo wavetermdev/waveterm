@@ -477,6 +477,11 @@ class RpcApiType {
         return client.wshRpcCall("ompreadconfig", null, opts);
     }
 
+    // command "ompreinit" [call]
+    OmpReinitCommand(client: WshClient, data: CommandOmpReinitData, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("ompreinit", data, opts);
+    }
+
     // command "omprestorebackup" [call]
     OmpRestoreBackupCommand(client: WshClient, data: CommandOmpRestoreBackupData, opts?: RpcOpts): Promise<CommandOmpRestoreBackupRtnData> {
         return client.wshRpcCall("omprestorebackup", data, opts);

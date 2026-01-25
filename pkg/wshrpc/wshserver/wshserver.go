@@ -1528,3 +1528,62 @@ func (ws *WshServer) OmpWriteConfigCommand(ctx context.Context, data wshrpc.Comm
 	result.Success = true
 	return result, nil
 }
+
+// OmpReinitCommand sends the OMP reinit command to a terminal block
+func (ws *WshServer) OmpReinitCommand(ctx context.Context, data wshrpc.CommandOmpReinitData) error {
+	if data.BlockId == "" {
+		return fmt.Errorf("blockid is required")
+	}
+
+	// Get block data to validate it exists and is a terminal
+	blockData, err := wstore.DBMustGet[*waveobj.Block](ctx, data.BlockId)
+	if err != nil {
+		return fmt.Errorf("error getting block: %w", err)
+	}
+
+	// Validate block is a terminal view
+	viewType := blockData.Meta.GetString(waveobj.MetaKey_View, "")
+	if viewType != "term" {
+		return fmt.Errorf("block %s is not a terminal (view=%s)", data.BlockId, viewType)
+	}
+
+	// Get shell path from block or connection to determine shell type
+	shellPath := blockData.Meta.GetString(waveobj.MetaKey_TermLocalShellPath, "")
+	if shellPath == "" {
+		// Try to get from settings
+		settings := wconfig.GetWatcher().GetFullConfig().Settings
+		shellPath = settings.TermLocalShellPath
+	}
+	if shellPath == "" {
+		// Use default detection
+		shellPath = shellutil.DetectLocalShellPath()
+	}
+
+	shellType := shellutil.GetShellTypeFromShellPath(shellPath)
+
+	// Generate the OMP reinit command based on shell type
+	var reinitCmd string
+	switch shellType {
+	case shellutil.ShellType_pwsh:
+		reinitCmd = "oh-my-posh init pwsh --config $env:POSH_THEME | Invoke-Expression"
+	case shellutil.ShellType_bash:
+		reinitCmd = `eval "$(oh-my-posh init bash --config $POSH_THEME)"`
+	case shellutil.ShellType_zsh:
+		reinitCmd = `eval "$(oh-my-posh init zsh --config $POSH_THEME)"`
+	default:
+		return fmt.Errorf("unsupported shell type for OMP reinit: %s", shellType)
+	}
+
+	// Send the reinit command to the terminal as input
+	inputData := []byte(reinitCmd + "\n")
+	inputUnion := &blockcontroller.BlockInputUnion{
+		InputData: inputData,
+	}
+
+	err = blockcontroller.SendInput(data.BlockId, inputUnion)
+	if err != nil {
+		return fmt.Errorf("error sending OMP reinit command to terminal: %w", err)
+	}
+
+	return nil
+}
