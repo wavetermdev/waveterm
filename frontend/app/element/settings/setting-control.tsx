@@ -6,7 +6,7 @@ import { memo, useCallback } from "react";
 
 import "./settings-controls.scss";
 
-interface SettingControlProps {
+export interface SettingControlProps {
     settingKey: string;
     label: string;
     /** Description can be a string or a React node (for linked descriptions) */
@@ -17,6 +17,8 @@ interface SettingControlProps {
     isModified: boolean;
     disabled?: boolean;
     requiresRestart?: boolean;
+    /** If true, control spans full width below the label/description */
+    fullWidth?: boolean;
     children: React.ReactNode;
 }
 
@@ -31,6 +33,7 @@ const SettingControl = memo(
         isModified,
         disabled,
         requiresRestart,
+        fullWidth,
         children,
     }: SettingControlProps) => {
         const handleReset = useCallback(() => {
@@ -42,6 +45,7 @@ const SettingControl = memo(
                 className={cn("setting-row", {
                     modified: isModified,
                     disabled: disabled,
+                    "full-width": fullWidth,
                 })}
                 data-setting-key={settingKey}
             >
@@ -60,9 +64,10 @@ const SettingControl = memo(
                             </button>
                         )}
                     </div>
-                    <div className="setting-control-container">{children}</div>
+                    {!fullWidth && <div className="setting-control-container">{children}</div>}
                 </div>
                 {description && <div className="setting-description">{description}</div>}
+                {fullWidth && <div className="setting-control-container full-width-control">{children}</div>}
             </div>
         );
     }
@@ -71,4 +76,3 @@ const SettingControl = memo(
 SettingControl.displayName = "SettingControl";
 
 export { SettingControl };
-export type { SettingControlProps };

@@ -121,6 +121,7 @@ declare global {
         nativePaste: () => void; // native-paste
         doRefresh: () => void; // do-refresh
         showOpenDialog: (options: OpenDialogOptions) => Promise<string[]>; // show-open-dialog
+        setNativeThemeSource: (theme: "light" | "dark" | "system") => void; // set-native-theme-source
     };
 
     type ElectronContextMenuItem = {

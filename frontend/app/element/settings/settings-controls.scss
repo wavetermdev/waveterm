@@ -703,3 +703,137 @@ textarea.setting-text-input {
         font-size: 10px;
     }
 }
+
+// ===========================================
+// Terminal Theme Control
+// ===========================================
+
+.termtheme-control {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    width: 100%;
+    padding: 8px 0;
+}
+
+.termtheme-section {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.termtheme-section-title {
+    margin: 0;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--secondary-text-color);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.termtheme-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 12px;
+}
+
+.termtheme-card {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    padding: 8px;
+    border: 2px solid var(--form-element-border-color);
+    border-radius: 8px;
+    background: var(--form-element-bg-color);
+    cursor: pointer;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    position: relative;
+
+    &:hover {
+        border-color: var(--form-element-primary-color);
+    }
+
+    &.selected {
+        border-color: var(--form-element-primary-color);
+        box-shadow: 0 0 0 2px rgba(var(--form-element-primary-color-rgb, 88, 166, 255), 0.2);
+    }
+}
+
+.termtheme-preview {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 6px;
+    border-radius: 4px;
+    margin-bottom: 8px;
+}
+
+.termtheme-color-row {
+    display: flex;
+    gap: 2px;
+}
+
+.termtheme-swatch {
+    flex: 1;
+    height: 14px;
+    border-radius: 2px;
+    min-width: 14px;
+}
+
+.termtheme-name {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--main-text-color);
+    text-align: center;
+    padding: 4px 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.termtheme-check {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 18px;
+    height: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--form-element-primary-color);
+    border-radius: 50%;
+    color: white;
+
+    i {
+        font-size: 10px;
+    }
+}
+
+.termtheme-loading {
+    padding: 20px;
+    text-align: center;
+    color: var(--secondary-text-color);
+    font-size: 13px;
+}
+
+// ===========================================
+// Full Width Control Layout
+// ===========================================
+
+.setting-row.full-width {
+    .setting-header {
+        flex-wrap: wrap;
+    }
+
+    .full-width-control {
+        width: 100%;
+        margin-top: 12px;
+    }
+}
+
+// ===========================================
+// Import Custom Control Styles
+// ===========================================
+
+@import "./omp-palette-export.scss";
+@import "./omptheme-control.scss";

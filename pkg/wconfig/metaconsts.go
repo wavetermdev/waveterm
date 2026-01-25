@@ -12,6 +12,7 @@ const (
 	ConfigKey_AppDefaultNewBlock             = "app:defaultnewblock"
 	ConfigKey_AppShowOverlayBlockNums        = "app:showoverlayblocknums"
 	ConfigKey_AppCtrlVPaste                  = "app:ctrlvpaste"
+	ConfigKey_AppTheme                       = "app:theme"
 
 	ConfigKey_AiClear                        = "ai:*"
 	ConfigKey_AiPreset                       = "ai:preset"
@@ -98,7 +99,6 @@ const (
 	ConfigKey_WindowDimensions               = "window:dimensions"
 	ConfigKey_WindowZoom                     = "window:zoom"
 
-	// Telemetry keys (kept for compatibility, but telemetry is removed from this fork)
 	ConfigKey_TelemetryClear                 = "telemetry:*"
 	ConfigKey_TelemetryEnabled               = "telemetry:enabled"
 

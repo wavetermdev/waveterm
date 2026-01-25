@@ -69,6 +69,7 @@ contextBridge.exposeInMainWorld("api", {
         properties?: Array<"openFile" | "openDirectory" | "multiSelections" | "showHiddenFiles">;
         filters?: Array<{ name: string; extensions: string[] }>;
     }) => ipcRenderer.invoke("show-open-dialog", options),
+    setNativeThemeSource: (theme: "light" | "dark" | "system") => ipcRenderer.send("set-native-theme-source", theme),
 });
 
 // Custom event for "new-window"

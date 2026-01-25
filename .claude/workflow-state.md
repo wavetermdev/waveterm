@@ -1,124 +1,95 @@
 ---
 workflow: phased-dev
-workflow_status: complete
-current_phase: 3-integration
+workflow_status: in_progress
+current_phase: Design Review
 started: 2026-01-25
-last_updated: 2026-01-25T11:15:00
-tool_uses_count: 25
+last_updated: 2026-01-25
+tool_uses_count: 35
 ---
 
-# Phased Development Workflow - Connections Auto-Detection & AI Modes Pre-fill
+# Phased Development Workflow State
 
-## Overview
+## Project: Unified Appearance Panel
 
-Two features to implement:
+### Objective
+Create unified Appearance Panel - Move OMP components from settings to new Appearance tab, merge with Tab Backgrounds, create unified theming experience for UI theme, Terminal color scheme, and OMP theme selection. Settings registry should only have: 1) OMP theme detection (from $POSH_THEME), 2) OMP Color Theme selector similar to terminal theme selector, 3) Link to Appearance Panel for advanced config.
 
-### Feature 1: Connections Auto-Detection
-- Auto-detect shells/terminals like Windows Terminal does
-- Cross-platform support: Windows, macOS, Linux
-- Triggered by button/icon, auto-triggered when connections list is empty
-- Auto-populates connections.json with detected shells
-
-### Feature 2: AI Modes Pre-fill
-- Pre-fill AI providers from docs (https://docs.waveterm.dev/waveai-modes)
-- Non-opensource providers show warning/incomplete icon for missing API keys
-- Hover or click reveals the incomplete status details
-
-## Current Phase: Planning
-
-### Completed Stages
-- [x] Discovery (Phase 1) - Research completed, tasks identified
-  - Windows Terminal detection mechanisms researched
-  - AI providers analyzed from documentation and source code
-  - 3 tasks created in todos/
-
-### Completed
-- [x] Integration (Phase 3) - Changes committed
-  - `1e92844a` feat(connections): add auto-detection of available shells
-  - `e0de65a4` feat(ai-modes): add pre-filled provider templates with status indicators
-  - `9312d298` docs: add specs and reviews for connections/AI modes features
-
-### Completed
-- [x] QA Testing (Phase 3) - Static analysis complete
-  - TypeScript compilation: PASS
-  - Go compilation: PASS
-  - QA report: `.claude/reviews/qa-report-connections-ai-modes.md`
-- [x] Code Review (Phase 3) - Security + functional review
-  - Shell detection backend: PASS
-  - AI modes prefill: PASS
-  - Connections UI: CONDITIONAL PASS → Fixed H-1 (connection name validation)
-
-### Completed
-- [x] Execution (Phase 3) - Implement with parallel agents
-  - [x] TODO-001: Backend shell detection - COMPLETE
-  - [x] TODO-003: AI modes prefill - COMPLETE
-  - [x] `task generate` - TypeScript bindings regenerated
-  - [x] TODO-002: Connections auto-detection UI - COMPLETE
+### Key Requirements
+1. **Detect OMP installation** - Check if Oh-My-Posh is installed
+2. **Detect current theme** - Read `$POSH_THEME` environment variable
+3. **Detect color schema compatibility** - Light/dark theme support
+4. **Visual theme selector** - Like terminal theme selector
+5. **Palette comparison** - Show current OMP palette AND target palette
+6. **Apply functionality** - Button to apply Wave palette to OMP config
+7. **Merge with Tab Backgrounds** - Unified appearance panel
+8. **Link from settings** - Hardware Acceleration style link to Appearance Panel
+9. **Live OMP Theme Reload** - Support hot-reloading of OMP theme via shell re-init (per https://ohmyposh.dev/docs/installation/customize)
+10. **Theme Preview with Background Toggle** - Show OMP themes on both light AND dark backgrounds in selector
+11. **"High Contrast Compatible" Mode** - Auto-add contrasting background to transparent segments (white font → black bg, black font → white bg)
 
 ### Completed Stages
-- [x] Architecture Review (Phase 2) - COHERENT
-  - Dependency order verified: TODO-001 before TODO-002, TODO-003 independent
-  - Type consistency verified across all specs
-  - Pattern consistency verified (loading, error, accessibility)
-  - Parallel execution plan: TODO-001 + TODO-003 in parallel, then TODO-002
-- [x] Design Review (Phase 2) - All 3 specs PASSED
-  - Backend spec: Minor fixes applied (ID generation, shell types, RPC signature)
-  - UI spec: Minor fixes applied (accessibility, loading message, icons)
-  - AI modes spec: Minor fixes applied (Anthropic model, Google secret name, isLocalEndpoint)
-- [x] Planning (Phase 2) - Detailed specs created
-  - `spec-connections-autodetect-backend.md` - RPC command, platform detection
-  - `spec-connections-autodetect-ui.md` - UI components, state management
-  - `spec-ai-modes-prefill.md` - Provider templates, status indicators
+- [x] Discovery (Phase 1) - 10 tasks identified
+- [x] Planning (Phase 1) - 10 specs created by planning agents
+
+### In Progress
+- [ ] Worktree Setup (Phase 1) - Creating isolated branches for parallel development
+
+### Completed
+- [x] Design Review (Phase 1) - REQUEST_CHANGES: Created specs 011-013 for new requirements
+- [x] Architecture Review (Phase 1) - APPROVED with conditions: 5 implementation phases defined
 
 ### Pending Stages
-- [ ] Architecture Review (Phase 2) - Phase coherence check
-- [ ] Execution (Phase 3) - Implement with parallel agents
-- [ ] Code Review (Phase 3) - Security + functional review
-- [ ] QA Testing (Phase 3) - Electron MCP testing
-- [ ] Integration (Phase 3) - Merge and cleanup
+- [ ] Execution (Phase 1)
+- [ ] Code Review (Phase 1)
+- [ ] QA Testing (Phase 1)
+- [ ] Integration & Merge (Phase 1)
 
-## Discovery Summary
+## Specs Created (Planning Agent Outputs)
 
-### Research Documents Created
-1. `.claude/specs/research-windows-terminal-detection.md`
-   - Windows Terminal dynamic profile generator architecture
-   - WSL registry detection at `HKCU\Software\Microsoft\Windows\CurrentVersion\Lxss`
-   - PowerShell Core multi-source detection
-   - SSH config file parsing
-   - Git Bash registry detection
-   - Cross-platform considerations
+| Spec # | Task | Agent ID | Status |
+|--------|------|----------|--------|
+| spec-001 | Appearance Panel Component | a5ae424 | Complete |
+| spec-002 | Move OMP Theme Selector | a6bce6d | Complete |
+| spec-003 | UI Theme Selector | a107a56 | Complete |
+| spec-004 | Terminal Theme in Appearance | a190878 | Complete |
+| spec-005 | Tab Backgrounds Integration | a949437 | Complete |
+| spec-006 | OMP Detection | a54ddcb | Complete |
+| spec-007 | Palette Comparison | af44685 | Complete |
+| spec-008 | Apply Palette to OMP | a1e18ff | Complete |
+| spec-009 | Settings Registry Update | ac3b170 | Complete |
+| spec-010 | IPC Handlers for OMP | aaa7834 | Complete |
 
-2. `.claude/specs/research-ai-providers.md`
-   - All supported providers: Wave, OpenAI, Anthropic, Google, OpenRouter, Azure, Perplexity, Ollama, LM Studio
-   - Provider classification: Commercial (API key required) vs Local (no key needed)
-   - Configuration schema for each provider
-   - Pre-fill strategy with status indicators
+## Key Architecture Decisions
 
-### Tasks Identified
-1. **TODO-001**: Connections Auto-Detection Backend Service
-   - New RPC command: `DetectAvailableShellsCommand`
-   - Platform-specific detection logic
-   - Files: `pkg/util/shellutil/shelldetect*.go`, RPC types
+1. **AppearanceContent** - New unified panel component in waveconfig
+2. **Collapsible Sections** - UI Theme, Terminal, OMP, Tab Backgrounds
+3. **UIThemeSelector** - Visual cards for 5 themes (dark, light, light-gray, light-warm, system)
+4. **Reuse existing controls** - TermThemeControl, OmpThemeControl, BgPresetsContent
+5. **New IPC commands** - OmpGetConfigInfoCommand, OmpWritePaletteCommand
+6. **Backend utilities** - pkg/wshutil/omputil.go for OMP config detection/merging
+7. **Backup system** - Use existing filebackup for OMP config modifications
 
-2. **TODO-002**: Connections Auto-Detection UI
-   - Auto-detect button in toolbar
-   - Enhanced empty state
-   - Detection results dialog with checkboxes
-   - Duplicate detection
+## Key Files to Create/Modify
 
-3. **TODO-003**: AI Modes Pre-fill with Providers
-   - Pre-filled provider templates
-   - Status indicators (✅/⚠️/🔧)
-   - Tooltip/popover for status details
-   - Quick link to Secrets page
+### Frontend (Create)
+- frontend/app/view/waveconfig/appearance-content.tsx
+- frontend/app/view/waveconfig/appearance-content.scss
+- frontend/app/element/settings/ui-theme-selector.tsx
+- frontend/app/element/settings/omp-apply-button.tsx
+- frontend/app/element/settings/omp-palette-comparison.tsx
 
-## Key Decisions
-- Use registry-based WSL detection (faster than `wsl.exe`)
-- Cross-platform detection via `/etc/shells` on Unix
-- Pre-fill common providers with incomplete status
-- Status badge shows API key requirement
+### Frontend (Modify)
+- frontend/app/view/waveconfig/waveconfig-model.ts (add Appearance tab)
+- frontend/app/store/settings-registry.ts (update OMP entries)
+
+### Backend (Create)
+- pkg/wshutil/omputil.go (OMP utilities)
+
+### Backend (Modify)
+- pkg/wshrpc/wshrpctypes.go (add OMP command types)
+- pkg/wshrpc/wshserver/wshserver.go (add OMP handlers)
 
 ## Next Steps
-1. Launch planning agents to create detailed specs for each task
-2. Use Opus model with ultrathink for deep analysis
-3. Gate progression until specs are approved
+1. Launch Design Review agents for each spec
+2. Check for completeness, edge cases, security
+3. Proceed to Architecture Review if all approved

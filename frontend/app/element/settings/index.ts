@@ -40,6 +40,9 @@ export type { PathControlProps } from "./path-control";
 export { StringListControl } from "./stringlist-control";
 export type { StringListControlProps } from "./stringlist-control";
 
+export { TermThemeControl } from "./termtheme-control";
+export type { TermThemeControlProps } from "./termtheme-control";
+
 // Factory for dynamic control rendering
 export { ControlFactory, renderSettingControl } from "./control-factory";
 export type { ControlFactoryProps } from "./control-factory";

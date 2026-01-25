@@ -1062,6 +1062,7 @@ declare global {
         "app:defaultnewblock"?: string;
         "app:showoverlayblocknums"?: boolean;
         "app:ctrlvpaste"?: boolean;
+        "app:theme"?: string;
         "ai:*"?: boolean;
         "ai:preset"?: string;
         "ai:apitype"?: string;

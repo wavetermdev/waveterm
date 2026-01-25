@@ -55,7 +55,7 @@ const electronApp = electron.app;
 const waveDataDir = getWaveDataDir();
 const waveConfigDir = getWaveConfigDir();
 
-electron.nativeTheme.themeSource = "dark";
+// Native theme is set dynamically in appMain() based on app:theme setting
 
 console.log = log;
 console.log(
@@ -347,6 +347,15 @@ async function appMain() {
         console.log("error initializing wshrpc", e);
     }
     const fullConfig = await RpcApi.GetFullConfigCommand(ElectronWshClient);
+
+    // Set native theme based on app:theme setting
+    const appTheme = fullConfig?.settings?.["app:theme"] ?? "dark";
+    if (appTheme === "system" || appTheme === "light" || appTheme === "dark") {
+        electron.nativeTheme.themeSource = appTheme;
+    } else {
+        electron.nativeTheme.themeSource = "dark";
+    }
+
     checkIfRunningUnderARM64Translation(fullConfig);
     ensureHotSpareTab(fullConfig);
     await relaunchBrowserWindows();

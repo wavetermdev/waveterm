@@ -3,6 +3,7 @@
 
 import { WaveAIModel } from "@/app/aipanel/waveai-model";
 import { BlockNodeModel } from "@/app/block/blocktypes";
+import { resolvedAppThemeAtom } from "@/app/hook/usetheme";
 import { appHandleKeyDown } from "@/app/store/keymodel";
 import { activeTabIdAtom, type TabModel } from "@/app/store/tab-model";
 import { waveEventSubscribe } from "@/app/store/wps";
@@ -64,6 +65,7 @@ export class TermViewModel implements ViewModel {
     fontSizeAtom: jotai.Atom<number>;
     termThemeNameAtom: jotai.Atom<string>;
     termTransparencyAtom: jotai.Atom<number>;
+    termBgColor: jotai.Atom<string>;
     termBPMAtom: jotai.Atom<boolean>;
     noPadding: jotai.PrimitiveAtom<boolean>;
     endIconButtons: jotai.Atom<IconButtonDecl[]>;
@@ -228,15 +230,16 @@ export class TermViewModel implements ViewModel {
                 return boundNumber(value, 0, 1);
             });
         });
-        this.blockBg = jotai.atom((get) => {
+        // Terminal background is applied directly to the terminal content area via termBgColor,
+        // not to the whole block. This keeps the header using the app theme background.
+        this.blockBg = jotai.atom(() => null);
+        this.termBgColor = jotai.atom((get) => {
             const fullConfig = get(atoms.fullConfigAtom);
             const themeName = get(this.termThemeNameAtom);
             const termTransparency = get(this.termTransparencyAtom);
-            const [_, bgcolor] = computeTheme(fullConfig, themeName, termTransparency);
-            if (bgcolor != null) {
-                return { bg: bgcolor };
-            }
-            return null;
+            const appTheme = get(resolvedAppThemeAtom);
+            const [_, bgcolor] = computeTheme(fullConfig, themeName, termTransparency, appTheme);
+            return bgcolor;
         });
         this.connStatus = jotai.atom((get) => {
             const blockData = get(this.blockAtom);

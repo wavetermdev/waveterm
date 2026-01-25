@@ -21,6 +21,7 @@ import { DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
 import { AppBackground } from "./app-bg";
 import { CenteredDiv } from "./element/quickelems";
+import { useTheme } from "./hook/usetheme";
 import { NotificationBubbles } from "./notification/notificationbubbles";
 
 import "./app.scss";
@@ -122,6 +123,11 @@ async function handleContextMenu(e: React.MouseEvent<HTMLDivElement>) {
         });
     }
     ContextMenuModel.showContextMenu(menu, e);
+}
+
+function AppThemeUpdater() {
+    useTheme();
+    return null;
 }
 
 function AppSettingsUpdater() {
@@ -303,6 +309,7 @@ const AppInner = () => {
             <AppBackground />
             <AppKeyHandlers />
             <AppFocusHandler />
+            <AppThemeUpdater />
             <AppSettingsUpdater />
             <DndProvider backend={HTML5Backend}>
                 <Workspace />

@@ -13,6 +13,7 @@ import type { TermViewModel } from "@/app/view/term/term-model";
 import { atoms, getOverrideConfigAtom, getSettingsPrefixAtom, globalStore, WOS } from "@/store/global";
 import { fireAndForget, useAtomValueSafe } from "@/util/util";
 import { computeBgStyleFromMeta } from "@/util/waveutil";
+import { resolvedAppThemeAtom } from "@/app/hook/usetheme";
 import { ISearchOptions } from "@xterm/addon-search";
 import clsx from "clsx";
 import debug from "debug";
@@ -259,7 +260,8 @@ const TerminalView = ({ blockId, model }: ViewComponentProps<TermViewModel>) => 
         const termThemeName = globalStore.get(model.termThemeNameAtom);
         const termTransparency = globalStore.get(model.termTransparencyAtom);
         const termMacOptionIsMetaAtom = getOverrideConfigAtom(blockId, "term:macoptionismeta");
-        const [termTheme, _] = computeTheme(fullConfig, termThemeName, termTransparency);
+        const appTheme = globalStore.get(resolvedAppThemeAtom);
+        const [termTheme, _] = computeTheme(fullConfig, termThemeName, termTransparency, appTheme);
         let termScrollback = 2000;
         if (termSettings?.["term:scrollback"]) {
             termScrollback = Math.floor(termSettings["term:scrollback"]);
@@ -395,7 +397,8 @@ const TerminalView = ({ blockId, model }: ViewComponentProps<TermViewModel>) => 
         blockId: blockId,
     };
 
-    const termBg = computeBgStyleFromMeta(blockData?.meta);
+    const customTermBg = computeBgStyleFromMeta(blockData?.meta);
+    const termThemeBgColor = jotai.useAtomValue(model.termBgColor);
 
     const handleContextMenu = React.useCallback(
         (e: React.MouseEvent<HTMLDivElement>) => {
@@ -460,8 +463,13 @@ const TerminalView = ({ blockId, model }: ViewComponentProps<TermViewModel>) => 
     }, [model.nodeModel]);
 
     return (
-        <div className={clsx("view-term", "term-mode-" + termMode)} ref={viewRef} onContextMenu={handleContextMenu}>
-            {termBg && <div className="absolute inset-0 z-0 pointer-events-none" style={termBg} />}
+        <div
+            className={clsx("view-term", "term-mode-" + termMode)}
+            ref={viewRef}
+            onContextMenu={handleContextMenu}
+            style={{ backgroundColor: termThemeBgColor }}
+        >
+            {customTermBg && <div className="absolute inset-0 z-0 pointer-events-none" style={customTermBg} />}
             <TermResyncHandler blockId={blockId} model={model} />
             <TermThemeUpdater blockId={blockId} model={model} termRef={model.termRef} />
             <TermStickers config={stickerConfig} />

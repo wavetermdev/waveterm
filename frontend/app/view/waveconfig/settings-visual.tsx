@@ -18,6 +18,10 @@ import { ColorControl } from "@/app/element/settings/color-control";
 import { FontControl } from "@/app/element/settings/font-control";
 import { PathControl } from "@/app/element/settings/path-control";
 import { StringListControl } from "@/app/element/settings/stringlist-control";
+import { TermThemeControl } from "@/app/element/settings/termtheme-control";
+import { OmpPaletteExport } from "@/app/element/settings/omp-palette-export";
+import { OmpThemeControl } from "@/app/element/settings/omptheme-control";
+import { PromptCompatibilityHelp } from "@/app/view/waveconfig/prompt-compatibility-help";
 import {
     allSettingsAtom,
     selectedCategoryAtom,
@@ -445,6 +449,18 @@ function renderControl(
         case "stringlist":
             return <StringListControl value={(value as string[]) ?? []} onChange={onChange} />;
 
+        case "termtheme":
+            return <TermThemeControl value={(value as string) ?? ""} onChange={onChange as (value: string) => void} />;
+
+        case "omppalette":
+            return <OmpPaletteExport />;
+
+        case "omptheme":
+            return <OmpThemeControl value={(value as string) ?? ""} onChange={onChange as (value: string) => void} />;
+
+        case "promptcompat":
+            return <PromptCompatibilityHelp />;
+
         default:
             return (
                 <TextControl
@@ -524,6 +540,7 @@ const SettingRow = memo(({ metadata }: SettingRowProps) => {
             onChange={handleChange}
             isModified={isModified}
             requiresRestart={metadata.requiresRestart}
+            fullWidth={metadata.fullWidth}
         >
             {renderControl(metadata, value, handleChange, dynamicOptions)}
         </SettingControl>

@@ -21,12 +21,16 @@ declare global {
         | "color" // Color picker
         | "font" // Font family picker
         | "path" // File/directory path input
-        | "stringlist"; // List of strings
+        | "stringlist" // List of strings
+        | "termtheme" // Terminal color scheme picker
+        | "omptheme" // Oh-My-Posh theme selector
+        | "omppalette" // Oh-My-Posh palette export
+        | "promptcompat"; // Prompt compatibility help and configuration
 
     /**
      * The underlying JavaScript/TypeScript type for a setting value.
      */
-    type SettingValueType = "boolean" | "number" | "string" | "string[]";
+    type SettingValueType = "boolean" | "number" | "string" | "string[]" | "null";
 
     /**
      * Option for select controls.
@@ -90,6 +94,8 @@ declare global {
          * Example: { "window transparency": "window:transparent" }
          */
         links?: Record<string, string>;
+        /** If true, control spans full width below the label/description */
+        fullWidth?: boolean;
     }
 
     /**

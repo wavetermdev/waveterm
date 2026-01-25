@@ -462,16 +462,19 @@ function appHandleKeyDown(waveEvent: WaveKeyboardEvent): boolean {
         }
     }
     // Note: builder mode was removed, so window type is always "tab"
-    const layoutModel = getLayoutModelForStaticTab();
-    const focusedNode = globalStore.get(layoutModel.focusedNode);
-    const blockId = focusedNode?.data?.blockId;
-    if (blockId != null && shouldDispatchToBlock(waveEvent)) {
-        const bcm = getBlockComponentModel(blockId);
-        const viewModel = bcm?.viewModel;
-        if (viewModel?.keyDownHandler) {
-            const handledByBlock = viewModel.keyDownHandler(waveEvent);
-            if (handledByBlock) {
-                return true;
+    // Check that activeTab exists before trying to use the layout model
+    if (globalStore.get(atoms.activeTab) != null) {
+        const layoutModel = getLayoutModelForStaticTab();
+        const focusedNode = globalStore.get(layoutModel.focusedNode);
+        const blockId = focusedNode?.data?.blockId;
+        if (blockId != null && shouldDispatchToBlock(waveEvent)) {
+            const bcm = getBlockComponentModel(blockId);
+            const viewModel = bcm?.viewModel;
+            if (viewModel?.keyDownHandler) {
+                const handledByBlock = viewModel.keyDownHandler(waveEvent);
+                if (handledByBlock) {
+                    return true;
+                }
             }
         }
     }

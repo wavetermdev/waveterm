@@ -23,6 +23,9 @@
         "app:ctrlvpaste": {
           "type": "boolean"
         },
+        "app:theme": {
+          "type": "string"
+        },
         "ai:*": {
           "type": "boolean"
         },
