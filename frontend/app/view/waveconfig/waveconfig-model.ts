@@ -8,6 +8,7 @@ import { globalStore } from "@/app/store/jotaiStore";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { AiPresetsContent } from "@/app/view/waveconfig/aipresets-content";
+import { AppearanceContent } from "@/app/view/waveconfig/appearance-content";
 import { BgPresetsContent } from "@/app/view/waveconfig/bgpresets-content";
 import { ConnectionsContent } from "@/app/view/waveconfig/connections-content";
 import { SecretsContent } from "@/app/view/waveconfig/secretscontent";
@@ -168,6 +169,12 @@ const configFiles: ConfigFile[] = [
         docsUrl: "https://docs.waveterm.dev/config",
         hasJsonView: true,
         visualComponent: SettingsVisualContent,
+    },
+    {
+        name: "Appearance",
+        path: "virtual:appearance",
+        hasJsonView: false,
+        visualComponent: AppearanceContent,
     },
     {
         name: "Connections",
