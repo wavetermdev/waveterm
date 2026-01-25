@@ -7,6 +7,7 @@ import { getApi, getBlockMetaKeyAtom, WOS } from "@/app/store/global";
 import { globalStore } from "@/app/store/jotaiStore";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
+import { AiPresetsContent } from "@/app/view/waveconfig/aipresets-content";
 import { SecretsContent } from "@/app/view/waveconfig/secretscontent";
 import { SettingsVisualContent } from "@/app/view/waveconfig/settings-visual-content";
 import { WaveConfigView } from "@/app/view/waveconfig/waveconfig";
@@ -229,6 +230,7 @@ const deprecatedConfigFiles: ConfigFile[] = [
         docsUrl: "https://docs.waveterm.dev/ai-presets",
         validator: validateAiJson,
         hasJsonView: true,
+        visualComponent: AiPresetsContent,
     },
 ];
 
