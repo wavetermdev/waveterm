@@ -1,0 +1,76 @@
+// Copyright 2025, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
+.collapsible-section {
+    background: var(--panel-bg-color);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 12px;
+
+    .section-header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        width: 100%;
+        padding: 14px 16px;
+        background: transparent;
+        border: none;
+        cursor: pointer;
+        user-select: none;
+        transition: background-color 0.15s ease;
+        text-align: left;
+        color: var(--main-text-color);
+
+        &:hover {
+            background: var(--hover-bg-color);
+        }
+
+        &:focus {
+            outline: none;
+            background: var(--hover-bg-color);
+        }
+    }
+
+    .section-icon {
+        width: 20px;
+        text-align: center;
+        color: var(--secondary-text-color);
+        font-size: 14px;
+    }
+
+    .section-title {
+        flex: 1;
+        font-size: 14px;
+        font-weight: 500;
+    }
+
+    .section-badge {
+        margin-right: 8px;
+    }
+
+    .section-chevron {
+        color: var(--grey-text-color);
+        transition: transform 0.2s ease;
+        font-size: 12px;
+
+        &.expanded {
+            transform: rotate(90deg);
+        }
+    }
+
+    .section-content {
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.3s ease;
+
+        &.expanded {
+            max-height: 2000px;
+        }
+    }
+
+    .section-inner {
+        padding: 16px;
+        border-top: 1px solid var(--border-color);
+    }
+}
