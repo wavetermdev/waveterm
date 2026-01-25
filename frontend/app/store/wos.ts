@@ -3,6 +3,7 @@
 
 // WaveObjectStore
 
+import debug from "debug";
 import { waveEventSubscribe } from "@/app/store/wps";
 import { getWebServerEndpoint } from "@/util/endpoints";
 import { fetch } from "@/util/fetchutil";
@@ -11,6 +12,8 @@ import { atom, Atom, Getter, PrimitiveAtom, Setter, useAtomValue } from "jotai";
 import { useEffect } from "react";
 import { globalStore } from "./jotaiStore";
 import { ObjectService } from "./services";
+
+const dlog = debug("wave:wos");
 
 type WaveObjectDataItemType<T extends WaveObj> = {
     value: T;
@@ -64,18 +67,18 @@ function GetObject<T>(oref: string): Promise<T> {
 function debugLogBackendCall(methodName: string, durationStr: string, args: any[]) {
     durationStr = "| " + durationStr;
     if (methodName == "object.UpdateObject" && args.length > 0) {
-        console.log("[service] object.UpdateObject", args[0].otype, args[0].oid, durationStr, args[0]);
+        dlog("[service] object.UpdateObject", args[0].otype, args[0].oid, durationStr, args[0]);
         return;
     }
     if (methodName == "object.GetObject" && args.length > 0) {
-        console.log("[service] object.GetObject", args[0], durationStr);
+        dlog("[service] object.GetObject", args[0], durationStr);
         return;
     }
     if (methodName == "file.StatFile" && args.length >= 2) {
-        console.log("[service] file.StatFile", args[1], durationStr);
+        dlog("[service] file.StatFile", args[1], durationStr);
         return;
     }
-    console.log("[service]", methodName, durationStr);
+    dlog("[service]", methodName, durationStr);
 }
 
 function wpsSubscribeToObject(oref: string): () => void {
@@ -179,7 +182,7 @@ function createWaveValueObject<T extends WaveObj>(oref: string, shouldFetch: boo
         }
         wov.pendingPromise = null;
         globalStore.set(wov.dataAtom, { value: val, loading: false });
-        console.log("WaveObj resolved", oref, Date.now() - startTs + "ms");
+        dlog("WaveObj resolved", oref, Date.now() - startTs + "ms");
     });
     return wov;
 }
@@ -243,18 +246,18 @@ function updateWaveObject(update: WaveObjUpdate) {
     const oref = makeORef(update.otype, update.oid);
     const wov = getWaveObjectValue(oref);
     if (update.updatetype == "delete") {
-        console.log("WaveObj deleted", oref);
+        dlog("WaveObj deleted", oref);
         globalStore.set(wov.dataAtom, { value: null, loading: false });
     } else {
         if (!isValidWaveObj(update.obj)) {
-            console.log("invalid wave object update", update);
+            console.warn("invalid wave object update", update);
             return;
         }
         const curValue: WaveObjectDataItemType<WaveObj> = globalStore.get(wov.dataAtom);
         if (curValue.value != null && curValue.value.version >= update.obj.version) {
             return;
         }
-        console.log("WaveObj updated", oref);
+        dlog("WaveObj updated", oref);
         globalStore.set(wov.dataAtom, { value: update.obj, loading: false });
     }
     wov.holdTime = Date.now() + defaultHoldTime;

@@ -409,7 +409,6 @@ function useBlockAtom<T>(blockId: string, name: string, makeFn: () => Atom<T>): 
     if (atom == null) {
         atom = makeFn();
         blockCache.set(name, atom);
-        console.log("New BlockAtom", blockId, name);
     }
     return atom as Atom<T>;
 }
@@ -804,11 +803,9 @@ function setActiveTab(tabId: string) {
     getApi().setActiveTab(tabId);
 }
 
+// Telemetry removed - this function is now a no-op
 function recordTEvent(event: string, props?: TEventProps) {
-    if (props == null) {
-        props = {};
-    }
-    RpcApi.RecordTEventCommand(TabRpcClient, { event, props }, { noresponse: true });
+    // No-op - telemetry has been removed from this fork
 }
 
 export {

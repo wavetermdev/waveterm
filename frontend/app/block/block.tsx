@@ -25,7 +25,7 @@ import {
 import type { TabModel } from "@/app/store/tab-model";
 import { useTabModel } from "@/app/store/tab-model";
 import { getWaveObjectAtom, makeORef, useWaveObjectValue } from "@/store/wos";
-import { focusedBlockId, getElemAsStr } from "@/util/focusutil";
+import { focusedBlockId } from "@/util/focusutil";
 import { isBlank, useAtomValueSafe } from "@/util/util";
 import { HelpViewModel } from "@/view/helpview/helpview";
 import { TermViewModel } from "@/view/term/term-model";
@@ -199,16 +199,11 @@ const BlockFull = memo(({ nodeModel, viewModel }: FullBlockProps) => {
         [nodeModel.blockId, blockData?.meta?.view, viewModel]
     );
 
-    const handleChildFocus = useCallback(
-        (event: React.FocusEvent<HTMLDivElement, Element>) => {
-            console.log("setFocusedChild", nodeModel.blockId, getElemAsStr(event.target));
-            if (!isFocused) {
-                console.log("focusedChild focus", nodeModel.blockId);
-                nodeModel.focusNode();
-            }
-        },
-        [isFocused]
-    );
+    const handleChildFocus = useCallback(() => {
+        if (!isFocused) {
+            nodeModel.focusNode();
+        }
+    }, [isFocused]);
 
     const setFocusTarget = useCallback(() => {
         const ok = viewModel?.giveFocus?.();

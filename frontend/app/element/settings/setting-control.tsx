@@ -9,7 +9,8 @@ import "./settings-controls.scss";
 interface SettingControlProps {
     settingKey: string;
     label: string;
-    description: string;
+    /** Description can be a string or a React node (for linked descriptions) */
+    description: string | React.ReactNode;
     value: boolean | number | string | string[] | null;
     defaultValue: boolean | number | string | string[] | null;
     onChange: (value: boolean | number | string | string[] | null) => void;

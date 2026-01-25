@@ -25,7 +25,7 @@ interface ITerminalDimensions {
 
 const MINIMUM_COLS = 2;
 const MINIMUM_ROWS = 1;
-const DEFAULT_SCROLLBAR_WIDTH = 15; // Match xterm.js DEFAULT_SCROLL_BAR_WIDTH
+const DEFAULT_SCROLLBAR_WIDTH = 10; // Custom scrollbar width matching our CSS styling
 
 export class FitAddon implements ITerminalAddon, IFitApi {
     private _terminal: Terminal | undefined;

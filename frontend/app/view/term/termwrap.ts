@@ -5,7 +5,7 @@ import type { BlockNodeModel } from "@/app/block/blocktypes";
 import { getFileSubject } from "@/app/store/wps";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
-import { WOS, fetchWaveFile, getApi, getSettingsKeyAtom, globalStore, openLink, recordTEvent } from "@/store/global";
+import { WOS, fetchWaveFile, getApi, getSettingsKeyAtom, globalStore, openLink } from "@/store/global";
 import * as services from "@/store/services";
 import { sanitizeOsc7Path } from "@/util/pathutil";
 import { PLATFORM, PlatformMacOS } from "@/util/platformutil";
@@ -187,17 +187,17 @@ function handleOsc52Command(data: string, blockId: string, loaded: boolean, term
  * @see https://invisible-island.net/xterm/ctlseqs/ctlseqs.html#h3-Operating-System-Commands
  */
 function handleOsc7Command(data: string, blockId: string, tabId: string, loaded: boolean): boolean {
-    console.log("OSC 7 received:", { data, blockId, loaded });
+    dlog("OSC 7 received:", { data, blockId, loaded });
     if (!loaded) {
-        console.log("OSC 7 ignored - terminal not loaded");
+        dlog("OSC 7 ignored - terminal not loaded");
         return true;
     }
     if (data == null || data.length == 0) {
-        console.log("Invalid OSC 7 command received (empty)");
+        dlog("Invalid OSC 7 command received (empty)");
         return true;
     }
     if (data.length > 1024) {
-        console.log("Invalid OSC 7, data length too long", data.length);
+        dlog("Invalid OSC 7, data length too long", data.length);
         return true;
     }
 
@@ -205,7 +205,7 @@ function handleOsc7Command(data: string, blockId: string, tabId: string, loaded:
     try {
         const url = new URL(data);
         if (url.protocol !== "file:") {
-            console.log("Invalid OSC 7 command received (non-file protocol)", data);
+            dlog("Invalid OSC 7 command received (non-file protocol)", data);
             return true;
         }
 
@@ -230,10 +230,10 @@ function handleOsc7Command(data: string, blockId: string, tabId: string, loaded:
         if (/^\/[a-zA-Z]:[\\/]/.test(pathPart)) {
             // Strip leading slash and normalize to forward slashes
             pathPart = pathPart.substring(1).replace(/\\/g, "/");
-            console.log("OSC 7 Windows path normalized:", pathPart);
+            dlog("OSC 7 Windows path normalized:", pathPart);
         }
     } catch (e) {
-        console.log("Invalid OSC 7 command received (parse error)", data, e);
+        dlog("Invalid OSC 7 command received (parse error)", data, e);
         return true;
     }
 
@@ -301,14 +301,14 @@ function handleOsc7Command(data: string, blockId: string, tabId: string, loaded:
 
                         // Only skip if explicitly locked
                         if (isLocked) {
-                            console.log("OSC 7: Skipping update - tab basedir is locked");
+                            dlog("OSC 7: Skipping update - tab basedir is locked");
                             return;
                         }
 
                         // Only update basedir if it's empty or equals "~" (smart auto-detection)
                         // This respects user-set directories while allowing first terminal to "teach" the tab
                         if (currentBasedir && currentBasedir !== "~") {
-                            console.log("OSC 7: Skipping update - tab basedir already explicitly set:", currentBasedir);
+                            dlog("OSC 7: Skipping update - tab basedir already explicitly set:", currentBasedir);
                             return;
                         }
 
@@ -370,28 +370,7 @@ function addTestMarkerDecoration(terminal: Terminal, marker: TermTypes.IMarker, 
     });
 }
 
-function checkCommandForTelemetry(decodedCmd: string) {
-    if (!decodedCmd) {
-        return;
-    }
-
-    if (decodedCmd.startsWith("ssh ")) {
-        recordTEvent("conn:connect", { "conn:conntype": "ssh-manual" });
-        return;
-    }
-
-    const editorsRegex = /^(vim|vi|nano|nvim)\b/;
-    if (editorsRegex.test(decodedCmd)) {
-        recordTEvent("action:term", { "action:type": "cli-edit" });
-        return;
-    }
-
-    const tailFollowRegex = /(^|\|\s*)tail\s+-[fF]\b/;
-    if (tailFollowRegex.test(decodedCmd)) {
-        recordTEvent("action:term", { "action:type": "cli-tailf" });
-        return;
-    }
-}
+// Telemetry removed - checkCommandForTelemetry function removed
 
 // OSC 16162 - Shell Integration Commands
 // See aiprompts/wave-osc-16162.md for full documentation
@@ -458,7 +437,7 @@ function handleOsc16162Command(data: string, blockId: string, loaded: boolean, t
                         const decodedCmd = base64ToString(cmd.data.cmd64);
                         rtInfo["shell:lastcmd"] = decodedCmd;
                         globalStore.set(termWrap.lastCommandAtom, decodedCmd);
-                        checkCommandForTelemetry(decodedCmd);
+                        // Telemetry removed - no command tracking
                     } catch (e) {
                         console.error("Error decoding cmd64:", e);
                         rtInfo["shell:lastcmd"] = null;
@@ -619,7 +598,7 @@ export class TermWrap {
             );
             this.terminal.loadAddon(webglAddon);
             if (!loggedWebGL) {
-                console.log("loaded webgl!");
+                dlog("loaded webgl!");
                 loggedWebGL = true;
             }
         }
@@ -894,7 +873,7 @@ export class TermWrap {
             }
         }
         const { data: mainData, fileInfo: mainFile } = await fetchWaveFile(zoneId, TermFileName, ptyOffset);
-        console.log(
+        dlog(
             `terminal loaded cachefile:${cacheData?.byteLength ?? 0} main:${mainData?.byteLength ?? 0} bytes, ${Date.now() - startTs}ms`
         );
         if (mainFile != null) {
@@ -922,7 +901,9 @@ export class TermWrap {
         this.fitAddon.fit();
         if (oldRows !== this.terminal.rows || oldCols !== this.terminal.cols) {
             const termSize: TermSize = { rows: this.terminal.rows, cols: this.terminal.cols };
-            RpcApi.ControllerInputCommand(TabRpcClient, { blockid: this.blockId, termsize: termSize });
+            RpcApi.ControllerInputCommand(TabRpcClient, { blockid: this.blockId, termsize: termSize }).catch(() => {
+                // Expected during startup - controller may not be ready yet
+            });
         }
         dlog("resize", `${this.terminal.rows}x${this.terminal.cols}`, `${oldRows}x${oldCols}`, this.hasResized);
         if (!this.hasResized) {

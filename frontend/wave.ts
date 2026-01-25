@@ -1,6 +1,7 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import debug from "debug";
 import { App } from "@/app/app";
 import { loadMonaco } from "@/app/monaco/monaco-env";
 import { GlobalModel } from "@/app/store/global-model";
@@ -36,6 +37,7 @@ import { setKeyUtilPlatform } from "@/util/keyutil";
 import { createElement } from "react";
 import { createRoot } from "react-dom/client";
 
+const dlog = debug("wave:init");
 const platform = getApi().getPlatform();
 document.title = `Wave Terminal`;
 let savedInitOpts: WaveInitOpts = null;
@@ -54,7 +56,7 @@ let savedInitOpts: WaveInitOpts = null;
 (window as any).modalsModel = modalsModel;
 
 function updateZoomFactor(zoomFactor: number) {
-    console.log("update zoomfactor", zoomFactor);
+    dlog("update zoomfactor", zoomFactor);
     document.documentElement.style.setProperty("--zoomfactor", String(zoomFactor));
     document.documentElement.style.setProperty("--zoomfactor-inv", String(1 / zoomFactor));
 }
@@ -72,7 +74,7 @@ async function initBare() {
         updateZoomFactor(zoomFactor);
     });
     document.fonts.ready.then(() => {
-        console.log("Init Bare Done");
+        dlog("Init Bare Done");
         getApi().setWindowInitStatus("ready");
     });
 }
@@ -98,7 +100,7 @@ async function initWaveWrap(initOpts: WaveInitOpts) {
 }
 
 async function reinitWave() {
-    console.log("Reinit Wave");
+    dlog("Reinit Wave");
     getApi().sendLog("Reinit Wave");
 
     // We use this hack to prevent a flicker of the previously-hovered tab when this view was last active.
@@ -152,7 +154,7 @@ async function initWave(initOpts: WaveInitOpts) {
         environment: "renderer",
         primaryTabStartup: initOpts.primaryTabStartup,
     };
-    console.log("Wave Init", globalInitOpts);
+    dlog("Wave Init", globalInitOpts);
     globalStore.set(activeTabIdAtom, initOpts.tabId);
     await GlobalModel.getInstance().initialize(globalInitOpts);
     initGlobal(globalInitOpts);
@@ -194,11 +196,11 @@ async function initWave(initOpts: WaveInitOpts) {
 
     await loadMonaco();
     const fullConfig = await RpcApi.GetFullConfigCommand(TabRpcClient);
-    console.log("fullconfig", fullConfig);
+    dlog("fullconfig", fullConfig);
     globalStore.set(atoms.fullConfigAtom, fullConfig);
     const waveaiModeConfig = await RpcApi.GetWaveAIModeConfigCommand(TabRpcClient);
     globalStore.set(atoms.waveaiModeConfigAtom, waveaiModeConfig.configs);
-    console.log("Wave First Render");
+    dlog("Wave First Render");
     let firstRenderResolveFn: () => void = null;
     let firstRenderPromise = new Promise<void>((resolve) => {
         firstRenderResolveFn = resolve;
@@ -208,6 +210,6 @@ async function initWave(initOpts: WaveInitOpts) {
     const root = createRoot(elem);
     root.render(reactElem);
     await firstRenderPromise;
-    console.log("Wave First Render Done");
+    dlog("Wave First Render Done");
     getApi().setWindowInitStatus("wave-ready");
 }

@@ -650,6 +650,30 @@ declare global {
         count: number;
     };
 
+    // wshrpc.DetectShellsRequest
+    type DetectShellsRequest = {
+        connectionname?: string;
+        rescan?: boolean;
+    };
+
+    // wshrpc.DetectShellsResponse
+    type DetectShellsResponse = {
+        shells: DetectedShell[];
+        error?: string;
+    };
+
+    // wshrpc.DetectedShell
+    type DetectedShell = {
+        id: string;
+        name: string;
+        shellpath: string;
+        shelltype: string;
+        version?: string;
+        source: string;
+        icon?: string;
+        isdefault?: boolean;
+    };
+
     // wshrpc.FetchSuggestionsData
     type FetchSuggestionsData = {
         suggestiontype: string;
@@ -1173,126 +1197,6 @@ declare global {
         "file:path"?: string;
         "file:name"?: string;
         "url:url"?: string;
-    };
-
-    // telemetrydata.TEvent
-    type TEvent = {
-        uuid?: string;
-        ts?: number;
-        tslocal?: string;
-        event: string;
-        props: TEventProps;
-    };
-
-    // telemetrydata.TEventProps
-    type TEventProps = {
-        "client:arch"?: string;
-        "client:version"?: string;
-        "client:initial_version"?: string;
-        "client:buildtime"?: string;
-        "client:osrelease"?: string;
-        "client:isdev"?: boolean;
-        "cohort:month"?: string;
-        "cohort:isoweek"?: string;
-        "autoupdate:channel"?: string;
-        "autoupdate:enabled"?: boolean;
-        "localshell:type"?: string;
-        "localshell:version"?: string;
-        "loc:countrycode"?: string;
-        "loc:regioncode"?: string;
-        "settings:customwidgets"?: number;
-        "settings:customaipresets"?: number;
-        "settings:customsettings"?: number;
-        "settings:customaimodes"?: number;
-        "settings:secretscount"?: number;
-        "settings:transparent"?: boolean;
-        "activity:activeminutes"?: number;
-        "activity:fgminutes"?: number;
-        "activity:openminutes"?: number;
-        "activity:waveaiactiveminutes"?: number;
-        "activity:waveaifgminutes"?: number;
-        "activity:termcommandsrun"?: number;
-        "app:firstday"?: boolean;
-        "app:firstlaunch"?: boolean;
-        "action:initiator"?: "keyboard" | "mouse";
-        "action:type"?: string;
-        "debug:panictype"?: string;
-        "block:view"?: string;
-        "block:controller"?: string;
-        "ai:backendtype"?: string;
-        "ai:local"?: boolean;
-        "wsh:cmd"?: string;
-        "wsh:haderror"?: boolean;
-        "conn:conntype"?: string;
-        "conn:wsherrorcode"?: string;
-        "onboarding:feature"?: "waveai" | "magnify" | "wsh";
-        "onboarding:version"?: string;
-        "onboarding:githubstar"?: "already" | "star" | "later";
-        "display:height"?: number;
-        "display:width"?: number;
-        "display:dpr"?: number;
-        "display:count"?: number;
-        "display:all"?: any;
-        "count:blocks"?: number;
-        "count:tabs"?: number;
-        "count:windows"?: number;
-        "count:workspaces"?: number;
-        "count:sshconn"?: number;
-        "count:wslconn"?: number;
-        "count:views"?: {[key: string]: number};
-        "waveai:apitype"?: string;
-        "waveai:model"?: string;
-        "waveai:chatid"?: string;
-        "waveai:stepnum"?: number;
-        "waveai:inputtokens"?: number;
-        "waveai:outputtokens"?: number;
-        "waveai:nativewebsearchcount"?: number;
-        "waveai:requestcount"?: number;
-        "waveai:toolusecount"?: number;
-        "waveai:tooluseerrorcount"?: number;
-        "waveai:tooldetail"?: {[key: string]: number};
-        "waveai:premiumreq"?: number;
-        "waveai:proxyreq"?: number;
-        "waveai:haderror"?: boolean;
-        "waveai:imagecount"?: number;
-        "waveai:pdfcount"?: number;
-        "waveai:textdoccount"?: number;
-        "waveai:textlen"?: number;
-        "waveai:firstbytems"?: number;
-        "waveai:requestdurms"?: number;
-        "waveai:widgetaccess"?: boolean;
-        "waveai:thinkinglevel"?: string;
-        "waveai:mode"?: string;
-        "waveai:provider"?: string;
-        "waveai:islocal"?: boolean;
-        "waveai:feedback"?: "good" | "bad";
-        "waveai:action"?: string;
-        $set?: TEventUserProps;
-        $set_once?: TEventUserProps;
-    };
-
-    // telemetrydata.TEventUserProps
-    type TEventUserProps = {
-        "client:arch"?: string;
-        "client:version"?: string;
-        "client:initial_version"?: string;
-        "client:buildtime"?: string;
-        "client:osrelease"?: string;
-        "client:isdev"?: boolean;
-        "cohort:month"?: string;
-        "cohort:isoweek"?: string;
-        "autoupdate:channel"?: string;
-        "autoupdate:enabled"?: boolean;
-        "localshell:type"?: string;
-        "localshell:version"?: string;
-        "loc:countrycode"?: string;
-        "loc:regioncode"?: string;
-        "settings:customwidgets"?: number;
-        "settings:customaipresets"?: number;
-        "settings:customsettings"?: number;
-        "settings:customaimodes"?: number;
-        "settings:secretscount"?: number;
-        "settings:transparent"?: boolean;
     };
 
     // waveobj.Tab

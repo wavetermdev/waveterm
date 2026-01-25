@@ -1,0 +1,514 @@
+// Copyright 2025, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
+// ============================================
+// Tab Variables Content Styles
+// Visual editor for tab variable presets
+// ============================================
+
+.tabvars-content {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
+}
+
+// ============================================
+// Error Display
+// ============================================
+
+.tabvars-error-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 16px;
+    background: rgba(239, 68, 68, 0.1);
+    border-bottom: 1px solid rgba(239, 68, 68, 0.2);
+
+    > div {
+        flex: 1;
+    }
+}
+
+.tabvars-error-dismiss {
+    background: transparent;
+    border: none;
+    color: var(--secondary-text-color);
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: color 0.15s ease;
+
+    &:hover {
+        color: var(--main-text-color);
+    }
+}
+
+// ============================================
+// Empty State
+// ============================================
+
+.tabvars-empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    padding: 48px 24px;
+    height: 100%;
+    background: var(--panel-bg-color);
+    border-radius: 8px;
+    margin: 16px;
+
+    > i {
+        font-size: 48px;
+        color: var(--grey-text-color);
+    }
+
+    > h3 {
+        font-size: 18px;
+        font-weight: 600;
+        color: var(--secondary-text-color);
+        margin: 0;
+    }
+
+    > p {
+        font-size: 14px;
+        color: var(--grey-text-color);
+        text-align: center;
+        max-width: 400px;
+        margin: 0;
+    }
+}
+
+.tabvars-add-button {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    background: var(--accent-color);
+    border: none;
+    border-radius: 6px;
+    color: var(--button-text-color);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: opacity 0.15s ease;
+
+    &:hover {
+        opacity: 0.9;
+    }
+
+    > i {
+        font-size: 12px;
+    }
+}
+
+// ============================================
+// Info Bubble
+// ============================================
+
+.tabvars-info-bubble {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 16px;
+    margin: 16px;
+    background: var(--panel-bg-color);
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+}
+
+.tabvars-info-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    > i {
+        color: var(--accent-color);
+    }
+}
+
+.tabvars-info-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--main-text-color);
+}
+
+.tabvars-info-content {
+    font-size: 13px;
+    color: var(--secondary-text-color);
+    line-height: 1.5;
+}
+
+// ============================================
+// List View
+// ============================================
+
+.tabvars-list-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow-y: auto;
+}
+
+.tabvars-list {
+    display: flex;
+    flex-direction: column;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.tabvars-list-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+    border-bottom: 1px solid var(--border-color);
+
+    &:hover {
+        background: var(--hover-bg-color);
+    }
+
+    &:last-of-type {
+        border-bottom: none;
+    }
+}
+
+.tabvars-list-item-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    background: var(--accent-color);
+    border-radius: 6px;
+    color: var(--button-text-color);
+    font-size: 14px;
+}
+
+.tabvars-list-item-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.tabvars-list-item-name {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--main-text-color);
+}
+
+.tabvars-lock-icon {
+    font-size: 10px;
+    color: var(--warning-color);
+}
+
+.tabvars-list-item-path {
+    font-size: 12px;
+    color: var(--grey-text-color);
+    font-family: var(--termfontfamily);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-top: 2px;
+}
+
+.tabvars-list-item-arrow {
+    color: var(--grey-text-color);
+    font-size: 12px;
+}
+
+.tabvars-list-add {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 14px 16px;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+    border-top: 2px solid var(--border-color);
+    color: var(--accent-color);
+    font-weight: 500;
+
+    &:hover {
+        background: var(--hover-bg-color);
+    }
+}
+
+// ============================================
+// Form Styles
+// ============================================
+
+.tabvars-form {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    padding: 24px;
+    background: var(--panel-bg-color);
+    border-radius: 8px;
+    margin: 16px;
+    overflow-y: auto;
+}
+
+.tabvars-form-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+
+    > i {
+        font-size: 18px;
+        color: var(--accent-color);
+    }
+}
+
+.tabvars-form-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--main-text-color);
+    margin: 0;
+}
+
+.tabvars-form-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.tabvars-form-label {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--main-text-color);
+}
+
+.tabvars-form-input-wrapper {
+    display: flex;
+    align-items: center;
+    background: var(--main-bg-color);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    overflow: hidden;
+
+    &:focus-within {
+        border-color: var(--accent-color);
+    }
+}
+
+.tabvars-form-prefix {
+    padding: 8px 0 8px 12px;
+    color: var(--grey-text-color);
+    font-family: var(--termfontfamily);
+    font-size: 13px;
+    user-select: none;
+}
+
+.tabvars-form-input {
+    padding: 8px 12px;
+    background: var(--main-bg-color);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    color: var(--main-text-color);
+    font-size: 13px;
+    transition: border-color 0.15s ease;
+
+    &:focus {
+        outline: none;
+        border-color: var(--accent-color);
+    }
+
+    &::placeholder {
+        color: var(--grey-text-color);
+    }
+
+    &:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .tabvars-form-input-wrapper & {
+        flex: 1;
+        border: none;
+        border-radius: 0;
+
+        &:focus {
+            border: none;
+        }
+    }
+}
+
+.tabvars-form-input-full {
+    width: 100%;
+}
+
+.tabvars-form-input-small {
+    width: 120px;
+}
+
+.tabvars-form-input-error {
+    border-color: var(--error-color);
+
+    &:focus {
+        border-color: var(--error-color);
+    }
+}
+
+.tabvars-form-hint {
+    font-size: 12px;
+    color: var(--grey-text-color);
+}
+
+.tabvars-form-directory {
+    display: flex;
+    gap: 8px;
+}
+
+.tabvars-browse-button {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    background: var(--main-bg-color);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    color: var(--main-text-color);
+    font-size: 13px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+
+    &:hover:not(:disabled) {
+        background: var(--hover-bg-color);
+        border-color: var(--accent-color);
+    }
+
+    &:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+}
+
+.tabvars-form-checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--main-text-color);
+    cursor: pointer;
+
+    input[type="checkbox"] {
+        width: 16px;
+        height: 16px;
+        accent-color: var(--accent-color);
+        cursor: pointer;
+    }
+}
+
+.tabvars-form-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 8px;
+}
+
+.tabvars-form-actions-spread {
+    justify-content: space-between;
+}
+
+// ============================================
+// Buttons
+// ============================================
+
+.tabvars-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 8px 16px;
+    border: none;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: opacity 0.15s ease, background-color 0.15s ease;
+
+    &:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+}
+
+.tabvars-button-primary {
+    background: var(--accent-color);
+    color: var(--button-text-color);
+
+    &:hover:not(:disabled) {
+        opacity: 0.9;
+    }
+}
+
+.tabvars-button-secondary {
+    background: var(--main-bg-color);
+    color: var(--main-text-color);
+    border: 1px solid var(--border-color);
+
+    &:hover:not(:disabled) {
+        background: var(--hover-bg-color);
+    }
+}
+
+.tabvars-button-danger {
+    background: var(--error-color);
+    color: var(--button-text-color);
+
+    &:hover:not(:disabled) {
+        opacity: 0.9;
+    }
+}
+
+.tabvars-button-danger-outline {
+    background: transparent;
+    color: var(--error-color);
+    border: 1px solid var(--error-color);
+
+    &:hover:not(:disabled) {
+        background: rgba(239, 68, 68, 0.1);
+    }
+}
+
+// ============================================
+// Delete Confirmation
+// ============================================
+
+.tabvars-delete-confirm {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 16px;
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+    border-radius: 8px;
+    margin-top: 8px;
+}
+
+.tabvars-delete-confirm-text {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 14px;
+    color: var(--main-text-color);
+
+    > i {
+        color: var(--warning-color);
+    }
+}
+
+.tabvars-delete-confirm-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+}

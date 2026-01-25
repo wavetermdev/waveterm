@@ -1,0 +1,72 @@
+{
+    "provider@openai-gpt4o": {
+        "display:name": "OpenAI GPT-4o",
+        "display:order": 10,
+        "display:icon": "brain",
+        "display:description": "OpenAI's most capable multimodal model",
+        "ai:provider": "openai",
+        "ai:apitype": "openai-chat",
+        "ai:model": "gpt-4o",
+        "ai:apitokensecretname": "OPENAI_KEY",
+        "ai:capabilities": ["tools", "images", "pdfs"]
+    },
+    "provider@anthropic-sonnet": {
+        "display:name": "Anthropic Claude Sonnet",
+        "display:order": 20,
+        "display:icon": "comments",
+        "display:description": "Claude 3.5 Sonnet - balanced performance",
+        "ai:provider": "custom",
+        "ai:apitype": "anthropic",
+        "ai:model": "claude-3-5-sonnet-20241022",
+        "ai:endpoint": "https://api.anthropic.com/v1/messages",
+        "ai:apitokensecretname": "ANTHROPIC_KEY",
+        "ai:apiversion": "2023-06-01",
+        "ai:capabilities": ["tools", "images", "pdfs"]
+    },
+    "provider@google-gemini": {
+        "display:name": "Google Gemini Flash",
+        "display:order": 30,
+        "display:icon": "gem",
+        "display:description": "Fast and capable Gemini model",
+        "ai:provider": "google",
+        "ai:apitype": "google-gemini",
+        "ai:model": "gemini-2.0-flash",
+        "ai:apitokensecretname": "GOOGLE_AI_KEY",
+        "ai:capabilities": ["tools", "images", "pdfs"]
+    },
+    "provider@openrouter-claude": {
+        "display:name": "OpenRouter (Claude 3.5)",
+        "display:order": 40,
+        "display:icon": "route",
+        "display:description": "Access Claude via OpenRouter",
+        "ai:provider": "openrouter",
+        "ai:apitype": "openai-chat",
+        "ai:model": "anthropic/claude-3.5-sonnet",
+        "ai:apitokensecretname": "OPENROUTER_KEY",
+        "ai:capabilities": ["tools", "images"]
+    },
+    "provider@ollama": {
+        "display:name": "Ollama (Local)",
+        "display:order": 100,
+        "display:icon": "server",
+        "display:description": "Local LLM via Ollama\nNo API key required",
+        "ai:provider": "custom",
+        "ai:apitype": "openai-chat",
+        "ai:model": "llama3.3:70b",
+        "ai:endpoint": "http://localhost:11434/v1/chat/completions",
+        "ai:apitoken": "ollama",
+        "ai:capabilities": ["tools"]
+    },
+    "provider@lmstudio": {
+        "display:name": "LM Studio (Local)",
+        "display:order": 110,
+        "display:icon": "laptop-code",
+        "display:description": "Local LLM via LM Studio\nNo API key required",
+        "ai:provider": "custom",
+        "ai:apitype": "openai-chat",
+        "ai:model": "local-model",
+        "ai:endpoint": "http://localhost:1234/v1/chat/completions",
+        "ai:apitoken": "lm-studio",
+        "ai:capabilities": ["tools"]
+    }
+}

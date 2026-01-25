@@ -18,6 +18,7 @@ import { debounce } from "throttle-debounce";
 
 // Page flow:
 //   init -> features
+// Telemetry removed - simplified onboarding flow
 
 type PageName = "init" | "features";
 

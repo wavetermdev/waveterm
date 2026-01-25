@@ -17,15 +17,16 @@ import { debounce } from "throttle-debounce";
 import "./waveconfig.scss";
 
 /**
- * JSON Editor Modal - Opens settings.json in a modal overlay
+ * JSON Editor Modal - Opens config file in a modal overlay
  */
 interface JsonEditorModalProps {
     model: WaveConfigViewModel;
     blockId: string;
+    configFile: ConfigFile;
     onClose: () => void;
 }
 
-const JsonEditorModal = memo(({ model, blockId, onClose }: JsonEditorModalProps) => {
+const JsonEditorModal = memo(({ model, blockId, configFile, onClose }: JsonEditorModalProps) => {
     const [fileContent, setFileContent] = useAtom(model.fileContentAtom);
     const isSaving = useAtomValue(model.isSavingAtom);
     const hasChanges = useAtomValue(model.hasEditedAtom);
@@ -113,7 +114,7 @@ const JsonEditorModal = memo(({ model, blockId, onClose }: JsonEditorModalProps)
                 <div className="waveconfig-modal-header">
                     <div className="waveconfig-modal-title">
                         <i className="fa fa-solid fa-code" />
-                        <span>settings.json</span>
+                        <span>{configFile.path}</span>
                     </div>
                     <div className="waveconfig-modal-actions">
                         {hasChanges && (
@@ -150,8 +151,8 @@ const JsonEditorModal = memo(({ model, blockId, onClose }: JsonEditorModalProps)
                     <CodeEditor
                         blockId={blockId}
                         text={fileContent}
-                        fileName="WAVECONFIGPATH/settings.json"
-                        language="json"
+                        fileName={`WAVECONFIGPATH/${configFile.path}`}
+                        language={configFile.language}
                         readonly={false}
                         onChange={handleContentChange}
                         onMount={handleEditorMount}
@@ -224,9 +225,9 @@ const ConfigTabBar = memo(({ model, onEditJson }: ConfigTabBarProps) => {
                         </a>
                     </Tooltip>
                 )}
-                {selectedFile?.path === "settings.json" && selectedFile?.visualComponent && (
+                {selectedFile?.visualComponent && (
                     <button onClick={onEditJson} className="waveconfig-edit-json">
-                        Edit in settings.json
+                        Edit in {selectedFile.path}
                     </button>
                 )}
             </div>
@@ -281,17 +282,16 @@ const WaveConfigView = memo(({ blockId, model }: ViewComponentProps<WaveConfigVi
         [model]
     );
 
-    // Open JSON modal and load settings.json content
+    // Open JSON modal for current file
     const handleEditJson = useCallback(async () => {
-        // Flush any pending settings changes first
+        // Flush any pending settings changes first (in case visual component has unsaved changes)
         await settingsService.forceSave();
-        // Find and load settings.json
-        const settingsFile = model.getConfigFiles().find((f) => f.path === "settings.json");
-        if (settingsFile) {
-            await model.loadFile(settingsFile);
+        // Reload the current file to ensure we have the latest content
+        if (selectedFile) {
+            await model.loadFile(selectedFile);
         }
         setIsJsonModalOpen(true);
-    }, [model]);
+    }, [model, selectedFile]);
 
     const handleCloseJsonModal = useCallback(() => {
         setIsJsonModalOpen(false);
@@ -357,10 +357,11 @@ const WaveConfigView = memo(({ blockId, model }: ViewComponentProps<WaveConfigVi
                 ) : null}
             </div>
 
-            {isJsonModalOpen && (
+            {isJsonModalOpen && selectedFile && (
                 <JsonEditorModal
                     model={model}
                     blockId={blockId}
+                    configFile={selectedFile}
                     onClose={handleCloseJsonModal}
                 />
             )}

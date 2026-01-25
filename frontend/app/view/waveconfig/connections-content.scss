@@ -1,0 +1,1016 @@
+// Copyright 2025, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
+// ============================================
+// Connections Content Styles
+// Two-panel layout for managing SSH/WSL connections
+// ============================================
+
+.connections-content {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
+}
+
+// ============================================
+// Loading & Empty States
+// ============================================
+
+.connections-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    height: 100%;
+    color: var(--secondary-text-color);
+
+    i {
+        font-size: 24px;
+    }
+}
+
+.connections-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    height: 100%;
+    padding: 48px;
+    text-align: center;
+    color: var(--secondary-text-color);
+
+    i {
+        font-size: 48px;
+        color: var(--grey-text-color);
+    }
+
+    h3 {
+        font-size: 18px;
+        font-weight: 600;
+        color: var(--main-text-color);
+        margin: 0;
+    }
+
+    p {
+        font-size: 14px;
+        margin: 0;
+    }
+}
+
+// ============================================
+// Error Bar
+// ============================================
+
+.connections-error {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 16px;
+    background: var(--error-color);
+    color: var(--main-text-color);
+    font-size: 13px;
+    flex-shrink: 0;
+
+    button {
+        background: transparent;
+        border: none;
+        color: var(--main-text-color);
+        cursor: pointer;
+        padding: 4px 8px;
+        border-radius: 4px;
+        transition: background-color 0.15s ease;
+
+        &:hover {
+            background: rgb(0 0 0 / 0.2);
+        }
+    }
+}
+
+// ============================================
+// Connection List
+// ============================================
+
+.connections-list-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+}
+
+.connections-list-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border-color);
+    flex-shrink: 0;
+
+    h3 {
+        font-size: 15px;
+        font-weight: 600;
+        color: var(--main-text-color);
+        margin: 0;
+    }
+}
+
+.connections-list {
+    flex: 1;
+    overflow-y: auto;
+}
+
+.connections-list-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 20px;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+    border-bottom: 1px solid var(--border-color);
+
+    &:hover {
+        background: var(--hover-bg-color);
+    }
+
+    &.selected {
+        background: var(--highlight-bg-color);
+    }
+
+    &.hidden {
+        opacity: 0.6;
+    }
+
+    > i:first-child {
+        font-size: 14px;
+        color: var(--accent-color);
+        width: 18px;
+        text-align: center;
+    }
+
+    .connections-list-item-name {
+        flex: 1;
+        font-size: 13px;
+        color: var(--main-text-color);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .connections-list-item-hidden {
+        font-size: 11px;
+        color: var(--grey-text-color);
+    }
+
+    .connections-list-item-arrow {
+        font-size: 11px;
+        color: var(--grey-text-color);
+    }
+}
+
+// ============================================
+// CLI Info
+// ============================================
+
+.connections-cli-info {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 16px 20px;
+    margin: 16px;
+    background: var(--panel-bg-color);
+    border-radius: 8px;
+    flex-shrink: 0;
+
+    .connections-cli-info-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 12px;
+        font-weight: 500;
+        color: var(--secondary-text-color);
+    }
+
+    .connections-cli-info-commands {
+        font-family: var(--termfontfamily);
+        font-size: 11px;
+        line-height: 1.6;
+        color: var(--grey-text-color);
+        background: var(--main-bg-color);
+        padding: 10px 12px;
+        border-radius: 4px;
+    }
+}
+
+// ============================================
+// Buttons
+// ============================================
+
+.connections-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    border: none;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.15s ease, opacity 0.15s ease;
+
+    &:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    &.primary {
+        background: var(--accent-color);
+        color: var(--button-text-color);
+
+        &:hover:not(:disabled) {
+            opacity: 0.9;
+        }
+    }
+
+    &.secondary {
+        background: var(--panel-bg-color);
+        color: var(--main-text-color);
+
+        &:hover:not(:disabled) {
+            background: var(--hover-bg-color);
+        }
+    }
+
+    &.danger {
+        background: var(--error-color);
+        color: var(--main-text-color);
+
+        &:hover:not(:disabled) {
+            opacity: 0.9;
+        }
+    }
+}
+
+.connections-add-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 18px;
+    background: var(--accent-color);
+    color: var(--button-text-color);
+    border: none;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: opacity 0.15s ease;
+
+    &:hover {
+        opacity: 0.9;
+    }
+
+    &.small {
+        padding: 6px 12px;
+        font-size: 12px;
+    }
+}
+
+.connections-back-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: transparent;
+    color: var(--secondary-text-color);
+    border: none;
+    border-radius: 4px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: color 0.15s ease, background-color 0.15s ease;
+
+    &:hover {
+        color: var(--main-text-color);
+        background: var(--hover-bg-color);
+    }
+}
+
+// ============================================
+// Add Connection Form
+// ============================================
+
+.connections-add-form {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    padding: 24px;
+    max-width: 500px;
+    margin: 0 auto;
+
+    h3 {
+        font-size: 16px;
+        font-weight: 600;
+        color: var(--main-text-color);
+        margin: 0;
+    }
+
+    .connections-add-form-field {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+
+        label {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--secondary-text-color);
+        }
+
+        input {
+            padding: 10px 12px;
+            background: var(--panel-bg-color);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            color: var(--main-text-color);
+            font-size: 14px;
+
+            &:focus {
+                outline: none;
+                border-color: var(--accent-color);
+            }
+
+            &::placeholder {
+                color: var(--grey-text-color);
+            }
+        }
+    }
+
+    .connections-add-form-hint {
+        font-size: 12px;
+        color: var(--grey-text-color);
+    }
+
+    .connections-add-form-error {
+        font-size: 12px;
+        color: var(--error-color);
+    }
+
+    .connections-add-form-actions {
+        display: flex;
+        gap: 10px;
+        justify-content: flex-end;
+        margin-top: 8px;
+    }
+}
+
+// ============================================
+// Connection Editor
+// ============================================
+
+.connections-editor {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+}
+
+.connections-editor-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--border-color);
+    flex-shrink: 0;
+
+    .connections-editor-title {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex: 1;
+        min-width: 0;
+
+        i {
+            font-size: 14px;
+            color: var(--accent-color);
+        }
+
+        span {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--main-text-color);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+    }
+
+    .connections-editor-actions {
+        display: flex;
+        gap: 10px;
+        flex-shrink: 0;
+    }
+}
+
+.connections-delete-confirm {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 20px;
+    background: var(--warning-color);
+    color: var(--main-bg-color);
+    flex-shrink: 0;
+
+    .connections-delete-confirm-content {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+
+        i {
+            font-size: 18px;
+        }
+
+        strong {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        p {
+            margin: 4px 0 0;
+            font-size: 12px;
+            opacity: 0.9;
+        }
+    }
+
+    .connections-delete-confirm-actions {
+        display: flex;
+        gap: 8px;
+    }
+}
+
+.connections-editor-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px 20px;
+}
+
+// ============================================
+// Settings Categories
+// ============================================
+
+.connections-category {
+    margin-bottom: 8px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    overflow: hidden;
+
+    &.expanded {
+        .connections-category-header {
+            border-bottom: 1px solid var(--border-color);
+        }
+    }
+}
+
+.connections-category-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 12px 16px;
+    background: var(--panel-bg-color);
+    border: none;
+    color: var(--main-text-color);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+
+    &:hover {
+        background: var(--hover-bg-color);
+    }
+
+    > i:first-child {
+        font-size: 13px;
+        color: var(--accent-color);
+        width: 18px;
+        text-align: center;
+    }
+
+    > span {
+        flex: 1;
+        text-align: left;
+    }
+
+    > i:last-child {
+        font-size: 11px;
+        color: var(--grey-text-color);
+    }
+}
+
+.connections-category-content {
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+// ============================================
+// Setting Fields
+// ============================================
+
+.connections-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+
+    &.connections-field-toggle {
+        .connections-field-header {
+            flex-direction: row;
+            align-items: center;
+            justify-content: space-between;
+        }
+    }
+}
+
+.connections-field-header {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.connections-field-label {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--main-text-color);
+}
+
+.connections-field-description {
+    font-size: 12px;
+    color: var(--grey-text-color);
+}
+
+.connections-field-input {
+    margin-top: 4px;
+}
+
+.connections-input {
+    width: 100%;
+    padding: 8px 12px;
+    background: var(--main-bg-color);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    color: var(--main-text-color);
+    font-size: 13px;
+
+    &:focus {
+        outline: none;
+        border-color: var(--accent-color);
+    }
+
+    &::placeholder {
+        color: var(--grey-text-color);
+    }
+}
+
+.connections-textarea {
+    width: 100%;
+    padding: 8px 12px;
+    background: var(--main-bg-color);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    color: var(--main-text-color);
+    font-size: 13px;
+    font-family: var(--termfontfamily);
+    resize: vertical;
+    min-height: 60px;
+
+    &:focus {
+        outline: none;
+        border-color: var(--accent-color);
+    }
+
+    &::placeholder {
+        color: var(--grey-text-color);
+        font-family: inherit;
+    }
+}
+
+// ============================================
+// Toggle Switch
+// ============================================
+
+.connections-toggle {
+    position: relative;
+    display: inline-block;
+    width: 40px;
+    height: 22px;
+    flex-shrink: 0;
+
+    input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+
+        &:checked + .connections-toggle-slider {
+            background: var(--accent-color);
+
+            &::before {
+                transform: translateX(18px);
+            }
+        }
+
+        &:focus + .connections-toggle-slider {
+            box-shadow: 0 0 0 2px var(--accent-color-faint);
+        }
+    }
+}
+
+.connections-toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    inset: 0;
+    background: var(--panel-bg-color);
+    border: 1px solid var(--border-color);
+    border-radius: 22px;
+    transition: background-color 0.2s ease;
+
+    &::before {
+        content: "";
+        position: absolute;
+        height: 16px;
+        width: 16px;
+        left: 2px;
+        bottom: 2px;
+        background: var(--main-text-color);
+        border-radius: 50%;
+        transition: transform 0.2s ease;
+    }
+}
+
+// ============================================
+// Empty State Enhancements
+// ============================================
+
+.connections-empty-divider {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    max-width: 280px;
+    margin: 8px 0;
+
+    span {
+        font-size: 12px;
+        color: var(--grey-text-color);
+        white-space: nowrap;
+    }
+}
+
+.connections-detect-btn-primary {
+    gap: 10px;
+
+    i {
+        font-size: 14px;
+    }
+}
+
+// ============================================
+// Auto-Detect Button (in header)
+// ============================================
+
+.connections-list-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.connections-detect-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    background: transparent;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    color: var(--secondary-text-color);
+    cursor: pointer;
+    transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+
+    &:hover:not(:disabled) {
+        background: var(--hover-bg-color);
+        color: var(--accent-color);
+        border-color: var(--accent-color);
+    }
+
+    &:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    i {
+        font-size: 14px;
+    }
+}
+
+// ============================================
+// Detection Panel
+// ============================================
+
+.connections-detect-panel {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+}
+
+.connections-detect-panel-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--border-color);
+    flex-shrink: 0;
+
+    h3 {
+        flex: 1;
+        font-size: 15px;
+        font-weight: 600;
+        color: var(--main-text-color);
+        margin: 0;
+    }
+}
+
+.connections-detect-close {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    background: transparent;
+    border: none;
+    border-radius: 4px;
+    color: var(--secondary-text-color);
+    cursor: pointer;
+    transition: background-color 0.15s ease, color 0.15s ease;
+
+    &:hover {
+        background: var(--hover-bg-color);
+        color: var(--main-text-color);
+    }
+
+    i {
+        font-size: 14px;
+    }
+}
+
+// ============================================
+// Detection Loading/Error/Empty States
+// ============================================
+
+.connections-detect-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    flex: 1;
+    padding: 48px;
+    color: var(--secondary-text-color);
+
+    i {
+        font-size: 32px;
+        color: var(--accent-color);
+    }
+
+    span {
+        font-size: 14px;
+    }
+}
+
+.connections-detect-error {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    flex: 1;
+    padding: 48px;
+    text-align: center;
+
+    i {
+        font-size: 32px;
+        color: var(--error-color);
+    }
+
+    span {
+        font-size: 14px;
+        color: var(--secondary-text-color);
+        max-width: 400px;
+    }
+}
+
+.connections-detect-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    flex: 1;
+    padding: 48px;
+    text-align: center;
+
+    i {
+        font-size: 32px;
+        color: var(--grey-text-color);
+    }
+
+    span {
+        font-size: 14px;
+        color: var(--secondary-text-color);
+    }
+}
+
+// ============================================
+// Detection List
+// ============================================
+
+.connections-detect-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px 0;
+}
+
+// ============================================
+// Detection Item
+// ============================================
+
+.connections-detect-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px 20px;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+
+    &:hover:not(.disabled) {
+        background: var(--hover-bg-color);
+    }
+
+    &.selected:not(.disabled) {
+        background: var(--highlight-bg-color);
+    }
+
+    &.disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+}
+
+.connections-detect-item-checkbox {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+    margin-top: 2px;
+
+    input {
+        position: absolute;
+        opacity: 0;
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        cursor: pointer;
+
+        &:disabled {
+            cursor: not-allowed;
+        }
+
+        &:checked + .connections-detect-item-checkmark {
+            background: var(--accent-color);
+            border-color: var(--accent-color);
+
+            &::after {
+                display: block;
+            }
+        }
+
+        &:focus + .connections-detect-item-checkmark {
+            box-shadow: 0 0 0 2px var(--accent-color-faint);
+        }
+    }
+}
+
+.connections-detect-item-checkmark {
+    position: absolute;
+    inset: 0;
+    background: var(--main-bg-color);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+
+    &::after {
+        content: "";
+        display: none;
+        position: absolute;
+        left: 5px;
+        top: 2px;
+        width: 5px;
+        height: 9px;
+        border: solid var(--button-text-color);
+        border-width: 0 2px 2px 0;
+        transform: rotate(45deg);
+    }
+}
+
+.connections-detect-item-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    background: var(--panel-bg-color);
+    border-radius: 6px;
+    flex-shrink: 0;
+
+    i {
+        font-size: 14px;
+        color: var(--accent-color);
+    }
+}
+
+.connections-detect-item-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.connections-detect-item-name {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--main-text-color);
+}
+
+.connections-detect-item-version {
+    font-size: 12px;
+    font-weight: 400;
+    color: var(--grey-text-color);
+}
+
+.connections-detect-item-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 6px;
+    font-size: 10px;
+    font-weight: 500;
+    text-transform: uppercase;
+    border-radius: 4px;
+
+    &.default {
+        background: var(--accent-color-faint);
+        color: var(--accent-color);
+    }
+
+    &.configured {
+        background: var(--panel-bg-color);
+        color: var(--grey-text-color);
+    }
+}
+
+.connections-detect-item-path {
+    margin-top: 4px;
+    font-size: 12px;
+    color: var(--grey-text-color);
+    font-family: var(--termfontfamily);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+// ============================================
+// Detection Footer
+// ============================================
+
+.connections-detect-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 20px;
+    border-top: 1px solid var(--border-color);
+    flex-shrink: 0;
+}
+
+.connections-detect-footer-left {
+    display: flex;
+    gap: 8px;
+}
+
+.connections-detect-footer-right {
+    display: flex;
+    gap: 8px;
+}

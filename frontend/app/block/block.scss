@@ -28,6 +28,12 @@
         &.block-no-padding {
             padding: 0;
         }
+
+        // Terminal views need right edge access for scrollbar
+        &:has(> .view-term) {
+            padding-right: 0;
+            overflow: visible;
+        }
     }
 
     .block-focuselem {

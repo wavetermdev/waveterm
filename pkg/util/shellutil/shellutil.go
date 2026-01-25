@@ -71,6 +71,7 @@ const (
 	ShellType_zsh     = "zsh"
 	ShellType_fish    = "fish"
 	ShellType_pwsh    = "pwsh"
+	ShellType_cmd     = "cmd"
 	ShellType_unknown = "unknown"
 )
 

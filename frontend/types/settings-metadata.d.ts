@@ -84,6 +84,12 @@ declare global {
         tags?: string[];
         /** If true, this is a sensitive setting (e.g., API tokens) */
         sensitive?: boolean;
+        /**
+         * Links to related settings within the description text.
+         * Maps display text (case-insensitive) to setting keys.
+         * Example: { "window transparency": "window:transparent" }
+         */
+        links?: Record<string, string>;
     }
 
     /**

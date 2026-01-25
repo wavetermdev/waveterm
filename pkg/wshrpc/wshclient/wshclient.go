@@ -6,7 +6,6 @@
 package wshclient
 
 import (
-	"github.com/wavetermdev/waveterm/pkg/telemetry/telemetrydata"
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
 	"github.com/wavetermdev/waveterm/pkg/wshrpc"
 	"github.com/wavetermdev/waveterm/pkg/wconfig"
@@ -176,6 +175,12 @@ func DeleteBlockCommand(w *wshutil.WshRpc, data wshrpc.CommandDeleteBlockData, o
 func DeleteSubBlockCommand(w *wshutil.WshRpc, data wshrpc.CommandDeleteBlockData, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "deletesubblock", data, opts)
 	return err
+}
+
+// command "detectavailableshells", wshserver.DetectAvailableShellsCommand
+func DetectAvailableShellsCommand(w *wshutil.WshRpc, data wshrpc.DetectShellsRequest, opts *wshrpc.RpcOpts) (wshrpc.DetectShellsResponse, error) {
+	resp, err := sendRpcRequestCallHelper[wshrpc.DetectShellsResponse](w, "detectavailableshells", data, opts)
+	return resp, err
 }
 
 // command "dismisswshfail", wshserver.DismissWshFailCommand
@@ -553,12 +558,6 @@ func PathCommand(w *wshutil.WshRpc, data wshrpc.PathCommandData, opts *wshrpc.Rp
 	return resp, err
 }
 
-// command "recordtevent", wshserver.RecordTEventCommand
-func RecordTEventCommand(w *wshutil.WshRpc, data telemetrydata.TEvent, opts *wshrpc.RpcOpts) error {
-	_, err := sendRpcRequestCallHelper[any](w, "recordtevent", data, opts)
-	return err
-}
-
 // command "remotedisconnectfromjobmanager", wshserver.RemoteDisconnectFromJobManagerCommand
 func RemoteDisconnectFromJobManagerCommand(w *wshutil.WshRpc, data wshrpc.CommandRemoteDisconnectFromJobManagerData, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "remotedisconnectfromjobmanager", data, opts)
@@ -681,12 +680,6 @@ func RouteUnannounceCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) error {
 	return err
 }
 
-// command "sendtelemetry", wshserver.SendTelemetryCommand
-func SendTelemetryCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) error {
-	_, err := sendRpcRequestCallHelper[any](w, "sendtelemetry", nil, opts)
-	return err
-}
-
 // command "setconfig", wshserver.SetConfigCommand
 func SetConfigCommand(w *wshutil.WshRpc, data wshrpc.MetaSettingsType, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "setconfig", data, opts)
@@ -789,12 +782,6 @@ func WaitForRouteCommand(w *wshutil.WshRpc, data wshrpc.CommandWaitForRouteData,
 // command "waveaiaddcontext", wshserver.WaveAIAddContextCommand
 func WaveAIAddContextCommand(w *wshutil.WshRpc, data wshrpc.CommandWaveAIAddContextData, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "waveaiaddcontext", data, opts)
-	return err
-}
-
-// command "waveaienabletelemetry", wshserver.WaveAIEnableTelemetryCommand
-func WaveAIEnableTelemetryCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) error {
-	_, err := sendRpcRequestCallHelper[any](w, "waveaienabletelemetry", nil, opts)
 	return err
 }
 

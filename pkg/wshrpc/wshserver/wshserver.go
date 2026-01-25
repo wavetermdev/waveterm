@@ -34,7 +34,6 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/remote/fileshare"
 	"github.com/wavetermdev/waveterm/pkg/secretstore"
 	"github.com/wavetermdev/waveterm/pkg/suggestion"
-	"github.com/wavetermdev/waveterm/pkg/telemetry/telemetrydata"
 	"github.com/wavetermdev/waveterm/pkg/util/envutil"
 	"github.com/wavetermdev/waveterm/pkg/util/iochan/iochantypes"
 	"github.com/wavetermdev/waveterm/pkg/util/iterfn"
@@ -826,6 +825,45 @@ func (ws *WshServer) FindGitBashCommand(ctx context.Context, rescan bool) (strin
 	return shellutil.FindGitBash(&fullConfig, rescan), nil
 }
 
+func (ws *WshServer) DetectAvailableShellsCommand(ctx context.Context, data wshrpc.DetectShellsRequest) (wshrpc.DetectShellsResponse, error) {
+	// Currently only local detection is supported
+	// Remote connection detection would be a future enhancement
+	if data.ConnectionName != "" {
+		return wshrpc.DetectShellsResponse{
+			Shells: nil,
+			Error:  "remote shell detection not yet supported",
+		}, nil
+	}
+
+	fullConfig := wconfig.GetWatcher().GetFullConfig()
+	detectedShells, err := shellutil.DetectAllShells(&fullConfig, data.Rescan)
+
+	var errStr string
+	if err != nil {
+		errStr = err.Error()
+	}
+
+	// Convert shellutil.DetectedShell to wshrpc.DetectedShell
+	rpcShells := make([]wshrpc.DetectedShell, len(detectedShells))
+	for i, shell := range detectedShells {
+		rpcShells[i] = wshrpc.DetectedShell{
+			ID:        shell.ID,
+			Name:      shell.Name,
+			ShellPath: shell.ShellPath,
+			ShellType: shell.ShellType,
+			Version:   shell.Version,
+			Source:    shell.Source,
+			Icon:      shell.Icon,
+			IsDefault: shell.IsDefault,
+		}
+	}
+
+	return wshrpc.DetectShellsResponse{
+		Shells: rpcShells,
+		Error:  errStr,
+	}, nil
+}
+
 func (ws *WshServer) BlockInfoCommand(ctx context.Context, blockId string) (*wshrpc.BlockInfoData, error) {
 	blockData, err := wstore.DBMustGet[*waveobj.Block](ctx, blockId)
 	if err != nil {
@@ -953,20 +991,7 @@ func (ws *WshServer) WorkspaceListCommand(ctx context.Context) ([]wshrpc.Workspa
 	return rtn, nil
 }
 
-func (ws *WshServer) RecordTEventCommand(ctx context.Context, data telemetrydata.TEvent) error {
-	// Telemetry has been removed - this is a no-op for backwards compatibility
-	return nil
-}
-
-func (ws WshServer) SendTelemetryCommand(ctx context.Context) error {
-	// Telemetry has been removed - this is a no-op for backwards compatibility
-	return nil
-}
-
-func (ws *WshServer) WaveAIEnableTelemetryCommand(ctx context.Context) error {
-	// Telemetry has been removed - this is a no-op for backwards compatibility
-	return nil
-}
+// Telemetry removed - no-op for backwards compatibility
 
 func (ws *WshServer) GetWaveAIChatCommand(ctx context.Context, data wshrpc.CommandGetWaveAIChatData) (*uctypes.UIChat, error) {
 	aiChat := chatstore.DefaultChatStore.Get(data.ChatId)
@@ -1001,12 +1026,12 @@ func (ws *WshServer) WaveAIGetToolDiffCommand(ctx context.Context, data wshrpc.C
 }
 
 func (ws *WshServer) WshActivityCommand(ctx context.Context, data map[string]int) error {
-	// Telemetry has been removed - this is a no-op for backwards compatibility
+	// Telemetry removed - this is now a no-op
 	return nil
 }
 
 func (ws *WshServer) ActivityCommand(ctx context.Context, activity wshrpc.ActivityUpdate) error {
-	// Telemetry has been removed - this is a no-op for backwards compatibility
+	// Telemetry removed - this is now a no-op
 	return nil
 }
 

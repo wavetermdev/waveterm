@@ -7,7 +7,7 @@
     "productName": "Wave",
     "description": "Open-Source AI-Native Terminal Built for Seamless Workflows",
     "license": "Apache-2.0",
-    "version": "0.13.2-alpha.0",
+    "version": "0.14.0",
     "homepage": "https://waveterm.dev",
     "build": {
         "appId": "dev.commandline.waveterm"
@@ -60,6 +60,7 @@
         "prettier-plugin-jsdoc": "^1.8.0",
         "prettier-plugin-organize-imports": "^4.3.0",
         "sass": "1.91.0",
+        "sharp": "^0.34.5",
         "tailwindcss": "^4.1.18",
         "tailwindcss-animate": "^1.0.7",
         "ts-node": "^10.9.2",

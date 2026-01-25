@@ -142,6 +142,11 @@ class RpcApiType {
         return client.wshRpcCall("deletesubblock", data, opts);
     }
 
+    // command "detectavailableshells" [call]
+    DetectAvailableShellsCommand(client: WshClient, data: DetectShellsRequest, opts?: RpcOpts): Promise<DetectShellsResponse> {
+        return client.wshRpcCall("detectavailableshells", data, opts);
+    }
+
     // command "dismisswshfail" [call]
     DismissWshFailCommand(client: WshClient, data: string, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("dismisswshfail", data, opts);
@@ -457,11 +462,6 @@ class RpcApiType {
         return client.wshRpcCall("path", data, opts);
     }
 
-    // command "recordtevent" [call]
-    RecordTEventCommand(client: WshClient, data: TEvent, opts?: RpcOpts): Promise<void> {
-        return client.wshRpcCall("recordtevent", data, opts);
-    }
-
     // command "remotedisconnectfromjobmanager" [call]
     RemoteDisconnectFromJobManagerCommand(client: WshClient, data: CommandRemoteDisconnectFromJobManagerData, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("remotedisconnectfromjobmanager", data, opts);
@@ -567,11 +567,6 @@ class RpcApiType {
         return client.wshRpcCall("routeunannounce", null, opts);
     }
 
-    // command "sendtelemetry" [call]
-    SendTelemetryCommand(client: WshClient, opts?: RpcOpts): Promise<void> {
-        return client.wshRpcCall("sendtelemetry", null, opts);
-    }
-
     // command "setconfig" [call]
     SetConfigCommand(client: WshClient, data: SettingsType, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("setconfig", data, opts);
@@ -660,11 +655,6 @@ class RpcApiType {
     // command "waveaiaddcontext" [call]
     WaveAIAddContextCommand(client: WshClient, data: CommandWaveAIAddContextData, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("waveaiaddcontext", data, opts);
-    }
-
-    // command "waveaienabletelemetry" [call]
-    WaveAIEnableTelemetryCommand(client: WshClient, opts?: RpcOpts): Promise<void> {
-        return client.wshRpcCall("waveaienabletelemetry", null, opts);
     }
 
     // command "waveaigettooldiff" [call]

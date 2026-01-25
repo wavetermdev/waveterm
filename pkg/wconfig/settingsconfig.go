@@ -145,6 +145,8 @@ type SettingsType struct {
 	WindowDimensions                    string   `json:"window:dimensions,omitempty"`
 	WindowZoom                          *float64 `json:"window:zoom,omitempty"`
 
+	// Telemetry has been removed from this fork - these fields are kept for compatibility
+	// but have no effect
 	TelemetryClear   bool `json:"telemetry:*,omitempty"`
 	TelemetryEnabled bool `json:"telemetry:enabled,omitempty"`
 
