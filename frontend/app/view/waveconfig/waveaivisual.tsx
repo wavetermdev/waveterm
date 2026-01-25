@@ -5,6 +5,12 @@ import { atoms, getApi } from "@/app/store/global";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import type { WaveConfigViewModel } from "@/app/view/waveconfig/waveconfig-model";
+import {
+    computeModeStatus,
+    isLocalEndpoint,
+    ModeStatus,
+    ProviderStatusBadge,
+} from "@/app/view/waveconfig/provider-status-badge";
 import { base64ToString, cn, stringToBase64 } from "@/util/util";
 import { useAtomValue } from "jotai";
 import { memo, useCallback, useEffect, useMemo, useState } from "react";
@@ -55,6 +61,7 @@ const API_TYPE_OPTIONS = [
     { value: "openai-chat", label: "OpenAI Chat (/v1/chat/completions)" },
     { value: "openai-responses", label: "OpenAI Responses (/v1/responses)" },
     { value: "google-gemini", label: "Google Gemini" },
+    { value: "anthropic", label: "Anthropic Messages API" },
 ];
 
 // Thinking level options
@@ -99,6 +106,10 @@ function getDefaultSecretName(provider: string | undefined): string {
 
 function isDefaultMode(modeKey: string): boolean {
     return modeKey.startsWith("waveai@");
+}
+
+function isTemplateMode(modeKey: string): boolean {
+    return modeKey.startsWith("provider@");
 }
 
 function modeKeyToFormData(key: string, mode: AIModeConfigType): ModeFormData {
@@ -160,10 +171,13 @@ interface ModeListItemProps {
     mode: AIModeConfigType;
     isSelected: boolean;
     onSelect: () => void;
+    status?: ModeStatus;
+    onNavigateToSecrets?: () => void;
 }
 
-const ModeListItem = memo(({ modeKey, mode, isSelected, onSelect }: ModeListItemProps) => {
+const ModeListItem = memo(({ modeKey, mode, isSelected, onSelect, status, onNavigateToSecrets }: ModeListItemProps) => {
     const isDefault = isDefaultMode(modeKey);
+    const isTemplate = isTemplateMode(modeKey);
     const icon = mode["display:icon"] || "sparkles";
     const isCloud = mode["waveai:cloud"];
     const isPremium = mode["waveai:premium"];
@@ -173,6 +187,7 @@ const ModeListItem = memo(({ modeKey, mode, isSelected, onSelect }: ModeListItem
             className={cn("waveai-mode-item", {
                 active: isSelected,
                 "is-default": isDefault,
+                "is-template": isTemplate,
             })}
             onClick={onSelect}
         >
@@ -188,7 +203,16 @@ const ModeListItem = memo(({ modeKey, mode, isSelected, onSelect }: ModeListItem
             <div className="waveai-mode-badges">
                 {isCloud && <span className="waveai-mode-badge cloud">Cloud</span>}
                 {isPremium && <span className="waveai-mode-badge premium">Premium</span>}
+                {isTemplate && <span className="waveai-mode-badge template">Template</span>}
             </div>
+            {status && (
+                <ProviderStatusBadge
+                    status={status}
+                    secretName={mode["ai:apitokensecretname"]}
+                    endpoint={mode["ai:endpoint"]}
+                    onNavigateToSecrets={onNavigateToSecrets}
+                />
+            )}
             <i className="fa fa-solid fa-chevron-right waveai-mode-chevron" />
         </div>
     );
@@ -205,11 +229,14 @@ interface ModeEditorProps {
     mode: AIModeConfigType;
     onSave: (key: string, config: AIModeConfigType) => void;
     onDelete: (key: string) => void;
+    onDuplicate?: (key: string, mode: AIModeConfigType) => void;
     isLoading: boolean;
 }
 
-const ModeEditor = memo(({ modeKey, mode, onSave, onDelete, isLoading }: ModeEditorProps) => {
+const ModeEditor = memo(({ modeKey, mode, onSave, onDelete, onDuplicate, isLoading }: ModeEditorProps) => {
     const isDefault = isDefaultMode(modeKey);
+    const isTemplate = isTemplateMode(modeKey);
+    const isReadOnly = isDefault || isTemplate;
     const [form, setForm] = useState<ModeFormData>(() => modeKeyToFormData(modeKey, mode));
     const [tokenMode, setTokenMode] = useState<TokenMode>(() =>
         form["ai:apitoken"] ? "direct" : "secret"
@@ -260,6 +287,12 @@ const ModeEditor = memo(({ modeKey, mode, onSave, onDelete, isLoading }: ModeEdi
         }
     }, [modeKey, form, onDelete]);
 
+    const handleDuplicate = useCallback(() => {
+        if (onDuplicate) {
+            onDuplicate(modeKey, mode);
+        }
+    }, [modeKey, mode, onDuplicate]);
+
     // Determine which fields to show based on provider
     const provider = form["ai:provider"];
     const showEndpoint = provider === "custom" || !provider;
@@ -283,7 +316,17 @@ const ModeEditor = memo(({ modeKey, mode, onSave, onDelete, isLoading }: ModeEdi
                     </div>
                 </div>
                 <div className="waveai-editor-actions">
-                    {!isDefault && (
+                    {isTemplate && onDuplicate && (
+                        <button
+                            className="waveai-duplicate-btn"
+                            onClick={handleDuplicate}
+                            disabled={isLoading}
+                        >
+                            <i className="fa fa-solid fa-copy" />
+                            Duplicate & Edit
+                        </button>
+                    )}
+                    {!isReadOnly && (
                         <button
                             className="waveai-delete-btn"
                             onClick={handleDelete}
@@ -293,7 +336,7 @@ const ModeEditor = memo(({ modeKey, mode, onSave, onDelete, isLoading }: ModeEdi
                             Delete
                         </button>
                     )}
-                    {!isDefault && (
+                    {!isReadOnly && (
                         <button
                             className="waveai-save-btn"
                             onClick={handleSave}
@@ -322,6 +365,12 @@ const ModeEditor = memo(({ modeKey, mode, onSave, onDelete, isLoading }: ModeEdi
                         This is a built-in Wave Cloud mode and cannot be edited. Create a new mode to customize.
                     </div>
                 )}
+                {isTemplate && (
+                    <div className="waveai-readonly-notice template">
+                        <i className="fa fa-solid fa-cube" />
+                        This is a pre-configured template. Click "Duplicate & Edit" to create your own customized version.
+                    </div>
+                )}
 
                 {/* Display Settings Section */}
                 <div className="waveai-form-section">
@@ -341,7 +390,7 @@ const ModeEditor = memo(({ modeKey, mode, onSave, onDelete, isLoading }: ModeEdi
                                     value={form["display:name"]}
                                     onChange={(e) => updateField("display:name", e.target.value)}
                                     placeholder="My AI Mode"
-                                    disabled={isDefault}
+                                    disabled={isReadOnly}
                                 />
                             </div>
                             <div className="waveai-form-field half">
@@ -357,7 +406,7 @@ const ModeEditor = memo(({ modeKey, mode, onSave, onDelete, isLoading }: ModeEdi
                                         )
                                     }
                                     placeholder="0"
-                                    disabled={isDefault}
+                                    disabled={isReadOnly}
                                 />
                                 <div className="waveai-field-help">Lower numbers appear first</div>
                             </div>
@@ -375,7 +424,7 @@ const ModeEditor = memo(({ modeKey, mode, onSave, onDelete, isLoading }: ModeEdi
                                         value={form["display:icon"] || ""}
                                         onChange={(e) => updateField("display:icon", e.target.value)}
                                         placeholder="sparkles"
-                                        disabled={isDefault}
+                                        disabled={isReadOnly}
                                     />
                                 </div>
                                 <div className="waveai-field-help">FontAwesome icon name (without fa- prefix)</div>
@@ -389,7 +438,7 @@ const ModeEditor = memo(({ modeKey, mode, onSave, onDelete, isLoading }: ModeEdi
                                     value={form["display:description"] || ""}
                                     onChange={(e) => updateField("display:description", e.target.value)}
                                     placeholder="Description of this AI mode..."
-                                    disabled={isDefault}
+                                    disabled={isReadOnly}
                                     rows={2}
                                 />
                             </div>
@@ -411,7 +460,7 @@ const ModeEditor = memo(({ modeKey, mode, onSave, onDelete, isLoading }: ModeEdi
                                     className="waveai-select"
                                     value={form["ai:provider"] || ""}
                                     onChange={(e) => updateField("ai:provider", e.target.value)}
-                                    disabled={isDefault}
+                                    disabled={isReadOnly}
                                 >
                                     {PROVIDER_OPTIONS.map((opt) => (
                                         <option key={opt.value} value={opt.value}>
@@ -427,7 +476,7 @@ const ModeEditor = memo(({ modeKey, mode, onSave, onDelete, isLoading }: ModeEdi
                                         className="waveai-select"
                                         value={form["ai:apitype"] || ""}
                                         onChange={(e) => updateField("ai:apitype", e.target.value)}
-                                        disabled={isDefault}
+                                        disabled={isReadOnly}
                                     >
                                         {API_TYPE_OPTIONS.map((opt) => (
                                             <option key={opt.value} value={opt.value}>
@@ -449,7 +498,7 @@ const ModeEditor = memo(({ modeKey, mode, onSave, onDelete, isLoading }: ModeEdi
                                         value={form["ai:model"] || ""}
                                         onChange={(e) => updateField("ai:model", e.target.value)}
                                         placeholder="gpt-4o, llama3.3:70b, gemini-pro..."
-                                        disabled={isDefault}
+                                        disabled={isReadOnly}
                                     />
                                 </div>
                             </div>
@@ -465,7 +514,7 @@ const ModeEditor = memo(({ modeKey, mode, onSave, onDelete, isLoading }: ModeEdi
                                         value={form["ai:endpoint"] || ""}
                                         onChange={(e) => updateField("ai:endpoint", e.target.value)}
                                         placeholder="http://localhost:11434/v1/chat/completions"
-                                        disabled={isDefault}
+                                        disabled={isReadOnly}
                                     />
                                     <div className="waveai-field-help">Full URL including path</div>
                                 </div>
@@ -482,7 +531,7 @@ const ModeEditor = memo(({ modeKey, mode, onSave, onDelete, isLoading }: ModeEdi
                                         value={form["ai:azureresourcename"] || ""}
                                         onChange={(e) => updateField("ai:azureresourcename", e.target.value)}
                                         placeholder="your-resource-name"
-                                        disabled={isDefault}
+                                        disabled={isReadOnly}
                                     />
                                 </div>
                             </div>
@@ -498,7 +547,7 @@ const ModeEditor = memo(({ modeKey, mode, onSave, onDelete, isLoading }: ModeEdi
                                         value={form["ai:azuredeployment"] || ""}
                                         onChange={(e) => updateField("ai:azuredeployment", e.target.value)}
                                         placeholder="your-deployment-name"
-                                        disabled={isDefault}
+                                        disabled={isReadOnly}
                                     />
                                 </div>
                                 {showAzureApiVersion && (
@@ -510,7 +559,7 @@ const ModeEditor = memo(({ modeKey, mode, onSave, onDelete, isLoading }: ModeEdi
                                             value={form["ai:azureapiversion"] || ""}
                                             onChange={(e) => updateField("ai:azureapiversion", e.target.value)}
                                             placeholder="2025-04-01-preview"
-                                            disabled={isDefault}
+                                            disabled={isReadOnly}
                                         />
                                     </div>
                                 )}
@@ -524,7 +573,7 @@ const ModeEditor = memo(({ modeKey, mode, onSave, onDelete, isLoading }: ModeEdi
                                     className="waveai-select"
                                     value={form["ai:thinkinglevel"] || ""}
                                     onChange={(e) => updateField("ai:thinkinglevel", e.target.value)}
-                                    disabled={isDefault}
+                                    disabled={isReadOnly}
                                 >
                                     {THINKING_LEVEL_OPTIONS.map((opt) => (
                                         <option key={opt.value} value={opt.value}>
@@ -558,7 +607,7 @@ const ModeEditor = memo(({ modeKey, mode, onSave, onDelete, isLoading }: ModeEdi
                                         name="tokenMode"
                                         checked={tokenMode === "secret"}
                                         onChange={() => {}}
-                                        disabled={isDefault}
+                                        disabled={isReadOnly}
                                     />
                                     <span>Use Secret (Recommended)</span>
                                 </label>
@@ -574,7 +623,7 @@ const ModeEditor = memo(({ modeKey, mode, onSave, onDelete, isLoading }: ModeEdi
                                         name="tokenMode"
                                         checked={tokenMode === "direct"}
                                         onChange={() => {}}
-                                        disabled={isDefault}
+                                        disabled={isReadOnly}
                                     />
                                     <span>Direct Token</span>
                                 </label>
@@ -590,7 +639,7 @@ const ModeEditor = memo(({ modeKey, mode, onSave, onDelete, isLoading }: ModeEdi
                                             value={form["ai:apitokensecretname"] || ""}
                                             onChange={(e) => updateField("ai:apitokensecretname", e.target.value)}
                                             placeholder={getDefaultSecretName(provider) || "MY_API_KEY"}
-                                            disabled={isDefault}
+                                            disabled={isReadOnly}
                                         />
                                         <div className="waveai-field-help">
                                             Reference to a secret stored in Wave's secret manager.
@@ -610,7 +659,7 @@ const ModeEditor = memo(({ modeKey, mode, onSave, onDelete, isLoading }: ModeEdi
                                             value={form["ai:apitoken"] || ""}
                                             onChange={(e) => updateField("ai:apitoken", e.target.value)}
                                             placeholder="sk-..."
-                                            disabled={isDefault}
+                                            disabled={isReadOnly}
                                         />
                                         <div className="waveai-field-help">
                                             Not recommended - tokens are stored in plaintext. Use secrets instead.
@@ -636,7 +685,7 @@ const ModeEditor = memo(({ modeKey, mode, onSave, onDelete, isLoading }: ModeEdi
                                         type="checkbox"
                                         checked={form["ai:capabilities"]?.includes(cap.value) || false}
                                         onChange={(e) => handleCapabilityChange(cap.value, e.target.checked)}
-                                        disabled={isDefault}
+                                        disabled={isReadOnly}
                                     />
                                     <span className="waveai-checkbox-label">{cap.label}</span>
                                 </label>
@@ -670,7 +719,7 @@ const ModeEditor = memo(({ modeKey, mode, onSave, onDelete, isLoading }: ModeEdi
                                         updateField("ai:switchcompat", values);
                                     }}
                                     placeholder="mode-key-1, mode-key-2"
-                                    disabled={isDefault}
+                                    disabled={isReadOnly}
                                 />
                                 <div className="waveai-field-help">
                                     Comma-separated list of mode keys that this mode can switch to mid-conversation.
@@ -1176,9 +1225,22 @@ export const WaveAIVisualContent = memo(({ model }: WaveAIVisualContentProps) =>
     const [isLoading, setIsLoading] = useState(false);
     const [userModes, setUserModes] = useState<Record<string, AIModeConfigType>>({});
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
+    const [secretNames, setSecretNames] = useState<Set<string>>(new Set());
 
     // Get config directory
     const configDir = useMemo(() => getApi().getConfigDir(), []);
+
+    // Load secrets on mount to determine provider status
+    const loadSecrets = useCallback(async () => {
+        try {
+            const names = await RpcApi.GetSecretsNamesCommand(TabRpcClient);
+            setSecretNames(new Set(names || []));
+        } catch (err: any) {
+            console.error("Failed to load secrets:", err);
+            // Don't set error message, just use empty set
+            setSecretNames(new Set());
+        }
+    }, []);
 
     const loadUserModes = useCallback(async () => {
         setErrorMessage(null);
@@ -1204,10 +1266,11 @@ export const WaveAIVisualContent = memo(({ model }: WaveAIVisualContentProps) =>
         }
     }, [configDir]);
 
-    // Load user waveai.json on mount
+    // Load user waveai.json and secrets on mount
     useEffect(() => {
         loadUserModes();
-    }, [loadUserModes]);
+        loadSecrets();
+    }, [loadUserModes, loadSecrets]);
 
     const saveUserModes = useCallback(async (modes: Record<string, AIModeConfigType>) => {
         setErrorMessage(null);
@@ -1235,8 +1298,17 @@ export const WaveAIVisualContent = memo(({ model }: WaveAIVisualContentProps) =>
     // Get the list of existing keys for validation
     const existingKeys = useMemo(() => new Set(Object.keys(allModes)), [allModes]);
 
-    // Separate default and user modes
-    const defaultModes = useMemo(() => {
+    // Compute mode status map
+    const modeStatusMap = useMemo(() => {
+        const statusMap: Record<string, ModeStatus> = {};
+        for (const [key, mode] of Object.entries(allModes)) {
+            statusMap[key] = computeModeStatus(key, mode, secretNames);
+        }
+        return statusMap;
+    }, [allModes, secretNames]);
+
+    // Separate modes into categories: Wave Cloud, Commercial (templates), Local (templates), Custom
+    const waveCloudModes = useMemo(() => {
         const result: [string, AIModeConfigType][] = [];
         for (const [key, mode] of Object.entries(allModes)) {
             if (isDefaultMode(key)) {
@@ -1246,10 +1318,30 @@ export const WaveAIVisualContent = memo(({ model }: WaveAIVisualContentProps) =>
         return result.sort((a, b) => (a[1]["display:order"] ?? 0) - (b[1]["display:order"] ?? 0));
     }, [allModes]);
 
+    const commercialModes = useMemo(() => {
+        const result: [string, AIModeConfigType][] = [];
+        for (const [key, mode] of Object.entries(allModes)) {
+            if (isTemplateMode(key) && !isLocalEndpoint(mode["ai:endpoint"])) {
+                result.push([key, mode]);
+            }
+        }
+        return result.sort((a, b) => (a[1]["display:order"] ?? 0) - (b[1]["display:order"] ?? 0));
+    }, [allModes]);
+
+    const localModes = useMemo(() => {
+        const result: [string, AIModeConfigType][] = [];
+        for (const [key, mode] of Object.entries(allModes)) {
+            if (isTemplateMode(key) && isLocalEndpoint(mode["ai:endpoint"])) {
+                result.push([key, mode]);
+            }
+        }
+        return result.sort((a, b) => (a[1]["display:order"] ?? 0) - (b[1]["display:order"] ?? 0));
+    }, [allModes]);
+
     const customModes = useMemo(() => {
         const result: [string, AIModeConfigType][] = [];
         for (const [key, mode] of Object.entries(allModes)) {
-            if (!isDefaultMode(key)) {
+            if (!isDefaultMode(key) && !isTemplateMode(key)) {
                 result.push([key, mode]);
             }
         }
@@ -1303,6 +1395,33 @@ export const WaveAIVisualContent = memo(({ model }: WaveAIVisualContentProps) =>
         setIsAddingNew(false);
     }, []);
 
+    const handleNavigateToSecrets = useCallback(() => {
+        model.navigateToSecrets();
+    }, [model]);
+
+    const handleDuplicateMode = useCallback(
+        (key: string, mode: AIModeConfigType) => {
+            // Generate a new key based on the display name
+            const baseName = mode["display:name"] || "Mode";
+            let newKey = `${baseName.toLowerCase().replace(/[^a-z0-9]/g, "-")}-copy`;
+            let counter = 1;
+            while (existingKeys.has(newKey)) {
+                newKey = `${baseName.toLowerCase().replace(/[^a-z0-9]/g, "-")}-copy-${counter}`;
+                counter++;
+            }
+
+            // Create a copy of the mode with a new name
+            const newMode: AIModeConfigType = {
+                ...mode,
+                "display:name": `${baseName} (Copy)`,
+            };
+
+            // Save the new mode
+            handleSaveMode(newKey, newMode);
+        },
+        [existingKeys, handleSaveMode]
+    );
+
     return (
         <div className="waveai-visual">
             {errorMessage && (
@@ -1332,10 +1451,10 @@ export const WaveAIVisualContent = memo(({ model }: WaveAIVisualContentProps) =>
                     </div>
                     <div className="waveai-mode-list">
                         {/* Wave Cloud modes */}
-                        {defaultModes.length > 0 && (
+                        {waveCloudModes.length > 0 && (
                             <div className="waveai-mode-group">
                                 <div className="waveai-mode-group-header">Wave Cloud</div>
-                                {defaultModes.map(([key, mode]) => (
+                                {waveCloudModes.map(([key, mode]) => (
                                     <ModeListItem
                                         key={key}
                                         modeKey={key}
@@ -1345,6 +1464,48 @@ export const WaveAIVisualContent = memo(({ model }: WaveAIVisualContentProps) =>
                                             setIsAddingNew(false);
                                             setSelectedModeKey(key);
                                         }}
+                                        status={modeStatusMap[key]}
+                                    />
+                                ))}
+                            </div>
+                        )}
+
+                        {/* Commercial provider templates */}
+                        {commercialModes.length > 0 && (
+                            <div className="waveai-mode-group">
+                                <div className="waveai-mode-group-header">Commercial Providers</div>
+                                {commercialModes.map(([key, mode]) => (
+                                    <ModeListItem
+                                        key={key}
+                                        modeKey={key}
+                                        mode={mode}
+                                        isSelected={selectedModeKey === key && !isAddingNew}
+                                        onSelect={() => {
+                                            setIsAddingNew(false);
+                                            setSelectedModeKey(key);
+                                        }}
+                                        status={modeStatusMap[key]}
+                                        onNavigateToSecrets={handleNavigateToSecrets}
+                                    />
+                                ))}
+                            </div>
+                        )}
+
+                        {/* Local provider templates */}
+                        {localModes.length > 0 && (
+                            <div className="waveai-mode-group">
+                                <div className="waveai-mode-group-header">Local Providers</div>
+                                {localModes.map(([key, mode]) => (
+                                    <ModeListItem
+                                        key={key}
+                                        modeKey={key}
+                                        mode={mode}
+                                        isSelected={selectedModeKey === key && !isAddingNew}
+                                        onSelect={() => {
+                                            setIsAddingNew(false);
+                                            setSelectedModeKey(key);
+                                        }}
+                                        status={modeStatusMap[key]}
                                     />
                                 ))}
                             </div>
@@ -1364,13 +1525,15 @@ export const WaveAIVisualContent = memo(({ model }: WaveAIVisualContentProps) =>
                                             setIsAddingNew(false);
                                             setSelectedModeKey(key);
                                         }}
+                                        status={modeStatusMap[key]}
+                                        onNavigateToSecrets={handleNavigateToSecrets}
                                     />
                                 ))}
                             </div>
                         )}
 
                         {/* Empty state */}
-                        {defaultModes.length === 0 && customModes.length === 0 && (
+                        {waveCloudModes.length === 0 && commercialModes.length === 0 && localModes.length === 0 && customModes.length === 0 && (
                             <div className="waveai-empty-sidebar">
                                 <i className="fa fa-solid fa-robot" />
                                 <div className="waveai-empty-text">No AI modes configured</div>
@@ -1393,6 +1556,7 @@ export const WaveAIVisualContent = memo(({ model }: WaveAIVisualContentProps) =>
                         mode={selectedMode}
                         onSave={handleSaveMode}
                         onDelete={handleDeleteMode}
+                        onDuplicate={handleDuplicateMode}
                         isLoading={isLoading}
                     />
                 ) : (

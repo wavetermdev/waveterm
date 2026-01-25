@@ -314,6 +314,29 @@ $waveai-sidebar-width: 260px;
                     cursor: not-allowed;
                 }
             }
+
+            .waveai-duplicate-btn {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                padding: 6px 14px;
+                background: #8b5cf6;
+                color: var(--button-text-color);
+                border: none;
+                border-radius: 4px;
+                font-size: 12px;
+                cursor: pointer;
+                transition: opacity 0.15s ease;
+
+                &:hover:not(:disabled) {
+                    opacity: 0.9;
+                }
+
+                &:disabled {
+                    opacity: 0.5;
+                    cursor: not-allowed;
+                }
+            }
         }
     }
 
@@ -666,6 +689,12 @@ $waveai-sidebar-width: 260px;
         i {
             font-size: 14px;
         }
+
+        &.template {
+            background: rgb(from #8b5cf6 r g b / 0.1);
+            border-color: #8b5cf6;
+            color: #8b5cf6;
+        }
     }
 
     // ========================================
@@ -718,6 +747,177 @@ $waveai-sidebar-width: 260px;
         }
         to {
             transform: rotate(360deg);
+        }
+    }
+
+    // ========================================
+    // Status Badge Styles
+    // ========================================
+
+    .waveai-status-badge {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        flex-shrink: 0;
+        cursor: help;
+        transition: transform 0.15s ease, opacity 0.15s ease;
+
+        &:hover {
+            transform: scale(1.1);
+        }
+
+        &:focus {
+            outline: 2px solid var(--accent-color);
+            outline-offset: 2px;
+        }
+
+        i {
+            font-size: 12px;
+        }
+
+        &.status-ready {
+            color: #22c55e;
+            background: rgb(from #22c55e r g b / 0.15);
+        }
+
+        &.status-incomplete {
+            color: #f59e0b;
+            background: rgb(from #f59e0b r g b / 0.15);
+        }
+
+        &.status-local {
+            color: #3b82f6;
+            background: rgb(from #3b82f6 r g b / 0.15);
+        }
+
+        &.status-cloud {
+            color: var(--accent-color);
+            background: rgb(from var(--accent-color) r g b / 0.15);
+        }
+    }
+
+    // ========================================
+    // Status Tooltip Styles
+    // ========================================
+
+    .waveai-status-tooltip {
+        min-width: 200px;
+        max-width: 280px;
+
+        .waveai-tooltip-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border-color);
+
+            i {
+                font-size: 14px;
+            }
+
+            &.ready {
+                color: #22c55e;
+            }
+
+            &.incomplete {
+                color: #f59e0b;
+            }
+
+            &.local {
+                color: #3b82f6;
+            }
+
+            &.cloud {
+                color: var(--accent-color);
+            }
+        }
+
+        .waveai-tooltip-body {
+            font-size: 12px;
+            color: var(--secondary-text-color);
+            line-height: 1.5;
+
+            p {
+                margin: 0 0 8px 0;
+
+                &:last-child {
+                    margin-bottom: 0;
+                }
+            }
+
+            code {
+                background: var(--panel-bg-color);
+                padding: 2px 6px;
+                border-radius: 4px;
+                font-family: var(--fixed-font);
+                font-size: 11px;
+                color: var(--main-text-color);
+            }
+        }
+
+        .waveai-tooltip-secret {
+            background: var(--panel-bg-color);
+            padding: 8px;
+            border-radius: 4px;
+            margin: 8px 0;
+
+            code {
+                display: block;
+                margin-top: 4px;
+            }
+        }
+
+        .waveai-tooltip-endpoint {
+            code {
+                display: block;
+                margin-top: 4px;
+                word-break: break-all;
+            }
+        }
+
+        .waveai-tooltip-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: var(--accent-color);
+            color: var(--button-text-color);
+            border: none;
+            border-radius: 4px;
+            padding: 6px 12px;
+            font-size: 12px;
+            cursor: pointer;
+            margin-top: 8px;
+            transition: opacity 0.15s ease;
+
+            &:hover {
+                opacity: 0.9;
+            }
+
+            i {
+                font-size: 11px;
+            }
+        }
+    }
+
+    // ========================================
+    // Template Badge Style
+    // ========================================
+
+    .waveai-mode-badge.template {
+        background: rgb(from #8b5cf6 r g b / 0.15);
+        color: #8b5cf6;
+    }
+
+    // Template mode styling
+    .waveai-mode-item.is-template {
+        .waveai-mode-icon {
+            color: #8b5cf6;
         }
     }
 

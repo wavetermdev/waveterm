@@ -694,4 +694,14 @@ export class WaveConfigViewModel implements ViewModel {
         }
         return false;
     }
+
+    /**
+     * Navigate to the Secrets configuration tab
+     */
+    navigateToSecrets() {
+        const secretsFile = configFiles.find((f) => f.isSecrets);
+        if (secretsFile) {
+            this.loadFile(secretsFile);
+        }
+    }
 }
