@@ -740,10 +740,16 @@ func jsonMarshalConfigInOrder(m waveobj.MetaMapType) ([]byte, error) {
 var dummyNumber json.Number
 
 func convertJsonNumber(num json.Number, ctype reflect.Type) (interface{}, error) {
-	// ctype might be int64, float64, string, *int64, *float64, *string
+	// ctype might be int, int64, float64, string, *int, *int64, *float64, *string
 	// switch on ctype first
 	if ctype.Kind() == reflect.Pointer {
 		ctype = ctype.Elem()
+	}
+	if reflect.Int == ctype.Kind() {
+		if ival, err := num.Int64(); err == nil {
+			return int(ival), nil
+		}
+		return nil, fmt.Errorf("invalid number for int: %s", num)
 	}
 	if reflect.Int64 == ctype.Kind() {
 		if ival, err := num.Int64(); err == nil {

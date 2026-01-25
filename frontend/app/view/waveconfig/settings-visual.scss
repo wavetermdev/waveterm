@@ -18,16 +18,39 @@ $sidebar-width: 200px;
 
 .settings-visual {
     display: flex;
+    flex-direction: column;
     height: 100%;
     width: 100%;
     background: var(--main-bg-color);
     overflow: hidden;
 
     // ========================================
+    // Header with Search Bar
+    // ========================================
+
+    .settings-visual-header {
+        flex-shrink: 0;
+        padding: 12px 16px;
+        background: var(--main-bg-color);
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    // ========================================
+    // Body containing Sidebar and List
+    // ========================================
+
+    .settings-visual-body {
+        flex: 1;
+        display: flex;
+        min-height: 0; // Important for nested flexbox scrolling
+        overflow: hidden;
+    }
+
+    // ========================================
     // Category Sidebar
     // ========================================
 
-    .settings-sidebar {
+    .settings-category-sidebar {
         width: $sidebar-width;
         min-width: $sidebar-width;
         border-right: 1px solid var(--border-color);
@@ -38,70 +61,70 @@ $sidebar-width: 200px;
         .category-list {
             padding: 8px 0;
         }
+    }
 
-        .category-item {
-            display: flex;
-            align-items: center;
-            padding: 8px 16px;
-            cursor: pointer;
-            gap: 10px;
-            color: var(--secondary-text-color);
-            transition: background-color 0.15s ease, color 0.15s ease;
-            user-select: none;
+    .settings-category-item {
+        display: flex;
+        align-items: center;
+        padding: 8px 16px;
+        cursor: pointer;
+        gap: 10px;
+        color: var(--secondary-text-color);
+        transition: background-color 0.15s ease, color 0.15s ease;
+        user-select: none;
 
-            &:hover {
-                background: var(--hover-bg-color);
-                color: var(--main-text-color);
-            }
+        &:hover {
+            background: var(--hover-bg-color);
+            color: var(--main-text-color);
+        }
 
-            &.active {
-                background: var(--highlight-bg-color);
-                color: var(--main-text-color);
-                border-left: 3px solid var(--accent-color);
-                padding-left: 13px;
-            }
+        &.active {
+            background: var(--highlight-bg-color);
+            color: var(--main-text-color);
+            border-left: 3px solid var(--accent-color);
+            padding-left: 13px;
+        }
 
-            .category-icon {
+        .category-icon {
+            width: 18px;
+            text-align: center;
+            font-size: 14px;
+            opacity: 0.8;
+            flex-shrink: 0;
+
+            i {
                 width: 18px;
-                text-align: center;
-                font-size: 14px;
-                opacity: 0.8;
-                flex-shrink: 0;
-
-                i {
-                    width: 18px;
-                }
             }
+        }
 
-            .category-name {
-                flex: 1;
-                font-size: 13px;
-                white-space: nowrap;
-                overflow: hidden;
-                text-overflow: ellipsis;
-            }
+        .category-name {
+            flex: 1;
+            font-size: 13px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
 
-            .category-count {
-                font-size: 11px;
-                color: var(--grey-text-color);
-                background: var(--panel-bg-color);
-                padding: 2px 6px;
-                border-radius: 10px;
-                flex-shrink: 0;
-            }
+        .category-count {
+            font-size: 11px;
+            color: var(--grey-text-color);
+            background: var(--panel-bg-color);
+            padding: 2px 6px;
+            border-radius: 10px;
+            flex-shrink: 0;
+        }
 
-            .modified-badge {
-                width: 8px;
-                height: 8px;
-                border-radius: 50%;
-                background: $setting-modified-color;
-                flex-shrink: 0;
-            }
+        .modified-badge {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: $setting-modified-color;
+            flex-shrink: 0;
         }
     }
 
     // ========================================
-    // Main Content Area
+    // Main Content Area (legacy, kept for compatibility)
     // ========================================
 
     .settings-main {
@@ -116,6 +139,57 @@ $sidebar-width: 200px;
     // Search Bar
     // ========================================
 
+    .settings-search {
+        display: flex;
+        align-items: center;
+        background: var(--form-element-bg-color);
+        border: 1px solid var(--form-element-border-color);
+        border-radius: 6px;
+        padding: 0 12px;
+        transition: border-color 0.15s ease, box-shadow 0.15s ease;
+
+        &:focus-within {
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 2px rgb(from var(--accent-color) r g b / 0.2);
+        }
+
+        .search-icon {
+            color: var(--grey-text-color);
+            margin-right: 8px;
+            font-size: 13px;
+        }
+
+        input {
+            flex: 1;
+            padding: 8px 0;
+            background: transparent;
+            border: none;
+            color: var(--main-text-color);
+            font-size: 14px;
+            outline: none;
+
+            &::placeholder {
+                color: var(--grey-text-color);
+            }
+        }
+
+        .clear-button {
+            padding: 4px 6px;
+            background: transparent;
+            border: none;
+            color: var(--grey-text-color);
+            cursor: pointer;
+            border-radius: 4px;
+            transition: background-color 0.15s ease, color 0.15s ease;
+
+            &:hover {
+                background: var(--hover-bg-color);
+                color: var(--main-text-color);
+            }
+        }
+    }
+
+    // Legacy search bar (kept for compatibility)
     .search-bar {
         position: sticky;
         top: 0;
@@ -190,9 +264,10 @@ $sidebar-width: 200px;
     .settings-list {
         flex: 1;
         overflow-y: auto;
+        min-height: 0; // Important for nested flexbox scrolling
 
-        .category-section {
-            .category-header {
+        .settings-category-section {
+            .settings-category-header {
                 position: sticky;
                 top: 0;
                 z-index: 5;
@@ -206,7 +281,8 @@ $sidebar-width: 200px;
                 align-items: center;
                 gap: 8px;
 
-                i {
+                i,
+                .category-icon {
                     font-size: 14px;
                     width: 18px;
                     text-align: center;
@@ -214,7 +290,7 @@ $sidebar-width: 200px;
                 }
             }
 
-            .subcategory-header {
+            .settings-subcategory-header {
                 padding: 8px 16px 4px;
                 font-weight: 500;
                 font-size: 12px;
@@ -225,32 +301,47 @@ $sidebar-width: 200px;
             }
         }
 
-        // Empty state
-        .settings-empty {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 48px 24px;
-            color: var(--grey-text-color);
-            text-align: center;
+        // Search results header
+        .settings-search-results-header {
+            padding: 10px 16px;
+            background: var(--highlight-bg-color);
+            font-size: 13px;
+            color: var(--secondary-text-color);
+            border-bottom: 1px solid var(--border-color);
+        }
+    }
 
-            i {
-                font-size: 48px;
-                margin-bottom: 16px;
-                opacity: 0.5;
-            }
+    // Empty state (displayed when no search results)
+    .settings-empty {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 48px 24px;
+        color: var(--grey-text-color);
+        text-align: center;
 
-            .empty-title {
-                font-size: 16px;
-                font-weight: 500;
-                color: var(--secondary-text-color);
-                margin-bottom: 8px;
-            }
+        .empty-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
 
-            .empty-description {
-                font-size: 13px;
-            }
+        .empty-text {
+            font-size: 14px;
+            color: var(--secondary-text-color);
+        }
+
+        .empty-title {
+            font-size: 16px;
+            font-weight: 500;
+            color: var(--secondary-text-color);
+            margin-bottom: 8px;
+        }
+
+        .empty-description {
+            font-size: 13px;
         }
     }
 

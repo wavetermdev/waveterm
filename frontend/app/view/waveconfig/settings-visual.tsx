@@ -10,7 +10,7 @@
 
 import { SettingControl } from "@/app/element/settings/setting-control";
 import { SliderControl } from "@/app/element/settings/slider-control";
-import { SelectControl } from "@/app/element/settings/select-control";
+import { SelectControl, SelectOption } from "@/app/element/settings/select-control";
 import { ToggleControl } from "@/app/element/settings/toggle-control";
 import { NumberControl } from "@/app/element/settings/number-control";
 import { TextControl } from "@/app/element/settings/text-control";
@@ -27,10 +27,12 @@ import {
     searchSettings,
 } from "@/app/store/settings-registry";
 import { settingsService } from "@/app/store/settings-service";
+import { termThemesProvider, aiModeProvider } from "@/app/store/settings-options-provider";
 import { getApi } from "@/app/store/global";
 import { cn } from "@/util/util";
 import { useAtom, useAtomValue } from "jotai";
-import { memo, useCallback, useEffect, useMemo, useRef } from "react";
+import { atom } from "jotai";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import "./settings-visual.scss";
 
@@ -127,12 +129,58 @@ const SearchBar = memo(() => {
 SearchBar.displayName = "SearchBar";
 
 /**
+ * Map of setting keys to their dynamic options providers.
+ * These settings have options that need to be loaded at runtime.
+ */
+const dynamicOptionsMap: Record<string, () => Promise<SelectOption[]>> = {
+    "term:theme": () => termThemesProvider.getOptions(),
+    "waveai:defaultmode": () => aiModeProvider.getOptions(),
+    "ai:preset": () => aiModeProvider.getOptions(),
+};
+
+/**
+ * Hook to get options for a select control, handling both static and dynamic options.
+ */
+function useDynamicOptions(settingKey: string, staticOptions?: SelectOption[]): SelectOption[] {
+    const [dynamicOptions, setDynamicOptions] = useState<SelectOption[]>([]);
+    const [loaded, setLoaded] = useState(false);
+
+    useEffect(() => {
+        // If we already have static options, use them
+        if (staticOptions && staticOptions.length > 0) {
+            setDynamicOptions(staticOptions);
+            setLoaded(true);
+            return;
+        }
+
+        // Check if this setting needs dynamic options
+        const provider = dynamicOptionsMap[settingKey];
+        if (provider) {
+            provider()
+                .then((options) => {
+                    setDynamicOptions(options);
+                    setLoaded(true);
+                })
+                .catch((err) => {
+                    console.error(`Failed to load options for ${settingKey}:`, err);
+                    setLoaded(true);
+                });
+        } else {
+            setLoaded(true);
+        }
+    }, [settingKey, staticOptions]);
+
+    return dynamicOptions;
+}
+
+/**
  * Render the appropriate control component based on setting metadata
  */
 function renderControl(
     metadata: SettingMetadata,
     value: unknown,
-    onChange: (value: unknown) => void
+    onChange: (value: unknown) => void,
+    dynamicOptions?: SelectOption[]
 ): React.ReactNode {
     switch (metadata.controlType) {
         case "toggle":
@@ -160,15 +208,20 @@ function renderControl(
                 />
             );
 
-        case "select":
+        case "select": {
+            // Use dynamic options if provided and static options are empty
+            const options = dynamicOptions && dynamicOptions.length > 0
+                ? dynamicOptions
+                : (metadata.validation?.options || []);
             return (
                 <SelectControl
                     value={(value as string) ?? ""}
                     onChange={onChange}
-                    options={metadata.validation?.options || []}
+                    options={options}
                     placeholder="Select..."
                 />
             );
+        }
 
         case "text":
             return (
@@ -213,6 +266,10 @@ const SettingRow = memo(({ metadata }: SettingRowProps) => {
     const value = allSettings[metadata.key];
     const defaultValue = getDefaultValue(metadata.key);
 
+    // Load dynamic options for select controls
+    const staticOptions = metadata.validation?.options as SelectOption[] | undefined;
+    const dynamicOptions = useDynamicOptions(metadata.key, staticOptions);
+
     const isModified = useMemo(() => {
         if (value === undefined || value === null) {
             return false;
@@ -242,7 +299,7 @@ const SettingRow = memo(({ metadata }: SettingRowProps) => {
             isModified={isModified}
             requiresRestart={metadata.requiresRestart}
         >
-            {renderControl(metadata, value, handleChange)}
+            {renderControl(metadata, value, handleChange, dynamicOptions)}
         </SettingControl>
     );
 });
