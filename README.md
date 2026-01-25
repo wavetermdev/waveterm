@@ -76,6 +76,25 @@ Comprehensive metadata validation to prevent injection attacks:
 - **No Cloud Mode Restrictions** - Wave AI cloud modes accessible without telemetry opt-in
 - **Simplified Onboarding** - Removed telemetry toggle from initial setup
 
+### GUI Settings System (New Feature)
+
+A visual settings interface similar to VS Code:
+
+- **Visual Settings Panel** - Browse and modify settings with a graphical interface
+- **Category Sidebar** - Navigate settings by category with scroll-spy sync
+- **Sticky Headers** - Section headers stick to top when scrolling with visual feedback
+- **Search** - Find settings by name, description, or key
+- **Dual View** - Switch between Visual mode and Raw JSON editing
+- **Input Controls** - Toggles, sliders, dropdowns, text inputs, color pickers, font selectors
+- **Real-time Sync** - Changes persist immediately with debounced saves
+- **Modified Indicators** - Visual markers show which settings differ from defaults
+
+**New Files:**
+- `frontend/app/view/waveconfig/settings-visual.tsx` - Main visual settings component
+- `frontend/app/view/waveconfig/settings-visual.scss` - Visual settings styles
+- `frontend/app/element/settings/` - Reusable setting control components
+- `frontend/app/store/settings-*.ts` - Settings state management and persistence
+
 ### PowerShell Improvements
 
 - **Profile Loading** - User's PowerShell profile (`$PROFILE`) is now sourced automatically
