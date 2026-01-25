@@ -310,6 +310,9 @@ func resolveColor(color string, palette map[string]string) string {
 func ApplyHighContrastMode(config *OmpConfig) *OmpConfig {
 	// Deep copy the config to avoid modifying the original
 	modified := deepCopyOmpConfig(config)
+	if modified == nil {
+		return nil
+	}
 
 	for blockIdx := range modified.Blocks {
 		for segIdx := range modified.Blocks[blockIdx].Segments {
