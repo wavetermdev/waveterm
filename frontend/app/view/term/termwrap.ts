@@ -213,6 +213,14 @@ function handleOsc7Command(data: string, blockId: string, tabId: string, loaded:
         // e.g., %252e%252e -> %2e%2e -> .. (if decoded twice)
         pathPart = decodeURIComponent(url.pathname);
 
+        // SECURITY: Block UNC paths BEFORE normalization to prevent bypass
+        // UNC paths like //server or \\server can be used for data exfiltration via network shares
+        // This regex matches both forward-slash and backslash UNC paths: //server, \\server, /\\server
+        if (/^[\\/]{2}[^\\/]/.test(pathPart)) {
+            console.warn("[Security] UNC path blocked in OSC 7:", pathPart);
+            return true;
+        }
+
         // Normalize double slashes at the beginning to single slash
         if (pathPart.startsWith("//")) {
             pathPart = pathPart.substring(1);
@@ -223,13 +231,6 @@ function handleOsc7Command(data: string, blockId: string, tabId: string, loaded:
             // Strip leading slash and normalize to forward slashes
             pathPart = pathPart.substring(1).replace(/\\/g, "/");
             console.log("OSC 7 Windows path normalized:", pathPart);
-        }
-
-        // SECURITY: Block UNC paths entirely - they are a security risk
-        // (can be used for data exfiltration via network shares)
-        if (pathPart.startsWith("/\\\\") || pathPart.startsWith("\\\\")) {
-            console.warn("[Security] UNC path blocked in OSC 7:", pathPart);
-            return true;
         }
     } catch (e) {
         console.log("Invalid OSC 7 command received (parse error)", data, e);
