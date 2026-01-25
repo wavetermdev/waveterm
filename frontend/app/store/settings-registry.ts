@@ -19,7 +19,7 @@ const categoryConfigMap: Record<string, CategoryConfig> = {
     App: { order: 7, icon: "cog", description: "General application settings" },
     AutoUpdate: { order: 8, icon: "sync", description: "Automatic update settings" },
     Preview: { order: 9, icon: "file", description: "File preview settings" },
-    Markdown: { order: 10, icon: "markdown", description: "Markdown viewer settings" },
+    Markdown: { order: 10, icon: "file-lines", description: "Markdown viewer settings" },
     Widget: { order: 11, icon: "th-large", description: "Widget launcher settings" },
     BlockHeader: { order: 12, icon: "heading", description: "Block header display settings" },
     Telemetry: { order: 13, icon: "chart-bar", description: "Usage data collection" },
@@ -100,22 +100,24 @@ const allSettings: SettingMetadata[] = [
         type: "number",
         validation: { min: 0, max: 1, step: 0.1 },
         tags: ["opacity", "transparent", "background"],
+        links: { "window transparency": "window:transparent" },
     },
     {
         key: "term:ligatures",
         label: "Font Ligatures",
-        description: "Enable font ligatures for supported fonts (e.g., Fira Code, JetBrains Mono).",
+        description: "Enable font ligatures for supported fonts (e.g., Fira Code, JetBrains Mono). Set a ligature-enabled Font Family to use this feature.",
         category: "Terminal",
         subcategory: "Appearance",
         controlType: "toggle",
         defaultValue: false,
         type: "boolean",
         tags: ["font", "ligatures", "typography"],
+        links: { "Font Family": "term:fontfamily" },
     },
     {
         key: "term:disablewebgl",
         label: "Disable WebGL",
-        description: "Disable WebGL rendering for the terminal. May help with GPU-related issues.",
+        description: "Disable WebGL rendering for the terminal. May help with GPU-related issues. See also Hardware Acceleration.",
         category: "Terminal",
         subcategory: "Performance",
         controlType: "toggle",
@@ -123,6 +125,7 @@ const allSettings: SettingMetadata[] = [
         type: "boolean",
         requiresRestart: true,
         tags: ["gpu", "rendering", "performance"],
+        links: { "Hardware Acceleration": "window:disablehardwareacceleration" },
     },
     {
         key: "term:localshellpath",
@@ -267,6 +270,7 @@ const allSettings: SettingMetadata[] = [
         type: "boolean",
         requiresRestart: true,
         tags: ["transparency", "opacity", "background"],
+        links: { "terminal transparency": "term:transparency" },
     },
     {
         key: "window:blur",
@@ -278,6 +282,7 @@ const allSettings: SettingMetadata[] = [
         defaultValue: false,
         type: "boolean",
         tags: ["blur", "transparency", "effect"],
+        links: { "transparent window": "window:transparent" },
     },
     {
         key: "window:opacity",
@@ -290,6 +295,7 @@ const allSettings: SettingMetadata[] = [
         type: "number",
         validation: { min: 0.1, max: 1, step: 0.05 },
         tags: ["opacity", "transparency"],
+        links: { "transparency is enabled": "window:transparent" },
     },
     {
         key: "window:bgcolor",
@@ -352,7 +358,7 @@ const allSettings: SettingMetadata[] = [
     {
         key: "window:disablehardwareacceleration",
         label: "Disable Hardware Acceleration",
-        description: "Disable GPU hardware acceleration. May help with rendering issues.",
+        description: "Disable GPU hardware acceleration. May help with rendering issues. See also Disable WebGL for terminal-specific GPU settings.",
         category: "Window",
         subcategory: "Performance",
         controlType: "toggle",
@@ -360,6 +366,7 @@ const allSettings: SettingMetadata[] = [
         type: "boolean",
         requiresRestart: true,
         tags: ["gpu", "acceleration", "rendering"],
+        links: { "Disable WebGL": "term:disablewebgl" },
     },
     {
         key: "window:fullscreenonlaunch",
@@ -715,12 +722,13 @@ const allSettings: SettingMetadata[] = [
     {
         key: "conn:askbeforewshinstall",
         label: "Ask Before Installing WSH",
-        description: "Prompt before installing wsh on remote systems.",
+        description: "Prompt before installing wsh on remote systems. Only applies when Enable WSH is on.",
         category: "Connections",
         controlType: "toggle",
         defaultValue: true,
         type: "boolean",
         tags: ["wsh", "install", "prompt"],
+        links: { "Enable WSH": "conn:wshenabled" },
     },
 
     // ===================
@@ -1091,6 +1099,31 @@ function getSettingsByCategoryForPlatform(
     return result;
 }
 
+/**
+ * Get subcategories for a category, ordered by first appearance in settings list.
+ * Returns an array of unique subcategory names (excluding undefined).
+ */
+function getSubcategoriesForCategory(
+    category: string,
+    platform: "darwin" | "win32" | "linux"
+): string[] {
+    const settingsByCategory = getSettingsByCategoryForPlatform(platform);
+    const settings = settingsByCategory.get(category);
+    if (!settings) return [];
+
+    const subcategories: string[] = [];
+    const seen = new Set<string>();
+
+    for (const setting of settings) {
+        if (setting.subcategory && !seen.has(setting.subcategory)) {
+            seen.add(setting.subcategory);
+            subcategories.push(setting.subcategory);
+        }
+    }
+
+    return subcategories;
+}
+
 export {
     settingsRegistry,
     settingsByCategory,
@@ -1102,4 +1135,5 @@ export {
     searchSettings,
     getSettingsForPlatform,
     getSettingsByCategoryForPlatform,
+    getSubcategoriesForCategory,
 };

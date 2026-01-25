@@ -489,8 +489,9 @@ textarea.setting-text-input {
 // ============================================
 
 .setting-font {
-    display: flex;
+    display: inline-flex;
     flex-direction: column;
+    align-items: flex-end;
     gap: 8px;
 
     &.disabled {
@@ -499,41 +500,18 @@ textarea.setting-text-input {
     }
 }
 
-.setting-font-input-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.setting-font-input {
-    width: 200px;
-    height: $setting-control-height;
-    padding: $setting-input-padding;
-    border: 1px solid var(--form-element-border-color);
-    border-radius: $setting-border-radius;
-    // Layered background: dark overlay for better contrast
-    background: linear-gradient($setting-input-bg, $setting-input-bg), var(--form-element-bg-color);
-    color: var(--form-element-text-color);
-    font-size: 12px;
-    outline: none;
-    transition: border-color 0.15s ease;
-
-    &:hover {
-        border-color: var(--form-element-primary-color);
-    }
-
-    &:focus {
-        border-color: var(--form-element-primary-color);
-    }
+// Wider select to accommodate long font names
+.setting-font-select {
+    width: 260px;
 }
 
 .setting-font-preview {
-    padding: 8px 12px;
+    width: 260px;
+    padding: 6px 10px;
     background: var(--block-bg-color);
     border-radius: $setting-border-radius;
-    font-size: 14px;
+    font-size: 13px;
     color: var(--secondary-text-color);
-    max-width: 400px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;

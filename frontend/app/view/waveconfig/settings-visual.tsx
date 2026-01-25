@@ -18,52 +18,218 @@ import { ColorControl } from "@/app/element/settings/color-control";
 import { FontControl } from "@/app/element/settings/font-control";
 import { PathControl } from "@/app/element/settings/path-control";
 import { StringListControl } from "@/app/element/settings/stringlist-control";
-import { allSettingsAtom, selectedCategoryAtom, settingsSearchQueryAtom } from "@/app/store/settings-atoms";
+import {
+    allSettingsAtom,
+    selectedCategoryAtom,
+    selectedSubcategoryAtom,
+    settingsSearchQueryAtom,
+} from "@/app/store/settings-atoms";
 import {
     categoryConfigMap,
     getDefaultValue,
     getOrderedCategories,
+    getSettingMetadata,
     getSettingsByCategoryForPlatform,
+    getSubcategoriesForCategory,
     searchSettings,
 } from "@/app/store/settings-registry";
 import { settingsService } from "@/app/store/settings-service";
 import { termThemesProvider, aiModeProvider } from "@/app/store/settings-options-provider";
 import { getApi } from "@/app/store/global";
 import { cn } from "@/util/util";
-import { useAtom, useAtomValue } from "jotai";
+import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { atom } from "jotai";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import "./settings-visual.scss";
+
+/**
+ * Navigate to a setting by key and highlight it.
+ * Used for cross-linking between related settings.
+ */
+function navigateToSetting(settingKey: string): void {
+    // Clear search so we can navigate to the full settings list
+    // The search query atom will be updated via the callback if needed
+
+    // Get the setting metadata to find its category
+    const metadata = getSettingMetadata(settingKey);
+    if (!metadata) {
+        console.warn(`Setting not found: ${settingKey}`);
+        return;
+    }
+
+    // Find the setting row element
+    const settingRow = document.querySelector(`[data-setting-key="${settingKey}"]`);
+    const container = document.querySelector(".settings-list");
+
+    if (settingRow && container) {
+        // Scroll the setting into view
+        const containerRect = container.getBoundingClientRect();
+        const rowRect = settingRow.getBoundingClientRect();
+        const scrollOffset = rowRect.top - containerRect.top + container.scrollTop - 60; // 60px offset for header
+
+        container.scrollTo({ top: scrollOffset, behavior: "smooth" });
+
+        // Add highlight class after scroll completes
+        setTimeout(() => {
+            settingRow.classList.add("highlight");
+            // Remove highlight class after animation completes
+            setTimeout(() => {
+                settingRow.classList.remove("highlight");
+            }, 1500);
+        }, 300);
+    } else {
+        // Setting might be in a different category - scroll to category first
+        const categoryElement = document.getElementById(`settings-category-${metadata.category}`);
+        if (categoryElement && container) {
+            const containerRect = container.getBoundingClientRect();
+            const categoryRect = categoryElement.getBoundingClientRect();
+            const scrollOffset = categoryRect.top - containerRect.top + container.scrollTop;
+
+            container.scrollTo({ top: scrollOffset, behavior: "smooth" });
+
+            // After scrolling to category, try to find and highlight the setting
+            setTimeout(() => {
+                const settingRowRetry = document.querySelector(`[data-setting-key="${settingKey}"]`);
+                if (settingRowRetry) {
+                    settingRowRetry.classList.add("highlight");
+                    setTimeout(() => {
+                        settingRowRetry.classList.remove("highlight");
+                    }, 1500);
+                }
+            }, 500);
+        }
+    }
+}
+
+/**
+ * Component that renders setting description with clickable links.
+ * Parses the description text and converts linked phrases into clickable elements.
+ */
+interface SettingDescriptionProps {
+    description: string;
+    links?: Record<string, string>;
+    onNavigate?: (settingKey: string) => void;
+}
+
+const SettingDescription = memo(({ description, links, onNavigate }: SettingDescriptionProps) => {
+    // If no links, just return the description as-is
+    if (!links || Object.keys(links).length === 0) {
+        return <>{description}</>;
+    }
+
+    // Build a regex to match all link phrases (case-insensitive)
+    const linkPhrases = Object.keys(links);
+    // Sort by length (longest first) to match longer phrases first
+    linkPhrases.sort((a, b) => b.length - a.length);
+
+    // Escape special regex characters in phrases
+    const escapedPhrases = linkPhrases.map((phrase) => phrase.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+    const regex = new RegExp(`(${escapedPhrases.join("|")})`, "gi");
+
+    // Split description by link phrases
+    const parts = description.split(regex);
+
+    const handleClick = useCallback(
+        (settingKey: string) => {
+            if (onNavigate) {
+                onNavigate(settingKey);
+            } else {
+                navigateToSetting(settingKey);
+            }
+        },
+        [onNavigate]
+    );
+
+    return (
+        <>
+            {parts.map((part, index) => {
+                // Check if this part is a link phrase (case-insensitive match)
+                const linkKey = linkPhrases.find((phrase) => phrase.toLowerCase() === part.toLowerCase());
+                if (linkKey) {
+                    const targetSettingKey = links[linkKey];
+                    return (
+                        <span
+                            key={index}
+                            className="setting-link"
+                            onClick={() => handleClick(targetSettingKey)}
+                            role="button"
+                            tabIndex={0}
+                            onKeyDown={(e) => {
+                                if (e.key === "Enter" || e.key === " ") {
+                                    handleClick(targetSettingKey);
+                                }
+                            }}
+                        >
+                            {part}
+                        </span>
+                    );
+                }
+                return <span key={index}>{part}</span>;
+            })}
+        </>
+    );
+});
+
+SettingDescription.displayName = "SettingDescription";
 
 interface SettingsVisualProps {
     className?: string;
 }
 
 /**
- * Category Sidebar Component
+ * Category Sidebar Component - Tree structure with expandable categories
  */
 const CategorySidebar = memo(() => {
     const [selectedCategory, setSelectedCategory] = useAtom(selectedCategoryAtom);
+    const [selectedSubcategory, setSelectedSubcategory] = useAtom(selectedSubcategoryAtom);
     const orderedCategories = useMemo(() => getOrderedCategories(), []);
     const platform = getApi().getPlatform() as "darwin" | "win32" | "linux";
     const settingsByCategory = useMemo(() => getSettingsByCategoryForPlatform(platform), [platform]);
 
+    // Get subcategories for each category
+    const subcategoriesByCategory = useMemo(() => {
+        const result = new Map<string, string[]>();
+        for (const category of orderedCategories) {
+            result.set(category, getSubcategoriesForCategory(category, platform));
+        }
+        return result;
+    }, [orderedCategories, platform]);
+
     const handleCategoryClick = useCallback(
         (category: string) => {
             setSelectedCategory(category);
+            setSelectedSubcategory(null);
             // Scroll to category section within the settings-list container
             const element = document.getElementById(`settings-category-${category}`);
             const container = document.querySelector(".settings-list");
             if (element && container) {
-                // Calculate the offset and scroll within the container
                 const containerRect = container.getBoundingClientRect();
                 const elementRect = element.getBoundingClientRect();
                 const scrollOffset = elementRect.top - containerRect.top + container.scrollTop;
                 container.scrollTo({ top: scrollOffset, behavior: "smooth" });
             }
         },
-        [setSelectedCategory]
+        [setSelectedCategory, setSelectedSubcategory]
+    );
+
+    const handleSubcategoryClick = useCallback(
+        (category: string, subcategory: string, e: React.MouseEvent) => {
+            e.stopPropagation();
+            setSelectedCategory(category);
+            setSelectedSubcategory(subcategory);
+            // Scroll to subcategory section
+            const element = document.getElementById(`settings-subcategory-${category}-${subcategory}`);
+            const container = document.querySelector(".settings-list");
+            if (element && container) {
+                const containerRect = container.getBoundingClientRect();
+                const elementRect = element.getBoundingClientRect();
+                // Offset for the sticky category header (~38px)
+                const scrollOffset = elementRect.top - containerRect.top + container.scrollTop - 38;
+                container.scrollTo({ top: scrollOffset, behavior: "smooth" });
+            }
+        },
+        [setSelectedCategory, setSelectedSubcategory]
     );
 
     return (
@@ -73,17 +239,47 @@ const CategorySidebar = memo(() => {
                 const settings = settingsByCategory.get(category);
                 if (!settings || settings.length === 0) return null;
 
+                const subcategories = subcategoriesByCategory.get(category) || [];
+                const isExpanded = selectedCategory === category;
+                const hasSubcategories = subcategories.length > 0;
+
                 return (
-                    <div
-                        key={category}
-                        className={cn("settings-category-item", {
-                            active: selectedCategory === category,
-                        })}
-                        onClick={() => handleCategoryClick(category)}
-                    >
-                        <i className={`fa fa-solid fa-${config?.icon || "cog"} category-icon`} />
-                        <span className="category-name">{category}</span>
-                        <span className="category-count">{settings.length}</span>
+                    <div key={category} className="settings-category-tree-item">
+                        <div
+                            className={cn("settings-category-item", {
+                                active: isExpanded,
+                                expanded: isExpanded && hasSubcategories,
+                            })}
+                            onClick={() => handleCategoryClick(category)}
+                        >
+                            {hasSubcategories && (
+                                <i
+                                    className={cn("fa fa-solid tree-chevron", {
+                                        "fa-chevron-down": isExpanded,
+                                        "fa-chevron-right": !isExpanded,
+                                    })}
+                                />
+                            )}
+                            {!hasSubcategories && <span className="tree-chevron-spacer" />}
+                            <i className={`fa fa-solid fa-${config?.icon || "cog"} category-icon`} />
+                            <span className="category-name">{category}</span>
+                            <span className="category-count">{settings.length}</span>
+                        </div>
+                        {isExpanded && hasSubcategories && (
+                            <div className="settings-subcategory-list">
+                                {subcategories.map((subcategory) => (
+                                    <div
+                                        key={subcategory}
+                                        className={cn("settings-subcategory-item", {
+                                            active: selectedSubcategory === subcategory,
+                                        })}
+                                        onClick={(e) => handleSubcategoryClick(category, subcategory, e)}
+                                    >
+                                        <span className="subcategory-name">{subcategory}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
                 );
             })}
@@ -268,6 +464,7 @@ interface SettingRowProps {
 
 const SettingRow = memo(({ metadata }: SettingRowProps) => {
     const allSettings = useAtomValue(allSettingsAtom);
+    const setSearchQuery = useSetAtom(settingsSearchQueryAtom);
     const value = allSettings[metadata.key];
     const defaultValue = getDefaultValue(metadata.key);
 
@@ -293,11 +490,35 @@ const SettingRow = memo(({ metadata }: SettingRowProps) => {
         [metadata.key]
     );
 
+    // Handle navigation to linked settings - clear search first
+    const handleNavigate = useCallback(
+        (settingKey: string) => {
+            // Clear search so the target setting is visible
+            setSearchQuery("");
+            // Small delay to let React re-render before navigating
+            setTimeout(() => {
+                navigateToSetting(settingKey);
+            }, 50);
+        },
+        [setSearchQuery]
+    );
+
+    // Render description with links if present
+    const descriptionContent = metadata.links ? (
+        <SettingDescription
+            description={metadata.description}
+            links={metadata.links}
+            onNavigate={handleNavigate}
+        />
+    ) : (
+        metadata.description
+    );
+
     return (
         <SettingControl
             settingKey={metadata.key}
             label={metadata.label}
-            description={metadata.description}
+            description={descriptionContent}
             value={value as boolean | number | string | string[] | null}
             defaultValue={defaultValue}
             onChange={handleChange}
@@ -317,12 +538,13 @@ SettingRow.displayName = "SettingRow";
 const SettingsList = memo(() => {
     const searchQuery = useAtomValue(settingsSearchQueryAtom);
     const [, setSelectedCategory] = useAtom(selectedCategoryAtom);
+    const [, setSelectedSubcategory] = useAtom(selectedSubcategoryAtom);
     const platform = getApi().getPlatform() as "darwin" | "win32" | "linux";
     const settingsByCategory = useMemo(() => getSettingsByCategoryForPlatform(platform), [platform]);
     const orderedCategories = useMemo(() => getOrderedCategories(), []);
     const listRef = useRef<HTMLDivElement>(null);
 
-    // Scroll-spy: Update sidebar selection when scrolling through categories
+    // Scroll-spy: Update sidebar selection when scrolling through categories and subcategories
     useEffect(() => {
         if (searchQuery.trim()) {
             // Don't run scroll-spy during search
@@ -332,44 +554,59 @@ const SettingsList = memo(() => {
         const container = listRef.current;
         if (!container) return;
 
-        // Use IntersectionObserver to detect which category sections are visible
-        const observer = new IntersectionObserver(
-            (entries) => {
-                // Find the topmost visible category
-                let topCategory: string | null = null;
-                let topPosition = Infinity;
+        const handleScroll = () => {
+            const containerRect = container.getBoundingClientRect();
+            const containerTop = containerRect.top;
 
-                for (const entry of entries) {
-                    if (entry.isIntersecting) {
-                        const rect = entry.boundingClientRect;
-                        // Get the category from the element's ID
-                        const id = entry.target.id;
-                        const match = id.match(/^settings-category-(.+)$/);
-                        if (match && rect.top < topPosition) {
-                            topPosition = rect.top;
-                            topCategory = match[1];
+            // Find the topmost visible category
+            const categoryElements = container.querySelectorAll("[id^='settings-category-']");
+            let currentCategory: string | null = null;
+
+            for (const element of categoryElements) {
+                const rect = element.getBoundingClientRect();
+                // Category is current if its top is at or above container top + some margin
+                if (rect.top <= containerTop + 60 && rect.bottom > containerTop + 60) {
+                    const match = element.id.match(/^settings-category-(.+)$/);
+                    if (match) {
+                        currentCategory = match[1];
+                    }
+                }
+            }
+
+            if (currentCategory) {
+                setSelectedCategory(currentCategory);
+
+                // Find the topmost visible subcategory within this category
+                const subcategoryElements = container.querySelectorAll(
+                    `[id^='settings-subcategory-${currentCategory}-']`
+                );
+                let currentSubcategory: string | null = null;
+
+                for (const element of subcategoryElements) {
+                    const rect = element.getBoundingClientRect();
+                    // Subcategory is current if its top is at or above container top + header offset
+                    if (rect.top <= containerTop + 100 && rect.bottom > containerTop + 100) {
+                        const match = element.id.match(/^settings-subcategory-[^-]+-(.+)$/);
+                        if (match) {
+                            currentSubcategory = match[1];
                         }
                     }
                 }
 
-                if (topCategory) {
-                    setSelectedCategory(topCategory);
-                }
-            },
-            {
-                root: container,
-                // Trigger when element is near top of container
-                rootMargin: "-10% 0px -80% 0px",
-                threshold: 0,
+                setSelectedSubcategory(currentSubcategory);
             }
-        );
+        };
 
-        // Observe all category section elements
-        const sections = container.querySelectorAll("[id^='settings-category-']");
-        sections.forEach((section) => observer.observe(section));
+        // Initial check
+        handleScroll();
 
-        return () => observer.disconnect();
-    }, [searchQuery, setSelectedCategory]);
+        // Update on scroll
+        container.addEventListener("scroll", handleScroll, { passive: true });
+
+        return () => {
+            container.removeEventListener("scroll", handleScroll);
+        };
+    }, [searchQuery, setSelectedCategory, setSelectedSubcategory]);
 
     // Sticky header detection: Add 'is-stuck' class when headers are stuck at top
     useEffect(() => {
@@ -382,9 +619,10 @@ const SettingsList = memo(() => {
 
         const updateStickyHeaders = () => {
             const containerRect = container.getBoundingClientRect();
-            const headers = container.querySelectorAll(".settings-category-header");
 
-            headers.forEach((header) => {
+            // Update category headers
+            const categoryHeaders = container.querySelectorAll(".settings-category-header");
+            categoryHeaders.forEach((header) => {
                 const headerRect = header.getBoundingClientRect();
                 const section = header.closest(".settings-category-section");
                 if (!section) return;
@@ -397,6 +635,36 @@ const SettingsList = memo(() => {
                 const isStuck =
                     sectionRect.top <= containerRect.top + 1 &&
                     sectionRect.bottom > containerRect.top + headerRect.height;
+
+                if (isStuck) {
+                    header.classList.add("is-stuck");
+                } else {
+                    header.classList.remove("is-stuck");
+                }
+            });
+
+            // Update subcategory headers
+            const subcategoryHeaders = container.querySelectorAll(".settings-subcategory-header");
+            subcategoryHeaders.forEach((header) => {
+                const headerRect = header.getBoundingClientRect();
+                const section = header.closest(".settings-subcategory-section");
+                if (!section) return;
+
+                const sectionRect = section.getBoundingClientRect();
+                const categorySection = header.closest(".settings-category-section");
+                if (!categorySection) return;
+
+                const categorySectionRect = categorySection.getBoundingClientRect();
+
+                // Subcategory header is stuck if:
+                // 1. Its section top is at or above the sticky position (container top + category header height ~38px)
+                // 2. Its section bottom is still visible
+                // 3. The parent category section is still visible
+                const stickyTop = containerRect.top + 38;
+                const isStuck =
+                    sectionRect.top <= stickyTop + 1 &&
+                    sectionRect.bottom > stickyTop + headerRect.height &&
+                    categorySectionRect.bottom > stickyTop;
 
                 if (isStuck) {
                     header.classList.add("is-stuck");
@@ -512,11 +780,21 @@ const SettingsList = memo(() => {
                             {category}
                         </div>
                         {Array.from(bySubcategory.entries()).map(([subcategory, subSettings]) => (
-                            <div key={subcategory ?? "default"}>
-                                {subcategory && <div className="settings-subcategory-header">{subcategory}</div>}
-                                {subSettings.map((setting) => (
-                                    <SettingRow key={setting.key} metadata={setting} />
-                                ))}
+                            <div
+                                key={subcategory ?? "default"}
+                                id={subcategory ? `settings-subcategory-${category}-${subcategory}` : undefined}
+                                className="settings-subcategory-section"
+                            >
+                                {subcategory && (
+                                    <div className="settings-subcategory-header">
+                                        {subcategory}
+                                    </div>
+                                )}
+                                <div className="settings-subcategory-content">
+                                    {subSettings.map((setting) => (
+                                        <SettingRow key={setting.key} metadata={setting} />
+                                    ))}
+                                </div>
                             </div>
                         ))}
                     </div>

@@ -11,94 +11,242 @@ import { adaptFromReactOrNativeKeyEvent, checkKeyPressed, keydownWrapper } from 
 import { cn } from "@/util/util";
 import { useAtom, useAtomValue } from "jotai";
 import type * as MonacoTypes from "monaco-editor";
-import { memo, useCallback, useEffect, useRef } from "react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { debounce } from "throttle-debounce";
 
-interface ConfigSidebarProps {
+import "./waveconfig.scss";
+
+/**
+ * JSON Editor Modal - Opens settings.json in a modal overlay
+ */
+interface JsonEditorModalProps {
     model: WaveConfigViewModel;
+    blockId: string;
+    onClose: () => void;
 }
 
-const ConfigSidebar = memo(({ model }: ConfigSidebarProps) => {
-    const selectedFile = useAtomValue(model.selectedFileAtom);
-    const [isMenuOpen, setIsMenuOpen] = useAtom(model.isMenuOpenAtom);
-    const configFiles = model.getConfigFiles();
-    const deprecatedConfigFiles = model.getDeprecatedConfigFiles();
+const JsonEditorModal = memo(({ model, blockId, onClose }: JsonEditorModalProps) => {
+    const [fileContent, setFileContent] = useAtom(model.fileContentAtom);
+    const isSaving = useAtomValue(model.isSavingAtom);
+    const hasChanges = useAtomValue(model.hasEditedAtom);
+    const validationError = useAtomValue(model.validationErrorAtom);
+    const errorMessage = useAtomValue(model.errorMessageAtom);
+    const editorRef = useRef<MonacoTypes.editor.IStandaloneCodeEditor>(null);
 
-    const handleFileSelect = (file: ConfigFile) => {
-        model.loadFile(file);
-        setIsMenuOpen(false);
-    };
+    const handleContentChange = useCallback(
+        (newContent: string) => {
+            setFileContent(newContent);
+            model.markAsEdited();
+        },
+        [setFileContent, model]
+    );
+
+    const handleEditorMount = useCallback(
+        (editor: MonacoTypes.editor.IStandaloneCodeEditor) => {
+            editorRef.current = editor;
+            editor.focus();
+
+            const keyDownDisposer = editor.onKeyDown((e: MonacoTypes.IKeyboardEvent) => {
+                const waveEvent = adaptFromReactOrNativeKeyEvent(e.browserEvent);
+                // Allow Escape to close the modal
+                if (e.keyCode === 9 /* Escape */) {
+                    onClose();
+                    e.stopPropagation();
+                    e.preventDefault();
+                    return;
+                }
+                const handled = tryReinjectKey(waveEvent);
+                if (handled) {
+                    e.stopPropagation();
+                    e.preventDefault();
+                }
+            });
+
+            return () => {
+                keyDownDisposer.dispose();
+                editorRef.current = null;
+            };
+        },
+        [onClose]
+    );
+
+    const handleSave = useCallback(async () => {
+        await model.saveFile();
+        if (!globalStore.get(model.validationErrorAtom)) {
+            onClose();
+        }
+    }, [model, onClose]);
+
+    // Close on backdrop click
+    const handleBackdropClick = useCallback(
+        (e: React.MouseEvent) => {
+            if (e.target === e.currentTarget) {
+                onClose();
+            }
+        },
+        [onClose]
+    );
+
+    // Handle keyboard shortcuts
+    useEffect(() => {
+        const handleKeyDown = keydownWrapper((e: WaveKeyboardEvent) => {
+            if (checkKeyPressed(e, "Cmd:s")) {
+                if (hasChanges && !isSaving) {
+                    handleSave();
+                }
+                return true;
+            }
+            if (checkKeyPressed(e, "Escape")) {
+                onClose();
+                return true;
+            }
+            return false;
+        });
+
+        window.addEventListener("keydown", handleKeyDown);
+        return () => window.removeEventListener("keydown", handleKeyDown);
+    }, [hasChanges, isSaving, handleSave, onClose]);
 
     return (
-        <div className="flex flex-col w-48 border-r border-border @w600:h-full @max-w600:absolute @max-w600:left-0.5 @max-w600:top-0 @max-w600:bottom-0.5 @max-w600:z-10 @max-w600:bg-background @max-w600:shadow-xl @max-w600:rounded-bl">
-            <div className="flex items-center justify-between px-4 py-2 border-b border-border @w600:hidden">
-                <span className="font-semibold">Config Files</span>
-                <button
-                    onClick={() => setIsMenuOpen(false)}
-                    className="hover:bg-secondary/50 rounded p-1 cursor-pointer transition-colors"
-                >
-                    ✕
-                </button>
-            </div>
-            {configFiles.map((file) => (
-                <div
-                    key={file.path}
-                    onClick={() => handleFileSelect(file)}
-                    className={`px-4 py-2 border-b border-border cursor-pointer transition-colors ${
-                        selectedFile?.path === file.path ? "bg-accentbg text-primary" : "hover:bg-secondary/50"
-                    }`}
-                >
-                    <div className="whitespace-nowrap overflow-hidden text-ellipsis">{file.name}</div>
-                    {file.description && (
-                        <div className="text-xs text-muted mt-0.5 whitespace-nowrap overflow-hidden text-ellipsis">
-                            {file.description}
-                        </div>
-                    )}
-                </div>
-            ))}
-            {deprecatedConfigFiles.length > 0 && (
-                <>
-                    {deprecatedConfigFiles.map((file) => (
-                        <div
-                            key={file.path}
-                            onClick={() => handleFileSelect(file)}
-                            className={`px-4 py-2 border-b border-border cursor-pointer transition-colors ${
-                                selectedFile?.path === file.path ? "bg-accentbg text-primary" : "hover:bg-secondary/50"
-                            }`}
+        <div className="waveconfig-modal-backdrop" onClick={handleBackdropClick}>
+            <div className="waveconfig-modal">
+                <div className="waveconfig-modal-header">
+                    <div className="waveconfig-modal-title">
+                        <i className="fa fa-solid fa-code" />
+                        <span>settings.json</span>
+                    </div>
+                    <div className="waveconfig-modal-actions">
+                        {hasChanges && (
+                            <span className="waveconfig-modal-unsaved">Unsaved changes</span>
+                        )}
+                        <button
+                            onClick={handleSave}
+                            disabled={!hasChanges || isSaving}
+                            className={cn("waveconfig-modal-save", {
+                                disabled: !hasChanges || isSaving,
+                            })}
                         >
-                            <div className="flex items-center gap-2 overflow-hidden">
-                                <span className="text-secondary truncate">{file.name}</span>
-                                <span
-                                    className={`text-xs px-1.5 py-0.5 rounded shrink-0 ${
-                                        selectedFile?.path === file.path
-                                            ? "text-primary/80 bg-secondary/50"
-                                            : "text-muted-foreground/70 bg-secondary/30"
-                                    }`}
-                                >
-                                    deprecated
-                                </span>
-                            </div>
-                        </div>
-                    ))}
-                </>
-            )}
+                            {isSaving ? "Saving..." : "Save"}
+                        </button>
+                        <button onClick={onClose} className="waveconfig-modal-close">
+                            <i className="fa fa-solid fa-times" />
+                        </button>
+                    </div>
+                </div>
+                {(errorMessage || validationError) && (
+                    <div className="waveconfig-modal-error">
+                        <span>{errorMessage || validationError}</span>
+                        <button
+                            onClick={() => {
+                                model.clearError();
+                                model.clearValidationError();
+                            }}
+                        >
+                            <i className="fa fa-solid fa-times" />
+                        </button>
+                    </div>
+                )}
+                <div className="waveconfig-modal-content">
+                    <CodeEditor
+                        blockId={blockId}
+                        text={fileContent}
+                        fileName="WAVECONFIGPATH/settings.json"
+                        language="json"
+                        readonly={false}
+                        onChange={handleContentChange}
+                        onMount={handleEditorMount}
+                    />
+                </div>
+            </div>
         </div>
     );
 });
 
-ConfigSidebar.displayName = "ConfigSidebar";
+JsonEditorModal.displayName = "JsonEditorModal";
 
+/**
+ * Config Tab Bar - Horizontal tabs for config sections
+ */
+interface ConfigTabBarProps {
+    model: WaveConfigViewModel;
+    onEditJson: () => void;
+}
+
+const ConfigTabBar = memo(({ model, onEditJson }: ConfigTabBarProps) => {
+    const selectedFile = useAtomValue(model.selectedFileAtom);
+    const configFiles = model.getConfigFiles();
+    const deprecatedConfigFiles = model.getDeprecatedConfigFiles();
+
+    const handleFileSelect = useCallback(
+        (file: ConfigFile) => {
+            model.loadFile(file);
+        },
+        [model]
+    );
+
+    return (
+        <div className="waveconfig-tabbar">
+            <div className="waveconfig-tabs">
+                {configFiles.map((file) => (
+                    <button
+                        key={file.path}
+                        onClick={() => handleFileSelect(file)}
+                        className={cn("waveconfig-tab", {
+                            active: selectedFile?.path === file.path,
+                        })}
+                    >
+                        {file.name}
+                    </button>
+                ))}
+                {deprecatedConfigFiles.map((file) => (
+                    <button
+                        key={file.path}
+                        onClick={() => handleFileSelect(file)}
+                        className={cn("waveconfig-tab", "deprecated", {
+                            active: selectedFile?.path === file.path,
+                        })}
+                    >
+                        {file.name}
+                        <span className="waveconfig-tab-badge">deprecated</span>
+                    </button>
+                ))}
+            </div>
+            <div className="waveconfig-tabbar-actions">
+                {selectedFile?.docsUrl && (
+                    <Tooltip content="View documentation">
+                        <a
+                            href={`${selectedFile.docsUrl}?ref=waveconfig`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="waveconfig-docs-link"
+                        >
+                            <i className="fa fa-solid fa-book" />
+                        </a>
+                    </Tooltip>
+                )}
+                {selectedFile?.path === "settings.json" && selectedFile?.visualComponent && (
+                    <button onClick={onEditJson} className="waveconfig-edit-json">
+                        Edit in settings.json
+                    </button>
+                )}
+            </div>
+        </div>
+    );
+});
+
+ConfigTabBar.displayName = "ConfigTabBar";
+
+/**
+ * Main WaveConfig View Component
+ */
 const WaveConfigView = memo(({ blockId, model }: ViewComponentProps<WaveConfigViewModel>) => {
     const selectedFile = useAtomValue(model.selectedFileAtom);
     const [fileContent, setFileContent] = useAtom(model.fileContentAtom);
     const isLoading = useAtomValue(model.isLoadingAtom);
-    const isSaving = useAtomValue(model.isSavingAtom);
     const errorMessage = useAtomValue(model.errorMessageAtom);
     const validationError = useAtomValue(model.validationErrorAtom);
-    const [isMenuOpen, setIsMenuOpen] = useAtom(model.isMenuOpenAtom);
-    const hasChanges = useAtomValue(model.hasEditedAtom);
-    const [activeTab, setActiveTab] = useAtom(model.activeTabAtom);
     const editorContainerRef = useRef<HTMLDivElement>(null);
+    const [isJsonModalOpen, setIsJsonModalOpen] = useState(false);
 
     const handleContentChange = useCallback(
         (newContent: string) => {
@@ -133,48 +281,25 @@ const WaveConfigView = memo(({ blockId, model }: ViewComponentProps<WaveConfigVi
         [model]
     );
 
-    // Handler for Save button - context-aware for visual vs JSON mode
-    const handleSave = useCallback(async () => {
-        // When in visual mode for settings.json, use settingsService.forceSave()
-        // to flush pending changes instead of model.saveFile() which uses stale fileContentAtom
-        const isVisualMode = selectedFile?.visualComponent && activeTab === "visual";
-        if (isVisualMode && selectedFile?.path === "settings.json") {
-            await settingsService.forceSave();
-            // Clear the edited flag since visual mode changes are now saved
-            globalStore.set(model.hasEditedAtom, false);
-        } else {
-            // For JSON mode or other files, use the normal save
-            model.saveFile();
+    // Open JSON modal and load settings.json content
+    const handleEditJson = useCallback(async () => {
+        // Flush any pending settings changes first
+        await settingsService.forceSave();
+        // Find and load settings.json
+        const settingsFile = model.getConfigFiles().find((f) => f.path === "settings.json");
+        if (settingsFile) {
+            await model.loadFile(settingsFile);
         }
-    }, [selectedFile, activeTab, model]);
+        setIsJsonModalOpen(true);
+    }, [model]);
 
-    // Handler for switching to JSON tab - flush pending settings changes and reload file
-    const handleSwitchToJson = useCallback(async () => {
-        // If we're viewing settings.json in visual mode, flush pending changes first
-        if (selectedFile?.path === "settings.json") {
-            await settingsService.forceSave();
-        }
-        // Reload the file to get fresh content
+    const handleCloseJsonModal = useCallback(() => {
+        setIsJsonModalOpen(false);
+        // Reload the current file to refresh any changes
         if (selectedFile) {
-            await model.loadFile(selectedFile);
+            model.loadFile(selectedFile);
         }
-        setActiveTab("json");
-    }, [selectedFile, model, setActiveTab]);
-
-    useEffect(() => {
-        const handleKeyDown = keydownWrapper((e: WaveKeyboardEvent) => {
-            if (checkKeyPressed(e, "Cmd:s")) {
-                if (hasChanges && !isSaving) {
-                    handleSave();
-                }
-                return true;
-            }
-            return false;
-        });
-
-        window.addEventListener("keydown", handleKeyDown);
-        return () => window.removeEventListener("keydown", handleKeyDown);
-    }, [hasChanges, isSaving, handleSave]);
+    }, [selectedFile, model]);
 
     useEffect(() => {
         if (!editorContainerRef.current) {
@@ -190,144 +315,55 @@ const WaveConfigView = memo(({ blockId, model }: ViewComponentProps<WaveConfigVi
         return () => resizeObserver.disconnect();
     }, [model]);
 
-    const saveTooltip = `Save (${model.saveShortcut})`;
-
     return (
-        <div className="@container flex flex-row w-full h-full">
-            {isMenuOpen && (
-                <div className="absolute inset-0 bg-black/50 z-5 @w600:hidden" onClick={() => setIsMenuOpen(false)} />
+        <div ref={editorContainerRef} className="waveconfig-container">
+            <ConfigTabBar model={model} onEditJson={handleEditJson} />
+
+            {(errorMessage || validationError) && (
+                <div className="waveconfig-error">
+                    <span>{errorMessage || validationError}</span>
+                    <button
+                        onClick={() => {
+                            model.clearError();
+                            model.clearValidationError();
+                        }}
+                    >
+                        <i className="fa fa-solid fa-times" />
+                    </button>
+                </div>
             )}
-            <div className={`h-full ${isMenuOpen ? "" : "@max-w600:hidden"}`}>
-                <ConfigSidebar model={model} />
+
+            <div className="waveconfig-content">
+                {isLoading ? (
+                    <div className="waveconfig-loading">
+                        <i className="fa fa-solid fa-spinner fa-spin" />
+                        <span>Loading...</span>
+                    </div>
+                ) : selectedFile?.visualComponent ? (
+                    (() => {
+                        const VisualComponent = selectedFile.visualComponent;
+                        return <VisualComponent model={model} />;
+                    })()
+                ) : selectedFile ? (
+                    <CodeEditor
+                        blockId={blockId}
+                        text={fileContent}
+                        fileName={`WAVECONFIGPATH/${selectedFile.path}`}
+                        language={selectedFile.language}
+                        readonly={false}
+                        onChange={handleContentChange}
+                        onMount={handleEditorMount}
+                    />
+                ) : null}
             </div>
-            <div ref={editorContainerRef} className="flex flex-col flex-1 min-w-0">
-                {selectedFile && (
-                    <>
-                        <div className="flex flex-row items-center justify-between px-4 py-2 border-b border-border">
-                            <div className="flex items-baseline gap-2 min-w-0">
-                                <button
-                                    onClick={() => setIsMenuOpen(true)}
-                                    className="@w600:hidden hover:bg-secondary/50 rounded p-1 cursor-pointer transition-colors mr-2 shrink-0"
-                                >
-                                    <i className="fa fa-bars" />
-                                </button>
-                                <div className="text-lg font-semibold whitespace-nowrap shrink-0">
-                                    {selectedFile.name}
-                                </div>
-                                {selectedFile.docsUrl && (
-                                    <Tooltip content="View documentation">
-                                        <a
-                                            href={`${selectedFile.docsUrl}?ref=waveconfig`}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="!text-muted-foreground hover:!text-primary transition-colors ml-1 shrink-0 cursor-pointer"
-                                        >
-                                            <i className="fa fa-book text-sm" />
-                                        </a>
-                                    </Tooltip>
-                                )}
-                                <div className="text-xs text-muted-foreground font-mono pb-0.5 ml-1 truncate @max-w450:hidden">
-                                    {selectedFile.path}
-                                </div>
-                            </div>
-                            <div className="flex gap-2 items-baseline shrink-0">
-                                {selectedFile.hasJsonView && (
-                                    <>
-                                        {hasChanges && (
-                                            <span className="text-xs text-warning pb-0.5 @max-w450:hidden">
-                                                Unsaved changes
-                                            </span>
-                                        )}
-                                        <Tooltip content={saveTooltip} placement="bottom" divClassName="shrink-0">
-                                            <button
-                                                onClick={handleSave}
-                                                disabled={!hasChanges || isSaving}
-                                                className={`px-3 py-1 rounded transition-colors text-sm ${
-                                                    !hasChanges || isSaving
-                                                        ? "border border-border text-muted-foreground opacity-50"
-                                                        : "bg-accent/80 text-primary hover:bg-accent cursor-pointer"
-                                                }`}
-                                            >
-                                                {isSaving ? "Saving..." : "Save"}
-                                            </button>
-                                        </Tooltip>
-                                    </>
-                                )}
-                            </div>
-                        </div>
-                        {selectedFile.visualComponent && selectedFile.hasJsonView && (
-                            <div className="flex gap-0 border-b border-border">
-                                <button
-                                    onClick={() => setActiveTab("visual")}
-                                    className={cn(
-                                        "px-4 pt-1 pb-1.5 cursor-pointer transition-colors text-secondary",
-                                        activeTab === "visual"
-                                            ? "bg-highlightbg text-primary"
-                                            : "bg-transparent hover:bg-hover"
-                                    )}
-                                >
-                                    Visual
-                                </button>
-                                <button
-                                    onClick={handleSwitchToJson}
-                                    className={cn(
-                                        "px-4 pt-1 pb-1.5 cursor-pointer transition-colors text-secondary",
-                                        activeTab === "json"
-                                            ? "bg-highlightbg text-primary"
-                                            : "bg-transparent hover:bg-hover"
-                                    )}
-                                >
-                                    Raw JSON
-                                </button>
-                            </div>
-                        )}
-                        {errorMessage && (
-                            <div className="bg-error text-primary px-4 py-2 border-b border-error flex items-center justify-between">
-                                <span>{errorMessage}</span>
-                                <button
-                                    onClick={() => model.clearError()}
-                                    className="ml-2 hover:bg-black/20 rounded p-1 cursor-pointer transition-colors"
-                                >
-                                    ✕
-                                </button>
-                            </div>
-                        )}
-                        {validationError && (
-                            <div className="bg-error text-primary px-4 py-2 border-b border-error flex items-center justify-between">
-                                <span>{validationError}</span>
-                                <button
-                                    onClick={() => model.clearValidationError()}
-                                    className="ml-2 hover:bg-black/20 rounded p-1 cursor-pointer transition-colors"
-                                >
-                                    ✕
-                                </button>
-                            </div>
-                        )}
-                        <div className="flex-1 overflow-hidden">
-                            {isLoading ? (
-                                <div className="flex items-center justify-center h-full text-muted-foreground">
-                                    Loading...
-                                </div>
-                            ) : selectedFile.visualComponent && (!selectedFile.hasJsonView || activeTab === "visual") ? (
-                                (() => {
-                                    const VisualComponent = selectedFile.visualComponent;
-                                    return <VisualComponent model={model} />;
-                                })()
-                            ) : (
-                                <CodeEditor
-                                    blockId={blockId}
-                                    text={fileContent}
-                                    fileName={`WAVECONFIGPATH/${selectedFile.path}`}
-                                    language={selectedFile.language}
-                                    readonly={false}
-                                    onChange={handleContentChange}
-                                    onMount={handleEditorMount}
-                                />
-                            )}
-                        </div>
-                    </>
-                )}
-            </div>
+
+            {isJsonModalOpen && (
+                <JsonEditorModal
+                    model={model}
+                    blockId={blockId}
+                    onClose={handleCloseJsonModal}
+                />
+            )}
         </div>
     );
 });

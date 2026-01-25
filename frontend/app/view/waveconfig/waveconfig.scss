@@ -1,0 +1,311 @@
+// Copyright 2025, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
+// ============================================
+// WaveConfig Component Styles
+// Horizontal tab-based configuration view
+// ============================================
+
+.waveconfig-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    width: 100%;
+    background: var(--main-bg-color);
+    overflow: hidden;
+}
+
+// ============================================
+// Tab Bar
+// ============================================
+
+.waveconfig-tabbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 12px;
+    border-bottom: 1px solid var(--border-color);
+    background: var(--main-bg-color);
+    flex-shrink: 0;
+    min-height: 36px;
+    gap: 12px;
+}
+
+.waveconfig-tabs {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    overflow-x: auto;
+    flex: 1;
+    min-width: 0;
+
+    // Hide scrollbar but allow scrolling
+    scrollbar-width: none;
+    &::-webkit-scrollbar {
+        display: none;
+    }
+}
+
+.waveconfig-tab {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--secondary-text-color);
+    font-size: 13px;
+    cursor: pointer;
+    transition: color 0.15s ease, border-color 0.15s ease, background-color 0.15s ease;
+    white-space: nowrap;
+    margin-bottom: -1px; // Overlap the container border
+
+    &:hover {
+        color: var(--main-text-color);
+        background: var(--hover-bg-color);
+    }
+
+    &.active {
+        color: var(--main-text-color);
+        border-bottom-color: var(--accent-color);
+    }
+
+    &.deprecated {
+        color: var(--grey-text-color);
+
+        &:hover {
+            color: var(--secondary-text-color);
+        }
+    }
+}
+
+.waveconfig-tab-badge {
+    font-size: 9px;
+    padding: 1px 4px;
+    background: var(--warning-color);
+    color: var(--main-bg-color);
+    border-radius: 3px;
+    text-transform: uppercase;
+    font-weight: 600;
+}
+
+.waveconfig-tabbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+}
+
+.waveconfig-docs-link {
+    color: var(--grey-text-color);
+    font-size: 13px;
+    padding: 4px 6px;
+    border-radius: 4px;
+    transition: color 0.15s ease, background-color 0.15s ease;
+
+    &:hover {
+        color: var(--main-text-color);
+        background: var(--hover-bg-color);
+    }
+}
+
+.waveconfig-edit-json {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    background: transparent;
+    border: none;
+    color: var(--accent-color);
+    font-size: 12px;
+    cursor: pointer;
+    transition: opacity 0.15s ease;
+    white-space: nowrap;
+
+    &:hover {
+        opacity: 0.8;
+        text-decoration: underline;
+    }
+}
+
+// ============================================
+// Content Area
+// ============================================
+
+.waveconfig-content {
+    flex: 1;
+    overflow: hidden;
+    min-height: 0;
+}
+
+.waveconfig-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    height: 100%;
+    color: var(--secondary-text-color);
+    font-size: 14px;
+}
+
+// ============================================
+// Error Bar
+// ============================================
+
+.waveconfig-error {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 16px;
+    background: var(--error-color);
+    color: var(--main-text-color);
+    font-size: 13px;
+    flex-shrink: 0;
+
+    button {
+        background: transparent;
+        border: none;
+        color: var(--main-text-color);
+        cursor: pointer;
+        padding: 4px 8px;
+        border-radius: 4px;
+        transition: background-color 0.15s ease;
+
+        &:hover {
+            background: rgb(0 0 0 / 0.2);
+        }
+    }
+}
+
+// ============================================
+// JSON Editor Modal
+// ============================================
+
+.waveconfig-modal-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgb(0 0 0 / 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    backdrop-filter: blur(2px);
+}
+
+.waveconfig-modal {
+    display: flex;
+    flex-direction: column;
+    width: 90%;
+    max-width: 900px;
+    height: 80%;
+    max-height: 700px;
+    background: var(--main-bg-color);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    box-shadow: 0 8px 32px rgb(0 0 0 / 0.4);
+    overflow: hidden;
+}
+
+.waveconfig-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border-color);
+    background: var(--panel-bg-color);
+    flex-shrink: 0;
+}
+
+.waveconfig-modal-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--main-text-color);
+
+    i {
+        color: var(--secondary-text-color);
+    }
+}
+
+.waveconfig-modal-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.waveconfig-modal-unsaved {
+    font-size: 12px;
+    color: var(--warning-color);
+}
+
+.waveconfig-modal-save {
+    padding: 6px 14px;
+    background: var(--accent-color);
+    border: none;
+    border-radius: 4px;
+    color: var(--button-text-color);
+    font-size: 13px;
+    cursor: pointer;
+    transition: opacity 0.15s ease;
+
+    &:hover:not(.disabled) {
+        opacity: 0.9;
+    }
+
+    &.disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+}
+
+.waveconfig-modal-close {
+    background: transparent;
+    border: none;
+    color: var(--secondary-text-color);
+    font-size: 16px;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: color 0.15s ease, background-color 0.15s ease;
+
+    &:hover {
+        color: var(--main-text-color);
+        background: var(--hover-bg-color);
+    }
+}
+
+.waveconfig-modal-error {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 16px;
+    background: var(--error-color);
+    color: var(--main-text-color);
+    font-size: 13px;
+    flex-shrink: 0;
+
+    button {
+        background: transparent;
+        border: none;
+        color: var(--main-text-color);
+        cursor: pointer;
+        padding: 4px 8px;
+        border-radius: 4px;
+
+        &:hover {
+            background: rgb(0 0 0 / 0.2);
+        }
+    }
+}
+
+.waveconfig-modal-content {
+    flex: 1;
+    overflow: hidden;
+    min-height: 0;
+}
