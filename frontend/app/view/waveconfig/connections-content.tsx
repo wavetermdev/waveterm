@@ -454,6 +454,54 @@ const EmptyState = memo(({ onAddConnection, onAutoDetect, isDetecting }: EmptySt
 });
 EmptyState.displayName = "EmptyState";
 
+/**
+ * Derives the icon for a saved connection based on name and config.
+ */
+function getConnectionIcon(connection: ConnectionInfo): ShellIconInfo {
+    const name = connection.name.toLowerCase();
+    const shellpath = connection.config["conn:shellpath"]?.toLowerCase() || "";
+
+    // WSL connections with specific distros
+    if (connection.type === "wsl" || name.startsWith("wsl://")) {
+        if (name.includes("ubuntu")) return { icon: "ubuntu", isBrand: true };
+        if (name.includes("debian")) return { icon: "debian", isBrand: true };
+        if (name.includes("fedora")) return { icon: "fedora", isBrand: true };
+        if (name.includes("opensuse") || name.includes("suse")) return { icon: "suse", isBrand: true };
+        if (name.includes("centos")) return { icon: "centos", isBrand: true };
+        if (name.includes("redhat") || name.includes("rhel")) return { icon: "redhat", isBrand: true };
+        return { icon: "linux", isBrand: true };
+    }
+
+    // Git Bash
+    if (name.includes("git") || shellpath.includes("git")) {
+        return { icon: "git-alt", isBrand: true };
+    }
+
+    // Command Prompt
+    if (name === "cmd" || shellpath.includes("cmd.exe")) {
+        return { icon: "windows", isBrand: true };
+    }
+
+    // PowerShell (Windows or Core)
+    if (name.includes("powershell") || name.includes("pwsh") || shellpath.includes("pwsh") || shellpath.includes("powershell")) {
+        return { icon: "terminal", isBrand: false };
+    }
+
+    // Bash, Zsh, Fish
+    if (name === "bash" || name === "zsh" || name === "fish" ||
+        shellpath.includes("bash") || shellpath.includes("zsh") || shellpath.includes("fish")) {
+        return { icon: "terminal", isBrand: false };
+    }
+
+    // SSH connections (user@host format)
+    if (name.includes("@") || connection.type === "ssh") {
+        return { icon: "server", isBrand: false };
+    }
+
+    // Default
+    return { icon: "terminal", isBrand: false };
+}
+
 interface ConnectionListItemProps {
     connection: ConnectionInfo;
     isSelected: boolean;
@@ -461,7 +509,10 @@ interface ConnectionListItemProps {
 }
 
 const ConnectionListItem = memo(({ connection, isSelected, onSelect }: ConnectionListItemProps) => {
-    const icon = connection.type === "wsl" ? "linux" : "server";
+    const iconInfo = getConnectionIcon(connection);
+    const iconClass = iconInfo.isBrand
+        ? `fa-brands fa-${iconInfo.icon}`
+        : `fa-sharp fa-solid fa-${iconInfo.icon}`;
     const isHidden = connection.config["display:hidden"];
 
     return (
@@ -469,7 +520,7 @@ const ConnectionListItem = memo(({ connection, isSelected, onSelect }: Connectio
             className={cn("connections-list-item", { selected: isSelected, hidden: isHidden })}
             onClick={onSelect}
         >
-            <i className={`fa-sharp fa-solid fa-${icon}`} />
+            <i className={iconClass} />
             <span className="connections-list-item-name">{connection.name}</span>
             {isHidden && <i className="fa-sharp fa-solid fa-eye-slash connections-list-item-hidden" />}
             <i className="fa-sharp fa-solid fa-chevron-right connections-list-item-arrow" />
@@ -1105,9 +1156,13 @@ const ConnectionEditor = memo(({ connection, onBack, onDelete, onSave }: Connect
                     <span>Back</span>
                 </button>
                 <div className="connections-editor-title">
-                    <i
-                        className={`fa-sharp fa-solid fa-${connection.type === "wsl" ? "linux" : "server"}`}
-                    />
+                    {(() => {
+                        const editorIconInfo = getConnectionIcon(connection);
+                        const editorIconClass = editorIconInfo.isBrand
+                            ? `fa-brands fa-${editorIconInfo.icon}`
+                            : `fa-sharp fa-solid fa-${editorIconInfo.icon}`;
+                        return <i className={editorIconClass} />;
+                    })()}
                     <span>{connection.name}</span>
                 </div>
                 <div className="connections-editor-actions">
