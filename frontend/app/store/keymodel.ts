@@ -1,6 +1,7 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import debug from "debug";
 import { WaveAIModel } from "@/app/aipanel/waveai-model";
 import { FocusManager } from "@/app/store/focusManager";
 import {
@@ -30,6 +31,8 @@ import { CHORD_TIMEOUT } from "@/util/sharedconst";
 import { fireAndForget } from "@/util/util";
 import * as jotai from "jotai";
 import { modalsModel } from "./modalmodel";
+
+const dlog = debug("wave:keymodel");
 
 type KeyHandler = (event: WaveKeyboardEvent) => boolean;
 
@@ -257,7 +260,7 @@ function getAllTabs(ws: Workspace): string[] {
 }
 
 function switchTabAbs(index: number) {
-    console.log("switchTabAbs", index);
+    dlog("switchTabAbs", index);
     const ws = globalStore.get(atoms.workspace);
     const newTabIdx = index - 1;
     const tabids = getAllTabs(ws);
@@ -269,7 +272,7 @@ function switchTabAbs(index: number) {
 }
 
 function switchTab(offset: number) {
-    console.log("switchTab", offset);
+    dlog("switchTab", offset);
     const ws = globalStore.get(atoms.workspace);
     const curTabId = globalStore.get(atoms.staticTabId);
     let tabIdx = -1;
@@ -427,12 +430,12 @@ function appHandleKeyDown(waveEvent: WaveKeyboardEvent): boolean {
     }
     const nativeEvent = (waveEvent as any).nativeEvent;
     if (lastHandledEvent != null && nativeEvent != null && lastHandledEvent === nativeEvent) {
-        console.log("lastHandledEvent return false");
+        dlog("lastHandledEvent return false");
         return false;
     }
     lastHandledEvent = nativeEvent;
     if (activeChord) {
-        console.log("handle activeChord", activeChord);
+        dlog("handle activeChord", activeChord);
         // If we're in chord mode, look for the second key.
         const chordBindings = globalChordMap.get(activeChord);
         const [, handler] = checkKeyMap(waveEvent, chordBindings);
@@ -458,18 +461,17 @@ function appHandleKeyDown(waveEvent: WaveKeyboardEvent): boolean {
             return true;
         }
     }
-    if (globalStore.get(atoms.waveWindowType) == "tab") {
-        const layoutModel = getLayoutModelForStaticTab();
-        const focusedNode = globalStore.get(layoutModel.focusedNode);
-        const blockId = focusedNode?.data?.blockId;
-        if (blockId != null && shouldDispatchToBlock(waveEvent)) {
-            const bcm = getBlockComponentModel(blockId);
-            const viewModel = bcm?.viewModel;
-            if (viewModel?.keyDownHandler) {
-                const handledByBlock = viewModel.keyDownHandler(waveEvent);
-                if (handledByBlock) {
-                    return true;
-                }
+    // Note: builder mode was removed, so window type is always "tab"
+    const layoutModel = getLayoutModelForStaticTab();
+    const focusedNode = globalStore.get(layoutModel.focusedNode);
+    const blockId = focusedNode?.data?.blockId;
+    if (blockId != null && shouldDispatchToBlock(waveEvent)) {
+        const bcm = getBlockComponentModel(blockId);
+        const viewModel = bcm?.viewModel;
+        if (viewModel?.keyDownHandler) {
+            const handledByBlock = viewModel.keyDownHandler(waveEvent);
+            if (handledByBlock) {
+                return true;
             }
         }
     }

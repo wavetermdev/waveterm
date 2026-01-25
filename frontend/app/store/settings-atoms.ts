@@ -52,6 +52,25 @@ export const settingsSearchQueryAtom = atom<string>("");
 export const selectedCategoryAtom = atom<string | null>(null);
 
 /**
+ * Currently selected subcategory in the settings view.
+ */
+export const selectedSubcategoryAtom = atom<string | null>(null);
+
+/**
+ * Combined selection state for category navigation.
+ */
+export const selectedSectionAtom = atom(
+    (get) => ({
+        category: get(selectedCategoryAtom),
+        subcategory: get(selectedSubcategoryAtom),
+    }),
+    (get, set, value: { category: string | null; subcategory: string | null }) => {
+        set(selectedCategoryAtom, value.category);
+        set(selectedSubcategoryAtom, value.subcategory);
+    }
+);
+
+/**
  * Whether a save is currently in progress.
  */
 export const isSavingAtom = atom<boolean>(false);

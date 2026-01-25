@@ -247,34 +247,7 @@
 	transition: opacity 800ms linear;
 }
 
-/* Scrollable Content Inset Shadow */
+/* Scrollable Content Inset Shadow - disabled for cleaner look */
 .xterm .xterm-scrollable-element > .shadow {
-	position: absolute;
-	display: none;
-}
-.xterm .xterm-scrollable-element > .shadow.top {
-	display: block;
-	top: 0;
-	left: 3px;
-	height: 3px;
-	width: 100%;
-	box-shadow: var(--vscode-scrollbar-shadow, #000) 0 6px 6px -6px inset;
-}
-.xterm .xterm-scrollable-element > .shadow.left {
-	display: block;
-	top: 3px;
-	left: 0;
-	height: 100%;
-	width: 3px;
-	box-shadow: var(--vscode-scrollbar-shadow, #000) 6px 0 6px -6px inset;
-}
-.xterm .xterm-scrollable-element > .shadow.top-left-corner {
-	display: block;
-	top: 0;
-	left: 0;
-	height: 3px;
-	width: 3px;
-}
-.xterm .xterm-scrollable-element > .shadow.top.left {
-	box-shadow: var(--vscode-scrollbar-shadow, #000) 6px 0 6px -6px inset;
+	display: none !important;
 }

@@ -407,6 +407,58 @@ const TerminalView = ({ blockId, model }: ViewComponentProps<TermViewModel>) => 
         [model]
     );
 
+    // Focus block on any pointerdown in the terminal (including scrollbar)
+    // xterm.js scrollbar uses PointerEvents, not MouseEvents
+    React.useEffect(() => {
+        const elem = viewRef.current;
+        if (!elem) return;
+
+        const handlePointerDown = () => {
+            if (!globalStore.get(model.nodeModel.isFocused)) {
+                model.nodeModel.focusNode();
+            }
+        };
+
+        // Attach to the view-term element for normal terminal clicks
+        elem.addEventListener("pointerdown", handlePointerDown, true);
+
+        // Find and attach to the scrollbar slider directly
+        // xterm creates this element asynchronously, so we need to wait/observe
+        let sliderElem: Element | null = null;
+        const attachSliderListener = () => {
+            sliderElem = elem.querySelector(".xterm-scrollable-element > .scrollbar.vertical > .slider");
+            if (sliderElem) {
+                sliderElem.addEventListener("pointerdown", handlePointerDown, true);
+            }
+        };
+
+        // Try immediately and also after a short delay (xterm init is async)
+        attachSliderListener();
+        const timer = setTimeout(attachSliderListener, 500);
+
+        // Also observe for DOM changes in case the terminal reinitializes
+        const observer = new MutationObserver(() => {
+            const newSlider = elem.querySelector(".xterm-scrollable-element > .scrollbar.vertical > .slider");
+            if (newSlider && newSlider !== sliderElem) {
+                if (sliderElem) {
+                    sliderElem.removeEventListener("pointerdown", handlePointerDown, true);
+                }
+                sliderElem = newSlider;
+                sliderElem.addEventListener("pointerdown", handlePointerDown, true);
+            }
+        });
+        observer.observe(elem, { childList: true, subtree: true });
+
+        return () => {
+            clearTimeout(timer);
+            observer.disconnect();
+            elem.removeEventListener("pointerdown", handlePointerDown, true);
+            if (sliderElem) {
+                sliderElem.removeEventListener("pointerdown", handlePointerDown, true);
+            }
+        };
+    }, [model.nodeModel]);
+
     return (
         <div className={clsx("view-term", "term-mode-" + termMode)} ref={viewRef} onContextMenu={handleContextMenu}>
             {termBg && <div className="absolute inset-0 z-0 pointer-events-none" style={termBg} />}

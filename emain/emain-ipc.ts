@@ -324,7 +324,11 @@ export function initIpcHandlers() {
                 symbolColor: color.isDark ? "white" : "black",
             });
         } catch (e) {
-            console.error("Error updating window controls overlay:", e);
+            // Silently ignore "display surface not available" - expected during rapid tab switching
+            const errMsg = e instanceof Error ? e.message : String(e);
+            if (!errMsg.includes("display surface not available")) {
+                console.error("Error updating window controls overlay:", e);
+            }
         }
     });
 

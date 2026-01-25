@@ -57,10 +57,17 @@
     .term-connectelem {
         flex-grow: 1;
         min-height: 0;
-        overflow: hidden;
+        overflow: visible; // Allow scrollbar to extend beyond bounds
         line-height: 1;
         margin: 5px;
         margin-left: 4px;
+        margin-right: 0;
+
+        // Make xterm extend to fill and overflow to the right edge of the block
+        .terminal,
+        .xterm {
+            width: calc(100% + 8px) !important; // Extend past the block padding/frame (5px padding + 1px frame + 2px border)
+        }
     }
 
     .term-htmlelem {
@@ -126,14 +133,16 @@
         }
     }
 
-    // The 18px width is the width of the scrollbar plus the margin
+    // The scrollbar area at the right edge of the terminal
+    // pointer-events: none allows hover to pass through to the scrollbar underneath
     .term-scrollbar-show-observer {
         z-index: calc(var(--zindex-xterm-viewport-overlay) - 1);
         position: absolute;
         top: 0;
         right: 0;
         height: 100%;
-        width: 18px;
+        width: 10px;
+        pointer-events: none;
     }
 
     .term-scrollbar-hide-observer {
@@ -143,10 +152,17 @@
         top: 0;
         left: 0;
         height: 100%;
-        width: calc(100% - 18px);
+        width: calc(100% - 10px);
+        pointer-events: none;
     }
 
     .terminal {
+        // Show scrollbar when hovering anywhere in the terminal
+        &:hover .xterm-scrollable-element > .scrollbar {
+            opacity: 1 !important;
+            pointer-events: auto !important;
+        }
+
         // Legacy webkit scrollbar styles for .xterm-viewport native scrollbar.
         // NOTE: In xterm.js 6.x, the scrollbar is rendered by DomScrollableElement,
         // so these styles may only apply during fallback scenarios or if xterm.js
@@ -184,9 +200,56 @@
         }
 
         // xterm.js 6.1.0+ DomScrollableElement scrollbar styles
+        // Windows Terminal-style scrollbar: thin, flush right, with visible track
+        .xterm-scrollable-element {
+            // Scrollbar should be at the right edge of the terminal element
+            // (terminal element itself now extends to block edge via negative margin on term-connectelem)
+            right: 0 !important;
+
+            // Extend height to cover full terminal area including margins
+            top: -5px !important;
+            height: calc(100% + 10px) !important;
+
+            // Ensure the scrollbar container can receive hover events
+            // (the scrollbar itself may have pointer-events: none when hidden)
+            pointer-events: auto !important;
+
+            // Show scrollbar when hovering over the scrollable element
+            &:hover > .scrollbar {
+                opacity: 1 !important;
+                pointer-events: auto !important;
+            }
+
+            // Vertical scrollbar (the main one)
+            > .scrollbar.vertical {
+                // Track styling - visible full-height background like Windows Terminal
+                // Width matches left margin (4px term-connectelem + 5px block-content = 9px)
+                width: 10px !important;
+                right: 0 !important;
+                background-color: rgba(255, 255, 255, 0.04);
+
+                // Thumb styling - wider for better visibility
+                > .slider {
+                    width: 8px !important;
+                    left: 1px !important;
+                    background-color: var(--scrollbar-thumb-color);
+                    border-radius: 4px;
+
+                    &:hover {
+                        background-color: var(--scrollbar-thumb-hover-color);
+                    }
+
+                    &.active {
+                        background-color: var(--scrollbar-thumb-active-color);
+                    }
+                }
+            }
+        }
+
+        // Legacy slider styles (fallback)
         .xterm-scrollable-element > .scrollbar > .slider {
             background-color: var(--scrollbar-thumb-color);
-            border-radius: 4px;
+            border-radius: 3px;
 
             &:hover {
                 background-color: var(--scrollbar-thumb-hover-color);

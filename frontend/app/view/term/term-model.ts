@@ -311,9 +311,14 @@ export class TermViewModel implements ViewModel {
         });
         this.shellProcFullStatus = jotai.atom(null) as jotai.PrimitiveAtom<BlockControllerRuntimeStatus>;
         const initialShellProcStatus = services.BlockService.GetControllerStatus(blockId);
-        initialShellProcStatus.then((rts) => {
-            this.updateShellProcStatus(rts);
-        });
+        initialShellProcStatus
+            .then((rts) => {
+                this.updateShellProcStatus(rts);
+            })
+            .catch(() => {
+                // Expected during startup - controller may not be ready yet.
+                // Status will be updated via the controllerstatus event subscription.
+            });
         this.shellProcStatusUnsubFn = waveEventSubscribe({
             eventType: "controllerstatus",
             scope: WOS.makeORef("block", blockId),
