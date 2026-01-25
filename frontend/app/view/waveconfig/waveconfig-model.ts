@@ -8,9 +8,14 @@ import { globalStore } from "@/app/store/jotaiStore";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { AiPresetsContent } from "@/app/view/waveconfig/aipresets-content";
+import { BgPresetsContent } from "@/app/view/waveconfig/bgpresets-content";
+import { ConnectionsContent } from "@/app/view/waveconfig/connections-content";
 import { SecretsContent } from "@/app/view/waveconfig/secretscontent";
 import { SettingsVisualContent } from "@/app/view/waveconfig/settings-visual-content";
+import { TabVarsContent } from "@/app/view/waveconfig/tabvars-content";
+import { WaveAIVisualContent } from "@/app/view/waveconfig/waveaivisual";
 import { WaveConfigView } from "@/app/view/waveconfig/waveconfig";
+import { WidgetsContent } from "@/app/view/waveconfig/widgets-content";
 import { isWindows } from "@/util/platformutil";
 import { base64ToString, stringToBase64 } from "@/util/util";
 import { atom, type PrimitiveAtom } from "jotai";
@@ -171,6 +176,7 @@ const configFiles: ConfigFile[] = [
         docsUrl: "https://docs.waveterm.dev/connections",
         description: isWindows() ? "SSH hosts and WSL distros" : "SSH hosts",
         hasJsonView: true,
+        visualComponent: ConnectionsContent,
     },
     {
         name: "Sidebar Widgets",
@@ -178,6 +184,7 @@ const configFiles: ConfigFile[] = [
         language: "json",
         docsUrl: "https://docs.waveterm.dev/customwidgets",
         hasJsonView: true,
+        visualComponent: WidgetsContent,
     },
     {
         name: "Wave AI Modes",
@@ -187,7 +194,7 @@ const configFiles: ConfigFile[] = [
         docsUrl: "https://docs.waveterm.dev/waveai-modes",
         validator: validateWaveAiJson,
         hasJsonView: true,
-        // visualComponent: WaveAIVisualContent,
+        visualComponent: WaveAIVisualContent,
     },
     {
         name: "Tab Backgrounds",
@@ -196,6 +203,7 @@ const configFiles: ConfigFile[] = [
         docsUrl: "https://docs.waveterm.dev/presets#background-configurations",
         validator: validateBgJson,
         hasJsonView: true,
+        visualComponent: BgPresetsContent,
     },
     {
         name: "Tab Variables",
@@ -204,6 +212,7 @@ const configFiles: ConfigFile[] = [
         docsUrl: "https://docs.waveterm.dev/customization#tab-variables",
         validator: validateTabVarsJson,
         hasJsonView: true,
+        visualComponent: TabVarsContent,
     },
     {
         name: "Secrets",
