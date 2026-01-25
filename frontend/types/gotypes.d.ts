@@ -392,6 +392,17 @@ declare global {
         error?: string;
     };
 
+    // wshrpc.CommandOmpReadConfigRtnData
+    type CommandOmpReadConfigRtnData = {
+        configpath: string;
+        config?: OmpConfigData;
+        rawcontent?: string;
+        format: string;
+        source: string;
+        backupexists: boolean;
+        error?: string;
+    };
+
     // wshrpc.CommandOmpRestoreBackupData
     type CommandOmpRestoreBackupData = {
     };
@@ -399,6 +410,19 @@ declare global {
     // wshrpc.CommandOmpRestoreBackupRtnData
     type CommandOmpRestoreBackupRtnData = {
         success: boolean;
+        error?: string;
+    };
+
+    // wshrpc.CommandOmpWriteConfigData
+    type CommandOmpWriteConfigData = {
+        config: OmpConfigData;
+        createbackup: boolean;
+    };
+
+    // wshrpc.CommandOmpWriteConfigRtnData
+    type CommandOmpWriteConfigRtnData = {
+        success: boolean;
+        backuppath?: string;
         error?: string;
     };
 
@@ -1035,6 +1059,98 @@ declare global {
         "waveai:chatid"?: string;
         "waveai:mode"?: string;
         "waveai:maxoutputtokens"?: number;
+    };
+
+    // wshrpc.OmpBlockData
+    type OmpBlockData = {
+        type: string;
+        alignment: string;
+        segments: OmpSegmentData[];
+        newline?: boolean;
+        filler?: string;
+        overflow?: string;
+    };
+
+    // wshrpc.OmpCacheData
+    type OmpCacheData = {
+        duration?: string;
+        strategy?: string;
+    };
+
+    // wshrpc.OmpConfigData
+    type OmpConfigData = {
+        $schema?: string;
+        version?: number;
+        final_space?: boolean;
+        console_title_template?: string;
+        palette?: {[key: string]: string};
+        blocks: OmpBlockData[];
+        transient_prompt?: OmpTransientData;
+        secondary_prompt?: OmpSecondaryPromptData;
+        debug_prompt?: OmpDebugPromptData;
+        tooltips?: OmpTooltipData[];
+        cycle_cache_enabled?: boolean;
+        disable_cursor_positioning?: boolean;
+        patch_pwsh_bleed?: boolean;
+        upgrade_notice?: boolean;
+    };
+
+    // wshrpc.OmpDebugPromptData
+    type OmpDebugPromptData = {
+        foreground?: string;
+        background?: string;
+        template?: string;
+    };
+
+    // wshrpc.OmpSecondaryPromptData
+    type OmpSecondaryPromptData = {
+        foreground?: string;
+        background?: string;
+        template?: string;
+    };
+
+    // wshrpc.OmpSegmentData
+    type OmpSegmentData = {
+        type: string;
+        style: string;
+        foreground?: string;
+        background?: string;
+        template?: string;
+        templates?: string[];
+        properties?: {[key: string]: any};
+        leading_diamond?: string;
+        trailing_diamond?: string;
+        leading_powerline_symbol?: string;
+        trailing_powerline_symbol?: string;
+        invert_powerline?: boolean;
+        powerline_symbol?: string;
+        interactive?: boolean;
+        foreground_templates?: string[];
+        background_templates?: string[];
+        alias?: string;
+        max_width?: number;
+        min_width?: number;
+        cache?: OmpCacheData;
+    };
+
+    // wshrpc.OmpTooltipData
+    type OmpTooltipData = {
+        type: string;
+        tips: string[];
+        style?: string;
+        foreground?: string;
+        background?: string;
+        template?: string;
+        properties?: {[key: string]: any};
+    };
+
+    // wshrpc.OmpTransientData
+    type OmpTransientData = {
+        foreground?: string;
+        background?: string;
+        template?: string;
+        filler?: string;
+        newline?: boolean;
     };
 
     // iochantypes.Packet

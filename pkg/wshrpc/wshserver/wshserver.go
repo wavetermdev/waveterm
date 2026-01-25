@@ -1420,3 +1420,111 @@ func (ws *WshServer) OmpRestoreBackupCommand(ctx context.Context, data wshrpc.Co
 	result.Success = true
 	return result, nil
 }
+
+// OmpReadConfigCommand reads the full OMP configuration for the configurator
+func (ws *WshServer) OmpReadConfigCommand(ctx context.Context) (wshrpc.CommandOmpReadConfigRtnData, error) {
+	result := wshrpc.CommandOmpReadConfigRtnData{}
+
+	// Determine config source
+	poshTheme := os.Getenv("POSH_THEME")
+	if poshTheme != "" {
+		result.Source = "POSH_THEME"
+	} else {
+		result.Source = "default"
+	}
+
+	configPath, err := wshutil.GetOmpConfigPath()
+	if err != nil {
+		result.Error = err.Error()
+		return result, nil
+	}
+	result.ConfigPath = configPath
+
+	// Detect format
+	format := wshutil.DetectConfigFormat(configPath)
+	result.Format = string(format)
+
+	// Check if backup exists
+	backupPath := wshutil.GetBackupPath(configPath)
+	if _, err := os.Stat(backupPath); err == nil {
+		result.BackupExists = true
+	}
+
+	// Read the file
+	content, err := os.ReadFile(configPath)
+	if err != nil {
+		result.Error = fmt.Sprintf("Failed to read config: %v", err)
+		return result, nil
+	}
+
+	// For JSON, parse and return structured config
+	if format == wshutil.OmpFormatJSON {
+		var config wshrpc.OmpConfigData
+		if err := json.Unmarshal(content, &config); err != nil {
+			result.Error = fmt.Sprintf("Failed to parse config: %v", err)
+			result.RawContent = string(content)
+			return result, nil
+		}
+		result.Config = &config
+	} else {
+		// For YAML/TOML, return raw content (not yet supported for editing)
+		result.RawContent = string(content)
+	}
+
+	return result, nil
+}
+
+// OmpWriteConfigCommand writes the full OMP configuration
+func (ws *WshServer) OmpWriteConfigCommand(ctx context.Context, data wshrpc.CommandOmpWriteConfigData) (wshrpc.CommandOmpWriteConfigRtnData, error) {
+	result := wshrpc.CommandOmpWriteConfigRtnData{}
+
+	if data.Config == nil {
+		result.Error = "Config is required"
+		return result, nil
+	}
+
+	configPath, err := wshutil.GetOmpConfigPath()
+	if err != nil {
+		result.Error = err.Error()
+		return result, nil
+	}
+
+	// Validate the path
+	if err := wshutil.ValidateOmpConfigPath(configPath); err != nil {
+		result.Error = err.Error()
+		return result, nil
+	}
+
+	// Create backup if requested
+	if data.CreateBackup {
+		backupPath, err := wshutil.CreateOmpBackup(configPath)
+		if err != nil {
+			result.Error = fmt.Sprintf("Failed to create backup: %v", err)
+			return result, nil
+		}
+		result.BackupPath = backupPath
+	}
+
+	// Serialize the config to JSON with nice formatting
+	content, err := json.MarshalIndent(data.Config, "", "  ")
+	if err != nil {
+		result.Error = fmt.Sprintf("Failed to serialize config: %v", err)
+		return result, nil
+	}
+
+	// Get original file permissions
+	origInfo, err := os.Stat(configPath)
+	mode := os.FileMode(0644)
+	if err == nil {
+		mode = origInfo.Mode()
+	}
+
+	// Write the file
+	if err := os.WriteFile(configPath, content, mode); err != nil {
+		result.Error = fmt.Sprintf("Failed to write config: %v", err)
+		return result, nil
+	}
+
+	result.Success = true
+	return result, nil
+}

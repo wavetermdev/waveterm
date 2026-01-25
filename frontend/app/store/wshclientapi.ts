@@ -472,9 +472,19 @@ class RpcApiType {
         return client.wshRpcCall("ompgetconfiginfo", null, opts);
     }
 
+    // command "ompreadconfig" [call]
+    OmpReadConfigCommand(client: WshClient, opts?: RpcOpts): Promise<CommandOmpReadConfigRtnData> {
+        return client.wshRpcCall("ompreadconfig", null, opts);
+    }
+
     // command "omprestorebackup" [call]
     OmpRestoreBackupCommand(client: WshClient, data: CommandOmpRestoreBackupData, opts?: RpcOpts): Promise<CommandOmpRestoreBackupRtnData> {
         return client.wshRpcCall("omprestorebackup", data, opts);
+    }
+
+    // command "ompwriteconfig" [call]
+    OmpWriteConfigCommand(client: WshClient, data: CommandOmpWriteConfigData, opts?: RpcOpts): Promise<CommandOmpWriteConfigRtnData> {
+        return client.wshRpcCall("ompwriteconfig", data, opts);
     }
 
     // command "ompwritepalette" [call]
