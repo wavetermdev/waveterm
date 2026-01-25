@@ -9,6 +9,7 @@
  */
 
 import { CollapsibleSection } from "@/app/element/collapsible-section";
+import { OmpConfigurator } from "@/app/element/settings/omp-configurator";
 import { OmpHighContrast } from "@/app/element/settings/omp-high-contrast";
 import { OmpPaletteExport } from "@/app/element/settings/omp-palette-export";
 import { OmpThemeControl } from "@/app/element/settings/omptheme-control";
@@ -178,6 +179,11 @@ export const AppearanceContent = memo(({ model }: AppearanceContentProps) => {
                     <OmpHighContrast />
                     <div className="section-divider" />
                     <OmpPaletteExport />
+                    <div className="section-divider" />
+                    <OmpConfigurator
+                        previewBackground={ompPreviewBg}
+                        onConfigChange={handleOmpThemeChange}
+                    />
                 </div>
             </CollapsibleSection>
 
