@@ -23,7 +23,6 @@ import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { getApi } from "@/app/store/global";
 import { base64ToString, stringToBase64 } from "@/util/util";
-import { cn } from "@/util/util";
 import { memo, useCallback, useEffect, useMemo, useState } from "react";
 
 import "./bgpresets-content.scss";
@@ -502,6 +501,8 @@ export const BgPresetsContent = memo(({ model }: BgPresetsContentProps) => {
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const [selectedPreset, setSelectedPreset] = useState<string | null>(null);
     const [isAddingNew, setIsAddingNew] = useState(false);
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [presetToDelete, setPresetToDelete] = useState<string | null>(null);
 
     const configDir = useMemo(() => getApi().getConfigDir(), []);
 
@@ -571,15 +572,29 @@ export const BgPresetsContent = memo(({ model }: BgPresetsContentProps) => {
         setIsAddingNew(true);
     }, []);
 
-    const handleDeletePreset = useCallback(async (key: string) => {
+    const handleDeletePreset = useCallback((key: string) => {
+        setPresetToDelete(key);
+        setShowDeleteConfirm(true);
+    }, []);
+
+    const handleConfirmDelete = useCallback(async () => {
+        if (!presetToDelete) return;
+
         const newPresets = { ...presets };
-        delete newPresets[key];
+        delete newPresets[presetToDelete];
         await savePresets(newPresets);
 
-        if (selectedPreset === key) {
+        if (selectedPreset === presetToDelete) {
             setSelectedPreset(null);
         }
-    }, [presets, savePresets, selectedPreset]);
+        setShowDeleteConfirm(false);
+        setPresetToDelete(null);
+    }, [presets, savePresets, selectedPreset, presetToDelete]);
+
+    const handleCancelDelete = useCallback(() => {
+        setShowDeleteConfirm(false);
+        setPresetToDelete(null);
+    }, []);
 
     const handleSavePreset = useCallback(async (key: string, preset: BgPreset) => {
         const newPresets = { ...presets, [key]: preset };
@@ -612,6 +627,43 @@ export const BgPresetsContent = memo(({ model }: BgPresetsContentProps) => {
             {errorMessage && (
                 <div className="bgpresets-error">
                     <ErrorDisplay message={errorMessage} />
+                </div>
+            )}
+
+            {showDeleteConfirm && presetToDelete && (
+                <div className="bgpresets-delete-confirm">
+                    <div className="bgpresets-delete-confirm-text">
+                        <i className="fa-sharp fa-solid fa-triangle-exclamation" />
+                        <span>
+                            Delete <strong>{presetToDelete}</strong>? This cannot be undone.
+                        </span>
+                    </div>
+                    <div className="bgpresets-delete-confirm-actions">
+                        <button
+                            className="bgpresets-button bgpresets-button-secondary"
+                            onClick={handleCancelDelete}
+                            disabled={isSaving}
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            className="bgpresets-button bgpresets-button-danger"
+                            onClick={handleConfirmDelete}
+                            disabled={isSaving}
+                        >
+                            {isSaving ? (
+                                <>
+                                    <i className="fa-sharp fa-solid fa-spinner fa-spin" />
+                                    Deleting...
+                                </>
+                            ) : (
+                                <>
+                                    <i className="fa-sharp fa-solid fa-trash" />
+                                    Delete
+                                </>
+                            )}
+                        </button>
+                    </div>
                 </div>
             )}
 

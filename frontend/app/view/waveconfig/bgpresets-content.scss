@@ -425,6 +425,79 @@ $card-preview-height: 120px;
 }
 
 // ============================================
+// Delete Confirmation Dialog
+// ============================================
+
+.bgpresets-delete-confirm {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    background: rgb(from var(--warning-color) r g b / 0.1);
+    border-bottom: 1px solid var(--warning-color);
+    flex-shrink: 0;
+}
+
+.bgpresets-delete-confirm-text {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--warning-color);
+
+    i {
+        font-size: 14px;
+    }
+
+    strong {
+        font-family: var(--fixed-font);
+    }
+}
+
+.bgpresets-delete-confirm-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.bgpresets-button {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: background-color 0.15s ease, color 0.15s ease, opacity 0.15s ease;
+
+    &:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+}
+
+.bgpresets-button-secondary {
+    background: var(--panel-bg-color);
+    border: 1px solid var(--border-color);
+    color: var(--secondary-text-color);
+
+    &:hover:not(:disabled) {
+        background: var(--hover-bg-color);
+        color: var(--main-text-color);
+    }
+}
+
+.bgpresets-button-danger {
+    background: var(--error-color);
+    border: none;
+    color: var(--button-text-color);
+
+    &:hover:not(:disabled) {
+        opacity: 0.9;
+    }
+}
+
+// ============================================
 // Responsive Adjustments
 // ============================================
 

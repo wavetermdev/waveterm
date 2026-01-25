@@ -34,6 +34,7 @@ interface ModeFormData {
     "ai:azureresourcename"?: string;
     "ai:azuredeployment"?: string;
     "ai:capabilities"?: string[];
+    "ai:switchcompat"?: string[];
 }
 
 // Provider options
@@ -118,6 +119,7 @@ function modeKeyToFormData(key: string, mode: AIModeConfigType): ModeFormData {
         "ai:azureresourcename": mode["ai:azureresourcename"] || "",
         "ai:azuredeployment": mode["ai:azuredeployment"] || "",
         "ai:capabilities": mode["ai:capabilities"] || [],
+        "ai:switchcompat": mode["ai:switchcompat"] || [],
     };
 }
 
@@ -141,6 +143,9 @@ function formDataToModeConfig(form: ModeFormData): AIModeConfigType {
     if (form["ai:azuredeployment"]) config["ai:azuredeployment"] = form["ai:azuredeployment"];
     if (form["ai:capabilities"] && form["ai:capabilities"].length > 0) {
         config["ai:capabilities"] = form["ai:capabilities"];
+    }
+    if (form["ai:switchcompat"] && form["ai:switchcompat"].length > 0) {
+        config["ai:switchcompat"] = form["ai:switchcompat"];
     }
 
     return config;
@@ -642,6 +647,39 @@ const ModeEditor = memo(({ modeKey, mode, onSave, onDelete, isLoading }: ModeEdi
                         </div>
                     </div>
                 </div>
+
+                {/* Switch Compatibility Section */}
+                <div className="waveai-form-section">
+                    <div className="waveai-form-section-header">
+                        <i className="fa fa-solid fa-shuffle" />
+                        Switch Compatibility
+                    </div>
+                    <div className="waveai-form-section-content">
+                        <div className="waveai-form-row">
+                            <div className="waveai-form-field">
+                                <label className="waveai-field-label">Compatible Mode Keys</label>
+                                <input
+                                    type="text"
+                                    className="waveai-input mono"
+                                    value={(form["ai:switchcompat"] || []).join(", ")}
+                                    onChange={(e) => {
+                                        const values = e.target.value
+                                            .split(",")
+                                            .map((s) => s.trim())
+                                            .filter((s) => s.length > 0);
+                                        updateField("ai:switchcompat", values);
+                                    }}
+                                    placeholder="mode-key-1, mode-key-2"
+                                    disabled={isDefault}
+                                />
+                                <div className="waveai-field-help">
+                                    Comma-separated list of mode keys that this mode can switch to mid-conversation.
+                                    Used for grouping compatible modes in the AI panel.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     );
@@ -1084,6 +1122,38 @@ const AddModeForm = memo(({ onSave, onCancel, isLoading, existingKeys }: AddMode
                         </div>
                     </div>
                 </div>
+
+                {/* Switch Compatibility Section */}
+                <div className="waveai-form-section">
+                    <div className="waveai-form-section-header">
+                        <i className="fa fa-solid fa-shuffle" />
+                        Switch Compatibility
+                    </div>
+                    <div className="waveai-form-section-content">
+                        <div className="waveai-form-row">
+                            <div className="waveai-form-field">
+                                <label className="waveai-field-label">Compatible Mode Keys</label>
+                                <input
+                                    type="text"
+                                    className="waveai-input mono"
+                                    value={(form["ai:switchcompat"] || []).join(", ")}
+                                    onChange={(e) => {
+                                        const values = e.target.value
+                                            .split(",")
+                                            .map((s) => s.trim())
+                                            .filter((s) => s.length > 0);
+                                        updateField("ai:switchcompat", values);
+                                    }}
+                                    placeholder="mode-key-1, mode-key-2"
+                                />
+                                <div className="waveai-field-help">
+                                    Comma-separated list of mode keys that this mode can switch to mid-conversation.
+                                    Used for grouping compatible modes in the AI panel.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     );
@@ -1105,16 +1175,13 @@ export const WaveAIVisualContent = memo(({ model }: WaveAIVisualContentProps) =>
     const [isAddingNew, setIsAddingNew] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [userModes, setUserModes] = useState<Record<string, AIModeConfigType>>({});
+    const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
     // Get config directory
-    const configDir = getApi().getConfigDir();
+    const configDir = useMemo(() => getApi().getConfigDir(), []);
 
-    // Load user waveai.json on mount
-    useEffect(() => {
-        loadUserModes();
-    }, []);
-
-    const loadUserModes = async () => {
+    const loadUserModes = useCallback(async () => {
+        setErrorMessage(null);
         try {
             const fullPath = `${configDir}/waveai.json`;
             const fileData = await RpcApi.FileReadCommand(TabRpcClient, {
@@ -1127,13 +1194,23 @@ export const WaveAIVisualContent = memo(({ model }: WaveAIVisualContentProps) =>
                     setUserModes(parsed);
                 }
             }
-        } catch (err) {
+        } catch (err: any) {
             // File doesn't exist or is empty, that's fine
-            setUserModes({});
+            if (err.message?.includes("not found") || err.message?.includes("ENOENT")) {
+                setUserModes({});
+            } else {
+                setErrorMessage(`Failed to load AI modes: ${err.message || String(err)}`);
+            }
         }
-    };
+    }, [configDir]);
 
-    const saveUserModes = async (modes: Record<string, AIModeConfigType>) => {
+    // Load user waveai.json on mount
+    useEffect(() => {
+        loadUserModes();
+    }, [loadUserModes]);
+
+    const saveUserModes = useCallback(async (modes: Record<string, AIModeConfigType>) => {
+        setErrorMessage(null);
         try {
             const fullPath = `${configDir}/waveai.json`;
             const content = JSON.stringify(modes, null, 2);
@@ -1142,11 +1219,12 @@ export const WaveAIVisualContent = memo(({ model }: WaveAIVisualContentProps) =>
                 data64: stringToBase64(content),
             });
             setUserModes(modes);
-        } catch (err) {
+        } catch (err: any) {
             console.error("Failed to save waveai.json:", err);
+            setErrorMessage(`Failed to save AI modes: ${err.message || String(err)}`);
             throw err;
         }
-    };
+    }, [configDir]);
 
     // Combine default modes with user modes
     const allModes = useMemo(() => {
@@ -1227,6 +1305,21 @@ export const WaveAIVisualContent = memo(({ model }: WaveAIVisualContentProps) =>
 
     return (
         <div className="waveai-visual">
+            {errorMessage && (
+                <div className="waveai-error-container">
+                    <div className="waveai-error-message">
+                        <i className="fa fa-solid fa-circle-exclamation" />
+                        <span>{errorMessage}</span>
+                    </div>
+                    <button
+                        className="waveai-error-dismiss"
+                        onClick={() => setErrorMessage(null)}
+                        title="Dismiss"
+                    >
+                        <i className="fa fa-solid fa-times" />
+                    </button>
+                </div>
+            )}
             <div className="waveai-visual-body">
                 {/* Sidebar with mode list */}
                 <div className="waveai-mode-sidebar">

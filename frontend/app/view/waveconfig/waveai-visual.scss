@@ -608,6 +608,46 @@ $waveai-sidebar-width: 260px;
     }
 
     // ========================================
+    // Error Display
+    // ========================================
+
+    .waveai-error-container {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 16px;
+        background: rgb(from var(--error-color) r g b / 0.1);
+        border-bottom: 1px solid var(--error-color);
+        flex-shrink: 0;
+
+        .waveai-error-message {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            color: var(--error-color);
+
+            i {
+                font-size: 14px;
+            }
+        }
+
+        .waveai-error-dismiss {
+            background: transparent;
+            border: none;
+            padding: 4px 8px;
+            color: var(--error-color);
+            cursor: pointer;
+            opacity: 0.7;
+            transition: opacity 0.15s ease;
+
+            &:hover {
+                opacity: 1;
+            }
+        }
+    }
+
+    // ========================================
     // Read-Only Notice
     // ========================================
 
