@@ -33,12 +33,76 @@ type OmpConfigInfo struct {
 	Error          string            `json:"error,omitempty"`
 }
 
+// ValidateOmpConfigPath checks if the path is safe for OMP config operations
+func ValidateOmpConfigPath(path string) error {
+	// Check for path traversal sequences
+	if strings.Contains(path, "..") {
+		return fmt.Errorf("path contains traversal sequence")
+	}
+
+	// Validate file extension
+	ext := strings.ToLower(filepath.Ext(path))
+	validExts := map[string]bool{".json": true, ".yaml": true, ".yml": true, ".toml": true}
+
+	// Also accept .omp.json pattern
+	isOmpJson := strings.HasSuffix(strings.ToLower(path), ".omp.json")
+
+	if !validExts[ext] && !isOmpJson {
+		return fmt.Errorf("invalid config extension: %s", ext)
+	}
+
+	// Get absolute path to resolve any relative components
+	absPath, err := filepath.Abs(path)
+	if err != nil {
+		return fmt.Errorf("cannot resolve path: %w", err)
+	}
+
+	// Ensure the path is within user directories (home, appdata, etc.)
+	homeDir := os.Getenv("HOME")
+	if homeDir == "" {
+		homeDir = os.Getenv("USERPROFILE")
+	}
+
+	localAppData := os.Getenv("LOCALAPPDATA")
+	appData := os.Getenv("APPDATA")
+
+	// Path must be under one of these directories
+	validPrefixes := []string{homeDir}
+	if localAppData != "" {
+		validPrefixes = append(validPrefixes, localAppData)
+	}
+	if appData != "" {
+		validPrefixes = append(validPrefixes, appData)
+	}
+
+	isUnderValidDir := false
+	for _, prefix := range validPrefixes {
+		if prefix != "" {
+			absPrefix, _ := filepath.Abs(prefix)
+			if strings.HasPrefix(absPath, absPrefix) {
+				isUnderValidDir = true
+				break
+			}
+		}
+	}
+
+	if !isUnderValidDir {
+		return fmt.Errorf("path must be within user directories")
+	}
+
+	return nil
+}
+
 // GetOmpConfigPath finds the OMP config path from $POSH_THEME or default locations
 func GetOmpConfigPath() (string, error) {
 	// Priority 1: $POSH_THEME environment variable
 	poshTheme := os.Getenv("POSH_THEME")
 	if poshTheme != "" {
 		if _, err := os.Stat(poshTheme); err == nil {
+			// Validate the path before returning
+			if err := ValidateOmpConfigPath(poshTheme); err != nil {
+				return "", fmt.Errorf("invalid POSH_THEME path: %w", err)
+			}
 			return poshTheme, nil
 		}
 	}

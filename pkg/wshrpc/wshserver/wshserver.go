@@ -1271,7 +1271,13 @@ func (ws *WshServer) OmpWritePaletteCommand(ctx context.Context, data wshrpc.Com
 		backupPath := configPath + ".backup"
 		content, err := os.ReadFile(configPath)
 		if err == nil {
-			if err := os.WriteFile(backupPath, content, 0644); err != nil {
+			// Preserve original file permissions for backup
+			origInfo, statErr := os.Stat(configPath)
+			backupMode := os.FileMode(0600) // Default to more restrictive
+			if statErr == nil {
+				backupMode = origInfo.Mode()
+			}
+			if err := os.WriteFile(backupPath, content, backupMode); err != nil {
 				result.Error = fmt.Sprintf("backup failed: %v", err)
 				return result, nil
 			}
