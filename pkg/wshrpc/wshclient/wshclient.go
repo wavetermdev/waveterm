@@ -558,6 +558,12 @@ func OmpGetConfigInfoCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) (wshrpc.Co
 	return resp, err
 }
 
+// command "ompreinit", wshserver.OmpReinitCommand
+func OmpReinitCommand(w *wshutil.WshRpc, data wshrpc.CommandOmpReinitData, opts *wshrpc.RpcOpts) error {
+	_, err := sendRpcRequestCallHelper[any](w, "ompreinit", data, opts)
+	return err
+}
+
 // command "ompwritepalette", wshserver.OmpWritePaletteCommand
 func OmpWritePaletteCommand(w *wshutil.WshRpc, data wshrpc.CommandOmpWritePaletteData, opts *wshrpc.RpcOpts) (wshrpc.CommandOmpWritePaletteRtnData, error) {
 	resp, err := sendRpcRequestCallHelper[wshrpc.CommandOmpWritePaletteRtnData](w, "ompwritepalette", data, opts)

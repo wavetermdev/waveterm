@@ -462,6 +462,11 @@ class RpcApiType {
         return client.wshRpcCall("ompgetconfiginfo", null, opts);
     }
 
+    // command "ompreinit" [call]
+    OmpReinitCommand(client: WshClient, data: CommandOmpReinitData, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("ompreinit", data, opts);
+    }
+
     // command "ompwritepalette" [call]
     OmpWritePaletteCommand(client: WshClient, data: CommandOmpWritePaletteData, opts?: RpcOpts): Promise<CommandOmpWritePaletteRtnData> {
         return client.wshRpcCall("ompwritepalette", data, opts);
