@@ -1224,3 +1224,79 @@ func (ws *WshServer) JobControllerAttachJobCommand(ctx context.Context, data wsh
 func (ws *WshServer) JobControllerDetachJobCommand(ctx context.Context, jobId string) error {
 	return jobcontroller.DetachJobFromBlock(ctx, jobId, true)
 }
+
+// OMP (Oh-My-Posh) integration handlers
+
+func (ws *WshServer) OmpGetConfigInfoCommand(ctx context.Context) (wshrpc.CommandOmpGetConfigInfoRtnData, error) {
+	result := wshrpc.CommandOmpGetConfigInfoRtnData{}
+
+	configPath, err := wshutil.GetOmpConfigPath()
+	if err != nil {
+		result.Error = err.Error()
+		return result, nil
+	}
+
+	result.ConfigPath = configPath
+	result.Format = string(wshutil.DetectConfigFormat(configPath))
+	result.Exists = true
+
+	content, err := os.ReadFile(configPath)
+	if err != nil {
+		result.Readable = false
+		result.Error = fmt.Sprintf("cannot read: %v", err)
+		return result, nil
+	}
+	result.Readable = true
+
+	fileInfo, _ := os.Stat(configPath)
+	if fileInfo != nil && fileInfo.Mode().Perm()&0200 != 0 {
+		result.Writable = true
+	}
+
+	result.CurrentPalette, _ = wshutil.ExtractPaletteFromConfig(content, result.Format)
+
+	return result, nil
+}
+
+func (ws *WshServer) OmpWritePaletteCommand(ctx context.Context, data wshrpc.CommandOmpWritePaletteData) (wshrpc.CommandOmpWritePaletteRtnData, error) {
+	result := wshrpc.CommandOmpWritePaletteRtnData{}
+
+	configPath, err := wshutil.GetOmpConfigPath()
+	if err != nil {
+		result.Error = err.Error()
+		return result, nil
+	}
+
+	if data.CreateBackup {
+		backupPath := configPath + ".backup"
+		content, err := os.ReadFile(configPath)
+		if err == nil {
+			if err := os.WriteFile(backupPath, content, 0644); err != nil {
+				result.Error = fmt.Sprintf("backup failed: %v", err)
+				return result, nil
+			}
+			result.BackupPath = backupPath
+		}
+	}
+
+	newContent, err := wshutil.MergePaletteIntoConfig(configPath, data.Palette)
+	if err != nil {
+		result.Error = fmt.Sprintf("merge failed: %v", err)
+		return result, nil
+	}
+
+	fileInfo, _ := os.Stat(configPath)
+	mode := os.FileMode(0644)
+	if fileInfo != nil {
+		mode = fileInfo.Mode()
+	}
+
+	err = os.WriteFile(configPath, newContent, mode)
+	if err != nil {
+		result.Error = fmt.Sprintf("write failed: %v", err)
+		return result, nil
+	}
+
+	result.Success = true
+	return result, nil
+}

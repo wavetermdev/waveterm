@@ -172,6 +172,10 @@ type WshRpcInterface interface {
 	JobControllerConnectedJobsCommand(ctx context.Context) ([]string, error)
 	JobControllerAttachJobCommand(ctx context.Context, data CommandJobControllerAttachJobData) error
 	JobControllerDetachJobCommand(ctx context.Context, jobId string) error
+
+	// OMP (Oh-My-Posh) integration
+	OmpGetConfigInfoCommand(ctx context.Context) (CommandOmpGetConfigInfoRtnData, error)
+	OmpWritePaletteCommand(ctx context.Context, data CommandOmpWritePaletteData) (CommandOmpWritePaletteRtnData, error)
 }
 
 // for frontend
@@ -795,4 +799,30 @@ type DetectedShell struct {
 type DetectShellsResponse struct {
 	Shells []DetectedShell `json:"shells"`
 	Error  string          `json:"error,omitempty"` // Non-fatal errors
+}
+
+// OMP (Oh-My-Posh) configuration types
+
+// CommandOmpGetConfigInfoRtnData contains OMP config info
+type CommandOmpGetConfigInfoRtnData struct {
+	ConfigPath     string            `json:"configpath"`
+	Format         string            `json:"format"`
+	Exists         bool              `json:"exists"`
+	Readable       bool              `json:"readable"`
+	Writable       bool              `json:"writable"`
+	CurrentPalette map[string]string `json:"currentpalette,omitempty"`
+	Error          string            `json:"error,omitempty"`
+}
+
+// CommandOmpWritePaletteData contains palette write request
+type CommandOmpWritePaletteData struct {
+	Palette      map[string]string `json:"palette"`
+	CreateBackup bool              `json:"createbackup"`
+}
+
+// CommandOmpWritePaletteRtnData contains write result
+type CommandOmpWritePaletteRtnData struct {
+	Success    bool   `json:"success"`
+	BackupPath string `json:"backuppath,omitempty"`
+	Error      string `json:"error,omitempty"`
 }
