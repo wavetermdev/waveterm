@@ -34,7 +34,7 @@ export const OmpHighContrast = memo(({ className }: OmpHighContrastProps) => {
     // Analyze on mount
     useEffect(() => {
         analyzeConfig();
-    }, []);
+    }, [analyzeConfig]);
 
     const analyzeConfig = useCallback(async () => {
         setAnalysisState("loading");
