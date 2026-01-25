@@ -336,13 +336,13 @@ $setting-gap: 8px;
     &.invalid {
         border-color: var(--form-element-error-color);
     }
+}
 
-    // Textarea variant
-    textarea& {
-        height: auto;
-        resize: vertical;
-        min-height: 60px;
-    }
+// Textarea variant of setting-text-input
+textarea.setting-text-input {
+    height: auto;
+    resize: vertical;
+    min-height: 60px;
 }
 
 // ============================================
