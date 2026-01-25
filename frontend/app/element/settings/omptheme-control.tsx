@@ -13,6 +13,7 @@ import { cn } from "@/util/util";
 import { memo, useCallback, useEffect, useMemo, useState } from "react";
 
 import "./omptheme-control.scss";
+import type { PreviewBackground } from "./preview-background-toggle";
 
 interface OmpTheme {
     name: string;
@@ -24,6 +25,7 @@ interface OmpThemeControlProps {
     value: string;
     onChange: (value: string) => void;
     disabled?: boolean;
+    previewBackground?: PreviewBackground;
 }
 
 /**
@@ -33,9 +35,71 @@ interface ThemeCardProps {
     theme: OmpTheme;
     selected: boolean;
     onClick: () => void;
+    previewBackground?: PreviewBackground;
 }
 
-const ThemeCard = memo(({ theme, selected, onClick }: ThemeCardProps) => {
+const ThemeCard = memo(({ theme, selected, onClick, previewBackground }: ThemeCardProps) => {
+    // Determine background based on preview mode
+    const bgColor =
+        previewBackground === "light"
+            ? "#fafafa"
+            : previewBackground === "dark"
+              ? "#1a1a1a"
+              : theme.colors[0];
+
+    // Split view shows both dark and light backgrounds
+    if (previewBackground === "split") {
+        return (
+            <div
+                className={cn("omptheme-card", { selected })}
+                onClick={onClick}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        onClick();
+                    }
+                }}
+                aria-pressed={selected}
+                aria-label={`${theme.displayName} theme${selected ? " (selected)" : ""}`}
+            >
+                <div className="omptheme-preview split-view">
+                    <div className="preview-half dark">
+                        <div className="omptheme-color-row">
+                            {theme.colors.slice(0, 8).map((color, i) => (
+                                <div
+                                    key={`dark-${i}`}
+                                    className="omptheme-swatch"
+                                    style={{ backgroundColor: color }}
+                                    title={color}
+                                />
+                            ))}
+                        </div>
+                    </div>
+                    <div className="preview-half light">
+                        <div className="omptheme-color-row">
+                            {theme.colors.slice(0, 8).map((color, i) => (
+                                <div
+                                    key={`light-${i}`}
+                                    className="omptheme-swatch"
+                                    style={{ backgroundColor: color }}
+                                    title={color}
+                                />
+                            ))}
+                        </div>
+                    </div>
+                </div>
+                <div className="omptheme-name">{theme.displayName}</div>
+                {selected && (
+                    <div className="omptheme-check">
+                        <i className="fa fa-solid fa-check" />
+                    </div>
+                )}
+            </div>
+        );
+    }
+
     return (
         <div
             className={cn("omptheme-card", { selected })}
@@ -51,7 +115,13 @@ const ThemeCard = memo(({ theme, selected, onClick }: ThemeCardProps) => {
             aria-pressed={selected}
             aria-label={`${theme.displayName} theme${selected ? " (selected)" : ""}`}
         >
-            <div className="omptheme-preview" style={{ background: theme.colors[0] }}>
+            <div
+                className={cn("omptheme-preview", {
+                    "dark-bg": previewBackground === "dark",
+                    "light-bg": previewBackground === "light",
+                })}
+                style={{ background: bgColor }}
+            >
                 <div className="omptheme-color-row">
                     {theme.colors.slice(0, 8).map((color, i) => (
                         <div
@@ -78,7 +148,7 @@ ThemeCard.displayName = "ThemeCard";
 /**
  * Main OMP theme selector component
  */
-export const OmpThemeControl = memo(({ value, onChange, disabled }: OmpThemeControlProps) => {
+export const OmpThemeControl = memo(({ value, onChange, disabled, previewBackground }: OmpThemeControlProps) => {
     const [themes, setThemes] = useState<OmpTheme[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -196,6 +266,7 @@ export const OmpThemeControl = memo(({ value, onChange, disabled }: OmpThemeCont
                             theme={theme}
                             selected={value === theme.name}
                             onClick={() => handleThemeClick(theme.name)}
+                            previewBackground={previewBackground}
                         />
                     ))}
                 </div>
