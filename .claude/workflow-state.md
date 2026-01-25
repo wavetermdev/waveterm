@@ -1,95 +1,98 @@
 ---
 workflow: phased-dev
-workflow_status: complete
-current_phase: Complete
+workflow_status: in_progress
+current_phase: Implementation
 started: 2026-01-25
 last_updated: 2026-01-25
-completed_at: 2026-01-25
+orchestrator_session: active
 ---
 
-# Phased Development Workflow - COMPLETE
+# Phased Development Workflow - OMP Theme Configurator Integration
 
-## Project: Unified Appearance Panel
+## Project: OMP Theme Configurator
 
 ### Objective
-Create unified Appearance Panel - Move OMP components from settings to new Appearance tab, merge with Tab Backgrounds, create unified theming experience for UI theme, Terminal color scheme, and OMP theme selection.
+Integrate the OMP Theme Configurator (based on https://github.com/jamesmontemagno/ohmyposh-configurator) into Wave Terminal's Appearance Panel, with the following requirements:
 
-### Final Status: ALL PHASES COMPLETE
+1. **Theme Integration**: Dynamically load the current OMP theme into the configurator
+2. **Rebranded UI**: Change the configurator theme to match Wave Terminal's design language
+3. **Primary Focus**: Theme modification should be the main action (Save/Cancel workflow)
+4. **Secondary Actions**: Import/Share/Copy should be collapsed/hidden secondary options
+5. **Preview Support**: Must support light/dark preview (already exists in the source)
 
-## Phase Summary
+### Current Status: Ready for Implementation Phase
 
-### Phase 0 & 1: Core Infrastructure
-- [x] Backend OMP utilities (pkg/wshutil/omputil.go)
-- [x] IPC handlers for OMP commands
-- [x] Frontend Appearance Panel with collapsible sections
-- [x] Merged: 3de6da2f
+## Planning Summary
 
-### Phase 2: OMP Theme Selector + Palette Export
-- [x] OmpThemeControl - Visual grid selector for 124 OMP themes
-- [x] OmpPaletteExport - Export terminal colors as OMP palette JSON
-- [x] Code Review: APPROVED
-- [x] QA: PASSED
+**Recommended Approach:** Extract logic from ohmyposh-configurator, rebuild UI using Wave's design system
 
-### Phase 3: Live OMP Theme Reload
-- [x] OmpReinitCommand handler for shell re-initialization
-- [x] Support for PowerShell, Bash, Zsh
-- [x] Frontend trigger after theme changes
-- [x] Code Review: APPROVED
-- [x] QA: PASSED
+**Key Decisions:**
+1. Use Jotai (not Zustand) for state management
+2. Use SCSS with CSS variables (not Tailwind)
+3. Support JSON configs only for MVP (YAML/TOML later)
+4. Primary focus on edit/save workflow
+5. Collapse Import/Export/Share into Advanced section
+6. Reuse existing Wave OMP infrastructure (RPCs, reinit, backup)
 
-### Phase 4-5: High Contrast Mode + Background Toggle
-- [x] Preview Background Toggle (Dark/Light/Split modes)
-- [x] High Contrast Mode for transparent OMP segments
-- [x] Color utilities with WCAG luminance calculation
-- [x] 30 unit tests for colorutil functions
-- [x] Code Review: APPROVED (after fixes)
-- [x] QA: PASSED
+**New Components Needed:**
+- `OmpConfigurator` - Main container
+- `OmpConfigPreview` - Rendered prompt preview
+- `OmpBlockEditor` - Block list with selection
+- `OmpSegmentEditor` - Segment properties panel
+- `AdvancedSection` - Collapsed secondary actions
 
-## Integration & Merge Summary
+**New RPC Commands Needed:**
+- `OmpReadConfigCommand` - Read full config as JSON
+- `OmpWriteConfigCommand` - Write full config with backup
 
-All three feature branches merged to `feat/experimental-upstream-fixes`:
-- `feature/omp-theme-selector` - Merged (2 commits)
-- `feature/live-omp-reload` - Merged (4 commits)
-- `feature/high-contrast-mode` - Merged (13 commits including fixes)
+**Estimated Effort:** 14-19 days total (see discovery report)
 
-Final merge commit: b732be42
+## Phase Tracking
 
-## Worktrees Cleaned Up
+### Phase 0: Discovery & Research
+- [x] Clone and analyze ohmyposh-configurator source
+- [x] Identify key components and architecture
+- [x] Document integration points with Wave Terminal
+- [x] Map out UI changes needed for Wave branding
+- [x] Created discovery report: `.claude/specs/discovery-omp-configurator.md`
 
-- ~~`G:/Code/worktree-omp-theme-selector`~~ - Removed
-- ~~`G:/Code/worktree-live-omp-reload`~~ - Removed
-- ~~`G:/Code/worktree-high-contrast`~~ - Removed
+### Phase 1: Planning
+- [x] Create specs for each integration task
+    - spec-001-configurator-embed.md - Component embedding and RPC commands
+    - spec-002-wave-branding.md - Styling and design system
+    - spec-003-theme-loading.md - Dynamic theme loading from $POSH_THEME
+    - spec-004-save-workflow.md - Save/Cancel workflow with validation
+    - spec-005-secondary-actions.md - Collapsed Import/Export/Share
+- [x] Design review with ultrathink
+- [x] Architecture review
 
-## Feature Branches Deleted
+### Phase 2: Implementation
+**Status: IN PROGRESS**
 
-- ~~`feature/omp-theme-selector`~~ - Deleted
-- ~~`feature/live-omp-reload`~~ - Deleted
-- ~~`feature/high-contrast-mode`~~ - Deleted
+#### Phase 2.1: Backend RPC Commands (Go) - COMPLETE
+- [x] Add OmpReadConfigCommand RPC (read full config as JSON)
+- [x] Add OmpWriteConfigCommand RPC (write full config with backup)
+- [x] Regenerate TypeScript bindings
+- [ ] Test RPC commands (will test with frontend)
 
-## Key Files Created/Modified
+#### Phase 2.2: Frontend Components (React/TypeScript) - COMPLETE
+- [x] OmpConfigurator main component shell
+- [x] OmpConfigPreview (visual preview)
+- [x] OmpBlockEditor (block/segment editing)
+- [x] ActionButtons (Save/Cancel with keyboard shortcuts)
+- [x] AdvancedSection (collapsed Import/Export/Copy/Restore)
 
-### Frontend
-- `frontend/app/view/waveconfig/appearance-content.tsx` - Main panel
-- `frontend/app/element/settings/omptheme-control.tsx` - Theme selector
-- `frontend/app/element/settings/omp-palette-export.tsx` - Palette export
-- `frontend/app/element/settings/preview-background-toggle.tsx` - Background toggle
-- `frontend/app/element/settings/omp-high-contrast.tsx` - High contrast UI
-- `frontend/app/element/settings/index.ts` - Exports all components
+#### Phase 2.3: Integration & Styling - COMPLETE
+- [x] Wire up to appearance-content.tsx
+- [x] Apply Wave branding (SCSS)
+- [ ] Test with existing OMP infrastructure (requires runtime testing)
 
-### Backend
-- `pkg/wshutil/omputil.go` - OMP config utilities
-- `pkg/wshutil/colorutil.go` - Color utilities with luminance calculation
-- `pkg/wshutil/colorutil_test.go` - 30 unit tests
-- `pkg/wshrpc/wshserver/wshserver.go` - OMP command handlers
-- `pkg/wshrpc/wshrpctypes.go` - OMP command types
+### Phase 3: Review & QA
+- [ ] Code review
+- [ ] QA testing with Electron MCP
+- [ ] Integration verification
 
-## Build Verification
-
-- [x] Go Build: PASSED (`go build ./pkg/... ./cmd/...`)
-- [x] TypeScript Build: PASSED (`npm run typecheck`)
-- [x] Go Tests: 30/30 colorutil tests PASSED
-- [x] Frontend Lint: PASSED
-
-## Workflow Complete
-
-Ready for production deployment.
+## Reference
+- Source repo: https://github.com/jamesmontemagno/ohmyposh-configurator
+- Target location: Wave Terminal Appearance Panel
+- Existing context: Prior work in unified Appearance Panel (completed)
