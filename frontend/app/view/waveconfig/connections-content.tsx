@@ -9,7 +9,7 @@
  * a main panel for editing connection settings grouped by category.
  */
 
-import { atoms } from "@/app/store/global";
+import { atoms, getApi } from "@/app/store/global";
 import { globalStore } from "@/app/store/jotaiStore";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
@@ -845,13 +845,38 @@ export const ConnectionsContent = memo(({ model }: ConnectionsContentProps) => {
 
         setError(null);
         try {
-            // Setting metamaptype to null/empty should delete the connection
-            // We need to set all fields to null to remove them
-            const data: ConnConfigRequest = {
-                host: selectedConnection,
-                metamaptype: null as any,
-            };
-            await RpcApi.SetConnectionsConfigCommand(TabRpcClient, data);
+            // Read the connections file, remove the connection, and write back
+            const configDir = getApi().getConfigDir();
+            const fullPath = `${configDir}/connections.json`;
+
+            // Read current connections
+            let connectionsData: { [key: string]: ConnKeywords } = {};
+            try {
+                const fileData = await RpcApi.FileReadCommand(TabRpcClient, {
+                    info: { path: fullPath },
+                });
+                if (fileData?.data64) {
+                    const content = atob(fileData.data64);
+                    if (content.trim()) {
+                        connectionsData = JSON.parse(content);
+                    }
+                }
+            } catch {
+                // File doesn't exist or is empty - nothing to delete
+                setSelectedConnection(null);
+                return;
+            }
+
+            // Remove the connection
+            delete connectionsData[selectedConnection];
+
+            // Write back
+            const encoded = btoa(JSON.stringify(connectionsData, null, 2));
+            await RpcApi.FileWriteCommand(TabRpcClient, {
+                info: { path: fullPath },
+                data64: encoded,
+            });
+
             setSelectedConnection(null);
         } catch (err) {
             setError(`Failed to delete connection: ${err.message || String(err)}`);

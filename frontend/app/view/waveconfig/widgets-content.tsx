@@ -381,6 +381,17 @@ const WidgetEditor = memo(({ widget, isNew, onSave, onDelete, onCancel }: Widget
     const [magnified, setMagnified] = useState(widget?.config?.magnified || false);
     const [viewType, setViewType] = useState(widget?.config?.blockdef?.meta?.view || "term");
 
+    // Reset local state when widget prop changes
+    useEffect(() => {
+        setKey(widget?.key?.replace(/^(def)?widget@/, "") || "");
+        setLabel(widget?.config?.label || "");
+        setIcon(widget?.config?.icon || "puzzle-piece");
+        setColor(widget?.config?.color || "");
+        setDescription(widget?.config?.description || "");
+        setMagnified(widget?.config?.magnified || false);
+        setViewType(widget?.config?.blockdef?.meta?.view || "term");
+    }, [widget]);
+
     const isDefault = widget?.isDefault ?? false;
     const canDelete = !isDefault && !isNew;
     const keyError = isNew && !key.match(/^[a-zA-Z0-9_-]+$/);

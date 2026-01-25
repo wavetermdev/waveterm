@@ -581,6 +581,7 @@ export const TabVarsContent = memo(({ model }: TabVarsContentProps) => {
                 setPresetsData(data);
             } catch (err: any) {
                 setErrorMessage(`Failed to save presets: ${err.message || String(err)}`);
+                throw err; // Re-throw so callers can handle accordingly
             } finally {
                 setIsSaving(false);
             }
@@ -637,13 +638,14 @@ export const TabVarsContent = memo(({ model }: TabVarsContentProps) => {
             }
 
             const newData = { ...presetsData, [fullKey]: data };
-            await savePresets(newData);
-
-            if (!errorMessage) {
+            try {
+                await savePresets(newData);
                 setIsAddingNew(false);
+            } catch {
+                // Error is already set by savePresets
             }
         },
-        [presetsData, savePresets, errorMessage]
+        [presetsData, savePresets]
     );
 
     const handleSavePreset = useCallback(
@@ -651,13 +653,14 @@ export const TabVarsContent = memo(({ model }: TabVarsContentProps) => {
             if (!selectedPreset) return;
 
             const newData = { ...presetsData, [selectedPreset]: data };
-            await savePresets(newData);
-
-            if (!errorMessage) {
+            try {
+                await savePresets(newData);
                 setSelectedPreset(null);
+            } catch {
+                // Error is already set by savePresets
             }
         },
-        [selectedPreset, presetsData, savePresets, errorMessage]
+        [selectedPreset, presetsData, savePresets]
     );
 
     const handleDeletePreset = useCallback(async () => {
@@ -665,12 +668,13 @@ export const TabVarsContent = memo(({ model }: TabVarsContentProps) => {
 
         const newData = { ...presetsData };
         delete newData[selectedPreset];
-        await savePresets(newData);
-
-        if (!errorMessage) {
+        try {
+            await savePresets(newData);
             setSelectedPreset(null);
+        } catch {
+            // Error is already set by savePresets
         }
-    }, [selectedPreset, presetsData, savePresets, errorMessage]);
+    }, [selectedPreset, presetsData, savePresets]);
 
     // Render content
     const renderContent = () => {
